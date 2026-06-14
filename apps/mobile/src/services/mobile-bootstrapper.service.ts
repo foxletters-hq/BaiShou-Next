@@ -5,9 +5,9 @@ import type {
   SettingsManagerService,
   SummarySyncService
 } from '@baishou/core-mobile'
-import { logger } from '@baishou/shared'
+import { logger, DEFAULT_USER_PROFILE, USER_PROFILE_SETTINGS_KEY, ASSISTANT_DEFAULT_AVATAR_SENTINEL } from '@baishou/shared'
 import i18n from 'i18next'
-import { syncSettingsAssistantsToRepo } from './mobile-assistant-sync.service'
+import { buildAssistantRepoInput } from '../lib/mobile-assistant.util'
 
 export interface MobileBootstrapperDeps {
   shadowIndexSyncService: ShadowIndexSyncService
@@ -94,40 +94,26 @@ export class MobileDataBootstrapper {
         logger.warn('[MobileBootstrapper] settings fullResyncFromDisk failed:', e as Error)
       }
 
-      // Check and create default assistant
-      const assistants = await deps.settingsManager.get<any[]>('assistants')
-      if (!assistants || assistants.length === 0) {
-        const defaultAssistant = {
+      const assistants = await deps.assistantManager.findAll()
+      if (assistants.length === 0) {
+        await deps.assistantManager.create({
           id: 'default',
-          name: i18n.t('agent.assistant.default_assistant_name', '默认伙伴'),
-          emoji: '',
-          avatarPath: 'default-assistant',
-          isDefault: true,
-          isPinned: false,
-          systemPrompt: ''
-        }
-        await deps.settingsManager.set('assistants', [defaultAssistant])
+          ...buildAssistantRepoInput({
+            name: i18n.t('agent.assistant.default_assistant_name', '默认伙伴'),
+            avatarPath: ASSISTANT_DEFAULT_AVATAR_SENTINEL,
+            isDefault: true,
+            isPinned: false,
+            systemPrompt: ''
+          })
+        })
         logger.info('[MobileBootstrapper] Created default assistant')
       }
 
-      try {
-        await syncSettingsAssistantsToRepo(deps.settingsManager, deps.assistantManager)
-      } catch (e) {
-        logger.warn('[MobileBootstrapper] syncSettingsAssistantsToRepo failed:', e as Error)
-      }
-
-      const userProfile = await deps.settingsManager.get<any>('user_profile')
-      if (!userProfile || !userProfile.personas || Object.keys(userProfile.personas).length === 0) {
-        const defaultPersonaId = i18n.t('settings.default_identity', '默认身份')
-        const defaultProfile = {
-          nickname: i18n.t('settings.default_nickname', '白守用户'),
-          activePersonaId: defaultPersonaId,
-          personas: {
-            [defaultPersonaId]: { id: defaultPersonaId, facts: {} }
-          },
-          recentPersonaIds: [defaultPersonaId]
-        }
-        await deps.settingsManager.set('user_profile', defaultProfile)
+      const userProfile = await deps.settingsManager.get<typeof DEFAULT_USER_PROFILE>(
+        USER_PROFILE_SETTINGS_KEY
+      )
+      if (!userProfile?.personas || Object.keys(userProfile.personas).length === 0) {
+        await deps.settingsManager.set(USER_PROFILE_SETTINGS_KEY, DEFAULT_USER_PROFILE)
         logger.info('[MobileBootstrapper] Created default identity card')
       }
 

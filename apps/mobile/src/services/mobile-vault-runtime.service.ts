@@ -46,6 +46,18 @@ import type { SessionFileService } from '@baishou/core-mobile'
 import type { SessionSyncService } from '@baishou/core-mobile'
 import type { DiaryRepository } from '@baishou/database'
 
+/** 每次 Vault 切换递增；用于丢弃过期的 deferResync onComplete，避免重连 Shadow DB 时 watcher 仍持有旧连接 */
+let vaultRuntimeGeneration = 0
+
+function bumpVaultRuntimeGeneration(): number {
+  vaultRuntimeGeneration += 1
+  return vaultRuntimeGeneration
+}
+
+function isVaultRuntimeGenerationCurrent(generation: number): boolean {
+  return generation === vaultRuntimeGeneration
+}
+
 export type VaultDiarySearcher = {
   searchFTS: (
     query: string,
@@ -150,7 +162,7 @@ export async function initVaultLayer(deps: {
 }): Promise<VaultBoundDiaryStack> {
   await deps.pathService.getRootDirectory()
   await deps.vaultService.initRegistry()
-  await connectShadowForActiveVault(deps)
+  await connectGlobalShadowDb(deps)
   return createVaultBoundDiaryStack(deps)
 }
 
@@ -160,7 +172,11 @@ export function createVaultBoundDiaryStack(deps: {
   fileSystem: IFileSystem
   settingsManager?: SettingsManagerService
 }): VaultBoundDiaryStack {
-  const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb())
+  const activeVault = deps.vaultService.getActiveVault()
+  if (!activeVault) {
+    throw new Error('[VaultRuntime] 无活跃 Vault，无法创建日记栈')
+  }
+  const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), activeVault.name)
   const fileSyncService = new FileSyncServiceImpl(deps.pathService, deps.fileSystem)
   const vaultIndexService = new VaultIndexServiceImpl()
   const shadowIndexSyncService = new ShadowIndexSyncService(
@@ -294,22 +310,40 @@ export function createVaultBoundDiaryStack(deps: {
   }
 }
 
-export async function connectShadowForActiveVault(deps: {
+export async function connectGlobalShadowDb(deps: {
   pathService: IStoragePathService
-  vaultService: VaultService
   fileSystem: IFileSystem
 }): Promise<void> {
-  const activeVault = deps.vaultService.getActiveVault()
-  if (!activeVault) {
-    logger.warn('[VaultRuntime] 无活跃 Vault，跳过 Shadow DB 连接')
+  if (shadowConnectionManager.isConnected()) {
     return
   }
 
-  const sysDir = await deps.pathService.getShadowIndexDirectory(activeVault.name)
-  await deps.fileSystem.mkdir(sysDir, { recursive: true })
-  await shadowConnectionManager.connect(sysDir)
-  logger.info(`[VaultRuntime] Shadow DB 已连接: ${activeVault.name}`)
+  if (connectGlobalShadowDbInFlight) {
+    await connectGlobalShadowDbInFlight
+    return
+  }
+
+  const task = (async () => {
+    if (shadowConnectionManager.isConnected()) {
+      return
+    }
+    const sysDir = await deps.pathService.getGlobalShadowIndexDirectory()
+    await deps.fileSystem.mkdir(sysDir, { recursive: true })
+    await shadowConnectionManager.connect(sysDir)
+    logger.info(`[VaultRuntime] 全局 Shadow DB 已连接: ${sysDir}`)
+  })()
+
+  connectGlobalShadowDbInFlight = task
+  try {
+    await task
+  } finally {
+    if (connectGlobalShadowDbInFlight === task) {
+      connectGlobalShadowDbInFlight = null
+    }
+  }
 }
+
+let connectGlobalShadowDbInFlight: Promise<void> | null = null
 
 export type VaultRuntimeWatcherDeps = {
   pathService: IStoragePathService
@@ -339,6 +373,8 @@ export async function prepareVaultSwitch(currentStack?: VaultBoundDiaryStack): P
   }
   await ShadowIndexUpsertOps.waitForIdle()
   await mobileDataBootstrapper.waitUntilIdle()
+  // deferResync 的 onComplete 可能在 waitUntilIdle 期间重启 watcher，切换继续前再停一次
+  await stopVaultWatchers()
 }
 
 /** 文件级迁移/复制前：停 watcher、刷盘、断开 Shadow DB（不退出应用） */
@@ -346,9 +382,10 @@ export async function quiesceStorageForFileCopy(deps: {
   currentStack?: VaultBoundDiaryStack
   settingsManager: SettingsManagerService
 }): Promise<void> {
+  bumpVaultRuntimeGeneration()
   await prepareVaultSwitch(deps.currentStack)
   await deps.settingsManager.flushToDisk()
-  shadowConnectionManager.disconnect()
+  await shadowConnectionManager.disconnect()
 }
 
 export async function resumeStorageAfterFileCopy(deps: {
@@ -370,7 +407,7 @@ export async function resumeStorageAfterFileCopy(deps: {
   }
   watcherDeps: VaultRuntimeWatcherDeps
 }): Promise<VaultBoundDiaryStack> {
-  await connectShadowForActiveVault(deps)
+  await connectGlobalShadowDb(deps)
   const diaryStack = createVaultBoundDiaryStack({
     pathService: deps.pathService,
     vaultService: deps.vaultService,
@@ -384,7 +421,7 @@ export async function resumeStorageAfterFileCopy(deps: {
 
 let storageRootRebootstrapInFlight: Promise<VaultBoundDiaryStack> | null = null
 
-/** 数据根目录变更后：重载 registry、重连 Shadow DB、重建 diary stack 并全量扫描日记 */
+/** 数据根目录变更后：重载 registry、重建 diary stack 并全量扫描日记 */
 export async function rebootstrapAfterStorageRootChange(deps: {
   pathService: IStoragePathService
   vaultService: VaultService
@@ -410,10 +447,9 @@ export async function rebootstrapAfterStorageRootChange(deps: {
   }
 
   const task = (async () => {
+    bumpVaultRuntimeGeneration()
     await prepareVaultSwitch(deps.diaryStack)
-    await shadowConnectionManager.disconnect()
     await deps.vaultService.initRegistry()
-    await connectShadowForActiveVault(deps)
 
     const diaryStack = createVaultBoundDiaryStack({
       pathService: deps.pathService,
@@ -504,7 +540,12 @@ async function runVaultBootstrap(
 
   if (options?.deferResync) {
     // 后台 resync 完成后再启动 watcher，避免 fullScanVault 与 VaultFileWatcher 并发写 Shadow DB
+    const generation = vaultRuntimeGeneration
     void scheduleVaultEcosystemResync(bootstrapDeps, options.resyncReason ?? 'vault-switch', () => {
+      if (!isVaultRuntimeGenerationCurrent(generation)) {
+        logger.info('[VaultRuntime] Skip stale watcher restart after background resync')
+        return
+      }
       void restartVaultWatchers(deps.diaryStack, deps.vaultService, deps.watcherDeps).finally(() =>
         options.onResyncComplete?.()
       )
@@ -572,7 +613,6 @@ export async function activateVaultRuntime(deps: {
   }
   watcherDeps: VaultRuntimeWatcherDeps
 }): Promise<void> {
-  await connectShadowForActiveVault(deps)
   await runVaultBootstrap(deps)
 }
 
@@ -599,10 +639,11 @@ export async function switchVaultRuntime(
   }
 
   const switchTask = (async () => {
+    bumpVaultRuntimeGeneration()
     await prepareVaultSwitch(deps.currentStack)
 
     const active = deps.vaultService.getActiveVault()
-    if (active?.name === vaultName && shadowConnectionManager.isConnected() && deps.currentStack) {
+    if (active?.name === vaultName && deps.currentStack) {
       await restartVaultWatchers(deps.currentStack, deps.vaultService, deps.watcherDeps)
       return deps.currentStack
     }
@@ -611,7 +652,6 @@ export async function switchVaultRuntime(
 
     deps.callbacks?.onStackInvalidated?.()
 
-    await connectShadowForActiveVault(deps)
     const diaryStack = createVaultBoundDiaryStack({
       pathService: deps.pathService,
       vaultService: deps.vaultService,
@@ -647,4 +687,16 @@ export async function switchVaultRuntime(
       vaultSwitchInFlight = null
     }
   }
+}
+
+/** 删除工作空间前清理其在全局 Shadow DB 中的索引 */
+export async function deleteVaultWithShadowCleanup(
+  vaultName: string,
+  deps: { vaultService: VaultService }
+): Promise<void> {
+  if (shadowConnectionManager.isConnected()) {
+    const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultName)
+    await shadowRepo.deleteAllForVault(vaultName)
+  }
+  await deps.vaultService.deleteVault(vaultName)
 }

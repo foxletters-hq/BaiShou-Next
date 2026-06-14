@@ -85,6 +85,7 @@ import {
   rebootstrapAfterStorageRootChange,
   resumeStorageAfterFileCopy,
   switchVaultRuntime,
+  deleteVaultWithShadowCleanup,
   type VaultBoundDiaryStack
 } from '../services/mobile-vault-runtime.service'
 import { logger } from '@baishou/shared'
@@ -102,7 +103,7 @@ interface BaishouContextValue {
   storageReady: boolean
   /** 工作空间切换后递增，供列表等 UI 重新拉取数据 */
   vaultRevision: number
-  /** 工作空间切换进行中（Shadow DB 重连窗口） */
+  /** 工作空间切换进行中（重建 diary stack / 后台 resync） */
   vaultSwitching: boolean
   /** Android：授权后重试挂载 BaiShou_Root 并同步磁盘 */
   retryStorageSetup: () => Promise<boolean>
@@ -131,6 +132,7 @@ interface BaishouContextValue {
     bootstrapper: MobileDataBootstrapper
     vaultFileWatcher: VaultFileWatcherService
     switchVault: (vaultName: string) => Promise<void>
+    deleteVault: (vaultName: string) => Promise<void>
     memorySearch: (
       query: string,
       options?: { topK?: number; minScore?: number }
@@ -373,7 +375,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           settingsManager,
           archiveService,
           pathService,
-          fileSystem
+          fileSystem,
+          mobileDataBootstrapper
         )
 
         const updaterService = new MobileUpdaterService(settingsManager)
@@ -619,7 +622,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
         const switchVault = async (vaultName: string) => {
           const active = vaultService.getActiveVault()
-          if (active?.name === vaultName && shadowConnectionManager.isConnected()) {
+          if (active?.name === vaultName) {
             return
           }
 
@@ -660,7 +663,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                       ? {
                           ...prev.services,
                           ragService: ragServiceRef.current,
-                          switchVault
+                          switchVault,
+                          deleteVault
                         }
                       : prev.services
                   }))
@@ -682,6 +686,10 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               setValue((prev) => ({ ...prev, vaultSwitching: false }))
             }
           }
+        }
+
+        const deleteVault = async (vaultName: string) => {
+          await deleteVaultWithShadowCleanup(vaultName, { vaultService })
         }
 
         if (diaryStack) {
@@ -907,6 +915,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               bootstrapper: mobileDataBootstrapper,
               vaultFileWatcher,
               switchVault,
+              deleteVault,
               memorySearch,
               mobileMcpService,
               ragService: ragServiceRef.current,

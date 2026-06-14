@@ -9,6 +9,7 @@ import {
   openAllFilesAccessSettings as openAllFilesAccessSettingsPage,
   requestStoragePermission
 } from './storage-permission.service'
+import { sanitizeVaultDirectoryName } from '@baishou/core'
 
 export { EXTERNAL_STORAGE_ROOT }
 
@@ -169,7 +170,7 @@ export class MobileStoragePathService implements IStoragePathService {
 
   public async getVaultDirectory(vaultName: string): Promise<string> {
     const root = await this.getRootDirectory()
-    const safeName = vaultName.replace(/[/\\]/g, '_')
+    const safeName = sanitizeVaultDirectoryName(vaultName)
     const vaultDir = `${root}/${safeName}`
     await this.ensureDir(vaultDir)
     return vaultDir
@@ -182,21 +183,24 @@ export class MobileStoragePathService implements IStoragePathService {
     return vaultSysDir
   }
 
+  public async getActiveVaultSettingsDirectory(): Promise<string> {
+    const name = await this.getActiveVaultName()
+    return this.getVaultSystemDirectory(name)
+  }
+
   /**
-   * 影子索引为可重建缓存。expo-sqlite 在外置 BaiShou_Root 上 open 可能原生崩溃，
-   * 故 Mobile 将 per-vault shadow_index_v2.db 放在应用沙盒（与 Flutter 同路径 SSOT 的日记仍在外置 Vault）。
+   * 全局 Shadow DB 目录（应用沙盒内单库，所有 Vault 共用 shadow_index_v2.db）
    */
-  public async getShadowIndexDirectory(vaultName: string): Promise<string> {
-    const safeName = vaultName.replace(/[/\\]/g, '_')
+  public async getGlobalShadowIndexDirectory(): Promise<string> {
     const base = await this.getGlobalRegistryDirectory()
-    const dir = `${base}/shadow_indexes/${safeName}`
+    const dir = `${base}/shadow_index`
     await this.ensureDir(dir)
     return dir
   }
 
   public async getSnapshotsDirectory(): Promise<string> {
-    const name = await this.getActiveVaultName()
-    const dir = `${await this.getVaultSystemDirectory(name)}/snapshots`
+    const root = await this.getRootDirectory()
+    const dir = `${root}/.snapshots`
     await this.ensureDir(dir)
     return dir
   }
@@ -227,21 +231,21 @@ export class MobileStoragePathService implements IStoragePathService {
 
   public async getSessionsBaseDirectory(): Promise<string> {
     const name = await this.getActiveVaultName()
-    const dir = `${await this.getVaultSystemDirectory(name)}/sessions`
+    const dir = `${await this.getVaultDirectory(name)}/Sessions`
     await this.ensureDir(dir)
     return dir
   }
 
   public async getAssistantsBaseDirectory(): Promise<string> {
     const name = await this.getActiveVaultName()
-    const dir = `${await this.getVaultSystemDirectory(name)}/assistants`
+    const dir = `${await this.getVaultDirectory(name)}/Assistants`
     await this.ensureDir(dir)
     return dir
   }
 
   public async getAttachmentsBaseDirectory(): Promise<string> {
     const name = await this.getActiveVaultName()
-    const dir = `${await this.getVaultSystemDirectory(name)}/attachments`
+    const dir = `${await this.getVaultDirectory(name)}/Attachments`
     await this.ensureDir(dir)
     return dir
   }

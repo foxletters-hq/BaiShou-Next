@@ -1,10 +1,26 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast } from '@baishou/ui/native'
 import { useAgentStore, type AgentMessagePart } from '@baishou/store'
 import { useBaishou } from '../providers/BaishouProvider'
+import { waitForVaultEcosystemResync } from '../services/mobile-vault-resync.service'
 import { buildInsertSessionInput } from '../utils/session-input.util'
 import { mapSessionMessageFromDb } from '../utils/map-session-message.util'
+import { sessionBelongsToActiveVault } from '@baishou/shared'
+
+async function resolveActiveVaultContext(
+  services: NonNullable<ReturnType<typeof useBaishou>['services']>
+): Promise<{ name: string; path: string | null }> {
+  try {
+    const [name, vaultPath] = await Promise.all([
+      services.pathService.getActiveVaultNameForContext(),
+      services.pathService.getActiveVaultPath()
+    ])
+    return { name, path: vaultPath }
+  } catch {
+    return { name: 'Personal', path: null }
+  }
+}
 
 // 会话消息接口
 interface SessionMessage {
@@ -21,15 +37,28 @@ interface SessionMessage {
   costMicros?: number
 }
 
-export function useAgentSession() {
+export interface UseAgentSessionOptions {
+  assistantId?: string
+  providerId?: string
+  modelId?: string
+}
+
+export function useAgentSession(options: UseAgentSessionOptions = {}) {
+  const { assistantId, providerId, modelId } = options
   const { t } = useTranslation()
   const toast = useNativeToast()
   const { messages, addMessage, clearSession } = useAgentStore()
-  const { services, dbReady } = useBaishou()
+  const { services, dbReady, vaultRevision, vaultSwitching } = useBaishou()
 
   // 会话管理状态
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(false)
+
+  const resetSessionState = useCallback(() => {
+    setCurrentSessionId(null)
+    setHasMore(false)
+    clearSession()
+  }, [clearSession])
 
   // 将数据库消息转换为 UI 消息格式
   const mapDbMessageToUI = useCallback((msg: any): SessionMessage => {
@@ -100,8 +129,13 @@ export function useAgentSession() {
       if (!dbReady || !services) return
       try {
         const sessionList = await services.sessionManager.list(100, 0, assistantId)
-        if (sessionList.length > 0) {
-          const sorted = [...sessionList].sort(
+        const { name: activeVaultName, path: activeVaultPath } =
+          await resolveActiveVaultContext(services)
+        const vaultSessions = sessionList.filter((session: { vaultName?: string | null }) =>
+          sessionBelongsToActiveVault(session.vaultName, activeVaultName, activeVaultPath)
+        )
+        if (vaultSessions.length > 0) {
+          const sorted = [...vaultSessions].sort(
             (a: { updatedAt?: Date | string | null }, b: { updatedAt?: Date | string | null }) =>
               new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()
           )
@@ -110,14 +144,18 @@ export function useAgentSession() {
         }
 
         const newId = Date.now().toString()
+        const { name: vaultName } = await resolveActiveVaultContext(services)
         await services.sessionManager.upsertSession(
-          buildInsertSessionInput({
-            id: newId,
-            title: t('agent.sessions.default_title', '新对话'),
-            assistantId,
-            providerId,
-            modelId
-          })
+          buildInsertSessionInput(
+            {
+              id: newId,
+              title: t('agent.sessions.default_title', '新对话'),
+              assistantId,
+              providerId,
+              modelId
+            },
+            vaultName
+          )
         )
         setCurrentSessionId(newId)
         clearSession()
@@ -134,14 +172,18 @@ export function useAgentSession() {
       if (!dbReady || !services) return null
       try {
         const newId = Date.now().toString()
+        const { name: vaultName } = await resolveActiveVaultContext(services)
         await services.sessionManager.upsertSession(
-          buildInsertSessionInput({
-            id: newId,
-            title: t('agent.sessions.default_title', '新对话'),
-            assistantId: options?.assistantId,
-            providerId: options?.providerId,
-            modelId: options?.modelId
-          })
+          buildInsertSessionInput(
+            {
+              id: newId,
+              title: t('agent.sessions.default_title', '新对话'),
+              assistantId: options?.assistantId,
+              providerId: options?.providerId,
+              modelId: options?.modelId
+            },
+            vaultName
+          )
         )
         setCurrentSessionId(newId)
         clearSession()
@@ -200,6 +242,43 @@ export function useAgentSession() {
     },
     [services]
   )
+
+  // 工作区切换开始：立刻清空聊天 UI，避免继续渲染上一工作区的消息
+  useEffect(() => {
+    if (vaultSwitching) {
+      resetSessionState()
+    }
+  }, [vaultSwitching, resetSessionState])
+
+  // 无活跃会话时加载当前伙伴的最近对话（含工作区切换完成后的重载）
+  useEffect(() => {
+    if (!dbReady || !services || !assistantId || vaultSwitching) return
+    if (currentSessionId) return
+
+    let cancelled = false
+    const loadLatestSession = async () => {
+      if (vaultRevision > 0) {
+        await waitForVaultEcosystemResync()
+      }
+      if (cancelled) return
+      await handleAssistantSwitched(assistantId, providerId, modelId)
+    }
+
+    void loadLatestSession()
+    return () => {
+      cancelled = true
+    }
+  }, [
+    dbReady,
+    services,
+    assistantId,
+    providerId,
+    modelId,
+    vaultSwitching,
+    currentSessionId,
+    vaultRevision,
+    handleAssistantSwitched
+  ])
 
   return {
     // 状态
