@@ -28,7 +28,9 @@ const DEFAULT_CONFIG: S3SyncConfig = {
   fileConcurrency: 5,
   chunkConcurrency: 5,
   maxDivergencePercent: 100
-}: React.FC = () => {
+}
+
+const IncrementalSyncScreen: React.FC = () => {
   const { t } = useTranslation()
   const { colors, isDark, tokens } = useNativeTheme()
   const toast = useNativeToast()
