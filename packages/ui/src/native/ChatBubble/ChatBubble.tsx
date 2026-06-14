@@ -143,11 +143,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                   onImagePress={(_src, resolvedUri) => setPreviewImageUri(resolvedUri)}
                 />
               ) : !isAssistant ? (
-                <Text
-                  style={[styles.text, { color: colors.textPrimary }]}
-                >
-                  {message.content}
-                </Text>
+                <Text style={[styles.text, { color: colors.textPrimary }]}>{message.content}</Text>
               ) : null}
             </Pressable>
           )}

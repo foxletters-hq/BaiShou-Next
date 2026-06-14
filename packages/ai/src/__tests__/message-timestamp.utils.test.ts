@@ -12,7 +12,10 @@ describe('injectModelMetadata (adapter integration)', () => {
 
   it('wraps first text part in multimodal content', () => {
     const result = injectModelMetadata(
-      [{ type: 'text', text: '查天气' }, { type: 'image', image: 'x' }],
+      [
+        { type: 'text', text: '查天气' },
+        { type: 'image', image: 'x' }
+      ],
       'user',
       at
     )

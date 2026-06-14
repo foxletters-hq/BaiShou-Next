@@ -28,12 +28,9 @@ export function AssistantPickerPromptTab({
   const { isDark } = useTheme()
 
   const providerId = activeAssistant.providerId
-  const providerRecord = providers.find(
-    (p) => (p.id || p.providerId) === providerId
-  )
+  const providerRecord = providers.find((p) => (p.id || p.providerId) === providerId)
   const providerIconSrc = providerId
-    ? getProviderIcon(providerId, isDark) ||
-      getProviderIcon(providerRecord?.type, isDark)
+    ? getProviderIcon(providerId, isDark) || getProviderIcon(providerRecord?.type, isDark)
     : undefined
 
   return (
@@ -51,10 +48,7 @@ export function AssistantPickerPromptTab({
           {t('agent.assistant.prompt_label', '系统提示词')}
         </h3>
         <HelpTooltip
-          content={t(
-            'agent.assistant.prompt_hint',
-            '定义伙伴的角色、行为和回复风格...'
-          )}
+          content={t('agent.assistant.prompt_hint', '定义伙伴的角色、行为和回复风格...')}
         />
       </div>
       <div

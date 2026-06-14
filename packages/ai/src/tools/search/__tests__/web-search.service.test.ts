@@ -62,12 +62,10 @@ describe('WebSearchService', () => {
 
   describe('multiSearch', () => {
     it('caps merged multi-query results at totalMaxResults', async () => {
-      const searchSpy = vi
-        .spyOn(WebSearchService, 'search')
-        .mockImplementation(async (query) => [
-          { title: `${query}-a`, url: `https://example.com/${query}-a`, snippet: 'a' },
-          { title: `${query}-b`, url: `https://example.com/${query}-b`, snippet: 'b' }
-        ])
+      const searchSpy = vi.spyOn(WebSearchService, 'search').mockImplementation(async (query) => [
+        { title: `${query}-a`, url: `https://example.com/${query}-a`, snippet: 'a' },
+        { title: `${query}-b`, url: `https://example.com/${query}-b`, snippet: 'b' }
+      ])
 
       const results = await WebSearchService.multiSearch({
         queries: ['one', 'two'],

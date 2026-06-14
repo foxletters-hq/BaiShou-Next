@@ -113,34 +113,36 @@ describe('MessageAdapter.toVercelMessages', () => {
       expect(toolResults[1].output).toEqual({ type: 'text', value: '结果2' })
     })
 
-  it('should NOT generate a tool message when assistant has no tool parts', async () => {
-    const dbMessages: MessageWithParts[] = [
-      makeUserMsg('你好'),
-      makeAssistantMsg([makeTextPart('你好！有什么可以帮助你的？')])
-    ]
+    it('should NOT generate a tool message when assistant has no tool parts', async () => {
+      const dbMessages: MessageWithParts[] = [
+        makeUserMsg('你好'),
+        makeAssistantMsg([makeTextPart('你好！有什么可以帮助你的？')])
+      ]
 
-    const result = await MessageAdapter.toVercelMessages(dbMessages)
+      const result = await MessageAdapter.toVercelMessages(dbMessages)
 
-    expect(result).toHaveLength(2)
-    expect(result[0]?.role).toBe('user')
-    expect(result[1]?.role).toBe('assistant')
-  })
+      expect(result).toHaveLength(2)
+      expect(result[0]?.role).toBe('user')
+      expect(result[1]?.role).toBe('assistant')
+    })
 
-  it('should wrap user and assistant messages with metadata blocks for model context', async () => {
-    const sentAt = new Date(2026, 5, 15, 16, 45)
-    const expectedUser = wrapMessageBodyForModel('我们今天聊了什么', sentAt)
-    const expectedAssistant = wrapMessageBodyForModel('让我整理一下', sentAt)
-    const dbMessages: MessageWithParts[] = [
-      makeUserMsg('我们今天聊了什么', { createdAt: sentAt }),
-      makeAssistantMsg([makeTextPart('让我整理一下')], { createdAt: sentAt, orderIndex: 1 })
-    ]
+    it('should wrap user and assistant messages with metadata blocks for model context', async () => {
+      const sentAt = new Date(2026, 5, 15, 16, 45)
+      const expectedUser = wrapMessageBodyForModel('我们今天聊了什么', sentAt)
+      const expectedAssistant = wrapMessageBodyForModel('让我整理一下', sentAt)
+      const dbMessages: MessageWithParts[] = [
+        makeUserMsg('我们今天聊了什么', { createdAt: sentAt }),
+        makeAssistantMsg([makeTextPart('让我整理一下')], { createdAt: sentAt, orderIndex: 1 })
+      ]
 
-    const result = await MessageAdapter.toVercelMessages(dbMessages)
+      const result = await MessageAdapter.toVercelMessages(dbMessages)
 
-    expect(result[0]?.content).toBe(expectedUser)
-    const assistantText = (result[1]?.content as Array<{ type?: string; text?: string }>).find((p) => p.type === 'text')?.text
-    expect(assistantText).toBe(expectedAssistant)
-  })
+      expect(result[0]?.content).toBe(expectedUser)
+      const assistantText = (result[1]?.content as Array<{ type?: string; text?: string }>).find(
+        (p) => p.type === 'text'
+      )?.text
+      expect(assistantText).toBe(expectedAssistant)
+    })
 
     it('should place tool messages immediately after their corresponding assistant message', async () => {
       const dbMessages: MessageWithParts[] = [

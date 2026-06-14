@@ -7,7 +7,7 @@ import { SnapshotRepository } from '@baishou/database'
 import {
   CompressionErrorCode,
   compressionError,
-  getDefaultCompressionSystemPrompt,
+  getDefaultCompressionSystemPrompt
 } from '@baishou/shared'
 import { logger } from '@baishou/shared'
 import { MessageWithParts } from './message.adapter'

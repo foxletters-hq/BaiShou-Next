@@ -29,7 +29,10 @@ function isNearBottom(el: HTMLElement, threshold = BOTTOM_THRESHOLD_PX): boolean
   return scrollHeight - scrollTop - clientHeight < threshold
 }
 
-function smoothScrollToBottom(container: HTMLElement, duration = SMOOTH_SCROLL_DURATION_MS): Promise<void> {
+function smoothScrollToBottom(
+  container: HTMLElement,
+  duration = SMOOTH_SCROLL_DURATION_MS
+): Promise<void> {
   const start = container.scrollTop
   const end = Math.max(0, container.scrollHeight - container.clientHeight)
   const change = end - start
@@ -194,14 +197,7 @@ export function useChatScroll(params: UseChatScrollParams): UseChatScrollResult 
       followScrollToBottom()
     }
     prevNewestIdRef.current = newestMsg?.id || null
-  }, [
-    messages,
-    streamingText,
-    streamingReasoning,
-    isStreaming,
-    activeTool,
-    followScrollToBottom
-  ])
+  }, [messages, streamingText, streamingReasoning, isStreaming, activeTool, followScrollToBottom])
 
   return {
     scrollRef,

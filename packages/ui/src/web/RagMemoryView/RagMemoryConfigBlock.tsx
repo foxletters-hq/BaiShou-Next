@@ -31,7 +31,9 @@ export const RagMemoryConfigBlock: React.FC<RagMemoryConfigBlockProps> = ({ conf
       <div className={styles.paramSliders}>
         <div className={styles.paramSliderRow}>
           <div className={styles.paramLabelGroup}>
-            <span className={styles.paramLabel}>{t('settings.rag_top_k', '召回数量上限 (Top-K)')}</span>
+            <span className={styles.paramLabel}>
+              {t('settings.rag_top_k', '召回数量上限 (Top-K)')}
+            </span>
             <HelpTooltip
               content={t(
                 'settings.rag_top_k_tooltip',

@@ -305,7 +305,6 @@ export const IdentityCardManagementPane: React.FC = () => {
             </div>
           ) : null}
         </div>
-
       </div>
     </div>
   )

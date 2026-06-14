@@ -15,7 +15,10 @@ export function friendlySyncError(msg: string, t: TFunction): string {
     )
   }
   if (cleanMsg.includes('S3NotConfiguredError')) {
-    return t('data_sync.error_not_configured', 'Sync is not enabled or configuration is incomplete.')
+    return t(
+      'data_sync.error_not_configured',
+      'Sync is not enabled or configuration is incomplete.'
+    )
   }
   if (cleanMsg.includes('InvalidAccessKeyId')) {
     return t(
@@ -27,7 +30,10 @@ export function friendlySyncError(msg: string, t: TFunction): string {
     cleanMsg.includes('SignatureDoesNotMatch') ||
     (cleanMsg.includes('signature') && cleanMsg.includes('does not match'))
   ) {
-    return t('data_sync.error_invalid_secret', 'Secret Key is invalid. Please update your credentials.')
+    return t(
+      'data_sync.error_invalid_secret',
+      'Secret Key is invalid. Please update your credentials.'
+    )
   }
   if (cleanMsg.includes('AccessDenied')) {
     return t(

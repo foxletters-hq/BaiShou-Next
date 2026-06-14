@@ -242,8 +242,7 @@ export const SettingsPage: React.FC = () => {
   }
 
   const isManagementSubPage =
-    location.pathname === '/settings/workspaces' ||
-    location.pathname === '/settings/identity-cards'
+    location.pathname === '/settings/workspaces' || location.pathname === '/settings/identity-cards'
 
   const isFullHeightPane =
     activeTab === 8 ||

@@ -56,9 +56,7 @@ export const ChatBubbleUserRow: React.FC<ChatBubbleUserRowProps> = ({
       </div>
 
       {isEditing ? (
-        <div
-          className={`${styles.userBubbleCard} ${styles.editingBubbleCard}`}
-        >
+        <div className={`${styles.userBubbleCard} ${styles.editingBubbleCard}`}>
           <ChatBubbleInlineEditor
             isUser
             editedContent={editedContent}

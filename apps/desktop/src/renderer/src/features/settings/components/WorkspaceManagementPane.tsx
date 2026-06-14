@@ -241,7 +241,6 @@ export const WorkspaceManagementPane: React.FC = () => {
             />
           </div>
         ) : null}
-
       </div>
     </div>
   )

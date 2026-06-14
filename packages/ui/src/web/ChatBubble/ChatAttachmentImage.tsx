@@ -12,10 +12,7 @@ interface ChatAttachmentImageProps {
   fileName: string
 }
 
-export const ChatAttachmentImage: React.FC<ChatAttachmentImageProps> = ({
-  filePath,
-  fileName
-}) => {
+export const ChatAttachmentImage: React.FC<ChatAttachmentImageProps> = ({ filePath, fileName }) => {
   const [thumbSrc, setThumbSrc] = useState<string | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewSrc, setPreviewSrc] = useState('')

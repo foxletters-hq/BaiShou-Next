@@ -158,7 +158,6 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
           </div>
         </>
       ) : null}
-
     </>
   )
 

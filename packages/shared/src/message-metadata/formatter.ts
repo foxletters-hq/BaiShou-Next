@@ -15,18 +15,12 @@ export function wrapMessageContentBlock(body: string): string {
 }
 
 /** 将存储正文包裹为 <message-time> + <message-content>（仅用于模型上下文，不落库） */
-export function wrapMessageBodyForModel(
-  body: string,
-  createdAt?: Date | number | null
-): string {
+export function wrapMessageBodyForModel(body: string, createdAt?: Date | number | null): string {
   const timeLine = buildMessageTimeLine(createdAt)
   if (!timeLine) return body
   return `${timeLine}${wrapMessageContentBlock(body)}`
 }
 
-export function prefixTextWithMessageTimestamp(
-  text: string,
-  at?: Date | number | null
-): string {
+export function prefixTextWithMessageTimestamp(text: string, at?: Date | number | null): string {
   return wrapMessageBodyForModel(text, at ?? new Date())
 }

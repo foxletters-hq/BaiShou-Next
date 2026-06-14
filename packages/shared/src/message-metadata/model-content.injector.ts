@@ -13,11 +13,7 @@ export interface ToolResultTextOutput {
   [key: string]: unknown
 }
 
-function wrapIfRole(
-  body: string,
-  role: string,
-  createdAt?: Date | number | null
-): string {
+function wrapIfRole(body: string, role: string, createdAt?: Date | number | null): string {
   if (!shouldWrapRoleForModel(role)) return body
   return wrapMessageBodyForModel(body, createdAt)
 }
@@ -62,9 +58,7 @@ export function injectModelMetadataIntoAssistantParts(
   createdAt?: Date | number | null
 ): ModelMetadataTextPart[] {
   const copy = parts.map((p) => ({ ...p }))
-  const firstVisibleTextIdx = copy.findIndex(
-    (p) => p.type === 'text' && typeof p.text === 'string'
-  )
+  const firstVisibleTextIdx = copy.findIndex((p) => p.type === 'text' && typeof p.text === 'string')
   if (firstVisibleTextIdx >= 0) {
     const part = copy[firstVisibleTextIdx]!
     copy[firstVisibleTextIdx] = {

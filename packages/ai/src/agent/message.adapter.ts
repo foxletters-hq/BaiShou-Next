@@ -124,13 +124,19 @@ export class MessageAdapter {
         if (contentParts.length > 0) {
           vercelMessages.push({
             role: 'assistant',
-            content: injectModelMetadataIntoAssistantParts(contentParts, msg.createdAt) as AssistantContent
+            content: injectModelMetadataIntoAssistantParts(
+              contentParts,
+              msg.createdAt
+            ) as AssistantContent
           })
 
           if (toolResultParts.length > 0) {
             vercelMessages.push({
               role: 'tool',
-              content: injectModelMetadataIntoToolResults(toolResultParts as ToolResultTextOutput[], msg.createdAt) as ToolContent
+              content: injectModelMetadataIntoToolResults(
+                toolResultParts as ToolResultTextOutput[],
+                msg.createdAt
+              ) as ToolContent
             })
           }
         }
@@ -164,7 +170,10 @@ export class MessageAdapter {
         if (resultParts.length > 0) {
           vercelMessages.push({
             role: 'tool',
-            content: injectModelMetadataIntoToolResults(resultParts as ToolResultTextOutput[], msg.createdAt) as ToolContent
+            content: injectModelMetadataIntoToolResults(
+              resultParts as ToolResultTextOutput[],
+              msg.createdAt
+            ) as ToolContent
           })
         }
       }

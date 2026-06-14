@@ -31,11 +31,9 @@ async function invokeGetThumbnail(filePath: string, maxSize: number): Promise<st
     return w.api.attachment.getThumbnail(filePath, maxSize)
   }
   if (w.electron?.ipcRenderer?.invoke) {
-    return w.electron.ipcRenderer.invoke(
-      'attachment:getThumbnail',
-      filePath,
-      maxSize
-    ) as Promise<string | null>
+    return w.electron.ipcRenderer.invoke('attachment:getThumbnail', filePath, maxSize) as Promise<
+      string | null
+    >
   }
   return null
 }

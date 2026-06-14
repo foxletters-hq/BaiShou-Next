@@ -1,5 +1,9 @@
 import { logger } from '@baishou/shared'
-import { LocalSearchProvider, LOCAL_SEARCH_MAX_URL_RESULTS, type SearchItem } from './local-search-provider'
+import {
+  LocalSearchProvider,
+  LOCAL_SEARCH_MAX_URL_RESULTS,
+  type SearchItem
+} from './local-search-provider'
 
 /**
  * Google 本地搜索提供者
