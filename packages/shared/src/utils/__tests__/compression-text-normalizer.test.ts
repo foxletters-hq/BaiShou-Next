@@ -23,4 +23,16 @@ describe('normalizeCompressionOutput', () => {
     expect(summaryText).toBe('纯摘要正文')
     expect(reasoningText).toBe('已有思考')
   })
+
+  it('strips assistant reply before rolling summary header', () => {
+    const raw =
+      '确实会慢喵，但这正是 Legacy Mode 的魅力。\n\n' +
+      '更新后的滚动摘要（基于2026-06-14对话 + 新讨论）\n' +
+      '用户反馈 Legacy Mode 感觉慢，推荐混合策略。'
+
+    const { summaryText } = normalizeCompressionOutput(raw, '')
+    expect(summaryText).toContain('用户反馈 Legacy Mode')
+    expect(summaryText).not.toContain('确实会慢喵')
+    expect(summaryText).not.toContain('更新后的滚动摘要')
+  })
 })

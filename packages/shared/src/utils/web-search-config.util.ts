@@ -1,6 +1,8 @@
 import type { WebSearchConfig } from '../types/settings.types'
 
 /** Defaults aligned with `DEFAULT_WEB_SEARCH_CONFIG` in settings. */
+export const WEB_SEARCH_MAX_RESULTS_LIMIT = 30
+
 export const DEFAULT_WEB_SEARCH_LIMITS = {
   plainSnippetLength: 3000,
   ragMaxChunks: 12,

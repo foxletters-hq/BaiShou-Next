@@ -8,10 +8,11 @@ import {
 describe('compression-prompt.defaults', () => {
   it('zh default focuses on companion memory not code specs', () => {
     const zh = DEFAULT_COMPRESSION_SYSTEM_PROMPTS.zh
-    expect(zh).toContain('情感陪伴')
+    expect(zh).toContain('记忆压缩专家')
     expect(zh).toContain('关键事件')
     expect(zh).toContain('情绪')
     expect(zh).toContain('<previous-summary>')
+    expect(zh).toContain('只输出滚动摘要正文')
     expect(zh).not.toContain('代码、路径、命令、错误、偏好、待办')
   })
 
