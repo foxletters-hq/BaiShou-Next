@@ -1,25 +1,21 @@
 import { eq } from 'drizzle-orm'
 import { systemSettingsTable } from '../schema/system-settings'
-import { USER_DEFAULT_AVATAR_SENTINEL, isCustomUserAvatar, type UserProfile } from '@baishou/shared'
+import {
+  USER_DEFAULT_AVATAR_SENTINEL,
+  isCustomUserAvatar,
+  DEFAULT_USER_PROFILE,
+  USER_PROFILE_SETTINGS_KEY,
+  type UserProfile
+} from '@baishou/shared'
 
-const KEY = 'user_profile_data'
+const KEY = USER_PROFILE_SETTINGS_KEY
 
 function withNormalizedAvatar(profile: UserProfile): UserProfile {
   if (isCustomUserAvatar(profile.avatarPath)) return profile
   return { ...profile, avatarPath: USER_DEFAULT_AVATAR_SENTINEL }
 }
 
-export const DEFAULT_PROFILE: UserProfile = {
-  nickname: '白守用户', // t.settings.default_nickname
-  avatarPath: USER_DEFAULT_AVATAR_SENTINEL,
-  activePersonaId: '默认身份卡', // t.settings.default_identity
-  personas: {
-    默认身份卡: {
-      id: '默认身份卡',
-      facts: {}
-    }
-  }
-}
+export const DEFAULT_PROFILE = DEFAULT_USER_PROFILE
 
 export class UserProfileRepository {
   public readonly table = systemSettingsTable // exposed for tests if needed

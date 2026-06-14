@@ -4,6 +4,7 @@ import * as path from 'node:path'
 import * as os from 'node:os'
 
 import { ShadowIndexConnectionManager } from '../shadow-index.connection.manager'
+import { SHADOW_INDEX_DB_FILENAME } from '../shadow-index-schema.shared'
 
 import { sql } from 'drizzle-orm'
 import { existsSync } from 'node:fs'
@@ -19,7 +20,7 @@ describe('ShadowIndexConnectionManager', () => {
 
   afterEach(async () => {
     if (manager.isConnected()) {
-      await manager.disconnect()
+      manager.disconnect()
     }
     try {
       await fs.rm(tempDir, { recursive: true, force: true })
@@ -29,22 +30,13 @@ describe('ShadowIndexConnectionManager', () => {
     vi.clearAllMocks()
   })
 
-  it('should initialize successfully in `.baishou` directory of vault', async () => {
-    const vaultPath = tempDir
-    // .baishou shouldn't exist initially
-    const baishouDir = path.join(vaultPath, '.baishou')
-
-    await manager.connect(baishouDir)
+  it('should initialize successfully in global shadow directory', async () => {
+    await manager.connect(tempDir)
     expect(manager.isConnected()).toBe(true)
+    expect(existsSync(path.join(tempDir, SHADOW_INDEX_DB_FILENAME))).toBe(true)
 
-    // Assert the directory is created
-    expect(existsSync(baishouDir)).toBe(true)
-
-    // Check WAL mode was initialized correctly by running a PRAGMA fetch
     const db = manager.getDb()
     await db.run(sql`PRAGMA journal_mode`)
-    // NOTE: drizzle sqlite run() return type depends on the driver. In libsql, rows are accessible.
-    // For this basic test, we just ensure it didn't throw during creation
     expect(db).toBeDefined()
   })
 
@@ -54,13 +46,10 @@ describe('ShadowIndexConnectionManager', () => {
     )
   })
 
-  it('should ensure journals_fts and journals_index tables are initialized', async () => {
-    const baishouDir = path.join(tempDir, '.baishou')
-    await manager.connect(baishouDir)
+  it('should ensure journals_fts and journals_index tables are initialized with vault_name', async () => {
+    await manager.connect(tempDir)
     const db = manager.getDb()
 
-    // Verify raw tables exist
-    // Drizzle maps table names, we just manually query sqlite_master
     const tablesResult = await db.all(
       sql`SELECT name FROM sqlite_master WHERE type='table' AND name IN ('journals_index', 'journals_fts')`
     )
@@ -68,39 +57,75 @@ describe('ShadowIndexConnectionManager', () => {
     const tableNames = tablesResult.map((row) => (row as any).name)
     expect(tableNames).toContain('journals_index')
     expect(tableNames).toContain('journals_fts')
+
+    const columnsResult = await db.all(sql`PRAGMA table_info(journals_index)`)
+    const columnNames = columnsResult.map((row) => (row as any).name)
+    expect(columnNames).toContain('vault_name')
   })
 
-  it('should be able to recover from a corrupted database file', async () => {
-    const baishouDir = path.join(tempDir, '.baishou')
-    const dbFile = path.join(baishouDir, 'shadow_index.db')
+  it('should migrate legacy schema without vault_name by rebuilding tables', async () => {
+    const dbFile = path.join(tempDir, SHADOW_INDEX_DB_FILENAME)
+    await fs.mkdir(tempDir, { recursive: true })
 
-    // Stage 1: Connect and create a normal database
-    await manager.connect(baishouDir)
-    expect(manager.isConnected()).toBe(true)
-    await manager.disconnect()
+    const { createClient } = await import('@libsql/client')
+    const legacy = createClient({ url: `file:${dbFile}` })
+    await legacy.execute(`
+      CREATE TABLE journals_index (
+        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        file_path TEXT NOT NULL,
+        date TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        content_hash TEXT NOT NULL
+      )
+    `)
+    await legacy.execute('PRAGMA user_version = 1')
+    legacy.close()
 
-    // Stage 2: Corrupt the file manually
-    await fs.mkdir(baishouDir, { recursive: true })
-    await fs.writeFile(dbFile, 'THIS_IS_NOT_A_SQLITE_FILE_TOTALLY_CORRUPT')
-
-    // Stage 3: Reconnect. The connection manager deletes the corrupted file and recreates it.
-    await expect(manager.connect(baishouDir)).resolves.not.toThrow()
+    await manager.connect(tempDir)
     expect(manager.isConnected()).toBe(true)
 
     const db = manager.getDb()
-    // Tables should be recreated
+    const columnsResult = await db.all(sql`PRAGMA table_info(journals_index)`)
+    const columnNames = columnsResult.map((row) => (row as any).name)
+    expect(columnNames).toContain('vault_name')
+
+    const versionResult = await db.all(sql`PRAGMA user_version`)
+    expect((versionResult[0] as any).user_version).toBe(2)
+  })
+
+  it('should be able to recover from a corrupted database file', async () => {
+    const dbFile = path.join(tempDir, SHADOW_INDEX_DB_FILENAME)
+
+    await manager.connect(tempDir)
+    expect(manager.isConnected()).toBe(true)
+    manager.disconnect()
+
+    await fs.mkdir(tempDir, { recursive: true })
+    await fs.writeFile(dbFile, 'THIS_IS_NOT_A_SQLITE_FILE_TOTALLY_CORRUPT')
+
+    await expect(manager.connect(tempDir)).resolves.not.toThrow()
+    expect(manager.isConnected()).toBe(true)
+
+    const db = manager.getDb()
     const tablesResult = await db.all(
       sql`SELECT name FROM sqlite_master WHERE type='table' AND name='journals_index'`
     )
     expect(tablesResult.length).toBeGreaterThan(0)
   })
 
+  it('should reuse connection when connect is called again with same global dir', async () => {
+    await manager.connect(tempDir)
+    const firstDb = manager.getDb()
+    await manager.connect(tempDir)
+    expect(manager.getDb()).toBe(firstDb)
+  })
+
   it('should disconnect successfully without errors', async () => {
-    const baishouDir = path.join(tempDir, '.baishou')
-    await manager.connect(baishouDir)
+    await manager.connect(tempDir)
     expect(manager.isConnected()).toBe(true)
 
-    await manager.disconnect()
+    manager.disconnect()
     expect(manager.isConnected()).toBe(false)
   })
 })

@@ -15,13 +15,25 @@ import type {
 } from './shadow-index.repository.types'
 
 export class ShadowIndexQueryOps {
-  constructor(private readonly database: AppDatabase) {}
+  constructor(
+    private readonly database: AppDatabase,
+    private readonly vaultName: string
+  ) {}
+
+  private vaultFilter() {
+    return eq(shadowJournalIndexTable.vaultName, this.vaultName)
+  }
+
+  private withVault(...conditions: Parameters<typeof and>) {
+    const extra = conditions.filter(Boolean)
+    return extra.length > 0 ? and(this.vaultFilter(), ...extra) : this.vaultFilter()
+  }
 
   async findByDatePrefix(dayStr: string): Promise<ShadowJournalRecord[]> {
     return await this.database
       .select()
       .from(shadowJournalIndexTable)
-      .where(like(shadowJournalIndexTable.date, `${dayStr}%`))
+      .where(this.withVault(like(shadowJournalIndexTable.date, `${dayStr}%`)))
   }
 
   async findByDateRange(startIso: string, endIso: string): Promise<ShadowJournalRecord[]> {
@@ -29,7 +41,10 @@ export class ShadowIndexQueryOps {
       .select()
       .from(shadowJournalIndexTable)
       .where(
-        and(gte(shadowJournalIndexTable.date, startIso), lte(shadowJournalIndexTable.date, endIso))
+        this.withVault(
+          gte(shadowJournalIndexTable.date, startIso),
+          lte(shadowJournalIndexTable.date, endIso)
+        )
       )
       .orderBy(sql`${shadowJournalIndexTable.date} ASC`)
   }
@@ -38,7 +53,7 @@ export class ShadowIndexQueryOps {
     const rows = await this.database
       .select({ contentHash: shadowJournalIndexTable.contentHash })
       .from(shadowJournalIndexTable)
-      .where(eq(shadowJournalIndexTable.date, dateIso))
+      .where(this.withVault(eq(shadowJournalIndexTable.date, dateIso)))
       .limit(1)
 
     return rows[0]?.contentHash ?? null
@@ -52,6 +67,7 @@ export class ShadowIndexQueryOps {
         filePath: shadowJournalIndexTable.filePath
       })
       .from(shadowJournalIndexTable)
+      .where(this.vaultFilter())
   }
 
   async searchFTS(
@@ -91,12 +107,14 @@ export class ShadowIndexQueryOps {
         const rawResults = (await this.database.all(
           sql`
             SELECT 
-              rowid,
+              journals_fts.rowid,
               snippet(journals_fts, 0, '<b>', '</b>', '...', 64) as content_snippet,
-              tags,
-              rank as fts_rank
-            FROM journals_fts 
+              journals_fts.tags,
+              journals_fts.rank as fts_rank
+            FROM journals_fts
+            INNER JOIN journals_index i ON i.id = journals_fts.rowid
             WHERE journals_fts MATCH ${ftsMatchExpr}
+              AND i.vault_name = ${this.vaultName}
             ORDER BY fts_rank ASC
             LIMIT ${limit + offset}
           `
@@ -129,7 +147,7 @@ export class ShadowIndexQueryOps {
           tags: shadowJournalIndexTable.tags
         })
         .from(shadowJournalIndexTable)
-        .where(and(...likeQueries))
+        .where(this.withVault(...likeQueries))
         .limit(limit + offset)) as any[]
 
       if (rows) {
@@ -215,7 +233,7 @@ export class ShadowIndexQueryOps {
   }
 
   private buildListFilterWhere(options: DiaryListFilterOptions) {
-    const conditions: any[] = []
+    const conditions: any[] = [this.vaultFilter()]
 
     if (options.year != null && options.month != null) {
       const monthStr = String(options.month).padStart(2, '0')
@@ -231,7 +249,7 @@ export class ShadowIndexQueryOps {
       conditions.push(inArray(shadowJournalIndexTable.weather, expanded))
     }
 
-    return conditions.length > 0 ? and(...conditions) : undefined
+    return and(...conditions)
   }
 
   async listFiltered(options: DiaryListFilterOptions = {}): Promise<ShadowJournalRow[]> {
@@ -241,8 +259,7 @@ export class ShadowIndexQueryOps {
         ? asc(shadowJournalIndexTable.date)
         : desc(shadowJournalIndexTable.date)
 
-    let query = this.database.select().from(shadowJournalIndexTable).orderBy(orderFn)
-    if (where) query = query.where(where) as typeof query
+    let query = this.database.select().from(shadowJournalIndexTable).where(where).orderBy(orderFn)
     if (options.limit != null && options.limit > 0) {
       query = query.limit(options.limit) as typeof query
     }
@@ -257,9 +274,10 @@ export class ShadowIndexQueryOps {
     options: Omit<DiaryListFilterOptions, 'limit' | 'offset'> = {}
   ): Promise<number> {
     const where = this.buildListFilterWhere(options)
-    let query = this.database.select({ count: sql<number>`count(*)` }).from(shadowJournalIndexTable)
-    if (where) query = query.where(where) as typeof query
-    const result = await query
+    const result = await this.database
+      .select({ count: sql<number>`count(*)` })
+      .from(shadowJournalIndexTable)
+      .where(where)
     return result[0]?.count || 0
   }
 
@@ -268,14 +286,14 @@ export class ShadowIndexQueryOps {
     return (await this.database
       .select()
       .from(shadowJournalIndexTable)
-      .where(inArray(shadowJournalIndexTable.id, ids))) as ShadowJournalRow[]
+      .where(this.withVault(inArray(shadowJournalIndexTable.id, ids)))) as ShadowJournalRow[]
   }
 
   async findById(id: number): Promise<ShadowJournalRow | null> {
     const rows = await this.database
       .select()
       .from(shadowJournalIndexTable)
-      .where(eq(shadowJournalIndexTable.id, id))
+      .where(this.withVault(eq(shadowJournalIndexTable.id, id)))
       .limit(1)
     return (rows[0] as ShadowJournalRow) ?? null
   }
@@ -284,7 +302,7 @@ export class ShadowIndexQueryOps {
     const rows = await this.database
       .select()
       .from(shadowJournalIndexTable)
-      .where(eq(shadowJournalIndexTable.date, dateIso))
+      .where(this.withVault(eq(shadowJournalIndexTable.date, dateIso)))
       .limit(1)
     return (rows[0] as ShadowJournalRow) ?? null
   }
@@ -302,6 +320,7 @@ export class ShadowIndexQueryOps {
       SELECT i.*, i.raw_content as rawContent, i.tags as rawTags
       FROM journals_index i
       LEFT JOIN journals_fts f ON i.id = f.rowid
+      WHERE i.vault_name = ${this.vaultName}
       ORDER BY i.date ${direction}
     `
     if (limit > 0) queryStr = sql`${queryStr} LIMIT ${limit}`
@@ -310,6 +329,7 @@ export class ShadowIndexQueryOps {
     try {
       interface RawFTSRow {
         id: number
+        vault_name: string
         file_path: string
         date: string
         created_at: string
@@ -327,6 +347,7 @@ export class ShadowIndexQueryOps {
       const rawResults = (await this.database.all(queryStr)) as RawFTSRow[]
       return rawResults.map((row) => ({
         id: row.id,
+        vaultName: row.vault_name,
         filePath: row.file_path,
         date: row.date,
         createdAt: row.created_at,
@@ -358,7 +379,11 @@ export class ShadowIndexQueryOps {
         ? sql`${shadowJournalIndexTable.date} ASC`
         : sql`${shadowJournalIndexTable.date} DESC`
 
-    let query = this.database.select().from(shadowJournalIndexTable).orderBy(orderFn)
+    let query = this.database
+      .select()
+      .from(shadowJournalIndexTable)
+      .where(this.vaultFilter())
+      .orderBy(orderFn)
 
     if (options?.limit) query = query.limit(options.limit) as any
     if (options?.offset) query = query.offset(options.offset) as any
@@ -370,6 +395,7 @@ export class ShadowIndexQueryOps {
     const result = await this.database
       .select({ count: sql<number>`count(*)` })
       .from(shadowJournalIndexTable)
+      .where(this.vaultFilter())
     return result[0]?.count || 0
   }
 
@@ -378,10 +404,10 @@ export class ShadowIndexQueryOps {
       const rows =
         year != null
           ? ((await this.database.all(
-              sql`SELECT date, 1 as count FROM journals_index WHERE date >= ${`${year}-01-01`} AND date <= ${`${year}-12-31`} ORDER BY date ASC`
+              sql`SELECT date, 1 as count FROM journals_index WHERE vault_name = ${this.vaultName} AND date >= ${`${year}-01-01`} AND date <= ${`${year}-12-31`} ORDER BY date ASC`
             )) as { date: string; count: number }[])
           : ((await this.database.all(
-              sql`SELECT date, 1 as count FROM journals_index ORDER BY date ASC`
+              sql`SELECT date, 1 as count FROM journals_index WHERE vault_name = ${this.vaultName} ORDER BY date ASC`
             )) as { date: string; count: number }[])
       return rows.map((row) => ({
         date: row.date,

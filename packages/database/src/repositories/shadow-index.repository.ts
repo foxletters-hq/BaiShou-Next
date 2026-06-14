@@ -28,10 +28,12 @@ export { normalizeShadowFilePath, ShadowIndexUpsertOps } from './shadow-index.re
 export class ShadowIndexRepository {
   private readonly upsertOps: ShadowIndexUpsertOps
   private readonly queryOps: ShadowIndexQueryOps
+  readonly vaultName: string
 
-  constructor(database: AppDatabase) {
-    this.upsertOps = new ShadowIndexUpsertOps(database)
-    this.queryOps = new ShadowIndexQueryOps(database)
+  constructor(database: AppDatabase, vaultName: string) {
+    this.vaultName = vaultName
+    this.upsertOps = new ShadowIndexUpsertOps(database, vaultName)
+    this.queryOps = new ShadowIndexQueryOps(database, vaultName)
   }
 
   async upsert(...args: Parameters<ShadowIndexUpsertOps['upsert']>) {
@@ -44,6 +46,10 @@ export class ShadowIndexRepository {
 
   async deleteById(...args: Parameters<ShadowIndexUpsertOps['deleteById']>) {
     return this.upsertOps.deleteById(...args)
+  }
+
+  async deleteAllForVault(vaultName?: string): Promise<void> {
+    return this.upsertOps.deleteAllForVault(vaultName)
   }
 
   async findByDatePrefix(...args: Parameters<ShadowIndexQueryOps['findByDatePrefix']>) {

@@ -4,52 +4,78 @@ import { logger } from '@baishou/shared'
 import type { AppDatabase } from './types'
 import { ensureExpoShadowIndexSchema } from './expo-shadow-schema'
 import type { ExpoSqliteDatabase } from './drivers/expo-sqlite.driver'
+import { SHADOW_INDEX_DB_FILENAME } from './shadow-index-schema.shared'
 
-const SHADOW_DB_FILENAME = 'shadow_index_v2.db'
+const SHADOW_DB_CACHE_KB = 512
 
-function normalizeVaultSystemDir(vaultSystemDir: string): string {
-  return vaultSystemDir
+function normalizeGlobalShadowDbDir(globalShadowDbDir: string): string {
+  return globalShadowDbDir
     .replace(/^file:\/\//, '')
     .replace(/\\/g, '/')
     .replace(/\/+$/, '')
 }
 
 /**
- * Mobile 影子索引连接管理器 — 对齐 Desktop `ShadowIndexConnectionManager`：
- * 每个 Vault 独立 `shadow_index_v2.db`（Mobile 目录由 pathService.getShadowIndexDirectory 决定）。
+ * Mobile 影子索引连接管理器 — 对齐 Desktop 全局单库多 Vault 设计。
+ * 所有 Vault 共享 `{globalShadowDbDir}/shadow_index_v2.db`。
  */
 export class ExpoShadowIndexConnectionManager {
   private _expoDb: ExpoSqliteDatabase | null = null
   private _db: AppDatabase | null = null
   private _currentDbPath: string | null = null
-  private _closePromise: Promise<void> | null = null
-  private _connectChain: Promise<void> = Promise.resolve()
+  /** disconnect 后保留原生连接，避免重复 open / closeAsync */
+  private _cachedConnection: { expoDb: ExpoSqliteDatabase; db: AppDatabase; dbPath: string } | null =
+    null
+  /** 串行化 connect / disconnect，避免并发 open 同一 DB 文件 */
+  private _opChain: Promise<void> = Promise.resolve()
 
-  async connect(vaultSystemDir: string): Promise<void> {
-    const task = this._connectChain.then(() => this.connectInternal(vaultSystemDir))
-    this._connectChain = task.catch(() => {})
-    await task
+  private async withOpLock<T>(fn: () => Promise<T>): Promise<T> {
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const previous = this._opChain
+    this._opChain = previous.then(() => gate)
+    await previous
+    try {
+      return await fn()
+    } finally {
+      release()
+    }
   }
 
-  private async connectInternal(vaultSystemDir: string): Promise<void> {
-    const dir = normalizeVaultSystemDir(vaultSystemDir)
-    const dbPath = `${dir}/${SHADOW_DB_FILENAME}`
+  async connect(globalShadowDbDir: string): Promise<void> {
+    await this.withOpLock(() => this.connectInternal(globalShadowDbDir))
+  }
+
+  private async connectInternal(globalShadowDbDir: string): Promise<void> {
+    const dir = normalizeGlobalShadowDbDir(globalShadowDbDir)
+    const dbPath = `${dir}/${SHADOW_INDEX_DB_FILENAME}`
 
     if (this._currentDbPath === dbPath && this._db && this._expoDb) {
       logger.info(`[ExpoShadowDB] 复用已有连接: ${dbPath}`)
       return
     }
 
-    await this.disconnect()
+    if (this._cachedConnection?.dbPath === dbPath) {
+      this._expoDb = this._cachedConnection.expoDb
+      this._db = this._cachedConnection.db
+      this._currentDbPath = dbPath
+      logger.info(`[ExpoShadowDB] 恢复已缓存连接: ${dbPath}`)
+      return
+    }
 
-    // Android expo-sqlite：close 后立即 open 新库偶发原生崩溃，留出释放窗口
-    await new Promise((resolve) => setTimeout(resolve, 80))
+    if (this._expoDb && this._currentDbPath === dbPath) {
+      this._db = drizzle(this._expoDb as any) as unknown as AppDatabase
+      logger.info(`[ExpoShadowDB] 恢复已有原生连接: ${dbPath}`)
+      return
+    }
 
     logger.info(`[ExpoShadowDB] 正在连接影子索引库: ${dbPath}`)
 
     try {
       const expoDb = (await SQLite.openDatabaseAsync(
-        SHADOW_DB_FILENAME,
+        SHADOW_INDEX_DB_FILENAME,
         { useNewConnection: true },
         dir
       )) as unknown as ExpoSqliteDatabase
@@ -58,13 +84,15 @@ export class ExpoShadowIndexConnectionManager {
 
       try {
         await expoDb.execAsync('PRAGMA journal_mode=WAL')
+        await expoDb.execAsync(`PRAGMA cache_size=-${SHADOW_DB_CACHE_KB}`)
       } catch (e) {
-        logger.warn('[ExpoShadowDB] WAL 模式设置失败，继续使用默认 journal:', e as Error)
+        logger.warn('[ExpoShadowDB] PRAGMA 初始化失败，继续使用默认配置:', e as Error)
       }
 
       this._expoDb = expoDb
       this._db = drizzle(expoDb as any) as unknown as AppDatabase
       this._currentDbPath = dbPath
+      this._cachedConnection = { expoDb, db: this._db, dbPath }
 
       logger.info(`[ExpoShadowDB] 影子索引库连接成功: ${dbPath}`)
     } catch (e) {
@@ -88,29 +116,30 @@ export class ExpoShadowIndexConnectionManager {
     return this._db !== null && this._expoDb !== null
   }
 
+  /**
+   * 仅解除当前引用，不调用 closeAsync（规避 expo-sqlite native 崩溃）。
+   * 底层连接在进程生命周期内保持打开，再次 connect 同一全局路径时复用。
+   */
   async disconnect(): Promise<void> {
-    if (this._closePromise) {
-      await this._closePromise
-      return
-    }
+    await this.withOpLock(() => this.disconnectInternal())
+  }
 
+  private async disconnectInternal(): Promise<void> {
     const expoDb = this._expoDb
+    const dbPath = this._currentDbPath
     this._expoDb = null
     this._db = null
     this._currentDbPath = null
 
-    if (!expoDb) return
+    if (!dbPath) return
 
-    this._closePromise = expoDb
-      .closeAsync()
-      .catch((e) => {
-        logger.warn('[ExpoShadowDB] closeAsync failed:', e as Error)
-      })
-      .finally(() => {
-        this._closePromise = null
-      })
+    try {
+      await expoDb?.execAsync('PRAGMA shrink_memory')
+    } catch (e) {
+      logger.debug('[ExpoShadowDB] shrink_memory failed:', e as Error)
+    }
 
-    await this._closePromise
+    logger.info(`[ExpoShadowDB] 已解除当前影子索引连接引用: ${dbPath}`)
   }
 }
 

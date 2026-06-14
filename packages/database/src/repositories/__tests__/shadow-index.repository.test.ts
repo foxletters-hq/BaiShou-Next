@@ -21,12 +21,13 @@ describe('ShadowIndexRepository', () => {
   let manager: ShadowIndexConnectionManager
   let repo: ShadowIndexRepository
   let tempDir: string
+  const TEST_VAULT_NAME = 'test-vault'
 
   beforeEach(async () => {
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baishou-shadowrepo-test-'))
     manager = new ShadowIndexConnectionManager()
     await manager.connect(tempDir)
-    repo = new ShadowIndexRepository(manager.getDb())
+    repo = new ShadowIndexRepository(manager.getDb(), TEST_VAULT_NAME)
   })
 
   afterEach(async () => {
@@ -257,6 +258,33 @@ describe('ShadowIndexRepository', () => {
 
       const ftsRes = await repo.searchFTS('delete')
       expect(ftsRes).toHaveLength(0)
+    })
+
+    it('deleteById ignores rows from other vaults', async () => {
+      const otherRepo = new ShadowIndexRepository(manager.getDb(), 'other-vault')
+      const dateIso = '2026-01-05T00:00:00.000Z'
+      await otherRepo.upsert(generateDummyPayload(dateIso, 'other vault diary'))
+
+      const record = await otherRepo.findByDate(dateIso)
+      expect(record).toBeDefined()
+
+      await repo.deleteById(record!.id)
+
+      expect(await otherRepo.findByDate(dateIso)).not.toBeNull()
+    })
+
+    it('deleteAllForVault removes only the current vault data', async () => {
+      const otherRepo = new ShadowIndexRepository(manager.getDb(), 'other-vault')
+      await repo.upsert(generateDummyPayload('2026-01-06T00:00:00.000Z', 'vault a'))
+      await otherRepo.upsert(generateDummyPayload('2026-01-07T00:00:00.000Z', 'vault b'))
+
+      expect(await repo.count()).toBe(1)
+      expect(await otherRepo.count()).toBe(1)
+
+      await repo.deleteAllForVault()
+
+      expect(await repo.count()).toBe(0)
+      expect(await otherRepo.count()).toBe(1)
     })
   })
 })

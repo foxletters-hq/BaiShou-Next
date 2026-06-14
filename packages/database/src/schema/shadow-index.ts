@@ -3,13 +3,15 @@ import { sqliteTable, integer, text, uniqueIndex } from 'drizzle-orm/sqlite-core
 /**
  * 日记影子索引主表 — 对齐原版 `journals_index` 表名
  *
- * 存储在 per-vault 的 `shadow_index.db` 中，由 ShadowIndexConnectionManager 管理。
- * Drizzle schema 仅用于类型推导，不参与 Agent DB 的 migration 流程。
+ * 存储在全局单库 `shadow_index_v2.db` 中，由 ShadowIndexConnectionManager 管理。
+ * 多 Vault 通过 `vault_name` 列区分；Drizzle schema 仅用于类型推导。
  */
 export const shadowJournalIndexTable = sqliteTable(
   'journals_index',
   {
     id: integer('id').primaryKey({ autoIncrement: true }),
+    /** Vault 名称（多 vault 共享同一 shadow_index.db 时用于隔离） */
+    vaultName: text('vault_name').notNull(),
     /** 相对于 Vault 根目录的文件路径（用于唯一定位 .md 文件） */
     filePath: text('file_path').notNull(),
     /** 日期 ISO8601 字符串 (yyyy-MM-ddTHH:mm:ss.sssZ) */
@@ -34,7 +36,10 @@ export const shadowJournalIndexTable = sqliteTable(
     tags: text('tags')
   },
   (t) => ({
-    filePathUniq: uniqueIndex('journals_index_file_path_unique').on(t.filePath)
+    vaultFilePathUniq: uniqueIndex('journals_index_vault_file_path_unique').on(
+      t.vaultName,
+      t.filePath
+    )
   })
 )
 
