@@ -12,17 +12,28 @@ export interface ModelSwitcherProvider {
 export type ModelSwitcherFilterMode = 'dialogue' | 'embedding' | 'tts'
 
 /**
+ * 用户显式配置的启用模型列表。
+ * `enabledModels: []` 表示全部关闭；仅当字段缺失时回退 `models`（兼容旧数据）。
+ */
+export function resolveEnabledModelPool(config: Pick<AIProviderConfig, 'enabledModels' | 'models'>): string[] {
+  if (config.enabledModels !== undefined) {
+    return config.enabledModels
+  }
+  return config.models ?? []
+}
+
+/**
  * 过滤可用于模型选择弹窗的供应商与模型列表。
- * 仅保留已启用的供应商，且模型须在 enabledModels（或 models 回退）中。
+ * 仅保留已启用的供应商，且模型须在用户启用的 enabledModels 中。
  */
 export function filterProvidersForModelSwitcher(
   providers: AIProviderConfig[],
   mode: ModelSwitcherFilterMode = 'dialogue'
 ): ModelSwitcherProvider[] {
   return providers
-    .filter((p) => p.isEnabled && (p.enabledModels?.length || p.models?.length))
+    .filter((p) => p.isEnabled)
     .map((p) => {
-      const pool = p.enabledModels?.length ? p.enabledModels : p.models || []
+      const pool = resolveEnabledModelPool(p)
       const filtered = pool.filter((modelId) => {
         const isEmbed = isEmbeddingModel(modelId)
         const isTts = isTtsModel(modelId)

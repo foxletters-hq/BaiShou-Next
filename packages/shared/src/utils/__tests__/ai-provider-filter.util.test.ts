@@ -52,4 +52,30 @@ describe('filterProvidersForModelSwitcher', () => {
     const result = filterProvidersForModelSwitcher(providers, 'tts')
     expect(result[0]?.enabledModels).toEqual(['tts-1'])
   })
+
+  it('excludes provider when enabledModels is explicitly empty', () => {
+    const result = filterProvidersForModelSwitcher(
+      [
+        provider({
+          id: 'google',
+          models: ['gemini-2.5-pro', 'gemini-2.0-flash'],
+          enabledModels: []
+        })
+      ],
+      'dialogue'
+    )
+    expect(result).toHaveLength(0)
+  })
+
+  it('falls back to models when enabledModels field is missing (legacy)', () => {
+    const legacy = provider({
+      id: 'legacy',
+      models: ['gpt-4', 'text-embedding-3-small']
+    })
+    delete (legacy as { enabledModels?: string[] }).enabledModels
+
+    const result = filterProvidersForModelSwitcher([legacy], 'dialogue')
+    expect(result).toHaveLength(1)
+    expect(result[0]?.enabledModels).toEqual(['gpt-4'])
+  })
 })
