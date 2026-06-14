@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, LayoutAnimation } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { WebSearchConfig } from '@baishou/shared'
+import { WEB_SEARCH_MAX_RESULTS_LIMIT } from '@baishou/shared'
 import { DEFAULT_WEB_SEARCH_CONFIG } from '@baishou/database'
 import { Switch, useNativeTheme, Input } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
@@ -164,7 +165,7 @@ export const WebSearchSection: React.FC = () => {
           description={t('agent.tools.param_max_results_desc')}
           value={config.webSearchMaxResults}
           min={1}
-          max={30}
+          max={WEB_SEARCH_MAX_RESULTS_LIMIT}
           step={1}
           onChange={(v) => applyPatch({ webSearchMaxResults: v })}
         />

@@ -7,6 +7,7 @@ import {
   webSearchConfigToUserConfig
 } from '@baishou/ai'
 import { resolveDiaryAiWritingPrompt, type DiaryTemplateConfig } from '@baishou/shared'
+import { DEFAULT_WEB_SEARCH_CONFIG } from '@baishou/database'
 import type { SessionRepository, SnapshotRepository } from '@baishou/database'
 import type { AssistantManagerService, SettingsManagerService } from '@baishou/core-mobile'
 export interface MappedCallChainFlatEntry {
@@ -90,7 +91,10 @@ export async function buildMobileStreamUserConfig(
           : assistantContextWindow
         : (behaviorConfig?.agentContextWindowSize ?? 30),
     web_search_enabled: searchMode,
-    ...webSearchConfigToUserConfig(webSearchConfig),
+    ...webSearchConfigToUserConfig({
+      ...DEFAULT_WEB_SEARCH_CONFIG,
+      ...(webSearchConfig || {})
+    }),
     diaryAiWritingPrompt: resolveDiaryAiWritingPrompt(diaryTemplateConfig)
   }
 }
