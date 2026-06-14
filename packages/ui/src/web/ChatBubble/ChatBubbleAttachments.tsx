@@ -1,36 +1,21 @@
 import React from 'react'
 import type { MockChatAttachment } from '@baishou/shared'
+import { ChatAttachmentImage } from './ChatAttachmentImage'
 import styles from './ChatBubble.module.css'
 
 interface ChatBubbleAttachmentsProps {
   attachments: MockChatAttachment[]
-  isUserBubble: boolean
 }
 
-export const ChatBubbleAttachments: React.FC<ChatBubbleAttachmentsProps> = ({
-  attachments,
-  isUserBubble
-}) => {
+export const ChatBubbleAttachments: React.FC<ChatBubbleAttachmentsProps> = ({ attachments }) => {
   if (!attachments.length) return null
 
   return (
-    <div
-      className={`${styles.attachmentsWrap} ${isUserBubble ? styles.alignEnd : styles.alignStart}`}
-    >
+    <div className={styles.attachmentsWrap}>
       {attachments.map((att) => (
         <div key={att.id} className={styles.attachmentItem}>
           {att.isImage ? (
-            <img
-              src={
-                att.filePath?.startsWith('blob:') ||
-                att.filePath?.startsWith('local://') ||
-                att.filePath?.startsWith('data:')
-                  ? att.filePath
-                  : `local:///${(att.filePath || '').replace(/\\/g, '/')}`
-              }
-              className={styles.attImage}
-              alt={att.fileName}
-            />
+            <ChatAttachmentImage filePath={att.filePath} fileName={att.fileName} />
           ) : (
             <div className={styles.attDocument}>
               <span className={styles.attDocIcon}>{att.isPdf || att.isText ? '📄' : '📁'}</span>

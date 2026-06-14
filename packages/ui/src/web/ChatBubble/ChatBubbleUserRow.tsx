@@ -58,7 +58,6 @@ export const ChatBubbleUserRow: React.FC<ChatBubbleUserRowProps> = ({
       {isEditing ? (
         <div
           className={`${styles.userBubbleCard} ${styles.editingBubbleCard}`}
-          style={{ background: '#FFFFFF', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
         >
           <ChatBubbleInlineEditor
             isUser
@@ -75,7 +74,7 @@ export const ChatBubbleUserRow: React.FC<ChatBubbleUserRowProps> = ({
         <>
           <div className={styles.userBubbleCard}>
             {message.attachments && message.attachments.length > 0 && (
-              <ChatBubbleAttachments attachments={message.attachments} isUserBubble />
+              <ChatBubbleAttachments attachments={message.attachments} />
             )}
             {message.content && <div className={styles.textContentUser}>{message.content}</div>}
           </div>

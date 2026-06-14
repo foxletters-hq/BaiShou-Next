@@ -11,6 +11,8 @@ import styles from './MarkdownRenderer.module.css'
 import { ContextMenu, ContextMenuItem } from '../ContextMenu'
 import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
+import { ImagePreview } from '../DiaryEditor/ImagePreview'
+import { resolveChatAttachmentSrc } from '../ChatBubble/chat-bubble.utils'
 import { Copy, FolderOpen, Trash2 } from 'lucide-react'
 
 export interface MarkdownRendererProps {
@@ -105,14 +107,13 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
             const isLocal = cleanSrc && basePath && cleanSrc.startsWith('attachment/')
 
             const renderImg = () => (
-              <img
-                {...props}
-                src={resolvedSrc}
+              <ImagePreview
+                src={resolveChatAttachmentSrc(resolvedSrc)}
+                alt={props.alt}
                 style={{
                   maxWidth: '100%',
                   width: width || undefined,
-                  borderRadius: '8px',
-                  cursor: isLocal ? 'context-menu' : 'default'
+                  borderRadius: '8px'
                 }}
               />
             )

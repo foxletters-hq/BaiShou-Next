@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import React, { useMemo } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, CheckCircle2, Loader2 } from 'lucide-react'
 import shared from '../shared/CollapsibleAncillaryBlock.module.css'
 import styles from './StreamingBubble.module.css'
 import { MarkdownRenderer } from '../MarkdownRenderer'
@@ -186,7 +186,9 @@ const ToolExecutionGroup: React.FC<{
               : `${(tool.durationMs / 1000).toFixed(1)}s`
           return (
             <div key={idx} className={styles.toolItem}>
-              <span className={styles.checkIcon}>✅</span>
+              <span className={styles.toolStatusIcon}>
+                <CheckCircle2 size={14} />
+              </span>
               <span className={styles.toolItemName}>
                 {t(`agent.tools.${tool.name}`, tool.name)}
               </span>
@@ -228,7 +230,7 @@ const ActiveToolItem: React.FC<{ name: string }> = ({ name }) => {
 
   return (
     <div className={`${styles.toolItem} ${styles.pulsing}`}>
-      <div className={styles.spinner}></div>
+      <Loader2 size={14} className={styles.toolStatusSpinner} />
       <span className={styles.activeToolName}>
         {t(`agent.tools.${name}`, name)} {dots}
       </span>

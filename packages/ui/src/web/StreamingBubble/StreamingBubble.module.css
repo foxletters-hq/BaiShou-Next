@@ -74,9 +74,18 @@
   gap: 8px;
 }
 
-.checkIcon {
-  font-size: 14px;
-  color: rgba(var(--color-primary-rgb), 0.7);
+.toolStatusIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--color-primary);
+}
+
+.toolStatusSpinner {
+  flex-shrink: 0;
+  color: var(--color-primary);
+  animation: spin 1s linear infinite;
 }
 
 .toolItemName {
@@ -107,15 +116,6 @@
   100% {
     opacity: 1;
   }
-}
-
-.spinner {
-  width: 14px;
-  height: 14px;
-  border: 1.5px solid rgba(var(--color-tertiary-rgb), 0.3);
-  border-top-color: var(--color-tertiary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
 }
 
 @keyframes spin {

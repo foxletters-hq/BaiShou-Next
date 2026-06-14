@@ -91,7 +91,7 @@ export const ChatBubbleAiRow: React.FC<ChatBubbleAiRowProps> = ({
         <>
           <div className={styles.aiBubbleCard}>
             {message.attachments && message.attachments.length > 0 && (
-              <ChatBubbleAttachments attachments={message.attachments} isUserBubble={false} />
+              <ChatBubbleAttachments attachments={message.attachments} />
             )}
             {cleanReasoning && (
               <ThinkingBlock
