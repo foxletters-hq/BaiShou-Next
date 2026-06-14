@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Cloud, Globe, Settings } from 'lucide-react'
 import { useSyncStore } from '@baishou/store'
 import { useTranslation } from 'react-i18next'
+import { SYNC_DIVERGENCE_THRESHOLD_OPTIONS } from '@baishou/shared'
+import { Switch, useDialog, Select } from '@baishou/ui'
 import { S3SyncForm } from './S3SyncForm'
 import { WebDavSyncForm } from './WebDavSyncForm'
 
@@ -9,9 +11,11 @@ type SyncTarget = 's3' | 'webdav'
 
 export const SyncConfigForm: React.FC = () => {
   const { t } = useTranslation()
+  const dialog = useDialog()
   const { status, message, setStatus, setMessage } = useSyncStore()
 
   const [config, setConfig] = useState<any>({
+    enabled: false,
     target: 's3',
     endpoint: '',
     region: '',
@@ -24,7 +28,8 @@ export const SyncConfigForm: React.FC = () => {
     webdavPassword: '',
     webdavPath: 'backup_sync',
     fileConcurrency: 5,
-    chunkConcurrency: 5
+    chunkConcurrency: 5,
+    maxDivergencePercent: 100
   })
 
   useEffect(() => {
@@ -104,6 +109,7 @@ export const SyncConfigForm: React.FC = () => {
               : 'backup_sync'
 
         setConfig({
+          enabled: cfg.enabled === true,
           target: curTarget,
           endpoint: cfg.endpoint || '',
           region: cfg.region || '',
@@ -116,7 +122,11 @@ export const SyncConfigForm: React.FC = () => {
           webdavPassword: loadedWebdavPassword || '',
           webdavPath: loadedWebdavPath || 'backup_sync',
           chunkConcurrency: cfg.chunkConcurrency !== undefined ? cfg.chunkConcurrency : 5,
-          fileConcurrency: cfg.fileConcurrency !== undefined ? cfg.fileConcurrency : 5
+          fileConcurrency: cfg.fileConcurrency !== undefined ? cfg.fileConcurrency : 5,
+          maxDivergencePercent:
+            cfg.maxDivergencePercent === null || cfg.maxDivergencePercent === undefined
+              ? 100
+              : cfg.maxDivergencePercent
         })
       }
     } catch {}
@@ -126,27 +136,64 @@ export const SyncConfigForm: React.FC = () => {
     setConfig((prev: any) => ({ ...prev, ...updated }))
   }
 
+  const buildConfigPayload = useCallback(
+    (cfg: typeof config) => ({
+      enabled: cfg.enabled === true,
+      target: cfg.target,
+      endpoint: cfg.endpoint,
+      region: cfg.region,
+      bucket: cfg.bucket,
+      webdavUrl: cfg.webdavUrl,
+      path: cfg.target === 'webdav' ? cfg.webdavPath : cfg.s3Path,
+      accessKey: cfg.target === 'webdav' ? cfg.webdavUsername : cfg.s3AccessKey,
+      secretKey: cfg.target === 'webdav' ? cfg.webdavPassword : cfg.s3SecretKey,
+      s3AccessKey: cfg.s3AccessKey,
+      s3SecretKey: cfg.s3SecretKey,
+      s3Path: cfg.s3Path,
+      webdavUsername: cfg.webdavUsername,
+      webdavPassword: cfg.webdavPassword,
+      webdavPath: cfg.webdavPath,
+      chunkConcurrency: cfg.chunkConcurrency,
+      fileConcurrency: cfg.fileConcurrency,
+      maxDivergencePercent:
+        cfg.maxDivergencePercent === null || cfg.maxDivergencePercent === undefined
+          ? 100
+          : cfg.maxDivergencePercent
+    }),
+    []
+  )
+
+  const handleEnabledChange = async (enabled: boolean) => {
+    if (enabled && !config.enabled) {
+      const confirmed = await dialog.confirm(
+        t('data_sync.incremental_sync_enable_warning'),
+        t('data_sync.incremental_sync_enable_warning_title')
+      )
+      if (!confirmed) return
+    }
+
+    const prevEnabled = config.enabled
+    const next = { ...config, enabled }
+    setConfig(next)
+
+    try {
+      await (window as any).api?.incrementalSync?.updateConfig(buildConfigPayload(next))
+      setMessage(t('data_sync.config_saved', 'Configuration saved'))
+      setStatus('success')
+      setTimeout(() => {
+        setStatus('idle')
+        setMessage('')
+      }, 2000)
+    } catch (e: any) {
+      setConfig((current: typeof config) => ({ ...current, enabled: prevEnabled }))
+      setMessage(e?.message || t('data_sync.save_failed', 'Save failed'))
+      setStatus('error')
+    }
+  }
+
   const handleSaveConfig = async () => {
     try {
-      await (window as any).api?.incrementalSync?.updateConfig({
-        enabled: true,
-        target: config.target,
-        endpoint: config.endpoint,
-        region: config.region,
-        bucket: config.bucket,
-        webdavUrl: config.webdavUrl,
-        path: config.target === 'webdav' ? config.webdavPath : config.s3Path,
-        accessKey: config.target === 'webdav' ? config.webdavUsername : config.s3AccessKey,
-        secretKey: config.target === 'webdav' ? config.webdavPassword : config.s3SecretKey,
-        s3AccessKey: config.s3AccessKey,
-        s3SecretKey: config.s3SecretKey,
-        s3Path: config.s3Path,
-        webdavUsername: config.webdavUsername,
-        webdavPassword: config.webdavPassword,
-        webdavPath: config.webdavPath,
-        chunkConcurrency: config.chunkConcurrency,
-        fileConcurrency: config.fileConcurrency
-      })
+      await (window as any).api?.incrementalSync?.updateConfig(buildConfigPayload(config))
       setMessage(t('data_sync.config_saved', 'Configuration saved'))
       setStatus('success')
       setTimeout(() => {
@@ -209,6 +256,24 @@ export const SyncConfigForm: React.FC = () => {
         {t('data_sync.config_section', 'Configuration')}
       </h3>
 
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 16,
+          gap: 12
+        }}
+      >
+        <span style={{ fontSize: '14px', fontWeight: 600 }}>
+          {t('data_sync.incremental_sync', 'File Sync')}
+        </span>
+        <Switch
+          checked={config.enabled === true}
+          onChange={(e) => void handleEnabledChange(e.target.checked)}
+        />
+      </div>
+
       <div style={{ marginBottom: 16 }}>
         <label
           style={{
@@ -253,6 +318,43 @@ export const SyncConfigForm: React.FC = () => {
       ) : (
         <S3SyncForm config={config} onChange={handleConfigChange} />
       )}
+
+      <div style={{ marginTop: 16 }}>
+        <label
+          style={{
+            fontSize: '12px',
+            color: 'var(--text-secondary)',
+            display: 'block',
+            marginBottom: 6
+          }}
+        >
+          {t('data_sync.max_divergence_label', 'Max local/remote difference for bidirectional sync')}
+        </label>
+        <Select
+          value={String(
+            config.maxDivergencePercent === null || config.maxDivergencePercent === undefined
+              ? 100
+              : config.maxDivergencePercent
+          )}
+          onChange={(e) => {
+            handleConfigChange({ maxDivergencePercent: parseInt(e.target.value, 10) })
+          }}
+          options={SYNC_DIVERGENCE_THRESHOLD_OPTIONS.map((percent) => ({
+            value: String(percent),
+            label:
+              percent === 100
+                ? t('data_sync.max_divergence_remove_protection', '100 (remove protection)')
+                : t('data_sync.max_divergence_option', '{{percent}}%', { percent })
+          }))}
+          size="small"
+        />
+        <p style={{ margin: '8px 0 0', fontSize: '12px', color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
+          {t(
+            'data_sync.max_divergence_hint',
+            'Bidirectional sync is blocked when local and remote differ by more than this threshold. Upload-only is not affected. S3 and WebDAV use separate storage snapshots.'
+          )}
+        </p>
+      </div>
 
       <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
         <button onClick={handleSaveConfig} style={actionButtonStyle}>

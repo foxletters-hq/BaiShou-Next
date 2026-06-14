@@ -1,6 +1,6 @@
 import { RefreshCw, FileText, Cloud, HelpCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Tooltip, formatSyncProgressStatus } from '@baishou/ui'
+import { Tooltip, formatSyncProgressStatus, IncrementalSyncScopeList } from '@baishou/ui'
 import { SyncConfigForm } from './components/sync/SyncConfigForm'
 import { useOrchestratedSync } from '../../hooks/useOrchestratedSync'
 
@@ -55,6 +55,18 @@ export const IncrementalSyncPage: React.FC = () => {
           </span>
         </Tooltip>
       </h2>
+
+      <div
+        style={{
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: '12px',
+          padding: '16px 24px',
+          marginBottom: '20px'
+        }}
+      >
+        <IncrementalSyncScopeList />
+      </div>
 
       <SyncConfigForm />
 

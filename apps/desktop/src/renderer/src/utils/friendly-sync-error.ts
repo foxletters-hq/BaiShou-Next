@@ -56,5 +56,15 @@ export function friendlySyncError(msg: string, t: TFunction): string {
       'Connection refused. Please check the endpoint and service status.'
     )
   }
+  if (cleanMsg.includes('SyncDivergenceExceededError')) {
+    const match = cleanMsg.match(/divergence (\d+)% exceeds limit (\d+)%/)
+    if (match) {
+      return t('data_sync.error_divergence_exceeded', {
+        divergence: match[1],
+        limit: match[2]
+      })
+    }
+    return t('data_sync.error_divergence_exceeded_generic')
+  }
   return t('data_sync.error_sync_failed_with_msg', 'Sync failed: {{msg}}', { msg: cleanMsg })
 }
