@@ -80,6 +80,7 @@ export const RAGMemorySection: React.FC = () => {
     text: String(raw.text ?? ''),
     modelId: String(raw.modelId ?? fallbackModelId ?? ''),
     createdAt: Number(raw.createdAt ?? Date.now()),
+    sourceType: raw.sourceType != null ? String(raw.sourceType) : undefined,
     similarity: typeof raw.similarity === 'number' ? raw.similarity : undefined
   })
 
