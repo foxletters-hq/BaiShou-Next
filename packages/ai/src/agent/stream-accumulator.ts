@@ -1,5 +1,5 @@
 import { TextStreamPart } from 'ai'
-import { sanitizeAssistantGeneratedText } from '@baishou/shared'
+import { logger, sanitizeAssistantGeneratedText } from '@baishou/shared'
 
 export interface ToolCallSnapshot {
   callId: string

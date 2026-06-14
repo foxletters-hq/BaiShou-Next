@@ -138,9 +138,7 @@ describe('MessageAdapter.toVercelMessages', () => {
     const result = await MessageAdapter.toVercelMessages(dbMessages)
 
     expect(result[0]?.content).toBe(expectedUser)
-    const assistantText = (result[1]?.content as Array<{ text?: string }>).find(
-      (p) => p.type === 'text'
-    )?.text
+    const assistantText = (result[1]?.content as Array<{ type?: string; text?: string }>).find((p) => p.type === 'text')?.text
     expect(assistantText).toBe(expectedAssistant)
   })
 

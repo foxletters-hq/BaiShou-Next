@@ -110,7 +110,7 @@ export abstract class LocalSearchProvider {
   /**
    * 构建搜索 URL
    */
-  protected buildSearchUrl(query: string, maxResults: number): string {
+  protected buildSearchUrl(query: string, _maxResults: number): string {
     return this.searchUrl.replace('%s', encodeURIComponent(query))
   }
 

@@ -1,9 +1,10 @@
 import { AgentMessage, AgentPart } from '@baishou/shared'
-import { ModelMessage, ToolResultPart } from 'ai'
+import { type AssistantContent, ModelMessage, type ToolContent, ToolResultPart } from 'ai'
 import {
   injectModelMetadata,
   injectModelMetadataIntoAssistantParts,
-  injectModelMetadataIntoToolResults
+  injectModelMetadataIntoToolResults,
+  type ToolResultTextOutput
 } from '@baishou/shared'
 import {
   appendFileAttachmentToContentParts,
@@ -123,13 +124,13 @@ export class MessageAdapter {
         if (contentParts.length > 0) {
           vercelMessages.push({
             role: 'assistant',
-            content: injectModelMetadataIntoAssistantParts(contentParts, msg.createdAt)
+            content: injectModelMetadataIntoAssistantParts(contentParts, msg.createdAt) as AssistantContent
           })
 
           if (toolResultParts.length > 0) {
             vercelMessages.push({
               role: 'tool',
-              content: injectModelMetadataIntoToolResults(toolResultParts, msg.createdAt)
+              content: injectModelMetadataIntoToolResults(toolResultParts as ToolResultTextOutput[], msg.createdAt) as ToolContent
             })
           }
         }
@@ -163,7 +164,7 @@ export class MessageAdapter {
         if (resultParts.length > 0) {
           vercelMessages.push({
             role: 'tool',
-            content: injectModelMetadataIntoToolResults(resultParts, msg.createdAt)
+            content: injectModelMetadataIntoToolResults(resultParts as ToolResultTextOutput[], msg.createdAt) as ToolContent
           })
         }
       }
