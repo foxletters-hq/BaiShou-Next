@@ -118,7 +118,6 @@ export const DiaryList: React.FC<DiaryListProps> = ({
           total={totalPages}
           onChange={onPageChange}
           siblingCount={width >= 400 ? 1 : 0}
-          showFirstLast={width >= 360}
           showJumper
         />
       </ScrollView>

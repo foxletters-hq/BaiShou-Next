@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import * as Sharing from 'expo-sharing'
 import {
   AttachmentManagementView,
   useNativeTheme,
@@ -12,6 +11,7 @@ import {
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { useAttachmentImageLoader } from '../../../hooks/useAttachmentImageLoader'
 import { toFileUri } from '../../../services/android-external-fs'
+import { shareLocalFile } from '../../../utils/share-local-file.util'
 
 const SESSION_FETCH_LIMIT = 5000
 
@@ -68,17 +68,21 @@ export const AttachmentManagementSection: React.FC = () => {
   }, [loadAll])
 
   const handleOpenFile = async (absolutePath: string) => {
+    if (!services?.fileSystem) return
     try {
-      const uri = toFileUri(absolutePath)
-      const canShare = await Sharing.isAvailableAsync()
-      if (!canShare) {
+      await shareLocalFile(services.fileSystem, absolutePath)
+    } catch (e) {
+      console.warn('Share file failed', e)
+      const code = e instanceof Error ? e.message : ''
+      if (code === 'SHARE_UNAVAILABLE') {
         toast.showError(t('settings.attachment_share_unavailable', '当前设备不支持分享文件'))
         return
       }
-      await Sharing.shareAsync(uri)
-    } catch (e) {
-      console.warn('Share file failed', e)
-      toast.showError(t('common.errors.save_failed'))
+      if (code === 'FILE_NOT_FOUND') {
+        toast.showError(t('settings.attachment_share_file_not_found', '文件不存在或已被删除'))
+        return
+      }
+      toast.showError(t('settings.attachment_share_failed', '分享失败'))
     }
   }
 

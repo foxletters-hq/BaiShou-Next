@@ -101,12 +101,11 @@ export const WorkspaceManagementScreen: React.FC = () => {
   }, [currentPage, totalPages])
 
   const pagedVaults = useMemo(() => {
-    if (filteredVaults.length <= PAGE_SIZE) return filteredVaults
     const start = (safePage - 1) * PAGE_SIZE
     return filteredVaults.slice(start, start + PAGE_SIZE)
   }, [filteredVaults, safePage])
 
-  const showPagination = filteredVaults.length > PAGE_SIZE
+  const showPagination = totalPages > 1
 
   const handleCreate = async () => {
     const name = await dialog.prompt(t('workspace.new_name', '空间名称'), '')
@@ -139,7 +138,7 @@ export const WorkspaceManagementScreen: React.FC = () => {
     )
     if (input === vaultName) {
       try {
-        await services!.vaultService.deleteVault(vaultName)
+        await services!.deleteVault(vaultName)
         await loadVaults()
         toast.showSuccess(t('common.save_success'))
       } catch {
@@ -234,7 +233,7 @@ export const WorkspaceManagementScreen: React.FC = () => {
           )
         })}
 
-        {showPagination ? (
+        {filteredVaults.length > 0 ? (
           <View style={styles.paginationWrap}>
             <Text style={[styles.pageInfo, { color: colors.textSecondary }]}>
               {t('workspace.page_info', '共 {{total}} 个 · 第 {{page}} / {{pages}} 页', {
@@ -243,13 +242,21 @@ export const WorkspaceManagementScreen: React.FC = () => {
                 pages: totalPages
               })}
             </Text>
-            <Pagination
-              current={safePage}
-              total={totalPages}
-              onChange={setCurrentPage}
-              siblingCount={1}
-              showFirstLast
-            />
+            {showPagination ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.paginationScrollContent}
+              >
+                <Pagination
+                  current={safePage}
+                  total={totalPages}
+                  onChange={setCurrentPage}
+                  siblingCount={1}
+                  showFirstLast
+                />
+              </ScrollView>
+            ) : null}
           </View>
         ) : null}
 
@@ -328,6 +335,11 @@ const styles = StyleSheet.create({
   paginationWrap: {
     paddingVertical: 4,
     gap: 8
+  },
+  paginationScrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 4
   },
   pageInfo: {
     fontSize: 12

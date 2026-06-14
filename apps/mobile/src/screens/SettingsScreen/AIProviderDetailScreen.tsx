@@ -1,14 +1,19 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { ScrollView, StyleSheet, View } from 'react-native'
+import React, { useEffect, useMemo, useState } from 'react'
+import { StyleSheet, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
-import { scrollIndicatorStyle, useNativeTheme } from '@baishou/ui/native'
+import { scrollIndicatorStyle, KeyboardAwareScrollView, useNativeTheme } from '@baishou/ui/native'
 import { AIProviderConfig } from '@baishou/shared'
 import { StackScreenLayout } from '../../components/StackScreenLayout'
 import { getStackScreenChrome } from '../../components/stackScreenChrome'
 import { useBaishou } from '../../providers/BaishouProvider'
 import { AIProviderConfigForm } from './components/AIProviderConfigForm'
-import { buildProviderListItems } from './utils/provider-settings'
+import {
+  buildAndCacheProviderListItems,
+  buildProviderListItems,
+  peekProviderSettingsCache,
+  writeProviderSettingsCache
+} from './utils/provider-settings'
 
 export interface AIProviderDetailScreenProps {
   providerId: string
@@ -20,17 +25,19 @@ export const AIProviderDetailScreen: React.FC<AIProviderDetailScreenProps> = ({ 
   const { colors, isDark } = useNativeTheme()
   const chrome = getStackScreenChrome(colors)
   const { services, dbReady } = useBaishou()
-  const [savedProviders, setSavedProviders] = useState<AIProviderConfig[]>([])
-
-  const loadProviders = useCallback(async () => {
-    if (!services || !dbReady) return
-    const list = (await services.settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
-    setSavedProviders(list)
-  }, [services, dbReady])
+  const [savedProviders, setSavedProviders] = useState<AIProviderConfig[]>(
+    () => peekProviderSettingsCache() ?? []
+  )
 
   useEffect(() => {
-    void loadProviders()
-  }, [loadProviders])
+    if (!services || !dbReady) return
+    if (peekProviderSettingsCache()) return
+    void (async () => {
+      const list = (await services.settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
+      writeProviderSettingsCache(list)
+      setSavedProviders(list)
+    })()
+  }, [services, dbReady])
 
   const providerItems = useMemo(
     () => buildProviderListItems(savedProviders, t),
@@ -49,7 +56,7 @@ export const AIProviderDetailScreen: React.FC<AIProviderDetailScreenProps> = ({ 
 
   return (
     <StackScreenLayout title={title} {...chrome} contentStyle={styles.layoutContent}>
-      <ScrollView
+      <KeyboardAwareScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         indicatorStyle={scrollIndicatorStyle(isDark)}
@@ -62,13 +69,15 @@ export const AIProviderDetailScreen: React.FC<AIProviderDetailScreenProps> = ({ 
           providerMeta={providerMeta}
           savedProviders={savedProviders}
           onProvidersChange={(next) => {
+            writeProviderSettingsCache(next)
+            buildAndCacheProviderListItems(next, t)
             setSavedProviders(next)
             if (!next.some((p) => p.id === providerId)) {
               router.back()
             }
           }}
         />
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </StackScreenLayout>
   )
 }

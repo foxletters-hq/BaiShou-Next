@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native'
+import { View, Text, Pressable, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import {
   scrollIndicatorStyle,
+  KeyboardAwareScrollView,
   useNativeTheme,
   useDialog,
   useNativeToast,
@@ -16,6 +17,11 @@ import {
 import { StackScreenLayout } from '../../components/StackScreenLayout'
 import { getStackScreenChrome } from '../../components/stackScreenChrome'
 import { useBaishou } from '../../providers/BaishouProvider'
+import {
+  getUserProfileFromSettings,
+  saveUserProfileToSettings,
+  type UserProfile
+} from '@baishou/shared'
 
 const PAGE_SIZE = 10
 
@@ -28,7 +34,7 @@ export const IdentityCardManagementScreen: React.FC = () => {
   const { t } = useTranslation()
   const { colors, isDark, tokens } = useNativeTheme()
   const chrome = getStackScreenChrome(colors)
-  const { services, dbReady } = useBaishou()
+  const { services, dbReady, vaultRevision } = useBaishou()
   const dialog = useDialog()
   const toast = useNativeToast()
 
@@ -40,7 +46,7 @@ export const IdentityCardManagementScreen: React.FC = () => {
   const loadPersonas = useCallback(async () => {
     if (!services || !dbReady) return
     try {
-      const userProfile = (await services.settingsManager.get<any>('user_profile')) || {}
+      const userProfile = await getUserProfileFromSettings(services.settingsManager)
       const personasMap = userProfile.personas || {}
       const list: PersonaInfo[] = Object.keys(personasMap).map((id) => ({
         id,
@@ -51,7 +57,7 @@ export const IdentityCardManagementScreen: React.FC = () => {
     } catch (e) {
       console.warn('Load personas failed', e)
     }
-  }, [dbReady, services])
+  }, [dbReady, services, vaultRevision])
 
   useEffect(() => {
     void loadPersonas()
@@ -94,18 +100,21 @@ export const IdentityCardManagementScreen: React.FC = () => {
       return
     }
     try {
-      const userProfile = (await services!.settingsManager.get<any>('user_profile')) || {}
-      const personasMap = userProfile.personas || {}
+      const userProfile = await getUserProfileFromSettings(services!.settingsManager)
+      const personasMap = { ...userProfile.personas }
       personasMap[name.trim()] = { id: name.trim(), facts: {} }
       const previousActiveId = userProfile.activePersonaId || activePersonaId
-      userProfile.personas = personasMap
-      userProfile.activePersonaId = name.trim()
-      userProfile.recentPersonaIds = updateRecentPersonaIds(
-        userProfile.recentPersonaIds,
-        previousActiveId,
-        name.trim()
-      )
-      await services!.settingsManager.set('user_profile', userProfile)
+      const next: UserProfile = {
+        ...userProfile,
+        personas: personasMap,
+        activePersonaId: name.trim(),
+        recentPersonaIds: updateRecentPersonaIds(
+          userProfile.recentPersonaIds,
+          previousActiveId,
+          name.trim()
+        )
+      }
+      await saveUserProfileToSettings(services!.settingsManager, next)
       await loadPersonas()
       toast.showSuccess(t('common.save_success'))
     } catch {
@@ -116,15 +125,18 @@ export const IdentityCardManagementScreen: React.FC = () => {
   const handleSwitch = async (personaId: string) => {
     if (!services || activePersonaId === personaId) return
     try {
-      const userProfile = (await services.settingsManager.get<any>('user_profile')) || {}
+      const userProfile = await getUserProfileFromSettings(services.settingsManager)
       const previousActiveId = userProfile.activePersonaId || activePersonaId
-      userProfile.activePersonaId = personaId
-      userProfile.recentPersonaIds = updateRecentPersonaIds(
-        userProfile.recentPersonaIds,
-        previousActiveId,
-        personaId
-      )
-      await services.settingsManager.set('user_profile', userProfile)
+      const next: UserProfile = {
+        ...userProfile,
+        activePersonaId: personaId,
+        recentPersonaIds: updateRecentPersonaIds(
+          userProfile.recentPersonaIds,
+          previousActiveId,
+          personaId
+        )
+      }
+      await saveUserProfileToSettings(services.settingsManager, next)
       setActivePersonaId(personaId)
       toast.showSuccess(t('common.save_success'))
     } catch {
@@ -144,20 +156,22 @@ export const IdentityCardManagementScreen: React.FC = () => {
       return
     }
     try {
-      const userProfile = (await services!.settingsManager.get<any>('user_profile')) || {}
+      const userProfile = await getUserProfileFromSettings(services!.settingsManager)
       const personasMap = { ...userProfile.personas }
       personasMap[newName.trim()] = { ...personasMap[personaId], id: newName.trim() }
       delete personasMap[personaId]
-      userProfile.personas = personasMap
-      if (userProfile.activePersonaId === personaId) {
-        userProfile.activePersonaId = newName.trim()
+      const next: UserProfile = {
+        ...userProfile,
+        personas: personasMap,
+        activePersonaId:
+          userProfile.activePersonaId === personaId ? newName.trim() : userProfile.activePersonaId,
+        recentPersonaIds: renameRecentPersonaId(
+          userProfile.recentPersonaIds,
+          personaId,
+          newName.trim()
+        )
       }
-      userProfile.recentPersonaIds = renameRecentPersonaId(
-        userProfile.recentPersonaIds,
-        personaId,
-        newName.trim()
-      )
-      await services!.settingsManager.set('user_profile', userProfile)
+      await saveUserProfileToSettings(services!.settingsManager, next)
       await loadPersonas()
       toast.showSuccess(t('common.save_success'))
     } catch {
@@ -179,15 +193,19 @@ export const IdentityCardManagementScreen: React.FC = () => {
     )
     if (!confirmed) return
     try {
-      const userProfile = (await services!.settingsManager.get<any>('user_profile')) || {}
+      const userProfile = await getUserProfileFromSettings(services!.settingsManager)
       const personasMap = { ...userProfile.personas }
       delete personasMap[personaId]
-      userProfile.personas = personasMap
-      if (userProfile.activePersonaId === personaId) {
-        userProfile.activePersonaId = Object.keys(personasMap)[0]
+      const next: UserProfile = {
+        ...userProfile,
+        personas: personasMap,
+        activePersonaId:
+          userProfile.activePersonaId === personaId
+            ? Object.keys(personasMap)[0]!
+            : userProfile.activePersonaId,
+        recentPersonaIds: removeRecentPersonaId(userProfile.recentPersonaIds, personaId)
       }
-      userProfile.recentPersonaIds = removeRecentPersonaId(userProfile.recentPersonaIds, personaId)
-      await services!.settingsManager.set('user_profile', userProfile)
+      await saveUserProfileToSettings(services!.settingsManager, next)
       await loadPersonas()
       toast.showSuccess(t('common.save_success'))
     } catch {
@@ -201,7 +219,7 @@ export const IdentityCardManagementScreen: React.FC = () => {
       {...chrome}
       contentStyle={styles.layoutContent}
     >
-      <ScrollView
+      <KeyboardAwareScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         indicatorStyle={scrollIndicatorStyle(isDark)}
@@ -300,7 +318,6 @@ export const IdentityCardManagementScreen: React.FC = () => {
                 total={totalPages}
                 onChange={setCurrentPage}
                 siblingCount={1}
-                showFirstLast
               />
             </View>
           ) : null}
@@ -314,7 +331,7 @@ export const IdentityCardManagementScreen: React.FC = () => {
         >
           + {t('settings.create_new_identity', '创建新身份卡')}
         </Button>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </StackScreenLayout>
   )
 }

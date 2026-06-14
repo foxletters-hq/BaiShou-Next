@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, LayoutAnimation } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { WebSearchConfig } from '@baishou/shared'
 import { WEB_SEARCH_MAX_RESULTS_LIMIT } from '@baishou/shared'
@@ -54,7 +54,7 @@ export const WebSearchSection: React.FC = () => {
   const ragOn = config.webSearchRagEnabled
 
   return (
-    <ScrollView keyboardShouldPersistTaps="handled">
+    <>
       <SettingsGroupCard>
         <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
           {t('settings.web_search_config_title')}
@@ -222,7 +222,7 @@ export const WebSearchSection: React.FC = () => {
 
         <View style={{ height: tokens.spacing.xs }} />
       </SettingsGroupCard>
-    </ScrollView>
+    </>
   )
 }
 

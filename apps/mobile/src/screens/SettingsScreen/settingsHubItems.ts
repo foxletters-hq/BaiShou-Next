@@ -139,18 +139,28 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
   }
 ]
 
-export const SETTINGS_SECTION_IDS = new Set(
-  SETTINGS_HUB_GROUPS.flatMap((g) =>
+export const HIDDEN_SETTINGS_SECTIONS = ['developer'] as const
+
+export const SETTINGS_SECTION_IDS = new Set([
+  ...SETTINGS_HUB_GROUPS.flatMap((g) =>
     g.items
       .filter(
         (item): item is SettingsHubItem & { route: { type: 'section' } } =>
           item.route.type === 'section'
       )
       .map((item) => item.route.section)
-  )
-)
+  ),
+  ...HIDDEN_SETTINGS_SECTIONS
+])
+
+const HIDDEN_SECTION_TITLE_KEYS: Record<string, string> = {
+  developer: 'settings.developer_options'
+}
 
 export function getHubItemTitleKey(section: string): string | undefined {
+  if (section in HIDDEN_SECTION_TITLE_KEYS) {
+    return HIDDEN_SECTION_TITLE_KEYS[section]
+  }
   for (const group of SETTINGS_HUB_GROUPS) {
     for (const item of group.items) {
       if (item.route.type === 'section' && item.route.section === section) {

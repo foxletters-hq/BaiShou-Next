@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useMemo, useRef, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Modal, ActivityIndicator } from 'react-native'
-import { useRouter } from 'expo-router'
+import { useRouter, useFocusEffect } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import {
   useNativeTheme,
@@ -17,8 +17,13 @@ import { ProviderSortableList } from './ProviderSortableList'
 import { ProviderBrandIcon } from './ProviderBrandIcon'
 import {
   applyProviderOrderFromIds,
-  buildProviderListItems,
-  effectiveProviderBaseUrl
+  buildAndCacheProviderListItems,
+  effectiveProviderBaseUrl,
+  peekProviderListItemsCache,
+  peekProviderSettingsCache,
+  writeProviderListItemsCache,
+  writeProviderSettingsCache,
+  type ProviderListItem
 } from '../utils/provider-settings'
 
 export const AIServicesSection: React.FC = () => {
@@ -27,58 +32,88 @@ export const AIServicesSection: React.FC = () => {
   const { colors, tokens } = useNativeTheme()
   const { services, dbReady } = useBaishou()
   const toast = useNativeToast()
+  const loadingRef = useRef(false)
 
-  const [savedProviders, setSavedProviders] = useState<AIProviderConfig[] | null>(null)
+  const [listItems, setListItems] = useState<ProviderListItem[] | null>(
+    () => peekProviderListItemsCache()
+  )
   const [showAddModal, setShowAddModal] = useState(false)
   const [addForm, setAddForm] = useState({ name: '', type: 'openai', baseUrl: '' })
 
-  const providerItems = useMemo(
-    () => buildProviderListItems(savedProviders ?? [], t),
-    [savedProviders, t]
-  )
-
-  const [localProviderItems, setLocalProviderItems] = useState<typeof providerItems>([])
-
-  useEffect(() => {
-    if (savedProviders === null) return
-    setLocalProviderItems(providerItems)
-  }, [savedProviders, providerItems])
-
-  const loadProviders = useCallback(async () => {
-    if (!services || !dbReady) return
+  const loadListFromDb = useCallback(async () => {
+    if (!services || !dbReady || loadingRef.current) return
+    loadingRef.current = true
     try {
       const list = (await services.settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
-      setSavedProviders(list)
+      writeProviderSettingsCache(list)
+      const items = buildAndCacheProviderListItems(list, t)
+      setListItems(items)
     } catch (e) {
       console.warn('Load providers failed', e)
-      setSavedProviders([])
+      setListItems([])
+    } finally {
+      loadingRef.current = false
     }
-  }, [services, dbReady])
+  }, [services, dbReady, t])
 
-  useEffect(() => {
-    void loadProviders()
-  }, [loadProviders])
+  const syncListOnFocus = useCallback(() => {
+    const cachedItems = peekProviderListItemsCache()
+    if (cachedItems) {
+      setListItems((prev) => (prev === cachedItems ? prev : cachedItems))
+      return
+    }
+    const full = peekProviderSettingsCache()
+    if (full) {
+      const items = buildAndCacheProviderListItems(full, t)
+      setListItems(items)
+      return
+    }
+    void loadListFromDb()
+  }, [loadListFromDb, t])
 
-  const handleReorderProviders = useCallback(
-    async (orderedItems: typeof providerItems) => {
-      setLocalProviderItems(orderedItems)
-      if (!services || !dbReady) return
-      const orderedIds = orderedItems.map((p) => p.id)
-      const next = applyProviderOrderFromIds(savedProviders ?? [], orderedIds, orderedItems)
-      try {
-        await services.settingsManager.set('ai_providers', next)
-        setSavedProviders(next)
-      } catch (e) {
-        console.warn('Reorder providers failed', e)
-        setLocalProviderItems(providerItems)
-      }
-    },
-    [services, dbReady, savedProviders, providerItems]
+  useFocusEffect(
+    useCallback(() => {
+      syncListOnFocus()
+    }, [syncListOnFocus])
   )
 
-  const handleOpenProvider = (id: string) => {
-    router.push(`/settings/ai-provider/${encodeURIComponent(id)}`)
-  }
+  const handleReorderProviders = useCallback(
+    (orderedItems: ProviderListItem[]) => {
+      const withSortOrder = orderedItems.map((item, index) => ({
+        ...item,
+        sortOrder: index
+      }))
+      setListItems(withSortOrder)
+      writeProviderListItemsCache(withSortOrder)
+
+      if (!services || !dbReady) return
+
+      const full = peekProviderSettingsCache() ?? []
+      const next = applyProviderOrderFromIds(
+        full,
+        withSortOrder.map((p) => p.id),
+        withSortOrder
+      )
+      writeProviderSettingsCache(next, { keepListCache: true })
+
+      void services.settingsManager.setWithoutFlush('ai_providers', next).then(
+        () => {
+          services.settingsManager.scheduleFlushToDisk()
+        },
+        (e) => {
+          console.warn('Reorder providers failed', e)
+        }
+      )
+    },
+    [services, dbReady]
+  )
+
+  const handleOpenProvider = useCallback(
+    (id: string) => {
+      router.push(`/settings/ai-provider/${encodeURIComponent(id)}`)
+    },
+    [router]
+  )
 
   const handleAddCustomProvider = async () => {
     if (!services || !dbReady) return
@@ -99,14 +134,16 @@ export const AIServicesSection: React.FC = () => {
       enabledModels: [],
       isEnabled: true,
       isSystem: false,
-      sortOrder: (savedProviders ?? []).length + 1,
+      sortOrder: (peekProviderSettingsCache() ?? []).length + 1,
       defaultDialogueModel: '',
       defaultNamingModel: ''
     }
     try {
-      const next = [...(savedProviders ?? []), newProvider]
+      const next = [...(peekProviderSettingsCache() ?? []), newProvider]
       await services.settingsManager.set('ai_providers', next)
-      setSavedProviders(next)
+      writeProviderSettingsCache(next)
+      const items = buildAndCacheProviderListItems(next, t)
+      setListItems(items)
       setShowAddModal(false)
       setAddForm({ name: '', type: 'openai', baseUrl: '' })
       router.push(`/settings/ai-provider/${encodeURIComponent(id)}`)
@@ -122,12 +159,15 @@ export const AIServicesSection: React.FC = () => {
     borderColor: colors.borderSubtle
   }
 
-  const footer = (
-    <View style={styles.footer}>
-      <CardLinkAction onPress={() => setShowAddModal(true)}>
-        {t('settings.add_provider')}
-      </CardLinkAction>
-    </View>
+  const footer = useMemo(
+    () => (
+      <View style={styles.footer}>
+        <CardLinkAction onPress={() => setShowAddModal(true)}>
+          {t('settings.add_provider')}
+        </CardLinkAction>
+      </View>
+    ),
+    [t]
   )
 
   const typeOptions = useMemo(
@@ -140,7 +180,7 @@ export const AIServicesSection: React.FC = () => {
     []
   )
 
-  if (savedProviders === null) {
+  if (listItems === null) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator size="small" color={colors.primary} />
@@ -151,9 +191,9 @@ export const AIServicesSection: React.FC = () => {
   return (
     <View style={styles.root}>
       <ProviderSortableList
-        items={localProviderItems}
+        items={listItems}
         onOpen={handleOpenProvider}
-        onReorder={(items) => void handleReorderProviders(items)}
+        onReorder={handleReorderProviders}
         ListFooterComponent={footer}
       />
 

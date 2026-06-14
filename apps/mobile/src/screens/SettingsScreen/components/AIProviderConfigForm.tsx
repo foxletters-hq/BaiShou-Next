@@ -6,6 +6,8 @@ import { AIProviderConfig } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { ProviderBrandIcon } from './ProviderBrandIcon'
 import {
+  buildAndCacheProviderListItems,
+  computeSortOrderOnEnable,
   effectiveProviderBaseUrl,
   fetchProviderModelsViaRegistry,
   getChatModelsForTest,
@@ -14,6 +16,8 @@ import {
   testProviderConnectionViaRegistry,
   type ProviderListItem
 } from '../utils/provider-settings'
+
+const MODEL_PAGE_SIZE = 10
 
 interface AIProviderConfigFormProps {
   providerId: string
@@ -37,6 +41,7 @@ export const AIProviderConfigForm: React.FC<AIProviderConfigFormProps> = ({
   const [localApiKey, setLocalApiKey] = useState('')
   const [localBaseUrl, setLocalBaseUrl] = useState('')
   const [modelSearchQuery, setModelSearchQuery] = useState('')
+  const [modelVisibleCount, setModelVisibleCount] = useState(MODEL_PAGE_SIZE)
   const [isTesting, setIsTesting] = useState(false)
   const [isFetching, setIsFetching] = useState(false)
 
@@ -49,7 +54,12 @@ export const AIProviderConfigForm: React.FC<AIProviderConfigFormProps> = ({
     setLocalApiKey(activeConfig.apiKey || '')
     setLocalBaseUrl(activeConfig.baseUrl || providerMeta?.defaultBase || '')
     setModelSearchQuery('')
+    setModelVisibleCount(MODEL_PAGE_SIZE)
   }, [providerId, activeConfig.apiKey, activeConfig.baseUrl, providerMeta?.defaultBase])
+
+  useEffect(() => {
+    setModelVisibleCount(MODEL_PAGE_SIZE)
+  }, [providerId, modelSearchQuery, activeConfig.models])
 
   const persistProvider = async (updates: Partial<AIProviderConfig>) => {
     if (!services || !dbReady) return
@@ -87,6 +97,12 @@ export const AIProviderConfigForm: React.FC<AIProviderConfigFormProps> = ({
   }
 
   const handleToggleEnable = async (enabled: boolean) => {
+    if (enabled) {
+      const items = buildAndCacheProviderListItems(savedProviders, t)
+      const sortOrder = computeSortOrderOnEnable(items)
+      await persistProvider({ isEnabled: enabled, sortOrder })
+      return
+    }
     await persistProvider({ isEnabled: enabled })
   }
 
@@ -207,10 +223,19 @@ export const AIProviderConfigForm: React.FC<AIProviderConfigFormProps> = ({
       })
   }, [activeConfig.models, activeConfig.enabledModels, modelSearchQuery])
 
-  const toggleModelEnabled = async (modelId: string) => {
-    const enabled = new Set(activeConfig.enabledModels || [])
-    if (enabled.has(modelId)) enabled.delete(modelId)
-    else enabled.add(modelId)
+  const visibleModels = useMemo(
+    () => sortedDisplayModels.slice(0, modelVisibleCount),
+    [sortedDisplayModels, modelVisibleCount]
+  )
+
+  const hasMoreModels = modelVisibleCount < sortedDisplayModels.length
+
+  const toggleModelEnabled = async (modelId: string, nextEnabled?: boolean) => {
+    const currentConfig = getProviderConfig(savedProviders, providerId, providerMeta)
+    const enabled = new Set(currentConfig.enabledModels || [])
+    const shouldEnable = nextEnabled ?? !enabled.has(modelId)
+    if (shouldEnable) enabled.add(modelId)
+    else enabled.delete(modelId)
     await persistProvider({ enabledModels: Array.from(enabled) })
   }
 
@@ -327,13 +352,12 @@ export const AIProviderConfigForm: React.FC<AIProviderConfigFormProps> = ({
                 {t('common.no_match_model')}
               </Text>
             ) : (
-              sortedDisplayModels.map((modelId) => {
+              visibleModels.map((modelId) => {
                 const on = (activeConfig.enabledModels || []).includes(modelId)
                 return (
-                  <TouchableOpacity
+                  <View
                     key={modelId}
                     style={[styles.modelRow, { borderBottomColor: colors.borderSubtle }]}
-                    onPress={() => toggleModelEnabled(modelId)}
                   >
                     <View style={styles.modelRowLeading}>
                       <ProviderBrandIcon providerId={providerId} size={18} />
@@ -347,11 +371,27 @@ export const AIProviderConfigForm: React.FC<AIProviderConfigFormProps> = ({
                     >
                       {modelId}
                     </Text>
-                    <Switch value={on} onValueChange={() => toggleModelEnabled(modelId)} />
-                  </TouchableOpacity>
+                    <Switch value={on} onValueChange={(next) => toggleModelEnabled(modelId, next)} />
+                  </View>
                 )
               })
             )}
+            {hasMoreModels ? (
+              <TouchableOpacity
+                style={[styles.loadMoreModelsBtn, { backgroundColor: colors.bgApp }]}
+                onPress={() => setModelVisibleCount((count) => count + MODEL_PAGE_SIZE)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.loadMoreModelsText, { color: colors.primary }]}>
+                  {t('common.load_more', '加载更多')} ({visibleModels.length}/
+                  {sortedDisplayModels.length})
+                </Text>
+              </TouchableOpacity>
+            ) : sortedDisplayModels.length > MODEL_PAGE_SIZE ? (
+              <Text style={[styles.modelCountHint, { color: colors.textTertiary }]}>
+                {t('common.loaded_all', '已全部加载')} ({sortedDisplayModels.length})
+              </Text>
+            ) : null}
           </View>
         </>
       )}
@@ -430,6 +470,21 @@ const styles = StyleSheet.create({
   modelRowText: {
     flex: 1,
     fontSize: 13
+  },
+  loadMoreModelsBtn: {
+    marginTop: 10,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center'
+  },
+  loadMoreModelsText: {
+    fontSize: 13,
+    fontWeight: '700'
+  },
+  modelCountHint: {
+    marginTop: 10,
+    textAlign: 'center',
+    fontSize: 12
   },
   deleteLink: {
     marginTop: 12,

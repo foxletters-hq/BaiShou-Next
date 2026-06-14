@@ -1,7 +1,7 @@
 import React from 'react'
-import { ScrollView, StyleSheet, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { scrollIndicatorStyle, useNativeTheme } from '@baishou/ui/native'
+import { scrollIndicatorStyle, KeyboardAwareScrollView, useNativeTheme } from '@baishou/ui/native'
 import { StackScreenLayout } from '../../components/StackScreenLayout'
 import { getStackScreenChrome } from '../../components/stackScreenChrome'
 import { getHubItemTitleKey } from './settingsHubItems'
@@ -64,14 +64,14 @@ export const SettingsDetailScreen: React.FC<SettingsDetailScreenProps> = ({ sect
       {isSelfScrolling ? (
         <View style={[styles.scrollContent, styles.selfScrollHost]}>{renderContent()}</View>
       ) : (
-        <ScrollView
+        <KeyboardAwareScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           indicatorStyle={scrollIndicatorStyle(isDark)}
           keyboardShouldPersistTaps="handled"
         >
           {renderContent()}
-        </ScrollView>
+        </KeyboardAwareScrollView>
       )}
     </StackScreenLayout>
   )

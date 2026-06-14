@@ -10,9 +10,9 @@ import {
   formatDiaryPreviewText,
   type WeatherId
 } from '@baishou/shared'
+import { logger } from '@baishou/shared'
 import { useNativeTheme, useNativeToast, useDialog } from '@baishou/ui/native'
 import { useStoragePermission } from '../../hooks/useStoragePermission'
-import { logger } from '@baishou/shared'
 import { useBaishou } from '../../providers/BaishouProvider'
 import { DiaryAppBar } from './components/DiaryAppBar'
 import { DiaryFab } from './components/DiaryFab'
@@ -79,6 +79,22 @@ export const DiaryScreen: React.FC = () => {
   const [todayEntry, setTodayEntry] = useState<{ id: number } | null>(null)
   const [isStateRestored, setIsStateRestored] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
+  const [incrementalSyncReady, setIncrementalSyncReady] = useState(false)
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!services?.incrementalSyncService || !dbReady) {
+        setIncrementalSyncReady(false)
+        return
+      }
+      void services.incrementalSyncService
+        .isConfigured()
+        .then(setIncrementalSyncReady)
+        .catch(() => {
+          setIncrementalSyncReady(false)
+        })
+    }, [services, dbReady])
+  )
 
   useEffect(() => {
     const restoreState = async () => {
@@ -347,7 +363,9 @@ export const DiaryScreen: React.FC = () => {
             onFilterWeathersChange={setFilterWeathers}
             filterFavorite={filterFavorite}
             onFilterFavoriteChange={setFilterFavorite}
-            onSyncPress={() => void handleIncrementalSync()}
+            onSyncPress={
+              incrementalSyncReady ? () => void handleIncrementalSync() : undefined
+            }
             isSyncing={isSyncing}
           />
 

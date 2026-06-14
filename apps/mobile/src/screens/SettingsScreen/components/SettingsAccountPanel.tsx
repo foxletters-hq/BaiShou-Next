@@ -15,6 +15,12 @@ import {
   type UserProfileConfig,
   type VaultInfo
 } from '@baishou/ui/native'
+import {
+  DEFAULT_USER_PROFILE,
+  getUserProfileFromSettings,
+  saveUserProfileToSettings,
+  type UserProfile
+} from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { useMobileMcpConfig } from '../../../hooks/useMobileMcpConfig'
 import { notifyThemeRefresh } from '../../../lib/theme-events'
@@ -30,7 +36,7 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const router = useRouter()
-  const { services, dbReady } = useBaishou()
+  const { services, dbReady, vaultRevision } = useBaishou()
   const toast = useNativeToast()
   const mcp = useMobileMcpConfig()
 
@@ -39,9 +45,9 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
   const [language, setLanguage] = useState('system')
   const [profile, setProfile] = useState<any>({ nickname: '', avatarPath: '' })
   const [identityProfile, setIdentityProfile] = useState<UserProfileConfig>({
-    nickname: '',
-    activePersonaId: 'Default',
-    personas: { Default: { id: 'Default', facts: {} } }
+    nickname: DEFAULT_USER_PROFILE.nickname,
+    activePersonaId: DEFAULT_USER_PROFILE.activePersonaId,
+    personas: DEFAULT_USER_PROFILE.personas
   })
 
   const [vaults, setVaults] = useState<VaultInfo[]>([])
@@ -90,7 +96,7 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
   const handleDeleteVault = async (name: string) => {
     if (!services || !dbReady) return
     try {
-      await services.vaultService.deleteVault(name)
+      await services.deleteVault(name)
       await loadVaults()
     } catch {
       toast.showError(t('common.errors.save_failed'))
@@ -111,24 +117,22 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
       if (settings.seedColor) setSeedColor(settings.seedColor)
       if (settings.language) setLanguage(settings.language)
 
-      const userProfile = (await services.settingsManager.get<any>('user_profile')) || {}
+      const userProfile = await getUserProfileFromSettings(services.settingsManager)
       setProfile({
         nickname: userProfile.nickname || '',
         avatarPath: userProfile.avatarPath
       })
       setIdentityProfile({
         nickname: userProfile.nickname || '',
-        avatarPath: userProfile.avatarPath,
-        activePersonaId: userProfile.activePersonaId || 'Default',
-        personas: userProfile.personas || {
-          Default: { id: 'Default', facts: {} }
-        },
+        avatarPath: userProfile.avatarPath ?? undefined,
+        activePersonaId: userProfile.activePersonaId,
+        personas: userProfile.personas,
         recentPersonaIds: userProfile.recentPersonaIds
       })
     } catch (e) {
       console.warn('Load account settings failed', e)
     }
-  }, [dbReady, services])
+  }, [dbReady, services, vaultRevision])
 
   useEffect(() => {
     void loadAccountSettings()
@@ -142,11 +146,25 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
     }, [loadAccountSettings, loadVaults])
   )
 
-  const handleSaveProfile = async (newProfile: any) => {
+  const handleSaveProfile = async (newProfile: {
+    nickname: string
+    avatarPath?: string | null
+  }) => {
     if (!services || !dbReady) return
     try {
-      await services.settingsManager.set('user_profile', newProfile)
-      setProfile(newProfile)
+      const userProfile = await getUserProfileFromSettings(services.settingsManager)
+      const next: UserProfile = {
+        ...userProfile,
+        nickname: newProfile.nickname,
+        avatarPath: newProfile.avatarPath ?? userProfile.avatarPath
+      }
+      await saveUserProfileToSettings(services.settingsManager, next)
+      setProfile({ nickname: next.nickname, avatarPath: next.avatarPath })
+      setIdentityProfile((prev) => ({
+        ...prev,
+        nickname: next.nickname,
+        avatarPath: next.avatarPath ?? undefined
+      }))
       toast.showSuccess(t('common.save_success'))
     } catch {
       toast.showError(t('common.errors.save_failed'))
@@ -157,13 +175,17 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
     if (!services || !dbReady) return
     try {
       setIdentityProfile(newProfile)
-      const userProfile = (await services.settingsManager.get<any>('user_profile')) || {}
-      userProfile.personas = newProfile.personas
-      userProfile.activePersonaId = newProfile.activePersonaId
-      userProfile.recentPersonaIds = newProfile.recentPersonaIds
-      userProfile.nickname = newProfile.nickname
-      await services.settingsManager.set('user_profile', userProfile)
-      setProfile({ ...profile, ...userProfile })
+      const userProfile = await getUserProfileFromSettings(services.settingsManager)
+      const next: UserProfile = {
+        ...userProfile,
+        nickname: newProfile.nickname,
+        avatarPath: newProfile.avatarPath ?? userProfile.avatarPath ?? null,
+        personas: newProfile.personas,
+        activePersonaId: newProfile.activePersonaId,
+        recentPersonaIds: newProfile.recentPersonaIds
+      }
+      await saveUserProfileToSettings(services.settingsManager, next)
+      setProfile({ nickname: next.nickname, avatarPath: next.avatarPath })
     } catch (e) {
       console.error('Save identity failed', e)
     }

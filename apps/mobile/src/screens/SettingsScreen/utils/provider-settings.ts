@@ -3,6 +3,7 @@ import {
   AIProviderConfig,
   ProviderType,
   isChatModelForConnectionTest,
+  resolveEnabledModelPool,
   resolveProviderBaseUrl
 } from '@baishou/shared'
 import {
@@ -19,6 +20,45 @@ export interface ProviderListItem {
   isSystem: boolean
   sortOrder: number
   isEnabled: boolean
+}
+
+export interface ProviderListGroups {
+  enabled: ProviderListItem[]
+  disabled: ProviderListItem[]
+}
+
+let providerSettingsCache: AIProviderConfig[] | null = null
+let providerListItemsCache: ProviderListItem[] | null = null
+
+export function peekProviderSettingsCache(): AIProviderConfig[] | null {
+  return providerSettingsCache
+}
+
+export function peekProviderListItemsCache(): ProviderListItem[] | null {
+  return providerListItemsCache
+}
+
+export function writeProviderSettingsCache(
+  list: AIProviderConfig[],
+  options?: { keepListCache?: boolean }
+): void {
+  providerSettingsCache = list
+  if (!options?.keepListCache) {
+    providerListItemsCache = null
+  }
+}
+
+export function writeProviderListItemsCache(items: ProviderListItem[]): void {
+  providerListItemsCache = items
+}
+
+export function buildAndCacheProviderListItems(
+  savedProviders: AIProviderConfig[],
+  t: TFunction
+): ProviderListItem[] {
+  const items = buildProviderListItems(savedProviders, t)
+  providerListItemsCache = items
+  return items
 }
 
 export function buildProviderListItems(
@@ -56,7 +96,74 @@ export function buildProviderListItems(
       isEnabled: p.isEnabled ?? false
     }))
 
-  return [...knownItems, ...customItems].sort((a, b) => a.sortOrder - b.sortOrder)
+  return [...knownItems, ...customItems].sort((a, b) => {
+    if (a.isEnabled !== b.isEnabled) return a.isEnabled ? -1 : 1
+    return a.sortOrder - b.sortOrder
+  })
+}
+
+export function splitProviderListItems(items: ProviderListItem[]): ProviderListGroups {
+  const enabled: ProviderListItem[] = []
+  const disabled: ProviderListItem[] = []
+  for (const item of items) {
+    if (item.isEnabled) enabled.push(item)
+    else disabled.push(item)
+  }
+  return { enabled, disabled }
+}
+
+export function mergeProviderListGroups(groups: ProviderListGroups): ProviderListItem[] {
+  return [...groups.enabled, ...groups.disabled]
+}
+
+/** 扁平列表拖拽时限制在同一启用状态分组内（兼容旧版 ProviderSortableList / HMR 缓存） */
+export function reorderProviderItemsWithinGroups(
+  items: ProviderListItem[],
+  from: number,
+  to: number
+): ProviderListItem[] {
+  if (from === to || from < 0 || to < 0 || from >= items.length) return items
+
+  const enabledCount = items.filter((i) => i.isEnabled).length
+  const moving = items[from]
+  if (!moving) return items
+
+  let target = to
+  if (moving.isEnabled) {
+    target = Math.min(Math.max(0, target), Math.max(0, enabledCount - 1))
+  } else {
+    target = Math.min(Math.max(enabledCount, target), items.length - 1)
+  }
+
+  if (from === target) return items
+
+  const next = [...items]
+  const [removed] = next.splice(from, 1)
+  if (!removed) return items
+  next.splice(target, 0, removed)
+  return next
+}
+
+export function reorderEnabledProviders(
+  allItems: ProviderListItem[],
+  enabledReordered: ProviderListItem[]
+): ProviderListItem[] {
+  const disabled = allItems.filter((item) => !item.isEnabled)
+  return mergeProviderListGroups({ enabled: enabledReordered, disabled })
+}
+
+export function reorderDisabledProviders(
+  allItems: ProviderListItem[],
+  disabledReordered: ProviderListItem[]
+): ProviderListItem[] {
+  const enabled = allItems.filter((item) => item.isEnabled)
+  return mergeProviderListGroups({ enabled, disabled: disabledReordered })
+}
+
+/** 启用供应商时排到已启用分组末尾 */
+export function computeSortOrderOnEnable(items: ProviderListItem[]): number {
+  const enabledOrders = items.filter((p) => p.isEnabled).map((p) => p.sortOrder)
+  return enabledOrders.length > 0 ? Math.max(...enabledOrders) + 1 : 0
 }
 
 export function getProviderConfig(
@@ -175,6 +282,6 @@ export async function testProviderConnectionViaRegistry(
 }
 
 export function getChatModelsForTest(config: AIProviderConfig): string[] {
-  const pool = config.enabledModels?.length ? config.enabledModels : config.models || []
+  const pool = resolveEnabledModelPool(config)
   return pool.filter((m) => isChatModelForConnectionTest(m))
 }
