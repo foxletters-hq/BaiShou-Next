@@ -42,11 +42,13 @@ interface SummaryMissingSectionProps {
   generationStates: Record<string, any>
   stats: { totalDiaryCount: number }
   isBatchGenerating: boolean
+  isDetectingMissing: boolean
   concurrencyLimit: number
   onBatchGenerate: () => void
   onStopGeneration: () => void
   onConcurrencyChange: (n: number) => void
   onQueueSingle: (item: MissingPeriod) => void
+  onDetectMissing: () => void
 }
 
 export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
@@ -54,11 +56,13 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
   generationStates,
   stats,
   isBatchGenerating,
+  isDetectingMissing,
   concurrencyLimit,
   onBatchGenerate,
   onStopGeneration,
   onConcurrencyChange,
-  onQueueSingle
+  onQueueSingle,
+  onDetectMissing
 }) => {
   const { t, i18n } = useTranslation()
   const { colors } = useNativeTheme()
@@ -95,6 +99,27 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
           >
             {t('common.count_items').replace('$count', String(missingSummaries.length))}
           </Text>
+          <Pressable
+            style={[
+              styles.detectBtn,
+              {
+                backgroundColor: colors.bgSurface,
+                borderColor: colors.borderMuted
+              },
+              (isDetectingMissing || isGenerating) && styles.detectBtnDisabled
+            ]}
+            onPress={onDetectMissing}
+            disabled={isDetectingMissing || isGenerating}
+          >
+            {isDetectingMissing ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <MaterialIcons name="refresh" size={14} color={colors.textSecondary} />
+            )}
+            <Text style={[styles.detectBtnText, { color: colors.textSecondary }]}>
+              {isDetectingMissing ? t('summary.detecting_missing') : t('summary.detect_missing')}
+            </Text>
+          </Pressable>
         </View>
       )}
 
@@ -301,6 +326,23 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12,
     overflow: 'hidden'
+  },
+  detectBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderStyle: 'solid'
+  },
+  detectBtnDisabled: {
+    opacity: 0.6
+  },
+  detectBtnText: {
+    fontSize: 12,
+    fontWeight: '600'
   },
   emptyBox: {
     padding: 24,

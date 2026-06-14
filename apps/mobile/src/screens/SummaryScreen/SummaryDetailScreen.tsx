@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react'
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar } from 'react-native'
+import React, { useState, useEffect, useRef } from 'react'
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar } from 'react-native'
 import { ScreenSafeArea } from '@/src/components/ScreenSafeArea'
 import {
   useNativeTheme,
   useNativeToast,
   useDialog,
   scrollIndicatorStyle,
+  KeyboardAwareScrollView,
   MarkdownRenderer,
   Input
 } from '@baishou/ui/native'
@@ -14,6 +15,7 @@ import { useTranslation } from 'react-i18next'
 import * as Clipboard from 'expo-clipboard'
 import { SummaryType } from '@baishou/shared'
 import { buildSummaryTitle } from './utils/buildSummaryTitle'
+import { consumePendingSummaryDetail } from './utils/summaryDetailCache'
 
 interface SummaryDetail {
   id?: number
@@ -43,8 +45,9 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
   const toast = useNativeToast()
   const dialog = useDialog()
   const { services, dbReady } = useBaishou()
-  const [summary, setSummary] = useState<SummaryDetail | null>(null)
-  const [loading, setLoading] = useState(true)
+  const cachedSummaryRef = useRef(consumePendingSummaryDetail(summaryId))
+  const [summary, setSummary] = useState<SummaryDetail | null>(cachedSummaryRef.current)
+  const [loading, setLoading] = useState(!cachedSummaryRef.current)
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState('')
   const [isSaving, setIsSaving] = useState(false)
@@ -52,6 +55,13 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
   useEffect(() => {
     const fetchSummary = async () => {
       if (!dbReady || !services) return
+
+      if (cachedSummaryRef.current) {
+        setSummary(cachedSummaryRef.current)
+        setLoading(false)
+        return
+      }
+
       setLoading(true)
       try {
         const summaryList = await services.summaryManager.list()
@@ -272,55 +282,55 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
         </View>
       </View>
 
-      <ScrollView
+      <KeyboardAwareScrollView
         style={[styles.content, { backgroundColor: colors.bgApp }]}
         contentContainerStyle={styles.contentScroll}
         indicatorStyle={scrollIndicatorStyle(isDark)}
       >
-        <View
-          style={[
-            styles.metaCard,
-            { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }
-          ]}
-        >
-          <View style={[styles.typeBadge, { backgroundColor: colors.primary + '20' }]}>
-            <Text style={[styles.typeBadgeText, { color: colors.primary }]}>{typeLabel}</Text>
-          </View>
+          <View
+            style={[
+              styles.metaCard,
+              { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }
+            ]}
+          >
+            <View style={[styles.typeBadge, { backgroundColor: colors.primary + '20' }]}>
+              <Text style={[styles.typeBadgeText, { color: colors.primary }]}>{typeLabel}</Text>
+            </View>
 
-          <View style={styles.dateContainer}>
-            <Text style={[styles.dateText, { color: colors.textPrimary }]}>
-              {formatDate(summary.startDate)} — {formatDate(summary.endDate)}
-            </Text>
-          </View>
-
-          {summary.generatedAt ? (
-            <View style={styles.dateContainerLast}>
-              <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>
-                {t('summary.generated_at')} {formatGeneratedAt(summary.generatedAt)}
+            <View style={styles.dateContainer}>
+              <Text style={[styles.dateText, { color: colors.textPrimary }]}>
+                {formatDate(summary.startDate)} — {formatDate(summary.endDate)}
               </Text>
             </View>
-          ) : null}
-        </View>
 
-        <View
-          style={[
-            styles.contentCard,
-            { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }
-          ]}
-        >
-          {isEditing ? (
-            <Input
-              value={editContent}
-              onChangeText={setEditContent}
-              multiline
-              placeholder={t('summary.content_placeholder')}
-              style={styles.contentInput}
-            />
-          ) : (
-            <MarkdownRenderer content={summary.content} style={styles.contentText} />
-          )}
-        </View>
-      </ScrollView>
+            {summary.generatedAt ? (
+              <View style={styles.dateContainerLast}>
+                <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>
+                  {t('summary.generated_at')} {formatGeneratedAt(summary.generatedAt)}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+
+          <View
+            style={[
+              styles.contentCard,
+              { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }
+            ]}
+          >
+            {isEditing ? (
+              <Input
+                value={editContent}
+                onChangeText={setEditContent}
+                multiline
+                placeholder={t('summary.content_placeholder')}
+                style={styles.contentInput}
+              />
+            ) : (
+              <MarkdownRenderer content={summary.content} style={styles.contentText} />
+            )}
+          </View>
+      </KeyboardAwareScrollView>
     </ScreenSafeArea>
   )
 }

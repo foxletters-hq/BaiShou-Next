@@ -6,6 +6,7 @@ import { GalleryPanel, useNativeToast, useDialog } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { SummaryType } from '@baishou/shared'
 import { buildSummaryTitle } from '../utils/buildSummaryTitle'
+import { setPendingSummaryDetail } from '../utils/summaryDetailCache'
 
 interface Summary {
   id?: number | string
@@ -17,7 +18,7 @@ interface Summary {
 
 interface SummaryGalleryViewProps {
   summaries: Summary[]
-  onRefreshData: () => void
+  onRefreshData: () => Promise<void>
 }
 
 export const SummaryGalleryView: React.FC<SummaryGalleryViewProps> = ({
@@ -41,7 +42,7 @@ export const SummaryGalleryView: React.FC<SummaryGalleryViewProps> = ({
         new Date(summary.endDate),
         { content }
       )
-      onRefreshData()
+      await onRefreshData()
     } catch (e) {
       console.error('[SummaryGalleryView] save error:', e)
       toast.showError(t('common.save_failed'))
@@ -65,7 +66,7 @@ export const SummaryGalleryView: React.FC<SummaryGalleryViewProps> = ({
         new Date(summary.startDate),
         new Date(summary.endDate)
       )
-      onRefreshData()
+      await onRefreshData()
       toast.showSuccess(t('common.delete_success'))
     } catch (e) {
       console.error('[SummaryGalleryView] delete error:', e)
@@ -84,12 +85,32 @@ export const SummaryGalleryView: React.FC<SummaryGalleryViewProps> = ({
           content: s.content
         }))}
         onOpen={(id) => {
+          const summary = summaries.find((s) => String(s.id) === id)
+          if (summary) {
+            setPendingSummaryDetail({
+              id: typeof summary.id === 'number' ? summary.id : Number(summary.id),
+              type: summary.type,
+              startDate: summary.startDate,
+              endDate: summary.endDate,
+              content: summary.content
+            })
+          }
           router.push({
             pathname: '/summary-detail',
             params: { id }
           })
         }}
         onEdit={(id) => {
+          const summary = summaries.find((s) => String(s.id) === id)
+          if (summary) {
+            setPendingSummaryDetail({
+              id: typeof summary.id === 'number' ? summary.id : Number(summary.id),
+              type: summary.type,
+              startDate: summary.startDate,
+              endDate: summary.endDate,
+              content: summary.content
+            })
+          }
           router.push({
             pathname: '/summary-detail',
             params: { id }

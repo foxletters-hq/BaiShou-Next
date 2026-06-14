@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { useFocusEffect } from 'expo-router'
 import { View, StyleSheet, ScrollView, useWindowDimensions, StatusBar } from 'react-native'
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import * as Clipboard from 'expo-clipboard'
@@ -52,11 +53,29 @@ export const SummaryScreen: React.FC = () => {
     queueGeneration,
     stopGeneration,
     setConcurrency,
-    refreshData
+    isDetectingMissing,
+    refreshData,
+    refreshMissing
   } = useSummaryData()
 
   const prevStatesRef = useRef<typeof generationStates>({})
+  const prevTabRef = useRef(activeTab)
   const isWide = width >= 860
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshData()
+    }, [refreshData])
+  )
+
+  useEffect(() => {
+    const prev = prevTabRef.current
+    prevTabRef.current = activeTab
+
+    if (prev !== 'panel' && activeTab === 'panel') {
+      void refreshMissing()
+    }
+  }, [activeTab, refreshMissing])
 
   const checkModelConfigured = async (): Promise<boolean> => {
     if (!services) return false
@@ -257,6 +276,7 @@ export const SummaryScreen: React.FC = () => {
                     generationStates={generationStates}
                     stats={stats}
                     isBatchGenerating={isBatchGenerating}
+                    isDetectingMissing={isDetectingMissing}
                     concurrencyLimit={concurrencyLimit}
                     onBatchGenerate={handleBatchGenerate}
                     onStopGeneration={handleStopGeneration}
@@ -267,6 +287,7 @@ export const SummaryScreen: React.FC = () => {
                         queueGeneration([item], concurrencyLimit)
                       }
                     }}
+                    onDetectMissing={() => void refreshMissing()}
                   />
                 </ScrollView>
               </View>
