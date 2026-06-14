@@ -27,9 +27,9 @@ import {
 import { OnboardingBackground } from './components/OnboardingBackground'
 import { OnboardingGlowIcon } from './components/OnboardingGlowIcon'
 import { OnboardingStorageSlide } from './components/OnboardingStorageSlide'
+import APP_ICON from '../../../assets/images/icon.png'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
-const APP_ICON = require('../../../assets/images/icon.png')
 
 export const OnboardingScreen: React.FC = () => {
   const router = useRouter()
