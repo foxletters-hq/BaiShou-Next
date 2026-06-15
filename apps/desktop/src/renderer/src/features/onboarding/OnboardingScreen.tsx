@@ -1,34 +1,21 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import {
-  BookOpen,
-  Layers,
-  FolderOpen,
-  ShieldCheck,
-  ChevronRight,
-  ChevronLeft,
-  ArrowRight,
-  Cpu,
-  Languages
-} from 'lucide-react'
+import { MdArrowBackIosNew, MdArrowForwardIos } from 'react-icons/md'
 import { type CompressionPromptLocale } from '@baishou/shared'
 import { useSettingsStore } from '@baishou/store'
 import icon from '../../../../../resources/icon.png?asset'
-import styles from './OnboardingScreen.module.css'
+import {
+  BRAND_BLUE_DARK,
+  NUM_ONBOARDING_PAGES,
+  ONBOARDING_PAGE,
+  SLIDE_THEMES
+} from './onboarding-theme'
+import { OnboardingBackground } from './components/OnboardingBackground'
+import { OnboardingGlowIcon } from './components/OnboardingGlowIcon'
+import { OnboardingStorageSlide } from './components/OnboardingStorageSlide'
 import { OnboardingLanguagePage } from './OnboardingLanguagePage'
-
-interface OnboardingPageConfig {
-  id: string
-  icon?: React.ReactNode
-  title?: string
-  tagline?: string
-  desc?: string
-  color: string
-  isLanguage?: boolean
-  isStorage?: boolean
-  isLast?: boolean
-}
+import styles from './OnboardingScreen.module.css'
 
 export const OnboardingScreen: React.FC = () => {
   const { t } = useTranslation()
@@ -36,24 +23,29 @@ export const OnboardingScreen: React.FC = () => {
   const [searchParams] = useSearchParams()
   const isPreview = searchParams.get('preview') === '1'
   const setLocale = useSettingsStore((s) => s.setLocale)
-  const [currentIndex, setCurrentIndex] = useState(0)
-  const [selectedPath, setSelectedPath] = useState<string>('')
+  const [currentPage, setCurrentPage] = useState(0)
+  const [selectedPath, setSelectedPath] = useState('')
   const [isFinishing, setIsFinishing] = useState(false)
   const [selectedLanguage, setSelectedLanguage] = useState<CompressionPromptLocale | null>(null)
   const [languageConfirmed, setLanguageConfirmed] = useState(false)
+  const scrollViewportRef = useRef<HTMLDivElement>(null)
+  const programmaticTargetRef = useRef<number | null>(null)
 
-  const applyOnboardingLanguage = async (lang: CompressionPromptLocale) => {
-    setSelectedLanguage(lang)
-    setLanguageConfirmed(true)
-    setLocale(lang)
-    try {
-      const features = (await window.api.settings.getFeatures()) || {}
-      await window.api.settings.setFeatures({ ...features, language: lang })
-      await window.api.ensureDefaultLatteAssistant(lang)
-    } catch (e) {
-      console.warn('Failed to persist onboarding language', e)
-    }
-  }
+  const applyOnboardingLanguage = useCallback(
+    async (lang: CompressionPromptLocale) => {
+      setSelectedLanguage(lang)
+      setLanguageConfirmed(true)
+      setLocale(lang)
+      try {
+        const features = (await window.api.settings.getFeatures()) || {}
+        await window.api.settings.setFeatures({ ...features, language: lang })
+        await window.api.ensureDefaultLatteAssistant(lang)
+      } catch (e) {
+        console.warn('Failed to persist onboarding language', e)
+      }
+    },
+    [setLocale]
+  )
 
   useEffect(() => {
     if (isPreview) return undefined
@@ -76,98 +68,19 @@ export const OnboardingScreen: React.FC = () => {
     })
   }, [isPreview])
 
-  const ONBOARDING_PAGES: OnboardingPageConfig[] = useMemo(
-    () => [
-      {
-        id: 'language',
-        icon: <Languages size={48} />,
-        color: '#5BA8CD',
-        isLanguage: true
-      },
-      {
-        id: 'welcome',
-        icon: <img src={icon} alt="BaiShou" className={styles.appLogo} />,
-        title: t('onboarding.welcome_title'),
-        tagline: t('onboarding.welcome_tagline'),
-        desc: t('onboarding.welcome_desc'),
-        color: '#9AD4EA'
-      },
-      {
-        id: 'philosophy',
-        icon: <BookOpen size={48} />,
-        title: t('onboarding.philosophy_title'),
-        desc: t('onboarding.philosophy_desc'),
-        color: '#9B8DC4'
-      },
-      {
-        id: 'compression',
-        icon: <Layers size={48} />,
-        title: t('onboarding.compression_title'),
-        desc: t('onboarding.compression_desc'),
-        color: '#3D8FD9'
-      },
-      {
-        id: 'storage',
-        icon: <FolderOpen size={48} />,
-        title: t('onboarding.storage_title'),
-        desc: t('onboarding.storage_desc'),
-        isStorage: true,
-        color: '#FFB74D'
-      },
-      {
-        id: 'api-guide',
-        icon: <Cpu size={48} />,
-        title: t('onboarding.api_guide_title'),
-        desc: t('onboarding.api_guide_desc'),
-        color: '#90CAF9'
-      },
-      {
-        id: 'privacy',
-        icon: <ShieldCheck size={48} />,
-        title: t('onboarding.privacy_title'),
-        desc: t('onboarding.privacy_desc'),
-        isLast: true,
-        color: '#81C784'
-      }
-    ],
-    [t]
-  )
+  const goToPage = useCallback((page: number, options?: { animated?: boolean }) => {
+    const target = Math.max(0, Math.min(page, NUM_ONBOARDING_PAGES - 1))
+    programmaticTargetRef.current = target
+    const viewport = scrollViewportRef.current
+    if (!viewport) return
 
-  const handleNext = async () => {
-    if (currentIndex === 0) {
-      if (!selectedLanguage) {
-        window.alert(t('onboarding.language_required'))
-        return
-      }
-      await applyOnboardingLanguage(selectedLanguage)
-    }
-    if (currentIndex < ONBOARDING_PAGES.length - 1) {
-      setCurrentIndex((prev) => prev + 1)
-    }
-  }
+    viewport.scrollTo({
+      left: target * viewport.clientWidth,
+      behavior: options?.animated === false ? 'auto' : 'smooth'
+    })
+  }, [])
 
-  const handleBack = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex((prev) => prev - 1)
-    }
-  }
-
-  const handlePickDirectory = async () => {
-    const path = await window.api.onboarding.pickDirectory()
-    if (path) {
-      const separator = path.includes('\\') ? '\\' : '/'
-      const dirSuffix = 'baishou-data'
-      const finalPath = path.endsWith(separator)
-        ? `${path}${dirSuffix}`
-        : `${path}${separator}${dirSuffix}`
-      setSelectedPath(finalPath)
-      if (!isPreview) {
-        await window.api.onboarding.setDirectory(finalPath)
-      }
-    }
-  }
-
-  const handleFinish = async () => {
+  const finishOnboarding = useCallback(async () => {
     if (isPreview) {
       navigate('/')
       return
@@ -175,7 +88,7 @@ export const OnboardingScreen: React.FC = () => {
 
     if (!languageConfirmed || !selectedLanguage) {
       window.alert(t('onboarding.language_required'))
-      setCurrentIndex(0)
+      goToPage(ONBOARDING_PAGE.LANGUAGE)
       return
     }
 
@@ -187,98 +100,250 @@ export const OnboardingScreen: React.FC = () => {
       console.error('完成引导失败', e)
       setIsFinishing(false)
     }
+  }, [goToPage, isPreview, languageConfirmed, navigate, selectedLanguage, t])
+
+  const handleNext = () => {
+    if (isFinishing) return
+
+    if (currentPage === ONBOARDING_PAGE.LANGUAGE) {
+      if (!selectedLanguage) {
+        window.alert(t('onboarding.language_required'))
+        return
+      }
+      void applyOnboardingLanguage(selectedLanguage)
+    }
+
+    if (currentPage < NUM_ONBOARDING_PAGES - 1) {
+      goToPage(currentPage + 1)
+    } else {
+      void finishOnboarding()
+    }
   }
 
-  const currentPage = ONBOARDING_PAGES[currentIndex]
-  const nextBlockedOnLanguage = !isPreview && currentIndex === 0 && !languageConfirmed
+  const handlePrevious = () => {
+    if (currentPage > 0) {
+      goToPage(currentPage - 1)
+    }
+  }
+
+  const handlePickDirectory = async () => {
+    const path = await window.api.onboarding.pickDirectory()
+    if (!path) return
+
+    const separator = path.includes('\\') ? '\\' : '/'
+    const dirSuffix = 'baishou-data'
+    const finalPath = path.endsWith(separator)
+      ? `${path}${dirSuffix}`
+      : `${path}${separator}${dirSuffix}`
+
+    setSelectedPath(finalPath)
+    if (!isPreview) {
+      await window.api.onboarding.setDirectory(finalPath)
+    }
+  }
+
+  const handleScroll = useCallback(() => {
+    const viewport = scrollViewportRef.current
+    if (!viewport || viewport.clientWidth === 0) return
+
+    const page = Math.round(viewport.scrollLeft / viewport.clientWidth)
+    const clampedPage = Math.max(0, Math.min(page, NUM_ONBOARDING_PAGES - 1))
+
+    const pendingTarget = programmaticTargetRef.current
+    if (pendingTarget !== null) {
+      if (clampedPage !== pendingTarget) return
+      programmaticTargetRef.current = null
+    }
+
+    if (
+      !isPreview &&
+      clampedPage > ONBOARDING_PAGE.LANGUAGE &&
+      !languageConfirmed
+    ) {
+      goToPage(ONBOARDING_PAGE.LANGUAGE, { animated: false })
+      return
+    }
+
+    setCurrentPage((prev) => (clampedPage !== prev ? clampedPage : prev))
+  }, [goToPage, isPreview, languageConfirmed])
+
+  useEffect(() => {
+    const viewport = scrollViewportRef.current
+    if (!viewport) return
+
+    const onResize = () => {
+      goToPage(currentPage, { animated: false })
+    }
+
+    viewport.addEventListener('scroll', handleScroll, { passive: true })
+    window.addEventListener('resize', onResize)
+    return () => {
+      viewport.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('resize', onResize)
+    }
+  }, [currentPage, goToPage, handleScroll])
+
+  const theme = SLIDE_THEMES[currentPage]
+  const isLast = currentPage === NUM_ONBOARDING_PAGES - 1
+  const nextBlockedOnLanguage =
+    !isPreview && currentPage === ONBOARDING_PAGE.LANGUAGE && !languageConfirmed
+
+  const renderSlideTitle = (text: string) => <h2 className={styles.slideTitle}>{text}</h2>
+  const renderSlideBody = (text: string) => <p className={styles.slideBody}>{text}</p>
+
+  const renderLanguageSlide = () => (
+    <OnboardingLanguagePage
+      selectedLanguage={selectedLanguage}
+      onSelectLanguage={(lang) => {
+        void applyOnboardingLanguage(lang)
+      }}
+    />
+  )
+
+  const renderWelcomeSlide = () => (
+    <div className={styles.slideInner}>
+      <div className={styles.welcomeIconWrap}>
+        <img src={icon} alt="BaiShou" className={styles.welcomeIcon} />
+      </div>
+      <h1 className={styles.welcomeTitle}>{t('onboarding.welcome_title')}</h1>
+      <p className={styles.welcomeTagline}>{t('onboarding.welcome_tagline')}</p>
+      {renderSlideBody(t('onboarding.welcome_desc'))}
+    </div>
+  )
+
+  const renderPhilosophySlide = () => (
+    <div className={styles.slideInner}>
+      <OnboardingGlowIcon theme={SLIDE_THEMES[ONBOARDING_PAGE.PHILOSOPHY]} />
+      <div className={styles.slideSpacerLarge} />
+      {renderSlideTitle(t('onboarding.philosophy_title'))}
+      <div className={styles.slideSpacerMedium} />
+      {renderSlideBody(t('onboarding.philosophy_desc'))}
+    </div>
+  )
+
+  const renderCompressionSlide = () => (
+    <div className={styles.slideInner}>
+      <OnboardingGlowIcon theme={SLIDE_THEMES[ONBOARDING_PAGE.COMPRESSION]} size={56} />
+      <div className={styles.slideSpacerLarge} />
+      {renderSlideTitle(t('onboarding.compression_title'))}
+      <div className={styles.slideSpacerMedium} />
+      {renderSlideBody(t('onboarding.compression_desc'))}
+    </div>
+  )
+
+  const renderStorageSlide = () => (
+    <div className={styles.slideInner}>
+      <OnboardingGlowIcon theme={SLIDE_THEMES[ONBOARDING_PAGE.STORAGE]} />
+      <div className={styles.slideSpacerLarge} />
+      {renderSlideTitle(t('onboarding.storage_title'))}
+      <div className={styles.slideSpacerMedium} />
+      {renderSlideBody(t('onboarding.storage_desc'))}
+      <div className={styles.slideSpacerLarge} />
+      <OnboardingStorageSlide rootPath={selectedPath} onChangeStorage={handlePickDirectory} />
+    </div>
+  )
+
+  const renderApiConfigSlide = () => (
+    <div className={styles.slideInner}>
+      <OnboardingGlowIcon theme={SLIDE_THEMES[ONBOARDING_PAGE.API]} />
+      <div className={styles.slideSpacerLarge} />
+      {renderSlideTitle(t('onboarding.api_guide_title'))}
+      <div className={styles.slideSpacerMedium} />
+      {renderSlideBody(t('onboarding.api_guide_desc'))}
+    </div>
+  )
+
+  const renderPrivacySlide = () => (
+    <div className={styles.slideInner}>
+      <OnboardingGlowIcon theme={SLIDE_THEMES[ONBOARDING_PAGE.PRIVACY]} />
+      <div className={styles.slideSpacerLarge} />
+      {renderSlideTitle(t('onboarding.privacy_title'))}
+      <div className={styles.slideSpacerMedium} />
+      {renderSlideBody(t('onboarding.privacy_desc'))}
+      <div className={styles.sloganSpacer} />
+      <p className={styles.slogan}>{t('onboarding.slogan')}</p>
+    </div>
+  )
+
+  const slides = [
+    renderLanguageSlide,
+    renderWelcomeSlide,
+    renderPhilosophySlide,
+    renderCompressionSlide,
+    renderStorageSlide,
+    renderApiConfigSlide,
+    renderPrivacySlide
+  ]
 
   return (
-    <div
-      className={styles.screen}
-      style={{ '--theme-color': currentPage.color } as React.CSSProperties}
-    >
-      <div className={styles.bgOrb1} />
-      <div className={styles.bgOrb2} />
+    <div className={styles.screen}>
+      <OnboardingBackground />
 
-      <div className={styles.contentBox}>
-        <div className={styles.slideContainer}>
-          {ONBOARDING_PAGES.map((page, index) => (
-            <div
-              key={page.id}
-              className={`${styles.page} ${index === currentIndex ? styles.active : ''} ${index < currentIndex ? styles.prev : ''}`}
+      <div className={styles.safeArea}>
+        <div className={styles.topBar}>
+          {!isLast && (
+            <button
+              type="button"
+              className={styles.skipButton}
+              onClick={() => void finishOnboarding()}
+              disabled={isFinishing}
             >
-              {page.isLanguage ? (
-                <OnboardingLanguagePage
-                  selectedLanguage={selectedLanguage}
-                  onSelectLanguage={(lang) => {
-                    void applyOnboardingLanguage(lang)
-                  }}
-                />
-              ) : (
-                <>
-                  {page.icon && <div className={styles.iconWrapper}>{page.icon}</div>}
-                  <h1 className={page.id === 'welcome' ? styles.titleWelcome : styles.title}>
-                    {page.title}
-                  </h1>
-                  {page.tagline ? <p className={styles.tagline}>{page.tagline}</p> : null}
-                  <p className={styles.subtitle}>{page.desc}</p>
-                </>
-              )}
+              <span className={styles.skipText}>{t('onboarding.skip')}</span>
+            </button>
+          )}
+        </div>
 
-              {page.isStorage && (
-                <div className={styles.storageBox}>
-                  <div className={styles.pathLabel}>{t('onboarding.current_storage')}</div>
-                  <div className={styles.pathText}>{selectedPath}</div>
-                  <button className={styles.pickBtn} onClick={handlePickDirectory}>
-                    <FolderOpen size={16} />
-                    {t('onboarding.change_storage')}
-                  </button>
-                </div>
-              )}
-
-              {page.isLast && <div className={styles.slogan}>{t('onboarding.slogan')}</div>}
+        <div ref={scrollViewportRef} className={styles.scrollViewport}>
+          {slides.map((renderSlide, index) => (
+            <div key={index} className={styles.page}>
+              <div className={styles.pageScrollContent}>{renderSlide()}</div>
             </div>
           ))}
         </div>
 
-        <div className={styles.footer}>
+        <div className={styles.bottomControls}>
           <div className={styles.indicators}>
-            {ONBOARDING_PAGES.map((_, i) => (
-              <div
-                key={i}
-                className={`${styles.dot} ${i === currentIndex ? styles.dotActive : ''}`}
-                onClick={() => {
-                  if (i === 0 || languageConfirmed) {
-                    if (i <= currentIndex) setCurrentIndex(i)
-                  }
-                }}
-              />
-            ))}
+            {Array.from({ length: NUM_ONBOARDING_PAGES }).map((_, index) => {
+              const active = currentPage === index
+              return (
+                <div
+                  key={index}
+                  className={styles.indicator}
+                  style={{
+                    width: active ? 20 : 7,
+                    backgroundColor: active ? theme.iconColor : '#D1D5DB'
+                  }}
+                />
+              )
+            })}
           </div>
 
-          <div className={styles.btnGroup}>
-            {currentIndex > 0 && (
-              <button className={styles.btnBack} onClick={handleBack}>
-                <ChevronLeft size={16} />
-                {t('common.back')}
+          <div className={styles.navActions}>
+            {currentPage > 0 && (
+              <button type="button" className={styles.backButton} onClick={handlePrevious}>
+                <MdArrowBackIosNew size={12} color="#9CA3AF" />
+                <span>{t('common.back')}</span>
               </button>
             )}
 
-            {currentPage.isLast ? (
-              <button className={styles.btnPrimary} onClick={handleFinish} disabled={isFinishing}>
-                {isFinishing ? t('common.loading') : t('onboarding.get_started')}
-                {!isFinishing && <ArrowRight size={18} />}
-              </button>
-            ) : (
-              <button
-                className={styles.btnPrimary}
-                onClick={() => void handleNext()}
-                disabled={nextBlockedOnLanguage}
-              >
-                {t('common.next')}
-                <ChevronRight size={18} />
-              </button>
-            )}
+            <button
+              type="button"
+              className={styles.nextButton}
+              onClick={handleNext}
+              disabled={isFinishing || nextBlockedOnLanguage}
+              style={{
+                backgroundColor: isLast ? theme.iconColor : BRAND_BLUE_DARK
+              }}
+            >
+              <span>
+                {isFinishing
+                  ? t('common.loading')
+                  : isLast
+                    ? t('onboarding.get_started')
+                    : t('common.next')}
+              </span>
+              {!isLast && !isFinishing && <MdArrowForwardIos size={14} color="#FFFFFF" />}
+            </button>
           </div>
         </div>
       </div>

@@ -1,0 +1,52 @@
+.root {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #fffbf5 0%, #d9eef8 100%);
+}
+
+.orbTop {
+  position: absolute;
+  top: -60px;
+  right: -40px;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background-color: rgba(154, 212, 234, 0.08);
+  animation: orbFloatTop 3s ease-in-out infinite alternate;
+}
+
+.orbBottom {
+  position: absolute;
+  bottom: -30px;
+  left: -50px;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background-color: rgba(154, 212, 234, 0.22);
+  animation: orbFloatBottom 3s ease-in-out infinite alternate;
+}
+
+@keyframes orbFloatTop {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(8px);
+  }
+}
+
+@keyframes orbFloatBottom {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(6px);
+  }
+}

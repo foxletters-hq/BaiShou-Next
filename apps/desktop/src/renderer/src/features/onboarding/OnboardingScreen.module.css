@@ -2,298 +2,227 @@
   height: 100%;
   width: 100%;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(160deg, #fffbf5 0%, #d9eef8 100%);
-  color: var(--text-primary);
-  overflow: hidden;
+  flex-direction: column;
   position: relative;
-  transition: background 0.8s ease;
+  overflow: hidden;
   box-sizing: border-box;
 }
 
-/* Dynamic background orbs — flow naturally behind the transparent titlebar */
-.bgOrb1 {
-  position: absolute;
-  top: -10%;
-  right: -10%;
-  width: 55vw;
-  height: 55vw;
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--theme-color) 0%, transparent 70%);
-  filter: blur(40px);
-  animation: float 15s infinite alternate ease-in-out;
-  opacity: 0.6;
-  pointer-events: none;
-}
-
-.bgOrb2 {
-  position: absolute;
-  bottom: -25%;
-  left: -10%;
-  width: 50vw;
-  height: 50vw;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(var(--color-primary-rgb), 0.1) 0%, transparent 70%);
-  filter: blur(40px);
-  animation: float 12s infinite alternate-reverse ease-in-out;
-  opacity: 0.4;
-  pointer-events: none;
-}
-
-@keyframes float {
-  0% {
-    transform: translate(0, 0) scale(1);
-  }
-  100% {
-    transform: translate(3vw, 5vh) scale(1.1);
-  }
-}
-
-.contentBox {
-  width: 100%;
-  max-width: 500px;
-  height: calc(85vh - 48px);
-  max-height: 580px;
-  min-height: 320px;
+.safeArea {
+  flex: 1;
   display: flex;
   flex-direction: column;
   position: relative;
   z-index: 10;
+  min-height: 0;
 }
 
-.slideContainer {
+.topBar {
+  padding: 8px 20px;
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.skipButton {
+  padding: 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.skipText {
+  color: #9ca3af;
+  font-size: 15px;
+}
+
+.scrollViewport {
   flex: 1;
-  position: relative;
-  width: 100%;
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  min-height: 0;
+}
+
+.scrollViewport::-webkit-scrollbar {
+  display: none;
 }
 
 .page {
-  position: absolute;
-  inset: 0;
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.page::-webkit-scrollbar {
+  display: none;
+}
+
+.pageScrollContent {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 16px 32px;
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.slideInner {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   text-align: center;
-  padding: 0 40px;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateX(40px);
-  transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.page.active {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateX(0);
-}
-
-.page.prev {
-  transform: translateX(-40px);
-}
-
-.iconWrapper {
-  width: 100px;
-  height: 100px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 40px;
-  color: var(--theme-color);
-  background: var(--bg-surface);
-  border-radius: 32px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.05);
-  transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.appLogo {
-  width: 80px;
-  height: 80px;
-  object-fit: contain;
-}
-
-.title,
-.titleWelcome {
-  font-size: 28px;
-  font-weight: 800;
-  margin-bottom: 8px;
-  letter-spacing: -0.5px;
-}
-
-.titleWelcome {
-  color: #5ba8cd;
-}
-
-.title {
+.slideTitle {
   font-size: 22px;
   font-weight: 700;
-  color: var(--text-primary);
+  letter-spacing: -0.3px;
+  line-height: 30px;
+  color: #111827;
+  margin: 0;
 }
 
-.tagline {
+.slideBody {
+  font-size: 16px;
+  line-height: 27px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.welcomeIconWrap {
+  border-radius: 32px;
+  box-shadow: 0 0 30px rgba(154, 212, 234, 0.25);
+  animation: welcomeFloat 3s ease-in-out infinite alternate;
+}
+
+.welcomeIcon {
+  width: 140px;
+  height: 140px;
+  border-radius: 32px;
+  object-fit: cover;
+  display: block;
+}
+
+.welcomeTitle {
+  margin: 36px 0 0;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: #5ba8cd;
+}
+
+.welcomeTagline {
+  margin: 6px 0 0;
   font-size: 16px;
   font-weight: 600;
-  line-height: 1.5;
   color: #5ba8cd;
   opacity: 0.85;
-  margin-bottom: 12px;
 }
 
-.subtitle {
-  font-size: 16px;
-  line-height: 1.7;
-  color: var(--text-secondary);
-  max-width: 360px;
-  margin-bottom: 32px;
+.slideSpacerLarge {
+  height: 36px;
+  flex-shrink: 0;
 }
 
-.storageBox {
-  width: 100%;
-  padding: 20px;
-  background: var(--bg-surface);
-  border-radius: 20px;
-  border: 1px solid var(--border-subtle);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+.slideSpacerMedium {
+  height: 20px;
+  flex-shrink: 0;
 }
 
-.pathLabel {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 8px;
-  text-align: left;
-}
-
-.pathText {
-  font-size: 13px;
-  font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
-  background: var(--bg-surface-low);
-  padding: 12px;
-  border-radius: 12px;
-  color: var(--text-primary);
-  margin-bottom: 16px;
-  word-break: break-all;
-  text-align: left;
-}
-
-.pickBtn {
-  width: 100%;
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px dashed var(--theme-color);
-  background: var(--theme-color) 11;
-  color: var(--theme-color);
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: all 0.2s ease;
-}
-
-.pickBtn:hover {
-  background: var(--theme-color) 22;
-}
-
-.hintText {
-  font-size: 14px;
-  color: var(--text-secondary);
-  line-height: 1.6;
-  text-align: left;
+.sloganSpacer {
+  height: 40px;
+  flex-shrink: 0;
 }
 
 .slogan {
-  margin-top: 20px;
-  font-size: 16px;
-  color: var(--text-secondary);
-  letter-spacing: 4px;
-  font-weight: 300;
+  font-size: 15px;
+  color: #6b7280;
+  letter-spacing: 2px;
+  margin: 0;
 }
 
-/* Footer Controls */
-.footer {
-  padding: 32px 40px;
+.bottomControls {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  padding: 12px 20px 24px;
+  flex-shrink: 0;
 }
 
 .indicators {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
 }
 
-.dot {
-  width: 8px;
-  height: 8px;
+.indicator {
+  height: 7px;
   border-radius: 4px;
-  background: var(--border-subtle);
-  transition: all 0.3s ease;
-  cursor: pointer;
+  transition:
+    width 0.3s ease,
+    background-color 0.3s ease;
 }
 
-.dotActive {
-  width: 24px;
-  background: var(--theme-color);
-}
-
-.btnGroup {
-  display: flex;
-  gap: 12px;
-}
-
-.btnNext,
-.btnPrimary,
-.btnBack {
-  border: none;
-  cursor: pointer;
+.navActions {
+  flex: 1;
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  transition: all 0.2s ease;
+  justify-content: flex-end;
+  gap: 4px;
 }
 
-.btnBack {
+.backButton {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 12px;
+  border: none;
   background: transparent;
-  color: var(--text-secondary);
-  padding: 12px 16px;
+  cursor: pointer;
+  color: #6b7280;
+  font-size: 13px;
 }
 
-.btnBack:hover {
-  color: var(--text-primary);
+.backButton:hover {
+  color: #374151;
 }
 
-.btnNext {
-  background: var(--text-primary);
-  color: var(--text-on-primary);
+.nextButton {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   padding: 12px 24px;
-  border-radius: 24px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 600;
+  transition: opacity 0.2s ease;
 }
 
-.btnNext:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+.nextButton:hover:not(:disabled) {
+  opacity: 0.92;
 }
 
-.btnPrimary {
-  background: var(--theme-color);
-  color: var(--text-on-primary);
-  padding: 12px 32px;
-  border-radius: 24px;
-  box-shadow: 0 8px 20px rgba(var(--theme-color-rgb), 0.3);
-}
-
-.btnPrimary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  filter: brightness(1.05);
-}
-
-.btnPrimary:disabled {
+.nextButton:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+@keyframes welcomeFloat {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(1.04);
+  }
 }

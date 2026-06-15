@@ -1,0 +1,67 @@
+.container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.pathBlock {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pathHeader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.pathLabel {
+  font-weight: 600;
+  font-size: 13px;
+  color: #6b5b45;
+}
+
+.pathValueWrap {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.pathValue {
+  font-family: 'JetBrains Mono', 'Roboto Mono', ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+  color: #6b7280;
+  word-break: break-all;
+}
+
+.changeButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  align-self: center;
+  background: #ffb74d;
+  padding: 12px 24px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 600;
+  transition: opacity 0.2s ease;
+}
+
+.changeButton:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.changeButton:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
