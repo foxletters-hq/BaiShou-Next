@@ -8,6 +8,7 @@ export interface TokenBadgeProps {
   costMicros?: number
   durationMs?: number // legacy prop alias
   onClick?: () => void
+  className?: string
 }
 
 export const TokenBadge: React.FC<TokenBadgeProps> = ({
@@ -15,7 +16,8 @@ export const TokenBadge: React.FC<TokenBadgeProps> = ({
   outputTokens = 0,
   costMicros = 0,
   durationMs = 0,
-  onClick
+  onClick,
+  className
 }) => {
   const formatTokens = (n: number) => {
     if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
@@ -27,9 +29,9 @@ export const TokenBadge: React.FC<TokenBadgeProps> = ({
   const total = inputTokens + outputTokens
 
   return (
-    <div className={`${styles.container}`} onClick={onClick}>
+    <div className={`${styles.container} ${className ?? ''}`.trim()} onClick={onClick}>
       <span className={styles.iconWrap}>
-        <Activity size={12} strokeWidth={2.5} />
+        <Activity size={14} strokeWidth={2.5} />
       </span>
       <span className={styles.tokenText}>{formatTokens(total)}</span>
       {costText && (

@@ -39,6 +39,8 @@ export const ContextChainDialog: React.FC<ContextChainDialogProps> = ({
 
   const totalInputTokens = message.inputTokens || 0
   const totalOutputTokens = message.outputTokens || 0
+  const cacheRead = message.cacheReadInputTokens || 0
+  const cacheWrite = message.cacheWriteInputTokens || 0
   const costText = message.costMicros ? `$${(message.costMicros / 1000000).toFixed(4)}` : null
 
   const getRoleLabel = (role: string) => {
@@ -109,7 +111,10 @@ export const ContextChainDialog: React.FC<ContextChainDialogProps> = ({
           </button>
         </div>
 
-        {(totalInputTokens > 0 || totalOutputTokens > 0) && (
+        {(totalInputTokens > 0 ||
+          totalOutputTokens > 0 ||
+          cacheRead > 0 ||
+          cacheWrite > 0) && (
           <div className={styles.statsRow}>
             <div className={styles.statChip}>
               <span className={styles.statIcon}>↑</span>
@@ -123,6 +128,22 @@ export const ContextChainDialog: React.FC<ContextChainDialogProps> = ({
                 {t('agent.chat.round_output', '出')} {totalOutputTokens}
               </span>
             </div>
+            {cacheRead > 0 ? (
+              <div className={styles.statChip}>
+                <span title={t('agent.chat.cache_read', '缓存读取')}>
+                  {t('agent.chat.cache_label', '缓存：')}
+                  {cacheRead}
+                </span>
+              </div>
+            ) : null}
+            {cacheWrite > 0 ? (
+              <div className={styles.statChip}>
+                <span title={t('agent.chat.cache_write', '缓存写入')}>
+                  {t('agent.chat.cache_label', '缓存：')}
+                  {cacheWrite}
+                </span>
+              </div>
+            ) : null}
             {costText && (
               <div className={styles.statChip}>
                 <span className={styles.statIcon}>$</span>

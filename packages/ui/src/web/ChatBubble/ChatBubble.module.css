@@ -232,10 +232,36 @@
 
 .aiFooterRow {
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: flex-start;
+  flex-wrap: nowrap;
   width: 100%;
   margin-top: 4px;
+  gap: 8px;
+}
+
+.tokenRow {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+:global(.chat-bubble-container:hover) .tokenRow,
+:global(.chat-bubble-container:focus-within) .tokenRow {
+  opacity: 1;
+}
+
+.tokenStat {
+  font-size: 11px;
+  color: var(--text-tertiary, rgba(148, 163, 184, 0.85));
+  line-height: 1.2;
 }
 
 .userFooterRow {

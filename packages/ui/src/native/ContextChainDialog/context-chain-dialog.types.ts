@@ -4,6 +4,8 @@ export interface MockChatMessage {
   content: string
   inputTokens?: number
   outputTokens?: number
+  cacheReadInputTokens?: number
+  cacheWriteInputTokens?: number
   costMicros?: number
   toolInvocations?: unknown[]
 }

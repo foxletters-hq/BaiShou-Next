@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { MessageActionBar } from '../MessageActionBar/MessageActionBar'
 import type { ChatBubbleMessage } from './chat-bubble.types'
 import { chatBubbleStyles as styles } from './chat-bubble.styles'
+import { formatCompactTokenCount, hasTokenUsageStats } from '../../shared/token-usage-display'
 
 interface ThemeColors {
   primary: string
@@ -33,6 +34,7 @@ interface NativeChatBubbleActionsRowProps {
 }
 
 export const NativeChatBubbleActionsRow: React.FC<NativeChatBubbleActionsRowProps> = ({
+  colors,
   isUser,
   isAssistant,
   message,
@@ -62,6 +64,7 @@ export const NativeChatBubbleActionsRow: React.FC<NativeChatBubbleActionsRowProp
         isAI={isAssistant}
         isTtsPlaying={isTtsPlaying}
       />
+      {isAssistant ? <NativeChatBubbleTokenRow colors={colors} message={message} /> : null}
     </View>
   )
 }
@@ -126,23 +129,50 @@ export const NativeChatBubbleTokenRow: React.FC<{
   colors: ThemeColors
   message: ChatBubbleMessage
 }> = ({ colors, message }) => {
-  if (!message.inputTokens && !message.outputTokens) return null
+  const { t } = useTranslation()
+  const usage = {
+    inputTokens: message.inputTokens,
+    outputTokens: message.outputTokens,
+    cacheReadInputTokens: message.cacheReadInputTokens,
+    cacheWriteInputTokens: message.cacheWriteInputTokens,
+    costMicros: message.costMicros
+  }
+
+  if (!hasTokenUsageStats(usage)) return null
 
   return (
     <View style={styles.tokenRow}>
       {message.inputTokens ? (
         <Text style={[styles.tokenText, { color: colors.textTertiary }]}>
-          ↑{message.inputTokens}
+          ↑{formatCompactTokenCount(message.inputTokens)}
         </Text>
       ) : null}
       {message.outputTokens ? (
         <Text style={[styles.tokenText, { color: colors.textTertiary }]}>
-          ↓{message.outputTokens}
+          ↓{formatCompactTokenCount(message.outputTokens)}
         </Text>
       ) : null}
       {message.costMicros ? (
         <Text style={[styles.tokenText, { color: colors.textTertiary }]}>
           ${(message.costMicros / 1_000_000).toFixed(4)}
+        </Text>
+      ) : null}
+      {(message.cacheReadInputTokens ?? 0) > 0 ? (
+        <Text
+          style={[styles.tokenText, { color: colors.textTertiary }]}
+          accessibilityLabel={t('agent.chat.cache_read', '缓存读取')}
+        >
+          {t('agent.chat.cache_label', '缓存：')}
+          {formatCompactTokenCount(message.cacheReadInputTokens ?? 0)}
+        </Text>
+      ) : null}
+      {(message.cacheWriteInputTokens ?? 0) > 0 ? (
+        <Text
+          style={[styles.tokenText, { color: colors.textTertiary }]}
+          accessibilityLabel={t('agent.chat.cache_write', '缓存写入')}
+        >
+          {t('agent.chat.cache_label', '缓存：')}
+          {formatCompactTokenCount(message.cacheWriteInputTokens ?? 0)}
         </Text>
       ) : null}
     </View>

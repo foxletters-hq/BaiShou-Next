@@ -9,6 +9,8 @@ export interface ChatBubbleMessage {
   attachments?: unknown[]
   inputTokens?: number
   outputTokens?: number
+  cacheReadInputTokens?: number
+  cacheWriteInputTokens?: number
   costMicros?: number
   contextMessages?: ChatBubbleMessage[]
 }

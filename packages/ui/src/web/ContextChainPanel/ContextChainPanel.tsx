@@ -13,6 +13,8 @@ import { usePanelResize } from './usePanelResize'
 import { ContextChainRecompressBar } from './ContextChainRecompressBar'
 import { CompressionActivityBar } from '../CompressionActivityBar'
 import { ContextChainAttachments } from './ContextChainAttachments'
+import { RoundUsageFooterStats } from './RoundUsageFooterStats'
+import { hasTokenUsageStats } from '../../shared/token-usage-display'
 import panelStyles from './ContextChainPanel.module.css'
 
 export interface ContextChainPanelProps {
@@ -470,10 +472,7 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
         </div>
 
         {(view.meta?.nextRequest ||
-          (view.roundUsage &&
-            (view.roundUsage.inputTokens > 0 ||
-              view.roundUsage.outputTokens > 0 ||
-              view.roundUsage.costMicros > 0))) && (
+          (view.roundUsage && hasTokenUsageStats(view.roundUsage))) && (
           <div className={panelStyles.panelFooter}>
             {view.meta?.nextRequest && (
               <div className={panelStyles.estimateBar}>
@@ -497,10 +496,7 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
                 </div>
               </div>
             )}
-            {view.roundUsage &&
-              (view.roundUsage.inputTokens > 0 ||
-                view.roundUsage.outputTokens > 0 ||
-                view.roundUsage.costMicros > 0) && (
+            {view.roundUsage && hasTokenUsageStats(view.roundUsage) && (
                 <div className={panelStyles.footerBar}>
                   <div className={panelStyles.footerTitle}>
                     {view.t('agent.chat.this_round_usage', '本轮消耗')}
@@ -510,24 +506,12 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
                         })}`
                       : ''}
                   </div>
-                  <div className={panelStyles.footerRow}>
-                    <span className={panelStyles.footerStat}>
-                      <span className={panelStyles.footerStatIcon}>↑</span>
-                      {view.t('agent.chat.round_input', '上行')}{' '}
-                      {view.roundUsage.inputTokens.toLocaleString()} tokens
-                    </span>
-                    <span className={panelStyles.footerStat}>
-                      <span className={panelStyles.footerStatIcon}>↓</span>
-                      {view.t('agent.chat.round_output', '下行')}{' '}
-                      {view.roundUsage.outputTokens.toLocaleString()} tokens
-                    </span>
-                    {view.costText && (
-                      <span className={panelStyles.footerStat}>
-                        <span className={panelStyles.footerStatIcon}>$</span>
-                        {view.t('agent.chat.round_cost', '费用')} {view.costText}
-                      </span>
-                    )}
-                  </div>
+                  <RoundUsageFooterStats
+                    usage={view.roundUsage}
+                    costText={view.costText}
+                    className={panelStyles.footerRow}
+                    statClassName={panelStyles.footerStat}
+                  />
                 </div>
               )}
           </div>

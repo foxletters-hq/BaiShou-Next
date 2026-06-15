@@ -17,6 +17,8 @@ export interface CostDetails {
   promptTokens: number
   completionTokens: number
   totalTokens?: number
+  cacheReadTokens?: number
+  cacheWriteTokens?: number
   estimatedCost: string
   lastInputTokens?: number
 }
@@ -127,6 +129,28 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
                   {details.completionTokens} {t('agent.chat.tokens_unit', 'tokens')}
                 </Text>
               </View>
+              {(details.cacheReadTokens ?? 0) > 0 ? (
+                <View style={styles.costRow}>
+                  <Text style={[styles.costLabel, { color: colors.textSecondary }]}>
+                    {t('agent.chat.cost_cumulative_cache_read', '缓存读取')}
+                  </Text>
+                  <Text style={[styles.costValue, { color: colors.textPrimary }]}>
+                    {details.cacheReadTokens!.toLocaleString()}{' '}
+                    {t('agent.chat.tokens_unit', 'tokens')}
+                  </Text>
+                </View>
+              ) : null}
+              {(details.cacheWriteTokens ?? 0) > 0 ? (
+                <View style={styles.costRow}>
+                  <Text style={[styles.costLabel, { color: colors.textSecondary }]}>
+                    {t('agent.chat.cost_cumulative_cache_write', '缓存写入')}
+                  </Text>
+                  <Text style={[styles.costValue, { color: colors.textPrimary }]}>
+                    {details.cacheWriteTokens!.toLocaleString()}{' '}
+                    {t('agent.chat.tokens_unit', 'tokens')}
+                  </Text>
+                </View>
+              ) : null}
 
               <View style={[styles.divider, { borderBottomColor: colors.borderSubtle }]} />
 

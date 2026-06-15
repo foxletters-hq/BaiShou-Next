@@ -1,10 +1,10 @@
 .container {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
+  gap: 8px;
+  padding: 6px 12px;
   border-radius: 12px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   font-family: var(--font-mono, monospace);
   color: var(--color-success);
@@ -42,7 +42,7 @@
 
 .divider {
   width: 1px;
-  height: 10px;
+  height: 14px;
   background-color: currentColor;
   opacity: 0.3;
 }

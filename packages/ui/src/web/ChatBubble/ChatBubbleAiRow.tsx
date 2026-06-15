@@ -6,6 +6,7 @@ import { ToolResultGroup } from '../ToolResultGroupCard'
 import { ThinkingBlock } from '../ThinkingBlock'
 import { ChatBubbleAttachments } from './ChatBubbleAttachments'
 import { ChatBubbleInlineEditor } from './ChatBubbleInlineEditor'
+import { ChatBubbleTokenRow } from './ChatBubbleTokenRow'
 import { formatRelativeTime } from './chat-bubble.utils'
 import styles from './ChatBubble.module.css'
 
@@ -118,6 +119,15 @@ export const ChatBubbleAiRow: React.FC<ChatBubbleAiRowProps> = ({
               onReadAloud={onReadAloud ? () => onReadAloud(message.content || '') : undefined}
               isTtsPlaying={isTtsPlaying}
               onShowContext={onShowContext ? () => onShowContext(message) : undefined}
+            />
+            <ChatBubbleTokenRow
+              usage={{
+                inputTokens: message.inputTokens,
+                outputTokens: message.outputTokens,
+                cacheReadInputTokens: message.cacheReadInputTokens,
+                cacheWriteInputTokens: message.cacheWriteInputTokens,
+                costMicros: message.costMicros
+              }}
             />
           </div>
         </>

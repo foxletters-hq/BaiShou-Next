@@ -22,6 +22,8 @@ export interface CallChainPanelMeta {
   roundUsage?: {
     inputTokens: number
     outputTokens: number
+    cacheReadInputTokens?: number
+    cacheWriteInputTokens?: number
     costMicros: number
   } | null
   activeRoundIndex?: number

@@ -3,6 +3,7 @@ import { View, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import type { useContextChainView } from './useContextChainView'
+import { hasTokenUsageStats, formatCompactTokenCount } from '../../shared/token-usage-display'
 
 type ContextChainView = ReturnType<typeof useContextChainView>
 
@@ -15,9 +16,7 @@ export const ContextChainFooter: React.FC<ContextChainFooterProps> = ({ view }) 
   const { colors, tokens } = useNativeTheme()
 
   const roundUsage = view.meta?.roundUsage
-  const hasRoundUsage =
-    roundUsage &&
-    (roundUsage.inputTokens > 0 || roundUsage.outputTokens > 0 || roundUsage.costMicros > 0)
+  const hasRoundUsage = roundUsage && hasTokenUsageStats(roundUsage)
   const hasNextRequest = Boolean(view.meta?.nextRequest)
 
   if (!hasNextRequest && !hasRoundUsage) return null
@@ -71,6 +70,24 @@ export const ContextChainFooter: React.FC<ContextChainFooterProps> = ({ view }) 
               ↓ {t('agent.chat.round_output', '下行')} {roundUsage.outputTokens.toLocaleString()}{' '}
               tokens
             </Text>
+            {(roundUsage.cacheReadInputTokens ?? 0) > 0 ? (
+              <Text
+                style={{ fontSize: 12, color: colors.textSecondary }}
+                accessibilityLabel={t('agent.chat.cache_read', '缓存读取')}
+              >
+                {t('agent.chat.cache_label', '缓存：')}
+                {formatCompactTokenCount(roundUsage.cacheReadInputTokens ?? 0)} tokens
+              </Text>
+            ) : null}
+            {(roundUsage.cacheWriteInputTokens ?? 0) > 0 ? (
+              <Text
+                style={{ fontSize: 12, color: colors.textSecondary }}
+                accessibilityLabel={t('agent.chat.cache_write', '缓存写入')}
+              >
+                {t('agent.chat.cache_label', '缓存：')}
+                {formatCompactTokenCount(roundUsage.cacheWriteInputTokens ?? 0)} tokens
+              </Text>
+            ) : null}
             {view.costText ? (
               <Text style={{ fontSize: 12, color: colors.textSecondary }}>
                 $ {t('agent.chat.round_cost', '费用')} {view.costText}

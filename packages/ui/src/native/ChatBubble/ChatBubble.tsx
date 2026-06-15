@@ -15,8 +15,7 @@ import { NativeChatBubbleAttachments } from './NativeChatBubbleAttachments'
 import { useNativeChatBubbleEdit } from './useNativeChatBubbleEdit'
 import {
   NativeChatBubbleActionsRow,
-  NativeChatBubbleEditActions,
-  NativeChatBubbleTokenRow
+  NativeChatBubbleEditActions
 } from './NativeChatBubbleActionsRow'
 import { NativeChatBubbleActionSheet } from './NativeChatBubbleActionSheet'
 import { ChatBubbleAvatar } from './ChatBubbleAvatar'
@@ -189,8 +188,6 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
             onDelete={onDelete}
           />
         )}
-
-        {isAssistant && <NativeChatBubbleTokenRow colors={colors} message={message} />}
       </View>
 
       {isUser ? (
