@@ -15,7 +15,7 @@ import { useTranslation } from 'react-i18next'
 import { isIncrementalSyncReady } from '@baishou/shared'
 import { IncrementalSyncPanel, WorkspaceScopeHelpTooltip } from '@baishou/ui'
 
-import { resolveFirstVisibleSidebarPath } from '../Sidebar/sidebar-preferences'
+import { resolveDiaryHomePath } from '../Sidebar/sidebar-preferences'
 import { useOrchestratedSync } from '../../hooks/useOrchestratedSync'
 
 export const TitleBar: React.FC = () => {
@@ -64,9 +64,8 @@ export const TitleBar: React.FC = () => {
   }, [showVaultMenu])
 
   useEffect(() => {
-    if (!activeVault) return undefined
     let cancelled = false
-    let retryTimer: any
+    let retryTimer: ReturnType<typeof setTimeout> | undefined
     let retries = 0
     const fetchConfig = async () => {
       try {
@@ -82,9 +81,9 @@ export const TitleBar: React.FC = () => {
     fetchConfig()
     return () => {
       cancelled = true
-      clearTimeout(retryTimer)
+      if (retryTimer) clearTimeout(retryTimer)
     }
-  }, [activeVault])
+  }, [])
 
   const preloadVault = (vaultName: string) => {
     if (!vaultName || vaultName === activeVault?.name) return
@@ -121,7 +120,7 @@ export const TitleBar: React.FC = () => {
           <div className={styles.tabsContainer}>
             <div
               className={`${styles.tab} ${!isAgent && !isSettings ? styles.activeTab : ''}`}
-              onClick={() => navigate(resolveFirstVisibleSidebarPath())}
+              onClick={() => navigate(resolveDiaryHomePath())}
             >
               <MdAutoStories className={styles.tabIcon} />
               <span>{t('nav.diary', '日记')}</span>

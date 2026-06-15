@@ -1,12 +1,23 @@
-/** 左侧主导航默认项（默认全部显示） */
-export const DEFAULT_NAV_IDS = ['diary', 'summary', 'incr-sync', 'sync', 'lan', 'git'] as const
+import {
+  ALL_SIDEBAR_NAV_IDS,
+  SIDEBAR_NAV_PATHS,
+  getDefaultHiddenNavIds,
+  reorderSyncNavIdsInOrder,
+  type SidebarNavId
+} from './sidebar-nav-catalog'
 
-export type SidebarNavId = (typeof DEFAULT_NAV_IDS)[number]
+/** @deprecated 使用 ALL_SIDEBAR_NAV_IDS；保留兼容旧引用 */
+export const DEFAULT_NAV_IDS = [...ALL_SIDEBAR_NAV_IDS]
+
+export type { SidebarNavId }
 
 const VISIBILITY_CONFIGURED_KEY = 'desktop_sidebar_visibility_configured'
 const HIDDEN_ITEMS_KEY = 'desktop_sidebar_hidden_items'
+const NAV_ORDER_KEY = 'desktop_sidebar_nav_order'
+const MIGRATION_VERSION_KEY = 'desktop_sidebar_mv'
+const CURRENT_MIGRATION_VERSION = 3
 
-const DEFAULT_NAV_ID_SET = new Set<string>(DEFAULT_NAV_IDS)
+const ALL_NAV_ID_SET = new Set<string>(ALL_SIDEBAR_NAV_IDS)
 
 export function isSidebarVisibilityConfigured(): boolean {
   return localStorage.getItem(VISIBILITY_CONFIGURED_KEY) === '1'
@@ -16,21 +27,21 @@ export function markSidebarVisibilityConfigured(): void {
   localStorage.setItem(VISIBILITY_CONFIGURED_KEY, '1')
 }
 
-/** 未手动配置前返回空数组，即默认展示全部导航项 */
+/** 未手动配置前：默认仅显示日记与回忆 */
 export function loadHiddenNavItems(): string[] {
   if (!isSidebarVisibilityConfigured()) {
-    return []
+    return [...getDefaultHiddenNavIds()]
   }
 
   const saved = localStorage.getItem(HIDDEN_ITEMS_KEY)
-  if (!saved) return []
+  if (!saved) return [...getDefaultHiddenNavIds()]
 
   try {
     const parsed = JSON.parse(saved) as unknown
-    if (!Array.isArray(parsed)) return []
-    return parsed.filter((id): id is string => typeof id === 'string' && DEFAULT_NAV_ID_SET.has(id))
+    if (!Array.isArray(parsed)) return [...getDefaultHiddenNavIds()]
+    return parsed.filter((id): id is string => typeof id === 'string' && ALL_NAV_ID_SET.has(id))
   } catch {
-    return []
+    return [...getDefaultHiddenNavIds()]
   }
 }
 
@@ -43,34 +54,71 @@ export function filterVisibleNavIds(order: string[]): string[] {
   return order.filter((id) => !hidden.has(id))
 }
 
-export const SIDEBAR_NAV_PATHS: Record<string, string> = {
-  diary: '/diary',
-  summary: '/summary',
-  lan: '/lan-transfer',
-  sync: '/data-sync',
-  'incr-sync': '/incremental-sync',
-  git: '/git'
+export { SIDEBAR_NAV_PATHS }
+
+/** 日记区首页：固定为日记列表，不受侧边栏排序影响 */
+export const DIARY_HOME_PATH = '/diary'
+
+export function resolveDiaryHomePath(): string {
+  return DIARY_HOME_PATH
 }
 
-/** 默认展示全部项时，取排序后第一个可见路由 */
-export function resolveFirstVisibleSidebarPath(): string {
-  const saved = localStorage.getItem('desktop_sidebar_nav_order')
-  let order: string[] = [...DEFAULT_NAV_IDS]
+/** 合并迁移：补全新导航项、应用默认隐藏策略 */
+export function loadSidebarNavOrder(): string[] {
+  const defaults = [...ALL_SIDEBAR_NAV_IDS]
+  const saved = localStorage.getItem(NAV_ORDER_KEY)
+  let order: string[] = [...defaults]
+
   if (saved) {
     try {
       const parsed = JSON.parse(saved) as unknown
       if (Array.isArray(parsed) && parsed.length > 0) {
-        order = parsed.filter((id): id is string => typeof id === 'string')
+        order = parsed.filter(
+          (id): id is string => typeof id === 'string' && ALL_NAV_ID_SET.has(id)
+        )
       }
     } catch {
-      /* use default order */
+      order = [...defaults]
     }
   }
 
-  const visible = filterVisibleNavIds(order)
-  const firstId = visible[0]
-  if (firstId && SIDEBAR_NAV_PATHS[firstId]) {
-    return SIDEBAR_NAV_PATHS[firstId]
+  const mv = parseInt(localStorage.getItem(MIGRATION_VERSION_KEY) || '0', 10)
+
+  if (mv < CURRENT_MIGRATION_VERSION) {
+    if (!isSidebarVisibilityConfigured()) {
+      persistHiddenNavItems([...getDefaultHiddenNavIds()])
+    } else {
+      const hidden = new Set(loadHiddenNavItems())
+      for (const id of defaults) {
+        if (!order.includes(id)) {
+          order.push(id)
+          hidden.add(id)
+        }
+      }
+      persistHiddenNavItems([...hidden].filter((id) => ALL_NAV_ID_SET.has(id)))
+    }
+
+    for (const id of defaults) {
+      if (!order.includes(id)) order.push(id)
+    }
+
+    order = reorderSyncNavIdsInOrder(order)
+
+    localStorage.setItem(MIGRATION_VERSION_KEY, String(CURRENT_MIGRATION_VERSION))
+    localStorage.setItem(NAV_ORDER_KEY, JSON.stringify(order))
+    return order
   }
-  return '/diary'
+
+  let changed = false
+  for (const id of defaults) {
+    if (!order.includes(id)) {
+      order.push(id)
+      changed = true
+    }
+  }
+  if (changed) {
+    localStorage.setItem(NAV_ORDER_KEY, JSON.stringify(order))
+  }
+
+  return order
 }

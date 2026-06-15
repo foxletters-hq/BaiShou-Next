@@ -12,6 +12,7 @@ import { AgentLayout } from './features/agent/AgentLayout'
 // Phase 14: Recover Missing Feature Routes
 import { DiaryEditorPage } from './features/diary/DiaryEditorPage'
 import { SettingsPage } from './features/settings/SettingsPage'
+import { rememberSettingsReturnPath } from './features/settings/settings-navigation.util'
 import { SummaryDetailPage } from './features/summary/SummaryDetailPage'
 import {
   useToast,
@@ -115,12 +116,16 @@ const AppRoutes = () => {
   useEffect(() => {
     if (!location.pathname.startsWith('/settings')) {
       setBackgroundLocation(location)
+    } else if (!backgroundLocation.pathname.startsWith('/settings')) {
+      rememberSettingsReturnPath(backgroundLocation.pathname)
     }
   }, [location])
 
+  const mainRoutesLocation = isSettings ? backgroundLocation : location
+
   return (
     <>
-      <Routes location={isSettings ? backgroundLocation : location}>
+      <Routes location={mainRoutesLocation}>
         <Route path="/welcome" element={<OnboardingScreen />} />
 
         <Route element={<MainLayout />}>
@@ -137,6 +142,9 @@ const AppRoutes = () => {
           <Route path="/data-sync" element={<CachedRoutePlaceholder />} />
           <Route path="/incremental-sync" element={<CachedRoutePlaceholder />} />
           <Route path="/git" element={<CachedRoutePlaceholder />} />
+
+          {/* 日记区侧边栏内嵌设置（非全屏 overlay） */}
+          <Route path="/hub/*" element={<CachedRoutePlaceholder />} />
 
           {/* AI / Agent Role Routing - Wrapped in AgentLayout */}
           <Route element={<AgentLayout />}>

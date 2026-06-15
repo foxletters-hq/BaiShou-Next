@@ -6,19 +6,24 @@ import { LanTransferPage } from '../features/settings/LanTransferPage'
 import { CloudSyncPage } from '../features/settings/CloudSyncPage'
 import { IncrementalSyncPage } from '../features/settings/IncrementalSyncPage'
 import { GitManagementPage } from '../features/settings/GitManagementPage'
+import { SettingsHubPage } from '../features/settings/SettingsHubPage'
+import { isSettingsHubPath } from '../features/settings/settings-route.util'
 import styles from './MainLayout.module.css'
 /** 侧边栏主页面：切换时保持挂载，避免重复加载数据 */
+
 export const MAIN_PAGE_CACHE: Record<string, React.ComponentType> = {
   '/diary': DiaryPage,
   '/summary': SummaryPage,
   '/lan-transfer': LanTransferPage,
   '/data-sync': CloudSyncPage,
   '/incremental-sync': IncrementalSyncPage,
-  '/git': GitManagementPage
+  '/git': GitManagementPage,
+  '/hub': SettingsHubPage
 }
 
 export function getMainPageCacheKey(pathname: string): string | null {
   if (pathname in MAIN_PAGE_CACHE) return pathname
+  if (isSettingsHubPath(pathname)) return '/hub'
   return null
 }
 

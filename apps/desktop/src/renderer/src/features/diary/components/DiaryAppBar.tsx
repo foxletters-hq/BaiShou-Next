@@ -1,5 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocation } from 'react-router-dom'
 import { Search, Plus, Edit3, CalendarCheck, Filter, X, Heart } from 'lucide-react'
 import { WEATHER_IDS, getWeatherEmoji, weatherI18nKey, type WeatherId } from '@baishou/shared'
 import { YearMonthPicker } from '@baishou/ui'
@@ -34,8 +35,13 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
   onAddNew
 }) => {
   const { t } = useTranslation()
+  const location = useLocation()
   const [isFilterOpen, setIsFilterOpen] = React.useState(false)
   const filterRef = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    setIsFilterOpen(false)
+  }, [location.pathname])
 
   const hasActiveFilters = filterWeathers.length > 0 || filterFavorite
 

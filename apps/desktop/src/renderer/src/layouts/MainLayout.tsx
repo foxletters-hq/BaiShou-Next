@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Sidebar } from '../components/Sidebar'
 import styles from './MainLayout.module.css'
 import { MainPageCache, getMainPageCacheKey } from './MainPageCache'
+import { isSettingsHubPath } from '../features/settings/settings-route.util'
 
 export const MainLayout: React.FC = () => {
   const location = useLocation()
@@ -19,6 +20,8 @@ export const MainLayout: React.FC = () => {
     activeCacheKey = '/diary'
   } else if (location.pathname.startsWith('/summary/')) {
     activeCacheKey = '/summary'
+  } else if (isSettingsHubPath(location.pathname)) {
+    activeCacheKey = '/hub'
   }
 
   return (
