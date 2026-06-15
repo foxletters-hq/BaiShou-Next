@@ -2,6 +2,7 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import { HelpCircle } from 'lucide-react'
 import { Tooltip } from '../Tooltip/Tooltip'
+import { GitRemoteConfigHelp } from './GitRemoteConfigHelp'
 import type { GitManagementViewModel } from './useGitManagementPage'
 import { GitConflictSection } from './GitConflictSection'
 
@@ -31,7 +32,8 @@ export const GitConfigTab: React.FC<GitConfigTabProps> = ({ vm }) => {
     handleTestRemote,
     handlePush,
     handlePull,
-    handleSaveConfig
+    handleSaveAuthorConfig,
+    handleSaveRemoteConfig
   } = vm
 
   return (
@@ -99,6 +101,9 @@ export const GitConfigTab: React.FC<GitConfigTabProps> = ({ vm }) => {
               <span className="gmp-label" style={{ marginBottom: 0 }}>
                 {t('version_control.author_signature', 'Git 提交签名')}
               </span>
+              <button className="gmp-btn gmp-btn-primary" onClick={handleSaveAuthorConfig}>
+                {t('common.save', '保存')}
+              </button>
             </div>
             <div className="gmp-label">
               {t('version_control.author_name', '用户名 (user.name)')}
@@ -124,6 +129,17 @@ export const GitConfigTab: React.FC<GitConfigTabProps> = ({ vm }) => {
 
           {/* 远程仓库配置 */}
           <div className="gmp-section">
+            <div className="gmp-section-header" style={{ marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span className="gmp-label" style={{ marginBottom: 0 }}>
+                  {t('version_control.remote_config', '远程仓库配置')}
+                </span>
+                <GitRemoteConfigHelp />
+              </div>
+              <button className="gmp-btn gmp-btn-primary" onClick={handleSaveRemoteConfig}>
+                {t('common.save', '保存')}
+              </button>
+            </div>
             <div className="gmp-label">{t('version_control.remote_url', '远程仓库地址')}</div>
             <input
               className="gmp-input"
@@ -200,19 +216,6 @@ export const GitConfigTab: React.FC<GitConfigTabProps> = ({ vm }) => {
                 {t('version_control.pull', '从远程拉取')}
               </button>
             </div>
-          </div>
-
-          {/* 保存配置 */}
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              marginTop: 16
-            }}
-          >
-            <button className="gmp-btn gmp-btn-primary" onClick={handleSaveConfig}>
-              {t('common.save', '保存配置')}
-            </button>
           </div>
         </>
       )}

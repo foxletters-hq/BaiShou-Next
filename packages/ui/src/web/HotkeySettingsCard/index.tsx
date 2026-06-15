@@ -237,7 +237,9 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
         <div className="settings-expansion-grid-item">
           <div className="settings-list-divider indent" />
           <div className="settings-list-tile settings-list-tile-noclick">
-            <div className="settings-list-tile-leading" style={{ paddingLeft: 24 }} />
+            <div className="settings-list-tile-leading">
+              <MdOutlineEdit size={22} />
+            </div>
             <div className="settings-list-tile-content">
               <span className="settings-list-tile-title">
                 {t('hotkey.record_combo', '录入快捷组合键')}

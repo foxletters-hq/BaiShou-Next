@@ -162,15 +162,24 @@
   gap: 10px;
 }
 
-.selectedProviderBadge {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
+.selectedProviderIcon {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
   background: var(--bg-app);
+  border: 1px solid var(--border-card, var(--border-muted));
   color: var(--text-secondary);
-  padding: 2px 8px;
-  border-radius: 4px;
-  letter-spacing: 0.5px;
+  overflow: hidden;
+}
+
+.selectedProviderIcon img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
 }
 
 .selectedModelName {

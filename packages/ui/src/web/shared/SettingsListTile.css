@@ -13,7 +13,11 @@
 }
 
 .settings-expansion-summary-divider {
-  border-bottom: 1px solid var(--color-outline-variant, rgba(208, 208, 208, 0.5));
+  box-shadow: inset 0 -1px 0 var(--color-outline-variant, rgba(208, 208, 208, 0.5));
+}
+
+.settings-expansion-tile-embedded .settings-expansion-summary {
+  box-sizing: border-box;
 }
 
 .settings-expansion-content-embedded {
@@ -21,7 +25,7 @@
 }
 
 .settings-expansion-content-divider {
-  border-bottom: 1px solid var(--color-outline-variant, rgba(208, 208, 208, 0.5));
+  box-shadow: inset 0 -1px 0 var(--color-outline-variant, rgba(208, 208, 208, 0.5));
 }
 
 .settings-card-link-action {
@@ -91,7 +95,15 @@
   background-color: rgba(0, 0, 0, 0.03);
 }
 
+.settings-expansion-tile-embedded:not(.settings-open) .settings-expansion-summary:hover {
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
 [data-theme='dark'] .settings-expansion-summary:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+[data-theme='dark'] .settings-expansion-tile-embedded:not(.settings-open) .settings-expansion-summary:hover {
   background-color: rgba(255, 255, 255, 0.04);
 }
 
@@ -112,7 +124,9 @@
   display: grid;
   grid-template-rows: 0fr;
   opacity: 0;
-  overflow: hidden; /* CRITICAL: Clips the grid items' padding during 0fr height */
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
   transition:
     grid-template-rows 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
     opacity 0.35s ease-out;
@@ -317,8 +331,8 @@
   width: 100px;
   padding: 6px 10px;
   border-radius: 8px;
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--border-card, rgba(148, 163, 184, 0.3));
+  background: #fff;
   color: var(--color-on-surface);
   font-size: 14px;
   font-family: inherit;
@@ -326,6 +340,14 @@
   outline: none;
   transition: border-color 0.2s;
   flex-shrink: 0;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.settings-number-input::-webkit-outer-spin-button,
+.settings-number-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .settings-number-input:focus {
@@ -333,7 +355,7 @@
 }
 
 [data-theme='dark'] .settings-number-input {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.9);
+  background: #fff;
+  border-color: var(--border-card, rgba(255, 255, 255, 0.15));
+  color: #1e293b;
 }

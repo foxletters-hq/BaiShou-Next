@@ -12,7 +12,7 @@
 /* Flutter Card with Elevation 0 + Border */
 .cardSection {
   background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-card);
   border-radius: 12px;
   display: flex;
   flex-direction: column;

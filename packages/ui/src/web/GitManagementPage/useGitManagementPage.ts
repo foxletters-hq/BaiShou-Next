@@ -12,7 +12,6 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     onInit,
     isInitialized,
     onTestRemote,
-    onCommit,
     onCommitAll,
     onToast,
     onGetStatus,
@@ -128,11 +127,21 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     }
   }, [onInit, onToast, t, handleRefreshStatus])
 
-  const handleSaveConfig = useCallback(async () => {
+  const handleSaveAuthorConfig = useCallback(async () => {
     try {
       onSaveConfig({
         userName: userName || undefined,
-        userEmail: userEmail || undefined,
+        userEmail: userEmail || undefined
+      })
+      onToast(t('common.save_success', '保存成功'), 'success')
+    } catch (e: any) {
+      onToast(e?.message || t('common.error', '保存失败'), 'error')
+    }
+  }, [userName, userEmail, onSaveConfig, onToast, t])
+
+  const handleSaveRemoteConfig = useCallback(async () => {
+    try {
+      onSaveConfig({
         remote: remoteUrl
           ? {
               url: remoteUrl,
@@ -146,17 +155,7 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     } catch (e: any) {
       onToast(e?.message || t('common.error', '保存失败'), 'error')
     }
-  }, [
-    remoteUrl,
-    remoteBranch,
-    remoteUsername,
-    remoteToken,
-    userName,
-    userEmail,
-    onSaveConfig,
-    onToast,
-    t
-  ])
+  }, [remoteUrl, remoteBranch, remoteUsername, remoteToken, onSaveConfig, onToast, t])
 
   const handleTestRemote = useCallback(async () => {
     const ok = await onTestRemote()
@@ -186,8 +185,6 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     t,
     commitMessage,
     setCommitMessage,
-    stagedCount,
-    onCommit,
     onCommitAll,
     onPush,
     onToast,
@@ -299,7 +296,8 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     handleLoadHistory,
     handleLoadRecentPulls,
     handleInit,
-    handleSaveConfig,
+    handleSaveAuthorConfig,
+    handleSaveRemoteConfig,
     handleTestRemote,
     handlePush,
     handlePull,

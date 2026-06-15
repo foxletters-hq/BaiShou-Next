@@ -39,17 +39,15 @@
 
 .avatarHover {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
   display: flex;
   justify-content: center;
   align-items: center;
-  font-size: 24px;
+  color: #fff;
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
 }
 
 .avatarZone:hover .avatarHover {

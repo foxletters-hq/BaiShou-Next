@@ -117,79 +117,70 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
         <span className="about-sub-page-title">{t('settings.about_baishou', '关于白守')}</span>
       </div>
       <div className="about-sub-page-content no-drag">
-        {/* 隔离层：拦截所有浏览器默认图片操作，百分百捕获快速点击 */}
-        <div className="about-hero-image-container" style={{ position: 'relative' }}>
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              zIndex: 10,
-              cursor: 'pointer'
-            }}
-            onClick={(e) => {
-              e.stopPropagation()
-              handleLogoTap()
-            }}
-          />
-          {heroImageSrc && (
-            <img
-              src={heroImageSrc}
-              alt="BaiShou Version"
-              draggable={false}
-              style={{
-                pointerEvents: 'none',
-                display: 'block',
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover'
+        <section className="about-surface-card">
+          <div className="about-hero-image-wrap">
+            <div
+              className="about-hero-tap-layer"
+              onClick={(e) => {
+                e.stopPropagation()
+                handleLogoTap()
               }}
             />
-          )}
-        </div>
-
-        <div className="about-app-name">{t('about.app_name', '白守 (BaiShou)')}</div>
-        <div className="about-version">{formatAppVersion(version)}</div>
-
-        <div className="about-section-title" style={{ marginTop: 24 }}>
-          {t('about.developer_label', '开发者')}
-        </div>
-        <div className="about-license-card" style={{ position: 'relative' }}>
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              zIndex: 10,
-              cursor: 'pointer'
-            }}
-            onClick={(e) => {
-              e.stopPropagation()
-              handleDevTap()
-            }}
-          />
-          <div className="about-license-content">
-            <span className="about-license-title">Anson & Kasumiame Sakura & Tenkou Akatsuki</span>
-            <span className="about-license-subtitle">The Trio</span>
+            {heroImageSrc ? (
+              <img src={heroImageSrc} alt="BaiShou Version" draggable={false} />
+            ) : null}
           </div>
-        </div>
-
-        <div className="about-section-title">{t('about.oss_license_label', '开源协议')}</div>
-        <div
-          className="about-license-card"
-          onClick={() => window.open('https://www.gnu.org/licenses/agpl-3.0.html', '_blank')}
-          style={{ cursor: 'pointer' }}
-        >
-          <div className="about-license-content">
-            <span className="about-license-title">AGPL v3.0</span>
-            <span className="about-license-subtitle">
-              Copyright (C) 2026 Anson, Kasumiame Sakura & Tenkou Akatsuki
-            </span>
+          <div className="about-hero-card-body">
+            <div className="about-app-name">{t('about.app_name', '白守 (BaiShou)')}</div>
+            <div className="about-version">{formatAppVersion(version)}</div>
           </div>
-          <MdOpenInNew size={18} style={{ color: 'var(--color-on-surface-variant)' }} />
-        </div>
+        </section>
 
-        <div style={{ marginTop: 24 }}>
-          <VersionManager version={version} onOpenGithubRepo={onOpenGithubRepo} />
-        </div>
+        <section className="about-surface-card">
+          <div className="about-flat-section about-flat-section-only">
+            <div className="about-flat-label">{t('about.developer_label', '开发者')}</div>
+            <div className="about-flat-developer">
+              <div
+                className="about-flat-developer-tap"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleDevTap()
+                }}
+              />
+              <span className="about-license-title">Anson & Kasumiame Sakura & Tenkou Akatsuki</span>
+              <span className="about-license-subtitle">The Trio</span>
+            </div>
+          </div>
+        </section>
+
+        <section className="about-surface-card">
+          <div className="about-flat-section about-flat-section-only">
+            <div className="about-flat-label">{t('about.oss_license_label', '开源协议')}</div>
+            <button
+              type="button"
+              className="about-flat-link-row"
+              onClick={() => window.open('https://www.gnu.org/licenses/agpl-3.0.html', '_blank')}
+            >
+              <div className="about-license-content">
+                <span className="about-license-title">AGPL v3.0</span>
+                <span className="about-license-subtitle">
+                  Copyright (C) 2026 Anson, Kasumiame Sakura & Tenkou Akatsuki
+                </span>
+              </div>
+              <MdOpenInNew size={18} className="about-flat-link-trailing" />
+            </button>
+          </div>
+        </section>
+
+        <section className="about-surface-card">
+          <div className="about-flat-section about-flat-section-only">
+            <VersionManager
+              embedded
+              version={version}
+              onOpenGithubRepo={onOpenGithubRepo}
+            />
+          </div>
+        </section>
       </div>
     </div>
   )
@@ -205,35 +196,37 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
         </span>
       </div>
       <div className="about-sub-page-content no-drag">
-        <div className="privacy-section">
-          <div className="privacy-item">
-            <div className="privacy-item-title">{t('privacy.data_ownership', '1. 数据主权')}</div>
-            <div className="privacy-item-desc">
-              {t(
-                'privacy.data_ownership_desc',
-                '白守始终认为，记忆是灵魂的延伸。你的日记数据仅保存在本地 SQLite 数据库中。除了你主动配置的 AI 供应商和云同步目标外，白守不会以任何形式上传你的隐私。'
-              )}
+        <section className="about-surface-card">
+          <div className="privacy-section">
+            <div className="privacy-item">
+              <div className="privacy-item-title">{t('privacy.data_ownership', '1. 数据主权')}</div>
+              <div className="privacy-item-desc">
+                {t(
+                  'privacy.data_ownership_desc',
+                  '白守始终认为，记忆是灵魂的延伸。你的日记数据仅保存在本地 SQLite 数据库中。除了你主动配置的 AI 供应商和云同步目标外，白守不会以任何形式上传你的隐私。'
+                )}
+              </div>
+            </div>
+            <div className="privacy-item">
+              <div className="privacy-item-title">{t('privacy.local_first', '2. 本地优先')}</div>
+              <div className="privacy-item-desc">
+                {t(
+                  'privacy.local_first_desc',
+                  '即便没有网络，你依然可以流畅地写日记。所有的 AI 总结都是在你发起请求时即时生成的，我们不存储任何生成的文本。'
+                )}
+              </div>
+            </div>
+            <div className="privacy-item">
+              <div className="privacy-item-title">{t('privacy.transparency', '3. 透明与安全')}</div>
+              <div className="privacy-item-desc">
+                {t(
+                  'privacy.transparency_desc',
+                  '白守支持端到端的数据导出与同步。你可以随时通过 ZIP 导出彻底带走自己的回忆，或者将其同步至你完全掌控的 S3/WebDAV 空间。'
+                )}
+              </div>
             </div>
           </div>
-          <div className="privacy-item">
-            <div className="privacy-item-title">{t('privacy.local_first', '2. 本地优先')}</div>
-            <div className="privacy-item-desc">
-              {t(
-                'privacy.local_first_desc',
-                '即便没有网络，你依然可以流畅地写日记。所有的 AI 总结都是在你发起请求时即时生成的，我们不存储任何生成的文本。'
-              )}
-            </div>
-          </div>
-          <div className="privacy-item">
-            <div className="privacy-item-title">{t('privacy.transparency', '3. 透明与安全')}</div>
-            <div className="privacy-item-desc">
-              {t(
-                'privacy.transparency_desc',
-                '白守支持端到端的数据导出与同步。你可以随时通过 ZIP 导出彻底带走自己的回忆，或者将其同步至你完全掌控的 S3/WebDAV 空间。'
-              )}
-            </div>
-          </div>
-        </div>
+        </section>
       </div>
     </div>
   )

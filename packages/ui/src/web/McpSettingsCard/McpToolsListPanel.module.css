@@ -1,0 +1,57 @@
+.toolsList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 16px 16px;
+}
+
+.toolItem {
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--bg-app);
+  border: 1px solid var(--border-card);
+}
+
+.toolHeader {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.toolName {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary, #5ba8f5);
+}
+
+.toolCategory {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--bg-surface-high, rgba(0, 0, 0, 0.05));
+  color: var(--text-secondary);
+}
+
+.toolTitle {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.toolDescription {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+}
+
+.stateMessage {
+  margin: 0;
+  padding: 16px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}

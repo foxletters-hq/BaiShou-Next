@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react'
+import { MdPhotoCamera, MdEdit } from 'react-icons/md'
 import styles from './ProfileSettingsCard.module.css'
 import { useTranslation } from 'react-i18next'
 import { useDialog } from '../Dialog'
@@ -71,7 +72,9 @@ export const ProfileSettingsCard: React.FC<ProfileSettingsCardProps> = ({ profil
             src={resolveWebUserAvatarSrc(profile.avatarPath)}
             alt="avatar"
           />
-          <div className={styles.avatarHover}>📷</div>
+          <div className={styles.avatarHover} aria-hidden>
+            <MdPhotoCamera size={22} />
+          </div>
           <input
             type="file"
             accept="image/*"
@@ -92,7 +95,7 @@ export const ProfileSettingsCard: React.FC<ProfileSettingsCardProps> = ({ profil
               title={t('profile.edit_nickname', '修改昵称')}
               aria-label={t('profile.edit_nickname', '修改昵称')}
             >
-              ✎
+              <MdEdit size={16} />
             </button>
           </div>
         </div>

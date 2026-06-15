@@ -1,0 +1,46 @@
+.helpBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 4px;
+  margin: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    transform 0.1s;
+}
+
+.helpBtn:hover {
+  background-color: rgba(var(--text-primary-rgb, 15, 23, 42), 0.06);
+}
+
+.helpBtn:active {
+  transform: scale(0.92);
+  background-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.12);
+}
+
+.helpIcon {
+  color: var(--text-tertiary);
+  transition: color 0.15s;
+}
+
+.helpBtn:hover .helpIcon {
+  color: var(--color-primary);
+}
+
+.helpModal {
+  min-width: min(480px, 92vw);
+  max-width: 560px;
+}
+
+.body {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  white-space: pre-line;
+}

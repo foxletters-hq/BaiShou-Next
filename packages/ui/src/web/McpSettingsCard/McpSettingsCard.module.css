@@ -30,6 +30,27 @@
   }
 }
 
+/* ─── 启用后端口/连接地址向下展开 ─── */
+.connectionCollapseWrapper {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition:
+    grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.28s ease;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.connectionCollapseWrapper.connectionCollapseOpen {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.connectionCollapseInner {
+  min-height: 0;
+  overflow: hidden;
+}
+
 /* ─── 折叠/展开动画 ─── */
 .collapseWrapper {
   display: grid;
@@ -141,4 +162,16 @@
 
 .copyBtn:active {
   transform: scale(0.96);
+}
+
+.standaloneRoot {
+  display: flex;
+  flex-direction: column;
+}
+
+.standaloneConnectionSection {
+  padding: 18px 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }

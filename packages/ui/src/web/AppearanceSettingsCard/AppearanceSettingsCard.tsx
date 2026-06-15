@@ -13,6 +13,8 @@ export interface AppearanceSettingsProps {
   onThemeModeChange: (mode: 'system' | 'light' | 'dark') => void
   onSeedColorChange: (color: string) => void
   onLanguageChange: (lang: string) => void
+  embedded?: boolean
+  isLast?: boolean
 }
 
 export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
@@ -21,7 +23,9 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
   language = 'system',
   onThemeModeChange,
   onSeedColorChange,
-  onLanguageChange
+  onLanguageChange,
+  embedded = false,
+  isLast = false
 }) => {
   const { t } = useTranslation()
   const [showPicker, setShowPicker] = useState(false)
@@ -66,6 +70,8 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
   return (
     <div className="appearance-settings-wrapper">
       <SettingsExpansionTile
+        embedded={embedded}
+        isLast={isLast}
         icon={<MdOutlinePalette size={24} />}
         title={t('settings.appearance', '外观与主题')}
         subtitle={`${getThemeText()} · ${getLangText()}`}

@@ -7,8 +7,6 @@ export interface UseGitManagementCommitParams {
   t: TFunction
   commitMessage: string
   setCommitMessage: (value: string) => void
-  stagedCount: number
-  onCommit: GitManagementPageProps['onCommit']
   onCommitAll: GitManagementPageProps['onCommitAll']
   onPush: GitManagementPageProps['onPush']
   onToast: GitManagementPageProps['onToast']
@@ -24,8 +22,6 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
     t,
     commitMessage,
     setCommitMessage,
-    stagedCount,
-    onCommit,
     onCommitAll,
     onPush,
     onToast,
@@ -36,18 +32,10 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
     setSelectedFileDiff
   } = params
 
-  const performCommit = useCallback(
-    async (msg: string) => {
-      if (stagedCount > 0) {
-        return onCommit(msg)
-      }
-      return onCommitAll(msg)
-    },
-    [stagedCount, onCommit, onCommitAll]
-  )
+  const performCommit = useCallback(async (msg: string) => onCommitAll(msg), [onCommitAll])
 
   const notifyCommitOutcome = useCallback(
-    (fileCount: number, mode: 'local' | 'push', usedStagedOnly: boolean) => {
+    (fileCount: number, mode: 'local' | 'push') => {
       if (fileCount === 0) {
         onToast(
           t('version_control.commit_result_count', '已提交 {{count}} 个文件', { count: 0 }),
@@ -58,30 +46,20 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
 
       if (mode === 'push') {
         onToast(
-          usedStagedOnly
-            ? t(
-                'version_control.commit_success_count',
-                '提交成功: {{count}} 个文件已提交，正在推送...',
-                { count: fileCount }
-              )
-            : t(
-                'version_control.commit_all_success_count_pushing',
-                '已暂存并提交 {{count}} 个文件，正在推送...',
-                { count: fileCount }
-              ),
+          t(
+            'version_control.commit_all_success_count_pushing',
+            '已暂存并提交 {{count}} 个文件，正在推送...',
+            { count: fileCount }
+          ),
           'success'
         )
         return
       }
 
       onToast(
-        usedStagedOnly
-          ? t('version_control.commit_success_count', '提交成功: {{count}} 个文件已提交', {
-              count: fileCount
-            })
-          : t('version_control.commit_all_success_count', '已暂存并提交 {{count}} 个文件', {
-              count: fileCount
-            }),
+        t('version_control.commit_all_success_count', '已暂存并提交 {{count}} 个文件', {
+          count: fileCount
+        }),
         'success'
       )
     },
@@ -93,11 +71,10 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
     const pad = (n: number) => String(n).padStart(2, '0')
     const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
     const msg = commitMessage.trim() || timestamp
-    const usedStagedOnly = stagedCount > 0
     try {
       const result = await performCommit(msg)
       const fileCount = result?.files?.length ?? 0
-      notifyCommitOutcome(fileCount, 'local', usedStagedOnly)
+      notifyCommitOutcome(fileCount, 'local')
       if (fileCount === 0) return
 
       setCommitMessage('')
@@ -106,7 +83,7 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
     } catch (e: any) {
       const errorMsg = e?.message || ''
       if (errorMsg.includes('No changes')) {
-        notifyCommitOutcome(0, 'local', usedStagedOnly)
+        notifyCommitOutcome(0, 'local')
       } else {
         onToast(errorMsg || t('version_control.git_commit_failed', '提交失败'), 'error')
       }
@@ -114,7 +91,6 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
   }, [
     commitMessage,
     performCommit,
-    stagedCount,
     notifyCommitOutcome,
     onToast,
     t,
@@ -127,16 +103,15 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
     const pad = (n: number) => String(n).padStart(2, '0')
     const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
     const msg = commitMessage.trim() || timestamp
-    const usedStagedOnly = stagedCount > 0
     try {
       const result = await performCommit(msg)
       const fileCount = result?.files?.length ?? 0
       if (fileCount === 0) {
-        notifyCommitOutcome(0, 'push', usedStagedOnly)
+        notifyCommitOutcome(0, 'push')
         return
       }
 
-      notifyCommitOutcome(fileCount, 'push', usedStagedOnly)
+      notifyCommitOutcome(fileCount, 'push')
       setCommitMessage('')
       setSelectedCommit(null)
       setCommitChanges([])
@@ -153,7 +128,7 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
     } catch (e: any) {
       const errorMsg = e?.message || ''
       if (errorMsg.includes('No changes')) {
-        notifyCommitOutcome(0, 'push', usedStagedOnly)
+        notifyCommitOutcome(0, 'push')
       } else {
         onToast(e?.message || t('version_control.git_commit_failed', '提交失败'), 'error')
       }
@@ -161,7 +136,6 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
   }, [
     commitMessage,
     performCommit,
-    stagedCount,
     notifyCommitOutcome,
     onPush,
     onToast,

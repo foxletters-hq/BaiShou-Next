@@ -32,7 +32,11 @@
 }
 
 .storage-settings-action-btn-secondary {
-  border-color: var(--border-subtle, rgba(0, 0, 0, 0.08));
+  border: 1px solid var(--border-card, rgba(0, 0, 0, 0.12));
   background: var(--bg-surface, #fff);
   color: var(--text-primary, #111);
+}
+
+.storage-settings-action-btn-secondary:hover {
+  border-color: var(--border-strong, rgba(0, 0, 0, 0.16));
 }

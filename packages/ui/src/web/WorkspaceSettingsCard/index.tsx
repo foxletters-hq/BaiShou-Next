@@ -187,6 +187,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
       <SettingsExpansionTile
         embedded
         isLast={isLast}
+        icon={<MdWorkspacesOutline size={24} />}
         title={t('workspace.title', '工作空间')}
         titleAddon={<WorkspaceScopeHelpTooltip />}
         subtitle={t('workspace.current', '当前空间: {{name}}', {

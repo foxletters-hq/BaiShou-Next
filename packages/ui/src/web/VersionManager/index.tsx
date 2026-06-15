@@ -18,9 +18,17 @@ import './VersionManager.css'
 export interface VersionManagerProps {
   version: string
   onOpenGithubRepo?: () => void | Promise<void>
+  hideSectionTitle?: boolean
+  /** 嵌入关于页等单卡片布局：无外框，区块标题 + 横线分隔 */
+  embedded?: boolean
 }
 
-export const VersionManager: React.FC<VersionManagerProps> = ({ version, onOpenGithubRepo }) => {
+export const VersionManager: React.FC<VersionManagerProps> = ({
+  version,
+  onOpenGithubRepo,
+  hideSectionTitle = false,
+  embedded = false
+}) => {
   const { t } = useTranslation()
   const toast = useToast()
   const displayVersion = formatAppVersion(version)
@@ -135,11 +143,30 @@ export const VersionManager: React.FC<VersionManagerProps> = ({ version, onOpenG
     void onOpenGithubRepo?.()
   }
 
-  return (
-    <div className="version-manager">
-      <div className="about-section-title">{t('updater.section_title', 'App updates')}</div>
+  if (embedded) {
+    return (
+      <div className={`version-manager ${embedded ? 'version-manager-embedded' : ''}`}>
+        <div className="about-flat-label">{t('updater.section_title', '应用更新')}</div>
+        {renderPrimaryAction()}
+        {status === UpdateStatus.DOWNLOADING ? (
+          <div className="version-progress-wrap version-progress-wrap-embedded">
+            <div className="version-progress-track">
+              <div className="version-progress-fill" style={{ width: `${downloadProgress}%` }} />
+            </div>
+            <span className="version-progress-label">{Math.round(downloadProgress)}%</span>
+          </div>
+        ) : null}
+      </div>
+    )
+  }
 
-      <div className="version-panel">
+  return (
+    <div className={`version-manager ${embedded ? 'version-manager-embedded' : ''}`}>
+      {!hideSectionTitle && !embedded ? (
+        <div className="about-section-title">{t('updater.section_title', 'App updates')}</div>
+      ) : null}
+
+      <div className={embedded ? 'version-panel-flat' : 'version-panel'}>
         <div className="version-meta-row">
           <span className="version-meta-label">
             {t('updater.current_version', 'Current version')}

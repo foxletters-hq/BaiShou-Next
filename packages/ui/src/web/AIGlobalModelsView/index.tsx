@@ -5,8 +5,10 @@ import { useDialog } from '../Dialog'
 import { ModelSwitcherPopup } from '../ModelSwitcherPopup'
 import { GlobalModelsConfig, GlobalModelsConfig as SharedGlobalModelsConfig } from '@baishou/shared'
 import { isEmbeddingModel, isTtsModel } from '@baishou/shared'
-import { MdChatBubbleOutline, MdCompress, MdEdit, MdHub, MdVolumeUp } from 'react-icons/md'
+import { MdChatBubbleOutline, MdCompress, MdEdit, MdHub, MdCloud } from 'react-icons/md'
 import { HelpTooltip } from '../HelpTooltip'
+import { useTheme } from '../../hooks/useTheme'
+import { getProviderIcon } from '../../utils/provider-icons'
 
 export interface AIProviderConfigInfo {
   providerId: string
@@ -42,6 +44,7 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
 }) => {
   const { t } = useTranslation()
   const dialog = useDialog()
+  const { isDark } = useTheme()
 
   // State to manage which model selector is currently open
   const [activeSelector, setActiveSelector] = useState<
@@ -148,7 +151,10 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
     isDanger: boolean = false
   ) => {
     const isModelSet = currentProvider && currentModel
-    const providerName = availableProviders[currentProvider]?.name || currentProvider
+    const providerMeta = availableProviders[currentProvider]
+    const providerIconUrl =
+      getProviderIcon(currentProvider, isDark) ||
+      (providerMeta?.type ? getProviderIcon(providerMeta.type, isDark) : undefined)
 
     const getTooltipContent = () => {
       switch (key) {
@@ -190,7 +196,13 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
         >
           {isModelSet ? (
             <div className={styles.selectedValueInfo}>
-              <span className={styles.selectedProviderBadge}>{providerName}</span>
+              <span className={styles.selectedProviderIcon} aria-hidden>
+                {providerIconUrl ? (
+                  <img src={providerIconUrl} alt="" />
+                ) : (
+                  <MdCloud size={18} />
+                )}
+              </span>
               <span className={styles.selectedModelName}>{currentModel}</span>
             </div>
           ) : (

@@ -1,6 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdOutlineFolderShared } from 'react-icons/md'
+import { MdOutlineFolderShared, MdOutlineFolder } from 'react-icons/md'
 import '../shared/SettingsListTile.css'
 import './StorageSettingsCard.css'
 import { SettingsExpansionTile } from '../shared/SettingsExpansionTile'
@@ -18,6 +18,8 @@ export interface StorageSettingsCardProps {
   onMigrateDirectory?: () => void | Promise<void>
   migrateDirectoryLabel?: string
   onNavigateToAttachments?: () => void
+  embedded?: boolean
+  isLast?: boolean
   onClearCache?: () => void
   onVacuumDb?: () => void
   onRefreshStats?: () => Promise<any>
@@ -30,20 +32,26 @@ export const StorageSettingsCard: React.FC<StorageSettingsCardProps> = ({
   changeDirectoryLabel,
   onMigrateDirectory,
   migrateDirectoryLabel,
-  onNavigateToAttachments
+  onNavigateToAttachments,
+  embedded = false,
+  isLast = false
 }) => {
   const { t } = useTranslation()
   const handleChangeDirectory = onChangeDirectory ?? onChangeRoot
 
   return (
     <SettingsExpansionTile
+      embedded={embedded}
+      isLast={isLast}
       icon={<MdOutlineFolderShared size={24} />}
       title={t('settings.storage_manager', '存储管理')}
       subtitle={t('settings.storage_root_desc', '管理数据存储路径与附件')}
     >
       <div className="storage-settings-root-block">
         <div className="settings-list-tile settings-list-tile-noclick">
-          <div className="settings-list-tile-leading" />
+          <div className="settings-list-tile-leading">
+            <MdOutlineFolder size={22} />
+          </div>
           <div className="settings-list-tile-content">
             <span className="settings-list-tile-title">
               {t('settings.storage_root', '数据根目录')}

@@ -42,7 +42,8 @@ export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
     }
   }, [open])
 
-  const showRowDivider = embedded && (!isLast || open)
+  const showRowDivider = !embedded && (!isLast || open)
+  const showContentDivider = embedded && !isLast && open
 
   return (
     <div
@@ -74,18 +75,19 @@ export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
         <MdExpandMore className="settings-expansion-arrow" size={24} />
       </div>
 
-      {/* Uses modern CSS Grid transition for bidirectional smooth height animation + delayed unmount */}
-      <div className={`settings-expansion-grid-wrapper ${open ? 'expanded' : ''}`}>
-        <div className="settings-expansion-grid-item">
-          {shouldRender && (
-            <div
-              className={`settings-expansion-content ${embedded ? 'settings-expansion-content-embedded' : ''} ${embedded && !isLast ? 'settings-expansion-content-divider' : ''}`}
-            >
-              {children}
-            </div>
-          )}
+      {(open || shouldRender) && (
+        <div className={`settings-expansion-grid-wrapper ${open ? 'expanded' : ''}`}>
+          <div className="settings-expansion-grid-item">
+            {shouldRender && (
+              <div
+                className={`settings-expansion-content ${embedded ? 'settings-expansion-content-embedded' : ''} ${showContentDivider ? 'settings-expansion-content-divider' : ''}`}
+              >
+                {children}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

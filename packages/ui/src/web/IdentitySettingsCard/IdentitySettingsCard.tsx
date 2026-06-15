@@ -7,6 +7,7 @@ import { IdentityPersonaChips } from './IdentityPersonaChips'
 import { IdentitySettingsPersonaSection } from './IdentitySettingsPersonaSection'
 import { IdentityFactsList } from './IdentityFactsList'
 import { IdentityFactEditModal } from './IdentityFactEditModal'
+import { MdBadge } from 'react-icons/md'
 import { SettingsExpansionTile } from '../shared/SettingsExpansionTile'
 import styles from './IdentitySettingsCard.module.css'
 
@@ -48,6 +49,7 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({
       <SettingsExpansionTile
         embedded
         isLast={isLast}
+        icon={<MdBadge size={24} />}
         title={t('settings.identity_card', '身份卡')}
         subtitle={t('settings.identity_current', '当前: {{name}}', { name: card.activeId })}
       >
