@@ -35,7 +35,6 @@ import { HotkeyService } from './services/hotkey.service'
 import { setHotkeyService } from './ipc/settings.ipc'
 import { logger } from '@baishou/shared'
 import * as fs from 'fs/promises'
-import { APP_VERSION_NUMBER } from '../app-version'
 
 let mainWindow: BrowserWindow | null = null
 let isBootstrapping = false
@@ -193,9 +192,6 @@ app.whenReady().then(async () => {
 
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
-
-  // package.json / version.json 已是 semver；此处再设一次，防止旧构建残留 Next- 前缀
-  app.setVersion(APP_VERSION_NUMBER)
 
   // Register local protocol for secure local asset rendering
   protocol.handle('local', async (request) => {

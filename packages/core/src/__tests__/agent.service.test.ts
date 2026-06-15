@@ -49,6 +49,8 @@ describe('AgentService', () => {
       systemPrompt: 'You are a helpful assistant',
       totalInputTokens: 0,
       totalOutputTokens: 0,
+      totalCacheReadInputTokens: 0,
+      totalCacheWriteInputTokens: 0,
       totalCostMicros: 0
     })
 
