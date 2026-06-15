@@ -267,12 +267,8 @@
           "name": "agent_messages_session_id_agent_sessions_id_fk",
           "tableFrom": "agent_messages",
           "tableTo": "agent_sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -334,12 +330,8 @@
           "name": "agent_parts_message_id_agent_messages_id_fk",
           "tableFrom": "agent_parts",
           "tableTo": "agent_messages",
-          "columnsFrom": [
-            "message_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["message_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -596,11 +588,7 @@
       "indexes": {
         "summaries_type_start_date_end_date_unique": {
           "name": "summaries_type_start_date_end_date_unique",
-          "columns": [
-            "type",
-            "start_date",
-            "end_date"
-          ],
+          "columns": ["type", "start_date", "end_date"],
           "isUnique": true
         }
       },
@@ -742,9 +730,7 @@
       "indexes": {
         "memory_embeddings_embedding_id_unique": {
           "name": "memory_embeddings_embedding_id_unique",
-          "columns": [
-            "embedding_id"
-          ],
+          "columns": ["embedding_id"],
           "isUnique": true
         }
       },
