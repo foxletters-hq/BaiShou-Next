@@ -10,7 +10,7 @@ export const DiaryEditorPage: React.FC = () => {
   if (editor.isLoading) {
     return (
       <div
-        style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}
+        style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center' }}
       >
         Loading...
       </div>

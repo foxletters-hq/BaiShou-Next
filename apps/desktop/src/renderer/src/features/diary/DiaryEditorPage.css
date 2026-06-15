@@ -8,6 +8,13 @@
   background-color: var(--bg-surface-lowest, #f8fafc);
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
+  padding-bottom: 12px;
+}
+
+.diary-editor-page-container .diary-editor-scaffold {
+  flex: 1;
+  min-height: 0;
 }
 
 /* Auto Save Toast Notification */

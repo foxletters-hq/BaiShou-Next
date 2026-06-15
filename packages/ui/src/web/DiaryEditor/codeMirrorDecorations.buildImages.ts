@@ -47,6 +47,8 @@ export function collectImageDecorations(
 
     const src = resolveUrl ? resolveUrl(srcRaw) : srcRaw
 
+    if (matchStart >= matchEnd) continue
+
     imageRanges.push({ from: matchStart, to: matchEnd })
     marks.push({
       from: matchStart,

@@ -15,11 +15,22 @@ import {
 import { isCursorInRange, isCursorOnLine } from './codeMirrorDecorations.cursor'
 import type { ImageRange } from './codeMirrorDecorations.buildImages'
 
+type DecorationMark = { from: number; to: number; value: Decoration }
+
+function pushDecoration(
+  marks: DecorationMark[],
+  value: Decoration,
+  from: number,
+  to: number
+): void {
+  if (from < to) marks.push(value.range(from, to))
+}
+
 export function collectTreeDecorations(
   view: EditorView,
   cursors: number[],
   imageRanges: ImageRange[],
-  marks: { from: number; to: number; value: Decoration }[]
+  marks: DecorationMark[]
 ): void {
   const tree = syntaxTree(view.state)
   const doc = view.state.doc
@@ -36,7 +47,7 @@ export function collectTreeDecorations(
       const name = node.type.name
 
       if (name === 'FencedCode') {
-        marks.push(codeBlockMark.range(node.from, node.to))
+        pushDecoration(marks, codeBlockMark, node.from, node.to)
 
         const startLine = doc.lineAt(node.from).number
         const endLine = doc.lineAt(node.to).number
@@ -58,11 +69,11 @@ export function collectTreeDecorations(
       if (name === 'CodeMark') {
         const parent = node.node.parent
         if (parent && parent.type.name === 'FencedCode') {
-          marks.push(codeMarkStyle.range(node.from, node.to))
+          pushDecoration(marks, codeMarkStyle, node.from, node.to)
           return
         }
         if (!onActiveLine) {
-          marks.push(hideMark.range(node.from, node.to))
+          pushDecoration(marks, hideMark, node.from, node.to)
         }
         return
       }
@@ -74,10 +85,15 @@ export function collectTreeDecorations(
           const prefixEnd = node.from + match[0].length
           const cursorInMarker = isCursorInRange(node.from, prefixEnd, cursors)
           if (!onActiveLine || !cursorInMarker) {
-            marks.push(hideMark.range(node.from, prefixEnd))
+            pushDecoration(marks, hideMark, node.from, prefixEnd)
           }
           const level = match[1]!.length
-          marks.push(headingStyles[level]!.range(cursorInMarker ? node.from : prefixEnd, node.to))
+          pushDecoration(
+            marks,
+            headingStyles[level]!,
+            cursorInMarker ? node.from : prefixEnd,
+            node.to
+          )
         }
         return
       }
@@ -90,8 +106,8 @@ export function collectTreeDecorations(
         const to = node.to
         const cursorInOpen = isCursorInRange(from, from + openLen, cursors)
         const cursorInClose = isCursorInRange(to - closeLen, to, cursors)
-        if (!cursorInOpen) marks.push(hideMark.range(from, from + openLen))
-        if (!cursorInClose) marks.push(hideMark.range(to - closeLen, to))
+        if (!cursorInOpen) pushDecoration(marks, hideMark, from, from + openLen)
+        if (!cursorInClose) pushDecoration(marks, hideMark, to - closeLen, to)
         return
       }
 
@@ -102,8 +118,8 @@ export function collectTreeDecorations(
         const to = node.to
         const cursorInOpen = isCursorInRange(from, from + 1, cursors)
         const cursorInClose = isCursorInRange(to - 1, to, cursors)
-        if (!cursorInOpen) marks.push(hideMark.range(from, from + 1))
-        if (!cursorInClose) marks.push(hideMark.range(to - 1, to))
+        if (!cursorInOpen) pushDecoration(marks, hideMark, from, from + 1)
+        if (!cursorInClose) pushDecoration(marks, hideMark, to - 1, to)
         return
       }
 
@@ -112,8 +128,8 @@ export function collectTreeDecorations(
         const to = node.to
         const cursorInOpen = isCursorInRange(from, from + 2, cursors)
         const cursorInClose = isCursorInRange(to - 2, to, cursors)
-        if (!cursorInOpen) marks.push(hideMark.range(from, from + 2))
-        if (!cursorInClose) marks.push(hideMark.range(to - 2, to))
+        if (!cursorInOpen) pushDecoration(marks, hideMark, from, from + 2)
+        if (!cursorInClose) pushDecoration(marks, hideMark, to - 2, to)
         return
       }
 
@@ -124,8 +140,8 @@ export function collectTreeDecorations(
         const to = node.to
         const cursorInOpen = isCursorInRange(from, from + tickLen, cursors)
         const cursorInClose = isCursorInRange(to - tickLen, to, cursors)
-        if (!cursorInOpen) marks.push(hideMark.range(from, from + tickLen))
-        if (!cursorInClose) marks.push(hideMark.range(to - tickLen, to))
+        if (!cursorInOpen) pushDecoration(marks, hideMark, from, from + tickLen)
+        if (!cursorInClose) pushDecoration(marks, hideMark, to - tickLen, to)
         return
       }
 
@@ -138,9 +154,9 @@ export function collectTreeDecorations(
           const closeFrom = node.from + bracketClose
           const cursorInOpen = isCursorInRange(openFrom, openFrom + 1, cursors)
           const cursorInClose = isCursorInRange(closeFrom, node.to, cursors)
-          if (!cursorInOpen) marks.push(hideMark.range(openFrom, openFrom + 1))
-          if (!cursorInClose) marks.push(hideMark.range(closeFrom, node.to))
-          marks.push(linkMark.range(openFrom + 1, closeFrom))
+          if (!cursorInOpen) pushDecoration(marks, hideMark, openFrom, openFrom + 1)
+          if (!cursorInClose) pushDecoration(marks, hideMark, closeFrom, node.to)
+          pushDecoration(marks, linkMark, openFrom + 1, closeFrom)
         }
         return
       }
@@ -148,17 +164,17 @@ export function collectTreeDecorations(
       if (onActiveLine) return
 
       if (name === 'QuoteMark') {
-        marks.push(hideMark.range(node.from, node.to))
+        pushDecoration(marks, hideMark, node.from, node.to)
         return
       }
 
       if (name === 'ListMark') {
-        marks.push(hideMark.range(node.from, node.to))
+        pushDecoration(marks, hideMark, node.from, node.to)
         return
       }
 
       if (name === 'TaskMarker') {
-        marks.push(hideMark.range(node.from, node.to))
+        pushDecoration(marks, hideMark, node.from, node.to)
       }
     }
   })
