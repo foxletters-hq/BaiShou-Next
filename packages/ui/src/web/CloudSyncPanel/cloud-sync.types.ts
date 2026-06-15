@@ -1,3 +1,5 @@
+export type DataSyncTab = 'cloud' | 'snapshot' | 'local'
+
 export type SyncTarget = 'local' | 's3' | 'webdav'
 
 export interface SyncConfig {
@@ -44,4 +46,7 @@ export interface CloudSyncPanelProps {
   onDeleteSnapshot?: (filename: string) => Promise<boolean>
   onBatchDeleteSnapshots?: (filenames: string[]) => Promise<number>
   onRenameSnapshot?: (oldName: string, newName: string) => Promise<boolean>
+  onExportZip?: () => Promise<void>
+  onImportZip?: (filePath: string) => Promise<void>
+  onPickArchiveFile?: () => Promise<string | null>
 }

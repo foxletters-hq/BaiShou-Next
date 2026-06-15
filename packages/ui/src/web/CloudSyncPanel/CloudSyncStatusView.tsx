@@ -7,13 +7,15 @@ import { CloudSyncHeaderActions } from './CloudSyncHeaderActions'
 import { CloudSyncRecordList } from './CloudSyncRecordList'
 import { CloudSyncCountModal } from './CloudSyncCountModal'
 import { BackupScopeList } from '../BackupScopeList'
+import { LocalArchiveBackupPanel } from './LocalArchiveBackupPanel'
 
 export interface CloudSyncStatusViewProps {
   vm: CloudSyncPanelViewModel
 }
 
 export const CloudSyncStatusView: React.FC<CloudSyncStatusViewProps> = ({ vm }) => {
-  const { showCountModal, activeTab } = vm
+  const { showCountModal, activeTab, onExportZip, onImportZip, onPickArchiveFile } = vm
+  const showLocalArchive = Boolean(onExportZip && onImportZip && onPickArchiveFile)
 
   return (
     <motion.div
@@ -24,10 +26,21 @@ export const CloudSyncStatusView: React.FC<CloudSyncStatusViewProps> = ({ vm }) 
       transition={{ duration: 0.2 }}
       className={styles.container}
     >
-      <CloudSyncStatCards vm={vm} />
-      {activeTab === 'cloud' && <BackupScopeList />}
-      <CloudSyncHeaderActions vm={vm} />
-      <CloudSyncRecordList vm={vm} />
+      {activeTab !== 'local' && <CloudSyncStatCards vm={vm} />}
+      <section className={styles.cardSection}>
+        <CloudSyncHeaderActions vm={vm} />
+        {activeTab === 'local' && showLocalArchive ? (
+          <LocalArchiveBackupPanel
+            onExportZip={onExportZip!}
+            onImportZip={onImportZip!}
+            onPickFile={onPickArchiveFile!}
+          />
+        ) : (
+          <CloudSyncRecordList vm={vm} />
+        )}
+      </section>
+      {(activeTab === 'cloud' || activeTab === 'local') && <BackupScopeList />}
+
       {showCountModal && <CloudSyncCountModal vm={vm} />}
     </motion.div>
   )

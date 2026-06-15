@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { CloudSyncPanelProps } from './cloud-sync.types'
+import type { CloudSyncPanelProps, DataSyncTab } from './cloud-sync.types'
 import { DEFAULT_SYNC_CONFIG } from './cloud-sync.constants'
 import { getTargetColor, getTargetIcon } from './cloud-sync.helpers'
 import { useCloudSyncFetch } from './useCloudSyncFetch'
@@ -10,6 +10,7 @@ export function useCloudSyncPanel(props: CloudSyncPanelProps) {
   const { t } = useTranslation()
   const noLimitLabel = t('data_sync.no_limit', 'No Limit')
   const { savedConfig, onSaveConfig, onListRecords, onListSnapshots, onDownloadBackup } = props
+  const { onExportZip, onImportZip, onPickArchiveFile } = props
 
   const [config, setConfig] = useState(() => ({
     ...DEFAULT_SYNC_CONFIG,
@@ -20,7 +21,7 @@ export function useCloudSyncPanel(props: CloudSyncPanelProps) {
   const [showConfig, setShowConfig] = useState(false)
   const [showCountModal, setShowCountModal] = useState(false)
   const [tempCount, setTempCount] = useState(config.maxBackupCount)
-  const [activeTab, setActiveTab] = useState<'cloud' | 'snapshot'>('cloud')
+  const [activeTab, setActiveTab] = useState<DataSyncTab>('cloud')
   const [showPassword, setShowPassword] = useState(false)
 
   const fetchState = useCloudSyncFetch(
@@ -73,6 +74,9 @@ export function useCloudSyncPanel(props: CloudSyncPanelProps) {
     getTargetIcon,
     getTargetColor,
     onDownloadBackup,
+    onExportZip,
+    onImportZip,
+    onPickArchiveFile,
     onSaveConfig,
     savedConfig,
     ...actions

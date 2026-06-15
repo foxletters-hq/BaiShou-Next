@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '../Toast/useToast'
-import type { CloudSyncPanelProps, SyncConfig, SyncRecord } from './cloud-sync.types'
+import type { CloudSyncPanelProps, SyncConfig, SyncRecord, DataSyncTab } from './cloud-sync.types'
 import { DEFAULT_SYNC_CONFIG } from './cloud-sync.constants'
 import { ensureMinLoadingDelay } from './cloud-sync.utils'
 
 export function useCloudSyncFetch(
   config: SyncConfig,
   setConfig: React.Dispatch<React.SetStateAction<SyncConfig>>,
-  activeTab: 'cloud' | 'snapshot',
+  activeTab: DataSyncTab,
   onListRecords: CloudSyncPanelProps['onListRecords'],
   onListSnapshots: CloudSyncPanelProps['onListSnapshots'],
   savedConfig: SyncConfig | undefined
@@ -27,6 +27,12 @@ export function useCloudSyncFetch(
 
   const fetchRecords = useCallback(async () => {
     const startTime = Date.now()
+
+    if (activeTab === 'local') {
+      setRecords([])
+      resetSelection()
+      return
+    }
 
     if (activeTab === 'snapshot') {
       if (!onListSnapshots) {
@@ -72,6 +78,12 @@ export function useCloudSyncFetch(
     const next = { ...DEFAULT_SYNC_CONFIG, ...savedConfig }
     setConfig(next)
     const startTime = Date.now()
+
+    if (activeTab === 'local') {
+      setRecords([])
+      resetSelection()
+      return
+    }
 
     if (activeTab === 'cloud') {
       if (next.target !== 'local') {

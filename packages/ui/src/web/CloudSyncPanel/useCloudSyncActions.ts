@@ -2,14 +2,14 @@ import type React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '../Toast/useToast'
 import { useDialog } from '../Dialog'
-import type { CloudSyncPanelProps, SyncConfig } from './cloud-sync.types'
+import type { CloudSyncPanelProps, SyncConfig, DataSyncTab } from './cloud-sync.types'
 import { DEFAULT_SYNC_CONFIG } from './cloud-sync.constants'
 
 export interface UseCloudSyncActionsParams {
   props: CloudSyncPanelProps
   config: SyncConfig
   setConfig: React.Dispatch<React.SetStateAction<SyncConfig>>
-  activeTab: 'cloud' | 'snapshot'
+  activeTab: DataSyncTab
   selected: Set<string>
   setIsSyncing: React.Dispatch<React.SetStateAction<boolean>>
   setIsRestoring: React.Dispatch<React.SetStateAction<boolean>>

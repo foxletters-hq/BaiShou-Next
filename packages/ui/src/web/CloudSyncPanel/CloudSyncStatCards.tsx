@@ -10,6 +10,8 @@ export interface CloudSyncStatCardsProps {
 export const CloudSyncStatCards: React.FC<CloudSyncStatCardsProps> = ({ vm }) => {
   const { t, config, activeTab, records, sizeString, getTargetIcon, getTargetColor } = vm
 
+  if (activeTab === 'local') return null
+
   return (
     <div className={styles.statCardsRow}>
       <div className={styles.statCard}>

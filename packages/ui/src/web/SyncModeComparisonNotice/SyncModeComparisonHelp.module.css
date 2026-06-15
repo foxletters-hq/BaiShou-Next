@@ -1,0 +1,90 @@
+.helpBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 4px;
+  margin: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  vertical-align: middle;
+  transition:
+    background-color 0.15s,
+    transform 0.1s;
+}
+
+.helpBtn:hover {
+  background-color: rgba(var(--text-primary-rgb, 15, 23, 42), 0.06);
+}
+
+.helpBtn:active {
+  transform: scale(0.92);
+  background-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.12);
+}
+
+.helpIcon {
+  color: var(--text-tertiary);
+  transition: color 0.15s;
+}
+
+.helpBtn:hover .helpIcon {
+  color: var(--color-primary);
+}
+
+.modal {
+  min-width: min(480px, 92vw);
+  max-width: 560px;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 560px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+}
+
+.card[data-active='true'] {
+  border-color: color-mix(in srgb, var(--color-primary) 45%, var(--border-subtle));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 18%, transparent);
+}
+
+.cardTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.cardDesc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.hint {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-tertiary);
+}
