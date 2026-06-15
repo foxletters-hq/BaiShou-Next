@@ -1,6 +1,12 @@
 import * as Crypto from 'expo-crypto'
 import type { IFileSystem } from '@baishou/core-mobile'
-import type { SyncManifest, S3SyncConfig, ManifestEntry } from '@baishou/shared'
+import type {
+  SyncProgressEvent,
+  SyncManifest,
+  S3SyncConfig,
+  ManifestEntry,
+  MergeDecision
+} from '@baishou/shared'
 import {
   assertBidirectionalSyncDivergenceAllowed,
   getIncrementalSyncStorageId,
@@ -18,6 +24,46 @@ import {
 import type { IStoragePathService } from '@baishou/core-mobile'
 import { getAppCacheDirectory } from './mobile-app-paths'
 import { MobileIncrementalCloudClient } from './mobile-incremental-cloud.client'
+
+export type MobileIncrementalProgress = Partial<
+  Pick<SyncProgressEvent, 'phase' | 'fileName' | 'action' | 'statusText'>
+> & {
+  current: number
+  total: number
+}
+
+type IncrementalProgressCallback = (progress: MobileIncrementalProgress) => void
+
+/** 本地 manifest 哈希并发度（移动端 I/O 密集，适度并行） */
+const MANIFEST_HASH_CONCURRENCY = 8
+
+function mapDecisionProgress(
+  completed: number,
+  total: number,
+  d: ReturnType<typeof threeWayMerge>[number]
+): MobileIncrementalProgress {
+  const base: MobileIncrementalProgress = {
+    phase: 'syncing',
+    current: completed,
+    total,
+    fileName: d.filePath
+  }
+  switch (d.type) {
+    case 'upload':
+      return { ...base, action: 'upload' }
+    case 'download':
+      return { ...base, action: 'download' }
+    case 'delete-remote':
+    case 'delete-local':
+      return { ...base, action: 'delete' }
+    case 'skip':
+      return { ...base, action: 'skip' }
+    case 'conflict-resolved':
+      return { ...base, action: d.direction === 'upload' ? 'upload' : 'download' }
+    default:
+      return base
+  }
+}
 
 export type MobileIncrementalSyncOutcome = {
   uploaded: number
@@ -90,7 +136,9 @@ export class MobileIncrementalEngine {
     return joinPath(metaDir, SYNC_REMOTE_SNAPSHOT_FILENAME)
   }
 
-  async buildLocalManifest(): Promise<SyncManifest> {
+  async buildLocalManifest(
+    onProgress?: (current: number, total: number, fileName: string) => void
+  ): Promise<SyncManifest> {
     const syncRoot = await this.syncRoot()
     const files: string[] = []
 
@@ -107,11 +155,15 @@ export class MobileIncrementalEngine {
           }
         } else if (info?.isFile && shouldIncludeIncrementalSyncFile(name, relPath)) {
           files.push(relPath)
+          if (files.length % 5 === 0) {
+            onProgress?.(0, files.length, relPath)
+          }
         }
       }
     }
 
     await scan(syncRoot, '')
+    const cachedManifest = await this.readLocalManifestFile().catch(() => this.emptyManifest())
     const manifest: SyncManifest = {
       version: SYNC_MANIFEST_VERSION,
       updatedAt: Date.now(),
@@ -119,7 +171,73 @@ export class MobileIncrementalEngine {
       files: {}
     }
 
-    for (const relPath of files) {
+    const total = Math.max(files.length, 1)
+    let hashedCount = 0
+    await limitExecute(files, MANIFEST_HASH_CONCURRENCY, async (relPath) => {
+      const full = joinPath(syncRoot, relPath)
+      try {
+        const info = await this.fileSystem.stat(full)
+        const cached = cachedManifest.files[relPath]
+        const mtimeMs = info.mtimeMs ?? Date.now()
+        const size = info.size ?? 0
+        if (cached?.hash && cached.size === size && cached.lastModified === mtimeMs) {
+          manifest.files[relPath] = cached
+        } else {
+          const hash = await md5File(this.fileSystem, full)
+          manifest.files[relPath] = {
+            hash,
+            size,
+            lastModified: mtimeMs
+          }
+        }
+      } catch {
+        // skip unreadable
+      }
+      hashedCount++
+      if (hashedCount % 4 === 0 || hashedCount === files.length) {
+        onProgress?.(hashedCount, total, relPath)
+      }
+    })
+    if (files.length > 0) {
+      onProgress?.(files.length, total, files[files.length - 1]!)
+    }
+    return manifest
+  }
+
+  /** 同步结束后仅刷新变更文件条目，避免全量重扫 */
+  private async patchManifestAfterDecisions(
+    baseManifest: SyncManifest,
+    decisions: MergeDecision[],
+    syncRoot: string
+  ): Promise<SyncManifest> {
+    const manifest: SyncManifest = {
+      ...baseManifest,
+      updatedAt: Date.now(),
+      deviceId: this.deviceId,
+      files: { ...baseManifest.files }
+    }
+
+    const pathsToRefresh = new Set<string>()
+    for (const d of decisions) {
+      switch (d.type) {
+        case 'upload':
+        case 'download':
+        case 'conflict-resolved':
+          pathsToRefresh.add(d.filePath)
+          break
+        case 'delete-local':
+          delete manifest.files[d.filePath]
+          break
+        default:
+          break
+      }
+    }
+
+    if (pathsToRefresh.size === 0) {
+      return manifest
+    }
+
+    await limitExecute([...pathsToRefresh], MANIFEST_HASH_CONCURRENCY, async (relPath) => {
       const full = joinPath(syncRoot, relPath)
       try {
         const info = await this.fileSystem.stat(full)
@@ -130,9 +248,10 @@ export class MobileIncrementalEngine {
           lastModified: info.mtimeMs ?? Date.now()
         }
       } catch {
-        // skip unreadable
+        delete manifest.files[relPath]
       }
-    }
+    })
+
     return manifest
   }
 
@@ -151,6 +270,16 @@ export class MobileIncrementalEngine {
 
   private emptyManifest(): SyncManifest {
     return { version: SYNC_MANIFEST_VERSION, updatedAt: 0, deviceId: '', files: {} }
+  }
+
+  private async readLocalManifestFile(): Promise<SyncManifest> {
+    const metaDir = await this.syncMetaDir()
+    const mp = this.manifestPath(metaDir)
+    if (!(await this.fileSystem.exists(mp))) {
+      return this.emptyManifest()
+    }
+    const raw = await this.fileSystem.readFile(mp)
+    return JSON.parse(raw) as SyncManifest
   }
 
   async loadRemoteSnapshot(config: S3SyncConfig): Promise<SyncManifest> {
@@ -195,7 +324,11 @@ export class MobileIncrementalEngine {
     )
   }
 
-  async getRemoteManifest(client: MobileIncrementalCloudClient): Promise<SyncManifest> {
+  async getRemoteManifest(
+    client: MobileIncrementalCloudClient,
+    onProgress?: (current: number, total: number, fileName: string) => void
+  ): Promise<SyncManifest> {
+    onProgress?.(0, 0, '')
     const files = await client.listFiles()
     const actualFilesSet = new Set(files.map((f) => f.filename.replace(/\\/g, '/')))
     const hit = files.find(
@@ -243,15 +376,23 @@ export class MobileIncrementalEngine {
    */
   async syncThreeWay(
     config: S3SyncConfig,
-    onProgress?: (current: number, total: number, text: string) => void
+    onProgress?: IncrementalProgressCallback
   ): Promise<MobileIncrementalSyncOutcome> {
     const syncRoot = await this.syncRoot()
     const metaDir = await this.syncMetaDir()
     const client = new MobileIncrementalCloudClient(config, this.fileSystem)
     client.setVaultPath(syncRoot)
 
-    const localManifest = await this.buildLocalManifest()
-    const remoteManifest = await this.getRemoteManifest(client)
+    onProgress?.({ phase: 'scanning', current: 0, total: 0 })
+    const localManifest = await this.buildLocalManifest((current, total, fileName) => {
+      onProgress?.({ phase: 'scanning', current, total, fileName })
+    })
+
+    onProgress?.({ phase: 'comparing', current: 0, total: 1 })
+    const remoteManifest = await this.getRemoteManifest(client, (current, total, fileName) => {
+      onProgress?.({ phase: 'comparing', current, total, fileName })
+    })
+    onProgress?.({ phase: 'comparing', current: 1, total: 1 })
     assertBidirectionalSyncDivergenceAllowed(localManifest, remoteManifest, config)
     const ancestorSnapshot = await this.loadRemoteSnapshot(config)
 
@@ -270,7 +411,9 @@ export class MobileIncrementalEngine {
 
     await limitExecute(decisions, fileConcurrency, async (d) => {
       completed++
-      onProgress?.(completed, decisions.length, d.filePath)
+      if (d.type !== 'skip' || completed === decisions.length || completed % 24 === 0) {
+        onProgress?.(mapDecisionProgress(completed, decisions.length, d))
+      }
       try {
         switch (d.type) {
           case 'upload':
@@ -320,10 +463,18 @@ export class MobileIncrementalEngine {
     }
 
     this.lastConflicts = conflicted
-    const finalManifest = await this.buildLocalManifest()
-    await this.saveLocalManifest(finalManifest)
-    await client.uploadFile(this.manifestPath(metaDir))
-    await this.saveRemoteSnapshot(finalManifest, config)
+    const hasManifestChanges = decisions.some((d) => d.type !== 'skip')
+    if (hasManifestChanges) {
+      onProgress?.({ phase: 'finalizing', current: 1, total: 1 })
+      const finalManifest = await this.patchManifestAfterDecisions(
+        localManifest,
+        decisions,
+        syncRoot
+      )
+      await this.saveLocalManifest(finalManifest)
+      await client.uploadFile(this.manifestPath(metaDir))
+      await this.saveRemoteSnapshot(finalManifest, config)
+    }
 
     return {
       uploaded,
@@ -338,15 +489,22 @@ export class MobileIncrementalEngine {
   /** 仅上传本地变更（对齐桌面 uploadOnly） */
   async uploadOnly(
     config: S3SyncConfig,
-    onProgress?: (current: number, total: number, text: string) => void
+    onProgress?: IncrementalProgressCallback
   ): Promise<MobileIncrementalSyncOutcome> {
     const syncRoot = await this.syncRoot()
     const metaDir = await this.syncMetaDir()
     const client = new MobileIncrementalCloudClient(config, this.fileSystem)
     client.setVaultPath(syncRoot)
 
-    const localManifest = await this.buildLocalManifest()
-    const remoteManifest = await this.getRemoteManifest(client)
+    onProgress?.({ phase: 'scanning', current: 0, total: 0 })
+    const localManifest = await this.buildLocalManifest((current, total, fileName) => {
+      onProgress?.({ phase: 'scanning', current, total, fileName })
+    })
+    onProgress?.({ phase: 'comparing', current: 0, total: 1 })
+    const remoteManifest = await this.getRemoteManifest(client, (current, total, fileName) => {
+      onProgress?.({ phase: 'comparing', current, total, fileName })
+    })
+    onProgress?.({ phase: 'comparing', current: 1, total: 1 })
     const entries = Object.entries(localManifest.files)
 
     let uploaded = 0
@@ -356,7 +514,13 @@ export class MobileIncrementalEngine {
 
     await limitExecute(entries, fileConcurrency, async ([relPath, localEntry]) => {
       completed++
-      onProgress?.(completed, entries.length, relPath)
+      onProgress?.({
+        phase: 'syncing',
+        current: completed,
+        total: entries.length,
+        fileName: relPath,
+        action: 'upload'
+      })
       const remoteEntry = remoteManifest.files[relPath]
       if (!remoteEntry || remoteEntry.hash !== localEntry.hash) {
         await client.uploadFile(joinPath(syncRoot, relPath))
@@ -383,15 +547,22 @@ export class MobileIncrementalEngine {
   /** 仅下载远程变更（对齐桌面 downloadOnly，含三向删除传播中的 download） */
   async downloadOnly(
     config: S3SyncConfig,
-    onProgress?: (current: number, total: number, text: string) => void
+    onProgress?: IncrementalProgressCallback
   ): Promise<MobileIncrementalSyncOutcome> {
     const syncRoot = await this.syncRoot()
     const metaDir = await this.syncMetaDir()
     const client = new MobileIncrementalCloudClient(config, this.fileSystem)
     client.setVaultPath(syncRoot)
 
-    const localManifest = await this.buildLocalManifest()
-    const remoteManifest = await this.getRemoteManifest(client)
+    onProgress?.({ phase: 'scanning', current: 0, total: 0 })
+    const localManifest = await this.buildLocalManifest((current, total, fileName) => {
+      onProgress?.({ phase: 'scanning', current, total, fileName })
+    })
+    onProgress?.({ phase: 'comparing', current: 0, total: 1 })
+    const remoteManifest = await this.getRemoteManifest(client, (current, total, fileName) => {
+      onProgress?.({ phase: 'comparing', current, total, fileName })
+    })
+    onProgress?.({ phase: 'comparing', current: 1, total: 1 })
     assertBidirectionalSyncDivergenceAllowed(localManifest, remoteManifest, config)
     const ancestorSnapshot = await this.loadRemoteSnapshot(config)
     const decisions = threeWayMerge(localManifest, remoteManifest, ancestorSnapshot)
@@ -403,7 +574,9 @@ export class MobileIncrementalEngine {
 
     await limitExecute(decisions, fileConcurrency, async (d) => {
       completed++
-      onProgress?.(completed, decisions.length, d.filePath)
+      if (d.type !== 'skip' || completed === decisions.length || completed % 24 === 0) {
+        onProgress?.(mapDecisionProgress(completed, decisions.length, d))
+      }
       if (d.type === 'download' || (d.type === 'conflict-resolved' && d.direction === 'download')) {
         await client.downloadFile(d.filePath, joinPath(syncRoot, d.filePath))
         downloaded++
@@ -412,7 +585,7 @@ export class MobileIncrementalEngine {
       }
     })
 
-    const finalManifest = await this.buildLocalManifest()
+    const finalManifest = await this.patchManifestAfterDecisions(localManifest, decisions, syncRoot)
     await this.saveLocalManifest(finalManifest)
     await client.uploadFile(this.manifestPath(metaDir))
     await this.saveRemoteSnapshot(finalManifest, config)

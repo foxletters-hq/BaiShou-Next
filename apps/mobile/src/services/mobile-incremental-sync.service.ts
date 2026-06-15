@@ -12,14 +12,15 @@ import {
 import type { IFileSystem, IArchiveService, SettingsManagerService } from '@baishou/core-mobile'
 import type { IStoragePathService } from '@baishou/core-mobile'
 import { FileSystemUploadType, uploadAsync } from './mobile-http-transfer'
-import { MobileIncrementalEngine } from './mobile-incremental-engine'
+import {
+  MobileIncrementalEngine,
+  type MobileIncrementalProgress
+} from './mobile-incremental-engine'
 import type { MobileDataBootstrapper } from './mobile-bootstrapper.service'
+import { invalidateAllAvatarDisplayCaches } from '../lib/assistant-avatar-display.util'
+import { invalidateUserAvatarDisplayCache } from '../lib/user-avatar-display.util'
 
-export type IncrementalSyncProgress = {
-  current: number
-  total: number
-  statusText?: string
-}
+export type IncrementalSyncProgress = MobileIncrementalProgress
 
 export type IncrementalSyncResult = {
   uploaded: number
@@ -186,6 +187,7 @@ async function uploadS3(
 
 export class MobileIncrementalSyncService {
   private readonly engine: MobileIncrementalEngine
+  private onAfterSyncComplete?: () => void
 
   constructor(
     private readonly settingsManager: SettingsManagerService,
@@ -193,13 +195,22 @@ export class MobileIncrementalSyncService {
     private readonly pathService: IStoragePathService,
     private readonly fileSystem: IFileSystem,
     private readonly bootstrapper?: MobileDataBootstrapper,
-    deviceId: string = `mobile-${Date.now()}`
+    deviceId: string = `mobile-${Date.now()}`,
+    onAfterSyncComplete?: () => void
   ) {
     this.engine = new MobileIncrementalEngine(pathService, fileSystem, deviceId)
+    this.onAfterSyncComplete = onAfterSyncComplete
+  }
+
+  setOnAfterSyncComplete(handler?: () => void): void {
+    this.onAfterSyncComplete = handler
   }
 
   private async afterSyncComplete(): Promise<void> {
+    invalidateAllAvatarDisplayCaches()
+    invalidateUserAvatarDisplayCache()
     await this.bootstrapper?.resyncFromDisk()
+    this.onAfterSyncComplete?.()
   }
 
   private async rootConfigPath(): Promise<string> {
@@ -258,11 +269,13 @@ export class MobileIncrementalSyncService {
       throw new Error('增量同步未配置或已禁用')
     }
 
-    const result = await this.engine.syncThreeWay(config, (current, total, statusText) => {
-      onProgress?.({ current, total, statusText })
+    const result = await this.engine.syncThreeWay(config, (progress) => {
+      onProgress?.(progress)
     })
 
-    await this.afterSyncComplete()
+    void this.afterSyncComplete().catch((e) => {
+      console.warn('[MobileIncrementalSync] afterSyncComplete failed:', e)
+    })
 
     return {
       uploaded: result.uploaded,
@@ -277,10 +290,10 @@ export class MobileIncrementalSyncService {
   ): Promise<IncrementalSyncResult> {
     const config = await this.getConfig()
     if (!isConfigReady(config)) throw new Error('增量同步未配置或已禁用')
-    const result = await this.engine.uploadOnly(config, (c, t, s) =>
-      onProgress?.({ current: c, total: t, statusText: s })
-    )
-    await this.afterSyncComplete()
+    const result = await this.engine.uploadOnly(config, (progress) => onProgress?.(progress))
+    void this.afterSyncComplete().catch((e) => {
+      console.warn('[MobileIncrementalSync] afterSyncComplete failed:', e)
+    })
     return {
       uploaded: result.uploaded,
       downloaded: 0,
@@ -294,10 +307,10 @@ export class MobileIncrementalSyncService {
   ): Promise<IncrementalSyncResult> {
     const config = await this.getConfig()
     if (!isConfigReady(config)) throw new Error('增量同步未配置或已禁用')
-    const result = await this.engine.downloadOnly(config, (c, t, s) =>
-      onProgress?.({ current: c, total: t, statusText: s })
-    )
-    await this.afterSyncComplete()
+    const result = await this.engine.downloadOnly(config, (progress) => onProgress?.(progress))
+    void this.afterSyncComplete().catch((e) => {
+      console.warn('[MobileIncrementalSync] afterSyncComplete failed:', e)
+    })
     return {
       uploaded: 0,
       downloaded: result.downloaded,

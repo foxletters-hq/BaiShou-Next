@@ -13,6 +13,7 @@ import {
   IncrementalSyncScopeList
 } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
+import { useIncrementalSync } from '../providers/IncrementalSyncProvider'
 import { StackScreenLayout } from '../components/StackScreenLayout'
 import { getStackScreenChrome } from '../components/stackScreenChrome'
 import { IncrementalSyncConfigSheet } from './IncrementalSyncConfigSheet'
@@ -37,34 +38,28 @@ const IncrementalSyncScreen: React.FC = () => {
   const toast = useNativeToast()
   const dialog = useDialog()
   const { services, dbReady } = useBaishou()
+  const { isSyncing, progress, isConfigured, refreshConfigured, runIncrementalSync } =
+    useIncrementalSync()
 
-  const [isConfigured, setIsConfigured] = useState(false)
-  const [isSyncing, setIsSyncing] = useState(false)
   const [showAccessKey, setShowAccessKey] = useState(false)
   const [showSecretKey, setShowSecretKey] = useState(false)
   const [testing, setTesting] = useState(false)
   const [config, setConfig] = useState<S3SyncConfig>(DEFAULT_CONFIG)
-  const [progress, setProgress] = useState<{
-    current: number
-    total: number
-    statusText?: string
-  } | null>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const refreshConfigured = useCallback(async () => {
+  const loadConfig = useCallback(async () => {
     if (!services?.incrementalSyncService || !dbReady) return
-    const svc = services.incrementalSyncService
-    setIsConfigured(await svc.isConfigured())
     try {
-      setConfig(await svc.getConfig())
+      setConfig(await services.incrementalSyncService.getConfig())
     } catch {
       setConfig(DEFAULT_CONFIG)
     }
   }, [services, dbReady])
 
   useEffect(() => {
-    refreshConfigured()
-  }, [refreshConfigured])
+    void refreshConfigured()
+    void loadConfig()
+  }, [refreshConfigured, loadConfig])
 
   useEffect(() => {
     return () => {
@@ -77,12 +72,12 @@ const IncrementalSyncScreen: React.FC = () => {
       if (!services?.incrementalSyncService) return
       try {
         await services.incrementalSyncService.saveConfig(next)
-        setIsConfigured(await services.incrementalSyncService.isConfigured())
+        await refreshConfigured()
       } catch (e: unknown) {
         toast.showError(e instanceof Error ? e.message : t('data_sync.save_failed'))
       }
     },
-    [services, t, toast]
+    [services, t, toast, refreshConfigured]
   )
 
   const applyConfigChange = useCallback(
@@ -113,46 +108,13 @@ const IncrementalSyncScreen: React.FC = () => {
     [applyConfigChange, config.enabled, dialog, t]
   )
 
-  const runSync = useCallback(
-    async (mode: 'sync' | 'uploadOnly' | 'downloadOnly', title: string) => {
-      if (!services?.incrementalSyncService) throw new Error(t('workspace.service_unavailable'))
-
-      setIsSyncing(true)
-      setProgress({ current: 0, total: 1, statusText: title })
-
-      try {
-        let result
-        if (mode === 'sync') {
-          result = await services.incrementalSyncService.sync((p) => setProgress(p))
-        } else if (mode === 'uploadOnly') {
-          result = await services.incrementalSyncService.uploadOnly((p) => setProgress(p))
-        } else {
-          result = await services.incrementalSyncService.downloadOnly((p) => setProgress(p))
-        }
-
-        toast.showSuccess(
-          t('data_sync.sync_result_uploaded').replace('$count', String(result.uploaded)) +
-            ' / ' +
-            t('data_sync.sync_result_downloaded').replace('$count', String(result.downloaded))
-        )
-        return result
-      } finally {
-        setIsSyncing(false)
-        setProgress(null)
-      }
-    },
-    [services, t, toast]
-  )
-
   const handleSync = useCallback(async () => {
     try {
-      return await runSync('sync', t('data_sync.syncing'))
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e)
-      toast.showError(msg || t('data_sync.sync_failed_generic'))
-      throw e
+      await runIncrementalSync('sync')
+    } catch {
+      // 错误提示由全局同步 Provider 处理
     }
-  }, [runSync, t, toast])
+  }, [runIncrementalSync])
 
   const handleTestConnection = useCallback(async () => {
     if (!services?.incrementalSyncService) return
@@ -213,14 +175,14 @@ const IncrementalSyncScreen: React.FC = () => {
               <Button
                 variant="primary"
                 onPress={handleSync}
-                isDisabled={!isConfigured || isSyncing}
+                isDisabled={isConfigured !== true || isSyncing}
                 isLoading={isSyncing}
                 style={styles.syncButton}
               >
                 {isSyncing ? t('data_sync.syncing') : t('data_sync.sync_now', '同步')}
               </Button>
 
-              {isSyncing && progress && progress.total > 0 ? (
+              {isSyncing && progress ? (
                 <View style={styles.progressSection}>
                   <View style={[styles.progressBarBg, { backgroundColor: colors.bgSurfaceNormal }]}>
                     <View
@@ -228,14 +190,21 @@ const IncrementalSyncScreen: React.FC = () => {
                         styles.progressBarFill,
                         {
                           backgroundColor: colors.primary,
-                          width: `${Math.round((progress.current / progress.total) * 100)}%`
+                          width:
+                            progress.total > 0
+                              ? `${Math.round((progress.current / progress.total) * 100)}%`
+                              : '35%'
                         }
                       ]}
                     />
                   </View>
                   <Text style={[styles.progressText, { color: colors.textSecondary }]}>
-                    {progress.current}/{progress.total}
-                    {progress.statusText ? ` · ${progress.statusText}` : ''}
+                    {progress.total > 0 ? `${progress.current}/${progress.total}` : ''}
+                    {progress.fileName
+                      ? ` · ${progress.fileName.split('/').pop() ?? progress.fileName}`
+                      : progress.statusText
+                        ? ` · ${progress.statusText}`
+                        : ''}
                   </Text>
                 </View>
               ) : null}

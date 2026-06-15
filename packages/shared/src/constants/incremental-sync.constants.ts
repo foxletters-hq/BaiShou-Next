@@ -27,7 +27,8 @@ export const INCREMENTAL_SYNC_SCOPE_I18N_KEYS = [
   'incremental_sync_scope_sessions',
   'incremental_sync_scope_partners',
   'incremental_sync_scope_attachments',
-  'incremental_sync_scope_settings'
+  'incremental_sync_scope_settings',
+  'incremental_sync_scope_registry'
 ] as const
 
 /** i18n 键：`data_sync.backup_scope_*`（全量 ZIP 备份范围，非增量同步） */
@@ -35,8 +36,13 @@ export const FULL_BACKUP_SCOPE_I18N_KEYS = [
   'backup_scope_intro',
   'backup_scope_root',
   'backup_scope_database',
+  'backup_scope_database_detail',
   'backup_scope_device_prefs',
-  'backup_scope_not_incremental'
+  'backup_scope_not_incremental',
+  'backup_scope_excludes_heading',
+  'backup_scope_excludes_shadow',
+  'backup_scope_excludes_sync_meta',
+  'backup_scope_import_note'
 ] as const
 
 /** 双向同步允许的最大本地/远端差异比例（%）下拉选项 */
