@@ -13,6 +13,7 @@ import {
   updateRecentPersonaIds
 } from '@baishou/ui'
 import './ManagementPane.css'
+import { useSettingsScopeNavigation } from '../hooks/useSettingsScopeNavigation'
 
 const PAGE_SIZE = 10
 
@@ -24,6 +25,7 @@ interface PersonaInfo {
 export const IdentityCardManagementPane: React.FC = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const settingsNav = useSettingsScopeNavigation()
   const dialog = useDialog()
   const toast = useToast()
   const { loadProfile } = useUserProfileStore() as { loadProfile?: () => Promise<void> }
@@ -197,7 +199,7 @@ export const IdentityCardManagementPane: React.FC = () => {
         <button
           type="button"
           className="settings-management-back"
-          onClick={() => navigate('/settings/general')}
+          onClick={() => settingsNav.goGeneral()}
           title={t('common.back', '返回')}
         >
           <MdArrowBack size={22} />

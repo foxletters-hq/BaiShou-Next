@@ -1,5 +1,6 @@
 import React from 'react'
 import { CloudSyncPanel } from '@baishou/ui'
+import { useTranslation } from 'react-i18next'
 import { cloudSyncArchiveApi } from '../cloudSyncArchiveApi'
 
 interface DataSyncPaneProps {
@@ -7,6 +8,9 @@ interface DataSyncPaneProps {
 }
 
 export const DataSyncPane: React.FC<DataSyncPaneProps> = ({ settings }) => {
+  const { i18n } = useTranslation()
+  const archiveLocale = settings.locale === 'system' ? i18n.language : settings.locale
+
   return (
     <div className="settings-pane settings-pane-full">
       <CloudSyncPanel
@@ -34,6 +38,15 @@ export const DataSyncPane: React.FC<DataSyncPaneProps> = ({ settings }) => {
         onDeleteSnapshot={cloudSyncArchiveApi.deleteSnapshot}
         onBatchDeleteSnapshots={cloudSyncArchiveApi.batchDeleteSnapshots}
         onRenameSnapshot={cloudSyncArchiveApi.renameSnapshot}
+        onExportZip={async () => {
+          await (window as any).api?.archive?.exportZip(archiveLocale)
+        }}
+        onImportZip={async (filePath: string) => {
+          await (window as any).api?.archive?.importZip(filePath)
+        }}
+        onPickArchiveFile={async () => {
+          return await (window as any).api?.archive?.pickZip(archiveLocale)
+        }}
       />
     </div>
   )

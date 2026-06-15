@@ -1,13 +1,13 @@
 import React, { useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { AIGlobalModelsView, AgentBehaviorSettingsCard, useToast } from '@baishou/ui'
 import { useTranslation } from 'react-i18next'
 import { showMigrationResultToast } from '../hooks/migration-result-toast'
+import { useSettingsScopeNavigation } from '../hooks/useSettingsScopeNavigation'
 
 export const AiGlobalModelsPane: React.FC<{ settings: any }> = ({ settings }) => {
   const { t } = useTranslation()
   const toast = useToast()
-  const navigate = useNavigate()
+  const settingsNav = useSettingsScopeNavigation()
 
   const providerRecord = React.useMemo(() => {
     const rec: Record<string, any> = {}
@@ -36,7 +36,7 @@ export const AiGlobalModelsPane: React.FC<{ settings: any }> = ({ settings }) =>
         globalEmbeddingDimension: number
       }
     }) => {
-      navigate('/settings/rag')
+      settingsNav.goRag()
       // Let RAG settings mount so it can subscribe to migration progress events.
       await new Promise<void>((resolve) => {
         requestAnimationFrame(() => resolve())
@@ -62,7 +62,7 @@ export const AiGlobalModelsPane: React.FC<{ settings: any }> = ({ settings }) =>
         return false
       }
     },
-    [t, toast, settings, navigate]
+    [t, toast, settings, settingsNav]
   )
 
   return (
@@ -74,12 +74,12 @@ export const AiGlobalModelsPane: React.FC<{ settings: any }> = ({ settings }) =>
             availableProviders={providerRecord}
             onChange={(config) => settings.setGlobalModels(config)}
             onEmbeddingMigrationRequest={handleEmbeddingMigrationRequest}
-            onManageProviders={() => navigate('/settings/ai-services')}
+            onManageProviders={() => settingsNav.goAiServices()}
           />
         </div>
       )}
       {settings.agentBehaviorConfig && (
-        <div className="glass-panel-card">
+        <div className="settings-card-section" style={{ margin: 16 }}>
           <AgentBehaviorSettingsCard
             config={settings.agentBehaviorConfig}
             onChange={(config) => settings.setAgentBehaviorConfig(config)}

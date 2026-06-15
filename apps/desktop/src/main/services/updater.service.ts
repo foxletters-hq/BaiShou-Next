@@ -1,5 +1,6 @@
 import { app } from 'electron'
 import { autoUpdater } from 'electron-updater'
+import { APP_VERSION } from '../../app-version'
 import { UpdateStatus, type UpdateCheckResult, type UpdateInfo } from './updater.types'
 import { UpdateTimeoutError, UpdateCheckError } from './updater.errors'
 
@@ -85,9 +86,9 @@ export class UpdaterService {
     this.progressCallbacks.push(callback)
   }
 
-  /** 获取当前版本 */
+  /** 获取当前版本（营销版本，供 UI 展示） */
   getCurrentVersion(): string {
-    return app.getVersion()
+    return APP_VERSION
   }
 
   /** 检查更新 */

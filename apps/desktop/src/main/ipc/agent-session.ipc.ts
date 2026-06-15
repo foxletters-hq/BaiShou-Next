@@ -148,6 +148,8 @@ export function registerSessionIPC() {
     return {
       inputTokens: session?.totalInputTokens || 0,
       outputTokens: session?.totalOutputTokens || 0,
+      cacheReadInputTokens: session?.totalCacheReadInputTokens || 0,
+      cacheWriteInputTokens: session?.totalCacheWriteInputTokens || 0,
       totalCostMicros: session?.totalCostMicros || 0
     }
   })
@@ -227,6 +229,8 @@ export function registerSessionIPC() {
             orderIndex: i + 1,
             inputTokens: msg.inputTokens ?? undefined,
             outputTokens: msg.outputTokens ?? undefined,
+            cacheReadInputTokens: msg.cacheReadInputTokens ?? undefined,
+            cacheWriteInputTokens: msg.cacheWriteInputTokens ?? undefined,
             costMicros: msg.costMicros ?? undefined,
             providerId: msg.providerId ?? undefined,
             modelId: msg.modelId ?? undefined

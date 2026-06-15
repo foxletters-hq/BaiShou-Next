@@ -1,0 +1,13 @@
+.hubPage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-app, var(--bg-surface));
+}
+
+.hubPage :global(.settings-content-motion-host) {
+  flex: 1;
+  min-height: 0;
+}

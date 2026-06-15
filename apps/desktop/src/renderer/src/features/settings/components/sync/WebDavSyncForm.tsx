@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Select } from '@baishou/ui'
+import { DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH } from '@baishou/shared'
 
 interface WebDavSyncFormProps {
   config: any
@@ -43,7 +44,7 @@ export const WebDavSyncForm: React.FC<WebDavSyncFormProps> = ({ config, onChange
         <label style={labelStyle}>{t('data_sync.path_prefix', 'Path Prefix')}</label>
         <input
           type="text"
-          value={config.webdavPath || 'backup_sync'}
+          value={config.webdavPath || DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH}
           onChange={(e) => onChange({ webdavPath: e.target.value })}
           style={inputStyle}
         />

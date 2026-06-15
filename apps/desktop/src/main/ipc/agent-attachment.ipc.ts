@@ -5,6 +5,58 @@ import { logger, supportsNativePdf } from '@baishou/shared'
 import { pathService } from './vault.ipc'
 import { getAgentManagers, getActiveProvider } from './agent-helpers'
 
+function isEphemeralAttachmentPath(filePath?: string): boolean {
+  if (!filePath) return true
+  return filePath.startsWith('blob:') || filePath.startsWith('data:')
+}
+
+function inferAttachmentExt(att: {
+  data?: string
+  fileName?: string
+  mimeType?: string
+  isPdf?: boolean
+}): string {
+  if (att.isPdf) return '.pdf'
+  const fromName = att.fileName ? path.extname(att.fileName) : ''
+  if (fromName) return fromName
+
+  const mime = att.mimeType || ''
+  const mimeMap: Record<string, string> = {
+    'image/png': '.png',
+    'image/jpeg': '.jpg',
+    'image/gif': '.gif',
+    'image/webp': '.webp',
+    'image/bmp': '.bmp',
+    'application/pdf': '.pdf'
+  }
+  if (mimeMap[mime]) return mimeMap[mime]
+
+  const match = String(att.data || '').match(/^data:([^;]+);base64,/)
+  if (match) {
+    const subtype = match[1]!.split('/')[1]?.toLowerCase()
+    if (subtype === 'jpeg') return '.jpg'
+    if (subtype) return `.${subtype}`
+  }
+  return '.png'
+}
+
+function mimeTypeFromExt(ext: string): string {
+  switch (ext.toLowerCase()) {
+    case '.png':
+      return 'image/png'
+    case '.gif':
+      return 'image/gif'
+    case '.webp':
+      return 'image/webp'
+    case '.bmp':
+      return 'image/bmp'
+    case '.pdf':
+      return 'application/pdf'
+    default:
+      return 'image/jpeg'
+  }
+}
+
 export function registerAttachmentIPC() {
   // ==========================================
   // API: 保存用户消息及其附件并处理文本提取
@@ -42,7 +94,39 @@ export function registerAttachmentIPC() {
 
             finalAttachments = await Promise.all(
               finalAttachments.map(async (att) => {
-                if (att.filePath && att.fileName) {
+                if (att.data && isEphemeralAttachmentPath(att.filePath)) {
+                  const ext = inferAttachmentExt(att)
+                  const originalName = path.parse(att.fileName || 'pasted').name || 'pasted'
+                  const newFileName = `${originalName}_${Date.now()}${ext}`
+                  const destPath = path.join(sessionAttachDir, newFileName)
+                  try {
+                    const buffer = Buffer.from(
+                      String(att.data).replace(/^data:[^;]+;base64,/, ''),
+                      'base64'
+                    )
+                    await fs.writeFile(destPath, buffer)
+                    att.url = `file:///${destPath.replace(/\\/g, '/')}`
+                    att.filePath = destPath
+                    att.fileName = newFileName
+                    att.name = newFileName
+
+                    const isImage = /\.(png|jpe?g|gif|webp|bmp|heic)$/i.test(newFileName)
+                    const isText = /\.(txt|md)$/i.test(newFileName)
+                    const isPdf = /\.pdf$/i.test(newFileName)
+                    att.isImage = isImage
+                    att.isText = isText
+                    att.isPdf = isPdf
+                    if (isImage) {
+                      att.type = 'image'
+                      att.mimeType = mimeTypeFromExt(path.extname(newFileName))
+                    } else if (isPdf) {
+                      att.type = 'file'
+                      att.mimeType = 'application/pdf'
+                    }
+                  } catch (e: any) {
+                    logger.error('Failed to write base64 attachment', e)
+                  }
+                } else if (att.filePath && att.fileName && !isEphemeralAttachmentPath(att.filePath)) {
                   const ext = path.extname(att.filePath) || path.extname(att.fileName)
                   const originalName = path.parse(att.fileName).name
                   const newFileName = `${originalName}_${Date.now()}${ext}`
@@ -122,20 +206,6 @@ export function registerAttachmentIPC() {
                       error: copyErr
                     })
                     att.url = `file:///${att.filePath.replace(/\\/g, '/')}`
-                  }
-                } else if (att.data && !att.url) {
-                  const ext = '.png'
-                  const newFileName = `pasted_${Date.now()}${ext}`
-                  const destPath = path.join(sessionAttachDir, newFileName)
-                  try {
-                    const buffer = Buffer.from(
-                      att.data.replace(/^data:image\/\w+;base64,/, ''),
-                      'base64'
-                    )
-                    await fs.writeFile(destPath, buffer)
-                    att.url = `file:///${destPath.replace(/\\/g, '/')}`
-                  } catch (e: any) {
-                    logger.error('Failed to copy base64 attachment', e)
                   }
                 }
                 return att

@@ -1,5 +1,5 @@
-import { ipcMain, app } from 'electron'
-import * as crypto from 'crypto'
+import { ipcMain } from 'electron'
+import * as fs from 'fs'
 import * as path from 'path'
 import {
   ThreeWaySyncService,
@@ -7,7 +7,12 @@ import {
   OperationLogService,
   type IIncrementalSyncService
 } from '@baishou/core-desktop'
-import type { S3SyncConfig } from '@baishou/shared'
+import {
+  DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH,
+  resolveSyncDeviceId,
+  migrateLegacyIncrementalSyncConfig,
+  type S3SyncConfig
+} from '@baishou/shared'
 import { IncrementalS3Client } from '../services/incremental-s3.client'
 import { IncrementalWebDavClient } from '../services/incremental-webdav.client'
 import { pathService } from './vault.ipc'
@@ -22,7 +27,7 @@ function getDefaultSyncConfig(): S3SyncConfig {
     endpoint: '',
     region: '',
     bucket: '',
-    path: 'backup_sync',
+    path: DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH,
     accessKey: '',
     secretKey: '',
     fileConcurrency: 5,
@@ -31,15 +36,23 @@ function getDefaultSyncConfig(): S3SyncConfig {
   }
 }
 
+async function resolveSyncConfigFile(): Promise<string | null> {
+  const root = await pathService.getRootDirectory()
+  const vaultPath = await pathService.getActiveVaultPath()
+  const configPath = await migrateLegacyIncrementalSyncConfig(root, vaultPath, {
+    exists: (p) => fs.existsSync(p),
+    read: (p) => fs.promises.readFile(p, 'utf8'),
+    write: (p, content) => fs.promises.writeFile(p, content, 'utf8'),
+    unlink: (p) => fs.promises.unlink(p)
+  })
+  return fs.existsSync(configPath) ? configPath : null
+}
+
 async function ensureSyncServicesInitialized(): Promise<void> {
   if (syncService) return
 
-  const vaultPath = await pathService.getActiveVaultPath()
-  if (!vaultPath) return
-
-  const fs = await import('fs')
-  const configPath = path.join(vaultPath, '.baishou-s3.json')
-  if (!fs.existsSync(configPath)) return
+  const configPath = await resolveSyncConfigFile()
+  if (!configPath) return
 
   try {
     const raw = await fs.promises.readFile(configPath, 'utf8')
@@ -67,9 +80,21 @@ async function getOrchestrator(): Promise<SyncOrchestrator> {
   return orchestrator
 }
 
+async function resolveDesktopDeviceId(syncMetaDir: string): Promise<string> {
+  return resolveSyncDeviceId('desktop', syncMetaDir, {
+    exists: (p) => fs.existsSync(p),
+    read: (p) => fs.promises.readFile(p, 'utf8'),
+    write: (p, content) => fs.promises.writeFile(p, content, 'utf8'),
+    mkdir: async (p) => {
+      await fs.promises.mkdir(p, { recursive: true })
+    }
+  })
+}
+
 async function createSyncService(config: S3SyncConfig): Promise<IIncrementalSyncService> {
-  const vaultPath = await pathService.getActiveVaultPath()
-  const deviceId = 'desktop-' + crypto.randomUUID().substring(0, 8)
+  const syncRoot = await pathService.getRootDirectory()
+  const syncMetaDir = path.join(syncRoot, '.baishou')
+  const deviceId = await resolveDesktopDeviceId(syncMetaDir)
 
   let client: IncrementalS3Client | IncrementalWebDavClient
 
@@ -93,15 +118,11 @@ async function createSyncService(config: S3SyncConfig): Promise<IIncrementalSync
     )
   }
 
-  if (vaultPath) {
-    client.setVaultPath(vaultPath)
-  }
+  client.setVaultPath(syncRoot)
 
   syncService = new ThreeWaySyncService(pathService, client, deviceId)
 
-  const logDir = vaultPath
-    ? path.join(vaultPath, '.baishou', 'sync-log')
-    : path.join(app.getPath('userData'), 'sync-log')
+  const logDir = path.join(syncMetaDir, 'sync-log')
   const logService = new OperationLogService(logDir)
 
   const gitService = getGitService()
@@ -109,6 +130,16 @@ async function createSyncService(config: S3SyncConfig): Promise<IIncrementalSync
   orchestrator = new SyncOrchestrator(syncService, logService, gitService, deviceId)
 
   return syncService
+}
+
+async function afterIncrementalDownload(result: {
+  downloaded: string[]
+  deletedLocal: string[]
+}): Promise<void> {
+  if (result.downloaded.length > 0 || result.deletedLocal.length > 0) {
+    const { globalBootstrapper } = await import('../services/bootstrapper.service')
+    await globalBootstrapper.fullyResyncAllEcosystems()
+  }
 }
 
 export function registerIncrementalSyncIPC() {
@@ -132,8 +163,8 @@ export function registerIncrementalSyncIPC() {
   })
 
   ipcMain.handle('incrementalSync:testConnection', async (_, config?: Partial<S3SyncConfig>) => {
-    const vaultPath = await pathService.getActiveVaultPath()
-    let clientToTest: any
+    const syncRoot = await pathService.getRootDirectory()
+    let clientToTest: IncrementalS3Client | IncrementalWebDavClient
     if (config) {
       const merged = {
         ...getDefaultSyncConfig(),
@@ -158,27 +189,17 @@ export function registerIncrementalSyncIPC() {
           merged.path
         )
       }
-      if (vaultPath) {
-        clientToTest.setVaultPath(vaultPath)
-      }
+      clientToTest.setVaultPath(syncRoot)
     } else {
-      try {
-        const ok = await (await getSyncService()).testConnection()
-        if (!ok) {
-          throw new Error('连接测试失败，请检查配置信息')
-        }
-        return true
-      } catch (err) {
-        throw err
+      const ok = await (await getSyncService()).testConnection()
+      if (!ok) {
+        throw new Error('连接测试失败，请检查配置信息')
       }
+      return true
     }
 
-    try {
-      await clientToTest.listFiles()
-      return true
-    } catch (err) {
-      throw err
-    }
+    await clientToTest.listFiles()
+    return true
   })
 
   ipcMain.handle('incrementalSync:sync', async (event) => {
@@ -187,10 +208,7 @@ export function registerIncrementalSyncIPC() {
     ).sync((progress) => {
       event.sender.send('incrementalSync:progress', progress)
     })
-    if (result.downloaded.length > 0 || result.deletedLocal.length > 0) {
-      const { globalBootstrapper } = await import('../services/bootstrapper.service')
-      await globalBootstrapper.fullyResyncAllEcosystems()
-    }
+    await afterIncrementalDownload(result)
     return result
   })
 
@@ -206,10 +224,7 @@ export function registerIncrementalSyncIPC() {
     ).downloadOnly((progress) => {
       event.sender.send('incrementalSync:progress', progress)
     })
-    if (result.downloaded.length > 0 || result.deletedLocal.length > 0) {
-      const { globalBootstrapper } = await import('../services/bootstrapper.service')
-      await globalBootstrapper.fullyResyncAllEcosystems()
-    }
+    await afterIncrementalDownload(result)
     return result
   })
 
@@ -229,18 +244,13 @@ export function registerIncrementalSyncIPC() {
     return (await getSyncService()).getLastSyncConflicts()
   })
 
-  // ── 编排器一键同步 API ─────────────────────────────────────
-
   ipcMain.handle('incrementalSync:orchestratedSync', async (event) => {
     const result = await (
       await getOrchestrator()
     ).sync((progress) => {
       event.sender.send('incrementalSync:progress', progress)
     })
-    if (result.downloaded.length > 0 || result.deletedLocal.length > 0) {
-      const { globalBootstrapper } = await import('../services/bootstrapper.service')
-      await globalBootstrapper.fullyResyncAllEcosystems()
-    }
+    await afterIncrementalDownload(result)
     return result
   })
 
@@ -256,10 +266,7 @@ export function registerIncrementalSyncIPC() {
     ).downloadOnly((progress) => {
       event.sender.send('incrementalSync:progress', progress)
     })
-    if (result.downloaded.length > 0 || result.deletedLocal.length > 0) {
-      const { globalBootstrapper } = await import('../services/bootstrapper.service')
-      await globalBootstrapper.fullyResyncAllEcosystems()
-    }
+    await afterIncrementalDownload(result)
     return result
   })
 

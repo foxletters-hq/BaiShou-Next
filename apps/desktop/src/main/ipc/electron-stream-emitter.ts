@@ -1,4 +1,4 @@
-import type { IStreamEmitter } from '@baishou/ai'
+import type { IStreamEmitter, StreamFinishPayload } from '@baishou/ai'
 import { logger } from '@baishou/shared'
 
 export class ElectronStreamEmitter implements IStreamEmitter {
@@ -28,7 +28,7 @@ export class ElectronStreamEmitter implements IStreamEmitter {
     this.event.sender.send('agent:tool-result', { sessionId, name, result })
   }
 
-  sendFinish(sessionId: string, payload: { success?: boolean; error?: string }) {
+  sendFinish(sessionId: string, payload: StreamFinishPayload) {
     logger.info(
       `[ElectronStreamEmitter] sendFinish - sessionId=${sessionId}, payload=${JSON.stringify(payload)}`
     )

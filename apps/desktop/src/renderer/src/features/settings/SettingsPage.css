@@ -39,6 +39,7 @@
 
 .settings-page-wrapper.settings-closing {
   animation: settingsClose 0.15s cubic-bezier(0.8, 0, 0.8, 1) forwards;
+  pointer-events: none;
 }
 
 .settings-layout-body {
@@ -51,7 +52,7 @@
 
 /* Sidebar for Tabs */
 .settings-sidebar {
-  width: 260px;
+  width: 280px;
   flex-shrink: 0;
   background-color: var(--bg-surface);
   border-right: 1px solid var(--border-subtle);
@@ -253,6 +254,13 @@
 
 .glass-panel-card:last-child {
   border-bottom: none;
+}
+
+.settings-card-section {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-card);
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .settings-item-divider {

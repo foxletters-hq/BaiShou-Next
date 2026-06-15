@@ -4,9 +4,12 @@ import * as fs from 'fs'
 import * as fsp from 'fs/promises'
 import archiver from 'archiver'
 import { SettingsRepository, UserProfileRepository, executeRawSql } from '@baishou/database-desktop'
-import { logger } from '@baishou/shared'
+import { FULL_BACKUP_EXCLUDED_ROOT_NAMES, logger } from '@baishou/shared'
 import { getAppDb } from '../db'
 import { DesktopStoragePathService } from './path.service'
+
+/** ZIP 内用户级数据（不在 vault 根目录下） */
+export const ARCHIVE_USER_AVATARS_ZIP_PREFIX = 'user-data/UserAvatars'
 
 /** Balance speed and size for full vault backups (level 9 is very slow on large trees). Level 1 is fastest. */
 const ZIP_COMPRESSION_LEVEL = 1
@@ -99,7 +102,13 @@ export class ZipExporter {
     if (fs.existsSync(rootDir)) {
       const entities = await fsp.readdir(rootDir, { withFileTypes: true })
       for (const dirent of entities) {
-        if (dirent.name === 'snapshots' || dirent.name === 'temp') continue
+        if (
+          dirent.name === 'snapshots' ||
+          dirent.name === 'temp' ||
+          FULL_BACKUP_EXCLUDED_ROOT_NAMES.has(dirent.name)
+        ) {
+          continue
+        }
 
         const fullPath = path.join(rootDir, dirent.name)
         if (dirent.isDirectory()) {
@@ -116,6 +125,18 @@ export class ZipExporter {
           const store = shouldStoreWithoutCompression(dirent.name)
           archive.file(fullPath, { name: dirent.name, store } as any)
         }
+      }
+    }
+
+    const legacyAvatarsDir = path.join(app.getPath('userData'), 'UserAvatars')
+    if (fs.existsSync(legacyAvatarsDir)) {
+      try {
+        const legacyEntries = await fsp.readdir(legacyAvatarsDir)
+        if (legacyEntries.length > 0) {
+          await addDirectory(legacyAvatarsDir, ARCHIVE_USER_AVATARS_ZIP_PREFIX)
+        }
+      } catch (e: any) {
+        logger.warn('Failed to pack legacy UserAvatars directory', e)
       }
     }
 
