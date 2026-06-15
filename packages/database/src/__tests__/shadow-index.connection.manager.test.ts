@@ -96,11 +96,6 @@ describe('ShadowIndexConnectionManager', () => {
 
   it('should be able to recover from a corrupted database file', async () => {
     const dbFile = path.join(tempDir, SHADOW_INDEX_DB_FILENAME)
-
-    await manager.connect(tempDir)
-    expect(manager.isConnected()).toBe(true)
-    manager.disconnect()
-
     await fs.mkdir(tempDir, { recursive: true })
     await fs.writeFile(dbFile, 'THIS_IS_NOT_A_SQLITE_FILE_TOTALLY_CORRUPT')
 

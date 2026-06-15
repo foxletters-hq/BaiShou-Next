@@ -51,6 +51,7 @@ export class ShadowIndexConnectionManager {
     } catch (e: any) {
       logger.error(`[ShadowDB] 数据库初始化失败: ${e.message}`)
       this._disconnect()
+      await this._deleteDbFiles(dbPath)
 
       try {
         await this._initDatabase(dbPath)
@@ -88,53 +89,82 @@ export class ShadowIndexConnectionManager {
   private async _ensureHealthyFile(dbPath: string): Promise<void> {
     if (!fs.existsSync(dbPath)) return
 
-    const probePath = dbPath + '.probe'
     let isCorrupt = false
 
     try {
-      fs.copyFileSync(dbPath, probePath)
+      const header = fs.readFileSync(dbPath)
+      if (header.length < 16 || header.subarray(0, 15).toString('utf8') !== 'SQLite format 3') {
+        isCorrupt = true
+      }
+    } catch {
+      isCorrupt = true
+    }
 
-      let probe: Client | null = null
+    if (!isCorrupt) {
+      const probePath = dbPath + '.probe'
       try {
-        probe = createClient({ url: `file:${probePath}` })
-        const res = await probe.execute('PRAGMA quick_check;')
-        const firstRow = res.rows[0]
-        isCorrupt = !firstRow || firstRow['quick_check'] !== 'ok'
+        fs.copyFileSync(dbPath, probePath)
+
+        let probe: Client | null = null
+        try {
+          probe = createClient({ url: `file:${probePath}` })
+          const res = await probe.execute('PRAGMA quick_check;')
+          const firstRow = res.rows[0]
+          isCorrupt = !firstRow || firstRow['quick_check'] !== 'ok'
+        } catch {
+          isCorrupt = true
+        } finally {
+          try {
+            probe?.close()
+          } catch {}
+        }
       } catch {
         isCorrupt = true
       } finally {
-        try {
-          probe?.close()
-        } catch {}
-      }
-    } catch {
-      return
-    } finally {
-      for (const f of [probePath, `${probePath}-wal`, `${probePath}-shm`]) {
-        try {
-          fs.unlinkSync(f)
-        } catch {}
+        for (const f of [dbPath + '.probe', `${dbPath}.probe-wal`, `${dbPath}.probe-shm`]) {
+          try {
+            fs.unlinkSync(f)
+          } catch {}
+        }
       }
     }
 
     if (!isCorrupt) return
 
     logger.warn(`[ShadowDB] 检测到损坏的影子索引库，正在清理: ${dbPath}`)
-    let canDelete = true
-    for (const file of [dbPath, `${dbPath}-wal`, `${dbPath}-shm`]) {
-      try {
-        if (fs.existsSync(file)) fs.unlinkSync(file)
-      } catch (e: any) {
-        logger.error(`[ShadowDB] 删除损坏文件失败: ${file}`, e.message)
-        canDelete = false
-      }
-    }
-
-    if (!canDelete) {
+    const deleted = await this._deleteDbFiles(dbPath)
+    if (!deleted) {
       throw new Error(
         `无法清理损坏的影子索引库: ${dbPath}。文件可能正被其他程序占用，请关闭后重试。`
       )
     }
+  }
+
+  private async _deleteDbFiles(dbPath: string): Promise<boolean> {
+    const files = [dbPath, `${dbPath}-wal`, `${dbPath}-shm`]
+    for (let attempt = 0; attempt < 8; attempt++) {
+      let failed = false
+      for (const file of files) {
+        try {
+          if (fs.existsSync(file)) fs.unlinkSync(file)
+        } catch (e: any) {
+          if (e?.code === 'EBUSY' || e?.code === 'EPERM') {
+            failed = true
+            continue
+          }
+          logger.error(`[ShadowDB] 删除损坏文件失败: ${file}`, e.message)
+          return false
+        }
+      }
+      if (!failed) return true
+      await new Promise((resolve) => setTimeout(resolve, 25 * (attempt + 1)))
+    }
+    for (const file of files) {
+      if (fs.existsSync(file)) {
+        logger.error(`[ShadowDB] 删除损坏文件失败: ${file}`, 'EBUSY')
+      }
+    }
+    return false
   }
 
   private async _initDatabase(dbPath: string): Promise<void> {

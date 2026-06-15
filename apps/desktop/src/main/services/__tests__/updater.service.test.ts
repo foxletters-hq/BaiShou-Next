@@ -29,6 +29,11 @@ vi.mock('electron', () => ({
   }
 }))
 
+vi.mock('../../../app-version', () => ({
+  APP_VERSION: 'Next-1.0.0',
+  APP_VERSION_NUMBER: '1.0.0'
+}))
+
 describe('UpdaterService', () => {
   let updaterService: any
   let mockAutoUpdater: any
@@ -44,7 +49,7 @@ describe('UpdaterService', () => {
   })
 
   afterEach(() => {
-    vi.restoreAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('getCurrentVersion', () => {
