@@ -27,7 +27,7 @@ export function markSidebarVisibilityConfigured(): void {
   localStorage.setItem(VISIBILITY_CONFIGURED_KEY, '1')
 }
 
-/** 未手动配置前：默认仅显示日记与回忆 */
+/** 未手动配置前：默认显示日记、回忆、增量同步与版本控制 */
 export function loadHiddenNavItems(): string[] {
   if (!isSidebarVisibilityConfigured()) {
     return [...getDefaultHiddenNavIds()]

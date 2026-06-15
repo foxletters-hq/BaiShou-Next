@@ -26,7 +26,12 @@ export function sidebarNavIcon(icon: React.ReactElement<{ size?: number }>): Rea
   return React.cloneElement(icon, { size: SIDEBAR_NAV_ICON_SIZE })
 }
 
-export const DEFAULT_VISIBLE_NAV_IDS = ['diary', 'summary'] as const
+export const DEFAULT_VISIBLE_NAV_IDS = [
+  'diary',
+  'summary',
+  'incremental-sync',
+  'git'
+] as const
 
 /** 与系统设置侧边栏条目一一对应（另含日记区核心页 diary / summary） */
 export const ALL_SIDEBAR_NAV_IDS = [
