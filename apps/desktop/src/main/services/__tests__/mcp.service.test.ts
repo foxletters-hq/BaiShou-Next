@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { z } from 'zod'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
