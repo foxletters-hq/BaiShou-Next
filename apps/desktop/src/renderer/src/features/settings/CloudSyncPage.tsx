@@ -1,17 +1,20 @@
 import React, { useEffect } from 'react'
 import { CloudSyncPanel } from '@baishou/ui'
 import { useSettingsStore } from '@baishou/store'
+import { useTranslation } from 'react-i18next'
 import { cloudSyncArchiveApi } from './cloudSyncArchiveApi'
 
 export const CloudSyncPage: React.FC = () => {
   const settings = useSettingsStore()
+  const { i18n } = useTranslation()
+  const archiveLocale = settings.locale === 'system' ? i18n.language : settings.locale
 
   useEffect(() => {
     settings.loadConfig()
   }, [settings.loadConfig])
 
   return (
-    <div style={{ flex: 1, padding: 0, overflowY: 'auto' }}>
+    <div style={{ flex: 1, overflowY: 'auto' }}>
       <CloudSyncPanel
         savedConfig={settings.cloudSyncConfig}
         onSaveConfig={settings.setCloudSyncConfig}
@@ -37,6 +40,15 @@ export const CloudSyncPage: React.FC = () => {
         onDeleteSnapshot={cloudSyncArchiveApi.deleteSnapshot}
         onBatchDeleteSnapshots={cloudSyncArchiveApi.batchDeleteSnapshots}
         onRenameSnapshot={cloudSyncArchiveApi.renameSnapshot}
+        onExportZip={async () => {
+          await (window as any).api?.archive?.exportZip(archiveLocale)
+        }}
+        onImportZip={async (filePath: string) => {
+          await (window as any).api?.archive?.importZip(filePath)
+        }}
+        onPickArchiveFile={async () => {
+          return await (window as any).api?.archive?.pickZip(archiveLocale)
+        }}
       />
     </div>
   )

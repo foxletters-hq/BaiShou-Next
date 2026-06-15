@@ -11,6 +11,7 @@ import {
   type VaultInfo
 } from '@baishou/ui'
 import './ManagementPane.css'
+import { useSettingsScopeNavigation } from '../hooks/useSettingsScopeNavigation'
 
 const PAGE_SIZE = 10
 
@@ -36,6 +37,7 @@ function toTimestamp(value: Date | string | undefined): number {
 export const WorkspaceManagementPane: React.FC = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const settingsNav = useSettingsScopeNavigation()
   const dialog = useDialog()
   const toast = useToast()
 
@@ -146,7 +148,7 @@ export const WorkspaceManagementPane: React.FC = () => {
         <button
           type="button"
           className="settings-management-back"
-          onClick={() => navigate('/settings/general')}
+          onClick={() => settingsNav.goGeneral()}
           title={t('common.back', '返回')}
         >
           <MdArrowBack size={22} />

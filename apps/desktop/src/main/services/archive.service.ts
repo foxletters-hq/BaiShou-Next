@@ -1,5 +1,5 @@
 import { app, dialog, type BrowserWindow } from 'electron'
-import { translateMain } from '@baishou/shared'
+import { translateMain, resetIncrementalSyncMetaAfterFullRestore, logger } from '@baishou/shared'
 import * as path from 'path'
 import * as fs from 'fs'
 import * as fsp from 'fs/promises'
@@ -13,10 +13,9 @@ import {
   UserProfileRepository,
   installDatabaseSchema
 } from '@baishou/database-desktop'
-import { logger } from '@baishou/shared'
 import { getAppDb } from '../db'
 import { DesktopStoragePathService } from './path.service'
-import { ZipExporter } from './ZipExporter'
+import { ZipExporter, ARCHIVE_USER_AVATARS_ZIP_PREFIX } from './ZipExporter'
 import { MetadataMigrator } from './MetadataMigrator'
 import { SnapshotManager } from './SnapshotManager'
 
@@ -171,6 +170,10 @@ export class DesktopArchiveService implements IArchiveService {
               await fsp.unlink(srcFile).catch(() => {})
               continue
             }
+            if (entry.name === 'user-data' && src === tempExtractDir) {
+              await fsp.rm(srcFile, { recursive: true, force: true }).catch(() => {})
+              continue
+            }
             await fsp.copyFile(srcFile, destFile)
             await fsp.unlink(srcFile)
           }
@@ -178,8 +181,10 @@ export class DesktopArchiveService implements IArchiveService {
       }
       await moveAll(tempExtractDir, rootDir)
 
+      await this.restoreUserAvatarsFromExtract(tempExtractDir)
+
       try {
-        const registryFile = path.join(rootDir, '.baishou', 'vault_registry.json')
+        const registryFile = path.join(rootDir, 'vault_registry.json')
         if (fs.existsSync(registryFile)) {
           const raw = await fsp.readFile(registryFile, 'utf8')
           const vaults: any[] = JSON.parse(raw)
@@ -294,6 +299,21 @@ export class DesktopArchiveService implements IArchiveService {
       }
     }
 
+    try {
+      const syncMetaDir = path.join(rootDir, '.baishou')
+      await resetIncrementalSyncMetaAfterFullRestore(syncMetaDir, {
+        exists: (p) => fs.existsSync(p),
+        read: (p) => fsp.readFile(p, 'utf8'),
+        write: (p, content) => fsp.writeFile(p, content, 'utf8'),
+        unlink: (p) => fsp.unlink(p)
+      })
+      logger.info('[ArchiveService] Incremental sync meta reset after full restore.')
+    } catch (e: unknown) {
+      logger.warn('[ArchiveService] Failed to reset incremental sync meta after import:', {
+        error: e instanceof Error ? e.message : String(e)
+      })
+    }
+
     await fsp.rm(tempExtractDir, { recursive: true, force: true }).catch(() => {})
 
     await this.vaultService.initRegistry()
@@ -342,5 +362,31 @@ export class DesktopArchiveService implements IArchiveService {
 
   public async batchDeleteSnapshots(filenames: string[]): Promise<number> {
     return new SnapshotManager().batchDelete(filenames)
+  }
+
+  private async restoreUserAvatarsFromExtract(extractDir: string): Promise<void> {
+    const avatarsSrc = path.join(extractDir, ...ARCHIVE_USER_AVATARS_ZIP_PREFIX.split('/'))
+    if (!fs.existsSync(avatarsSrc)) return
+
+    const avatarsDest = await this.pathService.getUserAvatarsDirectory()
+    await fsp.rm(avatarsDest, { recursive: true, force: true }).catch(() => {})
+    await fsp.mkdir(avatarsDest, { recursive: true })
+
+    const copyDir = async (src: string, dest: string) => {
+      const entries = await fsp.readdir(src, { withFileTypes: true })
+      for (const entry of entries) {
+        const srcPath = path.join(src, entry.name)
+        const destPath = path.join(dest, entry.name)
+        if (entry.isDirectory()) {
+          await fsp.mkdir(destPath, { recursive: true })
+          await copyDir(srcPath, destPath)
+        } else {
+          await fsp.copyFile(srcPath, destPath)
+        }
+      }
+    }
+
+    await copyDir(avatarsSrc, avatarsDest)
+    logger.info('[ArchiveService] User avatars restored from archive.')
   }
 }

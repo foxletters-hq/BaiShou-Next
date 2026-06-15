@@ -1,7 +1,7 @@
 import { app } from 'electron'
 import * as path from 'path'
 import * as fs from 'fs/promises'
-import { sanitizeVaultDirectoryName } from '@baishou/core'
+import { sanitizeVaultDirectoryName } from '@baishou/core-desktop'
 import { IStoragePathService } from '@baishou/core-desktop'
 
 export class DesktopStoragePathService implements IStoragePathService {

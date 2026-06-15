@@ -1,7 +1,11 @@
 import * as path from 'path'
 import * as fs from 'fs'
 import { createClient, WebDAVClient } from 'webdav'
-import { INCREMENTAL_SYNC_CHUNK_SIZE, limitExecute } from '@baishou/shared'
+import {
+  INCREMENTAL_SYNC_CHUNK_SIZE,
+  WEBDAV_SHALLOW_LIST_CONCURRENCY,
+  limitExecute
+} from '@baishou/shared'
 import type { ICloudSyncClient, SyncRecord } from '@baishou/core-desktop'
 
 /**
@@ -201,41 +205,73 @@ export class IncrementalWebDavClient implements ICloudSyncClient {
     const records: SyncRecord[] = []
 
     try {
-      const items = (await this.client.getDirectoryContents(this.basePath, { deep: true })) as any[]
-      for (const item of items) {
-        if (!item || item.type === 'directory') continue
-
-        let relativeName = item.filename || item.basename
-        const idx = relativeName.indexOf(this.basePath)
-        if (idx !== -1) {
-          relativeName = relativeName.substring(idx + this.basePath.length)
-        } else {
-          const cleanBasePath = this.basePath.replace(/^\/+|\/+$/g, '')
-          const cleanIdx = relativeName.indexOf(cleanBasePath)
-          if (cleanIdx !== -1) {
-            relativeName = relativeName.substring(cleanIdx + cleanBasePath.length)
-          } else {
-            relativeName = item.basename || relativeName
-          }
-        }
-
-        if (relativeName.startsWith('/')) {
-          relativeName = relativeName.substring(1)
-        }
-
-        records.push({
-          filename: relativeName,
-          lastModified: item.lastmod ? new Date(item.lastmod) : new Date(),
-          sizeInBytes: item.size || 0,
-          managed: /^BaiShou_.*\.zip$/i.test(relativeName)
-        })
-      }
+      await this.collectFilesShallow(this.basePath.replace(/\/$/, '') || '/', records)
     } catch (e: any) {
       if (e.status === 404 || e.message?.includes('404')) return []
       throw new Error(`WebDAV list failed: ${e.message || e}`)
     }
 
     return records.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime())
+  }
+
+  /**
+   * 逐目录 Depth:1 PROPFIND，避免单次 deep PROPFIND 触发 fast-xml-parser 实体展开上限。
+   */
+  private async collectFilesShallow(remoteDir: string, records: SyncRecord[]): Promise<void> {
+    let items: any[]
+    try {
+      items = (await this.client.getDirectoryContents(remoteDir, { deep: false })) as any[]
+    } catch (e: any) {
+      if (e.status === 404 || e.message?.includes('404')) return
+      throw e
+    }
+
+    const subdirs: string[] = []
+    const normalizedRequestDir = remoteDir.replace(/\/$/, '')
+
+    for (const item of items) {
+      if (!item?.filename) continue
+      const itemPath = String(item.filename).replace(/\/$/, '')
+      if (item.type === 'directory') {
+        if (itemPath !== normalizedRequestDir) {
+          subdirs.push(item.filename)
+        }
+        continue
+      }
+
+      const relativeName = this.toRelativeFilename(item)
+      records.push({
+        filename: relativeName,
+        lastModified: item.lastmod ? new Date(item.lastmod) : new Date(),
+        sizeInBytes: item.size || 0,
+        managed: /^BaiShou_.*\.zip$/i.test(relativeName)
+      })
+    }
+
+    await limitExecute(subdirs, WEBDAV_SHALLOW_LIST_CONCURRENCY, async (dir) => {
+      await this.collectFilesShallow(dir, records)
+    })
+  }
+
+  private toRelativeFilename(item: { filename?: string; basename?: string }): string {
+    let relativeName = item.filename || item.basename || ''
+    const idx = relativeName.indexOf(this.basePath)
+    if (idx !== -1) {
+      relativeName = relativeName.substring(idx + this.basePath.length)
+    } else {
+      const cleanBasePath = this.basePath.replace(/^\/+|\/+$/g, '')
+      const cleanIdx = relativeName.indexOf(cleanBasePath)
+      if (cleanIdx !== -1) {
+        relativeName = relativeName.substring(cleanIdx + cleanBasePath.length)
+      } else {
+        relativeName = item.basename || relativeName
+      }
+    }
+
+    if (relativeName.startsWith('/')) {
+      relativeName = relativeName.substring(1)
+    }
+    return relativeName
   }
 
   async deleteFile(remoteFilename: string): Promise<void> {

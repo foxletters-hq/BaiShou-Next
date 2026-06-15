@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Select } from '@baishou/ui'
+import { DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH } from '@baishou/shared'
 
 interface S3SyncFormProps {
   config: any
@@ -61,7 +62,7 @@ export const S3SyncForm: React.FC<S3SyncFormProps> = ({ config, onChange }) => {
         <label style={labelStyle}>{t('data_sync.path_prefix', 'Path Prefix')}</label>
         <input
           type="text"
-          value={config.s3Path || 'backup_sync'}
+          value={config.s3Path || DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH}
           onChange={(e) => onChange({ s3Path: e.target.value })}
           style={inputStyle}
         />

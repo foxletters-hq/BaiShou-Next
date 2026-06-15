@@ -50,6 +50,7 @@ export class AgentChatService {
     userConfig: unknown
     attachments?: unknown[]
     skipUserMessageRecording?: boolean
+    forceRecompress?: boolean
   }) {
     const { realSessionRepo, realSnapshotRepo } = getAgentManagers()
     const emitter = new ElectronStreamEmitter(params.event)
@@ -65,6 +66,7 @@ export class AgentChatService {
       userConfig: params.userConfig,
       attachments: params.attachments,
       skipUserMessageRecording: params.skipUserMessageRecording,
+      forceRecompress: params.forceRecompress,
       realSessionRepo,
       realSnapshotRepo,
       toolRegistry,
@@ -106,7 +108,8 @@ export class AgentChatService {
         modelId: args.modelId || globalModels?.globalDialogueModelId || 'deepseek-chat',
         systemModels,
         userConfig,
-        attachments: args.attachments
+        attachments: args.attachments,
+        skipUserMessageRecording: Boolean(args.userMsgId)
       })
 
       try {

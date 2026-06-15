@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { Cloud, Globe, Settings } from 'lucide-react'
 import { useSyncStore } from '@baishou/store'
 import { useTranslation } from 'react-i18next'
-import { SYNC_DIVERGENCE_THRESHOLD_OPTIONS } from '@baishou/shared'
+import { SYNC_DIVERGENCE_THRESHOLD_OPTIONS, DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH } from '@baishou/shared'
 import { Switch, useDialog, Select } from '@baishou/ui'
 import { S3SyncForm } from './S3SyncForm'
 import { WebDavSyncForm } from './WebDavSyncForm'
@@ -22,11 +22,11 @@ export const SyncConfigForm: React.FC = () => {
     bucket: '',
     s3AccessKey: '',
     s3SecretKey: '',
-    s3Path: 'backup_sync',
+    s3Path: DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH,
     webdavUrl: '',
     webdavUsername: '',
     webdavPassword: '',
-    webdavPath: 'backup_sync',
+    webdavPath: DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH,
     fileConcurrency: 5,
     chunkConcurrency: 5,
     maxDivergencePercent: 100
@@ -87,7 +87,11 @@ export const SyncConfigForm: React.FC = () => {
         const loadedS3SecretKey =
           cfg.s3SecretKey !== undefined ? cfg.s3SecretKey : curTarget === 's3' ? cfg.secretKey : ''
         const loadedS3Path =
-          cfg.s3Path !== undefined ? cfg.s3Path : curTarget === 's3' ? cfg.path : 'backup_sync'
+          cfg.s3Path !== undefined
+            ? cfg.s3Path
+            : curTarget === 's3'
+              ? cfg.path
+              : DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH
 
         const loadedWebdavUsername =
           cfg.webdavUsername !== undefined
@@ -106,7 +110,7 @@ export const SyncConfigForm: React.FC = () => {
             ? cfg.webdavPath
             : curTarget === 'webdav'
               ? cfg.path
-              : 'backup_sync'
+              : DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH
 
         setConfig({
           enabled: cfg.enabled === true,
@@ -117,10 +121,10 @@ export const SyncConfigForm: React.FC = () => {
           webdavUrl: cfg.webdavUrl || '',
           s3AccessKey: loadedS3AccessKey || '',
           s3SecretKey: loadedS3SecretKey || '',
-          s3Path: loadedS3Path || 'backup_sync',
+          s3Path: loadedS3Path || DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH,
           webdavUsername: loadedWebdavUsername || '',
           webdavPassword: loadedWebdavPassword || '',
-          webdavPath: loadedWebdavPath || 'backup_sync',
+          webdavPath: loadedWebdavPath || DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH,
           chunkConcurrency: cfg.chunkConcurrency !== undefined ? cfg.chunkConcurrency : 5,
           fileConcurrency: cfg.fileConcurrency !== undefined ? cfg.fileConcurrency : 5,
           maxDivergencePercent:

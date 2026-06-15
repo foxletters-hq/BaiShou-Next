@@ -1,6 +1,6 @@
 import * as path from 'path'
 import * as Minio from 'minio'
-import { shouldUseS3PathStyle } from '@baishou/shared'
+import { shouldUseS3PathStyle, listAllS3Objects } from '@baishou/shared'
 import type { ICloudSyncClient, SyncRecord } from '@baishou/core-desktop'
 
 /**
@@ -12,6 +12,10 @@ export class IncrementalS3Client implements ICloudSyncClient {
   private client: Minio.Client
   private bucket: string
   private basePath: string
+  private endpoint: string
+  private region: string
+  private accessKey: string
+  private secretKey: string
   private vaultPath: string | null = null
   private chunkConcurrency: number
 
@@ -39,6 +43,10 @@ export class IncrementalS3Client implements ICloudSyncClient {
       pathStyle: shouldUseS3PathStyle(safeEndpoint)
     })
     this.bucket = bucket
+    this.endpoint = safeEndpoint
+    this.region = region || 'us-east-1'
+    this.accessKey = accessKey
+    this.secretKey = secretKey
     this.chunkConcurrency = chunkConcurrency || 5
 
     let p = basePath || ''
@@ -179,29 +187,31 @@ export class IncrementalS3Client implements ICloudSyncClient {
   }
 
   async listFiles(): Promise<SyncRecord[]> {
-    const records: SyncRecord[] = []
-
-    return new Promise((resolve, reject) => {
-      const stream = this.client.listObjectsV2(this.bucket, this.basePath, true)
-
-      stream.on('data', (obj) => {
-        if (!obj.name || obj.name.endsWith('/')) return
-
-        const relativeName = obj.name.substring(this.basePath.length)
-
-        records.push({
-          filename: relativeName,
-          lastModified: obj.lastModified || new Date(),
-          sizeInBytes: obj.size || 0,
-          managed: /^BaiShou_.*\.zip$/i.test(relativeName)
-        })
-      })
-
-      stream.on('end', () =>
-        resolve(records.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime()))
-      )
-      stream.on('error', reject)
+    const objects = await listAllS3Objects({
+      endpoint: this.endpoint,
+      bucket: this.bucket,
+      prefix: this.basePath,
+      region: this.region,
+      accessKey: this.accessKey,
+      secretKey: this.secretKey
     })
+
+    const records: SyncRecord[] = []
+    for (const obj of objects) {
+      if (obj.key.endsWith('/')) continue
+      let relativeName = obj.key
+      if (relativeName.startsWith(this.basePath)) {
+        relativeName = relativeName.slice(this.basePath.length)
+      }
+      records.push({
+        filename: relativeName,
+        lastModified: obj.lastModified ? new Date(obj.lastModified) : new Date(),
+        sizeInBytes: obj.size || 0,
+        managed: /^BaiShou_.*\.zip$/i.test(relativeName)
+      })
+    }
+
+    return records.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime())
   }
 
   async deleteFile(remoteFilename: string): Promise<void> {

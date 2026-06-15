@@ -1,0 +1,42 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px 32px 32px;
+  background: var(--bg-app);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.cardSection {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-card);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.cardHeader {
+  padding: 16px 16px 8px;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 0;
+}
+
+.divider {
+  height: 1px;
+  background-color: var(--color-outline-variant, var(--border-subtle));
+  margin: 0;
+}

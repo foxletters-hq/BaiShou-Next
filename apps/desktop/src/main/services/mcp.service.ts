@@ -10,6 +10,7 @@ import {
   isInitializeRequest
 } from '@modelcontextprotocol/sdk/types.js'
 import type { SettingsRepository } from '@baishou/database-desktop'
+import { APP_VERSION } from '../../app-version'
 // @ts-ignore
 import { Server as HttpServer } from 'http'
 
@@ -58,7 +59,7 @@ export class McpService {
 
   private createMcpServer(): Server {
     const server = new Server(
-      { name: 'BaiShou MCP Server', version: '1.0.0' },
+      { name: 'BaiShou MCP Server', version: APP_VERSION },
       { capabilities: { tools: { listChanged: false } } }
     )
     this.registerServerHandlers(server)
@@ -285,7 +286,6 @@ export class McpService {
   }
 
   /**
-***REMOVED***
    * MCP SDK 要求 inputSchema.type === "object"，且包含 properties 与 required。
    */
   private toMcpInputSchema(parameters: z.ZodType) {

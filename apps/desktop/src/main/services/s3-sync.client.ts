@@ -1,5 +1,6 @@
 import * as path from 'path'
 import * as Minio from 'minio'
+import { shouldUseS3PathStyle, listAllS3Objects } from '@baishou/shared'
 import { ICloudSyncClient, SyncRecord } from '@baishou/core-desktop'
 
 /**
@@ -11,6 +12,10 @@ export class S3SyncClient implements ICloudSyncClient {
   private client: Minio.Client
   private bucket: string
   private basePath: string
+  private endpoint: string
+  private region: string
+  private accessKey: string
+  private secretKey: string
 
   constructor(
     endpoint: string,
@@ -20,7 +25,11 @@ export class S3SyncClient implements ICloudSyncClient {
     secretKey: string,
     basePath: string
   ) {
-    const uri = new URL(endpoint)
+    let safeEndpoint = endpoint && endpoint.trim() !== '' ? endpoint : 'http://localhost'
+    if (!safeEndpoint.startsWith('http://') && !safeEndpoint.startsWith('https://')) {
+      safeEndpoint = 'https://' + safeEndpoint
+    }
+    const uri = new URL(safeEndpoint)
     this.client = new Minio.Client({
       endPoint: uri.hostname,
       port: uri.port ? parseInt(uri.port) : uri.protocol === 'https:' ? 443 : 80,
@@ -28,9 +37,13 @@ export class S3SyncClient implements ICloudSyncClient {
       accessKey,
       secretKey,
       region: region || 'us-east-1',
-      pathStyle: false // 兼容腾讯云 COS 的 Virtual-hosted style 寻址
+      pathStyle: shouldUseS3PathStyle(safeEndpoint)
     })
     this.bucket = bucket
+    this.endpoint = safeEndpoint
+    this.region = region || 'us-east-1'
+    this.accessKey = accessKey
+    this.secretKey = secretKey
 
     // 标准化路径：确保 basePath 不以 / 开头但以 / 结尾
     let p = basePath
@@ -162,34 +175,30 @@ export class S3SyncClient implements ICloudSyncClient {
   }
 
   async listFiles(): Promise<SyncRecord[]> {
-    const records: SyncRecord[] = []
-
-    return new Promise((resolve, reject) => {
-      const stream = this.client.listObjectsV2(this.bucket, this.basePath, true)
-
-      stream.on('data', (obj) => {
-        if (!obj.name || obj.name.endsWith('/')) return // skip directory markers
-        const filename = path.basename(obj.name)
-        // 仅列出 .zip 文件，不限制命名前缀
-        if (!/\.zip$/i.test(filename)) return
-        const isManaged = /^BaiShou_.*\.zip$/i.test(filename)
-        records.push({
-          filename,
-          lastModified: obj.lastModified || new Date(),
-          sizeInBytes: obj.size || 0,
-          managed: isManaged
-        })
-      })
-
-      stream.on('error', (err) => {
-        reject(new Error(`S3 列出文件失败: ${err.message}`))
-      })
-
-      stream.on('end', () => {
-        records.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime())
-        resolve(records)
-      })
+    const objects = await listAllS3Objects({
+      endpoint: this.endpoint,
+      bucket: this.bucket,
+      prefix: this.basePath,
+      region: this.region,
+      accessKey: this.accessKey,
+      secretKey: this.secretKey
     })
+
+    const records: SyncRecord[] = []
+    for (const obj of objects) {
+      if (obj.key.endsWith('/')) continue
+      const filename = path.basename(obj.key)
+      if (!/\.zip$/i.test(filename)) continue
+      const isManaged = /^BaiShou_.*\.zip$/i.test(filename)
+      records.push({
+        filename,
+        lastModified: obj.lastModified ? new Date(obj.lastModified) : new Date(),
+        sizeInBytes: obj.size || 0,
+        managed: isManaged
+      })
+    }
+
+    return records.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime())
   }
 
   async deleteFile(remoteFilename: string): Promise<void> {

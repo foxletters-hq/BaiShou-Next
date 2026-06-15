@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useSettingsStore } from '@baishou/store'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence } from 'framer-motion'
 import {
   MdOutlineSettings,
   MdOutlineCloudQueue,
@@ -11,43 +11,23 @@ import {
   MdTravelExplore,
   MdOutlineExtension,
   MdOutlineAutoAwesome,
-  MdOutlineWifiProtectedSetup,
-  MdSync,
-  MdOutlineFolderDelete,
+  MdWifi,
+  MdOutlineStorage,
+  MdOutlineCollections,
   MdArrowBack,
-  MdVolumeUp
+  MdVolumeUp,
+  MdHistory,
+  MdOutlineHub,
+  MdSync
 } from 'react-icons/md'
 import './SettingsPage.css'
 import { useTranslation } from 'react-i18next'
+import { SettingsContentView } from './SettingsContentView'
+import { getSettingsRouteSegment } from './settings-route.util'
+import { resolveSettingsReturnPath } from './settings-navigation.util'
 
-import { WebSearchPane } from './components/WebSearchPane'
-import { AgentToolsPane } from './components/AgentToolsPane'
-import { SummarySettingsPane } from './components/SummarySettingsPane'
-import { LanTransferPane } from './components/LanTransferPane'
-import { DataSyncPane } from './components/DataSyncPane'
-import { AttachmentManagementPane } from './components/AttachmentManagementPane'
-import { TTSSettingsPane } from './components/TTSSettingsPane'
-
-import { GeneralSettingsPane } from './components/GeneralSettingsPane'
-import { WorkspaceManagementPane } from './components/WorkspaceManagementPane'
-import { IdentityCardManagementPane } from './components/IdentityCardManagementPane'
-import { AiModelServicesPane } from './components/AiModelServicesPane'
-import { AiGlobalModelsPane } from './components/AiGlobalModelsPane'
-import { AssistantPane } from './components/AssistantPane'
-import { RagSettingsPane } from './components/RagSettingsPane'
-
-const settingsViewTransition = {
-  initial: { opacity: 0, y: 10 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -6 },
-  transition: { duration: 0.2, ease: 'easeOut' as const }
-}
-
-function getSettingsContentKey(pathname: string, activeTab: number): string {
-  if (pathname === '/settings/workspaces') return 'workspaces'
-  if (pathname === '/settings/identity-cards') return 'identity-cards'
-  if (pathname === '/settings' || pathname === '/settings/general') return 'general'
-  return `tab-${activeTab}`
+function getSettingsContentKey(pathname: string): string {
+  return getSettingsRouteSegment(pathname)
 }
 
 export const SettingsPage: React.FC = () => {
@@ -60,6 +40,7 @@ export const SettingsPage: React.FC = () => {
 
   const TABS = [
     { id: 0, label: t('settings.general', '常规设置'), icon: <MdOutlineSettings /> },
+    { id: 13, label: t('settings.mcp_title', 'MCP 服务'), icon: <MdOutlineHub /> },
     { type: 'divider' },
     { id: 1, label: t('settings.ai_services', '供应商管理'), icon: <MdOutlineCloudQueue /> },
     { id: 2, label: t('settings.ai_global_models', '全局默认模型'), icon: <MdOutlineStarBorder /> },
@@ -76,15 +57,21 @@ export const SettingsPage: React.FC = () => {
     { id: 11, label: t('settings.tts_settings', 'TTS 语音合成'), icon: <MdVolumeUp /> },
     { type: 'divider' },
     {
-      id: 8,
-      label: t('settings.lan_transfer', '局域网传输'),
-      icon: <MdOutlineWifiProtectedSetup />
+      id: 14,
+      label: t('data_sync.incremental_sync', '增量同步'),
+      icon: <MdSync size={20} />
     },
-    { id: 9, label: t('data_sync.title', '数据备份'), icon: <MdSync /> },
+    { id: 9, label: t('data_sync.title', '数据备份'), icon: <MdOutlineStorage size={20} /> },
+    { id: 12, label: t('version_control.title', '版本控制'), icon: <MdHistory /> },
     {
       id: 10,
       label: t('settings.attachment_management', '附件管理'),
-      icon: <MdOutlineFolderDelete />
+      icon: <MdOutlineCollections />
+    },
+    {
+      id: 8,
+      label: t('settings.lan_transfer', '局域网传输'),
+      icon: <MdWifi size={20} />
     }
   ]
 
@@ -92,6 +79,10 @@ export const SettingsPage: React.FC = () => {
 
   useEffect(() => {
     switch (location.pathname) {
+      case '/settings/general':
+      case '/settings/mcp':
+        setActiveTab(location.pathname === '/settings/mcp' ? 13 : 0)
+        break
       case '/settings/ai-services':
         setActiveTab(1)
         break
@@ -122,13 +113,20 @@ export const SettingsPage: React.FC = () => {
       case '/settings/data-sync':
         setActiveTab(9)
         break
+      case '/settings/incremental-sync':
+        setActiveTab(14)
+        break
       case '/settings/attachments':
         setActiveTab(10)
+        break
+      case '/settings/git':
+        setActiveTab(12)
         break
       case '/settings/workspaces':
       case '/settings/identity-cards':
       case '/settings':
-      case '/settings/general':
+        setActiveTab(0)
+        break
       default:
         setActiveTab(0)
     }
@@ -138,12 +136,14 @@ export const SettingsPage: React.FC = () => {
     settings.loadConfig()
   }, [settings.loadConfig])
 
-  // Sync state to URL without pushing history excessively
   const handleTabChange = (tabId: number) => {
     setActiveTab(tabId)
     switch (tabId) {
       case 0:
         navigate('/settings/general', { replace: true })
+        break
+      case 13:
+        navigate('/settings/mcp', { replace: true })
         break
       case 1:
         navigate('/settings/ai-services', { replace: true })
@@ -175,85 +175,27 @@ export const SettingsPage: React.FC = () => {
       case 9:
         navigate('/settings/data-sync', { replace: true })
         break
+      case 14:
+        navigate('/settings/incremental-sync', { replace: true })
+        break
       case 10:
         navigate('/settings/attachments', { replace: true })
+        break
+      case 12:
+        navigate('/settings/git', { replace: true })
         break
     }
   }
 
-  const renderActiveView = () => {
-    if (settings.isLoading) {
-      return (
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            marginTop: 100,
-            color: 'var(--color-on-surface-variant)'
-          }}
-        >
-          {t('common.loading_settings', '读取配置表项状态中...')}
-        </div>
-      )
-    }
-
-    if (location.pathname === '/settings/workspaces') {
-      return <WorkspaceManagementPane />
-    }
-    if (location.pathname === '/settings/identity-cards') {
-      return <IdentityCardManagementPane />
-    }
-
-    switch (activeTab) {
-      case 0:
-        return <GeneralSettingsPane settings={settings} />
-      case 1:
-        return <AiModelServicesPane settings={settings} />
-      case 2:
-        return <AiGlobalModelsPane settings={settings} />
-      case 3:
-        return <AssistantPane settings={settings} />
-      case 4:
-        return <RagSettingsPane settings={settings} />
-      case 5:
-        return <WebSearchPane settings={settings} />
-      case 6:
-        return <AgentToolsPane settings={settings} />
-      case 7:
-        return <SummarySettingsPane settings={settings} />
-      case 11:
-        return <TTSSettingsPane />
-      case 8:
-        return <LanTransferPane />
-      case 9:
-        return <DataSyncPane settings={settings} />
-      case 10:
-        return <AttachmentManagementPane />
-      default:
-        return <div />
-    }
-  }
-
   const handleBack = () => {
+    const returnTo = resolveSettingsReturnPath()
     setIsClosing(true)
-    setTimeout(() => {
-      navigate(-1)
-    }, 250) // Matches the exit animation duration
+    window.setTimeout(() => {
+      navigate(returnTo, { replace: true })
+    }, 150)
   }
 
-  const isManagementSubPage =
-    location.pathname === '/settings/workspaces' || location.pathname === '/settings/identity-cards'
-
-  const isFullHeightPane =
-    activeTab === 8 ||
-    activeTab === 1 ||
-    activeTab === 2 ||
-    activeTab === 11 ||
-    activeTab === 4 ||
-    activeTab === 5 ||
-    isManagementSubPage
-
-  const contentKey = getSettingsContentKey(location.pathname, activeTab)
+  const contentKey = getSettingsContentKey(location.pathname)
 
   return (
     <div className={`settings-page-wrapper ${isClosing ? 'settings-closing' : ''}`}>
@@ -294,18 +236,12 @@ export const SettingsPage: React.FC = () => {
 
         <div className="settings-content-area" style={{ position: 'relative', overflow: 'hidden' }}>
           <AnimatePresence mode="wait">
-            <motion.div
+            <SettingsContentView
               key={contentKey}
-              className={`settings-content-motion-host ${
-                isFullHeightPane ? '' : 'settings-content-scroll'
-              }`.trim()}
-              style={{
-                overflow: isManagementSubPage ? 'hidden' : isFullHeightPane ? undefined : undefined
-              }}
-              {...settingsViewTransition}
-            >
-              {renderActiveView()}
-            </motion.div>
+              pathname={location.pathname}
+              settings={settings}
+              motionKey={contentKey}
+            />
           </AnimatePresence>
         </div>
       </div>

@@ -3,133 +3,70 @@ import { useTranslation } from 'react-i18next'
 import { Tooltip, formatSyncProgressStatus, IncrementalSyncScopeList } from '@baishou/ui'
 import { SyncConfigForm } from './components/sync/SyncConfigForm'
 import { useOrchestratedSync } from '../../hooks/useOrchestratedSync'
+import styles from './IncrementalSyncPage.module.css'
 
-export const IncrementalSyncPage: React.FC = () => {
+export const IncrementalSyncPage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const { t } = useTranslation()
   const { isSyncing, syncResult, progress, startSync } = useOrchestratedSync()
 
   const formatDuration = (ms: number) => (ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`)
 
   return (
-    <div
-      style={{
-        flex: 1,
-        padding: '24px 32px',
-        overflowY: 'auto',
-        background: 'var(--bg-app)',
-        color: 'var(--text-primary)'
-      }}
-    >
-      <h2
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          margin: '0 0 24px 0',
-          fontSize: '18px',
-          fontWeight: 600
-        }}
-      >
-        <FileText size={18} style={{ marginRight: 2 }} />
-        <span>{t('data_sync.incremental_sync', 'File Sync')}</span>
-        <Tooltip
-          content={t(
-            'data_sync.incremental_sync_tooltip',
-            'File sync uses a two-way incremental sync mechanism. It automatically compares modification times and hash values between local and cloud files, transfers only changed files, and propagates deletions in both directions. The sync scope covers core data including your diaries, historical summaries, and AI chat partners.'
-          )}
-        >
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--text-secondary)',
-              cursor: 'pointer',
-              transition: 'color 0.2s ease',
-              marginTop: '2px'
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--color-primary)')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
-          >
-            <HelpCircle size={16} />
-          </span>
-        </Tooltip>
-      </h2>
+    <div className={styles.container}>
+      {!embedded ? (
+        <section className={styles.cardSection}>
+          <h2 className={styles.cardTitle} style={{ fontSize: '16px', marginBottom: 0 }}>
+            <FileText size={18} />
+            <span>{t('data_sync.incremental_sync', '增量同步')}</span>
+            <Tooltip content={t('data_sync.incremental_sync_tooltip')}>
+              <span className={styles.helpIcon}>
+                <HelpCircle size={16} />
+              </span>
+            </Tooltip>
+          </h2>
+        </section>
+      ) : (
+        <section className={styles.cardSection}>
+          <p className={styles.embeddedDesc}>{t('data_sync.incremental_sync_desc')}</p>
+        </section>
+      )}
 
-      <div
-        style={{
-          background: 'var(--bg-surface)',
-          border: '1px solid var(--border-subtle)',
-          borderRadius: '12px',
-          padding: '16px 24px',
-          marginBottom: '20px'
-        }}
-      >
-        <IncrementalSyncScopeList />
-      </div>
+      <section className={styles.cardSection}>
+        <SyncConfigForm />
+      </section>
 
-      <SyncConfigForm />
-
-      <div
-        style={{
-          background: 'var(--bg-surface)',
-          border: '1px solid var(--border-subtle)',
-          borderRadius: '12px',
-          padding: '20px 24px'
-        }}
-      >
-        <h3 style={{ margin: '0 0 16px 0', fontSize: '14px', fontWeight: 600 }}>
-          <Cloud size={14} style={{ marginRight: 6 }} />
+      <section className={styles.cardSection}>
+        <h3 className={styles.cardTitle}>
+          <Cloud size={14} />
           {t('data_sync.sync_actions', 'Sync Actions')}
         </h3>
 
         <button
+          className={styles.syncButton}
           onClick={() => void startSync()}
           disabled={isSyncing}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '10px 20px',
-            border: '1px solid var(--color-primary)',
-            borderRadius: '8px',
-            background: isSyncing ? 'var(--bg-surface)' : 'var(--color-primary)',
-            color: isSyncing ? 'var(--text-primary)' : 'var(--text-on-primary)',
-            fontSize: '14px',
-            fontWeight: 500,
-            cursor: 'pointer',
-            opacity: isSyncing ? 0.6 : 1
-          }}
+          style={
+            isSyncing
+              ? {
+                  background: 'var(--bg-surface)',
+                  color: 'var(--text-primary)'
+                }
+              : undefined
+          }
         >
-          <RefreshCw
-            size={16}
-            style={isSyncing ? { animation: 'spin 1s linear infinite' } : undefined}
-          />
+          <RefreshCw size={16} className={isSyncing ? styles.spinning : undefined} />
           {isSyncing ? t('data_sync.syncing', 'Syncing...') : t('data_sync.sync_now', 'Sync')}
         </button>
 
         {isSyncing && progress && progress.total > 0 && (
-          <div style={{ marginTop: 12 }}>
-            <div
-              style={{
-                height: 3,
-                background: 'var(--bg-surface-low)',
-                borderRadius: 2,
-                overflow: 'hidden',
-                marginBottom: 4
-              }}
-            >
+          <div>
+            <div className={styles.progressTrack}>
               <div
-                style={{
-                  height: '100%',
-                  background: 'var(--color-primary)',
-                  borderRadius: 2,
-                  transition: 'width 0.3s ease',
-                  width: `${Math.round((progress.current / progress.total) * 100)}%`
-                }}
+                className={styles.progressFill}
+                style={{ width: `${Math.round((progress.current / progress.total) * 100)}%` }}
               />
             </div>
-            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
+            <div className={styles.progressMeta}>
               {progress.current}/{progress.total}
               {(() => {
                 const line = formatSyncProgressStatus(progress, t)
@@ -140,9 +77,7 @@ export const IncrementalSyncPage: React.FC = () => {
         )}
 
         {syncResult && (
-          <div
-            style={{ marginTop: 16, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}
-          >
+          <div className={styles.statsGrid}>
             <StatCard
               label={t('data_sync.stat_uploaded', 'Uploaded')}
               value={syncResult.uploaded?.length || 0}
@@ -178,9 +113,9 @@ export const IncrementalSyncPage: React.FC = () => {
             />
           </div>
         )}
-      </div>
+      </section>
 
-      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      <IncrementalSyncScopeList />
     </div>
   )
 }
@@ -191,15 +126,10 @@ const StatCard: React.FC<{
   color: string
   isText?: boolean
 }> = ({ label, value, color, isText }) => (
-  <div
-    style={{
-      background: 'var(--bg-surface-low)',
-      borderRadius: '8px',
-      padding: '12px',
-      textAlign: 'center'
-    }}
-  >
-    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginBottom: 4 }}>{label}</div>
-    <div style={{ fontSize: isText ? '13px' : '20px', fontWeight: 600, color }}>{value}</div>
+  <div className={styles.statCard}>
+    <div className={styles.statLabel}>{label}</div>
+    <div className={isText ? styles.statValueText : styles.statValue} style={{ color }}>
+      {value}
+    </div>
   </div>
 )
