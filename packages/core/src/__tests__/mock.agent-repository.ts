@@ -19,11 +19,22 @@ export class MockAgentSessionRepository implements AgentSessionRepository {
     return newSession
   }
 
-  async updateTokenUsage(id: string, inputTokens: number, outputTokens: number): Promise<void> {
+  async updateTokenUsage(
+    id: string,
+    inputTokens: number,
+    outputTokens: number,
+    _costMicros?: number,
+    cacheReadInputTokens: number = 0,
+    cacheWriteInputTokens: number = 0
+  ): Promise<void> {
     const session = this.sessions.find((s) => s.id === id)
     if (session) {
       session.totalInputTokens += inputTokens
       session.totalOutputTokens += outputTokens
+      session.totalCacheReadInputTokens =
+        (session.totalCacheReadInputTokens ?? 0) + cacheReadInputTokens
+      session.totalCacheWriteInputTokens =
+        (session.totalCacheWriteInputTokens ?? 0) + cacheWriteInputTokens
     }
   }
 }

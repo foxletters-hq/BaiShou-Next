@@ -35,9 +35,18 @@ export class SessionManagerService {
     id: string,
     inputTokens: number,
     outputTokens: number,
-    costMicros: number = 0
+    costMicros: number = 0,
+    cacheReadInputTokens: number = 0,
+    cacheWriteInputTokens: number = 0
   ): Promise<void> {
-    await this.sessionRepo.updateTokenUsage(id, inputTokens, outputTokens, costMicros)
+    await this.sessionRepo.updateTokenUsage(
+      id,
+      inputTokens,
+      outputTokens,
+      costMicros,
+      cacheReadInputTokens,
+      cacheWriteInputTokens
+    )
     await this.flushSessionToDisk(id)
   }
 

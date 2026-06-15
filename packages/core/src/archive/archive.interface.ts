@@ -2,6 +2,8 @@ export interface ImportResult {
   fileCount: number
   profileRestored: boolean
   snapshotPath?: string
+  /** 移动端替换 SQLite 主库后需完全重启应用 */
+  needsRestart?: boolean
 }
 
 export interface SnapshotMeta {
