@@ -24,6 +24,7 @@ export * from './utils/date.utils'
 export * from './message-metadata'
 export { logger } from './utils/logger'
 export { traceCall, SHORTCUT_TRACE_CHAIN } from './utils/call-trace'
+export * from './utils/prompt-shortcut.util'
 export * from './utils/model-capabilities'
 
 // Mock 数据与类型（供开发阶段跨包使用）
@@ -39,15 +40,31 @@ export * from './utils/rag-embed-failure.util'
 export * from './utils/rag-embedding-sort.util'
 export * from './utils/web-search-config.util'
 export { signS3Request, s3FetchHeaders } from './utils/aws-v4-sign'
-export * from './utils/s3-url'
 export * from './utils/s3-list.util'
-export { isIncrementalSyncReady } from './utils/incremental-sync-config.util'
+export * from './utils/s3-url'
+export {
+  isIncrementalSyncReady,
+  getRootIncrementalSyncConfigPath,
+  migrateLegacyIncrementalSyncConfig,
+  resetIncrementalSyncMetaAfterFullRestore,
+  FULL_BACKUP_EXCLUDED_ROOT_NAMES,
+  INCREMENTAL_SYNC_META_RESET_FILENAMES,
+  type IncrementalSyncFileStorage
+} from './utils/incremental-sync-config.util'
 export {
   INCREMENTAL_SYNC_BAISHOU_ALLOWLIST,
   INCREMENTAL_SYNC_BAISHOU_SETTINGS_PREFIX,
   shouldIncludeIncrementalSyncFile,
   shouldScanIncrementalSyncDirectory
 } from './utils/incremental-sync-scan.util'
+export {
+  WEBDAV_SHALLOW_LIST_CONCURRENCY,
+  parseWebDavPropfindEntries,
+  toRelativeWebDavPath,
+  isManagedIncrementalZipPath,
+  type WebDavListEntry
+} from './utils/incremental-sync-webdav.util'
+export { resolveSyncDeviceId } from './utils/sync-device-id.util'
 export {
   INCREMENTAL_SYNC_CHUNK_SIZE,
   INCREMENTAL_SYNC_SCOPE_I18N_KEYS,
@@ -56,7 +73,9 @@ export {
   SYNC_MANIFEST_FILENAME,
   SYNC_REMOTE_SNAPSHOT_FILENAME,
   SYNC_MANIFEST_VERSION,
-  SYNC_CONFIG_FILENAME
+  SYNC_CONFIG_FILENAME,
+  DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH,
+  SYNC_DEVICE_ID_FILENAME
 } from './constants/incremental-sync.constants'
 export {
   SYNC_STORAGE_ID_FILENAME,

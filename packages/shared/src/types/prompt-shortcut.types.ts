@@ -6,4 +6,8 @@ export interface PromptShortcut {
   icon: string // Emoji 或图标代号
   name: string // 快捷指令名称
   content: string // 快捷指令系统提示词正文
+  /** 快捷短语，用于 `/` 匹配 */
+  command?: string
+  tag?: string
+  description?: string
 }

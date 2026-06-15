@@ -29,6 +29,8 @@ export type MockChatMessage = {
   attachments?: MockChatAttachment[]
   inputTokens?: number
   outputTokens?: number
+  cacheReadInputTokens?: number
+  cacheWriteInputTokens?: number
   costMicros?: number
   contextMessages?: MockChatMessage[]
   isReasoning?: boolean

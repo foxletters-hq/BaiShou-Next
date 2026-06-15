@@ -11,6 +11,8 @@ export const AgentSessionSchema = z.object({
   modelId: z.string(),
   totalInputTokens: z.number().int().nonnegative().default(0),
   totalOutputTokens: z.number().int().nonnegative().default(0),
+  totalCacheReadInputTokens: z.number().int().nonnegative().default(0),
+  totalCacheWriteInputTokens: z.number().int().nonnegative().default(0),
   totalCostMicros: z.number().int().nonnegative().default(0),
   createdAt: z.date().optional(),
   updatedAt: z.date().optional()
@@ -31,6 +33,8 @@ export const AgentMessageSchema = z.object({
   orderIndex: z.number().int().nonnegative(),
   inputTokens: z.number().int().nonnegative().optional(),
   outputTokens: z.number().int().nonnegative().optional(),
+  cacheReadInputTokens: z.number().int().nonnegative().optional(),
+  cacheWriteInputTokens: z.number().int().nonnegative().optional(),
   costMicros: z.number().int().nonnegative().optional(),
   createdAt: z.date().optional()
 })
