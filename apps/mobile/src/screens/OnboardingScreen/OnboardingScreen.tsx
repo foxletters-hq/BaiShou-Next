@@ -11,7 +11,7 @@ import {
 } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
-import { useRouter, useNavigation } from 'expo-router'
+import { useRouter, useNavigation, useLocalSearchParams } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { ScreenSafeArea } from '@/src/components/ScreenSafeArea'
@@ -27,17 +27,31 @@ import {
 import { OnboardingBackground } from './components/OnboardingBackground'
 import { OnboardingGlowIcon } from './components/OnboardingGlowIcon'
 import { OnboardingStorageSlide } from './components/OnboardingStorageSlide'
+import { OnboardingLanguageSlide } from './components/OnboardingLanguageSlide'
 import APP_ICON from '../../../assets/images/icon.png'
+import { useBaishou } from '@/src/providers/BaishouProvider'
+import {
+  applyOnboardingUiLanguage,
+  hasPersistedOnboardingUiLanguage,
+  readOnboardingUiLanguage,
+  type OnboardingUiLanguage
+} from '@/src/lib/onboarding-language.util'
+import { ensureDefaultLatteAssistant } from '@baishou/core-mobile'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
 export const OnboardingScreen: React.FC = () => {
   const router = useRouter()
+  const { preview } = useLocalSearchParams<{ preview?: string }>()
+  const isPreview = preview === '1'
   const navigation = useNavigation()
   const { t } = useTranslation()
   const toast = useNativeToast()
   const storagePermission = useStoragePermission()
+  const { services, dbReady } = useBaishou()
   const [currentPage, setCurrentPage] = useState(0)
+  const [selectedLanguage, setSelectedLanguage] = useState<OnboardingUiLanguage | null>(null)
+  const [languageConfirmed, setLanguageConfirmed] = useState(false)
   const scrollViewRef = useRef<ScrollView>(null)
   const floatAnim = useRef(new Animated.Value(0)).current
   const programmaticTargetRef = useRef<number | null>(null)
@@ -47,6 +61,40 @@ export const OnboardingScreen: React.FC = () => {
     !storagePermission.isAndroid ||
     (storagePermission.permissionChecked && storagePermission.granted === true)
   const nextBlockedOnStorage = currentPage === ONBOARDING_PAGE.STORAGE && !storageReadyToAdvance
+  const nextBlockedOnLanguage =
+    !isPreview && currentPage === ONBOARDING_PAGE.LANGUAGE && !languageConfirmed
+
+  useEffect(() => {
+    if (isPreview) return
+    void readOnboardingUiLanguage().then((lang) => {
+      if (!lang) return
+      setSelectedLanguage(lang)
+      setLanguageConfirmed(true)
+    })
+  }, [isPreview])
+
+  const persistLanguageSelection = async (lang: OnboardingUiLanguage) => {
+    await applyOnboardingUiLanguage(lang, {
+      settingsManager: dbReady ? services?.settingsManager : undefined,
+      assistantManager: dbReady ? services?.assistantManager : undefined
+    })
+    if (dbReady && services?.assistantManager) {
+      await ensureDefaultLatteAssistant(services.assistantManager, lang)
+    }
+    setLanguageConfirmed(true)
+  }
+
+  const requireLanguageBeforeLeave = async (): Promise<boolean> => {
+    if (isPreview || languageConfirmed) return true
+    const persisted = await hasPersistedOnboardingUiLanguage()
+    if (persisted) {
+      setLanguageConfirmed(true)
+      return true
+    }
+    toast.showWarning(t('onboarding.language_required'))
+    goToPage(ONBOARDING_PAGE.LANGUAGE, { animated: true })
+    return false
+  }
 
   useEffect(() => {
     const animation = Animated.loop(
@@ -68,7 +116,15 @@ export const OnboardingScreen: React.FC = () => {
   }, [floatAnim])
 
   const finishOnboarding = async () => {
+    if (!(await requireLanguageBeforeLeave())) return
     allowLeaveRef.current = true
+    if (isPreview) {
+      router.back()
+      return
+    }
+    if (selectedLanguage) {
+      await persistLanguageSelection(selectedLanguage)
+    }
     await AsyncStorage.setItem(ONBOARDING_STORAGE_KEY, '1')
     router.replace('/(tabs)')
   }
@@ -82,7 +138,14 @@ export const OnboardingScreen: React.FC = () => {
     })
   }
 
-  const handleNext = () => {
+  const handleNext = async () => {
+    if (currentPage === ONBOARDING_PAGE.LANGUAGE) {
+      if (!selectedLanguage) {
+        toast.showWarning(t('onboarding.language_required'))
+        return
+      }
+      await persistLanguageSelection(selectedLanguage)
+    }
     if (nextBlockedOnStorage) {
       toast.showWarning(t('storage.all_files_access_settings_hint'))
       return
@@ -117,11 +180,11 @@ export const OnboardingScreen: React.FC = () => {
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (event) => {
-      if (allowLeaveRef.current) return
+      if (allowLeaveRef.current || isPreview) return
       event.preventDefault()
     })
     return unsubscribe
-  }, [navigation])
+  }, [navigation, isPreview])
 
   const handleScroll = (event: { nativeEvent: { contentOffset: { x: number } } }) => {
     const page = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH)
@@ -133,6 +196,17 @@ export const OnboardingScreen: React.FC = () => {
         return
       }
       programmaticTargetRef.current = null
+    }
+
+    if (clampedPage > ONBOARDING_PAGE.LANGUAGE && !languageConfirmed && !isPreview) {
+      programmaticTargetRef.current = ONBOARDING_PAGE.LANGUAGE
+      setCurrentPage(ONBOARDING_PAGE.LANGUAGE)
+      scrollViewRef.current?.scrollTo({
+        x: ONBOARDING_PAGE.LANGUAGE * SCREEN_WIDTH,
+        animated: true
+      })
+      toast.showWarning(t('onboarding.language_required'))
+      return
     }
 
     if (clampedPage > ONBOARDING_PAGE.STORAGE && !storageReadyToAdvance) {
@@ -163,6 +237,16 @@ export const OnboardingScreen: React.FC = () => {
 
   const renderSlideBody = (text: string) => <Text style={styles.slideBody}>{text}</Text>
 
+  const renderLanguageSlide = () => (
+    <OnboardingLanguageSlide
+      selectedLanguage={selectedLanguage}
+      onSelectLanguage={(lang) => {
+        setSelectedLanguage(lang)
+        void persistLanguageSelection(lang)
+      }}
+    />
+  )
+
   const renderWelcomeSlide = () => (
     <View style={styles.slideInner}>
       <Animated.View style={[styles.welcomeIconWrap, { transform: [{ scale: welcomeScale }] }]}>
@@ -176,7 +260,7 @@ export const OnboardingScreen: React.FC = () => {
 
   const renderPhilosophySlide = () => (
     <View style={styles.slideInner}>
-      <OnboardingGlowIcon theme={SLIDE_THEMES[1]} />
+      <OnboardingGlowIcon theme={SLIDE_THEMES[ONBOARDING_PAGE.PHILOSOPHY]} />
       <View style={styles.slideSpacerLarge} />
       {renderSlideTitle(t('onboarding.philosophy_title'))}
       <View style={styles.slideSpacerMedium} />
@@ -186,7 +270,7 @@ export const OnboardingScreen: React.FC = () => {
 
   const renderCompressionSlide = () => (
     <View style={styles.slideInner}>
-      <OnboardingGlowIcon theme={SLIDE_THEMES[2]} size={56} />
+      <OnboardingGlowIcon theme={SLIDE_THEMES[ONBOARDING_PAGE.COMPRESSION]} size={56} />
       <View style={styles.slideSpacerLarge} />
       {renderSlideTitle(t('onboarding.compression_title'))}
       <View style={styles.slideSpacerMedium} />
@@ -196,7 +280,7 @@ export const OnboardingScreen: React.FC = () => {
 
   const renderStorageSlide = () => (
     <View style={styles.slideInner}>
-      <OnboardingGlowIcon theme={SLIDE_THEMES[3]} />
+      <OnboardingGlowIcon theme={SLIDE_THEMES[ONBOARDING_PAGE.STORAGE]} />
       <View style={styles.slideSpacerLarge} />
       {renderSlideTitle(t('onboarding.storage_title'))}
       <View style={styles.slideSpacerMedium} />
@@ -213,7 +297,7 @@ export const OnboardingScreen: React.FC = () => {
 
   const renderApiConfigSlide = () => (
     <View style={styles.slideInner}>
-      <OnboardingGlowIcon theme={SLIDE_THEMES[4]} />
+      <OnboardingGlowIcon theme={SLIDE_THEMES[ONBOARDING_PAGE.API]} />
       <View style={styles.slideSpacerLarge} />
       {renderSlideTitle(t('onboarding.api_guide_title'))}
       <View style={styles.slideSpacerMedium} />
@@ -223,7 +307,7 @@ export const OnboardingScreen: React.FC = () => {
 
   const renderPrivacySlide = () => (
     <View style={styles.slideInner}>
-      <OnboardingGlowIcon theme={SLIDE_THEMES[5]} />
+      <OnboardingGlowIcon theme={SLIDE_THEMES[ONBOARDING_PAGE.PRIVACY]} />
       <View style={styles.slideSpacerLarge} />
       {renderSlideTitle(t('onboarding.privacy_title'))}
       <View style={styles.slideSpacerMedium} />
@@ -234,6 +318,7 @@ export const OnboardingScreen: React.FC = () => {
   )
 
   const slides = [
+    renderLanguageSlide,
     renderWelcomeSlide,
     renderPhilosophySlide,
     renderCompressionSlide,
@@ -248,7 +333,7 @@ export const OnboardingScreen: React.FC = () => {
 
       <ScreenSafeArea preset="screen" style={styles.safeArea}>
         <View style={styles.topBar}>
-          {currentPage < NUM_ONBOARDING_PAGES - 1 && (
+          {currentPage > ONBOARDING_PAGE.LANGUAGE && currentPage < NUM_ONBOARDING_PAGES - 1 && (
             <TouchableOpacity onPress={() => void finishOnboarding()} style={styles.skipButton}>
               <Text style={styles.skipText}>{t('onboarding.skip')}</Text>
             </TouchableOpacity>
@@ -259,6 +344,7 @@ export const OnboardingScreen: React.FC = () => {
           ref={scrollViewRef}
           horizontal
           pagingEnabled
+          scrollEnabled={isPreview || languageConfirmed || currentPage > ONBOARDING_PAGE.LANGUAGE}
           showsHorizontalScrollIndicator={false}
           onMomentumScrollEnd={handleScroll}
           scrollEventThrottle={16}
@@ -297,7 +383,7 @@ export const OnboardingScreen: React.FC = () => {
           </View>
 
           <View style={styles.navActions}>
-            {currentPage > 0 && (
+            {currentPage > ONBOARDING_PAGE.LANGUAGE && (
               <TouchableOpacity onPress={handlePrevious} style={styles.backButton}>
                 <MaterialIcons name="arrow-back-ios" size={12} color="#9CA3AF" />
                 <Text style={styles.backText}>{t('common.back')}</Text>
@@ -305,15 +391,15 @@ export const OnboardingScreen: React.FC = () => {
             )}
 
             <TouchableOpacity
-              onPress={handleNext}
+              onPress={() => void handleNext()}
               style={[
                 styles.nextButton,
                 {
                   backgroundColor: isLast ? theme.iconColor : BRAND_BLUE_DARK,
-                  opacity: nextBlockedOnStorage ? 0.45 : 1
+                  opacity: nextBlockedOnStorage || nextBlockedOnLanguage ? 0.45 : 1
                 }
               ]}
-              activeOpacity={nextBlockedOnStorage ? 1 : 0.9}
+              activeOpacity={nextBlockedOnStorage || nextBlockedOnLanguage ? 1 : 0.9}
             >
               <Text style={styles.nextButtonText}>
                 {isLast ? t('onboarding.get_started') : t('common.next')}

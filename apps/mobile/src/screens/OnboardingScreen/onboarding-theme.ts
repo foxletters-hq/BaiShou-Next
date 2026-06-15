@@ -3,15 +3,16 @@ import type { MaterialIcons } from '@expo/vector-icons'
 export const BRAND_BLUE = '#9AD4EA'
 export const BRAND_BLUE_DARK = '#5BA8CD'
 
-export const NUM_ONBOARDING_PAGES = 6
+export const NUM_ONBOARDING_PAGES = 7
 
 export const ONBOARDING_PAGE = {
-  WELCOME: 0,
-  PHILOSOPHY: 1,
-  COMPRESSION: 2,
-  STORAGE: 3,
-  API: 4,
-  PRIVACY: 5
+  LANGUAGE: 0,
+  WELCOME: 1,
+  PHILOSOPHY: 2,
+  COMPRESSION: 3,
+  STORAGE: 4,
+  API: 5,
+  PRIVACY: 6
 } as const
 
 export const ONBOARDING_BG_GRADIENT: [string, string] = ['#FFFBF5', '#D9EEF8']
@@ -23,6 +24,11 @@ export interface SlideTheme {
 }
 
 export const SLIDE_THEMES: SlideTheme[] = [
+  {
+    iconColor: BRAND_BLUE_DARK,
+    glowColor: 'rgba(91, 168, 205, 0.2)',
+    icon: 'language'
+  },
   {
     iconColor: BRAND_BLUE,
     glowColor: 'rgba(154, 212, 234, 0.22)',

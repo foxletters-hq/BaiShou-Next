@@ -9,12 +9,14 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import * as SplashScreen from 'expo-splash-screen'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Platform, NativeModules } from 'react-native'
 import i18n from 'i18next'
+import { readOnboardingUiLanguage } from '@/src/lib/onboarding-language.util'
+import { getSystemLanguage, resolveAppUiLanguage } from '@/src/lib/device-locale'
 
 import { useNativeTheme, DialogProvider, preloadAllProviderIcons } from '@baishou/ui/native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { BaishouProvider, useBaishou } from '@/src/providers/BaishouProvider'
+import { IncrementalSyncProvider } from '@/src/providers/IncrementalSyncProvider'
 import { useDiaryEmbedFailureToast } from '@/src/hooks/useDiaryEmbedFailureToast'
 import { fadeStackAnimation } from '@/src/navigation/fadeStackAnimation'
 import { NativeAppThemeBridge } from '@/src/providers/NativeAppThemeBridge'
@@ -25,24 +27,6 @@ SplashScreen.preventAutoHideAsync()
 export const unstable_settings = {
   // 深链进入子页面时，栈底保留 tabs 而非引导页
   initialRouteName: '(tabs)'
-}
-
-const getSystemLanguage = () => {
-  try {
-    let locale = 'zh'
-    if (Platform.OS === 'ios') {
-      locale =
-        NativeModules.SettingsManager?.settings?.AppleLanguages?.[0] ||
-        NativeModules.SettingsManager?.settings?.AppleLocale ||
-        'zh'
-    } else if (Platform.OS === 'android') {
-      locale = NativeModules.I18nManager?.localeIdentifier || 'zh'
-    }
-    const cleanLang = locale.split(/[-_]/)[0]
-    return ['zh', 'en', 'ja', 'zh-TW'].includes(cleanLang) ? cleanLang : 'zh'
-  } catch (e) {
-    return 'zh'
-  }
 }
 
 function AppContent() {
@@ -57,7 +41,11 @@ function AppContent() {
       try {
         const settings = (await services.settingsManager.get<any>('settings')) || {}
         const savedLang = settings.language || 'system'
-        const targetLang = savedLang === 'system' ? getSystemLanguage() : savedLang
+        const onboardingLang = await readOnboardingUiLanguage()
+        const targetLang =
+          savedLang === 'system'
+            ? onboardingLang || getSystemLanguage()
+            : resolveAppUiLanguage(savedLang, getSystemLanguage())
         if (i18n.language !== targetLang) {
           await i18n.changeLanguage(targetLang)
         }
@@ -122,7 +110,9 @@ export default function RootLayout() {
           <NativeAppThemeBridge>
             <HeroUIThemeBridge>
               <DialogProvider>
-                <AppContent />
+                <IncrementalSyncProvider>
+                  <AppContent />
+                </IncrementalSyncProvider>
               </DialogProvider>
             </HeroUIThemeBridge>
           </NativeAppThemeBridge>
