@@ -43,40 +43,13 @@ export const McpHelpButton: React.FC<McpHelpButtonProps> = ({
           <p className={styles.intro}>
             {t(
               'settings.mcp_help_intro',
-              '启用 MCP 后，白守会在本机启动 MCP 服务，供 Cursor 调用日记、记忆等工具。'
+              '启用 MCP 后，白守会在本机启动 MCP 服务，供 Cursor 等外部 AI 客户端调用日记、记忆等工具。'
             )}
           </p>
           <div className={styles.urlLine}>
             <span className={styles.urlLabel}>{t('settings.mcp_url_label', '连接地址')}</span>
             <code className={styles.urlCode}>{mcpUrl}</code>
           </div>
-          <section className={styles.section}>
-            <h3 className={styles.sectionTitle}>
-              {t('settings.mcp_help_json_title', 'JSON 配置客户端')}
-            </h3>
-            <ol className={styles.steps}>
-              <li>
-                {t(
-                  'settings.mcp_help_json_1',
-                  '打开 设置 → MCP → 编辑 JSON，在 mcpServers 中新增服务器。'
-                )}
-              </li>
-              <li>
-                {t(
-                  'settings.mcp_help_json_2',
-                  'type 设为 streamableHttp，baseUrl 设为上方连接地址（必须以 /mcp 结尾）。'
-                )}
-              </li>
-            </ol>
-            <pre className={styles.jsonExample}>{`{
-  "mcpServers": {
-    "baishou": {
-      "type": "streamableHttp",
-      "baseUrl": "${mcpUrl}"
-    }
-  }
-}`}</pre>
-          </section>
           <section className={styles.section}>
             <h3 className={styles.sectionTitle}>{t('settings.mcp_help_cursor_title', 'Cursor')}</h3>
             <ol className={styles.steps}>
@@ -93,6 +66,33 @@ export const McpHelpButton: React.FC<McpHelpButtonProps> = ({
                 )}
               </li>
             </ol>
+          </section>
+          <section className={styles.section}>
+            <h3 className={styles.sectionTitle}>
+              {t('settings.mcp_help_json_title', 'JSON 配置客户端')}
+            </h3>
+            <ol className={styles.steps}>
+              <li>
+                {t(
+                  'settings.mcp_help_json_1',
+                  '在客户端的 MCP 设置中打开 JSON 配置，于 mcpServers 中新增服务器。'
+                )}
+              </li>
+              <li>
+                {t(
+                  'settings.mcp_help_json_2',
+                  '将 type 设为 streamableHttp，baseUrl 设为上方连接地址（必须以 /mcp 结尾）。'
+                )}
+              </li>
+            </ol>
+            <pre className={styles.jsonExample}>{`{
+  "mcpServers": {
+    "baishou": {
+      "type": "streamableHttp",
+      "baseUrl": "${mcpUrl}"
+    }
+  }
+}`}</pre>
           </section>
           <p className={styles.note}>
             {t(
