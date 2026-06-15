@@ -42,8 +42,9 @@ describe('s3-list.util', () => {
   })
 
   it('parses more than 1000 Contents blocks without XML entity limits', () => {
-    const contents = Array.from({ length: 1002 }, (_, i) =>
-      `<Contents><Key>memories_sync/file-${i}.md</Key><Size>1</Size></Contents>`
+    const contents = Array.from(
+      { length: 1002 },
+      (_, i) => `<Contents><Key>memories_sync/file-${i}.md</Key><Size>1</Size></Contents>`
     ).join('')
     const xml = `<ListBucketResult><IsTruncated>false</IsTruncated>${contents}</ListBucketResult>`
     const parsed = parseS3ListObjectsXml(xml)

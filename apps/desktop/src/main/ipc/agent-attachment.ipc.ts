@@ -126,7 +126,11 @@ export function registerAttachmentIPC() {
                   } catch (e: any) {
                     logger.error('Failed to write base64 attachment', e)
                   }
-                } else if (att.filePath && att.fileName && !isEphemeralAttachmentPath(att.filePath)) {
+                } else if (
+                  att.filePath &&
+                  att.fileName &&
+                  !isEphemeralAttachmentPath(att.filePath)
+                ) {
                   const ext = path.extname(att.filePath) || path.extname(att.fileName)
                   const originalName = path.parse(att.fileName).name
                   const newFileName = `${originalName}_${Date.now()}${ext}`

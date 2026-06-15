@@ -1,4 +1,11 @@
-import React, { useState, useCallback, useImperativeHandle, forwardRef, useRef, useMemo } from 'react'
+import React, {
+  useState,
+  useCallback,
+  useImperativeHandle,
+  forwardRef,
+  useRef,
+  useMemo
+} from 'react'
 import {
   View,
   TouchableOpacity,

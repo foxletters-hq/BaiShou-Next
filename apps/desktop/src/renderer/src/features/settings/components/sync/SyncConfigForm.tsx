@@ -2,7 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { Cloud, Globe, Settings } from 'lucide-react'
 import { useSyncStore } from '@baishou/store'
 import { useTranslation } from 'react-i18next'
-import { SYNC_DIVERGENCE_THRESHOLD_OPTIONS, DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH } from '@baishou/shared'
+import {
+  SYNC_DIVERGENCE_THRESHOLD_OPTIONS,
+  DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH
+} from '@baishou/shared'
 import { Switch, useDialog, Select } from '@baishou/ui'
 import { S3SyncForm } from './S3SyncForm'
 import { WebDavSyncForm } from './WebDavSyncForm'

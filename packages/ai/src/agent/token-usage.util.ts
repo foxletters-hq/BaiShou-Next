@@ -22,7 +22,8 @@ export function mergeStreamUsageFromSdk(
 ): StreamTokenUsage {
   if (!sdkUsage) return accumulatorUsage
 
-  const inputTokens = Number(sdkUsage.inputTokens ?? sdkUsage.promptTokens ?? 0) || accumulatorUsage.inputTokens
+  const inputTokens =
+    Number(sdkUsage.inputTokens ?? sdkUsage.promptTokens ?? 0) || accumulatorUsage.inputTokens
   const outputTokens =
     Number(sdkUsage.outputTokens ?? sdkUsage.completionTokens ?? 0) || accumulatorUsage.outputTokens
 

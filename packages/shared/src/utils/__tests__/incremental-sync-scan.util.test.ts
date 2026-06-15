@@ -16,18 +16,14 @@ describe('incremental-sync-scan.util', () => {
 
   it('scans nested vault .baishou/settings', () => {
     expect(shouldScanIncrementalSyncDirectory('.baishou', 'Personal/.baishou')).toBe(true)
-    expect(shouldScanIncrementalSyncDirectory('settings', 'Personal/.baishou/settings')).toBe(
-      true
-    )
+    expect(shouldScanIncrementalSyncDirectory('settings', 'Personal/.baishou/settings')).toBe(true)
     expect(
       shouldIncludeIncrementalSyncFile(
         'ai_providers.json',
         'Personal/.baishou/settings/ai_providers.json'
       )
     ).toBe(true)
-    expect(shouldScanIncrementalSyncDirectory('sync-log', 'Personal/.baishou/sync-log')).toBe(
-      false
-    )
+    expect(shouldScanIncrementalSyncDirectory('sync-log', 'Personal/.baishou/sync-log')).toBe(false)
   })
 
   it('excludes root .baishou sync metadata and other dot directories', () => {

@@ -19,7 +19,9 @@ function SyncModeComparisonBody({ context }: { context?: 'incremental' | 'fullBa
     <div className={styles.body}>
       <div className={styles.grid}>
         <div className={styles.card} data-active={context === 'incremental'}>
-          <div className={styles.cardTitle}>{t('data_sync.sync_mode_comparison_row_incremental')}</div>
+          <div className={styles.cardTitle}>
+            {t('data_sync.sync_mode_comparison_row_incremental')}
+          </div>
           <p className={styles.cardDesc}>{t('data_sync.sync_mode_comparison_incremental_desc')}</p>
         </div>
         <div className={styles.card} data-active={context === 'fullBackup'}>

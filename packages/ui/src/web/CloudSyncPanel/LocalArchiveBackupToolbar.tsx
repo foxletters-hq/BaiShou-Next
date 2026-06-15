@@ -92,9 +92,7 @@ export const LocalArchiveBackupToolbar: React.FC<LocalArchiveBackupToolbarProps>
             {t('settings.export_data', '导出数据')}
           </button>
         </Tooltip>
-        <Tooltip
-          content={t('settings.import_desc', '从 ZIP 备份文件恢复数据（将覆盖当前数据）')}
-        >
+        <Tooltip content={t('settings.import_desc', '从 ZIP 备份文件恢复数据（将覆盖当前数据）')}>
           <button
             type="button"
             className={`${styles.actionBtn} ${styles.btnOutlined} ${styles.localArchiveBtn}`}
@@ -102,11 +100,7 @@ export const LocalArchiveBackupToolbar: React.FC<LocalArchiveBackupToolbarProps>
             disabled={busy}
             aria-label={t('settings.import_data', '导入数据')}
           >
-            {isImporting ? (
-              <Loader2 size={16} className={styles.spinIcon} />
-            ) : (
-              <Upload size={16} />
-            )}
+            {isImporting ? <Loader2 size={16} className={styles.spinIcon} /> : <Upload size={16} />}
             {t('settings.import_data', '导入数据')}
           </button>
         </Tooltip>

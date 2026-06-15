@@ -27,9 +27,7 @@ export interface WrapLanguageModelOptions {
   baseUrl?: string
 }
 
-function resolveWrapOptions(
-  options: string | WrapLanguageModelOptions
-): WrapLanguageModelOptions {
+function resolveWrapOptions(options: string | WrapLanguageModelOptions): WrapLanguageModelOptions {
   if (typeof options === 'string') {
     return { providerType: options }
   }
@@ -97,10 +95,15 @@ export function buildLanguageModelMiddlewares(
   // 2. 推理提取中间件
   if (resolved.providerType === 'deepseek' || resolved.providerType === 'openai') {
     try {
-      middlewares.push(extractReasoningMiddleware({ tagName: 'think' }) as LanguageModelV3Middleware)
+      middlewares.push(
+        extractReasoningMiddleware({ tagName: 'think' }) as LanguageModelV3Middleware
+      )
     } catch (e: unknown) {
       const detail = e instanceof Error ? e.message : String(e)
-      logger.warn('[buildLanguageModelMiddlewares] extractReasoningMiddleware not available:', detail)
+      logger.warn(
+        '[buildLanguageModelMiddlewares] extractReasoningMiddleware not available:',
+        detail
+      )
     }
   }
 

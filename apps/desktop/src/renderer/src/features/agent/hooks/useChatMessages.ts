@@ -157,9 +157,7 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
   const messageCacheRef = useRef<any[]>([])
   const roundWindowStartRef = useRef(0)
   const fetchHasMoreRef = useRef(false)
-  const pendingUsageByMessageIdRef = useRef(
-    new Map<string, Record<string, number | undefined>>()
-  )
+  const pendingUsageByMessageIdRef = useRef(new Map<string, Record<string, number | undefined>>())
 
   const messagesRef = useRef<any[]>(messages)
   useEffect(() => {
@@ -233,7 +231,11 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
             ingestFetchedTail(fetched, !atBottom)
 
             const latestAssistant = [...fetched].reverse().find((m) => m.role === 'assistant')
-            if (latestAssistant && !messageHasUsageStats(latestAssistant) && attempt < retryCount - 1) {
+            if (
+              latestAssistant &&
+              !messageHasUsageStats(latestAssistant) &&
+              attempt < retryCount - 1
+            ) {
               await new Promise((r) => setTimeout(r, 200 * (attempt + 1)))
               continue
             }
@@ -339,7 +341,9 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
       }
 
       messageCacheRef.current = messageCacheRef.current.map(patch)
-      if (messageCacheRef.current.some((m) => m.id === detail.messageId && messageHasUsageStats(m))) {
+      if (
+        messageCacheRef.current.some((m) => m.id === detail.messageId && messageHasUsageStats(m))
+      ) {
         pendingUsageByMessageIdRef.current.delete(detail.messageId)
       }
       syncFromCache(roundWindowStartRef.current)

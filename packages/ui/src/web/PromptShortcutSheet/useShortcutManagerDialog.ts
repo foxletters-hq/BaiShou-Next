@@ -68,12 +68,8 @@ export function useShortcutManagerDialog(
         'shortcut'
     }
 
-    if (
-      findShortcutCommandConflict(shortcuts, newItem, isNew ? undefined : newItem.id)
-    ) {
-      toast.showError(
-        t('shortcut.duplicate_command', '已存在相同快捷短语的指令，请换一个短语')
-      )
+    if (findShortcutCommandConflict(shortcuts, newItem, isNew ? undefined : newItem.id)) {
+      toast.showError(t('shortcut.duplicate_command', '已存在相同快捷短语的指令，请换一个短语'))
       return
     }
 
@@ -87,9 +83,7 @@ export function useShortcutManagerDialog(
     } catch (error) {
       const message = error instanceof Error ? error.message : ''
       if (message === 'DUPLICATE_SHORTCUT_COMMAND') {
-        toast.showError(
-          t('shortcut.duplicate_command', '已存在相同快捷短语的指令，请换一个短语')
-        )
+        toast.showError(t('shortcut.duplicate_command', '已存在相同快捷短语的指令，请换一个短语'))
         return
       }
       throw error

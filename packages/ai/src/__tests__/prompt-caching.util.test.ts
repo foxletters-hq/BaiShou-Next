@@ -15,7 +15,9 @@ import {
 describe('prompt-caching.util', () => {
   describe('resolveCachingStrategy', () => {
     it('enables inline markers for anthropic', () => {
-      expect(resolveCachingStrategy({ providerType: 'anthropic', modelId: 'claude-3-5-sonnet' })).toEqual({
+      expect(
+        resolveCachingStrategy({ providerType: 'anthropic', modelId: 'claude-3-5-sonnet' })
+      ).toEqual({
         inlineMarkers: true,
         promptCacheKey: false
       })
@@ -48,7 +50,9 @@ describe('prompt-caching.util', () => {
     })
 
     it('skips markers for gemini', () => {
-      expect(resolveCachingStrategy({ providerType: 'gemini', modelId: 'gemini-2.5-flash' })).toEqual({
+      expect(
+        resolveCachingStrategy({ providerType: 'gemini', modelId: 'gemini-2.5-flash' })
+      ).toEqual({
         inlineMarkers: false,
         promptCacheKey: false
       })
@@ -125,7 +129,9 @@ describe('prompt-caching.util', () => {
         { remaining: ANTHROPIC_BREAKPOINT_CAP }
       ) as Record<string, { providerOptions?: Record<string, unknown> }>
 
-      expect(result.memory?.providerOptions?.anthropic).toEqual(INLINE_CACHE_PROVIDER_OPTIONS.anthropic)
+      expect(result.memory?.providerOptions?.anthropic).toEqual(
+        INLINE_CACHE_PROVIDER_OPTIONS.anthropic
+      )
       expect(result.search?.providerOptions).toBeUndefined()
     })
   })

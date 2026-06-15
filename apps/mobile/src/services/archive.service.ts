@@ -131,9 +131,7 @@ export class MobileArchiveService implements IArchiveService {
     }
 
     let needsRestart = false
-    const preservedSettings = this.dbBridge
-      ? await this.dbBridge.readPreservedImportSettings()
-      : {}
+    const preservedSettings = this.dbBridge ? await this.dbBridge.readPreservedImportSettings() : {}
 
     try {
       try {

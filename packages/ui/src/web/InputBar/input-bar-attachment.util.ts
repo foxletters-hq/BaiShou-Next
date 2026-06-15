@@ -26,8 +26,7 @@ export async function fileToChatAttachment(file: File): Promise<InputBarAttachme
   const isImage = file.type.startsWith('image/')
   const isPdf = file.type === 'application/pdf'
   const isText = file.type.startsWith('text/') || /\.(txt|md)$/i.test(file.name)
-  const fileName =
-    file.name || (isImage ? `pasted_${Date.now()}.png` : `file_${Date.now()}`)
+  const fileName = file.name || (isImage ? `pasted_${Date.now()}.png` : `file_${Date.now()}`)
 
   const id = Math.random().toString(36).substring(7)
 

@@ -71,9 +71,7 @@ export function useInputBarShortcuts(
     (delta: -1 | 1) => {
       if (!filteredShortcuts.length) return
       setSelectedIndex((index) =>
-        delta < 0
-          ? Math.max(index - 1, 0)
-          : Math.min(index + 1, filteredShortcuts.length - 1)
+        delta < 0 ? Math.max(index - 1, 0) : Math.min(index + 1, filteredShortcuts.length - 1)
       )
     },
     [filteredShortcuts.length]

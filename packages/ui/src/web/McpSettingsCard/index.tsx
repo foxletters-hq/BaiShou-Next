@@ -1,10 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  MdOutlineHub,
-  MdExpandMore,
-  MdContentCopy
-} from 'react-icons/md'
+import { MdOutlineHub, MdExpandMore, MdContentCopy } from 'react-icons/md'
 import '../shared/SettingsListTile.css'
 import {
   isSettingsInlineHelpTarget,
@@ -53,7 +49,9 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
   }
 
   const enableRow = (
-    <div className={`settings-list-tile settings-list-tile-noclick ${standalone ? '' : styles.indentedTile}`}>
+    <div
+      className={`settings-list-tile settings-list-tile-noclick ${standalone ? '' : styles.indentedTile}`}
+    >
       <div className="settings-list-tile-content">
         <span className={`settings-list-tile-title ${styles.titleRow}`}>
           {t('settings.mcp_enable', '启用 MCP 服务')}

@@ -40,7 +40,10 @@ import {
   finalizeCompressionForStorage
 } from './compaction-marker'
 import { consumeCompressionModelStream } from './compression-stream.utils'
-import { wrapLanguageModelWithMiddlewares, buildCachedSystemForStream } from '../middleware/middleware-factory'
+import {
+  wrapLanguageModelWithMiddlewares,
+  buildCachedSystemForStream
+} from '../middleware/middleware-factory'
 
 export type { SessionCompressionConfig } from './context-compression.utils'
 

@@ -62,9 +62,7 @@ describe('prompt-shortcut.util', () => {
         command: 'weekly'
       })
     ).toMatchObject({ id: 'custom-1' })
-    expect(
-      findShortcutCommandConflict(shortcuts, shortcuts[1]!, 'custom-1')
-    ).toBeUndefined()
+    expect(findShortcutCommandConflict(shortcuts, shortcuts[1]!, 'custom-1')).toBeUndefined()
   })
 
   it('localizes built-in default shortcuts', () => {

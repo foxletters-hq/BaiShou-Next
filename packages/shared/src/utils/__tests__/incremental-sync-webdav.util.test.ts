@@ -27,9 +27,9 @@ describe('incremental-sync-webdav.util', () => {
   })
 
   it('maps href to relative path under base prefix', () => {
-    expect(
-      toRelativeWebDavPath('/dav/memories_sync/Personal/Journals/a.md', 'memories_sync')
-    ).toBe('Personal/Journals/a.md')
+    expect(toRelativeWebDavPath('/dav/memories_sync/Personal/Journals/a.md', 'memories_sync')).toBe(
+      'Personal/Journals/a.md'
+    )
     expect(toRelativeWebDavPath('/dav/memories_sync/', 'memories_sync')).toBeNull()
   })
 

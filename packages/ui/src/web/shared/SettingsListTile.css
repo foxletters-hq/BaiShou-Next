@@ -103,7 +103,9 @@
   background-color: rgba(255, 255, 255, 0.04);
 }
 
-[data-theme='dark'] .settings-expansion-tile-embedded:not(.settings-open) .settings-expansion-summary:hover {
+[data-theme='dark']
+  .settings-expansion-tile-embedded:not(.settings-open)
+  .settings-expansion-summary:hover {
   background-color: rgba(255, 255, 255, 0.04);
 }
 

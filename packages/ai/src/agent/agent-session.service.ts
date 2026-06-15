@@ -11,11 +11,7 @@ import { StreamChunkAdapter } from './stream-chunk.adapter'
 import { ChunkType } from './stream-chunk.types'
 import type { StreamChunk } from './stream-chunk.types'
 import { SystemPromptBuilder } from './system-prompt.builder'
-import {
-  isVisionModel,
-  logger,
-  type ISqlExecutor
-} from '@baishou/shared'
+import { isVisionModel, logger, type ISqlExecutor } from '@baishou/shared'
 
 // --- 新挂载的智慧引擎组件 ---
 import { ContextWindowBuilder } from './context-window.builder'
@@ -39,9 +35,7 @@ import { MemoryDeduplicationServiceImpl } from '../rag/memory-deduplication.serv
 
 import { StreamChatOptions, StreamChatCallbacks } from './agent-session.types'
 import { persistResult } from './agent-session-persist'
-import {
-  messageHasImageAttachments
-} from './attachment-content.builder'
+import { messageHasImageAttachments } from './attachment-content.builder'
 
 export type { StreamChatOptions, StreamChatCallbacks } from './agent-session.types'
 

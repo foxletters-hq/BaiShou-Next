@@ -120,7 +120,8 @@ export class StreamAccumulator {
 
       case 'tool-call': {
         if (p.toolCallId) {
-          const legacyArgs = p.args ?? (p.providerMetadata as Record<string, unknown> | undefined)?.raw
+          const legacyArgs =
+            p.args ?? (p.providerMetadata as Record<string, unknown> | undefined)?.raw
           const rawInput = (legacyArgs as { input?: unknown } | undefined)?.input
           const inputArgs =
             typeof p.input === 'string' ? p.input : JSON.stringify(p.input ?? rawInput ?? {})
@@ -147,9 +148,11 @@ export class StreamAccumulator {
       }
 
       case 'finish-step': {
-        this.ingestUsage(p.usage as Record<string, unknown> | undefined, p.providerMetadata as
-          | Record<string, unknown>
-          | undefined, true)
+        this.ingestUsage(
+          p.usage as Record<string, unknown> | undefined,
+          p.providerMetadata as Record<string, unknown> | undefined,
+          true
+        )
         break
       }
 
@@ -162,9 +165,11 @@ export class StreamAccumulator {
       default: {
         const partType = String(p.type)
         if (partType === 'finish-step') {
-          this.ingestUsage(p.usage as Record<string, unknown> | undefined, p.providerMetadata as
-            | Record<string, unknown>
-            | undefined, true)
+          this.ingestUsage(
+            p.usage as Record<string, unknown> | undefined,
+            p.providerMetadata as Record<string, unknown> | undefined,
+            true
+          )
           break
         }
         if (p.usage || p.usageMetadata || p.providerMetadata) {

@@ -1,9 +1,6 @@
 import { useCallback, useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import {
-  settingsPathForScope,
-  settingsScopeFromPath
-} from '../settings-route.util'
+import { settingsPathForScope, settingsScopeFromPath } from '../settings-route.util'
 
 export function useSettingsScopeNavigation() {
   const navigate = useNavigate()

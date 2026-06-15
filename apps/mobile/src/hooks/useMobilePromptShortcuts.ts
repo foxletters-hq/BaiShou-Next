@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PromptShortcut } from '@baishou/shared'
-import { logger, SHORTCUT_TRACE_CHAIN, traceCall, dedupePromptShortcuts, findShortcutCommandConflict } from '@baishou/shared'
+import {
+  logger,
+  SHORTCUT_TRACE_CHAIN,
+  traceCall,
+  dedupePromptShortcuts,
+  findShortcutCommandConflict
+} from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
@@ -137,9 +143,7 @@ export function useMobilePromptShortcuts() {
   const addShortcut = useCallback(
     async (shortcut: PromptShortcut) => {
       if (findShortcutCommandConflict(shortcutsRef.current, shortcut)) {
-        toast.showError(
-          t('shortcut.duplicate_command', '已存在相同快捷短语的指令，请换一个短语')
-        )
+        toast.showError(t('shortcut.duplicate_command', '已存在相同快捷短语的指令，请换一个短语'))
         throw new Error('DUPLICATE_SHORTCUT_COMMAND')
       }
       await traceCall(
@@ -155,9 +159,7 @@ export function useMobilePromptShortcuts() {
   const updateShortcut = useCallback(
     async (shortcut: PromptShortcut) => {
       if (findShortcutCommandConflict(shortcutsRef.current, shortcut, shortcut.id)) {
-        toast.showError(
-          t('shortcut.duplicate_command', '已存在相同快捷短语的指令，请换一个短语')
-        )
+        toast.showError(t('shortcut.duplicate_command', '已存在相同快捷短语的指令，请换一个短语'))
         throw new Error('DUPLICATE_SHORTCUT_COMMAND')
       }
       await traceCall(

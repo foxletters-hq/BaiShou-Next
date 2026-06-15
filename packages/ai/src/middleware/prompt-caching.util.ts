@@ -84,10 +84,7 @@ function useMessageLevelCacheOptions(ctx: PromptCachingContext): boolean {
   return type === 'anthropic' || (type === 'vertexai' && isClaudeModel(ctx.modelId))
 }
 
-function markMessageWithCache(
-  msg: ModelMessage,
-  ctx: PromptCachingContext
-): ModelMessage {
+function markMessageWithCache(msg: ModelMessage, ctx: PromptCachingContext): ModelMessage {
   const existing = (msg as { providerOptions?: Record<string, unknown> }).providerOptions
   if (hasInlineCacheMarker(existing)) return msg
 
@@ -240,14 +237,19 @@ export function applyInlineCacheMarkersToTools(
     const entries = Object.entries(tools as Record<string, unknown>)
     if (entries.length === 0) return tools
     const lastKey = entries[entries.length - 1]![0]
-    const lastTool = entries[entries.length - 1]![1] as { providerOptions?: Record<string, unknown> }
+    const lastTool = entries[entries.length - 1]![1] as {
+      providerOptions?: Record<string, unknown>
+    }
     if (hasInlineCacheMarker(lastTool?.providerOptions)) return tools
     breakpointBudget.remaining -= 1
     return {
       ...(tools as Record<string, unknown>),
       [lastKey]: {
         ...lastTool,
-        providerOptions: mergeProviderOptions(lastTool?.providerOptions, INLINE_CACHE_PROVIDER_OPTIONS)
+        providerOptions: mergeProviderOptions(
+          lastTool?.providerOptions,
+          INLINE_CACHE_PROVIDER_OPTIONS
+        )
       }
     }
   }

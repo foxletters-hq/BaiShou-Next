@@ -471,8 +471,7 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
           )}
         </div>
 
-        {(view.meta?.nextRequest ||
-          (view.roundUsage && hasTokenUsageStats(view.roundUsage))) && (
+        {(view.meta?.nextRequest || (view.roundUsage && hasTokenUsageStats(view.roundUsage))) && (
           <div className={panelStyles.panelFooter}>
             {view.meta?.nextRequest && (
               <div className={panelStyles.estimateBar}>
@@ -497,23 +496,23 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
               </div>
             )}
             {view.roundUsage && hasTokenUsageStats(view.roundUsage) && (
-                <div className={panelStyles.footerBar}>
-                  <div className={panelStyles.footerTitle}>
-                    {view.t('agent.chat.this_round_usage', '本轮消耗')}
-                    {view.meta?.activeRoundIndex
-                      ? ` · ${view.t('agent.chat.round_label', '第 {{n}} 轮', {
-                          n: view.meta.activeRoundIndex
-                        })}`
-                      : ''}
-                  </div>
-                  <RoundUsageFooterStats
-                    usage={view.roundUsage}
-                    costText={view.costText}
-                    className={panelStyles.footerRow}
-                    statClassName={panelStyles.footerStat}
-                  />
+              <div className={panelStyles.footerBar}>
+                <div className={panelStyles.footerTitle}>
+                  {view.t('agent.chat.this_round_usage', '本轮消耗')}
+                  {view.meta?.activeRoundIndex
+                    ? ` · ${view.t('agent.chat.round_label', '第 {{n}} 轮', {
+                        n: view.meta.activeRoundIndex
+                      })}`
+                    : ''}
                 </div>
-              )}
+                <RoundUsageFooterStats
+                  usage={view.roundUsage}
+                  costText={view.costText}
+                  className={panelStyles.footerRow}
+                  statClassName={panelStyles.footerStat}
+                />
+              </div>
+            )}
           </div>
         )}
       </aside>

@@ -209,9 +209,7 @@ export abstract class GitSyncInternalBase {
 
     if (toRemove.size === 0) return false
 
-    logger.info(
-      `[GitSync] 从索引移除 ${toRemove.size} 个不应版本化的路径（含 gitlink/归档/配置）`
-    )
+    logger.info(`[GitSync] 从索引移除 ${toRemove.size} 个不应版本化的路径（含 gitlink/归档/配置）`)
 
     let anyRemoved = false
     for (const filePath of toRemove) {
