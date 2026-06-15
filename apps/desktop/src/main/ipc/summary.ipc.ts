@@ -23,6 +23,8 @@ import { SummaryQueueService } from '../services/summary-queue.service'
 import { pathService, vaultService, getActiveVaultShadowRepo } from './vault.ipc'
 import { fileSystem } from '../services/node-file-system'
 import { CreateSummaryInput, UpdateSummaryInput, SummaryType } from '@baishou/shared'
+import { summariesTable } from '@baishou/database-desktop'
+import { sql } from 'drizzle-orm'
 import { buildSummaryAiClient } from './summary-ai-client'
 
 export function getSummaryManager() {
@@ -150,13 +152,22 @@ export function registerSummaryIPC() {
       } catch (e: any) {
         logger.error('Failed to get shadow_index count', e)
       }
-      const summaries = await ensureManager().list()
+      const db = connectionManager.getDb()
+      const typeCounts = await db
+        .select({
+          type: summariesTable.type,
+          count: sql<number>`count(*)`.mapWith(Number)
+        })
+        .from(summariesTable)
+        .groupBy(summariesTable.type)
+
+      const countByType = Object.fromEntries(typeCounts.map((row) => [row.type, row.count]))
       return {
         totalDiaryCount,
-        weeklyCount: summaries.filter((s: any) => s.type === 'weekly').length,
-        monthlyCount: summaries.filter((s: any) => s.type === 'monthly').length,
-        quarterlyCount: summaries.filter((s: any) => s.type === 'quarterly').length,
-        yearlyCount: summaries.filter((s: any) => s.type === 'yearly').length
+        weeklyCount: countByType.weekly ?? 0,
+        monthlyCount: countByType.monthly ?? 0,
+        quarterlyCount: countByType.quarterly ?? 0,
+        yearlyCount: countByType.yearly ?? 0
       }
     } catch (err: any) {
       logger.error('Failed to calculate summary stats:', err)
@@ -205,22 +216,9 @@ export function registerSummaryIPC() {
       } as any
 
       const detector = new MissingSummaryDetector(diaryRepoAdapter, summaryRepo)
-      const res = await detector.getAllMissing(locale)
-
-      require('fs').writeFileSync(
-        require('path').join(process.cwd(), 'detect-debug.log'),
-        JSON.stringify({ count: res.length })
-      )
-
-      return res
+      return await detector.getAllMissing(locale)
     } catch (err: any) {
       logger.error('[SummaryIPC] detect-missing error:', err)
-      try {
-        require('fs').writeFileSync(
-          require('path').join(process.cwd(), 'detect-err.log'),
-          err.stack || err.toString()
-        )
-      } catch (e) {}
       return []
     }
   })

@@ -6,7 +6,9 @@ import type { AgentAssistant } from './components/AgentSidebar'
 import { useAssistantStore, useSettingsStore, useUserProfileStore } from '@baishou/store'
 import { useToast, AssistantPickerSheet, Modal, AssistantEditPage, useDialog } from '@baishou/ui'
 import styles from './AgentLayout.module.css'
+import { LATTE_ASSISTANT_DESCRIPTION, LATTE_ASSISTANT_NAME } from '@baishou/shared'
 import { useAgentSessions } from './hooks/useAgentSessions'
+import i18n from 'i18next'
 
 export const AgentLayout: React.FC = () => {
   const navigate = useNavigate()
@@ -70,35 +72,22 @@ export const AgentLayout: React.FC = () => {
     }
   }, [sessionId])
 
-  // 初始化：加载助手列表，如无助手则创建默认助手
+  // 初始化：加载助手列表，由 bootstrap 确保 Latte 存在
   useEffect(() => {
-    fetchAssistants().then(() => {
+    void fetchAssistants().then(async () => {
       const store = useAssistantStore.getState()
-      if (store.assistants.length === 0 && typeof window !== 'undefined' && window.electron) {
-        window.electron.ipcRenderer
-          .invoke('agent:create-assistant', {
-            id: 'default',
-            name: t('agent.default_assistant_name', '默认伙伴'),
-            emoji: '🍵',
-            systemPrompt: '',
-            isDefault: true,
-            contextWindow: 20
-          })
-          .then(() => fetchAssistants())
-          .then(() => {
-            const finalStore = useAssistantStore.getState()
-            const ast =
-              finalStore.assistants.find((a: any) => a.isDefault) || finalStore.assistants[0]
-            if (ast) {
-              resolvedAssistantIdRef.current = String(ast.id)
-            }
-          })
-          .catch(console.error)
-      } else {
-        const ast = store.assistants.find((a: any) => a.isDefault) || store.assistants[0]
-        if (ast) {
-          resolvedAssistantIdRef.current = String(ast.id)
+      if (store.assistants.length === 0 && typeof window !== 'undefined' && window.api) {
+        try {
+          await window.api.ensureDefaultLatteAssistant(i18n.language)
+          await fetchAssistants()
+        } catch (error) {
+          console.error('Failed to ensure default Latte assistant', error)
         }
+      }
+      const refreshed = useAssistantStore.getState()
+      const ast = refreshed.assistants.find((a: any) => a.isDefault) || refreshed.assistants[0]
+      if (ast) {
+        resolvedAssistantIdRef.current = String(ast.id)
       }
     })
     loadConfig()
@@ -144,16 +133,16 @@ export const AgentLayout: React.FC = () => {
     ? {
         id: String(currentAssistant.id),
         name: currentAssistant.name,
-        description: currentAssistant.description || t('agent.default_assistant_desc', ''),
+        description: currentAssistant.description || LATTE_ASSISTANT_DESCRIPTION,
         emoji: currentAssistant.emoji,
         avatarPath: (currentAssistant as any).avatarPath
       }
     : !isAssistantsLoading
       ? {
           id: 'default',
-          name: t('agent.default_assistant_name', '默认伙伴'),
-          description: t('agent.default_assistant_desc', ''),
-          emoji: '🍵'
+          name: LATTE_ASSISTANT_NAME,
+          description: LATTE_ASSISTANT_DESCRIPTION,
+          emoji: undefined
         }
       : undefined
 

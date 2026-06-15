@@ -10,7 +10,9 @@ import {
   connectionManager,
   shadowConnectionManager
 } from '@baishou/database-desktop'
-import { logger } from '@baishou/shared'
+import { app } from 'electron'
+import { ensureDefaultLatteAssistant } from '@baishou/core-desktop'
+import { logger, resolveBootstrapUiLocale } from '@baishou/shared'
 
 import { pathService, vaultService } from '../ipc/vault.ipc'
 import { fileSystem } from './node-file-system'
@@ -113,6 +115,20 @@ export class GlobalDataBootstrapper {
       // 3. AI 预设角色：从 baishou_agent.db 同步助手配置
       logger.info('[Bootstrapper] 正在同步助理设定 (Assistant Assets)...')
       await assistantManager.fullResyncFromDisks()
+      const appSettings = (await settingsManager.get<{ language?: string }>('settings')) || {}
+      const featureSettings =
+        (await settingsManager.get<{ language?: string }>('feature_settings')) || {}
+      const storedLanguage = appSettings.language || featureSettings.language
+      const locale = resolveBootstrapUiLocale({
+        savedLanguage: storedLanguage,
+        systemLocale: app.getLocale(),
+        hasCompletedOnboarding: !!vaultService.getActiveVault()
+      })
+      if (locale) {
+        await ensureDefaultLatteAssistant(assistantManager, locale)
+      } else {
+        logger.info('[Bootstrapper] Skipped Latte until UI language is chosen')
+      }
 
       // 4. AI 漫游会话：从 baishou_agent.db 同步会话快照
       logger.info('[Bootstrapper] 正在同步智能体对话上下文 (Agent Session Snapshots)...')

@@ -55,6 +55,9 @@ async function switchVaultFast(vaultName: string) {
 
   await vaultService.switchVault(vaultName)
 
+  const { resetCachedManager } = await import('./summary.ipc')
+  resetCachedManager()
+
   const { globalBootstrapper } = await import('../services/bootstrapper.service')
   await globalBootstrapper.activateVaultRuntime()
   const { resetAttachmentAllowedRootsCache } = await import('./attachment-path-cache')

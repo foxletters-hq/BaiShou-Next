@@ -1,4 +1,5 @@
 import { ipcMain } from 'electron'
+import { ensureDefaultLatteAssistant, syncDefaultLatteAssistantLocale } from '@baishou/core-desktop'
 import { getAgentManagers } from './agent-helpers'
 
 export function registerAssistantIPC() {
@@ -35,5 +36,17 @@ export function registerAssistantIPC() {
   ipcMain.handle('agent:pin-assistant', async (_, id: string, isPinned: boolean) => {
     const { assistantManager } = getAgentManagers()
     await assistantManager.togglePin(id, isPinned)
+  })
+
+  ipcMain.handle('agent:sync-default-latte-locale', async (_, locale?: string) => {
+    const { assistantManager } = getAgentManagers()
+    await syncDefaultLatteAssistantLocale(assistantManager, locale)
+    return true
+  })
+
+  ipcMain.handle('agent:ensure-default-latte-assistant', async (_, locale?: string) => {
+    const { assistantManager } = getAgentManagers()
+    await ensureDefaultLatteAssistant(assistantManager, locale)
+    return true
   })
 }

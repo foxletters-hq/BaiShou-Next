@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAssistantStore } from '@baishou/store'
+import { LATTE_ASSISTANT_NAME } from '@baishou/shared'
 
 export interface UseAssistantResolverParams {
   sessionId: string | undefined
@@ -48,14 +49,12 @@ export function useAssistantResolver(
       assistant = assistants.find((a) => String(a.id) === String(activeAssistantId)) ||
         assistants.find((a) => a.isDefault) || {
           id: 'default',
-          name: 'BaiShou (Core)',
-          emoji: '✨'
+          name: LATTE_ASSISTANT_NAME
         }
     } else {
       assistant = assistants.find((a) => a.isDefault) || {
         id: 'default',
-        name: 'BaiShou (Core)',
-        emoji: '✨'
+        name: LATTE_ASSISTANT_NAME
       }
     }
     return { ...assistant, id: String(assistant.id) }

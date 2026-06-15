@@ -70,6 +70,12 @@ interface UpdaterAPI {
   onDownloadProgress(callback: (progress: number) => void): () => void
 }
 
+interface SettingsAPI {
+  getFeatures(): Promise<Record<string, unknown>>
+  setFeatures(config: Record<string, unknown>): Promise<void>
+  [key: string]: (...args: unknown[]) => Promise<unknown>
+}
+
 interface AppAPI {
   onboarding: OnboardingAPI
   window: WindowAPI
@@ -80,6 +86,9 @@ interface AppAPI {
   git: GitAPI
   incrementalSync: IncrementalSyncAPI
   updater: UpdaterAPI
+  settings: SettingsAPI
+  ensureDefaultLatteAssistant(locale?: string): Promise<void>
+  syncDefaultLatteLocale(locale?: string): Promise<void>
   [key: string]: unknown
 }
 

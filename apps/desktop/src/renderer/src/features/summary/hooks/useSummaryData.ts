@@ -62,15 +62,12 @@ export function useSummaryData() {
     }
   }, [])
 
-  const fetchData = useCallback(async () => {
+  const fetchCoreData = useCallback(async () => {
     if (typeof window === 'undefined' || !window.electron) return
 
-    setIsDetectingMissing(true)
-
-    const [listResult, statsResult, missingResult] = await Promise.allSettled([
+    const [listResult, statsResult] = await Promise.allSettled([
       window.electron.ipcRenderer.invoke('summary:list'),
-      window.electron.ipcRenderer.invoke('summary:stats'),
-      window.electron.ipcRenderer.invoke('summary:detect-missing', i18n.language)
+      window.electron.ipcRenderer.invoke('summary:stats')
     ])
 
     if (listResult.status === 'fulfilled') {
@@ -93,23 +90,18 @@ export function useSummaryData() {
     } else {
       logger.warn('[SummaryData] summary:stats failed:', statsResult.reason)
     }
+  }, [])
 
-    if (missingResult.status === 'fulfilled') {
-      const missing = missingResult.value
-      logger.info(`[RENDERER-DEBUG] summary:detect-missing → ${missing?.length ?? 0} items`)
-      setMissingSummaries(missing || [])
-    } else {
-      logger.warn('[SummaryData] summary:detect-missing failed:', missingResult.reason)
-      setMissingSummaries([])
-    }
-
-    setIsDetectingMissing(false)
-  }, [i18n.language])
+  const fetchData = useCallback(async () => {
+    await fetchCoreData()
+    void fetchMissingSummaries()
+  }, [fetchCoreData, fetchMissingSummaries])
 
   useEffect(() => {
-    fetchData()
+    void fetchCoreData()
+    void fetchMissingSummaries()
     fetchQueueState()
-  }, [fetchData, fetchQueueState])
+  }, [fetchCoreData, fetchMissingSummaries, fetchQueueState])
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.electron) {

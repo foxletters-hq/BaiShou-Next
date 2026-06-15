@@ -1,0 +1,76 @@
+.pageInner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.iconWrapper {
+  width: 96px;
+  height: 96px;
+  border-radius: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(154, 212, 234, 0.18);
+  color: #5ba8cd;
+}
+
+.title {
+  margin-top: 28px;
+  font-size: 24px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--text-primary);
+}
+
+.subtitle {
+  margin-top: 12px;
+  font-size: 16px;
+  line-height: 1.65;
+  text-align: center;
+  color: var(--text-secondary);
+  max-width: 360px;
+}
+
+.langList {
+  margin-top: 28px;
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.langChip {
+  min-height: 52px;
+  border-radius: 14px;
+  border: 1.5px solid rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.72);
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 16px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.langChip:hover {
+  border-color: rgba(91, 168, 205, 0.45);
+}
+
+.langChipActive {
+  border-color: #5ba8cd;
+  background: rgba(154, 212, 234, 0.14);
+  font-weight: 700;
+  color: #5ba8cd;
+}
+
+.checkMark {
+  font-size: 16px;
+  font-weight: 700;
+}

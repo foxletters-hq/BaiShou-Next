@@ -211,6 +211,7 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
                 onOpenGithubRepo={() => window.api.shell.openExternal(GITHUB_REPO_URL)}
                 onOpenFeedback={() => window.api.shell.openExternal(GITHUB_ISSUES_URL)}
                 onOpenCompressionTestSession={(sessionId) => navigate(`/chat/${sessionId}`)}
+                onOpenOnboarding={() => navigate('/welcome?preview=1')}
               />
             </div>
           </section>

@@ -2,6 +2,7 @@ import React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { MdUnfoldMore, MdAdd, MdSettings, MdChecklist } from 'react-icons/md'
+import { resolveWebAssistantAvatarSrc } from '@baishou/ui'
 import type { AgentAssistant } from './AgentSidebar'
 import styles from './AgentSidebar.module.css'
 import { rememberSettingsReturnPath } from '../../settings/settings-navigation.util'
@@ -11,7 +12,7 @@ interface AssistantAvatarProps {
   size: number
 }
 
-/** 助手头像：支持图片路径或 emoji fallback */
+/** 助手头像：内置预设 / 本地上传 */
 const AssistantAvatar: React.FC<AssistantAvatarProps> = ({ assistant, size }) => {
   const shellStyle: React.CSSProperties = {
     width: size,
@@ -24,26 +25,19 @@ const AssistantAvatar: React.FC<AssistantAvatarProps> = ({ assistant, size }) =>
     justifyContent: 'center'
   }
 
-  if (assistant.avatarPath && assistant.avatarPath !== 'default') {
-    return (
-      <div style={shellStyle}>
-        <img
-          src={assistant.avatarPath}
-          alt={assistant.name}
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            objectPosition: 'center',
-            display: 'block'
-          }}
-        />
-      </div>
-    )
-  }
   return (
-    <div style={{ ...shellStyle, backgroundColor: 'transparent', fontSize: size * 0.5 }}>
-      {assistant.emoji || '🤖'}
+    <div style={shellStyle}>
+      <img
+        src={resolveWebAssistantAvatarSrc(assistant.avatarPath)}
+        alt={assistant.name}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          objectPosition: 'center',
+          display: 'block'
+        }}
+      />
     </div>
   )
 }

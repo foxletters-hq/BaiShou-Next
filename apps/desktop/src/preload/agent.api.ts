@@ -40,6 +40,10 @@ export const agentApi = {
   updateAssistant: (id: string, input: any) =>
     ipcRenderer.invoke('agent:update-assistant', id, input),
   deleteAssistant: (id: string) => ipcRenderer.invoke('agent:delete-assistant', id),
+  syncDefaultLatteLocale: (locale?: string) =>
+    ipcRenderer.invoke('agent:sync-default-latte-locale', locale),
+  ensureDefaultLatteAssistant: (locale?: string) =>
+    ipcRenderer.invoke('agent:ensure-default-latte-assistant', locale),
 
   // RAG System
   rag: {
