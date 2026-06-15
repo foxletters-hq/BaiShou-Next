@@ -127,5 +127,6 @@ export * from './utils/assistant-avatar.util'
 export * from './utils/app-ui-locale.util'
 export * from './utils/message-attachment.util'
 export * from './utils/attachment-reference.util'
+export * from './utils/version-control-path.util'
 
 export { threeWayMerge, type MergeDecision } from './sync/three-way-merge'
