@@ -9,7 +9,7 @@ import {
   openAllFilesAccessSettings as openAllFilesAccessSettingsPage,
   requestStoragePermission
 } from './storage-permission.service'
-import { sanitizeVaultDirectoryName } from '@baishou/core'
+import { sanitizeVaultDirectoryName } from '@baishou/core-mobile'
 
 export { EXTERNAL_STORAGE_ROOT }
 

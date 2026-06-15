@@ -17,9 +17,7 @@ export const AgentScreen: React.FC = () => {
   const providerIconUrl = useMemo(() => {
     const providerId = flow.model.currentProviderId
     if (!providerId || providerId === 'unknown') return undefined
-    const providerRecord = flow.providers.find(
-      (provider) => provider.id === providerId || provider.providerId === providerId
-    )
+    const providerRecord = flow.providers.find((provider) => provider.id === providerId)
     return (
       getProviderIcon(providerId, isDark) ||
       (providerRecord?.type ? getProviderIcon(providerRecord.type, isDark) : undefined)

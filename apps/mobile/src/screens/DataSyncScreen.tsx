@@ -177,7 +177,7 @@ export const DataSyncScreen: React.FC = () => {
         : backupTab === 'local'
           ? t('data_sync.local_backup_tab', '本地备份')
           : t('data_sync.sync_records', '云端备份')
-    void dialog.alert(message, { title })
+    void dialog.alert(message, title)
   }
 
   const openCountModal = () => {

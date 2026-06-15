@@ -6,19 +6,11 @@ import { useTranslation } from 'react-i18next'
 import {
   getShortcutCommand,
   getDefaultShortcutLabelsFromT,
-  localizePromptShortcut
+  localizePromptShortcut,
+  type PromptShortcut
 } from '@baishou/shared'
 
-export interface PromptShortcut {
-  id: string
-  icon?: string
-  name?: string
-  content: string
-  // Legacy / fallback fields
-  command?: string
-  description?: string
-  tag?: string
-}
+export type { PromptShortcut }
 
 export interface PromptShortcutSheetProps {
   isOpen: boolean

@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { PromptShortcut } from '../types/prompt-shortcut.types'
 
 export type ShortcutLike = PromptShortcut & { command?: string; tag?: string }
@@ -80,9 +81,7 @@ export type LocalizedShortcutLabels = {
   summarizeContent: string
 }
 
-export function getDefaultShortcutLabelsFromT(
-  t: (key: string, fallback?: string) => string
-): LocalizedShortcutLabels {
+export function getDefaultShortcutLabelsFromT(t: TFunction): LocalizedShortcutLabels {
   return {
     translateName: t('agent.tools.shortcuts.translate_name', '翻译'),
     translateContent: t(
