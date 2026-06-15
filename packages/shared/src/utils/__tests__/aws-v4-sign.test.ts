@@ -91,4 +91,45 @@ describe('signS3Request', () => {
     expect(fetchHeaders.host).toBeUndefined()
     expect(fetchHeaders.Authorization).toMatch(/^AWS4-HMAC-SHA256/)
   })
+
+  it('signs object GET URLs with non-ASCII path segments (no double-encoding)', async () => {
+    const { buildS3ObjectUrl } = await import('../s3-url')
+    const { signS3Request } = await import('../aws-v4-sign')
+    const url = buildS3ObjectUrl({
+      endpoint: 'https://s3.amazonaws.com',
+      bucket: 'my-bucket',
+      objectKey: 'memories_sync/Personal/Attachments/项目设计文档-示例.pdf'
+    })
+    const headers = await signS3Request(
+      'GET',
+      url,
+      'us-east-1',
+      'test-access-key',
+      'test-secret-key',
+      null
+    )
+    expect(headers.Authorization).toMatch(/^AWS4-HMAC-SHA256/)
+    expect(url).toContain(encodeURIComponent('项目设计文档-示例.pdf'))
+  })
+
+  it('signs object GET URLs with parentheses in filename', async () => {
+    const { buildS3ObjectUrl } = await import('../s3-url')
+    const { signS3Request } = await import('../aws-v4-sign')
+    const url = buildS3ObjectUrl({
+      endpoint: 'https://s3.amazonaws.com',
+      bucket: 'my-bucket',
+      objectKey: 'memories_sync/Personal/Attachments/uuid/2026-02-27-表情包 (1)_1781399781572.png'
+    })
+    const headers = await signS3Request(
+      'GET',
+      url,
+      'us-east-1',
+      'test-access-key',
+      'test-secret-key',
+      null
+    )
+    expect(headers.Authorization).toMatch(/^AWS4-HMAC-SHA256/)
+    expect(url).not.toContain('(1)')
+    expect(url).toContain('%281%29')
+  })
 })

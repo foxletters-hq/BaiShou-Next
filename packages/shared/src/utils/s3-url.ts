@@ -35,6 +35,17 @@ function s3Origin(endpoint: string): { origin: string; uri: URL; usePathStyle: b
   return { origin, uri, usePathStyle: shouldUseS3PathStyle(endpoint) }
 }
 
+/**
+ * AWS Sig V4 对象 key 路径段编码。
+ * 与 encodeURIComponent 不同：额外编码 !'()*，须与签名 canonical URI 一致。
+ */
+export function encodeS3ObjectKeySegment(segment: string): string {
+  return encodeURIComponent(segment).replace(
+    /[!'()*]/g,
+    (ch) => `%${ch.charCodeAt(0).toString(16).toUpperCase()}`
+  )
+}
+
 /** 构建 ListObjectsV2 URL */
 export function buildS3ListUrl(options: {
   endpoint: string
@@ -70,7 +81,7 @@ export function buildS3ObjectUrl(options: {
   const port = uri.port ? `:${uri.port}` : ''
   const encodedKey = options.objectKey
     .split('/')
-    .map((seg) => encodeURIComponent(seg))
+    .map((seg) => encodeS3ObjectKeySegment(seg))
     .join('/')
 
   if (usePathStyle) {

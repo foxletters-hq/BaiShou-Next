@@ -5,6 +5,7 @@
  * Node.js < 19 通过 node:crypto.webcrypto 回退。
  */
 
+import { encodeS3ObjectKeySegment } from './s3-url'
 import { hmacSha256Pure, sha256Pure } from './sha256-pure'
 
 const encoder = new TextEncoder()
@@ -38,19 +39,23 @@ function canonicalQueryString(searchParams: URLSearchParams): string {
     .join('&')
 }
 
-/** AWS Sig V4 URI 编码（与 encodeURIComponent 略有差异） */
-function awsUriEncode(value: string): string {
-  return encodeURIComponent(value).replace(
-    /[!'()*]/g,
-    (ch) => `%${ch.charCodeAt(0).toString(16).toUpperCase()}`
-  )
-}
+/** @deprecated 使用 encodeS3ObjectKeySegment */
+const awsUriEncode = encodeS3ObjectKeySegment
 
 function canonicalUri(pathname: string): string {
   if (!pathname || pathname === '/') return '/'
   return pathname
     .split('/')
-    .map((segment) => awsUriEncode(segment))
+    .map((segment) => {
+      if (!segment) return ''
+      let decoded = segment
+      try {
+        decoded = decodeURIComponent(segment)
+      } catch {
+        // 保留原 segment（畸形 % 编码）
+      }
+      return awsUriEncode(decoded)
+    })
     .join('/')
 }
 

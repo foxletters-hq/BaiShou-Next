@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildS3ListUrl,
+  buildS3ObjectUrl,
   buildS3ObjectUrlWithQuery,
+  encodeS3ObjectKeySegment,
   normalizeS3BasePath,
   shouldUseS3PathStyle
 } from '../s3-url'
@@ -37,5 +39,19 @@ describe('s3-url', () => {
       query: { partNumber: '1', uploadId: 'abc' }
     })
     expect(url).toBe('http://localhost:9000/b/backup_sync/a.txt?partNumber=1&uploadId=abc')
+  })
+
+  it('encodes parentheses and spaces in object key segments for Sig V4', () => {
+    const seg = '2026-02-27-表情包 (1)_1781399781572.png'
+    expect(encodeS3ObjectKeySegment(seg)).toBe(
+      '2026-02-27-%E8%A1%A8%E6%83%85%E5%8C%85%20%281%29_1781399781572.png'
+    )
+    const url = buildS3ObjectUrl({
+      endpoint: 'https://s3.amazonaws.com',
+      bucket: 'my-bucket',
+      objectKey: `memories_sync/Personal/Attachments/uuid/${seg}`
+    })
+    expect(url).toContain(encodeS3ObjectKeySegment(seg))
+    expect(url).not.toContain('(1)')
   })
 })
