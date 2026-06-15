@@ -54,12 +54,15 @@ describe('ToolRegistry — Full Tool Suite', () => {
       vaultName: '/tmp'
     })
 
-    // 16 个工具，其中 3 个因缺少条件隐式跳过（web_search/vector_search/memory_store）
-    expect(Object.keys(vercelTools)).toHaveLength(13)
+    // 16 个工具，其中 3 个因缺少条件隐式跳过（web_search/vector_search/memory_store），
+    // 2 个内部压缩工具不暴露给模型主动调用。
+    expect(Object.keys(vercelTools)).toHaveLength(11)
     expect(vercelTools['current_time']).toBeDefined()
     expect(vercelTools['diary_read']).toBeDefined()
     expect(vercelTools['diary_write']).toBeDefined()
     expect(vercelTools['summary_read']).toBeDefined()
+    expect(vercelTools['compress_context_upstream']).toBeUndefined()
+    expect(vercelTools['compress_context_downstream']).toBeUndefined()
   })
 
   it('should respect disabledToolIds in userConfig', () => {
@@ -76,7 +79,7 @@ describe('ToolRegistry — Full Tool Suite', () => {
     expect(vercelTools['web_search']).toBeUndefined()
     expect(vercelTools['url_read']).toBeUndefined()
     expect(vercelTools['current_time']).toBeDefined()
-    expect(Object.keys(vercelTools)).toHaveLength(12)
+    expect(Object.keys(vercelTools)).toHaveLength(10)
   })
 
   it('should disable RAG tools when ragEnabled is false', () => {

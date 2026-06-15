@@ -10,6 +10,7 @@ export interface TokenUsage {
   inputTokens: number
   outputTokens: number
   cachedInputTokens?: number
+  cacheWriteInputTokens?: number
 }
 
 export class ModelPrice {
@@ -37,14 +38,17 @@ export class ModelPrice {
    * 计算美元级总费用
    */
   public calculateCost(usage: TokenUsage): number {
-    const totalInput = usage.inputTokens + (usage.cachedInputTokens || 0)
+    const cacheRead = usage.cachedInputTokens || 0
+    const cacheWrite = usage.cacheWriteInputTokens || 0
+    const totalInput = usage.inputTokens + cacheRead + cacheWrite
     const effectivePrice = this.over200K && totalInput > 200000 ? this.over200K : this
 
     const inputCost = (usage.inputTokens * effectivePrice.input) / 1000000
     const outputCost = (usage.outputTokens * effectivePrice.output) / 1000000
-    const cacheCost = ((usage.cachedInputTokens || 0) * effectivePrice.cacheRead) / 1000000
+    const cacheReadCost = (cacheRead * effectivePrice.cacheRead) / 1000000
+    const cacheWriteCost = (cacheWrite * effectivePrice.cacheWrite) / 1000000
 
-    return inputCost + outputCost + cacheCost
+    return inputCost + outputCost + cacheReadCost + cacheWriteCost
   }
 }
 

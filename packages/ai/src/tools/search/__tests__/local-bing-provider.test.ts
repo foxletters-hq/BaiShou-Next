@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { LocalBingProvider } from '../local-bing-provider'
+import { resolveBingClickThroughUrl } from '../bing-search-url.util'
 
 describe('LocalBingProvider', () => {
   const provider = new LocalBingProvider()
@@ -47,26 +48,20 @@ describe('LocalBingProvider', () => {
     })
   })
 
-  describe('decodeBingUrl', () => {
+  describe('resolveBingClickThroughUrl', () => {
     it('should decode Bing redirect URL', () => {
       const bingUrl = 'https://www.bing.com/ck/a?u=a1aHR0cHM6Ly9leGFtcGxlLmNvbQ=='
-      const decoded = (provider as any).decodeBingUrl(bingUrl)
-
-      expect(decoded).toBe('https://example.com')
+      expect(resolveBingClickThroughUrl(bingUrl)).toBe('https://example.com')
     })
 
     it('should return original URL if no u parameter', () => {
       const url = 'https://example.com'
-      const result = (provider as any).decodeBingUrl(url)
-
-      expect(result).toBe(url)
+      expect(resolveBingClickThroughUrl(url)).toBe(url)
     })
 
     it('should return original URL if decoding fails', () => {
       const url = 'https://www.bing.com/ck/a?u=invalid'
-      const result = (provider as any).decodeBingUrl(url)
-
-      expect(result).toBe(url)
+      expect(resolveBingClickThroughUrl(url)).toBe(url)
     })
   })
 })

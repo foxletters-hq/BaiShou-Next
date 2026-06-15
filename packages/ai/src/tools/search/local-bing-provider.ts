@@ -1,4 +1,5 @@
 import { logger } from '@baishou/shared'
+import { resolveBingClickThroughUrl } from './bing-search-url.util'
 import {
   LocalSearchProvider,
   LOCAL_SEARCH_MAX_URL_RESULTS,
@@ -42,7 +43,7 @@ export class LocalBingProvider extends LocalSearchProvider {
         if (url && title && (url.startsWith('http') || url.startsWith('https'))) {
           results.push({
             title,
-            url: this.decodeBingUrl(url)
+            url: resolveBingClickThroughUrl(url)
           })
         }
       }
@@ -59,7 +60,7 @@ export class LocalBingProvider extends LocalSearchProvider {
           if (url && title && (url.startsWith('http') || url.startsWith('https'))) {
             results.push({
               title,
-              url: this.decodeBingUrl(url)
+              url: resolveBingClickThroughUrl(url)
             })
           }
         }
@@ -69,36 +70,6 @@ export class LocalBingProvider extends LocalSearchProvider {
     }
 
     return results
-  }
-
-  /**
-   * 解码 Bing 重定向 URL 获取真实 URL
-   * Bing URL 格式: https://www.bing.com/ck/a?...&u=a1aHR0cHM6Ly93d3cudG91dGlhby5jb20...
-   * 'u' 参数包含 Base64 编码的 URL，带有 'a1' 前缀
-   */
-  private decodeBingUrl(bingUrl: string): string {
-    try {
-      const url = new URL(bingUrl)
-      const encodedUrl = url.searchParams.get('u')
-
-      if (!encodedUrl) {
-        return bingUrl
-      }
-
-      // 移除 'a1' 前缀并解码 Base64
-      const base64Part = encodedUrl.substring(2)
-      const decodedUrl = atob(base64Part)
-
-      // 验证解码后的 URL
-      if (decodedUrl.startsWith('http')) {
-        return decodedUrl
-      }
-
-      return bingUrl
-    } catch (error: any) {
-      logger.warn('[LocalBingProvider] Failed to decode Bing URL:', error)
-      return bingUrl
-    }
   }
 }
 

@@ -207,7 +207,11 @@ export class MemoryDeduplicationServiceImpl implements ToolDeduplicationService 
         .join('\n')
 
       const baseModel = this.provider.getLanguageModel(this.modelId)
-      const model = wrapLanguageModelWithMiddlewares(baseModel, this.provider.config?.type || '')
+      const model = wrapLanguageModelWithMiddlewares(baseModel, {
+        providerType: this.provider.config?.type || 'openai',
+        providerId: this.provider.config?.id,
+        modelId: this.modelId
+      })
 
       const { text } = await generateText({
         model,

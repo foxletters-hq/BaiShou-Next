@@ -52,7 +52,7 @@ export abstract class LocalSearchProvider {
   ): Promise<LocalSearchResponse> {
     try {
       if (!query.trim()) {
-        throw new Error('Search query cannot be empty')
+        throw new Error('搜索关键词不能为空')
       }
 
       // 构建搜索 URL（含结果数量参数）

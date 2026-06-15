@@ -15,6 +15,8 @@ import { VectorSearchTool } from './vector-search.tool'
 import { CurrentTimeTool } from './current-time.tool'
 import { ContextCompressUpstreamTool, ContextCompressDownstreamTool } from './context-compress.tool'
 
+const INTERNAL_ONLY_TOOL_IDS = new Set(['compress_context_upstream', 'compress_context_downstream'])
+
 export class ToolRegistry {
   private readonly tools = new Map<string, AgentTool>()
 
@@ -89,6 +91,11 @@ export class ToolRegistry {
     const configuredTools: Record<string, any> = {}
 
     for (const [name, tool] of this.tools.entries()) {
+      // 上下文压缩由宿主应用按阈值静默调度，不能暴露给模型主动调用，
+      // 否则模型可能每轮调用并传 force=true 绕过伙伴阈值。
+      if (INTERNAL_ONLY_TOOL_IDS.has(name)) {
+        continue
+      }
       // 被显式手动关闭禁言的 Tool
       if (tool.canBeDisabled && disabledIds.has(name)) {
         continue
