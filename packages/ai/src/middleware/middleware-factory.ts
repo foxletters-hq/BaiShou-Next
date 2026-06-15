@@ -13,9 +13,39 @@ import { GeminiThoughtSignatureMiddleware } from './gemini-thought-signature'
 import { wrapLanguageModel, extractReasoningMiddleware } from 'ai'
 import type { LanguageModelV3Middleware } from '@ai-sdk/provider'
 import { createDeepSeekReasoningMiddleware } from './deepseek-reasoning'
+import { createPromptCachingMiddleware } from './prompt-caching.middleware'
+import type { PromptCachingContext } from './prompt-caching.types'
 import { logger } from '@baishou/shared'
 
 export type ProviderType = 'openai' | 'anthropic' | 'gemini' | 'deepseek' | 'custom'
+
+export interface WrapLanguageModelOptions {
+  providerType: string
+  providerId?: string
+  modelId?: string
+  sessionId?: string
+  baseUrl?: string
+}
+
+function resolveWrapOptions(
+  options: string | WrapLanguageModelOptions
+): WrapLanguageModelOptions {
+  if (typeof options === 'string') {
+    return { providerType: options }
+  }
+  return options
+}
+
+function toCachingContext(options: WrapLanguageModelOptions): PromptCachingContext {
+  return {
+    providerType: options.providerType,
+    providerId: options.providerId,
+    modelId: options.modelId,
+    sessionId: options.sessionId,
+    baseUrl: options.baseUrl,
+    cachePolicy: 'auto'
+  }
+}
 
 /**
  * 根据 Provider 类型构建对应的中间件链
@@ -26,22 +56,13 @@ export function buildMiddlewareChain(providerType: ProviderType): MiddlewareChai
   switch (providerType) {
     case 'gemini':
       middlewares.push(new GeminiThoughtSignatureMiddleware())
-      // 未来: GeminiSafetySettingsMiddleware, ...
       break
 
     case 'anthropic':
-      // 未来: AnthropicCacheMiddleware, ...
-      break
-
     case 'deepseek':
-      // DeepSeek reasoning 中间件已通过 Vercel AI SDK 的 LanguageModelV3Middleware 实现
-      // 参见 ./deepseek-reasoning.ts
-      break
-
     case 'openai':
     case 'custom':
     default:
-      // OpenAI 标准协议族 (OpenAI, DeepSeek, Kimi, GLM 等)
       break
   }
 
@@ -51,28 +72,35 @@ export function buildMiddlewareChain(providerType: ProviderType): MiddlewareChai
 /**
  * 根据 Provider 类型构建对应的 Vercel AI SDK LanguageModelV3Middleware 列表
  */
-export function buildLanguageModelMiddlewares(providerType: string): LanguageModelV3Middleware[] {
+export function buildLanguageModelMiddlewares(
+  options: string | WrapLanguageModelOptions
+): LanguageModelV3Middleware[] {
+  const resolved = resolveWrapOptions(options)
   const middlewares: LanguageModelV3Middleware[] = []
 
-  // 1. DeepSeek reasoning 内容处理中间件 — 将历史消息中的 reasoning parts 转换为 <think> 标签
-  //    解决 DeepSeek API 要求回传 reasoning_content 的问题
-  if (providerType === 'deepseek') {
+  // 0. 提示词缓存 — 默认开启，覆盖所有厂商
+  middlewares.push(createPromptCachingMiddleware(toCachingContext(resolved)))
+
+  // 1. DeepSeek reasoning 内容处理中间件
+  if (resolved.providerType === 'deepseek') {
     try {
       middlewares.push(createDeepSeekReasoningMiddleware())
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const detail = e instanceof Error ? e.message : String(e)
       logger.warn(
         '[buildLanguageModelMiddlewares] createDeepSeekReasoningMiddleware not available:',
-        e
+        detail
       )
     }
   }
 
-  // 2. 推理提取中间件 — 适用于 DeepSeek-R1、QwQ 等在文本中嵌入 <think> 标签的模型
-  if (providerType === 'deepseek' || providerType === 'openai') {
+  // 2. 推理提取中间件
+  if (resolved.providerType === 'deepseek' || resolved.providerType === 'openai') {
     try {
-      middlewares.push(extractReasoningMiddleware({ tagName: 'think' }) as any)
-    } catch (e: any) {
-      logger.warn('[buildLanguageModelMiddlewares] extractReasoningMiddleware not available:', e)
+      middlewares.push(extractReasoningMiddleware({ tagName: 'think' }) as LanguageModelV3Middleware)
+    } catch (e: unknown) {
+      const detail = e instanceof Error ? e.message : String(e)
+      logger.warn('[buildLanguageModelMiddlewares] extractReasoningMiddleware not available:', detail)
     }
   }
 
@@ -82,13 +110,19 @@ export function buildLanguageModelMiddlewares(providerType: string): LanguageMod
 /**
  * 自动使用对应 Provider 的中间件包装基础语言模型
  */
-export function wrapLanguageModelWithMiddlewares(model: any, providerType: string): any {
-  const middlewares = buildLanguageModelMiddlewares(providerType)
+export function wrapLanguageModelWithMiddlewares(
+  model: unknown,
+  options: string | WrapLanguageModelOptions
+): any {
+  const middlewares = buildLanguageModelMiddlewares(options)
   if (middlewares.length > 0) {
     return wrapLanguageModel({
-      model: model as any,
+      model: model as Parameters<typeof wrapLanguageModel>[0]['model'],
       middleware: middlewares
     })
   }
   return model
 }
+
+export { buildCachedSystemForStream } from './prompt-caching.util'
+export type { PromptCachingContext, PromptCachePolicy } from './prompt-caching.types'

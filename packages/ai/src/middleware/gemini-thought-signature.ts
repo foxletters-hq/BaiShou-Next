@@ -1,44 +1,51 @@
 /**
- * Gemini Thought Signature 跳过中间件
+ * Gemini Thought Signature 中间件
  *
- * Gemini 2.5/3 模型的 functionCall 响应包含 thoughtSignature 字段，
- * 回传历史时必须原样携带，否则返回 400 错误。
+ * Gemini 2.5+ 在 functionCall 响应里附带 thoughtSignature，多轮对话必须原样回传。
+ * 官方允许使用 magic string 跳过校验（仅开发/兼容场景）。
  *
- * 本中间件使用 magic string 'skip_thought_signature_validator' 跳过验证。
- * 参考: https://ai.google.dev/gemini-api/docs/thought-signatures
- *
- * 原始实现：lib/agent/middleware/gemini_thought_signature.dart (39 行)
+ * @see https://ai.google.dev/gemini-api/docs/thought-signatures
  */
 
 import type { ModelMessage } from 'ai'
 import type { MessageMiddleware } from './message-middleware'
 
-const SKIP_VALIDATOR = 'skip_thought_signature_validator'
+/** Google 文档给出的 thought signature 跳过标记 */
+const GEMINI_SKIP_SIGNATURE = 'skip_thought_signature_validator'
 
 export class GeminiThoughtSignatureMiddleware implements MessageMiddleware {
   readonly name = 'gemini-thought-signature-skip'
 
   process(messages: ModelMessage[]): ModelMessage[] {
-    for (const message of messages) {
-      if (message.role !== 'assistant') continue
+    return messages.map((message) => this.annotateAssistantToolCalls(message))
+  }
 
-      // Vercel AI SDK 将 tool calls 包装在 content parts 中
-      if (!Array.isArray(message.content)) continue
+  private annotateAssistantToolCalls(message: ModelMessage): ModelMessage {
+    if (message.role !== 'assistant' || !Array.isArray(message.content)) {
+      return message
+    }
 
-      let isFirstToolCall = true
-      for (const part of message.content) {
-        if (typeof part === 'object' && 'type' in part && part.type === 'tool-call') {
-          if (isFirstToolCall) {
-            // 在 experimental_providerMetadata 上注入跳过标记
-            // 当前 Vercel AI SDK 通过此字段透传 provider 元数据
-            ;(part as unknown as Record<string, unknown>)['experimental_providerMetadata'] = {
-              google: { thoughtSignature: SKIP_VALIDATOR }
-            }
-            isFirstToolCall = false
+    const nextContent = message.content.map((part) => {
+      if (typeof part !== 'object' || part === null || !('type' in part)) {
+        return part
+      }
+      if (part.type !== 'tool-call') {
+        return part
+      }
+
+      const existing = (part as { providerOptions?: Record<string, unknown> }).providerOptions
+      return {
+        ...part,
+        providerOptions: {
+          ...(existing ?? {}),
+          google: {
+            ...((existing?.google as Record<string, unknown> | undefined) ?? {}),
+            thoughtSignature: GEMINI_SKIP_SIGNATURE
           }
         }
       }
-    }
-    return messages
+    })
+
+    return { ...message, content: nextContent } as ModelMessage
   }
 }

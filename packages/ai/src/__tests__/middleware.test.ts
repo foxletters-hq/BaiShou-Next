@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { MiddlewareChain } from '../middleware/message-middleware'
 import type { MessageMiddleware } from '../middleware/message-middleware'
 import { GeminiThoughtSignatureMiddleware } from '../middleware/gemini-thought-signature'
-import { buildMiddlewareChain } from '../middleware/middleware-factory'
+import { buildMiddlewareChain, buildLanguageModelMiddlewares } from '../middleware/middleware-factory'
 import type { ModelMessage } from 'ai'
 
 describe('Middleware Pipeline', () => {
@@ -69,6 +69,18 @@ describe('Middleware Pipeline', () => {
     it('should return empty chain for deepseek', () => {
       const chain = buildMiddlewareChain('deepseek')
       expect(chain.isEmpty).toBe(true)
+    })
+  })
+
+  describe('buildLanguageModelMiddlewares', () => {
+    it('always includes prompt caching middleware', () => {
+      const middlewares = buildLanguageModelMiddlewares('openai')
+      expect(middlewares.length).toBeGreaterThanOrEqual(1)
+    })
+
+    it('includes deepseek reasoning middleware for deepseek', () => {
+      const middlewares = buildLanguageModelMiddlewares('deepseek')
+      expect(middlewares.length).toBeGreaterThanOrEqual(2)
     })
   })
 })
