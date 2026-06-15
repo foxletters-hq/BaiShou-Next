@@ -1,6 +1,11 @@
 import { create } from 'zustand'
 import { persist, devtools } from 'zustand/middleware'
-import { i18n, resolveSummaryPromptLocale } from '@baishou/shared'
+import {
+  i18n,
+  resolveSummaryPromptLocale,
+  resolveAppUiLanguageFromSystemLocale
+} from '@baishou/shared'
+import { useAssistantStore } from './assistant.store'
 import type {
   AIProviderConfig,
   GlobalModelsConfig,
@@ -92,14 +97,34 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
         setLocale: (locale) => {
           set({ locale })
           const resolvedUi =
-            locale === 'system' ? navigator.language : locale === 'zh-TW' ? 'zh-TW' : locale
-          i18n.changeLanguage(locale === 'system' ? navigator.language.split('-')[0] : locale)
+            locale === 'system' ? resolveAppUiLanguageFromSystemLocale(navigator.language) : locale
+          i18n.changeLanguage(resolvedUi)
           const summaryConfig = get().summaryConfig
           if (summaryConfig) {
             const promptLocale = resolveSummaryPromptLocale(resolvedUi)
             if (summaryConfig.promptLocale !== promptLocale) {
               void get().setSummaryConfig({ ...summaryConfig, promptLocale })
             }
+          }
+
+          if (typeof window !== 'undefined' && (window as any).api?.settings) {
+            void (window as any).api.settings
+              .getFeatures()
+              .then((features: Record<string, unknown> | null) =>
+                (window as any).api.settings.setFeatures({
+                  ...(features || {}),
+                  language: locale
+                })
+              )
+              .catch((e: unknown) => console.warn('Failed to persist UI language', e))
+          }
+
+          if (typeof window !== 'undefined' && (window as any).api?.ensureDefaultLatteAssistant) {
+            void (window as any).api
+              .ensureDefaultLatteAssistant(resolvedUi)
+              .then(() => (window as any).api.syncDefaultLatteLocale(resolvedUi))
+              .then(() => useAssistantStore.getState().fetchAssistants())
+              .catch((e: unknown) => console.warn('Failed to sync default Latte locale', e))
           }
         },
 
