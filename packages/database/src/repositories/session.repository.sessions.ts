@@ -39,13 +39,17 @@ export class SessionCrudOps {
     id: string,
     inputTokens: number,
     outputTokens: number,
-    costMicros: number = 0
+    costMicros: number = 0,
+    cacheReadInputTokens: number = 0,
+    cacheWriteInputTokens: number = 0
   ): Promise<void> {
     await this.db
       .update(agentSessionsTable)
       .set({
         totalInputTokens: sql`${agentSessionsTable.totalInputTokens} + ${inputTokens}`,
         totalOutputTokens: sql`${agentSessionsTable.totalOutputTokens} + ${outputTokens}`,
+        totalCacheReadInputTokens: sql`${agentSessionsTable.totalCacheReadInputTokens} + ${cacheReadInputTokens}`,
+        totalCacheWriteInputTokens: sql`${agentSessionsTable.totalCacheWriteInputTokens} + ${cacheWriteInputTokens}`,
         totalCostMicros: sql`${agentSessionsTable.totalCostMicros} + ${costMicros}`,
         updatedAt: new Date()
       })

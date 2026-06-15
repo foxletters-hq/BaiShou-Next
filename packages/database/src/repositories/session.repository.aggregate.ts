@@ -83,8 +83,9 @@ export class SessionAggregateSync {
       sql: `INSERT INTO agent_sessions
               (id, title, vault_name, assistant_id, is_pinned, system_prompt,
                provider_id, model_id, total_input_tokens, total_output_tokens,
+               total_cache_read_input_tokens, total_cache_write_input_tokens,
                total_cost_micros, created_at, updated_at)
-              VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+              VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       args: [
         session.id,
         session.title ?? null,
@@ -96,6 +97,8 @@ export class SessionAggregateSync {
         session.modelId ?? null,
         session.totalInputTokens ?? null,
         session.totalOutputTokens ?? null,
+        session.totalCacheReadInputTokens ?? 0,
+        session.totalCacheWriteInputTokens ?? 0,
         session.totalCostMicros ?? null,
         toUnixSec(session.createdAt),
         toUnixSec(session.updatedAt)

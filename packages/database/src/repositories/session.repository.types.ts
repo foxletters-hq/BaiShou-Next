@@ -16,6 +16,8 @@ export interface InsertMessageInput {
   orderIndex: number
   inputTokens?: number
   outputTokens?: number
+  cacheReadInputTokens?: number
+  cacheWriteInputTokens?: number
   costMicros?: number
   providerId?: string
   modelId?: string

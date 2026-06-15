@@ -32,6 +32,8 @@ export class MessageRepository implements AgentMessageRepository {
       modelId: row.modelId ?? undefined,
       inputTokens: row.inputTokens ?? undefined,
       outputTokens: row.outputTokens ?? undefined,
+      cacheReadInputTokens: row.cacheReadInputTokens ?? undefined,
+      cacheWriteInputTokens: row.cacheWriteInputTokens ?? undefined,
       costMicros: row.costMicros ?? undefined,
       createdAt: row.createdAt
     }))
@@ -64,6 +66,8 @@ export class MessageRepository implements AgentMessageRepository {
         orderIndex: input.orderIndex,
         inputTokens: input.inputTokens,
         outputTokens: input.outputTokens,
+        cacheReadInputTokens: input.cacheReadInputTokens,
+        cacheWriteInputTokens: input.cacheWriteInputTokens,
         costMicros: input.costMicros
       })
       .returning()
@@ -78,6 +82,8 @@ export class MessageRepository implements AgentMessageRepository {
       modelId: inserted.modelId ?? undefined,
       inputTokens: inserted.inputTokens ?? undefined,
       outputTokens: inserted.outputTokens ?? undefined,
+      cacheReadInputTokens: inserted.cacheReadInputTokens ?? undefined,
+      cacheWriteInputTokens: inserted.cacheWriteInputTokens ?? undefined,
       costMicros: inserted.costMicros ?? undefined
     }
   }

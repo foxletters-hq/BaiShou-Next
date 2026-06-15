@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { systemSettingsTable } from '../schema/system-settings'
-import { SHORTCUT_TRACE_CHAIN, traceCall, type PromptShortcut } from '@baishou/shared'
+import { SHORTCUT_TRACE_CHAIN, traceCall, dedupePromptShortcuts, type PromptShortcut } from '@baishou/shared'
 
 const KEY = 'prompt_shortcuts_v2'
 
@@ -8,14 +8,16 @@ export const DEFAULT_SHORTCUTS: PromptShortcut[] = [
   {
     id: 'default-translate',
     icon: '🌐',
-    name: '翻译助手 (Translate)', // t.agent.tools.shortcuts.translate_name mapping mock
-    content: '请作为专业翻译，翻译后续的文本内容，保持原文格式。'
+    name: '翻译',
+    command: 'translate',
+    content: '请把下面这段话信达雅地翻译为中文（含专业术语解释）：\n\n'
   },
   {
     id: 'default-summarize',
     icon: '📝',
-    name: '长文总结 (Summarize)', // t.agent.tools.shortcuts.summarize_name mapping mock
-    content: '请将上述内容提炼成几条关键要点。'
+    name: '总结',
+    command: 'summarize',
+    content: '请总结以下内容背后的核心要义：\n\n'
   }
 ]
 
@@ -61,11 +63,12 @@ export class PromptShortcutRepository {
    * 保存完整的快捷指令列表
    */
   async saveShortcuts(list: PromptShortcut[]): Promise<void> {
+    const normalized = dedupePromptShortcuts(list)
     await traceCall(
       SHORTCUT_TRACE_CHAIN,
       'PromptShortcutRepository.save',
       async () => {
-        const jsonStr = JSON.stringify(list)
+        const jsonStr = JSON.stringify(normalized)
 
         await this.db
           .insert(systemSettingsTable)
@@ -82,7 +85,7 @@ export class PromptShortcutRepository {
             }
           })
       },
-      { payload: list }
+      { payload: normalized }
     )
   }
 }

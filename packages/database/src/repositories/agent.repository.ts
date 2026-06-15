@@ -7,7 +7,9 @@ export interface AgentSessionRepository {
     id: string,
     inputTokens: number,
     outputTokens: number,
-    costMicros?: number
+    costMicros?: number,
+    cacheReadInputTokens?: number,
+    cacheWriteInputTokens?: number
   ): Promise<void>
 }
 
