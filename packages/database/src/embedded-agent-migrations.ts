@@ -22,6 +22,13 @@ export const EMBEDDED_AGENT_MIGRATIONS: EmbeddedMigrations = {
         when: 1775536911817,
         tag: '0001_chunky_hannibal_king',
         breakpoints: true
+      },
+      {
+        idx: 2,
+        version: '6',
+        when: 1775600000000,
+        tag: '0002_cache_token_usage',
+        breakpoints: true
       }
     ]
   },
@@ -136,6 +143,13 @@ CREATE TABLE \`system_settings\` (
 	\`source_created_at\` integer
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX IF NOT EXISTS \`memory_embeddings_embedding_id_unique\` ON \`memory_embeddings\` (\`embedding_id\`);`
+CREATE UNIQUE INDEX IF NOT EXISTS \`memory_embeddings_embedding_id_unique\` ON \`memory_embeddings\` (\`embedding_id\`);`,
+    '0002_cache_token_usage': `ALTER TABLE \`agent_messages\` ADD \`cache_read_input_tokens\` integer;
+--> statement-breakpoint
+ALTER TABLE \`agent_messages\` ADD \`cache_write_input_tokens\` integer;
+--> statement-breakpoint
+ALTER TABLE \`agent_sessions\` ADD \`total_cache_read_input_tokens\` integer DEFAULT 0 NOT NULL;
+--> statement-breakpoint
+ALTER TABLE \`agent_sessions\` ADD \`total_cache_write_input_tokens\` integer DEFAULT 0 NOT NULL;`
   }
 }

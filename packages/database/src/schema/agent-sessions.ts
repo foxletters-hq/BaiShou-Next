@@ -11,6 +11,8 @@ export const agentSessionsTable = sqliteTable('agent_sessions', {
   modelId: text('model_id').notNull(),
   totalInputTokens: integer('total_input_tokens').notNull().default(0),
   totalOutputTokens: integer('total_output_tokens').notNull().default(0),
+  totalCacheReadInputTokens: integer('total_cache_read_input_tokens').notNull().default(0),
+  totalCacheWriteInputTokens: integer('total_cache_write_input_tokens').notNull().default(0),
   totalCostMicros: integer('total_cost_micros').notNull().default(0),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().defaultNow(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().defaultNow()

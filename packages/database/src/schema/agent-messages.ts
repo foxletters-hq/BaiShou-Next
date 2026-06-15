@@ -16,6 +16,8 @@ export const agentMessagesTable = sqliteTable('agent_messages', {
   orderIndex: integer('order_index').notNull(),
   inputTokens: integer('input_tokens'),
   outputTokens: integer('output_tokens'),
+  cacheReadInputTokens: integer('cache_read_input_tokens'),
+  cacheWriteInputTokens: integer('cache_write_input_tokens'),
   costMicros: integer('cost_micros'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().defaultNow()
 })
