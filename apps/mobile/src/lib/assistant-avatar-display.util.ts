@@ -1,5 +1,13 @@
 import type { IAttachmentManager, IFileSystem } from '@baishou/core-mobile'
 import { guessImageMimeType } from '@baishou/ui/native'
+import {
+  isBuiltinAssistantAvatarPath,
+  isDefaultAssistantAvatarPath,
+  parseBuiltinAssistantAvatarId,
+  DEFAULT_BUILTIN_ASSISTANT_AVATAR_ID
+} from '@baishou/shared'
+import { Image } from 'react-native'
+import { NATIVE_BUILTIN_ASSISTANT_AVATAR_SOURCES } from '@baishou/ui/native'
 import { isExternalStoragePath, stripFileScheme, toFileUri } from '../services/android-external-fs'
 import { resolveAssistantAvatarDisplayUri } from './assistant-avatar-uri'
 
@@ -34,6 +42,10 @@ export function invalidateAssistantAvatarDisplayCache(avatarPath?: string): void
   avatarDisplayCache.clear()
 }
 
+export function invalidateAllAvatarDisplayCaches(): void {
+  avatarDisplayCache.clear()
+}
+
 /** 将 settings 中的 avatarPath 解析为移动端 Image 可展示的 URI */
 export async function resolveAssistantAvatarForMobileUi(
   avatarPath: string | undefined,
@@ -41,6 +53,16 @@ export async function resolveAssistantAvatarForMobileUi(
   fileSystem: IFileSystem
 ): Promise<string | undefined> {
   if (!avatarPath) return undefined
+
+  if (isDefaultAssistantAvatarPath(avatarPath) || isBuiltinAssistantAvatarPath(avatarPath)) {
+    const id = parseBuiltinAssistantAvatarId(avatarPath) ?? DEFAULT_BUILTIN_ASSISTANT_AVATAR_ID
+    const cached = avatarDisplayCache.get(avatarPath)
+    if (cached) return cached
+    const source = NATIVE_BUILTIN_ASSISTANT_AVATAR_SOURCES[id]
+    const displayUri = Image.resolveAssetSource(source).uri
+    avatarDisplayCache.set(avatarPath, displayUri)
+    return displayUri
+  }
 
   const cached = avatarDisplayCache.get(avatarPath)
   if (cached) return cached

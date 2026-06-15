@@ -30,7 +30,10 @@ export const ChatBubbleAvatar: React.FC<ChatBubbleAvatarProps> = ({
   return (
     <View style={[styles.avatar, { backgroundColor: colors.bgSurfaceHighest }, style]}>
       {variant === 'user' ? (
-        <Image source={resolveNativeUserAvatarSource(avatarPath)} style={styles.avatarImage} />
+        <Image
+          source={resolveNativeUserAvatarSource(avatarPath, resolvedAvatarUri)}
+          style={styles.avatarImage}
+        />
       ) : shouldShowAssistantEmoji(avatarPath, resolvedAvatarUri, emoji) ? (
         <Text style={styles.avatarText}>{emoji}</Text>
       ) : (

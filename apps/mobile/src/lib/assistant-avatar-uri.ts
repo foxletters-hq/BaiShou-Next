@@ -1,16 +1,14 @@
 import {
   isAssistantAvatarDirectUri,
   isAssistantAvatarRelativePath,
-  isDefaultAssistantAvatarPath
+  isDefaultAssistantAvatarPath,
+  extractAvatarsRelativeKey
 } from '@baishou/shared'
 import { toFileUri } from '../services/android-external-fs'
 
 /** 从 local:///…/avatars/foo.jpg 或绝对路径中提取 avatars/ 相对键 */
 export function extractAvatarsRelativePath(avatarPath: string): string | null {
-  const normalized = avatarPath.replace(/\\/g, '/')
-  const idx = normalized.toLowerCase().lastIndexOf('avatars/')
-  if (idx < 0) return null
-  return normalized.slice(idx)
+  return extractAvatarsRelativeKey(avatarPath)
 }
 
 /** 将桌面端 local: 协议或相对路径解析结果规范为 RN Image 可读的 file:// URI */

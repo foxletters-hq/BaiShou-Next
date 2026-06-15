@@ -148,14 +148,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                   onImagePress={(_src, resolvedUri) => setPreviewImageUri(resolvedUri)}
                 />
               ) : !isAssistant && message.content ? (
-                <Text
-                  style={[
-                    styles.text,
-                    { color: isUser ? colors.textOnPrimary : colors.textPrimary }
-                  ]}
-                >
-                  {message.content}
-                </Text>
+                <Text style={[styles.text, { color: colors.textPrimary }]}>{message.content}</Text>
               ) : null}
             </Pressable>
           )}
@@ -195,6 +188,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
           variant="user"
           nickname={userProfile?.nickname}
           avatarPath={userProfile?.avatarPath}
+          resolvedAvatarUri={userProfile?.resolvedAvatarUri}
           style={{ marginLeft: 8 }}
         />
       ) : null}

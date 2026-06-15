@@ -24,6 +24,7 @@ import {
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { useMobileMcpConfig } from '../../../hooks/useMobileMcpConfig'
 import { notifyThemeRefresh } from '../../../lib/theme-events'
+import { ensureDefaultLatteAssistant, syncDefaultLatteAssistantLocale } from '@baishou/core-mobile'
 import { resolveAppUiLanguage } from '../../../lib/device-locale'
 import { SettingsProfileHeader } from './SettingsProfileHeader'
 
@@ -224,7 +225,10 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
       const settings = (await services.settingsManager.get<any>('settings')) || {}
       settings.language = lang
       await services.settingsManager.set('settings', settings)
-      await i18n.changeLanguage(resolveAppUiLanguage(lang, i18n.language))
+      const resolvedLang = resolveAppUiLanguage(lang, i18n.language)
+      await i18n.changeLanguage(resolvedLang)
+      await ensureDefaultLatteAssistant(services.assistantManager, resolvedLang)
+      await syncDefaultLatteAssistantLocale(services.assistantManager, resolvedLang)
     } catch (e) {
       console.error('Save language failed', e)
     }

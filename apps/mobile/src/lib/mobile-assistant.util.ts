@@ -1,6 +1,9 @@
 import type { AssistantManagerService, IAttachmentManager, IFileSystem } from '@baishou/core-mobile'
 import type { InsertAssistantInput, UpdateAssistantInput } from '@baishou/database'
-import { ASSISTANT_DEFAULT_AVATAR_SENTINEL } from '@baishou/shared'
+import {
+  DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH,
+  normalizeAssistantAvatarPath
+} from '@baishou/shared'
 import { resolveAssistantAvatarForMobileUi } from '../lib/assistant-avatar-display.util'
 
 export type MobileAssistantUi = {
@@ -39,16 +42,12 @@ export function buildAssistantRepoInput(input: {
   compressKeepTurns?: number
   compressSystemPrompt?: string | null
 }): Omit<InsertAssistantInput, 'id'> {
-  const emoji = input.emoji?.trim()
-  const avatarPath = input.avatarPath
   return {
     name: input.name,
-    emoji: emoji || undefined,
+    emoji: undefined,
     description: input.description,
     avatarPath:
-      emoji || !avatarPath || avatarPath === ASSISTANT_DEFAULT_AVATAR_SENTINEL
-        ? undefined
-        : avatarPath,
+      normalizeAssistantAvatarPath(input.avatarPath) || DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH,
     systemPrompt: input.systemPrompt,
     isDefault: input.isDefault ?? false,
     isPinned: input.isPinned ?? false,

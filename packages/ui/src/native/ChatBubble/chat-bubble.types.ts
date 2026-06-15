@@ -17,7 +17,7 @@ export interface ChatBubbleMessage {
 
 export interface ChatBubbleProps {
   message: ChatBubbleMessage
-  userProfile?: { nickname: string; avatarPath?: string | null }
+  userProfile?: { nickname: string; avatarPath?: string | null; resolvedAvatarUri?: string | null }
   aiProfile?: {
     name: string
     avatarPath?: string | null

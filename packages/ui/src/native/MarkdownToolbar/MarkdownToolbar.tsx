@@ -96,15 +96,9 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
           <TouchableOpacity style={styles.btn} onPressIn={() => onInsertText('- ')}>
             <Text style={[styles.btnText, { color: colors.textSecondary }]}>≡</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.btn} onPressIn={() => onInsertText('- [ ] ')}>
-            <Text style={[styles.btnText, { color: colors.textSecondary }]}>☑</Text>
-          </TouchableOpacity>
 
           <View style={[styles.divider, { backgroundColor: colors.borderMuted }]} />
 
-          <TouchableOpacity style={styles.btn} onPressIn={() => onInsertText('[', '](url)')}>
-            <MaterialIcons name="link" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
           <TouchableOpacity
             style={styles.btn}
             onPress={onPickImages}

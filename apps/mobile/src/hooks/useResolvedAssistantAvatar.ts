@@ -4,7 +4,7 @@ import { resolveAssistantAvatarForMobileUi } from '../lib/assistant-avatar-displ
 
 /** 将 settings 中的伙伴头像路径解析为可展示的本地 URI */
 export function useResolvedAssistantAvatar(avatarPath?: string | null): string | null {
-  const { services, dbReady } = useBaishou()
+  const { services, dbReady, vaultRevision } = useBaishou()
   const [uri, setUri] = useState<string | null>(null)
 
   useEffect(() => {
@@ -23,7 +23,7 @@ export function useResolvedAssistantAvatar(avatarPath?: string | null): string |
     return () => {
       cancelled = true
     }
-  }, [avatarPath, dbReady, services])
+  }, [avatarPath, dbReady, services, vaultRevision])
 
   return uri
 }

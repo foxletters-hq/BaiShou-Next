@@ -104,7 +104,7 @@ export const chatBubbleStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    flexWrap: 'nowrap',
+    flexWrap: 'wrap',
     gap: 8,
     marginTop: 6,
     width: '100%'
@@ -120,12 +120,12 @@ export const chatBubbleStyles = StyleSheet.create({
   },
   tokenRow: {
     flexDirection: 'row',
-    flexWrap: 'nowrap',
+    flexWrap: 'wrap',
     alignItems: 'center',
-    justifyContent: 'flex-end',
+    justifyContent: 'flex-start',
     gap: 8,
-    marginLeft: 'auto',
-    flexShrink: 0
+    width: '100%',
+    flexBasis: '100%'
   },
   tokenText: {
     fontSize: 11,

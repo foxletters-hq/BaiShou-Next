@@ -1,22 +1,27 @@
 import { Platform, NativeModules } from 'react-native'
+import { resolveAppUiLanguageFromSystemLocale } from '@baishou/shared'
 
-/** 与根布局 `getSystemLanguage` 一致，供设置页「跟随系统」解析 UI 语言 */
-export function getSystemLanguage(): string {
+function readDeviceLocaleString(): string {
   try {
-    let locale = 'zh'
     if (Platform.OS === 'ios') {
-      locale =
+      return (
         NativeModules.SettingsManager?.settings?.AppleLanguages?.[0] ||
         NativeModules.SettingsManager?.settings?.AppleLocale ||
         'zh'
-    } else if (Platform.OS === 'android') {
-      locale = NativeModules.I18nManager?.localeIdentifier || 'zh'
+      )
     }
-    const cleanLang = locale.split(/[-_]/)[0]
-    return ['zh', 'en', 'ja', 'zh-TW'].includes(cleanLang) ? cleanLang : 'zh'
+    if (Platform.OS === 'android') {
+      return NativeModules.I18nManager?.localeIdentifier || 'zh'
+    }
   } catch {
-    return 'zh'
+    /* fall through */
   }
+  return 'zh'
+}
+
+/** 与根布局一致，供设置页「跟随系统」与 bootstrap 解析 UI 语言 */
+export function getSystemLanguage(): string {
+  return resolveAppUiLanguageFromSystemLocale(readDeviceLocaleString())
 }
 
 export function resolveAppUiLanguage(

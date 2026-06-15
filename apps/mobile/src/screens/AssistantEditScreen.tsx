@@ -18,18 +18,19 @@ import {
   scrollIndicatorStyle,
   Switch,
   Input,
-  EmojiPicker,
   ModelSwitcher,
   SettingsSliderRow,
   SettingsGroupCard,
   settingsCardStyles,
   ProviderBrandIcon,
-  AssistantAvatar
+  AssistantAvatarPicker
 } from '@baishou/ui/native'
 import {
   AIProviderConfig,
-  ASSISTANT_DEFAULT_AVATAR_SENTINEL,
+  DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH,
+  isAssistantCustomAvatar,
   isDefaultAssistantAvatarPath,
+  normalizeAssistantAvatarPath,
   getDefaultCompressionSystemPrompt,
   isAssistantAvatarDirectUri,
   isAssistantAvatarRelativePath,
@@ -103,13 +104,12 @@ export const AssistantEditScreen: React.FC = () => {
   const isNew = !id || id === 'new'
 
   const [name, setName] = useState('')
-  const [emoji, setEmoji] = useState('')
   const [description, setDescription] = useState('')
   const [systemPrompt, setSystemPrompt] = useState('')
   const [providerId, setProviderId] = useState<string | undefined>()
   const [modelId, setModelId] = useState<string | undefined>()
-  const [storedAvatarPath, setStoredAvatarPath] = useState<string | undefined>(
-    ASSISTANT_DEFAULT_AVATAR_SENTINEL
+  const [storedAvatarPath, setStoredAvatarPath] = useState<string>(
+    DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH
   )
   const [previewAvatarUri, setPreviewAvatarUri] = useState<string | null>(null)
   const [pendingImportUri, setPendingImportUri] = useState<string | null>(null)
@@ -123,7 +123,6 @@ export const AssistantEditScreen: React.FC = () => {
   const [chatProviders, setChatProviders] = useState<ModelSwitcherProvider[]>([])
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [showModelSwitcher, setShowModelSwitcher] = useState(false)
 
   const isUnlimitedContext = contextWindow < 0
@@ -183,18 +182,14 @@ export const AssistantEditScreen: React.FC = () => {
         if (assistant) {
           setExistingAssistant(assistant as Assistant)
           setName(assistant.name)
-          setEmoji(assistant.emoji || '')
           setDescription(assistant.description || '')
           setSystemPrompt(assistant.systemPrompt || '')
           setProviderId(assistant.providerId)
           setModelId(assistant.modelId)
-          if (assistant.avatarPath) {
-            setStoredAvatarPath(assistant.avatarPath)
-          } else if (assistant.emoji) {
-            setStoredAvatarPath(undefined)
-          } else {
-            setStoredAvatarPath(ASSISTANT_DEFAULT_AVATAR_SENTINEL)
-          }
+          setStoredAvatarPath(
+            normalizeAssistantAvatarPath(assistant.avatarPath) ||
+              DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH
+          )
           setPendingImportUri(null)
           await resolveAvatarPreview(assistant.avatarPath ?? undefined)
           setContextWindow(assistant.contextWindow ?? -1)
@@ -230,28 +225,23 @@ export const AssistantEditScreen: React.FC = () => {
         const uri = result.assets[0].uri
         setPendingImportUri(uri)
         setPreviewAvatarUri(uri)
-        setStoredAvatarPath(undefined)
-        setEmoji('')
+        setStoredAvatarPath(uri)
       }
     } catch {
       toast.showError(t('profile.image_pick_error', '选择图片失败'))
     }
   }, [t, toast])
 
-  const handleAvatarPress = useCallback(async () => {
-    const choice = await dialog.choose(t('emoji.personalize_avatar', '个性化头像'), [
-      { label: t('emoji.picker', '选择表情'), value: 'emoji' },
-      { label: t('emoji.upload_avatar_hint', '从相册选择图片'), value: 'image' }
-    ])
-    if (choice === 'emoji') setShowEmojiPicker(true)
-    else if (choice === 'image') void handlePickImage()
-  }, [dialog, handlePickImage, t])
-
-  const handleRemoveAvatar = useCallback(() => {
+  const handleSelectBuiltin = useCallback((path: string) => {
     setPendingImportUri(null)
     setPreviewAvatarUri(null)
-    setStoredAvatarPath(ASSISTANT_DEFAULT_AVATAR_SENTINEL)
-    setEmoji('')
+    setStoredAvatarPath(path)
+  }, [])
+
+  const handleResetBuiltinAvatar = useCallback(() => {
+    setPendingImportUri(null)
+    setPreviewAvatarUri(null)
+    setStoredAvatarPath(DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH)
   }, [])
 
   const clearModelBinding = useCallback(() => {
@@ -277,24 +267,6 @@ export const AssistantEditScreen: React.FC = () => {
     setSaving(true)
 
     try {
-      let finalAvatarPath: string | undefined = storedAvatarPath
-      if (pendingImportUri) {
-        finalAvatarPath = await services.attachmentManager.importAvatar(pendingImportUri, 'agent')
-      } else if (!emoji && !storedAvatarPath) {
-        finalAvatarPath = ASSISTANT_DEFAULT_AVATAR_SENTINEL
-      }
-
-      const hasImageAvatar =
-        Boolean(pendingImportUri) ||
-        (Boolean(finalAvatarPath) &&
-          !isDefaultAssistantAvatarPath(finalAvatarPath) &&
-          (isAssistantAvatarRelativePath(finalAvatarPath) ||
-            isAssistantAvatarDirectUri(finalAvatarPath)))
-
-      const useDefaultBuiltinAvatar =
-        !hasImageAvatar &&
-        (storedAvatarPath === ASSISTANT_DEFAULT_AVATAR_SENTINEL || (!emoji && !storedAvatarPath))
-
       const assistantId = isNew ? Date.now().toString() : (id as string)
       const existingList = isNew
         ? []
@@ -304,22 +276,20 @@ export const AssistantEditScreen: React.FC = () => {
             services.fileSystem
           )
 
+      let finalAvatarPath = normalizeAssistantAvatarPath(storedAvatarPath)
+      if (pendingImportUri) {
+        finalAvatarPath = await services.attachmentManager.importAvatar(pendingImportUri, 'agent')
+      }
+
       const repoInput = buildAssistantRepoInput({
         name: name.trim(),
-        emoji: hasImageAvatar || useDefaultBuiltinAvatar ? '' : emoji,
         description: description.trim(),
         systemPrompt: systemPrompt.trim(),
         isDefault: existingAssistant?.isDefault ?? existingList.length === 0,
         isPinned: existingAssistant?.isPinned ?? false,
         providerId: providerId || null,
         modelId: modelId || null,
-        avatarPath: hasImageAvatar
-          ? finalAvatarPath
-          : useDefaultBuiltinAvatar
-            ? ASSISTANT_DEFAULT_AVATAR_SENTINEL
-            : emoji
-              ? undefined
-              : (finalAvatarPath ?? ASSISTANT_DEFAULT_AVATAR_SENTINEL),
+        avatarPath: finalAvatarPath,
         contextWindow: isUnlimitedContext ? -1 : Math.round(contextWindow),
         compressTokenThreshold: isCompressDisabled ? 0 : Math.round(compressTokenThreshold),
         compressKeepTurns: Math.round(compressKeepTurns),
@@ -380,9 +350,7 @@ export const AssistantEditScreen: React.FC = () => {
     ? t('agent.assistant.create_title', '创建伙伴')
     : t('agent.assistant.edit_title', '编辑伙伴')
 
-  const hasCustomImage =
-    Boolean(pendingImportUri || previewAvatarUri) &&
-    storedAvatarPath !== ASSISTANT_DEFAULT_AVATAR_SENTINEL
+  const hasCustomUpload = Boolean(pendingImportUri || isAssistantCustomAvatar(storedAvatarPath))
 
   const canDelete = !isNew && !existingAssistant?.isDefault
 
@@ -414,36 +382,22 @@ export const AssistantEditScreen: React.FC = () => {
           keyboardShouldPersistTaps="handled"
         >
           <SettingsGroupCard style={styles.avatarCard}>
-            <View style={styles.avatarSection}>
-              <View style={styles.avatarWrap}>
-                <Pressable onPress={() => void handleAvatarPress()}>
-                  <AssistantAvatar
-                    emoji={emoji}
-                    avatarPath={storedAvatarPath}
-                    resolvedAvatarUri={previewAvatarUri}
-                    size={88}
-                  />
-                </Pressable>
-                <View style={[styles.avatarBadge, { backgroundColor: colors.primary }]}>
-                  <MaterialIcons
-                    name="sentiment-satisfied-alt"
-                    size={16}
-                    color={colors.onPrimary}
-                  />
-                </View>
-              </View>
-              <Text style={[styles.avatarHint, { color: colors.textSecondary }]}>
-                {t('agent.assistant.avatar_hint', '点击更换伙伴的图标或头像')}
-              </Text>
-              {hasCustomImage ||
-              (emoji && storedAvatarPath !== ASSISTANT_DEFAULT_AVATAR_SENTINEL) ? (
-                <TouchableOpacity onPress={handleRemoveAvatar}>
-                  <Text style={[styles.textBtn, { color: colors.primary }]}>
-                    {t('agent.assistant.remove_avatar', '移除头像')}
-                  </Text>
-                </TouchableOpacity>
-              ) : null}
-            </View>
+            <AssistantAvatarPicker
+              avatarPath={storedAvatarPath}
+              previewUri={previewAvatarUri}
+              onSelectBuiltin={handleSelectBuiltin}
+              onPressUpload={() => void handlePickImage()}
+            />
+            <Text style={[styles.avatarHint, { color: colors.textSecondary }]}>
+              {t('agent.assistant.avatar_hint', '选择内置头像或从本地上传')}
+            </Text>
+            {hasCustomUpload ? (
+              <TouchableOpacity onPress={handleResetBuiltinAvatar}>
+                <Text style={[styles.textBtn, { color: colors.primary }]}>
+                  {t('agent.assistant.reset_builtin_avatar', '恢复默认内置头像')}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
           </SettingsGroupCard>
 
           <SettingsGroupCard>
@@ -723,17 +677,6 @@ export const AssistantEditScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </View>
-
-      <EmojiPicker
-        visible={showEmojiPicker}
-        onClose={() => setShowEmojiPicker(false)}
-        onSelect={(value) => {
-          setEmoji(value)
-          setPendingImportUri(null)
-          setPreviewAvatarUri(null)
-          setStoredAvatarPath(undefined)
-        }}
-      />
 
       <ModelSwitcher
         isOpen={showModelSwitcher}
