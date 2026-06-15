@@ -42,7 +42,8 @@ export interface StreamChatOptions {
   fetchSearchPage?: (url: string) => Promise<string>
   abortSignal?: AbortSignal
   userMessageId?: string // 明确指定回复针对的用户消息 ID
-  skipUserMessageRecording?: boolean // 如果是编辑/重发消息，跳过用户消息记录
+  skipUserMessageRecording?: boolean // 用户消息已提前落库时，跳过重复记录
+  forceRecompress?: boolean // 编辑/重发截断后强制重建压缩摘要
 }
 
 export interface StreamChatCallbacks {
@@ -51,5 +52,12 @@ export interface StreamChatCallbacks {
   onToolCallStart?: (toolName: string, args: unknown) => void
   onToolCallResult?: (toolName: string, result: unknown) => void
   onError?: (error: Error) => void
-  onFinish?: (result?: { inputTokens?: number; outputTokens?: number; costMicros?: number }) => void
+  onFinish?: (result?: {
+    messageId?: string
+    inputTokens?: number
+    outputTokens?: number
+    cacheReadInputTokens?: number
+    cacheWriteInputTokens?: number
+    costMicros?: number
+  }) => void
 }

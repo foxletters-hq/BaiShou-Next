@@ -9,31 +9,73 @@ export interface ToolCallSnapshot {
 
 export interface ToolResultSnapshot {
   callId: string
-  result: any
+  result: unknown
+}
+
+export interface StreamTokenUsage {
+  inputTokens: number
+  outputTokens: number
+  cacheReadInputTokens: number
+  cacheWriteInputTokens: number
+}
+
+function readNumber(value: unknown): number {
+  const n = Number(value)
+  return Number.isFinite(n) && n > 0 ? n : 0
+}
+
+function extractCacheUsageFromRecord(
+  usage: Record<string, unknown> | undefined,
+  metadata: Record<string, unknown> | undefined
+): Pick<StreamTokenUsage, 'cacheReadInputTokens' | 'cacheWriteInputTokens'> {
+  const anthropic = metadata?.anthropic as Record<string, unknown> | undefined
+  const vertex = metadata?.vertex as Record<string, unknown> | undefined
+  const bedrock = metadata?.bedrock as Record<string, unknown> | undefined
+  const bedrockUsage = bedrock?.usage as Record<string, unknown> | undefined
+  const openai = metadata?.openai as Record<string, unknown> | undefined
+  const google = metadata?.google as Record<string, unknown> | undefined
+
+  const cacheReadInputTokens = readNumber(
+    usage?.cacheReadInputTokens ??
+      usage?.cachedInputTokens ??
+      (usage?.promptTokensDetails as Record<string, unknown> | undefined)?.cachedTokens ??
+      (usage?.inputTokensDetails as Record<string, unknown> | undefined)?.cachedTokens ??
+      anthropic?.cacheReadInputTokens ??
+      anthropic?.cache_read_input_tokens ??
+      vertex?.cacheReadInputTokens ??
+      bedrockUsage?.cacheReadInputTokens ??
+      openai?.cachedPromptTokens ??
+      google?.cachedContentTokenCount
+  )
+
+  const cacheWriteInputTokens = readNumber(
+    usage?.cacheWriteInputTokens ??
+      usage?.cacheCreationInputTokens ??
+      anthropic?.cacheCreationInputTokens ??
+      anthropic?.cache_creation_input_tokens ??
+      vertex?.cacheCreationInputTokens ??
+      bedrockUsage?.cacheWriteInputTokens
+  )
+
+  return { cacheReadInputTokens, cacheWriteInputTokens }
 }
 
 export class StreamAccumulator {
   private _textBuffer: string = ''
   private _reasoningBuffer: string = ''
 
-  // 用于 tracking token
   private _inputTokens: number = 0
   private _outputTokens: number = 0
+  private _cacheReadInputTokens: number = 0
+  private _cacheWriteInputTokens: number = 0
 
-  // 使用 Map 是为了流式不断累加时去查找
   private _toolCalls: Map<string, ToolCallSnapshot> = new Map()
   private _toolResults: Map<string, ToolResultSnapshot> = new Map()
 
-  /**
-   * 纯文本内容（用于发送给 UI 或者最终落盘时作为 text Part）
-   */
   get text(): string {
     return sanitizeAssistantGeneratedText(this._textBuffer)
   }
 
-  /**
-   * 深度思考过程（R1等大模型的思维链过程）
-   */
   get reasoning(): string {
     return this._reasoningBuffer
   }
@@ -46,46 +88,46 @@ export class StreamAccumulator {
     return Array.from(this._toolResults.values())
   }
 
-  get usage() {
+  get usage(): StreamTokenUsage {
     return {
       inputTokens: this._inputTokens,
-      outputTokens: this._outputTokens
+      outputTokens: this._outputTokens,
+      cacheReadInputTokens: this._cacheReadInputTokens,
+      cacheWriteInputTokens: this._cacheWriteInputTokens
     }
   }
 
-  /**
-   * 处理从 AI SDK 传回的原生 TextStreamPart 碎片
-   */
   add(part: TextStreamPart<any>): void {
-    const p = part as any
+    const p = part as Record<string, unknown>
     switch (p.type) {
       case 'text-delta': {
         if (p.textDelta) {
-          this._textBuffer += p.textDelta
+          this._textBuffer += String(p.textDelta)
         } else if (p.text) {
-          this._textBuffer += p.text
+          this._textBuffer += String(p.text)
         }
         break
       }
 
       case 'reasoning-delta': {
         if (p.textDelta) {
-          this._reasoningBuffer += p.textDelta
+          this._reasoningBuffer += String(p.textDelta)
         } else if (p.text) {
-          this._reasoningBuffer += p.text
+          this._reasoningBuffer += String(p.text)
         }
         break
       }
 
       case 'tool-call': {
         if (p.toolCallId) {
-          const legacyArgs = p.args ?? p.providerMetadata?.raw?.input
+          const legacyArgs = p.args ?? (p.providerMetadata as Record<string, unknown> | undefined)?.raw
+          const rawInput = (legacyArgs as { input?: unknown } | undefined)?.input
           const inputArgs =
-            typeof p.input === 'string' ? p.input : JSON.stringify(p.input ?? legacyArgs ?? {})
+            typeof p.input === 'string' ? p.input : JSON.stringify(p.input ?? rawInput ?? {})
 
-          this._toolCalls.set(p.toolCallId, {
-            callId: p.toolCallId,
-            name: p.toolName || '',
+          this._toolCalls.set(String(p.toolCallId), {
+            callId: String(p.toolCallId),
+            name: String(p.toolName || ''),
             arguments: inputArgs
           })
         }
@@ -94,9 +136,10 @@ export class StreamAccumulator {
 
       case 'tool-result': {
         if (p.toolCallId) {
-          const res = p.output ?? p.result ?? p.providerMetadata?.raw
-          this._toolResults.set(p.toolCallId, {
-            callId: p.toolCallId,
+          const raw = (p.providerMetadata as Record<string, unknown> | undefined)?.raw
+          const res = p.output ?? p.result ?? raw
+          this._toolResults.set(String(p.toolCallId), {
+            callId: String(p.toolCallId),
             result: res
           })
         }
@@ -104,57 +147,27 @@ export class StreamAccumulator {
       }
 
       case 'finish-step': {
-        // 步骤级别的 usage 数据，累加到总 usage
-        if (p.usage) {
-          const stepInput = p.usage.inputTokens || p.usage.promptTokens || 0
-          const stepOutput = p.usage.outputTokens || p.usage.completionTokens || 0
-          this._inputTokens += stepInput
-          this._outputTokens += stepOutput
-          logger.info(
-            `[StreamAccumulator] Step finish chunk usage parsed: input=${stepInput}, output=${stepOutput}`
-          )
-        }
+        this.ingestUsage(p.usage as Record<string, unknown> | undefined, p.providerMetadata as
+          | Record<string, unknown>
+          | undefined, true)
         break
       }
 
       case 'finish': {
-        if (p.usage) {
-          this._inputTokens = p.usage.promptTokens || p.usage.inputTokens || 0
-          this._outputTokens = p.usage.completionTokens || p.usage.outputTokens || 0
-          logger.info(
-            `[StreamAccumulator] Finish chunk usage parsed: input=${this._inputTokens}, output=${this._outputTokens}`
-          )
-        } else if (p.totalUsage) {
-          this._inputTokens = p.totalUsage.promptTokens || p.totalUsage.inputTokens || 0
-          this._outputTokens = p.totalUsage.completionTokens || p.totalUsage.outputTokens || 0
-          logger.info(
-            `[StreamAccumulator] Finish chunk totalUsage parsed: input=${this._inputTokens}, output=${this._outputTokens}`
-          )
-        } else {
-          logger.info(
-            '[StreamAccumulator] Finish chunk received but NO usage data found:',
-            JSON.stringify(p)
-          )
-        }
+        const usage = (p.usage ?? p.totalUsage) as Record<string, unknown> | undefined
+        this.ingestUsage(usage, p.providerMetadata as Record<string, unknown> | undefined, false)
         break
       }
 
       default: {
-        // 防御性兜底：某些 AI SDK 版本或 provider 返回的 finish-step 可能因类型差异
-        // 导致 switch 未匹配到 case 'finish-step'，这里做二次检查
         const partType = String(p.type)
-        if (partType === 'finish-step' && p.usage) {
-          const stepInput = p.usage.inputTokens || p.usage.promptTokens || 0
-          const stepOutput = p.usage.outputTokens || p.usage.completionTokens || 0
-          this._inputTokens += stepInput
-          this._outputTokens += stepOutput
-          logger.info(
-            `[StreamAccumulator] Step finish (fallback) usage parsed: input=${stepInput}, output=${stepOutput}`
-          )
+        if (partType === 'finish-step') {
+          this.ingestUsage(p.usage as Record<string, unknown> | undefined, p.providerMetadata as
+            | Record<string, unknown>
+            | undefined, true)
           break
         }
-        // 记录未知 chunk 的 usage 元数据
-        if ((part as any).usage || (part as any).usageMetadata || (part as any).providerMetadata) {
+        if (p.usage || p.usageMetadata || p.providerMetadata) {
           logger.info(
             '[StreamAccumulator] Unknown chunk with potential usage metadata:',
             JSON.stringify(part)
@@ -163,5 +176,36 @@ export class StreamAccumulator {
         break
       }
     }
+  }
+
+  private ingestUsage(
+    usage: Record<string, unknown> | undefined,
+    metadata: Record<string, unknown> | undefined,
+    accumulate: boolean
+  ): void {
+    if (!usage) return
+
+    const stepInput = readNumber(usage.inputTokens ?? usage.promptTokens)
+    const stepOutput = readNumber(usage.outputTokens ?? usage.completionTokens)
+    const cache = extractCacheUsageFromRecord(usage, metadata)
+
+    if (accumulate) {
+      this._inputTokens += stepInput
+      this._outputTokens += stepOutput
+      this._cacheReadInputTokens += cache.cacheReadInputTokens
+      this._cacheWriteInputTokens += cache.cacheWriteInputTokens
+      logger.info(
+        `[StreamAccumulator] Step finish usage: input=${stepInput}, output=${stepOutput}, cacheRead=${cache.cacheReadInputTokens}`
+      )
+      return
+    }
+
+    this._inputTokens = stepInput
+    this._outputTokens = stepOutput
+    this._cacheReadInputTokens = cache.cacheReadInputTokens
+    this._cacheWriteInputTokens = cache.cacheWriteInputTokens
+    logger.info(
+      `[StreamAccumulator] Finish usage: input=${this._inputTokens}, output=${this._outputTokens}, cacheRead=${this._cacheReadInputTokens}, cacheWrite=${this._cacheWriteInputTokens}`
+    )
   }
 }

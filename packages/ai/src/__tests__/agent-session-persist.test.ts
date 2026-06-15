@@ -101,4 +101,69 @@ describe('persistResult token estimation', () => {
       expect(insertedMessage.inputTokens).toBe(expectedInputTokens)
     }
   )
+
+  it('writes cache read/write tokens to message row and session totals', async () => {
+    vi.spyOn(ModelPricingService.getInstance(), 'calculateCostMicros').mockResolvedValue(42)
+
+    const sessionRepo = {
+      getMessagesBySession: vi.fn().mockResolvedValue([{ orderIndex: 2 }]),
+      insertMessageWithParts: vi.fn().mockResolvedValue(undefined),
+      updateTokenUsage: vi.fn().mockResolvedValue(undefined)
+    }
+
+    const snapshotRepo = {
+      getLatestSnapshot: vi.fn().mockResolvedValue(null)
+    }
+
+    const provider = {
+      config: {
+        id: 'deepseek',
+        type: 'openai'
+      }
+    }
+
+    const accumulator = {
+      text: 'cached reply',
+      reasoning: '',
+      toolCalls: [],
+      toolResults: [],
+      usage: {
+        inputTokens: 1200,
+        outputTokens: 80,
+        cacheReadInputTokens: 960,
+        cacheWriteInputTokens: 0
+      }
+    }
+
+    const streamResult = {
+      usage: Promise.resolve({
+        inputTokens: 1200,
+        outputTokens: 80,
+        cacheReadInputTokens: 960,
+        cacheWriteInputTokens: 0
+      })
+    }
+
+    await persistResult({
+      sessionId: 's1',
+      rawUserText: 'follow-up',
+      streamResult: streamResult as any,
+      accumulator: accumulator as any,
+      sessionRepo: sessionRepo as any,
+      snapshotRepo: snapshotRepo as any,
+      provider: provider as any,
+      modelId: 'deepseek-chat',
+      streamError: null
+    })
+
+    expect(sessionRepo.insertMessageWithParts).toHaveBeenCalled()
+    const insertedMessage = sessionRepo.insertMessageWithParts.mock.calls[0]![0]
+    expect(insertedMessage.inputTokens).toBe(1200)
+    expect(insertedMessage.outputTokens).toBe(80)
+    expect(insertedMessage.cacheReadInputTokens).toBe(960)
+    expect(insertedMessage.cacheWriteInputTokens).toBe(0)
+    expect(insertedMessage.costMicros).toBe(42)
+
+    expect(sessionRepo.updateTokenUsage).toHaveBeenCalledWith('s1', 1200, 80, 42, 960, 0)
+  })
 })
