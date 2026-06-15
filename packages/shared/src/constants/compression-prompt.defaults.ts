@@ -58,7 +58,8 @@ Retention rules:
 
 export function resolveCompressionPromptLocale(locale?: string): CompressionPromptLocale {
   const raw = (locale || 'zh').toLowerCase()
-  if (raw.startsWith('zh-tw') || raw === 'zh_hant' || raw === 'zh-hant') return 'zh-TW'
+  if (raw.startsWith('zh-tw') || raw.startsWith('zh-hk') || raw === 'zh_hant' || raw === 'zh-hant')
+    return 'zh-TW'
   if (raw.startsWith('zh')) return 'zh'
   if (raw.startsWith('ja')) return 'ja'
   if (raw.startsWith('en')) return 'en'

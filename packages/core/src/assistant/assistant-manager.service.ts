@@ -1,4 +1,10 @@
 import { AssistantRepository, InsertAssistantInput, UpdateAssistantInput } from '@baishou/database'
+import {
+  normalizePersistedAvatarPath,
+  normalizeAssistantAvatarPath,
+  isBuiltinAssistantAvatarPath,
+  isDefaultAssistantAvatarPath
+} from '@baishou/shared'
 import { AssistantFileService } from './assistant-file.service'
 import { IAttachmentManager } from '../attachments/attachment-manager.types'
 
@@ -14,16 +20,25 @@ export class AssistantManagerService {
   ) {}
 
   private async processAvatarInput(input: { avatarPath?: string | null }) {
-    if (input.avatarPath && input.avatarPath.trim().length > 0) {
-      if (!input.avatarPath.startsWith('avatars/')) {
-        input.avatarPath = await this.attachmentManager.importAvatar(input.avatarPath, 'agent')
-      }
+    const raw = input.avatarPath?.trim()
+    if (!raw) return
+    if (isDefaultAssistantAvatarPath(raw) && !isBuiltinAssistantAvatarPath(raw)) {
+      input.avatarPath = normalizeAssistantAvatarPath(raw)
+      return
     }
+    if (raw.startsWith('avatars/') || isBuiltinAssistantAvatarPath(raw)) {
+      return
+    }
+    input.avatarPath = await this.attachmentManager.importAvatar(raw, 'agent')
   }
 
   private async mapAvatarOutput<T extends { avatarPath: string | null }>(item: T): Promise<T> {
     if (item.avatarPath && item.avatarPath.startsWith('avatars/')) {
-      item.avatarPath = await this.attachmentManager.resolveAvatarPath(item.avatarPath)
+      try {
+        item.avatarPath = await this.attachmentManager.resolveAvatarPath(item.avatarPath)
+      } catch {
+        // 文件尚未同步到位时保留相对路径，由 UI 层再解析
+      }
     }
     return item
   }
@@ -80,6 +95,11 @@ export class AssistantManagerService {
         // Otherwise Drizzle SQLiteTimestamp.mapToDriverValue will raise TypeError: value.getTime is not a function
         if (data.createdAt != null) data.createdAt = new Date(data.createdAt)
         if (data.updatedAt != null) data.updatedAt = new Date(data.updatedAt)
+        if (data.avatarPath != null) {
+          data.avatarPath =
+            normalizePersistedAvatarPath(data.avatarPath) ??
+            normalizeAssistantAvatarPath(data.avatarPath)
+        }
 
         const existing = await this.repo.findById(f.id)
         if (existing) {

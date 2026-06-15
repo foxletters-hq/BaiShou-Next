@@ -1,5 +1,12 @@
 import { SettingsRepository } from '@baishou/database'
-import { SHORTCUT_TRACE_CHAIN, traceCall, migrateUserProfileSettingsKey } from '@baishou/shared'
+import {
+  SHORTCUT_TRACE_CHAIN,
+  traceCall,
+  migrateUserProfileSettingsKey,
+  USER_PROFILE_SETTINGS_KEY,
+  normalizePersistedAvatarPath,
+  type UserProfile
+} from '@baishou/shared'
 import { SettingsFileService } from './settings-file.service'
 
 const PROMPT_SHORTCUTS_KEY = 'prompt_shortcuts_v2'
@@ -104,7 +111,17 @@ export class SettingsManagerService {
     const settingsMap = await this.fileService.readAllSettings()
     // 如果外层是 {} 依然继续，只是不更新罢了。
     for (const key of Object.keys(settingsMap)) {
-      await this.repo.set(key, settingsMap[key])
+      let value = settingsMap[key]
+      if (key === USER_PROFILE_SETTINGS_KEY && value && typeof value === 'object') {
+        const profile = value as UserProfile
+        if (profile.avatarPath) {
+          const normalized = normalizePersistedAvatarPath(profile.avatarPath)
+          if (normalized && normalized !== profile.avatarPath) {
+            value = { ...profile, avatarPath: normalized }
+          }
+        }
+      }
+      await this.repo.set(key, value)
     }
     const migrated = await migrateUserProfileSettingsKey(this.repo)
     if (migrated) {
