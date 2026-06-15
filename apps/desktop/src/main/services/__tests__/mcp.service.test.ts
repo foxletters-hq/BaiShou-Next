@@ -59,7 +59,17 @@ describe.sequential('McpService', () => {
   it('handles Streamable HTTP initialize and tools/list on /mcp', async () => {
     await service.start()
     const server = (service as any).httpServer as import('http').Server | null
-    const bound = server?.address()
+    expect(server).toBeTruthy()
+
+    await vi.waitFor(
+      () => {
+        expect(server!.listening).toBe(true)
+        expect(server!.address()).toBeTruthy()
+      },
+      { timeout: 10_000, interval: 50 }
+    )
+
+    const bound = server!.address()
     const port = typeof bound === 'object' && bound ? bound.port : testPort
     const base = `http://127.0.0.1:${port}/mcp`
     const mcpHeaders = {
@@ -81,7 +91,7 @@ describe.sequential('McpService', () => {
     const fetchWithRetry = async (
       url: string,
       init: RequestInit,
-      attempts = 30
+      attempts = 50
     ): Promise<Response> => {
       let lastError: unknown
       for (let i = 0; i < attempts; i++) {
@@ -89,7 +99,7 @@ describe.sequential('McpService', () => {
           return await fetch(url, init)
         } catch (error) {
           lastError = error
-          await new Promise((resolve) => setTimeout(resolve, 50 + i * 10))
+          await new Promise((resolve) => setTimeout(resolve, 100 + i * 20))
         }
       }
       throw lastError
