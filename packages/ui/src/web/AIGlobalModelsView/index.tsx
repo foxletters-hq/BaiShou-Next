@@ -197,11 +197,7 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
           {isModelSet ? (
             <div className={styles.selectedValueInfo}>
               <span className={styles.selectedProviderIcon} aria-hidden>
-                {providerIconUrl ? (
-                  <img src={providerIconUrl} alt="" />
-                ) : (
-                  <MdCloud size={18} />
-                )}
+                {providerIconUrl ? <img src={providerIconUrl} alt="" /> : <MdCloud size={18} />}
               </span>
               <span className={styles.selectedModelName}>{currentModel}</span>
             </div>

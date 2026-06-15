@@ -291,18 +291,16 @@ describe('GitSyncService', () => {
       expect(isExcludedFromVersionControl('.baishou-s3.json')).toBe(true)
       expect(isExcludedFromVersionControl('.baishou-git.json')).toBe(true)
       expect(isExcludedFromVersionControl('Personal/.git.vault-legacy/config')).toBe(true)
-      expect(isExcludedFromVersionControl('Personal/.git.vault-legacy/hooks/commit-msg.sample')).toBe(
-        true
-      )
+      expect(
+        isExcludedFromVersionControl('Personal/.git.vault-legacy/hooks/commit-msg.sample')
+      ).toBe(true)
     })
   })
 
   describe('parseGitlinkPathFromLsFilesLine', () => {
     it('parses gitlink entries from ls-files -s output', async () => {
       const { parseGitlinkPathFromLsFilesLine } = await import('../git-sync.helpers')
-      expect(
-        parseGitlinkPathFromLsFilesLine('160000 abc123 0\tPersonal')
-      ).toBe('Personal')
+      expect(parseGitlinkPathFromLsFilesLine('160000 abc123 0\tPersonal')).toBe('Personal')
       expect(parseGitlinkPathFromLsFilesLine('100644 abc123 0\tfoo.md')).toBeNull()
     })
   })

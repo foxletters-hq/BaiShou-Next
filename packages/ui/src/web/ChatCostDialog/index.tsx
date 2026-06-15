@@ -129,8 +129,7 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
                 {t('agent.chat.cost_cumulative_cache_write', '缓存写入')}
               </span>
               <span className={styles.costValue}>
-                {details.cacheWriteTokens!.toLocaleString()}{' '}
-                {t('agent.chat.tokens_unit', 'tokens')}
+                {details.cacheWriteTokens!.toLocaleString()} {t('agent.chat.tokens_unit', 'tokens')}
               </span>
             </div>
           ) : null}

@@ -129,7 +129,13 @@ export function useAgentStream(
 
   useEffect(() => {
     if (!currentSessionId) {
-      setTokenUsage({ inputTokens: 0, outputTokens: 0, cacheReadInputTokens: 0, cacheWriteInputTokens: 0, totalCostMicros: 0 })
+      setTokenUsage({
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheReadInputTokens: 0,
+        cacheWriteInputTokens: 0,
+        totalCostMicros: 0
+      })
       return
     }
     if (!isStreaming) {

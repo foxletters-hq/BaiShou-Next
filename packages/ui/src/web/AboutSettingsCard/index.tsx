@@ -147,7 +147,9 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
                   handleDevTap()
                 }}
               />
-              <span className="about-license-title">Anson & Kasumiame Sakura & Tenkou Akatsuki</span>
+              <span className="about-license-title">
+                Anson & Kasumiame Sakura & Tenkou Akatsuki
+              </span>
               <span className="about-license-subtitle">The Trio</span>
             </div>
           </div>
@@ -174,11 +176,7 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
 
         <section className="about-surface-card">
           <div className="about-flat-section about-flat-section-only">
-            <VersionManager
-              embedded
-              version={version}
-              onOpenGithubRepo={onOpenGithubRepo}
-            />
+            <VersionManager embedded version={version} onOpenGithubRepo={onOpenGithubRepo} />
           </div>
         </section>
       </div>

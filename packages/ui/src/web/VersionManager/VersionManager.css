@@ -203,6 +203,8 @@
 .version-progress-wrap-embedded {
   padding: 12px 0 0;
 }
+
+.version-spin {
   animation: version-spin 1s linear infinite;
 }
 

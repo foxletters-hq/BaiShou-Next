@@ -1,6 +1,11 @@
 import { eq } from 'drizzle-orm'
 import { systemSettingsTable } from '../schema/system-settings'
-import { SHORTCUT_TRACE_CHAIN, traceCall, dedupePromptShortcuts, type PromptShortcut } from '@baishou/shared'
+import {
+  SHORTCUT_TRACE_CHAIN,
+  traceCall,
+  dedupePromptShortcuts,
+  type PromptShortcut
+} from '@baishou/shared'
 
 const KEY = 'prompt_shortcuts_v2'
 

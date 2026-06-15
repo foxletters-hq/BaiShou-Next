@@ -307,7 +307,9 @@
   background: var(--bg-surface);
   text-align: left;
   cursor: pointer;
-  transition: background-color 0.2s, border-color 0.2s;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
 }
 
 .about-info-row:hover {

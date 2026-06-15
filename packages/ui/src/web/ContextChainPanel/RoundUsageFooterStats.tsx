@@ -27,8 +27,7 @@ export const RoundUsageFooterStats: React.FC<RoundUsageFooterStatsProps> = ({
         ↑ {t('agent.chat.round_input', '上行')} {(usage.inputTokens ?? 0).toLocaleString()} tokens
       </span>
       <span className={statClassName}>
-        ↓ {t('agent.chat.round_output', '下行')} {(usage.outputTokens ?? 0).toLocaleString()}{' '}
-        tokens
+        ↓ {t('agent.chat.round_output', '下行')} {(usage.outputTokens ?? 0).toLocaleString()} tokens
       </span>
       {cacheRead > 0 ? (
         <span className={statClassName} title={t('agent.chat.cache_read', '缓存读取')}>

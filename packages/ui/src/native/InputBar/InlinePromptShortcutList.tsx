@@ -1,7 +1,11 @@
 import React from 'react'
 import { View, Text, Pressable, FlatList, StyleSheet } from 'react-native'
 import type { PromptShortcut } from '@baishou/shared'
-import { getShortcutCommand, getDefaultShortcutLabelsFromT, localizePromptShortcut } from '@baishou/shared'
+import {
+  getShortcutCommand,
+  getDefaultShortcutLabelsFromT,
+  localizePromptShortcut
+} from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 

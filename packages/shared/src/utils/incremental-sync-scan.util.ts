@@ -63,7 +63,8 @@ export function shouldScanIncrementalSyncDirectory(
 export function shouldIncludeIncrementalSyncFile(entryName: string, relativePath: string): boolean {
   const rel = normalizeRel(relativePath)
   if (isBaishouSettingsTree(rel)) {
-    return rel.includes('/.baishou/settings/') || rel.startsWith(INCREMENTAL_SYNC_BAISHOU_SETTINGS_PREFIX)
+    return rel.includes('/.baishou/settings/') ||
+      rel.startsWith(INCREMENTAL_SYNC_BAISHOU_SETTINGS_PREFIX)
       ? rel.endsWith('.json') && !entryName.endsWith('.tmp')
       : false
   }

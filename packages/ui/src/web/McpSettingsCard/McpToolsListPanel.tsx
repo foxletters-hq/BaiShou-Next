@@ -43,9 +43,7 @@ export const McpToolsListPanel: React.FC = () => {
   }, [])
 
   if (loading) {
-    return (
-      <p className={styles.stateMessage}>{t('common.loading', '加载中...')}</p>
-    )
+    return <p className={styles.stateMessage}>{t('common.loading', '加载中...')}</p>
   }
 
   if (failed) {
@@ -58,9 +56,7 @@ export const McpToolsListPanel: React.FC = () => {
 
   if (tools.length === 0) {
     return (
-      <p className={styles.stateMessage}>
-        {t('settings.mcp_no_tools', '未检测到任何暴露的工具')}
-      </p>
+      <p className={styles.stateMessage}>{t('settings.mcp_no_tools', '未检测到任何暴露的工具')}</p>
     )
   }
 
@@ -78,9 +74,7 @@ export const McpToolsListPanel: React.FC = () => {
               <span className={styles.toolCategory}>{tool.category || 'general'}</span>
               <span className={styles.toolTitle}>({localizedTitle})</span>
             </div>
-            {localizedDesc ? (
-              <p className={styles.toolDescription}>{localizedDesc}</p>
-            ) : null}
+            {localizedDesc ? <p className={styles.toolDescription}>{localizedDesc}</p> : null}
           </article>
         )
       })}

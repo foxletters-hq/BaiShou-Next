@@ -39,11 +39,7 @@ export const AgentScreen: React.FC = () => {
           onClick={() => flow.setShowModelSwitcher(true)}
         >
           <span className={styles.modelProviderIcon} aria-hidden>
-            {providerIconUrl ? (
-              <img src={providerIconUrl} alt="" />
-            ) : (
-              <MdCloud size={18} />
-            )}
+            {providerIconUrl ? <img src={providerIconUrl} alt="" /> : <MdCloud size={18} />}
           </span>
           <span className={styles.modelName}>{displayModelName}</span>
           <span className={styles.chevron}>▼</span>

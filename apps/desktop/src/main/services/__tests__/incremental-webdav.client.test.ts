@@ -25,12 +25,23 @@ describe('IncrementalWebDavClient.listFiles', () => {
       if (dir === 'memories_sync') {
         return [
           { type: 'directory', filename: 'memories_sync/Personal' },
-          { type: 'file', filename: 'memories_sync/vault_registry.json', basename: 'vault_registry.json', size: 10 }
+          {
+            type: 'file',
+            filename: 'memories_sync/vault_registry.json',
+            basename: 'vault_registry.json',
+            size: 10
+          }
         ]
       }
       if (dir === 'memories_sync/Personal') {
         return [
-          { type: 'file', filename: 'memories_sync/Personal/Journals/a.md', basename: 'a.md', size: 5, lastmod: '2026-01-01T00:00:00Z' }
+          {
+            type: 'file',
+            filename: 'memories_sync/Personal/Journals/a.md',
+            basename: 'a.md',
+            size: 5,
+            lastmod: '2026-01-01T00:00:00Z'
+          }
         ]
       }
       return []
@@ -46,7 +57,9 @@ describe('IncrementalWebDavClient.listFiles', () => {
     expect(mockClient.getDirectoryContents).toHaveBeenCalledWith('memories_sync/Personal', {
       deep: false
     })
-    expect(mockClient.getDirectoryContents).not.toHaveBeenCalledWith(expect.anything(), { deep: true })
+    expect(mockClient.getDirectoryContents).not.toHaveBeenCalledWith(expect.anything(), {
+      deep: true
+    })
     expect(records.map((r) => r.filename).sort()).toEqual([
       'Personal/Journals/a.md',
       'vault_registry.json'

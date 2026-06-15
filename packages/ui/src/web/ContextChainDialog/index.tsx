@@ -111,10 +111,7 @@ export const ContextChainDialog: React.FC<ContextChainDialogProps> = ({
           </button>
         </div>
 
-        {(totalInputTokens > 0 ||
-          totalOutputTokens > 0 ||
-          cacheRead > 0 ||
-          cacheWrite > 0) && (
+        {(totalInputTokens > 0 || totalOutputTokens > 0 || cacheRead > 0 || cacheWrite > 0) && (
           <div className={styles.statsRow}>
             <div className={styles.statChip}>
               <span className={styles.statIcon}>↑</span>

@@ -2,7 +2,10 @@ import { describe, it, expect } from 'vitest'
 import { MiddlewareChain } from '../middleware/message-middleware'
 import type { MessageMiddleware } from '../middleware/message-middleware'
 import { GeminiThoughtSignatureMiddleware } from '../middleware/gemini-thought-signature'
-import { buildMiddlewareChain, buildLanguageModelMiddlewares } from '../middleware/middleware-factory'
+import {
+  buildMiddlewareChain,
+  buildLanguageModelMiddlewares
+} from '../middleware/middleware-factory'
 import type { ModelMessage } from 'ai'
 
 describe('Middleware Pipeline', () => {

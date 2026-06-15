@@ -23,10 +23,7 @@ export function getSettingsRouteSegment(pathname: string): string {
   return 'general'
 }
 
-export function settingsPathForScope(
-  scope: 'hub' | 'overlay',
-  segment: string
-): string {
+export function settingsPathForScope(scope: 'hub' | 'overlay', segment: string): string {
   const prefix = scope === 'hub' ? SETTINGS_HUB_PREFIX : SETTINGS_OVERLAY_PREFIX
   return segment === 'general' ? `${prefix}/general` : `${prefix}/${segment}`
 }

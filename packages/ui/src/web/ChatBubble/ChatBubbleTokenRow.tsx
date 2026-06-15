@@ -19,14 +19,10 @@ export const ChatBubbleTokenRow: React.FC<{ usage: TokenUsageDisplay }> = ({ usa
   return (
     <div className={styles.tokenRow}>
       {input > 0 ? (
-        <span className={styles.tokenStat}>
-          ↑{formatCompactTokenCount(input)}
-        </span>
+        <span className={styles.tokenStat}>↑{formatCompactTokenCount(input)}</span>
       ) : null}
       {output > 0 ? (
-        <span className={styles.tokenStat}>
-          ↓{formatCompactTokenCount(output)}
-        </span>
+        <span className={styles.tokenStat}>↓{formatCompactTokenCount(output)}</span>
       ) : null}
       {costMicros > 0 ? (
         <span className={styles.tokenStat}>${(costMicros / 1_000_000).toFixed(4)}</span>

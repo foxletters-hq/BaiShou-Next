@@ -12,7 +12,13 @@ import {
   TextInput,
   type LayoutChangeEvent
 } from 'react-native'
-import { SHORTCUT_TRACE_CHAIN, traceCall, findShortcutCommandConflict, getDefaultShortcutLabelsFromT, localizePromptShortcut } from '@baishou/shared'
+import {
+  SHORTCUT_TRACE_CHAIN,
+  traceCall,
+  findShortcutCommandConflict,
+  getDefaultShortcutLabelsFromT,
+  localizePromptShortcut
+} from '@baishou/shared'
 import { MaterialIcons } from '@expo/vector-icons'
 import type { PromptShortcut } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
@@ -165,9 +171,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
     }
 
     if (findShortcutCommandConflict(shortcuts, payload, isNew ? undefined : payload.id)) {
-      toast.showError(
-        t('shortcut.duplicate_command', '已存在相同快捷短语的指令，请换一个短语')
-      )
+      toast.showError(t('shortcut.duplicate_command', '已存在相同快捷短语的指令，请换一个短语'))
       return
     }
 
@@ -232,90 +236,90 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
     (item: PromptShortcut, index: number) => {
       const localized = localizePromptShortcut(item, defaultShortcutLabels)
       return (
-      <View
-        style={[
-          styles.item,
-          {
-            backgroundColor: colors.bgSurfaceHigh,
-            borderColor: colors.borderSubtle,
-            minHeight: ROW_MIN_HEIGHT
-          }
-        ]}
-      >
-        {canManage ? (
-          canDrag && onReorder ? (
-            <View style={styles.reorderBtns}>
-              <Pressable
-                style={[styles.reorderBtn, { opacity: index <= 0 ? 0.3 : 1 }]}
-                disabled={index <= 0}
-                onPress={() => handleMoveItem(index, -1)}
-                hitSlop={6}
-                accessibilityLabel={t('shortcut.move_up', '上移')}
-              >
-                <MaterialIcons name="keyboard-arrow-up" size={22} color={colors.textTertiary} />
-              </Pressable>
-              <Pressable
-                style={[
-                  styles.reorderBtn,
-                  { opacity: index >= paginatedShortcuts.length - 1 ? 0.3 : 1 }
-                ]}
-                disabled={index >= paginatedShortcuts.length - 1}
-                onPress={() => handleMoveItem(index, 1)}
-                hitSlop={6}
-                accessibilityLabel={t('shortcut.move_down', '下移')}
-              >
-                <MaterialIcons name="keyboard-arrow-down" size={22} color={colors.textTertiary} />
-              </Pressable>
-            </View>
-          ) : (
-            <View style={styles.reorderSpacer} />
-          )
-        ) : null}
-
-        <View style={styles.itemBody}>
-          <Text style={[styles.itemName, { color: colors.textPrimary }]} numberOfLines={1}>
-            {localized.name || t('shortcut.default_tag', '指令')}
-          </Text>
-          <Text style={[styles.itemContent, { color: colors.textSecondary }]} numberOfLines={2}>
-            {localized.content}
-          </Text>
-        </View>
-
-        <View style={styles.itemActions}>
-          <Pressable
-            style={[styles.useBtn, { backgroundColor: colors.primary }]}
-            onPress={() => {
-              onSelect(localized)
-              handleClose()
-            }}
-            accessibilityLabel={t('common.use', '使用')}
-          >
-            <Text style={{ color: colors.textOnPrimary, fontWeight: '600', fontSize: 12 }}>
-              {t('common.use', '使用')}
-            </Text>
-          </Pressable>
+        <View
+          style={[
+            styles.item,
+            {
+              backgroundColor: colors.bgSurfaceHigh,
+              borderColor: colors.borderSubtle,
+              minHeight: ROW_MIN_HEIGHT
+            }
+          ]}
+        >
           {canManage ? (
-            <>
-            <Pressable
-              style={styles.actionBtn}
-              hitSlop={8}
-              onPress={() => handleEdit(item)}
-              accessibilityLabel={t('shortcut.edit', '编辑')}
-            >
-              <MaterialIcons name="edit" size={20} color={colors.textTertiary} />
-            </Pressable>
-            <Pressable
-              style={styles.actionBtn}
-              hitSlop={8}
-              onPress={() => void handleDeletePress(item.id)}
-              accessibilityLabel={t('common.delete', '删除')}
-            >
-              <MaterialIcons name="delete-outline" size={22} color={colors.error} />
-            </Pressable>
-            </>
+            canDrag && onReorder ? (
+              <View style={styles.reorderBtns}>
+                <Pressable
+                  style={[styles.reorderBtn, { opacity: index <= 0 ? 0.3 : 1 }]}
+                  disabled={index <= 0}
+                  onPress={() => handleMoveItem(index, -1)}
+                  hitSlop={6}
+                  accessibilityLabel={t('shortcut.move_up', '上移')}
+                >
+                  <MaterialIcons name="keyboard-arrow-up" size={22} color={colors.textTertiary} />
+                </Pressable>
+                <Pressable
+                  style={[
+                    styles.reorderBtn,
+                    { opacity: index >= paginatedShortcuts.length - 1 ? 0.3 : 1 }
+                  ]}
+                  disabled={index >= paginatedShortcuts.length - 1}
+                  onPress={() => handleMoveItem(index, 1)}
+                  hitSlop={6}
+                  accessibilityLabel={t('shortcut.move_down', '下移')}
+                >
+                  <MaterialIcons name="keyboard-arrow-down" size={22} color={colors.textTertiary} />
+                </Pressable>
+              </View>
+            ) : (
+              <View style={styles.reorderSpacer} />
+            )
           ) : null}
+
+          <View style={styles.itemBody}>
+            <Text style={[styles.itemName, { color: colors.textPrimary }]} numberOfLines={1}>
+              {localized.name || t('shortcut.default_tag', '指令')}
+            </Text>
+            <Text style={[styles.itemContent, { color: colors.textSecondary }]} numberOfLines={2}>
+              {localized.content}
+            </Text>
+          </View>
+
+          <View style={styles.itemActions}>
+            <Pressable
+              style={[styles.useBtn, { backgroundColor: colors.primary }]}
+              onPress={() => {
+                onSelect(localized)
+                handleClose()
+              }}
+              accessibilityLabel={t('common.use', '使用')}
+            >
+              <Text style={{ color: colors.textOnPrimary, fontWeight: '600', fontSize: 12 }}>
+                {t('common.use', '使用')}
+              </Text>
+            </Pressable>
+            {canManage ? (
+              <>
+                <Pressable
+                  style={styles.actionBtn}
+                  hitSlop={8}
+                  onPress={() => handleEdit(item)}
+                  accessibilityLabel={t('shortcut.edit', '编辑')}
+                >
+                  <MaterialIcons name="edit" size={20} color={colors.textTertiary} />
+                </Pressable>
+                <Pressable
+                  style={styles.actionBtn}
+                  hitSlop={8}
+                  onPress={() => void handleDeletePress(item.id)}
+                  accessibilityLabel={t('common.delete', '删除')}
+                >
+                  <MaterialIcons name="delete-outline" size={22} color={colors.error} />
+                </Pressable>
+              </>
+            ) : null}
+          </View>
         </View>
-      </View>
       )
     },
     [
