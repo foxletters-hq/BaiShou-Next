@@ -80,6 +80,6 @@ describe('prompt-shortcut.util', () => {
     )
     expect(localized.name).toBe('Translate')
     expect(localized.content).toBe('Translate this:\n\n')
-    expect(localized.command).toBe('translate')
+    expect(getShortcutCommand(localized)).toBe('translate')
   })
 })
