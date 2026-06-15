@@ -1,11 +1,13 @@
 import React, { useState } from 'react'
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native'
+import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme, useNativeToast, useDialog, Button } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 
 export const DeveloperSettingsSection: React.FC = () => {
   const { t } = useTranslation()
+  const router = useRouter()
   const { colors } = useNativeTheme()
   const toast = useNativeToast()
   const dialog = useDialog()
@@ -87,6 +89,16 @@ export const DeveloperSettingsSection: React.FC = () => {
       </Text>
 
       {busy && <ActivityIndicator color={colors.primary} style={styles.spinner} />}
+
+      <Button
+        variant="secondary"
+        className="w-full"
+        onPress={() => router.push('/onboarding?preview=1')}
+        isDisabled={busy}
+        style={styles.button}
+      >
+        {t('developer.open_onboarding')}
+      </Button>
 
       <Button
         variant="primary"

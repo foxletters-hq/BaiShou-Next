@@ -43,7 +43,12 @@
       "expo-audio",
       "expo-web-browser",
       "expo-sharing",
-      "expo-sqlite"
+      [
+        "expo-sqlite",
+        {
+          "withSQLiteVecExtension": true
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

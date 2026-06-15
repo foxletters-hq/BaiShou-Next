@@ -5,14 +5,9 @@ import type {
   SettingsManagerService,
   SummarySyncService
 } from '@baishou/core-mobile'
-import {
-  logger,
-  DEFAULT_USER_PROFILE,
-  USER_PROFILE_SETTINGS_KEY,
-  ASSISTANT_DEFAULT_AVATAR_SENTINEL
-} from '@baishou/shared'
-import i18n from 'i18next'
-import { buildAssistantRepoInput } from '../lib/mobile-assistant.util'
+import { ensureDefaultLatteAssistant } from '@baishou/core-mobile'
+import { logger, DEFAULT_USER_PROFILE, USER_PROFILE_SETTINGS_KEY } from '@baishou/shared'
+import { resolveMobileBootstrapUiLocale } from '../lib/onboarding-language.util'
 
 export interface MobileBootstrapperDeps {
   shadowIndexSyncService: ShadowIndexSyncService
@@ -73,45 +68,35 @@ export class MobileDataBootstrapper {
     logger.info('[MobileBootstrapper] Starting ecosystem resync…')
 
     try {
-      await deps.shadowIndexSyncService.fullScanVault(true)
+      const shadowScan = deps.shadowIndexSyncService.fullScanVault(true).catch((e) => {
+        logger.warn('[MobileBootstrapper] shadow fullScanVault failed:', e as Error)
+      })
 
-      try {
-        await deps.summarySyncService.fullScanArchives()
-      } catch (e) {
+      const summaryScan = deps.summarySyncService.fullScanArchives().catch((e) => {
         logger.warn('[MobileBootstrapper] summary fullScanArchives failed:', e as Error)
-      }
+      })
 
-      try {
-        await deps.assistantManager.fullResyncFromDisks()
-      } catch (e) {
+      const assistantScan = deps.assistantManager.fullResyncFromDisks().catch((e) => {
         logger.warn('[MobileBootstrapper] assistant fullResyncFromDisks failed:', e as Error)
-      }
+      })
 
-      try {
-        await deps.sessionManager.fullResyncFromDisks()
-      } catch (e) {
+      const sessionScan = deps.sessionManager.fullResyncFromDisks().catch((e) => {
         logger.warn('[MobileBootstrapper] session fullResyncFromDisks failed:', e as Error)
-      }
+      })
 
-      try {
-        await deps.settingsManager.fullResyncFromDisk()
-      } catch (e) {
+      const settingsScan = deps.settingsManager.fullResyncFromDisk().catch((e) => {
         logger.warn('[MobileBootstrapper] settings fullResyncFromDisk failed:', e as Error)
-      }
+      })
 
-      const assistants = await deps.assistantManager.findAll()
-      if (assistants.length === 0) {
-        await deps.assistantManager.create({
-          id: 'default',
-          ...buildAssistantRepoInput({
-            name: i18n.t('agent.assistant.default_assistant_name', '默认伙伴'),
-            avatarPath: ASSISTANT_DEFAULT_AVATAR_SENTINEL,
-            isDefault: true,
-            isPinned: false,
-            systemPrompt: ''
-          })
-        })
-        logger.info('[MobileBootstrapper] Created default assistant')
+      await Promise.all([shadowScan, summaryScan, assistantScan, sessionScan, settingsScan])
+
+      const settings = (await deps.settingsManager.get<{ language?: string }>('settings')) || {}
+      const locale = await resolveMobileBootstrapUiLocale(settings.language)
+      if (locale) {
+        await ensureDefaultLatteAssistant(deps.assistantManager, locale)
+        logger.info('[MobileBootstrapper] Ensured default assistant Latte')
+      } else {
+        logger.info('[MobileBootstrapper] Skipped Latte until onboarding language is chosen')
       }
 
       const userProfile =

@@ -53,7 +53,7 @@ export const RAGMemorySection: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [searchQuery, setSearchQuery] = useState('')
-  const [searchMode, setSearchMode] = useState<'semantic' | 'text'>('semantic')
+  const [searchMode, setSearchMode] = useState<'semantic' | 'text'>('text')
   const [embeddingModelId, setEmbeddingModelId] = useState<string>()
   const [embeddingProviderId, setEmbeddingProviderId] = useState<string>()
   const [providers, setProviders] = useState<AIProviderConfig[]>([])
@@ -174,6 +174,8 @@ export const RAGMemorySection: React.FC = () => {
 
   const embeddingProviders = useMemo(() => buildEmbeddingProviders(providers), [providers])
 
+  const semanticAvailable = config.ragEnabled && Boolean(embeddingProviderId && embeddingModelId)
+
   const openModelSwitcher = useCallback(async () => {
     if (embeddingProviders.length === 0) {
       const goConfigure = await dialog.confirm(t('settings.no_models_available'), {
@@ -236,12 +238,33 @@ export const RAGMemorySection: React.FC = () => {
     setConfig(next)
   }
 
+  const handleSemanticUnavailable = useCallback(async () => {
+    if (config.ragEnabled) {
+      await openModelSwitcher()
+      return
+    }
+    const goConfigure = await dialog.confirm(t('settings.rag_semantic_unavailable_message'), {
+      title: t('settings.rag_semantic_unavailable_title'),
+      confirmText: t('settings.rag_go_configure')
+    })
+    if (!goConfigure) return
+    const next = { ...config, ragEnabled: true }
+    await saveConfig(next)
+    await openModelSwitcher()
+  }, [config, dialog, openModelSwitcher, t, services, dbReady])
+
   const handleSearch = (query: string, mode: 'semantic' | 'text') => {
     setSearchQuery(query)
     setSearchMode(mode)
     setCurrentPage(1)
     void loadRagData(query, mode, 1, pageSize)
   }
+
+  useEffect(() => {
+    if (!semanticAvailable && searchMode === 'semantic') {
+      setSearchMode('text')
+    }
+  }, [semanticAvailable, searchMode])
 
   const handlePageChange = (page: number, size: number) => {
     setCurrentPage(page)
@@ -423,6 +446,8 @@ export const RAGMemorySection: React.FC = () => {
         pageSize={pageSize}
         searchQuery={searchQuery}
         searchMode={searchMode}
+        semanticAvailable={semanticAvailable}
+        onSemanticUnavailable={() => void handleSemanticUnavailable()}
         onChange={saveConfig}
         onDetectDimension={handleDetectDimension}
         onBatchEmbed={handleBatchEmbed}

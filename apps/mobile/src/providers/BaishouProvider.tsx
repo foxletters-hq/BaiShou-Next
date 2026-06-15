@@ -1,11 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode, useRef } from 'react'
 import { Platform } from 'react-native'
 import * as SQLite from 'expo-sqlite'
-import {
-  ensureExpoAgentDatabaseInstalled,
-  detectVecSupport,
-  type ExpoSqliteDatabase
-} from '@baishou/database/expo'
+import { ensureExpoAgentDatabaseInstalled, type ExpoSqliteDatabase } from '@baishou/database/expo'
 import {
   SessionManagerService,
   DiaryService,
@@ -33,7 +29,9 @@ import {
   UserProfileRepository,
   SummaryRepositoryImpl,
   SnapshotRepository,
-  shadowConnectionManager
+  shadowConnectionManager,
+  SqliteHybridSearchRepository,
+  createSqlExecutorFromDrizzleDb
 } from '@baishou/database'
 
 import {
@@ -45,7 +43,6 @@ import {
   EmbeddingAdapter,
   HybridSearchService
 } from '@baishou/ai'
-import { SqliteHybridSearchRepository } from '@baishou/database'
 
 import { MobileStoragePathService } from '../services/path.service'
 import {
@@ -258,17 +255,17 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
     async function init() {
       try {
         // 1. 初始化 SQLite 环境（单例，避免并发 open + 迁移）
-        const { drizzleDb, driver } = await ensureExpoAgentDatabaseInstalled(
-          () => SQLite.openDatabaseAsync('baishou_next_mobile.db') as Promise<ExpoSqliteDatabase>
-        )
+        const { drizzleDb, sqliteVecLoaded, sqliteVecLoadReason } =
+          await ensureExpoAgentDatabaseInstalled(
+            () => SQLite.openDatabaseAsync('baishou_next_mobile.db') as Promise<ExpoSqliteDatabase>
+          )
 
-        const vecCapability = await detectVecSupport(driver)
-        if (vecCapability.available) {
-          logger.info('[BaishouProvider] Native sqlite-vec extension detected on mobile.')
+        if (sqliteVecLoaded) {
+          logger.info('[BaishouProvider] Native sqlite-vec extension active on agent database.')
         } else {
           logger.warn(
-            '[BaishouProvider] Native sqlite-vec extension not detected on mobile. RAG will fallback to JS calculation.',
-            vecCapability.reason
+            '[BaishouProvider] sqlite-vec not active; vector search uses JS fallback. Rebuild with pnpm dev:mobile:clear if needed.',
+            sqliteVecLoadReason
           )
         }
 
@@ -432,7 +429,14 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           pathService,
           fileSystem,
           mobileDataBootstrapper,
-          syncDeviceId
+          syncDeviceId,
+          () => {
+            if (!isMounted) return
+            setValue((prev) => ({
+              ...prev,
+              vaultRevision: prev.vaultRevision + 1
+            }))
+          }
         )
 
         const updaterService = new MobileUpdaterService(settingsManager)
@@ -454,8 +458,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         const getDiarySearcher = () => diaryStackRef.current?.diarySearcher ?? diarySearcher
 
         // 构建 RAG 记忆搜索所需的底层组件
-        const rawClient = (drizzleDb as any)?.session?.client || (drizzleDb as any)
-        const hsRepo = new SqliteHybridSearchRepository(rawClient)
+        const sqlExecutor = createSqlExecutorFromDrizzleDb(drizzleDb)
+        const hsRepo = new SqliteHybridSearchRepository(sqlExecutor)
         const hybridSearchService = new HybridSearchService(hsRepo)
         const ragServiceDeps = {
           settingsManager,
@@ -463,7 +467,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           hsRepo,
           hybridSearchService,
           registry,
-          rawSqlClient: rawClient
+          rawSqlClient: sqlExecutor
         }
         setMobileDiaryEmbeddingDeps(ragServiceDeps)
         const ragServiceRef = {
@@ -626,12 +630,6 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        try {
-          await mobileMcpService.start()
-        } catch (mcpErr) {
-          logger.warn('[BaishouProvider] MCP server failed to start:', mcpErr as Error)
-        }
-
         ensureMobileCompressionBridge()
 
         logger.info('Mobile DB and DI Container Ready!')
@@ -663,14 +661,27 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
           const activeVault = vaultService.getActiveVault()
           if (activeVault?.path) {
-            await activateVaultRuntime({
-              pathService,
-              vaultService,
-              fileSystem,
-              diaryStack: stack,
-              bootstrapDeps,
-              watcherDeps
-            })
+            await activateVaultRuntime(
+              {
+                pathService,
+                vaultService,
+                fileSystem,
+                diaryStack: stack,
+                bootstrapDeps,
+                watcherDeps
+              },
+              {
+                deferResync: true,
+                resyncReason: 'cold-start',
+                onResyncComplete: () => {
+                  if (!isMounted) return
+                  setValue((prev) => ({
+                    ...prev,
+                    vaultRevision: prev.vaultRevision + 1
+                  }))
+                }
+              }
+            )
           } else {
             logger.warn('[BaishouProvider] No active vault; skipped bootstrap and file watcher')
           }
@@ -709,7 +720,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                     hsRepo,
                     hybridSearchService,
                     registry,
-                    rawSqlClient: rawClient
+                    rawSqlClient: sqlExecutor
                   }
                   setMobileDiaryEmbeddingDeps(nextRagDeps)
                   ragServiceRef.current = createMobileRagService(nextRagDeps)
@@ -776,14 +787,27 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               diaryStackRef.current = stack
               const activeVault = vaultService.getActiveVault()
               if (activeVault?.path) {
-                await activateVaultRuntime({
-                  pathService,
-                  vaultService,
-                  fileSystem,
-                  diaryStack: stack,
-                  bootstrapDeps,
-                  watcherDeps
-                })
+                await activateVaultRuntime(
+                  {
+                    pathService,
+                    vaultService,
+                    fileSystem,
+                    diaryStack: stack,
+                    bootstrapDeps,
+                    watcherDeps
+                  },
+                  {
+                    deferResync: true,
+                    resyncReason: 'storage-granted',
+                    onResyncComplete: () => {
+                      if (!isMounted) return
+                      setValue((prev) => ({
+                        ...prev,
+                        vaultRevision: prev.vaultRevision + 1
+                      }))
+                    }
+                  }
+                )
               }
             } else {
               diaryStackRef.current = null
@@ -804,7 +828,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               hsRepo,
               hybridSearchService,
               registry,
-              rawSqlClient: rawClient
+              rawSqlClient: sqlExecutor
             })
             setMobileDiaryEmbeddingDeps({
               settingsManager,
@@ -812,7 +836,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               hsRepo,
               hybridSearchService,
               registry,
-              rawSqlClient: rawClient
+              rawSqlClient: sqlExecutor
             })
             if (isMounted) {
               setValue((prev) => ({
@@ -877,7 +901,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                     hsRepo,
                     hybridSearchService,
                     registry,
-                    rawSqlClient: rawClient
+                    rawSqlClient: sqlExecutor
                   }
                   setMobileDiaryEmbeddingDeps(resumedRagDeps)
                   ragServiceRef.current = createMobileRagService(resumedRagDeps)
@@ -985,6 +1009,10 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             startAgentChat
           })
         }
+
+        void mobileMcpService?.start().catch((mcpErr) => {
+          logger.warn('[BaishouProvider] MCP server failed to start:', mcpErr as Error)
+        })
       } catch (e) {
         logger.error('Failed to init Baishou DB:', e as Error)
       }
