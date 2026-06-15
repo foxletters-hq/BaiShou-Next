@@ -14,7 +14,7 @@ import { useToast } from '../Toast/useToast'
 export interface DeveloperOptionsViewProps {
   /** 注入压缩测试会话后跳转到对应对话页（桌面端传入） */
   onOpenCompressionTestSession?: (sessionId: string) => void
-  /** 打开开屏引导页（预览模式） */
+  /** 打开开屏引导页（预览模式，桌面端传入） */
   onOpenOnboarding?: () => void
 }
 
@@ -128,6 +128,38 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
 
   return (
     <div style={{ padding: '24px' }}>
+      {onOpenOnboarding ? (
+        <div className="glass-panel-card" style={{ padding: 0, marginBottom: 16 }}>
+          <div
+            className="settings-action-item"
+            onClick={onOpenOnboarding}
+            style={{
+              padding: '16px 24px',
+              display: 'flex',
+              alignItems: 'center',
+              cursor: 'pointer'
+            }}
+          >
+            <MdViewCarousel
+              style={{
+                fontSize: 24,
+                marginRight: 16,
+                color: 'var(--color-primary)'
+              }}
+            />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 'bold', fontSize: 15 }}>
+                {t('developer.open_onboarding', '打开开屏引导')}
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--color-on-surface-variant)' }}>
+                {t('developer.open_onboarding_desc', '跳转到首次启动引导页，用于预览和调试。')}
+              </div>
+            </div>
+            <MdChevronRight style={{ fontSize: 24, opacity: 0.5 }} />
+          </div>
+        </div>
+      ) : null}
+
       <div
         className="glass-panel-card"
         style={{ padding: 0, border: '1px solid rgba(91, 168, 245, 0.35)', marginBottom: 16 }}
