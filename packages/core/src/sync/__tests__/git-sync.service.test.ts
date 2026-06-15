@@ -391,10 +391,7 @@ describe('GitSyncService', () => {
         '+# New diary\n'
 
       const mockGit = {
-        diff: vi
-          .fn()
-          .mockRejectedValueOnce(new Error('no parent'))
-          .mockResolvedValueOnce(rootDiff)
+        diff: vi.fn().mockRejectedValueOnce(new Error('no parent')).mockResolvedValueOnce(rootDiff)
       } as any
 
       ;(impl as any).git = mockGit

@@ -89,28 +89,28 @@ export const GitCommitsSection: React.FC<GitCommitsSectionProps> = ({ vm }) => {
                           {commitChanges.map((change) => {
                             const canDiff = isTextDiffablePath(change.path)
                             return (
-                            <div key={change.path} className="gmp-tl-file">
-                              <div
-                                className={`gmp-tl-file-header ${canDiff ? 'gmp-file-row-clickable' : ''}`}
-                                onClick={canDiff ? () => handleViewDiff(change.path) : undefined}
-                              >
-                                <span className={`gmp-tl-file-icon gmp-tl-file-${change.status}`}>
-                                  {change.status === 'added'
-                                    ? 'A'
-                                    : change.status === 'deleted'
-                                      ? 'D'
-                                      : 'M'}
-                                </span>
-                                <span className="gmp-tl-file-path">{change.path}</span>
-                                <span className="gmp-tl-file-stats">
-                                  +{change.additions} -{change.deletions}
-                                </span>
-                              </div>
+                              <div key={change.path} className="gmp-tl-file">
+                                <div
+                                  className={`gmp-tl-file-header ${canDiff ? 'gmp-file-row-clickable' : ''}`}
+                                  onClick={canDiff ? () => handleViewDiff(change.path) : undefined}
+                                >
+                                  <span className={`gmp-tl-file-icon gmp-tl-file-${change.status}`}>
+                                    {change.status === 'added'
+                                      ? 'A'
+                                      : change.status === 'deleted'
+                                        ? 'D'
+                                        : 'M'}
+                                  </span>
+                                  <span className="gmp-tl-file-path">{change.path}</span>
+                                  <span className="gmp-tl-file-stats">
+                                    +{change.additions} -{change.deletions}
+                                  </span>
+                                </div>
 
-                              {expandedFile === change.path && selectedFileDiff && (
-                                <GitDiffViewer diff={selectedFileDiff} />
-                              )}
-                            </div>
+                                {expandedFile === change.path && selectedFileDiff && (
+                                  <GitDiffViewer diff={selectedFileDiff} />
+                                )}
+                              </div>
                             )
                           })}
                         </div>
