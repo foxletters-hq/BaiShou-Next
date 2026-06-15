@@ -2,6 +2,7 @@ import React from 'react'
 import styles from './AssistantManagementView.module.css'
 import { useTranslation } from 'react-i18next'
 import { useDialog } from '../Dialog'
+import { resolveWebAssistantAvatarSrc } from '../assistant-avatar.util'
 import {
   MdAdd,
   MdDragIndicator,
@@ -81,15 +82,11 @@ export const AssistantManagementView: React.FC<AssistantManagementViewProps> = (
                 </div>
 
                 <div className={styles.avatar}>
-                  {assistant.avatarPath ? (
-                    <img
-                      src={`secure-file://${assistant.avatarPath}`}
-                      alt={assistant.name}
-                      className={styles.avatarImg}
-                    />
-                  ) : (
-                    assistant.emoji || '🍵'
-                  )}
+                  <img
+                    src={resolveWebAssistantAvatarSrc(assistant.avatarPath)}
+                    alt={assistant.name}
+                    className={styles.avatarImg}
+                  />
                 </div>
 
                 <div className={styles.contentRow}>

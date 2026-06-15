@@ -1,10 +1,7 @@
 import React from 'react'
-import { View, Text, Image, StyleSheet } from 'react-native'
+import { View, Image, StyleSheet } from 'react-native'
 import { useNativeTheme } from '../theme'
-import {
-  resolveNativeAssistantAvatarSource,
-  shouldShowAssistantEmoji
-} from '../assistant-avatar.util'
+import { resolveNativeAssistantAvatarSource } from '../assistant-avatar.util'
 
 export interface AssistantAvatarProps {
   emoji?: string | null
@@ -15,14 +12,12 @@ export interface AssistantAvatarProps {
 }
 
 export const AssistantAvatar: React.FC<AssistantAvatarProps> = ({
-  emoji,
   avatarPath,
   resolvedAvatarUri,
   size = 40
 }) => {
   const { colors } = useNativeTheme()
   const radius = size / 2
-  const showEmoji = shouldShowAssistantEmoji(avatarPath, resolvedAvatarUri, emoji)
 
   return (
     <View
@@ -36,16 +31,12 @@ export const AssistantAvatar: React.FC<AssistantAvatarProps> = ({
         }
       ]}
     >
-      {showEmoji && emoji ? (
-        <Text style={[styles.emoji, { fontSize: size * 0.45 }]}>{emoji}</Text>
-      ) : (
-        <Image
-          key={resolvedAvatarUri ?? avatarPath ?? 'default'}
-          source={resolveNativeAssistantAvatarSource(avatarPath, resolvedAvatarUri)}
-          style={{ width: size, height: size, borderRadius: radius }}
-          resizeMode="cover"
-        />
-      )}
+      <Image
+        key={resolvedAvatarUri ?? avatarPath ?? 'default'}
+        source={resolveNativeAssistantAvatarSource(avatarPath, resolvedAvatarUri)}
+        style={{ width: size, height: size, borderRadius: radius }}
+        resizeMode="cover"
+      />
     </View>
   )
 }
@@ -55,8 +46,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden'
-  },
-  emoji: {
-    textAlign: 'center'
   }
 })

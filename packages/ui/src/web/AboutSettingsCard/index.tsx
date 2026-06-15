@@ -22,6 +22,7 @@ export interface AboutSettingsCardProps {
   onOpenGithubRepo?: () => void
   onOpenFeedback?: () => void
   onOpenCompressionTestSession?: (sessionId: string) => void
+  onOpenOnboarding?: () => void
 }
 
 export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
@@ -29,7 +30,8 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
   heroImageSrc,
   onOpenGithubRepo,
   onOpenFeedback,
-  onOpenCompressionTestSession
+  onOpenCompressionTestSession,
+  onOpenOnboarding
 }) => {
   const { t } = useTranslation()
   const toast = useToast()
@@ -240,7 +242,10 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
         </span>
       </div>
       <div className="about-sub-page-content no-drag" style={{ padding: 0 }}>
-        <DeveloperOptionsView onOpenCompressionTestSession={onOpenCompressionTestSession} />
+        <DeveloperOptionsView
+          onOpenCompressionTestSession={onOpenCompressionTestSession}
+          onOpenOnboarding={onOpenOnboarding}
+        />
       </div>
     </div>
   )

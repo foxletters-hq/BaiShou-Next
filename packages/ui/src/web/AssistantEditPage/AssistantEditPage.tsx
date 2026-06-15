@@ -2,6 +2,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
 import type { AssistantEditPageProps } from './assistant-edit.types'
+import { DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH } from '@baishou/shared'
 import { useAssistantEditPage } from './useAssistantEditPage'
 import { AssistantEditAppBar } from './AssistantEditAppBar'
 import { AssistantEditAvatarSection } from './AssistantEditAvatarSection'
@@ -31,19 +32,11 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
       <div className={styles.scrollArea}>
         <div className={styles.formContainer}>
           <AssistantEditAvatarSection
-            emoji={form.emoji}
-            currentAvatarImagePath={form.currentAvatarImagePath}
-            onEmojiChange={(value) => {
-              form.setEmoji(value)
-              form.setAvatarPath('')
-              form.setAvatarRemoved(true)
-            }}
-            onAvatarChange={(value) => {
-              form.setAvatarPath(value)
-              form.setAvatarRemoved(false)
-              form.setEmoji('')
-            }}
-            onRemoveAvatar={() => form.setAvatarRemoved(true)}
+            avatarPath={form.avatarPath}
+            onSelectBuiltin={(path) => form.setAvatarPath(path)}
+            onUploadImage={(value) => form.setAvatarPath(value)}
+            showReset={form.showResetBuiltin}
+            onResetToDefault={() => form.setAvatarPath(DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH)}
           />
 
           <div className={styles.spacer24} />

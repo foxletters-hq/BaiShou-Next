@@ -59,6 +59,7 @@ export * from './MessageActionBar'
 
 // 同步组件
 export * from './IncrementalSyncPanel'
+export * from './IncrementalSyncProgressOverlay'
 export * from './IncrementalSyncScopeList'
 export * from './SyncModeComparisonNotice'
 export * from './BackupScopeList'
@@ -95,11 +96,13 @@ export * from './ChatCostDialog'
 export * from './AgentSessionList'
 export * from './EmojiPicker'
 export * from './AssistantAvatar'
+export * from './AssistantAvatarPicker'
 export {
   resolveNativeAssistantAvatarSource,
-  NATIVE_DEFAULT_ASSISTANT_AVATAR,
+  resolveNativeBuiltinAssistantAvatarSource,
   shouldShowAssistantEmoji
 } from './assistant-avatar.util'
+export { NATIVE_BUILTIN_ASSISTANT_AVATAR_SOURCES } from './builtin-assistant-avatar.sources'
 export * from './TagInput'
 export * from './DiaryMetaCard'
 export * from './DatePicker'

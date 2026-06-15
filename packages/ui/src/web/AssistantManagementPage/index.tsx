@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { Search, Pin, PinOff, Trash2, Copy, Plus, Activity, Sparkles } from 'lucide-react'
+import { resolveWebAssistantAvatarSrc } from '../assistant-avatar.util'
 import styles from './AssistantManagementPage.module.css'
 
 // ─── 类型定义 ──────────────────────────────────────────────
@@ -162,20 +163,16 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
                   {/* Header Information */}
                   <div className={styles.cardHeader}>
                     <div className={styles.cardAvatar}>
-                      {assistant.avatarPath ? (
-                        <div
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            borderRadius: '50%',
-                            backgroundImage: `url("${assistant.avatarPath.replace(/\\/g, '/')}")`,
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center'
-                          }}
-                        />
-                      ) : (
-                        assistant.emoji || '🤖'
-                      )}
+                      <div
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          borderRadius: '50%',
+                          backgroundImage: `url("${resolveWebAssistantAvatarSrc(assistant.avatarPath)}")`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center'
+                        }}
+                      />
                     </div>
                     <div className={styles.cardInfo}>
                       <div className={styles.cardNameRow}>

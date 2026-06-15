@@ -1,4 +1,9 @@
 import { useState, useEffect } from 'react'
+import {
+  DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH,
+  isAssistantCustomAvatar,
+  normalizeAssistantAvatarPath
+} from '@baishou/shared'
 import { logger } from '@baishou/shared'
 import type { AssistantFormData } from './assistant-edit.types'
 
@@ -11,7 +16,6 @@ export function useAssistantEditPage({ assistant, onSave }: UseAssistantEditPage
   const isEditing = assistant !== null
 
   const [name, setName] = useState(assistant?.name ?? '')
-  const [emoji, setEmoji] = useState(assistant?.emoji ?? '🍵')
   const [description, setDescription] = useState(assistant?.description ?? '')
   const [systemPrompt, setSystemPrompt] = useState(assistant?.systemPrompt ?? '')
   const [contextWindow, setContextWindow] = useState(assistant?.contextWindow ?? -1)
@@ -21,8 +25,9 @@ export function useAssistantEditPage({ assistant, onSave }: UseAssistantEditPage
     assistant?.compressTokenThreshold ?? 60000
   )
   const [compressKeepTurns, setCompressKeepTurns] = useState(assistant?.compressKeepTurns ?? 3)
-  const [avatarPath, setAvatarPath] = useState(assistant?.avatarPath ?? '')
-  const [avatarRemoved, setAvatarRemoved] = useState(false)
+  const [avatarPath, setAvatarPath] = useState(
+    normalizeAssistantAvatarPath(assistant?.avatarPath) || DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH
+  )
   const [saving, setSaving] = useState(false)
   const [providerPickerOpen, setProviderPickerOpen] = useState(false)
   const [pickerProviders, setPickerProviders] = useState<any[]>([])
@@ -32,7 +37,22 @@ export function useAssistantEditPage({ assistant, onSave }: UseAssistantEditPage
 
   const isUnlimitedContext = contextWindow < 0
   const isCompressDisabled = compressThreshold <= 0
-  const currentAvatarImagePath = !avatarRemoved && avatarPath ? avatarPath : null
+  const showResetBuiltin = isAssistantCustomAvatar(avatarPath)
+
+  useEffect(() => {
+    if (!assistant) return
+    setName(assistant.name ?? '')
+    setDescription(assistant.description ?? '')
+    setSystemPrompt(assistant.systemPrompt ?? '')
+    setContextWindow(assistant.contextWindow ?? -1)
+    setProviderId(assistant.providerId)
+    setModelId(assistant.modelId)
+    setCompressThreshold(assistant.compressTokenThreshold ?? 60000)
+    setCompressKeepTurns(assistant.compressKeepTurns ?? 3)
+    setAvatarPath(
+      normalizeAssistantAvatarPath(assistant.avatarPath) || DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH
+    )
+  }, [assistant])
 
   useEffect(() => {
     if (typeof window !== 'undefined' && (window as any).electron) {
@@ -52,7 +72,7 @@ export function useAssistantEditPage({ assistant, onSave }: UseAssistantEditPage
       onSave({
         id: assistant?.id ?? crypto.randomUUID(),
         name: name.trim(),
-        emoji,
+        emoji: '',
         description: description.trim(),
         systemPrompt: systemPrompt.trim(),
         contextWindow: isUnlimitedContext ? -1 : Math.round(contextWindow),
@@ -60,7 +80,7 @@ export function useAssistantEditPage({ assistant, onSave }: UseAssistantEditPage
         modelId: modelId ?? undefined,
         compressTokenThreshold: isCompressDisabled ? 0 : Math.round(compressThreshold),
         compressKeepTurns: Math.round(compressKeepTurns),
-        avatarPath: avatarRemoved ? '' : avatarPath
+        avatarPath: normalizeAssistantAvatarPath(avatarPath)
       })
     } catch (e) {
       logger.error('Failed to save assistant:', e)
@@ -78,8 +98,6 @@ export function useAssistantEditPage({ assistant, onSave }: UseAssistantEditPage
     isEditing,
     name,
     setName,
-    emoji,
-    setEmoji,
     description,
     setDescription,
     systemPrompt,
@@ -94,8 +112,6 @@ export function useAssistantEditPage({ assistant, onSave }: UseAssistantEditPage
     setCompressKeepTurns,
     avatarPath,
     setAvatarPath,
-    avatarRemoved,
-    setAvatarRemoved,
     saving,
     providerPickerOpen,
     setProviderPickerOpen,
@@ -108,7 +124,7 @@ export function useAssistantEditPage({ assistant, onSave }: UseAssistantEditPage
     setShowKeepTurnsTooltip,
     isUnlimitedContext,
     isCompressDisabled,
-    currentAvatarImagePath,
+    showResetBuiltin,
     handleSave,
     clearModelBinding,
     setProviderId,

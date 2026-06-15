@@ -1,61 +1,41 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Smile } from 'lucide-react'
-import { AvatarEditor } from '../AvatarEditor'
+import { DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH } from '@baishou/shared'
+import { AssistantAvatarPicker } from '../AssistantAvatarPicker'
 import styles from './AssistantEditPage.module.css'
 
 interface AssistantEditAvatarSectionProps {
-  emoji: string
-  currentAvatarImagePath: string | null
-  onEmojiChange: (emoji: string) => void
-  onAvatarChange: (path: string) => void
-  onRemoveAvatar: () => void
+  avatarPath: string
+  onSelectBuiltin: (path: string) => void
+  onUploadImage: (dataUrl: string) => void
+  onResetToDefault?: () => void
+  showReset?: boolean
 }
 
 export const AssistantEditAvatarSection: React.FC<AssistantEditAvatarSectionProps> = ({
-  emoji,
-  currentAvatarImagePath,
-  onEmojiChange,
-  onAvatarChange,
-  onRemoveAvatar
+  avatarPath,
+  onSelectBuiltin,
+  onUploadImage,
+  onResetToDefault,
+  showReset
 }) => {
   const { t } = useTranslation()
 
   return (
     <div className={styles.avatarSection}>
-      <AvatarEditor
-        emoji={emoji}
-        avatarPath={currentAvatarImagePath || undefined}
-        onChange={(type, value) => {
-          if (type === 'emoji') {
-            onEmojiChange(value)
-          } else {
-            onAvatarChange(value)
-          }
-        }}
-      >
-        <div className={styles.avatarStack}>
-          <div
-            className={styles.avatarCircle}
-            style={{
-              backgroundImage: currentAvatarImagePath ? `url(${currentAvatarImagePath})` : 'none'
-            }}
-          >
-            {!currentAvatarImagePath && <span className={styles.emojiText}>{emoji}</span>}
-          </div>
-          <div className={styles.avatarBadge}>
-            <Smile size={16} />
-          </div>
-        </div>
-      </AvatarEditor>
+      <AssistantAvatarPicker
+        avatarPath={avatarPath || DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH}
+        onSelectBuiltin={onSelectBuiltin}
+        onUploadImage={onUploadImage}
+      />
       <div className={styles.avatarHint}>
-        {t('agent.assistant.avatar_hint', '点击更换伙伴的图标或头像')}
+        {t('agent.assistant.avatar_hint', '选择内置头像或从本地上传')}
       </div>
-      {currentAvatarImagePath && (
-        <button className={styles.textBtn} onClick={onRemoveAvatar}>
-          {t('agent.assistant.remove_avatar', '移除图片')}
+      {showReset && onResetToDefault ? (
+        <button type="button" className={styles.textBtn} onClick={onResetToDefault}>
+          {t('agent.assistant.reset_builtin_avatar', '恢复默认内置头像')}
         </button>
-      )}
+      ) : null}
     </div>
   )
 }

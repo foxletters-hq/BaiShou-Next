@@ -1,17 +1,31 @@
 import type { ImageSourcePropType } from 'react-native'
 import {
+  DEFAULT_BUILTIN_ASSISTANT_AVATAR_ID,
   isAssistantAvatarDirectUri,
   isAssistantAvatarRelativePath,
-  isAssistantCustomAvatar,
-  isDefaultAssistantAvatarPath
+  isDefaultAssistantAvatarPath,
+  parseBuiltinAssistantAvatarId
 } from '@baishou/shared'
+import { NATIVE_BUILTIN_ASSISTANT_AVATAR_SOURCES } from './builtin-assistant-avatar.sources'
 
-export const NATIVE_DEFAULT_ASSISTANT_AVATAR: ImageSourcePropType = require('@baishou/shared/assets/images/default-assistant-avatar.jpg')
+export function resolveNativeBuiltinAssistantAvatarSource(
+  avatarPath?: string | null
+): ImageSourcePropType {
+  const id =
+    parseBuiltinAssistantAvatarId(avatarPath) ??
+    (isDefaultAssistantAvatarPath(avatarPath) || !avatarPath
+      ? DEFAULT_BUILTIN_ASSISTANT_AVATAR_ID
+      : null)
+  if (id) {
+    return NATIVE_BUILTIN_ASSISTANT_AVATAR_SOURCES[id]
+  }
+  return NATIVE_BUILTIN_ASSISTANT_AVATAR_SOURCES[DEFAULT_BUILTIN_ASSISTANT_AVATAR_ID]
+}
 
 /**
  * 解析伙伴头像 Image source。
- * @param avatarPath 已解析的 file:// URI，或相对路径（需调用方先 resolve）
- * @param resolvedUri 当 avatarPath 为 avatars/ 相对路径时，传入 resolve 后的 URI
+ * @param avatarPath 内置路径、已解析 file://，或 avatars/ 相对路径
+ * @param resolvedUri 相对路径经 AttachmentManager 解析后的 URI
  */
 export function resolveNativeAssistantAvatarSource(
   avatarPath?: string | null,
@@ -19,6 +33,9 @@ export function resolveNativeAssistantAvatarSource(
 ): ImageSourcePropType {
   if (resolvedUri) {
     return { uri: resolvedUri }
+  }
+  if (isDefaultAssistantAvatarPath(avatarPath) || parseBuiltinAssistantAvatarId(avatarPath)) {
+    return resolveNativeBuiltinAssistantAvatarSource(avatarPath)
   }
   if (avatarPath && isAssistantAvatarDirectUri(avatarPath)) {
     return { uri: avatarPath }
@@ -29,25 +46,16 @@ export function resolveNativeAssistantAvatarSource(
     return { uri }
   }
   if (isAssistantAvatarRelativePath(avatarPath)) {
-    return NATIVE_DEFAULT_ASSISTANT_AVATAR
+    return resolveNativeBuiltinAssistantAvatarSource(null)
   }
-  if (!isAssistantCustomAvatar(avatarPath)) {
-    return NATIVE_DEFAULT_ASSISTANT_AVATAR
-  }
-  return NATIVE_DEFAULT_ASSISTANT_AVATAR
+  return resolveNativeBuiltinAssistantAvatarSource(null)
 }
 
-/** 仅当用户主动选择 emoji 且没有图片头像时显示 emoji */
+/** @deprecated 伙伴头像不再使用 emoji */
 export function shouldShowAssistantEmoji(
-  avatarPath?: string | null,
-  resolvedUri?: string | null,
-  emoji?: string | null
+  _avatarPath?: string | null,
+  _resolvedUri?: string | null,
+  _emoji?: string | null
 ): boolean {
-  if (!emoji) return false
-  if (resolvedUri) return false
-  if (avatarPath && isAssistantAvatarDirectUri(avatarPath)) return false
-  if (avatarPath?.startsWith('avatars/')) return false
-  if (isAssistantCustomAvatar(avatarPath)) return false
-  if (isDefaultAssistantAvatarPath(avatarPath)) return false
-  return true
+  return false
 }
