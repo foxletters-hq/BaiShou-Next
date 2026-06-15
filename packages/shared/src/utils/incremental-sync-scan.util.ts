@@ -1,4 +1,4 @@
-/** 增量同步在 .baishou/settings/ 下纳入扫描的文件前缀（相对 vault 根路径） */
+/** 增量同步在 `.baishou/settings/` 下纳入扫描的文件前缀（相对同步根路径） */
 export const INCREMENTAL_SYNC_BAISHOU_SETTINGS_PREFIX = '.baishou/settings/' as const
 
 /** @deprecated 使用 INCREMENTAL_SYNC_BAISHOU_SETTINGS_PREFIX */
@@ -6,26 +6,55 @@ export const INCREMENTAL_SYNC_BAISHOU_ALLOWLIST = [
   INCREMENTAL_SYNC_BAISHOU_SETTINGS_PREFIX
 ] as const
 
+const SYNC_SKIP_DIR_NAMES = new Set(['node_modules', 'snapshots', 'temp', '.snapshots'])
+
 function normalizeRel(relativePath: string): string {
   return relativePath.replace(/\\/g, '/').replace(/^\//, '')
+}
+
+function isBaishouSettingsTree(rel: string): boolean {
+  return (
+    rel === '.baishou/settings' ||
+    rel.endsWith('/.baishou/settings') ||
+    rel.includes('/.baishou/settings/') ||
+    rel.startsWith(INCREMENTAL_SYNC_BAISHOU_SETTINGS_PREFIX)
+  )
+}
+
+/** 存储根下的 `.baishou/`（manifest、sync-log），不参与文件扫描 */
+function isRootSyncMetaDirectory(rel: string, entryName: string): boolean {
+  return entryName === '.baishou' && (rel === '.baishou' || rel === '')
 }
 
 export function shouldScanIncrementalSyncDirectory(
   entryName: string,
   relativePath: string
 ): boolean {
-  if (entryName === 'node_modules') return false
+  if (SYNC_SKIP_DIR_NAMES.has(entryName)) return false
   const rel = normalizeRel(relativePath)
 
-  if (rel.startsWith('.baishou/') && rel !== '.baishou') {
-    if (rel === '.baishou/settings' || rel.startsWith(INCREMENTAL_SYNC_BAISHOU_SETTINGS_PREFIX)) {
-      return entryName !== 'node_modules'
-    }
+  if (isRootSyncMetaDirectory(rel, entryName)) {
+    return false
+  }
+
+  if (isBaishouSettingsTree(rel)) {
+    return !SYNC_SKIP_DIR_NAMES.has(entryName)
+  }
+
+  if (entryName === '.baishou' && rel.endsWith('/.baishou')) {
+    return true
+  }
+
+  if (rel.includes('/.baishou/') && !isBaishouSettingsTree(rel)) {
+    return false
+  }
+
+  if (rel.startsWith('.baishou/') && !isBaishouSettingsTree(rel)) {
     return false
   }
 
   if (entryName.startsWith('.')) {
-    return entryName === '.baishou' && rel === '.baishou'
+    return false
   }
 
   return true
@@ -33,9 +62,12 @@ export function shouldScanIncrementalSyncDirectory(
 
 export function shouldIncludeIncrementalSyncFile(entryName: string, relativePath: string): boolean {
   const rel = normalizeRel(relativePath)
-  if (rel.startsWith('.baishou/')) {
-    return rel.startsWith(INCREMENTAL_SYNC_BAISHOU_SETTINGS_PREFIX) && rel.endsWith('.json')
+  if (isBaishouSettingsTree(rel)) {
+    return rel.includes('/.baishou/settings/') || rel.startsWith(INCREMENTAL_SYNC_BAISHOU_SETTINGS_PREFIX)
+      ? rel.endsWith('.json') && !entryName.endsWith('.tmp')
+      : false
   }
+  if (rel.includes('/.baishou/') || rel.startsWith('.baishou/')) return false
   if (entryName.startsWith('.')) return false
   return true
 }

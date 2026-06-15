@@ -1,20 +1,27 @@
-/** 增量同步本地/远程清单文件名（位于 vault `.baishou/` 下） */
+/** 增量同步本地/远程清单文件名（位于存储根 `.baishou/` 下） */
 export const SYNC_MANIFEST_FILENAME = 'manifest.json'
 
-/** 三向合并共同祖先快照（位于 vault `.baishou/` 下） */
+/** 三向合并共同祖先快照（位于存储根 `.baishou/` 下） */
 export const SYNC_REMOTE_SNAPSHOT_FILENAME = 'last-remote-manifest.json'
 
 /** `SyncManifest.version` 当前格式版本 */
 export const SYNC_MANIFEST_VERSION = 1
 
-/** 增量同步云目标配置（位于 vault 根目录） */
+/** 增量同步云目标配置（位于存储根目录） */
 export const SYNC_CONFIG_FILENAME = '.baishou-s3.json'
 
 /** 增量同步单文件分块大小（与 S3 multipart / WebDAV 分块一致） */
 export const INCREMENTAL_SYNC_CHUNK_SIZE = 5 * 1024 * 1024
 
+/** 增量同步默认云端路径前缀（与全量云备份 `backup_sync` 分离） */
+export const DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH = 'memories_sync'
+
+/** 稳定设备安装 ID，存于同步根 `.baishou/` */
+export const SYNC_DEVICE_ID_FILENAME = 'sync-device-id.txt'
+
 /** i18n 键：`data_sync.incremental_sync_scope_*` */
 export const INCREMENTAL_SYNC_SCOPE_I18N_KEYS = [
+  'incremental_sync_scope_all_vaults',
   'incremental_sync_scope_diary',
   'incremental_sync_scope_summary',
   'incremental_sync_scope_sessions',

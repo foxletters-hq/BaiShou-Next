@@ -8,7 +8,7 @@ describe('isIncrementalSyncReady', () => {
     endpoint: 'https://s3.example.com',
     region: 'us-east-1',
     bucket: 'bucket',
-    path: 'backup_sync',
+    path: 'memories_sync',
     accessKey: 'ak',
     secretKey: 'sk',
     target: 's3'
