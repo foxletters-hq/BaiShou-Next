@@ -119,20 +119,20 @@ describe('HybridSearchService RRF Engine', () => {
     expect(mockStorage.queryFTS).not.toHaveBeenCalled()
   })
 
-  it('should fallback to memory KNN when native vector is not supported', async () => {
+  it('should always route vector search through queryNativeVector (JS fallback inside)', async () => {
     const mockStorage: IHybridSearchStorage = {
       supportsNativeVectorSearch: () => false,
       queryFTS: vi.fn().mockResolvedValue([]),
-      queryNativeVector: vi.fn(),
-      fetchAllEmbeddingsForDecoupledSearch: vi.fn().mockResolvedValue([
+      queryNativeVector: vi.fn().mockResolvedValue([
         {
           messageId: 'd-1',
           sessionId: 's1',
           chunkText: '一些文本',
-          embedding: [0.1, 0.2, 0.3],
-          createdAt: Date.now()
+          score: 0.88,
+          source: 'vector'
         }
-      ])
+      ] as ISearchResult[]),
+      fetchAllEmbeddingsForDecoupledSearch: vi.fn().mockResolvedValue([])
     }
 
     const service = new HybridSearchService(mockStorage)
@@ -143,9 +143,9 @@ describe('HybridSearchService RRF Engine', () => {
       topK: 10
     })
 
-    // 应该走 fallback 路径
-    expect(mockStorage.fetchAllEmbeddingsForDecoupledSearch).toHaveBeenCalled()
-    expect(mockStorage.queryNativeVector).not.toHaveBeenCalled()
+    expect(mockStorage.queryNativeVector).toHaveBeenCalledWith([0.1, 0.2, 0.3], 10, undefined)
+    expect(mockStorage.fetchAllEmbeddingsForDecoupledSearch).not.toHaveBeenCalled()
     expect(results.length).toBe(1)
+    expect(results[0]?.messageId).toBe('d-1')
   })
 })

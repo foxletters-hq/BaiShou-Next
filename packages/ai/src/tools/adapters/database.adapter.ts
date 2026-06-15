@@ -15,24 +15,15 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
   // --- ToolVectorStore 实现 ---
 
   async searchSimilar(queryEmbedding: number[], topK: number): Promise<VectorSearchResult[]> {
-    if (this.hybridRepo.supportsNativeVectorSearch()) {
-      const rows = await this.hybridRepo.queryNativeVector(queryEmbedding, topK)
-      // 将 hybridRepo 里面的结构映射到 VectorSearchResult
-      return rows.map((r: any) => ({
-        sourceType: r.source || 'chat',
-        sourceId: r.messageId,
-        groupId: r.sessionId,
-        chunkText: r.chunkText,
-        distance: 1.0 - r.score, // SQLite-vec 的 distance 处理兼容 (hybridRepo 内将原生 match r.score 转为了 1-rawDist)
-        createdAt: r.createdAt
-      }))
-    } else {
-      // 当系统无原生 sqlite-vec 拓展时降级返回空（或利用内存全解算）
-      console.warn(
-        '[DatabaseAdapter] No native vector search support detected, dropping similarity search.'
-      )
-      return []
-    }
+    const rows = await this.hybridRepo.queryNativeVector(queryEmbedding, topK)
+    return rows.map((r: any) => ({
+      sourceType: r.source || 'chat',
+      sourceId: r.messageId,
+      groupId: r.sessionId,
+      chunkText: r.chunkText,
+      distance: 1.0 - r.score,
+      createdAt: r.createdAt
+    }))
   }
 
   async deleteBySource(sourceType: string, sourceId: string): Promise<void> {

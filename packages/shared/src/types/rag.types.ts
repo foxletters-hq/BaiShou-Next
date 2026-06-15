@@ -25,8 +25,8 @@ export interface ISearchQueryOptions {
  */
 export interface IHybridSearchStorage {
   /**
-   * 判断当前数据库设施是否支持底层硬件或原生指令层面的 Vector 检索计算。
-   * 如果支持，可以直接让 DB 执行查询；如果不支持，获取全局所有 Embedding 到内存中由 Node 计算。
+   * 判断当前数据库是否已确认支持原生向量函数（sqlite-vec / libsql）。
+   * 为 false 时 queryNativeVector 仍可用，会内部降级到 JS 余弦计算。
    */
   supportsNativeVectorSearch(): boolean
 
@@ -36,13 +36,12 @@ export interface IHybridSearchStorage {
   queryFTS(keyword: string, limit: number): Promise<ISearchResult[]>
 
   /**
-   * (原生方案) 如果 supportsNativeVectorSearch 为 true 则执行并返回
+   * 向量检索：优先原生 vec_distance_cosine / vector_top_k，不可用时自动 JS 降级。
    */
   queryNativeVector(vector: number[], limit: number, threshold?: number): Promise<ISearchResult[]>
 
   /**
-   * (降级方案) 如果原生不支持，则使用该方法一次性取回全量 Memory Vector（通常在特定 Session 下有数量上限），
-   * 把它们以裸格式传给 JS 调度层纯函数的 KNN 进行遍历裁切
+   * 一次性取回 embedding 供外部内存 KNN（会话级等解耦场景；HybridSearchService 不再依赖此路径）。
    */
   fetchAllEmbeddingsForDecoupledSearch(sessionGroupId?: string): Promise<
     {

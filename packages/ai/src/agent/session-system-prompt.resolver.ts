@@ -1,5 +1,8 @@
-import type { ISqlExecutor } from '@baishou/shared'
-import { MessageRepository, SqliteHybridSearchRepository } from '@baishou/database'
+import {
+  MessageRepository,
+  SqliteHybridSearchRepository,
+  createSqlExecutorFromDrizzleDb
+} from '@baishou/database'
 import type { IAIProvider } from '../providers/provider.interface'
 import type { ToolRegistry } from '../tools/tool-registry'
 import { DatabaseAdapter } from '../tools/adapters/database.adapter'
@@ -30,42 +33,6 @@ export interface AgentToolsContextParams {
   fetchSearchPage?: unknown
 }
 
-function createClientExecutor(drizzleDb: any): ISqlExecutor {
-  const rawClient = (drizzleDb?.session?.client || drizzleDb) as any
-  if (typeof rawClient.execute === 'function') {
-    return rawClient
-  }
-
-  return {
-    execute: async (statement: string | { sql: string; args?: any[] }, args?: any[]) => {
-      let sqlStr = ''
-      let sqlArgs: any[] = []
-      if (typeof statement === 'string') {
-        sqlStr = statement
-        sqlArgs = args || []
-      } else {
-        sqlStr = statement.sql
-        sqlArgs = statement.args || []
-      }
-
-      if (typeof rawClient.prepare !== 'function') {
-        throw new Error('Database client lacks both execute and prepare methods')
-      }
-
-      const stmt = rawClient.prepare(sqlStr)
-      if (
-        sqlStr.trim().toUpperCase().startsWith('SELECT') ||
-        sqlStr.trim().toUpperCase().startsWith('PRAGMA')
-      ) {
-        const rows = stmt.all(...sqlArgs)
-        return { rows }
-      }
-      const res = stmt.run(...sqlArgs)
-      return { rows: [], ...res }
-    }
-  }
-}
-
 export async function resolveEnabledToolsForSession(
   params: AgentToolsContextParams
 ): Promise<Record<string, unknown>> {
@@ -74,7 +41,7 @@ export async function resolveEnabledToolsForSession(
     throw new Error('Agent database connection is unavailable')
   }
 
-  const clientExecutor = createClientExecutor(drizzleDb)
+  const clientExecutor = createSqlExecutorFromDrizzleDb(drizzleDb)
   const hsRepo = new SqliteHybridSearchRepository(clientExecutor)
   const msgRepo = new MessageRepository(drizzleDb)
   const dbAdapter = new DatabaseAdapter(hsRepo, msgRepo, drizzleDb)

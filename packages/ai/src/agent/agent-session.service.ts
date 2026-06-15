@@ -11,7 +11,7 @@ import { StreamChunkAdapter } from './stream-chunk.adapter'
 import { ChunkType } from './stream-chunk.types'
 import type { StreamChunk } from './stream-chunk.types'
 import { SystemPromptBuilder } from './system-prompt.builder'
-import { isVisionModel, logger, type ISqlExecutor } from '@baishou/shared'
+import { isVisionModel, logger } from '@baishou/shared'
 
 // --- 新挂载的智慧引擎组件 ---
 import { ContextWindowBuilder } from './context-window.builder'
@@ -27,7 +27,8 @@ import { COMPRESSION_MESSAGE_FETCH_LIMIT } from './compression.constants'
 import {
   AssistantRepository,
   MessageRepository,
-  SqliteHybridSearchRepository
+  SqliteHybridSearchRepository,
+  createSqlExecutorFromDrizzleDb
 } from '@baishou/database'
 import { DatabaseAdapter } from '../tools/adapters/database.adapter'
 import { EmbeddingAdapter } from '../tools/adapters/embedding.adapter'
@@ -144,39 +145,7 @@ export class AgentSessionService {
       if (!drizzleDb) {
         throw new Error('Agent database connection is unavailable')
       }
-      const rawClient = (drizzleDb?.session?.client || drizzleDb) as any
-      const clientExecutor: ISqlExecutor =
-        typeof rawClient.execute === 'function'
-          ? rawClient
-          : {
-              execute: async (statement: string | { sql: string; args?: any[] }, args?: any[]) => {
-                let sqlStr = ''
-                let sqlArgs: any[] = []
-                if (typeof statement === 'string') {
-                  sqlStr = statement
-                  sqlArgs = args || []
-                } else {
-                  sqlStr = statement.sql
-                  sqlArgs = statement.args || []
-                }
-
-                if (typeof rawClient.prepare !== 'function') {
-                  throw new Error('Database client lacks both execute and prepare methods')
-                }
-
-                const stmt = rawClient.prepare(sqlStr)
-                if (
-                  sqlStr.trim().toUpperCase().startsWith('SELECT') ||
-                  sqlStr.trim().toUpperCase().startsWith('PRAGMA')
-                ) {
-                  const rows = stmt.all(...sqlArgs)
-                  return { rows }
-                } else {
-                  const res = stmt.run(...sqlArgs)
-                  return { rows: [], ...res }
-                }
-              }
-            }
+      const clientExecutor = createSqlExecutorFromDrizzleDb(drizzleDb)
 
       const hsRepo = new SqliteHybridSearchRepository(clientExecutor)
       const msgRepo = new MessageRepository(drizzleDb)
