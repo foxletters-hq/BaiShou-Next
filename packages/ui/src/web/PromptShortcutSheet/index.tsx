@@ -1,7 +1,13 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react'
 import { Terminal } from 'lucide-react'
+import { PageSizeSelector } from '../PageSizeSelector'
 import styles from './PromptShortcutSheet.module.css'
 import { useTranslation } from 'react-i18next'
+import {
+  getShortcutCommand,
+  getDefaultShortcutLabelsFromT,
+  localizePromptShortcut
+} from '@baishou/shared'
 
 export interface PromptShortcut {
   id: string
@@ -19,13 +25,16 @@ export interface PromptShortcutSheetProps {
   shortcuts: PromptShortcut[]
   selectedIndex: number
   onSelect: (shortcut: PromptShortcut) => void
+  /** 内联模式：不分页，展示全部匹配项 */
+  compact?: boolean
 }
 
 export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
   isOpen,
   shortcuts,
   selectedIndex,
-  onSelect
+  onSelect,
+  compact = false
 }) => {
   const { t } = useTranslation()
   const listRef = useRef<HTMLDivElement>(null)
@@ -35,9 +44,10 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
   // 分页计算
   const totalPages = Math.max(1, Math.ceil(shortcuts.length / pageSize))
   const paginatedShortcuts = useMemo(() => {
+    if (compact) return shortcuts
     const start = (currentPage - 1) * pageSize
     return shortcuts.slice(start, start + pageSize)
-  }, [shortcuts, currentPage, pageSize])
+  }, [shortcuts, currentPage, pageSize, compact])
 
   // 切换页码时重置到第一页
   useEffect(() => {
@@ -55,51 +65,22 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
 
   if (!isOpen) return null
 
+  const labels = getDefaultShortcutLabelsFromT(t)
+
   const getLocalizedShortcut = (shortcut: PromptShortcut) => {
-    // Elegant internationalization and data mapping
-    let cmd = shortcut.command
-    if (!cmd) {
-      // Use name or tag instead of id for display
-      cmd =
-        shortcut.name ||
-        shortcut.tag ||
-        (shortcut.id.startsWith('default-') ? shortcut.id.replace('default-', '') : 'unnamed')
-    }
-
-    if (shortcut.id === 'default-translate') {
-      return {
-        ...shortcut,
-        command: cmd,
-        name: t('agent.tools.shortcuts.translate_name', shortcut.tag || '翻译助手'),
-        content: t('agent.tools.shortcuts.translate_content', shortcut.content),
-        icon: shortcut.icon || '🌐',
-        description:
-          shortcut.description || t('agent.tools.shortcuts.translate_content', shortcut.content)
-      }
-    }
-    if (shortcut.id === 'default-summarize') {
-      return {
-        ...shortcut,
-        command: cmd,
-        name: t('agent.tools.shortcuts.summarize_name', shortcut.tag || '长文总结'),
-        content: t('agent.tools.shortcuts.summarize_content', shortcut.content),
-        icon: shortcut.icon || '📝',
-        description:
-          shortcut.description || t('agent.tools.shortcuts.summarize_content', shortcut.content)
-      }
-    }
-
+    const localized = localizePromptShortcut(shortcut, labels)
+    const cmd = getShortcutCommand(localized)
     return {
-      ...shortcut,
+      ...localized,
       command: cmd,
-      name: shortcut.name || shortcut.tag || 'Prompt',
-      icon: shortcut.icon,
-      description: shortcut.description || shortcut.content
+      name: localized.name || localized.tag || 'Prompt',
+      icon: localized.icon,
+      description: localized.description || localized.content
     }
   }
 
-  const showPagination = shortcuts.length > 5
-  const startIdx = (currentPage - 1) * pageSize
+  const showPagination = !compact && shortcuts.length > 5
+  const startIdx = compact ? 0 : (currentPage - 1) * pageSize
 
   return (
     <div className={styles.overlay}>
@@ -112,7 +93,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
             <div
               key={shortcut.id}
               className={`${styles.item} ${globalIndex === selectedIndex ? styles.itemSelected : ''}`}
-              onClick={() => onSelect(rawShortcut)}
+              onClick={() => onSelect(shortcut)}
             >
               <div className={styles.itemIcon}>
                 {shortcut.icon ? (
@@ -146,20 +127,15 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
       </div>
       {showPagination && (
         <div className={styles.paginationBar}>
-          <select
-            className={styles.pageSizeSelect}
+          <PageSizeSelector
             value={pageSize}
-            onChange={(e) => {
-              setPageSize(Number(e.target.value))
+            options={[5, 10, 15, 20, 25, 30]}
+            onChange={(size) => {
+              setPageSize(size)
               setCurrentPage(1)
             }}
-          >
-            {[5, 10, 15, 20, 25, 30].map((size) => (
-              <option key={size} value={size}>
-                {size}
-              </option>
-            ))}
-          </select>
+            label={t('diary.per_page', '条/页')}
+          />
           <button
             className={styles.pageBtn}
             disabled={currentPage <= 1}

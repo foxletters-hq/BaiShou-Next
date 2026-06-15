@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useImperativeHandle, forwardRef, useRef } from 'react'
+import React, { useState, useCallback, useImperativeHandle, forwardRef, useRef, useMemo } from 'react'
 import {
   View,
   TouchableOpacity,
@@ -7,16 +7,21 @@ import {
   Image,
   ScrollView,
   LayoutAnimation,
-  Platform
+  Platform,
+  type NativeSyntheticEvent,
+  type TextInputKeyPressEventData
 } from 'react-native'
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
-import type { MockChatAttachment } from '@baishou/shared'
+import type { MockChatAttachment, PromptShortcut } from '@baishou/shared'
+import { getDefaultShortcutLabelsFromT, localizePromptShortcuts } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../../native/theme'
 import { Input } from '../Input/Input'
 import { useNativeToast } from '../Toast'
 import { useDialog } from '../Dialog'
+import { useInputBarShortcuts } from '../../hooks/useInputBarShortcuts'
+import { InlinePromptShortcutList } from './InlinePromptShortcutList'
 import {
   pickAttachmentsFromCamera,
   pickAttachmentsFromFileManager,
@@ -33,6 +38,7 @@ export interface InputBarProps {
   assistantName?: string
   onAssistantTap?: () => void
   onRecall?: () => void
+  shortcuts?: PromptShortcut[]
   onTriggerShortcut?: () => void
   onManageShortcuts?: () => void
   onOpenTools?: () => void
@@ -48,6 +54,7 @@ export interface InputBarProps {
 
 export interface InputBarRef {
   insertText: (text: string) => void
+  insertShortcutContent: (content: string) => void
   focus: () => void
 }
 
@@ -60,6 +67,7 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
       assistantName = 'Assistant',
       onAssistantTap,
       onRecall,
+      shortcuts,
       onTriggerShortcut,
       onManageShortcuts,
       onOpenTools,
@@ -72,7 +80,7 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
     },
     ref
   ) => {
-    const { t } = useTranslation()
+    const { t, i18n } = useTranslation()
     const dialog = useDialog()
     const toast = useNativeToast()
     const { colors } = useNativeTheme()
@@ -81,6 +89,11 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
     const [attachments, setAttachments] = useState<MockChatAttachment[]>([])
     const [showToolbar, setShowToolbar] = useState(true)
     const toolbarProgress = useSharedValue(1)
+    const localizedShortcuts = useMemo(() => {
+      if (!shortcuts?.length) return undefined
+      return localizePromptShortcuts(shortcuts, getDefaultShortcutLabelsFromT(t))
+    }, [shortcuts, t, i18n.language])
+    const shortcutHandlers = useInputBarShortcuts(text, setText, localizedShortcuts)
 
     const toggleToolbar = useCallback(() => {
       LayoutAnimation.configureNext({
@@ -172,12 +185,17 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
         setText((prev) => (prev ? `${prev}\n${newText}` : newText))
         setTimeout(() => inputRef.current?.focus?.(), 0)
       },
+      insertShortcutContent: (content: string) => {
+        shortcutHandlers.insertShortcutContent(content)
+        setTimeout(() => inputRef.current?.focus?.(), 0)
+      },
       focus: () => {
         inputRef.current?.focus?.()
       }
     }))
 
     const handleSend = () => {
+      if (shortcutHandlers.shortcutModeActive && text.startsWith('/')) return
       if ((text.trim() || attachments.length > 0) && !isLoading) {
         onSend(text.trim(), attachments.length > 0 ? [...attachments] : undefined)
         setText('')
@@ -186,12 +204,29 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
     }
 
     const handleShortcutPress = () => {
-      if (onTriggerShortcut) {
-        onTriggerShortcut()
-        return
-      }
       onManageShortcuts?.()
     }
+
+    const handleChangeText = useCallback(
+      (nextText: string) => {
+        if (shortcuts?.length) {
+          shortcutHandlers.handleTextChangeForShortcuts(text, nextText)
+        } else if (nextText === '/' && text === '' && onTriggerShortcut) {
+          onTriggerShortcut()
+        }
+        setText(nextText)
+      },
+      [shortcuts, shortcutHandlers, text, onTriggerShortcut]
+    )
+
+    const handleKeyPress = useCallback(
+      (event: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
+        if (shortcutHandlers.tryHandleShortcutKey(event.nativeEvent.key)) {
+          event.preventDefault?.()
+        }
+      },
+      [shortcutHandlers]
+    )
 
     const renderToolbarChip = (
       label: string,
@@ -283,6 +318,13 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
           </ScrollView>
         )}
 
+        <InlinePromptShortcutList
+          visible={shortcutHandlers.shortcutModeActive}
+          shortcuts={shortcutHandlers.filteredShortcuts}
+          selectedIndex={shortcutHandlers.selectedIndex}
+          onSelect={shortcutHandlers.applyShortcut}
+        />
+
         <Animated.View style={toolbarAnimatedStyle} pointerEvents={showToolbar ? 'auto' : 'none'}>
           <ScrollView
             horizontal
@@ -324,7 +366,8 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
             className="min-h-12 max-h-36"
             style={styles.input}
             value={text}
-            onChangeText={setText}
+            onChangeText={handleChangeText}
+            onKeyPress={handleKeyPress}
             placeholder={t('agent.chat.input_hint', '输入消息...')}
             multiline
             maxLength={4000}

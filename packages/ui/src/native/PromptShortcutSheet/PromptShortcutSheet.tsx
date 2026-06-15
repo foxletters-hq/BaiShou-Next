@@ -12,7 +12,7 @@ import {
   TextInput,
   type LayoutChangeEvent
 } from 'react-native'
-import { SHORTCUT_TRACE_CHAIN, traceCall } from '@baishou/shared'
+import { SHORTCUT_TRACE_CHAIN, traceCall, findShortcutCommandConflict, getDefaultShortcutLabelsFromT, localizePromptShortcut } from '@baishou/shared'
 import { MaterialIcons } from '@expo/vector-icons'
 import type { PromptShortcut } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
@@ -54,6 +54,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
   const toast = useNativeToast()
   const { colors, tokens, maxModalWidth } = useNativeTheme()
   const canManage = Boolean(onAdd && onUpdate && onDelete)
+  const defaultShortcutLabels = getDefaultShortcutLabelsFromT(t)
 
   const {
     searchQuery,
@@ -163,6 +164,13 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
       content: draftContent.trim()
     }
 
+    if (findShortcutCommandConflict(shortcuts, payload, isNew ? undefined : payload.id)) {
+      toast.showError(
+        t('shortcut.duplicate_command', '已存在相同快捷短语的指令，请换一个短语')
+      )
+      return
+    }
+
     const nextCount = isNew ? shortcuts.length + 1 : shortcuts.length
 
     setSaving(true)
@@ -221,7 +229,9 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
   )
 
   const renderShortcutRow = useCallback(
-    (item: PromptShortcut, index: number) => (
+    (item: PromptShortcut, index: number) => {
+      const localized = localizePromptShortcut(item, defaultShortcutLabels)
+      return (
       <View
         style={[
           styles.item,
@@ -262,23 +272,30 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
           )
         ) : null}
 
-        <Pressable
-          style={styles.itemBody}
-          onPress={() => {
-            onSelect(item)
-            handleClose()
-          }}
-        >
+        <View style={styles.itemBody}>
           <Text style={[styles.itemName, { color: colors.textPrimary }]} numberOfLines={1}>
-            {item.name || t('shortcut.default_tag', '指令')}
+            {localized.name || t('shortcut.default_tag', '指令')}
           </Text>
           <Text style={[styles.itemContent, { color: colors.textSecondary }]} numberOfLines={2}>
-            {item.content}
+            {localized.content}
           </Text>
-        </Pressable>
+        </View>
 
-        {canManage ? (
-          <View style={styles.itemActions}>
+        <View style={styles.itemActions}>
+          <Pressable
+            style={[styles.useBtn, { backgroundColor: colors.primary }]}
+            onPress={() => {
+              onSelect(localized)
+              handleClose()
+            }}
+            accessibilityLabel={t('common.use', '使用')}
+          >
+            <Text style={{ color: colors.textOnPrimary, fontWeight: '600', fontSize: 12 }}>
+              {t('common.use', '使用')}
+            </Text>
+          </Pressable>
+          {canManage ? (
+            <>
             <Pressable
               style={styles.actionBtn}
               hitSlop={8}
@@ -295,14 +312,17 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
             >
               <MaterialIcons name="delete-outline" size={22} color={colors.error} />
             </Pressable>
-          </View>
-        ) : null}
+            </>
+          ) : null}
+        </View>
       </View>
-    ),
+      )
+    },
     [
       canDrag,
       canManage,
       colors,
+      defaultShortcutLabels,
       handleClose,
       handleDeletePress,
       handleEdit,
@@ -430,6 +450,22 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                       </Pressable>
                     </View>
                   </View>
+
+                  <Text
+                    style={[
+                      styles.slashHint,
+                      {
+                        color: colors.textSecondary,
+                        backgroundColor: colors.primaryContainer,
+                        borderColor: colors.borderMuted
+                      }
+                    ]}
+                  >
+                    {t(
+                      'shortcut.input_slash_hint',
+                      '在空输入框输入 / 可快速匹配快捷指令；继续输入可过滤，按回车或点击条目即可插入正文。'
+                    )}
+                  </Text>
 
                   <View
                     style={[
@@ -608,6 +644,15 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
     height: 40
   },
+  slashHint: {
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth
+  },
   dragHint: {
     fontSize: 11,
     marginBottom: 8
@@ -664,7 +709,14 @@ const styles = StyleSheet.create({
   itemActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingRight: 6
+    paddingRight: 6,
+    gap: 4
+  },
+  useBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    marginRight: 2
   },
   actionBtn: {
     width: 36,

@@ -139,21 +139,31 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 4px;
+  gap: 8px;
   padding: 6px 12px;
   border-top: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
 }
 
-.pageSizeSelect {
-  padding: 2px 6px;
-  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);
-  border-radius: 4px;
-  background: transparent;
-  color: var(--text-secondary, #64748b);
-  font-size: 11px;
-  cursor: pointer;
-  margin-right: 4px;
-  outline: none;
+.managerPaginationBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.managerPaginationInfo {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.managerPaginationControls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .pageBtn {

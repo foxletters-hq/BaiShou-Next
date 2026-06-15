@@ -1,8 +1,13 @@
-import { useState, useRef, useEffect, useImperativeHandle, useCallback } from 'react'
+import { useState, useRef, useEffect, useImperativeHandle, useCallback, useMemo } from 'react'
 import type { InputBarProps, InputBarRef } from './input-bar.types'
 import { useInputBarExpand } from './useInputBarExpand'
 import { useInputBarAttachments } from './useInputBarAttachments'
-import type { MockChatAttachment } from '@baishou/shared'
+import { useInputBarShortcuts } from '../../hooks/useInputBarShortcuts'
+import {
+  getDefaultShortcutLabelsFromT,
+  localizePromptShortcuts,
+  type MockChatAttachment
+} from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
 
 export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputBarRef>) {
@@ -13,6 +18,7 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
     assistantName,
     onAssistantTap,
     onRecall,
+    shortcuts,
     onTriggerShortcut,
     onManageShortcuts,
     onOpenTools,
@@ -22,7 +28,7 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
     onToggleTtsMode
   } = props
 
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [text, setText] = useState('')
   const [attachments, setAttachments] = useState<MockChatAttachment[]>([])
   const [showToolbar, setShowToolbar] = useState(() => {
@@ -39,6 +45,11 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
 
   const expand = useInputBarExpand(textareaRef, text)
   const attachmentHandlers = useInputBarAttachments(setAttachments)
+  const localizedShortcuts = useMemo(() => {
+    if (!shortcuts?.length) return undefined
+    return localizePromptShortcuts(shortcuts, getDefaultShortcutLabelsFromT(t))
+  }, [shortcuts, t, i18n.language])
+  const shortcutHandlers = useInputBarShortcuts(text, setText, localizedShortcuts)
 
   const updateToolbarScrollState = useCallback(() => {
     const el = toolbarViewportRef.current
@@ -88,6 +99,10 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
       setText((prev) => (prev ? `${prev}\n${newText}` : newText))
       setTimeout(() => textareaRef.current?.focus(), 0)
     },
+    insertShortcutContent: (content) => {
+      shortcutHandlers.insertShortcutContent(content)
+      setTimeout(() => textareaRef.current?.focus(), 0)
+    },
     focus: () => textareaRef.current?.focus()
   }))
 
@@ -102,7 +117,9 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (shortcutHandlers.handleShortcutKeyDown(e)) return
     if (e.key === 'Enter' && !e.shiftKey) {
+      if (shortcutHandlers.shortcutModeActive && text.startsWith('/')) return
       e.preventDefault()
       handleSend()
     }
@@ -115,7 +132,11 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value
-    if (val.endsWith('/') && val.length > text.length && onTriggerShortcut) onTriggerShortcut()
+    if (shortcuts?.length) {
+      shortcutHandlers.handleTextChangeForShortcuts(text, val)
+    } else if (val === '/' && text === '' && onTriggerShortcut) {
+      onTriggerShortcut()
+    }
     setText(val)
   }
 
@@ -143,7 +164,12 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
     fileInputRef: attachmentHandlers.fileInputRef,
     handlePickFiles: attachmentHandlers.handlePickFiles,
     handleNativeWebFileChange: attachmentHandlers.handleNativeWebFileChange,
+    handlePaste: attachmentHandlers.handlePaste,
     handleTextChange,
+    shortcutModeActive: shortcutHandlers.shortcutModeActive,
+    filteredShortcuts: shortcutHandlers.filteredShortcuts,
+    shortcutSelectedIndex: shortcutHandlers.selectedIndex,
+    applyShortcut: shortcutHandlers.applyShortcut,
     toggleSearchMode: () => onToggleSearchMode?.(),
     handlePromptShortcut,
     isLoading,

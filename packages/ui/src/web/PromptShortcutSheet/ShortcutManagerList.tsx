@@ -1,8 +1,17 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Terminal, Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Terminal, Edit2, Trash2 } from 'lucide-react'
+import { PageSizeSelector } from '../PageSizeSelector'
+import { Pagination } from '../Pagination'
+import styles from './PromptShortcutSheet.module.css'
+import {
+  getShortcutCommand,
+  getDefaultShortcutLabelsFromT,
+  localizePromptShortcut
+} from '@baishou/shared'
 import type { PromptShortcut } from './index'
 import { PAGE_SIZE_OPTIONS, isDefaultShortcut } from './useShortcutManagerDialog'
+import { useDialog } from '../Dialog'
 
 interface ShortcutManagerListProps {
   shortcuts: PromptShortcut[]
@@ -30,10 +39,24 @@ export const ShortcutManagerList: React.FC<ShortcutManagerListProps> = ({
   onDelete
 }) => {
   const { t } = useTranslation()
+  const dialog = useDialog()
+  const labels = getDefaultShortcutLabelsFromT(t)
+
+  const handleDelete = useCallback(
+    async (id: string) => {
+      const confirmed = await dialog.confirm(
+        t('shortcut.delete_confirm', '确定删除这条快捷指令吗？')
+      )
+      if (confirmed) await onDelete(id)
+    },
+    [dialog, onDelete, t]
+  )
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {paginatedShortcuts.map((s) => (
+      {paginatedShortcuts.map((raw) => {
+        const s = localizePromptShortcut(raw, labels)
+        return (
         <div
           key={s.id}
           style={{
@@ -61,10 +84,10 @@ export const ShortcutManagerList: React.FC<ShortcutManagerListProps> = ({
           >
             {s.icon ? <span style={{ fontSize: 16 }}>{s.icon}</span> : <Terminal size={16} />}
           </div>
-          <div style={{ flex: 1, overflow: 'hidden' }} onClick={() => onSelect?.(s)}>
+          <div style={{ flex: 1, overflow: 'hidden' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
               <span style={{ fontSize: 14, fontWeight: 800 }}>
-                /{s.command || s.name || s.tag || 'unnamed'}
+                /{getShortcutCommand(s)}
               </span>
               <span
                 style={{
@@ -113,7 +136,7 @@ export const ShortcutManagerList: React.FC<ShortcutManagerListProps> = ({
               <>
                 <button
                   type="button"
-                  onClick={() => onEdit(s)}
+                  onClick={() => onEdit(raw)}
                   style={{
                     background: 'transparent',
                     border: 'none',
@@ -127,7 +150,7 @@ export const ShortcutManagerList: React.FC<ShortcutManagerListProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onDelete(s.id)}
+                  onClick={() => void handleDelete(s.id)}
                   style={{
                     background: 'transparent',
                     border: 'none',
@@ -143,7 +166,8 @@ export const ShortcutManagerList: React.FC<ShortcutManagerListProps> = ({
             )}
           </div>
         </div>
-      ))}
+        )
+      })}
       {shortcuts.length === 0 && (
         <div
           style={{
@@ -157,83 +181,28 @@ export const ShortcutManagerList: React.FC<ShortcutManagerListProps> = ({
         </div>
       )}
       {shortcuts.length > 0 && (
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginTop: 16,
-            padding: '12px 0',
-            borderTop: '1px solid var(--border-subtle)'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-              {t('common.page_size', '每页显示')}:
-            </span>
-            <select
+        <div className={styles.managerPaginationBar}>
+          <span className={styles.managerPaginationInfo}>
+            {t('diary.pagination_info', '共 $total 条，第 $page / $pages 页')
+              .replace('$total', String(shortcuts.length))
+              .replace('$page', String(currentPage))
+              .replace('$pages', String(totalPages))}
+          </span>
+          <div className={styles.managerPaginationControls}>
+            <PageSizeSelector
               value={pageSize}
-              onChange={(e) => onPageSizeChange(Number(e.target.value))}
-              style={{
-                padding: '4px 8px',
-                borderRadius: '6px',
-                border: '1px solid var(--border-subtle)',
-                background: 'var(--bg-surface)',
-                fontSize: 12,
-                cursor: 'pointer'
-              }}
-            >
-              {PAGE_SIZE_OPTIONS.map((size) => (
-                <option key={size} value={size}>
-                  {size}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-              {t('common.page_info', '{{current}} / {{total}}', {
-                current: currentPage,
-                total: totalPages
-              })}
-            </span>
-            <div style={{ display: 'flex', gap: 4 }}>
-              <button
-                type="button"
-                onClick={() => onPageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-                style={{
-                  padding: '6px',
-                  borderRadius: '6px',
-                  border: '1px solid var(--border-subtle)',
-                  background: currentPage === 1 ? 'var(--bg-surface-high)' : 'var(--bg-surface)',
-                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <ChevronLeft size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={() => onPageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                style={{
-                  padding: '6px',
-                  borderRadius: '6px',
-                  border: '1px solid var(--border-subtle)',
-                  background:
-                    currentPage === totalPages ? 'var(--bg-surface-high)' : 'var(--bg-surface)',
-                  cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <ChevronRight size={14} />
-              </button>
-            </div>
+              options={[...PAGE_SIZE_OPTIONS]}
+              onChange={onPageSizeChange}
+              label={t('diary.per_page', '条/页')}
+            />
+            <Pagination
+              current={currentPage}
+              total={totalPages}
+              onChange={onPageChange}
+              siblingCount={1}
+              showJumper
+              jumperPlaceholder={t('common.pagination_jump_placeholder', 'Go to')}
+            />
           </div>
         </div>
       )}
