@@ -458,11 +458,21 @@ export async function rebootstrapAfterStorageRootChange(deps: {
       settingsManager: deps.bootstrapDeps.settingsManager
     })
     const bootstrapDeps = buildBootstrapDeps(diaryStack, deps.bootstrapDeps)
-    mobileDataBootstrapper.registerDeps(bootstrapDeps)
-    diaryStack.shadowIndexSyncService.setSyncEnabled(true)
-    await mobileDataBootstrapper.runWhenVaultReady(bootstrapDeps, { force: true })
-    await restartVaultWatchers(diaryStack, deps.vaultService, deps.watcherDeps)
-    logger.info('[VaultRuntime] Storage root rebootstrap completed')
+    await runVaultBootstrap(
+      {
+        pathService: deps.pathService,
+        vaultService: deps.vaultService,
+        fileSystem: deps.fileSystem,
+        diaryStack,
+        bootstrapDeps: deps.bootstrapDeps,
+        watcherDeps: deps.watcherDeps
+      },
+      {
+        deferResync: true,
+        resyncReason: 'storage-root-changed'
+      }
+    )
+    logger.info('[VaultRuntime] Storage root rebootstrap scheduled (background resync)')
     return diaryStack
   })()
 
@@ -593,27 +603,41 @@ async function restartVaultWatchers(
   summaryFileWatcher.start(watcherDeps.summarySyncService)
 }
 
-export async function activateVaultRuntime(deps: {
-  pathService: IStoragePathService
-  vaultService: VaultService
-  fileSystem: IFileSystem
-  diaryStack: VaultBoundDiaryStack
-  bootstrapDeps: Omit<
-    MobileBootstrapperDeps,
-    | 'shadowIndexSyncService'
-    | 'sessionManager'
-    | 'assistantManager'
-    | 'settingsManager'
-    | 'summarySyncService'
-  > & {
-    sessionManager: SessionManagerService
-    assistantManager: AssistantManagerService
-    settingsManager: SettingsManagerService
-    summarySyncService: SummarySyncService
-  }
-  watcherDeps: VaultRuntimeWatcherDeps
-}): Promise<void> {
-  await runVaultBootstrap(deps)
+export type ActivateVaultRuntimeOptions = {
+  /** 后台 resync，避免冷启动阻塞 UI（默认 true） */
+  deferResync?: boolean
+  resyncReason?: string
+  onResyncComplete?: () => void
+}
+
+export async function activateVaultRuntime(
+  deps: {
+    pathService: IStoragePathService
+    vaultService: VaultService
+    fileSystem: IFileSystem
+    diaryStack: VaultBoundDiaryStack
+    bootstrapDeps: Omit<
+      MobileBootstrapperDeps,
+      | 'shadowIndexSyncService'
+      | 'sessionManager'
+      | 'assistantManager'
+      | 'settingsManager'
+      | 'summarySyncService'
+    > & {
+      sessionManager: SessionManagerService
+      assistantManager: AssistantManagerService
+      settingsManager: SettingsManagerService
+      summarySyncService: SummarySyncService
+    }
+    watcherDeps: VaultRuntimeWatcherDeps
+  },
+  options?: ActivateVaultRuntimeOptions
+): Promise<void> {
+  await runVaultBootstrap(deps, {
+    deferResync: options?.deferResync ?? true,
+    resyncReason: options?.resyncReason ?? 'cold-start',
+    onResyncComplete: options?.onResyncComplete
+  })
 }
 
 let vaultSwitchInFlight: Promise<VaultBoundDiaryStack> | null = null

@@ -6,16 +6,25 @@ import {
   StyleSheet,
   Modal,
   Pressable,
-  ScrollView
+  ScrollView,
+  ActivityIndicator
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { WEATHER_IDS, weatherI18nKey, type WeatherId } from '@baishou/shared'
-import { YearMonthPicker, useNativeTheme, WeatherEmoji, Input } from '@baishou/ui/native'
+import {
+  YearMonthPicker,
+  useNativeTheme,
+  WeatherEmoji,
+  RagMemorySearchSection
+} from '@baishou/ui/native'
 
 export interface DiaryAppBarProps {
   searchQuery: string
-  onSearchChange: (q: string) => void
+  searchMode: 'semantic' | 'text'
+  onSearch: (query: string, mode: 'semantic' | 'text') => void
+  semanticAvailable: boolean
+  onSemanticUnavailable: () => void
   selectedMonth: Date | null
   onMonthChange: (m: Date | null) => void
   filterWeathers: string[]
@@ -28,7 +37,10 @@ export interface DiaryAppBarProps {
 
 export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
   searchQuery,
-  onSearchChange,
+  searchMode,
+  onSearch,
+  semanticAvailable,
+  onSemanticUnavailable,
   selectedMonth,
   onMonthChange,
   filterWeathers,
@@ -54,7 +66,7 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
 
   const closeSearch = () => {
     setIsSearching(false)
-    onSearchChange('')
+    onSearch('', searchMode)
   }
 
   return (
@@ -69,21 +81,25 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
     >
       {isSearching ? (
         <View style={styles.searchRow}>
-          <View style={[styles.searchWrapper, { backgroundColor: colors.bgSurfaceNormal }]}>
-            <Input
-              className="min-h-0 flex-1 border-0 bg-transparent px-0"
-              containerStyle={styles.searchInputWrap}
-              style={[styles.searchInput, { color: colors.textPrimary }]}
-              placeholder={t('common.search_hint')}
-              value={searchQuery}
-              onChangeText={onSearchChange}
+          <View style={styles.searchSectionWrap}>
+            <RagMemorySearchSection
+              searchQuery={searchQuery}
+              searchMode={searchMode}
+              onSearch={onSearch}
+              semanticAvailable={semanticAvailable}
+              onSemanticUnavailable={onSemanticUnavailable}
               autoFocus
-              returnKeyType="search"
-              leftSlot={<MaterialIcons name="search" size={18} color={colors.textSecondary} />}
+              compact
             />
           </View>
-          <TouchableOpacity onPress={closeSearch} style={styles.iconBtn} accessibilityRole="button">
-            <MaterialIcons name="close" size={22} color={colors.textPrimary} />
+          <TouchableOpacity
+            onPress={closeSearch}
+            style={styles.closeSearchBtn}
+            hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+            accessibilityRole="button"
+            accessibilityLabel={t('common.close')}
+          >
+            <MaterialIcons name="close" size={20} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
       ) : (
@@ -126,12 +142,13 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
                 disabled={isSyncing}
                 accessibilityRole="button"
                 accessibilityLabel={t('data_sync.sync_now')}
+                accessibilityState={{ disabled: isSyncing, busy: isSyncing }}
               >
-                <MaterialIcons
-                  name="sync"
-                  size={22}
-                  color={isSyncing ? colors.textTertiary : colors.textPrimary}
-                />
+                {isSyncing ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <MaterialIcons name="sync" size={22} color={colors.textPrimary} />
+                )}
               </TouchableOpacity>
             ) : null}
             <TouchableOpacity
@@ -276,33 +293,18 @@ const styles = StyleSheet.create({
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8
+    gap: 4
   },
-  searchWrapper: {
+  searchSectionWrap: {
     flex: 1,
-    flexDirection: 'row',
+    minWidth: 0
+  },
+  closeSearchBtn: {
+    width: 32,
+    height: 32,
     alignItems: 'center',
-    borderRadius: 18,
-    paddingHorizontal: 12,
-    height: 36,
-    gap: 8
-  },
-  searchInputWrap: {
-    flex: 1,
-    minWidth: 0,
-    backgroundColor: 'transparent',
-    borderWidth: 0,
-    padding: 0,
-    margin: 0
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    paddingVertical: 0,
-    minHeight: 36,
-    backgroundColor: 'transparent',
-    borderRadius: 0,
-    borderWidth: 0
+    justifyContent: 'center',
+    flexShrink: 0
   },
   iconBtn: {
     width: 36,

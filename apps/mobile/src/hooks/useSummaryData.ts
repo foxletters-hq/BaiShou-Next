@@ -98,17 +98,15 @@ export function useSummaryData() {
     }
   }, [dbReady, missingSummaryDetector, i18n.language, mapDetectedMissing])
 
-  const fetchData = useCallback(async () => {
-    if (!dbReady || !summaryManager || !diaryService || !missingSummaryDetector) return
+  const fetchCoreData = useCallback(async () => {
+    if (!dbReady || !summaryManager || !diaryService) return
 
     try {
       setLoading(true)
-      setIsDetectingMissing(true)
 
-      const [summaryList, diaryCount, detected] = await Promise.all([
+      const [summaryList, diaryCount] = await Promise.all([
         summaryManager.list(),
-        diaryService.count(),
-        missingSummaryDetector.getAllMissing(i18n.language)
+        diaryService.count()
       ])
 
       setSummaries(
@@ -128,27 +126,22 @@ export function useSummaryData() {
         totalQuarterlyCount: summaryList.filter((s) => s.type === 'quarterly').length,
         totalYearlyCount: summaryList.filter((s) => s.type === 'yearly').length
       })
-
-      setMissingSummaries(mapDetectedMissing(detected))
     } catch (e) {
       console.warn('Failed to fetch summary data', e)
     } finally {
       setLoading(false)
-      setIsDetectingMissing(false)
     }
-  }, [
-    dbReady,
-    summaryManager,
-    diaryService,
-    missingSummaryDetector,
-    i18n.language,
-    mapDetectedMissing,
-    vaultRevision
-  ])
+  }, [dbReady, summaryManager, diaryService, vaultRevision])
+
+  const fetchData = useCallback(async () => {
+    await fetchCoreData()
+    void fetchMissingSummaries()
+  }, [fetchCoreData, fetchMissingSummaries])
 
   useEffect(() => {
-    fetchData()
-  }, [fetchData])
+    void fetchCoreData()
+    void fetchMissingSummaries()
+  }, [fetchCoreData, fetchMissingSummaries])
 
   // 广播队列状态到 React 状态
   const broadcastState = useCallback(() => {

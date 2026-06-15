@@ -4,6 +4,7 @@ import { ScreenSafeArea } from '../../components/ScreenSafeArea'
 import { useTranslation } from 'react-i18next'
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router'
 import { DiaryEditor, useNativeTheme, useDialog, useNativeToast } from '@baishou/ui/native'
+import { mergeDiaryTags } from '@baishou/ai'
 import {
   resolveDiaryAppendBlock,
   resolveDiaryNewEntryContent,
@@ -48,7 +49,51 @@ export const DiaryEditorScreen: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
   const isDirtyRef = useRef(false)
+  const originalTagsRef = useRef<string[]>([])
   const [pickingImages, setPickingImages] = useState(false)
+
+  const isAppendMode = append === '1'
+
+  const parseDiaryTags = (raw: string | string[] | null | undefined): string[] => {
+    if (!raw) return []
+    if (Array.isArray(raw)) return raw
+    return raw
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean)
+  }
+
+  const applyLoadedDiary = (
+    diary: {
+      id?: number | null
+      content: string
+      tags?: string | string[] | null
+      date: Date
+      weather?: string | null
+      isFavorite?: boolean
+    },
+    templateConfig: DiaryTemplateConfig,
+    now: Date
+  ) => {
+    const parsedTags = parseDiaryTags(diary.tags)
+    originalTagsRef.current = parsedTags
+    setExistingId(diary.id ?? null)
+    setSelectedDate(diary.date)
+    setWeather(diary.weather || null)
+    setIsFavorite(diary.isFavorite || false)
+
+    if (isAppendMode) {
+      const existing = (diary.content || '').trimEnd()
+      const timeMark = resolveDiaryAppendBlock(templateConfig, now)
+      setContent(existing ? existing + timeMark : timeMark.trimStart())
+      setOriginalContent(existing)
+      setTags([])
+    } else {
+      setContent(diary.content)
+      setOriginalContent(diary.content)
+      setTags(parsedTags)
+    }
+  }
 
   useEffect(() => {
     if (!dbReady || !services) return
@@ -63,43 +108,21 @@ export const DiaryEditorScreen: React.FC = () => {
         const now = new Date()
 
         if (id) {
-          // 通过 id 查询日记
           const diary = await services.diaryService.findById(Number(id))
           if (diary) {
-            setContent(diary.content)
-            setOriginalContent(diary.content)
-            setTags(typeof diary.tags === 'string' ? diary.tags.split(',') : diary.tags || [])
-            setSelectedDate(diary.date)
-            setWeather(diary.weather || null)
-            setIsFavorite(diary.isFavorite || false)
-            setExistingId(diary.id ?? null)
+            applyLoadedDiary(diary, templateConfig, now)
           }
         } else if (date) {
-          // 按日期查询已有日记
           const existing = await services.diaryService.findByDate(new Date(date))
           if (existing) {
-            setExistingId(existing.id ?? null)
-            setTags(
-              typeof existing.tags === 'string' ? existing.tags.split(',') : existing.tags || []
-            )
-            setSelectedDate(existing.date)
-            setWeather(existing.weather || null)
-            setIsFavorite(existing.isFavorite || false)
-
-            // 如果是追加模式，保留原内容，在末尾追加
-            if (append === '1') {
-              const timeMark = resolveDiaryAppendBlock(templateConfig, now)
-              setContent(existing.content + timeMark)
-              setOriginalContent(existing.content)
-            } else {
-              setContent(existing.content)
-              setOriginalContent(existing.content)
-            }
+            applyLoadedDiary(existing, templateConfig, now)
           } else {
+            originalTagsRef.current = []
             setContent(resolveDiaryNewEntryContent(templateConfig, now))
             setSelectedDate(new Date(date))
           }
         } else {
+          originalTagsRef.current = []
           setContent(resolveDiaryNewEntryContent(templateConfig, now))
         }
       } catch (e) {
@@ -113,16 +136,19 @@ export const DiaryEditorScreen: React.FC = () => {
     return () => {
       cancelled = true
     }
-  }, [id, date, append, dbReady, services])
+  }, [id, date, append, dbReady, services, isAppendMode])
 
   const handleSave = async () => {
     if (!services) return
 
     try {
       await assertExternalStorageReady()
+      const mergedTags = isAppendMode
+        ? mergeDiaryTags(originalTagsRef.current.join(', '), tags.join(','))
+        : tags.join(',')
       const input = {
         content,
-        tags: tags.join(','),
+        tags: mergedTags,
         date: selectedDate,
         weather: weather || undefined,
         isFavorite
