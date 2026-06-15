@@ -6,29 +6,38 @@ import { DataManagementCard, useNativeTheme } from '@baishou/ui/native'
 interface ArchiveLocalBackupSectionProps {
   onExport: () => Promise<void>
   onImport: () => Promise<void>
+  /** 作为标签页内容时隐藏标题，避免与页头重复 */
+  embedded?: boolean
 }
 
 export const ArchiveLocalBackupSection: React.FC<ArchiveLocalBackupSectionProps> = ({
   onExport,
-  onImport
+  onImport,
+  embedded = false
 }) => {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
 
   return (
     <View
-      style={[
-        styles.card,
-        {
-          backgroundColor: colors.bgSurface,
-          borderColor: colors.borderSubtle,
-          borderRadius: tokens.radius.lg
-        }
-      ]}
+      style={
+        embedded
+          ? styles.embedded
+          : [
+              styles.card,
+              {
+                backgroundColor: colors.bgSurface,
+                borderColor: colors.borderSubtle,
+                borderRadius: tokens.radius.lg
+              }
+            ]
+      }
     >
-      <Text style={[styles.title, { color: colors.textPrimary }]}>
-        {t('settings.local_archive_backup', '本地全量备份')}
-      </Text>
+      {!embedded ? (
+        <Text style={[styles.title, { color: colors.textPrimary }]}>
+          {t('settings.local_archive_backup', '本地全量备份')}
+        </Text>
+      ) : null}
       <Text style={[styles.desc, { color: colors.textSecondary }]}>
         {t(
           'settings.local_archive_backup_desc',
@@ -49,6 +58,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingBottom: 4,
     borderWidth: StyleSheet.hairlineWidth
+  },
+  embedded: {
+    paddingTop: 4,
+    paddingBottom: 4
   },
   title: {
     fontSize: 15,

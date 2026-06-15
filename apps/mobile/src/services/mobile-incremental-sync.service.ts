@@ -1,7 +1,9 @@
 import {
   buildS3ListUrl,
   buildS3ObjectUrl,
+  DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH,
   isIncrementalSyncReady,
+  migrateLegacyIncrementalSyncConfig,
   normalizeS3BasePath,
   s3FetchHeaders,
   signS3Request,
@@ -31,7 +33,7 @@ const DEFAULT_CONFIG: S3SyncConfig = {
   endpoint: '',
   region: 'us-east-1',
   bucket: '',
-  path: 'backup_sync',
+  path: DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH,
   accessKey: '',
   secretKey: '',
   target: 's3',
@@ -200,35 +202,35 @@ export class MobileIncrementalSyncService {
     await this.bootstrapper?.resyncFromDisk()
   }
 
-  private async vaultConfigPath(): Promise<string | null> {
+  private async rootConfigPath(): Promise<string> {
+    const root = await this.pathService.getRootDirectory()
     const vault = await this.pathService.getActiveVaultPath()
-    if (!vault) return null
-    return `${vault}/.baishou-s3.json`
+    return migrateLegacyIncrementalSyncConfig(root, vault, {
+      exists: (p) => this.fileSystem.exists(p),
+      read: (p) => this.fileSystem.readFile(p),
+      write: (p, content) => this.fileSystem.writeFile(p, content),
+      unlink: (p) => this.fileSystem.unlink(p)
+    })
   }
 
   async getConfig(): Promise<S3SyncConfig> {
-    const vaultPath = await this.vaultConfigPath()
-    if (vaultPath) {
-      try {
-        if (await this.fileSystem.exists(vaultPath)) {
-          const raw = await this.fileSystem.readFile(vaultPath)
-          const fromVault = JSON.parse(raw) as VaultSyncConfig
-          return normalizeVaultConfig(fromVault)
-        }
-      } catch {
-        // fall through to defaults
+    const configPath = await this.rootConfigPath()
+    try {
+      if (await this.fileSystem.exists(configPath)) {
+        const raw = await this.fileSystem.readFile(configPath)
+        const fromVault = JSON.parse(raw) as VaultSyncConfig
+        return normalizeVaultConfig(fromVault)
       }
+    } catch {
+      // fall through to defaults
     }
     return normalizeVaultConfig(null)
   }
 
   async saveConfig(config: Partial<S3SyncConfig>): Promise<void> {
     const merged = mergeConfig({ ...(await this.getConfig()), ...config })
-    const vaultPath = await this.vaultConfigPath()
-    if (!vaultPath) {
-      throw new Error('No active vault found')
-    }
-    await this.fileSystem.writeFile(vaultPath, JSON.stringify(merged, null, 2))
+    const configPath = await this.rootConfigPath()
+    await this.fileSystem.writeFile(configPath, JSON.stringify(merged, null, 2))
   }
 
   async isConfigured(): Promise<boolean> {
@@ -319,7 +321,7 @@ export class MobileIncrementalSyncService {
       throw new Error('增量同步未配置或已禁用')
     }
 
-    onProgress?.({ current: 0, total: 3, statusText: '打包 vault 文件...' })
+    onProgress?.({ current: 0, total: 3, statusText: '打包数据文件...' })
     const zipPath = await this.archiveService.exportToTempFile()
     if (!zipPath) {
       throw new Error('生成 vault 归档失败')

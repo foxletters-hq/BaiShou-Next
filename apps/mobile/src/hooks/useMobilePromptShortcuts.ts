@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PromptShortcut } from '@baishou/shared'
-import { logger, SHORTCUT_TRACE_CHAIN, traceCall } from '@baishou/shared'
+import { logger, SHORTCUT_TRACE_CHAIN, traceCall, dedupePromptShortcuts, findShortcutCommandConflict } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 
 const PROMPT_SHORTCUTS_KEY = 'prompt_shortcuts_v2'
 
-export function useMobilePromptShortcuts(showSheet: boolean) {
+export function useMobilePromptShortcuts() {
   const { t } = useTranslation()
   const toast = useNativeToast()
   const { services, dbReady } = useBaishou()
@@ -67,9 +67,8 @@ export function useMobilePromptShortcuts(showSheet: boolean) {
   }, [dbReady, services])
 
   useEffect(() => {
-    if (!showSheet) return
     void loadShortcuts()
-  }, [showSheet, loadShortcuts])
+  }, [loadShortcuts])
 
   const persistShortcuts = useCallback(
     async (updater: (prev: PromptShortcut[]) => PromptShortcut[]) => {
@@ -82,7 +81,7 @@ export function useMobilePromptShortcuts(showSheet: boolean) {
       }
 
       const prev = shortcutsRef.current
-      const next = updater(prev)
+      const next = dedupePromptShortcuts(updater(prev))
 
       // 作废进行中的 load，避免迟到的 load 用旧数据覆盖刚保存的列表
       loadGenRef.current += 1
@@ -137,6 +136,12 @@ export function useMobilePromptShortcuts(showSheet: boolean) {
 
   const addShortcut = useCallback(
     async (shortcut: PromptShortcut) => {
+      if (findShortcutCommandConflict(shortcutsRef.current, shortcut)) {
+        toast.showError(
+          t('shortcut.duplicate_command', '已存在相同快捷短语的指令，请换一个短语')
+        )
+        throw new Error('DUPLICATE_SHORTCUT_COMMAND')
+      }
       await traceCall(
         SHORTCUT_TRACE_CHAIN,
         'MobileHook.add',
@@ -144,11 +149,17 @@ export function useMobilePromptShortcuts(showSheet: boolean) {
         { payload: shortcut }
       )
     },
-    [persistShortcuts]
+    [persistShortcuts, t, toast]
   )
 
   const updateShortcut = useCallback(
     async (shortcut: PromptShortcut) => {
+      if (findShortcutCommandConflict(shortcutsRef.current, shortcut, shortcut.id)) {
+        toast.showError(
+          t('shortcut.duplicate_command', '已存在相同快捷短语的指令，请换一个短语')
+        )
+        throw new Error('DUPLICATE_SHORTCUT_COMMAND')
+      }
       await traceCall(
         SHORTCUT_TRACE_CHAIN,
         'MobileHook.update',
@@ -159,7 +170,7 @@ export function useMobilePromptShortcuts(showSheet: boolean) {
         { payload: shortcut }
       )
     },
-    [persistShortcuts]
+    [persistShortcuts, t, toast]
   )
 
   const deleteShortcut = useCallback(

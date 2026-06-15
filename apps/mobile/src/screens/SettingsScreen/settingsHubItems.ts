@@ -100,10 +100,10 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
     titleKey: 'settings.hub_group_data',
     items: [
       {
-        id: 'lan-transfer',
-        titleKey: 'settings.lan_transfer',
-        icon: 'wifi-tethering',
-        route: { type: 'stack', pathname: '/settings/lan-transfer' }
+        id: 'incremental-sync',
+        titleKey: 'data_sync.incremental_sync',
+        icon: 'sync',
+        route: { type: 'stack', pathname: '/incremental-sync' }
       },
       {
         id: 'data-sync',
@@ -118,16 +118,16 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
         route: { type: 'stack', pathname: '/settings/data-sync' }
       },
       {
-        id: 'incremental-sync',
-        titleKey: 'data_sync.incremental_sync',
-        icon: 'sync',
-        route: { type: 'stack', pathname: '/incremental-sync' }
-      },
-      {
         id: 'attachments',
         titleKey: 'settings.attachment_management',
         icon: 'folder-delete',
         route: { type: 'section', section: 'attachments' }
+      },
+      {
+        id: 'lan-transfer',
+        titleKey: 'settings.lan_transfer',
+        icon: 'wifi-tethering',
+        route: { type: 'stack', pathname: '/settings/lan-transfer' }
       },
       {
         id: 'storage',

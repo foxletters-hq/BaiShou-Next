@@ -11,9 +11,13 @@ import { mapSessionMessageFromDb } from '../utils/map-session-message.util'
 import { mapSavedAttachmentsForMobileUi } from '../utils/mobile-attachment-ui.util'
 import { subscribeMobileCompressionEvents } from '../services/mobile-compression-event.service'
 
+const COMPRESSION_DELTA_RENDER_INTERVAL_MS = 80
+
 interface TokenUsage {
   inputTokens: number
   outputTokens: number
+  cacheReadInputTokens: number
+  cacheWriteInputTokens: number
   totalCostMicros: number
 }
 
@@ -44,6 +48,8 @@ export function useAgentStream(
   const [tokenUsage, setTokenUsage] = useState<TokenUsage>({
     inputTokens: 0,
     outputTokens: 0,
+    cacheReadInputTokens: 0,
+    cacheWriteInputTokens: 0,
     totalCostMicros: 0
   })
   const [activeTool, setActiveTool] = useState<ToolCallInfo | null>(null)
@@ -63,6 +69,34 @@ export function useAgentStream(
   const activeToolRef = useRef<ToolCallInfo | null>(null)
   const currentSessionIdRef = useRef(currentSessionId)
   currentSessionIdRef.current = currentSessionId
+  const compressionTextBufferRef = useRef('')
+  const compressionReasoningBufferRef = useRef('')
+  const compressionFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const clearCompressionFlushTimer = useCallback(() => {
+    if (!compressionFlushTimerRef.current) return
+    clearTimeout(compressionFlushTimerRef.current)
+    compressionFlushTimerRef.current = null
+  }, [])
+
+  const flushCompressionBuffersToState = useCallback(() => {
+    setCompressionText(compressionTextBufferRef.current)
+    setCompressionReasoning(compressionReasoningBufferRef.current)
+  }, [])
+
+  const scheduleCompressionFlush = useCallback(() => {
+    if (compressionFlushTimerRef.current) return
+    compressionFlushTimerRef.current = setTimeout(() => {
+      compressionFlushTimerRef.current = null
+      flushCompressionBuffersToState()
+    }, COMPRESSION_DELTA_RENDER_INTERVAL_MS)
+  }, [flushCompressionBuffersToState])
+
+  const resetCompressionBuffers = useCallback(() => {
+    compressionTextBufferRef.current = ''
+    compressionReasoningBufferRef.current = ''
+    clearCompressionFlushTimer()
+  }, [clearCompressionFlushTimer])
 
   const syncTokenUsageFromSession = useCallback(
     async (sessionId: string) => {
@@ -72,6 +106,8 @@ export function useAgentStream(
       setTokenUsage({
         inputTokens: session.totalInputTokens ?? 0,
         outputTokens: session.totalOutputTokens ?? 0,
+        cacheReadInputTokens: session.totalCacheReadInputTokens ?? 0,
+        cacheWriteInputTokens: session.totalCacheWriteInputTokens ?? 0,
         totalCostMicros: session.totalCostMicros ?? 0
       })
     },
@@ -93,7 +129,7 @@ export function useAgentStream(
 
   useEffect(() => {
     if (!currentSessionId) {
-      setTokenUsage({ inputTokens: 0, outputTokens: 0, totalCostMicros: 0 })
+      setTokenUsage({ inputTokens: 0, outputTokens: 0, cacheReadInputTokens: 0, cacheWriteInputTokens: 0, totalCostMicros: 0 })
       return
     }
     if (!isStreaming) {
@@ -107,6 +143,7 @@ export function useAgentStream(
       if (event.sessionId !== currentSessionIdRef.current) return
 
       if (event.type === 'start') {
+        resetCompressionBuffers()
         setIsCompressing(true)
         setCompressionPhase(event.phase === 'manual' ? 'manual' : 'auto')
         setCompressionText('')
@@ -118,18 +155,23 @@ export function useAgentStream(
       }
 
       if (event.type === 'reasoning-delta') {
-        setCompressionReasoning((prev) => prev + (event.chunk ?? ''))
+        compressionReasoningBufferRef.current += event.chunk ?? ''
+        scheduleCompressionFlush()
         return
       }
 
       if (event.type === 'delta') {
-        setCompressionText((prev) => prev + (event.chunk ?? ''))
+        compressionTextBufferRef.current += event.chunk ?? ''
+        scheduleCompressionFlush()
         return
       }
 
       if (event.type === 'finish') {
+        clearCompressionFlushTimer()
+        flushCompressionBuffersToState()
         setIsCompressing(false)
         if (!event.ok) {
+          resetCompressionBuffers()
           setCompressionText('')
           setCompressionReasoning('')
           setCompressionTriggerMessageId(null)
@@ -144,13 +186,23 @@ export function useAgentStream(
             /* ignore */
           }
           await reloadMessagesFromDb(sessionId)
+          resetCompressionBuffers()
           setCompressionText('')
           setCompressionReasoning('')
           setCompressionTriggerMessageId(null)
         })()
       }
     })
-  }, [reloadMessagesFromDb, services])
+  }, [
+    reloadMessagesFromDb,
+    services,
+    resetCompressionBuffers,
+    clearCompressionFlushTimer,
+    flushCompressionBuffersToState,
+    scheduleCompressionFlush
+  ])
+
+  useEffect(() => () => clearCompressionFlushTimer(), [clearCompressionFlushTimer])
 
   const resetStreamingBuffers = useCallback(() => {
     setStreamingText('')
@@ -183,11 +235,12 @@ export function useAgentStream(
     setIsStreaming(false)
     setIsCompressing(false)
     setLoading(false)
+    resetCompressionBuffers()
     setCompressionText('')
     setCompressionReasoning('')
     setCompressionTriggerMessageId(null)
     resetStreamingBuffers()
-  }, [resetStreamingBuffers, setLoading])
+  }, [resetCompressionBuffers, resetStreamingBuffers, setLoading])
 
   // 工作区切换时中断流式生成，避免旧会话的流写入新 UI
   useEffect(() => {
@@ -264,6 +317,7 @@ export function useAgentStream(
             abortSignal: abortControllerRef.current.signal,
             userMessageId: userMessage.id,
             skipUserMessageRecording: true,
+            forceRecompress: true,
             attachments: userMessage.attachments
           }
         )

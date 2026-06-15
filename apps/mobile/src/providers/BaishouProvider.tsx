@@ -23,13 +23,14 @@ import {
   SummaryGeneratorService,
   buildSharedContextText
 } from '@baishou/core-mobile'
-import { resolveSummaryTemplatesForGeneration } from '@baishou/shared'
+import { resolveSummaryTemplatesForGeneration, resolveSyncDeviceId } from '@baishou/shared'
 import { getTtsPlaybackSettings } from '../services/mobile-tts-settings.service'
 
 import {
   SessionRepository,
   AssistantRepository,
   SettingsRepository,
+  UserProfileRepository,
   SummaryRepositoryImpl,
   SnapshotRepository,
   shadowConnectionManager
@@ -55,6 +56,8 @@ import {
 import { createMobileFileSystem } from '../services/create-mobile-file-system'
 import { setupMobileLocalFileReader } from '../services/mobile-local-file-reader.service'
 import { MobileArchiveService } from '../services/archive.service'
+import type { MobileArchiveDbBridge } from '../services/mobile-archive-db.bridge'
+import { getAppDocumentDirectory } from '../services/mobile-app-paths'
 import { MobileLanSyncService } from '../services/lan-sync.service'
 import { MobileCloudSyncService } from '../services/cloud-sync.service'
 import { createMobileRagService, type MobileRagService } from '../services/mobile-rag.service'
@@ -161,6 +164,7 @@ interface BaishouContextValue {
       abortSignal?: AbortSignal
       userMessageId?: string
       skipUserMessageRecording?: boolean
+      forceRecompress?: boolean
       attachments?: unknown[]
     }
   ) => Promise<void>
@@ -367,8 +371,59 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
         const agentService = new AgentSessionService()
 
-        // 创建归档服务和局域网同步服务
-        const archiveService = new MobileArchiveService(pathService, vaultService, fileSystem)
+        const profileRepo = new UserProfileRepository(drizzleDb)
+        const MOBILE_DB_NAME = 'baishou_next_mobile.db'
+        const archiveDbBridge: MobileArchiveDbBridge = {
+          flushBeforeExport: () => settingsManager.flushToDisk(),
+          exportDevicePreferences: async () => {
+            const prefs = await settingsRepo.getAll()
+            const profile = await profileRepo.getProfile()
+            return { ...prefs, user_profile_data: profile }
+          },
+          importDevicePreferences: async (prefs) => {
+            for (const [key, value] of Object.entries(prefs)) {
+              if (key === 'user_profile_data' || key === 'user_profile') continue
+              if (value !== undefined && value !== null) {
+                await settingsRepo.set(key, value as never)
+              }
+            }
+            if (prefs.user_profile_data) {
+              await profileRepo.saveProfile(prefs.user_profile_data as never)
+            } else if (prefs.user_profile) {
+              await profileRepo.saveProfile(prefs.user_profile as never)
+            }
+            await settingsManager.flushToDisk()
+          },
+          readPreservedImportSettings: async () => ({
+            cloud_sync_config: await settingsRepo.get('cloud_sync_config' as never)
+          }),
+          getAgentDatabaseUri: async () => `${getAppDocumentDirectory()}SQLite/${MOBILE_DB_NAME}`,
+          replaceAgentDatabaseFrom: async (sourceUri) => {
+            try {
+              await SQLite.deleteDatabaseAsync(MOBILE_DB_NAME)
+            } catch {
+              // ignore
+            }
+            const dest = `${getAppDocumentDirectory()}SQLite/${MOBILE_DB_NAME}`
+            await fileSystem.copyFile(sourceUri, dest)
+            return true
+          }
+        }
+
+        const syncMetaDir = `${await pathService.getRootDirectory()}/.baishou`
+        const syncDeviceId = await resolveSyncDeviceId('mobile', syncMetaDir, {
+          exists: (p) => fileSystem.exists(p),
+          read: (p) => fileSystem.readFile(p),
+          write: (p, content) => fileSystem.writeFile(p, content),
+          mkdir: (p) => fileSystem.mkdir(p, { recursive: true })
+        })
+
+        const archiveService = new MobileArchiveService(
+          pathService,
+          vaultService,
+          fileSystem,
+          archiveDbBridge
+        )
         const lanSyncService = new MobileLanSyncService(archiveService, fileSystem)
         const cloudSyncService = new MobileCloudSyncService(archiveService, fileSystem)
         const incrementalSyncService = new MobileIncrementalSyncService(
@@ -376,7 +431,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           archiveService,
           pathService,
           fileSystem,
-          mobileDataBootstrapper
+          mobileDataBootstrapper,
+          syncDeviceId
         )
 
         const updaterService = new MobileUpdaterService(settingsManager)
@@ -504,6 +560,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             abortSignal?: AbortSignal
             userMessageId?: string
             skipUserMessageRecording?: boolean
+            forceRecompress?: boolean
             attachments?: unknown[]
           }
         ) => {
@@ -558,6 +615,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                 abortSignal: overrides?.abortSignal,
                 userMessageId: overrides?.userMessageId,
                 skipUserMessageRecording: overrides?.skipUserMessageRecording,
+                forceRecompress: overrides?.forceRecompress,
                 attachments: overrides?.attachments as any
               },
               callbacks

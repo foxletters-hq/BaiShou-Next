@@ -44,7 +44,16 @@ export function useArchiveImportExport() {
       setIsImporting(true)
       const result = await services.archiveService.importFromZip(pick.assets[0].uri, true)
       if (result && (result.fileCount > 0 || result.fileCount === -1)) {
-        toast.showSuccess(t('settings.restore_success_simple'))
+        if (result.needsRestart) {
+          toast.showWarning(
+            t(
+              'settings.restore_success_restart',
+              '数据已恢复，请完全退出并重新打开应用以加载数据库。'
+            )
+          )
+        } else {
+          toast.showSuccess(t('settings.restore_success_simple'))
+        }
       } else {
         toast.showWarning(t('common.no_data'))
       }

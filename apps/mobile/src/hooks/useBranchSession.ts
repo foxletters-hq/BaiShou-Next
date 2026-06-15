@@ -68,6 +68,8 @@ export function useBranchSession() {
               orderIndex: i + 1,
               inputTokens: msg.inputTokens,
               outputTokens: msg.outputTokens,
+              cacheReadInputTokens: msg.cacheReadInputTokens,
+              cacheWriteInputTokens: msg.cacheWriteInputTokens,
               costMicros: msg.costMicros,
               providerId: msg.providerId,
               modelId: msg.modelId

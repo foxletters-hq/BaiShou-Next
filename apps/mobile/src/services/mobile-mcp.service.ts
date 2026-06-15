@@ -2,6 +2,7 @@ import { ToolRegistry } from '@baishou/ai'
 import type { SettingsManagerService } from '@baishou/core-mobile'
 import type { McpServerConfig } from '@baishou/shared'
 import { logger } from '@baishou/shared'
+import { APP_VERSION } from '../app-version'
 import { zodToJsonSchema } from 'zod-to-json-schema'
 import * as BaishouServer from 'expo-baishou-server'
 
@@ -159,7 +160,7 @@ export class MobileMcpService {
         result = {
           protocolVersion: '2024-11-05',
           capabilities: { tools: { listChanged: false } },
-          serverInfo: { name: 'BaiShou MCP Server', version: '1.0.0' },
+          serverInfo: { name: 'BaiShou MCP Server', version: APP_VERSION },
           instructions:
             'BaiShou is an AI companion diary app. Use the tools below to read/edit diaries, search memories, and manage stored knowledge.'
         }

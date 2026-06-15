@@ -418,7 +418,7 @@ export class MobileCloudSyncService {
   async restoreFromCloud(
     config: SyncConfig,
     remoteFilename: string
-  ): Promise<{ success: boolean; message: string }> {
+  ): Promise<{ success: boolean; message: string; needsRestart?: boolean }> {
     try {
       const client = this.createClient(config)
       const tempPath = `${getAppCacheDirectory()}restore_${Date.now()}.zip`
@@ -437,7 +437,11 @@ export class MobileCloudSyncService {
 
       if (result.fileCount > 0 || result.fileCount === -1) {
         const countMsg = result.fileCount > 0 ? `，共还原 ${result.fileCount} 个文件` : ''
-        return { success: true, message: `云端恢复成功${countMsg}` }
+        return {
+          success: true,
+          message: `云端恢复成功${countMsg}`,
+          needsRestart: result.needsRestart
+        }
       } else {
         return { success: false, message: '导入完成但未检测到文件' }
       }
