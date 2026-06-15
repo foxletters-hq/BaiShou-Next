@@ -5,10 +5,13 @@
     "src/renderer/src/**/*",
     "src/renderer/src/**/*.tsx",
     "src/preload/*.d.ts",
+    "src/app-version.ts",
+    "src/version.json",
     "../../packages/ui/src/env.d.ts"
   ],
   "compilerOptions": {
     "composite": true,
+    "resolveJsonModule": true,
     "jsx": "react-jsx",
     "types": ["node"],
     "baseUrl": ".",
