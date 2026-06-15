@@ -1,3 +1,6 @@
+import { buildS3ListUrl } from './s3-url'
+import { signS3Request, s3FetchHeaders } from './aws-v4-sign'
+
 export type S3ListedObject = {
   key: string
   lastModified?: string
@@ -51,4 +54,39 @@ export async function fetchAllS3ListPages(
     continuationToken = page.isTruncated ? page.nextContinuationToken : undefined
   } while (continuationToken)
   return all
+}
+
+/** 使用 SigV4 分页列出桶内对象（regex 解析 XML，规避 fast-xml-parser 实体展开上限） */
+export async function listAllS3Objects(options: {
+  endpoint: string
+  bucket: string
+  prefix: string
+  region: string
+  accessKey: string
+  secretKey: string
+  maxKeysPerPage?: number
+}): Promise<S3ListedObject[]> {
+  return fetchAllS3ListPages(async (continuationToken) => {
+    const listUrl = buildS3ListUrl({
+      endpoint: options.endpoint,
+      bucket: options.bucket,
+      prefix: options.prefix,
+      continuationToken,
+      maxKeys: options.maxKeysPerPage
+    })
+    const signed = await signS3Request(
+      'GET',
+      listUrl,
+      options.region || 'us-east-1',
+      options.accessKey,
+      options.secretKey,
+      null
+    )
+    const res = await fetch(listUrl, { method: 'GET', headers: s3FetchHeaders(signed) })
+    if (!res.ok) {
+      const body = await res.text().catch(() => '')
+      throw new Error(`S3 list failed: ${res.status}${body ? ` ${body.slice(0, 200)}` : ''}`)
+    }
+    return res.text()
+  })
 }

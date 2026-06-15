@@ -14,12 +14,28 @@ describe('incremental-sync-scan.util', () => {
     expect(shouldIncludeIncrementalSyncFile('manifest.json', '.baishou/manifest.json')).toBe(false)
   })
 
-  it('scans .baishou/settings but not other .baishou subdirectories', () => {
-    expect(shouldScanIncrementalSyncDirectory('.baishou', '.baishou')).toBe(true)
-    expect(shouldScanIncrementalSyncDirectory('settings', '.baishou/settings')).toBe(true)
+  it('scans nested vault .baishou/settings', () => {
+    expect(shouldScanIncrementalSyncDirectory('.baishou', 'Personal/.baishou')).toBe(true)
+    expect(shouldScanIncrementalSyncDirectory('settings', 'Personal/.baishou/settings')).toBe(
+      true
+    )
+    expect(
+      shouldIncludeIncrementalSyncFile(
+        'ai_providers.json',
+        'Personal/.baishou/settings/ai_providers.json'
+      )
+    ).toBe(true)
+    expect(shouldScanIncrementalSyncDirectory('sync-log', 'Personal/.baishou/sync-log')).toBe(
+      false
+    )
+  })
+
+  it('excludes root .baishou sync metadata and other dot directories', () => {
+    expect(shouldScanIncrementalSyncDirectory('.baishou', '.baishou')).toBe(false)
     expect(shouldScanIncrementalSyncDirectory('sync-log', '.baishou/sync-log')).toBe(false)
     expect(shouldScanIncrementalSyncDirectory('.versions', '.versions')).toBe(false)
     expect(shouldScanIncrementalSyncDirectory('node_modules', 'node_modules')).toBe(false)
     expect(shouldScanIncrementalSyncDirectory('Sessions', 'Sessions')).toBe(true)
+    expect(shouldScanIncrementalSyncDirectory('snapshots', 'snapshots')).toBe(false)
   })
 })
