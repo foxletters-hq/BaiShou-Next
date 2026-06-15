@@ -22,6 +22,7 @@ import {
 import { MdSend, MdStop, MdApps } from 'react-icons/md'
 import type { useInputBar } from './useInputBar'
 import { QuickActionChip } from './QuickActionChip'
+import { PromptShortcutSheet } from '../PromptShortcutSheet'
 
 type InputBarViewModel = ReturnType<typeof useInputBar>
 
@@ -49,7 +50,12 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
     fileInputRef,
     handlePickFiles,
     handleNativeWebFileChange,
+    handlePaste,
     handleTextChange,
+    shortcutModeActive,
+    filteredShortcuts,
+    shortcutSelectedIndex,
+    applyShortcut,
     toggleSearchMode,
     handlePromptShortcut,
     isLoading,
@@ -77,6 +83,13 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
       <div
         className={`${styles.constrainedBox} ${isExpanded ? styles.constrainedBoxExpanded : ''}`}
       >
+        <PromptShortcutSheet
+          isOpen={shortcutModeActive}
+          shortcuts={filteredShortcuts}
+          selectedIndex={shortcutSelectedIndex}
+          compact
+          onSelect={applyShortcut}
+        />
         {/* Attachments Preview */}
         {attachments.length > 0 && (
           <div className={styles.attachmentList}>
@@ -231,6 +244,7 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
                 value={text}
                 onChange={handleTextChange}
                 onKeyDown={handleKeyDown}
+                onPaste={handlePaste}
                 rows={1}
               />
             </div>

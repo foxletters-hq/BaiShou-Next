@@ -1,4 +1,7 @@
 import { useState, useMemo } from 'react'
+import { findShortcutCommandConflict } from '@baishou/shared'
+import { useTranslation } from 'react-i18next'
+import { useToast } from '../../web/Toast/useToast'
 import type { PromptShortcut } from './index'
 
 export const PAGE_SIZE_OPTIONS = [5, 10, 15, 20, 25, 30] as const
@@ -8,6 +11,8 @@ export function useShortcutManagerDialog(
   onAdd: (shortcut: PromptShortcut) => Promise<void>,
   onUpdate: (shortcut: PromptShortcut) => Promise<void>
 ) {
+  const { t } = useTranslation()
+  const toast = useToast()
   const [editingItem, setEditingItem] = useState<PromptShortcut | null>(null)
   const [draftId, setDraftId] = useState('')
   const [draftName, setDraftName] = useState('')
@@ -49,6 +54,7 @@ export function useShortcutManagerDialog(
 
   const handleSave = async () => {
     if (!draftContent.trim() || !editingItem) return
+    const isNew = editingItem.id === 'new'
     const newItem: PromptShortcut = {
       ...editingItem,
       id: draftId,
@@ -61,12 +67,33 @@ export function useShortcutManagerDialog(
         draftContent.trim().substring(0, 20).replace(/\n/g, '') ||
         'shortcut'
     }
-    if (editingItem.id === 'new') {
-      await onAdd(newItem)
-    } else {
-      await onUpdate(newItem)
+
+    if (
+      findShortcutCommandConflict(shortcuts, newItem, isNew ? undefined : newItem.id)
+    ) {
+      toast.showError(
+        t('shortcut.duplicate_command', '已存在相同快捷短语的指令，请换一个短语')
+      )
+      return
     }
-    setEditingItem(null)
+
+    try {
+      if (isNew) {
+        await onAdd(newItem)
+      } else {
+        await onUpdate(newItem)
+      }
+      setEditingItem(null)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : ''
+      if (message === 'DUPLICATE_SHORTCUT_COMMAND') {
+        toast.showError(
+          t('shortcut.duplicate_command', '已存在相同快捷短语的指令，请换一个短语')
+        )
+        return
+      }
+      throw error
+    }
   }
 
   const clearEditing = () => setEditingItem(null)

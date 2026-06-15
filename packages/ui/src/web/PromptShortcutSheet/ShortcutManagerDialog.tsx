@@ -6,6 +6,7 @@ import type { PromptShortcut } from './index'
 import { useShortcutManagerDialog } from './useShortcutManagerDialog'
 import { ShortcutManagerEditForm } from './ShortcutManagerEditForm'
 import { ShortcutManagerList } from './ShortcutManagerList'
+import { ShortcutSlashHint } from './ShortcutSlashHint'
 
 export interface ShortcutManagerDialogProps {
   isOpen: boolean
@@ -35,7 +36,7 @@ export const ShortcutManagerDialog: React.FC<ShortcutManagerDialogProps> = ({
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose}>
+    <Modal isOpen={isOpen} onClose={handleClose} style={{ padding: '12px 16px 16px' }}>
       <div
         style={{
           width: '600px',
@@ -49,8 +50,7 @@ export const ShortcutManagerDialog: React.FC<ShortcutManagerDialogProps> = ({
       >
         <div
           style={{
-            padding: '16px 20px',
-            borderBottom: '1px solid var(--border-subtle)',
+            padding: '10px 4px 8px',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center'
@@ -112,36 +112,63 @@ export const ShortcutManagerDialog: React.FC<ShortcutManagerDialogProps> = ({
         <div
           style={{
             flex: 1,
-            overflowY: 'auto',
-            padding: '16px 20px',
-            background: 'var(--bg-surface-lowest)'
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            padding: '0 4px 4px'
           }}
         >
-          {mgr.editingItem ? (
-            <ShortcutManagerEditForm
-              draftName={mgr.draftName}
-              draftCommand={mgr.draftCommand}
-              draftContent={mgr.draftContent}
-              onDraftNameChange={mgr.setDraftName}
-              onDraftCommandChange={mgr.setDraftCommand}
-              onDraftContentChange={mgr.setDraftContent}
-              onCancel={mgr.clearEditing}
-              onSave={mgr.handleSave}
-            />
-          ) : (
-            <ShortcutManagerList
-              shortcuts={shortcuts}
-              paginatedShortcuts={mgr.paginatedShortcuts}
-              currentPage={mgr.currentPage}
-              totalPages={mgr.totalPages}
-              pageSize={mgr.pageSize}
-              onPageChange={mgr.handlePageChange}
-              onPageSizeChange={mgr.handlePageSizeChange}
-              onSelect={onSelect}
-              onEdit={mgr.handleEdit}
-              onDelete={onDelete}
-            />
-          )}
+          <div
+            style={{
+              flex: 1,
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              background: 'var(--bg-surface-lowest)',
+              borderRadius: '12px',
+              overflow: 'hidden'
+            }}
+          >
+            {!mgr.editingItem ? (
+              <div style={{ padding: '12px 12px 0' }}>
+                <ShortcutSlashHint />
+              </div>
+            ) : null}
+
+            <div
+              style={{
+                flex: 1,
+                overflowY: 'auto',
+                padding: mgr.editingItem ? '16px 12px' : '12px 12px 16px'
+              }}
+            >
+              {mgr.editingItem ? (
+                <ShortcutManagerEditForm
+                  draftName={mgr.draftName}
+                  draftCommand={mgr.draftCommand}
+                  draftContent={mgr.draftContent}
+                  onDraftNameChange={mgr.setDraftName}
+                  onDraftCommandChange={mgr.setDraftCommand}
+                  onDraftContentChange={mgr.setDraftContent}
+                  onCancel={mgr.clearEditing}
+                  onSave={mgr.handleSave}
+                />
+              ) : (
+                <ShortcutManagerList
+                  shortcuts={shortcuts}
+                  paginatedShortcuts={mgr.paginatedShortcuts}
+                  currentPage={mgr.currentPage}
+                  totalPages={mgr.totalPages}
+                  pageSize={mgr.pageSize}
+                  onPageChange={mgr.handlePageChange}
+                  onPageSizeChange={mgr.handlePageSizeChange}
+                  onSelect={onSelect}
+                  onEdit={mgr.handleEdit}
+                  onDelete={onDelete}
+                />
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </Modal>
