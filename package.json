@@ -25,6 +25,8 @@
     "db:push": "turbo run db:push --filter=@baishou/database",
     "sync:icons": "node scripts/sync-app-icon.mjs",
     "sync:icons:check": "node scripts/sync-app-icon.mjs --check",
+    "sync:app-version": "node scripts/sync-app-version.mjs",
+    "sync:app-version:check": "node scripts/sync-app-version.mjs --check",
     "format": "prettier --write \"**/*.{ts,tsx,js,mjs,cjs,json,md,yaml,yml,css}\" --ignore-path .prettierignore",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,cjs,json,md,yaml,yml,css}\" --ignore-path .prettierignore",
     "ci": "pnpm ci:check",
