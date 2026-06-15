@@ -18,8 +18,8 @@ export const NativeChatBubbleAttachments: React.FC<NativeChatBubbleAttachmentsPr
 
   return (
     <View style={[styles.wrap, isUserBubble ? styles.wrapUser : styles.wrapAssistant]}>
-      {attachments.map((att) => (
-        <View key={att.id} style={styles.item}>
+      {attachments.map((att, index) => (
+        <View key={`${att.id}-${index}`} style={styles.item}>
           {att.isImage ? (
             <Image
               source={{ uri: att.filePath }}

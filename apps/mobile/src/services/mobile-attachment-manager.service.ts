@@ -8,6 +8,7 @@ import type {
   IFileSystem,
   IStoragePathService
 } from '@baishou/core-mobile'
+import { isUserAvatarRelativePath } from '@baishou/shared'
 import { joinPath, basename } from '@baishou/core-mobile'
 import { importUriToPath, inferImageExtension } from './mobile-uri-import'
 import { toFileUri } from './android-external-fs'
@@ -21,12 +22,24 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
     private readonly fileSystem: IFileSystem
   ) {}
 
-  private async listAvatarCandidateDirs(): Promise<string[]> {
+  private async listAvatarCandidateDirs(relativePath: string): Promise<string[]> {
+    if (isUserAvatarRelativePath(relativePath)) {
+      return [
+        await this.pathService.getUserAvatarsDirectory(),
+        await this.pathService.getAvatarsDirectory()
+      ]
+    }
     return [await this.pathService.getAvatarsDirectory()]
   }
 
+  private isUserAvatarPrefix(prefix: string): boolean {
+    return prefix === 'user_avatar' || prefix.startsWith('user_avatar')
+  }
+
   async importAvatar(absoluteSourcePath: string, prefix = 'agent'): Promise<string> {
-    const avatarsDir = await this.pathService.getAvatarsDirectory()
+    const avatarsDir = this.isUserAvatarPrefix(prefix)
+      ? await this.pathService.getUserAvatarsDirectory()
+      : await this.pathService.getAvatarsDirectory()
     const ext = inferImageExtension(absoluteSourcePath)
     const name = `${prefix}_${Date.now()}.${ext}`
     const dest = joinPath(avatarsDir, name)
@@ -40,7 +53,7 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
     }
 
     const filename = basename(relativePath)
-    const candidateDirs = await this.listAvatarCandidateDirs()
+    const candidateDirs = await this.listAvatarCandidateDirs(relativePath)
 
     for (const dir of candidateDirs) {
       const absPath = joinPath(dir, filename)
@@ -260,6 +273,6 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
       quality: 0.9
     })
     if (result.canceled || !result.assets[0]?.uri) return null
-    return manager.importAvatar(result.assets[0].uri, 'user')
+    return manager.importAvatar(result.assets[0].uri, 'user_avatar')
   }
 }

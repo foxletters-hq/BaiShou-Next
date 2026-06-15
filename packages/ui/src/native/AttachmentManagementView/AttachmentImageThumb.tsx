@@ -44,17 +44,17 @@ export const AttachmentImageThumb: React.FC<AttachmentImageThumbProps> = ({
       try {
         if (loadImageUri) {
           const loaded = await loadImageUri(filePath, 'thumbnail')
-          if (!cancelled && loaded) {
+          if (!cancelled) {
             setUri(loaded)
-            return
           }
+          return
         }
         if (!cancelled) {
           setUri(toDisplayUri(filePath))
         }
       } catch {
         if (!cancelled) {
-          setUri(toDisplayUri(filePath))
+          setUri(loadImageUri ? null : toDisplayUri(filePath))
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -86,8 +86,10 @@ export const AttachmentImageThumb: React.FC<AttachmentImageThumbProps> = ({
           onError={() => {
             if (loadImageUri) {
               void loadImageUri(filePath, 'thumbnail').then((fallback) => {
-                if (fallback) setUri(fallback)
+                setUri(fallback)
               })
+            } else {
+              setUri(null)
             }
           }}
         />

@@ -1,9 +1,13 @@
 import { mapAttachmentsFromParts, resolveAttachmentAbsolutePath } from '@baishou/shared'
 import type { AgentMessagePart } from '@baishou/store'
 import { parseCompactionMarkerData, type CompactionMarkerData } from '@baishou/ai'
+import { resolveMobileAttachmentFilePath } from './mobile-attachment-ui.util'
 
 /** local://（桌面）或裸路径 → React Native Image 可用的 file:// */
-function toMobileAttachmentFilePath(filePath?: string): string {
+function toMobileAttachmentFilePath(filePath?: string, storageRoot?: string): string {
+  if (storageRoot) {
+    return resolveMobileAttachmentFilePath(filePath, storageRoot)
+  }
   if (!filePath) return ''
   if (
     filePath.startsWith('file://') ||
@@ -36,18 +40,21 @@ function stripBinaryFromParts(
 }
 
 /** 将 DB 消息（含 parts）映射为 Agent UI 消息（对齐 desktop agent-message.ipc） */
-export function mapSessionMessageFromDb(msg: {
-  id: string
-  role: string
-  orderIndex?: number
-  createdAt?: string | Date
-  parts?: Array<{ type: string; id?: string; data?: Record<string, unknown> | string }>
-  inputTokens?: number
-  outputTokens?: number
-  cacheReadInputTokens?: number
-  cacheWriteInputTokens?: number
-  costMicros?: number
-}) {
+export function mapSessionMessageFromDb(
+  msg: {
+    id: string
+    role: string
+    orderIndex?: number
+    createdAt?: string | Date
+    parts?: Array<{ type: string; id?: string; data?: Record<string, unknown> | string }>
+    inputTokens?: number
+    outputTokens?: number
+    cacheReadInputTokens?: number
+    cacheWriteInputTokens?: number
+    costMicros?: number
+  },
+  options?: { storageRoot?: string }
+) {
   const parts = msg.parts || []
 
   const textParts = parts.filter((p) => p.type === 'text')
@@ -84,7 +91,7 @@ export function mapSessionMessageFromDb(msg: {
 
   const attachments = mapAttachmentsFromParts(parts)?.map((att) => ({
     ...att,
-    filePath: toMobileAttachmentFilePath(att.filePath)
+    filePath: toMobileAttachmentFilePath(att.filePath, options?.storageRoot)
   }))
 
   const compactionPart = parts.find((p) => p.type === 'compaction')

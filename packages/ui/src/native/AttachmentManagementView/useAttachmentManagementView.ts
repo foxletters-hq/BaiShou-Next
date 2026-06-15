@@ -44,8 +44,8 @@ export function useAttachmentManagementView(props: AttachmentManagementViewProps
         const src = await loadImageUri(filePath, 'preview')
         if (src) {
           setImagePreview({ src, name: fileName })
-          return
         }
+        return
       }
       setImagePreview({ src: toDisplayUri(filePath), name: fileName })
     })()
