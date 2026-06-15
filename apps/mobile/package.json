@@ -1,10 +1,10 @@
 {
   "name": "@baishou/mobile",
   "main": "expo-router/entry",
-  "version": "Next-1.0.0",
+  "version": "1.0.0",
   "scripts": {
     "commands": "node ../../scripts/commands-help.mjs mobile",
-    "predev": "node ../../scripts/sync-app-icon.mjs",
+    "predev": "node ../../scripts/sync-app-icon.mjs && node ../../scripts/sync-app-version.mjs",
     "dev": "node ./scripts/start-dev.mjs",
     "dev:clear": "node ./scripts/run-android.mjs",
     "install:apk": "node ./scripts/install-apk.mjs",
