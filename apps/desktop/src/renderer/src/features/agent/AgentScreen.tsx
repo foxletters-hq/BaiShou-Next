@@ -1,5 +1,6 @@
-import React from 'react'
-import { TokenBadge, InputBar, ContextChainPanel } from '@baishou/ui'
+import React, { useMemo } from 'react'
+import { TokenBadge, InputBar, ContextChainPanel, useTheme, getProviderIcon } from '@baishou/ui'
+import { MdCloud } from 'react-icons/md'
 import { AgentDialogs } from './components/AgentDialogs'
 import { AgentMessageList } from './components/AgentMessageList'
 import { useAgentChatFlow } from './hooks/useAgentChatFlow'
@@ -11,46 +12,52 @@ import styles from './AgentScreen.module.css'
  */
 export const AgentScreen: React.FC = () => {
   const flow = useAgentChatFlow()
+  const { isDark } = useTheme()
+
+  const providerIconUrl = useMemo(() => {
+    const providerId = flow.model.currentProviderId
+    if (!providerId || providerId === 'unknown') return undefined
+    const providerRecord = flow.providers.find(
+      (provider) => provider.id === providerId || provider.providerId === providerId
+    )
+    return (
+      getProviderIcon(providerId, isDark) ||
+      (providerRecord?.type ? getProviderIcon(providerRecord.type, isDark) : undefined)
+    )
+  }, [flow.model.currentProviderId, flow.providers, isDark])
+
+  const displayModelName =
+    flow.model.currentModelId === 'unknown'
+      ? flow.t('agent.no_model_selected', '暂未选择模型')
+      : flow.model.currentModelId
 
   return (
     <div className={styles.screen}>
       {/* 顶部状态与控制栏 */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'flex-end',
-          padding: '16px 24px',
-          gap: 12
-        }}
-      >
-        <div
-          style={{
-            padding: '4px 10px',
-            fontSize: '12px',
-            background: 'var(--bg-surface-highlight, rgba(148, 163, 184, 0.1))',
-            borderRadius: '12px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            color: 'var(--text-secondary)'
-          }}
+      <div className={styles.appBar}>
+        <button
+          type="button"
+          className={`${styles.modelSwitcherTrigger} ${styles.appBarChip}`}
           onClick={() => flow.setShowModelSwitcher(true)}
         >
-          {flow.model.currentModelId === 'unknown'
-            ? flow.t('agent.no_model_selected', '暂未选择模型')
-            : flow.model.currentModelId}{' '}
-          <span style={{ marginLeft: 6, fontSize: 10, opacity: 0.6 }}>▼</span>
-        </div>
+          <span className={styles.modelProviderIcon} aria-hidden>
+            {providerIconUrl ? (
+              <img src={providerIconUrl} alt="" />
+            ) : (
+              <MdCloud size={18} />
+            )}
+          </span>
+          <span className={styles.modelName}>{displayModelName}</span>
+          <span className={styles.chevron}>▼</span>
+        </button>
         <TokenBadge
+          className={styles.appBarChip}
           inputTokens={flow.tokens.totalInputTokens}
           outputTokens={flow.tokens.totalOutputTokens}
           costMicros={flow.tokens.estimatedCost * 1000000}
           onClick={() => flow.setShowCostDialog(true)}
         />
       </div>
-
-      {/* 消息历史列表组件 */}
       <AgentMessageList
         t={flow.t}
         sessionId={flow.sessionId}
@@ -75,8 +82,6 @@ export const AgentScreen: React.FC = () => {
         setShowCostDialog={flow.setShowCostDialog}
         showAssistantPicker={flow.showAssistantPicker}
         setShowAssistantPicker={flow.setShowAssistantPicker}
-        showShortcutSheet={flow.showShortcutSheet}
-        setShowShortcutSheet={flow.setShowShortcutSheet}
         showShortcutManager={flow.showShortcutManager}
         setShowShortcutManager={flow.setShowShortcutManager}
         showRecallSheet={flow.showRecallSheet}
@@ -196,9 +201,9 @@ export const AgentScreen: React.FC = () => {
             isLoading={flow.stream.isStreaming}
             onSend={flow.handleSend}
             onStop={flow.handleStop}
+            shortcuts={flow.shortcuts}
             assistantName={flow.currentAssistant?.name || 'BaiShou'}
             onAssistantTap={() => flow.setShowAssistantPicker(true)}
-            onTriggerShortcut={() => flow.setShowShortcutSheet(true)}
             onManageShortcuts={() => flow.setShowShortcutManager(true)}
             onRecall={() => flow.setShowRecallSheet(true)}
             onOpenTools={() => flow.setShowToolManager(true)}

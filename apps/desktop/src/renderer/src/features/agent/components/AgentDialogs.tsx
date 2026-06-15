@@ -3,7 +3,6 @@ import { useOutletContext } from 'react-router-dom'
 import {
   ChatCostDialog,
   AssistantPickerSheet,
-  PromptShortcutSheet,
   ShortcutManagerDialog,
   RecallDialog,
   ModelSwitcherPopup,
@@ -21,8 +20,6 @@ interface AgentDialogsProps {
   setShowCostDialog: (v: boolean) => void
   showAssistantPicker: boolean
   setShowAssistantPicker: (v: boolean) => void
-  showShortcutSheet: boolean
-  setShowShortcutSheet: (v: boolean) => void
   showShortcutManager: boolean
   setShowShortcutManager: (v: boolean) => void
   showRecallSheet: boolean
@@ -45,6 +42,8 @@ interface AgentDialogsProps {
   tokens: {
     totalInputTokens: number
     totalOutputTokens: number
+    totalCacheReadInputTokens: number
+    totalCacheWriteInputTokens: number
     estimatedCost: number
   }
   assistants: any[]
@@ -88,8 +87,6 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
   setShowCostDialog,
   showAssistantPicker,
   setShowAssistantPicker,
-  showShortcutSheet,
-  setShowShortcutSheet,
   showShortcutManager,
   setShowShortcutManager,
   showRecallSheet,
@@ -131,6 +128,8 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
               : model.currentModelId,
           promptTokens: tokens.totalInputTokens,
           completionTokens: tokens.totalOutputTokens,
+          cacheReadTokens: tokens.totalCacheReadInputTokens,
+          cacheWriteTokens: tokens.totalCacheWriteInputTokens,
           totalTokens: tokens.totalInputTokens + tokens.totalOutputTokens,
           estimatedCost: `$${tokens.estimatedCost.toFixed(6)}`
         }}
@@ -172,17 +171,6 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
         }}
       />
 
-      {/* 快捷Prompt指令栏 */}
-      <PromptShortcutSheet
-        isOpen={showShortcutSheet}
-        shortcuts={shortcuts as any}
-        selectedIndex={0}
-        onSelect={(shortcut) => {
-          setShowShortcutSheet(false)
-          inputBarRef.current?.insertText(shortcut.content)
-        }}
-      />
-
       {/* 快捷指令配置弹窗 */}
       <ShortcutManagerDialog
         isOpen={showShortcutManager}
@@ -193,7 +181,7 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
         onDelete={removeShortcut}
         onSelect={(shortcut) => {
           setShowShortcutManager(false)
-          inputBarRef.current?.insertText(shortcut.content)
+          inputBarRef.current?.insertShortcutContent(shortcut.content)
         }}
       />
 

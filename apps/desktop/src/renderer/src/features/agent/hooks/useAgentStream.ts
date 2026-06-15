@@ -70,6 +70,8 @@ interface SessionStreamState {
 // ── 全局多会话流状态存储 ──
 const sessionStates: Record<string, SessionStreamState> = {}
 const sessionListeners: Record<string, Set<() => void>> = {}
+const COMPRESSION_DELTA_RENDER_INTERVAL_MS = 80
+const compressionDeltaNotifyTimers: Record<string, ReturnType<typeof setTimeout> | undefined> = {}
 
 function getOrCreateSessionState(sessionId: string): SessionStreamState {
   if (!sessionStates[sessionId]) {
@@ -90,12 +92,32 @@ function getOrCreateSessionState(sessionId: string): SessionStreamState {
   return sessionStates[sessionId]
 }
 
-function updateSessionState(sessionId: string, updater: (state: SessionStreamState) => void) {
-  const state = getOrCreateSessionState(sessionId)
-  updater(state)
+function notifySessionListeners(sessionId: string) {
   if (sessionListeners[sessionId]) {
     sessionListeners[sessionId].forEach((listener) => listener())
   }
+}
+
+function scheduleCompressionDeltaNotify(sessionId: string) {
+  if (compressionDeltaNotifyTimers[sessionId]) return
+
+  compressionDeltaNotifyTimers[sessionId] = setTimeout(() => {
+    compressionDeltaNotifyTimers[sessionId] = undefined
+    notifySessionListeners(sessionId)
+  }, COMPRESSION_DELTA_RENDER_INTERVAL_MS)
+}
+
+function updateSessionState(
+  sessionId: string,
+  updater: (state: SessionStreamState) => void,
+  options?: { notify?: boolean }
+) {
+  const state = getOrCreateSessionState(sessionId)
+  updater(state)
+  if (options?.notify === false) {
+    return
+  }
+  notifySessionListeners(sessionId)
 }
 
 export function useAgentStream(currentSessionId?: string): UseAgentStreamResult {
@@ -187,33 +209,60 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
         }
         state.activeTool = null
       })
+
+      if (payload?.messageId) {
+        window.dispatchEvent(
+          new CustomEvent('baishou:assistant-message-usage', {
+            detail: {
+              sessionId: sId,
+              messageId: payload.messageId,
+              inputTokens: payload.inputTokens,
+              outputTokens: payload.outputTokens,
+              cacheReadInputTokens: payload.cacheReadInputTokens,
+              cacheWriteInputTokens: payload.cacheWriteInputTokens,
+              costMicros: payload.costMicros
+            }
+          })
+        )
+      }
     })
 
     window.electron.ipcRenderer.on('agent:compression-event', (_, event: any) => {
       const sId = event?.sessionId
       if (!sId || !event?.type) return
 
-      updateSessionState(sId, (state) => {
-        if (event.type === 'start') {
-          state.isCompressing = true
-          state.compressionPhase = event.phase === 'manual' ? 'manual' : 'auto'
-          state.compressionText = ''
-          state.compressionReasoning = ''
-          state.compressionTriggerMessageId =
-            typeof event.triggerUserMessageId === 'string' ? event.triggerUserMessageId : null
-        } else if (event.type === 'reasoning-delta') {
-          state.compressionReasoning += event.chunk ?? ''
-        } else if (event.type === 'delta') {
-          state.compressionText += event.chunk ?? ''
-        } else if (event.type === 'finish') {
-          state.isCompressing = false
-          if (!event.ok) {
+      if (event.type === 'reasoning-delta' || event.type === 'delta') {
+        updateSessionState(
+          sId,
+          (state) => {
+            if (event.type === 'reasoning-delta') {
+              state.compressionReasoning += event.chunk ?? ''
+            } else {
+              state.compressionText += event.chunk ?? ''
+            }
+          },
+          { notify: false }
+        )
+        scheduleCompressionDeltaNotify(sId)
+      } else {
+        updateSessionState(sId, (state) => {
+          if (event.type === 'start') {
+            state.isCompressing = true
+            state.compressionPhase = event.phase === 'manual' ? 'manual' : 'auto'
             state.compressionText = ''
             state.compressionReasoning = ''
-            state.compressionTriggerMessageId = null
+            state.compressionTriggerMessageId =
+              typeof event.triggerUserMessageId === 'string' ? event.triggerUserMessageId : null
+          } else if (event.type === 'finish') {
+            state.isCompressing = false
+            if (!event.ok) {
+              state.compressionText = ''
+              state.compressionReasoning = ''
+              state.compressionTriggerMessageId = null
+            }
           }
-        }
-      })
+        })
+      }
 
       if (event.type === 'finish' && event.ok) {
         window.dispatchEvent(

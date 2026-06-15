@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react'
 
-const BOTTOM_THRESHOLD_PX = 150
+const BOTTOM_THRESHOLD_PX = 48
 const SMOOTH_SCROLL_DURATION_MS = 720
 
 export type ScrollFollowMode = 'following' | 'idle'
@@ -26,7 +26,7 @@ export interface UseChatScrollResult {
 
 function isNearBottom(el: HTMLElement, threshold = BOTTOM_THRESHOLD_PX): boolean {
   const { scrollTop, scrollHeight, clientHeight } = el
-  return scrollHeight - scrollTop - clientHeight < threshold
+  return scrollHeight - scrollTop - clientHeight <= threshold
 }
 
 function smoothScrollToBottom(
@@ -136,9 +136,17 @@ export function useChatScroll(params: UseChatScrollParams): UseChatScrollResult 
     const el = scrollRef.current
     if (!el) return
 
+    const syncFollowModeFromPosition = () => {
+      if (isNearBottom(el)) {
+        enterFollowing()
+      } else {
+        exitFollowing()
+      }
+    }
+
     const handleUserInterrupt = () => {
       if (isSmoothScrollingRef.current) return
-      exitFollowing()
+      syncFollowModeFromPosition()
     }
 
     const handleScroll = () => {
@@ -147,7 +155,7 @@ export function useChatScroll(params: UseChatScrollParams): UseChatScrollResult 
         suppressInterruptRef.current -= 1
         return
       }
-      handleUserInterrupt()
+      syncFollowModeFromPosition()
     }
 
     el.addEventListener('scroll', handleScroll, { passive: true })
@@ -159,7 +167,7 @@ export function useChatScroll(params: UseChatScrollParams): UseChatScrollResult 
       el.removeEventListener('wheel', handleUserInterrupt)
       el.removeEventListener('touchmove', handleUserInterrupt)
     }
-  }, [sessionId, exitFollowing])
+  }, [sessionId, enterFollowing, exitFollowing])
 
   const followScrollToBottom = useCallback(() => {
     if (followModeRef.current !== 'following') return
@@ -181,8 +189,11 @@ export function useChatScroll(params: UseChatScrollParams): UseChatScrollResult 
     isSmoothScrollingRef.current = true
 
     void smoothScrollToBottom(el).finally(() => {
-      isSmoothScrollingRef.current = false
       el.scrollTop = el.scrollHeight
+      requestAnimationFrame(() => {
+        enterFollowing()
+        isSmoothScrollingRef.current = false
+      })
     })
   }, [enterFollowing])
 

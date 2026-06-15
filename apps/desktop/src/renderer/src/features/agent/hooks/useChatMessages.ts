@@ -75,6 +75,55 @@ function resolveHasMore(roundWindowStart: number, fetchHasMore: boolean): boolea
   return roundWindowStart > 0 || fetchHasMore
 }
 
+function mergeMessageTokenFields(prev: any | undefined, next: any): any {
+  if (!prev) return next
+  const nextHasUsage = messageHasUsageStats(next)
+  const prevHasUsage = messageHasUsageStats(prev)
+  if (nextHasUsage || !prevHasUsage) return next
+  return {
+    ...next,
+    inputTokens: prev.inputTokens,
+    outputTokens: prev.outputTokens,
+    cacheReadInputTokens: prev.cacheReadInputTokens,
+    cacheWriteInputTokens: prev.cacheWriteInputTokens,
+    costMicros: prev.costMicros
+  }
+}
+
+function mergeFetchedWithCache(prevCache: readonly any[], fetched: any[]): any[] {
+  const prevById = new Map(prevCache.map((m) => [m.id, m]))
+  return fetched.map((m) => mergeMessageTokenFields(prevById.get(m.id), m))
+}
+
+function messageHasUsageStats(msg: any): boolean {
+  return (
+    (msg.inputTokens ?? 0) > 0 ||
+    (msg.outputTokens ?? 0) > 0 ||
+    (msg.costMicros ?? 0) > 0 ||
+    (msg.cacheReadInputTokens ?? 0) > 0 ||
+    (msg.cacheWriteInputTokens ?? 0) > 0
+  )
+}
+
+function applyPendingUsageToMessages(
+  messages: any[],
+  pendingUsage: Map<string, Record<string, number | undefined>>
+): any[] {
+  if (pendingUsage.size === 0) return messages
+  return messages.map((msg) => {
+    const usage = pendingUsage.get(msg.id)
+    if (!usage || messageHasUsageStats(msg)) return msg
+    return {
+      ...msg,
+      inputTokens: usage.inputTokens ?? msg.inputTokens,
+      outputTokens: usage.outputTokens ?? msg.outputTokens,
+      cacheReadInputTokens: usage.cacheReadInputTokens ?? msg.cacheReadInputTokens,
+      cacheWriteInputTokens: usage.cacheWriteInputTokens ?? msg.cacheWriteInputTokens,
+      costMicros: usage.costMicros ?? msg.costMicros
+    }
+  })
+}
+
 function applyCacheToWindow(
   cache: any[],
   roundWindowStart: number,
@@ -108,6 +157,9 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
   const messageCacheRef = useRef<any[]>([])
   const roundWindowStartRef = useRef(0)
   const fetchHasMoreRef = useRef(false)
+  const pendingUsageByMessageIdRef = useRef(
+    new Map<string, Record<string, number | undefined>>()
+  )
 
   const messagesRef = useRef<any[]>(messages)
   useEffect(() => {
@@ -128,7 +180,15 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
 
   const ingestFetchedTail = useCallback(
     (fetched: any[], preserveWindow: boolean) => {
-      messageCacheRef.current = fetched
+      messageCacheRef.current = applyPendingUsageToMessages(
+        mergeFetchedWithCache(messageCacheRef.current, fetched),
+        pendingUsageByMessageIdRef.current
+      )
+      for (const msg of messageCacheRef.current) {
+        if (messageHasUsageStats(msg)) {
+          pendingUsageByMessageIdRef.current.delete(msg.id)
+        }
+      }
       loadedFromEndRef.current = fetched.length
       fetchHasMoreRef.current = fetched.length >= CHAT_MESSAGE_FETCH_LIMIT
       setCompactionAnchor(resolveLatestCompactionAnchor(fetched))
@@ -171,6 +231,13 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
                 groupMessagesIntoRounds(messageCacheRef.current).length - CHAT_ROUNDS_PER_PAGE
               )
             ingestFetchedTail(fetched, !atBottom)
+
+            const latestAssistant = [...fetched].reverse().find((m) => m.role === 'assistant')
+            if (latestAssistant && !messageHasUsageStats(latestAssistant) && attempt < retryCount - 1) {
+              await new Promise((r) => setTimeout(r, 200 * (attempt + 1)))
+              continue
+            }
+
             return true
           }
         } catch (e) {
@@ -193,6 +260,7 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
       messageCacheRef.current = []
       roundWindowStartRef.current = 0
       fetchHasMoreRef.current = false
+      pendingUsageByMessageIdRef.current.clear()
       setCompactionAnchor(null)
       currentSessionIdRef.current = null
       setPendingAssistantMsg(null)
@@ -206,6 +274,7 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
       messageCacheRef.current = []
       roundWindowStartRef.current = 0
       fetchHasMoreRef.current = false
+      pendingUsageByMessageIdRef.current.clear()
 
       const loadMessages = async () => {
         try {
@@ -231,6 +300,54 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
       void loadMessages()
     }
   }, [sessionId, ingestFetchedTail])
+
+  useEffect(() => {
+    if (!sessionId) return
+
+    const onAssistantUsage = (e: Event) => {
+      const detail = (
+        e as CustomEvent<{
+          sessionId?: string
+          messageId?: string
+          inputTokens?: number
+          outputTokens?: number
+          cacheReadInputTokens?: number
+          cacheWriteInputTokens?: number
+          costMicros?: number
+        }>
+      ).detail
+      if (!detail?.sessionId || detail.sessionId !== sessionId || !detail.messageId) return
+
+      pendingUsageByMessageIdRef.current.set(detail.messageId, {
+        inputTokens: detail.inputTokens,
+        outputTokens: detail.outputTokens,
+        cacheReadInputTokens: detail.cacheReadInputTokens,
+        cacheWriteInputTokens: detail.cacheWriteInputTokens,
+        costMicros: detail.costMicros
+      })
+
+      const patch = (msg: any) => {
+        if (msg.id !== detail.messageId) return msg
+        return {
+          ...msg,
+          inputTokens: detail.inputTokens ?? msg.inputTokens,
+          outputTokens: detail.outputTokens ?? msg.outputTokens,
+          cacheReadInputTokens: detail.cacheReadInputTokens ?? msg.cacheReadInputTokens,
+          cacheWriteInputTokens: detail.cacheWriteInputTokens ?? msg.cacheWriteInputTokens,
+          costMicros: detail.costMicros ?? msg.costMicros
+        }
+      }
+
+      messageCacheRef.current = messageCacheRef.current.map(patch)
+      if (messageCacheRef.current.some((m) => m.id === detail.messageId && messageHasUsageStats(m))) {
+        pendingUsageByMessageIdRef.current.delete(detail.messageId)
+      }
+      syncFromCache(roundWindowStartRef.current)
+    }
+
+    window.addEventListener('baishou:assistant-message-usage', onAssistantUsage)
+    return () => window.removeEventListener('baishou:assistant-message-usage', onAssistantUsage)
+  }, [sessionId, syncFromCache])
 
   useEffect(() => {
     if (!sessionId) return

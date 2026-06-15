@@ -1,7 +1,8 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { InputBar } from '@baishou/ui'
+import { usePromptShortcutStore } from '@baishou/store'
 import { MdAutoAwesome } from 'react-icons/md'
 import styles from './AgentHome.module.css'
 
@@ -15,9 +16,13 @@ import styles from './AgentHome.module.css'
 export const AgentHomePage: React.FC = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { shortcuts, loadShortcuts } = usePromptShortcutStore()
+
+  useEffect(() => {
+    void loadShortcuts()
+  }, [loadShortcuts])
 
   const handleSend = (text: string) => {
-    // 直接发起新会话并携带第一条消息
     const newId = `new-${Date.now()}`
     navigate(`/chat/${newId}?init=${encodeURIComponent(text)}`)
   }
@@ -34,12 +39,11 @@ export const AgentHomePage: React.FC = () => {
         </p>
       </div>
 
-      {/* 与原版完全对齐：底部固定输入栏 */}
       <div className={styles.inputDock}>
         <InputBar
           isLoading={false}
           onSend={handleSend}
-          onTriggerShortcut={() => navigate('/chat/new-session?focus=shortcut')}
+          shortcuts={shortcuts}
           onManageShortcuts={() => navigate('/chat/new-session?focus=manage-shortcuts')}
         />
       </div>

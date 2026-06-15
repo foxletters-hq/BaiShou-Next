@@ -77,7 +77,6 @@ export function useAgentChatFlow() {
   const [showModelSwitcher, setShowModelSwitcher] = useState(false)
   const [showCostDialog, setShowCostDialog] = useState(false)
   const [showAssistantPicker, setShowAssistantPicker] = useState(false)
-  const [showShortcutSheet, setShowShortcutSheet] = useState(false)
   const [showRecallSheet, setShowRecallSheet] = useState(false)
   const [showShortcutManager, setShowShortcutManager] = useState(false)
   const [showToolManager, setShowToolManager] = useState(false)
@@ -351,8 +350,6 @@ export function useAgentChatFlow() {
     setShowCostDialog,
     showAssistantPicker,
     setShowAssistantPicker,
-    showShortcutSheet,
-    setShowShortcutSheet,
     showRecallSheet,
     setShowRecallSheet,
     showShortcutManager,

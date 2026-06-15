@@ -8,46 +8,71 @@
 }
 
 .appBar {
-  height: 56px;
-  background-color: var(--bg-surface);
-  border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 20px;
+  justify-content: flex-end;
+  padding: 16px 24px;
+  gap: 12px;
   flex-shrink: 0;
+  --app-bar-chip-height: 32px;
+}
+
+.appBarChip {
+  height: var(--app-bar-chip-height);
+  box-sizing: border-box;
+  padding: 0 12px;
 }
 
 .modelSwitcherTrigger {
   display: flex;
   align-items: center;
-  padding: 6px 12px;
-  border-radius: 8px;
+  gap: 8px;
+  border-radius: 12px;
   cursor: pointer;
-  transition: background-color 0.2s;
+  background-color: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-subtle);
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
+  color: var(--text-primary);
 }
 
 .modelSwitcherTrigger:hover {
-  background-color: rgba(var(--color-surface-container-highest-rgb, 224, 224, 224), 0.5);
+  background-color: var(--bg-surface-high);
+  border-color: var(--border-muted);
 }
 
-.modelIcon {
-  font-size: 16px;
-  margin-right: 8px;
-  color: var(--color-primary, #5ba8f5);
+.modelProviderIcon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+}
+
+.modelProviderIcon img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
 }
 
 .modelName {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
-  color: var(--text-primary, #1a1a1a);
-  margin-right: 4px;
+  color: var(--text-primary);
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .chevron {
-  font-size: 12px;
-  color: var(--text-secondary, #475569);
-  margin-top: 2px;
+  font-size: 10px;
+  color: var(--text-tertiary);
+  line-height: 1;
+  flex-shrink: 0;
 }
 
 .appBarRight {

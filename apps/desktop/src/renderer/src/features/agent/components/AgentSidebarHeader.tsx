@@ -1,9 +1,10 @@
 import React from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { MdUnfoldMore, MdAdd, MdSettings, MdChecklist } from 'react-icons/md'
 import type { AgentAssistant } from './AgentSidebar'
 import styles from './AgentSidebar.module.css'
+import { rememberSettingsReturnPath } from '../../settings/settings-navigation.util'
 
 interface AssistantAvatarProps {
   assistant: AgentAssistant
@@ -77,6 +78,7 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
   onToggleMultiSelect
 }) => {
   const navigate = useNavigate()
+  const location = useLocation()
   const { t } = useTranslation()
 
   return (
@@ -159,7 +161,13 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
       </div>
 
       {/* ─── 设置入口 ─── */}
-      <div className={styles.menuItemRow} onClick={() => navigate('/settings')}>
+      <div
+        className={styles.menuItemRow}
+        onClick={() => {
+          rememberSettingsReturnPath(location.pathname)
+          navigate('/settings')
+        }}
+      >
         <div className={styles.menuItemRowInner}>
           <MdSettings size={20} className={styles.menuItemRowIcon} />
           <span>{t('settings.title', '系统设置')}</span>

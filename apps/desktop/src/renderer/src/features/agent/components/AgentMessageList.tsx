@@ -118,6 +118,10 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
             ...bubbleMessage,
             inputTokens: sourceMsg.inputTokens ?? bubbleMessage.inputTokens,
             outputTokens: sourceMsg.outputTokens ?? bubbleMessage.outputTokens,
+            cacheReadInputTokens:
+              sourceMsg.cacheReadInputTokens ?? bubbleMessage.cacheReadInputTokens,
+            cacheWriteInputTokens:
+              sourceMsg.cacheWriteInputTokens ?? bubbleMessage.cacheWriteInputTokens,
             costMicros: sourceMsg.costMicros ?? bubbleMessage.costMicros
           },
           flatEntries,
@@ -289,6 +293,8 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
               attachments: bubbleAttachments,
               inputTokens: msg.inputTokens,
               outputTokens: msg.outputTokens,
+              cacheReadInputTokens: msg.cacheReadInputTokens,
+              cacheWriteInputTokens: msg.cacheWriteInputTokens,
               isReasoning: msg.isReasoning,
               costMicros: msg.costMicros
             }
