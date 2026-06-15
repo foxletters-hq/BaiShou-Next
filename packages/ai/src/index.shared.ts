@@ -41,6 +41,9 @@ export * from './middleware/message-middleware'
 export * from './middleware/gemini-thought-signature'
 export * from './middleware/deepseek-reasoning'
 export * from './middleware/middleware-factory'
+export * from './middleware/prompt-caching.middleware'
+export * from './middleware/prompt-caching.util'
+export * from './middleware/prompt-caching.types'
 
 // Agent Handlers
 export * from './agent/message.adapter'
@@ -89,7 +92,7 @@ export {
   type NormalizedImagePayload
 } from './platform/normalize-image-for-model'
 
-export type { IStreamEmitter } from './agent/stream-emitter.interface'
+export type { IStreamEmitter, StreamFinishPayload } from './agent/stream-emitter.interface'
 export { AgentChatCoreService } from './agent/agent-chat-core.service'
 export { AgentChatActionCoreRunner } from './agent/agent-chat-action-core.runner'
 export type { ActionDeps, StreamRunConfig } from './agent/actions/base.action'

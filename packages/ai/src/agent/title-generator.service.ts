@@ -20,7 +20,13 @@ export class TitleGeneratorService {
   ): Promise<void> {
     try {
       const baseModel = provider.getLanguageModel(modelId)
-      const model = wrapLanguageModelWithMiddlewares(baseModel, provider.config?.type || '')
+      const model = wrapLanguageModelWithMiddlewares(baseModel, {
+        providerType: provider.config?.type || 'openai',
+        providerId: provider.config?.id,
+        modelId,
+        sessionId,
+        baseUrl: provider.config?.baseUrl
+      })
 
       // 请求产生名字
       // 我们用无系统的生成，只基于短句

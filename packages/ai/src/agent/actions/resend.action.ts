@@ -41,6 +41,7 @@ export async function runResendAction(
     ...config,
     userText,
     skipUserMessageRecording: true,
+    forceRecompress: true,
     userMessageId: messageId
   })
 }

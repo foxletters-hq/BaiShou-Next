@@ -32,6 +32,7 @@ export async function runEditMessageAction(
     ...config,
     userText: newText,
     skipUserMessageRecording: true,
+    forceRecompress: true,
     userMessageId: messageId
   })
 }

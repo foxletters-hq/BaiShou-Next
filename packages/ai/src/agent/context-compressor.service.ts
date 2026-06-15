@@ -40,7 +40,7 @@ import {
   finalizeCompressionForStorage
 } from './compaction-marker'
 import { consumeCompressionModelStream } from './compression-stream.utils'
-import { wrapLanguageModelWithMiddlewares } from '../middleware/middleware-factory'
+import { wrapLanguageModelWithMiddlewares, buildCachedSystemForStream } from '../middleware/middleware-factory'
 
 export type { SessionCompressionConfig } from './context-compression.utils'
 
@@ -400,7 +400,11 @@ export class ContextCompressorService {
     summaryDurationMs: number
   } | null> {
     const baseModel = provider.getLanguageModel(modelId)
-    const model = wrapLanguageModelWithMiddlewares(baseModel, providerType)
+    const model = wrapLanguageModelWithMiddlewares(baseModel, {
+      providerType,
+      modelId,
+      sessionId
+    })
     const systemBase = compressionConfig.systemPrompt?.trim() || getDefaultCompressionSystemPrompt()
 
     const userContent = buildCompressionUserMessageContent(toCompress, priorSummaryText)
@@ -410,7 +414,11 @@ export class ContextCompressorService {
 
     const streamResult = streamText({
       model,
-      system: systemBase,
+      system: buildCachedSystemForStream(systemBase, {
+        providerType,
+        modelId,
+        sessionId
+      }),
       messages,
       temperature: 0.1
     })

@@ -99,6 +99,8 @@ export class ContextAtMessageService {
         id: target.id,
         inputTokens: target.inputTokens ?? undefined,
         outputTokens: target.outputTokens ?? undefined,
+        cacheReadInputTokens: target.cacheReadInputTokens ?? undefined,
+        cacheWriteInputTokens: target.cacheWriteInputTokens ?? undefined,
         costMicros: target.costMicros ?? undefined
       },
       allMessages: allMessages as any,

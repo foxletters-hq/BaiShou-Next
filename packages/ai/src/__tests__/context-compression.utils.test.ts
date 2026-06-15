@@ -273,8 +273,8 @@ describe('context-compression.utils', () => {
     expect(usableContextTokens(100_000, 10_000)).toBe(90_000)
   })
 
-  it('resolveCompressionTrigger uses min(threshold, usable window)', () => {
-    // threshold smaller than usable → threshold governs
+  it('resolveCompressionTrigger prefers explicit threshold over model window', () => {
+    // Explicit threshold governs.
     expect(
       resolveCompressionTrigger(61_000, {
         threshold: 60_000,
@@ -289,18 +289,26 @@ describe('context-compression.utils', () => {
         modelContextWindow: 128_000
       })
     ).toBe(false)
-    // threshold disabled → window acts as safety net
+    // Model window is smaller, but explicit threshold still governs auto-compression.
+    expect(
+      resolveCompressionTrigger(55_000, {
+        threshold: 60_000,
+        keepTurns: 3,
+        modelContextWindow: 64_000
+      })
+    ).toBe(false)
+    // threshold disabled → no auto-compression
     expect(
       resolveCompressionTrigger(110_000, {
         threshold: 0,
         keepTurns: 3,
         modelContextWindow: 128_000
       })
-    ).toBe(true)
+    ).toBe(false)
     expect(
       resolveCompressionTrigger(50_000, { threshold: 0, keepTurns: 3, modelContextWindow: 128_000 })
     ).toBe(false)
-    // both disabled → never (unless force)
+    // disabled → never (unless force)
     expect(resolveCompressionTrigger(999_999, { threshold: 0, keepTurns: 3 })).toBe(false)
     expect(resolveCompressionTrigger(0, { threshold: 0, keepTurns: 3, force: true })).toBe(true)
   })

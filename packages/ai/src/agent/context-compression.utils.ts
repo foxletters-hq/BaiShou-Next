@@ -133,9 +133,10 @@ export function shouldCompressContext(currentContextTokens: number, threshold: n
 }
 
 /**
- * 综合触发判定：用户显式阈值与「模型窗口 usable」取较小者作为触发线。
- * - 任一为有效值即参与；两者都无效则不触发（除非 force）。
- * - 即使用户把阈值设为 0（关闭），窗口仍作为防溢出安全网。
+ * 自动压缩触发判定。
+ * - 用户显式阈值优先，避免模型窗口识别偏保守时绕过用户设置。
+ * - 阈值为 0 表示关闭自动压缩；仅 force 可强制触发。
+ * - 没有显式阈值时，模型可用窗口才作为防溢出兜底。
  */
 export function resolveCompressionTrigger(
   currentContextTokens: number,
@@ -143,14 +144,16 @@ export function resolveCompressionTrigger(
 ): boolean {
   if (config.force) return true
 
-  const candidates: number[] = []
-  if (config.threshold > 0) candidates.push(config.threshold)
+  if (config.threshold > 0) {
+    return currentContextTokens > config.threshold
+  }
+
+  if (config.threshold === 0) {
+    return false
+  }
 
   const usable = usableContextTokens(config.modelContextWindow ?? 0, config.reservedTokens)
-  if (usable > 0) candidates.push(usable)
-
-  if (candidates.length === 0) return false
-  return currentContextTokens > Math.min(...candidates)
+  return usable > 0 ? currentContextTokens > usable : false
 }
 
 export function extractMessageText(msg: MessageWithParts): string {

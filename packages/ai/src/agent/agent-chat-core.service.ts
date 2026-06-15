@@ -29,6 +29,7 @@ export class AgentChatCoreService {
     userConfig: unknown
     attachments?: unknown[]
     skipUserMessageRecording?: boolean
+    forceRecompress?: boolean
     realSessionRepo: unknown
     realSnapshotRepo: unknown
     toolRegistry: unknown
@@ -49,6 +50,7 @@ export class AgentChatCoreService {
         userConfig: params.userConfig,
         attachments: params.attachments,
         skipUserMessageRecording: params.skipUserMessageRecording,
+        forceRecompress: params.forceRecompress,
         toolRegistry: params.toolRegistry,
         sessionRepo: params.realSessionRepo,
         snapshotRepo: params.realSnapshotRepo,
@@ -65,7 +67,8 @@ export class AgentChatCoreService {
         onToolCallResult: (name, result) =>
           params.emitter.sendToolResult(params.sessionId, name, result),
         onError: (err) => params.emitter.sendFinish(params.sessionId, { error: err.message }),
-        onFinish: () => params.emitter.sendFinish(params.sessionId, { success: true })
+        onFinish: (result) =>
+          params.emitter.sendFinish(params.sessionId, { success: true, ...result })
       }
     )
   }

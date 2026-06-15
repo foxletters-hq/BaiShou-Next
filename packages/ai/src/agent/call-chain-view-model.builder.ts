@@ -13,6 +13,8 @@ export interface CallChainRound {
 export interface CallChainRoundUsage {
   inputTokens: number
   outputTokens: number
+  cacheReadInputTokens: number
+  cacheWriteInputTokens: number
   costMicros: number
 }
 
@@ -256,6 +258,8 @@ function resolveRoundUsage(
     orderIndex: number
     inputTokens?: number
     outputTokens?: number
+    cacheReadInputTokens?: number
+    cacheWriteInputTokens?: number
     costMicros?: number
   },
   allMessages: Array<{
@@ -263,6 +267,8 @@ function resolveRoundUsage(
     orderIndex: number
     inputTokens?: number
     outputTokens?: number
+    cacheReadInputTokens?: number
+    cacheWriteInputTokens?: number
     costMicros?: number
   }>
 ): CallChainRoundUsage | null {
@@ -270,6 +276,8 @@ function resolveRoundUsage(
     return {
       inputTokens: target.inputTokens ?? 0,
       outputTokens: target.outputTokens ?? 0,
+      cacheReadInputTokens: target.cacheReadInputTokens ?? 0,
+      cacheWriteInputTokens: target.cacheWriteInputTokens ?? 0,
       costMicros: target.costMicros ?? 0
     }
   }
@@ -282,6 +290,8 @@ function resolveRoundUsage(
     return {
       inputTokens: reply.inputTokens ?? 0,
       outputTokens: reply.outputTokens ?? 0,
+      cacheReadInputTokens: reply.cacheReadInputTokens ?? 0,
+      cacheWriteInputTokens: reply.cacheWriteInputTokens ?? 0,
       costMicros: reply.costMicros ?? 0
     }
   }
@@ -299,6 +309,8 @@ export function buildCallChainViewModel(params: {
     id?: string
     inputTokens?: number
     outputTokens?: number
+    cacheReadInputTokens?: number
+    cacheWriteInputTokens?: number
     costMicros?: number
   }
   allMessages: Array<{
@@ -307,6 +319,8 @@ export function buildCallChainViewModel(params: {
     id?: string
     inputTokens?: number
     outputTokens?: number
+    cacheReadInputTokens?: number
+    cacheWriteInputTokens?: number
     costMicros?: number
   }>
   compressionSummary?: string

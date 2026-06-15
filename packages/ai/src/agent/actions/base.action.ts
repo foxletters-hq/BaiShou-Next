@@ -21,6 +21,7 @@ export interface StreamRunConfig {
   userConfig: unknown
   attachments?: unknown[]
   skipUserMessageRecording?: boolean
+  forceRecompress?: boolean
 }
 
 export function extractTextFromUserMessage(userMessage: {
@@ -51,6 +52,7 @@ export async function runStreamWithPersistence(
       userConfig: config.userConfig,
       attachments: config.attachments,
       skipUserMessageRecording: config.skipUserMessageRecording,
+      forceRecompress: config.forceRecompress,
       realSessionRepo: deps.realSessionRepo,
       realSnapshotRepo: deps.realSnapshotRepo,
       toolRegistry: deps.toolRegistry,

@@ -55,6 +55,7 @@ export async function runRegenerateAction(
       userMessage as Parameters<typeof extractTextFromUserMessage>[0]
     ),
     skipUserMessageRecording: true,
+    forceRecompress: true,
     userMessageId: userMessage.id
   })
 }

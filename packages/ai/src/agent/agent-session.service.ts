@@ -1,5 +1,6 @@
 import { streamText, smoothStream, stepCountIs } from 'ai'
 import {
+  buildCachedSystemForStream,
   buildMiddlewareChain,
   wrapLanguageModelWithMiddlewares,
   type ProviderType
@@ -13,7 +14,6 @@ import { SystemPromptBuilder } from './system-prompt.builder'
 import {
   isVisionModel,
   logger,
-  prefixTextWithMessageTimestamp,
   type ISqlExecutor
 } from '@baishou/shared'
 
@@ -40,10 +40,6 @@ import { MemoryDeduplicationServiceImpl } from '../rag/memory-deduplication.serv
 import { StreamChatOptions, StreamChatCallbacks } from './agent-session.types'
 import { persistResult } from './agent-session-persist'
 import {
-  appendFileAttachmentToContentParts,
-  appendImagePartToContentParts,
-  finalizeUserContentParts,
-  inferAttachmentFlags,
   messageHasImageAttachments
 } from './attachment-content.builder'
 
@@ -71,13 +67,20 @@ export class AgentSessionService {
       webSearchResultFetcher,
       abortSignal,
       userMessageId,
-      skipUserMessageRecording
+      skipUserMessageRecording,
+      forceRecompress
     } = options
 
     try {
       // 1. 获取基础模型，然后用 Vercel 原生 middleware 包装
       const baseModel = provider.getLanguageModel(modelId)
-      const model = wrapLanguageModelWithMiddlewares(baseModel, provider.config?.type || '')
+      const model = wrapLanguageModelWithMiddlewares(baseModel, {
+        providerType: provider.config?.type || 'openai',
+        providerId: provider.config?.id,
+        modelId,
+        sessionId,
+        baseUrl: provider.config?.baseUrl
+      })
 
       // 2. 若上下文 token 超过阈值或逼近模型窗口，先同步压缩再构建窗口
       const compressionConfig = await resolveSessionCompressionConfig(sessionId, sessionRepo)
@@ -86,8 +89,9 @@ export class AgentSessionService {
           sessionId,
           COMPRESSION_MESSAGE_FETCH_LIMIT
         )) as import('./message.adapter').MessageWithParts[]
-        // 重发/编辑截断后 token 可能低于阈值，但仍需强制重压缩（内容可能已变）
-        const canForceRecompress = skipUserMessageRecording === true && rawForEstimate.length >= 4
+        // 重发/编辑截断后 token 可能低于阈值，但仍需强制重压缩（内容可能已变）。
+        // 普通发送也会提前落库用户消息，因此不能用 skipUserMessageRecording 判断。
+        const canForceRecompress = forceRecompress === true && rawForEstimate.length >= 4
         const compressionConfigForRun = canForceRecompress
           ? { ...compressionConfig, force: true }
           : compressionConfig
@@ -118,7 +122,7 @@ export class AgentSessionService {
         }
       }
 
-      // 3. 加载历史并使用 Builder+Adapter 进行超长截断和压缩感知注入
+      // 3. 从数据库构建模型上下文（用户消息须在 streamChat 之前落库）
       const configRecentCount =
         typeof userConfig?.['recentCount'] === 'number' ? userConfig['recentCount'] : 30
 
@@ -131,43 +135,8 @@ export class AgentSessionService {
         provider.config?.type
       )
 
-      // 将当前用户消息追加到上下文窗口，供 AI 推理使用（不再落盘，仅在内存中追加）
-      const lastCoreMsg = coreMessages.length > 0 ? coreMessages[coreMessages.length - 1]! : null
-      const userContentAlreadyInContext =
-        lastCoreMsg &&
-        lastCoreMsg.role === 'user' &&
-        (typeof lastCoreMsg.content === 'string' ? lastCoreMsg.content === userText : true)
-
-      if (!userContentAlreadyInContext) {
-        if (attachments && attachments.length > 0) {
-          const contentParts: unknown[] = []
-          if (userText.trim()) {
-            contentParts.push({
-              type: 'text',
-              text: prefixTextWithMessageTimestamp(userText)
-            })
-          }
-          for (const att of attachments) {
-            const flags = inferAttachmentFlags(att)
-            if (flags.isImage) {
-              await appendImagePartToContentParts(contentParts, att, { modelId })
-            } else {
-              await appendFileAttachmentToContentParts(contentParts, att, {
-                modelId,
-                providerType: provider.config?.type
-              })
-            }
-          }
-          coreMessages.push({
-            role: 'user',
-            content: finalizeUserContentParts(contentParts)
-          })
-        } else {
-          coreMessages.push({
-            role: 'user',
-            content: prefixTextWithMessageTimestamp(userText)
-          })
-        }
+      if (userMessageId && !dbHistory.some((message) => message.id === userMessageId)) {
+        throw new Error('无法发送：用户消息未加载到上下文，请重试')
       }
 
       const providerType = (provider.config?.type || 'openai') as ProviderType
@@ -359,10 +328,18 @@ export class AgentSessionService {
         }
       }
 
+      const cachingCtx = {
+        providerType: provider.config?.type || 'openai',
+        providerId: provider.config?.id,
+        modelId,
+        sessionId,
+        baseUrl: provider.config?.baseUrl
+      }
+
       const streamResult = await streamText({
         model,
         messages: messagesForModel,
-        system: builtSystemPrompt,
+        system: buildCachedSystemForStream(builtSystemPrompt, cachingCtx),
         tools: enabledTools,
         stopWhen: stepCountIs(10),
         abortSignal,
@@ -420,8 +397,11 @@ export class AgentSessionService {
         callbacks?.onError?.(streamError)
       } else if (callbacks?.onFinish) {
         callbacks.onFinish({
+          messageId: usageResult.assistantMessageId,
           inputTokens: usageResult.inputTokens,
           outputTokens: usageResult.outputTokens,
+          cacheReadInputTokens: usageResult.cacheReadInputTokens,
+          cacheWriteInputTokens: usageResult.cacheWriteInputTokens,
           costMicros: usageResult.costMicros
         })
       }
