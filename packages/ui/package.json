@@ -6,7 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./native": "./src/native/index.ts",
-    "./chat-attachment-thumbnail": "./src/web/ChatBubble/chat-attachment-thumbnail.util.ts",
+    "./chat-attachment-thumbnail": "./src/chat-attachment-thumbnail.ts",
     "./web/*": "./src/web/*",
     "./native/*": "./src/native/*",
     "./theme/*": "./src/theme/*",

@@ -60,6 +60,7 @@ export * from './MessageActionBar'
 // 同步组件
 export * from './IncrementalSyncPanel'
 export * from './IncrementalSyncScopeList'
+export * from './SyncModeComparisonNotice'
 export * from './BackupScopeList'
 export * from './LanSyncCard'
 export * from './CloudSyncPanel'

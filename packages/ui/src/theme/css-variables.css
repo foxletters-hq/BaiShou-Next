@@ -36,6 +36,7 @@
   /* Borders / Dividers (Light) */
   --border-subtle: rgba(0, 0, 0, 0.04);
   --border-muted: rgba(0, 0, 0, 0.08); /* faint lines */
+  --border-card: rgba(0, 0, 0, 0.12); /* settings / content cards on gray bg */
   --border-strong: rgba(0, 0, 0, 0.16);
 
   /* Text & Inks (Light) */
@@ -132,6 +133,7 @@
   /* Borders / Dividers (Dark) */
   --border-subtle: rgba(255, 255, 255, 0.08); /* increased visibility for dividers */
   --border-muted: rgba(255, 255, 255, 0.12);
+  --border-card: rgba(255, 255, 255, 0.16);
   --border-strong: rgba(255, 255, 255, 0.2);
 
   --color-outline-variant: rgba(255, 255, 255, 0.1);
