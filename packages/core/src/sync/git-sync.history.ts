@@ -105,7 +105,9 @@ export abstract class GitSyncHistoryMixin extends GitSyncCommitMixin {
 
   async getWorkingDiff(filePath: string, staged: boolean): Promise<FileDiff> {
     const git = await this.ensureGit()
-    const args = staged ? ['--cached', '--', filePath] : ['--', filePath]
+    const args = staged
+      ? ['--cached', '--submodule=short', '--', filePath]
+      : ['--submodule=short', '--', filePath]
 
     try {
       const diff = await git.diff(args)
@@ -119,8 +121,8 @@ export abstract class GitSyncHistoryMixin extends GitSyncCommitMixin {
     return this._withGitLock(async () => {
       try {
         const git = await this.ensureGit()
-        const vaultPath = await this.getVaultPath()
-        const fullPath = path.join(vaultPath, filePath)
+        const gitRoot = await this.getGitRoot()
+        const fullPath = path.join(gitRoot, filePath)
         logger.info(`[GitSync] 回滚文件: ${filePath} <- ${commitHash}~1`)
 
         let restored = false

@@ -31,7 +31,7 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
   }
 
   async buildLocalManifest(): Promise<SyncManifest> {
-    const vaultPath = await this.getVaultPath()
+    const syncRoot = await this.getSyncRoot()
     const files = await this.scanLocalFiles()
     const manifest: SyncManifest = {
       version: SYNC_MANIFEST_VERSION,
@@ -41,7 +41,7 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
     }
 
     for (const relPath of files) {
-      const fullPath = path.join(vaultPath, relPath)
+      const fullPath = path.join(syncRoot, relPath)
       try {
         const hash = await this.computeFileHash(fullPath)
         const stat = await fs.promises.stat(fullPath)
@@ -57,8 +57,8 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
   }
 
   async getLocalManifest(): Promise<SyncManifest> {
-    const vaultPath = await this.getVaultPath()
-    const manifestPath = path.join(vaultPath, '.baishou', SYNC_MANIFEST_FILENAME)
+    const metaDir = await this.getSyncMetaDirectory()
+    const manifestPath = path.join(metaDir, SYNC_MANIFEST_FILENAME)
 
     if (fs.existsSync(manifestPath)) {
       const raw = await fs.promises.readFile(manifestPath, 'utf8')
@@ -85,13 +85,12 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
       return { version: SYNC_MANIFEST_VERSION, updatedAt: 0, deviceId: '', files: {} }
     }
 
-    const vaultPath = await this.getVaultPath()
+    const metaDir = await this.getSyncMetaDirectory()
     const tempPath = path.join(
-      vaultPath,
-      '.baishou',
+      metaDir,
       `temp-remote-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.json`
     )
-    await fs.promises.mkdir(path.join(vaultPath, '.baishou'), { recursive: true })
+    await fs.promises.mkdir(metaDir, { recursive: true })
     await this.cloudClient.downloadFile(manifestFile.filename, tempPath)
 
     try {
@@ -128,9 +127,9 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
 
   async getRemoteSnapshot(): Promise<SyncManifest> {
     await this.loadConfig()
-    const vaultPath = await this.getVaultPath()
-    const snapshotPath = path.join(vaultPath, '.baishou', SYNC_REMOTE_SNAPSHOT_FILENAME)
-    const storageIdPath = path.join(vaultPath, '.baishou', SYNC_STORAGE_ID_FILENAME)
+    const metaDir = await this.getSyncMetaDirectory()
+    const snapshotPath = path.join(metaDir, SYNC_REMOTE_SNAPSHOT_FILENAME)
+    const storageIdPath = path.join(metaDir, SYNC_STORAGE_ID_FILENAME)
     const currentStorageId = getIncrementalSyncStorageId(this.config)
 
     const empty: SyncManifest = {
@@ -171,15 +170,15 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
   }
 
   protected async saveLocalManifest(manifest: SyncManifest): Promise<void> {
-    const vaultPath = await this.getVaultPath()
-    const manifestPath = path.join(vaultPath, '.baishou', SYNC_MANIFEST_FILENAME)
-    await fs.promises.mkdir(path.join(vaultPath, '.baishou'), { recursive: true })
+    const metaDir = await this.getSyncMetaDirectory()
+    const manifestPath = path.join(metaDir, SYNC_MANIFEST_FILENAME)
+    await fs.promises.mkdir(metaDir, { recursive: true })
     await fs.promises.writeFile(manifestPath, JSON.stringify(manifest, null, 2), 'utf8')
   }
 
   protected async uploadManifest(): Promise<void> {
-    const vaultPath = await this.getVaultPath()
-    const manifestPath = path.join(vaultPath, '.baishou', SYNC_MANIFEST_FILENAME)
+    const metaDir = await this.getSyncMetaDirectory()
+    const manifestPath = path.join(metaDir, SYNC_MANIFEST_FILENAME)
     if (fs.existsSync(manifestPath)) {
       await this.cloudClient.uploadFile(manifestPath)
     }
@@ -187,25 +186,25 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
 
   protected async saveRemoteSnapshot(manifest: SyncManifest): Promise<void> {
     await this.loadConfig()
-    const vaultPath = await this.getVaultPath()
-    const snapshotPath = path.join(vaultPath, '.baishou', SYNC_REMOTE_SNAPSHOT_FILENAME)
-    const storageIdPath = path.join(vaultPath, '.baishou', SYNC_STORAGE_ID_FILENAME)
-    await fs.promises.mkdir(path.join(vaultPath, '.baishou'), { recursive: true })
+    const metaDir = await this.getSyncMetaDirectory()
+    const snapshotPath = path.join(metaDir, SYNC_REMOTE_SNAPSHOT_FILENAME)
+    const storageIdPath = path.join(metaDir, SYNC_STORAGE_ID_FILENAME)
+    await fs.promises.mkdir(metaDir, { recursive: true })
     await fs.promises.writeFile(snapshotPath, JSON.stringify(manifest, null, 2), 'utf8')
     await fs.promises.writeFile(storageIdPath, getIncrementalSyncStorageId(this.config), 'utf8')
   }
 
   protected async uploadFile(relPath: string): Promise<void> {
-    const vaultPath = await this.getVaultPath()
-    const fullPath = path.join(vaultPath, relPath)
+    const syncRoot = await this.getSyncRoot()
+    const fullPath = path.join(syncRoot, relPath)
     if (fs.existsSync(fullPath)) {
       await this.cloudClient.uploadFile(fullPath)
     }
   }
 
   protected async downloadFile(relPath: string): Promise<void> {
-    const vaultPath = await this.getVaultPath()
-    const fullPath = path.join(vaultPath, relPath)
+    const syncRoot = await this.getSyncRoot()
+    const fullPath = path.join(syncRoot, relPath)
     await fs.promises.mkdir(path.dirname(fullPath), { recursive: true })
     try {
       await this.cloudClient.downloadFile(relPath, fullPath)
@@ -230,8 +229,8 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
   }
 
   protected async deleteLocalFile(relPath: string): Promise<void> {
-    const vaultPath = await this.getVaultPath()
-    const fullPath = path.join(vaultPath, relPath)
+    const syncRoot = await this.getSyncRoot()
+    const fullPath = path.join(syncRoot, relPath)
     if (fs.existsSync(fullPath)) {
       if (this.versionManager) {
         try {
@@ -252,8 +251,8 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
 
   protected async backupFile(relPath: string, _hash: string): Promise<void> {
     if (!this.versionManager) return
-    const vaultPath = await this.getVaultPath()
-    const fullPath = path.join(vaultPath, relPath)
+    const syncRoot = await this.getSyncRoot()
+    const fullPath = path.join(syncRoot, relPath)
     if (fs.existsSync(fullPath)) {
       try {
         await this.versionManager.backup(fullPath)

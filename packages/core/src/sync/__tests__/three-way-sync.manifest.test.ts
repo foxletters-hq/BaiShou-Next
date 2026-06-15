@@ -20,12 +20,14 @@ describe('ThreeWaySyncManifestMixin.getRemoteSnapshot', () => {
   } as unknown as ICloudSyncClient
 
   const pathService = {
+    getRootDirectory: vi.fn(),
     getActiveVaultPath: vi.fn()
   } as unknown as IStoragePathService
 
   beforeEach(() => {
     vaultPath = fs.mkdtempSync(path.join(os.tmpdir(), 'baishou-sync-test-'))
-    vi.mocked(pathService.getActiveVaultPath).mockResolvedValue(vaultPath)
+    vi.mocked(pathService.getRootDirectory).mockResolvedValue(vaultPath)
+    vi.mocked(pathService.getActiveVaultPath).mockResolvedValue(path.join(vaultPath, 'Personal'))
     service = new ThreeWaySyncService(pathService, cloudClient, 'desktop-test')
 
     const baishouDir = path.join(vaultPath, '.baishou')

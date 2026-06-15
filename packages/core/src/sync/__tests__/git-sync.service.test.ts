@@ -281,10 +281,46 @@ describe('GitSyncService', () => {
     })
   })
 
+  describe('isExcludedFromVersionControl', () => {
+    it('excludes nested vault .baishou paths and root sync metadata', async () => {
+      const { isExcludedFromVersionControl } = await import('../git-sync.helpers')
+
+      expect(isExcludedFromVersionControl('Personal/Journals/a.md')).toBe(false)
+      expect(isExcludedFromVersionControl('Personal/.baishou/settings/x.json')).toBe(true)
+      expect(isExcludedFromVersionControl('.baishou/manifest.json')).toBe(true)
+      expect(isExcludedFromVersionControl('.baishou-s3.json')).toBe(true)
+      expect(isExcludedFromVersionControl('.baishou-git.json')).toBe(true)
+      expect(isExcludedFromVersionControl('Personal/.git.vault-legacy/config')).toBe(true)
+      expect(isExcludedFromVersionControl('Personal/.git.vault-legacy/hooks/commit-msg.sample')).toBe(
+        true
+      )
+    })
+  })
+
+  describe('parseGitlinkPathFromLsFilesLine', () => {
+    it('parses gitlink entries from ls-files -s output', async () => {
+      const { parseGitlinkPathFromLsFilesLine } = await import('../git-sync.helpers')
+      expect(
+        parseGitlinkPathFromLsFilesLine('160000 abc123 0\tPersonal')
+      ).toBe('Personal')
+      expect(parseGitlinkPathFromLsFilesLine('100644 abc123 0\tfoo.md')).toBeNull()
+    })
+  })
+
+  describe('parseDiffHunks', () => {
+    it('falls back to raw diff body when no @@ hunks exist', async () => {
+      const { parseDiffHunks } = await import('../git-sync.helpers')
+      const diff = 'diff --git a/Personal b/Personal\n--- a/Personal\n+++ b/Personal\n'
+      const hunks = parseDiffHunks(diff)
+      expect(hunks).toHaveLength(1)
+      expect(hunks[0]?.content).toContain('diff --git')
+    })
+  })
+
   describe('GitSyncServiceImpl - getStatus', () => {
     it('should correctly map untracked files from not_added instead of created', async () => {
       const mockPathService = {
-        getActiveVaultPath: vi.fn().mockResolvedValue('/mock/vault')
+        getRootDirectory: vi.fn().mockResolvedValue('/mock/storage-root')
       } as any
 
       const impl = new GitSyncServiceImpl(mockPathService)
@@ -303,7 +339,8 @@ describe('GitSyncService', () => {
 
       ;(impl as any).git = mockGit
       vi.spyOn(impl as any, 'ensureGit').mockResolvedValue(mockGit)
-      vi.spyOn(impl as any, 'untrackBaishouFiles').mockResolvedValue(false)
+      vi.spyOn(impl as any, 'sanitizeGitIndex').mockResolvedValue(false)
+      vi.spyOn(impl as any, 'repairVaultGitlinks').mockResolvedValue(false)
 
       const result = await impl.getStatus()
 

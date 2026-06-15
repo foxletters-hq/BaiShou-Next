@@ -93,8 +93,8 @@ export abstract class GitSyncCommitMixin extends GitSyncWorkspaceMixin {
   async commitStaged(message: string): Promise<GitCommit | null> {
     return this._withGitLock(async () => {
       const git = await this.ensureGit()
-      await this.untrackBaishouFiles(git)
-      const stagedPaths = this.filterVersionedPaths(await this.getCachedPaths(git))
+      await this.sanitizeGitIndex(git)
+      const stagedPaths = await this.filterCommittableCachedPaths(git)
       if (stagedPaths.length === 0) {
         return null
       }
@@ -102,11 +102,12 @@ export abstract class GitSyncCommitMixin extends GitSyncWorkspaceMixin {
       logger.info(`[GitSync] 提交 ${stagedPaths.length} 个已暂存文件`)
       try {
         const result = await git.commit(message)
+        const files = await this.getCommittedFileNames(git, result.commit)
         return {
           hash: result.commit,
           message,
           date: new Date(),
-          files: stagedPaths
+          files
         }
       } catch (error) {
         throw new GitCommitError(error instanceof Error ? error : undefined)
@@ -119,14 +120,11 @@ export abstract class GitSyncCommitMixin extends GitSyncWorkspaceMixin {
 
     try {
       await this.ensureGitignore()
-      await this.untrackBaishouFiles(git)
+      await this.sanitizeGitIndex(git)
 
-      let stagedPaths = this.filterVersionedPaths(await this.getCachedPaths(git))
-      if (stagedPaths.length === 0) {
-        logger.info('[GitSync] 无暂存文件，自动暂存 Changes 中的变更')
-        await this.stagePendingChanges(git)
-        stagedPaths = this.filterVersionedPaths(await this.getCachedPaths(git))
-      }
+      logger.info('[GitSync] 暂存工作区变更后提交')
+      await this.stagePendingChanges(git)
+      const stagedPaths = await this.filterCommittableCachedPaths(git)
 
       if (stagedPaths.length === 0) {
         return null
@@ -134,12 +132,13 @@ export abstract class GitSyncCommitMixin extends GitSyncWorkspaceMixin {
 
       logger.info(`[GitSync] 提交 ${stagedPaths.length} 个文件`)
       const result = await git.commit(message)
+      const files = await this.getCommittedFileNames(git, result.commit)
 
       return {
         hash: result.commit,
         message,
         date: new Date(),
-        files: stagedPaths
+        files
       }
     } catch (error) {
       throw new GitCommitError(error instanceof Error ? error : undefined)

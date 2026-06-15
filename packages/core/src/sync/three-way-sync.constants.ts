@@ -1,5 +1,6 @@
 import type { S3SyncConfig } from '@baishou/shared'
 import {
+  DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH,
   SYNC_CONFIG_FILENAME,
   SYNC_MANIFEST_FILENAME,
   SYNC_REMOTE_SNAPSHOT_FILENAME
@@ -13,7 +14,7 @@ export const DEFAULT_S3_SYNC_CONFIG: S3SyncConfig = {
   endpoint: '',
   region: '',
   bucket: '',
-  path: 'backup_sync',
+  path: DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH,
   accessKey: '',
   secretKey: '',
   chunkConcurrency: 5,

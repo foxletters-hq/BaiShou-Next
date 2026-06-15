@@ -4,12 +4,12 @@ import * as crypto from 'crypto'
 import type { S3SyncConfig } from '@baishou/shared'
 import {
   shouldIncludeIncrementalSyncFile,
-  shouldScanIncrementalSyncDirectory
+  shouldScanIncrementalSyncDirectory,
+  migrateLegacyIncrementalSyncConfig
 } from '@baishou/shared'
 import type { ICloudSyncClient } from '../network/cloud-sync.interface'
 import type { IStoragePathService } from '../vault/storage-path.types'
 import type { IVersionManager } from './version-manager.interface'
-import { S3SyncError } from './sync.errors'
 import { DEFAULT_S3_SYNC_CONFIG, S3_CONFIG_FILE } from './three-way-sync.constants'
 
 export abstract class ThreeWaySyncCore {
@@ -24,17 +24,33 @@ export abstract class ThreeWaySyncCore {
     protected readonly versionManager?: IVersionManager
   ) {}
 
-  protected async getVaultPath(): Promise<string> {
+  /** 增量同步根：全部工作区所在的存储根目录 */
+  protected async getSyncRoot(): Promise<string> {
+    return this.pathService.getRootDirectory()
+  }
+
+  protected async getSyncMetaDirectory(): Promise<string> {
+    const root = await this.getSyncRoot()
+    return path.join(root, '.baishou')
+  }
+
+  protected async ensureRootConfigPath(): Promise<string> {
+    const root = await this.getSyncRoot()
     const vaultPath = await this.pathService.getActiveVaultPath()
-    if (!vaultPath) {
-      throw new S3SyncError('No active vault found')
-    }
-    return vaultPath
+    return migrateLegacyIncrementalSyncConfig(root, vaultPath, {
+      exists: (p) => fs.existsSync(p),
+      read: (p) => fs.promises.readFile(p, 'utf8'),
+      write: (p, content) => fs.promises.writeFile(p, content, 'utf8'),
+      unlink: (p) => fs.promises.unlink(p)
+    })
+  }
+
+  protected async resolveConfigPath(): Promise<string> {
+    return this.ensureRootConfigPath()
   }
 
   protected async loadConfig(): Promise<void> {
-    const vaultPath = await this.getVaultPath()
-    const configPath = path.join(vaultPath, this.configFileName)
+    const configPath = await this.ensureRootConfigPath()
 
     if (fs.existsSync(configPath)) {
       try {
@@ -48,8 +64,7 @@ export abstract class ThreeWaySyncCore {
   }
 
   protected async saveConfig(): Promise<void> {
-    const vaultPath = await this.getVaultPath()
-    const configPath = path.join(vaultPath, this.configFileName)
+    const configPath = await this.ensureRootConfigPath()
     await fs.promises.writeFile(configPath, JSON.stringify(this.config, null, 2), 'utf8')
   }
 
@@ -59,14 +74,14 @@ export abstract class ThreeWaySyncCore {
   }
 
   protected async scanLocalFiles(): Promise<string[]> {
-    const vaultPath = await this.getVaultPath()
+    const syncRoot = await this.getSyncRoot()
     const files: string[] = []
 
     const scan = async (dir: string, relativePath: string) => {
       const entries = await fs.promises.readdir(dir, { withFileTypes: true })
       for (const entry of entries) {
         const fullPath = path.join(dir, entry.name)
-        const relPath = path.join(relativePath, entry.name)
+        const relPath = relativePath ? path.join(relativePath, entry.name) : entry.name
         if (entry.isDirectory()) {
           if (shouldScanIncrementalSyncDirectory(entry.name, relPath)) {
             await scan(fullPath, relPath)
@@ -77,7 +92,7 @@ export abstract class ThreeWaySyncCore {
       }
     }
 
-    await scan(vaultPath, '')
+    await scan(syncRoot, '')
     return files
   }
 }

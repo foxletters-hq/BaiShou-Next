@@ -8,8 +8,8 @@ export abstract class GitSyncInitMixin extends GitSyncInternalBase {
   async init(): Promise<void> {
     return this._withGitLock(async () => {
       try {
-        const vaultPath = await this.getVaultPath()
-        logger.info(`[GitSync] 正在初始化 Git 仓库: ${vaultPath}`)
+        const gitRoot = await this.getGitRoot()
+        logger.info(`[GitSync] 正在初始化 Git 仓库（全部工作区）: ${gitRoot}`)
         const git = await this.ensureGit()
         await git.init()
         await this.ensureGitignore()
@@ -40,7 +40,7 @@ export abstract class GitSyncInitMixin extends GitSyncInternalBase {
           } catch {}
         }
 
-        logger.info(`[GitSync] Git 仓库初始化成功: ${vaultPath}`)
+        logger.info(`[GitSync] Git 仓库初始化成功: ${gitRoot}`)
       } catch (error) {
         logger.error(`[GitSync] Git 仓库初始化失败: ${error}`)
         throw new GitInitError(error instanceof Error ? error : undefined)
@@ -50,8 +50,8 @@ export abstract class GitSyncInitMixin extends GitSyncInternalBase {
 
   async isInitialized(): Promise<boolean> {
     try {
-      const vaultPath = await this.getVaultPath()
-      return fs.existsSync(path.join(vaultPath, '.git'))
+      const gitRoot = await this.getGitRoot()
+      return fs.existsSync(path.join(gitRoot, '.git'))
     } catch {
       return false
     }

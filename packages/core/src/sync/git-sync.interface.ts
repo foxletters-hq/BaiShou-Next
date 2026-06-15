@@ -16,7 +16,7 @@ export interface IGitSyncService {
 
   /**
    * 初始化 Git 仓库（如果尚未初始化）
-   * 在 Vault 根目录执行 git init
+   * 在存储根目录执行 git init，管理其下全部工作区（Vault）
    * @throws {GitInitError} 初始化失败
    */
   init(): Promise<void>

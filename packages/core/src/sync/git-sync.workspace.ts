@@ -8,7 +8,15 @@ export abstract class GitSyncWorkspaceMixin extends GitSyncInitMixin {
   async getStatus(): Promise<GitStatus> {
     const git = await this.ensureGit()
 
-    if (await this.untrackBaishouFiles(git)) {
+    if (await this.sanitizeGitIndex(git)) {
+      return this.getStatus()
+    }
+
+    if (await this.repairVaultGitlinks(git)) {
+      return this.getStatus()
+    }
+
+    if (await this.sanitizeGitIndex(git)) {
       return this.getStatus()
     }
 
@@ -56,6 +64,7 @@ export abstract class GitSyncWorkspaceMixin extends GitSyncInitMixin {
   async stageFile(filePath: string): Promise<void> {
     return this._withGitLock(async () => {
       const git = await this.ensureGit()
+      await this.repairVaultGitlinks(git)
       logger.info(`[GitSync] 暂存文件: ${filePath}`)
       await git.add(filePath)
     })

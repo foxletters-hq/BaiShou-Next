@@ -52,16 +52,75 @@ export function mapWorkingStatus(status: string): FileChange['status'] | '' {
   }
 }
 
-export function isExcludedFromVersionControl(filePath: string): boolean {
+function normalizeGitPath(filePath: string): string {
+  return filePath.replace(/\\/g, '/')
+}
+
+export function isBaishouManagedPath(filePath: string): boolean {
+  const normalized = normalizeGitPath(filePath)
   return (
-    filePath.startsWith('.baishou/') ||
-    filePath.startsWith('.versions/') ||
-    filePath.endsWith('.db') ||
-    filePath.endsWith('.db-shm') ||
-    filePath.endsWith('.db-wal') ||
-    filePath.endsWith('.db-journal') ||
-    filePath.endsWith('.probe')
+    normalized === '.baishou-s3.json' ||
+    normalized.endsWith('/.baishou-s3.json') ||
+    normalized === '.baishou-git.json' ||
+    normalized.endsWith('/.baishou-git.json') ||
+    normalized.startsWith('.baishou/') ||
+    normalized.includes('/.baishou/') ||
+    normalized.endsWith('/.baishou')
   )
+}
+
+export function isVaultLegacyGitPath(filePath: string): boolean {
+  const normalized = normalizeGitPath(filePath)
+  return (
+    normalized.includes('/.git.vault-legacy/') ||
+    normalized.endsWith('/.git.vault-legacy') ||
+    normalized.startsWith('.git.vault-legacy/')
+  )
+}
+
+export function isExcludedFromVersionControl(filePath: string): boolean {
+  const normalized = normalizeGitPath(filePath)
+  if (isBaishouManagedPath(normalized)) {
+    return true
+  }
+  if (isVaultLegacyGitPath(normalized)) {
+    return true
+  }
+  if (
+    normalized.startsWith('.versions/') ||
+    normalized.includes('/.versions/') ||
+    normalized.endsWith('/.versions')
+  ) {
+    return true
+  }
+  if (
+    normalized === 'snapshots' ||
+    normalized.startsWith('snapshots/') ||
+    normalized === 'temp' ||
+    normalized.startsWith('temp/') ||
+    normalized === '.snapshots' ||
+    normalized.startsWith('.snapshots/')
+  ) {
+    return true
+  }
+  const base = normalized.split('/').pop() ?? normalized
+  return (
+    base.endsWith('.db') ||
+    base.endsWith('.db-shm') ||
+    base.endsWith('.db-wal') ||
+    base.endsWith('.db-journal') ||
+    base.endsWith('.probe')
+  )
+}
+
+export const GITLINK_MODE = '160000'
+
+/** 从 `git ls-files -s` 行解析 gitlink（子模块指针）路径 */
+export function parseGitlinkPathFromLsFilesLine(line: string): string | null {
+  const trimmed = line.trim()
+  if (!trimmed) return null
+  const match = /^160000 \S+ \d+\t(.+)$/.exec(trimmed)
+  return match?.[1] ?? null
 }
 
 export function parseDiffHunks(diff: string): FileDiff['hunks'] {
@@ -88,6 +147,11 @@ export function parseDiffHunks(diff: string): FileDiff['hunks'] {
 
   if (hunks.length > 0) {
     hunks[hunks.length - 1]!.content = diff.substring(lastIndex)
+  }
+
+  const body = diff.trim()
+  if (hunks.length === 0 && body) {
+    return [{ oldStart: 0, oldLines: 0, newStart: 0, newLines: 0, content: body }]
   }
 
   return hunks

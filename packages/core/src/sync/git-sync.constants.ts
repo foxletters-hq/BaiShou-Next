@@ -4,19 +4,31 @@ export const DEFAULT_GIT_SYNC_CONFIG: GitSyncConfig = {
   enabled: false
 }
 
-export const GITIGNORE_CONTENT = `# SQLite 数据库
+/** 存储根 `.gitignore`：覆盖全部工作区（Vault） */
+export const GITIGNORE_CONTENT = `# 增量同步配置与元数据（存储根）
+.baishou/
+.baishou-s3.json
+.baishou-git.json
+
+# 工作区嵌套 Git 归档（修复子模块/gitlink 时产生，勿入库）
+**/.git.vault-legacy/
+
+# SQLite 数据库（任意位置）
 *.db
 *.db-journal
 *.db-wal
 *.db-shm
 
-# 应用数据目录（由 BaiShou 管理，不作为日记内容版本化）
-.baishou/
+# 各工作区内的应用数据目录（settings 等由增量同步管理）
+**/.baishou/
 
-# 版本备份（由 Git 本身管理历史）
-.versions/
+# 冲突备份目录
+**/.versions/
 
-# 临时文件
+# 本地快照与临时文件
+snapshots/
+temp/
+.snapshots/
 *.tmp
 .DS_Store
 Thumbs.db
