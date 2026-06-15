@@ -54,29 +54,29 @@ export const GitStagedSection: React.FC<GitStagedSectionProps> = ({ vm }) => {
             gitStatus!.staged.map((file) => {
               const canDiff = isTextDiffablePath(file.path)
               return (
-              <div key={file.path}>
-                <div
-                  className={`gmp-file-row ${canDiff ? 'gmp-file-row-clickable' : ''}`}
-                  onClick={canDiff ? () => handleViewWorkingDiff(file.path, true) : undefined}
-                >
-                  <span className={`gmp-file-badge gmp-file-${file.stagedStatus}`}>
-                    {getFileStatusIcon(file.stagedStatus)}
-                  </span>
-                  <span className="gmp-file-path">{file.path}</span>
-                  <button
-                    className="gmp-btn-tiny"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleUnstageFile(file.path)
-                    }}
+                <div key={file.path}>
+                  <div
+                    className={`gmp-file-row ${canDiff ? 'gmp-file-row-clickable' : ''}`}
+                    onClick={canDiff ? () => handleViewWorkingDiff(file.path, true) : undefined}
                   >
-                    {t('version_control.unstage', '取消暂存')}
-                  </button>
+                    <span className={`gmp-file-badge gmp-file-${file.stagedStatus}`}>
+                      {getFileStatusIcon(file.stagedStatus)}
+                    </span>
+                    <span className="gmp-file-path">{file.path}</span>
+                    <button
+                      className="gmp-btn-tiny"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleUnstageFile(file.path)
+                      }}
+                    >
+                      {t('version_control.unstage', '取消暂存')}
+                    </button>
+                  </div>
+                  {expandedWorkingFile?.path === file.path &&
+                    expandedWorkingFile.staged &&
+                    workingFileDiff && <GitDiffViewer diff={workingFileDiff} />}
                 </div>
-                {expandedWorkingFile?.path === file.path &&
-                  expandedWorkingFile.staged &&
-                  workingFileDiff && <GitDiffViewer diff={workingFileDiff} />}
-              </div>
               )
             })
           )}
