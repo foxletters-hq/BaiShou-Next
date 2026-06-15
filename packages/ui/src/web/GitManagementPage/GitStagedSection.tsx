@@ -1,6 +1,6 @@
 import React from 'react'
 import type { GitManagementViewModel } from './useGitManagementPage'
-import { getFileStatusIcon } from './git-management.utils'
+import { getFileStatusIcon, isTextDiffablePath } from './git-management.utils'
 import { GitDiffViewer } from './GitDiffViewer'
 
 export interface GitStagedSectionProps {
@@ -51,11 +51,13 @@ export const GitStagedSection: React.FC<GitStagedSectionProps> = ({ vm }) => {
               {t('version_control.no_staged_changes', '没有已暂存的变更')}
             </div>
           ) : (
-            gitStatus!.staged.map((file) => (
+            gitStatus!.staged.map((file) => {
+              const canDiff = isTextDiffablePath(file.path)
+              return (
               <div key={file.path}>
                 <div
-                  className="gmp-file-row gmp-file-row-clickable"
-                  onClick={() => handleViewWorkingDiff(file.path, true)}
+                  className={`gmp-file-row ${canDiff ? 'gmp-file-row-clickable' : ''}`}
+                  onClick={canDiff ? () => handleViewWorkingDiff(file.path, true) : undefined}
                 >
                   <span className={`gmp-file-badge gmp-file-${file.stagedStatus}`}>
                     {getFileStatusIcon(file.stagedStatus)}
@@ -75,7 +77,8 @@ export const GitStagedSection: React.FC<GitStagedSectionProps> = ({ vm }) => {
                   expandedWorkingFile.staged &&
                   workingFileDiff && <GitDiffViewer diff={workingFileDiff} />}
               </div>
-            ))
+              )
+            })
           )}
         </div>
       )}

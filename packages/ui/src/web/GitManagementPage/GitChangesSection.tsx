@@ -1,6 +1,6 @@
 import React from 'react'
 import type { GitManagementViewModel } from './useGitManagementPage'
-import { getFileStatusIcon } from './git-management.utils'
+import { getFileStatusIcon, isTextDiffablePath } from './git-management.utils'
 import { GitDiffViewer } from './GitDiffViewer'
 
 export interface GitChangesSectionProps {
@@ -61,11 +61,13 @@ export const GitChangesSection: React.FC<GitChangesSectionProps> = ({ vm }) => {
             <div className="gmp-section-empty">{t('version_control.no_changes', '没有变更')}</div>
           ) : (
             <>
-              {gitStatus!.unstaged.map((file) => (
+              {gitStatus!.unstaged.map((file) => {
+                const canDiff = isTextDiffablePath(file.path)
+                return (
                 <div key={file.path}>
                   <div
-                    className="gmp-file-row gmp-file-row-clickable"
-                    onClick={() => handleViewWorkingDiff(file.path, false)}
+                    className={`gmp-file-row ${canDiff ? 'gmp-file-row-clickable' : ''}`}
+                    onClick={canDiff ? () => handleViewWorkingDiff(file.path, false) : undefined}
                   >
                     <span className={`gmp-file-badge gmp-file-${file.unstagedStatus}`}>
                       {getFileStatusIcon(file.unstagedStatus)}
@@ -94,22 +96,34 @@ export const GitChangesSection: React.FC<GitChangesSectionProps> = ({ vm }) => {
                     !expandedWorkingFile.staged &&
                     workingFileDiff && <GitDiffViewer diff={workingFileDiff} />}
                 </div>
-              ))}
-              {gitStatus!.untracked.map((file) => (
-                <div key={file} className="gmp-file-row">
-                  <span className="gmp-file-badge gmp-file-untracked">U</span>
-                  <span className="gmp-file-path">{file}</span>
-                  <button
-                    className="gmp-btn-tiny"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleStageFile(file)
-                    }}
+                )
+              })}
+              {gitStatus!.untracked.map((file) => {
+                const canDiff = isTextDiffablePath(file)
+                return (
+                <div key={file}>
+                  <div
+                    className={`gmp-file-row ${canDiff ? 'gmp-file-row-clickable' : ''}`}
+                    onClick={canDiff ? () => handleViewWorkingDiff(file, false) : undefined}
                   >
-                    {t('version_control.stage', '暂存')}
-                  </button>
+                    <span className="gmp-file-badge gmp-file-untracked">U</span>
+                    <span className="gmp-file-path">{file}</span>
+                    <button
+                      className="gmp-btn-tiny"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleStageFile(file)
+                      }}
+                    >
+                      {t('version_control.stage', '暂存')}
+                    </button>
+                  </div>
+                  {expandedWorkingFile?.path === file &&
+                    !expandedWorkingFile.staged &&
+                    workingFileDiff && <GitDiffViewer diff={workingFileDiff} />}
                 </div>
-              ))}
+                )
+              })}
             </>
           )}
         </div>

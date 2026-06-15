@@ -1,6 +1,7 @@
 import React from 'react'
 import { PageSizeSelector, Pagination } from '@baishou/ui'
 import type { GitManagementViewModel } from './useGitManagementPage'
+import { isTextDiffablePath } from './git-management.utils'
 import { GitDiffViewer } from './GitDiffViewer'
 
 export interface GitCommitsSectionProps {
@@ -85,11 +86,13 @@ export const GitCommitsSection: React.FC<GitCommitsSectionProps> = ({ vm }) => {
 
                       {expandedCommit === entry.commit.hash && (
                         <div className="gmp-tl-changes">
-                          {commitChanges.map((change) => (
+                          {commitChanges.map((change) => {
+                            const canDiff = isTextDiffablePath(change.path)
+                            return (
                             <div key={change.path} className="gmp-tl-file">
                               <div
-                                className="gmp-tl-file-header"
-                                onClick={() => handleViewDiff(change.path)}
+                                className={`gmp-tl-file-header ${canDiff ? 'gmp-file-row-clickable' : ''}`}
+                                onClick={canDiff ? () => handleViewDiff(change.path) : undefined}
                               >
                                 <span className={`gmp-tl-file-icon gmp-tl-file-${change.status}`}>
                                   {change.status === 'added'
@@ -108,7 +111,8 @@ export const GitCommitsSection: React.FC<GitCommitsSectionProps> = ({ vm }) => {
                                 <GitDiffViewer diff={selectedFileDiff} />
                               )}
                             </div>
-                          ))}
+                            )
+                          })}
                         </div>
                       )}
                     </div>

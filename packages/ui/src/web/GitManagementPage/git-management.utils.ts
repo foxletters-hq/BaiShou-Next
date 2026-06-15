@@ -1,3 +1,7 @@
+import { isTextDiffablePath } from '@baishou/shared'
+
+export { isTextDiffablePath }
+
 export function getFileStatusIcon(status: string) {
   switch (status) {
     case 'added':

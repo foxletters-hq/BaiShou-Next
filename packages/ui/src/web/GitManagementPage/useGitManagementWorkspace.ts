@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import type { TFunction } from 'i18next'
+import { isTextDiffablePath } from '@baishou/shared'
 import type { GitManagementPageProps } from './git-management.types'
 import type { FileChange, FileDiff } from '@baishou/shared'
 
@@ -79,6 +80,7 @@ export function useGitManagementWorkspace(params: UseGitManagementWorkspaceParam
 
   const handleViewDiff = useCallback(
     async (filePath: string) => {
+      if (!isTextDiffablePath(filePath)) return
       if (expandedFile === filePath) {
         setExpandedFile(null)
         setSelectedFileDiff(null)
@@ -93,6 +95,7 @@ export function useGitManagementWorkspace(params: UseGitManagementWorkspaceParam
 
   const handleViewWorkingDiff = useCallback(
     async (filePath: string, staged: boolean) => {
+      if (!isTextDiffablePath(filePath)) return
       if (expandedWorkingFile?.path === filePath && expandedWorkingFile.staged === staged) {
         setExpandedWorkingFile(null)
         setWorkingFileDiff(null)
