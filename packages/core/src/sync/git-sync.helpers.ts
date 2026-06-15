@@ -1,4 +1,16 @@
 import type { FileChange, FileDiff } from '@baishou/shared'
+import {
+  isBinaryDiffPath,
+  isTextDiffablePath,
+  normalizeGitPath as sharedNormalizeGitPath
+} from '@baishou/shared'
+
+export { isBinaryDiffPath, isTextDiffablePath }
+export const normalizeGitPath = sharedNormalizeGitPath
+
+export function pathsEqual(a: string, b: string): boolean {
+  return sharedNormalizeGitPath(a) === sharedNormalizeGitPath(b)
+}
 
 export function getAuthenticatedUrl(url: string, username?: string, token?: string): string {
   const isHttp = url.startsWith('http://')
@@ -52,8 +64,26 @@ export function mapWorkingStatus(status: string): FileChange['status'] | '' {
   }
 }
 
-function normalizeGitPath(filePath: string): string {
-  return filePath.replace(/\\/g, '/')
+/** 将新文件全文构造成可展示的 diff hunk（用于未跟踪文件等场景） */
+export function buildNewFileDiffHunks(content: string): FileDiff['hunks'] {
+  if (!content) {
+    return [{ oldStart: 0, oldLines: 0, newStart: 0, newLines: 0, content: '' }]
+  }
+
+  const hasTrailingNewline = content.endsWith('\n')
+  const lines = hasTrailingNewline ? content.slice(0, -1).split('\n') : content.split('\n')
+  const lineCount = Math.max(lines.length, 1)
+  const body = lines.map((line) => `+${line}`).join('\n')
+
+  return [
+    {
+      oldStart: 0,
+      oldLines: 0,
+      newStart: 1,
+      newLines: lineCount,
+      content: body
+    }
+  ]
 }
 
 export function isBaishouManagedPath(filePath: string): boolean {
@@ -115,12 +145,70 @@ export function isExcludedFromVersionControl(filePath: string): boolean {
 
 export const GITLINK_MODE = '160000'
 
+/**
+ * 解码 `git ls-files` 等命令输出的 C 风格引号路径。
+ * 例如 `"\346\230\257"` → `是`
+ */
+export function unquoteGitPath(filePath: string): string {
+  const trimmed = filePath.trim()
+  if (!trimmed.startsWith('"') || !trimmed.endsWith('"') || trimmed.length < 2) {
+    return trimmed
+  }
+
+  const inner = trimmed.slice(1, -1)
+  const bytes: number[] = []
+
+  for (let i = 0; i < inner.length; i++) {
+    const ch = inner[i]!
+    if (ch !== '\\' || i + 1 >= inner.length) {
+      bytes.push(ch.charCodeAt(0) & 0xff)
+      continue
+    }
+
+    const next = inner[i + 1]!
+    if (next >= '0' && next <= '7') {
+      const octal = inner.slice(i + 1, i + 4)
+      if (/^[0-7]{3}$/.test(octal)) {
+        bytes.push(parseInt(octal, 8))
+        // 仅跳过 3 位八进制；for 循环末尾的 i++ 会越过前导反斜杠
+        i += octal.length
+        continue
+      }
+    }
+
+    switch (next) {
+      case 'n':
+        bytes.push(0x0a)
+        break
+      case 't':
+        bytes.push(0x09)
+        break
+      case 'r':
+        bytes.push(0x0d)
+        break
+      case '\\':
+        bytes.push(0x5c)
+        break
+      case '"':
+        bytes.push(0x22)
+        break
+      default:
+        bytes.push(next.charCodeAt(0) & 0xff)
+        break
+    }
+    i++
+  }
+
+  return new TextDecoder().decode(new Uint8Array(bytes))
+}
+
 /** 从 `git ls-files -s` 行解析 gitlink（子模块指针）路径 */
 export function parseGitlinkPathFromLsFilesLine(line: string): string | null {
   const trimmed = line.trim()
   if (!trimmed) return null
   const match = /^160000 \S+ \d+\t(.+)$/.exec(trimmed)
-  return match?.[1] ?? null
+  if (!match?.[1]) return null
+  return unquoteGitPath(match[1])
 }
 
 export function parseDiffHunks(diff: string): FileDiff['hunks'] {

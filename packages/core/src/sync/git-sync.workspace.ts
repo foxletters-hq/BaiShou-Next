@@ -6,65 +6,56 @@ import { mapWorkingStatus } from './git-sync.helpers'
 
 export abstract class GitSyncWorkspaceMixin extends GitSyncInitMixin {
   async getStatus(): Promise<GitStatus> {
-    const git = await this.ensureGit()
+    return this._withGitLock(async () => {
+      const git = await this.ensureGit()
+      await this.maintainGitIndex(git)
 
-    if (await this.sanitizeGitIndex(git)) {
-      return this.getStatus()
-    }
+      const status = await git.status()
 
-    if (await this.repairVaultGitlinks(git)) {
-      return this.getStatus()
-    }
+      const staged: GitStatusFile[] = []
+      const unstaged: GitStatusFile[] = []
 
-    if (await this.sanitizeGitIndex(git)) {
-      return this.getStatus()
-    }
+      for (const file of status.files) {
+        if (this.isExcludedFromVersionControl(file.path)) {
+          continue
+        }
+        if (file.index === '?' || file.working_dir === '?') {
+          continue
+        }
+        const stagedStatus = mapWorkingStatus(file.index)
+        const unstagedStatus = mapWorkingStatus(file.working_dir)
 
-    const status = await git.status()
+        if (stagedStatus !== '') {
+          staged.push({
+            path: file.path,
+            stagedStatus,
+            unstagedStatus: ''
+          })
+        }
 
-    const staged: GitStatusFile[] = []
-    const unstaged: GitStatusFile[] = []
-
-    for (const file of status.files) {
-      if (this.isExcludedFromVersionControl(file.path)) {
-        continue
+        if (unstagedStatus !== '') {
+          unstaged.push({
+            path: file.path,
+            stagedStatus: '',
+            unstagedStatus
+          })
+        }
       }
-      if (file.index === '?' || file.working_dir === '?') {
-        continue
-      }
-      const stagedStatus = mapWorkingStatus(file.index)
-      const unstagedStatus = mapWorkingStatus(file.working_dir)
 
-      if (stagedStatus !== '') {
-        staged.push({
-          path: file.path,
-          stagedStatus,
-          unstagedStatus: ''
-        })
+      return {
+        staged,
+        unstaged,
+        untracked: status.not_added.filter((p) => !this.isExcludedFromVersionControl(p)),
+        conflicted: status.conflicted,
+        hasChanges: !status.isClean()
       }
-
-      if (unstagedStatus !== '') {
-        unstaged.push({
-          path: file.path,
-          stagedStatus: '',
-          unstagedStatus
-        })
-      }
-    }
-
-    return {
-      staged,
-      unstaged,
-      untracked: status.not_added.filter((p) => !this.isExcludedFromVersionControl(p)),
-      conflicted: status.conflicted,
-      hasChanges: !status.isClean()
-    }
+    })
   }
 
   async stageFile(filePath: string): Promise<void> {
     return this._withGitLock(async () => {
       const git = await this.ensureGit()
-      await this.repairVaultGitlinks(git)
+      await this.maintainGitIndex(git)
       logger.info(`[GitSync] 暂存文件: ${filePath}`)
       await git.add(filePath)
     })

@@ -5,7 +5,13 @@ import type { FileChange, FileDiff, VersionHistoryEntry } from '@baishou/shared'
 import type { SimpleGit } from 'simple-git'
 import { GitRollbackError } from './sync.errors'
 import { GitSyncCommitMixin } from './git-sync.commit'
-import { mapStatusToType, parseDiffHunks } from './git-sync.helpers'
+import {
+  buildNewFileDiffHunks,
+  isTextDiffablePath,
+  mapStatusToType,
+  parseDiffHunks,
+  pathsEqual
+} from './git-sync.helpers'
 
 export abstract class GitSyncHistoryMixin extends GitSyncCommitMixin {
   async getHistory(filePath?: string, limit = 50): Promise<VersionHistoryEntry[]> {
@@ -89,22 +95,69 @@ export abstract class GitSyncHistoryMixin extends GitSyncCommitMixin {
   }
 
   async getFileDiff(filePath: string, commitHash?: string): Promise<FileDiff> {
+    if (!isTextDiffablePath(filePath)) {
+      return { path: filePath, hunks: [] }
+    }
+
     const git = await this.ensureGit()
 
-    const args = commitHash
-      ? [`${commitHash}~1`, commitHash, '--', filePath]
-      : ['HEAD~1', 'HEAD', '--', filePath]
+    const toFileDiff = (diff: string): FileDiff => ({
+      path: filePath,
+      hunks: parseDiffHunks(diff)
+    })
+
+    if (commitHash) {
+      try {
+        const diff = await git.diff([`${commitHash}~1`, commitHash, '--', filePath])
+        if (diff.trim()) {
+          return toFileDiff(diff)
+        }
+      } catch {
+        // 可能是首次提交（无父 commit），回退到 git show
+      }
+
+      try {
+        const diff = await git.diff(['--root', commitHash, '--', filePath])
+        if (diff.trim()) {
+          return toFileDiff(diff)
+        }
+      } catch {
+        return { path: filePath, hunks: [] }
+      }
+
+      return { path: filePath, hunks: [] }
+    }
 
     try {
-      const diff = await git.diff(args)
-      return { path: filePath, hunks: parseDiffHunks(diff) }
+      const diff = await git.diff(['HEAD~1', 'HEAD', '--', filePath])
+      return toFileDiff(diff)
     } catch {
       return { path: filePath, hunks: [] }
     }
   }
 
   async getWorkingDiff(filePath: string, staged: boolean): Promise<FileDiff> {
+    if (!isTextDiffablePath(filePath)) {
+      return { path: filePath, hunks: [] }
+    }
+
     const git = await this.ensureGit()
+
+    if (!staged) {
+      const status = await git.status()
+      const isUntracked = status.not_added.some((p) => pathsEqual(p, filePath))
+      if (isUntracked) {
+        try {
+          const gitRoot = await this.getGitRoot()
+          const fullPath = path.join(gitRoot, filePath)
+          const content = await fs.promises.readFile(fullPath, 'utf8')
+          return { path: filePath, hunks: buildNewFileDiffHunks(content) }
+        } catch {
+          return { path: filePath, hunks: [] }
+        }
+      }
+    }
+
     const args = staged
       ? ['--cached', '--submodule=short', '--', filePath]
       : ['--submodule=short', '--', filePath]

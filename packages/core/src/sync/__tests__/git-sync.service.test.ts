@@ -303,6 +303,19 @@ describe('GitSyncService', () => {
       expect(parseGitlinkPathFromLsFilesLine('160000 abc123 0\tPersonal')).toBe('Personal')
       expect(parseGitlinkPathFromLsFilesLine('100644 abc123 0\tfoo.md')).toBeNull()
     })
+
+    it('decodes quoted non-ascii gitlink paths from ls-files -s output', async () => {
+      const { parseGitlinkPathFromLsFilesLine } = await import('../git-sync.helpers')
+      expect(parseGitlinkPathFromLsFilesLine('160000 abc123 0\t"\\346\\230\\257"')).toBe('是')
+    })
+  })
+
+  describe('unquoteGitPath', () => {
+    it('decodes git-style quoted paths', async () => {
+      const { unquoteGitPath } = await import('../git-sync.helpers')
+      expect(unquoteGitPath('"\\346\\230\\257"')).toBe('是')
+      expect(unquoteGitPath('plain/path.md')).toBe('plain/path.md')
+    })
   })
 
   describe('parseDiffHunks', () => {
@@ -312,6 +325,143 @@ describe('GitSyncService', () => {
       const hunks = parseDiffHunks(diff)
       expect(hunks).toHaveLength(1)
       expect(hunks[0]?.content).toContain('diff --git')
+    })
+  })
+
+  describe('buildNewFileDiffHunks', () => {
+    it('builds all-addition hunks for new file content', async () => {
+      const { buildNewFileDiffHunks } = await import('../git-sync.helpers')
+      const hunks = buildNewFileDiffHunks('hello\nworld\n')
+      expect(hunks).toHaveLength(1)
+      expect(hunks[0]).toMatchObject({
+        oldStart: 0,
+        oldLines: 0,
+        newStart: 1,
+        newLines: 2
+      })
+      expect(hunks[0]?.content).toBe('+hello\n+world')
+    })
+  })
+
+  describe('GitSyncServiceImpl - getWorkingDiff', () => {
+    it('returns full content diff for untracked files', async () => {
+      const mockPathService = {
+        getRootDirectory: vi.fn().mockResolvedValue('/mock/storage-root')
+      } as any
+
+      const impl = new GitSyncServiceImpl(mockPathService)
+      const filePath = 'Journals/2026/05/2026-05-27.md'
+
+      const mockGit = {
+        status: vi.fn().mockResolvedValue({
+          not_added: [filePath]
+        }),
+        diff: vi.fn()
+      } as any
+
+      ;(impl as any).git = mockGit
+      vi.spyOn(impl as any, 'ensureGit').mockResolvedValue(mockGit)
+      vi.spyOn(impl as any, 'getGitRoot').mockResolvedValue('/mock/storage-root')
+
+      const fs = await import('fs')
+      vi.spyOn(fs.promises, 'readFile').mockResolvedValue('# New diary\n')
+
+      const result = await impl.getWorkingDiff(filePath, false)
+
+      expect(mockGit.diff).not.toHaveBeenCalled()
+      expect(result.path).toBe(filePath)
+      expect(result.hunks[0]?.content).toContain('+')
+      expect(result.hunks[0]?.content).toContain('New diary')
+    })
+  })
+
+  describe('GitSyncServiceImpl - getFileDiff', () => {
+    it('falls back to git diff --root when parent diff is unavailable', async () => {
+      const mockPathService = {
+        getRootDirectory: vi.fn().mockResolvedValue('/mock/storage-root')
+      } as any
+
+      const impl = new GitSyncServiceImpl(mockPathService)
+      const filePath = 'Journals/2026/05/2026-05-27.md'
+      const commitHash = 'abc1234'
+      const rootDiff =
+        'diff --git a/Journals/2026/05/2026-05-27.md b/Journals/2026/05/2026-05-27.md\n' +
+        'new file mode 100644\n' +
+        '@@ -0,0 +1,1 @@\n' +
+        '+# New diary\n'
+
+      const mockGit = {
+        diff: vi
+          .fn()
+          .mockRejectedValueOnce(new Error('no parent'))
+          .mockResolvedValueOnce(rootDiff)
+      } as any
+
+      ;(impl as any).git = mockGit
+      vi.spyOn(impl as any, 'ensureGit').mockResolvedValue(mockGit)
+
+      const result = await impl.getFileDiff(filePath, commitHash)
+
+      expect(mockGit.diff).toHaveBeenLastCalledWith(['--root', commitHash, '--', filePath])
+      expect(result.hunks.length).toBeGreaterThan(0)
+      expect(result.hunks[0]?.content).toContain('+')
+    })
+  })
+
+  describe('GitSyncServiceImpl - repairVaultGitlinks', () => {
+    it('does not auto stage vault contents after removing gitlink', async () => {
+      const mockPathService = {
+        getRootDirectory: vi.fn().mockResolvedValue('/mock/storage-root')
+      } as any
+
+      const impl = new GitSyncServiceImpl(mockPathService)
+      const mockGit = {
+        reset: vi.fn().mockResolvedValue(undefined),
+        add: vi.fn().mockResolvedValue(undefined)
+      } as any
+
+      vi.spyOn(impl as any, 'ensureGit').mockResolvedValue(mockGit)
+      vi.spyOn(impl as any, 'getGitRoot').mockResolvedValue('/mock/storage-root')
+      vi.spyOn(impl as any, 'listIndexedGitlinkPaths').mockResolvedValue(['VaultA'])
+      vi.spyOn(impl as any, 'listVaultNestedGitDirs').mockResolvedValue([])
+      vi.spyOn(impl as any, 'forceRemoveFromGitIndex').mockResolvedValue(true)
+
+      const repaired = await (impl as any).repairVaultGitlinks(mockGit)
+
+      expect(repaired).toBe(true)
+      expect(mockGit.add).not.toHaveBeenCalled()
+    })
+
+    it('returns false when gitlink removal fails and nothing else changes', async () => {
+      const mockPathService = {
+        getRootDirectory: vi.fn().mockResolvedValue('/mock/storage-root')
+      } as any
+
+      const impl = new GitSyncServiceImpl(mockPathService)
+      const mockGit = {
+        reset: vi.fn().mockResolvedValue(undefined),
+        add: vi.fn().mockResolvedValue(undefined)
+      } as any
+
+      vi.spyOn(impl as any, 'ensureGit').mockResolvedValue(mockGit)
+      vi.spyOn(impl as any, 'getGitRoot').mockResolvedValue('/mock/storage-root')
+      vi.spyOn(impl as any, 'listIndexedGitlinkPaths').mockResolvedValue(['是'])
+      vi.spyOn(impl as any, 'listVaultNestedGitDirs').mockResolvedValue([])
+      vi.spyOn(impl as any, 'forceRemoveFromGitIndex').mockResolvedValue(false)
+
+      const repaired = await (impl as any).repairVaultGitlinks(mockGit)
+
+      expect(repaired).toBe(false)
+      expect(mockGit.add).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('isTextDiffablePath', () => {
+    it('allows markdown and blocks images or directory-like paths', async () => {
+      const { isTextDiffablePath } = await import('../git-sync.helpers')
+      expect(isTextDiffablePath('Personal/Journals/2026/05/13.md')).toBe(true)
+      expect(isTextDiffablePath('Personal/attachments/photo.png')).toBe(false)
+      expect(isTextDiffablePath('是')).toBe(false)
     })
   })
 
@@ -337,6 +487,7 @@ describe('GitSyncService', () => {
 
       ;(impl as any).git = mockGit
       vi.spyOn(impl as any, 'ensureGit').mockResolvedValue(mockGit)
+      vi.spyOn(impl as any, 'maintainGitIndex').mockResolvedValue(undefined)
       vi.spyOn(impl as any, 'sanitizeGitIndex').mockResolvedValue(false)
       vi.spyOn(impl as any, 'repairVaultGitlinks').mockResolvedValue(false)
 

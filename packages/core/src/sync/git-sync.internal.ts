@@ -1,5 +1,6 @@
 import * as fs from 'fs'
 import * as path from 'path'
+import { spawn } from 'child_process'
 import simpleGit, { SimpleGit } from 'simple-git'
 import { logger } from '@baishou/shared'
 import type { GitSyncConfig } from '@baishou/shared'
@@ -7,6 +8,8 @@ import { GitInitError } from './sync.errors'
 import type { IStoragePathService } from '../vault/storage-path.types'
 import {
   DEFAULT_GIT_SYNC_CONFIG,
+  GIT_INDEX_MAINTENANCE_MAX_ROUNDS,
+  GIT_RAW_COMMAND_TIMEOUT_MS,
   GITIGNORE_CONTENT,
   GIT_SYNC_CONFIG_FILE
 } from './git-sync.constants'
@@ -15,7 +18,8 @@ import {
   isBaishouManagedPath,
   isExcludedFromVersionControl,
   mapWorkingStatus,
-  parseGitlinkPathFromLsFilesLine
+  parseGitlinkPathFromLsFilesLine,
+  unquoteGitPath
 } from './git-sync.helpers'
 
 const VAULT_REPAIR_SKIP_DIRS = new Set([
@@ -185,22 +189,145 @@ export abstract class GitSyncInternalBase {
       .filter(Boolean)
   }
 
-  protected async listIndexedBaishouPaths(git: SimpleGit): Promise<string[]> {
-    const output = await git.raw(['ls-files'])
+  protected splitGitLsFilesOutput(output: string): string[] {
+    const separator = output.includes('\0') ? '\0' : '\n'
     return output
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line && isBaishouManagedPath(line))
+      .split(separator)
+      .map((line) => unquoteGitPath(line.trim()))
+      .filter(Boolean)
+  }
+
+  protected resolveGitBinary(git: SimpleGit): string {
+    const binary = (
+      git as unknown as { executor?: { chain?: { options?: { binary?: string | string[] } } } }
+    ).executor?.chain?.options?.binary
+    if (Array.isArray(binary)) return binary[0] ?? 'git'
+    return binary ?? 'git'
+  }
+
+  protected async runGitWithStdin(git: SimpleGit, args: string[], stdin?: Buffer): Promise<string> {
+    const gitRoot = await this.getGitRoot()
+    const gitBinary = this.resolveGitBinary(git)
+    return new Promise((resolve, reject) => {
+      const proc = spawn(gitBinary, args, {
+        cwd: gitRoot,
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: { ...process.env, LC_ALL: 'C.UTF-8' }
+      })
+      let stdout = ''
+      let stderr = ''
+      let settled = false
+
+      const timer = setTimeout(() => {
+        if (settled) return
+        settled = true
+        proc.kill()
+        reject(new Error(`git ${args.join(' ')} timed out`))
+      }, GIT_RAW_COMMAND_TIMEOUT_MS)
+
+      const finish = (fn: () => void) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        fn()
+      }
+
+      proc.stdout.on('data', (chunk: Buffer) => {
+        stdout += chunk.toString('utf8')
+      })
+      proc.stderr.on('data', (chunk: Buffer) => {
+        stderr += chunk.toString('utf8')
+      })
+      proc.on('error', (err) => finish(() => reject(err)))
+      proc.on('close', (code) => {
+        finish(() => {
+          if (code === 0) resolve(stdout)
+          else reject(new Error(stderr.trim() || `git ${args.join(' ')} failed (${code})`))
+        })
+      })
+      if (stdin) {
+        proc.stdin.write(stdin)
+      }
+      proc.stdin.end()
+    })
+  }
+
+  protected async forceRemoveFromGitIndexWithStdin(
+    git: SimpleGit,
+    filePath: string
+  ): Promise<boolean> {
+    try {
+      await this.runGitWithStdin(
+        git,
+        ['update-index', '--force-remove', '-z', '--stdin'],
+        Buffer.from(`${filePath}\0`, 'utf8')
+      )
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  /** 从索引移除路径；Windows 下中文等非 ASCII 路径优先走 stdin 避免 pathspec 匹配失败 */
+  protected async forceRemoveFromGitIndex(git: SimpleGit, filePath: string): Promise<boolean> {
+    const hasNonAscii = /[^\u0000-\u007f]/.test(filePath)
+
+    if (hasNonAscii) {
+      if (await this.forceRemoveFromGitIndexWithStdin(git, filePath)) {
+        return true
+      }
+      logger.warn(`[GitSync] 无法移出追踪: ${filePath}`)
+      return false
+    }
+
+    try {
+      await git.rm(['-f', '--cached', '--', filePath])
+      return true
+    } catch {
+      if (await this.forceRemoveFromGitIndexWithStdin(git, filePath)) {
+        return true
+      }
+      logger.warn(`[GitSync] 无法移出追踪: ${filePath}`)
+      return false
+    }
+  }
+
+  /** 修复 gitlink / 清理索引；有界循环，避免递归 getStatus */
+  protected async maintainGitIndex(git: SimpleGit): Promise<void> {
+    for (let round = 0; round < GIT_INDEX_MAINTENANCE_MAX_ROUNDS; round++) {
+      const repaired = await this.repairVaultGitlinks(git)
+      const sanitized = await this.sanitizeGitIndex(git)
+      if (!repaired && !sanitized) {
+        break
+      }
+    }
+  }
+
+  protected vaultDirectoryExists(gitRoot: string, vaultName: string): boolean {
+    try {
+      const vaultPath = path.join(gitRoot, vaultName)
+      return fs.existsSync(vaultPath) && fs.statSync(vaultPath).isDirectory()
+    } catch {
+      return false
+    }
+  }
+
+  protected async listIndexedBaishouPaths(git: SimpleGit): Promise<string[]> {
+    const output = await git.raw(['ls-files', '-z'])
+    return this.splitGitLsFilesOutput(output).filter((line) => isBaishouManagedPath(line))
   }
 
   protected async sanitizeGitIndex(git: SimpleGit): Promise<boolean> {
+    const gitRoot = await this.getGitRoot()
     const gitlinks = await this.listIndexedGitlinkPaths(git)
-    const indexed = (await git.raw(['ls-files']))
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean)
+    const indexed = this.splitGitLsFilesOutput(await git.raw(['ls-files', '-z']))
 
-    const toRemove = new Set<string>(gitlinks)
+    const toRemove = new Set<string>()
+    for (const gitlinkPath of gitlinks) {
+      if (!this.vaultDirectoryExists(gitRoot, gitlinkPath)) {
+        toRemove.add(gitlinkPath)
+      }
+    }
     for (const filePath of indexed) {
       if (this.isExcludedFromVersionControl(filePath)) {
         toRemove.add(filePath)
@@ -213,11 +340,8 @@ export abstract class GitSyncInternalBase {
 
     let anyRemoved = false
     for (const filePath of toRemove) {
-      try {
-        await git.rm(['-f', '--cached', '--', filePath])
+      if (await this.forceRemoveFromGitIndex(git, filePath)) {
         anyRemoved = true
-      } catch (err) {
-        logger.warn(`[GitSync] 无法移出追踪: ${filePath}`, err as any)
       }
     }
     return anyRemoved
@@ -248,9 +372,7 @@ export abstract class GitSyncInternalBase {
 
   protected async stagePendingChanges(git: SimpleGit): Promise<number> {
     await this.ensureGitignore()
-    await this.sanitizeGitIndex(git)
-    await this.repairVaultGitlinks(git)
-    await this.sanitizeGitIndex(git)
+    await this.maintainGitIndex(git)
 
     const paths = await this.collectUnstagedPaths(git)
     if (paths.length === 0) {
@@ -273,10 +395,10 @@ export abstract class GitSyncInternalBase {
   }
 
   protected async listIndexedGitlinkPaths(git: SimpleGit): Promise<string[]> {
-    const output = await git.raw(['ls-files', '-s'])
+    const output = await git.raw(['ls-files', '-s', '-z'])
     const paths = new Set<string>()
-    for (const line of output.split('\n')) {
-      const gitlinkPath = parseGitlinkPathFromLsFilesLine(line)
+    for (const entry of output.split('\0')) {
+      const gitlinkPath = parseGitlinkPathFromLsFilesLine(entry)
       if (gitlinkPath) paths.add(gitlinkPath)
     }
     return [...paths]
@@ -337,8 +459,9 @@ export abstract class GitSyncInternalBase {
           } catch {
             // 可能尚未暂存
           }
-          await git.rm(['-f', '--cached', '--', vaultName])
-          repaired = true
+          if (await this.forceRemoveFromGitIndex(git, vaultName)) {
+            repaired = true
+          }
         }
 
         const vaultPath = path.join(gitRoot, vaultName)

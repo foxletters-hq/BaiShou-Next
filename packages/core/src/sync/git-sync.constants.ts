@@ -35,3 +35,9 @@ Thumbs.db
 `
 
 export const GIT_SYNC_CONFIG_FILE = '.baishou-git.json'
+
+/** getStatus / stage 时索引维护的最大轮次，防止 repair/sanitize 死循环 */
+export const GIT_INDEX_MAINTENANCE_MAX_ROUNDS = 5
+
+/** spawn git 子进程超时（毫秒） */
+export const GIT_RAW_COMMAND_TIMEOUT_MS = 30_000
