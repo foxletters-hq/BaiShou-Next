@@ -1,6 +1,10 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { useFocusEffect, useRouter, type Href } from 'expo-router'
-import { type PromptShortcut, USER_PROFILE_SETTINGS_KEY } from '@baishou/shared'
+import {
+  type PromptShortcut,
+  USER_PROFILE_SETTINGS_KEY,
+  LATTE_ASSISTANT_NAME
+} from '@baishou/shared'
 import {
   View,
   StyleSheet,
@@ -41,6 +45,7 @@ import { ModelSwitcher } from '../components/ModelSwitcher'
 import { ContextChainDialog } from '../components/ContextChainDialog'
 import { useBaishou } from '../providers/BaishouProvider'
 import { useAgentSession } from '../hooks/useAgentSession'
+import { useAgentSessions } from '../hooks/useAgentSessions'
 import { useAgentStream } from '../hooks/useAgentStream'
 import { useAgentModel } from '../hooks/useAgentModel'
 import { useAgentUI } from '../hooks/useAgentUI'
@@ -49,6 +54,7 @@ import { useBranchSession } from '../hooks/useBranchSession'
 import { useStreamError } from '../hooks/useStreamError'
 import { useMobilePromptShortcuts } from '../hooks/useMobilePromptShortcuts'
 import { useResolvedAssistantAvatar } from '../hooks/useResolvedAssistantAvatar'
+import { useResolvedUserAvatar } from '../hooks/useResolvedUserAvatar'
 import { listAssistantsForUi, type MobileAssistantUi } from '../lib/mobile-assistant.util'
 /** 底部输入栏 + 工具条的大致高度，用于「回到底部」悬浮按钮定位 */
 const INPUT_DOCK_HEIGHT = 136
@@ -90,11 +96,13 @@ export const AgentScreen = () => {
   }, [])
 
   const toast = useNativeToast()
-  const { services, dbReady } = useBaishou()
+  const { services, dbReady, vaultRevision } = useBaishou()
   const flatListRef = useRef<FlatList>(null)
   const inputBarRef = useRef<InputBarRef>(null)
   const editingRowRef = useRef<View>(null)
   const scrollOffsetRef = useRef(0)
+  const prevMsgLenRef = useRef(0)
+  const layoutReadyRef = useRef(false)
 
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [assistants, setAssistants] = useState<Array<AssistantSummary & { isPinned?: boolean }>>([])
@@ -118,13 +126,18 @@ export const AgentScreen = () => {
     syncWithSession
   } = useAgentModel()
 
+  const { sessions, hasMoreSessions, isLoadingMoreSessions, sessionListScrollKey, loadSessions } =
+    useAgentSessions(currentAssistant?.id)
+
   const resolvedCurrentAvatarUri = useResolvedAssistantAvatar(currentAssistant?.avatarPath)
+  const resolvedUserAvatarUri = useResolvedUserAvatar(userProfile.avatarPath)
 
   const {
     currentSessionId,
     setCurrentSessionId,
     hasMore,
     messages,
+    refreshSessionMessages,
     handleLoadMore,
     handleSelectSession,
     handleAssistantSwitched,
@@ -200,8 +213,12 @@ export const AgentScreen = () => {
     currentModelId,
     currentAssistant,
     setCurrentSessionId,
-    searchMode
+    searchMode,
+    refreshSessionMessages
   )
+
+  const [showLoadMoreBanner, setShowLoadMoreBanner] = useState(false)
+  const loadMoreLockRef = useRef(false)
 
   const {
     showCostDialog,
@@ -235,11 +252,34 @@ export const AgentScreen = () => {
 
   const handleListScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      scrollOffsetRef.current = event.nativeEvent.contentOffset.y
+      const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent
+      scrollOffsetRef.current = contentOffset.y
       handleScroll(event)
+
+      const canScroll = contentSize.height > layoutMeasurement.height + 50
+      const nearTop = contentOffset.y < 100
+      setShowLoadMoreBanner(hasMore && (nearTop || !canScroll))
+
+      if (layoutReadyRef.current && canScroll && nearTop && hasMore && !loadMoreLockRef.current) {
+        loadMoreLockRef.current = true
+        void handleLoadMore().finally(() => {
+          loadMoreLockRef.current = false
+        })
+      }
     },
-    [handleScroll]
+    [handleScroll, hasMore, handleLoadMore]
   )
+
+  useEffect(() => {
+    layoutReadyRef.current = false
+    prevMsgLenRef.current = 0
+  }, [currentSessionId])
+
+  useEffect(() => {
+    if (!hasMore) {
+      setShowLoadMoreBanner(false)
+    }
+  }, [hasMore])
 
   const { ttsPlayingMsgId, handleTtsReadAloud } = useTTS()
   const { branchSession } = useBranchSession()
@@ -268,7 +308,7 @@ export const AgentScreen = () => {
     } catch {
       setAssistants([])
     }
-  }, [dbReady, services])
+  }, [dbReady, services, vaultRevision])
 
   const refreshCurrentAssistant = useCallback(async () => {
     if (!dbReady || !services) return
@@ -290,7 +330,7 @@ export const AgentScreen = () => {
     } catch {
       // ignore
     }
-  }, [dbReady, services, currentAssistant?.id, setCurrentAssistant])
+  }, [dbReady, services, currentAssistant?.id, setCurrentAssistant, vaultRevision])
 
   useEffect(() => {
     void loadAssistants()
@@ -320,7 +360,7 @@ export const AgentScreen = () => {
         })
       )
       .catch(() => setUserProfile({ nickname: t('agent.chat.you_label', '你') }))
-  }, [dbReady, services, t])
+  }, [dbReady, services, t, vaultRevision])
 
   const pinnedAssistants = useMemo(
     () =>
@@ -342,15 +382,40 @@ export const AgentScreen = () => {
     async (assistant: AssistantSummary) => {
       const full = assistants.find((a) => a.id === assistant.id)
       if (!full) return
+
       handleSelectAssistant(full as any)
       const fullWithModel = full as {
         providerId?: string
         modelId?: string
       }
       await handleAssistantSwitched(assistant.id, fullWithModel.providerId, fullWithModel.modelId)
+
+      if (dbReady && services) {
+        try {
+          const [recentSessions] = await Promise.all([
+            services.sessionManager.list(1, 0, assistant.id),
+            loadSessions(true, assistant.id)
+          ])
+          if (recentSessions?.length > 0) {
+            await handleSelectSession(recentSessions[0]!.id)
+          }
+        } catch (e) {
+          console.warn('Failed to open recent session for assistant', e)
+        }
+      }
+
       void loadAssistants()
     },
-    [assistants, handleSelectAssistant, handleAssistantSwitched, services, loadAssistants]
+    [
+      assistants,
+      handleSelectAssistant,
+      handleAssistantSwitched,
+      handleSelectSession,
+      services,
+      dbReady,
+      loadSessions,
+      loadAssistants
+    ]
   )
 
   const handleShortcutSelect = useCallback(
@@ -493,9 +558,6 @@ export const AgentScreen = () => {
     [currentSessionId, services, searchMode, toast, t]
   )
 
-  const prevMsgLenRef = useRef(0)
-  const layoutReadyRef = useRef(false)
-
   useEffect(() => {
     if (messages.length > 0 && messages.length > prevMsgLenRef.current) {
       prevMsgLenRef.current = messages.length
@@ -548,8 +610,7 @@ export const AgentScreen = () => {
       return { success: false, error: msg }
     }
   }, [services, t, toast])
-  const assistantDisplayName =
-    currentAssistant?.name || t('agent.assistant.default_assistant_name', '默认伙伴')
+  const assistantDisplayName = currentAssistant?.name || LATTE_ASSISTANT_NAME
   const chatAiProfile = useMemo(
     () => ({
       name: assistantDisplayName,
@@ -562,9 +623,10 @@ export const AgentScreen = () => {
   const chatUserProfile = useMemo(
     () => ({
       nickname: userProfile.nickname || t('agent.chat.you_label', '你'),
-      avatarPath: userProfile.avatarPath
+      avatarPath: userProfile.avatarPath,
+      resolvedAvatarUri: resolvedUserAvatarUri || null
     }),
-    [userProfile, t]
+    [userProfile, t, resolvedUserAvatarUri]
   )
 
   const renderEmptyState = () => (
@@ -596,19 +658,13 @@ export const AgentScreen = () => {
         <View style={styles.container}>
           <AgentChatAppBar
             modelName={displayModelName || ''}
+            inputTokens={totalInputTokens}
+            outputTokens={totalOutputTokens}
             costMicros={totalCostMicros}
             onMenuPress={() => setDrawerOpen(true)}
             onModelPress={() => setShowModelSwitcher(true)}
             onCostPress={() => setShowCostDialog(true)}
           />
-
-          {hasMore && (
-            <TouchableOpacity style={styles.loadMore} onPress={handleLoadMore}>
-              <Text style={[styles.loadMoreText, { color: colors.textSecondary }]}>
-                {t('common.load_more', '点击加载更多记录')}
-              </Text>
-            </TouchableOpacity>
-          )}
 
           <FlatList
             ref={flatListRef}
@@ -619,6 +675,15 @@ export const AgentScreen = () => {
             nestedScrollEnabled
             keyboardShouldPersistTaps="always"
             keyboardDismissMode="interactive"
+            ListHeaderComponent={
+              hasMore && showLoadMoreBanner ? (
+                <TouchableOpacity style={styles.loadMore} onPress={() => void handleLoadMore()}>
+                  <Text style={[styles.loadMoreText, { color: colors.textSecondary }]}>
+                    {t('agent.chat.scroll_up_load_more', '点击或上滑加载更早对话')}
+                  </Text>
+                </TouchableOpacity>
+              ) : null
+            }
             renderItem={({ item }) => {
               const msgWithCompaction = item as typeof item & {
                 compactionRecord?: { streamTranscript?: string } | null
@@ -775,6 +840,12 @@ export const AgentScreen = () => {
             : null
         }
         pinnedAssistants={pinnedAssistants}
+        sessions={sessions}
+        sessionListScrollKey={sessionListScrollKey}
+        hasMoreSessions={hasMoreSessions}
+        isLoadingMoreSessions={isLoadingMoreSessions}
+        onLoadMoreSessions={() => void loadSessions(false)}
+        onRefreshSessions={() => void loadSessions(true)}
         selectedSessionId={currentSessionId || undefined}
         onSelectSession={handleSelectSession}
         onCreateSession={() => {

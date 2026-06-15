@@ -15,4 +15,6 @@ export interface AgentSessionListProps {
   hasMore?: boolean
   isLoadingMore?: boolean
   onLoadMore?: () => void
+  /** 递增时滚动到列表顶部（最新会话） */
+  scrollKey?: number
 }

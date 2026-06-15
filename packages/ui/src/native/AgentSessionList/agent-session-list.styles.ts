@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native'
 
 export const agentSessionListStyles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, position: 'relative' },
   searchBar: {
     margin: 12
   },

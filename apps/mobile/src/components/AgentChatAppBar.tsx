@@ -3,9 +3,12 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '@baishou/ui/native'
+import { formatCompactTokenCount } from '../utils/message-usage.util'
 
 interface AgentChatAppBarProps {
   modelName: string
+  inputTokens: number
+  outputTokens: number
   costMicros: number
   onMenuPress: () => void
   onModelPress: () => void
@@ -16,6 +19,8 @@ const SIDE_WIDTH = 88
 
 export const AgentChatAppBar: React.FC<AgentChatAppBarProps> = ({
   modelName,
+  inputTokens,
+  outputTokens,
   costMicros,
   onMenuPress,
   onModelPress,
@@ -23,7 +28,8 @@ export const AgentChatAppBar: React.FC<AgentChatAppBarProps> = ({
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
-  const showCost = costMicros > 0
+  const totalTokens = inputTokens + outputTokens
+  const tokenLabel = formatCompactTokenCount(totalTokens)
   const costLabel = `$${(costMicros / 1_000_000).toFixed(4)}`
   const displayModel = modelName || t('agent.no_model_selected', '暂未选择模型')
 
@@ -55,22 +61,24 @@ export const AgentChatAppBar: React.FC<AgentChatAppBarProps> = ({
       </TouchableOpacity>
 
       <View style={[styles.side, styles.sideRight]}>
-        {showCost ? (
-          <TouchableOpacity
-            style={[
-              styles.costBadge,
-              {
-                backgroundColor: colors.bgSurface,
-                borderColor: colors.borderMuted
-              }
-            ]}
-            onPress={onCostPress}
-            activeOpacity={0.85}
-            accessibilityLabel={t('agent.chat.cost_detail_title', '当前计费')}
-          >
-            <Text style={[styles.costText, { color: colors.textPrimary }]}>{costLabel}</Text>
-          </TouchableOpacity>
-        ) : null}
+        <TouchableOpacity
+          style={[
+            styles.costBadge,
+            {
+              backgroundColor: colors.bgSurface,
+              borderColor: colors.borderMuted
+            }
+          ]}
+          onPress={onCostPress}
+          activeOpacity={0.85}
+          accessibilityLabel={t('agent.chat.cost_detail_title', '当前计费')}
+        >
+          <Text style={[styles.costText, { color: colors.textPrimary }]} numberOfLines={1}>
+            {tokenLabel}
+            <Text style={[styles.costDivider, { color: colors.textTertiary }]}> · </Text>
+            {costLabel}
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   )
@@ -117,16 +125,21 @@ const styles = StyleSheet.create({
     textAlign: 'center'
   },
   costBadge: {
-    minWidth: 80,
-    paddingHorizontal: 12,
+    flexShrink: 1,
+    maxWidth: SIDE_WIDTH - 4,
+    minWidth: 64,
+    paddingHorizontal: 8,
     paddingVertical: 6,
     borderRadius: 12,
     borderWidth: 1
   },
   costText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
     textAlign: 'center'
+  },
+  costDivider: {
+    fontWeight: '500'
   }
 })

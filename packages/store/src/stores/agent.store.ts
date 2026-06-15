@@ -28,6 +28,7 @@ export interface AgentState {
 
 export interface AgentActions {
   addMessage: (message: AgentMessage) => void
+  setMessages: (messages: AgentMessage[]) => void
   updateMessage: (id: string, partial: Partial<AgentMessage>) => void
   setLoading: (loading: boolean) => void
   addToolCall: (id: string, toolCallName: string, args: any) => void
@@ -48,7 +49,17 @@ export const useAgentStore = createStore<AgentState & AgentActions>(
     searchMode: false,
 
     addMessage: (message) =>
-      set((state: AgentState) => ({ messages: [...state.messages, message] })),
+      set((state: AgentState) => {
+        const existingIndex = state.messages.findIndex((m) => m.id === message.id)
+        if (existingIndex >= 0) {
+          const next = [...state.messages]
+          next[existingIndex] = { ...next[existingIndex]!, ...message }
+          return { messages: next }
+        }
+        return { messages: [...state.messages, message] }
+      }),
+
+    setMessages: (messages) => set({ messages }),
 
     updateMessage: (id, partial) =>
       set((state: AgentState) => ({

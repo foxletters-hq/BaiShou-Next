@@ -1,28 +1,21 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef, type MutableRefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast } from '@baishou/ui/native'
 import { useAgentStore, type AgentMessagePart } from '@baishou/store'
 import { useBaishou } from '../providers/BaishouProvider'
-import { waitForVaultEcosystemResync } from '../services/mobile-vault-resync.service'
 import { buildInsertSessionInput } from '../utils/session-input.util'
 import { mapSessionMessageFromDb } from '../utils/map-session-message.util'
-import { sessionBelongsToActiveVault } from '@baishou/shared'
+import {
+  CHAT_MESSAGE_FETCH_LIMIT,
+  CHAT_ROUNDS_PER_PAGE,
+  applyCacheToWindow,
+  computeInitialRoundWindowStart,
+  expandRoundWindowStart,
+  groupMessagesIntoRounds,
+  dedupeMessagesById
+} from '../utils/chat-round-pagination'
+import { messageHasUsageStats } from '../utils/message-usage.util'
 
-async function resolveActiveVaultContext(
-  services: NonNullable<ReturnType<typeof useBaishou>['services']>
-): Promise<{ name: string; path: string | null }> {
-  try {
-    const [name, vaultPath] = await Promise.all([
-      services.pathService.getActiveVaultNameForContext(),
-      services.pathService.getActiveVaultPath()
-    ])
-    return { name, path: vaultPath }
-  } catch {
-    return { name: 'Personal', path: null }
-  }
-}
-
-// 会话消息接口
 interface SessionMessage {
   id: string
   role: 'user' | 'assistant' | 'system'
@@ -45,78 +38,228 @@ export interface UseAgentSessionOptions {
   modelId?: string
 }
 
-export function useAgentSession(options: UseAgentSessionOptions = {}) {
-  const { assistantId, providerId, modelId } = options
+function resetPaginationRefs(refs: {
+  messageCacheRef: MutableRefObject<SessionMessage[]>
+  roundWindowStartRef: MutableRefObject<number>
+  loadedFromEndRef: MutableRefObject<number>
+  fetchHasMoreRef: MutableRefObject<boolean>
+}) {
+  refs.messageCacheRef.current = []
+  refs.roundWindowStartRef.current = 0
+  refs.loadedFromEndRef.current = 0
+  refs.fetchHasMoreRef.current = false
+}
+
+export function useAgentSession(_options: UseAgentSessionOptions = {}) {
   const { t } = useTranslation()
   const toast = useNativeToast()
-  const { messages, addMessage, clearSession } = useAgentStore()
-  const { services, dbReady, vaultRevision, vaultSwitching } = useBaishou()
+  const { messages, setMessages, clearSession } = useAgentStore()
+  const { services, dbReady, vaultSwitching, vaultRevision } = useBaishou()
+  const storageRootRef = useRef<string | null>(null)
 
-  // 会话管理状态
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(false)
+
+  const messageCacheRef = useRef<SessionMessage[]>([])
+  const roundWindowStartRef = useRef(0)
+  const loadedFromEndRef = useRef(0)
+  const fetchHasMoreRef = useRef(false)
+  const loadMoreLockRef = useRef(false)
+  const paginationRefs = {
+    messageCacheRef,
+    roundWindowStartRef,
+    loadedFromEndRef,
+    fetchHasMoreRef
+  }
 
   const resetSessionState = useCallback(() => {
     setCurrentSessionId(null)
     setHasMore(false)
+    resetPaginationRefs(paginationRefs)
     clearSession()
   }, [clearSession])
 
-  // 将数据库消息转换为 UI 消息格式
-  const mapDbMessageToUI = useCallback((msg: any): SessionMessage => {
-    return mapSessionMessageFromDb(msg) as SessionMessage
+  useEffect(() => {
+    storageRootRef.current = null
+    if (!services) return
+    let cancelled = false
+    void services.pathService.getRootDirectory().then((root) => {
+      if (!cancelled) storageRootRef.current = root
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [services, vaultRevision])
+
+  const resolveStorageRoot = useCallback(async (): Promise<string | undefined> => {
+    if (storageRootRef.current) return storageRootRef.current
+    if (!services) return undefined
+    const root = await services.pathService.getRootDirectory()
+    storageRootRef.current = root
+    return root
+  }, [services])
+
+  const mapDbMessageToUI = useCallback((msg: any, storageRoot?: string): SessionMessage => {
+    return mapSessionMessageFromDb(msg, { storageRoot }) as SessionMessage
   }, [])
 
-  const MESSAGE_PAGE_SIZE = 20
-
-  // 加载会话消息（从末尾取最近 N 条）
-  const loadMessages = useCallback(
-    async (sessionId: string, limit = MESSAGE_PAGE_SIZE) => {
-      if (!dbReady || !services) return
-      try {
-        clearSession()
-        const msgs = await services.sessionManager.getMessagesBySession(sessionId, limit)
-        if (msgs && msgs.length > 0) {
-          msgs.forEach((msg: any) => addMessage(mapDbMessageToUI(msg)))
-          setHasMore(msgs.length >= limit)
-        } else {
-          setHasMore(false)
-        }
-      } catch (e) {
-        console.error('Failed to load messages', e)
-        setHasMore(false)
-      }
+  const syncFromCache = useCallback(
+    (roundWindowStart: number) => {
+      const result = applyCacheToWindow(
+        messageCacheRef.current,
+        roundWindowStart,
+        fetchHasMoreRef.current
+      )
+      roundWindowStartRef.current = result.roundWindowStart
+      setMessages(result.display as any)
+      setHasMore(result.hasMore)
+      return result
     },
-    [dbReady, services, clearSession, addMessage, mapDbMessageToUI]
+    [setMessages]
   )
 
-  // 加载更多历史消息（扩大 limit 后全量替换，避免重复）
-  const handleLoadMore = useCallback(async () => {
-    if (!dbReady || !currentSessionId || !services) return
-    try {
-      const newLimit = messages.length + MESSAGE_PAGE_SIZE
-      const msgs = await services.sessionManager.getMessagesBySession(currentSessionId, newLimit)
-      clearSession()
-      if (msgs && msgs.length > 0) {
-        msgs.forEach((msg: any) => addMessage(mapDbMessageToUI(msg)))
-        setHasMore(msgs.length >= newLimit)
+  const ingestFetchedTail = useCallback(
+    (fetched: SessionMessage[], preserveWindow: boolean) => {
+      messageCacheRef.current = dedupeMessagesById(fetched)
+      loadedFromEndRef.current = messageCacheRef.current.length
+      fetchHasMoreRef.current = fetched.length >= CHAT_MESSAGE_FETCH_LIMIT
+
+      const rounds = groupMessagesIntoRounds(fetched)
+      let start = roundWindowStartRef.current
+
+      if (!preserveWindow || start >= Math.max(0, rounds.length - CHAT_ROUNDS_PER_PAGE)) {
+        start = computeInitialRoundWindowStart(rounds.length)
       } else {
-        setHasMore(false)
+        start = Math.min(start, computeInitialRoundWindowStart(rounds.length))
       }
+
+      return syncFromCache(start)
+    },
+    [syncFromCache]
+  )
+
+  const refreshSessionMessages = useCallback(
+    async (
+      sessionId: string,
+      options?: {
+        preserveWindow?: boolean
+        retryCount?: number
+        waitForLatestUsage?: boolean
+        commitToUi?: boolean
+      }
+    ) => {
+      if (!dbReady || !services) return false
+
+      const retryCount = options?.retryCount ?? 1
+      const waitForLatestUsage = options?.waitForLatestUsage ?? false
+      const commitToUi = options?.commitToUi ?? true
+
+      let mapped: SessionMessage[] | null = null
+
+      for (let attempt = 0; attempt < retryCount; attempt++) {
+        try {
+          const storageRoot = await resolveStorageRoot()
+          const fetchLimit = Math.max(loadedFromEndRef.current, CHAT_MESSAGE_FETCH_LIMIT)
+          const rows = await services.sessionManager.getMessagesBySession(sessionId, fetchLimit, 0)
+          mapped = (rows ?? []).map((msg: any) => mapDbMessageToUI(msg, storageRoot))
+
+          const latestAssistant = [...mapped].reverse().find((m) => m.role === 'assistant')
+          if (
+            waitForLatestUsage &&
+            latestAssistant &&
+            !messageHasUsageStats(latestAssistant) &&
+            attempt < retryCount - 1
+          ) {
+            await new Promise((r) => setTimeout(r, 200 * (attempt + 1)))
+            continue
+          }
+
+          break
+        } catch (e) {
+          console.error('Failed to refresh session messages', e)
+          mapped = null
+          if (attempt < retryCount - 1) {
+            await new Promise((r) => setTimeout(r, 200 * (attempt + 1)))
+            continue
+          }
+        }
+      }
+
+      if (!mapped) return false
+
+      const latestAssistant = [...mapped].reverse().find((m) => m.role === 'assistant')
+      if (waitForLatestUsage && latestAssistant && !messageHasUsageStats(latestAssistant)) {
+        return false
+      }
+
+      if (commitToUi) {
+        ingestFetchedTail(mapped, options?.preserveWindow ?? false)
+      }
+
+      return true
+    },
+    [dbReady, services, mapDbMessageToUI, ingestFetchedTail, resolveStorageRoot]
+  )
+
+  const loadMessages = useCallback(
+    async (sessionId: string) => {
+      if (!dbReady || !services) return
+      resetPaginationRefs(paginationRefs)
+      clearSession()
+      await refreshSessionMessages(sessionId, { preserveWindow: false })
+    },
+    [dbReady, services, clearSession, refreshSessionMessages]
+  )
+
+  const handleLoadMore = useCallback(async () => {
+    if (!dbReady || !currentSessionId || !services || loadMoreLockRef.current) return
+    loadMoreLockRef.current = true
+
+    try {
+      if (roundWindowStartRef.current > 0) {
+        roundWindowStartRef.current = expandRoundWindowStart(roundWindowStartRef.current)
+        syncFromCache(roundWindowStartRef.current)
+        return
+      }
+
+      if (!fetchHasMoreRef.current) {
+        setHasMore(false)
+        return
+      }
+
+      const storageRoot = await resolveStorageRoot()
+      const fetched = await services.sessionManager.getMessagesBySession(
+        currentSessionId,
+        CHAT_MESSAGE_FETCH_LIMIT,
+        loadedFromEndRef.current
+      )
+
+      if (!fetched?.length) {
+        fetchHasMoreRef.current = false
+        setHasMore(false)
+        return
+      }
+
+      fetchHasMoreRef.current = fetched.length >= CHAT_MESSAGE_FETCH_LIMIT
+      loadedFromEndRef.current += fetched.length
+
+      const mapped = fetched.map((msg: any) => mapDbMessageToUI(msg, storageRoot))
+      const oldStart = roundWindowStartRef.current
+      const prependedRoundCount = groupMessagesIntoRounds(mapped).length
+      messageCacheRef.current = dedupeMessagesById([...mapped, ...messageCacheRef.current])
+
+      roundWindowStartRef.current = Math.max(
+        0,
+        oldStart + prependedRoundCount - CHAT_ROUNDS_PER_PAGE
+      )
+      syncFromCache(roundWindowStartRef.current)
     } catch (e) {
       console.error('Failed to load more messages', e)
+    } finally {
+      loadMoreLockRef.current = false
     }
-  }, [
-    dbReady,
-    currentSessionId,
-    services,
-    messages.length,
-    clearSession,
-    addMessage,
-    mapDbMessageToUI
-  ])
+  }, [dbReady, currentSessionId, services, mapDbMessageToUI, syncFromCache, resolveStorageRoot])
 
-  // 选择会话
   const handleSelectSession = useCallback(
     async (sessionId: string) => {
       setCurrentSessionId(sessionId)
@@ -125,56 +268,23 @@ export function useAgentSession(options: UseAgentSessionOptions = {}) {
     [loadMessages]
   )
 
-  // 切换伙伴时加载该伙伴最近会话（对齐桌面端 handleAssistantSwitched）
+  /** 切换伙伴：清空当前会话，由用户从侧栏手动选择对话 */
   const handleAssistantSwitched = useCallback(
-    async (assistantId: string, providerId?: string, modelId?: string) => {
-      if (!dbReady || !services) return
-      try {
-        const sessionList = await services.sessionManager.list(100, 0, assistantId)
-        const { name: activeVaultName, path: activeVaultPath } =
-          await resolveActiveVaultContext(services)
-        const vaultSessions = sessionList.filter((session: { vaultName?: string | null }) =>
-          sessionBelongsToActiveVault(session.vaultName, activeVaultName, activeVaultPath)
-        )
-        if (vaultSessions.length > 0) {
-          const sorted = [...vaultSessions].sort(
-            (a: { updatedAt?: Date | string | null }, b: { updatedAt?: Date | string | null }) =>
-              new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()
-          )
-          await handleSelectSession(sorted[0]!.id)
-          return
-        }
-
-        const newId = Date.now().toString()
-        const { name: vaultName } = await resolveActiveVaultContext(services)
-        await services.sessionManager.upsertSession(
-          buildInsertSessionInput(
-            {
-              id: newId,
-              title: t('agent.sessions.default_title', '新对话'),
-              assistantId,
-              providerId,
-              modelId
-            },
-            vaultName
-          )
-        )
-        setCurrentSessionId(newId)
-        clearSession()
-      } catch (e) {
-        console.error('Failed to switch assistant session', e)
-      }
+    async (_assistantId: string, _providerId?: string, _modelId?: string) => {
+      setCurrentSessionId(null)
+      resetPaginationRefs(paginationRefs)
+      clearSession()
+      setHasMore(false)
     },
-    [dbReady, services, handleSelectSession, clearSession, t]
+    [clearSession]
   )
 
-  // 创建新会话
   const handleCreateSession = useCallback(
     async (options?: { assistantId?: string; providerId?: string; modelId?: string }) => {
       if (!dbReady || !services) return null
       try {
         const newId = Date.now().toString()
-        const { name: vaultName } = await resolveActiveVaultContext(services)
+        const vaultName = await services.pathService.getActiveVaultNameForContext()
         await services.sessionManager.upsertSession(
           buildInsertSessionInput(
             {
@@ -187,8 +297,10 @@ export function useAgentSession(options: UseAgentSessionOptions = {}) {
             vaultName
           )
         )
+        resetPaginationRefs(paginationRefs)
         setCurrentSessionId(newId)
         clearSession()
+        setHasMore(false)
         return newId
       } catch (e) {
         console.error('Failed to create session', e)
@@ -202,25 +314,22 @@ export function useAgentSession(options: UseAgentSessionOptions = {}) {
     [dbReady, services, t, clearSession, toast]
   )
 
-  // 删除会话
   const handleDeleteSession = useCallback(
     async (sessionId: string) => {
       if (!services) return
       try {
         await services.sessionManager.deleteSessions([sessionId])
         if (sessionId === currentSessionId) {
-          setCurrentSessionId(null)
-          clearSession()
+          resetSessionState()
         }
       } catch (e) {
         console.error('Failed to delete session', e)
         toast.showError(t('agent.sessions.delete_session', '删除对话'))
       }
     },
-    [services, t, currentSessionId, clearSession]
+    [services, t, currentSessionId, resetSessionState]
   )
 
-  // 置顶会话
   const handlePinSession = useCallback(
     async (sessionId: string, isPinned: boolean) => {
       if (!services) return
@@ -245,51 +354,19 @@ export function useAgentSession(options: UseAgentSessionOptions = {}) {
     [services]
   )
 
-  // 工作区切换开始：立刻清空聊天 UI，避免继续渲染上一工作区的消息
   useEffect(() => {
     if (vaultSwitching) {
       resetSessionState()
     }
   }, [vaultSwitching, resetSessionState])
 
-  // 无活跃会话时加载当前伙伴的最近对话（含工作区切换完成后的重载）
-  useEffect(() => {
-    if (!dbReady || !services || !assistantId || vaultSwitching) return
-    if (currentSessionId) return
-
-    let cancelled = false
-    const loadLatestSession = async () => {
-      if (vaultRevision > 0) {
-        await waitForVaultEcosystemResync()
-      }
-      if (cancelled) return
-      await handleAssistantSwitched(assistantId, providerId, modelId)
-    }
-
-    void loadLatestSession()
-    return () => {
-      cancelled = true
-    }
-  }, [
-    dbReady,
-    services,
-    assistantId,
-    providerId,
-    modelId,
-    vaultSwitching,
-    currentSessionId,
-    vaultRevision,
-    handleAssistantSwitched
-  ])
-
   return {
-    // 状态
     currentSessionId,
     setCurrentSessionId,
     hasMore,
     messages,
-    // 方法
     loadMessages,
+    refreshSessionMessages,
     handleLoadMore,
     handleSelectSession,
     handleAssistantSwitched,

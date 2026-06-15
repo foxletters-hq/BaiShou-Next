@@ -20,7 +20,11 @@ type ChatMessage = {
 
 export interface AgentMessageRowProps {
   item: ChatMessage
-  chatUserProfile: { nickname: string; avatarPath?: string | null }
+  chatUserProfile: {
+    nickname: string
+    avatarPath?: string | null
+    resolvedAvatarUri?: string | null
+  }
   chatAiProfile: {
     name: string
     emoji?: string | null

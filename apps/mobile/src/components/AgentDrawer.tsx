@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react'
 import { View, Text, Modal, Pressable, TouchableOpacity, StyleSheet } from 'react-native'
 import Animated, {
   cancelAnimation,
@@ -15,7 +15,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { AgentSessionList, AssistantAvatar, useNativeTheme } from '@baishou/ui/native'
 import type { AgentSession } from '@baishou/ui/native'
-import { useBaishou } from '../providers/BaishouProvider'
 
 export interface AssistantSummary {
   id: string
@@ -31,6 +30,12 @@ interface AgentDrawerProps {
   onClose: () => void
   currentAssistant: AssistantSummary | null
   pinnedAssistants: AssistantSummary[]
+  sessions: AgentSession[]
+  sessionListScrollKey: number
+  hasMoreSessions: boolean
+  isLoadingMoreSessions: boolean
+  onLoadMoreSessions: () => void
+  onRefreshSessions: () => void
   selectedSessionId?: string
   onSelectSession: (sessionId: string) => void
   onCreateSession: () => void
@@ -42,11 +47,8 @@ interface AgentDrawerProps {
 }
 
 const DRAWER_WIDTH = 280
-/** 每页 10 条；多取 1 条用于判断是否还有下一页（对齐桌面端 useAgentSessions） */
-const SESSION_PAGE_SIZE = 10
 const DRAWER_OPEN_SPRING = { damping: 28, stiffness: 280, mass: 0.88, overshootClamping: true }
 const DRAWER_CLOSE_SPRING = { damping: 32, stiffness: 340, mass: 0.82, overshootClamping: true }
-const SESSION_LOAD_DELAY_MS = 220
 
 function DrawerAssistantAvatar({ assistant, size }: { assistant: AssistantSummary; size: number }) {
   return (
@@ -64,6 +66,12 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
   onClose,
   currentAssistant,
   pinnedAssistants,
+  sessions,
+  sessionListScrollKey,
+  hasMoreSessions,
+  isLoadingMoreSessions,
+  onLoadMoreSessions,
+  onRefreshSessions,
   selectedSessionId,
   onSelectSession,
   onCreateSession,
@@ -77,16 +85,9 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
   const { colors } = useNativeTheme()
   const insets = useSafeAreaInsets()
   const router = useRouter()
-  const { services, dbReady } = useBaishou()
-  const [sessions, setSessions] = useState<AgentSession[]>([])
-  const [hasMoreSessions, setHasMoreSessions] = useState(false)
-  const [isLoadingMoreSessions, setIsLoadingMoreSessions] = useState(false)
   const [mounted, setMounted] = useState(false)
   const slideX = useSharedValue(-DRAWER_WIDTH)
   const backdropOpacity = useSharedValue(0)
-  const sessionsLoadedFromDbRef = useRef(0)
-  const lastLoadRequestId = useRef(0)
-  const lastVisibleAssistantRef = useRef<string | null>(null)
 
   const backdropStyle = useAnimatedStyle(() => ({
     opacity: backdropOpacity.value
@@ -95,98 +96,6 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
   const drawerSlideStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: slideX.value }]
   }))
-
-  const mapSession = useCallback(
-    (s: any): AgentSession => ({
-      id: s.id,
-      title: s.title || t('agent.sessions.default_title', '新对话'),
-      isPinned: Boolean(s.isPinned),
-      lastMessageAt: s.updatedAt
-        ? new Date(s.updatedAt).getTime()
-        : s.createdAt
-          ? new Date(s.createdAt).getTime()
-          : Date.now(),
-      messageCount: s.messageCount ?? 0
-    }),
-    [t]
-  )
-
-  const loadSessions = useCallback(
-    async (resetOffset = true) => {
-      if (!dbReady || !services || !currentAssistant?.id) return
-
-      const reqId = ++lastLoadRequestId.current
-      const offset = resetOffset ? 0 : sessionsLoadedFromDbRef.current
-      const assistantId = currentAssistant.id
-
-      if (!resetOffset) {
-        setIsLoadingMoreSessions(true)
-      }
-
-      try {
-        const sessionList = await services.sessionManager.list(
-          SESSION_PAGE_SIZE + 1,
-          offset,
-          assistantId
-        )
-
-        if (reqId !== lastLoadRequestId.current) return
-
-        if (sessionList && sessionList.length > 0) {
-          const hasMore = sessionList.length > SESSION_PAGE_SIZE
-          const page = hasMore ? sessionList.slice(0, SESSION_PAGE_SIZE) : sessionList
-          const mapped = page.map(mapSession)
-
-          if (resetOffset) {
-            setSessions(mapped)
-            sessionsLoadedFromDbRef.current = sessionList.length
-          } else {
-            setSessions((prev) => {
-              const existing = new Set(prev.map((s) => s.id))
-              const merged = [...prev]
-              for (const row of mapped) {
-                if (!existing.has(row.id)) merged.push(row)
-              }
-              return merged
-            })
-            sessionsLoadedFromDbRef.current += sessionList.length
-          }
-          setHasMoreSessions(hasMore)
-        } else {
-          if (resetOffset) {
-            setSessions([])
-            sessionsLoadedFromDbRef.current = 0
-          }
-          setHasMoreSessions(false)
-        }
-      } catch (e) {
-        console.warn('Failed to load sessions', e)
-      } finally {
-        if (reqId === lastLoadRequestId.current) {
-          setIsLoadingMoreSessions(false)
-        }
-      }
-    },
-    [dbReady, services, currentAssistant?.id, mapSession]
-  )
-
-  useEffect(() => {
-    if (!visible || !currentAssistant?.id) return
-
-    const assistantKey = currentAssistant.id
-    const assistantChanged = lastVisibleAssistantRef.current !== assistantKey
-    lastVisibleAssistantRef.current = assistantKey
-
-    if (assistantChanged) {
-      lastLoadRequestId.current += 1
-      sessionsLoadedFromDbRef.current = 0
-      setSessions([])
-      setHasMoreSessions(false)
-    }
-
-    const timer = setTimeout(() => void loadSessions(true), SESSION_LOAD_DELAY_MS)
-    return () => clearTimeout(timer)
-  }, [visible, currentAssistant?.id, loadSessions])
 
   const finishClose = useCallback(() => {
     setMounted(false)
@@ -236,22 +145,22 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
   const handlePin = async (id: string) => {
     const session = sessions.find((s) => s.id === id)
     if (session) onPinSession(id, session.isPinned)
-    await loadSessions(true)
+    onRefreshSessions()
   }
 
   const handleDelete = async (id: string) => {
     onDeleteSession(id)
-    await loadSessions(true)
+    onRefreshSessions()
   }
 
   const handleRename = async (id: string, title: string) => {
     onRenameSession(id, title)
-    await loadSessions(true)
+    onRefreshSessions()
   }
 
   const handleLoadMore = useCallback(() => {
-    void loadSessions(false)
-  }, [loadSessions])
+    onLoadMoreSessions()
+  }, [onLoadMoreSessions])
 
   if (!mounted) return null
 
@@ -404,6 +313,7 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
             <View style={styles.listWrap}>
               <AgentSessionList
                 sessions={sessions}
+                scrollKey={sessionListScrollKey}
                 onSelect={handleSelect}
                 onPin={handlePin}
                 onDelete={handleDelete}

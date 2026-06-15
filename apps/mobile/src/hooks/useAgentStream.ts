@@ -34,7 +34,16 @@ export function useAgentStream(
   currentModelId: string | null,
   currentAssistant: { id?: string; name?: string } | null,
   onSessionCreated?: (sessionId: string) => void,
-  searchMode?: boolean
+  searchMode?: boolean,
+  refreshSessionMessages?: (
+    sessionId: string,
+    options?: {
+      preserveWindow?: boolean
+      retryCount?: number
+      waitForLatestUsage?: boolean
+      commitToUi?: boolean
+    }
+  ) => Promise<boolean>
 ) {
   const { t } = useTranslation()
   const toast = useNativeToast()
@@ -72,6 +81,12 @@ export function useAgentStream(
   const compressionTextBufferRef = useRef('')
   const compressionReasoningBufferRef = useRef('')
   const compressionFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const streamFinalizeLockRef = useRef<string | null>(null)
+
+  const isActiveSession = useCallback(
+    (sessionId: string) => currentSessionIdRef.current === sessionId,
+    []
+  )
 
   const clearCompressionFlushTimer = useCallback(() => {
     if (!compressionFlushTimerRef.current) return
@@ -101,8 +116,10 @@ export function useAgentStream(
   const syncTokenUsageFromSession = useCallback(
     async (sessionId: string) => {
       if (!services?.sessionRepo) return
+      if (!isActiveSession(sessionId)) return
       const session = await services.sessionRepo.getSessionById(sessionId)
       if (!session) return
+      if (!isActiveSession(sessionId)) return
       setTokenUsage({
         inputTokens: session.totalInputTokens ?? 0,
         outputTokens: session.totalOutputTokens ?? 0,
@@ -111,20 +128,50 @@ export function useAgentStream(
         totalCostMicros: session.totalCostMicros ?? 0
       })
     },
-    [services]
+    [services, isActiveSession]
   )
 
   const reloadMessagesFromDb = useCallback(
-    async (sessionId: string) => {
-      if (!services) return
-      const rows = await services.sessionManager.getMessagesBySession(sessionId, 100)
-      clearSession()
-      for (const row of rows) {
-        addMessage(mapSessionMessageFromDb(row as any))
+    async (
+      sessionId: string,
+      options?: {
+        preserveWindow?: boolean
+        retryCount?: number
+        waitForLatestUsage?: boolean
+        commitToUi?: boolean
       }
-      await syncTokenUsageFromSession(sessionId)
+    ): Promise<boolean> => {
+      const commitToUi = options?.commitToUi ?? isActiveSession(sessionId)
+
+      if (refreshSessionMessages) {
+        const ok = await refreshSessionMessages(sessionId, { ...options, commitToUi })
+        if (!ok) return false
+      } else if (services && commitToUi) {
+        const storageRoot = await services.pathService.getRootDirectory()
+        const rows = await services.sessionManager.getMessagesBySession(sessionId, 100)
+        clearSession()
+        const seen = new Set<string>()
+        for (const row of rows) {
+          if (seen.has(row.id)) continue
+          seen.add(row.id)
+          addMessage(mapSessionMessageFromDb(row as any, { storageRoot }))
+        }
+      }
+
+      if (commitToUi && isActiveSession(sessionId)) {
+        await syncTokenUsageFromSession(sessionId)
+      }
+
+      return true
     },
-    [services, clearSession, addMessage, syncTokenUsageFromSession]
+    [
+      refreshSessionMessages,
+      services,
+      clearSession,
+      addMessage,
+      syncTokenUsageFromSession,
+      isActiveSession
+    ]
   )
 
   useEffect(() => {
@@ -191,7 +238,11 @@ export function useAgentStream(
           } catch {
             /* ignore */
           }
-          await reloadMessagesFromDb(sessionId)
+          await reloadMessagesFromDb(sessionId, {
+            preserveWindow: false,
+            retryCount: 5,
+            waitForLatestUsage: true
+          })
           resetCompressionBuffers()
           setCompressionText('')
           setCompressionReasoning('')
@@ -235,18 +286,23 @@ export function useAgentStream(
   }, [])
 
   /** 中断当前流式/压缩 UI，避免重发或新消息与旧生成并行 */
-  const interruptActiveStream = useCallback(() => {
-    abortControllerRef.current?.abort()
-    abortControllerRef.current = null
-    setIsStreaming(false)
-    setIsCompressing(false)
-    setLoading(false)
-    resetCompressionBuffers()
-    setCompressionText('')
-    setCompressionReasoning('')
-    setCompressionTriggerMessageId(null)
-    resetStreamingBuffers()
-  }, [resetCompressionBuffers, resetStreamingBuffers, setLoading])
+  const interruptActiveStream = useCallback(
+    (options?: { keepStreamingFlag?: boolean }) => {
+      abortControllerRef.current?.abort()
+      abortControllerRef.current = null
+      if (!options?.keepStreamingFlag) {
+        setIsStreaming(false)
+      }
+      setIsCompressing(false)
+      setLoading(false)
+      resetCompressionBuffers()
+      setCompressionText('')
+      setCompressionReasoning('')
+      setCompressionTriggerMessageId(null)
+      resetStreamingBuffers()
+    },
+    [resetCompressionBuffers, resetStreamingBuffers, setLoading]
+  )
 
   // 工作区切换时中断流式生成，避免旧会话的流写入新 UI
   useEffect(() => {
@@ -255,19 +311,56 @@ export function useAgentStream(
     }
   }, [vaultSwitching, interruptActiveStream])
 
-  /** 流结束：先收起 StreamingBubble，再落库刷新，避免列表与 footer 双气泡闪烁 */
+  /** 流结束：收起 StreamingBubble，再从 DB 刷新消息与计费 */
   const finishStream = useCallback(
-    async (sessionId: string) => {
+    async (sessionId: string, options?: { waitForLatestUsage?: boolean }) => {
+      if (streamFinalizeLockRef.current === sessionId) return
+      streamFinalizeLockRef.current = sessionId
+
       setLoading(false)
       abortControllerRef.current = null
       setIsStreaming(false)
+      resetStreamingBuffers()
+
       try {
-        await reloadMessagesFromDb(sessionId)
+        try {
+          await services?.sessionManager.flushSessionToDisk(sessionId)
+        } catch {
+          /* ignore */
+        }
+
+        if (!isActiveSession(sessionId)) return
+
+        await new Promise((r) => setTimeout(r, 100))
+        const reloaded = await reloadMessagesFromDb(sessionId, {
+          preserveWindow: false,
+          retryCount: 5,
+          waitForLatestUsage: options?.waitForLatestUsage ?? false,
+          commitToUi: true
+        })
+
+        if (!reloaded && isActiveSession(sessionId)) {
+          await syncTokenUsageFromSession(sessionId)
+        }
+      } catch (e) {
+        console.error('Failed to finish stream', e)
+        if (isActiveSession(sessionId)) {
+          await syncTokenUsageFromSession(sessionId)
+        }
       } finally {
-        resetStreamingBuffers()
+        if (streamFinalizeLockRef.current === sessionId) {
+          streamFinalizeLockRef.current = null
+        }
       }
     },
-    [reloadMessagesFromDb, resetStreamingBuffers, setLoading]
+    [
+      reloadMessagesFromDb,
+      resetStreamingBuffers,
+      setLoading,
+      services,
+      syncTokenUsageFromSession,
+      isActiveSession
+    ]
   )
 
   /** 对齐 desktop resend/edit：截断后复用已有用户消息 id，不再 insert 新消息 */
@@ -286,7 +379,7 @@ export function useAgentStream(
 
       const fail = (errorMsg: string) => {
         setStreamError(errorMsg)
-        void finishStream(sessionId)
+        void finishStream(sessionId, { waitForLatestUsage: true })
       }
 
       interruptActiveStream()
@@ -310,7 +403,7 @@ export function useAgentStream(
             onToolCallStart: handleToolCallStart,
             onToolCallResult: handleToolCallResult,
             onFinish: () => {
-              void finishStream(sessionId)
+              void finishStream(sessionId, { waitForLatestUsage: true })
             },
             onError: (err) => {
               fail(err.message || t('app.unknown_error', '未知网络或系统错误'))
@@ -391,6 +484,8 @@ export function useAgentStream(
             )
           )
           sessionId = newSessionId
+          setLoading(true)
+          setIsStreaming(true)
           onSessionCreated?.(newSessionId)
         } catch (e) {
           console.error('Failed to create session', e)
@@ -419,7 +514,7 @@ export function useAgentStream(
         return
       }
 
-      interruptActiveStream()
+      interruptActiveStream({ keepStreamingFlag: true })
       abortControllerRef.current = new AbortController()
 
       addMessage({
@@ -427,7 +522,10 @@ export function useAgentStream(
         role: 'user',
         content: text,
         timestamp: new Date(),
-        attachments: mapSavedAttachmentsForMobileUi(saveResult.attachments) as any
+        attachments: mapSavedAttachmentsForMobileUi(
+          saveResult.attachments,
+          await services.pathService.getRootDirectory()
+        ) as any
       })
 
       setLoading(true)
@@ -437,7 +535,7 @@ export function useAgentStream(
 
       const failStream = (errorMsg: string, sessionIdForReload: string) => {
         setStreamError(errorMsg)
-        void finishStream(sessionIdForReload)
+        void finishStream(sessionIdForReload, { waitForLatestUsage: true })
       }
 
       try {
@@ -456,7 +554,7 @@ export function useAgentStream(
             onToolCallStart: handleToolCallStart,
             onToolCallResult: handleToolCallResult,
             onFinish: () => {
-              void finishStream(sessionId!)
+              void finishStream(sessionId!, { waitForLatestUsage: true })
             },
             onError: (err) => {
               failStream(err.message || t('app.unknown_error', '未知网络或系统错误'), sessionId!)
@@ -497,8 +595,16 @@ export function useAgentStream(
   )
 
   const handleStop = useCallback(() => {
-    interruptActiveStream()
-  }, [interruptActiveStream])
+    const sessionId = currentSessionIdRef.current
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = null
+    setStreamError(null)
+    if (sessionId) {
+      void finishStream(sessionId, { waitForLatestUsage: true })
+    } else {
+      interruptActiveStream()
+    }
+  }, [finishStream, interruptActiveStream])
 
   const handleRegenerate = useCallback(
     async (messageId: string) => {
@@ -514,7 +620,7 @@ export function useAgentStream(
 
       const failRegenerate = (errorMsg: string) => {
         setStreamError(errorMsg)
-        void finishStream(currentSessionId)
+        void finishStream(currentSessionId, { waitForLatestUsage: true })
       }
 
       try {
@@ -531,7 +637,7 @@ export function useAgentStream(
           currentSessionId,
           dbUser.orderIndex
         )
-        await reloadMessagesFromDb(currentSessionId)
+        await reloadMessagesFromDb(currentSessionId, { preserveWindow: false })
         await streamFromExistingUserMessage(currentSessionId, {
           id: userMessage.id,
           content: userMessage.content,
@@ -573,7 +679,7 @@ export function useAgentStream(
           currentSessionId,
           dbMsg.orderIndex
         )
-        await reloadMessagesFromDb(currentSessionId)
+        await reloadMessagesFromDb(currentSessionId, { preserveWindow: false })
         await streamFromExistingUserMessage(currentSessionId, {
           id: messageId,
           content: storeMsg.content,
@@ -611,7 +717,7 @@ export function useAgentStream(
           currentSessionId,
           dbMsg.orderIndex
         )
-        await reloadMessagesFromDb(currentSessionId)
+        await reloadMessagesFromDb(currentSessionId, { preserveWindow: false })
 
         const storeMsg = messages.find((m) => m.id === messageId)
         await streamFromExistingUserMessage(currentSessionId, {
@@ -667,7 +773,7 @@ export function useAgentStream(
             currentSessionId
           )
         }
-        await reloadMessagesFromDb(currentSessionId)
+        await reloadMessagesFromDb(currentSessionId, { preserveWindow: false })
       } catch (e) {
         console.error('Failed to delete message', e)
         toast.showError(t('common.delete_failed', '删除失败'))

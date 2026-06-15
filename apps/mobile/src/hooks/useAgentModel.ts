@@ -1,20 +1,18 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
+import { ensureDefaultLatteAssistant } from '@baishou/core-mobile'
+import i18n from 'i18next'
 import {
-  ASSISTANT_DEFAULT_AVATAR_SENTINEL,
   formatDialogueModelLabel,
   isConfiguredDialogueModelId,
   isConfiguredProviderId,
   resolveDialogueModelSelection,
+  resolveAppUiLanguageFromSystemLocale,
   type GlobalModelsConfig
 } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
-import {
-  listAssistantsForUi,
-  type MobileAssistantUi,
-  buildAssistantRepoInput
-} from '../lib/mobile-assistant.util'
+import { listAssistantsForUi, type MobileAssistantUi } from '../lib/mobile-assistant.util'
 import { waitForVaultEcosystemResync } from '../services/mobile-vault-resync.service'
+import { resolveMobileBootstrapUiLocale } from '../lib/onboarding-language.util'
 
 type Assistant = MobileAssistantUi
 
@@ -24,7 +22,6 @@ export interface UseAgentModelOptions {
 }
 
 export function useAgentModel(_options: UseAgentModelOptions = {}) {
-  const { t } = useTranslation()
   const { services, dbReady, storageReady, vaultRevision } = useBaishou()
 
   const [currentAssistant, setCurrentAssistant] = useState<Assistant | null>(null)
@@ -79,29 +76,19 @@ export function useAgentModel(_options: UseAgentModelOptions = {}) {
           await waitForVaultEcosystemResync()
         }
 
-        let assistants = await listAssistantsForUi(
+        const settings =
+          (await services.settingsManager.get<{ language?: string }>('settings')) || {}
+        const locale =
+          (await resolveMobileBootstrapUiLocale(settings.language)) ||
+          resolveAppUiLanguageFromSystemLocale(i18n.language)
+        if (locale) {
+          await ensureDefaultLatteAssistant(services.assistantManager, locale)
+        }
+        const assistants = await listAssistantsForUi(
           services.assistantManager,
           services.attachmentManager,
           services.fileSystem
         )
-
-        if (assistants.length === 0) {
-          await services.assistantManager.create({
-            id: 'default',
-            ...buildAssistantRepoInput({
-              name: t('agent.assistant.default_assistant_name', '默认伙伴'),
-              avatarPath: ASSISTANT_DEFAULT_AVATAR_SENTINEL,
-              isDefault: true,
-              isPinned: false,
-              systemPrompt: ''
-            })
-          })
-          assistants = await listAssistantsForUi(
-            services.assistantManager,
-            services.attachmentManager,
-            services.fileSystem
-          )
-        }
 
         const nextGlobalModels =
           (await services.settingsManager.get<GlobalModelsConfig>('global_models')) || null
@@ -121,7 +108,7 @@ export function useAgentModel(_options: UseAgentModelOptions = {}) {
     }
 
     void loadDefaultConfig()
-  }, [dbReady, services, storageReady, vaultRevision, t, applyResolvedModel])
+  }, [dbReady, services, storageReady, vaultRevision, i18n.language, applyResolvedModel])
 
   const handleSelectAssistant = useCallback(
     (assistant: Assistant) => {

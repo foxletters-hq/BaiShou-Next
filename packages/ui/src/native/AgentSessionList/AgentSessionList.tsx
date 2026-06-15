@@ -4,11 +4,12 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { Input } from '../Input/Input'
-import type { AgentSessionListProps } from './agent-session-list.types'
+import type { AgentSession, AgentSessionListProps } from './agent-session-list.types'
 export type { AgentSession, AgentSessionListProps } from './agent-session-list.types'
 import { groupSessionsByTime, type TimeGroup } from './agent-session-list.utils'
 import { agentSessionListStyles as styles } from './agent-session-list.styles'
 import { AgentSessionListItem } from './AgentSessionListItem'
+import { AgentSessionActionSheet } from './AgentSessionActionSheet'
 
 export const AgentSessionList: React.FC<AgentSessionListProps> = ({
   sessions,
@@ -18,11 +19,20 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
   onRename,
   hasMore = false,
   isLoadingMore = false,
-  onLoadMore
+  onLoadMore,
+  scrollKey = 0
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const [searchQuery, setSearchQuery] = useState('')
+  const [actionSession, setActionSession] = useState<AgentSession | null>(null)
+  const listRef = useRef<FlatList>(null)
+
+  useEffect(() => {
+    if (scrollKey > 0) {
+      listRef.current?.scrollToOffset({ offset: 0, animated: false })
+    }
+  }, [scrollKey])
 
   const groupLabel = (group: TimeGroup) => {
     const labels: Record<TimeGroup, string> = {
@@ -69,6 +79,10 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
     )
   }, [isLoadingMore, colors.textSecondary])
 
+  const handleShowActions = useCallback((session: AgentSession) => {
+    setActionSession(session)
+  }, [])
+
   return (
     <View style={[styles.container, { backgroundColor: colors.bgSurface }]}>
       <View style={styles.searchBar}>
@@ -90,7 +104,9 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
       </View>
 
       <FlatList
+        ref={listRef}
         data={groupedSessions}
+        scrollEnabled={!actionSession}
         keyExtractor={(item) => item.group}
         renderItem={({ item: group }) => (
           <View>
@@ -99,14 +115,12 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
                 {group.label}
               </Text>
             </View>
-            {group.items.map((session) => (
+            {group.items.map((session: AgentSession) => (
               <AgentSessionListItem
                 key={session.id}
                 item={session}
                 onSelect={onSelect}
-                onPin={onPin}
-                onDelete={onDelete}
-                onRename={onRename}
+                onShowActions={handleShowActions}
               />
             ))}
           </View>
@@ -122,6 +136,14 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
         onEndReached={handleEndReached}
         onEndReachedThreshold={0.2}
         showsVerticalScrollIndicator={false}
+      />
+
+      <AgentSessionActionSheet
+        session={actionSession}
+        onClose={() => setActionSession(null)}
+        onPin={onPin}
+        onDelete={onDelete}
+        onRename={onRename}
       />
     </View>
   )
