@@ -1,5 +1,16 @@
 import { createStore } from '../create-store'
-import type { PromptShortcut } from '@baishou/shared'
+import {
+  dedupePromptShortcuts,
+  findShortcutCommandConflict,
+  type PromptShortcut
+} from '@baishou/shared'
+
+export class DuplicateShortcutCommandError extends Error {
+  constructor() {
+    super('DUPLICATE_SHORTCUT_COMMAND')
+    this.name = 'DuplicateShortcutCommandError'
+  }
+}
 
 export interface PromptShortcutState {
   shortcuts: PromptShortcut[]
@@ -25,7 +36,7 @@ export const usePromptShortcutStore = createStore<PromptShortcutState & PromptSh
       try {
         if (typeof window !== 'undefined' && (window as any).api?.shortcuts) {
           const list = await (window as any).api.shortcuts.getShortcuts()
-          set({ shortcuts: list })
+          set({ shortcuts: dedupePromptShortcuts(list) })
         }
       } catch (e) {
         console.error('[PromptShortcutStore] Failed to load shortcuts from IPC', e)
@@ -35,7 +46,11 @@ export const usePromptShortcutStore = createStore<PromptShortcutState & PromptSh
     },
 
     addShortcut: async (shortcut: PromptShortcut) => {
-      const list = [...(get() as PromptShortcutState).shortcuts, shortcut]
+      const state = get() as PromptShortcutState
+      if (findShortcutCommandConflict(state.shortcuts, shortcut)) {
+        throw new DuplicateShortcutCommandError()
+      }
+      const list = dedupePromptShortcuts([...state.shortcuts, shortcut])
       set({ shortcuts: list })
       if (typeof window !== 'undefined' && (window as any).api?.shortcuts) {
         await (window as any).api.shortcuts.saveShortcuts(list)
@@ -44,7 +59,12 @@ export const usePromptShortcutStore = createStore<PromptShortcutState & PromptSh
 
     updateShortcut: async (shortcut: PromptShortcut) => {
       const state = get() as PromptShortcutState
-      const list = state.shortcuts.map((e) => (e.id === shortcut.id ? shortcut : e))
+      if (findShortcutCommandConflict(state.shortcuts, shortcut, shortcut.id)) {
+        throw new DuplicateShortcutCommandError()
+      }
+      const list = dedupePromptShortcuts(
+        state.shortcuts.map((e) => (e.id === shortcut.id ? shortcut : e))
+      )
 
       set({ shortcuts: list })
       if (typeof window !== 'undefined' && (window as any).api?.shortcuts) {
@@ -72,10 +92,11 @@ export const usePromptShortcutStore = createStore<PromptShortcutState & PromptSh
       const item = newList.splice(oldIndex, 1)[0]
       if (item) {
         newList.splice(newIndex, 0, item)
-        set({ shortcuts: newList })
+        const list = dedupePromptShortcuts(newList)
+        set({ shortcuts: list })
 
         if (typeof window !== 'undefined' && (window as any).api?.shortcuts) {
-          await (window as any).api.shortcuts.saveShortcuts(newList)
+          await (window as any).api.shortcuts.saveShortcuts(list)
         }
       }
     }
