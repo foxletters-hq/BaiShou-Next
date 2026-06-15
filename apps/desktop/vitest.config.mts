@@ -5,6 +5,7 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'jsdom',
+    environmentMatchGlobs: [['src/main/**', 'node']],
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
     css: {
