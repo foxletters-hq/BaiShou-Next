@@ -20,7 +20,7 @@ const COUNT_CHIPS = [1, 2, 3, 5, 10, 15, -1] as const
 
 export interface DataSyncCountModalProps {
   visible: boolean
-  activeTab: 'cloud' | 'snapshot'
+  activeTab: 'cloud' | 'snapshot' | 'local'
   tempCount: number
   noLimitLabel: string
   colors: ThemeColors

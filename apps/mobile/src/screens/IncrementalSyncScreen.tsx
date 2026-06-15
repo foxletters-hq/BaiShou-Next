@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { S3SyncConfig } from '@baishou/shared'
+import { DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH } from '@baishou/shared'
 import {
   scrollIndicatorStyle,
   KeyboardAwareScrollView,
@@ -21,7 +22,7 @@ const DEFAULT_CONFIG: S3SyncConfig = {
   endpoint: '',
   region: 'us-east-1',
   bucket: '',
-  path: 'backup_sync',
+  path: DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH,
   accessKey: '',
   secretKey: '',
   target: 's3',
@@ -113,7 +114,7 @@ const IncrementalSyncScreen: React.FC = () => {
   )
 
   const runSync = useCallback(
-    async (mode: 'sync' | 'uploadOnly' | 'downloadOnly' | 'zipBackup', title: string) => {
+    async (mode: 'sync' | 'uploadOnly' | 'downloadOnly', title: string) => {
       if (!services?.incrementalSyncService) throw new Error(t('workspace.service_unavailable'))
 
       setIsSyncing(true)
@@ -125,10 +126,8 @@ const IncrementalSyncScreen: React.FC = () => {
           result = await services.incrementalSyncService.sync((p) => setProgress(p))
         } else if (mode === 'uploadOnly') {
           result = await services.incrementalSyncService.uploadOnly((p) => setProgress(p))
-        } else if (mode === 'downloadOnly') {
-          result = await services.incrementalSyncService.downloadOnly((p) => setProgress(p))
         } else {
-          result = await services.incrementalSyncService.syncUpload((p) => setProgress(p))
+          result = await services.incrementalSyncService.downloadOnly((p) => setProgress(p))
         }
 
         toast.showSuccess(
@@ -195,10 +194,6 @@ const IncrementalSyncScreen: React.FC = () => {
             {t('data_sync.incremental_sync_tooltip')}
           </Text>
 
-          <IncrementalSyncScopeList />
-
-          <View style={[styles.cardDivider, { backgroundColor: colors.borderMuted }]} />
-
           <IncrementalSyncConfigSheet
             config={config}
             showAccessKey={showAccessKey}
@@ -246,6 +241,8 @@ const IncrementalSyncScreen: React.FC = () => {
               ) : null}
             </>
           ) : null}
+
+          <IncrementalSyncScopeList />
         </View>
       </KeyboardAwareScrollView>
     </StackScreenLayout>
@@ -255,17 +252,13 @@ const IncrementalSyncScreen: React.FC = () => {
 const styles = StyleSheet.create({
   layoutContent: { flex: 1 },
   scroll: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 32 },
+  scrollContent: { padding: 16, paddingBottom: 20 },
   card: {
     borderWidth: StyleSheet.hairlineWidth,
     padding: 16,
     gap: 4
   },
   intro: { fontSize: 14, lineHeight: 22 },
-  cardDivider: {
-    height: 1,
-    marginVertical: 14
-  },
   actionDivider: {
     height: 1,
     marginTop: 16,

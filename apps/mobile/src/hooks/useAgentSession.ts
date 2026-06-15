@@ -34,6 +34,8 @@ interface SessionMessage {
   parts?: AgentMessagePart[]
   inputTokens?: number
   outputTokens?: number
+  cacheReadInputTokens?: number
+  cacheWriteInputTokens?: number
   costMicros?: number
 }
 

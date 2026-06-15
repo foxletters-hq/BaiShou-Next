@@ -15,6 +15,8 @@ export interface ContextChainDialogProps {
     content?: string
     inputTokens?: number
     outputTokens?: number
+    cacheReadInputTokens?: number
+    cacheWriteInputTokens?: number
     costMicros?: number
   }
   flatEntries?: CallChainFlatEntry[]
@@ -30,6 +32,8 @@ export const ContextChainDialog: React.FC<ContextChainDialogProps> = (props) => 
     content: props.message.content || '',
     inputTokens: props.message.inputTokens,
     outputTokens: props.message.outputTokens,
+    cacheReadInputTokens: props.message.cacheReadInputTokens,
+    cacheWriteInputTokens: props.message.cacheWriteInputTokens,
     costMicros: props.message.costMicros
   }
 

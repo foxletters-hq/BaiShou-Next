@@ -231,7 +231,7 @@ export const AgentScreen = () => {
   }, [drawerOpen, showShortcutSheet, showRecallSheet, resetKeyboard])
 
   const { shortcuts, addShortcut, updateShortcut, deleteShortcut, reorderShortcuts } =
-    useMobilePromptShortcuts(showShortcutSheet)
+    useMobilePromptShortcuts()
 
   const handleListScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -357,7 +357,7 @@ export const AgentScreen = () => {
     (shortcut: PromptShortcut) => {
       setShowShortcutSheet(false)
       if (shortcut.content.trim()) {
-        inputBarRef.current?.insertText(shortcut.content.trim())
+        inputBarRef.current?.insertShortcutContent(shortcut.content.trim())
       }
     },
     [setShowShortcutSheet]
@@ -472,6 +472,8 @@ export const AgentScreen = () => {
             ...message,
             inputTokens: message.inputTokens,
             outputTokens: message.outputTokens,
+            cacheReadInputTokens: message.cacheReadInputTokens,
+            cacheWriteInputTokens: message.cacheWriteInputTokens,
             costMicros: message.costMicros
           },
           flatEntries,
@@ -510,6 +512,8 @@ export const AgentScreen = () => {
 
   const totalInputTokens = tokenUsage?.inputTokens || 0
   const totalOutputTokens = tokenUsage?.outputTokens || 0
+  const totalCacheReadInputTokens = tokenUsage?.cacheReadInputTokens || 0
+  const totalCacheWriteInputTokens = tokenUsage?.cacheWriteInputTokens || 0
   const estimatedCost = (tokenUsage?.totalCostMicros || 0) / 1_000_000
   const totalCostMicros = tokenUsage?.totalCostMicros || 0
   const [pricingLastUpdated, setPricingLastUpdated] = useState<Date | null>(null)
@@ -741,8 +745,8 @@ export const AgentScreen = () => {
               isLoading={isLoading || isStreaming}
               onStop={handleStop}
               composerEnabled={!isBubbleEditing}
+              shortcuts={shortcuts}
               assistantName={assistantDisplayName}
-              onTriggerShortcut={() => setShowShortcutSheet(true)}
               onManageShortcuts={() => setShowShortcutSheet(true)}
               onRecall={() => setShowRecallSheet(true)}
               onOpenTools={() => router.push('/(tabs)/agent/tools' as Href)}
@@ -811,6 +815,8 @@ export const AgentScreen = () => {
           modelName: displayModelName || t('agent.no_model_selected', '暂未选择模型'),
           promptTokens: totalInputTokens,
           completionTokens: totalOutputTokens,
+          cacheReadTokens: totalCacheReadInputTokens,
+          cacheWriteTokens: totalCacheWriteInputTokens,
           totalTokens: totalInputTokens + totalOutputTokens,
           estimatedCost: `$${estimatedCost.toFixed(6)}`
         }}

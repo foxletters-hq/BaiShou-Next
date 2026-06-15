@@ -12,6 +12,8 @@ type ChatMessage = {
   attachments?: unknown[]
   inputTokens?: number
   outputTokens?: number
+  cacheReadInputTokens?: number
+  cacheWriteInputTokens?: number
   costMicros?: number
   compactionRecord?: CompactionMarkerData | null
 }
@@ -102,6 +104,8 @@ export const AgentMessageRow: React.FC<AgentMessageRowProps> = ({
           attachments: item.attachments,
           inputTokens: item.inputTokens,
           outputTokens: item.outputTokens,
+          cacheReadInputTokens: item.cacheReadInputTokens,
+          cacheWriteInputTokens: item.cacheWriteInputTokens,
           costMicros: item.costMicros
         }}
         userProfile={chatUserProfile}

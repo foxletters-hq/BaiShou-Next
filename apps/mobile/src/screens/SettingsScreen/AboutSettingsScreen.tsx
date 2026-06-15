@@ -9,6 +9,7 @@ import { scrollIndicatorStyle, useNativeTheme } from '@baishou/ui/native'
 import { StackScreenLayout } from '../../components/StackScreenLayout'
 import { getStackScreenChrome } from '../../components/stackScreenChrome'
 import { AboutSettingsAboutContent, useAboutSettingsEasterEggs } from '@baishou/ui/native'
+import { APP_VERSION_NUMBER } from '../../app-version'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const HERO_IMAGE = require('@baishou/shared/assets/images/Next-1.0.0-banner.jpg')
@@ -22,7 +23,7 @@ export const AboutSettingsScreen: React.FC = () => {
     onDevModeUnlock: () => router.push('/settings/developer')
   })
 
-  const version = Constants.expoConfig?.version ?? '1.0.0'
+  const version = Constants.expoConfig?.version ?? APP_VERSION_NUMBER
 
   return (
     <StackScreenLayout

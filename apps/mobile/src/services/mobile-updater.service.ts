@@ -1,7 +1,8 @@
 import { Linking } from 'react-native'
 import * as Application from 'expo-application'
 import type { SettingsManagerService } from '@baishou/core-mobile'
-import { logger } from '@baishou/shared'
+import { logger, normalizeAppVersionNumber } from '@baishou/shared'
+import { APP_VERSION_NUMBER } from '../app-version'
 
 const GITHUB_LATEST_URL = 'https://api.github.com/repos/Anson-Trio/BaiShou-Next/releases/latest'
 const SETTINGS_KEY_AUTO_CHECK = 'updater_auto_check'
@@ -17,9 +18,7 @@ export interface MobileUpdateCheckResult {
 }
 
 function parseVersionParts(raw: string): number[] {
-  return raw
-    .trim()
-    .replace(/^v+/i, '')
+  return normalizeAppVersionNumber(raw)
     .split('.')
     .map((part) => {
       const n = parseInt(part.replace(/[^0-9].*$/, ''), 10)
@@ -42,7 +41,7 @@ export class MobileUpdaterService {
   constructor(private settingsManager: SettingsManagerService) {}
 
   getCurrentVersion(): string {
-    return Application.nativeApplicationVersion || Application.applicationId || '0.0.0'
+    return Application.nativeApplicationVersion || APP_VERSION_NUMBER
   }
 
   async getAutoCheck(): Promise<boolean> {

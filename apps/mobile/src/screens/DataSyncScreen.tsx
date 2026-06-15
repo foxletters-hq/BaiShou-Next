@@ -56,7 +56,7 @@ export const DataSyncScreen: React.FC = () => {
   const [selectedRecords, setSelectedRecords] = useState<Set<string>>(new Set())
   const [renamingRecord, setRenamingRecord] = useState<string | null>(null)
   const [newRecordName, setNewRecordName] = useState('')
-  const [backupTab, setBackupTab] = useState<'cloud' | 'snapshot'>('cloud')
+  const [backupTab, setBackupTab] = useState<'cloud' | 'snapshot' | 'local'>('cloud')
   const [showCountModal, setShowCountModal] = useState(false)
   const [tempCount, setTempCount] = useState(20)
   const [showConfigForm, setShowConfigForm] = useState(false)
@@ -165,12 +165,19 @@ export const DataSyncScreen: React.FC = () => {
   }, [fetchCloudRecords])
 
   const showHelp = () => {
-    void dialog.alert(
-      backupTab === 'snapshot' ? t('data_sync.snapshot_tooltip') : t('data_sync.backup_tooltip'),
+    const message =
+      backupTab === 'snapshot'
+        ? t('data_sync.snapshot_tooltip')
+        : backupTab === 'local'
+          ? t('settings.local_archive_backup_desc')
+          : t('data_sync.backup_tooltip')
+    const title =
       backupTab === 'snapshot'
         ? t('data_sync.local_snapshots_tab')
-        : t('data_sync.sync_records', '云端备份')
-    )
+        : backupTab === 'local'
+          ? t('data_sync.local_backup_tab', '本地备份')
+          : t('data_sync.sync_records', '云端备份')
+    void dialog.alert(message, { title })
   }
 
   const openCountModal = () => {
@@ -215,7 +222,16 @@ export const DataSyncScreen: React.FC = () => {
       setIsRestoring(true)
       try {
         const result = await cloudSyncService.restoreFromCloud(syncConfig, filename)
-        toast.showSuccess(result.message)
+        if (result.needsRestart) {
+          toast.showWarning(
+            t(
+              'settings.restore_success_restart',
+              '数据已恢复，请完全退出并重新打开应用以加载数据库。'
+            )
+          )
+        } else {
+          toast.showSuccess(result.message)
+        }
       } catch (e) {
         logger.error('云端恢复失败', e instanceof Error ? e : String(e))
         toast.showError(t('data_sync.restore_failed'))
@@ -353,7 +369,10 @@ export const DataSyncScreen: React.FC = () => {
             String(syncConfig.maxBackupCount)
           )
 
-  const renderHeaderActions = () => (
+  const renderHeaderActions = () => {
+    if (backupTab === 'local') return null
+
+    return (
     <View style={styles.headerActionsGroup}>
       {backupTab === 'cloud' && (
         <>
@@ -464,7 +483,8 @@ export const DataSyncScreen: React.FC = () => {
         </TouchableOpacity>
       )}
     </View>
-  )
+    )
+  }
 
   if (showConfigForm) {
     return (
@@ -496,11 +516,6 @@ export const DataSyncScreen: React.FC = () => {
           keyboardShouldPersistTaps="handled"
           nestedScrollEnabled
         >
-          <ArchiveLocalBackupSection
-            onExport={handleArchiveExport}
-            onImport={handleArchiveImport}
-          />
-
           {backupTab === 'cloud' && (
             <View
               style={[
@@ -562,12 +577,6 @@ export const DataSyncScreen: React.FC = () => {
             </View>
           )}
 
-          {backupTab === 'cloud' && (
-            <View style={styles.backupScopeWrapper}>
-              <BackupScopeList />
-            </View>
-          )}
-
           <View
             style={[styles.section, { backgroundColor: colors.bgSurface, paddingVertical: 12 }]}
           >
@@ -598,10 +607,28 @@ export const DataSyncScreen: React.FC = () => {
                 <Text
                   style={{
                     color: backupTab === 'snapshot' ? colors.primary : colors.textSecondary,
-                    fontWeight: backupTab === 'snapshot' ? '600' : '400'
+                    fontWeight: backupTab === 'snapshot' ? '600' : '400',
+                    fontSize: 13
                   }}
                 >
                   {t('data_sync.local_snapshots_tab')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.backupTab,
+                  backupTab === 'local' && { backgroundColor: colors.bgSurface }
+                ]}
+                onPress={() => setBackupTab('local')}
+              >
+                <Text
+                  style={{
+                    color: backupTab === 'local' ? colors.primary : colors.textSecondary,
+                    fontWeight: backupTab === 'local' ? '600' : '400',
+                    fontSize: 13
+                  }}
+                >
+                  {t('data_sync.local_backup_tab', '本地备份')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -611,7 +638,9 @@ export const DataSyncScreen: React.FC = () => {
                 <Text style={[styles.headerTitleLabel, { color: colors.textPrimary }]}>
                   {backupTab === 'snapshot'
                     ? t('data_sync.local_snapshots', '本地快照')
-                    : t('data_sync.sync_records', '云端备份')}
+                    : backupTab === 'local'
+                      ? t('settings.local_archive_backup', '本地全量备份')
+                      : t('data_sync.sync_records', '云端备份')}
                 </Text>
                 <TouchableOpacity onPress={showHelp} hitSlop={8}>
                   <MaterialIcons name="help-outline" size={18} color={colors.textSecondary} />
@@ -639,6 +668,16 @@ export const DataSyncScreen: React.FC = () => {
           </View>
 
           {backupTab === 'snapshot' ? <DataSyncSnapshotPanel /> : null}
+
+          {backupTab === 'local' && (
+            <View style={[styles.section, { backgroundColor: colors.bgSurface, padding: 16 }]}>
+              <ArchiveLocalBackupSection
+                embedded
+                onExport={handleArchiveExport}
+                onImport={handleArchiveImport}
+              />
+            </View>
+          )}
 
           {backupTab === 'cloud' && (
             <View style={[styles.section, { backgroundColor: colors.bgSurface }]}>
@@ -831,6 +870,12 @@ export const DataSyncScreen: React.FC = () => {
               )}
             </View>
           )}
+
+          {(backupTab === 'cloud' || backupTab === 'local') && (
+            <View style={styles.backupScopeWrapper}>
+              <BackupScopeList />
+            </View>
+          )}
         </KeyboardAwareScrollView>
 
         <DataSyncCountModal
@@ -851,10 +896,10 @@ export const DataSyncScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { flex: 1, padding: 16 },
+  content: { flex: 1, padding: 16, paddingBottom: 20 },
   section: { borderRadius: 16, padding: 16, marginBottom: 16 },
   backupScopeWrapper: {
-    marginBottom: 16
+    marginTop: 4
   },
   statCardsRow: {
     flexDirection: 'column',

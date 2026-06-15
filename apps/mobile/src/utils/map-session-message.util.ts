@@ -44,6 +44,8 @@ export function mapSessionMessageFromDb(msg: {
   parts?: Array<{ type: string; id?: string; data?: Record<string, unknown> | string }>
   inputTokens?: number
   outputTokens?: number
+  cacheReadInputTokens?: number
+  cacheWriteInputTokens?: number
   costMicros?: number
 }) {
   const parts = msg.parts || []
@@ -101,6 +103,8 @@ export function mapSessionMessageFromDb(msg: {
     attachments,
     inputTokens: msg.inputTokens,
     outputTokens: msg.outputTokens,
+    cacheReadInputTokens: msg.cacheReadInputTokens,
+    cacheWriteInputTokens: msg.cacheWriteInputTokens,
     costMicros: msg.costMicros,
     compactionRecord,
     parts: parts.length > 0 ? (stripBinaryFromParts(parts) as AgentMessagePart[]) : undefined
