@@ -26,18 +26,23 @@ export * from './repositories/summary.repository'
 export * from './repositories/summary.repository.impl'
 
 export * from './drivers/vec-capability'
+export * from './drivers/expo-sqlite-vec.loader'
 export type { ExpoSqliteDatabase } from './drivers/expo-sqlite.driver'
 
 import { AppDatabase } from './types'
 import { ExpoSqliteDriver, ExpoSqliteDatabase } from './drivers/expo-sqlite.driver'
+import { loadExpoSqliteVecExtension } from './drivers/expo-sqlite-vec.loader'
 import { MigrationService } from './migration.service'
 import { EMBEDDED_AGENT_MIGRATIONS } from './embedded-agent-migrations'
 import { withExpoAgentDatabaseLock } from './expo-agent-db.lock'
+import { logger } from '@baishou/shared'
 
 export type ExpoDatabaseInstallResult = {
   expoDb: ExpoSqliteDatabase
   drizzleDb: AppDatabase
   driver: ExpoSqliteDriver
+  sqliteVecLoaded: boolean
+  sqliteVecLoadReason?: string
 }
 
 let expoAgentDatabaseInstall: Promise<ExpoDatabaseInstallResult> | null = null
@@ -84,8 +89,23 @@ export async function ensureExpoAgentDatabaseInstalled(
   if (!expoAgentDatabaseInstall) {
     expoAgentDatabaseInstall = (async () => {
       const expoDb = await openDatabase()
+      const vecLoad = await loadExpoSqliteVecExtension(expoDb)
+      if (vecLoad.loaded) {
+        logger.info('[VectorSearch] expo sqlite-vec extension loaded on agent database')
+      } else {
+        logger.warn(
+          '[VectorSearch] expo sqlite-vec not loaded; vector search will use JS fallback.',
+          vecLoad.reason
+        )
+      }
       const { drizzleDb, driver } = await installExpoDatabaseSchema(expoDb)
-      return { expoDb, drizzleDb, driver }
+      return {
+        expoDb,
+        drizzleDb,
+        driver,
+        sqliteVecLoaded: vecLoad.loaded,
+        sqliteVecLoadReason: vecLoad.reason
+      }
     })()
   }
   return expoAgentDatabaseInstall

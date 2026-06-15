@@ -25,6 +25,14 @@
     "@baishou/shared": "workspace:^",
     "drizzle-orm": "^0.45.2"
   },
+  "peerDependencies": {
+    "expo-sqlite": ">=55.0.0"
+  },
+  "peerDependenciesMeta": {
+    "expo-sqlite": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@libsql/client": "0.17.2",
     "@types/node": "^22.0.0",

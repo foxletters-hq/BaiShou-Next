@@ -106,23 +106,35 @@ export class SessionMessageOps {
     }
   }
 
-  async getMessagesBySession(sessionId: string, limit: number = 50) {
+  async getMessagesBySession(sessionId: string, limit: number = 50, offset: number = 0) {
     const rawMessages = await this.db
       .select()
       .from(messagesTbl)
       .where(eq(messagesTbl.sessionId, sessionId))
       .orderBy(desc(messagesTbl.orderIndex))
       .limit(limit)
+      .offset(offset)
 
     rawMessages.reverse()
 
     if (rawMessages.length === 0) return []
 
-    const allParts = await this.db.select().from(partsTbl).where(eq(partsTbl.sessionId, sessionId))
+    const messageIds = rawMessages.map((msg) => msg.id)
+    const allParts = await this.db
+      .select()
+      .from(partsTbl)
+      .where(and(eq(partsTbl.sessionId, sessionId), inArray(partsTbl.messageId, messageIds)))
+
+    const partsByMessageId = new Map<string, typeof allParts>()
+    for (const part of allParts) {
+      const bucket = partsByMessageId.get(part.messageId)
+      if (bucket) bucket.push(part)
+      else partsByMessageId.set(part.messageId, [part])
+    }
 
     return rawMessages.map((msg) => ({
       ...msg,
-      parts: allParts.filter((p) => p.messageId === msg.id)
+      parts: partsByMessageId.get(msg.id) ?? []
     }))
   }
 

@@ -1,4 +1,4 @@
-import { logger, mapMigrationBackupRow } from '@baishou/shared'
+import { embeddingVectorToBytes, logger, mapMigrationBackupRow } from '@baishou/shared'
 import type { ISqlExecutor, EmbeddingSnapshotMeta } from '@baishou/shared'
 import {
   HYBRID_SEARCH_BACKUP_TABLE,
@@ -15,15 +15,24 @@ export class HybridSearchEmbeddingStore {
   }
 
   async initVectorTables(dimension: number, _forceRebuild = false): Promise<void> {
-    if (dimension > 0) {
-      try {
-        await this.db.execute(
-          `CREATE INDEX IF NOT EXISTS ${HYBRID_SEARCH_INDEX_NAME} ON ${HYBRID_SEARCH_TABLE} (libsql_vector_idx(embedding, 'metric=cosine'))`
-        )
-        logger.info(`[VectorSearch] ANN 索引已就绪（dim=${dimension}, metric=cosine）`)
-      } catch (e: any) {
-        logger.warn('[VectorSearch] ANN 索引创建失败（将使用降级搜索）:', e.message)
-      }
+    if (dimension <= 0) return
+
+    // sqlite-vec（桌面 better-sqlite3 / 移动端 expo-sqlite）走 vec_distance_cosine，无需 libsql ANN 索引
+    try {
+      await this.db.execute('SELECT vec_version()')
+      logger.info(`[VectorSearch] sqlite-vec 已就绪（dim=${dimension}, metric=cosine）`)
+      return
+    } catch {
+      // 非 sqlite-vec 环境，尝试 libsql 专有 ANN 索引
+    }
+
+    try {
+      await this.db.execute(
+        `CREATE INDEX IF NOT EXISTS ${HYBRID_SEARCH_INDEX_NAME} ON ${HYBRID_SEARCH_TABLE} (libsql_vector_idx(embedding, 'metric=cosine'))`
+      )
+      logger.info(`[VectorSearch] libsql ANN 索引已就绪（dim=${dimension}, metric=cosine）`)
+    } catch (e: any) {
+      logger.warn('[VectorSearch] ANN 索引创建失败（将使用降级搜索）:', e.message)
     }
   }
 
@@ -39,7 +48,7 @@ export class HybridSearchEmbeddingStore {
     modelId: string
     sourceCreatedAt?: number
   }): Promise<void> {
-    const vectorBuffer = Buffer.from(new Float32Array(params.embedding).buffer)
+    const vectorBuffer = embeddingVectorToBytes(params.embedding)
     await this.db.execute({
       sql: `
         INSERT INTO ${HYBRID_SEARCH_TABLE}

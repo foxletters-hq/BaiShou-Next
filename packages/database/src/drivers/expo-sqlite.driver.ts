@@ -8,6 +8,8 @@ export interface ExpoSqliteDatabase {
   execAsync(sql: string, params?: any[]): Promise<any>
   withTransactionAsync<T>(callback: () => Promise<T>): Promise<T>
   closeAsync(): Promise<void>
+  loadExtensionAsync?: (libPath: string, entryPoint?: string) => Promise<void>
+  loadExtensionSync?: (libPath: string, entryPoint?: string) => void
 }
 
 /**

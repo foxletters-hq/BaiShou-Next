@@ -1,5 +1,12 @@
-import { ISearchResult, logger } from '@baishou/shared'
+import {
+  bytesToFloat32Array,
+  embeddingVectorToBytes,
+  hexToBytes,
+  ISearchResult,
+  logger
+} from '@baishou/shared'
 import type { ISqlExecutor } from '@baishou/shared'
+import { isMissingSqliteFunctionError } from '../utils/sqlite-function-error.util'
 import {
   HYBRID_SEARCH_INDEX_NAME,
   HYBRID_SEARCH_TABLE,
@@ -12,8 +19,9 @@ export class HybridSearchVectorQuery {
     private readonly runtime: HybridSearchRuntimeState
   ) {}
 
+  /** 是否已确认 sqlite-vec / libsql 原生向量函数可用（不含 JS 降级）。 */
   supportsNativeVectorSearch(): boolean {
-    return this.runtime.nativeVectorSupported !== false
+    return this.runtime.nativeVectorSupported === true
   }
 
   async queryFTS(keyword: string, limit: number): Promise<ISearchResult[]> {
@@ -44,19 +52,23 @@ export class HybridSearchVectorQuery {
     limit: number,
     threshold?: number
   ): Promise<ISearchResult[]> {
-    const vectorBuffer = Buffer.from(new Float32Array(vector).buffer)
+    const vectorBuffer = embeddingVectorToBytes(vector)
     const vectorStr = `[${vector.join(',')}]`
 
     if (this.runtime.vecDistanceCosineAvailable !== false) {
       try {
         const results = await this.queryWithVecDistanceCosine(vectorBuffer, limit, threshold)
         this.runtime.vecDistanceCosineAvailable = true
+        this.runtime.nativeVectorSupported = true
         return results
       } catch (e: any) {
-        this.runtime.vecDistanceCosineAvailable = false
+        const message = e?.message ?? String(e)
+        if (isMissingSqliteFunctionError(message)) {
+          this.runtime.vecDistanceCosineAvailable = false
+        }
         logger.warn(
           '[VectorSearch] vec_distance_cosine not available, falling back to high-fidelity JS Cosine:',
-          e.message
+          message
         )
       }
     }
@@ -68,11 +80,13 @@ export class HybridSearchVectorQuery {
         this.runtime.nativeVectorSupported = true
         return results
       } catch (e: any) {
-        this.runtime.vectorTopKAvailable = false
-        this.runtime.nativeVectorSupported = false
+        const message = e?.message ?? String(e)
+        if (isMissingSqliteFunctionError(message)) {
+          this.runtime.vectorTopKAvailable = false
+        }
         logger.warn(
           '[VectorSearch] vector_top_k not available, falling back to high-fidelity JS Cosine:',
-          e.message
+          message
         )
       }
     }
@@ -81,7 +95,7 @@ export class HybridSearchVectorQuery {
   }
 
   private async queryWithVecDistanceCosine(
-    vectorBuffer: Buffer,
+    vectorBuffer: Uint8Array,
     limit: number,
     threshold?: number
   ): Promise<ISearchResult[]> {
@@ -165,10 +179,10 @@ export class HybridSearchVectorQuery {
           const hexStr = r.embeddingHex as string
           if (!hexStr) continue
 
-          const buffer = Buffer.from(hexStr, 'hex')
+          const buffer = hexToBytes(hexStr)
           if (buffer.length < dimension * 4) continue
 
-          const embArr = new Float32Array(buffer.buffer, buffer.byteOffset, dimension)
+          const embArr = bytesToFloat32Array(buffer, dimension)
 
           let dot = 0,
             normA = 0,
@@ -219,10 +233,10 @@ export class HybridSearchVectorQuery {
     }[]
   > {
     let sql = `SELECT embedding_id, group_id AS sessionId, chunk_text AS chunkText,
-                      hex(embedding) AS embeddingHex,
+                      hex(embedding) AS embeddingHex, dimension,
                       source_created_at AS createdAt
                FROM ${HYBRID_SEARCH_TABLE}`
-    const args: any[] = []
+    const args: (string | number)[] = []
     if (sessionGroupId) {
       sql += ` WHERE group_id = ?`
       args.push(sessionGroupId)
@@ -233,11 +247,10 @@ export class HybridSearchVectorQuery {
       let embeddingArr: number[] = []
       try {
         const hexStr = r.embeddingHex as string
-        if (hexStr) {
-          const buffer = Buffer.from(hexStr, 'hex')
-          embeddingArr = Array.from(
-            new Float32Array(buffer.buffer, buffer.byteOffset, buffer.length / 4)
-          )
+        const dimension = Number(r.dimension ?? 0)
+        if (hexStr && dimension > 0) {
+          const buffer = hexToBytes(hexStr)
+          embeddingArr = Array.from(bytesToFloat32Array(buffer, dimension))
         }
       } catch {}
       return {
