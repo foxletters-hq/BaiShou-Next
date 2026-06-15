@@ -43,6 +43,8 @@ export interface RagMemoryViewProps {
   pageSize?: number
   searchQuery?: string
   searchMode?: 'semantic' | 'text'
+  semanticAvailable?: boolean
+  onSemanticUnavailable?: () => void
   migrationState?: EmbeddingMigrationStateView | null
   onChange: (config: RagConfig) => void
   onClearDimension?: () => Promise<void>

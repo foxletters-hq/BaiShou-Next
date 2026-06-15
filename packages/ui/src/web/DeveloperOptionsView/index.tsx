@@ -1,16 +1,26 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdScience, MdDeleteForever, MdStorage, MdChevronRight, MdChat } from 'react-icons/md'
+import {
+  MdScience,
+  MdDeleteForever,
+  MdStorage,
+  MdChevronRight,
+  MdChat,
+  MdViewCarousel
+} from 'react-icons/md'
 import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
 
 export interface DeveloperOptionsViewProps {
   /** 注入压缩测试会话后跳转到对应对话页（桌面端传入） */
   onOpenCompressionTestSession?: (sessionId: string) => void
+  /** 打开开屏引导页（预览模式） */
+  onOpenOnboarding?: () => void
 }
 
 export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
-  onOpenCompressionTestSession
+  onOpenCompressionTestSession,
+  onOpenOnboarding
 }) => {
   const { t } = useTranslation()
   const { confirm, alert } = useDialog()
@@ -118,6 +128,43 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
 
   return (
     <div style={{ padding: '24px' }}>
+      <div
+        className="glass-panel-card"
+        style={{ padding: 0, border: '1px solid rgba(91, 168, 245, 0.35)', marginBottom: 16 }}
+      >
+        <div
+          className="settings-action-item"
+          onClick={onOpenOnboarding}
+          style={{
+            padding: '16px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            cursor: onOpenOnboarding ? 'pointer' : 'default',
+            opacity: onOpenOnboarding ? 1 : 0.5
+          }}
+        >
+          <MdViewCarousel
+            style={{
+              fontSize: 24,
+              marginRight: 16,
+              color: 'var(--color-primary)'
+            }}
+          />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 'bold', fontSize: 15 }}>
+              {t('developer.open_onboarding', '预览开屏引导')}
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--color-on-surface-variant)' }}>
+              {t(
+                'developer.open_onboarding_desc',
+                '跳转到首次启动引导页，用于检查文案与排版（不会修改已有数据）。'
+              )}
+            </div>
+          </div>
+          <MdChevronRight style={{ fontSize: 24, opacity: 0.5 }} />
+        </div>
+      </div>
+
       <div
         className="glass-panel-card"
         style={{ padding: 0, border: '1px solid rgba(244, 67, 54, 0.4)' }}

@@ -34,6 +34,8 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
   pageSize = 10,
   searchQuery = '',
   searchMode = 'semantic',
+  semanticAvailable = true,
+  onSemanticUnavailable,
   onChange,
   onBatchEmbed,
   onAddManualMemory,
@@ -114,6 +116,8 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
             searchQuery={searchQuery}
             searchMode={searchMode}
             onSearch={onSearch}
+            semanticAvailable={semanticAvailable}
+            onSemanticUnavailable={onSemanticUnavailable}
           />
         ) : null}
 
