@@ -1,3 +1,14 @@
+export interface StreamFinishPayload {
+  success?: boolean
+  error?: string
+  messageId?: string
+  inputTokens?: number
+  outputTokens?: number
+  cacheReadInputTokens?: number
+  cacheWriteInputTokens?: number
+  costMicros?: number
+}
+
 /**
  * 平台无关的 AI 流式数据及工具调用状态的事件推送接口
  */
@@ -6,5 +17,5 @@ export interface IStreamEmitter {
   sendReasoningChunk(sessionId: string, chunk: string): void
   sendToolStart(sessionId: string, name: string, args: unknown): void
   sendToolResult(sessionId: string, name: string, result: unknown): void
-  sendFinish(sessionId: string, payload: { success?: boolean; error?: string }): void
+  sendFinish(sessionId: string, payload: StreamFinishPayload): void
 }

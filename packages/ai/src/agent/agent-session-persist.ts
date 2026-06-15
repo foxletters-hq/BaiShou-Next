@@ -3,6 +3,7 @@ import { SessionRepository } from '@baishou/database'
 import { logger, sanitizeAssistantGeneratedText } from '@baishou/shared'
 import { IAIProvider } from '../providers/provider.interface'
 import { ModelPricingService } from '../pricing/model-pricing.service'
+import { mergeStreamUsageFromSdk, normalizeTokenUsageForBilling } from './token-usage.util'
 import { StreamAccumulator } from './stream-accumulator'
 // @ts-ignore
 import { SnapshotRepository } from '@baishou/database'
@@ -36,8 +37,11 @@ export interface PersistResultParams {
  * 从 AgentSessionService 中拆出，职责更清晰。
  */
 export async function persistResult(params: PersistResultParams): Promise<{
+  assistantMessageId?: string
   inputTokens: number
   outputTokens: number
+  cacheReadInputTokens: number
+  cacheWriteInputTokens: number
   costMicros: number
 }> {
   const {
@@ -110,9 +114,10 @@ export async function persistResult(params: PersistResultParams): Promise<{
   }
 
   // 从 Vercel AI SDK 获取最终 usage
+  let streamUsage = mergeStreamUsageFromSdk(accumulator.usage, null)
   let finalUsage = {
-    inputTokens: accumulator.usage.inputTokens,
-    outputTokens: accumulator.usage.outputTokens
+    inputTokens: streamUsage.inputTokens,
+    outputTokens: streamUsage.outputTokens
   }
   let costMicros = 0
 
@@ -121,10 +126,11 @@ export async function persistResult(params: PersistResultParams): Promise<{
       const u = await streamResult.usage
       logger.info('[AgentSessionService Debug] streamResult.usage resolved to:', JSON.stringify(u))
       if (u) {
-        finalUsage.inputTokens =
-          finalUsage.inputTokens || (u as any).inputTokens || (u as any).promptTokens || 0
-        finalUsage.outputTokens =
-          finalUsage.outputTokens || (u as any).outputTokens || (u as any).completionTokens || 0
+        streamUsage = mergeStreamUsageFromSdk(accumulator.usage, u as Record<string, unknown>)
+        finalUsage = {
+          inputTokens: streamUsage.inputTokens,
+          outputTokens: streamUsage.outputTokens
+        }
       }
     } catch (e: any) {
       const isNoOutputError = e?.[Symbol.for('vercel.ai.error.AI_NoOutputGeneratedError')] === true
@@ -176,12 +182,14 @@ export async function persistResult(params: PersistResultParams): Promise<{
     costMicros = await ModelPricingService.getInstance().calculateCostMicros(
       provider.config.id,
       modelId,
-      finalUsage
+      normalizeTokenUsageForBilling(streamUsage)
     )
 
     logger.info('\n================== 计费日志 ==================')
     logger.info(`模型: ${modelId} (${provider.config.id})`)
-    logger.info(`Tokens消耗: 输入 ${finalUsage.inputTokens} | 输出 ${finalUsage.outputTokens}`)
+    logger.info(
+      `Tokens消耗: 输入 ${finalUsage.inputTokens} | 输出 ${finalUsage.outputTokens} | 缓存读 ${streamUsage.cacheReadInputTokens} | 缓存写 ${streamUsage.cacheWriteInputTokens}`
+    )
     logger.info(
       `本次费用(Micros微美分): ${costMicros} (约合 $${(costMicros / 1000000).toFixed(6)})`
     )
@@ -206,6 +214,8 @@ export async function persistResult(params: PersistResultParams): Promise<{
         orderIndex: userOrderIndex + 1,
         inputTokens: finalUsage.inputTokens,
         outputTokens: finalUsage.outputTokens,
+        cacheReadInputTokens: streamUsage.cacheReadInputTokens,
+        cacheWriteInputTokens: streamUsage.cacheWriteInputTokens,
         costMicros: costMicros,
         providerId: provider.config.id,
         modelId: modelId
@@ -218,7 +228,9 @@ export async function persistResult(params: PersistResultParams): Promise<{
     sessionId,
     finalUsage.inputTokens,
     finalUsage.outputTokens,
-    costMicros
+    costMicros,
+    streamUsage.cacheReadInputTokens,
+    streamUsage.cacheWriteInputTokens
   )
 
   // ==========================================
@@ -242,8 +254,11 @@ export async function persistResult(params: PersistResultParams): Promise<{
 
   // 返回 token 统计数据，供上层回调使用
   return {
+    assistantMessageId: partsToInsert.length > 0 ? assistantMsgId : undefined,
     inputTokens: finalUsage.inputTokens,
     outputTokens: finalUsage.outputTokens,
+    cacheReadInputTokens: streamUsage.cacheReadInputTokens,
+    cacheWriteInputTokens: streamUsage.cacheWriteInputTokens,
     costMicros: costMicros
   }
 }
