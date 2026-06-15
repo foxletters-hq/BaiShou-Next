@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "86d77fa0-2d3a-47f9-835d-6be2d9b6f73a",
+  "id": "4f24bcc3-6766-4841-b984-b9f08c1da0b7",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "agent_assistants": {
@@ -104,6 +104,27 @@
           "notNull": true,
           "autoincrement": false,
           "default": 3
+        },
+        "compress_model_context_window": {
+          "name": "compress_model_context_window",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "compress_preserve_recent_tokens": {
+          "name": "compress_preserve_recent_tokens",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "compress_system_prompt": {
+          "name": "compress_system_prompt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         },
         "sort_order": {
           "name": "sort_order",
@@ -210,6 +231,20 @@
           "notNull": false,
           "autoincrement": false
         },
+        "cache_read_input_tokens": {
+          "name": "cache_read_input_tokens",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "cache_write_input_tokens": {
+          "name": "cache_write_input_tokens",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "cost_micros": {
           "name": "cost_micros",
           "type": "integer",
@@ -232,8 +267,12 @@
           "name": "agent_messages_session_id_agent_sessions_id_fk",
           "tableFrom": "agent_messages",
           "tableTo": "agent_sessions",
-          "columnsFrom": ["session_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "session_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -295,8 +334,12 @@
           "name": "agent_parts_message_id_agent_messages_id_fk",
           "tableFrom": "agent_parts",
           "tableTo": "agent_messages",
-          "columnsFrom": ["message_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "message_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -382,6 +425,22 @@
           "autoincrement": false,
           "default": 0
         },
+        "total_cache_read_input_tokens": {
+          "name": "total_cache_read_input_tokens",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "total_cache_write_input_tokens": {
+          "name": "total_cache_write_input_tokens",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
         "total_cost_micros": {
           "name": "total_cost_micros",
           "type": "integer",
@@ -444,6 +503,13 @@
           "notNull": true,
           "autoincrement": false
         },
+        "tail_start_message_id": {
+          "name": "tail_start_message_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "message_count": {
           "name": "message_count",
           "type": "integer",
@@ -468,153 +534,6 @@
         }
       },
       "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "journals_fts": {
-      "name": "journals_fts",
-      "columns": {
-        "rowid": {
-          "name": "rowid",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "content": {
-          "name": "content",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "tags": {
-          "name": "tags",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "journals_index": {
-      "name": "journals_index",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "file_path": {
-          "name": "file_path",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "date": {
-          "name": "date",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "content_hash": {
-          "name": "content_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "weather": {
-          "name": "weather",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "mood": {
-          "name": "mood",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "location": {
-          "name": "location",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "location_detail": {
-          "name": "location_detail",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "is_favorite": {
-          "name": "is_favorite",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": false
-        },
-        "has_media": {
-          "name": "has_media",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": false
-        },
-        "raw_content": {
-          "name": "raw_content",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "tags": {
-          "name": "tags",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "journals_index_file_path_unique": {
-          "name": "journals_index_file_path_unique",
-          "columns": ["file_path"],
-          "isUnique": true
-        }
-      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -677,7 +596,11 @@
       "indexes": {
         "summaries_type_start_date_end_date_unique": {
           "name": "summaries_type_start_date_end_date_unique",
-          "columns": ["type", "start_date", "end_date"],
+          "columns": [
+            "type",
+            "start_date",
+            "end_date"
+          ],
           "isUnique": true
         }
       },
@@ -819,7 +742,9 @@
       "indexes": {
         "memory_embeddings_embedding_id_unique": {
           "name": "memory_embeddings_embedding_id_unique",
-          "columns": ["embedding_id"],
+          "columns": [
+            "embedding_id"
+          ],
           "isUnique": true
         }
       },

@@ -2,7 +2,7 @@ import type { EmbeddedMigrations } from './migration.service'
 
 /**
  * Agent DB 迁移（内嵌，供 Expo / React Native 使用，不依赖文件系统读取 drizzle 目录）
- * 与 apps/desktop/resources/database/drizzle 保持同步
+ * 由 scripts/sync-embedded-agent-migrations.mjs 根据 apps/desktop/resources/database/drizzle 自动生成
  */
 export const EMBEDDED_AGENT_MIGRATIONS: EmbeddedMigrations = {
   journal: {
@@ -12,34 +12,14 @@ export const EMBEDDED_AGENT_MIGRATIONS: EmbeddedMigrations = {
       {
         idx: 0,
         version: '6',
-        when: 1775340000000,
+        when: 1781510528245,
         tag: '0000_agent_schema',
-        breakpoints: true
-      },
-      {
-        idx: 1,
-        version: '6',
-        when: 1775536911817,
-        tag: '0001_chunky_hannibal_king',
-        breakpoints: true
-      },
-      {
-        idx: 2,
-        version: '6',
-        when: 1775600000000,
-        tag: '0002_cache_token_usage',
         breakpoints: true
       }
     ]
   },
   sqlByTag: {
-    '0000_agent_schema': `CREATE TABLE \`__drizzle_migrations\` (
-	\`version\` integer PRIMARY KEY NOT NULL,
-	\`tag\` text NOT NULL,
-	\`executed_at\` integer NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE \`agent_assistants\` (
+    '0000_agent_schema': `CREATE TABLE \`agent_assistants\` (
 	\`id\` text PRIMARY KEY NOT NULL,
 	\`name\` text NOT NULL,
 	\`emoji\` text,
@@ -53,9 +33,12 @@ CREATE TABLE \`agent_assistants\` (
 	\`model_id\` text,
 	\`compress_token_threshold\` integer DEFAULT 60000 NOT NULL,
 	\`compress_keep_turns\` integer DEFAULT 3 NOT NULL,
+	\`compress_model_context_window\` integer,
+	\`compress_preserve_recent_tokens\` integer,
+	\`compress_system_prompt\` text,
 	\`sort_order\` integer DEFAULT 0 NOT NULL,
-	\`created_at\` integer NOT NULL,
-	\`updated_at\` integer NOT NULL
+	\`created_at\` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL,
+	\`updated_at\` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE \`agent_sessions\` (
@@ -69,9 +52,11 @@ CREATE TABLE \`agent_sessions\` (
 	\`model_id\` text NOT NULL,
 	\`total_input_tokens\` integer DEFAULT 0 NOT NULL,
 	\`total_output_tokens\` integer DEFAULT 0 NOT NULL,
+	\`total_cache_read_input_tokens\` integer DEFAULT 0 NOT NULL,
+	\`total_cache_write_input_tokens\` integer DEFAULT 0 NOT NULL,
 	\`total_cost_micros\` integer DEFAULT 0 NOT NULL,
-	\`created_at\` integer NOT NULL,
-	\`updated_at\` integer NOT NULL
+	\`created_at\` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL,
+	\`updated_at\` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE \`agent_messages\` (
@@ -85,8 +70,10 @@ CREATE TABLE \`agent_messages\` (
 	\`order_index\` integer NOT NULL,
 	\`input_tokens\` integer,
 	\`output_tokens\` integer,
+	\`cache_read_input_tokens\` integer,
+	\`cache_write_input_tokens\` integer,
 	\`cost_micros\` integer,
-	\`created_at\` integer NOT NULL,
+	\`created_at\` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL,
 	FOREIGN KEY (\`session_id\`) REFERENCES \`agent_sessions\`(\`id\`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
@@ -95,8 +82,8 @@ CREATE TABLE \`agent_parts\` (
 	\`message_id\` text NOT NULL,
 	\`session_id\` text NOT NULL,
 	\`type\` text NOT NULL,
-	\`data\` text NOT NULL,
-	\`created_at\` integer NOT NULL,
+	\`data\` text,
+	\`created_at\` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL,
 	FOREIGN KEY (\`message_id\`) REFERENCES \`agent_messages\`(\`id\`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
@@ -105,9 +92,10 @@ CREATE TABLE \`compression_snapshots\` (
 	\`session_id\` text NOT NULL,
 	\`summary_text\` text NOT NULL,
 	\`covered_up_to_message_id\` text NOT NULL,
+	\`tail_start_message_id\` text,
 	\`message_count\` integer NOT NULL,
 	\`token_count\` integer,
-	\`created_at\` integer NOT NULL
+	\`created_at\` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE \`summaries\` (
@@ -117,7 +105,7 @@ CREATE TABLE \`summaries\` (
 	\`end_date\` integer NOT NULL,
 	\`content\` text NOT NULL,
 	\`source_ids\` text,
-	\`generated_at\` integer NOT NULL
+	\`generated_at\` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX \`summaries_type_start_date_end_date_unique\` ON \`summaries\` (\`type\`,\`start_date\`,\`end_date\`);
@@ -125,9 +113,10 @@ CREATE UNIQUE INDEX \`summaries_type_start_date_end_date_unique\` ON \`summaries
 CREATE TABLE \`system_settings\` (
 	\`key\` text PRIMARY KEY NOT NULL,
 	\`value\` text NOT NULL,
-	\`updated_at\` integer NOT NULL
-);`,
-    '0001_chunky_hannibal_king': `CREATE TABLE IF NOT EXISTS \`memory_embeddings\` (
+	\`updated_at\` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE \`memory_embeddings\` (
 	\`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	\`embedding_id\` text NOT NULL,
 	\`source_type\` text NOT NULL,
@@ -143,13 +132,6 @@ CREATE TABLE \`system_settings\` (
 	\`source_created_at\` integer
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX IF NOT EXISTS \`memory_embeddings_embedding_id_unique\` ON \`memory_embeddings\` (\`embedding_id\`);`,
-    '0002_cache_token_usage': `ALTER TABLE \`agent_messages\` ADD \`cache_read_input_tokens\` integer;
---> statement-breakpoint
-ALTER TABLE \`agent_messages\` ADD \`cache_write_input_tokens\` integer;
---> statement-breakpoint
-ALTER TABLE \`agent_sessions\` ADD \`total_cache_read_input_tokens\` integer DEFAULT 0 NOT NULL;
---> statement-breakpoint
-ALTER TABLE \`agent_sessions\` ADD \`total_cache_write_input_tokens\` integer DEFAULT 0 NOT NULL;`
+CREATE UNIQUE INDEX \`memory_embeddings_embedding_id_unique\` ON \`memory_embeddings\` (\`embedding_id\`);`
   }
 }

@@ -17,8 +17,9 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "node ../../node_modules/vitest/vitest.mjs run --config vitest.config.mts",
-    "db:generate": "drizzle-kit generate",
-    "db:push": "drizzle-kit push"
+    "db:generate": "drizzle-kit generate && node ../../scripts/sync-embedded-agent-migrations.mjs",
+    "db:push": "drizzle-kit push",
+    "db:sync-embedded": "node ../../scripts/sync-embedded-agent-migrations.mjs"
   },
   "dependencies": {
     "@baishou/shared": "workspace:^",

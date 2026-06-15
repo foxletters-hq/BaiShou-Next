@@ -1,9 +1,3 @@
-CREATE TABLE `__drizzle_migrations` (
-	`version` integer PRIMARY KEY NOT NULL,
-	`tag` text NOT NULL,
-	`executed_at` integer NOT NULL
-);
---> statement-breakpoint
 CREATE TABLE `agent_assistants` (
 	`id` text PRIMARY KEY NOT NULL,
 	`name` text NOT NULL,
@@ -18,9 +12,12 @@ CREATE TABLE `agent_assistants` (
 	`model_id` text,
 	`compress_token_threshold` integer DEFAULT 60000 NOT NULL,
 	`compress_keep_turns` integer DEFAULT 3 NOT NULL,
+	`compress_model_context_window` integer,
+	`compress_preserve_recent_tokens` integer,
+	`compress_system_prompt` text,
 	`sort_order` integer DEFAULT 0 NOT NULL,
-	`created_at` integer NOT NULL,
-	`updated_at` integer NOT NULL
+	`created_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL,
+	`updated_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE `agent_sessions` (
@@ -34,9 +31,11 @@ CREATE TABLE `agent_sessions` (
 	`model_id` text NOT NULL,
 	`total_input_tokens` integer DEFAULT 0 NOT NULL,
 	`total_output_tokens` integer DEFAULT 0 NOT NULL,
+	`total_cache_read_input_tokens` integer DEFAULT 0 NOT NULL,
+	`total_cache_write_input_tokens` integer DEFAULT 0 NOT NULL,
 	`total_cost_micros` integer DEFAULT 0 NOT NULL,
-	`created_at` integer NOT NULL,
-	`updated_at` integer NOT NULL
+	`created_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL,
+	`updated_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE `agent_messages` (
@@ -50,8 +49,10 @@ CREATE TABLE `agent_messages` (
 	`order_index` integer NOT NULL,
 	`input_tokens` integer,
 	`output_tokens` integer,
+	`cache_read_input_tokens` integer,
+	`cache_write_input_tokens` integer,
 	`cost_micros` integer,
-	`created_at` integer NOT NULL,
+	`created_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL,
 	FOREIGN KEY (`session_id`) REFERENCES `agent_sessions`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
@@ -60,8 +61,8 @@ CREATE TABLE `agent_parts` (
 	`message_id` text NOT NULL,
 	`session_id` text NOT NULL,
 	`type` text NOT NULL,
-	`data` text NOT NULL,
-	`created_at` integer NOT NULL,
+	`data` text,
+	`created_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL,
 	FOREIGN KEY (`message_id`) REFERENCES `agent_messages`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
@@ -70,9 +71,10 @@ CREATE TABLE `compression_snapshots` (
 	`session_id` text NOT NULL,
 	`summary_text` text NOT NULL,
 	`covered_up_to_message_id` text NOT NULL,
+	`tail_start_message_id` text,
 	`message_count` integer NOT NULL,
 	`token_count` integer,
-	`created_at` integer NOT NULL
+	`created_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE `summaries` (
@@ -82,7 +84,7 @@ CREATE TABLE `summaries` (
 	`end_date` integer NOT NULL,
 	`content` text NOT NULL,
 	`source_ids` text,
-	`generated_at` integer NOT NULL
+	`generated_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `summaries_type_start_date_end_date_unique` ON `summaries` (`type`,`start_date`,`end_date`);
@@ -90,5 +92,23 @@ CREATE UNIQUE INDEX `summaries_type_start_date_end_date_unique` ON `summaries` (
 CREATE TABLE `system_settings` (
 	`key` text PRIMARY KEY NOT NULL,
 	`value` text NOT NULL,
-	`updated_at` integer NOT NULL
+	`updated_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL
 );
+--> statement-breakpoint
+CREATE TABLE `memory_embeddings` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`embedding_id` text NOT NULL,
+	`source_type` text NOT NULL,
+	`source_id` text NOT NULL,
+	`group_id` text NOT NULL,
+	`chunk_index` integer DEFAULT 0 NOT NULL,
+	`chunk_text` text NOT NULL,
+	`metadata_json` text DEFAULT '{}' NOT NULL,
+	`embedding` blob NOT NULL,
+	`dimension` integer NOT NULL,
+	`model_id` text DEFAULT '' NOT NULL,
+	`created_at` integer NOT NULL,
+	`source_created_at` integer
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `memory_embeddings_embedding_id_unique` ON `memory_embeddings` (`embedding_id`);
