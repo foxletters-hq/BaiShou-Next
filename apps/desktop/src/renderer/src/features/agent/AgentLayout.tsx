@@ -3,12 +3,16 @@ import { useTranslation } from 'react-i18next'
 import { Outlet, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { AgentSidebar } from './components/AgentSidebar'
 import type { AgentAssistant } from './components/AgentSidebar'
-import { useAssistantStore, useSettingsStore, useUserProfileStore } from '@baishou/store'
+import { useAssistantStore, useSettingsStore, useUserProfileStore, useAgentNavigationStore } from '@baishou/store'
 import { useToast, AssistantPickerSheet, Modal, AssistantEditPage, useDialog } from '@baishou/ui'
 import styles from './AgentLayout.module.css'
-import { LATTE_ASSISTANT_DESCRIPTION, LATTE_ASSISTANT_NAME } from '@baishou/shared'
+import { LATTE_ASSISTANT_DESCRIPTION, LATTE_ASSISTANT_NAME, buildAgentChatNavigationPath } from '@baishou/shared'
 import { useAgentSessions } from './hooks/useAgentSessions'
 import i18n from 'i18next'
+import {
+  readAgentNavigationSnapshot,
+  writeAgentNavigationSnapshot
+} from '../../lib/agent-navigation-persistence'
 
 export const AgentLayout: React.FC = () => {
   const navigate = useNavigate()
@@ -25,6 +29,7 @@ export const AgentLayout: React.FC = () => {
   const [isCreateAssistantOpen, setIsCreateAssistantOpen] = useState(false)
   const [standaloneSessionDoc, setStandaloneSessionDoc] = useState<any>(null)
   const resolvedAssistantIdRef = useRef<string | undefined>(undefined)
+  const restoredNavigationRef = useRef(false)
 
   const sanitizeAssistantId = (raw: unknown): string | undefined => {
     if (typeof raw === 'string' && raw.length > 0) return raw
@@ -34,13 +39,12 @@ export const AgentLayout: React.FC = () => {
 
   const urlAssistantId = sanitizeAssistantId(searchParams.get('assistantId'))
   const defaultAssistantId = assistants.find((a) => a.isDefault)?.id ?? assistants[0]?.id
+  const sessionDocReady = Boolean(sessionId && standaloneSessionDoc?.id === sessionId)
   const resolvedAssistantId =
     urlAssistantId ||
-    (sessionId && standaloneSessionDoc?.id === sessionId
-      ? sanitizeAssistantId(standaloneSessionDoc.assistantId)
-      : undefined) ||
+    (sessionDocReady ? sanitizeAssistantId(standaloneSessionDoc.assistantId) : undefined) ||
     resolvedAssistantIdRef.current ||
-    (defaultAssistantId != null ? String(defaultAssistantId) : undefined)
+    (sessionId ? undefined : defaultAssistantId != null ? String(defaultAssistantId) : undefined)
 
   const toast = useToast()
   const dialog = useDialog()
@@ -72,6 +76,49 @@ export const AgentLayout: React.FC = () => {
     }
   }, [sessionId])
 
+  useEffect(() => {
+    const vaultKey =
+      (typeof window !== 'undefined' && window.localStorage.getItem('baishou_active_vault')) ||
+      'default'
+    const saved = readAgentNavigationSnapshot(vaultKey)
+    if (!saved?.assistantId || resolvedAssistantIdRef.current) return
+    if (sessionId && saved.sessionId === sessionId) {
+      resolvedAssistantIdRef.current = saved.assistantId
+    } else if (!urlAssistantId && !sessionId) {
+      resolvedAssistantIdRef.current = saved.assistantId
+    }
+  }, [sessionId, urlAssistantId])
+
+  useEffect(() => {
+    if (sessionId || restoredNavigationRef.current) return
+    const vaultKey =
+      (typeof window !== 'undefined' && window.localStorage.getItem('baishou_active_vault')) ||
+      'default'
+    const saved = readAgentNavigationSnapshot(vaultKey)
+    if (!saved?.sessionId && !saved?.assistantId) return
+    restoredNavigationRef.current = true
+    navigate(buildAgentChatNavigationPath(saved), { replace: true })
+  }, [sessionId, navigate])
+
+  useEffect(() => {
+    if (sessionId && !urlAssistantId && !sessionDocReady) return
+
+    const vaultKey =
+      (typeof window !== 'undefined' && window.localStorage.getItem('baishou_active_vault')) ||
+      'default'
+
+    const assistantIdToPersist = resolvedAssistantId ?? null
+    const snapshot = {
+      assistantId: assistantIdToPersist,
+      sessionId: sessionId ?? null
+    }
+    useAgentNavigationStore.getState().setContext(vaultKey, snapshot)
+    writeAgentNavigationSnapshot(vaultKey, snapshot)
+    if (assistantIdToPersist) {
+      resolvedAssistantIdRef.current = assistantIdToPersist
+    }
+  }, [sessionId, resolvedAssistantId, urlAssistantId, sessionDocReady])
+
   // 初始化：加载助手列表，由 bootstrap 确保 Latte 存在
   useEffect(() => {
     void fetchAssistants().then(async () => {
@@ -100,6 +147,7 @@ export const AgentLayout: React.FC = () => {
 
     const onVaultResyncComplete = (event: { type?: string }) => {
       if (event?.type !== 'vault-resync-complete') return
+      restoredNavigationRef.current = false
       resolvedAssistantIdRef.current = undefined
       void fetchAssistants().then(() => {
         const store = useAssistantStore.getState()

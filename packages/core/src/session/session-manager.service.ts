@@ -92,6 +92,10 @@ export class SessionManagerService {
     return this.sessionRepo.findAllSessions(limit, offset, assistantId, searchQuery)
   }
 
+  async getSessionById(sessionId: string) {
+    return this.sessionRepo.getSessionById(sessionId)
+  }
+
   // ========== Internal Engine ==========
 
   /**

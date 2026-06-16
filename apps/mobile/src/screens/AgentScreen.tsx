@@ -57,7 +57,12 @@ import { useMobilePromptShortcuts } from '../hooks/useMobilePromptShortcuts'
 import { useResolvedAssistantAvatar } from '../hooks/useResolvedAssistantAvatar'
 import { useResolvedUserAvatar } from '../hooks/useResolvedUserAvatar'
 import { useAgentChatKeyboardInsets } from '../hooks/useAgentChatKeyboardInsets'
-import { hydrateAssistantsForUi, mapAssistantRowsToUi, type MobileAssistantUi } from '../lib/mobile-assistant.util'
+import { useAgentNavigationPersistence } from '../hooks/useAgentNavigationPersistence'
+import {
+  hydrateAssistantsForUi,
+  mapAssistantRowsToUi,
+  type MobileAssistantUi
+} from '../lib/mobile-assistant.util'
 /** 底部输入栏 + 工具条的大致高度，用于「回到底部」悬浮按钮定位 */
 const INPUT_DOCK_HEIGHT = 136
 /** 编辑态：保存按钮与 token 行距键盘顶部的留白 */
@@ -68,7 +73,7 @@ const BUBBLE_EDIT_DOCK_GAP = 16
 export const AgentScreen = () => {
   const router = useRouter()
   const { t, i18n } = useTranslation()
-  const { isLoading, searchMode, toggleSearchMode } = useAgentStore()
+  const { isLoading, searchMode, toggleSearchMode, clearSession } = useAgentStore()
   const { colors, isDark } = useNativeTheme()
   const tabBarHeight = useBottomTabBarHeight()
   const [isBubbleEditing, setIsBubbleEditing] = useState(false)
@@ -83,7 +88,7 @@ export const AgentScreen = () => {
   }, [])
 
   const toast = useNativeToast()
-  const { services, dbReady, vaultRevision } = useBaishou()
+  const { services, dbReady, vaultRevision, vaultSwitching } = useBaishou()
   const flatListRef = useRef<FlatList>(null)
   const inputBarRef = useRef<InputBarRef>(null)
   const editingRowRef = useRef<View>(null)
@@ -140,6 +145,20 @@ export const AgentScreen = () => {
   useEffect(() => {
     syncWithSession(currentSessionId)
   }, [currentSessionId, syncWithSession])
+
+  useAgentNavigationPersistence({
+    dbReady,
+    vaultSwitching,
+    vaultRevision,
+    services,
+    assistants,
+    currentAssistant,
+    currentSessionId,
+    handleSelectAssistant,
+    handleSelectSession,
+    loadSessions,
+    clearSession
+  })
 
   const {
     isStreaming,

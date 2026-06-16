@@ -10,6 +10,7 @@ import {
   type GlobalModelsConfig
 } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
+import { useAgentNavigationStore } from '@baishou/store'
 import { listAssistantsForUi, type MobileAssistantUi } from '../lib/mobile-assistant.util'
 import { waitForVaultEcosystemResync } from '../services/mobile-vault-resync.service'
 import { resolveMobileBootstrapUiLocale } from '../lib/onboarding-language.util'
@@ -95,9 +96,22 @@ export function useAgentModel(_options: UseAgentModelOptions = {}) {
           (await services.settingsManager.get<GlobalModelsConfig>('global_models')) || null
         setGlobalModels(nextGlobalModels)
 
+        const vaultKey = await services.pathService.getActiveVaultNameForContext()
+        const persisted = useAgentNavigationStore.getState().getContext(vaultKey)
+
         setCurrentAssistant((prev) => {
+          if (prev && assistants.length === 0) return prev
+
           const stillValid = prev && assistants.find((a) => a.id === prev.id)
-          const next = stillValid || assistants.find((a) => a.isDefault) || assistants[0] || null
+          const fromPersisted =
+            persisted.assistantId &&
+            assistants.find((assistant) => assistant.id === persisted.assistantId)
+          const next =
+            stillValid ||
+            fromPersisted ||
+            assistants.find((a) => a.isDefault) ||
+            assistants[0] ||
+            null
           if (!userManuallySetModelRef.current) {
             applyResolvedModel(next, nextGlobalModels)
           }

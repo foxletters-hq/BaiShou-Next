@@ -12,11 +12,12 @@ import {
   MdSettings
 } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
-import { isIncrementalSyncReady } from '@baishou/shared'
+import { isIncrementalSyncReady, buildAgentChatNavigationPath } from '@baishou/shared'
 import { IncrementalSyncPanel, WorkspaceScopeHelpTooltip } from '@baishou/ui'
 
 import { resolveDiaryHomePath } from '../Sidebar/sidebar-preferences'
 import { useOrchestratedSync } from '../../hooks/useOrchestratedSync'
+import { readActiveVaultNavigationSnapshot } from '../../lib/agent-navigation-persistence'
 
 export const TitleBar: React.FC = () => {
   const { t } = useTranslation()
@@ -127,7 +128,10 @@ export const TitleBar: React.FC = () => {
             </div>
             <div
               className={`${styles.tab} ${isAgent && !isSettings ? styles.activeTab : ''}`}
-              onClick={() => navigate('/chat')}
+              onClick={() => {
+                const saved = readActiveVaultNavigationSnapshot()
+                navigate(saved ? buildAgentChatNavigationPath(saved) : '/chat')
+              }}
             >
               <MdAutoAwesome className={styles.tabIcon} />
               <span>{t('nav.agent', '伙伴')}</span>
