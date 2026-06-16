@@ -110,16 +110,24 @@ export function useGitManagementWorkspace(params: UseGitManagementWorkspaceParam
 
   const handleStageFile = useCallback(
     async (filePath: string) => {
-      await onStageFile(filePath)
-      handleRefreshStatus()
+      try {
+        await onStageFile(filePath)
+        await handleRefreshStatus()
+      } catch (e: any) {
+        onToast(e?.message || t('common.error', '操作失败'), 'error')
+      }
     },
-    [onStageFile, handleRefreshStatus]
+    [onStageFile, handleRefreshStatus, onToast, t]
   )
 
   const handleStageAll = useCallback(async () => {
-    await onStageAll()
-    handleRefreshStatus()
-  }, [onStageAll, handleRefreshStatus])
+    try {
+      await onStageAll()
+      await handleRefreshStatus()
+    } catch (e: any) {
+      onToast(e?.message || t('common.error', '操作失败'), 'error')
+    }
+  }, [onStageAll, handleRefreshStatus, onToast, t])
 
   const handleUnstageFile = useCallback(
     async (filePath: string) => {

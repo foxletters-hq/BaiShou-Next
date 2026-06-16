@@ -32,13 +32,21 @@ export function registerGitSyncIPC() {
   })
 
   ipcMain.handle('git:stageFile', async (_, filePath: string) => {
-    await getGitService().stageFile(filePath)
-    return { success: true }
+    try {
+      await getGitService().stageFile(filePath)
+      return { success: true }
+    } catch (e: any) {
+      return { success: false, message: e?.message || '暂存失败' }
+    }
   })
 
   ipcMain.handle('git:stageAll', async () => {
-    await getGitService().stageAll()
-    return { success: true }
+    try {
+      await getGitService().stageAll()
+      return { success: true }
+    } catch (e: any) {
+      return { success: false, message: e?.message || '暂存失败' }
+    }
   })
 
   ipcMain.handle('git:unstageFile', async (_, filePath: string) => {

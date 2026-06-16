@@ -157,6 +157,10 @@ export abstract class GitSyncInternalBase {
           content += '\n# 工作区嵌套 Git 归档\n**/.git.vault-legacy/\n'
           modified = true
         }
+        if (!content.includes('*.conflict-')) {
+          content += '\n# 增量同步冲突备份\n**/*.conflict-*\n'
+          modified = true
+        }
         if (modified) {
           await fs.promises.writeFile(gitignorePath, content, 'utf8')
         }
@@ -381,8 +385,17 @@ export abstract class GitSyncInternalBase {
     }
 
     logger.info(`[GitSync] 暂存 Changes 中的 ${paths.length} 个文件`)
-    await git.add(paths)
-    return paths.length
+    let staged = 0
+    for (const filePath of paths) {
+      try {
+        await git.add(filePath)
+        staged++
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err)
+        logger.warn(`[GitSync] 跳过无法暂存的文件: ${filePath} (${msg})`)
+      }
+    }
+    return staged
   }
 
   protected filterVersionedPaths(paths: string[]): string[] {
