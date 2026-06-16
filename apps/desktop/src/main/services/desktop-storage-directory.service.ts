@@ -104,6 +104,9 @@ export async function resumeStorageAfterFileCopy(): Promise<void> {
   await vaultService.initRegistry()
   await connectGlobalShadowDb()
 
+  const { resetSharedShadowSync } = await import('../services/shadow-sync.registry')
+  resetSharedShadowSync()
+
   const { globalBootstrapper } = await import('./bootstrapper.service')
   await globalBootstrapper.activateVaultRuntime()
 
@@ -126,7 +129,6 @@ export async function resumeStorageAfterFileCopy(): Promise<void> {
 
   BrowserWindow.getAllWindows().forEach((w) => {
     w.webContents.send('storage:root-changed')
-    w.webContents.send('diary:sync-event', { type: 'vault-resync-complete' })
   })
 }
 

@@ -5,7 +5,7 @@ import * as fsp from 'fs/promises'
 import archiver from 'archiver'
 import { SettingsRepository, UserProfileRepository, executeRawSql } from '@baishou/database-desktop'
 import { FULL_BACKUP_EXCLUDED_ROOT_NAMES, logger } from '@baishou/shared'
-import { getAppDb } from '../db'
+import { getAppDb, getAppDbPath } from '../db'
 import { DesktopStoragePathService } from './path.service'
 
 /** ZIP 内用户级数据（不在 vault 根目录下） */
@@ -157,7 +157,7 @@ export class ZipExporter {
     }
     archive.append(JSON.stringify(manifest, null, 2), { name: 'manifest.json' })
 
-    const sqliteDbPath = path.join(app.getPath('userData'), 'baishou_agent.db')
+    const sqliteDbPath = getAppDbPath() || path.join(app.getPath('userData'), 'baishou_agent.db')
     if (fs.existsSync(sqliteDbPath)) {
       try {
         const dbInstance: any = getAppDb()

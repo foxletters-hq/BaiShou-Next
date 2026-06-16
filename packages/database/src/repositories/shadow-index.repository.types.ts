@@ -49,6 +49,8 @@ export interface ShadowFTSResult {
   contentSnippet: string
   tags: string
   rankScore: number
+  /** 影子索引行（查询时 JOIN 带回，避免按 ID 二次查找） */
+  indexRow?: ShadowJournalRow
 }
 
 export type ShadowJournalRow = ShadowJournalRecord & {

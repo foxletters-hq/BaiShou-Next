@@ -9,6 +9,8 @@ import { ensureDefaultLatteAssistant } from '@baishou/core-mobile'
 import { logger, DEFAULT_USER_PROFILE, USER_PROFILE_SETTINGS_KEY } from '@baishou/shared'
 import { resolveMobileBootstrapUiLocale } from '../lib/onboarding-language.util'
 
+export type MobileBootstrapperStatus = 'idle' | 'running'
+
 export interface MobileBootstrapperDeps {
   shadowIndexSyncService: ShadowIndexSyncService
   sessionManager: SessionManagerService
@@ -25,6 +27,26 @@ export class MobileDataBootstrapper {
   private running = false
   private registeredDeps: MobileBootstrapperDeps | null = null
   private idleWaiters: Array<() => void> = []
+  private listeners = new Set<(status: MobileBootstrapperStatus) => void>()
+
+  getStatus(): MobileBootstrapperStatus {
+    return this.running ? 'running' : 'idle'
+  }
+
+  subscribe(listener: (status: MobileBootstrapperStatus) => void): () => void {
+    this.listeners.add(listener)
+    listener(this.getStatus())
+    return () => {
+      this.listeners.delete(listener)
+    }
+  }
+
+  private emitStatus(): void {
+    const status = this.getStatus()
+    for (const listener of this.listeners) {
+      listener(status)
+    }
+  }
 
   registerDeps(deps: MobileBootstrapperDeps): void {
     this.registeredDeps = deps
@@ -64,6 +86,7 @@ export class MobileDataBootstrapper {
       }
     }
     this.running = true
+    this.emitStatus()
 
     logger.info('[MobileBootstrapper] Starting ecosystem resync…')
 
@@ -111,6 +134,7 @@ export class MobileDataBootstrapper {
       logger.error('[MobileBootstrapper] Resync failed:', e as Error)
     } finally {
       this.running = false
+      this.emitStatus()
       this.resolveIdleWaiters()
     }
   }

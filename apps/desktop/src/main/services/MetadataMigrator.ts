@@ -86,22 +86,35 @@ export class MetadataMigrator {
 
     if (isLegacy) {
       logger.info('MetadataMigrator: Detected Legacy Architecture. Initiating Legacy Migration...')
-      if (fs.existsSync(rootDir)) {
-        await fsp.rm(rootDir, { recursive: true, force: true }).catch(() => {})
+      const { getDesktopInstallInstanceId } = await import('./install-instance.service')
+      const installInstanceId = await getDesktopInstallInstanceId()
+      const stagingDir = path.join(
+        path.dirname(rootDir),
+        `.baishou_migration_staging_${Date.now()}`
+      )
+      await fsp.mkdir(stagingDir, { recursive: true })
+
+      try {
+        await legacyService.migrate(tempExtractDir, stagingDir, {
+          source: 'flutter_zip',
+          installInstanceId
+        })
+
+        if (fs.existsSync(rootDir)) {
+          await fsp.rm(rootDir, { recursive: true, force: true })
+        }
+        await fsp.rename(stagingDir, rootDir)
+      } catch (migrationError) {
+        await fsp.rm(stagingDir, { recursive: true, force: true }).catch(() => {})
+        throw migrationError
       }
-      await fsp.mkdir(rootDir, { recursive: true })
 
-      // 执行旧版文件翻译迁移
-      await legacyService.migrate(tempExtractDir, rootDir)
-
-      // 清理 shadow_index 文件
       await this.cleanShadowIndexFiles(rootDir)
 
-      // 旧版恢复完毕后，立刻重新建立并激活数据库连接（先前断开了）
       try {
         const { resetAppDb } = await import('../db')
         resetAppDb()
-        const restoredDb = getAppDb()
+        const restoredDb = getAppDb(rootDir)
         connectionManager.setDb(restoredDb)
         // 旧版数据库同样可能缺少新表，补跑迁移
         await installDatabaseSchema(restoredDb)

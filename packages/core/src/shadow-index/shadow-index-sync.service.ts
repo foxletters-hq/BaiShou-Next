@@ -40,6 +40,11 @@ export type { IEmbeddingCallback }
  *
  * 3. 同步开关 (`setSyncEnabled`) — 导入恢复期间暂停同步防止海量无意义操作
  */
+export type ShadowScanProgress = {
+  indexed: number
+  total: number
+}
+
 export class ShadowIndexSyncService {
   private _isScanning = false
   private _isSyncDisabled = false
@@ -47,6 +52,7 @@ export class ShadowIndexSyncService {
 
   /** 同步事件监听者回调池 */
   private _listeners: Array<(event: JournalSyncEvent) => void> = []
+  private _progressListeners: Array<(progress: ShadowScanProgress) => void> = []
 
   constructor(
     private readonly shadowRepo: ShadowIndexRepository,
@@ -91,6 +97,26 @@ export class ShadowIndexSyncService {
     }
   }
 
+  onScanProgress(listener: (progress: ShadowScanProgress) => void): () => void {
+    this._progressListeners.push(listener)
+    return () => {
+      const idx = this._progressListeners.indexOf(listener)
+      if (idx !== -1) this._progressListeners.splice(idx, 1)
+    }
+  }
+
+  get isScanning(): boolean {
+    return this._isScanning
+  }
+
+  private _emitScanProgress(progress: ShadowScanProgress): void {
+    for (const listener of this._progressListeners) {
+      try {
+        listener(progress)
+      } catch {}
+    }
+  }
+
   /**
    * 触发单条日记的强同步
    */
@@ -110,7 +136,7 @@ export class ShadowIndexSyncService {
 
     const journalBase = await this.pathService.getJournalsBaseDirectory()
     const results: JournalSyncResult[] = []
-    const CHUNK_SIZE = 50 // 内存并发阈值
+    const CHUNK_SIZE = 100 // 内存并发阈值
 
     for (let i = 0; i < dateStrs.length; i += CHUNK_SIZE) {
       const chunk = dateStrs.slice(i, i + CHUNK_SIZE)
@@ -118,6 +144,7 @@ export class ShadowIndexSyncService {
       const parsedDiaries: ParsedJournal[] = []
       const events: JournalSyncEvent[] = []
       const idsToDelete: { id: number; dateStr: string }[] = []
+      const existingHashes = await this.shadowRepo.getHashesByDates(chunk)
 
       await Promise.all(
         chunk.map(async (dateStr) => {
@@ -144,9 +171,10 @@ export class ShadowIndexSyncService {
             return
           }
 
-          // ── 2. Hash 脏检测 ──
-          const currentHash = await this._computeFileHash(filePath)
-          const existingHash = await this.shadowRepo.getHashByDate(dateKey)
+          // ── 2. 单次读盘：Hash 脏检测 + 解析共用同一份内容 ──
+          const rawContent = await this.fileSystem.readFile(filePath, 'utf8')
+          const currentHash = md5Hex(rawContent)
+          const existingHash = existingHashes.get(dateKey) ?? null
 
           if (existingHash !== null && existingHash === currentHash) {
             results.push({ meta: null, isChanged: false })
@@ -154,7 +182,6 @@ export class ShadowIndexSyncService {
           }
 
           // ── 3. 解析落盘 ──
-          const rawContent = await this.fileSystem.readFile(filePath, 'utf8')
           const diary = parseJournalMarkdown(rawContent, dateStr)
           if (!diary) {
             results.push({ meta: null, isChanged: false })
@@ -290,7 +317,15 @@ export class ShadowIndexSyncService {
       const uniqueDates = [...new Set(targetDates)]
       if (uniqueDates.length > 0) {
         logger.info(`[ShadowSync] 全量扫描提取到 ${uniqueDates.length} 份文件，进入并行流水线...`)
-        await this.syncJournalsBatch(uniqueDates, skipRag)
+        const CHUNK_SIZE = 100
+        for (let i = 0; i < uniqueDates.length; i += CHUNK_SIZE) {
+          const chunk = uniqueDates.slice(i, i + CHUNK_SIZE)
+          await this.syncJournalsBatch(chunk, skipRag)
+          this._emitScanProgress({
+            indexed: Math.min(i + chunk.length, uniqueDates.length),
+            total: uniqueDates.length
+          })
+        }
       }
 
       // 3. 【关键】清理孤立索引 (Orphaned Index Cleanup)
@@ -326,15 +361,6 @@ export class ShadowIndexSyncService {
   }
 
   // ── 内部方法 ────────────────────────────
-
-  /**
-   * 计算文件的 MD5 Hash
-   * 对标原版 `_computeFileHash()`
-   */
-  private async _computeFileHash(filePath: string): Promise<string> {
-    const content = await this.fileSystem.readFile(filePath, 'utf8')
-    return md5Hex(content)
-  }
 
   /**
    * 获取特定日期的日记文件物理路径

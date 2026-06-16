@@ -132,14 +132,37 @@ async function createSyncService(config: S3SyncConfig): Promise<IIncrementalSync
   return syncService
 }
 
-async function afterIncrementalDownload(result: {
+function incrementalSyncNeedsBootstrap(result: {
   downloaded: string[]
   deletedLocal: string[]
-}): Promise<void> {
-  if (result.downloaded.length > 0 || result.deletedLocal.length > 0) {
-    const { globalBootstrapper } = await import('../services/bootstrapper.service')
-    await globalBootstrapper.fullyResyncAllEcosystems()
-  }
+  uploaded?: string[]
+  deletedRemote?: string[]
+  conflicted?: string[]
+}): boolean {
+  return (
+    result.downloaded.length > 0 ||
+    result.deletedLocal.length > 0 ||
+    (result.uploaded?.length ?? 0) > 0 ||
+    (result.deletedRemote?.length ?? 0) > 0 ||
+    (result.conflicted?.length ?? 0) > 0
+  )
+}
+
+/** 同步完成后将磁盘 JSON/设置 水合进 SQLite，并通知渲染进程刷新（对齐移动端 afterSyncComplete） */
+async function afterIncrementalSync(
+  result: {
+    downloaded: string[]
+    deletedLocal: string[]
+    uploaded?: string[]
+    deletedRemote?: string[]
+    conflicted?: string[]
+  },
+  options?: { force?: boolean }
+): Promise<void> {
+  if (!options?.force && !incrementalSyncNeedsBootstrap(result)) return
+
+  const { globalBootstrapper } = await import('../services/bootstrapper.service')
+  await globalBootstrapper.fullyResyncAllEcosystems()
 }
 
 export function registerIncrementalSyncIPC() {
@@ -208,7 +231,7 @@ export function registerIncrementalSyncIPC() {
     ).sync((progress) => {
       event.sender.send('incrementalSync:progress', progress)
     })
-    await afterIncrementalDownload(result)
+    await afterIncrementalSync(result, { force: true })
     return result
   })
 
@@ -224,7 +247,7 @@ export function registerIncrementalSyncIPC() {
     ).downloadOnly((progress) => {
       event.sender.send('incrementalSync:progress', progress)
     })
-    await afterIncrementalDownload(result)
+    await afterIncrementalSync(result)
     return result
   })
 
@@ -250,7 +273,7 @@ export function registerIncrementalSyncIPC() {
     ).sync((progress) => {
       event.sender.send('incrementalSync:progress', progress)
     })
-    await afterIncrementalDownload(result)
+    await afterIncrementalSync(result, { force: true })
     return result
   })
 
@@ -266,7 +289,7 @@ export function registerIncrementalSyncIPC() {
     ).downloadOnly((progress) => {
       event.sender.send('incrementalSync:progress', progress)
     })
-    await afterIncrementalDownload(result)
+    await afterIncrementalSync(result)
     return result
   })
 

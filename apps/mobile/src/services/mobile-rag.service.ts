@@ -320,6 +320,8 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
       offset?: number
       mode?: 'semantic' | 'text'
       withTotal?: boolean
+      minSimilarity?: number
+      sourceType?: string
     }): Promise<{ entries: Array<Record<string, unknown>>; total: number }> {
       const limit = params.limit ?? 10
       const offset = params.offset ?? 0
@@ -329,18 +331,28 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         if (adapter) {
           const vector = await adapter.embedQuery(params.keyword)
           if (vector?.length) {
-            const results = await deps.hsRepo.queryNativeVector(vector, Math.max(limit, 50))
+            const baseLimit = Math.max(limit, 50)
+            const fetchLimit =
+              params.minSimilarity != null ? Math.min(baseLimit * 4, 500) : baseLimit
+            const results = await deps.hsRepo.queryNativeVector(
+              vector,
+              fetchLimit,
+              params.minSimilarity,
+              params.sourceType
+            )
             const entries = results.map((r) => ({
               embeddingId: r.messageId,
               text: r.chunkText,
               createdAt: timestampToMillis(r.createdAt) ?? Date.now(),
               sourceType: r.sourceType,
+              sourceId: r.sourceId,
               similarity: r.score
             }))
             const sliced = entries.slice(offset, offset + limit)
             return { entries: sliced, total: entries.length }
           }
         }
+        return { entries: [], total: 0 }
       }
 
       const keyword = params.keyword?.trim()
@@ -351,6 +363,7 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
           text: r.chunkText,
           createdAt: timestampToMillis(r.createdAt) ?? Date.now(),
           sourceType: r.sourceType,
+          sourceId: r.sourceId,
           similarity: r.score
         }))
         return { entries: page, total: fts.length }

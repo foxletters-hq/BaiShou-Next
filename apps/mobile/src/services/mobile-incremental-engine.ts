@@ -4,10 +4,10 @@ import type {
   SyncProgressEvent,
   SyncManifest,
   S3SyncConfig,
-  ManifestEntry,
-  MergeDecision
+  ManifestEntry
 } from '@baishou/shared'
 import {
+  assertBidirectionalDeletePropagationAllowed,
   assertBidirectionalSyncDivergenceAllowed,
   getIncrementalSyncStorageId,
   limitExecute,
@@ -206,60 +206,6 @@ export class MobileIncrementalEngine {
     return manifest
   }
 
-  /** 同步结束后仅刷新变更文件条目，避免全量重扫 */
-  private async patchManifestAfterDecisions(
-    baseManifest: SyncManifest,
-    decisions: MergeDecision[],
-    syncRoot: string
-  ): Promise<SyncManifest> {
-    const manifest: SyncManifest = {
-      ...baseManifest,
-      updatedAt: Date.now(),
-      deviceId: this.deviceId,
-      files: { ...baseManifest.files }
-    }
-
-    const pathsToRefresh = new Set<string>()
-    for (const d of decisions) {
-      switch (d.type) {
-        case 'upload':
-        case 'download':
-        case 'conflict-resolved':
-          pathsToRefresh.add(d.filePath)
-          break
-        case 'delete-local':
-          delete manifest.files[d.filePath]
-          break
-        case 'delete-remote':
-          delete manifest.files[d.filePath]
-          break
-        default:
-          break
-      }
-    }
-
-    if (pathsToRefresh.size === 0) {
-      return manifest
-    }
-
-    await limitExecute([...pathsToRefresh], MANIFEST_HASH_CONCURRENCY, async (relPath) => {
-      const full = joinPath(syncRoot, relPath)
-      try {
-        const info = await this.fileSystem.stat(full)
-        const hash = await md5File(this.fileSystem, full)
-        manifest.files[relPath] = {
-          hash,
-          size: info.size ?? 0,
-          lastModified: info.mtimeMs ?? Date.now()
-        }
-      } catch {
-        delete manifest.files[relPath]
-      }
-    })
-
-    return manifest
-  }
-
   async saveLocalManifest(manifest: SyncManifest): Promise<void> {
     const metaDir = await this.syncMetaDir()
     const mp = this.manifestPath(metaDir)
@@ -400,8 +346,18 @@ export class MobileIncrementalEngine {
     onProgress?.({ phase: 'comparing', current: 1, total: 1 })
     assertBidirectionalSyncDivergenceAllowed(localManifest, remoteManifest, config)
     const ancestorSnapshot = await this.loadRemoteSnapshot(config)
+    const previousLocalManifest = await this.readLocalManifestFile().catch(() =>
+      this.emptyManifest()
+    )
 
     const decisions = threeWayMerge(localManifest, remoteManifest, ancestorSnapshot)
+    assertBidirectionalDeletePropagationAllowed(
+      decisions,
+      localManifest,
+      remoteManifest,
+      ancestorSnapshot,
+      previousLocalManifest
+    )
 
     let uploaded = 0
     let downloaded = 0
@@ -410,7 +366,6 @@ export class MobileIncrementalEngine {
     let deletedLocal = 0
     const conflicted: string[] = []
     const failures: string[] = []
-    const succeededDecisions: MergeDecision[] = []
 
     const fileConcurrency = config.fileConcurrency || 5
     let completed = 0
@@ -425,23 +380,19 @@ export class MobileIncrementalEngine {
           case 'upload':
             await client.uploadFile(joinPath(syncRoot, d.filePath))
             uploaded++
-            succeededDecisions.push(d)
             break
           case 'download':
             await client.downloadFile(d.filePath, joinPath(syncRoot, d.filePath))
             downloaded++
-            succeededDecisions.push(d)
             break
           case 'delete-remote':
             await client.deleteFile(d.filePath)
             deletedRemote++
-            succeededDecisions.push(d)
             break
           case 'delete-local': {
             const fp = joinPath(syncRoot, d.filePath)
             await this.fileSystem.unlink(fp)
             deletedLocal++
-            succeededDecisions.push(d)
             break
           }
           case 'conflict-resolved':
@@ -455,7 +406,6 @@ export class MobileIncrementalEngine {
               await client.downloadFile(d.filePath, joinPath(syncRoot, d.filePath))
               downloaded++
             }
-            succeededDecisions.push(d)
             break
           case 'skip':
             skipped++
@@ -480,18 +430,12 @@ export class MobileIncrementalEngine {
     }
 
     this.lastConflicts = conflicted
-    const hasManifestChanges = succeededDecisions.some((d) => d.type !== 'skip')
-    if (hasManifestChanges) {
-      onProgress?.({ phase: 'finalizing', current: 1, total: 1 })
-      const finalManifest = await this.patchManifestAfterDecisions(
-        ancestorSnapshot,
-        succeededDecisions,
-        syncRoot
-      )
-      await this.saveLocalManifest(finalManifest)
-      await client.uploadFile(this.manifestPath(metaDir))
-      await this.saveRemoteSnapshot(finalManifest, config)
-    }
+    onProgress?.({ phase: 'finalizing', current: 0, total: 1 })
+    const finalManifest = await this.buildLocalManifest()
+    await this.saveLocalManifest(finalManifest)
+    await client.uploadFile(this.manifestPath(metaDir))
+    await this.saveRemoteSnapshot(finalManifest, config)
+    onProgress?.({ phase: 'finalizing', current: 1, total: 1 })
 
     return {
       uploaded,
@@ -606,7 +550,7 @@ export class MobileIncrementalEngine {
       }
     })
 
-    const finalManifest = await this.patchManifestAfterDecisions(localManifest, decisions, syncRoot)
+    const finalManifest = await this.buildLocalManifest()
     await this.saveLocalManifest(finalManifest)
     await client.uploadFile(this.manifestPath(metaDir))
     await this.saveRemoteSnapshot(finalManifest, config)

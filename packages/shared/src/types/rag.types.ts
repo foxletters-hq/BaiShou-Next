@@ -8,6 +8,8 @@ export interface ISearchResult {
   source: SearchSource
   createdAt?: number
   sourceType?: string
+  /** 来源实体 ID，如日记 id */
+  sourceId?: string
 }
 
 export interface ISearchQueryOptions {

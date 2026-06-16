@@ -1,14 +1,11 @@
 import { BrowserWindow } from 'electron'
 import {
-  ShadowIndexSyncService,
   SummarySyncService,
   SummaryFileService
 } from '@baishou/core-desktop'
 import {
-  ShadowIndexRepository,
   SummaryRepositoryImpl,
-  connectionManager,
-  shadowConnectionManager
+  connectionManager
 } from '@baishou/database-desktop'
 import { app } from 'electron'
 import { ensureDefaultLatteAssistant } from '@baishou/core-desktop'
@@ -22,6 +19,7 @@ import { getGitService } from '../ipc/git-sync.ipc'
 import { diaryWatcher } from './diary-watcher.service'
 import { summaryWatcher } from './summary-watcher.service'
 import { sessionWatcher } from './session-watcher.service'
+import { getSharedShadowSync } from './shadow-sync.registry'
 
 /**
  * 全局数据同步收割机 (Global Bootstrapper)
@@ -43,17 +41,10 @@ export class GlobalDataBootstrapper {
   }
 
   /**
-   * 影子索引同步服务工厂
-   * 从 shadowConnectionManager 获取全局 Shadow DB，并按当前活跃 Vault 创建 Repository
+   * 影子索引同步服务工厂（全局单例，与 watcher / IPC 共用扫描状态）
    */
   private tryGetShadowBootstrapper() {
-    const shadowDb = shadowConnectionManager.getDb()
-    const activeVault = vaultService.getActiveVault()
-    if (!activeVault) {
-      throw new Error('[Bootstrapper] 无活跃 Vault，无法创建 ShadowIndexSyncService')
-    }
-    const shadowRepo = new ShadowIndexRepository(shadowDb, activeVault.name)
-    return new ShadowIndexSyncService(shadowRepo, pathService, vaultService, fileSystem)
+    return getSharedShadowSync()
   }
 
   /**
@@ -87,6 +78,7 @@ export class GlobalDataBootstrapper {
     BrowserWindow.getAllWindows().forEach((w) => {
       w.webContents.send('session:file-changed')
       w.webContents.send('diary:sync-event', { type: 'vault-resync-complete' })
+      w.webContents.send('diary:sync-event', { type: 'indexing-complete' })
     })
   }
 
@@ -106,15 +98,15 @@ export class GlobalDataBootstrapper {
 
       // 1. 日记层：从 shadow_index.db 同步影子索引（最海量的数据）
       logger.info('[Bootstrapper] 正在同步核心日记 (Diary Shadow Index)...')
-      await shadowScout.fullScanVault(true)
+      const shadowScan = shadowScout.fullScanVault(true)
 
-      // 2. 总结层：从 baishou_agent.db 同步 Summary 存档
-      logger.info('[Bootstrapper] 正在同步阶段总结 (Summary Archives)...')
-      await summaryScout.fullScanArchives()
+      // 2–5. 其余层与日记扫描并行，缩短冷启动等待
+      const summaryScan = summaryScout.fullScanArchives()
+      const assistantScan = assistantManager.fullResyncFromDisks()
+      const sessionScan = sessionManager.fullResyncFromDisks()
+      const settingsScan = settingsManager.fullResyncFromDisk()
 
-      // 3. AI 预设角色：从 baishou_agent.db 同步助手配置
-      logger.info('[Bootstrapper] 正在同步助理设定 (Assistant Assets)...')
-      await assistantManager.fullResyncFromDisks()
+      await Promise.all([shadowScan, summaryScan, assistantScan, sessionScan, settingsScan])
       const appSettings = (await settingsManager.get<{ language?: string }>('settings')) || {}
       const featureSettings =
         (await settingsManager.get<{ language?: string }>('feature_settings')) || {}
@@ -129,14 +121,6 @@ export class GlobalDataBootstrapper {
       } else {
         logger.info('[Bootstrapper] Skipped Latte until UI language is chosen')
       }
-
-      // 4. AI 漫游会话：从 baishou_agent.db 同步会话快照
-      logger.info('[Bootstrapper] 正在同步智能体对话上下文 (Agent Session Snapshots)...')
-      await sessionManager.fullResyncFromDisks()
-
-      // 5. 应用设置
-      logger.info('[Bootstrapper] 正在同步用户级全局设定 (Settings Blueprint)...')
-      await settingsManager.fullResyncFromDisk()
 
       logger.info('--- ✅ GLOBAL BOOTSTRAPPER FINISHED. SYSTEM IS RATIONALIZED AND READY ---')
       this.notifyRenderersAfterResync()

@@ -125,7 +125,7 @@ export class VaultService implements IVaultService {
 
   public async switchVault(vaultName: string): Promise<void> {
     const result = validateVaultName(vaultName)
-    if (!result.ok) {
+    if (result.ok === false) {
       throw new VaultInvalidNameError(vaultName, result.reason)
     }
     const name = result.name
@@ -148,7 +148,7 @@ export class VaultService implements IVaultService {
 
   private resolveVaultNameOrThrow(vaultName: string): string {
     const result = validateVaultName(vaultName)
-    if (!result.ok) {
+    if (result.ok === false) {
       throw new VaultInvalidNameError(vaultName, result.reason)
     }
     return result.name

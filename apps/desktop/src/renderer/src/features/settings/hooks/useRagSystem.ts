@@ -111,7 +111,10 @@ export function useRagSystem(
       await fetchRagInfo()
       if (detectedDim > 0) {
         toast.showSuccess(
-          t('settings.rag_detect_success', '检测完成，该模型向量维度为：') + detectedDim
+          t('settings.rag.detect_success', '检测成功：${dimension}维').replace(
+            '${dimension}',
+            String(detectedDim)
+          )
         )
       } else {
         toast.showError(
@@ -119,7 +122,10 @@ export function useRagSystem(
         )
       }
     } catch (e: any) {
-      toast.showError(t('settings.rag_detect_error', '检测发生错误：') + e.message)
+      toast.showError(
+        e?.message ||
+          t('settings.rag.detect_error', '检测失败: $error').replace('$error', String(e))
+      )
     } finally {
       setIsProcessing(false)
     }

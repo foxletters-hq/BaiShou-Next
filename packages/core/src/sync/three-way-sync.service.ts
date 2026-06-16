@@ -1,6 +1,8 @@
 import type { IncrementalSyncResult, SyncProgressCallback } from '@baishou/shared'
 import {
+  assertBidirectionalDeletePropagationAllowed,
   assertBidirectionalSyncDivergenceAllowed,
+  SyncDeletePropagationBlockedError,
   SyncDivergenceExceededError
 } from '@baishou/shared'
 import type { IIncrementalSyncService } from './incremental-sync.interface'
@@ -41,8 +43,16 @@ export class ThreeWaySyncService
       const remoteManifest = await this.getRemoteManifest()
       assertBidirectionalSyncDivergenceAllowed(localManifest, remoteManifest, this.config)
       const ancestorSnapshot = await this.getRemoteSnapshot()
+      const previousLocalManifest = await this.getLocalManifest()
 
       const decisions = threeWayMerge(localManifest, remoteManifest, ancestorSnapshot)
+      assertBidirectionalDeletePropagationAllowed(
+        decisions,
+        localManifest,
+        remoteManifest,
+        ancestorSnapshot,
+        previousLocalManifest
+      )
       const total = decisions.length
       let completedCount = 0
 
@@ -114,6 +124,7 @@ export class ThreeWaySyncService
       return result
     } catch (error) {
       if (error instanceof SyncDivergenceExceededError) throw error
+      if (error instanceof SyncDeletePropagationBlockedError) throw error
       throw new S3SyncError('Three-way sync failed', error instanceof Error ? error : undefined)
     }
   }

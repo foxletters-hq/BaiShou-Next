@@ -59,6 +59,29 @@ export class ShadowIndexQueryOps {
     return rows[0]?.contentHash ?? null
   }
 
+  /** 批量读取日期对应的 contentHash，供全量扫描时避免 N 次单条查询 */
+  async getHashesByDates(dateIsos: string[]): Promise<Map<string, string>> {
+    const uniqueDates = [...new Set(dateIsos.filter(Boolean))]
+    if (uniqueDates.length === 0) return new Map()
+
+    const rows = await this.database
+      .select({
+        date: shadowJournalIndexTable.date,
+        contentHash: shadowJournalIndexTable.contentHash
+      })
+      .from(shadowJournalIndexTable)
+      .where(this.withVault(inArray(shadowJournalIndexTable.date, uniqueDates)))
+
+    const map = new Map<string, string>()
+    for (const row of rows) {
+      const day = row.date.split('T')[0] ?? row.date
+      if (row.contentHash) {
+        map.set(day, row.contentHash)
+      }
+    }
+    return map
+  }
+
   async getAllRecords(): Promise<Pick<ShadowJournalRecord, 'id' | 'date' | 'filePath'>[]> {
     return await this.database
       .select({
@@ -70,20 +93,15 @@ export class ShadowIndexQueryOps {
       .where(this.vaultFilter())
   }
 
-  async searchFTS(
-    query: string,
-    limit: number = 20,
-    offset: number = 0
-  ): Promise<ShadowFTSResult[]> {
-    if (!query || query.trim().length === 0) return []
+  /** 解析搜索词为 FTS 表达式与原始 term 列表 */
+  private buildSearchTerms(query: string): { rawTerms: string[]; ftsMatchExpr: string | null } | null {
+    if (!query || query.trim().length === 0) return null
     const cleanedQuery = normalizeSearchQuery(query)
-    if (!cleanedQuery) return []
+    if (!cleanedQuery) return null
 
-    // 按照空白切分多 Term 逻辑
     const rawTerms = cleanedQuery.split(/\s+/).filter(Boolean)
-    if (rawTerms.length === 0) return []
+    if (rawTerms.length === 0) return null
 
-    // 1. 构造 FTS Match 表达式 (AND 逻辑)
     const ftsTokens: string[] = []
     for (const term of rawTerms) {
       const containsChinese = /[\u4e00-\u9fa5]/.test(term)
@@ -100,23 +118,94 @@ export class ShadowIndexQueryOps {
       }
     }
 
+    return {
+      rawTerms,
+      ftsMatchExpr: ftsTokens.length > 0 ? ftsTokens.join(' ') : null
+    }
+  }
+
+  /** FTS 命中总数（无 snippet，供分页计数） */
+  async countSearchFTS(query: string): Promise<number> {
+    const terms = this.buildSearchTerms(query)
+    if (!terms?.ftsMatchExpr) return 0
+
+    try {
+      const rows = (await this.database.all(
+        sql`
+          SELECT COUNT(*) as cnt
+          FROM journals_fts
+          INNER JOIN journals_index i ON i.id = journals_fts.rowid
+          WHERE journals_fts MATCH ${terms.ftsMatchExpr}
+            AND i.vault_name = ${this.vaultName}
+        `
+      )) as Array<{ cnt: number }>
+      return Number(rows[0]?.cnt ?? 0)
+    } catch (e: any) {
+      console.warn('[ShadowIndex] FTS 计数失败 (非阻塞):', e.message)
+      return 0
+    }
+  }
+
+  private mapSqlRowToIndexRow(row: Record<string, unknown>): ShadowJournalRow {
+    return {
+      id: Number(row.rowid ?? row.id),
+      vaultName: String(row.vault_name ?? row.vaultName ?? this.vaultName),
+      filePath: String(row.file_path ?? row.filePath ?? ''),
+      date: String(row.date ?? ''),
+      createdAt: String(row.created_at ?? row.createdAt ?? ''),
+      updatedAt: String(row.updated_at ?? row.updatedAt ?? ''),
+      contentHash: String(row.content_hash ?? row.contentHash ?? ''),
+      weather: (row.weather as string | null) ?? null,
+      mood: (row.mood as string | null) ?? null,
+      location: (row.location as string | null) ?? null,
+      locationDetail: (row.location_detail ?? row.locationDetail ?? null) as string | null,
+      isFavorite: Boolean(row.is_favorite ?? row.isFavorite),
+      hasMedia: Boolean(row.has_media ?? row.hasMedia),
+      rawContent: (row.raw_content ?? row.rawContent ?? null) as string | null,
+      tags: (row.tags ?? null) as string | null
+    }
+  }
+
+  async searchFTS(
+    query: string,
+    limit: number = 20,
+    offset: number = 0
+  ): Promise<ShadowFTSResult[]> {
+    const terms = this.buildSearchTerms(query)
+    if (!terms) return []
+
+    const { rawTerms, ftsMatchExpr } = terms
+    const needCount = limit + offset
+
     let ftsResults: ShadowFTSResult[] = []
-    if (ftsTokens.length > 0) {
-      const ftsMatchExpr = ftsTokens.join(' ')
+    if (ftsMatchExpr) {
       try {
         const rawResults = (await this.database.all(
           sql`
             SELECT 
               journals_fts.rowid,
+              i.vault_name,
+              i.file_path,
+              i.date,
+              i.created_at,
+              i.updated_at,
+              i.content_hash,
+              i.weather,
+              i.mood,
+              i.location,
+              i.location_detail,
+              i.is_favorite,
+              i.has_media,
+              i.raw_content,
+              i.tags,
               snippet(journals_fts, 0, '<b>', '</b>', '...', 64) as content_snippet,
-              journals_fts.tags,
               journals_fts.rank as fts_rank
             FROM journals_fts
             INNER JOIN journals_index i ON i.id = journals_fts.rowid
             WHERE journals_fts MATCH ${ftsMatchExpr}
               AND i.vault_name = ${this.vaultName}
             ORDER BY fts_rank ASC
-            LIMIT ${limit + offset}
+            LIMIT ${needCount}
           `
         )) as any[]
 
@@ -124,37 +213,35 @@ export class ShadowIndexQueryOps {
           rowid: row.rowid,
           contentSnippet: cleanSegmentedSnippet(row.content_snippet),
           tags: cleanSegmentedSnippet(row.tags),
-          rankScore: row.fts_rank
+          rankScore: row.fts_rank,
+          indexRow: this.mapSqlRowToIndexRow(row)
         }))
       } catch (e: any) {
         console.warn('[ShadowIndex] FTS 搜索失败 (非阻塞):', e.message)
       }
     }
 
-    // 2. 并行执行 LIKE 兜底检索
-    let likeRows: Array<{ rowid: number; rawContent: string | null; tags: string | null }> = []
-    try {
-      const likeQueries = rawTerms.map((term) => {
-        const escaped = `%${term.replace(/[%_\\]/g, '\\$&')}%`
-        return sql`(raw_content LIKE ${escaped} ESCAPE '\\' OR tags LIKE ${escaped} ESCAPE '\\')`
-      })
-
-      // 查询 journals_index 表
-      const rows = (await this.database
-        .select({
-          rowid: shadowJournalIndexTable.id,
-          rawContent: shadowJournalIndexTable.rawContent,
-          tags: shadowJournalIndexTable.tags
+    // FTS 已凑满一页时跳过 LIKE 兜底，减少全表扫描
+    let likeRows: ShadowJournalRow[] = []
+    if (ftsResults.length < needCount) {
+      try {
+        const likeQueries = rawTerms.map((term) => {
+          const escaped = `%${term.replace(/[%_\\]/g, '\\$&')}%`
+          return sql`(raw_content LIKE ${escaped} ESCAPE '\\' OR tags LIKE ${escaped} ESCAPE '\\')`
         })
-        .from(shadowJournalIndexTable)
-        .where(this.withVault(...likeQueries))
-        .limit(limit + offset)) as any[]
 
-      if (rows) {
-        likeRows = rows
+        const rows = (await this.database
+          .select()
+          .from(shadowJournalIndexTable)
+          .where(this.withVault(...likeQueries))
+          .limit(needCount)) as ShadowJournalRow[]
+
+        if (rows) {
+          likeRows = rows
+        }
+      } catch (e: any) {
+        console.warn('[ShadowIndex] LIKE 搜索失败 (非阻塞):', e.message)
       }
-    } catch (e: any) {
-      console.warn('[ShadowIndex] LIKE 搜索失败 (非阻塞):', e.message)
     }
 
     // 3. 合并与去重
@@ -215,17 +302,18 @@ export class ShadowIndexQueryOps {
     }
 
     for (const row of likeRows) {
-      if (seenIds.has(row.rowid)) continue
-      seenIds.add(row.rowid)
+      if (seenIds.has(row.id)) continue
+      seenIds.add(row.id)
 
       const snippet = generateLikeSnippet(row.rawContent || '', rawTerms)
       const tagsSnippet = generateLikeTagsSnippet(row.tags || '', rawTerms)
 
       mergedResults.push({
-        rowid: row.rowid,
+        rowid: row.id,
         contentSnippet: snippet,
         tags: tagsSnippet,
-        rankScore: 9999
+        rankScore: 9999,
+        indexRow: row
       })
     }
 

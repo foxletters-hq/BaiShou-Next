@@ -64,12 +64,20 @@ export class ShadowIndexRepository {
     return this.queryOps.getHashByDate(...args)
   }
 
+  async getHashesByDates(...args: Parameters<ShadowIndexQueryOps['getHashesByDates']>) {
+    return this.queryOps.getHashesByDates(...args)
+  }
+
   async getAllRecords(...args: Parameters<ShadowIndexQueryOps['getAllRecords']>) {
     return this.queryOps.getAllRecords(...args)
   }
 
   async searchFTS(...args: Parameters<ShadowIndexQueryOps['searchFTS']>) {
     return this.queryOps.searchFTS(...args)
+  }
+
+  async countSearchFTS(...args: Parameters<ShadowIndexQueryOps['countSearchFTS']>) {
+    return this.queryOps.countSearchFTS(...args)
   }
 
   async listFiltered(...args: Parameters<ShadowIndexQueryOps['listFiltered']>) {

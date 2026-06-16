@@ -27,7 +27,7 @@ export class HybridSearchVectorQuery {
   async queryFTS(keyword: string, limit: number): Promise<ISearchResult[]> {
     const res = await this.db.execute({
       sql: `
-        SELECT embedding_id, group_id AS sessionId, chunk_text AS chunkText,
+        SELECT embedding_id, source_id AS sourceId, group_id AS sessionId, chunk_text AS chunkText,
                source_created_at AS createdAt, source_type AS sourceType
         FROM ${HYBRID_SEARCH_TABLE}
         WHERE chunk_text LIKE ?
@@ -43,21 +43,28 @@ export class HybridSearchVectorQuery {
       score: limit - i,
       source: 'fts' as const,
       createdAt: r.createdAt as number,
-      sourceType: r.sourceType as string | undefined
+      sourceType: r.sourceType as string | undefined,
+      sourceId: r.sourceId != null ? String(r.sourceId) : undefined
     }))
   }
 
   async queryNativeVector(
     vector: number[],
     limit: number,
-    threshold?: number
+    threshold?: number,
+    sourceType?: string
   ): Promise<ISearchResult[]> {
     const vectorBuffer = embeddingVectorToBytes(vector)
     const vectorStr = `[${vector.join(',')}]`
 
     if (this.runtime.vecDistanceCosineAvailable !== false) {
       try {
-        const results = await this.queryWithVecDistanceCosine(vectorBuffer, limit, threshold)
+        const results = await this.queryWithVecDistanceCosine(
+          vectorBuffer,
+          limit,
+          threshold,
+          sourceType
+        )
         this.runtime.vecDistanceCosineAvailable = true
         this.runtime.nativeVectorSupported = true
         return results
@@ -75,7 +82,7 @@ export class HybridSearchVectorQuery {
 
     if (this.runtime.vectorTopKAvailable !== false) {
       try {
-        const results = await this.queryWithVectorTopK(vectorStr, limit, threshold)
+        const results = await this.queryWithVectorTopK(vectorStr, limit, threshold, sourceType)
         this.runtime.vectorTopKAvailable = true
         this.runtime.nativeVectorSupported = true
         return results
@@ -91,24 +98,31 @@ export class HybridSearchVectorQuery {
       }
     }
 
-    return this.queryWithJSCosine(vector, limit, threshold)
+    return this.queryWithJSCosine(vector, limit, threshold, sourceType)
+  }
+
+  private sourceTypeClause(sourceType?: string): { sql: string; args: string[] } {
+    if (!sourceType) return { sql: '', args: [] }
+    return { sql: ` WHERE source_type = ?`, args: [sourceType] }
   }
 
   private async queryWithVecDistanceCosine(
     vectorBuffer: Uint8Array,
     limit: number,
-    threshold?: number
+    threshold?: number,
+    sourceType?: string
   ): Promise<ISearchResult[]> {
+    const typeFilter = this.sourceTypeClause(sourceType)
     const res = await this.db.execute({
       sql: `
         SELECT embedding_id, source_id, group_id AS sessionId, chunk_text AS chunkText,
                source_created_at AS createdAt, source_type AS sourceType,
                vec_distance_cosine(embedding, ?) AS distance
-        FROM ${HYBRID_SEARCH_TABLE}
+        FROM ${HYBRID_SEARCH_TABLE}${typeFilter.sql}
         ORDER BY vec_distance_cosine(embedding, ?) ASC
         LIMIT ?
       `,
-      args: [vectorBuffer, vectorBuffer, limit]
+      args: [vectorBuffer, ...typeFilter.args, vectorBuffer, limit]
     })
 
     let results = Array.from(res.rows).map((r) => ({
@@ -118,7 +132,8 @@ export class HybridSearchVectorQuery {
       score: 1.0 - (typeof r.distance === 'number' ? r.distance : 0.0),
       source: 'vector' as const,
       createdAt: r.createdAt as number,
-      sourceType: r.sourceType as string | undefined
+      sourceType: r.sourceType as string | undefined,
+      sourceId: r.source_id != null ? String(r.source_id) : undefined
     }))
 
     if (threshold !== undefined) {
@@ -130,16 +145,18 @@ export class HybridSearchVectorQuery {
   private async queryWithVectorTopK(
     vectorStr: string,
     limit: number,
-    threshold?: number
+    threshold?: number,
+    sourceType?: string
   ): Promise<ISearchResult[]> {
+    const joinFilter = sourceType ? ` AND ae.source_type = ?` : ''
     const res = await this.db.execute({
       sql: `
-        SELECT ae.embedding_id, ae.group_id AS sessionId, ae.chunk_text AS chunkText,
+        SELECT ae.embedding_id, ae.source_id AS sourceId, ae.group_id AS sessionId, ae.chunk_text AS chunkText,
                ae.source_created_at AS createdAt, ae.source_type AS sourceType, vt.distance
         FROM vector_top_k('${HYBRID_SEARCH_INDEX_NAME}', vector(?), ?) AS vt
-        JOIN ${HYBRID_SEARCH_TABLE} ae ON ae.rowid = vt.id
+        JOIN ${HYBRID_SEARCH_TABLE} ae ON ae.rowid = vt.id${joinFilter}
       `,
-      args: [vectorStr, limit]
+      args: sourceType ? [vectorStr, limit, sourceType] : [vectorStr, limit]
     })
 
     let results = Array.from(res.rows).map((r) => ({
@@ -149,7 +166,8 @@ export class HybridSearchVectorQuery {
       score: 1.0 - (typeof r.distance === 'number' ? r.distance : 0.0),
       source: 'vector' as const,
       createdAt: r.createdAt as number,
-      sourceType: r.sourceType as string | undefined
+      sourceType: r.sourceType as string | undefined,
+      sourceId: r.sourceId != null ? String(r.sourceId) : undefined
     }))
 
     if (threshold !== undefined) {
@@ -161,15 +179,18 @@ export class HybridSearchVectorQuery {
   private async queryWithJSCosine(
     queryVector: number[],
     limit: number,
-    threshold?: number
+    threshold?: number,
+    sourceType?: string
   ): Promise<ISearchResult[]> {
     try {
-      const res = await this.db.execute(
-        `SELECT embedding_id, group_id AS sessionId, chunk_text AS chunkText,
+      const typeFilter = this.sourceTypeClause(sourceType)
+      const res = await this.db.execute({
+        sql: `SELECT embedding_id, source_id AS sourceId, group_id AS sessionId, chunk_text AS chunkText,
                 source_created_at AS createdAt, source_type AS sourceType,
                 hex(embedding) AS embeddingHex
-         FROM ${HYBRID_SEARCH_TABLE}`
-      )
+         FROM ${HYBRID_SEARCH_TABLE}${typeFilter.sql}`,
+        args: typeFilter.args
+      })
 
       const dimension = queryVector.length
       const scored: Array<ISearchResult & { _dist: number }> = []
@@ -203,6 +224,7 @@ export class HybridSearchVectorQuery {
             source: 'vector' as const,
             createdAt: r.createdAt as number,
             sourceType: r.sourceType as string | undefined,
+            sourceId: r.sourceId != null ? String(r.sourceId) : undefined,
             _dist: distance
           })
         } catch {

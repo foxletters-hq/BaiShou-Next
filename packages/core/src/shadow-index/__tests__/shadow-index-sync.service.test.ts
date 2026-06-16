@@ -50,6 +50,17 @@ class MockShadowIndexRepository {
     return rec?.contentHash ?? null
   }
 
+  async getHashesByDates(dateIsos: string[]) {
+    const map = new Map<string, string>()
+    for (const dateIso of dateIsos) {
+      const rec = this.records.find((r) => r.date === dateIso || r.date.startsWith(dateIso))
+      if (rec?.contentHash) {
+        map.set(dateIso, rec.contentHash)
+      }
+    }
+    return map
+  }
+
   async getAllRecords() {
     return this.records.map((r) => ({
       id: r.id,
