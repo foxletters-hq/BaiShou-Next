@@ -1,20 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useFocusEffect } from '@react-navigation/native'
-import { ensureDefaultLatteAssistant } from '@baishou/core-mobile'
-import i18n from 'i18next'
 import {
   formatDialogueModelLabel,
   isConfiguredDialogueModelId,
   isConfiguredProviderId,
   resolveDialogueModelSelection,
-  resolveAppUiLanguageFromSystemLocale,
   type GlobalModelsConfig
 } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
 import { useAgentNavigationStore } from '@baishou/store'
 import { listAssistantsForUi, type MobileAssistantUi } from '../lib/mobile-assistant.util'
+import { invalidateAllAvatarDisplayCaches } from '../lib/assistant-avatar-display.util'
 import { waitForVaultEcosystemResync } from '../services/mobile-vault-resync.service'
-import { resolveMobileBootstrapUiLocale } from '../lib/onboarding-language.util'
 
 type Assistant = MobileAssistantUi
 
@@ -96,14 +93,7 @@ export function useAgentModel(_options: UseAgentModelOptions = {}) {
           await waitForVaultEcosystemResync()
         }
 
-        const settings =
-          (await services.settingsManager.get<{ language?: string }>('settings')) || {}
-        const locale =
-          (await resolveMobileBootstrapUiLocale(settings.language)) ||
-          resolveAppUiLanguageFromSystemLocale(i18n.language)
-        if (locale) {
-          await ensureDefaultLatteAssistant(services.assistantManager, locale)
-        }
+        invalidateAllAvatarDisplayCaches()
         const assistants = await listAssistantsForUi(
           services.assistantManager,
           services.attachmentManager,
@@ -142,7 +132,7 @@ export function useAgentModel(_options: UseAgentModelOptions = {}) {
     }
 
     void loadDefaultConfig()
-  }, [dbReady, services, storageReady, vaultRevision, i18n.language, applyResolvedModel])
+  }, [dbReady, services, storageReady, vaultRevision, applyResolvedModel])
 
   const handleSelectAssistant = useCallback(
     (assistant: Assistant) => {

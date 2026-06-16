@@ -58,11 +58,9 @@ import { useResolvedAssistantAvatar } from '../hooks/useResolvedAssistantAvatar'
 import { useResolvedUserAvatar } from '../hooks/useResolvedUserAvatar'
 import { useAgentChatKeyboardInsets } from '../hooks/useAgentChatKeyboardInsets'
 import { useAgentNavigationPersistence } from '../hooks/useAgentNavigationPersistence'
-import {
-  hydrateAssistantsForUi,
-  mapAssistantRowsToUi,
-  type MobileAssistantUi
-} from '../lib/mobile-assistant.util'
+import { hydrateAssistantsForUi, mapAssistantRowsToUi, type MobileAssistantUi } from '../lib/mobile-assistant.util'
+import { invalidateAllAvatarDisplayCaches } from '../lib/assistant-avatar-display.util'
+import { waitForVaultEcosystemResync } from '../services/mobile-vault-resync.service'
 /** 底部输入栏 + 工具条的大致高度，用于「回到底部」悬浮按钮定位 */
 const INPUT_DOCK_HEIGHT = 136
 /** 编辑态：保存按钮与 token 行距键盘顶部的留白 */
@@ -316,6 +314,10 @@ export const AgentScreen = () => {
     if (!dbReady || !services) return
     const requestId = ++loadAssistantsRequestRef.current
     try {
+      if (vaultRevision > 0) {
+        await waitForVaultEcosystemResync()
+      }
+      invalidateAllAvatarDisplayCaches()
       const rows = await services.assistantManager.findAll()
       if (requestId !== loadAssistantsRequestRef.current) return
       setAssistants(mapAssistantRowsToUi(rows))
