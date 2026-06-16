@@ -3,12 +3,12 @@
   flex-direction: column;
   align-items: center;
   width: 100%;
-  gap: 16px;
+  gap: 12px;
 }
 
 .preview {
-  width: 96px;
-  height: 96px;
+  width: 88px;
+  height: 88px;
   border-radius: 50%;
   background-color: var(--bg-surface-highest, #f1f5f9);
   background-size: cover;
@@ -16,17 +16,52 @@
   border: 2px solid var(--border-muted);
 }
 
-.sectionLabel {
-  margin: 0;
+.actionRow {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  width: 100%;
+}
+
+.actionBtn {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-muted);
+  background: var(--bg-surface-normal);
+  color: var(--text-primary);
   font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  align-self: flex-start;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.actionBtn:hover {
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+}
+
+.actionBtn span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hiddenInput {
+  display: none;
+}
+
+.builtinModal {
+  width: min(100%, 360px);
 }
 
 .presetGrid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   width: 100%;
 }
@@ -58,33 +93,4 @@
   height: 100%;
   object-fit: cover;
   display: block;
-}
-
-.uploadBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border-radius: 999px;
-  border: 1px solid var(--border-muted);
-  background: transparent;
-  color: var(--text-primary);
-  font-size: 14px;
-  cursor: pointer;
-  transition: background-color 0.15s;
-}
-
-.uploadBtn:hover {
-  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
-}
-
-.hiddenInput {
-  display: none;
-}
-
-@media (max-width: 480px) {
-  .presetGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 }
