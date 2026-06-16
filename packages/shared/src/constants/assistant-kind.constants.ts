@@ -11,6 +11,7 @@ export const WORK_ASSISTANT_DISABLED_TOOL_IDS = [
   'diary_read',
   'diary_list',
   'diary_search',
+  'summary_read',
   'memory_store',
   'memory_delete',
   'vector_search',

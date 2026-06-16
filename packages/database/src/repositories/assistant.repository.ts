@@ -87,28 +87,39 @@ export class AssistantRepository {
    */
   async update(id: string, input: UpdateAssistantInput): Promise<void> {
     const target = await this.findById(id)
-    if (!target) return // Silent return if not found, or throw. Throwing is better but keeping simple for now
+    if (!target) return
+
+    const patch: Record<string, unknown> = {}
+    if (input.name !== undefined) patch.name = input.name
+    if (input.emoji !== undefined) patch.emoji = input.emoji
+    if (input.description !== undefined) patch.description = input.description
+    if (input.avatarPath !== undefined) patch.avatarPath = input.avatarPath
+    if (input.systemPrompt !== undefined) patch.systemPrompt = input.systemPrompt
+    if (input.isDefault !== undefined) patch.isDefault = input.isDefault
+    if (input.isPinned !== undefined) patch.isPinned = input.isPinned
+    if (input.contextWindow !== undefined) patch.contextWindow = input.contextWindow
+    if (input.providerId !== undefined) patch.providerId = input.providerId
+    if (input.modelId !== undefined) patch.modelId = input.modelId
+    if (input.compressTokenThreshold !== undefined) {
+      patch.compressTokenThreshold = input.compressTokenThreshold
+    }
+    if (input.compressKeepTurns !== undefined) patch.compressKeepTurns = input.compressKeepTurns
+    if (input.compressModelContextWindow !== undefined) {
+      patch.compressModelContextWindow = input.compressModelContextWindow
+    }
+    if (input.compressPreserveRecentTokens !== undefined) {
+      patch.compressPreserveRecentTokens = input.compressPreserveRecentTokens
+    }
+    if (input.compressSystemPrompt !== undefined) {
+      patch.compressSystemPrompt = input.compressSystemPrompt
+    }
+    if (input.assistantKind !== undefined) patch.assistantKind = input.assistantKind
+    if (input.sortOrder !== undefined) patch.sortOrder = input.sortOrder
 
     await this.db
       .update(agentAssistantsTable)
       .set({
-        name: input.name,
-        emoji: input.emoji,
-        description: input.description,
-        avatarPath: input.avatarPath,
-        systemPrompt: input.systemPrompt,
-        isDefault: input.isDefault,
-        isPinned: input.isPinned,
-        contextWindow: input.contextWindow,
-        providerId: input.providerId,
-        modelId: input.modelId,
-        compressTokenThreshold: input.compressTokenThreshold,
-        compressKeepTurns: input.compressKeepTurns,
-        compressModelContextWindow: input.compressModelContextWindow,
-        compressPreserveRecentTokens: input.compressPreserveRecentTokens,
-        compressSystemPrompt: input.compressSystemPrompt,
-        assistantKind: input.assistantKind,
-        sortOrder: input.sortOrder,
+        ...patch,
         updatedAt: new Date()
       })
       .where(eq(agentAssistantsTable.id, id))

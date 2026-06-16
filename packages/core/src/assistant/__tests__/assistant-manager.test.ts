@@ -37,21 +37,37 @@ describe('AssistantManagerService (SSOT Enforcer)', () => {
   const dummyAssistant = { id: 'ast-1', name: 'My Assistant' }
 
   it('create() should insert into SQLite and clone to physical JSON file', async () => {
+    mockRepo.findAll.mockResolvedValue([])
     mockRepo.findById.mockResolvedValue(dummyAssistant as any)
 
     await manager.create(dummyAssistant as any)
 
-    expect(mockRepo.create).toHaveBeenCalledWith(dummyAssistant)
-    expect(mockFileService.writeAssistant).toHaveBeenCalledWith('ast-1', dummyAssistant)
+    expect(mockRepo.create).toHaveBeenCalledWith({ ...dummyAssistant, sortOrder: 0 })
+    expect(mockFileService.writeAssistant).toHaveBeenCalledWith('ast-1', {
+      ...dummyAssistant,
+      assistantKind: 'companion',
+      sortOrder: 0,
+      avatarPath: undefined
+    })
   })
 
   it('update() should override SQLite and rewrite physical JSON file', async () => {
-    mockRepo.findById.mockResolvedValue(dummyAssistant as any)
+    mockRepo.findById.mockResolvedValue({
+      ...dummyAssistant,
+      assistantKind: 'companion',
+      sortOrder: 0
+    } as any)
 
     await manager.update('ast-1', { name: 'New Name' })
 
     expect(mockRepo.update).toHaveBeenCalledWith('ast-1', { name: 'New Name' })
-    expect(mockFileService.writeAssistant).toHaveBeenCalledWith('ast-1', dummyAssistant)
+    expect(mockFileService.writeAssistant).toHaveBeenCalledWith('ast-1', {
+      ...dummyAssistant,
+      name: 'My Assistant',
+      assistantKind: 'companion',
+      sortOrder: 0,
+      avatarPath: undefined
+    })
   })
 
   it('delete() should purge from both sources', async () => {
@@ -59,6 +75,31 @@ describe('AssistantManagerService (SSOT Enforcer)', () => {
 
     expect(mockRepo.delete).toHaveBeenCalledWith('ast-1')
     expect(mockFileService.deleteAssistant).toHaveBeenCalledWith('ast-1')
+  })
+
+  it('fullResyncFromDisks() skips stale JSON when SQLite is newer', async () => {
+    mockFileService.listAllAssistants.mockResolvedValue([{ id: 'ast-1', fullPath: '' }])
+    mockFileService.readAssistant.mockResolvedValue({
+      ...dummyAssistant,
+      avatarPath: 'builtin-assistant:assistant-preset-1',
+      updatedAt: '2026-06-16T10:00:00.000Z'
+    })
+    mockRepo.findById.mockResolvedValue({
+      ...dummyAssistant,
+      avatarPath: 'avatars/new.jpg',
+      updatedAt: new Date('2026-06-16T12:00:00.000Z')
+    } as any)
+    mockRepo.findAll.mockResolvedValue([
+      {
+        ...dummyAssistant,
+        avatarPath: 'avatars/new.jpg',
+        updatedAt: new Date('2026-06-16T12:00:00.000Z')
+      }
+    ] as any)
+
+    await manager.fullResyncFromDisks()
+
+    expect(mockRepo.update).not.toHaveBeenCalled()
   })
 
   it('fullResyncFromDisks() synchronizes JSON artifacts back into SQLite', async () => {

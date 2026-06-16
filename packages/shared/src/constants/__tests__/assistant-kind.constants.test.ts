@@ -9,6 +9,7 @@ describe('assistant-kind.constants', () => {
   it('should disable diary and memory tools for work assistants', () => {
     const ids = getAssistantDisabledToolIds('work')
     expect(ids).toContain('diary_edit')
+    expect(ids).toContain('summary_read')
     expect(ids).toContain('vector_search')
     expect(ids).not.toContain('web_search')
   })

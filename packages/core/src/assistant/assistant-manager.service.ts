@@ -2,11 +2,18 @@ import { AssistantRepository, InsertAssistantInput, UpdateAssistantInput } from 
 import {
   normalizePersistedAvatarPath,
   normalizeAssistantAvatarPath,
+  normalizeAssistantKind,
   isBuiltinAssistantAvatarPath,
   isDefaultAssistantAvatarPath
 } from '@baishou/shared'
 import { AssistantFileService } from './assistant-file.service'
 import { IAttachmentManager } from '../attachments/attachment-manager.types'
+import {
+  pickDefinedAssistantUpdate,
+  shouldApplyDiskAssistantRecord,
+  toPersistedAssistantAvatarPath,
+  normalizeDiskAssistantRecord
+} from './assistant-persist.util'
 
 /**
  * AI 角色身份卡存储漫游总代理。
@@ -47,19 +54,32 @@ export class AssistantManagerService {
     return item
   }
 
+  private async persistAssistantSnapshot(id: string): Promise<void> {
+    const full = await this.repo.findById(id)
+    if (!full) return
+    const snapshot = {
+      ...full,
+      avatarPath: toPersistedAssistantAvatarPath(full.avatarPath),
+      assistantKind: normalizeAssistantKind(full.assistantKind),
+      sortOrder: full.sortOrder ?? 0
+    }
+    await this.fileService.writeAssistant(id, snapshot)
+  }
+
   async create(input: InsertAssistantInput): Promise<void> {
     await this.processAvatarInput(input)
+    if (input.sortOrder == null) {
+      const all = await this.repo.findAll()
+      input.sortOrder = all.reduce((max, a) => Math.max(max, a.sortOrder ?? 0), -1) + 1
+    }
     await this.repo.create(input)
-    // 后挂抽样备份流
-    const full = await this.repo.findById(input.id)
-    if (full) await this.fileService.writeAssistant(input.id, full)
+    await this.persistAssistantSnapshot(input.id)
   }
 
   async update(id: string, input: UpdateAssistantInput): Promise<void> {
     await this.processAvatarInput(input)
     await this.repo.update(id, input)
-    const full = await this.repo.findById(id)
-    if (full) await this.fileService.writeAssistant(id, full)
+    await this.persistAssistantSnapshot(id)
   }
 
   async delete(id: string): Promise<void> {
@@ -69,8 +89,15 @@ export class AssistantManagerService {
 
   async togglePin(id: string, isPinned: boolean): Promise<void> {
     await this.repo.togglePin(id, isPinned)
-    const full = await this.repo.findById(id)
-    if (full) await this.fileService.writeAssistant(id, full)
+    await this.persistAssistantSnapshot(id)
+  }
+
+  async reorderAssistants(orderedIds: string[]): Promise<void> {
+    for (let index = 0; index < orderedIds.length; index++) {
+      const id = orderedIds[index]!
+      await this.repo.update(id, { sortOrder: index })
+      await this.persistAssistantSnapshot(id)
+    }
   }
 
   // Queries directly proxy to db since they are identical and cached
@@ -93,7 +120,8 @@ export class AssistantManagerService {
     const allDb = await this.repo.findAll()
 
     for (const f of allFiles) {
-      const data = await this.fileService.readAssistant(f.id)
+      const raw = await this.fileService.readAssistant(f.id)
+      const data = normalizeDiskAssistantRecord(raw)
       if (data) {
         // JSON.parse turns Date into ISO string, needs to transform to Date object
         // Otherwise Drizzle SQLiteTimestamp.mapToDriverValue will raise TypeError: value.getTime is not a function
@@ -107,8 +135,10 @@ export class AssistantManagerService {
 
         const existing = await this.repo.findById(f.id)
         if (existing) {
-          // Ignore parsing type mismatch due to quick schema update, we pass data via standard flow
-          await this.repo.update(f.id, data)
+          if (!shouldApplyDiskAssistantRecord(data.updatedAt, existing.updatedAt)) {
+            continue
+          }
+          await this.repo.update(f.id, pickDefinedAssistantUpdate(data))
         } else {
           await this.repo.create(data)
         }

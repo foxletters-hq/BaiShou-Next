@@ -1,6 +1,7 @@
 import {
   DEFAULT_LATTE_ASSISTANT_ID,
   getDefaultLatteAssistantSeed,
+  isAssistantCustomAvatar,
   isFactoryLatteAssistantSystemPrompt,
   LEGACY_DEFAULT_ASSISTANT_NAMES
 } from '@baishou/shared'
@@ -60,7 +61,9 @@ export async function ensureDefaultLatteAssistant(
     await assistantManager.update(legacyDefault.id, {
       name: seed.name,
       description: seed.description,
-      avatarPath: seed.avatarPath,
+      ...(isAssistantCustomAvatar(legacyDefault.avatarPath)
+        ? {}
+        : { avatarPath: seed.avatarPath }),
       systemPrompt: seed.systemPrompt
     })
   }
@@ -87,7 +90,7 @@ export async function syncDefaultLatteAssistantLocale(
   await assistantManager.update(DEFAULT_LATTE_ASSISTANT_ID, {
     name: seed.name,
     description: seed.description,
-    avatarPath: seed.avatarPath,
+    ...(isAssistantCustomAvatar(assistant.avatarPath) ? {} : { avatarPath: seed.avatarPath }),
     systemPrompt: seed.systemPrompt
   })
 }
