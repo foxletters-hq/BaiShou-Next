@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { AssistantManagementPage, AssistantEditPage } from '@baishou/ui'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -13,16 +13,34 @@ export const AssistantManagementScreen: React.FC = () => {
   const [assistants, setAssistants] = useState<any[]>([])
   const [editingAssistantId, setEditingAssistantId] = useState<string | null>(null)
   const [isCreatingNew, setIsCreatingNew] = useState(false)
-  const loadAssistants = async () => {
+  const loadAssistants = useCallback(async () => {
     if (typeof window !== 'undefined' && window.electron) {
       const data = await window.electron.ipcRenderer.invoke('agent:get-assistants')
       setAssistants(data || [])
     }
-  }
+  }, [])
 
   useEffect(() => {
-    loadAssistants()
-  }, [])
+    void loadAssistants()
+  }, [loadAssistants])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.electron) return undefined
+
+    const onVaultResyncComplete = (event: { type?: string }) => {
+      if (event?.type !== 'vault-resync-complete') return
+      void loadAssistants()
+    }
+
+    const removeListener = window.electron.ipcRenderer.on(
+      'diary:sync-event',
+      onVaultResyncComplete
+    )
+
+    return () => {
+      removeListener()
+    }
+  }, [loadAssistants])
 
   return (
     <div style={{ flex: 1, height: '100%', position: 'relative', overflow: 'hidden' }}>
