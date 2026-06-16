@@ -32,6 +32,18 @@ const knownSystemIds = [
   'lmstudio'
 ]
 
+const TTS_FETCH_TIMEOUT_MS = 30_000
+
+async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), TTS_FETCH_TIMEOUT_MS)
+  try {
+    return await fetch(url, { ...init, signal: controller.signal })
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 function withResolvedProviderBaseUrl(
   config: AIProviderConfig,
   tempKey?: string,
@@ -244,7 +256,7 @@ export function registerSettingsModelsIPC() {
       if (providerId === 'clone-tts') {
         try {
           const url = `${tempUrl?.replace(/\/$/, '')}/api/voices`
-          const response = await fetch(url)
+          const response = await fetchWithTimeout(url)
           if (response.ok) {
             const data = await response.json()
             return parseCloneTtsVoiceList(data)
@@ -253,6 +265,9 @@ export function registerSettingsModelsIPC() {
         } catch (err) {
           // @ts-ignore
           logger.error?.('[TTS] Fetch CloneTTS voices failed:', err)
+          if (err instanceof Error && err.name === 'AbortError') {
+            throw new Error(`请求超时（${TTS_FETCH_TIMEOUT_MS / 1000}s），请检查 CloneTTS 服务地址是否可达`)
+          }
           return []
         }
       }

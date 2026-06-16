@@ -309,6 +309,11 @@ export function useTtsProviderSettings({
   )
 
   const state = configs[providerType]
+  const persistCurrentConfigRef = useRef(persistCurrentConfig)
+
+  useEffect(() => {
+    persistCurrentConfigRef.current = persistCurrentConfig
+  }, [persistCurrentConfig])
 
   useEffect(() => {
     if (!isInitialized || !onSaveConfig || !state) return
@@ -319,7 +324,7 @@ export function useTtsProviderSettings({
 
     clearTimeout(autoSaveTimerRef.current)
     autoSaveTimerRef.current = setTimeout(() => {
-      void persistCurrentConfig(state, { silent: true })
+      void persistCurrentConfigRef.current(state, { silent: true })
     }, AUTO_SAVE_DEBOUNCE_MS)
 
     return () => clearTimeout(autoSaveTimerRef.current)
@@ -336,8 +341,7 @@ export function useTtsProviderSettings({
     state?.refAudioPath,
     state?.promptText,
     state?.promptLang,
-    state?.textLang,
-    persistCurrentConfig
+    state?.textLang
   ])
 
   const handleTest = async () => {

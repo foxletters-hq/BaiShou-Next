@@ -10,6 +10,18 @@ const CLONE_TTS_VOICE_ID_KEYS = [
   'refAudioPath'
 ] as const
 
+const TTS_FETCH_TIMEOUT_MS = 30_000
+
+async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), TTS_FETCH_TIMEOUT_MS)
+  try {
+    return await fetch(url, { ...init, signal: controller.signal })
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 function extractCloneTtsVoiceArray(data: unknown): unknown[] {
   if (Array.isArray(data)) return data
   if (!data || typeof data !== 'object') return []
@@ -93,7 +105,7 @@ export async function fetchOpenAiCompatibleModelIds(
       if (after) {
         url.searchParams.set('after', after)
       }
-      const response = await fetch(url.toString(), { headers })
+      const response = await fetchWithTimeout(url.toString(), { headers })
       if (!response.ok) break
 
       const data = (await response.json()) as {

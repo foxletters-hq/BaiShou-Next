@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import { useSettingsStore } from '@baishou/store'
 import {
   applyTtsSaveToGlobalModels,
@@ -22,21 +22,23 @@ ttsRegistry.register(new CloneTtsProvider())
 ttsRegistry.register(new GptSovitsProvider())
 
 export const TTSSettingsPane: React.FC = () => {
-  const settings = useSettingsStore()
+  const globalModels = useSettingsStore((state) => state.globalModels)
 
-  const handleSaveConfig = async (config: TtsProviderConfig) => {
-    const providers = Array.isArray(settings.providers) ? settings.providers : []
-    if (providers.some((p: { id: string }) => isTtsProviderId(p.id))) {
-      await settings.setProviders(providers.filter((p: { id: string }) => !isTtsProviderId(p.id)))
+  const handleSaveConfig = useCallback(async (config: TtsProviderConfig) => {
+    const { providers, globalModels: latestGlobalModels, setProviders, setGlobalModels } =
+      useSettingsStore.getState()
+
+    if (Array.isArray(providers) && providers.some((p) => isTtsProviderId(p.id))) {
+      await setProviders(providers.filter((p) => !isTtsProviderId(p.id)))
     }
 
-    const globalModels = settings.globalModels
-    if (!globalModels) return
+    const models = useSettingsStore.getState().globalModels ?? latestGlobalModels
+    if (!models) return
 
-    await settings.setGlobalModels(applyTtsSaveToGlobalModels(globalModels, config))
-  }
+    await setGlobalModels(applyTtsSaveToGlobalModels(models, config))
+  }, [])
 
-  const handleTestTts = async (config: TtsProviderConfig, text: string) => {
+  const handleTestTts = useCallback(async (config: TtsProviderConfig, text: string) => {
     try {
       const result = await synthesizeTtsFromFormConfig(ttsRegistry, config, text)
       if (result.success) {
@@ -51,9 +53,18 @@ export const TTSSettingsPane: React.FC = () => {
       const message = error instanceof Error ? error.message : String(error)
       return { success: false, error: message }
     }
-  }
+  }, [])
 
-  const globalModels = settings.globalModels
+  const handleFetchModels = useCallback(
+    async (providerId: string, apiKey: string, baseUrl: string) => {
+      return (
+        (await (window as any).api?.settings?.fetchProviderModels(providerId, apiKey, baseUrl)) ||
+        []
+      )
+    },
+    []
+  )
+
   const initialProviderStates = useMemo(
     () => buildTtsProviderStatesFromGlobal(globalModels),
     [globalModels]
@@ -79,15 +90,7 @@ export const TTSSettingsPane: React.FC = () => {
         initialProviderStates={initialProviderStates}
         onSaveConfig={handleSaveConfig}
         onTestTts={handleTestTts}
-        onFetchModels={async (providerId, apiKey, baseUrl) => {
-          return (
-            (await (window as any).api?.settings?.fetchProviderModels(
-              providerId,
-              apiKey,
-              baseUrl
-            )) || []
-          )
-        }}
+        onFetchModels={handleFetchModels}
       />
     </div>
   )
