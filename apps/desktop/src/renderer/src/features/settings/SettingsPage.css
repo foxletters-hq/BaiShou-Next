@@ -42,6 +42,18 @@
   pointer-events: none;
 }
 
+/* 日记区 /hub 内嵌：不占全屏 overlay，与主导航并排 */
+.settings-page-wrapper.settings-hub-embedded {
+  position: relative;
+  top: auto;
+  left: auto;
+  width: 100%;
+  height: 100%;
+  z-index: auto;
+  animation: none;
+  background-color: transparent;
+}
+
 .settings-layout-body {
   display: flex;
   flex: 1;

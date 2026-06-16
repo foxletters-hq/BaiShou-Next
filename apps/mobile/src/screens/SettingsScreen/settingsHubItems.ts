@@ -85,7 +85,7 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
       {
         id: 'diary-ai-writing',
         titleKey: 'settings.diary_partner_writing_title',
-        icon: 'smart-toy',
+        icon: 'text-snippet',
         route: { type: 'section', section: 'diary-ai-writing' }
       },
       {

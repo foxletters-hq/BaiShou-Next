@@ -7,6 +7,14 @@
   background: var(--bg-app, var(--bg-surface));
 }
 
+.hubContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .hubPage :global(.settings-content-motion-host) {
   flex: 1;
   min-height: 0;

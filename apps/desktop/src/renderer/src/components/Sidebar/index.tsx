@@ -24,6 +24,7 @@ import {
 } from './sidebar-nav-catalog'
 import { SidebarManageModal } from './SidebarManageModal'
 import { rememberSettingsReturnPath } from '../../features/settings/settings-navigation.util'
+import { isSettingsOverlayPath } from '../../features/settings/settings-route.util'
 
 export const Sidebar: React.FC = () => {
   const { t } = useTranslation()
@@ -127,6 +128,8 @@ export const Sidebar: React.FC = () => {
   const isAgentMode =
     location.pathname.startsWith('/chat') || location.pathname.startsWith('/agent')
 
+  const isInSettings = isSettingsOverlayPath(location.pathname)
+
   if (isAgentMode) return null
 
   return (
@@ -215,17 +218,17 @@ export const Sidebar: React.FC = () => {
               <span className={styles.navLabel}>{t('sidebar.manage', '侧边栏管理')}</span>
             </div>
             <div
-              className={`${styles.navItem} ${location.pathname.startsWith('/settings') ? styles.selected : ''}`}
+              className={`${styles.navItem} ${isInSettings ? styles.selected : ''}`}
               onClick={() => {
                 setManageModalOpen(false)
                 rememberSettingsReturnPath(location.pathname)
-                navigate('/settings')
+                navigate('/settings/general')
               }}
             >
               <span className={styles.navIcon}>
                 <MdSettings />
               </span>
-              <span className={styles.navLabel}>{t('settings.title', '设置')}</span>
+              <span className={styles.navLabel}>{t('settings.title', '系统设置')}</span>
             </div>
           </div>
         </div>

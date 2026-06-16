@@ -1,6 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'framer-motion'
+import { useSettingsStore } from '@baishou/store'
 import { getSettingsRouteSegment } from './settings-route.util'
 import { WebSearchPane } from './components/WebSearchPane'
 import { AgentToolsPane } from './components/AgentToolsPane'
@@ -19,6 +20,8 @@ import { RagSettingsPane } from './components/RagSettingsPane'
 import { GitSettingsPane } from './components/GitSettingsPane'
 import { McpSettingsPane } from './components/McpSettingsPane'
 import { IncrementalSyncPane } from './components/IncrementalSyncPane'
+import { DiaryTemplateSettingsPane } from './components/DiaryTemplateSettingsPane'
+import { DiaryAiWritingSettingsPane } from './components/DiaryAiWritingSettingsPane'
 
 const settingsViewTransition = {
   initial: { opacity: 0, y: 10 },
@@ -39,23 +42,27 @@ const FULL_HEIGHT_SEGMENTS = new Set([
   'git',
   'workspaces',
   'identity-cards',
-  'incremental-sync'
+  'incremental-sync',
+  'diary-template',
+  'diary-ai-writing'
 ])
 
 interface SettingsContentViewProps {
   pathname: string
-  settings: any
+  settings?: ReturnType<typeof useSettingsStore>
   motionKey?: string
   className?: string
 }
 
 export const SettingsContentView: React.FC<SettingsContentViewProps> = ({
   pathname,
-  settings,
+  settings: settingsProp,
   motionKey,
   className = ''
 }) => {
   const { t } = useTranslation()
+  const settingsFromStore = useSettingsStore()
+  const settings = settingsProp ?? settingsFromStore
   const segment = getSettingsRouteSegment(pathname)
   const contentKey = motionKey ?? segment
 
@@ -98,6 +105,10 @@ export const SettingsContentView: React.FC<SettingsContentViewProps> = ({
         return <WebSearchPane settings={settings} />
       case 'agent-tools':
         return <AgentToolsPane settings={settings} />
+      case 'diary-template':
+        return <DiaryTemplateSettingsPane />
+      case 'diary-ai-writing':
+        return <DiaryAiWritingSettingsPane />
       case 'summary':
         return <SummarySettingsPane settings={settings} />
       case 'tts':

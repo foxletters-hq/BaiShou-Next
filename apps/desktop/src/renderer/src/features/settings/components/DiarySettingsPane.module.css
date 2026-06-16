@@ -1,0 +1,110 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px 32px 32px;
+  background: var(--bg-app);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-card);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.desc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  opacity: 0.85;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle, rgba(148, 163, 184, 0.4));
+  background: var(--bg-surface-highlight, #f8fafc);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.55;
+  font-family: inherit;
+  resize: vertical;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb, 91, 168, 245), 0.15);
+}
+
+.textareaLarge {
+  min-height: 200px;
+}
+
+.textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.loadingRow {
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnPrimary {
+  border: none;
+  background: var(--color-primary);
+  color: #fff;
+}

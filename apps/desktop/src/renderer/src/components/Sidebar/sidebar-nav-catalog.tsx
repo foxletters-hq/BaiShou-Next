@@ -17,8 +17,11 @@ import {
   MdVolumeUp,
   MdHistory,
   MdOutlineHub,
-  MdSync
+  MdSync,
+  MdEditNote,
+  MdTextSnippet
 } from 'react-icons/md'
+import { SETTINGS_HUB_PREFIX } from '../../features/settings/settings-route.util'
 
 export const SIDEBAR_NAV_ICON_SIZE = 20
 
@@ -32,6 +35,8 @@ export const DEFAULT_VISIBLE_NAV_IDS = ['diary', 'summary', 'incremental-sync', 
 export const ALL_SIDEBAR_NAV_IDS = [
   'diary',
   'summary',
+  'diary-template',
+  'diary-ai-writing',
   'general',
   'mcp',
   'ai-services',
@@ -84,7 +89,7 @@ export const SIDEBAR_NAV_GROUPS: SidebarNavGroupDef[] = [
     key: 'diary',
     labelKey: 'sidebar.group_diary',
     defaultLabel: '日记与回忆',
-    itemIds: ['diary', 'summary']
+    itemIds: ['diary', 'summary', 'diary-template', 'diary-ai-writing', 'summary-settings']
   },
   {
     key: 'settings-general',
@@ -102,7 +107,7 @@ export const SIDEBAR_NAV_GROUPS: SidebarNavGroupDef[] = [
     key: 'memory',
     labelKey: 'sidebar.group_memory',
     defaultLabel: '记忆与工具',
-    itemIds: ['rag', 'web-search', 'agent-tools', 'summary-settings', 'tts']
+    itemIds: ['rag', 'web-search', 'agent-tools', 'tts']
   },
   {
     key: 'sync',
@@ -115,21 +120,23 @@ export const SIDEBAR_NAV_GROUPS: SidebarNavGroupDef[] = [
 export const SIDEBAR_NAV_PATHS: Record<SidebarNavId, string> = {
   diary: '/diary',
   summary: '/summary',
-  general: '/hub/general',
-  mcp: '/hub/mcp',
-  'ai-services': '/hub/ai-services',
-  'ai-models': '/hub/ai-models',
-  assistants: '/hub/assistants',
-  rag: '/hub/rag',
-  'web-search': '/hub/web-search',
-  'agent-tools': '/hub/agent-tools',
-  'summary-settings': '/hub/summary',
-  tts: '/hub/tts',
-  lan: '/lan-transfer',
-  sync: '/data-sync',
-  'incremental-sync': '/incremental-sync',
-  attachments: '/hub/attachments',
-  git: '/git'
+  'diary-template': `${SETTINGS_HUB_PREFIX}/diary-template`,
+  'diary-ai-writing': `${SETTINGS_HUB_PREFIX}/diary-ai-writing`,
+  general: `${SETTINGS_HUB_PREFIX}/general`,
+  mcp: `${SETTINGS_HUB_PREFIX}/mcp`,
+  'ai-services': `${SETTINGS_HUB_PREFIX}/ai-services`,
+  'ai-models': `${SETTINGS_HUB_PREFIX}/ai-models`,
+  assistants: `${SETTINGS_HUB_PREFIX}/assistants`,
+  rag: `${SETTINGS_HUB_PREFIX}/rag`,
+  'web-search': `${SETTINGS_HUB_PREFIX}/web-search`,
+  'agent-tools': `${SETTINGS_HUB_PREFIX}/agent-tools`,
+  'summary-settings': `${SETTINGS_HUB_PREFIX}/summary`,
+  tts: `${SETTINGS_HUB_PREFIX}/tts`,
+  lan: `${SETTINGS_HUB_PREFIX}/lan-transfer`,
+  sync: `${SETTINGS_HUB_PREFIX}/data-sync`,
+  'incremental-sync': `${SETTINGS_HUB_PREFIX}/incremental-sync`,
+  attachments: `${SETTINGS_HUB_PREFIX}/attachments`,
+  git: `${SETTINGS_HUB_PREFIX}/git`
 }
 
 export interface SidebarNavItemView {
@@ -147,80 +154,90 @@ export function buildSidebarNavItems(t: TFunction): Record<SidebarNavId, Sidebar
       label: t('summary.dashboard_title', '回忆'),
       path: '/summary'
     },
+    'diary-template': {
+      icon: icon(<MdEditNote />),
+      label: t('settings.diary_template_title', '日记模板'),
+      path: `${SETTINGS_HUB_PREFIX}/diary-template`
+    },
+    'diary-ai-writing': {
+      icon: icon(<MdTextSnippet />),
+      label: t('settings.diary_partner_writing_title', '伙伴书写规范'),
+      path: `${SETTINGS_HUB_PREFIX}/diary-ai-writing`
+    },
     general: {
       icon: icon(<MdOutlineSettings />),
       label: t('settings.general', '常规设置'),
-      path: '/hub/general'
+      path: `${SETTINGS_HUB_PREFIX}/general`
     },
     mcp: {
       icon: icon(<MdOutlineHub />),
       label: t('settings.mcp_title', 'MCP 服务'),
-      path: '/hub/mcp'
+      path: `${SETTINGS_HUB_PREFIX}/mcp`
     },
     'ai-services': {
       icon: icon(<MdOutlineCloudQueue />),
       label: t('settings.ai_services', '供应商管理'),
-      path: '/hub/ai-services'
+      path: `${SETTINGS_HUB_PREFIX}/ai-services`
     },
     'ai-models': {
       icon: icon(<MdOutlineStarBorder />),
       label: t('settings.ai_global_models', '全局默认模型'),
-      path: '/hub/ai-models'
+      path: `${SETTINGS_HUB_PREFIX}/ai-models`
     },
     assistants: {
       icon: icon(<MdSchool />),
       label: t('agent.assistant.settings_entry', '伙伴管理'),
-      path: '/hub/assistants'
+      path: `${SETTINGS_HUB_PREFIX}/assistants`
     },
     rag: {
       icon: icon(<MdColorLens />),
       label: t('agent.rag.title', 'RAG 记忆管理'),
-      path: '/hub/rag'
+      path: `${SETTINGS_HUB_PREFIX}/rag`
     },
     'web-search': {
       icon: icon(<MdTravelExplore />),
       label: t('agent.tools.web_search', '网络搜索'),
-      path: '/hub/web-search'
+      path: `${SETTINGS_HUB_PREFIX}/web-search`
     },
     'agent-tools': {
       icon: icon(<MdOutlineExtension />),
       label: t('settings.agent_tools_title', '工具管理'),
-      path: '/hub/agent-tools'
+      path: `${SETTINGS_HUB_PREFIX}/agent-tools`
     },
     'summary-settings': {
       icon: icon(<MdOutlineAutoAwesome />),
       label: t('settings.summary_settings_title', '回忆生成设置'),
-      path: '/hub/summary'
+      path: `${SETTINGS_HUB_PREFIX}/summary`
     },
     tts: {
       icon: icon(<MdVolumeUp />),
       label: t('settings.tts_settings', 'TTS 语音合成'),
-      path: '/hub/tts'
+      path: `${SETTINGS_HUB_PREFIX}/tts`
     },
     lan: {
       icon: icon(<MdWifi />),
       label: t('settings.lan_transfer', '局域网传输'),
-      path: '/lan-transfer'
+      path: `${SETTINGS_HUB_PREFIX}/lan-transfer`
     },
     sync: {
       icon: icon(<MdOutlineStorage />),
       label: t('data_sync.title', '数据备份'),
-      path: '/data-sync'
+      path: `${SETTINGS_HUB_PREFIX}/data-sync`
     },
     'incremental-sync': {
       icon: icon(<MdSync />),
       label: t('data_sync.incremental_sync', '增量同步'),
-      path: '/incremental-sync'
+      path: `${SETTINGS_HUB_PREFIX}/incremental-sync`
     },
     attachments: {
       icon: icon(<MdOutlineCollections />),
       label: t('settings.attachment_management', '附件管理'),
-      path: '/hub/attachments'
+      path: `${SETTINGS_HUB_PREFIX}/attachments`
     },
     git: {
       icon: icon(<MdHistory />),
       label: t('version_control.title', '版本控制'),
-      path: '/git'
+      path: `${SETTINGS_HUB_PREFIX}/git`
     }
   }
 }
@@ -231,8 +248,8 @@ export function getDefaultHiddenNavIds(): SidebarNavId[] {
 }
 
 export function isSidebarNavSelected(pathname: string, path: string): boolean {
-  if (path === '/hub/general') {
-    return pathname === '/hub' || pathname === '/hub/general'
+  if (path === `${SETTINGS_HUB_PREFIX}/general`) {
+    return pathname === SETTINGS_HUB_PREFIX || pathname === `${SETTINGS_HUB_PREFIX}/general`
   }
   return pathname === path || pathname.startsWith(`${path}/`)
 }

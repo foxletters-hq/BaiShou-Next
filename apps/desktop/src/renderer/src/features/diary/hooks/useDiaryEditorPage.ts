@@ -1,8 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { format } from 'date-fns'
-import { formatLocalDate, normalizeWeatherId, safeParseDate, logger } from '@baishou/shared'
+import {
+  formatLocalDate,
+  normalizeWeatherId,
+  safeParseDate,
+  logger,
+  resolveDiaryAppendBlock,
+  resolveDiaryNewEntryContent,
+  type DiaryTemplateConfig
+} from '@baishou/shared'
 import { useToast } from '@baishou/ui'
 
 type DiaryEditorInitialState = {
@@ -48,26 +55,46 @@ export function useDiaryEditorPage() {
   const [isLoading, setIsLoading] = useState(true)
   const initialStateRef = useRef<DiaryEditorInitialState | null>(null)
 
-  useEffect(() => {
-    if (!dateStr || dateStr === 'new') {
-      const timeMark = `##### ${format(new Date(), 'HH:mm:ss')}\n\n\u200B`
-      setContent(timeMark)
-      initialStateRef.current = {
-        content: timeMark,
-        tags: [],
-        selectedDate: parseInitialDate(),
-        weather: '',
-        isFavorite: false,
-        mediaPaths: []
+  const loadTemplateConfig = useCallback(async (): Promise<DiaryTemplateConfig> => {
+    try {
+      const api = (window as any).api?.settings
+      if (api?.getDiaryTemplateConfig) {
+        return (await api.getDiaryTemplateConfig()) || {}
       }
-      setIsLoading(false)
-      return
+    } catch (e) {
+      logger.warn('Failed to load diary template config', { error: e })
     }
+    return {}
+  }, [])
 
-    if (typeof window !== 'undefined' && (window as any).api?.diary) {
-      ;(window as any).api.diary
-        .findByDate(dateStr)
-        .then((diary: any) => {
+  useEffect(() => {
+    let cancelled = false
+
+    const initEditor = async () => {
+      const templateConfig = await loadTemplateConfig()
+      if (cancelled) return
+      const now = new Date()
+
+      if (!dateStr || dateStr === 'new') {
+        const initialContent = resolveDiaryNewEntryContent(templateConfig, now)
+        setContent(initialContent)
+        initialStateRef.current = {
+          content: initialContent,
+          tags: [],
+          selectedDate: parseInitialDate(),
+          weather: '',
+          isFavorite: false,
+          mediaPaths: []
+        }
+        setIsLoading(false)
+        return
+      }
+
+      if (typeof window !== 'undefined' && (window as any).api?.diary) {
+        try {
+          const diary = await (window as any).api.diary.findByDate(dateStr)
+          if (cancelled) return
+
           let initialContent = ''
           let initialTags: string[] = []
           let initialWeather = ''
@@ -93,13 +120,13 @@ export function useDiaryEditorPage() {
 
             if (isAppendMode) {
               const existing = (diary.content || '').trimEnd()
-              const timeMark = `\n\n##### ${format(new Date(), 'HH:mm:ss')}\n\n\u200B`
+              const timeMark = resolveDiaryAppendBlock(templateConfig, now)
               initialContent = existing ? existing + timeMark : timeMark.trimStart()
             } else {
               initialContent = diary.content || ''
             }
           } else {
-            initialContent = `##### ${format(new Date(), 'HH:mm:ss')}\n\n\u200B`
+            initialContent = resolveDiaryNewEntryContent(templateConfig, now)
           }
 
           setContent(initialContent)
@@ -111,25 +138,32 @@ export function useDiaryEditorPage() {
             isFavorite: initialFavorite,
             mediaPaths: initialMedia
           }
-        })
-        .catch((e: unknown) => {
+        } catch (e: unknown) {
           logger.error('Failed to load diary', { error: e, dateStr })
-          const timeMark = `##### ${format(new Date(), 'HH:mm:ss')}\n\n\u200B`
-          setContent(timeMark)
+          const fallback = resolveDiaryNewEntryContent(templateConfig, now)
+          setContent(fallback)
           initialStateRef.current = {
-            content: timeMark,
+            content: fallback,
             tags: [],
             selectedDate: parseInitialDate(),
             weather: '',
             isFavorite: false,
             mediaPaths: []
           }
-        })
-        .finally(() => {
-          setIsLoading(false)
-        })
+        } finally {
+          if (!cancelled) setIsLoading(false)
+        }
+      } else if (!cancelled) {
+        setIsLoading(false)
+      }
     }
-  }, [dateStr, isAppendMode, parseInitialDate])
+
+    void initEditor()
+
+    return () => {
+      cancelled = true
+    }
+  }, [dateStr, isAppendMode, parseInitialDate, loadTemplateConfig])
 
   const autoSave = useCallback(
     async (newContent: string) => {

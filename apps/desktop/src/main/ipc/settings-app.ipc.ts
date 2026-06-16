@@ -54,6 +54,15 @@ export function registerSettingsAppIPC() {
     return true
   })
 
+  ipcMain.handle('settings:get-diary-template-config', async () => {
+    return (await settingsManager.get<any>('diary_template_config')) || null
+  })
+
+  ipcMain.handle('settings:set-diary-template-config', async (_, config: any) => {
+    await settingsManager.set('diary_template_config', config)
+    return true
+  })
+
   ipcMain.handle('settings:get-tool-management-config', async () => {
     return (await settingsManager.get<any>('tool_management_config')) || null
   })

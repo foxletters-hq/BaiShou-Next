@@ -163,7 +163,7 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
         className={styles.menuItemRow}
         onClick={() => {
           rememberSettingsReturnPath(location.pathname)
-          navigate('/settings')
+          navigate('/settings/general')
         }}
       >
         <div className={styles.menuItemRowInner}>

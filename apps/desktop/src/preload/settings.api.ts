@@ -25,6 +25,10 @@ export const settingsApi = {
     getSummaryConfig: () => ipcRenderer.invoke('settings:get-summary-config'),
     setSummaryConfig: (config: any) => ipcRenderer.invoke('settings:set-summary-config', config),
 
+    getDiaryTemplateConfig: () => ipcRenderer.invoke('settings:get-diary-template-config'),
+    setDiaryTemplateConfig: (config: any) =>
+      ipcRenderer.invoke('settings:set-diary-template-config', config),
+
     getToolManagementConfig: () => ipcRenderer.invoke('settings:get-tool-management-config'),
     setToolManagementConfig: (config: any) =>
       ipcRenderer.invoke('settings:set-tool-management-config', config),
