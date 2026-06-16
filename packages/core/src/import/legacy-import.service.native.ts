@@ -1,10 +1,14 @@
 import type { SettingsRepository, UserProfileRepository } from '@baishou/database'
+import { restoreLegacyDevicePreferences } from './legacy-config-restore.shared'
 
-/** 移动端不依赖 Electron，旧版导入仅在桌面端可用 */
+/** 移动端旧版配置恢复（不依赖 Electron） */
 export class LegacyImportService {
-  constructor(_settingsRepo: SettingsRepository, _profileRepo: UserProfileRepository) {}
+  constructor(
+    private readonly settingsRepo: SettingsRepository,
+    private readonly profileRepo: UserProfileRepository
+  ) {}
 
-  async restoreConfig(_config: Record<string, unknown>): Promise<void> {
-    throw new Error('LegacyImportService is only available on desktop')
+  async restoreConfig(config: Record<string, unknown>): Promise<void> {
+    await restoreLegacyDevicePreferences(this.settingsRepo, this.profileRepo, config)
   }
 }
