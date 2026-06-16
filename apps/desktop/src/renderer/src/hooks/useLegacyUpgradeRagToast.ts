@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LEGACY_UPGRADE_RAG_NOTICE_MAX } from '@baishou/core/shared'
+import { LEGACY_UPGRADE_RAG_NOTICE_MAX } from '@baishou/shared'
 import { useToast } from '@baishou/ui'
 
 export function useLegacyUpgradeRagToast(): void {

@@ -1,10 +1,12 @@
 import type { IFileSystem } from '@baishou/core-mobile'
 import { guessImageMimeType } from '@baishou/ui/native'
 import {
-  AVATAR_IMPORT_JPEG_QUALITY,
   AVATAR_IMPORT_MAX_DIMENSION,
   shouldCompressAvatarFileSize
 } from '@baishou/shared'
+
+/** expo-image-manipulator JPEG 质量：0–1（仅移动端） */
+const AVATAR_IMPORT_JPEG_QUALITY = 0.88
 import { toFileUri, externalGetInfoSafe, isExternalStoragePath, normalizeExternalStoragePath } from '../services/android-external-fs'
 import { normalizeImportSourceUri } from '../services/mobile-uri-import'
 import { getInfoAsync } from '../services/mobile-sandbox-fs'

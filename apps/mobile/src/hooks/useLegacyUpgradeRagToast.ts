@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import {
   LEGACY_UPGRADE_RAG_NOTICE_COUNT_KEY,
   LEGACY_UPGRADE_RAG_NOTICE_MAX
-} from '@baishou/core/shared'
+} from '@baishou/shared'
 import { useNativeToast } from '@baishou/ui/native'
 
 import { useBaishou } from '../providers/BaishouProvider'

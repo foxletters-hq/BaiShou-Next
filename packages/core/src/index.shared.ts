@@ -23,7 +23,6 @@ export * from './vault/vault.errors'
 export * from './vault/vault-name.util'
 export * from './vault/vault.service'
 export * from './attachments/attachment-manager.types'
-export * from './attachments/attachment-manager.service'
 export * from './diary/diary.types'
 export * from './journal/journal-files.util'
 

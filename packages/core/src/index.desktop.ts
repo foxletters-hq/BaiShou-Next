@@ -2,6 +2,8 @@
  * @baishou/core — 桌面端专用（Git 同步、旧版导入、Electron 等）
  */
 
+export * from './attachments/attachment-manager.service'
+
 export * from './summary/summary-context'
 
 export * from './import/legacy-import.service'

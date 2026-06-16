@@ -4,9 +4,6 @@ export const AVATAR_IMPORT_MAX_BYTES = 3 * 1024 * 1024
 /** 压缩时最长边上限（保留清晰度，头像展示足够） */
 export const AVATAR_IMPORT_MAX_DIMENSION = 1024
 
-/** expo-image-manipulator：0–1 */
-export const AVATAR_IMPORT_JPEG_QUALITY = 0.88
-
 /** Electron nativeImage.toJPEG：0–100 */
 export const AVATAR_IMPORT_JPEG_QUALITY_DESKTOP = 88
 
