@@ -2,7 +2,7 @@ import { NativeModule, requireNativeModule } from 'expo-modules-core'
 
 type ServerEvents = {
   onFileReceived: (event: { path: string }) => void
-  onMcpHttpRequest: (event: { requestId: string; body: string }) => void
+  onMcpHttpRequest: (event: { requestId: string; body: string; authorization?: string }) => void
 }
 
 export type ExternalPathInfo = {
@@ -17,7 +17,7 @@ export type PickDirectoryResult =
   | { canceled: false; path: string; uri: string }
 
 declare class ExpoBaishouServerModule extends NativeModule<ServerEvents> {
-  startServer(port: number): number
+  startServer(port: number, authToken?: string | null): number
   stopServer(): void
   resolveMcpHttpResponse(requestId: string, responseBody: string): boolean
   hasAllFilesAccess(): boolean
@@ -93,12 +93,12 @@ function callNativeExternal<T>(op: string, fn: (mod: ExpoBaishouServerModule) =>
   }
 }
 
-export function startServer(port: number): number {
-  return requireNative().startServer(port)
+export function startServer(port: number, authToken?: string | null): number {
+  return requireNative().startServer(port, authToken ?? null)
 }
 
-export function startMcpServer(port: number): number {
-  return startServer(port)
+export function startMcpServer(port: number, authToken?: string | null): number {
+  return startServer(port, authToken)
 }
 
 export function stopServer(): void {
@@ -118,7 +118,9 @@ export function onFileReceived(listener: (event: { path: string }) => void) {
   return mod.addListener('onFileReceived', listener)
 }
 
-export function onMcpHttpRequest(listener: (event: { requestId: string; body: string }) => void) {
+export function onMcpHttpRequest(
+  listener: (event: { requestId: string; body: string; authorization?: string }) => void
+) {
   const mod = getNative()
   if (!mod) {
     return { remove: () => {} }

@@ -138,6 +138,8 @@ export interface ToolManagementConfig {
 export interface McpServerConfig {
   mcpEnabled: boolean // MCP Server 是否启用（默认关闭）
   mcpPort: number // MCP Server 端口（默认 31004）
+  /** 可选访问令牌；启用 MCP 时若为空会自动生成，外部客户端需在 Authorization 头携带 */
+  mcpAuthToken?: string
 }
 
 /**

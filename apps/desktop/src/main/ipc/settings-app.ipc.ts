@@ -77,16 +77,19 @@ export function registerSettingsAppIPC() {
   })
 
   ipcMain.handle('settings:set-mcp-server-config', async (_, config: any) => {
-    await settingsManager.set('mcp_server_config', config)
+    const { ensureMcpAuthToken } = await import('@baishou/shared')
+    const nextConfig = ensureMcpAuthToken(config)
+    await settingsManager.set('mcp_server_config', nextConfig)
     const { applyMcpServerConfig } = await import('../services/mcp-runtime')
-    await applyMcpServerConfig(config)
-    return true
+    await applyMcpServerConfig(nextConfig)
+    return nextConfig
   })
 
   ipcMain.handle('settings:get-mcp-tools', async () => {
-    const { toolRegistry } = await import('./agent-helpers')
+    const { toolRegistry, buildMcpToolContext } = await import('./agent-helpers')
     if (!toolRegistry) return []
-    const tools = toolRegistry.getAllRaw()
+    const context = await buildMcpToolContext()
+    const tools = toolRegistry.getEnabledToolsRaw(context)
     return tools.map((tool: any) => ({
       name: `baishou_${tool.name}`,
       displayName: tool.displayName,

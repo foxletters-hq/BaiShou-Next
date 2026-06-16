@@ -61,6 +61,7 @@ import { createMobileRagService, type MobileRagService } from '../services/mobil
 import { setMobileDiaryEmbeddingDeps } from '../services/mobile-diary-embedding.service'
 import { MobileIncrementalSyncService } from '../services/mobile-incremental-sync.service'
 import { MobileMcpService } from '../services/mobile-mcp.service'
+import { buildMobileMcpToolContext, invalidateMobileMcpToolContextCache } from '../services/mobile-mcp-context.service'
 import { mobileDataBootstrapper } from '../services/mobile-bootstrapper.service'
 import { vaultFileWatcher } from '../services/vault-file-watcher.service'
 import { mobileDeveloperService, type MobileDeveloperService } from '../services/developer.service'
@@ -177,6 +178,7 @@ interface BaishouContextValue {
       userMessageId?: string
       skipUserMessageRecording?: boolean
       forceRecompress?: boolean
+      streamClaimGeneration?: number
       attachments?: unknown[]
     }
   ) => Promise<void>
@@ -517,14 +519,22 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         })
 
         const toolRegistry = new ToolRegistry()
-        mobileMcpService = new MobileMcpService(settingsManager, toolRegistry, () =>
-          pathService.getActiveVaultNameForContext()
-        )
         const registry = AIProviderRegistry.getInstance()
         registry.initializeDefaultProviders()
 
         // 日记全文搜索器（与桌面端 createDiarySearcher 对齐）
         const getDiarySearcher = () => diaryStackRef.current?.diarySearcher ?? diarySearcher
+
+        mobileMcpService = new MobileMcpService(settingsManager, toolRegistry, () =>
+          buildMobileMcpToolContext({
+            settingsManager,
+            pathService,
+            getDiarySearcher,
+            drizzleDb,
+            webSearchResultFetcher: webFetchContent,
+            fetchSearchPage: fetchSearchPageHtml
+          })
+        )
 
         // 构建 RAG 记忆搜索所需的底层组件
         const sqlExecutor = createSqlExecutorFromDrizzleDb(drizzleDb)
@@ -633,9 +643,10 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             searchMode?: boolean
             abortSignal?: AbortSignal
             userMessageId?: string
-            skipUserMessageRecording?: boolean
-            forceRecompress?: boolean
-            attachments?: unknown[]
+      skipUserMessageRecording?: boolean
+      forceRecompress?: boolean
+      streamClaimGeneration?: number
+      attachments?: unknown[]
           }
         ) => {
           try {
@@ -711,6 +722,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                 userMessageId: overrides?.userMessageId,
                 skipUserMessageRecording: overrides?.skipUserMessageRecording,
                 forceRecompress: overrides?.forceRecompress,
+                streamClaimGeneration: overrides?.streamClaimGeneration,
                 attachments: overrides?.attachments as any
               },
               callbacks
@@ -838,6 +850,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                 }
               }
             })
+            invalidateMobileMcpToolContextCache()
           } catch (e) {
             logger.error('[BaishouProvider] switchVault failed:', e as Error)
             throw e

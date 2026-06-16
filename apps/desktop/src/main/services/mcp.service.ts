@@ -6,6 +6,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import {
   ListToolsRequestSchema,
   CallToolRequestSchema,
+  InitializeRequestSchema,
   ToolSchema,
   isInitializeRequest
 } from '@modelcontextprotocol/sdk/types.js'
@@ -15,8 +16,9 @@ import { APP_VERSION } from '../../app-version'
 import { Server as HttpServer } from 'http'
 
 import { z } from 'zod'
-import { ToolRegistry } from '@baishou/ai'
-import { logger } from '@baishou/shared'
+import { ToolRegistry, type ToolContext, buildMcpInstructions, formatMcpToolCallResult } from '@baishou/ai'
+import { isMcpRequestAuthorized, logger } from '@baishou/shared'
+import { buildMcpToolContext } from '../ipc/agent-helpers'
 
 interface SseMcpSession {
   server: Server
@@ -36,7 +38,8 @@ export class McpService {
 
   constructor(
     private readonly settingsRepo: SettingsRepository,
-    private readonly toolRegistry?: ToolRegistry
+    private readonly toolRegistry?: ToolRegistry,
+    private readonly resolveToolContext: () => Promise<ToolContext> = buildMcpToolContext
   ) {
     this.app.use(express.json())
     this.app.use(this.corsMiddleware)
@@ -55,6 +58,25 @@ export class McpService {
       return
     }
     next()
+  }
+
+  private async ensureAuthorized(
+    req: express.Request,
+    res: express.Response
+  ): Promise<boolean> {
+    const config = await this.settingsRepo.getMcpServerConfig()
+    const authHeader = req.headers.authorization
+    const headerValue = Array.isArray(authHeader) ? authHeader[0] : authHeader
+    if (isMcpRequestAuthorized(config, headerValue)) return true
+
+    if (!res.headersSent) {
+      res.status(401).json({
+        jsonrpc: '2.0',
+        error: { code: -32001, message: 'Unauthorized: invalid or missing MCP auth token' },
+        id: null
+      })
+    }
+    return false
   }
 
   private createMcpServer(): Server {
@@ -79,7 +101,8 @@ export class McpService {
     })
 
     // Legacy SSE transport (optional; session id must match SDK transport.sessionId)
-    this.app.get('/sse', async (_req, res) => {
+    this.app.get('/sse', async (req, res) => {
+      if (!(await this.ensureAuthorized(req, res))) return
       const transport = new SSEServerTransport('/message', res)
       const server = this.createMcpServer()
 
@@ -92,6 +115,7 @@ export class McpService {
     })
 
     this.app.post('/message', async (req, res) => {
+      if (!(await this.ensureAuthorized(req, res))) return
       const sessionId = req.query.sessionId as string
       const session = sessionId ? this.sseSessions.get(sessionId) : undefined
 
@@ -112,6 +136,8 @@ export class McpService {
   }
 
   private async handleStreamablePost(req: express.Request, res: express.Response) {
+    if (!(await this.ensureAuthorized(req, res))) return
+
     const sessionId = this.getStreamableSessionId(req)
 
     try {
@@ -170,6 +196,8 @@ export class McpService {
   }
 
   private async handleStreamableGet(req: express.Request, res: express.Response) {
+    if (!(await this.ensureAuthorized(req, res))) return
+
     const sessionId = this.getStreamableSessionId(req)
     if (!sessionId) {
       res.status(400).send('Invalid or missing session ID')
@@ -186,6 +214,8 @@ export class McpService {
   }
 
   private async handleStreamableDelete(req: express.Request, res: express.Response) {
+    if (!(await this.ensureAuthorized(req, res))) return
+
     const sessionId = this.getStreamableSessionId(req)
     if (!sessionId) {
       res.status(400).send('Invalid or missing session ID')
@@ -209,9 +239,20 @@ export class McpService {
   }
 
   private registerServerHandlers(server: Server) {
-    server.setRequestHandler(ListToolsRequestSchema, async () => {
+    server.setRequestHandler(InitializeRequestSchema, async () => {
+      const { vaultName } = await this.resolveToolContext()
       return {
-        tools: this.getAgentToolsMcp()
+        protocolVersion: '2024-11-05',
+        capabilities: { tools: { listChanged: false } },
+        serverInfo: { name: 'BaiShou MCP Server', version: APP_VERSION },
+        instructions: buildMcpInstructions(vaultName)
+      }
+    })
+
+    server.setRequestHandler(ListToolsRequestSchema, async () => {
+      const context = await this.resolveToolContext()
+      return {
+        tools: this.getAgentToolsMcp(context)
       }
     })
 
@@ -297,10 +338,10 @@ export class McpService {
     }
   }
 
-  private getAgentToolsMcp() {
+  private getAgentToolsMcp(context: ToolContext) {
     if (!this.toolRegistry) return []
 
-    const tools = this.toolRegistry.getAllRaw()
+    const tools = this.toolRegistry.getEnabledToolsRaw(context)
     const mcpTools: Array<{
       name: string
       description: string
@@ -338,18 +379,13 @@ export class McpService {
     const tool = this.toolRegistry.get(rawName)
     if (!tool) throw new Error(`Tool not found: ${rawName}`)
 
-    const context: any = {
-      sessionId: 'mcp-external',
-      vaultName: 'default',
-      userConfig: {}
+    const context = await this.resolveToolContext()
+
+    if (!this.toolRegistry.isToolEnabled(rawName, context)) {
+      throw new Error(`Tool not available: ${rawName}`)
     }
 
     const result = await tool.execute(params.arguments || {}, context)
-    return {
-      content: [
-        { type: 'text', text: typeof result === 'string' ? result : JSON.stringify(result) }
-      ],
-      isError: false
-    }
+    return formatMcpToolCallResult(typeof result === 'string' ? result : JSON.stringify(result))
   }
 }

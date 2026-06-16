@@ -10,16 +10,24 @@ export interface McpHelpButtonProps {
   size?: number
   className?: string
   mcpPort?: number
+  mcpAuthToken?: string
 }
 
 export const McpHelpButton: React.FC<McpHelpButtonProps> = ({
   size = 16,
   className = '',
-  mcpPort = 31004
+  mcpPort = 31004,
+  mcpAuthToken
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const mcpUrl = buildMcpUrl(mcpPort)
+  const authHeadersJson = mcpAuthToken?.trim()
+    ? `,
+      "headers": {
+        "Authorization": "Bearer ${mcpAuthToken.trim()}"
+      }`
+    : ''
 
   return (
     <>
@@ -50,6 +58,14 @@ export const McpHelpButton: React.FC<McpHelpButtonProps> = ({
             <span className={styles.urlLabel}>{t('settings.mcp_url_label', '连接地址')}</span>
             <code className={styles.urlCode}>{mcpUrl}</code>
           </div>
+          {mcpAuthToken?.trim() ? (
+            <p className={styles.note}>
+              {t(
+                'settings.mcp_help_auth_note',
+                '连接需在请求头携带 Authorization: Bearer <访问令牌>，令牌见设置页「访问令牌」。'
+              )}
+            </p>
+          ) : null}
           <section className={styles.section}>
             <h3 className={styles.sectionTitle}>{t('settings.mcp_help_cursor_title', 'Cursor')}</h3>
             <ol className={styles.steps}>
@@ -89,7 +105,7 @@ export const McpHelpButton: React.FC<McpHelpButtonProps> = ({
   "mcpServers": {
     "baishou": {
       "type": "streamableHttp",
-      "baseUrl": "${mcpUrl}"
+      "baseUrl": "${mcpUrl}"${authHeadersJson}
     }
   }
 }`}</pre>

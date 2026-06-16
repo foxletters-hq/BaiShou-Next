@@ -33,9 +33,25 @@ private data class PendingMcpRequest(
 class BaishouHttpServer(
     port: Int,
     private val context: Context,
+    private val authToken: String?,
     private val emitEvent: (String, Map<String, Any>) -> Unit,
-    private val dispatchMcpRequest: (String) -> String
+    private val dispatchMcpRequest: (String, String?) -> String
 ) : NanoHTTPD(port) {
+
+    private fun isAuthorized(session: IHTTPSession): Boolean {
+        val token = authToken?.trim().orEmpty()
+        if (token.isEmpty()) return true
+        val auth = session.headers["authorization"] ?: return false
+        return auth == "Bearer $token"
+    }
+
+    private fun unauthorizedResponse(): Response {
+        return corsResponse(
+            Response.Status.UNAUTHORIZED,
+            "application/json",
+            "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32001,\"message\":\"Unauthorized: invalid or missing MCP auth token\"},\"id\":null}"
+        )
+    }
 
     private fun corsResponse(status: Response.Status, mimeType: String, body: String): Response {
         val response = newFixedLengthResponse(status, mimeType, body)
@@ -67,6 +83,10 @@ class BaishouHttpServer(
             return corsResponse(Response.Status.OK, MIME_PLAINTEXT, "")
         }
 
+        if (!isAuthorized(session)) {
+            return unauthorizedResponse()
+        }
+
         if (session.method == Method.GET) {
             return corsResponse(Response.Status.OK, "application/json", MCP_INFO_JSON)
         }
@@ -74,7 +94,8 @@ class BaishouHttpServer(
         if (session.method == Method.POST) {
             return try {
                 val body = readRequestBody(session)
-                val responseBody = dispatchMcpRequest(body)
+                val authorization = session.headers["authorization"]
+                val responseBody = dispatchMcpRequest(body, authorization)
                 corsResponse(Response.Status.OK, "application/json", responseBody)
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -145,19 +166,21 @@ class ExpoBaishouServerModule : Module() {
     private val pendingMcpRequests = ConcurrentHashMap<String, PendingMcpRequest>()
     private var pendingDirectoryPromise: Promise? = null
 
-    private fun dispatchMcpRequestToJs(body: String): String {
+    private fun dispatchMcpRequestToJs(body: String, authorization: String?): String {
         val requestId = UUID.randomUUID().toString()
         val latch = CountDownLatch(1)
         val responseRef = AtomicReference("")
         pendingMcpRequests[requestId] = PendingMcpRequest(latch, responseRef)
 
-        sendEvent(
-            "onMcpHttpRequest",
-            mapOf(
-                "requestId" to requestId,
-                "body" to body
-            )
+        val payload = mutableMapOf(
+            "requestId" to requestId,
+            "body" to body
         )
+        if (!authorization.isNullOrBlank()) {
+            payload["authorization"] = authorization
+        }
+
+        sendEvent("onMcpHttpRequest", payload)
 
         val completed = latch.await(25, TimeUnit.SECONDS)
         pendingMcpRequests.remove(requestId)
@@ -181,7 +204,7 @@ class ExpoBaishouServerModule : Module() {
             true
         }
 
-        Function("startServer") { port: Int ->
+        Function("startServer") { port: Int, authToken: String? ->
             if (server != null) {
                 server?.stop()
                 server = null
@@ -191,8 +214,9 @@ class ExpoBaishouServerModule : Module() {
                 server = BaishouHttpServer(
                     port,
                     context,
+                    authToken,
                     { evt, payload -> this@ExpoBaishouServerModule.sendEvent(evt, payload) },
-                    { body -> dispatchMcpRequestToJs(body) }
+                    { body, authorization -> dispatchMcpRequestToJs(body, authorization) }
                 )
                 server?.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false)
                 return@Function server?.listeningPort ?: port

@@ -17,6 +17,26 @@ import { ContextCompressUpstreamTool, ContextCompressDownstreamTool } from './co
 
 const INTERNAL_ONLY_TOOL_IDS = new Set(['compress_context_upstream', 'compress_context_downstream'])
 
+function isToolEnabledForContext(name: string, tool: AgentTool, context: ToolContext): boolean {
+  const disabledIds = new Set(
+    Array.isArray(context.userConfig?.['disabledToolIds'])
+      ? (context.userConfig!['disabledToolIds'] as string[])
+      : []
+  )
+
+  const ragEnabled = context.userConfig?.['ragEnabled'] !== false
+  const hasEmbedding = context.userConfig?.['hasEmbeddingModel'] === true
+  const webSearchEnabled = context.userConfig?.['web_search_enabled'] === true
+
+  if (INTERNAL_ONLY_TOOL_IDS.has(name)) return false
+  if (tool.canBeDisabled && disabledIds.has(name)) return false
+  if ((!ragEnabled || !hasEmbedding) && (name === 'vector_search' || name === 'memory_store')) {
+    return false
+  }
+  if (name === 'web_search' && !webSearchEnabled) return false
+  return true
+}
+
 export class ToolRegistry {
   private readonly tools = new Map<string, AgentTool>()
 
@@ -69,47 +89,31 @@ export class ToolRegistry {
     return Array.from(this.tools.values())
   }
 
+  /** 与应用内 Agent 相同过滤规则，供 MCP tools/list 与 call 共用 */
+  getEnabledToolsRaw(context: ToolContext): AgentTool[] {
+    const enabled: AgentTool[] = []
+    for (const [name, tool] of this.tools.entries()) {
+      if (isToolEnabledForContext(name, tool, context)) {
+        enabled.push(tool)
+      }
+    }
+    return enabled
+  }
+
+  isToolEnabled(name: string, context: ToolContext): boolean {
+    const tool = this.tools.get(name)
+    if (!tool) return false
+    return isToolEnabledForContext(name, tool, context)
+  }
+
   /**
    * 将可供模型调用的工具转换为 Vercel 映射字典并排除用户被禁用的项。
    */
   getEnabledToolsAsVercel(context: ToolContext): Record<string, any> {
-    const disabledIds = new Set(
-      Array.isArray(context.userConfig?.['disabledToolIds'])
-        ? (context.userConfig!['disabledToolIds'] as string[])
-        : []
-    )
-
-    // 如果大局关掉了 RAG，则所有带记忆向量检索的模块主动切断防患于未然
-    const ragEnabled = context.userConfig?.['ragEnabled'] !== false
-
-    // 如果用户并未配置合法的切入模型
-    const hasEmbedding = context.userConfig?.['hasEmbeddingModel'] === true
-
-    // 检查网络搜索是否被用户启用
-    const webSearchEnabled = context.userConfig?.['web_search_enabled'] === true
-
     const configuredTools: Record<string, any> = {}
 
-    for (const [name, tool] of this.tools.entries()) {
-      // 上下文压缩由宿主应用按阈值静默调度，不能暴露给模型主动调用，
-      // 否则模型可能每轮调用并传 force=true 绕过伙伴阈值。
-      if (INTERNAL_ONLY_TOOL_IDS.has(name)) {
-        continue
-      }
-      // 被显式手动关闭禁言的 Tool
-      if (tool.canBeDisabled && disabledIds.has(name)) {
-        continue
-      }
-      // RAG 全局防呆拦截及物理模型防呆拦截
-      if ((!ragEnabled || !hasEmbedding) && (name === 'vector_search' || name === 'memory_store')) {
-        continue
-      }
-      // 网络搜索工具需要用户显式启用
-      if (name === 'web_search' && !webSearchEnabled) {
-        continue
-      }
-
-      configuredTools[name] = tool.toVercelTool(context)
+    for (const tool of this.getEnabledToolsRaw(context)) {
+      configuredTools[tool.name] = tool.toVercelTool(context)
     }
     return configuredTools
   }

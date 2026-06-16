@@ -19,7 +19,11 @@ describe.sequential('McpService', () => {
         mcpEnabled: true
       })
     }
-    service = new McpService(mockSettingsRepo)
+    service = new McpService(mockSettingsRepo, undefined, async () => ({
+      sessionId: 'mcp-external',
+      vaultName: 'Personal',
+      userConfig: {}
+    }))
   })
 
   afterEach(async () => {
@@ -235,6 +239,15 @@ describe.sequential('McpService', () => {
           execute: async () => 'Test execution result'
         }
       ],
+      getEnabledToolsRaw: () => [
+        {
+          name: 'test_tool',
+          description: 'A test tool',
+          parameters: z.object({}),
+          execute: async () => 'Test execution result'
+        }
+      ],
+      isToolEnabled: () => true,
       get: (name: string) => {
         if (name === 'test_tool') {
           return {
@@ -248,7 +261,11 @@ describe.sequential('McpService', () => {
       }
     } as any
 
-    const serviceWithTools = new McpService(mockSettingsRepo, dummyRegistry)
+    const serviceWithTools = new McpService(mockSettingsRepo, dummyRegistry, async () => ({
+      sessionId: 'mcp-external',
+      vaultName: 'Personal',
+      userConfig: {}
+    }))
     const mcpTools = (serviceWithTools as any).getAgentToolsMcp()
 
     expect(mcpTools).length(1)

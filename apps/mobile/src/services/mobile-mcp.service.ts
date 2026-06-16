@@ -1,7 +1,7 @@
-import { ToolRegistry } from '@baishou/ai'
+import { ToolRegistry, type ToolContext, buildMcpInstructions, formatMcpToolCallResult } from '@baishou/ai'
 import type { SettingsManagerService } from '@baishou/core-mobile'
 import type { McpServerConfig } from '@baishou/shared'
-import { logger } from '@baishou/shared'
+import { isMcpRequestAuthorized, logger } from '@baishou/shared'
 import { APP_VERSION } from '../app-version'
 import { zodToJsonSchema } from 'zod-to-json-schema'
 import * as BaishouServer from 'expo-baishou-server'
@@ -26,7 +26,7 @@ export class MobileMcpService {
   constructor(
     private readonly settingsManager: SettingsManagerService,
     private readonly toolRegistry: ToolRegistry,
-    private readonly resolveVaultName: () => Promise<string> = async () => 'default'
+    private readonly resolveToolContext: () => Promise<ToolContext>
   ) {}
 
   async getConfig(): Promise<McpServerConfig> {
@@ -35,8 +35,9 @@ export class MobileMcpService {
     )
   }
 
-  getToolsList(): McpToolListItem[] {
-    return this.toolRegistry.getAllRaw().map((tool) => ({
+  async getToolsList(): Promise<McpToolListItem[]> {
+    const context = await this.resolveToolContext()
+    return this.toolRegistry.getEnabledToolsRaw(context).map((tool) => ({
       name: `baishou_${tool.name}`,
       displayName: tool.displayName,
       description: tool.description,
@@ -55,7 +56,7 @@ export class MobileMcpService {
   async start(): Promise<void> {
     const config = await this.getConfig()
     if (!config.mcpEnabled) return
-    await this.startOnPort(config.mcpPort || DEFAULT_MCP_CONFIG.mcpPort)
+    await this.startOnPort(config)
   }
 
   async stop(): Promise<void> {
@@ -75,13 +76,13 @@ export class MobileMcpService {
   /** Apply config after settings UI changes (persists externally). */
   async applyConfig(config: McpServerConfig): Promise<void> {
     if (config.mcpEnabled) {
-      await this.startOnPort(config.mcpPort || DEFAULT_MCP_CONFIG.mcpPort)
+      await this.startOnPort(config)
     } else {
       await this.stop()
     }
   }
 
-  private async startOnPort(port: number): Promise<void> {
+  private async startOnPort(config: McpServerConfig): Promise<void> {
     if (!BaishouServer.isBaishouServerAvailable()) {
       logger.warn(
         '[MobileMcpService] ExpoBaishouServer 未编入 APK，跳过 MCP。请 pnpm dev:mobile:clear 重装开发版。'
@@ -91,13 +92,15 @@ export class MobileMcpService {
 
     this.teardownListener()
 
-    const boundPort = BaishouServer.startMcpServer(port)
+    const port = config.mcpPort || DEFAULT_MCP_CONFIG.mcpPort
+    const authToken = config.mcpAuthToken?.trim() || undefined
+    const boundPort = BaishouServer.startMcpServer(port, authToken)
     if (boundPort <= 0) {
       throw new Error(`Failed to start MCP HTTP server on port ${port}`)
     }
 
-    this.mcpListenerSub = BaishouServer.onMcpHttpRequest(({ requestId, body }) => {
-      void this.handleMcpRequest(requestId, body)
+    this.mcpListenerSub = BaishouServer.onMcpHttpRequest(({ requestId, body, authorization }) => {
+      void this.handleMcpRequest(requestId, body, authorization)
     })
 
     this.isRunning = true
@@ -112,8 +115,25 @@ export class MobileMcpService {
     }
   }
 
-  private async handleMcpRequest(requestId: string, body: string): Promise<void> {
+  private async handleMcpRequest(
+    requestId: string,
+    body: string,
+    authorization?: string
+  ): Promise<void> {
     try {
+      const config = await this.getConfig()
+      if (!isMcpRequestAuthorized(config, authorization)) {
+        BaishouServer.resolveMcpHttpResponse(
+          requestId,
+          JSON.stringify({
+            jsonrpc: '2.0',
+            id: null,
+            error: { code: -32001, message: 'Unauthorized: invalid or missing MCP auth token' }
+          })
+        )
+        return
+      }
+
       const responseBody = await this.processJsonRpc(body)
       BaishouServer.resolveMcpHttpResponse(requestId, responseBody)
     } catch (e: unknown) {
@@ -157,15 +177,15 @@ export class MobileMcpService {
     try {
       let result: unknown
       if (method === 'initialize') {
+        const { vaultName } = await this.resolveToolContext()
         result = {
           protocolVersion: '2024-11-05',
           capabilities: { tools: { listChanged: false } },
           serverInfo: { name: 'BaiShou MCP Server', version: APP_VERSION },
-          instructions:
-            'BaiShou is an AI companion diary app. Use the tools below to read/edit diaries, search memories, and manage stored knowledge.'
+          instructions: buildMcpInstructions(vaultName)
         }
       } else if (method === 'tools/list') {
-        result = { tools: this.getAgentToolsMcp() }
+        result = { tools: await this.getAgentToolsMcp() }
       } else if (method === 'tools/call') {
         result = await this.executeAgentTool(params)
       } else if (method === 'ping') {
@@ -189,8 +209,9 @@ export class MobileMcpService {
     }
   }
 
-  private getAgentToolsMcp() {
-    return this.toolRegistry.getAllRaw().map((tool) => ({
+  private async getAgentToolsMcp() {
+    const context = await this.resolveToolContext()
+    return this.toolRegistry.getEnabledToolsRaw(context).map((tool) => ({
       name: `baishou_${tool.name}`,
       description: tool.description,
       inputSchema: zodToJsonSchema(tool.parameters, { target: 'jsonSchema7' })
@@ -206,22 +227,12 @@ export class MobileMcpService {
     const tool = this.toolRegistry.get(rawName)
     if (!tool) throw new Error(`Tool not found: ${rawName}`)
 
-    const vaultName = await this.resolveVaultName()
-    const context = {
-      sessionId: 'mcp-external',
-      vaultName,
-      userConfig: {}
+    const context = await this.resolveToolContext()
+    if (!this.toolRegistry.isToolEnabled(rawName, context)) {
+      throw new Error(`Tool not available: ${rawName}`)
     }
 
     const result = await tool.execute((params.arguments as Record<string, unknown>) || {}, context)
-    return {
-      content: [
-        {
-          type: 'text',
-          text: typeof result === 'string' ? result : JSON.stringify(result)
-        }
-      ],
-      isError: false
-    }
+    return formatMcpToolCallResult(typeof result === 'string' ? result : JSON.stringify(result))
   }
 }

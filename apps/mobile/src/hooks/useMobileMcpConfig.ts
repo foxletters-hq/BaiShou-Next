@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as Network from 'expo-network'
 import type { McpServerConfig } from '@baishou/shared'
+import { ensureMcpAuthToken } from '@baishou/shared'
 import { useNativeToast, useDialog, McpToolsListContent } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 
@@ -45,12 +46,13 @@ export function useMobileMcpConfig() {
       if (!services || !dbReady) return
       setApplying(true)
       try {
-        await services.settingsManager.set('mcp_server_config', next)
-        setConfig(next)
+        const saved = ensureMcpAuthToken(next)
+        await services.settingsManager.set('mcp_server_config', saved)
+        setConfig(saved)
         // 延迟 300ms 待展开/收起动画执行完毕后，再在后台启动或停止 MCP 原生服务
         setTimeout(async () => {
           try {
-            await services.mobileMcpService.applyConfig(next)
+            await services.mobileMcpService.applyConfig(saved)
             toast.showSuccess(t('settings.mcp_saved'))
           } catch (e) {
             console.error(e)
@@ -70,7 +72,7 @@ export function useMobileMcpConfig() {
 
   const showToolsDialog = useCallback(async () => {
     try {
-      const tools = services?.mobileMcpService.getToolsList() || []
+      const tools = (await services?.mobileMcpService.getToolsList()) || []
       if (tools.length === 0) {
         toast.showWarning(t('settings.mcp_no_tools'))
         return

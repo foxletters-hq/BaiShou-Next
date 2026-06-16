@@ -19,6 +19,7 @@ export * from './providers/openai.provider'
 // Tools
 export * from './tools/agent.tool'
 export * from './tools/tool-registry'
+export * from './tools/mcp-tool.util'
 export * from './tools/current-time.tool'
 export * from './tools/diary-read.tool'
 export * from './tools/diary-list.tool'
@@ -94,5 +95,12 @@ export {
 
 export type { IStreamEmitter, StreamFinishPayload } from './agent/stream-emitter.interface'
 export { AgentChatCoreService } from './agent/agent-chat-core.service'
+export {
+  claimAgentStreamSession,
+  isAgentStreamSessionClaimActive,
+  releaseAgentStreamSession,
+  abortAgentStreamSession,
+  abortAllAgentStreamSessions
+} from './agent/stream-session-guard'
 export { AgentChatActionCoreRunner } from './agent/agent-chat-action-core.runner'
 export type { ActionDeps, StreamRunConfig } from './agent/actions/base.action'

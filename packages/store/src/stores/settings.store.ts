@@ -341,7 +341,8 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
         setMcpServerConfig: async (config) => {
           set({ mcpServerConfig: config })
           if (typeof window !== 'undefined' && (window as any).api?.settings) {
-            await (window as any).api.settings.setMcpServerConfig(config)
+            const saved = await (window as any).api.settings.setMcpServerConfig(config)
+            if (saved) set({ mcpServerConfig: saved })
           }
         },
 

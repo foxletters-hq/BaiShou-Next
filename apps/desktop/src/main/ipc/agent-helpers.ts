@@ -5,7 +5,9 @@ import {
   MessageRepository,
   connectionManager,
   UserProfileRepository,
-  SnapshotRepository
+  SnapshotRepository,
+  SqliteHybridSearchRepository,
+  createSqlExecutorFromDrizzleDb
 } from '@baishou/database-desktop'
 import {
   SessionFileService,
@@ -15,7 +17,7 @@ import {
   AssistantManagerService
 } from '@baishou/core-desktop'
 import { DesktopAttachmentManagerService } from '../services/desktop-attachment-manager.service'
-import { fileSystem, pathService, getActiveVaultShadowRepo } from './vault.ipc'
+import { fileSystem, pathService, getActiveVaultShadowRepo, vaultService } from './vault.ipc'
 import { settingsManager } from './settings.ipc'
 import {
   AIProviderConfig,
@@ -48,7 +50,11 @@ import {
   EMPTY_WEB_PAGE_MESSAGE,
   UNAVAILABLE_WEB_PAGE_MESSAGE,
   webSearchConfigToUserConfig,
-  mergeDiaryTags
+  mergeDiaryTags,
+  DatabaseAdapter,
+  EmbeddingAdapter,
+  MemoryDeduplicationServiceImpl,
+  type ToolContext
 } from '@baishou/ai'
 import { getDiaryManager } from './diary.ipc'
 
@@ -403,4 +409,83 @@ export async function buildStreamConfig(
     },
     userConfig
   }
+}
+
+/** MCP 外部工具调用上下文：绑定当前活跃工作空间，与应用内 Agent 对齐 */
+const MCP_CONTEXT_CACHE_TTL_MS = 5000
+let mcpToolContextCache: {
+  vaultName: string
+  context: ToolContext
+  expiresAt: number
+} | null = null
+
+export function invalidateMcpToolContextCache(): void {
+  mcpToolContextCache = null
+}
+
+export async function buildMcpToolContext(): Promise<ToolContext> {
+  const activeVault = vaultService.getActiveVault()
+  const vaultName = activeVault?.name || 'Personal'
+  const now = Date.now()
+
+  if (
+    mcpToolContextCache &&
+    mcpToolContextCache.vaultName === vaultName &&
+    mcpToolContextCache.expiresAt > now
+  ) {
+    return mcpToolContextCache.context
+  }
+
+  const { userConfig, systemModels } = await buildStreamConfig()
+
+  const drizzleDb = connectionManager.getDb()
+  const clientExecutor = createSqlExecutorFromDrizzleDb(drizzleDb)
+  const hsRepo = new SqliteHybridSearchRepository(clientExecutor)
+  const msgRepo = new MessageRepository(drizzleDb)
+  const dbAdapter = new DatabaseAdapter(hsRepo, msgRepo, drizzleDb)
+
+  let embAdapter: EmbeddingAdapter | undefined
+  if (systemModels?.embeddingProvider && systemModels?.embeddingModelId) {
+    embAdapter = new EmbeddingAdapter(
+      systemModels.embeddingProvider,
+      systemModels.embeddingModelId,
+      hsRepo
+    )
+  }
+
+  let dedupService: MemoryDeduplicationServiceImpl | undefined
+  if (
+    embAdapter &&
+    systemModels?.embeddingProvider &&
+    systemModels?.embeddingModelId
+  ) {
+    dedupService = new MemoryDeduplicationServiceImpl(
+      embAdapter,
+      dbAdapter,
+      systemModels.embeddingProvider,
+      systemModels.embeddingModelId
+    )
+  }
+
+  const context: ToolContext = {
+    sessionId: 'mcp-external',
+    vaultName,
+    userConfig,
+    diarySearcher: createDiarySearcher(),
+    embeddingService: embAdapter,
+    vectorStore: dbAdapter,
+    messageSearcher: dbAdapter,
+    summaryReader: dbAdapter,
+    deduplicationService: dedupService,
+    webSearchResultFetcher: createWebSearchResultFetcher(),
+    fetchSearchPage: createFetchSearchPage()
+  }
+
+  mcpToolContextCache = {
+    vaultName,
+    context,
+    expiresAt: now + MCP_CONTEXT_CACHE_TTL_MS
+  }
+
+  return context
 }

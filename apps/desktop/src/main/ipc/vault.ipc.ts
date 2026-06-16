@@ -55,6 +55,9 @@ async function switchVaultFast(vaultName: string) {
 
   await vaultService.switchVault(vaultName)
 
+  const { invalidateMcpToolContextCache } = await import('./agent-helpers')
+  invalidateMcpToolContextCache()
+
   const { resetCachedManager } = await import('./summary.ipc')
   resetCachedManager()
   const { resetSharedShadowSync } = await import('../services/shadow-sync.registry')
