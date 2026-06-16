@@ -1,13 +1,17 @@
 import React, {
   createContext,
+  forwardRef,
   useCallback,
   useContext,
   useEffect,
+  useImperativeHandle,
+  useMemo,
   useRef,
   useState,
+  startTransition,
   type ReactNode
 } from 'react'
-import { View, StyleSheet } from 'react-native'
+import { InteractionManager, View, StyleSheet } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTranslation } from 'react-i18next'
 import { IncrementalSyncProgressOverlay, useDialog, useNativeToast } from '@baishou/ui/native'
@@ -21,59 +25,93 @@ import { logger } from '@baishou/shared'
 
 export type IncrementalSyncMode = 'sync' | 'uploadOnly' | 'downloadOnly'
 
-type IncrementalSyncContextValue = {
+type IncrementalSyncActionsValue = {
   isSyncing: boolean
-  progress: IncrementalSyncProgress | null
   isConfigured: boolean | null
   refreshConfigured: () => Promise<void>
   runIncrementalSync: (mode?: IncrementalSyncMode) => Promise<IncrementalSyncResult | undefined>
 }
 
-const IncrementalSyncContext = createContext<IncrementalSyncContextValue>({
+export type IncrementalSyncOverlayHandle = {
+  publish: (progress: IncrementalSyncProgress) => void
+  reset: () => void
+}
+
+const IncrementalSyncActionsContext = createContext<IncrementalSyncActionsValue>({
   isSyncing: false,
-  progress: null,
   isConfigured: null,
   refreshConfigured: async () => {},
   runIncrementalSync: async () => undefined
 })
 
-export const useIncrementalSync = () => useContext(IncrementalSyncContext)
+export const useIncrementalSync = () => useContext(IncrementalSyncActionsContext)
+
+const IncrementalSyncOverlayHost = forwardRef<IncrementalSyncOverlayHandle, { isSyncing: boolean }>(
+  function IncrementalSyncOverlayHost({ isSyncing }, ref) {
+    const insets = useSafeAreaInsets()
+    const [progress, setProgress] = useState<IncrementalSyncProgress | null>(null)
+    const progressThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const pendingProgressRef = useRef<IncrementalSyncProgress | null>(null)
+
+    const flushProgress = useCallback(() => {
+      if (progressThrottleRef.current) {
+        clearTimeout(progressThrottleRef.current)
+        progressThrottleRef.current = null
+      }
+      pendingProgressRef.current = null
+    }, [])
+
+    useImperativeHandle(
+      ref,
+      () => ({
+        publish: (p: IncrementalSyncProgress) => {
+          pendingProgressRef.current = p
+          if (progressThrottleRef.current) return
+          startTransition(() => setProgress(p))
+          progressThrottleRef.current = setTimeout(() => {
+            progressThrottleRef.current = null
+            if (pendingProgressRef.current) {
+              startTransition(() => setProgress(pendingProgressRef.current))
+              pendingProgressRef.current = null
+            }
+          }, 280)
+        },
+        reset: () => {
+          flushProgress()
+          setProgress(null)
+        }
+      }),
+      [flushProgress]
+    )
+
+    useEffect(() => {
+      if (!isSyncing) {
+        flushProgress()
+        setProgress(null)
+      }
+    }, [flushProgress, isSyncing])
+
+    return (
+      <IncrementalSyncProgressOverlay
+        visible={isSyncing}
+        progress={progress}
+        topInset={insets.top + 48}
+      />
+    )
+  }
+)
 
 export function IncrementalSyncProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation()
   const toast = useNativeToast()
   const dialog = useDialog()
   const router = useRouter()
-  const insets = useSafeAreaInsets()
   const { services, dbReady } = useBaishou()
 
+  const overlayRef = useRef<IncrementalSyncOverlayHandle>(null)
   const [isSyncing, setIsSyncing] = useState(false)
-  const [progress, setProgress] = useState<IncrementalSyncProgress | null>(null)
   const [isConfigured, setIsConfigured] = useState<boolean | null>(null)
   const syncingRef = useRef(false)
-  const progressThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const pendingProgressRef = useRef<IncrementalSyncProgress | null>(null)
-
-  const publishProgress = useCallback((p: IncrementalSyncProgress) => {
-    pendingProgressRef.current = p
-    if (progressThrottleRef.current) return
-    setProgress(p)
-    progressThrottleRef.current = setTimeout(() => {
-      progressThrottleRef.current = null
-      if (pendingProgressRef.current) {
-        setProgress(pendingProgressRef.current)
-        pendingProgressRef.current = null
-      }
-    }, 120)
-  }, [])
-
-  const flushProgress = useCallback(() => {
-    if (progressThrottleRef.current) {
-      clearTimeout(progressThrottleRef.current)
-      progressThrottleRef.current = null
-    }
-    pendingProgressRef.current = null
-  }, [])
 
   const refreshConfigured = useCallback(async () => {
     if (!services?.incrementalSyncService || !dbReady) {
@@ -102,7 +140,7 @@ export function IncrementalSyncProvider({ children }: { children: ReactNode }) {
 
       syncingRef.current = true
       setIsSyncing(true)
-      setProgress({ phase: 'scanning', current: 0, total: 0 })
+      overlayRef.current?.publish({ phase: 'scanning', current: 0, total: 0 })
 
       try {
         const configured = isConfigured ?? (await services.incrementalSyncService.isConfigured())
@@ -115,14 +153,13 @@ export function IncrementalSyncProvider({ children }: { children: ReactNode }) {
           return undefined
         }
 
+        await new Promise<void>((resolve) => {
+          InteractionManager.runAfterInteractions(() => resolve())
+        })
+
         const svc = services.incrementalSyncService
         const onProgress = (p: IncrementalSyncProgress) => {
-          if (p.phase === 'finalizing') {
-            flushProgress()
-            setProgress(p)
-            return
-          }
-          publishProgress(p)
+          overlayRef.current?.publish(p)
         }
 
         const result =
@@ -132,62 +169,51 @@ export function IncrementalSyncProvider({ children }: { children: ReactNode }) {
               ? await svc.downloadOnly(onProgress)
               : await svc.sync(onProgress)
 
-        flushProgress()
-        syncingRef.current = false
-        setIsSyncing(false)
-        setProgress(null)
-
         toast.showSuccess(t('data_sync.sync_completed'))
         if (result.conflicts > 0) {
           toast.showWarning(
             t('data_sync.sync_result_conflicts').replace('$count', String(result.conflicts))
           )
         }
+        if (result.failed > 0) {
+          toast.showWarning(
+            t('data_sync.sync_result_partial_failed', {
+              count: result.failed,
+              defaultValue: '{{count}} 个文件同步失败，将在下次同步重试'
+            })
+          )
+        }
         return result
       } catch (e) {
         logger.error('增量同步失败', e instanceof Error ? e : String(e))
         toast.showError(e instanceof Error ? e.message : t('data_sync.sync_failed_generic'))
-        throw e
+        return undefined
       } finally {
-        flushProgress()
         syncingRef.current = false
         setIsSyncing(false)
-        setProgress(null)
+        overlayRef.current?.reset()
       }
     },
-    [
-      dbReady,
-      dialog,
-      flushProgress,
-      isConfigured,
+    [dbReady, dialog, isConfigured, isSyncing, router, services, t, toast]
+  )
+
+  const actionsValue = useMemo(
+    () => ({
       isSyncing,
-      publishProgress,
-      router,
-      services,
-      t,
-      toast
-    ]
+      isConfigured,
+      refreshConfigured,
+      runIncrementalSync
+    }),
+    [isConfigured, isSyncing, refreshConfigured, runIncrementalSync]
   )
 
   return (
-    <IncrementalSyncContext.Provider
-      value={{
-        isSyncing,
-        progress,
-        isConfigured,
-        refreshConfigured,
-        runIncrementalSync
-      }}
-    >
+    <IncrementalSyncActionsContext.Provider value={actionsValue}>
       <View style={styles.root}>
         {children}
-        <IncrementalSyncProgressOverlay
-          visible={isSyncing}
-          progress={progress}
-          topInset={insets.top + 48}
-        />
+        <IncrementalSyncOverlayHost ref={overlayRef} isSyncing={isSyncing} />
       </View>
-    </IncrementalSyncContext.Provider>
+    </IncrementalSyncActionsContext.Provider>
   )
 }
 

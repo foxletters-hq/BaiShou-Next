@@ -26,6 +26,32 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary)
 }
 
+function isTransientNetworkError(error: unknown): boolean {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === 'string'
+        ? error
+        : String(error)
+  return /network request failed|failed to fetch|timed out|timeout|econnreset|enetunreach/i.test(
+    message
+  )
+}
+
+async function withTransientNetworkRetry<T>(run: () => Promise<T>, retries = 4): Promise<T> {
+  let lastError: unknown
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await run()
+    } catch (error) {
+      lastError = error
+      if (attempt >= retries || !isTransientNetworkError(error)) throw error
+      await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** attempt))
+    }
+  }
+  throw lastError
+}
+
 export type IncrementalSyncRecord = {
   filename: string
   lastModified: Date
@@ -99,6 +125,10 @@ export class MobileIncrementalCloudClient {
     }
     const staged = this.httpStagingPath(localFilePath, 'ul')
     await this.fileSystem.copyFile(localFilePath, staged)
+    const stagedStat = await this.fileSystem.stat(staged).catch(() => null)
+    if (!stagedStat?.isFile || (stagedStat.size ?? 0) <= 0) {
+      throw new Error(`Staging copy failed for upload: ${localFilePath}`)
+    }
     try {
       return await fn(staged)
     } finally {
@@ -115,35 +145,39 @@ export class MobileIncrementalCloudClient {
 
   async uploadFile(localFilePath: string): Promise<void> {
     const rel = this.relFromLocal(localFilePath)
-    await this.withHttpUploadPath(localFilePath, async (httpPath) => {
-      if (this.config.target === 'webdav') {
-        await this.uploadWebDav(rel, httpPath)
-      } else {
-        await this.uploadS3(rel, httpPath)
-      }
-    })
+    await withTransientNetworkRetry(() =>
+      this.withHttpUploadPath(localFilePath, async (httpPath) => {
+        if (this.config.target === 'webdav') {
+          await this.uploadWebDav(rel, httpPath)
+        } else {
+          await this.uploadS3(rel, httpPath)
+        }
+      })
+    )
   }
 
   async downloadFile(remoteFilename: string, localDestPath: string): Promise<void> {
-    const parent = localDestPath.replace(/\/[^/]+$/, '')
-    if (!(await this.fileSystem.exists(parent))) {
-      await this.fileSystem.mkdir(parent, { recursive: true })
-    }
+    await withTransientNetworkRetry(async () => {
+      const parent = localDestPath.replace(/\/[^/]+$/, '')
+      if (!(await this.fileSystem.exists(parent))) {
+        await this.fileSystem.mkdir(parent, { recursive: true })
+      }
 
-    const staged = this.needsHttpStaging(localDestPath)
-      ? this.httpStagingPath(localDestPath, 'dl')
-      : localDestPath
+      const staged = this.needsHttpStaging(localDestPath)
+        ? this.httpStagingPath(localDestPath, 'dl')
+        : localDestPath
 
-    if (this.config.target === 'webdav') {
-      await this.downloadWebDav(remoteFilename, staged)
-    } else {
-      await this.downloadS3(remoteFilename, staged)
-    }
+      if (this.config.target === 'webdav') {
+        await this.downloadWebDav(remoteFilename, staged)
+      } else {
+        await this.downloadS3(remoteFilename, staged)
+      }
 
-    if (staged !== localDestPath) {
-      await this.fileSystem.copyFile(staged, localDestPath)
-      await this.fileSystem.unlink(staged).catch(() => {})
-    }
+      if (staged !== localDestPath) {
+        await this.fileSystem.copyFile(staged, localDestPath)
+        await this.fileSystem.unlink(staged).catch(() => {})
+      }
+    })
   }
 
   async deleteFile(remoteFilename: string): Promise<void> {
@@ -265,6 +299,17 @@ export class MobileIncrementalCloudClient {
   }
 
   private async uploadS3Single(rel: string, localFilePath: string) {
+    const uploadUri = toFileUri(localFilePath)
+    try {
+      await this.uploadS3SingleWithUploadAsync(rel, uploadUri)
+      return
+    } catch (error) {
+      if (!isTransientNetworkError(error)) throw error
+    }
+    await this.uploadS3SingleWithFetch(rel, localFilePath)
+  }
+
+  private async uploadS3SingleWithUploadAsync(rel: string, uploadUri: string) {
     const url = buildS3ObjectUrl(this.s3UrlOptions(rel))
     const contentType = 'application/octet-stream'
     const signed = await signS3Request(
@@ -276,12 +321,40 @@ export class MobileIncrementalCloudClient {
       null,
       { 'Content-Type': contentType }
     )
-    const response = await uploadAsync(url, localFilePath, {
+    const response = await uploadAsync(url, uploadUri, {
       httpMethod: 'PUT',
       headers: { ...s3FetchHeaders(signed), 'Content-Type': contentType },
       uploadType: FileSystemUploadType.BINARY_CONTENT
     })
     if (response.status < 200 || response.status >= 300) {
+      throw new Error(`S3 upload failed: ${response.status}`)
+    }
+  }
+
+  private async uploadS3SingleWithFetch(rel: string, localFilePath: string) {
+    const stat = await this.fileSystem.stat(localFilePath)
+    const fileSize = stat.size ?? 0
+    if (fileSize <= 0) {
+      throw new Error(`S3 upload skipped empty file: ${rel}`)
+    }
+    const body = await this.readFileChunk(localFilePath, 0, fileSize)
+    const url = buildS3ObjectUrl(this.s3UrlOptions(rel))
+    const contentType = 'application/octet-stream'
+    const signed = await signS3Request(
+      'PUT',
+      url,
+      this.config.region || 'us-east-1',
+      this.config.accessKey || '',
+      this.config.secretKey || '',
+      body,
+      { 'Content-Type': contentType }
+    )
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers: { ...s3FetchHeaders(signed), 'Content-Type': contentType },
+      body
+    })
+    if (!response.ok) {
       throw new Error(`S3 upload failed: ${response.status}`)
     }
   }
@@ -606,12 +679,44 @@ export class MobileIncrementalCloudClient {
   }
 
   private async uploadWebDavSingle(rel: string, localFilePath: string) {
-    const response = await uploadAsync(this.webdavFileUrl(rel), localFilePath, {
+    const uploadUri = toFileUri(localFilePath)
+    try {
+      await this.uploadWebDavSingleWithUploadAsync(rel, uploadUri)
+      return
+    } catch (error) {
+      if (!isTransientNetworkError(error)) throw error
+    }
+    await this.uploadWebDavSingleWithFetch(rel, localFilePath)
+  }
+
+  private async uploadWebDavSingleWithUploadAsync(rel: string, uploadUri: string) {
+    const response = await uploadAsync(this.webdavFileUrl(rel), uploadUri, {
       httpMethod: 'PUT',
       headers: { Authorization: this.webdavAuth() },
       uploadType: FileSystemUploadType.BINARY_CONTENT
     })
     if (response.status < 200 || response.status >= 300) {
+      throw new Error(`WebDAV upload failed: ${response.status}`)
+    }
+  }
+
+  private async uploadWebDavSingleWithFetch(rel: string, localFilePath: string) {
+    const stat = await this.fileSystem.stat(localFilePath)
+    const fileSize = stat.size ?? 0
+    if (fileSize <= 0) {
+      throw new Error(`WebDAV upload skipped empty file: ${rel}`)
+    }
+    const body = await this.readFileChunk(localFilePath, 0, fileSize)
+    const response = await fetch(this.webdavFileUrl(rel), {
+      method: 'PUT',
+      headers: {
+        Authorization: this.webdavAuth(),
+        'Content-Type': 'application/octet-stream',
+        'Content-Length': String(fileSize)
+      },
+      body
+    })
+    if (!response.ok) {
       throw new Error(`WebDAV upload failed: ${response.status}`)
     }
   }

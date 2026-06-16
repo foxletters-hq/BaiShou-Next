@@ -11,6 +11,7 @@ import {
 } from '@baishou/shared'
 import type { IFileSystem, IArchiveService, SettingsManagerService } from '@baishou/core-mobile'
 import type { IStoragePathService } from '@baishou/core-mobile'
+import { InteractionManager } from 'react-native'
 import { FileSystemUploadType, uploadAsync } from './mobile-http-transfer'
 import {
   MobileIncrementalEngine,
@@ -27,6 +28,7 @@ export type IncrementalSyncResult = {
   downloaded: number
   conflicts: number
   skipped: number
+  failed: number
 }
 
 const DEFAULT_CONFIG: S3SyncConfig = {
@@ -206,11 +208,26 @@ export class MobileIncrementalSyncService {
     this.onAfterSyncComplete = handler
   }
 
-  private async afterSyncComplete(): Promise<void> {
+  private afterSyncComplete(): Promise<void> {
     invalidateAllAvatarDisplayCaches()
     invalidateUserAvatarDisplayCache()
-    await this.bootstrapper?.resyncFromDisk()
-    this.onAfterSyncComplete?.()
+
+    return new Promise((resolve) => {
+      InteractionManager.runAfterInteractions(() => {
+        void (async () => {
+          try {
+            if (this.bootstrapper) {
+              await this.bootstrapper.resyncFromDisk()
+            }
+          } catch (e: unknown) {
+            console.warn('[MobileIncrementalSync] afterSyncComplete failed:', e)
+          } finally {
+            this.onAfterSyncComplete?.()
+            resolve()
+          }
+        })()
+      })
+    })
   }
 
   private async rootConfigPath(): Promise<string> {
@@ -273,15 +290,14 @@ export class MobileIncrementalSyncService {
       onProgress?.(progress)
     })
 
-    void this.afterSyncComplete().catch((e) => {
-      console.warn('[MobileIncrementalSync] afterSyncComplete failed:', e)
-    })
+    await this.afterSyncComplete()
 
     return {
       uploaded: result.uploaded,
       downloaded: result.downloaded,
       conflicts: result.conflicts,
-      skipped: result.skipped
+      skipped: result.skipped,
+      failed: result.failed
     }
   }
 
@@ -291,14 +307,13 @@ export class MobileIncrementalSyncService {
     const config = await this.getConfig()
     if (!isConfigReady(config)) throw new Error('增量同步未配置或已禁用')
     const result = await this.engine.uploadOnly(config, (progress) => onProgress?.(progress))
-    void this.afterSyncComplete().catch((e) => {
-      console.warn('[MobileIncrementalSync] afterSyncComplete failed:', e)
-    })
+    await this.afterSyncComplete()
     return {
       uploaded: result.uploaded,
       downloaded: 0,
       conflicts: 0,
-      skipped: result.skipped
+      skipped: result.skipped,
+      failed: result.failed
     }
   }
 
@@ -308,14 +323,13 @@ export class MobileIncrementalSyncService {
     const config = await this.getConfig()
     if (!isConfigReady(config)) throw new Error('增量同步未配置或已禁用')
     const result = await this.engine.downloadOnly(config, (progress) => onProgress?.(progress))
-    void this.afterSyncComplete().catch((e) => {
-      console.warn('[MobileIncrementalSync] afterSyncComplete failed:', e)
-    })
+    await this.afterSyncComplete()
     return {
       uploaded: 0,
       downloaded: result.downloaded,
       conflicts: 0,
-      skipped: result.skipped
+      skipped: result.skipped,
+      failed: result.failed
     }
   }
 
@@ -363,6 +377,6 @@ export class MobileIncrementalSyncService {
 
     onProgress?.({ current: 3, total: 3, statusText: '完成' })
 
-    return { uploaded: 1, downloaded: 0, conflicts: 0, skipped: 0 }
+    return { uploaded: 1, downloaded: 0, conflicts: 0, skipped: 0, failed: 0 }
   }
 }

@@ -38,8 +38,7 @@ const IncrementalSyncScreen: React.FC = () => {
   const toast = useNativeToast()
   const dialog = useDialog()
   const { services, dbReady } = useBaishou()
-  const { isSyncing, progress, isConfigured, refreshConfigured, runIncrementalSync } =
-    useIncrementalSync()
+  const { isSyncing, isConfigured, refreshConfigured, runIncrementalSync } = useIncrementalSync()
 
   const [showAccessKey, setShowAccessKey] = useState(false)
   const [showSecretKey, setShowSecretKey] = useState(false)
@@ -181,33 +180,6 @@ const IncrementalSyncScreen: React.FC = () => {
               >
                 {isSyncing ? t('data_sync.syncing') : t('data_sync.sync_now', '同步')}
               </Button>
-
-              {isSyncing && progress ? (
-                <View style={styles.progressSection}>
-                  <View style={[styles.progressBarBg, { backgroundColor: colors.bgSurfaceNormal }]}>
-                    <View
-                      style={[
-                        styles.progressBarFill,
-                        {
-                          backgroundColor: colors.primary,
-                          width:
-                            progress.total > 0
-                              ? `${Math.round((progress.current / progress.total) * 100)}%`
-                              : '35%'
-                        }
-                      ]}
-                    />
-                  </View>
-                  <Text style={[styles.progressText, { color: colors.textSecondary }]}>
-                    {progress.total > 0 ? `${progress.current}/${progress.total}` : ''}
-                    {progress.fileName
-                      ? ` · ${progress.fileName.split('/').pop() ?? progress.fileName}`
-                      : progress.statusText
-                        ? ` · ${progress.statusText}`
-                        : ''}
-                  </Text>
-                </View>
-              ) : null}
             </>
           ) : null}
 

@@ -72,6 +72,8 @@ export type MobileIncrementalSyncOutcome = {
   skipped: number
   deletedRemote: number
   deletedLocal: number
+  failed: number
+  failedPaths: string[]
 }
 
 function joinPath(...parts: string[]): string {
@@ -226,6 +228,9 @@ export class MobileIncrementalEngine {
           pathsToRefresh.add(d.filePath)
           break
         case 'delete-local':
+          delete manifest.files[d.filePath]
+          break
+        case 'delete-remote':
           delete manifest.files[d.filePath]
           break
         default:
@@ -405,6 +410,7 @@ export class MobileIncrementalEngine {
     let deletedLocal = 0
     const conflicted: string[] = []
     const failures: string[] = []
+    const succeededDecisions: MergeDecision[] = []
 
     const fileConcurrency = config.fileConcurrency || 5
     let completed = 0
@@ -419,19 +425,23 @@ export class MobileIncrementalEngine {
           case 'upload':
             await client.uploadFile(joinPath(syncRoot, d.filePath))
             uploaded++
+            succeededDecisions.push(d)
             break
           case 'download':
             await client.downloadFile(d.filePath, joinPath(syncRoot, d.filePath))
             downloaded++
+            succeededDecisions.push(d)
             break
           case 'delete-remote':
             await client.deleteFile(d.filePath)
             deletedRemote++
+            succeededDecisions.push(d)
             break
           case 'delete-local': {
             const fp = joinPath(syncRoot, d.filePath)
             await this.fileSystem.unlink(fp)
             deletedLocal++
+            succeededDecisions.push(d)
             break
           }
           case 'conflict-resolved':
@@ -445,6 +455,7 @@ export class MobileIncrementalEngine {
               await client.downloadFile(d.filePath, joinPath(syncRoot, d.filePath))
               downloaded++
             }
+            succeededDecisions.push(d)
             break
           case 'skip':
             skipped++
@@ -456,19 +467,25 @@ export class MobileIncrementalEngine {
       }
     })
 
-    if (failures.length > 0) {
+    const hadMutations = uploaded + downloaded + deletedRemote + deletedLocal > 0
+    if (failures.length > 0 && !hadMutations) {
       const preview = failures.slice(0, 3).join(', ')
       const suffix = failures.length > 3 ? '...' : ''
       throw new Error(`Sync failed for ${failures.length} file(s): ${preview}${suffix}`)
     }
+    if (failures.length > 0) {
+      console.warn(
+        `[MobileIncremental] ${failures.length} file(s) failed; continuing with partial sync`
+      )
+    }
 
     this.lastConflicts = conflicted
-    const hasManifestChanges = decisions.some((d) => d.type !== 'skip')
+    const hasManifestChanges = succeededDecisions.some((d) => d.type !== 'skip')
     if (hasManifestChanges) {
       onProgress?.({ phase: 'finalizing', current: 1, total: 1 })
       const finalManifest = await this.patchManifestAfterDecisions(
-        localManifest,
-        decisions,
+        ancestorSnapshot,
+        succeededDecisions,
         syncRoot
       )
       await this.saveLocalManifest(finalManifest)
@@ -482,7 +499,9 @@ export class MobileIncrementalEngine {
       conflicts: conflicted.length,
       skipped,
       deletedRemote,
-      deletedLocal
+      deletedLocal,
+      failed: failures.length,
+      failedPaths: failures
     }
   }
 
@@ -540,7 +559,9 @@ export class MobileIncrementalEngine {
       conflicts: 0,
       skipped,
       deletedRemote: 0,
-      deletedLocal: 0
+      deletedLocal: 0,
+      failed: 0,
+      failedPaths: []
     }
   }
 
@@ -596,7 +617,9 @@ export class MobileIncrementalEngine {
       conflicts: 0,
       skipped,
       deletedRemote: 0,
-      deletedLocal: 0
+      deletedLocal: 0,
+      failed: 0,
+      failedPaths: []
     }
   }
 }
