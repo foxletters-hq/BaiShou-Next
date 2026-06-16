@@ -2,8 +2,16 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast, useDialog } from '@baishou/ui/native'
 import { useAgentStore } from '@baishou/store'
-import { reconcileCompressionStateAfterTruncate, truncateSessionAfterOrderIndex } from '@baishou/ai'
-import { isConfiguredDialogueModelId, isConfiguredProviderId, deriveSessionTitleFromUserText } from '@baishou/shared'
+import {
+  reconcileCompressionStateAfterTruncate,
+  truncateSessionAfterOrderIndex,
+  claimAgentStreamSession
+} from '@baishou/ai'
+import {
+  isConfiguredDialogueModelId,
+  isConfiguredProviderId,
+  deriveSessionTitleFromUserText
+} from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
 import { saveUserMessage } from '../services/mobile-agent-message.service'
 import { buildInsertSessionInput } from '../utils/session-input.util'
@@ -75,7 +83,8 @@ export function useAgentStream(
 
   const searchModeRef = useRef(searchMode)
   searchModeRef.current = searchMode
-  const abortControllerRef = useRef<AbortController | null>(null)
+  const streamAbortRef = useRef<(() => void) | null>(null)
+  const retryEpochRef = useRef(0)
   const activeToolRef = useRef<ToolCallInfo | null>(null)
   const currentSessionIdRef = useRef(currentSessionId)
   currentSessionIdRef.current = currentSessionId
@@ -289,8 +298,8 @@ export function useAgentStream(
   /** 中断当前流式/压缩 UI，避免重发或新消息与旧生成并行 */
   const interruptActiveStream = useCallback(
     (options?: { keepStreamingFlag?: boolean }) => {
-      abortControllerRef.current?.abort()
-      abortControllerRef.current = null
+      streamAbortRef.current?.()
+      streamAbortRef.current = null
       if (!options?.keepStreamingFlag) {
         setIsStreaming(false)
       }
@@ -319,7 +328,7 @@ export function useAgentStream(
       streamFinalizeLockRef.current = sessionId
 
       setLoading(false)
-      abortControllerRef.current = null
+      streamAbortRef.current = null
 
       try {
         try {
@@ -392,7 +401,8 @@ export function useAgentStream(
       }
 
       interruptActiveStream()
-      abortControllerRef.current = new AbortController()
+      const claim = claimAgentStreamSession(sessionId)
+      streamAbortRef.current = claim.abort
       setLoading(true)
       setIsStreaming(true)
       setStreamError(null)
@@ -422,10 +432,11 @@ export function useAgentStream(
             providerId: currentProviderId || undefined,
             modelId: currentModelId || undefined,
             searchMode: searchModeRef.current,
-            abortSignal: abortControllerRef.current.signal,
+            abortSignal: claim.signal,
             userMessageId: userMessage.id,
             skipUserMessageRecording: true,
             forceRecompress: true,
+            streamClaimGeneration: claim.generation,
             attachments: userMessage.attachments
           }
         )
@@ -529,7 +540,8 @@ export function useAgentStream(
       }
 
       interruptActiveStream({ keepStreamingFlag: true })
-      abortControllerRef.current = new AbortController()
+      const claim = claimAgentStreamSession(sessionId)
+      streamAbortRef.current = claim.abort
 
       addMessage({
         id: saveResult.userMessageId,
@@ -578,9 +590,10 @@ export function useAgentStream(
             providerId: currentProviderId || undefined,
             modelId: currentModelId || undefined,
             searchMode: effectiveSearchMode,
-            abortSignal: abortControllerRef.current.signal,
+            abortSignal: claim.signal,
             userMessageId: saveResult.userMessageId,
             skipUserMessageRecording: true,
+            streamClaimGeneration: claim.generation,
             attachments: saveResult.attachments
           }
         )
@@ -611,8 +624,8 @@ export function useAgentStream(
 
   const handleStop = useCallback(() => {
     const sessionId = currentSessionIdRef.current
-    abortControllerRef.current?.abort()
-    abortControllerRef.current = null
+    streamAbortRef.current?.()
+    streamAbortRef.current = null
     setStreamError(null)
     if (sessionId) {
       void finishStream(sessionId, { waitForLatestUsage: true })
@@ -633,7 +646,10 @@ export function useAgentStream(
         return
       }
 
+      const epoch = ++retryEpochRef.current
+
       const failRegenerate = (errorMsg: string) => {
+        if (epoch !== retryEpochRef.current) return
         setStreamError(errorMsg)
         void finishStream(currentSessionId, { waitForLatestUsage: true })
       }
@@ -646,13 +662,19 @@ export function useAgentStream(
 
         const dbUser = await services.sessionRepo.getMessageById(userMessage.id)
         if (!dbUser || !services.snapshotRepo) return
+        if (epoch !== retryEpochRef.current) return
+
         await truncateSessionAfterOrderIndex(
           services.sessionRepo,
           services.snapshotRepo,
           currentSessionId,
           dbUser.orderIndex
         )
+        if (epoch !== retryEpochRef.current) return
+
         await reloadMessagesFromDb(currentSessionId, { preserveWindow: false })
+        if (epoch !== retryEpochRef.current) return
+
         await streamFromExistingUserMessage(currentSessionId, {
           id: userMessage.id,
           content: userMessage.content,
@@ -684,9 +706,12 @@ export function useAgentStream(
       const storeMsg = messages.find((m) => m.id === messageId)
       if (!storeMsg || storeMsg.role !== 'user') return
 
+      const epoch = ++retryEpochRef.current
+
       try {
         const dbMsg = await services.sessionRepo.getMessageById(messageId)
         if (!dbMsg) return
+        if (epoch !== retryEpochRef.current) return
 
         await truncateSessionAfterOrderIndex(
           services.sessionRepo,
@@ -694,13 +719,18 @@ export function useAgentStream(
           currentSessionId,
           dbMsg.orderIndex
         )
+        if (epoch !== retryEpochRef.current) return
+
         await reloadMessagesFromDb(currentSessionId, { preserveWindow: false })
+        if (epoch !== retryEpochRef.current) return
+
         await streamFromExistingUserMessage(currentSessionId, {
           id: messageId,
           content: storeMsg.content,
           attachments: storeMsg.attachments
         })
       } catch (e) {
+        if (epoch !== retryEpochRef.current) return
         console.error('Failed to resend message', e)
         toast.showError(t('agent.chat.resend_failed', '重新发送失败'))
       }
@@ -721,18 +751,26 @@ export function useAgentStream(
     async (messageId: string, newContent: string) => {
       if (!currentSessionId || !services?.snapshotRepo || !newContent.trim()) return
 
+      const epoch = ++retryEpochRef.current
+
       try {
         const dbMsg = await services.sessionRepo.getMessageById(messageId)
         if (!dbMsg || dbMsg.role !== 'user') return
+        if (epoch !== retryEpochRef.current) return
 
         await services.sessionRepo.updateMessageTextPart(messageId, newContent.trim())
+        if (epoch !== retryEpochRef.current) return
+
         await truncateSessionAfterOrderIndex(
           services.sessionRepo,
           services.snapshotRepo,
           currentSessionId,
           dbMsg.orderIndex
         )
+        if (epoch !== retryEpochRef.current) return
+
         await reloadMessagesFromDb(currentSessionId, { preserveWindow: false })
+        if (epoch !== retryEpochRef.current) return
 
         const storeMsg = messages.find((m) => m.id === messageId)
         await streamFromExistingUserMessage(currentSessionId, {
@@ -741,6 +779,7 @@ export function useAgentStream(
           attachments: storeMsg?.attachments
         })
       } catch (e) {
+        if (epoch !== retryEpochRef.current) return
         console.error('Failed to edit message', e)
         toast.showError(t('agent.chat.resend_failed', '重新发送失败'))
       }

@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useDialog, toast } from '@baishou/ui'
 
@@ -32,6 +33,9 @@ export function useMessageActions({
 }: UseMessageActionsOptions) {
   const navigate = useNavigate()
   const dialog = useDialog()
+  const retryEpochRef = useRef(0)
+
+  const bumpRetryEpoch = () => ++retryEpochRef.current
 
   /** 重新生成：找到 AI 消息对应的上一条用户消息并重发 */
   const handleRegenerate = (msg: any) => {
@@ -45,15 +49,16 @@ export function useMessageActions({
       }
     }
     if (!userMsgId) return
+
+    const epoch = bumpRetryEpoch()
     chat.truncateMessages(userMsgId)
     chat.setStreamSessionId(sessionId)
-    stream.resendChat(
-      sessionId,
-      userMsgId,
-      searchMode,
-      model.currentProviderId,
-      model.currentModelId
-    )
+    void stream
+      .resendChat(sessionId, userMsgId, searchMode, model.currentProviderId, model.currentModelId)
+      .catch((e: unknown) => {
+        if (epoch !== retryEpochRef.current) return
+        console.error('[useMessageActions] regenerate failed:', e)
+      })
   }
 
   /** 保存编辑（不重发）：调用 IPC 更新消息内容后刷新 */
@@ -77,25 +82,37 @@ export function useMessageActions({
   /** 编辑后重发：截断消息列表并重新流式生成 */
   const handleResendEdit = async (msg: any, newContent: string) => {
     if (!sessionId || !newContent.trim()) return
+    const epoch = bumpRetryEpoch()
     chat.truncateMessages(msg.id)
     chat.setStreamSessionId(sessionId)
-    await stream.editChat(
-      sessionId,
-      msg.id,
-      newContent,
-      model.currentProviderId,
-      model.currentModelId,
-      undefined,
-      searchMode
-    )
+    try {
+      await stream.editChat(
+        sessionId,
+        msg.id,
+        newContent,
+        model.currentProviderId,
+        model.currentModelId,
+        undefined,
+        searchMode
+      )
+    } catch (e) {
+      if (epoch !== retryEpochRef.current) return
+      console.error('[useMessageActions] resend edit failed:', e)
+    }
   }
 
   /** 重发用户消息（不修改内容） */
   const handleResend = (msg: any) => {
     if (msg.role !== 'user' || !sessionId) return
+    const epoch = bumpRetryEpoch()
     chat.truncateMessages(msg.id)
     chat.setStreamSessionId(sessionId)
-    stream.resendChat(sessionId, msg.id, searchMode, model.currentProviderId, model.currentModelId)
+    void stream
+      .resendChat(sessionId, msg.id, searchMode, model.currentProviderId, model.currentModelId)
+      .catch((e: unknown) => {
+        if (epoch !== retryEpochRef.current) return
+        console.error('[useMessageActions] resend failed:', e)
+      })
   }
 
   /** 删除消息：二次确认后调用 IPC */

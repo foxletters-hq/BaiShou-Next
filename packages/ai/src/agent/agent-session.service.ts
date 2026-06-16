@@ -37,6 +37,7 @@ import { MemoryDeduplicationServiceImpl } from '../rag/memory-deduplication.serv
 import { StreamChatOptions, StreamChatCallbacks } from './agent-session.types'
 import { persistResult } from './agent-session-persist'
 import { messageHasImageAttachments } from './attachment-content.builder'
+import { isAgentStreamSessionClaimActive } from './stream-session-guard'
 
 export type { StreamChatOptions, StreamChatCallbacks } from './agent-session.types'
 
@@ -61,6 +62,7 @@ export class AgentSessionService {
       attachments,
       webSearchResultFetcher,
       abortSignal,
+      streamClaimGeneration,
       userMessageId,
       skipUserMessageRecording,
       forceRecompress
@@ -350,7 +352,17 @@ export class AgentSessionService {
         logger.warn('[AgentSessionService] Stream encountered a fatal error:', streamError)
       }
 
-      // 6. 落盘
+      // 6. 落盘（被更新的重试取代时跳过，避免重复 assistant 消息）
+      if (
+        streamClaimGeneration !== undefined &&
+        !isAgentStreamSessionClaimActive(sessionId, streamClaimGeneration)
+      ) {
+        logger.info(
+          `[AgentSessionService] Skip persist for session ${sessionId}: stream superseded`
+        )
+        return
+      }
+
       const usageResult = await persistResult({
         sessionId,
         rawUserText: userText,

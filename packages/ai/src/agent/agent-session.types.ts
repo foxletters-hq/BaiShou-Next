@@ -42,6 +42,8 @@ export interface StreamChatOptions {
   webSearchResultFetcher?: (url: string) => Promise<string>
   fetchSearchPage?: (url: string) => Promise<string>
   abortSignal?: AbortSignal
+  /** 会话流 claim 代数；被新流取代时跳过落盘，避免快速重试产生重复 assistant 消息 */
+  streamClaimGeneration?: number
   userMessageId?: string // 明确指定回复针对的用户消息 ID
   skipUserMessageRecording?: boolean // 用户消息已提前落库时，跳过重复记录
   forceRecompress?: boolean // 编辑/重发截断后强制重建压缩摘要
