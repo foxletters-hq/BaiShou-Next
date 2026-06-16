@@ -57,8 +57,13 @@ export function useRecallSearch(): UseRecallSearchResult {
           }
         } else {
           const searchMode = mode || recallSearchMode
+          const trimmed = query.trim()
+          if (!trimmed) {
+            setRecallItems([])
+            return
+          }
           const dbEntries = await (window as any).api?.rag?.queryEntries({
-            keyword: query,
+            keyword: trimmed,
             limit: 50, // 语义检索召回更多以备分页，50条
             mode: searchMode
           })

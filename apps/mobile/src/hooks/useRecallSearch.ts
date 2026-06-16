@@ -48,8 +48,13 @@ export function useRecallSearch(): UseRecallSearchResult {
             setRecallItems([])
           }
         } else {
+          const trimmed = query.trim()
+          if (!trimmed) {
+            setRecallItems([])
+            return
+          }
           // RAG 语义记忆搜索：使用向量嵌入 + 混合搜索（FTS + 向量 RRF 融合）
-          const memoryResults = await services?.memorySearch?.(query, { topK: 20, minScore: 0.3 })
+          const memoryResults = await services?.memorySearch?.(trimmed, { topK: 20, minScore: 0.3 })
           if (memoryResults && memoryResults.length > 0) {
             setRecallItems(
               memoryResults.map((r, index) => ({

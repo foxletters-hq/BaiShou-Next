@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, Platform, TextInput } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
@@ -71,37 +71,43 @@ export const RagMemorySearchSection: React.FC<RagMemorySearchSectionProps> = ({
       ]}
     >
       <View style={[styles.inputCluster, compact && styles.inputClusterCompact]}>
-        <Input
-          className="min-h-0 flex-1 border-0 bg-transparent px-0"
-          containerStyle={[styles.searchInputWrap, compact && styles.searchInputWrapCompact]}
-          style={[
-            styles.searchInput,
-            compact && styles.searchInputCompact,
-            { color: colors.textPrimary }
-          ]}
-          textAlignVertical="center"
-          value={searchQuery}
-          onChangeText={handleQueryChange}
-          placeholder={placeholder}
-          autoFocus={autoFocus}
-          returnKeyType="search"
-          leftSlot={
-            compact ? undefined : (
-              <MaterialIcons name="search" size={18} color={colors.textSecondary} />
-            )
-          }
-          rightSlot={
-            searchQuery.length > 0 ? (
-              <TouchableOpacity
-                onPress={handleClear}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                activeOpacity={0.7}
-              >
-                <MaterialIcons name="close" size={16} color={colors.textTertiary} />
-              </TouchableOpacity>
-            ) : undefined
-          }
-        />
+        {compact ? (
+          <TextInput
+            style={[styles.searchInputCompact, { color: colors.textPrimary }]}
+            value={searchQuery}
+            onChangeText={handleQueryChange}
+            placeholder={placeholder}
+            placeholderTextColor={colors.textTertiary}
+            autoFocus={autoFocus}
+            returnKeyType="search"
+            autoCorrect={false}
+            autoCapitalize="none"
+          />
+        ) : (
+          <Input
+            className="min-h-0 flex-1 border-0 bg-transparent px-0"
+            containerStyle={styles.searchInputWrap}
+            style={[styles.searchInput, { color: colors.textPrimary }]}
+            textAlignVertical="center"
+            value={searchQuery}
+            onChangeText={handleQueryChange}
+            placeholder={placeholder}
+            autoFocus={autoFocus}
+            returnKeyType="search"
+            leftSlot={<MaterialIcons name="search" size={18} color={colors.textSecondary} />}
+            rightSlot={
+              searchQuery.length > 0 ? (
+                <TouchableOpacity
+                  onPress={handleClear}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  activeOpacity={0.7}
+                >
+                  <MaterialIcons name="close" size={16} color={colors.textTertiary} />
+                </TouchableOpacity>
+              ) : undefined
+            }
+          />
+        )}
       </View>
 
       <View
@@ -156,10 +162,11 @@ const styles = StyleSheet.create({
     gap: 8
   },
   searchBoxCompact: {
+    flexWrap: 'nowrap',
     paddingHorizontal: 8,
-    paddingVertical: 5,
+    paddingVertical: 0,
     gap: 6,
-    minHeight: 40,
+    height: 40,
     alignItems: 'center'
   },
   inputCluster: {
@@ -167,7 +174,9 @@ const styles = StyleSheet.create({
     minWidth: 120
   },
   inputClusterCompact: {
-    minWidth: 56,
+    flex: 1,
+    minWidth: 0,
+    height: 40,
     justifyContent: 'center'
   },
   searchInputWrap: {
@@ -178,9 +187,6 @@ const styles = StyleSheet.create({
     padding: 0,
     margin: 0
   },
-  searchInputWrapCompact: {
-    justifyContent: 'center'
-  },
   searchInput: {
     fontSize: 14,
     paddingVertical: 2,
@@ -188,18 +194,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent'
   },
   searchInputCompact: {
+    flex: 1,
     fontSize: 14,
-    height: 28,
-    minHeight: 28,
-    maxHeight: 28,
+    height: 40,
     paddingVertical: 0,
-    paddingTop: 0,
-    paddingBottom: 0,
-    marginVertical: 0,
-    lineHeight: Platform.OS === 'ios' ? 18 : 20,
+    paddingHorizontal: 0,
+    margin: 0,
+    backgroundColor: 'transparent',
     ...(Platform.OS === 'android'
       ? { includeFontPadding: false, textAlignVertical: 'center' as const }
-      : null)
+      : { paddingTop: 0, paddingBottom: 0 })
   },
   segmented: {
     flexDirection: 'row',
@@ -211,6 +215,8 @@ const styles = StyleSheet.create({
   segmentedCompact: {
     padding: 2,
     gap: 2,
+    height: 32,
+    alignItems: 'center',
     alignSelf: 'center'
   },
   segmentBtn: {
