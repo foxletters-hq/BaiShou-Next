@@ -31,10 +31,11 @@ import {
   ChatCostDialog,
   PromptShortcutSheet
 } from '@baishou/ui/native'
-import { useNativeTheme, useNativeToast, useKeyboardHeight } from '@baishou/ui/native'
+import { useNativeTheme, useNativeToast } from '@baishou/ui/native'
 import { useAgentStore } from '@baishou/store'
 import { useTranslation } from 'react-i18next'
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
+import Animated from 'react-native-reanimated'
 
 import { AgentChatAppBar } from '../components/AgentChatAppBar'
 import { AgentMessageRow } from '../components/AgentMessageRow'
@@ -55,7 +56,8 @@ import { useStreamError } from '../hooks/useStreamError'
 import { useMobilePromptShortcuts } from '../hooks/useMobilePromptShortcuts'
 import { useResolvedAssistantAvatar } from '../hooks/useResolvedAssistantAvatar'
 import { useResolvedUserAvatar } from '../hooks/useResolvedUserAvatar'
-import { listAssistantsForUi, type MobileAssistantUi } from '../lib/mobile-assistant.util'
+import { useAgentChatKeyboardInsets } from '../hooks/useAgentChatKeyboardInsets'
+import { hydrateAssistantsForUi, mapAssistantRowsToUi, type MobileAssistantUi } from '../lib/mobile-assistant.util'
 /** 底部输入栏 + 工具条的大致高度，用于「回到底部」悬浮按钮定位 */
 const INPUT_DOCK_HEIGHT = 136
 /** 编辑态：保存按钮与 token 行距键盘顶部的留白 */
@@ -68,27 +70,12 @@ export const AgentScreen = () => {
   const { t, i18n } = useTranslation()
   const { isLoading, searchMode, toggleSearchMode } = useAgentStore()
   const { colors, isDark } = useNativeTheme()
-  /** 遮罩层内输入框聚焦时不应顶起主聊天输入栏 */
-  const keyboardOverlayRef = useRef(false)
-  const { keyboardHeight, resetKeyboard } = useKeyboardHeight({
-    shouldIgnoreShow: () => keyboardOverlayRef.current
-  })
   const tabBarHeight = useBottomTabBarHeight()
-  /** 键盘高度从屏幕底量起，输入区位于 Tab 栏上方，需扣除 Tab 栏高度，避免输入框与键盘间出现空隙 */
-  const inputOffset = Math.max(0, keyboardHeight - tabBarHeight)
   const [isBubbleEditing, setIsBubbleEditing] = useState(false)
   const [recallLookbackMonths, setRecallLookbackMonths] = useState(1)
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   const [inputDockHeight, setInputDockHeight] = useState(INPUT_DOCK_HEIGHT)
-  /** 气泡内联编辑时：底部主输入栏不随键盘上移，列表仅为键盘留白（不再叠加入口栏高度） */
-  const dockBottomOffset = isBubbleEditing ? 0 : inputOffset
-  const bubbleEditKeyboardInset = Math.max(0, keyboardHeight - tabBarHeight)
-  const isEditKeyboardVisible = keyboardHeight >= 60
-  const listBottomPadding = isBubbleEditing
-    ? isEditKeyboardVisible
-      ? bubbleEditKeyboardInset + BUBBLE_EDIT_KEYBOARD_BUFFER + 16
-      : inputDockHeight + BUBBLE_EDIT_KEYBOARD_BUFFER + BUBBLE_EDIT_DOCK_GAP
-    : inputDockHeight + inputOffset + 24
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   const handleBubbleEditingChange = useCallback((editing: boolean, messageId?: string) => {
     setIsBubbleEditing(editing)
@@ -104,8 +91,7 @@ export const AgentScreen = () => {
   const prevMsgLenRef = useRef(0)
   const layoutReadyRef = useRef(false)
 
-  const [drawerOpen, setDrawerOpen] = useState(false)
-  const [assistants, setAssistants] = useState<Array<AssistantSummary & { isPinned?: boolean }>>([])
+  const [assistants, setAssistants] = useState<MobileAssistantUi[]>([])
   const [userProfile, setUserProfile] = useState<{
     nickname: string
     avatarPath?: string | null
@@ -154,38 +140,6 @@ export const AgentScreen = () => {
   useEffect(() => {
     syncWithSession(currentSessionId)
   }, [currentSessionId, syncWithSession])
-
-  /** 按行实测位置微调滚动：键盘展开时避开键盘，收起时避开底部工具栏 */
-  const scrollEditingMessageIntoView = useCallback(() => {
-    if (!editingMessageId) return
-    const row = editingRowRef.current
-    if (!row) return
-
-    row.measureInWindow((_x, y, _w, height) => {
-      const windowHeight = Dimensions.get('window').height
-      const keyboardOpen = keyboardHeight >= 60
-      const safeBottom = keyboardOpen
-        ? windowHeight - keyboardHeight - BUBBLE_EDIT_KEYBOARD_BUFFER
-        : windowHeight - tabBarHeight - inputDockHeight - BUBBLE_EDIT_DOCK_GAP
-      const rowBottom = y + height
-      if (rowBottom <= safeBottom + 4) return
-
-      flatListRef.current?.scrollToOffset({
-        offset: scrollOffsetRef.current + (rowBottom - safeBottom),
-        animated: true
-      })
-    })
-  }, [editingMessageId, keyboardHeight, tabBarHeight, inputDockHeight])
-
-  useEffect(() => {
-    if (!isBubbleEditing || !editingMessageId) return
-    const early = setTimeout(scrollEditingMessageIntoView, Platform.OS === 'ios' ? 80 : 160)
-    const late = setTimeout(scrollEditingMessageIntoView, Platform.OS === 'ios' ? 340 : 480)
-    return () => {
-      clearTimeout(early)
-      clearTimeout(late)
-    }
-  }, [isBubbleEditing, editingMessageId, keyboardHeight, scrollEditingMessageIntoView])
 
   const {
     isStreaming,
@@ -238,14 +192,60 @@ export const AgentScreen = () => {
     toggleRecallSearchMode
   } = useAgentUI()
 
+  const composerKeyboardLiftEnabled = !drawerOpen && !showShortcutSheet && !showRecallSheet
+  const {
+    keyboardInset,
+    inputDockAnimatedStyle,
+    scrollButtonAnimatedStyle,
+    listBottomPadding,
+    handleComposerFocus,
+    resetKeyboardInset
+  } = useAgentChatKeyboardInsets({
+    tabBarHeight,
+    inputDockHeight,
+    isBubbleEditing,
+    enableComposerKeyboardLift: composerKeyboardLiftEnabled
+  })
+
+  /** 按行实测位置微调滚动：键盘展开时避开键盘，收起时避开底部工具栏 */
+  const scrollEditingMessageIntoView = useCallback(() => {
+    if (!editingMessageId) return
+    const row = editingRowRef.current
+    if (!row) return
+
+    row.measureInWindow((_x, y, _w, height) => {
+      const windowHeight = Dimensions.get('window').height
+      const keyboardOpen = keyboardInset >= 60
+      const safeBottom = keyboardOpen
+        ? windowHeight - keyboardInset - tabBarHeight - BUBBLE_EDIT_KEYBOARD_BUFFER
+        : windowHeight - tabBarHeight - inputDockHeight - BUBBLE_EDIT_DOCK_GAP
+      const rowBottom = y + height
+      if (rowBottom <= safeBottom + 4) return
+
+      flatListRef.current?.scrollToOffset({
+        offset: scrollOffsetRef.current + (rowBottom - safeBottom),
+        animated: true
+      })
+    })
+  }, [editingMessageId, keyboardInset, tabBarHeight, inputDockHeight])
+
+  useEffect(() => {
+    if (!isBubbleEditing || !editingMessageId) return
+    const early = setTimeout(scrollEditingMessageIntoView, Platform.OS === 'ios' ? 80 : 160)
+    const late = setTimeout(scrollEditingMessageIntoView, Platform.OS === 'ios' ? 340 : 480)
+    return () => {
+      clearTimeout(early)
+      clearTimeout(late)
+    }
+  }, [isBubbleEditing, editingMessageId, keyboardInset, scrollEditingMessageIntoView])
+
   useEffect(() => {
     const overlaysOpen = drawerOpen || showShortcutSheet || showRecallSheet
-    keyboardOverlayRef.current = overlaysOpen
     if (overlaysOpen) {
-      resetKeyboard()
+      resetKeyboardInset()
       Keyboard.dismiss()
     }
-  }, [drawerOpen, showShortcutSheet, showRecallSheet, resetKeyboard])
+  }, [drawerOpen, showShortcutSheet, showRecallSheet, resetKeyboardInset])
 
   const { shortcuts, addShortcut, updateShortcut, deleteShortcut, reorderShortcuts } =
     useMobilePromptShortcuts()
@@ -285,68 +285,38 @@ export const AgentScreen = () => {
   const { branchSession } = useBranchSession()
   useStreamError(streamError, isStreaming)
 
+  const loadAssistantsRequestRef = useRef(0)
+
   const loadAssistants = useCallback(async () => {
     if (!dbReady || !services) return
+    const requestId = ++loadAssistantsRequestRef.current
     try {
-      const list = await listAssistantsForUi(
-        services.assistantManager,
+      const rows = await services.assistantManager.findAll()
+      if (requestId !== loadAssistantsRequestRef.current) return
+      setAssistants(mapAssistantRowsToUi(rows))
+
+      const hydrated = await hydrateAssistantsForUi(
+        rows,
         services.attachmentManager,
-        services.fileSystem
+        services.fileSystem,
+        { preferFileUri: true }
       )
-      setAssistants(
-        list.map(({ id, name, description, emoji, avatarPath, displayAvatarUri, isPinned }) => ({
-          id,
-          name,
-          description,
-          emoji,
-          avatarPath: avatarPath ?? undefined,
-          displayAvatarUri,
-          isPinned: Boolean(isPinned),
-          lastUsedAt: 0
-        }))
-      )
+      if (requestId !== loadAssistantsRequestRef.current) return
+      setAssistants(hydrated)
     } catch {
+      if (requestId !== loadAssistantsRequestRef.current) return
       setAssistants([])
     }
   }, [dbReady, services, vaultRevision])
 
-  const refreshCurrentAssistant = useCallback(async () => {
-    if (!dbReady || !services) return
-    try {
-      const list = await listAssistantsForUi(
-        services.assistantManager,
-        services.attachmentManager,
-        services.fileSystem
-      )
-      if (currentAssistant?.id) {
-        const updated = list.find((a) => a.id === currentAssistant.id)
-        if (updated) {
-          setCurrentAssistant(updated as MobileAssistantUi)
-          return
-        }
-      }
-      const defaultAssistant = list.find((a) => a.isDefault) || list[0]
-      if (defaultAssistant) setCurrentAssistant(defaultAssistant)
-    } catch {
-      // ignore
-    }
-  }, [dbReady, services, currentAssistant?.id, setCurrentAssistant, vaultRevision])
-
   useEffect(() => {
     void loadAssistants()
-  }, [loadAssistants, showAssistantPicker])
-
-  useEffect(() => {
-    if (!drawerOpen) return
-    const timer = setTimeout(() => void loadAssistants(), 400)
-    return () => clearTimeout(timer)
-  }, [drawerOpen, loadAssistants])
+  }, [loadAssistants])
 
   useFocusEffect(
     useCallback(() => {
       void loadAssistants()
-      void refreshCurrentAssistant()
-    }, [loadAssistants, refreshCurrentAssistant])
+    }, [loadAssistants])
   )
 
   useEffect(() => {
@@ -367,14 +337,32 @@ export const AgentScreen = () => {
       assistants
         .filter((a) => a.isPinned)
         .slice(0, 3)
-        .map(({ id, name, description, emoji, avatarPath, displayAvatarUri }) => ({
+        .map(({ id, name, description, emoji, avatarPath, displayAvatarUri, assistantKind }) => ({
           id,
           name,
           description,
           emoji,
           avatarPath,
-          displayAvatarUri
+          displayAvatarUri,
+          assistantKind
         })),
+    [assistants]
+  )
+
+  const pickerAssistants = useMemo(
+    () =>
+      assistants.map((a) => ({
+        id: a.id,
+        name: a.name,
+        description: a.description || '',
+        emoji: a.emoji,
+        avatarPath: a.avatarPath,
+        displayAvatarUri: a.displayAvatarUri,
+        systemPrompt: a.systemPrompt,
+        providerId: a.providerId,
+        modelId: a.modelId,
+        assistantKind: a.assistantKind
+      })),
     [assistants]
   )
 
@@ -629,6 +617,12 @@ export const AgentScreen = () => {
     [userProfile, t, resolvedUserAvatarUri]
   )
 
+  const showStreamingFooter = useMemo(() => {
+    if (!isStreaming || isCompressing) return false
+    const lastMessage = messages[messages.length - 1]
+    return lastMessage?.role !== 'assistant'
+  }, [isStreaming, isCompressing, messages])
+
   const renderEmptyState = () => (
     <View style={styles.empty}>
       <View style={[styles.emptyIconCircle, { backgroundColor: colors.primary + '26' }]}>
@@ -658,8 +652,6 @@ export const AgentScreen = () => {
         <View style={styles.container}>
           <AgentChatAppBar
             modelName={displayModelName || ''}
-            inputTokens={totalInputTokens}
-            outputTokens={totalOutputTokens}
             costMicros={totalCostMicros}
             onMenuPress={() => setDrawerOpen(true)}
             onModelPress={() => setShowModelSwitcher(true)}
@@ -742,7 +734,7 @@ export const AgentScreen = () => {
               )
             }}
             ListFooterComponent={
-              isStreaming && !isCompressing ? (
+              showStreamingFooter ? (
                 <View>
                   <StreamingBubble
                     text={streamingText}
@@ -774,10 +766,10 @@ export const AgentScreen = () => {
             ListEmptyComponent={!isStreaming ? renderEmptyState() : null}
           />
 
-          {showScrollButton && !isBubbleEditing && (
-            <View
+          {showScrollButton && !isBubbleEditing ? (
+            <Animated.View
               pointerEvents="box-none"
-              style={[styles.scrollBtnWrap, { bottom: dockBottomOffset + inputDockHeight + 12 }]}
+              style={[styles.scrollBtnWrap, scrollButtonAnimatedStyle]}
             >
               <TouchableOpacity
                 style={[styles.scrollBtn, { backgroundColor: colors.bgSurface }]}
@@ -786,19 +778,19 @@ export const AgentScreen = () => {
               >
                 <MaterialIcons name="keyboard-arrow-down" size={22} color={colors.textSecondary} />
               </TouchableOpacity>
-            </View>
-          )}
+            </Animated.View>
+          ) : null}
 
-          <View
+          <Animated.View
             onLayout={(event) => {
               const next = Math.ceil(event.nativeEvent.layout.height)
               if (next > 0 && next !== inputDockHeight) setInputDockHeight(next)
             }}
             style={[
               styles.inputDock,
+              inputDockAnimatedStyle,
               {
                 backgroundColor: colors.bgSurface,
-                bottom: dockBottomOffset,
                 opacity: isBubbleEditing ? 0.92 : 1
               }
             ]}
@@ -810,6 +802,7 @@ export const AgentScreen = () => {
               isLoading={isLoading || isStreaming}
               onStop={handleStop}
               composerEnabled={!isBubbleEditing}
+              onInputFocus={handleComposerFocus}
               shortcuts={shortcuts}
               assistantName={assistantDisplayName}
               onManageShortcuts={() => setShowShortcutSheet(true)}
@@ -820,7 +813,7 @@ export const AgentScreen = () => {
               ttsMode={ttsMode}
               onToggleTtsMode={toggleTtsMode}
             />
-          </View>
+          </Animated.View>
         </View>
       </ScreenSafeArea>
 
@@ -835,7 +828,8 @@ export const AgentScreen = () => {
                 description: currentAssistant.description,
                 emoji: currentAssistant.emoji,
                 avatarPath: currentAssistant.avatarPath ?? undefined,
-                displayAvatarUri: resolvedCurrentAvatarUri || undefined
+                displayAvatarUri: resolvedCurrentAvatarUri || undefined,
+                assistantKind: currentAssistant.assistantKind
               }
             : null
         }
@@ -869,6 +863,7 @@ export const AgentScreen = () => {
         onClose={() => setShowAssistantPicker(false)}
         onSelect={(a) => void handleSelectAssistantWithTracking(a)}
         selectedAssistantId={currentAssistant?.id}
+        assistants={pickerAssistants}
       />
 
       <ModelSwitcher

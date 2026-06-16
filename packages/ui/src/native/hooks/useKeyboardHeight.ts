@@ -5,11 +5,14 @@ function applyKeyboardHeight(setKeyboardHeight: Dispatch<SetStateAction<number>>
   setKeyboardHeight((prev) => (prev === next ? prev : next))
 }
 
-function isKeyboardStillVisible(windowHeight: number): boolean {
+function readKeyboardHeightFromMetrics(windowHeight: number): number {
   const metrics = Keyboard.metrics()
-  if (!metrics) return false
-  if (metrics.height > 0) return true
-  return Boolean(metrics.screenY > 0 && windowHeight > metrics.screenY)
+  if (!metrics) return 0
+  if (metrics.height > 0) return metrics.height
+  if (metrics.screenY > 0 && windowHeight > metrics.screenY) {
+    return windowHeight - metrics.screenY
+  }
+  return 0
 }
 
 function resolveKeyboardHeight(
@@ -20,7 +23,7 @@ function resolveKeyboardHeight(
   if (end.screenY > 0 && windowHeight > end.screenY) {
     return windowHeight - end.screenY
   }
-  return Keyboard.metrics()?.height ?? 0
+  return readKeyboardHeightFromMetrics(windowHeight)
 }
 
 export interface UseKeyboardHeightOptions {
@@ -54,55 +57,67 @@ export function useKeyboardHeight(options?: UseKeyboardHeightOptions): {
   )
 
   const syncFromMetrics = useCallback(() => {
-    const metrics = Keyboard.metrics()
-    if (metrics?.height) {
-      applyKeyboardHeight(setKeyboardHeight, metrics.height)
-      return
-    }
-    if (metrics && metrics.screenY > 0 && windowHeight > metrics.screenY) {
-      applyKeyboardHeight(setKeyboardHeight, windowHeight - metrics.screenY)
-    }
+    applyKeyboardHeight(setKeyboardHeight, readKeyboardHeightFromMetrics(windowHeight))
   }, [windowHeight])
+
+  const clearHideTimer = useCallback(() => {
+    if (!hideTimerRef.current) return
+    clearTimeout(hideTimerRef.current)
+    hideTimerRef.current = null
+  }, [])
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
 
-    const showSub = Keyboard.addListener(showEvent, (event) => {
+    const applyShow = (end: { height: number; screenY: number }) => {
       if (optionsRef.current?.shouldIgnoreShow?.()) return
-      if (hideTimerRef.current) {
-        clearTimeout(hideTimerRef.current)
-        hideTimerRef.current = null
-      }
-      applyKeyboardHeight(setKeyboardHeight, resolve(event.endCoordinates))
-    })
+      clearHideTimer()
+      applyKeyboardHeight(setKeyboardHeight, resolve(end))
+    }
 
-    const hideSub = Keyboard.addListener(hideEvent, () => {
+    const applyHide = () => {
       if (optionsRef.current?.shouldIgnoreHide?.()) return
       optionsRef.current?.onHide?.()
-      requestAnimationFrame(() => {
-        if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
+      clearHideTimer()
+      applyKeyboardHeight(setKeyboardHeight, 0)
+      // Android metrics 可能滞后；仅当仍检测到键盘时才回填，避免 iOS hide 后被 metrics 弹回
+      if (Platform.OS === 'android') {
         hideTimerRef.current = setTimeout(() => {
           hideTimerRef.current = null
-          if (isKeyboardStillVisible(windowHeight)) return
-          applyKeyboardHeight(setKeyboardHeight, 0)
-        }, 80)
-      })
-    })
+          const fromMetrics = readKeyboardHeightFromMetrics(windowHeight)
+          if (fromMetrics > 0) {
+            applyKeyboardHeight(setKeyboardHeight, fromMetrics)
+          }
+        }, 48)
+      }
+    }
+
+    const subs = [
+      Keyboard.addListener(showEvent, (event) => {
+        applyShow(event.endCoordinates)
+      }),
+      Keyboard.addListener(hideEvent, applyHide)
+    ]
+
+    if (Platform.OS === 'ios') {
+      subs.push(
+        Keyboard.addListener('keyboardWillChangeFrame', (event) => {
+          applyShow(event.endCoordinates)
+        })
+      )
+    }
 
     return () => {
-      if (hideTimerRef.current) {
-        clearTimeout(hideTimerRef.current)
-        hideTimerRef.current = null
-      }
-      showSub.remove()
-      hideSub.remove()
+      clearHideTimer()
+      subs.forEach((sub) => sub.remove())
     }
-  }, [resolve, windowHeight])
+  }, [clearHideTimer, resolve, windowHeight])
 
   const resetKeyboard = useCallback(() => {
+    clearHideTimer()
     applyKeyboardHeight(setKeyboardHeight, 0)
-  }, [])
+  }, [clearHideTimer])
 
   return { keyboardHeight, syncFromMetrics, resetKeyboard }
 }

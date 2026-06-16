@@ -311,7 +311,7 @@ export function useAgentStream(
     }
   }, [vaultSwitching, interruptActiveStream])
 
-  /** 流结束：收起 StreamingBubble，再从 DB 刷新消息与计费 */
+  /** 流结束：先从 DB 刷新消息，再收起 StreamingBubble，避免列表高度突变 */
   const finishStream = useCallback(
     async (sessionId: string, options?: { waitForLatestUsage?: boolean }) => {
       if (streamFinalizeLockRef.current === sessionId) return
@@ -319,8 +319,6 @@ export function useAgentStream(
 
       setLoading(false)
       abortControllerRef.current = null
-      setIsStreaming(false)
-      resetStreamingBuffers()
 
       try {
         try {
@@ -331,13 +329,21 @@ export function useAgentStream(
 
         if (!isActiveSession(sessionId)) return
 
-        await new Promise((r) => setTimeout(r, 100))
-        const reloaded = await reloadMessagesFromDb(sessionId, {
+        let reloaded = await reloadMessagesFromDb(sessionId, {
           preserveWindow: false,
           retryCount: 5,
           waitForLatestUsage: options?.waitForLatestUsage ?? false,
           commitToUi: true
         })
+
+        if (!reloaded && isActiveSession(sessionId)) {
+          reloaded = await reloadMessagesFromDb(sessionId, {
+            preserveWindow: false,
+            retryCount: 2,
+            waitForLatestUsage: false,
+            commitToUi: true
+          })
+        }
 
         if (!reloaded && isActiveSession(sessionId)) {
           await syncTokenUsageFromSession(sessionId)
@@ -348,6 +354,8 @@ export function useAgentStream(
           await syncTokenUsageFromSession(sessionId)
         }
       } finally {
+        setIsStreaming(false)
+        resetStreamingBuffers()
         if (streamFinalizeLockRef.current === sessionId) {
           streamFinalizeLockRef.current = null
         }

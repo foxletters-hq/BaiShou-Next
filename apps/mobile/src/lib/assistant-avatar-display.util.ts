@@ -13,14 +13,38 @@ import { resolveAssistantAvatarDisplayUri } from './assistant-avatar-uri'
 
 const avatarDisplayCache = new Map<string, string>()
 
+type AvatarCacheMode = 'builtin' | 'fast' | 'full'
+
+function avatarCacheKey(avatarPath: string, mode: AvatarCacheMode): string {
+  return mode === 'builtin' ? avatarPath : `${avatarPath}::${mode}`
+}
+
+function resolveCacheMode(options?: ResolveAssistantAvatarOptions): AvatarCacheMode {
+  return options?.preferFileUri === false ? 'full' : 'fast'
+}
+
+function deleteAvatarCacheKeys(avatarPath: string): void {
+  avatarDisplayCache.delete(avatarPath)
+  avatarDisplayCache.delete(avatarCacheKey(avatarPath, 'fast'))
+  avatarDisplayCache.delete(avatarCacheKey(avatarPath, 'full'))
+}
+
 /** 外部存储头像需读为 data: URI，RN Image 才能显示 BaiShou_Root 下的文件 */
-async function toDisplayableAvatarUri(uri: string, fileSystem: IFileSystem): Promise<string> {
+async function toDisplayableAvatarUri(
+  uri: string,
+  fileSystem: IFileSystem,
+  options?: { preferFileUri?: boolean }
+): Promise<string> {
   if (!uri) return uri
   if (uri.startsWith('data:') || uri.startsWith('content://')) return uri
 
   const absPath = stripFileScheme(uri)
   if (!isExternalStoragePath(absPath)) {
     return uri.startsWith('file://') ? uri : toFileUri(absPath)
+  }
+
+  if (options?.preferFileUri) {
+    return toFileUri(absPath)
   }
 
   try {
@@ -36,7 +60,7 @@ async function toDisplayableAvatarUri(uri: string, fileSystem: IFileSystem): Pro
 
 export function invalidateAssistantAvatarDisplayCache(avatarPath?: string): void {
   if (avatarPath) {
-    avatarDisplayCache.delete(avatarPath)
+    deleteAvatarCacheKeys(avatarPath)
     return
   }
   avatarDisplayCache.clear()
@@ -46,25 +70,34 @@ export function invalidateAllAvatarDisplayCaches(): void {
   avatarDisplayCache.clear()
 }
 
+export type ResolveAssistantAvatarOptions = {
+  /** 列表场景优先 file://，避免逐个读 base64 阻塞 UI */
+  preferFileUri?: boolean
+}
+
 /** 将 settings 中的 avatarPath 解析为移动端 Image 可展示的 URI */
 export async function resolveAssistantAvatarForMobileUi(
   avatarPath: string | undefined,
   attachmentManager: IAttachmentManager,
-  fileSystem: IFileSystem
+  fileSystem: IFileSystem,
+  options?: ResolveAssistantAvatarOptions
 ): Promise<string | undefined> {
   if (!avatarPath) return undefined
 
   if (isDefaultAssistantAvatarPath(avatarPath) || isBuiltinAssistantAvatarPath(avatarPath)) {
-    const id = parseBuiltinAssistantAvatarId(avatarPath) ?? DEFAULT_BUILTIN_ASSISTANT_AVATAR_ID
-    const cached = avatarDisplayCache.get(avatarPath)
+    const cacheKey = avatarCacheKey(avatarPath, 'builtin')
+    const cached = avatarDisplayCache.get(cacheKey)
     if (cached) return cached
+    const id = parseBuiltinAssistantAvatarId(avatarPath) ?? DEFAULT_BUILTIN_ASSISTANT_AVATAR_ID
     const source = NATIVE_BUILTIN_ASSISTANT_AVATAR_SOURCES[id]
     const displayUri = Image.resolveAssetSource(source).uri
-    avatarDisplayCache.set(avatarPath, displayUri)
+    avatarDisplayCache.set(cacheKey, displayUri)
     return displayUri
   }
 
-  const cached = avatarDisplayCache.get(avatarPath)
+  const cacheMode = resolveCacheMode(options)
+  const cacheKey = avatarCacheKey(avatarPath, cacheMode)
+  const cached = avatarDisplayCache.get(cacheKey)
   if (cached) return cached
 
   const resolved = await resolveAssistantAvatarDisplayUri(avatarPath, (path) =>
@@ -72,7 +105,7 @@ export async function resolveAssistantAvatarForMobileUi(
   )
   if (!resolved) return undefined
 
-  const displayUri = await toDisplayableAvatarUri(resolved, fileSystem)
-  avatarDisplayCache.set(avatarPath, displayUri)
+  const displayUri = await toDisplayableAvatarUri(resolved, fileSystem, options)
+  avatarDisplayCache.set(cacheKey, displayUri)
   return displayUri
 }
