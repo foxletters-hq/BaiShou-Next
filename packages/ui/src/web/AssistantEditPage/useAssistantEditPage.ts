@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
+  DEFAULT_ASSISTANT_KIND,
   DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH,
   isAssistantCustomAvatar,
-  normalizeAssistantAvatarPath
+  normalizeAssistantAvatarPath,
+  normalizeAssistantKind,
+  type AssistantKind
 } from '@baishou/shared'
 import { logger } from '@baishou/shared'
 import type { AssistantFormData } from './assistant-edit.types'
@@ -13,11 +17,15 @@ interface UseAssistantEditPageOptions {
 }
 
 export function useAssistantEditPage({ assistant, onSave }: UseAssistantEditPageOptions) {
+  const { t } = useTranslation()
   const isEditing = assistant !== null
 
   const [name, setName] = useState(assistant?.name ?? '')
   const [description, setDescription] = useState(assistant?.description ?? '')
   const [systemPrompt, setSystemPrompt] = useState(assistant?.systemPrompt ?? '')
+  const [assistantKind, setAssistantKind] = useState<AssistantKind>(
+    normalizeAssistantKind(assistant?.assistantKind ?? DEFAULT_ASSISTANT_KIND)
+  )
   const [contextWindow, setContextWindow] = useState(assistant?.contextWindow ?? -1)
   const [providerId, setProviderId] = useState(assistant?.providerId)
   const [modelId, setModelId] = useState(assistant?.modelId)
@@ -52,7 +60,12 @@ export function useAssistantEditPage({ assistant, onSave }: UseAssistantEditPage
     setAvatarPath(
       normalizeAssistantAvatarPath(assistant.avatarPath) || DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH
     )
+    setAssistantKind(normalizeAssistantKind(assistant.assistantKind))
   }, [assistant])
+
+  const handleKindChange = (kind: AssistantKind) => {
+    setAssistantKind(kind)
+  }
 
   useEffect(() => {
     if (typeof window !== 'undefined' && (window as any).electron) {
@@ -80,7 +93,8 @@ export function useAssistantEditPage({ assistant, onSave }: UseAssistantEditPage
         modelId: modelId ?? undefined,
         compressTokenThreshold: isCompressDisabled ? 0 : Math.round(compressThreshold),
         compressKeepTurns: Math.round(compressKeepTurns),
-        avatarPath: normalizeAssistantAvatarPath(avatarPath)
+        avatarPath: normalizeAssistantAvatarPath(avatarPath),
+        assistantKind
       })
     } catch (e) {
       logger.error('Failed to save assistant:', e)
@@ -128,6 +142,8 @@ export function useAssistantEditPage({ assistant, onSave }: UseAssistantEditPage
     handleSave,
     clearModelBinding,
     setProviderId,
-    setModelId
+    setModelId,
+    assistantKind,
+    handleKindChange
   }
 }

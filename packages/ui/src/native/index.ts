@@ -97,6 +97,8 @@ export * from './AgentSessionList'
 export * from './EmojiPicker'
 export * from './AssistantAvatar'
 export * from './AssistantAvatarPicker'
+export * from './AssistantKindTabBar'
+export * from './AssistantKindBadge'
 export {
   resolveNativeAssistantAvatarSource,
   resolveNativeBuiltinAssistantAvatarSource,

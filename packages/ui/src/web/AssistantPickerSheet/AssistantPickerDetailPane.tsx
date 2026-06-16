@@ -1,6 +1,7 @@
 import React from 'react'
 import { X, Star, Edit2, CheckSquare } from 'lucide-react'
 import { AvatarEditor } from '../AvatarEditor'
+import { AssistantKindBadge } from '../AssistantKindBadge'
 import styles from './AssistantPickerSheet.module.css'
 import type { AssistantInfo } from './assistant-picker-sheet.types'
 import type { AssistantPickerSheetViewModel } from './useAssistantPickerSheet'
@@ -78,6 +79,7 @@ export function AssistantPickerDetailPane({
               >
                 {activeAssistant.name} <Edit2 size={16} color="var(--text-secondary)" />
               </h2>
+              <AssistantKindBadge kind={activeAssistant.assistantKind} />
             </div>
           </div>
 

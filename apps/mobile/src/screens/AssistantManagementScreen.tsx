@@ -14,8 +14,10 @@ import {
   useDialog,
   scrollIndicatorStyle,
   Input,
-  AssistantAvatar
+  AssistantAvatar,
+  AssistantKindBadge
 } from '@baishou/ui/native'
+import type { AssistantKind } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { useTranslation } from 'react-i18next'
@@ -38,6 +40,7 @@ interface Assistant {
   lastUsedAt?: number
   useCount?: number
   displayAvatarUri?: string
+  assistantKind?: AssistantKind
 }
 
 export const AssistantManagementScreen: React.FC = () => {
@@ -61,7 +64,8 @@ export const AssistantManagementScreen: React.FC = () => {
       const assistantList = await listAssistantsForUi(
         services.assistantManager,
         services.attachmentManager,
-        services.fileSystem
+        services.fileSystem,
+        { preferFileUri: false }
       )
       setAssistants(assistantList)
     } catch (e) {
@@ -165,6 +169,7 @@ export const AssistantManagementScreen: React.FC = () => {
             <Text style={[styles.cardName, { color: colors.textPrimary }]} numberOfLines={1}>
               {item.name}
             </Text>
+            <AssistantKindBadge kind={item.assistantKind} compact />
             {item.isPinned ? (
               <MaterialIcons name="push-pin" size={14} color={colors.primary} />
             ) : null}

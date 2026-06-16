@@ -13,6 +13,7 @@ export interface AgentAssistant {
   description?: string
   avatarPath?: string
   emoji?: string
+  assistantKind?: 'companion' | 'work'
 }
 
 export interface AgentSidebarProps {

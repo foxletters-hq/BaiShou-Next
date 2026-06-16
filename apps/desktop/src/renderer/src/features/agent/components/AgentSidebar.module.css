@@ -188,6 +188,13 @@
   overflow: hidden;
 }
 
+.assistantNameRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 .assistantName {
   font-size: 14px;
   font-weight: 600;

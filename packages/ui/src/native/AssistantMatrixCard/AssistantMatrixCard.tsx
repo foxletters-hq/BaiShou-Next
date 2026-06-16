@@ -2,10 +2,13 @@ import React, { useState } from 'react'
 import { View, Text, TouchableOpacity, FlatList, StyleSheet, type ViewProps } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { AssistantKindBadge } from '../AssistantKindBadge'
+import type { AssistantKind } from '@baishou/shared'
 
 export interface AssistantMatrixAssistant {
   id: string
   name: string
+  assistantKind?: AssistantKind
 }
 
 export interface AvailableModel {
@@ -71,7 +74,10 @@ export const AssistantMatrixCard: React.FC<AssistantMatrixCardProps> = ({
           activeOpacity={0.7}
           style={styles.assistantHeader}
         >
-          <Text style={[styles.assistantName, { color: colors.textPrimary }]}>{item.name}</Text>
+          <View style={styles.assistantNameRow}>
+            <Text style={[styles.assistantName, { color: colors.textPrimary }]}>{item.name}</Text>
+            <AssistantKindBadge kind={item.assistantKind} compact />
+          </View>
           <View style={styles.assistantHeaderRight}>
             <View style={[styles.countBadge, { backgroundColor: colors.primaryLight + '30' }]}>
               <Text style={[styles.countBadgeText, { color: colors.primary }]}>
@@ -192,10 +198,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 14
   },
+  assistantNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+    flexWrap: 'wrap'
+  },
   assistantName: {
     fontSize: 15,
-    fontWeight: '600',
-    flex: 1
+    fontWeight: '600'
   },
   assistantHeaderRight: {
     flexDirection: 'row',

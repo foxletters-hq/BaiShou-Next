@@ -28,9 +28,6 @@ export const AssistantEditAvatarSection: React.FC<AssistantEditAvatarSectionProp
         onSelectBuiltin={onSelectBuiltin}
         onUploadImage={onUploadImage}
       />
-      <div className={styles.avatarHint}>
-        {t('agent.assistant.avatar_hint', '选择内置头像或从本地上传')}
-      </div>
       {showReset && onResetToDefault ? (
         <button type="button" className={styles.textBtn} onClick={onResetToDefault}>
           {t('agent.assistant.reset_builtin_avatar', '恢复默认内置头像')}

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '../Button/Button'
+import { AssistantKindBadge } from '../AssistantKindBadge'
 import styles from './AssistantPicker.module.css'
 import { MockAgentAssistant } from '@baishou/shared'
 
@@ -82,6 +83,7 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = ({
                     <div className={styles.sidebarItemInfo}>
                       <div className={styles.sidebarItemNameRow}>
                         <span className={styles.sidebarItemName}>{a.name}</span>
+                        <AssistantKindBadge kind={(a as any).assistantKind} compact />
                         {isCurrent && <span className={styles.currentDot}></span>}
                       </div>
                       <span className={styles.sidebarItemDesc}>{a.description}</span>
@@ -109,6 +111,7 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = ({
                 <div className={styles.detailInfo}>
                   <div className={styles.detailNameRow}>
                     <span className={styles.detailName}>{activeAssistant.name}</span>
+                    <AssistantKindBadge kind={(activeAssistant as any).assistantKind} compact />
                     {activeAssistant.id === currentAssistantId && (
                       <span className={styles.detailCurrentTag}>{t('agent.current')}</span>
                     )}

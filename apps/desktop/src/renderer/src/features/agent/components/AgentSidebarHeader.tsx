@@ -2,7 +2,7 @@ import React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { MdUnfoldMore, MdAdd, MdSettings, MdChecklist } from 'react-icons/md'
-import { resolveWebAssistantAvatarSrc } from '@baishou/ui'
+import { resolveWebAssistantAvatarSrc, AssistantKindBadge } from '@baishou/ui'
 import type { AgentAssistant } from './AgentSidebar'
 import styles from './AgentSidebar.module.css'
 import { rememberSettingsReturnPath } from '../../settings/settings-navigation.util'
@@ -90,7 +90,10 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
             <>
               <AssistantAvatar assistant={currentAssistant} size={36} />
               <div className={styles.assistantInfo}>
-                <div className={styles.assistantName}>{currentAssistant.name}</div>
+                <div className={styles.assistantNameRow}>
+                  <div className={styles.assistantName}>{currentAssistant.name}</div>
+                  <AssistantKindBadge kind={currentAssistant.assistantKind} compact />
+                </div>
                 {currentAssistant.description && (
                   <div className={styles.assistantDesc}>{currentAssistant.description}</div>
                 )}

@@ -124,12 +124,6 @@
   border: 2px solid var(--bg-surface);
 }
 
-.avatarHint {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-top: 4px;
-}
-
 .textBtn {
   background: transparent;
   border: none;

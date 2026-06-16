@@ -1,3 +1,5 @@
+import type { AssistantKind } from '@baishou/shared'
+
 export interface AssistantFormData {
   id?: string
   name: string
@@ -15,6 +17,7 @@ export interface AssistantFormData {
   topP?: number
   maxTokens?: number
   ragSpaceId?: string
+  assistantKind?: AssistantKind
 }
 
 export interface AssistantEditPageProps {

@@ -12,6 +12,7 @@ export interface AssistantInfo {
   compressKeepTurns?: number
   compressSystemPrompt?: string | null
   ragSpaceId?: string
+  assistantKind?: 'companion' | 'work'
 }
 
 export interface AssistantPickerSheetProps {

@@ -23,18 +23,22 @@ import {
   SettingsGroupCard,
   settingsCardStyles,
   ProviderBrandIcon,
-  AssistantAvatarPicker
+  AssistantAvatarPicker,
+  AssistantKindTabBar
 } from '@baishou/ui/native'
 import {
   AIProviderConfig,
+  DEFAULT_ASSISTANT_KIND,
   DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH,
   isAssistantCustomAvatar,
   isDefaultAssistantAvatarPath,
   normalizeAssistantAvatarPath,
+  normalizeAssistantKind,
   getDefaultCompressionSystemPrompt,
   isAssistantAvatarDirectUri,
   isAssistantAvatarRelativePath,
   filterProvidersForModelSwitcher,
+  type AssistantKind,
   type ModelSwitcherProvider
 } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
@@ -71,6 +75,7 @@ interface Assistant {
   compressTokenThreshold?: number
   compressKeepTurns?: number
   compressSystemPrompt?: string | null
+  assistantKind?: AssistantKind
   createdAt?: number
   lastUsedAt?: number
   useCount?: number
@@ -105,6 +110,7 @@ export const AssistantEditScreen: React.FC = () => {
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [assistantKind, setAssistantKind] = useState<AssistantKind>(DEFAULT_ASSISTANT_KIND)
   const [systemPrompt, setSystemPrompt] = useState('')
   const [providerId, setProviderId] = useState<string | undefined>()
   const [modelId, setModelId] = useState<string | undefined>()
@@ -127,6 +133,10 @@ export const AssistantEditScreen: React.FC = () => {
 
   const isUnlimitedContext = contextWindow < 0
   const isCompressDisabled = compressTokenThreshold <= 0
+
+  const handleKindChange = useCallback((kind: AssistantKind) => {
+    setAssistantKind(kind)
+  }, [])
 
   const resolveAvatarPreview = useCallback(
     async (path?: string) => {
@@ -199,6 +209,7 @@ export const AssistantEditScreen: React.FC = () => {
             assistant.compressSystemPrompt?.trim() ||
               getDefaultCompressionSystemPrompt(i18n.language)
           )
+          setAssistantKind(normalizeAssistantKind(assistant.assistantKind))
         } else {
           toast.showError(t('agent.assistant.not_found', '伙伴未找到'))
           router.back()
@@ -273,7 +284,8 @@ export const AssistantEditScreen: React.FC = () => {
         : await listAssistantsForUi(
             services.assistantManager,
             services.attachmentManager,
-            services.fileSystem
+            services.fileSystem,
+            { preferFileUri: false }
           )
 
       let finalAvatarPath = normalizeAssistantAvatarPath(storedAvatarPath)
@@ -293,7 +305,8 @@ export const AssistantEditScreen: React.FC = () => {
         contextWindow: isUnlimitedContext ? -1 : Math.round(contextWindow),
         compressTokenThreshold: isCompressDisabled ? 0 : Math.round(compressTokenThreshold),
         compressKeepTurns: Math.round(compressKeepTurns),
-        compressSystemPrompt: isCompressDisabled ? null : compressSystemPrompt.trim() || null
+        compressSystemPrompt: isCompressDisabled ? null : compressSystemPrompt.trim() || null,
+        assistantKind
       })
 
       if (isNew) {
@@ -388,9 +401,6 @@ export const AssistantEditScreen: React.FC = () => {
               onSelectBuiltin={handleSelectBuiltin}
               onPressUpload={() => void handlePickImage()}
             />
-            <Text style={[styles.avatarHint, { color: colors.textSecondary }]}>
-              {t('agent.assistant.avatar_hint', '选择内置头像或从本地上传')}
-            </Text>
             {hasCustomUpload ? (
               <TouchableOpacity onPress={handleResetBuiltinAvatar}>
                 <Text style={[styles.textBtn, { color: colors.primary }]}>
@@ -401,6 +411,10 @@ export const AssistantEditScreen: React.FC = () => {
           </SettingsGroupCard>
 
           <SettingsGroupCard>
+            <AssistantKindTabBar activeKind={assistantKind} onKindChange={handleKindChange} />
+
+            <View style={styles.fieldGap} />
+
             <Text style={[settingsCardStyles.cardTitle, { color: colors.textPrimary }]}>
               {t('agent.assistant.name_label', '伙伴名称')}
             </Text>
@@ -762,11 +776,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center'
-  },
-  avatarHint: {
-    fontSize: 13,
-    marginTop: 12,
-    textAlign: 'center'
   },
   textBtn: {
     fontSize: 14,

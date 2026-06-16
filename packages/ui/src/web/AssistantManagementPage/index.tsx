@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { Search, Pin, PinOff, Trash2, Copy, Plus, Activity, Sparkles } from 'lucide-react'
 import { resolveWebAssistantAvatarSrc } from '../assistant-avatar.util'
+import { AssistantKindBadge } from '../AssistantKindBadge'
 import styles from './AssistantManagementPage.module.css'
 
 // ─── 类型定义 ──────────────────────────────────────────────
@@ -23,6 +24,7 @@ export interface AssistantInfo {
   lastUsedAt?: number
   useCount?: number
   avatarPath?: string
+  assistantKind?: 'companion' | 'work'
 }
 
 export type SortMode = 'name' | 'newest' | 'frequent'
@@ -179,6 +181,7 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
                         <span className={styles.cardName} title={assistant.name}>
                           {assistant.name}
                         </span>
+                        <AssistantKindBadge kind={assistant.assistantKind} compact />
                         {isPinned && (
                           <Pin
                             size={14}

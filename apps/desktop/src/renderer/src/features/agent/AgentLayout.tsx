@@ -135,7 +135,8 @@ export const AgentLayout: React.FC = () => {
         name: currentAssistant.name,
         description: currentAssistant.description || LATTE_ASSISTANT_DESCRIPTION,
         emoji: currentAssistant.emoji,
-        avatarPath: (currentAssistant as any).avatarPath
+        avatarPath: (currentAssistant as any).avatarPath,
+        assistantKind: (currentAssistant as any).assistantKind
       }
     : !isAssistantsLoading
       ? {
@@ -160,7 +161,8 @@ export const AgentLayout: React.FC = () => {
       id: String(a!.id),
       name: a!.name,
       emoji: a!.emoji,
-      avatarPath: (a as any).avatarPath
+      avatarPath: (a as any).avatarPath,
+      assistantKind: (a as any).assistantKind
     }))
 
   const handleNewChat = async (targetAssistantId?: string) => {

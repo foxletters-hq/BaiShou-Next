@@ -11,6 +11,7 @@ import { AssistantEditContextSection } from './AssistantEditContextSection'
 import { AssistantEditCompressionSection } from './AssistantEditCompressionSection'
 import { AssistantDeleteConfirmDialog } from './AssistantDeleteConfirmDialog'
 import { AssistantModelPicker } from './AssistantModelPicker'
+import { AssistantKindTabBar } from '../AssistantKindTabBar'
 import styles from './AssistantEditPage.module.css'
 
 export type { AssistantFormData, AssistantEditPageProps } from './assistant-edit.types'
@@ -40,6 +41,13 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
           />
 
           <div className={styles.spacer24} />
+
+          <AssistantKindTabBar
+            activeKind={form.assistantKind}
+            onKindChange={form.handleKindChange}
+          />
+
+          <div className={styles.spacer16} />
 
           <label className={styles.fieldLabel}>{t('agent.assistant.name_label', '名称')}</label>
           <input

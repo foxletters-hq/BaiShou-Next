@@ -3,6 +3,7 @@ import styles from './AssistantManagementView.module.css'
 import { useTranslation } from 'react-i18next'
 import { useDialog } from '../Dialog'
 import { resolveWebAssistantAvatarSrc } from '../assistant-avatar.util'
+import { AssistantKindBadge } from '../AssistantKindBadge'
 import {
   MdAdd,
   MdDragIndicator,
@@ -21,6 +22,7 @@ export interface AgentAssistant {
   emoji?: string | null
   contextWindow: number
   modelId?: string | null
+  assistantKind?: 'companion' | 'work'
 }
 
 export interface AssistantManagementViewProps {
@@ -92,6 +94,7 @@ export const AssistantManagementView: React.FC<AssistantManagementViewProps> = (
                 <div className={styles.contentRow}>
                   <div className={styles.nameRow}>
                     <span className={styles.nameText}>{assistant.name}</span>
+                    <AssistantKindBadge kind={assistant.assistantKind} compact />
                   </div>
                   <div className={styles.descText}>
                     {assistant.description ||

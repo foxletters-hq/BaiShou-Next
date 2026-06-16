@@ -1,5 +1,6 @@
 import React from 'react'
 import { Plus, Cpu, Trash2 } from 'lucide-react'
+import { AssistantKindBadge } from '../AssistantKindBadge'
 import styles from './AssistantPickerSheet.module.css'
 import type { AssistantPickerSheetViewModel } from './useAssistantPickerSheet'
 
@@ -69,6 +70,7 @@ export function AssistantPickerSidebar({
                 <div className={styles.itemInfo}>
                   <div className={styles.itemNameRow}>
                     <span className={styles.itemName}>{ast.name}</span>
+                    <AssistantKindBadge kind={ast.assistantKind} compact />
                     {isCurrent && (
                       <span className={styles.currentBadge}>
                         {t('agent.assistant.current', 'Current')}
