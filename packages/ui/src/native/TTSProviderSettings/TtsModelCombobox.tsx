@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   View,
   Text,
@@ -7,7 +7,6 @@ import {
   ScrollView,
   Pressable,
   Modal,
-  Animated,
   StyleSheet
 } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -38,65 +37,29 @@ export const TtsModelCombobox: React.FC<TtsModelComboboxProps> = ({
 }) => {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
-  const [mounted, setMounted] = useState(false)
-  const [draft, setDraft] = useState(value)
-  const fadeAnim = useRef(new Animated.Value(0)).current
-  const scaleAnim = useRef(new Animated.Value(0.92)).current
+  const [searchQuery, setSearchQuery] = useState('')
 
   const filteredOptions = useMemo(() => {
-    const query = draft.toLowerCase().trim()
+    const query = searchQuery.toLowerCase().trim()
     if (!query) return options
     const filtered = options.filter((opt) => opt.toLowerCase().includes(query))
     return filtered.length > 0 ? filtered : options
-  }, [options, draft])
+  }, [options, searchQuery])
 
   const hasValue = Boolean(value.trim())
 
   useEffect(() => {
-    if (!isOpen) {
-      if (!mounted) return
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 160,
-          useNativeDriver: true
-        }),
-        Animated.timing(scaleAnim, {
-          toValue: 0.92,
-          duration: 160,
-          useNativeDriver: true
-        })
-      ]).start(({ finished }) => {
-        if (finished) setMounted(false)
-      })
-      return
+    if (isOpen) {
+      setSearchQuery('')
     }
-
-    setDraft(value)
-    setMounted(true)
-    fadeAnim.setValue(0)
-    scaleAnim.setValue(0.92)
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        useNativeDriver: true,
-        tension: 65,
-        friction: 11
-      })
-    ]).start()
-  }, [isOpen, mounted, value, fadeAnim, scaleAnim])
+  }, [isOpen])
 
   const close = () => {
     if (isOpen) onToggleDropdown()
   }
 
   const applyCustom = () => {
-    const next = draft.trim()
+    const next = searchQuery.trim()
     if (!next) return
     onChangeText(next)
     onSelect(next)
@@ -104,8 +67,8 @@ export const TtsModelCombobox: React.FC<TtsModelComboboxProps> = ({
   }
 
   const showCustomApply =
-    draft.trim().length > 0 &&
-    !filteredOptions.some((opt) => opt.toLowerCase() === draft.trim().toLowerCase())
+    searchQuery.trim().length > 0 &&
+    !filteredOptions.some((opt) => opt.toLowerCase() === searchQuery.trim().toLowerCase())
 
   return (
     <View style={comboboxStyles.wrapper}>
@@ -135,26 +98,20 @@ export const TtsModelCombobox: React.FC<TtsModelComboboxProps> = ({
         <Text style={[settingsSelectorStyles.chevron, { color: colors.textTertiary }]}>›</Text>
       </TouchableOpacity>
 
-      <Modal visible={mounted} transparent animationType="none" onRequestClose={close}>
+      <Modal visible={isOpen} transparent animationType="fade" onRequestClose={close}>
         <View style={settingsSelectorStyles.modalOverlay}>
-          <Animated.View
-            style={[
-              settingsSelectorStyles.modalBackdrop,
-              { backgroundColor: colors.bgOverlay, opacity: fadeAnim }
-            ]}
-          >
-            <Pressable style={StyleSheet.absoluteFill} onPress={close} />
-          </Animated.View>
+          <Pressable
+            style={[settingsSelectorStyles.modalBackdrop, { backgroundColor: colors.bgOverlay }]}
+            onPress={close}
+          />
 
-          <Animated.View
+          <View
             style={[
               comboboxStyles.modalPanel,
               {
                 backgroundColor: colors.bgSurface,
                 borderColor: colors.borderSubtle,
-                borderRadius: tokens.radius.lg,
-                opacity: fadeAnim,
-                transform: [{ scale: scaleAnim }]
+                borderRadius: tokens.radius.lg
               }
             ]}
           >
@@ -169,8 +126,8 @@ export const TtsModelCombobox: React.FC<TtsModelComboboxProps> = ({
 
             <View style={comboboxStyles.searchWrap}>
               <TextInput
-                value={draft}
-                onChangeText={setDraft}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
                 placeholder={t('common.search_model', '搜索模型...')}
                 placeholderTextColor={colors.textTertiary}
                 autoCapitalize="none"
@@ -201,16 +158,16 @@ export const TtsModelCombobox: React.FC<TtsModelComboboxProps> = ({
                     style={[comboboxStyles.optionText, { color: colors.primary }]}
                     numberOfLines={1}
                   >
-                    {t('tts.settings.use_custom_model', '使用')}: {draft.trim()}
+                    {t('tts.settings.use_custom_model', '使用')}: {searchQuery.trim()}
                   </Text>
                 </TouchableOpacity>
               )}
 
-              {filteredOptions.map((opt) => {
+              {filteredOptions.map((opt, index) => {
                 const selected = opt === value
                 return (
                   <TouchableOpacity
-                    key={opt}
+                    key={`${opt}-${index}`}
                     activeOpacity={0.7}
                     style={[
                       comboboxStyles.optionItem,
@@ -235,7 +192,7 @@ export const TtsModelCombobox: React.FC<TtsModelComboboxProps> = ({
                 )
               })}
             </ScrollView>
-          </Animated.View>
+          </View>
         </View>
       </Modal>
     </View>
