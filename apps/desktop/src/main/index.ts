@@ -255,6 +255,18 @@ app.whenReady().then(async () => {
     }
   } catch {}
 
+  if (needsOnboarding) {
+    try {
+      const { resolveLegacyRootCandidates } = await import('./services/flutter-legacy-paths.service')
+      const legacyCandidates = await resolveLegacyRootCandidates()
+      if (legacyCandidates.length > 0) {
+        customStorageRoot = legacyCandidates[0]!
+      }
+    } catch (e: any) {
+      logger.warn('[Bootstrapper] Legacy pre-check failed:', e)
+    }
+  }
+
   // ── 核心变更：在确定存储路径后，再初始化全局 Agent DB ──
   // connectionManager 提供全局访问句柄，供所有 Agent 相关 IPC 使用
   const appDb = getAppDb(customStorageRoot || undefined)
@@ -267,23 +279,48 @@ app.whenReady().then(async () => {
   // ======================================
   if (needsOnboarding) {
     try {
-      const defaultLegacyRoot = join(app.getPath('documents'), 'BaiShou_Root')
+      const { resolveLegacyRootCandidates } = await import('./services/flutter-legacy-paths.service')
       const { LegacyMigrationService } = await import('./services/legacy-migration.service')
+      const { getDesktopInstallInstanceId } = await import('./services/install-instance.service')
+      const { isMigrationCompleted } = await import('@baishou/core/shared')
+      const { createNodeFileSystem } = await import('@baishou/core-desktop')
       const legacyService = new LegacyMigrationService()
+      const installInstanceId = await getDesktopInstallInstanceId()
+      const fileSystem = createNodeFileSystem()
 
-      const isLegacyPresent = await legacyService.isLegacyAppRoot(defaultLegacyRoot)
-      if (isLegacyPresent) {
-        logger.info('[Bootstrapper] Discovered Local Legacy Installation at', defaultLegacyRoot)
-        // 执行无损原地热升迁
-        await legacyService.migrate(defaultLegacyRoot, defaultLegacyRoot)
+      const legacyCandidates = await resolveLegacyRootCandidates()
+      const legacyRoot = legacyCandidates[0]
+      if (legacyRoot) {
+        const alreadyMigrated = await isMigrationCompleted(
+          fileSystem,
+          legacyRoot,
+          installInstanceId
+        )
 
-        // 升迁成功后，保存路径配置并跳过引导页面
+        if (!alreadyMigrated) {
+          logger.info('[Bootstrapper] Discovered Local Legacy Installation at', legacyRoot)
+          await legacyService.migrate(legacyRoot, legacyRoot, {
+            source: 'flutter_desktop',
+            installInstanceId
+          })
+
+          const { resetAppDb } = await import('./db')
+          resetAppDb()
+          const migratedDb = getAppDb(legacyRoot)
+          connectionManager.setDb(migratedDb)
+          await installDatabaseSchema(migratedDb)
+        } else {
+          logger.info(
+            '[Bootstrapper] Legacy data already migrated for this install; skipping onboarding.'
+          )
+        }
+
         await fs.writeFile(
           settingsPath,
-          JSON.stringify({ custom_storage_root: defaultLegacyRoot }),
+          JSON.stringify({ custom_storage_root: legacyRoot }),
           'utf-8'
         )
-        customStorageRoot = defaultLegacyRoot
+        customStorageRoot = legacyRoot
         needsOnboarding = false
 
         logger.info('[Bootstrapper] Local Auto-Migration Completed! Skipped Onboarding.')

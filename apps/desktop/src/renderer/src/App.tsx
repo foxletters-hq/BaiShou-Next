@@ -27,6 +27,7 @@ import { useSettingsStore, useSyncStore } from '@baishou/store'
 import { i18n } from '@baishou/shared'
 import { TitleBar } from './components/TitleBar'
 import { useZoom } from './hooks/useZoom'
+import { useLegacyUpgradeRagToast } from './hooks/useLegacyUpgradeRagToast'
 import shellStyles from './AppShell.module.css'
 
 const GlobalErrorHandler = () => {
@@ -167,6 +168,8 @@ const AppRoutes = () => {
 }
 
 const AppShell: React.FC = () => {
+  useLegacyUpgradeRagToast()
+
   return (
     <div className={shellStyles.shell}>
       <TitleBar />

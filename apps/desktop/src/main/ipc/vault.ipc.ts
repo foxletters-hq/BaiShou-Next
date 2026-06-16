@@ -57,6 +57,8 @@ async function switchVaultFast(vaultName: string) {
 
   const { resetCachedManager } = await import('./summary.ipc')
   resetCachedManager()
+  const { resetSharedShadowSync } = await import('../services/shadow-sync.registry')
+  resetSharedShadowSync()
 
   const { globalBootstrapper } = await import('../services/bootstrapper.service')
   await globalBootstrapper.activateVaultRuntime()
@@ -74,7 +76,10 @@ export async function initVaultSystem() {
   await connectGlobalShadowDb()
 
   const { globalBootstrapper } = await import('../services/bootstrapper.service')
-  await globalBootstrapper.fullyResyncAllEcosystems()
+  await globalBootstrapper.activateVaultRuntime()
+
+  const { scheduleVaultEcosystemResync } = await import('../services/vault-resync.service')
+  scheduleVaultEcosystemResync('cold-start')
 }
 
 export function registerVaultIPC() {
@@ -116,6 +121,14 @@ export function registerVaultIPC() {
     const { waitForVaultEcosystemResync } = await import('../services/vault-resync.service')
     await waitForVaultEcosystemResync()
     return true
+  })
+
+  ipcMain.handle('vault:getIndexingStatus', async () => {
+    const { isVaultEcosystemResyncInFlight } = await import('../services/vault-resync.service')
+    const { getSharedShadowSync } = await import('../services/shadow-sync.registry')
+    const resyncing = isVaultEcosystemResyncInFlight()
+    const shadowScanning = getSharedShadowSync().isScanning
+    return { indexing: resyncing || shadowScanning, resyncing, shadowScanning }
   })
 
   ipcMain.handle('vault:delete', async (_, vaultName: string) => {

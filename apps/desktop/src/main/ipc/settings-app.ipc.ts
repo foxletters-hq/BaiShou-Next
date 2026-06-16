@@ -1,4 +1,8 @@
 import { ipcMain } from 'electron'
+import {
+  LEGACY_UPGRADE_RAG_NOTICE_COUNT_KEY,
+  LEGACY_UPGRADE_RAG_PENDING_KEY
+} from '@baishou/core/shared'
 import { settingsManager } from './settings.ipc'
 
 /**
@@ -124,5 +128,22 @@ export function registerSettingsAppIPC() {
     toolConfigs[key] = value
     await settingsManager.set('tool_configs', toolConfigs)
     return true
+  })
+
+  ipcMain.handle('settings:get-legacy-upgrade-notice-state', async () => {
+    const pending = await settingsManager.get<boolean>(LEGACY_UPGRADE_RAG_PENDING_KEY as never)
+    const shownCount = await settingsManager.get<number>(LEGACY_UPGRADE_RAG_NOTICE_COUNT_KEY as never)
+    return {
+      pending: pending === true,
+      shownCount: typeof shownCount === 'number' ? shownCount : 0
+    }
+  })
+
+  ipcMain.handle('settings:mark-legacy-upgrade-notice-shown', async () => {
+    const shownCount =
+      (await settingsManager.get<number>(LEGACY_UPGRADE_RAG_NOTICE_COUNT_KEY as never)) ?? 0
+    const next = shownCount + 1
+    await settingsManager.set(LEGACY_UPGRADE_RAG_NOTICE_COUNT_KEY as never, next as never)
+    return next
   })
 }

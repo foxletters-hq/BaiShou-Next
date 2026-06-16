@@ -3,13 +3,21 @@ import { join } from 'path'
 import { initNodeDatabase, AppDatabase } from '@baishou/database-desktop'
 import { logger } from '@baishou/shared'
 import { renameSync, existsSync } from 'fs'
+import { resolveAgentDbPath as resolveSharedAgentDbPath } from '@baishou/core/shared'
+
+export function resolveAgentDbPath(workspaceRoot?: string | null): string {
+  if (workspaceRoot && workspaceRoot.trim() !== '') {
+    return resolveSharedAgentDbPath(workspaceRoot)
+  }
+  return join(app.getPath('userData'), 'baishou_agent.db')
+}
 
 /**
  * 全局 Agent DB（baishou_agent.db）— 懒加载单例
  *
  * 架构说明（双库分离）：
  * - Agent DB 是全局共用的：所有 Vault 共享同一个 Agent 库
- * - 路径存放在 Electron 的 userData 目录下，与 Vault 物理路径完全隔离
+ * - 已配置工作空间时路径为 `{BaiShou_Root}/baishou_agent.db`；未配置时回退到 userData
  * - 使用懒加载：只有在 app.whenReady() 之后首次调用 getAppDb() 时才实际创建
  *
  * 影子索引库（shadow_index.db）是 per-vault 的，
@@ -56,8 +64,8 @@ function handleMalformedDb(dbPath: string, err: any) {
 
 export function getAppDb(customBasePath?: string): AppDatabase {
   const agentDbPath = customBasePath
-    ? join(customBasePath, 'baishou_agent.db')
-    : _appDbPath || join(app.getPath('userData'), 'baishou_agent.db')
+    ? resolveAgentDbPath(customBasePath)
+    : _appDbPath || resolveAgentDbPath()
 
   // 如果已有实例且路径匹配，直接返回
   if (_appDb && _appDbPath === agentDbPath) {
