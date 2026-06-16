@@ -1,13 +1,7 @@
-import React, { memo, useEffect, useMemo, useState } from 'react'
+import React, { memo, useMemo } from 'react'
 import { View, Text, StyleSheet, useColorScheme } from 'react-native'
-import { SvgXml } from 'react-native-svg'
 import { useNativeTheme } from '../theme'
-import {
-  getCachedProviderIconXml,
-  getProviderIconModule,
-  hasProviderIcon,
-  resolveProviderIconXml
-} from '../../utils/provider-icons.native'
+import { getProviderIconComponent, hasProviderIcon } from '../../utils/provider-icons.native'
 
 export interface ProviderBrandIconProps {
   providerId: string
@@ -34,40 +28,12 @@ const ProviderBrandIconInner: React.FC<ProviderBrandIconProps> = ({
     () => resolveIconProviderId(providerId, providerType),
     [providerId, providerType]
   )
-  const iconModule = useMemo(
-    () => getProviderIconModule(iconProviderId, isDark),
+  const Icon = useMemo(
+    () => getProviderIconComponent(iconProviderId, isDark),
     [iconProviderId, isDark]
   )
-  const [xml, setXml] = useState<string | null>(() =>
-    iconModule != null ? (getCachedProviderIconXml(iconModule) ?? null) : null
-  )
-
-  useEffect(() => {
-    if (iconModule == null) {
-      setXml(null)
-      return
-    }
-
-    const cached = getCachedProviderIconXml(iconModule)
-    if (cached) {
-      setXml(cached)
-      return
-    }
-
-    let cancelled = false
-
-    void resolveProviderIconXml(iconModule).then((resolved) => {
-      if (!cancelled) setXml(resolved)
-    })
-
-    return () => {
-      cancelled = true
-    }
-  }, [iconModule])
 
   const wrapSize = size + 8
-  const showBrandSvg = Boolean(xml)
-  const showLetterFallback = !hasProviderIcon(iconProviderId)
 
   return (
     <View
@@ -81,13 +47,13 @@ const ProviderBrandIconInner: React.FC<ProviderBrandIconProps> = ({
         }
       ]}
     >
-      {showBrandSvg ? (
-        <SvgXml xml={xml!} width={size} height={size} />
-      ) : showLetterFallback ? (
+      {Icon ? (
+        <Icon width={size} height={size} />
+      ) : (
         <Text style={[styles.fallback, { color: colors.primary, fontSize: size * 0.55 }]}>
           {providerId.slice(0, 2).toUpperCase()}
         </Text>
-      ) : null}
+      )}
     </View>
   )
 }

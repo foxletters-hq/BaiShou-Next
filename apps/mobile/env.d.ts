@@ -9,13 +9,14 @@ declare module '*.module.css' {
 declare module '*.css'
 
 declare module '*.svg' {
-  /** Metro 静态资源模块 id（与 PNG 相同，供 expo-asset / SvgUri 使用） */
-  const content: number
+  import type { FC } from 'react'
+  import type { SvgProps } from 'react-native-svg'
+  const content: FC<SvgProps>
   export default content
 }
 
 declare module '*.png' {
-  const content: string
+  const content: number
   export default content
 }
 

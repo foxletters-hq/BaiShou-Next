@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   Pressable,
-  useColorScheme,
   LayoutAnimation,
   Platform,
   UIManager
@@ -17,12 +16,10 @@ import Animated, {
   useSharedValue,
   withSpring
 } from 'react-native-reanimated'
-import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons'
-import { SvgXml } from 'react-native-svg'
+import { MaterialIcons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme } from '@baishou/ui/native'
-import { getCachedProviderIconXml, getProviderIconModule } from '@baishou/ui/native'
+import { useNativeTheme, ProviderBrandIcon } from '@baishou/ui/native'
 import {
   reorderDisabledProviders,
   reorderEnabledProviders,
@@ -54,29 +51,34 @@ export interface ProviderSortableListProps {
 
 const ProviderListIcon = React.memo(function ProviderListIcon({
   providerId,
-  size,
-  primaryColor
+  size
 }: {
   providerId: string
   size: number
-  primaryColor: string
 }) {
-  const isDark = useColorScheme() === 'dark'
-  const iconModule = getProviderIconModule(providerId, isDark)
-  const xml = iconModule ? getCachedProviderIconXml(iconModule) : undefined
-  const wrapSize = size + 8
+  return <ProviderBrandIcon providerId={providerId} size={size} />
+})
 
+const ProviderDragHandle = React.memo(function ProviderDragHandle({
+  color
+}: {
+  color: string
+}) {
   return (
-    <View
-      style={[styles.iconWrap, { width: wrapSize, height: wrapSize, borderRadius: wrapSize / 4 }]}
-    >
-      {xml ? (
-        <SvgXml xml={xml} width={size} height={size} />
-      ) : (
-        <Text style={[styles.iconFallback, { color: primaryColor, fontSize: size * 0.55 }]}>
-          {providerId.slice(0, 2).toUpperCase()}
-        </Text>
-      )}
+    <View style={styles.dragHandle} collapsable={false} accessibilityRole="button">
+      <View style={styles.dragGrip} collapsable={false}>
+        {[0, 1].map((column) => (
+          <View key={column} style={styles.dragGripColumn} collapsable={false}>
+            {[0, 1, 2].map((row) => (
+              <View
+                key={row}
+                style={[styles.dragGripDot, { backgroundColor: color }]}
+                collapsable={false}
+              />
+            ))}
+          </View>
+        ))}
+      </View>
     </View>
   )
 })
@@ -174,12 +176,10 @@ const DraggableProviderRow = React.memo(function DraggableProviderRow({
       ]}
     >
       <GestureDetector gesture={panGesture}>
-        <View style={styles.dragHandle} accessibilityRole="button">
-          <MaterialCommunityIcons name="drag-vertical" size={22} color={colors.textTertiary} />
-        </View>
+        <ProviderDragHandle color={colors.textSecondary} />
       </GestureDetector>
       <Pressable style={styles.rowBody} onPress={() => onOpen(item.id)}>
-        <ProviderListIcon providerId={item.id} size={22} primaryColor={colors.primary} />
+        <ProviderListIcon providerId={item.id} size={22} />
         <Text style={[styles.rowName, { color: colors.textPrimary }]} numberOfLines={1}>
           {item.name}
         </Text>
@@ -414,18 +414,33 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'stretch',
     borderRadius: 10,
     marginBottom: ROW_GAP,
-    overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden'
   },
   dragHandle: {
-    width: 36,
+    width: 40,
+    minHeight: ROW_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
-    alignSelf: 'stretch',
     paddingVertical: 12
+  },
+  dragGrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3
+  },
+  dragGripColumn: {
+    gap: 3
+  },
+  dragGripDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    opacity: 0.72
   },
   rowBody: {
     flex: 1,
@@ -433,7 +448,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     paddingVertical: 10,
-    paddingRight: 8
+    paddingRight: 8,
+    borderTopRightRadius: 10,
+    borderBottomRightRadius: 10,
+    overflow: 'hidden'
   },
   rowName: {
     flex: 1,
@@ -450,13 +468,5 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 4,
     borderWidth: StyleSheet.hairlineWidth
-  },
-  iconWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF'
-  },
-  iconFallback: {
-    fontWeight: '700'
   }
 })

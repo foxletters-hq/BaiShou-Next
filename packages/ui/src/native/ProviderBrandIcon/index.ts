@@ -1,8 +1,6 @@
 export * from './ProviderBrandIcon'
 export {
   preloadAllProviderIcons,
-  getCachedProviderIconXml,
-  getProviderIconModule,
-  hasProviderIcon,
-  resolveProviderIconXml
+  getProviderIconComponent,
+  hasProviderIcon
 } from '../../utils/provider-icons.native'

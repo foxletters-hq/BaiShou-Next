@@ -13,11 +13,12 @@ import i18n from 'i18next'
 import { readOnboardingUiLanguage } from '@/src/lib/onboarding-language.util'
 import { getSystemLanguage, resolveAppUiLanguage } from '@/src/lib/device-locale'
 
-import { useNativeTheme, DialogProvider, preloadAllProviderIcons } from '@baishou/ui/native'
+import { useNativeTheme, DialogProvider } from '@baishou/ui/native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { BaishouProvider, useBaishou } from '@/src/providers/BaishouProvider'
 import { IncrementalSyncProvider } from '@/src/providers/IncrementalSyncProvider'
 import { useDiaryEmbedFailureToast } from '@/src/hooks/useDiaryEmbedFailureToast'
+import { useLegacyUpgradeRagToast } from '@/src/hooks/useLegacyUpgradeRagToast'
 import { fadeStackAnimation } from '@/src/navigation/fadeStackAnimation'
 import { NativeAppThemeBridge } from '@/src/providers/NativeAppThemeBridge'
 import { HeroUIThemeBridge } from '@/src/providers/HeroUIThemeBridge'
@@ -34,6 +35,7 @@ function AppContent() {
   const { t } = useTranslation()
   const { dbReady, services } = useBaishou()
   useDiaryEmbedFailureToast()
+  useLegacyUpgradeRagToast()
 
   useEffect(() => {
     if (!dbReady || !services) return
@@ -99,7 +101,6 @@ function AppContent() {
 
 export default function RootLayout() {
   useEffect(() => {
-    preloadAllProviderIcons()
     SplashScreen.hideAsync()
   }, [])
 

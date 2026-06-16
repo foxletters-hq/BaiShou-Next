@@ -11,6 +11,7 @@
     "connect": "node ./scripts/connect-device.mjs",
     "fix": "node ../../scripts/run-with-hint.mjs \"对齐本目录 Expo SDK 55 依赖版本。\" npx expo install --fix",
     "export:android": "expo export --platform android",
+    "build:release": "node ./scripts/build-release-apk.mjs",
     "ios": "expo run:ios",
     "lint": "eslint . --cache",
     "typecheck": "tsc --noEmit"
@@ -81,6 +82,7 @@
     "eslint": "^10.2.0",
     "eslint-plugin-react-hooks": "^7.0.1",
     "prettier": "^3.8.1",
+    "react-native-svg-transformer": "^1.5.3",
     "typescript": "~5.9.2"
   },
   "private": true

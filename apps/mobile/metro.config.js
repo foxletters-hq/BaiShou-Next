@@ -15,6 +15,14 @@ config.resolver.nodeModulesPaths = [
 
 config.resolver.assetExts.push('wasm')
 
+// SVG 编译为 react-native-svg 组件（打进 JS 包），避免 Release 运行时再去读 android_res 资源
+config.transformer = {
+  ...config.transformer,
+  babelTransformerPath: require.resolve('react-native-svg-transformer/expo')
+}
+config.resolver.assetExts = config.resolver.assetExts.filter((ext) => ext !== 'svg')
+config.resolver.sourceExts = [...config.resolver.sourceExts, 'svg']
+
 const originalGetPolyfills = config.serializer.getPolyfills
 config.serializer.getPolyfills = (ctx) => {
   const polyfills = originalGetPolyfills ? originalGetPolyfills(ctx) : []
