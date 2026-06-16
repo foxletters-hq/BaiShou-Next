@@ -374,6 +374,22 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
     return () => window.removeEventListener('baishou:compression-finished', onCompressionFinished)
   }, [sessionId, refreshMessages])
 
+  // 增量同步 / 外部写入会话 JSON 后刷新当前对话
+  useEffect(() => {
+    if (!sessionId || typeof window === 'undefined' || !window.electron) return undefined
+
+    const onSessionFileChanged = () => {
+      if (isStreaming) return
+      void refreshMessages(3)
+    }
+
+    const removeListener = window.electron.ipcRenderer.on(
+      'session:file-changed',
+      onSessionFileChanged
+    )
+    return () => removeListener()
+  }, [sessionId, isStreaming, refreshMessages])
+
   const prevStreamingRef = useRef(isStreaming)
   useEffect(() => {
     if (prevStreamingRef.current && !isStreaming && sessionId) {

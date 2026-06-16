@@ -1,14 +1,59 @@
 import { generateText } from 'ai'
 import { IAIProvider } from '../providers/provider.interface'
 import { SessionRepository } from '@baishou/database'
-import { logger } from '@baishou/shared'
+import { deriveSessionTitleFromUserText, logger } from '@baishou/shared'
 import { wrapLanguageModelWithMiddlewares } from '../middleware/middleware-factory'
 
 export class TitleGeneratorService {
   static onTitleUpdated?: (sessionId: string, newTitle: string) => Promise<void> | void
 
+  private static async commitSessionTitle(
+    sessionRepo: SessionRepository,
+    sessionId: string,
+    cleanTitle: string
+  ): Promise<void> {
+    const sessions = await sessionRepo.findAllSessions()
+    const currentSession = sessions.find((s: { id: string }) => s.id === sessionId)
+    if (!currentSession) return
+
+    await sessionRepo.upsertSession({
+      id: sessionId,
+      title: cleanTitle,
+      vaultName: currentSession.vaultName,
+      assistantId: currentSession.assistantId || undefined,
+      providerId: currentSession.providerId,
+      modelId: currentSession.modelId
+    })
+    logger.info(`[AutoTitler] -> Session(${sessionId}) title updated to: ${cleanTitle}`)
+    if (TitleGeneratorService.onTitleUpdated) {
+      try {
+        await TitleGeneratorService.onTitleUpdated(sessionId, cleanTitle)
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e)
+        logger.warn('[AutoTitler] onTitleUpdated callback failed:', msg)
+      }
+    }
+  }
+
+  /** 未配置命名模型时：直接截取用户首条消息作为标题 */
+  static async applyTitleFromUserText(
+    sessionRepo: SessionRepository,
+    sessionId: string,
+    userText: string
+  ): Promise<void> {
+    const cleanTitle = deriveSessionTitleFromUserText(userText)
+    if (!cleanTitle) return
+
+    try {
+      await TitleGeneratorService.commitSessionTitle(sessionRepo, sessionId, cleanTitle)
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e)
+      logger.warn('[AutoTitler] Failed to apply user-text title silently.', msg)
+    }
+  }
+
   /**
-   * 利用用户当前选择的强力主对话模型，通过生成 API 去取个好听简短的标题。
+   * 利用命名模型通过生成 API 生成简短标题。
    * 完全脱机，不阻塞主会话流返回值。
    */
   static async autoTitle(
@@ -37,37 +82,40 @@ export class TitleGeneratorService {
       })
 
       const cleanTitle = text.trim()
-
       if (!cleanTitle) return
 
-      // 提取最新的 Session 数据进行部分替换
-      const sessions = await sessionRepo.findAllSessions()
-      const currentSession = sessions.find((s: any) => s.id === sessionId)
-
-      if (currentSession) {
-        await sessionRepo.upsertSession({
-          id: sessionId,
-          title: cleanTitle,
-          vaultName: currentSession.vaultName,
-          assistantId: currentSession.assistantId || undefined,
-          providerId: currentSession.providerId,
-          modelId: currentSession.modelId
-        })
-        logger.info(`[AutoTitler] -> Session(${sessionId}) title updated to: ${cleanTitle}`)
-        if (TitleGeneratorService.onTitleUpdated) {
-          try {
-            TitleGeneratorService.onTitleUpdated(sessionId, cleanTitle)
-          } catch (e: any) {
-            logger.warn('[AutoTitler] onTitleUpdated callback failed:', e.message)
-          }
-        }
+      await TitleGeneratorService.commitSessionTitle(sessionRepo, sessionId, cleanTitle)
+    } catch (e: unknown) {
+      if (e instanceof Error && e.name === 'AbortError') {
+        return
       }
-    } catch (e: any) {
-      if (e.name === 'AbortError') {
-        // Ignored silently, user stopped before title generation could finish
-      } else {
-        logger.warn('[AutoTitler] Failed to generate title silently.', e.message)
-      }
+      const msg = e instanceof Error ? e.message : String(e)
+      logger.warn('[AutoTitler] Failed to generate title silently.', msg)
     }
+  }
+
+  static async maybeUpdateSessionTitle(params: {
+    sessionRepo: SessionRepository
+    sessionId: string
+    userText: string
+    namingModelConfigured?: boolean
+    namingProvider?: IAIProvider
+    namingModelId?: string
+  }): Promise<void> {
+    const { sessionRepo, sessionId, userText, namingModelConfigured, namingProvider, namingModelId } =
+      params
+
+    if (namingModelConfigured && namingProvider && namingModelId) {
+      await TitleGeneratorService.autoTitle(
+        namingProvider,
+        namingModelId,
+        sessionRepo,
+        sessionId,
+        userText
+      )
+      return
+    }
+
+    await TitleGeneratorService.applyTitleFromUserText(sessionRepo, sessionId, userText)
   }
 }

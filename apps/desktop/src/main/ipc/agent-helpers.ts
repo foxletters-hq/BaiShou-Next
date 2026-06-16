@@ -25,7 +25,9 @@ import {
   resolveDiaryAppendBlock,
   logger,
   parseDateStr,
-  formatUserCardFromProfile
+  formatUserCardFromProfile,
+  isConfiguredProviderId,
+  isConfiguredDialogueModelId
 } from '@baishou/shared'
 
 function previewDiaryRow(raw: string | null | undefined): string {
@@ -383,12 +385,17 @@ export async function buildStreamConfig(
     diaryAiWritingPrompt: resolveDiaryAiWritingPrompt(diaryTemplateConfig)
   }
 
+  const namingModelConfigured =
+    isConfiguredProviderId(globalModels?.globalNamingProviderId) &&
+    isConfiguredDialogueModelId(globalModels?.globalNamingModelId)
+
   return {
     provider,
     globalModels,
     systemModels: {
       namingProvider,
       namingModelId,
+      namingModelConfigured,
       summaryProvider,
       summaryModelId,
       embeddingProvider,

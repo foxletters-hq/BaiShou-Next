@@ -364,7 +364,10 @@ export class AgentSessionService {
         userMessageId,
         streamError,
         dbHistory,
-        systemPrompt: builtSystemPrompt
+        systemPrompt: builtSystemPrompt,
+        namingModelConfigured: systemModels?.namingModelConfigured,
+        namingProvider: systemModels?.namingProvider,
+        namingModelId: systemModels?.namingModelId
       })
 
       // 7. 向外抛出完成/错误回调（仅一次，避免覆盖真实 API 错误）

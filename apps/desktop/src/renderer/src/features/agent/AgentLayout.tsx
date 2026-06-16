@@ -141,18 +141,30 @@ export const AgentLayout: React.FC = () => {
     loadProfile()
   }, [fetchAssistants, loadConfig, loadProfile])
 
-  // Vault 切换后的后台 resync 完成时，刷新当前工作区的伙伴与会话列表
+  // Vault resync / 增量同步完成后，刷新当前伙伴、会话与用户头像
   useEffect(() => {
     if (typeof window === 'undefined' || !window.electron) return undefined
 
     const onVaultResyncComplete = (event: { type?: string }) => {
       if (event?.type !== 'vault-resync-complete') return
-      restoredNavigationRef.current = false
-      resolvedAssistantIdRef.current = undefined
+
+      const previousAssistantId =
+        urlAssistantId || resolvedAssistantIdRef.current || undefined
+
+      void loadProfile()
       void fetchAssistants().then(() => {
         const store = useAssistantStore.getState()
-        const ast = store.assistants.find((a: any) => a.isDefault) || store.assistants[0]
-        const astId = ast?.id != null ? String(ast.id) : undefined
+        const stillExists =
+          previousAssistantId &&
+          store.assistants.some((a) => String(a.id) === String(previousAssistantId))
+        const fallback =
+          store.assistants.find((a: any) => a.isDefault) || store.assistants[0]
+        const astId = stillExists
+          ? String(previousAssistantId)
+          : fallback?.id != null
+            ? String(fallback.id)
+            : undefined
+
         if (astId) {
           resolvedAssistantIdRef.current = astId
           void loadSessions(true, astId)
@@ -170,7 +182,7 @@ export const AgentLayout: React.FC = () => {
     return () => {
       removeDiaryListener()
     }
-  }, [fetchAssistants, loadSessions])
+  }, [fetchAssistants, loadSessions, loadProfile, urlAssistantId])
 
   const currentAssistant = resolvedAssistantId
     ? assistants.find((a) => String(a.id) === String(resolvedAssistantId)) ||

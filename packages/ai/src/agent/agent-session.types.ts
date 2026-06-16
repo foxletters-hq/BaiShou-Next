@@ -32,6 +32,7 @@ export interface StreamChatOptions {
   systemModels?: {
     namingProvider?: IAIProvider
     namingModelId?: string
+    namingModelConfigured?: boolean
     summaryProvider?: IAIProvider
     summaryModelId?: string
     embeddingProvider?: IAIProvider

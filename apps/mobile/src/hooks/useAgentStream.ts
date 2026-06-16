@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNativeToast, useDialog } from '@baishou/ui/native'
 import { useAgentStore } from '@baishou/store'
 import { reconcileCompressionStateAfterTruncate, truncateSessionAfterOrderIndex } from '@baishou/ai'
-import { isConfiguredDialogueModelId, isConfiguredProviderId } from '@baishou/shared'
+import { isConfiguredDialogueModelId, isConfiguredProviderId, deriveSessionTitleFromUserText } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
 import { saveUserMessage } from '../services/mobile-agent-message.service'
 import { buildInsertSessionInput } from '../utils/session-input.util'
@@ -34,6 +34,7 @@ export function useAgentStream(
   currentModelId: string | null,
   currentAssistant: { id?: string; name?: string } | null,
   onSessionCreated?: (sessionId: string) => void,
+  onSessionListRefresh?: () => void,
   searchMode?: boolean,
   refreshSessionMessages?: (
     sessionId: string,
@@ -464,6 +465,7 @@ export function useAgentStream(
 
       const effectiveSearchMode = sendSearchMode ?? searchModeRef.current ?? false
       let sessionId = currentSessionId
+      const wasNewSession = !sessionId
 
       if (!sessionId) {
         try {
@@ -482,7 +484,7 @@ export function useAgentStream(
               {
                 id: newSessionId,
                 title:
-                  sessionTitleSource.substring(0, 20) ||
+                  deriveSessionTitleFromUserText(sessionTitleSource) ||
                   t('agent.sessions.default_title', '新对话'),
                 assistantId: currentAssistant?.id,
                 providerId: currentProviderId || undefined,
@@ -520,6 +522,10 @@ export function useAgentStream(
       if ('error' in saveResult) {
         toast.showError(saveResult.error)
         return
+      }
+
+      if (wasNewSession) {
+        onSessionListRefresh?.()
       }
 
       interruptActiveStream({ keepStreamingFlag: true })
@@ -594,6 +600,7 @@ export function useAgentStream(
       addMessage,
       setLoading,
       onSessionCreated,
+      onSessionListRefresh,
       finishStream,
       resetStreamingBuffers,
       interruptActiveStream,

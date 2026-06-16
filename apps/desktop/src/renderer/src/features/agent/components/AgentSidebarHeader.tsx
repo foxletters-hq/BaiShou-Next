@@ -28,6 +28,7 @@ const AssistantAvatar: React.FC<AssistantAvatarProps> = ({ assistant, size }) =>
   return (
     <div style={shellStyle}>
       <img
+        key={assistant.avatarPath ?? assistant.id}
         src={resolveWebAssistantAvatarSrc(assistant.avatarPath)}
         alt={assistant.name}
         style={{

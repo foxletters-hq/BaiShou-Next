@@ -30,6 +30,9 @@ export interface PersistResultParams {
   streamError: any
   dbHistory?: any[]
   systemPrompt?: string
+  namingModelConfigured?: boolean
+  namingProvider?: IAIProvider
+  namingModelId?: string
 }
 
 /**
@@ -241,13 +244,14 @@ export async function persistResult(params: PersistResultParams): Promise<{
       await new Promise((r) => setTimeout(r, 500))
       if (userOrderIndex <= 2) {
         const { TitleGeneratorService } = await import('./title-generator.service')
-        await TitleGeneratorService.autoTitle(
-          provider,
-          modelId,
+        await TitleGeneratorService.maybeUpdateSessionTitle({
           sessionRepo,
           sessionId,
-          rawUserText
-        )
+          userText: rawUserText,
+          namingModelConfigured: params.namingModelConfigured,
+          namingProvider: params.namingProvider,
+          namingModelId: params.namingModelId
+        })
       }
     })()
   }

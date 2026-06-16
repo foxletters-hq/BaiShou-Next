@@ -146,6 +146,10 @@ export const AgentScreen = () => {
     syncWithSession(currentSessionId)
   }, [currentSessionId, syncWithSession])
 
+  const refreshSessionList = useCallback(() => {
+    void loadSessions(true, currentAssistant?.id)
+  }, [loadSessions, currentAssistant?.id])
+
   useAgentNavigationPersistence({
     dbReady,
     vaultSwitching,
@@ -186,6 +190,7 @@ export const AgentScreen = () => {
     currentModelId,
     currentAssistant,
     setCurrentSessionId,
+    refreshSessionList,
     searchMode,
     refreshSessionMessages
   )
@@ -262,6 +267,7 @@ export const AgentScreen = () => {
     const overlaysOpen = drawerOpen || showShortcutSheet || showRecallSheet
     if (overlaysOpen) {
       resetKeyboardInset()
+      inputBarRef.current?.blur()
       Keyboard.dismiss()
     }
   }, [drawerOpen, showShortcutSheet, showRecallSheet, resetKeyboardInset])
@@ -486,6 +492,7 @@ export const AgentScreen = () => {
   const prevIsStreamingRef = useRef(isStreaming)
   useEffect(() => {
     if (prevIsStreamingRef.current && !isStreaming) {
+      refreshSessionList()
       if (ttsModeRef.current === 'always' && chatMessagesRef.current.length > 0) {
         const lastMsg = chatMessagesRef.current[chatMessagesRef.current.length - 1]
         if (lastMsg && lastMsg.role === 'assistant' && lastMsg.content) {
@@ -494,7 +501,7 @@ export const AgentScreen = () => {
       }
     }
     prevIsStreamingRef.current = isStreaming
-  }, [isStreaming, handleTtsReadAloud])
+  }, [isStreaming, refreshSessionList, handleTtsReadAloud])
 
   const [contextDialogState, setContextDialogState] = useState<{
     visible: boolean
@@ -866,6 +873,8 @@ export const AgentScreen = () => {
             assistantId: currentAssistant?.id,
             providerId: currentProviderId || undefined,
             modelId: currentModelId || undefined
+          }).then((sessionId) => {
+            if (sessionId) refreshSessionList()
           })
         }}
         onShowAssistantPicker={() => setShowAssistantPicker(true)}

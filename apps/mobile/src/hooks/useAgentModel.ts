@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useFocusEffect } from '@react-navigation/native'
 import { ensureDefaultLatteAssistant } from '@baishou/core-mobile'
 import i18n from 'i18next'
 import {
@@ -66,6 +67,24 @@ export function useAgentModel(_options: UseAgentModelOptions = {}) {
   useEffect(() => {
     applyResolvedModel(currentAssistant, globalModels)
   }, [currentAssistant, globalModels, applyResolvedModel])
+
+  /** 从设置页返回时重载 global_models（桌面端由 settings store 响应式同步） */
+  const reloadGlobalModels = useCallback(async () => {
+    if (!dbReady || !services) return
+    try {
+      const nextGlobalModels =
+        (await services.settingsManager.get<GlobalModelsConfig>('global_models')) || null
+      setGlobalModels(nextGlobalModels)
+    } catch (e) {
+      console.warn('Failed to reload global models', e)
+    }
+  }, [dbReady, services])
+
+  useFocusEffect(
+    useCallback(() => {
+      void reloadGlobalModels()
+    }, [reloadGlobalModels])
+  )
 
   // 加载默认助手和全局模型；工作区切换后随 vaultRevision 重载（对齐桌面 AgentLayout）
   useEffect(() => {
