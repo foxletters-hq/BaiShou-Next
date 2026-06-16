@@ -85,10 +85,16 @@ export const GitManagementPage: React.FC = () => {
           api?.getWorkingDiff(filePath, staged) ?? { path: filePath, hunks: [] }
         }
         onStageFile={async (filePath) => {
-          await api?.stageFile(filePath)
+          const result = await api?.stageFile(filePath)
+          if (result && !result.success) {
+            throw new Error(result.message || t('version_control.stage_failed', '暂存失败'))
+          }
         }}
         onStageAll={async () => {
-          await api?.stageAll()
+          const result = await api?.stageAll()
+          if (result && !result.success) {
+            throw new Error(result.message || t('version_control.stage_failed', '暂存失败'))
+          }
         }}
         onUnstageFile={async (filePath) => {
           await api?.unstageFile(filePath)

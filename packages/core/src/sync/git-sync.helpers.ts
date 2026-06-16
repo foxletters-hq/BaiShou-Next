@@ -108,12 +108,20 @@ export function isVaultLegacyGitPath(filePath: string): boolean {
   )
 }
 
+export function isIncrementalSyncConflictBackupPath(filePath: string): boolean {
+  const base = normalizeGitPath(filePath).split('/').pop() ?? filePath
+  return /\.conflict-\d+/.test(base)
+}
+
 export function isExcludedFromVersionControl(filePath: string): boolean {
   const normalized = normalizeGitPath(filePath)
   if (isBaishouManagedPath(normalized)) {
     return true
   }
   if (isVaultLegacyGitPath(normalized)) {
+    return true
+  }
+  if (isIncrementalSyncConflictBackupPath(normalized)) {
     return true
   }
   if (

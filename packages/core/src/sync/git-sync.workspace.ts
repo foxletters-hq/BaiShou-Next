@@ -54,10 +54,21 @@ export abstract class GitSyncWorkspaceMixin extends GitSyncInitMixin {
 
   async stageFile(filePath: string): Promise<void> {
     return this._withGitLock(async () => {
+      if (this.isExcludedFromVersionControl(filePath)) {
+        throw new Error('该文件为系统或冲突备份，不参与版本管理')
+      }
       const git = await this.ensureGit()
       await this.maintainGitIndex(git)
       logger.info(`[GitSync] 暂存文件: ${filePath}`)
-      await git.add(filePath)
+      try {
+        await git.add(filePath)
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err)
+        if (msg.includes('did not match any files')) {
+          throw new Error('文件不存在或路径无效，无法暂存')
+        }
+        throw err
+      }
     })
   }
 
