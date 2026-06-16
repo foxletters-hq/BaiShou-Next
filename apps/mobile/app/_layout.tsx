@@ -6,7 +6,6 @@ import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import 'react-native-reanimated'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
-import * as SplashScreen from 'expo-splash-screen'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import i18n from 'i18next'
@@ -19,11 +18,10 @@ import { BaishouProvider, useBaishou } from '@/src/providers/BaishouProvider'
 import { IncrementalSyncProvider } from '@/src/providers/IncrementalSyncProvider'
 import { useDiaryEmbedFailureToast } from '@/src/hooks/useDiaryEmbedFailureToast'
 import { useLegacyUpgradeRagToast } from '@/src/hooks/useLegacyUpgradeRagToast'
+import { FlutterLegacyMigrationGate } from '@/src/components/FlutterLegacyMigrationGate'
 import { fadeStackAnimation } from '@/src/navigation/fadeStackAnimation'
 import { NativeAppThemeBridge } from '@/src/providers/NativeAppThemeBridge'
 import { HeroUIThemeBridge } from '@/src/providers/HeroUIThemeBridge'
-
-SplashScreen.preventAutoHideAsync()
 
 export const unstable_settings = {
   // 深链进入子页面时，栈底保留 tabs 而非引导页
@@ -100,19 +98,17 @@ function AppContent() {
 }
 
 export default function RootLayout() {
-  useEffect(() => {
-    SplashScreen.hideAsync()
-  }, [])
-
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
       <SafeAreaProvider>
         <BaishouProvider>
           <NativeAppThemeBridge>
             <HeroUIThemeBridge>
               <DialogProvider>
                 <IncrementalSyncProvider>
-                  <AppContent />
+                  <FlutterLegacyMigrationGate>
+                    <AppContent />
+                  </FlutterLegacyMigrationGate>
                 </IncrementalSyncProvider>
               </DialogProvider>
             </HeroUIThemeBridge>

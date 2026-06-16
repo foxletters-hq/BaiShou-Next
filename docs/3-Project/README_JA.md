@@ -64,7 +64,7 @@ Latte のキャラクター設定：[简体中文](../../Latte/角色设定.md) 
 
 ##### 要件
 
-- Node.js ≥ 20
+- Node.js ≥ 20.19.4
 - pnpm 10（ルート `package.json` の `packageManager` を参照）
 
 ##### 1. クローン
@@ -79,8 +79,6 @@ cd BaiShou-Next
 ```bash
 pnpm install
 ```
-
-Electron のダウンロードに失敗した場合は [pnpm-electron-setup.md](../pnpm-electron-setup.md)（中国語）を参照。
 
 ##### 3. 開発
 

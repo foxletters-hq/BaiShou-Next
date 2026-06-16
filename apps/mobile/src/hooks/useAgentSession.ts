@@ -71,6 +71,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
     loadedFromEndRef,
     fetchHasMoreRef
   }
+  const lastVaultRevisionRef = useRef(vaultRevision)
 
   const resetSessionState = useCallback(() => {
     setCurrentSessionId(null)
@@ -359,6 +360,16 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
       resetSessionState()
     }
   }, [vaultSwitching, resetSessionState])
+
+  // 增量同步 / vault resync 后刷新当前对话消息
+  useEffect(() => {
+    if (lastVaultRevisionRef.current === vaultRevision) return
+    lastVaultRevisionRef.current = vaultRevision
+
+    if (!currentSessionId || vaultSwitching) return
+
+    void refreshSessionMessages(currentSessionId, { preserveWindow: true })
+  }, [vaultRevision, currentSessionId, vaultSwitching, refreshSessionMessages])
 
   return {
     currentSessionId,

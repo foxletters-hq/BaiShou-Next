@@ -10,7 +10,7 @@ import {
   type WeatherId
 } from '@baishou/shared'
 import { logger } from '@baishou/shared'
-import { useNativeTheme, useDialog } from '@baishou/ui/native'
+import { useNativeTheme } from '@baishou/ui/native'
 import { useStoragePermission } from '../../hooks/useStoragePermission'
 import { useBaishou } from '../../providers/BaishouProvider'
 import { DiaryAppBar } from './components/DiaryAppBar'
@@ -21,7 +21,6 @@ import { useIncrementalSync } from '../../providers/IncrementalSyncProvider'
 
 const STORAGE_KEYS = {
   searchQuery: 'diary_searchQuery',
-  searchMode: 'diary_searchMode',
   selectedMonth: 'diary_selectedMonth',
   filterWeathers: 'diary_filterWeathers',
   filterFavorite: 'diary_filterFavorite',
@@ -55,7 +54,6 @@ function parseFilterWeathers(saved: string | null): string[] {
 export const DiaryScreen: React.FC = () => {
   const { t } = useTranslation()
   const { colors, isDark } = useNativeTheme()
-  const dialog = useDialog()
   const { services, dbReady, vaultRevision, vaultSwitching, storageIndexing } = useBaishou()
   const router = useRouter()
   const {
@@ -70,8 +68,6 @@ export const DiaryScreen: React.FC = () => {
   } = useStoragePermission()
 
   const [searchQuery, setSearchQuery] = useState('')
-  const [searchMode, setSearchMode] = useState<'semantic' | 'text'>('text')
-  const [semanticAvailable, setSemanticAvailable] = useState(false)
   const [selectedMonth, setSelectedMonth] = useState<Date | null>(null)
   const [filterWeathers, setFilterWeathers] = useState<string[]>([])
   const [filterFavorite, setFilterFavorite] = useState(false)
@@ -94,70 +90,21 @@ export const DiaryScreen: React.FC = () => {
     }, [refreshConfigured])
   )
 
-  const refreshSemanticAvailability = useCallback(async () => {
-    if (!services?.settingsManager) return
-    const ragConfig =
-      (await services.settingsManager.get<{ ragEnabled?: boolean }>('rag_config')) || {}
-    const globalModels =
-      (await services.settingsManager.get<{
-        globalEmbeddingProviderId?: string
-        globalEmbeddingModelId?: string
-      }>('global_models')) || {}
-    const available =
-      ragConfig.ragEnabled !== false &&
-      Boolean(globalModels.globalEmbeddingProviderId && globalModels.globalEmbeddingModelId)
-    setSemanticAvailable(available)
-    if (!available && searchMode === 'semantic') {
-      setSearchMode('text')
-    }
-  }, [services?.settingsManager, searchMode])
-
-  useFocusEffect(
-    useCallback(() => {
-      void refreshSemanticAvailability()
-    }, [refreshSemanticAvailability])
-  )
-
   useEffect(() => {
-    if (!dbReady || !services?.settingsManager) return
+    if (!dbReady) return
     const restoreState = async () => {
       try {
-        const [
-          savedQuery,
-          savedMode,
-          savedMonth,
-          savedWeathers,
-          savedFavorite,
-          savedPage,
-          savedPageSize
-        ] = await Promise.all([
-          AsyncStorage.getItem(STORAGE_KEYS.searchQuery),
-          AsyncStorage.getItem(STORAGE_KEYS.searchMode),
-          AsyncStorage.getItem(STORAGE_KEYS.selectedMonth),
-          AsyncStorage.getItem(STORAGE_KEYS.filterWeathers),
-          AsyncStorage.getItem(STORAGE_KEYS.filterFavorite),
-          AsyncStorage.getItem(STORAGE_KEYS.currentPage),
-          AsyncStorage.getItem(STORAGE_KEYS.pageSize)
-        ])
-
-        const ragConfig =
-          (await services.settingsManager.get<{ ragEnabled?: boolean }>('rag_config')) || {}
-        const globalModels =
-          (await services.settingsManager.get<{
-            globalEmbeddingProviderId?: string
-            globalEmbeddingModelId?: string
-          }>('global_models')) || {}
-        const available =
-          ragConfig.ragEnabled !== false &&
-          Boolean(globalModels.globalEmbeddingProviderId && globalModels.globalEmbeddingModelId)
-        setSemanticAvailable(available)
+        const [savedQuery, savedMonth, savedWeathers, savedFavorite, savedPage, savedPageSize] =
+          await Promise.all([
+            AsyncStorage.getItem(STORAGE_KEYS.searchQuery),
+            AsyncStorage.getItem(STORAGE_KEYS.selectedMonth),
+            AsyncStorage.getItem(STORAGE_KEYS.filterWeathers),
+            AsyncStorage.getItem(STORAGE_KEYS.filterFavorite),
+            AsyncStorage.getItem(STORAGE_KEYS.currentPage),
+            AsyncStorage.getItem(STORAGE_KEYS.pageSize)
+          ])
 
         if (savedQuery != null) setSearchQuery(savedQuery)
-        if (savedMode === 'semantic' && available) {
-          setSearchMode('semantic')
-        } else {
-          setSearchMode('text')
-        }
 
         const month = parseSavedMonth(savedMonth)
         if (savedMonth != null) setSelectedMonth(month)
@@ -184,7 +131,7 @@ export const DiaryScreen: React.FC = () => {
     }
 
     void restoreState()
-  }, [dbReady, services?.settingsManager])
+  }, [dbReady])
 
   useEffect(() => {
     if (!isStateRestored) return
@@ -192,13 +139,6 @@ export const DiaryScreen: React.FC = () => {
       logger.error('保存搜索查询失败', e)
     )
   }, [searchQuery, isStateRestored])
-
-  useEffect(() => {
-    if (!isStateRestored) return
-    AsyncStorage.setItem(STORAGE_KEYS.searchMode, searchMode).catch((e) =>
-      logger.error('保存搜索模式失败', e)
-    )
-  }, [searchMode, isStateRestored])
 
   useEffect(() => {
     if (!isStateRestored) return
@@ -238,45 +178,32 @@ export const DiaryScreen: React.FC = () => {
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [selectedMonth, searchQuery, searchMode, filterWeathers, filterFavorite])
+  }, [selectedMonth, searchQuery, filterWeathers, filterFavorite])
 
   const diaryQuery: DiaryPageQuery = useMemo(
     () => ({
       selectedMonth,
       searchQuery,
-      searchMode,
       filterWeathers,
       filterFavorite,
       page: currentPage,
       pageSize
     }),
-    [selectedMonth, searchQuery, searchMode, filterWeathers, filterFavorite, currentPage, pageSize]
+    [selectedMonth, searchQuery, filterWeathers, filterFavorite, currentPage, pageSize]
   )
 
   const { entries, totalCount, loading, loadEntries } = useDiaryData(
     dbReady && !vaultSwitching ? services?.diaryService : undefined,
     diaryQuery,
-    semanticAvailable ? services?.ragService : undefined,
     {
       ready: Boolean(dbReady && services?.diaryService && storageReady && !vaultSwitching),
       vaultRevision
     }
   )
 
-  const handleDiarySearch = useCallback((query: string, mode: 'semantic' | 'text') => {
+  const handleDiarySearch = useCallback((query: string) => {
     setSearchQuery(query)
-    setSearchMode(mode)
   }, [])
-
-  const handleSemanticUnavailable = useCallback(async () => {
-    const goConfigure = await dialog.confirm(t('settings.rag_semantic_unavailable_message'), {
-      title: t('settings.rag_semantic_unavailable_title'),
-      confirmText: t('settings.rag_go_configure')
-    })
-    if (goConfigure) {
-      router.push('/settings/rag')
-    }
-  }, [dialog, router, t])
 
   const handleGoToEditor = useCallback(
     (id: number) => {
@@ -349,8 +276,7 @@ export const DiaryScreen: React.FC = () => {
         weather: e.weather,
         mood: e.mood,
         location: e.location,
-        isFavorite: e.isFavorite,
-        matchSimilarity: e.matchSimilarity
+        isFavorite: e.isFavorite
       }
     })
   }, [entries])
@@ -419,10 +345,7 @@ export const DiaryScreen: React.FC = () => {
         <View style={[styles.container, { backgroundColor: colors.bgApp }]}>
           <DiaryAppBar
             searchQuery={searchQuery}
-            searchMode={searchMode}
             onSearch={handleDiarySearch}
-            semanticAvailable={semanticAvailable}
-            onSemanticUnavailable={() => void handleSemanticUnavailable()}
             selectedMonth={selectedMonth}
             onMonthChange={setSelectedMonth}
             filterWeathers={filterWeathers}

@@ -64,7 +64,7 @@
 
 ##### 環境要求
 
-- Node.js ≥ 20
+- Node.js ≥ 20.19.4
 - pnpm 10（見根目錄 `packageManager` 欄位）
 
 ##### 1. 克隆倉庫
@@ -79,8 +79,6 @@ cd BaiShou-Next
 ```bash
 pnpm install
 ```
-
-若 Electron 下載失敗，可參考 [pnpm-electron-setup.md](../pnpm-electron-setup.md)（簡體中文）。
 
 ##### 3. 開發
 

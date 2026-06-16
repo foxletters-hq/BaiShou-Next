@@ -1,5 +1,5 @@
 import type { IEmbeddingCallback } from '@baishou/core-mobile'
-import { logger } from '@baishou/shared'
+import { isRagMemoryEnabled, logger } from '@baishou/shared'
 
 import { embedDiaryEntry, type MobileRagServiceDeps } from './mobile-rag.service'
 
@@ -43,6 +43,9 @@ const mobileDiaryEmbeddingCallback: IEmbeddingCallback = {
       })
     } catch (e) {
       logger.warn('[MobileDiaryEmbed] RAG 嵌入失败', e as Error)
+      const ragConfig =
+        (await deps.settingsManager.get<{ ragEnabled?: boolean }>('rag_config')) || {}
+      if (!isRagMemoryEnabled(ragConfig)) return
       notifyDiaryEmbedFailure()
     }
   },

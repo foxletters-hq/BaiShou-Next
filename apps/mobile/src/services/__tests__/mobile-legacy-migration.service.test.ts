@@ -5,7 +5,9 @@ vi.mock('react-native', () => ({
 }))
 
 vi.mock('expo-baishou-server', () => ({
-  getLegacyFlutterStorageRoots: () => []
+  getLegacyFlutterStorageRoots: () => [
+    '/data/user/0/com.baishou.baishou/app_flutter/BaiShou_Root'
+  ]
 }))
 
 vi.mock('../storage-permission.service', () => ({
@@ -22,23 +24,19 @@ describe('mobile-legacy-migration.service', () => {
     vi.resetModules()
   })
 
-  it('resolveMobileMigrationTargetRoot prefers external root on android when permitted', async () => {
+  it('resolveFlutterLegacyMigrationTargetRoot uses external BaiShou_Root on android', async () => {
+    const { resolveFlutterLegacyMigrationTargetRoot } = await import(
+      '../mobile-legacy-migration.service'
+    )
+    expect(resolveFlutterLegacyMigrationTargetRoot()).toBe(
+      'file:///storage/emulated/0/BaiShou_Root'
+    )
+  })
+
+  it('resolveMobileMigrationTargetRoot returns external root on android', async () => {
     const { resolveMobileMigrationTargetRoot } = await import('../mobile-legacy-migration.service')
     const target = await resolveMobileMigrationTargetRoot(async () => 'file:///unused')
     expect(target).toBe('file:///storage/emulated/0/BaiShou_Root')
-  })
-
-  it('resolveMobileMigrationTargetRoot uses flutter sandbox when storage permission is missing', async () => {
-    vi.doMock('../storage-permission.service', () => ({
-      EXTERNAL_STORAGE_ROOT: 'file:///storage/emulated/0/BaiShou_Root',
-      hasStoragePermission: vi.fn(async () => false)
-    }))
-    vi.doMock('expo-baishou-server', () => ({
-      getLegacyFlutterStorageRoots: () => ['/data/user/0/com.baishou.baishou/app_flutter/BaiShou_Root']
-    }))
-    const { resolveMobileMigrationTargetRoot } = await import('../mobile-legacy-migration.service')
-    const target = await resolveMobileMigrationTargetRoot(async () => 'file:///unused')
-    expect(target).toBe('file:///data/user/0/com.baishou.baishou/app_flutter/BaiShou_Root')
   })
 
   it('resolveIosFlutterPreferencesPlistPath derives Library/Preferences path from Documents', async () => {

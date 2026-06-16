@@ -47,19 +47,29 @@ export function toFileUri(uriOrPath: string): string {
   return `file:///${path}`
 }
 
+function isAppSandboxPath(uriOrPath: string): boolean {
+  const p = normalizeExternalStoragePath(uriOrPath)
+  return p.includes('/data/user/') || p.includes('/data/data/')
+}
+
 /**
  * 是否必须使用原生 File API（勿用 expo-file-system）
- * 用路径内容判断，避免 Platform / file:// 边界情况漏判
+ * 旧版 Flutter 默认路径 app_flutter/BaiShou_Root 仍在应用沙盒内，须走 Expo FS。
  */
 export function isExternalStoragePath(uriOrPath: string): boolean {
   if (Platform.OS !== 'android') return false
-  const p = stripFileScheme(uriOrPath)
+  const p = normalizeExternalStoragePath(uriOrPath)
+  if (isAppSandboxPath(p)) return false
   return (
-    p.includes('BaiShou_Root') ||
     p.startsWith('/storage/') ||
     p.startsWith('/sdcard/') ||
     p.includes('/emulated/0/')
   )
+}
+
+/** 访问该路径是否需要 MANAGE_EXTERNAL_STORAGE / WRITE_EXTERNAL_STORAGE */
+export function requiresAllFilesAccessForPath(uriOrPath: string): boolean {
+  return isExternalStoragePath(uriOrPath)
 }
 
 function ensureNativeModule(): void {

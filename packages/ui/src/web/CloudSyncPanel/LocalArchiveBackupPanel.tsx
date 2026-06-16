@@ -51,7 +51,7 @@ export const LocalArchiveBackupPanel: React.FC<LocalArchiveBackupPanelProps> = (
       setTimeout(() => window.location.reload(), 1500)
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
-      toast.showError(t('settings.restore_failed', '恢复失败：') + message)
+      toast.showError(t('settings.restore_failed', { error: message }))
     } finally {
       if (!willReload) setIsImporting(false)
     }

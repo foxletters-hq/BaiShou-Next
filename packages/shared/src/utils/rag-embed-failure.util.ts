@@ -1,5 +1,11 @@
 import type { RagConfig } from '../types/settings.types'
 
+export function isRagMemoryEnabled(
+  config?: Pick<RagConfig, 'ragEnabled'> | null
+): boolean {
+  return config?.ragEnabled !== false
+}
+
 export function hasRagDiaryEmbedFailure(
   config?: Pick<RagConfig, 'lastDiaryEmbedFailureAt'> | null
 ): boolean {

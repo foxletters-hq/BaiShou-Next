@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Platform } from 'react-native'
 import type { IFileSystem, IStoragePathService } from '@baishou/core-mobile'
+import { sanitizeVaultDirectoryName } from '@baishou/core-mobile'
 import { getAppDocumentDirectory } from './mobile-app-paths'
 import {
   EXTERNAL_STORAGE_ROOT,
@@ -9,8 +10,11 @@ import {
   openAllFilesAccessSettings as openAllFilesAccessSettingsPage,
   requestStoragePermission
 } from './storage-permission.service'
-import { sanitizeVaultDirectoryName } from '@baishou/core-mobile'
-import { normalizeExternalStoragePath, toFileUri } from './android-external-fs'
+import {
+  normalizeExternalStoragePath,
+  requiresAllFilesAccessForPath,
+  toFileUri
+} from './android-external-fs'
 
 export { EXTERNAL_STORAGE_ROOT }
 
@@ -49,10 +53,15 @@ export class MobileStoragePathService implements IStoragePathService {
    */
   public async applyExternalRootWhenPermitted(): Promise<boolean> {
     if (Platform.OS !== 'android') return false
-    if (!(await hasStoragePermission())) return false
 
     const existing = await this.getCustomRootPath()
     if (existing?.trim()) {
+      if (
+        requiresAllFilesAccessForPath(existing) &&
+        !(await hasStoragePermission())
+      ) {
+        return false
+      }
       try {
         await this.ensureWritableDirectory(existing)
         return true
@@ -61,6 +70,8 @@ export class MobileStoragePathService implements IStoragePathService {
         await AsyncStorage.removeItem(this.customRootKey)
       }
     }
+
+    if (!(await hasStoragePermission())) return false
 
     try {
       await this.ensureWritableDirectory(EXTERNAL_STORAGE_ROOT)
@@ -106,18 +117,24 @@ export class MobileStoragePathService implements IStoragePathService {
 
   public async getRootDirectory(): Promise<string> {
     if (Platform.OS === 'android') {
-      if (!(await hasStoragePermission())) {
-        throw new ExternalStorageRequiredError()
-      }
-
       const customPath = await this.getCustomRootPath()
       if (customPath?.trim()) {
+        if (
+          requiresAllFilesAccessForPath(customPath) &&
+          !(await hasStoragePermission())
+        ) {
+          throw new ExternalStorageRequiredError()
+        }
         try {
           return await this.ensureWritableDirectory(customPath)
         } catch (e) {
           console.warn(`StoragePathService: Custom path ${customPath} inaccessible.`, e)
           await AsyncStorage.removeItem(this.customRootKey)
         }
+      }
+
+      if (!(await hasStoragePermission())) {
+        throw new ExternalStorageRequiredError()
       }
 
       const root = await this.ensureWritableDirectory(EXTERNAL_STORAGE_ROOT)

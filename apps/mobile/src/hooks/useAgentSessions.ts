@@ -10,7 +10,7 @@ const SESSION_LIST_REFRESH_DEBOUNCE_MS = 300
 
 export function useAgentSessions(activeAssistantId: string | undefined) {
   const { t } = useTranslation()
-  const { services, dbReady } = useBaishou()
+  const { services, dbReady, vaultRevision } = useBaishou()
 
   const [sessions, setSessions] = useState<AgentSession[]>([])
   const [hasMoreSessions, setHasMoreSessions] = useState(false)
@@ -20,6 +20,7 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
   const lastLoadRequestId = useRef(0)
   const assistantIdRef = useRef<string | undefined>(activeAssistantId)
   const sessionsLoadedFromDbRef = useRef(0)
+  const lastVaultRevisionRef = useRef(vaultRevision)
 
   useEffect(() => {
     assistantIdRef.current = activeAssistantId
@@ -138,6 +139,21 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
 
     return () => clearTimeout(timer)
   }, [activeAssistantId, loadSessions])
+
+  // 增量同步 / vault resync 完成后刷新会话列表（对齐桌面 AgentLayout vault-resync-complete）
+  useEffect(() => {
+    if (lastVaultRevisionRef.current === vaultRevision) return
+    lastVaultRevisionRef.current = vaultRevision
+
+    if (!activeAssistantId) return
+
+    const timer = setTimeout(() => {
+      sessionsLoadedFromDbRef.current = 0
+      void loadSessions(true, activeAssistantId)
+    }, SESSION_LIST_REFRESH_DEBOUNCE_MS)
+
+    return () => clearTimeout(timer)
+  }, [vaultRevision, activeAssistantId, loadSessions])
 
   return {
     sessions,

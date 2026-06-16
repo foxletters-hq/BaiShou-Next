@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  deriveSessionTitleFromUserText,
-  SESSION_TITLE_FROM_USER_TEXT_MAX_LENGTH
-} from '../session-title.util'
+import { deriveSessionTitleFromUserText } from '../session-title.util'
 
 describe('deriveSessionTitleFromUserText', () => {
   it('returns empty string for blank input', () => {

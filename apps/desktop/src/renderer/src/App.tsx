@@ -24,7 +24,7 @@ import {
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSettingsStore, useSyncStore } from '@baishou/store'
-import { i18n } from '@baishou/shared'
+import { i18n, isRagMemoryEnabled } from '@baishou/shared'
 import { TitleBar } from './components/TitleBar'
 import { useZoom } from './hooks/useZoom'
 import { useLegacyUpgradeRagToast } from './hooks/useLegacyUpgradeRagToast'
@@ -76,6 +76,9 @@ const DiaryEmbedFailureNotifier = () => {
 
     const unsubscribe = api.diary.onSyncEvent((event: { type?: string }) => {
       if (event?.type !== 'embed-failed') return
+
+      const ragConfig = useSettingsStore.getState().ragConfig
+      if (!isRagMemoryEnabled(ragConfig)) return
 
       const now = Date.now()
       if (now - lastShownAtRef.current < DIARY_EMBED_FAILURE_TOAST_DEBOUNCE_MS) return

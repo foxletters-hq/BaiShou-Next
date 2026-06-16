@@ -64,7 +64,7 @@
 
 ##### 环境要求
 
-- Node.js ≥ 20
+- Node.js ≥ 20.19.4
 - pnpm 10（见根目录 `packageManager` 字段）
 
 ##### 1. 克隆仓库
@@ -81,8 +81,6 @@ pnpm install
 ```
 
 查看常用命令说明：`pnpm commands`（移动端：`pnpm commands:mobile`）。
-
-国内网络若 Electron 下载失败，可参考 [docs/pnpm-electron-setup.md](./docs/pnpm-electron-setup.md)。
 
 ##### 3. 开发
 

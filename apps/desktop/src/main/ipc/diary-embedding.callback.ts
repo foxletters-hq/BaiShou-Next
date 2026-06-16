@@ -2,6 +2,7 @@ import { BrowserWindow } from 'electron'
 import type { IEmbeddingCallback } from '@baishou/core-desktop'
 import {
   diaryDateToSourceCreatedSeconds,
+  isRagMemoryEnabled,
   markRagDiaryEmbedFailure,
   clearRagDiaryEmbedFailure,
   hasRagDiaryEmbedFailure
@@ -16,6 +17,7 @@ function broadcastDiaryEmbedFailed(): void {
 async function persistDiaryEmbedFailure(): Promise<void> {
   const { settingsManager } = await import('./settings.ipc')
   const ragConfig = (await settingsManager.get<any>('rag_config')) || {}
+  if (!isRagMemoryEnabled(ragConfig)) return
   await settingsManager.set('rag_config', markRagDiaryEmbedFailure(ragConfig))
   broadcastDiaryEmbedFailed()
 }
@@ -35,12 +37,11 @@ export const embeddingCallback: IEmbeddingCallback = {
     try {
       const { settingsManager } = await import('./settings.ipc')
       const ragConfig = (await settingsManager.get<any>('rag_config')) || {}
-      const ragEnabled = ragConfig.ragEnabled ?? true
 
       const { getEmbeddingService } = await import('./rag.ipc')
       const embeddingService = getEmbeddingService()
 
-      if (!ragEnabled || !embeddingService.isConfigured) {
+      if (!isRagMemoryEnabled(ragConfig) || !embeddingService.isConfigured) {
         return
       }
 

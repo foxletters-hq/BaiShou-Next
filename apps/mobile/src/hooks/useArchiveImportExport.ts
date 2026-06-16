@@ -16,9 +16,13 @@ export function useArchiveImportExport() {
       toast.showError(t('storage.service_unavailable', '归档服务未就绪'))
       return
     }
-    const zipPath = await services.archiveService.exportToUserDevice()
-    if (zipPath) {
-      toast.showSuccess(t('settings.export_success_desc', { path: zipPath }))
+
+    try {
+      await services.archiveService.exportToUserDevice()
+      toast.showSuccess(t('settings.export_success', '导出成功'))
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e)
+      toast.showError(t('settings.export_failed', { error: message }))
     }
   }, [dbReady, services, t, toast])
 

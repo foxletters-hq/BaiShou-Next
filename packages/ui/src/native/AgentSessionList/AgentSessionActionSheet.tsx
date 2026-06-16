@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react'
-import { View, Text, Pressable, StyleSheet } from 'react-native'
+import { Modal, View, Text, Pressable, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { useDialog } from '../Dialog'
@@ -86,76 +86,83 @@ export const AgentSessionActionSheet: React.FC<AgentSessionActionSheetProps> = (
   if (options.length === 0) return null
 
   return (
-    <View style={styles.root} pointerEvents="box-none">
-      <Pressable
-        style={[StyleSheet.absoluteFill, styles.backdrop]}
-        onPress={onClose}
-        accessibilityRole="button"
-        accessibilityLabel={t('common.cancel', '取消')}
-      />
-      <View
-        style={[
-          styles.sheet,
-          {
-            backgroundColor: colors.bgSurface,
-            borderRadius: tokens.radius.xl,
-            padding: tokens.spacing.md
-          }
-        ]}
-      >
-        <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={2}>
-          {session.title || t('agent.sessions.default_title', '新对话')}
-        </Text>
-
-        <View style={styles.list}>
-          {options.map((opt, index) => (
-            <Pressable
-              key={opt.key}
-              onPress={opt.onPress}
-              style={({ pressed }) => [
-                styles.item,
-                index > 0 && {
-                  borderTopWidth: StyleSheet.hairlineWidth,
-                  borderTopColor: colors.borderSubtle
-                },
-                pressed && { backgroundColor: colors.bgSurfaceNormal }
-              ]}
-            >
-              <Text
-                style={[
-                  styles.itemLabel,
-                  { color: opt.destructive ? colors.error : colors.textPrimary }
-                ]}
-              >
-                {opt.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
+    <Modal
+      visible
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      onRequestClose={onClose}
+    >
+      <View style={styles.root} pointerEvents="box-none">
         <Pressable
+          style={[StyleSheet.absoluteFill, styles.backdrop]}
           onPress={onClose}
-          style={({ pressed }) => [
-            styles.cancelBtn,
+          accessibilityRole="button"
+          accessibilityLabel={t('common.cancel', '取消')}
+        />
+        <View
+          style={[
+            styles.sheet,
             {
-              borderColor: colors.borderSubtle,
-              opacity: pressed ? 0.7 : 1
+              backgroundColor: colors.bgSurface,
+              borderRadius: tokens.radius.xl,
+              padding: tokens.spacing.md
             }
           ]}
         >
-          <Text style={[styles.cancelText, { color: colors.textSecondary }]}>
-            {t('common.cancel', '取消')}
+          <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={2}>
+            {session.title || t('agent.sessions.default_title', '新对话')}
           </Text>
-        </Pressable>
+
+          <View style={styles.list}>
+            {options.map((opt, index) => (
+              <Pressable
+                key={opt.key}
+                onPress={opt.onPress}
+                style={({ pressed }) => [
+                  styles.item,
+                  index > 0 && {
+                    borderTopWidth: StyleSheet.hairlineWidth,
+                    borderTopColor: colors.borderSubtle
+                  },
+                  pressed && { backgroundColor: colors.bgSurfaceNormal }
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.itemLabel,
+                    { color: opt.destructive ? colors.error : colors.textPrimary }
+                  ]}
+                >
+                  {opt.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <Pressable
+            onPress={onClose}
+            style={({ pressed }) => [
+              styles.cancelBtn,
+              {
+                borderColor: colors.borderSubtle,
+                opacity: pressed ? 0.7 : 1
+              }
+            ]}
+          >
+            <Text style={[styles.cancelText, { color: colors.textSecondary }]}>
+              {t('common.cancel', '取消')}
+            </Text>
+          </Pressable>
+        </View>
       </View>
-    </View>
+    </Modal>
   )
 }
 
 const styles = StyleSheet.create({
   root: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 20,
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 24
@@ -165,8 +172,7 @@ const styles = StyleSheet.create({
   },
   sheet: {
     width: '100%',
-    maxWidth: 360,
-    zIndex: 21
+    maxWidth: 360
   },
   title: {
     fontSize: 16,

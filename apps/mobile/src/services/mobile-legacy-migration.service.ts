@@ -32,10 +32,9 @@ import {
 } from 'expo-baishou-server'
 import { getAppDocumentDirectory } from './mobile-app-paths'
 import { MobileAttachmentManagerService } from './mobile-attachment-manager.service'
-import {
-  EXTERNAL_STORAGE_ROOT,
-  hasStoragePermission
-} from './storage-permission.service'
+import { EXTERNAL_STORAGE_ROOT } from './storage-permission.service'
+import { FLUTTER_LEGACY_MIGRATION_COMPLETED_KEY } from '../constants/storage'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { logger } from '@baishou/shared'
 import { normalizeStorageRoot } from '@baishou/shared'
 
@@ -44,6 +43,17 @@ export interface MobileLegacyMigrationResult {
   skippedOnboarding: boolean
   targetRoot: string | null
   sourceRoot: string | null
+}
+
+export interface FlutterLegacyMigrationPending {
+  sourceRoot: string
+  targetRoot: string
+  sourceDisplayPath: string
+  targetDisplayPath: string
+}
+
+function displayMigrationPath(uri: string): string {
+  return uri.replace(/^file:\/\//, '')
 }
 
 function normalizeNativePath(pathValue: string): string {
@@ -60,6 +70,52 @@ function toFileUriFromAbsolute(absPath: string): string {
 
 function rootsEqual(a: string, b: string): boolean {
   return normalizeStorageRoot(a) === normalizeStorageRoot(b)
+}
+
+interface FlutterLegacyMigrationCompletedRecord {
+  installInstanceId: string
+  completedAt: string
+  targetRoot: string
+}
+
+export async function isFlutterLegacyMigrationMarkedComplete(
+  installInstanceId: string
+): Promise<boolean> {
+  try {
+    const raw = await AsyncStorage.getItem(FLUTTER_LEGACY_MIGRATION_COMPLETED_KEY)
+    if (!raw) return false
+    const parsed = JSON.parse(raw) as FlutterLegacyMigrationCompletedRecord
+    return parsed.installInstanceId === installInstanceId && !!parsed.completedAt
+  } catch {
+    return false
+  }
+}
+
+export async function markFlutterLegacyMigrationComplete(options: {
+  installInstanceId: string
+  targetRoot: string
+}): Promise<void> {
+  const record: FlutterLegacyMigrationCompletedRecord = {
+    installInstanceId: options.installInstanceId,
+    completedAt: new Date().toISOString(),
+    targetRoot: normalizeNativePath(options.targetRoot)
+  }
+  await AsyncStorage.setItem(FLUTTER_LEGACY_MIGRATION_COMPLETED_KEY, JSON.stringify(record))
+}
+
+async function isLegacyUpgradeMigrationDone(
+  fileSystem: IFileSystem,
+  targetRoot: string,
+  installInstanceId: string
+): Promise<boolean> {
+  if (await isFlutterLegacyMigrationMarkedComplete(installInstanceId)) {
+    return true
+  }
+  if (await isMigrationCompleted(fileSystem, targetRoot, installInstanceId)) {
+    await markFlutterLegacyMigrationComplete({ installInstanceId, targetRoot })
+    return true
+  }
+  return false
 }
 
 export async function collectLegacyCandidateRoots(fileSystem: IFileSystem): Promise<string[]> {
@@ -111,14 +167,7 @@ export async function resolveMobileMigrationTargetRoot(
   getRootDirectory: () => Promise<string>
 ): Promise<string | null> {
   if (Platform.OS === 'android') {
-    if (await hasStoragePermission()) {
-      return EXTERNAL_STORAGE_ROOT
-    }
-    const flutterRoots = getLegacyFlutterStorageRoots()
-    if (flutterRoots[0]) {
-      return toFileUriFromAbsolute(flutterRoots[0])
-    }
-    return null
+    return resolveFlutterLegacyMigrationTargetRoot()
   }
 
   try {
@@ -126,6 +175,84 @@ export async function resolveMobileMigrationTargetRoot(
   } catch {
     return `${getAppDocumentDirectory()}BaiShou_Root`
   }
+}
+
+/** 旧版 Flutter 数据应迁入的新版默认根目录 */
+export function resolveFlutterLegacyMigrationTargetRoot(): string {
+  if (Platform.OS === 'android') {
+    return normalizeNativePath(EXTERNAL_STORAGE_ROOT)
+  }
+  return normalizeNativePath(`${getAppDocumentDirectory()}BaiShou_Root`)
+}
+
+/**
+ * 启动时快速检测：旧版目录有数据且尚未完成迁移时返回待迁移信息。
+ * Android 优先走原生 getLegacyFlutterStorageRoots，避免全量扫描。
+ */
+export async function detectFlutterLegacyMigrationPending(
+  fileSystem: IFileSystem,
+  installInstanceId: string
+): Promise<FlutterLegacyMigrationPending | null> {
+  const targetRoot = resolveFlutterLegacyMigrationTargetRoot()
+
+  if (await isLegacyUpgradeMigrationDone(fileSystem, targetRoot, installInstanceId)) {
+    return null
+  }
+
+  let legacyRoots: string[] = []
+  if (Platform.OS === 'android') {
+    for (const abs of getLegacyFlutterStorageRoots()) {
+      legacyRoots.push(toFileUriFromAbsolute(abs))
+    }
+  } else {
+    legacyRoots = await collectLegacyCandidateRoots(fileSystem)
+  }
+
+  if (legacyRoots.length === 0) {
+    return null
+  }
+
+  const sourceRoot = pickPrimaryLegacySource(legacyRoots, targetRoot)
+  if (rootsEqual(sourceRoot, targetRoot)) {
+    return null
+  }
+  if (!(await isLegacyAppRoot(fileSystem, sourceRoot))) {
+    return null
+  }
+
+  return {
+    sourceRoot,
+    targetRoot,
+    sourceDisplayPath: displayMigrationPath(sourceRoot),
+    targetDisplayPath: displayMigrationPath(targetRoot)
+  }
+}
+
+/** 迁移已完成且目标目录有数据后，才允许删除旧版源目录 */
+export async function deleteMigratedLegacySourceRoot(options: {
+  fileSystem: IFileSystem
+  sourceRoot: string
+  targetRoot: string
+  installInstanceId: string
+}): Promise<void> {
+  const { fileSystem, sourceRoot, targetRoot, installInstanceId } = options
+  const normalizedTarget = normalizeNativePath(targetRoot)
+  const normalizedSource = normalizeNativePath(sourceRoot)
+
+  if (rootsEqual(normalizedSource, normalizedTarget)) {
+    throw new Error('SOURCE_EQUALS_TARGET')
+  }
+  if (!(await isMigrationCompleted(fileSystem, normalizedTarget, installInstanceId))) {
+    throw new Error('MIGRATION_NOT_COMPLETED')
+  }
+  if (!(await targetDirectoryHasData(fileSystem, normalizedTarget))) {
+    throw new Error('TARGET_EMPTY')
+  }
+  if (!(await fileSystem.exists(normalizedSource))) {
+    return
+  }
+
+  await fileSystem.rm(normalizedSource, { recursive: true, force: true })
 }
 
 function pickPrimaryLegacySource(legacyRoots: string[], targetRoot: string): string {
@@ -231,12 +358,20 @@ export async function runMobileLegacyMigrationIfNeeded(options: {
   installInstanceId: string
   settingsRepo: SettingsRepository
   profileRepo: UserProfileRepository
+  onCopyProgress?: (itemName: string) => void
 }): Promise<MobileLegacyMigrationResult> {
-  const { fileSystem, sqliteClient, targetRoot, installInstanceId, settingsRepo, profileRepo } =
-    options
+  const {
+    fileSystem,
+    sqliteClient,
+    targetRoot,
+    installInstanceId,
+    settingsRepo,
+    profileRepo,
+    onCopyProgress
+  } = options
   const normalizedTarget = normalizeNativePath(targetRoot)
 
-  if (await isMigrationCompleted(fileSystem, normalizedTarget, installInstanceId)) {
+  if (await isLegacyUpgradeMigrationDone(fileSystem, normalizedTarget, installInstanceId)) {
     return {
       migrated: false,
       skippedOnboarding: true,
@@ -256,15 +391,21 @@ export async function runMobileLegacyMigrationIfNeeded(options: {
   }
 
   let sourceRoot = pickPrimaryLegacySource(legacyRoots, normalizedTarget)
+  const originalSourceRoot = sourceRoot
   const targetHasData = await targetDirectoryHasData(fileSystem, normalizedTarget)
   const sameRoot = rootsEqual(sourceRoot, normalizedTarget)
 
   if (!sameRoot && !targetHasData) {
     logger.info('[MobileLegacyMigration] Copying legacy tree into target root', {
-      sourceRoot,
+      sourceRoot: originalSourceRoot,
       normalizedTarget
     })
-    await copyStorageRootContents(fileSystem, sourceRoot, normalizedTarget)
+    await copyStorageRootContents(
+      fileSystem,
+      originalSourceRoot,
+      normalizedTarget,
+      onCopyProgress
+    )
     sourceRoot = normalizedTarget
   } else if (!sameRoot && targetHasData) {
     const alternate = legacyRoots.find((root) => !rootsEqual(root, normalizedTarget))
@@ -349,6 +490,11 @@ export async function runMobileLegacyMigrationIfNeeded(options: {
       vaultsMigrated: vaultNames
     })
 
+    await markFlutterLegacyMigrationComplete({
+      installInstanceId,
+      targetRoot: migrationTarget
+    })
+
     logger.info('[MobileLegacyMigration] Completed legacy migration', {
       migrationSource,
       migrationTarget,
@@ -359,7 +505,9 @@ export async function runMobileLegacyMigrationIfNeeded(options: {
       migrated: true,
       skippedOnboarding: true,
       targetRoot: migrationTarget,
-      sourceRoot: migrationSource
+      sourceRoot: rootsEqual(originalSourceRoot, migrationTarget)
+        ? null
+        : originalSourceRoot
     }
   } catch (error) {
     logger.error('[MobileLegacyMigration] Migration failed before status write:', error as Error)

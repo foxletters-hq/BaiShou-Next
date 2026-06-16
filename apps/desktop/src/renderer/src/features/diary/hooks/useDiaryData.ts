@@ -34,6 +34,23 @@ function buildListFilter(query: DiaryPageQuery): DiaryListFilter {
   return filter
 }
 
+/** 搜索模式：跨月全文检索，仅保留天气/收藏筛选 */
+function buildSearchFilter(
+  query: DiaryPageQuery
+): Omit<DiaryListFilter, 'limit' | 'offset' | 'orderBy'> {
+  const filter: Omit<DiaryListFilter, 'limit' | 'offset' | 'orderBy'> = {}
+
+  if (query.filterFavorite) {
+    filter.favorite = true
+  }
+
+  if (query.filterWeathers.length > 0) {
+    filter.weathers = query.filterWeathers
+  }
+
+  return filter
+}
+
 function buildCountFilter(query: DiaryPageQuery): Omit<DiaryListFilter, 'limit' | 'offset'> {
   const { limit: _l, offset: _o, orderBy: _ob, ...rest } = buildListFilter(query)
   return rest
@@ -66,6 +83,12 @@ export function useDiaryData(query: DiaryPageQuery) {
   const listFilter = useMemo(() => buildListFilter(query), [query])
   const countFilter = useMemo(() => buildCountFilter(query), [query])
   const searchTerm = query.searchQuery.trim()
+  const browseMonthKey = query.selectedMonth?.getTime() ?? 0
+  const searchFilterKey = useMemo(
+    () =>
+      `${query.filterFavorite ? 1 : 0}:${query.filterWeathers.join(',')}`,
+    [query.filterFavorite, query.filterWeathers]
+  )
 
   const loadEntries = useCallback(async (options?: { silent?: boolean }) => {
     const silent = options?.silent ?? false
@@ -82,13 +105,18 @@ export function useDiaryData(query: DiaryPageQuery) {
 
       if (api?.diary?.listFiltered) {
         if (term) {
-          const items = await api.diary.search(term, filter)
+          const searchFilter = buildSearchFilter(current)
+          const pageOffset = (current.page - 1) * current.pageSize
+          const pageLimit = current.pageSize
+          const items = await api.diary.search(term, {
+            ...searchFilter,
+            limit: pageLimit,
+            offset: pageOffset
+          })
           setEntries(items || [])
           const loaded = items?.length || 0
           setTotalCount(
-            loaded < (filter.limit ?? 0)
-              ? (filter.offset ?? 0) + loaded
-              : (filter.offset ?? 0) + loaded + 1
+            loaded < pageLimit ? pageOffset + loaded : pageOffset + loaded + 1
           )
         } else {
           const [items, total] = await Promise.all([
@@ -112,7 +140,15 @@ export function useDiaryData(query: DiaryPageQuery) {
 
   useEffect(() => {
     loadEntries()
-  }, [loadEntries, listFilter, countFilter, searchTerm, query.page, query.pageSize])
+  }, [
+    loadEntries,
+    searchTerm,
+    query.page,
+    query.pageSize,
+    searchTerm ? searchFilterKey : browseMonthKey,
+    searchTerm ? 0 : listFilter,
+    searchTerm ? 0 : countFilter
+  ])
 
   useEffect(() => {
     const api = (window as any).api

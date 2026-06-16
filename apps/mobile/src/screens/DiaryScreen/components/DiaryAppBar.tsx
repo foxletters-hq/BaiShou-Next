@@ -7,24 +7,18 @@ import {
   Modal,
   Pressable,
   ScrollView,
-  ActivityIndicator
+  ActivityIndicator,
+  TextInput,
+  Platform
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { WEATHER_IDS, weatherI18nKey, type WeatherId } from '@baishou/shared'
-import {
-  YearMonthPicker,
-  useNativeTheme,
-  WeatherEmoji,
-  RagMemorySearchSection
-} from '@baishou/ui/native'
+import { YearMonthPicker, useNativeTheme, WeatherEmoji } from '@baishou/ui/native'
 
 export interface DiaryAppBarProps {
   searchQuery: string
-  searchMode: 'semantic' | 'text'
-  onSearch: (query: string, mode: 'semantic' | 'text') => void
-  semanticAvailable: boolean
-  onSemanticUnavailable: () => void
+  onSearch: (query: string) => void
   selectedMonth: Date | null
   onMonthChange: (m: Date | null) => void
   filterWeathers: string[]
@@ -37,10 +31,7 @@ export interface DiaryAppBarProps {
 
 export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
   searchQuery,
-  searchMode,
   onSearch,
-  semanticAvailable,
-  onSemanticUnavailable,
   selectedMonth,
   onMonthChange,
   filterWeathers,
@@ -66,7 +57,7 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
 
   const closeSearch = () => {
     setIsSearching(false)
-    onSearch('', searchMode)
+    onSearch('')
   }
 
   return (
@@ -81,15 +72,26 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
     >
       {isSearching ? (
         <View style={styles.searchRow}>
-          <View style={styles.searchSectionWrap}>
-            <RagMemorySearchSection
-              searchQuery={searchQuery}
-              searchMode={searchMode}
-              onSearch={onSearch}
-              semanticAvailable={semanticAvailable}
-              onSemanticUnavailable={onSemanticUnavailable}
+          <View
+            style={[
+              styles.searchSectionWrap,
+              styles.searchInputBox,
+              {
+                backgroundColor: colors.bgGlassSurface,
+                borderColor: colors.borderMuted
+              }
+            ]}
+          >
+            <TextInput
+              style={[styles.searchInput, { color: colors.textPrimary }]}
+              value={searchQuery}
+              onChangeText={onSearch}
+              placeholder={t('common.please_search', '请搜索')}
+              placeholderTextColor={colors.textTertiary}
               autoFocus
-              compact
+              returnKeyType="search"
+              autoCorrect={false}
+              autoCapitalize="none"
             />
           </View>
           <TouchableOpacity
@@ -304,6 +306,25 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     justifyContent: 'center'
+  },
+  searchInputBox: {
+    height: 40,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    justifyContent: 'center'
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    height: 40,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    margin: 0,
+    backgroundColor: 'transparent',
+    ...(Platform.OS === 'android'
+      ? { includeFontPadding: false, textAlignVertical: 'center' as const }
+      : { paddingTop: 0, paddingBottom: 0 })
   },
   closeSearchBtn: {
     width: 32,

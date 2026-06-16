@@ -64,7 +64,7 @@ A locally run, privacy-focused diary and life-logging app with AI-assisted analy
 
 ##### Requirements
 
-- Node.js ≥ 20
+- Node.js ≥ 20.19.4
 - pnpm 10 (see `packageManager` in the root `package.json`)
 
 ##### 1. Clone
@@ -79,8 +79,6 @@ cd BaiShou-Next
 ```bash
 pnpm install
 ```
-
-If Electron fails to download, see [pnpm-electron-setup.md](../pnpm-electron-setup.md) (Chinese).
 
 ##### 3. Develop
 

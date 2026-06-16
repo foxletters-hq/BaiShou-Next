@@ -61,7 +61,7 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
       willReload = true
       setTimeout(() => window.location.reload(), 1500)
     } catch (e: any) {
-      toast.showError(t('settings.restore_failed', '恢复失败：') + e.message)
+      toast.showError(t('settings.restore_failed', { error: e.message }))
     } finally {
       if (!willReload) setIsImporting(false)
     }

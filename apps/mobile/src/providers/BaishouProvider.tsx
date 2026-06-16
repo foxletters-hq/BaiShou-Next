@@ -94,18 +94,26 @@ import type {
   SessionRepository as SessionRepositoryType,
   SnapshotRepository as SnapshotRepositoryType
 } from '@baishou/database'
-import { ONBOARDING_STORAGE_KEY } from '@/src/constants/storage'
 import {
-  resolveMobileMigrationTargetRoot,
+  ONBOARDING_STORAGE_KEY,
+  FLUTTER_LEGACY_MIGRATED_SOURCE_KEY
+} from '@/src/constants/storage'
+import {
+  detectFlutterLegacyMigrationPending,
+  deleteMigratedLegacySourceRoot,
+  resolveFlutterLegacyMigrationTargetRoot,
   runMobileLegacyMigrationIfNeeded,
-  runMobileLegacyZipMigration
+  runMobileLegacyZipMigration,
+  type FlutterLegacyMigrationPending,
+  type MobileLegacyMigrationResult
 } from '../services/mobile-legacy-migration.service'
 import { getMobileInstallInstanceId } from '../services/install-instance.service'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { isExternalStorageNativeAvailable } from 'expo-baishou-server'
 import {
   hasStoragePermission,
-  isExternalStorageRequiredError
+  isExternalStorageRequiredError,
+  requestStoragePermission
 } from '../services/storage-permission.service'
 
 // 采用类似于桌面端 db.ts 里的静态导出，但在 RN 里我们走 Context 更加 React 化
@@ -115,6 +123,17 @@ interface BaishouContextValue {
   storageReady: boolean
   /** 旧版 Flutter 升级后需重新嵌入 RAG */
   legacyRagReembedRequired: boolean
+  /** 检测到旧版目录有数据、尚未迁移 */
+  pendingFlutterLegacyMigration: FlutterLegacyMigrationPending | null
+  /** 迁移完成后可删除的旧版根目录 */
+  legacyMigrationSourcePendingDeletion: string | null
+  /** 正在执行旧版数据迁移（复制） */
+  flutterLegacyMigrationBusy: boolean
+  flutterLegacyMigrationProgress: string
+  /** 用户确认后执行旧版 → 新版目录复制迁移 */
+  runFlutterLegacyMigration: () => Promise<MobileLegacyMigrationResult | null>
+  /** 迁移验证通过后删除旧版目录 */
+  deleteMigratedLegacySource: () => Promise<boolean>
   /** 工作空间切换后递增，供列表等 UI 重新拉取数据 */
   vaultRevision: number
   /** 工作空间切换进行中（重建 diary stack / 后台 resync） */
@@ -188,6 +207,12 @@ const BaishouContext = createContext<BaishouContextValue>({
   dbReady: false,
   storageReady: Platform.OS !== 'android',
   legacyRagReembedRequired: false,
+  pendingFlutterLegacyMigration: null,
+  legacyMigrationSourcePendingDeletion: null,
+  flutterLegacyMigrationBusy: false,
+  flutterLegacyMigrationProgress: '',
+  runFlutterLegacyMigration: async () => null,
+  deleteMigratedLegacySource: async () => false,
   vaultRevision: 0,
   vaultSwitching: false,
   storageIndexing: false,
@@ -256,11 +281,29 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
   const runWithStorageQuiescedRef = useRef<<T>(fn: () => Promise<T>) => Promise<T>>(async (fn) =>
     fn()
   )
+  const runFlutterLegacyMigrationRef = useRef<
+    () => Promise<MobileLegacyMigrationResult | null>
+  >(async () => null)
+  const deleteMigratedLegacySourceRef = useRef<() => Promise<boolean>>(async () => false)
+  const migrationRuntimeRef = useRef<{
+    fileSystem: IFileSystem
+    expoDb: unknown
+    settingsRepo: SettingsRepository
+    profileRepo: UserProfileRepository
+    pathService: MobileStoragePathService
+    installInstanceId: string
+  } | null>(null)
   const diaryStackRef = useRef<VaultBoundDiaryStack | null>(null)
   const [value, setValue] = useState<BaishouContextValue>({
     dbReady: false,
     storageReady: Platform.OS !== 'android',
     legacyRagReembedRequired: false,
+    pendingFlutterLegacyMigration: null,
+    legacyMigrationSourcePendingDeletion: null,
+    flutterLegacyMigrationBusy: false,
+    flutterLegacyMigrationProgress: '',
+    runFlutterLegacyMigration: () => runFlutterLegacyMigrationRef.current(),
+    deleteMigratedLegacySource: () => deleteMigratedLegacySourceRef.current(),
     vaultRevision: 0,
     vaultSwitching: false,
     storageIndexing: mobileDataBootstrapper.getStatus() === 'running',
@@ -310,29 +353,32 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         const attachmentManager = new MobileAttachmentManagerService(pathService, fileSystem)
 
         let legacyRagReembedRequired = false
+        let pendingFlutterLegacyMigration: FlutterLegacyMigrationPending | null = null
+        let legacyMigrationSourcePendingDeletion: string | null = null
+
         try {
           const installInstanceId = await getMobileInstallInstanceId()
-          const migrationTarget = await resolveMobileMigrationTargetRoot(() =>
-            pathService.getRootDirectory()
-          )
-          if (migrationTarget) {
-            const migrationResult = await runMobileLegacyMigrationIfNeeded({
-              fileSystem,
-              sqliteClient: expoDb,
-              targetRoot: migrationTarget,
-              installInstanceId,
-              settingsRepo,
-              profileRepo
-            })
-            if (migrationResult.migrated || migrationResult.skippedOnboarding) {
-              await AsyncStorage.setItem(ONBOARDING_STORAGE_KEY, '1')
-            }
-            if (migrationResult.migrated) {
-              legacyRagReembedRequired = true
-            }
+          migrationRuntimeRef.current = {
+            fileSystem,
+            expoDb,
+            settingsRepo,
+            profileRepo,
+            pathService,
+            installInstanceId
           }
-        } catch (legacyError) {
-          logger.error('[BaishouProvider] Legacy migration failed:', legacyError as Error)
+
+          pendingFlutterLegacyMigration = await detectFlutterLegacyMigrationPending(
+            fileSystem,
+            installInstanceId
+          )
+          legacyMigrationSourcePendingDeletion = await AsyncStorage.getItem(
+            FLUTTER_LEGACY_MIGRATED_SOURCE_KEY
+          )
+        } catch (legacyDetectError) {
+          logger.warn(
+            '[BaishouProvider] Legacy migration detection failed:',
+            legacyDetectError as Error
+          )
         }
 
         try {
@@ -890,28 +936,6 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               }
             }
 
-            try {
-              const installInstanceId = await getMobileInstallInstanceId()
-              const migrationTarget = await resolveMobileMigrationTargetRoot(() =>
-                pathService.getRootDirectory()
-              )
-              if (migrationTarget) {
-                await runMobileLegacyMigrationIfNeeded({
-                  fileSystem,
-                  sqliteClient: expoDb,
-                  targetRoot: migrationTarget,
-                  installInstanceId,
-                  settingsRepo,
-                  profileRepo
-                })
-              }
-            } catch (migrationError) {
-              logger.warn(
-                '[BaishouProvider] Legacy migration on storage retry failed:',
-                migrationError as Error
-              )
-            }
-
             const priorStack = diaryStackRef.current
             const stack = !priorStack
               ? await runStorageBootstrap()
@@ -959,6 +983,127 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             if (!isExternalStorageRequiredError(e)) {
               logger.error('[BaishouProvider] retryStorageSetup failed:', e as Error)
             }
+            return false
+          }
+        }
+
+        runFlutterLegacyMigrationRef.current = async () => {
+          const runtime = migrationRuntimeRef.current
+          if (!runtime) return null
+
+          const pending = await detectFlutterLegacyMigrationPending(
+            runtime.fileSystem,
+            runtime.installInstanceId
+          )
+          if (!pending) return null
+
+          if (Platform.OS === 'android') {
+            if (!(await hasStoragePermission())) {
+              await requestStoragePermission()
+              if (!(await hasStoragePermission())) {
+                return null
+              }
+            }
+            await runtime.pathService.applyExternalRootWhenPermitted()
+          }
+
+          if (isMounted) {
+            setValue((prev) => ({
+              ...prev,
+              flutterLegacyMigrationBusy: true,
+              flutterLegacyMigrationProgress: ''
+            }))
+          }
+
+          try {
+            const result = await runWithStorageQuiescedRef.current(() =>
+              runMobileLegacyMigrationIfNeeded({
+                fileSystem: runtime.fileSystem,
+                sqliteClient: runtime.expoDb,
+                targetRoot: pending.targetRoot,
+                installInstanceId: runtime.installInstanceId,
+                settingsRepo: runtime.settingsRepo,
+                profileRepo: runtime.profileRepo,
+                onCopyProgress: (itemName) => {
+                  if (!isMounted) return
+                  setValue((prev) => ({
+                    ...prev,
+                    flutterLegacyMigrationProgress: itemName
+                  }))
+                }
+              })
+            )
+
+            if (result.migrated) {
+              await AsyncStorage.setItem(ONBOARDING_STORAGE_KEY, '1')
+              if (result.sourceRoot) {
+                await AsyncStorage.setItem(
+                  FLUTTER_LEGACY_MIGRATED_SOURCE_KEY,
+                  result.sourceRoot
+                )
+              }
+            }
+
+            await retryStorageSetupRef.current()
+
+            if (isMounted) {
+              setValue((prev) => ({
+                ...prev,
+                flutterLegacyMigrationBusy: false,
+                flutterLegacyMigrationProgress: '',
+                pendingFlutterLegacyMigration: result.migrated
+                  ? null
+                  : prev.pendingFlutterLegacyMigration,
+                legacyRagReembedRequired: result.migrated
+                  ? true
+                  : prev.legacyRagReembedRequired,
+                legacyMigrationSourcePendingDeletion: result.sourceRoot ?? null,
+                vaultRevision: result.migrated ? prev.vaultRevision + 1 : prev.vaultRevision
+              }))
+            }
+
+            return result
+          } catch (error) {
+            logger.error('[BaishouProvider] User-triggered legacy migration failed:', error as Error)
+            if (isMounted) {
+              setValue((prev) => ({
+                ...prev,
+                flutterLegacyMigrationBusy: false,
+                flutterLegacyMigrationProgress: ''
+              }))
+            }
+            throw error
+          }
+        }
+
+        deleteMigratedLegacySourceRef.current = async () => {
+          const runtime = migrationRuntimeRef.current
+          if (!runtime) return false
+
+          const sourceRoot = await AsyncStorage.getItem(FLUTTER_LEGACY_MIGRATED_SOURCE_KEY)
+          if (!sourceRoot) return false
+
+          const targetRoot = resolveFlutterLegacyMigrationTargetRoot()
+          try {
+            await deleteMigratedLegacySourceRoot({
+              fileSystem: runtime.fileSystem,
+              sourceRoot,
+              targetRoot,
+              installInstanceId: runtime.installInstanceId
+            })
+            await AsyncStorage.removeItem(FLUTTER_LEGACY_MIGRATED_SOURCE_KEY)
+            if (isMounted) {
+              setValue((prev) => ({
+                ...prev,
+                legacyMigrationSourcePendingDeletion: null
+              }))
+            }
+            return true
+          } catch (error) {
+            logger.warn(
+              '[BaishouProvider] Failed to delete migrated legacy source:',
+              error as Error
+            )
             return false
           }
         }
@@ -1079,6 +1224,12 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             dbReady: true,
             storageReady,
             legacyRagReembedRequired,
+            pendingFlutterLegacyMigration,
+            legacyMigrationSourcePendingDeletion,
+            flutterLegacyMigrationBusy: false,
+            flutterLegacyMigrationProgress: '',
+            runFlutterLegacyMigration: () => runFlutterLegacyMigrationRef.current(),
+            deleteMigratedLegacySource: () => deleteMigratedLegacySourceRef.current(),
             vaultRevision: 0,
             vaultSwitching: false,
             storageIndexing: mobileDataBootstrapper.getStatus() === 'running',

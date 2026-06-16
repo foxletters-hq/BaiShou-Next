@@ -7,6 +7,7 @@ import { spawnSync } from 'node:child_process'
 import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { applyAndroidPlainSplashPatch } from './plain-splash-patch.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const mobileRoot = path.resolve(__dirname, '..')
@@ -45,6 +46,9 @@ if (!existsSync(gradlew)) {
   console.error('❌ 未找到 Gradle wrapper，prebuild 可能失败')
   process.exit(1)
 }
+
+console.log('\n🎨 应用纯色启动屏补丁…')
+applyAndroidPlainSplashPatch(androidDir)
 
 console.log('\n🔨 assembleRelease…')
 run(gradlew, [':app:assembleRelease'], androidDir)

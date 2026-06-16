@@ -4,14 +4,15 @@ import {
   EMBEDDING_SOURCE_SORT_MILLIS_SQL,
   EMBEDDING_SOURCE_SORT_ORDER_SQL,
   filterUnindexedDiaries,
+  isRagMemoryEnabled,
   limitExecute,
   resolveBatchEmbedConcurrency,
   sortDiariesByDateAsc,
-  timestampToMillis
+  timestampToMillis,
+  logger
 } from '@baishou/shared'
 import { SqliteHybridSearchRepository } from '@baishou/database'
 import type { SettingsManagerService, DiaryService } from '@baishou/core-mobile'
-import { logger } from '@baishou/shared'
 
 const HYBRID_SEARCH_TABLE = 'memory_embeddings'
 
@@ -103,7 +104,7 @@ export async function embedDiaryEntry(
   params: EmbedDiaryEntryParams
 ): Promise<void> {
   const ragConfig = (await deps.settingsManager.get<{ ragEnabled?: boolean }>('rag_config')) || {}
-  if (ragConfig.ragEnabled === false) return
+  if (!isRagMemoryEnabled(ragConfig)) return
 
   const adapter = await resolveEmbeddingAdapter(deps)
   if (!adapter) return

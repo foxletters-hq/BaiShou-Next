@@ -11,7 +11,9 @@ import {
   type IFileSystem,
   type IStoragePathService
 } from '@baishou/core-mobile'
+import { stripFileScheme } from './android-external-fs'
 import { getAppCacheDirectory, getAppDocumentDirectory } from './mobile-app-paths'
+import { importUriToPath, normalizeImportSourceUri } from './mobile-uri-import'
 import {
   FULL_BACKUP_EXCLUDED_ROOT_NAMES,
   resetIncrementalSyncMetaAfterFullRestore
@@ -86,27 +88,32 @@ export class MobileArchiveService implements IArchiveService {
 
     const targetZip = `${getAppCacheDirectory()}BaiShou_Backup_${Date.now()}.zip`
     try {
-      await zip(cacheDir.replace('file://', ''), targetZip.replace('file://', ''))
+      await zip(stripFileScheme(cacheDir), stripFileScheme(targetZip))
       await this.fileSystem.rm(cacheDir, { recursive: true, force: true })
       return targetZip
     } catch (err) {
       console.error('[MobileArchive] ZIP operation failed', err)
-      return null
+      const message = err instanceof Error ? err.message : String(err)
+      throw new Error(`打包备份失败：${message}`)
     }
   }
 
   public async exportToUserDevice(): Promise<string | null> {
     const zipPath = await this.exportToTempFile()
-    if (!zipPath) return null
-
-    if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(zipPath, {
-        mimeType: 'application/zip',
-        dialogTitle: '保存 BaiShou 物理系统备份'
-      })
-      return zipPath
+    if (!zipPath) {
+      throw new Error('生成备份 ZIP 失败')
     }
-    return null
+
+    if (!(await Sharing.isAvailableAsync())) {
+      throw new Error('当前设备不支持分享/导出文件')
+    }
+
+    await Sharing.shareAsync(zipPath, {
+      mimeType: 'application/zip',
+      dialogTitle: '保存 BaiShou 物理系统备份',
+      UTI: 'public.zip-archive'
+    })
+    return zipPath
   }
 
   public async importFromZip(
@@ -124,13 +131,15 @@ export class MobileArchiveService implements IArchiveService {
     const extractDir = `${getAppCacheDirectory()}baishou_archive_extract_${Date.now()}`
     await this.fileSystem.mkdir(extractDir, { recursive: true })
 
+    const { nativeZipPath, cleanupStagedZip } = await this.stageZipForUnzip(zipFilePath)
     try {
-      const sourceZip = zipFilePath.replace('file://', '')
-      const targetDir = extractDir.replace('file://', '')
-      await unzip(sourceZip, targetDir)
+      await unzip(nativeZipPath, stripFileScheme(extractDir))
     } catch (e) {
       console.error('[MobileArchive] Failed to extract archive', e)
-      throw new Error('导入解压失败，请检查文件格式或存储权限')
+      const detail = e instanceof Error ? e.message : String(e)
+      throw new Error(`导入解压失败，请检查文件格式或存储权限（${detail}）`)
+    } finally {
+      await cleanupStagedZip?.()
     }
 
     let needsRestart = false
@@ -415,6 +424,35 @@ export class MobileArchiveService implements IArchiveService {
     }
 
     await copyDir(avatarsSrc, avatarsDest)
+  }
+
+  private async stageZipForUnzip(
+    zipFilePath: string
+  ): Promise<{ nativeZipPath: string; cleanupStagedZip?: () => Promise<void> }> {
+    const normalized = normalizeImportSourceUri(zipFilePath)
+    const needsStaging =
+      normalized.startsWith('content://') ||
+      normalized.startsWith('ph://') ||
+      normalized.startsWith('data:')
+
+    if (!needsStaging) {
+      const nativeZipPath = stripFileScheme(normalized)
+      if (await this.fileSystem.exists(normalized)) {
+        return { nativeZipPath }
+      }
+      if (await this.fileSystem.exists(zipFilePath)) {
+        return { nativeZipPath: stripFileScheme(zipFilePath) }
+      }
+    }
+
+    const stagedZip = `${getAppCacheDirectory()}baishou_import_${Date.now()}.zip`
+    await importUriToPath(zipFilePath, stagedZip, this.fileSystem)
+    return {
+      nativeZipPath: stripFileScheme(stagedZip),
+      cleanupStagedZip: async () => {
+        await this.fileSystem.unlink(stagedZip).catch(() => {})
+      }
+    }
   }
 
   private async selectiveCopy(sourceDirPath: string, targetDirPath: string) {
