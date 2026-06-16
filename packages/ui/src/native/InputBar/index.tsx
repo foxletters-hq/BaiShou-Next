@@ -325,14 +325,15 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
           </ScrollView>
         )}
 
-        <InlinePromptShortcutList
-          visible={shortcutHandlers.shortcutModeActive}
-          shortcuts={shortcutHandlers.filteredShortcuts}
-          selectedIndex={shortcutHandlers.selectedIndex}
-          onSelect={shortcutHandlers.applyShortcut}
-        />
+        <View style={styles.composerBlock}>
+          <InlinePromptShortcutList
+            visible={shortcutHandlers.shortcutModeActive}
+            shortcuts={shortcutHandlers.filteredShortcuts}
+            selectedIndex={shortcutHandlers.selectedIndex}
+            onSelect={shortcutHandlers.applyShortcut}
+          />
 
-        <Animated.View style={toolbarAnimatedStyle} pointerEvents={showToolbar ? 'auto' : 'none'}>
+          <Animated.View style={toolbarAnimatedStyle} pointerEvents={showToolbar ? 'auto' : 'none'}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -423,6 +424,7 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
             }
           />
         </View>
+        </View>
       </View>
     )
   }
@@ -436,6 +438,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingBottom: 14,
     borderTopWidth: StyleSheet.hairlineWidth
+  },
+  composerBlock: {
+    position: 'relative'
   },
   toolbarContent: {
     gap: 8,
