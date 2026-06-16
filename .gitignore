@@ -37,6 +37,7 @@ apps/mobile/android/app/build/
 apps/mobile/android/.gradle/
 apps/mobile/android/build/
 apps/mobile/android/local.properties
+apps/mobile/android/key.properties
 apps/mobile/android/captures/
 apps/mobile/android/.cxx/
 *.apk

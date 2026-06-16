@@ -8,10 +8,11 @@
     "scheme": "mobile",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.baishou.baishou"
     },
     "android": {
-      "package": "com.anonymous.mobile",
+      "package": "com.baishou.baishou",
       "permissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
@@ -25,6 +26,8 @@
     },
     "plugins": [
       "./plugins/withAndroidAdjustNothing.js",
+      "./plugins/withAndroidReleaseSigning.js",
+      "./plugins/withAndroidDevVariant.js",
       "expo-dev-client",
       "expo-router",
       [

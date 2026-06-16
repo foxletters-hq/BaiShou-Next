@@ -1,0 +1,12 @@
+# 复制为 apps/mobile/android/key.properties（该路径已 gitignore，勿提交）
+# 与旧版 Flutter 项目 android/key.properties 格式相同，可整文件复制。
+
+storePassword=你的_Store_密码
+keyPassword=你的_Key_密码
+keyAlias=upload
+
+# 本地推荐：JKS 的 Base64（与旧版 storeBase64 方案一致，无需保留物理 .jks）
+storeBase64=（upload-keystore.jks 的完整 Base64 字符串）
+
+# CI 可选：物理 keystore 相对 android/ 目录的路径（release.yml 使用此方式）
+# storeFile=app/upload-keystore.jks

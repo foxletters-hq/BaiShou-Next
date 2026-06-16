@@ -13,7 +13,7 @@
 
 升级 Expo、新增原生模块、闪退、连不上 bundler 时 → **`pnpm dev:mobile:clear`**，然后 **`pnpm dev:mobile`**。
 
-建议全量重装前在手机上**卸载**旧版 `com.anonymous.mobile`。
+开发调试安装 **白守 Dev**（`com.baishou.baishou.dev`），与正式包并存。已配置 `key.properties` 时 Dev 包也用**正式签名**，以便读取旧 Flutter/正式包沙盒内的日记并同步到 `/storage/emulated/0/BaiShou_Root`。
 
 ### WSL2 + 真机 `Unable to load script`
 
@@ -42,6 +42,9 @@ pnpm mobile:setup
 | `pnpm mobile:connect` | adb reverse + 打开开发版（Metro 需已在跑） |
 | `pnpm mobile:fix`     | 对齐 Expo SDK 依赖版本                     |
 | `pnpm mobile:export`  | 导出 Android 离线包                        |
+| `pnpm release:android` | 正式签名 Release APK（需先 `release:setup-signing`） |
+
+发布说明见 [`docs/打包须知.md`](../../docs/打包须知.md)。
 
 ## UI 与文案（AI / 协作者必读）
 

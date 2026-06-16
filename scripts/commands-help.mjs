@@ -33,7 +33,23 @@ const sections = [
   {
     id: 'desktop',
     title: '桌面端 · 构建',
-    commands: [['pnpm build:desktop', '构建 Electron 桌面应用']]
+    commands: [
+      ['pnpm build:desktop', '构建 Electron 桌面应用（开发用 out/）'],
+      ['pnpm release:desktop:linux', '★ 发布：Linux AppImage → apps/desktop/dist'],
+      ['pnpm release:desktop:win', '★ 发布：Windows 安装包 → apps/desktop/dist']
+    ]
+  },
+  {
+    id: 'release',
+    title: '发布 · Android / 桌面',
+    commands: [
+      ['pnpm release:all', '★ 一键正式打包：Android + Linux + Windows'],
+      ['pnpm release:setup-signing', '从旧版 BaiShou 复制 android/key.properties（不入库）'],
+      ['pnpm release:android', '正式签名 APK → release/BaiShou-v{版本}-Android.apk'],
+      ['pnpm release:desktop:linux', 'Linux AppImage → apps/desktop/dist/'],
+      ['pnpm release:desktop:win', 'Windows 安装包 → apps/desktop/dist/'],
+      ['git tag vX.Y.Z && git push origin vX.Y.Z', '触发 CI 三端 GitHub Release（推荐云端打包）']
+    ]
   },
   {
     id: 'ci',

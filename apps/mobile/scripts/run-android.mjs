@@ -12,6 +12,7 @@ import {
   devClientEnv,
   getLanIp,
   hasAdbDevice,
+  installApkViaAdb,
   prepareAndroidInstall,
   printAndroidInstallFailureHelp,
   printDevConnectionHelp,
@@ -25,7 +26,7 @@ const host = getLanIp()
 console.log(`
 📌 全量重装 Android 开发版（非 Expo Go）
    → 清 Metro / .expo / Gradle 缓存，重新编译并安装 APK
-   → 建议先在手机上卸载旧版：com.anonymous.mobile
+   → 开发包包名 com.baishou.baishou.dev（桌面显示「白守 Dev」），与正式版并存
    → 完成后在仓库根目录执行 pnpm dev:mobile 启动 Metro
 `)
 
@@ -59,7 +60,21 @@ child.on('exit', (code) => {
   if (code !== 0) {
     const apk = path.join(mobileRoot, 'android/app/build/outputs/apk/debug/app-debug.apk')
     if (fs.existsSync(apk) && hasAdbDevice()) {
-      printAndroidInstallFailureHelp(apk)
+      console.log('\n📲 expo 安装失败，尝试备用安装方式（push + pm install）…\n')
+      try {
+        const method = installApkViaAdb(apk)
+        const via =
+          method === 'push'
+            ? '（已绕过无线 adb 流式安装，MIUI 上更稳）'
+            : method === 'http'
+              ? '（adb 传大文件失败，已改用手机经局域网 HTTP 下载后安装）'
+              : ''
+        console.log(`\n✅ 备用安装成功${via}。请另开终端执行 pnpm dev:mobile\n`)
+        process.exit(0)
+        return
+      } catch (err) {
+        printAndroidInstallFailureHelp(apk, err?.message)
+      }
     }
   }
   process.exit(code ?? 0)
