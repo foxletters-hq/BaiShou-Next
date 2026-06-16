@@ -1,11 +1,10 @@
-import React, { useEffect, useRef } from 'react'
+import React, { memo, useCallback } from 'react'
 import {
   View,
   Text,
   Pressable,
   ScrollView,
   Modal,
-  Animated,
   StyleSheet,
   TouchableOpacity
 } from 'react-native'
@@ -13,6 +12,7 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { AssistantAvatar } from '../AssistantAvatar'
+import { AssistantKindBadge } from '../AssistantKindBadge'
 
 export interface MockAgentAssistant {
   id: string
@@ -27,6 +27,7 @@ export interface MockAgentAssistant {
   modelId?: string
   contextWindow?: number
   compressTokenThreshold?: number
+  assistantKind?: 'companion' | 'work'
 }
 
 interface NativeAssistantPickerProps {
@@ -39,6 +40,61 @@ interface NativeAssistantPickerProps {
   onCreatePress?: () => void
 }
 
+const AssistantPickerRow = memo(function AssistantPickerRow({
+  assistant,
+  isSelected,
+  onSelect,
+  colors
+}: {
+  assistant: MockAgentAssistant
+  isSelected: boolean
+  onSelect: (assistant: MockAgentAssistant) => void
+  colors: ReturnType<typeof useNativeTheme>['colors']
+}) {
+  return (
+    <TouchableOpacity
+      style={[
+        styles.card,
+        {
+          backgroundColor: isSelected ? colors.primaryContainer : colors.bgSurfaceNormal,
+          borderColor: isSelected ? colors.primary : colors.borderSubtle
+        }
+      ]}
+      onPress={() => onSelect(assistant)}
+      activeOpacity={0.7}
+    >
+      <AssistantAvatar
+        emoji={assistant.emoji}
+        avatarPath={assistant.avatarPath}
+        resolvedAvatarUri={assistant.displayAvatarUri}
+        size={40}
+      />
+      <View style={styles.cardBody}>
+        <View style={styles.cardTitleRow}>
+          <Text
+            style={[
+              styles.cardTitle,
+              {
+                color: isSelected ? colors.onPrimaryContainer : colors.textPrimary
+              }
+            ]}
+            numberOfLines={1}
+          >
+            {assistant.name}
+          </Text>
+          <AssistantKindBadge kind={assistant.assistantKind} compact />
+        </View>
+        {assistant.description ? (
+          <Text style={[styles.cardDesc, { color: colors.textSecondary }]} numberOfLines={1}>
+            {assistant.description}
+          </Text>
+        ) : null}
+      </View>
+      {isSelected ? <MaterialIcons name="check-circle" size={22} color={colors.primary} /> : null}
+    </TouchableOpacity>
+  )
+})
+
 export const AssistantPicker: React.FC<NativeAssistantPickerProps> = ({
   isOpen,
   onClose,
@@ -50,62 +106,21 @@ export const AssistantPicker: React.FC<NativeAssistantPickerProps> = ({
 }) => {
   const { t } = useTranslation()
   const { colors, tokens, maxModalWidth } = useNativeTheme()
-  const scaleAnim = useRef(new Animated.Value(0.85)).current
-  const fadeAnim = useRef(new Animated.Value(0)).current
-  const [mounted, setMounted] = React.useState(false)
 
-  useEffect(() => {
-    if (isOpen) {
-      setMounted(true)
-      Animated.parallel([
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          useNativeDriver: true,
-          tension: 65,
-          friction: 11
-        }),
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true
-        })
-      ]).start()
-      return
-    }
-
-    if (!mounted) return
-
-    Animated.parallel([
-      Animated.timing(scaleAnim, {
-        toValue: 0.85,
-        duration: 180,
-        useNativeDriver: true
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 180,
-        useNativeDriver: true
-      })
-    ]).start(({ finished }) => {
-      if (finished) setMounted(false)
-    })
-  }, [isOpen, mounted, scaleAnim, fadeAnim])
-
-  if (!mounted) return null
-
-  const handleSelect = (assistant: MockAgentAssistant) => {
-    onSelect(assistant)
-    onClose()
-  }
+  const handleSelect = useCallback(
+    (assistant: MockAgentAssistant) => {
+      onSelect(assistant)
+      onClose()
+    },
+    [onSelect, onClose]
+  )
 
   return (
-    <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose}>
+    <Modal visible={isOpen} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-        </Animated.View>
+        <Pressable style={styles.backdrop} onPress={onClose} />
 
-        <Animated.View
+        <View
           style={[
             styles.dialog,
             {
@@ -114,9 +129,7 @@ export const AssistantPicker: React.FC<NativeAssistantPickerProps> = ({
               width: '90%',
               maxWidth: maxModalWidth,
               maxHeight: '80%',
-              padding: tokens.spacing.lg,
-              opacity: fadeAnim,
-              transform: [{ scale: scaleAnim }]
+              padding: tokens.spacing.lg
             }
           ]}
         >
@@ -126,7 +139,7 @@ export const AssistantPicker: React.FC<NativeAssistantPickerProps> = ({
               {t('agent.assistant.select_title', '选择伙伴')}
             </Text>
             <View style={styles.headerSpacer} />
-            {onSettingsPress && (
+            {onSettingsPress ? (
               <TouchableOpacity
                 onPress={() => {
                   onClose()
@@ -137,7 +150,7 @@ export const AssistantPicker: React.FC<NativeAssistantPickerProps> = ({
               >
                 <MaterialIcons name="settings" size={22} color={colors.textSecondary} />
               </TouchableOpacity>
-            )}
+            ) : null}
           </View>
 
           <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
@@ -146,7 +159,7 @@ export const AssistantPicker: React.FC<NativeAssistantPickerProps> = ({
                 <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
                   {t('agent.assistant.empty_hint', '还没有伙伴，创建一个吧')}
                 </Text>
-                {onCreatePress && (
+                {onCreatePress ? (
                   <TouchableOpacity
                     style={[styles.createBtn, { backgroundColor: colors.primary }]}
                     onPress={() => {
@@ -159,62 +172,21 @@ export const AssistantPicker: React.FC<NativeAssistantPickerProps> = ({
                       {t('agent.assistant.create_first', '创建第一个伙伴')}
                     </Text>
                   </TouchableOpacity>
-                )}
+                ) : null}
               </View>
             ) : (
-              assistants.map((assistant) => {
-                const isSelected = assistant.id === currentAssistantId
-                return (
-                  <TouchableOpacity
-                    key={assistant.id}
-                    style={[
-                      styles.card,
-                      {
-                        backgroundColor: isSelected
-                          ? colors.primaryContainer
-                          : colors.bgSurfaceNormal,
-                        borderColor: isSelected ? colors.primary : colors.borderSubtle
-                      }
-                    ]}
-                    onPress={() => handleSelect(assistant)}
-                    activeOpacity={0.7}
-                  >
-                    <AssistantAvatar
-                      emoji={assistant.emoji}
-                      avatarPath={assistant.avatarPath}
-                      resolvedAvatarUri={assistant.displayAvatarUri}
-                      size={40}
-                    />
-                    <View style={styles.cardBody}>
-                      <Text
-                        style={[
-                          styles.cardTitle,
-                          {
-                            color: isSelected ? colors.onPrimaryContainer : colors.textPrimary
-                          }
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {assistant.name}
-                      </Text>
-                      {assistant.description ? (
-                        <Text
-                          style={[styles.cardDesc, { color: colors.textSecondary }]}
-                          numberOfLines={1}
-                        >
-                          {assistant.description}
-                        </Text>
-                      ) : null}
-                    </View>
-                    {isSelected && (
-                      <MaterialIcons name="check-circle" size={22} color={colors.primary} />
-                    )}
-                  </TouchableOpacity>
-                )
-              })
+              assistants.map((assistant) => (
+                <AssistantPickerRow
+                  key={assistant.id}
+                  assistant={assistant}
+                  isSelected={assistant.id === currentAssistantId}
+                  onSelect={handleSelect}
+                  colors={colors}
+                />
+              ))
             )}
           </ScrollView>
-        </Animated.View>
+        </View>
       </View>
     </Modal>
   )
@@ -280,22 +252,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 12
   },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  avatarEmoji: {
-    fontSize: 20
-  },
   cardBody: {
     flex: 1
   },
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap'
+  },
   cardTitle: {
     fontSize: 15,
-    fontWeight: '600'
+    fontWeight: '600',
+    flexShrink: 1
   },
   cardDesc: {
     fontSize: 13,

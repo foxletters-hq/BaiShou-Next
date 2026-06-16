@@ -87,7 +87,8 @@ export function useAgentModel(_options: UseAgentModelOptions = {}) {
         const assistants = await listAssistantsForUi(
           services.assistantManager,
           services.attachmentManager,
-          services.fileSystem
+          services.fileSystem,
+          { preferFileUri: true }
         )
 
         const nextGlobalModels =

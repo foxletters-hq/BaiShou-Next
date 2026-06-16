@@ -13,7 +13,8 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
-import { AgentSessionList, AssistantAvatar, useNativeTheme } from '@baishou/ui/native'
+import { AgentSessionList, AssistantAvatar, useNativeTheme, AssistantKindBadge } from '@baishou/ui/native'
+import type { AssistantKind } from '@baishou/shared'
 import type { AgentSession } from '@baishou/ui/native'
 
 export interface AssistantSummary {
@@ -23,6 +24,7 @@ export interface AssistantSummary {
   emoji?: string
   avatarPath?: string
   displayAvatarUri?: string
+  assistantKind?: AssistantKind
 }
 
 interface AgentDrawerProps {
@@ -209,12 +211,15 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
                 <>
                   <DrawerAssistantAvatar assistant={currentAssistant} size={36} />
                   <View style={styles.currentMeta}>
-                    <Text
-                      style={[styles.currentName, { color: colors.textPrimary }]}
-                      numberOfLines={1}
-                    >
-                      {currentAssistant.name}
-                    </Text>
+                    <View style={styles.currentNameRow}>
+                      <Text
+                        style={[styles.currentName, { color: colors.textPrimary }]}
+                        numberOfLines={1}
+                      >
+                        {currentAssistant.name}
+                      </Text>
+                      <AssistantKindBadge kind={currentAssistant.assistantKind} compact />
+                    </View>
                     {currentAssistant.description ? (
                       <Text
                         style={[styles.currentDesc, { color: colors.textSecondary }]}
@@ -359,6 +364,12 @@ const styles = StyleSheet.create({
   },
   currentMeta: {
     flex: 1
+  },
+  currentNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap'
   },
   currentName: {
     fontSize: 15,
