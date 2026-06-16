@@ -1,12 +1,18 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import { Search, Pin, PinOff, Trash2, Copy, Plus, Activity, Sparkles } from 'lucide-react'
-import { resolveWebAssistantAvatarSrc } from '../assistant-avatar.util'
-import { AssistantKindBadge } from '../AssistantKindBadge'
+import {
+  DndContext,
+  DragOverlay,
+  closestCenter,
+  defaultDropAnimationSideEffects
+} from '@dnd-kit/core'
+import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable'
+import { restrictToWindowEdges } from '@dnd-kit/modifiers'
+import { Plus, Sparkles, Trash2, Search } from 'lucide-react'
 import styles from './AssistantManagementPage.module.css'
-
-// ─── 类型定义 ──────────────────────────────────────────────
+import { AssistantListRow, AssistantSortableListItem } from './AssistantSortableListItem'
+import { useAssistantManagementPage } from './useAssistantManagementPage'
 
 export interface AssistantInfo {
   id: string
@@ -18,16 +24,13 @@ export interface AssistantInfo {
   providerId?: string
   modelId?: string
   compressTokenThreshold: number
-
-  // 新增针对战列排序必须的时间和频率戳
   createdAt?: number
   lastUsedAt?: number
   useCount?: number
   avatarPath?: string
   assistantKind?: 'companion' | 'work'
+  sortOrder?: number
 }
-
-export type SortMode = 'name' | 'newest' | 'frequent'
 
 export interface AssistantManagementPageProps {
   assistants: AssistantInfo[]
@@ -37,23 +40,22 @@ export interface AssistantManagementPageProps {
   onDelete: (assistantId: string) => void
   onClone?: (assistant: AssistantInfo) => void
   onTogglePin: (assistantId: string) => void
+  onReorder?: (orderedIds: string[]) => void
 }
-
-// ─── 主组件 ──────────────────────────────────────────────────
 
 export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = ({
   assistants,
   pinnedIds,
   onEdit,
   onCreate,
-  onClone,
   onDelete,
-  onTogglePin
+  onReorder
 }) => {
   const { t } = useTranslation()
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [sortMode, setSortMode] = useState<SortMode>('newest')
+
+  const vm = useAssistantManagementPage(assistants, pinnedIds, searchQuery, onReorder)
 
   const handleConfirmDelete = () => {
     if (deleteTargetId) {
@@ -71,48 +73,18 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
     }
   }, [deleteTargetId])
 
-  const formatContextWindow = (n: number) => {
-    if (n < 0) return '∞'
-    return String(n)
-  }
-
-  // 核心过滤器和排序引擎
-  const processedAssistants = useMemo(() => {
-    let filtered = assistants
-
-    // 1. 过滤流
-    const query = searchQuery.trim().toLowerCase()
-    if (query !== '') {
-      filtered = filtered.filter(
-        (a) =>
-          a.name.toLowerCase().includes(query) ||
-          (a.description && a.description.toLowerCase().includes(query))
-      )
-    }
-
-    // 2. 排序流
-    return [...filtered].sort((a, b) => {
-      // 首先，无论什么情况：置顶的必须浮于表层
-      const aPinned = pinnedIds.has(a.id)
-      const bPinned = pinnedIds.has(b.id)
-      if (aPinned && !bPinned) return -1
-      if (!aPinned && bPinned) return 1
-
-      // 执行选定的主排序模式
-      if (sortMode === 'name') {
-        return a.name.localeCompare(b.name)
-      } else if (sortMode === 'newest') {
-        return (b.createdAt || 0) - (a.createdAt || 0)
-      } else if (sortMode === 'frequent') {
-        return (b.useCount || 0) - (a.useCount || 0)
-      }
-      return 0
-    })
-  }, [assistants, searchQuery, sortMode, pinnedIds])
+  const renderRow = (assistant: AssistantInfo) => (
+    <AssistantSortableListItem
+      key={assistant.id}
+      assistant={assistant}
+      isPinned={pinnedIds.has(assistant.id)}
+      onEdit={onEdit}
+      onDelete={setDeleteTargetId}
+    />
+  )
 
   return (
     <div className={styles.page}>
-      {/* AppBar */}
       <div className={styles.appBar}>
         <div className={styles.appBarTitle}>{t('agent.assistant.title', '伙伴管理')}</div>
         <div className={styles.appBarControls}>
@@ -134,7 +106,6 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
         </div>
       </div>
 
-      {/* Grid Region */}
       <div className={styles.scrollArea}>
         {assistants.length === 0 ? (
           <div className={styles.emptyState}>
@@ -149,79 +120,66 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
               {t('agent.assistant.create_first', '执行首建协议')}
             </button>
           </div>
-        ) : processedAssistants.length === 0 ? (
+        ) : vm.visibleAssistants.length === 0 ? (
           <div className={styles.emptyState}>
             <span className={styles.emptyText}>{t('common.no_data')}</span>
           </div>
+        ) : vm.isDragEnabled ? (
+          <DndContext
+            sensors={vm.sensors}
+            collisionDetection={closestCenter}
+            onDragStart={vm.handleDragStart}
+            onDragEnd={vm.handleDragEnd}
+            modifiers={[restrictToWindowEdges]}
+          >
+            <SortableContext
+              items={vm.visibleAssistants.map((a) => a.id)}
+              strategy={rectSortingStrategy}
+            >
+              <div className={styles.sortableList}>
+                {vm.visibleAssistants.map((assistant) => renderRow(assistant))}
+              </div>
+            </SortableContext>
+            {typeof document !== 'undefined'
+              ? createPortal(
+                  <DragOverlay
+                    dropAnimation={{
+                      sideEffects: defaultDropAnimationSideEffects({
+                        styles: { active: { opacity: '0.5' } }
+                      })
+                    }}
+                  >
+                    {vm.activeDragId
+                      ? (() => {
+                          const assistant = vm.visibleAssistants.find((a) => a.id === vm.activeDragId)
+                          if (!assistant) return null
+                          const isPinned = pinnedIds.has(assistant.id)
+                          return (
+                            <AssistantListRow
+                              style={
+                                vm.dragOverlayWidth
+                                  ? { width: vm.dragOverlayWidth }
+                                  : undefined
+                              }
+                              className={`${styles.sortableRow} ${styles.sortableRowDragging} ${isPinned ? styles.cardPinned : ''}`}
+                              assistant={assistant}
+                              isPinned={isPinned}
+                            />
+                          )
+                        })()
+                      : null}
+                  </DragOverlay>,
+                  document.body
+                )
+              : null}
+          </DndContext>
         ) : (
-          <div className={styles.grid}>
-            {processedAssistants.map((assistant) => {
-              const isPinned = pinnedIds.has(assistant.id)
-              return (
-                <div
-                  key={assistant.id}
-                  className={`${styles.card} ${isPinned ? styles.cardPinned : ''}`}
-                  onClick={() => onEdit(assistant)}
-                >
-                  {/* Secret Hover Actions */}
-                  <div className={styles.cardActions}>
-                    <button
-                      className={`${styles.cardActionBtn} ${styles.cardActionBtnDanger}`}
-                      title={t('common.delete', '删除')}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setDeleteTargetId(assistant.id)
-                      }}
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
-
-                  {/* Header Information */}
-                  <div className={styles.cardHeader}>
-                    <div className={styles.cardAvatar}>
-                      <div
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          borderRadius: '50%',
-                          backgroundImage: `url("${resolveWebAssistantAvatarSrc(assistant.avatarPath)}")`,
-                          backgroundSize: 'cover',
-                          backgroundPosition: 'center'
-                        }}
-                      />
-                    </div>
-                    <div className={styles.cardInfo}>
-                      <div className={styles.cardNameRow}>
-                        <span className={styles.cardName} title={assistant.name}>
-                          {assistant.name}
-                        </span>
-                        <AssistantKindBadge kind={assistant.assistantKind} compact />
-                        {isPinned && (
-                          <Pin
-                            size={14}
-                            color="var(--color-primary, #5BA8F5)"
-                            style={{ marginLeft: 6, opacity: 0.8 }}
-                          />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Main Readout */}
-                  <div className={styles.cardDesc}>
-                    {assistant.description ||
-                      assistant.systemPrompt ||
-                      t('agent.assistant.no_prompt', '⚠️ 空白系统协议流...')}
-                  </div>
-                </div>
-              )
-            })}
+          <div className={styles.sortableList}>
+            {vm.visibleAssistants.map((assistant) => renderRow(assistant))}
           </div>
         )}
       </div>
 
-      {/* Delete Confirm Modal — portaled so fixed positioning is viewport-relative */}
       {deleteTargetId !== null &&
         typeof document !== 'undefined' &&
         createPortal(

@@ -122,6 +122,12 @@ export const AssistantManagementScreen: React.FC = () => {
                   loadAssistants()
                 }
               }}
+              onReorder={async (orderedIds) => {
+                if (typeof window !== 'undefined' && window.electron) {
+                  await window.electron.ipcRenderer.invoke('agent:reorder-assistants', orderedIds)
+                  await loadAssistants()
+                }
+              }}
             />
           </motion.div>
         )}

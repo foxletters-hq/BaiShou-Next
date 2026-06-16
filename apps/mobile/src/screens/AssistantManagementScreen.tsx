@@ -4,9 +4,12 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  TouchableOpacity,
-  useWindowDimensions
+  TouchableOpacity
 } from 'react-native'
+import DraggableFlatList, {
+  ScaleDecorator,
+  type RenderItemParams
+} from 'react-native-draggable-flatlist'
 import { MaterialIcons } from '@expo/vector-icons'
 import {
   useNativeTheme,
@@ -41,6 +44,7 @@ interface Assistant {
   useCount?: number
   displayAvatarUri?: string
   assistantKind?: AssistantKind
+  sortOrder?: number
 }
 
 export const AssistantManagementScreen: React.FC = () => {
@@ -48,15 +52,12 @@ export const AssistantManagementScreen: React.FC = () => {
   const { colors, isDark, tokens } = useNativeTheme()
   const toast = useNativeToast()
   const dialog = useDialog()
-  const { width } = useWindowDimensions()
   const { services, dbReady, vaultRevision } = useBaishou()
   const router = useRouter()
 
   const [assistants, setAssistants] = useState<Assistant[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-
-  const numColumns = width >= 520 ? 2 : 1
 
   const loadAssistants = useCallback(async () => {
     if (!dbReady || !services) return
@@ -97,9 +98,25 @@ export const AssistantManagementScreen: React.FC = () => {
     }
     return list.sort((a, b) => {
       if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1
-      return (b.createdAt || 0) - (a.createdAt || 0)
+      return (a.sortOrder ?? 0) - (b.sortOrder ?? 0)
     })
   }, [assistants, searchQuery])
+
+  const isDragEnabled = searchQuery.trim() === ''
+
+  const handleReorder = useCallback(
+    async (ordered: Assistant[]) => {
+      const next = ordered.map((item, index) => ({ ...item, sortOrder: index }))
+      setAssistants(next)
+      try {
+        await services?.assistantManager.reorderAssistants(next.map((a) => a.id))
+      } catch (e) {
+        console.error('Failed to reorder assistants', e)
+        void loadAssistants()
+      }
+    },
+    [loadAssistants, services]
+  )
 
   const handleCreateAssistant = () => {
     router.push('/settings/assistant-edit?id=new')
@@ -137,21 +154,32 @@ export const AssistantManagementScreen: React.FC = () => {
     }
   }
 
-  const renderCard = ({ item }: { item: Assistant }) => (
-    <TouchableOpacity
-      style={[
-        styles.card,
-        {
-          backgroundColor: colors.bgSurface,
-          borderColor: item.isPinned ? colors.primary : colors.borderSubtle,
-          borderRadius: tokens.radius.lg
-        },
-        item.isPinned && { borderWidth: 1.5 }
-      ]}
-      onPress={() => handleEditAssistant(item)}
-      activeOpacity={0.75}
-    >
+  const renderCard = ({ item, drag, isActive }: RenderItemParams<Assistant>) => (
+    <ScaleDecorator>
+      <TouchableOpacity
+        style={[
+          styles.card,
+          {
+            backgroundColor: colors.bgSurface,
+            borderColor: item.isPinned ? colors.primary : colors.borderSubtle,
+            borderRadius: tokens.radius.lg,
+            opacity: isActive ? 0.92 : 1
+          },
+          item.isPinned && { borderWidth: 1.5 }
+        ]}
+        onPress={() => handleEditAssistant(item)}
+        activeOpacity={0.75}
+      >
       <View style={styles.cardHeader}>
+        {isDragEnabled ? (
+          <TouchableOpacity
+            onPressIn={drag}
+            style={[styles.dragHandle, { borderColor: colors.borderSubtle }]}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <MaterialIcons name="drag-indicator" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+        ) : null}
         <AssistantAvatar
           emoji={item.emoji}
           avatarPath={item.avatarPath}
@@ -203,6 +231,7 @@ export const AssistantManagementScreen: React.FC = () => {
         ) : null}
       </View>
     </TouchableOpacity>
+    </ScaleDecorator>
   )
 
   return (
@@ -241,16 +270,37 @@ export const AssistantManagementScreen: React.FC = () => {
             </Text>
           </TouchableOpacity>
         </View>
+      ) : isDragEnabled ? (
+        <DraggableFlatList
+          data={processedAssistants}
+          renderItem={renderCard}
+          keyExtractor={(item) => item.id}
+          onDragEnd={({ data }) => void handleReorder(data)}
+          style={{ flex: 1, backgroundColor: colors.bgApp }}
+          contentContainerStyle={styles.listContent}
+          indicatorStyle={scrollIndicatorStyle(isDark)}
+          ListHeaderComponent={
+            <Input
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder={t('agent.assistant.search_hint', '搜索伙伴...')}
+            />
+          }
+          ListEmptyComponent={
+            <View style={styles.centered}>
+              <Text style={{ color: colors.textSecondary }}>{t('common.no_data')}</Text>
+            </View>
+          }
+        />
       ) : (
         <FlatList
           data={processedAssistants}
-          renderItem={renderCard}
-          key={numColumns}
-          numColumns={numColumns}
+          renderItem={({ item }) =>
+            renderCard({ item, drag: () => {}, isActive: false, getIndex: () => null })
+          }
           keyExtractor={(item) => item.id}
           style={{ flex: 1, backgroundColor: colors.bgApp }}
           contentContainerStyle={styles.listContent}
-          columnWrapperStyle={numColumns > 1 ? styles.columnWrap : undefined}
           indicatorStyle={scrollIndicatorStyle(isDark)}
           ListHeaderComponent={
             <Input
@@ -308,11 +358,18 @@ const styles = StyleSheet.create({
     gap: 12
   },
   card: {
-    flex: 1,
     borderWidth: 1,
     padding: 14,
     gap: 10,
     minHeight: 140
+  },
+  dragHandle: {
+    width: 28,
+    height: 44,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   cardHeader: {
     flexDirection: 'row',

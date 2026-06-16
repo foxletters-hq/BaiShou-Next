@@ -8,7 +8,6 @@ export function registerAssistantIPC() {
   // ==========================================
   ipcMain.handle('agent:get-assistants', async () => {
     const { assistantManager } = getAgentManagers()
-    await assistantManager.fullResyncFromDisks()
     return await assistantManager.findAll()
   })
 
@@ -36,6 +35,11 @@ export function registerAssistantIPC() {
   ipcMain.handle('agent:pin-assistant', async (_, id: string, isPinned: boolean) => {
     const { assistantManager } = getAgentManagers()
     await assistantManager.togglePin(id, isPinned)
+  })
+
+  ipcMain.handle('agent:reorder-assistants', async (_, orderedIds: string[]) => {
+    const { assistantManager } = getAgentManagers()
+    await assistantManager.reorderAssistants(orderedIds)
   })
 
   ipcMain.handle('agent:sync-default-latte-locale', async (_, locale?: string) => {

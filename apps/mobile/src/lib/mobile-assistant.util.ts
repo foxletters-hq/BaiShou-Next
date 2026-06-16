@@ -29,6 +29,7 @@ export type MobileAssistantUi = {
   compressKeepTurns?: number
   compressSystemPrompt?: string | null
   assistantKind?: AssistantKind
+  sortOrder?: number
   createdAt?: number
   lastUsedAt?: number
   useCount?: number
@@ -59,6 +60,7 @@ function mapAssistantRowToUi(a: AssistantRow, displayAvatarUri?: string): Mobile
     compressKeepTurns: a.compressKeepTurns ?? undefined,
     compressSystemPrompt: a.compressSystemPrompt,
     assistantKind: normalizeAssistantKind(a.assistantKind),
+    sortOrder: a.sortOrder ?? 0,
     createdAt: a.createdAt ? new Date(a.createdAt).getTime() : undefined,
     displayAvatarUri
   }
