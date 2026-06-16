@@ -1,3 +1,73 @@
+const CLONE_TTS_VOICE_ARRAY_KEYS = ['voices', 'data', 'items', 'list'] as const
+const CLONE_TTS_VOICE_ID_KEYS = [
+  'alias',
+  'name',
+  'id',
+  'voice',
+  'voiceName',
+  'path',
+  'ref_audio',
+  'refAudioPath'
+] as const
+
+function extractCloneTtsVoiceArray(data: unknown): unknown[] {
+  if (Array.isArray(data)) return data
+  if (!data || typeof data !== 'object') return []
+
+  const record = data as Record<string, unknown>
+  for (const key of CLONE_TTS_VOICE_ARRAY_KEYS) {
+    const value = record[key]
+    if (Array.isArray(value)) return value
+  }
+  return []
+}
+
+function readCloneTtsVoiceField(value: unknown): string | null {
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    return trimmed || null
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value)
+  }
+  return null
+}
+
+function extractCloneTtsVoiceId(item: unknown, index: number): string | null {
+  if (typeof item === 'string') {
+    return readCloneTtsVoiceField(item)
+  }
+  if (!item || typeof item !== 'object') return null
+
+  const record = item as Record<string, unknown>
+  for (const key of CLONE_TTS_VOICE_ID_KEYS) {
+    const id = readCloneTtsVoiceField(record[key])
+    if (id) return id
+  }
+  return `voice-${index + 1}`
+}
+
+function disambiguateCloneTtsVoiceId(baseId: string, seen: Map<string, number>): string {
+  const count = seen.get(baseId) ?? 0
+  seen.set(baseId, count + 1)
+  return count === 0 ? baseId : `${baseId} (${count + 1})`
+}
+
+/** 解析 CloneTTS /api/voices 响应，兼容顶层数组与 { voices } 等包装格式 */
+export function parseCloneTtsVoiceList(data: unknown): string[] {
+  const items = extractCloneTtsVoiceArray(data)
+  const ids: string[] = []
+  const seen = new Map<string, number>()
+
+  for (let index = 0; index < items.length; index++) {
+    const baseId = extractCloneTtsVoiceId(items[index], index)
+    if (!baseId) continue
+    ids.push(disambiguateCloneTtsVoiceId(baseId, seen))
+  }
+
+  return ids
+}
+
 /** 拉取 OpenAI 兼容 /models 列表，支持分页 */
 export async function fetchOpenAiCompatibleModelIds(
   baseUrl: string,

@@ -3,6 +3,7 @@ import {
   AIProviderConfig,
   ProviderType,
   fetchOpenAiCompatibleModelIds,
+  parseCloneTtsVoiceList,
   resolveProviderBaseUrl,
   resolveTtsProviderBaseUrl
 } from '@baishou/shared'
@@ -25,13 +26,7 @@ export async function fetchTtsProviderModels(
       const response = await fetch(`${trimmedUrl}/api/voices`)
       if (response.ok) {
         const data = await response.json()
-        if (Array.isArray(data)) {
-          return data
-            .map(
-              (item: { alias?: string; name?: string }) => item.alias || item.name || String(item)
-            )
-            .filter(Boolean)
-        }
+        return parseCloneTtsVoiceList(data)
       }
     } catch {
       return []

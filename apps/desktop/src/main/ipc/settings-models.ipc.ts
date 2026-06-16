@@ -5,6 +5,7 @@ import {
   fetchOpenAiCompatibleModelIds,
   isTtsProviderId,
   logger,
+  parseCloneTtsVoiceList,
   resolveProviderBaseUrl,
   resolveTtsProviderBaseUrl
 } from '@baishou/shared'
@@ -246,11 +247,7 @@ export function registerSettingsModelsIPC() {
           const response = await fetch(url)
           if (response.ok) {
             const data = await response.json()
-            if (Array.isArray(data)) {
-              return data
-                .map((item: any) => item.alias || item.name || String(item))
-                .filter(Boolean)
-            }
+            return parseCloneTtsVoiceList(data)
           }
           return []
         } catch (err) {

@@ -1,4 +1,4 @@
-export { fetchOpenAiCompatibleModelIds } from './fetch-tts-models'
+export { fetchOpenAiCompatibleModelIds, parseCloneTtsVoiceList } from './fetch-tts-models'
 export {
   TTS_PROVIDER_IDS,
   TTS_DEFAULT_BASE_URLS,
