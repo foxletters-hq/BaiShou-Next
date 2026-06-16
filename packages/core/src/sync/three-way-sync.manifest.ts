@@ -8,6 +8,7 @@ import {
   SYNC_STORAGE_ID_FILENAME,
   getIncrementalSyncStorageId
 } from '@baishou/shared'
+import { isSqliteRuntimeSyncPath } from '@baishou/shared'
 import { ThreeWaySyncCore } from './three-way-sync.core'
 
 export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
@@ -195,6 +196,10 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
   }
 
   protected async uploadFile(relPath: string): Promise<void> {
+    if (isSqliteRuntimeSyncPath(relPath)) {
+      console.warn(`[ThreeWaySync] Skipping SQLite runtime file upload: ${relPath}`)
+      return
+    }
     const syncRoot = await this.getSyncRoot()
     const fullPath = path.join(syncRoot, relPath)
     if (fs.existsSync(fullPath)) {
@@ -203,6 +208,10 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
   }
 
   protected async downloadFile(relPath: string): Promise<void> {
+    if (isSqliteRuntimeSyncPath(relPath)) {
+      console.warn(`[ThreeWaySync] Skipping SQLite runtime file download: ${relPath}`)
+      return
+    }
     const syncRoot = await this.getSyncRoot()
     const fullPath = path.join(syncRoot, relPath)
     await fs.promises.mkdir(path.dirname(fullPath), { recursive: true })

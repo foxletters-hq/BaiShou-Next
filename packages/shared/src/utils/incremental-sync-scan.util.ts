@@ -12,6 +12,23 @@ function normalizeRel(relativePath: string): string {
   return relativePath.replace(/\\/g, '/').replace(/^\//, '')
 }
 
+function basenameFromRel(relativePath: string): string {
+  const rel = normalizeRel(relativePath)
+  return rel.split('/').pop() ?? rel
+}
+
+/** SQLite 运行时附属文件与主库文件，禁止参与增量同步（会被进程锁定，且不应跨设备复制） */
+export function isSqliteRuntimeSyncPath(relativePath: string): boolean {
+  const base = basenameFromRel(relativePath).toLowerCase()
+  return (
+    base.endsWith('.db') ||
+    base.endsWith('.db-shm') ||
+    base.endsWith('.db-wal') ||
+    base.endsWith('.db-journal') ||
+    base.endsWith('.probe')
+  )
+}
+
 function isBaishouSettingsTree(rel: string): boolean {
   return (
     rel === '.baishou/settings' ||
@@ -62,6 +79,9 @@ export function shouldScanIncrementalSyncDirectory(
 
 export function shouldIncludeIncrementalSyncFile(entryName: string, relativePath: string): boolean {
   const rel = normalizeRel(relativePath)
+  if (isSqliteRuntimeSyncPath(rel) || isSqliteRuntimeSyncPath(entryName)) {
+    return false
+  }
   if (isBaishouSettingsTree(rel)) {
     return rel.includes('/.baishou/settings/') ||
       rel.startsWith(INCREMENTAL_SYNC_BAISHOU_SETTINGS_PREFIX)

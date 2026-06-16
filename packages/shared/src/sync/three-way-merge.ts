@@ -1,4 +1,5 @@
 import type { ManifestEntry, SyncManifest } from '../types/version-control.types'
+import { isSqliteRuntimeSyncPath } from '../utils/incremental-sync-scan.util'
 
 /** 合并决策 */
 export interface MergeDecision {
@@ -40,6 +41,17 @@ export function threeWayMerge(
   const decisions: MergeDecision[] = []
 
   for (const filePath of allPaths) {
+    if (isSqliteRuntimeSyncPath(filePath)) {
+      const remoteEntry = remote.files[filePath] ?? null
+      if (remoteEntry) {
+        const ancestorEntry = ancestor.files[filePath] ?? null
+        decisions.push(
+          mkDecision('delete-remote', filePath, remoteEntry, null, remoteEntry, ancestorEntry)
+        )
+      }
+      continue
+    }
+
     const localEntry = local.files[filePath] ?? null
     const remoteEntry = remote.files[filePath] ?? null
     const ancestorEntry = ancestor.files[filePath] ?? null

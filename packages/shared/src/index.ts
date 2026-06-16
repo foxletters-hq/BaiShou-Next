@@ -56,6 +56,7 @@ export {
 export {
   INCREMENTAL_SYNC_BAISHOU_ALLOWLIST,
   INCREMENTAL_SYNC_BAISHOU_SETTINGS_PREFIX,
+  isSqliteRuntimeSyncPath,
   shouldIncludeIncrementalSyncFile,
   shouldScanIncrementalSyncDirectory
 } from './utils/incremental-sync-scan.util'
@@ -117,6 +118,7 @@ export * from './utils/summary-template.util'
 export * from './constants/weather.constants'
 export * from './constants/github.constants'
 export * from './constants/rag-migration.constants'
+export * from './constants/legacy-migration.constants'
 export * from './constants/compression-prompt.defaults'
 export * from './constants/compression-errors'
 export * from './constants/compression-previous-summary'

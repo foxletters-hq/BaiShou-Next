@@ -206,6 +206,20 @@ describe('threeWayMerge', () => {
     expect(decision?.type).toBe('skip')
   })
 
+  it('should schedule delete-remote for sqlite runtime files present on remote', () => {
+    const dbShm = 'baishou_agent.db-shm'
+    const entry = makeEntry({ hash: 'shm-hash' })
+    const local = makeManifest({})
+    const remote = makeManifest({ [dbShm]: entry })
+    const ancestor = makeManifest({})
+
+    const decisions = threeWayMerge(local, remote, ancestor)
+    const decision = decisions.find((d) => d.filePath === dbShm)
+
+    expect(decision?.type).toBe('delete-remote')
+    expect(decisions.find((d) => d.filePath === dbShm && d.type === 'download')).toBeUndefined()
+  })
+
   it('should include file hash and size in decision', () => {
     const entry = makeEntry({ hash: 'abc', size: 999 })
     const local = makeManifest({ [filePath]: entry })

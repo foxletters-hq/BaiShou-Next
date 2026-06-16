@@ -1,10 +1,23 @@
 import { describe, expect, it } from 'vitest'
 import {
+  isSqliteRuntimeSyncPath,
   shouldIncludeIncrementalSyncFile,
   shouldScanIncrementalSyncDirectory
 } from '../incremental-sync-scan.util'
 
 describe('incremental-sync-scan.util', () => {
+  it('excludes sqlite runtime files from incremental sync', () => {
+    expect(isSqliteRuntimeSyncPath('baishou_agent.db')).toBe(true)
+    expect(isSqliteRuntimeSyncPath('baishou_agent.db-shm')).toBe(true)
+    expect(isSqliteRuntimeSyncPath('baishou_agent.db-wal')).toBe(true)
+    expect(isSqliteRuntimeSyncPath('Personal/shadow_index.db')).toBe(true)
+    expect(isSqliteRuntimeSyncPath('Journals/a.md')).toBe(false)
+    expect(shouldIncludeIncrementalSyncFile('baishou_agent.db-shm', 'baishou_agent.db-shm')).toBe(
+      false
+    )
+    expect(shouldIncludeIncrementalSyncFile('baishou_agent.db', 'baishou_agent.db')).toBe(false)
+  })
+
   it('includes vault root files and settings domain json files', () => {
     expect(shouldIncludeIncrementalSyncFile('a.md', 'Journals/a.md')).toBe(true)
     expect(

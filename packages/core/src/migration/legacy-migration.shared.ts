@@ -1,9 +1,20 @@
 import type { IFileSystem } from '../fs/file-system.types'
 import * as path from '../fs/path.util'
-import { stripStoragePathScheme } from '@baishou/shared'
+import {
+  stripStoragePathScheme,
+  LEGACY_UPGRADE_RAG_NOTICE_MAX,
+  LEGACY_UPGRADE_RAG_PENDING_KEY,
+  LEGACY_UPGRADE_RAG_NOTICE_COUNT_KEY
+} from '@baishou/shared'
 import { journalMarkdownExistsInTree } from '../journal/journal-files.util'
 import { sanitizeVaultDirectoryName } from '../vault/vault-name.util'
 import type { VaultInfo } from '../vault/vault.types'
+
+export {
+  LEGACY_UPGRADE_RAG_NOTICE_MAX,
+  LEGACY_UPGRADE_RAG_PENDING_KEY,
+  LEGACY_UPGRADE_RAG_NOTICE_COUNT_KEY
+}
 
 export const LEGACY_MIGRATION_STATUS_FILE = '.baishou_next_migration.json'
 export const LEGACY_REGISTRY_RELATIVE = '.baishou/vault_registry.json'
@@ -417,7 +428,3 @@ export async function cleanupLegacyVaultArtifacts(
     }
   }
 }
-
-export const LEGACY_UPGRADE_RAG_PENDING_KEY = 'legacy_upgrade_rag_pending'
-export const LEGACY_UPGRADE_RAG_NOTICE_COUNT_KEY = 'legacy_upgrade_rag_notice_count'
-export const LEGACY_UPGRADE_RAG_NOTICE_MAX = 2
