@@ -19,7 +19,6 @@ export async function getCroppedImg(
     return ''
   }
 
-  // Set physical canvas size to match the original bounding box
   canvas.width = image.width
   canvas.height = image.height
 
@@ -35,8 +34,13 @@ export async function getCroppedImg(
     return ''
   }
 
-  croppedCanvas.width = pixelCrop.width
-  croppedCanvas.height = pixelCrop.height
+  const MIN_EXPORT = 256
+  const MAX_EXPORT = 512
+  const rawSize = Math.max(pixelCrop.width, pixelCrop.height)
+  const exportSize = Math.min(MAX_EXPORT, Math.max(MIN_EXPORT, Math.round(rawSize)))
+
+  croppedCanvas.width = exportSize
+  croppedCanvas.height = exportSize
 
   croppedCtx.drawImage(
     canvas,
@@ -46,9 +50,9 @@ export async function getCroppedImg(
     pixelCrop.height,
     0,
     0,
-    pixelCrop.width,
-    pixelCrop.height
+    exportSize,
+    exportSize
   )
 
-  return croppedCanvas.toDataURL('image/png')
+  return croppedCanvas.toDataURL('image/jpeg', 0.92)
 }

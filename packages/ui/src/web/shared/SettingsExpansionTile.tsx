@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { MdExpandMore } from 'react-icons/md'
 import { isSettingsInlineHelpTarget, settingsInlineHelpHostProps } from './settingsInlineHelpBlock'
 import './SettingsListTile.css'
@@ -28,19 +28,6 @@ export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
   children
 }) => {
   const [open, setOpen] = useState(false)
-  const [shouldRender, setShouldRender] = useState(false)
-
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>
-    if (open) {
-      setShouldRender(true)
-    } else {
-      timer = setTimeout(() => setShouldRender(false), 350) // Match CSS transition duration
-    }
-    return () => {
-      if (timer) clearTimeout(timer)
-    }
-  }, [open])
 
   const showRowDivider = !embedded && (!isLast || open)
   const showContentDivider = embedded && !isLast && open
@@ -75,19 +62,15 @@ export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
         <MdExpandMore className="settings-expansion-arrow" size={24} />
       </div>
 
-      {(open || shouldRender) && (
-        <div className={`settings-expansion-grid-wrapper ${open ? 'expanded' : ''}`}>
-          <div className="settings-expansion-grid-item">
-            {shouldRender && (
-              <div
-                className={`settings-expansion-content ${embedded ? 'settings-expansion-content-embedded' : ''} ${showContentDivider ? 'settings-expansion-content-divider' : ''}`}
-              >
-                {children}
-              </div>
-            )}
+      <div className={`settings-expansion-grid-wrapper ${open ? 'expanded' : ''}`}>
+        <div className="settings-expansion-grid-item">
+          <div
+            className={`settings-expansion-content ${embedded ? 'settings-expansion-content-embedded' : ''} ${showContentDivider ? 'settings-expansion-content-divider' : ''}`}
+          >
+            {children}
           </div>
         </div>
-      )}
+      </div>
     </div>
   )
 }

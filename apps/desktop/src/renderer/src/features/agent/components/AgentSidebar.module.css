@@ -186,6 +186,9 @@
   flex: 1;
   margin-left: 10px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .assistantNameRow {

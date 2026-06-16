@@ -5,7 +5,7 @@
   margin-bottom: 12px;
   border-radius: 12px;
   overflow: hidden;
-  border: 1.5px solid var(--border-subtle);
+  border: 1.5px solid var(--border-card);
   background: var(--bg-surface);
   box-sizing: border-box;
   align-self: stretch;
@@ -23,7 +23,7 @@
   min-height: 42px;
   cursor: pointer;
   user-select: none;
-  background: var(--bg-surface-normal);
+  background: var(--bg-surface);
   transition: background 0.15s ease;
 }
 

@@ -35,7 +35,7 @@
   font-size: 14px;
   line-height: 1.7;
   color: var(--text-secondary);
-  border-top: 1px solid var(--border-subtle);
+  border-top: 1px solid var(--border-muted);
   word-break: break-word;
   overflow-wrap: break-word;
 }

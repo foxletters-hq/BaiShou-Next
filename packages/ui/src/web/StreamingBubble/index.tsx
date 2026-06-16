@@ -5,6 +5,7 @@ import shared from '../shared/CollapsibleAncillaryBlock.module.css'
 import styles from './StreamingBubble.module.css'
 import { MarkdownRenderer } from '../MarkdownRenderer'
 import { ThinkingBlock } from '../ThinkingBlock'
+import { AssistantAvatar } from '../AssistantAvatar'
 import { motion } from 'framer-motion'
 
 export interface ToolExecution {
@@ -77,18 +78,6 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
   const hasReasoning = cleanReasoning.length > 0
   const hasText = cleanText.length > 0
 
-  const Avatar = () => (
-    <div className={styles.avatarWrap}>
-      {aiProfile.avatarPath ? (
-        <img src={aiProfile.avatarPath} alt="avatar" className={styles.avatarImg} />
-      ) : aiProfile.emoji ? (
-        <div className={styles.avatarFallback}>{aiProfile.emoji}</div>
-      ) : (
-        <div className={styles.avatarFallback}>✨</div>
-      )}
-    </div>
-  )
-
   return (
     <motion.div
       className={styles.container}
@@ -96,7 +85,9 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ type: 'spring', damping: 20, stiffness: 300 }}
     >
-      <Avatar />
+      <div className={styles.avatarWrap}>
+        <AssistantAvatar avatarPath={aiProfile.avatarPath} size={36} borderRadius="50%" />
+      </div>
       <div className={styles.messageCol}>
         <div className={styles.nameLabel}>{aiName}</div>
 

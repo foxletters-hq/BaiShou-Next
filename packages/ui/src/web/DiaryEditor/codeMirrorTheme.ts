@@ -153,6 +153,8 @@ export const editorTheme = EditorView.baseTheme({
   },
   '.cm-placeholder': {
     color: 'var(--text-tertiary)',
-    opacity: '0.6'
+    opacity: '0.6',
+    fontSize: '15px',
+    lineHeight: '1.7'
   }
 })

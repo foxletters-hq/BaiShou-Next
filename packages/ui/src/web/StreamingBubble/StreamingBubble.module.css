@@ -65,7 +65,7 @@
   flex-direction: column;
   padding: 8px 14px 12px;
   gap: 6px;
-  border-top: 1px solid var(--border-subtle);
+  border-top: 1px solid var(--border-muted);
 }
 
 .toolItem {
