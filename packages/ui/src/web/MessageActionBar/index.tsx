@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import styles from './MessageActionBar.module.css'
-import { Copy, RefreshCcw, Edit3, Trash2, Volume2, Check, GitBranch } from 'lucide-react'
+import { Copy, RefreshCcw, Edit3, Trash2, Volume2, Check, GitBranch, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 export interface MessageActionBarProps {
@@ -50,8 +50,13 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
           className={`${styles.iconBtn} ${isTtsPlaying ? styles.ttsPlaying : ''}`}
           onClick={onReadAloud}
           title={t('agent.chat.readAloud', '语音朗读')}
+          aria-busy={isTtsPlaying}
         >
-          <Volume2 size={14} />
+          {isTtsPlaying ? (
+            <Loader2 size={14} className={styles.ttsSpinner} />
+          ) : (
+            <Volume2 size={14} />
+          )}
         </button>
       )}
 

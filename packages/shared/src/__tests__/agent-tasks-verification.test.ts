@@ -129,7 +129,7 @@ describe('Agent 5: TTS 功能验证', () => {
     const actionBarPath = resolve(__dirname, '../../../ui/src/web/MessageActionBar/index.tsx')
     const actionBarContent = readFileSync(actionBarPath, 'utf-8')
     expect(actionBarContent).toContain('isTtsPlaying')
-    expect(actionBarContent).toContain('ttsPlaying')
+    expect(actionBarContent).toContain('ttsSpinner')
   })
 
   it('任务27: AgentScreen auto-play 使用 ref 避免 stale closure', () => {

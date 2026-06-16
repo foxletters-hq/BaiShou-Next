@@ -1,12 +1,19 @@
+type AudioStatus = {
+  didJustFinish?: boolean
+  playbackState?: string
+}
+
 type AudioPlayer = {
   play: () => void
   pause: () => void
   release: () => void
   addListener: (
     event: 'playbackStatusUpdate',
-    listener: (status: { didJustFinish?: boolean }) => void
+    listener: (status: AudioStatus) => void
   ) => { remove: () => void }
 }
+
+const PLAYBACK_TIMEOUT_MS = 60_000
 
 let activePlayer: AudioPlayer | null = null
 let activeListener: { remove: () => void } | null = null
@@ -43,12 +50,49 @@ export async function playTtsAudio(
     uri: `data:audio/${format || 'mp3'};base64,${audioBase64}`
   })
 
-  activeListener = player.addListener('playbackStatusUpdate', (status) => {
-    if (status.didJustFinish) {
+  return new Promise<void>((resolve, reject) => {
+    let settled = false
+
+    const finish = () => {
+      if (settled) return
+      settled = true
+      clearTimeout(timeout)
       onFinished?.()
+      resolve()
+    }
+
+    const fail = (error: Error) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timeout)
+      activeListener?.remove()
+      activeListener = null
       void stopTtsAudioPlayback()
+      reject(error)
+    }
+
+    const timeout = setTimeout(() => {
+      fail(new Error('TTS playback timed out'))
+    }, PLAYBACK_TIMEOUT_MS)
+
+    activeListener = player.addListener('playbackStatusUpdate', (status) => {
+      if (status.didJustFinish) {
+        finish()
+        void stopTtsAudioPlayback()
+        return
+      }
+
+      const state = String(status.playbackState ?? '').toLowerCase()
+      if (state.includes('fail') || state.includes('error')) {
+        fail(new Error('TTS playback failed'))
+      }
+    })
+    activePlayer = player
+
+    try {
+      player.play()
+    } catch (error) {
+      fail(error instanceof Error ? error : new Error('TTS playback failed'))
     }
   })
-  activePlayer = player
-  player.play()
 }

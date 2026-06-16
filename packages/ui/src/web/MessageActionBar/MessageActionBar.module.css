@@ -55,19 +55,21 @@
   color: var(--color-success, #10b981);
 }
 
-@keyframes ttsPulse {
-  0%,
-  100% {
-    opacity: 1;
+@keyframes ttsSpin {
+  from {
+    transform: rotate(0deg);
   }
-  50% {
-    opacity: 0.4;
+  to {
+    transform: rotate(360deg);
   }
 }
 
 .ttsPlaying {
   color: var(--color-primary, #3b82f6);
-  animation: ttsPulse 1s ease-in-out infinite;
+}
+
+.ttsSpinner {
+  animation: ttsSpin 1s linear infinite;
 }
 
 .contextChainIcon {

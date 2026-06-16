@@ -1,5 +1,5 @@
 import React from 'react'
-import { TouchableOpacity, StyleSheet, type ViewStyle } from 'react-native'
+import { TouchableOpacity, StyleSheet, ActivityIndicator, type ViewStyle } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useNativeTheme } from '../theme'
 
@@ -11,6 +11,7 @@ interface NativeIconButtonProps {
   size?: number
   color?: string
   active?: boolean
+  loading?: boolean
   danger?: boolean
   accessibilityLabel?: string
   style?: ViewStyle
@@ -22,6 +23,7 @@ export const NativeIconButton: React.FC<NativeIconButtonProps> = ({
   size = 14,
   color,
   active = false,
+  loading = false,
   danger = false,
   accessibilityLabel,
   style
@@ -39,8 +41,13 @@ export const NativeIconButton: React.FC<NativeIconButtonProps> = ({
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
+      accessibilityState={{ busy: loading }}
     >
-      <MaterialIcons name={name} size={size} color={iconColor} />
+      {loading ? (
+        <ActivityIndicator size="small" color={iconColor} />
+      ) : (
+        <MaterialIcons name={name} size={size} color={iconColor} />
+      )}
     </TouchableOpacity>
   )
 }

@@ -51,6 +51,7 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
           name="volume-up"
           onPress={onReadAloud}
           active={isTtsPlaying}
+          loading={isTtsPlaying}
           accessibilityLabel={t('agent.chat.readAloud', '语音朗读')}
         />
       )}

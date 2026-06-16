@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
@@ -10,8 +10,16 @@ export function useTTS() {
   const toast = useNativeToast()
   const { services } = useBaishou()
   const [ttsPlayingMsgId, setTtsPlayingMsgId] = useState<string | null>(null)
+  const ttsRequestRef = useRef(0)
+
+  const clearTtsBusyState = useCallback((requestId: number) => {
+    if (requestId === ttsRequestRef.current) {
+      setTtsPlayingMsgId(null)
+    }
+  }, [])
 
   const stopTTS = useCallback(async () => {
+    ttsRequestRef.current += 1
     await stopTtsAudioPlayback()
     setTtsPlayingMsgId(null)
   }, [])
@@ -27,13 +35,19 @@ export function useTTS() {
 
       await stopTTS()
 
+      const requestId = ++ttsRequestRef.current
+      if (messageId) setTtsPlayingMsgId(messageId)
+
       try {
         if (!services) {
+          clearTtsBusyState(requestId)
           toast.showError(t('agent.tts_service_not_ready', '服务未就绪'))
           return
         }
 
         const result = await synthesizeTtsFromSavedSettings(services.settingsManager, content)
+        if (requestId !== ttsRequestRef.current) return
+
         if (!result.success) {
           console.error('[TTS] Synthesize failed:', result.error)
           const errorCodeMap: Record<string, string> = {
@@ -46,21 +60,22 @@ export function useTTS() {
             (result.errorCode && errorCodeMap[result.errorCode]) ||
             `${t('agent.tts_failed', '语音合成失败')}: ${result.error}`
           toast.showError(errorMsg)
+          clearTtsBusyState(requestId)
           return
         }
 
-        if (messageId) setTtsPlayingMsgId(messageId)
         await playTtsAudio(result.audioBase64, result.format, () => {
-          setTtsPlayingMsgId(null)
+          clearTtsBusyState(requestId)
         })
       } catch (e: unknown) {
+        if (requestId !== ttsRequestRef.current) return
         const message = e instanceof Error ? e.message : 'Unknown error'
         console.error('[TTS] Error:', e)
         toast.showError(`${t('agent.tts_failed', '语音合成失败')}: ${message}`)
-        setTtsPlayingMsgId(null)
+        clearTtsBusyState(requestId)
       }
     },
-    [ttsPlayingMsgId, services, t, stopTTS, toast]
+    [ttsPlayingMsgId, services, t, stopTTS, toast, clearTtsBusyState]
   )
 
   return {
