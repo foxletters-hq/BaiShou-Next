@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useCallback, memo } from 'react'
 import {
   View,
   Text,
@@ -50,41 +50,31 @@ export interface DiaryListProps {
   onRequestStoragePermission?: () => void | Promise<void>
 }
 
-export const DiaryList: React.FC<DiaryListProps> = ({
-  entries,
-  totalCount,
-  currentPage,
+type DiaryPaginationBarProps = {
+  placement: 'top' | 'bottom'
+  paginationInfo: string
+  pageSize: number
+  safeCurrentPage: number
+  totalPages: number
+  width: number
+  onPageChange: (page: number) => void
+  onPageSizeChange: (size: number) => void
+}
+
+const DiaryPaginationBar = memo(function DiaryPaginationBar({
+  placement,
+  paginationInfo,
   pageSize,
-  selectedMonth,
-  loading,
-  storagePending = false,
-  onGoToEditor,
-  onDeleteEntry,
+  safeCurrentPage,
+  totalPages,
+  width,
   onPageChange,
-  onPageSizeChange,
-  onViewAll,
-  showStoragePermission,
-  onRequestStoragePermission
-}) => {
+  onPageSizeChange
+}: DiaryPaginationBarProps) {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
-  const { width } = useWindowDimensions()
 
-  const numColumns = width > 700 ? 2 : 1
-  const showPagination = totalCount > pageSize
-  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
-  const safeCurrentPage = Math.min(currentPage, totalPages)
-
-  const paginationInfo = useMemo(
-    () =>
-      t('diary.pagination_info')
-        .replace('$total', String(totalCount))
-        .replace('$page', String(safeCurrentPage))
-        .replace('$pages', String(totalPages)),
-    [t, totalCount, safeCurrentPage, totalPages]
-  )
-
-  const PaginationBar = ({ placement }: { placement: 'top' | 'bottom' }) => (
+  return (
     <View
       style={[
         styles.paginationBar,
@@ -122,6 +112,118 @@ export const DiaryList: React.FC<DiaryListProps> = ({
         />
       </ScrollView>
     </View>
+  )
+})
+
+type DiaryListRowProps = {
+  item: DiaryListEntry
+  noContentLabel: string
+  onGoToEditor: (id: number) => void
+  onDeleteEntry: (id: number) => void
+}
+
+const DiaryListRow = memo(function DiaryListRow({
+  item,
+  noContentLabel,
+  onGoToEditor,
+  onDeleteEntry
+}: DiaryListRowProps) {
+  const handleOpen = useCallback(() => onGoToEditor(item.id), [item.id, onGoToEditor])
+  const handleDelete = useCallback(() => onDeleteEntry(item.id), [item.id, onDeleteEntry])
+
+  return (
+    <View style={styles.cardCell}>
+      <DiaryCard
+        id={item.id}
+        contentSnippet={item.preview || noContentLabel}
+        tags={item.tags || []}
+        createdAt={item.date}
+        weather={item.weather}
+        mood={item.mood}
+        location={item.location}
+        isFavorite={item.isFavorite}
+        onClick={handleOpen}
+        onEdit={handleOpen}
+        onDelete={handleDelete}
+      />
+    </View>
+  )
+})
+
+export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
+  entries,
+  totalCount,
+  currentPage,
+  pageSize,
+  selectedMonth,
+  loading,
+  storagePending = false,
+  onGoToEditor,
+  onDeleteEntry,
+  onPageChange,
+  onPageSizeChange,
+  onViewAll,
+  showStoragePermission,
+  onRequestStoragePermission
+}) {
+  const { t } = useTranslation()
+  const { colors } = useNativeTheme()
+  const { width } = useWindowDimensions()
+
+  const numColumns = width > 700 ? 2 : 1
+  const showPagination = totalCount > pageSize
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
+  const safeCurrentPage = Math.min(currentPage, totalPages)
+  const noContentLabel = t('diary.no_content_preview')
+
+  const paginationInfo = useMemo(
+    () =>
+      t('diary.pagination_info')
+        .replace('$total', String(totalCount))
+        .replace('$page', String(safeCurrentPage))
+        .replace('$pages', String(totalPages)),
+    [t, totalCount, safeCurrentPage, totalPages]
+  )
+
+  const paginationBarProps = useMemo(
+    () => ({
+      paginationInfo,
+      pageSize,
+      safeCurrentPage,
+      totalPages,
+      width,
+      onPageChange,
+      onPageSizeChange
+    }),
+    [
+      paginationInfo,
+      pageSize,
+      safeCurrentPage,
+      totalPages,
+      width,
+      onPageChange,
+      onPageSizeChange
+    ]
+  )
+
+  const renderItem = useCallback(
+    ({ item }: { item: DiaryListEntry }) => (
+      <DiaryListRow
+        item={item}
+        noContentLabel={noContentLabel}
+        onGoToEditor={onGoToEditor}
+        onDeleteEntry={onDeleteEntry}
+      />
+    ),
+    [noContentLabel, onDeleteEntry, onGoToEditor]
+  )
+
+  const keyExtractor = useCallback((item: DiaryListEntry) => String(item.id), [])
+
+  const listFooter = useMemo(
+    () =>
+      showPagination ? <DiaryPaginationBar placement="bottom" {...paginationBarProps} /> : null,
+    [paginationBarProps, showPagination]
   )
 
   if (showStoragePermission && onRequestStoragePermission) {
@@ -177,33 +279,21 @@ export const DiaryList: React.FC<DiaryListProps> = ({
       key={`diary-grid-${numColumns}`}
       data={entries}
       numColumns={numColumns}
-      keyExtractor={(item) => String(item.id)}
+      keyExtractor={keyExtractor}
+      renderItem={renderItem}
       style={{ flex: 1, backgroundColor: colors.bgApp }}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={[styles.listContent, { backgroundColor: colors.bgApp }]}
       columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : undefined}
-      ListHeaderComponent={showPagination ? <PaginationBar placement="top" /> : null}
-      ListFooterComponent={showPagination ? <PaginationBar placement="bottom" /> : null}
-      renderItem={({ item }) => (
-        <View style={styles.cardCell}>
-          <DiaryCard
-            id={item.id}
-            contentSnippet={item.preview || t('diary.no_content_preview')}
-            tags={item.tags || []}
-            createdAt={item.date}
-            weather={item.weather}
-            mood={item.mood}
-            location={item.location}
-            isFavorite={item.isFavorite}
-            onClick={() => onGoToEditor(item.id)}
-            onEdit={() => onGoToEditor(item.id)}
-            onDelete={() => onDeleteEntry(item.id)}
-          />
-        </View>
-      )}
+      ListFooterComponent={listFooter}
+      initialNumToRender={8}
+      maxToRenderPerBatch={6}
+      windowSize={7}
+      removeClippedSubviews
+      keyboardShouldPersistTaps="handled"
     />
   )
-}
+})
 
 const styles = StyleSheet.create({
   centered: {

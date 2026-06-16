@@ -14,6 +14,13 @@ export interface DiaryPageQuery {
   pageSize: number
 }
 
+export interface UseDiaryDataOptions {
+  ready?: boolean
+  vaultRevision?: number
+}
+
+const SEARCH_DEBOUNCE_MS = 350
+
 function buildListFilter(query: DiaryPageQuery): DiaryListFilter {
   const filter: DiaryListFilter = {
     limit: query.pageSize,
@@ -82,31 +89,53 @@ function mapDiaryToListEntry(diary: NonNullable<Awaited<ReturnType<DiaryService[
 export function useDiaryData(
   diaryService: DiaryService | undefined,
   query: DiaryPageQuery,
-  ragService?: MobileRagService
+  ragService?: MobileRagService,
+  options: UseDiaryDataOptions = {}
 ) {
+  const { ready = true, vaultRevision = 0 } = options
   const [entries, setEntries] = useState<any[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(false)
-  const queryRef = useRef(query)
-  queryRef.current = query
+  const loadRequestIdRef = useRef(0)
 
-  const listFilter = useMemo(() => buildListFilter(query), [query])
-  const countFilter = useMemo(() => buildCountFilter(query), [query])
-  const searchTerm = query.searchQuery.trim()
-  const searchMode = query.searchMode
+  const rawSearchTerm = query.searchQuery.trim()
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(rawSearchTerm)
+
+  useEffect(() => {
+    if (!rawSearchTerm) {
+      setDebouncedSearchTerm('')
+      return
+    }
+    const timer = setTimeout(() => setDebouncedSearchTerm(rawSearchTerm), SEARCH_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [rawSearchTerm])
+
+  const effectiveQuery = useMemo(
+    (): DiaryPageQuery => ({
+      ...query,
+      searchQuery: debouncedSearchTerm
+    }),
+    [query, debouncedSearchTerm]
+  )
+
+  const listFilter = useMemo(() => buildListFilter(effectiveQuery), [effectiveQuery])
+  const countFilter = useMemo(() => buildCountFilter(effectiveQuery), [effectiveQuery])
+  const searchMode = effectiveQuery.searchMode
 
   const loadEntries = useCallback(async () => {
     if (!diaryService) {
       setLoading(false)
       return
     }
+
+    const requestId = ++loadRequestIdRef.current
     setLoading(true)
+
     try {
-      const current = queryRef.current
-      const filter = buildListFilter(current)
-      const countOpts = buildCountFilter(current)
-      const term = current.searchQuery.trim()
-      const mode = current.searchMode
+      const filter = buildListFilter(effectiveQuery)
+      const countOpts = buildCountFilter(effectiveQuery)
+      const term = effectiveQuery.searchQuery.trim()
+      const mode = effectiveQuery.searchMode
 
       if (term && mode === 'semantic' && ragService) {
         const res = await ragService.queryEntries({
@@ -116,6 +145,7 @@ export function useDiaryData(
           offset: 0,
           withTotal: true
         })
+        if (requestId !== loadRequestIdRef.current) return
 
         const orderedIds: number[] = []
         const seen = new Set<number>()
@@ -130,6 +160,7 @@ export function useDiaryData(
         const diaries = (
           await Promise.all(orderedIds.map((id) => diaryService.findById(id)))
         ).filter((d): d is NonNullable<typeof d> => d != null)
+        if (requestId !== loadRequestIdRef.current) return
 
         const { limit: _l, offset: _o, orderBy: _ob, ...filterRest } = filter
         const filtered = diaries
@@ -143,32 +174,54 @@ export function useDiaryData(
         setEntries(pageItems)
         setTotalCount(filtered.length)
       } else if (term) {
-        const items = await diaryService.search(term, filter)
-        setEntries(items || [])
-        const loaded = items?.length || 0
-        setTotalCount(
-          loaded < (filter.limit ?? 0)
-            ? (filter.offset ?? 0) + loaded
-            : (filter.offset ?? 0) + loaded + 1
-        )
+        const pageLimit = filter.limit ?? 50
+        const pageOffset = filter.offset ?? 0
+        const items = await diaryService.search(term, {
+          ...filter,
+          limit: pageLimit + 1,
+          offset: pageOffset
+        })
+        if (requestId !== loadRequestIdRef.current) return
+        const hasMore = (items?.length ?? 0) > pageLimit
+        const pageItems = hasMore ? items!.slice(0, pageLimit) : items || []
+        setEntries(pageItems)
+        setTotalCount(hasMore ? pageOffset + pageLimit + 1 : pageOffset + pageItems.length)
       } else {
         const [items, total] = await Promise.all([
           diaryService.listFiltered(filter),
           diaryService.countFiltered(countOpts)
         ])
+        if (requestId !== loadRequestIdRef.current) return
         setEntries(items || [])
         setTotalCount(typeof total === 'number' ? total : items?.length || 0)
       }
     } catch (err) {
+      if (requestId !== loadRequestIdRef.current) return
       logger.error('获取日记列表失败', err instanceof Error ? err : String(err))
     } finally {
-      setLoading(false)
+      if (requestId === loadRequestIdRef.current) {
+        setLoading(false)
+      }
     }
-  }, [diaryService, ragService])
+  }, [diaryService, ragService, effectiveQuery])
 
   useEffect(() => {
-    loadEntries()
-  }, [loadEntries, listFilter, countFilter, searchTerm, searchMode, query.page, query.pageSize])
+    if (!ready || !diaryService) return
+    void loadEntries()
+  }, [
+    ready,
+    diaryService,
+    loadEntries,
+    listFilter,
+    countFilter,
+    debouncedSearchTerm,
+    searchMode,
+    query.page,
+    query.pageSize,
+    vaultRevision
+  ])
 
-  return { entries, totalCount, loading, loadEntries }
+  const isSearchPending = rawSearchTerm !== debouncedSearchTerm
+
+  return { entries, totalCount, loading: loading || isSearchPending, loadEntries }
 }

@@ -7,7 +7,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
   WEATHER_IDS,
   normalizeWeatherId,
-  formatDiaryPreviewText,
   type WeatherId
 } from '@baishou/shared'
 import { logger } from '@baishou/shared'
@@ -81,6 +80,7 @@ export const DiaryScreen: React.FC = () => {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [todayEntry, setTodayEntry] = useState<{ id: number } | null>(null)
   const [isStateRestored, setIsStateRestored] = useState(false)
+  const skipInitialFocusRefreshRef = useRef(true)
   const {
     isSyncing,
     isConfigured: incrementalSyncReady,
@@ -254,7 +254,11 @@ export const DiaryScreen: React.FC = () => {
   const { entries, totalCount, loading, loadEntries } = useDiaryData(
     dbReady && !vaultSwitching ? services?.diaryService : undefined,
     diaryQuery,
-    semanticAvailable ? services?.ragService : undefined
+    semanticAvailable ? services?.ragService : undefined,
+    {
+      ready: Boolean(dbReady && services?.diaryService && storageReady && !vaultSwitching),
+      vaultRevision
+    }
   )
 
   const handleDiarySearch = useCallback((query: string, mode: 'semantic' | 'text') => {
@@ -272,18 +276,26 @@ export const DiaryScreen: React.FC = () => {
     }
   }, [dialog, router, t])
 
-  useEffect(() => {
-    if (dbReady && services?.diaryService && storageReady && !vaultSwitching) {
-      void loadEntries()
-    }
-  }, [dbReady, services?.diaryService, storageReady, vaultSwitching, vaultRevision, loadEntries])
+  const handleGoToEditor = useCallback(
+    (id: number) => {
+      router.push({ pathname: '/diary-editor', params: { id: String(id) } })
+    },
+    [router]
+  )
+
+  const diaryDataReady = Boolean(
+    dbReady && services?.diaryService && storageReady && !vaultSwitching
+  )
 
   useFocusEffect(
     useCallback(() => {
-      if (dbReady && services?.diaryService && storageReady && !vaultSwitching) {
-        void loadEntries()
+      if (!diaryDataReady || isSyncing) return
+      if (skipInitialFocusRefreshRef.current) {
+        skipInitialFocusRefreshRef.current = false
+        return
       }
-    }, [dbReady, services?.diaryService, loadEntries, storageReady, vaultSwitching, vaultRevision])
+      void loadEntries()
+    }, [diaryDataReady, isSyncing, loadEntries])
   )
 
   const handleRequestStoragePermission = useCallback(async () => {
@@ -306,7 +318,7 @@ export const DiaryScreen: React.FC = () => {
       .findByDate(new Date(dateStr))
       .then((entry) => setTodayEntry(entry?.id != null ? { id: entry.id } : null))
       .catch(() => setTodayEntry(null))
-  }, [dbReady, services, storageReady, loadEntries])
+  }, [dbReady, services, storageReady, vaultRevision])
 
   const displayEntries = useMemo((): DiaryListEntry[] => {
     if (!entries?.length) return []
@@ -324,7 +336,7 @@ export const DiaryScreen: React.FC = () => {
         date: parsedDate,
         content: e.content || '',
         tags: e.tags || [],
-        preview: formatDiaryPreviewText(e.preview || e.content?.substring(0, 500) || ''),
+        preview: e.preview || e.content?.substring(0, 500) || '',
         weather: e.weather,
         mood: e.mood,
         location: e.location,
@@ -384,7 +396,7 @@ export const DiaryScreen: React.FC = () => {
   }
 
   const handleIncrementalSync = useCallback(async () => {
-    await runIncrementalSync('sync')
+    await runIncrementalSync('sync').catch(() => {})
   }, [runIncrementalSync])
 
   return (
@@ -421,7 +433,7 @@ export const DiaryScreen: React.FC = () => {
             selectedMonth={selectedMonth}
             loading={needsFullFileAccess ? false : vaultSwitching || loading}
             storagePending={isStoragePending}
-            onGoToEditor={(id) => router.push({ pathname: '/diary-editor', params: { id } })}
+            onGoToEditor={handleGoToEditor}
             onDeleteEntry={setDeletingId}
             onPageChange={setCurrentPage}
             onPageSizeChange={setPageSize}
