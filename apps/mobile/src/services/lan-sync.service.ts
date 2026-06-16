@@ -12,6 +12,7 @@ export class MobileLanSyncService implements ILanSyncService {
   private isBroadcasting = false
   private currentPort = 0
   private currentIp = ''
+  private publishedServiceName: string | null = null
   private fileReceivedCallback?: (path: string) => void
   private deviceFoundCb?: (d: DiscoveredDevice) => void
   private deviceLostCb?: (d: string) => void
@@ -23,8 +24,15 @@ export class MobileLanSyncService implements ILanSyncService {
   ) {
     this.zeroconf = new Zeroconf()
 
+    this.zeroconf.on('published', (service: { name?: string }) => {
+      if (service?.name) {
+        this.publishedServiceName = service.name
+      }
+    })
+
     this.zeroconf.on('resolved', (service: any) => {
       if (!this.deviceFoundCb) return
+      if (this.publishedServiceName && service.name === this.publishedServiceName) return
       try {
         const records = service.txt || {}
         const device: DiscoveredDevice = {
@@ -54,7 +62,7 @@ export class MobileLanSyncService implements ILanSyncService {
       return {
         ip: this.currentIp,
         port: this.currentPort,
-        serviceId: `baishou-mobile-${this.currentPort}`
+        serviceId: this.publishedServiceName || `BaiShou-Mobile-${this.currentPort}`
       }
     }
 
@@ -86,8 +94,10 @@ export class MobileLanSyncService implements ILanSyncService {
     const safeNickname = 'BaishouMob'
     const uuid = Math.floor(Math.random() * 10000).toString()
     const serviceName = `BaiShou-${safeNickname}-${uuid}`
+    this.publishedServiceName = serviceName
 
-    this.zeroconf.publishService('tcp', 'baishou', 'local.', serviceName, this.currentPort, {
+    // type=baishou, protocol=tcp → _baishou._tcp（与桌面端 bonjour-service 一致）
+    this.zeroconf.publishService('baishou', 'tcp', 'local.', serviceName, this.currentPort, {
       nickname: safeNickname,
       ip: ip,
       device_type: 'mobile'
@@ -99,7 +109,10 @@ export class MobileLanSyncService implements ILanSyncService {
 
   public async stopBroadcasting(): Promise<void> {
     if (!this.isBroadcasting) return
-    this.zeroconf.unpublishService('baishou')
+    if (this.publishedServiceName) {
+      this.zeroconf.unpublishService(this.publishedServiceName)
+    }
+    this.publishedServiceName = null
     BaishouServer.stopServer()
     if (this.serverEventSub) {
       this.serverEventSub.remove()

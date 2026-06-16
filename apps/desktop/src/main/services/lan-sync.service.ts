@@ -138,7 +138,32 @@ export class DesktopLanSyncService implements ILanSyncService {
     serviceId: string
     allIps: string[]
   } | null> {
-    if (this.server) return null
+    if (this.server) {
+      const addr = this.server.address()
+      if (addr && typeof addr !== 'string') {
+        const ips = await this.getPreferredLocalIps()
+        const displayIp = this.pickBestIp(ips) || ips[0]
+        if (!displayIp) return null
+
+        if (!this.discovery.hasPublishedService() && this.publishedServiceName) {
+          const rawNickname = os.userInfo().username || 'Desktop'
+          const safeNickname = rawNickname.replace(/[^\w\u4e00-\u9fa5]/g, '').substring(0, 10)
+          this.discovery.publish(this.publishedServiceName, addr.port, {
+            nickname: safeNickname,
+            ip: ips.slice(0, 4).join(','),
+            device_type: 'desktop'
+          })
+        }
+
+        return {
+          ip: displayIp,
+          port: addr.port,
+          serviceId: this.publishedServiceName || `BaiShou-${displayIp}-${addr.port}`,
+          allIps: ips
+        }
+      }
+      return null
+    }
 
     const ips = await this.getPreferredLocalIps()
     if (ips.length === 0) throw new Error('No local network connection found')

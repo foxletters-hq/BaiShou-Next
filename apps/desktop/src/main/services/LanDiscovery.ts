@@ -16,14 +16,17 @@ export class LanDiscovery {
     return this.bonjour
   }
 
-  public publish(name: string, port: number, txt: any) {
+  public publish(name: string, port: number, txt: Record<string, unknown>) {
     const bj = this.getBonjour()
+    const normalizedTxt = Object.fromEntries(
+      Object.entries(txt).map(([key, value]) => [key, String(value ?? '')])
+    )
     this.publishedService = bj.publish({
       name,
       type: 'baishou',
       protocol: 'tcp',
       port,
-      txt
+      txt: normalizedTxt
     })
     return this.publishedService
   }

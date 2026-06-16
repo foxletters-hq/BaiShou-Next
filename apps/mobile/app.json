@@ -9,14 +9,22 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.baishou.baishou"
+      "bundleIdentifier": "com.baishou.baishou",
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "用于在同一 Wi-Fi 下发现附近的设备并进行数据备份传输。",
+        "NSBonjourServices": ["_baishou._tcp"]
+      }
     },
     "android": {
       "package": "com.baishou.baishou",
       "permissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.MANAGE_EXTERNAL_STORAGE"
+        "android.permission.MANAGE_EXTERNAL_STORAGE",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.ACCESS_WIFI_STATE",
+        "android.permission.CHANGE_WIFI_MULTICAST_STATE",
+        "android.permission.NEARBY_WIFI_DEVICES"
       ],
       "requestLegacyExternalStorage": true
     },
