@@ -32,6 +32,8 @@ export const agentAssistantsTable = sqliteTable('agent_assistants', {
   compressPreserveRecentTokens: integer('compress_preserve_recent_tokens'),
   /** 压缩时发给模型的系统提示词（null 则用当前语言默认） */
   compressSystemPrompt: text('compress_system_prompt'),
+  /** 伙伴类型：companion=亲密伙伴，work=工作伙伴 */
+  assistantKind: text('assistant_kind').notNull().default('companion'),
   /** 拖动排序权重 */
   sortOrder: integer('sort_order').notNull().default(0),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().defaultNow(),

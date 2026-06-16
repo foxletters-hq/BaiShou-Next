@@ -34,6 +34,7 @@ export type DefaultLatteAssistantSeed = {
   isDefault: true
   isPinned: false
   contextWindow: number
+  assistantKind: 'companion'
 }
 
 export function getDefaultLatteAssistantSeed(locale?: string): DefaultLatteAssistantSeed {
@@ -44,6 +45,7 @@ export function getDefaultLatteAssistantSeed(locale?: string): DefaultLatteAssis
     systemPrompt: getDefaultLatteAssistantSystemPrompt(locale),
     isDefault: true,
     isPinned: false,
-    contextWindow: 20
+    contextWindow: 20,
+    assistantKind: 'companion'
   }
 }

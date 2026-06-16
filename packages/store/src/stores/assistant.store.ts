@@ -15,6 +15,7 @@ export interface Assistant {
   compressTokenThreshold: number
   compressKeepTurns: number
   compressSystemPrompt?: string | null
+  assistantKind?: 'companion' | 'work'
   sortOrder: number
   createdAt: Date
   updatedAt: Date

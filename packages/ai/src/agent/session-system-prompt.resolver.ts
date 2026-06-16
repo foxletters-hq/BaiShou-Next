@@ -1,4 +1,8 @@
 import {
+  mergeDisabledToolIds,
+  normalizeAssistantKind
+} from '@baishou/shared'
+import {
   MessageRepository,
   SqliteHybridSearchRepository,
   createSqlExecutorFromDrizzleDb
@@ -18,7 +22,9 @@ export interface AgentToolsContextParams {
     database?: unknown
   }
   assistantRepo?: {
-    findById: (id: string) => Promise<{ systemPrompt?: string | null } | null>
+    findById: (
+      id: string
+    ) => Promise<{ systemPrompt?: string | null; assistantKind?: string | null } | null>
   }
   userConfig: Record<string, unknown>
   provider: IAIProvider
@@ -73,8 +79,23 @@ export async function resolveEnabledToolsForSession(
 
   const sessionObj = await params.sessionRepo.getSessionById?.(params.sessionId)
 
+  let mergedUserConfig = params.userConfig
+  if (sessionObj?.assistantId && params.assistantRepo) {
+    const ast = await params.assistantRepo.findById(sessionObj.assistantId)
+    const assistantKind = normalizeAssistantKind(ast?.assistantKind)
+    mergedUserConfig = {
+      ...params.userConfig,
+      disabledToolIds: mergeDisabledToolIds(
+        Array.isArray(params.userConfig?.disabledToolIds)
+          ? (params.userConfig.disabledToolIds as string[])
+          : [],
+        assistantKind
+      )
+    }
+  }
+
   return params.toolRegistry.getEnabledToolsAsVercel({
-    userConfig: params.userConfig,
+    userConfig: mergedUserConfig,
     sessionId: params.sessionId,
     vaultName: sessionObj?.vaultName || 'default',
     embeddingService: embAdapter,

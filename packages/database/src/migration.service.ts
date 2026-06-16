@@ -173,6 +173,7 @@ export class MigrationService {
 
       await this._ensureAssistantCompressSystemPromptColumn()
       await this._ensureAssistantCompressionWindowColumns()
+      await this._ensureAssistantKindColumn()
       await this._ensureSnapshotTailStartColumn()
 
       logger.info('[MigrationService] Agent DB 迁移同步完成！')
@@ -222,6 +223,22 @@ export class MigrationService {
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
       logger.warn('[MigrationService] compression window 列检查失败（非阻塞）:', message)
+    }
+  }
+
+  private async _ensureAssistantKindColumn(): Promise<void> {
+    try {
+      const tableInfo = await this._executeSql(`PRAGMA table_info(agent_assistants)`)
+      const has = tableInfo.rows.some((c: { name?: string }) => c.name === 'assistant_kind')
+      if (!has) {
+        logger.info('[MigrationService] 添加 agent_assistants.assistant_kind 列...')
+        await this._executeSql(
+          `ALTER TABLE agent_assistants ADD COLUMN assistant_kind TEXT NOT NULL DEFAULT 'companion'`
+        )
+      }
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e)
+      logger.warn('[MigrationService] assistant_kind 列检查失败（非阻塞）:', message)
     }
   }
 

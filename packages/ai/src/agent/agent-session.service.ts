@@ -11,7 +11,7 @@ import { StreamChunkAdapter } from './stream-chunk.adapter'
 import { ChunkType } from './stream-chunk.types'
 import type { StreamChunk } from './stream-chunk.types'
 import { SystemPromptBuilder } from './system-prompt.builder'
-import { isVisionModel, logger } from '@baishou/shared'
+import { isVisionModel, logger, mergeDisabledToolIds, normalizeAssistantKind } from '@baishou/shared'
 
 // --- 新挂载的智慧引擎组件 ---
 import { ContextWindowBuilder } from './context-window.builder'
@@ -215,8 +215,32 @@ export class AgentSessionService {
         }
       }
 
+      let mergedUserConfig = userConfig || {}
+      let effectiveSystemPrompt = systemPrompt
+      if (sessionObj?.assistantId) {
+        const astRepo = new AssistantRepository(
+          (sessionRepo as any).db || (sessionRepo as any).database
+        )
+        const ast = await astRepo.findById(sessionObj.assistantId)
+        if (ast) {
+          const assistantKind = normalizeAssistantKind(ast.assistantKind)
+          mergedUserConfig = {
+            ...mergedUserConfig,
+            disabledToolIds: mergeDisabledToolIds(
+              Array.isArray(mergedUserConfig['disabledToolIds'])
+                ? (mergedUserConfig['disabledToolIds'] as string[])
+                : [],
+              assistantKind
+            )
+          }
+          if (ast.systemPrompt) {
+            effectiveSystemPrompt = ast.systemPrompt
+          }
+        }
+      }
+
       const enabledTools = toolRegistry.getEnabledToolsAsVercel({
-        userConfig: userConfig || {},
+        userConfig: mergedUserConfig,
         sessionId,
         vaultName: sessionObj?.vaultName || 'default',
         embeddingService: embAdapter,
@@ -229,18 +253,6 @@ export class AgentSessionService {
         fetchSearchPage: options.fetchSearchPage,
         contextCompressionRunner
       })
-
-      // --- 灵魂注入 (如果有 Assistant 绑定) ---
-      let effectiveSystemPrompt = systemPrompt
-      if (sessionObj?.assistantId) {
-        const astRepo = new AssistantRepository(
-          (sessionRepo as any).db || (sessionRepo as any).database
-        )
-        const ast = await astRepo.findById(sessionObj.assistantId)
-        if (ast && ast.systemPrompt) {
-          effectiveSystemPrompt = ast.systemPrompt
-        }
-      }
 
       const builtSystemPrompt = SystemPromptBuilder.build({
         vaultName: sessionObj?.vaultName || 'default',
