@@ -203,7 +203,7 @@ export const OnboardingScreen: React.FC = () => {
   const renderWelcomeSlide = () => (
     <div className={styles.slideInner}>
       <div className={styles.welcomeIconWrap}>
-        <img src={icon} alt="BaiShou" className={styles.welcomeIcon} />
+        <img src={icon} alt={t('common.app_title', 'BaiShou')} className={styles.welcomeIcon} />
       </div>
       <h1 className={styles.welcomeTitle}>{t('onboarding.welcome_title')}</h1>
       <p className={styles.welcomeTagline}>{t('onboarding.welcome_tagline')}</p>
@@ -280,19 +280,6 @@ export const OnboardingScreen: React.FC = () => {
       <OnboardingBackground />
 
       <div className={styles.safeArea}>
-        <div className={styles.topBar}>
-          {!isLast && (
-            <button
-              type="button"
-              className={styles.skipButton}
-              onClick={() => void finishOnboarding()}
-              disabled={isFinishing}
-            >
-              <span className={styles.skipText}>{t('onboarding.skip')}</span>
-            </button>
-          )}
-        </div>
-
         <div ref={scrollViewportRef} className={styles.scrollViewport}>
           {slides.map((renderSlide, index) => (
             <div key={index} className={styles.page}>

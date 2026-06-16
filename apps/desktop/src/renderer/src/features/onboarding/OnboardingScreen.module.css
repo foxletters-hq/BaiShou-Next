@@ -17,25 +17,6 @@
   min-height: 0;
 }
 
-.topBar {
-  padding: 8px 20px;
-  display: flex;
-  justify-content: flex-end;
-  flex-shrink: 0;
-}
-
-.skipButton {
-  padding: 4px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-}
-
-.skipText {
-  color: #9ca3af;
-  font-size: 15px;
-}
-
 .scrollViewport {
   flex: 1;
   display: flex;
