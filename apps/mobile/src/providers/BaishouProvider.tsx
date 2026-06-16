@@ -19,7 +19,7 @@ import {
   SummaryGeneratorService,
   buildSharedContextText
 } from '@baishou/core-mobile'
-import { resolveSummaryTemplatesForGeneration, resolveSyncDeviceId } from '@baishou/shared'
+import { resolveSummaryTemplatesForGeneration, resolveSyncDeviceId, isConfiguredProviderId, isConfiguredDialogueModelId } from '@baishou/shared'
 import { getTtsPlaybackSettings } from '../services/mobile-tts-settings.service'
 
 import {
@@ -93,18 +93,33 @@ import type {
   SessionRepository as SessionRepositoryType,
   SnapshotRepository as SnapshotRepositoryType
 } from '@baishou/database'
-import { isExternalStorageRequiredError, hasStoragePermission } from '../services/storage-permission.service'
+import { ONBOARDING_STORAGE_KEY } from '@/src/constants/storage'
+import {
+  resolveMobileMigrationTargetRoot,
+  runMobileLegacyMigrationIfNeeded,
+  runMobileLegacyZipMigration
+} from '../services/mobile-legacy-migration.service'
+import { getMobileInstallInstanceId } from '../services/install-instance.service'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { isExternalStorageNativeAvailable } from 'expo-baishou-server'
+import {
+  hasStoragePermission,
+  isExternalStorageRequiredError
+} from '../services/storage-permission.service'
 
 // 采用类似于桌面端 db.ts 里的静态导出，但在 RN 里我们走 Context 更加 React 化
 interface BaishouContextValue {
   dbReady: boolean
   /** Android：是否已成功挂载外部 BaiShou_Root（无权限时为 false） */
   storageReady: boolean
+  /** 旧版 Flutter 升级后需重新嵌入 RAG */
+  legacyRagReembedRequired: boolean
   /** 工作空间切换后递增，供列表等 UI 重新拉取数据 */
   vaultRevision: number
   /** 工作空间切换进行中（重建 diary stack / 后台 resync） */
   vaultSwitching: boolean
+  /** 正在从磁盘恢复日记/会话/总结索引 */
+  storageIndexing: boolean
   /** Android：授权后重试挂载 BaiShou_Root 并同步磁盘 */
   retryStorageSetup: () => Promise<boolean>
   /** 暂停文件监听与 Shadow DB，执行磁盘操作后自动恢复（用于目录迁移） */
@@ -170,8 +185,10 @@ interface BaishouContextValue {
 const BaishouContext = createContext<BaishouContextValue>({
   dbReady: false,
   storageReady: Platform.OS !== 'android',
+  legacyRagReembedRequired: false,
   vaultRevision: 0,
   vaultSwitching: false,
+  storageIndexing: false,
   retryStorageSetup: async () => Platform.OS !== 'android',
   runWithStorageQuiesced: async (fn) => fn(),
   services: null
@@ -241,8 +258,10 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
   const [value, setValue] = useState<BaishouContextValue>({
     dbReady: false,
     storageReady: Platform.OS !== 'android',
+    legacyRagReembedRequired: false,
     vaultRevision: 0,
     vaultSwitching: false,
+    storageIndexing: mobileDataBootstrapper.getStatus() === 'running',
     retryStorageSetup: () => retryStorageSetupRef.current(),
     runWithStorageQuiesced: (fn) => runWithStorageQuiescedRef.current(fn),
     services: null
@@ -251,11 +270,18 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let isMounted = true
     let mobileMcpService: MobileMcpService | null = null
+    const unsubscribeBootstrapper = mobileDataBootstrapper.subscribe((status) => {
+      if (!isMounted) return
+      setValue((prev) => ({
+        ...prev,
+        storageIndexing: status === 'running'
+      }))
+    })
 
     async function init() {
       try {
         // 1. 初始化 SQLite 环境（单例，避免并发 open + 迁移）
-        const { drizzleDb, sqliteVecLoaded, sqliteVecLoadReason } =
+        const { drizzleDb, expoDb, sqliteVecLoaded, sqliteVecLoadReason } =
           await ensureExpoAgentDatabaseInstalled(
             () => SQLite.openDatabaseAsync('baishou_next_mobile.db') as Promise<ExpoSqliteDatabase>
           )
@@ -278,6 +304,41 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         const assistantRepo = new AssistantRepository(drizzleDb)
         const settingsRepo = new SettingsRepository(drizzleDb)
         const summaryRepo = new SummaryRepositoryImpl(drizzleDb)
+        const profileRepo = new UserProfileRepository(drizzleDb)
+        const attachmentManager = new MobileAttachmentManagerService(pathService, fileSystem)
+
+        let legacyRagReembedRequired = false
+        try {
+          const installInstanceId = await getMobileInstallInstanceId()
+          const migrationTarget = await resolveMobileMigrationTargetRoot(() =>
+            pathService.getRootDirectory()
+          )
+          if (migrationTarget) {
+            const migrationResult = await runMobileLegacyMigrationIfNeeded({
+              fileSystem,
+              sqliteClient: expoDb,
+              targetRoot: migrationTarget,
+              installInstanceId,
+              settingsRepo,
+              profileRepo
+            })
+            if (migrationResult.migrated || migrationResult.skippedOnboarding) {
+              await AsyncStorage.setItem(ONBOARDING_STORAGE_KEY, '1')
+            }
+            if (migrationResult.migrated) {
+              legacyRagReembedRequired = true
+            }
+          }
+        } catch (legacyError) {
+          logger.error('[BaishouProvider] Legacy migration failed:', legacyError as Error)
+        }
+
+        try {
+          const pending = await settingsRepo.get<boolean>('legacy_upgrade_rag_pending' as never)
+          if (pending) legacyRagReembedRequired = true
+        } catch {
+          // ignore
+        }
 
         const snapshotRepo = new SnapshotRepository(drizzleDb)
 
@@ -291,7 +352,6 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         )
 
         const assistantFileService = new AssistantFileService(pathService, fileSystem)
-        const attachmentManager = new MobileAttachmentManagerService(pathService, fileSystem)
         const assistantManager = new AssistantManagerService(
           assistantRepo,
           assistantFileService,
@@ -368,7 +428,6 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
         const agentService = new AgentSessionService()
 
-        const profileRepo = new UserProfileRepository(drizzleDb)
         const MOBILE_DB_NAME = 'baishou_next_mobile.db'
         const archiveDbBridge: MobileArchiveDbBridge = {
           flushBeforeExport: () => settingsManager.flushToDisk(),
@@ -404,10 +463,20 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             const dest = `${getAppDocumentDirectory()}SQLite/${MOBILE_DB_NAME}`
             await fileSystem.copyFile(sourceUri, dest)
             return true
+          },
+          importLegacyFlutterZip: async (extractDir, stagingRoot) => {
+            await runMobileLegacyZipMigration({
+              fileSystem,
+              extractDir,
+              targetRoot: stagingRoot,
+              settingsRepo,
+              profileRepo
+            })
+            await settingsRepo.set('legacy_upgrade_rag_pending' as never, true as never)
           }
         }
 
-        const syncMetaDir = `${await pathService.getRootDirectory()}/.baishou`
+        const syncMetaDir = `${await pathService.getGlobalRegistryDirectory()}/sync-meta`
         const syncDeviceId = await resolveSyncDeviceId('mobile', syncMetaDir, {
           exists: (p) => fileSystem.exists(p),
           read: (p) => fileSystem.readFile(p),
@@ -595,11 +664,34 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               }
             }
 
+            const namingModelConfigured =
+              isConfiguredProviderId(globalModels?.globalNamingProviderId) &&
+              isConfiguredDialogueModelId(globalModels?.globalNamingModelId)
+            let namingProvider
+            let namingModelId: string | undefined
+            if (namingModelConfigured) {
+              const namingConfig = providers.find(
+                (p: any) => p.id === globalModels.globalNamingProviderId
+              )
+              if (namingConfig) {
+                namingProvider = registry.getOrUpdateProvider(namingConfig)
+                namingModelId = globalModels.globalNamingModelId
+              }
+            }
+
             const modelId =
               overrides?.modelId ||
               globalModels?.globalDialogueModelId ||
               config.defaultDialogueModel ||
               config.models[0]
+
+            const systemModels = {
+              namingModelConfigured,
+              ...(namingProvider && namingModelId ? { namingProvider, namingModelId } : {}),
+              ...(embeddingProvider && embeddingModelId
+                ? { embeddingProvider, embeddingModelId }
+                : {})
+            }
 
             await agentService.streamChat(
               {
@@ -611,9 +703,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                 sessionRepo,
                 snapshotRepo,
                 userConfig,
-                systemModels: embeddingProvider
-                  ? { embeddingProvider, embeddingModelId }
-                  : undefined,
+                systemModels: Object.keys(systemModels).length > 0 ? systemModels : undefined,
                 diarySearcher: getDiarySearcher(),
                 webSearchResultFetcher: webFetchContent,
                 fetchSearchPage: fetchSearchPageHtml,
@@ -780,48 +870,47 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
         retryStorageSetupRef.current = async () => {
           try {
-            const priorStack = diaryStackRef.current
-            let stack: VaultBoundDiaryStack
-
-            if (!priorStack) {
-              stack = await initVaultLayer(vaultRuntimeDeps)
-              diaryStackRef.current = stack
-              const activeVault = vaultService.getActiveVault()
-              if (activeVault?.path) {
-                await activateVaultRuntime(
-                  {
-                    pathService,
-                    vaultService,
-                    fileSystem,
-                    diaryStack: stack,
-                    bootstrapDeps,
-                    watcherDeps
-                  },
-                  {
-                    deferResync: true,
-                    resyncReason: 'storage-granted',
-                    onResyncComplete: () => {
-                      if (!isMounted) return
-                      setValue((prev) => ({
-                        ...prev,
-                        vaultRevision: prev.vaultRevision + 1
-                      }))
-                    }
-                  }
-                )
+            if (Platform.OS === 'android') {
+              const applied = await pathService.applyExternalRootWhenPermitted()
+              if (!applied && !(await hasStoragePermission())) {
+                return false
               }
-            } else {
-              diaryStackRef.current = null
-              stack = await rebootstrapAfterStorageRootChange({
-                pathService,
-                vaultService,
-                fileSystem,
-                diaryStack: priorStack,
-                bootstrapDeps,
-                watcherDeps
-              })
-              diaryStackRef.current = stack
             }
+
+            try {
+              const installInstanceId = await getMobileInstallInstanceId()
+              const migrationTarget = await resolveMobileMigrationTargetRoot(() =>
+                pathService.getRootDirectory()
+              )
+              if (migrationTarget) {
+                await runMobileLegacyMigrationIfNeeded({
+                  fileSystem,
+                  sqliteClient: expoDb,
+                  targetRoot: migrationTarget,
+                  installInstanceId,
+                  settingsRepo,
+                  profileRepo
+                })
+              }
+            } catch (migrationError) {
+              logger.warn(
+                '[BaishouProvider] Legacy migration on storage retry failed:',
+                migrationError as Error
+              )
+            }
+
+            const priorStack = diaryStackRef.current
+            const stack = !priorStack
+              ? await runStorageBootstrap()
+              : await rebootstrapAfterStorageRootChange({
+                  pathService,
+                  vaultService,
+                  fileSystem,
+                  diaryStack: priorStack,
+                  bootstrapDeps,
+                  watcherDeps
+                })
+            diaryStackRef.current = stack
 
             ragServiceRef.current = createMobileRagService({
               settingsManager,
@@ -976,8 +1065,10 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           setValue({
             dbReady: true,
             storageReady,
+            legacyRagReembedRequired,
             vaultRevision: 0,
             vaultSwitching: false,
+            storageIndexing: mobileDataBootstrapper.getStatus() === 'running',
             retryStorageSetup: () => retryStorageSetupRef.current(),
             runWithStorageQuiesced: (fn) => runWithStorageQuiescedRef.current(fn),
             services: {
@@ -1020,6 +1111,10 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           logger.warn('[BaishouProvider] MCP server failed to start:', mcpErr as Error)
         })
       } catch (e) {
+        if (isExternalStorageRequiredError(e)) {
+          logger.info('[BaishouProvider] External storage is not ready; waiting for user permission')
+          return
+        }
         logger.error('Failed to init Baishou DB:', e as Error)
       }
     }
@@ -1028,6 +1123,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
     return () => {
       isMounted = false
+      unsubscribeBootstrapper()
       vaultFileWatcher.stop()
       sessionFileWatcher.stop()
       summaryFileWatcher.stop()

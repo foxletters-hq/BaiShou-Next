@@ -45,28 +45,28 @@ export async function resolveMobileBootstrapUiLocale(
   })
 }
 
-export async function applyOnboardingUiLanguage(
-  lang: OnboardingUiLanguage,
-  deps?: {
-    settingsManager?: SettingsManagerService
-    assistantManager?: AssistantManagerService
-  }
-): Promise<void> {
+/** 仅写入 AsyncStorage 并切换 i18n，不依赖外部存储权限 */
+export async function applyOnboardingUiLanguage(lang: OnboardingUiLanguage): Promise<void> {
   await AsyncStorage.setItem(ONBOARDING_UI_LANGUAGE_KEY, lang)
   if (i18n.language !== lang) {
     await i18n.changeLanguage(lang)
   }
+}
 
-  if (deps?.settingsManager) {
-    const settings = (await deps.settingsManager.get<Record<string, unknown>>('settings')) || {}
-    settings.language = lang
-    await deps.settingsManager.set('settings', settings)
+/** 外部 BaiShou_Root 就绪后，将引导页语言同步到工作区 settings / 默认伙伴 */
+export async function syncOnboardingUiLanguageToVault(
+  lang: OnboardingUiLanguage,
+  deps: {
+    settingsManager: SettingsManagerService
+    assistantManager: AssistantManagerService
   }
+): Promise<void> {
+  const settings = (await deps.settingsManager.get<Record<string, unknown>>('settings')) || {}
+  settings.language = lang
+  await deps.settingsManager.set('settings', settings)
 
-  if (deps?.assistantManager) {
-    await ensureDefaultLatteAssistant(deps.assistantManager, lang)
-    await syncDefaultLatteAssistantLocale(deps.assistantManager, lang)
-  }
+  await ensureDefaultLatteAssistant(deps.assistantManager, lang)
+  await syncDefaultLatteAssistantLocale(deps.assistantManager, lang)
 }
 
 export async function readOnboardingUiLanguage(): Promise<OnboardingUiLanguage | null> {

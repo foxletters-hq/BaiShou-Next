@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   BackHandler
 } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
-import { Image } from 'expo-image'
+import { Image } from 'react-native'
 import { useRouter, useNavigation, useLocalSearchParams } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -28,15 +28,17 @@ import { OnboardingBackground } from './components/OnboardingBackground'
 import { OnboardingGlowIcon } from './components/OnboardingGlowIcon'
 import { OnboardingStorageSlide } from './components/OnboardingStorageSlide'
 import { OnboardingLanguageSlide } from './components/OnboardingLanguageSlide'
-import APP_ICON from '../../../assets/images/icon.png'
+
+const APP_ICON = require('../../../assets/images/icon.png') as number
 import { useBaishou } from '@/src/providers/BaishouProvider'
 import {
   applyOnboardingUiLanguage,
   hasPersistedOnboardingUiLanguage,
   readOnboardingUiLanguage,
+  syncOnboardingUiLanguageToVault,
   type OnboardingUiLanguage
 } from '@/src/lib/onboarding-language.util'
-import { ensureDefaultLatteAssistant } from '@baishou/core-mobile'
+import { isExternalStorageRequiredError } from '@/src/services/storage-permission.service'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
@@ -57,14 +59,33 @@ export const OnboardingScreen: React.FC = () => {
   const programmaticTargetRef = useRef<number | null>(null)
   const allowLeaveRef = useRef(false)
 
+  const [isMountingStorage, setIsMountingStorage] = useState(false)
+
   const storageReadyToAdvance =
     !storagePermission.isAndroid ||
-    (storagePermission.permissionChecked &&
-      storagePermission.granted === true &&
-      storageReady)
-  const nextBlockedOnStorage = currentPage === ONBOARDING_PAGE.STORAGE && !storageReadyToAdvance
+    (storagePermission.permissionChecked && storagePermission.granted === true)
+  const nextBlockedOnStorage =
+    currentPage === ONBOARDING_PAGE.STORAGE && storagePermission.isAndroid && !storageReadyToAdvance
   const nextBlockedOnLanguage =
-    !isPreview && currentPage === ONBOARDING_PAGE.LANGUAGE && !languageConfirmed
+    !isPreview &&
+    currentPage === ONBOARDING_PAGE.LANGUAGE &&
+    !languageConfirmed &&
+    !selectedLanguage
+
+  const ensureAndroidStorageMounted = async (): Promise<boolean> => {
+    if (!storagePermission.isAndroid) return true
+    if (!storagePermission.permissionChecked || storagePermission.granted !== true) {
+      return false
+    }
+    if (storageReady) return true
+    if (!dbReady) return false
+    setIsMountingStorage(true)
+    try {
+      return await storagePermission.retryMount()
+    } finally {
+      setIsMountingStorage(false)
+    }
+  }
 
   useEffect(() => {
     if (isPreview) return
@@ -75,16 +96,33 @@ export const OnboardingScreen: React.FC = () => {
     })
   }, [isPreview])
 
+  const syncLanguageToVaultIfReady = useCallback(
+    async (lang: OnboardingUiLanguage) => {
+      if (!dbReady || !storageReady || !services) return
+      try {
+        await syncOnboardingUiLanguageToVault(lang, {
+          settingsManager: services.settingsManager,
+          assistantManager: services.assistantManager
+        })
+      } catch (e) {
+        if (!isExternalStorageRequiredError(e)) {
+          console.warn('[Onboarding] vault language sync failed:', e)
+        }
+      }
+    },
+    [dbReady, storageReady, services]
+  )
+
   const persistLanguageSelection = async (lang: OnboardingUiLanguage) => {
-    await applyOnboardingUiLanguage(lang, {
-      settingsManager: dbReady ? services?.settingsManager : undefined,
-      assistantManager: dbReady ? services?.assistantManager : undefined
-    })
-    if (dbReady && services?.assistantManager) {
-      await ensureDefaultLatteAssistant(services.assistantManager, lang)
-    }
+    await applyOnboardingUiLanguage(lang)
     setLanguageConfirmed(true)
+    await syncLanguageToVaultIfReady(lang)
   }
+
+  useEffect(() => {
+    if (!selectedLanguage || !languageConfirmed) return
+    void syncLanguageToVaultIfReady(selectedLanguage)
+  }, [selectedLanguage, languageConfirmed, syncLanguageToVaultIfReady])
 
   const requireLanguageBeforeLeave = async (): Promise<boolean> => {
     if (isPreview || languageConfirmed) return true
@@ -155,15 +193,21 @@ export const OnboardingScreen: React.FC = () => {
       }
       await persistLanguageSelection(selectedLanguage)
     }
-    if (nextBlockedOnStorage) {
-      toast.showWarning(t('storage.all_files_access_settings_hint'))
-      return
+
+    if (storagePermission.isAndroid && currentPage === ONBOARDING_PAGE.STORAGE) {
+      if (!storagePermission.permissionChecked) {
+        return
+      }
+      if (storagePermission.granted !== true) {
+        toast.showWarning(t('storage.all_files_access_settings_hint'))
+        return
+      }
+      if (!storageReady) {
+        void ensureAndroidStorageMounted()
+      }
     }
+
     const nextPage = currentPage + 1
-    if (nextPage > ONBOARDING_PAGE.STORAGE && !storageReadyToAdvance) {
-      toast.showWarning(t('storage.all_files_access_settings_hint'))
-      return
-    }
     if (currentPage < NUM_ONBOARDING_PAGES - 1) {
       goToPage(nextPage)
     } else {
@@ -251,7 +295,9 @@ export const OnboardingScreen: React.FC = () => {
       selectedLanguage={selectedLanguage}
       onSelectLanguage={(lang) => {
         setSelectedLanguage(lang)
-        void persistLanguageSelection(lang)
+        void persistLanguageSelection(lang).catch(() => {
+          toast.showError(t('onboarding.language_save_error', '无法保存语言设置，请重试'))
+        })
       }}
     />
   )
@@ -259,7 +305,7 @@ export const OnboardingScreen: React.FC = () => {
   const renderWelcomeSlide = () => (
     <View style={styles.slideInner}>
       <Animated.View style={[styles.welcomeIconWrap, { transform: [{ scale: welcomeScale }] }]}>
-        <Image source={APP_ICON} style={styles.welcomeIcon} contentFit="cover" />
+        <Image source={APP_ICON} style={styles.welcomeIcon} resizeMode="cover" />
       </Animated.View>
       <Text style={styles.welcomeTitle}>{t('onboarding.welcome_title')}</Text>
       <Text style={styles.welcomeTagline}>{t('onboarding.welcome_tagline')}</Text>
@@ -299,7 +345,10 @@ export const OnboardingScreen: React.FC = () => {
         granted={storagePermission.granted}
         permissionChecked={storagePermission.permissionChecked}
         needsFullFileAccess={storagePermission.needsFullFileAccess}
+        isStoragePending={storagePermission.isStoragePending || isMountingStorage}
+        mountFailed={storagePermission.mountFailed}
         onRequestPermission={storagePermission.request}
+        onRetryMount={() => void storagePermission.retryMount()}
       />
     </View>
   )
@@ -397,15 +446,29 @@ export const OnboardingScreen: React.FC = () => {
                 styles.nextButton,
                 {
                   backgroundColor: isLast ? theme.iconColor : BRAND_BLUE_DARK,
-                  opacity: nextBlockedOnStorage || nextBlockedOnLanguage ? 0.45 : 1
+                  opacity:
+                    nextBlockedOnLanguage || isMountingStorage
+                      ? 0.45
+                      : nextBlockedOnStorage && storagePermission.granted !== true
+                        ? 0.45
+                        : 1
                 }
               ]}
-              activeOpacity={nextBlockedOnStorage || nextBlockedOnLanguage ? 1 : 0.9}
+              activeOpacity={
+                nextBlockedOnLanguage || isMountingStorage ? 1 : 0.9
+              }
+              disabled={isMountingStorage}
             >
               <Text style={styles.nextButtonText}>
-                {isLast ? t('onboarding.get_started') : t('common.next')}
+                {isMountingStorage
+                  ? t('storage.mounting')
+                  : isLast
+                    ? t('onboarding.get_started')
+                    : t('common.next')}
               </Text>
-              {!isLast && <MaterialIcons name="arrow-forward-ios" size={14} color="#FFFFFF" />}
+              {!isLast && !isMountingStorage && (
+                <MaterialIcons name="arrow-forward-ios" size={14} color="#FFFFFF" />
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -456,7 +519,11 @@ const styles = StyleSheet.create({
     color: '#6B7280'
   },
   welcomeIconWrap: {
+    width: 140,
+    height: 140,
     borderRadius: 32,
+    overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
     shadowColor: '#9AD4EA',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.25,

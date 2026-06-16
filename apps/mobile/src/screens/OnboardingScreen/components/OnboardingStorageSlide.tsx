@@ -20,14 +20,20 @@ interface OnboardingStorageSlideProps {
   granted: boolean | undefined
   permissionChecked: boolean
   needsFullFileAccess: boolean
+  isStoragePending?: boolean
+  mountFailed?: boolean
   onRequestPermission: () => Promise<boolean>
+  onRetryMount?: () => void
 }
 
 export const OnboardingStorageSlide: React.FC<OnboardingStorageSlideProps> = ({
   granted,
   permissionChecked,
   needsFullFileAccess,
-  onRequestPermission
+  isStoragePending = false,
+  mountFailed = false,
+  onRequestPermission,
+  onRetryMount
 }) => {
   const { t } = useTranslation()
   const toast = useNativeToast()
@@ -91,6 +97,24 @@ export const OnboardingStorageSlide: React.FC<OnboardingStorageSlideProps> = ({
         />
       )}
 
+      {isStoragePending && (
+        <View style={styles.pendingRow}>
+          <ActivityIndicator size="small" color="#D4924A" />
+          <Text style={styles.pendingText}>{t('storage.mounting')}</Text>
+        </View>
+      )}
+
+      {mountFailed && !isStoragePending && (
+        <View style={styles.failedBlock}>
+          <Text style={styles.failedText}>{t('storage.external_access_error')}</Text>
+          {onRetryMount ? (
+            <TouchableOpacity style={styles.retryButton} onPress={onRetryMount} activeOpacity={0.85}>
+              <Text style={styles.retryButtonText}>{t('common.retry', '重试')}</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      )}
+
       <View style={styles.pathBlock}>
         <View style={styles.pathHeader}>
           <MaterialIcons name="folder-open" size={16} color="#D4924A" />
@@ -132,6 +156,37 @@ const styles = StyleSheet.create({
   container: {
     width: '100%',
     gap: 20
+  },
+  pendingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8
+  },
+  pendingText: {
+    fontSize: 14,
+    color: '#6B5B45'
+  },
+  failedBlock: {
+    alignItems: 'center',
+    gap: 10
+  },
+  failedText: {
+    fontSize: 13,
+    lineHeight: 20,
+    textAlign: 'center',
+    color: '#B45309'
+  },
+  retryButton: {
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: '#FFB74D'
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600'
   },
   pathBlock: {
     width: '100%',

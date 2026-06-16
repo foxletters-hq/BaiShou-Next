@@ -326,6 +326,29 @@ class ExpoBaishouServerModule : Module() {
             }.start()
         }
 
+        Function("getLegacyFlutterStorageRoots") {
+            val context = appContext.reactContext ?: return@Function emptyList<String>()
+            LegacyProductionBridge.collectLegacyStorageRoots(context)
+        }
+
+        Function("readLegacyFlutterSharedPreferencesXml") {
+            val context = appContext.reactContext ?: return@Function null
+            LegacyProductionBridge.readFlutterSharedPreferencesXml(context)
+        }
+
+        Function("getLegacyFlutterAvatarsDirectory") {
+            val context = appContext.reactContext ?: return@Function null
+            LegacyProductionBridge.getLegacyAvatarsDirectory(context)
+        }
+
+        Function("mirrorProductionLegacyToExternal") {
+            val context = appContext.reactContext ?: return@Function mapOf(
+                "mirrored" to false,
+                "reason" to "no_context"
+            )
+            LegacyProductionBridge.mirrorProductionLegacyToExternal(context)
+        }
+
         /** 调起系统目录选择器（ACTION_OPEN_DOCUMENT_TREE） */
         AsyncFunction("pickDirectoryAsync") { promise: Promise ->
             if (pendingDirectoryPromise != null) {

@@ -24,6 +24,9 @@ declare class ExpoBaishouServerModule extends NativeModule<ServerEvents> {
   openAllFilesAccessSettings(): boolean
   getStoragePermissionOemKey(): string
   probeExternalStorageWritable(): boolean
+  getLegacyFlutterStorageRoots(): string[]
+  readLegacyFlutterSharedPreferencesXml(): string | null
+  getLegacyFlutterAvatarsDirectory(): string | null
   externalGetInfo(path: string): ExternalPathInfo
   externalMakeDirectory(path: string, intermediates: boolean): void
   externalWriteString(path: string, content: string): void
@@ -161,6 +164,56 @@ export function probeExternalStorageWritable(): boolean {
     return mod.probeExternalStorageWritable()
   } catch {
     return false
+  }
+}
+
+export function getLegacyFlutterStorageRoots(): string[] {
+  const mod = getNative()
+  if (!mod || typeof mod.getLegacyFlutterStorageRoots !== 'function') return []
+  try {
+    return mod.getLegacyFlutterStorageRoots() ?? []
+  } catch {
+    return []
+  }
+}
+
+export function readLegacyFlutterSharedPreferencesXml(): string | null {
+  const mod = getNative()
+  if (!mod || typeof mod.readLegacyFlutterSharedPreferencesXml !== 'function') return null
+  try {
+    return mod.readLegacyFlutterSharedPreferencesXml() ?? null
+  } catch {
+    return null
+  }
+}
+
+export function getLegacyFlutterAvatarsDirectory(): string | null {
+  const mod = getNative()
+  if (!mod || typeof mod.getLegacyFlutterAvatarsDirectory !== 'function') return null
+  try {
+    return mod.getLegacyFlutterAvatarsDirectory() ?? null
+  } catch {
+    return null
+  }
+}
+
+export type MirrorProductionLegacyResult = {
+  mirrored?: boolean
+  productionInstalled?: boolean
+  journalFilesCopied?: number
+  reason?: string
+}
+
+/** Dev 包：尝试把正式包沙盒内的 BaiShou_Root 复制到外部存储 */
+export function mirrorProductionLegacyToExternal(): MirrorProductionLegacyResult {
+  const mod = getNative()
+  if (!mod || typeof mod.mirrorProductionLegacyToExternal !== 'function') {
+    return { mirrored: false, reason: 'native_unavailable' }
+  }
+  try {
+    return (mod.mirrorProductionLegacyToExternal() ?? { mirrored: false }) as MirrorProductionLegacyResult
+  } catch {
+    return { mirrored: false, reason: 'native_error' }
   }
 }
 
