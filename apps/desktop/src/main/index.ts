@@ -192,6 +192,7 @@ app.whenReady().then(async () => {
 
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
+  app.setName('白守')
 
   // Register local protocol for secure local asset rendering
   protocol.handle('local', async (request) => {

@@ -126,7 +126,7 @@ export const Sidebar: React.FC = () => {
             <img src={appIcon} alt="Logo" className={styles.brandLogo} />
           </div>
           <div className={styles.brandText}>
-            <div className={styles.brandName}>{t('common.app_title', 'BaiShou AI')}</div>
+            <div className={styles.brandName}>{t('common.app_title', 'BaiShou')}</div>
             <div className={styles.brandSlogan}>
               {t('settings.tagline_short', '下一代本地优先 AI 记忆终端')}
             </div>

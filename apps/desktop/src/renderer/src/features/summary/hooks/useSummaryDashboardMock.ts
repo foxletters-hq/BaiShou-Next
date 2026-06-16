@@ -34,7 +34,7 @@ export function useSummaryDashboardMock() {
       title: '2026年3月总结',
       dateRange: '03.01-03.31',
       type: 'month' as const,
-      summaryText: '整个三月都沉浸在 BaiShou Next 的双端架构中。'
+      summaryText: '整个三月都沉浸在白守的双端架构中。'
     }
   ]
 

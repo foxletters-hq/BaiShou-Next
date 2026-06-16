@@ -271,7 +271,7 @@
     "monthly_report": "月報",
     "quarterly_report": "四半期報",
     "yearbook": "年鑑",
-    "welcome": "BaiShou Next へようこそ",
+    "welcome": "白守へようこそ",
     "welcome_sub": "個人ワークスペースの割り当てとインデックス設定を初期化中です。",
     "start": "旅を始める",
     "ai_config_title": "AI サービスの設定",
@@ -1312,7 +1312,7 @@
   },
   "about": {
     "title": "白守について",
-    "app_name": "白守 (BaiShou)",
+    "app_name": "白守",
     "developer_label": "開発者",
     "dev_mode_hint": "あと $count 回タップで開発者モードになります",
     "oss_license_label": "オープンソースライセンス",

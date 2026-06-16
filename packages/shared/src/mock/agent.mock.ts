@@ -121,7 +121,7 @@ export interface MockAgentAssistant {
 
 export const MOCK_ASSISTANT: MockAgentAssistant = {
   id: 'assistant_1',
-  name: 'BaiShou AI',
+  name: 'BaiShou',
   description: '你的智能全能助手',
   emoji: '✨',
   avatarPath: null,

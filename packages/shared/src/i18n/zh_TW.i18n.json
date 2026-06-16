@@ -271,7 +271,7 @@
     "monthly_report": "月報",
     "quarterly_report": "季報",
     "yearbook": "年鑑",
-    "welcome": "歡迎來到 BaiShou Next",
+    "welcome": "歡迎來到白守",
     "welcome_sub": "正在為您分配個人工作區及初始化索引配置。",
     "start": "開始旅程",
     "ai_config_title": "配置 AI 服務",
@@ -1299,7 +1299,7 @@
   },
   "about": {
     "title": "關於白守",
-    "app_name": "白守 (BaiShou)",
+    "app_name": "白守",
     "developer_label": "開發者",
     "dev_mode_hint": "再點 $count 次進入開發者模式",
     "oss_license_label": "開源協議",

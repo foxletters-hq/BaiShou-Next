@@ -1,5 +1,5 @@
 appId: com.electron.app
-productName: apps-desktop
+productName: 白守
 directories:
   buildResources: build
 files:
@@ -12,7 +12,7 @@ files:
 asarUnpack:
   - resources/**
 win:
-  executableName: apps-desktop
+  executableName: BaiShou
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}

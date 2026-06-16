@@ -133,7 +133,7 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
             ) : null}
           </div>
           <div className="about-hero-card-body">
-            <div className="about-app-name">{t('about.app_name', '白守 (BaiShou)')}</div>
+            <div className="about-app-name">{t('about.app_name', '白守')}</div>
             <div className="about-version">{formatAppVersion(version)}</div>
           </div>
         </section>

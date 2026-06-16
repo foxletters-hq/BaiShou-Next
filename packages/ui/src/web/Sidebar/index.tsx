@@ -69,7 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <img src="/assets/icon/icon.png" alt="Logo" className={styles.logoImg} />
         </div>
         <div className={styles.headerText}>
-          <h2 className={styles.appName}>BaiShou Next</h2>
+          <h2 className={styles.appName}>{t('common.app_title', 'BaiShou')}</h2>
           <span className={styles.tagline}>{t('sidebar.tagline', 'AI 终端伴侣')}</span>
         </div>
       </div>

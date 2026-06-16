@@ -1,7 +1,7 @@
 {
   "name": "@baishou/desktop",
   "version": "1.0.0",
-  "description": "An Electron application with React and TypeScript",
+  "description": "白守 (BaiShou) — 记录你珍贵的回忆",
   "main": "./out/main/index.js",
   "author": "example.com",
   "homepage": "https://electron-vite.org",

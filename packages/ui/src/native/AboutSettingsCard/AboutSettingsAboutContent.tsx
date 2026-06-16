@@ -63,7 +63,7 @@ export const AboutSettingsAboutContent: React.FC<AboutSettingsAboutContentProps>
             color: colors.textPrimary
           }}
         >
-          {t('about.app_name', '白守 (BaiShou)')}
+          {t('about.app_name', '白守')}
         </Text>
         <Text
           style={{
