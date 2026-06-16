@@ -12,6 +12,7 @@ import { AssistantEditCompressionSection } from './AssistantEditCompressionSecti
 import { AssistantDeleteConfirmDialog } from './AssistantDeleteConfirmDialog'
 import { AssistantModelPicker } from './AssistantModelPicker'
 import { AssistantKindTabBar } from '../AssistantKindTabBar'
+import { ResizableMarkdownEditor } from '../ResizableMarkdownEditor'
 import styles from './AssistantEditPage.module.css'
 
 export type { AssistantFormData, AssistantEditPageProps } from './assistant-edit.types'
@@ -49,6 +50,12 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
 
           <div className={styles.spacer16} />
 
+          <h3 className={styles.sectionTitle}>
+            {t('agent.assistant.partner_info_label', '伙伴信息')}
+          </h3>
+
+          <div className={styles.spacer16} />
+
           <label className={styles.fieldLabel}>{t('agent.assistant.name_label', '名称')}</label>
           <input
             className={styles.inputField}
@@ -62,23 +69,25 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
           <label className={styles.fieldLabel}>
             {t('agent.assistant.description_label', '简介')}
           </label>
-          <textarea
-            className={styles.inputField}
-            rows={2}
-            value={form.description}
-            onChange={(e) => form.setDescription(e.target.value)}
+          <ResizableMarkdownEditor
+            content={form.description}
+            onChange={(value) => form.setDescription(value || '')}
             placeholder={t('agent.assistant.description_hint', '简短描述你的伙伴')}
+            defaultHeight={96}
+            minHeight={72}
+            maxHeight={240}
           />
 
           <div className={styles.spacer24} />
 
           <label className={styles.fieldLabel}>{t('agent.assistant.prompt_label', '提示词')}</label>
-          <textarea
-            className={`${styles.inputField} ${styles.inputFieldMulti}`}
-            rows={8}
-            value={form.systemPrompt}
-            onChange={(e) => form.setSystemPrompt(e.target.value)}
+          <ResizableMarkdownEditor
+            content={form.systemPrompt}
+            onChange={(value) => form.setSystemPrompt(value || '')}
             placeholder={t('agent.assistant.prompt_hint', '你是一个AI助手...')}
+            defaultHeight={220}
+            minHeight={140}
+            maxHeight={520}
           />
 
           <div className={styles.spacer24} />

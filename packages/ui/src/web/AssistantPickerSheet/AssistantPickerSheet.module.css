@@ -32,7 +32,7 @@
 
 /* ───────── Left Sidebar (white tone) ───────── */
 .sidebar {
-  width: 280px;
+  width: 320px;
   background: var(--bg-surface-lowest);
   border-right: 1px solid var(--border-muted);
   display: flex;
@@ -115,8 +115,10 @@
 }
 
 .listItem {
-  display: flex;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
   align-items: center;
+  gap: 12px;
   padding: 8px 12px;
   border-radius: 10px;
   cursor: pointer;
@@ -125,7 +127,6 @@
     border-color 0.2s,
     box-shadow 0.2s;
   border: 1px solid transparent;
-  position: relative;
 }
 
 .listItem:hover {
@@ -168,13 +169,12 @@
 }
 
 .actionsWrapper {
-  position: absolute;
-  right: 12px;
   display: flex;
   align-items: center;
   gap: 6px;
   opacity: 0;
   transition: opacity 0.2s;
+  flex-shrink: 0;
 }
 
 .listItem:hover .actionsWrapper {
@@ -226,19 +226,20 @@
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background-color: rgba(var(--color-outline-variant-rgb), 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
-  margin-right: 12px;
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 .itemInfo {
   flex: 1;
+  min-width: 0;
   overflow: hidden;
-  padding-right: 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .itemNameRow {
@@ -254,6 +255,14 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.currentBadgeInline {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-primary);
+  line-height: 1.2;
 }
 
 .currentBadge {
@@ -445,6 +454,30 @@
   margin-bottom: 24px;
 }
 
+.detailTitles {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.detailName {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+}
+
+.partnerKindSection {
+  margin-bottom: 20px;
+}
+
 .detailAvatar {
   width: 60px;
   height: 60px;
@@ -465,7 +498,7 @@
   font-size: 24px;
   font-weight: 800;
   color: var(--text-primary);
-  margin: 0 0 4px 0;
+  margin: 0;
   letter-spacing: -0.5px;
 }
 
@@ -474,6 +507,52 @@
   font-size: 14px;
   color: var(--text-secondary);
   line-height: 1.5;
+}
+
+.descriptionInput {
+  width: 100%;
+  margin-top: 0;
+  margin-bottom: 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(var(--color-outline-variant-rgb), 0.5);
+  border-radius: 10px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 52px;
+  outline: none;
+  font-family: inherit;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.descriptionInput:focus {
+  border-color: rgba(var(--color-primary-rgb), 0.5);
+  color: var(--text-primary);
+}
+
+.descriptionInput::placeholder {
+  color: var(--text-tertiary);
+}
+
+.restoreDefaultBtn {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 10px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.restoreDefaultBtn:hover {
+  opacity: 0.85;
 }
 
 .tabsRow {
@@ -489,12 +568,15 @@
   font-weight: 700;
   color: var(--text-secondary);
   cursor: pointer;
+  border: none;
+  background: transparent;
   border-bottom: 2px solid transparent;
   margin-bottom: -2px;
   transition: all 0.2s;
   display: flex;
   align-items: center;
   gap: 6px;
+  font-family: inherit;
 }
 
 .tab:hover {
@@ -512,14 +594,23 @@
   flex-direction: column;
 }
 
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  margin-top: 24px;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+
+.sectionHeader:first-child {
+  margin-top: 0;
+}
+
 .sectionTitle {
   font-size: 13px;
   font-weight: 800;
   color: var(--text-primary);
-  margin: 0 0 8px 0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  margin: 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }

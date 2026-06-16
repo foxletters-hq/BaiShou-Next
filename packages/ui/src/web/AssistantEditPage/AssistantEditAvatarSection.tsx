@@ -25,6 +25,7 @@ export const AssistantEditAvatarSection: React.FC<AssistantEditAvatarSectionProp
     <div className={styles.avatarSection}>
       <AssistantAvatarPicker
         avatarPath={avatarPath || DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH}
+        previewSize={120}
         onSelectBuiltin={onSelectBuiltin}
         onUploadImage={onUploadImage}
       />

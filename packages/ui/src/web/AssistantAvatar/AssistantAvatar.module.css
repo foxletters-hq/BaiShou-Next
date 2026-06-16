@@ -1,0 +1,6 @@
+.avatar {
+  display: block;
+  object-fit: cover;
+  flex-shrink: 0;
+  background-color: var(--bg-surface-highest, #f1f5f9);
+}

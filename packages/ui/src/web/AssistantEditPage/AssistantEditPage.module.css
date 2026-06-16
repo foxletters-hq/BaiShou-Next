@@ -139,6 +139,32 @@
   background-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.08);
 }
 
+.sectionTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.2px;
+}
+
+.restoreDefaultBtn {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 10px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.restoreDefaultBtn:hover {
+  opacity: 0.85;
+}
+
 /* Fields */
 .fieldLabel {
   font-size: 14px;

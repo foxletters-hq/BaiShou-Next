@@ -147,7 +147,7 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
               color: 'var(--text-secondary)'
             }}
           >
-            {t('agent.assistant.status', '状态')}
+            {t('agent.assistant.compress_token_threshold_label', 'Token 阈值')}
           </span>
           <div style={{ flex: 1 }}></div>
           {editingCompressEnabled && (

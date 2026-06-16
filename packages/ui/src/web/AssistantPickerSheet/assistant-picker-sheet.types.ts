@@ -13,6 +13,7 @@ export interface AssistantInfo {
   compressSystemPrompt?: string | null
   ragSpaceId?: string
   assistantKind?: 'companion' | 'work'
+  sortOrder?: number
 }
 
 export interface AssistantPickerSheetProps {

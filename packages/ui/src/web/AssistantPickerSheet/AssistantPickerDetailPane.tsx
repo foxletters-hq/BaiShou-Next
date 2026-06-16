@@ -1,7 +1,10 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import { X, Star, Edit2, CheckSquare } from 'lucide-react'
-import { AvatarEditor } from '../AvatarEditor'
-import { AssistantKindBadge } from '../AssistantKindBadge'
+import {
+  DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH,
+  normalizeAssistantAvatarPath
+} from '@baishou/shared'
+import { AssistantAvatarPicker } from '../AssistantAvatarPicker'
 import styles from './AssistantPickerSheet.module.css'
 import type { AssistantInfo } from './assistant-picker-sheet.types'
 import type { AssistantPickerSheetViewModel } from './useAssistantPickerSheet'
@@ -23,6 +26,26 @@ export function AssistantPickerDetailPane({
 }) {
   const { t, activeTab, setActiveTab, updateAssistantAPI, handleEditName } = vm
 
+  const avatarPath =
+    normalizeAssistantAvatarPath(activeAssistant?.avatarPath) ||
+    DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH
+
+  const handleSelectBuiltin = useCallback(
+    (path: string) => {
+      if (!activeAssistant) return
+      void updateAssistantAPI(activeAssistant.id, { avatarPath: path, emoji: '' })
+    },
+    [activeAssistant, updateAssistantAPI]
+  )
+
+  const handleUploadImage = useCallback(
+    (dataUrl: string) => {
+      if (!activeAssistant) return
+      void updateAssistantAPI(activeAssistant.id, { avatarPath: dataUrl, emoji: '' })
+    },
+    [activeAssistant, updateAssistantAPI]
+  )
+
   return (
     <div className={styles.detailPane}>
       <button className={styles.closeBtn} onClick={onClose}>
@@ -39,76 +62,52 @@ export function AssistantPickerDetailPane({
       ) : (
         <div className={styles.detailContent}>
           <div className={styles.detailHeader}>
-            <AvatarEditor
-              emoji={activeAssistant.emoji}
-              avatarPath={activeAssistant.avatarPath}
-              onChange={(type, value) => {
-                if (type === 'emoji') {
-                  updateAssistantAPI(activeAssistant.id, { emoji: value, avatarPath: '' })
-                } else {
-                  updateAssistantAPI(activeAssistant.id, { avatarPath: value })
-                }
-              }}
-            >
-              <div className={styles.detailAvatar} title={t('common.edit_avatar', '点击修改头像')}>
-                {activeAssistant.avatarPath ? (
-                  <img
-                    src={activeAssistant.avatarPath}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      borderRadius: 'inherit',
-                      objectFit: 'cover'
-                    }}
-                  />
-                ) : (
-                  activeAssistant.emoji
-                )}
-              </div>
-            </AvatarEditor>
+            <AssistantAvatarPicker
+              avatarPath={avatarPath}
+              previewSize={60}
+              fullWidth={false}
+              onSelectBuiltin={handleSelectBuiltin}
+              onUploadImage={handleUploadImage}
+            />
             <div className={styles.detailTitles}>
               <h2
                 onClick={handleEditName}
                 title={t('agent.assistant.click_to_rename', 'Click to rename')}
-                style={{
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6
-                }}
+                className={styles.detailName}
               >
                 {activeAssistant.name} <Edit2 size={16} color="var(--text-secondary)" />
               </h2>
-              <AssistantKindBadge kind={activeAssistant.assistantKind} />
             </div>
           </div>
 
           <div className={styles.tabsRow} style={{ justifyContent: 'center', gap: 48 }}>
-            <div
+            <button
+              type="button"
               className={`${styles.tab} ${activeTab === 'prompt' ? styles.tabActive : ''}`}
               onClick={() => {
                 vm.setShowModelSwitcher(false)
                 setActiveTab('prompt')
               }}
             >
-              {t('agent.assistant.prompt_label', '提示词')}
-            </div>
-            <div
+              {t('agent.assistant.partner_info_label', '伙伴信息')}
+            </button>
+            <button
+              type="button"
               className={`${styles.tab} ${activeTab === 'memory' ? styles.tabActive : ''}`}
               onClick={() => {
                 vm.setShowModelSwitcher(false)
                 setActiveTab('memory')
               }}
             >
-              {t('agent.assistant.memory_label', 'Memory')}
-            </div>
+              {t('agent.assistant.memory_label', '记忆')}
+            </button>
           </div>
 
           <div className={styles.tabContent}>
-            {activeTab === 'prompt' ? (
-              <AssistantPickerPromptTab vm={vm} activeAssistant={activeAssistant} />
-            ) : (
+            {activeTab === 'memory' ? (
               <AssistantPickerMemoryTab vm={vm} />
+            ) : (
+              <AssistantPickerPromptTab vm={vm} activeAssistant={activeAssistant} />
             )}
           </div>
 

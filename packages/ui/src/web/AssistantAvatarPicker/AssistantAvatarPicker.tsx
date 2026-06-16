@@ -18,14 +18,23 @@ export interface AssistantAvatarPickerProps {
   avatarPath: string
   onSelectBuiltin: (path: string) => void
   onUploadImage: (dataUrl: string) => void
+  /** 预览尺寸（px），默认 120 */
+  previewSize?: number
+  /** 是否占满父容器宽度（编辑页居中用），默认 true */
+  fullWidth?: boolean
+  className?: string
 }
 
 export const AssistantAvatarPicker: React.FC<AssistantAvatarPickerProps> = ({
   avatarPath,
   onSelectBuiltin,
-  onUploadImage
+  onUploadImage,
+  previewSize = 120,
+  fullWidth = true,
+  className
 }) => {
   const { t } = useTranslation()
+  const [choiceModalOpen, setChoiceModalOpen] = useState(false)
   const [showBuiltinModal, setShowBuiltinModal] = useState(false)
   const [showCropModal, setShowCropModal] = useState(false)
   const [tempImageSrc, setTempImageSrc] = useState<string | null>(null)
@@ -33,9 +42,16 @@ export const AssistantAvatarPicker: React.FC<AssistantAvatarPickerProps> = ({
 
   const selectedBuiltinId = parseBuiltinAssistantAvatarId(avatarPath)
   const previewSrc = resolveWebAssistantAvatarSrc(avatarPath)
+  const previewRadius = Math.max(12, Math.round(previewSize * 0.22))
 
   const triggerUpload = () => {
+    setChoiceModalOpen(false)
     fileInputRef.current?.click()
+  }
+
+  const openBuiltinPicker = () => {
+    setChoiceModalOpen(false)
+    setShowBuiltinModal(true)
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,26 +74,26 @@ export const AssistantAvatarPicker: React.FC<AssistantAvatarPickerProps> = ({
   }
 
   return (
-    <div className={styles.root}>
-      <div
-        className={styles.preview}
-        style={{ backgroundImage: previewSrc ? `url("${previewSrc}")` : undefined }}
-      />
-
-      <div className={styles.actionRow}>
-        <button
-          type="button"
-          className={styles.actionBtn}
-          onClick={() => setShowBuiltinModal(true)}
-        >
-          <LayoutGrid size={16} />
-          <span>{t('agent.assistant.select_builtin_avatar')}</span>
-        </button>
-        <button type="button" className={styles.actionBtn} onClick={triggerUpload}>
-          <ImagePlus size={16} />
-          <span>{t('agent.assistant.upload_avatar')}</span>
-        </button>
-      </div>
+    <div
+      className={`${styles.root} ${fullWidth ? styles.rootFullWidth : ''} ${className ?? ''}`}
+    >
+      <button
+        type="button"
+        className={styles.previewBtn}
+        onClick={() => setChoiceModalOpen(true)}
+        title={t('common.edit_avatar', '点击修改头像')}
+        aria-label={t('common.edit_avatar', '点击修改头像')}
+        style={{ width: previewSize, height: previewSize, borderRadius: previewRadius }}
+      >
+        <img
+          src={previewSrc}
+          alt=""
+          className={styles.previewImg}
+          draggable={false}
+          width={previewSize}
+          height={previewSize}
+        />
+      </button>
 
       <input
         ref={fileInputRef}
@@ -86,6 +102,25 @@ export const AssistantAvatarPicker: React.FC<AssistantAvatarPickerProps> = ({
         className={styles.hiddenInput}
         onChange={handleFileChange}
       />
+
+      <Modal
+        isOpen={choiceModalOpen}
+        onClose={() => setChoiceModalOpen(false)}
+        title={t('agent.assistant.avatar_choice_title', '选择头像')}
+        closeOnOverlayClick
+        className={styles.choiceModal}
+      >
+        <div className={styles.actionRow}>
+          <button type="button" className={styles.actionBtn} onClick={openBuiltinPicker}>
+            <LayoutGrid size={16} />
+            <span>{t('agent.assistant.select_builtin_avatar', '选择内置头像')}</span>
+          </button>
+          <button type="button" className={styles.actionBtn} onClick={triggerUpload}>
+            <ImagePlus size={16} />
+            <span>{t('agent.assistant.upload_avatar', '从本地上传')}</span>
+          </button>
+        </div>
+      </Modal>
 
       <Modal
         isOpen={showBuiltinModal}

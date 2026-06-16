@@ -1,0 +1,96 @@
+.shell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border: 1px solid var(--border-muted);
+  border-radius: 12px;
+  background: var(--bg-surface);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.body :global(.codemirror-editor-wrapper) {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+.body :global(.cm-editor),
+.body :global(.cm-scroller),
+.body :global(.cm-gutters) {
+  background: var(--bg-surface) !important;
+}
+
+.body :global(.cm-editor) {
+  height: 100% !important;
+}
+
+.body :global(.cm-scroller) {
+  overflow: auto !important;
+}
+
+.body :global(.cm-content) {
+  padding-bottom: 28px;
+  padding-right: 20px;
+}
+
+.resizeHandle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 18px;
+  height: 18px;
+  cursor: nwse-resize;
+  z-index: 3;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 0 3px 3px 0;
+  border: none;
+  background: transparent;
+  transition: opacity 0.15s;
+}
+
+.resizeHandle:hover {
+  opacity: 1;
+}
+
+.resizeGrip {
+  position: relative;
+  width: 10px;
+  height: 10px;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.resizeGrip::before,
+.resizeGrip::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  height: 1.5px;
+  border-radius: 1px;
+  background-color: var(--text-tertiary);
+  transform: rotate(-45deg);
+  transform-origin: right center;
+}
+
+.resizeGrip::before {
+  bottom: 3px;
+  width: 10px;
+}
+
+.resizeGrip::after {
+  bottom: 6px;
+  width: 6px;
+}

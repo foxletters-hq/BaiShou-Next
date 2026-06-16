@@ -25,6 +25,7 @@ export function useAssistantPickerSheet({
   })
   const [activeTab, setActiveTab] = useState<'prompt' | 'memory'>('prompt')
   const [editingPrompt, setEditingPrompt] = useState('')
+  const [editingDescription, setEditingDescription] = useState('')
   const [editingContextWindow, setEditingContextWindow] = useState(-1)
   const [editingCompressEnabled, setEditingCompressEnabled] = useState(true)
   const [editingCompressThreshold, setEditingCompressThreshold] = useState(60000)
@@ -74,7 +75,7 @@ export function useAssistantPickerSheet({
       const bCurrent = currentId != null && String(b.id) === currentId
       if (aCurrent !== bCurrent) return aCurrent ? -1 : 1
 
-      return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+      return (a.sortOrder ?? 0) - (b.sortOrder ?? 0)
     })
   }, [assistants, searchQuery, pinnedIds, currentAssistantId])
 
@@ -93,6 +94,7 @@ export function useAssistantPickerSheet({
     hydratedAssistantIdRef.current = assistantId
 
     setEditingPrompt(activeAssistant.systemPrompt || '')
+    setEditingDescription(activeAssistant.description || '')
     setEditingContextWindow(activeAssistant.contextWindow ?? -1)
     setEditingCompressEnabled(activeAssistant.compressTokenThreshold > 0)
     setEditingCompressThreshold(
@@ -177,6 +179,13 @@ export function useAssistantPickerSheet({
     }
   }
 
+  const saveDescription = async () => {
+    if (!activeAssistant) return
+    const trimmed = editingDescription.trim()
+    if (trimmed === (activeAssistant.description ?? '')) return
+    await updateAssistantAPI(activeAssistant.id, { description: trimmed })
+  }
+
   const confirmDelete = async () => {
     if (deleteTargetId === null) return
     if (typeof window !== 'undefined' && (window as any).electron) {
@@ -199,6 +208,8 @@ export function useAssistantPickerSheet({
     setActiveTab,
     editingPrompt,
     setEditingPrompt,
+    editingDescription,
+    setEditingDescription,
     editingContextWindow,
     setEditingContextWindow,
     editingCompressEnabled,
@@ -218,6 +229,7 @@ export function useAssistantPickerSheet({
     saveConfig,
     updateAssistantAPI,
     handleEditName,
+    saveDescription,
     confirmDelete,
     pinnedIds,
     onTogglePin,

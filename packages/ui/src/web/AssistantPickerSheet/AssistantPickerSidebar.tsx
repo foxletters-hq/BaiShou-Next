@@ -1,6 +1,7 @@
 import React from 'react'
-import { Plus, Cpu, Trash2 } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { AssistantKindBadge } from '../AssistantKindBadge'
+import { AssistantAvatar } from '../AssistantAvatar'
 import styles from './AssistantPickerSheet.module.css'
 import type { AssistantPickerSheetViewModel } from './useAssistantPickerSheet'
 
@@ -50,37 +51,23 @@ export function AssistantPickerSidebar({
                 className={`${styles.listItem} ${isPinned ? styles.pinnedItem : ''} ${isSelected ? styles.selectedItem : ''}`}
               >
                 <div className={styles.itemAvatar}>
-                  {ast.avatarPath ? (
-                    <img
-                      src={ast.avatarPath}
-                      alt="avatar"
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        borderRadius: 8,
-                        objectFit: 'cover'
-                      }}
-                    />
-                  ) : ast.emoji ? (
-                    ast.emoji
-                  ) : (
-                    <Cpu size={18} color="var(--color-primary)" />
-                  )}
+                  <AssistantAvatar avatarPath={ast.avatarPath} size={32} borderRadius={8} />
                 </div>
                 <div className={styles.itemInfo}>
                   <div className={styles.itemNameRow}>
                     <span className={styles.itemName}>{ast.name}</span>
                     <AssistantKindBadge kind={ast.assistantKind} compact />
-                    {isCurrent && (
-                      <span className={styles.currentBadge}>
-                        {t('agent.assistant.current', 'Current')}
-                      </span>
-                    )}
                   </div>
+                  {isCurrent ? (
+                    <span className={styles.currentBadgeInline}>
+                      {t('agent.assistant.current', 'Current')}
+                    </span>
+                  ) : ast.description ? (
+                    <span className={styles.itemDesc}>{ast.description}</span>
+                  ) : null}
                 </div>
 
                 <div className={styles.actionsWrapper}>
-                  {/* Pin Button */}
                   <div
                     className={`${styles.actionBtn} ${isPinned ? styles.pinnedBtn : ''}`}
                     onClick={(e) => {
@@ -109,7 +96,6 @@ export function AssistantPickerSidebar({
                     </svg>
                   </div>
 
-                  {/* Delete Button */}
                   {assistants.length > 1 && (
                     <div
                       className={`${styles.actionBtn} ${styles.dangerBtn}`}
