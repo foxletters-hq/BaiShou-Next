@@ -11,7 +11,7 @@ import { useBaishou } from '../providers/BaishouProvider'
 export function useStoragePermission() {
   const { t } = useTranslation()
   const toast = useNativeToast()
-  const { storageReady, retryStorageSetup } = useBaishou()
+  const { dbReady, storageReady, retryStorageSetup } = useBaishou()
   const [granted, setGranted] = useState<boolean | undefined>(
     Platform.OS === 'android' ? undefined : true
   )
@@ -36,19 +36,26 @@ export function useStoragePermission() {
     void refresh()
   }, [refresh])
 
+  /** 权限已授予但 vault 尚未挂载（常见于引导页去系统设置授权后返回） */
+  useEffect(() => {
+    if (Platform.OS !== 'android') return
+    if (!dbReady || !permissionChecked || granted !== true || storageReady) return
+    void retryStorageSetup()
+  }, [dbReady, permissionChecked, granted, storageReady, retryStorageSetup])
+
   useEffect(() => {
     if (Platform.OS !== 'android') return
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
         void refresh().then(async (permitted) => {
-          if (permitted && !storageReady) {
+          if (permitted && dbReady && !storageReady) {
             await retryStorageSetup()
           }
         })
       }
     })
     return () => sub.remove()
-  }, [refresh, storageReady, retryStorageSetup])
+  }, [refresh, dbReady, storageReady, retryStorageSetup])
 
   const request = useCallback(async (): Promise<boolean> => {
     if (Platform.OS !== 'android') return true

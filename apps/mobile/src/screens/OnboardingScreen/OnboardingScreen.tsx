@@ -48,7 +48,7 @@ export const OnboardingScreen: React.FC = () => {
   const { t } = useTranslation()
   const toast = useNativeToast()
   const storagePermission = useStoragePermission()
-  const { services, dbReady } = useBaishou()
+  const { services, dbReady, storageReady, retryStorageSetup } = useBaishou()
   const [currentPage, setCurrentPage] = useState(0)
   const [selectedLanguage, setSelectedLanguage] = useState<OnboardingUiLanguage | null>(null)
   const [languageConfirmed, setLanguageConfirmed] = useState(false)
@@ -59,7 +59,9 @@ export const OnboardingScreen: React.FC = () => {
 
   const storageReadyToAdvance =
     !storagePermission.isAndroid ||
-    (storagePermission.permissionChecked && storagePermission.granted === true)
+    (storagePermission.permissionChecked &&
+      storagePermission.granted === true &&
+      storageReady)
   const nextBlockedOnStorage = currentPage === ONBOARDING_PAGE.STORAGE && !storageReadyToAdvance
   const nextBlockedOnLanguage =
     !isPreview && currentPage === ONBOARDING_PAGE.LANGUAGE && !languageConfirmed
@@ -117,6 +119,13 @@ export const OnboardingScreen: React.FC = () => {
 
   const finishOnboarding = async () => {
     if (!(await requireLanguageBeforeLeave())) return
+    if (
+      storagePermission.isAndroid &&
+      storagePermission.granted === true &&
+      !storageReady
+    ) {
+      await retryStorageSetup()
+    }
     allowLeaveRef.current = true
     if (isPreview) {
       router.back()
@@ -332,14 +341,6 @@ export const OnboardingScreen: React.FC = () => {
       <OnboardingBackground />
 
       <ScreenSafeArea preset="screen" style={styles.safeArea}>
-        <View style={styles.topBar}>
-          {currentPage > ONBOARDING_PAGE.LANGUAGE && currentPage < NUM_ONBOARDING_PAGES - 1 && (
-            <TouchableOpacity onPress={() => void finishOnboarding()} style={styles.skipButton}>
-              <Text style={styles.skipText}>{t('onboarding.skip')}</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
         <ScrollView
           ref={scrollViewRef}
           horizontal
@@ -420,19 +421,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: 'transparent'
-  },
-  topBar: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    alignItems: 'flex-end'
-  },
-  skipButton: {
-    paddingVertical: 4,
-    paddingHorizontal: 4
-  },
-  skipText: {
-    color: '#9CA3AF',
-    fontSize: 15
   },
   scrollView: {
     flex: 1

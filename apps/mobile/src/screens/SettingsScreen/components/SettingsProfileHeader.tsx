@@ -1,5 +1,5 @@
-import React from 'react'
-import { View, Text, Pressable, Image, StyleSheet } from 'react-native'
+import React, { useEffect, useState } from 'react'
+import { View, Text, Pressable, Image, StyleSheet, ActivityIndicator } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
@@ -9,10 +9,18 @@ import {
   useNativeToast,
   resolveNativeUserAvatarSource
 } from '@baishou/ui/native'
+import { useResolvedUserAvatar } from '../../../hooks/useResolvedUserAvatar'
+
+export interface SettingsProfileSavePayload {
+  nickname: string
+  avatarPath?: string | null
+  /** ImagePicker 提供的原图体积，避免为测大小重复读取 content:// */
+  avatarSourceByteSize?: number
+}
 
 export interface SettingsProfileHeaderProps {
   profile: { nickname: string; avatarPath?: string | null }
-  onSave: (data: { nickname: string; avatarPath?: string | null }) => void
+  onSave: (data: SettingsProfileSavePayload) => Promise<void>
   /** 数据库未就绪时仍可展示，仅禁用保存 */
   disabled?: boolean
   /** 嵌入快捷设置分组卡片内 */
@@ -29,22 +37,49 @@ export const SettingsProfileHeader: React.FC<SettingsProfileHeaderProps> = ({
   const { colors } = useNativeTheme()
   const dialog = useDialog()
   const toast = useNativeToast()
+  const resolvedAvatarUri = useResolvedUserAvatar(profile.avatarPath)
+  const [pendingPreviewUri, setPendingPreviewUri] = useState<string | null>(null)
+  const [savingAvatar, setSavingAvatar] = useState(false)
+
+  useEffect(() => {
+    if (!pendingPreviewUri) return
+    if (resolvedAvatarUri && profile.avatarPath?.startsWith('avatars/')) {
+      setPendingPreviewUri(null)
+    }
+  }, [pendingPreviewUri, resolvedAvatarUri, profile.avatarPath])
 
   const displayName = profile.nickname?.trim() || t('profile.default_nickname', '白守用户')
+  const avatarSource = resolveNativeUserAvatarSource(
+    profile.avatarPath,
+    pendingPreviewUri ?? resolvedAvatarUri
+  )
 
   const handlePickImage = async () => {
-    if (disabled) return
+    if (disabled || savingAvatar) return
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.8
+        quality: 0.85
       })
       if (!result.canceled && result.assets[0]) {
-        onSave({ ...profile, avatarPath: result.assets[0].uri })
+        const asset = result.assets[0]
+        setPendingPreviewUri(asset.uri)
+        setSavingAvatar(true)
+        try {
+          await onSave({
+            ...profile,
+            avatarPath: asset.uri,
+            avatarSourceByteSize: asset.fileSize ?? undefined
+          })
+        } finally {
+          setSavingAvatar(false)
+        }
       }
     } catch {
+      setPendingPreviewUri(null)
+      setSavingAvatar(false)
       toast.showError(t('profile.image_pick_error', '选择图片失败'))
     }
   }
@@ -56,7 +91,7 @@ export const SettingsProfileHeader: React.FC<SettingsProfileHeaderProps> = ({
       profile.nickname
     )
     if (nextName && nextName.trim() !== '' && nextName !== profile.nickname) {
-      onSave({ ...profile, nickname: nextName.trim() })
+      await onSave({ ...profile, nickname: nextName.trim() })
     }
   }
 
@@ -70,16 +105,18 @@ export const SettingsProfileHeader: React.FC<SettingsProfileHeaderProps> = ({
     >
       <Pressable
         onPress={handlePickImage}
-        disabled={disabled}
+        disabled={disabled || savingAvatar}
         style={({ pressed }) => [styles.avatarBtn, pressed && !disabled && { opacity: 0.85 }]}
         accessibilityRole="button"
         accessibilityLabel={t('profile.change_avatar', '更换头像')}
       >
         <View style={[styles.avatar, { backgroundColor: colors.primaryContainer }]}>
-          <Image
-            source={resolveNativeUserAvatarSource(profile.avatarPath)}
-            style={styles.avatarImage}
-          />
+          <Image source={avatarSource} style={styles.avatarImage} />
+          {savingAvatar ? (
+            <View style={[styles.avatarSavingOverlay, { backgroundColor: colors.bgOverlay }]}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          ) : null}
         </View>
         <View style={[styles.cameraBadge, { backgroundColor: colors.primary }]}>
           <MaterialIcons name="photo-camera" size={12} color={colors.textOnPrimary} />
@@ -126,6 +163,11 @@ const styles = StyleSheet.create({
   avatarImage: {
     width: 56,
     height: 56
+  },
+  avatarSavingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   cameraBadge: {
     position: 'absolute',

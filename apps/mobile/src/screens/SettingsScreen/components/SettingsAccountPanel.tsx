@@ -26,7 +26,8 @@ import { useMobileMcpConfig } from '../../../hooks/useMobileMcpConfig'
 import { notifyThemeRefresh } from '../../../lib/theme-events'
 import { ensureDefaultLatteAssistant, syncDefaultLatteAssistantLocale } from '@baishou/core-mobile'
 import { resolveAppUiLanguage } from '../../../lib/device-locale'
-import { SettingsProfileHeader } from './SettingsProfileHeader'
+import { SettingsProfileHeader, type SettingsProfileSavePayload } from './SettingsProfileHeader'
+import { invalidateUserAvatarDisplayCache } from '../../../lib/user-avatar-display.util'
 
 export interface QuickSettingsGroupProps {
   groupCardStyle: object
@@ -147,17 +148,37 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
     }, [loadAccountSettings, loadVaults])
   )
 
-  const handleSaveProfile = async (newProfile: {
-    nickname: string
-    avatarPath?: string | null
-  }) => {
+  const handleSaveProfile = async (newProfile: SettingsProfileSavePayload) => {
     if (!services || !dbReady) return
     try {
       const userProfile = await getUserProfileFromSettings(services.settingsManager)
+      let avatarPath = newProfile.avatarPath ?? userProfile.avatarPath
+
+      const pendingAvatarUri = newProfile.avatarPath
+      const isPendingLocalAvatar =
+        pendingAvatarUri &&
+        !pendingAvatarUri.startsWith('avatars/') &&
+        (pendingAvatarUri.startsWith('file://') ||
+          pendingAvatarUri.startsWith('content://') ||
+          pendingAvatarUri.startsWith('/'))
+
+      if (isPendingLocalAvatar) {
+        const importedPath = await services.attachmentManager.importAvatar(
+          pendingAvatarUri,
+          'user_avatar',
+          newProfile.avatarSourceByteSize
+        )
+        avatarPath = importedPath
+        invalidateUserAvatarDisplayCache(importedPath)
+        if (userProfile.avatarPath && userProfile.avatarPath !== avatarPath) {
+          invalidateUserAvatarDisplayCache(userProfile.avatarPath)
+        }
+      }
+
       const next: UserProfile = {
         ...userProfile,
         nickname: newProfile.nickname,
-        avatarPath: newProfile.avatarPath ?? userProfile.avatarPath
+        avatarPath
       }
       await saveUserProfileToSettings(services.settingsManager, next)
       setProfile({ nickname: next.nickname, avatarPath: next.avatarPath })

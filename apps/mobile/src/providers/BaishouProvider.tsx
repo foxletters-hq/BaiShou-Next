@@ -93,7 +93,7 @@ import type {
   SessionRepository as SessionRepositoryType,
   SnapshotRepository as SnapshotRepositoryType
 } from '@baishou/database'
-import { isExternalStorageRequiredError } from '../services/storage-permission.service'
+import { isExternalStorageRequiredError, hasStoragePermission } from '../services/storage-permission.service'
 import { isExternalStorageNativeAvailable } from 'expo-baishou-server'
 
 // 采用类似于桌面端 db.ts 里的静态导出，但在 RN 里我们走 Context 更加 React 化
@@ -966,6 +966,11 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           )
 
         void getTtsPlaybackSettings(settingsManager).catch(() => {})
+
+        if (Platform.OS === 'android' && !storageReady && (await hasStoragePermission())) {
+          const mounted = await retryStorageSetupRef.current()
+          if (mounted) storageReady = true
+        }
 
         if (isMounted) {
           setValue({
