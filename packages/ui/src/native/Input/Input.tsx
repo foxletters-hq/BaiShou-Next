@@ -69,6 +69,8 @@ export const Input = forwardRef<any, NativeInputProps>(
       textAlignVertical: textAlignVerticalProp,
       keyboardAware = true,
       onFocus,
+      placeholderTextColor,
+      selectionColor,
       ...props
     },
     ref
@@ -84,6 +86,8 @@ export const Input = forwardRef<any, NativeInputProps>(
       },
       [keyboardAware, keyboardScroll, onFocus]
     )
+    const resolvedPlaceholderColor = placeholderTextColor ?? colors.textTertiary
+    const resolvedSelectionColor = selectionColor ?? colors.primary
     const computedInvalid = isInvalid ?? !!error
     const useTextArea = textarea && multiline
     const hasSlots = Boolean(leftSlot || rightSlot)
@@ -114,6 +118,8 @@ export const Input = forwardRef<any, NativeInputProps>(
         variant="primary"
         className={inputClassName}
         style={inputStyle}
+        placeholderTextColor={resolvedPlaceholderColor}
+        selectionColor={resolvedSelectionColor}
         onFocus={handleFocus}
         {...props}
       />
@@ -126,6 +132,8 @@ export const Input = forwardRef<any, NativeInputProps>(
         textAlignVertical={textAlignVerticalProp ?? (multiline ? 'top' : 'center')}
         className={inputClassName}
         style={inputStyle}
+        placeholderTextColor={resolvedPlaceholderColor}
+        selectionColor={resolvedSelectionColor}
         onFocus={handleFocus}
         {...props}
       />

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, type ViewStyle } from 'react-
 import { MaterialIcons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme } from '@baishou/ui/native'
+import { getNativeElevationStyle, useNativeTheme } from '@baishou/ui/native'
 import { StackScreenHeaderAction } from './StackScreenHeaderAction'
 import type { StackScreenHeaderActionConfig } from './stack-screen-header.types'
 
@@ -30,7 +30,7 @@ export const StackScreenHeader: React.FC<StackScreenHeaderProps> = ({
   transparent = false
 }) => {
   const { t } = useTranslation()
-  const { colors } = useNativeTheme()
+  const { colors, isDark } = useNativeTheme()
   const router = useRouter()
 
   const handleBack = onBack ?? (() => router.back())
@@ -55,7 +55,7 @@ export const StackScreenHeader: React.FC<StackScreenHeaderProps> = ({
         styles.header,
         barStyle,
         !transparent && styles.headerElevated,
-        !transparent && { shadowColor: colors.textPrimary },
+        !transparent && getNativeElevationStyle(isDark, 'subtle'),
         style
       ]}
     >

@@ -62,7 +62,7 @@ export const AssistantManagementView: React.FC<AssistantManagementViewProps> = (
                   style={[styles.defaultBadge, { backgroundColor: colors.primaryLight + '30' }]}
                 >
                   <Text style={[styles.defaultBadgeText, { color: colors.primary }]}>
-                    {t('assistant.default', '默认')}
+                    {t('agent.assistant.default_tag')}
                   </Text>
                 </View>
               )}
@@ -75,7 +75,7 @@ export const AssistantManagementView: React.FC<AssistantManagementViewProps> = (
               style={[styles.deleteBtn, { borderColor: colors.error + '40' }]}
             >
               <Text style={[styles.deleteBtnText, { color: colors.error }]}>
-                {isDeleting ? '...' : t('assistant.delete', '删除')}
+                {isDeleting ? '...' : t('common.delete')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -93,7 +93,7 @@ export const AssistantManagementView: React.FC<AssistantManagementViewProps> = (
     <View style={[{ flex: 1 }, style]} {...props}>
       <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
         <Text style={[styles.title, { color: colors.textPrimary }]}>
-          {t('assistant.title', '助手管理')}
+          {t('agent.assistant.title')}
         </Text>
         <TouchableOpacity
           onPress={onCreate}
@@ -101,7 +101,7 @@ export const AssistantManagementView: React.FC<AssistantManagementViewProps> = (
           style={[styles.createButton, { backgroundColor: colors.primary }]}
         >
           <Text style={[styles.createButtonText, { color: colors.bgSurface }]}>
-            + {t('assistant.create', '新建')}
+            + {t('agent.assistant.create_new')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -114,7 +114,7 @@ export const AssistantManagementView: React.FC<AssistantManagementViewProps> = (
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
-              {t('assistant.empty', '暂无助手')}
+              {t('agent.assistant.empty_hint')}
             </Text>
           </View>
         }

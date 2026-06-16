@@ -107,7 +107,7 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
               <View style={[styles.headerTitleRow, { gap: tokens.spacing.sm }]}>
                 <Text style={styles.headerIcon}>🤖</Text>
                 <Text style={[styles.headerText, { color: colors.textPrimary }]}>
-                  {t('assistant.select', '选择助手')}
+                  {t('agent.assistant.select_title')}
                 </Text>
               </View>
               <Pressable onPress={onClose}>
@@ -124,7 +124,7 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
               ListEmptyComponent={
                 <View style={[styles.emptyContainer, { padding: tokens.spacing.lg }]}>
                   <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                    {t('assistant.noAssistants', '暂无助手')}
+                    {t('agent.assistant.no_assistant')}
                   </Text>
                 </View>
               }

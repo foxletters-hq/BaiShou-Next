@@ -129,6 +129,7 @@ export * from './ContextMenu'
 export {
   useNativeTheme,
   scrollIndicatorStyle,
+  getNativeElevationStyle,
   NativeThemeProvider,
   useNativeThemeContext,
   type ThemeModePreference

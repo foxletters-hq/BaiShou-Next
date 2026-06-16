@@ -205,7 +205,7 @@ export const IdentityCardManagementPane: React.FC = () => {
           <MdArrowBack size={22} />
         </button>
         <h2 className="settings-management-title">
-          {t('settings.manage_identity_cards', '管理身份卡')}
+          {t('settings.manage_identity_cards')}
         </h2>
         <button
           type="button"
@@ -213,7 +213,7 @@ export const IdentityCardManagementPane: React.FC = () => {
           onClick={() => void handleCreate()}
         >
           <MdAdd size={18} />
-          <span>{t('settings.create_new_identity', '创建新身份卡')}</span>
+          <span>{t('settings.create_new_identity')}</span>
         </button>
       </div>
 
@@ -223,13 +223,13 @@ export const IdentityCardManagementPane: React.FC = () => {
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t('settings.search_identity_placeholder', '搜索身份卡…')}
+              placeholder={t('settings.search_identity_placeholder')}
             />
           </div>
 
           {filteredPersonas.length === 0 ? (
             <div className="settings-management-empty">
-              {t('settings.search_identity_empty', '没有匹配的身份卡')}
+              {t('settings.search_identity_empty')}
             </div>
           ) : null}
 
@@ -244,7 +244,7 @@ export const IdentityCardManagementPane: React.FC = () => {
                 <div className="settings-management-row-main">
                   <span className="settings-management-row-title">{persona.id}</span>
                   <span className="settings-management-row-sub">
-                    {t('settings.identity_facts_count', '{{count}} 条身份条目', {
+                    {t('settings.identity_facts_count', {
                       count: persona.factsCount
                     })}
                   </span>
@@ -253,7 +253,7 @@ export const IdentityCardManagementPane: React.FC = () => {
                   <div className="settings-management-status-slot">
                     {isActive ? (
                       <span className="settings-management-status-current">
-                        {t('settings.identity_current', '当前')}
+                        {t('settings.identity_active_mark')}
                       </span>
                     ) : (
                       <button

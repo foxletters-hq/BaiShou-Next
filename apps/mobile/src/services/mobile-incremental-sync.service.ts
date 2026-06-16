@@ -42,7 +42,7 @@ const DEFAULT_CONFIG: S3SyncConfig = {
   target: 's3',
   fileConcurrency: 5,
   chunkConcurrency: 5,
-  maxDivergencePercent: 100
+  maxDivergencePercent: 30
 }
 
 type VaultSyncConfig = Partial<S3SyncConfig> & {

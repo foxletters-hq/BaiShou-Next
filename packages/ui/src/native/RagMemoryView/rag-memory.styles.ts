@@ -40,6 +40,7 @@ export const ragMemoryStyles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 10,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth,
     gap: 4
   },

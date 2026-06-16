@@ -45,6 +45,11 @@ export const settingsApi = {
     setCloudSyncConfig: (config: any) =>
       ipcRenderer.invoke('settings:set-cloud-sync-config', config),
 
+    getLegacyUpgradeNoticeState: () =>
+      ipcRenderer.invoke('settings:get-legacy-upgrade-notice-state'),
+    markLegacyUpgradeNoticeShown: () =>
+      ipcRenderer.invoke('settings:mark-legacy-upgrade-notice-shown'),
+
     reorderProviders: (orderedIds: string[]) =>
       ipcRenderer.invoke('settings:reorder-providers', orderedIds),
     testProviderConnection: (
@@ -62,6 +67,7 @@ export const settingsApi = {
     getActive: () => ipcRenderer.invoke('vault:getActive'),
     switchActive: (vaultName: string) => ipcRenderer.invoke('vault:switch', vaultName),
     waitForResync: () => ipcRenderer.invoke('vault:wait-for-resync'),
+    getIndexingStatus: () => ipcRenderer.invoke('vault:getIndexingStatus'),
     preload: (vaultName: string) => ipcRenderer.invoke('vault:preload', vaultName),
     delete: (vaultName: string) => ipcRenderer.invoke('vault:delete', vaultName),
     createDialog: (name?: string) => ipcRenderer.invoke('vault:createDialog', name),

@@ -14,6 +14,7 @@ import { useSummaryData } from './hooks/useSummaryData'
 import { SummaryTabBar } from './components/SummaryTabBar'
 import { SummaryMissingSection } from './components/SummaryMissingSection'
 import { SummaryGalleryView } from './components/SummaryGalleryView'
+import { resolveDesktopSummaryConfig } from './utils/summary-config.util'
 import './SummaryPage.css'
 
 export const SummaryPage: React.FC = () => {
@@ -127,6 +128,20 @@ export const SummaryPage: React.FC = () => {
     prevStatesRef.current = generationStates
   }, [generationStates, t, toast])
 
+  const checkModelConfigured = async (): Promise<boolean> => {
+    try {
+      const resolution = await resolveDesktopSummaryConfig()
+      if (!resolution.ok) {
+        toast.showError(t('summary.model_not_configured', '模型未配置'))
+        return false
+      }
+      return true
+    } catch {
+      toast.showError(t('summary.model_not_configured', '模型未配置'))
+      return false
+    }
+  }
+
   const handleCopyContext = async () => {
     try {
       const api = (window as any).api
@@ -149,6 +164,9 @@ export const SummaryPage: React.FC = () => {
 
   const handleBatchGenerate = async () => {
     if (isBatchGenerating) return
+    const isConfigured = await checkModelConfigured()
+    if (!isConfigured) return
+
     setIsBatchGenerating(true)
     const pendingTasks = missingSummaries.filter((mp) => {
       const uKey = `${mp.type}_${new Date(mp.startDate).getTime()}`
@@ -221,7 +239,12 @@ export const SummaryPage: React.FC = () => {
                 onBatchGenerate={handleBatchGenerate}
                 onStopGeneration={handleStopGeneration}
                 onConcurrencyChange={handleConcurrencyChange}
-                onQueueSingle={(item) => queueGeneration([item], concurrencyLimit)}
+                onQueueSingle={async (item) => {
+                  const isConfigured = await checkModelConfigured()
+                  if (isConfigured) {
+                    await queueGeneration([item], concurrencyLimit)
+                  }
+                }}
                 onDetectMissing={() => void refreshMissing()}
               />
             </motion.div>

@@ -62,7 +62,7 @@ export const IdentitySettingsPersonaSection: React.FC<IdentitySettingsPersonaSec
             </Text>
             {isActive ? (
               <Text style={[styles.activeMark, { color: colors.primary }]}>
-                {t('settings.identity_active_mark', '当前')}
+                {t('settings.identity_active_mark')}
               </Text>
             ) : null}
           </Pressable>

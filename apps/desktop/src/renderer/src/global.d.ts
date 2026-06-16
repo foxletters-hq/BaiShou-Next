@@ -73,6 +73,24 @@ interface UpdaterAPI {
 interface SettingsAPI {
   getFeatures(): Promise<Record<string, unknown>>
   setFeatures(config: Record<string, unknown>): Promise<void>
+  getProviders(): Promise<import('@baishou/shared').AIProviderConfig[]>
+  getGlobalModels(): Promise<import('@baishou/shared').GlobalModelsConfig | null>
+  getLegacyUpgradeNoticeState(): Promise<{ pending: boolean; shownCount: number }>
+  markLegacyUpgradeNoticeShown(): Promise<number>
+  [key: string]: (...args: unknown[]) => Promise<unknown>
+}
+
+interface VaultAPI {
+  getIndexingStatus(): Promise<{
+    indexing: boolean
+    resyncing: boolean
+    shadowScanning: boolean
+  }>
+  [key: string]: (...args: unknown[]) => Promise<unknown>
+}
+
+interface StorageAPI {
+  onRootChanged(callback: () => void): () => void
   [key: string]: (...args: unknown[]) => Promise<unknown>
 }
 
@@ -87,6 +105,8 @@ interface AppAPI {
   incrementalSync: IncrementalSyncAPI
   updater: UpdaterAPI
   settings: SettingsAPI
+  vault: VaultAPI
+  storage: StorageAPI
   ensureDefaultLatteAssistant(locale?: string): Promise<void>
   syncDefaultLatteLocale(locale?: string): Promise<void>
   [key: string]: unknown

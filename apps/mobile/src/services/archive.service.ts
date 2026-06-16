@@ -5,6 +5,9 @@ import {
   IArchiveService,
   ImportResult,
   VaultService,
+  copyStorageRootContents,
+  isLegacyAppRoot,
+  resolveAgentDbPath,
   type IFileSystem,
   type IStoragePathService
 } from '@baishou/core-mobile'
@@ -132,6 +135,60 @@ export class MobileArchiveService implements IArchiveService {
 
     let needsRestart = false
     const preservedSettings = this.dbBridge ? await this.dbBridge.readPreservedImportSettings() : {}
+
+    const hasManifest = await this.fileSystem.exists(`${extractDir}/manifest.json`)
+    const isFlutterLegacyZip =
+      !hasManifest && (await isLegacyAppRoot(this.fileSystem, extractDir))
+
+    if (isFlutterLegacyZip) {
+      if (!this.dbBridge?.importLegacyFlutterZip) {
+        throw new Error('当前环境不支持导入 Flutter 旧版备份包')
+      }
+
+      const stagingDir = `${getAppCacheDirectory()}baishou_legacy_staging_${Date.now()}`
+      await this.fileSystem.mkdir(stagingDir, { recursive: true })
+
+      try {
+        await this.dbBridge.importLegacyFlutterZip(extractDir, stagingDir)
+
+        try {
+          await this.fileSystem.rm(rootDir, { recursive: true, force: true })
+        } catch (e) {
+          console.warn('[MobileArchive] Wipe root warning (legacy zip)', e)
+        }
+        await this.fileSystem.mkdir(rootDir, { recursive: true })
+        await copyStorageRootContents(this.fileSystem, stagingDir, rootDir)
+
+        const stagedAgentDb = resolveAgentDbPath(rootDir)
+        if (this.dbBridge && (await this.fileSystem.exists(stagedAgentDb))) {
+          needsRestart = await this.dbBridge.replaceAgentDatabaseFrom(stagedAgentDb)
+        }
+
+        try {
+          const syncMetaDir = `${rootDir}/.baishou`
+          await resetIncrementalSyncMetaAfterFullRestore(syncMetaDir, {
+            exists: (p) => this.fileSystem.exists(p),
+            read: (p) => this.fileSystem.readFile(p),
+            write: (p, content) => this.fileSystem.writeFile(p, content),
+            unlink: (p) => this.fileSystem.unlink(p)
+          })
+        } catch (e) {
+          console.warn('[MobileArchive] Failed to reset incremental sync meta (legacy zip)', e)
+        }
+
+        await this.vaultService.initRegistry()
+      } finally {
+        await this.fileSystem.rm(stagingDir, { recursive: true, force: true }).catch(() => {})
+        await this.fileSystem.rm(extractDir, { recursive: true, force: true }).catch(() => {})
+      }
+
+      return {
+        fileCount: -1,
+        profileRestored: true,
+        snapshotPath,
+        needsRestart
+      }
+    }
 
     try {
       try {

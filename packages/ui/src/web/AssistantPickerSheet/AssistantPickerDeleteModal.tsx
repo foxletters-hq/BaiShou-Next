@@ -73,10 +73,7 @@ export function AssistantPickerDeleteModal({ vm }: { vm: AssistantPickerSheetVie
               lineHeight: 1.5
             }}
           >
-            {t(
-              'agent.assistant.delete_confirm_desc',
-              '此操作将永久删除该伙伴的所有配置，该操作不可恢复。'
-            )}
+            {t('agent.assistant.delete_confirm_desc')}
           </p>
         </div>
         <div

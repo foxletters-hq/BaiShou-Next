@@ -10,12 +10,13 @@ import {
   requestStoragePermission
 } from './storage-permission.service'
 import { sanitizeVaultDirectoryName } from '@baishou/core-mobile'
+import { normalizeExternalStoragePath, toFileUri } from './android-external-fs'
 
 export { EXTERNAL_STORAGE_ROOT }
 
 /**
- * Android 数据根目录固定为 /storage/emulated/0/BaiShou_Root（EXTERNAL_STORAGE_ROOT）。
- * 必须授予「管理所有文件」权限；不回退应用沙盒，以便用户用文件管理器直接管理日记与总结。
+ * Android 默认数据根为 /storage/emulated/0/BaiShou_Root（EXTERNAL_STORAGE_ROOT）。
+ * 用户可在设置中更换目录；自定义路径保存在 AsyncStorage，不得被默认根覆盖。
  */
 export class MobileStoragePathService implements IStoragePathService {
   constructor(private readonly fileSystem: IFileSystem) {}
@@ -38,13 +39,29 @@ export class MobileStoragePathService implements IStoragePathService {
   }
 
   public async updateRootDirectory(newPath: string): Promise<void> {
-    await AsyncStorage.setItem(this.customRootKey, newPath)
+    const normalized = toFileUri(normalizeExternalStoragePath(newPath))
+    await AsyncStorage.setItem(this.customRootKey, normalized)
   }
 
-  /** 在已具备全文件访问权限时，应用固定的外部 BaiShou_Root（无需用户选择路径） */
+  /**
+   * 首次获得全文件访问权限时写入默认外部 BaiShou_Root。
+   * 若用户已在设置/引导页选定目录，不得覆盖。
+   */
   public async applyExternalRootWhenPermitted(): Promise<boolean> {
     if (Platform.OS !== 'android') return false
     if (!(await hasStoragePermission())) return false
+
+    const existing = await this.getCustomRootPath()
+    if (existing?.trim()) {
+      try {
+        await this.ensureWritableDirectory(existing)
+        return true
+      } catch (e) {
+        console.warn(`StoragePathService: Saved custom path ${existing} inaccessible.`, e)
+        await AsyncStorage.removeItem(this.customRootKey)
+      }
+    }
+
     try {
       await this.ensureWritableDirectory(EXTERNAL_STORAGE_ROOT)
       await this.updateRootDirectory(EXTERNAL_STORAGE_ROOT)
@@ -61,14 +78,6 @@ export class MobileStoragePathService implements IStoragePathService {
 
   public async openAllFilesAccessSettings(): Promise<void> {
     await openAllFilesAccessSettingsPage()
-  }
-
-  private isExternalStoragePath(pathUri: string): boolean {
-    return (
-      pathUri.startsWith('file:///storage/') ||
-      pathUri.startsWith('/storage/') ||
-      pathUri.includes('/emulated/0/')
-    )
   }
 
   private async ensureDir(dir: string): Promise<void> {
@@ -102,11 +111,12 @@ export class MobileStoragePathService implements IStoragePathService {
       }
 
       const customPath = await this.getCustomRootPath()
-      if (customPath && customPath.trim() !== '' && this.isExternalStoragePath(customPath)) {
+      if (customPath?.trim()) {
         try {
           return await this.ensureWritableDirectory(customPath)
         } catch (e) {
           console.warn(`StoragePathService: Custom path ${customPath} inaccessible.`, e)
+          await AsyncStorage.removeItem(this.customRootKey)
         }
       }
 

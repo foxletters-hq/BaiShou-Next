@@ -18,7 +18,6 @@ import {
   targetDirectoryHasData,
   validateStorageDirectoryWritable
 } from '../services/storage-migration.service'
-import { toFileUri } from '../services/android-external-fs'
 import { pickUserDirectory } from '../services/pick-directory.service'
 
 function displayPath(uri: string): string {
@@ -163,7 +162,7 @@ export function useStorageSettings() {
       const pathService = services.pathService as MobileStoragePathService
       setStorageBusy('switching')
       try {
-        await pathService.updateRootDirectory(toFileUri(targetPath))
+        await pathService.updateRootDirectory(targetPath)
         const reloaded = await retryStorageSetup()
         if (reloaded) {
           await refreshStorageInfo()

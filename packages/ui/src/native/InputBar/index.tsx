@@ -63,6 +63,7 @@ export interface InputBarRef {
   insertText: (text: string) => void
   insertShortcutContent: (content: string) => void
   focus: () => void
+  blur: () => void
 }
 
 export const InputBar = forwardRef<InputBarRef, InputBarProps>(
@@ -90,7 +91,7 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
     const { t, i18n } = useTranslation()
     const dialog = useDialog()
     const toast = useNativeToast()
-    const { colors } = useNativeTheme()
+    const { colors, isDark } = useNativeTheme()
     const inputRef = useRef<any>(null)
     const [text, setText] = useState('')
     const [attachments, setAttachments] = useState<MockChatAttachment[]>([])
@@ -198,6 +199,9 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
       },
       focus: () => {
         inputRef.current?.focus?.()
+      },
+      blur: () => {
+        inputRef.current?.blur?.()
       }
     }))
 
@@ -372,7 +376,13 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
           <Input
             ref={inputRef}
             className="min-h-12 max-h-36"
-            style={styles.input}
+            style={[
+              styles.input,
+              {
+                color: colors.textPrimary,
+                backgroundColor: isDark ? colors.bgSurfaceHigh : colors.bgSurface
+              }
+            ]}
             value={text}
             onChangeText={handleChangeText}
             onKeyPress={handleKeyPress}

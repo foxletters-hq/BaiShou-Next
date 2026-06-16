@@ -66,5 +66,11 @@ export function friendlySyncError(msg: string, t: TFunction): string {
     }
     return t('data_sync.error_divergence_exceeded_generic')
   }
+  if (cleanMsg.includes('SyncDeletePropagationBlockedError')) {
+    if (cleanMsg.includes('local_data_loss')) {
+      return t('data_sync.error_delete_propagation_local_data_loss')
+    }
+    return t('data_sync.error_delete_propagation_mass_delete')
+  }
   return t('data_sync.error_sync_failed_with_msg', 'Sync failed: {{msg}}', { msg: cleanMsg })
 }

@@ -116,6 +116,17 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
       <div className={styles.appBar}>
         <div className={styles.appBarTitle}>{t('agent.assistant.title', '伙伴管理')}</div>
         <div className={styles.appBarControls}>
+          {assistants.length > 0 ? (
+            <div className={styles.searchBox}>
+              <Search size={16} color="var(--text-tertiary)" />
+              <input
+                className={styles.searchInput}
+                placeholder={t('agent.assistant.search_hint')}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          ) : null}
           <button className={styles.createBtn} onClick={onCreate}>
             <Plus size={18} />
             {t('agent.assistant.create_new', '新增伙伴')}
@@ -137,6 +148,10 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
               <Plus size={18} />
               {t('agent.assistant.create_first', '执行首建协议')}
             </button>
+          </div>
+        ) : processedAssistants.length === 0 ? (
+          <div className={styles.emptyState}>
+            <span className={styles.emptyText}>{t('common.no_data')}</span>
           </div>
         ) : (
           <div className={styles.grid}>

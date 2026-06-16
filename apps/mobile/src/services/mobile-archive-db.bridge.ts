@@ -7,6 +7,8 @@ export interface MobileArchiveDbBridge {
   getAgentDatabaseUri(): Promise<string | null>
   /** 用备份中的 SQLite 文件替换当前 Agent 库；返回是否需重启应用 */
   replaceAgentDatabaseFrom(sourceUri: string): Promise<boolean>
+  /** Flutter 旧版 ZIP（无 manifest）全量迁移到 staging 目录 */
+  importLegacyFlutterZip?(extractDir: string, stagingRoot: string): Promise<void>
 }
 
 /** ZIP 内遗留用户头像路径（桌面导出兼容） */

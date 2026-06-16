@@ -30,7 +30,7 @@ export const AssistantEditAvatarSection: React.FC<AssistantEditAvatarSectionProp
       />
       {showReset && onResetToDefault ? (
         <button type="button" className={styles.textBtn} onClick={onResetToDefault}>
-          {t('agent.assistant.reset_builtin_avatar', '恢复默认内置头像')}
+          {t('agent.assistant.reset_builtin_avatar')}
         </button>
       ) : null}
     </div>

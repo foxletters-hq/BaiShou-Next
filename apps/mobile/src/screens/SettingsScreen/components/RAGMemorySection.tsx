@@ -292,10 +292,17 @@ export const RAGMemorySection: React.FC = () => {
         return
       }
       const dimension = await services.ragService.detectDimension()
-      toast.showSuccess(t('settings.rag_detect_success', { dimension: String(dimension) }))
+      toast.showSuccess(
+        t('settings.rag.detect_success', '检测成功：${dimension}维').replace(
+          '${dimension}',
+          String(dimension)
+        )
+      )
       await loadRagData()
     } catch (e: unknown) {
-      toast.showError(e instanceof Error ? e.message : t('settings.rag_detect_error'))
+      toast.showError(
+        e instanceof Error ? e.message : t('settings.rag.detect_failed', '检测失败，请检查模型配置')
+      )
     } finally {
       setRagState({
         isRunning: false,

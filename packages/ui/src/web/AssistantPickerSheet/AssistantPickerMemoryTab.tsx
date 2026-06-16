@@ -267,10 +267,7 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
                 {t('agent.assistant.compress_system_prompt_label', '压缩提示词')}
               </span>
               <HelpTooltip
-                content={t(
-                  'agent.assistant.compress_system_prompt_desc',
-                  '生成对话压缩摘要时使用的系统提示词，与摘要模板一样支持多语言。所有规则写在此提示词中；未保存自定义内容前可「恢复默认」。'
-                )}
+                content={t('agent.assistant.compress_system_prompt_desc')}
               />
               <div style={{ flex: 1 }} />
               <button

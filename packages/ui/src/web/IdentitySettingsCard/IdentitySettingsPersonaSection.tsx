@@ -43,7 +43,7 @@ export const IdentitySettingsPersonaSection: React.FC<IdentitySettingsPersonaSec
               <span>{pid}</span>
               {isActive ? (
                 <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-primary)' }}>
-                  {t('settings.identity_active_mark', '当前')}
+                  {t('settings.identity_active_mark')}
                 </span>
               ) : null}
             </button>

@@ -35,20 +35,17 @@ export const AssistantDeleteConfirmDialog: React.FC<AssistantDeleteConfirmDialog
           <Trash2 size={32} color="var(--color-error, #F44336)" />
         </div>
         <div className={styles.dialogTitle}>
-          {t('agent.assistant.delete_confirm_title', '确定要删除此伙伴吗？')}
+          {t('agent.assistant.delete_confirm_title')}
         </div>
         <div className={styles.dialogText}>
-          {t(
-            'agent.assistant.delete_confirm_content',
-            '此操作将永久抹除其所有设定、记忆及对话记录，删除后无法恢复。'
-          )}
+          {t('agent.assistant.delete_confirm_content')}
         </div>
         <div className={styles.dialogActions}>
           <button className={`${styles.dialogBtn} ${styles.dialogBtnCancel}`} onClick={onCancel}>
-            {t('common.cancel', '取消')}
+            {t('common.cancel')}
           </button>
           <button className={`${styles.dialogBtn} ${styles.dialogBtnDanger}`} onClick={onConfirm}>
-            {t('common.delete', '确认删除')}
+            {t('common.delete')}
           </button>
         </div>
       </div>

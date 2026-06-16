@@ -110,22 +110,16 @@ export const AssistantManagementScreen: React.FC = () => {
   }
 
   const handleDeleteAssistant = async (assistant: Assistant) => {
-    const confirmed = await dialog.confirm(
-      t(
-        'agent.assistant.delete_confirm_content',
-        '确认要永久销毁此智能体的全部数据吗？一旦抹除将不可撤销。'
-      ),
-      {
-        title: t('agent.assistant.delete_confirm_title', '特级警告：抹除心智模式？'),
-        confirmText: t('common.delete', '删除'),
+    const confirmed = await dialog.confirm(t('agent.assistant.delete_confirm_content'), {
+        title: t('agent.assistant.delete_confirm_title'),
+        confirmText: t('common.delete'),
         destructive: true
-      }
-    )
+      })
     if (!confirmed) return
     try {
       await services?.assistantManager.delete(assistant.id)
       setAssistants((prev) => prev.filter((a) => a.id !== assistant.id))
-      toast.showSuccess(t('agent.assistant.deleted', '助手已删除'))
+      toast.showSuccess(t('agent.assistant.deleted'))
     } catch (e) {
       console.error('Failed to delete assistant', e)
       toast.showError(t('common.delete_failed', '删除失败'))
@@ -176,7 +170,7 @@ export const AssistantManagementScreen: React.FC = () => {
           </View>
           {item.isDefault ? (
             <Text style={[styles.defaultTag, { color: colors.primary }]}>
-              {t('assistant.default', '默认')}
+              {t('agent.assistant.default_tag')}
             </Text>
           ) : null}
         </View>
@@ -262,7 +256,7 @@ export const AssistantManagementScreen: React.FC = () => {
             <Input
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholder={t('agent.assistant.search_hint', '搜索伙伴...')}
+              placeholder={t('agent.assistant.search_hint')}
             />
           }
           ListEmptyComponent={

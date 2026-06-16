@@ -54,7 +54,7 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
             className={styles.inputField}
             value={form.name}
             onChange={(e) => form.setName(e.target.value)}
-            placeholder={t('agent.assistant.name_hint', '请输入伙伴名称')}
+            placeholder={t('agent.assistant.name_hint')}
           />
 
           <div className={styles.spacer16} />

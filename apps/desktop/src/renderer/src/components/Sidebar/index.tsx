@@ -82,6 +82,22 @@ export const Sidebar: React.FC = () => {
     loadProfile()
   }, [loadProfile])
 
+  // 增量同步 / vault resync 完成后刷新用户头像
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.electron) return undefined
+
+    const onVaultResyncComplete = (event: { type?: string }) => {
+      if (event?.type !== 'vault-resync-complete') return
+      void loadProfile()
+    }
+
+    const removeListener = window.electron.ipcRenderer.on(
+      'diary:sync-event',
+      onVaultResyncComplete
+    )
+    return () => removeListener()
+  }, [loadProfile])
+
   useEffect(() => {
     if (profile?.avatarFileMissing && !localStorage.getItem('avatar_missing_warned')) {
       localStorage.setItem('avatar_missing_warned', '1')

@@ -35,9 +35,12 @@ export const SummaryScreen: React.FC = () => {
     slideOffset.value = withTiming(activeTab === 'gallery' ? 1 : 0, { duration: 280 })
   }, [activeTab, slideOffset])
 
-  const animatedContainerStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: -slideOffset.value * width }]
-  }))
+  const animatedContainerStyle = useAnimatedStyle(
+    () => ({
+      transform: [{ translateX: -slideOffset.value * width }]
+    }),
+    [width]
+  )
   const [lookbackMonths, setLookbackMonths] = useState(1)
   const [isBatchGenerating, setIsBatchGenerating] = useState(false)
   const [concurrencyLimit, setConcurrencyLimit] = useState(3)

@@ -8,11 +8,12 @@ import { ToastProvider, useNativeTheme } from '@baishou/ui/native'
  * Toast 直接使用 Hero 默认安全区与动画，不覆盖 top inset。
  */
 export function HeroUIThemeBridge({ children }: { children: React.ReactNode }) {
-  const { isDark } = useNativeTheme()
+  const { themeMode } = useNativeTheme()
 
   useEffect(() => {
-    Uniwind.setTheme(isDark ? 'dark' : 'light')
-  }, [isDark])
+    // system 模式须交给 Uniwind 跟随系统；显式 light/dark 才锁定 Appearance
+    Uniwind.setTheme(themeMode === 'system' ? 'system' : themeMode)
+  }, [themeMode])
 
   const providerConfig = useMemo(
     () => ({

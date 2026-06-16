@@ -64,7 +64,7 @@ export const AssistantAvatarPicker: React.FC<AssistantAvatarPickerProps> = ({
         >
           <MaterialIcons name="grid-view" size={17} color={colors.primary} />
           <Text style={[styles.actionBtnText, { color: colors.textPrimary }]} numberOfLines={1}>
-            {t('agent.assistant.select_builtin_avatar', '选择内置头像')}
+            {t('agent.assistant.select_builtin_avatar')}
           </Text>
         </Pressable>
 
@@ -81,7 +81,7 @@ export const AssistantAvatarPicker: React.FC<AssistantAvatarPickerProps> = ({
         >
           <MaterialIcons name="add-photo-alternate" size={17} color={colors.primary} />
           <Text style={[styles.actionBtnText, { color: colors.textPrimary }]} numberOfLines={1}>
-            {t('agent.assistant.upload_avatar', '从本地上传')}
+            {t('agent.assistant.upload_avatar')}
           </Text>
         </Pressable>
       </View>

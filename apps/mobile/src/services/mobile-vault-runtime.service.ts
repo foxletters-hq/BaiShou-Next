@@ -4,6 +4,8 @@ import {
   ShadowIndexSyncService,
   VaultIndexServiceImpl,
   VaultService,
+  journalMarkdownExistsInTree,
+  path,
   type IFileSystem,
   type IStoragePathService,
   SessionManagerService,
@@ -106,8 +108,11 @@ export function createUnavailableDiaryService(): DiaryService {
     listFiltered: emptyList,
     countFiltered: emptyCount,
     search: emptyList,
+    searchPage: async () => ({ items: [], hasMore: false }),
+    countSearch: emptyCount,
     findById: emptyNull,
     findByDate: emptyNull,
+    findMetaByIds: emptyList,
     create: requireStorage,
     update: requireStorage,
     delete: requireStorage
@@ -511,6 +516,39 @@ function buildBootstrapDeps(
   }
 }
 
+async function shouldDeferVaultResync(
+  deps: {
+    diaryStack: VaultBoundDiaryStack
+    vaultService: VaultService
+    fileSystem: IFileSystem
+  },
+  requested?: boolean
+): Promise<boolean> {
+  const defer = requested ?? true
+  if (!defer) return false
+
+  try {
+    const records = await deps.diaryStack.shadowRepo.getAllRecords()
+    if (records.length > 0) return true
+
+    const active = deps.vaultService.getActiveVault()
+    if (!active?.path) return true
+
+    const journalsDir = path.join(active.path, 'Journals')
+    const hasOnDisk = await journalMarkdownExistsInTree(deps.fileSystem, journalsDir)
+    if (hasOnDisk) {
+      logger.info(
+        '[VaultRuntime] Shadow index empty but journal files exist on disk; running blocking resync'
+      )
+      return false
+    }
+  } catch (e) {
+    logger.warn('[VaultRuntime] Failed to probe on-disk journals for resync mode:', e as Error)
+  }
+
+  return true
+}
+
 async function runVaultBootstrap(
   deps: {
     pathService: IStoragePathService
@@ -548,16 +586,18 @@ async function runVaultBootstrap(
     return
   }
 
-  if (options?.deferResync) {
+  const deferResync = await shouldDeferVaultResync(deps, options?.deferResync)
+
+  if (deferResync) {
     // 后台 resync 完成后再启动 watcher，避免 fullScanVault 与 VaultFileWatcher 并发写 Shadow DB
     const generation = vaultRuntimeGeneration
-    void scheduleVaultEcosystemResync(bootstrapDeps, options.resyncReason ?? 'vault-switch', () => {
+    void scheduleVaultEcosystemResync(bootstrapDeps, options?.resyncReason ?? 'vault-switch', () => {
       if (!isVaultRuntimeGenerationCurrent(generation)) {
         logger.info('[VaultRuntime] Skip stale watcher restart after background resync')
         return
       }
       void restartVaultWatchers(deps.diaryStack, deps.vaultService, deps.watcherDeps).finally(() =>
-        options.onResyncComplete?.()
+        options?.onResyncComplete?.()
       )
     })
     return
@@ -565,6 +605,7 @@ async function runVaultBootstrap(
 
   await mobileDataBootstrapper.runWhenVaultReady(bootstrapDeps, { force: true })
   await restartVaultWatchers(deps.diaryStack, deps.vaultService, deps.watcherDeps)
+  options?.onResyncComplete?.()
 }
 
 async function restartVaultWatchers(

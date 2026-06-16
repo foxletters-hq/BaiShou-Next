@@ -192,7 +192,7 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       <Modal
         visible={state.isOpen}
         onClose={dismissDialog}
-        title={state.type === 'prompt' || state.type === 'choose' ? undefined : state.title}
+        title={state.type === 'prompt' ? undefined : state.title}
       >
         {state.isOpen ? (
           <View
@@ -223,14 +223,11 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
               typeof state.message === 'string' && state.message.trim().length > 0 ? (
                 <Text
                   style={{
-                    fontSize: 16,
-                    fontWeight: '600',
-                    color: colors.textPrimary,
-                    textAlign: 'center',
+                    fontSize: 14,
+                    color: colors.textSecondary,
                     marginBottom: tokens.spacing.md,
-                    lineHeight: 22
+                    lineHeight: 20
                   }}
-                  numberOfLines={2}
                 >
                   {state.message}
                 </Text>

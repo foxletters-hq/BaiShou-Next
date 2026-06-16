@@ -71,11 +71,11 @@ export const AssistantAvatarPicker: React.FC<AssistantAvatarPickerProps> = ({
           onClick={() => setShowBuiltinModal(true)}
         >
           <LayoutGrid size={16} />
-          <span>{t('agent.assistant.select_builtin_avatar', '选择内置头像')}</span>
+          <span>{t('agent.assistant.select_builtin_avatar')}</span>
         </button>
         <button type="button" className={styles.actionBtn} onClick={triggerUpload}>
           <ImagePlus size={16} />
-          <span>{t('agent.assistant.upload_avatar', '从本地上传')}</span>
+          <span>{t('agent.assistant.upload_avatar')}</span>
         </button>
       </div>
 
@@ -103,7 +103,7 @@ export const AssistantAvatarPicker: React.FC<AssistantAvatarPickerProps> = ({
                 type="button"
                 className={`${styles.presetBtn} ${selected ? styles.presetBtnSelected : ''}`}
                 onClick={() => handleBuiltinSelect(id)}
-                aria-label={t('agent.assistant.select_builtin_avatar', '选择内置头像')}
+                aria-label={t('agent.assistant.select_builtin_avatar')}
               >
                 <img src={WEB_BUILTIN_ASSISTANT_AVATAR_URLS[id]} alt="" className={styles.presetImg} />
               </button>

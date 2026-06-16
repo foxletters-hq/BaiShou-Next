@@ -8,6 +8,7 @@ import {
   RefreshControl,
   ActivityIndicator
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { MaterialIcons } from '@expo/vector-icons'
 import {
   useNativeTheme,
@@ -38,6 +39,7 @@ import { ArchiveLocalBackupSection } from './DataSyncScreen/ArchiveLocalBackupSe
 
 export const DataSyncScreen: React.FC = () => {
   const { t } = useTranslation()
+  const insets = useSafeAreaInsets()
   const { colors, tokens, maxModalWidth, isDark } = useNativeTheme()
   const toast = useNativeToast()
   const dialog = useDialog()
@@ -511,7 +513,11 @@ export const DataSyncScreen: React.FC = () => {
         contentStyle={styles.container}
       >
         <KeyboardAwareScrollView
-          style={styles.content}
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: Math.max(insets.bottom, 16) + 24 }
+          ]}
           indicatorStyle={scrollIndicatorStyle(isDark)}
           keyboardShouldPersistTaps="handled"
           nestedScrollEnabled
@@ -896,10 +902,12 @@ export const DataSyncScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { flex: 1, padding: 16, paddingBottom: 20 },
+  scrollView: { flex: 1 },
+  scrollContent: { paddingHorizontal: 16, paddingTop: 16 },
   section: { borderRadius: 16, padding: 16, marginBottom: 16 },
   backupScopeWrapper: {
-    marginTop: 4
+    marginTop: 4,
+    marginBottom: 8
   },
   statCardsRow: {
     flexDirection: 'column',

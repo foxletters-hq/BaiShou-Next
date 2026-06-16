@@ -26,9 +26,12 @@ export const SummaryTabBar: React.FC<SummaryTabBarProps> = ({ activeTab, onTabCh
     slideAnim.value = withTiming(activeTab === 'gallery' ? 1 : 0, { duration: 280 })
   }, [activeTab, slideAnim])
 
-  const indicatorStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: slideAnim.value * (tabWidth + TAB_GAP) }]
-  }))
+  const indicatorStyle = useAnimatedStyle(
+    () => ({
+      transform: [{ translateX: slideAnim.value * (tabWidth + TAB_GAP) }]
+    }),
+    [tabWidth]
+  )
 
   return (
     <View

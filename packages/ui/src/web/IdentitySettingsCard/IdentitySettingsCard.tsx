@@ -50,12 +50,12 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({
         embedded
         isLast={isLast}
         icon={<MdBadge size={24} />}
-        title={t('settings.identity_card', '身份卡')}
-        subtitle={t('settings.identity_current', '当前: {{name}}', { name: card.activeId })}
+        title={t('settings.identity_card')}
+        subtitle={t('settings.identity_current_named', { name: card.activeId })}
       >
         <div className={styles.embeddedQuickSwitchBlock}>
           <span className={styles.embeddedQuickSwitchHint}>
-            {t('settings.identity_recent_hint', '仅显示最近五次常用的身份卡')}
+            {t('settings.identity_recent_hint')}
           </span>
           <div className={styles.embeddedQuickSwitchRow}>
             <IdentitySettingsPersonaSection
@@ -70,7 +70,7 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({
               onClick={() => onManageIdentity?.()}
               disabled={!onManageIdentity}
             >
-              {t('settings.manage_identity_cards', '管理身份卡')}
+              {t('settings.manage_identity_cards')}
             </button>
           </div>
         </div>

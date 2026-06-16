@@ -81,6 +81,7 @@
 }
 
 .gallery-mode .sp-content {
+  max-width: 1680px;
   padding-bottom: 0;
 }
 

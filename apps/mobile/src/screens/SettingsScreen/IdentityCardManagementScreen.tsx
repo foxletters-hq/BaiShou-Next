@@ -215,7 +215,7 @@ export const IdentityCardManagementScreen: React.FC = () => {
 
   return (
     <StackScreenLayout
-      title={t('settings.manage_identity_cards', '管理身份卡')}
+      title={t('settings.manage_identity_cards')}
       {...chrome}
       contentStyle={styles.layoutContent}
     >
@@ -234,7 +234,7 @@ export const IdentityCardManagementScreen: React.FC = () => {
             <Input
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholder={t('settings.search_identity_placeholder', '搜索身份卡…')}
+              placeholder={t('settings.search_identity_placeholder')}
               autoCapitalize="none"
               autoCorrect={false}
             />
@@ -243,7 +243,7 @@ export const IdentityCardManagementScreen: React.FC = () => {
           {filteredPersonas.length === 0 ? (
             <View style={styles.emptyRow}>
               <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
-                {t('settings.search_identity_empty', '没有匹配的身份卡')}
+                {t('settings.search_identity_empty')}
               </Text>
             </View>
           ) : null}
@@ -265,20 +265,20 @@ export const IdentityCardManagementScreen: React.FC = () => {
                 <View style={{ flex: 1, gap: 2 }}>
                   <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>{persona.id}</Text>
                   <Text style={[styles.sub, { color: colors.textSecondary }]}>
-                    {t('settings.identity_facts_count', '{{count}} 条身份条目', {
+                    {t('settings.identity_facts_count', {
                       count: persona.factsCount
                     })}
                   </Text>
                 </View>
                 {isActive ? (
                   <Text style={[styles.badge, { color: colors.primary }]}>
-                    {t('settings.identity_current', '当前')}
+                    {t('settings.identity_active_mark')}
                   </Text>
                 ) : (
                   <View style={styles.actions}>
                     <Pressable onPress={() => void handleSwitch(persona.id)}>
                       <Text style={[styles.action, { color: colors.primary }]}>
-                        {t('workspace.switch', '切换')}
+                        {t('workspace.switch')}
                       </Text>
                     </Pressable>
                   </View>
@@ -329,7 +329,7 @@ export const IdentityCardManagementScreen: React.FC = () => {
           style={{ marginTop: 12 }}
           onPress={() => void handleCreate()}
         >
-          + {t('settings.create_new_identity', '创建新身份卡')}
+          + {t('settings.create_new_identity')}
         </Button>
       </KeyboardAwareScrollView>
     </StackScreenLayout>

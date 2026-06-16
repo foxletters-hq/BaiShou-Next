@@ -21,13 +21,16 @@ import type {
   IncrementalSyncResult
 } from '../services/mobile-incremental-sync.service'
 import { useBaishou } from './BaishouProvider'
-import { logger } from '@baishou/shared'
+import { logger, isIncrementalSyncReady } from '@baishou/shared'
+import { friendlyMobileSyncError } from '../utils/friendly-sync-error'
 
 export type IncrementalSyncMode = 'sync' | 'uploadOnly' | 'downloadOnly'
 
 type IncrementalSyncActionsValue = {
   isSyncing: boolean
   isConfigured: boolean | null
+  /** 增量同步开关是否已打开（与设置页展示同步入口的条件一致） */
+  isEnabled: boolean | null
   refreshConfigured: () => Promise<void>
   runIncrementalSync: (mode?: IncrementalSyncMode) => Promise<IncrementalSyncResult | undefined>
 }
@@ -40,6 +43,7 @@ export type IncrementalSyncOverlayHandle = {
 const IncrementalSyncActionsContext = createContext<IncrementalSyncActionsValue>({
   isSyncing: false,
   isConfigured: null,
+  isEnabled: null,
   refreshConfigured: async () => {},
   runIncrementalSync: async () => undefined
 })
@@ -111,17 +115,22 @@ export function IncrementalSyncProvider({ children }: { children: ReactNode }) {
   const overlayRef = useRef<IncrementalSyncOverlayHandle>(null)
   const [isSyncing, setIsSyncing] = useState(false)
   const [isConfigured, setIsConfigured] = useState<boolean | null>(null)
+  const [isEnabled, setIsEnabled] = useState<boolean | null>(null)
   const syncingRef = useRef(false)
 
   const refreshConfigured = useCallback(async () => {
     if (!services?.incrementalSyncService || !dbReady) {
       setIsConfigured(false)
+      setIsEnabled(false)
       return
     }
     try {
-      setIsConfigured(await services.incrementalSyncService.isConfigured())
+      const config = await services.incrementalSyncService.getConfig()
+      setIsEnabled(config.enabled === true)
+      setIsConfigured(isIncrementalSyncReady(config))
     } catch {
       setIsConfigured(false)
+      setIsEnabled(false)
     }
   }, [dbReady, services])
 
@@ -186,7 +195,8 @@ export function IncrementalSyncProvider({ children }: { children: ReactNode }) {
         return result
       } catch (e) {
         logger.error('增量同步失败', e instanceof Error ? e : String(e))
-        toast.showError(e instanceof Error ? e.message : t('data_sync.sync_failed_generic'))
+        const message = e instanceof Error ? e.message : t('data_sync.sync_failed_generic')
+        toast.showError(friendlyMobileSyncError(message, t))
         return undefined
       } finally {
         syncingRef.current = false
@@ -201,10 +211,11 @@ export function IncrementalSyncProvider({ children }: { children: ReactNode }) {
     () => ({
       isSyncing,
       isConfigured,
+      isEnabled,
       refreshConfigured,
       runIncrementalSync
     }),
-    [isConfigured, isSyncing, refreshConfigured, runIncrementalSync]
+    [isConfigured, isEnabled, isSyncing, refreshConfigured, runIncrementalSync]
   )
 
   return (

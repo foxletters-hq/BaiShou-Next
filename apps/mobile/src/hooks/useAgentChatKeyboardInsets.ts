@@ -1,9 +1,10 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Keyboard } from 'react-native'
 import {
   useAnimatedKeyboard,
   useAnimatedReaction,
   useAnimatedStyle,
+  useSharedValue,
   runOnJS
 } from 'react-native-reanimated'
 
@@ -26,6 +27,8 @@ export function useAgentChatKeyboardInsets({
 }) {
   const keyboard = useAnimatedKeyboard()
   const [keyboardInset, setKeyboardInset] = useState(0)
+  const liftEnabled = useSharedValue(enableComposerKeyboardLift && !isBubbleEditing ? 1 : 0)
+  const composerBottom = useSharedValue(0)
 
   const syncKeyboardInset = useCallback(
     (rawHeight: number) => {
@@ -35,39 +38,73 @@ export function useAgentChatKeyboardInsets({
     [tabBarHeight]
   )
 
-  useAnimatedReaction(
-    () => keyboard.height.value,
-    (height, prevHeight) => {
-      const prev = prevHeight ?? 0
-      if (Math.abs(height - prev) < 1) return
-      runOnJS(syncKeyboardInset)(height)
+  const applyComposerBottom = useCallback(
+    (rawHeight: number) => {
+      composerBottom.value = Math.max(0, rawHeight - tabBarHeight)
+      syncKeyboardInset(rawHeight)
     },
-    [syncKeyboardInset]
+    [composerBottom, syncKeyboardInset, tabBarHeight]
   )
 
-  const inputDockAnimatedStyle = useAnimatedStyle(() => {
-    if (isBubbleEditing || !enableComposerKeyboardLift) return { bottom: 0 }
-    return { bottom: Math.max(0, keyboard.height.value - tabBarHeight) }
-  }, [isBubbleEditing, enableComposerKeyboardLift, tabBarHeight])
+  const clearComposerBottom = useCallback(() => {
+    composerBottom.value = 0
+    syncKeyboardInset(0)
+  }, [composerBottom, syncKeyboardInset])
 
-  const scrollButtonAnimatedStyle = useAnimatedStyle(() => {
-    const dockBottom =
-      isBubbleEditing || !enableComposerKeyboardLift
-        ? 0
-        : Math.max(0, keyboard.height.value - tabBarHeight)
-    return { bottom: dockBottom + inputDockHeight + 12 }
-  }, [isBubbleEditing, enableComposerKeyboardLift, tabBarHeight, inputDockHeight])
+  useEffect(() => {
+    const enabled = enableComposerKeyboardLift && !isBubbleEditing
+    liftEnabled.value = enabled ? 1 : 0
+    if (!enabled) {
+      clearComposerBottom()
+      return
+    }
+    const metrics = Keyboard.metrics()
+    applyComposerBottom(metrics?.height ?? 0)
+  }, [
+    enableComposerKeyboardLift,
+    isBubbleEditing,
+    liftEnabled,
+    clearComposerBottom,
+    applyComposerBottom
+  ])
+
+  useAnimatedReaction(
+    () => ({ height: keyboard.height.value, enabled: liftEnabled.value }),
+    ({ height, enabled }, prev) => {
+      if (!enabled) {
+        if (composerBottom.value !== 0) composerBottom.value = 0
+        return
+      }
+      const prevHeight = prev?.height ?? 0
+      if (Math.abs(height - prevHeight) < 1) return
+      composerBottom.value = Math.max(0, height - tabBarHeight)
+      runOnJS(syncKeyboardInset)(height)
+    },
+    [syncKeyboardInset, tabBarHeight]
+  )
+
+  const inputDockAnimatedStyle = useAnimatedStyle(() => ({
+    bottom: composerBottom.value
+  }))
+
+  const scrollButtonAnimatedStyle = useAnimatedStyle(
+    () => ({
+      bottom: composerBottom.value + inputDockHeight + 12
+    }),
+    [inputDockHeight]
+  )
 
   const handleComposerFocus = useCallback(() => {
+    if (!enableComposerKeyboardLift || isBubbleEditing) return
     const metrics = Keyboard.metrics()
     if (metrics?.height) {
-      syncKeyboardInset(metrics.height)
+      applyComposerBottom(metrics.height)
     }
-  }, [syncKeyboardInset])
+  }, [enableComposerKeyboardLift, isBubbleEditing, applyComposerBottom])
 
   const resetKeyboardInset = useCallback(() => {
-    syncKeyboardInset(0)
-  }, [syncKeyboardInset])
+    clearComposerBottom()
+  }, [clearComposerBottom])
 
   const composerInset = enableComposerKeyboardLift ? keyboardInset : 0
   const isEditKeyboardVisible = keyboardInset >= 60

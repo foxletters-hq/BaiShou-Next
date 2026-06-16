@@ -5,7 +5,7 @@ import { useNativeTheme } from '../theme'
 import { settingsHubListStyles as hubStyles } from '../settings/settings-hub.styles'
 import { SettingsExpansionTile } from '../settings/SettingsExpansionTile'
 import { StoragePermissionPrompt } from '../StoragePermissionPrompt/StoragePermissionPrompt'
-import { Button, CardLinkAction } from '../Button'
+import { Button } from '../Button'
 
 export interface NativeStorageSettingsCardProps {
   storageRootPath?: string
@@ -55,14 +55,19 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
 
       {onChangeDirectory || onMigrateDirectory ? (
         <View style={styles.actions}>
-          {onChangeDirectory ? (
-            <CardLinkAction variant="card" onPress={() => void onChangeDirectory()}>
-              {changeDirectoryLabel ?? t('storage.change_directory', '更换目录')}
-            </CardLinkAction>
-          ) : null}
           {onMigrateDirectory ? (
-            <Button variant="outline" className="w-full" onPress={() => void onMigrateDirectory()}>
+            <Button variant="primary" className="w-full" onPress={() => void onMigrateDirectory()}>
               {migrateDirectoryLabel ?? t('storage.migrate_directory', '迁移数据目录')}
+            </Button>
+          ) : null}
+          {onChangeDirectory ? (
+            <Button
+              variant="outline"
+              className="w-full"
+              style={{ backgroundColor: colors.bgSurface }}
+              onPress={() => void onChangeDirectory()}
+            >
+              {changeDirectoryLabel ?? t('storage.change_directory', '更换目录')}
             </Button>
           ) : null}
         </View>

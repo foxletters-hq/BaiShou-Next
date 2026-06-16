@@ -217,7 +217,7 @@ export const AssistantEditScreen: React.FC = () => {
           )
           setAssistantKind(normalizeAssistantKind(assistant.assistantKind))
         } else {
-          toast.showError(t('agent.assistant.not_found', '伙伴未找到'))
+          toast.showError(t('agent.assistant.not_found'))
           router.back()
         }
       } catch (e) {
@@ -322,9 +322,7 @@ export const AssistantEditScreen: React.FC = () => {
         invalidateAssistantAvatarDisplayCache(existingAssistant.avatarPath)
       }
       toast.showSuccess(
-        isNew
-          ? t('agent.assistant.created', '伙伴已创建')
-          : t('agent.assistant.updated', '伙伴已更新')
+        isNew ? t('agent.assistant.created') : t('agent.assistant.updated')
       )
       router.back()
     } catch (e) {
@@ -339,21 +337,15 @@ export const AssistantEditScreen: React.FC = () => {
     if (isNew || existingAssistant?.isDefault) return
 
     Keyboard.dismiss()
-    const confirmed = await dialog.confirm(
-      t(
-        'agent.assistant.delete_confirm_content',
-        '确定要删除此伙伴吗？关联的对话及附件将会被一并删除。'
-      ),
-      {
-        title: t('agent.assistant.delete_confirm_title', '删除伙伴'),
-        confirmText: t('common.delete', '删除'),
+    const confirmed = await dialog.confirm(t('agent.assistant.delete_confirm_content'), {
+        title: t('agent.assistant.delete_confirm_title'),
+        confirmText: t('common.delete'),
         destructive: true
-      }
-    )
+      })
     if (!confirmed) return
     try {
       await services?.assistantManager.delete(id as string)
-      toast.showSuccess(t('agent.assistant.deleted', '伙伴已删除'))
+      toast.showSuccess(t('agent.assistant.deleted'))
       router.back()
     } catch (e) {
       console.error('Failed to delete assistant', e)
@@ -414,7 +406,7 @@ export const AssistantEditScreen: React.FC = () => {
             <Input
               value={name}
               onChangeText={setName}
-              placeholder={t('agent.assistant.name_hint', '例如：知识伙伴、写作伙伴...')}
+              placeholder={t('agent.assistant.name_hint')}
             />
 
             <View style={styles.fieldGap} />

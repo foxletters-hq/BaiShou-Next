@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react'
 import { View, Text, Pressable, TextInput } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme } from '../theme'
+import { getNativeElevationStyle, useNativeTheme } from '../theme'
 import { paginationStyles as styles } from './pagination.styles'
 
 export interface NativePaginationProps {
@@ -83,7 +83,7 @@ export const Pagination: React.FC<NativePaginationProps> = ({
   disabled = false
 }) => {
   const { t } = useTranslation()
-  const { colors } = useNativeTheme()
+  const { colors, isDark } = useNativeTheme()
   const pageUnitLabel = t('common.pagination_page_unit', 'Page')
 
   const [jumperValue, setJumperValue] = useState(() => String(current))
@@ -148,7 +148,7 @@ export const Pagination: React.FC<NativePaginationProps> = ({
           },
           isActive && {
             ...styles.pageBtnActive,
-            shadowColor: colors.primary
+            ...getNativeElevationStyle(isDark, 'subtle')
           }
         ]}
       >
