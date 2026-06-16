@@ -265,18 +265,22 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
   )
 }
 
+const APP_BAR_MIN_HEIGHT = 56
+
 const styles = StyleSheet.create({
   appBar: {
     paddingHorizontal: 16,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderBottomWidth: 1,
-    gap: 6
+    minHeight: APP_BAR_MIN_HEIGHT,
+    justifyContent: 'center'
   },
   mainRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8
+    gap: 8,
+    minHeight: 40
   },
   left: {
     flexDirection: 'row',
@@ -293,11 +297,13 @@ const styles = StyleSheet.create({
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4
+    gap: 4,
+    minHeight: 40
   },
   searchSectionWrap: {
     flex: 1,
-    minWidth: 0
+    minWidth: 0,
+    justifyContent: 'center'
   },
   closeSearchBtn: {
     width: 32,
