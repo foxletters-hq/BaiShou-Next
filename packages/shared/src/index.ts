@@ -66,6 +66,8 @@ export {
   type WebDavListEntry
 } from './utils/incremental-sync-webdav.util'
 export { resolveSyncDeviceId } from './utils/sync-device-id.util'
+export { resolveInstallInstanceId } from './utils/install-instance-id.util'
+export type { InstallInstanceIdStorage } from './utils/install-instance-id.util'
 export {
   INCREMENTAL_SYNC_CHUNK_SIZE,
   INCREMENTAL_SYNC_SCOPE_I18N_KEYS,
@@ -89,6 +91,14 @@ export {
   getEffectiveMaxDivergencePercent,
   isSyncDivergenceAllowed
 } from './sync/sync-divergence'
+export {
+  SyncDeletePropagationBlockedError,
+  assertBidirectionalDeletePropagationAllowed,
+  SYNC_DELETE_GUARD_MIN_REMOTE_FILES,
+  SYNC_DELETE_GUARD_MAX_REMOTE_DELETE_RATIO,
+  SYNC_LOCAL_DATA_LOSS_RATIO,
+  SYNC_LOCAL_VS_ANCESTOR_MIN_RATIO
+} from './sync/sync-delete-guard'
 export { sessionBelongsToActiveVault } from './utils/session-vault.util'
 
 export * from './tts'
@@ -116,10 +126,12 @@ export * from './utils/migration-backup.util'
 export * from './utils/version.utils'
 export * from './utils/diary-preview.util'
 export * from './utils/compression-text-normalizer'
+export * from './utils/summary-config.util'
 export * from './utils/user-avatar.util'
 export * from './utils/user-card.util'
 export * from './utils/user-profile-settings.util'
 export * from './utils/agent-dialogue-model.util'
+export * from './utils/session-title.util'
 export * from './constants/builtin-assistant-avatars.constants'
 export * from './constants/avatar-import.constants'
 export * from './constants/latte-default-assistant.constants'

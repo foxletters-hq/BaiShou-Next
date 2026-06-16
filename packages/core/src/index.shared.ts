@@ -4,6 +4,13 @@
 
 export * from './fs'
 export * from './storage/storage-root-migration'
+export * from './migration/legacy-migration.shared'
+export * from './migration/flutter-shared-prefs.util'
+export * from './migration/legacy-avatar-migration.shared'
+export * from './migration/legacy-archive-migration.shared'
+export * from './migration/legacy-runtime-artifacts.shared'
+export * from './migration/migration-target-path.service'
+export * from './import/legacy-config-restore.shared'
 
 export * from './diary/diary.service'
 export * from './diary/file-sync.service'
@@ -18,6 +25,7 @@ export * from './vault/vault.service'
 export * from './attachments/attachment-manager.types'
 export * from './attachments/attachment-manager.service'
 export * from './diary/diary.types'
+export * from './journal/journal-files.util'
 
 export * from './session/session-file.service'
 export * from './session/session-sync.service'
