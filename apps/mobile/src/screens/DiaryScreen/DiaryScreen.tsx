@@ -15,7 +15,7 @@ import { useStoragePermission } from '../../hooks/useStoragePermission'
 import { useBaishou } from '../../providers/BaishouProvider'
 import { DiaryAppBar } from './components/DiaryAppBar'
 import { DiaryFab } from './components/DiaryFab'
-import { DiaryList, type DiaryListEntry } from './components/DiaryList'
+import { DiaryList, type DiaryListEntry, DEFAULT_DIARY_PAGE_SIZE, DIARY_PAGE_SIZE_OPTIONS } from './components/DiaryList'
 import { useDiaryData, type DiaryPageQuery } from './hooks/useDiaryData'
 import { useIncrementalSync } from '../../providers/IncrementalSyncProvider'
 
@@ -56,34 +56,34 @@ export const DiaryScreen: React.FC = () => {
   const { t } = useTranslation()
   const { colors, isDark } = useNativeTheme()
   const dialog = useDialog()
-  const { services, dbReady, vaultRevision, vaultSwitching } = useBaishou()
+  const { services, dbReady, vaultRevision, vaultSwitching, storageIndexing } = useBaishou()
   const router = useRouter()
   const {
     needsFullFileAccess,
     request: requestStorage,
     storageReady,
     permissionChecked,
-    isStoragePending
+    isStoragePending,
+    mountSlow,
+    mountFailed,
+    retryMount
   } = useStoragePermission()
 
   const [searchQuery, setSearchQuery] = useState('')
   const [searchMode, setSearchMode] = useState<'semantic' | 'text'>('text')
   const [semanticAvailable, setSemanticAvailable] = useState(false)
-  const [selectedMonth, setSelectedMonth] = useState<Date | null>(() => {
-    const now = new Date()
-    return new Date(now.getFullYear(), now.getMonth(), 1)
-  })
+  const [selectedMonth, setSelectedMonth] = useState<Date | null>(null)
   const [filterWeathers, setFilterWeathers] = useState<string[]>([])
   const [filterFavorite, setFilterFavorite] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize, setPageSize] = useState(50)
+  const [pageSize, setPageSize] = useState(DEFAULT_DIARY_PAGE_SIZE)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [todayEntry, setTodayEntry] = useState<{ id: number } | null>(null)
   const [isStateRestored, setIsStateRestored] = useState(false)
   const skipInitialFocusRefreshRef = useRef(true)
   const {
     isSyncing,
-    isConfigured: incrementalSyncReady,
+    isEnabled: incrementalSyncEnabled,
     refreshConfigured,
     runIncrementalSync
   } = useIncrementalSync()
@@ -172,7 +172,9 @@ export const DiaryScreen: React.FC = () => {
 
         if (savedPageSize) {
           const size = Number(savedPageSize)
-          if (!isNaN(size) && [20, 30, 50, 80, 100].includes(size)) setPageSize(size)
+          if (!isNaN(size) && (DIARY_PAGE_SIZE_OPTIONS as readonly number[]).includes(size)) {
+            setPageSize(size)
+          }
         }
       } catch (e) {
         logger.error('恢复日记筛选状态失败', e instanceof Error ? e : String(e))
@@ -305,6 +307,13 @@ export const DiaryScreen: React.FC = () => {
     }
   }, [loadEntries, requestStorage, services?.diaryService])
 
+  const handleRetryStorageMount = useCallback(async () => {
+    const ok = await retryMount()
+    if (ok && services?.diaryService) {
+      await loadEntries()
+    }
+  }, [loadEntries, retryMount, services?.diaryService])
+
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   useEffect(() => {
     if (currentPage > totalPages && totalPages > 0) setCurrentPage(totalPages)
@@ -340,7 +349,8 @@ export const DiaryScreen: React.FC = () => {
         weather: e.weather,
         mood: e.mood,
         location: e.location,
-        isFavorite: e.isFavorite
+        isFavorite: e.isFavorite,
+        matchSimilarity: e.matchSimilarity
       }
     })
   }, [entries])
@@ -420,7 +430,7 @@ export const DiaryScreen: React.FC = () => {
             filterFavorite={filterFavorite}
             onFilterFavoriteChange={setFilterFavorite}
             onSyncPress={
-              incrementalSyncReady === true ? () => void handleIncrementalSync() : undefined
+              incrementalSyncEnabled === true ? () => void handleIncrementalSync() : undefined
             }
             isSyncing={isSyncing}
           />
@@ -433,6 +443,10 @@ export const DiaryScreen: React.FC = () => {
             selectedMonth={selectedMonth}
             loading={needsFullFileAccess ? false : vaultSwitching || loading}
             storagePending={isStoragePending}
+            storageSlow={mountSlow}
+            storageMountFailed={mountFailed}
+            storageIndexing={storageIndexing}
+            onRetryStorageMount={handleRetryStorageMount}
             onGoToEditor={handleGoToEditor}
             onDeleteEntry={setDeletingId}
             onPageChange={setCurrentPage}

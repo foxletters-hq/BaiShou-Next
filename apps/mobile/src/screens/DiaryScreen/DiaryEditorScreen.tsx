@@ -17,12 +17,16 @@ import {
   uploadDiaryAttachments
 } from '../../services/mobile-diary-attachment.service'
 import { useStoragePermission } from '../../hooks/useStoragePermission'
+import { useAttachmentImageLoader } from '../../hooks/useAttachmentImageLoader'
+import { extractDiaryAttachmentSrcs } from '@baishou/ui/native'
+import {
+  resolveDiaryAttachmentImageDataUri
+} from '../../utils/mobile-diary-attachment-resolver'
 import { FullFileAccessGate } from '../../components/FullFileAccessGate'
 import {
   assertExternalStorageReady,
   isExternalStorageRequiredError
 } from '../../services/storage-permission.service'
-import { toFileUri } from '../../services/android-external-fs'
 
 export const DiaryEditorScreen: React.FC = () => {
   const { t } = useTranslation()
@@ -207,16 +211,12 @@ export const DiaryEditorScreen: React.FC = () => {
   }
 
   const [attachmentUriMap, setAttachmentUriMap] = useState<Record<string, string>>({})
+  const { loadImageUri } = useAttachmentImageLoader(services?.fileSystem)
 
   useEffect(() => {
-    if (!services?.pathService) return
-    const re = /!\[[^\]]*\]\((attachment\/[^)|\s]+)/g
-    const srcs = new Set<string>()
-    let m: RegExpExecArray | null
-    while ((m = re.exec(content)) !== null) {
-      srcs.add(m[1]!)
-    }
-    if (srcs.size === 0) {
+    if (!services?.pathService || !services?.fileSystem) return
+    const srcs = extractDiaryAttachmentSrcs(content)
+    if (srcs.length === 0) {
       setAttachmentUriMap({})
       return
     }
@@ -224,11 +224,16 @@ export const DiaryEditorScreen: React.FC = () => {
     let cancelled = false
     void (async () => {
       try {
-        const dir = await services.pathService!.getDiaryAttachmentDirectory(selectedDate)
         const map: Record<string, string> = {}
         for (const src of srcs) {
-          const fileName = src.replace(/^attachment\//, '')
-          map[src] = toFileUri(`${dir}/${fileName}`)
+          const dataUri = await resolveDiaryAttachmentImageDataUri(
+            services.pathService!,
+            services.fileSystem,
+            selectedDate,
+            src,
+            (absPath) => loadImageUri(absPath, 'preview')
+          )
+          if (dataUri) map[src] = dataUri
         }
         if (!cancelled) setAttachmentUriMap(map)
       } catch (e) {
@@ -239,7 +244,7 @@ export const DiaryEditorScreen: React.FC = () => {
     return () => {
       cancelled = true
     }
-  }, [content, selectedDate, services?.pathService])
+  }, [content, selectedDate, services?.pathService, services?.fileSystem, loadImageUri])
 
   const resolveAttachmentUri = useCallback(
     (src: string) => {
@@ -249,6 +254,24 @@ export const DiaryEditorScreen: React.FC = () => {
       return src
     },
     [attachmentUriMap]
+  )
+
+  const loadAttachmentImageUri = useCallback(
+    async (src: string) => {
+      if (!src.startsWith('attachment/') || !services?.pathService || !services?.fileSystem) {
+        return null
+      }
+      const cached = attachmentUriMap[src]
+      if (cached) return cached
+      return resolveDiaryAttachmentImageDataUri(
+        services.pathService,
+        services.fileSystem,
+        selectedDate,
+        src,
+        (absPath) => loadImageUri(absPath, 'preview')
+      )
+    },
+    [attachmentUriMap, loadImageUri, selectedDate, services?.pathService, services?.fileSystem]
   )
 
   const handlePickImages = useCallback(async (): Promise<string[]> => {
@@ -342,6 +365,7 @@ export const DiaryEditorScreen: React.FC = () => {
           onPickImages={handlePickImages}
           pickingImages={pickingImages}
           resolveAttachmentUri={resolveAttachmentUri}
+          loadAttachmentImageUri={loadAttachmentImageUri}
           onSave={handleSave}
           onCancel={handleBack}
         />

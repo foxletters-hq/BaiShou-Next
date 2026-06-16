@@ -1,6 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Edit3 } from 'lucide-react'
+import { Edit3, Loader2 } from 'lucide-react'
 import { DiaryCard } from '../DiaryCard'
 import type { DiaryEntry } from '../DiaryCard'
 import { PageSizeSelector, Pagination } from '@baishou/ui'
@@ -13,6 +13,7 @@ interface DiaryGridProps {
   pageSize: number
   selectedMonth: Date | null
   loading: boolean
+  storageIndexing?: boolean
   attachmentBasePath: string
   onGoToEditor: (dateStr: string) => void
   onDeleteEntry: (id: number) => void
@@ -38,6 +39,7 @@ export const DiaryGrid: React.FC<DiaryGridProps> = ({
   pageSize,
   selectedMonth,
   loading,
+  storageIndexing = false,
   attachmentBasePath,
   onGoToEditor,
   onDeleteEntry,
@@ -81,6 +83,23 @@ export const DiaryGrid: React.FC<DiaryGridProps> = ({
       </div>
     </>
   )
+
+  if (storageIndexing && totalCount === 0) {
+    return (
+      <div className="diary-empty-state">
+        <Loader2 size={48} className="diary-indexing-spinner" />
+        <div className="diary-empty-title">
+          {t('storage.indexing_title', '正在恢复日记索引')}
+        </div>
+        <div className="diary-empty-text">
+          {t(
+            'storage.indexing_desc',
+            '数据没有丢失。白守已经连接到本地存储，正在扫描日记、会话和总结；数据较多时可能需要约一分钟。'
+          )}
+        </div>
+      </div>
+    )
+  }
 
   if (loading && entries.length === 0) {
     return (

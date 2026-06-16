@@ -29,7 +29,12 @@ export interface DiaryListEntry {
   mood?: string
   location?: string
   isFavorite?: boolean
+  /** 语义搜索相似度 0–1，仅语义模式展示 */
+  matchSimilarity?: number
 }
+
+export const DEFAULT_DIARY_PAGE_SIZE = 10
+export const DIARY_PAGE_SIZE_OPTIONS = [10, 20, 30, 50, 80, 100] as const
 
 export interface DiaryListProps {
   entries: DiaryListEntry[]
@@ -40,6 +45,13 @@ export interface DiaryListProps {
   loading: boolean
   /** 已授权但外部存储尚未挂载完成 */
   storagePending?: boolean
+  /** 外部存储挂载耗时较长，后台仍在继续 */
+  storageSlow?: boolean
+  /** 外部存储挂载失败 */
+  storageMountFailed?: boolean
+  /** 已连接存储，正在从磁盘恢复索引 */
+  storageIndexing?: boolean
+  onRetryStorageMount?: () => void | Promise<void>
   onGoToEditor: (id: number) => void
   onDeleteEntry: (id: number) => void
   onPageChange: (page: number) => void
@@ -88,7 +100,7 @@ const DiaryPaginationBar = memo(function DiaryPaginationBar({
         </Text>
         <PageSizeSelector
           value={pageSize}
-          options={[20, 30, 50, 80, 100]}
+          options={[...DIARY_PAGE_SIZE_OPTIONS]}
           label={t('diary.per_page', '条/页')}
           onChange={(size) => {
             onPageSizeChange(size)
@@ -142,6 +154,7 @@ const DiaryListRow = memo(function DiaryListRow({
         mood={item.mood}
         location={item.location}
         isFavorite={item.isFavorite}
+        matchSimilarity={item.matchSimilarity}
         onClick={handleOpen}
         onEdit={handleOpen}
         onDelete={handleDelete}
@@ -158,6 +171,10 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
   selectedMonth,
   loading,
   storagePending = false,
+  storageSlow = false,
+  storageMountFailed = false,
+  storageIndexing = false,
+  onRetryStorageMount,
   onGoToEditor,
   onDeleteEntry,
   onPageChange,
@@ -220,6 +237,11 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
 
   const keyExtractor = useCallback((item: DiaryListEntry) => String(item.id), [])
 
+  const listHeader = useMemo(
+    () => (showPagination ? <DiaryPaginationBar placement="top" {...paginationBarProps} /> : null),
+    [paginationBarProps, showPagination]
+  )
+
   const listFooter = useMemo(
     () =>
       showPagination ? <DiaryPaginationBar placement="bottom" {...paginationBarProps} /> : null,
@@ -240,6 +262,64 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
         <ActivityIndicator size="large" color={colors.primary} />
         <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
           {t('storage.mounting', '正在准备日记存储…')}
+        </Text>
+        <Text style={[styles.storageHintText, { color: colors.textTertiary }]}>
+          {t(
+            'storage.mounting_data_safe_hint',
+            '正在连接 BaiShou_Root，本地日记仍保存在原目录，不会被清空。'
+          )}
+        </Text>
+      </View>
+    )
+  }
+
+  if ((storageSlow || storageMountFailed) && entries.length === 0) {
+    return (
+      <View style={styles.centered}>
+        <MaterialIcons
+          name={storageMountFailed ? 'folder-off' : 'folder-open'}
+          size={56}
+          color={colors.primary}
+          style={{ opacity: 0.65 }}
+        />
+        <Text style={[styles.storageTitle, { color: colors.textPrimary }]}>
+          {storageMountFailed
+            ? t('storage.external_access_error', '无法访问外部 BaiShou_Root，请确认已开启「管理所有文件」权限。')
+            : t('storage.mounting_slow_title', '正在后台准备日记存储')}
+        </Text>
+        <Text style={[styles.storageHintText, { color: colors.textSecondary }]}>
+          {t(
+            'storage.mounting_slow_desc',
+            '数据没有丢失。白守正在连接 /storage/emulated/0/BaiShou_Root 并恢复索引，数据较多时可能需要一点时间。'
+          )}
+        </Text>
+        {storageMountFailed && onRetryStorageMount ? (
+          <TouchableOpacity
+            style={[styles.retryStorageButton, { backgroundColor: colors.primary }]}
+            onPress={() => void onRetryStorageMount()}
+            activeOpacity={0.85}
+          >
+            <Text style={[styles.retryStorageButtonText, { color: colors.textOnPrimary }]}>
+              {t('common.retry', '重试')}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+    )
+  }
+
+  if (storageIndexing && entries.length === 0) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.storageTitle, { color: colors.textPrimary }]}>
+          {t('storage.indexing_title', '正在恢复日记索引')}
+        </Text>
+        <Text style={[styles.storageHintText, { color: colors.textSecondary }]}>
+          {t(
+            'storage.indexing_desc',
+            '数据没有丢失。白守已经连接到本地存储，正在扫描日记、会话和总结；数据较多时可能需要约一分钟。'
+          )}
         </Text>
       </View>
     )
@@ -285,6 +365,7 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
       showsVerticalScrollIndicator={false}
       contentContainerStyle={[styles.listContent, { backgroundColor: colors.bgApp }]}
       columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : undefined}
+      ListHeaderComponent={listHeader}
       ListFooterComponent={listFooter}
       initialNumToRender={8}
       maxToRenderPerBatch={6}
@@ -306,6 +387,26 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 14
+  },
+  storageTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    textAlign: 'center'
+  },
+  storageHintText: {
+    fontSize: 14,
+    lineHeight: 22,
+    textAlign: 'center'
+  },
+  retryStorageButton: {
+    marginTop: 4,
+    paddingHorizontal: 22,
+    paddingVertical: 10,
+    borderRadius: 12
+  },
+  retryStorageButtonText: {
+    fontSize: 15,
+    fontWeight: '600'
   },
   emptyText: {
     fontSize: 16,

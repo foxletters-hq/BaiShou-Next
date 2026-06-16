@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { normalizeWeatherId, type WeatherId } from '@baishou/shared'
 import { WEATHER_IDS } from '@baishou/shared'
 import { useDiaryData } from './hooks/useDiaryData'
+import { useStorageIndexing } from './hooks/useStorageIndexing'
 import type { DiaryEntry } from './DiaryCard'
 import { useToast } from '@baishou/ui'
 import { DiaryAppBar } from './components/DiaryAppBar'
@@ -130,6 +131,7 @@ export const DiaryPage: React.FC = () => {
     [selectedMonth, searchQuery, filterWeathers, filterFavorite, currentPage, pageSize]
   )
   const { entries, totalCount, loading, loadEntries } = useDiaryData(diaryQuery)
+  const storageIndexing = useStorageIndexing()
 
   // 页码越界时自动修正
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
@@ -252,6 +254,7 @@ export const DiaryPage: React.FC = () => {
         pageSize={pageSize}
         selectedMonth={selectedMonth}
         loading={loading}
+        storageIndexing={storageIndexing}
         attachmentBasePath={attachmentBasePath}
         onGoToEditor={goToEditor}
         onDeleteEntry={setDeletingId}

@@ -359,4 +359,64 @@ describe('DiaryService - Single Source of Truth architecture', () => {
       )
     })
   })
+
+  describe('searchPage', () => {
+    const shadowRow = (id: number, favorite = false) => ({
+      id,
+      vaultName: 'default',
+      filePath: `d/${id}.md`,
+      date: '2026-03-15T00:00:00.000Z',
+      createdAt: '2026-03-15T00:00:00.000Z',
+      updatedAt: '2026-03-15T00:00:00.000Z',
+      contentHash: 'h',
+      weather: 'sunny',
+      mood: null,
+      location: null,
+      locationDetail: null,
+      isFavorite: favorite,
+      hasMedia: false,
+      rawContent: 'hello',
+      tags: ''
+    })
+
+    it('scans multiple FTS batches when favorite filter reduces matches', async () => {
+      mockShadowRepo.searchFTS
+        .mockResolvedValueOnce([
+          {
+            rowid: 1,
+            contentSnippet: 'a',
+            tags: '',
+            rankScore: 1,
+            indexRow: shadowRow(1, false)
+          },
+          {
+            rowid: 2,
+            contentSnippet: 'b',
+            tags: '',
+            rankScore: 2,
+            indexRow: shadowRow(2, true)
+          }
+        ])
+        .mockResolvedValueOnce([
+          {
+            rowid: 3,
+            contentSnippet: 'c',
+            tags: '',
+            rankScore: 1,
+            indexRow: shadowRow(3, true)
+          }
+        ])
+
+      const { items, hasMore } = await service.searchPage('q', {
+        limit: 1,
+        offset: 0,
+        favorite: true
+      })
+
+      expect(items).toHaveLength(1)
+      expect(items[0]!.id).toBe(2)
+      expect(hasMore).toBe(true)
+      expect(mockShadowRepo.searchFTS).toHaveBeenCalledTimes(2)
+    })
+  })
 })

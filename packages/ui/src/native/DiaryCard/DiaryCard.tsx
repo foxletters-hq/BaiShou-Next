@@ -21,6 +21,8 @@ interface DiaryCardProps {
   mood?: string
   location?: string
   isFavorite?: boolean
+  /** 语义搜索相似度 0–1 */
+  matchSimilarity?: number
   onClick?: () => void
   onEdit?: () => void
   onDelete?: () => void
@@ -35,6 +37,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
   mood,
   location,
   isFavorite,
+  matchSimilarity,
   onClick,
   onEdit,
   onDelete
@@ -113,6 +116,13 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
                   </Text>
                 </View>
               ) : null}
+              {matchSimilarity != null && (
+                <View style={[styles.similarityBadge, { backgroundColor: colors.primaryLight }]}>
+                  <Text style={[styles.similarityText, { color: colors.primary }]}>
+                    {(matchSimilarity * 100).toFixed(0)}%
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
         </View>
@@ -212,6 +222,15 @@ const styles = StyleSheet.create({
   weatherInlineText: {
     fontSize: 11,
     fontWeight: '600'
+  },
+  similarityBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4
+  },
+  similarityText: {
+    fontSize: 10,
+    fontWeight: '800'
   },
   headerSpacer: { width: 22 },
   metaRow: {

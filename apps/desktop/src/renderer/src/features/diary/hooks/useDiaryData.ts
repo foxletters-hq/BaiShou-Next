@@ -123,6 +123,10 @@ export function useDiaryData(query: DiaryPageQuery) {
           void loadEntries({ silent: true })
           return
         }
+        if (event?.type === 'indexing-progress') {
+          void loadEntries({ silent: hasCachedRows })
+          return
+        }
         logger.info('[useDiaryData] 收到 diary:sync-event，刷新当前页')
         void loadEntries({ silent: hasCachedRows })
       })

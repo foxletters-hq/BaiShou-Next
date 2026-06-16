@@ -2,7 +2,6 @@ import { useTranslation } from 'react-i18next'
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import {
   View,
-  type TextInput as RNTextInput,
   StyleSheet,
   TouchableOpacity,
   Text,
@@ -19,16 +18,9 @@ import { TagInput } from '../TagInput/TagInput'
 import { WeatherPicker } from '../WeatherPicker/WeatherPicker'
 import { useNativeTheme } from '../theme'
 import { useKeyboardHeight } from '../hooks/useKeyboardHeight'
-import { Input } from '../Input/Input'
-import { MarkdownRenderer } from '../MarkdownRenderer/MarkdownRenderer'
+import { NativeDiaryMixedContent, type NativeDiaryMixedContentHandle } from './NativeDiaryMixedContent'
 import { NativeImagePreviewModal } from './NativeImagePreviewModal'
 import type { DiaryEditorViewMode } from './diary-editor.types'
-import {
-  adjustImageWidthInContent,
-  DIARY_IMAGE_SIZE,
-  findImageAtOffset,
-  type ParsedDiaryImage
-} from './diary-image-markdown.util'
 
 interface DiaryEditorProps {
   content: string
@@ -49,6 +41,8 @@ interface DiaryEditorProps {
   pickingImages?: boolean
   /** attachment/xxx → file:// 本地路径 */
   resolveAttachmentUri?: (src: string) => string | null | undefined
+  /** attachment/xxx → data: URI（Android 外部存储） */
+  loadAttachmentImageUri?: (src: string) => Promise<string | null>
 }
 
 export const DiaryEditor: React.FC<DiaryEditorProps> = ({
@@ -67,17 +61,16 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   onCancel,
   onPickImages,
   pickingImages = false,
-  resolveAttachmentUri
+  resolveAttachmentUri,
+  loadAttachmentImageUri
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const [viewMode, setViewMode] = useState<DiaryEditorViewMode>('edit')
   const [selection, setSelection] = useState({ start: 0, end: 0 })
-  const [editorHeight, setEditorHeight] = useState(200)
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null)
-  const [activeImage, setActiveImage] = useState<ParsedDiaryImage | null>(null)
   const [toolbarHeight, setToolbarHeight] = useState(52)
-  const textInputRef = useRef<RNTextInput>(null)
+  const mixedContentRef = useRef<NativeDiaryMixedContentHandle>(null)
   const keyboardInsetLockedRef = useRef(false)
   const contentRef = useRef(content)
   const selectionRef = useRef({ start: 0, end: 0 })
@@ -117,8 +110,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   const refocusEditor = useCallback(
     (sel: { start: number; end: number }) => {
       requestAnimationFrame(() => {
-        textInputRef.current?.focus()
-        textInputRef.current?.setNativeProps?.({ selection: sel })
+        mixedContentRef.current?.focusAtOffset(sel.start)
         if (Platform.OS === 'android') {
           requestAnimationFrame(syncFromMetrics)
         }
@@ -174,18 +166,12 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
     insertAtPosition(anchor.start, anchor.end, block)
   }
 
-  const updateActiveImageFromSelection = useCallback((offset: number) => {
-    const img = findImageAtOffset(contentRef.current, offset)
-    setActiveImage(img)
-  }, [])
-
   const handleSelectionChange = useCallback(
     (start: number, end: number) => {
       if (toolbarInsertingRef.current) return
       syncSelection({ start, end })
-      updateActiveImageFromSelection(end)
     },
-    [syncSelection, updateActiveImageFromSelection]
+    [syncSelection]
   )
 
   useEffect(() => {
@@ -193,15 +179,8 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
       const sel = pendingSelectionRef.current
       pendingSelectionRef.current = null
       syncSelection(sel)
-      updateActiveImageFromSelection(sel.end)
     }
-  }, [content, syncSelection, updateActiveImageFromSelection])
-
-  useEffect(() => {
-    if (viewMode === 'edit') {
-      updateActiveImageFromSelection(selectionRef.current.end)
-    }
-  }, [viewMode, updateActiveImageFromSelection])
+  }, [content, syncSelection])
 
   const snapKeyboardChromeAway = useCallback(() => {
     keyboardInsetLockedRef.current = true
@@ -209,55 +188,38 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
       LayoutAnimation.create(0, LayoutAnimation.Types.linear, 'opacity')
     )
     resetKeyboard()
-    textInputRef.current?.blur()
+    mixedContentRef.current?.blur()
     Keyboard.dismiss()
   }, [resetKeyboard])
 
-  const handleImageWidthDelta = useCallback(
-    (delta: number) => {
-      const img = activeImage ?? findImageAtOffset(contentRef.current, selectionRef.current.end)
-      if (!img) return
-      const next = adjustImageWidthInContent(contentRef.current, img, delta)
-      onContentChange(next)
-      const updated = findImageAtOffset(next, img.from)
-      if (updated) {
-        syncSelection({ start: updated.to, end: updated.to })
-        setActiveImage(updated)
-      }
-    },
-    [activeImage, onContentChange, syncSelection]
-  )
-
-  const handlePreviewImagePress = useCallback(
-    (src: string, resolvedUri: string) => {
-      setPreviewImageUri(resolvedUri)
-      const idx = contentRef.current.indexOf(src)
-      if (idx < 0) return
-      const img = findImageAtOffset(contentRef.current, idx)
-      if (img) {
-        syncSelection({ start: img.from, end: img.to })
-        setActiveImage(img)
-      }
-    },
-    [syncSelection]
-  )
+  const handlePreviewImagePress = useCallback((_src: string, resolvedUri: string) => {
+    setPreviewImageUri(resolvedUri)
+  }, [])
 
   const handleSwitchToEdit = useCallback(() => {
     setViewMode('edit')
     requestAnimationFrame(() => {
-      textInputRef.current?.focus()
-      const sel = selectionRef.current
-      textInputRef.current?.setNativeProps?.({ selection: sel })
-      updateActiveImageFromSelection(sel.end)
+      mixedContentRef.current?.focusAtOffset(selectionRef.current.end)
     })
-  }, [updateActiveImageFromSelection])
+  }, [])
 
   const resolveImageUri = useMemo(() => {
     if (!resolveAttachmentUri) return undefined
-    return (src: string) => resolveAttachmentUri(src) ?? src
+    return (src: string) => {
+      if (src.startsWith('attachment/')) {
+        return resolveAttachmentUri(src)
+      }
+      return resolveAttachmentUri(src) ?? src
+    }
   }, [resolveAttachmentUri])
 
-  const showImageTools = viewMode === 'edit' && activeImage != null
+  const loadImageUri = useMemo(() => {
+    if (!loadAttachmentImageUri) return undefined
+    return (src: string) => {
+      if (!src.startsWith('attachment/')) return Promise.resolve(null)
+      return loadAttachmentImageUri(src)
+    }
+  }, [loadAttachmentImageUri])
 
   const toolbarDockBottom = keyboardHeight
 
@@ -339,41 +301,25 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
               </View>
             )}
 
-            {viewMode === 'edit' ? (
-              <Input
-                ref={textInputRef}
-                style={[styles.textArea, { minHeight: Math.max(280, editorHeight) }]}
-                multiline
-                textarea
-                placeholder={t('diary.editor_hint')}
-                value={content}
-                selection={selection}
-                onChangeText={onContentChange}
-                onContentSizeChange={(e) => {
-                  const h = e.nativeEvent.contentSize.height
-                  if (h > 0) setEditorHeight(h)
-                }}
-                onSelectionChange={(e) => {
-                  const { start, end } = e.nativeEvent.selection
-                  handleSelectionChange(start, end)
-                }}
-                onFocus={() => {
-                  keyboardInsetLockedRef.current = false
-                  updateActiveImageFromSelection(selectionRef.current.end)
-                  if (Platform.OS === 'android') {
-                    requestAnimationFrame(syncFromMetrics)
-                  }
-                }}
-              />
-            ) : (
-              <Pressable onPress={handleSwitchToEdit} style={styles.previewArea}>
-                <MarkdownRenderer
-                  content={content}
-                  resolveImageUri={resolveImageUri}
-                  onImagePress={handlePreviewImagePress}
-                />
-              </Pressable>
-            )}
+            <NativeDiaryMixedContent
+              ref={mixedContentRef}
+              content={content}
+              mode={viewMode === 'edit' ? 'edit' : 'preview'}
+              placeholder={t('diary.editor_hint')}
+              selection={selection}
+              onChange={onContentChange}
+              onSelectionChange={handleSelectionChange}
+              onPress={viewMode === 'preview' ? handleSwitchToEdit : undefined}
+              onFocus={() => {
+                keyboardInsetLockedRef.current = false
+                if (Platform.OS === 'android') {
+                  requestAnimationFrame(syncFromMetrics)
+                }
+              }}
+              resolveImageUri={resolveImageUri}
+              loadImageUri={loadImageUri}
+              onImagePress={handlePreviewImagePress}
+            />
           </View>
         </ScrollView>
 
@@ -394,9 +340,6 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
             onInsertText={handleInsertText}
             onPickImages={onPickImages ? handlePickImages : undefined}
             pickingImages={pickingImages}
-            showImageTools={showImageTools}
-            onImageZoomIn={() => handleImageWidthDelta(DIARY_IMAGE_SIZE.step)}
-            onImageZoomOut={() => handleImageWidthDelta(-DIARY_IMAGE_SIZE.step)}
           />
         </View>
       </View>
@@ -453,11 +396,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0
-  },
-  textArea: {
-    fontSize: 16,
-    lineHeight: 24,
-    textAlignVertical: 'top'
-  },
-  previewArea: { minHeight: 280, paddingBottom: 16 }
+  }
 })

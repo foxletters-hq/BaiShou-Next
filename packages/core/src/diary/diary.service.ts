@@ -229,6 +229,17 @@ export class DiaryService {
     return this.fileSync.readJournal(date)
   }
 
+  /** 批量读取影子索引元数据（不读磁盘日记正文，供搜索列表等场景） */
+  async findMetaByIds(ids: number[]): Promise<DiaryMeta[]> {
+    if (ids.length === 0) return []
+    const rows = await this.shadowRepo.findByIds(ids)
+    const rowMap = new Map(rows.map((r) => [r.id, r]))
+    return ids
+      .map((id) => rowMap.get(id))
+      .filter((row): row is NonNullable<typeof row> => row != null)
+      .map((row) => this.mapShadowRowToMeta(row))
+  }
+
   async findByDate(date: Date): Promise<Diary | null> {
     // 穿透底层：真相直接来在物理文件
     const diary = await this.fileSync.readJournal(date)
@@ -265,26 +276,117 @@ export class DiaryService {
     query: string,
     options?: DiaryListFilter & { limit?: number; offset?: number }
   ): Promise<DiaryMeta[]> {
+    const page = await this.searchPage(query, options)
+    return page.items
+  }
+
+  /**
+   * 分页全文搜索：FTS/LIKE 与影子索引一次 JOIN，仅对缺失行批量补 ID。
+   * 有天气/收藏等后置筛选时批量扫描 FTS，保证分页正确。
+   */
+  async searchPage(
+    query: string,
+    options?: DiaryListFilter & { limit?: number; offset?: number }
+  ): Promise<{ items: DiaryMeta[]; hasMore: boolean }> {
     const limit = options?.limit ?? 50
     const offset = options?.offset ?? 0
-    const ftsResults = await this.shadowRepo.searchFTS(query, limit, offset)
-    if (ftsResults.length === 0) return []
-
-    const ids = ftsResults.map((r) => r.rowid)
-    const rows = await this.shadowRepo.findByIds(ids)
-    const rowMap = new Map(rows.map((r) => [r.id, r]))
-
     const { limit: _l, offset: _o, orderBy: _ob, ...filterRest } = options || {}
     const filterOpts = filterRest as Omit<DiaryListFilter, 'limit' | 'offset' | 'orderBy'>
+    const needCount = offset + limit + 1
 
-    return ftsResults
+    if (!this.hasPostSearchFilter(filterOpts)) {
+      const ftsResults = await this.shadowRepo.searchFTS(query, limit + 1, offset)
+      const hasMore = ftsResults.length > limit
+      const pageHits = ftsResults.slice(0, limit)
+      const items = await this.mapFtsHitsToFilteredMetas(pageHits, filterOpts)
+      return { items, hasMore }
+    }
+
+    const collected: DiaryMeta[] = []
+    let ftsOffset = 0
+    const batchSize = Math.max(limit * 2, 20)
+
+    while (collected.length < needCount) {
+      const batch = await this.shadowRepo.searchFTS(query, batchSize, ftsOffset)
+      if (batch.length === 0) break
+
+      const filtered = await this.mapFtsHitsToFilteredMetas(batch, filterOpts)
+      collected.push(...filtered)
+      ftsOffset += batch.length
+    }
+
+    return {
+      items: collected.slice(offset, offset + limit),
+      hasMore: collected.length > offset + limit
+    }
+  }
+
+  private hasPostSearchFilter(
+    filter: Omit<DiaryListFilter, 'limit' | 'offset' | 'orderBy'>
+  ): boolean {
+    return Boolean(
+      filter.favorite ||
+        (filter.weathers && filter.weathers.length > 0) ||
+        (filter.year != null && filter.month != null)
+    )
+  }
+
+  private async mapFtsHitsToFilteredMetas(
+    hits: Awaited<ReturnType<ShadowIndexRepository['searchFTS']>>,
+    filterOpts: Omit<DiaryListFilter, 'limit' | 'offset' | 'orderBy'>
+  ): Promise<DiaryMeta[]> {
+    if (hits.length === 0) return []
+
+    const missingIds = hits.filter((h) => !h.indexRow).map((h) => h.rowid)
+    const batchRows =
+      missingIds.length > 0 ? await this.shadowRepo.findByIds(missingIds) : []
+    const rowMap = new Map(batchRows.map((r) => [r.id, r]))
+    for (const hit of hits) {
+      if (hit.indexRow) rowMap.set(hit.rowid, hit.indexRow)
+    }
+
+    return hits
       .map((hit) => {
-        const row = rowMap.get(hit.rowid)
+        const row = hit.indexRow ?? rowMap.get(hit.rowid)
         if (!row) return null
         const meta = this.mapShadowRowToMeta(row, hit.contentSnippet)
         return this.matchesListFilter(meta, filterOpts) ? meta : null
       })
       .filter((item): item is DiaryMeta => item !== null)
+  }
+
+  /** 全文搜索命中总数（不含月份筛选，供日记页跨月搜索分页） */
+  async countSearch(
+    query: string,
+    options?: Omit<DiaryListFilter, 'limit' | 'offset' | 'orderBy'>
+  ): Promise<number> {
+    const hasExtraFilter =
+      options?.favorite ||
+      (options?.weathers && options.weathers.length > 0) ||
+      (options?.year != null && options?.month != null)
+
+    if (!hasExtraFilter) {
+      return this.shadowRepo.countSearchFTS(query)
+    }
+
+    const FILTERED_CAP = 500
+    const ftsResults = await this.shadowRepo.searchFTS(query, FILTERED_CAP, 0)
+    if (ftsResults.length === 0) return 0
+
+    const ids = ftsResults.filter((h) => !h.indexRow).map((r) => r.rowid)
+    const batchRows = ids.length > 0 ? await this.shadowRepo.findByIds(ids) : []
+    const rowMap = new Map(batchRows.map((r) => [r.id, r]))
+    for (const hit of ftsResults) {
+      if (hit.indexRow) rowMap.set(hit.rowid, hit.indexRow)
+    }
+    const filterOpts = options as Omit<DiaryListFilter, 'limit' | 'offset' | 'orderBy'>
+
+    return ftsResults.filter((hit) => {
+      const row = hit.indexRow ?? rowMap.get(hit.rowid)
+      if (!row) return false
+      const meta = this.mapShadowRowToMeta(row)
+      return this.matchesListFilter(meta, filterOpts)
+    }).length
   }
 
   private matchesListFilter(

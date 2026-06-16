@@ -2,7 +2,7 @@ import React from 'react'
 import { View, TouchableOpacity, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
-import { useNativeTheme } from '@baishou/ui/native'
+import { getNativeElevationStyle, useNativeTheme } from '@baishou/ui/native'
 
 const FAB_MARGIN_END = 28
 /** Tab 页内容区底部即底边栏上沿，只需留小间距 */
@@ -16,7 +16,9 @@ export interface DiaryFabProps {
 
 export const DiaryFab: React.FC<DiaryFabProps> = ({ todayEntry, onEditToday, onAddNew }) => {
   const { t } = useTranslation()
-  const { colors } = useNativeTheme()
+  const { colors, isDark } = useNativeTheme()
+  const fabShadowSubtle = getNativeElevationStyle(isDark, 'subtle')
+  const fabShadowRaised = getNativeElevationStyle(isDark, 'raised')
 
   return (
     <View pointerEvents="box-none" style={[styles.wrap, { bottom: FAB_MARGIN_BOTTOM }]}>
@@ -25,9 +27,9 @@ export const DiaryFab: React.FC<DiaryFabProps> = ({ todayEntry, onEditToday, onA
         style={[
           styles.fabSmall,
           {
-            backgroundColor: colors.secondaryContainer,
-            shadowColor: colors.textPrimary
-          }
+            backgroundColor: isDark ? colors.bgSurfaceHigh : colors.secondaryContainer
+          },
+          fabShadowSubtle
         ]}
         accessibilityRole="button"
         accessibilityLabel={
@@ -37,7 +39,7 @@ export const DiaryFab: React.FC<DiaryFabProps> = ({ todayEntry, onEditToday, onA
         <MaterialIcons
           name={todayEntry ? 'edit-note' : 'today'}
           size={22}
-          color={colors.onSecondaryContainer}
+          color={isDark ? colors.textSecondary : colors.onSecondaryContainer}
         />
       </TouchableOpacity>
 
@@ -45,10 +47,8 @@ export const DiaryFab: React.FC<DiaryFabProps> = ({ todayEntry, onEditToday, onA
         onPress={onAddNew}
         style={[
           styles.fabLarge,
-          {
-            backgroundColor: colors.primary,
-            shadowColor: colors.textPrimary
-          }
+          { backgroundColor: colors.primary },
+          fabShadowRaised
         ]}
         accessibilityRole="button"
         accessibilityLabel={t('settings.write_diary_button')}
@@ -71,21 +71,13 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     alignItems: 'center',
-    justifyContent: 'center',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 4
+    justifyContent: 'center'
   },
   fabLarge: {
     width: 56,
     height: 56,
     borderRadius: 28,
     alignItems: 'center',
-    justifyContent: 'center',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 6
+    justifyContent: 'center'
   }
 })

@@ -1,7 +1,12 @@
 import React, { useMemo } from 'react'
-import { View, StyleSheet, Image, Pressable } from 'react-native'
+import { View, StyleSheet } from 'react-native'
 import Markdown, { MarkdownIt } from 'react-native-markdown-display'
 import { useNativeTheme } from '../theme'
+import {
+  parseImageSrcWithoutWidth,
+  stripImageWidthInMarkdown
+} from '../DiaryEditor/diary-image-markdown.util'
+import { NativeMarkdownImage } from './NativeMarkdownImage'
 
 export type MarkdownRendererVariant = 'default' | 'chat' | 'ancillary'
 
@@ -12,6 +17,8 @@ export interface MarkdownRendererProps {
   variant?: MarkdownRendererVariant
   /** 将 attachment/xxx 转为可加载的 file:// URI */
   resolveImageUri?: (src: string) => string | null | undefined
+  /** 异步解析 attachment/xxx（Android 外部存储需 data: URI） */
+  loadImageUri?: (src: string) => Promise<string | null>
   onImagePress?: (src: string, resolvedUri: string) => void
 }
 
@@ -178,6 +185,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   style,
   variant = 'default',
   resolveImageUri,
+  loadImageUri,
   onImagePress
 }) => {
   const { colors } = useNativeTheme()
@@ -193,10 +201,13 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     []
   )
 
-  const displayContent = useMemo(() => content.replace(/\u200B/g, ''), [content])
+  const displayContent = useMemo(
+    () => stripImageWidthInMarkdown(content.replace(/\u200B/g, '')),
+    [content]
+  )
 
   const rules = useMemo(() => {
-    if (!resolveImageUri && !onImagePress) return undefined
+    if (!resolveImageUri && !loadImageUri && !onImagePress) return undefined
     return {
       image: (
         node: { key: string; attributes: { src?: string; alt?: string } },
@@ -204,33 +215,24 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         _parent: unknown,
         _styles: { image?: object }
       ) => {
-        const rawSrc = node.attributes.src ?? ''
-        const resolved = resolveImageUri?.(rawSrc) ?? rawSrc
-        if (!resolved) return null
-
-        const img = (
-          <Image
-            key={node.key}
-            source={{ uri: resolved }}
-            style={[_styles.image, styles.image, styles.imageBlock]}
-            resizeMode="contain"
-          />
-        )
-
-        if (!onImagePress) return img
+        const rawSrc = parseImageSrcWithoutWidth(node.attributes.src ?? '')
+        const syncUri = resolveImageUri?.(rawSrc) ?? null
+        const imageStyle = [_styles.image, styles.image, styles.imageBlock]
 
         return (
-          <Pressable
+          <NativeMarkdownImage
             key={node.key}
-            onPress={() => onImagePress(rawSrc, resolved)}
-            accessibilityRole="imagebutton"
-          >
-            {img}
-          </Pressable>
+            rawSrc={rawSrc}
+            alt={node.attributes.alt}
+            imageStyle={imageStyle}
+            syncUri={syncUri}
+            loadImageUri={loadImageUri}
+            onPress={onImagePress}
+          />
         )
       }
     }
-  }, [resolveImageUri, onImagePress])
+  }, [resolveImageUri, loadImageUri, onImagePress])
 
   return (
     <View
