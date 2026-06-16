@@ -1,3 +1,4 @@
+import { getSummaryWeekNumber } from '@baishou/shared'
 import type { SummaryItem } from './gallery-panel.types'
 
 export const SUMMARY_TABS = ['weekly', 'monthly', 'quarterly', 'yearly'] as const
@@ -12,11 +13,7 @@ export const TYPE_I18N_MAP: Record<string, string> = {
 
 export const NUM_COLUMNS = 3
 
-export const getWeekNumber = (date: Date): number => {
-  const firstDayOfYear = new Date(date.getFullYear(), 0, 1)
-  const diff = date.getTime() - firstDayOfYear.getTime()
-  return Math.ceil(diff / (7 * 24 * 60 * 60 * 1000))
-}
+export const getWeekNumber = getSummaryWeekNumber
 
 /** 列表「路径」行：起止日期，与桌面画廊列表一致 */
 export const formatSummarySpan = (s: SummaryItem): string => {

@@ -4,6 +4,7 @@ import {
   formatMessageTimestamp,
   formatRagEntryTimestamp,
   formatStoredTimestamp,
+  getSummaryWeekNumber,
   normalizeUnixToSeconds,
   timestampToMillis
 } from '../date.utils'
@@ -76,5 +77,12 @@ describe('formatMessageTimestamp', () => {
   it('formats Date instances in local time', () => {
     const d = new Date(2026, 5, 15, 8, 9)
     expect(formatMessageTimestamp(d)).toBe('2026-06-15 08:09')
+  })
+})
+
+describe('getSummaryWeekNumber', () => {
+  it('matches summary generator week numbering', () => {
+    expect(getSummaryWeekNumber(new Date(2026, 4, 18))).toBe(21)
+    expect(getSummaryWeekNumber(new Date(2026, 5, 9))).toBe(24)
   })
 })

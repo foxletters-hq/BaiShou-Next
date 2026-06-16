@@ -1,5 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import { getSummaryWeekNumber } from '@baishou/shared'
 import { GalleryPanel, useToast, useDialog } from '@baishou/ui'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
@@ -15,13 +16,6 @@ interface Summary {
 interface SummaryGalleryViewProps {
   summaries: Summary[]
   onRefreshData: () => Promise<void>
-}
-
-/** 计算指定日期是一年中的第几周 */
-const getWeekNumber = (date: Date): number => {
-  const firstDayOfYear = new Date(date.getFullYear(), 0, 1)
-  const diff = date.getTime() - firstDayOfYear.getTime()
-  return Math.ceil(diff / (7 * 24 * 60 * 60 * 1000))
 }
 
 /** 归档画廊视图（GalleryPanel 封装层） */
@@ -40,7 +34,7 @@ export const SummaryGalleryView: React.FC<SummaryGalleryViewProps> = ({
     if (summary.type === 'weekly') {
       return t('summary.missing_label_weekly', 'Week $week, $year')
         .replace('$year', String(start.getFullYear()))
-        .replace('$week', String(getWeekNumber(start)))
+        .replace('$week', String(getSummaryWeekNumber(start)))
     }
     if (summary.type === 'monthly') {
       return t('summary.title_monthly', 'Monthly Report ($year-$month)')

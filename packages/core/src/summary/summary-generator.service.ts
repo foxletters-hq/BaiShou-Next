@@ -3,6 +3,7 @@ import {
   SummaryType,
   logger,
   getSummaryRawDataPrefix,
+  getSummaryWeekNumber,
   type SummaryPromptLocale
 } from '@baishou/shared'
 import { DiaryRepository, SummaryRepository } from '@baishou/database'
@@ -44,11 +45,7 @@ export class SummaryGeneratorService {
       switch (target.type) {
         case SummaryType.weekly:
           contextData = await this.buildWeeklyContext(startDate, endDate)
-          // 计算周数
-          const firstDayOfYear = new Date(year, 0, 1)
-          const weekNum = Math.ceil(
-            (startDate.getTime() - firstDayOfYear.getTime()) / (7 * 24 * 60 * 60 * 1000) + 1
-          )
+          const weekNum = getSummaryWeekNumber(startDate)
           promptTemplate = buildWeeklyPrompt({
             year,
             month,

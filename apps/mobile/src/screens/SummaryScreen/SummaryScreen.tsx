@@ -72,10 +72,13 @@ export const SummaryScreen: React.FC = () => {
     const prev = prevTabRef.current
     prevTabRef.current = activeTab
 
+    if (prev !== 'gallery' && activeTab === 'gallery') {
+      void refreshData()
+    }
     if (prev !== 'panel' && activeTab === 'panel') {
       void refreshMissing()
     }
-  }, [activeTab, refreshMissing])
+  }, [activeTab, refreshData, refreshMissing])
 
   const checkModelConfigured = async (): Promise<boolean> => {
     if (!services) return false

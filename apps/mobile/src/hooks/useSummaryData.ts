@@ -281,8 +281,7 @@ export function useSummaryData() {
             contentLength: finalContent.length
           })
 
-          // 刷新数据
-          setTimeout(fetchData, 1000)
+          await fetchData()
         } else {
           throw new Error('Generated content was empty.')
         }
@@ -304,7 +303,7 @@ export function useSummaryData() {
         }
       }
     },
-    [broadcastState, services, fetchData]
+    [broadcastState, fetchData, services]
   )
 
   // 调度下一个任务
@@ -340,6 +339,7 @@ export function useSummaryData() {
           if (activeCountRef.current === 0) {
             abortControllerRef.current = null
             setIsGenerating(false)
+            void fetchData()
 
             // 延迟清理已完成的任务
             setTimeout(() => {
@@ -359,7 +359,7 @@ export function useSummaryData() {
     } finally {
       isSchedulingRef.current = false
     }
-  }, [broadcastState, processTask])
+  }, [broadcastState, fetchData, processTask])
 
   const queueGeneration = async (items: MissingSummary[], concurrency?: number) => {
     if (!dbReady || !services) return

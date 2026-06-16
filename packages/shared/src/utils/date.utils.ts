@@ -19,6 +19,17 @@
  *
  * 等价于 Flutter 的 DateFormat('yyyy-MM-dd').format(date)
  */
+/**
+ * 计算周总结使用的「年内第几周」编号（与总结生成 Prompt 一致）。
+ * 以当年 1 月 1 日为第 1 周起点，含首周偏移 +1。
+ */
+export function getSummaryWeekNumber(date: Date): number {
+  const firstDayOfYear = new Date(date.getFullYear(), 0, 1)
+  return Math.ceil(
+    (date.getTime() - firstDayOfYear.getTime()) / (7 * 24 * 60 * 60 * 1000) + 1
+  )
+}
+
 export function formatLocalDate(date: Date): string {
   const y = date.getFullYear()
   const m = String(date.getMonth() + 1).padStart(2, '0')

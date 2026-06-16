@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import React from 'react'
+import React, { memo } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useNativeTheme } from '../../native/theme'
@@ -26,7 +26,7 @@ interface DiaryCardProps {
   onDelete?: () => void
 }
 
-export const DiaryCard: React.FC<DiaryCardProps> = ({
+export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
   id,
   contentSnippet,
   tags,
@@ -38,7 +38,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
   onClick,
   onEdit,
   onDelete
-}) => {
+}: DiaryCardProps) {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const day = createdAt.getDate().toString().padStart(2, '0')
@@ -171,7 +171,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
       </View>
     </TouchableOpacity>
   )
-}
+})
 
 const styles = StyleSheet.create({
   card: {

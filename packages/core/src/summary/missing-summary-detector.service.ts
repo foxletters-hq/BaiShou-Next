@@ -1,4 +1,4 @@
-import { Diary, Summary, SummaryType, MissingSummary } from '@baishou/shared'
+import { Diary, Summary, SummaryType, MissingSummary, getSummaryWeekNumber } from '@baishou/shared'
 import type { DiaryRepository, SummaryRepository } from '@baishou/database'
 
 export class MissingSummaryDetector {
@@ -95,7 +95,7 @@ export class MissingSummaryDetector {
         )
 
         if (!hasSummary) {
-          const weekNum = this.getWeekNumber(currentStart)
+          const weekNum = getSummaryWeekNumber(currentStart)
           missing.push({
             type: SummaryType.weekly,
             startDate: new Date(currentStart),
@@ -239,12 +239,6 @@ export class MissingSummaryDetector {
       }
     }
     return missing
-  }
-
-  private getWeekNumber(date: Date): number {
-    const start = new Date(date.getFullYear(), 0, 1)
-    const days = Math.floor((date.getTime() - start.getTime()) / (24 * 60 * 60 * 1000))
-    return Math.floor((days - date.getDay() + 10) / 7)
   }
 
   private formatLabel(
