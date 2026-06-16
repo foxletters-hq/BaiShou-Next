@@ -6,7 +6,7 @@ import type { AgentAssistant } from './components/AgentSidebar'
 import { useAssistantStore, useSettingsStore, useUserProfileStore, useAgentNavigationStore } from '@baishou/store'
 import { useToast, AssistantPickerSheet, Modal, AssistantEditPage, useDialog } from '@baishou/ui'
 import styles from './AgentLayout.module.css'
-import { LATTE_ASSISTANT_DESCRIPTION, LATTE_ASSISTANT_NAME, buildAgentChatNavigationPath } from '@baishou/shared'
+import { LATTE_ASSISTANT_NAME, buildAgentChatNavigationPath } from '@baishou/shared'
 import { useAgentSessions } from './hooks/useAgentSessions'
 import i18n from 'i18next'
 import {
@@ -97,7 +97,22 @@ export const AgentLayout: React.FC = () => {
     const saved = readAgentNavigationSnapshot(vaultKey)
     if (!saved?.sessionId && !saved?.assistantId) return
     restoredNavigationRef.current = true
-    navigate(buildAgentChatNavigationPath(saved), { replace: true })
+
+    void (async () => {
+      if (saved.sessionId && typeof window !== 'undefined' && window.electron) {
+        const doc = await window.electron.ipcRenderer.invoke('agent:get-session', saved.sessionId)
+        if (!doc) {
+          navigate(
+            saved.assistantId
+              ? buildAgentChatNavigationPath({ assistantId: saved.assistantId, sessionId: null })
+              : '/chat',
+            { replace: true }
+          )
+          return
+        }
+      }
+      navigate(buildAgentChatNavigationPath(saved), { replace: true })
+    })()
   }, [sessionId, navigate])
 
   useEffect(() => {
@@ -193,7 +208,7 @@ export const AgentLayout: React.FC = () => {
     ? {
         id: String(currentAssistant.id),
         name: currentAssistant.name,
-        description: currentAssistant.description || LATTE_ASSISTANT_DESCRIPTION,
+        description: currentAssistant.description,
         emoji: currentAssistant.emoji,
         avatarPath: (currentAssistant as any).avatarPath,
         assistantKind: (currentAssistant as any).assistantKind
@@ -202,7 +217,6 @@ export const AgentLayout: React.FC = () => {
       ? {
           id: 'default',
           name: LATTE_ASSISTANT_NAME,
-          description: LATTE_ASSISTANT_DESCRIPTION,
           emoji: undefined
         }
       : undefined
