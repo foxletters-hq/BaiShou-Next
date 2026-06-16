@@ -482,6 +482,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           query: string,
           options?: { topK?: number; minScore?: number }
         ): Promise<Array<{ chunkText: string; score: number; createdAt?: number }>> => {
+          if (!query.trim()) return []
           try {
             const providers = (await settingsManager.get<any[]>('ai_providers')) || []
             const globalModels = await settingsManager.get<any>('global_models')
