@@ -24,14 +24,42 @@ function md5(filePath) {
   return createHash('md5').update(readFileSync(filePath)).digest('hex')
 }
 
+const PYTHON_CANDIDATES =
+  process.platform === 'win32'
+    ? [
+        { command: 'py', args: ['-3'] },
+        { command: 'python', args: [] },
+        { command: 'python3', args: [] }
+      ]
+    : [
+        { command: 'python3', args: [] },
+        { command: 'python', args: [] }
+      ]
+
 function runGenerate() {
-  const result = spawnSync('python3', [generateScript, sourceIcon], {
-    cwd: root,
-    stdio: 'inherit'
-  })
-  if (result.status !== 0) {
-    process.exit(result.status ?? 1)
+  for (const { command, args } of PYTHON_CANDIDATES) {
+    const result = spawnSync(command, [...args, generateScript, sourceIcon], {
+      cwd: root,
+      stdio: 'inherit'
+    })
+    if (result.error?.code === 'ENOENT') continue
+    // Windows「应用执行别名」会把 python3 导向商店占位程序
+    if (result.status === 9009) continue
+    if (result.status !== 0) {
+      process.exit(result.status ?? 1)
+    }
+    return
   }
+
+  if (existsSync(mobileIcon) && existsSync(desktopIcon)) {
+    console.warn('[sync-app-icon] 未找到可用的 Python，跳过图标生成（沿用现有文件）')
+    return
+  }
+
+  console.error(
+    '[sync-app-icon] 未找到 Python。请安装 Python 3（含 Pillow）后执行: pnpm sync:icons'
+  )
+  process.exit(1)
 }
 
 if (!checkOnly) {

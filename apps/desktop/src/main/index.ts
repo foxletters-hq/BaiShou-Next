@@ -50,7 +50,7 @@ function createWindow(needsOnboarding: boolean): void {
     frame: false,
     autoHideMenuBar: true,
     backgroundColor: '#00000000',
-    ...(process.platform === 'linux' ? { icon } : {}),
+    icon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
@@ -191,7 +191,7 @@ app.whenReady().then(async () => {
   ;(global as any).customNetFetch = net.fetch
 
   // Set app user model id for windows
-  electronApp.setAppUserModelId('com.electron')
+  electronApp.setAppUserModelId('com.electron.app')
   app.setName('白守')
 
   // Register local protocol for secure local asset rendering
