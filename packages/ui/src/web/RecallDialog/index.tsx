@@ -57,8 +57,13 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
   // 向量回忆 tab 的搜索：带 debounce，传递 searchMode
   useEffect(() => {
     if (!isOpen || activeTab !== 'memory') return undefined
+    const trimmed = searchQuery.trim()
+    if (!trimmed) {
+      onSearch('', 'memory', searchMode)
+      return undefined
+    }
     const timeoutId = setTimeout(() => {
-      onSearch(searchQuery, 'memory', searchMode)
+      onSearch(trimmed, 'memory', searchMode)
     }, 400)
 
     return () => clearTimeout(timeoutId)

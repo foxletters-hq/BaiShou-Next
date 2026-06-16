@@ -34,7 +34,7 @@ export function useAgentUI() {
   }, [])
 
   const handleRecallSearch = useCallback(
-    async (query: string, tab: 'diary' | 'memory', _mode?: 'semantic' | 'text') => {
+    async (query: string, tab: 'diary' | 'memory', mode?: 'semantic' | 'text') => {
       if (!services) return
       setIsSearchingRecall(true)
       try {
@@ -53,26 +53,34 @@ export function useAgentUI() {
           } else {
             setRecallItems([])
           }
-        } else {
-          const memoryResults = await services.memorySearch?.(query, {
-            topK: 20,
-            minScore: 0.3
-          })
-          if (memoryResults && memoryResults.length > 0) {
-            setRecallItems(
-              memoryResults.map((r, index) => ({
-                id: `memory_${index}`,
-                type: 'memory' as const,
-                title: t('agent.recall.memory', '记忆'),
-                snippet: r.chunkText.substring(0, 150),
-                date: r.createdAt ? new Date(r.createdAt * 1000).toISOString().split('T')[0] : '',
-                similarity: r.score
-              }))
-            )
-          } else {
-            setRecallItems([])
-          }
+          return
         }
+
+        const trimmed = query.trim()
+        if (!trimmed) {
+          setRecallItems([])
+          return
+        }
+
+        const searchMode = mode || recallSearchMode
+        const res = await services.ragService.queryEntries({
+          keyword: trimmed,
+          limit: 50,
+          mode: searchMode
+        })
+
+        setRecallItems(
+          res.entries.map((row) => ({
+            id: String(row.embeddingId ?? row.sourceId ?? row.id),
+            type: 'memory' as const,
+            title: t('agent.recall.memory', '记忆'),
+            snippet: String(row.text ?? '').substring(0, 150),
+            date: row.createdAt
+              ? new Date(Number(row.createdAt)).toISOString().split('T')[0]
+              : '',
+            similarity: typeof row.similarity === 'number' ? row.similarity : undefined
+          }))
+        )
       } catch (err) {
         console.error('[AgentUI] Search fail:', err)
         setRecallItems([])
