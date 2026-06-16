@@ -18,10 +18,11 @@
     "dev": "electron-vite dev",
     "prebuild": "node ../../scripts/sync-app-icon.mjs && node ../../scripts/sync-app-version.mjs",
     "build": "npm run typecheck && electron-vite build",
-    "build:unpack": "npm run build && electron-builder --dir",
-    "build:win": "npm run build && electron-builder --win",
-    "build:mac": "electron-vite build && electron-builder --mac",
-    "build:linux": "electron-vite build && electron-builder --linux"
+    "electron-builder": "node scripts/electron-builder.mjs",
+    "build:unpack": "npm run build && npm run electron-builder -- --dir",
+    "build:win": "npm run build && npm run electron-builder -- --win",
+    "build:mac": "electron-vite build && npm run electron-builder -- --mac",
+    "build:linux": "electron-vite build && npm run electron-builder -- --linux"
   },
   "dependencies": {
     "@baishou/ai": "workspace:*",
