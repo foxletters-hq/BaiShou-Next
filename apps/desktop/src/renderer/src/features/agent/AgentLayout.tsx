@@ -90,12 +90,22 @@ export const AgentLayout: React.FC = () => {
   }, [sessionId, urlAssistantId])
 
   useEffect(() => {
-    if (sessionId || restoredNavigationRef.current) return
+    if (restoredNavigationRef.current) return
+
+    // 已通过 URL 进入具体会话或伙伴，无需再从快照恢复（否则点「新对话」后会误跳回旧会话）
+    if (sessionId || urlAssistantId) {
+      restoredNavigationRef.current = true
+      return
+    }
+
     const vaultKey =
       (typeof window !== 'undefined' && window.localStorage.getItem('baishou_active_vault')) ||
       'default'
     const saved = readAgentNavigationSnapshot(vaultKey)
-    if (!saved?.sessionId && !saved?.assistantId) return
+    if (!saved?.sessionId && !saved?.assistantId) {
+      restoredNavigationRef.current = true
+      return
+    }
     restoredNavigationRef.current = true
 
     void (async () => {
@@ -113,7 +123,7 @@ export const AgentLayout: React.FC = () => {
       }
       navigate(buildAgentChatNavigationPath(saved), { replace: true })
     })()
-  }, [sessionId, navigate])
+  }, [sessionId, urlAssistantId, navigate])
 
   useEffect(() => {
     if (sessionId && !urlAssistantId && !sessionDocReady) return
@@ -247,7 +257,15 @@ export const AgentLayout: React.FC = () => {
       const defaultAst = store.assistants.find((a) => a.isDefault) || store.assistants[0]
       astId = defaultAst?.id || 'default'
     }
-    navigate(`/chat?assistantId=${astId}`)
+
+    const vaultKey =
+      (typeof window !== 'undefined' && window.localStorage.getItem('baishou_active_vault')) ||
+      'default'
+    const snapshot = { assistantId: String(astId), sessionId: null }
+    restoredNavigationRef.current = true
+    useAgentNavigationStore.getState().setContext(vaultKey, snapshot)
+    writeAgentNavigationSnapshot(vaultKey, snapshot)
+    navigate(buildAgentChatNavigationPath(snapshot))
   }
 
   const handleAssistantSwitched = async (assistant: AgentAssistant) => {
