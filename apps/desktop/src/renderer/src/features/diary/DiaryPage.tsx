@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { normalizeWeatherId, type WeatherId } from '@baishou/shared'
+import { normalizeWeatherId, normalizeDiaryTags, type WeatherId } from '@baishou/shared'
 import { WEATHER_IDS } from '@baishou/shared'
 import { useDiaryData } from './hooks/useDiaryData'
 import { useStorageIndexing } from './hooks/useStorageIndexing'
@@ -213,7 +213,7 @@ export const DiaryPage: React.FC = () => {
           id: e.id,
           date: e.date ? new Date(e.date) : new Date(),
           content: e.content || '',
-          tags: e.tags || [],
+          tags: normalizeDiaryTags(e.tags),
           preview: e.preview || e.content?.substring(0, 500) || '',
           weather: e.weather,
           mood: e.mood,

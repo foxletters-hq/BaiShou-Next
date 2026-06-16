@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
-import { logger } from '@baishou/shared'
+import { logger, normalizeDiaryTags } from '@baishou/shared'
 import type { DiaryListFilter } from '@baishou/shared'
 
 export interface DiaryPageQuery {
@@ -44,7 +44,11 @@ function patchEntriesWithSaved(prev: any[], saved: any): any[] {
   const idx = prev.findIndex((e) => e.id === saved.id)
   if (idx >= 0) {
     const next = [...prev]
-    next[idx] = { ...next[idx], ...saved }
+    next[idx] = {
+      ...next[idx],
+      ...saved,
+      tags: normalizeDiaryTags(saved.tags ?? next[idx].tags)
+    }
     return next
   }
   return prev

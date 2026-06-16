@@ -5,7 +5,7 @@ import {
   FileSyncServiceImpl,
   VaultIndexServiceImpl
 } from '@baishou/core-desktop'
-import { parseDateStr } from '@baishou/shared'
+import { parseDateStr, normalizeDiaryTags, formatDiaryPreviewText } from '@baishou/shared'
 import * as fs from 'fs/promises'
 
 import { fileSystem, pathService, getActiveVaultShadowRepo } from './vault.ipc'
@@ -69,7 +69,21 @@ export function registerDiaryIPC() {
       const saved = await getDiaryManager().save(id, input)
       const win = BrowserWindow.fromWebContents(event.sender)
       if (win && saved) {
-        win.webContents.send('diary:sync-event', { type: 'saved', entry: saved })
+        win.webContents.send('diary:sync-event', {
+          type: 'saved',
+          entry: {
+            id: saved.id,
+            date: saved.date,
+            preview: formatDiaryPreviewText(saved.content?.substring(0, 500) ?? ''),
+            tags: normalizeDiaryTags(saved.tags),
+            weather: saved.weather ?? undefined,
+            mood: saved.mood ?? undefined,
+            location: saved.location ?? undefined,
+            isFavorite: saved.isFavorite ?? false,
+            hasMedia: (saved.mediaPaths?.length ?? 0) > 0,
+            updatedAt: saved.updatedAt
+          }
+        })
       }
       return saved
     }
