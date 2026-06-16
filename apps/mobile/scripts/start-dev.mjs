@@ -18,6 +18,11 @@ const mobileRoot = path.resolve(__dirname, '..')
 const clearCache = process.argv.includes('--clear')
 
 const lanHost = getLanIp()
+
+if (hasAdbDevice()) {
+  setupAdbReverse(METRO_PORT)
+}
+
 const devHost = getDevServerHost(lanHost)
 const env = devClientEnv()
 
@@ -27,10 +32,6 @@ if (devHost !== lanHost) {
 }
 printDevConnectionHelp(lanHost, METRO_PORT)
 console.log('   升级 Expo / 原生依赖 / 闪退后请先: pnpm dev:mobile:clear\n')
-
-if (hasAdbDevice()) {
-  setupAdbReverse(METRO_PORT)
-}
 
 const expoArgs = ['expo', 'start', '--dev-client', '--lan', '--port', METRO_PORT]
 if (clearCache) {

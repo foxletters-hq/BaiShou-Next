@@ -15,15 +15,17 @@
 
 建议全量重装前在手机上**卸载**旧版 `com.anonymous.mobile`。
 
-### WSL2 + 真机提示 `localhost:8081` 连不上
+### WSL2 + 真机 `Unable to load script`
 
-Metro 跑在 **WSL** 里，而 Windows 上的 `adb reverse` 只会把手机的 `localhost:8081` 转到 **Windows 本机**，通常**到不了** WSL 里的 Metro。
+Metro 跑在 **WSL** 里。手机**无法**直接访问 `192.168.x.x:8081`（该端口在 WSL 内，不经 portproxy 不会暴露到局域网）。
 
-1. 终端里看 `pnpm dev:mobile` 打印的 **局域网地址**（如 `http://192.168.1.59:8081`），手机与电脑同一 Wi‑Fi，在开发菜单里填这个地址（**不要用 localhost**）。
-2. 开 Clash/VPN 时把 `apps/mobile/.env.example` 复制为 `.env`，设置 `REACT_NATIVE_PACKAGER_HOSTNAME=你的局域网 IP`。
-3. 同 Wi‑Fi 仍失败：在**管理员 PowerShell** 做端口转发（脚本启动时会打印 `netsh portproxy` 命令），或在 WSL 内用 usbipd 绑定 USB 后使用 WSL 内的 adb。
+**推荐做法**（WSL 内 adb，与 Metro 同环境）：
 
-USB 调试且非 WSL：可用 `pnpm mobile:connect`（依赖 `adb reverse` + localhost）。
+1. 终端 A：`pnpm dev:mobile`（会自动 `adb reverse` 并用 `localhost:8081` 打开 App）
+2. 若仍报错：另开终端 `pnpm mobile:connect` 重新 reverse 并打开 App
+3. 确保用的是 **WSL 内的 adb**（`which adb` 应在 WSL 路径下），不要用 Windows 侧 adb
+
+无 adb 时：在**管理员 PowerShell** 做端口转发（`pnpm dev:mobile` 启动时会打印 `netsh portproxy` 命令），再用局域网 IP。
 
 ## 首次克隆
 

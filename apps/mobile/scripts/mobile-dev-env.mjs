@@ -182,13 +182,10 @@ export function hasAdbReverse(port = METRO_PORT) {
 
 /**
  * 供 deep link / REACT_NATIVE_PACKAGER_HOSTNAME 使用的 Metro 主机名。
- * 原生 Linux/macOS：adb reverse 时手机用 localhost 经 USB 隧道连 Metro。
- * WSL2：Metro 在 WSL，Windows adb reverse 只到 Windows 本机 → 必须用局域网 IP。
+ * adb reverse 已就绪时手机用 localhost 经隧道连 Metro（WSL 内 adb 与 Metro 同环境，同样适用）。
+ * WSL2 且无 reverse：Windows 侧 adb reverse 到不了 WSL Metro，需局域网 IP 或 portproxy。
  */
 export function getDevServerHost(lanHost = getLanIp(), port = METRO_PORT) {
-  if (isWsl()) {
-    return lanHost
-  }
   if (hasAdbReverse(port)) {
     return 'localhost'
   }
@@ -242,17 +239,20 @@ export function printDevConnectionHelp(lanHost = getLanIp(), port = METRO_PORT) 
   const devHost = getDevServerHost(lanHost, port)
   const wsl = isWsl()
   console.log('\n── 手机如何连上 Metro ──')
-  console.log(`   局域网（同一 Wi‑Fi）: http://${lanHost}:${port}`)
-  if (wsl) {
-    console.log(`   WSL2 自动打开 / 开发菜单请填: http://${lanHost}:${port} （勿用 localhost）`)
-    printWslPortProxyHint(lanHost, port)
-  } else if (adb) {
-    console.log(`   adb reverse（USB/无线调试，自动打开优先）: http://localhost:${port}`)
-    if (devHost === 'localhost') {
-      console.log('   当前自动打开将使用 localhost（adb reverse 已生效）')
+  if (adb && devHost === 'localhost') {
+    console.log(`   adb reverse（推荐，自动打开优先）: http://localhost:${port}`)
+    if (wsl) {
+      console.log('   WSL2：请在 WSL 内使用 adb（与 Metro 同环境），勿用 Windows 侧 adb')
     }
+  } else if (adb) {
+    console.log(`   adb 已连接但 reverse 未就绪，将执行: adb reverse tcp:${port} tcp:${port}`)
   } else {
     console.log('   连接 adb 后会自动 reverse，届时可用 http://localhost:' + port)
+  }
+  console.log(`   局域网（同一 Wi‑Fi，无 adb 时用）: http://${lanHost}:${port}`)
+  if (wsl && devHost !== 'localhost') {
+    console.log(`   WSL2 无 reverse 时开发菜单填: http://${lanHost}:${port} （需 portproxy 或 WSL 内 adb）`)
+    printWslPortProxyHint(lanHost, port)
   }
   if (lanHost.startsWith('198.18.')) {
     console.log('\n   ⚠️  检测到 VPN 假 IP，请复制 apps/mobile/.env.example 为 .env 并填写：')
