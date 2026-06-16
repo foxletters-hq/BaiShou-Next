@@ -26,9 +26,13 @@ export class AssistantManagerService {
       input.avatarPath = normalizeAssistantAvatarPath(raw)
       return
     }
-    if (raw.startsWith('avatars/') || isBuiltinAssistantAvatarPath(raw)) {
+
+    const persisted = normalizePersistedAvatarPath(raw)
+    if (persisted?.startsWith('avatars/') || isBuiltinAssistantAvatarPath(persisted ?? '')) {
+      input.avatarPath = persisted ?? normalizeAssistantAvatarPath(raw)
       return
     }
+
     input.avatarPath = await this.attachmentManager.importAvatar(raw, 'agent')
   }
 

@@ -3,7 +3,8 @@ import * as fsp from 'fs/promises'
 import { app } from 'electron'
 import { getAppDb } from '../db'
 import { SettingsRepository, UserProfileRepository, executeRawSql } from '@baishou/database-desktop'
-import { LegacyImportService, AttachmentManagerService } from '@baishou/core-desktop'
+import { LegacyImportService } from '@baishou/core-desktop'
+import { DesktopAttachmentManagerService } from './desktop-attachment-manager.service'
 import { logger } from '@baishou/shared'
 import { DesktopStoragePathService } from './path.service'
 
@@ -40,7 +41,7 @@ export class LegacyMigrationService {
 
     // Prepare Attachments Manager to handle physical avatar copying
     const pathProvider = new DesktopStoragePathService()
-    const attManager = new AttachmentManagerService(pathProvider)
+    const attManager = new DesktopAttachmentManagerService(pathProvider)
 
     // 2. Process Assistant Avatars
     const legacyAvatarsDir = path.join(sourceDir, 'assistant_avatars')

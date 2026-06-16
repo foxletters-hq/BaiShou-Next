@@ -4,6 +4,7 @@ import {
   DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH,
   DEFAULT_ASSISTANT_KIND,
   normalizeAssistantAvatarPath,
+  normalizePersistedAvatarPath,
   normalizeAssistantKind,
   type AssistantKind
 } from '@baishou/shared'
@@ -126,8 +127,10 @@ export function buildAssistantRepoInput(input: {
     name: input.name,
     emoji: undefined,
     description: input.description,
-    avatarPath:
-      normalizeAssistantAvatarPath(input.avatarPath) || DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH,
+        avatarPath:
+      normalizePersistedAvatarPath(input.avatarPath) ||
+      normalizeAssistantAvatarPath(input.avatarPath) ||
+      DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH,
     systemPrompt: input.systemPrompt,
     isDefault: input.isDefault ?? false,
     isPinned: input.isPinned ?? false,

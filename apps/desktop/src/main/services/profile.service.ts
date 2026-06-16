@@ -1,5 +1,5 @@
 import { dialog } from 'electron'
-import { AttachmentManagerService } from '@baishou/core-desktop'
+import { DesktopAttachmentManagerService } from './desktop-attachment-manager.service'
 import { USER_DEFAULT_AVATAR_SENTINEL } from '@baishou/shared'
 import { DesktopStoragePathService } from './path.service'
 
@@ -9,7 +9,7 @@ import { DesktopStoragePathService } from './path.service'
  */
 export class ProfileService {
   private pathService = new DesktopStoragePathService()
-  private attachmentManager = new AttachmentManagerService(this.pathService)
+  private attachmentManager = new DesktopAttachmentManagerService(this.pathService)
 
   /**
    * 唤起系统文件选择框，让用户选择新头像

@@ -34,6 +34,8 @@ export function normalizeExternalStoragePath(uriOrPath: string): string {
     p = `/storage${p}`
   } else if (p.startsWith('emulated/0')) {
     p = `/storage/${p}`
+  } else if (p.startsWith('storage/emulated/0')) {
+    p = `/${p}`
   }
   return p
 }
@@ -41,8 +43,8 @@ export function normalizeExternalStoragePath(uriOrPath: string): string {
 export function toFileUri(uriOrPath: string): string {
   const path = normalizeExternalStoragePath(uriOrPath)
   if (path.startsWith('/')) return `file://${path}`
-  if (uriOrPath.startsWith('file://')) return uriOrPath
-  return `file://${uriOrPath}`
+  if (uriOrPath.startsWith('content://') || uriOrPath.startsWith('data:')) return uriOrPath
+  return `file:///${path}`
 }
 
 /**

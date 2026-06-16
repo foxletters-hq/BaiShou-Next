@@ -8,8 +8,9 @@ import type {
   IFileSystem,
   IStoragePathService
 } from '@baishou/core-mobile'
-import { isUserAvatarRelativePath } from '@baishou/shared'
+import { isUserAvatarRelativePath, normalizePersistedAvatarPath } from '@baishou/shared'
 import { joinPath, basename } from '@baishou/core-mobile'
+import { compressImageForAvatarImport } from '../utils/mobile-attachment-image-resolver'
 import { importUriToPath, inferImageExtension } from './mobile-uri-import'
 import { toFileUri } from './android-external-fs'
 
@@ -36,14 +37,27 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
     return prefix === 'user_avatar' || prefix.startsWith('user_avatar')
   }
 
-  async importAvatar(absoluteSourcePath: string, prefix = 'agent'): Promise<string> {
+  async importAvatar(
+    absoluteSourcePath: string,
+    prefix = 'agent',
+    sourceByteSize?: number
+  ): Promise<string> {
+    const persisted = normalizePersistedAvatarPath(absoluteSourcePath)
+    if (persisted?.startsWith('avatars/')) {
+      return persisted
+    }
+
     const avatarsDir = this.isUserAvatarPrefix(prefix)
       ? await this.pathService.getUserAvatarsDirectory()
       : await this.pathService.getAvatarsDirectory()
-    const ext = inferImageExtension(absoluteSourcePath)
+    const compressedSource = await compressImageForAvatarImport(
+      absoluteSourcePath,
+      sourceByteSize
+    )
+    const ext = inferImageExtension(compressedSource)
     const name = `${prefix}_${Date.now()}.${ext}`
     const dest = joinPath(avatarsDir, name)
-    await importUriToPath(absoluteSourcePath, dest, this.fileSystem)
+    await importUriToPath(compressedSource, dest, this.fileSystem)
     return `avatars/${name}`
   }
 

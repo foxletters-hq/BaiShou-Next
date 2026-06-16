@@ -30,9 +30,9 @@ import {
   AIProviderConfig,
   DEFAULT_ASSISTANT_KIND,
   DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH,
-  isAssistantCustomAvatar,
   isDefaultAssistantAvatarPath,
   normalizeAssistantAvatarPath,
+  normalizePersistedAvatarPath,
   normalizeAssistantKind,
   getDefaultCompressionSystemPrompt,
   isAssistantAvatarDirectUri,
@@ -157,7 +157,8 @@ export const AssistantEditScreen: React.FC = () => {
           const displayUri = await resolveAssistantAvatarForMobileUi(
             path,
             services.attachmentManager,
-            services.fileSystem
+            services.fileSystem,
+            { preferFileUri: false }
           )
           setPreviewAvatarUri(displayUri ?? null)
         } catch {
@@ -187,7 +188,8 @@ export const AssistantEditScreen: React.FC = () => {
           services.assistantManager,
           services.attachmentManager,
           services.fileSystem,
-          id as string
+          id as string,
+          { preferFileUri: false }
         )
         if (assistant) {
           setExistingAssistant(assistant as Assistant)
@@ -197,11 +199,15 @@ export const AssistantEditScreen: React.FC = () => {
           setProviderId(assistant.providerId)
           setModelId(assistant.modelId)
           setStoredAvatarPath(
-            normalizeAssistantAvatarPath(assistant.avatarPath) ||
+            normalizePersistedAvatarPath(assistant.avatarPath) ||
               DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH
           )
           setPendingImportUri(null)
-          await resolveAvatarPreview(assistant.avatarPath ?? undefined)
+          if (assistant.displayAvatarUri) {
+            setPreviewAvatarUri(assistant.displayAvatarUri)
+          } else {
+            await resolveAvatarPreview(assistant.avatarPath ?? undefined)
+          }
           setContextWindow(assistant.contextWindow ?? -1)
           setCompressTokenThreshold(assistant.compressTokenThreshold ?? 60000)
           setCompressKeepTurns(assistant.compressKeepTurns ?? 3)
@@ -249,12 +255,6 @@ export const AssistantEditScreen: React.FC = () => {
     setStoredAvatarPath(path)
   }, [])
 
-  const handleResetBuiltinAvatar = useCallback(() => {
-    setPendingImportUri(null)
-    setPreviewAvatarUri(null)
-    setStoredAvatarPath(DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH)
-  }, [])
-
   const clearModelBinding = useCallback(() => {
     setProviderId(undefined)
     setModelId(undefined)
@@ -288,7 +288,9 @@ export const AssistantEditScreen: React.FC = () => {
             { preferFileUri: false }
           )
 
-      let finalAvatarPath = normalizeAssistantAvatarPath(storedAvatarPath)
+      let finalAvatarPath =
+        normalizePersistedAvatarPath(storedAvatarPath) ||
+        DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH
       if (pendingImportUri) {
         finalAvatarPath = await services.attachmentManager.importAvatar(pendingImportUri, 'agent')
       }
@@ -363,8 +365,6 @@ export const AssistantEditScreen: React.FC = () => {
     ? t('agent.assistant.create_title', '创建伙伴')
     : t('agent.assistant.edit_title', '编辑伙伴')
 
-  const hasCustomUpload = Boolean(pendingImportUri || isAssistantCustomAvatar(storedAvatarPath))
-
   const canDelete = !isNew && !existingAssistant?.isDefault
 
   if (loading) {
@@ -401,13 +401,6 @@ export const AssistantEditScreen: React.FC = () => {
               onSelectBuiltin={handleSelectBuiltin}
               onPressUpload={() => void handlePickImage()}
             />
-            {hasCustomUpload ? (
-              <TouchableOpacity onPress={handleResetBuiltinAvatar}>
-                <Text style={[styles.textBtn, { color: colors.primary }]}>
-                  {t('agent.assistant.reset_builtin_avatar', '恢复默认内置头像')}
-                </Text>
-              </TouchableOpacity>
-            ) : null}
           </SettingsGroupCard>
 
           <SettingsGroupCard>

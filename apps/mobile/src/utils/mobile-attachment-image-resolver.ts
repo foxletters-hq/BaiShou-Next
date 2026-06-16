@@ -1,7 +1,13 @@
 import type { IFileSystem } from '@baishou/core-mobile'
 import { guessImageMimeType } from '@baishou/ui/native'
-import { toFileUri } from '../services/android-external-fs'
-import { normalizeExternalStoragePath } from './mobile-attachment-display-path.util'
+import {
+  AVATAR_IMPORT_JPEG_QUALITY,
+  AVATAR_IMPORT_MAX_DIMENSION,
+  shouldCompressAvatarFileSize
+} from '@baishou/shared'
+import { toFileUri, externalGetInfoSafe, isExternalStoragePath, normalizeExternalStoragePath } from '../services/android-external-fs'
+import { normalizeImportSourceUri } from '../services/mobile-uri-import'
+import { getInfoAsync } from '../services/mobile-sandbox-fs'
 import {
   ATTACHMENT_PREVIEW_MAX_BYTES,
   ATTACHMENT_THUMB_MAX_BYTES,
@@ -102,4 +108,68 @@ export async function resolveAttachmentImageDataUri(
   const width = purpose === 'preview' ? PREVIEW_RESIZE_WIDTH : THUMB_RESIZE_WIDTH
   const compress = purpose === 'preview' ? 0.85 : 0.72
   return manipulateToDataUri(filePath, width, compress)
+}
+
+/** 导入头像前：仅当原图超过 3MB 时缩放压缩，避免大图卡顿又不过度损失画质 */
+async function resolveAvatarSourceByteSize(sourceUri: string): Promise<number | null> {
+  const absPath = normalizeExternalStoragePath(sourceUri)
+  if (isExternalStoragePath(absPath)) {
+    try {
+      return externalGetInfoSafe(absPath).size
+    } catch {
+      // fall through
+    }
+  }
+
+  const uri = normalizeImportSourceUri(sourceUri)
+
+  try {
+    const info = await getInfoAsync(uri)
+    if (info.exists && !info.isDirectory && typeof info.size === 'number') {
+      return info.size
+    }
+  } catch {
+    // fall through
+  }
+
+  if (sourceUri.startsWith('content://') || uri.startsWith('content://')) {
+    // content:// 无已知大小时不再 fetch 整图测体积（大图会非常慢）；交给 ImagePicker fileSize 或跳过压缩
+    return null
+  }
+
+  return null
+}
+
+export async function compressImageForAvatarImport(
+  sourceUri: string,
+  knownByteSize?: number
+): Promise<string> {
+  const normalizedSource = normalizeImportSourceUri(sourceUri)
+  const byteSize =
+    knownByteSize != null && knownByteSize >= 0
+      ? knownByteSize
+      : await resolveAvatarSourceByteSize(sourceUri)
+  if (byteSize == null || !shouldCompressAvatarFileSize(byteSize)) {
+    return normalizedSource
+  }
+
+  const manipulator = await loadManipulator()
+  if (!manipulator) return normalizedSource
+
+  const { manipulateAsync, SaveFormat } = manipulator
+
+  try {
+    const result = await manipulateAsync(
+      normalizedSource,
+      [{ resize: { width: AVATAR_IMPORT_MAX_DIMENSION } }],
+      {
+        compress: AVATAR_IMPORT_JPEG_QUALITY,
+        format: SaveFormat.JPEG
+      }
+    )
+    return result.uri
+  } catch (e) {
+    console.warn('[AttachmentImage] avatar import compress failed, using original:', e)
+    return normalizedSource
+  }
 }

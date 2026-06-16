@@ -1,5 +1,5 @@
 import { ipcMain, shell, nativeImage } from 'electron'
-import { AttachmentManagerService } from '@baishou/core-desktop'
+import { DesktopAttachmentManagerService } from '../services/desktop-attachment-manager.service'
 import { DesktopStoragePathService } from '../services/path.service'
 import { SessionRepository, connectionManager } from '@baishou/database-desktop'
 import path from 'node:path'
@@ -8,7 +8,7 @@ import { getAttachmentAllowedRoots, isPathUnderAllowedRoots } from './attachment
 
 export function registerAttachmentIPC() {
   const pathService = new DesktopStoragePathService()
-  const attachmentManager = new AttachmentManagerService(pathService)
+  const attachmentManager = new DesktopAttachmentManagerService(pathService)
 
   ipcMain.handle('attachment:listAll', async () => {
     const db = connectionManager.getDb()

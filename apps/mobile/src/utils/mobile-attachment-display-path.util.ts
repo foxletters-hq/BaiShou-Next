@@ -14,6 +14,8 @@ export function normalizeExternalStoragePath(uriOrPath: string): string {
     p = `/storage${p}`
   } else if (p.startsWith('emulated/0')) {
     p = `/storage/${p}`
+  } else if (p.startsWith('storage/emulated/0')) {
+    p = `/${p}`
   }
   return p
 }
@@ -31,8 +33,8 @@ export function isExternalStoragePathPattern(uriOrPath: string): boolean {
 export function toFileUriFromPath(uriOrPath: string): string {
   const path = normalizeExternalStoragePath(uriOrPath)
   if (path.startsWith('/')) return `file://${path}`
-  if (uriOrPath.startsWith('file://')) return uriOrPath
-  return `file://${uriOrPath}`
+  if (uriOrPath.startsWith('content://') || uriOrPath.startsWith('data:')) return uriOrPath
+  return `file:///${path}`
 }
 
 /** Android 外部 BaiShou_Root 路径无法用 file:// 在 RN Image 中展示 */

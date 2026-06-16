@@ -35,7 +35,11 @@ export class AttachmentAvatarOps {
     return [await this.pathProvider.getAvatarsDirectory()]
   }
 
-  async importAvatar(absoluteSourcePath: string, prefix: string = 'avatar'): Promise<string> {
+  async importAvatar(
+    absoluteSourcePath: string,
+    prefix: string = 'avatar',
+    _sourceByteSize?: number
+  ): Promise<string> {
     if (!absoluteSourcePath || absoluteSourcePath.trim() === '') {
       return absoluteSourcePath
     }

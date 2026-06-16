@@ -12,9 +12,9 @@ import {
   SessionSyncService,
   SessionManagerService,
   AssistantFileService,
-  AssistantManagerService,
-  AttachmentManagerService
+  AssistantManagerService
 } from '@baishou/core-desktop'
+import { DesktopAttachmentManagerService } from '../services/desktop-attachment-manager.service'
 import { fileSystem, pathService, getActiveVaultShadowRepo } from './vault.ipc'
 import { settingsManager } from './settings.ipc'
 import {
@@ -68,7 +68,7 @@ export function getAgentManagers() {
 
   const realAssistantRepo = new AssistantRepository(db)
   const assistantFileService = new AssistantFileService(pathService, fileSystem)
-  const attachmentManager = new AttachmentManagerService(pathService)
+  const attachmentManager = new DesktopAttachmentManagerService(pathService)
   const assistantManager = new AssistantManagerService(
     realAssistantRepo,
     assistantFileService,

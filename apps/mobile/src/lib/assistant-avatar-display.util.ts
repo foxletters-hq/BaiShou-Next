@@ -1,5 +1,4 @@
 import type { IAttachmentManager, IFileSystem } from '@baishou/core-mobile'
-import { guessImageMimeType } from '@baishou/ui/native'
 import {
   isBuiltinAssistantAvatarPath,
   isDefaultAssistantAvatarPath,
@@ -9,6 +8,8 @@ import {
 import { Image } from 'react-native'
 import { NATIVE_BUILTIN_ASSISTANT_AVATAR_SOURCES } from '@baishou/ui/native'
 import { isExternalStoragePath, stripFileScheme, toFileUri } from '../services/android-external-fs'
+import type { AttachmentImagePurpose } from '../utils/mobile-attachment-image-cache'
+import { resolveAttachmentImageDataUri } from '../utils/mobile-attachment-image-resolver'
 import { resolveAssistantAvatarDisplayUri } from './assistant-avatar-uri'
 
 const avatarDisplayCache = new Map<string, string>()
@@ -43,19 +44,13 @@ async function toDisplayableAvatarUri(
     return uri.startsWith('file://') ? uri : toFileUri(absPath)
   }
 
-  if (options?.preferFileUri) {
-    return toFileUri(absPath)
-  }
+  const purpose: AttachmentImagePurpose =
+    options?.preferFileUri === false ? 'preview' : 'thumbnail'
+  const dataUri = await resolveAttachmentImageDataUri(fileSystem, absPath, purpose)
+  if (dataUri) return dataUri
 
-  try {
-    const fileName = absPath.split('/').pop() || 'avatar.jpg'
-    const b64 = await fileSystem.readFile(absPath, 'base64')
-    if (!b64) return toFileUri(absPath)
-    return `data:${guessImageMimeType(fileName)};base64,${b64}`
-  } catch (e) {
-    console.warn('[AssistantAvatar] read data URI failed:', e)
-    return toFileUri(absPath)
-  }
+  console.warn('[AssistantAvatar] failed to resolve external avatar, falling back to file://')
+  return toFileUri(absPath)
 }
 
 export function invalidateAssistantAvatarDisplayCache(avatarPath?: string): void {
@@ -71,7 +66,7 @@ export function invalidateAllAvatarDisplayCaches(): void {
 }
 
 export type ResolveAssistantAvatarOptions = {
-  /** 列表场景优先 file://，避免逐个读 base64 阻塞 UI */
+  /** false 时用稍大的预览图；默认缩略图，适合列表/侧边栏 */
   preferFileUri?: boolean
 }
 

@@ -41,7 +41,12 @@ export interface IAttachmentManager {
    * @returns The relative path representing the imported avatar (e.g., 'avatars/agent_123.jpg').
    *          If the source doesn't exist or fails, it should return the original input or null.
    */
-  importAvatar(absoluteSourcePath: string, prefix?: string): Promise<string>
+  importAvatar(
+    absoluteSourcePath: string,
+    prefix?: string,
+    /** 已知原图字节数时可跳过为测大小重复读取 content://（移动端 ImagePicker fileSize） */
+    sourceByteSize?: number
+  ): Promise<string>
 
   /**
    * Converts a Vault-relative avatar path back into an absolute URI for native desktop rendering.

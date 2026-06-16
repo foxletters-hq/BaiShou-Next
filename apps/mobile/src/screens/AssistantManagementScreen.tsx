@@ -49,7 +49,7 @@ export const AssistantManagementScreen: React.FC = () => {
   const toast = useNativeToast()
   const dialog = useDialog()
   const { width } = useWindowDimensions()
-  const { services, dbReady } = useBaishou()
+  const { services, dbReady, vaultRevision } = useBaishou()
   const router = useRouter()
 
   const [assistants, setAssistants] = useState<Assistant[]>([])
@@ -65,7 +65,7 @@ export const AssistantManagementScreen: React.FC = () => {
         services.assistantManager,
         services.attachmentManager,
         services.fileSystem,
-        { preferFileUri: false }
+        { preferFileUri: true }
       )
       setAssistants(assistantList)
     } catch (e) {
@@ -73,7 +73,7 @@ export const AssistantManagementScreen: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }, [dbReady, services])
+  }, [dbReady, services, vaultRevision])
 
   useEffect(() => {
     void loadAssistants()
