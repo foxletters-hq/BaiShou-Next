@@ -220,6 +220,7 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
 
   const handleSend = async (device: DiscoveredDevice) => {
     const deviceKey = getLanDeviceDedupKey(device)
+    markDeviceSeen(device)
     setSendingTo(deviceKey)
     setProgress(0)
     const success = await onSendFile(device.ip, device.port, (p) => setProgress(p))

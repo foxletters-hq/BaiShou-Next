@@ -354,10 +354,46 @@ export class DesktopLanSyncService implements ILanSyncService {
 
       return await new Promise<boolean>((resolve) => {
         let settled = false
+        let responseStatus: number | null = null
+        let bodyFullySent = false
+        let uploadedBytes = 0
+
         const finish = (ok: boolean) => {
           if (settled) return
           settled = true
           resolve(ok)
+        }
+
+        const finishIfAlreadyOk = () => {
+          if (responseStatus === 200) {
+            onProgress?.(100)
+            finish(true)
+            return true
+          }
+          return false
+        }
+
+        const finishIfUploadCompleteAfterAbort = (reason: string) => {
+          if (!bodyFullySent || uploadedBytes < stat.size) return false
+          console.warn(`[DesktopLanSyncService] ${reason}; upload complete, treating as success`)
+          onProgress?.(100)
+          finish(true)
+          return true
+        }
+
+        const handlePostSocketError = (e: unknown) => {
+          if (finishIfAlreadyOk()) return
+          const code = (e as NodeJS.ErrnoException)?.code
+          const message = e instanceof Error ? e.message : String(e)
+          if (
+            code === 'ECONNRESET' ||
+            code === 'EPIPE' ||
+            message.includes('socket hang up')
+          ) {
+            if (finishIfUploadCompleteAfterAbort('Connection closed after upload')) return
+          }
+          console.error('[DesktopLanSyncService] POST error:', e)
+          finish(false)
         }
 
         const req = http.request(
@@ -369,10 +405,12 @@ export class DesktopLanSyncService implements ILanSyncService {
             headers: {
               'Content-Type': 'application/octet-stream',
               'Content-Length': stat.size,
-              'Content-Disposition': `attachment; filename="${path.basename(zipFile!)}"`
+              'Content-Disposition': `attachment; filename="${path.basename(zipFile!)}"`,
+              Connection: 'close'
             }
           },
           (res) => {
+            responseStatus = res.statusCode ?? null
             res.resume()
             res.on('end', () => {
               onProgress?.(100)
@@ -380,7 +418,7 @@ export class DesktopLanSyncService implements ILanSyncService {
             })
             res.on('error', (e) => {
               console.error('[DesktopLanSyncService] response error:', e)
-              finish(false)
+              if (!finishIfAlreadyOk()) finish(false)
             })
           }
         )
@@ -388,13 +426,21 @@ export class DesktopLanSyncService implements ILanSyncService {
         req.setTimeout(15 * 60 * 1000, () => {
           console.error('[DesktopLanSyncService] POST timed out waiting for device response')
           req.destroy()
-          finish(false)
+          if (!finishIfAlreadyOk() && !finishIfUploadCompleteAfterAbort('POST timed out after upload')) {
+            finish(false)
+          }
         })
 
-        req.on('error', (e) => {
-          console.error('[DesktopLanSyncService] POST error:', e)
-          // 对端已返回 200 后 Connection 关闭可能触发 ECONNRESET，忽略后续 socket 错误
-          finish(false)
+        req.on('finish', () => {
+          bodyFullySent = true
+        })
+
+        req.on('error', handlePostSocketError)
+
+        req.on('close', () => {
+          if (settled) return
+          if (finishIfAlreadyOk()) return
+          finishIfUploadCompleteAfterAbort('Connection closed without HTTP response')
         })
 
         readStream.on('error', (e) => {
@@ -402,14 +448,13 @@ export class DesktopLanSyncService implements ILanSyncService {
           finish(false)
         })
 
-        if (onProgress) {
-          let uploaded = 0
-          readStream.on('data', (chunk) => {
-            uploaded += chunk.length
-            const pct = Math.min(99, Math.round((uploaded / stat.size) * 100))
+        readStream.on('data', (chunk: Buffer | string) => {
+          uploadedBytes += Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(chunk)
+          if (onProgress) {
+            const pct = Math.min(99, Math.round((uploadedBytes / stat.size) * 100))
             onProgress(pct)
-          })
-        }
+          }
+        })
 
         readStream.pipe(req)
       })
