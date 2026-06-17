@@ -19,6 +19,11 @@ export function usesSyncTransaction(db: unknown): boolean {
 
 let expoAgentDbMutex: Promise<void> = Promise.resolve()
 
+/** 等待 Agent 主库上已排队的 Drizzle / runAsync 访问全部结束 */
+export function waitForExpoAgentDatabaseIdle(): Promise<void> {
+  return expoAgentDbMutex
+}
+
 /** 串行化 Agent 主库上的所有 Drizzle / runAsync 访问（仅 expo-sync） */
 export function withExpoAgentDatabaseLock<T>(db: unknown, fn: () => Promise<T>): Promise<T> {
   if (detectSqliteDriver(db) !== 'expo-sync') {

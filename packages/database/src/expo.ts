@@ -34,7 +34,7 @@ import { ExpoSqliteDriver, ExpoSqliteDatabase } from './drivers/expo-sqlite.driv
 import { loadExpoSqliteVecExtension } from './drivers/expo-sqlite-vec.loader'
 import { MigrationService } from './migration.service'
 import { EMBEDDED_AGENT_MIGRATIONS } from './embedded-agent-migrations'
-import { withExpoAgentDatabaseLock } from './expo-agent-db.lock'
+import { withExpoAgentDatabaseLock, waitForExpoAgentDatabaseIdle } from './expo-agent-db.lock'
 import { logger } from '@baishou/shared'
 
 export type ExpoDatabaseInstallResult = {
@@ -109,4 +109,13 @@ export async function ensureExpoAgentDatabaseInstalled(
     })()
   }
   return expoAgentDatabaseInstall
+}
+
+/**
+ * 解除 JS 侧 Agent 主库单例引用，供全量归档恢复后重新 open。
+ * 不调用 closeAsync：Android expo-sqlite 在 sqlite3_close 会原生崩溃（与影子库 disconnect 同理）。
+ */
+export async function releaseExpoAgentDatabaseInstall(): Promise<void> {
+  await waitForExpoAgentDatabaseIdle()
+  expoAgentDatabaseInstall = null
 }
