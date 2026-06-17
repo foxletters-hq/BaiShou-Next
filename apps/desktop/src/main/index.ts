@@ -34,7 +34,6 @@ import { getAppDb } from './db'
 import { HotkeyService } from './services/hotkey.service'
 import { setHotkeyService } from './ipc/settings.ipc'
 import { logger } from '@baishou/shared'
-import * as fs from 'fs/promises'
 
 let mainWindow: BrowserWindow | null = null
 let isBootstrapping = false
@@ -242,30 +241,16 @@ app.whenReady().then(async () => {
     win?.close()
   })
 
-  // 引导检查
+  // 引导检查 + Flutter 旧版自动迁移
   const settingsPath = join(app.getPath('userData'), 'baishou_settings.json')
-  let needsOnboarding = true
-  let customStorageRoot = ''
-  try {
-    const data = await fs.readFile(settingsPath, 'utf-8')
-    const settings = JSON.parse(data)
-    if (settings.custom_storage_root) {
-      customStorageRoot = settings.custom_storage_root
-      needsOnboarding = false
-    }
-  } catch {}
+  const { resolveDesktopStorageBootstrap } =
+    await import('./services/desktop-legacy-bootstrap.service')
+  const bootstrap = await resolveDesktopStorageBootstrap(settingsPath)
+  let needsOnboarding = bootstrap.needsOnboarding
+  let customStorageRoot = bootstrap.storageRoot
 
-  if (needsOnboarding) {
-    try {
-      const { resolveLegacyRootCandidates } =
-        await import('./services/flutter-legacy-paths.service')
-      const legacyCandidates = await resolveLegacyRootCandidates()
-      if (legacyCandidates.length > 0) {
-        customStorageRoot = legacyCandidates[0]!
-      }
-    } catch (e: any) {
-      logger.warn('[Bootstrapper] Legacy pre-check failed:', e)
-    }
+  if (bootstrap.migrated) {
+    logger.info('[Bootstrapper] Local Auto-Migration Completed! Skipped Onboarding.')
   }
 
   // ── 核心变更：在确定存储路径后，再初始化全局 Agent DB ──
@@ -275,62 +260,8 @@ app.whenReady().then(async () => {
   await installDatabaseSchema(appDb)
 
   // ======================================
-  // 5. 自动升级探测 (Legacy Migration Check)
-  // 如果当前是全新安装，尝试探查本地默认目录下是否遗留旧版白守的数据库
+  // 5. 自动升级探测已在 resolveDesktopStorageBootstrap 中完成
   // ======================================
-  if (needsOnboarding) {
-    try {
-      const { resolveLegacyRootCandidates } =
-        await import('./services/flutter-legacy-paths.service')
-      const { LegacyMigrationService } = await import('./services/legacy-migration.service')
-      const { getDesktopInstallInstanceId } = await import('./services/install-instance.service')
-      const { isMigrationCompleted } = await import('@baishou/core/shared')
-      const { createNodeFileSystem } = await import('@baishou/core-desktop')
-      const legacyService = new LegacyMigrationService()
-      const installInstanceId = await getDesktopInstallInstanceId()
-      const fileSystem = createNodeFileSystem()
-
-      const legacyCandidates = await resolveLegacyRootCandidates()
-      const legacyRoot = legacyCandidates[0]
-      if (legacyRoot) {
-        const alreadyMigrated = await isMigrationCompleted(
-          fileSystem,
-          legacyRoot,
-          installInstanceId
-        )
-
-        if (!alreadyMigrated) {
-          logger.info('[Bootstrapper] Discovered Local Legacy Installation at', legacyRoot)
-          await legacyService.migrate(legacyRoot, legacyRoot, {
-            source: 'flutter_desktop',
-            installInstanceId
-          })
-
-          const { resetAppDb } = await import('./db')
-          resetAppDb()
-          const migratedDb = getAppDb(legacyRoot)
-          connectionManager.setDb(migratedDb)
-          await installDatabaseSchema(migratedDb)
-        } else {
-          logger.info(
-            '[Bootstrapper] Legacy data already migrated for this install; skipping onboarding.'
-          )
-        }
-
-        await fs.writeFile(
-          settingsPath,
-          JSON.stringify({ custom_storage_root: legacyRoot }),
-          'utf-8'
-        )
-        customStorageRoot = legacyRoot
-        needsOnboarding = false
-
-        logger.info('[Bootstrapper] Local Auto-Migration Completed! Skipped Onboarding.')
-      }
-    } catch (e: any) {
-      logger.error('[Bootstrapper] Local Auto-Migration Failed. Falling back to Onboarding:', e)
-    }
-  }
 
   // 1. 注册引导 IPC
   registerOnboardingIPC(() => {

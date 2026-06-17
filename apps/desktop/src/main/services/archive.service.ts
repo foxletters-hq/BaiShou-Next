@@ -5,7 +5,8 @@ import * as fs from 'fs'
 import * as fsp from 'fs/promises'
 import extract from 'extract-zip'
 
-import { IArchiveService, ImportResult, VaultService } from '@baishou/core-desktop'
+import { IArchiveService, ImportResult, VaultService, createNodeFileSystem } from '@baishou/core-desktop'
+import { resolveArchiveExtractRoot } from '@baishou/core/shared'
 import {
   connectionManager,
   shadowConnectionManager,
@@ -26,6 +27,8 @@ function broadcastArchiveImportState(importing: boolean): void {
 }
 
 export class DesktopArchiveService implements IArchiveService {
+  private readonly fileSystem = createNodeFileSystem()
+
   constructor(
     private pathService: DesktopStoragePathService,
     private vaultService: VaultService
@@ -162,7 +165,12 @@ export class DesktopArchiveService implements IArchiveService {
       throw e
     }
 
-    const manifestPath = path.join(tempExtractDir, 'manifest.json')
+    const archiveRoot = await resolveArchiveExtractRoot(this.fileSystem, tempExtractDir)
+    if (archiveRoot !== tempExtractDir) {
+      logger.info('[ArchiveService] 检测到嵌套备份目录，已自动下钻至:', archiveRoot)
+    }
+
+    const manifestPath = path.join(archiveRoot, 'manifest.json')
     let manifest: any = null
     if (fs.existsSync(manifestPath)) {
       try {
@@ -179,7 +187,7 @@ export class DesktopArchiveService implements IArchiveService {
     migrator.validateManifest(manifest, CURRENT_FORMAT_VERSION)
 
     const rootDir = await this.pathService.getRootDirectory()
-    const migrated = await migrator.migrateLegacyIfNecessary(manifest, tempExtractDir, rootDir)
+    const migrated = await migrator.migrateLegacyIfNecessary(manifest, archiveRoot, rootDir)
 
     if (!migrated) {
       logger.info('ArchiveService: Detected Next Architecture. Restoring Standard Data...')
@@ -213,11 +221,11 @@ export class DesktopArchiveService implements IArchiveService {
             ) {
               continue
             }
-            if (entry.name === 'manifest.json' && src === tempExtractDir) {
+            if (entry.name === 'manifest.json' && src === archiveRoot) {
               await fsp.unlink(srcFile).catch(() => {})
               continue
             }
-            if (entry.name === 'user-data' && src === tempExtractDir) {
+            if (entry.name === 'user-data' && src === archiveRoot) {
               await fsp.rm(srcFile, { recursive: true, force: true }).catch(() => {})
               continue
             }
@@ -226,9 +234,9 @@ export class DesktopArchiveService implements IArchiveService {
           }
         }
       }
-      await moveAll(tempExtractDir, rootDir)
+      await moveAll(archiveRoot, rootDir)
 
-      await this.restoreUserAvatarsFromExtract(tempExtractDir)
+      await this.restoreUserAvatarsFromExtract(archiveRoot)
 
       try {
         const registryFile = path.join(rootDir, 'vault_registry.json')

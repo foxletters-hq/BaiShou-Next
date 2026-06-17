@@ -134,7 +134,7 @@ export const OnboardingScreen: React.FC = () => {
     setIsFinishing(true)
     try {
       if (selectedPath.trim()) {
-        await window.api.onboarding.setDirectory(selectedPath)
+        await window.api.onboarding.setDirectory(selectedPath.trim())
       }
       await window.api.ensureDefaultLatteAssistant(selectedLanguage)
       await window.api.onboarding.finish()
@@ -172,15 +172,9 @@ export const OnboardingScreen: React.FC = () => {
     const path = await window.api.onboarding.pickDirectory()
     if (!path) return
 
-    const separator = path.includes('\\') ? '\\' : '/'
-    const dirSuffix = 'baishou-data'
-    const finalPath = path.endsWith(separator)
-      ? `${path}${dirSuffix}`
-      : `${path}${separator}${dirSuffix}`
-
-    setSelectedPath(finalPath)
+    setSelectedPath(path)
     if (!isPreview) {
-      await window.api.onboarding.setDirectory(finalPath)
+      await window.api.onboarding.setDirectory(path)
     }
   }
 

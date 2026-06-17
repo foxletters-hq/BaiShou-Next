@@ -1,6 +1,11 @@
 import * as fsp from 'fs/promises'
 import { getAppDb, resolveAgentDbPath } from '../db'
-import { SettingsRepository, UserProfileRepository, executeRawSql } from '@baishou/database-desktop'
+import {
+  SettingsRepository,
+  UserProfileRepository,
+  executeRawSql,
+  installDatabaseSchema
+} from '@baishou/database-desktop'
 import { LegacyImportService } from '@baishou/core-desktop'
 import {
   discoverVaultNames,
@@ -40,9 +45,12 @@ export class LegacyMigrationService {
     }
 
     logger.info(`[LegacyMigration] Start migration from ${sourceDir} to ${targetWorkspaceDir}`)
-    const client = (getAppDb(targetWorkspaceDir) as { session?: { client?: unknown } })?.session
-      ?.client
+    const db = getAppDb(targetWorkspaceDir)
+    const client = (db as { session?: { client?: unknown } })?.session?.client
     if (!client) throw new Error('Database client not initialized')
+
+    // ZIP 导入等场景会在全新 staging 目录建库，必须先落 schema 再合并 legacy SQLite
+    await installDatabaseSchema(db)
 
     const settingsRepo = new SettingsRepository(getAppDb(targetWorkspaceDir))
     const profileRepo = new UserProfileRepository(getAppDb(targetWorkspaceDir))
