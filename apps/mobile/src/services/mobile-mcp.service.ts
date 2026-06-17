@@ -1,4 +1,9 @@
-import { ToolRegistry, type ToolContext, buildMcpInstructions, formatMcpToolCallResult } from '@baishou/ai'
+import {
+  ToolRegistry,
+  type ToolContext,
+  buildMcpInstructions,
+  formatMcpToolCallResult
+} from '@baishou/ai'
 import type { SettingsManagerService } from '@baishou/core-mobile'
 import type { McpServerConfig } from '@baishou/shared'
 import { isMcpRequestAuthorized, logger } from '@baishou/shared'

@@ -144,7 +144,9 @@ export function registerSettingsAppIPC() {
 
   ipcMain.handle('settings:get-legacy-upgrade-notice-state', async () => {
     const pending = await settingsManager.get<boolean>(LEGACY_UPGRADE_RAG_PENDING_KEY as never)
-    const shownCount = await settingsManager.get<number>(LEGACY_UPGRADE_RAG_NOTICE_COUNT_KEY as never)
+    const shownCount = await settingsManager.get<number>(
+      LEGACY_UPGRADE_RAG_NOTICE_COUNT_KEY as never
+    )
     return {
       pending: pending === true,
       shownCount: typeof shownCount === 'number' ? shownCount : 0

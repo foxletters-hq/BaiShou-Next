@@ -9,5 +9,7 @@ export async function ensureLanDiscoveryPermissions(): Promise<boolean> {
       : [PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION]
 
   const results = await PermissionsAndroid.requestMultiple(permissions)
-  return permissions.every((permission) => results[permission] === PermissionsAndroid.RESULTS.GRANTED)
+  return permissions.every(
+    (permission) => results[permission] === PermissionsAndroid.RESULTS.GRANTED
+  )
 }

@@ -56,13 +56,18 @@ describe('legacy-migration.shared', () => {
 
   it('writes next vault registry with remapped paths', async () => {
     const targetRoot = path.join(tempDir, 'target')
-    const vaults = await writeNextVaultRegistry(fileSystem, targetRoot, ['Personal', 'Work'], [
-      {
-        name: 'Personal',
-        createdAt: '2024-01-01T00:00:00.000Z',
-        lastAccessedAt: '2024-02-01T00:00:00.000Z'
-      }
-    ])
+    const vaults = await writeNextVaultRegistry(
+      fileSystem,
+      targetRoot,
+      ['Personal', 'Work'],
+      [
+        {
+          name: 'Personal',
+          createdAt: '2024-01-01T00:00:00.000Z',
+          lastAccessedAt: '2024-02-01T00:00:00.000Z'
+        }
+      ]
+    )
 
     expect(vaults).toHaveLength(2)
     const expectedPersonalPath = path.join(targetRoot, 'Personal')
@@ -126,7 +131,10 @@ describe('legacy-migration.shared', () => {
       '/storage/emulated/0/a.db',
       '/storage/emulated/0/b.db'
     ]
-    expect(dedupeSqlitePaths(paths)).toEqual(['/storage/emulated/0/a.db', '/storage/emulated/0/b.db'])
+    expect(dedupeSqlitePaths(paths)).toEqual([
+      '/storage/emulated/0/a.db',
+      '/storage/emulated/0/b.db'
+    ])
   })
 
   it('resolves agent db path under workspace root', () => {

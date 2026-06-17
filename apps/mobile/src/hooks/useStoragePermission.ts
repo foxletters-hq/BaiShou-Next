@@ -39,39 +39,42 @@ export function useStoragePermission() {
     }
   }, [])
 
-  const attemptMount = useCallback(async (forcePermitted = false): Promise<boolean> => {
-    if (Platform.OS !== 'android') return true
-    if (
-      !dbReady ||
-      (!forcePermitted && granted !== true) ||
-      storageReady ||
-      mountInFlightRef.current
-    ) {
-      return storageReady
-    }
-
-    mountInFlightRef.current = true
-    setMountStatus('mounting')
-    if (slowTimerRef.current) {
-      clearTimeout(slowTimerRef.current)
-    }
-    slowTimerRef.current = setTimeout(() => {
-      if (mountInFlightRef.current) {
-        setMountStatus('slow')
+  const attemptMount = useCallback(
+    async (forcePermitted = false): Promise<boolean> => {
+      if (Platform.OS !== 'android') return true
+      if (
+        !dbReady ||
+        (!forcePermitted && granted !== true) ||
+        storageReady ||
+        mountInFlightRef.current
+      ) {
+        return storageReady
       }
-    }, STORAGE_MOUNT_SLOW_MS)
-    try {
-      const ok = await retryStorageSetup()
-      setMountStatus(ok ? 'idle' : 'failed')
-      return ok
-    } finally {
+
+      mountInFlightRef.current = true
+      setMountStatus('mounting')
       if (slowTimerRef.current) {
         clearTimeout(slowTimerRef.current)
-        slowTimerRef.current = null
       }
-      mountInFlightRef.current = false
-    }
-  }, [dbReady, granted, retryStorageSetup, storageReady])
+      slowTimerRef.current = setTimeout(() => {
+        if (mountInFlightRef.current) {
+          setMountStatus('slow')
+        }
+      }, STORAGE_MOUNT_SLOW_MS)
+      try {
+        const ok = await retryStorageSetup()
+        setMountStatus(ok ? 'idle' : 'failed')
+        return ok
+      } finally {
+        if (slowTimerRef.current) {
+          clearTimeout(slowTimerRef.current)
+          slowTimerRef.current = null
+        }
+        mountInFlightRef.current = false
+      }
+    },
+    [dbReady, granted, retryStorageSetup, storageReady]
+  )
 
   useEffect(() => {
     void refresh()

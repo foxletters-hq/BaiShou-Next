@@ -20,8 +20,7 @@ export function useDiaryEmbedFailureToast(): void {
         const settingsManager = services?.settingsManager
         if (!settingsManager) return
 
-        const ragConfig =
-          (await settingsManager.get<{ ragEnabled?: boolean }>('rag_config')) || {}
+        const ragConfig = (await settingsManager.get<{ ragEnabled?: boolean }>('rag_config')) || {}
         if (!isRagMemoryEnabled({ ragEnabled: ragConfig.ragEnabled ?? true })) return
 
         const now = Date.now()

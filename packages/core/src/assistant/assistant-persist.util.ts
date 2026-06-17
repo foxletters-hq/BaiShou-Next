@@ -16,7 +16,9 @@ function pickDefined<T extends Record<string, unknown>>(input: T): Partial<T> {
   return out
 }
 
-export function pickDefinedAssistantUpdate<T extends Record<string, unknown>>(input: T): Partial<T> {
+export function pickDefinedAssistantUpdate<T extends Record<string, unknown>>(
+  input: T
+): Partial<T> {
   return pickDefined(input)
 }
 
@@ -24,9 +26,7 @@ export function toPersistedAssistantAvatarPath(
   avatarPath: string | null | undefined
 ): string | null | undefined {
   if (avatarPath == null) return avatarPath
-  return (
-    normalizePersistedAvatarPath(avatarPath) ?? normalizeAssistantAvatarPath(avatarPath)
-  )
+  return normalizePersistedAvatarPath(avatarPath) ?? normalizeAssistantAvatarPath(avatarPath)
 }
 
 export function toAssistantUpdatedAtMs(value: unknown): number | null {

@@ -23,8 +23,14 @@ const SPLASH_STYLE_ITEMS = `    <item name="windowSplashScreenAnimatedIcon">@dra
 function patchSplashStyles(styles) {
   let next = styles
   next = next.replace(/\s*<item name="windowSplashScreenAnimatedIcon">[^<]*<\/item>\s*/g, '\n')
-  next = next.replace(/\s*<item name="windowSplashScreenIconBackgroundColor">[^<]*<\/item>\s*/g, '\n')
-  next = next.replace(/\s*<item name="android:windowSplashScreenBehavior"[^>]*>[^<]*<\/item>\s*/g, '\n')
+  next = next.replace(
+    /\s*<item name="windowSplashScreenIconBackgroundColor">[^<]*<\/item>\s*/g,
+    '\n'
+  )
+  next = next.replace(
+    /\s*<item name="android:windowSplashScreenBehavior"[^>]*>[^<]*<\/item>\s*/g,
+    '\n'
+  )
 
   if (next.includes('windowSplashScreenBackground')) {
     next = next.replace(

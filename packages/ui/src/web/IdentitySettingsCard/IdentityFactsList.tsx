@@ -39,9 +39,7 @@ export const IdentityFactsList: React.FC<IdentityFactsListProps> = ({
       {Object.keys(currentFacts).length === 0 ? (
         <div className={styles.emptyContainer}>
           <MdOutlinePersonAddAlt1 size={32} />
-          <span>
-            {t('settings.identity_card_empty_hint')}
-          </span>
+          <span>{t('settings.identity_card_empty_hint')}</span>
         </div>
       ) : (
         <div className={styles.factsList}>

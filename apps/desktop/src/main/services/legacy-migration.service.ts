@@ -33,7 +33,9 @@ export class LegacyMigrationService {
       installInstanceId &&
       (await isMigrationCompleted(this.fileSystem, targetWorkspaceDir, installInstanceId))
     ) {
-      logger.info('[LegacyMigration] Migration already completed for this install instance, skipping.')
+      logger.info(
+        '[LegacyMigration] Migration already completed for this install instance, skipping.'
+      )
       return false
     }
 
@@ -57,7 +59,9 @@ export class LegacyMigrationService {
       if (flutterPrefsConfig) {
         try {
           await legacyImporter.restoreConfig(flutterPrefsConfig)
-          logger.info('[LegacyMigration] Restored Flutter SharedPreferences via LegacyImportService')
+          logger.info(
+            '[LegacyMigration] Restored Flutter SharedPreferences via LegacyImportService'
+          )
         } catch (e) {
           logger.error('[LegacyMigration] Failed to migrate Flutter SharedPreferences:', e as Error)
         }

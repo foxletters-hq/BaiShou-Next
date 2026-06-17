@@ -17,7 +17,11 @@ const releaseDir = join(root, 'release')
 
 function runStep(label, cmd, args) {
   console.log(`\n${'═'.repeat(60)}\n▶ ${label}\n${'═'.repeat(60)}\n`)
-  const result = spawnSync(cmd, args, { cwd: root, stdio: 'inherit', shell: process.platform === 'win32' })
+  const result = spawnSync(cmd, args, {
+    cwd: root,
+    stdio: 'inherit',
+    shell: process.platform === 'win32'
+  })
   return result.status === 0
 }
 

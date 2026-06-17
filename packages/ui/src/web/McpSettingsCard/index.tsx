@@ -122,9 +122,7 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
       </div>
       {config.mcpAuthToken ? (
         <div className={styles.endpointRow}>
-          <span className={styles.endpointLabel}>
-            {t('settings.mcp_auth_token', '访问令牌')}
-          </span>
+          <span className={styles.endpointLabel}>{t('settings.mcp_auth_token', '访问令牌')}</span>
           <span className={styles.endpointUrl}>{config.mcpAuthToken}</span>
           <button
             type="button"
@@ -177,7 +175,11 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
           <span className={`settings-list-tile-title ${styles.titleRow}`}>
             {t('settings.mcp_title', 'MCP Server')}
             <span {...settingsInlineHelpHostProps}>
-              <McpHelpButton size={16} mcpPort={config.mcpPort} mcpAuthToken={config.mcpAuthToken} />
+              <McpHelpButton
+                size={16}
+                mcpPort={config.mcpPort}
+                mcpAuthToken={config.mcpAuthToken}
+              />
             </span>
             {config.mcpEnabled && <span className={styles.statusIndicator} aria-hidden />}
           </span>

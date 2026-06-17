@@ -82,13 +82,7 @@ describe('assertBidirectionalDeletePropagationAllowed', () => {
     const decisions = Array.from({ length: 9 }, (_, i) => deleteRemoteDecision(`file-${i + 1}.md`))
 
     expect(() =>
-      assertBidirectionalDeletePropagationAllowed(
-        decisions,
-        local,
-        remote,
-        ancestor,
-        previousLocal
-      )
+      assertBidirectionalDeletePropagationAllowed(decisions, local, remote, ancestor, previousLocal)
     ).toThrow(SyncDeletePropagationBlockedError)
   })
 })

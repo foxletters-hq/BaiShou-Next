@@ -76,7 +76,9 @@ export function resolveDiscoveredLanIpv4(options: {
   const fromTxt = parseLanTxtIpv4(options.txt)
   if (fromTxt) return fromTxt
 
-  const fromAddresses = pickBestLanIpv4((options.addresses ?? []).filter((addr) => !addr.includes(':')))
+  const fromAddresses = pickBestLanIpv4(
+    (options.addresses ?? []).filter((addr) => !addr.includes(':'))
+  )
   if (fromAddresses) return fromAddresses
 
   const host = String(options.host ?? '').trim()

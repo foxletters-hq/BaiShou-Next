@@ -108,7 +108,11 @@ export const OnboardingStorageSlide: React.FC<OnboardingStorageSlideProps> = ({
         <View style={styles.failedBlock}>
           <Text style={styles.failedText}>{t('storage.external_access_error')}</Text>
           {onRetryMount ? (
-            <TouchableOpacity style={styles.retryButton} onPress={onRetryMount} activeOpacity={0.85}>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={onRetryMount}
+              activeOpacity={0.85}
+            >
               <Text style={styles.retryButtonText}>{t('common.retry', '重试')}</Text>
             </TouchableOpacity>
           ) : null}

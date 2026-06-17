@@ -3,7 +3,12 @@ import { useTranslation } from 'react-i18next'
 import { Outlet, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { AgentSidebar } from './components/AgentSidebar'
 import type { AgentAssistant } from './components/AgentSidebar'
-import { useAssistantStore, useSettingsStore, useUserProfileStore, useAgentNavigationStore } from '@baishou/store'
+import {
+  useAssistantStore,
+  useSettingsStore,
+  useUserProfileStore,
+  useAgentNavigationStore
+} from '@baishou/store'
 import { useToast, AssistantPickerSheet, Modal, AssistantEditPage, useDialog } from '@baishou/ui'
 import styles from './AgentLayout.module.css'
 import { LATTE_ASSISTANT_NAME, buildAgentChatNavigationPath } from '@baishou/shared'
@@ -116,10 +121,7 @@ export const AgentLayout: React.FC = () => {
     void (async () => {
       if (saved.sessionId && typeof window !== 'undefined' && window.electron) {
         try {
-          const doc = await window.electron.ipcRenderer.invoke(
-            'agent:get-session',
-            saved.sessionId
-          )
+          const doc = await window.electron.ipcRenderer.invoke('agent:get-session', saved.sessionId)
           if (!doc) {
             navigate(
               saved.assistantId
@@ -192,8 +194,7 @@ export const AgentLayout: React.FC = () => {
     const onVaultResyncComplete = (event: { type?: string }) => {
       if (event?.type !== 'vault-resync-complete') return
 
-      const previousAssistantId =
-        urlAssistantId || resolvedAssistantIdRef.current || undefined
+      const previousAssistantId = urlAssistantId || resolvedAssistantIdRef.current || undefined
 
       void loadProfile()
       void fetchAssistants().then(() => {
@@ -201,8 +202,7 @@ export const AgentLayout: React.FC = () => {
         const stillExists =
           previousAssistantId &&
           store.assistants.some((a) => String(a.id) === String(previousAssistantId))
-        const fallback =
-          store.assistants.find((a: any) => a.isDefault) || store.assistants[0]
+        const fallback = store.assistants.find((a: any) => a.isDefault) || store.assistants[0]
         const astId = stillExists
           ? String(previousAssistantId)
           : fallback?.id != null

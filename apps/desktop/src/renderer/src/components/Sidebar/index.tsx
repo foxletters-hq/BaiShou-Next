@@ -92,10 +92,7 @@ export const Sidebar: React.FC = () => {
       void loadProfile()
     }
 
-    const removeListener = window.electron.ipcRenderer.on(
-      'diary:sync-event',
-      onVaultResyncComplete
-    )
+    const removeListener = window.electron.ipcRenderer.on('diary:sync-event', onVaultResyncComplete)
     return () => removeListener()
   }, [loadProfile])
 

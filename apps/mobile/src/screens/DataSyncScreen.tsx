@@ -846,150 +846,152 @@ export const DataSyncScreen: React.FC = () => {
                     ]}
                   >
                     {cloudRecords.map((record, index) => (
-                    <View
-                      key={record.filename}
-                      style={[
-                        styles.recordItem,
-                        {
-                          backgroundColor: colors.bgSurface,
-                          borderBottomColor: colors.borderSubtle,
-                          borderBottomWidth:
-                            index < cloudRecords.length - 1 ? StyleSheet.hairlineWidth : 0
-                        },
-                        selectedRecords.has(record.filename) && {
-                          borderColor: colors.primary,
-                          borderWidth: 2
-                        }
-                      ]}
-                    >
-                      {isMultiSelectMode && (
-                        <TouchableOpacity
-                          style={[
-                            styles.checkbox,
-                            {
-                              borderColor: colors.borderSubtle,
-                              backgroundColor: selectedRecords.has(record.filename)
-                                ? colors.primary
-                                : 'transparent'
-                            }
-                          ]}
-                          onPress={() => toggleRecordSelection(record.filename)}
-                        >
-                          {selectedRecords.has(record.filename) && (
-                            <Text style={[styles.checkmark, { color: colors.textOnPrimary }]}>
-                              ✓
-                            </Text>
-                          )}
-                        </TouchableOpacity>
-                      )}
+                      <View
+                        key={record.filename}
+                        style={[
+                          styles.recordItem,
+                          {
+                            backgroundColor: colors.bgSurface,
+                            borderBottomColor: colors.borderSubtle,
+                            borderBottomWidth:
+                              index < cloudRecords.length - 1 ? StyleSheet.hairlineWidth : 0
+                          },
+                          selectedRecords.has(record.filename) && {
+                            borderColor: colors.primary,
+                            borderWidth: 2
+                          }
+                        ]}
+                      >
+                        {isMultiSelectMode && (
+                          <TouchableOpacity
+                            style={[
+                              styles.checkbox,
+                              {
+                                borderColor: colors.borderSubtle,
+                                backgroundColor: selectedRecords.has(record.filename)
+                                  ? colors.primary
+                                  : 'transparent'
+                              }
+                            ]}
+                            onPress={() => toggleRecordSelection(record.filename)}
+                          >
+                            {selectedRecords.has(record.filename) && (
+                              <Text style={[styles.checkmark, { color: colors.textOnPrimary }]}>
+                                ✓
+                              </Text>
+                            )}
+                          </TouchableOpacity>
+                        )}
 
-                      {renamingRecord === record.filename ? (
-                        <View style={styles.renameContainer}>
-                          <Input
-                            value={newRecordName}
-                            onChangeText={setNewRecordName}
-                            placeholder={t('data_sync.new_name_placeholder')}
-                            autoFocus
-                          />
-                          <TouchableOpacity
-                            style={[styles.renameConfirm, { backgroundColor: colors.primary }]}
-                            onPress={() => void handleRenameRecord(record.filename)}
-                          >
-                            <Text
-                              style={[styles.renameConfirmText, { color: colors.textOnPrimary }]}
+                        {renamingRecord === record.filename ? (
+                          <View style={styles.renameContainer}>
+                            <Input
+                              value={newRecordName}
+                              onChangeText={setNewRecordName}
+                              placeholder={t('data_sync.new_name_placeholder')}
+                              autoFocus
+                            />
+                            <TouchableOpacity
+                              style={[styles.renameConfirm, { backgroundColor: colors.primary }]}
+                              onPress={() => void handleRenameRecord(record.filename)}
                             >
-                              {t('common.confirm')}
-                            </Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={styles.renameCancel}
-                            onPress={() => {
-                              setRenamingRecord(null)
-                              setNewRecordName('')
-                            }}
-                          >
-                            <Text
-                              style={[styles.renameCancelText, { color: colors.textSecondary }]}
+                              <Text
+                                style={[styles.renameConfirmText, { color: colors.textOnPrimary }]}
+                              >
+                                {t('common.confirm')}
+                              </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.renameCancel}
+                              onPress={() => {
+                                setRenamingRecord(null)
+                                setNewRecordName('')
+                              }}
                             >
-                              {t('common.cancel')}
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
-                      ) : (
-                        <>
-                          <MaterialIcons
-                            name="description"
-                            size={22}
-                            color={colors.primary}
-                            style={{ marginRight: 10, opacity: 0.85 }}
-                          />
-                          <View style={styles.recordInfo}>
-                            <Text
-                              style={[styles.recordName, { color: colors.textPrimary }]}
-                              numberOfLines={1}
-                            >
-                              {record.filename}
-                              {!record.managed && (
-                                <Text style={{ color: colors.primary, fontSize: 11 }}>
-                                  {' '}
-                                  {t('cloud.unmanaged_label', '手动')}
-                                </Text>
-                              )}
-                            </Text>
-                            <Text style={[styles.recordMeta, { color: colors.textSecondary }]}>
-                              {new Date(record.lastModified).toLocaleString()} ·{' '}
-                              {formatSize(record.sizeInBytes)}
-                            </Text>
+                              <Text
+                                style={[styles.renameCancelText, { color: colors.textSecondary }]}
+                              >
+                                {t('common.cancel')}
+                              </Text>
+                            </TouchableOpacity>
                           </View>
-
-                          {!isMultiSelectMode && (
-                            <View style={styles.recordActions}>
-                              <TouchableOpacity
-                                style={[
-                                  styles.recordAction,
-                                  { backgroundColor: colors.primaryLight }
-                                ]}
-                                onPress={() => handleRestoreRecord(record.filename)}
+                        ) : (
+                          <>
+                            <MaterialIcons
+                              name="description"
+                              size={22}
+                              color={colors.primary}
+                              style={{ marginRight: 10, opacity: 0.85 }}
+                            />
+                            <View style={styles.recordInfo}>
+                              <Text
+                                style={[styles.recordName, { color: colors.textPrimary }]}
+                                numberOfLines={1}
                               >
-                                <Text style={[styles.recordActionText, { color: colors.primary }]}>
-                                  {t('data_sync.restore')}
-                                </Text>
-                              </TouchableOpacity>
-                              <TouchableOpacity
-                                style={[
-                                  styles.recordAction,
-                                  { backgroundColor: colors.secondaryContainer }
-                                ]}
-                                onPress={() => {
-                                  setRenamingRecord(record.filename)
-                                  setNewRecordName(record.filename)
-                                }}
-                              >
-                                <Text
-                                  style={[
-                                    styles.recordActionText,
-                                    { color: colors.onSecondaryContainer }
-                                  ]}
-                                >
-                                  {t('data_sync.rename')}
-                                </Text>
-                              </TouchableOpacity>
-                              <TouchableOpacity
-                                style={[
-                                  styles.recordAction,
-                                  { backgroundColor: colors.errorContainer }
-                                ]}
-                                onPress={() => handleDeleteCloudRecord(record.filename)}
-                              >
-                                <Text style={[styles.recordActionText, { color: colors.error }]}>
-                                  {t('common.delete')}
-                                </Text>
-                              </TouchableOpacity>
+                                {record.filename}
+                                {!record.managed && (
+                                  <Text style={{ color: colors.primary, fontSize: 11 }}>
+                                    {' '}
+                                    {t('cloud.unmanaged_label', '手动')}
+                                  </Text>
+                                )}
+                              </Text>
+                              <Text style={[styles.recordMeta, { color: colors.textSecondary }]}>
+                                {new Date(record.lastModified).toLocaleString()} ·{' '}
+                                {formatSize(record.sizeInBytes)}
+                              </Text>
                             </View>
-                          )}
-                        </>
-                      )}
-                    </View>
+
+                            {!isMultiSelectMode && (
+                              <View style={styles.recordActions}>
+                                <TouchableOpacity
+                                  style={[
+                                    styles.recordAction,
+                                    { backgroundColor: colors.primaryLight }
+                                  ]}
+                                  onPress={() => handleRestoreRecord(record.filename)}
+                                >
+                                  <Text
+                                    style={[styles.recordActionText, { color: colors.primary }]}
+                                  >
+                                    {t('data_sync.restore')}
+                                  </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  style={[
+                                    styles.recordAction,
+                                    { backgroundColor: colors.secondaryContainer }
+                                  ]}
+                                  onPress={() => {
+                                    setRenamingRecord(record.filename)
+                                    setNewRecordName(record.filename)
+                                  }}
+                                >
+                                  <Text
+                                    style={[
+                                      styles.recordActionText,
+                                      { color: colors.onSecondaryContainer }
+                                    ]}
+                                  >
+                                    {t('data_sync.rename')}
+                                  </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  style={[
+                                    styles.recordAction,
+                                    { backgroundColor: colors.errorContainer }
+                                  ]}
+                                  onPress={() => handleDeleteCloudRecord(record.filename)}
+                                >
+                                  <Text style={[styles.recordActionText, { color: colors.error }]}>
+                                    {t('common.delete')}
+                                  </Text>
+                                </TouchableOpacity>
+                              </View>
+                            )}
+                          </>
+                        )}
+                      </View>
                     ))}
                   </View>
                 </ScrollView>

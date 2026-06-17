@@ -135,7 +135,10 @@ export async function collectLegacyCandidateRoots(fileSystem: IFileSystem): Prom
   if (Platform.OS === 'android') {
     const mirror = mirrorProductionLegacyToExternal()
     if (mirror.mirrored) {
-      logger.info('[MobileLegacyMigration] Mirrored production legacy data to external storage', mirror)
+      logger.info(
+        '[MobileLegacyMigration] Mirrored production legacy data to external storage',
+        mirror
+      )
     } else if (mirror.productionInstalled && mirror.reason === 'production_context_unavailable') {
       logger.warn(
         '[MobileLegacyMigration] 正式版日记在应用沙盒内，Dev 包无法直接读取。请先安装并打开一次正式 Release 包（pnpm release:android），或仅在正式包中查看旧数据。',
@@ -384,12 +387,7 @@ export async function runMobileLegacyMigrationIfNeeded(options: {
       sourceRoot: originalSourceRoot,
       normalizedTarget
     })
-    await copyStorageRootContents(
-      fileSystem,
-      originalSourceRoot,
-      normalizedTarget,
-      onCopyProgress
-    )
+    await copyStorageRootContents(fileSystem, originalSourceRoot, normalizedTarget, onCopyProgress)
     sourceRoot = normalizedTarget
   } else if (!sameRoot && targetHasData) {
     const alternate = legacyRoots.find((root) => !rootsEqual(root, normalizedTarget))
@@ -421,7 +419,10 @@ export async function runMobileLegacyMigrationIfNeeded(options: {
       await legacyImporter.restoreConfig(flutterPrefsConfig)
       logger.info('[MobileLegacyMigration] Restored Flutter SharedPreferences')
     } catch (error) {
-      logger.warn('[MobileLegacyMigration] Flutter SharedPreferences restore failed:', error as Error)
+      logger.warn(
+        '[MobileLegacyMigration] Flutter SharedPreferences restore failed:',
+        error as Error
+      )
     }
   } else if (!isFlutterSettingsMigrationFullySupported(Platform.OS)) {
     logger.info(
@@ -489,9 +490,7 @@ export async function runMobileLegacyMigrationIfNeeded(options: {
       migrated: true,
       skippedOnboarding: true,
       targetRoot: migrationTarget,
-      sourceRoot: rootsEqual(originalSourceRoot, migrationTarget)
-        ? null
-        : originalSourceRoot
+      sourceRoot: rootsEqual(originalSourceRoot, migrationTarget) ? null : originalSourceRoot
     }
   } catch (error) {
     logger.error('[MobileLegacyMigration] Migration failed before status write:', error as Error)

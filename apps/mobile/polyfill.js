@@ -49,6 +49,8 @@ try {
 }
 
 if (__DEV__) {
-  console.log('[POLYFILL] Metro-injected polyfill loaded. TDS=' + typeof globalThis.TextDecoderStream)
+  console.log(
+    '[POLYFILL] Metro-injected polyfill loaded. TDS=' + typeof globalThis.TextDecoderStream
+  )
   console.log('[POLYFILL] __expoFetch (metro):', typeof globalThis.__expoFetch)
 }

@@ -102,8 +102,14 @@ export class TitleGeneratorService {
     namingProvider?: IAIProvider
     namingModelId?: string
   }): Promise<void> {
-    const { sessionRepo, sessionId, userText, namingModelConfigured, namingProvider, namingModelId } =
-      params
+    const {
+      sessionRepo,
+      sessionId,
+      userText,
+      namingModelConfigured,
+      namingProvider,
+      namingModelId
+    } = params
 
     if (namingModelConfigured && namingProvider && namingModelId) {
       await TitleGeneratorService.autoTitle(

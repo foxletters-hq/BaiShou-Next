@@ -18,7 +18,10 @@ import { TagInput } from '../TagInput/TagInput'
 import { WeatherPicker } from '../WeatherPicker/WeatherPicker'
 import { useNativeTheme } from '../theme'
 import { useKeyboardHeight } from '../hooks/useKeyboardHeight'
-import { NativeDiaryMixedContent, type NativeDiaryMixedContentHandle } from './NativeDiaryMixedContent'
+import {
+  NativeDiaryMixedContent,
+  type NativeDiaryMixedContentHandle
+} from './NativeDiaryMixedContent'
 import { NativeImagePreviewModal } from './NativeImagePreviewModal'
 import type { DiaryEditorViewMode } from './diary-editor.types'
 

@@ -1,7 +1,4 @@
-import {
-  mergeDisabledToolIds,
-  normalizeAssistantKind
-} from '@baishou/shared'
+import { mergeDisabledToolIds, normalizeAssistantKind } from '@baishou/shared'
 import {
   MessageRepository,
   SqliteHybridSearchRepository,

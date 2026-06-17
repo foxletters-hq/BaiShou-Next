@@ -277,7 +277,9 @@ export function mirrorProductionLegacyToExternal(): MirrorProductionLegacyResult
     return { mirrored: false, reason: 'native_unavailable' }
   }
   try {
-    return (mod.mirrorProductionLegacyToExternal() ?? { mirrored: false }) as MirrorProductionLegacyResult
+    return (mod.mirrorProductionLegacyToExternal() ?? {
+      mirrored: false
+    }) as MirrorProductionLegacyResult
   } catch {
     return { mirrored: false, reason: 'native_error' }
   }

@@ -27,6 +27,8 @@ describe('journal-files.util', () => {
 
   it('returns false for empty Journals directory', async () => {
     await fs.mkdir(path.join(tempDir, 'Journals'), { recursive: true })
-    expect(await journalMarkdownExistsInTree(fileSystem, path.join(tempDir, 'Journals'))).toBe(false)
+    expect(await journalMarkdownExistsInTree(fileSystem, path.join(tempDir, 'Journals'))).toBe(
+      false
+    )
   })
 })

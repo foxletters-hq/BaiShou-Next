@@ -62,9 +62,7 @@ export const AssistantListRow = forwardRef<HTMLDivElement, AssistantListRowProps
               />
             ) : null}
           </div>
-          <div className={styles.cardDesc}>
-            {assistant.description || assistant.systemPrompt}
-          </div>
+          <div className={styles.cardDesc}>{assistant.description || assistant.systemPrompt}</div>
         </div>
 
         {onDelete ? (

@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  AVATAR_IMPORT_MAX_BYTES,
-  shouldCompressAvatarFileSize
-} from '../avatar-import.constants'
+import { AVATAR_IMPORT_MAX_BYTES, shouldCompressAvatarFileSize } from '../avatar-import.constants'
 
 describe('avatar-import.constants', () => {
   it('compresses only above 3 MiB', () => {

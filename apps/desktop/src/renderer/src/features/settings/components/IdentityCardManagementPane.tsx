@@ -204,9 +204,7 @@ export const IdentityCardManagementPane: React.FC = () => {
         >
           <MdArrowBack size={22} />
         </button>
-        <h2 className="settings-management-title">
-          {t('settings.manage_identity_cards')}
-        </h2>
+        <h2 className="settings-management-title">{t('settings.manage_identity_cards')}</h2>
         <button
           type="button"
           className="settings-management-header-action"
@@ -228,9 +226,7 @@ export const IdentityCardManagementPane: React.FC = () => {
           </div>
 
           {filteredPersonas.length === 0 ? (
-            <div className="settings-management-empty">
-              {t('settings.search_identity_empty')}
-            </div>
+            <div className="settings-management-empty">{t('settings.search_identity_empty')}</div>
           ) : null}
 
           {pagedPersonas.map((persona, index) => {

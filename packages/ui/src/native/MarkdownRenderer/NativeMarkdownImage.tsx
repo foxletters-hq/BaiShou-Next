@@ -86,13 +86,7 @@ export const NativeMarkdownImage: React.FC<NativeMarkdownImageProps> = ({
 
   if (loading && !uri) {
     return (
-      <View
-        style={[
-          imageStyle,
-          styles.placeholder,
-          { backgroundColor: colors.bgSurfaceHighest }
-        ]}
-      >
+      <View style={[imageStyle, styles.placeholder, { backgroundColor: colors.bgSurfaceHighest }]}>
         <ActivityIndicator size="small" color={colors.primary} />
       </View>
     )
@@ -119,12 +113,7 @@ export const NativeMarkdownImage: React.FC<NativeMarkdownImageProps> = ({
 
   const img = (
     <View pointerEvents="none">
-      <Image
-        source={{ uri }}
-        style={imageStyle}
-        resizeMode="contain"
-        accessibilityLabel={alt}
-      />
+      <Image source={{ uri }} style={imageStyle} resizeMode="contain" accessibilityLabel={alt} />
     </View>
   )
 

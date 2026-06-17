@@ -26,9 +26,9 @@ describe('assertSafeSnapshotFilename', () => {
 
 describe('isValidArchiveManifestContent', () => {
   it('accepts formatVersion >= 1', () => {
-    expect(isValidArchiveManifestContent(JSON.stringify({ formatVersion: 1, platform: 'mobile' }))).toBe(
-      true
-    )
+    expect(
+      isValidArchiveManifestContent(JSON.stringify({ formatVersion: 1, platform: 'mobile' }))
+    ).toBe(true)
   })
 
   it('rejects invalid manifest', () => {

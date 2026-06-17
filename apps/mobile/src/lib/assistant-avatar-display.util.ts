@@ -45,8 +45,7 @@ async function toDisplayableAvatarUri(
     return uri.startsWith('file://') ? uri : toFileUri(absPath)
   }
 
-  const purpose: AttachmentImagePurpose =
-    options?.preferFileUri === false ? 'preview' : 'thumbnail'
+  const purpose: AttachmentImagePurpose = options?.preferFileUri === false ? 'preview' : 'thumbnail'
   const dataUri = await resolveAttachmentImageDataUri(fileSystem, absPath, purpose)
   if (dataUri) return dataUri
 

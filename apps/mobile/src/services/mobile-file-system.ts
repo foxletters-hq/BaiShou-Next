@@ -35,9 +35,7 @@ function enoentError(filePath: string, syscall: string): Error & { code: string 
 /** Android 沙盒路径用 java.io.File，避免 expo-file-system 对 Unicode 文件名的 stat/readdir 失败 */
 function shouldUseAndroidNativeLocalFs(filePath: string): boolean {
   return (
-    Platform.OS === 'android' &&
-    isAndroidAppSandboxPath(filePath) &&
-    isLocalFsNativeAvailable()
+    Platform.OS === 'android' && isAndroidAppSandboxPath(filePath) && isLocalFsNativeAvailable()
   )
 }
 
@@ -237,8 +235,7 @@ export class MobileFileSystem implements IFileSystem {
       isFile: !info.isDirectory,
       isDirectory: !!info.isDirectory,
       size: 'size' in info && typeof info.size === 'number' ? info.size : undefined,
-      mtimeMs:
-        info.modificationTime != null ? normalizeMtimeToMs(info.modificationTime) : undefined
+      mtimeMs: info.modificationTime != null ? normalizeMtimeToMs(info.modificationTime) : undefined
     }
   }
 

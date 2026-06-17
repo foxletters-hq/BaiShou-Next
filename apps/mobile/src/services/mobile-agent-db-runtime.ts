@@ -79,7 +79,10 @@ export async function createSummaryPipelineServices(options: {
   const { drizzleDb, pathService, fileSystem, settingsManager, diaryRepoAdapter } = options
   const summaryRepo = new SummaryRepositoryImpl(drizzleDb)
   const summaryConfig = (await settingsManager.get<Record<string, unknown>>('summary_config')) || {}
-  const customTemplates = resolveSummaryTemplatesForGeneration(summaryConfig) as Record<string, string>
+  const customTemplates = resolveSummaryTemplatesForGeneration(summaryConfig) as Record<
+    string,
+    string
+  >
   const promptLocale = ((summaryConfig?.promptLocale as string | undefined) ?? 'zh') as 'zh' | 'en'
   const summaryAiClient = buildMobileSummaryAiClient(settingsManager)
   const summaryFileService = new SummaryFileService(pathService, fileSystem)
@@ -100,19 +103,19 @@ export async function createSummaryPipelineServices(options: {
     summaryRepo,
     summaryFileService
   )
-  const summaryManager = new SummaryManagerService(summaryRepo, summaryFileService, summarySyncService)
+  const summaryManager = new SummaryManagerService(
+    summaryRepo,
+    summaryFileService,
+    summarySyncService
+  )
   return { summaryManager, summaryGenerator, missingSummaryDetector, summarySyncService }
 }
 
-export async function createAgentDbRuntime(options: CreateAgentDbRuntimeOptions): Promise<AgentDbRuntime> {
-  const {
-    expoDb,
-    drizzleDb,
-    pathService,
-    fileSystem,
-    attachmentManager,
-    diaryRepoAdapter
-  } = options
+export async function createAgentDbRuntime(
+  options: CreateAgentDbRuntimeOptions
+): Promise<AgentDbRuntime> {
+  const { expoDb, drizzleDb, pathService, fileSystem, attachmentManager, diaryRepoAdapter } =
+    options
 
   const sessionRepo = new SessionRepository(drizzleDb)
   const assistantRepo = new AssistantRepository(drizzleDb)
@@ -123,7 +126,11 @@ export async function createAgentDbRuntime(options: CreateAgentDbRuntimeOptions)
 
   const sessionFileService = new SessionFileService(pathService, fileSystem)
   const sessionSyncService = new SessionSyncService(sessionRepo, sessionFileService)
-  const sessionManager = new SessionManagerService(sessionRepo, sessionFileService, sessionSyncService)
+  const sessionManager = new SessionManagerService(
+    sessionRepo,
+    sessionFileService,
+    sessionSyncService
+  )
 
   const assistantFileService = new AssistantFileService(pathService, fileSystem)
   const assistantManager = new AssistantManagerService(

@@ -99,7 +99,14 @@ export function useSummaryData() {
     } finally {
       setIsDetectingMissing(false)
     }
-  }, [dbReady, storageIndexing, missingSummaryDetector, i18n.language, mapDetectedMissing, archiveRestoreEpoch])
+  }, [
+    dbReady,
+    storageIndexing,
+    missingSummaryDetector,
+    i18n.language,
+    mapDetectedMissing,
+    archiveRestoreEpoch
+  ])
 
   const fetchCoreData = useCallback(async () => {
     if (!dbReady || storageIndexing || !summaryManager || !diaryService) return

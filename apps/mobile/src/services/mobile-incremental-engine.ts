@@ -1,11 +1,6 @@
 import * as Crypto from 'expo-crypto'
 import type { IFileSystem } from '@baishou/core-mobile'
-import type {
-  SyncProgressEvent,
-  SyncManifest,
-  S3SyncConfig,
-  ManifestEntry
-} from '@baishou/shared'
+import type { SyncProgressEvent, SyncManifest, S3SyncConfig, ManifestEntry } from '@baishou/shared'
 import {
   assertBidirectionalDeletePropagationAllowed,
   assertBidirectionalSyncDivergenceAllowed,

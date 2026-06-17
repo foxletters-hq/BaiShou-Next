@@ -17,13 +17,7 @@ export const AssistantKindBadge: React.FC<AssistantKindBadgeProps> = ({ kind, co
   const theme = getAssistantKindBadgeTheme(kind)
 
   return (
-    <View
-      style={[
-        styles.badge,
-        compact && styles.badgeCompact,
-        { backgroundColor: theme.bg }
-      ]}
-    >
+    <View style={[styles.badge, compact && styles.badgeCompact, { backgroundColor: theme.bg }]}>
       <Text style={[styles.text, compact && styles.textCompact, { color: theme.text }]}>
         {t(getAssistantKindLabelKey(kind))}
       </Text>

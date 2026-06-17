@@ -39,34 +39,29 @@ export const StorageSettingsInline: React.FC<StorageSettingsInlineProps> = ({
     handleDeleteMigratedLegacySource
   } = useFlutterLegacyMigrationSettings()
 
-  const {
-    flutterLegacyMigrationBusy,
-    flutterLegacyMigrationProgress
-  } = useBaishou()
+  const { flutterLegacyMigrationBusy, flutterLegacyMigrationProgress } = useBaishou()
 
   const overlayVisible = storageBusy !== 'idle' || flutterLegacyMigrationBusy
-  const overlayMessage =
-    flutterLegacyMigrationBusy
-      ? t('storage.flutter_legacy_migrating', '正在从旧版目录复制数据…')
-      : storageBusy === 'switching'
-        ? t('storage.switching_directory', '正在更换目录...')
-        : t('storage.migrating_data', '正在迁移数据...')
-  const overlayHint =
-    flutterLegacyMigrationBusy
-      ? flutterLegacyMigrationProgress
+  const overlayMessage = flutterLegacyMigrationBusy
+    ? t('storage.flutter_legacy_migrating', '正在从旧版目录复制数据…')
+    : storageBusy === 'switching'
+      ? t('storage.switching_directory', '正在更换目录...')
+      : t('storage.migrating_data', '正在迁移数据...')
+  const overlayHint = flutterLegacyMigrationBusy
+    ? flutterLegacyMigrationProgress
+      ? t('storage.migrating_item', {
+          name: flutterLegacyMigrationProgress,
+          defaultValue: `正在复制：${flutterLegacyMigrationProgress}`
+        })
+      : t('storage.flutter_legacy_migrating_hint', '请勿关闭应用，原目录数据不会被删除')
+    : storageBusy === 'switching'
+      ? t('storage.switching_directory_hint', '请勿关闭应用')
+      : migrationProgress
         ? t('storage.migrating_item', {
-            name: flutterLegacyMigrationProgress,
-            defaultValue: `正在复制：${flutterLegacyMigrationProgress}`
+            name: migrationProgress,
+            defaultValue: `正在复制：${migrationProgress}`
           })
-        : t('storage.flutter_legacy_migrating_hint', '请勿关闭应用，原目录数据不会被删除')
-      : storageBusy === 'switching'
-        ? t('storage.switching_directory_hint', '请勿关闭应用')
-        : migrationProgress
-          ? t('storage.migrating_item', {
-              name: migrationProgress,
-              defaultValue: `正在复制：${migrationProgress}`
-            })
-          : t('storage.migrating_data_hint', '请勿关闭应用，原目录数据不会被删除')
+        : t('storage.migrating_data_hint', '请勿关闭应用，原目录数据不会被删除')
 
   return (
     <>

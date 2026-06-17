@@ -50,10 +50,7 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
     const avatarsDir = this.isUserAvatarPrefix(prefix)
       ? await this.pathService.getUserAvatarsDirectory()
       : await this.pathService.getAvatarsDirectory()
-    const compressedSource = await compressImageForAvatarImport(
-      absoluteSourcePath,
-      sourceByteSize
-    )
+    const compressedSource = await compressImageForAvatarImport(absoluteSourcePath, sourceByteSize)
     const ext = inferImageExtension(compressedSource)
     const name = `${prefix}_${Date.now()}.${ext}`
     const dest = joinPath(avatarsDir, name)

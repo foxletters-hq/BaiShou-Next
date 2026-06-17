@@ -155,11 +155,7 @@ export const OnboardingScreen: React.FC = () => {
       programmaticTargetRef.current = null
     }
 
-    if (
-      !isPreview &&
-      clampedPage > ONBOARDING_PAGE.LANGUAGE &&
-      !languageConfirmed
-    ) {
+    if (!isPreview && clampedPage > ONBOARDING_PAGE.LANGUAGE && !languageConfirmed) {
       goToPage(ONBOARDING_PAGE.LANGUAGE, { animated: false })
       return
     }

@@ -69,9 +69,8 @@ export class MobileDataBootstrapper {
 
   async resyncFromDisk(): Promise<void> {
     if (!this.registeredDeps) return
-    const { waitForVaultEcosystemResync, scheduleVaultEcosystemResync } = await import(
-      '../services/mobile-vault-resync.service'
-    )
+    const { waitForVaultEcosystemResync, scheduleVaultEcosystemResync } =
+      await import('../services/mobile-vault-resync.service')
     // 等待进行中的 resync 结束，再强制跑一轮，避免复用 sync 前已启动的冷启动扫描
     await waitForVaultEcosystemResync()
     await scheduleVaultEcosystemResync(this.registeredDeps, 'resync-from-disk')

@@ -16,7 +16,12 @@ import { APP_VERSION } from '../../app-version'
 import { Server as HttpServer } from 'http'
 
 import { z } from 'zod'
-import { ToolRegistry, type ToolContext, buildMcpInstructions, formatMcpToolCallResult } from '@baishou/ai'
+import {
+  ToolRegistry,
+  type ToolContext,
+  buildMcpInstructions,
+  formatMcpToolCallResult
+} from '@baishou/ai'
 import { isMcpRequestAuthorized, logger } from '@baishou/shared'
 import { buildMcpToolContext } from '../ipc/agent-helpers'
 
@@ -60,10 +65,7 @@ export class McpService {
     next()
   }
 
-  private async ensureAuthorized(
-    req: express.Request,
-    res: express.Response
-  ): Promise<boolean> {
+  private async ensureAuthorized(req: express.Request, res: express.Response): Promise<boolean> {
     const config = await this.settingsRepo.getMcpServerConfig()
     const authHeader = req.headers.authorization
     const headerValue = Array.isArray(authHeader) ? authHeader[0] : authHeader

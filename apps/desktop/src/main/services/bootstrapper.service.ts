@@ -1,12 +1,6 @@
 import { BrowserWindow } from 'electron'
-import {
-  SummarySyncService,
-  SummaryFileService
-} from '@baishou/core-desktop'
-import {
-  SummaryRepositoryImpl,
-  connectionManager
-} from '@baishou/database-desktop'
+import { SummarySyncService, SummaryFileService } from '@baishou/core-desktop'
+import { SummaryRepositoryImpl, connectionManager } from '@baishou/database-desktop'
 import { app } from 'electron'
 import { ensureDefaultLatteAssistant } from '@baishou/core-desktop'
 import { logger, resolveBootstrapUiLocale } from '@baishou/shared'

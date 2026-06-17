@@ -14,10 +14,7 @@ function resolveSystemColorScheme(
 }
 
 /** RN 阴影：暗色下避免用 textPrimary 作 shadowColor（会呈诡异白光） */
-export function getNativeElevationStyle(
-  isDark: boolean,
-  level: 'subtle' | 'raised' = 'subtle'
-) {
+export function getNativeElevationStyle(isDark: boolean, level: 'subtle' | 'raised' = 'subtle') {
   if (isDark) {
     return level === 'raised'
       ? {

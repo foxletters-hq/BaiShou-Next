@@ -94,7 +94,9 @@ export class ShadowIndexQueryOps {
   }
 
   /** 解析搜索词为 FTS 表达式与原始 term 列表 */
-  private buildSearchTerms(query: string): { rawTerms: string[]; ftsMatchExpr: string | null } | null {
+  private buildSearchTerms(
+    query: string
+  ): { rawTerms: string[]; ftsMatchExpr: string | null } | null {
     if (!query || query.trim().length === 0) return null
     const cleanedQuery = normalizeSearchQuery(query)
     if (!cleanedQuery) return null

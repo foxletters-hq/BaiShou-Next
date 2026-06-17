@@ -57,7 +57,9 @@ function buildListFilter(query: DiaryPageQuery): DiaryListFilter {
 }
 
 /** 搜索模式：跨月全文检索，仅保留天气/收藏筛选 */
-function buildSearchFilter(query: DiaryPageQuery): Omit<DiaryListFilter, 'limit' | 'offset' | 'orderBy'> {
+function buildSearchFilter(
+  query: DiaryPageQuery
+): Omit<DiaryListFilter, 'limit' | 'offset' | 'orderBy'> {
   const filter: Omit<DiaryListFilter, 'limit' | 'offset' | 'orderBy'> = {}
 
   if (query.filterFavorite) {

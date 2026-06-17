@@ -17,7 +17,10 @@ import {
   RestoreBlockingOverlay
 } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
-import { applyArchiveImportFeedback, isArchiveImportSuccessful } from '../utils/archive-restore-feedback'
+import {
+  applyArchiveImportFeedback,
+  isArchiveImportSuccessful
+} from '../utils/archive-restore-feedback'
 import {
   parseSnapshotCreatedAtFromFilename,
   shouldRefreshVaultAfterArchiveImport

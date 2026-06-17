@@ -338,102 +338,102 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
           />
 
           <Animated.View style={toolbarAnimatedStyle} pointerEvents={showToolbar ? 'auto' : 'none'}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.toolbarContent}
-          >
-            {renderToolbarChip(t('input.upload_attachment', '上传附件'), handleUploadAttachment, {
-              icon: 'attach-file'
-            })}
-            {renderToolbarChip(t('input.shortcut_command', '快捷指令'), handleShortcutPress, {
-              icon: 'bolt'
-            })}
-            {renderToolbarChip(
-              searchMode
-                ? t('settings.web_search_mode_tool', '外部工具搜索')
-                : t('settings.web_search_mode_off', '关闭搜索'),
-              onToggleSearchMode,
-              { active: searchMode, icon: 'public' }
-            )}
-            {renderToolbarChip(t('settings.recall_memories', '唤醒回忆'), onRecall, {
-              icon: 'menu-book'
-            })}
-            {renderToolbarChip(
-              ttsMode === 'always'
-                ? t('agent.chat.tts_always', '始终朗读')
-                : t('agent.chat.tts_manual', '手动朗读'),
-              onToggleTtsMode,
-              { active: ttsMode === 'always', icon: 'volume-up' }
-            )}
-            {renderToolbarChip(t('settings.agent_tools_title', '工具管理'), onOpenTools, {
-              icon: 'build'
-            })}
-          </ScrollView>
-        </Animated.View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.toolbarContent}
+            >
+              {renderToolbarChip(t('input.upload_attachment', '上传附件'), handleUploadAttachment, {
+                icon: 'attach-file'
+              })}
+              {renderToolbarChip(t('input.shortcut_command', '快捷指令'), handleShortcutPress, {
+                icon: 'bolt'
+              })}
+              {renderToolbarChip(
+                searchMode
+                  ? t('settings.web_search_mode_tool', '外部工具搜索')
+                  : t('settings.web_search_mode_off', '关闭搜索'),
+                onToggleSearchMode,
+                { active: searchMode, icon: 'public' }
+              )}
+              {renderToolbarChip(t('settings.recall_memories', '唤醒回忆'), onRecall, {
+                icon: 'menu-book'
+              })}
+              {renderToolbarChip(
+                ttsMode === 'always'
+                  ? t('agent.chat.tts_always', '始终朗读')
+                  : t('agent.chat.tts_manual', '手动朗读'),
+                onToggleTtsMode,
+                { active: ttsMode === 'always', icon: 'volume-up' }
+              )}
+              {renderToolbarChip(t('settings.agent_tools_title', '工具管理'), onOpenTools, {
+                icon: 'build'
+              })}
+            </ScrollView>
+          </Animated.View>
 
-        <View pointerEvents={composerEnabled ? 'auto' : 'none'}>
-          <Input
-            ref={inputRef}
-            className="min-h-12 max-h-36"
-            style={[
-              styles.input,
-              {
-                color: colors.textPrimary,
-                backgroundColor: isDark ? colors.bgSurfaceHigh : colors.bgSurface
+          <View pointerEvents={composerEnabled ? 'auto' : 'none'}>
+            <Input
+              ref={inputRef}
+              className="min-h-12 max-h-36"
+              style={[
+                styles.input,
+                {
+                  color: colors.textPrimary,
+                  backgroundColor: isDark ? colors.bgSurfaceHigh : colors.bgSurface
+                }
+              ]}
+              value={text}
+              onChangeText={handleChangeText}
+              onKeyPress={handleKeyPress}
+              placeholder={t('agent.chat.input_hint', '输入消息...')}
+              multiline
+              maxLength={4000}
+              textAlignVertical="center"
+              editable={composerEnabled}
+              onFocus={composerEnabled ? onInputFocus : undefined}
+              leftSlot={
+                <TouchableOpacity
+                  style={styles.toolbarToggle}
+                  onPress={toggleToolbar}
+                  hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                >
+                  <MaterialIcons
+                    name={showToolbar ? 'expand-less' : 'add'}
+                    size={20}
+                    color={colors.textTertiary}
+                  />
+                </TouchableOpacity>
               }
-            ]}
-            value={text}
-            onChangeText={handleChangeText}
-            onKeyPress={handleKeyPress}
-            placeholder={t('agent.chat.input_hint', '输入消息...')}
-            multiline
-            maxLength={4000}
-            textAlignVertical="center"
-            editable={composerEnabled}
-            onFocus={composerEnabled ? onInputFocus : undefined}
-            leftSlot={
-              <TouchableOpacity
-                style={styles.toolbarToggle}
-                onPress={toggleToolbar}
-                hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
-              >
-                <MaterialIcons
-                  name={showToolbar ? 'expand-less' : 'add'}
-                  size={20}
-                  color={colors.textTertiary}
-                />
-              </TouchableOpacity>
-            }
-            rightSlot={
-              isLoading ? (
-                <TouchableOpacity
-                  style={[styles.stopBtn, { backgroundColor: colors.textPrimary }]}
-                  onPress={onStop}
-                  accessibilityLabel={t('common.stop', '停止')}
-                >
-                  <View style={[styles.stopIcon, { backgroundColor: colors.bgSurface }]} />
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={[
-                    styles.sendBtn,
-                    { backgroundColor: colors.primary },
-                    !text.trim() &&
-                      attachments.length === 0 && {
-                        backgroundColor: colors.textTertiary
-                      }
-                  ]}
-                  onPress={handleSend}
-                  disabled={!text.trim() && attachments.length === 0}
-                  accessibilityLabel={t('common.send', '发送')}
-                >
-                  <MaterialIcons name="arrow-upward" size={18} color={colors.textOnPrimary} />
-                </TouchableOpacity>
-              )
-            }
-          />
-        </View>
+              rightSlot={
+                isLoading ? (
+                  <TouchableOpacity
+                    style={[styles.stopBtn, { backgroundColor: colors.textPrimary }]}
+                    onPress={onStop}
+                    accessibilityLabel={t('common.stop', '停止')}
+                  >
+                    <View style={[styles.stopIcon, { backgroundColor: colors.bgSurface }]} />
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={[
+                      styles.sendBtn,
+                      { backgroundColor: colors.primary },
+                      !text.trim() &&
+                        attachments.length === 0 && {
+                          backgroundColor: colors.textTertiary
+                        }
+                    ]}
+                    onPress={handleSend}
+                    disabled={!text.trim() && attachments.length === 0}
+                    accessibilityLabel={t('common.send', '发送')}
+                  >
+                    <MaterialIcons name="arrow-upward" size={18} color={colors.textOnPrimary} />
+                  </TouchableOpacity>
+                )
+              }
+            />
+          </View>
         </View>
       </View>
     )

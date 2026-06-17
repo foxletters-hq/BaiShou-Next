@@ -85,8 +85,7 @@ export function useDiaryData(query: DiaryPageQuery) {
   const searchTerm = query.searchQuery.trim()
   const browseMonthKey = query.selectedMonth?.getTime() ?? 0
   const searchFilterKey = useMemo(
-    () =>
-      `${query.filterFavorite ? 1 : 0}:${query.filterWeathers.join(',')}`,
+    () => `${query.filterFavorite ? 1 : 0}:${query.filterWeathers.join(',')}`,
     [query.filterFavorite, query.filterWeathers]
   )
 
@@ -115,9 +114,7 @@ export function useDiaryData(query: DiaryPageQuery) {
           })
           setEntries(items || [])
           const loaded = items?.length || 0
-          setTotalCount(
-            loaded < pageLimit ? pageOffset + loaded : pageOffset + loaded + 1
-          )
+          setTotalCount(loaded < pageLimit ? pageOffset + loaded : pageOffset + loaded + 1)
         } else {
           const [items, total] = await Promise.all([
             api.diary.listFiltered(filter),

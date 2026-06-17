@@ -30,7 +30,12 @@ import {
   type ImportResult,
   type SyncConfig
 } from '@baishou/core-mobile'
-import { resolveSummaryTemplatesForGeneration, resolveSyncDeviceId, isConfiguredProviderId, isConfiguredDialogueModelId } from '@baishou/shared'
+import {
+  resolveSummaryTemplatesForGeneration,
+  resolveSyncDeviceId,
+  isConfiguredProviderId,
+  isConfiguredDialogueModelId
+} from '@baishou/shared'
 import { getTtsPlaybackSettings } from '../services/mobile-tts-settings.service'
 import { shouldRefreshVaultAfterArchiveImport } from '../services/archive-guards.util'
 
@@ -73,7 +78,10 @@ import { createMobileRagService, type MobileRagService } from '../services/mobil
 import { setMobileDiaryEmbeddingDeps } from '../services/mobile-diary-embedding.service'
 import { MobileIncrementalSyncService } from '../services/mobile-incremental-sync.service'
 import { MobileMcpService } from '../services/mobile-mcp.service'
-import { buildMobileMcpToolContext, invalidateMobileMcpToolContextCache } from '../services/mobile-mcp-context.service'
+import {
+  buildMobileMcpToolContext,
+  invalidateMobileMcpToolContextCache
+} from '../services/mobile-mcp-context.service'
 import { mobileDataBootstrapper } from '../services/mobile-bootstrapper.service'
 import { vaultFileWatcher } from '../services/vault-file-watcher.service'
 import { mobileDeveloperService, type MobileDeveloperService } from '../services/developer.service'
@@ -303,9 +311,9 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
   const runWithStorageQuiescedRef = useRef<<T>(fn: () => Promise<T>) => Promise<T>>(async (fn) =>
     fn()
   )
-  const runFlutterLegacyMigrationRef = useRef<
-    () => Promise<MobileLegacyMigrationResult | null>
-  >(async () => null)
+  const runFlutterLegacyMigrationRef = useRef<() => Promise<MobileLegacyMigrationResult | null>>(
+    async () => null
+  )
   const deleteMigratedLegacySourceRef = useRef<() => Promise<boolean>>(async () => false)
   const notifyArchiveRestoreCompleteRef = useRef<(result: ImportResult) => void>(() => {})
   const agentDbRuntimeRef = useRef<AgentDbRuntime | null>(null)
@@ -373,8 +381,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
       setValue((prev) => ({
         ...prev,
         storageIndexing: indexing,
-        vaultRevision:
-          wasStorageIndexing && !indexing ? prev.vaultRevision + 1 : prev.vaultRevision
+        vaultRevision: wasStorageIndexing && !indexing ? prev.vaultRevision + 1 : prev.vaultRevision
       }))
       wasStorageIndexing = indexing
     })
@@ -409,7 +416,9 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         const attachmentManager = new MobileAttachmentManagerService(pathService, fileSystem)
 
         try {
-          const pendingCloudSyncRaw = await AsyncStorage.getItem(PENDING_RESTORE_CLOUD_SYNC_CONFIG_KEY)
+          const pendingCloudSyncRaw = await AsyncStorage.getItem(
+            PENDING_RESTORE_CLOUD_SYNC_CONFIG_KEY
+          )
           if (pendingCloudSyncRaw) {
             await AsyncStorage.removeItem(PENDING_RESTORE_CLOUD_SYNC_CONFIG_KEY)
             await settingsRepo.set(
@@ -588,7 +597,10 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             try {
               await runtime.expoDb.execAsync('PRAGMA wal_checkpoint(FULL)')
             } catch (checkpointError) {
-              logger.error('[MobileArchive] WAL checkpoint before export failed:', checkpointError as Error)
+              logger.error(
+                '[MobileArchive] WAL checkpoint before export failed:',
+                checkpointError as Error
+              )
               throw new Error('数据库刷盘失败，已取消导出以保护备份完整性')
             }
           },
@@ -696,7 +708,10 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             try {
               await summaryPipeline.summarySyncService.fullScanArchives()
             } catch (e) {
-              logger.warn('[BaishouProvider] summary fullScanArchives after archive restore failed:', e as Error)
+              logger.warn(
+                '[BaishouProvider] summary fullScanArchives after archive restore failed:',
+                e as Error
+              )
             }
 
             const nextRagDeps = {
@@ -853,7 +868,11 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             }
 
             const embeddingProvider = registry.getOrUpdateProvider(embeddingProviderConfig)
-            const embAdapter = new EmbeddingAdapter(embeddingProvider, embeddingModelId, runtime.hsRepo)
+            const embAdapter = new EmbeddingAdapter(
+              embeddingProvider,
+              embeddingModelId,
+              runtime.hsRepo
+            )
 
             // 生成查询向量
             const queryVector = await embAdapter.embedQuery(query)
@@ -904,10 +923,10 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             searchMode?: boolean
             abortSignal?: AbortSignal
             userMessageId?: string
-      skipUserMessageRecording?: boolean
-      forceRecompress?: boolean
-      streamClaimGeneration?: number
-      attachments?: unknown[]
+            skipUserMessageRecording?: boolean
+            forceRecompress?: boolean
+            streamClaimGeneration?: number
+            attachments?: unknown[]
           }
         ) => {
           try {
@@ -926,7 +945,10 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             const provider = registry.getOrUpdateProvider(config)
 
             const searchMode = overrides?.searchMode ?? false
-            const userConfig = await buildMobileStreamUserConfig(runtime.settingsManager, searchMode)
+            const userConfig = await buildMobileStreamUserConfig(
+              runtime.settingsManager,
+              searchMode
+            )
 
             const embeddingProviderId = globalModels?.globalEmbeddingProviderId
             const embeddingModelId = globalModels?.globalEmbeddingModelId
@@ -1381,10 +1403,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             if (result.migrated) {
               await AsyncStorage.setItem(ONBOARDING_STORAGE_KEY, '1')
               if (result.sourceRoot) {
-                await AsyncStorage.setItem(
-                  FLUTTER_LEGACY_MIGRATED_SOURCE_KEY,
-                  result.sourceRoot
-                )
+                await AsyncStorage.setItem(FLUTTER_LEGACY_MIGRATED_SOURCE_KEY, result.sourceRoot)
               }
             }
 
@@ -1398,9 +1417,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                 pendingFlutterLegacyMigration: result.migrated
                   ? null
                   : prev.pendingFlutterLegacyMigration,
-                legacyRagReembedRequired: result.migrated
-                  ? true
-                  : prev.legacyRagReembedRequired,
+                legacyRagReembedRequired: result.migrated ? true : prev.legacyRagReembedRequired,
                 legacyMigrationSourcePendingDeletion: result.sourceRoot ?? null,
                 vaultRevision: result.migrated ? prev.vaultRevision + 1 : prev.vaultRevision
               }))
@@ -1408,7 +1425,10 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
             return result
           } catch (error) {
-            logger.error('[BaishouProvider] User-triggered legacy migration failed:', error as Error)
+            logger.error(
+              '[BaishouProvider] User-triggered legacy migration failed:',
+              error as Error
+            )
             if (isMounted) {
               setValue((prev) => ({
                 ...prev,
@@ -1661,7 +1681,9 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         })
       } catch (e) {
         if (isExternalStorageRequiredError(e)) {
-          logger.info('[BaishouProvider] External storage is not ready; waiting for user permission')
+          logger.info(
+            '[BaishouProvider] External storage is not ready; waiting for user permission'
+          )
           return
         }
         logger.error('Failed to init Baishou DB:', e as Error)

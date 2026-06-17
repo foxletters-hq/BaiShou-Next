@@ -58,7 +58,11 @@ import { useResolvedAssistantAvatar } from '../hooks/useResolvedAssistantAvatar'
 import { useResolvedUserAvatar } from '../hooks/useResolvedUserAvatar'
 import { useAgentChatKeyboardInsets } from '../hooks/useAgentChatKeyboardInsets'
 import { useAgentNavigationPersistence } from '../hooks/useAgentNavigationPersistence'
-import { hydrateAssistantsForUi, mapAssistantRowsToUi, type MobileAssistantUi } from '../lib/mobile-assistant.util'
+import {
+  hydrateAssistantsForUi,
+  mapAssistantRowsToUi,
+  type MobileAssistantUi
+} from '../lib/mobile-assistant.util'
 import { invalidateAllAvatarDisplayCaches } from '../lib/assistant-avatar-display.util'
 import { waitForVaultEcosystemResync } from '../services/mobile-vault-resync.service'
 /** 底部输入栏 + 工具条的大致高度，用于「回到底部」悬浮按钮定位 */

@@ -23,8 +23,7 @@ export const AssistantKindTabBar: React.FC<AssistantKindTabBarProps> = ({
   const slideAnim = useSharedValue(0)
   const [layoutWidth, setLayoutWidth] = useState(0)
 
-  const tabWidth =
-    layoutWidth > 0 ? (layoutWidth - TAB_PADDING * 2 - TAB_GAP) / 2 : 0
+  const tabWidth = layoutWidth > 0 ? (layoutWidth - TAB_PADDING * 2 - TAB_GAP) / 2 : 0
 
   useEffect(() => {
     if (tabWidth <= 0) return

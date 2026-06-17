@@ -53,10 +53,7 @@ export async function restoreLegacyDevicePreferences(
   }
   if (config['theme_mode'] !== undefined) {
     const themeMap = ['system', 'light', 'dark']
-    await settingsRepo.set(
-      'theme_mode',
-      themeMap[config['theme_mode'] as number] || 'system'
-    )
+    await settingsRepo.set('theme_mode', themeMap[config['theme_mode'] as number] || 'system')
   }
 
   await restoreProviders(settingsRepo, config)
@@ -126,7 +123,10 @@ async function restoreProviders(settingsRepo: SettingsRepository, config: Record
   await settingsRepo.setAIProviderConfigs(providers)
 }
 
-async function restoreGlobalModels(settingsRepo: SettingsRepository, config: Record<string, unknown>) {
+async function restoreGlobalModels(
+  settingsRepo: SettingsRepository,
+  config: Record<string, unknown>
+) {
   const globalModels = await settingsRepo.getGlobalModelsConfig()
 
   if (config['global_dialogue_provider_id']) {
@@ -150,13 +150,18 @@ async function restoreGlobalModels(settingsRepo: SettingsRepository, config: Rec
       config['global_embedding_dimension']
   }
   if (config['monthly_summary_source']) {
-    globalModels.monthlySummarySource = config['monthly_summary_source'] as typeof globalModels.monthlySummarySource
+    globalModels.monthlySummarySource = config[
+      'monthly_summary_source'
+    ] as typeof globalModels.monthlySummarySource
   }
 
   await settingsRepo.setGlobalModelsConfig(globalModels)
 }
 
-async function restoreAgentBehavior(settingsRepo: SettingsRepository, config: Record<string, unknown>) {
+async function restoreAgentBehavior(
+  settingsRepo: SettingsRepository,
+  config: Record<string, unknown>
+) {
   const behavior = await settingsRepo.getAgentBehaviorConfig()
   if (config['agent_context_window_size'] !== undefined) {
     behavior.agentContextWindowSize = config['agent_context_window_size'] as number
@@ -172,12 +177,16 @@ async function restoreAgentBehavior(settingsRepo: SettingsRepository, config: Re
   await settingsRepo.setAgentBehaviorConfig(behavior)
 }
 
-async function restoreRagAndTools(settingsRepo: SettingsRepository, config: Record<string, unknown>) {
+async function restoreRagAndTools(
+  settingsRepo: SettingsRepository,
+  config: Record<string, unknown>
+) {
   const rag = await settingsRepo.getRagConfig()
   const tools = await settingsRepo.getToolManagementConfig()
   const summary = await settingsRepo.getSummaryConfig()
 
-  if (config['rag_global_enabled'] !== undefined) rag.ragEnabled = config['rag_global_enabled'] as boolean
+  if (config['rag_global_enabled'] !== undefined)
+    rag.ragEnabled = config['rag_global_enabled'] as boolean
   if (config['rag_top_k'] !== undefined) rag.ragTopK = config['rag_top_k'] as number
   if (config['rag_similarity_threshold'] !== undefined) {
     rag.ragSimilarityThreshold = config['rag_similarity_threshold'] as number
@@ -195,8 +204,9 @@ async function restoreRagAndTools(settingsRepo: SettingsRepository, config: Reco
 
   if (!summary.instructions) summary.instructions = {}
   if (config['summary_prompt_instructions'] && !config['all_summary_instructions']) {
-    ;(summary.instructions as Record<string, string>)['legacy'] =
-      config['summary_prompt_instructions'] as string
+    ;(summary.instructions as Record<string, string>)['legacy'] = config[
+      'summary_prompt_instructions'
+    ] as string
   } else if (config['all_summary_instructions']) {
     summary.instructions = {
       ...summary.instructions,
@@ -235,7 +245,8 @@ async function restoreWebSearch(settingsRepo: SettingsRepository, config: Record
 
 async function restoreMcp(settingsRepo: SettingsRepository, config: Record<string, unknown>) {
   const mcp = await settingsRepo.getMcpServerConfig()
-  if (config['mcp_server_enabled'] !== undefined) mcp.mcpEnabled = config['mcp_server_enabled'] as boolean
+  if (config['mcp_server_enabled'] !== undefined)
+    mcp.mcpEnabled = config['mcp_server_enabled'] as boolean
   if (config['mcp_server_port'] !== undefined) mcp.mcpPort = config['mcp_server_port'] as number
   await settingsRepo.setMcpServerConfig(mcp)
 }

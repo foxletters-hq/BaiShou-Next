@@ -17,14 +17,9 @@ export function resolveFlutterSharedPreferencesCandidates(): string[] {
     candidates.push(join(homedir(), '.local/share/baishou/shared_preferences.json'))
     candidates.push(join(homedir(), '.local/share/com.baishou.baishou/shared_preferences.json'))
   } else if (process.platform === 'darwin') {
+    candidates.push(join(homedir(), 'Library/Application Support/baishou/shared_preferences.json'))
     candidates.push(
-      join(homedir(), 'Library/Application Support/baishou/shared_preferences.json')
-    )
-    candidates.push(
-      join(
-        homedir(),
-        'Library/Application Support/com.baishou.baishou/shared_preferences.json'
-      )
+      join(homedir(), 'Library/Application Support/com.baishou.baishou/shared_preferences.json')
     )
   } else if (process.platform === 'win32') {
     const appData = process.env.APPDATA || join(homedir(), 'AppData', 'Roaming')
@@ -47,7 +42,10 @@ export async function readFlutterSharedPreferencesRaw(): Promise<Record<string, 
   return null
 }
 
-export async function readFlutterSharedPreferencesConfig(): Promise<Record<string, unknown> | null> {
+export async function readFlutterSharedPreferencesConfig(): Promise<Record<
+  string,
+  unknown
+> | null> {
   const sp = await readFlutterSharedPreferencesRaw()
   if (!sp) return null
   const config = assembleDevicePreferencesFromFlutterSp(sp)

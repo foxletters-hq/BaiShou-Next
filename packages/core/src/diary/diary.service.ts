@@ -326,8 +326,8 @@ export class DiaryService {
   ): boolean {
     return Boolean(
       filter.favorite ||
-        (filter.weathers && filter.weathers.length > 0) ||
-        (filter.year != null && filter.month != null)
+      (filter.weathers && filter.weathers.length > 0) ||
+      (filter.year != null && filter.month != null)
     )
   }
 
@@ -338,8 +338,7 @@ export class DiaryService {
     if (hits.length === 0) return []
 
     const missingIds = hits.filter((h) => !h.indexRow).map((h) => h.rowid)
-    const batchRows =
-      missingIds.length > 0 ? await this.shadowRepo.findByIds(missingIds) : []
+    const batchRows = missingIds.length > 0 ? await this.shadowRepo.findByIds(missingIds) : []
     const rowMap = new Map(batchRows.map((r) => [r.id, r]))
     for (const hit of hits) {
       if (hit.indexRow) rowMap.set(hit.rowid, hit.indexRow)

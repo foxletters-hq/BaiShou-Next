@@ -1,11 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity
-} from 'react-native'
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native'
 import DraggableFlatList, {
   ScaleDecorator,
   type RenderItemParams
@@ -128,10 +122,10 @@ export const AssistantManagementScreen: React.FC = () => {
 
   const handleDeleteAssistant = async (assistant: Assistant) => {
     const confirmed = await dialog.confirm(t('agent.assistant.delete_confirm_content'), {
-        title: t('agent.assistant.delete_confirm_title'),
-        confirmText: t('common.delete'),
-        destructive: true
-      })
+      title: t('agent.assistant.delete_confirm_title'),
+      confirmText: t('common.delete'),
+      destructive: true
+    })
     if (!confirmed) return
     try {
       await services?.assistantManager.delete(assistant.id)
@@ -170,67 +164,67 @@ export const AssistantManagementScreen: React.FC = () => {
         onPress={() => handleEditAssistant(item)}
         activeOpacity={0.75}
       >
-      <View style={styles.cardHeader}>
-        {isDragEnabled ? (
-          <TouchableOpacity
-            onPressIn={drag}
-            style={[styles.dragHandle, { borderColor: colors.borderSubtle }]}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <MaterialIcons name="drag-indicator" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
-        ) : null}
-        <AssistantAvatar
-          emoji={item.emoji}
-          avatarPath={item.avatarPath}
-          resolvedAvatarUri={item.displayAvatarUri}
-          size={44}
-        />
-        <View style={styles.cardMeta}>
-          <View style={styles.nameRow}>
-            <Text style={[styles.cardName, { color: colors.textPrimary }]} numberOfLines={1}>
-              {item.name}
-            </Text>
-            <AssistantKindBadge kind={item.assistantKind} compact />
-            {item.isPinned ? (
-              <MaterialIcons name="push-pin" size={14} color={colors.primary} />
+        <View style={styles.cardHeader}>
+          {isDragEnabled ? (
+            <TouchableOpacity
+              onPressIn={drag}
+              style={[styles.dragHandle, { borderColor: colors.borderSubtle }]}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <MaterialIcons name="drag-indicator" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          ) : null}
+          <AssistantAvatar
+            emoji={item.emoji}
+            avatarPath={item.avatarPath}
+            resolvedAvatarUri={item.displayAvatarUri}
+            size={44}
+          />
+          <View style={styles.cardMeta}>
+            <View style={styles.nameRow}>
+              <Text style={[styles.cardName, { color: colors.textPrimary }]} numberOfLines={1}>
+                {item.name}
+              </Text>
+              <AssistantKindBadge kind={item.assistantKind} compact />
+              {item.isPinned ? (
+                <MaterialIcons name="push-pin" size={14} color={colors.primary} />
+              ) : null}
+            </View>
+            {item.isDefault ? (
+              <Text style={[styles.defaultTag, { color: colors.primary }]}>
+                {t('agent.assistant.default_tag')}
+              </Text>
             ) : null}
           </View>
-          {item.isDefault ? (
-            <Text style={[styles.defaultTag, { color: colors.primary }]}>
-              {t('agent.assistant.default_tag')}
-            </Text>
+        </View>
+
+        <Text style={[styles.cardDesc, { color: colors.textSecondary }]} numberOfLines={3}>
+          {item.description ||
+            item.systemPrompt ||
+            t('agent.assistant.no_prompt', '⚠️ 空白系统协议流...')}
+        </Text>
+
+        <View style={styles.cardActions}>
+          <TouchableOpacity
+            style={[styles.chipBtn, { borderColor: colors.borderSubtle }]}
+            onPress={() => void handleTogglePin(item)}
+          >
+            <MaterialIcons
+              name="push-pin"
+              size={16}
+              color={item.isPinned ? colors.primary : colors.textSecondary}
+            />
+          </TouchableOpacity>
+          {!item.isDefault ? (
+            <TouchableOpacity
+              style={[styles.chipBtn, { borderColor: colors.error + '55' }]}
+              onPress={() => handleDeleteAssistant(item)}
+            >
+              <MaterialIcons name="delete-outline" size={16} color={colors.error} />
+            </TouchableOpacity>
           ) : null}
         </View>
-      </View>
-
-      <Text style={[styles.cardDesc, { color: colors.textSecondary }]} numberOfLines={3}>
-        {item.description ||
-          item.systemPrompt ||
-          t('agent.assistant.no_prompt', '⚠️ 空白系统协议流...')}
-      </Text>
-
-      <View style={styles.cardActions}>
-        <TouchableOpacity
-          style={[styles.chipBtn, { borderColor: colors.borderSubtle }]}
-          onPress={() => void handleTogglePin(item)}
-        >
-          <MaterialIcons
-            name="push-pin"
-            size={16}
-            color={item.isPinned ? colors.primary : colors.textSecondary}
-          />
-        </TouchableOpacity>
-        {!item.isDefault ? (
-          <TouchableOpacity
-            style={[styles.chipBtn, { borderColor: colors.error + '55' }]}
-            onPress={() => handleDeleteAssistant(item)}
-          >
-            <MaterialIcons name="delete-outline" size={16} color={colors.error} />
-          </TouchableOpacity>
-        ) : null}
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
     </ScaleDecorator>
   )
 

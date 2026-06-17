@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type -- Expo config plugin（CommonJS） */
 const { withAndroidManifest, AndroidConfig } = require('@expo/config-plugins')
-const { ensureToolsAvailable, getMainApplicationOrThrow } = require('@expo/config-plugins/build/android/Manifest')
+const {
+  ensureToolsAvailable,
+  getMainApplicationOrThrow
+} = require('@expo/config-plugins/build/android/Manifest')
 
 const LAN_PERMISSIONS = [
   'android.permission.ACCESS_NETWORK_STATE',

@@ -206,7 +206,15 @@ export class MobileLanSyncService implements ILanSyncService {
       device_id: this.lanDeviceId
     }
     if (impl) {
-      this.zeroconf.publishService('baishou', 'tcp', 'local.', serviceName, this.currentPort, txt, impl)
+      this.zeroconf.publishService(
+        'baishou',
+        'tcp',
+        'local.',
+        serviceName,
+        this.currentPort,
+        txt,
+        impl
+      )
     } else {
       this.zeroconf.publishService('baishou', 'tcp', 'local.', serviceName, this.currentPort, txt)
     }
@@ -282,7 +290,10 @@ export class MobileLanSyncService implements ILanSyncService {
   }
 
   private async findReachableIp(hostStr: string, port: number): Promise<string | null> {
-    const hosts = hostStr.split(',').map((h) => h.trim()).filter(Boolean)
+    const hosts = hostStr
+      .split(',')
+      .map((h) => h.trim())
+      .filter(Boolean)
     if (hosts.length === 0 || hosts[0] === 'Unknown') return null
 
     for (const host of hosts) {

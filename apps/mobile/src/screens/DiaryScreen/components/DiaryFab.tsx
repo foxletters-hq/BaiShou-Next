@@ -45,11 +45,7 @@ export const DiaryFab: React.FC<DiaryFabProps> = ({ todayEntry, onEditToday, onA
 
       <TouchableOpacity
         onPress={onAddNew}
-        style={[
-          styles.fabLarge,
-          { backgroundColor: colors.primary },
-          fabShadowRaised
-        ]}
+        style={[styles.fabLarge, { backgroundColor: colors.primary }, fabShadowRaised]}
         accessibilityRole="button"
         accessibilityLabel={t('settings.write_diary_button')}
       >

@@ -2,10 +2,7 @@ import type { IFileSystem } from '../fs/file-system.types'
 import * as path from '../fs/path.util'
 import type { RawSqlExecutor } from './legacy-migration.shared'
 
-export type LegacyAvatarImporter = (
-  absoluteSourcePath: string,
-  prefix: string
-) => Promise<string>
+export type LegacyAvatarImporter = (absoluteSourcePath: string, prefix: string) => Promise<string>
 
 export async function restoreLegacyAvatarsFromArchiveLayout(
   fileSystem: IFileSystem,
@@ -120,8 +117,6 @@ export async function rectifyAssistantAvatarPaths(
   }
 }
 
-export function mergeAvatarMaps(
-  ...maps: Array<Record<string, string>>
-): Record<string, string> {
+export function mergeAvatarMaps(...maps: Array<Record<string, string>>): Record<string, string> {
   return Object.assign({}, ...maps)
 }

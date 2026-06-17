@@ -28,11 +28,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 
 function isTransientNetworkError(error: unknown): boolean {
   const message =
-    error instanceof Error
-      ? error.message
-      : typeof error === 'string'
-        ? error
-        : String(error)
+    error instanceof Error ? error.message : typeof error === 'string' ? error : String(error)
   return /network request failed|failed to fetch|timed out|timeout|econnreset|enetunreach/i.test(
     message
   )

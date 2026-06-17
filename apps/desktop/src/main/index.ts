@@ -257,7 +257,8 @@ app.whenReady().then(async () => {
 
   if (needsOnboarding) {
     try {
-      const { resolveLegacyRootCandidates } = await import('./services/flutter-legacy-paths.service')
+      const { resolveLegacyRootCandidates } =
+        await import('./services/flutter-legacy-paths.service')
       const legacyCandidates = await resolveLegacyRootCandidates()
       if (legacyCandidates.length > 0) {
         customStorageRoot = legacyCandidates[0]!
@@ -279,7 +280,8 @@ app.whenReady().then(async () => {
   // ======================================
   if (needsOnboarding) {
     try {
-      const { resolveLegacyRootCandidates } = await import('./services/flutter-legacy-paths.service')
+      const { resolveLegacyRootCandidates } =
+        await import('./services/flutter-legacy-paths.service')
       const { LegacyMigrationService } = await import('./services/legacy-migration.service')
       const { getDesktopInstallInstanceId } = await import('./services/install-instance.service')
       const { isMigrationCompleted } = await import('@baishou/core/shared')

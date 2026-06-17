@@ -110,8 +110,7 @@ export function useAttachmentSessionState(
     )
     if (!confirmed) return
 
-    const freedSizeMB =
-      attachments.find((a) => a.sessionId === sessionId)?.totalSizeMB ?? 0
+    const freedSizeMB = attachments.find((a) => a.sessionId === sessionId)?.totalSizeMB ?? 0
 
     setIsDeleting(true)
     try {

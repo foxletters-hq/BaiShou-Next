@@ -25,9 +25,7 @@
  */
 export function getSummaryWeekNumber(date: Date): number {
   const firstDayOfYear = new Date(date.getFullYear(), 0, 1)
-  return Math.ceil(
-    (date.getTime() - firstDayOfYear.getTime()) / (7 * 24 * 60 * 60 * 1000) + 1
-  )
+  return Math.ceil((date.getTime() - firstDayOfYear.getTime()) / (7 * 24 * 60 * 60 * 1000) + 1)
 }
 
 export function formatLocalDate(date: Date): string {

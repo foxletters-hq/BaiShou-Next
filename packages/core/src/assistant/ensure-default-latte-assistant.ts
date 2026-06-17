@@ -61,9 +61,7 @@ export async function ensureDefaultLatteAssistant(
     await assistantManager.update(legacyDefault.id, {
       name: seed.name,
       description: seed.description,
-      ...(isAssistantCustomAvatar(legacyDefault.avatarPath)
-        ? {}
-        : { avatarPath: seed.avatarPath }),
+      ...(isAssistantCustomAvatar(legacyDefault.avatarPath) ? {} : { avatarPath: seed.avatarPath }),
       systemPrompt: seed.systemPrompt
     })
   }

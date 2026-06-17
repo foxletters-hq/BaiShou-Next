@@ -202,7 +202,11 @@ export function useAgentNavigationPersistence({
       if (cancelled || !session) return
 
       const sessionAssistantId = session.assistantId ?? null
-      if (!sessionAssistantId || !currentAssistant?.id || sessionAssistantId === currentAssistant.id) {
+      if (
+        !sessionAssistantId ||
+        !currentAssistant?.id ||
+        sessionAssistantId === currentAssistant.id
+      ) {
         return
       }
 
@@ -270,7 +274,11 @@ export function useAgentNavigationPersistence({
     }
 
     const sessionAssistantId = session.assistantId ?? null
-    if (!sessionAssistantId || !currentAssistant?.id || sessionAssistantId === currentAssistant.id) {
+    if (
+      !sessionAssistantId ||
+      !currentAssistant?.id ||
+      sessionAssistantId === currentAssistant.id
+    ) {
       return
     }
 

@@ -29,6 +29,7 @@ import { OnboardingGlowIcon } from './components/OnboardingGlowIcon'
 import { OnboardingStorageSlide } from './components/OnboardingStorageSlide'
 import { OnboardingLanguageSlide } from './components/OnboardingLanguageSlide'
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const APP_ICON = require('../../../assets/images/icon.png') as number
 import { useBaishou } from '@/src/providers/BaishouProvider'
 import {
@@ -157,11 +158,7 @@ export const OnboardingScreen: React.FC = () => {
 
   const finishOnboarding = async () => {
     if (!(await requireLanguageBeforeLeave())) return
-    if (
-      storagePermission.isAndroid &&
-      storagePermission.granted === true &&
-      !storageReady
-    ) {
+    if (storagePermission.isAndroid && storagePermission.granted === true && !storageReady) {
       await retryStorageSetup()
     }
     allowLeaveRef.current = true
@@ -454,9 +451,7 @@ export const OnboardingScreen: React.FC = () => {
                         : 1
                 }
               ]}
-              activeOpacity={
-                nextBlockedOnLanguage || isMountingStorage ? 1 : 0.9
-              }
+              activeOpacity={nextBlockedOnLanguage || isMountingStorage ? 1 : 0.9}
               disabled={isMountingStorage}
             >
               <Text style={styles.nextButtonText}>

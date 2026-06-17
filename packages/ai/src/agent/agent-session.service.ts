@@ -11,7 +11,12 @@ import { StreamChunkAdapter } from './stream-chunk.adapter'
 import { ChunkType } from './stream-chunk.types'
 import type { StreamChunk } from './stream-chunk.types'
 import { SystemPromptBuilder } from './system-prompt.builder'
-import { isVisionModel, logger, mergeDisabledToolIds, normalizeAssistantKind } from '@baishou/shared'
+import {
+  isVisionModel,
+  logger,
+  mergeDisabledToolIds,
+  normalizeAssistantKind
+} from '@baishou/shared'
 
 // --- 新挂载的智慧引擎组件 ---
 import { ContextWindowBuilder } from './context-window.builder'

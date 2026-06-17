@@ -59,11 +59,7 @@ const ProviderListIcon = React.memo(function ProviderListIcon({
   return <ProviderBrandIcon providerId={providerId} size={size} />
 })
 
-const ProviderDragHandle = React.memo(function ProviderDragHandle({
-  color
-}: {
-  color: string
-}) {
+const ProviderDragHandle = React.memo(function ProviderDragHandle({ color }: { color: string }) {
   return (
     <View style={styles.dragHandle} collapsable={false} accessibilityRole="button">
       <View style={styles.dragGrip} collapsable={false}>

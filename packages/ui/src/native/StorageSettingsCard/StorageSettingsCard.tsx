@@ -61,7 +61,10 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
         </Text>
       </View>
 
-      {onChangeDirectory || onMigrateDirectory || onMigrateFromFlutterLegacy || onDeleteMigratedLegacySource ? (
+      {onChangeDirectory ||
+      onMigrateDirectory ||
+      onMigrateFromFlutterLegacy ||
+      onDeleteMigratedLegacySource ? (
         <View style={styles.actions}>
           {onMigrateFromFlutterLegacy ? (
             <Button

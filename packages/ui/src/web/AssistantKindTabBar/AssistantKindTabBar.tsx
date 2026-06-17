@@ -1,7 +1,11 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Heart, Briefcase } from 'lucide-react'
-import { getAssistantKindHintKey, normalizeAssistantKind, type AssistantKind } from '@baishou/shared'
+import {
+  getAssistantKindHintKey,
+  normalizeAssistantKind,
+  type AssistantKind
+} from '@baishou/shared'
 import styles from './AssistantKindTabBar.module.css'
 
 export interface AssistantKindTabBarProps {

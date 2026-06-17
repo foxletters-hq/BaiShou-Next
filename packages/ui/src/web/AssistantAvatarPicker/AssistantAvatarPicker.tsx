@@ -74,9 +74,7 @@ export const AssistantAvatarPicker: React.FC<AssistantAvatarPickerProps> = ({
   }
 
   return (
-    <div
-      className={`${styles.root} ${fullWidth ? styles.rootFullWidth : ''} ${className ?? ''}`}
-    >
+    <div className={`${styles.root} ${fullWidth ? styles.rootFullWidth : ''} ${className ?? ''}`}>
       <button
         type="button"
         className={styles.previewBtn}
@@ -140,7 +138,11 @@ export const AssistantAvatarPicker: React.FC<AssistantAvatarPickerProps> = ({
                 onClick={() => handleBuiltinSelect(id)}
                 aria-label={t('agent.assistant.select_builtin_avatar')}
               >
-                <img src={WEB_BUILTIN_ASSISTANT_AVATAR_URLS[id]} alt="" className={styles.presetImg} />
+                <img
+                  src={WEB_BUILTIN_ASSISTANT_AVATAR_URLS[id]}
+                  alt=""
+                  className={styles.presetImg}
+                />
               </button>
             )
           })}

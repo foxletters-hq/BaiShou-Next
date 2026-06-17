@@ -78,10 +78,7 @@ export function FlutterLegacyMigrationGate({ children }: { children: React.React
 
       const deleted = await deleteMigratedLegacySource()
       if (deleted) {
-        toast.showToast(
-          t('storage.flutter_legacy_delete_success', '旧版目录已删除'),
-          'success'
-        )
+        toast.showToast(t('storage.flutter_legacy_delete_success', '旧版目录已删除'), 'success')
       } else {
         toast.showError(
           t('storage.flutter_legacy_delete_failed', '无法删除旧版目录，请稍后在存储设置中重试')
@@ -168,9 +165,7 @@ export function FlutterLegacyMigrationGate({ children }: { children: React.React
           </Text>
         </View>
 
-        {errorMessage ? (
-          <Text style={styles.errorText}>{errorMessage}</Text>
-        ) : null}
+        {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
         <Button
           variant="primary"

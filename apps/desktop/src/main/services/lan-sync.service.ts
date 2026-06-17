@@ -354,13 +354,10 @@ export class DesktopLanSyncService implements ILanSyncService {
 
   private probeInfo(host: string, port: number): Promise<boolean> {
     return new Promise((resolve) => {
-      const req = http.get(
-        { hostname: host, port, path: '/info', timeout: 3000 },
-        (res) => {
-          res.resume()
-          resolve(res.statusCode === 200)
-        }
-      )
+      const req = http.get({ hostname: host, port, path: '/info', timeout: 3000 }, (res) => {
+        res.resume()
+        resolve(res.statusCode === 200)
+      })
       req.on('error', () => resolve(false))
       req.on('timeout', () => {
         req.destroy()
@@ -444,11 +441,7 @@ export class DesktopLanSyncService implements ILanSyncService {
           if (finishIfAlreadyOk()) return
           const code = (e as NodeJS.ErrnoException)?.code
           const message = e instanceof Error ? e.message : String(e)
-          if (
-            code === 'ECONNRESET' ||
-            code === 'EPIPE' ||
-            message.includes('socket hang up')
-          ) {
+          if (code === 'ECONNRESET' || code === 'EPIPE' || message.includes('socket hang up')) {
             if (finishIfUploadCompleteAfterAbort('Connection closed after upload')) return
           }
           console.error('[DesktopLanSyncService] POST error:', e)
@@ -485,7 +478,10 @@ export class DesktopLanSyncService implements ILanSyncService {
         req.setTimeout(15 * 60 * 1000, () => {
           console.error('[DesktopLanSyncService] POST timed out waiting for device response')
           req.destroy()
-          if (!finishIfAlreadyOk() && !finishIfUploadCompleteAfterAbort('POST timed out after upload')) {
+          if (
+            !finishIfAlreadyOk() &&
+            !finishIfUploadCompleteAfterAbort('POST timed out after upload')
+          ) {
             finish(false)
           }
         })

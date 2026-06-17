@@ -49,10 +49,10 @@ export interface DiaryListProps {
   storageSlow?: boolean
   /** 外部存储挂载失败 */
   storageMountFailed?: boolean
-    /** 保险库切换 / 全量恢复期间，列表尚未就绪 */
-    vaultSwitching?: boolean
-    /** 已连接存储，正在从磁盘恢复索引 */
-    storageIndexing?: boolean
+  /** 保险库切换 / 全量恢复期间，列表尚未就绪 */
+  vaultSwitching?: boolean
+  /** 已连接存储，正在从磁盘恢复索引 */
+  storageIndexing?: boolean
   onRetryStorageMount?: () => void | Promise<void>
   onGoToEditor: (id: number) => void
   onDeleteEntry: (id: number) => void
@@ -215,15 +215,7 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
       onPageChange,
       onPageSizeChange
     }),
-    [
-      paginationInfo,
-      pageSize,
-      safeCurrentPage,
-      totalPages,
-      width,
-      onPageChange,
-      onPageSizeChange
-    ]
+    [paginationInfo, pageSize, safeCurrentPage, totalPages, width, onPageChange, onPageSizeChange]
   )
 
   const renderItem = useCallback(
@@ -287,7 +279,10 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
         />
         <Text style={[styles.storageTitle, { color: colors.textPrimary }]}>
           {storageMountFailed
-            ? t('storage.external_access_error', '无法访问外部 BaiShou_Root，请确认已开启「管理所有文件」权限。')
+            ? t(
+                'storage.external_access_error',
+                '无法访问外部 BaiShou_Root，请确认已开启「管理所有文件」权限。'
+              )
             : t('storage.mounting_slow_title', '正在后台准备日记存储')}
         </Text>
         <Text style={[styles.storageHintText, { color: colors.textSecondary }]}>

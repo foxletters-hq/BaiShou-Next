@@ -295,9 +295,7 @@ describe('GitSyncService', () => {
         isExcludedFromVersionControl('Personal/.git.vault-legacy/hooks/commit-msg.sample')
       ).toBe(true)
       expect(
-        isExcludedFromVersionControl(
-          'Personal/Attachments/x/全栈开发.conflict-1781599201371.pdf'
-        )
+        isExcludedFromVersionControl('Personal/Attachments/x/全栈开发.conflict-1781599201371.pdf')
       ).toBe(true)
       expect(
         isExcludedFromVersionControl(

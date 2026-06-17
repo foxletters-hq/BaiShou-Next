@@ -81,9 +81,7 @@ export const DiaryTemplateSettingsPane: React.FC = () => {
       </section>
 
       <section className={styles.card}>
-        <h3 className={styles.cardTitle}>
-          {t('settings.diary_template_append', '追加记录模板')}
-        </h3>
+        <h3 className={styles.cardTitle}>{t('settings.diary_template_append', '追加记录模板')}</h3>
         <p className={styles.desc}>
           {t('settings.diary_template_append_desc', '在已有日记末尾追加新记录时插入的时间块。')}
         </p>

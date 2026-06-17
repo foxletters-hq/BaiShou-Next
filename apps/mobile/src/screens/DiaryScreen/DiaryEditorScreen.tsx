@@ -19,9 +19,7 @@ import {
 import { useStoragePermission } from '../../hooks/useStoragePermission'
 import { useAttachmentImageLoader } from '../../hooks/useAttachmentImageLoader'
 import { extractDiaryAttachmentSrcs } from '@baishou/ui/native'
-import {
-  resolveDiaryAttachmentImageDataUri
-} from '../../utils/mobile-diary-attachment-resolver'
+import { resolveDiaryAttachmentImageDataUri } from '../../utils/mobile-diary-attachment-resolver'
 import { FullFileAccessGate } from '../../components/FullFileAccessGate'
 import {
   assertExternalStorageReady,

@@ -2,10 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { AIProviderConfig } from '../../types/settings.types'
 import { resolveSummaryConfigFromSettings } from '../summary-config.util'
 
-function makeProvider(
-  id: string,
-  overrides: Partial<AIProviderConfig> = {}
-): AIProviderConfig {
+function makeProvider(id: string, overrides: Partial<AIProviderConfig> = {}): AIProviderConfig {
   return {
     id,
     name: id,
@@ -66,7 +63,9 @@ describe('resolveSummaryConfigFromSettings', () => {
   })
 
   it('does not treat placeholder summary provider id as configured when model is off', () => {
-    const providers = [makeProvider('deepseek', { apiKey: 'sk-deep', enabledModels: ['deepseek-chat'] })]
+    const providers = [
+      makeProvider('deepseek', { apiKey: 'sk-deep', enabledModels: ['deepseek-chat'] })
+    ]
 
     const result = resolveSummaryConfigFromSettings(providers, {
       globalSummaryProviderId: 'gemini',

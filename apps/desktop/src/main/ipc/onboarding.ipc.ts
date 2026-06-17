@@ -53,7 +53,8 @@ export function registerOnboardingIPC(onComplete: () => void) {
         const { getDesktopInstallInstanceId } = await import('../services/install-instance.service')
         const { isMigrationCompleted } = await import('@baishou/core/shared')
         const { createNodeFileSystem } = await import('@baishou/core-desktop')
-        const { connectionManager, installDatabaseSchema } = await import('@baishou/database-desktop')
+        const { connectionManager, installDatabaseSchema } =
+          await import('@baishou/database-desktop')
         const { getAppDb, resetAppDb } = await import('../db')
 
         const legacyService = new LegacyMigrationService()

@@ -13,7 +13,9 @@ const fileReceivedListeners = new Set<FileReceivedListener>()
 let deviceFoundBridge: ((_event: unknown, device: unknown) => void) | null = null
 let deviceLostBridge: ((_event: unknown, deviceId: string) => void) | null = null
 let sendProgressBridge: ((_event: unknown, progress: number) => void) | null = null
-let fileReceivedBridge: ((_event: unknown, payload: string | { path: string; sizeBytes?: number }) => void) | null = null
+let fileReceivedBridge:
+  | ((_event: unknown, payload: string | { path: string; sizeBytes?: number }) => void)
+  | null = null
 
 function ensureDeviceFoundBridge() {
   if (deviceFoundBridge) return

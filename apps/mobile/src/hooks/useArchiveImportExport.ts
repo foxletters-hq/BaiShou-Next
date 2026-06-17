@@ -16,7 +16,10 @@ function waitForShareSheetDismiss(): Promise<void> {
   })
 }
 
-function formatExportFailedToast(t: (key: string, options?: Record<string, string>) => string, error: unknown): string {
+function formatExportFailedToast(
+  t: (key: string, options?: Record<string, string>) => string,
+  error: unknown
+): string {
   const detail = formatArchiveExportErrorMessage(error)
   const localized = t('settings.export_failed', { error: detail })
   if (localized.includes('{{error}}')) {

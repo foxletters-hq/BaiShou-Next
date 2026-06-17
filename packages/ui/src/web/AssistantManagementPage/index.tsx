@@ -151,15 +151,15 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
                   >
                     {vm.activeDragId
                       ? (() => {
-                          const assistant = vm.visibleAssistants.find((a) => a.id === vm.activeDragId)
+                          const assistant = vm.visibleAssistants.find(
+                            (a) => a.id === vm.activeDragId
+                          )
                           if (!assistant) return null
                           const isPinned = pinnedIds.has(assistant.id)
                           return (
                             <AssistantListRow
                               style={
-                                vm.dragOverlayWidth
-                                  ? { width: vm.dragOverlayWidth }
-                                  : undefined
+                                vm.dragOverlayWidth ? { width: vm.dragOverlayWidth } : undefined
                               }
                               className={`${styles.sortableRow} ${styles.sortableRowDragging} ${isPinned ? styles.cardPinned : ''}`}
                               assistant={assistant}

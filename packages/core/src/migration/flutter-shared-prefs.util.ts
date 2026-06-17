@@ -225,9 +225,7 @@ export function isFlutterSettingsMigrationFullySupported(platform: string): bool
   return platform === 'android'
 }
 
-export function extractFlutterCustomStorageRoot(
-  sp: Record<string, unknown>
-): string | null {
+export function extractFlutterCustomStorageRoot(sp: Record<string, unknown>): string | null {
   const raw = sp['custom_storage_root']
   if (typeof raw !== 'string') return null
   const trimmed = raw.trim()

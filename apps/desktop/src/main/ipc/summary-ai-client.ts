@@ -1,6 +1,11 @@
 import { generateText } from 'ai'
 import { settingsManager } from './settings.ipc'
-import { GlobalModelsConfig, logger, prepareProviderConfigForRuntime, resolveSummaryConfigFromSettings } from '@baishou/shared'
+import {
+  GlobalModelsConfig,
+  logger,
+  prepareProviderConfigForRuntime,
+  resolveSummaryConfigFromSettings
+} from '@baishou/shared'
 import { pathService } from './vault.ipc'
 import type { SummaryAiClient } from '@baishou/core-desktop'
 import { AIProviderConfig } from '@baishou/shared'

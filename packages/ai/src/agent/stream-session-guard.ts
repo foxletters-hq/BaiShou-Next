@@ -32,10 +32,7 @@ export function claimAgentStreamSession(sessionId: string): AgentStreamSessionCl
   }
 }
 
-export function isAgentStreamSessionClaimActive(
-  sessionId: string,
-  generation: number
-): boolean {
+export function isAgentStreamSessionClaimActive(sessionId: string, generation: number): boolean {
   return sessionClaims.get(sessionId)?.generation === generation
 }
 

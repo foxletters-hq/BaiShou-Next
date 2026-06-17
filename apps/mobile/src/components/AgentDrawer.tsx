@@ -13,7 +13,12 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
-import { AgentSessionList, AssistantAvatar, useNativeTheme, AssistantKindBadge } from '@baishou/ui/native'
+import {
+  AgentSessionList,
+  AssistantAvatar,
+  useNativeTheme,
+  AssistantKindBadge
+} from '@baishou/ui/native'
 import type { AssistantKind } from '@baishou/shared'
 import type { AgentSession } from '@baishou/ui/native'
 

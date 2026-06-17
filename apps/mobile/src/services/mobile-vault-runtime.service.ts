@@ -436,24 +436,24 @@ export type StorageRootRebootstrapOptions = {
 /** 数据根目录变更后：重载 registry、重建 diary stack 并全量扫描日记 */
 export async function rebootstrapAfterStorageRootChange(
   deps: {
-  pathService: IStoragePathService
-  vaultService: VaultService
-  fileSystem: IFileSystem
-  diaryStack?: VaultBoundDiaryStack
-  bootstrapDeps: Omit<
-    MobileBootstrapperDeps,
-    | 'shadowIndexSyncService'
-    | 'sessionManager'
-    | 'assistantManager'
-    | 'settingsManager'
-    | 'summarySyncService'
-  > & {
-    sessionManager: SessionManagerService
-    assistantManager: AssistantManagerService
-    settingsManager: SettingsManagerService
-    summarySyncService: SummarySyncService
-  }
-  watcherDeps: VaultRuntimeWatcherDeps
+    pathService: IStoragePathService
+    vaultService: VaultService
+    fileSystem: IFileSystem
+    diaryStack?: VaultBoundDiaryStack
+    bootstrapDeps: Omit<
+      MobileBootstrapperDeps,
+      | 'shadowIndexSyncService'
+      | 'sessionManager'
+      | 'assistantManager'
+      | 'settingsManager'
+      | 'summarySyncService'
+    > & {
+      sessionManager: SessionManagerService
+      assistantManager: AssistantManagerService
+      settingsManager: SettingsManagerService
+      summarySyncService: SummarySyncService
+    }
+    watcherDeps: VaultRuntimeWatcherDeps
   },
   options?: StorageRootRebootstrapOptions
 ): Promise<VaultBoundDiaryStack> {
@@ -640,9 +640,7 @@ async function preferActiveVaultWithJournalsOnDisk(deps: {
   if (!best || best.score === 0) return
 
   const active = deps.vaultService.getActiveVault()
-  const activeScore = active
-    ? (scored.find((item) => item.name === active.name)?.score ?? 0)
-    : 0
+  const activeScore = active ? (scored.find((item) => item.name === active.name)?.score ?? 0) : 0
 
   if (active && activeScore >= best.score) return
 
@@ -694,15 +692,19 @@ async function runVaultBootstrap(
   if (deferResync) {
     // 后台 resync 完成后再启动 watcher，避免 fullScanVault 与 VaultFileWatcher 并发写 Shadow DB
     const generation = vaultRuntimeGeneration
-    void scheduleVaultEcosystemResync(bootstrapDeps, options?.resyncReason ?? 'vault-switch', () => {
-      if (!isVaultRuntimeGenerationCurrent(generation)) {
-        logger.info('[VaultRuntime] Skip stale watcher restart after background resync')
-        return
+    void scheduleVaultEcosystemResync(
+      bootstrapDeps,
+      options?.resyncReason ?? 'vault-switch',
+      () => {
+        if (!isVaultRuntimeGenerationCurrent(generation)) {
+          logger.info('[VaultRuntime] Skip stale watcher restart after background resync')
+          return
+        }
+        void restartVaultWatchers(deps.diaryStack, deps.vaultService, deps.watcherDeps).finally(
+          () => options?.onResyncComplete?.()
+        )
       }
-      void restartVaultWatchers(deps.diaryStack, deps.vaultService, deps.watcherDeps).finally(() =>
-        options?.onResyncComplete?.()
-      )
-    })
+    )
     return
   }
 

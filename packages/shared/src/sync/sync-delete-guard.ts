@@ -50,18 +50,11 @@ export function assertBidirectionalDeletePropagationAllowed(
     remoteFileCount >= SYNC_DELETE_GUARD_MIN_REMOTE_FILES &&
     deleteRemoteCount / remoteFileCount > SYNC_DELETE_GUARD_MAX_REMOTE_DELETE_RATIO
   ) {
-    throw new SyncDeletePropagationBlockedError(
-      deleteRemoteCount,
-      remoteFileCount,
-      'mass_delete'
-    )
+    throw new SyncDeletePropagationBlockedError(deleteRemoteCount, remoteFileCount, 'mass_delete')
   }
 
   const unchangedRemoteDeletes = deleteRemoteDecisions.filter(
-    (d) =>
-      d.remoteEntry &&
-      d.ancestorEntry &&
-      d.remoteEntry.hash === d.ancestorEntry.hash
+    (d) => d.remoteEntry && d.ancestorEntry && d.remoteEntry.hash === d.ancestorEntry.hash
   )
 
   if (

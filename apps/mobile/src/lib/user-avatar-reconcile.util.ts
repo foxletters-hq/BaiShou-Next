@@ -15,7 +15,10 @@ async function userAvatarFileExists(
   if (!avatarPath.startsWith('avatars/')) return true
 
   const filename = avatarPath.split('/').pop() || avatarPath
-  const candidateDirs = [await pathService.getUserAvatarsDirectory(), await pathService.getAvatarsDirectory()]
+  const candidateDirs = [
+    await pathService.getUserAvatarsDirectory(),
+    await pathService.getAvatarsDirectory()
+  ]
 
   for (const dir of candidateDirs) {
     if (await fileSystem.exists(`${dir}/${filename}`)) {

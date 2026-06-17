@@ -5,9 +5,7 @@ vi.mock('react-native', () => ({
 }))
 
 vi.mock('expo-baishou-server', () => ({
-  getLegacyFlutterStorageRoots: () => [
-    '/data/user/0/com.baishou.baishou/app_flutter/BaiShou_Root'
-  ]
+  getLegacyFlutterStorageRoots: () => ['/data/user/0/com.baishou.baishou/app_flutter/BaiShou_Root']
 }))
 
 vi.mock('../storage-permission.service', () => ({
@@ -25,9 +23,8 @@ describe('mobile-legacy-migration.paths', () => {
   })
 
   it('resolveFlutterLegacyMigrationTargetRoot uses external BaiShou_Root on android', async () => {
-    const { resolveFlutterLegacyMigrationTargetRoot } = await import(
-      '../mobile-legacy-migration.paths'
-    )
+    const { resolveFlutterLegacyMigrationTargetRoot } =
+      await import('../mobile-legacy-migration.paths')
     expect(resolveFlutterLegacyMigrationTargetRoot()).toBe(
       'file:///storage/emulated/0/BaiShou_Root'
     )
@@ -41,9 +38,11 @@ describe('mobile-legacy-migration.paths', () => {
 
   it('resolveIosFlutterPreferencesPlistPath derives Library/Preferences path from Documents', async () => {
     vi.doMock('../mobile-app-paths', () => ({
-      getAppDocumentDirectory: () => 'file:///var/mobile/Containers/Data/Application/UUID/Documents/'
+      getAppDocumentDirectory: () =>
+        'file:///var/mobile/Containers/Data/Application/UUID/Documents/'
     }))
-    const { resolveIosFlutterPreferencesPlistPath } = await import('../mobile-legacy-migration.paths')
+    const { resolveIosFlutterPreferencesPlistPath } =
+      await import('../mobile-legacy-migration.paths')
     expect(resolveIosFlutterPreferencesPlistPath()).toBe(
       'file:///var/mobile/Containers/Data/Application/UUID/Library/Preferences/com.baishou.baishou.plist'
     )

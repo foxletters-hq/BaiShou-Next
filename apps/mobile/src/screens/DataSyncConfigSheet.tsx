@@ -53,7 +53,11 @@ export const DataSyncConfigSheet: React.FC<DataSyncConfigSheetProps> = ({
             autoCorrect={false}
           />
         </View>
-        <TouchableOpacity onPress={onTogglePassword} style={styles.eyeBtn} accessibilityRole="button">
+        <TouchableOpacity
+          onPress={onTogglePassword}
+          style={styles.eyeBtn}
+          accessibilityRole="button"
+        >
           <MaterialIcons
             name={showPassword ? 'visibility' : 'visibility-off'}
             size={22}

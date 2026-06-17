@@ -3,7 +3,6 @@ const { withDangerousMod } = require('@expo/config-plugins')
 const path = require('path')
 
 // build 脚本与 prebuild 共用同一份补丁逻辑
-// eslint-disable-next-line import/no-unresolved
 const { applyAndroidPlainSplashPatch } = require('../scripts/plain-splash-patch.mjs')
 
 /**

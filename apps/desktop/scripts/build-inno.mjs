@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable @typescript-eslint/explicit-function-return-type -- desktop build script（.mjs） */
 /**
  * 在 electron-builder --dir 产出 win-unpacked 后，用 Inno Setup 打 Windows 安装包。
  * 需已安装 Inno Setup 6（ISCC.exe）；CI 通过 choco install innosetup 提供。
@@ -68,7 +69,9 @@ function resolveIscc() {
 }
 
 if (process.platform !== 'win32') {
-  fail('Inno Setup 仅支持在 Windows 上编译。请在本机 Windows 执行，或推送 git tag 由 GitHub Actions 打包。')
+  fail(
+    'Inno Setup 仅支持在 Windows 上编译。请在本机 Windows 执行，或推送 git tag 由 GitHub Actions 打包。'
+  )
 }
 
 if (!existsSync(unpackedDir)) {

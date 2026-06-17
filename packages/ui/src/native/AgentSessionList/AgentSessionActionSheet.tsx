@@ -86,13 +86,7 @@ export const AgentSessionActionSheet: React.FC<AgentSessionActionSheetProps> = (
   if (options.length === 0) return null
 
   return (
-    <Modal
-      visible
-      transparent
-      animationType="fade"
-      statusBarTranslucent
-      onRequestClose={onClose}
-    >
+    <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
       <View style={styles.root} pointerEvents="box-none">
         <Pressable
           style={[StyleSheet.absoluteFill, styles.backdrop]}

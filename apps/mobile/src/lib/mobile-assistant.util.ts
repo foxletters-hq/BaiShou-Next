@@ -129,7 +129,7 @@ export function buildAssistantRepoInput(input: {
     name: input.name,
     emoji: undefined,
     description: input.description,
-        avatarPath:
+    avatarPath:
       normalizePersistedAvatarPath(input.avatarPath) ||
       normalizeAssistantAvatarPath(input.avatarPath) ||
       DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH,

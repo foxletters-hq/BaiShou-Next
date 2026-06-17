@@ -177,7 +177,10 @@ export function uninstallConflictingPackages(packageId = ANDROID_PACKAGE_ID) {
 /**
  * 编译安装前停止开发包进程。默认不卸载，以便同签名覆盖升级开发版。
  */
-export function prepareAndroidInstall(packageId = ANDROID_PACKAGE_ID, options = { uninstallFirst: false }) {
+export function prepareAndroidInstall(
+  packageId = ANDROID_PACKAGE_ID,
+  options = { uninstallFirst: false }
+) {
   if (!hasAdbDevice()) return false
   try {
     adbExec(`adb shell am force-stop ${packageId}`)
@@ -228,10 +231,14 @@ function tryHttpInstall(absApk) {
   const apkName = path.basename(absApk)
   const url = `http://${lanIp}:${HTTP_INSTALL_PORT}/${apkName}`
 
-  const server = spawn('python3', ['-m', 'http.server', String(HTTP_INSTALL_PORT), '--bind', '0.0.0.0'], {
-    cwd: apkDir,
-    stdio: 'ignore'
-  })
+  const server = spawn(
+    'python3',
+    ['-m', 'http.server', String(HTTP_INSTALL_PORT), '--bind', '0.0.0.0'],
+    {
+      cwd: apkDir,
+      stdio: 'ignore'
+    }
+  )
 
   try {
     try {
@@ -447,7 +454,10 @@ export function printWslPortProxyHint(lanHost = getLanIp(), port = METRO_PORT) {
 }
 
 /** 轮询 Metro /status，就绪后再用 adb 打开 App，避免固定延时不够 */
-export async function waitForMetro(port = METRO_PORT, { timeoutMs = 120_000, intervalMs = 500 } = {}) {
+export async function waitForMetro(
+  port = METRO_PORT,
+  { timeoutMs = 120_000, intervalMs = 500 } = {}
+) {
   const deadline = Date.now() + timeoutMs
   const url = `http://127.0.0.1:${port}/status`
   while (Date.now() < deadline) {
@@ -482,14 +492,18 @@ export function printDevConnectionHelp(lanHost = getLanIp(), port = METRO_PORT) 
     try {
       const devices = execSync('adb devices', { encoding: 'utf8' })
       if (devices.includes(':5555')) {
-        console.log('   无线 adb：若连不上，先 adb disconnect 再 adb connect 手机IP:5555，然后 pnpm mobile:connect')
+        console.log(
+          '   无线 adb：若连不上，先 adb disconnect 再 adb connect 手机IP:5555，然后 pnpm mobile:connect'
+        )
       }
     } catch {
       /* ignore */
     }
   }
   if (wsl && devHost !== 'localhost') {
-    console.log(`   WSL2 无 reverse 时开发菜单填: http://${lanHost}:${port} （需 portproxy 或 WSL 内 adb）`)
+    console.log(
+      `   WSL2 无 reverse 时开发菜单填: http://${lanHost}:${port} （需 portproxy 或 WSL 内 adb）`
+    )
     printWslPortProxyHint(lanHost, port)
   }
   if (lanHost.startsWith('198.18.')) {

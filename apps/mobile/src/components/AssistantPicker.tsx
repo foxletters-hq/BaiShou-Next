@@ -1,6 +1,9 @@
 import React from 'react'
 import { useRouter } from 'expo-router'
-import { AssistantPicker as SharedAssistantPicker, type MockAgentAssistant } from '@baishou/ui/native'
+import {
+  AssistantPicker as SharedAssistantPicker,
+  type MockAgentAssistant
+} from '@baishou/ui/native'
 
 interface AssistantPickerProps {
   isVisible: boolean

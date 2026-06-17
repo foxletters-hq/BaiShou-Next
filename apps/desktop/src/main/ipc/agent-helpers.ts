@@ -454,11 +454,7 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
   }
 
   let dedupService: MemoryDeduplicationServiceImpl | undefined
-  if (
-    embAdapter &&
-    systemModels?.embeddingProvider &&
-    systemModels?.embeddingModelId
-  ) {
+  if (embAdapter && systemModels?.embeddingProvider && systemModels?.embeddingModelId) {
     dedupService = new MemoryDeduplicationServiceImpl(
       embAdapter,
       dbAdapter,

@@ -1,9 +1,6 @@
 import type { AIProviderConfig, GlobalModelsConfig } from '@baishou/shared'
 import type { SettingsManagerService } from '@baishou/core-mobile'
-import {
-  resolveSummaryConfigFromSettings,
-  type SummaryConfigResolution
-} from '@baishou/shared'
+import { resolveSummaryConfigFromSettings, type SummaryConfigResolution } from '@baishou/shared'
 
 export type { SummaryConfigResolution }
 

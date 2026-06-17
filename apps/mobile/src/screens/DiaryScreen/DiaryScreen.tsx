@@ -4,18 +4,19 @@ import { ScreenSafeArea } from '../../components/ScreenSafeArea'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import {
-  WEATHER_IDS,
-  normalizeWeatherId,
-  type WeatherId
-} from '@baishou/shared'
+import { WEATHER_IDS, normalizeWeatherId, type WeatherId } from '@baishou/shared'
 import { logger } from '@baishou/shared'
 import { useNativeTheme } from '@baishou/ui/native'
 import { useStoragePermission } from '../../hooks/useStoragePermission'
 import { useBaishou } from '../../providers/BaishouProvider'
 import { DiaryAppBar } from './components/DiaryAppBar'
 import { DiaryFab } from './components/DiaryFab'
-import { DiaryList, type DiaryListEntry, DEFAULT_DIARY_PAGE_SIZE, DIARY_PAGE_SIZE_OPTIONS } from './components/DiaryList'
+import {
+  DiaryList,
+  type DiaryListEntry,
+  DEFAULT_DIARY_PAGE_SIZE,
+  DIARY_PAGE_SIZE_OPTIONS
+} from './components/DiaryList'
 import { useDiaryData, type DiaryPageQuery } from './hooks/useDiaryData'
 import { useIncrementalSync } from '../../providers/IncrementalSyncProvider'
 

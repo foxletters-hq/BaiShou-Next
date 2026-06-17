@@ -37,11 +37,11 @@ pnpm mobile:setup
 
 ## 其它
 
-| 命令                  | 说明                                       |
-| --------------------- | ------------------------------------------ |
-| `pnpm mobile:connect` | adb reverse + 打开开发版（Metro 需已在跑） |
-| `pnpm mobile:fix`     | 对齐 Expo SDK 依赖版本                     |
-| `pnpm mobile:export`  | 导出 Android 离线包                        |
+| 命令                   | 说明                                                 |
+| ---------------------- | ---------------------------------------------------- |
+| `pnpm mobile:connect`  | adb reverse + 打开开发版（Metro 需已在跑）           |
+| `pnpm mobile:fix`      | 对齐 Expo SDK 依赖版本                               |
+| `pnpm mobile:export`   | 导出 Android 离线包                                  |
 | `pnpm release:android` | 正式签名 Release APK（需先 `release:setup-signing`） |
 
 发布说明见 [`docs/打包须知.md`](../../docs/打包须知.md)。

@@ -28,8 +28,10 @@ function normalizeTimestamp(value: unknown): string | number | null {
 
 function normalizeAssistantRow(row: Record<string, unknown>): Record<string, unknown> {
   const mapped = mapRowToCamel(row)
-  if (mapped['createdAt'] !== undefined) mapped['createdAt'] = normalizeTimestamp(mapped['createdAt'])
-  if (mapped['updatedAt'] !== undefined) mapped['updatedAt'] = normalizeTimestamp(mapped['updatedAt'])
+  if (mapped['createdAt'] !== undefined)
+    mapped['createdAt'] = normalizeTimestamp(mapped['createdAt'])
+  if (mapped['updatedAt'] !== undefined)
+    mapped['updatedAt'] = normalizeTimestamp(mapped['updatedAt'])
   if (typeof mapped['isDefault'] === 'number') mapped['isDefault'] = mapped['isDefault'] === 1
   if (typeof mapped['isPinned'] === 'number') mapped['isPinned'] = mapped['isPinned'] === 1
   return mapped
@@ -37,22 +39,26 @@ function normalizeAssistantRow(row: Record<string, unknown>): Record<string, unk
 
 function normalizeSessionRow(row: Record<string, unknown>): Record<string, unknown> {
   const mapped = mapRowToCamel(row)
-  if (mapped['createdAt'] !== undefined) mapped['createdAt'] = normalizeTimestamp(mapped['createdAt'])
-  if (mapped['updatedAt'] !== undefined) mapped['updatedAt'] = normalizeTimestamp(mapped['updatedAt'])
+  if (mapped['createdAt'] !== undefined)
+    mapped['createdAt'] = normalizeTimestamp(mapped['createdAt'])
+  if (mapped['updatedAt'] !== undefined)
+    mapped['updatedAt'] = normalizeTimestamp(mapped['updatedAt'])
   if (typeof mapped['isPinned'] === 'number') mapped['isPinned'] = mapped['isPinned'] === 1
   return mapped
 }
 
 function normalizeMessageRow(row: Record<string, unknown>): Record<string, unknown> {
   const mapped = mapRowToCamel(row)
-  if (mapped['createdAt'] !== undefined) mapped['createdAt'] = normalizeTimestamp(mapped['createdAt'])
+  if (mapped['createdAt'] !== undefined)
+    mapped['createdAt'] = normalizeTimestamp(mapped['createdAt'])
   if (typeof mapped['isSummary'] === 'number') mapped['isSummary'] = mapped['isSummary'] === 1
   return mapped
 }
 
 function normalizePartRow(row: Record<string, unknown>): Record<string, unknown> {
   const mapped = mapRowToCamel(row)
-  if (mapped['createdAt'] !== undefined) mapped['createdAt'] = normalizeTimestamp(mapped['createdAt'])
+  if (mapped['createdAt'] !== undefined)
+    mapped['createdAt'] = normalizeTimestamp(mapped['createdAt'])
   if (typeof mapped['data'] === 'string') {
     try {
       mapped['data'] = JSON.parse(mapped['data'] as string)
@@ -117,9 +123,7 @@ export async function exportLegacyRuntimeArtifacts(options: {
     const sessionId = String(session['id'] ?? '')
     if (!sessionId) continue
 
-    const vaultName = sanitizeVaultDirectoryName(
-      String(session['vaultName'] ?? defaultVaultName)
-    )
+    const vaultName = sanitizeVaultDirectoryName(String(session['vaultName'] ?? defaultVaultName))
     const sessionsDir = path.join(targetWorkspaceDir, vaultName, 'Sessions')
     await ensureDir(fileSystem, sessionsDir)
 

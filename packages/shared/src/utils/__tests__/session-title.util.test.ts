@@ -7,7 +7,9 @@ describe('deriveSessionTitleFromUserText', () => {
   })
 
   it('truncates to 10 characters by default', () => {
-    expect(deriveSessionTitleFromUserText('这是一段比较长的用户首句内容')).toBe('这是一段比较长的用户')
+    expect(deriveSessionTitleFromUserText('这是一段比较长的用户首句内容')).toBe(
+      '这是一段比较长的用户'
+    )
     expect(deriveSessionTitleFromUserText('Hello world from user')).toBe('Hello worl')
   })
 

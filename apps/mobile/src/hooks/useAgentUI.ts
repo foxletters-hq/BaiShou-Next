@@ -75,9 +75,7 @@ export function useAgentUI() {
             type: 'memory' as const,
             title: t('agent.recall.memory', '记忆'),
             snippet: String(row.text ?? '').substring(0, 150),
-            date: row.createdAt
-              ? new Date(Number(row.createdAt)).toISOString().split('T')[0]
-              : '',
+            date: row.createdAt ? new Date(Number(row.createdAt)).toISOString().split('T')[0] : '',
             similarity: typeof row.similarity === 'number' ? row.similarity : undefined
           }))
         )

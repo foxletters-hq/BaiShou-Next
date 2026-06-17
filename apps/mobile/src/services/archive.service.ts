@@ -210,7 +210,8 @@ export class MobileArchiveService implements IArchiveService {
     zipFilePath: string,
     createSnapshotBefore: boolean = true
   ): Promise<ImportResult> {
-    const runQuiesced = this.dbBridge?.runArchiveImportQuiesced ?? ((fn: () => Promise<ImportResult>) => fn())
+    const runQuiesced =
+      this.dbBridge?.runArchiveImportQuiesced ?? ((fn: () => Promise<ImportResult>) => fn())
     return runQuiesced(() => this.importFromZipInternal(zipFilePath, createSnapshotBefore))
   }
 
@@ -249,8 +250,7 @@ export class MobileArchiveService implements IArchiveService {
       await this.fileSystem.mkdir(extractDir, { recursive: true })
 
       const { nativeZipPath, cleanupStagedZip } = await this.stageZipForUnzip(zipFilePath)
-      const useNativeArchiveImport =
-        Platform.OS === 'android' && isNativeArchiveImportAvailable()
+      const useNativeArchiveImport = Platform.OS === 'android' && isNativeArchiveImportAvailable()
       try {
         if (useNativeArchiveImport) {
           await nativeUnzipArchive(nativeZipPath, extractDir)
@@ -265,10 +265,13 @@ export class MobileArchiveService implements IArchiveService {
         await cleanupStagedZip?.()
       }
 
-      const preservedSettings = this.dbBridge ? await this.dbBridge.readPreservedImportSettings() : {}
+      const preservedSettings = this.dbBridge
+        ? await this.dbBridge.readPreservedImportSettings()
+        : {}
 
       const hasManifest = await this.fileSystem.exists(joinStoragePath(extractDir, 'manifest.json'))
-      const isFlutterLegacyZip = !hasManifest && (await isLegacyAppRoot(this.fileSystem, extractDir))
+      const isFlutterLegacyZip =
+        !hasManifest && (await isLegacyAppRoot(this.fileSystem, extractDir))
       await this.validateExtractedArchive(extractDir, isFlutterLegacyZip)
 
       if (isFlutterLegacyZip) {
@@ -359,8 +362,7 @@ export class MobileArchiveService implements IArchiveService {
         await this.restoreUserAvatarsFromExtract(extractDir)
 
         const dbPath = joinStoragePath(extractDir, MOBILE_ARCHIVE_DB_ZIP_NAME)
-        const restoredDatabase =
-          !!this.dbBridge && (await this.fileSystem.exists(dbPath))
+        const restoredDatabase = !!this.dbBridge && (await this.fileSystem.exists(dbPath))
 
         if (restoredDatabase) {
           await this.dbBridge!.replaceAgentDatabaseFrom(dbPath)

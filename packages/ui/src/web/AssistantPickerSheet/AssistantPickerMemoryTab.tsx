@@ -266,9 +266,7 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
                 {t('agent.assistant.compress_system_prompt_label', '压缩提示词')}
               </span>
-              <HelpTooltip
-                content={t('agent.assistant.compress_system_prompt_desc')}
-              />
+              <HelpTooltip content={t('agent.assistant.compress_system_prompt_desc')} />
               <div style={{ flex: 1 }} />
               <button
                 type="button"

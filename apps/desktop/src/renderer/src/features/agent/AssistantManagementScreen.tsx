@@ -32,10 +32,7 @@ export const AssistantManagementScreen: React.FC = () => {
       void loadAssistants()
     }
 
-    const removeListener = window.electron.ipcRenderer.on(
-      'diary:sync-event',
-      onVaultResyncComplete
-    )
+    const removeListener = window.electron.ipcRenderer.on('diary:sync-event', onVaultResyncComplete)
 
     return () => {
       removeListener()

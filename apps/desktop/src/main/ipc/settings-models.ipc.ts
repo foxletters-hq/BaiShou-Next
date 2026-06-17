@@ -266,7 +266,9 @@ export function registerSettingsModelsIPC() {
           // @ts-ignore
           logger.error?.('[TTS] Fetch CloneTTS voices failed:', err)
           if (err instanceof Error && err.name === 'AbortError') {
-            throw new Error(`请求超时（${TTS_FETCH_TIMEOUT_MS / 1000}s），请检查 CloneTTS 服务地址是否可达`)
+            throw new Error(
+              `请求超时（${TTS_FETCH_TIMEOUT_MS / 1000}s），请检查 CloneTTS 服务地址是否可达`
+            )
           }
           return []
         }

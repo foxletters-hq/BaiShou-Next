@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable @typescript-eslint/explicit-function-return-type -- desktop build script（.mjs） */
 /**
  * 打包后校验：扫描 main/preload 中的 runtime require，确认 app.asar 里能解析到对应模块。
  * 在 electron-builder --dir 之后运行，一次性列出所有缺失依赖，避免装完才发现。
@@ -24,11 +25,7 @@ const WORKSPACE_BUNDLED = new Set([
   '@baishou/ui'
 ])
 
-const BUILTIN = new Set([
-  'electron',
-  ...builtinModules,
-  ...builtinModules.map((m) => `node:${m}`)
-])
+const BUILTIN = new Set(['electron', ...builtinModules, ...builtinModules.map((m) => `node:${m}`)])
 
 /** @param {string} message @returns {never} */
 function fail(message) {
@@ -91,10 +88,9 @@ function listAsarEntries() {
 
 /** @param {Set<string>} entries @param {string} packageName @returns {boolean} */
 function hasPackageInAsar(entries, packageName) {
-  const prefix =
-    packageName.startsWith('@')
-      ? `\\node_modules\\${packageName.replace('/', '\\')}\\`
-      : `\\node_modules\\${packageName}\\`
+  const prefix = packageName.startsWith('@')
+    ? `\\node_modules\\${packageName.replace('/', '\\')}\\`
+    : `\\node_modules\\${packageName}\\`
   for (const entry of entries) {
     if (entry.includes(`${prefix}package.json`)) return true
   }
@@ -116,7 +112,7 @@ const mainBundlePath = join(desktopRoot, 'out', 'main', 'index.js')
 const mainBundle = readFileSync(mainBundlePath, 'utf8')
 if (/_interopNamespace(?:Default|Compat)\(\s*sqliteVec\s*\)/.test(mainBundle)) {
   fail(
-    'sqlite-vec 仍使用 namespace interop 包装，打包后启动会报 Cannot read properties of undefined (reading \'get\')。\n' +
+    "sqlite-vec 仍使用 namespace interop 包装，打包后启动会报 Cannot read properties of undefined (reading 'get')。\n" +
       '请确认 packages/database/src/drivers/node-sqlite.driver.ts 使用 require("sqlite-vec") 后重新 build。'
   )
 }
@@ -127,7 +123,9 @@ const required = [
 ]
 const uniqueRequired = [...new Set(required)].sort()
 
-console.log(`[verify-desktop-pack] 扫描到 ${uniqueRequired.length} 个需在 asar 中可解析的运行时依赖`)
+console.log(
+  `[verify-desktop-pack] 扫描到 ${uniqueRequired.length} 个需在 asar 中可解析的运行时依赖`
+)
 
 const entries = listAsarEntries()
 const missing = []
@@ -138,7 +136,9 @@ for (const pkg of uniqueRequired) {
 }
 
 if (missing.length > 0) {
-  console.error('[verify-desktop-pack] 以下依赖未出现在打包产物中（启动时可能 Cannot find module）：')
+  console.error(
+    '[verify-desktop-pack] 以下依赖未出现在打包产物中（启动时可能 Cannot find module）：'
+  )
   for (const pkg of missing) {
     console.error(`  - ${pkg}`)
   }

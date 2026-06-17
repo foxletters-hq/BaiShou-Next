@@ -289,8 +289,7 @@ export const AssistantEditScreen: React.FC = () => {
           )
 
       let finalAvatarPath =
-        normalizePersistedAvatarPath(storedAvatarPath) ||
-        DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH
+        normalizePersistedAvatarPath(storedAvatarPath) || DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH
       if (pendingImportUri) {
         finalAvatarPath = await services.attachmentManager.importAvatar(pendingImportUri, 'agent')
       }
@@ -321,9 +320,7 @@ export const AssistantEditScreen: React.FC = () => {
       if (existingAssistant?.avatarPath && existingAssistant.avatarPath !== repoInput.avatarPath) {
         invalidateAssistantAvatarDisplayCache(existingAssistant.avatarPath)
       }
-      toast.showSuccess(
-        isNew ? t('agent.assistant.created') : t('agent.assistant.updated')
-      )
+      toast.showSuccess(isNew ? t('agent.assistant.created') : t('agent.assistant.updated'))
       router.back()
     } catch (e) {
       console.error('Failed to save assistant', e)
@@ -338,10 +335,10 @@ export const AssistantEditScreen: React.FC = () => {
 
     Keyboard.dismiss()
     const confirmed = await dialog.confirm(t('agent.assistant.delete_confirm_content'), {
-        title: t('agent.assistant.delete_confirm_title'),
-        confirmText: t('common.delete'),
-        destructive: true
-      })
+      title: t('agent.assistant.delete_confirm_title'),
+      confirmText: t('common.delete'),
+      destructive: true
+    })
     if (!confirmed) return
     try {
       await services?.assistantManager.delete(id as string)

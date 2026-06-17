@@ -88,9 +88,7 @@ export const DiaryGrid: React.FC<DiaryGridProps> = ({
     return (
       <div className="diary-empty-state">
         <Loader2 size={48} className="diary-indexing-spinner" />
-        <div className="diary-empty-title">
-          {t('storage.indexing_title', '正在恢复日记索引')}
-        </div>
+        <div className="diary-empty-title">{t('storage.indexing_title', '正在恢复日记索引')}</div>
         <div className="diary-empty-text">
           {t(
             'storage.indexing_desc',

@@ -25,8 +25,12 @@ export const TTSSettingsPane: React.FC = () => {
   const globalModels = useSettingsStore((state) => state.globalModels)
 
   const handleSaveConfig = useCallback(async (config: TtsProviderConfig) => {
-    const { providers, globalModels: latestGlobalModels, setProviders, setGlobalModels } =
-      useSettingsStore.getState()
+    const {
+      providers,
+      globalModels: latestGlobalModels,
+      setProviders,
+      setGlobalModels
+    } = useSettingsStore.getState()
 
     if (Array.isArray(providers) && providers.some((p) => isTtsProviderId(p.id))) {
       await setProviders(providers.filter((p) => !isTtsProviderId(p.id)))

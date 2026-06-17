@@ -1,11 +1,6 @@
 import type { ImportResult } from '@baishou/core-mobile'
 
-export const ARCHIVE_SKIP_TOP_LEVEL = new Set([
-  'database',
-  'config',
-  'manifest.json',
-  'user-data'
-])
+export const ARCHIVE_SKIP_TOP_LEVEL = new Set(['database', 'config', 'manifest.json', 'user-data'])
 
 function normalizeArchivePreservePath(uriOrPath: string): string {
   let p = uriOrPath.replace(/^file:\/\//, '').replace(/\/+$/, '')
@@ -129,10 +124,7 @@ export function collectSnapshotPreserveKeys(preservePaths: string[]): {
   return { absolutes, filenames }
 }
 
-export function formatArchiveImportFailureMessage(
-  error: unknown,
-  snapshotPath?: string
-): string {
+export function formatArchiveImportFailureMessage(error: unknown, snapshotPath?: string): string {
   const base = error instanceof Error ? error.message : String(error)
   if (!snapshotPath) return base
   return `${base}\n已创建保护快照，可在「本地快照」中回退。`
