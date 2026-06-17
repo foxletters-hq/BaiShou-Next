@@ -24,7 +24,10 @@ function isIpv4(ip: string): boolean {
 
 export function isPrivateLanIpv4(ip: string): boolean {
   if (!isIpv4(ip)) return false
-  const [a, b] = ip.split('.').map(Number)
+  const octets = ip.split('.').map(Number)
+  const a = octets[0]
+  const b = octets[1]
+  if (a === undefined || b === undefined) return false
   if (a === 10) return true
   if (a === 172 && b >= 16 && b <= 31) return true
   if (a === 192 && b === 168) return true
@@ -33,8 +36,10 @@ export function isPrivateLanIpv4(ip: string): boolean {
 
 export function isExcludedLanIpv4(ip: string): boolean {
   if (!isIpv4(ip)) return true
-  const [a, b] = ip.split('.').map(Number)
-  if (a === 127) return true
+  const octets = ip.split('.').map(Number)
+  const a = octets[0]
+  const b = octets[1]
+  if (a === undefined || b === undefined) return true
   if (a === 169 && b === 254) return true
   if (a === 198 && (b === 18 || b === 19)) return true
   return false
