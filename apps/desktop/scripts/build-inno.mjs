@@ -70,7 +70,7 @@ function resolveIscc() {
 
 if (process.platform !== 'win32') {
   fail(
-    'Inno Setup 仅支持在 Windows 上编译。请在本机 Windows 执行，或推送 git tag 由 GitHub Actions 打包。'
+    'Inno Setup 仅支持在 Windows 上编译。请在本机 Windows 执行。'
   )
 }
 

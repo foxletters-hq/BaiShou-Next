@@ -41,6 +41,10 @@ interface Assistant {
   sortOrder?: number
 }
 
+function ListSeparator() {
+  return <View style={{ height: 12 }} />
+}
+
 export const AssistantManagementScreen: React.FC = () => {
   const { t } = useTranslation()
   const { colors, isDark, tokens } = useNativeTheme()
@@ -55,6 +59,7 @@ export const AssistantManagementScreen: React.FC = () => {
 
   const loadAssistants = useCallback(async () => {
     if (!dbReady || !services) return
+    setLoading(true)
     try {
       const assistantList = await listAssistantsForUi(
         services.assistantManager,
@@ -69,6 +74,8 @@ export const AssistantManagementScreen: React.FC = () => {
       setLoading(false)
     }
   }, [dbReady, services, vaultRevision])
+
+  const isBootstrapping = !dbReady || !services
 
   useEffect(() => {
     void loadAssistants()
@@ -239,7 +246,7 @@ export const AssistantManagementScreen: React.FC = () => {
       }}
       contentStyle={styles.container}
     >
-      {loading ? (
+      {isBootstrapping || loading ? (
         <View style={styles.centered}>
           <Text style={{ color: colors.textSecondary }}>{t('common.loading')}</Text>
         </View>
@@ -265,50 +272,57 @@ export const AssistantManagementScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       ) : isDragEnabled ? (
-        <DraggableFlatList
-          data={processedAssistants}
-          renderItem={renderCard}
-          keyExtractor={(item) => item.id}
-          onDragEnd={({ data }) => void handleReorder(data)}
-          style={{ flex: 1, backgroundColor: colors.bgApp }}
-          contentContainerStyle={styles.listContent}
-          indicatorStyle={scrollIndicatorStyle(isDark)}
-          ListHeaderComponent={
-            <Input
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder={t('agent.assistant.search_hint', '搜索伙伴...')}
-            />
-          }
-          ListEmptyComponent={
-            <View style={styles.centered}>
-              <Text style={{ color: colors.textSecondary }}>{t('common.no_data')}</Text>
-            </View>
-          }
-        />
+        <View style={[styles.listHost, { backgroundColor: colors.bgApp }]}>
+          <DraggableFlatList
+            data={processedAssistants}
+            renderItem={renderCard}
+            keyExtractor={(item) => item.id}
+            onDragEnd={({ data }) => void handleReorder(data)}
+            containerStyle={styles.listHost}
+            contentContainerStyle={styles.listContent}
+            activationDistance={8}
+            ItemSeparatorComponent={ListSeparator}
+            indicatorStyle={scrollIndicatorStyle(isDark)}
+            ListHeaderComponent={
+              <Input
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder={t('agent.assistant.search_hint', '搜索伙伴...')}
+              />
+            }
+            ListEmptyComponent={
+              <View style={styles.listEmpty}>
+                <Text style={{ color: colors.textSecondary }}>{t('common.no_data')}</Text>
+              </View>
+            }
+          />
+        </View>
       ) : (
-        <FlatList
-          data={processedAssistants}
-          renderItem={({ item }) =>
-            renderCard({ item, drag: () => {}, isActive: false, getIndex: () => undefined })
-          }
-          keyExtractor={(item) => item.id}
-          style={{ flex: 1, backgroundColor: colors.bgApp }}
-          contentContainerStyle={styles.listContent}
-          indicatorStyle={scrollIndicatorStyle(isDark)}
-          ListHeaderComponent={
-            <Input
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder={t('agent.assistant.search_hint')}
-            />
-          }
-          ListEmptyComponent={
-            <View style={styles.centered}>
-              <Text style={{ color: colors.textSecondary }}>{t('common.no_data')}</Text>
-            </View>
-          }
-        />
+        <View style={[styles.listHost, { backgroundColor: colors.bgApp }]}>
+          <FlatList
+            data={processedAssistants}
+            renderItem={({ item }) =>
+              renderCard({ item, drag: () => {}, isActive: false, getIndex: () => undefined })
+            }
+            keyExtractor={(item) => item.id}
+            style={styles.listHost}
+            contentContainerStyle={styles.listContent}
+            ItemSeparatorComponent={ListSeparator}
+            indicatorStyle={scrollIndicatorStyle(isDark)}
+            ListHeaderComponent={
+              <Input
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder={t('agent.assistant.search_hint')}
+              />
+            }
+            ListEmptyComponent={
+              <View style={styles.listEmpty}>
+                <Text style={{ color: colors.textSecondary }}>{t('common.no_data')}</Text>
+              </View>
+            }
+          />
+        </View>
       )}
     </StackScreenLayout>
   )
@@ -345,8 +359,16 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
-    paddingBottom: 32,
-    gap: 12
+    paddingBottom: 32
+  },
+  listHost: {
+    flex: 1,
+    backgroundColor: 'transparent'
+  },
+  listEmpty: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 32
   },
   columnWrap: {
     gap: 12

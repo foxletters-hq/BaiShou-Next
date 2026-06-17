@@ -1,12 +1,26 @@
 name: Build & Release
 
+# 发版以本地 pnpm release:* 为主；此 workflow 仅作备用，在 Actions 页手动触发。
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release 标签名（如 v1.0.0，用于产物文件名与 Release 标题）
+        required: true
+        type: string
+      ref:
+        description: 构建使用的分支或 commit（默认 main）
+        required: false
+        default: main
+        type: string
+      create_release:
+        description: 构建完成后创建 GitHub Release 并上传附件
+        required: false
+        default: true
+        type: boolean
 
 concurrency:
-  group: release-${{ github.workflow }}-${{ github.ref }}
+  group: release-${{ github.workflow }}-${{ inputs.tag }}
   cancel-in-progress: true
 
 jobs:
@@ -17,6 +31,8 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
 
       - uses: pnpm/action-setup@v4
 
@@ -66,6 +82,8 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
 
       - uses: pnpm/action-setup@v4
 
@@ -101,6 +119,8 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
 
       - uses: pnpm/action-setup@v4
 
@@ -130,6 +150,7 @@ jobs:
   # ── GitHub Release ────────────────────────────────────────
   release:
     name: Create GitHub Release
+    if: ${{ inputs.create_release }}
     needs: [build-android, build-linux, build-windows]
     runs-on: ubuntu-latest
     permissions:
@@ -153,20 +174,35 @@ jobs:
           name: windows-installer
           path: artifacts/
 
-      - name: Rename Android APK
-        run: mv artifacts/BaiShou-*-Android.apk "artifacts/BaiShou-${{ github.ref_name }}-Android.apk"
-
-      - name: Rename Windows installer
+      - name: Normalize artifact filenames
         run: |
-          installer=$(ls artifacts/BaiShou-v*-Windows-Setup.exe | head -n 1)
-          mv "$installer" "artifacts/BaiShou-${{ github.ref_name }}-Windows-Setup.exe"
+          set -euo pipefail
+          TAG="${{ inputs.tag }}"
+          TARGET_APK="artifacts/BaiShou-${TAG}-Android.apk"
+          for apk in artifacts/BaiShou-*-Android.apk; do
+            [ -e "$apk" ] || continue
+            if [ "$apk" != "$TARGET_APK" ]; then
+              mv "$apk" "$TARGET_APK"
+            fi
+            break
+          done
+
+          TARGET_WIN="artifacts/BaiShou-${TAG}-Windows-Setup.exe"
+          for installer in artifacts/BaiShou-*-Windows-Setup.exe; do
+            [ -e "$installer" ] || continue
+            if [ "$installer" != "$TARGET_WIN" ]; then
+              mv "$installer" "$TARGET_WIN"
+            fi
+            break
+          done
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          name: 白守 ${{ github.ref_name }}
+          tag_name: ${{ inputs.tag }}
+          name: 白守 ${{ inputs.tag }}
           body: |
-            ## 白守 ${{ github.ref_name }}
+            ## 白守 ${{ inputs.tag }}
 
             以纯白誓约，守护彼此一生。
 
@@ -178,10 +214,10 @@ jobs:
             | Linux | `.AppImage` | 添加可执行权限后运行 |
 
             ### 更新内容
-            请查看 [提交记录](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }})
+            请查看 [提交记录](https://github.com/${{ github.repository }}/commits/${{ inputs.tag }})
           files: |
-            artifacts/BaiShou-${{ github.ref_name }}-Android.apk
-            artifacts/BaiShou-${{ github.ref_name }}-Windows-Setup.exe
+            artifacts/BaiShou-${{ inputs.tag }}-Android.apk
+            artifacts/BaiShou-${{ inputs.tag }}-Windows-Setup.exe
             artifacts/*.AppImage
           draft: false
           prerelease: false
