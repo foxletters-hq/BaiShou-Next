@@ -16,6 +16,11 @@ export function registerLanIPC() {
   })
 
   ipcMain.handle(SyncIpcChannels.LAN_START_DISCOVERY, async () => {
+    const windows = BrowserWindow.getAllWindows()
+    if (windows.length > 0) {
+      windows[0].webContents.send('lan:discovery-reset')
+    }
+
     await lanSyncService.startDiscovery(
       (device) => {
         const windows = BrowserWindow.getAllWindows()

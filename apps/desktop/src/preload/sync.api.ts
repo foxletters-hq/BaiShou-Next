@@ -1,5 +1,60 @@
 import { ipcRenderer } from 'electron'
 
+type DeviceFoundListener = (device: unknown) => void
+type DeviceLostListener = (deviceId: string) => void
+type ProgressListener = (progress: number) => void
+type FileReceivedListener = (zipFilePath: string) => void
+
+const deviceFoundListeners = new Set<DeviceFoundListener>()
+const deviceLostListeners = new Set<DeviceLostListener>()
+const sendProgressListeners = new Set<ProgressListener>()
+const fileReceivedListeners = new Set<FileReceivedListener>()
+
+let deviceFoundBridge: ((_event: unknown, device: unknown) => void) | null = null
+let deviceLostBridge: ((_event: unknown, deviceId: string) => void) | null = null
+let sendProgressBridge: ((_event: unknown, progress: number) => void) | null = null
+let fileReceivedBridge: ((_event: unknown, zipFilePath: string) => void) | null = null
+
+function ensureDeviceFoundBridge() {
+  if (deviceFoundBridge) return
+  deviceFoundBridge = (_event, device) => {
+    for (const listener of deviceFoundListeners) {
+      listener(device)
+    }
+  }
+  ipcRenderer.on('lan:device-found', deviceFoundBridge)
+}
+
+function ensureDeviceLostBridge() {
+  if (deviceLostBridge) return
+  deviceLostBridge = (_event, deviceId) => {
+    for (const listener of deviceLostListeners) {
+      listener(deviceId)
+    }
+  }
+  ipcRenderer.on('lan:device-lost', deviceLostBridge)
+}
+
+function ensureSendProgressBridge() {
+  if (sendProgressBridge) return
+  sendProgressBridge = (_event, progress) => {
+    for (const listener of sendProgressListeners) {
+      listener(progress)
+    }
+  }
+  ipcRenderer.on('lan:send-progress', sendProgressBridge)
+}
+
+function ensureFileReceivedBridge() {
+  if (fileReceivedBridge) return
+  fileReceivedBridge = (_event, zipFilePath) => {
+    for (const listener of fileReceivedListeners) {
+      listener(zipFilePath)
+    }
+  }
+  ipcRenderer.on('lan:file-received', fileReceivedBridge)
+}
+
 export const syncApi = {
   lan: {
     startBroadcasting: () => ipcRenderer.invoke('lan:startBroadcasting'),
@@ -8,26 +63,38 @@ export const syncApi = {
     stopDiscovery: () => ipcRenderer.invoke('lan:stopDiscovery'),
     sendFile: (ip: string, port: number) => ipcRenderer.invoke('lan:sendFile', ip, port),
 
-    // Listeners
-    onDeviceFound: (callback: (device: any) => void) => {
-      const handler = (_: any, device: any) => callback(device)
-      ipcRenderer.on('lan:device-found', handler)
-      return () => ipcRenderer.off('lan:device-found', handler)
+    onDeviceFound: (callback: DeviceFoundListener) => {
+      ensureDeviceFoundBridge()
+      deviceFoundListeners.add(callback)
+      return () => {
+        deviceFoundListeners.delete(callback)
+      }
     },
-    onDeviceLost: (callback: (deviceId: string) => void) => {
-      const handler = (_: any, deviceId: string) => callback(deviceId)
-      ipcRenderer.on('lan:device-lost', handler)
-      return () => ipcRenderer.off('lan:device-lost', handler)
+    onDeviceLost: (callback: DeviceLostListener) => {
+      ensureDeviceLostBridge()
+      deviceLostListeners.add(callback)
+      return () => {
+        deviceLostListeners.delete(callback)
+      }
     },
-    onSendProgress: (callback: (progress: number) => void) => {
-      const handler = (_: any, progress: number) => callback(progress)
-      ipcRenderer.on('lan:send-progress', handler)
-      return () => ipcRenderer.off('lan:send-progress', handler)
+    onDiscoveryReset: (callback: () => void) => {
+      const handler = () => callback()
+      ipcRenderer.on('lan:discovery-reset', handler)
+      return () => ipcRenderer.off('lan:discovery-reset', handler)
     },
-    onFileReceived: (callback: (zipFilePath: string) => void) => {
-      const handler = (_: any, path: string) => callback(path)
-      ipcRenderer.on('lan:file-received', handler)
-      return () => ipcRenderer.off('lan:file-received', handler)
+    onSendProgress: (callback: ProgressListener) => {
+      ensureSendProgressBridge()
+      sendProgressListeners.add(callback)
+      return () => {
+        sendProgressListeners.delete(callback)
+      }
+    },
+    onFileReceived: (callback: FileReceivedListener) => {
+      ensureFileReceivedBridge()
+      fileReceivedListeners.add(callback)
+      return () => {
+        fileReceivedListeners.delete(callback)
+      }
     }
   },
 

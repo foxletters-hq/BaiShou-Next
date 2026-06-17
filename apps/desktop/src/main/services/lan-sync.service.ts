@@ -6,18 +6,27 @@ import * as http from 'http'
 import * as dgram from 'dgram'
 import { app } from 'electron'
 import express from 'express'
-import { v4 as uuidv4 } from 'uuid'
 
 import { ILanSyncService, DiscoveredDevice, IArchiveService } from '@baishou/core-desktop'
+import { buildLanServiceName, pickBestLanIpv4 } from '@baishou/shared'
 import { LanDiscovery } from './LanDiscovery'
+import { getDesktopInstallInstanceId } from './install-instance.service'
 
 export class DesktopLanSyncService implements ILanSyncService {
   private server: http.Server | null = null
   private discovery: LanDiscovery = new LanDiscovery()
   private publishedServiceName: string | null = null
+  private lanDeviceId: string | null = null
   private fileReceivedCallback?: (path: string) => void
 
   constructor(private archiveService: IArchiveService) {}
+
+  private async getLanDeviceId(): Promise<string> {
+    if (!this.lanDeviceId) {
+      this.lanDeviceId = await getDesktopInstallInstanceId()
+    }
+    return this.lanDeviceId
+  }
 
   private isExcludedIp(ip: string): boolean {
     const [a, b] = ip.split('.').map(Number)
@@ -70,19 +79,7 @@ export class DesktopLanSyncService implements ILanSyncService {
   }
 
   private pickBestIp(candidates: string[]): string | null {
-    const unique = Array.from(new Set(candidates.filter(Boolean)))
-    if (unique.length === 0) return null
-
-    const sorted = unique.sort((a, b) => {
-      const scoreIp = (ip: string) => {
-        if (this.isExcludedIp(ip)) return -100
-        if (this.isPrivateLanIp(ip)) return 100
-        return 0
-      }
-      return scoreIp(b) - scoreIp(a)
-    })
-
-    return sorted.find((ip) => !this.isExcludedIp(ip)) ?? sorted[0] ?? null
+    return pickBestLanIpv4(candidates)
   }
 
   private getLocalIps(): string[] {
@@ -132,12 +129,32 @@ export class DesktopLanSyncService implements ILanSyncService {
     return ips
   }
 
+  private async publishService(port: number, ips: string[]): Promise<string> {
+    const deviceId = await this.getLanDeviceId()
+    const rawNickname = os.userInfo().username || 'Desktop'
+    const safeNickname = rawNickname.replace(/[^\w\u4e00-\u9fa5]/g, '').substring(0, 10)
+    const serviceName = buildLanServiceName(safeNickname, deviceId)
+    this.publishedServiceName = serviceName
+
+    this.discovery.publish(serviceName, port, {
+      nickname: safeNickname,
+      ip: ips.slice(0, 4).join(','),
+      device_type: 'desktop',
+      device_id: deviceId
+    })
+
+    return serviceName
+  }
+
   public async startBroadcasting(): Promise<{
     ip: string
     port: number
     serviceId: string
     allIps: string[]
+    deviceId: string
   } | null> {
+    const deviceId = await this.getLanDeviceId()
+
     if (this.server) {
       const addr = this.server.address()
       if (addr && typeof addr !== 'string') {
@@ -145,21 +162,23 @@ export class DesktopLanSyncService implements ILanSyncService {
         const displayIp = this.pickBestIp(ips) || ips[0]
         if (!displayIp) return null
 
-        if (!this.discovery.hasPublishedService() && this.publishedServiceName) {
-          const rawNickname = os.userInfo().username || 'Desktop'
-          const safeNickname = rawNickname.replace(/[^\w\u4e00-\u9fa5]/g, '').substring(0, 10)
-          this.discovery.publish(this.publishedServiceName, addr.port, {
-            nickname: safeNickname,
-            ip: ips.slice(0, 4).join(','),
-            device_type: 'desktop'
-          })
+        if (!this.discovery.hasPublishedService()) {
+          const serviceName = await this.publishService(addr.port, ips)
+          return {
+            ip: displayIp,
+            port: addr.port,
+            serviceId: serviceName,
+            allIps: ips,
+            deviceId
+          }
         }
 
         return {
           ip: displayIp,
           port: addr.port,
           serviceId: this.publishedServiceName || `BaiShou-${displayIp}-${addr.port}`,
-          allIps: ips
+          allIps: ips,
+          deviceId
         }
       }
       return null
@@ -207,17 +226,14 @@ export class DesktopLanSyncService implements ILanSyncService {
           const port = addr.port
 
           try {
-            const rawNickname = os.userInfo().username || 'Desktop'
-            const safeNickname = rawNickname.replace(/[^\w\u4e00-\u9fa5]/g, '').substring(0, 10)
-            const serviceName = `BaiShou-${safeNickname}-${uuidv4().substring(0, 4)}`
-            this.publishedServiceName = serviceName
-
-            this.discovery.publish(serviceName, port, {
-              nickname: safeNickname,
-              ip: ips.slice(0, 4).join(','),
-              device_type: 'desktop'
-            })
-            resolve({ ip: displayIp, port, serviceId: serviceName, allIps: ips })
+            void this.publishService(port, ips)
+              .then((serviceName) => {
+                resolve({ ip: displayIp, port, serviceId: serviceName, allIps: ips, deviceId })
+              })
+              .catch((e) => {
+                this.stopBroadcasting()
+                reject(e)
+              })
           } catch (e) {
             this.stopBroadcasting()
             reject(e)
@@ -234,6 +250,7 @@ export class DesktopLanSyncService implements ILanSyncService {
     this.discovery.unpublish()
     this.publishedServiceName = null
     this.discovery.destroy()
+    this.discovery = new LanDiscovery()
     if (this.server) {
       this.server.close()
       this.server = null
@@ -245,18 +262,14 @@ export class DesktopLanSyncService implements ILanSyncService {
     onDeviceLost: (deviceId: string) => void
   ): Promise<void> {
     await this.stopDiscovery()
-    this.discovery.startDiscovery(
-      this.publishedServiceName,
-      this.pickBestIp.bind(this),
-      onDeviceFound,
-      onDeviceLost
-    )
+    this.discovery.startDiscovery(this.publishedServiceName, onDeviceFound, onDeviceLost)
   }
 
   public async stopDiscovery(): Promise<void> {
     this.discovery.stopDiscovery()
     if (!this.discovery.hasPublishedService()) {
       this.discovery.destroy()
+      this.discovery = new LanDiscovery()
     }
   }
 
