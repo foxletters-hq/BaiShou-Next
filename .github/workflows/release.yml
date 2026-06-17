@@ -153,13 +153,26 @@ jobs:
           name: windows-installer
           path: artifacts/
 
-      - name: Rename Android APK
-        run: mv artifacts/BaiShou-*-Android.apk "artifacts/BaiShou-${{ github.ref_name }}-Android.apk"
-
-      - name: Rename Windows installer
+      - name: Normalize artifact filenames
         run: |
-          installer=$(ls artifacts/BaiShou-v*-Windows-Setup.exe | head -n 1)
-          mv "$installer" "artifacts/BaiShou-${{ github.ref_name }}-Windows-Setup.exe"
+          set -euo pipefail
+          TARGET_APK="artifacts/BaiShou-${{ github.ref_name }}-Android.apk"
+          for apk in artifacts/BaiShou-*-Android.apk; do
+            [ -e "$apk" ] || continue
+            if [ "$apk" != "$TARGET_APK" ]; then
+              mv "$apk" "$TARGET_APK"
+            fi
+            break
+          done
+
+          TARGET_WIN="artifacts/BaiShou-${{ github.ref_name }}-Windows-Setup.exe"
+          for installer in artifacts/BaiShou-*-Windows-Setup.exe; do
+            [ -e "$installer" ] || continue
+            if [ "$installer" != "$TARGET_WIN" ]; then
+              mv "$installer" "$TARGET_WIN"
+            fi
+            break
+          done
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
