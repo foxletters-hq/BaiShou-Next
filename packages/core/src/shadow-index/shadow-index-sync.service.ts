@@ -295,7 +295,7 @@ export class ShadowIndexSyncService {
       const activeVault = this.vaultService.getActiveVault()
       if (!activeVault) return
 
-      const journalsDir = path.join(activeVault.path, 'Journals')
+      const journalsDir = await this.pathService.getJournalsBaseDirectory()
 
       // 1. 收集所有符合 yyyy-MM-dd.md 格式的物理文件日期
       const dateFileRegex = /^(\d{4}-\d{2}-\d{2})\.md$/
@@ -420,11 +420,15 @@ export class ShadowIndexSyncService {
     }
     for (const name of entries) {
       const fullPath = path.join(dir, name)
-      const stat = await this.fileSystem.stat(fullPath)
-      if (stat.isDirectory) {
-        await this._walkDir(fullPath, callback)
-      } else if (stat.isFile) {
-        callback(fullPath)
+      try {
+        const stat = await this.fileSystem.stat(fullPath)
+        if (stat.isDirectory) {
+          await this._walkDir(fullPath, callback)
+        } else if (stat.isFile) {
+          callback(fullPath)
+        }
+      } catch {
+        // 跳过不可读条目，避免单个异常路径导致整次全量扫描失败
       }
     }
   }

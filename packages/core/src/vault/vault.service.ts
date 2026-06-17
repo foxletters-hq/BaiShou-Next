@@ -10,6 +10,25 @@ import {
 } from './vault.errors'
 import { sanitizeVaultDirectoryName, validateVaultName } from './vault-name.util'
 
+function parseRegistryTimestamp(value: unknown, fallback: Date): Date {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const parsed = new Date(value)
+    if (!Number.isNaN(parsed.getTime())) return parsed
+  }
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = new Date(value)
+    if (!Number.isNaN(parsed.getTime())) return parsed
+  }
+  return fallback
+}
+
+function normalizeRegistryPath(p: string): string {
+  return p
+    .replace(/^file:\/\//, '')
+    .replace(/\\/g, '/')
+    .replace(/\/$/, '')
+}
+
 export class VaultService implements IVaultService {
   private _vaults: VaultInfo[] = []
 
@@ -49,19 +68,19 @@ export class VaultService implements IVaultService {
     } else {
       try {
         const rawList = JSON.parse(content)
+        const fallbackNow = new Date()
         this._vaults = rawList.map((item: any) => ({
           name: item.name,
           path: item.path,
-          createdAt: new Date(item.createdAt),
-          lastAccessedAt: new Date(item.lastAccessedAt)
+          createdAt: parseRegistryTimestamp(item.createdAt, fallbackNow),
+          lastAccessedAt: parseRegistryTimestamp(item.lastAccessedAt, fallbackNow)
         }))
 
         for (let i = 0; i < this._vaults.length; i++) {
           const vault = this._vaults[i]
           if (!vault) continue
           const expectedPath = path.join(rootDir, sanitizeVaultDirectoryName(vault.name))
-          const normalize = (p: string) => p.replace(/\\/g, '/').replace(/\/$/, '')
-          if (normalize(vault.path) !== normalize(expectedPath)) {
+          if (normalizeRegistryPath(vault.path) !== normalizeRegistryPath(expectedPath)) {
             vault.path = expectedPath
             shouldSave = true
           }
