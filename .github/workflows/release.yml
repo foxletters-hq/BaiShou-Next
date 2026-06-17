@@ -39,29 +39,25 @@ jobs:
       - name: Sync app version
         run: pnpm sync:app-version
 
-      - name: Prebuild Android
-        working-directory: apps/mobile
-        run: npx expo prebuild --platform android --no-install
-
-      - name: Decode keystore
-        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > apps/mobile/android/app/upload-keystore.jks
-
-      - name: Create key.properties
+      - name: Prepare Android signing
         run: |
+          mkdir -p apps/mobile/android/app
           echo "storePassword=${{ secrets.ANDROID_STORE_PASSWORD }}" > apps/mobile/android/key.properties
           echo "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}" >> apps/mobile/android/key.properties
           echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> apps/mobile/android/key.properties
           echo "storeFile=app/upload-keystore.jks" >> apps/mobile/android/key.properties
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > apps/mobile/android/app/upload-keystore.jks
 
       - name: Build release APK
-        working-directory: apps/mobile/android
-        run: ./gradlew :app:assembleRelease --no-daemon
+        run: pnpm --filter @baishou/mobile build:release
+        env:
+          BAISHOU_RELEASE_BUILD: '1'
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
-          path: apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+          path: release/BaiShou-*-Android.apk
 
   # ── Linux (Electron AppImage) ────────────────────────────
   build-linux:
@@ -158,7 +154,7 @@ jobs:
           path: artifacts/
 
       - name: Rename Android APK
-        run: mv artifacts/app-release.apk "artifacts/BaiShou-${{ github.ref_name }}-Android.apk"
+        run: mv artifacts/BaiShou-*-Android.apk "artifacts/BaiShou-${{ github.ref_name }}-Android.apk"
 
       - name: Rename Windows installer
         run: |

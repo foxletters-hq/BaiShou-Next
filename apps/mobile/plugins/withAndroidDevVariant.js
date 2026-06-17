@@ -1,10 +1,5 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type -- Expo config plugin（CommonJS） */
 const { withAppBuildGradle } = require('@expo/config-plugins')
-const { mergeContents } = require('@expo/config-plugins/build/utils/generateCode')
-
-const DEV_VARIANT = `            applicationIdSuffix ".dev"
-            versionNameSuffix "-dev"
-            resValue "string", "app_name", "白守 Dev"`
 
 const RELEASE_WHEN_KEYSTORE =
   'signingConfig keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug'
@@ -20,14 +15,44 @@ function withAndroidDevVariant(config) {
     let contents = config.modResults.contents
 
     if (!contents.includes('applicationIdSuffix ".dev"')) {
-      contents = mergeContents({
-        tag: 'baishou-dev-variant',
-        src: contents,
-        newSrc: DEV_VARIANT,
-        anchor: /^\s*debug\s*\{/,
-        offset: 1,
-        comment: '//'
-      }).contents
+      const lines = contents.split('\n')
+      let inBuildTypes = false
+      let inDebug = false
+      let injected = false
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i]
+        if (/^\s*buildTypes\s*\{/.test(line)) {
+          inBuildTypes = true
+          continue
+        }
+        if (!inBuildTypes) continue
+        if (/^\s*debug\s*\{/.test(line)) {
+          inDebug = true
+          const indent = line.match(/^(\s*)/)?.[1] ?? '        '
+          const childIndent = `${indent}    `
+          lines.splice(
+            i + 1,
+            0,
+            `${childIndent}// @generated begin baishou-dev-variant`,
+            `${childIndent}applicationIdSuffix ".dev"`,
+            `${childIndent}versionNameSuffix "-dev"`,
+            `${childIndent}resValue "string", "app_name", "白守 Dev"`,
+            `${childIndent}// @generated end baishou-dev-variant`
+          )
+          injected = true
+          break
+        }
+        if (inDebug && /^\s*\}\s*$/.test(line)) break
+      }
+
+      if (!injected) {
+        throw new Error(
+          '[withAndroidDevVariant] 未在 buildTypes.debug 中找到注入点，请检查 Expo prebuild 模板是否变更'
+        )
+      }
+
+      contents = lines.join('\n')
     }
 
     const lines = contents.split('\n')
