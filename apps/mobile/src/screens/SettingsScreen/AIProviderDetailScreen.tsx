@@ -11,6 +11,7 @@ import { AIProviderConfigForm } from './components/AIProviderConfigForm'
 import {
   buildAndCacheProviderListItems,
   buildProviderListItems,
+  isValidProviderId,
   peekProviderSettingsCache,
   writeProviderSettingsCache
 } from './utils/provider-settings'
@@ -28,14 +29,21 @@ export const AIProviderDetailScreen: React.FC<AIProviderDetailScreenProps> = ({ 
   const [savedProviders, setSavedProviders] = useState<AIProviderConfig[]>(
     () => peekProviderSettingsCache() ?? []
   )
+  const [providersLoaded, setProvidersLoaded] = useState(
+    () => peekProviderSettingsCache() != null
+  )
 
   useEffect(() => {
     if (!services || !dbReady) return
-    if (peekProviderSettingsCache()) return
+    if (peekProviderSettingsCache()) {
+      setProvidersLoaded(true)
+      return
+    }
     void (async () => {
       const list = (await services.settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
       writeProviderSettingsCache(list)
       setSavedProviders(list)
+      setProvidersLoaded(true)
     })()
   }, [services, dbReady])
 
@@ -49,10 +57,11 @@ export const AIProviderDetailScreen: React.FC<AIProviderDetailScreenProps> = ({ 
   const title = activeConfig?.name || providerMeta?.name || providerId
 
   useEffect(() => {
-    if (dbReady && savedProviders.length > 0 && !savedProviders.some((p) => p.id === providerId)) {
+    if (!providersLoaded) return
+    if (!isValidProviderId(providerId, savedProviders)) {
       router.back()
     }
-  }, [dbReady, savedProviders, providerId, router])
+  }, [providersLoaded, savedProviders, providerId, router])
 
   return (
     <StackScreenLayout title={title} {...chrome} contentStyle={styles.layoutContent}>
