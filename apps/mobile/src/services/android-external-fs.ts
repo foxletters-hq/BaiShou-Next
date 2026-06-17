@@ -18,19 +18,50 @@ import {
 export const EXTERNAL_STORAGE_REBUILD_HINT =
   '无法写入外部 BaiShou_Root：当前 APK 未包含原生存储模块或版本过旧。请执行 pnpm dev:mobile:clear 重新编译安装（勿用 Expo Go），并在系统设置中开启「管理所有文件」。'
 
-/** 去掉重复的 file:// 前缀 */
+/** 将绝对路径各段编码为合法 file:// URI（避免 % # 等触发 Java URI 解析错误） */
+function encodeAbsolutePathForFileUri(absPath: string): string {
+  return absPath
+    .split('/')
+    .map((segment) => {
+      if (segment === '') return ''
+      let decoded = segment
+      try {
+        decoded = decodeURIComponent(segment)
+      } catch {
+        /* 已是原始文件名 */
+      }
+      return encodeURIComponent(decoded)
+    })
+    .join('/')
+}
+
+/** 去掉重复的 file:// 前缀，并解码 URI 转义段 */
 export function stripFileScheme(uriOrPath: string): string {
   let s = uriOrPath.trim()
   while (s.startsWith('file://')) {
     s = s.slice('file://'.length)
   }
   return s
+    .split('/')
+    .map((segment) => {
+      if (segment === '') return ''
+      try {
+        return decodeURIComponent(segment)
+      } catch {
+        return segment
+      }
+    })
+    .join('/')
 }
 
-/** 修正 Android Uri 解析导致的 /emulated/0 → /storage/emulated/0 */
-export function normalizeExternalStoragePath(uriOrPath: string): string {
-  let p = stripFileScheme(uriOrPath)
-  if (p.startsWith('/emulated/0')) {
+/** 去掉 file:// 与尾部 /，供磁盘 I/O 使用（勿把带 file:// 的路径直接拼子路径） */
+export function normalizeStoragePath(uriOrPath: string): string {
+  let p = stripFileScheme(uriOrPath).replace(/\/+$/, '')
+  if (p.startsWith('/storage/storage/emulated/0')) {
+    p = p.replace('/storage/storage/emulated/0', '/storage/emulated/0')
+  } else if (p.startsWith('storage/storage/emulated/0')) {
+    p = p.replace('storage/storage/emulated/0', '/storage/emulated/0')
+  } else if (p.startsWith('/emulated/0')) {
     p = `/storage${p}`
   } else if (p.startsWith('emulated/0')) {
     p = `/storage/${p}`
@@ -40,11 +71,16 @@ export function normalizeExternalStoragePath(uriOrPath: string): string {
   return p
 }
 
+/** 修正 Android Uri 解析导致的 /emulated/0 → /storage/emulated/0 */
+export function normalizeExternalStoragePath(uriOrPath: string): string {
+  return normalizeStoragePath(uriOrPath)
+}
+
 export function toFileUri(uriOrPath: string): string {
-  const path = normalizeExternalStoragePath(uriOrPath)
-  if (path.startsWith('/')) return `file://${path}`
   if (uriOrPath.startsWith('content://') || uriOrPath.startsWith('data:')) return uriOrPath
-  return `file:///${path}`
+  const path = normalizeExternalStoragePath(uriOrPath)
+  if (path.startsWith('/')) return `file://${encodeAbsolutePathForFileUri(path)}`
+  return `file://${encodeAbsolutePathForFileUri(`/${path}`)}`
 }
 
 function isAppSandboxPath(uriOrPath: string): boolean {
@@ -60,11 +96,7 @@ export function isExternalStoragePath(uriOrPath: string): boolean {
   if (Platform.OS !== 'android') return false
   const p = normalizeExternalStoragePath(uriOrPath)
   if (isAppSandboxPath(p)) return false
-  return (
-    p.startsWith('/storage/') ||
-    p.startsWith('/sdcard/') ||
-    p.includes('/emulated/0/')
-  )
+  return p.startsWith('/storage/') || p.startsWith('/sdcard/') || p.includes('/emulated/0/')
 }
 
 /** 访问该路径是否需要 MANAGE_EXTERNAL_STORAGE / WRITE_EXTERNAL_STORAGE */

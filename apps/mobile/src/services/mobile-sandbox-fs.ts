@@ -58,6 +58,10 @@ export async function readAsStringAsync(
   uri: string,
   options?: { encoding?: (typeof EncodingType)['Base64'] | 'base64' }
 ): Promise<string> {
+  const directory = toDirectory(uri)
+  if (directory.exists) {
+    throw new Error(`Path is a directory: ${uri}`)
+  }
   const file = toFile(uri)
   if (options?.encoding === EncodingType.Base64 || options?.encoding === 'base64') {
     return file.base64()

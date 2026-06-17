@@ -12,8 +12,8 @@ import {
 } from './storage-permission.service'
 import {
   normalizeExternalStoragePath,
-  requiresAllFilesAccessForPath,
-  toFileUri
+  normalizeStoragePath,
+  requiresAllFilesAccessForPath
 } from './android-external-fs'
 
 export { EXTERNAL_STORAGE_ROOT }
@@ -31,19 +31,21 @@ export class MobileStoragePathService implements IStoragePathService {
     try {
       const stored = await AsyncStorage.getItem(this.customRootKey)
       if (!stored) return null
-      if (stored.includes('/emulated/0') && !stored.includes('/storage/emulated/0')) {
-        const fixed = stored.replace('/emulated/0', '/storage/emulated/0')
-        await AsyncStorage.setItem(this.customRootKey, fixed)
-        return fixed
+      let normalized = normalizeStoragePath(stored)
+      if (normalized.includes('/emulated/0') && !normalized.includes('/storage/emulated/0')) {
+        normalized = normalized.replace('/emulated/0', '/storage/emulated/0')
       }
-      return stored
+      if (stored !== normalized) {
+        await AsyncStorage.setItem(this.customRootKey, normalized)
+      }
+      return normalized
     } catch {
       return null
     }
   }
 
   public async updateRootDirectory(newPath: string): Promise<void> {
-    const normalized = toFileUri(normalizeExternalStoragePath(newPath))
+    const normalized = normalizeStoragePath(normalizeExternalStoragePath(newPath))
     await AsyncStorage.setItem(this.customRootKey, normalized)
   }
 
@@ -56,10 +58,7 @@ export class MobileStoragePathService implements IStoragePathService {
 
     const existing = await this.getCustomRootPath()
     if (existing?.trim()) {
-      if (
-        requiresAllFilesAccessForPath(existing) &&
-        !(await hasStoragePermission())
-      ) {
+      if (requiresAllFilesAccessForPath(existing) && !(await hasStoragePermission())) {
         return false
       }
       try {
@@ -98,15 +97,16 @@ export class MobileStoragePathService implements IStoragePathService {
   }
 
   private async ensureWritableDirectory(dirUri: string): Promise<string> {
-    await this.ensureDir(dirUri)
-    const testFile = `${dirUri}/.write_test`
+    const dir = normalizeStoragePath(dirUri)
+    await this.ensureDir(dir)
+    const testFile = `${dir}/.write_test`
     await this.fileSystem.writeFile(testFile, 'test')
     try {
       await this.fileSystem.unlink(testFile)
     } catch {
       // ignore cleanup errors
     }
-    return dirUri
+    return dir
   }
 
   private async getSandboxRootDirectory(): Promise<string> {
@@ -119,10 +119,7 @@ export class MobileStoragePathService implements IStoragePathService {
     if (Platform.OS === 'android') {
       const customPath = await this.getCustomRootPath()
       if (customPath?.trim()) {
-        if (
-          requiresAllFilesAccessForPath(customPath) &&
-          !(await hasStoragePermission())
-        ) {
+        if (requiresAllFilesAccessForPath(customPath) && !(await hasStoragePermission())) {
           throw new ExternalStorageRequiredError()
         }
         try {

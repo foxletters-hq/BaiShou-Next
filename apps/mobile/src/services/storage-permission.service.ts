@@ -13,7 +13,10 @@ import {
 } from 'expo-baishou-server'
 
 /** 与桌面端 / 旧版 BaiShou 一致的外部数据根目录 */
-export const EXTERNAL_STORAGE_ROOT = 'file:///storage/emulated/0/BaiShou_Root'
+export const EXTERNAL_STORAGE_ROOT = '/storage/emulated/0/BaiShou_Root'
+
+/** 展示 / 深链用 file URI */
+export const EXTERNAL_STORAGE_ROOT_URI = `file://${EXTERNAL_STORAGE_ROOT}`
 
 /**
  * 检查是否具备外部存储读写能力（对齐 BaiShou PermissionService.hasStoragePermission）

@@ -17,6 +17,27 @@ function needsStreamImport(uri: string): boolean {
   return uri.startsWith('content://') || uri.startsWith('ph://') || hasFileUriAuthority(uri)
 }
 
+async function resolveImportFilePath(pathOrUri: string, fileSystem: IFileSystem): Promise<string> {
+  const filePath = stripFileScheme(pathOrUri)
+  const stat = await fileSystem.stat(filePath).catch(() => null)
+  if (!stat?.isDirectory) return filePath
+
+  const entries = await fileSystem.readdir(filePath).catch(() => [])
+  const zipFiles: string[] = []
+  for (const name of entries) {
+    if (!name || name === '.' || name === '..' || !name.toLowerCase().endsWith('.zip')) continue
+    const childPath = `${filePath}/${name}`
+    const childStat = await fileSystem.stat(childPath).catch(() => null)
+    if (childStat?.isFile) zipFiles.push(childPath)
+  }
+
+  if (zipFiles.length === 1) return zipFiles[0]!
+  if (zipFiles.length > 1) {
+    throw new Error('导入路径指向文件夹，且其中包含多个 ZIP 文件，请直接选择要导入的 ZIP 文件')
+  }
+  throw new Error('导入路径指向文件夹，未找到可导入的 ZIP 文件')
+}
+
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer)
   let binary = ''
@@ -29,7 +50,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 
 /** 统一相册 / content / 外部存储 file URI，避免 file://storage/... 畸形路径 */
 export function normalizeImportSourceUri(uri: string): string {
-  if (uri.startsWith('content://') || uri.startsWith('data:')) return uri
+  if (uri.startsWith('content://') || uri.startsWith('data:') || uri.startsWith('ph://')) return uri
   return toFileUri(uri)
 }
 
@@ -80,7 +101,7 @@ export async function importUriToPath(
     return
   }
 
-  const fromPath = stripFileScheme(normalizedFrom)
+  const fromPath = await resolveImportFilePath(normalizedFrom, fileSystem)
 
   try {
     await fileSystem.copyFile(fromPath, destPath)
@@ -89,7 +110,7 @@ export async function importUriToPath(
     // 跨沙盒 / 外部存储或带 authority 的 URI 无法直接 copy，回退 base64 读写
   }
 
-  const b64 = await readUriAsBase64(normalizedFrom)
+  const b64 = await readUriAsBase64(toFileUri(fromPath))
   await fileSystem.writeFile(destPath, b64, 'base64')
 }
 

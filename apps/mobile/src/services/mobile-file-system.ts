@@ -18,6 +18,7 @@ import {
   toFileUri
 } from './android-external-fs'
 import * as SandboxFS from './mobile-sandbox-fs'
+import { normalizeMtimeToMs } from '../utils/fs-mtime.util'
 
 function enoentError(filePath: string, syscall: string): Error & { code: string } {
   const err = new Error(`${syscall}: no such file or directory, open '${filePath}'`) as Error & {
@@ -120,10 +121,22 @@ export class MobileFileSystem implements IFileSystem {
     }
 
     if (!srcExternal && !destExternal) {
-      await SandboxFS.copyAsync({
-        from: toFileUri(src),
-        to: toFileUri(dest)
-      })
+      const srcUri = toFileUri(src)
+      const destUri = toFileUri(dest)
+      const srcInfo = await SandboxFS.getInfoAsync(srcUri)
+      if (srcInfo.isDirectory) {
+        const destInfo = await SandboxFS.getInfoAsync(destUri)
+        if (destInfo.exists) {
+          await SandboxFS.deleteAsync(destUri, { idempotent: true })
+        }
+        await SandboxFS.copyAsync({ from: srcUri, to: destUri })
+        return
+      }
+      const destInfo = await SandboxFS.getInfoAsync(destUri)
+      if (destInfo.exists) {
+        await SandboxFS.deleteAsync(destUri, { idempotent: true })
+      }
+      await SandboxFS.copyAsync({ from: srcUri, to: destUri })
       return
     }
 
@@ -131,6 +144,12 @@ export class MobileFileSystem implements IFileSystem {
     try {
       await externalCopyFileAsyncSafe(src, dest)
     } catch {
+      const srcInfo = isExternalStoragePath(src)
+        ? externalGetInfoSafe(src)
+        : await SandboxFS.getInfoAsync(toFileUri(src))
+      if (srcInfo.isDirectory) {
+        throw new Error(`Cannot copy directory across storage boundaries: ${src}`)
+      }
       const data = await this.readFile(src, 'base64')
       await this.writeFile(dest, data, 'base64')
     }
@@ -170,7 +189,8 @@ export class MobileFileSystem implements IFileSystem {
         isFile: !info.isDirectory,
         isDirectory: info.isDirectory,
         size: info.size,
-        mtimeMs: info.modificationTime
+        mtimeMs:
+          info.modificationTime != null ? normalizeMtimeToMs(info.modificationTime) : undefined
       }
     }
     const uri = toFileUri(filePath)
@@ -182,7 +202,8 @@ export class MobileFileSystem implements IFileSystem {
       isFile: !info.isDirectory,
       isDirectory: !!info.isDirectory,
       size: 'size' in info && typeof info.size === 'number' ? info.size : undefined,
-      mtimeMs: info.modificationTime != null ? info.modificationTime * 1000 : undefined
+      mtimeMs:
+        info.modificationTime != null ? normalizeMtimeToMs(info.modificationTime) : undefined
     }
   }
 

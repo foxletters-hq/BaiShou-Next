@@ -1,4 +1,5 @@
 import type { IFileSystem } from '../fs/file-system.types'
+import { mergeDirectories } from '../migration/legacy-migration.shared'
 import {
   isPathInsideStorageRoot,
   isSameStorageRoot,
@@ -54,14 +55,37 @@ export async function copyStorageRootContents(
     for (const name of entries) {
       if (shouldSkipStorageMigrationEntry(name)) continue
       onProgress?.(name)
-      await fileSystem.copyFile(`${source}/${name}`, `${staging}/${name}`)
+      const srcPath = `${source}/${name}`
+      const stagingPath = `${staging}/${name}`
+      let isDirectory = false
+      try {
+        isDirectory = (await fileSystem.stat(srcPath)).isDirectory
+      } catch {
+        continue
+      }
+      if (isDirectory) {
+        await mergeDirectories(fileSystem, srcPath, stagingPath)
+      } else {
+        await fileSystem.copyFile(srcPath, stagingPath)
+      }
     }
 
     const staged = await fileSystem.readdir(staging)
     for (const name of staged) {
       onProgress?.(name)
+      const stagedPath = `${staging}/${name}`
       const dest = `${target}/${name}`
-      await fileSystem.copyFile(`${staging}/${name}`, dest)
+      let isDirectory = false
+      try {
+        isDirectory = (await fileSystem.stat(stagedPath)).isDirectory
+      } catch {
+        continue
+      }
+      if (isDirectory) {
+        await mergeDirectories(fileSystem, stagedPath, dest)
+      } else {
+        await fileSystem.copyFile(stagedPath, dest)
+      }
       promoted.push(dest)
     }
   } catch (error) {
