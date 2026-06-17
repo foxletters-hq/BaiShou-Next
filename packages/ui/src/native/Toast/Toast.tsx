@@ -19,6 +19,10 @@ interface ToastContextType {
 
 const ToastContext = createContext<ToastContextType | null>(null)
 
+const STATUS_TOAST_ID = 'baishou-status-toast'
+/** 与 toastExit Keyframe 时长一致；hide 后须等退场结束再 show，避免 Android Reanimated 视图竞态 */
+const TOAST_EXIT_MS = 220
+
 const ICON_BY_TYPE: Record<ToastType, keyof typeof MaterialIcons.glyphMap> = {
   success: 'check-circle-outline',
   error: 'error-outline',
@@ -117,17 +121,27 @@ const BaishouHeroToast: React.FC<BaishouHeroToastProps> = ({ id, message, type, 
  * 桥接 HeroUI Native Toast，保留项目现有 `useNativeToast` 调用 API。
  */
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { toast } = useToast()
+  const { toast, isToastVisible } = useToast()
 
   const presentToast = useCallback(
     (message: string, type: ToastType = 'info') => {
-      toast.hide('all')
-      toast.show({
-        duration: durationForType(type),
-        component: (props) => <BaishouHeroToast {...props} message={message} type={type} />
-      })
+      const showNext = () => {
+        toast.show({
+          id: STATUS_TOAST_ID,
+          duration: durationForType(type),
+          component: (props) => <BaishouHeroToast {...props} message={message} type={type} />
+        })
+      }
+
+      if (isToastVisible) {
+        toast.hide('all')
+        setTimeout(showNext, TOAST_EXIT_MS)
+        return
+      }
+
+      showNext()
     },
-    [toast]
+    [isToastVisible, toast]
   )
 
   const ctx = useMemo<ToastContextType>(

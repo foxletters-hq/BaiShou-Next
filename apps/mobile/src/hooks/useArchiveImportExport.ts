@@ -1,10 +1,20 @@
 import { useCallback, useState } from 'react'
+import { InteractionManager } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import * as DocumentPicker from 'expo-document-picker'
 import { useNativeToast, useDialog } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import { applyArchiveImportFeedback } from '../utils/archive-restore-feedback'
 import { formatArchiveExportErrorMessage } from '../services/archive-guards.util'
+
+/** 分享面板关闭后立即弹 Toast 会在部分 Android 上触发 SafeArea/Reanimated 视图竞态崩溃 */
+function waitForShareSheetDismiss(): Promise<void> {
+  return new Promise((resolve) => {
+    InteractionManager.runAfterInteractions(() => {
+      setTimeout(resolve, 350)
+    })
+  })
+}
 
 function formatExportFailedToast(t: (key: string, options?: Record<string, string>) => string, error: unknown): string {
   const detail = formatArchiveExportErrorMessage(error)
@@ -30,6 +40,7 @@ export function useArchiveImportExport() {
 
     try {
       await services.archiveService.exportToUserDevice()
+      await waitForShareSheetDismiss()
       toast.showSuccess(t('settings.export_success', '导出成功'))
     } catch (e: unknown) {
       toast.showError(formatExportFailedToast(t, e))

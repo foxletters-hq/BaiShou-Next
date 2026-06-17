@@ -2,11 +2,19 @@
  * 白守语义色 → HeroUI Native / Uniwind
  * 与 packages/ui/src/theme/light.ts、dark.ts 及 Flutter AppToast 对齐
  */
+@theme {
+  /* Uniwind accent-* 须在 @theme 静态注册；HeroUI Input 默认 selectionColorClassName="accent-accent" */
+  --color-primary: #5ba8f5;
+  --color-accent: #5ba8f5;
+}
+
 @layer theme {
   :root {
     @variant light {
       --color-primary: #5ba8f5;
       --color-primary-hover: #3a88d5;
+      --accent: #5ba8f5;
+      --accent-foreground: #ffffff;
       --color-background: #f4f5f7;
       --color-background-subtle: #f0f2f5;
       --color-foreground: #1a1c23;
@@ -17,7 +25,6 @@
       --color-border: rgba(0, 0, 0, 0.08);
       --color-border-hover: rgba(0, 0, 0, 0.12);
       --color-muted: #eaecef;
-      --color-accent: #e0f0fe;
       --color-secondary: #eaecef;
       --color-ring: rgba(91, 168, 245, 0.4);
       --color-destructive: #ef4444;
@@ -34,6 +41,8 @@
     @variant dark {
       --color-primary: #5ba8f5;
       --color-primary-hover: #3a88d5;
+      --accent: #5ba8f5;
+      --accent-foreground: #ffffff;
       --color-background: #1a1a1e;
       --color-background-subtle: #151518;
       --color-foreground: #f8fafc;
@@ -44,7 +53,6 @@
       --color-border: rgba(255, 255, 255, 0.1);
       --color-border-hover: rgba(255, 255, 255, 0.14);
       --color-muted: #1e1e22;
-      --color-accent: rgba(91, 168, 245, 0.2);
       --color-secondary: #323236;
       --color-ring: rgba(91, 168, 245, 0.45);
       --color-destructive: #ef4444;

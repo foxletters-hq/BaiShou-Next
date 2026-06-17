@@ -120,6 +120,7 @@ export const Input = forwardRef<any, NativeInputProps>(
         style={inputStyle}
         placeholderTextColor={resolvedPlaceholderColor}
         selectionColor={resolvedSelectionColor}
+        selectionColorClassName="accent-primary"
         onFocus={handleFocus}
         {...props}
       />
@@ -134,6 +135,7 @@ export const Input = forwardRef<any, NativeInputProps>(
         style={inputStyle}
         placeholderTextColor={resolvedPlaceholderColor}
         selectionColor={resolvedSelectionColor}
+        selectionColorClassName="accent-primary"
         onFocus={handleFocus}
         {...props}
       />
