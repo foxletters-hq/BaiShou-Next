@@ -15,6 +15,7 @@ import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import fi.iki.elonen.NanoHTTPD
 import java.io.File
+import java.io.FileOutputStream
 import java.util.HashMap
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -24,6 +25,9 @@ import java.util.concurrent.atomic.AtomicReference
 
 private const val MCP_INFO_JSON =
     "{\"name\":\"BaiShou MCP Server\",\"version\":\"1.0.0\",\"protocolVersion\":\"2024-11-05\",\"description\":\"BaiShou AI Companion Diary - MCP Interface\"}"
+
+/** 局域网备份可能较大，默认 5s 读超时会导致传输中断 */
+private const val LAN_SOCKET_READ_TIMEOUT_MS = 10 * 60 * 1000
 
 private data class PendingMcpRequest(
     val latch: CountDownLatch,
@@ -110,6 +114,34 @@ class BaishouHttpServer(
         return corsResponse(Response.Status.METHOD_NOT_ALLOWED, MIME_PLAINTEXT, "Method Not Allowed")
     }
 
+    /**
+     * 按 Content-Length 读取请求体。若读到 EOF 才停，在 keep-alive 连接上会一直阻塞，
+     * 导致发送方已显示 100% 却永远等不到 HTTP 200。
+     */
+    private fun streamRequestBodyToFile(session: IHTTPSession, destFile: File): Long {
+        val contentLength = session.headers["content-length"]?.toLongOrNull()
+        var totalWritten = 0L
+        session.inputStream.use { input ->
+            FileOutputStream(destFile).use { output ->
+                val buffer = ByteArray(64 * 1024)
+                var remaining = contentLength
+                while (remaining == null || remaining > 0L) {
+                    val toRead = when {
+                        remaining == null -> buffer.size
+                        remaining > buffer.size -> buffer.size
+                        else -> remaining.toInt()
+                    }
+                    val read = input.read(buffer, 0, toRead)
+                    if (read <= 0) break
+                    output.write(buffer, 0, read)
+                    totalWritten += read
+                    if (remaining != null) remaining -= read
+                }
+            }
+        }
+        return totalWritten
+    }
+
     override fun serve(session: IHTTPSession): Response {
         if (session.uri == "/mcp" || session.uri == "/mcp/") {
             return handleMcp(session)
@@ -121,37 +153,33 @@ class BaishouHttpServer(
 
         if (session.method == Method.POST && session.uri == "/upload") {
             try {
-                val files = HashMap<String, String>()
-                session.parseBody(files)
+                val destFile = File(
+                    context.cacheDir,
+                    "lan_sync_payload_${System.currentTimeMillis()}.zip"
+                )
+                val bytesWritten = streamRequestBodyToFile(session, destFile)
 
-                var targetTempPath: String? = null
-
-                val postDataPath = files["postData"]
-                if (postDataPath != null) {
-                    targetTempPath = postDataPath
-                } else if (files.isNotEmpty()) {
-                    targetTempPath = files[files.keys.first()]
+                if (bytesWritten <= 0L) {
+                    return newFixedLengthResponse(
+                        Response.Status.BAD_REQUEST,
+                        "application/json",
+                        "{\"error\":\"No file content\"}"
+                    )
                 }
 
-                if (targetTempPath != null) {
-                    val tempFile = File(targetTempPath)
-                    val outDir = context.cacheDir
-                    val destFile = File(outDir, "lan_sync_payload_${System.currentTimeMillis()}.zip")
-
-                    tempFile.copyTo(destFile, overwrite = true)
-
-                    emitEvent("onFileReceived", mapOf("path" to destFile.absolutePath))
-                    return newFixedLengthResponse(Response.Status.OK, "application/json", "{\"success\":true}")
-                }
-
+                emitEvent("onFileReceived", mapOf("path" to destFile.absolutePath))
                 return newFixedLengthResponse(
-                    Response.Status.BAD_REQUEST,
+                    Response.Status.OK,
                     "application/json",
-                    "{\"error\":\"No file content\"}"
+                    "{\"success\":true}"
                 )
             } catch (e: Exception) {
                 e.printStackTrace()
-                return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, e.message ?: "Internal Error")
+                return newFixedLengthResponse(
+                    Response.Status.INTERNAL_ERROR,
+                    MIME_PLAINTEXT,
+                    e.message ?: "Internal Error"
+                )
             }
         }
 
@@ -218,7 +246,7 @@ class ExpoBaishouServerModule : Module() {
                     { evt, payload -> this@ExpoBaishouServerModule.sendEvent(evt, payload) },
                     { body, authorization -> dispatchMcpRequestToJs(body, authorization) }
                 )
-                server?.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false)
+                server?.start(LAN_SOCKET_READ_TIMEOUT_MS, false)
                 return@Function server?.listeningPort ?: port
             } catch (e: Exception) {
                 e.printStackTrace()

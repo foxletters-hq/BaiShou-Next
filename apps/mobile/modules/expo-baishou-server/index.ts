@@ -94,7 +94,13 @@ function callNativeExternal<T>(op: string, fn: (mod: ExpoBaishouServerModule) =>
 }
 
 export function startServer(port: number, authToken?: string | null): number {
-  return requireNative().startServer(port, authToken ?? null)
+  const mod = requireNative()
+  const token = authToken?.trim()
+  // 旧版原生模块只接受 port；勿传 null 作为第二参数，否则会触发 bridge 参数个数错误
+  if (token) {
+    return mod.startServer(port, token)
+  }
+  return mod.startServer(port)
 }
 
 export function startMcpServer(port: number, authToken?: string | null): number {
