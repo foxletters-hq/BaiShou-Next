@@ -1,27 +1,76 @@
-import React from 'react'
+import React, { Suspense, lazy } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'framer-motion'
 import { useSettingsStore } from '@baishou/store'
 import { getSettingsRouteSegment } from './settings-route.util'
-import { WebSearchPane } from './components/WebSearchPane'
-import { AgentToolsPane } from './components/AgentToolsPane'
-import { SummarySettingsPane } from './components/SummarySettingsPane'
-import { LanTransferPane } from './components/LanTransferPane'
-import { DataSyncPane } from './components/DataSyncPane'
-import { AttachmentManagementPane } from './components/AttachmentManagementPane'
-import { TTSSettingsPane } from './components/TTSSettingsPane'
-import { GeneralSettingsPane } from './components/GeneralSettingsPane'
-import { WorkspaceManagementPane } from './components/WorkspaceManagementPane'
-import { IdentityCardManagementPane } from './components/IdentityCardManagementPane'
-import { AiModelServicesPane } from './components/AiModelServicesPane'
-import { AiGlobalModelsPane } from './components/AiGlobalModelsPane'
-import { AssistantPane } from './components/AssistantPane'
-import { RagSettingsPane } from './components/RagSettingsPane'
-import { GitSettingsPane } from './components/GitSettingsPane'
-import { McpSettingsPane } from './components/McpSettingsPane'
-import { IncrementalSyncPane } from './components/IncrementalSyncPane'
-import { DiaryTemplateSettingsPane } from './components/DiaryTemplateSettingsPane'
-import { DiaryAiWritingSettingsPane } from './components/DiaryAiWritingSettingsPane'
+
+const GeneralSettingsPane = lazy(() =>
+  import('./components/GeneralSettingsPane').then((m) => ({ default: m.GeneralSettingsPane }))
+)
+const McpSettingsPane = lazy(() =>
+  import('./components/McpSettingsPane').then((m) => ({ default: m.McpSettingsPane }))
+)
+const AiModelServicesPane = lazy(() =>
+  import('./components/AiModelServicesPane').then((m) => ({ default: m.AiModelServicesPane }))
+)
+const AiGlobalModelsPane = lazy(() =>
+  import('./components/AiGlobalModelsPane').then((m) => ({ default: m.AiGlobalModelsPane }))
+)
+const AssistantPane = lazy(() =>
+  import('./components/AssistantPane').then((m) => ({ default: m.AssistantPane }))
+)
+const RagSettingsPane = lazy(() =>
+  import('./components/RagSettingsPane').then((m) => ({ default: m.RagSettingsPane }))
+)
+const WebSearchPane = lazy(() =>
+  import('./components/WebSearchPane').then((m) => ({ default: m.WebSearchPane }))
+)
+const AgentToolsPane = lazy(() =>
+  import('./components/AgentToolsPane').then((m) => ({ default: m.AgentToolsPane }))
+)
+const DiaryTemplateSettingsPane = lazy(() =>
+  import('./components/DiaryTemplateSettingsPane').then((m) => ({
+    default: m.DiaryTemplateSettingsPane
+  }))
+)
+const DiaryAiWritingSettingsPane = lazy(() =>
+  import('./components/DiaryAiWritingSettingsPane').then((m) => ({
+    default: m.DiaryAiWritingSettingsPane
+  }))
+)
+const SummarySettingsPane = lazy(() =>
+  import('./components/SummarySettingsPane').then((m) => ({ default: m.SummarySettingsPane }))
+)
+const TTSSettingsPane = lazy(() =>
+  import('./components/TTSSettingsPane').then((m) => ({ default: m.TTSSettingsPane }))
+)
+const LanTransferPane = lazy(() =>
+  import('./components/LanTransferPane').then((m) => ({ default: m.LanTransferPane }))
+)
+const DataSyncPane = lazy(() =>
+  import('./components/DataSyncPane').then((m) => ({ default: m.DataSyncPane }))
+)
+const IncrementalSyncPane = lazy(() =>
+  import('./components/IncrementalSyncPane').then((m) => ({ default: m.IncrementalSyncPane }))
+)
+const AttachmentManagementPane = lazy(() =>
+  import('./components/AttachmentManagementPane').then((m) => ({
+    default: m.AttachmentManagementPane
+  }))
+)
+const GitSettingsPane = lazy(() =>
+  import('./components/GitSettingsPane').then((m) => ({ default: m.GitSettingsPane }))
+)
+const WorkspaceManagementPane = lazy(() =>
+  import('./components/WorkspaceManagementPane').then((m) => ({
+    default: m.WorkspaceManagementPane
+  }))
+)
+const IdentityCardManagementPane = lazy(() =>
+  import('./components/IdentityCardManagementPane').then((m) => ({
+    default: m.IdentityCardManagementPane
+  }))
+)
 
 const settingsViewTransition = {
   initial: { opacity: 0, y: 10 },
@@ -54,6 +103,22 @@ interface SettingsContentViewProps {
   className?: string
 }
 
+const PaneLoadingFallback: React.FC = () => {
+  const { t } = useTranslation()
+  return (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'center',
+        marginTop: 100,
+        color: 'var(--color-on-surface-variant)'
+      }}
+    >
+      {t('common.loading', '加载中...')}
+    </div>
+  )
+}
+
 export const SettingsContentView: React.FC<SettingsContentViewProps> = ({
   pathname,
   settings: settingsProp,
@@ -61,12 +126,14 @@ export const SettingsContentView: React.FC<SettingsContentViewProps> = ({
   className = ''
 }) => {
   const { t } = useTranslation()
+  const isLoading = useSettingsStore((s) => s.isLoading)
+  const configHydrated = useSettingsStore((s) => s.configHydrated)
   const settingsFromStore = useSettingsStore()
   const settings = settingsProp ?? settingsFromStore
   const segment = getSettingsRouteSegment(pathname)
   const contentKey = motionKey ?? segment
 
-  if (settings.isLoading) {
+  if (isLoading && !configHydrated) {
     return (
       <div
         style={{
@@ -138,7 +205,7 @@ export const SettingsContentView: React.FC<SettingsContentViewProps> = ({
       }}
       {...settingsViewTransition}
     >
-      {renderBody()}
+      <Suspense fallback={<PaneLoadingFallback />}>{renderBody()}</Suspense>
     </motion.div>
   )
 }

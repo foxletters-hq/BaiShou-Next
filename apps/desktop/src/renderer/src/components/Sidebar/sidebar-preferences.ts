@@ -15,7 +15,7 @@ const VISIBILITY_CONFIGURED_KEY = 'desktop_sidebar_visibility_configured'
 const HIDDEN_ITEMS_KEY = 'desktop_sidebar_hidden_items'
 const NAV_ORDER_KEY = 'desktop_sidebar_nav_order'
 const MIGRATION_VERSION_KEY = 'desktop_sidebar_mv'
-const CURRENT_MIGRATION_VERSION = 3
+const CURRENT_MIGRATION_VERSION = 1
 
 const ALL_NAV_ID_SET = new Set<string>(ALL_SIDEBAR_NAV_IDS)
 

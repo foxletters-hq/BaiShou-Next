@@ -326,6 +326,13 @@ export class DesktopArchiveService implements IArchiveService {
     }
 
     try {
+      const { resetSharedShadowSync } = await import('./shadow-sync.registry')
+      resetSharedShadowSync()
+    } catch (e: any) {
+      logger.error('Failed to reset shadow sync cache after import:', e)
+    }
+
+    try {
       const { resetCachedManager } = await import('../ipc/summary.ipc')
       resetCachedManager()
     } catch (e: any) {
