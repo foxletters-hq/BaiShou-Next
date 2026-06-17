@@ -116,22 +116,6 @@ export class LanDiscovery {
     onDeviceFound(device)
   }
 
-  private removeDeviceByServiceName(
-    serviceName: string,
-    onDeviceLost: (deviceId: string) => void
-  ) {
-    const dedupKey = this.serviceNameToDedupKey.get(serviceName)
-    if (!dedupKey) {
-      onDeviceLost(serviceName)
-      return
-    }
-
-    const device = this.activeDevices.get(dedupKey)
-    this.activeDevices.delete(dedupKey)
-    this.serviceNameToDedupKey.delete(serviceName)
-    onDeviceLost(device?.deviceId || serviceName)
-  }
-
   private handleDiscoveredService(service: {
     name: string
     port: number

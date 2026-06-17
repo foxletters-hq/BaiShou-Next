@@ -50,20 +50,32 @@ export function shouldApplyDiskAssistantRecord(
   return diskMs >= dbMs
 }
 
+export interface DiskAssistantRecord {
+  id?: string
+  name?: string
+  avatarPath?: string | null
+  assistantKind?: string
+  sortOrder?: number
+  createdAt?: string | number | Date | null
+  updatedAt?: string | number | Date | null
+  [key: string]: unknown
+}
+
 /** 将磁盘 JSON 记录规范化为 SQLite / 写盘可识别的字段 */
 export function normalizeDiskAssistantRecord(
   raw: Record<string, unknown> | null | undefined
-): Record<string, unknown> | null {
+): DiskAssistantRecord | null {
   if (!raw) return null
-  const data: Record<string, unknown> = { ...raw }
+  const data: DiskAssistantRecord = { ...raw }
 
   if (data.assistant_kind != null && data.assistantKind == null) {
-    data.assistantKind = data.assistant_kind
+    data.assistantKind = String(data.assistant_kind)
   }
   delete data.assistant_kind
 
   if (data.sort_order != null && data.sortOrder == null) {
-    data.sortOrder = data.sort_order
+    const parsed = Number(data.sort_order)
+    data.sortOrder = Number.isFinite(parsed) ? parsed : 0
   }
   delete data.sort_order
 

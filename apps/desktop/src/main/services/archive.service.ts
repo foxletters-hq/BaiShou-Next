@@ -135,14 +135,14 @@ export class DesktopArchiveService implements IArchiveService {
       logger.info(
         '[ArchiveService] Agent database reconnected after import was interrupted or failed.'
       )
-    } catch (e: unknown) {
+    } catch (e: any) {
       logger.error('[ArchiveService] Failed to reconnect agent database:', e)
     }
 
     try {
       const { connectGlobalShadowDb } = await import('../ipc/vault.ipc')
       await connectGlobalShadowDb()
-    } catch (e: unknown) {
+    } catch (e: any) {
       logger.warn('[ArchiveService] Failed to reconnect shadow DB after import rollback:', e)
     }
   }

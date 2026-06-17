@@ -289,7 +289,8 @@ export class DesktopLanSyncService implements ILanSyncService {
       if (bytesWritten <= 0) {
         await cleanupPartial()
         if (!res.headersSent) {
-          res.status(400).send('No file content')
+          res.statusCode = 400
+          res.end('No file content')
         }
         return
       }
@@ -301,7 +302,8 @@ export class DesktopLanSyncService implements ILanSyncService {
         )
         await cleanupPartial()
         if (!res.headersSent) {
-          res.status(400).send('Incomplete upload')
+          res.statusCode = 400
+          res.end('Incomplete upload')
         }
         return
       }
@@ -310,13 +312,15 @@ export class DesktopLanSyncService implements ILanSyncService {
         this.fileReceivedCallback(tempPath)
       }
       if (!res.headersSent) {
-        res.status(200).send('Success')
+        res.statusCode = 200
+        res.end('Success')
       }
     } catch (err) {
       console.error('[DesktopLanSyncService] failed to receive LAN upload', err)
       await cleanupPartial()
       if (!res.headersSent) {
-        res.status(500).send('Stream error')
+        res.statusCode = 500
+        res.end('Stream error')
       }
     }
   }

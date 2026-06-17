@@ -129,7 +129,9 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
     if (cleanupParts.length > 0) {
       discoveryCleanupRef.current = () => {
         for (const part of cleanupParts) {
-          part?.()
+          if (typeof part === 'function') {
+            part()
+          }
         }
       }
     }

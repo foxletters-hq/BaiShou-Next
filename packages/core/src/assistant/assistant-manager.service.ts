@@ -122,26 +122,28 @@ export class AssistantManagerService {
     for (const f of allFiles) {
       const raw = await this.fileService.readAssistant(f.id)
       const data = normalizeDiskAssistantRecord(raw)
-      if (data) {
-        // JSON.parse turns Date into ISO string, needs to transform to Date object
-        // Otherwise Drizzle SQLiteTimestamp.mapToDriverValue will raise TypeError: value.getTime is not a function
-        if (data.createdAt != null) data.createdAt = new Date(data.createdAt)
-        if (data.updatedAt != null) data.updatedAt = new Date(data.updatedAt)
-        if (data.avatarPath != null) {
-          data.avatarPath =
-            normalizePersistedAvatarPath(data.avatarPath) ??
-            normalizeAssistantAvatarPath(data.avatarPath)
-        }
+      if (!data?.id || typeof data.name !== 'string') {
+        continue
+      }
 
-        const existing = await this.repo.findById(f.id)
-        if (existing) {
-          if (!shouldApplyDiskAssistantRecord(data.updatedAt, existing.updatedAt)) {
-            continue
-          }
-          await this.repo.update(f.id, pickDefinedAssistantUpdate(data))
-        } else {
-          await this.repo.create(data)
+      // JSON.parse turns Date into ISO string, needs to transform to Date object
+      // Otherwise Drizzle SQLiteTimestamp.mapToDriverValue will raise TypeError: value.getTime is not a function
+      if (data.createdAt != null) data.createdAt = new Date(data.createdAt)
+      if (data.updatedAt != null) data.updatedAt = new Date(data.updatedAt)
+      if (data.avatarPath != null) {
+        data.avatarPath =
+          normalizePersistedAvatarPath(data.avatarPath) ??
+          normalizeAssistantAvatarPath(data.avatarPath)
+      }
+
+      const existing = await this.repo.findById(f.id)
+      if (existing) {
+        if (!shouldApplyDiskAssistantRecord(data.updatedAt, existing.updatedAt)) {
+          continue
         }
+        await this.repo.update(f.id, pickDefinedAssistantUpdate(data) as UpdateAssistantInput)
+      } else {
+        await this.repo.create(data as InsertAssistantInput)
       }
     }
 

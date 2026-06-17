@@ -10,6 +10,11 @@
   "compilerOptions": {
     "composite": true,
     "resolveJsonModule": true,
-    "types": ["electron-vite/node"]
+    "types": ["electron-vite/node"],
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": {
+      "@baishou/core/shared": ["../../packages/core/src/index.shared.ts"]
+    }
   }
 }
