@@ -11,7 +11,7 @@ import {
   type IFileSystem,
   type IStoragePathService
 } from '@baishou/core-mobile'
-import { stripFileScheme } from './android-external-fs'
+import { normalizeStoragePath, stripFileScheme } from './android-external-fs'
 import { getAppCacheDirectory, getAppDocumentDirectory } from './mobile-app-paths'
 import { importUriToPath, normalizeImportSourceUri } from './mobile-uri-import'
 import {
@@ -23,8 +23,15 @@ import {
   MOBILE_ARCHIVE_DB_ZIP_NAME,
   type MobileArchiveDbBridge
 } from './mobile-archive-db.bridge'
-
-const ARCHIVE_SKIP_TOP_LEVEL = new Set(['database', 'config', 'manifest.json', 'user-data'])
+import {
+  assertSafeSnapshotFilename,
+  ARCHIVE_SKIP_TOP_LEVEL,
+  collectSnapshotPreserveKeys,
+  formatArchiveImportFailureMessage,
+  isValidArchiveManifestContent,
+  resolveSnapshotCreatedAt,
+  validateArchiveExtractPayload
+} from './archive-guards.util'
 
 export class MobileArchiveService implements IArchiveService {
   constructor(
@@ -39,62 +46,80 @@ export class MobileArchiveService implements IArchiveService {
       await this.dbBridge.flushBeforeExport()
     }
 
-    const rootDir = await this.pathService.getRootDirectory()
+    const rootDir = normalizeStoragePath(await this.pathService.getRootDirectory())
     const cacheDir = `${getAppCacheDirectory()}baishou_archive_prep_${Date.now()}`
     await this.fileSystem.mkdir(cacheDir, { recursive: true })
 
-    if (await this.fileSystem.exists(rootDir)) {
-      const rootStat = await this.fileSystem.stat(rootDir)
-      if (rootStat.isDirectory) {
-        await this.copyStorageRootForArchive(rootDir, cacheDir)
-      }
-    }
-
     try {
-      const configDir = `${cacheDir}/config`
-      await this.fileSystem.mkdir(configDir, { recursive: true })
-
-      const prefs = this.dbBridge
-        ? await this.dbBridge.exportDevicePreferences()
-        : await this.legacyExportAsyncStoragePrefs()
-
-      await this.fileSystem.writeFile(
-        `${configDir}/device_preferences.json`,
-        JSON.stringify(prefs, null, 2)
-      )
-    } catch (e) {
-      console.warn('[MobileArchive] Failed to dump device preferences', e)
-    }
-
-    if (this.dbBridge) {
       try {
+        const rootStat = await this.fileSystem.stat(rootDir)
+        if (rootStat.isDirectory) {
+          await this.copyStorageRootForArchive(rootDir, cacheDir)
+        }
+      } catch (e) {
+        // 首次导入 / 外部根目录尚未创建时无本地数据可复制，仅打包 DB 与偏好即可
+        console.warn(
+          '[MobileArchive] Skip copying storage root for export (root missing or unreadable)',
+          e
+        )
+      }
+
+      try {
+        await this.packUserAvatarsForArchive(cacheDir)
+      } catch (e) {
+        console.warn('[MobileArchive] Failed to pack user avatars', e)
+      }
+
+      try {
+        const configDir = `${cacheDir}/config`
+        await this.fileSystem.mkdir(configDir, { recursive: true })
+
+        const prefs = this.dbBridge
+          ? await this.dbBridge.exportDevicePreferences()
+          : await this.legacyExportAsyncStoragePrefs()
+
+        await this.fileSystem.writeFile(
+          `${configDir}/device_preferences.json`,
+          JSON.stringify(prefs, null, 2)
+        )
+      } catch (e) {
+        console.warn('[MobileArchive] Failed to dump device preferences', e)
+      }
+
+      if (this.dbBridge) {
         const dbUri = await this.dbBridge.getAgentDatabaseUri()
         if (dbUri && (await this.fileSystem.exists(dbUri))) {
           const dbDir = `${cacheDir}/database`
           await this.fileSystem.mkdir(dbDir, { recursive: true })
-          await this.fileSystem.copyFile(dbUri, `${dbDir}/baishou_agent.db`)
+          try {
+            await this.fileSystem.copyFile(dbUri, `${dbDir}/baishou_agent.db`)
+          } catch (e) {
+            const detail = e instanceof Error ? e.message : String(e)
+            throw new Error(`打包数据库失败：${detail}`)
+          }
         }
-      } catch (e) {
-        console.warn('[MobileArchive] Failed to pack agent database', e)
       }
-    }
 
-    const manifest = {
-      formatVersion: 1,
-      exportedAt: Date.now(),
-      platform: 'mobile'
-    }
-    await this.fileSystem.writeFile(`${cacheDir}/manifest.json`, JSON.stringify(manifest, null, 2))
+      const manifest = {
+        formatVersion: 1,
+        exportedAt: Date.now(),
+        platform: 'mobile'
+      }
+      await this.fileSystem.writeFile(`${cacheDir}/manifest.json`, JSON.stringify(manifest, null, 2))
 
-    const targetZip = `${getAppCacheDirectory()}BaiShou_Backup_${Date.now()}.zip`
-    try {
-      await zip(stripFileScheme(cacheDir), stripFileScheme(targetZip))
-      await this.fileSystem.rm(cacheDir, { recursive: true, force: true })
-      return targetZip
+      const targetZip = `${getAppCacheDirectory()}BaiShou_Backup_${Date.now()}.zip`
+      try {
+        await zip(stripFileScheme(cacheDir), stripFileScheme(targetZip))
+        await this.fileSystem.rm(cacheDir, { recursive: true, force: true })
+        return targetZip
+      } catch (err) {
+        console.error('[MobileArchive] ZIP operation failed', err)
+        const message = err instanceof Error ? err.message : String(err)
+        throw new Error(`打包备份失败：${message}`)
+      }
     } catch (err) {
-      console.error('[MobileArchive] ZIP operation failed', err)
-      const message = err instanceof Error ? err.message : String(err)
-      throw new Error(`打包备份失败：${message}`)
+      await this.fileSystem.rm(cacheDir, { recursive: true, force: true }).catch(() => {})
+      throw err
     }
   }
 
@@ -105,72 +130,178 @@ export class MobileArchiveService implements IArchiveService {
     }
 
     if (!(await Sharing.isAvailableAsync())) {
+      await this.fileSystem.unlink(zipPath).catch(() => {})
       throw new Error('当前设备不支持分享/导出文件')
     }
 
-    await Sharing.shareAsync(zipPath, {
-      mimeType: 'application/zip',
-      dialogTitle: '保存 BaiShou 物理系统备份',
-      UTI: 'public.zip-archive'
-    })
-    return zipPath
+    try {
+      await Sharing.shareAsync(zipPath, {
+        mimeType: 'application/zip',
+        dialogTitle: '保存 BaiShou 物理系统备份',
+        UTI: 'public.zip-archive'
+      })
+    } finally {
+      await this.fileSystem.unlink(zipPath).catch(() => {})
+    }
+    return null
   }
 
   public async importFromZip(
     zipFilePath: string,
     createSnapshotBefore: boolean = true
   ): Promise<ImportResult> {
+    const runQuiesced = this.dbBridge?.runArchiveImportQuiesced ?? ((fn: () => Promise<ImportResult>) => fn())
+    return runQuiesced(() => this.importFromZipInternal(zipFilePath, createSnapshotBefore))
+  }
+
+  private async importFromZipInternal(
+    zipFilePath: string,
+    createSnapshotBefore: boolean
+  ): Promise<ImportResult> {
     let snapshotPath: string | undefined
 
-    if (createSnapshotBefore) {
-      const snap = await this.createSnapshot()
-      if (snap) snapshotPath = snap
+    const rootDir = normalizeStoragePath(await this.pathService.getRootDirectory())
+    await this.fileSystem.mkdir(rootDir, { recursive: true })
+
+    const preserveDuringSnapshot = normalizeStoragePath(zipFilePath)
+    if (createSnapshotBefore && (await this.storageRootHasData(rootDir))) {
+      try {
+        const snap = await this.createSnapshot({ preservePaths: [preserveDuringSnapshot] })
+        if (!snap) {
+          throw new Error('导入前创建保护快照失败，已中止导入以保护当前数据')
+        }
+        snapshotPath = snap
+      } catch (e) {
+        console.error('[MobileArchive] Pre-import snapshot failed', e)
+        const detail = e instanceof Error ? e.message : String(e)
+        throw new Error(
+          detail.includes('保护快照') ? detail : `导入前创建保护快照失败，已中止导入（${detail}）`
+        )
+      }
     }
 
-    const rootDir = await this.pathService.getRootDirectory()
-    const extractDir = `${getAppCacheDirectory()}baishou_archive_extract_${Date.now()}`
-    await this.fileSystem.mkdir(extractDir, { recursive: true })
-
-    const { nativeZipPath, cleanupStagedZip } = await this.stageZipForUnzip(zipFilePath)
+    let extractDir: string | undefined
     try {
-      await unzip(nativeZipPath, stripFileScheme(extractDir))
-    } catch (e) {
-      console.error('[MobileArchive] Failed to extract archive', e)
-      const detail = e instanceof Error ? e.message : String(e)
-      throw new Error(`导入解压失败，请检查文件格式或存储权限（${detail}）`)
-    } finally {
-      await cleanupStagedZip?.()
-    }
+      extractDir = `${getAppCacheDirectory()}baishou_archive_extract_${Date.now()}`
+      await this.fileSystem.mkdir(extractDir, { recursive: true })
 
-    let needsRestart = false
-    const preservedSettings = this.dbBridge ? await this.dbBridge.readPreservedImportSettings() : {}
-
-    const hasManifest = await this.fileSystem.exists(`${extractDir}/manifest.json`)
-    const isFlutterLegacyZip =
-      !hasManifest && (await isLegacyAppRoot(this.fileSystem, extractDir))
-
-    if (isFlutterLegacyZip) {
-      if (!this.dbBridge?.importLegacyFlutterZip) {
-        throw new Error('当前环境不支持导入 Flutter 旧版备份包')
+      const { nativeZipPath, cleanupStagedZip } = await this.stageZipForUnzip(zipFilePath)
+      try {
+        await unzip(nativeZipPath, stripFileScheme(extractDir))
+      } catch (e) {
+        console.error('[MobileArchive] Failed to extract archive', e)
+        const detail = e instanceof Error ? e.message : String(e)
+        throw new Error(`导入解压失败，请检查文件格式或存储权限（${detail}）`)
+      } finally {
+        await cleanupStagedZip?.()
       }
 
-      const stagingDir = `${getAppCacheDirectory()}baishou_legacy_staging_${Date.now()}`
-      await this.fileSystem.mkdir(stagingDir, { recursive: true })
+      const preservedSettings = this.dbBridge ? await this.dbBridge.readPreservedImportSettings() : {}
+
+      const hasManifest = await this.fileSystem.exists(`${extractDir}/manifest.json`)
+      const isFlutterLegacyZip = !hasManifest && (await isLegacyAppRoot(this.fileSystem, extractDir))
+      await this.validateExtractedArchive(extractDir, isFlutterLegacyZip)
+
+      if (isFlutterLegacyZip) {
+        if (!this.dbBridge?.importLegacyFlutterZip) {
+          throw new Error('当前环境不支持导入 Flutter 旧版备份包')
+        }
+
+        const stagingDir = `${getAppCacheDirectory()}baishou_legacy_staging_${Date.now()}`
+        await this.fileSystem.mkdir(stagingDir, { recursive: true })
+
+        try {
+          try {
+            await this.dbBridge.importLegacyFlutterZip(extractDir, stagingDir)
+
+            try {
+              await this.fileSystem.rm(rootDir, { recursive: true, force: true })
+            } catch (e) {
+              console.warn('[MobileArchive] Wipe root warning (legacy zip)', e)
+            }
+            await this.fileSystem.mkdir(rootDir, { recursive: true })
+            await copyStorageRootContents(this.fileSystem, stagingDir, rootDir)
+
+            const stagedAgentDb = resolveAgentDbPath(rootDir)
+            if (this.dbBridge && (await this.fileSystem.exists(stagedAgentDb))) {
+              await this.dbBridge.replaceAgentDatabaseFrom(stagedAgentDb)
+            }
+
+            try {
+              const syncMetaDir = `${rootDir}/.baishou`
+              await resetIncrementalSyncMetaAfterFullRestore(syncMetaDir, {
+                exists: (p) => this.fileSystem.exists(p),
+                read: (p) => this.fileSystem.readFile(p),
+                write: (p, content) => this.fileSystem.writeFile(p, content),
+                unlink: (p) => this.fileSystem.unlink(p)
+              })
+            } catch (e) {
+              console.warn('[MobileArchive] Failed to reset incremental sync meta (legacy zip)', e)
+            }
+
+            await this.vaultService.initRegistry()
+            if (this.dbBridge?.rebootstrapAfterArchiveRestore) {
+              await this.dbBridge.rebootstrapAfterArchiveRestore()
+            }
+          } catch (restoreError) {
+            throw new Error(formatArchiveImportFailureMessage(restoreError, snapshotPath))
+          }
+        } finally {
+          await this.fileSystem.rm(stagingDir, { recursive: true, force: true }).catch(() => {})
+        }
+
+        return {
+          fileCount: -1,
+          profileRestored: true,
+          snapshotPath
+        }
+      }
 
       try {
-        await this.dbBridge.importLegacyFlutterZip(extractDir, stagingDir)
-
         try {
           await this.fileSystem.rm(rootDir, { recursive: true, force: true })
         } catch (e) {
-          console.warn('[MobileArchive] Wipe root warning (legacy zip)', e)
+          console.warn('[MobileArchive] Wipe root warning', e)
         }
         await this.fileSystem.mkdir(rootDir, { recursive: true })
-        await copyStorageRootContents(this.fileSystem, stagingDir, rootDir)
 
-        const stagedAgentDb = resolveAgentDbPath(rootDir)
-        if (this.dbBridge && (await this.fileSystem.exists(stagedAgentDb))) {
-          needsRestart = await this.dbBridge.replaceAgentDatabaseFrom(stagedAgentDb)
+        const entries = await this.fileSystem.readdir(extractDir)
+        for (const name of entries) {
+          if (!name || name === '.' || name === '..') continue
+          if (ARCHIVE_SKIP_TOP_LEVEL.has(name)) continue
+          const src = `${extractDir}/${name}`
+          const dest = `${rootDir}/${name}`
+          const stat = await this.fileSystem.stat(src)
+          if (stat.isDirectory) {
+            await this.fileSystem.mkdir(dest, { recursive: true })
+            await this.selectiveCopy(src, dest)
+          } else if (stat.isFile) {
+            await this.fileSystem.copyFile(src, dest)
+          }
+        }
+
+        await this.restoreUserAvatarsFromExtract(extractDir)
+
+        const dbPath = `${extractDir}/${MOBILE_ARCHIVE_DB_ZIP_NAME}`
+        const restoredDatabase =
+          !!this.dbBridge && (await this.fileSystem.exists(dbPath))
+
+        if (restoredDatabase) {
+          await this.dbBridge!.replaceAgentDatabaseFrom(dbPath)
+        }
+
+        const configPath = `${extractDir}/config/device_preferences.json`
+        if (await this.fileSystem.exists(configPath)) {
+          const raw = await this.fileSystem.readFile(configPath)
+          const prefs = JSON.parse(raw) as Record<string, unknown>
+          if (preservedSettings.cloud_sync_config !== undefined) {
+            prefs.cloud_sync_config = preservedSettings.cloud_sync_config
+          }
+          if (this.dbBridge) {
+            await this.dbBridge.importDevicePreferences(prefs)
+          } else {
+            await this.legacyImportAsyncStoragePrefs(prefs as Record<string, string>)
+          }
         }
 
         try {
@@ -182,110 +313,48 @@ export class MobileArchiveService implements IArchiveService {
             unlink: (p) => this.fileSystem.unlink(p)
           })
         } catch (e) {
-          console.warn('[MobileArchive] Failed to reset incremental sync meta (legacy zip)', e)
+          console.warn('[MobileArchive] Failed to reset incremental sync meta', e)
+        }
+
+        try {
+          const registryFile = `${rootDir}/vault_registry.json`
+          if (await this.fileSystem.exists(registryFile)) {
+            const raw = await this.fileSystem.readFile(registryFile)
+            const vaults: Array<{ name: string; path: string }> = JSON.parse(raw)
+            let modified = false
+
+            for (const v of vaults) {
+              const correctPath = `${rootDir}/${v.name}`
+              if (v.path !== correctPath) {
+                v.path = correctPath
+                modified = true
+              }
+            }
+            if (modified) {
+              await this.fileSystem.writeFile(registryFile, JSON.stringify(vaults, null, 2))
+            }
+          }
+        } catch (e) {
+          console.warn('[MobileArchive] Failed to remap vault paths', e)
         }
 
         await this.vaultService.initRegistry()
-      } finally {
-        await this.fileSystem.rm(stagingDir, { recursive: true, force: true }).catch(() => {})
-        await this.fileSystem.rm(extractDir, { recursive: true, force: true }).catch(() => {})
+        if (this.dbBridge?.rebootstrapAfterArchiveRestore) {
+          await this.dbBridge.rebootstrapAfterArchiveRestore()
+        }
+      } catch (restoreError) {
+        throw new Error(formatArchiveImportFailureMessage(restoreError, snapshotPath))
       }
 
       return {
         fileCount: -1,
         profileRestored: true,
-        snapshotPath,
-        needsRestart
+        snapshotPath
       }
-    }
-
-    try {
-      try {
-        await this.fileSystem.rm(rootDir, { recursive: true, force: true })
-      } catch (e) {
-        console.warn('[MobileArchive] Wipe root warning', e)
-      }
-      await this.fileSystem.mkdir(rootDir, { recursive: true })
-
-      const entries = await this.fileSystem.readdir(extractDir)
-      for (const name of entries) {
-        if (ARCHIVE_SKIP_TOP_LEVEL.has(name)) continue
-        const src = `${extractDir}/${name}`
-        const dest = `${rootDir}/${name}`
-        const stat = await this.fileSystem.stat(src)
-        if (stat.isDirectory) {
-          await this.fileSystem.mkdir(dest, { recursive: true })
-          await this.selectiveCopy(src, dest)
-        } else if (stat.isFile) {
-          await this.fileSystem.copyFile(src, dest)
-        }
-      }
-
-      await this.restoreUserAvatarsFromExtract(extractDir)
-
-      const dbPath = `${extractDir}/${MOBILE_ARCHIVE_DB_ZIP_NAME}`
-      if (this.dbBridge && (await this.fileSystem.exists(dbPath))) {
-        needsRestart = await this.dbBridge.replaceAgentDatabaseFrom(dbPath)
-      }
-
-      const configPath = `${extractDir}/config/device_preferences.json`
-      if (await this.fileSystem.exists(configPath)) {
-        const raw = await this.fileSystem.readFile(configPath)
-        const prefs = JSON.parse(raw) as Record<string, unknown>
-        if (preservedSettings.cloud_sync_config !== undefined) {
-          prefs.cloud_sync_config = preservedSettings.cloud_sync_config
-        }
-        if (this.dbBridge) {
-          await this.dbBridge.importDevicePreferences(prefs)
-        } else {
-          await this.legacyImportAsyncStoragePrefs(prefs as Record<string, string>)
-        }
-      }
-
-      try {
-        const syncMetaDir = `${rootDir}/.baishou`
-        await resetIncrementalSyncMetaAfterFullRestore(syncMetaDir, {
-          exists: (p) => this.fileSystem.exists(p),
-          read: (p) => this.fileSystem.readFile(p),
-          write: (p, content) => this.fileSystem.writeFile(p, content),
-          unlink: (p) => this.fileSystem.unlink(p)
-        })
-      } catch (e) {
-        console.warn('[MobileArchive] Failed to reset incremental sync meta', e)
-      }
-
-      try {
-        const registryFile = `${rootDir}/vault_registry.json`
-        if (await this.fileSystem.exists(registryFile)) {
-          const raw = await this.fileSystem.readFile(registryFile)
-          const vaults: Array<{ name: string; path: string }> = JSON.parse(raw)
-          let modified = false
-
-          for (const v of vaults) {
-            const correctPath = `${rootDir}/${v.name}`
-            if (v.path !== correctPath) {
-              v.path = correctPath
-              modified = true
-            }
-          }
-          if (modified) {
-            await this.fileSystem.writeFile(registryFile, JSON.stringify(vaults, null, 2))
-          }
-        }
-      } catch (e) {
-        console.warn('[MobileArchive] Failed to remap vault paths', e)
-      }
-
-      await this.vaultService.initRegistry()
     } finally {
-      await this.fileSystem.rm(extractDir, { recursive: true, force: true }).catch(() => {})
-    }
-
-    return {
-      fileCount: -1,
-      profileRestored: true,
-      snapshotPath,
-      needsRestart
+      if (extractDir) {
+        await this.fileSystem.rm(extractDir, { recursive: true, force: true }).catch(() => {})
+      }
     }
   }
 
@@ -314,7 +383,7 @@ export class MobileArchiveService implements IArchiveService {
     return `${getAppDocumentDirectory()}snapshots`
   }
 
-  public async createSnapshot(): Promise<string | null> {
+  public async createSnapshot(options?: { preservePaths?: string[] }): Promise<string | null> {
     const zipPath = await this.exportToTempFile()
     if (!zipPath) return null
 
@@ -322,12 +391,27 @@ export class MobileArchiveService implements IArchiveService {
     await this.fileSystem.mkdir(snapshotDir, { recursive: true })
 
     const dt = new Date()
-    const ts = `${dt.getFullYear()}${(dt.getMonth() + 1).toString().padStart(2, '0')}${dt.getDate().toString().padStart(2, '0')}_${dt.getHours().toString().padStart(2, '0')}${dt.getMinutes().toString().padStart(2, '0')}`
+    const ts = [
+      dt.getFullYear(),
+      (dt.getMonth() + 1).toString().padStart(2, '0'),
+      dt.getDate().toString().padStart(2, '0'),
+      '_',
+      dt.getHours().toString().padStart(2, '0'),
+      dt.getMinutes().toString().padStart(2, '0'),
+      dt.getSeconds().toString().padStart(2, '0'),
+      dt.getMilliseconds().toString().padStart(3, '0')
+    ].join('')
     const finalSnapPath = `${snapshotDir}/snapshot_${ts}.zip`
 
     await this.fileSystem.copyFile(zipPath, finalSnapPath)
     await this.fileSystem.unlink(zipPath)
-    await this.pruneSnapshots(5)
+
+    const maxCount = this.dbBridge ? await this.dbBridge.getMaxSnapshotCount() : 5
+    const preservePaths = [
+      normalizeStoragePath(finalSnapPath),
+      ...(options?.preservePaths ?? []).map((p) => normalizeStoragePath(p))
+    ]
+    await this.pruneSnapshots(maxCount, preservePaths)
     return finalSnapPath
   }
 
@@ -345,7 +429,7 @@ export class MobileArchiveService implements IArchiveService {
         if (!stat.isFile) continue
         results.push({
           filename,
-          createdAt: stat.mtimeMs ?? Date.now(),
+          createdAt: resolveSnapshotCreatedAt(filename, stat.mtimeMs),
           size: stat.size ?? 0
         })
       } catch {
@@ -356,6 +440,7 @@ export class MobileArchiveService implements IArchiveService {
   }
 
   public async restoreFromSnapshot(filename: string): Promise<ImportResult> {
+    this.assertSafeSnapshotFilename(filename)
     const fullPath = `${this.getSnapshotDir()}/${filename}`
     if (!(await this.fileSystem.exists(fullPath))) {
       throw new Error('Snapshot not found')
@@ -364,23 +449,115 @@ export class MobileArchiveService implements IArchiveService {
   }
 
   public async deleteSnapshot(filename: string): Promise<void> {
+    this.assertSafeSnapshotFilename(filename)
     const fullPath = `${this.getSnapshotDir()}/${filename}`
     await this.fileSystem.unlink(fullPath)
   }
 
-  private async pruneSnapshots(maxCount: number): Promise<void> {
+  private assertSafeSnapshotFilename(filename: string): void {
+    assertSafeSnapshotFilename(filename)
+  }
+
+  private async pruneSnapshots(maxCount: number, preservePaths: string[] = []): Promise<void> {
     if (maxCount < 0) return
-    const list = await this.listSnapshots()
-    if (list.length <= maxCount) return
-    const toDelete = list.slice(maxCount)
-    for (const item of toDelete) {
-      await this.deleteSnapshot(item.filename).catch(() => {})
+
+    const preserve = collectSnapshotPreserveKeys(preservePaths)
+    const snapshotDir = normalizeStoragePath(this.getSnapshotDir())
+    let list = await this.listSnapshots()
+
+    while (list.length > maxCount) {
+      const oldestFirst = [...list].reverse()
+      let deleted = false
+
+      for (const item of oldestFirst) {
+        const fullPath = normalizeStoragePath(`${snapshotDir}/${item.filename}`)
+        if (preserve.absolutes.has(fullPath) || preserve.filenames.has(item.filename)) continue
+        await this.deleteSnapshot(item.filename).catch(() => {})
+        deleted = true
+        break
+      }
+
+      if (!deleted) break
+      list = await this.listSnapshots()
     }
+  }
+
+  private async validateExtractedArchive(
+    extractDir: string,
+    isFlutterLegacyZip: boolean
+  ): Promise<void> {
+    const entries = await this.fileSystem.readdir(extractDir)
+    const meaningful = entries.filter((name) => name && name !== '.' && name !== '..')
+
+    const manifestPath = `${extractDir}/manifest.json`
+    let hasValidManifest = false
+    if (await this.fileSystem.exists(manifestPath)) {
+      try {
+        const raw = await this.fileSystem.readFile(manifestPath)
+        hasValidManifest = isValidArchiveManifestContent(raw)
+      } catch {
+        hasValidManifest = false
+      }
+    }
+
+    const hasDatabase = await this.fileSystem.exists(`${extractDir}/${MOBILE_ARCHIVE_DB_ZIP_NAME}`)
+    const hasVaultRegistry = await this.fileSystem.exists(`${extractDir}/vault_registry.json`)
+
+    let hasVaultDirectory = false
+    for (const name of meaningful) {
+      if (ARCHIVE_SKIP_TOP_LEVEL.has(name)) continue
+      const entryPath = `${extractDir}/${name}`
+      try {
+        const stat = await this.fileSystem.stat(entryPath)
+        if (stat.isDirectory) {
+          hasVaultDirectory = true
+          break
+        }
+      } catch {
+        // skip unreadable entries
+      }
+    }
+
+    validateArchiveExtractPayload({
+      isFlutterLegacyZip,
+      isEmpty: meaningful.length === 0,
+      hasValidManifest,
+      hasDatabase,
+      hasVaultRegistry,
+      hasVaultDirectory
+    })
+  }
+
+  private async packUserAvatarsForArchive(cacheDir: string): Promise<void> {
+    const avatarsSrc = await this.pathService.getUserAvatarsDirectory()
+    if (!(await this.fileSystem.exists(avatarsSrc))) return
+
+    const avatarsDest = `${cacheDir}/${ARCHIVE_USER_AVATARS_ZIP_PREFIX}`
+    await this.fileSystem.mkdir(avatarsDest, { recursive: true })
+
+    const copyDir = async (src: string, dest: string) => {
+      const entries = await this.fileSystem.readdir(src)
+      for (const name of entries) {
+        if (!name || name === '.' || name === '..') continue
+        const srcPath = `${src}/${name}`
+        const destPath = `${dest}/${name}`
+        const stat = await this.fileSystem.stat(srcPath)
+        if (stat.isDirectory) {
+          await this.fileSystem.mkdir(destPath, { recursive: true })
+          await copyDir(srcPath, destPath)
+        } else {
+          await this.fileSystem.copyFile(srcPath, destPath)
+        }
+      }
+    }
+
+    await copyDir(avatarsSrc, avatarsDest)
   }
 
   private async copyStorageRootForArchive(sourceRoot: string, targetRoot: string): Promise<void> {
     const entries = await this.fileSystem.readdir(sourceRoot)
     for (const itemName of entries) {
+      if (!itemName || itemName === '.' || itemName === '..') continue
       if (FULL_BACKUP_EXCLUDED_ROOT_NAMES.has(itemName)) continue
       if (itemName === 'snapshots' || itemName === 'temp' || itemName === '.snapshots') continue
 
@@ -426,6 +603,16 @@ export class MobileArchiveService implements IArchiveService {
     await copyDir(avatarsSrc, avatarsDest)
   }
 
+  private async storageRootHasData(rootDir: string): Promise<boolean> {
+    try {
+      if (!(await this.fileSystem.exists(rootDir))) return false
+      const entries = await this.fileSystem.readdir(rootDir)
+      return entries.some((name) => name && name !== '.' && name !== '..')
+    } catch {
+      return false
+    }
+  }
+
   private async stageZipForUnzip(
     zipFilePath: string
   ): Promise<{ nativeZipPath: string; cleanupStagedZip?: () => Promise<void> }> {
@@ -446,6 +633,7 @@ export class MobileArchiveService implements IArchiveService {
     }
 
     const stagedZip = `${getAppCacheDirectory()}baishou_import_${Date.now()}.zip`
+    await this.fileSystem.rm(stagedZip, { recursive: true, force: true }).catch(() => {})
     await importUriToPath(zipFilePath, stagedZip, this.fileSystem)
     return {
       nativeZipPath: stripFileScheme(stagedZip),
@@ -459,6 +647,7 @@ export class MobileArchiveService implements IArchiveService {
     const dirContent = await this.fileSystem.readdir(sourceDirPath)
 
     for (const itemName of dirContent) {
+      if (!itemName || itemName === '.' || itemName === '..') continue
       if (itemName === 'snapshots' || itemName === 'temp' || itemName === '.snapshots') continue
       if (itemName.endsWith('-wal') || itemName.endsWith('-shm') || itemName.endsWith('-journal'))
         continue
