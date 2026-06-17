@@ -364,10 +364,11 @@ export const DiaryScreen: React.FC = () => {
             currentPage={currentPage}
             pageSize={pageSize}
             selectedMonth={selectedMonth}
-            loading={needsFullFileAccess ? false : vaultSwitching || loading}
+            loading={vaultSwitching || loading}
             storagePending={isStoragePending}
             storageSlow={mountSlow}
             storageMountFailed={mountFailed}
+            vaultSwitching={vaultSwitching}
             storageIndexing={storageIndexing}
             onRetryStorageMount={handleRetryStorageMount}
             onGoToEditor={handleGoToEditor}
