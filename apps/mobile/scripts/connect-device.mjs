@@ -23,7 +23,7 @@ setupAdbReverse(METRO_PORT)
 printDevConnectionHelp(host, METRO_PORT)
 
 try {
-  openDevClientOnDevice(host, METRO_PORT)
+  await openDevClientOnDevice(host, METRO_PORT)
 } catch (e) {
   console.error('打开失败:', e.message)
   process.exit(1)

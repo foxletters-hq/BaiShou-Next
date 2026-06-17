@@ -42,6 +42,8 @@
       "./plugins/withAndroidReleaseSigning.js",
       "./plugins/withAndroidDevVariant.js",
       "expo-dev-client",
+      "./plugins/withAndroidMainActivitySplash.js",
+      "./plugins/withAndroidDevLauncherLaunchMode.js",
       "expo-router",
       [
         "expo-splash-screen",

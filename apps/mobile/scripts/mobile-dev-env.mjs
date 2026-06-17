@@ -387,12 +387,36 @@ export function devClientEnv() {
   }
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/** 结束旧进程，避免 DevLauncher 在 React 上下文未销毁时重启 MainActivity 崩溃 */
+export function stopDevClientApp(packageId = ANDROID_DEV_PACKAGE_ID) {
+  if (!hasAdbDevice()) return false
+  try {
+    adbExec(`adb shell am force-stop ${packageId}`)
+    return true
+  } catch {
+    return false
+  }
+}
+
 /**
  * 真机打开开发版：adb reverse 已就绪时用 localhost（手机侧经隧道连 Metro），否则用局域网 IP。
+ * 默认先 force-stop，降低「App react context shouldn't be created before」竞态。
  */
-export function openDevClientOnDevice(lanHost = getLanIp(), port = METRO_PORT) {
+export async function openDevClientOnDevice(
+  lanHost = getLanIp(),
+  port = METRO_PORT,
+  { restart = true, settleMs = 700 } = {}
+) {
   if (hasAdbDevice()) {
     setupAdbReverse(port)
+    if (restart) {
+      stopDevClientApp()
+      if (settleMs > 0) {
+        await sleep(settleMs)
+      }
+    }
   }
 
   const devHost = getDevServerHost(lanHost, port)

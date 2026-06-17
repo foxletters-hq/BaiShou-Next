@@ -69,7 +69,7 @@ const tryOpenDeviceWithRetry = async () => {
     }
     setupAdbReverse(METRO_PORT)
     try {
-      openDevClientOnDevice(lanHost, METRO_PORT)
+      await openDevClientOnDevice(lanHost, METRO_PORT)
       return
     } catch (e) {
       if (attempt < maxAttempts) {
