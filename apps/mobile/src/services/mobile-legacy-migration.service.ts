@@ -37,6 +37,17 @@ import { FLUTTER_LEGACY_MIGRATION_COMPLETED_KEY } from '../constants/storage'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { logger } from '@baishou/shared'
 import { normalizeStorageRoot } from '@baishou/shared'
+import {
+  resolveFlutterLegacyMigrationTargetRoot,
+  resolveIosFlutterPreferencesPlistPath,
+  resolveMobileMigrationTargetRoot
+} from './mobile-legacy-migration.paths'
+
+export {
+  resolveFlutterLegacyMigrationTargetRoot,
+  resolveIosFlutterPreferencesPlistPath,
+  resolveMobileMigrationTargetRoot
+} from './mobile-legacy-migration.paths'
 
 export interface MobileLegacyMigrationResult {
   migrated: boolean
@@ -163,28 +174,6 @@ export async function collectLegacyCandidateRoots(fileSystem: IFileSystem): Prom
   return resolved
 }
 
-export async function resolveMobileMigrationTargetRoot(
-  getRootDirectory: () => Promise<string>
-): Promise<string | null> {
-  if (Platform.OS === 'android') {
-    return resolveFlutterLegacyMigrationTargetRoot()
-  }
-
-  try {
-    return await getRootDirectory()
-  } catch {
-    return `${getAppDocumentDirectory()}BaiShou_Root`
-  }
-}
-
-/** 旧版 Flutter 数据应迁入的新版默认根目录 */
-export function resolveFlutterLegacyMigrationTargetRoot(): string {
-  if (Platform.OS === 'android') {
-    return normalizeNativePath(EXTERNAL_STORAGE_ROOT)
-  }
-  return normalizeNativePath(`${getAppDocumentDirectory()}BaiShou_Root`)
-}
-
 /**
  * 启动时快速检测：旧版目录有数据且尚未完成迁移时返回待迁移信息。
  * Android 优先走原生 getLegacyFlutterStorageRoots，避免全量扫描。
@@ -275,11 +264,6 @@ function pickPrimaryLegacySource(legacyRoots: string[], targetRoot: string): str
   }
 
   return legacyRoots.find((root) => !rootsEqual(root, targetRoot)) ?? legacyRoots[0]!
-}
-
-export function resolveIosFlutterPreferencesPlistPath(): string {
-  const doc = getAppDocumentDirectory()
-  return doc.replace(/Documents\/?$/, 'Library/Preferences/com.baishou.baishou.plist')
 }
 
 export async function readIosFlutterSharedPreferencesRaw(
