@@ -1,4 +1,4 @@
-appId: com.electron.app
+appId: com.baishou.baishou
 productName: 白守
 electronVersion: 41.1.1
 directories:
@@ -12,9 +12,14 @@ files:
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
 asarUnpack:
   - resources/**
+  - "**/*.node"
+  - node_modules/better-sqlite3/**
+  - node_modules/sqlite-vec/**
 win:
   executableName: BaiShou
   icon: resources/icon.png
+# 正式 Windows 安装包由 setup.iss + scripts/build-inno.mjs 生成（build:win）。
+# 下方 nsis 仅在使用 electron-builder --win 时生效，日常发布不经过此路径。
 nsis:
   artifactName: BaiShou-${version}-setup.${ext}
   shortcutName: ${productName}

@@ -6,6 +6,18 @@ import react from '@vitejs/plugin-react'
 const configDir = dirname(fileURLToPath(import.meta.url))
 const repoRoot = resolve(configDir, '../..')
 
+/** 打进 main/preload bundle 的包：monorepo 工作区 + 小型 electron 工具库 */
+const bundleIntoMain = [
+  '@baishou/ai',
+  '@baishou/core-desktop',
+  '@baishou/database-desktop',
+  '@baishou/shared',
+  '@baishou/store',
+  '@baishou/ui',
+  '@electron-toolkit/utils',
+  '@electron-toolkit/preload'
+]
+
 const workspaceAliases = {
   '@baishou/ai': resolve(repoRoot, 'packages/ai'),
   '@baishou/core/shared': resolve(repoRoot, 'packages/core/src/index.shared.ts'),
@@ -15,15 +27,6 @@ const workspaceAliases = {
   '@baishou/store': resolve(repoRoot, 'packages/store'),
   '@baishou/ui': resolve(repoRoot, 'packages/ui/src')
 }
-
-const workspaceExcludes = [
-  '@baishou/ai',
-  '@baishou/core-desktop',
-  '@baishou/database-desktop',
-  '@baishou/shared',
-  '@baishou/store',
-  '@baishou/ui'
-]
 
 export default defineConfig({
   main: {
@@ -47,7 +50,7 @@ export default defineConfig({
           return null
         }
       },
-      externalizeDepsPlugin({ exclude: workspaceExcludes })
+      externalizeDepsPlugin({ exclude: bundleIntoMain })
     ],
     resolve: {
       alias: workspaceAliases
@@ -57,6 +60,9 @@ export default defineConfig({
     },
     build: {
       rollupOptions: {
+        output: {
+          interop: 'compat'
+        },
         external: (id) => {
           if (
             id === 'electron' ||
@@ -73,12 +79,15 @@ export default defineConfig({
     }
   },
   preload: {
-    plugins: [externalizeDepsPlugin({ exclude: workspaceExcludes })],
+    plugins: [externalizeDepsPlugin({ exclude: bundleIntoMain })],
     resolve: {
       alias: workspaceAliases
     },
     build: {
       rollupOptions: {
+        output: {
+          interop: 'compat'
+        },
         external: ['electron', '@libsql/client']
       }
     }
