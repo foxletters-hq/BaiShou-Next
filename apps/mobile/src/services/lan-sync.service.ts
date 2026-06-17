@@ -1,5 +1,6 @@
+import { Platform } from 'react-native'
 import * as Network from 'expo-network'
-import Zeroconf from 'react-native-zeroconf'
+import Zeroconf, { ImplType } from 'react-native-zeroconf'
 import { FileSystemUploadType, uploadAsync } from './mobile-http-transfer'
 import type { IFileSystem } from '@baishou/core-mobile'
 import { IArchiveService, ILanSyncService, DiscoveredDevice } from '@baishou/core-mobile'
@@ -13,6 +14,8 @@ import {
 
 import * as BaishouServer from 'expo-baishou-server'
 import { ensureLanDiscoveryPermissions } from './lan-discovery-permission.service'
+
+const ANDROID_MDNS_IMPL = ImplType.DNSSD
 
 export class MobileLanSyncService implements ILanSyncService {
   private zeroconf: Zeroconf
@@ -73,6 +76,23 @@ export class MobileLanSyncService implements ILanSyncService {
     this.zeroconf.on('remove', (serviceName: string) => {
       this.removeDeviceByServiceName(serviceName)
     })
+
+    this.zeroconf.on('error', (err: unknown) => {
+      console.error('[MobileLanSyncService] zeroconf error', err)
+    })
+  }
+
+  private getAndroidMdnsImpl() {
+    return Platform.OS === 'android' ? ANDROID_MDNS_IMPL : undefined
+  }
+
+  private scanLanServices() {
+    const impl = this.getAndroidMdnsImpl()
+    if (impl) {
+      this.zeroconf.scan('baishou', 'tcp', 'local.', impl)
+    } else {
+      this.zeroconf.scan('baishou', 'tcp', 'local.')
+    }
   }
 
   private emitDevice(device: DiscoveredDevice) {
@@ -145,17 +165,27 @@ export class MobileLanSyncService implements ILanSyncService {
 
     const safeNickname = 'BaishouMob'
     const serviceName = buildLanServiceName(safeNickname, this.lanDeviceId)
+    const impl = this.getAndroidMdnsImpl()
     if (this.publishedServiceName && this.publishedServiceName !== serviceName) {
-      this.zeroconf.unpublishService(this.publishedServiceName)
+      if (impl) {
+        this.zeroconf.unpublishService(this.publishedServiceName, impl)
+      } else {
+        this.zeroconf.unpublishService(this.publishedServiceName)
+      }
     }
     this.publishedServiceName = serviceName
 
-    this.zeroconf.publishService('baishou', 'tcp', 'local.', serviceName, this.currentPort, {
+    const txt = {
       nickname: safeNickname,
       ip,
       device_type: 'mobile',
       device_id: this.lanDeviceId
-    })
+    }
+    if (impl) {
+      this.zeroconf.publishService('baishou', 'tcp', 'local.', serviceName, this.currentPort, txt, impl)
+    } else {
+      this.zeroconf.publishService('baishou', 'tcp', 'local.', serviceName, this.currentPort, txt)
+    }
 
     this.isBroadcasting = true
     return { ip, port: this.currentPort, serviceId: serviceName, deviceId: this.lanDeviceId }
@@ -164,7 +194,12 @@ export class MobileLanSyncService implements ILanSyncService {
   public async stopBroadcasting(): Promise<void> {
     if (!this.isBroadcasting) return
     if (this.publishedServiceName) {
-      this.zeroconf.unpublishService(this.publishedServiceName)
+      const impl = this.getAndroidMdnsImpl()
+      if (impl) {
+        this.zeroconf.unpublishService(this.publishedServiceName, impl)
+      } else {
+        this.zeroconf.unpublishService(this.publishedServiceName)
+      }
     }
     this.publishedServiceName = null
     BaishouServer.stopServer()
@@ -184,15 +219,16 @@ export class MobileLanSyncService implements ILanSyncService {
       throw new Error('需要授予附近设备或定位权限才能扫描局域网设备')
     }
 
+    await this.stopDiscovery()
     this.deviceFoundCb = onDeviceFound
     this.deviceLostCb = onDeviceLost
     this.activeDevices.clear()
     this.serviceNameToDedupKey.clear()
 
-    this.zeroconf.scan('baishou', 'tcp', 'local.')
+    this.scanLanServices()
     if (this.rescanTimer) clearInterval(this.rescanTimer)
     this.rescanTimer = setInterval(() => {
-      this.zeroconf.scan('baishou', 'tcp', 'local.')
+      this.scanLanServices()
     }, LAN_DISCOVERY_RESCAN_MS)
   }
 
@@ -201,11 +237,34 @@ export class MobileLanSyncService implements ILanSyncService {
       clearInterval(this.rescanTimer)
       this.rescanTimer = null
     }
-    this.zeroconf.stop()
+    const impl = this.getAndroidMdnsImpl()
+    if (impl) {
+      this.zeroconf.stop(impl)
+    } else {
+      this.zeroconf.stop()
+    }
     this.activeDevices.clear()
     this.serviceNameToDedupKey.clear()
     this.deviceFoundCb = undefined
     this.deviceLostCb = undefined
+  }
+
+  private async findReachableIp(hostStr: string, port: number): Promise<string | null> {
+    const hosts = hostStr.split(',').map((h) => h.trim()).filter(Boolean)
+    if (hosts.length === 0 || hosts[0] === 'Unknown') return null
+
+    for (const host of hosts) {
+      try {
+        const controller = new AbortController()
+        const timer = setTimeout(() => controller.abort(), 3000)
+        const response = await fetch(`http://${host}:${port}/info`, { signal: controller.signal })
+        clearTimeout(timer)
+        if (response.ok) return host
+      } catch {
+        // try next candidate
+      }
+    }
+    return null
   }
 
   public async sendFile(
@@ -214,10 +273,16 @@ export class MobileLanSyncService implements ILanSyncService {
     onProgress?: (percent: number) => void
   ): Promise<boolean> {
     try {
+      const reachableHost = await this.findReachableIp(ip, port)
+      if (!reachableHost) {
+        console.error('[MobileLanSyncService] no reachable LAN IP for', ip, port)
+        return false
+      }
+
       const zipPath = await this.archiveService.exportToTempFile()
       if (!zipPath) return false
 
-      const url = `http://${ip}:${port}/upload`
+      const url = `http://${reachableHost}:${port}/upload`
 
       const response = await uploadAsync(url, zipPath, {
         httpMethod: 'POST',
@@ -226,7 +291,11 @@ export class MobileLanSyncService implements ILanSyncService {
 
       await this.fileSystem.unlink(zipPath).catch(() => {})
 
-      return response.status === 200
+      if (response.status === 200) {
+        onProgress?.(100)
+        return true
+      }
+      return false
     } catch (e) {
       console.error('[MobileLanSyncService] failed to push file', e)
       return false

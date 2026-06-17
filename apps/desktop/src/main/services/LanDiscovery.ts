@@ -36,7 +36,10 @@ export class LanDiscovery {
       type: 'baishou',
       protocol: 'tcp',
       port,
-      txt: normalizedTxt
+      txt: normalizedTxt,
+      // Windows 上 probe 偶发误判重名导致广播静默失败；禁用 IPv6 减少解析异常
+      probe: false,
+      disableIPv6: true
     })
     return this.publishedService
   }

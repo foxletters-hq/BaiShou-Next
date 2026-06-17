@@ -18,13 +18,14 @@ import {
 import { LanTransferRadarView } from '../components/LanTransferRadarView'
 import { StackScreenLayout } from '../components/StackScreenLayout'
 import { getStackScreenChrome } from '../components/stackScreenChrome'
+import { applyArchiveImportFeedback } from '../utils/archive-restore-feedback'
 
 export const LanTransferScreen: React.FC = () => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const toast = useNativeToast()
   const dialog = useDialog()
-  const { services, dbReady } = useBaishou()
+  const { services, dbReady, notifyArchiveRestoreComplete } = useBaishou()
 
   const [devices, setDevices] = useState<DiscoveredDevice[]>([])
   const [isDiscovering, setIsDiscovering] = useState(false)
@@ -80,32 +81,42 @@ export const LanTransferScreen: React.FC = () => {
         },
         (id) => setDevices((prev) => removeDiscoveredLanDevice(prev, id))
       )
+
+      lanSyncService.onFileReceived((zipPath) => {
+        void (async () => {
+          const restore = await dialog.confirm(t('lan_transfer.received_backup_content'), {
+            title: t('lan_transfer.received_backup_title'),
+            confirmText: t('common.restore')
+          })
+          if (!restore || !archiveService) return
+          setIsRestoring(true)
+          try {
+            const result = await archiveService.importFromZip(zipPath, true)
+            applyArchiveImportFeedback(result, t, toast, notifyArchiveRestoreComplete)
+          } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : String(e)
+            toast.showError(msg || t('lan.import_failed'))
+          } finally {
+            setIsRestoring(false)
+          }
+        })()
+      })
     } catch (e: unknown) {
       setIsDiscovering(false)
       const msg = e instanceof Error ? e.message : String(e)
       toast.showError(msg || t('lan_transfer.scan_failed', '局域网扫描启动失败'))
     }
-
-    lanSyncService.onFileReceived((zipPath) => {
-      void (async () => {
-        const restore = await dialog.confirm(t('lan_transfer.received_backup_content'), {
-          title: t('lan_transfer.received_backup_title'),
-          confirmText: t('common.restore')
-        })
-        if (!restore || !archiveService) return
-        setIsRestoring(true)
-        try {
-          await archiveService.importFromZip(zipPath, true)
-          toast.showSuccess(t('lan.import_success'))
-        } catch (e: unknown) {
-          const msg = e instanceof Error ? e.message : String(e)
-          toast.showError(msg || t('lan.import_failed'))
-        } finally {
-          setIsRestoring(false)
-        }
-      })()
-    })
-  }, [archiveService, dbReady, dialog, isSelfDevice, lanSyncService, markDeviceSeen, t, toast])
+  }, [
+    archiveService,
+    dbReady,
+    dialog,
+    isSelfDevice,
+    lanSyncService,
+    markDeviceSeen,
+    notifyArchiveRestoreComplete,
+    t,
+    toast
+  ])
 
   const restartDualMode = useCallback(async () => {
     await stopDualMode()

@@ -121,6 +121,19 @@ export class DesktopLanSyncService implements ILanSyncService {
   private async getPreferredLocalIps(): Promise<string[]> {
     let ips = this.getLocalIps()
     if (ips.length === 0) {
+      // 与原版 Flutter 一致：过滤失败时回退到所有非回环 IPv4
+      const ifs = os.networkInterfaces()
+      const fallback: string[] = []
+      for (const name of Object.keys(ifs)) {
+        for (const iface of ifs[name]!) {
+          if (iface.family === 'IPv4' && !iface.internal && iface.address !== '127.0.0.1') {
+            fallback.push(iface.address)
+          }
+        }
+      }
+      ips = fallback
+    }
+    if (ips.length === 0) {
       const outbound = await this.getOutboundIp()
       if (outbound && !this.isExcludedIp(outbound)) {
         ips = [outbound]
@@ -297,7 +310,8 @@ export class DesktopLanSyncService implements ILanSyncService {
           headers: {
             'Content-Type': 'application/octet-stream',
             'Content-Length': stat.size,
-            'Content-Disposition': `attachment; filename="${path.basename(zipFile)}"`
+            'Content-Disposition': `attachment; filename="${path.basename(zipFile)}"`,
+            Connection: 'close'
           }
         }
 
@@ -305,12 +319,19 @@ export class DesktopLanSyncService implements ILanSyncService {
           let body = ''
           res.on('data', (d) => (body += d))
           res.on('end', () => {
+            onProgress?.(100)
             if (res.statusCode === 200) {
               resolve(true)
             } else {
               resolve(false)
             }
           })
+        })
+
+        req.setTimeout(15 * 60 * 1000, () => {
+          console.error('[DesktopLanSyncService] POST timed out waiting for device response')
+          req.destroy()
+          resolve(false)
         })
 
         req.on('error', (e) => {
@@ -322,7 +343,9 @@ export class DesktopLanSyncService implements ILanSyncService {
           let uploaded = 0
           readStream.on('data', (chunk) => {
             uploaded += chunk.length
-            onProgress(Math.min(100, Math.round((uploaded / stat.size) * 100)))
+            // 上传完成 ≠ 对方已确认；保留 1% 给 HTTP 200 响应
+            const pct = Math.min(99, Math.round((uploaded / stat.size) * 100))
+            onProgress(pct)
           })
         }
 
