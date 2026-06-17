@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { startTransition } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { MdUnfoldMore, MdAdd, MdSettings, MdChecklist } from 'react-icons/md'
@@ -163,7 +163,9 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
         className={styles.menuItemRow}
         onClick={() => {
           rememberSettingsReturnPath(location.pathname)
-          navigate('/settings/general')
+          startTransition(() => {
+            navigate('/settings/general')
+          })
         }}
       >
         <div className={styles.menuItemRowInner}>

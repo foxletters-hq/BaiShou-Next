@@ -40,6 +40,7 @@ export interface SettingsState {
   cloudSyncConfig: any | null
 
   isLoading: boolean
+  configHydrated: boolean
 }
 
 export interface SettingsActions {
@@ -90,6 +91,7 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
         cloudSyncConfig: null,
 
         isLoading: false,
+        configHydrated: false,
 
         setThemeMode: (themeMode) => set({ themeMode }),
         toggleGlassmorphism: (useGlassmorphism) => set({ useGlassmorphism }),
@@ -129,7 +131,10 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
         },
 
         loadConfig: async () => {
-          set({ isLoading: true })
+          const alreadyHydrated = get().configHydrated
+          if (!alreadyHydrated) {
+            set({ isLoading: true })
+          }
           try {
             if (typeof window !== 'undefined' && (window as any).api?.settings) {
               const { settings } = (window as any).api
@@ -236,13 +241,16 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
                 toolManagementConfig: toolManagementConfig || defaultToolManagementConfig,
                 mcpServerConfig: mcpServerConfig || defaultMcpServerConfig,
                 hotkeyConfig: hotkeyConfig || defaultHotkeyConfig,
-                cloudSyncConfig: cloudSyncConfig || null
+                cloudSyncConfig: cloudSyncConfig || null,
+                configHydrated: true
               })
             }
           } catch (e) {
             console.error('[SettingsStore] Failed to load config from IPC', e)
           } finally {
-            set({ isLoading: false })
+            if (!alreadyHydrated) {
+              set({ isLoading: false })
+            }
           }
         },
 

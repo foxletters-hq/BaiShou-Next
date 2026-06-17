@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, startTransition } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
@@ -222,7 +222,9 @@ export const Sidebar: React.FC = () => {
               onClick={() => {
                 setManageModalOpen(false)
                 rememberSettingsReturnPath(location.pathname)
-                navigate('/settings/general')
+                startTransition(() => {
+                  navigate('/settings/general')
+                })
               }}
             >
               <span className={styles.navIcon}>

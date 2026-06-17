@@ -156,7 +156,10 @@ export const SettingsShell: React.FC = () => {
   )
 
   useEffect(() => {
-    void loadConfig()
+    const frameId = requestAnimationFrame(() => {
+      void loadConfig()
+    })
+    return () => cancelAnimationFrame(frameId)
   }, [loadConfig])
 
   useEffect(() => {

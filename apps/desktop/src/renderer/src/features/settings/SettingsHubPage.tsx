@@ -16,7 +16,10 @@ export const SettingsHubPage: React.FC = () => {
   const contentKey = getSettingsRouteSegment(location.pathname)
 
   useEffect(() => {
-    void loadConfig()
+    const frameId = requestAnimationFrame(() => {
+      void loadConfig()
+    })
+    return () => cancelAnimationFrame(frameId)
   }, [loadConfig])
 
   useEffect(() => {

@@ -1,4 +1,5 @@
-import { HashRouter, Routes, Route, useLocation } from 'react-router-dom'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { HashRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import { MainLayout } from './layouts/MainLayout'
 import { CachedRoutePlaceholder } from './layouts/MainPageCache'
 import { HomeScreen } from './features/home/HomeScreen'
@@ -11,7 +12,6 @@ import { AgentLayout } from './features/agent/AgentLayout'
 
 // Phase 14: Recover Missing Feature Routes
 import { DiaryEditorPage } from './features/diary/DiaryEditorPage'
-import { SettingsPage } from './features/settings/SettingsPage'
 import { rememberSettingsReturnPath } from './features/settings/settings-navigation.util'
 import { SummaryDetailPage } from './features/summary/SummaryDetailPage'
 import {
@@ -21,7 +21,6 @@ import {
   ToastProvider,
   GlobalInputContextMenu
 } from '@baishou/ui'
-import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSettingsStore, useSyncStore } from '@baishou/store'
 import { i18n, isRagMemoryEnabled } from '@baishou/shared'
@@ -29,6 +28,10 @@ import { TitleBar } from './components/TitleBar'
 import { useZoom } from './hooks/useZoom'
 import { useLegacyUpgradeRagToast } from './hooks/useLegacyUpgradeRagToast'
 import shellStyles from './AppShell.module.css'
+
+const SettingsPage = lazy(() =>
+  import('./features/settings/SettingsPage').then((m) => ({ default: m.SettingsPage }))
+)
 
 const GlobalErrorHandler = () => {
   const toast = useToast()
@@ -142,7 +145,7 @@ const AppRoutes = () => {
           <Route path="/summary/:id" element={<SummaryDetailPage />} />
 
           {/* Tools Routing */}
-          <Route path="/lan-transfer" element={<CachedRoutePlaceholder />} />
+          <Route path="/lan-transfer" element={<Navigate to="/hub/lan-transfer" replace />} />
           <Route path="/data-sync" element={<CachedRoutePlaceholder />} />
           <Route path="/incremental-sync" element={<CachedRoutePlaceholder />} />
           <Route path="/git" element={<CachedRoutePlaceholder />} />
@@ -163,7 +166,14 @@ const AppRoutes = () => {
       {/* Settings Rendered as an Overlay to avoid unmounting MainLayout */}
       {isSettings && (
         <Routes>
-          <Route path="/settings/*" element={<SettingsPage />} />
+          <Route
+            path="/settings/*"
+            element={
+              <Suspense fallback={null}>
+                <SettingsPage />
+              </Suspense>
+            }
+          />
         </Routes>
       )}
     </>
