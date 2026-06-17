@@ -67,9 +67,14 @@ export const AgentLayout: React.FC = () => {
   useEffect(() => {
     if (sessionId) {
       if (typeof window !== 'undefined' && window.electron) {
-        window.electron.ipcRenderer.invoke('agent:get-session', sessionId).then((doc) => {
-          if (doc) setStandaloneSessionDoc(doc)
-        })
+        void window.electron.ipcRenderer
+          .invoke('agent:get-session', sessionId)
+          .then((doc) => {
+            if (doc) setStandaloneSessionDoc(doc)
+          })
+          .catch((error) => {
+            console.warn('[AgentLayout] Failed to load session document:', error)
+          })
       }
     } else {
       setStandaloneSessionDoc(null)
@@ -110,8 +115,22 @@ export const AgentLayout: React.FC = () => {
 
     void (async () => {
       if (saved.sessionId && typeof window !== 'undefined' && window.electron) {
-        const doc = await window.electron.ipcRenderer.invoke('agent:get-session', saved.sessionId)
-        if (!doc) {
+        try {
+          const doc = await window.electron.ipcRenderer.invoke(
+            'agent:get-session',
+            saved.sessionId
+          )
+          if (!doc) {
+            navigate(
+              saved.assistantId
+                ? buildAgentChatNavigationPath({ assistantId: saved.assistantId, sessionId: null })
+                : '/chat',
+              { replace: true }
+            )
+            return
+          }
+        } catch (error) {
+          console.warn('[AgentLayout] Failed to restore saved session:', error)
           navigate(
             saved.assistantId
               ? buildAgentChatNavigationPath({ assistantId: saved.assistantId, sessionId: null })
