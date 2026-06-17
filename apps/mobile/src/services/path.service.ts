@@ -3,6 +3,8 @@ import { Platform } from 'react-native'
 import type { IFileSystem, IStoragePathService } from '@baishou/core-mobile'
 import { sanitizeVaultDirectoryName } from '@baishou/core-mobile'
 import { getAppDocumentDirectory } from './mobile-app-paths'
+import { joinStoragePath } from './mobile-storage-path.util'
+import { resolveMobileSnapshotsDirectory } from './mobile-snapshot-path.util'
 import {
   EXTERNAL_STORAGE_ROOT,
   ExternalStorageRequiredError,
@@ -223,10 +225,40 @@ export class MobileStoragePathService implements IStoragePathService {
   }
 
   public async getSnapshotsDirectory(): Promise<string> {
-    const root = await this.getRootDirectory()
-    const dir = `${root}/.snapshots`
+    const dir = resolveMobileSnapshotsDirectory(getAppDocumentDirectory())
     await this.ensureDir(dir)
+    await this.migrateLegacyWorkspaceSnapshots(dir)
     return dir
+  }
+
+  /** 旧版快照在工作区 `.snapshots` 内，全量导入会 wipe 根目录导致保护快照丢失 */
+  private async migrateLegacyWorkspaceSnapshots(targetDir: string): Promise<void> {
+    try {
+      const root = normalizeStoragePath(await this.getRootDirectory())
+      const legacyDir = joinStoragePath(root, '.snapshots')
+      if (legacyDir === targetDir || !(await this.fileSystem.exists(legacyDir))) return
+
+      const files = await this.fileSystem.readdir(legacyDir)
+      for (const name of files) {
+        if (!name || !name.startsWith('snapshot_') || !name.endsWith('.zip')) continue
+        const src = joinStoragePath(legacyDir, name)
+        const dest = joinStoragePath(targetDir, name)
+        if (await this.fileSystem.exists(dest)) continue
+        try {
+          await this.fileSystem.copyFile(src, dest)
+          await this.fileSystem.unlink(src).catch(() => {})
+        } catch (e) {
+          console.warn('[StoragePath] Failed to migrate legacy snapshot', name, e)
+        }
+      }
+
+      const remaining = await this.fileSystem.readdir(legacyDir).catch(() => [] as string[])
+      if (remaining.length === 0) {
+        await this.fileSystem.rm(legacyDir, { recursive: true, force: true }).catch(() => {})
+      }
+    } catch (e) {
+      console.warn('[StoragePath] Legacy snapshot migration skipped', e)
+    }
   }
 
   public async getJournalsBaseDirectory(): Promise<string> {
