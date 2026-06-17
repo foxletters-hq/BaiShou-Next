@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { AnimatePresence } from 'framer-motion'
 import { useSettingsStore } from '@baishou/store'
 import { SettingsContentView } from './SettingsContentView'
 import { getSettingsRouteSegment, SETTINGS_HUB_PREFIX } from './settings-route.util'
@@ -31,14 +30,12 @@ export const SettingsHubPage: React.FC = () => {
   return (
     <div className={styles.hubPage}>
       <div className={styles.hubContent}>
-        <AnimatePresence mode="wait">
-          <SettingsContentView
-            key={contentKey}
-            pathname={location.pathname}
-            settings={settings}
-            motionKey={contentKey}
-          />
-        </AnimatePresence>
+        <SettingsContentView
+          key={contentKey}
+          pathname={location.pathname}
+          settings={settings}
+          motionKey={contentKey}
+        />
       </div>
     </div>
   )

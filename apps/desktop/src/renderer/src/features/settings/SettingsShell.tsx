@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useSettingsStore } from '@baishou/store'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { AnimatePresence } from 'framer-motion'
 import {
   MdOutlineSettings,
   MdOutlineCloudQueue,
@@ -225,14 +224,12 @@ export const SettingsShell: React.FC = () => {
         </div>
 
         <div className="settings-content-area" style={{ position: 'relative', overflow: 'hidden' }}>
-          <AnimatePresence mode="wait">
-            <SettingsContentView
-              key={contentKey}
-              pathname={location.pathname}
-              settings={settings}
-              motionKey={contentKey}
-            />
-          </AnimatePresence>
+          <SettingsContentView
+            key={contentKey}
+            pathname={location.pathname}
+            settings={settings}
+            motionKey={contentKey}
+          />
         </div>
       </div>
     </div>
