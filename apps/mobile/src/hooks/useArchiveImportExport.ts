@@ -3,12 +3,23 @@ import { useTranslation } from 'react-i18next'
 import * as DocumentPicker from 'expo-document-picker'
 import { useNativeToast, useDialog } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
+import { applyArchiveImportFeedback } from '../utils/archive-restore-feedback'
+import { formatArchiveExportErrorMessage } from '../services/archive-guards.util'
+
+function formatExportFailedToast(t: (key: string, options?: Record<string, string>) => string, error: unknown): string {
+  const detail = formatArchiveExportErrorMessage(error)
+  const localized = t('settings.export_failed', { error: detail })
+  if (localized.includes('{{error}}')) {
+    return `导出失败：${detail}`
+  }
+  return localized
+}
 
 export function useArchiveImportExport() {
   const { t } = useTranslation()
   const toast = useNativeToast()
   const dialog = useDialog()
-  const { services, dbReady } = useBaishou()
+  const { services, dbReady, notifyArchiveRestoreComplete } = useBaishou()
   const [isImporting, setIsImporting] = useState(false)
 
   const handleExport = useCallback(async () => {
@@ -21,8 +32,7 @@ export function useArchiveImportExport() {
       await services.archiveService.exportToUserDevice()
       toast.showSuccess(t('settings.export_success', '导出成功'))
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e)
-      toast.showError(t('settings.export_failed', { error: message }))
+      toast.showError(formatExportFailedToast(t, e))
     }
   }, [dbReady, services, t, toast])
 
@@ -47,27 +57,14 @@ export function useArchiveImportExport() {
 
       setIsImporting(true)
       const result = await services.archiveService.importFromZip(pick.assets[0].uri, true)
-      if (result && (result.fileCount > 0 || result.fileCount === -1)) {
-        if (result.needsRestart) {
-          toast.showWarning(
-            t(
-              'settings.restore_success_restart',
-              '数据已恢复，请完全退出并重新打开应用以加载数据库。'
-            )
-          )
-        } else {
-          toast.showSuccess(t('settings.restore_success_simple'))
-        }
-      } else {
-        toast.showWarning(t('common.no_data'))
-      }
+      applyArchiveImportFeedback(result, t, toast, notifyArchiveRestoreComplete)
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
       toast.showError(t('settings.import_failed_with_error', { error: message }))
     } finally {
       setIsImporting(false)
     }
-  }, [dbReady, dialog, services, t, toast])
+  }, [dbReady, dialog, notifyArchiveRestoreComplete, services, t, toast])
 
   return { handleExport, handleImport, isImporting, dbReady }
 }

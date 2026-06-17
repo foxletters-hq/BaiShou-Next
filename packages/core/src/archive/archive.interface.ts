@@ -21,8 +21,7 @@ export interface IArchiveService {
 
   /**
    * 导出为本地 ZIP 文件。
-   * 桌面端（Electron）直接呼出 dialog.showSaveDialog，移动端（Expo）呼出 Sharing
-   * 成功返回物理路径否则返回 null
+   * 桌面端（Electron）成功时返回保存路径；移动端（Expo）分享完成后会清理临时文件并返回 null。
    */
   exportToUserDevice(): Promise<string | null>
 
@@ -37,7 +36,7 @@ export interface IArchiveService {
   /**
    * 在覆盖本地数据前生成保护性快照（仅由 importFromZip / restoreFromSnapshot 内部调用）。
    */
-  createSnapshot(): Promise<string | null>
+  createSnapshot(options?: { preservePaths?: string[] }): Promise<string | null>
 
   /** 列出本地快照（按创建时间倒序） */
   listSnapshots(): Promise<SnapshotMeta[]>
