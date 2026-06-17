@@ -20,7 +20,7 @@
     "release:setup-signing": "node scripts/setup-android-signing.mjs",
     "release:android": "node scripts/setup-android-signing.mjs && pnpm --filter @baishou/mobile build:release",
     "release:desktop:linux": "node scripts/run-with-hint.mjs \"构建 Linux AppImage（输出 apps/desktop/dist）。\" pnpm sync:app-version && pnpm --filter @baishou/desktop build:linux",
-    "release:desktop:win": "node scripts/run-with-hint.mjs \"构建 Windows NSIS 安装包（输出 apps/desktop/dist）。\" pnpm sync:app-version && pnpm --filter @baishou/desktop build:win",
+    "release:desktop:win": "node scripts/run-with-hint.mjs \"构建 Windows Inno Setup 安装包（输出 apps/desktop/dist）。\" pnpm sync:app-version && pnpm --filter @baishou/desktop build:win",
     "release:all": "node scripts/run-with-hint.mjs \"正式打包 Android + Linux + Windows（产物见 release/ 与 apps/desktop/dist）。\" node scripts/release-all.mjs",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",

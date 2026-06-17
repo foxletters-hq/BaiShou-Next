@@ -98,11 +98,11 @@ jobs:
           name: linux-appimage
           path: apps/desktop/dist/*.AppImage
 
-  # ── Windows (Electron NSIS) ──────────────────────────────
+  # ── Windows (Inno Setup) ───────────────────────────────────
   build-windows:
     name: Build Windows Installer
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
@@ -112,6 +112,9 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -126,7 +129,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-installer
-          path: apps/desktop/dist/*-setup.exe
+          path: apps/desktop/dist/BaiShou-v*-Windows-Setup.exe
 
   # ── GitHub Release ────────────────────────────────────────
   release:
@@ -157,6 +160,11 @@ jobs:
       - name: Rename Android APK
         run: mv artifacts/app-release.apk "artifacts/BaiShou-${{ github.ref_name }}-Android.apk"
 
+      - name: Rename Windows installer
+        run: |
+          installer=$(ls artifacts/BaiShou-v*-Windows-Setup.exe | head -n 1)
+          mv "$installer" "artifacts/BaiShou-${{ github.ref_name }}-Windows-Setup.exe"
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
@@ -170,14 +178,14 @@ jobs:
             | 平台 | 文件 | 说明 |
             |------|------|------|
             | Android | `-Android.apk` | 允许安装未知来源后安装，可覆盖旧 Flutter 版 |
-            | Windows | `-setup.exe` | 双击运行安装向导 |
+            | Windows | `-Windows-Setup.exe` | Inno Setup 安装向导，默认 `Program Files\BaiShou` |
             | Linux | `.AppImage` | 添加可执行权限后运行 |
 
             ### 更新内容
             请查看 [提交记录](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }})
           files: |
             artifacts/BaiShou-${{ github.ref_name }}-Android.apk
+            artifacts/BaiShou-${{ github.ref_name }}-Windows-Setup.exe
             artifacts/*.AppImage
-            artifacts/*.exe
           draft: false
           prerelease: false

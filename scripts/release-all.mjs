@@ -45,7 +45,7 @@ for (const [label, cmd, args] of steps) {
     failed.push(label)
     if (label === 'Windows 安装包' && process.platform !== 'win32') {
       console.error(
-        '\n⚠️  Windows 包在非 Windows 环境常因缺少 wine/NSIS 失败；Android/Linux 若已成功可忽略，或改在 Windows 执行 pnpm release:desktop:win'
+        '\n⚠️  Windows 包需在 Windows 上执行（需 Inno Setup 6）；Android/Linux 若已成功可忽略，或改在 Windows 执行 pnpm release:desktop:win，或推送 git tag 走 CI。'
       )
     }
   }
@@ -53,7 +53,7 @@ for (const [label, cmd, args] of steps) {
 
 const androidApks = listArtifacts(releaseDir, [/Android\.apk$/i])
 const linuxImages = listArtifacts(desktopDist, [/\.AppImage$/i])
-const winInstallers = listArtifacts(desktopDist, [/setup\.exe$/i])
+const winInstallers = listArtifacts(desktopDist, [/Windows-Setup\.exe$/i])
 
 console.log(`\n${'═'.repeat(60)}`)
 console.log('📦 打包产物位置')
