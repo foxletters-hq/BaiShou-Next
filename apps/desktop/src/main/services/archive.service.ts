@@ -1,4 +1,4 @@
-import { app, dialog, type BrowserWindow } from 'electron'
+import { app, dialog, BrowserWindow } from 'electron'
 import { translateMain, resetIncrementalSyncMetaAfterFullRestore, logger } from '@baishou/shared'
 import * as path from 'path'
 import * as fs from 'fs'
@@ -18,6 +18,12 @@ import { DesktopStoragePathService } from './path.service'
 import { ZipExporter, ARCHIVE_USER_AVATARS_ZIP_PREFIX } from './ZipExporter'
 import { MetadataMigrator } from './MetadataMigrator'
 import { SnapshotManager } from './SnapshotManager'
+
+function broadcastArchiveImportState(importing: boolean): void {
+  for (const window of BrowserWindow.getAllWindows()) {
+    window.webContents.send('archive:import-state', importing)
+  }
+}
 
 export class DesktopArchiveService implements IArchiveService {
   constructor(
@@ -75,36 +81,77 @@ export class DesktopArchiveService implements IArchiveService {
       if (snap) snapshotPath = snap
     }
 
-    try {
-      const { diaryWatcher } = await import('./diary-watcher.service')
-      const { summaryWatcher } = await import('./summary-watcher.service')
-      const { sessionWatcher } = await import('./session-watcher.service')
-      diaryWatcher.stop()
-      summaryWatcher.stop()
-      sessionWatcher.stop()
-      logger.info('[ArchiveService] File watchers stopped successfully before import.')
-    } catch (e: any) {
-      logger.error('[ArchiveService] Failed to stop file watchers before import:', e)
-    }
+    broadcastArchiveImportState(true)
 
-    let currentCloudSyncConfig: any = null
     try {
-      const settingsRepo = new SettingsRepository(getAppDb())
-      currentCloudSyncConfig = await settingsRepo.get<any>('cloud_sync_config')
-    } catch (e: any) {
-      logger.warn(
-        '[ArchiveService] 无法在导入前读取本地的 cloud_sync_config (可能尚无配置):',
-        e.message || e
+      try {
+        const { diaryWatcher } = await import('./diary-watcher.service')
+        const { summaryWatcher } = await import('./summary-watcher.service')
+        const { sessionWatcher } = await import('./session-watcher.service')
+        diaryWatcher.stop()
+        summaryWatcher.stop()
+        sessionWatcher.stop()
+        logger.info('[ArchiveService] File watchers stopped successfully before import.')
+      } catch (e: any) {
+        logger.error('[ArchiveService] Failed to stop file watchers before import:', e)
+      }
+
+      let currentCloudSyncConfig: any = null
+      try {
+        const settingsRepo = new SettingsRepository(getAppDb())
+        currentCloudSyncConfig = await settingsRepo.get<any>('cloud_sync_config')
+      } catch (e: any) {
+        logger.warn(
+          '[ArchiveService] 无法在导入前读取本地的 cloud_sync_config (可能尚无配置):',
+          e.message || e
+        )
+      }
+
+      await connectionManager.disconnect()
+      try {
+        await shadowConnectionManager.disconnect()
+      } catch (e: any) {
+        logger.warn('Failed to disconnect shadow DB:', e)
+      }
+
+      return await this.importFromZipAfterDisconnect(
+        zipFilePath,
+        snapshotPath,
+        currentCloudSyncConfig
       )
+    } finally {
+      await this.reconnectAgentDatabaseIfNeeded()
+      broadcastArchiveImportState(false)
     }
+  }
 
-    await connectionManager.disconnect()
+  private async reconnectAgentDatabaseIfNeeded(): Promise<void> {
+    if (connectionManager.isConnected()) return
+
     try {
-      await shadowConnectionManager.disconnect()
-    } catch (e: any) {
-      logger.warn('Failed to disconnect shadow DB:', e)
+      const db = getAppDb()
+      connectionManager.setDb(db)
+      await installDatabaseSchema(db)
+      logger.info(
+        '[ArchiveService] Agent database reconnected after import was interrupted or failed.'
+      )
+    } catch (e: unknown) {
+      logger.error('[ArchiveService] Failed to reconnect agent database:', e)
     }
 
+    try {
+      const { connectGlobalShadowDb } = await import('../ipc/vault.ipc')
+      await connectGlobalShadowDb()
+    } catch (e: unknown) {
+      logger.warn('[ArchiveService] Failed to reconnect shadow DB after import rollback:', e)
+    }
+  }
+
+  private async importFromZipAfterDisconnect(
+    zipFilePath: string,
+    snapshotPath: string | undefined,
+    currentCloudSyncConfig: any
+  ): Promise<ImportResult> {
     const tempExtractDir = path.join(app.getPath('temp'), `archive_extract_${Date.now()}`)
     await fsp.mkdir(tempExtractDir, { recursive: true })
 

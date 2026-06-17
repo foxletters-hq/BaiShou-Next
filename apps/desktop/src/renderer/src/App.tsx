@@ -19,7 +19,8 @@ import {
   useDialog,
   DialogProvider,
   ToastProvider,
-  GlobalInputContextMenu
+  GlobalInputContextMenu,
+  RestoreBlockingOverlay
 } from '@baishou/ui'
 import { useTranslation } from 'react-i18next'
 import { useSettingsStore, useSyncStore } from '@baishou/store'
@@ -196,6 +197,12 @@ const AppShell: React.FC = () => {
 export function App() {
   useZoom()
   const locale = useSettingsStore((s) => s.locale)
+  const [archiveImporting, setArchiveImporting] = useState(false)
+
+  useEffect(() => {
+    const unsub = (window as any).api?.archive?.onArchiveImportState?.(setArchiveImporting)
+    return unsub
+  }, [])
 
   // 监听并更新全局增量同步进度
   useEffect(() => {
@@ -270,6 +277,7 @@ export function App() {
     <HashRouter>
       <DialogProvider>
         <ToastProvider />
+        <RestoreBlockingOverlay visible={archiveImporting} />
         <GlobalErrorHandler />
         <DiaryEmbedFailureNotifier />
         <GlobalInputContextMenu />

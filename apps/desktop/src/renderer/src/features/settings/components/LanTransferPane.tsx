@@ -27,7 +27,7 @@ export const LanTransferPane: React.FC = () => {
         }}
         onFileReceivedListener={(cb: any) => (window as any).api?.lan?.onFileReceived(cb)}
         onImportZip={async (file: string) => {
-          ;(window as any).api?.archive.importZip(file)
+          await (window as any).api?.archive.importZip(file)
         }}
       />
     </div>
