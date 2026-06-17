@@ -67,7 +67,7 @@ export async function migrateLegacyArchiveContents(
     } catch (error) {
       logger.warn(
         '[migrateLegacyArchiveContents] device_preferences restore failed (archive finalization may retry):',
-        error
+        error instanceof Error ? error : String(error)
       )
     }
   }

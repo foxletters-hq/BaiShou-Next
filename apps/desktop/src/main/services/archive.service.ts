@@ -1,5 +1,5 @@
 import { app, dialog, BrowserWindow } from 'electron'
-import { translateMain, resetIncrementalSyncMetaAfterFullRestore, logger } from '@baishou/shared'
+import { translateMain, resetIncrementalSyncMetaAfterFullRestore, logger, type UserProfile } from '@baishou/shared'
 import * as path from 'path'
 import * as fs from 'fs'
 import * as fsp from 'fs/promises'
@@ -367,10 +367,10 @@ export class DesktopArchiveService implements IArchiveService {
 
           if (prefs['user_profile_data']) {
             const profileRepo = new UserProfileRepository(getAppDb())
-            await profileRepo.saveProfile(prefs['user_profile_data'])
+            await profileRepo.saveProfile(prefs['user_profile_data'] as UserProfile)
           } else if (prefs['user_profile']) {
             const profileRepo = new UserProfileRepository(getAppDb())
-            await profileRepo.saveProfile(prefs['user_profile'])
+            await profileRepo.saveProfile(prefs['user_profile'] as UserProfile)
           }
         }
         await fsp.rm(path.join(rootDir, 'config'), { recursive: true, force: true }).catch(() => {})
