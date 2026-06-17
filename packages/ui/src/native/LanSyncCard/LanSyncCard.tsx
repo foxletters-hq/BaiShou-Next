@@ -1,5 +1,6 @@
 import React from 'react'
 import { View, Text, TouchableOpacity, FlatList } from 'react-native'
+import { getLanDeviceDedupKey } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 import type { LanSyncCardProps } from './lan-sync-card.types'
 import { lanSyncCardStyles as styles } from './lan-sync-card.styles'
@@ -101,17 +102,20 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
           ) : (
             <FlatList
               data={devices}
-              keyExtractor={(item) => item.rawServiceId}
-              renderItem={({ item }) => (
-                <LanSyncDeviceRow
-                  item={item}
-                  progress={sendProgress[item.rawServiceId] ?? 0}
-                  isSending={sendingDevice === item.rawServiceId}
-                  onSend={handleSend}
-                  colors={colors}
-                  tokens={tokens}
-                />
-              )}
+              keyExtractor={(item) => getLanDeviceDedupKey(item)}
+              renderItem={({ item }) => {
+                const deviceKey = getLanDeviceDedupKey(item)
+                return (
+                  <LanSyncDeviceRow
+                    item={item}
+                    progress={sendProgress[deviceKey] ?? 0}
+                    isSending={sendingDevice === deviceKey}
+                    onSend={handleSend}
+                    colors={colors}
+                    tokens={tokens}
+                  />
+                )
+              }}
               scrollEnabled={false}
             />
           )}

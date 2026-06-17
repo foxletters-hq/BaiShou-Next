@@ -3,12 +3,19 @@ import styles from './LanSyncCard.module.css'
 import { useTranslation } from 'react-i18next'
 import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
-import { MdRadar, MdRefresh, MdComputer, MdSmartphone, MdSend, MdQrCode } from 'react-icons/md'
+import { MdRadar, MdRefresh, MdQrCode } from 'react-icons/md'
 import { HelpTooltip } from '../HelpTooltip'
 import { RestoreBlockingOverlay } from '../RestoreBlockingOverlay'
 import { QRCodeSVG } from 'qrcode.react'
+import {
+  LAN_DEVICE_STALE_MS,
+  getLanDeviceDedupKey,
+  removeDiscoveredLanDevice,
+  upsertDiscoveredLanDevice
+} from '@baishou/shared'
 
 export interface DiscoveredDevice {
+  deviceId: string
   nickname: string
   ip: string
   port: number
@@ -21,6 +28,7 @@ export interface LanSyncCardProps {
     ip: string
     port: number
     serviceId: string
+    deviceId?: string
     allIps?: string[]
   } | null>
   onStopBroadcasting: () => Promise<void>
@@ -30,6 +38,7 @@ export interface LanSyncCardProps {
   ) => Promise<(() => void) | void>
   onStopDiscovery: () => Promise<void>
   onSendFile: (ip: string, port: number, onProgress: (p: number) => void) => Promise<boolean>
+  onDiscoveryResetListener?: (callback: () => void) => () => void
   onFileReceivedListener?: (callback: (zipPath: string) => void) => () => void
   onImportZip?: (filePath: string) => Promise<void>
 }
@@ -48,6 +57,7 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
   onStartDiscovery,
   onStopDiscovery,
   onSendFile,
+  onDiscoveryResetListener,
   onFileReceivedListener,
   onImportZip
 }) => {
@@ -62,11 +72,13 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
     ip: string
     port: number
     serviceId: string
+    deviceId?: string
     allIps?: string[]
   } | null>(null)
   const [showQrCode, setShowQrCode] = useState(false)
   const [isRestoring, setIsRestoring] = useState(false)
   const discoveryCleanupRef = useRef<(() => void) | null>(null)
+  const deviceSeenAtRef = useRef<Map<string, number>>(new Map())
 
   const isSelfDevice = (
     dev: DiscoveredDevice,
@@ -74,49 +86,70 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
       ip: string
       port: number
       serviceId: string
+      deviceId?: string
       allIps?: string[]
     } | null
   ) => {
     if (!connInfo) return false
+    if (connInfo.deviceId && dev.deviceId === connInfo.deviceId) return true
     if (dev.rawServiceId === connInfo.serviceId) return true
     if (dev.port !== connInfo.port) return false
     const localIps = connInfo.allIps?.length ? connInfo.allIps : [connInfo.ip]
     return localIps.includes(dev.ip)
   }
 
+  const markDeviceSeen = (device: DiscoveredDevice) => {
+    deviceSeenAtRef.current.set(getLanDeviceDedupKey(device), Date.now())
+  }
+
   const startDualMode = async () => {
     setIsActive(true)
     discoveryCleanupRef.current?.()
     discoveryCleanupRef.current = null
+    deviceSeenAtRef.current.clear()
+    setDevices([])
 
     const connInfo = await onStartBroadcasting()
     if (connInfo) {
       setLocalConnection(connInfo)
     }
 
-    const cleanup = await onStartDiscovery(
-      (dev) =>
-        setDevices((prev) => {
-          if (isSelfDevice(dev, connInfo)) return prev
+    const cleanupParts: Array<(() => void) | void> = []
+    if (onDiscoveryResetListener) {
+      cleanupParts.push(
+        onDiscoveryResetListener(() => {
+          deviceSeenAtRef.current.clear()
+          setDevices([])
+        })
+      )
+    }
 
-          const idx = prev.findIndex((d) => d.rawServiceId === dev.rawServiceId)
-          if (idx !== -1) {
-            const next = [...prev]
-            next[idx] = dev
-            return next
-          }
-          return [...prev, dev]
-        }),
-      (id) => setDevices((prev) => prev.filter((d) => d.rawServiceId !== id))
+    const cleanup = await onStartDiscovery(
+      (dev) => {
+        if (isSelfDevice(dev, connInfo)) return
+        markDeviceSeen(dev)
+        setDevices((prev) => upsertDiscoveredLanDevice(prev, dev))
+      },
+      (id) => {
+        setDevices((prev) => removeDiscoveredLanDevice(prev, id))
+      }
     )
     if (typeof cleanup === 'function') {
-      discoveryCleanupRef.current = cleanup
+      cleanupParts.push(cleanup)
+    }
+    if (cleanupParts.length > 0) {
+      discoveryCleanupRef.current = () => {
+        for (const part of cleanupParts) {
+          part?.()
+        }
+      }
     }
   }
 
   const stopDualMode = async () => {
     setIsActive(false)
     setDevices([])
+    deviceSeenAtRef.current.clear()
     discoveryCleanupRef.current?.()
     discoveryCleanupRef.current = null
     setLocalConnection(null)
@@ -184,8 +217,25 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
     return undefined
   }, [onFileReceivedListener, onImportZip, dialog, t, toast])
 
+  useEffect(() => {
+    if (!isActive) return
+
+    const timer = setInterval(() => {
+      const now = Date.now()
+      setDevices((prev) =>
+        prev.filter((device) => {
+          const seenAt = deviceSeenAtRef.current.get(getLanDeviceDedupKey(device))
+          return seenAt != null && now - seenAt < LAN_DEVICE_STALE_MS
+        })
+      )
+    }, 10_000)
+
+    return () => clearInterval(timer)
+  }, [isActive])
+
   const handleSend = async (device: DiscoveredDevice) => {
-    setSendingTo(device.rawServiceId)
+    const deviceKey = getLanDeviceDedupKey(device)
+    setSendingTo(deviceKey)
     setProgress(0)
     const success = await onSendFile(device.ip, device.port, (p) => setProgress(p))
     setSendingTo(null)
@@ -294,12 +344,13 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
           {isActive &&
             devices.map((d, index) => {
               const pos = FIXED_POSITIONS[index % FIXED_POSITIONS.length]
-              const isSending = sendingTo === d.rawServiceId
+              const deviceKey = getLanDeviceDedupKey(d)
+              const isSending = sendingTo === deviceKey
               const delayStyle = { animationDelay: `${index * 0.5}s` }
 
               return (
                 <div
-                  key={d.rawServiceId}
+                  key={deviceKey}
                   className={`${styles.deviceBubble} ${isSending ? styles.bubbleSending : ''}`}
                   style={{ top: pos.top, left: pos.left, ...delayStyle }}
                 >

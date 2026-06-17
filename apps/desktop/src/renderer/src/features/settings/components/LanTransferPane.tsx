@@ -10,6 +10,7 @@ export const LanTransferPane: React.FC = () => {
       <LanSyncCard
         onStartBroadcasting={async () => (window as any).api?.lan?.startBroadcasting()}
         onStopBroadcasting={async () => (window as any).api?.lan?.stopBroadcasting()}
+        onDiscoveryResetListener={(cb) => (window as any).api?.lan?.onDiscoveryReset(cb)}
         onStartDiscovery={async (onFound: any, onLost: any) => {
           const unsubFound = (window as any).api?.lan?.onDeviceFound(onFound)
           const unsubLost = (window as any).api?.lan?.onDeviceLost(onLost)

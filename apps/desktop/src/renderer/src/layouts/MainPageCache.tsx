@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react'
 import { motion, useAnimation } from 'framer-motion'
 import { DiaryPage } from '../features/diary/DiaryPage'
 import { SummaryPage } from '../features/summary/SummaryPage'
-import { LanTransferPage } from '../features/settings/LanTransferPage'
 import { CloudSyncPage } from '../features/settings/CloudSyncPage'
 import { IncrementalSyncPage } from '../features/settings/IncrementalSyncPage'
 import { GitManagementPage } from '../features/settings/GitManagementPage'
@@ -14,7 +13,6 @@ import styles from './MainLayout.module.css'
 export const MAIN_PAGE_CACHE: Record<string, React.ComponentType> = {
   '/diary': DiaryPage,
   '/summary': SummaryPage,
-  '/lan-transfer': LanTransferPage,
   '/data-sync': CloudSyncPage,
   '/incremental-sync': IncrementalSyncPage,
   '/git': GitManagementPage,

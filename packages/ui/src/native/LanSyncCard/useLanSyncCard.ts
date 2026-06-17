@@ -1,4 +1,9 @@
 import { useEffect, useCallback, useState } from 'react'
+import {
+  getLanDeviceDedupKey,
+  removeDiscoveredLanDevice,
+  upsertDiscoveredLanDevice
+} from '@baishou/shared'
 import type { DiscoveredDevice, LanSyncCardProps } from './lan-sync-card.types'
 
 export function useLanSyncCard({
@@ -35,15 +40,10 @@ export function useLanSyncCard({
       await onStartBroadcasting()
       await onStartDiscovery(
         (d) => {
-          setDevices((prev) => {
-            if (prev.some((existing) => existing.rawServiceId === d.rawServiceId)) {
-              return prev
-            }
-            return [...prev, d]
-          })
+          setDevices((prev) => upsertDiscoveredLanDevice(prev, d))
         },
         (id) => {
-          setDevices((prev) => prev.filter((d) => d.rawServiceId !== id))
+          setDevices((prev) => removeDiscoveredLanDevice(prev, id))
         }
       )
     }
@@ -51,10 +51,11 @@ export function useLanSyncCard({
 
   const handleSend = useCallback(
     async (device: DiscoveredDevice) => {
-      setSendingDevice(device.rawServiceId)
-      setSendProgress((prev) => ({ ...prev, [device.rawServiceId]: 0 }))
+      const deviceKey = getLanDeviceDedupKey(device)
+      setSendingDevice(deviceKey)
+      setSendProgress((prev) => ({ ...prev, [deviceKey]: 0 }))
       await onSendFile(device.ip, device.port, (p) => {
-        setSendProgress((prev) => ({ ...prev, [device.rawServiceId]: p }))
+        setSendProgress((prev) => ({ ...prev, [deviceKey]: p }))
       })
       setSendingDevice(null)
     },

@@ -1,4 +1,5 @@
 export interface DiscoveredDevice {
+  deviceId: string
   nickname: string
   ip: string
   port: number
