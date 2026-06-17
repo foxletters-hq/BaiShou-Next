@@ -8,7 +8,9 @@ import {
   LAN_DISCOVERY_RESCAN_MS,
   buildLanServiceName,
   getLanDeviceDedupKey,
+  isPrivateLanIpv4,
   lanDevicesEquivalent,
+  pickBestLanIpv4,
   resolveDiscoveredLanIpv4
 } from '@baishou/shared'
 
@@ -78,6 +80,14 @@ export class MobileLanSyncService implements ILanSyncService {
     })
 
     this.zeroconf.on('error', (err: unknown) => {
+      const message = err instanceof Error ? err.message : String(err)
+      if (message.includes('CHANGE_WIFI_MULTICAST_STATE')) {
+        console.error(
+          '[MobileLanSyncService] 缺少 Android 组播权限，请执行 pnpm dev:mobile:clear 重新安装开发版',
+          err
+        )
+        return
+      }
       console.error('[MobileLanSyncService] zeroconf error', err)
     })
   }
@@ -263,6 +273,16 @@ export class MobileLanSyncService implements ILanSyncService {
       } catch {
         // try next candidate
       }
+    }
+
+    const fallback = pickBestLanIpv4(hosts)
+    if (fallback && isPrivateLanIpv4(fallback)) {
+      console.warn(
+        '[MobileLanSyncService] /info probe failed, fallback to direct LAN IP',
+        fallback,
+        port
+      )
+      return fallback
     }
     return null
   }
