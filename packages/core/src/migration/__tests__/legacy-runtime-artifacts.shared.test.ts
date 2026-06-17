@@ -111,4 +111,35 @@ describe('exportLegacyRuntimeArtifacts', () => {
     expect(sessionAggregate.messages[0].parts).toHaveLength(1)
     expect(sessionAggregate.messages[0].parts[0].data).toEqual({ text: 'hi' })
   })
+
+  it('exports many sessions in pages without loading all rows at once', async () => {
+    for (let i = 0; i < 30; i++) {
+      const sid = `sess-${i}`
+      db.prepare(
+        `INSERT INTO agent_sessions (id, title, vault_name, created_at, updated_at)
+         VALUES (?, ?, 'Personal', '2024-01-01', '2024-01-02')`
+      ).run(sid, `Title ${i}`)
+      db.prepare(
+        `INSERT INTO agent_messages (id, session_id, role, order_index, created_at)
+         VALUES (?, ?, 'user', 0, '2024-01-01')`
+      ).run(`msg-${i}`, sid)
+      db.prepare(
+        `INSERT INTO agent_parts (id, session_id, message_id, type, data, created_at)
+         VALUES (?, ?, ?, 'text', '{"text":"ok"}', '2024-01-01')`
+      ).run(`part-${i}`, sid, `msg-${i}`)
+    }
+
+    await exportLegacyRuntimeArtifacts({
+      fileSystem,
+      targetWorkspaceDir: tempDir,
+      vaultNames: ['Personal'],
+      sqliteClient: db,
+      executeRawSql
+    })
+
+    for (let i = 0; i < 30; i++) {
+      const sessionPath = path.join(tempDir, 'Personal', 'Sessions', `sess-${i}.json`)
+      expect(await fileSystem.exists(sessionPath)).toBe(true)
+    }
+  })
 })

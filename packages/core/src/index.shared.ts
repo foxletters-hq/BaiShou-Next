@@ -56,6 +56,8 @@ export {
 } from './summary/summary-context'
 
 export * from './archive/archive.interface'
+export * from './archive/archive-manifest.util'
+export * from './archive/archive-import-preferences.util'
 
 export * from './network/lan-sync.interface'
 export * from './network/cloud-sync.interface'

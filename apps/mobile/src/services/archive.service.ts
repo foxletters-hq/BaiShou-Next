@@ -14,7 +14,10 @@ import {
   VaultService,
   copyStorageRootContents,
   isLegacyAppRoot,
+  purgeImportedShadowIndexCaches,
   resolveAgentDbPath,
+  resolveArchivePayloadRoot,
+  mergeArchivePrefsPreservingCloudSync,
   type IFileSystem,
   type IStoragePathService
 } from '@baishou/core-mobile'
@@ -265,14 +268,16 @@ export class MobileArchiveService implements IArchiveService {
         await cleanupStagedZip?.()
       }
 
+      const payloadDir = await resolveArchivePayloadRoot(this.fileSystem, extractDir)
+
       const preservedSettings = this.dbBridge
         ? await this.dbBridge.readPreservedImportSettings()
         : {}
 
-      const hasManifest = await this.fileSystem.exists(joinStoragePath(extractDir, 'manifest.json'))
+      const hasValidManifest = await this.resolveHasValidManifest(payloadDir)
       const isFlutterLegacyZip =
-        !hasManifest && (await isLegacyAppRoot(this.fileSystem, extractDir))
-      await this.validateExtractedArchive(extractDir, isFlutterLegacyZip)
+        !hasValidManifest && (await isLegacyAppRoot(this.fileSystem, payloadDir))
+      await this.validateExtractedArchive(payloadDir, isFlutterLegacyZip)
 
       if (isFlutterLegacyZip) {
         if (!this.dbBridge?.importLegacyFlutterZip) {
@@ -287,7 +292,7 @@ export class MobileArchiveService implements IArchiveService {
 
         try {
           try {
-            await this.dbBridge.importLegacyFlutterZip(extractDir, stagingDir)
+            await this.dbBridge.importLegacyFlutterZip(payloadDir, stagingDir)
 
             try {
               await this.fileSystem.rm(rootDir, { recursive: true, force: true })
@@ -315,8 +320,26 @@ export class MobileArchiveService implements IArchiveService {
             }
 
             await this.vaultService.initRegistry()
+            const globalShadowDir = await this.pathService.getGlobalShadowIndexDirectory()
+            await purgeImportedShadowIndexCaches(this.fileSystem, {
+              workspaceRoot: rootDir,
+              globalShadowDir
+            })
             if (this.dbBridge?.rebootstrapAfterArchiveRestore) {
               await this.dbBridge.rebootstrapAfterArchiveRestore()
+            }
+
+            const legacyConfigPath = joinStoragePath(payloadDir, 'config/device_preferences.json')
+            if (
+              (await this.fileSystem.exists(legacyConfigPath)) &&
+              this.dbBridge?.importDevicePreferences
+            ) {
+              const raw = await this.fileSystem.readFile(legacyConfigPath)
+              const prefs = mergeArchivePrefsPreservingCloudSync(
+                JSON.parse(raw) as Record<string, unknown>,
+                preservedSettings.cloud_sync_config
+              )
+              await this.dbBridge.importDevicePreferences(prefs)
             }
           } catch (restoreError) {
             throw new Error(formatArchiveImportFailureMessage(restoreError, snapshotPath))
@@ -341,13 +364,13 @@ export class MobileArchiveService implements IArchiveService {
         await this.fileSystem.mkdir(rootDir, { recursive: true })
 
         if (useNativeArchiveImport) {
-          await nativeCopyArchiveExtractToRoot(extractDir, rootDir)
+          await nativeCopyArchiveExtractToRoot(payloadDir, rootDir)
         } else {
-          const entries = await this.fileSystem.readdir(extractDir)
+          const entries = await this.fileSystem.readdir(payloadDir)
           for (const name of entries) {
             if (!name || name === '.' || name === '..') continue
             if (ARCHIVE_SKIP_TOP_LEVEL.has(name)) continue
-            const src = joinStoragePath(extractDir, name)
+            const src = joinStoragePath(payloadDir, name)
             const dest = joinStoragePath(rootDir, name)
             const stat = await this.fileSystem.stat(src)
             if (stat.isDirectory) {
@@ -359,22 +382,22 @@ export class MobileArchiveService implements IArchiveService {
           }
         }
 
-        await this.restoreUserAvatarsFromExtract(extractDir)
+        await this.restoreUserAvatarsFromExtract(payloadDir)
 
-        const dbPath = joinStoragePath(extractDir, MOBILE_ARCHIVE_DB_ZIP_NAME)
+        const dbPath = joinStoragePath(payloadDir, MOBILE_ARCHIVE_DB_ZIP_NAME)
         const restoredDatabase = !!this.dbBridge && (await this.fileSystem.exists(dbPath))
 
         if (restoredDatabase) {
           await this.dbBridge!.replaceAgentDatabaseFrom(dbPath)
         }
 
-        const configPath = joinStoragePath(extractDir, 'config/device_preferences.json')
+        const configPath = joinStoragePath(payloadDir, 'config/device_preferences.json')
         if (await this.fileSystem.exists(configPath)) {
           const raw = await this.fileSystem.readFile(configPath)
-          const prefs = JSON.parse(raw) as Record<string, unknown>
-          if (preservedSettings.cloud_sync_config !== undefined) {
-            prefs.cloud_sync_config = preservedSettings.cloud_sync_config
-          }
+          const prefs = mergeArchivePrefsPreservingCloudSync(
+            JSON.parse(raw) as Record<string, unknown>,
+            preservedSettings.cloud_sync_config
+          )
           if (this.dbBridge) {
             await this.dbBridge.importDevicePreferences(prefs)
           } else {
@@ -396,6 +419,11 @@ export class MobileArchiveService implements IArchiveService {
 
         // 路径校正由 vaultService.initRegistry() 负责（保留 lastAccessedAt 等字段，勿在此重写 registry）
         await this.vaultService.initRegistry()
+        const globalShadowDir = await this.pathService.getGlobalShadowIndexDirectory()
+        await purgeImportedShadowIndexCaches(this.fileSystem, {
+          workspaceRoot: rootDir,
+          globalShadowDir
+        })
         if (this.dbBridge?.rebootstrapAfterArchiveRestore) {
           await this.dbBridge.rebootstrapAfterArchiveRestore()
         }
@@ -542,6 +570,17 @@ export class MobileArchiveService implements IArchiveService {
 
       if (!deleted) break
       list = await this.listSnapshots()
+    }
+  }
+
+  private async resolveHasValidManifest(payloadDir: string): Promise<boolean> {
+    const manifestPath = joinStoragePath(payloadDir, 'manifest.json')
+    if (!(await this.fileSystem.exists(manifestPath))) return false
+    try {
+      const raw = await this.fileSystem.readFile(manifestPath)
+      return isValidArchiveManifestContent(raw)
+    } catch {
+      return false
     }
   }
 

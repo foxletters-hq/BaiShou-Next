@@ -219,5 +219,27 @@ describe('MigrationService', () => {
       `)
       expect(tables).toHaveLength(1)
     })
+
+    it('_ensureSystemSettingsTable should create missing settings table on legacy agent db', async () => {
+      const db = dbManager.getDb()
+      await db.run(sql`
+        CREATE TABLE agent_sessions (
+          id TEXT PRIMARY KEY NOT NULL,
+          title TEXT NOT NULL DEFAULT '新对话',
+          vault_name TEXT NOT NULL,
+          provider_id TEXT NOT NULL,
+          model_id TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        );
+      `)
+
+      await (service as any)._ensureSystemSettingsTable()
+
+      const tables = await db.all(sql`
+        SELECT name FROM sqlite_master WHERE type='table' AND name='system_settings'
+      `)
+      expect(tables).toHaveLength(1)
+    })
   })
 })

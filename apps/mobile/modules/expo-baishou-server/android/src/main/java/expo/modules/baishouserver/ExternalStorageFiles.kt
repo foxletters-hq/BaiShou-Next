@@ -146,6 +146,22 @@ object ExternalStorageFiles {
         file.writeText(content)
     }
 
+    fun appendString(context: Context, uri: String, content: String) {
+        val file = resolveFile(context, uri)
+        file.parentFile?.mkdirs()
+        java.io.FileOutputStream(file, true).use { out ->
+            out.write(content.toByteArray(Charsets.UTF_8))
+        }
+    }
+
+    fun appendStringAny(context: Context, uri: String, content: String) {
+        val file = resolveAnyFile(uri)
+        file.parentFile?.mkdirs()
+        java.io.FileOutputStream(file, true).use { out ->
+            out.write(content.toByteArray(Charsets.UTF_8))
+        }
+    }
+
     fun writeBase64(context: Context, uri: String, base64: String) {
         val file = resolveFile(context, uri)
         file.parentFile?.mkdirs()

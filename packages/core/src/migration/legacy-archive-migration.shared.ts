@@ -1,5 +1,6 @@
 import type { IFileSystem } from '../fs/file-system.types'
 import * as path from '../fs/path.util'
+import { logger } from '@baishou/shared'
 import {
   cleanupLegacyVaultArtifacts,
   discoverVaultNames,
@@ -58,12 +59,15 @@ export async function migrateLegacyArchiveContents(
 
   const prefsPath = path.join(sourceDir, 'config', 'device_preferences.json')
   if (restoreDevicePreferences && (await fileSystem.exists(prefsPath))) {
+    const raw = await fileSystem.readFile(prefsPath, 'utf8')
+    const prefs = JSON.parse(raw) as Record<string, unknown>
     try {
-      const raw = await fileSystem.readFile(prefsPath, 'utf8')
-      const prefs = JSON.parse(raw) as Record<string, unknown>
       await restoreDevicePreferences(prefs)
-    } catch {
-      // prefs restore failure should not abort vault migration
+    } catch (error) {
+      logger.warn(
+        '[migrateLegacyArchiveContents] device_preferences restore failed (archive finalization may retry):',
+        error
+      )
     }
   }
 

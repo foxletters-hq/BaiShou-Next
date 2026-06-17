@@ -26,6 +26,7 @@ export * from './repositories/summary.repository.impl'
 
 export * from './drivers/vec-capability'
 export * from './migration.service'
+export * from './migration-context'
 export * from './raw-sql.executor'
 export * from './sql-executor.factory'
 export * from './types'

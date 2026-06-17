@@ -1,4 +1,5 @@
 import type { ImportResult } from '@baishou/core-mobile'
+import { isValidNextArchiveManifestContent } from '@baishou/core/shared'
 
 export const ARCHIVE_SKIP_TOP_LEVEL = new Set(['database', 'config', 'manifest.json', 'user-data'])
 
@@ -70,12 +71,7 @@ export function shouldRefreshVaultAfterArchiveImport(result: ImportResult): bool
 }
 
 export function isValidArchiveManifestContent(raw: string): boolean {
-  try {
-    const parsed = JSON.parse(raw) as { formatVersion?: unknown }
-    return typeof parsed.formatVersion === 'number' && parsed.formatVersion >= 1
-  } catch {
-    return false
-  }
+  return isValidNextArchiveManifestContent(raw)
 }
 
 export function validateArchiveExtractPayload(options: {

@@ -38,6 +38,15 @@ export const MEMORY_EMBEDDINGS_INDEX_SQL = `
   ON memory_embeddings (embedding_id)
 `
 
+/** 原 0000 迁移内容；Flutter v3 agent.sqlite 无此表，但迁移记录可能被误标为已执行 */
+export const SYSTEM_SETTINGS_CREATE_SQL = `
+  CREATE TABLE IF NOT EXISTS system_settings (
+    key TEXT PRIMARY KEY NOT NULL,
+    value TEXT NOT NULL,
+    updated_at INTEGER NOT NULL DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer))
+  )
+`
+
 /**
  * 按表聚合的缺列补丁（顺序无关，逐条检测后执行）。
  */

@@ -39,6 +39,7 @@ declare class ExpoBaishouServerModule extends NativeModule<ServerEvents> {
   externalGetInfo(path: string): ExternalPathInfo
   externalMakeDirectory(path: string, intermediates: boolean): void
   externalWriteString(path: string, content: string): void
+  externalAppendString(path: string, content: string): void
   externalWriteBase64(path: string, base64: string): void
   externalReadString(path: string): string
   externalReadBase64(path: string): string
@@ -46,6 +47,7 @@ declare class ExpoBaishouServerModule extends NativeModule<ServerEvents> {
   externalReadDirectory(path: string): string[]
   localGetInfo(path: string): ExternalPathInfo
   localReadDirectory(path: string): string[]
+  localAppendString(path: string, content: string): void
   nativeUnzipArchive(zipPath: string, destDir: string): Promise<void>
   nativeZipArchiveExport(
     storageRoot: string,
@@ -299,6 +301,10 @@ export function externalWriteString(path: string, content: string): void {
   callNativeExternal('externalWriteString', (mod) => mod.externalWriteString(path, content))
 }
 
+export function externalAppendString(path: string, content: string): void {
+  callNativeExternal('externalAppendString', (mod) => mod.externalAppendString(path, content))
+}
+
 export function externalWriteBase64(path: string, base64: string): void {
   callNativeExternal('externalWriteBase64', (mod) => mod.externalWriteBase64(path, base64))
 }
@@ -325,6 +331,10 @@ export function localGetInfo(path: string): ExternalPathInfo {
 
 export function localReadDirectory(path: string): string[] {
   return callNativeExternal('localReadDirectory', (mod) => mod.localReadDirectory(path))
+}
+
+export function localAppendString(path: string, content: string): void {
+  callNativeExternal('localAppendString', (mod) => mod.localAppendString(path, content))
 }
 
 export async function nativeUnzipArchive(zipPath: string, destDir: string): Promise<void> {

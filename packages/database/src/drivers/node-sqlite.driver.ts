@@ -136,3 +136,26 @@ export async function installDatabaseSchema(db: AppDatabase): Promise<void> {
   const migrationService = new MigrationService(db, client, migrationDir)
   await migrationService.runMigrations()
 }
+
+function resolveNodeMigrationDir(): string {
+  const isDev = process.env.NODE_ENV !== 'production' && !process.env.VITE_APP_BUILD
+  if (isDev) {
+    if (
+      fs.existsSync(path.join(process.cwd(), 'apps', 'desktop', 'resources', 'database', 'drizzle'))
+    ) {
+      return path.join(process.cwd(), 'apps', 'desktop', 'resources', 'database', 'drizzle')
+    }
+    return path.join(process.cwd(), 'resources', 'database', 'drizzle')
+  }
+  return path.join((process as any).resourcesPath || process.cwd(), 'database', 'drizzle')
+}
+
+/** 归档导入完成后补建 Agent 消息 FTS 历史索引 */
+export async function backfillAgentDatabaseFts(db: AppDatabase): Promise<void> {
+  const internalDb = db as { session?: { client?: unknown } }
+  const client = internalDb.session?.client
+  if (!client) return
+
+  const migrationService = new MigrationService(db, client, resolveNodeMigrationDir())
+  await migrationService.backfillAgentMessagesFts()
+}

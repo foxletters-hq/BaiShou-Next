@@ -3,58 +3,32 @@ import * as fs from 'fs'
 import * as fsp from 'fs/promises'
 import { connectionManager, installDatabaseSchema } from '@baishou/database-desktop'
 import { logger } from '@baishou/shared'
+import {
+  createNodeFileSystem,
+  isValidNextArchiveManifest,
+  mergeArchivePrefsPreservingCloudSync,
+  purgeImportedShadowIndexCaches
+} from '@baishou/core/shared'
 import { getAppDb } from '../db'
 
 /**
  * 负责解析导入备份时的元数据校验、遗留旧版结构的数据清洗与兼容迁移逻辑。
  */
 export class MetadataMigrator {
+  private readonly fileSystem = createNodeFileSystem()
+
   /**
-   * 扫描 rootDir 下所有 vault 的 .baishou 目录，删除 shadow_index.db 及其附属文件。
-   * shadow_index 是纯缓存索引，会在 bootstrapper 中自动重建。
+   * 扫描工作区并删除所有可重建的影子索引缓存（per-vault + 全局）。
    */
-  public async cleanShadowIndexFiles(rootDir: string): Promise<void> {
-    try {
-      const entries = await fsp.readdir(rootDir, { withFileTypes: true })
-      for (const entry of entries) {
-        if (!entry.isDirectory()) continue
-        const baishouDir = path.join(rootDir, entry.name, '.baishou')
-        if (!fs.existsSync(baishouDir)) continue
-
-        for (const suffix of ['', '-wal', '-shm', '-journal']) {
-          const filePath = path.join(baishouDir, `shadow_index.db${suffix}`)
-          try {
-            if (fs.existsSync(filePath)) {
-              await fsp.unlink(filePath)
-              logger.info(`[MetadataMigrator] Cleaned shadow_index file: ${filePath}`)
-            }
-          } catch (e: any) {
-            logger.error(`[MetadataMigrator] Failed to clean shadow_index file: ${filePath}`, e)
-          }
-        }
-      }
-
-      // 也检查根级 .baishou 目录
-      const rootBaishou = path.join(rootDir, '.baishou')
-      if (fs.existsSync(rootBaishou)) {
-        for (const suffix of ['', '-wal', '-shm', '-journal']) {
-          const filePath = path.join(rootBaishou, `shadow_index.db${suffix}`)
-          try {
-            if (fs.existsSync(filePath)) {
-              await fsp.unlink(filePath)
-              logger.info(`[MetadataMigrator] Cleaned root shadow_index file: ${filePath}`)
-            }
-          } catch (e: any) {
-            logger.error(
-              `[MetadataMigrator] Failed to clean root shadow_index file: ${filePath}`,
-              e
-            )
-          }
-        }
-      }
-    } catch (e: any) {
-      logger.error('[MetadataMigrator] Failed to clean shadow index files:', e)
-    }
+  public async cleanShadowIndexFiles(
+    rootDir: string,
+    globalShadowDir?: string | null
+  ): Promise<void> {
+    await purgeImportedShadowIndexCaches(this.fileSystem, {
+      workspaceRoot: rootDir,
+      globalShadowDir
+    })
+    logger.info('[MetadataMigrator] Purged imported shadow index caches.')
   }
 
   /**
@@ -78,11 +52,14 @@ export class MetadataMigrator {
   public async migrateLegacyIfNecessary(
     manifest: any,
     tempExtractDir: string,
-    rootDir: string
+    rootDir: string,
+    globalShadowDir?: string | null,
+    currentCloudSyncConfig?: unknown
   ): Promise<boolean> {
     const { LegacyMigrationService } = await import('./legacy-migration.service')
     const legacyService = new LegacyMigrationService()
-    const isLegacy = manifest ? false : await legacyService.isLegacyAppRoot(tempExtractDir)
+    const isNextArchive = isValidNextArchiveManifest(manifest)
+    const isLegacy = isNextArchive ? false : await legacyService.isLegacyAppRoot(tempExtractDir)
 
     if (isLegacy) {
       logger.info('MetadataMigrator: Detected Legacy Architecture. Initiating Legacy Migration...')
@@ -109,23 +86,55 @@ export class MetadataMigrator {
         throw migrationError
       }
 
-      await this.cleanShadowIndexFiles(rootDir)
+      await this.cleanShadowIndexFiles(rootDir, globalShadowDir)
 
       try {
         const { resetAppDb } = await import('../db')
         resetAppDb()
         const restoredDb = getAppDb(rootDir)
         connectionManager.setDb(restoredDb)
-        // 旧版数据库同样可能缺少新表，补跑迁移
         await installDatabaseSchema(restoredDb)
         logger.info(
           '[MetadataMigrator] Legacy Database connection successfully reconnected and schema migrated.'
         )
       } catch (dbErr: any) {
         logger.error('[MetadataMigrator] Failed to reconnect database for Legacy:', dbErr)
+        throw dbErr
       }
+
+      await this.restoreDevicePreferencesFromExtract(
+        tempExtractDir,
+        rootDir,
+        currentCloudSyncConfig
+      )
       return true
     }
     return false
+  }
+
+  /** 从 ZIP 解压目录恢复 device_preferences.json 到 Agent DB */
+  public async restoreDevicePreferencesFromExtract(
+    extractDir: string,
+    workspaceRoot: string,
+    currentCloudSyncConfig?: unknown
+  ): Promise<void> {
+    const configPath = path.join(extractDir, 'config', 'device_preferences.json')
+    if (!fs.existsSync(configPath)) return
+
+    const raw = await fsp.readFile(configPath, 'utf8')
+    const prefs = mergeArchivePrefsPreservingCloudSync(
+      JSON.parse(raw) as Record<string, unknown>,
+      currentCloudSyncConfig
+    )
+
+    const { SettingsRepository, UserProfileRepository } = await import('@baishou/database-desktop')
+    const { LegacyImportService } = await import('@baishou/core-desktop')
+
+    const db = getAppDb(workspaceRoot)
+    const settingsRepo = new SettingsRepository(db)
+    const profileRepo = new UserProfileRepository(db)
+    const legacyImporter = new LegacyImportService(settingsRepo, profileRepo)
+    await legacyImporter.restoreConfig(prefs)
+    logger.info('[MetadataMigrator] Restored device preferences from archive config.')
   }
 }

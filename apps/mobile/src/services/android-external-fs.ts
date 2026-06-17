@@ -12,6 +12,8 @@ import {
   externalReadString,
   externalWriteBase64,
   externalWriteString,
+  externalAppendString,
+  localAppendString,
   isExternalStorageNativeAvailable,
   localGetInfo,
   localReadDirectory
@@ -138,6 +140,16 @@ export function externalMkdirSafe(uriOrPath: string, intermediates = true): void
 export function externalWriteTextSafe(uriOrPath: string, content: string): void {
   ensureNativeModule()
   externalWriteString(toFileUri(uriOrPath), content)
+}
+
+export function externalAppendTextSafe(uriOrPath: string, content: string): void {
+  ensureNativeModule()
+  externalAppendString(toFileUri(uriOrPath), content)
+}
+
+export function localAppendTextSafe(uriOrPath: string, content: string): void {
+  ensureNativeModule()
+  localAppendString(normalizeStoragePath(uriOrPath), content)
 }
 
 export function externalWriteB64Safe(uriOrPath: string, base64: string): void {

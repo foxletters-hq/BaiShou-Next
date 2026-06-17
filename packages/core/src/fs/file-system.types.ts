@@ -47,4 +47,7 @@ export interface IFileSystem {
   rename(oldPath: string, newPath: string): Promise<void>
 
   rm(path: string, options?: { recursive?: boolean; force?: boolean }): Promise<void>
+
+  /** 向文本文件末尾追加内容（用于流式写大 JSON，避免整包驻留内存） */
+  appendFile(path: string, data: string, encoding?: FileEncoding): Promise<void>
 }

@@ -23,6 +23,7 @@ describe('SettingsFileService', () => {
       mkdir: vi.fn(),
       readFile: vi.fn(),
       writeFile: vi.fn().mockResolvedValue(undefined),
+      appendFile: vi.fn().mockResolvedValue(undefined),
       unlink: vi.fn(),
       readdir: vi.fn(),
       stat: vi.fn(),

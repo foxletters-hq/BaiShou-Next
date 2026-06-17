@@ -3,6 +3,7 @@
  */
 export * from './expo'
 export * from './types'
+export * from './migration-context'
 export * from './raw-sql.executor'
 export * from './sql-executor.factory'
 export * from './expo-shadow-index.connection.manager'

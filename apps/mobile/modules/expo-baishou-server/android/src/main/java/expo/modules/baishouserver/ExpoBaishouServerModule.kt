@@ -394,6 +394,11 @@ class ExpoBaishouServerModule : Module() {
             ExternalStorageFiles.writeString(context, path, content)
         }
 
+        Function("externalAppendString") { path: String, content: String ->
+            val context = appContext.reactContext ?: throw Exception("React context is null")
+            ExternalStorageFiles.appendString(context, path, content)
+        }
+
         Function("externalWriteBase64") { path: String, base64: String ->
             val context = appContext.reactContext ?: throw Exception("React context is null")
             ExternalStorageFiles.writeBase64(context, path, base64)
@@ -428,6 +433,11 @@ class ExpoBaishouServerModule : Module() {
         Function("localReadDirectory") { path: String ->
             val context = appContext.reactContext ?: throw Exception("React context is null")
             ExternalStorageFiles.readDirectoryAny(context, path)
+        }
+
+        Function("localAppendString") { path: String, content: String ->
+            val context = appContext.reactContext ?: throw Exception("React context is null")
+            ExternalStorageFiles.appendStringAny(context, path, content)
         }
 
         AsyncFunction("nativeUnzipArchive") { zipPath: String, destDir: String, promise: Promise ->

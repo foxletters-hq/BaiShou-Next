@@ -4,6 +4,9 @@ import * as SQLite from 'expo-sqlite'
 import {
   ensureExpoAgentDatabaseInstalled,
   releaseExpoAgentDatabaseInstall,
+  backfillExpoAgentMessagesFts,
+  enterAgentMigrationArchiveImport,
+  exitAgentMigrationArchiveImport,
   type ExpoSqliteDatabase
 } from '@baishou/database/expo'
 import {
@@ -656,9 +659,11 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           },
           runArchiveImportQuiesced: async (fn) => {
             archiveFullRestoreDoneRef.current = false
+            enterAgentMigrationArchiveImport()
             try {
               return await runWithStorageQuiescedRef.current(fn)
             } finally {
+              exitAgentMigrationArchiveImport()
               archiveFullRestoreDoneRef.current = false
             }
           },
@@ -713,6 +718,10 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                 e as Error
               )
             }
+
+            void backfillExpoAgentMessagesFts(runtime.drizzleDb, runtime.expoDb).catch((e) => {
+              logger.warn('[BaishouProvider] Agent FTS backfill after archive import failed:', e)
+            })
 
             const nextRagDeps = {
               settingsManager: runtime.settingsManager,

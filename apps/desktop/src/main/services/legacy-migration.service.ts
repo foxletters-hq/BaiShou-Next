@@ -1,6 +1,6 @@
 import * as fsp from 'fs/promises'
 import { getAppDb, resolveAgentDbPath } from '../db'
-import { SettingsRepository, UserProfileRepository, executeRawSql } from '@baishou/database-desktop'
+import { SettingsRepository, UserProfileRepository, executeRawSql, installDatabaseSchema } from '@baishou/database-desktop'
 import { LegacyImportService } from '@baishou/core-desktop'
 import {
   discoverVaultNames,
@@ -40,12 +40,14 @@ export class LegacyMigrationService {
     }
 
     logger.info(`[LegacyMigration] Start migration from ${sourceDir} to ${targetWorkspaceDir}`)
-    const client = (getAppDb(targetWorkspaceDir) as { session?: { client?: unknown } })?.session
-      ?.client
+    const db = getAppDb(targetWorkspaceDir)
+    await installDatabaseSchema(db)
+
+    const client = (db as { session?: { client?: unknown } })?.session?.client
     if (!client) throw new Error('Database client not initialized')
 
-    const settingsRepo = new SettingsRepository(getAppDb(targetWorkspaceDir))
-    const profileRepo = new UserProfileRepository(getAppDb(targetWorkspaceDir))
+    const settingsRepo = new SettingsRepository(db)
+    const profileRepo = new UserProfileRepository(db)
     const legacyImporter = new LegacyImportService(settingsRepo, profileRepo)
 
     const vaultNamesPreview = await discoverVaultNames(this.fileSystem, sourceDir)

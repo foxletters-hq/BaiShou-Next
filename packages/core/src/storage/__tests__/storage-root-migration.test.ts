@@ -38,6 +38,9 @@ function createMockFileSystem(initial?: { dirs?: string[]; files?: Record<string
     writeFile: async (p, data) => {
       state.files.set(p, data)
     },
+    appendFile: async (p, data) => {
+      state.files.set(p, (state.files.get(p) ?? '') + data)
+    },
     readFile: async (p) => state.files.get(p) ?? '',
     copyFile: vi.fn(async (src, dest) => {
       if (state.dirs.has(src)) {

@@ -36,6 +36,7 @@ import { MigrationService } from './migration.service'
 import { EMBEDDED_AGENT_MIGRATIONS } from './embedded-agent-migrations'
 import { withExpoAgentDatabaseLock, waitForExpoAgentDatabaseIdle } from './expo-agent-db.lock'
 import { logger } from '@baishou/shared'
+export * from './migration-context'
 
 export type ExpoDatabaseInstallResult = {
   expoDb: ExpoSqliteDatabase
@@ -118,4 +119,13 @@ export async function ensureExpoAgentDatabaseInstalled(
 export async function releaseExpoAgentDatabaseInstall(): Promise<void> {
   await waitForExpoAgentDatabaseIdle()
   expoAgentDatabaseInstall = null
+}
+
+/** 归档导入完成后异步补建 Agent 消息 FTS 历史索引 */
+export async function backfillExpoAgentMessagesFts(
+  drizzleDb: AppDatabase,
+  expoDb: ExpoSqliteDatabase
+): Promise<void> {
+  const migrationService = new MigrationService(drizzleDb, expoDb, '', EMBEDDED_AGENT_MIGRATIONS)
+  await migrationService.backfillAgentMessagesFts()
 }

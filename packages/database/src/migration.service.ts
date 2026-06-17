@@ -6,10 +6,12 @@ import { logger } from '@baishou/shared'
 import { executeRawSql } from './raw-sql.executor'
 import { FTS_SYNC_TRIGGER_STATEMENTS } from './schema/fts'
 import { withExpoAgentDatabaseLock } from './expo-agent-db.lock'
+import { isAgentMigrationArchiveImport } from './migration-context'
 import {
   AGENT_DB_COLUMN_PATCHES,
   MEMORY_EMBEDDINGS_CREATE_SQL,
-  MEMORY_EMBEDDINGS_INDEX_SQL
+  MEMORY_EMBEDDINGS_INDEX_SQL,
+  SYSTEM_SETTINGS_CREATE_SQL
 } from './agent-schema-compat'
 
 export interface MigrationJournal {
@@ -92,6 +94,9 @@ export class MigrationService {
               // 确保旧库中的 compression_snapshots 有正确的字段类型
               logger.info('[MigrationService] 检查旧库 compression_snapshots 字段兼容性...')
               await this._ensureCompressionSnapshotsCompatibility()
+              // 旧版 agent.sqlite 仅有部分 0000 表，回填迁移记录后仍需补齐 Next 新增表
+              await this._ensureSystemSettingsTable()
+              await this._ensureMemoryEmbeddingsTable()
             }
           }
         } catch (e: any) {
@@ -102,6 +107,9 @@ export class MigrationService {
       const journal = await this.readMigrationJournal()
       if (journal.entries.length === 0) {
         logger.info('[MigrationService] 迁移日志为空，无需执行。')
+        await this._ensureSystemSettingsTable()
+        await this._ensureMemoryEmbeddingsTable()
+        await this._ensureAgentSchemaColumns()
         return
       }
 
@@ -153,29 +161,21 @@ export class MigrationService {
             await this._executeSql(statement)
           }
 
-          await this._executeSql(`
-            INSERT OR IGNORE INTO agent_messages_fts(part_id, message_id, session_id, content)
-            SELECT
-              p.id,
-              p.message_id,
-              p.session_id,
-              json_extract(p.data, '$.text')
-            FROM agent_parts p
-            WHERE p.type = 'text'
-              AND COALESCE(json_extract(p.data, '$.isReasoning'), 0) IN (0, false)
-              AND json_extract(p.data, '$.text') IS NOT NULL
-              AND LENGTH(TRIM(json_extract(p.data, '$.text'))) > 0
-              AND NOT EXISTS (
-                SELECT 1 FROM agent_messages_fts f WHERE f.part_id = p.id
-              )
-          `)
-
-          logger.info('[MigrationService] Agent 消息 FTS 触发器与索引回填完成。')
+          // 归档导入期间跳过全量 FTS 回填，避免与 legacy 导出查询争抢堆内存导致 OOM
+          if (!isAgentMigrationArchiveImport()) {
+            await this._backfillAgentMessagesFts()
+            logger.info('[MigrationService] Agent 消息 FTS 触发器与索引回填完成。')
+          } else {
+            logger.info(
+              '[MigrationService] 归档导入期间跳过 Agent FTS 全量回填（导入完成后将异步补建）。'
+            )
+          }
         }
       } catch (e: any) {
         logger.warn('[MigrationService] Agent FTS 基础设施初始化失败（非阻塞）:', e.message)
       }
 
+      await this._ensureSystemSettingsTable()
       await this._ensureMemoryEmbeddingsTable()
       await this._ensureAgentSchemaColumns()
 
@@ -183,6 +183,60 @@ export class MigrationService {
     } catch (error: any) {
       logger.error('[MigrationService] 迁移执行过程中发生致命错误:', error)
       throw error
+    }
+  }
+
+  /** 归档导入完成后补建历史 Agent 消息 FTS 索引（异步调用，不阻塞 UI） */
+  public async backfillAgentMessagesFts(): Promise<void> {
+    return withExpoAgentDatabaseLock(this.db, () => this._backfillAgentMessagesFtsUnlocked())
+  }
+
+  private async _backfillAgentMessagesFtsUnlocked(): Promise<void> {
+    const ftsTable = await this._executeSql(
+      `SELECT name FROM sqlite_master WHERE type='table' AND name='agent_messages_fts'`
+    )
+    if (ftsTable.rows.length === 0) {
+      logger.info('[MigrationService] Agent FTS 表不存在，跳过历史索引补建。')
+      return
+    }
+    await this._backfillAgentMessagesFts()
+    logger.info('[MigrationService] Agent 消息 FTS 历史索引补建完成。')
+  }
+
+  private async _backfillAgentMessagesFts(): Promise<void> {
+    await this._executeSql(`
+      INSERT OR IGNORE INTO agent_messages_fts(part_id, message_id, session_id, content)
+      SELECT
+        p.id,
+        p.message_id,
+        p.session_id,
+        json_extract(p.data, '$.text')
+      FROM agent_parts p
+      WHERE p.type = 'text'
+        AND COALESCE(json_extract(p.data, '$.isReasoning'), 0) IN (0, false)
+        AND json_extract(p.data, '$.text') IS NOT NULL
+        AND LENGTH(TRIM(json_extract(p.data, '$.text'))) > 0
+        AND NOT EXISTS (
+          SELECT 1 FROM agent_messages_fts f WHERE f.part_id = p.id
+        )
+    `)
+  }
+
+  /**
+   * 确保 system_settings 表存在（Flutter v3 agent.sqlite 升级后常见缺失）。
+   */
+  private async _ensureSystemSettingsTable(): Promise<void> {
+    try {
+      const table = await this._executeSql(
+        `SELECT name FROM sqlite_master WHERE type='table' AND name='system_settings'`
+      )
+      if (table.rows.length > 0) return
+
+      logger.info('[MigrationService] 创建缺失的 system_settings 表...')
+      await this._executeSql(SYSTEM_SETTINGS_CREATE_SQL)
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e)
+      logger.warn('[MigrationService] system_settings 表检查失败（非阻塞）:', message)
     }
   }
 

@@ -14,6 +14,8 @@ import {
   externalReadTextSafe,
   externalWriteB64Safe,
   externalWriteTextSafe,
+  externalAppendTextSafe,
+  localAppendTextSafe,
   isAndroidAppSandboxPath,
   isExternalStoragePath,
   localGetInfoSafe,
@@ -130,6 +132,55 @@ export class MobileFileSystem implements IFileSystem {
     await SandboxFS.writeAsStringAsync(uri, data, {
       encoding: encoding === 'base64' ? SandboxFS.EncodingType.Base64 : undefined
     })
+  }
+
+  async appendFile(filePath: string, data: string, encoding: FileEncoding = 'utf8'): Promise<void> {
+    if (!data) return
+
+    if (encoding === 'utf8' && Platform.OS === 'android' && isLocalFsNativeAvailable()) {
+      if (isExternalStoragePath(filePath)) {
+        if (!(await this.exists(filePath))) {
+          await this.writeFile(filePath, data, encoding)
+          return
+        }
+        externalAppendTextSafe(filePath, data)
+        return
+      }
+      if (shouldUseAndroidNativeLocalFs(filePath) || isAndroidAppSandboxPath(filePath)) {
+        if (!(await this.exists(filePath))) {
+          await this.writeFile(filePath, data, encoding)
+          return
+        }
+        localAppendTextSafe(filePath, data)
+        return
+      }
+    }
+
+    if (isExternalStoragePath(filePath)) {
+      if (await this.exists(filePath)) {
+        const existing =
+          encoding === 'base64' ? externalReadB64Safe(filePath) : externalReadTextSafe(filePath)
+        if (encoding === 'base64') {
+          externalWriteB64Safe(filePath, existing + data)
+        } else {
+          externalWriteTextSafe(filePath, existing + data)
+        }
+      } else {
+        await this.writeFile(filePath, data, encoding)
+      }
+      return
+    }
+    const uri = toFileUri(filePath)
+    if (await this.exists(filePath)) {
+      const existing = await SandboxFS.readAsStringAsync(uri, {
+        encoding: encoding === 'base64' ? SandboxFS.EncodingType.Base64 : undefined
+      })
+      await SandboxFS.writeAsStringAsync(uri, existing + data, {
+        encoding: encoding === 'base64' ? SandboxFS.EncodingType.Base64 : undefined
+      })
+      return
+    }
+    await this.writeFile(filePath, data, encoding)
   }
 
   async copyFile(src: string, dest: string): Promise<void> {

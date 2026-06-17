@@ -40,6 +40,14 @@ export class NodeFileSystem implements IFileSystem {
     await fs.writeFile(filePath, data, 'utf8')
   }
 
+  async appendFile(filePath: string, data: string, encoding: FileEncoding = 'utf8'): Promise<void> {
+    if (encoding === 'base64') {
+      await fs.appendFile(filePath, Buffer.from(data, 'base64'))
+      return
+    }
+    await fs.appendFile(filePath, data, 'utf8')
+  }
+
   async copyFile(src: string, dest: string): Promise<void> {
     await fs.cp(src, dest, { recursive: true })
   }

@@ -3,6 +3,10 @@ import * as path from '../fs/path.util'
 import { sanitizeVaultDirectoryName } from '../vault/vault-name.util'
 import type { RawSqlExecutor } from './legacy-migration.shared'
 
+const SESSION_PAGE_SIZE = 25
+const MESSAGE_PAGE_SIZE = 80
+const PART_PAGE_SIZE = 50
+
 function snakeToCamel(key: string): string {
   return key.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())
 }
@@ -75,9 +79,114 @@ async function ensureDir(fileSystem: IFileSystem, dir: string): Promise<void> {
   }
 }
 
+async function loadMessageParts(
+  sqliteClient: unknown,
+  executeRawSql: RawSqlExecutor,
+  messageId: string
+): Promise<Record<string, unknown>[]> {
+  const parts: Record<string, unknown>[] = []
+  let partOffset = 0
+
+  while (true) {
+    const partRows = await executeRawSql(
+      sqliteClient,
+      `SELECT * FROM agent_parts
+       WHERE message_id = ?
+       ORDER BY order_index ASC
+       LIMIT ? OFFSET ?`,
+      [messageId, PART_PAGE_SIZE, partOffset]
+    )
+
+    if (partRows.rows.length === 0) break
+
+    for (const row of partRows.rows) {
+      parts.push(normalizePartRow(row as Record<string, unknown>))
+    }
+
+    partOffset += PART_PAGE_SIZE
+    if (partRows.rows.length < PART_PAGE_SIZE) break
+  }
+
+  return parts
+}
+
+/** 流式写出单个会话 JSON，每次仅序列化一条消息，降低移动端导入峰值内存 */
+export async function writeSessionAggregateFile(
+  fileSystem: IFileSystem,
+  sessionPath: string,
+  session: Record<string, unknown>,
+  sqliteClient: unknown,
+  executeRawSql: RawSqlExecutor,
+  sessionId: string
+): Promise<void> {
+  const tempPath = `${sessionPath}.tmp`
+
+  try {
+    await fileSystem.writeFile(
+      tempPath,
+      `{"session":${JSON.stringify(session)},"messages":[`,
+      'utf8'
+    )
+
+    let wroteMessage = false
+    let offset = 0
+
+    while (true) {
+      const messageRows = await executeRawSql(
+        sqliteClient,
+        `SELECT * FROM agent_messages
+         WHERE session_id = ?
+         ORDER BY order_index ASC
+         LIMIT ? OFFSET ?`,
+        [sessionId, MESSAGE_PAGE_SIZE, offset]
+      )
+
+      if (messageRows.rows.length === 0) break
+
+      for (const rawMessage of messageRows.rows) {
+        const message = normalizeMessageRow(rawMessage as Record<string, unknown>)
+        const messageId = String(message['id'] ?? '')
+        const parts = messageId
+          ? await loadMessageParts(sqliteClient, executeRawSql, messageId)
+          : []
+
+        const aggregateMessage = {
+          ...message,
+          parts
+        }
+
+        const prefix = wroteMessage ? ',' : ''
+        await fileSystem.appendFile(tempPath, `${prefix}${JSON.stringify(aggregateMessage)}`, 'utf8')
+        wroteMessage = true
+      }
+
+      offset += MESSAGE_PAGE_SIZE
+      if (messageRows.rows.length < MESSAGE_PAGE_SIZE) break
+    }
+
+    await fileSystem.appendFile(tempPath, ']}', 'utf8')
+
+    if (await fileSystem.exists(sessionPath)) {
+      await fileSystem.unlink(sessionPath)
+    }
+    await fileSystem.rename(tempPath, sessionPath)
+  } catch (error) {
+    try {
+      if (await fileSystem.exists(tempPath)) {
+        await fileSystem.unlink(tempPath)
+      }
+    } catch {
+      // ignore cleanup errors
+    }
+    throw error
+  }
+}
+
 /**
  * 将合并后的 Agent DB 导出为新版磁盘 JSON（Assistants / Sessions），
  * 防止 bootstrap fullResyncFromDisks 误删仅存在于 SQLite 的旧版数据。
+ *
+ * 会话列表分页查询 + 单会话流式写出，避免 getAllAsync 一次性加载导致 OOM。
  */
 export async function exportLegacyRuntimeArtifacts(options: {
   fileSystem: IFileSystem
@@ -117,48 +226,37 @@ export async function exportLegacyRuntimeArtifacts(options: {
     }
   }
 
-  const sessionRows = await executeRawSql(sqliteClient, 'SELECT * FROM agent_sessions')
-  for (const rawSession of sessionRows.rows) {
-    const session = normalizeSessionRow(rawSession as Record<string, unknown>)
-    const sessionId = String(session['id'] ?? '')
-    if (!sessionId) continue
-
-    const vaultName = sanitizeVaultDirectoryName(String(session['vaultName'] ?? defaultVaultName))
-    const sessionsDir = path.join(targetWorkspaceDir, vaultName, 'Sessions')
-    await ensureDir(fileSystem, sessionsDir)
-
-    const messageRows = await executeRawSql(
+  let sessionOffset = 0
+  while (true) {
+    const sessionRows = await executeRawSql(
       sqliteClient,
-      'SELECT * FROM agent_messages WHERE session_id = ? ORDER BY order_index ASC',
-      [sessionId]
-    )
-    const partRows = await executeRawSql(
-      sqliteClient,
-      'SELECT * FROM agent_parts WHERE session_id = ?',
-      [sessionId]
+      `SELECT * FROM agent_sessions ORDER BY id LIMIT ? OFFSET ?`,
+      [SESSION_PAGE_SIZE, sessionOffset]
     )
 
-    const partsByMessage = new Map<string, Record<string, unknown>[]>()
-    for (const rawPart of partRows.rows) {
-      const part = normalizePartRow(rawPart as Record<string, unknown>)
-      const messageId = String(part['messageId'] ?? '')
-      if (!messageId) continue
-      const list = partsByMessage.get(messageId) ?? []
-      list.push(part)
-      partsByMessage.set(messageId, list)
+    if (sessionRows.rows.length === 0) break
+
+    for (const rawSession of sessionRows.rows) {
+      const session = normalizeSessionRow(rawSession as Record<string, unknown>)
+      const sessionId = String(session['id'] ?? '')
+      if (!sessionId) continue
+
+      const vaultName = sanitizeVaultDirectoryName(String(session['vaultName'] ?? defaultVaultName))
+      const sessionsDir = path.join(targetWorkspaceDir, vaultName, 'Sessions')
+      await ensureDir(fileSystem, sessionsDir)
+
+      const sessionPath = path.join(sessionsDir, `${sessionId}.json`)
+      await writeSessionAggregateFile(
+        fileSystem,
+        sessionPath,
+        session,
+        sqliteClient,
+        executeRawSql,
+        sessionId
+      )
     }
 
-    const messages = messageRows.rows.map((rawMessage) => {
-      const message = normalizeMessageRow(rawMessage as Record<string, unknown>)
-      const messageId = String(message['id'] ?? '')
-      return {
-        ...message,
-        parts: partsByMessage.get(messageId) ?? []
-      }
-    })
-
-    const aggregate = { session, messages }
-    const sessionPath = path.join(sessionsDir, `${sessionId}.json`)
-    await fileSystem.writeFile(sessionPath, JSON.stringify(aggregate, null, 2), 'utf8')
+    sessionOffset += SESSION_PAGE_SIZE
+    if (sessionRows.rows.length < SESSION_PAGE_SIZE) break
   }
 }

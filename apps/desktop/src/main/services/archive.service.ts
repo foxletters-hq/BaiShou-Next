@@ -6,13 +6,19 @@ import * as fsp from 'fs/promises'
 import extract from 'extract-zip'
 
 import { IArchiveService, ImportResult, VaultService } from '@baishou/core-desktop'
+import { resolveArchivePayloadRoot } from '@baishou/core/shared'
+import { createNodeFileSystem } from '@baishou/core-desktop'
 import {
   connectionManager,
   shadowConnectionManager,
   SettingsRepository,
   UserProfileRepository,
-  installDatabaseSchema
+  installDatabaseSchema,
+  backfillAgentDatabaseFts,
+  enterAgentMigrationArchiveImport,
+  exitAgentMigrationArchiveImport
 } from '@baishou/database-desktop'
+import { mergeArchivePrefsPreservingCloudSync } from '@baishou/core/shared'
 import { getAppDb } from '../db'
 import { DesktopStoragePathService } from './path.service'
 import { ZipExporter, ARCHIVE_USER_AVATARS_ZIP_PREFIX } from './ZipExporter'
@@ -26,6 +32,8 @@ function broadcastArchiveImportState(importing: boolean): void {
 }
 
 export class DesktopArchiveService implements IArchiveService {
+  private readonly archiveFileSystem = createNodeFileSystem()
+
   constructor(
     private pathService: DesktopStoragePathService,
     private vaultService: VaultService
@@ -114,15 +122,39 @@ export class DesktopArchiveService implements IArchiveService {
         logger.warn('Failed to disconnect shadow DB:', e)
       }
 
-      return await this.importFromZipAfterDisconnect(
-        zipFilePath,
-        snapshotPath,
-        currentCloudSyncConfig
-      )
+      enterAgentMigrationArchiveImport()
+      let importSucceeded = false
+      try {
+        const result = await this.importFromZipAfterDisconnect(
+          zipFilePath,
+          snapshotPath,
+          currentCloudSyncConfig
+        )
+        importSucceeded = true
+        return result
+      } finally {
+        exitAgentMigrationArchiveImport()
+        if (importSucceeded) {
+          this.scheduleAgentFtsBackfillAfterImport()
+        }
+      }
     } finally {
       await this.reconnectAgentDatabaseIfNeeded()
       broadcastArchiveImportState(false)
     }
+  }
+
+  private scheduleAgentFtsBackfillAfterImport(): void {
+    void (async () => {
+      try {
+        await backfillAgentDatabaseFts(getAppDb())
+        logger.info('[ArchiveService] Agent FTS historical index backfill completed after import.')
+      } catch (e: unknown) {
+        logger.warn('[ArchiveService] Agent FTS backfill after import failed:', {
+          error: e instanceof Error ? e.message : String(e)
+        })
+      }
+    })()
   }
 
   private async reconnectAgentDatabaseIfNeeded(): Promise<void> {
@@ -162,7 +194,9 @@ export class DesktopArchiveService implements IArchiveService {
       throw e
     }
 
-    const manifestPath = path.join(tempExtractDir, 'manifest.json')
+    const payloadDir = await resolveArchivePayloadRoot(this.archiveFileSystem, tempExtractDir)
+
+    const manifestPath = path.join(payloadDir, 'manifest.json')
     let manifest: any = null
     if (fs.existsSync(manifestPath)) {
       try {
@@ -171,6 +205,7 @@ export class DesktopArchiveService implements IArchiveService {
         logger.info('[ArchiveService] 读取备份元数据成功:', manifest)
       } catch (manifestErr: any) {
         logger.warn('[ArchiveService] 发现 manifest.json 但读取失败，将视为普通备份:', manifestErr)
+        manifest = null
       }
     }
 
@@ -179,7 +214,14 @@ export class DesktopArchiveService implements IArchiveService {
     migrator.validateManifest(manifest, CURRENT_FORMAT_VERSION)
 
     const rootDir = await this.pathService.getRootDirectory()
-    const migrated = await migrator.migrateLegacyIfNecessary(manifest, tempExtractDir, rootDir)
+    const globalShadowDir = await this.pathService.getGlobalShadowIndexDirectory()
+    const migrated = await migrator.migrateLegacyIfNecessary(
+      manifest,
+      payloadDir,
+      rootDir,
+      globalShadowDir,
+      currentCloudSyncConfig
+    )
 
     if (!migrated) {
       logger.info('ArchiveService: Detected Next Architecture. Restoring Standard Data...')
@@ -213,11 +255,11 @@ export class DesktopArchiveService implements IArchiveService {
             ) {
               continue
             }
-            if (entry.name === 'manifest.json' && src === tempExtractDir) {
+            if (entry.name === 'manifest.json' && src === payloadDir) {
               await fsp.unlink(srcFile).catch(() => {})
               continue
             }
-            if (entry.name === 'user-data' && src === tempExtractDir) {
+            if (entry.name === 'user-data' && src === payloadDir) {
               await fsp.rm(srcFile, { recursive: true, force: true }).catch(() => {})
               continue
             }
@@ -226,9 +268,9 @@ export class DesktopArchiveService implements IArchiveService {
           }
         }
       }
-      await moveAll(tempExtractDir, rootDir)
+      await moveAll(payloadDir, rootDir)
 
-      await this.restoreUserAvatarsFromExtract(tempExtractDir)
+      await this.restoreUserAvatarsFromExtract(payloadDir)
 
       try {
         const registryFile = path.join(rootDir, 'vault_registry.json')
@@ -309,15 +351,14 @@ export class DesktopArchiveService implements IArchiveService {
         const configPath = path.join(rootDir, 'config', 'device_preferences.json')
         if (fs.existsSync(configPath)) {
           const raw = await fsp.readFile(configPath, 'utf8')
-          const prefs = JSON.parse(raw)
+          const prefs = mergeArchivePrefsPreservingCloudSync(
+            JSON.parse(raw) as Record<string, unknown>,
+            currentCloudSyncConfig
+          )
 
           const settingsRepo = new SettingsRepository(getAppDb())
           for (const [key, value] of Object.entries(prefs)) {
             if (key === 'user_profile_data' || key === 'user_profile') continue
-            if (key === 'cloud_sync_config' && currentCloudSyncConfig) {
-              await settingsRepo.set(key, currentCloudSyncConfig)
-              continue
-            }
             if (value !== undefined && value !== null) {
               await settingsRepo.set(key, value)
             }
@@ -345,6 +386,8 @@ export class DesktopArchiveService implements IArchiveService {
         }
       }
     }
+
+    await migrator.cleanShadowIndexFiles(rootDir, globalShadowDir)
 
     try {
       const syncMetaDir = path.join(rootDir, '.baishou')
