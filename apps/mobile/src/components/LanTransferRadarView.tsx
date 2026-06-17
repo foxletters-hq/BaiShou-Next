@@ -95,8 +95,8 @@ const FloatingBubble: React.FC<{
   const off = BUBBLE_OFFSETS[index % BUBBLE_OFFSETS.length]
   const cx = zone.width / 2
   const cy = zone.height / 2
-  const left = cx + off.dx * (zone.width * 0.35) - 80
-  const top = cy + off.dy * (zone.height * 0.35) - 48
+  const left = cx + off.dx * (zone.width * 0.35) - 110
+  const top = cy + off.dy * (zone.height * 0.35) - 28
 
   return (
     <Animated.View
@@ -115,18 +115,25 @@ const FloatingBubble: React.FC<{
         style={[
           styles.bubble,
           {
-            backgroundColor: colors.bgGlassSurface,
-            borderColor: isSending ? colors.primary : colors.borderMuted
+            backgroundColor: colors.bgSurface,
+            borderColor: isSending ? colors.warning : colors.primary
           },
-          isSending && { opacity: 0.95 }
+          isSending && styles.bubbleSending
         ]}
       >
-        <View style={[styles.bubbleIconBox, { backgroundColor: colors.primaryLight }]}>
-          <MaterialIcons name={deviceIconName(device)} size={24} color={colors.primary} />
+        <View style={[styles.bubbleIcon, { backgroundColor: colors.primaryLight }]}>
+          <MaterialIcons name={deviceIconName(device)} size={20} color={colors.primary} />
         </View>
-        <Text style={[styles.bubbleName, { color: colors.textPrimary }]} numberOfLines={1}>
-          {isSending ? `${sendProgress}%` : device.nickname}
-        </Text>
+        <View style={styles.bubbleInfo}>
+          <Text style={[styles.bubbleName, { color: colors.textPrimary }]} numberOfLines={1}>
+            {isSending ? `${sendProgress}%` : device.nickname}
+          </Text>
+          {!isSending ? (
+            <Text style={[styles.bubbleIp, { color: colors.textSecondary }]} numberOfLines={1}>
+              {device.ip}
+            </Text>
+          ) : null}
+        </View>
       </TouchableOpacity>
     </Animated.View>
   )
@@ -291,24 +298,44 @@ const styles = StyleSheet.create({
     zIndex: 10
   },
   bubble: {
-    paddingHorizontal: 24,
-    paddingVertical: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 8,
+    paddingLeft: 10,
+    paddingRight: 16,
     borderRadius: 999,
     borderWidth: 1,
-    alignItems: 'center',
-    minWidth: 120,
-    maxWidth: 200,
-    elevation: 6
+    minWidth: 140,
+    maxWidth: 220,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 }
   },
-  bubbleIconBox: {
-    padding: 12,
-    borderRadius: 16,
-    marginBottom: 8
+  bubbleSending: {
+    shadowOpacity: 0.2
+  },
+  bubbleIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  bubbleInfo: {
+    flex: 1,
+    minWidth: 0
   },
   bubbleName: {
     fontSize: 14,
-    fontWeight: '500',
-    maxWidth: 140,
-    textAlign: 'center'
+    fontWeight: '700',
+    maxWidth: 120
+  },
+  bubbleIp: {
+    fontSize: 11,
+    marginTop: 2,
+    fontFamily: 'monospace'
   }
 })
