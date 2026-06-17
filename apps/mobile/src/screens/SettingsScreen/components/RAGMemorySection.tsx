@@ -93,64 +93,68 @@ export const RAGMemorySection: React.FC = () => {
     ) => {
       if (!services?.ragService || !dbReady) return
 
-      const ragStats = await services.ragService.getStats()
-      const globalModels =
-        (await services.settingsManager.get<{
-          globalEmbeddingProviderId?: string
-          globalEmbeddingModelId?: string
-        }>('global_models')) || {}
-      setEmbeddingProviderId(globalModels.globalEmbeddingProviderId)
-      setEmbeddingModelId(globalModels.globalEmbeddingModelId)
-      setStats({
-        totalCount: ragStats.totalCount,
-        currentDimension: ragStats.currentDimension,
-        totalSizeText: `${(ragStats.totalCount * 2.5).toFixed(1)} KB`
-      })
+      try {
+        const ragStats = await services.ragService.getStats()
+        const globalModels =
+          (await services.settingsManager.get<{
+            globalEmbeddingProviderId?: string
+            globalEmbeddingModelId?: string
+          }>('global_models')) || {}
+        setEmbeddingProviderId(globalModels.globalEmbeddingProviderId)
+        setEmbeddingModelId(globalModels.globalEmbeddingModelId)
+        setStats({
+          totalCount: ragStats.totalCount,
+          currentDimension: ragStats.currentDimension,
+          totalSizeText: `${(ragStats.totalCount * 2.5).toFixed(1)} KB`
+        })
 
-      const limit = size
-      const offset = (page - 1) * size
-      const params: {
-        keyword?: string
-        limit: number
-        offset: number
-        mode: 'semantic' | 'text'
-        withTotal: boolean
-      } = {
-        limit,
-        offset,
-        mode,
-        withTotal: true
-      }
-
-      if (q.trim()) {
-        params.keyword = q.trim()
-        if (mode === 'semantic') {
-          params.limit = 50
-          params.offset = 0
+        const limit = size
+        const offset = (page - 1) * size
+        const params: {
+          keyword?: string
+          limit: number
+          offset: number
+          mode: 'semantic' | 'text'
+          withTotal: boolean
+        } = {
+          limit,
+          offset,
+          mode,
+          withTotal: true
         }
-      }
 
-      const res = await services.ragService.queryEntries(params)
-      const fallbackModel = globalModels.globalEmbeddingModelId
-
-      if (q.trim() && mode === 'semantic') {
-        const sliced = res.entries.slice((page - 1) * size, page * size)
-        setEntries(sliced.map((e) => mapEntry(e as Record<string, unknown>, fallbackModel)))
-        setTotalCount(res.total)
-      } else {
-        if (res.total > 0 && offset >= res.total) {
-          const maxPage = Math.max(1, Math.ceil(res.total / size))
-          setCurrentPage(maxPage)
-          await loadRagData(q, mode, maxPage, size)
-          return
+        if (q.trim()) {
+          params.keyword = q.trim()
+          if (mode === 'semantic') {
+            params.limit = 50
+            params.offset = 0
+          }
         }
-        setEntries(res.entries.map((e) => mapEntry(e as Record<string, unknown>, fallbackModel)))
-        setTotalCount(res.total)
-      }
 
-      await checkModelMismatch()
+        const res = await services.ragService.queryEntries(params)
+        const fallbackModel = globalModels.globalEmbeddingModelId
+
+        if (q.trim() && mode === 'semantic') {
+          const sliced = res.entries.slice((page - 1) * size, page * size)
+          setEntries(sliced.map((e) => mapEntry(e as Record<string, unknown>, fallbackModel)))
+          setTotalCount(res.total)
+        } else {
+          if (res.total > 0 && offset >= res.total) {
+            const maxPage = Math.max(1, Math.ceil(res.total / size))
+            setCurrentPage(maxPage)
+            await loadRagData(q, mode, maxPage, size)
+            return
+          }
+          setEntries(res.entries.map((e) => mapEntry(e as Record<string, unknown>, fallbackModel)))
+          setTotalCount(res.total)
+        }
+
+        await checkModelMismatch()
+      } catch (e: unknown) {
+        toast.showError(e instanceof Error ? e.message : t('settings.rag_operation_failed'))
+      }
     },
-    [services, dbReady, checkModelMismatch]
+    [services, dbReady, checkModelMismatch, toast, t]
   )
 
   useEffect(() => {
