@@ -296,7 +296,7 @@ export const AssistantManagementScreen: React.FC = () => {
         <FlatList
           data={processedAssistants}
           renderItem={({ item }) =>
-            renderCard({ item, drag: () => {}, isActive: false, getIndex: () => null })
+            renderCard({ item, drag: () => {}, isActive: false, getIndex: () => undefined })
           }
           keyExtractor={(item) => item.id}
           style={{ flex: 1, backgroundColor: colors.bgApp }}

@@ -1,9 +1,9 @@
-import { Platform, PermissionsAndroid } from 'react-native'
+import { Platform, PermissionsAndroid, type Permission } from 'react-native'
 
 export async function ensureLanDiscoveryPermissions(): Promise<boolean> {
   if (Platform.OS !== 'android') return true
 
-  const permissions: string[] =
+  const permissions: Permission[] =
     Platform.Version >= 33
       ? [PermissionsAndroid.PERMISSIONS.NEARBY_WIFI_DEVICES]
       : [PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION]

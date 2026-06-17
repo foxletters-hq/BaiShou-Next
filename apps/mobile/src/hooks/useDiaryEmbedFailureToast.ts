@@ -22,7 +22,7 @@ export function useDiaryEmbedFailureToast(): void {
 
         const ragConfig =
           (await settingsManager.get<{ ragEnabled?: boolean }>('rag_config')) || {}
-        if (!isRagMemoryEnabled(ragConfig)) return
+        if (!isRagMemoryEnabled({ ragEnabled: ragConfig.ragEnabled ?? true })) return
 
         const now = Date.now()
         if (now - lastShownAtRef.current < DIARY_EMBED_FAILURE_TOAST_DEBOUNCE_MS) return

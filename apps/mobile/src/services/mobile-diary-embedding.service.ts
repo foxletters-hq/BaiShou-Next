@@ -45,7 +45,7 @@ const mobileDiaryEmbeddingCallback: IEmbeddingCallback = {
       logger.warn('[MobileDiaryEmbed] RAG 嵌入失败', e as Error)
       const ragConfig =
         (await deps.settingsManager.get<{ ragEnabled?: boolean }>('rag_config')) || {}
-      if (!isRagMemoryEnabled(ragConfig)) return
+      if (!isRagMemoryEnabled({ ragEnabled: ragConfig.ragEnabled ?? true })) return
       notifyDiaryEmbedFailure()
     }
   },

@@ -104,7 +104,7 @@ export async function embedDiaryEntry(
   params: EmbedDiaryEntryParams
 ): Promise<void> {
   const ragConfig = (await deps.settingsManager.get<{ ragEnabled?: boolean }>('rag_config')) || {}
-  if (!isRagMemoryEnabled(ragConfig)) return
+  if (!isRagMemoryEnabled({ ragEnabled: ragConfig.ragEnabled ?? true })) return
 
   const adapter = await resolveEmbeddingAdapter(deps)
   if (!adapter) return

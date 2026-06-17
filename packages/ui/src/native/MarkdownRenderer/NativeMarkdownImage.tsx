@@ -118,13 +118,14 @@ export const NativeMarkdownImage: React.FC<NativeMarkdownImageProps> = ({
   }
 
   const img = (
-    <Image
-      source={{ uri }}
-      style={imageStyle}
-      resizeMode="contain"
-      accessibilityLabel={alt}
-      pointerEvents="none"
-    />
+    <View pointerEvents="none">
+      <Image
+        source={{ uri }}
+        style={imageStyle}
+        resizeMode="contain"
+        accessibilityLabel={alt}
+      />
+    </View>
   )
 
   if (!onPress) return img

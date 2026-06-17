@@ -101,7 +101,7 @@ export const LanTransferScreen: React.FC = () => {
           let sizeBytes = 0
           try {
             const stat = await services?.fileSystem.stat(zipPath)
-            sizeBytes = stat.size
+            sizeBytes = stat.size ?? 0
           } catch {
             // ignore
           }
