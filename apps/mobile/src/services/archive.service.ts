@@ -3,8 +3,10 @@ import { Platform } from 'react-native'
 import { zip, unzip } from 'react-native-zip-archive'
 import {
   isNativeArchiveImportAvailable,
+  isNativeArchiveExportAvailable,
   nativeCopyArchiveExtractToRoot,
-  nativeUnzipArchive
+  nativeUnzipArchive,
+  nativeZipArchiveExport
 } from 'expo-baishou-server'
 
 import {
@@ -18,7 +20,7 @@ import {
   type IStoragePathService
 } from '@baishou/core-mobile'
 import { normalizeStoragePath, stripFileScheme } from './android-external-fs'
-import { getAppCacheDirectory, getAppDocumentDirectory } from './mobile-app-paths'
+import { getAppCacheDirectory } from './mobile-app-paths'
 import { joinStoragePath } from './mobile-storage-path.util'
 import { importUriToPath, normalizeImportSourceUri } from './mobile-uri-import'
 import {
@@ -54,80 +56,136 @@ export class MobileArchiveService implements IArchiveService {
     }
 
     const rootDir = normalizeStoragePath(await this.pathService.getRootDirectory())
-    const cacheDir = `${getAppCacheDirectory()}baishou_archive_prep_${Date.now()}`
-    await this.fileSystem.mkdir(cacheDir, { recursive: true })
+    const stagingDir = this.getArchiveExportStagingDir(rootDir)
+    await this.fileSystem.mkdir(stagingDir, { recursive: true })
+
+    const supplementDir = joinStoragePath(stagingDir, `supplement_${Date.now()}`)
+    await this.fileSystem.mkdir(supplementDir, { recursive: true })
 
     try {
-      try {
-        const rootStat = await this.fileSystem.stat(rootDir)
-        if (rootStat.isDirectory) {
-          await this.copyStorageRootForArchive(rootDir, cacheDir)
+      await this.buildArchiveSupplement(supplementDir)
+
+      const targetZip = joinStoragePath(stagingDir, `BaiShou_Backup_${Date.now()}.zip`)
+
+      if (Platform.OS === 'android') {
+        if (!isNativeArchiveExportAvailable()) {
+          throw new Error(
+            '全量备份需要新版原生导出模块。请执行 pnpm dev:mobile:clear 重新安装开发版（不可用 Expo Go）。'
+          )
         }
-      } catch (e) {
-        // 首次导入 / 外部根目录尚未创建时无本地数据可复制，仅打包 DB 与偏好即可
-        console.warn(
-          '[MobileArchive] Skip copying storage root for export (root missing or unreadable)',
-          e
-        )
-      }
 
-      try {
-        await this.packUserAvatarsForArchive(cacheDir)
-      } catch (e) {
-        console.warn('[MobileArchive] Failed to pack user avatars', e)
-      }
+        const result = await nativeZipArchiveExport(rootDir, supplementDir, targetZip)
+        await this.fileSystem.rm(supplementDir, { recursive: true, force: true }).catch(() => {})
 
-      try {
-        const configDir = `${cacheDir}/config`
-        await this.fileSystem.mkdir(configDir, { recursive: true })
-
-        const prefs = this.dbBridge
-          ? await this.dbBridge.exportDevicePreferences()
-          : await this.legacyExportAsyncStoragePrefs()
-
-        await this.fileSystem.writeFile(
-          `${configDir}/device_preferences.json`,
-          JSON.stringify(prefs, null, 2)
-        )
-      } catch (e) {
-        console.warn('[MobileArchive] Failed to dump device preferences', e)
-      }
-
-      if (this.dbBridge) {
-        const dbUri = await this.dbBridge.getAgentDatabaseUri()
-        if (dbUri && (await this.fileSystem.exists(dbUri))) {
-          const dbDir = `${cacheDir}/database`
-          await this.fileSystem.mkdir(dbDir, { recursive: true })
-          try {
-            await this.fileSystem.copyFile(dbUri, `${dbDir}/baishou_agent.db`)
-          } catch (e) {
-            const detail = e instanceof Error ? e.message : String(e)
-            throw new Error(`打包数据库失败：${detail}`)
-          }
+        if (result.entryCount <= 0) {
+          await this.fileSystem.unlink(targetZip).catch(() => {})
+          throw new Error('打包备份失败：未找到可导出的数据文件')
         }
-      }
 
-      const manifest = {
-        formatVersion: 1,
-        exportedAt: Date.now(),
-        platform: 'mobile'
-      }
-      await this.fileSystem.writeFile(`${cacheDir}/manifest.json`, JSON.stringify(manifest, null, 2))
-
-      const targetZip = `${getAppCacheDirectory()}BaiShou_Backup_${Date.now()}.zip`
-      try {
-        await zip(stripFileScheme(cacheDir), stripFileScheme(targetZip))
-        await this.fileSystem.rm(cacheDir, { recursive: true, force: true })
         return targetZip
-      } catch (err) {
-        console.error('[MobileArchive] ZIP operation failed', err)
-        const message = err instanceof Error ? err.message : String(err)
-        throw new Error(`打包备份失败：${message}`)
       }
+
+      await this.exportToTempFileDirectZip(rootDir, supplementDir, targetZip)
+      await this.fileSystem.rm(supplementDir, { recursive: true, force: true }).catch(() => {})
+      return targetZip
     } catch (err) {
-      await this.fileSystem.rm(cacheDir, { recursive: true, force: true }).catch(() => {})
+      await this.fileSystem.rm(supplementDir, { recursive: true, force: true }).catch(() => {})
       throw err
     }
+  }
+
+  private getArchiveExportStagingDir(rootDir: string): string {
+    return joinStoragePath(rootDir, '.baishou/export_staging')
+  }
+
+  /**
+   * 非 Android：直接从数据根目录挑选顶层条目打包，避免整库复制进应用沙盒。
+   */
+  private async exportToTempFileDirectZip(
+    rootDir: string,
+    supplementDir: string,
+    targetZip: string
+  ): Promise<void> {
+    const zipSources: string[] = []
+
+    try {
+      const rootStat = await this.fileSystem.stat(rootDir)
+      if (rootStat.isDirectory) {
+        const entries = await this.fileSystem.readdir(rootDir)
+        for (const itemName of entries) {
+          if (!itemName || itemName === '.' || itemName === '..') continue
+          if (FULL_BACKUP_EXCLUDED_ROOT_NAMES.has(itemName)) continue
+          if (itemName === 'snapshots' || itemName === 'temp' || itemName === '.snapshots') {
+            continue
+          }
+          zipSources.push(joinStoragePath(rootDir, itemName))
+        }
+      }
+    } catch (e) {
+      console.warn('[MobileArchive] Skip reading storage root for direct zip export', e)
+    }
+
+    zipSources.push(supplementDir)
+
+    if (zipSources.length === 0) {
+      throw new Error('打包备份失败：未找到可导出的数据文件')
+    }
+
+    try {
+      await zip(
+        zipSources.map((p) => stripFileScheme(p)),
+        stripFileScheme(targetZip)
+      )
+    } catch (err) {
+      console.error('[MobileArchive] Direct ZIP operation failed', err)
+      const message = err instanceof Error ? err.message : String(err)
+      throw new Error(`打包备份失败：${message}`)
+    }
+  }
+
+  private async buildArchiveSupplement(cacheDir: string): Promise<void> {
+    try {
+      await this.packUserAvatarsForArchive(cacheDir)
+    } catch (e) {
+      console.warn('[MobileArchive] Failed to pack user avatars', e)
+    }
+
+    try {
+      const configDir = `${cacheDir}/config`
+      await this.fileSystem.mkdir(configDir, { recursive: true })
+
+      const prefs = this.dbBridge
+        ? await this.dbBridge.exportDevicePreferences()
+        : await this.legacyExportAsyncStoragePrefs()
+
+      await this.fileSystem.writeFile(
+        `${configDir}/device_preferences.json`,
+        JSON.stringify(prefs, null, 2)
+      )
+    } catch (e) {
+      console.warn('[MobileArchive] Failed to dump device preferences', e)
+    }
+
+    if (this.dbBridge) {
+      const dbUri = await this.dbBridge.getAgentDatabaseUri()
+      if (dbUri && (await this.fileSystem.exists(dbUri))) {
+        const dbDir = `${cacheDir}/database`
+        await this.fileSystem.mkdir(dbDir, { recursive: true })
+        try {
+          await this.fileSystem.copyFile(dbUri, `${dbDir}/baishou_agent.db`)
+        } catch (e) {
+          const detail = e instanceof Error ? e.message : String(e)
+          throw new Error(`打包数据库失败：${detail}`)
+        }
+      }
+    }
+
+    const manifest = {
+      formatVersion: 1,
+      exportedAt: Date.now(),
+      platform: 'mobile'
+    }
+    await this.fileSystem.writeFile(`${cacheDir}/manifest.json`, JSON.stringify(manifest, null, 2))
   }
 
   public async exportToUserDevice(): Promise<string | null> {
@@ -381,15 +439,15 @@ export class MobileArchiveService implements IArchiveService {
     }
   }
 
-  private getSnapshotDir(): string {
-    return `${getAppDocumentDirectory()}snapshots`
+  private async getSnapshotDir(): Promise<string> {
+    return this.pathService.getSnapshotsDirectory()
   }
 
   public async createSnapshot(options?: { preservePaths?: string[] }): Promise<string | null> {
     const zipPath = await this.exportToTempFile()
     if (!zipPath) return null
 
-    const snapshotDir = this.getSnapshotDir()
+    const snapshotDir = await this.getSnapshotDir()
     await this.fileSystem.mkdir(snapshotDir, { recursive: true })
 
     const dt = new Date()
@@ -403,10 +461,14 @@ export class MobileArchiveService implements IArchiveService {
       dt.getSeconds().toString().padStart(2, '0'),
       dt.getMilliseconds().toString().padStart(3, '0')
     ].join('')
-    const finalSnapPath = `${snapshotDir}/snapshot_${ts}.zip`
+    const finalSnapPath = joinStoragePath(snapshotDir, `snapshot_${ts}.zip`)
 
-    await this.fileSystem.copyFile(zipPath, finalSnapPath)
-    await this.fileSystem.unlink(zipPath)
+    try {
+      await this.fileSystem.rename(zipPath, finalSnapPath)
+    } catch {
+      await this.fileSystem.copyFile(zipPath, finalSnapPath)
+      await this.fileSystem.unlink(zipPath).catch(() => {})
+    }
 
     const maxCount = this.dbBridge ? await this.dbBridge.getMaxSnapshotCount() : 5
     const preservePaths = [
@@ -418,7 +480,7 @@ export class MobileArchiveService implements IArchiveService {
   }
 
   public async listSnapshots(): Promise<import('@baishou/core-mobile').SnapshotMeta[]> {
-    const snapshotDir = this.getSnapshotDir()
+    const snapshotDir = await this.getSnapshotDir()
     if (!(await this.fileSystem.exists(snapshotDir))) return []
 
     const files = await this.fileSystem.readdir(snapshotDir)
@@ -443,7 +505,8 @@ export class MobileArchiveService implements IArchiveService {
 
   public async restoreFromSnapshot(filename: string): Promise<ImportResult> {
     this.assertSafeSnapshotFilename(filename)
-    const fullPath = `${this.getSnapshotDir()}/${filename}`
+    const snapshotDir = await this.getSnapshotDir()
+    const fullPath = joinStoragePath(snapshotDir, filename)
     if (!(await this.fileSystem.exists(fullPath))) {
       throw new Error('Snapshot not found')
     }
@@ -452,7 +515,8 @@ export class MobileArchiveService implements IArchiveService {
 
   public async deleteSnapshot(filename: string): Promise<void> {
     this.assertSafeSnapshotFilename(filename)
-    const fullPath = `${this.getSnapshotDir()}/${filename}`
+    const snapshotDir = await this.getSnapshotDir()
+    const fullPath = joinStoragePath(snapshotDir, filename)
     await this.fileSystem.unlink(fullPath)
   }
 
@@ -464,7 +528,7 @@ export class MobileArchiveService implements IArchiveService {
     if (maxCount < 0) return
 
     const preserve = collectSnapshotPreserveKeys(preservePaths)
-    const snapshotDir = normalizeStoragePath(this.getSnapshotDir())
+    const snapshotDir = normalizeStoragePath(await this.getSnapshotDir())
     let list = await this.listSnapshots()
 
     while (list.length > maxCount) {
@@ -558,29 +622,6 @@ export class MobileArchiveService implements IArchiveService {
     }
 
     await copyDir(avatarsSrc, avatarsDest)
-  }
-
-  private async copyStorageRootForArchive(sourceRoot: string, targetRoot: string): Promise<void> {
-    const entries = await this.fileSystem.readdir(sourceRoot)
-    for (const itemName of entries) {
-      if (!itemName || itemName === '.' || itemName === '..') continue
-      if (FULL_BACKUP_EXCLUDED_ROOT_NAMES.has(itemName)) continue
-      if (itemName === 'snapshots' || itemName === 'temp' || itemName === '.snapshots') continue
-
-      const fullSourcePath = `${sourceRoot}/${itemName}`
-      const fullTargetPath = `${targetRoot}/${itemName}`
-      const stat = await this.fileSystem.stat(fullSourcePath)
-      if (stat.isDirectory) {
-        await this.fileSystem.mkdir(fullTargetPath, { recursive: true })
-        await this.selectiveCopy(fullSourcePath, fullTargetPath)
-      } else if (
-        !itemName.endsWith('-wal') &&
-        !itemName.endsWith('-shm') &&
-        !itemName.endsWith('-journal')
-      ) {
-        await this.fileSystem.copyFile(fullSourcePath, fullTargetPath)
-      }
-    }
   }
 
   private async restoreUserAvatarsFromExtract(extractDir: string): Promise<void> {
