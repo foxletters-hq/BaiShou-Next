@@ -44,6 +44,8 @@ export type AgentDbRuntime = {
   assistantManager: AssistantManagerService
   settingsManager: SettingsManagerService
   summaryManager: SummaryManagerService
+  summaryGenerator: SummaryGeneratorService
+  missingSummaryDetector: MissingSummaryDetector
   summarySyncService: SummarySyncService
   sqlExecutor: ReturnType<typeof createSqlExecutorFromDrizzleDb>
   hsRepo: SqliteHybridSearchRepository
@@ -57,6 +59,49 @@ export type CreateAgentDbRuntimeOptions = {
   fileSystem: IFileSystem
   attachmentManager: MobileAttachmentManagerService
   diaryRepoAdapter: unknown
+}
+
+export type SummaryPipelineServices = {
+  summaryManager: SummaryManagerService
+  summaryGenerator: SummaryGeneratorService
+  missingSummaryDetector: MissingSummaryDetector
+  summarySyncService: SummarySyncService
+}
+
+/** 归档/快照恢复后须用新的 diaryRepoAdapter 重建总结管线，否则统计与缺失检测仍读旧 Shadow 索引 */
+export async function createSummaryPipelineServices(options: {
+  drizzleDb: AppDatabase
+  pathService: MobileStoragePathService
+  fileSystem: IFileSystem
+  settingsManager: SettingsManagerService
+  diaryRepoAdapter: unknown
+}): Promise<SummaryPipelineServices> {
+  const { drizzleDb, pathService, fileSystem, settingsManager, diaryRepoAdapter } = options
+  const summaryRepo = new SummaryRepositoryImpl(drizzleDb)
+  const summaryConfig = (await settingsManager.get<Record<string, unknown>>('summary_config')) || {}
+  const customTemplates = resolveSummaryTemplatesForGeneration(summaryConfig) as Record<string, string>
+  const promptLocale = ((summaryConfig?.promptLocale as string | undefined) ?? 'zh') as 'zh' | 'en'
+  const summaryAiClient = buildMobileSummaryAiClient(settingsManager)
+  const summaryFileService = new SummaryFileService(pathService, fileSystem)
+  const missingSummaryDetector = new MissingSummaryDetector(
+    diaryRepoAdapter as never,
+    summaryRepo as never
+  )
+  const summaryGenerator = new SummaryGeneratorService(
+    diaryRepoAdapter as never,
+    summaryRepo as never,
+    summaryAiClient as never,
+    customTemplates,
+    promptLocale
+  )
+  const summarySyncService = new SummarySyncService(
+    missingSummaryDetector,
+    summaryGenerator,
+    summaryRepo,
+    summaryFileService
+  )
+  const summaryManager = new SummaryManagerService(summaryRepo, summaryFileService, summarySyncService)
+  return { summaryManager, summaryGenerator, missingSummaryDetector, summarySyncService }
 }
 
 export async function createAgentDbRuntime(options: CreateAgentDbRuntimeOptions): Promise<AgentDbRuntime> {
@@ -90,30 +135,14 @@ export async function createAgentDbRuntime(options: CreateAgentDbRuntimeOptions)
   const settingsFileService = new SettingsFileService(pathService, fileSystem)
   const settingsManager = new SettingsManagerService(settingsRepo, settingsFileService)
 
-  const summaryConfig = (await settingsManager.get<Record<string, unknown>>('summary_config')) || {}
-  const customTemplates = resolveSummaryTemplatesForGeneration(summaryConfig) as Record<string, string>
-  const promptLocale = ((summaryConfig?.promptLocale as string | undefined) ?? 'zh') as 'zh' | 'en'
-  const summaryAiClient = buildMobileSummaryAiClient(settingsManager)
-
-  const summaryFileService = new SummaryFileService(pathService, fileSystem)
-  const missingSummaryDetector = new MissingSummaryDetector(
-    diaryRepoAdapter as never,
-    summaryRepo as never
-  )
-  const summaryGenerator = new SummaryGeneratorService(
-    diaryRepoAdapter as never,
-    summaryRepo as never,
-    summaryAiClient as never,
-    customTemplates,
-    promptLocale
-  )
-  const summarySyncService = new SummarySyncService(
-    missingSummaryDetector,
-    summaryGenerator,
-    summaryRepo,
-    summaryFileService
-  )
-  const summaryManager = new SummaryManagerService(summaryRepo, summaryFileService, summarySyncService)
+  const { summaryManager, summaryGenerator, missingSummaryDetector, summarySyncService } =
+    await createSummaryPipelineServices({
+      drizzleDb,
+      pathService,
+      fileSystem,
+      settingsManager,
+      diaryRepoAdapter
+    })
 
   const sqlExecutor = createSqlExecutorFromDrizzleDb(drizzleDb)
   const hsRepo = new SqliteHybridSearchRepository(sqlExecutor)
@@ -132,6 +161,8 @@ export async function createAgentDbRuntime(options: CreateAgentDbRuntimeOptions)
     assistantManager,
     settingsManager,
     summaryManager,
+    summaryGenerator,
+    missingSummaryDetector,
     summarySyncService,
     sqlExecutor,
     hsRepo,

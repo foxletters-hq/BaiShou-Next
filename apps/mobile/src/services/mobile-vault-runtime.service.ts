@@ -107,6 +107,7 @@ export function createUnavailableDiaryService(): DiaryService {
   return {
     listAll: emptyList,
     listFiltered: emptyList,
+    count: emptyCount,
     countFiltered: emptyCount,
     search: emptyList,
     searchPage: async () => ({ items: [], hasMore: false }),
@@ -538,6 +539,30 @@ function buildBootstrapDeps(
   }
 }
 
+/** 归档恢复 / summary 管线重建后，刷新 bootstrapper 与总结文件 watcher 的绑定 */
+export function registerVaultBootstrapDeps(
+  diaryStack: VaultBoundDiaryStack,
+  bootstrapDeps: Omit<
+    MobileBootstrapperDeps,
+    | 'shadowIndexSyncService'
+    | 'sessionManager'
+    | 'assistantManager'
+    | 'settingsManager'
+    | 'summarySyncService'
+  > & {
+    sessionManager: SessionManagerService
+    assistantManager: AssistantManagerService
+    settingsManager: SettingsManagerService
+    summarySyncService: SummarySyncService
+  }
+): MobileBootstrapperDeps {
+  const deps = buildBootstrapDeps(diaryStack, bootstrapDeps)
+  mobileDataBootstrapper.registerDeps(deps)
+  summaryFileWatcher.stop()
+  summaryFileWatcher.start(deps.summarySyncService)
+  return deps
+}
+
 async function shouldDeferVaultResync(
   deps: {
     diaryStack: VaultBoundDiaryStack
@@ -571,7 +596,25 @@ async function shouldDeferVaultResync(
   return true
 }
 
-/** 归档恢复后：若当前活跃工作区磁盘无日记，切换到日记最多的工作区 */
+/** 归档恢复后：若当前活跃工作区磁盘数据偏少，切换到日记+总结总量最多的工作区 */
+async function countArchiveMarkdownInTree(
+  fileSystem: IFileSystem,
+  vaultPath: string
+): Promise<number> {
+  let count = 0
+  for (const root of ['Archives', 'Summaries']) {
+    const baseDir = path.join(vaultPath, root)
+    if (!(await fileSystem.exists(baseDir))) continue
+    for (const typeDir of ['Weekly', 'Monthly', 'Quarterly', 'Yearly']) {
+      const dir = path.join(baseDir, typeDir)
+      if (!(await fileSystem.exists(dir))) continue
+      const entries = await fileSystem.readdir(dir)
+      count += entries.filter((name) => name.endsWith('.md')).length
+    }
+  }
+  return count
+}
+
 async function preferActiveVaultWithJournalsOnDisk(deps: {
   vaultService: VaultService
   fileSystem: IFileSystem
@@ -579,26 +622,32 @@ async function preferActiveVaultWithJournalsOnDisk(deps: {
   const vaults = deps.vaultService.getAllVaults()
   if (vaults.length === 0) return
 
-  const scored: Array<{ name: string; count: number }> = []
+  const scored: Array<{ name: string; score: number; journals: number; archives: number }> = []
   for (const vault of vaults) {
     const journalsDir = path.join(vault.path, 'Journals')
-    const count = await countJournalMarkdownInTree(deps.fileSystem, journalsDir)
-    scored.push({ name: vault.name, count })
+    const journalCount = await countJournalMarkdownInTree(deps.fileSystem, journalsDir)
+    const archiveCount = await countArchiveMarkdownInTree(deps.fileSystem, vault.path)
+    scored.push({
+      name: vault.name,
+      score: journalCount + archiveCount,
+      journals: journalCount,
+      archives: archiveCount
+    })
   }
 
-  scored.sort((a, b) => b.count - a.count)
+  scored.sort((a, b) => b.score - a.score)
   const best = scored[0]
-  if (!best || best.count === 0) return
+  if (!best || best.score === 0) return
 
   const active = deps.vaultService.getActiveVault()
-  const activeCount = active
-    ? (scored.find((item) => item.name === active.name)?.count ?? 0)
+  const activeScore = active
+    ? (scored.find((item) => item.name === active.name)?.score ?? 0)
     : 0
 
-  if (active && activeCount >= best.count) return
+  if (active && activeScore >= best.score) return
 
   logger.info(
-    `[VaultRuntime] Switching active vault to "${best.name}" (${best.count} journals on disk; previous had ${activeCount})`
+    `[VaultRuntime] Switching active vault to "${best.name}" (${best.journals} journals, ${best.archives} summaries on disk; previous score ${activeScore})`
   )
   await deps.vaultService.switchVault(best.name)
 }

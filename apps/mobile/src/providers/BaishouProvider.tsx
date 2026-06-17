@@ -8,6 +8,7 @@ import {
 } from '@baishou/database/expo'
 import {
   createAgentDbRuntime,
+  createSummaryPipelineServices,
   type AgentDbRuntime
 } from '../services/mobile-agent-db-runtime'
 import {
@@ -97,6 +98,7 @@ import {
   initVaultLayer,
   quiesceStorageForFileCopy,
   rebootstrapAfterStorageRootChange,
+  registerVaultBootstrapDeps,
   resumeStorageAfterFileCopy,
   switchVaultRuntime,
   deleteVaultWithShadowCleanup,
@@ -570,6 +572,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           assistantManager,
           settingsManager,
           summaryManager,
+          summaryGenerator,
+          missingSummaryDetector,
           summarySyncService,
           sqlExecutor,
           hsRepo,
@@ -671,6 +675,30 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               ctx.pathService,
               ctx.fileSystem
             )
+
+            const summaryPipeline = await createSummaryPipelineServices({
+              drizzleDb: runtime.drizzleDb,
+              pathService: ctx.pathService,
+              fileSystem: ctx.fileSystem,
+              settingsManager: runtime.settingsManager,
+              diaryRepoAdapter: stack.diaryRepoAdapter
+            })
+            ctx.bootstrapDeps.summarySyncService = summaryPipeline.summarySyncService
+            ctx.watcherDeps.summarySyncService = summaryPipeline.summarySyncService
+            registerVaultBootstrapDeps(stack, ctx.bootstrapDeps)
+            agentDbRuntimeRef.current = {
+              ...runtime,
+              summaryManager: summaryPipeline.summaryManager,
+              summaryGenerator: summaryPipeline.summaryGenerator,
+              missingSummaryDetector: summaryPipeline.missingSummaryDetector,
+              summarySyncService: summaryPipeline.summarySyncService
+            }
+            try {
+              await summaryPipeline.summarySyncService.fullScanArchives()
+            } catch (e) {
+              logger.warn('[BaishouProvider] summary fullScanArchives after archive restore failed:', e as Error)
+            }
+
             const nextRagDeps = {
               settingsManager: runtime.settingsManager,
               diaryService: stack.diaryService,
@@ -685,11 +713,14 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               setValue((prev) => ({
                 ...prev,
                 vaultRevision: prev.vaultRevision + 1,
+                archiveRestoreEpoch: prev.archiveRestoreEpoch + 1,
                 services: prev.services
                   ? {
                       ...prev.services,
                       ragService: ctx.ragServiceRef.current,
-                      diaryService: stack.diaryService
+                      summaryManager: summaryPipeline.summaryManager,
+                      summaryGenerator: summaryPipeline.summaryGenerator,
+                      missingSummaryDetector: summaryPipeline.missingSummaryDetector
                     }
                   : prev.services
               }))
@@ -1105,6 +1136,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                     assistantManager: newRuntime.assistantManager,
                     settingsManager: newRuntime.settingsManager,
                     summaryManager: newRuntime.summaryManager,
+                    summaryGenerator: newRuntime.summaryGenerator,
+                    missingSummaryDetector: newRuntime.missingSummaryDetector,
                     ragService: ctx.ragServiceRef.current,
                     mobileMcpService: mobileMcpService!,
                     incrementalSyncService: nextIncrementalSyncService,
