@@ -6,3 +6,6 @@ export const FLUTTER_LEGACY_MIGRATED_SOURCE_KEY =
 /** 本机已完成旧版 Flutter → 新版目录迁移（与 installInstanceId 绑定） */
 export const FLUTTER_LEGACY_MIGRATION_COMPLETED_KEY =
   '@baishou/flutter_legacy_migration_completed'
+/** 全量恢复替换数据库后，待下次启动写入的 cloud_sync_config */
+export const PENDING_RESTORE_CLOUD_SYNC_CONFIG_KEY =
+  '@baishou/pending_restore_cloud_sync_config'

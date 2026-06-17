@@ -30,6 +30,23 @@ export interface LegacySyncTarget {
   isEnabled: boolean
 }
 
+/** 用于判断是否需要重新拉取云端列表（仅含连接相关字段） */
+export function getCloudSyncFetchKey(config: SyncConfig): string {
+  return JSON.stringify({
+    target: config.target,
+    webdavUrl: config.webdavUrl,
+    webdavPath: config.webdavPath,
+    webdavUsername: config.webdavUsername,
+    webdavPassword: config.webdavPassword,
+    s3Endpoint: config.s3Endpoint,
+    s3Region: config.s3Region,
+    s3Bucket: config.s3Bucket,
+    s3Path: config.s3Path,
+    s3AccessKey: config.s3AccessKey,
+    s3SecretKey: config.s3SecretKey
+  })
+}
+
 export function migrateLegacySyncTargets(targets: LegacySyncTarget[]): SyncConfig | null {
   const active = targets.find((t) => t.isEnabled) ?? targets[0]
   if (!active) return null

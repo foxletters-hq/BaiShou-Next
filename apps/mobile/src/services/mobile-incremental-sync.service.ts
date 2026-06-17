@@ -20,6 +20,7 @@ import {
 import type { MobileDataBootstrapper } from './mobile-bootstrapper.service'
 import { invalidateAllAvatarDisplayCaches } from '../lib/assistant-avatar-display.util'
 import { invalidateUserAvatarDisplayCache } from '../lib/user-avatar-display.util'
+import { reconcileUserAvatarProfileAfterStorageChange } from '../lib/user-avatar-reconcile.util'
 
 export type IncrementalSyncProgress = MobileIncrementalProgress
 
@@ -219,6 +220,11 @@ export class MobileIncrementalSyncService {
             if (this.bootstrapper) {
               await this.bootstrapper.resyncFromDisk()
             }
+            await reconcileUserAvatarProfileAfterStorageChange(
+              this.settingsManager,
+              this.pathService,
+              this.fileSystem
+            )
           } catch (e: unknown) {
             console.warn('[MobileIncrementalSync] afterSyncComplete failed:', e)
           } finally {

@@ -11,6 +11,7 @@ import {
   buildS3ListUrl,
   buildS3ObjectUrl,
   fetchAllS3ListPages,
+  isRemoteCloudSyncConfigured,
   s3FetchHeaders,
   signS3Request
 } from '@baishou/shared'
@@ -411,6 +412,7 @@ export class MobileCloudSyncService {
 
   async listRecords(config: SyncConfig): Promise<SyncRecord[]> {
     if (config.target === 'local') return []
+    if (!isRemoteCloudSyncConfigured(config)) return []
     const client = this.createClient(config)
     return await client.listFiles()
   }
@@ -418,7 +420,7 @@ export class MobileCloudSyncService {
   async restoreFromCloud(
     config: SyncConfig,
     remoteFilename: string
-  ): Promise<{ success: boolean; message: string; needsRestart?: boolean }> {
+  ): Promise<{ success: boolean; message: string }> {
     try {
       const client = this.createClient(config)
       const tempPath = `${getAppCacheDirectory()}restore_${Date.now()}.zip`
@@ -439,8 +441,7 @@ export class MobileCloudSyncService {
         const countMsg = result.fileCount > 0 ? `，共还原 ${result.fileCount} 个文件` : ''
         return {
           success: true,
-          message: `云端恢复成功${countMsg}`,
-          needsRestart: result.needsRestart
+          message: `云端恢复成功${countMsg}`
         }
       } else {
         return { success: false, message: '导入完成但未检测到文件' }

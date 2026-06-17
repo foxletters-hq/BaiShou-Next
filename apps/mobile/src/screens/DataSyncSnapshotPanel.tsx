@@ -17,6 +17,17 @@ import {
   RestoreBlockingOverlay
 } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
+import { applyArchiveImportFeedback, isArchiveImportSuccessful } from '../utils/archive-restore-feedback'
+import {
+  parseSnapshotCreatedAtFromFilename,
+  shouldRefreshVaultAfterArchiveImport
+} from '../services/archive-guards.util'
+
+const formatSnapshotTime = (item: { filename: string; createdAt: number }): string => {
+  const parsed = parseSnapshotCreatedAtFromFilename(item.filename)
+  const date = new Date(parsed ?? item.createdAt)
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString()
+}
 
 const formatSize = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} B`
@@ -29,7 +40,7 @@ export const DataSyncSnapshotPanel: React.FC = () => {
   const { colors } = useNativeTheme()
   const toast = useNativeToast()
   const dialog = useDialog()
-  const { services, dbReady } = useBaishou()
+  const { services, dbReady, notifyArchiveRestoreComplete } = useBaishou()
   const archiveService = services?.archiveService
 
   const [snapshots, setSnapshots] = useState<SnapshotMeta[]>([])
@@ -69,8 +80,15 @@ export const DataSyncSnapshotPanel: React.FC = () => {
       if (!confirmed) return
       setIsRestoring(true)
       try {
-        await archiveService.restoreFromSnapshot(item.filename)
-        toast.showSuccess(t('data_sync.restore_success'))
+        const result = await archiveService.restoreFromSnapshot(item.filename)
+        applyArchiveImportFeedback(result, t, toast, (restored) => {
+          if (shouldRefreshVaultAfterArchiveImport(restored)) {
+            notifyArchiveRestoreComplete(restored)
+          }
+        })
+        if (isArchiveImportSuccessful(result)) {
+          void loadSnapshots()
+        }
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e)
         toast.showError(msg || t('data_sync.restore_failed'))
@@ -133,7 +151,7 @@ export const DataSyncSnapshotPanel: React.FC = () => {
                     {item.filename}
                   </Text>
                   <Text style={[styles.meta, { color: colors.textSecondary }]}>
-                    {new Date(item.createdAt).toLocaleString()} · {formatSize(item.size)}
+                    {formatSnapshotTime(item)} · {formatSize(item.size)}
                   </Text>
                 </View>
                 <TouchableOpacity onPress={() => handleRestore(item)} style={styles.actionBtn}>

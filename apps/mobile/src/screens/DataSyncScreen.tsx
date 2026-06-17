@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   View,
   Text,
@@ -20,7 +20,7 @@ import {
   RestoreBlockingOverlay,
   BackupScopeList
 } from '@baishou/ui/native'
-import { logger } from '@baishou/shared'
+import { logger, isRemoteCloudSyncConfigured } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
 import { useTranslation } from 'react-i18next'
 import { SyncConfig, SyncRecord } from '@baishou/core-mobile'
@@ -29,6 +29,7 @@ import { StackScreenLayout } from '../components/StackScreenLayout'
 import { getStackScreenChrome } from '../components/stackScreenChrome'
 import {
   DEFAULT_SYNC_CONFIG,
+  getCloudSyncFetchKey,
   migrateLegacySyncTargets,
   type LegacySyncTarget
 } from './dataSyncDefaults'
@@ -36,6 +37,7 @@ import { DataSyncCountModal } from './DataSyncCountModal'
 import { DataSyncConfigSheet } from './DataSyncConfigSheet'
 import { useArchiveImportExport } from '../hooks/useArchiveImportExport'
 import { ArchiveLocalBackupSection } from './DataSyncScreen/ArchiveLocalBackupSection'
+import { applyArchiveImportFeedback } from '../utils/archive-restore-feedback'
 
 export const DataSyncScreen: React.FC = () => {
   const { t } = useTranslation()
@@ -43,7 +45,7 @@ export const DataSyncScreen: React.FC = () => {
   const { colors, tokens, maxModalWidth, isDark } = useNativeTheme()
   const toast = useNativeToast()
   const dialog = useDialog()
-  const { services, dbReady } = useBaishou()
+  const { services, dbReady, notifyArchiveRestoreComplete } = useBaishou()
 
   const [syncConfig, setSyncConfig] = useState<SyncConfig>(DEFAULT_SYNC_CONFIG)
   const [configDraft, setConfigDraft] = useState<SyncConfig>(DEFAULT_SYNC_CONFIG)
@@ -52,6 +54,14 @@ export const DataSyncScreen: React.FC = () => {
   const [cloudRecords, setCloudRecords] = useState<SyncRecord[]>([])
   const [recordsLoading, setRecordsLoading] = useState(false)
   const [recordsRefreshing, setRecordsRefreshing] = useState(false)
+  const [recordsFetchError, setRecordsFetchError] = useState<string | null>(null)
+  const toastRef = useRef(toast)
+  const tRef = useRef(t)
+  const fetchInFlightRef = useRef(false)
+  const lastFetchedConfigKeyRef = useRef<string | null>(null)
+  const recordsFetchErrorRef = useRef<string | null>(null)
+  toastRef.current = toast
+  tRef.current = t
   const [isSyncing, setIsSyncing] = useState(false)
   const [isRestoring, setIsRestoring] = useState(false)
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false)
@@ -136,33 +146,87 @@ export const DataSyncScreen: React.FC = () => {
     void loadConfig()
   }, [loadConfig])
 
-  const fetchCloudRecords = useCallback(async () => {
-    if (!cloudSyncService || syncConfig.target === 'local') {
-      setCloudRecords([])
-      return
-    }
-    setRecordsLoading(true)
-    try {
-      const records = await cloudSyncService.listRecords(syncConfig)
-      setCloudRecords(records)
-    } catch (e) {
-      logger.error('加载云端记录失败', e instanceof Error ? e : String(e))
-      toast.showError(t('data_sync.load_records_failed'))
-    } finally {
-      setRecordsLoading(false)
-      setIsMultiSelectMode(false)
-      setSelectedRecords(new Set())
-    }
-  }, [cloudSyncService, syncConfig, t, toast])
+  const syncConfigKey = useMemo(() => getCloudSyncFetchKey(syncConfig), [syncConfig])
+
+  const fetchCloudRecords = useCallback(
+    async (options?: { force?: boolean }) => {
+      if (!cloudSyncService || syncConfig.target === 'local') {
+        setCloudRecords([])
+        setRecordsFetchError(null)
+        recordsFetchErrorRef.current = null
+        lastFetchedConfigKeyRef.current = null
+        return
+      }
+      if (!isRemoteCloudSyncConfigured(syncConfig)) {
+        setCloudRecords([])
+        setRecordsFetchError(null)
+        recordsFetchErrorRef.current = null
+        lastFetchedConfigKeyRef.current = null
+        return
+      }
+      if (fetchInFlightRef.current) return
+      if (
+        !options?.force &&
+        lastFetchedConfigKeyRef.current === syncConfigKey &&
+        recordsFetchErrorRef.current
+      ) {
+        return
+      }
+
+      fetchInFlightRef.current = true
+      setRecordsLoading(true)
+      try {
+        const records = await cloudSyncService.listRecords(syncConfig)
+        setCloudRecords(records)
+        setRecordsFetchError(null)
+        recordsFetchErrorRef.current = null
+        lastFetchedConfigKeyRef.current = syncConfigKey
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        setCloudRecords([])
+        lastFetchedConfigKeyRef.current = syncConfigKey
+
+        if (msg.includes('403')) {
+          logger.warn('加载云端记录失败（S3 权限或密钥错误）', msg)
+          const errorText = tRef.current(
+            'data_sync.s3_list_forbidden',
+            'S3 列表失败：请检查 Access Key、Secret 与桶策略（需 s3:ListBucket / 列举前缀对象权限）'
+          )
+          recordsFetchErrorRef.current = errorText
+          setRecordsFetchError(errorText)
+          if (options?.force) {
+            toastRef.current.showError(errorText)
+          }
+        } else {
+          logger.error('加载云端记录失败', e instanceof Error ? e : String(e))
+          const errorText = tRef.current('data_sync.load_records_failed')
+          recordsFetchErrorRef.current = errorText
+          setRecordsFetchError(errorText)
+          if (options?.force) {
+            toastRef.current.showError(errorText)
+          }
+        }
+      } finally {
+        fetchInFlightRef.current = false
+        setRecordsLoading(false)
+        setIsMultiSelectMode(false)
+        setSelectedRecords(new Set())
+      }
+    },
+    [cloudSyncService, syncConfig, syncConfigKey]
+  )
 
   useEffect(() => {
     if (!configLoaded || backupTab !== 'cloud') return
+    if (lastFetchedConfigKeyRef.current === syncConfigKey) return
     void fetchCloudRecords()
-  }, [configLoaded, backupTab, syncConfig, fetchCloudRecords])
+    // 仅随配置指纹变化自动拉取；fetchCloudRecords 通过闭包读取最新状态，避免 toast 等依赖引发重试循环
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [configLoaded, backupTab, syncConfigKey])
 
   const handleRefreshRecords = useCallback(async () => {
     setRecordsRefreshing(true)
-    await fetchCloudRecords()
+    await fetchCloudRecords({ force: true })
     setRecordsRefreshing(false)
   }, [fetchCloudRecords])
 
@@ -184,7 +248,7 @@ export const DataSyncScreen: React.FC = () => {
 
   const openCountModal = () => {
     if (backupTab === 'snapshot') {
-      setTempCount(syncConfig.maxSnapshotCount === -1 ? 5 : (syncConfig.maxSnapshotCount ?? 5))
+      setTempCount(syncConfig.maxSnapshotCount ?? 5)
     } else {
       setTempCount(syncConfig.maxBackupCount === -1 ? 20 : syncConfig.maxBackupCount)
     }
@@ -211,7 +275,10 @@ export const DataSyncScreen: React.FC = () => {
     await persistConfig(configDraft)
     setShowConfigForm(false)
     toast.showSuccess(t('data_sync.config_saved', '配置已保存'))
-    await fetchCloudRecords()
+    lastFetchedConfigKeyRef.current = null
+    recordsFetchErrorRef.current = null
+    setRecordsFetchError(null)
+    await fetchCloudRecords({ force: true })
   }
 
   const handleRestoreRecord = useCallback(
@@ -224,15 +291,19 @@ export const DataSyncScreen: React.FC = () => {
       setIsRestoring(true)
       try {
         const result = await cloudSyncService.restoreFromCloud(syncConfig, filename)
-        if (result.needsRestart) {
-          toast.showWarning(
-            t(
-              'settings.restore_success_restart',
-              '数据已恢复，请完全退出并重新打开应用以加载数据库。'
-            )
+        if (result.success) {
+          applyArchiveImportFeedback(
+            {
+              fileCount: -1,
+              profileRestored: true
+            },
+            t,
+            toast,
+            notifyArchiveRestoreComplete,
+            { successMessage: result.message }
           )
         } else {
-          toast.showSuccess(result.message)
+          toast.showError(result.message)
         }
       } catch (e) {
         logger.error('云端恢复失败', e instanceof Error ? e : String(e))
@@ -241,7 +312,7 @@ export const DataSyncScreen: React.FC = () => {
         setIsRestoring(false)
       }
     },
-    [cloudSyncService, dialog, syncConfig, t, toast]
+    [cloudSyncService, dialog, notifyArchiveRestoreComplete, syncConfig, t, toast]
   )
 
   const handleDeleteCloudRecord = useCallback(
@@ -344,7 +415,7 @@ export const DataSyncScreen: React.FC = () => {
       const result = await cloudSyncService.syncNow(syncConfig)
       if (result.success) {
         toast.showSuccess(result.message)
-        await fetchCloudRecords()
+        await fetchCloudRecords({ force: true })
       } else {
         toast.showError(result.message)
       }
@@ -660,7 +731,7 @@ export const DataSyncScreen: React.FC = () => {
                 )}
                 {backupTab === 'cloud' && (
                   <TouchableOpacity
-                    onPress={() => void fetchCloudRecords()}
+                    onPress={() => void fetchCloudRecords({ force: true })}
                     disabled={recordsLoading}
                     hitSlop={8}
                   >
@@ -695,6 +766,40 @@ export const DataSyncScreen: React.FC = () => {
                   >
                     {t('data_sync.loading_records', '正在连线获取云端记录...')}
                   </Text>
+                </View>
+              ) : recordsFetchError ? (
+                <View style={styles.emptyContainer}>
+                  <MaterialIcons
+                    name="cloud-off"
+                    size={48}
+                    color={colors.error}
+                    style={{ opacity: 0.7 }}
+                  />
+                  <Text style={[styles.emptyText, { color: colors.textPrimary }]}>
+                    {recordsFetchError}
+                  </Text>
+                  <Text style={[styles.emptySubText, { color: colors.textSecondary }]}>
+                    {t(
+                      'data_sync.cloud_fetch_fallback_hint',
+                      '请检查备份设置中的连接信息，或稍后重试。'
+                    )}
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.retryBtn, { borderColor: colors.primary }]}
+                    onPress={() => void fetchCloudRecords({ force: true })}
+                    disabled={recordsLoading}
+                  >
+                    <MaterialIcons name="refresh" size={16} color={colors.primary} />
+                    <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '600' }}>
+                      {t('common.retry', '重试')}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={openSettings} style={styles.settingsLinkBtn}>
+                    <MaterialIcons name="settings" size={16} color={colors.textSecondary} />
+                    <Text style={{ color: colors.textSecondary, fontSize: 14, fontWeight: '600' }}>
+                      {t('data_sync.sync_settings_button', '备份设置')}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               ) : cloudRecords.length === 0 ? (
                 <View style={styles.emptyContainer}>
@@ -731,12 +836,26 @@ export const DataSyncScreen: React.FC = () => {
                     />
                   }
                 >
-                  {cloudRecords.map((record) => (
+                  <View
+                    style={[
+                      styles.recordList,
+                      {
+                        backgroundColor: colors.bgSurface,
+                        borderColor: colors.borderSubtle
+                      }
+                    ]}
+                  >
+                    {cloudRecords.map((record, index) => (
                     <View
                       key={record.filename}
                       style={[
                         styles.recordItem,
-                        { backgroundColor: colors.bgSurfaceHighest },
+                        {
+                          backgroundColor: colors.bgSurface,
+                          borderBottomColor: colors.borderSubtle,
+                          borderBottomWidth:
+                            index < cloudRecords.length - 1 ? StyleSheet.hairlineWidth : 0
+                        },
                         selectedRecords.has(record.filename) && {
                           borderColor: colors.primary,
                           borderWidth: 2
@@ -871,7 +990,8 @@ export const DataSyncScreen: React.FC = () => {
                         </>
                       )}
                     </View>
-                  ))}
+                    ))}
+                  </View>
                 </ScrollView>
               )}
             </View>
@@ -957,12 +1077,33 @@ const styles = StyleSheet.create({
   emptyContainer: { alignItems: 'center', padding: 32, gap: 8 },
   emptyText: { fontSize: 15, fontWeight: '600', textAlign: 'center' },
   emptySubText: { fontSize: 13, textAlign: 'center', lineHeight: 20, maxWidth: 320 },
+  retryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1
+  },
+  settingsLinkBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 8
+  },
   loadingContainer: { alignItems: 'center', padding: 32 },
   loadingText: { fontSize: 14 },
+  recordList: {
+    borderRadius: 10,
+    borderWidth: 1,
+    overflow: 'hidden'
+  },
   recordItem: {
     padding: 12,
-    borderRadius: 10,
-    marginBottom: 8,
     flexDirection: 'row',
     alignItems: 'center'
   },

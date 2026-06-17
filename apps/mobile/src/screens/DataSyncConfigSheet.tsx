@@ -36,6 +36,34 @@ export const DataSyncConfigSheet: React.FC<DataSyncConfigSheetProps> = ({
 
   const setTarget = (target: SyncConfig['target']) => onChange({ ...config, target })
 
+  const renderSecretField = (
+    label: string,
+    value: string,
+    onChangeText: (text: string) => void
+  ) => (
+    <>
+      <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>{label}</Text>
+      <View style={styles.passwordRow}>
+        <View style={styles.passwordInputWrapper}>
+          <Input
+            value={value}
+            onChangeText={onChangeText}
+            secureTextEntry={!showPassword}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </View>
+        <TouchableOpacity onPress={onTogglePassword} style={styles.eyeBtn} accessibilityRole="button">
+          <MaterialIcons
+            name={showPassword ? 'visibility' : 'visibility-off'}
+            size={22}
+            color={colors.textSecondary}
+          />
+        </TouchableOpacity>
+      </View>
+    </>
+  )
+
   const renderTargetCard = (
     target: SyncConfig['target'],
     icon: keyof typeof MaterialIcons.glyphMap,
@@ -168,25 +196,11 @@ export const DataSyncConfigSheet: React.FC<DataSyncConfigSheetProps> = ({
                 onChangeText={(v) => onChange({ ...config, webdavUsername: v })}
                 autoCapitalize="none"
               />
-              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                {t('data_sync.webdav_password_label', 'Password 密码')}
-              </Text>
-              <View style={styles.passwordRow}>
-                <Input
-                  value={config.webdavPassword}
-                  onChangeText={(v) => onChange({ ...config, webdavPassword: v })}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                  style={{ flex: 1 }}
-                />
-                <TouchableOpacity onPress={onTogglePassword} style={styles.eyeBtn}>
-                  <MaterialIcons
-                    name={showPassword ? 'visibility' : 'visibility-off'}
-                    size={22}
-                    color={colors.textSecondary}
-                  />
-                </TouchableOpacity>
-              </View>
+              {renderSecretField(
+                t('data_sync.webdav_password_label', 'Password 密码'),
+                config.webdavPassword,
+                (webdavPassword) => onChange({ ...config, webdavPassword })
+              )}
             </View>
           )}
 
@@ -234,25 +248,11 @@ export const DataSyncConfigSheet: React.FC<DataSyncConfigSheetProps> = ({
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
               />
-              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                {t('data_sync.s3_sk_label', 'Secret Key (SK)')}
-              </Text>
-              <View style={styles.passwordRow}>
-                <Input
-                  value={config.s3SecretKey}
-                  onChangeText={(v) => onChange({ ...config, s3SecretKey: v })}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                  style={{ flex: 1 }}
-                />
-                <TouchableOpacity onPress={onTogglePassword} style={styles.eyeBtn}>
-                  <MaterialIcons
-                    name={showPassword ? 'visibility' : 'visibility-off'}
-                    size={22}
-                    color={colors.textSecondary}
-                  />
-                </TouchableOpacity>
-              </View>
+              {renderSecretField(
+                t('data_sync.s3_sk_label', 'Secret Key (SK)'),
+                config.s3SecretKey,
+                (s3SecretKey) => onChange({ ...config, s3SecretKey })
+              )}
             </View>
           )}
 
@@ -316,6 +316,7 @@ const styles = StyleSheet.create({
   form: { gap: 4 },
   fieldLabel: { fontSize: 13, fontWeight: '600', marginTop: 10, marginBottom: 6 },
   passwordRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  passwordInputWrapper: { flex: 1 },
   eyeBtn: { padding: 8 },
   saveBtn: {
     marginTop: 28,
