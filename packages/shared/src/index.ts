@@ -44,6 +44,7 @@ export * from './utils/mcp-auth.util'
 export { signS3Request, s3FetchHeaders } from './utils/aws-v4-sign'
 export * from './utils/s3-list.util'
 export * from './utils/s3-url'
+export * from './utils/cloud-sync-config.util'
 export {
   isIncrementalSyncReady,
   getRootIncrementalSyncConfigPath,
