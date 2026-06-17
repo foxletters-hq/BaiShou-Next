@@ -4,7 +4,7 @@
  * 产物汇总目录见脚本结束时的输出。
  *
  * 注意：Windows 安装包需在 Windows（或配置好 wine 的 Linux）上才能成功；
- * WSL 下若 build:win 失败，可用 git tag 触发 CI，或在 Windows 本机单独执行 pnpm release:desktop:win。
+ * WSL 下若 build:win 失败，请在 Windows 本机单独执行 pnpm release:desktop:win。
  */
 import { spawnSync } from 'node:child_process'
 import { existsSync, readdirSync } from 'node:fs'
@@ -49,7 +49,7 @@ for (const [label, cmd, args] of steps) {
     failed.push(label)
     if (label === 'Windows 安装包' && process.platform !== 'win32') {
       console.error(
-        '\n⚠️  Windows 包需在 Windows 上执行（需 Inno Setup 6）；Android/Linux 若已成功可忽略，或改在 Windows 执行 pnpm release:desktop:win，或推送 git tag 走 CI。'
+        '\n⚠️  Windows 包需在 Windows 上执行（需 Inno Setup 6）；Android/Linux 若已成功可忽略，改在 Windows 执行 pnpm release:desktop:win。'
       )
     }
   }
