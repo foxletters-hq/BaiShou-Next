@@ -7,11 +7,12 @@ import { createNodeFileSystem } from '../../fs/create-node-file-system'
 import { exportLegacyRuntimeArtifacts } from '../legacy-runtime-artifacts.shared'
 
 async function executeRawSql(
-  client: Database.Database,
+  client: unknown,
   statement: string,
   args: unknown[] = []
 ): Promise<{ rows: Record<string, unknown>[] }> {
-  const stmt = client.prepare(statement)
+  const db = client as Database.Database
+  const stmt = db.prepare(statement)
   const rows = (args.length > 0 ? stmt.all(...args) : stmt.all()) as Record<string, unknown>[]
   return { rows }
 }

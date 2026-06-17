@@ -10,11 +10,12 @@ import { MigrationTargetStoragePathService } from '../migration-target-path.serv
 import { migrateLegacyArchiveContents } from '../legacy-archive-migration.shared'
 
 async function executeRawSql(
-  client: Database.Database,
+  client: unknown,
   statement: string,
   args: unknown[] = []
 ): Promise<{ rows: Record<string, unknown>[] }> {
-  const stmt = client.prepare(statement)
+  const db = client as Database.Database
+  const stmt = db.prepare(statement)
   const head = statement.trim().split(/\s+/)[0]?.toUpperCase()
   if (head === 'SELECT' || head === 'WITH') {
     const rows = (args.length > 0 ? stmt.all(...args) : stmt.all()) as Record<string, unknown>[]

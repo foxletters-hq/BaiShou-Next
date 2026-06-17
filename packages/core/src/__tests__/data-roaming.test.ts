@@ -212,6 +212,7 @@ describe('ILanSyncService 接口契约', () => {
 
   it('DiscoveredDevice 类型应包含关键字段', () => {
     const device: DiscoveredDevice = {
+      deviceId: 'desktop-a1b2',
       nickname: 'BaiShou-Desktop-a1b2',
       ip: '192.168.1.101',
       port: 54321,

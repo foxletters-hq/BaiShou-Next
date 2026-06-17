@@ -65,11 +65,12 @@ describe('legacy-migration.shared', () => {
     ])
 
     expect(vaults).toHaveLength(2)
-    expect(vaults[0]?.path).toBe(path.join(targetRoot, 'Personal'))
+    const expectedPersonalPath = path.join(targetRoot, 'Personal')
+    expect(vaults[0]?.path?.replace(/\\/g, '/')).toBe(expectedPersonalPath.replace(/\\/g, '/'))
 
     const registryRaw = await fs.readFile(path.join(targetRoot, 'vault_registry.json'), 'utf8')
     const registry = JSON.parse(registryRaw)
-    expect(registry[0].path).toBe(path.join(targetRoot, 'Personal'))
+    expect(registry[0].path.replace(/\\/g, '/')).toBe(expectedPersonalPath.replace(/\\/g, '/'))
   })
 
   it('discovers vault names from legacy registry and filesystem', async () => {
