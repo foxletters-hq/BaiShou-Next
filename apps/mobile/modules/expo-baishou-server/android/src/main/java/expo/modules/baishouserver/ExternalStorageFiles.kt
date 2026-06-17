@@ -400,13 +400,25 @@ object ExternalStorageFiles {
      * 任一端为外部路径时需已授予全文件访问或 WRITE_EXTERNAL_STORAGE。
      */
     fun copyFileAny(context: Context, fromUri: String, toUri: String) {
-        val fromPath = uriToPath(fromUri)
         val toPath = uriToPath(toUri)
+        val to = File(toPath)
+        to.parentFile?.mkdirs()
+
+        if (fromUri.startsWith("content://") || fromUri.startsWith("ph://")) {
+            val input = context.contentResolver.openInputStream(Uri.parse(fromUri))
+                ?: throw java.io.FileNotFoundException(fromUri)
+            input.buffered().use { source ->
+                to.outputStream().buffered().use { output ->
+                    source.copyTo(output)
+                }
+            }
+            return
+        }
+
+        val fromPath = uriToPath(fromUri)
         ensureExternalAccessForPaths(context, fromPath, toPath)
         val from = File(fromPath)
-        val to = File(toPath)
         if (!from.exists()) throw java.io.FileNotFoundException(fromUri)
-        to.parentFile?.mkdirs()
         if (from.isDirectory) {
             from.copyRecursively(to, overwrite = true)
         } else {

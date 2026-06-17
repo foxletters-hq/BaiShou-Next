@@ -8,6 +8,7 @@ import {
   isValidArchiveManifestContent,
   parseSnapshotCreatedAtFromFilename,
   resolveSnapshotCreatedAt,
+  resolveArchiveImportStageMessage,
   shouldRefreshVaultAfterArchiveImport,
   validateArchiveExtractPayload
 } from '../archive-guards.util'
@@ -221,5 +222,12 @@ describe('formatArchiveExportErrorMessage', () => {
     expect(formatArchiveExportErrorMessage(new Error('打包数据库失败：disk full'))).toBe(
       '打包数据库失败：disk full'
     )
+  })
+})
+
+describe('resolveArchiveImportStageMessage', () => {
+  it('returns human-readable stage labels', () => {
+    expect(resolveArchiveImportStageMessage('unpacking')).toContain('解压')
+    expect(resolveArchiveImportStageMessage('migrating_legacy')).toContain('迁移')
   })
 })

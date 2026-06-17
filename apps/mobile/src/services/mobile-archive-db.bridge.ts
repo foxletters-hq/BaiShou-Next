@@ -1,3 +1,10 @@
+export interface ArchiveRestoreRebootstrapOptions {
+  /** 默认 true；大体积 Flutter 旧包导入时改为 false，避免阻塞 UI 数分钟 */
+  blockingResync?: boolean
+  /** 默认 false；大体积导入时改为 true，总结索引在后台补扫 */
+  deferSummaryScan?: boolean
+}
+
 export interface MobileArchiveDbBridge {
   /** 导出前刷盘设置并对 SQLite 执行 WAL checkpoint */
   flushBeforeExport(): Promise<void>
@@ -15,7 +22,7 @@ export interface MobileArchiveDbBridge {
   /** 全量恢复期间暂停 watcher / MCP，与 Flutter 恢复前 quiesce 对齐 */
   runArchiveImportQuiesced<T>(fn: () => Promise<T>): Promise<T>
   /** 工作区与数据库还原后全量重扫 vault / 日记索引 */
-  rebootstrapAfterArchiveRestore(): Promise<void>
+  rebootstrapAfterArchiveRestore(options?: ArchiveRestoreRebootstrapOptions): Promise<void>
   /** Flutter 旧版 ZIP（无 manifest）全量迁移到 staging 目录 */
   importLegacyFlutterZip?(extractDir: string, stagingRoot: string): Promise<void>
 }

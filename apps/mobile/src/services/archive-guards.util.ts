@@ -130,3 +130,45 @@ export function formatArchiveExportErrorMessage(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error)
   return message.trim() || '未知错误'
 }
+
+/** 超过此大小的 ZIP 导入时跳过导入前保护快照，避免先全量导出再导入导致长时间无响应 */
+export const LARGE_ARCHIVE_IMPORT_BYTES = 150 * 1024 * 1024
+
+export type ArchiveImportStage =
+  | 'preparing'
+  | 'snapshot'
+  | 'unpacking'
+  | 'validating'
+  | 'migrating_legacy'
+  | 'restoring_files'
+  | 'loading_database'
+  | 'rebuilding_index'
+  | 'finishing'
+
+export type ArchiveImportProgressCallback = (stage: ArchiveImportStage) => void
+
+const ARCHIVE_IMPORT_STAGE_MESSAGES: Record<ArchiveImportStage, string> = {
+  preparing: '正在准备导入…',
+  snapshot: '正在创建保护快照…',
+  unpacking: '正在解压备份包…',
+  validating: '正在校验备份内容…',
+  migrating_legacy: '正在迁移原版数据（大文件可能需要数分钟）…',
+  restoring_files: '正在恢复工作区文件…',
+  loading_database: '正在加载数据库…',
+  rebuilding_index: '正在重建索引…',
+  finishing: '即将完成…'
+}
+
+const ARCHIVE_IMPORT_STAGE_HINTS: Partial<Record<ArchiveImportStage, string>> = {
+  unpacking: '大型备份解压较慢，请保持应用在前台并确保存储空间充足',
+  migrating_legacy: '正在合并 SQLite 与附件，请勿关闭应用',
+  rebuilding_index: '日记索引将在后台继续构建，列表可能稍后才会完整'
+}
+
+export function resolveArchiveImportStageMessage(stage: ArchiveImportStage): string {
+  return ARCHIVE_IMPORT_STAGE_MESSAGES[stage]
+}
+
+export function resolveArchiveImportStageHint(stage: ArchiveImportStage): string | undefined {
+  return ARCHIVE_IMPORT_STAGE_HINTS[stage]
+}

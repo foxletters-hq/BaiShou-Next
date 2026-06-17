@@ -5,7 +5,12 @@ import * as DocumentPicker from 'expo-document-picker'
 import { useNativeToast, useDialog } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import { applyArchiveImportFeedback } from '../utils/archive-restore-feedback'
-import { formatArchiveExportErrorMessage } from '../services/archive-guards.util'
+import {
+  formatArchiveExportErrorMessage,
+  resolveArchiveImportStageHint,
+  resolveArchiveImportStageMessage,
+  type ArchiveImportStage
+} from '../services/archive-guards.util'
 
 /** 分享面板关闭后立即弹 Toast 会在部分 Android 上触发 SafeArea/Reanimated 视图竞态崩溃 */
 function waitForShareSheetDismiss(): Promise<void> {
@@ -34,6 +39,7 @@ export function useArchiveImportExport() {
   const dialog = useDialog()
   const { services, dbReady, notifyArchiveRestoreComplete } = useBaishou()
   const [isImporting, setIsImporting] = useState(false)
+  const [importStage, setImportStage] = useState<ArchiveImportStage | null>(null)
 
   const handleExport = useCallback(async () => {
     if (!services?.archiveService || !dbReady) {
@@ -62,6 +68,9 @@ export function useArchiveImportExport() {
     })
     if (!confirmed) return
 
+    setIsImporting(true)
+    setImportStage('preparing')
+
     try {
       const pick = await DocumentPicker.getDocumentAsync({
         type: 'application/zip',
@@ -69,16 +78,23 @@ export function useArchiveImportExport() {
       })
       if (pick.canceled || !pick.assets?.[0]?.uri) return
 
-      setIsImporting(true)
-      const result = await services.archiveService.importFromZip(pick.assets[0].uri, true)
+      const result = await services.archiveService.importFromZip(
+        pick.assets[0].uri,
+        true,
+        (stage) => setImportStage(stage)
+      )
       applyArchiveImportFeedback(result, t, toast, notifyArchiveRestoreComplete)
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
       toast.showError(t('settings.import_failed_with_error', { error: message }))
     } finally {
       setIsImporting(false)
+      setImportStage(null)
     }
   }, [dbReady, dialog, notifyArchiveRestoreComplete, services, t, toast])
 
-  return { handleExport, handleImport, isImporting, dbReady }
+  const importMessage = importStage ? resolveArchiveImportStageMessage(importStage) : undefined
+  const importHint = importStage ? resolveArchiveImportStageHint(importStage) : undefined
+
+  return { handleExport, handleImport, isImporting, importMessage, importHint, dbReady }
 }

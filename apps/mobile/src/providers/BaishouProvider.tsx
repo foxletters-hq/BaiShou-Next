@@ -675,7 +675,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               archiveFullRestoreDoneRef.current = false
             }
           },
-          rebootstrapAfterArchiveRestore: async () => {
+          rebootstrapAfterArchiveRestore: async (options) => {
             const ctx = vaultBootstrapCtxRef.current
             if (!ctx) return
             // 数据根已被覆盖，旧 diary stack 指向已删除路径，不可再用于 prepareVaultSwitch
@@ -689,7 +689,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                 bootstrapDeps: ctx.bootstrapDeps,
                 watcherDeps: ctx.watcherDeps
               },
-              { blockingResync: true }
+              { blockingResync: options?.blockingResync ?? true }
             )
             diaryStackRef.current = stack
             archiveFullRestoreDoneRef.current = true
@@ -718,13 +718,22 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               missingSummaryDetector: summaryPipeline.missingSummaryDetector,
               summarySyncService: summaryPipeline.summarySyncService
             }
-            try {
-              await summaryPipeline.summarySyncService.fullScanArchives()
-            } catch (e) {
-              logger.warn(
-                '[BaishouProvider] summary fullScanArchives after archive restore failed:',
-                e as Error
-              )
+            if (options?.deferSummaryScan) {
+              void summaryPipeline.summarySyncService.fullScanArchives().catch((e) => {
+                logger.warn(
+                  '[BaishouProvider] deferred summary fullScanArchives after archive restore failed:',
+                  e as Error
+                )
+              })
+            } else {
+              try {
+                await summaryPipeline.summarySyncService.fullScanArchives()
+              } catch (e) {
+                logger.warn(
+                  '[BaishouProvider] summary fullScanArchives after archive restore failed:',
+                  e as Error
+                )
+              }
             }
 
             void backfillExpoAgentMessagesFts(runtime.drizzleDb, runtime.expoDb).catch((e) => {
@@ -760,7 +769,9 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           },
           importLegacyFlutterZip: async (extractDir, stagingRoot) => {
             const runtime = agentDbRuntimeRef.current
-            if (!runtime) return
+            if (!runtime) {
+              throw new Error('数据库运行时未就绪，无法导入原版备份')
+            }
             await runMobileLegacyZipMigration({
               fileSystem,
               extractDir,

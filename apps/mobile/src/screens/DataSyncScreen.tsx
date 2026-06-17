@@ -79,7 +79,9 @@ export const DataSyncScreen: React.FC = () => {
   const {
     handleExport: handleArchiveExport,
     handleImport: handleArchiveImport,
-    isImporting: isArchiveImporting
+    isImporting: isArchiveImporting,
+    importMessage: archiveImportMessage,
+    importHint: archiveImportHint
   } = useArchiveImportExport()
 
   const totalSizeString = useMemo(() => {
@@ -577,7 +579,11 @@ export const DataSyncScreen: React.FC = () => {
 
   return (
     <>
-      <RestoreBlockingOverlay visible={isRestoring || isArchiveImporting} />
+      <RestoreBlockingOverlay
+        visible={isRestoring || isArchiveImporting}
+        message={isArchiveImporting ? archiveImportMessage : undefined}
+        hint={isArchiveImporting ? archiveImportHint : undefined}
+      />
       <StackScreenLayout
         title={t('data_sync.title')}
         {...getStackScreenChrome(colors)}

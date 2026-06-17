@@ -1,6 +1,8 @@
 import type { IFileSystem } from '@baishou/core-mobile'
+import { Platform } from 'react-native'
 import { EncodingType, readAsStringAsync } from './mobile-sandbox-fs'
 import {
+  externalCopyFileAsyncSafe,
   externalReadB64Safe,
   isExternalStoragePath,
   normalizeExternalStoragePath,
@@ -96,6 +98,14 @@ export async function importUriToPath(
   const normalizedFrom = normalizeImportSourceUri(fromUri)
 
   if (needsStreamImport(normalizedFrom)) {
+    if (
+      Platform.OS === 'android' &&
+      (normalizedFrom.startsWith('content://') || normalizedFrom.startsWith('ph://'))
+    ) {
+      await externalCopyFileAsyncSafe(normalizedFrom, toFileUri(destPath))
+      return
+    }
+
     const b64 = await readUriAsBase64(normalizedFrom)
     await fileSystem.writeFile(destPath, b64, 'base64')
     return
