@@ -1,7 +1,15 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode, useRef } from 'react'
 import { Platform } from 'react-native'
 import * as SQLite from 'expo-sqlite'
-import { ensureExpoAgentDatabaseInstalled, type ExpoSqliteDatabase } from '@baishou/database/expo'
+import {
+  ensureExpoAgentDatabaseInstalled,
+  releaseExpoAgentDatabaseInstall,
+  type ExpoSqliteDatabase
+} from '@baishou/database/expo'
+import {
+  createAgentDbRuntime,
+  type AgentDbRuntime
+} from '../services/mobile-agent-db-runtime'
 import {
   SessionManagerService,
   DiaryService,
@@ -17,10 +25,13 @@ import {
   VaultService,
   MissingSummaryDetector,
   SummaryGeneratorService,
-  buildSharedContextText
+  buildSharedContextText,
+  type ImportResult,
+  type SyncConfig
 } from '@baishou/core-mobile'
 import { resolveSummaryTemplatesForGeneration, resolveSyncDeviceId, isConfiguredProviderId, isConfiguredDialogueModelId } from '@baishou/shared'
 import { getTtsPlaybackSettings } from '../services/mobile-tts-settings.service'
+import { shouldRefreshVaultAfterArchiveImport } from '../services/archive-guards.util'
 
 import {
   SessionRepository,
@@ -73,6 +84,8 @@ import { ensureMobileCompressionBridge } from '../services/mobile-compression-ev
 import type { IFileSystem } from '@baishou/core-mobile'
 import { buildMobileSummaryAiClient } from '../services/mobile-summary-ai-client'
 import { MobileAttachmentManagerService } from '../services/mobile-attachment-manager.service'
+import { invalidateUserAvatarDisplayCache } from '../lib/user-avatar-display.util'
+import { reconcileUserAvatarProfileAfterStorageChange } from '../lib/user-avatar-reconcile.util'
 import { sessionFileWatcher } from '../services/session-file-watcher.service'
 import { summaryFileWatcher } from '../services/summary-file-watcher.service'
 import {
@@ -96,7 +109,8 @@ import type {
 } from '@baishou/database'
 import {
   ONBOARDING_STORAGE_KEY,
-  FLUTTER_LEGACY_MIGRATED_SOURCE_KEY
+  FLUTTER_LEGACY_MIGRATED_SOURCE_KEY,
+  PENDING_RESTORE_CLOUD_SYNC_CONFIG_KEY
 } from '@/src/constants/storage'
 import {
   detectFlutterLegacyMigrationPending,
@@ -136,6 +150,8 @@ interface BaishouContextValue {
   deleteMigratedLegacySource: () => Promise<boolean>
   /** 工作空间切换后递增，供列表等 UI 重新拉取数据 */
   vaultRevision: number
+  /** 全量导入/快照恢复成功后递增 vaultRevision，供 UI 刷新 */
+  notifyArchiveRestoreComplete: (result: ImportResult) => void
   /** 工作空间切换进行中（重建 diary stack / 后台 resync） */
   vaultSwitching: boolean
   /** 正在从磁盘恢复日记/会话/总结索引 */
@@ -214,6 +230,7 @@ const BaishouContext = createContext<BaishouContextValue>({
   runFlutterLegacyMigration: async () => null,
   deleteMigratedLegacySource: async () => false,
   vaultRevision: 0,
+  notifyArchiveRestoreComplete: () => {},
   vaultSwitching: false,
   storageIndexing: false,
   retryStorageSetup: async () => Platform.OS !== 'android',
@@ -285,6 +302,33 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
     () => Promise<MobileLegacyMigrationResult | null>
   >(async () => null)
   const deleteMigratedLegacySourceRef = useRef<() => Promise<boolean>>(async () => false)
+  const notifyArchiveRestoreCompleteRef = useRef<(result: ImportResult) => void>(() => {})
+  const agentDbRuntimeRef = useRef<AgentDbRuntime | null>(null)
+  const reloadAgentDatabaseRef = useRef<() => Promise<void>>(async () => {})
+  const archiveFullRestoreDoneRef = useRef(false)
+  const vaultBootstrapCtxRef = useRef<{
+    pathService: MobileStoragePathService
+    vaultService: VaultService
+    fileSystem: ReturnType<typeof createMobileFileSystem>
+    attachmentManager: MobileAttachmentManagerService
+    bootstrapDeps: {
+      sessionManager: SessionManagerService
+      assistantManager: AssistantManagerService
+      settingsManager: SettingsManagerService
+      summarySyncService: SummarySyncService
+    }
+    watcherDeps: {
+      pathService: MobileStoragePathService
+      fileSystem: ReturnType<typeof createMobileFileSystem>
+      sessionFileService: SessionFileService
+      sessionSyncService: SessionSyncService
+      sessionManager: SessionManagerService
+      summarySyncService: SummarySyncService
+    }
+    registry: AIProviderRegistry
+    mobileMcpService: MobileMcpService | null
+    ragServiceRef: { current: ReturnType<typeof createMobileRagService> }
+  } | null>(null)
   const migrationRuntimeRef = useRef<{
     fileSystem: IFileSystem
     expoDb: unknown
@@ -305,6 +349,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
     runFlutterLegacyMigration: () => runFlutterLegacyMigrationRef.current(),
     deleteMigratedLegacySource: () => deleteMigratedLegacySourceRef.current(),
     vaultRevision: 0,
+    notifyArchiveRestoreComplete: (result) => notifyArchiveRestoreCompleteRef.current(result),
     vaultSwitching: false,
     storageIndexing: mobileDataBootstrapper.getStatus() === 'running',
     retryStorageSetup: () => retryStorageSetupRef.current(),
@@ -351,6 +396,22 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         const summaryRepo = new SummaryRepositoryImpl(drizzleDb)
         const profileRepo = new UserProfileRepository(drizzleDb)
         const attachmentManager = new MobileAttachmentManagerService(pathService, fileSystem)
+
+        try {
+          const pendingCloudSyncRaw = await AsyncStorage.getItem(PENDING_RESTORE_CLOUD_SYNC_CONFIG_KEY)
+          if (pendingCloudSyncRaw) {
+            await AsyncStorage.removeItem(PENDING_RESTORE_CLOUD_SYNC_CONFIG_KEY)
+            await settingsRepo.set(
+              'cloud_sync_config' as never,
+              JSON.parse(pendingCloudSyncRaw) as never
+            )
+          }
+        } catch (pendingCloudSyncError) {
+          logger.warn(
+            '[BaishouProvider] Failed to apply deferred cloud_sync_config after restore:',
+            pendingCloudSyncError as Error
+          )
+        }
 
         let legacyRagReembedRequired = false
         let pendingFlutterLegacyMigration: FlutterLegacyMigrationPending | null = null
@@ -477,50 +538,162 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         const agentService = new AgentSessionService()
 
         const MOBILE_DB_NAME = 'baishou_next_mobile.db'
+        const openAgentDatabase = (options?: { newConnection?: boolean }) => () =>
+          SQLite.openDatabaseAsync(
+            MOBILE_DB_NAME,
+            options?.newConnection ? { useNewConnection: true } : undefined
+          ) as Promise<ExpoSqliteDatabase>
+
+        const sqlExecutor = createSqlExecutorFromDrizzleDb(drizzleDb)
+        const hsRepo = new SqliteHybridSearchRepository(sqlExecutor)
+        const hybridSearchService = new HybridSearchService(hsRepo)
+
+        agentDbRuntimeRef.current = {
+          expoDb,
+          drizzleDb,
+          sessionRepo,
+          assistantRepo,
+          settingsRepo,
+          summaryRepo,
+          profileRepo,
+          snapshotRepo,
+          sessionManager,
+          assistantManager,
+          settingsManager,
+          summaryManager,
+          summarySyncService,
+          sqlExecutor,
+          hsRepo,
+          hybridSearchService
+        }
+
         const archiveDbBridge: MobileArchiveDbBridge = {
-          flushBeforeExport: () => settingsManager.flushToDisk(),
+          flushBeforeExport: async () => {
+            const runtime = agentDbRuntimeRef.current
+            if (!runtime) return
+            await runtime.settingsManager.flushToDisk()
+            try {
+              await runtime.expoDb.execAsync('PRAGMA wal_checkpoint(FULL)')
+            } catch (checkpointError) {
+              logger.error('[MobileArchive] WAL checkpoint before export failed:', checkpointError as Error)
+              throw new Error('数据库刷盘失败，已取消导出以保护备份完整性')
+            }
+          },
+          getMaxSnapshotCount: async () => {
+            const runtime = agentDbRuntimeRef.current
+            if (!runtime) return 5
+            const config = await runtime.settingsManager.get<SyncConfig>('cloud_sync_config')
+            return config?.maxSnapshotCount ?? 5
+          },
           exportDevicePreferences: async () => {
-            const prefs = await settingsRepo.getAll()
-            const profile = await profileRepo.getProfile()
+            const runtime = agentDbRuntimeRef.current
+            if (!runtime) return {}
+            const prefs = await runtime.settingsRepo.getAll()
+            const profile = await runtime.profileRepo.getProfile()
             return { ...prefs, user_profile_data: profile }
           },
           importDevicePreferences: async (prefs) => {
+            const runtime = agentDbRuntimeRef.current
+            if (!runtime) return
             for (const [key, value] of Object.entries(prefs)) {
               if (key === 'user_profile_data' || key === 'user_profile') continue
               if (value !== undefined && value !== null) {
-                await settingsRepo.set(key, value as never)
+                await runtime.settingsRepo.set(key, value as never)
               }
             }
             if (prefs.user_profile_data) {
-              await profileRepo.saveProfile(prefs.user_profile_data as never)
+              await runtime.profileRepo.saveProfile(prefs.user_profile_data as never)
             } else if (prefs.user_profile) {
-              await profileRepo.saveProfile(prefs.user_profile as never)
+              await runtime.profileRepo.saveProfile(prefs.user_profile as never)
             }
-            await settingsManager.flushToDisk()
+            await runtime.settingsManager.flushToDisk()
           },
-          readPreservedImportSettings: async () => ({
-            cloud_sync_config: await settingsRepo.get('cloud_sync_config' as never)
-          }),
+          readPreservedImportSettings: async () => {
+            const runtime = agentDbRuntimeRef.current
+            if (!runtime) return {}
+            return {
+              cloud_sync_config: await runtime.settingsRepo.get('cloud_sync_config' as never)
+            }
+          },
           getAgentDatabaseUri: async () => `${getAppDocumentDirectory()}SQLite/${MOBILE_DB_NAME}`,
           replaceAgentDatabaseFrom: async (sourceUri) => {
-            try {
-              await SQLite.deleteDatabaseAsync(MOBILE_DB_NAME)
-            } catch {
-              // ignore
+            await releaseExpoAgentDatabaseInstall()
+            const sqliteDir = `${getAppDocumentDirectory()}SQLite/`
+            const destBase = `${sqliteDir}${MOBILE_DB_NAME}`
+            for (const suffix of ['', '-wal', '-shm']) {
+              const candidate = `${destBase}${suffix}`
+              if (await fileSystem.exists(candidate)) {
+                await fileSystem.unlink(candidate)
+              }
             }
-            const dest = `${getAppDocumentDirectory()}SQLite/${MOBILE_DB_NAME}`
-            await fileSystem.copyFile(sourceUri, dest)
-            return true
+            await fileSystem.copyFile(sourceUri, destBase)
+            await reloadAgentDatabaseRef.current()
+          },
+          runArchiveImportQuiesced: async (fn) => {
+            archiveFullRestoreDoneRef.current = false
+            try {
+              return await runWithStorageQuiescedRef.current(fn)
+            } finally {
+              archiveFullRestoreDoneRef.current = false
+            }
+          },
+          rebootstrapAfterArchiveRestore: async () => {
+            const ctx = vaultBootstrapCtxRef.current
+            if (!ctx) return
+            // 数据根已被覆盖，旧 diary stack 指向已删除路径，不可再用于 prepareVaultSwitch
+            diaryStackRef.current = null
+            invalidateUserAvatarDisplayCache()
+            const stack = await rebootstrapAfterStorageRootChange({
+              pathService: ctx.pathService,
+              vaultService: ctx.vaultService,
+              fileSystem: ctx.fileSystem,
+              bootstrapDeps: ctx.bootstrapDeps,
+              watcherDeps: ctx.watcherDeps
+            })
+            diaryStackRef.current = stack
+            archiveFullRestoreDoneRef.current = true
+            const runtime = agentDbRuntimeRef.current
+            if (!runtime) return
+            await reconcileUserAvatarProfileAfterStorageChange(
+              runtime.settingsManager,
+              ctx.pathService,
+              ctx.fileSystem
+            )
+            const nextRagDeps = {
+              settingsManager: runtime.settingsManager,
+              diaryService: stack.diaryService,
+              hsRepo: runtime.hsRepo,
+              hybridSearchService: runtime.hybridSearchService,
+              registry: ctx.registry,
+              rawSqlClient: runtime.sqlExecutor
+            }
+            setMobileDiaryEmbeddingDeps(nextRagDeps)
+            ctx.ragServiceRef.current = createMobileRagService(nextRagDeps)
+            if (isMounted) {
+              setValue((prev) => ({
+                ...prev,
+                vaultRevision: prev.vaultRevision + 1,
+                services: prev.services
+                  ? {
+                      ...prev.services,
+                      ragService: ctx.ragServiceRef.current,
+                      diaryService: stack.diaryService
+                    }
+                  : prev.services
+              }))
+            }
           },
           importLegacyFlutterZip: async (extractDir, stagingRoot) => {
+            const runtime = agentDbRuntimeRef.current
+            if (!runtime) return
             await runMobileLegacyZipMigration({
               fileSystem,
               extractDir,
               targetRoot: stagingRoot,
-              settingsRepo,
-              profileRepo
+              settingsRepo: runtime.settingsRepo,
+              profileRepo: runtime.profileRepo
             })
-            await settingsRepo.set('legacy_upgrade_rag_pending' as never, true as never)
+            await runtime.settingsRepo.set('legacy_upgrade_rag_pending' as never, true as never)
           }
         }
 
@@ -571,21 +744,18 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         // 日记全文搜索器（与桌面端 createDiarySearcher 对齐）
         const getDiarySearcher = () => diaryStackRef.current?.diarySearcher ?? diarySearcher
 
-        mobileMcpService = new MobileMcpService(settingsManager, toolRegistry, () =>
-          buildMobileMcpToolContext({
-            settingsManager,
+        mobileMcpService = new MobileMcpService(settingsManager, toolRegistry, () => {
+          const runtime = agentDbRuntimeRef.current
+          return buildMobileMcpToolContext({
+            settingsManager: runtime?.settingsManager ?? settingsManager,
             pathService,
             getDiarySearcher,
-            drizzleDb,
+            drizzleDb: runtime?.drizzleDb ?? drizzleDb,
             webSearchResultFetcher: webFetchContent,
             fetchSearchPage: fetchSearchPageHtml
           })
-        )
+        })
 
-        // 构建 RAG 记忆搜索所需的底层组件
-        const sqlExecutor = createSqlExecutorFromDrizzleDb(drizzleDb)
-        const hsRepo = new SqliteHybridSearchRepository(sqlExecutor)
-        const hybridSearchService = new HybridSearchService(hsRepo)
         const ragServiceDeps = {
           settingsManager,
           diaryService: diaryServiceProxy,
@@ -608,9 +778,11 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           options?: { topK?: number; minScore?: number }
         ): Promise<Array<{ chunkText: string; score: number; createdAt?: number }>> => {
           if (!query.trim()) return []
+          const runtime = agentDbRuntimeRef.current
+          if (!runtime) return []
           try {
-            const providers = (await settingsManager.get<any[]>('ai_providers')) || []
-            const globalModels = await settingsManager.get<any>('global_models')
+            const providers = (await runtime.settingsManager.get<any[]>('ai_providers')) || []
+            const globalModels = await runtime.settingsManager.get<any>('global_models')
 
             // 获取嵌入模型配置
             const embeddingProviderId = globalModels?.globalEmbeddingProviderId
@@ -618,7 +790,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
             if (!embeddingProviderId || !embeddingModelId) {
               logger.warn('[MemorySearch] 嵌入模型未配置，降级为 FTS 搜索')
-              const ftsResults = await hsRepo.queryFTS(query, options?.topK ?? 20)
+              const ftsResults = await runtime.hsRepo.queryFTS(query, options?.topK ?? 20)
               return ftsResults.map((r) => ({
                 chunkText: r.chunkText,
                 score: r.score,
@@ -629,7 +801,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             const embeddingProviderConfig = providers.find((p: any) => p.id === embeddingProviderId)
             if (!embeddingProviderConfig) {
               logger.warn('[MemorySearch] 嵌入供应商配置未找到，降级为 FTS 搜索')
-              const ftsResults = await hsRepo.queryFTS(query, options?.topK ?? 20)
+              const ftsResults = await runtime.hsRepo.queryFTS(query, options?.topK ?? 20)
               return ftsResults.map((r) => ({
                 chunkText: r.chunkText,
                 score: r.score,
@@ -638,13 +810,13 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             }
 
             const embeddingProvider = registry.getOrUpdateProvider(embeddingProviderConfig)
-            const embAdapter = new EmbeddingAdapter(embeddingProvider, embeddingModelId, hsRepo)
+            const embAdapter = new EmbeddingAdapter(embeddingProvider, embeddingModelId, runtime.hsRepo)
 
             // 生成查询向量
             const queryVector = await embAdapter.embedQuery(query)
             if (!queryVector) {
               logger.warn('[MemorySearch] 查询向量生成失败，降级为 FTS 搜索')
-              const ftsResults = await hsRepo.queryFTS(query, options?.topK ?? 20)
+              const ftsResults = await runtime.hsRepo.queryFTS(query, options?.topK ?? 20)
               return ftsResults.map((r) => ({
                 chunkText: r.chunkText,
                 score: r.score,
@@ -656,7 +828,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             const topK = options?.topK ?? 20
             const minScore = options?.minScore ?? 0.3
 
-            const results = await hybridSearchService.search({
+            const results = await runtime.hybridSearchService.search({
               queryVector,
               queryText: query,
               topK,
@@ -670,7 +842,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             }))
           } catch (e) {
             logger.error('[MemorySearch] RAG 搜索失败，降级为 FTS:', e as Error)
-            const ftsResults = await hsRepo.queryFTS(query, options?.topK ?? 20)
+            const ftsResults = await runtime.hsRepo.queryFTS(query, options?.topK ?? 20)
             return ftsResults.map((r) => ({
               chunkText: r.chunkText,
               score: r.score,
@@ -696,8 +868,10 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           }
         ) => {
           try {
-            const providers = (await settingsManager.get<any[]>('ai_providers')) || []
-            const globalModels = await settingsManager.get<any>('global_models')
+            const runtime = agentDbRuntimeRef.current
+            if (!runtime) throw new Error('数据库未就绪')
+            const providers = (await runtime.settingsManager.get<any[]>('ai_providers')) || []
+            const globalModels = await runtime.settingsManager.get<any>('global_models')
 
             const providerId = overrides?.providerId || globalModels?.globalDialogueProviderId
             const config =
@@ -709,7 +883,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             const provider = registry.getOrUpdateProvider(config)
 
             const searchMode = overrides?.searchMode ?? false
-            const userConfig = await buildMobileStreamUserConfig(settingsManager, searchMode)
+            const userConfig = await buildMobileStreamUserConfig(runtime.settingsManager, searchMode)
 
             const embeddingProviderId = globalModels?.globalEmbeddingProviderId
             const embeddingModelId = globalModels?.globalEmbeddingModelId
@@ -757,8 +931,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                 provider,
                 modelId,
                 toolRegistry,
-                sessionRepo,
-                snapshotRepo,
+                sessionRepo: runtime.sessionRepo,
+                snapshotRepo: runtime.snapshotRepo,
                 userConfig,
                 systemModels: Object.keys(systemModels).length > 0 ? systemModels : undefined,
                 diarySearcher: getDiarySearcher(),
@@ -802,6 +976,131 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           sessionSyncService,
           sessionManager,
           summarySyncService
+        }
+
+        vaultBootstrapCtxRef.current = {
+          pathService,
+          vaultService,
+          fileSystem,
+          attachmentManager,
+          bootstrapDeps,
+          watcherDeps,
+          registry,
+          mobileMcpService,
+          ragServiceRef
+        }
+
+        reloadAgentDatabaseRef.current = async () => {
+          const ctx = vaultBootstrapCtxRef.current
+          if (!ctx) {
+            throw new Error('数据库运行时未就绪，无法完成恢复')
+          }
+
+          const priorMcp = ctx.mobileMcpService
+          const mcpWasRunning = priorMcp?.isServerRunning() ?? false
+          if (mcpWasRunning && priorMcp) {
+            await priorMcp.stop()
+          }
+
+          const { drizzleDb: newDrizzleDb, expoDb: newExpoDb } =
+            await ensureExpoAgentDatabaseInstalled(openAgentDatabase({ newConnection: true }))
+
+          const diaryRepoAdapter =
+            diaryStackRef.current?.diaryRepoAdapter ?? EMPTY_DIARY_REPO_ADAPTER
+
+          const newRuntime = await createAgentDbRuntime({
+            expoDb: newExpoDb,
+            drizzleDb: newDrizzleDb,
+            pathService: ctx.pathService,
+            fileSystem: ctx.fileSystem,
+            attachmentManager: ctx.attachmentManager,
+            diaryRepoAdapter
+          })
+          agentDbRuntimeRef.current = newRuntime
+
+          if (migrationRuntimeRef.current) {
+            migrationRuntimeRef.current = {
+              ...migrationRuntimeRef.current,
+              expoDb: newExpoDb,
+              settingsRepo: newRuntime.settingsRepo,
+              profileRepo: newRuntime.profileRepo
+            }
+          }
+
+          ctx.bootstrapDeps.sessionManager = newRuntime.sessionManager
+          ctx.bootstrapDeps.assistantManager = newRuntime.assistantManager
+          ctx.bootstrapDeps.settingsManager = newRuntime.settingsManager
+          ctx.bootstrapDeps.summarySyncService = newRuntime.summarySyncService
+          ctx.watcherDeps.sessionManager = newRuntime.sessionManager
+          ctx.watcherDeps.summarySyncService = newRuntime.summarySyncService
+
+          const stack = diaryStackRef.current
+          const nextRagDeps = {
+            settingsManager: newRuntime.settingsManager,
+            diaryService: stack?.diaryService ?? diaryServiceProxy,
+            hsRepo: newRuntime.hsRepo,
+            hybridSearchService: newRuntime.hybridSearchService,
+            registry: ctx.registry,
+            rawSqlClient: newRuntime.sqlExecutor
+          }
+          setMobileDiaryEmbeddingDeps(nextRagDeps)
+          ctx.ragServiceRef.current = createMobileRagService(nextRagDeps)
+          invalidateMobileMcpToolContextCache()
+
+          mobileMcpService = new MobileMcpService(newRuntime.settingsManager, toolRegistry, () => {
+            const runtime = agentDbRuntimeRef.current
+            return buildMobileMcpToolContext({
+              settingsManager: runtime?.settingsManager ?? newRuntime.settingsManager,
+              pathService: ctx.pathService,
+              getDiarySearcher,
+              drizzleDb: runtime?.drizzleDb ?? newDrizzleDb,
+              webSearchResultFetcher: webFetchContent,
+              fetchSearchPage: fetchSearchPageHtml
+            })
+          })
+          ctx.mobileMcpService = mobileMcpService
+          if (mcpWasRunning) {
+            await mobileMcpService.start().catch((mcpErr) => {
+              logger.warn('[BaishouProvider] MCP restart after DB reload failed:', mcpErr as Error)
+            })
+          }
+
+          const nextIncrementalSyncService = new MobileIncrementalSyncService(
+            newRuntime.settingsManager,
+            archiveService,
+            ctx.pathService,
+            ctx.fileSystem,
+            mobileDataBootstrapper,
+            syncDeviceId,
+            () => {
+              if (!isMounted) return
+              setValue((prev) => ({
+                ...prev,
+                vaultRevision: prev.vaultRevision + 1
+              }))
+            }
+          )
+
+          if (isMounted) {
+            setValue((prev) => ({
+              ...prev,
+              services: prev.services
+                ? {
+                    ...prev.services,
+                    sessionManager: newRuntime.sessionManager,
+                    sessionRepo: newRuntime.sessionRepo,
+                    snapshotRepo: newRuntime.snapshotRepo,
+                    assistantManager: newRuntime.assistantManager,
+                    settingsManager: newRuntime.settingsManager,
+                    summaryManager: newRuntime.summaryManager,
+                    ragService: ctx.ragServiceRef.current,
+                    mobileMcpService: mobileMcpService!,
+                    incrementalSyncService: nextIncrementalSyncService,
+                    updaterService: new MobileUpdaterService(newRuntime.settingsManager)
+                  }
+                : prev.services
+            }))
+          }
         }
 
         const runStorageBootstrap = async (): Promise<VaultBoundDiaryStack> => {
@@ -1118,59 +1417,81 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             setValue((prev) => ({ ...prev, vaultSwitching: true }))
           }
           try {
+            const runtime = agentDbRuntimeRef.current
             await quiesceStorageForFileCopy({
               currentStack: stack ?? undefined,
-              settingsManager
+              settingsManager: runtime?.settingsManager ?? settingsManager
             })
-            if (mobileMcpService?.isServerRunning()) {
+            const activeMcp = vaultBootstrapCtxRef.current?.mobileMcpService ?? mobileMcpService
+            if (activeMcp?.isServerRunning()) {
               mcpWasRunning = true
-              await mobileMcpService.stop()
+              await activeMcp.stop()
             }
             result = await fn()
           } catch (e) {
             fnError = e
           } finally {
             try {
-              const priorStack = diaryStackRef.current
-              if (priorStack) {
-                diaryStackRef.current = null
-                try {
-                  const resumedStack = await resumeStorageAfterFileCopy({
-                    pathService,
-                    vaultService,
-                    fileSystem,
-                    bootstrapDeps,
-                    watcherDeps
-                  })
-                  diaryStackRef.current = resumedStack
+              const ctx = vaultBootstrapCtxRef.current
+              const runtime = agentDbRuntimeRef.current
+              if (archiveFullRestoreDoneRef.current) {
+                const stack = diaryStackRef.current
+                if (stack && ctx && runtime) {
                   const resumedRagDeps = {
-                    settingsManager,
-                    diaryService: resumedStack.diaryService,
-                    hsRepo,
-                    hybridSearchService,
-                    registry,
-                    rawSqlClient: sqlExecutor
+                    settingsManager: runtime.settingsManager,
+                    diaryService: stack.diaryService,
+                    hsRepo: runtime.hsRepo,
+                    hybridSearchService: runtime.hybridSearchService,
+                    registry: ctx.registry,
+                    rawSqlClient: runtime.sqlExecutor
                   }
                   setMobileDiaryEmbeddingDeps(resumedRagDeps)
-                  ragServiceRef.current = createMobileRagService(resumedRagDeps)
-                } catch (caughtResumeError) {
-                  logger.error(
-                    '[BaishouProvider] resumeStorageAfterFileCopy failed, retrying setup:',
-                    caughtResumeError as Error
-                  )
-                  const recovered = await retryStorageSetupRef.current()
-                  if (!recovered) {
-                    diaryStackRef.current = priorStack
-                    resumeError = caughtResumeError
-                  }
+                  ctx.ragServiceRef.current = createMobileRagService(resumedRagDeps)
                 }
               } else {
-                await retryStorageSetupRef.current()
+                const priorStack = diaryStackRef.current
+                if (priorStack && ctx && runtime) {
+                  diaryStackRef.current = null
+                  try {
+                    const resumedStack = await resumeStorageAfterFileCopy({
+                      pathService: ctx.pathService,
+                      vaultService: ctx.vaultService,
+                      fileSystem: ctx.fileSystem,
+                      bootstrapDeps: ctx.bootstrapDeps,
+                      watcherDeps: ctx.watcherDeps
+                    })
+                    diaryStackRef.current = resumedStack
+                    const resumedRagDeps = {
+                      settingsManager: runtime.settingsManager,
+                      diaryService: resumedStack.diaryService,
+                      hsRepo: runtime.hsRepo,
+                      hybridSearchService: runtime.hybridSearchService,
+                      registry: ctx.registry,
+                      rawSqlClient: runtime.sqlExecutor
+                    }
+                    setMobileDiaryEmbeddingDeps(resumedRagDeps)
+                    ctx.ragServiceRef.current = createMobileRagService(resumedRagDeps)
+                  } catch (caughtResumeError) {
+                    logger.error(
+                      '[BaishouProvider] resumeStorageAfterFileCopy failed, retrying setup:',
+                      caughtResumeError as Error
+                    )
+                    const recovered = await retryStorageSetupRef.current()
+                    if (!recovered) {
+                      diaryStackRef.current = priorStack
+                      resumeError = caughtResumeError
+                    }
+                  }
+                } else {
+                  await retryStorageSetupRef.current()
+                }
               }
               if (mcpWasRunning) {
-                await mobileMcpService?.start()
+                const activeMcp = vaultBootstrapCtxRef.current?.mobileMcpService ?? mobileMcpService
+                await activeMcp?.start()
               }
               if (isMounted) {
+                const ragRef = vaultBootstrapCtxRef.current?.ragServiceRef ?? ragServiceRef
                 setValue((prev) => ({
                   ...prev,
                   vaultSwitching: false,
@@ -1178,7 +1499,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                   services: prev.services
                     ? {
                         ...prev.services,
-                        ragService: ragServiceRef.current
+                        ragService: ragRef.current
                       }
                     : prev.services
                 }))
@@ -1195,13 +1516,17 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           return result as T
         }
 
-        const getContextAtMessage = (sessionId: string, messageId: string, searchMode = false) =>
-          loadContextAtMessage(
+        const getContextAtMessage = (sessionId: string, messageId: string, searchMode = false) => {
+          const runtime = agentDbRuntimeRef.current
+          if (!runtime) {
+            return Promise.resolve({ messages: [], totalTokens: 0 } as never)
+          }
+          return loadContextAtMessage(
             {
-              sessionRepo,
-              snapshotRepo,
-              assistantManager,
-              settingsManager,
+              sessionRepo: runtime.sessionRepo,
+              snapshotRepo: runtime.snapshotRepo,
+              assistantManager: runtime.assistantManager,
+              settingsManager: runtime.settingsManager,
               toolRegistry,
               diarySearcher: getDiarySearcher(),
               webSearchResultFetcher: webFetchContent,
@@ -1211,6 +1536,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             messageId,
             searchMode
           )
+        }
 
         void getTtsPlaybackSettings(settingsManager).catch(() => {})
 
@@ -1220,6 +1546,14 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         }
 
         if (isMounted) {
+          notifyArchiveRestoreCompleteRef.current = (result: ImportResult) => {
+            if (!isMounted || !shouldRefreshVaultAfterArchiveImport(result)) return
+            setValue((prev) => ({
+              ...prev,
+              vaultRevision: prev.vaultRevision + 1
+            }))
+          }
+
           setValue({
             dbReady: true,
             storageReady,
@@ -1231,6 +1565,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             runFlutterLegacyMigration: () => runFlutterLegacyMigrationRef.current(),
             deleteMigratedLegacySource: () => deleteMigratedLegacySourceRef.current(),
             vaultRevision: 0,
+            notifyArchiveRestoreComplete: (result) =>
+              notifyArchiveRestoreCompleteRef.current(result),
             vaultSwitching: false,
             storageIndexing: mobileDataBootstrapper.getStatus() === 'running',
             retryStorageSetup: () => retryStorageSetupRef.current(),
