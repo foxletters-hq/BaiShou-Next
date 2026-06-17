@@ -73,6 +73,8 @@ export {
   LAN_DEVICE_STALE_MS,
   LAN_DISCOVERY_RESCAN_MS,
   buildLanServiceName,
+  formatLanBackupSizeMb,
+  formatLanReceivedBackupContent,
   getLanDeviceDedupKey,
   getLanDeviceHostKey,
   isExcludedLanIpv4,

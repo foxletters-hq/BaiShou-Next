@@ -154,3 +154,14 @@ export function buildLanServiceName(nickname: string, deviceId: string): string 
   const suffix = deviceId.replace(/[^a-zA-Z0-9]/g, '').slice(-8) || 'lan'
   return `BaiShou-${safeNickname}-${suffix}`
 }
+
+/** 与原版 Flutter 一致：局域网备份包大小（MB，保留两位小数） */
+export function formatLanBackupSizeMb(sizeBytes: number): string {
+  if (!Number.isFinite(sizeBytes) || sizeBytes < 0) return '?'
+  return (sizeBytes / (1024 * 1024)).toFixed(2)
+}
+
+/** i18n 文案使用 $size 占位符，需手动替换（与项目其它 $count 等一致） */
+export function formatLanReceivedBackupContent(message: string, sizeBytes: number): string {
+  return message.replace('$size', formatLanBackupSizeMb(sizeBytes))
+}

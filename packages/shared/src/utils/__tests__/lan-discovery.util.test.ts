@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  formatLanBackupSizeMb,
+  formatLanReceivedBackupContent,
   buildLanServiceName,
   getLanDeviceDedupKey,
   pickBestLanIpv4,
@@ -70,5 +72,12 @@ describe('lan-discovery.util', () => {
 
   it('picks best lan ipv4', () => {
     expect(pickBestLanIpv4(['127.0.0.1', '192.168.1.8', '8.8.8.8'])).toBe('192.168.1.8')
+  })
+
+  it('formats received backup content size placeholder', () => {
+    expect(formatLanBackupSizeMb(2 * 1024 * 1024)).toBe('2.00')
+    expect(
+      formatLanReceivedBackupContent('来自局域网设备的数据 ($size MB)。', 2.5 * 1024 * 1024)
+    ).toBe('来自局域网设备的数据 (2.50 MB)。')
   })
 })
