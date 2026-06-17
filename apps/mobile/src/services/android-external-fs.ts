@@ -12,7 +12,9 @@ import {
   externalReadString,
   externalWriteBase64,
   externalWriteString,
-  isExternalStorageNativeAvailable
+  isExternalStorageNativeAvailable,
+  localGetInfo,
+  localReadDirectory
 } from 'expo-baishou-server'
 
 export const EXTERNAL_STORAGE_REBUILD_HINT =
@@ -88,6 +90,12 @@ function isAppSandboxPath(uriOrPath: string): boolean {
   return p.includes('/data/user/') || p.includes('/data/data/')
 }
 
+/** Android 应用沙盒路径（cache / files），需走 java.io.File 以正确处理 Unicode 文件名 */
+export function isAndroidAppSandboxPath(uriOrPath: string): boolean {
+  if (Platform.OS !== 'android') return false
+  return isAppSandboxPath(uriOrPath)
+}
+
 /**
  * 是否必须使用原生 File API（勿用 expo-file-system）
  * 旧版 Flutter 默认路径 app_flutter/BaiShou_Root 仍在应用沙盒内，须走 Expo FS。
@@ -155,6 +163,16 @@ export function externalDeleteSafe(uriOrPath: string, idempotent = true): void {
 export function externalListDirSafe(uriOrPath: string): string[] {
   ensureNativeModule()
   return externalReadDirectory(toFileUri(uriOrPath))
+}
+
+export function localGetInfoSafe(uriOrPath: string): ExternalPathInfo {
+  ensureNativeModule()
+  return localGetInfo(normalizeStoragePath(uriOrPath))
+}
+
+export function localListDirSafe(uriOrPath: string): string[] {
+  ensureNativeModule()
+  return localReadDirectory(normalizeStoragePath(uriOrPath))
 }
 
 export function externalMoveSafe(from: string, to: string): void {

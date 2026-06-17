@@ -11,6 +11,8 @@ import android.provider.Settings
 import expo.modules.kotlin.Promise
 import androidx.core.content.ContextCompat
 import android.content.pm.PackageManager
+import android.os.Handler
+import android.os.Looper
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import fi.iki.elonen.NanoHTTPD
@@ -118,9 +120,14 @@ class BaishouHttpServer(
      * 按 Content-Length 读取请求体。若读到 EOF 才停，在 keep-alive 连接上会一直阻塞，
      * 导致发送方已显示 100% 却永远等不到 HTTP 200。
      */
-    private fun streamRequestBodyToFile(session: IHTTPSession, destFile: File): Long {
+    private fun streamRequestBodyToFile(
+        session: IHTTPSession,
+        destFile: File,
+        onProgress: ((written: Long, total: Long) -> Unit)? = null
+    ): Long {
         val contentLength = session.headers["content-length"]?.toLongOrNull()
         var totalWritten = 0L
+        var lastProgressEmit = 0L
         session.inputStream.use { input ->
             FileOutputStream(destFile).use { output ->
                 val buffer = ByteArray(64 * 1024)
@@ -136,8 +143,20 @@ class BaishouHttpServer(
                     output.write(buffer, 0, read)
                     totalWritten += read
                     if (remaining != null) remaining -= read
+                    if (onProgress != null && contentLength != null && contentLength > 0L) {
+                        val shouldEmit =
+                            totalWritten == contentLength ||
+                                totalWritten - lastProgressEmit >= 512 * 1024
+                        if (shouldEmit) {
+                            onProgress(totalWritten, contentLength)
+                            lastProgressEmit = totalWritten
+                        }
+                    }
                 }
             }
+        }
+        if (onProgress != null && contentLength != null && contentLength > 0L) {
+            onProgress(totalWritten, contentLength)
         }
         return totalWritten
     }
@@ -157,7 +176,19 @@ class BaishouHttpServer(
                     context.cacheDir,
                     "lan_sync_payload_${System.currentTimeMillis()}.zip"
                 )
-                val bytesWritten = streamRequestBodyToFile(session, destFile)
+                val totalBytes = session.headers["content-length"]?.toLongOrNull() ?: 0L
+                if (totalBytes > 0L) {
+                    emitEvent(
+                        "onLanUploadStarted",
+                        mapOf("totalBytes" to totalBytes)
+                    )
+                }
+                val bytesWritten = streamRequestBodyToFile(session, destFile) { written, total ->
+                    emitEvent(
+                        "onLanUploadProgress",
+                        mapOf("writtenBytes" to written, "totalBytes" to total)
+                    )
+                }
 
                 if (bytesWritten <= 0L) {
                     return newFixedLengthResponse(
@@ -167,12 +198,17 @@ class BaishouHttpServer(
                     )
                 }
 
-                emitEvent("onFileReceived", mapOf("path" to destFile.absolutePath))
-                return newFixedLengthResponse(
+                val savedPath = destFile.absolutePath
+                val response = newFixedLengthResponse(
                     Response.Status.OK,
                     "application/json",
                     "{\"success\":true}"
                 )
+                // 先返回 HTTP 200，再通知 JS，避免发送方在 RN 桥接期间误判超时/断连
+                Handler(Looper.getMainLooper()).post {
+                    emitEvent("onFileReceived", mapOf("path" to savedPath))
+                }
+                return response
             } catch (e: Exception) {
                 e.printStackTrace()
                 return newFixedLengthResponse(
@@ -223,7 +259,7 @@ class ExpoBaishouServerModule : Module() {
     override fun definition() = ModuleDefinition {
         Name("ExpoBaishouServer")
 
-        Events("onFileReceived", "onMcpHttpRequest")
+        Events("onFileReceived", "onMcpHttpRequest", "onLanUploadStarted", "onLanUploadProgress")
 
         Function("resolveMcpHttpResponse") { requestId: String, responseBody: String ->
             val pending = pendingMcpRequests[requestId] ?: return@Function false
@@ -332,6 +368,49 @@ class ExpoBaishouServerModule : Module() {
         Function("externalReadDirectory") { path: String ->
             val context = appContext.reactContext ?: throw Exception("React context is null")
             ExternalStorageFiles.readDirectory(context, path)
+        }
+
+        /** 应用沙盒等任意本地路径（无需外部存储权限） */
+        Function("localGetInfo") { path: String ->
+            val context = appContext.reactContext ?: throw Exception("React context is null")
+            ExternalStorageFiles.getInfoAny(context, path)
+        }
+
+        Function("localReadDirectory") { path: String ->
+            val context = appContext.reactContext ?: throw Exception("React context is null")
+            ExternalStorageFiles.readDirectoryAny(context, path)
+        }
+
+        AsyncFunction("nativeUnzipArchive") { zipPath: String, destDir: String, promise: Promise ->
+            val context = appContext.reactContext
+            if (context == null) {
+                promise.reject("E_NO_CONTEXT", "React context is null", null)
+                return@AsyncFunction
+            }
+            Thread {
+                try {
+                    ExternalStorageFiles.unzipArchive(zipPath, destDir)
+                    promise.resolve(null)
+                } catch (e: Exception) {
+                    promise.reject("E_UNZIP", e.message ?: "unzip failed", e)
+                }
+            }.start()
+        }
+
+        AsyncFunction("nativeCopyArchiveExtractToRoot") { extractDir: String, rootDir: String, promise: Promise ->
+            val context = appContext.reactContext
+            if (context == null) {
+                promise.reject("E_NO_CONTEXT", "React context is null", null)
+                return@AsyncFunction
+            }
+            Thread {
+                try {
+                    ExternalStorageFiles.copyArchiveExtractToRoot(context, extractDir, rootDir)
+                    promise.resolve(null)
+                } catch (e: Exception) {
+                    promise.reject("E_ARCHIVE_COPY", e.message ?: "archive copy failed", e)
+                }
+            }.start()
         }
 
         Function("externalMove") { fromPath: String, toPath: String ->

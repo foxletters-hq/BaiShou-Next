@@ -9,31 +9,51 @@ import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import android.util.Base64
 import java.io.File
+import java.nio.charset.StandardCharsets
+import net.lingala.zip4j.ZipFile
 
 object ExternalStorageFiles {
-    fun uriToPath(uri: String): String {
-        if (uri.startsWith("file://")) {
-            // 勿用 Uri.parse(uri).path：file:///storage/emulated/0/… 会把 storage 当成 host，path 变成 /emulated/0/…
-            val remainder = uri.removePrefix("file://")
-            if (remainder.startsWith("/")) {
-                return remainder
-            }
-            val parsed = Uri.parse(uri)
-            val path = parsed.path
-            if (!path.isNullOrEmpty()) {
-                val host = parsed.host
-                if (!host.isNullOrEmpty() && host != "localhost" && !path.startsWith("/$host")) {
-                    return "/$host$path"
+    /** 将 file:// 或绝对路径中的 %E4%B8%AD 等段解码为真实文件名（供 java.io.File 使用） */
+    private fun decodePathSegments(path: String): String {
+        return path.split('/').joinToString("/") { segment ->
+            if (segment.isEmpty()) {
+                ""
+            } else {
+                try {
+                    Uri.decode(segment)
+                } catch (_: Exception) {
+                    segment
                 }
-                return path
             }
-            return remainder
         }
-        // JS 层若传入已 strip 的路径，补全 /storage 前缀
-        if (uri.startsWith("/emulated/0")) {
-            return "/storage$uri"
+    }
+
+    fun uriToPath(uri: String): String {
+        val rawPath = when {
+            uri.startsWith("file://") -> {
+                // 勿用 Uri.parse(uri).path：file:///storage/emulated/0/… 会把 storage 当成 host，path 变成 /emulated/0/…
+                val remainder = uri.removePrefix("file://")
+                if (remainder.startsWith("/")) {
+                    remainder
+                } else {
+                    val parsed = Uri.parse(uri)
+                    val path = parsed.path
+                    if (!path.isNullOrEmpty()) {
+                        val host = parsed.host
+                        if (!host.isNullOrEmpty() && host != "localhost" && !path.startsWith("/$host")) {
+                            "/$host$path"
+                        } else {
+                            path
+                        }
+                    } else {
+                        remainder
+                    }
+                }
+            }
+            uri.startsWith("/emulated/0") -> "/storage$uri"
+            else -> uri
         }
-        return uri
+        return decodePathSegments(rawPath)
     }
 
     fun hasExternalAccess(context: Context): Boolean {
@@ -63,6 +83,28 @@ object ExternalStorageFiles {
             throw IllegalArgumentException("Path is not external storage: $path")
         }
         return File(path)
+    }
+
+    private fun resolveAnyFile(uri: String): File = File(uriToPath(uri))
+
+    /** 任意本地路径（含应用沙盒 cache）的元信息，不校验外部存储权限 */
+    fun getInfoAny(context: Context, uri: String): Map<String, Any?> {
+        val file = resolveAnyFile(uri)
+        return mapOf(
+            "exists" to file.exists(),
+            "isDirectory" to file.isDirectory,
+            "modificationTime" to (if (file.exists()) file.lastModified() else 0L),
+            "size" to (if (file.exists() && file.isFile) file.length() else 0L)
+        )
+    }
+
+    /** 任意本地路径（含应用沙盒 cache）的目录列表，不校验外部存储权限 */
+    fun readDirectoryAny(context: Context, uri: String): List<String> {
+        val file = resolveAnyFile(uri)
+        if (!file.exists() || !file.isDirectory) {
+            throw java.io.FileNotFoundException(uri)
+        }
+        return file.list()?.toList() ?: emptyList()
     }
 
     fun probeWritable(context: Context): Boolean {
@@ -192,6 +234,72 @@ object ExternalStorageFiles {
                 to.outputStream().buffered().use { output ->
                     input.copyTo(output)
                 }
+            }
+        }
+    }
+
+    private val ARCHIVE_SKIP_TOP_LEVEL =
+        setOf("database", "config", "manifest.json", "user-data")
+
+    private val ARCHIVE_SKIP_DIR_NAMES = setOf("snapshots", "temp", ".snapshots")
+
+    /** UTF-8 解压备份 ZIP 到目标目录（支持中文文件名） */
+    fun unzipArchive(zipUri: String, destUri: String) {
+        val zipFile = resolveAnyFile(zipUri)
+        val destDir = resolveAnyFile(destUri)
+        if (!zipFile.exists() || !zipFile.isFile) {
+            throw java.io.FileNotFoundException(zipUri)
+        }
+        destDir.mkdirs()
+        ZipFile(zipFile).use { zip ->
+            zip.charset = StandardCharsets.UTF_8
+            zip.extractAll(destDir.absolutePath)
+        }
+    }
+
+    /** 将解压目录中的保险库文件复制到 BaiShou_Root（对齐 JS selectiveCopy 过滤规则） */
+    fun copyArchiveExtractToRoot(context: Context, extractUri: String, rootUri: String) {
+        val rootPath = uriToPath(rootUri)
+        if (isExternalPath(rootPath) && !hasExternalAccess(context)) {
+            throw SecurityException("External storage access not granted")
+        }
+        val extractDir = resolveAnyFile(extractUri)
+        val rootDir = resolveAnyFile(rootUri)
+        if (!extractDir.exists() || !extractDir.isDirectory) {
+            throw java.io.FileNotFoundException(extractUri)
+        }
+        rootDir.mkdirs()
+        val children = extractDir.listFiles() ?: return
+        for (entry in children) {
+            val name = entry.name
+            if (name == "." || name == ".." || name in ARCHIVE_SKIP_TOP_LEVEL) continue
+            copyArchiveEntrySelective(entry, File(rootDir, name))
+        }
+    }
+
+    private fun copyArchiveEntrySelective(source: File, target: File) {
+        if (!source.exists()) return
+        if (source.isDirectory) {
+            if (source.name in ARCHIVE_SKIP_DIR_NAMES) return
+            target.mkdirs()
+            val children = source.listFiles() ?: return
+            for (child in children) {
+                copyArchiveEntrySelective(child, File(target, child.name))
+            }
+            return
+        }
+        val fileName = source.name
+        if (
+            fileName.endsWith("-wal") ||
+            fileName.endsWith("-shm") ||
+            fileName.endsWith("-journal")
+        ) {
+            return
+        }
+        target.parentFile?.mkdirs()
+        source.inputStream().buffered().use { input ->
+            target.outputStream().buffered().use { output ->
+                input.copyTo(output)
             }
         }
     }

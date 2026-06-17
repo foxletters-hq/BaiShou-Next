@@ -1,4 +1,6 @@
 import type { FileEncoding, FileStat, IFileSystem } from '@baishou/core-mobile'
+import { Platform } from 'react-native'
+import { isLocalFsNativeAvailable } from 'expo-baishou-server'
 import {
   externalCopySafe,
   externalCopyAsyncSafe,
@@ -12,10 +14,12 @@ import {
   externalReadTextSafe,
   externalWriteB64Safe,
   externalWriteTextSafe,
+  isAndroidAppSandboxPath,
   isExternalStoragePath,
-  stripFileScheme,
-  normalizeExternalStoragePath,
-  toFileUri
+  localGetInfoSafe,
+  localListDirSafe,
+  toFileUri,
+  type ExternalPathInfo
 } from './android-external-fs'
 import * as SandboxFS from './mobile-sandbox-fs'
 import { normalizeMtimeToMs } from '../utils/fs-mtime.util'
@@ -28,17 +32,41 @@ function enoentError(filePath: string, syscall: string): Error & { code: string 
   return err
 }
 
-function normalizePath(filePath: string): string {
-  return normalizeExternalStoragePath(filePath)
+/** Android 沙盒路径用 java.io.File，避免 expo-file-system 对 Unicode 文件名的 stat/readdir 失败 */
+function shouldUseAndroidNativeLocalFs(filePath: string): boolean {
+  return (
+    Platform.OS === 'android' &&
+    isAndroidAppSandboxPath(filePath) &&
+    isLocalFsNativeAvailable()
+  )
+}
+
+function fileStatFromNativeInfo(
+  filePath: string,
+  info: ExternalPathInfo,
+  syscall = 'stat'
+): FileStat {
+  if (!info.exists) {
+    throw enoentError(filePath, syscall)
+  }
+  return {
+    isFile: !info.isDirectory,
+    isDirectory: info.isDirectory,
+    size: info.size,
+    mtimeMs: info.modificationTime != null ? normalizeMtimeToMs(info.modificationTime) : undefined
+  }
 }
 
 /**
- * 移动端唯一文件 I/O 实现：BaiShou_Root /storage → 原生 java.io.File；沙盒 → Expo。
+ * 移动端唯一文件 I/O 实现：BaiShou_Root /storage → 原生 java.io.File；沙盒 → 原生（Android）或 Expo。
  */
 export class MobileFileSystem implements IFileSystem {
   async exists(filePath: string): Promise<boolean> {
     if (isExternalStoragePath(filePath)) {
       return externalGetInfoSafe(filePath).exists
+    }
+    if (shouldUseAndroidNativeLocalFs(filePath)) {
+      return localGetInfoSafe(filePath).exists
     }
     const info = await SandboxFS.getInfoAsync(toFileUri(filePath))
     return info.exists
@@ -121,6 +149,11 @@ export class MobileFileSystem implements IFileSystem {
     }
 
     if (!srcExternal && !destExternal) {
+      if (shouldUseAndroidNativeLocalFs(src)) {
+        await externalCopyFileAsyncSafe(src, dest)
+        return
+      }
+
       const srcUri = toFileUri(src)
       const destUri = toFileUri(dest)
       const srcInfo = await SandboxFS.getInfoAsync(srcUri)
@@ -146,7 +179,9 @@ export class MobileFileSystem implements IFileSystem {
     } catch {
       const srcInfo = isExternalStoragePath(src)
         ? externalGetInfoSafe(src)
-        : await SandboxFS.getInfoAsync(toFileUri(src))
+        : shouldUseAndroidNativeLocalFs(src)
+          ? localGetInfoSafe(src)
+          : await SandboxFS.getInfoAsync(toFileUri(src))
       if (srcInfo.isDirectory) {
         throw new Error(`Cannot copy directory across storage boundaries: ${src}`)
       }
@@ -171,6 +206,13 @@ export class MobileFileSystem implements IFileSystem {
       }
       return externalListDirSafe(dirPath)
     }
+    if (shouldUseAndroidNativeLocalFs(dirPath)) {
+      const info = localGetInfoSafe(dirPath)
+      if (!info.exists || !info.isDirectory) {
+        throw enoentError(dirPath, 'scandir')
+      }
+      return localListDirSafe(dirPath)
+    }
     const uri = toFileUri(dirPath)
     const info = await SandboxFS.getInfoAsync(uri)
     if (!info.exists) {
@@ -181,17 +223,10 @@ export class MobileFileSystem implements IFileSystem {
 
   async stat(filePath: string): Promise<FileStat> {
     if (isExternalStoragePath(filePath)) {
-      const info = externalGetInfoSafe(filePath)
-      if (!info.exists) {
-        throw enoentError(filePath, 'stat')
-      }
-      return {
-        isFile: !info.isDirectory,
-        isDirectory: info.isDirectory,
-        size: info.size,
-        mtimeMs:
-          info.modificationTime != null ? normalizeMtimeToMs(info.modificationTime) : undefined
-      }
+      return fileStatFromNativeInfo(filePath, externalGetInfoSafe(filePath))
+    }
+    if (shouldUseAndroidNativeLocalFs(filePath)) {
+      return fileStatFromNativeInfo(filePath, localGetInfoSafe(filePath))
     }
     const uri = toFileUri(filePath)
     const info = await SandboxFS.getInfoAsync(uri)

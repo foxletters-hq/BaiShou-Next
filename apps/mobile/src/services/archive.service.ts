@@ -1,5 +1,11 @@
 import * as Sharing from 'expo-sharing'
+import { Platform } from 'react-native'
 import { zip, unzip } from 'react-native-zip-archive'
+import {
+  isNativeArchiveImportAvailable,
+  nativeCopyArchiveExtractToRoot,
+  nativeUnzipArchive
+} from 'expo-baishou-server'
 
 import {
   IArchiveService,
@@ -13,6 +19,7 @@ import {
 } from '@baishou/core-mobile'
 import { normalizeStoragePath, stripFileScheme } from './android-external-fs'
 import { getAppCacheDirectory, getAppDocumentDirectory } from './mobile-app-paths'
+import { joinStoragePath } from './mobile-storage-path.util'
 import { importUriToPath, normalizeImportSourceUri } from './mobile-uri-import'
 import {
   FULL_BACKUP_EXCLUDED_ROOT_NAMES,
@@ -182,12 +189,21 @@ export class MobileArchiveService implements IArchiveService {
 
     let extractDir: string | undefined
     try {
-      extractDir = `${getAppCacheDirectory()}baishou_archive_extract_${Date.now()}`
+      extractDir = joinStoragePath(
+        stripFileScheme(getAppCacheDirectory()),
+        `baishou_archive_extract_${Date.now()}`
+      )
       await this.fileSystem.mkdir(extractDir, { recursive: true })
 
       const { nativeZipPath, cleanupStagedZip } = await this.stageZipForUnzip(zipFilePath)
+      const useNativeArchiveImport =
+        Platform.OS === 'android' && isNativeArchiveImportAvailable()
       try {
-        await unzip(nativeZipPath, stripFileScheme(extractDir))
+        if (useNativeArchiveImport) {
+          await nativeUnzipArchive(nativeZipPath, extractDir)
+        } else {
+          await unzip(nativeZipPath, extractDir)
+        }
       } catch (e) {
         console.error('[MobileArchive] Failed to extract archive', e)
         const detail = e instanceof Error ? e.message : String(e)
@@ -198,7 +214,7 @@ export class MobileArchiveService implements IArchiveService {
 
       const preservedSettings = this.dbBridge ? await this.dbBridge.readPreservedImportSettings() : {}
 
-      const hasManifest = await this.fileSystem.exists(`${extractDir}/manifest.json`)
+      const hasManifest = await this.fileSystem.exists(joinStoragePath(extractDir, 'manifest.json'))
       const isFlutterLegacyZip = !hasManifest && (await isLegacyAppRoot(this.fileSystem, extractDir))
       await this.validateExtractedArchive(extractDir, isFlutterLegacyZip)
 
@@ -207,7 +223,10 @@ export class MobileArchiveService implements IArchiveService {
           throw new Error('当前环境不支持导入 Flutter 旧版备份包')
         }
 
-        const stagingDir = `${getAppCacheDirectory()}baishou_legacy_staging_${Date.now()}`
+        const stagingDir = joinStoragePath(
+          stripFileScheme(getAppCacheDirectory()),
+          `baishou_legacy_staging_${Date.now()}`
+        )
         await this.fileSystem.mkdir(stagingDir, { recursive: true })
 
         try {
@@ -265,24 +284,28 @@ export class MobileArchiveService implements IArchiveService {
         }
         await this.fileSystem.mkdir(rootDir, { recursive: true })
 
-        const entries = await this.fileSystem.readdir(extractDir)
-        for (const name of entries) {
-          if (!name || name === '.' || name === '..') continue
-          if (ARCHIVE_SKIP_TOP_LEVEL.has(name)) continue
-          const src = `${extractDir}/${name}`
-          const dest = `${rootDir}/${name}`
-          const stat = await this.fileSystem.stat(src)
-          if (stat.isDirectory) {
-            await this.fileSystem.mkdir(dest, { recursive: true })
-            await this.selectiveCopy(src, dest)
-          } else if (stat.isFile) {
-            await this.fileSystem.copyFile(src, dest)
+        if (useNativeArchiveImport) {
+          await nativeCopyArchiveExtractToRoot(extractDir, rootDir)
+        } else {
+          const entries = await this.fileSystem.readdir(extractDir)
+          for (const name of entries) {
+            if (!name || name === '.' || name === '..') continue
+            if (ARCHIVE_SKIP_TOP_LEVEL.has(name)) continue
+            const src = joinStoragePath(extractDir, name)
+            const dest = joinStoragePath(rootDir, name)
+            const stat = await this.fileSystem.stat(src)
+            if (stat.isDirectory) {
+              await this.fileSystem.mkdir(dest, { recursive: true })
+              await this.selectiveCopy(src, dest)
+            } else if (stat.isFile) {
+              await this.fileSystem.copyFile(src, dest)
+            }
           }
         }
 
         await this.restoreUserAvatarsFromExtract(extractDir)
 
-        const dbPath = `${extractDir}/${MOBILE_ARCHIVE_DB_ZIP_NAME}`
+        const dbPath = joinStoragePath(extractDir, MOBILE_ARCHIVE_DB_ZIP_NAME)
         const restoredDatabase =
           !!this.dbBridge && (await this.fileSystem.exists(dbPath))
 
@@ -290,7 +313,7 @@ export class MobileArchiveService implements IArchiveService {
           await this.dbBridge!.replaceAgentDatabaseFrom(dbPath)
         }
 
-        const configPath = `${extractDir}/config/device_preferences.json`
+        const configPath = joinStoragePath(extractDir, 'config/device_preferences.json')
         if (await this.fileSystem.exists(configPath)) {
           const raw = await this.fileSystem.readFile(configPath)
           const prefs = JSON.parse(raw) as Record<string, unknown>
@@ -489,7 +512,7 @@ export class MobileArchiveService implements IArchiveService {
     const entries = await this.fileSystem.readdir(extractDir)
     const meaningful = entries.filter((name) => name && name !== '.' && name !== '..')
 
-    const manifestPath = `${extractDir}/manifest.json`
+    const manifestPath = joinStoragePath(extractDir, 'manifest.json')
     let hasValidManifest = false
     if (await this.fileSystem.exists(manifestPath)) {
       try {
@@ -500,13 +523,17 @@ export class MobileArchiveService implements IArchiveService {
       }
     }
 
-    const hasDatabase = await this.fileSystem.exists(`${extractDir}/${MOBILE_ARCHIVE_DB_ZIP_NAME}`)
-    const hasVaultRegistry = await this.fileSystem.exists(`${extractDir}/vault_registry.json`)
+    const hasDatabase = await this.fileSystem.exists(
+      joinStoragePath(extractDir, MOBILE_ARCHIVE_DB_ZIP_NAME)
+    )
+    const hasVaultRegistry = await this.fileSystem.exists(
+      joinStoragePath(extractDir, 'vault_registry.json')
+    )
 
     let hasVaultDirectory = false
     for (const name of meaningful) {
       if (ARCHIVE_SKIP_TOP_LEVEL.has(name)) continue
-      const entryPath = `${extractDir}/${name}`
+      const entryPath = joinStoragePath(extractDir, name)
       try {
         const stat = await this.fileSystem.stat(entryPath)
         if (stat.isDirectory) {
@@ -578,7 +605,7 @@ export class MobileArchiveService implements IArchiveService {
   }
 
   private async restoreUserAvatarsFromExtract(extractDir: string): Promise<void> {
-    const avatarsSrc = `${extractDir}/${ARCHIVE_USER_AVATARS_ZIP_PREFIX}`
+    const avatarsSrc = joinStoragePath(extractDir, ARCHIVE_USER_AVATARS_ZIP_PREFIX)
     if (!(await this.fileSystem.exists(avatarsSrc))) return
 
     const avatarsDest = await this.pathService.getUserAvatarsDirectory()
@@ -588,8 +615,8 @@ export class MobileArchiveService implements IArchiveService {
     const copyDir = async (src: string, dest: string) => {
       const entries = await this.fileSystem.readdir(src)
       for (const name of entries) {
-        const srcPath = `${src}/${name}`
-        const destPath = `${dest}/${name}`
+        const srcPath = joinStoragePath(src, name)
+        const destPath = joinStoragePath(dest, name)
         const stat = await this.fileSystem.stat(srcPath)
         if (stat.isDirectory) {
           await this.fileSystem.mkdir(destPath, { recursive: true })
@@ -652,8 +679,8 @@ export class MobileArchiveService implements IArchiveService {
       if (itemName.endsWith('-wal') || itemName.endsWith('-shm') || itemName.endsWith('-journal'))
         continue
 
-      const fullSourcePath = `${sourceDirPath}/${itemName}`
-      const fullTargetPath = `${targetDirPath}/${itemName}`
+      const fullSourcePath = joinStoragePath(sourceDirPath, itemName)
+      const fullTargetPath = joinStoragePath(targetDirPath, itemName)
 
       const stat = await this.fileSystem.stat(fullSourcePath)
       if (stat.isDirectory) {

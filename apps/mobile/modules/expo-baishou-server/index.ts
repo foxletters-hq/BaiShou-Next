@@ -3,6 +3,8 @@ import { NativeModule, requireNativeModule } from 'expo-modules-core'
 type ServerEvents = {
   onFileReceived: (event: { path: string }) => void
   onMcpHttpRequest: (event: { requestId: string; body: string; authorization?: string }) => void
+  onLanUploadStarted: (event: { totalBytes: number }) => void
+  onLanUploadProgress: (event: { writtenBytes: number; totalBytes: number }) => void
 }
 
 export type ExternalPathInfo = {
@@ -35,6 +37,10 @@ declare class ExpoBaishouServerModule extends NativeModule<ServerEvents> {
   externalReadBase64(path: string): string
   externalDelete(path: string, idempotent: boolean): void
   externalReadDirectory(path: string): string[]
+  localGetInfo(path: string): ExternalPathInfo
+  localReadDirectory(path: string): string[]
+  nativeUnzipArchive(zipPath: string, destDir: string): Promise<void>
+  nativeCopyArchiveExtractToRoot(extractDir: string, rootDir: string): Promise<void>
   externalMove(fromPath: string, toPath: string): void
   externalCopy(fromPath: string, toPath: string): void
   externalCopyAsync(fromPath: string, toPath: string): Promise<void>
@@ -65,6 +71,18 @@ export function isBaishouServerAvailable(): boolean {
 export function isExternalStorageNativeAvailable(): boolean {
   const mod = getNative()
   return mod != null && typeof mod.externalMakeDirectory === 'function'
+}
+
+/** 当前 APK 是否包含沙盒本地路径 java.io.File API（localGetInfo / localReadDirectory） */
+export function isLocalFsNativeAvailable(): boolean {
+  const mod = getNative()
+  return mod != null && typeof mod.localGetInfo === 'function'
+}
+
+/** 当前 APK 是否包含原生归档解压/复制 API */
+export function isNativeArchiveImportAvailable(): boolean {
+  const mod = getNative()
+  return mod != null && typeof mod.nativeUnzipArchive === 'function'
 }
 
 export function isNativeDirectoryPickerAvailable(): boolean {
@@ -122,6 +140,24 @@ export function onFileReceived(listener: (event: { path: string }) => void) {
     return { remove: () => {} }
   }
   return mod.addListener('onFileReceived', listener)
+}
+
+export function onLanUploadStarted(listener: (event: { totalBytes: number }) => void) {
+  const mod = getNative()
+  if (!mod) {
+    return { remove: () => {} }
+  }
+  return mod.addListener('onLanUploadStarted', listener)
+}
+
+export function onLanUploadProgress(
+  listener: (event: { writtenBytes: number; totalBytes: number }) => void
+) {
+  const mod = getNative()
+  if (!mod) {
+    return { remove: () => {} }
+  }
+  return mod.addListener('onLanUploadProgress', listener)
 }
 
 export function onMcpHttpRequest(
@@ -257,6 +293,33 @@ export function externalDelete(path: string, idempotent = true): void {
 
 export function externalReadDirectory(path: string): string[] {
   return callNativeExternal('externalReadDirectory', (mod) => mod.externalReadDirectory(path))
+}
+
+export function localGetInfo(path: string): ExternalPathInfo {
+  return callNativeExternal('localGetInfo', (mod) => mod.localGetInfo(path))
+}
+
+export function localReadDirectory(path: string): string[] {
+  return callNativeExternal('localReadDirectory', (mod) => mod.localReadDirectory(path))
+}
+
+export async function nativeUnzipArchive(zipPath: string, destDir: string): Promise<void> {
+  const mod = requireNative()
+  if (typeof mod.nativeUnzipArchive !== 'function') {
+    throw new Error(`${NATIVE_REBUILD_HINT}（缺少 nativeUnzipArchive）`)
+  }
+  await mod.nativeUnzipArchive(zipPath, destDir)
+}
+
+export async function nativeCopyArchiveExtractToRoot(
+  extractDir: string,
+  rootDir: string
+): Promise<void> {
+  const mod = requireNative()
+  if (typeof mod.nativeCopyArchiveExtractToRoot !== 'function') {
+    throw new Error(`${NATIVE_REBUILD_HINT}（缺少 nativeCopyArchiveExtractToRoot）`)
+  }
+  await mod.nativeCopyArchiveExtractToRoot(extractDir, rootDir)
 }
 
 export function externalMove(fromPath: string, toPath: string): void {
