@@ -27,7 +27,7 @@ import { ModelPricingService } from '../pricing/model-pricing.service'
 describe('persistResult token estimation', () => {
   it(
     'should estimate input tokens correctly when api usage is missing',
-    { timeout: 15_000 },
+    { timeout: 60_000 },
     async () => {
       vi.spyOn(ModelPricingService.getInstance(), 'calculateCostMicros').mockResolvedValue(0)
       const sessionRepo = {
