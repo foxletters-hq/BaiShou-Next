@@ -27,7 +27,7 @@ export const SummaryScreen: React.FC = () => {
   const { width } = useWindowDimensions()
   const { colors, isDark } = useNativeTheme()
   const toast = useNativeToast()
-  const { services, dbReady } = useBaishou()
+  const { services, dbReady, vaultRevision, archiveRestoreEpoch, storageIndexing } = useBaishou()
   const [activeTab, setActiveTab] = useState<'panel' | 'gallery'>('panel')
   const slideOffset = useSharedValue(0)
 
@@ -47,6 +47,7 @@ export const SummaryScreen: React.FC = () => {
   const [activityData, setActivityData] = useState<Array<{ date: string; count: number }>>([])
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const [availableYears, setAvailableYears] = useState<number[]>([new Date().getFullYear()])
+  const [isRescanning, setIsRescanning] = useState(false)
 
   const {
     summaries,
@@ -99,7 +100,7 @@ export const SummaryScreen: React.FC = () => {
   }
 
   useEffect(() => {
-    if (!dbReady || !services) return
+    if (!dbReady || storageIndexing || !services) return
 
     const initActivityData = async () => {
       try {
@@ -135,10 +136,10 @@ export const SummaryScreen: React.FC = () => {
 
     initActivityData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dbReady, services])
+  }, [dbReady, storageIndexing, services, vaultRevision, archiveRestoreEpoch])
 
   useEffect(() => {
-    if (!dbReady || !services) return
+    if (!dbReady || storageIndexing || !services) return
 
     const loadYearData = async () => {
       try {
@@ -161,7 +162,7 @@ export const SummaryScreen: React.FC = () => {
     }
 
     loadYearData()
-  }, [dbReady, services, selectedYear])
+  }, [dbReady, storageIndexing, services, selectedYear, vaultRevision, archiveRestoreEpoch])
 
   useEffect(() => {
     Object.keys(generationStates).forEach((uKey) => {
@@ -242,6 +243,21 @@ export const SummaryScreen: React.FC = () => {
     setConcurrency(n)
   }
 
+  const handleRescan = useCallback(async () => {
+    if (!services?.bootstrapper || isRescanning || storageIndexing) return
+    setIsRescanning(true)
+    try {
+      await services.bootstrapper.resyncFromDisk()
+      await refreshData()
+      toast.showSuccess(t('summary.rescan_success'))
+    } catch (e) {
+      logger.warn('[SummaryScreen] rescan failed:', e instanceof Error ? e : String(e))
+      toast.showError(t('summary.rescan_failed'))
+    } finally {
+      setIsRescanning(false)
+    }
+  }, [isRescanning, refreshData, services, storageIndexing, t, toast])
+
   return (
     <>
       <StatusBar
@@ -272,7 +288,11 @@ export const SummaryScreen: React.FC = () => {
                       />
                     </View>
                     <View style={styles.flex1}>
-                      <DashboardStatsCard {...stats} />
+                      <DashboardStatsCard
+                        {...stats}
+                        onRescan={() => void handleRescan()}
+                        rescanning={isRescanning || storageIndexing}
+                      />
                     </View>
                   </View>
 

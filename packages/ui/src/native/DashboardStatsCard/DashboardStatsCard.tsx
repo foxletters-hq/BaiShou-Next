@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import React from 'react'
-import { View, Text, StyleSheet } from 'react-native'
+import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import type { ComponentProps } from 'react'
 import { useNativeTheme } from '../../native/theme'
@@ -11,6 +11,8 @@ interface DashboardStatsCardProps {
   totalMonthlyCount: number
   totalQuarterlyCount: number
   totalYearlyCount: number
+  onRescan?: () => void
+  rescanning?: boolean
 }
 
 type IconName = ComponentProps<typeof MaterialIcons>['name']
@@ -73,7 +75,9 @@ export const DashboardStatsCard: React.FC<DashboardStatsCardProps> = ({
   totalWeeklyCount,
   totalMonthlyCount,
   totalQuarterlyCount,
-  totalYearlyCount
+  totalYearlyCount,
+  onRescan,
+  rescanning = false
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -111,10 +115,33 @@ export const DashboardStatsCard: React.FC<DashboardStatsCardProps> = ({
   return (
     <View style={[styles.card, { backgroundColor: colors.bgSurface, borderColor: cardBorder }]}>
       <View style={styles.header}>
-        <MaterialIcons name="analytics" size={20} color="#43A047" style={styles.headerIcon} />
-        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
-          {t('common.app_title')} · {t('summary.stats_panel')}
-        </Text>
+        <View style={styles.headerTitleRow}>
+          <MaterialIcons name="analytics" size={20} color="#43A047" style={styles.headerIcon} />
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
+            {t('common.app_title')} · {t('summary.stats_panel')}
+          </Text>
+        </View>
+        {onRescan ? (
+          <Pressable
+            style={[
+              styles.rescanButton,
+              {
+                backgroundColor: colors.bgSurfaceNormal ?? colors.bgSurface,
+                opacity: rescanning ? 0.6 : 1
+              }
+            ]}
+            onPress={onRescan}
+            disabled={rescanning}
+            accessibilityRole="button"
+            accessibilityLabel={t('summary.rescan')}
+          >
+            {rescanning ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <MaterialIcons name="sync" size={18} color={colors.textSecondary} />
+            )}
+          </Pressable>
+        ) : null}
       </View>
 
       <View style={styles.grid}>
@@ -146,14 +173,31 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 20
+  },
+  headerTitleRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    minWidth: 0
   },
   headerIcon: {
     marginRight: 8
   },
   headerTitle: {
     fontSize: 14,
-    fontWeight: 'bold'
+    fontWeight: 'bold',
+    flexShrink: 1
+  },
+  rescanButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+    flexShrink: 0
   },
   grid: {
     gap: 12

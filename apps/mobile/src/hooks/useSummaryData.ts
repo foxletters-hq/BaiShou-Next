@@ -47,10 +47,12 @@ interface QueueItem {
 
 export function useSummaryData() {
   const { i18n } = useTranslation()
-  const { services, dbReady, vaultRevision } = useBaishou()
+  const { services, dbReady, vaultRevision, archiveRestoreEpoch, storageIndexing } = useBaishou()
   const summaryManager = services?.summaryManager
   const diaryService = services?.diaryService
   const missingSummaryDetector = services?.missingSummaryDetector
+  const bootstrapper = services?.bootstrapper
+  const autoRescanAttemptedRef = useRef(-1)
   const [summaries, setSummaries] = useState<Summary[]>([])
   const [stats, setStats] = useState<Stats>({
     totalDiaryCount: 0,
@@ -85,7 +87,7 @@ export function useSummaryData() {
   )
 
   const fetchMissingSummaries = useCallback(async () => {
-    if (!dbReady || !missingSummaryDetector) return
+    if (!dbReady || storageIndexing || !missingSummaryDetector) return
 
     setIsDetectingMissing(true)
     try {
@@ -97,18 +99,36 @@ export function useSummaryData() {
     } finally {
       setIsDetectingMissing(false)
     }
-  }, [dbReady, missingSummaryDetector, i18n.language, mapDetectedMissing])
+  }, [dbReady, storageIndexing, missingSummaryDetector, i18n.language, mapDetectedMissing, archiveRestoreEpoch])
 
   const fetchCoreData = useCallback(async () => {
-    if (!dbReady || !summaryManager || !diaryService) return
+    if (!dbReady || storageIndexing || !summaryManager || !diaryService) return
 
     try {
       setLoading(true)
 
-      const [summaryList, diaryCount] = await Promise.all([
-        summaryManager.list(),
-        diaryService.count()
-      ])
+      let summaryList = await summaryManager.list()
+
+      if (
+        summaryList.length === 0 &&
+        bootstrapper &&
+        autoRescanAttemptedRef.current !== vaultRevision
+      ) {
+        autoRescanAttemptedRef.current = vaultRevision
+        try {
+          await bootstrapper.resyncFromDisk()
+          summaryList = await summaryManager.list()
+        } catch (e) {
+          logger.warn('[useSummaryData] auto resync after empty summary list failed:', e as Error)
+        }
+      }
+
+      let diaryCount = 0
+      try {
+        diaryCount = await diaryService.count()
+      } catch (e) {
+        logger.warn('[useSummaryData] diary count failed:', e as Error)
+      }
 
       setSummaries(
         summaryList.map((s) => ({
@@ -132,7 +152,15 @@ export function useSummaryData() {
     } finally {
       setLoading(false)
     }
-  }, [dbReady, summaryManager, diaryService, vaultRevision])
+  }, [
+    dbReady,
+    storageIndexing,
+    summaryManager,
+    diaryService,
+    bootstrapper,
+    vaultRevision,
+    archiveRestoreEpoch
+  ])
 
   const fetchData = useCallback(async () => {
     await fetchCoreData()
