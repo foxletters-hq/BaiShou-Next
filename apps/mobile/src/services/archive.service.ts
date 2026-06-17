@@ -1,4 +1,3 @@
-import * as Sharing from 'expo-sharing'
 import { Platform } from 'react-native'
 import { zip, unzip } from 'react-native-zip-archive'
 import {
@@ -23,6 +22,7 @@ import { normalizeStoragePath, stripFileScheme } from './android-external-fs'
 import { getAppCacheDirectory } from './mobile-app-paths'
 import { joinStoragePath } from './mobile-storage-path.util'
 import { importUriToPath, normalizeImportSourceUri } from './mobile-uri-import'
+import { shareLocalFile } from '../utils/share-local-file.util'
 import {
   FULL_BACKUP_EXCLUDED_ROOT_NAMES,
   resetIncrementalSyncMetaAfterFullRestore
@@ -194,13 +194,8 @@ export class MobileArchiveService implements IArchiveService {
       throw new Error('生成备份 ZIP 失败')
     }
 
-    if (!(await Sharing.isAvailableAsync())) {
-      await this.fileSystem.unlink(zipPath).catch(() => {})
-      throw new Error('当前设备不支持分享/导出文件')
-    }
-
     try {
-      await Sharing.shareAsync(zipPath, {
+      await shareLocalFile(this.fileSystem, zipPath, {
         mimeType: 'application/zip',
         dialogTitle: '保存 BaiShou 物理系统备份',
         UTI: 'public.zip-archive'
