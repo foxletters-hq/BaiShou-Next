@@ -11,6 +11,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import type { DiscoveredDevice } from '@baishou/core-mobile'
+import { getLanDeviceDedupKey } from '@baishou/shared'
 import { useNativeTheme } from '@baishou/ui/native'
 
 type ThemeColors = ReturnType<typeof useNativeTheme>['colors']
@@ -236,12 +237,12 @@ export const LanTransferRadarView: React.FC<LanTransferRadarViewProps> = ({
           .slice(0, 5)
           .map((device, index) => (
             <FloatingBubble
-              key={device.rawServiceId}
+              key={getLanDeviceDedupKey(device)}
               device={device}
               index={index}
               zone={zone}
               colors={colors}
-              isSending={sendingTo === device.rawServiceId}
+              isSending={sendingTo === getLanDeviceDedupKey(device)}
               sendProgress={sendProgress}
               onPress={() => onDevicePress(device)}
             />

@@ -9,6 +9,12 @@ import {
 import { useBaishou } from '../providers/BaishouProvider'
 import { useTranslation } from 'react-i18next'
 import type { DiscoveredDevice } from '@baishou/core-mobile'
+import {
+  LAN_DEVICE_STALE_MS,
+  getLanDeviceDedupKey,
+  removeDiscoveredLanDevice,
+  upsertDiscoveredLanDevice
+} from '@baishou/shared'
 import { LanTransferRadarView } from '../components/LanTransferRadarView'
 import { StackScreenLayout } from '../components/StackScreenLayout'
 import { getStackScreenChrome } from '../components/stackScreenChrome'
@@ -25,7 +31,13 @@ export const LanTransferScreen: React.FC = () => {
   const [sendingTo, setSendingTo] = useState<string | null>(null)
   const [sendProgress, setSendProgress] = useState(0)
   const [isRestoring, setIsRestoring] = useState(false)
-  const localConnRef = useRef<{ ip: string; port: number; serviceId: string } | null>(null)
+  const localConnRef = useRef<{
+    ip: string
+    port: number
+    serviceId: string
+    deviceId?: string
+  } | null>(null)
+  const deviceSeenAtRef = useRef<Map<string, number>>(new Map())
 
   const lanSyncService = services?.lanSyncService
   const archiveService = services?.archiveService
@@ -33,12 +45,18 @@ export const LanTransferScreen: React.FC = () => {
   const isSelfDevice = useCallback((dev: DiscoveredDevice) => {
     const conn = localConnRef.current
     if (!conn) return false
+    if (conn.deviceId && dev.deviceId === conn.deviceId) return true
     return dev.rawServiceId === conn.serviceId || (dev.port === conn.port && dev.ip === conn.ip)
+  }, [])
+
+  const markDeviceSeen = useCallback((device: DiscoveredDevice) => {
+    deviceSeenAtRef.current.set(getLanDeviceDedupKey(device), Date.now())
   }, [])
 
   const stopDualMode = useCallback(async () => {
     setIsDiscovering(false)
     setDevices([])
+    deviceSeenAtRef.current.clear()
     localConnRef.current = null
     await lanSyncService?.stopDiscovery().catch(() => {})
     await lanSyncService?.stopBroadcasting().catch(() => {})
@@ -48,25 +66,25 @@ export const LanTransferScreen: React.FC = () => {
     if (!dbReady || !lanSyncService) return
     setIsDiscovering(true)
     setDevices([])
+    deviceSeenAtRef.current.clear()
 
-    const conn = await lanSyncService.startBroadcasting()
-    if (conn) localConnRef.current = conn
+    try {
+      const conn = await lanSyncService.startBroadcasting()
+      if (conn) localConnRef.current = conn
 
-    await lanSyncService.startDiscovery(
-      (device) => {
-        if (isSelfDevice(device)) return
-        setDevices((prev) => {
-          const idx = prev.findIndex((d) => d.rawServiceId === device.rawServiceId)
-          if (idx >= 0) {
-            const next = [...prev]
-            next[idx] = device
-            return next
-          }
-          return [...prev, device]
-        })
-      },
-      (id) => setDevices((prev) => prev.filter((d) => d.rawServiceId !== id))
-    )
+      await lanSyncService.startDiscovery(
+        (device) => {
+          if (isSelfDevice(device)) return
+          markDeviceSeen(device)
+          setDevices((prev) => upsertDiscoveredLanDevice(prev, device))
+        },
+        (id) => setDevices((prev) => removeDiscoveredLanDevice(prev, id))
+      )
+    } catch (e: unknown) {
+      setIsDiscovering(false)
+      const msg = e instanceof Error ? e.message : String(e)
+      toast.showError(msg || t('lan_transfer.scan_failed', '局域网扫描启动失败'))
+    }
 
     lanSyncService.onFileReceived((zipPath) => {
       void (async () => {
@@ -87,7 +105,7 @@ export const LanTransferScreen: React.FC = () => {
         }
       })()
     })
-  }, [archiveService, dbReady, dialog, isSelfDevice, lanSyncService, t, toast])
+  }, [archiveService, dbReady, dialog, isSelfDevice, lanSyncService, markDeviceSeen, t, toast])
 
   const restartDualMode = useCallback(async () => {
     await stopDualMode()
@@ -103,10 +121,27 @@ export const LanTransferScreen: React.FC = () => {
     }
   }, [dbReady, lanSyncService, startDualMode, stopDualMode])
 
+  useEffect(() => {
+    if (!isDiscovering) return
+
+    const timer = setInterval(() => {
+      const now = Date.now()
+      setDevices((prev) =>
+        prev.filter((device) => {
+          const seenAt = deviceSeenAtRef.current.get(getLanDeviceDedupKey(device))
+          return seenAt != null && now - seenAt < LAN_DEVICE_STALE_MS
+        })
+      )
+    }, 10_000)
+
+    return () => clearInterval(timer)
+  }, [isDiscovering])
+
   const sendToDevice = useCallback(
     async (device: DiscoveredDevice) => {
       if (!lanSyncService || sendingTo) return
-      setSendingTo(device.rawServiceId)
+      const deviceKey = getLanDeviceDedupKey(device)
+      setSendingTo(deviceKey)
       setSendProgress(0)
       const ok = await lanSyncService.sendFile(device.ip, device.port, (p) => setSendProgress(p))
       setSendingTo(null)
