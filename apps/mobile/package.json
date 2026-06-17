@@ -14,7 +14,8 @@
     "build:release": "node ./scripts/build-release-apk.mjs",
     "ios": "expo run:ios",
     "lint": "eslint . --cache",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node ../../node_modules/vitest/vitest.mjs run --config vitest.config.mts"
   },
   "dependencies": {
     "@baishou/ai": "workspace:^",

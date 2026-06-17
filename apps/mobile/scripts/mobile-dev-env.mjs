@@ -33,6 +33,9 @@ export const METRO_PORT = process.env.RCT_METRO_PORT || process.env.EXPO_DEV_SER
 /** Clash / 部分 VPN 的假 IP 段，手机无法访问 */
 const BLOCKED_PREFIXES = ['127.', '169.254.', '198.18.', '198.19.']
 
+/** Tailscale / CGNAT（100.64.0.0/10），手机在普通 Wi‑Fi 上通常无法直连 */
+const DEPRIORITIZED_PREFIXES = ['100.', '172.']
+
 export function isUsableDevHost(ip) {
   if (!ip || typeof ip !== 'string') return false
   return !BLOCKED_PREFIXES.some((p) => ip.startsWith(p))
@@ -57,9 +60,10 @@ function getLanIpFromHostname() {
     const other = []
     for (const addr of parts) {
       if (!isUsableDevHost(addr)) continue
+      if (DEPRIORITIZED_PREFIXES.some((p) => addr.startsWith(p))) continue
       if (addr.startsWith('192.168.')) prefer192.push(addr)
       else if (addr.startsWith('10.')) prefer10.push(addr)
-      else if (!addr.startsWith('172.')) other.push(addr)
+      else other.push(addr)
     }
     return prefer192[0] || prefer10[0] || other[0] || null
   } catch {
@@ -112,9 +116,17 @@ export function getLanIp() {
   return prefer192[0] || prefer10[0] || other[0] || '127.0.0.1'
 }
 
+function adbQuick(cmd, timeoutMs = 5000) {
+  return execSync(cmd, {
+    encoding: 'utf8',
+    stdio: ['pipe', 'pipe', 'pipe'],
+    timeout: timeoutMs
+  })
+}
+
 export function hasAdbDevice() {
   try {
-    const out = execSync('adb devices', { encoding: 'utf8' })
+    const out = adbQuick('adb devices')
     return out.split('\n').some((line) => line.trim().endsWith('\tdevice'))
   } catch {
     return false
@@ -127,8 +139,12 @@ const ANDROID_PACKAGE_ID = ANDROID_DEV_PACKAGE_ID
 /** 历史包名，与当前 debug 签名不同，冲突时需一并卸载 */
 const LEGACY_ANDROID_PACKAGE_IDS = ['com.anonymous.mobile']
 
-function adbExec(cmd) {
-  return execSync(cmd, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] })
+function adbExec(cmd, opts = {}) {
+  return execSync(cmd, {
+    encoding: 'utf8',
+    stdio: ['pipe', 'pipe', 'pipe'],
+    ...opts
+  })
 }
 
 function adbExecErrorText(err) {
@@ -330,14 +346,22 @@ export function setupAdbReverse(port = METRO_PORT) {
   }
 }
 
+let lastKnownReverseOk = false
+
 /** 当前 adb 是否已配置 reverse（USB 或无线调试均可） */
 export function hasAdbReverse(port = METRO_PORT) {
-  if (!hasAdbDevice()) return false
-  try {
-    const out = execSync('adb reverse --list', { encoding: 'utf8' })
-    return out.includes(`tcp:${port} tcp:${port}`)
-  } catch {
+  if (!hasAdbDevice()) {
+    lastKnownReverseOk = false
     return false
+  }
+  try {
+    const out = adbQuick('adb reverse --list')
+    const ok = out.includes(`tcp:${port} tcp:${port}`)
+    lastKnownReverseOk = ok
+    return ok
+  } catch {
+    // WSL2 + 无线 adb 时 adb 偶发超时，勿误判为 reverse 丢失
+    return lastKnownReverseOk
   }
 }
 
@@ -398,6 +422,22 @@ export function printWslPortProxyHint(lanHost = getLanIp(), port = METRO_PORT) {
   console.log('   或在 WSL 内安装 adb（usbipd 绑定 USB），使 reverse 与 Metro 同环境。\n')
 }
 
+/** 轮询 Metro /status，就绪后再用 adb 打开 App，避免固定延时不够 */
+export async function waitForMetro(port = METRO_PORT, { timeoutMs = 120_000, intervalMs = 500 } = {}) {
+  const deadline = Date.now() + timeoutMs
+  const url = `http://127.0.0.1:${port}/status`
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(2000) })
+      if (res.ok) return true
+    } catch {
+      /* Metro 尚未监听 */
+    }
+    await new Promise((r) => setTimeout(r, intervalMs))
+  }
+  return false
+}
+
 export function printDevConnectionHelp(lanHost = getLanIp(), port = METRO_PORT) {
   const adb = hasAdbDevice()
   const devHost = getDevServerHost(lanHost, port)
@@ -414,6 +454,16 @@ export function printDevConnectionHelp(lanHost = getLanIp(), port = METRO_PORT) 
     console.log('   连接 adb 后会自动 reverse，届时可用 http://localhost:' + port)
   }
   console.log(`   局域网（同一 Wi‑Fi，无 adb 时用）: http://${lanHost}:${port}`)
+  if (adb) {
+    try {
+      const devices = execSync('adb devices', { encoding: 'utf8' })
+      if (devices.includes(':5555')) {
+        console.log('   无线 adb：若连不上，先 adb disconnect 再 adb connect 手机IP:5555，然后 pnpm mobile:connect')
+      }
+    } catch {
+      /* ignore */
+    }
+  }
   if (wsl && devHost !== 'localhost') {
     console.log(`   WSL2 无 reverse 时开发菜单填: http://${lanHost}:${port} （需 portproxy 或 WSL 内 adb）`)
     printWslPortProxyHint(lanHost, port)
