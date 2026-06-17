@@ -49,8 +49,10 @@ export interface DiaryListProps {
   storageSlow?: boolean
   /** 外部存储挂载失败 */
   storageMountFailed?: boolean
-  /** 已连接存储，正在从磁盘恢复索引 */
-  storageIndexing?: boolean
+    /** 保险库切换 / 全量恢复期间，列表尚未就绪 */
+    vaultSwitching?: boolean
+    /** 已连接存储，正在从磁盘恢复索引 */
+    storageIndexing?: boolean
   onRetryStorageMount?: () => void | Promise<void>
   onGoToEditor: (id: number) => void
   onDeleteEntry: (id: number) => void
@@ -173,6 +175,7 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
   storagePending = false,
   storageSlow = false,
   storageMountFailed = false,
+  vaultSwitching = false,
   storageIndexing = false,
   onRetryStorageMount,
   onGoToEditor,
@@ -308,7 +311,7 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
     )
   }
 
-  if (storageIndexing && entries.length === 0) {
+  if ((storageIndexing || vaultSwitching) && entries.length === 0) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={colors.primary} />

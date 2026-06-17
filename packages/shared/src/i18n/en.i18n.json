@@ -1072,6 +1072,8 @@
     "ip_not_found": "Cannot get device IP",
     "received_backup_title": "Received Backup",
     "received_backup_content": "Data from LAN device ($size MB).\nOverwrite current data and import now?\n\nNote: A snapshot will be created automatically before import.",
+    "receiving_backup": "Receiving backup ($percent%)…",
+    "receiving_backup_hint": "Large transfers take a while. Keep this screen open until complete.",
     "qr_scan_title": "Scan QR Code",
     "file_received": "File received: $name",
     "show_qr": "Show QR Code",

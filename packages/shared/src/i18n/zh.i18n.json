@@ -1097,6 +1097,8 @@
     "ip_not_found": "无法获取设备IP",
     "received_backup_title": "收到数据备份",
     "received_backup_content": "来自局域网设备的数据 ($size MB)。\n是否立即覆盖当前数据并导入？\n\n注意：导入前会自动创建当前数据的快照。",
+    "receiving_backup": "正在接收备份包（$percent%）…",
+    "receiving_backup_hint": "大包传输需要一些时间，请保持本页面在前台直至完成。",
     "qr_scan_title": "扫描二维码",
     "file_received": "已接收文件: $name",
     "show_qr": "显示二维码",
