@@ -1,10 +1,18 @@
-import React from 'react'
-import { View, StyleSheet, type StyleProp, type ViewStyle } from 'react-native'
+import React, { useEffect, useMemo, useState } from 'react'
+import {
+  View,
+  StyleSheet,
+  Platform,
+  InteractionManager,
+  type StyleProp,
+  type ViewStyle
+} from 'react-native'
 import CommunitySlider from '@react-native-community/slider'
 import { useNativeTheme } from '../theme'
 import {
   NATIVE_SLIDER_HEIGHT,
-  snapSliderValue,
+  getAndroidSliderIntegerScale,
+  toNativeSliderProps,
   type NativeSliderThumbOptions
 } from './native-slider.utils'
 
@@ -45,6 +53,19 @@ export const NativeSlider: React.FC<NativeSliderProps> = ({
   style
 }) => {
   const { colors } = useNativeTheme()
+  const [androidReady, setAndroidReady] = useState(Platform.OS !== 'android')
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return
+    const task = InteractionManager.runAfterInteractions(() => setAndroidReady(true))
+    return () => task.cancel()
+  }, [])
+
+  const platformScale = Platform.OS === 'android' ? getAndroidSliderIntegerScale(step) : 1
+  const nativeProps = useMemo(
+    () => toNativeSliderProps(value, minValue, maxValue, step, platformScale),
+    [value, minValue, maxValue, step, platformScale]
+  )
 
   const minTrack = fillColor ?? minimumTrackTintColor ?? colors.primary
   const maxTrack =
@@ -52,7 +73,7 @@ export const NativeSlider: React.FC<NativeSliderProps> = ({
   const thumb = thumbOptions?.thumbColor ?? thumbTintColor ?? colors.primary
 
   const emit = (raw: number, phase: 'change' | 'end') => {
-    const next = snapSliderValue(raw, minValue, maxValue, step)
+    const next = nativeProps.logicalFromNative(raw)
     if (phase === 'change') {
       onChange?.(next)
       return
@@ -62,19 +83,21 @@ export const NativeSlider: React.FC<NativeSliderProps> = ({
 
   return (
     <View style={[styles.wrap, style]}>
-      <CommunitySlider
-        style={styles.slider}
-        value={value}
-        minimumValue={minValue}
-        maximumValue={maxValue}
-        step={step}
-        disabled={disabled}
-        minimumTrackTintColor={minTrack}
-        maximumTrackTintColor={maxTrack}
-        thumbTintColor={thumb}
-        onValueChange={(raw) => emit(raw, 'change')}
-        onSlidingComplete={(raw) => emit(raw, 'end')}
-      />
+      {androidReady ? (
+        <CommunitySlider
+          style={styles.slider}
+          value={nativeProps.value}
+          minimumValue={nativeProps.minimumValue}
+          maximumValue={nativeProps.maximumValue}
+          step={nativeProps.step}
+          disabled={disabled}
+          minimumTrackTintColor={minTrack}
+          maximumTrackTintColor={maxTrack}
+          thumbTintColor={thumb}
+          onValueChange={(raw) => emit(raw, 'change')}
+          onSlidingComplete={(raw) => emit(raw, 'end')}
+        />
+      ) : null}
     </View>
   )
 }
