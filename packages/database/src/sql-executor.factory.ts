@@ -1,5 +1,6 @@
 import type { ISqlExecutor } from '@baishou/shared'
 import { sql } from 'drizzle-orm'
+import { isRawSqlReadStatement } from './raw-sql.executor'
 
 type SqlRow = Record<string, unknown>
 
@@ -26,9 +27,7 @@ export function createSqlExecutor(db: unknown): ISqlExecutor {
         sqlArgs = statement.args || []
       }
 
-      const isQuery =
-        sqlStr.trim().toUpperCase().startsWith('SELECT') ||
-        sqlStr.trim().toUpperCase().startsWith('PRAGMA')
+      const isQuery = isRawSqlReadStatement(sqlStr)
 
       const rawClient = client as Record<string, unknown>
 

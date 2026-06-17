@@ -101,6 +101,11 @@ export const AGENT_DB_COLUMN_PATCHES: AgentSchemaColumnPatch[] = [
   // ── agent_messages（原 0002_cache_token_usage）──
   {
     table: 'agent_messages',
+    column: 'order_index',
+    ddl: `ALTER TABLE agent_messages ADD COLUMN order_index INTEGER NOT NULL DEFAULT 0`
+  },
+  {
+    table: 'agent_messages',
     column: 'cache_read_input_tokens',
     ddl: `ALTER TABLE agent_messages ADD COLUMN cache_read_input_tokens INTEGER`
   },

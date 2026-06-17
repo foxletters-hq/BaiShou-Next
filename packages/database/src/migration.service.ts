@@ -62,6 +62,11 @@ export class MigrationService {
     try {
       logger.info('[MigrationService] 检查 Agent DB 迁移，目录:', this.migrationDir)
 
+      // 归档导入的旧库可能缺 order_index 等列；在任何 Drizzle agent_* 查询前补齐
+      if (isAgentMigrationArchiveImport()) {
+        await this._ensureAgentSchemaColumns()
+      }
+
       let hasMigrationsTable = await this.migrationsTableExists()
 
       if (!hasMigrationsTable) {
@@ -110,6 +115,7 @@ export class MigrationService {
         await this._ensureSystemSettingsTable()
         await this._ensureMemoryEmbeddingsTable()
         await this._ensureAgentSchemaColumns()
+        await this._backfillAgentMessagesOrderIndex()
         return
       }
 
@@ -178,6 +184,7 @@ export class MigrationService {
       await this._ensureSystemSettingsTable()
       await this._ensureMemoryEmbeddingsTable()
       await this._ensureAgentSchemaColumns()
+      await this._backfillAgentMessagesOrderIndex()
 
       logger.info('[MigrationService] Agent DB 迁移同步完成！')
     } catch (error: any) {
@@ -289,6 +296,42 @@ export class MigrationService {
           message
         )
       }
+    }
+  }
+
+  /**
+   * 旧版 agent.sqlite / 早期 Next 库可能缺 order_index 或全为 0；
+   * 按 session 内 created_at 顺序回填，保证导入后 Drizzle 查询可用。
+   */
+  private async _backfillAgentMessagesOrderIndex(): Promise<void> {
+    try {
+      const tableInfo = await this._executeSql(`PRAGMA table_info(agent_messages)`)
+      if (tableInfo.rows.length === 0) return
+      const hasOrderIndex = tableInfo.rows.some((c: { name?: string }) => c.name === 'order_index')
+      if (!hasOrderIndex) return
+
+      await this._executeSql(`
+        WITH ordered AS (
+          SELECT
+            id,
+            ROW_NUMBER() OVER (
+              PARTITION BY session_id
+              ORDER BY created_at, id
+            ) - 1 AS new_idx
+          FROM agent_messages
+        )
+        UPDATE agent_messages
+        SET order_index = (
+          SELECT new_idx FROM ordered WHERE ordered.id = agent_messages.id
+        )
+        WHERE order_index IS NULL
+           OR order_index != (
+             SELECT new_idx FROM ordered WHERE ordered.id = agent_messages.id
+           )
+      `)
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e)
+      logger.warn('[MigrationService] agent_messages.order_index 回填失败（非阻塞）:', message)
     }
   }
 

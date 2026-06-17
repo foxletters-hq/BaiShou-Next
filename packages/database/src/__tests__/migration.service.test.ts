@@ -153,6 +153,39 @@ describe('MigrationService', () => {
       expect(names).toContain('total_cache_write_input_tokens')
     })
 
+    it('_ensureAgentSchemaColumns should add missing order_index on legacy agent_messages', async () => {
+      const db = dbManager.getDb()
+      await db.run(sql`
+        CREATE TABLE agent_messages (
+          id TEXT PRIMARY KEY NOT NULL,
+          session_id TEXT NOT NULL,
+          role TEXT NOT NULL,
+          is_summary INTEGER NOT NULL DEFAULT 0,
+          created_at INTEGER NOT NULL
+        );
+      `)
+      await db.run(sql`
+        INSERT INTO agent_messages (id, session_id, role, created_at)
+        VALUES ('m1', 's1', 'user', 100),
+               ('m2', 's1', 'assistant', 200);
+      `)
+
+      await (service as any)._ensureAgentSchemaColumns()
+      await (service as any)._backfillAgentMessagesOrderIndex()
+
+      const cols = await db.all(sql`PRAGMA table_info(agent_messages)`)
+      const names = cols.map((c: any) => c.name)
+      expect(names).toContain('order_index')
+
+      const rows = await db.all(sql`
+        SELECT id, order_index FROM agent_messages ORDER BY created_at
+      `)
+      expect(rows).toEqual([
+        { id: 'm1', order_index: 0 },
+        { id: 'm2', order_index: 1 }
+      ])
+    })
+
     it('_ensureAgentSchemaColumns should add missing message cache token columns', async () => {
       const db = dbManager.getDb()
       await db.run(sql`
