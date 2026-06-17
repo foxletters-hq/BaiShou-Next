@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import styles from './TitleBar.module.css'
 import {
@@ -8,8 +8,7 @@ import {
   MdCropSquare,
   MdClose,
   MdFolderShared,
-  MdArrowDropDown,
-  MdSettings
+  MdArrowDropDown
 } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import { isIncrementalSyncReady, buildAgentChatNavigationPath } from '@baishou/shared'
@@ -34,34 +33,62 @@ export const TitleBar: React.FC = () => {
   const [s3Configured, setS3Configured] = useState(false)
   const { isSyncing, progress, startSync } = useOrchestratedSync()
 
-  useEffect(() => {
-    let timeoutId: any
-    let retries = 0
-    const fetchVaults = async () => {
-      try {
-        const vList = await (window as any).api?.vault?.list()
-        const active = await (window as any).api?.vault?.getActive()
-        if (vList) setVaults(vList)
-        if (active) setActiveVault(active)
-
-        if ((!vList || vList.length === 0) && retries < 10) {
-          retries++
-          timeoutId = setTimeout(fetchVaults, 500)
-        }
-      } catch (e) {}
+  const fetchVaults = useCallback(async (): Promise<boolean> => {
+    try {
+      const vList = await (window as any).api?.vault?.list()
+      const active = await (window as any).api?.vault?.getActive()
+      if (Array.isArray(vList)) setVaults(vList)
+      if (active) setActiveVault(active)
+      return Array.isArray(vList) && vList.length > 0
+    } catch {
+      return false
     }
-    fetchVaults()
-    return () => clearTimeout(timeoutId)
   }, [])
 
+  // TitleBar 在引导页即挂载，vault 系统可能尚未就绪；需持续重试并在进入主界面后再拉一次
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (vaultMenuRef.current && !vaultMenuRef.current.contains(e.target as Node)) {
-        setShowVaultMenu(false)
-      }
+    let cancelled = false
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
+    let retries = 0
+    const maxRetries = 120
+
+    const pollVaults = async () => {
+      if (cancelled) return
+      const ready = await fetchVaults()
+      if (ready || retries >= maxRetries) return
+      retries++
+      timeoutId = setTimeout(pollVaults, 500)
     }
-    if (showVaultMenu) document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+
+    void pollVaults()
+    return () => {
+      cancelled = true
+      if (timeoutId) clearTimeout(timeoutId)
+    }
+  }, [fetchVaults])
+
+  useEffect(() => {
+    if (location.pathname.startsWith('/welcome')) return
+    void fetchVaults()
+  }, [location.pathname, fetchVaults])
+
+  useEffect(() => {
+    if (!showVaultMenu) return undefined
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (vaultMenuRef.current?.contains(e.target as Node)) return
+      setShowVaultMenu(false)
+    }
+
+    // 延迟注册，避免与打开菜单的同一次点击冲突
+    const timerId = window.setTimeout(() => {
+      document.addEventListener('click', handleClickOutside, true)
+    }, 0)
+
+    return () => {
+      clearTimeout(timerId)
+      document.removeEventListener('click', handleClickOutside, true)
+    }
   }, [showVaultMenu])
 
   useEffect(() => {
@@ -109,6 +136,17 @@ export const TitleBar: React.FC = () => {
     }
   }
 
+  const toggleVaultMenu = () => {
+    if (isSwitchingVault) return
+    setShowVaultMenu((open) => {
+      const next = !open
+      if (next && vaults.length === 0) {
+        void fetchVaults()
+      }
+      return next
+    })
+  }
+
   // Tabs logic corresponding to Flutter tab controller
   const isAgent = location.pathname.startsWith('/agent') || location.pathname.startsWith('/chat')
   const isSettings = location.pathname.startsWith('/settings')
@@ -144,7 +182,7 @@ export const TitleBar: React.FC = () => {
         {!isOnboarding && (
           <>
             {s3Configured && (
-              <div style={{ marginRight: '8px' }}>
+              <div className={styles.syncPanelWrap}>
                 <IncrementalSyncPanel
                   onSync={startSync}
                   isConfigured={s3Configured}
@@ -160,60 +198,47 @@ export const TitleBar: React.FC = () => {
               style={{ position: 'relative' }}
             >
               <WorkspaceScopeHelpTooltip size={15} className={styles.vaultHelpIcon} />
-              <div
+              <button
+                type="button"
                 className={styles.vaultSwitcher}
-                onClick={() => !isSwitchingVault && setShowVaultMenu(!showVaultMenu)}
+                onClick={toggleVaultMenu}
+                onMouseDown={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+                disabled={isSwitchingVault}
+                aria-expanded={showVaultMenu}
+                aria-haspopup="menu"
                 style={{ opacity: isSwitchingVault ? 0.65 : 1 }}
               >
                 <MdFolderShared className={styles.actionIconSm} />
                 <span className={styles.vaultName}>
                   {isSwitchingVault
                     ? t('workspace.switching', 'Switching…')
-                    : activeVault?.name || ''}
+                    : activeVault?.name || t('workspace.no_active', '未选择工作空间')}
                 </span>
                 <MdArrowDropDown className={styles.actionIconSm} />
-              </div>
-              {showVaultMenu && vaults.length > 0 && (
-                <div
-                  className={styles.vaultMenu}
-                  style={{
-                    position: 'absolute',
-                    top: '100%',
-                    right: 0,
-                    marginTop: '4px',
-                    background: 'var(--bg-surface)',
-                    border: '1px solid var(--border-subtle)',
-                    borderRadius: '8px',
-                    boxShadow: 'var(--shadow-md)',
-                    zIndex: 1000,
-                    minWidth: '150px',
-                    padding: '4px'
-                  }}
-                >
-                  {vaults.map((v, i) => (
-                    <div
-                      key={i}
-                      onMouseEnter={() => preloadVault(v.name)}
-                      onClick={() => handleSwitchVault(v.name)}
-                      style={{
-                        padding: '8px 12px',
-                        cursor: 'pointer',
-                        borderRadius: '4px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        fontSize: '13px',
-                        color:
-                          v.name === activeVault?.name
-                            ? 'var(--color-primary)'
-                            : 'var(--text-primary)',
-                        background:
-                          v.name === activeVault?.name ? 'rgba(91,168,245,0.08)' : 'transparent'
-                      }}
-                    >
-                      {v.name}
+              </button>
+              {showVaultMenu && (
+                <div className={styles.vaultMenu} role="menu">
+                  {vaults.length > 0 ? (
+                    vaults.map((v) => (
+                      <button
+                        key={v.name}
+                        type="button"
+                        role="menuitem"
+                        className={`${styles.vaultMenuItem} ${
+                          v.name === activeVault?.name ? styles.vaultMenuItemActive : ''
+                        }`}
+                        onMouseEnter={() => preloadVault(v.name)}
+                        onClick={() => void handleSwitchVault(v.name)}
+                      >
+                        {v.name}
+                      </button>
+                    ))
+                  ) : (
+                    <div className={styles.vaultMenuPlaceholder} role="presentation">
+                      {t('common.loading', '加载中…')}
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
             </div>

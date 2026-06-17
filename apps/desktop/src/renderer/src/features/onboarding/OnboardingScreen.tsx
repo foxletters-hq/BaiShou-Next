@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { MdArrowBackIosNew, MdArrowForwardIos } from 'react-icons/md'
-import { type CompressionPromptLocale } from '@baishou/shared'
+import { APP_UI_LANGUAGE_ORDER, type CompressionPromptLocale } from '@baishou/shared'
 import { useSettingsStore } from '@baishou/store'
 import icon from '../../../../../resources/icon.png?asset'
 import {
@@ -23,6 +23,7 @@ export const OnboardingScreen: React.FC = () => {
   const [searchParams] = useSearchParams()
   const isPreview = searchParams.get('preview') === '1'
   const setLocale = useSettingsStore((s) => s.setLocale)
+  const persistedLocale = useSettingsStore((s) => s.locale)
   const [currentPage, setCurrentPage] = useState(0)
   const [selectedPath, setSelectedPath] = useState('')
   const [isFinishing, setIsFinishing] = useState(false)
@@ -61,6 +62,44 @@ export const OnboardingScreen: React.FC = () => {
     return () => cleanup()
   }, [navigate, isPreview])
 
+  // 恢复已持久化的语言，避免每次进入引导都需重新点选
+  useEffect(() => {
+    if (isPreview) return
+
+    const restoreLanguage = async () => {
+      let lang: CompressionPromptLocale | null = null
+
+      if (
+        persistedLocale &&
+        persistedLocale !== 'system' &&
+        APP_UI_LANGUAGE_ORDER.includes(persistedLocale as CompressionPromptLocale)
+      ) {
+        lang = persistedLocale as CompressionPromptLocale
+      } else {
+        try {
+          const features = (await window.api.settings.getFeatures()) || {}
+          const saved = features.language
+          if (
+            typeof saved === 'string' &&
+            APP_UI_LANGUAGE_ORDER.includes(saved as CompressionPromptLocale)
+          ) {
+            lang = saved as CompressionPromptLocale
+          }
+        } catch {
+          /* settings may be unavailable before bootstrap */
+        }
+      }
+
+      if (lang) {
+        setSelectedLanguage(lang)
+        setLanguageConfirmed(true)
+        setLocale(lang)
+      }
+    }
+
+    void restoreLanguage()
+  }, [isPreview, persistedLocale, setLocale])
+
   useEffect(() => {
     if (!isPreview) return
     window.api.onboarding.check().then((res) => {
@@ -94,13 +133,16 @@ export const OnboardingScreen: React.FC = () => {
 
     setIsFinishing(true)
     try {
+      if (selectedPath.trim()) {
+        await window.api.onboarding.setDirectory(selectedPath)
+      }
       await window.api.ensureDefaultLatteAssistant(selectedLanguage)
       await window.api.onboarding.finish()
     } catch (e) {
       console.error('完成引导失败', e)
       setIsFinishing(false)
     }
-  }, [goToPage, isPreview, languageConfirmed, navigate, selectedLanguage, t])
+  }, [goToPage, isPreview, languageConfirmed, navigate, selectedLanguage, selectedPath, t])
 
   const handleNext = () => {
     if (isFinishing) return

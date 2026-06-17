@@ -44,9 +44,22 @@ export function registerOnboardingIPC(onComplete: () => void) {
   })
 
   ipcMain.handle('onboarding:finish', async () => {
+    let settings: { custom_storage_root?: string } = {}
     try {
       const data = await fs.readFile(settingsPath, 'utf-8')
-      const settings = JSON.parse(data) as { custom_storage_root?: string }
+      settings = JSON.parse(data) as { custom_storage_root?: string }
+    } catch {
+      /* first launch — create settings file below */
+    }
+
+    // 用户未手动改路径时，渲染进程可能未调用 set-directory；在此兜底持久化默认路径
+    if (!settings.custom_storage_root?.trim()) {
+      settings.custom_storage_root = path.join(app.getPath('userData'), 'Vaults')
+      await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2), 'utf-8')
+      logger.info('[Onboarding] Persisted default storage root:', settings.custom_storage_root)
+    }
+
+    try {
       const dirPath = settings.custom_storage_root?.trim()
       if (dirPath) {
         const { LegacyMigrationService } = await import('../services/legacy-migration.service')

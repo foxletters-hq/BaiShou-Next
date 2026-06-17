@@ -9,13 +9,15 @@
   top: 0;
   left: 0;
   right: 0;
-  z-index: 10000;
+  z-index: 10001;
+  /* Windows 无边框窗口：顶栏默认可拖拽，交互子元素单独标记 no-drag */
+  -webkit-app-region: drag;
 }
 
 .dragRegion {
   flex: 1;
+  min-width: 0;
   height: 100%;
-  -webkit-app-region: drag;
   display: flex;
   align-items: center;
   padding-left: 16px;
@@ -69,6 +71,9 @@
   -webkit-app-region: no-drag;
   display: flex;
   align-items: center;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
 }
 
 .vaultSwitcherWrapper {
@@ -76,10 +81,12 @@
   align-items: center;
   gap: 2px;
   margin-right: 4px;
+  -webkit-app-region: no-drag;
 }
 
 .vaultHelpIcon {
   flex-shrink: 0;
+  -webkit-app-region: no-drag;
 }
 
 .vaultSwitcher {
@@ -89,6 +96,10 @@
   display: flex;
   align-items: center;
   cursor: pointer;
+  border: none;
+  background: transparent;
+  font: inherit;
+  -webkit-app-region: no-drag;
   transition: background-color 0.2s;
 }
 
@@ -136,11 +147,66 @@
   height: 20px;
   background-color: var(--border-muted);
   margin: 0 8px;
+  -webkit-app-region: no-drag;
+}
+
+.vaultMenu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+  z-index: 10;
+  min-width: 150px;
+  padding: 4px;
+  -webkit-app-region: no-drag;
+}
+
+.vaultMenuItem {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  -webkit-app-region: no-drag;
+}
+
+.vaultMenuItem:hover {
+  background: rgba(var(--text-primary-rgb), 0.05);
+}
+
+.vaultMenuItemActive {
+  color: var(--color-primary);
+  background: rgba(91, 168, 245, 0.08);
+}
+
+.vaultMenuPlaceholder {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: default;
+  -webkit-app-region: no-drag;
+}
+
+.syncPanelWrap {
+  margin-right: 8px;
+  -webkit-app-region: no-drag;
 }
 
 .windowControls {
   display: flex;
   height: 100%;
+  -webkit-app-region: no-drag;
 }
 
 .winBtn {

@@ -21,7 +21,8 @@
   font-size: 24px;
   font-weight: 700;
   text-align: center;
-  color: var(--text-primary);
+  /* 引导页背景固定为浅色，不跟随全局 dark theme 变量 */
+  color: #111827;
 }
 
 .subtitle {
@@ -29,7 +30,7 @@
   font-size: 16px;
   line-height: 1.65;
   text-align: center;
-  color: var(--text-secondary);
+  color: #6b7280;
   max-width: 360px;
 }
 
@@ -52,7 +53,7 @@
   align-items: center;
   justify-content: space-between;
   font-size: 16px;
-  color: var(--text-primary);
+  color: #111827;
   cursor: pointer;
   transition:
     border-color 0.15s ease,
