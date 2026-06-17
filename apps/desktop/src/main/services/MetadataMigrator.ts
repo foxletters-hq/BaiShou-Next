@@ -2,14 +2,15 @@ import * as path from 'path'
 import * as fs from 'fs'
 import * as fsp from 'fs/promises'
 import { connectionManager, installDatabaseSchema } from '@baishou/database-desktop'
-import { logger } from '@baishou/shared'
 import {
-  createNodeFileSystem,
-  isValidNextArchiveManifest,
+  resolveArchiveExtractRoot,
+  shouldImportAsFlutterLegacyArchive,
   mergeArchivePrefsPreservingCloudSync,
   purgeImportedShadowIndexCaches
 } from '@baishou/core/shared'
-import { getAppDb } from '../db'
+import { createNodeFileSystem } from '@baishou/core-desktop'
+import { logger } from '@baishou/shared'
+import { getAppDb, resetAppDb } from '../db'
 
 /**
  * 负责解析导入备份时的元数据校验、遗留旧版结构的数据清洗与兼容迁移逻辑。
@@ -56,60 +57,56 @@ export class MetadataMigrator {
     globalShadowDir?: string | null,
     currentCloudSyncConfig?: unknown
   ): Promise<boolean> {
+    const archiveRoot = await resolveArchiveExtractRoot(this.fileSystem, tempExtractDir)
+    const isLegacy = await shouldImportAsFlutterLegacyArchive(
+      this.fileSystem,
+      archiveRoot,
+      manifest
+    )
+
+    if (!isLegacy) {
+      return false
+    }
+
+    logger.info('MetadataMigrator: Detected Legacy Architecture. Initiating Legacy Migration...')
     const { LegacyMigrationService } = await import('./legacy-migration.service')
     const legacyService = new LegacyMigrationService()
-    const isNextArchive = isValidNextArchiveManifest(manifest)
-    const isLegacy = isNextArchive ? false : await legacyService.isLegacyAppRoot(tempExtractDir)
+    const { getDesktopInstallInstanceId } = await import('./install-instance.service')
+    const installInstanceId = await getDesktopInstallInstanceId()
+    const stagingDir = path.join(path.dirname(rootDir), `.baishou_migration_staging_${Date.now()}`)
+    await fsp.mkdir(stagingDir, { recursive: true })
 
-    if (isLegacy) {
-      logger.info('MetadataMigrator: Detected Legacy Architecture. Initiating Legacy Migration...')
-      const { getDesktopInstallInstanceId } = await import('./install-instance.service')
-      const installInstanceId = await getDesktopInstallInstanceId()
-      const stagingDir = path.join(
-        path.dirname(rootDir),
-        `.baishou_migration_staging_${Date.now()}`
-      )
-      await fsp.mkdir(stagingDir, { recursive: true })
+    try {
+      resetAppDb()
+      await legacyService.migrate(archiveRoot, stagingDir, {
+        source: 'flutter_zip',
+        installInstanceId
+      })
 
-      try {
-        await legacyService.migrate(tempExtractDir, stagingDir, {
-          source: 'flutter_zip',
-          installInstanceId
-        })
-
-        if (fs.existsSync(rootDir)) {
-          await fsp.rm(rootDir, { recursive: true, force: true })
-        }
-        await fsp.rename(stagingDir, rootDir)
-      } catch (migrationError) {
-        await fsp.rm(stagingDir, { recursive: true, force: true }).catch(() => {})
-        throw migrationError
+      if (fs.existsSync(rootDir)) {
+        await fsp.rm(rootDir, { recursive: true, force: true })
       }
-
-      await this.cleanShadowIndexFiles(rootDir, globalShadowDir)
-
-      try {
-        const { resetAppDb } = await import('../db')
-        resetAppDb()
-        const restoredDb = getAppDb(rootDir)
-        connectionManager.setDb(restoredDb)
-        await installDatabaseSchema(restoredDb)
-        logger.info(
-          '[MetadataMigrator] Legacy Database connection successfully reconnected and schema migrated.'
-        )
-      } catch (dbErr: any) {
-        logger.error('[MetadataMigrator] Failed to reconnect database for Legacy:', dbErr)
-        throw dbErr
-      }
-
-      await this.restoreDevicePreferencesFromExtract(
-        tempExtractDir,
-        rootDir,
-        currentCloudSyncConfig
-      )
-      return true
+      await fsp.rename(stagingDir, rootDir)
+    } catch (migrationError) {
+      await fsp.rm(stagingDir, { recursive: true, force: true }).catch(() => {})
+      throw migrationError
     }
-    return false
+
+    await this.cleanShadowIndexFiles(rootDir, globalShadowDir)
+
+    const restoredDb = getAppDb(rootDir)
+    connectionManager.setDb(restoredDb)
+    await installDatabaseSchema(restoredDb)
+    logger.info(
+      '[MetadataMigrator] Legacy Database connection successfully reconnected and schema migrated.'
+    )
+
+    await this.restoreDevicePreferencesFromExtract(
+      archiveRoot,
+      rootDir,
+      currentCloudSyncConfig
+    )
+    return true
   }
 
   /** 从 ZIP 解压目录恢复 device_preferences.json 到 Agent DB */

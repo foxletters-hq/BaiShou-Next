@@ -306,7 +306,24 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
     )
   }
 
-  if (storageIndexing || vaultSwitching) {
+  if (vaultSwitching) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.storageTitle, { color: colors.textPrimary }]}>
+          {t('storage.indexing_title', '正在恢复日记索引')}
+        </Text>
+        <Text style={[styles.storageHintText, { color: colors.textSecondary }]}>
+          {t(
+            'storage.indexing_desc',
+            '数据没有丢失。白守已经连接到本地存储，正在扫描日记、会话和总结；数据较多时可能需要约一分钟。'
+          )}
+        </Text>
+      </View>
+    )
+  }
+
+  if (storageIndexing && entries.length === 0 && totalCount === 0) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={colors.primary} />

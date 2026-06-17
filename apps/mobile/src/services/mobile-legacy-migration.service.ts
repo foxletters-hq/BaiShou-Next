@@ -83,6 +83,31 @@ function rootsEqual(a: string, b: string): boolean {
   return normalizeStorageRoot(a) === normalizeStorageRoot(b)
 }
 
+/** 从原版 Flutter SharedPreferences 读取自定义工作区根目录（Android） */
+export function resolveAndroidFlutterCustomStorageRoot(): string | null {
+  if (Platform.OS !== 'android') return null
+  const rawXml = readLegacyFlutterSharedPreferencesXml()
+  if (!rawXml) return null
+  try {
+    const sp = parseFlutterSharedPreferencesXml(rawXml)
+    return extractFlutterCustomStorageRoot(sp)
+  } catch {
+    return null
+  }
+}
+
+function appendAndroidLegacyRootCandidates(candidates: string[]): void {
+  for (const abs of getLegacyFlutterStorageRoots()) {
+    candidates.push(toFileUriFromAbsolute(abs))
+  }
+  const customRoot = resolveAndroidFlutterCustomStorageRoot()
+  if (customRoot) {
+    candidates.push(
+      customRoot.startsWith('file://') ? customRoot : toFileUriFromAbsolute(customRoot)
+    )
+  }
+}
+
 interface FlutterLegacyMigrationCompletedRecord {
   installInstanceId: string
   completedAt: string
@@ -146,9 +171,7 @@ export async function collectLegacyCandidateRoots(fileSystem: IFileSystem): Prom
       )
     }
 
-    for (const abs of getLegacyFlutterStorageRoots()) {
-      candidates.push(toFileUriFromAbsolute(abs))
-    }
+    appendAndroidLegacyRootCandidates(candidates)
   }
 
   if (Platform.OS === 'ios') {
@@ -179,7 +202,6 @@ export async function collectLegacyCandidateRoots(fileSystem: IFileSystem): Prom
 
 /**
  * 启动时快速检测：旧版目录有数据且尚未完成迁移时返回待迁移信息。
- * Android 优先走原生 getLegacyFlutterStorageRoots，避免全量扫描。
  */
 export async function detectFlutterLegacyMigrationPending(
   fileSystem: IFileSystem,
@@ -191,15 +213,7 @@ export async function detectFlutterLegacyMigrationPending(
     return null
   }
 
-  let legacyRoots: string[] = []
-  if (Platform.OS === 'android') {
-    for (const abs of getLegacyFlutterStorageRoots()) {
-      legacyRoots.push(toFileUriFromAbsolute(abs))
-    }
-  } else {
-    legacyRoots = await collectLegacyCandidateRoots(fileSystem)
-  }
-
+  const legacyRoots = await collectLegacyCandidateRoots(fileSystem)
   if (legacyRoots.length === 0) {
     return null
   }
@@ -208,6 +222,7 @@ export async function detectFlutterLegacyMigrationPending(
   if (rootsEqual(sourceRoot, targetRoot)) {
     return null
   }
+
   if (!(await isLegacyAppRoot(fileSystem, sourceRoot))) {
     return null
   }
@@ -253,6 +268,17 @@ function pickPrimaryLegacySource(legacyRoots: string[], targetRoot: string): str
   }
 
   if (Platform.OS === 'android') {
+    const customRoot = resolveAndroidFlutterCustomStorageRoot()
+    if (customRoot) {
+      const customUri = customRoot.startsWith('file://')
+        ? customRoot
+        : toFileUriFromAbsolute(customRoot)
+      const customMatch = legacyRoots.find((root) => rootsEqual(root, customUri))
+      if (customMatch && !rootsEqual(customMatch, targetRoot)) {
+        return customMatch
+      }
+    }
+
     const flutterRoot = legacyRoots.find((root) => root.includes('/app_flutter/'))
     if (flutterRoot && !rootsEqual(flutterRoot, targetRoot)) {
       return flutterRoot

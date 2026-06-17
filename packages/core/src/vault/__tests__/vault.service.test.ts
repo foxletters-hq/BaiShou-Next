@@ -62,4 +62,28 @@ describe('VaultService Integration', () => {
     const parsed = JSON.parse(fixedContent)
     expect(normalize(parsed[0].path)).toBe(normalize(expected))
   })
+
+  it('loads Flutter legacy registry from .baishou/vault_registry.json when root registry is missing', async () => {
+    await fs.mkdir(path.join(tempDir, '.baishou'), { recursive: true })
+    await fs.mkdir(path.join(tempDir, 'Work', 'Journals'), { recursive: true })
+    await fs.writeFile(path.join(tempDir, 'Work', 'Journals', '2024-06-01.md'), '# hello')
+    const legacyRegistry = [
+      {
+        name: 'Work',
+        path: '/old/absolute/Work',
+        createdAt: '2024-01-01T00:00:00.000Z',
+        lastAccessedAt: '2024-06-01T00:00:00.000Z'
+      }
+    ]
+    await fs.writeFile(
+      path.join(tempDir, '.baishou', 'vault_registry.json'),
+      JSON.stringify(legacyRegistry)
+    )
+
+    await service.initRegistry()
+
+    const vaults = service.getAllVaults()
+    expect(vaults.map((v) => v.name)).toEqual(['Work'])
+    expect(await fs.stat(path.join(tempDir, 'vault_registry.json'))).toBeDefined()
+  })
 })

@@ -1,0 +1,148 @@
+import * as fs from 'fs/promises'
+import { join } from 'path'
+import { app } from 'electron'
+import { logger } from '@baishou/shared'
+import {
+  isMigrationCompleted,
+  isLegacyAppRoot,
+  targetDirectoryHasData
+} from '@baishou/core/shared'
+import { createNodeFileSystem } from '@baishou/core-desktop'
+import { connectionManager, installDatabaseSchema } from '@baishou/database-desktop'
+import { resolveLegacyRootCandidates } from './flutter-legacy-paths.service'
+import { LegacyMigrationService } from './legacy-migration.service'
+import { getDesktopInstallInstanceId } from './install-instance.service'
+import { getAppDb, resetAppDb } from '../db'
+
+export interface DesktopLegacyBootstrapResult {
+  storageRoot: string
+  needsOnboarding: boolean
+  migrated: boolean
+}
+
+async function runLegacyMigration(targetDir: string): Promise<void> {
+  const installInstanceId = await getDesktopInstallInstanceId()
+  const legacyService = new LegacyMigrationService()
+  await legacyService.migrate(targetDir, targetDir, {
+    source: 'flutter_desktop',
+    installInstanceId
+  })
+  resetAppDb()
+  const migratedDb = getAppDb(targetDir)
+  connectionManager.setDb(migratedDb)
+  await installDatabaseSchema(migratedDb)
+}
+
+/**
+ * 启动时解析存储根目录，并在检测到 Flutter 旧版数据时自动迁移。
+ * 覆盖：首次安装、已完成引导但指向空目录、以及指向 legacy 根但未写入迁移标记等情况。
+ */
+export async function resolveDesktopStorageBootstrap(
+  settingsPath: string
+): Promise<DesktopLegacyBootstrapResult> {
+  let customStorageRoot = ''
+  let needsOnboarding = true
+
+  try {
+    const data = await fs.readFile(settingsPath, 'utf-8')
+    const settings = JSON.parse(data) as { custom_storage_root?: string }
+    if (settings.custom_storage_root?.trim()) {
+      customStorageRoot = settings.custom_storage_root.trim()
+      needsOnboarding = false
+    }
+  } catch {
+    // no settings yet
+  }
+
+  const legacyCandidates = await resolveLegacyRootCandidates()
+  const primaryLegacy = legacyCandidates[0] ?? null
+  const fileSystem = createNodeFileSystem()
+  const installInstanceId = await getDesktopInstallInstanceId()
+
+  if (needsOnboarding && primaryLegacy && !customStorageRoot) {
+    customStorageRoot = primaryLegacy
+  }
+
+  const persistStorageRoot = async (root: string) => {
+    await fs.writeFile(
+      settingsPath,
+      JSON.stringify({ custom_storage_root: root }, null, 2),
+      'utf-8'
+    )
+  }
+
+  try {
+    if (customStorageRoot) {
+      const isLegacy = await isLegacyAppRoot(fileSystem, customStorageRoot)
+      const alreadyMigrated = await isMigrationCompleted(
+        fileSystem,
+        customStorageRoot,
+        installInstanceId
+      )
+
+      if (isLegacy && !alreadyMigrated) {
+        logger.info('[DesktopLegacyBootstrap] Migrating legacy installation at', customStorageRoot)
+        await runLegacyMigration(customStorageRoot)
+        await persistStorageRoot(customStorageRoot)
+        return { storageRoot: customStorageRoot, needsOnboarding: false, migrated: true }
+      }
+
+      if (!isLegacy && primaryLegacy) {
+        const currentHasData = await targetDirectoryHasData(fileSystem, customStorageRoot)
+        const legacyAlreadyMigrated = await isMigrationCompleted(
+          fileSystem,
+          primaryLegacy,
+          installInstanceId
+        )
+        if (!currentHasData && !legacyAlreadyMigrated) {
+          logger.info(
+            '[DesktopLegacyBootstrap] Current storage is empty; adopting legacy data from',
+            primaryLegacy
+          )
+          await runLegacyMigration(primaryLegacy)
+          customStorageRoot = primaryLegacy
+          await persistStorageRoot(customStorageRoot)
+          return { storageRoot: customStorageRoot, needsOnboarding: false, migrated: true }
+        }
+      }
+
+      if (isLegacy && needsOnboarding) {
+        await persistStorageRoot(customStorageRoot)
+        return { storageRoot: customStorageRoot, needsOnboarding: false, migrated: false }
+      }
+
+      if (customStorageRoot && !needsOnboarding) {
+        return { storageRoot: customStorageRoot, needsOnboarding: false, migrated: false }
+      }
+    }
+  } catch (e) {
+    logger.error('[DesktopLegacyBootstrap] Legacy migration failed:', e as Error)
+  }
+
+  return {
+    storageRoot: customStorageRoot || primaryLegacy || '',
+    needsOnboarding,
+    migrated: false
+  }
+}
+
+/** 引导页选目录：已是 Flutter 旧版根目录则原样使用，否则追加 baishou-data 子目录 */
+export async function resolvePickedStorageDirectory(pickedPath: string): Promise<string> {
+  const normalized = pickedPath.trim()
+  if (!normalized) return normalized
+
+  const fileSystem = createNodeFileSystem()
+  if (await isLegacyAppRoot(fileSystem, normalized)) {
+    return normalized
+  }
+
+  const separator = normalized.includes('\\') ? '\\' : '/'
+  const dirSuffix = 'baishou-data'
+  return normalized.endsWith(separator)
+    ? `${normalized}${dirSuffix}`
+    : `${normalized}${separator}${dirSuffix}`
+}
+
+export function defaultOnboardingStoragePath(): string {
+  return join(app.getPath('userData'), 'Vaults')
+}

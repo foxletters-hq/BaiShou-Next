@@ -2,23 +2,35 @@ import { ipcMain, dialog, app } from 'electron'
 import * as fs from 'fs/promises'
 import * as path from 'path'
 import { logger } from '@baishou/shared'
+import {
+  defaultOnboardingStoragePath,
+  resolveDesktopStorageBootstrap,
+  resolvePickedStorageDirectory
+} from '../services/desktop-legacy-bootstrap.service'
+import { resolveLegacyRootCandidates } from '../services/flutter-legacy-paths.service'
 
 export function registerOnboardingIPC(onComplete: () => void) {
   const settingsPath = path.join(app.getPath('userData'), 'baishou_settings.json')
 
   ipcMain.handle('onboarding:check', async () => {
     try {
-      const data = await fs.readFile(settingsPath, 'utf-8')
-      const settings = JSON.parse(data)
-      const root = settings.custom_storage_root
+      const bootstrap = await resolveDesktopStorageBootstrap(settingsPath)
+      const legacyCandidates = await resolveLegacyRootCandidates()
+      const legacyRoot = legacyCandidates[0] ?? null
+      const root = bootstrap.storageRoot?.trim()
+
       return {
-        needsOnboarding: !root || root.trim() === '',
-        currentPath: root || path.join(app.getPath('userData'), 'Vaults')
+        needsOnboarding: bootstrap.needsOnboarding,
+        currentPath:
+          root ||
+          legacyRoot ||
+          defaultOnboardingStoragePath()
       }
     } catch {
+      const legacyCandidates = await resolveLegacyRootCandidates().catch(() => [])
       return {
         needsOnboarding: true,
-        currentPath: path.join(app.getPath('userData'), 'Vaults')
+        currentPath: legacyCandidates[0] || defaultOnboardingStoragePath()
       }
     }
   })
@@ -27,8 +39,8 @@ export function registerOnboardingIPC(onComplete: () => void) {
     const result = await dialog.showOpenDialog({
       properties: ['openDirectory', 'createDirectory']
     })
-    if (result.canceled) return null
-    return result.filePaths[0]
+    if (result.canceled || !result.filePaths[0]) return null
+    return resolvePickedStorageDirectory(result.filePaths[0])
   })
 
   ipcMain.handle('onboarding:set-directory', async (_, dirPath: string) => {

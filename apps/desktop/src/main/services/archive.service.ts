@@ -5,9 +5,8 @@ import * as fs from 'fs'
 import * as fsp from 'fs/promises'
 import extract from 'extract-zip'
 
-import { IArchiveService, ImportResult, VaultService } from '@baishou/core-desktop'
-import { resolveArchivePayloadRoot } from '@baishou/core/shared'
-import { createNodeFileSystem } from '@baishou/core-desktop'
+import { IArchiveService, ImportResult, VaultService, createNodeFileSystem } from '@baishou/core-desktop'
+import { resolveArchiveExtractRoot, mergeArchivePrefsPreservingCloudSync } from '@baishou/core/shared'
 import {
   connectionManager,
   shadowConnectionManager,
@@ -18,7 +17,6 @@ import {
   enterAgentMigrationArchiveImport,
   exitAgentMigrationArchiveImport
 } from '@baishou/database-desktop'
-import { mergeArchivePrefsPreservingCloudSync } from '@baishou/core/shared'
 import { getAppDb } from '../db'
 import { DesktopStoragePathService } from './path.service'
 import { ZipExporter, ARCHIVE_USER_AVATARS_ZIP_PREFIX } from './ZipExporter'
@@ -32,7 +30,7 @@ function broadcastArchiveImportState(importing: boolean): void {
 }
 
 export class DesktopArchiveService implements IArchiveService {
-  private readonly archiveFileSystem = createNodeFileSystem()
+  private readonly fileSystem = createNodeFileSystem()
 
   constructor(
     private pathService: DesktopStoragePathService,
@@ -194,9 +192,12 @@ export class DesktopArchiveService implements IArchiveService {
       throw e
     }
 
-    const payloadDir = await resolveArchivePayloadRoot(this.archiveFileSystem, tempExtractDir)
+    const archiveRoot = await resolveArchiveExtractRoot(this.fileSystem, tempExtractDir)
+    if (archiveRoot !== tempExtractDir) {
+      logger.info('[ArchiveService] 检测到嵌套备份目录，已自动下钻至:', archiveRoot)
+    }
 
-    const manifestPath = path.join(payloadDir, 'manifest.json')
+    const manifestPath = path.join(archiveRoot, 'manifest.json')
     let manifest: any = null
     if (fs.existsSync(manifestPath)) {
       try {
@@ -217,7 +218,7 @@ export class DesktopArchiveService implements IArchiveService {
     const globalShadowDir = await this.pathService.getGlobalShadowIndexDirectory()
     const migrated = await migrator.migrateLegacyIfNecessary(
       manifest,
-      payloadDir,
+      tempExtractDir,
       rootDir,
       globalShadowDir,
       currentCloudSyncConfig
@@ -255,11 +256,11 @@ export class DesktopArchiveService implements IArchiveService {
             ) {
               continue
             }
-            if (entry.name === 'manifest.json' && src === payloadDir) {
+            if (entry.name === 'manifest.json' && src === archiveRoot) {
               await fsp.unlink(srcFile).catch(() => {})
               continue
             }
-            if (entry.name === 'user-data' && src === payloadDir) {
+            if (entry.name === 'user-data' && src === archiveRoot) {
               await fsp.rm(srcFile, { recursive: true, force: true }).catch(() => {})
               continue
             }
@@ -268,9 +269,9 @@ export class DesktopArchiveService implements IArchiveService {
           }
         }
       }
-      await moveAll(payloadDir, rootDir)
+      await moveAll(archiveRoot, rootDir)
 
-      await this.restoreUserAvatarsFromExtract(payloadDir)
+      await this.restoreUserAvatarsFromExtract(archiveRoot)
 
       try {
         const registryFile = path.join(rootDir, 'vault_registry.json')

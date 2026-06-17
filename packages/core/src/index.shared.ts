@@ -58,6 +58,7 @@ export {
 export * from './archive/archive.interface'
 export * from './archive/archive-manifest.util'
 export * from './archive/archive-import-preferences.util'
+export * from './archive/archive-import-detection.shared'
 
 export * from './network/lan-sync.interface'
 export * from './network/cloud-sync.interface'

@@ -45,9 +45,13 @@ object LegacyProductionBridge {
 
         fun addIfUseful(dir: File) {
             if (!dir.exists() || !dir.isDirectory) return
-            if (countJournalMarkdownFiles(dir) > 0 || hasLegacySqliteMarkers(dir)) {
+            if (hasLegacySqliteMarkers(dir) || countJournalMarkdownFiles(dir) > 0) {
                 roots.add(dir.absolutePath)
             }
+        }
+
+        parseFlutterCustomStorageRoot(context)?.let { customPath ->
+            addIfUseful(File(customPath))
         }
 
         val appFlutter = File(context.applicationInfo.dataDir, "app_flutter/BaiShou_Root")
@@ -80,6 +84,21 @@ object LegacyProductionBridge {
         }
 
         return roots.toList()
+    }
+
+    /** 原版 Flutter 自定义工作区路径（SharedPreferences custom_storage_root） */
+    private fun parseFlutterCustomStorageRoot(context: Context): String? {
+        val xml = readFlutterSharedPreferencesXml(context) ?: return null
+        val pattern = Regex("""<string name="(?:flutter\\.)?custom_storage_root">([\s\S]*?)</string>""")
+        val match = pattern.find(xml) ?: return null
+        val decoded = match.groupValues[1]
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&amp;", "&")
+            .replace("&quot;", "\"")
+            .replace("&#10;", "\n")
+            .trim()
+        return decoded.takeIf { it.isNotEmpty() }
     }
 
     fun readFlutterSharedPreferencesXml(context: Context): String? {
