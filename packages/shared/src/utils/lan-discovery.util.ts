@@ -1,5 +1,8 @@
 export const LAN_DEVICE_STALE_MS = 120_000
+/** 移动端 zeroconf 全量 rescan 间隔 */
 export const LAN_DISCOVERY_RESCAN_MS = 30_000
+/** 桌面端 bonjour browser.update() 主动 re-query 间隔（Windows 被动发现 Android 很慢） */
+export const LAN_DISCOVERY_REQUERY_MS = 5_000
 
 export interface LanDiscoveredDeviceLike {
   deviceId?: string

@@ -3,10 +3,17 @@ import { DiscoveredDevice } from '@baishou/core-desktop'
 import {
   getLanDeviceDedupKey,
   lanDevicesEquivalent,
+  LAN_DISCOVERY_REQUERY_MS,
   parseLanTxtIpv4,
   pickBestLanIpv4,
   resolveDiscoveredLanIpv4
 } from '@baishou/shared'
+
+type DiscoveryCallbacks = {
+  publishedServiceName: string | null
+  onDeviceFound: (device: DiscoveredDevice) => void
+  onDeviceLost: (deviceId: string) => void
+}
 
 /**
  * 负责局域网 mDNS (Bonjour) 服务的广播发布与局域网伙伴嗅探发现。
@@ -17,6 +24,8 @@ export class LanDiscovery {
   private publishedService: any = null
   private activeDevices = new Map<string, DiscoveredDevice>()
   private serviceNameToDedupKey = new Map<string, string>()
+  private requeryTimer: ReturnType<typeof setInterval> | null = null
+  private discoveryCallbacks: DiscoveryCallbacks | null = null
 
   private getBonjour(): Bonjour {
     if (!this.bonjour) {
@@ -92,7 +101,10 @@ export class LanDiscovery {
   ) {
     const dedupKey = getLanDeviceDedupKey(device)
     const previous = this.activeDevices.get(dedupKey)
-    if (previous && lanDevicesEquivalent(previous, device)) return
+    if (previous && lanDevicesEquivalent(previous, device)) {
+      onDeviceFound(device)
+      return
+    }
 
     if (previous && previous.rawServiceId !== device.rawServiceId) {
       this.serviceNameToDedupKey.delete(previous.rawServiceId)
@@ -120,37 +132,88 @@ export class LanDiscovery {
     onDeviceLost(device?.deviceId || serviceName)
   }
 
+  private handleDiscoveredService(service: {
+    name: string
+    port: number
+    txt?: Record<string, unknown>
+    addresses?: string[]
+    host?: string
+  }) {
+    const callbacks = this.discoveryCallbacks
+    if (!callbacks) return
+
+    try {
+      if (callbacks.publishedServiceName && service.name === callbacks.publishedServiceName) {
+        return
+      }
+
+      const device = this.parseDevice(service)
+      if (!parseLanTxtIpv4(service.txt as Record<string, unknown>) && device.ip === 'Unknown') {
+        return
+      }
+      this.emitDevice(device, callbacks.onDeviceFound, callbacks.onDeviceLost)
+    } catch (e) {
+      console.error('Failed to parse mDNS txt string', e)
+    }
+  }
+
+  private triggerDiscoveryRequery() {
+    if (!this.browser) return
+    try {
+      this.browser.update()
+    } catch (e) {
+      console.warn('[LanDiscovery] browser.update failed:', e)
+    }
+  }
+
+  private startRequeryTimer() {
+    if (this.requeryTimer) clearInterval(this.requeryTimer)
+    this.requeryTimer = setInterval(() => {
+      this.triggerDiscoveryRequery()
+    }, LAN_DISCOVERY_REQUERY_MS)
+  }
+
+  private stopRequeryTimer() {
+    if (this.requeryTimer) {
+      clearInterval(this.requeryTimer)
+      this.requeryTimer = null
+    }
+  }
+
   public startDiscovery(
     publishedServiceName: string | null,
     onDeviceFound: (device: DiscoveredDevice) => void,
     onDeviceLost: (deviceId: string) => void
   ) {
-    this.activeDevices.clear()
-    this.serviceNameToDedupKey.clear()
+    this.stopDiscovery()
+    this.discoveryCallbacks = { publishedServiceName, onDeviceFound, onDeviceLost }
 
     const bj = this.getBonjour()
-    this.browser = bj.find({ type: 'baishou' }, (service) => {
-      try {
-        if (publishedServiceName && service.name === publishedServiceName) {
-          return
-        }
-
-        const device = this.parseDevice(service)
-        if (!parseLanTxtIpv4(service.txt as Record<string, unknown>) && device.ip === 'Unknown') {
-          return
-        }
-        this.emitDevice(device, onDeviceFound, onDeviceLost)
-      } catch (e) {
-        console.error('Failed to parse mDNS txt string', e)
-      }
+    this.browser = bj.find({ type: 'baishou', protocol: 'tcp' }, (service) => {
+      this.handleDiscoveredService(service)
     })
 
-    this.browser.on('down', (service) => {
-      this.removeDeviceByServiceName(service.name, onDeviceLost)
+    // 不处理 down 事件：bonjour-service 在 Windows 上会因 TTL 或 re-query 误报 down，
+    // 且 periodic update() 会在响应到达前先触发 down，导致设备不断闪现消失。
+    // 真正的设备离线由 UI 层的 2 分钟 stale 定时器负责清理（与移动端策略一致）。
+
+    // 首次 up 时 TXT/SRV 可能尚未解析完成；后续 update 会补全
+    this.browser.on('txt-update', (service) => {
+      this.handleDiscoveredService(service)
     })
+    this.browser.on('srv-update', (service) => {
+      this.handleDiscoveredService(service)
+    })
+
+    // 主动 re-query，对齐移动端 zeroconf.scan()，避免 Windows 被动等待 Android 广播
+    this.triggerDiscoveryRequery()
+    setTimeout(() => this.triggerDiscoveryRequery(), 800)
+    this.startRequeryTimer()
   }
 
   public stopDiscovery() {
+    this.stopRequeryTimer()
+    this.discoveryCallbacks = null
     if (this.browser) {
       this.browser.stop()
       this.browser = null
