@@ -5,6 +5,7 @@ type ServerEvents = {
   onMcpHttpRequest: (event: { requestId: string; body: string; authorization?: string }) => void
   onLanUploadStarted: (event: { totalBytes: number }) => void
   onLanUploadProgress: (event: { writtenBytes: number; totalBytes: number }) => void
+  onStorageRootCopyProgress: (event: { itemName: string }) => void
 }
 
 export type ExternalPathInfo = {
@@ -60,6 +61,7 @@ declare class ExpoBaishouServerModule extends NativeModule<ServerEvents> {
     zipBytes: number
   }>
   nativeCopyArchiveExtractToRoot(extractDir: string, rootDir: string): Promise<void>
+  nativeCopyStorageRootAsync(sourceRoot: string, targetRoot: string): Promise<void>
   uploadLanFileAsync(url: string, filePath: string): Promise<{ status: number }>
   externalMove(fromPath: string, toPath: string): void
   externalCopy(fromPath: string, toPath: string): void
@@ -104,6 +106,12 @@ export function isLocalFsNativeAvailable(): boolean {
 export function isNativeArchiveImportAvailable(): boolean {
   const mod = getNative()
   return mod != null && typeof mod.nativeUnzipArchive === 'function'
+}
+
+/** 当前 APK 是否包含整棵存储根流式迁移 API（旧版升级复制） */
+export function isNativeStorageRootMigrationAvailable(): boolean {
+  const mod = getNative()
+  return mod != null && typeof mod.nativeCopyStorageRootAsync === 'function'
 }
 
 export function isNativeArchiveExportAvailable(): boolean {
@@ -189,6 +197,14 @@ export function onLanUploadProgress(
     return { remove: () => {} }
   }
   return mod.addListener('onLanUploadProgress', listener)
+}
+
+export function onStorageRootCopyProgress(listener: (event: { itemName: string }) => void) {
+  const mod = getNative()
+  if (!mod) {
+    return { remove: () => {} }
+  }
+  return mod.addListener('onStorageRootCopyProgress', listener)
 }
 
 export function onMcpHttpRequest(
@@ -373,6 +389,25 @@ export async function nativeCopyArchiveExtractToRoot(
     throw new Error(`${NATIVE_REBUILD_HINT}（缺少 nativeCopyArchiveExtractToRoot）`)
   }
   await mod.nativeCopyArchiveExtractToRoot(extractDir, rootDir)
+}
+
+export async function nativeCopyStorageRootAsync(
+  sourceRoot: string,
+  targetRoot: string,
+  onProgress?: (itemName: string) => void
+): Promise<void> {
+  const mod = requireNative()
+  if (typeof mod.nativeCopyStorageRootAsync !== 'function') {
+    throw new Error(`${NATIVE_REBUILD_HINT}（缺少 nativeCopyStorageRootAsync）`)
+  }
+  const subscription = onProgress
+    ? onStorageRootCopyProgress((event) => onProgress(event.itemName))
+    : null
+  try {
+    await mod.nativeCopyStorageRootAsync(sourceRoot, targetRoot)
+  } finally {
+    subscription?.remove()
+  }
 }
 
 export async function uploadLanFileAsync(

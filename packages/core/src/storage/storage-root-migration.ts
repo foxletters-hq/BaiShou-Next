@@ -1,5 +1,8 @@
 import type { IFileSystem } from '../fs/file-system.types'
-import { mergeDirectories } from '../migration/legacy-migration.shared'
+import {
+  mergeDirectories,
+  StorageMigrationCopyError
+} from '../migration/legacy-migration.shared'
 import {
   isPathInsideStorageRoot,
   isSameStorageRoot,
@@ -64,9 +67,16 @@ export async function copyStorageRootContents(
         continue
       }
       if (isDirectory) {
-        await mergeDirectories(fileSystem, srcPath, stagingPath)
+        const failed = await mergeDirectories(fileSystem, srcPath, stagingPath)
+        if (failed.length > 0) {
+          throw new StorageMigrationCopyError(failed)
+        }
       } else {
-        await fileSystem.copyFile(srcPath, stagingPath)
+        try {
+          await fileSystem.copyFile(srcPath, stagingPath)
+        } catch {
+          throw new StorageMigrationCopyError([srcPath])
+        }
       }
     }
 
@@ -82,9 +92,16 @@ export async function copyStorageRootContents(
         continue
       }
       if (isDirectory) {
-        await mergeDirectories(fileSystem, stagedPath, dest)
+        const failed = await mergeDirectories(fileSystem, stagedPath, dest)
+        if (failed.length > 0) {
+          throw new StorageMigrationCopyError(failed)
+        }
       } else {
-        await fileSystem.copyFile(stagedPath, dest)
+        try {
+          await fileSystem.copyFile(stagedPath, dest)
+        } catch {
+          throw new StorageMigrationCopyError([stagedPath])
+        }
       }
       promoted.push(dest)
     }

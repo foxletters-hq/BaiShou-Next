@@ -5,7 +5,12 @@ import {
   validateStorageDirectoryWritable as validateStorageDirectoryWritableCore
 } from '@baishou/core-mobile'
 import { isPathInsideStorageRoot, isSameStorageRoot, normalizeStorageRoot } from '@baishou/shared'
-import { normalizeExternalStoragePath, stripFileScheme } from './android-external-fs'
+import {
+  isNativeStorageRootMigrationAvailable,
+  nativeCopyStorageRootAsync
+} from 'expo-baishou-server'
+import { Platform } from 'react-native'
+import { normalizeExternalStoragePath, stripFileScheme, toFileUri } from './android-external-fs'
 
 function normalizeRoot(path: string): string {
   return normalizeStorageRoot(stripFileScheme(normalizeExternalStoragePath(path)))
@@ -19,12 +24,15 @@ export async function copyStorageRootContents(
   targetRoot: string,
   onProgress?: (itemName: string) => void
 ): Promise<void> {
-  return copyStorageRootContentsCore(
-    fileSystem,
-    normalizeRoot(sourceRoot),
-    normalizeRoot(targetRoot),
-    onProgress
-  )
+  const source = normalizeRoot(sourceRoot)
+  const target = normalizeRoot(targetRoot)
+
+  if (Platform.OS === 'android' && isNativeStorageRootMigrationAvailable()) {
+    await nativeCopyStorageRootAsync(toFileUri(source), toFileUri(target), onProgress)
+    return
+  }
+
+  return copyStorageRootContentsCore(fileSystem, source, target, onProgress)
 }
 
 export async function targetDirectoryHasData(

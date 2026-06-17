@@ -227,6 +227,174 @@ object ExternalStorageFiles {
         }
     }
 
+    private val STORAGE_MIGRATION_SKIP_DIRS = setOf("snapshots", "temp")
+    private const val STORAGE_MIGRATION_STAGING_DIR = ".baishou_migrate_staging"
+
+    private fun normalizeStorageRootPath(path: String): String {
+        return uriToPath(path).trimEnd('/')
+    }
+
+    private fun shouldSkipStorageMigrationEntry(name: String): Boolean {
+        if (name in STORAGE_MIGRATION_SKIP_DIRS) return true
+        if (name == STORAGE_MIGRATION_STAGING_DIR) return true
+        return name.endsWith("-wal") ||
+            name.endsWith("-shm") ||
+            name.endsWith("-journal")
+    }
+
+    private fun ensureExternalAccessForPaths(context: Context, vararg paths: String) {
+        for (path in paths) {
+            if (isExternalPath(path) && !hasExternalAccess(context)) {
+                throw SecurityException("External storage access not granted")
+            }
+        }
+    }
+
+    private fun copyFileStreaming(context: Context, from: File, to: File) {
+        ensureExternalAccessForPaths(context, from.absolutePath, to.absolutePath)
+        if (!from.exists() || from.isDirectory) {
+            throw java.io.FileNotFoundException(from.absolutePath)
+        }
+        to.parentFile?.mkdirs()
+        from.inputStream().buffered().use { input ->
+            to.outputStream().buffered().use { output ->
+                input.copyTo(output)
+            }
+        }
+    }
+
+    private fun mergeDirectoriesForMigration(
+        context: Context,
+        src: File,
+        dest: File,
+        onProgress: ((String) -> Unit)?
+    ): List<String> {
+        val failed = mutableListOf<String>()
+        if (!src.exists() || !src.isDirectory) return failed
+        dest.mkdirs()
+        val children = src.listFiles() ?: return failed
+        for (entry in children) {
+            onProgress?.invoke(entry.name)
+            val destPath = File(dest, entry.name)
+            if (entry.isDirectory) {
+                failed.addAll(mergeDirectoriesForMigration(context, entry, destPath, onProgress))
+            } else {
+                try {
+                    copyFileStreaming(context, entry, destPath)
+                } catch (_: Exception) {
+                    failed.add(entry.absolutePath)
+                }
+            }
+        }
+        return failed
+    }
+
+    private fun removePathRecursive(target: File) {
+        if (!target.exists()) return
+        if (target.isDirectory) {
+            target.listFiles()?.forEach { child ->
+                removePathRecursive(child)
+            }
+        }
+        target.delete()
+    }
+
+    /**
+     * 与 TS copyStorageRootContents 对齐：staging 复制后提升到目标根，流式 I/O，不经 JS 堆。
+     * skip 规则须与 @baishou/shared shouldSkipStorageMigrationEntry 保持一致。
+     */
+    fun copyStorageRootContents(
+        context: Context,
+        sourceUri: String,
+        targetUri: String,
+        onProgress: ((String) -> Unit)? = null
+    ) {
+        val source = resolveAnyFile(sourceUri)
+        val targetRoot = resolveAnyFile(targetUri)
+        val sourcePath = normalizeStorageRootPath(source.absolutePath)
+        val targetPath = normalizeStorageRootPath(targetRoot.absolutePath)
+
+        if (sourcePath == targetPath) {
+            throw IllegalArgumentException("SAME_PATH")
+        }
+        if (targetPath == sourcePath || targetPath.startsWith("$sourcePath/")) {
+            throw IllegalArgumentException("TARGET_INSIDE_SOURCE")
+        }
+        if (!source.exists()) {
+            throw java.io.FileNotFoundException(sourceUri)
+        }
+        if (!source.isDirectory) {
+            throw IllegalArgumentException("SOURCE_NOT_DIRECTORY")
+        }
+        ensureExternalAccessForPaths(context, targetPath)
+
+        val staging = File(targetRoot, STORAGE_MIGRATION_STAGING_DIR)
+        removePathRecursive(staging)
+        staging.mkdirs()
+
+        val promoted = mutableListOf<File>()
+        val copyFailures = mutableListOf<String>()
+        try {
+            val sourceChildren = source.listFiles() ?: emptyArray()
+            for (entry in sourceChildren) {
+                val name = entry.name
+                if (shouldSkipStorageMigrationEntry(name)) continue
+                onProgress?.invoke(name)
+                val stagingPath = File(staging, name)
+                if (entry.isDirectory) {
+                    copyFailures.addAll(
+                        mergeDirectoriesForMigration(context, entry, stagingPath, onProgress)
+                    )
+                } else {
+                    try {
+                        copyFileStreaming(context, entry, stagingPath)
+                    } catch (_: Exception) {
+                        copyFailures.add(entry.absolutePath)
+                    }
+                }
+            }
+            if (copyFailures.isNotEmpty()) {
+                throw java.io.IOException(
+                    "Failed to copy ${copyFailures.size} file(s): ${copyFailures.take(3).joinToString()}"
+                )
+            }
+
+            val stagedChildren = staging.listFiles() ?: emptyArray()
+            for (entry in stagedChildren) {
+                onProgress?.invoke(entry.name)
+                val dest = File(targetRoot, entry.name)
+                if (entry.isDirectory) {
+                    copyFailures.addAll(
+                        mergeDirectoriesForMigration(context, entry, dest, onProgress)
+                    )
+                } else {
+                    try {
+                        copyFileStreaming(context, entry, dest)
+                    } catch (_: Exception) {
+                        copyFailures.add(entry.absolutePath)
+                    }
+                }
+                promoted.add(dest)
+            }
+            if (copyFailures.isNotEmpty()) {
+                throw java.io.IOException(
+                    "Failed to copy ${copyFailures.size} file(s): ${copyFailures.take(3).joinToString()}"
+                )
+            }
+        } catch (error: Exception) {
+            promoted.asReversed().forEach { path ->
+                try {
+                    removePathRecursive(path)
+                } catch (_: Exception) {
+                    // best-effort rollback
+                }
+            }
+            throw error
+        } finally {
+            removePathRecursive(staging)
+        }
+    }
+
     /**
      * 任意 file:// 路径间复制（外部存储 ↔ 应用沙盒），用流式 I/O，避免整文件 base64 进 JS 堆。
      * 任一端为外部路径时需已授予全文件访问或 WRITE_EXTERNAL_STORAGE。
@@ -234,11 +402,7 @@ object ExternalStorageFiles {
     fun copyFileAny(context: Context, fromUri: String, toUri: String) {
         val fromPath = uriToPath(fromUri)
         val toPath = uriToPath(toUri)
-        if (isExternalPath(fromPath) || isExternalPath(toPath)) {
-            if (!hasExternalAccess(context)) {
-                throw SecurityException("External storage access not granted")
-            }
-        }
+        ensureExternalAccessForPaths(context, fromPath, toPath)
         val from = File(fromPath)
         val to = File(toPath)
         if (!from.exists()) throw java.io.FileNotFoundException(fromUri)
@@ -246,11 +410,7 @@ object ExternalStorageFiles {
         if (from.isDirectory) {
             from.copyRecursively(to, overwrite = true)
         } else {
-            from.inputStream().buffered().use { input ->
-                to.outputStream().buffered().use { output ->
-                    input.copyTo(output)
-                }
-            }
+            copyFileStreaming(context, from, to)
         }
     }
 

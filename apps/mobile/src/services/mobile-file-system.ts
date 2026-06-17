@@ -26,6 +26,9 @@ import {
 import * as SandboxFS from './mobile-sandbox-fs'
 import { normalizeMtimeToMs } from '../utils/fs-mtime.util'
 
+/** 跨存储边界时允许 base64 回退的最大文件大小（更大文件会 OOM） */
+const CROSS_STORAGE_BASE64_MAX_BYTES = 4 * 1024 * 1024
+
 function enoentError(filePath: string, syscall: string): Error & { code: string } {
   const err = new Error(`${syscall}: no such file or directory, open '${filePath}'`) as Error & {
     code: string
@@ -222,10 +225,10 @@ export class MobileFileSystem implements IFileSystem {
       return
     }
 
-    // 外部 ↔ 沙盒：原生流式复制；旧 APK 无 API 时退化为 base64
+    // 外部 ↔ 沙盒：优先原生流式复制；仅小文件可在失败时回退 base64
     try {
       await externalCopyFileAsyncSafe(src, dest)
-    } catch {
+    } catch (error) {
       const srcInfo = isExternalStoragePath(src)
         ? externalGetInfoSafe(src)
         : shouldUseAndroidNativeLocalFs(src)
@@ -233,6 +236,10 @@ export class MobileFileSystem implements IFileSystem {
           : await SandboxFS.getInfoAsync(toFileUri(src))
       if (srcInfo.isDirectory) {
         throw new Error(`Cannot copy directory across storage boundaries: ${src}`)
+      }
+      const size = srcInfo.size ?? 0
+      if (size > CROSS_STORAGE_BASE64_MAX_BYTES) {
+        throw error
       }
       const data = await this.readFile(src, 'base64')
       await this.writeFile(dest, data, 'base64')

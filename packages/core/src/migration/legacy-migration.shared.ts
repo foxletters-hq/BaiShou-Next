@@ -366,21 +366,35 @@ export async function mergeLegacySqliteDatabases(
   }
 }
 
+/** 存储迁移中部分文件复制失败 */
+export class StorageMigrationCopyError extends Error {
+  readonly failedPaths: string[]
+
+  constructor(failedPaths: string[]) {
+    const preview = failedPaths.slice(0, 3).join(', ')
+    const suffix = failedPaths.length > 3 ? ` (+${failedPaths.length - 3} more)` : ''
+    super(`Failed to copy ${failedPaths.length} file(s): ${preview}${suffix}`)
+    this.name = 'StorageMigrationCopyError'
+    this.failedPaths = failedPaths
+  }
+}
+
 export async function mergeDirectories(
   fileSystem: IFileSystem,
   src: string,
   dest: string
-): Promise<void> {
-  if (!(await fileSystem.exists(src))) return
+): Promise<string[]> {
+  const failed: string[] = []
+  if (!(await fileSystem.exists(src))) return failed
 
   let isDirectory = false
   try {
     const stat = await fileSystem.stat(src)
     isDirectory = stat.isDirectory
   } catch {
-    return
+    return failed
   }
-  if (!isDirectory) return
+  if (!isDirectory) return failed
 
   await fileSystem.mkdir(dest, { recursive: true })
   const entries = await fileSystem.readdir(src)
@@ -395,15 +409,16 @@ export async function mergeDirectories(
       continue
     }
     if (entryIsDirectory) {
-      await mergeDirectories(fileSystem, srcPath, destPath)
+      failed.push(...(await mergeDirectories(fileSystem, srcPath, destPath)))
     } else {
       try {
         await fileSystem.copyFile(srcPath, destPath)
       } catch {
-        // single file failures should not abort the whole migration
+        failed.push(srcPath)
       }
     }
   }
+  return failed
 }
 
 export async function cleanupLegacyVaultArtifacts(

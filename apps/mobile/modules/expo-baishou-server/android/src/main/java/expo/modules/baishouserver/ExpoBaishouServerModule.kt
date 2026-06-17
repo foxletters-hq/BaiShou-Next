@@ -280,7 +280,7 @@ class ExpoBaishouServerModule : Module() {
     override fun definition() = ModuleDefinition {
         Name("ExpoBaishouServer")
 
-        Events("onFileReceived", "onMcpHttpRequest", "onLanUploadStarted", "onLanUploadProgress")
+        Events("onFileReceived", "onMcpHttpRequest", "onLanUploadStarted", "onLanUploadProgress", "onStorageRootCopyProgress")
 
         Function("resolveMcpHttpResponse") { requestId: String, responseBody: String ->
             val pending = pendingMcpRequests[requestId] ?: return@Function false
@@ -538,6 +538,28 @@ class ExpoBaishouServerModule : Module() {
                     promise.resolve(null)
                 } catch (e: Exception) {
                     promise.reject("E_EXTERNAL_COPY_FILE", e.message ?: "external copy file failed", e)
+                }
+            }.start()
+        }
+
+        /** 旧版升级：整棵 BaiShou_Root 流式复制到外部目录（后台线程，避免大文件进 JS 堆 OOM） */
+        AsyncFunction("nativeCopyStorageRootAsync") { sourceRoot: String, targetRoot: String, promise: Promise ->
+            val context = appContext.reactContext
+            if (context == null) {
+                promise.reject("E_NO_CONTEXT", "React context is null", null)
+                return@AsyncFunction
+            }
+            Thread {
+                try {
+                    ExternalStorageFiles.copyStorageRootContents(context, sourceRoot, targetRoot) { itemName ->
+                        sendEvent(
+                            "onStorageRootCopyProgress",
+                            mapOf("itemName" to itemName)
+                        )
+                    }
+                    promise.resolve(null)
+                } catch (e: Exception) {
+                    promise.reject("E_STORAGE_ROOT_COPY", e.message ?: "storage root copy failed", e)
                 }
             }.start()
         }

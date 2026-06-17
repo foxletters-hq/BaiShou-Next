@@ -32,14 +32,14 @@ release/
 *.blockmap
 
 # ─── React Native ─────────────────────────────────────────
-# Android
+# Android（含 expo 原生模块等子目录）
+**/.gradle/
+**/.cxx/
 apps/mobile/android/app/build/
-apps/mobile/android/.gradle/
 apps/mobile/android/build/
 apps/mobile/android/local.properties
 apps/mobile/android/key.properties
 apps/mobile/android/captures/
-apps/mobile/android/.cxx/
 *.apk
 *.aab
 

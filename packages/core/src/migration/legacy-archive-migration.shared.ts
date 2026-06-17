@@ -8,6 +8,7 @@ import {
   mergeLegacySqliteDatabases,
   readLegacyVaultRegistry,
   scanLegacyDatabases,
+  StorageMigrationCopyError,
   writeNextVaultRegistry,
   type RawSqlExecutor
 } from './legacy-migration.shared'
@@ -121,7 +122,10 @@ export async function migrateLegacyArchiveContents(
     } catch {
       continue
     }
-    await mergeDirectories(fileSystem, vSource, vTarget)
+    const failed = await mergeDirectories(fileSystem, vSource, vTarget)
+    if (failed.length > 0) {
+      throw new StorageMigrationCopyError(failed)
+    }
     await cleanupLegacyVaultArtifacts(fileSystem, vTarget)
   }
 

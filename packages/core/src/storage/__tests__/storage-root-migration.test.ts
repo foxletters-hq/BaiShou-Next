@@ -158,7 +158,9 @@ describe('storage-root-migration', () => {
       return originalCopy(src, dest)
     })
 
-    await expect(copyStorageRootContents(fs, '/src', '/dest')).rejects.toThrow('DISK_FULL')
+    await expect(copyStorageRootContents(fs, '/src', '/dest')).rejects.toMatchObject({
+      name: 'StorageMigrationCopyError'
+    })
     expect(await fs.exists('/dest/Personal')).toBe(false)
     expect(await fs.exists('/dest/vault_registry.json')).toBe(false)
   })
@@ -180,5 +182,27 @@ describe('storage-root-migration', () => {
   it('validates writable directory', async () => {
     const { fs } = createMockFileSystem({ dirs: ['/writable'] })
     expect(await validateStorageDirectoryWritable(fs, '/writable')).toBe(true)
+  })
+
+  it('fails when nested file copy fails during merge', async () => {
+    const { fs } = createMockFileSystem({
+      dirs: ['/src', '/src/Personal'],
+      files: { '/src/Personal/note.md': 'hi' }
+    })
+
+    await fs.mkdir('/dest', { recursive: true })
+    const originalCopy = fs.copyFile
+    fs.copyFile = vi.fn(async (src, dest) => {
+      if (src === '/src/Personal/note.md') {
+        throw new Error('COPY_DENIED')
+      }
+      return originalCopy(src, dest)
+    })
+
+    await expect(copyStorageRootContents(fs, '/src', '/dest')).rejects.toMatchObject({
+      name: 'StorageMigrationCopyError',
+      failedPaths: ['/src/Personal/note.md']
+    })
+    expect(await fs.exists('/dest/Personal')).toBe(false)
   })
 })
