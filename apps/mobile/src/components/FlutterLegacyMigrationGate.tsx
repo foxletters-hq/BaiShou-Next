@@ -19,6 +19,8 @@ function displayPath(uri: string): string {
 /**
  * 旧版升级用户必须完成一次性迁移；阻塞主界面直至迁移成功。
  * 采用复制策略，不删除原目录；完成后写入持久化完成状态。
+ *
+ * 以全屏 overlay 覆盖导航栈，避免卸载 expo-router Stack 引发闪退。
  */
 export function FlutterLegacyMigrationGate({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation()
@@ -105,94 +107,98 @@ export function FlutterLegacyMigrationGate({ children }: { children: React.React
     toast
   ])
 
-  if (!dbReady) {
-    return (
-      <View style={styles.bootLoading}>
-        <ActivityIndicator size="large" color={colors.textTertiary} />
-      </View>
-    )
-  }
-
-  if (flutterLegacyMigrationBusy) {
-    return (
-      <RestoreBlockingOverlay
-        visible
-        message={t('storage.flutter_legacy_migrating', '正在从旧版目录复制数据…')}
-        hint={
-          flutterLegacyMigrationProgress
-            ? t('storage.migrating_item', {
-                name: flutterLegacyMigrationProgress,
-                defaultValue: `正在复制：${flutterLegacyMigrationProgress}`
-              })
-            : t('storage.flutter_legacy_migrating_hint', '请勿关闭应用，原目录数据不会被删除')
-        }
-      />
-    )
-  }
-
-  if (!pendingFlutterLegacyMigration) {
-    return <>{children}</>
-  }
-
-  const { sourceDisplayPath, targetDisplayPath } = pendingFlutterLegacyMigration
+  const showBootLoading = !dbReady
+  const showMigrationRequired = !!pendingFlutterLegacyMigration && !flutterLegacyMigrationBusy
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: colors.bgSurface }]}>
-      <View style={styles.content}>
-        <View style={[styles.iconWrap, { backgroundColor: '#FFF3E0' }]}>
-          <MaterialIcons name="folder-shared" size={40} color="#D4924A" />
+    <>
+      {children}
+
+      {showBootLoading ? (
+        <View style={[styles.overlay, styles.bootLoading]}>
+          <ActivityIndicator size="large" color={colors.textTertiary} />
         </View>
+      ) : null}
 
-        <Text style={[styles.title, { color: colors.textPrimary }]}>
-          {t('storage.flutter_legacy_migration_required_title', '需要迁移旧版数据')}
-        </Text>
+      {flutterLegacyMigrationBusy ? (
+        <RestoreBlockingOverlay
+          visible
+          message={t('storage.flutter_legacy_migrating', '正在从旧版目录复制数据…')}
+          hint={
+            flutterLegacyMigrationProgress
+              ? t('storage.migrating_item', {
+                  name: flutterLegacyMigrationProgress,
+                  defaultValue: `正在复制：${flutterLegacyMigrationProgress}`
+                })
+              : t('storage.flutter_legacy_migrating_hint', '请勿关闭应用，原目录数据不会被删除')
+          }
+        />
+      ) : null}
 
-        <Text style={[styles.body, { color: colors.textSecondary }]}>
-          {t('storage.flutter_legacy_migration_required_message', {
-            source: sourceDisplayPath,
-            target: targetDisplayPath,
-            defaultValue: `检测到您从旧版白守升级，日记仍在：\n${sourceDisplayPath}\n\n请先将全部数据复制到新版目录：\n${targetDisplayPath}\n\n我们会复制您的数据，不会删除原目录里的任何文件。迁移完成前无法使用应用。`
-          })}
-        </Text>
-
-        <View style={[styles.notice, { backgroundColor: colors.bgSurface }]}>
-          <MaterialIcons name="info-outline" size={18} color="#D4924A" />
-          <Text style={[styles.noticeText, { color: colors.textSecondary }]}>
-            {t(
-              'storage.flutter_legacy_migration_no_delete_notice',
-              '迁移过程仅复制文件，不会删除或移动您原来的数据。'
-            )}
-          </Text>
-        </View>
-
-        {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-
-        <Button
-          variant="primary"
-          className="w-full"
-          onPress={() => void handleStartMigration()}
-          disabled={starting}
+      {showMigrationRequired && pendingFlutterLegacyMigration ? (
+        <SafeAreaView
+          style={[styles.overlay, styles.screen, { backgroundColor: colors.bgSurface }]}
         >
-          {starting
-            ? t('storage.flutter_legacy_migrating', '正在从旧版目录复制数据…')
-            : t('storage.flutter_legacy_migration_confirm', '开始迁移')}
-        </Button>
-      </View>
-    </SafeAreaView>
+          <View style={styles.content}>
+            <View style={[styles.iconWrap, { backgroundColor: '#FFF3E0' }]}>
+              <MaterialIcons name="folder-shared" size={40} color="#D4924A" />
+            </View>
+
+            <Text style={[styles.title, { color: colors.textPrimary }]}>
+              {t('storage.flutter_legacy_migration_required_title', '需要迁移旧版数据')}
+            </Text>
+
+            <Text style={[styles.body, { color: colors.textSecondary }]}>
+              {t('storage.flutter_legacy_migration_required_message', {
+                source: pendingFlutterLegacyMigration.sourceDisplayPath,
+                target: pendingFlutterLegacyMigration.targetDisplayPath,
+                defaultValue: `检测到您从旧版白守升级，日记仍在：\n${pendingFlutterLegacyMigration.sourceDisplayPath}\n\n请先将全部数据复制到新版目录：\n${pendingFlutterLegacyMigration.targetDisplayPath}\n\n我们会复制您的数据，不会删除原目录里的任何文件。迁移完成前无法使用应用。`
+              })}
+            </Text>
+
+            <View style={[styles.notice, { backgroundColor: colors.bgSurface }]}>
+              <MaterialIcons name="info-outline" size={18} color="#D4924A" />
+              <Text style={[styles.noticeText, { color: colors.textSecondary }]}>
+                {t(
+                  'storage.flutter_legacy_migration_no_delete_notice',
+                  '迁移过程仅复制文件，不会删除或移动您原来的数据。'
+                )}
+              </Text>
+            </View>
+
+            {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+
+            <Button
+              variant="primary"
+              className="w-full"
+              onPress={() => void handleStartMigration()}
+              disabled={starting}
+            >
+              {starting
+                ? t('storage.flutter_legacy_migrating', '正在从旧版目录复制数据…')
+                : t('storage.flutter_legacy_migration_confirm', '开始迁移')}
+            </Button>
+          </View>
+        </SafeAreaView>
+      ) : null}
+    </>
   )
 }
 
 const BOOT_BACKGROUND = '#FFFFFF'
 
 const styles = StyleSheet.create({
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1000,
+    elevation: 1000
+  },
   bootLoading: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: BOOT_BACKGROUND
   },
   screen: {
-    flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 24
   },

@@ -569,8 +569,12 @@ async function shouldDeferVaultResync(
     vaultService: VaultService
     fileSystem: IFileSystem
   },
-  requested?: boolean
+  requested?: boolean,
+  forceDefer?: boolean,
+  resyncReason?: string
 ): Promise<boolean> {
+  if (forceDefer) return true
+
   const defer = requested ?? true
   if (!defer) return false
 
@@ -584,10 +588,16 @@ async function shouldDeferVaultResync(
     const journalsDir = path.join(active.path, 'Journals')
     const hasOnDisk = await journalMarkdownExistsInTree(deps.fileSystem, journalsDir)
     if (hasOnDisk) {
+      if (resyncReason === 'archive-full-restore') {
+        logger.info(
+          '[VaultRuntime] Shadow index empty but journal files exist on disk; running blocking resync'
+        )
+        return false
+      }
       logger.info(
-        '[VaultRuntime] Shadow index empty but journal files exist on disk; running blocking resync'
+        '[VaultRuntime] Shadow index empty but journal files exist on disk; scheduling background resync'
       )
-      return false
+      return true
     }
   } catch (e) {
     logger.warn('[VaultRuntime] Failed to probe on-disk journals for resync mode:', e as Error)
@@ -673,6 +683,8 @@ async function runVaultBootstrap(
   },
   options?: {
     deferResync?: boolean
+    /** 跳过上架日记存在时的阻塞全量扫描（旧版迁移完成后使用，避免 OOM 闪退） */
+    forceDeferResync?: boolean
     skipFullResync?: boolean
     resyncReason?: string
     onResyncComplete?: () => void
@@ -687,7 +699,26 @@ async function runVaultBootstrap(
     return
   }
 
-  const deferResync = await shouldDeferVaultResync(deps, options?.deferResync)
+  if (!options?.forceDeferResync) {
+    try {
+      const records = await deps.diaryStack.shadowRepo.getAllRecords()
+      if (records.length > 0) {
+        logger.info('[VaultRuntime] Shadow index already populated; skipping resync')
+        await restartVaultWatchers(deps.diaryStack, deps.vaultService, deps.watcherDeps)
+        options?.onResyncComplete?.()
+        return
+      }
+    } catch (e) {
+      logger.warn('[VaultRuntime] Failed to probe shadow index before resync:', e as Error)
+    }
+  }
+
+  const deferResync = await shouldDeferVaultResync(
+    deps,
+    options?.deferResync,
+    options?.forceDeferResync,
+    options?.resyncReason
+  )
 
   if (deferResync) {
     // 后台 resync 完成后再启动 watcher，避免 fullScanVault 与 VaultFileWatcher 并发写 Shadow DB
@@ -752,6 +783,8 @@ async function restartVaultWatchers(
 export type ActivateVaultRuntimeOptions = {
   /** 后台 resync，避免冷启动阻塞 UI（默认 true） */
   deferResync?: boolean
+  /** 强制后台 resync，不因磁盘已有日记而阻塞全量扫描 */
+  forceDeferResync?: boolean
   resyncReason?: string
   onResyncComplete?: () => void
 }
@@ -781,6 +814,7 @@ export async function activateVaultRuntime(
 ): Promise<void> {
   await runVaultBootstrap(deps, {
     deferResync: options?.deferResync ?? true,
+    forceDeferResync: options?.forceDeferResync,
     resyncReason: options?.resyncReason ?? 'cold-start',
     onResyncComplete: options?.onResyncComplete
   })

@@ -169,7 +169,7 @@ interface BaishouContextValue {
   /** 正在从磁盘恢复日记/会话/总结索引 */
   storageIndexing: boolean
   /** Android：授权后重试挂载 BaiShou_Root 并同步磁盘 */
-  retryStorageSetup: () => Promise<boolean>
+  retryStorageSetup: (options?: { forceDeferResync?: boolean }) => Promise<boolean>
   /** 暂停文件监听与 Shadow DB，执行磁盘操作后自动恢复（用于目录迁移） */
   runWithStorageQuiesced: <T>(fn: () => Promise<T>) => Promise<T>
   services: {
@@ -307,7 +307,9 @@ async function webFetchContent(url: string): Promise<string> {
 }
 
 export function BaishouProvider({ children }: { children: ReactNode }) {
-  const retryStorageSetupRef = useRef<() => Promise<boolean>>(async () => false)
+  const retryStorageSetupRef = useRef<
+    (options?: { forceDeferResync?: boolean }) => Promise<boolean>
+  >(async () => false)
   const runWithStorageQuiescedRef = useRef<<T>(fn: () => Promise<T>) => Promise<T>>(async (fn) =>
     fn()
   )
@@ -366,7 +368,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
     archiveRestoreEpoch: 0,
     vaultSwitching: false,
     storageIndexing: mobileDataBootstrapper.getStatus() === 'running',
-    retryStorageSetup: () => retryStorageSetupRef.current(),
+    retryStorageSetup: (options) => retryStorageSetupRef.current(options),
     runWithStorageQuiesced: (fn) => runWithStorageQuiescedRef.current(fn),
     services: null
   })
@@ -495,8 +497,14 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
         let diaryStack: VaultBoundDiaryStack | null = null
         let storageReady = Platform.OS !== 'android'
+        const deferVaultBootstrapForLegacyMigration = pendingFlutterLegacyMigration != null
 
-        if (Platform.OS === 'android') {
+        if (deferVaultBootstrapForLegacyMigration) {
+          logger.info(
+            '[BaishouProvider] Deferring vault bootstrap until Flutter legacy migration completes'
+          )
+          storageReady = false
+        } else if (Platform.OS === 'android') {
           try {
             diaryStack = await initVaultLayer(vaultRuntimeDeps)
             diaryStackRef.current = diaryStack
@@ -1170,7 +1178,10 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        const runStorageBootstrap = async (): Promise<VaultBoundDiaryStack> => {
+        const runStorageBootstrap = async (options?: {
+          forceDeferResync?: boolean
+          resyncReason?: string
+        }): Promise<VaultBoundDiaryStack> => {
           const stack = diaryStackRef.current ?? (await initVaultLayer(vaultRuntimeDeps))
           diaryStackRef.current = stack
 
@@ -1187,7 +1198,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               },
               {
                 deferResync: true,
-                resyncReason: 'cold-start',
+                forceDeferResync: options?.forceDeferResync,
+                resyncReason: options?.resyncReason ?? 'cold-start',
                 onResyncComplete: () => {
                   if (!isMounted) return
                   setValue((prev) => ({
@@ -1277,7 +1289,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           await deleteVaultWithShadowCleanup(vaultName, { vaultService })
         }
 
-        if (diaryStack) {
+        if (diaryStack && !deferVaultBootstrapForLegacyMigration) {
           try {
             await runStorageBootstrap()
             storageReady = true
@@ -1293,7 +1305,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        retryStorageSetupRef.current = async () => {
+        retryStorageSetupRef.current = async (options?: { forceDeferResync?: boolean }) => {
           try {
             if (Platform.OS === 'android') {
               const applied = await pathService.applyExternalRootWhenPermitted()
@@ -1303,8 +1315,11 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             }
 
             const priorStack = diaryStackRef.current
+            const bootstrapOptions = options?.forceDeferResync
+              ? { forceDeferResync: true as const, resyncReason: 'legacy-migration-complete' }
+              : undefined
             const stack = !priorStack
-              ? await runStorageBootstrap()
+              ? await runStorageBootstrap(bootstrapOptions)
               : await rebootstrapAfterStorageRootChange({
                   pathService,
                   vaultService,
@@ -1407,7 +1422,9 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               }
             }
 
-            await retryStorageSetupRef.current()
+            await retryStorageSetupRef.current(
+              result.migrated ? { forceDeferResync: true } : undefined
+            )
 
             if (isMounted) {
               setValue((prev) => ({
@@ -1638,7 +1655,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             archiveRestoreEpoch: 0,
             vaultSwitching: false,
             storageIndexing: mobileDataBootstrapper.getStatus() === 'running',
-            retryStorageSetup: () => retryStorageSetupRef.current(),
+            retryStorageSetup: (options) => retryStorageSetupRef.current(options),
             runWithStorageQuiesced: (fn) => runWithStorageQuiescedRef.current(fn),
             services: {
               agentService,
