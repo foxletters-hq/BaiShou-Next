@@ -6,6 +6,11 @@ import { logger } from '@baishou/shared'
 import { executeRawSql } from './raw-sql.executor'
 import { FTS_SYNC_TRIGGER_STATEMENTS } from './schema/fts'
 import { withExpoAgentDatabaseLock } from './expo-agent-db.lock'
+import {
+  AGENT_DB_COLUMN_PATCHES,
+  MEMORY_EMBEDDINGS_CREATE_SQL,
+  MEMORY_EMBEDDINGS_INDEX_SQL
+} from './agent-schema-compat'
 
 export interface MigrationJournal {
   version: string
@@ -171,12 +176,8 @@ export class MigrationService {
         logger.warn('[MigrationService] Agent FTS 基础设施初始化失败（非阻塞）:', e.message)
       }
 
-      await this._ensureAssistantCompressSystemPromptColumn()
-      await this._ensureAssistantCompressionWindowColumns()
-      await this._ensureAssistantKindColumn()
-      await this._ensureSnapshotTailStartColumn()
-      await this._ensureSessionTokenUsageColumns()
-      await this._ensureMessageTokenUsageColumns()
+      await this._ensureMemoryEmbeddingsTable()
+      await this._ensureAgentSchemaColumns()
 
       logger.info('[MigrationService] Agent DB 迁移同步完成！')
     } catch (error: any) {
@@ -186,136 +187,54 @@ export class MigrationService {
   }
 
   /**
-   * 确保 compression_snapshots 的 session_id / covered_up_to_message_id 是 TEXT 类型。
+   * 确保 memory_embeddings 表存在（原 0001 迁移；squash 后旧库可能缺整张表）。
    */
-  private async _ensureAssistantCompressSystemPromptColumn(): Promise<void> {
+  private async _ensureMemoryEmbeddingsTable(): Promise<void> {
     try {
-      const tableInfo = await this._executeSql(`PRAGMA table_info(agent_assistants)`)
-      const has = tableInfo.rows.some((c: { name?: string }) => c.name === 'compress_system_prompt')
-      if (!has) {
-        logger.info('[MigrationService] 添加 agent_assistants.compress_system_prompt 列...')
-        await this._executeSql(
-          `ALTER TABLE agent_assistants ADD COLUMN compress_system_prompt TEXT`
-        )
-      }
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e)
-      logger.warn('[MigrationService] compress_system_prompt 列检查失败（非阻塞）:', message)
-    }
-  }
-
-  private async _ensureAssistantCompressionWindowColumns(): Promise<void> {
-    try {
-      const tableInfo = await this._executeSql(`PRAGMA table_info(agent_assistants)`)
-      const names = new Set(
-        tableInfo.rows.map((c: { name?: string }) => c.name).filter(Boolean) as string[]
+      const table = await this._executeSql(
+        `SELECT name FROM sqlite_master WHERE type='table' AND name='memory_embeddings'`
       )
-      if (!names.has('compress_model_context_window')) {
-        logger.info('[MigrationService] 添加 agent_assistants.compress_model_context_window...')
-        await this._executeSql(
-          `ALTER TABLE agent_assistants ADD COLUMN compress_model_context_window INTEGER`
-        )
-      }
-      if (!names.has('compress_preserve_recent_tokens')) {
-        logger.info('[MigrationService] 添加 agent_assistants.compress_preserve_recent_tokens...')
-        await this._executeSql(
-          `ALTER TABLE agent_assistants ADD COLUMN compress_preserve_recent_tokens INTEGER`
-        )
-      }
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e)
-      logger.warn('[MigrationService] compression window 列检查失败（非阻塞）:', message)
-    }
-  }
+      if (table.rows.length > 0) return
 
-  private async _ensureAssistantKindColumn(): Promise<void> {
-    try {
-      const tableInfo = await this._executeSql(`PRAGMA table_info(agent_assistants)`)
-      const has = tableInfo.rows.some((c: { name?: string }) => c.name === 'assistant_kind')
-      if (!has) {
-        logger.info('[MigrationService] 添加 agent_assistants.assistant_kind 列...')
-        await this._executeSql(
-          `ALTER TABLE agent_assistants ADD COLUMN assistant_kind TEXT NOT NULL DEFAULT 'companion'`
-        )
-      }
+      logger.info('[MigrationService] 创建缺失的 memory_embeddings 表...')
+      await this._executeSql(MEMORY_EMBEDDINGS_CREATE_SQL)
+      await this._executeSql(MEMORY_EMBEDDINGS_INDEX_SQL)
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
-      logger.warn('[MigrationService] assistant_kind 列检查失败（非阻塞）:', message)
+      logger.warn('[MigrationService] memory_embeddings 表检查失败（非阻塞）:', message)
     }
   }
 
   /**
-   * 确保 compression_snapshots 有 tail_start_message_id 列（保留区起点标记）。
+   * 按 agent-schema-compat 清单补齐旧库缺失列（squash 迁移后未执行的增量变更）。
    */
-  private async _ensureSnapshotTailStartColumn(): Promise<void> {
-    try {
-      const tableInfo = await this._executeSql(`PRAGMA table_info(compression_snapshots)`)
-      const has = tableInfo.rows.some((c: { name?: string }) => c.name === 'tail_start_message_id')
-      if (!has) {
-        logger.info('[MigrationService] 添加 compression_snapshots.tail_start_message_id 列...')
-        await this._executeSql(
-          `ALTER TABLE compression_snapshots ADD COLUMN tail_start_message_id TEXT`
+  private async _ensureAgentSchemaColumns(): Promise<void> {
+    const columnsByTable = new Map<string, Set<string>>()
+
+    for (const patch of AGENT_DB_COLUMN_PATCHES) {
+      let names = columnsByTable.get(patch.table)
+      if (!names) {
+        const tableInfo = await this._executeSql(`PRAGMA table_info(${patch.table})`)
+        if (tableInfo.rows.length === 0) continue
+        names = new Set(
+          tableInfo.rows.map((c: { name?: string }) => c.name).filter(Boolean) as string[]
+        )
+        columnsByTable.set(patch.table, names)
+      }
+
+      if (names.has(patch.column)) continue
+
+      try {
+        logger.info(`[MigrationService] 添加 ${patch.table}.${patch.column} 列...`)
+        await this._executeSql(patch.ddl)
+        names.add(patch.column)
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e)
+        logger.warn(
+          `[MigrationService] ${patch.table}.${patch.column} 列检查失败（非阻塞）:`,
+          message
         )
       }
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e)
-      logger.warn('[MigrationService] tail_start_message_id 列检查失败（非阻塞）:', message)
-    }
-  }
-
-  /**
-   * 确保 agent_sessions 有 cache token 累计列（旧库升级时 schema 已回填但缺列）。
-   */
-  private async _ensureSessionTokenUsageColumns(): Promise<void> {
-    try {
-      const tableInfo = await this._executeSql(`PRAGMA table_info(agent_sessions)`)
-      if (tableInfo.rows.length === 0) return
-
-      const names = new Set(
-        tableInfo.rows.map((c: { name?: string }) => c.name).filter(Boolean) as string[]
-      )
-      if (!names.has('total_cache_read_input_tokens')) {
-        logger.info('[MigrationService] 添加 agent_sessions.total_cache_read_input_tokens 列...')
-        await this._executeSql(
-          `ALTER TABLE agent_sessions ADD COLUMN total_cache_read_input_tokens INTEGER NOT NULL DEFAULT 0`
-        )
-      }
-      if (!names.has('total_cache_write_input_tokens')) {
-        logger.info('[MigrationService] 添加 agent_sessions.total_cache_write_input_tokens 列...')
-        await this._executeSql(
-          `ALTER TABLE agent_sessions ADD COLUMN total_cache_write_input_tokens INTEGER NOT NULL DEFAULT 0`
-        )
-      }
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e)
-      logger.warn('[MigrationService] agent_sessions token 列检查失败（非阻塞）:', message)
-    }
-  }
-
-  /**
-   * 确保 agent_messages 有单条消息的 cache token 列（与 Drizzle schema 对齐）。
-   */
-  private async _ensureMessageTokenUsageColumns(): Promise<void> {
-    try {
-      const tableInfo = await this._executeSql(`PRAGMA table_info(agent_messages)`)
-      if (tableInfo.rows.length === 0) return
-
-      const names = new Set(
-        tableInfo.rows.map((c: { name?: string }) => c.name).filter(Boolean) as string[]
-      )
-      if (!names.has('cache_read_input_tokens')) {
-        logger.info('[MigrationService] 添加 agent_messages.cache_read_input_tokens 列...')
-        await this._executeSql(`ALTER TABLE agent_messages ADD COLUMN cache_read_input_tokens INTEGER`)
-      }
-      if (!names.has('cache_write_input_tokens')) {
-        logger.info('[MigrationService] 添加 agent_messages.cache_write_input_tokens 列...')
-        await this._executeSql(
-          `ALTER TABLE agent_messages ADD COLUMN cache_write_input_tokens INTEGER`
-        )
-      }
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e)
-      logger.warn('[MigrationService] agent_messages token 列检查失败（非阻塞）:', message)
     }
   }
 

@@ -15,6 +15,7 @@ CREATE TABLE `agent_assistants` (
 	`compress_model_context_window` integer,
 	`compress_preserve_recent_tokens` integer,
 	`compress_system_prompt` text,
+	`assistant_kind` text DEFAULT 'companion' NOT NULL,
 	`sort_order` integer DEFAULT 0 NOT NULL,
 	`created_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL,
 	`updated_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL

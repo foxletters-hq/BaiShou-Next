@@ -125,7 +125,7 @@ describe('MigrationService', () => {
   })
 
   describe('Token usage column compatibility', () => {
-    it('_ensureSessionTokenUsageColumns should add missing cache token columns', async () => {
+    it('_ensureAgentSchemaColumns should add missing cache token columns', async () => {
       const db = dbManager.getDb()
       await db.run(sql`
         CREATE TABLE agent_sessions (
@@ -145,7 +145,7 @@ describe('MigrationService', () => {
         );
       `)
 
-      await (service as any)._ensureSessionTokenUsageColumns()
+      await (service as any)._ensureAgentSchemaColumns()
 
       const cols = await db.all(sql`PRAGMA table_info(agent_sessions)`)
       const names = cols.map((c: any) => c.name)
@@ -153,7 +153,7 @@ describe('MigrationService', () => {
       expect(names).toContain('total_cache_write_input_tokens')
     })
 
-    it('_ensureMessageTokenUsageColumns should add missing cache token columns', async () => {
+    it('_ensureAgentSchemaColumns should add missing message cache token columns', async () => {
       const db = dbManager.getDb()
       await db.run(sql`
         CREATE TABLE agent_messages (
@@ -172,12 +172,52 @@ describe('MigrationService', () => {
         );
       `)
 
-      await (service as any)._ensureMessageTokenUsageColumns()
+      await (service as any)._ensureAgentSchemaColumns()
 
       const cols = await db.all(sql`PRAGMA table_info(agent_messages)`)
       const names = cols.map((c: any) => c.name)
       expect(names).toContain('cache_read_input_tokens')
       expect(names).toContain('cache_write_input_tokens')
+    })
+
+    it('_ensureAgentSchemaColumns should add assistant_kind and compress columns', async () => {
+      const db = dbManager.getDb()
+      await db.run(sql`
+        CREATE TABLE agent_assistants (
+          id TEXT PRIMARY KEY NOT NULL,
+          name TEXT NOT NULL,
+          emoji TEXT,
+          description TEXT,
+          avatar_path TEXT,
+          system_prompt TEXT,
+          is_default INTEGER NOT NULL DEFAULT 0,
+          is_pinned INTEGER NOT NULL DEFAULT 0,
+          context_window INTEGER NOT NULL DEFAULT 20,
+          provider_id TEXT,
+          model_id TEXT,
+          sort_order INTEGER NOT NULL DEFAULT 0,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        );
+      `)
+
+      await (service as any)._ensureAgentSchemaColumns()
+
+      const cols = await db.all(sql`PRAGMA table_info(agent_assistants)`)
+      const names = cols.map((c: any) => c.name)
+      expect(names).toContain('assistant_kind')
+      expect(names).toContain('compress_token_threshold')
+      expect(names).toContain('compress_keep_turns')
+    })
+
+    it('_ensureMemoryEmbeddingsTable should create missing vector table', async () => {
+      await (service as any)._ensureMemoryEmbeddingsTable()
+
+      const db = dbManager.getDb()
+      const tables = await db.all(sql`
+        SELECT name FROM sqlite_master WHERE type='table' AND name='memory_embeddings'
+      `)
+      expect(tables).toHaveLength(1)
     })
   })
 })
