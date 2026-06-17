@@ -350,7 +350,7 @@
     "attachment_total_size": "总占用空间",
     "attachment_orphans_size": "孤立附件体积",
     "attachment_total_count": "附件总数",
-    "attachment_clear_completed": "清理完成，共释放 $size 空间",
+    "attachment_clear_completed": "清理完成，共释放 {{size}} 空间",
     "attachment_clear_confirm_title": "确认删除？",
     "attachment_clear_confirm_desc": "将彻底删除所有已丢失关联的附件文件夹。该操作不可撤销！",
     "attachment_delete_selected": "删除已选 ($count)",

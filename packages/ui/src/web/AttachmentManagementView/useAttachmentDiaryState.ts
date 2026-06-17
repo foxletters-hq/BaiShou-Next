@@ -4,6 +4,7 @@ import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
 import type { DiaryAttachmentFileItem } from './attachment-management.types'
 import {
+  formatAttachmentClearCompletedMessage,
   isImageFile,
   supportsLocalFileImagePreview,
   toLocalFileUrl
@@ -305,10 +306,15 @@ export function useAttachmentDiaryState(
       if (!confirmed) return
     }
 
+    const freedSizeMB = Array.from(selectedDiaryPaths).reduce((sum, filePath) => {
+      const item = diaryAttachments.find((entry) => entry.path === filePath)
+      return sum + (item?.sizeMB ?? 0)
+    }, 0)
+
     setIsDeleting(true)
     try {
       await Promise.all(Array.from(selectedDiaryPaths).map((p) => onDeleteDiaryAttachment(p)))
-      toast.showSuccess(t('settings.attachment_clear_completed', '清理完成'))
+      toast.showSuccess(formatAttachmentClearCompletedMessage(t, freedSizeMB))
       setSelectedDiaryPaths(new Set())
     } catch (e: any) {
       toast.showError(`${t('common.error', '错误')}: ${e.message}`)
