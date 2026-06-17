@@ -11,6 +11,7 @@ import { isExternalStoragePath, stripFileScheme, toFileUri } from '../services/a
 import type { AttachmentImagePurpose } from '../utils/mobile-attachment-image-cache'
 import { resolveAttachmentImageDataUri } from '../utils/mobile-attachment-image-resolver'
 import { resolveAssistantAvatarDisplayUri } from './assistant-avatar-uri'
+import { invalidateUserAvatarDisplayCache } from './user-avatar-display.util'
 
 const avatarDisplayCache = new Map<string, string>()
 
@@ -63,6 +64,7 @@ export function invalidateAssistantAvatarDisplayCache(avatarPath?: string): void
 
 export function invalidateAllAvatarDisplayCaches(): void {
   avatarDisplayCache.clear()
+  invalidateUserAvatarDisplayCache()
 }
 
 export type ResolveAssistantAvatarOptions = {

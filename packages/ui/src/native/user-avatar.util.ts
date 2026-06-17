@@ -1,5 +1,5 @@
 import type { ImageSourcePropType } from 'react-native'
-import { isCustomUserAvatar } from '@baishou/shared'
+import { isAssistantAvatarDirectUri, isCustomUserAvatar } from '@baishou/shared'
 
 export { isCustomUserAvatar }
 
@@ -11,6 +11,8 @@ export function resolveNativeUserAvatarSource(
   resolvedUri?: string | null
 ): ImageSourcePropType {
   if (resolvedUri) return { uri: resolvedUri }
-  if (isCustomUserAvatar(avatarPath)) return { uri: avatarPath! }
+  if (isCustomUserAvatar(avatarPath) && isAssistantAvatarDirectUri(avatarPath)) {
+    return { uri: avatarPath! }
+  }
   return NATIVE_APP_BRAND_ICON
 }
