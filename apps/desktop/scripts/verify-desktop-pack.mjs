@@ -30,11 +30,13 @@ const BUILTIN = new Set([
   ...builtinModules.map((m) => `node:${m}`)
 ])
 
+/** @param {string} message @returns {never} */
 function fail(message) {
   console.error(`[verify-desktop-pack] ${message}`)
   process.exit(1)
 }
 
+/** @param {string} specifier @returns {string} */
 function toPackageName(specifier) {
   if (specifier.startsWith('@')) {
     const [scope, name] = specifier.split('/')
@@ -44,6 +46,7 @@ function toPackageName(specifier) {
   return specifier.split('/')[0]
 }
 
+/** @param {string} filePath @returns {string[]} */
 function collectRuntimeRequires(filePath) {
   if (!existsSync(filePath)) return []
   const code = readFileSync(filePath, 'utf8')
@@ -68,6 +71,7 @@ function collectRuntimeRequires(filePath) {
   return [...specs].sort()
 }
 
+/** @returns {Set<string>} */
 function listAsarEntries() {
   const repoRoot = join(desktopRoot, '..', '..')
   const requireFromRoot = createRequire(pathToFileURL(join(repoRoot, 'package.json')))
@@ -85,6 +89,7 @@ function listAsarEntries() {
   }
 }
 
+/** @param {Set<string>} entries @param {string} packageName @returns {boolean} */
 function hasPackageInAsar(entries, packageName) {
   const prefix =
     packageName.startsWith('@')
@@ -96,6 +101,7 @@ function hasPackageInAsar(entries, packageName) {
   return false
 }
 
+/** @param {string} packageName @returns {boolean} */
 function hasPackageInUnpacked(packageName) {
   const base = join(unpackedRoot, 'resources', 'app.asar.unpacked', 'node_modules')
   const pkgDir = join(base, ...packageName.split('/'))

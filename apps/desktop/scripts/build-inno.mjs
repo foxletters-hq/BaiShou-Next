@@ -12,6 +12,7 @@ const desktopRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const unpackedDir = join(desktopRoot, 'dist', 'win-unpacked')
 const setupIss = join(desktopRoot, 'setup.iss')
 
+/** @returns {void} */
 function runVerifyPack() {
   const verify = join(desktopRoot, 'scripts', 'verify-desktop-pack.mjs')
   const result = spawnSync(process.execPath, [verify], {
@@ -23,11 +24,13 @@ function runVerifyPack() {
   }
 }
 
+/** @param {string} message @returns {never} */
 function fail(message) {
   console.error(`[build-inno] ${message}`)
   process.exit(1)
 }
 
+/** @returns {string} */
 function readVersion() {
   const manifestPath = join(desktopRoot, 'src', 'version.json')
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
@@ -39,6 +42,7 @@ function readVersion() {
   return match[1]
 }
 
+/** @returns {string | null} */
 function resolveIscc() {
   const fromEnv = process.env.ISCC?.trim()
   if (fromEnv && existsSync(fromEnv)) return fromEnv
