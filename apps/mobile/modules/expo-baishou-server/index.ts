@@ -40,7 +40,18 @@ declare class ExpoBaishouServerModule extends NativeModule<ServerEvents> {
   localGetInfo(path: string): ExternalPathInfo
   localReadDirectory(path: string): string[]
   nativeUnzipArchive(zipPath: string, destDir: string): Promise<void>
+  nativeZipArchiveExport(
+    storageRoot: string,
+    supplementRoot: string | null,
+    outputZip: string
+  ): Promise<{
+    outputPath: string
+    entryCount: number
+    uncompressedBytes: number
+    zipBytes: number
+  }>
   nativeCopyArchiveExtractToRoot(extractDir: string, rootDir: string): Promise<void>
+  uploadLanFileAsync(url: string, filePath: string): Promise<{ status: number }>
   externalMove(fromPath: string, toPath: string): void
   externalCopy(fromPath: string, toPath: string): void
   externalCopyAsync(fromPath: string, toPath: string): Promise<void>
@@ -83,6 +94,16 @@ export function isLocalFsNativeAvailable(): boolean {
 export function isNativeArchiveImportAvailable(): boolean {
   const mod = getNative()
   return mod != null && typeof mod.nativeUnzipArchive === 'function'
+}
+
+export function isNativeArchiveExportAvailable(): boolean {
+  const mod = getNative()
+  return mod != null && typeof mod.nativeZipArchiveExport === 'function'
+}
+
+export function isLanUploadNativeAvailable(): boolean {
+  const mod = getNative()
+  return mod != null && typeof mod.uploadLanFileAsync === 'function'
 }
 
 export function isNativeDirectoryPickerAvailable(): boolean {
@@ -311,6 +332,25 @@ export async function nativeUnzipArchive(zipPath: string, destDir: string): Prom
   await mod.nativeUnzipArchive(zipPath, destDir)
 }
 
+export type NativeZipArchiveExportResult = {
+  outputPath: string
+  entryCount: number
+  uncompressedBytes: number
+  zipBytes: number
+}
+
+export async function nativeZipArchiveExport(
+  storageRoot: string,
+  supplementRoot: string | null,
+  outputZip: string
+): Promise<NativeZipArchiveExportResult> {
+  const mod = requireNative()
+  if (typeof mod.nativeZipArchiveExport !== 'function') {
+    throw new Error(`${NATIVE_REBUILD_HINT}（缺少 nativeZipArchiveExport）`)
+  }
+  return mod.nativeZipArchiveExport(storageRoot, supplementRoot, outputZip)
+}
+
 export async function nativeCopyArchiveExtractToRoot(
   extractDir: string,
   rootDir: string
@@ -320,6 +360,17 @@ export async function nativeCopyArchiveExtractToRoot(
     throw new Error(`${NATIVE_REBUILD_HINT}（缺少 nativeCopyArchiveExtractToRoot）`)
   }
   await mod.nativeCopyArchiveExtractToRoot(extractDir, rootDir)
+}
+
+export async function uploadLanFileAsync(
+  url: string,
+  filePath: string
+): Promise<{ status: number }> {
+  const mod = requireNative()
+  if (typeof mod.uploadLanFileAsync !== 'function') {
+    throw new Error(`${NATIVE_REBUILD_HINT}（缺少 uploadLanFileAsync）`)
+  }
+  return mod.uploadLanFileAsync(url, filePath)
 }
 
 export function externalMove(fromPath: string, toPath: string): void {

@@ -243,6 +243,130 @@ object ExternalStorageFiles {
 
     private val ARCHIVE_SKIP_DIR_NAMES = setOf("snapshots", "temp", ".snapshots")
 
+    private val ARCHIVE_EXCLUDED_ROOT_NAMES = setOf(
+        ".baishou",
+        ".baishou-s3.json",
+        ".git",
+        ".baishou-git.json"
+    )
+
+    private val STORE_EXTENSIONS = setOf(
+        ".png", ".jpg", ".jpeg", ".gif", ".webp",
+        ".mp3", ".mp4", ".mov", ".wav", ".avi", ".mkv",
+        ".zip", ".gz", ".tar", ".rar", ".7z", ".pdf", ".epub"
+    )
+
+    private data class ArchiveZipStats(var entryCount: Int = 0, var uncompressedBytes: Long = 0L)
+
+    private fun shouldStoreWithoutCompression(fileName: String): Boolean {
+        val dot = fileName.lastIndexOf('.')
+        if (dot < 0) return false
+        return fileName.substring(dot).lowercase() in STORE_EXTENSIONS
+    }
+
+    private fun shouldSkipJournalFile(fileName: String): Boolean {
+        return fileName.endsWith("-wal") ||
+            fileName.endsWith("-shm") ||
+            fileName.endsWith("-journal")
+    }
+
+    /**
+     * 直接从 BaiShou_Root 流式打包 ZIP，避免先把整库复制进应用沙盒（大库会撑爆 cache 导致备份残缺）。
+     * [supplementRootUri] 为沙盒内的小目录（manifest / config / database / user-data 等）。
+     */
+    fun zipArchiveExport(
+        context: Context,
+        storageRootUri: String,
+        supplementRootUri: String?,
+        outputZipUri: String
+    ): Map<String, Any> {
+        val storageRootPath = uriToPath(storageRootUri)
+        if (isExternalPath(storageRootPath) && !hasExternalAccess(context)) {
+            throw SecurityException("External storage access not granted")
+        }
+
+        val storageRoot = resolveAnyFile(storageRootUri)
+        if (!storageRoot.exists() || !storageRoot.isDirectory) {
+            throw java.io.FileNotFoundException(storageRootUri)
+        }
+
+        val outputZip = resolveAnyFile(outputZipUri)
+        outputZip.parentFile?.mkdirs()
+        if (outputZip.exists()) {
+            outputZip.delete()
+        }
+
+        val stats = ArchiveZipStats()
+        ZipFile(outputZip).use { zipFile ->
+            zipFile.charset = StandardCharsets.UTF_8
+
+            val children = storageRoot.listFiles() ?: emptyArray()
+            for (entry in children) {
+                val name = entry.name
+                if (name == "." || name == "..") continue
+                if (name in ARCHIVE_EXCLUDED_ROOT_NAMES) continue
+                if (name in ARCHIVE_SKIP_DIR_NAMES) continue
+                if (name == "snapshots" || name == "temp" || name == ".snapshots") continue
+                addArchiveEntryToZip(zipFile, entry, name, stats)
+            }
+
+            if (!supplementRootUri.isNullOrBlank()) {
+                val supplementRoot = resolveAnyFile(supplementRootUri)
+                if (supplementRoot.exists() && supplementRoot.isDirectory) {
+                    val supplementChildren = supplementRoot.listFiles() ?: emptyArray()
+                    for (entry in supplementChildren) {
+                        val name = entry.name
+                        if (name == "." || name == "..") continue
+                        addArchiveEntryToZip(zipFile, entry, name, stats)
+                    }
+                }
+            }
+        }
+
+        return mapOf(
+            "outputPath" to outputZip.absolutePath,
+            "entryCount" to stats.entryCount,
+            "uncompressedBytes" to stats.uncompressedBytes,
+            "zipBytes" to outputZip.length()
+        )
+    }
+
+    private fun addArchiveEntryToZip(
+        zipFile: ZipFile,
+        source: File,
+        zipPath: String,
+        stats: ArchiveZipStats
+    ) {
+        if (!source.exists()) return
+        if (source.isDirectory) {
+            if (source.name in ARCHIVE_SKIP_DIR_NAMES) return
+            val children = source.listFiles() ?: return
+            for (child in children) {
+                addArchiveEntryToZip(zipFile, child, "$zipPath/${child.name}", stats)
+            }
+            return
+        }
+
+        val fileName = source.name
+        if (shouldSkipJournalFile(fileName)) return
+
+        val normalizedZipPath = zipPath.replace('\\', '/')
+        val params = net.lingala.zip4j.model.ZipParameters().apply {
+            fileNameInZip = normalizedZipPath
+            compressionMethod = if (shouldStoreWithoutCompression(fileName)) {
+                net.lingala.zip4j.model.enums.CompressionMethod.STORE
+            } else {
+                net.lingala.zip4j.model.enums.CompressionMethod.DEFLATE
+            }
+            if (compressionMethod == net.lingala.zip4j.model.enums.CompressionMethod.DEFLATE) {
+                compressionLevel = net.lingala.zip4j.model.enums.CompressionLevel.FASTEST
+            }
+        }
+        zipFile.addFile(source, params)
+        stats.entryCount += 1
+        stats.uncompressedBytes += source.length()
+    }
+
     /** UTF-8 解压备份 ZIP 到目标目录（支持中文文件名） */
     fun unzipArchive(zipUri: String, destUri: String) {
         val zipFile = resolveAnyFile(zipUri)

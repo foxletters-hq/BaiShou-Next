@@ -24,12 +24,17 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.asRequestBody
 
 private const val MCP_INFO_JSON =
     "{\"name\":\"BaiShou MCP Server\",\"version\":\"1.0.0\",\"protocolVersion\":\"2024-11-05\",\"description\":\"BaiShou AI Companion Diary - MCP Interface\"}"
 
 /** 局域网备份可能较大，默认 5s 读超时会导致传输中断 */
 private const val LAN_SOCKET_READ_TIMEOUT_MS = 10 * 60 * 1000
+private const val LAN_HTTP_TIMEOUT_MS = 10 * 60 * 1000L
 
 private data class PendingMcpRequest(
     val latch: CountDownLatch,
@@ -198,6 +203,15 @@ class BaishouHttpServer(
                     )
                 }
 
+                if (totalBytes > 0L && bytesWritten < totalBytes) {
+                    destFile.delete()
+                    return newFixedLengthResponse(
+                        Response.Status.BAD_REQUEST,
+                        "application/json",
+                        "{\"error\":\"Incomplete upload\"}"
+                    )
+                }
+
                 val savedPath = destFile.absolutePath
                 val response = newFixedLengthResponse(
                     Response.Status.OK,
@@ -229,6 +243,13 @@ class ExpoBaishouServerModule : Module() {
     private var server: BaishouHttpServer? = null
     private val pendingMcpRequests = ConcurrentHashMap<String, PendingMcpRequest>()
     private var pendingDirectoryPromise: Promise? = null
+    private val lanHttpClient: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(60, TimeUnit.SECONDS)
+            .readTimeout(LAN_HTTP_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+            .writeTimeout(LAN_HTTP_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+            .build()
+    }
 
     private fun dispatchMcpRequestToJs(body: String, authorization: String?): String {
         val requestId = UUID.randomUUID().toString()
@@ -298,6 +319,34 @@ class ExpoBaishouServerModule : Module() {
                 pending.latch.countDown()
             }
             pendingMcpRequests.clear()
+        }
+
+        AsyncFunction("uploadLanFileAsync") { url: String, filePath: String, promise: Promise ->
+            try {
+                val normalizedPath = filePath.removePrefix("file://")
+                val file = File(normalizedPath)
+                if (!file.isFile) {
+                    promise.reject("E_FILE_NOT_FOUND", "File not found: $normalizedPath", null)
+                    return@AsyncFunction
+                }
+
+                val body = file.asRequestBody("application/octet-stream".toMediaTypeOrNull())
+                val request = Request.Builder()
+                    .url(url)
+                    .post(body)
+                    .header(
+                        "Content-Disposition",
+                        "attachment; filename=\"${file.name}\""
+                    )
+                    .build()
+
+                lanHttpClient.newCall(request).execute().use { response ->
+                    promise.resolve(mapOf("status" to response.code))
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                promise.reject("E_LAN_UPLOAD", e.message ?: "Upload failed", e)
+            }
         }
 
         /** Android 11+ 全文件访问；较低版本检查 WRITE_EXTERNAL_STORAGE */
@@ -393,6 +442,32 @@ class ExpoBaishouServerModule : Module() {
                     promise.resolve(null)
                 } catch (e: Exception) {
                     promise.reject("E_UNZIP", e.message ?: "unzip failed", e)
+                }
+            }.start()
+        }
+
+        AsyncFunction("nativeZipArchiveExport") {
+            storageRoot: String,
+            supplementRoot: String?,
+            outputZip: String,
+            promise: Promise
+        ->
+            val context = appContext.reactContext
+            if (context == null) {
+                promise.reject("E_NO_CONTEXT", "React context is null", null)
+                return@AsyncFunction
+            }
+            Thread {
+                try {
+                    val result = ExternalStorageFiles.zipArchiveExport(
+                        context,
+                        storageRoot,
+                        supplementRoot,
+                        outputZip
+                    )
+                    promise.resolve(result)
+                } catch (e: Exception) {
+                    promise.reject("E_ZIP_EXPORT", e.message ?: "zip export failed", e)
                 }
             }.start()
         }
