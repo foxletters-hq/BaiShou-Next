@@ -175,6 +175,8 @@ export class MigrationService {
       await this._ensureAssistantCompressionWindowColumns()
       await this._ensureAssistantKindColumn()
       await this._ensureSnapshotTailStartColumn()
+      await this._ensureSessionTokenUsageColumns()
+      await this._ensureMessageTokenUsageColumns()
 
       logger.info('[MigrationService] Agent DB 迁移同步完成！')
     } catch (error: any) {
@@ -258,6 +260,62 @@ export class MigrationService {
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
       logger.warn('[MigrationService] tail_start_message_id 列检查失败（非阻塞）:', message)
+    }
+  }
+
+  /**
+   * 确保 agent_sessions 有 cache token 累计列（旧库升级时 schema 已回填但缺列）。
+   */
+  private async _ensureSessionTokenUsageColumns(): Promise<void> {
+    try {
+      const tableInfo = await this._executeSql(`PRAGMA table_info(agent_sessions)`)
+      if (tableInfo.rows.length === 0) return
+
+      const names = new Set(
+        tableInfo.rows.map((c: { name?: string }) => c.name).filter(Boolean) as string[]
+      )
+      if (!names.has('total_cache_read_input_tokens')) {
+        logger.info('[MigrationService] 添加 agent_sessions.total_cache_read_input_tokens 列...')
+        await this._executeSql(
+          `ALTER TABLE agent_sessions ADD COLUMN total_cache_read_input_tokens INTEGER NOT NULL DEFAULT 0`
+        )
+      }
+      if (!names.has('total_cache_write_input_tokens')) {
+        logger.info('[MigrationService] 添加 agent_sessions.total_cache_write_input_tokens 列...')
+        await this._executeSql(
+          `ALTER TABLE agent_sessions ADD COLUMN total_cache_write_input_tokens INTEGER NOT NULL DEFAULT 0`
+        )
+      }
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e)
+      logger.warn('[MigrationService] agent_sessions token 列检查失败（非阻塞）:', message)
+    }
+  }
+
+  /**
+   * 确保 agent_messages 有单条消息的 cache token 列（与 Drizzle schema 对齐）。
+   */
+  private async _ensureMessageTokenUsageColumns(): Promise<void> {
+    try {
+      const tableInfo = await this._executeSql(`PRAGMA table_info(agent_messages)`)
+      if (tableInfo.rows.length === 0) return
+
+      const names = new Set(
+        tableInfo.rows.map((c: { name?: string }) => c.name).filter(Boolean) as string[]
+      )
+      if (!names.has('cache_read_input_tokens')) {
+        logger.info('[MigrationService] 添加 agent_messages.cache_read_input_tokens 列...')
+        await this._executeSql(`ALTER TABLE agent_messages ADD COLUMN cache_read_input_tokens INTEGER`)
+      }
+      if (!names.has('cache_write_input_tokens')) {
+        logger.info('[MigrationService] 添加 agent_messages.cache_write_input_tokens 列...')
+        await this._executeSql(
+          `ALTER TABLE agent_messages ADD COLUMN cache_write_input_tokens INTEGER`
+        )
+      }
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e)
+      logger.warn('[MigrationService] agent_messages token 列检查失败（非阻塞）:', message)
     }
   }
 

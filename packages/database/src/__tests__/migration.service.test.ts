@@ -123,4 +123,61 @@ describe('MigrationService', () => {
       expect(snap.session_id).toBe(fakeUuid)
     })
   })
+
+  describe('Token usage column compatibility', () => {
+    it('_ensureSessionTokenUsageColumns should add missing cache token columns', async () => {
+      const db = dbManager.getDb()
+      await db.run(sql`
+        CREATE TABLE agent_sessions (
+          id TEXT PRIMARY KEY NOT NULL,
+          title TEXT NOT NULL DEFAULT '新对话',
+          vault_name TEXT NOT NULL,
+          assistant_id TEXT,
+          is_pinned INTEGER NOT NULL DEFAULT 0,
+          system_prompt TEXT,
+          provider_id TEXT NOT NULL,
+          model_id TEXT NOT NULL,
+          total_input_tokens INTEGER NOT NULL DEFAULT 0,
+          total_output_tokens INTEGER NOT NULL DEFAULT 0,
+          total_cost_micros INTEGER NOT NULL DEFAULT 0,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        );
+      `)
+
+      await (service as any)._ensureSessionTokenUsageColumns()
+
+      const cols = await db.all(sql`PRAGMA table_info(agent_sessions)`)
+      const names = cols.map((c: any) => c.name)
+      expect(names).toContain('total_cache_read_input_tokens')
+      expect(names).toContain('total_cache_write_input_tokens')
+    })
+
+    it('_ensureMessageTokenUsageColumns should add missing cache token columns', async () => {
+      const db = dbManager.getDb()
+      await db.run(sql`
+        CREATE TABLE agent_messages (
+          id TEXT PRIMARY KEY NOT NULL,
+          session_id TEXT NOT NULL,
+          role TEXT NOT NULL,
+          is_summary INTEGER NOT NULL DEFAULT 0,
+          ask_id TEXT,
+          provider_id TEXT,
+          model_id TEXT,
+          order_index INTEGER NOT NULL,
+          input_tokens INTEGER,
+          output_tokens INTEGER,
+          cost_micros INTEGER,
+          created_at INTEGER NOT NULL
+        );
+      `)
+
+      await (service as any)._ensureMessageTokenUsageColumns()
+
+      const cols = await db.all(sql`PRAGMA table_info(agent_messages)`)
+      const names = cols.map((c: any) => c.name)
+      expect(names).toContain('cache_read_input_tokens')
+      expect(names).toContain('cache_write_input_tokens')
+    })
+  })
 })
