@@ -1,7 +1,7 @@
 import { generateText } from 'ai'
 import type { SummaryAiClient } from '@baishou/core-mobile'
 import { AIProviderRegistry } from '@baishou/ai'
-import { logger } from '@baishou/shared'
+import { logger, prepareProviderConfigForRuntime } from '@baishou/shared'
 import type { SettingsManagerService } from '@baishou/core-mobile'
 import { resolveSummaryConfig } from './mobile-summary-config.util'
 
@@ -29,7 +29,7 @@ export function buildMobileSummaryAiClient(
       const { providerConfig, modelId: finalModelId } = resolution
       const registry = AIProviderRegistry.getInstance()
       registry.initializeDefaultProviders()
-      const provider = registry.getOrUpdateProvider(providerConfig)
+      const provider = registry.getOrUpdateProvider(prepareProviderConfigForRuntime(providerConfig))
       const model = provider.getLanguageModel(finalModelId)
 
       const abortController = new AbortController()

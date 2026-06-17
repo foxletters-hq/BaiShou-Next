@@ -169,8 +169,14 @@ export const SummaryScreen: React.FC = () => {
       const prev = prevStatesRef.current[uKey]
       if (cur.status === 'error' && (!prev || prev.status !== 'error')) {
         let errText = cur.error || t('common.error')
-        if (cur.error?.includes('active provider')) {
+        if (cur.error?.includes('active provider') || cur.error?.includes('No summary model')) {
           errText = t('summary.model_not_configured')
+        } else if (
+          cur.error?.toLowerCase().includes('api key') ||
+          cur.error?.includes('invalid_api_key') ||
+          cur.error?.includes('unauthorized')
+        ) {
+          errText = t('agent.error.api_key')
         } else if (
           cur.error?.includes('timed out') ||
           cur.error?.includes('AbortError') ||

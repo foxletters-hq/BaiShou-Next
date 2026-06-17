@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBaishou } from '../providers/BaishouProvider'
+import { resolveSummaryConfig } from '../services/mobile-summary-config.util'
 import { SummaryType, logger, type MissingSummary as DetectedMissingSummary } from '@baishou/shared'
 import { appendVaultDebugLog } from '../services/summary-debug-log.util'
 
@@ -176,17 +177,28 @@ export function useSummaryData() {
 
         if (!services) throw new Error('Services not ready')
 
-        // 复用 SummaryGeneratorService —— 它内部走 buildMobileSummaryAiClient，
-        // Provider/Model 查找逻辑统一且与桌面端一致
-        const globalModels = await services.settingsManager.get<any>('global_models')
-        const finalModelId = globalModels?.globalSummaryModelId || 'deepseek-chat'
+        const resolution = await resolveSummaryConfig(services.settingsManager)
+        if (!resolution.ok) {
+          if (resolution.reason === 'no_api_key') {
+            throw new Error(
+              `No active provider with API key for summary generation (provider: ${
+                resolution.providerName ?? 'unknown'
+              })`
+            )
+          }
+          throw new Error('No summary model configured')
+        }
+
+        const finalModelId = resolution.modelId
 
         await appendVaultDebugLog(services.pathService, services.fileSystem, {
           timestamp: new Date().toISOString(),
           event: 'start',
           taskId: task.id,
           targetType: task.target.type,
-          modelId: finalModelId
+          modelId: finalModelId,
+          providerId: resolution.providerConfig.id,
+          usedDialogueFallback: resolution.isFallback
         })
 
         const target = {

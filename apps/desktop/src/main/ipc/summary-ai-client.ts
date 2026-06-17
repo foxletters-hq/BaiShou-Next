@@ -1,9 +1,10 @@
 import { generateText } from 'ai'
 import { settingsManager } from './settings.ipc'
-import { getActiveProvider } from './agent-helpers'
-import { GlobalModelsConfig, logger } from '@baishou/shared'
+import { GlobalModelsConfig, logger, prepareProviderConfigForRuntime, resolveSummaryConfigFromSettings } from '@baishou/shared'
 import { pathService } from './vault.ipc'
 import type { SummaryAiClient } from '@baishou/core-desktop'
+import { AIProviderConfig } from '@baishou/shared'
+import { AIProviderRegistry } from '@baishou/ai'
 import path from 'path'
 import fs from 'fs'
 
@@ -24,19 +25,29 @@ async function appendDebugLog(
 export function buildSummaryAiClient(): SummaryAiClient {
   return {
     async generateContent(prompt: string, modelId: string): Promise<string> {
-      const provider = await getActiveProvider()
+      const providers = (await settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
       const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
+      const resolution = resolveSummaryConfigFromSettings(providers, globalModels, modelId)
 
-      // 允许用户为摘要功能独立指定 Provider
-      const summaryProviderId = globalModels?.globalSummaryProviderId || provider.config.id
-      let finalProvider = provider
-      if (summaryProviderId !== provider.config.id) {
-        try {
-          finalProvider = await getActiveProvider(summaryProviderId)
-        } catch (e) {}
+      if (!resolution.ok) {
+        if (resolution.reason === 'no_api_key') {
+          throw new Error(
+            `No active provider with API key for summary generation (provider: ${
+              resolution.providerName ?? 'unknown'
+            })`
+          )
+        }
+        if (resolution.reason === 'no_model') {
+          throw new Error('No summary model configured')
+        }
+        throw new Error('No active AI provider configured for summary generation')
       }
 
-      const finalModelId = globalModels?.globalSummaryModelId || modelId || 'deepseek-chat'
+      const { providerConfig, modelId: finalModelId } = resolution
+      const registry = AIProviderRegistry.getInstance()
+      const finalProvider = registry.getOrUpdateProvider(
+        prepareProviderConfigForRuntime(providerConfig)
+      )
       const model = finalProvider.getLanguageModel(finalModelId)
       const providerUrl = finalProvider.config?.baseUrl || 'default'
       const activeVaultPath = await pathService.getActiveVaultPath()
