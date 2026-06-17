@@ -8,34 +8,67 @@ const KEYSTORE_LOADER = `    def keystorePropertiesFile = rootProject.file("key.
         keystoreProperties.load(keystorePropertiesFile.newInputStream())
     }`
 
-const RELEASE_SIGNING_CONFIG = `        release {
-            if (keystorePropertiesFile.exists()) {
-                keyAlias keystoreProperties.getProperty("keyAlias")
-                keyPassword keystoreProperties.getProperty("keyPassword")
-                storePassword keystoreProperties.getProperty("storePassword")
-
-                def storeBase64 = keystoreProperties.getProperty("storeBase64")
-                def storeFilePath = keystoreProperties.getProperty("storeFile")
-
-                if (storeBase64 != null && !storeBase64.isEmpty()) {
-                    def tmpKeystore = file("\${layout.buildDirectory.get()}/tmp_keystore/upload.jks")
-                    tmpKeystore.parentFile.mkdirs()
-                    tmpKeystore.bytes = Base64.decoder.decode(storeBase64)
-                    storeFile tmpKeystore
-                } else if (storeFilePath != null) {
-                    storeFile file(storeFilePath)
-                }
-            }
-        }`
-
 const RELEASE_WHEN_KEYSTORE =
   'signingConfig keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug'
 
-/** 仅 release 使用正式签名 */
-function patchReleaseBuildTypeSigning(contents) {
+const RELEASE_SIGNING_LINES = [
+  '        release {',
+  '            if (keystorePropertiesFile.exists()) {',
+  '                keyAlias keystoreProperties.getProperty("keyAlias")',
+  '                keyPassword keystoreProperties.getProperty("keyPassword")',
+  '                storePassword keystoreProperties.getProperty("storePassword")',
+  '',
+  '                def storeBase64 = keystoreProperties.getProperty("storeBase64")',
+  '                def storeFilePath = keystoreProperties.getProperty("storeFile")',
+  '',
+  '                if (storeBase64 != null && !storeBase64.isEmpty()) {',
+  '                    def tmpKeystore = file("${layout.buildDirectory.get()}/tmp_keystore/upload.jks")',
+  '                    tmpKeystore.parentFile.mkdirs()',
+  '                    tmpKeystore.bytes = Base64.decoder.decode(storeBase64)',
+  '                    storeFile tmpKeystore',
+  '                } else if (storeFilePath != null) {',
+  '                    storeFile file(storeFilePath)',
+  '                }',
+  '            }',
+  '        }'
+]
+
+/** 在 signingConfigs 闭合前注入 release 块（勿用 signingConfigs.release 字符串判断，dev 插件会先写入引用） */
+function injectReleaseSigningConfig(contents) {
+  if (contents.includes('baishou-release-signing-config')) {
+    return contents
+  }
+
+  const lines = contents.split('\n')
+  let inSigningConfigs = false
+  let braceDepth = 0
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    if (/^\s*signingConfigs\s*\{/.test(line)) {
+      inSigningConfigs = true
+      braceDepth = 1
+      continue
+    }
+    if (!inSigningConfigs) continue
+
+    braceDepth += (line.match(/\{/g) || []).length
+    braceDepth -= (line.match(/\}/g) || []).length
+
+    if (braceDepth === 0) {
+      lines.splice(i, 0, '        // @generated begin baishou-release-signing-config', ...RELEASE_SIGNING_LINES, '        // @generated end baishou-release-signing-config')
+      return lines.join('\n')
+    }
+  }
+
+  throw new Error('[withAndroidReleaseSigning] 未找到 signingConfigs 注入点')
+}
+
+/** release / debug buildType 在存在 key.properties 时使用正式签名 */
+function patchBuildTypeSigning(contents) {
   const lines = contents.split('\n')
   let inBuildTypes = false
-  let inRelease = false
+  let inTarget = false
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
@@ -44,22 +77,23 @@ function patchReleaseBuildTypeSigning(contents) {
       continue
     }
     if (!inBuildTypes) continue
-    if (/^\s*release\s*\{/.test(line)) {
-      inRelease = true
+    if (/^\s*(debug|release)\s*\{/.test(line)) {
+      inTarget = true
       continue
     }
-    if (inRelease && /^\s*signingConfig signingConfigs\.debug\s*$/.test(line)) {
+    if (inTarget && /^\s*signingConfig signingConfigs\.debug\s*$/.test(line)) {
       if (!line.includes('keystorePropertiesFile.exists()')) {
         lines[i] = line.replace('signingConfig signingConfigs.debug', RELEASE_WHEN_KEYSTORE)
       }
-      return lines.join('\n')
+      inTarget = false
+      continue
     }
-    if (inRelease && /^\s*\}\s*$/.test(line)) {
-      return lines.join('\n')
+    if (inTarget && /^\s*\}\s*$/.test(line)) {
+      inTarget = false
     }
   }
 
-  return contents
+  return lines.join('\n')
 }
 
 /**
@@ -92,18 +126,8 @@ function withAndroidReleaseSigning(config) {
       }).contents
     }
 
-    if (!contents.includes('signingConfigs.release')) {
-      contents = mergeContents({
-        tag: 'baishou-release-signing-config',
-        src: contents,
-        newSrc: RELEASE_SIGNING_CONFIG,
-        anchor: /keyPassword 'android'/,
-        offset: 1,
-        comment: '//'
-      }).contents
-    }
-
-    contents = patchReleaseBuildTypeSigning(contents)
+    contents = injectReleaseSigningConfig(contents)
+    contents = patchBuildTypeSigning(contents)
 
     config.modResults.contents = contents
     return config
