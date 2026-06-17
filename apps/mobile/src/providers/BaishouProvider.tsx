@@ -538,7 +538,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           fileSystem,
           archiveDbBridge
         )
-        const lanSyncService = new MobileLanSyncService(archiveService, fileSystem)
+        const lanSyncService = new MobileLanSyncService(archiveService, fileSystem, syncDeviceId)
         const cloudSyncService = new MobileCloudSyncService(archiveService, fileSystem)
         const incrementalSyncService = new MobileIncrementalSyncService(
           settingsManager,
