@@ -1,3 +1,4 @@
+import type { AppDatabase } from '@baishou/database'
 import type { ToolContext, ToolDiarySearcher } from '@baishou/ai'
 import {
   AIProviderRegistry,
@@ -51,10 +52,11 @@ export async function buildMobileMcpToolContext(
 
   const userConfig = await buildMobileStreamUserConfig(deps.settingsManager, false)
 
-  const clientExecutor = createSqlExecutorFromDrizzleDb(deps.drizzleDb)
+  const drizzleDb = deps.drizzleDb as AppDatabase
+  const clientExecutor = createSqlExecutorFromDrizzleDb(drizzleDb)
   const hsRepo = new SqliteHybridSearchRepository(clientExecutor)
-  const msgRepo = new MessageRepository(deps.drizzleDb)
-  const dbAdapter = new DatabaseAdapter(hsRepo, msgRepo, deps.drizzleDb)
+  const msgRepo = new MessageRepository(drizzleDb)
+  const dbAdapter = new DatabaseAdapter(hsRepo, msgRepo, drizzleDb)
 
   const globalModels = await deps.settingsManager.get<any>('global_models')
   const providers = (await deps.settingsManager.get<any[]>('ai_providers')) || []

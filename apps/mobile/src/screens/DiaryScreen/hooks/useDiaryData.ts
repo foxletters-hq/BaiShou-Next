@@ -172,14 +172,14 @@ export function useDiaryData(
           (items || []).map((item) => ({
             id: item.id,
             date: item.date,
-            content: item.content ?? '',
+            content: item.preview ?? '',
             tags: item.tags ?? [],
-            preview: item.preview ?? item.content?.substring(0, 500) ?? '',
+            preview: item.preview ?? '',
             weather: item.weather,
             mood: item.mood,
             location: item.location,
             isFavorite: item.isFavorite,
-            createdAt: item.createdAt,
+            createdAt: item.updatedAt,
             updatedAt: item.updatedAt
           }))
         )

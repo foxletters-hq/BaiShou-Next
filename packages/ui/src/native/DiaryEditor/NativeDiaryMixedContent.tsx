@@ -10,7 +10,8 @@ import {
   StyleSheet,
   Pressable,
   TouchableWithoutFeedback,
-  type TextInput as RNTextInput
+  type TextInput as RNTextInput,
+  type ViewStyle
 } from 'react-native'
 import { Input } from '../Input/Input'
 import { getHeroInputFieldStyle } from '../Input/input-field.styles'
@@ -116,10 +117,18 @@ export const NativeDiaryMixedContent = forwardRef<
   const inputRefs = useRef<Array<RNTextInput | null>>([])
   const lastTextBlockIndex = useMemo(() => getLastTextBlockIndex(blocks), [blocks])
 
-  const editorShellStyle = useMemo(
-    () => [getHeroInputFieldStyle(colors, { multiline: true }), styles.editorShell],
-    [colors]
-  )
+  const editorShellStyle = useMemo((): ViewStyle[] => {
+    const field = getHeroInputFieldStyle(colors, { multiline: true })
+    return [
+      {
+        backgroundColor: field.backgroundColor,
+        borderWidth: field.borderWidth,
+        borderColor: field.borderColor,
+        borderRadius: field.borderRadius
+      },
+      styles.editorShell
+    ]
+  }, [colors])
 
   const focusTextBlock = useCallback(
     (index: number) => {

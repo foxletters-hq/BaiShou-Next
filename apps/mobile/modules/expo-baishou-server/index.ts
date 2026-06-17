@@ -18,6 +18,13 @@ export type PickDirectoryResult =
   | { canceled: true }
   | { canceled: false; path: string; uri: string }
 
+export type MirrorProductionLegacyResult = {
+  mirrored?: boolean
+  productionInstalled?: boolean
+  journalFilesCopied?: number
+  reason?: string
+}
+
 declare class ExpoBaishouServerModule extends NativeModule<ServerEvents> {
   startServer(port: number, authToken?: string | null): number
   stopServer(): void
@@ -57,6 +64,7 @@ declare class ExpoBaishouServerModule extends NativeModule<ServerEvents> {
   externalCopyAsync(fromPath: string, toPath: string): Promise<void>
   externalCopyFileAsync(fromPath: string, toPath: string): Promise<void>
   pickDirectoryAsync(): Promise<PickDirectoryResult>
+  mirrorProductionLegacyToExternal(): MirrorProductionLegacyResult
 }
 
 const NATIVE_REBUILD_HINT =
@@ -260,13 +268,6 @@ export function getLegacyFlutterAvatarsDirectory(): string | null {
   } catch {
     return null
   }
-}
-
-export type MirrorProductionLegacyResult = {
-  mirrored?: boolean
-  productionInstalled?: boolean
-  journalFilesCopied?: number
-  reason?: string
 }
 
 /** Dev 包：尝试把正式包沙盒内的 BaiShou_Root 复制到外部存储 */
