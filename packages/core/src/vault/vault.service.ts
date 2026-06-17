@@ -9,6 +9,11 @@ import {
   VaultNotFoundError
 } from './vault.errors'
 import { sanitizeVaultDirectoryName, validateVaultName } from './vault-name.util'
+import {
+  discoverVaultNames,
+  readLegacyVaultRegistry,
+  writeNextVaultRegistry
+} from '../migration/legacy-migration.shared'
 
 function parseRegistryTimestamp(value: unknown, fallback: Date): Date {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -27,6 +32,33 @@ function normalizeRegistryPath(p: string): string {
     .replace(/^file:\/\//, '')
     .replace(/\\/g, '/')
     .replace(/\/$/, '')
+}
+
+async function vaultDirectoryHasLegacyContent(
+  fileSystem: IFileSystem,
+  rootDir: string,
+  vaultName: string
+): Promise<boolean> {
+  const vaultDir = path.join(rootDir, vaultName)
+  return (
+    (await fileSystem.exists(path.join(vaultDir, 'Journals'))) ||
+    (await fileSystem.exists(path.join(vaultDir, 'Archives'))) ||
+    (await fileSystem.exists(path.join(vaultDir, '.baishou', 'agent.sqlite')))
+  )
+}
+
+async function discoverLegacyVaultNamesOnDisk(
+  fileSystem: IFileSystem,
+  rootDir: string
+): Promise<string[]> {
+  const names = await discoverVaultNames(fileSystem, rootDir)
+  const withContent: string[] = []
+  for (const name of names) {
+    if (await vaultDirectoryHasLegacyContent(fileSystem, rootDir, name)) {
+      withContent.push(name)
+    }
+  }
+  return withContent
 }
 
 export class VaultService implements IVaultService {
@@ -53,18 +85,35 @@ export class VaultService implements IVaultService {
     }
 
     if (!content) {
-      const defaultVaultName = 'Personal'
-      const defaultVaultPath = await this.pathService.getVaultDirectory(defaultVaultName)
+      const legacyEntries = await readLegacyVaultRegistry(this.fileSystem, rootDir)
+      if (legacyEntries.length > 0) {
+        this._vaults = await writeNextVaultRegistry(
+          this.fileSystem,
+          rootDir,
+          legacyEntries.map((entry) => entry.name),
+          legacyEntries
+        )
+        shouldSave = false
+      } else {
+        const discovered = await discoverLegacyVaultNamesOnDisk(this.fileSystem, rootDir)
+        if (discovered.length > 0) {
+          this._vaults = await writeNextVaultRegistry(this.fileSystem, rootDir, discovered)
+          shouldSave = false
+        } else {
+          const defaultVaultName = 'Personal'
+          const defaultVaultPath = await this.pathService.getVaultDirectory(defaultVaultName)
 
-      this._vaults = [
-        {
-          name: defaultVaultName,
-          path: defaultVaultPath,
-          createdAt: new Date(),
-          lastAccessedAt: new Date()
+          this._vaults = [
+            {
+              name: defaultVaultName,
+              path: defaultVaultPath,
+              createdAt: new Date(),
+              lastAccessedAt: new Date()
+            }
+          ]
+          shouldSave = true
         }
-      ]
-      shouldSave = true
+      }
     } else {
       try {
         const rawList = JSON.parse(content)
@@ -83,6 +132,30 @@ export class VaultService implements IVaultService {
           if (normalizeRegistryPath(vault.path) !== normalizeRegistryPath(expectedPath)) {
             vault.path = expectedPath
             shouldSave = true
+          }
+        }
+
+        const active = this.getActiveVault()
+        if (
+          active &&
+          this._vaults.length === 1 &&
+          !(await vaultDirectoryHasLegacyContent(this.fileSystem, rootDir, active.name))
+        ) {
+          const legacyEntries = await readLegacyVaultRegistry(this.fileSystem, rootDir)
+          if (legacyEntries.length > 0) {
+            this._vaults = await writeNextVaultRegistry(
+              this.fileSystem,
+              rootDir,
+              legacyEntries.map((entry) => entry.name),
+              legacyEntries
+            )
+            shouldSave = false
+          } else {
+            const discovered = await discoverLegacyVaultNamesOnDisk(this.fileSystem, rootDir)
+            if (discovered.length > 0) {
+              this._vaults = await writeNextVaultRegistry(this.fileSystem, rootDir, discovered)
+              shouldSave = false
+            }
           }
         }
       } catch {
