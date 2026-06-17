@@ -29,6 +29,10 @@ export class MobileLanSyncService implements ILanSyncService {
   private deviceFoundCb?: (d: DiscoveredDevice) => void
   private deviceLostCb?: (d: string) => void
   private serverEventSub: { remove: () => void } | null = null
+  private lanUploadStartedSub: { remove: () => void } | null = null
+  private lanUploadProgressSub: { remove: () => void } | null = null
+  private lanUploadStartedCallback?: (totalBytes: number) => void
+  private lanUploadProgressCallback?: (writtenBytes: number, totalBytes: number) => void
   private rescanTimer: ReturnType<typeof setInterval> | null = null
   private activeDevices = new Map<string, DiscoveredDevice>()
   private serviceNameToDedupKey = new Map<string, string>()
@@ -173,6 +177,15 @@ export class MobileLanSyncService implements ILanSyncService {
       }
     })
 
+    if (this.lanUploadStartedSub) this.lanUploadStartedSub.remove()
+    if (this.lanUploadProgressSub) this.lanUploadProgressSub.remove()
+    this.lanUploadStartedSub = BaishouServer.onLanUploadStarted((event) => {
+      this.lanUploadStartedCallback?.(event.totalBytes)
+    })
+    this.lanUploadProgressSub = BaishouServer.onLanUploadProgress((event) => {
+      this.lanUploadProgressCallback?.(event.writtenBytes, event.totalBytes)
+    })
+
     const safeNickname = 'BaishouMob'
     const serviceName = buildLanServiceName(safeNickname, this.lanDeviceId)
     const impl = this.getAndroidMdnsImpl()
@@ -216,6 +229,14 @@ export class MobileLanSyncService implements ILanSyncService {
     if (this.serverEventSub) {
       this.serverEventSub.remove()
       this.serverEventSub = null
+    }
+    if (this.lanUploadStartedSub) {
+      this.lanUploadStartedSub.remove()
+      this.lanUploadStartedSub = null
+    }
+    if (this.lanUploadProgressSub) {
+      this.lanUploadProgressSub.remove()
+      this.lanUploadProgressSub = null
     }
     this.isBroadcasting = false
   }
@@ -324,5 +345,13 @@ export class MobileLanSyncService implements ILanSyncService {
 
   public onFileReceived(callback: (zipFilePath: string) => void): void {
     this.fileReceivedCallback = callback
+  }
+
+  public onLanUploadStarted(callback: (totalBytes: number) => void): void {
+    this.lanUploadStartedCallback = callback
+  }
+
+  public onLanUploadProgress(callback: (writtenBytes: number, totalBytes: number) => void): void {
+    this.lanUploadProgressCallback = callback
   }
 }

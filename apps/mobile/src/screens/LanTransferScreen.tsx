@@ -33,6 +33,8 @@ export const LanTransferScreen: React.FC = () => {
   const [sendingTo, setSendingTo] = useState<string | null>(null)
   const [sendProgress, setSendProgress] = useState(0)
   const [isRestoring, setIsRestoring] = useState(false)
+  const [isReceiving, setIsReceiving] = useState(false)
+  const [receiveProgress, setReceiveProgress] = useState(0)
   const localConnRef = useRef<{
     ip: string
     port: number
@@ -83,8 +85,19 @@ export const LanTransferScreen: React.FC = () => {
         (id) => setDevices((prev) => removeDiscoveredLanDevice(prev, id))
       )
 
+      lanSyncService.onLanUploadStarted(() => {
+        setIsReceiving(true)
+        setReceiveProgress(0)
+      })
+      lanSyncService.onLanUploadProgress((written, total) => {
+        if (total > 0) {
+          setReceiveProgress(Math.min(99, Math.round((written / total) * 100)))
+        }
+      })
+
       lanSyncService.onFileReceived((zipPath) => {
         void (async () => {
+          setReceiveProgress(100)
           let sizeBytes = 0
           try {
             const stat = await services?.fileSystem.stat(zipPath)
@@ -99,7 +112,11 @@ export const LanTransferScreen: React.FC = () => {
               confirmText: t('common.restore')
             }
           )
-          if (!restore || !archiveService) return
+          if (!restore || !archiveService) {
+            setIsReceiving(false)
+            return
+          }
+          setIsReceiving(false)
           setIsRestoring(true)
           try {
             const result = await archiveService.importFromZip(zipPath, true)
@@ -109,6 +126,7 @@ export const LanTransferScreen: React.FC = () => {
             toast.showError(msg || t('lan.import_failed'))
           } finally {
             setIsRestoring(false)
+            setIsReceiving(false)
           }
         })()
       })
@@ -198,7 +216,25 @@ export const LanTransferScreen: React.FC = () => {
 
   return (
     <>
-      <RestoreBlockingOverlay visible={isRestoring} />
+      <RestoreBlockingOverlay
+        visible={isRestoring || isReceiving}
+        message={
+          isReceiving
+            ? t('lan_transfer.receiving_backup', '正在接收备份包（$percent%）…').replace(
+                '$percent',
+                String(receiveProgress)
+              )
+            : undefined
+        }
+        hint={
+          isReceiving
+            ? t(
+                'lan_transfer.receiving_backup_hint',
+                '大包传输需要一些时间，请保持本页面在前台直至完成。'
+              )
+            : undefined
+        }
+      />
       <StackScreenLayout
         title={t('lan_transfer.title')}
         {...getStackScreenChrome(colors)}
