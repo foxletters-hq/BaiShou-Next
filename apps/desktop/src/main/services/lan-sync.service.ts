@@ -4,6 +4,8 @@ import * as fs from 'fs'
 import * as fsp from 'fs/promises'
 import * as http from 'http'
 import * as dgram from 'dgram'
+import { Transform } from 'stream'
+import { pipeline } from 'stream/promises'
 import { app } from 'electron'
 import express from 'express'
 
@@ -11,6 +13,9 @@ import { ILanSyncService, DiscoveredDevice, IArchiveService } from '@baishou/cor
 import { buildLanServiceName, pickBestLanIpv4, isPrivateLanIpv4 } from '@baishou/shared'
 import { LanDiscovery } from './LanDiscovery'
 import { getDesktopInstallInstanceId } from './install-instance.service'
+
+/** 局域网全量备份可能较大，需放宽 HTTP 读写超时 */
+const LAN_TRANSFER_TIMEOUT_MS = 15 * 60 * 1000
 
 export class DesktopLanSyncService implements ILanSyncService {
   private server: http.Server | null = null
@@ -210,37 +215,14 @@ export class DesktopLanSyncService implements ILanSyncService {
     })
 
     expressApp.post('/upload', (req, res) => {
-      const fileName = `received_lan_${Date.now()}.zip`
-      const tempPath = path.join(app.getPath('temp'), fileName)
-      const writeStream = fs.createWriteStream(tempPath)
-
-      writeStream.on('finish', () => {
-        if (this.fileReceivedCallback) {
-          this.fileReceivedCallback(tempPath)
-        }
-        res.status(200).send('Success')
-      })
-
-      writeStream.on('error', (err) => {
-        console.error('Failed to write LAN upload', err)
-        if (!res.headersSent) {
-          res.status(500).send('Write error')
-        }
-      })
-
-      req.on('error', (err) => {
-        console.error('Failed to receive LAN stream', err)
-        writeStream.destroy()
-        if (!res.headersSent) {
-          res.status(500).send('Stream error')
-        }
-      })
-
-      req.pipe(writeStream)
+      void this.receiveLanUpload(req, res)
     })
 
     return new Promise((resolve, reject) => {
       this.server = expressApp.listen(0, '0.0.0.0', () => {
+        if (this.server) {
+          this.configureLanHttpServer(this.server)
+        }
         const addr = this.server?.address()
         if (addr && typeof addr !== 'string') {
           const port = addr.port
@@ -264,6 +246,79 @@ export class DesktopLanSyncService implements ILanSyncService {
         }
       })
     })
+  }
+
+  private configureLanHttpServer(server: http.Server): void {
+    server.timeout = 0
+    const serverWithTimeouts = server as http.Server & {
+      requestTimeout?: number
+      headersTimeout?: number
+    }
+    if (typeof serverWithTimeouts.requestTimeout === 'number') {
+      serverWithTimeouts.requestTimeout = LAN_TRANSFER_TIMEOUT_MS
+    }
+    if (typeof serverWithTimeouts.headersTimeout === 'number') {
+      serverWithTimeouts.headersTimeout = 120_000
+    }
+  }
+
+  private async receiveLanUpload(
+    req: http.IncomingMessage,
+    res: http.ServerResponse
+  ): Promise<void> {
+    const contentLength = Number.parseInt(req.headers['content-length'] ?? '', 10)
+    const fileName = `received_lan_${Date.now()}.zip`
+    const tempPath = path.join(app.getPath('temp'), fileName)
+    const writeStream = fs.createWriteStream(tempPath)
+    let bytesWritten = 0
+
+    const counter = new Transform({
+      transform(chunk, _encoding, callback) {
+        bytesWritten += chunk.length
+        callback(null, chunk)
+      }
+    })
+
+    const cleanupPartial = async () => {
+      await fsp.unlink(tempPath).catch(() => {})
+    }
+
+    try {
+      await pipeline(req, counter, writeStream)
+
+      if (bytesWritten <= 0) {
+        await cleanupPartial()
+        if (!res.headersSent) {
+          res.status(400).send('No file content')
+        }
+        return
+      }
+
+      if (Number.isFinite(contentLength) && contentLength > 0 && bytesWritten !== contentLength) {
+        console.error(
+          '[DesktopLanSyncService] incomplete LAN upload:',
+          `expected ${contentLength}, received ${bytesWritten}`
+        )
+        await cleanupPartial()
+        if (!res.headersSent) {
+          res.status(400).send('Incomplete upload')
+        }
+        return
+      }
+
+      if (this.fileReceivedCallback) {
+        this.fileReceivedCallback(tempPath)
+      }
+      if (!res.headersSent) {
+        res.status(200).send('Success')
+      }
+    } catch (err) {
+      console.error('[DesktopLanSyncService] failed to receive LAN upload', err)
+      await cleanupPartial()
+      if (!res.headersSent) {
+        res.status(500).send('Stream error')
+      }
+    }
   }
 
   public async stopBroadcasting(): Promise<void> {

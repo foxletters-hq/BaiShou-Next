@@ -16,6 +16,7 @@ import {
 
 import * as BaishouServer from 'expo-baishou-server'
 import { ensureLanDiscoveryPermissions } from './lan-discovery-permission.service'
+import { stripFileScheme } from './android-external-fs'
 
 const ANDROID_MDNS_IMPL = ImplType.DNSSD
 
@@ -324,15 +325,23 @@ export class MobileLanSyncService implements ILanSyncService {
       if (!zipPath) return false
 
       const url = `http://${reachableHost}:${port}/upload`
+      const nativeZipPath = stripFileScheme(zipPath)
 
-      const response = await uploadAsync(url, zipPath, {
-        httpMethod: 'POST',
-        uploadType: FileSystemUploadType.BINARY_CONTENT
-      })
+      let status = 0
+      if (Platform.OS === 'android' && BaishouServer.isLanUploadNativeAvailable()) {
+        const response = await BaishouServer.uploadLanFileAsync(url, nativeZipPath)
+        status = response.status
+      } else {
+        const response = await uploadAsync(url, zipPath, {
+          httpMethod: 'POST',
+          uploadType: FileSystemUploadType.BINARY_CONTENT
+        })
+        status = response.status
+      }
 
       await this.fileSystem.unlink(zipPath).catch(() => {})
 
-      if (response.status === 200) {
+      if (status === 200) {
         onProgress?.(100)
         return true
       }
