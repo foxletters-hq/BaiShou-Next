@@ -3,10 +3,9 @@ import styles from './LanSyncCard.module.css'
 import { useTranslation } from 'react-i18next'
 import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
-import { MdRadar, MdRefresh, MdQrCode, MdComputer, MdSmartphone } from 'react-icons/md'
+import { MdRadar, MdRefresh, MdComputer, MdSmartphone } from 'react-icons/md'
 import { HelpTooltip } from '../HelpTooltip'
 import { RestoreBlockingOverlay } from '../RestoreBlockingOverlay'
-import { QRCodeSVG } from 'qrcode.react'
 import {
   LAN_DEVICE_STALE_MS,
   formatLanReceivedBackupContent,
@@ -69,14 +68,6 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
   const [devices, setDevices] = useState<DiscoveredDevice[]>([])
   const [sendingTo, setSendingTo] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
-  const [localConnection, setLocalConnection] = useState<{
-    ip: string
-    port: number
-    serviceId: string
-    deviceId?: string
-    allIps?: string[]
-  } | null>(null)
-  const [showQrCode, setShowQrCode] = useState(false)
   const [isRestoring, setIsRestoring] = useState(false)
   const discoveryCleanupRef = useRef<(() => void) | null>(null)
   const deviceSeenAtRef = useRef<Map<string, number>>(new Map())
@@ -111,9 +102,6 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
     setDevices([])
 
     const connInfo = await onStartBroadcasting()
-    if (connInfo) {
-      setLocalConnection(connInfo)
-    }
 
     const cleanupParts: Array<(() => void) | void> = []
     if (onDiscoveryResetListener) {
@@ -153,7 +141,6 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
     deviceSeenAtRef.current.clear()
     discoveryCleanupRef.current?.()
     discoveryCleanupRef.current = null
-    setLocalConnection(null)
     await onStopDiscovery()
     await onStopBroadcasting()
   }
@@ -266,15 +253,6 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
             size={20}
             className={styles.helpBtn}
           />
-          {localConnection && (
-            <button
-              className={styles.qrFixedBtn}
-              onClick={() => setShowQrCode(!showQrCode)}
-              title={t('lan_transfer.show_qr', '扫码连接')}
-            >
-              <MdQrCode size={20} />
-            </button>
-          )}
           <button
             className={styles.refreshBtn}
             onClick={restartDualMode}
@@ -306,35 +284,6 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
               </div>
               <div className={styles.scanSubtitle}>
                 {t('lan_transfer.scan_hint', '请确保两台设备处于相同的 Wi-Fi 网络下')}
-              </div>
-            </div>
-          )}
-
-          {showQrCode && localConnection && (
-            <div className={styles.qrOverlay} onClick={() => setShowQrCode(false)}>
-              <div className={styles.qrCard} onClick={(e) => e.stopPropagation()}>
-                <div className={styles.qrTitle}>
-                  {t('lan_transfer.scan_to_connect', '扫码连接')}
-                </div>
-                <div className={styles.qrCodeWrapper}>
-                  <QRCodeSVG
-                    value={`baishou://${localConnection.ip}:${localConnection.port}`}
-                    size={200}
-                    level="M"
-                    includeMargin={true}
-                  />
-                </div>
-                <div className={styles.qrInfo}>
-                  <span className={styles.qrIp}>
-                    {localConnection.ip}:{localConnection.port}
-                  </span>
-                </div>
-                <div className={styles.qrHint}>
-                  {t('lan_transfer.qr_hint', '使用白守移动端扫描此二维码即可连接')}
-                </div>
-                <button className={styles.qrCloseBtn} onClick={() => setShowQrCode(false)}>
-                  {t('common.close', '关闭')}
-                </button>
               </div>
             </div>
           )}
