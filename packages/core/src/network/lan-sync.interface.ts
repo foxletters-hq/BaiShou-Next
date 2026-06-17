@@ -1,5 +1,6 @@
 // 跨平台局域网同步基类抽象
 export interface DiscoveredDevice {
+  deviceId: string
   nickname: string
   ip: string
   port: number
@@ -18,6 +19,7 @@ export interface ILanSyncService {
     ip: string
     port: number
     serviceId: string
+    deviceId?: string
     allIps?: string[]
   } | null>
 

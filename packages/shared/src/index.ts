@@ -68,6 +68,22 @@ export {
   type WebDavListEntry
 } from './utils/incremental-sync-webdav.util'
 export { resolveSyncDeviceId } from './utils/sync-device-id.util'
+export {
+  LAN_DEVICE_STALE_MS,
+  LAN_DISCOVERY_RESCAN_MS,
+  buildLanServiceName,
+  getLanDeviceDedupKey,
+  getLanDeviceHostKey,
+  isExcludedLanIpv4,
+  isPrivateLanIpv4,
+  lanDevicesEquivalent,
+  parseLanTxtIpv4,
+  pickBestLanIpv4,
+  removeDiscoveredLanDevice,
+  resolveDiscoveredLanIpv4,
+  upsertDiscoveredLanDevice,
+  type LanDiscoveredDeviceLike
+} from './utils/lan-discovery.util'
 export { resolveInstallInstanceId } from './utils/install-instance-id.util'
 export type { InstallInstanceIdStorage } from './utils/install-instance-id.util'
 export {
