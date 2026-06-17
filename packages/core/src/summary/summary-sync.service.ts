@@ -99,8 +99,18 @@ export class SummarySyncService {
       await this.syncSummaryFile(f.type, f.startDate, f.endDate)
     }
 
-    // 顺向孤立检查（找出 DB 中有但 File 中没有的文件）
     const allDb = await this.summaryRepo.getSummaries()
+    if (allDb.length === 0) return
+
+    // 磁盘扫描为空但 DB 仍有记录时，多半是活跃 vault/路径未就绪；跳过 ghost 清理以免误删导入的总结
+    if (allFiles.length === 0) {
+      console.warn(
+        '[SummarySyncService] Skipping ghost cleanup: disk scan found no summary files but DB has records'
+      )
+      return
+    }
+
+    // 顺向孤立检查（找出 DB 中有但 File 中没有的文件）
     for (const record of allDb) {
       const isFileExist = allFiles.some(
         (f) => f.type === record.type && f.startDate.getTime() === record.startDate.getTime()

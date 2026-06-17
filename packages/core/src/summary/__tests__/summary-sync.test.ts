@@ -104,4 +104,16 @@ describe('SummarySyncService (Ghost indexing)', () => {
       expect.objectContaining({ content: 'content_xyz' })
     )
   })
+
+  it('fullScanArchives() should skip ghost cleanup when disk scan is empty but DB has records', async () => {
+    mockFileService.listAllSummaries.mockResolvedValue([])
+    mockRepo.getSummaries.mockResolvedValue([
+      { id: 42, type: SummaryType.weekly, startDate: start, content: 'restored' } as any
+    ])
+
+    await service.fullScanArchives()
+
+    expect(mockRepo.delete).not.toHaveBeenCalled()
+    expect(mockRepo.upsert).not.toHaveBeenCalled()
+  })
 })
