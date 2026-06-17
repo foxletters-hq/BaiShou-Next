@@ -3,12 +3,13 @@ import styles from './LanSyncCard.module.css'
 import { useTranslation } from 'react-i18next'
 import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
-import { MdRadar, MdRefresh, MdQrCode } from 'react-icons/md'
+import { MdRadar, MdRefresh, MdQrCode, MdComputer, MdSmartphone } from 'react-icons/md'
 import { HelpTooltip } from '../HelpTooltip'
 import { RestoreBlockingOverlay } from '../RestoreBlockingOverlay'
 import { QRCodeSVG } from 'qrcode.react'
 import {
   LAN_DEVICE_STALE_MS,
+  formatLanReceivedBackupContent,
   getLanDeviceDedupKey,
   removeDiscoveredLanDevice,
   upsertDiscoveredLanDevice
@@ -39,7 +40,7 @@ export interface LanSyncCardProps {
   onStopDiscovery: () => Promise<void>
   onSendFile: (ip: string, port: number, onProgress: (p: number) => void) => Promise<boolean>
   onDiscoveryResetListener?: (callback: () => void) => () => void
-  onFileReceivedListener?: (callback: (zipPath: string) => void) => () => void
+  onFileReceivedListener?: (callback: (zipPath: string, sizeBytes?: number) => void) => () => void
   onImportZip?: (filePath: string) => Promise<void>
 }
 
@@ -184,13 +185,10 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
 
   useEffect(() => {
     if (onFileReceivedListener && onImportZip) {
-      const unsub = onFileReceivedListener(async (zipPath) => {
+      const unsub = onFileReceivedListener(async (zipPath, sizeBytes = 0) => {
         const confirmed = await dialog.confirm(
-          t(
-            'lan_transfer.received_backup_content',
-            '来自局域网设备的全量备份包。\n是否立即覆盖当前数据并导入？\n\n注意：导入前会自动创建当前数据的本地快照，可在「数据备份 → 本地快照」中查看。'
-          ),
-          t('lan_transfer.receive_confirm_title', '收到数据包')
+          formatLanReceivedBackupContent(t('lan_transfer.received_backup_content'), sizeBytes),
+          t('lan_transfer.received_backup_title', '收到数据备份')
         )
         if (confirmed) {
           setIsRestoring(true)
@@ -354,7 +352,13 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
                   className={`${styles.deviceBubble} ${isSending ? styles.bubbleSending : ''}`}
                   style={{ top: pos.top, left: pos.left, ...delayStyle }}
                 >
-                  <div className={styles.bubbleIcon}>{d.deviceType === 'mobile' ? '📱' : '💻'}</div>
+                  <div className={styles.bubbleIcon}>
+                    {d.deviceType === 'mobile' ? (
+                      <MdSmartphone size={20} />
+                    ) : (
+                      <MdComputer size={20} />
+                    )}
+                  </div>
                   <div className={styles.bubbleInfo}>
                     <span className={styles.bubbleName} title={d.nickname}>
                       {d.nickname}

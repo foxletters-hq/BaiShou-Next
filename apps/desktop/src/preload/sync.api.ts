@@ -3,7 +3,7 @@ import { ipcRenderer } from 'electron'
 type DeviceFoundListener = (device: unknown) => void
 type DeviceLostListener = (deviceId: string) => void
 type ProgressListener = (progress: number) => void
-type FileReceivedListener = (zipFilePath: string) => void
+type FileReceivedListener = (zipFilePath: string, sizeBytes?: number) => void
 
 const deviceFoundListeners = new Set<DeviceFoundListener>()
 const deviceLostListeners = new Set<DeviceLostListener>()
@@ -13,7 +13,7 @@ const fileReceivedListeners = new Set<FileReceivedListener>()
 let deviceFoundBridge: ((_event: unknown, device: unknown) => void) | null = null
 let deviceLostBridge: ((_event: unknown, deviceId: string) => void) | null = null
 let sendProgressBridge: ((_event: unknown, progress: number) => void) | null = null
-let fileReceivedBridge: ((_event: unknown, zipFilePath: string) => void) | null = null
+let fileReceivedBridge: ((_event: unknown, payload: string | { path: string; sizeBytes?: number }) => void) | null = null
 
 function ensureDeviceFoundBridge() {
   if (deviceFoundBridge) return
@@ -47,9 +47,11 @@ function ensureSendProgressBridge() {
 
 function ensureFileReceivedBridge() {
   if (fileReceivedBridge) return
-  fileReceivedBridge = (_event, zipFilePath) => {
+  fileReceivedBridge = (_event, payload) => {
+    const zipFilePath = typeof payload === 'string' ? payload : payload.path
+    const sizeBytes = typeof payload === 'string' ? undefined : payload.sizeBytes
     for (const listener of fileReceivedListeners) {
-      listener(zipFilePath)
+      listener(zipFilePath, sizeBytes)
     }
   }
   ipcRenderer.on('lan:file-received', fileReceivedBridge)
