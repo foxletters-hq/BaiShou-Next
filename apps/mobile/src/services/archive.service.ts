@@ -339,28 +339,7 @@ export class MobileArchiveService implements IArchiveService {
           console.warn('[MobileArchive] Failed to reset incremental sync meta', e)
         }
 
-        try {
-          const registryFile = `${rootDir}/vault_registry.json`
-          if (await this.fileSystem.exists(registryFile)) {
-            const raw = await this.fileSystem.readFile(registryFile)
-            const vaults: Array<{ name: string; path: string }> = JSON.parse(raw)
-            let modified = false
-
-            for (const v of vaults) {
-              const correctPath = `${rootDir}/${v.name}`
-              if (v.path !== correctPath) {
-                v.path = correctPath
-                modified = true
-              }
-            }
-            if (modified) {
-              await this.fileSystem.writeFile(registryFile, JSON.stringify(vaults, null, 2))
-            }
-          }
-        } catch (e) {
-          console.warn('[MobileArchive] Failed to remap vault paths', e)
-        }
-
+        // 路径校正由 vaultService.initRegistry() 负责（保留 lastAccessedAt 等字段，勿在此重写 registry）
         await this.vaultService.initRegistry()
         if (this.dbBridge?.rebootstrapAfterArchiveRestore) {
           await this.dbBridge.rebootstrapAfterArchiveRestore()

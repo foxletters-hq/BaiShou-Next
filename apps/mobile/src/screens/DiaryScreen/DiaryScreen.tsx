@@ -54,7 +54,8 @@ function parseFilterWeathers(saved: string | null): string[] {
 export const DiaryScreen: React.FC = () => {
   const { t } = useTranslation()
   const { colors, isDark } = useNativeTheme()
-  const { services, dbReady, vaultRevision, vaultSwitching, storageIndexing } = useBaishou()
+  const { services, dbReady, vaultRevision, vaultSwitching, storageIndexing, archiveRestoreEpoch } =
+    useBaishou()
   const router = useRouter()
   const {
     needsFullFileAccess,
@@ -89,6 +90,22 @@ export const DiaryScreen: React.FC = () => {
       void refreshConfigured()
     }, [refreshConfigured])
   )
+
+  useEffect(() => {
+    if (!dbReady || archiveRestoreEpoch === 0) return
+    setSelectedMonth(null)
+    setSearchQuery('')
+    setFilterWeathers([])
+    setFilterFavorite(false)
+    setCurrentPage(1)
+    void AsyncStorage.multiSet([
+      [STORAGE_KEYS.selectedMonth, 'all'],
+      [STORAGE_KEYS.searchQuery, ''],
+      [STORAGE_KEYS.filterWeathers, '[]'],
+      [STORAGE_KEYS.filterFavorite, 'false'],
+      [STORAGE_KEYS.currentPage, '1']
+    ]).catch((e) => logger.error('归档恢复后重置日记筛选失败', e instanceof Error ? e : String(e)))
+  }, [archiveRestoreEpoch, dbReady])
 
   useEffect(() => {
     if (!dbReady) return

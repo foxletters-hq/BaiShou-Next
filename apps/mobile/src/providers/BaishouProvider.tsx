@@ -152,6 +152,8 @@ interface BaishouContextValue {
   vaultRevision: number
   /** 全量导入/快照恢复成功后递增 vaultRevision，供 UI 刷新 */
   notifyArchiveRestoreComplete: (result: ImportResult) => void
+  /** 归档恢复后递增，供日记页重置月份/筛选 */
+  archiveRestoreEpoch: number
   /** 工作空间切换进行中（重建 diary stack / 后台 resync） */
   vaultSwitching: boolean
   /** 正在从磁盘恢复日记/会话/总结索引 */
@@ -231,6 +233,7 @@ const BaishouContext = createContext<BaishouContextValue>({
   deleteMigratedLegacySource: async () => false,
   vaultRevision: 0,
   notifyArchiveRestoreComplete: () => {},
+  archiveRestoreEpoch: 0,
   vaultSwitching: false,
   storageIndexing: false,
   retryStorageSetup: async () => Platform.OS !== 'android',
@@ -350,6 +353,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
     deleteMigratedLegacySource: () => deleteMigratedLegacySourceRef.current(),
     vaultRevision: 0,
     notifyArchiveRestoreComplete: (result) => notifyArchiveRestoreCompleteRef.current(result),
+    archiveRestoreEpoch: 0,
     vaultSwitching: false,
     storageIndexing: mobileDataBootstrapper.getStatus() === 'running',
     retryStorageSetup: () => retryStorageSetupRef.current(),
@@ -360,12 +364,17 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let isMounted = true
     let mobileMcpService: MobileMcpService | null = null
+    let wasStorageIndexing = mobileDataBootstrapper.getStatus() === 'running'
     const unsubscribeBootstrapper = mobileDataBootstrapper.subscribe((status) => {
       if (!isMounted) return
+      const indexing = status === 'running'
       setValue((prev) => ({
         ...prev,
-        storageIndexing: status === 'running'
+        storageIndexing: indexing,
+        vaultRevision:
+          wasStorageIndexing && !indexing ? prev.vaultRevision + 1 : prev.vaultRevision
       }))
+      wasStorageIndexing = indexing
     })
 
     async function init() {
@@ -643,13 +652,16 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             // 数据根已被覆盖，旧 diary stack 指向已删除路径，不可再用于 prepareVaultSwitch
             diaryStackRef.current = null
             invalidateUserAvatarDisplayCache()
-            const stack = await rebootstrapAfterStorageRootChange({
-              pathService: ctx.pathService,
-              vaultService: ctx.vaultService,
-              fileSystem: ctx.fileSystem,
-              bootstrapDeps: ctx.bootstrapDeps,
-              watcherDeps: ctx.watcherDeps
-            })
+            const stack = await rebootstrapAfterStorageRootChange(
+              {
+                pathService: ctx.pathService,
+                vaultService: ctx.vaultService,
+                fileSystem: ctx.fileSystem,
+                bootstrapDeps: ctx.bootstrapDeps,
+                watcherDeps: ctx.watcherDeps
+              },
+              { blockingResync: true }
+            )
             diaryStackRef.current = stack
             archiveFullRestoreDoneRef.current = true
             const runtime = agentDbRuntimeRef.current
@@ -1492,6 +1504,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               }
               if (isMounted) {
                 const ragRef = vaultBootstrapCtxRef.current?.ragServiceRef ?? ragServiceRef
+                const stack = diaryStackRef.current
                 setValue((prev) => ({
                   ...prev,
                   vaultSwitching: false,
@@ -1499,7 +1512,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                   services: prev.services
                     ? {
                         ...prev.services,
-                        ragService: ragRef.current
+                        ragService: ragRef.current,
+                        ...(stack ? { diaryService: stack.diaryService } : {})
                       }
                     : prev.services
                 }))
@@ -1550,7 +1564,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             if (!isMounted || !shouldRefreshVaultAfterArchiveImport(result)) return
             setValue((prev) => ({
               ...prev,
-              vaultRevision: prev.vaultRevision + 1
+              vaultRevision: prev.vaultRevision + 1,
+              archiveRestoreEpoch: prev.archiveRestoreEpoch + 1
             }))
           }
 
@@ -1567,6 +1582,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             vaultRevision: 0,
             notifyArchiveRestoreComplete: (result) =>
               notifyArchiveRestoreCompleteRef.current(result),
+            archiveRestoreEpoch: 0,
             vaultSwitching: false,
             storageIndexing: mobileDataBootstrapper.getStatus() === 'running',
             retryStorageSetup: () => retryStorageSetupRef.current(),

@@ -311,7 +311,7 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
     )
   }
 
-  if ((storageIndexing || vaultSwitching) && entries.length === 0) {
+  if (storageIndexing || vaultSwitching) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={colors.primary} />

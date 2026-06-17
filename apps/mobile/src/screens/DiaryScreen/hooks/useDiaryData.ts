@@ -196,7 +196,12 @@ export function useDiaryData(
   }, [diaryService, effectiveQuery])
 
   useEffect(() => {
-    if (!ready || !diaryService) return
+    if (!ready || !diaryService) {
+      setEntries([])
+      setTotalCount(0)
+      setLoading(false)
+      return
+    }
     void loadEntries()
   }, [
     ready,

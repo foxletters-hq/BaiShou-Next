@@ -5,6 +5,7 @@ import {
   VaultIndexServiceImpl,
   VaultService,
   journalMarkdownExistsInTree,
+  countJournalMarkdownInTree,
   path,
   type IFileSystem,
   type IStoragePathService,
@@ -426,8 +427,14 @@ export async function resumeStorageAfterFileCopy(deps: {
 
 let storageRootRebootstrapInFlight: Promise<VaultBoundDiaryStack> | null = null
 
+export type StorageRootRebootstrapOptions = {
+  /** 归档全量恢复后阻塞扫描，避免沿用旧 Shadow 索引导致日记列表不正确 */
+  blockingResync?: boolean
+}
+
 /** 数据根目录变更后：重载 registry、重建 diary stack 并全量扫描日记 */
-export async function rebootstrapAfterStorageRootChange(deps: {
+export async function rebootstrapAfterStorageRootChange(
+  deps: {
   pathService: IStoragePathService
   vaultService: VaultService
   fileSystem: IFileSystem
@@ -446,16 +453,26 @@ export async function rebootstrapAfterStorageRootChange(deps: {
     summarySyncService: SummarySyncService
   }
   watcherDeps: VaultRuntimeWatcherDeps
-}): Promise<VaultBoundDiaryStack> {
+  },
+  options?: StorageRootRebootstrapOptions
+): Promise<VaultBoundDiaryStack> {
   if (storageRootRebootstrapInFlight) {
     return storageRootRebootstrapInFlight
   }
+
+  const blockingResync = options?.blockingResync ?? false
 
   const task = (async () => {
     bumpVaultRuntimeGeneration()
     await prepareVaultSwitch(deps.diaryStack)
     await deps.vaultService.initRegistry()
+    if (blockingResync) {
+      await preferActiveVaultWithJournalsOnDisk(deps)
+    }
     await connectGlobalShadowDb(deps)
+    if (blockingResync) {
+      await clearAllVaultShadowIndexes(deps.vaultService)
+    }
 
     const diaryStack = createVaultBoundDiaryStack({
       pathService: deps.pathService,
@@ -474,11 +491,15 @@ export async function rebootstrapAfterStorageRootChange(deps: {
         watcherDeps: deps.watcherDeps
       },
       {
-        deferResync: true,
-        resyncReason: 'storage-root-changed'
+        deferResync: !blockingResync,
+        resyncReason: blockingResync ? 'archive-full-restore' : 'storage-root-changed'
       }
     )
-    logger.info('[VaultRuntime] Storage root rebootstrap scheduled (background resync)')
+    logger.info(
+      blockingResync
+        ? '[VaultRuntime] Storage root rebootstrap complete (blocking resync)'
+        : '[VaultRuntime] Storage root rebootstrap scheduled (background resync)'
+    )
     return diaryStack
   })()
 
@@ -548,6 +569,38 @@ async function shouldDeferVaultResync(
   }
 
   return true
+}
+
+/** 归档恢复后：若当前活跃工作区磁盘无日记，切换到日记最多的工作区 */
+async function preferActiveVaultWithJournalsOnDisk(deps: {
+  vaultService: VaultService
+  fileSystem: IFileSystem
+}): Promise<void> {
+  const vaults = deps.vaultService.getAllVaults()
+  if (vaults.length === 0) return
+
+  const scored: Array<{ name: string; count: number }> = []
+  for (const vault of vaults) {
+    const journalsDir = path.join(vault.path, 'Journals')
+    const count = await countJournalMarkdownInTree(deps.fileSystem, journalsDir)
+    scored.push({ name: vault.name, count })
+  }
+
+  scored.sort((a, b) => b.count - a.count)
+  const best = scored[0]
+  if (!best || best.count === 0) return
+
+  const active = deps.vaultService.getActiveVault()
+  const activeCount = active
+    ? (scored.find((item) => item.name === active.name)?.count ?? 0)
+    : 0
+
+  if (active && activeCount >= best.count) return
+
+  logger.info(
+    `[VaultRuntime] Switching active vault to "${best.name}" (${best.count} journals on disk; previous had ${activeCount})`
+  )
+  await deps.vaultService.switchVault(best.name)
 }
 
 async function runVaultBootstrap(
@@ -765,4 +818,15 @@ export async function deleteVaultWithShadowCleanup(
     await shadowRepo.deleteAllForVault(vaultName)
   }
   await deps.vaultService.deleteVault(vaultName)
+}
+
+/** 全量归档恢复前清空 Shadow 索引，避免旧索引与全新磁盘内容不一致 */
+export async function clearAllVaultShadowIndexes(vaultService: VaultService): Promise<void> {
+  if (!shadowConnectionManager.isConnected()) return
+  const db = shadowConnectionManager.getDb()
+  for (const vault of vaultService.getAllVaults()) {
+    const shadowRepo = new ShadowIndexRepository(db, vault.name)
+    await shadowRepo.deleteAllForVault(vault.name)
+  }
+  logger.info('[VaultRuntime] Cleared shadow index for all vaults before archive restore resync')
 }
