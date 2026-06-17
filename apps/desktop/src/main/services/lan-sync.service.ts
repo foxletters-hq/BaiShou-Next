@@ -8,7 +8,7 @@ import { app } from 'electron'
 import express from 'express'
 
 import { ILanSyncService, DiscoveredDevice, IArchiveService } from '@baishou/core-desktop'
-import { buildLanServiceName, pickBestLanIpv4 } from '@baishou/shared'
+import { buildLanServiceName, pickBestLanIpv4, isPrivateLanIpv4 } from '@baishou/shared'
 import { LanDiscovery } from './LanDiscovery'
 import { getDesktopInstallInstanceId } from './install-instance.service'
 
@@ -214,11 +214,6 @@ export class DesktopLanSyncService implements ILanSyncService {
       const tempPath = path.join(app.getPath('temp'), fileName)
       const writeStream = fs.createWriteStream(tempPath)
 
-      req.pipe(writeStream)
-      req.on('end', () => {
-        writeStream.end()
-      })
-
       writeStream.on('finish', () => {
         if (this.fileReceivedCallback) {
           this.fileReceivedCallback(tempPath)
@@ -226,10 +221,22 @@ export class DesktopLanSyncService implements ILanSyncService {
         res.status(200).send('Success')
       })
 
+      writeStream.on('error', (err) => {
+        console.error('Failed to write LAN upload', err)
+        if (!res.headersSent) {
+          res.status(500).send('Write error')
+        }
+      })
+
       req.on('error', (err) => {
         console.error('Failed to receive LAN stream', err)
-        res.status(500).send('Stream error')
+        writeStream.destroy()
+        if (!res.headersSent) {
+          res.status(500).send('Stream error')
+        }
       })
+
+      req.pipe(writeStream)
     })
 
     return new Promise((resolve, reject) => {
@@ -286,75 +293,134 @@ export class DesktopLanSyncService implements ILanSyncService {
     }
   }
 
+  private probeInfo(host: string, port: number): Promise<boolean> {
+    return new Promise((resolve) => {
+      const req = http.get(
+        { hostname: host, port, path: '/info', timeout: 3000 },
+        (res) => {
+          res.resume()
+          resolve(res.statusCode === 200)
+        }
+      )
+      req.on('error', () => resolve(false))
+      req.on('timeout', () => {
+        req.destroy()
+        resolve(false)
+      })
+    })
+  }
+
+  private async findReachableIp(hostStr: string, port: number): Promise<string | null> {
+    const hosts = hostStr
+      .split(',')
+      .map((h) => h.trim())
+      .filter(Boolean)
+    if (hosts.length === 0 || hosts[0] === 'Unknown') return null
+
+    for (const host of hosts) {
+      if (await this.probeInfo(host, port)) return host
+    }
+
+    const fallback = pickBestLanIpv4(hosts)
+    if (fallback && isPrivateLanIpv4(fallback)) {
+      console.warn(
+        '[DesktopLanSyncService] /info probe failed, fallback to direct LAN IP',
+        fallback,
+        port
+      )
+      return fallback
+    }
+    return null
+  }
+
   public async sendFile(
     ip: string,
     port: number,
     onProgress?: (percent: number) => void
   ): Promise<boolean> {
-    return new Promise(async (resolve) => {
-      try {
-        const zipFile = await this.archiveService.exportToTempFile()
-        if (!zipFile) {
-          resolve(false)
-          return
+    let zipFile: string | null = null
+    try {
+      const reachableHost = await this.findReachableIp(ip, port)
+      if (!reachableHost) {
+        console.error('[DesktopLanSyncService] no reachable LAN IP for', ip, port)
+        return false
+      }
+
+      zipFile = await this.archiveService.exportToTempFile()
+      if (!zipFile) return false
+
+      const stat = await fsp.stat(zipFile)
+      const readStream = fs.createReadStream(zipFile)
+
+      return await new Promise<boolean>((resolve) => {
+        let settled = false
+        const finish = (ok: boolean) => {
+          if (settled) return
+          settled = true
+          resolve(ok)
         }
 
-        const stat = await fsp.stat(zipFile)
-        const readStream = fs.createReadStream(zipFile)
-
-        const options = {
-          hostname: ip,
-          port: port,
-          path: '/upload',
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/octet-stream',
-            'Content-Length': stat.size,
-            'Content-Disposition': `attachment; filename="${path.basename(zipFile)}"`,
-            Connection: 'close'
-          }
-        }
-
-        const req = http.request(options, (res) => {
-          let body = ''
-          res.on('data', (d) => (body += d))
-          res.on('end', () => {
-            onProgress?.(100)
-            if (res.statusCode === 200) {
-              resolve(true)
-            } else {
-              resolve(false)
+        const req = http.request(
+          {
+            hostname: reachableHost,
+            port,
+            path: '/upload',
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/octet-stream',
+              'Content-Length': stat.size,
+              'Content-Disposition': `attachment; filename="${path.basename(zipFile!)}"`
             }
-          })
-        })
+          },
+          (res) => {
+            res.resume()
+            res.on('end', () => {
+              onProgress?.(100)
+              finish(res.statusCode === 200)
+            })
+            res.on('error', (e) => {
+              console.error('[DesktopLanSyncService] response error:', e)
+              finish(false)
+            })
+          }
+        )
 
         req.setTimeout(15 * 60 * 1000, () => {
           console.error('[DesktopLanSyncService] POST timed out waiting for device response')
           req.destroy()
-          resolve(false)
+          finish(false)
         })
 
         req.on('error', (e) => {
-          console.error('[DesktopLanSyncService] POST error: ', e)
-          resolve(false)
+          console.error('[DesktopLanSyncService] POST error:', e)
+          // 对端已返回 200 后 Connection 关闭可能触发 ECONNRESET，忽略后续 socket 错误
+          finish(false)
+        })
+
+        readStream.on('error', (e) => {
+          console.error('[DesktopLanSyncService] read stream error:', e)
+          finish(false)
         })
 
         if (onProgress) {
           let uploaded = 0
           readStream.on('data', (chunk) => {
             uploaded += chunk.length
-            // 上传完成 ≠ 对方已确认；保留 1% 给 HTTP 200 响应
             const pct = Math.min(99, Math.round((uploaded / stat.size) * 100))
             onProgress(pct)
           })
         }
 
         readStream.pipe(req)
-      } catch (e) {
-        console.error('[DesktopLanSyncService] failed to send file', e)
-        resolve(false)
+      })
+    } catch (e) {
+      console.error('[DesktopLanSyncService] failed to send file', e)
+      return false
+    } finally {
+      if (zipFile) {
+        await fsp.unlink(zipFile).catch(() => {})
       }
-    })
+    }
   }
 
   public onFileReceived(callback: (zipFilePath: string) => void): void {
