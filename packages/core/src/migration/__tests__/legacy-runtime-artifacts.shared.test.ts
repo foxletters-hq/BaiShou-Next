@@ -112,9 +112,54 @@ describe('exportLegacyRuntimeArtifacts', () => {
     expect(sessionAggregate.messages[0].parts[0].data).toEqual({ text: 'hi' })
   })
 
+  it('orders messages and parts by created_at when order_index column is missing', async () => {
+    db.exec(`
+      DROP TABLE agent_parts;
+      DROP TABLE agent_messages;
+      CREATE TABLE agent_messages (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        role TEXT,
+        created_at TEXT
+      );
+      CREATE TABLE agent_parts (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        message_id TEXT NOT NULL,
+        type TEXT,
+        data TEXT,
+        created_at TEXT
+      );
+    `)
+    db.prepare(
+      `INSERT INTO agent_messages (id, session_id, role, created_at)
+       VALUES ('msg-a', 'sess-1', 'user', '2024-01-01'),
+              ('msg-b', 'sess-1', 'assistant', '2024-01-02')`
+    ).run()
+    db.prepare(
+      `INSERT INTO agent_parts (id, session_id, message_id, type, data, created_at)
+       VALUES ('part-a', 'sess-1', 'msg-a', 'text', '{"text":"first"}', '2024-01-01'),
+              ('part-b', 'sess-1', 'msg-b', 'text', '{"text":"second"}', '2024-01-02')`
+    ).run()
+
+    await exportLegacyRuntimeArtifacts({
+      fileSystem,
+      targetWorkspaceDir: tempDir,
+      vaultNames: ['Personal'],
+      sqliteClient: db,
+      executeRawSql
+    })
+
+    const sessionAggregate = JSON.parse(
+      await fs.readFile(path.join(tempDir, 'Personal', 'Sessions', 'sess-1.json'), 'utf8')
+    )
+    expect(sessionAggregate.messages.map((m: { id: string }) => m.id)).toEqual(['msg-a', 'msg-b'])
+    expect(sessionAggregate.messages[0].parts[0].data).toEqual({ text: 'first' })
+  })
+
   it('exports many sessions in pages without loading all rows at once', async () => {
     for (let i = 0; i < 30; i++) {
-      const sid = `sess-${i}`
+      const sid = `sess-page-${i}`
       db.prepare(
         `INSERT INTO agent_sessions (id, title, vault_name, created_at, updated_at)
          VALUES (?, ?, 'Personal', '2024-01-01', '2024-01-02')`
@@ -122,11 +167,11 @@ describe('exportLegacyRuntimeArtifacts', () => {
       db.prepare(
         `INSERT INTO agent_messages (id, session_id, role, order_index, created_at)
          VALUES (?, ?, 'user', 0, '2024-01-01')`
-      ).run(`msg-${i}`, sid)
+      ).run(`msg-page-${i}`, sid)
       db.prepare(
         `INSERT INTO agent_parts (id, session_id, message_id, type, data, created_at)
          VALUES (?, ?, ?, 'text', '{"text":"ok"}', '2024-01-01')`
-      ).run(`part-${i}`, sid, `msg-${i}`)
+      ).run(`part-page-${i}`, sid, `msg-page-${i}`)
     }
 
     await exportLegacyRuntimeArtifacts({
@@ -138,7 +183,7 @@ describe('exportLegacyRuntimeArtifacts', () => {
     })
 
     for (let i = 0; i < 30; i++) {
-      const sessionPath = path.join(tempDir, 'Personal', 'Sessions', `sess-${i}.json`)
+      const sessionPath = path.join(tempDir, 'Personal', 'Sessions', `sess-page-${i}.json`)
       expect(await fileSystem.exists(sessionPath)).toBe(true)
     }
   })

@@ -4,6 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { createNodeFileSystem } from '../../fs/create-node-file-system'
 import {
+  hasFlutterLegacyDatabaseMarkers,
   isNextFormatArchiveManifest,
   resolveArchiveExtractRoot,
   shouldImportAsFlutterLegacyArchive
@@ -45,5 +46,16 @@ describe('archive-import-detection.shared', () => {
     expect(
       await shouldImportAsFlutterLegacyArchive(fileSystem, legacyRoot, { formatVersion: 1 })
     ).toBe(false)
+  })
+
+  it('treats Flutter zip with agent.sqlite as legacy even when manifest is present', async () => {
+    const legacyRoot = path.join(tempDir, 'flutter_with_manifest')
+    await fs.mkdir(path.join(legacyRoot, '.baishou'), { recursive: true })
+    await fs.writeFile(path.join(legacyRoot, '.baishou', 'agent.sqlite'), 'sqlite-placeholder')
+
+    expect(await hasFlutterLegacyDatabaseMarkers(fileSystem, legacyRoot)).toBe(true)
+    expect(
+      await shouldImportAsFlutterLegacyArchive(fileSystem, legacyRoot, { formatVersion: 1 })
+    ).toBe(true)
   })
 })

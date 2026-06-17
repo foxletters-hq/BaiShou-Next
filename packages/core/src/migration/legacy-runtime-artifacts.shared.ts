@@ -79,20 +79,59 @@ async function ensureDir(fileSystem: IFileSystem, dir: string): Promise<void> {
   }
 }
 
+type TableColumnCache = Map<string, Set<string>>
+
+async function getTableColumnNames(
+  sqliteClient: unknown,
+  executeRawSql: RawSqlExecutor,
+  tableName: string,
+  cache: TableColumnCache
+): Promise<Set<string>> {
+  const cached = cache.get(tableName)
+  if (cached) return cached
+
+  const info = await executeRawSql(sqliteClient, `PRAGMA table_info(${tableName})`)
+  const names = new Set(
+    info.rows.map((row) => String((row as Record<string, unknown>).name)).filter(Boolean)
+  )
+  cache.set(tableName, names)
+  return names
+}
+
+/** 旧版 Flutter agent.sqlite 的 agent_parts 无 order_index，按时间序兜底 */
+async function resolveTableOrderByClause(
+  sqliteClient: unknown,
+  executeRawSql: RawSqlExecutor,
+  tableName: string,
+  cache: TableColumnCache
+): Promise<string> {
+  const columns = await getTableColumnNames(sqliteClient, executeRawSql, tableName, cache)
+  if (columns.has('order_index')) return 'order_index ASC'
+  if (columns.has('created_at')) return 'created_at ASC, id ASC'
+  return 'id ASC'
+}
+
 async function loadMessageParts(
   sqliteClient: unknown,
   executeRawSql: RawSqlExecutor,
-  messageId: string
+  messageId: string,
+  columnCache: TableColumnCache
 ): Promise<Record<string, unknown>[]> {
   const parts: Record<string, unknown>[] = []
   let partOffset = 0
+  const orderBy = await resolveTableOrderByClause(
+    sqliteClient,
+    executeRawSql,
+    'agent_parts',
+    columnCache
+  )
 
   while (true) {
     const partRows = await executeRawSql(
       sqliteClient,
       `SELECT * FROM agent_parts
        WHERE message_id = ?
-       ORDER BY order_index ASC
+       ORDER BY ${orderBy}
        LIMIT ? OFFSET ?`,
       [messageId, PART_PAGE_SIZE, partOffset]
     )
@@ -120,6 +159,13 @@ export async function writeSessionAggregateFile(
   sessionId: string
 ): Promise<void> {
   const tempPath = `${sessionPath}.tmp`
+  const columnCache: TableColumnCache = new Map()
+  const messageOrderBy = await resolveTableOrderByClause(
+    sqliteClient,
+    executeRawSql,
+    'agent_messages',
+    columnCache
+  )
 
   try {
     await fileSystem.writeFile(
@@ -136,7 +182,7 @@ export async function writeSessionAggregateFile(
         sqliteClient,
         `SELECT * FROM agent_messages
          WHERE session_id = ?
-         ORDER BY order_index ASC
+         ORDER BY ${messageOrderBy}
          LIMIT ? OFFSET ?`,
         [sessionId, MESSAGE_PAGE_SIZE, offset]
       )
@@ -147,7 +193,7 @@ export async function writeSessionAggregateFile(
         const message = normalizeMessageRow(rawMessage as Record<string, unknown>)
         const messageId = String(message['id'] ?? '')
         const parts = messageId
-          ? await loadMessageParts(sqliteClient, executeRawSql, messageId)
+          ? await loadMessageParts(sqliteClient, executeRawSql, messageId, columnCache)
           : []
 
         const aggregateMessage = {
