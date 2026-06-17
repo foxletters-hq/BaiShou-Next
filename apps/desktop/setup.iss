@@ -32,9 +32,9 @@ UninstallDisplayIcon={app}\BaiShou.exe
 
 [Languages]
 Name: "en"; MessagesFile: "compiler:Default.isl"
-Name: "zh_cn"; MessagesFile: "build\inno-languages\ChineseSimplified.isl"
-Name: "zh_tw"; MessagesFile: "build\inno-languages\ChineseTraditional.isl"
-Name: "ja"; MessagesFile: "build\inno-languages\Japanese.isl"
+Name: "zh_cn"; MessagesFile: "inno-languages\ChineseSimplified.isl"
+Name: "zh_tw"; MessagesFile: "inno-languages\ChineseTraditional.isl"
+Name: "ja"; MessagesFile: "inno-languages\Japanese.isl"
 
 [CustomMessages]
 en.AppName=BaiShou
