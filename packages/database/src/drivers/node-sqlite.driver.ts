@@ -1,6 +1,5 @@
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
-import * as sqliteVec from 'sqlite-vec'
 import * as path from 'path'
 import * as fs from 'fs'
 import { AppDatabase } from '../types'
@@ -15,7 +14,10 @@ export function initNodeDatabase(dbPath: string, onCorrupt?: (err: any) => void)
   const sqlite = new Database(dbPath)
 
   // 1. 一键载入 C++ 原生向量数据库引擎支持！
+  // 使用 runtime require，避免 Rollup default/namespace interop 破坏 sqlite-vec 的 CJS 导出 { load }。
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const sqliteVec = require('sqlite-vec') as { load: (db: InstanceType<typeof Database>) => void }
     sqliteVec.load(sqlite)
     console.log(
       '[VectorSearch] Native sqlite-vec extension loaded successfully on desktop database!'
