@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useDialog } from '../Dialog'
 import { useNativeToast } from '../Toast'
 import type { SessionAttachmentGroup } from './attachment-management.types'
+import { formatAttachmentClearCompletedMessage } from './attachment-management.utils'
 
 export interface UseAttachmentSessionStateOptions {
   onDeleteSelected: (ids: string[]) => Promise<void>
@@ -78,10 +79,14 @@ export function useAttachmentSessionState(
     })
     if (!confirmed) return
 
+    const freedSizeMB = attachments
+      .filter((a) => selectedIds.has(a.sessionId))
+      .reduce((sum, item) => sum + (item.totalSizeMB ?? 0), 0)
+
     setIsDeleting(true)
     try {
       await onDeleteSelected(Array.from(selectedIds))
-      toast.showSuccess(t('settings.attachment_clear_completed', '清理完成'))
+      toast.showSuccess(formatAttachmentClearCompletedMessage(t, freedSizeMB))
       setSelectedIds(new Set())
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
@@ -105,10 +110,13 @@ export function useAttachmentSessionState(
     )
     if (!confirmed) return
 
+    const freedSizeMB =
+      attachments.find((a) => a.sessionId === sessionId)?.totalSizeMB ?? 0
+
     setIsDeleting(true)
     try {
       await onDeleteSelected([sessionId])
-      toast.showSuccess(t('settings.attachment_clear_completed', '清理完成'))
+      toast.showSuccess(formatAttachmentClearCompletedMessage(t, freedSizeMB))
       const clone = new Set(selectedIds)
       clone.delete(sessionId)
       setSelectedIds(clone)

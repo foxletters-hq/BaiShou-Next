@@ -6,6 +6,17 @@ export function formatSize(mb: number | undefined | null): string {
   return mb.toFixed(2) + ' MB'
 }
 
+export function formatAttachmentClearCompletedMessage(
+  t: (key: string, options?: Record<string, unknown>) => string,
+  sizeMB: number
+): string {
+  const size = formatSize(sizeMB)
+  return t('settings.attachment_clear_completed', {
+    size,
+    defaultValue: `清理完成，共释放 ${size} 空间`
+  })
+}
+
 export function isImageFile(fileName: string): boolean {
   const ext = fileName.split('.').pop()?.toLowerCase() || ''
   return ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'heic'].includes(ext)

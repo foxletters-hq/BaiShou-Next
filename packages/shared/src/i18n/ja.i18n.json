@@ -346,7 +346,7 @@
     "attachment_total_size": "総使用容量",
     "attachment_orphans_size": "孤立したファイル",
     "attachment_total_count": "添付ファイル総数",
-    "attachment_clear_completed": "完了しました。$size のスペースを解放しました",
+    "attachment_clear_completed": "完了しました。{{size}} のスペースを解放しました",
     "attachment_clear_confirm_title": "削除を確認しますか？",
     "attachment_clear_confirm_desc": "すべての孤立した添付ファイルフォルダを完全に削除します。この操作は元に戻せません！",
     "attachment_delete_selected": "選択を削除 ($count)",

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useDialog } from '../Dialog'
 import { useNativeToast } from '../Toast'
 import type { DiaryAttachmentFileItem } from './attachment-management.types'
+import { formatAttachmentClearCompletedMessage } from './attachment-management.utils'
 
 export interface UseAttachmentDiaryStateOptions {
   onDeleteDiaryAttachment?: (filePath: string) => Promise<void>
@@ -152,10 +153,15 @@ export function useAttachmentDiaryState(
       if (!confirmed) return
     }
 
+    const freedSizeMB = Array.from(selectedDiaryPaths).reduce((sum, filePath) => {
+      const item = diaryAttachments.find((entry) => entry.path === filePath)
+      return sum + (item?.sizeMB ?? 0)
+    }, 0)
+
     setIsDeleting(true)
     try {
       await Promise.all(Array.from(selectedDiaryPaths).map((p) => onDeleteDiaryAttachment(p)))
-      toast.showSuccess(t('settings.attachment_clear_completed', '清理完成'))
+      toast.showSuccess(formatAttachmentClearCompletedMessage(t, freedSizeMB))
       setSelectedDiaryPaths(new Set())
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)

@@ -347,7 +347,7 @@
     "attachment_total_size": "Total Space Used",
     "attachment_orphans_size": "Orphaned Attachments Size",
     "attachment_total_count": "Total Attachments",
-    "attachment_clear_completed": "Cleanup completed, freed up $size space",
+    "attachment_clear_completed": "Cleanup completed, freed up {{size}} space",
     "attachment_clear_confirm_title": "Confirm Deletion?",
     "attachment_clear_confirm_desc": "This will permanently delete all orphaned attachment folders. This action cannot be undone!",
     "attachment_delete_selected": "Delete Selected ($count)",
