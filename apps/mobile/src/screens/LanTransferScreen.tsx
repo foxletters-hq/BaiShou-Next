@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import type { DiscoveredDevice } from '@baishou/core-mobile'
 import {
   LAN_DEVICE_STALE_MS,
+  formatLanReceivedBackupContent,
   getLanDeviceDedupKey,
   removeDiscoveredLanDevice,
   upsertDiscoveredLanDevice
@@ -84,10 +85,20 @@ export const LanTransferScreen: React.FC = () => {
 
       lanSyncService.onFileReceived((zipPath) => {
         void (async () => {
-          const restore = await dialog.confirm(t('lan_transfer.received_backup_content'), {
-            title: t('lan_transfer.received_backup_title'),
-            confirmText: t('common.restore')
-          })
+          let sizeBytes = 0
+          try {
+            const stat = await services?.fileSystem.stat(zipPath)
+            sizeBytes = stat.size
+          } catch {
+            // ignore
+          }
+          const restore = await dialog.confirm(
+            formatLanReceivedBackupContent(t('lan_transfer.received_backup_content'), sizeBytes),
+            {
+              title: t('lan_transfer.received_backup_title'),
+              confirmText: t('common.restore')
+            }
+          )
           if (!restore || !archiveService) return
           setIsRestoring(true)
           try {
@@ -114,6 +125,7 @@ export const LanTransferScreen: React.FC = () => {
     lanSyncService,
     markDeviceSeen,
     notifyArchiveRestoreComplete,
+    services,
     t,
     toast
   ])

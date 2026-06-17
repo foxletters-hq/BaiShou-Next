@@ -1,3 +1,4 @@
+import * as fs from 'fs'
 import { ipcMain, BrowserWindow } from 'electron'
 import { SyncIpcChannels } from '@baishou/shared'
 import { DesktopLanSyncService } from '../services/lan-sync.service'
@@ -56,7 +57,13 @@ export function registerLanIPC() {
   lanSyncService.onFileReceived((zipFilePath) => {
     const windows = BrowserWindow.getAllWindows()
     if (windows.length > 0) {
-      windows[0].webContents.send('lan:file-received', zipFilePath)
+      let sizeBytes = 0
+      try {
+        sizeBytes = fs.statSync(zipFilePath).size
+      } catch {
+        // ignore
+      }
+      windows[0].webContents.send('lan:file-received', { path: zipFilePath, sizeBytes })
     }
   })
 }
