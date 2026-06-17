@@ -15,6 +15,9 @@ asarUnpack:
   - "**/*.node"
   - node_modules/better-sqlite3/**
   - node_modules/sqlite-vec/**
+extraResources:
+  - from: resources/database
+    to: database
 win:
   executableName: BaiShou
   icon: resources/icon.png
@@ -42,7 +45,7 @@ linux:
   category: Utility
 appImage:
   artifactName: BaiShou-${version}.${ext}
-npmRebuild: false
+npmRebuild: true
 publish:
   provider: github
   owner: Anson-Trio
