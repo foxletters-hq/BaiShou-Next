@@ -29,7 +29,7 @@ function guessMimeType(fileName: string): string | undefined {
 export async function shareLocalFile(
   fileSystem: IFileSystem,
   absolutePath: string,
-  options?: { dialogTitle?: string }
+  options?: { dialogTitle?: string; mimeType?: string; UTI?: string }
 ): Promise<void> {
   if (!(await Sharing.isAvailableAsync())) {
     throw new Error('SHARE_UNAVAILABLE')
@@ -46,15 +46,15 @@ export async function shareLocalFile(
 
   if (Platform.OS === 'android' && isExternalStoragePath(sourcePath)) {
     tempCachePath = `${stripFileScheme(getAppCacheDirectory())}share_${Date.now()}_${fileName}`
-    const b64 = await fileSystem.readFile(sourcePath, 'base64')
-    await fileSystem.writeFile(tempCachePath, b64, 'base64')
+    await fileSystem.copyFile(sourcePath, tempCachePath)
     shareUri = toFileUri(tempCachePath)
   }
 
   try {
     await Sharing.shareAsync(shareUri, {
-      mimeType: guessMimeType(fileName),
-      dialogTitle: options?.dialogTitle
+      mimeType: options?.mimeType ?? guessMimeType(fileName),
+      dialogTitle: options?.dialogTitle,
+      UTI: options?.UTI
     })
   } finally {
     if (tempCachePath) {
