@@ -112,12 +112,6 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
         route: { type: 'stack', pathname: '/settings/data-sync' }
       },
       {
-        id: 'local-backup',
-        titleKey: 'settings.local_backup',
-        icon: 'archive',
-        route: { type: 'stack', pathname: '/settings/data-sync' }
-      },
-      {
         id: 'attachments',
         titleKey: 'settings.attachment_management',
         icon: 'folder-delete',

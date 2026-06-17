@@ -455,6 +455,7 @@ export async function rebootstrapAfterStorageRootChange(deps: {
     bumpVaultRuntimeGeneration()
     await prepareVaultSwitch(deps.diaryStack)
     await deps.vaultService.initRegistry()
+    await connectGlobalShadowDb(deps)
 
     const diaryStack = createVaultBoundDiaryStack({
       pathService: deps.pathService,
