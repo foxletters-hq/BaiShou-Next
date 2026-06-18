@@ -17,8 +17,7 @@ import {
   rectifyAssistantAvatarPaths,
   restoreLegacyAvatarsFromArchiveLayout,
   restoreLegacyAvatarsFromDocumentsDir,
-  restoreUserAvatarFromConfigDir,
-  restoreUserAvatarFromSpPath,
+  restoreLegacyUserAvatar,
   type LegacyAvatarImporter
 } from './legacy-avatar-migration.shared'
 import { exportLegacyRuntimeArtifacts } from './legacy-runtime-artifacts.shared'
@@ -36,6 +35,7 @@ export interface LegacyArchiveMigrationDeps {
   flutterDocumentsAvatarsDir?: string | null
   userAvatarPathFromPrefs?: string | null
   onTableError?: (tableName: string, error: unknown) => void
+  onCopyProgress?: (entryPath: string) => void
 }
 
 /**
@@ -55,7 +55,8 @@ export async function migrateLegacyArchiveContents(
     saveUserAvatarPath,
     flutterDocumentsAvatarsDir,
     userAvatarPathFromPrefs,
-    onTableError
+    onTableError,
+    onCopyProgress
   } = deps
 
   const prefsPath = path.join(sourceDir, 'config', 'device_preferences.json')
@@ -86,23 +87,19 @@ export async function migrateLegacyArchiveContents(
     : {}
   const avatarMap = mergeAvatarMaps(archiveAvatarMap, documentsAvatarMap)
 
-  const userFromConfig = await restoreUserAvatarFromConfigDir(
-    fileSystem,
-    path.join(sourceDir, 'config'),
+  const userAvatarRel = await restoreLegacyUserAvatar(fileSystem, {
+    userAvatarPathFromPrefs: userAvatarPathFromPrefs ?? undefined,
+    sourceRoot: sourceDir,
+    flutterDocumentsAvatarsDir: flutterDocumentsAvatarsDir ?? undefined,
     importAvatar
-  )
-  const userFromSp = await restoreUserAvatarFromSpPath(
-    fileSystem,
-    userAvatarPathFromPrefs ?? undefined,
-    importAvatar
-  )
-  const userAvatarRel = userFromConfig ?? userFromSp
+  })
   if (userAvatarRel && saveUserAvatarPath) {
     await saveUserAvatarPath(userAvatarRel)
   }
 
-  const { agentDbs, baishouDbs } = await scanLegacyDatabases(fileSystem, sourceDir)
-  await mergeLegacySqliteDatabases(sqliteClient, executeRawSql, agentDbs, baishouDbs, {
+  const { baishouDbs } = await scanLegacyDatabases(fileSystem, sourceDir)
+  // 伙伴/会话由「版本迁移」按工作空间导入，启动迁移不合并 agent 表
+  await mergeLegacySqliteDatabases(sqliteClient, executeRawSql, [], baishouDbs, {
     includeMemoryEmbeddings: false,
     onTableError
   })
@@ -122,7 +119,10 @@ export async function migrateLegacyArchiveContents(
     } catch {
       continue
     }
-    const failed = await mergeDirectories(fileSystem, vSource, vTarget)
+    const failed = await mergeDirectories(fileSystem, vSource, vTarget, {
+      skipEntryNames: ['Journals'],
+      onEntry: onCopyProgress
+    })
     if (failed.length > 0) {
       throw new StorageMigrationCopyError(failed)
     }

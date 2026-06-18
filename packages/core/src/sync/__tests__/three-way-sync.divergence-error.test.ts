@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { SyncDivergenceExceededError } from '@baishou/shared'
+import { SyncDivergenceExceededError, SyncDivergenceConfirmationRequiredError } from '@baishou/shared'
 import { ThreeWaySyncService } from '../three-way-sync.service'
 import { S3SyncError } from '../sync.errors'
 import type { ICloudSyncClient } from '../../network/cloud-sync.interface'
@@ -34,6 +34,7 @@ describe('ThreeWaySyncService divergence errors', () => {
       deviceId: 'remote',
       files: { 'b.txt': { hash: '2', size: 1, lastModified: 1 } }
     })
+    vi.spyOn(service, 'getSyncStorageHistoryState').mockResolvedValue('match')
     vi.spyOn(ThreeWaySyncService.prototype as any, 'loadConfig').mockResolvedValue(undefined)
     Object.defineProperty(service, 'config', {
       value: {
@@ -53,6 +54,11 @@ describe('ThreeWaySyncService divergence errors', () => {
   it('rethrows SyncDivergenceExceededError without wrapping as S3SyncError', async () => {
     await expect(service.sync()).rejects.toBeInstanceOf(SyncDivergenceExceededError)
     await expect(service.sync()).rejects.not.toBeInstanceOf(S3SyncError)
+  })
+
+  it('rethrows SyncDivergenceConfirmationRequiredError on first-sync high divergence', async () => {
+    vi.spyOn(service, 'getSyncStorageHistoryState').mockResolvedValue('none')
+    await expect(service.sync()).rejects.toBeInstanceOf(SyncDivergenceConfirmationRequiredError)
   })
 
   it('rethrows SyncDivergenceExceededError on downloadOnly', async () => {

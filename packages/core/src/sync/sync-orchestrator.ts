@@ -3,7 +3,8 @@ import type {
   SyncSessionLog,
   S3SyncConfig,
   SyncSummary,
-  SyncProgressCallback
+  SyncProgressCallback,
+  IncrementalSyncRunOptions
 } from '@baishou/shared'
 import type { ISyncOrchestrator } from './sync-orchestrator.interface'
 import type { IIncrementalSyncService } from './incremental-sync.interface'
@@ -134,16 +135,26 @@ export class SyncOrchestrator implements ISyncOrchestrator {
     }
   }
 
-  async sync(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult> {
-    return this.doSync((p) => this.syncService.sync(p), 'full-sync', onProgress)
+  async sync(
+    onProgress?: SyncProgressCallback,
+    runOptions?: IncrementalSyncRunOptions
+  ): Promise<IncrementalSyncResult> {
+    return this.doSync((p) => this.syncService.sync(p, runOptions), 'full-sync', onProgress)
   }
 
   async uploadOnly(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult> {
     return this.doSync((p) => this.syncService.uploadOnly(p), 'upload-only', onProgress)
   }
 
-  async downloadOnly(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult> {
-    return this.doSync((p) => this.syncService.downloadOnly(p), 'download-only', onProgress)
+  async downloadOnly(
+    onProgress?: SyncProgressCallback,
+    runOptions?: IncrementalSyncRunOptions
+  ): Promise<IncrementalSyncResult> {
+    return this.doSync(
+      (p) => this.syncService.downloadOnly(p, runOptions),
+      'download-only',
+      onProgress
+    )
   }
 
   async getSyncHistory(limit?: number): Promise<SyncSessionLog[]> {
