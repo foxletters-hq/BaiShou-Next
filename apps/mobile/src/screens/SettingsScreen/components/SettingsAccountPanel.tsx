@@ -1,13 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { View, StyleSheet, ActivityIndicator } from 'react-native'
-import { useFocusEffect, useRouter } from 'expo-router'
-import * as Clipboard from 'expo-clipboard'
+import { useRouter } from 'expo-router'
+import { useThrottledFocusRefresh } from '../../../hooks/useThrottledFocusRefresh'
 import { useTranslation } from 'react-i18next'
 import i18n from 'i18next'
 import {
   useNativeTheme,
   useNativeToast,
-  McpSettingsCard,
   SettingsGroupDivider,
   AppearanceSettingsCard,
   IdentitySettingsCard,
@@ -22,7 +21,6 @@ import {
   type UserProfile
 } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
-import { useMobileMcpConfig } from '../../../hooks/useMobileMcpConfig'
 import { notifyThemeRefresh } from '../../../lib/theme-events'
 import { ensureDefaultLatteAssistant, syncDefaultLatteAssistantLocale } from '@baishou/core-mobile'
 import { resolveAppUiLanguage } from '../../../lib/device-locale'
@@ -33,14 +31,13 @@ export interface QuickSettingsGroupProps {
   groupCardStyle: object
 }
 
-/** 快捷设置分组卡片内容（用户 / 身份卡 / 外观 / MCP） */
+/** 快捷设置分组卡片内容（用户 / 身份卡 / 外观） */
 export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCardStyle }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const router = useRouter()
   const { services, dbReady, vaultRevision } = useBaishou()
   const toast = useNativeToast()
-  const mcp = useMobileMcpConfig()
 
   const [themeMode, setThemeMode] = useState<'system' | 'light' | 'dark'>('system')
   const [seedColor, setSeedColor] = useState('#5BA8F5')
@@ -141,12 +138,10 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
     void loadVaults()
   }, [loadAccountSettings, loadVaults])
 
-  useFocusEffect(
-    useCallback(() => {
-      void loadAccountSettings()
-      void loadVaults()
-    }, [loadAccountSettings, loadVaults])
-  )
+  useThrottledFocusRefresh(() => {
+    void loadAccountSettings()
+    void loadVaults()
+  })
 
   const handleSaveProfile = async (newProfile: SettingsProfileSavePayload) => {
     if (!services || !dbReady) return
@@ -255,15 +250,6 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
     }
   }
 
-  const handleCopyMcpEndpoint = async () => {
-    try {
-      await Clipboard.setStringAsync(mcp.mcpEndpointUrl)
-      toast.showSuccess(t('common.copied'))
-    } catch {
-      toast.showError(t('common.copy_failed'))
-    }
-  }
-
   const accountReady = dbReady && !!services
 
   return (
@@ -300,6 +286,7 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
           <SettingsGroupDivider />
           <AppearanceSettingsCard
             embedded
+            isLast
             themeMode={themeMode}
             seedColor={seedColor}
             language={language as 'system' | 'zh' | 'zh-TW' | 'en' | 'ja'}
@@ -307,23 +294,6 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
             onSeedColorChange={handleSeedColorChange}
             onLanguageChange={handleSaveLanguage}
           />
-          {!mcp.loading ? (
-            <>
-              <SettingsGroupDivider />
-              <McpSettingsCard
-                embedded
-                isLast
-                config={mcp.config}
-                mcpEndpointUrl={mcp.mcpEndpointUrl}
-                applying={mcp.applying}
-                isRunning={mcp.isRunning}
-                activePort={mcp.activePort}
-                onChange={(next) => void mcp.persistConfig(next)}
-                onCopyEndpoint={() => void handleCopyMcpEndpoint()}
-                onShowTools={() => void mcp.showToolsDialog()}
-              />
-            </>
-          ) : null}
         </>
       )}
     </View>
