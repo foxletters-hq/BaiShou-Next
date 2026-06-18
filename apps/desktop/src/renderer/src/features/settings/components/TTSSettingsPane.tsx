@@ -4,7 +4,8 @@ import {
   applyTtsSaveToGlobalModels,
   buildTtsProviderStatesFromGlobal,
   buildTtsSettingsInitialConfig,
-  isTtsProviderId
+  isTtsProviderId,
+  type TtsSynthesizeFromSettingsResult
 } from '@baishou/shared'
 import { TTSProviderSettings } from '@baishou/ui'
 import type { TtsProviderConfig } from '@baishou/ui'
@@ -32,16 +33,18 @@ export const TTSSettingsPane: React.FC = () => {
 
   const handleTestTts = useCallback(async (config: TtsProviderConfig, text: string) => {
     try {
-      const result =
-        (await window.electron?.ipcRenderer.invoke('settings:tts-test', config, text)) || null
-      if (result.success) {
-        return { success: true, audioBase64: result.audioBase64, format: result.format }
+      const result = await window.api?.settings?.testTts(config, text)
+      if (!result) {
+        return { success: false, error: 'TTS 试听不可用' }
       }
-      const failed = result as Extract<typeof result, { success: false }>
-      const errorMsg = failed.error
-        ? `${failed.errorCode}: ${failed.error}`
-        : failed.errorCode || 'unknown'
-      return { success: false, error: errorMsg }
+      if (!result.success) {
+        const failed = result as Extract<TtsSynthesizeFromSettingsResult, { success: false }>
+        const errorMsg = failed.error
+          ? `${failed.errorCode}: ${failed.error}`
+          : failed.errorCode || 'unknown'
+        return { success: false, error: errorMsg }
+      }
+      return { success: true, audioBase64: result.audioBase64, format: result.format }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error)
       return { success: false, error: message }

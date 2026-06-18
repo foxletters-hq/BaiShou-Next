@@ -169,7 +169,9 @@ describe('GptSovitsProvider', () => {
 
       const fetchSpy = vi
         .spyOn(global, 'fetch')
-        .mockResolvedValueOnce(createResponse({ ok: false, status: 404, contentType: 'application/json' }))
+        .mockResolvedValueOnce(
+          createResponse({ ok: false, status: 404, contentType: 'application/json' })
+        )
         .mockResolvedValueOnce(
           createResponse({
             ok: true,
@@ -237,9 +239,13 @@ describe('GptSovitsProvider', () => {
       ])
 
       vi.spyOn(global, 'fetch')
-        .mockResolvedValueOnce(createResponse({ ok: false, status: 404, contentType: 'application/json' }))
+        .mockResolvedValueOnce(
+          createResponse({ ok: false, status: 404, contentType: 'application/json' })
+        )
         .mockResolvedValueOnce(createResponse({ ok: true, status: 200, contentType: 'text/html' }))
-        .mockResolvedValueOnce(createResponse({ ok: true, status: 200, contentType: 'application/json' }))
+        .mockResolvedValueOnce(
+          createResponse({ ok: true, status: 200, contentType: 'application/json' })
+        )
         .mockResolvedValueOnce(
           createResponse({
             ok: true,
@@ -289,9 +295,7 @@ describe('GptSovitsProvider', () => {
       const promise = provider.synthesize(mockRequest, mockConfig)
 
       await expect(promise).rejects.toThrow(TtsApiError)
-      await expect(promise).rejects.toThrow(
-        'GPT-SoVITS 无法连接到服务: Connection refused'
-      )
+      await expect(promise).rejects.toThrow('GPT-SoVITS 无法连接到服务: Connection refused')
     })
   })
 })

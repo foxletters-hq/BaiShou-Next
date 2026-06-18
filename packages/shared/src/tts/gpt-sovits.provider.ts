@@ -20,7 +20,9 @@ function normalizePositiveInt(value: unknown, fallback: number): number {
 }
 
 function mapToGradioLanguageLabel(value: unknown): string {
-  const normalized = String(value || 'zh').trim().toLowerCase()
+  const normalized = String(value || 'zh')
+    .trim()
+    .toLowerCase()
   switch (normalized) {
     case 'all_zh':
     case 'zh':
@@ -150,9 +152,7 @@ async function waitForGradioQueueOutput(
             const block = buffer.slice(0, separatorIndex)
             buffer = buffer.slice(separatorIndex + 2)
 
-            const dataLine = block
-              .split(/\r?\n/)
-              .find((line) => line.startsWith('data:'))
+            const dataLine = block.split(/\r?\n/).find((line) => line.startsWith('data:'))
             if (!dataLine) {
               continue
             }
@@ -349,9 +349,9 @@ export class GptSovitsProvider implements TtsProvider {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(gradioPayload)
       })
-      const callPayload = (await callResponse.json().catch(() => null)) as
-        | { event_id?: string }
-        | null
+      const callPayload = (await callResponse.json().catch(() => null)) as {
+        event_id?: string
+      } | null
       const eventId = callPayload?.event_id || ''
 
       if (!callResponse.ok || !eventId) {

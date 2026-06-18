@@ -1,4 +1,5 @@
 import { ipcRenderer } from 'electron'
+import type { TtsSynthesizeFromSettingsResult } from '@baishou/shared'
 
 export const settingsApi = {
   settings: {
@@ -63,7 +64,9 @@ export const settingsApi = {
       testModelId?: string
     ) => ipcRenderer.invoke('settings:test-connection', providerId, tempKey, tempUrl, testModelId),
     fetchProviderModels: (providerId: string, tempKey?: string, tempUrl?: string) =>
-      ipcRenderer.invoke('settings:fetch-models', providerId, tempKey, tempUrl)
+      ipcRenderer.invoke('settings:fetch-models', providerId, tempKey, tempUrl),
+    testTts: (config: unknown, text: string): Promise<TtsSynthesizeFromSettingsResult> =>
+      ipcRenderer.invoke('settings:tts-test', config, text)
   },
 
   vault: {
