@@ -133,6 +133,17 @@ function resolveIdentityFacts(sp: Record<string, unknown>): Record<string, strin
       const first = Object.values(personas)[0]
       if (first) return first
     }
+  } else if (personasRaw && typeof personasRaw === 'object' && !Array.isArray(personasRaw)) {
+    const personas = personasRaw as Record<string, Record<string, unknown>>
+    if (typeof activeId === 'string' && personas[activeId]) {
+      return Object.fromEntries(
+        Object.entries(personas[activeId] ?? {}).map(([k, v]) => [k, String(v)])
+      )
+    }
+    const first = Object.values(personas)[0]
+    if (first) {
+      return Object.fromEntries(Object.entries(first ?? {}).map(([k, v]) => [k, String(v)]))
+    }
   }
 
   const legacy = sp['user_identity_facts']

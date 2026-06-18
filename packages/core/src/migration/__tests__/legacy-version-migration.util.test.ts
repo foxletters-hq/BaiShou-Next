@@ -4,6 +4,7 @@ import {
   normalizeImportedSectionIds,
   normalizeLegacyPartType,
   parseLegacyPersonasFromSp,
+  resolveLegacyIdentityPersonas,
   resolveLegacyVaultTargetName,
   resolveUniqueNameWithTwoDigitSuffix
 } from '../legacy-version-migration.util'
@@ -34,6 +35,35 @@ describe('legacy-version-migration.util', () => {
     const personas = parseLegacyPersonasFromSp(sp)
     expect(personas).toHaveLength(2)
     expect(personas[0]?.facts).toEqual({ 职业: '工程师' })
+  })
+
+  it('resolveLegacyIdentityPersonas reads user_personas from config when SP lacks personas', () => {
+    const sp = { user_nickname: 'Nick', global_dialogue_provider_id: 'openai' }
+    const config = {
+      user_personas: JSON.stringify({ 工作: { 职业: '工程师' } })
+    }
+    const personas = resolveLegacyIdentityPersonas(sp, config)
+    expect(personas).toHaveLength(1)
+    expect(personas[0]?.id).toBe('工作')
+  })
+
+  it('resolveLegacyIdentityPersonas falls back to identity_facts in device_preferences', () => {
+    const personas = resolveLegacyIdentityPersonas(null, {
+      identity_facts: { name: 'Anson', role: 'dev' }
+    })
+    expect(personas).toHaveLength(1)
+    expect(personas[0]?.facts.name).toBe('Anson')
+  })
+
+  it('resolveLegacyIdentityPersonas reads array identity_facts', () => {
+    const personas = resolveLegacyIdentityPersonas(null, {
+      identity_facts: ['喜欢写日记', '住在上海']
+    })
+    expect(personas).toHaveLength(1)
+    expect(personas[0]?.facts).toEqual({
+      '1': '喜欢写日记',
+      '2': '住在上海'
+    })
   })
 
   it('normalizeLegacyPartType maps legacy camelCase types', () => {

@@ -52,7 +52,7 @@ export interface LegacyMigrationImportResult {
 
 export interface LegacyMigrationProgressEvent {
   phase: 'scan' | 'import'
-  section?: LegacyMigrationSectionId
+  section?: string
   message: string
   current?: number
   total?: number

@@ -12,18 +12,32 @@ import {
 import {
   formatMigrationMegabytes,
   legacySessionBelongsToVault,
+  parseLegacyIdentityFacts,
   parseLegacyPersonasFromSp,
+  resolveLegacyIdentityPersonas,
   workspaceSectionId,
   type LegacyVersionMigrationScanResult,
   type LegacyVersionMigrationSectionPreview,
   type LegacyVersionMigrationWorkspacePreview
 } from './legacy-version-migration.util'
 import { isFlutterLegacyUserAvatarFileName } from './legacy-avatar-migration.shared'
+import {
+  assembleDevicePreferencesFromFlutterSp,
+  hasMeaningfulFlutterPreferences
+} from './flutter-shared-prefs.util'
 
 const GLOBAL_SECTION_TITLE_KEYS: Record<'avatar' | 'personas' | 'config', string> = {
   avatar: 'version_migration.section_avatar',
   personas: 'version_migration.section_personas',
   config: 'version_migration.section_config'
+}
+
+function deriveConfigFromSpForScan(
+  sp: Record<string, unknown> | null
+): Record<string, unknown> | null {
+  if (!sp) return null
+  const assembled = assembleDevicePreferencesFromFlutterSp(sp)
+  return hasMeaningfulFlutterPreferences(assembled) ? assembled : null
 }
 
 export interface ScanLegacyVersionMigrationDeps {
@@ -144,11 +158,17 @@ async function readLegacyAgentDbStatsForVault(
   for (let i = 0; i < uniquePaths.length; i++) {
     const alias = `legacy_scan_${i}`
     const rawAttachPath = uniquePaths[i]!
-    const attachPath = deps.prepareSqliteAttachPath
-      ? await deps.prepareSqliteAttachPath(rawAttachPath)
-      : rawAttachPath
     const vaultSpecific = isVaultSpecificAgentDb(rawAttachPath, legacyVaultName)
     try {
+      const attachPath = deps.prepareSqliteAttachPath
+        ? await deps.prepareSqliteAttachPath(rawAttachPath)
+        : rawAttachPath
+      console.info('[VersionMigration][scan-agent-db] attach', {
+        legacyVaultName,
+        rawAttachPath,
+        attachPath,
+        vaultSpecific
+      })
       await executeRawSql(sqliteClient, `ATTACH DATABASE '${attachPath}' AS ${alias}`)
 
       const assistantRows = (
@@ -166,6 +186,13 @@ async function readLegacyAgentDbStatsForVault(
         : sessionRows.filter((row) =>
             legacySessionBelongsToVault(row.vault_name, legacyVaultName)
           )
+      console.info('[VersionMigration][scan-agent-db] rows', {
+        legacyVaultName,
+        rawAttachPath,
+        assistantRows: assistantRows.length,
+        sessionRows: sessionRows.length,
+        filteredSessions: filteredSessions.length
+      })
 
       const sessionAssistantIds = new Set<string>()
       for (const row of filteredSessions) {
@@ -186,6 +213,13 @@ async function readLegacyAgentDbStatsForVault(
       for (const row of assistantRows) {
         const aid = String(row.id ?? '')
         if (!aid || allAssistantIds.has(aid)) continue
+        if (
+          !vaultSpecific &&
+          sessionAssistantIds.size > 0 &&
+          !sessionAssistantIds.has(aid)
+        ) {
+          continue
+        }
         allAssistantIds.add(aid)
         if (previewAssistants.length < 4) {
           previewAssistants.push({
@@ -206,9 +240,14 @@ async function readLegacyAgentDbStatsForVault(
 
       await executeRawSql(sqliteClient, `DETACH DATABASE ${alias}`)
     } catch (error) {
-      attachErrors.push(
-        error instanceof Error ? error.message : `Failed to read legacy database at ${attachPath}`
-      )
+      const message = error instanceof Error ? error.message : String(error)
+      console.warn('[VersionMigration][scan-agent-db] failed', {
+        legacyVaultName,
+        rawAttachPath,
+        alias,
+        error: message
+      })
+      attachErrors.push(message)
       try {
         await executeRawSql(sqliteClient, `DETACH DATABASE ${alias}`)
       } catch {
@@ -278,13 +317,17 @@ export async function scanLegacyVersionMigration(
   const { fileSystem, sourceRoot, sourceDisplayPath, flutterPrefsConfig, flutterRawSp, flutterDocumentsAvatarsDir } =
     deps
 
+  const effectivePrefsConfig =
+    flutterPrefsConfig ??
+  deriveConfigFromSpForScan(flutterRawSp ?? null)
+
   const vaultNames = await discoverVaultNames(fileSystem, sourceRoot)
 
   const avatarPathFromPrefs =
     typeof deps.flutterRawSp?.['user_avatar_path'] === 'string'
       ? (deps.flutterRawSp['user_avatar_path'] as string)
-      : typeof flutterPrefsConfig?.['user_avatar_path'] === 'string'
-        ? (flutterPrefsConfig['user_avatar_path'] as string)
+      : typeof effectivePrefsConfig?.['user_avatar_path'] === 'string'
+        ? (effectivePrefsConfig['user_avatar_path'] as string)
         : null
   const avatarFileBytes = avatarPathFromPrefs
     ? await fileSizeIfExists(fileSystem, avatarPathFromPrefs)
@@ -312,12 +355,17 @@ export async function scanLegacyVersionMigration(
   const avatarAvailable =
     avatarFileBytes > 0 || avatarDirBytes > 0 || avatarConfigBytes > 0
 
-  const personaSp = flutterRawSp ?? flutterPrefsConfig
-  const personas = personaSp ? parseLegacyPersonasFromSp(personaSp as Record<string, unknown>) : []
+  const personas = resolveLegacyIdentityPersonas(flutterRawSp ?? null, effectivePrefsConfig ?? null)
+  const personasFromSp = flutterRawSp ? parseLegacyPersonasFromSp(flutterRawSp) : []
+  const personasFromConfig = effectivePrefsConfig
+    ? parseLegacyPersonasFromSp(effectivePrefsConfig)
+    : []
+  const configIdentityFacts = parseLegacyIdentityFacts(effectivePrefsConfig?.['identity_facts'])
   const identityFactsOnly =
-    flutterPrefsConfig?.['identity_facts'] &&
-    typeof flutterPrefsConfig['identity_facts'] === 'object' &&
-    personas.length === 0
+    personas.length > 0 &&
+    personasFromSp.length === 0 &&
+    personasFromConfig.length === 0 &&
+    !!configIdentityFacts
 
   const configDirBytes = await sumTreeBytes(fileSystem, path.join(sourceRoot, 'config'))
 
@@ -330,12 +378,9 @@ export async function scanLegacyVersionMigration(
     }),
     buildGlobalSection('personas', {
       bytes: 0,
-      count: personas.length > 0 ? personas.length : identityFactsOnly ? 1 : 0,
-      available: personas.length > 0 || !!identityFactsOnly,
-      warnings:
-        personas.length === 0 && identityFactsOnly
-          ? ['version_migration.warning_personas_partial']
-          : [],
+      count: personas.length,
+      available: personas.length > 0,
+      warnings: identityFactsOnly ? ['version_migration.warning_personas_partial'] : [],
       previewItems: personas.slice(0, 8).map((p) => ({
         label: p.id,
         detail: String(Object.keys(p.facts).length)
@@ -343,10 +388,10 @@ export async function scanLegacyVersionMigration(
     }),
     buildGlobalSection('config', {
       bytes: configDirBytes,
-      count: flutterPrefsConfig ? 1 : 0,
-      available: !!flutterPrefsConfig,
+      count: effectivePrefsConfig ? 1 : 0,
+      available: !!effectivePrefsConfig,
       warnings: [],
-      previewItems: flutterPrefsConfig
+      previewItems: effectivePrefsConfig
         ? [
             { label: 'version_migration.config_preview_providers', detail: undefined },
             { label: 'version_migration.config_preview_models', detail: undefined },

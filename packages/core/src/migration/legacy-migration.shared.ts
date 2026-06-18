@@ -64,20 +64,20 @@ export async function stageLegacySqliteForAttach(
   sourceDbPath: string,
   stagingDir: string
 ): Promise<string> {
-  const rawSource = stripStoragePathScheme(sourceDbPath).replace(/\\/g, '/')
+  const rawSource = stripStoragePathScheme(sourceDbPath)
+  const normalizedSource = rawSource.replace(/\\/g, '/')
   await fileSystem.mkdir(stagingDir, { recursive: true })
 
-  const baseName = rawSource.split('/').pop() ?? 'agent.sqlite'
+  const baseName = normalizedSource.split('/').pop() ?? 'agent.sqlite'
   const safeName = baseName.replace(/[^\w.-]/g, '_')
   let hash = 0
-  for (let i = 0; i < rawSource.length; i++) {
-    hash = (hash * 31 + rawSource.charCodeAt(i)) | 0
+  for (let i = 0; i < normalizedSource.length; i++) {
+    hash = (hash * 31 + normalizedSource.charCodeAt(i)) | 0
   }
-  const stagedUri = path.join(stagingDir, `legacy_${Math.abs(hash)}_${safeName}`)
+  const stagedPath = path.join(stagingDir, `legacy_${Math.abs(hash)}_${safeName}`)
 
-  const sourceUri = sourceDbPath.startsWith('file://') ? sourceDbPath : `file://${rawSource}`
-  await fileSystem.copyFile(sourceUri, stagedUri)
-  return normalizeSqliteAttachPath(stagedUri)
+  await fileSystem.copyFile(rawSource, stagedPath)
+  return normalizeSqliteAttachPath(stagedPath)
 }
 
 export function dedupeSqlitePaths(paths: string[]): string[] {
