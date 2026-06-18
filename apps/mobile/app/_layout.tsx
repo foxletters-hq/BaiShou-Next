@@ -1,12 +1,12 @@
 import 'react-native-gesture-handler'
 import '../src/polyfills'
 import '../global.css'
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native'
+import { ThemeProvider } from '@react-navigation/native'
 import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import 'react-native-reanimated'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import i18n from 'i18next'
 import { readOnboardingUiLanguage } from '@/src/lib/onboarding-language.util'
@@ -19,7 +19,10 @@ import { IncrementalSyncProvider } from '@/src/providers/IncrementalSyncProvider
 import { useDiaryEmbedFailureToast } from '@/src/hooks/useDiaryEmbedFailureToast'
 import { useLegacyUpgradeRagToast } from '@/src/hooks/useLegacyUpgradeRagToast'
 import { LegacyMigrationPrompt } from '@/src/components/LegacyMigrationPrompt'
-import { fadeStackAnimation } from '@/src/navigation/fadeStackAnimation'
+import {
+  buildAppNavigationTheme,
+  buildThemedFadeStackOptions
+} from '@/src/navigation/themedNavigation'
 import { NativeAppThemeBridge } from '@/src/providers/NativeAppThemeBridge'
 import { HeroUIThemeBridge } from '@/src/providers/HeroUIThemeBridge'
 
@@ -29,7 +32,15 @@ export const unstable_settings = {
 }
 
 function AppContent() {
-  const { isDark } = useNativeTheme()
+  const { isDark, colors } = useNativeTheme()
+  const navigationTheme = useMemo(
+    () => buildAppNavigationTheme(isDark, colors.bgApp),
+    [isDark, colors.bgApp]
+  )
+  const themedFadeStackOptions = useMemo(
+    () => buildThemedFadeStackOptions(colors.bgApp),
+    [colors.bgApp]
+  )
   const { t } = useTranslation()
   const { dbReady, services } = useBaishou()
   useDiaryEmbedFailureToast()
@@ -57,11 +68,11 @@ function AppContent() {
   }, [dbReady, services])
 
   return (
-    <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={navigationTheme}>
       <Stack
         screenOptions={{
           headerShown: false,
-          ...fadeStackAnimation
+          ...themedFadeStackOptions
         }}
       >
         <Stack.Screen name="index" />
@@ -81,7 +92,7 @@ function AppContent() {
             presentation: 'modal',
             title: t('diary.editor_title', '编辑记忆'),
             headerShown: false,
-            ...fadeStackAnimation
+            ...themedFadeStackOptions
           }}
         />
         <Stack.Screen name="assistants" />
@@ -99,7 +110,7 @@ function AppContent() {
 
 export default function RootLayout() {
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <BaishouProvider>
           <NativeAppThemeBridge>
