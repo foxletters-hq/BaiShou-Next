@@ -75,6 +75,18 @@ export function useSummaryData() {
   const concurrencyLimitRef = useRef(1)
   const isSchedulingRef = useRef(false)
 
+  useEffect(() => {
+    setSummaries([])
+    setStats({
+      totalDiaryCount: 0,
+      totalWeeklyCount: 0,
+      totalMonthlyCount: 0,
+      totalQuarterlyCount: 0,
+      totalYearlyCount: 0
+    })
+    setMissingSummaries([])
+  }, [vaultRevision])
+
   const mapDetectedMissing = useCallback(
     (detected: DetectedMissingSummary[]) =>
       detected.map((m) => ({

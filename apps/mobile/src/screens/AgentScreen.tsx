@@ -316,6 +316,13 @@ export const AgentScreen = () => {
 
   const loadAssistantsRequestRef = useRef(0)
 
+  useEffect(() => {
+    if (vaultSwitching) {
+      loadAssistantsRequestRef.current += 1
+      setAssistants([])
+    }
+  }, [vaultSwitching])
+
   const loadAssistants = useCallback(async () => {
     if (!dbReady || !services) return
     if (storageIndexing) {

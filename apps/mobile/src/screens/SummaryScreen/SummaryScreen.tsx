@@ -76,6 +76,13 @@ export const SummaryScreen: React.FC = () => {
     setActivityData(filtered)
   }, [])
 
+  useEffect(() => {
+    activityIndexRef.current = null
+    setActivityData([])
+    setAvailableYears([new Date().getFullYear()])
+    setSelectedYear(new Date().getFullYear())
+  }, [vaultRevision])
+
   useFocusEffect(
     useCallback(() => {
       const now = Date.now()
