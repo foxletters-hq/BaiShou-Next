@@ -24,13 +24,25 @@ export const TtsGptSovitsFields: React.FC<TtsGptSovitsFieldsProps> = ({
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
 
-  const dividerStyle = compact
-    ? [styles.divider, { backgroundColor: colors.borderSubtle }]
-    : [styles.fieldGroupDivider, { borderTopColor: colors.borderSubtle }]
+  const Section: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    if (compact) {
+      return (
+        <>
+          <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
+          <View style={styles.fieldGroupCard}>{children}</View>
+        </>
+      )
+    }
+    return (
+      <View style={[styles.fieldGroupDivider, { borderTopColor: colors.borderSubtle }]}>
+        {children}
+      </View>
+    )
+  }
 
   return (
     <>
-      <View style={dividerStyle}>
+      <Section>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('tts.settings.ref_audio_path_label')}
         </Text>
@@ -42,9 +54,9 @@ export const TtsGptSovitsFields: React.FC<TtsGptSovitsFieldsProps> = ({
           autoCapitalize="none"
           autoCorrect={false}
         />
-      </View>
+      </Section>
 
-      <View style={dividerStyle}>
+      <Section>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('tts.settings.prompt_text_label')}
         </Text>
@@ -54,9 +66,9 @@ export const TtsGptSovitsFields: React.FC<TtsGptSovitsFieldsProps> = ({
           onChangeText={(v) => onUpdate({ promptText: v })}
           placeholder={t('tts.settings.prompt_text_placeholder')}
         />
-      </View>
+      </Section>
 
-      <View style={dividerStyle}>
+      <Section>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('tts.settings.prompt_lang_label')}
         </Text>
@@ -65,9 +77,9 @@ export const TtsGptSovitsFields: React.FC<TtsGptSovitsFieldsProps> = ({
           value={config.promptLang || 'zh'}
           onValueChange={(v) => onUpdate({ promptLang: v })}
         />
-      </View>
+      </Section>
 
-      <View style={dividerStyle}>
+      <Section>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('tts.settings.text_lang_label')}
         </Text>
@@ -76,7 +88,7 @@ export const TtsGptSovitsFields: React.FC<TtsGptSovitsFieldsProps> = ({
           value={config.textLang || 'zh'}
           onValueChange={(v) => onUpdate({ textLang: v })}
         />
-      </View>
+      </Section>
     </>
   )
 }

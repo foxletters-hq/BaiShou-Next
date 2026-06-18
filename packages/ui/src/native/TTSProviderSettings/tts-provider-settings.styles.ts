@@ -109,6 +109,21 @@ export const ttsProviderSettingsStyles = StyleSheet.create({
     gap: 8,
     alignItems: 'center'
   },
+  refAudioPickButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8
+  },
+  refAudioPickButtonText: {
+    fontSize: 14,
+    fontWeight: '500'
+  },
+  selectedRefAudioName: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 8
+  },
   testInput: {
     flex: 1
   },

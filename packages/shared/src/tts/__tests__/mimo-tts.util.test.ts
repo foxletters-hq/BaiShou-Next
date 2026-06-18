@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
   buildMimoTtsChatCompletionBody,
   getMimoTtsModelMode,
+  registerTtsRefAudioReader,
   resolveRefAudioMimeType,
   validateMimoTtsSettings
 } from '../mimo-tts.util'
@@ -15,6 +16,7 @@ import { readFile } from 'node:fs/promises'
 describe('mimo-tts.util', () => {
   beforeEach(() => {
     vi.mocked(readFile).mockReset()
+    registerTtsRefAudioReader(null)
   })
 
   describe('getMimoTtsModelMode', () => {
@@ -77,6 +79,24 @@ describe('mimo-tts.util', () => {
 
       expect(body.audio.voice).toBe(`data:audio/mpeg;base64,${btoa('fake-audio')}`)
       expect(body.messages[0]).toEqual({ role: 'user', content: '' })
+    })
+
+    it('uses registered ref audio reader before node fs', async () => {
+      registerTtsRefAudioReader(async () => new Uint8Array([1, 2, 3]))
+
+      const body = await buildMimoTtsChatCompletionBody({
+        modelId: 'mimo-v2.5-tts-voiceclone',
+        text: 'hello',
+        settings: {
+          voice: '',
+          responseFormat: 'wav',
+          refAudioPath: '/storage/emulated/0/BaiShou_Root/tts-ref-audio/sample.wav',
+          promptText: ''
+        }
+      })
+
+      expect(readFile).not.toHaveBeenCalled()
+      expect(body.audio.voice).toBe(`data:audio/wav;base64,${btoa(String.fromCharCode(1, 2, 3))}`)
     })
   })
 

@@ -9,10 +9,12 @@ import {
 import {
   TTSProviderSettings,
   type ProviderLocalState,
-  type TtsProviderConfig
+  type TtsProviderConfig,
+  useNativeToast
 } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { synthesizeTtsFromForm } from '../../../services/mobile-tts-synthesize'
+import { pickAndStoreTtsRefAudio } from '../../../services/mobile-tts-ref-audio.service'
 import { playTtsAudio } from '../../../services/play-tts-audio'
 import { fetchTtsProviderModels } from '../utils/tts-provider-models'
 import { setTtsPlaybackSettingsCache } from '../../../services/mobile-tts-settings.service'
@@ -23,6 +25,7 @@ export interface TTSSettingsSectionProps {
 }
 
 export const TTSSettingsSection: React.FC<TTSSettingsSectionProps> = ({ providerId }) => {
+  const toast = useNativeToast()
   const { services, dbReady } = useBaishou()
   const [activeProviderId, setActiveProviderId] = useState(providerId)
   const [initialConfig, setInitialConfig] = useState<Partial<TtsProviderConfig> | undefined>()
@@ -80,6 +83,17 @@ export const TTSSettingsSection: React.FC<TTSSettingsSectionProps> = ({ provider
     setTtsPlaybackSettingsCache({ globalModels: nextGlobalModels })
   }
 
+  const handlePickRefAudio = useCallback(async () => {
+    if (!services) return null
+    try {
+      return await pickAndStoreTtsRefAudio(services.fileSystem, services.pathService)
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error)
+      toast.showError(message)
+      return null
+    }
+  }, [services, toast])
+
   const configReady = useMemo(
     () => initialConfig !== undefined && initialProviderStates !== undefined,
     [initialConfig, initialProviderStates]
@@ -102,6 +116,7 @@ export const TTSSettingsSection: React.FC<TTSSettingsSectionProps> = ({ provider
           onActiveProviderIdChange={handleProviderChange}
           onSaveConfig={handleSaveConfig}
           onFetchModels={fetchTtsProviderModels}
+          onPickRefAudio={handlePickRefAudio}
           onPlayTestAudio={playTtsAudio}
           onTestTts={async (config, text) => {
             const result = await synthesizeTtsFromForm(config, text)
