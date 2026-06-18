@@ -34,3 +34,25 @@ export function resolveDiaryAiWritingPrompt(
 ): string {
   return config?.aiWritingPrompt?.trim() || DEFAULT_DIARY_AI_WRITING_PROMPT
 }
+
+/**
+ * 构建注入 Agent 系统提示词的完整日记书写规范（含伙伴提示词与追加模板说明）。
+ */
+export function buildDiaryWritingGuidelinesForSystemPrompt(
+  config: DiaryTemplateConfig | null | undefined,
+  referenceDate: Date = new Date()
+): string {
+  const writingPrompt = resolveDiaryAiWritingPrompt(config)
+  const appendTemplate =
+    config?.appendBlockTemplate?.trim() || DEFAULT_DIARY_APPEND_BLOCK_TEMPLATE
+  const appendExample = resolveDiaryAppendBlock(config, referenceDate).replace(/\u200B$/, '')
+
+  return [
+    writingPrompt.trim(),
+    '',
+    '关于 diary_edit 追加模式（append）：',
+    `- 系统会在你提交的 content 之前自动插入时间块；当前追加记录模板为：${appendTemplate}`,
+    `- 按当前时间解析后的插入示例：${JSON.stringify(appendExample)}`,
+    '- content 参数中请勿重复写入时间标题行，只写正文内容。'
+  ].join('\n')
+}

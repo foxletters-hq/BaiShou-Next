@@ -3,7 +3,8 @@ import {
   applyDiaryTemplateVars,
   resolveDiaryAiWritingPrompt,
   resolveDiaryAppendBlock,
-  resolveDiaryNewEntryContent
+  resolveDiaryNewEntryContent,
+  buildDiaryWritingGuidelinesForSystemPrompt
 } from '../diary-template.util'
 import { DEFAULT_DIARY_AI_WRITING_PROMPT } from '../../constants/diary-templates'
 
@@ -29,5 +30,16 @@ describe('diary-template.util', () => {
   it('falls back to default AI writing prompt', () => {
     expect(resolveDiaryAiWritingPrompt({})).toBe(DEFAULT_DIARY_AI_WRITING_PROMPT)
     expect(resolveDiaryAiWritingPrompt({ aiWritingPrompt: 'custom' })).toBe('custom')
+  })
+
+  it('builds system prompt guidelines with append template info', () => {
+    const guidelines = buildDiaryWritingGuidelinesForSystemPrompt(
+      { appendBlockTemplate: '## {time}' },
+      fixedDate
+    )
+    expect(guidelines).toContain(DEFAULT_DIARY_AI_WRITING_PROMPT)
+    expect(guidelines).toContain('## {time}')
+    expect(guidelines).toContain('## 15:30:45')
+    expect(guidelines).toContain('diary_edit 追加模式')
   })
 })
