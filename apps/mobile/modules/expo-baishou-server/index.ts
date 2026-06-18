@@ -44,6 +44,7 @@ declare class ExpoBaishouServerModule extends NativeModule<ServerEvents> {
   hasAllFilesAccess(): boolean
   openAllFilesAccessSettings(): boolean
   getStoragePermissionOemKey(): string
+  getStoragePermissionState(): Record<string, boolean>
   probeExternalStorageWritable(): boolean
   getLegacyFlutterStorageRoots(): string[]
   readLegacyFlutterSharedPreferencesXml(): string | null
@@ -284,6 +285,41 @@ export function probeExternalStorageWritable(): boolean {
     return mod.probeExternalStorageWritable()
   } catch {
     return false
+  }
+}
+
+export type StoragePermissionState = {
+  allFilesManager: boolean
+  appOpsAllFiles: boolean
+  standardStorage: boolean
+  probeWritable: boolean
+  safTree: boolean
+  effectiveAccess: boolean
+}
+
+export function getStoragePermissionState(): StoragePermissionState {
+  const mod = getNative()
+  const empty: StoragePermissionState = {
+    allFilesManager: false,
+    appOpsAllFiles: false,
+    standardStorage: false,
+    probeWritable: false,
+    safTree: false,
+    effectiveAccess: false
+  }
+  if (!mod || typeof mod.getStoragePermissionState !== 'function') return empty
+  try {
+    const raw = mod.getStoragePermissionState() ?? {}
+    return {
+      allFilesManager: Boolean(raw.allFilesManager),
+      appOpsAllFiles: Boolean(raw.appOpsAllFiles),
+      standardStorage: Boolean(raw.standardStorage),
+      probeWritable: Boolean(raw.probeWritable),
+      safTree: Boolean(raw.safTree),
+      effectiveAccess: Boolean(raw.effectiveAccess)
+    }
+  } catch {
+    return empty
   }
 }
 

@@ -415,22 +415,15 @@ class ExpoBaishouServerModule : Module() {
             }
         }
 
-        /** Android 11+ 全文件访问；较低版本检查 WRITE_EXTERNAL_STORAGE */
+        /** Android 11+ 全文件访问；较低版本检查 WRITE_EXTERNAL_STORAGE；SAF 目录树亦视为已授权 */
         Function("hasAllFilesAccess") {
             val context = appContext.reactContext ?: return@Function false
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                Environment.isExternalStorageManager()
-            } else {
-                ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE
-                ) == PackageManager.PERMISSION_GRANTED
-            }
+            ExternalStorageFiles.hasExternalAccess(context)
         }
 
         /** 打开系统「允许管理所有文件」或应用权限页（按厂商尝试多个 Intent） */
         Function("openAllFilesAccessSettings") {
-            val context = appContext.currentActivity ?: appContext.reactContext ?: return@Function false
+            val context = appContext.throwingActivity
             AllFilesAccessSettingsOpener.open(context, context.packageName)
         }
 
@@ -443,6 +436,12 @@ class ExpoBaishouServerModule : Module() {
         Function("probeExternalStorageWritable") {
             val context = appContext.reactContext ?: return@Function false
             ExternalStorageFiles.probeWritable(context)
+        }
+
+        /** 细分存储权限状态，供 JS 展示 realme「存储空间」与「管理所有文件」差异引导 */
+        Function("getStoragePermissionState") {
+            val context = appContext.reactContext ?: return@Function emptyMap<String, Any>()
+            StoragePermissionHelper.getState(context)
         }
 
         Function("externalGetInfo") { path: String ->
@@ -714,6 +713,8 @@ class ExpoBaishouServerModule : Module() {
             } catch (_: Exception) {
                 // 部分 ROM 可能不支持持久化，仍可尝试解析路径
             }
+
+            StorageTreeAccess.saveTreeUri(context, treeUri)
 
             val path = DirectoryTreeUri.resolvePath(context, treeUri)
             if (path.isNullOrBlank()) {

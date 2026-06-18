@@ -9,8 +9,12 @@ import {
   isExternalStorageNativeAvailable,
   openAllFilesAccessSettings as nativeOpenAllFilesAccessSettings,
   getStoragePermissionOemKey as nativeGetStoragePermissionOemKey,
-  probeExternalStorageWritable
+  getStoragePermissionState as nativeGetStoragePermissionState,
+  probeExternalStorageWritable,
+  type StoragePermissionState
 } from 'expo-baishou-server'
+
+export type { StoragePermissionState }
 
 /** 与桌面端 / 旧版 BaiShou 一致的外部数据根目录 */
 export const EXTERNAL_STORAGE_ROOT = '/storage/emulated/0/BaiShou_Root'
@@ -19,8 +23,8 @@ export const EXTERNAL_STORAGE_ROOT = '/storage/emulated/0/BaiShou_Root'
 export const EXTERNAL_STORAGE_ROOT_URI = `file://${EXTERNAL_STORAGE_ROOT}`
 
 /**
- * 检查是否具备「管理所有文件」权限（Android 11+）。
- * 可写性探测在挂载阶段单独进行，避免部分 ROM（如 ColorOS）误报未授权。
+ * 检查外部存储是否可用（全文件访问 / SAF 目录树 / 实际可写探测）。
+ * realme 等 ROM 上「存储空间」开关不等于「允许管理所有文件」。
  */
 export async function hasStoragePermission(): Promise<boolean> {
   if (Platform.OS !== 'android') return true
@@ -34,8 +38,41 @@ export async function hasStoragePermission(): Promise<boolean> {
 
 /** 探测外部 BaiShou_Root 是否可写（挂载/写入前使用） */
 export async function canWriteExternalStorage(): Promise<boolean> {
-  if (!(await hasStoragePermission())) return false
+  if (Platform.OS !== 'android') return true
+  if (!isBaishouServerAvailable() || !isExternalStorageNativeAvailable()) {
+    return false
+  }
   return probeExternalStorageWritable()
+}
+
+export function readStoragePermissionState(): StoragePermissionState {
+  if (Platform.OS !== 'android') {
+    return {
+      allFilesManager: true,
+      appOpsAllFiles: true,
+      standardStorage: true,
+      probeWritable: true,
+      safTree: false,
+      effectiveAccess: true
+    }
+  }
+  return nativeGetStoragePermissionState()
+}
+
+/** 按当前权限状态返回更具体的引导文案 key 对应文本 */
+export function getStoragePermissionHint(state?: StoragePermissionState): string {
+  const s = state ?? readStoragePermissionState()
+  if (s.effectiveAccess || s.probeWritable || s.safTree) {
+    return ''
+  }
+  if (s.standardStorage && !s.allFilesManager && !s.appOpsAllFiles) {
+    const oem = getStoragePermissionOemKey()
+    if (oem === 'oppo') {
+      return i18n.t('storage.only_standard_storage_granted_oppo')
+    }
+    return i18n.t('storage.only_standard_storage_granted')
+  }
+  return i18n.t('storage.all_files_access_settings_hint')
 }
 
 export function isExternalBaiShouRootPath(pathUri: string): boolean {
@@ -56,12 +93,25 @@ export {
   isExternalStorageRequiredError
 } from './storage-required.error'
 
-async function openAllFilesAccessSettingsFallback(): Promise<void> {
-  if (!Application.applicationId) return
-  await IntentLauncher.startActivityAsync(
-    'android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION',
-    { data: `package:${Application.applicationId}` }
-  )
+async function openAllFilesAccessSettingsFallback(): Promise<boolean> {
+  if (!Application.applicationId) return false
+
+  const packageUri = `package:${Application.applicationId}`
+  const attempts: Array<{ action: string; data?: string }> = [
+    { action: 'android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION', data: packageUri },
+    { action: 'android.settings.MANAGE_ALL_FILES_ACCESS_PERMISSION' },
+    { action: 'android.settings.APPLICATION_DETAILS_SETTINGS', data: packageUri }
+  ]
+
+  for (const { action, data } of attempts) {
+    try {
+      await IntentLauncher.startActivityAsync(action, data ? { data } : undefined)
+      return true
+    } catch {
+      // 部分 realme / ColorOS 机型首个 Intent 不可用，继续尝试下一个
+    }
+  }
+  return false
 }
 
 export type StoragePermissionOemKey = 'xiaomi' | 'huawei' | 'oppo' | 'vivo' | 'samsung' | 'generic'
@@ -91,26 +141,27 @@ export function getStoragePermissionConfirmMessage(): string {
 }
 
 /** 仅打开系统/ROM 权限页，不弹应用内确认（由调用方决定是否先确认） */
-export async function openStoragePermissionSettings(): Promise<void> {
-  if (Platform.OS !== 'android') return
+export async function openStoragePermissionSettings(): Promise<boolean> {
+  if (Platform.OS !== 'android') return true
 
   const apiLevel = typeof Platform.Version === 'number' ? Platform.Version : 0
   if (apiLevel >= 30) {
     if (isBaishouServerAvailable()) {
       const opened = nativeOpenAllFilesAccessSettings()
-      if (!opened) {
-        await openAllFilesAccessSettingsFallback()
-      }
-    } else {
-      await openAllFilesAccessSettingsFallback()
+      if (opened) return true
     }
-    return
+    return openAllFilesAccessSettingsFallback()
   }
 
-  if (!Application.applicationId) return
-  await IntentLauncher.startActivityAsync('android.settings.APPLICATION_DETAILS_SETTINGS', {
-    data: `package:${Application.applicationId}`
-  })
+  if (!Application.applicationId) return false
+  try {
+    await IntentLauncher.startActivityAsync('android.settings.APPLICATION_DETAILS_SETTINGS', {
+      data: `package:${Application.applicationId}`
+    })
+    return true
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -122,7 +173,8 @@ export async function requestStoragePermission(): Promise<boolean> {
   const apiLevel = typeof Platform.Version === 'number' ? Platform.Version : 0
 
   if (apiLevel >= 30) {
-    await openStoragePermissionSettings()
+    const opened = await openStoragePermissionSettings()
+    if (!opened) return false
     return hasStoragePermission()
   }
 

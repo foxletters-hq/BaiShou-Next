@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { useNativeToast } from '@baishou/ui/native'
 import {
   hasStoragePermission,
+  getStoragePermissionHint,
+  openStoragePermissionSettings,
   requestStoragePermission
 } from '../services/storage-permission.service'
 import { useBaishou } from '../providers/BaishouProvider'
@@ -128,13 +130,23 @@ export function useStoragePermission() {
 
     if (!(await hasStoragePermission())) {
       awaitingSettingsReturnRef.current = true
-      await requestStoragePermission()
+      const apiLevel = typeof Platform.Version === 'number' ? Platform.Version : 0
+      if (apiLevel >= 30) {
+        const opened = await openStoragePermissionSettings()
+        if (!opened) {
+          toast.showWarning(t('storage.settings_open_failed'))
+          return false
+        }
+      } else {
+        await requestStoragePermission()
+      }
     }
 
     const permitted = await hasStoragePermission()
     setGranted(permitted)
     if (!permitted) {
-      toast.showWarning(t('storage.all_files_access_settings_hint'))
+      const hint = getStoragePermissionHint()
+      toast.showWarning(hint || t('storage.all_files_access_settings_hint'))
       return false
     }
 
