@@ -1,7 +1,8 @@
 import { ipcRenderer, webFrame } from 'electron'
 
 export const systemApi = {
-  pickFiles: () => ipcRenderer.invoke('system:pick-files'),
+  pickFiles: (options?: Electron.OpenDialogOptions) =>
+    ipcRenderer.invoke('system:pick-files', options),
 
   // Summary System
   summary: {

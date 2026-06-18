@@ -17,6 +17,7 @@ import { IncrementalSyncPanel, WorkspaceScopeHelpTooltip } from '@baishou/ui'
 import { resolveDiaryHomePath } from '../Sidebar/sidebar-preferences'
 import { useOrchestratedSync } from '../../hooks/useOrchestratedSync'
 import { readActiveVaultNavigationSnapshot } from '../../lib/agent-navigation-persistence'
+import { switchActiveVaultAndReload, persistActiveVaultName } from '../../lib/vault-runtime.util'
 
 export const TitleBar: React.FC = () => {
   const { t } = useTranslation()
@@ -38,7 +39,10 @@ export const TitleBar: React.FC = () => {
       const vList = await (window as any).api?.vault?.list()
       const active = await (window as any).api?.vault?.getActive()
       if (Array.isArray(vList)) setVaults(vList)
-      if (active) setActiveVault(active)
+      if (active?.name) {
+        setActiveVault(active)
+        persistActiveVaultName(active.name)
+      }
       return Array.isArray(vList) && vList.length > 0
     } catch {
       return false
@@ -126,10 +130,7 @@ export const TitleBar: React.FC = () => {
     if (isSwitchingVault || vaultName === activeVault?.name) return
     setIsSwitchingVault(true)
     try {
-      await (window as any).api?.vault?.switchActive(vaultName)
-      await (window as any).api?.vault?.waitForResync?.()
-      setShowVaultMenu(false)
-      window.location.reload()
+      await switchActiveVaultAndReload(vaultName)
     } catch (e) {
       console.error(e)
       setIsSwitchingVault(false)

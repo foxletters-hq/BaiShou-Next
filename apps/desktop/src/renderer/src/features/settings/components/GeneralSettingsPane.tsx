@@ -17,6 +17,7 @@ import baishouHeroImg from '@baishou/shared/assets/images/Next-1.0.0-banner.jpg'
 import { APP_VERSION } from '../../../../../app-version'
 import { useDesktopStorageSettings } from '../hooks/useDesktopStorageSettings'
 import { useSettingsScopeNavigation } from '../hooks/useSettingsScopeNavigation'
+import { switchActiveVaultAndReload, persistActiveVaultName } from '../../../lib/vault-runtime.util'
 import styles from './GeneralSettingsPane.module.css'
 
 export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
@@ -53,7 +54,10 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
       const vList = await (window as any).api?.vault?.list()
       const active = await (window as any).api?.vault?.getActive()
       if (vList) setVaults(vList)
-      if (active) setActiveVault(active)
+      if (active?.name) {
+        setActiveVault(active)
+        persistActiveVaultName(active.name)
+      }
     } catch (e) {
       console.warn('Load vaults failed', e)
     }
@@ -135,11 +139,12 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
                 activeVault={activeVault || vaults[0] || null}
                 onSwitch={async (id) => {
                   if (id === activeVault?.name) return
-                  await (window as any).api?.vault?.switchActive(id)
-                  await (window as any).api?.vault?.waitForResync?.()
-                  window.location.reload()
+                  await switchActiveVaultAndReload(id)
                 }}
-                onDelete={async (id) => await (window as any).api?.vault?.delete(id)}
+                onDelete={async (id) => {
+                  await (window as any).api?.vault?.delete(id)
+                  await loadVaults()
+                }}
                 onCreate={async (name) => {
                   await (window as any).api?.vault?.createDialog(name)
                   const active = await (window as any).api?.vault?.getActive()

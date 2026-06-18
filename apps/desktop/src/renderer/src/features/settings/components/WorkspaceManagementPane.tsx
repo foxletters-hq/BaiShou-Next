@@ -12,6 +12,7 @@ import {
 } from '@baishou/ui'
 import './ManagementPane.css'
 import { useSettingsScopeNavigation } from '../hooks/useSettingsScopeNavigation'
+import { switchActiveVaultAndReload } from '../../../lib/vault-runtime.util'
 
 const PAGE_SIZE = 10
 
@@ -115,9 +116,7 @@ export const WorkspaceManagementPane: React.FC = () => {
   const handleSwitch = async (name: string) => {
     if (activeVault?.name === name) return
     try {
-      await (window as any).api?.vault?.switchActive(name)
-      await (window as any).api?.vault?.waitForResync?.()
-      window.location.reload()
+      await switchActiveVaultAndReload(name)
     } catch {
       toast.showError(t('common.errors.save_failed'))
     }
