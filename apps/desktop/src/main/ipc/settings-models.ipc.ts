@@ -393,6 +393,7 @@ export function registerSettingsModelsIPC() {
           const base = resolveTtsProviderBaseUrl('gpt-sovits', tempUrl)
           return await fetchGptSovitsModelIds(base)
         } catch (err) {
+          // @ts-ignore
           logger.error?.('[TTS] Fetch GPT-SoVITS models failed:', err)
           if (err instanceof Error && err.name === 'AbortError') {
             throw new Error(

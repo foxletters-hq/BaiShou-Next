@@ -46,20 +46,23 @@ export function registerTtsIPC() {
     }
   )
 
-  ipcMain.handle('settings:tts-test', async (_event, config: TtsFormSynthesizeConfig, text: string) => {
-    const result = await synthesizeTtsFromFormConfig(registry, config, text)
+  ipcMain.handle(
+    'settings:tts-test',
+    async (_event, config: TtsFormSynthesizeConfig, text: string) => {
+      const result = await synthesizeTtsFromFormConfig(registry, config, text)
 
-    if (!result.success) {
-      if (result.errorCode === 'tts_provider_not_supported') {
-        logger.error(`[TTS] No provider found for form config provider: ${config?.id}`)
-      } else if (
-        result.errorCode === 'tts_synthesis_failed' ||
-        result.errorCode === 'tts_api_error'
-      ) {
-        logger.error('[TTS] Form synthesize error:', result.error)
+      if (!result.success) {
+        if (result.errorCode === 'tts_provider_not_supported') {
+          logger.error(`[TTS] No provider found for form config provider: ${config?.id}`)
+        } else if (
+          result.errorCode === 'tts_synthesis_failed' ||
+          result.errorCode === 'tts_api_error'
+        ) {
+          logger.error('[TTS] Form synthesize error:', result.error)
+        }
       }
-    }
 
-    return result
-  })
+      return result
+    }
+  )
 }
