@@ -7,7 +7,8 @@ import {
   normalizeS3BasePath,
   s3FetchHeaders,
   signS3Request,
-  type S3SyncConfig
+  type S3SyncConfig,
+  type IncrementalSyncRunOptions
 } from '@baishou/shared'
 import type { IFileSystem, IArchiveService, SettingsManagerService } from '@baishou/core-mobile'
 import type { IStoragePathService } from '@baishou/core-mobile'
@@ -43,7 +44,7 @@ const DEFAULT_CONFIG: S3SyncConfig = {
   target: 's3',
   fileConcurrency: 5,
   chunkConcurrency: 5,
-  maxDivergencePercent: 30
+  maxDivergencePercent: 100
 }
 
 type VaultSyncConfig = Partial<S3SyncConfig> & {
@@ -285,7 +286,8 @@ export class MobileIncrementalSyncService {
    * 三向合并增量同步（对齐桌面 ThreeWaySyncService.sync）
    */
   async sync(
-    onProgress?: (progress: IncrementalSyncProgress) => void
+    onProgress?: (progress: IncrementalSyncProgress) => void,
+    runOptions?: IncrementalSyncRunOptions
   ): Promise<IncrementalSyncResult> {
     const config = await this.getConfig()
     if (!isConfigReady(config)) {
@@ -294,7 +296,7 @@ export class MobileIncrementalSyncService {
 
     const result = await this.engine.syncThreeWay(config, (progress) => {
       onProgress?.(progress)
-    })
+    }, runOptions)
 
     await this.afterSyncComplete()
 
@@ -324,11 +326,12 @@ export class MobileIncrementalSyncService {
   }
 
   async downloadOnly(
-    onProgress?: (progress: IncrementalSyncProgress) => void
+    onProgress?: (progress: IncrementalSyncProgress) => void,
+    runOptions?: IncrementalSyncRunOptions
   ): Promise<IncrementalSyncResult> {
     const config = await this.getConfig()
     if (!isConfigReady(config)) throw new Error('增量同步未配置或已禁用')
-    const result = await this.engine.downloadOnly(config, (progress) => onProgress?.(progress))
+    const result = await this.engine.downloadOnly(config, (progress) => onProgress?.(progress), runOptions)
     await this.afterSyncComplete()
     return {
       uploaded: 0,
