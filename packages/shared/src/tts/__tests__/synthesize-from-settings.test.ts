@@ -1,22 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import {
-  CloneTtsProvider,
-  GptSovitsProvider,
-  MimoTtsProvider,
-  OpenAiTtsProvider,
-  TtsProviderRegistry
-} from '../index'
+import { createDefaultTtsRegistry } from '../index'
 import { synthesizeTtsFromFormConfig, synthesizeTtsFromSettings } from '../synthesize-from-settings'
 
 describe('synthesizeTtsFromSettings', () => {
-  let registry: TtsProviderRegistry
+  let registry: ReturnType<typeof createDefaultTtsRegistry>
 
   beforeEach(() => {
-    registry = new TtsProviderRegistry()
-    registry.register(new OpenAiTtsProvider())
-    registry.register(new MimoTtsProvider())
-    registry.register(new CloneTtsProvider())
-    registry.register(new GptSovitsProvider())
+    registry = createDefaultTtsRegistry()
     vi.restoreAllMocks()
   })
 

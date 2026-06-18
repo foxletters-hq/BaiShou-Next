@@ -2,19 +2,9 @@ import { ipcMain } from 'electron'
 import { logger, synthesizeTtsFromFormConfig, synthesizeTtsFromSettings } from '@baishou/shared'
 import { settingsManager } from './settings.ipc'
 import { GlobalModelsConfig, TtsFormSynthesizeConfig } from '@baishou/shared'
-import {
-  OpenAiTtsProvider,
-  MimoTtsProvider,
-  CloneTtsProvider,
-  GptSovitsProvider,
-  TtsProviderRegistry
-} from '@baishou/shared'
+import { getDefaultTtsRegistry } from '@baishou/shared'
 
-const registry = new TtsProviderRegistry()
-registry.register(new OpenAiTtsProvider())
-registry.register(new MimoTtsProvider())
-registry.register(new CloneTtsProvider())
-registry.register(new GptSovitsProvider())
+const registry = getDefaultTtsRegistry()
 
 export function registerTtsIPC() {
   ipcMain.handle(
