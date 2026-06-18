@@ -948,6 +948,8 @@
     "max_divergence_hint": "當本地與遠端 manifest 差異超過該比例時，將阻止雙向同步與僅下載；僅上傳不受影響。選 100 即關閉此保護。S3 與 WebDAV 使用各自獨立的同步快照。",
     "error_divergence_exceeded": "本地與遠端差異為 {{divergence}}%，已超過設定上限 {{limit}}%，同步已中止。可提高差異上限、改用僅上傳，或確認連線的是正確的目標儲存。",
     "error_divergence_exceeded_generic": "本地與遠端差異過大，已超過設定上限，同步已中止。",
+    "error_divergence_first_sync_confirm_title": "確認首次同步",
+    "error_divergence_first_sync_confirm_message": "本機首次連線該雲端儲存，本地與遠端差異為 {{divergence}}%，已超過設定上限 {{limit}}%。若目標儲存正確（例如從其他裝置備份還原），可繼續同步；否則請取消並檢查設定。",
     "error_delete_propagation_mass_delete": "偵測到本次同步將向遠端刪除大量檔案，已自動中止。請改用「僅下載」拉取遠端資料，或確認本地資料完整後再試。",
     "error_delete_propagation_local_data_loss": "偵測到本地檔案明顯少於上次同步記錄，疑似本地資料遺失。已阻止雙向同步以防清空遠端。請先使用「僅下載」恢復資料。",
     "chunk_concurrency_option": "{{count}} 个分块并发",

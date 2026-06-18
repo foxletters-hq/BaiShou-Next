@@ -27,8 +27,30 @@ export { synthesizeTtsFromSettings, synthesizeTtsFromFormConfig } from './synthe
 export type {
   TtsSynthesizeFromSettingsInput,
   TtsSynthesizeFromSettingsResult,
-  TtsFormSynthesizeConfig
+  TtsFormSynthesizeConfig,
+  TtsSynthesizeOptions
 } from './synthesize-from-settings'
+export { uint8ArrayToBase64, base64ToUint8Array } from './bytes-base64'
+export {
+  stripFencedCodeBlocks,
+  normalizeTtsWhitespace,
+  splitTtsTextIntoChunks,
+  prepareTtsSpeechChunks
+} from './tts-text-preprocess'
+export {
+  TtsSynthesisCache,
+  buildTtsSynthesisCacheKey,
+  getGlobalTtsSynthesisCache,
+  clearGlobalTtsSynthesisCache
+} from './tts-synthesis-cache'
+export type { TtsSynthesisCacheKeyInput, TtsSynthesisCacheEntry } from './tts-synthesis-cache'
+export { synthesizeTtsSpeechContent } from './tts-chunked-synthesis'
+export type {
+  TtsSpeechSegment,
+  TtsSpeechSynthesisFailure,
+  TtsSpeechSynthesisResult,
+  TtsSpeechSynthesisOptions
+} from './tts-chunked-synthesis'
 export { TtsProviderRegistry } from './tts.registry'
 export { OpenAiTtsProvider } from './openai-tts.provider'
 export { MimoTtsProvider } from './mimo-tts.provider'
