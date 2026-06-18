@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
 import {
   DashboardHeroBanner,
@@ -45,6 +45,36 @@ export const SummaryPage: React.FC = () => {
   const prevStatesRef = useRef<typeof generationStates>({})
   const prevPathRef = useRef(location.pathname)
   const prevTabRef = useRef(activeTab)
+  const selectedYearRef = useRef(selectedYear)
+  selectedYearRef.current = selectedYear
+
+  const refreshActivityData = useCallback(async () => {
+    if (typeof window === 'undefined' || !window.electron) return
+    try {
+      const allData = await window.electron.ipcRenderer.invoke('diary:activityData', null)
+      const yearSet = new Set<number>()
+      if (allData && allData.length > 0) {
+        allData.forEach((d: ActivityData) => {
+          const y = parseInt(d.date.substring(0, 4), 10)
+          if (!isNaN(y)) yearSet.add(y)
+        })
+      }
+      const years = Array.from(yearSet).sort((a, b) => a - b)
+      if (years.length === 0) years.push(new Date().getFullYear())
+      setAvailableYears(years)
+
+      let yearToShow = selectedYearRef.current
+      if (!years.includes(yearToShow)) {
+        yearToShow = years[years.length - 1]!
+        setSelectedYear(yearToShow)
+      }
+      setActivityData(
+        (allData || []).filter((d: ActivityData) => d.date.startsWith(`${yearToShow}-`))
+      )
+    } catch (e) {
+      console.warn('[SummaryPage] refresh activity data failed:', e)
+    }
+  }, [])
 
   /** 从总结详情页返回时刷新列表（页面被 MainPageCache 缓存，不会重新挂载） */
   useEffect(() => {
@@ -66,33 +96,22 @@ export const SummaryPage: React.FC = () => {
     }
   }, [activeTab, refreshMissing])
 
-  /** 首次加载：获取所有年份数据构建年份下拉 */
+  /** 首次加载与工作空间 resync 后：重建年份列表与热力图 */
   useEffect(() => {
-    const initActivityData = async () => {
-      if (typeof window === 'undefined' || !window.electron) return
-      try {
-        const allData = await window.electron.ipcRenderer.invoke('diary:activityData', null)
-        const yearSet = new Set<number>()
-        if (allData && allData.length > 0) {
-          allData.forEach((d: ActivityData) => {
-            const y = parseInt(d.date.substring(0, 4), 10)
-            if (!isNaN(y)) yearSet.add(y)
-          })
-        }
-        const years = Array.from(yearSet).sort((a, b) => a - b)
-        if (years.length === 0) years.push(new Date().getFullYear())
-        setAvailableYears(years)
-        if (!years.includes(selectedYear)) setSelectedYear(years[years.length - 1]!)
-        setActivityData(
-          (allData || []).filter((d: ActivityData) => d.date.startsWith(`${selectedYear}-`))
-        )
-      } catch (e) {
-        console.warn('[SummaryPage] init activity data failed:', e)
-      }
-    }
-    initActivityData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    void refreshActivityData()
+  }, [refreshActivityData])
+
+  useEffect(() => {
+    const api = (window as any).api
+    if (!api?.diary?.onSyncEvent) return undefined
+
+    const unsubscribe = api.diary.onSyncEvent((event: { type?: string }) => {
+      if (event?.type !== 'vault-resync-complete' && event?.type !== 'indexing-complete') return
+      void refreshActivityData()
+    })
+
+    return unsubscribe
+  }, [refreshActivityData])
 
   /** 切换年份时按年份过滤数据 */
   useEffect(() => {
