@@ -138,6 +138,19 @@ export function useSummaryData() {
     return undefined
   }, [fetchData])
 
+  useEffect(() => {
+    const api = (window as any).api
+    if (!api?.diary?.onSyncEvent) return undefined
+
+    const unsubscribe = api.diary.onSyncEvent((event: { type?: string }) => {
+      if (event?.type !== 'vault-resync-complete' && event?.type !== 'indexing-complete') return
+      logger.info('[SummaryData] vault resync completed, reloading summaries...')
+      void fetchData()
+    })
+
+    return unsubscribe
+  }, [fetchData])
+
   const queueGeneration = async (items: any[], concurrency?: number) => {
     if (typeof window !== 'undefined' && window.electron) {
       return window.electron.ipcRenderer.invoke('summary:queue-generation', items, concurrency)
