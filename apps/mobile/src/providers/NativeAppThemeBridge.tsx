@@ -1,7 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { NativeThemeProvider, type ThemeModePreference } from '@baishou/ui/native'
+import { View } from 'react-native'
+import { NativeThemeProvider, useNativeTheme, type ThemeModePreference } from '@baishou/ui/native'
 import { subscribeThemeRefresh } from '../lib/theme-events'
 import { useBaishou } from './BaishouProvider'
+
+/** 根容器底色与主题同步，fade 转场时避免露出硬编码白底 */
+function ThemedRootShell({ children }: { children: React.ReactNode }) {
+  const { colors } = useNativeTheme()
+  return <View style={{ flex: 1, backgroundColor: colors.bgApp }}>{children}</View>
+}
 
 /**
  * 从设置读取 themeMode / seedColor，与桌面 Appearance 设置联动。
@@ -42,7 +49,7 @@ export function NativeAppThemeBridge({ children }: { children: React.ReactNode }
 
   return (
     <NativeThemeProvider themeMode={themeMode} seedColor={seedColor}>
-      {children}
+      <ThemedRootShell>{children}</ThemedRootShell>
     </NativeThemeProvider>
   )
 }

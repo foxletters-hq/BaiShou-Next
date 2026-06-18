@@ -1,11 +1,19 @@
 import { Stack } from 'expo-router'
-import { fadeStackAnimation } from '@/src/navigation/fadeStackAnimation'
+import { useNativeTheme } from '@baishou/ui/native'
+import { buildThemedFadeStackOptions } from '@/src/navigation/themedNavigation'
 
 export default function AgentTabLayout() {
+  const { colors } = useNativeTheme()
+
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        ...buildThemedFadeStackOptions(colors.bgApp)
+      }}
+    >
       <Stack.Screen name="index" />
-      <Stack.Screen name="tools" options={fadeStackAnimation} />
+      <Stack.Screen name="tools" />
     </Stack>
   )
 }
