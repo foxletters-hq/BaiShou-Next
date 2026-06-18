@@ -5,6 +5,7 @@ import {
   TtsProviderConfig
 } from '../types/tts.types'
 import { TtsApiError } from './tts.errors'
+import { uint8ArrayToBase64 } from './bytes-base64'
 
 const GPT_SOVITS_GRADIO_FN_INDEX = 1
 const GPT_SOVITS_GRADIO_CUT_METHOD = '凑四句一切'
@@ -60,12 +61,7 @@ function isAudioContentType(contentType: string | null): boolean {
 
 async function responseToAudioBase64(response: Response): Promise<string> {
   const arrayBuffer = await response.arrayBuffer()
-  const bytes = new Uint8Array(arrayBuffer)
-  let binary = ''
-  for (const byte of bytes) {
-    binary += String.fromCharCode(byte)
-  }
-  return btoa(binary)
+  return uint8ArrayToBase64(new Uint8Array(arrayBuffer))
 }
 
 function resolveGradioAudioUrl(baseUrl: string, payload: unknown): string | null {

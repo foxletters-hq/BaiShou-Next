@@ -7,11 +7,13 @@ import {
   TtsProviderRegistry
 } from '../index'
 import { synthesizeTtsFromFormConfig, synthesizeTtsFromSettings } from '../synthesize-from-settings'
+import { clearGlobalTtsSynthesisCache } from '../tts-synthesis-cache'
 
 describe('synthesizeTtsFromSettings', () => {
   let registry: TtsProviderRegistry
 
   beforeEach(() => {
+    clearGlobalTtsSynthesisCache()
     registry = new TtsProviderRegistry()
     registry.register(new OpenAiTtsProvider())
     registry.register(new MimoTtsProvider())
@@ -49,13 +51,14 @@ describe('synthesizeTtsFromSettings', () => {
           responseFormat: 'wav'
         }
       } as any,
-      text: '你好'
+      text: '你好-global-config'
     })
 
     expect(result).toEqual({
       success: true,
       audioBase64: 'global-config-audio',
-      format: 'wav'
+      format: 'wav',
+      fromCache: false
     })
     expect(fetchSpy).toHaveBeenCalledWith(
       'https://api.xiaomimimo.com/v1/chat/completions',
@@ -88,13 +91,14 @@ describe('synthesizeTtsFromSettings', () => {
           responseFormat: 'wav'
         }
       } as any,
-      text: '你好'
+      text: '你好-mimo-settings'
     })
 
     expect(result).toEqual({
       success: true,
       audioBase64: 'audio-data',
-      format: 'wav'
+      format: 'wav',
+      fromCache: false
     })
     expect(fetchSpy).toHaveBeenCalledWith(
       'https://api.xiaomimimo.com/v1/chat/completions',
@@ -125,13 +129,14 @@ describe('synthesizeTtsFromSettings', () => {
         voice: '冰糖',
         responseFormat: 'wav'
       },
-      '你好'
+      '你好-form-config'
     )
 
     expect(result).toEqual({
       success: true,
       audioBase64: 'form-audio',
-      format: 'wav'
+      format: 'wav',
+      fromCache: false
     })
     expect(fetchSpy).toHaveBeenCalledWith(
       'https://api.xiaomimimo.com/v1/chat/completions',
