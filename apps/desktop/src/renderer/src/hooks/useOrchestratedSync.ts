@@ -1,12 +1,14 @@
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSyncStore } from '@baishou/store'
-import { useToast } from '@baishou/ui'
+import { useToast, useDialog } from '@baishou/ui'
+import { runIncrementalSyncWithDivergenceConfirmation } from '@baishou/shared'
 import { friendlySyncError } from '../utils/friendly-sync-error'
 
 export function useOrchestratedSync() {
   const { t } = useTranslation()
   const toast = useToast()
+  const dialog = useDialog()
 
   const status = useSyncStore((s) => s.status)
   const message = useSyncStore((s) => s.message)
@@ -28,7 +30,32 @@ export function useOrchestratedSync() {
     setProgress(null)
 
     try {
-      const result = await (window as any).api?.incrementalSync?.orchestratedSync()
+      const confirmHighDivergence = (divergence: number, limit: number) =>
+        dialog.confirm(
+          t('data_sync.error_divergence_first_sync_confirm_message', {
+            divergence,
+            limit
+          }),
+          {
+            title: t('data_sync.error_divergence_first_sync_confirm_title'),
+            confirmText: t('common.confirm', 'Confirm'),
+            cancelText: t('common.cancel', 'Cancel'),
+            destructive: true
+          }
+        )
+
+      const result = await runIncrementalSyncWithDivergenceConfirmation(
+        (runOptions) => (window as any).api?.incrementalSync?.orchestratedSync(runOptions),
+        confirmHighDivergence
+      )
+
+      if (!result) {
+        setStatus('idle')
+        setMessage('')
+        setProgress(null)
+        return null
+      }
+
       setSyncResult(result)
       setProgress(null)
       setMessage(t('data_sync.sync_completed', 'Sync Completed'))
@@ -46,7 +73,7 @@ export function useOrchestratedSync() {
       toast.showError(errorMessage)
       throw e
     }
-  }, [isSyncing, setMessage, setProgress, setStatus, setSyncResult, t, toast])
+  }, [dialog, isSyncing, setMessage, setProgress, setStatus, setSyncResult, t, toast])
 
   return {
     status,
