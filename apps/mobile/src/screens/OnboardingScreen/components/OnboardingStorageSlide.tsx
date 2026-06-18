@@ -6,8 +6,7 @@ import { StoragePermissionPrompt, useNativeToast } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import {
   EXTERNAL_STORAGE_ROOT,
-  hasStoragePermission,
-  requestStoragePermission
+  hasStoragePermission
 } from '../../../services/storage-permission.service'
 import { pickUserDirectory } from '../../../services/pick-directory.service'
 import { toFileUri } from '../../../services/android-external-fs'
