@@ -23,7 +23,7 @@ import {
   AIProviderConfig,
   GlobalModelsConfig,
   formatDiaryPreviewText,
-  resolveDiaryAiWritingPrompt,
+  buildDiaryWritingGuidelinesForSystemPrompt,
   resolveDiaryAppendBlock,
   logger,
   parseDateStr,
@@ -388,7 +388,7 @@ export async function buildStreamConfig(
     web_search_enabled: searchMode ?? false,
     ...webSearchConfigToUserConfig(webSearchConfig),
     userCard,
-    diaryAiWritingPrompt: resolveDiaryAiWritingPrompt(diaryTemplateConfig)
+    diaryAiWritingPrompt: buildDiaryWritingGuidelinesForSystemPrompt(diaryTemplateConfig)
   }
 
   const namingModelConfigured =

@@ -7,7 +7,7 @@ import {
   webSearchConfigToUserConfig
 } from '@baishou/ai'
 import {
-  resolveDiaryAiWritingPrompt,
+  buildDiaryWritingGuidelinesForSystemPrompt,
   formatUserCardFromProfile,
   getUserProfileFromSettings,
   type DiaryTemplateConfig
@@ -104,7 +104,7 @@ export async function buildMobileStreamUserConfig(
       ...DEFAULT_WEB_SEARCH_CONFIG,
       ...(webSearchConfig || {})
     }),
-    diaryAiWritingPrompt: resolveDiaryAiWritingPrompt(diaryTemplateConfig),
+    diaryAiWritingPrompt: buildDiaryWritingGuidelinesForSystemPrompt(diaryTemplateConfig),
     userCard: formatUserCardFromProfile(userProfile)
   }
 }

@@ -11,7 +11,7 @@ import styles from './DiarySettingsPane.module.css'
 export const DiaryTemplateSettingsPane: React.FC = () => {
   const { t } = useTranslation()
   const toast = useToast()
-  const { config, hydrated, saving, persist, persistMerge } = useDiaryTemplateConfig()
+  const { config, hydrated, saving, persistMerge } = useDiaryTemplateConfig()
 
   const [localNewEntry, setLocalNewEntry] = useState('')
   const [localAppendBlock, setLocalAppendBlock] = useState('')
@@ -40,7 +40,10 @@ export const DiaryTemplateSettingsPane: React.FC = () => {
 
   const handleReset = async () => {
     try {
-      await persist({})
+      await persistMerge({
+        newEntryTemplate: undefined,
+        appendBlockTemplate: undefined
+      })
       setLocalNewEntry(DEFAULT_DIARY_NEW_ENTRY_TEMPLATE)
       setLocalAppendBlock(DEFAULT_DIARY_APPEND_BLOCK_TEMPLATE)
       setDirty(false)
