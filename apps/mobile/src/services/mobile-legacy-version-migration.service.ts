@@ -180,6 +180,43 @@ async function collectAllSessionIds(sessionManager: SessionManagerService): Prom
   return ids
 }
 
+async function collectExistingTargetVaultNames(
+  runtime: MobileVersionMigrationRuntime
+): Promise<Set<string>> {
+  await runtime.vaultService.initRegistry()
+  const existing = new Set(runtime.vaultService.getAllVaults().map((v) => v.name))
+
+  try {
+    const rootDir = await runtime.pathService.getRootDirectory()
+    const registryFile = `${rootDir}/vault_registry.json`
+    if (await runtime.fileSystem.exists(registryFile)) {
+      const content = await runtime.fileSystem.readFile(registryFile, 'utf8')
+      const parsed = JSON.parse(content) as Array<{ name?: string }>
+      if (Array.isArray(parsed)) {
+        for (const entry of parsed) {
+          if (entry?.name) existing.add(entry.name)
+        }
+      }
+    }
+
+    const entries = await runtime.fileSystem.readdir(rootDir)
+    for (const name of entries) {
+      if (name.startsWith('.') || name === 'vault_registry.json') continue
+      const dirPath = `${rootDir}/${name}`
+      try {
+        const stat = await runtime.fileSystem.stat(dirPath)
+        if (stat.isDirectory) existing.add(name)
+      } catch {
+        // ignore unreadable entries
+      }
+    }
+  } catch {
+    // registry from initRegistry remains authoritative
+  }
+
+  return existing
+}
+
 function buildImporterDeps(
   runtime: MobileVersionMigrationRuntime,
   sourceRoot: string,
@@ -192,9 +229,9 @@ function buildImporterDeps(
 
   const resolveTargetVaultName = async (legacyVaultName: string): Promise<string> => {
     const stored = await getStoredVaultNameMap()
-    const existing = new Set(runtime.vaultService.getAllVaults().map((v) => v.name))
+    const existing = await collectExistingTargetVaultNames(runtime)
     const target = resolveLegacyVaultTargetName(legacyVaultName, existing, stored)
-    if (!stored[legacyVaultName] && target !== legacyVaultName) {
+    if (target !== legacyVaultName && stored[legacyVaultName] !== target) {
       await mergeVaultNameMap({ [legacyVaultName]: target })
     }
     return target
@@ -206,12 +243,7 @@ function buildImporterDeps(
     if (originalVault !== targetVault) {
       await runtime.vaultService.switchVault(targetVault)
     }
-    try {
-      return await fn()
-    } finally {
-      await runtime.assistantManager.fullResyncFromDisks()
-      await runtime.sessionManager.fullResyncFromDisks()
-    }
+    return await fn()
   }
 
   return {
@@ -254,21 +286,24 @@ function buildImporterDeps(
     runInVaultContext,
     resolveTargetVaultName,
     onVaultNameMapped: async (legacyName: string, targetName: string) => {
-      await mergeVaultNameMap({ [legacyName]: targetName })
+      if (legacyName !== targetName) {
+        await mergeVaultNameMap({ [legacyName]: targetName })
+      }
     },
     flushSettingsToDisk: async () => {
       await runtime.settingsManager.flushToDisk()
     },
     onProgress,
-    readTargetJournalRaw: async (dateStr) => {
-      const journalsBase = await runtime.pathService.getJournalsBaseDirectory()
+    readTargetJournalRaw: async (dateStr: string, targetVaultName: string) => {
+      const journalsBase = `${await runtime.pathService.getVaultDirectory(targetVaultName)}/Journals`
       const filePath = buildJournalFilePathFromDateStr(journalsBase, dateStr)
       if (!(await runtime.fileSystem.exists(filePath))) return null
       return runtime.fileSystem.readFile(filePath, 'utf8')
     },
-    prepareSqliteAttachPath: (dbPath) =>
+    prepareSqliteAttachPath: (dbPath: string) =>
       prepareMobileSqliteAttachPath(runtime.fileSystem, dbPath),
-    getJournalsBaseDirectory: async () => runtime.pathService.getJournalsBaseDirectory(),
+    getJournalsBaseDirectory: async (targetVaultName: string) =>
+      `${await runtime.pathService.getVaultDirectory(targetVaultName)}/Journals`,
     assistantRecordExists: async (assistantId: string) => {
       const dir = await runtime.pathService.getAssistantsBaseDirectory()
       return runtime.fileSystem.exists(`${dir}/${assistantId}.json`)
@@ -297,6 +332,8 @@ export async function importMobileVersionMigrationSection(
     }
   }
 
+  await runtime.vaultService.initRegistry()
+
   const deps = buildImporterDeps(runtime, source.sourceRoot, targetRoot, options?.onProgress)
   const [flutterPrefsConfig, flutterRawSp] = await Promise.all([
     readMobileFlutterSharedPreferencesConfig(runtime.fileSystem),
@@ -312,19 +349,17 @@ export async function importMobileVersionMigrationSection(
   const legacyVaultName = parseWorkspaceSectionId(sectionId)
   if (legacyVaultName && (result.imported > 0 || result.skipped > 0)) {
     const storedVaultMap = await getStoredVaultNameMap()
+    const existing = await collectExistingTargetVaultNames(runtime)
     const targetVault =
       result.vaultNameMap?.[legacyVaultName] ??
-      resolveLegacyVaultTargetName(
-        legacyVaultName,
-        new Set(runtime.vaultService.getAllVaults().map((v) => v.name)),
-        storedVaultMap
-      )
+      resolveLegacyVaultTargetName(legacyVaultName, existing, storedVaultMap)
     const activeVault = await runtime.pathService.getActiveVaultNameForContext()
     if (activeVault !== targetVault) {
       await runtime.vaultService.switchVault(targetVault)
     }
-    await runtime.assistantManager.fullResyncFromDisks()
-    await runtime.sessionManager.fullResyncFromDisks()
+    const resyncOptions = { activeVaultName: targetVault }
+    await runtime.assistantManager.fullResyncFromDisks(resyncOptions)
+    await runtime.sessionManager.fullResyncFromDisks(resyncOptions)
   }
 
   if (result.assistantIdMap && Object.keys(result.assistantIdMap).length > 0) {
