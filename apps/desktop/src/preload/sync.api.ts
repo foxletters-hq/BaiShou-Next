@@ -162,16 +162,19 @@ export const syncApi = {
     getConfig: () => ipcRenderer.invoke('incrementalSync:getConfig'),
     updateConfig: (config: any) => ipcRenderer.invoke('incrementalSync:updateConfig', config),
     testConnection: (config?: any) => ipcRenderer.invoke('incrementalSync:testConnection', config),
-    sync: () => ipcRenderer.invoke('incrementalSync:sync'),
+    sync: (runOptions?: unknown) => ipcRenderer.invoke('incrementalSync:sync', runOptions),
     uploadOnly: () => ipcRenderer.invoke('incrementalSync:uploadOnly'),
-    downloadOnly: () => ipcRenderer.invoke('incrementalSync:downloadOnly'),
+    downloadOnly: (runOptions?: unknown) =>
+      ipcRenderer.invoke('incrementalSync:downloadOnly', runOptions),
     getLocalManifest: () => ipcRenderer.invoke('incrementalSync:getLocalManifest'),
     getRemoteManifest: () => ipcRenderer.invoke('incrementalSync:getRemoteManifest'),
     refreshLocalManifest: () => ipcRenderer.invoke('incrementalSync:refreshLocalManifest'),
     getLastSyncConflicts: () => ipcRenderer.invoke('incrementalSync:getLastSyncConflicts'),
-    orchestratedSync: () => ipcRenderer.invoke('incrementalSync:orchestratedSync'),
+    orchestratedSync: (runOptions?: unknown) =>
+      ipcRenderer.invoke('incrementalSync:orchestratedSync', runOptions),
     orchestratedUploadOnly: () => ipcRenderer.invoke('incrementalSync:orchestratedUploadOnly'),
-    orchestratedDownloadOnly: () => ipcRenderer.invoke('incrementalSync:orchestratedDownloadOnly'),
+    orchestratedDownloadOnly: (runOptions?: unknown) =>
+      ipcRenderer.invoke('incrementalSync:orchestratedDownloadOnly', runOptions),
     getSyncHistory: (limit?: number) => ipcRenderer.invoke('incrementalSync:getSyncHistory', limit),
     getLastSyncSummary: () => ipcRenderer.invoke('incrementalSync:getLastSyncSummary'),
     onSyncProgress: (callback: (event: any) => void) => {

@@ -179,7 +179,7 @@ export const AgentLayout: React.FC = () => {
       }
       const refreshed = useAssistantStore.getState()
       const ast = refreshed.assistants.find((a: any) => a.isDefault) || refreshed.assistants[0]
-      if (ast) {
+      if (ast && !resolvedAssistantIdRef.current && !urlAssistantId && !sessionId) {
         resolvedAssistantIdRef.current = String(ast.id)
       }
     })
@@ -229,8 +229,8 @@ export const AgentLayout: React.FC = () => {
   }, [fetchAssistants, loadSessions, loadProfile, urlAssistantId])
 
   const currentAssistant = resolvedAssistantId
-    ? assistants.find((a) => String(a.id) === String(resolvedAssistantId)) ||
-      assistants.find((a) => a.isDefault)
+    ? assistants.find((a) => String(a.id) === String(resolvedAssistantId)) ??
+      (isAssistantsLoading ? undefined : assistants.find((a) => a.isDefault))
     : assistants.find((a) => a.isDefault) || (assistants.length > 0 ? assistants[0] : undefined)
 
   const mappedAssistant = currentAssistant
@@ -290,6 +290,15 @@ export const AgentLayout: React.FC = () => {
   const handleAssistantSwitched = async (assistant: AgentAssistant) => {
     const astId = String(assistant.id)
     resolvedAssistantIdRef.current = astId
+    restoredNavigationRef.current = true
+
+    const vaultKey =
+      (typeof window !== 'undefined' && window.localStorage.getItem('baishou_active_vault')) ||
+      'default'
+    const snapshot = { assistantId: astId, sessionId: null }
+    useAgentNavigationStore.getState().setContext(vaultKey, snapshot)
+    writeAgentNavigationSnapshot(vaultKey, snapshot)
+
     void loadSessions(true, astId)
 
     if (typeof window !== 'undefined' && window.electron) {
