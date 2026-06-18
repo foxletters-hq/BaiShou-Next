@@ -2300,7 +2300,9 @@
     "legacy_source_manual": "Using a manually selected legacy directory",
     "legacy_source_flutter": "Auto-detected original Flutter BaiShou data directory",
     "legacy_source_migrated": "Using legacy directory from full migration record",
-    "storage_entry_action": "Migrate from legacy by section"
+    "storage_entry_action": "Migrate from legacy by section",
+    "restart_title": "Restart required",
+    "restart_message": "Workspace data has been imported. To ensure diaries, summaries, and companions refresh correctly when switching workspaces, please fully quit BaiShou and open it again."
   },
   "emoji": {
     "categories": "Categories",

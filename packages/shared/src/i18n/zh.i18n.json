@@ -2342,7 +2342,9 @@
     "legacy_source_manual": "当前使用手动选择的旧版目录",
     "legacy_source_flutter": "已自动定位到原版 Flutter 白守数据目录",
     "legacy_source_migrated": "使用整包迁移记录的旧版目录",
-    "storage_entry_action": "按板块从旧版迁移数据"
+    "storage_entry_action": "按板块从旧版迁移数据",
+    "restart_title": "请重启应用",
+    "restart_message": "工作空间数据已导入完成。为确保切换工作空间时日记、总结与伙伴能正常刷新，请完全退出白守后重新打开应用。"
   },
   "emoji": {
     "categories": "类别",
