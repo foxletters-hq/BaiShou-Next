@@ -128,11 +128,10 @@ import {
 import {
   detectFlutterLegacyMigrationPending,
   deleteMigratedLegacySourceRoot,
+  markFlutterLegacyMigrationComplete,
   resolveFlutterLegacyMigrationTargetRoot,
-  runMobileLegacyMigrationIfNeeded,
   runMobileLegacyZipMigration,
-  type FlutterLegacyMigrationPending,
-  type MobileLegacyMigrationResult
+  type FlutterLegacyMigrationPending
 } from '../services/mobile-legacy-migration.service'
 import { getMobileInstallInstanceId } from '../services/install-instance.service'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -154,23 +153,22 @@ interface BaishouContextValue {
   pendingFlutterLegacyMigration: FlutterLegacyMigrationPending | null
   /** 迁移完成后可删除的旧版根目录 */
   legacyMigrationSourcePendingDeletion: string | null
-  /** 正在执行旧版数据迁移（复制） */
-  flutterLegacyMigrationBusy: boolean
-  flutterLegacyMigrationProgress: string
-  /** 用户确认后执行旧版 → 新版目录复制迁移 */
-  runFlutterLegacyMigration: () => Promise<MobileLegacyMigrationResult | null>
   /** 迁移验证通过后删除旧版目录 */
   deleteMigratedLegacySource: () => Promise<boolean>
   /** 工作空间切换后递增，供列表等 UI 重新拉取数据 */
   vaultRevision: number
   /** 全量导入/快照恢复成功后递增 vaultRevision，供 UI 刷新 */
   notifyArchiveRestoreComplete: (result: ImportResult) => void
+  /** 版本迁移板块导入成功后递增 vaultRevision，供列表刷新 */
+  notifyVersionMigrationComplete: () => void
   /** 归档恢复后递增，供日记页重置月份/筛选 */
   archiveRestoreEpoch: number
   /** 工作空间切换进行中（重建 diary stack / 后台 resync） */
   vaultSwitching: boolean
   /** 正在从磁盘恢复日记/会话/总结索引 */
   storageIndexing: boolean
+  /** 后台 ecosystem resync 完成时递增（与 vaultRevision 分离，避免重复刷新） */
+  ecosystemResyncEpoch: number
   /** Android：授权后重试挂载 BaiShou_Root 并同步磁盘 */
   retryStorageSetup: (options?: { forceDeferResync?: boolean }) => Promise<boolean>
   /** 暂停文件监听与 Shadow DB，执行磁盘操作后自动恢复（用于目录迁移） */
@@ -207,6 +205,9 @@ interface BaishouContextValue {
     ragService: MobileRagService
     incrementalSyncService: MobileIncrementalSyncService
     attachmentManager: MobileAttachmentManagerService
+    expoDb: unknown
+    settingsRepo: SettingsRepository
+    profileRepo: UserProfileRepository
     /** 与桌面 summary:buildSharedContext 一致（总结 + 级联折叠后的日记） */
     buildSharedContext: (lookbackMonths: number, locale?: string) => Promise<string>
     /** 与桌面 agent:get-context-at-message 一致 */
@@ -240,15 +241,14 @@ const BaishouContext = createContext<BaishouContextValue>({
   legacyRagReembedRequired: false,
   pendingFlutterLegacyMigration: null,
   legacyMigrationSourcePendingDeletion: null,
-  flutterLegacyMigrationBusy: false,
-  flutterLegacyMigrationProgress: '',
-  runFlutterLegacyMigration: async () => null,
   deleteMigratedLegacySource: async () => false,
   vaultRevision: 0,
   notifyArchiveRestoreComplete: () => {},
+  notifyVersionMigrationComplete: () => {},
   archiveRestoreEpoch: 0,
   vaultSwitching: false,
   storageIndexing: false,
+  ecosystemResyncEpoch: 0,
   retryStorageSetup: async () => Platform.OS !== 'android',
   runWithStorageQuiesced: async (fn) => fn(),
   services: null
@@ -316,11 +316,9 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
   const runWithStorageQuiescedRef = useRef<<T>(fn: () => Promise<T>) => Promise<T>>(async (fn) =>
     fn()
   )
-  const runFlutterLegacyMigrationRef = useRef<() => Promise<MobileLegacyMigrationResult | null>>(
-    async () => null
-  )
   const deleteMigratedLegacySourceRef = useRef<() => Promise<boolean>>(async () => false)
   const notifyArchiveRestoreCompleteRef = useRef<(result: ImportResult) => void>(() => {})
+  const notifyVersionMigrationCompleteRef = useRef<() => void>(() => {})
   const agentDbRuntimeRef = useRef<AgentDbRuntime | null>(null)
   const reloadAgentDatabaseRef = useRef<() => Promise<void>>(async () => {})
   const archiveFullRestoreDoneRef = useRef(false)
@@ -362,15 +360,14 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
     legacyRagReembedRequired: false,
     pendingFlutterLegacyMigration: null,
     legacyMigrationSourcePendingDeletion: null,
-    flutterLegacyMigrationBusy: false,
-    flutterLegacyMigrationProgress: '',
-    runFlutterLegacyMigration: () => runFlutterLegacyMigrationRef.current(),
     deleteMigratedLegacySource: () => deleteMigratedLegacySourceRef.current(),
     vaultRevision: 0,
     notifyArchiveRestoreComplete: (result) => notifyArchiveRestoreCompleteRef.current(result),
+    notifyVersionMigrationComplete: () => notifyVersionMigrationCompleteRef.current(),
     archiveRestoreEpoch: 0,
     vaultSwitching: false,
     storageIndexing: mobileDataBootstrapper.getStatus() === 'running',
+    ecosystemResyncEpoch: 0,
     retryStorageSetup: (options) => retryStorageSetupRef.current(options),
     runWithStorageQuiesced: (fn) => runWithStorageQuiescedRef.current(fn),
     services: null
@@ -386,7 +383,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
       setValue((prev) => ({
         ...prev,
         storageIndexing: indexing,
-        vaultRevision: wasStorageIndexing && !indexing ? prev.vaultRevision + 1 : prev.vaultRevision
+        ecosystemResyncEpoch:
+          wasStorageIndexing && !indexing ? prev.ecosystemResyncEpoch + 1 : prev.ecosystemResyncEpoch
       }))
       wasStorageIndexing = indexing
     })
@@ -500,30 +498,36 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
         let diaryStack: VaultBoundDiaryStack | null = null
         let storageReady = Platform.OS !== 'android'
-        const deferVaultBootstrapForLegacyMigration = pendingFlutterLegacyMigration != null
-
-        if (deferVaultBootstrapForLegacyMigration) {
-          logger.info(
-            '[BaishouProvider] Deferring vault bootstrap until Flutter legacy migration completes'
-          )
-          storageReady = false
-        } else if (Platform.OS === 'android') {
+        let summaryConfig: Record<string, unknown> = {}
+        if (Platform.OS === 'android') {
           try {
-            diaryStack = await initVaultLayer(vaultRuntimeDeps)
+            const [stack, summaryConfigRaw] = await Promise.all([
+              initVaultLayer(vaultRuntimeDeps),
+              settingsManager.get<Record<string, unknown>>('summary_config')
+            ])
+            diaryStack = stack
             diaryStackRef.current = diaryStack
+            summaryConfig = summaryConfigRaw || {}
           } catch (e) {
             if (isExternalStorageRequiredError(e)) {
               logger.info(
                 '[BaishouProvider] Waiting for MANAGE_EXTERNAL_STORAGE; diary UI will prompt user'
               )
               storageReady = false
+              summaryConfig =
+                (await settingsManager.get<Record<string, unknown>>('summary_config')) || {}
             } else {
               throw e
             }
           }
         } else {
-          diaryStack = await initVaultLayer(vaultRuntimeDeps)
+          const [stack, summaryConfigRaw] = await Promise.all([
+            initVaultLayer(vaultRuntimeDeps),
+            settingsManager.get<Record<string, unknown>>('summary_config')
+          ])
+          diaryStack = stack
           diaryStackRef.current = diaryStack
+          summaryConfig = summaryConfigRaw || {}
         }
 
         const diaryServiceProxy = createVaultDiaryServiceProxy(diaryStackRef)
@@ -531,7 +535,6 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
         const summaryFileService = new SummaryFileService(pathService, fileSystem)
         const diaryRepoAdapter = diaryStack?.diaryRepoAdapter ?? EMPTY_DIARY_REPO_ADAPTER
-        const summaryConfig = (await settingsManager.get<any>('summary_config')) || {}
         const customTemplates = resolveSummaryTemplatesForGeneration(summaryConfig)
         const promptLocale = summaryConfig?.promptLocale ?? 'zh'
         const summaryAiClient = buildMobileSummaryAiClient(settingsManager)
@@ -767,7 +770,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               }))
             }
           },
-          importLegacyFlutterZip: async (extractDir, stagingRoot) => {
+          importLegacyFlutterZip: async (extractDir, stagingRoot, options) => {
             const runtime = agentDbRuntimeRef.current
             if (!runtime) {
               throw new Error('数据库运行时未就绪，无法导入原版备份')
@@ -777,7 +780,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               extractDir,
               targetRoot: stagingRoot,
               settingsRepo: runtime.settingsRepo,
-              profileRepo: runtime.profileRepo
+              profileRepo: runtime.profileRepo,
+              onCopyProgress: options?.onCopyProgress
             })
             await runtime.settingsRepo.set('legacy_upgrade_rag_pending' as never, true as never)
           }
@@ -1309,20 +1313,23 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           await deleteVaultWithShadowCleanup(vaultName, { vaultService })
         }
 
-        if (diaryStack && !deferVaultBootstrapForLegacyMigration) {
-          try {
-            await runStorageBootstrap()
-            storageReady = true
-          } catch (e) {
+        if (diaryStack) {
+          storageReady = true
+          void runStorageBootstrap().catch((e) => {
             if (Platform.OS === 'android' && isExternalStorageRequiredError(e)) {
               logger.info(
                 '[BaishouProvider] Vault bootstrap deferred until external storage is granted'
               )
-              storageReady = false
-            } else {
-              throw e
+              if (isMounted) {
+                setValue((prev) => ({ ...prev, storageReady: false }))
+              }
+              return
             }
-          }
+            logger.error('[BaishouProvider] Vault bootstrap failed:', e as Error)
+            if (isMounted) {
+              setValue((prev) => ({ ...prev, storageReady: false }))
+            }
+          })
         }
 
         retryStorageSetupRef.current = async (options?: { forceDeferResync?: boolean }) => {
@@ -1385,95 +1392,6 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               logger.error('[BaishouProvider] retryStorageSetup failed:', e as Error)
             }
             return false
-          }
-        }
-
-        runFlutterLegacyMigrationRef.current = async () => {
-          const runtime = migrationRuntimeRef.current
-          if (!runtime) return null
-
-          const pending = await detectFlutterLegacyMigrationPending(
-            runtime.fileSystem,
-            runtime.installInstanceId
-          )
-          if (!pending) return null
-
-          if (Platform.OS === 'android') {
-            if (!(await hasStoragePermission())) {
-              await requestStoragePermission()
-              if (!(await hasStoragePermission())) {
-                return null
-              }
-            }
-            await runtime.pathService.applyExternalRootWhenPermitted()
-          }
-
-          if (isMounted) {
-            setValue((prev) => ({
-              ...prev,
-              flutterLegacyMigrationBusy: true,
-              flutterLegacyMigrationProgress: ''
-            }))
-          }
-
-          try {
-            const result = await runWithStorageQuiescedRef.current(() =>
-              runMobileLegacyMigrationIfNeeded({
-                fileSystem: runtime.fileSystem,
-                sqliteClient: runtime.expoDb,
-                targetRoot: pending.targetRoot,
-                installInstanceId: runtime.installInstanceId,
-                settingsRepo: runtime.settingsRepo,
-                profileRepo: runtime.profileRepo,
-                onCopyProgress: (itemName) => {
-                  if (!isMounted) return
-                  setValue((prev) => ({
-                    ...prev,
-                    flutterLegacyMigrationProgress: itemName
-                  }))
-                }
-              })
-            )
-
-            if (result.migrated) {
-              await AsyncStorage.setItem(ONBOARDING_STORAGE_KEY, '1')
-              if (result.sourceRoot) {
-                await AsyncStorage.setItem(FLUTTER_LEGACY_MIGRATED_SOURCE_KEY, result.sourceRoot)
-              }
-            }
-
-            await retryStorageSetupRef.current(
-              result.migrated ? { forceDeferResync: true } : undefined
-            )
-
-            if (isMounted) {
-              setValue((prev) => ({
-                ...prev,
-                flutterLegacyMigrationBusy: false,
-                flutterLegacyMigrationProgress: '',
-                pendingFlutterLegacyMigration: result.migrated
-                  ? null
-                  : prev.pendingFlutterLegacyMigration,
-                legacyRagReembedRequired: result.migrated ? true : prev.legacyRagReembedRequired,
-                legacyMigrationSourcePendingDeletion: result.sourceRoot ?? null,
-                vaultRevision: result.migrated ? prev.vaultRevision + 1 : prev.vaultRevision
-              }))
-            }
-
-            return result
-          } catch (error) {
-            logger.error(
-              '[BaishouProvider] User-triggered legacy migration failed:',
-              error as Error
-            )
-            if (isMounted) {
-              setValue((prev) => ({
-                ...prev,
-                flutterLegacyMigrationBusy: false,
-                flutterLegacyMigrationProgress: ''
-              }))
-            }
-            throw error
           }
         }
 
@@ -1659,22 +1577,49 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             }))
           }
 
+          notifyVersionMigrationCompleteRef.current = () => {
+            void (async () => {
+              let markedComplete = false
+              const runtime = migrationRuntimeRef.current
+              if (runtime) {
+                try {
+                  const targetRoot = await runtime.pathService.getRootDirectory()
+                  await markFlutterLegacyMigrationComplete({
+                    installInstanceId: runtime.installInstanceId,
+                    targetRoot
+                  })
+                  markedComplete = true
+                } catch (error) {
+                  logger.warn(
+                    '[BaishouProvider] markFlutterLegacyMigrationComplete failed:',
+                    error as Error
+                  )
+                }
+              }
+              if (!isMounted) return
+              setValue((prev) => ({
+                ...prev,
+                vaultRevision: prev.vaultRevision + 1,
+                ...(markedComplete ? { pendingFlutterLegacyMigration: null } : {})
+              }))
+            })()
+          }
+
           setValue({
             dbReady: true,
             storageReady,
             legacyRagReembedRequired,
             pendingFlutterLegacyMigration,
             legacyMigrationSourcePendingDeletion,
-            flutterLegacyMigrationBusy: false,
-            flutterLegacyMigrationProgress: '',
-            runFlutterLegacyMigration: () => runFlutterLegacyMigrationRef.current(),
             deleteMigratedLegacySource: () => deleteMigratedLegacySourceRef.current(),
             vaultRevision: 0,
             notifyArchiveRestoreComplete: (result) =>
               notifyArchiveRestoreCompleteRef.current(result),
+            notifyVersionMigrationComplete: () => notifyVersionMigrationCompleteRef.current(),
             archiveRestoreEpoch: 0,
             vaultSwitching: false,
             storageIndexing: mobileDataBootstrapper.getStatus() === 'running',
+            ecosystemResyncEpoch: 0,
             retryStorageSetup: (options) => retryStorageSetupRef.current(options),
             runWithStorageQuiesced: (fn) => runWithStorageQuiescedRef.current(fn),
             services: {
@@ -1706,6 +1651,9 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               ragService: ragServiceRef.current,
               incrementalSyncService,
               attachmentManager,
+              expoDb: agentDbRuntimeRef.current?.expoDb ?? null,
+              settingsRepo: agentDbRuntimeRef.current?.settingsRepo ?? settingsRepo,
+              profileRepo: agentDbRuntimeRef.current?.profileRepo ?? profileRepo,
               buildSharedContext,
               getContextAtMessage
             },

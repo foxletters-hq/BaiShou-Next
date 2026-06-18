@@ -9,6 +9,7 @@ import {
   type AssistantKind
 } from '@baishou/shared'
 import {
+  peekAssistantAvatarDisplayCache,
   resolveAssistantAvatarForMobileUi,
   type ResolveAssistantAvatarOptions
 } from '../lib/assistant-avatar-display.util'
@@ -68,6 +69,16 @@ function mapAssistantRowToUi(a: AssistantRow, displayAvatarUri?: string): Mobile
 
 export function mapAssistantRowsToUi(rows: AssistantRow[]): MobileAssistantUi[] {
   return rows.map((a) => mapAssistantRowToUi(a))
+}
+
+/** 用内存缓存同步填充 displayAvatarUri，避免列表先闪默认头像 */
+export function mapAssistantRowsToUiWithCachedAvatars(
+  rows: AssistantRow[],
+  options?: ResolveAssistantAvatarOptions
+): MobileAssistantUi[] {
+  return rows.map((a) =>
+    mapAssistantRowToUi(a, peekAssistantAvatarDisplayCache(a.avatarPath ?? undefined, options))
+  )
 }
 
 export async function hydrateAssistantsForUi(

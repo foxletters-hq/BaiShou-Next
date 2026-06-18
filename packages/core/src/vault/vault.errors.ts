@@ -37,3 +37,16 @@ export class VaultInvalidNameError extends Error {
     this.reason = reason
   }
 }
+
+export class VaultDeleteFilesystemError extends Error {
+  readonly vaultName: string
+  readonly cause: unknown
+
+  constructor(vaultName: string, cause: unknown) {
+    const detail = cause instanceof Error ? cause.message : String(cause)
+    super(`Failed to delete vault directory for "${vaultName}": ${detail}`)
+    this.name = 'VaultDeleteFilesystemError'
+    this.vaultName = vaultName
+    this.cause = cause
+  }
+}

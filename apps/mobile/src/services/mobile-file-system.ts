@@ -309,11 +309,38 @@ export class MobileFileSystem implements IFileSystem {
   }
 
   async rm(targetPath: string, options?: { recursive?: boolean; force?: boolean }): Promise<void> {
+    const force = options?.force ?? true
     if (isExternalStoragePath(targetPath)) {
-      externalDeleteSafe(targetPath, options?.force ?? true)
+      externalDeleteSafe(targetPath, force)
       return
     }
-    await SandboxFS.deleteAsync(toFileUri(targetPath), { idempotent: options?.force ?? true })
+    if (options?.recursive) {
+      await this.rmRecursive(targetPath, force)
+      return
+    }
+    await SandboxFS.deleteAsync(toFileUri(targetPath), { idempotent: force })
+  }
+
+  private async rmRecursive(targetPath: string, force: boolean): Promise<void> {
+    if (!(await this.exists(targetPath))) {
+      if (!force) {
+        throw enoentError(targetPath, 'rm')
+      }
+      return
+    }
+
+    const stat = await this.stat(targetPath)
+    if (!stat.isDirectory) {
+      await this.unlink(targetPath)
+      return
+    }
+
+    const entries = await this.readdir(targetPath)
+    for (const entry of entries) {
+      const childPath = targetPath.endsWith('/') ? `${targetPath}${entry}` : `${targetPath}/${entry}`
+      await this.rm(childPath, { recursive: true, force })
+    }
+    await SandboxFS.deleteAsync(toFileUri(targetPath), { idempotent: force })
   }
 }
 

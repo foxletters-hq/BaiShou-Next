@@ -8,6 +8,7 @@ import {
 } from '@baishou/shared'
 import { pathService } from './vault.ipc'
 import type { SummaryAiClient } from '@baishou/core-desktop'
+import { SUMMARY_AI_GENERATION_TIMEOUT_MS } from '@baishou/core/shared'
 import { AIProviderConfig } from '@baishou/shared'
 import { AIProviderRegistry } from '@baishou/ai'
 import path from 'path'
@@ -72,22 +73,22 @@ export function buildSummaryAiClient(): SummaryAiClient {
       const startTime = Date.now()
       const abortController = new AbortController()
 
-      // 120秒 Promise 级别强制超时，绝对防止任何流挂起
+      const timeoutSeconds = SUMMARY_AI_GENERATION_TIMEOUT_MS / 1000
       let timeoutId: ReturnType<typeof setTimeout>
       const timeoutPromise = new Promise<never>((_, reject) => {
         timeoutId = setTimeout(() => {
           abortController.abort()
           const err = new Error(
-            'AI generation timed out after 120 seconds (Promise level force-abort).'
+            `AI generation timed out after ${timeoutSeconds} seconds (Promise level force-abort).`
           )
           err.name = 'AbortError'
           reject(err)
-        }, 120000)
+        }, SUMMARY_AI_GENERATION_TIMEOUT_MS)
       })
 
       try {
         logger.info(
-          `[SummaryAI] Invoking Vercel AI SDK generateText with 120s Promise-race timeout...`
+          `[SummaryAI] Invoking Vercel AI SDK generateText with ${timeoutSeconds}s Promise-race timeout...`
         )
 
         const generatePromise = (async () => {

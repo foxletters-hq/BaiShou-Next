@@ -105,15 +105,22 @@ export {
 } from './constants/incremental-sync.constants'
 export {
   SYNC_STORAGE_ID_FILENAME,
-  getIncrementalSyncStorageId
+  getIncrementalSyncStorageId,
+  resolveIncrementalSyncStorageHistory,
+  type IncrementalSyncStorageHistory
 } from './utils/incremental-sync-storage.util'
 export {
   SyncDivergenceExceededError,
+  SyncDivergenceConfirmationRequiredError,
+  isSyncDivergenceConfirmationRequiredError,
   assertBidirectionalSyncDivergenceAllowed,
   computeManifestDivergencePercent,
   getEffectiveMaxDivergencePercent,
-  isSyncDivergenceAllowed
+  isSyncDivergenceAllowed,
+  shouldSkipSyncDivergenceCheck,
+  type AssertBidirectionalSyncDivergenceOptions
 } from './sync/sync-divergence'
+export { runIncrementalSyncWithDivergenceConfirmation } from './sync/sync-divergence-run.util'
 export {
   SyncDeletePropagationBlockedError,
   assertBidirectionalDeletePropagationAllowed,

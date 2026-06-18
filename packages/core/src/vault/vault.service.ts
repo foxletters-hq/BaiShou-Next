@@ -4,6 +4,7 @@ import { IVaultService, VaultInfo } from './vault.types'
 import { IStoragePathService } from './storage-path.types'
 import {
   VaultActiveDeleteError,
+  VaultDeleteFilesystemError,
   VaultInvalidNameError,
   VaultNameExistsError,
   VaultNotFoundError
@@ -277,7 +278,17 @@ export class VaultService implements IVaultService {
     if (!existing) {
       throw new VaultNotFoundError(vaultName)
     }
-    const vaultPath = existing.path
+
+    const rootDir = await this.pathService.getRootDirectory()
+    const vaultPath = path.join(rootDir, sanitizeVaultDirectoryName(existing.name))
+    try {
+      if (await this.fileSystem.exists(vaultPath)) {
+        await this.fileSystem.rm(vaultPath, { recursive: true, force: true })
+      }
+    } catch (error) {
+      throw new VaultDeleteFilesystemError(vaultName, error)
+    }
+
     this._vaults.splice(existingIndex, 1)
 
     if (this._vaults.length === 0) {
@@ -290,13 +301,8 @@ export class VaultService implements IVaultService {
       })
     }
 
-    const rootDir = await this.pathService.getRootDirectory()
     const registryFile = path.join(rootDir, 'vault_registry.json')
     await this.saveRegistry(registryFile)
-
-    try {
-      await this.fileSystem.rm(vaultPath, { recursive: true, force: true })
-    } catch {}
   }
 
   private async saveRegistry(registryFile: string): Promise<void> {

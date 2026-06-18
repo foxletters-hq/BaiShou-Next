@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import DraggableFlatList, {
   ScaleDecorator,
   type RenderItemParams
@@ -16,7 +16,8 @@ import {
 } from '@baishou/ui/native'
 import type { AssistantKind } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
-import { useRouter, useFocusEffect } from 'expo-router'
+import { useRouter } from 'expo-router'
+import { useThrottledFocusRefresh } from '../hooks/useThrottledFocusRefresh'
 import { useTranslation } from 'react-i18next'
 import { StackScreenLayout } from '../components/StackScreenLayout'
 import { getStackScreenChrome } from '../components/stackScreenChrome'
@@ -41,9 +42,41 @@ interface Assistant {
   sortOrder?: number
 }
 
+function sortAssistantsByOrder(list: Assistant[]): Assistant[] {
+  return [...list].sort((a, b) => {
+    if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1
+    return (a.sortOrder ?? 0) - (b.sortOrder ?? 0)
+  })
+}
+
+function mergeAssistantAvatars(next: Assistant[], prev: Assistant[]): Assistant[] {
+  if (prev.length === 0) return next
+  const prevById = new Map(prev.map((item) => [item.id, item]))
+  return next.map((item) => {
+    const cached = prevById.get(item.id)?.displayAvatarUri
+    return cached ? { ...item, displayAvatarUri: cached } : item
+  })
+}
+
 function ListSeparator() {
   return <View style={{ height: 12 }} />
 }
+
+const AssistantSearchBar = React.memo(function AssistantSearchBar({
+  value,
+  onChangeText,
+  placeholder
+}: {
+  value: string
+  onChangeText: (text: string) => void
+  placeholder: string
+}) {
+  return (
+    <View style={styles.searchWrap}>
+      <Input value={value} onChangeText={onChangeText} placeholder={placeholder} />
+    </View>
+  )
+})
 
 export const AssistantManagementScreen: React.FC = () => {
   const { t } = useTranslation()
@@ -54,26 +87,41 @@ export const AssistantManagementScreen: React.FC = () => {
   const router = useRouter()
 
   const [assistants, setAssistants] = useState<Assistant[]>([])
-  const [loading, setLoading] = useState(true)
+  const [orderedAssistants, setOrderedAssistants] = useState<Assistant[]>([])
+  const [initialLoading, setInitialLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const reorderingRef = useRef(false)
+  const hasLoadedRef = useRef(false)
 
-  const loadAssistants = useCallback(async () => {
-    if (!dbReady || !services) return
-    setLoading(true)
-    try {
-      const assistantList = await listAssistantsForUi(
-        services.assistantManager,
-        services.attachmentManager,
-        services.fileSystem,
-        { preferFileUri: true }
-      )
-      setAssistants(assistantList)
-    } catch (e) {
-      console.error('Failed to load assistants', e)
-    } finally {
-      setLoading(false)
-    }
-  }, [dbReady, services, vaultRevision])
+  const loadAssistants = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!dbReady || !services) return
+      const silent = options?.silent ?? hasLoadedRef.current
+      if (!silent) setInitialLoading(true)
+      try {
+        const assistantList = await listAssistantsForUi(
+          services.assistantManager,
+          services.attachmentManager,
+          services.fileSystem,
+          {
+            preferFileUri: true,
+            skipAvatarResolve: silent
+          }
+        )
+        const sorted = sortAssistantsByOrder(assistantList)
+        hasLoadedRef.current = true
+        setAssistants((prev) => mergeAssistantAvatars(sorted, prev))
+        if (!reorderingRef.current) {
+          setOrderedAssistants((prev) => mergeAssistantAvatars(sorted, prev))
+        }
+      } catch (e) {
+        console.error('Failed to load assistants', e)
+      } finally {
+        if (!silent) setInitialLoading(false)
+      }
+    },
+    [dbReady, services, vaultRevision]
+  )
 
   const isBootstrapping = !dbReady || !services
 
@@ -81,39 +129,36 @@ export const AssistantManagementScreen: React.FC = () => {
     void loadAssistants()
   }, [loadAssistants])
 
-  useFocusEffect(
-    useCallback(() => {
-      void loadAssistants()
-    }, [loadAssistants])
-  )
+  useThrottledFocusRefresh(() => {
+    void loadAssistants({ silent: true })
+  })
 
-  const processedAssistants = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase()
-    let list = [...assistants]
-    if (q) {
-      list = list.filter(
-        (a) =>
-          a.name.toLowerCase().includes(q) ||
-          (a.description && a.description.toLowerCase().includes(q))
-      )
-    }
-    return list.sort((a, b) => {
-      if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1
-      return (a.sortOrder ?? 0) - (b.sortOrder ?? 0)
-    })
-  }, [assistants, searchQuery])
+  const searchText = searchQuery.trim()
+  const isDragEnabled = searchText === ''
 
-  const isDragEnabled = searchQuery.trim() === ''
+  const visibleAssistants = useMemo(() => {
+    const q = searchText.toLowerCase()
+    if (!q) return orderedAssistants
+    return orderedAssistants.filter(
+      (a) =>
+        (a.name ?? '').toLowerCase().includes(q) ||
+        (a.description && a.description.toLowerCase().includes(q))
+    )
+  }, [orderedAssistants, searchText])
 
   const handleReorder = useCallback(
     async (ordered: Assistant[]) => {
       const next = ordered.map((item, index) => ({ ...item, sortOrder: index }))
+      reorderingRef.current = true
+      setOrderedAssistants(next)
       setAssistants(next)
       try {
         await services?.assistantManager.reorderAssistants(next.map((a) => a.id))
       } catch (e) {
         console.error('Failed to reorder assistants', e)
-        void loadAssistants()
+        void loadAssistants({ silent: true })
+      } finally {
+        reorderingRef.current = false
       }
     },
     [loadAssistants, services]
@@ -137,6 +182,7 @@ export const AssistantManagementScreen: React.FC = () => {
     try {
       await services?.assistantManager.delete(assistant.id)
       setAssistants((prev) => prev.filter((a) => a.id !== assistant.id))
+      setOrderedAssistants((prev) => prev.filter((a) => a.id !== assistant.id))
       toast.showSuccess(t('agent.assistant.deleted'))
     } catch (e) {
       console.error('Failed to delete assistant', e)
@@ -145,18 +191,25 @@ export const AssistantManagementScreen: React.FC = () => {
   }
 
   const handleTogglePin = async (assistant: Assistant) => {
+    const nextPinned = !assistant.isPinned
     try {
-      await services?.assistantManager.togglePin(assistant.id, !assistant.isPinned)
-      setAssistants((prev) =>
-        prev.map((a) => (a.id === assistant.id ? { ...a, isPinned: !a.isPinned } : a))
-      )
+      await services?.assistantManager.togglePin(assistant.id, nextPinned)
+      const applyPin = (prev: Assistant[]) =>
+        sortAssistantsByOrder(
+          prev.map((a) => (a.id === assistant.id ? { ...a, isPinned: nextPinned } : a))
+        )
+      setAssistants(applyPin)
+      setOrderedAssistants(applyPin)
     } catch (e) {
       console.error('Failed to toggle pin', e)
     }
   }
 
-  const renderCard = ({ item, drag, isActive }: RenderItemParams<Assistant>) => (
-    <ScaleDecorator>
+  const renderAssistantCard = useCallback(
+    (
+      item: Assistant,
+      options?: { drag?: () => void; isActive?: boolean; showDragHandle?: boolean }
+    ) => (
       <TouchableOpacity
         style={[
           styles.card,
@@ -164,7 +217,7 @@ export const AssistantManagementScreen: React.FC = () => {
             backgroundColor: colors.bgSurface,
             borderColor: item.isPinned ? colors.primary : colors.borderSubtle,
             borderRadius: tokens.radius.lg,
-            opacity: isActive ? 0.92 : 1
+            opacity: options?.isActive ? 0.92 : 1
           },
           item.isPinned && { borderWidth: 1.5 }
         ]}
@@ -172,9 +225,9 @@ export const AssistantManagementScreen: React.FC = () => {
         activeOpacity={0.75}
       >
         <View style={styles.cardHeader}>
-          {isDragEnabled ? (
+          {options?.showDragHandle ? (
             <TouchableOpacity
-              onPressIn={drag}
+              onPressIn={options.drag}
               style={[styles.dragHandle, { borderColor: colors.borderSubtle }]}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
@@ -197,11 +250,6 @@ export const AssistantManagementScreen: React.FC = () => {
                 <MaterialIcons name="push-pin" size={14} color={colors.primary} />
               ) : null}
             </View>
-            {item.isDefault ? (
-              <Text style={[styles.defaultTag, { color: colors.primary }]}>
-                {t('agent.assistant.default_tag')}
-              </Text>
-            ) : null}
           </View>
         </View>
 
@@ -232,8 +280,24 @@ export const AssistantManagementScreen: React.FC = () => {
           ) : null}
         </View>
       </TouchableOpacity>
-    </ScaleDecorator>
+    ),
+    [colors, handleDeleteAssistant, handleEditAssistant, handleTogglePin, t, tokens.radius.lg]
   )
+
+  const renderDraggableCard = useCallback(
+    ({ item, drag, isActive }: RenderItemParams<Assistant>) => (
+      <ScaleDecorator>
+        {renderAssistantCard(item, {
+          drag: isDragEnabled ? drag : undefined,
+          isActive,
+          showDragHandle: isDragEnabled
+        })}
+      </ScaleDecorator>
+    ),
+    [isDragEnabled, renderAssistantCard]
+  )
+
+  const searchPlaceholder = t('agent.assistant.search_hint', '搜索伙伴...')
 
   return (
     <StackScreenLayout
@@ -246,7 +310,7 @@ export const AssistantManagementScreen: React.FC = () => {
       }}
       contentStyle={styles.container}
     >
-      {isBootstrapping || loading ? (
+      {isBootstrapping || initialLoading ? (
         <View style={styles.centered}>
           <Text style={{ color: colors.textSecondary }}>{t('common.loading')}</Text>
         </View>
@@ -271,51 +335,27 @@ export const AssistantManagementScreen: React.FC = () => {
             </Text>
           </TouchableOpacity>
         </View>
-      ) : isDragEnabled ? (
+      ) : (
         <View style={[styles.listHost, { backgroundColor: colors.bgApp }]}>
+          <AssistantSearchBar
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder={searchPlaceholder}
+          />
           <DraggableFlatList
-            data={processedAssistants}
-            renderItem={renderCard}
+            data={visibleAssistants}
+            renderItem={renderDraggableCard}
             keyExtractor={(item) => item.id}
-            onDragEnd={({ data }) => void handleReorder(data)}
+            onDragEnd={({ data }) => {
+              if (!isDragEnabled) return
+              void handleReorder(data)
+            }}
             containerStyle={styles.listHost}
             contentContainerStyle={styles.listContent}
             activationDistance={8}
+            keyboardShouldPersistTaps="handled"
             ItemSeparatorComponent={ListSeparator}
             indicatorStyle={scrollIndicatorStyle(isDark)}
-            ListHeaderComponent={
-              <Input
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholder={t('agent.assistant.search_hint', '搜索伙伴...')}
-              />
-            }
-            ListEmptyComponent={
-              <View style={styles.listEmpty}>
-                <Text style={{ color: colors.textSecondary }}>{t('common.no_data')}</Text>
-              </View>
-            }
-          />
-        </View>
-      ) : (
-        <View style={[styles.listHost, { backgroundColor: colors.bgApp }]}>
-          <FlatList
-            data={processedAssistants}
-            renderItem={({ item }) =>
-              renderCard({ item, drag: () => {}, isActive: false, getIndex: () => undefined })
-            }
-            keyExtractor={(item) => item.id}
-            style={styles.listHost}
-            contentContainerStyle={styles.listContent}
-            ItemSeparatorComponent={ListSeparator}
-            indicatorStyle={scrollIndicatorStyle(isDark)}
-            ListHeaderComponent={
-              <Input
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholder={t('agent.assistant.search_hint')}
-              />
-            }
             ListEmptyComponent={
               <View style={styles.listEmpty}>
                 <Text style={{ color: colors.textSecondary }}>{t('common.no_data')}</Text>
@@ -357,8 +397,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600'
   },
+  searchWrap: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12
+  },
   listContent: {
-    padding: 16,
+    paddingHorizontal: 16,
     paddingBottom: 32
   },
   listHost: {
@@ -420,10 +465,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     flexShrink: 1
-  },
-  defaultTag: {
-    fontSize: 11,
-    fontWeight: '600'
   },
   cardDesc: {
     fontSize: 13,

@@ -1,11 +1,13 @@
 import * as Crypto from 'expo-crypto'
 import type { IFileSystem } from '@baishou/core-mobile'
-import type { SyncProgressEvent, SyncManifest, S3SyncConfig, ManifestEntry } from '@baishou/shared'
+import type { SyncProgressEvent, SyncManifest, S3SyncConfig, ManifestEntry, IncrementalSyncRunOptions } from '@baishou/shared'
 import {
   assertBidirectionalDeletePropagationAllowed,
   assertBidirectionalSyncDivergenceAllowed,
   getIncrementalSyncStorageId,
   limitExecute,
+  resolveIncrementalSyncStorageHistory,
+  type IncrementalSyncStorageHistory,
   SYNC_MANIFEST_FILENAME,
   SYNC_MANIFEST_VERSION,
   SYNC_REMOTE_SNAPSHOT_FILENAME,
@@ -228,6 +230,20 @@ export class MobileIncrementalEngine {
     return JSON.parse(raw) as SyncManifest
   }
 
+  private async getSyncStorageHistoryState(config: S3SyncConfig): Promise<IncrementalSyncStorageHistory> {
+    const metaDir = await this.syncMetaDir()
+    const storageIdPath = this.storageIdPath(metaDir)
+    if (!(await this.fileSystem.exists(storageIdPath))) {
+      return 'none'
+    }
+    try {
+      const savedId = (await this.fileSystem.readFile(storageIdPath)).trim()
+      return resolveIncrementalSyncStorageHistory(savedId, config)
+    } catch {
+      return 'mismatch'
+    }
+  }
+
   async loadRemoteSnapshot(config: S3SyncConfig): Promise<SyncManifest> {
     const metaDir = await this.syncMetaDir()
     const sp = this.snapshotPath(metaDir)
@@ -322,7 +338,8 @@ export class MobileIncrementalEngine {
    */
   async syncThreeWay(
     config: S3SyncConfig,
-    onProgress?: IncrementalProgressCallback
+    onProgress?: IncrementalProgressCallback,
+    runOptions?: IncrementalSyncRunOptions
   ): Promise<MobileIncrementalSyncOutcome> {
     const syncRoot = await this.syncRoot()
     const metaDir = await this.syncMetaDir()
@@ -339,7 +356,11 @@ export class MobileIncrementalEngine {
       onProgress?.({ phase: 'comparing', current, total, fileName })
     })
     onProgress?.({ phase: 'comparing', current: 1, total: 1 })
-    assertBidirectionalSyncDivergenceAllowed(localManifest, remoteManifest, config)
+    const storageHistory = await this.getSyncStorageHistoryState(config)
+    assertBidirectionalSyncDivergenceAllowed(localManifest, remoteManifest, config, {
+      storageHistory,
+      highDivergenceConfirmed: runOptions?.highDivergenceConfirmed
+    })
     const ancestorSnapshot = await this.loadRemoteSnapshot(config)
     const previousLocalManifest = await this.readLocalManifestFile().catch(() =>
       this.emptyManifest()
@@ -507,7 +528,8 @@ export class MobileIncrementalEngine {
   /** 仅下载远程变更（对齐桌面 downloadOnly，含三向删除传播中的 download） */
   async downloadOnly(
     config: S3SyncConfig,
-    onProgress?: IncrementalProgressCallback
+    onProgress?: IncrementalProgressCallback,
+    runOptions?: IncrementalSyncRunOptions
   ): Promise<MobileIncrementalSyncOutcome> {
     const syncRoot = await this.syncRoot()
     const metaDir = await this.syncMetaDir()
@@ -523,7 +545,11 @@ export class MobileIncrementalEngine {
       onProgress?.({ phase: 'comparing', current, total, fileName })
     })
     onProgress?.({ phase: 'comparing', current: 1, total: 1 })
-    assertBidirectionalSyncDivergenceAllowed(localManifest, remoteManifest, config)
+    const storageHistory = await this.getSyncStorageHistoryState(config)
+    assertBidirectionalSyncDivergenceAllowed(localManifest, remoteManifest, config, {
+      storageHistory,
+      highDivergenceConfirmed: runOptions?.highDivergenceConfirmed
+    })
     const ancestorSnapshot = await this.loadRemoteSnapshot(config)
     const decisions = threeWayMerge(localManifest, remoteManifest, ancestorSnapshot)
 

@@ -4,8 +4,6 @@ import os from 'node:os'
 import path from 'node:path'
 import Database from 'better-sqlite3'
 import { createNodeFileSystem } from '../../fs/create-node-file-system'
-import { AssistantManagerService } from '../../assistant/assistant-manager.service'
-import { AssistantFileService } from '../../assistant/assistant-file.service'
 import { MigrationTargetStoragePathService } from '../migration-target-path.service'
 import { migrateLegacyArchiveContents } from '../legacy-archive-migration.shared'
 import { isBetterSqlite3Available } from './better-sqlite3-available'
@@ -84,7 +82,12 @@ describe.skipIf(!isBetterSqlite3Available())('legacy upgrade bootstrap safety', 
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'legacy-bootstrap-'))
     sourceDir = path.join(tempDir, 'source')
     targetDir = path.join(tempDir, 'target')
-    await fs.mkdir(path.join(sourceDir, 'Personal', 'Journals'), { recursive: true })
+    await fs.mkdir(path.join(sourceDir, 'Personal', 'Journals', '2024', '01'), { recursive: true })
+    await fs.writeFile(
+      path.join(sourceDir, 'Personal', 'Journals', '2024', '01', '2024-01-15.md'),
+      'legacy journal',
+      'utf8'
+    )
     await fs.mkdir(path.join(sourceDir, '.baishou'), { recursive: true })
     await fs.writeFile(
       path.join(sourceDir, '.baishou', 'vault_registry.json'),
@@ -111,7 +114,7 @@ describe.skipIf(!isBetterSqlite3Available())('legacy upgrade bootstrap safety', 
     await fs.rm(tempDir, { recursive: true, force: true }).catch(() => null)
   })
 
-  it('keeps assistants after fullResyncFromDisks when JSON artifacts were exported during migration', async () => {
+  it('exports vault files without merging agent sqlite into main database', async () => {
     const migrationPath = new MigrationTargetStoragePathService(targetDir, 'Personal')
     const avatarImports: string[] = []
 
@@ -131,43 +134,15 @@ describe.skipIf(!isBetterSqlite3Available())('legacy upgrade bootstrap safety', 
       }
     })
 
-    const assistantJson = path.join(targetDir, 'Personal', 'Assistants', 'legacy-ast.json')
-    expect(await fileSystem.exists(assistantJson)).toBe(true)
+    const mergedAgents = await executeRawSql(db, 'SELECT id FROM agent_assistants')
+    expect(mergedAgents.rows).toHaveLength(0)
 
-    const mockRepo = {
-      findAll: async () => {
-        const rows = await executeRawSql(db, 'SELECT * FROM agent_assistants')
-        return rows.rows.map((row) => ({
-          id: String(row.id),
-          name: String(row.name)
-        }))
-      },
-      findById: async (id: string) => {
-        const rows = await executeRawSql(db, 'SELECT * FROM agent_assistants WHERE id = ?', [id])
-        return rows.rows[0] ?? null
-      },
-      create: async () => {},
-      update: async () => {},
-      delete: async () => {}
-    }
-
-    const assistantFileService = new AssistantFileService(migrationPath, fileSystem)
-    const mockAttachmentManager = {
-      importAvatar: async () => 'avatars/test.jpg',
-      resolveAvatarPath: async () => '/abs/test.jpg',
-      listOrphans: async () => [],
-      deleteBatch: async () => undefined
-    } as any
-
-    const manager = new AssistantManagerService(
-      mockRepo as any,
-      assistantFileService,
-      mockAttachmentManager
-    )
-
-    await manager.fullResyncFromDisks()
-
-    const remaining = await executeRawSql(db, 'SELECT id FROM agent_assistants')
-    expect(remaining.rows.map((row) => row.id)).toContain('legacy-ast')
+    const personalVault = path.join(targetDir, 'Personal')
+    expect(await fileSystem.exists(personalVault)).toBe(true)
+    expect(
+      await fileSystem.exists(
+        path.join(targetDir, 'Personal', 'Journals', '2024', '01', '2024-01-15.md')
+      )
+    ).toBe(false)
   })
 })

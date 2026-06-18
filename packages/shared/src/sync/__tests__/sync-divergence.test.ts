@@ -3,6 +3,8 @@ import type { SyncManifest } from '../../types/version-control.types'
 import {
   assertBidirectionalSyncDivergenceAllowed,
   computeManifestDivergencePercent,
+  shouldSkipSyncDivergenceCheck,
+  SyncDivergenceConfirmationRequiredError,
   SyncDivergenceExceededError
 } from '../sync-divergence'
 
@@ -28,10 +30,14 @@ describe('sync-divergence', () => {
     const local = manifest({ a: '1', b: '2' })
     const remote = manifest({ a: '1', b: 'x' })
     expect(() =>
-      assertBidirectionalSyncDivergenceAllowed(local, remote, { maxDivergencePercent: 50 })
+      assertBidirectionalSyncDivergenceAllowed(local, remote, { maxDivergencePercent: 50 }, {
+        storageHistory: 'match'
+      })
     ).not.toThrow()
     expect(() =>
-      assertBidirectionalSyncDivergenceAllowed(local, remote, { maxDivergencePercent: 40 })
+      assertBidirectionalSyncDivergenceAllowed(local, remote, { maxDivergencePercent: 40 }, {
+        storageHistory: 'match'
+      })
     ).toThrow(SyncDivergenceExceededError)
   })
 
@@ -39,8 +45,47 @@ describe('sync-divergence', () => {
     const local = manifest({ a: '1' })
     const remote = manifest({ b: '2' })
     expect(() =>
-      assertBidirectionalSyncDivergenceAllowed(local, remote, { maxDivergencePercent: null })
+      assertBidirectionalSyncDivergenceAllowed(local, remote, { maxDivergencePercent: null }, {
+        storageHistory: 'match'
+      })
     ).not.toThrow()
     expect(computeManifestDivergencePercent(local, remote)).toBe(100)
+  })
+
+  it('requires confirmation on first sync when both sides have data and divergence is high', () => {
+    const local = manifest({ a: '1', b: '2' })
+    const remote = manifest({ c: '3', d: '4' })
+    expect(() =>
+      assertBidirectionalSyncDivergenceAllowed(local, remote, { maxDivergencePercent: 10 }, {
+        storageHistory: 'none'
+      })
+    ).toThrow(SyncDivergenceConfirmationRequiredError)
+    expect(() =>
+      assertBidirectionalSyncDivergenceAllowed(local, remote, { maxDivergencePercent: 10 }, {
+        storageHistory: 'none',
+        highDivergenceConfirmed: true
+      })
+    ).not.toThrow()
+  })
+
+  it('skips when one side has no files', () => {
+    const local = manifest({})
+    const remote = manifest({ a: '1', b: '2' })
+    expect(shouldSkipSyncDivergenceCheck(local, remote)).toBe(true)
+    expect(() =>
+      assertBidirectionalSyncDivergenceAllowed(local, remote, { maxDivergencePercent: 10 }, {
+        storageHistory: 'match'
+      })
+    ).not.toThrow()
+  })
+
+  it('still blocks when storage target mismatches and both sides have data', () => {
+    const local = manifest({ a: '1', b: '2' })
+    const remote = manifest({ c: '3', d: '4' })
+    expect(() =>
+      assertBidirectionalSyncDivergenceAllowed(local, remote, { maxDivergencePercent: 10 }, {
+        storageHistory: 'mismatch'
+      })
+    ).toThrow(SyncDivergenceExceededError)
   })
 })

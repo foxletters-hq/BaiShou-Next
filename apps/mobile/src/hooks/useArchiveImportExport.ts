@@ -6,10 +6,13 @@ import { useNativeToast, useDialog } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import { applyArchiveImportFeedback } from '../utils/archive-restore-feedback'
 import {
+  buildArchiveImportProgress,
   formatArchiveExportErrorMessage,
+  reportArchiveImportStage,
+  resolveArchiveImportStageDetail,
   resolveArchiveImportStageHint,
   resolveArchiveImportStageMessage,
-  type ArchiveImportStage
+  type ArchiveImportProgress
 } from '../services/archive-guards.util'
 
 /** 分享面板关闭后立即弹 Toast 会在部分 Android 上触发 SafeArea/Reanimated 视图竞态崩溃 */
@@ -33,13 +36,15 @@ function formatExportFailedToast(
   return localized
 }
 
+const IMPORT_SUCCESS_DISMISS_MS = 900
+
 export function useArchiveImportExport() {
   const { t } = useTranslation()
   const toast = useNativeToast()
   const dialog = useDialog()
   const { services, dbReady, notifyArchiveRestoreComplete } = useBaishou()
   const [isImporting, setIsImporting] = useState(false)
-  const [importStage, setImportStage] = useState<ArchiveImportStage | null>(null)
+  const [importProgress, setImportProgress] = useState<ArchiveImportProgress | null>(null)
 
   const handleExport = useCallback(async () => {
     if (!services?.archiveService || !dbReady) {
@@ -69,32 +74,62 @@ export function useArchiveImportExport() {
     if (!confirmed) return
 
     setIsImporting(true)
-    setImportStage('preparing')
+    setImportProgress(buildArchiveImportProgress('preparing'))
 
     try {
+      reportArchiveImportStage(setImportProgress, 'reading_file')
       const pick = await DocumentPicker.getDocumentAsync({
         type: 'application/zip',
         copyToCacheDirectory: true
       })
-      if (pick.canceled || !pick.assets?.[0]?.uri) return
+      if (pick.canceled || !pick.assets?.[0]?.uri) {
+        return
+      }
 
       const result = await services.archiveService.importFromZip(
         pick.assets[0].uri,
         true,
-        (stage) => setImportStage(stage)
+        (progress) => setImportProgress(progress)
       )
+
+      reportArchiveImportStage(setImportProgress, 'succeeded', { percent: 100 })
       applyArchiveImportFeedback(result, t, toast, notifyArchiveRestoreComplete)
+      await new Promise((resolve) => setTimeout(resolve, IMPORT_SUCCESS_DISMISS_MS))
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
+      setImportProgress(
+        buildArchiveImportProgress('failed', {
+          percent: 100,
+          detail: message
+        })
+      )
       toast.showError(t('settings.import_failed_with_error', { error: message }))
+      await new Promise((resolve) => setTimeout(resolve, IMPORT_SUCCESS_DISMISS_MS))
     } finally {
       setIsImporting(false)
-      setImportStage(null)
+      setImportProgress(null)
     }
   }, [dbReady, dialog, notifyArchiveRestoreComplete, services, t, toast])
 
-  const importMessage = importStage ? resolveArchiveImportStageMessage(importStage) : undefined
-  const importHint = importStage ? resolveArchiveImportStageHint(importStage) : undefined
+  const importMessage = importProgress
+    ? resolveArchiveImportStageMessage(importProgress)
+    : undefined
+  const importHint = importProgress ? resolveArchiveImportStageHint(importProgress) : undefined
+  const importDetail = importProgress ? resolveArchiveImportStageDetail(importProgress) : undefined
+  const importPercent = importProgress?.percent
+  const importSucceeded = importProgress?.stage === 'succeeded'
+  const importFailed = importProgress?.stage === 'failed'
 
-  return { handleExport, handleImport, isImporting, importMessage, importHint, dbReady }
+  return {
+    handleExport,
+    handleImport,
+    isImporting,
+    importMessage,
+    importHint,
+    importDetail,
+    importPercent,
+    importSucceeded,
+    importFailed,
+    dbReady
+  }
 }

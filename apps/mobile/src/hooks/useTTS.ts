@@ -2,8 +2,8 @@ import { useState, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
-import { synthesizeTtsFromSavedSettings } from '../services/mobile-tts-synthesize'
-import { playTtsAudio, stopTtsAudioPlayback } from '../services/play-tts-audio'
+import { synthesizeTtsSpeechFromSavedSettings } from '../services/mobile-tts-synthesize'
+import { playTtsAudioSegment, stopTtsAudioPlayback } from '../services/play-tts-audio'
 
 export function useTTS() {
   const { t } = useTranslation()
@@ -45,10 +45,22 @@ export function useTTS() {
           return
         }
 
-        const result = await synthesizeTtsFromSavedSettings(services.settingsManager, content)
+        const result = await synthesizeTtsSpeechFromSavedSettings(services.settingsManager, content, {
+          isCancelled: () => requestId !== ttsRequestRef.current,
+          onSegmentReady: async (segment) => {
+            if (requestId !== ttsRequestRef.current) return
+            await playTtsAudioSegment(segment.audioBase64, segment.format)
+          }
+        })
+
         if (requestId !== ttsRequestRef.current) return
 
         if (!result.success) {
+          if (result.errorCode === 'tts_cancelled' || result.errorCode === 'tts_empty_content') {
+            clearTtsBusyState(requestId)
+            return
+          }
+
           console.error('[TTS] Synthesize failed:', result.error)
           const errorCodeMap: Record<string, string> = {
             tts_not_configured: t('agent.tts_configure_hint', '请在设置中配置 TTS 模型'),
@@ -64,14 +76,16 @@ export function useTTS() {
           return
         }
 
-        await playTtsAudio(result.audioBase64, result.format, () => {
-          clearTtsBusyState(requestId)
-        })
+        clearTtsBusyState(requestId)
       } catch (e: unknown) {
         if (requestId !== ttsRequestRef.current) return
         const message = e instanceof Error ? e.message : 'Unknown error'
         console.error('[TTS] Error:', e)
-        toast.showError(`${t('agent.tts_failed', '语音合成失败')}: ${message}`)
+        const isPlaybackError = /playback/i.test(message)
+        const errorLabel = isPlaybackError
+          ? t('agent.tts_play_failed', '语音播放失败')
+          : t('agent.tts_failed', '语音合成失败')
+        toast.showError(`${errorLabel}: ${message}`)
         clearTtsBusyState(requestId)
       }
     },

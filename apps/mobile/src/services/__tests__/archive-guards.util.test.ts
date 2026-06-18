@@ -227,7 +227,7 @@ describe('formatArchiveExportErrorMessage', () => {
 
 describe('resolveArchiveImportStageMessage', () => {
   it('returns human-readable stage labels', () => {
-    expect(resolveArchiveImportStageMessage('unpacking')).toContain('解压')
-    expect(resolveArchiveImportStageMessage('migrating_legacy')).toContain('迁移')
+    expect(resolveArchiveImportStageMessage({ stage: 'unpacking' })).toContain('解压')
+    expect(resolveArchiveImportStageMessage({ stage: 'migrating_legacy' })).toContain('迁移')
   })
 })

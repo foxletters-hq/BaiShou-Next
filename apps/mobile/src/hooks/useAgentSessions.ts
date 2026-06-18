@@ -10,7 +10,7 @@ const SESSION_LIST_REFRESH_DEBOUNCE_MS = 300
 
 export function useAgentSessions(activeAssistantId: string | undefined) {
   const { t } = useTranslation()
-  const { services, dbReady, vaultRevision } = useBaishou()
+  const { services, dbReady, vaultRevision, ecosystemResyncEpoch } = useBaishou()
 
   const [sessions, setSessions] = useState<AgentSession[]>([])
   const [hasMoreSessions, setHasMoreSessions] = useState(false)
@@ -21,6 +21,7 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
   const assistantIdRef = useRef<string | undefined>(activeAssistantId)
   const sessionsLoadedFromDbRef = useRef(0)
   const lastVaultRevisionRef = useRef(vaultRevision)
+  const lastEcosystemResyncEpochRef = useRef(ecosystemResyncEpoch)
 
   useEffect(() => {
     assistantIdRef.current = activeAssistantId
@@ -140,11 +141,14 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
     return () => clearTimeout(timer)
   }, [activeAssistantId, loadSessions])
 
-  // 增量同步 / vault resync 完成后刷新会话列表（对齐桌面 AgentLayout vault-resync-complete）
+  // vault 切换或后台索引完成后刷新会话列表
   useEffect(() => {
-    if (lastVaultRevisionRef.current === vaultRevision) return
+    const vaultChanged = lastVaultRevisionRef.current !== vaultRevision
+    const ecosystemResynced = lastEcosystemResyncEpochRef.current !== ecosystemResyncEpoch
     lastVaultRevisionRef.current = vaultRevision
+    lastEcosystemResyncEpochRef.current = ecosystemResyncEpoch
 
+    if (!vaultChanged && !ecosystemResynced) return
     if (!activeAssistantId) return
 
     const timer = setTimeout(() => {
@@ -153,7 +157,7 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
     }, SESSION_LIST_REFRESH_DEBOUNCE_MS)
 
     return () => clearTimeout(timer)
-  }, [vaultRevision, activeAssistantId, loadSessions])
+  }, [vaultRevision, ecosystemResyncEpoch, activeAssistantId, loadSessions])
 
   return {
     sessions,

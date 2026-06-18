@@ -6,7 +6,7 @@ import { ONBOARDING_STORAGE_KEY } from '@/src/constants/storage'
 import { useBaishou } from '@/src/providers/BaishouProvider'
 
 export default function Index() {
-  const { dbReady, pendingFlutterLegacyMigration } = useBaishou()
+  const { dbReady } = useBaishou()
   const [ready, setReady] = useState(false)
   const [hasOnboarded, setHasOnboarded] = useState(false)
 
@@ -25,10 +25,6 @@ export default function Index() {
         <ActivityIndicator />
       </View>
     )
-  }
-
-  if (pendingFlutterLegacyMigration) {
-    return null
   }
 
   if (!hasOnboarded) {
