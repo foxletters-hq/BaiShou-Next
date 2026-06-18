@@ -19,8 +19,8 @@ export const EXTERNAL_STORAGE_ROOT = '/storage/emulated/0/BaiShou_Root'
 export const EXTERNAL_STORAGE_ROOT_URI = `file://${EXTERNAL_STORAGE_ROOT}`
 
 /**
- * 检查是否具备外部存储读写能力（对齐 BaiShou PermissionService.hasStoragePermission）
- * 仅信任原生 java.io.File 探测，不使用 expo-file-system（Scoped Storage 会误报/误拒）
+ * 检查是否具备「管理所有文件」权限（Android 11+）。
+ * 可写性探测在挂载阶段单独进行，避免部分 ROM（如 ColorOS）误报未授权。
  */
 export async function hasStoragePermission(): Promise<boolean> {
   if (Platform.OS !== 'android') return true
@@ -29,7 +29,13 @@ export async function hasStoragePermission(): Promise<boolean> {
     return false
   }
 
-  return nativeHasAllFilesAccess() && probeExternalStorageWritable()
+  return nativeHasAllFilesAccess()
+}
+
+/** 探测外部 BaiShou_Root 是否可写（挂载/写入前使用） */
+export async function canWriteExternalStorage(): Promise<boolean> {
+  if (!(await hasStoragePermission())) return false
+  return probeExternalStorageWritable()
 }
 
 export function isExternalBaiShouRootPath(pathUri: string): boolean {

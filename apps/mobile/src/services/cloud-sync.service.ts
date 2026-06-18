@@ -15,6 +15,7 @@ import {
   s3FetchHeaders,
   signS3Request
 } from '@baishou/shared'
+import type { ArchiveImportProgressCallback } from './archive-guards.util'
 
 /**
  * 基于 fetch API 的 WebDAV 客户端（React Native 兼容）
@@ -419,7 +420,8 @@ export class MobileCloudSyncService {
 
   async restoreFromCloud(
     config: SyncConfig,
-    remoteFilename: string
+    remoteFilename: string,
+    onProgress?: ArchiveImportProgressCallback
   ): Promise<{ success: boolean; message: string }> {
     try {
       const client = this.createClient(config)
@@ -427,8 +429,7 @@ export class MobileCloudSyncService {
 
       await client.downloadFile(remoteFilename, tempPath)
 
-      // 调用 archive service 的 importFromZip
-      const result = await this.archiveService.importFromZip(tempPath)
+      const result = await this.archiveService.importFromZip(tempPath, false, onProgress)
 
       // 清理临时文件
       try {

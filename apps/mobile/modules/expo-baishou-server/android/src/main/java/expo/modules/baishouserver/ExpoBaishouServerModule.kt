@@ -41,12 +41,24 @@ private data class PendingMcpRequest(
     val response: AtomicReference<String>
 )
 
-class BaishouHttpServer(
+internal data class McpHttpRequest(
+    val method: String,
+    val headers: Map<String, String>,
+    val body: String
+)
+
+internal data class McpHttpResponse(
+    val statusCode: Int,
+    val headers: Map<String, String>,
+    val body: String
+)
+
+internal class BaishouHttpServer(
     port: Int,
     private val context: Context,
     private val authToken: String?,
     private val emitEvent: (String, Map<String, Any>) -> Unit,
-    private val dispatchMcpRequest: (String, String?) -> String
+    private val dispatchMcpRequest: (McpHttpRequest) -> McpHttpResponse
 ) : NanoHTTPD(port) {
 
     private fun isAuthorized(session: IHTTPSession): Boolean {
@@ -66,27 +78,61 @@ class BaishouHttpServer(
 
     private fun corsResponse(status: Response.Status, mimeType: String, body: String): Response {
         val response = newFixedLengthResponse(status, mimeType, body)
-        response.addHeader("Access-Control-Allow-Origin", "*")
-        response.addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        response.addHeader(
-            "Access-Control-Allow-Headers",
-            "Content-Type, Authorization, mcp-session-id"
-        )
+        addCorsHeaders(response)
         return response
     }
 
-    private fun readRequestBody(session: IHTTPSession): String {
-        val files = HashMap<String, String>()
-        session.parseBody(files)
-        val postDataPath = files["postData"]
-        if (postDataPath != null) {
-            return File(postDataPath).readText()
+    private fun addCorsHeaders(response: Response) {
+        response.addHeader("Access-Control-Allow-Origin", "*")
+        response.addHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+        response.addHeader(
+            "Access-Control-Allow-Headers",
+            "Content-Type, Authorization, Accept, mcp-session-id, Mcp-Session-Id, Last-Event-ID, mcp-protocol-version, MCP-Protocol-Version"
+        )
+    }
+
+    private fun collectHeaders(session: IHTTPSession): Map<String, String> {
+        val headers = mutableMapOf<String, String>()
+        for ((key, value) in session.headers) {
+            headers[key.lowercase()] = value
         }
+        return headers
+    }
+
+    /**
+     * 直接从 inputStream 按 Content-Length 读取，避免 NanoHTTPD parseBody 临时文件在部分机型上 ENOENT。
+     */
+    private fun readRequestBody(session: IHTTPSession): String {
         val contentLength = session.headers["content-length"]?.toIntOrNull() ?: 0
         if (contentLength <= 0) return ""
-        val buffer = ByteArray(contentLength.coerceAtMost(10 * 1024 * 1024))
-        val read = session.inputStream.read(buffer)
-        return if (read > 0) String(buffer, 0, read) else ""
+        val maxBytes = 10 * 1024 * 1024
+        val toRead = contentLength.coerceAtMost(maxBytes)
+        val buffer = ByteArray(toRead)
+        var totalRead = 0
+        while (totalRead < toRead) {
+            val read = session.inputStream.read(buffer, totalRead, toRead - totalRead)
+            if (read <= 0) break
+            totalRead += read
+        }
+        return if (totalRead > 0) String(buffer, 0, totalRead) else ""
+    }
+
+    private fun buildMcpResponse(res: McpHttpResponse): Response {
+        val status = Response.Status.lookup(res.statusCode) ?: Response.Status.INTERNAL_ERROR
+        val contentType = res.headers["content-type"] ?: "application/json"
+        val response = newFixedLengthResponse(status, contentType, res.body)
+        addCorsHeaders(response)
+        val skipKeys = setOf(
+            "access-control-allow-origin",
+            "access-control-allow-methods",
+            "access-control-allow-headers"
+        )
+        for ((key, value) in res.headers) {
+            if (key.lowercase() !in skipKeys) {
+                response.addHeader(key, value)
+            }
+        }
+        return response
     }
 
     private fun handleMcp(session: IHTTPSession): Response {
@@ -98,27 +144,22 @@ class BaishouHttpServer(
             return unauthorizedResponse()
         }
 
-        if (session.method == Method.GET) {
-            return corsResponse(Response.Status.OK, "application/json", MCP_INFO_JSON)
-        }
-
-        if (session.method == Method.POST) {
-            return try {
-                val body = readRequestBody(session)
-                val authorization = session.headers["authorization"]
-                val responseBody = dispatchMcpRequest(body, authorization)
-                corsResponse(Response.Status.OK, "application/json", responseBody)
-            } catch (e: Exception) {
-                e.printStackTrace()
-                corsResponse(
-                    Response.Status.INTERNAL_ERROR,
-                    "application/json",
-                    "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"${e.message ?: "Internal Error"}\"}}"
-                )
+        return try {
+            val method = session.method.name
+            val headers = collectHeaders(session)
+            val body = when (session.method) {
+                Method.POST -> readRequestBody(session)
+                else -> ""
             }
+            buildMcpResponse(dispatchMcpRequest(McpHttpRequest(method, headers, body)))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            corsResponse(
+                Response.Status.INTERNAL_ERROR,
+                "application/json",
+                "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"${e.message ?: "Internal Error"}\"},\"id\":null}"
+            )
         }
-
-        return corsResponse(Response.Status.METHOD_NOT_ALLOWED, MIME_PLAINTEXT, "Method Not Allowed")
     }
 
     /**
@@ -251,36 +292,61 @@ class ExpoBaishouServerModule : Module() {
             .build()
     }
 
-    private fun dispatchMcpRequestToJs(body: String, authorization: String?): String {
+    private fun dispatchMcpRequestToJs(request: McpHttpRequest): McpHttpResponse {
         val requestId = UUID.randomUUID().toString()
         val latch = CountDownLatch(1)
         val responseRef = AtomicReference("")
         pendingMcpRequests[requestId] = PendingMcpRequest(latch, responseRef)
 
-        val payload = mutableMapOf(
-            "requestId" to requestId,
-            "body" to body
+        sendEvent(
+            "onMcpHttpRequest",
+            mapOf(
+                "requestId" to requestId,
+                "method" to request.method,
+                "headers" to request.headers,
+                "body" to request.body
+            )
         )
-        if (!authorization.isNullOrBlank()) {
-            payload["authorization"] = authorization
-        }
-
-        sendEvent("onMcpHttpRequest", payload)
 
         val completed = latch.await(25, TimeUnit.SECONDS)
         pendingMcpRequests.remove(requestId)
 
         if (!completed) {
-            return "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"MCP request timed out after 25s\"}}"
+            return McpHttpResponse(
+                500,
+                mapOf("content-type" to "application/json"),
+                "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"MCP request timed out after 25s\"},\"id\":null}"
+            )
         }
 
-        return responseRef.get()
+        val raw = responseRef.get()
+        if (raw.isBlank()) {
+            return McpHttpResponse(202, emptyMap(), "")
+        }
+
+        return try {
+            val json = org.json.JSONObject(raw)
+            val statusCode = json.optInt("statusCode", 200)
+            val headers = mutableMapOf<String, String>()
+            val headersObj = json.optJSONObject("headers")
+            if (headersObj != null) {
+                val keys = headersObj.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    headers[key] = headersObj.getString(key)
+                }
+            }
+            val body = json.optString("body", raw)
+            McpHttpResponse(statusCode, headers, body)
+        } catch (_: Exception) {
+            McpHttpResponse(200, mapOf("content-type" to "application/json"), raw)
+        }
     }
 
     override fun definition() = ModuleDefinition {
         Name("ExpoBaishouServer")
 
-        Events("onFileReceived", "onMcpHttpRequest", "onLanUploadStarted", "onLanUploadProgress", "onStorageRootCopyProgress")
+        Events("onFileReceived", "onMcpHttpRequest", "onLanUploadStarted", "onLanUploadProgress", "onStorageRootCopyProgress", "onArchiveImportProgress")
 
         Function("resolveMcpHttpResponse") { requestId: String, responseBody: String ->
             val pending = pendingMcpRequests[requestId] ?: return@Function false
@@ -301,7 +367,7 @@ class ExpoBaishouServerModule : Module() {
                     context,
                     authToken,
                     { evt, payload -> this@ExpoBaishouServerModule.sendEvent(evt, payload) },
-                    { body, authorization -> dispatchMcpRequestToJs(body, authorization) }
+                    { request -> dispatchMcpRequestToJs(request) }
                 )
                 server?.start(LAN_SOCKET_READ_TIMEOUT_MS, false)
                 return@Function server?.listeningPort ?: port
@@ -448,7 +514,17 @@ class ExpoBaishouServerModule : Module() {
             }
             Thread {
                 try {
-                    ExternalStorageFiles.unzipArchive(zipPath, destDir)
+                    ExternalStorageFiles.unzipArchive(zipPath, destDir) { current, total, entryName ->
+                        sendEvent(
+                            "onArchiveImportProgress",
+                            mapOf(
+                                "phase" to "unzip",
+                                "current" to current,
+                                "total" to total,
+                                "detail" to entryName
+                            )
+                        )
+                    }
                     promise.resolve(null)
                 } catch (e: Exception) {
                     promise.reject("E_UNZIP", e.message ?: "unzip failed", e)

@@ -225,12 +225,12 @@ export function registerIncrementalSyncIPC() {
     return true
   })
 
-  ipcMain.handle('incrementalSync:sync', async (event) => {
+  ipcMain.handle('incrementalSync:sync', async (event, runOptions) => {
     const result = await (
       await getOrchestrator()
     ).sync((progress) => {
       event.sender.send('incrementalSync:progress', progress)
-    })
+    }, runOptions)
     await afterIncrementalSync(result, { force: true })
     return result
   })
@@ -241,12 +241,12 @@ export function registerIncrementalSyncIPC() {
     })
   })
 
-  ipcMain.handle('incrementalSync:downloadOnly', async (event) => {
+  ipcMain.handle('incrementalSync:downloadOnly', async (event, runOptions) => {
     const result = await (
       await getOrchestrator()
     ).downloadOnly((progress) => {
       event.sender.send('incrementalSync:progress', progress)
-    })
+    }, runOptions)
     await afterIncrementalSync(result)
     return result
   })
@@ -267,12 +267,12 @@ export function registerIncrementalSyncIPC() {
     return (await getSyncService()).getLastSyncConflicts()
   })
 
-  ipcMain.handle('incrementalSync:orchestratedSync', async (event) => {
+  ipcMain.handle('incrementalSync:orchestratedSync', async (event, runOptions) => {
     const result = await (
       await getOrchestrator()
     ).sync((progress) => {
       event.sender.send('incrementalSync:progress', progress)
-    })
+    }, runOptions)
     await afterIncrementalSync(result, { force: true })
     return result
   })
@@ -283,12 +283,12 @@ export function registerIncrementalSyncIPC() {
     })
   })
 
-  ipcMain.handle('incrementalSync:orchestratedDownloadOnly', async (event) => {
+  ipcMain.handle('incrementalSync:orchestratedDownloadOnly', async (event, runOptions) => {
     const result = await (
       await getOrchestrator()
     ).downloadOnly((progress) => {
       event.sender.send('incrementalSync:progress', progress)
-    })
+    }, runOptions)
     await afterIncrementalSync(result)
     return result
   })

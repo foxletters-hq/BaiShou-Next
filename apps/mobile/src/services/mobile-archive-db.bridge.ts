@@ -24,7 +24,11 @@ export interface MobileArchiveDbBridge {
   /** 工作区与数据库还原后全量重扫 vault / 日记索引 */
   rebootstrapAfterArchiveRestore(options?: ArchiveRestoreRebootstrapOptions): Promise<void>
   /** Flutter 旧版 ZIP（无 manifest）全量迁移到 staging 目录 */
-  importLegacyFlutterZip?(extractDir: string, stagingRoot: string): Promise<void>
+  importLegacyFlutterZip?(
+    extractDir: string,
+    stagingRoot: string,
+    options?: { onCopyProgress?: (entryPath: string) => void }
+  ): Promise<void>
 }
 
 /** ZIP 内遗留用户头像路径（桌面导出兼容） */

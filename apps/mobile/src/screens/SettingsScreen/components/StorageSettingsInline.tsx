@@ -1,8 +1,8 @@
 import React from 'react'
 import { Platform } from 'react-native'
+import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { StorageSettingsCard, RestoreBlockingOverlay } from '@baishou/ui/native'
-import { useBaishou } from '../../../providers/BaishouProvider'
 import { useStorageSettings } from '../../../hooks/useStorageSettings'
 import { useFlutterLegacyMigrationSettings } from '../../../hooks/useFlutterLegacyMigrationSettings'
 import { DirectoryPickerModal } from '../../../components/DirectoryPickerModal'
@@ -17,6 +17,7 @@ export const StorageSettingsInline: React.FC<StorageSettingsInlineProps> = ({
   isLast = false
 }) => {
   const { t } = useTranslation()
+  const router = useRouter()
   const {
     storageRootPath,
     allFilesAccessGranted,
@@ -32,29 +33,15 @@ export const StorageSettingsInline: React.FC<StorageSettingsInlineProps> = ({
     fileSystem
   } = useStorageSettings()
 
-  const {
-    showMigrateFromFlutterLegacy,
-    showDeleteMigratedLegacySource,
-    handleMigrateFromFlutterLegacy,
-    handleDeleteMigratedLegacySource
-  } = useFlutterLegacyMigrationSettings()
+  const { showMigrateFromFlutterLegacy } = useFlutterLegacyMigrationSettings()
 
-  const { flutterLegacyMigrationBusy, flutterLegacyMigrationProgress } = useBaishou()
-
-  const overlayVisible = storageBusy !== 'idle' || flutterLegacyMigrationBusy
-  const overlayMessage = flutterLegacyMigrationBusy
-    ? t('storage.flutter_legacy_migrating', '正在从旧版目录复制数据…')
-    : storageBusy === 'switching'
+  const overlayVisible = storageBusy !== 'idle'
+  const overlayMessage =
+    storageBusy === 'switching'
       ? t('storage.switching_directory', '正在更换目录...')
       : t('storage.migrating_data', '正在迁移数据...')
-  const overlayHint = flutterLegacyMigrationBusy
-    ? flutterLegacyMigrationProgress
-      ? t('storage.migrating_item', {
-          name: flutterLegacyMigrationProgress,
-          defaultValue: `正在复制：${flutterLegacyMigrationProgress}`
-        })
-      : t('storage.flutter_legacy_migrating_hint', '请勿关闭应用，原目录数据不会被删除')
-    : storageBusy === 'switching'
+  const overlayHint =
+    storageBusy === 'switching'
       ? t('storage.switching_directory_hint', '请勿关闭应用')
       : migrationProgress
         ? t('storage.migrating_item', {
@@ -79,11 +66,14 @@ export const StorageSettingsInline: React.FC<StorageSettingsInlineProps> = ({
         onMigrateDirectory={showDirectoryActions ? handleMigrateDirectory : undefined}
         migrateDirectoryLabel={t('storage.migrate_directory', '迁移数据目录')}
         onMigrateFromFlutterLegacy={
-          showMigrateFromFlutterLegacy ? handleMigrateFromFlutterLegacy : undefined
+          showMigrateFromFlutterLegacy
+            ? () => router.push('/settings/version-migration')
+            : undefined
         }
-        onDeleteMigratedLegacySource={
-          showDeleteMigratedLegacySource ? handleDeleteMigratedLegacySource : undefined
-        }
+        migrateFromFlutterLegacyLabel={t(
+          'version_migration.storage_entry_action',
+          '按板块从旧版迁移数据'
+        )}
         allFilesAccessGranted={allFilesAccessGranted}
         onRequestAllFilesAccess={
           Platform.OS === 'android' ? handleRequestAllFilesAccess : undefined

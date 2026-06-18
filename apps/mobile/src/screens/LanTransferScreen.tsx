@@ -20,6 +20,14 @@ import { LanTransferRadarView } from '../components/LanTransferRadarView'
 import { StackScreenLayout } from '../components/StackScreenLayout'
 import { getStackScreenChrome } from '../components/stackScreenChrome'
 import { applyArchiveImportFeedback } from '../utils/archive-restore-feedback'
+import {
+  buildArchiveImportProgress,
+  reportArchiveImportStage,
+  resolveArchiveImportStageDetail,
+  resolveArchiveImportStageHint,
+  resolveArchiveImportStageMessage,
+  type ArchiveImportProgress
+} from '../services/archive-guards.util'
 
 export const LanTransferScreen: React.FC = () => {
   const { t } = useTranslation()
@@ -33,6 +41,7 @@ export const LanTransferScreen: React.FC = () => {
   const [sendingTo, setSendingTo] = useState<string | null>(null)
   const [sendProgress, setSendProgress] = useState(0)
   const [isRestoring, setIsRestoring] = useState(false)
+  const [importProgress, setImportProgress] = useState<ArchiveImportProgress | null>(null)
   const [isReceiving, setIsReceiving] = useState(false)
   const [receiveProgress, setReceiveProgress] = useState(0)
   const localConnRef = useRef<{
@@ -118,14 +127,24 @@ export const LanTransferScreen: React.FC = () => {
           }
           setIsReceiving(false)
           setIsRestoring(true)
+          setImportProgress(buildArchiveImportProgress('preparing'))
           try {
-            const result = await archiveService.importFromZip(zipPath, true)
+            const result = await archiveService.importFromZip(zipPath, true, (progress) =>
+              setImportProgress(progress)
+            )
+            reportArchiveImportStage(setImportProgress, 'succeeded', { percent: 100 })
             applyArchiveImportFeedback(result, t, toast, notifyArchiveRestoreComplete)
+            await new Promise((resolve) => setTimeout(resolve, 900))
           } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : String(e)
+            setImportProgress(
+              buildArchiveImportProgress('failed', { percent: 100, detail: msg })
+            )
             toast.showError(msg || t('lan.import_failed'))
+            await new Promise((resolve) => setTimeout(resolve, 900))
           } finally {
             setIsRestoring(false)
+            setImportProgress(null)
             setIsReceiving(false)
           }
         })()
@@ -224,7 +243,9 @@ export const LanTransferScreen: React.FC = () => {
                 '$percent',
                 String(receiveProgress)
               )
-            : undefined
+            : importProgress
+              ? resolveArchiveImportStageMessage(importProgress)
+              : undefined
         }
         hint={
           isReceiving
@@ -232,8 +253,13 @@ export const LanTransferScreen: React.FC = () => {
                 'lan_transfer.receiving_backup_hint',
                 '大包传输需要一些时间，请保持本页面在前台直至完成。'
               )
-            : undefined
+            : importProgress
+              ? resolveArchiveImportStageHint(importProgress)
+              : undefined
         }
+        detail={importProgress ? resolveArchiveImportStageDetail(importProgress) : undefined}
+        progress={importProgress?.percent}
+        succeeded={importProgress?.stage === 'succeeded'}
       />
       <StackScreenLayout
         title={t('lan_transfer.title')}

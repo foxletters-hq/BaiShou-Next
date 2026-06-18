@@ -1,7 +1,10 @@
-import type { ImportResult } from '@baishou/core-mobile'
+import type { ImportResult, IFileSystem } from '@baishou/core-mobile'
 import { isValidNextArchiveManifestContent } from '@baishou/core/shared'
 
 export const ARCHIVE_SKIP_TOP_LEVEL = new Set(['database', 'config', 'manifest.json', 'user-data'])
+
+/** 全量导入 wipe 工作区时需保留的目录（本地快照、临时文件） */
+export const SNAPSHOT_STORAGE_DIR_NAMES = new Set(['snapshots', 'temp', '.snapshots'])
 
 function normalizeArchivePreservePath(uriOrPath: string): string {
   let p = uriOrPath.replace(/^file:\/\//, '').replace(/\/+$/, '')
@@ -134,8 +137,54 @@ export function formatArchiveExportErrorMessage(error: unknown): string {
 /** 超过此大小的 ZIP 导入时跳过导入前保护快照，避免先全量导出再导入导致长时间无响应 */
 export const LARGE_ARCHIVE_IMPORT_BYTES = 150 * 1024 * 1024
 
+async function countTreeFiles(
+  fileSystem: IFileSystem,
+  dir: string,
+  skipEntryNames?: Set<string>
+): Promise<number> {
+  if (!(await fileSystem.exists(dir))) return 0
+  let isDirectory = false
+  try {
+    const stat = await fileSystem.stat(dir)
+    isDirectory = stat.isDirectory
+  } catch {
+    return 0
+  }
+  if (!isDirectory) return 1
+
+  let count = 0
+  const entries = await fileSystem.readdir(dir)
+  for (const name of entries) {
+    if (skipEntryNames?.has(name)) continue
+    count += await countTreeFiles(fileSystem, `${dir.replace(/\/$/, '')}/${name}`, skipEntryNames)
+  }
+  return count
+}
+
+/** 估算 Flutter 旧版 ZIP 迁移时要复制的文件数（用于进度百分比） */
+export async function estimateLegacyFlutterZipCopyFiles(
+  fileSystem: IFileSystem,
+  payloadDir: string,
+  vaultNames: string[]
+): Promise<number> {
+  let total = 0
+  const skip = new Set(['Journals'])
+  for (const vaultName of vaultNames) {
+    total += await countTreeFiles(fileSystem, `${payloadDir.replace(/\/$/, '')}/${vaultName}`, skip)
+  }
+  return Math.max(total, 1)
+}
+
+export function formatArchiveImportEntryDetail(entryPath: string): string {
+  const normalized = entryPath.replace(/\\/g, '/')
+  const parts = normalized.split('/').filter(Boolean)
+  if (parts.length === 0) return entryPath
+  return parts.slice(Math.max(0, parts.length - 3)).join('/')
+}
+
 export type ArchiveImportStage =
   | 'preparing'
+  | 'reading_file'
   | 'snapshot'
   | 'unpacking'
   | 'validating'
@@ -144,31 +193,105 @@ export type ArchiveImportStage =
   | 'loading_database'
   | 'rebuilding_index'
   | 'finishing'
+  | 'succeeded'
+  | 'failed'
 
-export type ArchiveImportProgressCallback = (stage: ArchiveImportStage) => void
+export interface ArchiveImportProgress {
+  stage: ArchiveImportStage
+  detail?: string
+  /** 0–100，大文件导入时用于展示整体进度 */
+  percent?: number
+}
+
+export type ArchiveImportProgressCallback = (progress: ArchiveImportProgress) => void
 
 const ARCHIVE_IMPORT_STAGE_MESSAGES: Record<ArchiveImportStage, string> = {
   preparing: '正在准备导入…',
+  reading_file: '正在读取备份文件…',
   snapshot: '正在创建保护快照…',
   unpacking: '正在解压备份包…',
   validating: '正在校验备份内容…',
-  migrating_legacy: '正在迁移原版数据（大文件可能需要数分钟）…',
+  migrating_legacy: '正在迁移原版数据…',
   restoring_files: '正在恢复工作区文件…',
   loading_database: '正在加载数据库…',
   rebuilding_index: '正在重建索引…',
-  finishing: '即将完成…'
+  finishing: '即将完成…',
+  succeeded: '导入成功',
+  failed: '导入失败'
 }
 
 const ARCHIVE_IMPORT_STAGE_HINTS: Partial<Record<ArchiveImportStage, string>> = {
+  reading_file: '大型备份会先复制到应用缓存，请稍候',
   unpacking: '大型备份解压较慢，请保持应用在前台并确保存储空间充足',
-  migrating_legacy: '正在合并 SQLite 与附件，请勿关闭应用',
-  rebuilding_index: '日记索引将在后台继续构建，列表可能稍后才会完整'
+  migrating_legacy: '正在合并数据库与工作区文件，请勿关闭应用',
+  restoring_files: '正在复制工作区与附件，请勿关闭应用',
+  rebuilding_index: '日记索引将在后台继续构建，列表可能稍后才会完整',
+  succeeded: '数据已写入，可继续使用应用',
+  failed: '请检查备份文件是否完整，或尝试重新导入'
 }
 
-export function resolveArchiveImportStageMessage(stage: ArchiveImportStage): string {
-  return ARCHIVE_IMPORT_STAGE_MESSAGES[stage]
+const ARCHIVE_IMPORT_STAGE_BASE_PERCENT: Record<ArchiveImportStage, number> = {
+  preparing: 0,
+  reading_file: 1,
+  snapshot: 2,
+  unpacking: 5,
+  validating: 36,
+  migrating_legacy: 38,
+  restoring_files: 38,
+  loading_database: 88,
+  rebuilding_index: 92,
+  finishing: 98,
+  succeeded: 100,
+  failed: 100
 }
 
-export function resolveArchiveImportStageHint(stage: ArchiveImportStage): string | undefined {
-  return ARCHIVE_IMPORT_STAGE_HINTS[stage]
+const ARCHIVE_IMPORT_STAGE_SPAN_PERCENT: Partial<Record<ArchiveImportStage, number>> = {
+  unpacking: 30,
+  migrating_legacy: 48,
+  restoring_files: 48
+}
+
+export function buildArchiveImportProgress(
+  stage: ArchiveImportStage,
+  options?: { detail?: string; subCurrent?: number; subTotal?: number; percent?: number }
+): ArchiveImportProgress {
+  if (options?.percent != null) {
+    return {
+      stage,
+      detail: options.detail,
+      percent: Math.min(100, Math.max(0, Math.round(options.percent)))
+    }
+  }
+
+  const base = ARCHIVE_IMPORT_STAGE_BASE_PERCENT[stage]
+  const span = ARCHIVE_IMPORT_STAGE_SPAN_PERCENT[stage] ?? 0
+  let percent = base
+  if (options?.subCurrent != null && options?.subTotal != null && options.subTotal > 0) {
+    percent = base + Math.round((options.subCurrent / options.subTotal) * span)
+  }
+  return {
+    stage,
+    detail: options?.detail,
+    percent: Math.min(100, Math.max(0, percent))
+  }
+}
+
+export function reportArchiveImportStage(
+  onProgress: ArchiveImportProgressCallback | undefined,
+  stage: ArchiveImportStage,
+  options?: { detail?: string; subCurrent?: number; subTotal?: number; percent?: number }
+): void {
+  onProgress?.(buildArchiveImportProgress(stage, options))
+}
+
+export function resolveArchiveImportStageMessage(progress: ArchiveImportProgress): string {
+  return ARCHIVE_IMPORT_STAGE_MESSAGES[progress.stage]
+}
+
+export function resolveArchiveImportStageHint(progress: ArchiveImportProgress): string | undefined {
+  return ARCHIVE_IMPORT_STAGE_HINTS[progress.stage]
+}
+
+export function resolveArchiveImportStageDetail(progress: ArchiveImportProgress): string | undefined {
+  return progress.detail
 }

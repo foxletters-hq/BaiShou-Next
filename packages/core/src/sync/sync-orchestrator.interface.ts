@@ -2,7 +2,8 @@ import type {
   IncrementalSyncResult,
   SyncSessionLog,
   S3SyncConfig,
-  SyncProgressCallback
+  SyncProgressCallback,
+  IncrementalSyncRunOptions
 } from '@baishou/shared'
 
 /**
@@ -38,7 +39,10 @@ export interface ISyncOrchestrator {
    * ```
    * @param onProgress - 可选的进度回调，逐文件处理时触发
    */
-  sync(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult>
+  sync(
+    onProgress?: SyncProgressCallback,
+    runOptions?: IncrementalSyncRunOptions
+  ): Promise<IncrementalSyncResult>
 
   /**
    * 仅上传变更（不同步下载）
@@ -50,7 +54,10 @@ export interface ISyncOrchestrator {
    * 仅下载变更（不同步上传）
    * @param onProgress - 可选的进度回调
    */
-  downloadOnly(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult>
+  downloadOnly(
+    onProgress?: SyncProgressCallback,
+    runOptions?: IncrementalSyncRunOptions
+  ): Promise<IncrementalSyncResult>
 
   /**
    * 获取同步历史记录

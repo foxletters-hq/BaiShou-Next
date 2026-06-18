@@ -15,8 +15,6 @@ export interface NativeStorageSettingsCardProps {
   migrateDirectoryLabel?: string
   onMigrateFromFlutterLegacy?: () => void | Promise<void>
   migrateFromFlutterLegacyLabel?: string
-  onDeleteMigratedLegacySource?: () => void | Promise<void>
-  deleteMigratedLegacySourceLabel?: string
   allFilesAccessGranted?: boolean
   onRequestAllFilesAccess?: () => void | Promise<void>
   embedded?: boolean
@@ -31,8 +29,6 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
   migrateDirectoryLabel,
   onMigrateFromFlutterLegacy,
   migrateFromFlutterLegacyLabel,
-  onDeleteMigratedLegacySource,
-  deleteMigratedLegacySourceLabel,
   allFilesAccessGranted,
   onRequestAllFilesAccess,
   embedded = false,
@@ -61,10 +57,7 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
         </Text>
       </View>
 
-      {onChangeDirectory ||
-      onMigrateDirectory ||
-      onMigrateFromFlutterLegacy ||
-      onDeleteMigratedLegacySource ? (
+      {onChangeDirectory || onMigrateDirectory || onMigrateFromFlutterLegacy ? (
         <View style={styles.actions}>
           {onMigrateFromFlutterLegacy ? (
             <Button
@@ -74,17 +67,6 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
             >
               {migrateFromFlutterLegacyLabel ??
                 t('storage.flutter_legacy_migration_settings_action', '从旧版白守迁移数据')}
-            </Button>
-          ) : null}
-          {onDeleteMigratedLegacySource ? (
-            <Button
-              variant="outline"
-              className="w-full"
-              style={{ backgroundColor: colors.bgSurface }}
-              onPress={() => void onDeleteMigratedLegacySource()}
-            >
-              {deleteMigratedLegacySourceLabel ??
-                t('storage.flutter_legacy_delete_settings_action', '删除已迁移的旧版目录')}
             </Button>
           ) : null}
           {onMigrateDirectory ? (

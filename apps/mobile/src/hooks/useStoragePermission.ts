@@ -11,6 +11,7 @@ import { useBaishou } from '../providers/BaishouProvider'
 export type StorageMountStatus = 'idle' | 'mounting' | 'slow' | 'failed'
 
 const STORAGE_MOUNT_SLOW_MS = 5000
+const PERMISSION_SETTINGS_RETRY_MS = 450
 
 export function useStoragePermission() {
   const { t } = useTranslation()
@@ -23,6 +24,7 @@ export function useStoragePermission() {
   const [mountStatus, setMountStatus] = useState<StorageMountStatus>('idle')
   const mountInFlightRef = useRef(false)
   const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const awaitingSettingsReturnRef = useRef(false)
 
   const refresh = useCallback(async (): Promise<boolean> => {
     if (Platform.OS !== 'android') {
@@ -106,11 +108,16 @@ export function useStoragePermission() {
     if (Platform.OS !== 'android') return
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
-        void refresh().then(async (permitted) => {
+        void (async () => {
+          if (awaitingSettingsReturnRef.current) {
+            awaitingSettingsReturnRef.current = false
+            await new Promise((resolve) => setTimeout(resolve, PERMISSION_SETTINGS_RETRY_MS))
+          }
+          const permitted = await refresh()
           if (permitted && dbReady && !storageReady) {
             await attemptMount()
           }
-        })
+        })()
       }
     })
     return () => sub.remove()
@@ -120,6 +127,7 @@ export function useStoragePermission() {
     if (Platform.OS !== 'android') return true
 
     if (!(await hasStoragePermission())) {
+      awaitingSettingsReturnRef.current = true
       await requestStoragePermission()
     }
 

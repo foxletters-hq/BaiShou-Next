@@ -56,6 +56,30 @@ export function normalizeSqliteAttachPath(dbPath: string): string {
   return normalized.replace(/'/g, "''")
 }
 
+/**
+ * 将旧版 SQLite 复制到可 ATTACH 的目录（移动端 Expo SQLite 无法直接打开外部存储上的 db）。
+ */
+export async function stageLegacySqliteForAttach(
+  fileSystem: IFileSystem,
+  sourceDbPath: string,
+  stagingDir: string
+): Promise<string> {
+  const rawSource = stripStoragePathScheme(sourceDbPath).replace(/\\/g, '/')
+  await fileSystem.mkdir(stagingDir, { recursive: true })
+
+  const baseName = rawSource.split('/').pop() ?? 'agent.sqlite'
+  const safeName = baseName.replace(/[^\w.-]/g, '_')
+  let hash = 0
+  for (let i = 0; i < rawSource.length; i++) {
+    hash = (hash * 31 + rawSource.charCodeAt(i)) | 0
+  }
+  const stagedUri = path.join(stagingDir, `legacy_${Math.abs(hash)}_${safeName}`)
+
+  const sourceUri = sourceDbPath.startsWith('file://') ? sourceDbPath : `file://${rawSource}`
+  await fileSystem.copyFile(sourceUri, stagedUri)
+  return normalizeSqliteAttachPath(stagedUri)
+}
+
 export function dedupeSqlitePaths(paths: string[]): string[] {
   const seen = new Set<string>()
   const unique: string[] = []
@@ -379,12 +403,44 @@ export class StorageMigrationCopyError extends Error {
   }
 }
 
+export async function countMigrationTreeFiles(
+  fileSystem: IFileSystem,
+  src: string,
+  options?: { skipEntryNames?: Iterable<string> }
+): Promise<number> {
+  const skipEntries = options?.skipEntryNames ? new Set(options.skipEntryNames) : null
+  if (!(await fileSystem.exists(src))) return 0
+
+  let isDirectory = false
+  try {
+    const stat = await fileSystem.stat(src)
+    isDirectory = stat.isDirectory
+  } catch {
+    return 0
+  }
+  if (!isDirectory) return 1
+
+  let count = 0
+  const entries = await fileSystem.readdir(src)
+  for (const entry of entries) {
+    if (skipEntries?.has(entry)) continue
+    const srcPath = path.join(src, entry)
+    count += await countMigrationTreeFiles(fileSystem, srcPath, options)
+  }
+  return count
+}
+
 export async function mergeDirectories(
   fileSystem: IFileSystem,
   src: string,
-  dest: string
+  dest: string,
+  options?: {
+    skipEntryNames?: Iterable<string>
+    onEntry?: (entryPath: string) => void
+  }
 ): Promise<string[]> {
   const failed: string[] = []
+  const skipEntries = options?.skipEntryNames ? new Set(options.skipEntryNames) : null
   if (!(await fileSystem.exists(src))) return failed
 
   let isDirectory = false
@@ -399,6 +455,7 @@ export async function mergeDirectories(
   await fileSystem.mkdir(dest, { recursive: true })
   const entries = await fileSystem.readdir(src)
   for (const entry of entries) {
+    if (skipEntries?.has(entry)) continue
     const srcPath = path.join(src, entry)
     const destPath = path.join(dest, entry)
     let entryIsDirectory = false
@@ -409,8 +466,9 @@ export async function mergeDirectories(
       continue
     }
     if (entryIsDirectory) {
-      failed.push(...(await mergeDirectories(fileSystem, srcPath, destPath)))
+      failed.push(...(await mergeDirectories(fileSystem, srcPath, destPath, options)))
     } else {
+      options?.onEntry?.(srcPath)
       try {
         await fileSystem.copyFile(srcPath, destPath)
       } catch {

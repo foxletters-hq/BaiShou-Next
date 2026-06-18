@@ -21,7 +21,7 @@ import type {
   IncrementalSyncResult
 } from '../services/mobile-incremental-sync.service'
 import { useBaishou } from './BaishouProvider'
-import { logger, isIncrementalSyncReady } from '@baishou/shared'
+import { logger, isIncrementalSyncReady, runIncrementalSyncWithDivergenceConfirmation } from '@baishou/shared'
 import { friendlyMobileSyncError } from '../utils/friendly-sync-error'
 
 export type IncrementalSyncMode = 'sync' | 'uploadOnly' | 'downloadOnly'
@@ -171,12 +171,36 @@ export function IncrementalSyncProvider({ children }: { children: ReactNode }) {
           overlayRef.current?.publish(p)
         }
 
-        const result =
-          mode === 'uploadOnly'
-            ? await svc.uploadOnly(onProgress)
-            : mode === 'downloadOnly'
-              ? await svc.downloadOnly(onProgress)
-              : await svc.sync(onProgress)
+        const confirmHighDivergence = (divergence: number, limit: number) =>
+          dialog.confirm(
+            t('data_sync.error_divergence_first_sync_confirm_message', {
+              divergence,
+              limit
+            }),
+            {
+              title: t('data_sync.error_divergence_first_sync_confirm_title'),
+              confirmText: t('common.confirm', '确认'),
+              cancelText: t('common.cancel', '取消'),
+              destructive: true
+            }
+          )
+
+        const result = await (async () => {
+          if (mode === 'uploadOnly') {
+            return svc.uploadOnly(onProgress)
+          }
+          const run = (runOptions?: { highDivergenceConfirmed?: boolean }) =>
+            mode === 'downloadOnly'
+              ? svc.downloadOnly(onProgress, runOptions)
+              : svc.sync(onProgress, runOptions)
+          const outcome = await runIncrementalSyncWithDivergenceConfirmation(
+            run,
+            confirmHighDivergence
+          )
+          return outcome
+        })()
+
+        if (!result) return undefined
 
         toast.showSuccess(t('data_sync.sync_completed'))
         if (result.conflicts > 0) {

@@ -1,5 +1,6 @@
 import { generateText } from 'ai'
 import type { SummaryAiClient } from '@baishou/core-mobile'
+import { SUMMARY_AI_GENERATION_TIMEOUT_MS } from '@baishou/core-mobile'
 import { AIProviderRegistry } from '@baishou/ai'
 import { logger, prepareProviderConfigForRuntime } from '@baishou/shared'
 import type { SettingsManagerService } from '@baishou/core-mobile'
@@ -33,7 +34,7 @@ export function buildMobileSummaryAiClient(
       const model = provider.getLanguageModel(finalModelId)
 
       const abortController = new AbortController()
-      const timeoutId = setTimeout(() => abortController.abort(), 45_000)
+      const timeoutId = setTimeout(() => abortController.abort(), SUMMARY_AI_GENERATION_TIMEOUT_MS)
 
       try {
         const { text } = await generateText({

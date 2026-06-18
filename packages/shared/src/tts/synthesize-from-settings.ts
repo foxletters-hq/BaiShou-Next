@@ -7,9 +7,14 @@ import {
 } from './tts.errors'
 import { resolveTtsProviderBaseUrl, resolveTtsProviderCredentials } from './tts-defaults'
 import type { TtsProviderRegistry } from './tts.registry'
+import {
+  buildTtsSynthesisCacheKey,
+  getGlobalTtsSynthesisCache,
+  type TtsSynthesisCache
+} from './tts-synthesis-cache'
 
 export type TtsSynthesizeFromSettingsResult =
-  | { success: true; audioBase64: string; format: string }
+  | { success: true; audioBase64: string; format: string; fromCache?: boolean }
   | {
       success: false
       errorCode: string
@@ -38,13 +43,19 @@ export interface TtsFormSynthesizeConfig {
   textLang?: string
 }
 
+export interface TtsSynthesizeOptions {
+  useCache?: boolean
+  cache?: TtsSynthesisCache
+}
+
 /**
  * 与桌面 agent:tts-synthesize IPC 完全一致的合成路径：
  * 仅从 global_models（含 globalTtsProviderConfigs）读取 TTS 配置，可选覆盖 providerId / modelId。
  */
 export async function synthesizeTtsFromSettings(
   registry: TtsProviderRegistry,
-  input: TtsSynthesizeFromSettingsInput
+  input: TtsSynthesizeFromSettingsInput,
+  options?: TtsSynthesizeOptions
 ): Promise<TtsSynthesizeFromSettingsResult> {
   try {
     const { globalModels, text, providerId, modelId } = input
@@ -61,6 +72,40 @@ export async function synthesizeTtsFromSettings(
       globalModels?.globalTtsProviderConfigs
     )
 
+    const baseUrl = resolveTtsProviderBaseUrl(ttsProviderId, credentials.baseUrl)
+    const ttsSettings = globalModels?.globalTtsSettings
+    const voice = ttsSettings?.voice || ''
+    const speed = ttsSettings?.speed ?? 1.0
+    const responseFormat = ttsSettings?.responseFormat || ''
+
+    const useCache = options?.useCache !== false
+    const cache = options?.cache ?? getGlobalTtsSynthesisCache()
+    const cacheKey = buildTtsSynthesisCacheKey({
+      providerId: ttsProviderId,
+      modelId: ttsModelId,
+      voice,
+      speed,
+      responseFormat,
+      baseUrl,
+      refAudioPath: ttsSettings?.refAudioPath,
+      promptText: ttsSettings?.promptText,
+      promptLang: ttsSettings?.promptLang,
+      textLang: ttsSettings?.textLang,
+      text
+    })
+
+    if (useCache) {
+      const cached = cache.get(cacheKey)
+      if (cached) {
+        return {
+          success: true,
+          audioBase64: cached.audioBase64,
+          format: cached.format,
+          fromCache: true
+        }
+      }
+    }
+
     let ttsProvider = registry.get(ttsProviderId)
     if (!ttsProvider) {
       ttsProvider = registry.findByModel(ttsModelId)
@@ -69,16 +114,14 @@ export async function synthesizeTtsFromSettings(
       return { success: false, errorCode: 'tts_provider_not_supported' }
     }
 
-    const ttsSettings = globalModels?.globalTtsSettings
-
     const result = await ttsProvider.synthesize(
       {
         text,
         modelId: ttsModelId,
         settings: {
-          voice: ttsSettings?.voice || '',
-          speed: ttsSettings?.speed,
-          responseFormat: ttsSettings?.responseFormat || '',
+          voice,
+          speed,
+          responseFormat,
           refAudioPath: ttsSettings?.refAudioPath,
           promptText: ttsSettings?.promptText,
           promptLang: ttsSettings?.promptLang,
@@ -86,12 +129,16 @@ export async function synthesizeTtsFromSettings(
         }
       },
       {
-        baseUrl: resolveTtsProviderBaseUrl(ttsProviderId, credentials.baseUrl),
+        baseUrl,
         apiKey: credentials.apiKey ?? ''
       }
     )
 
-    return { success: true, audioBase64: result.audioBase64, format: result.format }
+    if (useCache) {
+      cache.set(cacheKey, result)
+    }
+
+    return { success: true, audioBase64: result.audioBase64, format: result.format, fromCache: false }
   } catch (error: unknown) {
     if (error instanceof TtsNotConfiguredError) {
       return { success: false, errorCode: 'tts_not_configured' }
@@ -120,11 +167,45 @@ export async function synthesizeTtsFromSettings(
 export async function synthesizeTtsFromFormConfig(
   registry: TtsProviderRegistry,
   config: TtsFormSynthesizeConfig,
-  text: string
+  text: string,
+  options?: TtsSynthesizeOptions
 ): Promise<TtsSynthesizeFromSettingsResult> {
   try {
     if (!config.id || !config.modelId) {
       return { success: false, errorCode: 'tts_not_configured' }
+    }
+
+    const baseUrl = resolveTtsProviderBaseUrl(config.id, config.baseUrl)
+    const voice = config.voice || ''
+    const speed = config.speed ?? 1.0
+    const responseFormat = config.responseFormat || ''
+
+    const useCache = options?.useCache !== false
+    const cache = options?.cache ?? getGlobalTtsSynthesisCache()
+    const cacheKey = buildTtsSynthesisCacheKey({
+      providerId: config.id,
+      modelId: config.modelId,
+      voice,
+      speed,
+      responseFormat,
+      baseUrl,
+      refAudioPath: config.refAudioPath,
+      promptText: config.promptText,
+      promptLang: config.promptLang,
+      textLang: config.textLang,
+      text
+    })
+
+    if (useCache) {
+      const cached = cache.get(cacheKey)
+      if (cached) {
+        return {
+          success: true,
+          audioBase64: cached.audioBase64,
+          format: cached.format,
+          fromCache: true
+        }
+      }
     }
 
     let ttsProvider = registry.get(config.id)
@@ -140,9 +221,9 @@ export async function synthesizeTtsFromFormConfig(
         text,
         modelId: config.modelId,
         settings: {
-          voice: config.voice || '',
-          speed: config.speed,
-          responseFormat: config.responseFormat || '',
+          voice,
+          speed,
+          responseFormat,
           refAudioPath: config.refAudioPath,
           promptText: config.promptText,
           promptLang: config.promptLang,
@@ -150,12 +231,16 @@ export async function synthesizeTtsFromFormConfig(
         }
       },
       {
-        baseUrl: resolveTtsProviderBaseUrl(config.id, config.baseUrl),
+        baseUrl,
         apiKey: config.apiKey?.trim() ?? ''
       }
     )
 
-    return { success: true, audioBase64: result.audioBase64, format: result.format }
+    if (useCache) {
+      cache.set(cacheKey, result)
+    }
+
+    return { success: true, audioBase64: result.audioBase64, format: result.format, fromCache: false }
   } catch (error: unknown) {
     if (error instanceof TtsApiError) {
       return {

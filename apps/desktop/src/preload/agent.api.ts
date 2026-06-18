@@ -1,5 +1,16 @@
 import { ipcRenderer } from 'electron'
 
+export type TtsSpeechSegmentPayload = {
+  text: string
+  audioBase64: string
+  format: string
+  fromCache: boolean
+}
+
+export type TtsSynthesizeSpeechResult =
+  | { success: true; segmentCount: number }
+  | { success: false; errorCode: string; error?: string; statusCode?: number }
+
 export const agentApi = {
   agentChat: (params: { sessionId: string; text: string }) =>
     ipcRenderer.invoke('agent:chat', params),
@@ -25,7 +36,61 @@ export const agentApi = {
   // TTS
   tts: {
     synthesize: (text: string, providerId?: string, modelId?: string) =>
-      ipcRenderer.invoke('agent:tts-synthesize', text, providerId, modelId)
+      ipcRenderer.invoke('agent:tts-synthesize', text, providerId, modelId),
+    synthesizeSpeech: (
+      content: string,
+      options?: {
+        sessionId?: string
+        providerId?: string
+        modelId?: string
+        onSegment?: (
+          segment: TtsSpeechSegmentPayload,
+          index: number
+        ) => void | Promise<void>
+      }
+    ): Promise<TtsSynthesizeSpeechResult> => {
+      const sessionId =
+        options?.sessionId ??
+        (globalThis.crypto?.randomUUID?.() ?? `tts-${Date.now()}-${Math.random()}`)
+
+      return new Promise<TtsSynthesizeSpeechResult>((resolve, reject) => {
+        const onSegmentEvent = async (
+          _event: unknown,
+          payload: {
+            sessionId: string
+            index: number
+            segment: TtsSpeechSegmentPayload
+          }
+        ) => {
+          if (payload.sessionId !== sessionId) return
+
+          try {
+            await options?.onSegment?.(payload.segment, payload.index)
+            ipcRenderer.send('agent:tts-speech-segment-ack', sessionId, payload.index)
+          } catch (error) {
+            void ipcRenderer.invoke('agent:tts-cancel-speech', sessionId)
+            reject(error)
+          }
+        }
+
+        ipcRenderer.on('agent:tts-speech-segment', onSegmentEvent)
+
+        ipcRenderer
+          .invoke(
+            'agent:tts-synthesize-speech',
+            sessionId,
+            content,
+            options?.providerId,
+            options?.modelId
+          )
+          .then((result) => resolve(result as TtsSynthesizeSpeechResult))
+          .catch(reject)
+          .finally(() => {
+            ipcRenderer.removeListener('agent:tts-speech-segment', onSegmentEvent)
+          })
+      })
+    },
+    cancelSpeech: (sessionId: string) => ipcRenderer.invoke('agent:tts-cancel-speech', sessionId)
   },
 
   // Sessions

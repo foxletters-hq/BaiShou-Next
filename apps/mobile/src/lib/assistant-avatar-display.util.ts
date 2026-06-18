@@ -61,6 +61,28 @@ export function invalidateAssistantAvatarDisplayCache(avatarPath?: string): void
   avatarDisplayCache.clear()
 }
 
+/** 同步读取已解析的伙伴头像 URI；内置头像会立即预热缓存 */
+export function peekAssistantAvatarDisplayCache(
+  avatarPath?: string | null,
+  options?: ResolveAssistantAvatarOptions
+): string | undefined {
+  if (!avatarPath) return undefined
+
+  if (isDefaultAssistantAvatarPath(avatarPath) || isBuiltinAssistantAvatarPath(avatarPath)) {
+    const cacheKey = avatarCacheKey(avatarPath, 'builtin')
+    const cached = avatarDisplayCache.get(cacheKey)
+    if (cached) return cached
+    const id = parseBuiltinAssistantAvatarId(avatarPath) ?? DEFAULT_BUILTIN_ASSISTANT_AVATAR_ID
+    const source = NATIVE_BUILTIN_ASSISTANT_AVATAR_SOURCES[id]
+    const displayUri = Image.resolveAssetSource(source).uri
+    avatarDisplayCache.set(cacheKey, displayUri)
+    return displayUri
+  }
+
+  const cacheMode = resolveCacheMode(options)
+  return avatarDisplayCache.get(avatarCacheKey(avatarPath, cacheMode))
+}
+
 export function invalidateAllAvatarDisplayCaches(): void {
   avatarDisplayCache.clear()
   invalidateUserAvatarDisplayCache()

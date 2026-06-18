@@ -1,5 +1,6 @@
 import type { S3SyncConfig, SyncManifest } from '../types/version-control.types'
 import { SYNC_DIVERGENCE_THRESHOLD_OPTIONS } from '../constants/incremental-sync.constants'
+import type { IncrementalSyncStorageHistory } from '../utils/incremental-sync-storage.util'
 
 export type SyncDivergenceThresholdOption =
   | (typeof SYNC_DIVERGENCE_THRESHOLD_OPTIONS)[number]
@@ -16,6 +17,28 @@ export class SyncDivergenceExceededError extends Error {
     )
     this.name = 'SyncDivergenceExceededError'
   }
+}
+
+/** 本机首次连接该云存储且差异过大，需用户确认后继续 */
+export class SyncDivergenceConfirmationRequiredError extends Error {
+  constructor(
+    public readonly divergencePercent: number,
+    public readonly maxDivergencePercent: number
+  ) {
+    super(
+      `SyncDivergenceConfirmationRequiredError: local/remote divergence ${divergencePercent}% exceeds limit ${maxDivergencePercent}% on first sync`
+    )
+    this.name = 'SyncDivergenceConfirmationRequiredError'
+  }
+}
+
+export function isSyncDivergenceConfirmationRequiredError(
+  error: unknown
+): error is SyncDivergenceConfirmationRequiredError {
+  return (
+    error instanceof SyncDivergenceConfirmationRequiredError ||
+    (error instanceof Error && error.name === 'SyncDivergenceConfirmationRequiredError')
+  )
 }
 
 /** 未配置或历史 `null`（旧「不限制」）均视为 100%，即关闭差异保护 */
@@ -56,16 +79,45 @@ export function isSyncDivergenceAllowed(
   return divergencePercent <= maxDivergencePercent
 }
 
+/** 任一侧尚无同步文件时跳过差异保护（典型：首次下载或首次上传） */
+export function shouldSkipSyncDivergenceCheck(
+  local: SyncManifest,
+  remote: SyncManifest
+): boolean {
+  const localCount = Object.keys(local.files).length
+  const remoteCount = Object.keys(remote.files).length
+  return localCount === 0 || remoteCount === 0
+}
+
+export type AssertBidirectionalSyncDivergenceOptions = {
+  storageHistory: IncrementalSyncStorageHistory
+  highDivergenceConfirmed?: boolean
+}
+
 /** 双向同步前校验；仅上传（uploadOnly）不调用 */
 export function assertBidirectionalSyncDivergenceAllowed(
   local: SyncManifest,
   remote: SyncManifest,
-  config: Pick<S3SyncConfig, 'maxDivergencePercent'>
+  config: Pick<S3SyncConfig, 'maxDivergencePercent'>,
+  options: AssertBidirectionalSyncDivergenceOptions
 ): number {
   const divergencePercent = computeManifestDivergencePercent(local, remote)
-  const maxDivergencePercent = getEffectiveMaxDivergencePercent(config)
-  if (!isSyncDivergenceAllowed(divergencePercent, maxDivergencePercent)) {
-    throw new SyncDivergenceExceededError(divergencePercent, maxDivergencePercent)
+
+  if (shouldSkipSyncDivergenceCheck(local, remote)) {
+    return divergencePercent
   }
-  return divergencePercent
+
+  const maxDivergencePercent = getEffectiveMaxDivergencePercent(config)
+  if (isSyncDivergenceAllowed(divergencePercent, maxDivergencePercent)) {
+    return divergencePercent
+  }
+
+  if (options.storageHistory === 'none') {
+    if (!options.highDivergenceConfirmed) {
+      throw new SyncDivergenceConfirmationRequiredError(divergencePercent, maxDivergencePercent)
+    }
+    return divergencePercent
+  }
+
+  throw new SyncDivergenceExceededError(divergencePercent, maxDivergencePercent)
 }

@@ -29,6 +29,7 @@ export interface DiaryListEntryData {
 export interface UseDiaryDataOptions {
   ready?: boolean
   vaultRevision?: number
+  ecosystemResyncEpoch?: number
 }
 
 const SEARCH_DEBOUNCE_MS = 500
@@ -89,7 +90,7 @@ export function useDiaryData(
   query: DiaryPageQuery,
   options: UseDiaryDataOptions = {}
 ) {
-  const { ready = true, vaultRevision = 0 } = options
+  const { ready = true, vaultRevision = 0, ecosystemResyncEpoch = 0 } = options
   const [entries, setEntries] = useState<DiaryListEntryData[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -213,6 +214,7 @@ export function useDiaryData(
     query.page,
     query.pageSize,
     vaultRevision,
+    ecosystemResyncEpoch,
     searchFilterKey,
     debouncedSearchTerm ? 0 : browseMonthKey,
     debouncedSearchTerm ? 0 : listFilter,

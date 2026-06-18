@@ -331,7 +331,7 @@ export const AssistantEditScreen: React.FC = () => {
   }
 
   const handleDelete = async () => {
-    if (isNew || existingAssistant?.isDefault) return
+    if (isNew) return
 
     Keyboard.dismiss()
     const confirmed = await dialog.confirm(t('agent.assistant.delete_confirm_content'), {
@@ -354,7 +354,7 @@ export const AssistantEditScreen: React.FC = () => {
     ? t('agent.assistant.create_title', '创建伙伴')
     : t('agent.assistant.edit_title', '编辑伙伴')
 
-  const canDelete = !isNew && !existingAssistant?.isDefault
+  const canDelete = !isNew
 
   if (loading) {
     return (

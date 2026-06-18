@@ -962,6 +962,8 @@
     "max_divergence_hint": "ローカルとリモートの manifest の差分がこの割合を超えると、双方向同期とダウンロードのみをブロックします。アップロードのみは対象外です。100 で保護を無効にします。",
     "error_divergence_exceeded": "ローカルとリモートの差分は {{divergence}}% で、上限 {{limit}}% を超えたため同期を中止しました。上限を引き上げるか、アップロードのみを使うか、正しいストレージ先を確認してください。",
     "error_divergence_exceeded_generic": "ローカルとリモートの差分が上限を超えたため、同期を中止しました。",
+    "error_divergence_first_sync_confirm_title": "初回同期の確認",
+    "error_divergence_first_sync_confirm_message": "このデバイスではこのクラウド先への初回接続です。差分は {{divergence}}% で、上限 {{limit}}% を超えています。別デバイスのバックアップからの復元など、正しいストレージ先である場合のみ続行してください。",
     "error_delete_propagation_mass_delete": "この同期ではリモートの大量削除が発生するため中止しました。先に「ダウンロードのみ」でデータを取得するか、ローカルデータが完全か確認してください。",
     "error_delete_propagation_local_data_loss": "ローカルファイルが前回の同期記録より大幅に少なく、データ損失の可能性があります。リモート保護のため双方向同期を中止しました。先に「ダウンロードのみ」で復元してください。",
     "chunk_concurrency_option": "{{count}} 个分块并发",

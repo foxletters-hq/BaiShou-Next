@@ -1,0 +1,85 @@
+import { describe, it, expect, vi } from 'vitest'
+import {
+  formatMigrationMegabytes,
+  normalizeImportedSectionIds,
+  normalizeLegacyPartType,
+  parseLegacyPersonasFromSp,
+  resolveLegacyVaultTargetName,
+  resolveUniqueNameWithTwoDigitSuffix
+} from '../legacy-version-migration.util'
+
+describe('legacy-version-migration.util', () => {
+  it('formatMigrationMegabytes formats bytes to MB', () => {
+    expect(formatMigrationMegabytes(0)).toBe('0 MB')
+    expect(formatMigrationMegabytes(512 * 1024)).toMatch(/MB$/)
+    expect(formatMigrationMegabytes(5 * 1024 * 1024)).toBe('5.00 MB')
+  })
+
+  it('resolveUniqueNameWithTwoDigitSuffix appends two digits on conflict', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5)
+    const existing = new Set(['旅行者'])
+    const resolved = resolveUniqueNameWithTwoDigitSuffix('旅行者', existing)
+    expect(resolved).toMatch(/^旅行者\d{2}$/)
+    expect(resolved).not.toBe('旅行者')
+    vi.restoreAllMocks()
+  })
+
+  it('parseLegacyPersonasFromSp reads user_personas JSON', () => {
+    const sp = {
+      user_personas: JSON.stringify({
+        工作: { 职业: '工程师' },
+        生活: { 城市: '上海' }
+      })
+    }
+    const personas = parseLegacyPersonasFromSp(sp)
+    expect(personas).toHaveLength(2)
+    expect(personas[0]?.facts).toEqual({ 职业: '工程师' })
+  })
+
+  it('normalizeLegacyPartType maps legacy camelCase types', () => {
+    expect(normalizeLegacyPartType('contextSnapshot')).toBe('context_snapshot')
+    expect(normalizeLegacyPartType('text')).toBe('text')
+  })
+
+  it('resolveLegacyVaultTargetName matches workspace suffix rules', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.42)
+    const existing = new Set(['Personal'])
+    expect(resolveLegacyVaultTargetName('Personal', existing, {})).toMatch(/^Personal\d{2}$/)
+    expect(resolveLegacyVaultTargetName('Personal', existing, { Personal: 'Personal42' })).toBe(
+      'Personal42'
+    )
+    expect(resolveLegacyVaultTargetName('工作', existing, {})).toBe('工作')
+    vi.restoreAllMocks()
+  })
+
+  it('normalizeImportedSectionIds maps legacy flat workspace section ids', () => {
+    const normalized = normalizeImportedSectionIds(
+      ['avatar', 'diaries', 'assistants', 'workspace:Personal'],
+      ['Personal', 'Work']
+    )
+    expect(normalized).toContain('avatar')
+    expect(normalized).toContain('workspace:Personal')
+    expect(normalized).toContain('workspace:Work')
+    expect(normalized).not.toContain('diaries' as never)
+  })
+})
+
+describe('vault-scoped assistant id map', () => {
+  it('scopes and filters assistant id map per legacy vault', async () => {
+    const { filterAssistantIdMapForVault, scopeAssistantIdMapForVault } = await import(
+      '../legacy-version-migration.util'
+    )
+    const global = {
+      'Personal::old-a': 'new-a',
+      '工作::old-b': 'new-b',
+      legacy: 'mapped'
+    }
+    expect(filterAssistantIdMapForVault(global, 'Personal')).toEqual({
+      'old-a': 'new-a',
+      legacy: 'mapped'
+    })
+    expect(scopeAssistantIdMapForVault({ 'old-c': 'new-c' }, 'Personal')).toEqual({
+      'Personal::old-c': 'new-c'
+    })
+  })
+})

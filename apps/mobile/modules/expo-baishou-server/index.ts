@@ -2,10 +2,21 @@ import { NativeModule, requireNativeModule } from 'expo-modules-core'
 
 type ServerEvents = {
   onFileReceived: (event: { path: string }) => void
-  onMcpHttpRequest: (event: { requestId: string; body: string; authorization?: string }) => void
+  onMcpHttpRequest: (event: {
+    requestId: string
+    method: string
+    headers: Record<string, string>
+    body: string
+  }) => void
   onLanUploadStarted: (event: { totalBytes: number }) => void
   onLanUploadProgress: (event: { writtenBytes: number; totalBytes: number }) => void
   onStorageRootCopyProgress: (event: { itemName: string }) => void
+  onArchiveImportProgress: (event: {
+    phase: string
+    current: number
+    total: number
+    detail: string
+  }) => void
 }
 
 export type ExternalPathInfo = {
@@ -169,8 +180,21 @@ export function stopServer(): void {
   requireNative().stopServer()
 }
 
-export function resolveMcpHttpResponse(requestId: string, responseBody: string): boolean {
-  return requireNative().resolveMcpHttpResponse(requestId, responseBody)
+export type McpHttpResponseEnvelope = {
+  statusCode: number
+  headers: Record<string, string>
+  body: string
+}
+
+export function resolveMcpHttpResponse(
+  requestId: string,
+  response: McpHttpResponseEnvelope | string
+): boolean {
+  const payload =
+    typeof response === 'string'
+      ? JSON.stringify({ statusCode: 200, headers: { 'content-type': 'application/json' }, body: response })
+      : JSON.stringify(response)
+  return requireNative().resolveMcpHttpResponse(requestId, payload)
 }
 
 export function onFileReceived(listener: (event: { path: string }) => void) {
@@ -208,7 +232,12 @@ export function onStorageRootCopyProgress(listener: (event: { itemName: string }
 }
 
 export function onMcpHttpRequest(
-  listener: (event: { requestId: string; body: string; authorization?: string }) => void
+  listener: (event: {
+    requestId: string
+    method: string
+    headers: Record<string, string>
+    body: string
+  }) => void
 ) {
   const mod = getNative()
   if (!mod) {
@@ -353,12 +382,37 @@ export function localAppendString(path: string, content: string): void {
   callNativeExternal('localAppendString', (mod) => mod.localAppendString(path, content))
 }
 
-export async function nativeUnzipArchive(zipPath: string, destDir: string): Promise<void> {
+export function onArchiveImportProgress(
+  listener: (event: { phase: string; current: number; total: number; detail: string }) => void
+) {
+  const mod = requireNative()
+  return mod.addListener('onArchiveImportProgress', listener)
+}
+
+export async function nativeUnzipArchive(
+  zipPath: string,
+  destDir: string,
+  onProgress?: (event: { current: number; total: number; detail: string }) => void
+): Promise<void> {
   const mod = requireNative()
   if (typeof mod.nativeUnzipArchive !== 'function') {
     throw new Error(`${NATIVE_REBUILD_HINT}（缺少 nativeUnzipArchive）`)
   }
-  await mod.nativeUnzipArchive(zipPath, destDir)
+  const subscription = onProgress
+    ? onArchiveImportProgress((event) => {
+        if (event.phase !== 'unzip') return
+        onProgress({
+          current: event.current,
+          total: event.total,
+          detail: event.detail
+        })
+      })
+    : null
+  try {
+    await mod.nativeUnzipArchive(zipPath, destDir)
+  } finally {
+    subscription?.remove()
+  }
 }
 
 export type NativeZipArchiveExportResult = {

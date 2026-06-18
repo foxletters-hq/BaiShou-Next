@@ -53,11 +53,12 @@ function resetPaginationRefs(refs: {
 export function useAgentSession(_options: UseAgentSessionOptions = {}) {
   const { t } = useTranslation()
   const toast = useNativeToast()
-  const { messages, setMessages, clearSession } = useAgentStore()
-  const { services, dbReady, vaultSwitching, vaultRevision } = useBaishou()
+  const { messages, setMessages, clearSession, currentSessionId, setCurrentSessionId } =
+    useAgentStore()
+  const { services, dbReady, vaultSwitching, vaultRevision, storageIndexing, ecosystemResyncEpoch } =
+    useBaishou()
   const storageRootRef = useRef<string | null>(null)
 
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(false)
 
   const messageCacheRef = useRef<SessionMessage[]>([])
@@ -72,6 +73,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
     fetchHasMoreRef
   }
   const lastVaultRevisionRef = useRef(vaultRevision)
+  const lastEcosystemResyncEpochRef = useRef(ecosystemResyncEpoch)
 
   const resetSessionState = useCallback(() => {
     setCurrentSessionId(null)
@@ -361,15 +363,25 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
     }
   }, [vaultSwitching, resetSessionState])
 
-  // 增量同步 / vault resync 后刷新当前对话消息
+  // vault resync / 索引完成后刷新当前对话消息
   useEffect(() => {
-    if (lastVaultRevisionRef.current === vaultRevision) return
+    const vaultChanged = lastVaultRevisionRef.current !== vaultRevision
+    const ecosystemResynced = lastEcosystemResyncEpochRef.current !== ecosystemResyncEpoch
     lastVaultRevisionRef.current = vaultRevision
+    lastEcosystemResyncEpochRef.current = ecosystemResyncEpoch
 
-    if (!currentSessionId || vaultSwitching) return
+    if (!vaultChanged && !ecosystemResynced) return
+    if (!currentSessionId || vaultSwitching || storageIndexing) return
 
     void refreshSessionMessages(currentSessionId, { preserveWindow: true })
-  }, [vaultRevision, currentSessionId, vaultSwitching, refreshSessionMessages])
+  }, [
+    vaultRevision,
+    ecosystemResyncEpoch,
+    storageIndexing,
+    currentSessionId,
+    vaultSwitching,
+    refreshSessionMessages
+  ])
 
   return {
     currentSessionId,

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
 import { useFocusEffect } from '@react-navigation/native'
 import { useAgentNavigationStore } from '@baishou/store'
 import type { MobileAssistantUi } from '../lib/mobile-assistant.util'
@@ -6,6 +6,11 @@ import {
   readAgentNavigationSnapshot,
   writeAgentNavigationSnapshot
 } from '../lib/agent-navigation-persistence'
+import {
+  shouldPersistNavigationImmediately,
+  shouldSkipSessionRestoreForAssistantMismatch,
+  shouldThrottleNavigationReconcile
+} from '../lib/agent-navigation-restore.util'
 
 type SessionRow = { id: string; assistantId?: string | null }
 
@@ -30,6 +35,8 @@ type UseAgentNavigationPersistenceOptions = {
   clearSession: () => void
 }
 
+const RECONCILE_THROTTLE_MS = 2000
+
 async function lookupSession(
   sessionManager: Services['sessionManager'],
   sessionId: string
@@ -53,9 +60,14 @@ export function useAgentNavigationPersistence({
   clearSession
 }: UseAgentNavigationPersistenceOptions) {
   const hydratedRef = useRef(false)
+  const initialRestoreDoneRef = useRef(false)
   const restoringRef = useRef(false)
   const lastPersistedRef = useRef<string>('')
   const prevSessionIdRef = useRef<string | null>(null)
+  const prevAssistantIdRef = useRef<string | null>(null)
+  const lastReconcileAtRef = useRef(0)
+  const lastReconcileKeyRef = useRef('')
+  const [navigationHydrationEpoch, setNavigationHydrationEpoch] = useState(0)
 
   const persistSnapshot = useCallback(
     async (snapshot: { assistantId: string | null; sessionId: string | null }) => {
@@ -72,7 +84,9 @@ export function useAgentNavigationPersistence({
 
   useEffect(() => {
     hydratedRef.current = false
+    initialRestoreDoneRef.current = false
     restoringRef.current = false
+    prevAssistantIdRef.current = null
     if (!dbReady || !services || vaultSwitching) return
 
     let cancelled = false
@@ -88,6 +102,7 @@ export function useAgentNavigationPersistence({
         lastPersistedRef.current = ''
       }
       hydratedRef.current = true
+      setNavigationHydrationEpoch((epoch) => epoch + 1)
     })()
 
     return () => {
@@ -100,7 +115,11 @@ export function useAgentNavigationPersistence({
     if (!hydratedRef.current || !dbReady || !services || vaultSwitching || restoringRef.current) {
       return
     }
-    if (currentSessionId) return
+    if (initialRestoreDoneRef.current) return
+    if (currentSessionId) {
+      initialRestoreDoneRef.current = true
+      return
+    }
     if (assistants.length === 0) return
 
     let cancelled = false
@@ -147,7 +166,10 @@ export function useAgentNavigationPersistence({
           clearSession()
         }
       } finally {
-        if (!cancelled) restoringRef.current = false
+        if (!cancelled) {
+          restoringRef.current = false
+          initialRestoreDoneRef.current = true
+        }
       }
     })()
 
@@ -164,6 +186,7 @@ export function useAgentNavigationPersistence({
     handleSelectAssistant,
     handleSelectSession,
     loadSessions,
+    navigationHydrationEpoch,
     services,
     vaultSwitching
   ])
@@ -181,7 +204,17 @@ export function useAgentNavigationPersistence({
     const prevSessionId = prevSessionIdRef.current
     prevSessionIdRef.current = currentSessionId
 
-    if (prevSessionId && !currentSessionId) {
+    const assistantChanged = currentAssistant?.id !== prevAssistantIdRef.current
+    if (assistantChanged) {
+      prevAssistantIdRef.current = currentAssistant?.id ?? null
+    }
+
+    if (
+      shouldPersistNavigationImmediately({
+        assistantChanged,
+        sessionCleared: Boolean(prevSessionId && !currentSessionId)
+      })
+    ) {
       void persistSnapshot(snapshot)
       return
     }
@@ -234,6 +267,22 @@ export function useAgentNavigationPersistence({
     if (!hydratedRef.current || !dbReady || !services || vaultSwitching) return
 
     const vaultKey = await services.pathService.getActiveVaultNameForContext()
+    const reconcileKey = `${vaultKey}:${currentAssistant?.id ?? ''}:${currentSessionId ?? ''}`
+    const now = Date.now()
+    if (
+      shouldThrottleNavigationReconcile({
+        reconcileKey,
+        lastReconcileKey: lastReconcileKeyRef.current,
+        lastReconcileAtMs: lastReconcileAtRef.current,
+        nowMs: now,
+        throttleMs: RECONCILE_THROTTLE_MS
+      })
+    ) {
+      return
+    }
+    lastReconcileKeyRef.current = reconcileKey
+    lastReconcileAtRef.current = now
+
     const saved = useAgentNavigationStore.getState().getContext(vaultKey)
     let persistedSessionId: string | null | undefined = saved.sessionId
     if (lastPersistedRef.current) {
@@ -249,6 +298,16 @@ export function useAgentNavigationPersistence({
       if (!saved.sessionId) return
       if (persistedSessionId == null) return
       if (assistants.length === 0) return
+
+      if (
+        shouldSkipSessionRestoreForAssistantMismatch({
+          currentAssistantId: currentAssistant?.id,
+          savedAssistantId: saved.assistantId
+        })
+      ) {
+        void persistSnapshot({ assistantId: currentAssistant!.id, sessionId: null })
+        return
+      }
 
       if (saved.assistantId) {
         const assistant = assistants.find((item) => item.id === saved.assistantId)
@@ -290,12 +349,13 @@ export function useAgentNavigationPersistence({
   }, [
     assistants,
     clearSession,
-    currentAssistant?.id,
+    currentAssistant,
     currentSessionId,
     dbReady,
     handleSelectAssistant,
     handleSelectSession,
     loadSessions,
+    persistSnapshot,
     services,
     vaultSwitching
   ])

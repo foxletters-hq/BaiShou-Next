@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { toast } from '@baishou/ui'
 
+type TtsSynthesizeSpeechResult =
+  | { success: true; segmentCount: number }
+  | { success: false; errorCode?: string; error?: string }
+
 /**
  * 封装 Text-to-Speech (TTS) 音频播放、模式控制、生命周期清理状态的自定义 Hook。
- *
- * @param t - 翻译函数
- * @returns 包含 TTS 状态和控制方法的对象
  */
 export function useTts(t: any) {
   const [ttsMode, setTtsMode] = useState<'always' | 'manual'>(() => {
@@ -23,6 +24,7 @@ export function useTts(t: any) {
   const ttsAudioRef = useRef<HTMLAudioElement | null>(null)
   const ttsModeRef = useRef(ttsMode)
   const ttsRequestRef = useRef(0)
+  const ttsSessionIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     ttsModeRef.current = ttsMode
@@ -46,12 +48,48 @@ export function useTts(t: any) {
 
   const stopTts = useCallback(() => {
     ttsRequestRef.current += 1
+    const api = (window as any).api
+    if (ttsSessionIdRef.current && api?.tts?.cancelSpeech) {
+      void api.tts.cancelSpeech(ttsSessionIdRef.current)
+      ttsSessionIdRef.current = null
+    }
     if (ttsAudioRef.current) {
       ttsAudioRef.current.pause()
       ttsAudioRef.current = null
     }
     setTtsPlayingMsgId(null)
   }, [])
+
+  const playAudioChunk = useCallback(
+    async (audioBase64: string, format: string, requestId: number): Promise<void> => {
+      if (requestId !== ttsRequestRef.current) return
+
+      if (ttsAudioRef.current) {
+        ttsAudioRef.current.pause()
+        ttsAudioRef.current = null
+      }
+
+      const audio = new Audio(`data:audio/${format || 'mp3'};base64,${audioBase64}`)
+      ttsAudioRef.current = audio
+
+      await new Promise<void>((resolve, reject) => {
+        audio.onended = () => {
+          if (requestId === ttsRequestRef.current) {
+            ttsAudioRef.current = null
+          }
+          resolve()
+        }
+        audio.onerror = () => {
+          if (requestId === ttsRequestRef.current) {
+            ttsAudioRef.current = null
+          }
+          reject(new Error('TTS playback failed'))
+        }
+        void audio.play().catch(reject)
+      })
+    },
+    []
+  )
 
   const handleTtsReadAloud = useCallback(
     async (content: string, messageId?: string) => {
@@ -76,7 +114,7 @@ export function useTts(t: any) {
 
       try {
         const api = (window as any).api
-        if (!api?.tts?.synthesize) {
+        if (!api?.tts?.synthesizeSpeech) {
           reportError(t('agent.chat.tts_no_api', 'TTS 功能不可用'))
           return
         }
@@ -85,38 +123,28 @@ export function useTts(t: any) {
         requestId = ++ttsRequestRef.current
         if (messageId) setTtsPlayingMsgId(messageId)
 
-        const result = await api.tts.synthesize(content)
+        const sessionId =
+          globalThis.crypto?.randomUUID?.() ?? `tts-${Date.now()}-${Math.random()}`
+        ttsSessionIdRef.current = sessionId
+
+        const result: TtsSynthesizeSpeechResult = await api.tts.synthesizeSpeech(content, {
+          sessionId,
+          onSegment: async (segment, _index) => {
+            if (requestId !== ttsRequestRef.current) return
+            await playAudioChunk(segment.audioBase64, segment.format || 'mp3', requestId)
+          }
+        })
+
+        ttsSessionIdRef.current = null
+
         if (requestId !== ttsRequestRef.current) return
 
-        if (result.success && result.audioBase64) {
-          if (ttsAudioRef.current) {
-            ttsAudioRef.current.pause()
-            ttsAudioRef.current = null
+        if (!result.success) {
+          if (result.errorCode === 'tts_cancelled' || result.errorCode === 'tts_empty_content') {
+            clearTtsBusyState(requestId)
+            return
           }
-          const audio = new Audio(
-            `data:audio/${result.format || 'mp3'};base64,${result.audioBase64}`
-          )
-          ttsAudioRef.current = audio
-          audio.onended = () => {
-            clearTtsBusyState(requestId!)
-            ttsAudioRef.current = null
-          }
-          audio.onerror = () => {
-            clearTtsBusyState(requestId!)
-            ttsAudioRef.current = null
-            reportError(t('agent.chat.tts_play_failed', '语音播放失败，已自动切换为手动朗读'))
-          }
-          try {
-            await audio.play()
-          } catch (playErr) {
-            clearTtsBusyState(requestId!)
-            ttsAudioRef.current = null
-            reportError(
-              t('agent.chat.tts_play_blocked', '语音播放被浏览器拦截或失败，已自动切换为手动朗读')
-            )
-          }
-        } else {
-          clearTtsBusyState(requestId)
+
           const errorCodeMap: Record<string, string> = {
             tts_not_configured: t(
               'agent.chat.tts_not_configured',
@@ -131,18 +159,28 @@ export function useTts(t: any) {
             ? errorCodeMap[errorCode] || t('agent.chat.tts_failed', '语音合成失败')
             : result.error || t('agent.chat.tts_failed', '语音合成失败')
           reportError(errorMsg)
+          clearTtsBusyState(requestId)
+          return
         }
+
+        clearTtsBusyState(requestId)
       } catch (e: any) {
+        ttsSessionIdRef.current = null
         if (requestId !== null) {
           clearTtsBusyState(requestId)
         }
-        reportError(e.message || t('agent.chat.tts_failed', '语音合成失败'))
+        const message = e?.message || ''
+        const isPlaybackError = /playback/i.test(message)
+        reportError(
+          isPlaybackError
+            ? t('agent.chat.tts_play_failed', '语音播放失败，已自动切换为手动朗读')
+            : message || t('agent.chat.tts_failed', '语音合成失败')
+        )
       }
     },
-    [t, ttsPlayingMsgId, stopTts, clearTtsBusyState]
+    [t, ttsPlayingMsgId, stopTts, clearTtsBusyState, playAudioChunk]
   )
 
-  // 卸载组件时清理播放的音频
   useEffect(() => {
     return () => {
       if (ttsAudioRef.current) {

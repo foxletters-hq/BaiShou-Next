@@ -5,6 +5,7 @@ import {
   TtsProviderConfig
 } from '../types/tts.types'
 import { TtsApiError } from './tts.errors'
+import { uint8ArrayToBase64 } from './bytes-base64'
 
 export class CloneTtsProvider implements TtsProvider {
   readonly id = 'clone-tts'
@@ -43,12 +44,7 @@ export class CloneTtsProvider implements TtsProvider {
     }
 
     const arrayBuffer = await response.arrayBuffer()
-    const bytes = new Uint8Array(arrayBuffer)
-    let binary = ''
-    for (const byte of bytes) {
-      binary += String.fromCharCode(byte)
-    }
-    const audioBase64 = btoa(binary)
+    const audioBase64 = uint8ArrayToBase64(new Uint8Array(arrayBuffer))
 
     return {
       audioBase64,

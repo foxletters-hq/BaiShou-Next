@@ -4,10 +4,14 @@ import type { IFileSystem, IStoragePathService } from '@baishou/core-mobile'
 import { sanitizeVaultDirectoryName } from '@baishou/core-mobile'
 import { getAppDocumentDirectory } from './mobile-app-paths'
 import { joinStoragePath } from './mobile-storage-path.util'
-import { resolveMobileSnapshotsDirectory } from './mobile-snapshot-path.util'
+import {
+  resolveLegacySandboxSnapshotsDirectory,
+  resolveMobileSnapshotsDirectory
+} from './mobile-snapshot-path.util'
 import {
   EXTERNAL_STORAGE_ROOT,
   ExternalStorageRequiredError,
+  canWriteExternalStorage,
   hasStoragePermission,
   openAllFilesAccessSettings as openAllFilesAccessSettingsPage,
   requestStoragePermission
@@ -73,6 +77,9 @@ export class MobileStoragePathService implements IStoragePathService {
     }
 
     if (!(await hasStoragePermission())) return false
+    if (!(await canWriteExternalStorage())) {
+      console.warn('StoragePathService: All-files access granted but external probe write failed.')
+    }
 
     try {
       await this.ensureWritableDirectory(EXTERNAL_STORAGE_ROOT)
@@ -225,39 +232,48 @@ export class MobileStoragePathService implements IStoragePathService {
   }
 
   public async getSnapshotsDirectory(): Promise<string> {
-    const dir = resolveMobileSnapshotsDirectory(getAppDocumentDirectory())
+    const root = normalizeStoragePath(await this.getRootDirectory())
+    const dir = resolveMobileSnapshotsDirectory(root)
     await this.ensureDir(dir)
-    await this.migrateLegacyWorkspaceSnapshots(dir)
+    await this.migrateSnapshotsFromDirectory(
+      resolveLegacySandboxSnapshotsDirectory(getAppDocumentDirectory()),
+      dir
+    )
+    await this.migrateSnapshotsFromDirectory(joinStoragePath(root, '.snapshots'), dir)
     return dir
   }
 
-  /** 旧版快照在工作区 `.snapshots` 内，全量导入会 wipe 根目录导致保护快照丢失 */
-  private async migrateLegacyWorkspaceSnapshots(targetDir: string): Promise<void> {
+  private async migrateSnapshotsFromDirectory(
+    sourceDir: string,
+    targetDir: string
+  ): Promise<void> {
     try {
-      const root = normalizeStoragePath(await this.getRootDirectory())
-      const legacyDir = joinStoragePath(root, '.snapshots')
-      if (legacyDir === targetDir || !(await this.fileSystem.exists(legacyDir))) return
+      const normalizedSource = normalizeStoragePath(sourceDir)
+      const normalizedTarget = normalizeStoragePath(targetDir)
+      if (normalizedSource === normalizedTarget || !(await this.fileSystem.exists(normalizedSource))) {
+        return
+      }
 
-      const files = await this.fileSystem.readdir(legacyDir)
+      const files = await this.fileSystem.readdir(normalizedSource)
       for (const name of files) {
         if (!name || !name.startsWith('snapshot_') || !name.endsWith('.zip')) continue
-        const src = joinStoragePath(legacyDir, name)
-        const dest = joinStoragePath(targetDir, name)
+        const src = joinStoragePath(normalizedSource, name)
+        const dest = joinStoragePath(normalizedTarget, name)
         if (await this.fileSystem.exists(dest)) continue
         try {
           await this.fileSystem.copyFile(src, dest)
           await this.fileSystem.unlink(src).catch(() => {})
         } catch (e) {
-          console.warn('[StoragePath] Failed to migrate legacy snapshot', name, e)
+          console.warn('[StoragePath] Failed to migrate snapshot', name, e)
         }
       }
 
-      const remaining = await this.fileSystem.readdir(legacyDir).catch(() => [] as string[])
+      const remaining = await this.fileSystem.readdir(normalizedSource).catch(() => [] as string[])
       if (remaining.length === 0) {
-        await this.fileSystem.rm(legacyDir, { recursive: true, force: true }).catch(() => {})
+        await this.fileSystem.rm(normalizedSource, { recursive: true, force: true }).catch(() => {})
       }
     } catch (e) {
-      console.warn('[StoragePath] Legacy snapshot migration skipped', e)
+      console.warn('[StoragePath] Snapshot migration skipped', sourceDir, e)
     }
   }
 

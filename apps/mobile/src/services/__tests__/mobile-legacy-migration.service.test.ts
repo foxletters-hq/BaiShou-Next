@@ -48,3 +48,45 @@ describe('mobile-legacy-migration.paths', () => {
     )
   })
 })
+
+describe('mobile-legacy-version-migration.state', () => {
+  beforeEach(() => {
+    vi.resetModules()
+  })
+
+  it('mergeAssistantIdMap persists assistant mapping', async () => {
+    const storage = new Map<string, string>()
+    vi.doMock('@react-native-async-storage/async-storage', () => ({
+      default: {
+        getItem: async (key: string) => storage.get(key) ?? null,
+        setItem: async (key: string, value: string) => {
+          storage.set(key, value)
+        }
+      }
+    }))
+    const { mergeAssistantIdMap, getStoredAssistantIdMap } = await import(
+      '../mobile-legacy-version-migration.state'
+    )
+    await mergeAssistantIdMap({ old_a: 'new_a' })
+    const map = await getStoredAssistantIdMap()
+    expect(map.old_a).toBe('new_a')
+  })
+
+  it('mergeVaultNameMap persists vault name mapping', async () => {
+    const storage = new Map<string, string>()
+    vi.doMock('@react-native-async-storage/async-storage', () => ({
+      default: {
+        getItem: async (key: string) => storage.get(key) ?? null,
+        setItem: async (key: string, value: string) => {
+          storage.set(key, value)
+        }
+      }
+    }))
+    const { mergeVaultNameMap, getStoredVaultNameMap } = await import(
+      '../mobile-legacy-version-migration.state'
+    )
+    await mergeVaultNameMap({ Personal: 'Personal42' })
+    const map = await getStoredVaultNameMap()
+    expect(map.Personal).toBe('Personal42')
+  })
+})

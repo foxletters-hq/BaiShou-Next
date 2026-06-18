@@ -1,8 +1,13 @@
-import type { IncrementalSyncResult, SyncProgressCallback } from '@baishou/shared'
+import type {
+  IncrementalSyncResult,
+  SyncProgressCallback,
+  IncrementalSyncRunOptions
+} from '@baishou/shared'
 import {
   assertBidirectionalDeletePropagationAllowed,
   assertBidirectionalSyncDivergenceAllowed,
   SyncDeletePropagationBlockedError,
+  SyncDivergenceConfirmationRequiredError,
   SyncDivergenceExceededError
 } from '@baishou/shared'
 import type { IIncrementalSyncService } from './incremental-sync.interface'
@@ -22,7 +27,10 @@ export class ThreeWaySyncService
   extends ThreeWaySyncManifestMixin
   implements IIncrementalSyncService
 {
-  async sync(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult> {
+  async sync(
+    onProgress?: SyncProgressCallback,
+    runOptions?: IncrementalSyncRunOptions
+  ): Promise<IncrementalSyncResult> {
     await this.loadConfig()
     if (!this.config.enabled) throw new S3NotConfiguredError()
 
@@ -41,7 +49,11 @@ export class ThreeWaySyncService
     try {
       const localManifest = await this.buildLocalManifest()
       const remoteManifest = await this.getRemoteManifest()
-      assertBidirectionalSyncDivergenceAllowed(localManifest, remoteManifest, this.config)
+      const storageHistory = await this.getSyncStorageHistoryState()
+      assertBidirectionalSyncDivergenceAllowed(localManifest, remoteManifest, this.config, {
+        storageHistory,
+        highDivergenceConfirmed: runOptions?.highDivergenceConfirmed
+      })
       const ancestorSnapshot = await this.getRemoteSnapshot()
       const previousLocalManifest = await this.getLocalManifest()
 
@@ -124,6 +136,7 @@ export class ThreeWaySyncService
       return result
     } catch (error) {
       if (error instanceof SyncDivergenceExceededError) throw error
+      if (error instanceof SyncDivergenceConfirmationRequiredError) throw error
       if (error instanceof SyncDeletePropagationBlockedError) throw error
       throw new S3SyncError('Three-way sync failed', error instanceof Error ? error : undefined)
     }
@@ -189,7 +202,10 @@ export class ThreeWaySyncService
     }
   }
 
-  async downloadOnly(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult> {
+  async downloadOnly(
+    onProgress?: SyncProgressCallback,
+    runOptions?: IncrementalSyncRunOptions
+  ): Promise<IncrementalSyncResult> {
     await this.loadConfig()
     if (!this.config.enabled) throw new S3NotConfiguredError()
 
@@ -208,7 +224,11 @@ export class ThreeWaySyncService
     try {
       const localManifest = await this.buildLocalManifest()
       const remoteManifest = await this.getRemoteManifest()
-      assertBidirectionalSyncDivergenceAllowed(localManifest, remoteManifest, this.config)
+      const storageHistory = await this.getSyncStorageHistoryState()
+      assertBidirectionalSyncDivergenceAllowed(localManifest, remoteManifest, this.config, {
+        storageHistory,
+        highDivergenceConfirmed: runOptions?.highDivergenceConfirmed
+      })
       const ancestorSnapshot = await this.getRemoteSnapshot()
 
       const decisions = threeWayMerge(localManifest, remoteManifest, ancestorSnapshot)
@@ -252,6 +272,7 @@ export class ThreeWaySyncService
       return result
     } catch (error) {
       if (error instanceof SyncDivergenceExceededError) throw error
+      if (error instanceof SyncDivergenceConfirmationRequiredError) throw error
       throw new S3SyncError('Download failed', error instanceof Error ? error : undefined)
     }
   }

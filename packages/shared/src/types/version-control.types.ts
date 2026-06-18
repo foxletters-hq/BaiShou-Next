@@ -106,6 +106,12 @@ export interface S3SyncConfig {
   maxDivergencePercent?: number | null
 }
 
+/** 增量同步执行选项（双向 / 仅下载） */
+export type IncrementalSyncRunOptions = {
+  /** 用户已确认本机首次连接时本地与远端差异较大 */
+  highDivergenceConfirmed?: boolean
+}
+
 /** 文件清单条目 */
 export interface ManifestEntry {
   /** 文件内容 MD5 */

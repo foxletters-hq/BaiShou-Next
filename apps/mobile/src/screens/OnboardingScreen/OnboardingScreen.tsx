@@ -51,7 +51,7 @@ export const OnboardingScreen: React.FC = () => {
   const { t } = useTranslation()
   const toast = useNativeToast()
   const storagePermission = useStoragePermission()
-  const { services, dbReady, storageReady, retryStorageSetup } = useBaishou()
+  const { services, dbReady, storageReady } = useBaishou()
   const [currentPage, setCurrentPage] = useState(0)
   const [selectedLanguage, setSelectedLanguage] = useState<OnboardingUiLanguage | null>(null)
   const [languageConfirmed, setLanguageConfirmed] = useState(false)
@@ -64,7 +64,9 @@ export const OnboardingScreen: React.FC = () => {
 
   const storageReadyToAdvance =
     !storagePermission.isAndroid ||
-    (storagePermission.permissionChecked && storagePermission.granted === true)
+    (storagePermission.permissionChecked &&
+      storagePermission.granted === true &&
+      (storageReady || storagePermission.isStoragePending))
   const nextBlockedOnStorage =
     currentPage === ONBOARDING_PAGE.STORAGE && storagePermission.isAndroid && !storageReadyToAdvance
   const nextBlockedOnLanguage =
@@ -159,7 +161,11 @@ export const OnboardingScreen: React.FC = () => {
   const finishOnboarding = async () => {
     if (!(await requireLanguageBeforeLeave())) return
     if (storagePermission.isAndroid && storagePermission.granted === true && !storageReady) {
-      await retryStorageSetup()
+      const mounted = await ensureAndroidStorageMounted()
+      if (!mounted) {
+        toast.showWarning(t('storage.external_access_error'))
+        return
+      }
     }
     allowLeaveRef.current = true
     if (isPreview) {
@@ -200,7 +206,11 @@ export const OnboardingScreen: React.FC = () => {
         return
       }
       if (!storageReady) {
-        void ensureAndroidStorageMounted()
+        const mounted = await ensureAndroidStorageMounted()
+        if (!mounted) {
+          toast.showWarning(t('storage.external_access_error'))
+          return
+        }
       }
     }
 

@@ -215,6 +215,13 @@ export function assembleDevicePreferencesFromFlutterSp(
     config['all_summary_instructions'] = allSummaryInstructions
   }
 
+  if (typeof sp['user_personas'] === 'string') {
+    config['user_personas'] = sp['user_personas']
+  }
+  if (typeof sp['user_active_persona_id'] === 'string') {
+    config['user_active_persona_id'] = sp['user_active_persona_id']
+  }
+
   return config
 }
 

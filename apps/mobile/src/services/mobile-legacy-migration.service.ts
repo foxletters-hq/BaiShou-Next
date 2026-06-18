@@ -7,22 +7,17 @@ import type { IFileSystem } from '@baishou/core-mobile'
 import {
   LegacyImportService,
   assembleDevicePreferencesFromFlutterSp,
-  copyStorageRootContents,
   discoverVaultNames,
   extractFlutterCustomStorageRoot,
   hasMeaningfulFlutterPreferences,
-  isFlutterSettingsMigrationFullySupported,
   isLegacyAppRoot,
   isMigrationCompleted,
-  LEGACY_UPGRADE_RAG_PENDING_KEY,
   migrateLegacyArchiveContents,
   MigrationTargetStoragePathService,
   parseFlutterSharedPreferencesPlist,
   parseFlutterSharedPreferencesXml,
   resolveAgentDbPath,
-  targetDirectoryHasData,
-  writeMigrationStatus,
-  type LegacyMigrationSource
+  targetDirectoryHasData
 } from '@baishou/core-mobile'
 import {
   getLegacyFlutterAvatarsDirectory,
@@ -48,13 +43,6 @@ export {
   resolveIosFlutterPreferencesPlistPath,
   resolveMobileMigrationTargetRoot
 } from './mobile-legacy-migration.paths'
-
-export interface MobileLegacyMigrationResult {
-  migrated: boolean
-  skippedOnboarding: boolean
-  targetRoot: string | null
-  sourceRoot: string | null
-}
 
 export interface FlutterLegacyMigrationPending {
   sourceRoot: string
@@ -218,7 +206,7 @@ export async function detectFlutterLegacyMigrationPending(
     return null
   }
 
-  const sourceRoot = pickPrimaryLegacySource(legacyRoots, targetRoot)
+  const sourceRoot = pickPrimaryFlutterLegacySource(legacyRoots, targetRoot)
   if (rootsEqual(sourceRoot, targetRoot)) {
     return null
   }
@@ -262,7 +250,8 @@ export async function deleteMigratedLegacySourceRoot(options: {
   await fileSystem.rm(normalizedSource, { recursive: true, force: true })
 }
 
-function pickPrimaryLegacySource(legacyRoots: string[], targetRoot: string): string {
+/** 从候选旧版根目录中优先选择 Flutter 原版 app_flutter 目录 */
+export function pickPrimaryFlutterLegacySource(legacyRoots: string[], targetRoot: string): string {
   if (legacyRoots.length === 0) {
     return targetRoot
   }
@@ -308,6 +297,26 @@ export async function readIosFlutterSharedPreferencesRaw(
   }
 }
 
+export async function readMobileFlutterSharedPreferencesRaw(
+  fileSystem?: IFileSystem
+): Promise<Record<string, unknown> | null> {
+  if (Platform.OS === 'android') {
+    const rawXml = readLegacyFlutterSharedPreferencesXml()
+    if (!rawXml) return null
+    try {
+      return parseFlutterSharedPreferencesXml(rawXml)
+    } catch {
+      return null
+    }
+  }
+
+  if (Platform.OS === 'ios' && fileSystem) {
+    return readIosFlutterSharedPreferencesRaw(fileSystem)
+  }
+
+  return null
+}
+
 export async function readMobileFlutterSharedPreferencesConfig(
   fileSystem?: IFileSystem
 ): Promise<Record<string, unknown> | null> {
@@ -336,7 +345,8 @@ export async function readMobileFlutterSharedPreferencesConfig(
 export function createMigrationAvatarImporter(
   fileSystem: IFileSystem,
   targetRoot: string,
-  sourceDir: string
+  sourceDir: string,
+  options?: { targetVaultName?: () => Promise<string> }
 ): (absoluteSourcePath: string, prefix: string) => Promise<string> {
   const normalizedTarget = normalizeNativePath(targetRoot)
   const vaultNamesPreviewPromise = discoverVaultNames(fileSystem, sourceDir)
@@ -345,7 +355,9 @@ export function createMigrationAvatarImporter(
   return async (absoluteSourcePath, prefix) => {
     if (!migrationAttManager) {
       const vaultNames = await vaultNamesPreviewPromise
-      const primaryVault = vaultNames[0] ?? 'Personal'
+      const primaryVault = options?.targetVaultName
+        ? await options.targetVaultName()
+        : (vaultNames[0] ?? 'Personal')
       const migrationPath = new MigrationTargetStoragePathService(normalizedTarget, primaryVault)
       migrationAttManager = new MobileAttachmentManagerService(migrationPath, fileSystem)
     }
@@ -364,166 +376,6 @@ export function resolveMobileFlutterAvatarsDirectory(): string | null {
   return null
 }
 
-export async function runMobileLegacyMigrationIfNeeded(options: {
-  fileSystem: IFileSystem
-  sqliteClient: unknown
-  targetRoot: string
-  installInstanceId: string
-  settingsRepo: SettingsRepository
-  profileRepo: UserProfileRepository
-  onCopyProgress?: (itemName: string) => void
-}): Promise<MobileLegacyMigrationResult> {
-  const {
-    fileSystem,
-    sqliteClient,
-    targetRoot,
-    installInstanceId,
-    settingsRepo,
-    profileRepo,
-    onCopyProgress
-  } = options
-  const normalizedTarget = normalizeNativePath(targetRoot)
-
-  if (await isLegacyUpgradeMigrationDone(fileSystem, normalizedTarget, installInstanceId)) {
-    return {
-      migrated: false,
-      skippedOnboarding: true,
-      targetRoot: normalizedTarget,
-      sourceRoot: null
-    }
-  }
-
-  const legacyRoots = await collectLegacyCandidateRoots(fileSystem)
-  if (legacyRoots.length === 0) {
-    return {
-      migrated: false,
-      skippedOnboarding: false,
-      targetRoot: normalizedTarget,
-      sourceRoot: null
-    }
-  }
-
-  let sourceRoot = pickPrimaryLegacySource(legacyRoots, normalizedTarget)
-  const originalSourceRoot = sourceRoot
-  const targetHasData = await targetDirectoryHasData(fileSystem, normalizedTarget)
-  const sameRoot = rootsEqual(sourceRoot, normalizedTarget)
-
-  if (!sameRoot && !targetHasData) {
-    logger.info('[MobileLegacyMigration] Copying legacy tree into target root', {
-      sourceRoot: originalSourceRoot,
-      normalizedTarget
-    })
-    await copyStorageRootContents(fileSystem, originalSourceRoot, normalizedTarget, onCopyProgress)
-    sourceRoot = normalizedTarget
-  } else if (!sameRoot && targetHasData) {
-    const alternate = legacyRoots.find((root) => !rootsEqual(root, normalizedTarget))
-    if (alternate) {
-      sourceRoot = alternate
-      logger.info(
-        '[MobileLegacyMigration] Target already has data; merging legacy from',
-        sourceRoot
-      )
-    }
-  }
-
-  if (!(await isLegacyAppRoot(fileSystem, sourceRoot))) {
-    return {
-      migrated: false,
-      skippedOnboarding: false,
-      targetRoot: normalizedTarget,
-      sourceRoot: null
-    }
-  }
-
-  const migrationTarget = normalizedTarget
-  const migrationSource = sourceRoot
-  const legacyImporter = new LegacyImportService(settingsRepo, profileRepo)
-
-  const flutterPrefsConfig = await readMobileFlutterSharedPreferencesConfig(fileSystem)
-  if (flutterPrefsConfig) {
-    try {
-      await legacyImporter.restoreConfig(flutterPrefsConfig)
-      logger.info('[MobileLegacyMigration] Restored Flutter SharedPreferences')
-    } catch (error) {
-      logger.warn(
-        '[MobileLegacyMigration] Flutter SharedPreferences restore failed:',
-        error as Error
-      )
-    }
-  } else if (!isFlutterSettingsMigrationFullySupported(Platform.OS)) {
-    logger.info(
-      '[MobileLegacyMigration] Flutter settings not auto-migrated on iOS; content data migration continues.'
-    )
-  }
-
-  const importAvatar = createMigrationAvatarImporter(fileSystem, migrationTarget, migrationSource)
-
-  try {
-    const vaultNames = await migrateLegacyArchiveContents({
-      fileSystem,
-      sourceDir: migrationSource,
-      targetWorkspaceDir: migrationTarget,
-      sqliteClient,
-      executeRawSql,
-      restoreDevicePreferences: async (config) => legacyImporter.restoreConfig(config),
-      importAvatar,
-      saveUserAvatarPath: async (relativePath) => {
-        const profile = await profileRepo.getProfile()
-        profile.avatarPath = relativePath
-        await profileRepo.saveProfile(profile)
-      },
-      flutterDocumentsAvatarsDir: resolveMobileFlutterAvatarsDirectory(),
-      userAvatarPathFromPrefs:
-        typeof flutterPrefsConfig?.['user_avatar_path'] === 'string'
-          ? (flutterPrefsConfig['user_avatar_path'] as string)
-          : null,
-      onTableError: (tableName, error) => {
-        logger.warn(`[MobileLegacyMigration] SQL merge warning (${tableName}):`, error as Error)
-      }
-    })
-
-    try {
-      await settingsRepo.set(LEGACY_UPGRADE_RAG_PENDING_KEY as never, true as never)
-    } catch (error) {
-      logger.warn('[MobileLegacyMigration] Failed to mark RAG re-embed pending:', error as Error)
-    }
-
-    const source: LegacyMigrationSource = 'flutter_mobile'
-
-    await writeMigrationStatus(fileSystem, migrationTarget, {
-      version: 1,
-      completedAt: new Date().toISOString(),
-      source,
-      migrationCompleted: true,
-      installInstanceId,
-      ragSkipped: true,
-      ragReembedRequired: true,
-      vaultsMigrated: vaultNames
-    })
-
-    await markFlutterLegacyMigrationComplete({
-      installInstanceId,
-      targetRoot: migrationTarget
-    })
-
-    logger.info('[MobileLegacyMigration] Completed legacy migration', {
-      migrationSource,
-      migrationTarget,
-      vaultNames
-    })
-
-    return {
-      migrated: true,
-      skippedOnboarding: true,
-      targetRoot: migrationTarget,
-      sourceRoot: rootsEqual(originalSourceRoot, migrationTarget) ? null : originalSourceRoot
-    }
-  } catch (error) {
-    logger.error('[MobileLegacyMigration] Migration failed before status write:', error as Error)
-    throw error
-  }
-}
-
 /**
  * 将解压后的 Flutter legacy ZIP 迁移到目标工作区（staging），在隔离 DB 中合并后再写出 agent DB。
  */
@@ -533,8 +385,9 @@ export async function runMobileLegacyZipMigration(options: {
   targetRoot: string
   settingsRepo: SettingsRepository
   profileRepo: UserProfileRepository
+  onCopyProgress?: (entryPath: string) => void
 }): Promise<string[]> {
-  const { fileSystem, extractDir, targetRoot, settingsRepo, profileRepo } = options
+  const { fileSystem, extractDir, targetRoot, settingsRepo, profileRepo, onCopyProgress } = options
   const legacyImporter = new LegacyImportService(settingsRepo, profileRepo)
   const normalizedTarget = normalizeNativePath(targetRoot)
   const importAvatar = createMigrationAvatarImporter(fileSystem, normalizedTarget, extractDir)
@@ -561,7 +414,8 @@ export async function runMobileLegacyZipMigration(options: {
       },
       onTableError: (tableName, error) => {
         logger.warn(`[MobileLegacyZipMigration] SQL merge warning (${tableName}):`, error as Error)
-      }
+      },
+      onCopyProgress
     })
 
     const stagedDbPath = resolveAgentDbPath(normalizedTarget)

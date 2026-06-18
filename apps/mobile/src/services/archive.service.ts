@@ -17,6 +17,7 @@ import {
   resolveAgentDbPath,
   resolveArchivePayloadRoot,
   mergeArchivePrefsPreservingCloudSync,
+  discoverVaultNames,
   type IFileSystem,
   type IStoragePathService
 } from '@baishou/core-mobile'
@@ -42,7 +43,11 @@ import {
   isValidArchiveManifestContent,
   LARGE_ARCHIVE_IMPORT_BYTES,
   resolveSnapshotCreatedAt,
+  SNAPSHOT_STORAGE_DIR_NAMES,
   validateArchiveExtractPayload,
+  estimateLegacyFlutterZipCopyFiles,
+  formatArchiveImportEntryDetail,
+  reportArchiveImportStage,
   type ArchiveImportProgressCallback
 } from './archive-guards.util'
 import type { ArchiveRestoreRebootstrapOptions } from './mobile-archive-db.bridge'
@@ -120,7 +125,7 @@ export class MobileArchiveService implements IArchiveService {
         for (const itemName of entries) {
           if (!itemName || itemName === '.' || itemName === '..') continue
           if (FULL_BACKUP_EXCLUDED_ROOT_NAMES.has(itemName)) continue
-          if (itemName === 'snapshots' || itemName === 'temp' || itemName === '.snapshots') {
+          if (SNAPSHOT_STORAGE_DIR_NAMES.has(itemName)) {
             continue
           }
           zipSources.push(joinStoragePath(rootDir, itemName))
@@ -236,10 +241,10 @@ export class MobileArchiveService implements IArchiveService {
     const preserveDuringSnapshot = normalizeStoragePath(zipFilePath)
     const skipPreImportSnapshot = await this.shouldSkipPreImportSnapshot(zipFilePath)
 
-    onProgress?.('preparing')
+    reportArchiveImportStage(onProgress, 'preparing')
     if (createSnapshotBefore && !skipPreImportSnapshot && (await this.storageRootHasData(rootDir))) {
       try {
-        onProgress?.('snapshot')
+        reportArchiveImportStage(onProgress, 'snapshot')
         const snap = await this.createSnapshot({ preservePaths: [preserveDuringSnapshot] })
         if (!snap) {
           throw new Error('导入前创建保护快照失败，已中止导入以保护当前数据')
@@ -262,12 +267,18 @@ export class MobileArchiveService implements IArchiveService {
       )
       await this.fileSystem.mkdir(extractDir, { recursive: true })
 
-      onProgress?.('unpacking')
+      reportArchiveImportStage(onProgress, 'unpacking')
       const { nativeZipPath, cleanupStagedZip } = await this.stageZipForUnzip(zipFilePath)
       const useNativeArchiveImport = Platform.OS === 'android' && isNativeArchiveImportAvailable()
       try {
         if (useNativeArchiveImport) {
-          await nativeUnzipArchive(nativeZipPath, extractDir)
+          await nativeUnzipArchive(nativeZipPath, extractDir, ({ current, total, detail }) => {
+            reportArchiveImportStage(onProgress, 'unpacking', {
+              detail: formatArchiveImportEntryDetail(detail),
+              subCurrent: current,
+              subTotal: total
+            })
+          })
         } else {
           await unzip(nativeZipPath, extractDir)
         }
@@ -281,7 +292,7 @@ export class MobileArchiveService implements IArchiveService {
 
       const payloadDir = await resolveArchivePayloadRoot(this.fileSystem, extractDir)
 
-      onProgress?.('validating')
+      reportArchiveImportStage(onProgress, 'validating')
       const preservedSettings = this.dbBridge
         ? await this.dbBridge.readPreservedImportSettings()
         : {}
@@ -300,18 +311,38 @@ export class MobileArchiveService implements IArchiveService {
         }
 
         try {
-          onProgress?.('migrating_legacy')
+          const vaultNames = await discoverVaultNames(this.fileSystem, payloadDir)
+          const copyTotal = await estimateLegacyFlutterZipCopyFiles(
+            this.fileSystem,
+            payloadDir,
+            vaultNames
+          )
+          let copyCurrent = 0
+          reportArchiveImportStage(onProgress, 'migrating_legacy', {
+            detail: '正在准备工作区…',
+            subCurrent: 0,
+            subTotal: copyTotal
+          })
           try {
-            await this.fileSystem.rm(rootDir, { recursive: true, force: true })
+            await this.wipeStorageRootPreservingSnapshots(rootDir)
           } catch (e) {
             console.warn('[MobileArchive] Wipe root warning (legacy zip)', e)
           }
           await this.fileSystem.mkdir(rootDir, { recursive: true })
 
           // 直接迁移到最终工作区，避免 extract → staging → root 的第二次全量复制
-          await this.dbBridge.importLegacyFlutterZip(payloadDir, rootDir)
+          await this.dbBridge.importLegacyFlutterZip(payloadDir, rootDir, {
+            onCopyProgress: (entryPath) => {
+              copyCurrent += 1
+              reportArchiveImportStage(onProgress, 'migrating_legacy', {
+                detail: formatArchiveImportEntryDetail(entryPath),
+                subCurrent: copyCurrent,
+                subTotal: copyTotal
+              })
+            }
+          })
 
-          onProgress?.('loading_database')
+          reportArchiveImportStage(onProgress, 'loading_database')
           const stagedAgentDb = resolveAgentDbPath(rootDir)
           if (this.dbBridge && (await this.fileSystem.exists(stagedAgentDb))) {
             await this.dbBridge.replaceAgentDatabaseFrom(stagedAgentDb)
@@ -336,7 +367,7 @@ export class MobileArchiveService implements IArchiveService {
             globalShadowDir
           })
 
-          onProgress?.('rebuilding_index')
+          reportArchiveImportStage(onProgress, 'rebuilding_index')
           const rebootstrapOptions: ArchiveRestoreRebootstrapOptions = {
             blockingResync: false,
             deferSummaryScan: true
@@ -357,7 +388,7 @@ export class MobileArchiveService implements IArchiveService {
             )
             await this.dbBridge.importDevicePreferences(prefs)
           }
-          onProgress?.('finishing')
+          reportArchiveImportStage(onProgress, 'finishing')
         } catch (restoreError) {
           throw new Error(formatArchiveImportFailureMessage(restoreError, snapshotPath))
         }
@@ -370,9 +401,9 @@ export class MobileArchiveService implements IArchiveService {
       }
 
       try {
-        onProgress?.('restoring_files')
+        reportArchiveImportStage(onProgress, 'restoring_files')
         try {
-          await this.fileSystem.rm(rootDir, { recursive: true, force: true })
+          await this.wipeStorageRootPreservingSnapshots(rootDir)
         } catch (e) {
           console.warn('[MobileArchive] Wipe root warning', e)
         }
@@ -439,11 +470,11 @@ export class MobileArchiveService implements IArchiveService {
           workspaceRoot: rootDir,
           globalShadowDir
         })
-        onProgress?.('rebuilding_index')
+        reportArchiveImportStage(onProgress, 'rebuilding_index')
         if (this.dbBridge?.rebootstrapAfterArchiveRestore) {
           await this.dbBridge.rebootstrapAfterArchiveRestore()
         }
-        onProgress?.('finishing')
+        reportArchiveImportStage(onProgress, 'finishing')
       } catch (restoreError) {
         throw new Error(formatArchiveImportFailureMessage(restoreError, snapshotPath))
       }
@@ -770,12 +801,25 @@ export class MobileArchiveService implements IArchiveService {
     }
   }
 
+  private async wipeStorageRootPreservingSnapshots(rootDir: string): Promise<void> {
+    const entries = await this.fileSystem.readdir(rootDir).catch(() => [] as string[])
+    for (const itemName of entries) {
+      if (!itemName || itemName === '.' || itemName === '..') continue
+      if (SNAPSHOT_STORAGE_DIR_NAMES.has(itemName)) continue
+      await this.fileSystem
+        .rm(joinStoragePath(rootDir, itemName), { recursive: true, force: true })
+        .catch((e) => {
+          console.warn('[MobileArchive] Failed to wipe storage entry', itemName, e)
+        })
+    }
+  }
+
   private async selectiveCopy(sourceDirPath: string, targetDirPath: string) {
     const dirContent = await this.fileSystem.readdir(sourceDirPath)
 
     for (const itemName of dirContent) {
       if (!itemName || itemName === '.' || itemName === '..') continue
-      if (itemName === 'snapshots' || itemName === 'temp' || itemName === '.snapshots') continue
+      if (SNAPSHOT_STORAGE_DIR_NAMES.has(itemName)) continue
       if (itemName.endsWith('-wal') || itemName.endsWith('-shm') || itemName.endsWith('-journal'))
         continue
 

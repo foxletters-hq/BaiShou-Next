@@ -18,7 +18,7 @@ import { BaishouProvider, useBaishou } from '@/src/providers/BaishouProvider'
 import { IncrementalSyncProvider } from '@/src/providers/IncrementalSyncProvider'
 import { useDiaryEmbedFailureToast } from '@/src/hooks/useDiaryEmbedFailureToast'
 import { useLegacyUpgradeRagToast } from '@/src/hooks/useLegacyUpgradeRagToast'
-import { FlutterLegacyMigrationGate } from '@/src/components/FlutterLegacyMigrationGate'
+import { LegacyMigrationPrompt } from '@/src/components/LegacyMigrationPrompt'
 import { fadeStackAnimation } from '@/src/navigation/fadeStackAnimation'
 import { NativeAppThemeBridge } from '@/src/providers/NativeAppThemeBridge'
 import { HeroUIThemeBridge } from '@/src/providers/HeroUIThemeBridge'
@@ -106,9 +106,8 @@ export default function RootLayout() {
             <HeroUIThemeBridge>
               <DialogProvider>
                 <IncrementalSyncProvider>
-                  <FlutterLegacyMigrationGate>
-                    <AppContent />
-                  </FlutterLegacyMigrationGate>
+                  <LegacyMigrationPrompt />
+                  <AppContent />
                 </IncrementalSyncProvider>
               </DialogProvider>
             </HeroUIThemeBridge>

@@ -4,6 +4,7 @@ export type SettingsStackPathname =
   | '/settings/assistants'
   | '/settings/lan-transfer'
   | '/settings/data-sync'
+  | '/settings/version-migration'
   | '/incremental-sync'
   | '/settings/tts'
 
@@ -128,6 +129,12 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
         titleKey: 'storage.title',
         icon: 'folder',
         route: { type: 'inline', id: 'storage' }
+      },
+      {
+        id: 'version-migration',
+        titleKey: 'version_migration.title',
+        icon: 'system-update-alt',
+        route: { type: 'stack', pathname: '/settings/version-migration' }
       }
     ]
   }

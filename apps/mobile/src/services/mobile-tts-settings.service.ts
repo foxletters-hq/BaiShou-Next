@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import type { GlobalModelsConfig } from '@baishou/shared'
+import { clearGlobalTtsSynthesisCache } from '@baishou/shared'
 import type { SettingsManagerService } from '@baishou/core-mobile'
 
 const TTS_PLAYBACK_CACHE_KEY = 'baishou_tts_playback_cache'
@@ -16,6 +17,7 @@ function sleep(ms: number): Promise<void> {
 
 export function setTtsPlaybackSettingsCache(settings: TtsPlaybackSettings): void {
   memoryCache = settings
+  clearGlobalTtsSynthesisCache()
   void AsyncStorage.setItem(TTS_PLAYBACK_CACHE_KEY, JSON.stringify(settings)).catch(() => {})
 }
 
