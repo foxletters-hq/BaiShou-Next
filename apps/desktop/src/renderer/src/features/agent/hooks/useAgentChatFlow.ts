@@ -198,43 +198,42 @@ export function useAgentChatFlow() {
     }
   }, [searchMode])
 
-  // ── 8. 流式时序哨兵与朗读 ──
+  // ── 8. 流式结束后的会话刷新与始终朗读（对齐移动端）──
   const prevIsStreamingRef = useRef(stream.isStreaming)
-  const waitingForAutoPlayRef = useRef<string | null>(null)
+  const awaitingAutoTtsRef = useRef(false)
 
   useEffect(() => {
-    if (!stream.isStreaming) {
-      waitingForAutoPlayRef.current = null
+    if (!sessionId) {
+      awaitingAutoTtsRef.current = false
     }
-  }, [sessionId, stream.isStreaming])
+  }, [sessionId])
+
+  useEffect(() => {
+    if (stream.isStreaming && sessionId) {
+      awaitingAutoTtsRef.current = true
+    }
+  }, [stream.isStreaming, sessionId])
 
   useEffect(() => {
     if (prevIsStreamingRef.current === true && stream.isStreaming === false) {
       if (loadSessions) {
-        loadSessions(true, currentAssistant?.id ? String(currentAssistant.id) : undefined)
+        void loadSessions(true, currentAssistant?.id ? String(currentAssistant.id) : undefined)
       }
     }
     prevIsStreamingRef.current = stream.isStreaming
   }, [stream.isStreaming, sessionId, loadSessions, currentAssistant])
 
   useEffect(() => {
-    if (stream.isStreaming && sessionId) {
-      waitingForAutoPlayRef.current = sessionId
-    }
-  }, [stream.isStreaming, sessionId])
-
-  useEffect(() => {
     if (
-      waitingForAutoPlayRef.current === sessionId &&
+      awaitingAutoTtsRef.current &&
       !stream.isStreaming &&
+      tts.ttsMode === 'always' &&
       chat.messages.length > 0
     ) {
       const lastMsg = chat.messages[chat.messages.length - 1]
-      if (lastMsg.role === 'assistant' && lastMsg.content) {
-        waitingForAutoPlayRef.current = null
-        if (tts.ttsMode === 'always') {
-          tts.handleTtsReadAloud(lastMsg.content, lastMsg.id)
-        }
+      if (lastMsg?.role === 'assistant' && lastMsg.content?.trim()) {
+        awaitingAutoTtsRef.current = false
+        void tts.handleTtsReadAloud(lastMsg.content, lastMsg.id)
       }
     }
   }, [chat.messages, stream.isStreaming, tts.ttsMode, tts.handleTtsReadAloud, sessionId])

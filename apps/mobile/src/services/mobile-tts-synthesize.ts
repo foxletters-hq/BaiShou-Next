@@ -2,15 +2,18 @@ import {
   getDefaultTtsRegistry,
   synthesizeTtsFromSettings,
   synthesizeTtsFromFormConfig,
+  synthesizeTtsSpeechContent,
   type GlobalModelsConfig,
-  type TtsFormSynthesizeConfig
+  type TtsFormSynthesizeConfig,
+  type TtsSpeechSynthesisOptions,
+  type TtsSpeechSynthesisResult
 } from '@baishou/shared'
 import type { SettingsManagerService } from '@baishou/core-mobile'
 import type { TtsProviderConfig } from '@baishou/ui/native'
 import { getTtsPlaybackSettings } from './mobile-tts-settings.service'
 
 export type TtsTestResult =
-  | { success: true; audioBase64: string; format: string }
+  | { success: true; audioBase64: string; format: string; fromCache?: boolean }
   | { success: false; error: string; errorCode?: string }
 
 const registry = getDefaultTtsRegistry()
@@ -22,7 +25,8 @@ function toTestResult(
     return {
       success: true,
       audioBase64: result.audioBase64,
-      format: result.format
+      format: result.format,
+      fromCache: result.fromCache
     }
   }
   return {
@@ -32,7 +36,32 @@ function toTestResult(
   }
 }
 
-/** 与桌面 api.tts.synthesize(text) 一致：从已保存的 global_models 合成 */
+/** 与桌面 agent:tts-synthesize-speech 一致：分片合成 + 缓存 */
+export async function synthesizeTtsSpeechFromSavedSettings(
+  settingsManager: SettingsManagerService,
+  content: string,
+  options?: TtsSpeechSynthesisOptions & {
+    providerId?: string
+    modelId?: string
+  }
+): Promise<TtsSpeechSynthesisResult> {
+  const { providerId, modelId, ...speechOptions } = options ?? {}
+  const { globalModels } = await getTtsPlaybackSettings(settingsManager, {
+    forceRefresh: true
+  })
+  return synthesizeTtsSpeechContent(
+    registry,
+    {
+      globalModels: globalModels as GlobalModelsConfig | null | undefined,
+      content,
+      providerId,
+      modelId
+    },
+    speechOptions
+  )
+}
+
+/** 与桌面 api.tts.synthesize(text) 一致：从已保存的 global_models 合成单段 */
 export async function synthesizeTtsFromSavedSettings(
   settingsManager: SettingsManagerService,
   text: string,
@@ -72,3 +101,5 @@ export async function synthesizeTtsFromForm(
   }
   return toTestResult(await synthesizeTtsFromFormConfig(registry, formConfig, text))
 }
+
+export type { TtsSpeechSegment, TtsSpeechSynthesisOptions, TtsSpeechSynthesisResult } from '@baishou/shared'
