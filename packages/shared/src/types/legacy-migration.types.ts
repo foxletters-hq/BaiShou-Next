@@ -23,6 +23,8 @@ export interface LegacyMigrationScanResult {
   sourceDir: string
   candidatePaths: string[]
   sections: LegacyMigrationSectionPreview[]
+  /** 扫描级别的补充说明（如纯文件工作区限制） */
+  notes?: string[]
 }
 
 export interface LegacyMigrationImportSelection {
@@ -59,6 +61,10 @@ export interface LegacyMigrationProgressEvent {
 export interface LegacySelectiveMigrationManifest {
   assistants: Record<string, string>
   sessions: Record<string, string>
+  /** vault/date/contentHash → 已导入 */
+  diaries?: Record<string, true>
+  /** sourceId/factsHash → 已导入 */
+  personas?: Record<string, true>
   lastSourceDir?: string
 }
 

@@ -12,18 +12,27 @@ import {
 } from '@baishou/core-desktop'
 import {
   appendTwoRandomDigits,
+  buildLegacyDiaryImportItems,
+  collectLegacyDiaryMarkdownEntries,
+  countArchiveMarkdownFiles,
+  countImportableDiaryEntries,
   countJournalMarkdownFiles,
+  diaryManifestKey,
   discoverVaultNames,
-  extractJournalDateKey,
   formatMigrationSizeBytes,
+  hashDiaryContent,
+  isValidDateKey,
   LEGACY_MIGRATION_SECTION_LABELS,
   mapBaishouDbToVaultName,
   mergeDirectoriesSkipExisting,
-  parseFlutterPersonasFromSp,
+  personaManifestKey,
+  resolveLegacyAvatarCandidates,
+  resolveLegacyIdentityPersonas,
   scanLegacyDatabases,
   sumDirectorySizeBytes,
-  parseJournalMarkdown,
-  isLegacyAppRoot
+  isLegacyAppRoot,
+  type LegacyDiaryMarkdownEntry,
+  type LegacyDiarySqliteEntry
 } from '@baishou/core/shared'
 import type {
   LegacyMigrationImportResult,
@@ -46,9 +55,8 @@ import { getAgentManagers } from '../ipc/agent-helpers'
 import { vaultService } from '../ipc/vault.ipc'
 import { getDiaryManagerForVault } from './diary-vault.factory'
 import {
-  readFlutterSharedPreferencesRaw,
   resolveFlutterDocumentsAvatarsDir,
-  resolveLegacyPreferencesForSource,
+  resolveLegacyPreferencesForMigration,
   resolveLegacyRootCandidates
 } from './flutter-legacy-paths.service'
 
@@ -200,30 +208,18 @@ function readLegacyBaishouDiaries(dbPath: string): LegacyBaishouDiaryRow[] {
   }
 }
 
-function countLegacyBaishouDiaries(dbPath: string): number {
-  return readLegacyBaishouDiaries(dbPath).length
-}
-
 function resolveUserAvatarCandidates(
   sp: Record<string, unknown> | null,
-  sourceDir: string
+  sourceDir: string,
+  options?: { includeMachineAvatarPaths?: boolean }
 ): string[] {
-  const paths: string[] = []
-  const fromSp = sp?.['user_avatar_path']
-  if (typeof fromSp === 'string' && fromSp.trim()) {
-    paths.push(fromSp.trim())
-  }
-  const docsAvatars = resolveFlutterDocumentsAvatarsDir()
-  for (const name of ['user_avatar.jpg', 'user_avatar.png', 'user_avatar.webp', 'user_avatar.jpeg']) {
-    paths.push(join(docsAvatars, name))
-  }
-  const configDir = join(sourceDir, 'config')
-  if (existsSync(configDir)) {
-    for (const name of ['avatar.jpg', 'avatar.png', 'avatar.webp', 'avatar.jpeg']) {
-      paths.push(join(configDir, name))
-    }
-  }
-  return [...new Set(paths)].filter((p) => existsSync(p))
+  const includeMachinePaths = options?.includeMachineAvatarPaths ?? true
+  return [...new Set(
+    resolveLegacyAvatarCandidates(sp, sourceDir, {
+      includeMachinePaths,
+      documentsAvatarsDir: includeMachinePaths ? resolveFlutterDocumentsAvatarsDir() : undefined
+    })
+  )].filter((p) => existsSync(p))
 }
 
 function normalizeImportSelection(
@@ -286,14 +282,28 @@ export class LegacySelectiveMigrationService {
       }
     }
 
-    const prefs = await resolveLegacyPreferencesForSource(resolvedSource)
-    const sp = prefs.sp ?? (await readFlutterSharedPreferencesRaw())
+    const prefs = await resolveLegacyPreferencesForMigration(resolvedSource)
+    const sp = prefs.sp
     const vaultNames = await discoverVaultNames(this.fileSystem, resolvedSource)
     const { agentDbs, baishouDbs } = await scanLegacyDatabases(this.fileSystem, resolvedSource)
+    const isFileOnlyWorkspace = agentDbs.length === 0 && baishouDbs.length === 0
+    const notes: string[] = []
+    if (prefs.supplementedFromMachine) {
+      notes.push(
+        '头像、身份卡或配置的部分数据来自本机 Flutter 安装目录（如 %APPDATA%\\baishou 或「文档/avatars」），与工作区文件一并展示。'
+      )
+    }
+    if (isFileOnlyWorkspace) {
+      notes.push(
+        '此目录为纯文件工作区：可导入日记与工作空间；身份卡、伙伴或聊天记录需本机 SharedPreferences 或目录内 SQLite。'
+      )
+    }
 
     const sections: LegacyMigrationSectionPreview[] = []
 
-    const avatarPaths = resolveUserAvatarCandidates(sp, resolvedSource)
+    const avatarPaths = resolveUserAvatarCandidates(sp, resolvedSource, {
+      includeMachineAvatarPaths: true
+    })
     let avatarSize = 0
     for (const p of avatarPaths) {
       try {
@@ -315,10 +325,20 @@ export class LegacySelectiveMigrationService {
       importable: avatarPaths.length > 0
     })
 
-    const personas = parseFlutterPersonasFromSp(sp)
+    const personas = resolveLegacyIdentityPersonas(sp, prefs.config)
     const personaJson = sp?.['user_personas']
     const personaSize =
       typeof personaJson === 'string' ? new TextEncoder().encode(personaJson).length : 0
+    const identityWarnings: string[] = []
+    if (personas.length === 0 && isFileOnlyWorkspace) {
+      identityWarnings.push('未检测到 shared_preferences.json 或 identity_facts，无法恢复身份卡')
+    } else if (personas.length > 0 && prefs.source === 'device_preferences' && !sp?.['user_personas']) {
+      identityWarnings.push(
+        '仅检测到 device_preferences 中的 active 身份事实，无法恢复全部旧版身份卡'
+      )
+    } else if (personas.length > 0) {
+      identityWarnings.push('重复导入将跳过已迁移身份卡')
+    }
     sections.push({
       id: 'identityCards',
       label: LEGACY_MIGRATION_SECTION_LABELS.identityCards,
@@ -327,7 +347,7 @@ export class LegacySelectiveMigrationService {
       sizeBytes: personaSize,
       sizeLabel: formatMigrationSizeBytes(personaSize),
       samples: personas.map((p) => p.id).slice(0, 5),
-      warnings: [],
+      warnings: identityWarnings,
       importable: personas.length > 0
     })
 
@@ -342,28 +362,72 @@ export class LegacySelectiveMigrationService {
       sizeBytes: configKeys.length * 128,
       sizeLabel: formatMigrationSizeBytes(configKeys.length * 128),
       samples: configKeys.slice(0, 5),
-      warnings: prefs.source === 'device_preferences' ? ['来自旧版目录 config/device_preferences.json'] : [],
+      warnings:
+        prefs.source === 'device_preferences'
+          ? ['来自旧版目录 config/device_preferences.json']
+          : prefs.source === 'source_shared_preferences'
+            ? ['来自旧版目录 shared_preferences.json']
+            : [],
       importable: configKeys.length > 0
     })
 
-    let diaryCount = 0
     let diarySize = 0
     const diarySamples: string[] = []
+    const markdownEntries: LegacyDiaryMarkdownEntry[] = []
+    const markdownCountByVault = new Map<string, number>()
+    const markdownDatesByVault = new Map<string, Set<string>>()
+    const sqliteByVault = new Map<string, Set<string>>()
+
     for (const vaultName of vaultNames) {
       const journalsDir = join(resolvedSource, vaultName, 'Journals')
       const stats = await countJournalMarkdownFiles(this.fileSystem, journalsDir)
-      diaryCount += stats.count
       diarySize += stats.sizeBytes
-      for (const sample of stats.samples) {
-        if (diarySamples.length < 5) diarySamples.push(`${vaultName}/${sample}`)
+      const vaultEntries = await collectLegacyDiaryMarkdownEntries(
+        this.fileSystem,
+        journalsDir,
+        vaultName
+      )
+      markdownEntries.push(...vaultEntries)
+      if (vaultEntries.length > 0) {
+        markdownCountByVault.set(vaultName, vaultEntries.length)
+        markdownDatesByVault.set(
+          vaultName,
+          new Set(vaultEntries.map((e) => e.dateKey))
+        )
+      }
+      for (const entry of vaultEntries) {
+        if (diarySamples.length < 5) {
+          diarySamples.push(`${vaultName}/${entry.dateKey}`)
+        }
       }
     }
     for (const dbPath of baishouDbs) {
-      const sqliteCount = countLegacyBaishouDiaries(dbPath)
-      diaryCount += sqliteCount
-      if (sqliteCount > 0 && diarySamples.length < 5) {
-        const vaultName = mapBaishouDbToVaultName(dbPath, vaultNames) ?? 'sqlite'
-        diarySamples.push(`${vaultName}:sqlite×${sqliteCount}`)
+      const vaultName = mapBaishouDbToVaultName(dbPath, vaultNames) ?? vaultNames[0] ?? 'Personal'
+      const dates = sqliteByVault.get(vaultName) ?? new Set<string>()
+      for (const row of readLegacyBaishouDiaries(dbPath)) {
+        if (isValidDateKey(row.dateKey)) dates.add(row.dateKey)
+      }
+      if (dates.size > 0) sqliteByVault.set(vaultName, dates)
+      if (dates.size > 0 && diarySamples.length < 5) {
+        diarySamples.push(`${vaultName}:sqlite×${dates.size}`)
+      }
+    }
+    const diaryCount = countImportableDiaryEntries(
+      markdownCountByVault,
+      markdownDatesByVault,
+      sqliteByVault
+    )
+    const rawMarkdownFiles = [...markdownCountByVault.values()].reduce((n, c) => n + c, 0)
+    const rawSqliteRows = [...sqliteByVault.values()].reduce((n, s) => n + s.size, 0)
+    const diaryWarnings = [
+      '同日多篇 Markdown 将依次追加到同一日记',
+      'Markdown 优先，baishou.sqlite 仅补缺同日条目',
+      '重复导入将跳过已迁移日记'
+    ]
+    if (rawSqliteRows > 0 && rawMarkdownFiles > 0) {
+      const sqliteOnly = diaryCount - rawMarkdownFiles
+      if (sqliteOnly < rawSqliteRows) {
+        diaryWarnings.push(`已跳过 ${rawSqliteRows - sqliteOnly} 条与 Markdown 重复的 SQLite 日记`)
       }
     }
     sections.push({
@@ -374,10 +438,7 @@ export class LegacySelectiveMigrationService {
       sizeBytes: diarySize,
       sizeLabel: formatMigrationSizeBytes(diarySize),
       samples: diarySamples,
-      warnings: [
-        '同日日记将追加到现有内容末尾',
-        '包含 Journals Markdown 与 baishou.sqlite 可恢复项（可能重复计数）'
-      ],
+      warnings: diaryWarnings,
       importable: diaryCount > 0
     })
 
@@ -421,7 +482,11 @@ export class LegacySelectiveMigrationService {
       sizeBytes: Math.round(chatSize * 0.2),
       sizeLabel: formatMigrationSizeBytes(Math.round(chatSize * 0.2)),
       samples: assistantSamples,
-      warnings: assistantIds.size > 0 ? ['导入后伙伴名称将追加两位随机数字', '重复导入将跳过已迁移伙伴'] : [],
+      warnings: assistantIds.size > 0
+        ? ['导入后伙伴名称将追加两位随机数字', '重复导入将跳过已迁移伙伴']
+        : isFileOnlyWorkspace
+          ? ['未检测到 agent.sqlite，无法从此目录恢复伙伴']
+          : [],
       importable: assistantIds.size > 0
     })
 
@@ -435,17 +500,46 @@ export class LegacySelectiveMigrationService {
       samples: [`${sessionCount} 个会话`, `${messageCount} 条消息`],
       warnings: messageCount > 0
         ? ['需与伙伴一并导入，聊天记录将绑定到新导入的伙伴', '重复导入将跳过已迁移会话']
-        : [],
+        : isFileOnlyWorkspace
+          ? ['未检测到 agent.sqlite，无法从此目录恢复聊天记录']
+          : [],
       importable: messageCount > 0 && assistantIds.size > 0
     })
 
     let workspaceSize = 0
+    let archiveCount = 0
+    const workspaceSamples: string[] = []
     for (const vaultName of vaultNames) {
       workspaceSize += await sumDirectorySizeBytes(
         this.fileSystem,
         join(resolvedSource, vaultName),
         { skipDirNames: new Set(['.baishou', 'Journals']) }
       )
+      const archiveStats = await countArchiveMarkdownFiles(
+        this.fileSystem,
+        join(resolvedSource, vaultName, 'Archives')
+      )
+      archiveCount += archiveStats.count
+      if (archiveStats.count > 0 && workspaceSamples.length < 5) {
+        workspaceSamples.push(`${vaultName}/Archives×${archiveStats.count}`)
+      }
+    }
+  if (workspaceSamples.length < 5) {
+      for (const name of vaultNames) {
+        if (workspaceSamples.length >= 5) break
+        if (!workspaceSamples.some((s) => s.startsWith(`${name}/`))) {
+          workspaceSamples.push(name)
+        }
+      }
+    }
+    const workspaceWarnings = [
+      '仅登记工作空间并复制附件/Archives（不复制 Journals，日记请用「日记」板块导入）',
+      '不会自动切换当前存储根目录',
+      '不会覆盖已存在的附件文件',
+      '导入后需等待索引刷新完成'
+    ]
+    if (archiveCount > 0) {
+      workspaceWarnings.unshift(`检测到约 ${archiveCount} 个归档笔记（将复制 Archives 目录）`)
     }
     sections.push({
       id: 'workspaces',
@@ -454,17 +548,13 @@ export class LegacySelectiveMigrationService {
       count: vaultNames.length,
       sizeBytes: workspaceSize,
       sizeLabel: formatMigrationSizeBytes(workspaceSize),
-      samples: vaultNames.slice(0, 5),
-      warnings: [
-        '仅登记工作空间并复制附件/Archives（不复制 Journals，日记请用「日记」板块导入）',
-        '不会自动切换当前存储根目录',
-        '不会覆盖已存在的附件文件'
-      ],
+      samples: workspaceSamples.slice(0, 5),
+      warnings: workspaceWarnings,
       importable: vaultNames.length > 0
     })
 
     onProgress?.({ phase: 'scan', message: '扫描完成' })
-    return { sourceDir: resolvedSource, candidatePaths: candidates, sections }
+    return { sourceDir: resolvedSource, candidatePaths: candidates, sections, notes }
   }
 
   async importSelected(
@@ -489,12 +579,14 @@ export class LegacySelectiveMigrationService {
     const settingsRepo = new SettingsRepository(db)
     const profileRepo = new UserProfileRepository(db)
     const legacyImporter = new LegacyImportService(settingsRepo, profileRepo)
-    const prefs = await resolveLegacyPreferencesForSource(trimmedSource)
-    const sp = prefs.sp ?? (await readFlutterSharedPreferencesRaw())
+    const prefs = await resolveLegacyPreferencesForMigration(trimmedSource)
+    const sp = prefs.sp
 
     let manifest = (await settingsRepo.get<LegacySelectiveMigrationManifest>(
       LEGACY_SELECTIVE_MIGRATION_MANIFEST_KEY
-    )) ?? { assistants: {}, sessions: {} }
+    )) ?? { assistants: {}, sessions: {}, diaries: {}, personas: {} }
+    manifest.diaries = manifest.diaries ?? {}
+    manifest.personas = manifest.personas ?? {}
     manifest.lastSourceDir = trimmedSource
 
     let assistantIdMap = new Map<string, string>(Object.entries(manifest.assistants))
@@ -505,7 +597,9 @@ export class LegacySelectiveMigrationService {
       )
     }
     if (selection.identityCards) {
-      results.push(await this.importIdentityCards(sp, profileRepo, onProgress))
+      results.push(
+        await this.importIdentityCards(sp, prefs.config, profileRepo, manifest, onProgress)
+      )
     }
     if (selection.config) {
       results.push(await this.importConfig(legacyImporter, prefs.config, onProgress))
@@ -514,7 +608,7 @@ export class LegacySelectiveMigrationService {
       results.push(await this.importWorkspaces(trimmedSource, onProgress))
     }
     if (selection.diaries) {
-      results.push(await this.importDiaries(trimmedSource, onProgress))
+      results.push(await this.importDiaries(trimmedSource, manifest, onProgress))
     }
     if (selection.assistants) {
       const assistantResult = await this.importAssistants(
@@ -587,7 +681,9 @@ export class LegacySelectiveMigrationService {
     const result = emptySectionResult('avatar')
     onProgress?.({ phase: 'import', section: 'avatar', message: '正在导入头像…' })
     try {
-      const candidates = resolveUserAvatarCandidates(sp, sourceDir)
+      const candidates = resolveUserAvatarCandidates(sp, sourceDir, {
+        includeMachineAvatarPaths: true
+      })
       if (candidates.length === 0) {
         result.skipped = 1
         return result
@@ -606,28 +702,41 @@ export class LegacySelectiveMigrationService {
 
   private async importIdentityCards(
     sp: Record<string, unknown> | null,
+    config: Record<string, unknown> | null,
     profileRepo: UserProfileRepository,
+    manifest: LegacySelectiveMigrationManifest,
     onProgress?: ProgressFn
   ): Promise<LegacyMigrationImportSectionResult> {
     const result = emptySectionResult('identityCards')
     onProgress?.({ phase: 'import', section: 'identityCards', message: '正在导入身份卡…' })
     try {
-      const personas = parseFlutterPersonasFromSp(sp)
+      const personas = resolveLegacyIdentityPersonas(sp, config)
       if (personas.length === 0) {
         result.skipped = 1
         return result
       }
       const profile = await profileRepo.getProfile()
+      manifest.personas = manifest.personas ?? {}
+      let changed = false
       for (const persona of personas) {
         if (this.wasCancelled()) break
+        const manifestKey = personaManifestKey(persona.id, persona.facts)
+        if (manifest.personas[manifestKey]) {
+          result.skipped += 1
+          continue
+        }
         let newId = appendTwoRandomDigits(persona.id)
         while (profile.personas[newId]) {
           newId = appendTwoRandomDigits(persona.id)
         }
         profile.personas[newId] = { id: newId, facts: { ...persona.facts } }
+        manifest.personas[manifestKey] = true
+        changed = true
         result.success += 1
       }
-      await profileRepo.saveProfile(profile)
+      if (changed) {
+        await profileRepo.saveProfile(profile)
+      }
     } catch (e) {
       result.failed += 1
       result.errors.push(e instanceof Error ? e.message : String(e))
@@ -658,30 +767,52 @@ export class LegacySelectiveMigrationService {
 
   private async importDiaries(
     sourceDir: string,
+    manifest: LegacySelectiveMigrationManifest,
     onProgress?: ProgressFn
   ): Promise<LegacyMigrationImportSectionResult> {
     const result = emptySectionResult('diaries')
     const vaultNames = await discoverVaultNames(this.fileSystem, sourceDir)
     const { baishouDbs } = await scanLegacyDatabases(this.fileSystem, sourceDir)
+    manifest.diaries = manifest.diaries ?? {}
 
-    const markdownFiles: Array<{ path: string; vaultName: string }> = []
+    const markdownEntries: LegacyDiaryMarkdownEntry[] = []
     for (const vaultName of vaultNames) {
       const journalsDir = join(sourceDir, vaultName, 'Journals')
-      await this.collectJournalFiles(journalsDir, markdownFiles, vaultName)
+      const vaultEntries = await collectLegacyDiaryMarkdownEntries(
+        this.fileSystem,
+        journalsDir,
+        vaultName
+      )
+      markdownEntries.push(...vaultEntries)
     }
 
-    const sqliteRows: Array<{ vaultName: string; row: LegacyBaishouDiaryRow }> = []
+    const sqliteEntries: LegacyDiarySqliteEntry[] = []
     for (const dbPath of baishouDbs) {
       const vaultName = mapBaishouDbToVaultName(dbPath, vaultNames) ?? vaultNames[0] ?? 'Personal'
       for (const row of readLegacyBaishouDiaries(dbPath)) {
-        sqliteRows.push({ vaultName, row })
+        if (!isValidDateKey(row.dateKey)) continue
+        const content = row.content.trim()
+        if (!content) continue
+        sqliteEntries.push({
+          vaultName,
+          dateKey: row.dateKey,
+          content,
+          contentHash: hashDiaryContent(content),
+          tags: row.tags,
+          weather: row.weather,
+          mood: row.mood,
+          location: row.location,
+          locationDetail: row.locationDetail,
+          isFavorite: row.isFavorite ?? false
+        })
       }
     }
 
-    const total = markdownFiles.length + sqliteRows.length
+    const items = buildLegacyDiaryImportItems(markdownEntries, sqliteEntries)
+    const total = items.length
     let index = 0
 
-    for (const file of markdownFiles) {
+    for (const item of items) {
       if (this.wasCancelled()) break
       index += 1
       onProgress?.({
@@ -691,71 +822,31 @@ export class LegacySelectiveMigrationService {
         current: index,
         total
       })
-      try {
-        await this.ensureTargetVault(file.vaultName)
-        const diaryManager = await getDiaryManagerForVault(file.vaultName)
-        const raw = await this.fileSystem.readFile(file.path, 'utf8')
-        const baseName = file.path.split(/[/\\]/).pop()?.replace(/\.md$/, '') ?? ''
-        const parsed = parseJournalMarkdown(raw, baseName)
-        const dateKey =
-          extractJournalDateKey(parsed?.date ?? '', baseName) ??
-          extractJournalDateKey(raw, baseName)
-        if (!dateKey) {
-          result.skipped += 1
-          continue
-        }
-        const date = safeParseDate(dateKey)
-        const content = parsed?.content?.trim() || raw.trim()
-        if (!content) {
-          result.skipped += 1
-          continue
-        }
-        await diaryManager.save(null, {
-          date,
-          content,
-          tags: parsed?.tags?.join(',') ?? undefined,
-          weather: parsed?.weather,
-          mood: parsed?.mood,
-          location: parsed?.location,
-          locationDetail: parsed?.locationDetail,
-          isFavorite: parsed?.isFavorite ?? false
-        })
-        result.success += 1
-      } catch (e) {
-        result.failed += 1
-        result.errors.push(`${file.path}: ${e instanceof Error ? e.message : String(e)}`)
+      const manifestKey = diaryManifestKey(item.vaultName, item.dateKey, item.contentHash)
+      if (manifest.diaries![manifestKey]) {
+        result.skipped += 1
+        continue
       }
-    }
-
-    for (const item of sqliteRows) {
-      if (this.wasCancelled()) break
-      index += 1
-      onProgress?.({
-        phase: 'import',
-        section: 'diaries',
-        message: `正在导入 SQLite 日记 ${index}/${total}`,
-        current: index,
-        total
-      })
       try {
         await this.ensureTargetVault(item.vaultName)
         const diaryManager = await getDiaryManagerForVault(item.vaultName)
-        const date = safeParseDate(item.row.dateKey)
+        const date = safeParseDate(item.dateKey)
         await diaryManager.save(null, {
           date,
-          content: item.row.content,
-          tags: item.row.tags,
-          weather: item.row.weather,
-          mood: item.row.mood,
-          location: item.row.location,
-          locationDetail: item.row.locationDetail,
-          isFavorite: item.row.isFavorite ?? false
+          content: item.content,
+          tags: item.tags,
+          weather: item.weather,
+          mood: item.mood,
+          location: item.location,
+          locationDetail: item.locationDetail,
+          isFavorite: item.isFavorite
         })
+        manifest.diaries![manifestKey] = true
         result.success += 1
       } catch (e) {
         result.failed += 1
         result.errors.push(
-          `${item.vaultName}/${item.row.dateKey}: ${e instanceof Error ? e.message : String(e)}`
+          `${item.vaultName}/${item.dateKey}: ${e instanceof Error ? e.message : String(e)}`
         )
       }
     }
@@ -766,24 +857,6 @@ export class LegacySelectiveMigrationService {
   private async ensureTargetVault(vaultName: string): Promise<void> {
     if (!vaultService.vaultExists(vaultName)) {
       await vaultService.createVault(vaultName)
-    }
-  }
-
-  private async collectJournalFiles(
-    dir: string,
-    out: Array<{ path: string; vaultName: string }>,
-    vaultName: string
-  ): Promise<void> {
-    if (!(await this.fileSystem.exists(dir))) return
-    const entries = await this.fileSystem.readdir(dir)
-    for (const name of entries) {
-      const full = join(dir, name)
-      const stat = await this.fileSystem.stat(full)
-      if (stat.isDirectory) {
-        await this.collectJournalFiles(full, out, vaultName)
-      } else if (name.endsWith('.md')) {
-        out.push({ path: full, vaultName })
-      }
     }
   }
 
