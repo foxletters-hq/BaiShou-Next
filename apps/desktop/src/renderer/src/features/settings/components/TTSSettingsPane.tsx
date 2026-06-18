@@ -4,22 +4,10 @@ import {
   applyTtsSaveToGlobalModels,
   buildTtsProviderStatesFromGlobal,
   buildTtsSettingsInitialConfig,
-  isTtsProviderId,
-  synthesizeTtsFromFormConfig,
-  TtsProviderRegistry,
-  OpenAiTtsProvider,
-  MimoTtsProvider,
-  CloneTtsProvider,
-  GptSovitsProvider
+  isTtsProviderId
 } from '@baishou/shared'
 import { TTSProviderSettings } from '@baishou/ui'
 import type { TtsProviderConfig } from '@baishou/ui'
-
-const ttsRegistry = new TtsProviderRegistry()
-ttsRegistry.register(new OpenAiTtsProvider())
-ttsRegistry.register(new MimoTtsProvider())
-ttsRegistry.register(new CloneTtsProvider())
-ttsRegistry.register(new GptSovitsProvider())
 
 export const TTSSettingsPane: React.FC = () => {
   const globalModels = useSettingsStore((state) => state.globalModels)
@@ -44,7 +32,8 @@ export const TTSSettingsPane: React.FC = () => {
 
   const handleTestTts = useCallback(async (config: TtsProviderConfig, text: string) => {
     try {
-      const result = await synthesizeTtsFromFormConfig(ttsRegistry, config, text)
+      const result =
+        (await window.electron?.ipcRenderer.invoke('settings:tts-test', config, text)) || null
       if (result.success) {
         return { success: true, audioBase64: result.audioBase64, format: result.format }
       }
