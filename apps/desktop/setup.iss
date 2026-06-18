@@ -2,10 +2,10 @@
 ; 由 scripts/build-inno.mjs 调用 ISCC，传入 AppVersion / OutputBaseFilename / SetupIconPath
 
 #ifndef AppVersion
-#define AppVersion "1.0.2"
+#define AppVersion "1.0.3"
 #endif
 #ifndef OutputBaseFilename
-#define OutputBaseFilename "BaiShou-v1.0.2-Windows-Setup"
+#define OutputBaseFilename "BaiShou-v1.0.3-Windows-Setup"
 #endif
 #ifndef SetupIconPath
 #define SetupIconPath "dist\.icon-ico\icon.ico"
