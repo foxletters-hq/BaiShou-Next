@@ -161,12 +161,17 @@ interface IncrementalSyncAPI {
 }
 
 interface LegacyMigrationAPI {
-  scan(sourceDir?: string): Promise<import('@baishou/shared').LegacyMigrationScanResult>
+  scan(customSourceRoot?: string | null): Promise<import('@baishou/shared').LegacyVersionMigrationScanPayload>
   pickSource(): Promise<string | null>
-  import(
-    sourceDir: string,
-    selection: import('@baishou/shared').LegacyMigrationImportSelection
-  ): Promise<import('@baishou/shared').LegacyMigrationImportResult>
+  clearCustomSource(): Promise<{ success: boolean }>
+  importSection(
+    sectionId: import('@baishou/shared').LegacyVersionMigrationSectionId,
+    customSourceRoot?: string | null
+  ): Promise<import('@baishou/shared').LegacyVersionMigrationImportResult>
+  importAllWorkspaces(
+    sectionIds: import('@baishou/shared').LegacyVersionMigrationSectionId[],
+    customSourceRoot?: string | null
+  ): Promise<import('@baishou/shared').LegacyVersionMigrationBatchImportResult>
   cancel(): Promise<{ success: boolean }>
   onProgress(
     callback: (event: import('@baishou/shared').LegacyMigrationProgressEvent) => void

@@ -11,35 +11,119 @@ import {
 } from '@baishou/core/shared'
 import { createNodeFileSystem, isLegacyAppRoot } from '@baishou/core-desktop'
 
+export interface VersionMigrationFlutterPrefs {
+  config: Record<string, unknown> | null
+  sp: Record<string, unknown> | null
+  supplementedFromMachine: boolean
+}
+
+function deriveConfigFromSp(sp: Record<string, unknown> | null): Record<string, unknown> | null {
+  if (!sp) return null
+  const assembled = assembleDevicePreferencesFromFlutterSp(sp)
+  return hasMeaningfulFlutterPreferences(assembled) ? assembled : null
+}
+
+function hasMeaningfulSpValue(value: unknown): boolean {
+  if (value == null) return false
+  if (typeof value === 'string') return value.trim().length > 0
+  if (Array.isArray(value)) return value.length > 0
+  if (typeof value === 'object') return Object.keys(value as object).length > 0
+  return true
+}
+
+function mergeFlutterSharedPreferences(
+  machineSp: Record<string, unknown>,
+  sourceSp: Record<string, unknown>
+): Record<string, unknown> {
+  const merged = { ...machineSp }
+  for (const [key, value] of Object.entries(sourceSp)) {
+    if (hasMeaningfulSpValue(value)) {
+      merged[key] = value
+    }
+  }
+  return merged
+}
+
+/**
+ * 版本迁移扫描/导入：合并目录与本机 SP，并在仅有 SP 时推导 config（对齐移动端）。
+ */
+export async function resolveVersionMigrationFlutterPrefs(
+  sourceDir: string
+): Promise<VersionMigrationFlutterPrefs> {
+  const prefs = await resolveLegacyPreferencesForMigration(sourceDir)
+  let sp = prefs.sp
+  let config = prefs.config ?? deriveConfigFromSp(sp)
+
+  if (!config && !sp) {
+    const machineSp = await readFlutterSharedPreferencesRaw()
+    if (machineSp) {
+      sp = machineSp
+      config = deriveConfigFromSp(machineSp)
+    }
+  }
+
+  return {
+    sp,
+    config,
+    supplementedFromMachine:
+      prefs.supplementedFromMachine || Boolean(prefs.sp == null && sp != null)
+  }
+}
+
 export function resolveFlutterSharedPreferencesCandidates(): string[] {
   const candidates: string[] = []
   if (process.platform === 'linux') {
+    candidates.push(join(homedir(), '.local/share/com.baishou/baishou/shared_preferences.json'))
     candidates.push(join(homedir(), '.local/share/baishou/shared_preferences.json'))
     candidates.push(join(homedir(), '.local/share/com.baishou.baishou/shared_preferences.json'))
   } else if (process.platform === 'darwin') {
+    candidates.push(
+      join(homedir(), 'Library/Application Support/com.baishou/baishou/shared_preferences.json')
+    )
     candidates.push(join(homedir(), 'Library/Application Support/baishou/shared_preferences.json'))
     candidates.push(
       join(homedir(), 'Library/Application Support/com.baishou.baishou/shared_preferences.json')
     )
   } else if (process.platform === 'win32') {
     const appData = process.env.APPDATA || join(homedir(), 'AppData', 'Roaming')
-    candidates.push(join(appData, 'baishou', 'shared_preferences.json'))
+    // 原版 Flutter 桌面白守（CompanyName=com.baishou, 应用名=baishou）
+    candidates.push(join(appData, 'com.baishou', 'baishou', 'shared_preferences.json'))
     candidates.push(join(appData, 'com.baishou.baishou', 'shared_preferences.json'))
+    candidates.push(join(appData, 'baishou', 'shared_preferences.json'))
   }
   return candidates
 }
 
+function scoreFlutterPrefsForMigration(sp: Record<string, unknown>): number {
+  let score = 0
+  if (sp['user_personas']) score += 10
+  if (sp['user_identity_facts']) score += 5
+  if (sp['custom_storage_root']) score += 3
+  if (sp['user_nickname']) score += 1
+  if (sp['ai_providers_list']) score += 1
+  return score
+}
+
 export async function readFlutterSharedPreferencesRaw(): Promise<Record<string, unknown> | null> {
+  let best: Record<string, unknown> | null = null
+  let bestScore = -1
+
   for (const candidate of resolveFlutterSharedPreferencesCandidates()) {
     if (!existsSync(candidate)) continue
     try {
       const raw = await fs.readFile(candidate, 'utf8')
-      return parseFlutterSharedPreferencesJson(raw)
+      const parsed = parseFlutterSharedPreferencesJson(raw)
+      const score = scoreFlutterPrefsForMigration(parsed)
+      if (score > bestScore) {
+        best = parsed
+        bestScore = score
+      }
     } catch {
       // try next candidate
     }
   }
-  return null
+
+  return best
 }
 
 export async function readFlutterSharedPreferencesConfig(): Promise<Record<
@@ -162,14 +246,20 @@ export async function resolveLegacyPreferencesForMigration(
     supplementedFromMachine = true
     if (source === 'none') source = fromMachine.source
   } else if (sp && fromMachine.sp) {
-    sp = { ...fromMachine.sp, ...sp }
+    sp = mergeFlutterSharedPreferences(fromMachine.sp, sp)
     supplementedFromMachine = true
+    if (!config) {
+      config = deriveConfigFromSp(sp)
+    }
   }
 
   if (!config && fromMachine.config) {
     config = fromMachine.config
     supplementedFromMachine = true
     if (source === 'none') source = fromMachine.source
+  } else if (!config && fromMachine.sp) {
+    config = deriveConfigFromSp(fromMachine.sp)
+    if (config) supplementedFromMachine = true
   } else if (
     config &&
     fromMachine.config &&

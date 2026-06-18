@@ -1,21 +1,29 @@
 import { ipcRenderer } from 'electron'
 import type {
-  LegacyMigrationImportResult,
-  LegacyMigrationImportSelection,
   LegacyMigrationProgressEvent,
-  LegacyMigrationScanResult
+  LegacyVersionMigrationBatchImportResult,
+  LegacyVersionMigrationImportResult,
+  LegacyVersionMigrationScanPayload,
+  LegacyVersionMigrationSectionId
 } from '@baishou/shared'
 
 export const legacyMigrationApi = {
   legacyMigration: {
-    scan: (sourceDir?: string): Promise<LegacyMigrationScanResult> =>
-      ipcRenderer.invoke('legacyMigration:scan', sourceDir),
+    scan: (customSourceRoot?: string | null): Promise<LegacyVersionMigrationScanPayload> =>
+      ipcRenderer.invoke('legacyMigration:scan', customSourceRoot),
     pickSource: (): Promise<string | null> => ipcRenderer.invoke('legacyMigration:pickSource'),
-    import: (
-      sourceDir: string,
-      selection: LegacyMigrationImportSelection
-    ): Promise<LegacyMigrationImportResult> =>
-      ipcRenderer.invoke('legacyMigration:import', sourceDir, selection),
+    clearCustomSource: (): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke('legacyMigration:clearCustomSource'),
+    importSection: (
+      sectionId: LegacyVersionMigrationSectionId,
+      customSourceRoot?: string | null
+    ): Promise<LegacyVersionMigrationImportResult> =>
+      ipcRenderer.invoke('legacyMigration:importSection', sectionId, customSourceRoot),
+    importAllWorkspaces: (
+      sectionIds: LegacyVersionMigrationSectionId[],
+      customSourceRoot?: string | null
+    ): Promise<LegacyVersionMigrationBatchImportResult> =>
+      ipcRenderer.invoke('legacyMigration:importAllWorkspaces', sectionIds, customSourceRoot),
     cancel: (): Promise<{ success: boolean }> => ipcRenderer.invoke('legacyMigration:cancel'),
     onProgress: (callback: (event: LegacyMigrationProgressEvent) => void) => {
       const handler = (_: unknown, event: LegacyMigrationProgressEvent) => callback(event)
