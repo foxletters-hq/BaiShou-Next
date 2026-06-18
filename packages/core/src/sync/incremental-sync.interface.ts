@@ -2,7 +2,8 @@ import type {
   S3SyncConfig,
   SyncManifest,
   IncrementalSyncResult,
-  SyncProgressCallback
+  SyncProgressCallback,
+  IncrementalSyncRunOptions
 } from '@baishou/shared'
 
 /**
@@ -56,7 +57,10 @@ export interface IIncrementalSyncService {
    * @throws {ManifestFetchError} 获取远程 manifest 失败
    * @param onProgress - 可选的进度回调，逐文件处理时触发
    */
-  sync(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult>
+  sync(
+    onProgress?: SyncProgressCallback,
+    runOptions?: IncrementalSyncRunOptions
+  ): Promise<IncrementalSyncResult>
 
   /**
    * 仅上传变更（不同步下载）
@@ -70,7 +74,10 @@ export interface IIncrementalSyncService {
    * 用于移动端恢复数据
    * @param onProgress - 可选的进度回调
    */
-  downloadOnly(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult>
+  downloadOnly(
+    onProgress?: SyncProgressCallback,
+    runOptions?: IncrementalSyncRunOptions
+  ): Promise<IncrementalSyncResult>
 
   // ── 清单管理 ───────────────────────────────────────────────
 

@@ -5,6 +5,8 @@ export interface LegacyConfigRestoreOptions {
   importAvatarBase64?: (base64: string, ext: string) => Promise<string | null>
   /** 选择性迁移：身份卡/头像由独立板块处理时不改写 profile */
   skipProfileFields?: boolean
+  /** 为 true 时跳过云同步凭据恢复，保留当前 Next 版 cloud_sync_config */
+  preserveCloudSync?: boolean
 }
 
 /**
@@ -66,7 +68,9 @@ export async function restoreLegacyDevicePreferences(
   await restoreRagAndTools(settingsRepo, config)
   await restoreWebSearch(settingsRepo, config)
   await restoreMcp(settingsRepo, config)
-  await restoreCloudSync(settingsRepo, config)
+  if (!options?.preserveCloudSync) {
+    await restoreCloudSync(settingsRepo, config)
+  }
 }
 
 async function restoreProviders(settingsRepo: SettingsRepository, config: Record<string, unknown>) {

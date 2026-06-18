@@ -6,7 +6,9 @@ import {
   SYNC_MANIFEST_VERSION,
   SYNC_REMOTE_SNAPSHOT_FILENAME,
   SYNC_STORAGE_ID_FILENAME,
-  getIncrementalSyncStorageId
+  getIncrementalSyncStorageId,
+  resolveIncrementalSyncStorageHistory,
+  type IncrementalSyncStorageHistory
 } from '@baishou/shared'
 import { isSqliteRuntimeSyncPath } from '@baishou/shared'
 import { ThreeWaySyncCore } from './three-way-sync.core'
@@ -123,6 +125,21 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
       try {
         fs.unlinkSync(tempPath)
       } catch {}
+    }
+  }
+
+  async getSyncStorageHistoryState(): Promise<IncrementalSyncStorageHistory> {
+    await this.loadConfig()
+    const metaDir = await this.getSyncMetaDirectory()
+    const storageIdPath = path.join(metaDir, SYNC_STORAGE_ID_FILENAME)
+    if (!fs.existsSync(storageIdPath)) {
+      return 'none'
+    }
+    try {
+      const savedId = (await fs.promises.readFile(storageIdPath, 'utf8')).trim()
+      return resolveIncrementalSyncStorageHistory(savedId, this.config)
+    } catch {
+      return 'mismatch'
     }
   }
 
