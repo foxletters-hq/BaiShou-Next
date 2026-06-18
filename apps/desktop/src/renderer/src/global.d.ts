@@ -77,6 +77,10 @@ interface SettingsAPI {
   getGlobalModels(): Promise<import('@baishou/shared').GlobalModelsConfig | null>
   getLegacyUpgradeNoticeState(): Promise<{ pending: boolean; shownCount: number }>
   markLegacyUpgradeNoticeShown(): Promise<number>
+  testTts(
+    config: unknown,
+    text: string
+  ): Promise<import('@baishou/shared').TtsSynthesizeFromSettingsResult>
   [key: string]: (...args: unknown[]) => Promise<unknown>
 }
 
@@ -103,6 +107,7 @@ interface AppAPI {
   zoom: ZoomAPI
   git: GitAPI
   incrementalSync: IncrementalSyncAPI
+  legacyMigration: LegacyMigrationAPI
   updater: UpdaterAPI
   settings: SettingsAPI
   vault: VaultAPI
@@ -153,6 +158,19 @@ interface IncrementalSyncAPI {
   getRemoteManifest(): Promise<unknown>
   refreshLocalManifest(): Promise<unknown>
   getLastSyncConflicts(): Promise<string[]>
+}
+
+interface LegacyMigrationAPI {
+  scan(sourceDir?: string): Promise<import('@baishou/shared').LegacyMigrationScanResult>
+  pickSource(): Promise<string | null>
+  import(
+    sourceDir: string,
+    selection: import('@baishou/shared').LegacyMigrationImportSelection
+  ): Promise<import('@baishou/shared').LegacyMigrationImportResult>
+  cancel(): Promise<{ success: boolean }>
+  onProgress(
+    callback: (event: import('@baishou/shared').LegacyMigrationProgressEvent) => void
+  ): () => void
 }
 
 declare interface Window {

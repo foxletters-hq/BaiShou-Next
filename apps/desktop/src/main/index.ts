@@ -11,6 +11,7 @@ import { registerLanIPC } from './ipc/lan.ipc'
 import { registerCloudSyncIPC } from './ipc/cloud-sync.ipc'
 import { registerGitSyncIPC } from './ipc/git-sync.ipc'
 import { registerIncrementalSyncIPC } from './ipc/incremental-sync.ipc'
+import { registerLegacyMigrationIPC } from './ipc/legacy-migration.ipc'
 import { registerDiaryIPC } from './ipc/diary.ipc'
 import { registerProfileIPC } from './ipc/profile.ipc'
 import { registerSummaryIPC } from './ipc/summary.ipc'
@@ -246,8 +247,8 @@ app.whenReady().then(async () => {
   const { resolveDesktopStorageBootstrap } =
     await import('./services/desktop-legacy-bootstrap.service')
   const bootstrap = await resolveDesktopStorageBootstrap(settingsPath)
-  let needsOnboarding = bootstrap.needsOnboarding
-  let customStorageRoot = bootstrap.storageRoot
+  const needsOnboarding = bootstrap.needsOnboarding
+  const customStorageRoot = bootstrap.storageRoot
 
   if (bootstrap.migrated) {
     logger.info('[Bootstrapper] Local Auto-Migration Completed! Skipped Onboarding.')
@@ -280,6 +281,7 @@ app.whenReady().then(async () => {
   registerCloudSyncIPC()
   registerGitSyncIPC()
   registerIncrementalSyncIPC()
+  registerLegacyMigrationIPC()
   registerDiaryIPC()
   registerProfileIPC()
   registerSummaryIPC()

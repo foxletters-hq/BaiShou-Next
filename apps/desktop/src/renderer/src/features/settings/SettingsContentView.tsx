@@ -71,6 +71,9 @@ const IdentityCardManagementPane = lazy(() =>
     default: m.IdentityCardManagementPane
   }))
 )
+const LegacyMigrationPane = lazy(() =>
+  import('./components/LegacyMigrationPane').then((m) => ({ default: m.LegacyMigrationPane }))
+)
 
 const settingsViewTransition = {
   initial: { opacity: 0, y: 10 },
@@ -93,7 +96,8 @@ const FULL_HEIGHT_SEGMENTS = new Set([
   'identity-cards',
   'incremental-sync',
   'diary-template',
-  'diary-ai-writing'
+  'diary-ai-writing',
+  'legacy-migration'
 ])
 
 interface SettingsContentViewProps {
@@ -190,6 +194,8 @@ export const SettingsContentView: React.FC<SettingsContentViewProps> = ({
         return <AttachmentManagementPane />
       case 'git':
         return <GitSettingsPane />
+      case 'legacy-migration':
+        return <LegacyMigrationPane />
       default:
         return <GeneralSettingsPane settings={settings} />
     }
