@@ -2,6 +2,7 @@ import { ipcMain } from 'electron'
 import { UserProfileRepository } from '@baishou/database-desktop'
 import { getAppDb } from '../db'
 import { profileService } from '../services/profile.service'
+import { settingsManager } from './settings.ipc'
 export function registerProfileIPC() {
   ipcMain.handle('profile:get-all', async () => {
     const repo = new UserProfileRepository(getAppDb())
@@ -15,6 +16,7 @@ export function registerProfileIPC() {
     const updated = { ...current, ...diff }
     await profileService.processProfileInput(updated)
     await repo.saveProfile(updated)
+    await settingsManager.flushToDisk()
     return await profileService.mapProfileOutput(updated)
   })
 
@@ -24,6 +26,7 @@ export function registerProfileIPC() {
     const updated = { ...current, ...diff }
     await profileService.processProfileInput(updated)
     await repo.saveProfile(updated)
+    await settingsManager.flushToDisk()
     return await profileService.mapProfileOutput(updated)
   })
 
