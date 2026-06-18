@@ -18,7 +18,8 @@ export const SETTINGS_TAB_SEGMENTS: Record<number, string> = {
   9: 'data-sync',
   12: 'git',
   10: 'attachments',
-  8: 'lan-transfer'
+  8: 'lan-transfer',
+  17: 'legacy-migration'
 }
 
 const SEGMENT_TO_TAB: Record<string, number> = {
