@@ -72,8 +72,33 @@ export class SummaryManagerService {
   }
 
   async list(options?: { start?: Date }): Promise<Summary[]> {
-    // 列表为了展现可以直接读 Shadow SQLite 库，获得极速响应
-    return this.summaryRepo.getSummaries(options)
+    const files = await this.fileSync.listAllSummaries()
+    const filtered = options?.start
+      ? files.filter((file) => file.startDate >= options.start!)
+      : files
+
+    const summaries = await Promise.all(
+      filtered.map(async (file, index) => {
+        const content = await this.fileSync.readSummary(file.type, file.startDate)
+        const dbRecord = await this.summaryRepo.getByDateRange(
+          file.type,
+          file.startDate,
+          file.endDate
+        )
+        return {
+          ...(dbRecord ?? {
+            id: -(index + 1),
+            generatedAt: new Date()
+          }),
+          type: file.type,
+          startDate: file.startDate,
+          endDate: file.endDate,
+          content: content ?? dbRecord?.content ?? ''
+        } as Summary
+      })
+    )
+
+    return summaries.sort((a, b) => b.startDate.getTime() - a.startDate.getTime())
   }
 
   async delete(type: SummaryType, startDate: Date, endDate: Date): Promise<void> {
