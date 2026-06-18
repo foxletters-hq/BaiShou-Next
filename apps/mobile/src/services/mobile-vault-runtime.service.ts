@@ -38,7 +38,10 @@ function diaryPreviewFromRaw(raw: string | null | undefined): string {
   return firstLine.length > 80 ? `${firstLine.slice(0, 80)}...` : firstLine
 }
 import { mobileDataBootstrapper, type MobileBootstrapperDeps } from './mobile-bootstrapper.service'
-import { scheduleVaultEcosystemResync } from './mobile-vault-resync.service'
+import {
+  scheduleVaultEcosystemResync,
+  waitForVaultEcosystemResync
+} from './mobile-vault-resync.service'
 import { vaultFileWatcher } from './vault-file-watcher.service'
 import { sessionFileWatcher } from './session-file-watcher.service'
 import { summaryFileWatcher } from './summary-file-watcher.service'
@@ -426,6 +429,45 @@ export async function resumeStorageAfterFileCopy(deps: {
   return diaryStack
 }
 
+type VaultBootstrapBaseDeps = Omit<
+  MobileBootstrapperDeps,
+  | 'shadowIndexSyncService'
+  | 'sessionManager'
+  | 'assistantManager'
+  | 'settingsManager'
+  | 'summarySyncService'
+> & {
+  sessionManager: SessionManagerService
+  assistantManager: AssistantManagerService
+  settingsManager: SettingsManagerService
+  summarySyncService: SummarySyncService
+}
+
+/**
+ * 文件级迁移/复制后阻塞重建 Shadow 索引。
+ * resumeStorageAfterFileCopy 会 skipFullResync 并提前启动 watcher；watcher 仅扫 Journals 顶层且
+ * 首次见到的文件不入库，嵌套日记只能靠 fullScanVault。此处先停 watcher 再阻塞全量扫描。
+ */
+export async function resyncEcosystemAfterFileMutation(deps: {
+  diaryStack: VaultBoundDiaryStack
+  vaultService: VaultService
+  bootstrapDeps: VaultBootstrapBaseDeps
+  watcherDeps: VaultRuntimeWatcherDeps
+}): Promise<void> {
+  await waitForVaultEcosystemResync()
+  await mobileDataBootstrapper.waitUntilIdle()
+  await stopVaultWatchers()
+  await deps.diaryStack.shadowIndexSyncService.waitForScan()
+
+  const bootstrapDeps = buildBootstrapDeps(deps.diaryStack, deps.bootstrapDeps)
+  deps.diaryStack.shadowIndexSyncService.setSyncEnabled(true)
+
+  logger.info('[VaultRuntime] Blocking ecosystem resync after file mutation…')
+  await mobileDataBootstrapper.runWhenVaultReady(bootstrapDeps, { force: true })
+  await restartVaultWatchers(deps.diaryStack, deps.vaultService, deps.watcherDeps)
+  logger.info('[VaultRuntime] Post-mutation ecosystem resync complete')
+}
+
 let storageRootRebootstrapInFlight: Promise<VaultBoundDiaryStack> | null = null
 
 export type StorageRootRebootstrapOptions = {
@@ -535,7 +577,8 @@ function buildBootstrapDeps(
     sessionManager: bootstrapDeps.sessionManager,
     assistantManager: bootstrapDeps.assistantManager,
     settingsManager: bootstrapDeps.settingsManager,
-    summarySyncService: bootstrapDeps.summarySyncService
+    summarySyncService: bootstrapDeps.summarySyncService,
+    getActiveVaultName: bootstrapDeps.getActiveVaultName
   }
 }
 
