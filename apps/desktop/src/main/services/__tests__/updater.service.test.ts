@@ -3,7 +3,7 @@ import { UpdateStatus } from '../updater.types'
 import { UpdateTimeoutError, UpdateCheckError } from '../updater.errors'
 
 const electronAppMock = vi.hoisted(() => ({
-  getVersion: vi.fn(() => 'Next-1.0.3'),
+  getVersion: vi.fn(() => 'Next-1.0.4'),
   isPackaged: false
 }))
 
@@ -18,7 +18,7 @@ vi.mock('electron-updater', () => ({
     autoDownload: false,
     autoInstallOnAppQuit: false,
     logger: null,
-    currentVersion: 'Next-1.0.3'
+    currentVersion: 'Next-1.0.4'
   }
 }))
 
@@ -30,8 +30,8 @@ vi.mock('electron', () => ({
 }))
 
 vi.mock('../../../app-version', () => ({
-  APP_VERSION: 'Next-1.0.3',
-  APP_VERSION_NUMBER: '1.0.3'
+  APP_VERSION: 'Next-1.0.4',
+  APP_VERSION_NUMBER: '1.0.4'
 }))
 
 describe('UpdaterService', () => {
@@ -55,7 +55,7 @@ describe('UpdaterService', () => {
   describe('getCurrentVersion', () => {
     it('should return current version', () => {
       const version = updaterService.getCurrentVersion()
-      expect(version).toBe('Next-1.0.3')
+      expect(version).toBe('Next-1.0.4')
     })
   })
 
@@ -79,7 +79,7 @@ describe('UpdaterService', () => {
       const result = await updaterService.checkForUpdates()
 
       expect(result.hasUpdate).toBe(true)
-      expect(result.currentVersion).toBe('Next-1.0.3')
+      expect(result.currentVersion).toBe('Next-1.0.4')
       expect(result.updateInfo).toEqual({
         version: '2.0.0',
         releaseNotes: 'New features',
