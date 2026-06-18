@@ -72,8 +72,15 @@ export class SummaryManagerService {
   }
 
   async list(options?: { start?: Date }): Promise<Summary[]> {
-    // 列表为了展现可以直接读 Shadow SQLite 库，获得极速响应
-    return this.summaryRepo.getSummaries(options)
+    // SQLite 是当前工作区的热缓存；可见性以 Summaries/Archives 磁盘文件为准
+    const [rows, files] = await Promise.all([
+      this.summaryRepo.getSummaries(options),
+      this.fileSync.listAllSummaries()
+    ])
+    const fileKeys = new Set(files.map((f) => `${f.type}:${f.startDate.getTime()}`))
+    return rows.filter((row) =>
+      fileKeys.has(`${row.type}:${new Date(row.startDate).getTime()}`)
+    )
   }
 
   async delete(type: SummaryType, startDate: Date, endDate: Date): Promise<void> {

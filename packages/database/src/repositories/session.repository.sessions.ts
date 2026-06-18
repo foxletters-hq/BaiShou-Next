@@ -60,7 +60,8 @@ export class SessionCrudOps {
     limit: number = 20,
     offset: number = 0,
     assistantId?: string,
-    searchQuery?: string
+    searchQuery?: string,
+    options?: { vaultName?: string }
   ) {
     let matchedSessionIds: string[] = []
 
@@ -129,6 +130,10 @@ export class SessionCrudOps {
 
     // 组合过滤条件
     const conditions: any[] = []
+
+    if (options?.vaultName) {
+      conditions.push(eq(agentSessionsTable.vaultName, options.vaultName))
+    }
 
     if (assistantId) {
       conditions.push(

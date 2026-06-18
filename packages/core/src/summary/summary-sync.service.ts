@@ -3,6 +3,7 @@ import { SummaryGeneratorService } from './summary-generator.service'
 import { SummaryRepository } from '@baishou/database'
 import { MissingSummary, SummaryType } from '@baishou/shared'
 import { SummaryFileService } from '../vault/summary-file.service'
+import type { DiskResyncOptions } from '../sync/disk-resync.types'
 
 export interface SummarySyncCallbacks {
   onProgress?: (missing: MissingSummary, status: string) => void
@@ -92,7 +93,7 @@ export class SummarySyncService {
   /**
    * 网盘启动、重建全库或者数据漫游使用的主动补齐。
    */
-  async fullScanArchives(): Promise<void> {
+  async fullScanArchives(options?: DiskResyncOptions): Promise<void> {
     const allFiles = await this.fileService.listAllSummaries()
 
     for (const f of allFiles) {
@@ -102,8 +103,8 @@ export class SummarySyncService {
     const allDb = await this.summaryRepo.getSummaries()
     if (allDb.length === 0) return
 
-    // 磁盘扫描为空但 DB 仍有记录时，多半是活跃 vault/路径未就绪；跳过 ghost 清理以免误删导入的总结
-    if (allFiles.length === 0) {
+    // 普通冷启动路径未就绪时保守跳过；明确处于活跃 vault resync 时，DB 应重建为当前 vault 缓存
+    if (allFiles.length === 0 && !options?.activeVaultName) {
       console.warn(
         '[SummarySyncService] Skipping ghost cleanup: disk scan found no summary files but DB has records'
       )

@@ -116,4 +116,16 @@ describe('SummarySyncService (Ghost indexing)', () => {
     expect(mockRepo.delete).not.toHaveBeenCalled()
     expect(mockRepo.upsert).not.toHaveBeenCalled()
   })
+
+  it('fullScanArchives() should clear cache for active vault when disk scan is empty', async () => {
+    mockFileService.listAllSummaries.mockResolvedValue([])
+    mockRepo.getSummaries.mockResolvedValue([
+      { id: 42, type: SummaryType.weekly, startDate: start, content: 'old-vault' } as any
+    ])
+
+    await service.fullScanArchives({ activeVaultName: 'EmptyVault' })
+
+    expect(mockRepo.delete).toHaveBeenCalledWith(42)
+    expect(mockRepo.upsert).not.toHaveBeenCalled()
+  })
 })
