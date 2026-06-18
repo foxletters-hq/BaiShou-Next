@@ -1,6 +1,7 @@
 import { useCallback, type MutableRefObject } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import type { TFunction } from 'i18next'
+import { validateMimoTtsSettings } from '@baishou/shared'
 import type {
   TtsProviderConfig,
   ProviderLocalState,
@@ -179,6 +180,13 @@ export function useTTSProviderSettingsHandlers(deps: HandlerDeps) {
   const handleTest = useCallback(async () => {
     if (!testText.trim()) {
       toast.showError(t('tts.settings.test_text_required', '请输入测试文本'))
+      return
+    }
+
+    const state = configs[providerType]
+    const mimoValidationError = validateMimoTtsSettings(state.modelId || '', state)
+    if (mimoValidationError) {
+      toast.showError(t(`tts.settings.${mimoValidationError}`))
       return
     }
 

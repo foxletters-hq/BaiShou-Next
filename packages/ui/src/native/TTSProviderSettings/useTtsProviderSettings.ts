@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { MIMO_TTS_DEFAULT_MODELS, validateMimoTtsSettings } from '@baishou/shared'
 import { useNativeToast } from '../Toast'
 import type {
   ProviderLocalState,
@@ -208,7 +209,7 @@ export function useTtsProviderSettings({
 
   const getDefaultModelOptions = useCallback(() => {
     if (providerType === 'clone-tts' || providerType === 'gpt-sovits') return ['default']
-    if (providerType === 'mimo-tts') return ['mimo-v2.5-tts']
+    if (providerType === 'mimo-tts') return [...MIMO_TTS_DEFAULT_MODELS]
     return ['tts-1', 'tts-1-hd']
   }, [providerType])
 
@@ -350,6 +351,14 @@ export function useTtsProviderSettings({
       toast.showError(t('tts.settings.test_text_required'))
       return
     }
+
+    const state = configs[providerType]
+    const mimoValidationError = validateMimoTtsSettings(state.modelId || '', state)
+    if (mimoValidationError) {
+      toast.showError(t(`tts.settings.${mimoValidationError}`))
+      return
+    }
+
     setTesting(true)
     try {
       const result = await onTestTts(
@@ -415,6 +424,8 @@ export function useTtsProviderSettings({
     setIsModelDropdownOpen,
     canFetchModels: !!onFetchModels,
     isGptSovits: providerType === 'gpt-sovits',
+    isMimoTts: providerType === 'mimo-tts',
+    mimoModelId: config.modelId || '',
     showApiKeyField: providerType !== 'clone-tts' && providerType !== 'gpt-sovits',
     apiKeyOptional: providerType === 'openai-tts' || providerType === 'mimo-tts',
     showSpeedControl

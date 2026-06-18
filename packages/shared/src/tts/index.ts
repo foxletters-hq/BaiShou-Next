@@ -34,30 +34,8 @@ export { synthesizeTtsFromSettings, synthesizeTtsFromFormConfig } from './synthe
 export type {
   TtsSynthesizeFromSettingsInput,
   TtsSynthesizeFromSettingsResult,
-  TtsFormSynthesizeConfig,
-  TtsSynthesizeOptions
+  TtsFormSynthesizeConfig
 } from './synthesize-from-settings'
-export { uint8ArrayToBase64, base64ToUint8Array } from './bytes-base64'
-export {
-  stripFencedCodeBlocks,
-  normalizeTtsWhitespace,
-  splitTtsTextIntoChunks,
-  prepareTtsSpeechChunks
-} from './tts-text-preprocess'
-export {
-  TtsSynthesisCache,
-  buildTtsSynthesisCacheKey,
-  getGlobalTtsSynthesisCache,
-  clearGlobalTtsSynthesisCache
-} from './tts-synthesis-cache'
-export type { TtsSynthesisCacheKeyInput, TtsSynthesisCacheEntry } from './tts-synthesis-cache'
-export { synthesizeTtsSpeechContent } from './tts-chunked-synthesis'
-export type {
-  TtsSpeechSegment,
-  TtsSpeechSynthesisFailure,
-  TtsSpeechSynthesisResult,
-  TtsSpeechSynthesisOptions
-} from './tts-chunked-synthesis'
 export { TtsProviderRegistry } from './tts.registry'
 export {
   TtsProviderFactory,
@@ -72,6 +50,20 @@ export {
 } from './tts-provider-creators'
 export type { TtsProviderCreator } from './tts-provider-creators'
 export { OpenAiTtsProvider } from './openai-tts.provider'
+export {
+  normalizeRefAudioPath,
+  isMimoVoiceCloneAudioExtension,
+  assertMimoVoiceCloneAudioPath
+} from './ref-audio-path.util'
+export {
+  getMimoTtsModelMode,
+  isMimoVoiceCloneModel,
+  isMimoVoiceDesignModel,
+  isMimoPresetModel,
+  validateMimoTtsSettings,
+  MIMO_TTS_DEFAULT_MODELS
+} from './mimo-tts.util'
+export type { MimoTtsModelMode } from './mimo-tts.util'
 export { MimoTtsProvider } from './mimo-tts.provider'
 export { CloneTtsProvider } from './clone-tts.provider'
 export { GptSovitsProvider } from './gpt-sovits.provider'
