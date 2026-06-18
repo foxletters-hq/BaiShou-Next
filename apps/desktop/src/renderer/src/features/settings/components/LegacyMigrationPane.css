@@ -1,0 +1,195 @@
+.legacy-migration-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px 32px 32px;
+  max-width: 920px;
+}
+
+.legacy-migration-header h2 {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-on-surface);
+}
+
+.legacy-migration-header p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-on-surface-variant);
+  line-height: 1.5;
+}
+
+.legacy-migration-source {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--color-surface-container-low, rgba(0, 0, 0, 0.04));
+  border: 1px solid var(--color-outline-variant, rgba(0, 0, 0, 0.08));
+}
+
+.legacy-migration-source-path {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  word-break: break-all;
+  color: var(--color-on-surface);
+}
+
+.legacy-migration-source-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.legacy-migration-btn {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--color-outline-variant, rgba(0, 0, 0, 0.12));
+  background: var(--color-surface-container, #fff);
+  color: var(--color-on-surface);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.legacy-migration-btn:hover:not(:disabled) {
+  background: var(--color-surface-container-high, rgba(0, 0, 0, 0.06));
+}
+
+.legacy-migration-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.legacy-migration-btn.primary {
+  background: var(--color-primary, #6750a4);
+  border-color: transparent;
+  color: var(--color-on-primary, #fff);
+}
+
+.legacy-migration-btn.primary:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.legacy-migration-candidates {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--color-on-surface-variant);
+}
+
+.legacy-migration-candidate-btn {
+  background: none;
+  border: none;
+  padding: 4px 0;
+  text-align: left;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: var(--color-primary, #6750a4);
+  cursor: pointer;
+  word-break: break-all;
+}
+
+.legacy-migration-candidate-btn:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.legacy-migration-candidate-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.legacy-migration-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.legacy-migration-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px 14px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--color-outline-variant, rgba(0, 0, 0, 0.08));
+  background: var(--color-surface, #fff);
+}
+
+.legacy-migration-card.disabled {
+  opacity: 0.55;
+}
+
+.legacy-migration-card input[type='checkbox'] {
+  margin-top: 4px;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.legacy-migration-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--color-on-surface);
+}
+
+.legacy-migration-card-meta {
+  font-size: 12px;
+  color: var(--color-on-surface-variant);
+  margin-top: 4px;
+}
+
+.legacy-migration-card-samples {
+  margin: 8px 0 0;
+  padding-left: 16px;
+  font-size: 12px;
+  color: var(--color-on-surface-variant);
+}
+
+.legacy-migration-card-warnings {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 193, 7, 0.12);
+  font-size: 12px;
+  color: var(--color-on-surface);
+  list-style: none;
+}
+
+.legacy-migration-card-warnings li + li {
+  margin-top: 4px;
+}
+
+.legacy-migration-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-outline-variant, rgba(0, 0, 0, 0.08));
+}
+
+.legacy-migration-progress {
+  font-size: 13px;
+  color: var(--color-on-surface-variant);
+}
+
+.legacy-migration-results {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--color-surface-container-low, rgba(0, 0, 0, 0.04));
+  font-size: 13px;
+}
+
+.legacy-migration-results ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.legacy-migration-error {
+  color: #c62828;
+  font-size: 13px;
+}

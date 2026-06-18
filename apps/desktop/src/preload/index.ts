@@ -6,6 +6,7 @@ import { syncApi } from './sync.api'
 import { agentApi } from './agent.api'
 import { systemApi } from './system.api'
 import { shortcutsApi } from './shortcuts.api'
+import { legacyMigrationApi } from './legacy-migration.api'
 
 // Custom APIs for renderer
 
@@ -39,6 +40,7 @@ export const api = {
   ...settingsApi,
   ...syncApi,
   ...systemApi,
+  ...legacyMigrationApi,
   shortcuts: shortcutsApi
 }
 

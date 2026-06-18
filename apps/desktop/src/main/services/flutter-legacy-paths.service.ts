@@ -52,6 +52,46 @@ export async function readFlutterSharedPreferencesConfig(): Promise<Record<
   return hasMeaningfulFlutterPreferences(config) ? config : null
 }
 
+export interface ResolvedLegacyPreferences {
+  sp: Record<string, unknown> | null
+  config: Record<string, unknown> | null
+  source: 'device_preferences' | 'shared_preferences' | 'none'
+}
+
+/**
+ * 优先从用户选定的旧版根目录 `config/device_preferences.json` 读取；
+ * 否则回退到本机 Flutter SharedPreferences。
+ */
+export async function resolveLegacyPreferencesForSource(
+  sourceDir?: string
+): Promise<ResolvedLegacyPreferences> {
+  if (sourceDir?.trim()) {
+    const prefsPath = join(sourceDir.trim(), 'config', 'device_preferences.json')
+    if (existsSync(prefsPath)) {
+      try {
+        const raw = await fs.readFile(prefsPath, 'utf8')
+        const config = JSON.parse(raw) as Record<string, unknown>
+        if (hasMeaningfulFlutterPreferences(config)) {
+          return { sp: null, config, source: 'device_preferences' }
+        }
+      } catch {
+        // fall through
+      }
+    }
+  }
+
+  const sp = await readFlutterSharedPreferencesRaw()
+  if (!sp) {
+    return { sp: null, config: null, source: 'none' }
+  }
+  const config = assembleDevicePreferencesFromFlutterSp(sp)
+  return {
+    sp,
+    config: hasMeaningfulFlutterPreferences(config) ? config : null,
+    source: 'shared_preferences'
+  }
+}
+
 export function resolveFlutterDocumentsAvatarsDir(): string {
   return join(app.getPath('documents'), 'avatars')
 }

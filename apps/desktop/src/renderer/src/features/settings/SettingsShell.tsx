@@ -19,7 +19,8 @@ import {
   MdOutlineHub,
   MdSync,
   MdEditNote,
-  MdTextSnippet
+  MdTextSnippet,
+  MdSwapHoriz
 } from 'react-icons/md'
 import './SettingsPage.css'
 import { useTranslation } from 'react-i18next'
@@ -149,6 +150,12 @@ export const SettingsShell: React.FC = () => {
         kind: 'item',
         label: t('settings.lan_transfer', '局域网传输'),
         icon: <MdWifi size={20} />
+      },
+      {
+        id: 17,
+        kind: 'item',
+        label: t('legacy_migration.title', '版本迁移'),
+        icon: <MdSwapHoriz size={20} />
       }
     ],
     [t]
