@@ -59,6 +59,7 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = (props) =
         <TtsMimoFields
           config={vm.config}
           onUpdate={vm.update}
+          onPickRefAudio={props.onPickRefAudio}
           compact={layout === 'groupCard'}
         />
       )}

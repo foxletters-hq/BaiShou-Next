@@ -73,6 +73,7 @@ import {
 } from '../services/mobile-context-at-message.service'
 import { createMobileFileSystem } from '../services/create-mobile-file-system'
 import { setupMobileLocalFileReader } from '../services/mobile-local-file-reader.service'
+import { setupMobileTtsRefAudioReader } from '../services/mobile-tts-ref-audio.service'
 import { MobileArchiveService } from '../services/archive.service'
 import type { MobileArchiveDbBridge } from '../services/mobile-archive-db.bridge'
 import { getAppDocumentDirectory } from '../services/mobile-app-paths'
@@ -415,6 +416,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
         const fileSystem = createMobileFileSystem()
         setupMobileLocalFileReader(fileSystem)
+        setupMobileTtsRefAudioReader(fileSystem)
         const pathService = new MobileStoragePathService(fileSystem) as any
 
         // 3. 构建 Repositories

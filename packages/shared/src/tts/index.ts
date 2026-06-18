@@ -84,9 +84,10 @@ export {
   isMimoVoiceDesignModel,
   isMimoPresetModel,
   validateMimoTtsSettings,
+  registerTtsRefAudioReader,
   MIMO_TTS_DEFAULT_MODELS
 } from './mimo-tts.util'
-export type { MimoTtsModelMode } from './mimo-tts.util'
+export type { MimoTtsModelMode, TtsRefAudioReader } from './mimo-tts.util'
 export { MimoTtsProvider } from './mimo-tts.provider'
 export { CloneTtsProvider } from './clone-tts.provider'
 export { GptSovitsProvider } from './gpt-sovits.provider'

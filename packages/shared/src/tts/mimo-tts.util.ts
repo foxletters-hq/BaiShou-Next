@@ -17,6 +17,15 @@ export const MIMO_TTS_DEFAULT_MODELS = [
 const DEFAULT_PRESET_STYLE = 'Natural, clear and professional speech style.'
 const MAX_VOICE_CLONE_AUDIO_BYTES = 10 * 1024 * 1024
 
+export type TtsRefAudioReader = (path: string) => Promise<Uint8Array>
+
+let ttsRefAudioReader: TtsRefAudioReader | null = null
+
+/** 注册平台侧参考音频读取器（移动端外部存储等）；桌面端默认走 node:fs */
+export function registerTtsRefAudioReader(reader: TtsRefAudioReader | null): void {
+  ttsRefAudioReader = reader
+}
+
 export function getMimoTtsModelMode(modelId: string): MimoTtsModelMode {
   const lower = modelId.toLowerCase()
   if (lower.includes('voiceclone')) {
@@ -56,23 +65,35 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
   return btoa(binary)
 }
 
+function mapRefAudioReadError(error: unknown, normalizedPath: string): never {
+  const code =
+    error && typeof error === 'object' && 'code' in error
+      ? String((error as { code?: string }).code)
+      : ''
+  if (code === 'ENOENT') {
+    throw new TtsApiError(`参考音频文件不存在: ${normalizedPath}`, 404, 'mimo-tts')
+  }
+  const message = error instanceof Error ? error.message : String(error)
+  throw new TtsApiError(`读取参考音频失败: ${message}`, 500, 'mimo-tts')
+}
+
 async function readRefAudioFile(path: string): Promise<Uint8Array> {
   const normalizedPath = normalizeRefAudioPath(path)
   assertMimoVoiceCloneAudioPath(normalizedPath)
+
+  if (ttsRefAudioReader) {
+    try {
+      return await ttsRefAudioReader(normalizedPath)
+    } catch (error: unknown) {
+      mapRefAudioReadError(error, normalizedPath)
+    }
+  }
 
   const { readFile } = await import('node:fs/promises')
   try {
     return new Uint8Array(await readFile(normalizedPath))
   } catch (error: unknown) {
-    const code =
-      error && typeof error === 'object' && 'code' in error
-        ? String((error as { code?: string }).code)
-        : ''
-    if (code === 'ENOENT') {
-      throw new TtsApiError(`参考音频文件不存在: ${normalizedPath}`, 404, 'mimo-tts')
-    }
-    const message = error instanceof Error ? error.message : String(error)
-    throw new TtsApiError(`读取参考音频失败: ${message}`, 500, 'mimo-tts')
+    mapRefAudioReadError(error, normalizedPath)
   }
 }
 
