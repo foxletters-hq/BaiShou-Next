@@ -52,7 +52,8 @@ export function useVersionMigration() {
     dbReady,
     runWithStorageQuiesced,
     vaultRevision,
-    notifyVersionMigrationComplete
+    notifyVersionMigrationComplete,
+    resyncAfterMigration
   } = useBaishou()
 
   const [pageReady, setPageReady] = useState(false)
@@ -89,6 +90,13 @@ export function useVersionMigration() {
     setAllFilesAccessGranted(granted)
     return granted
   }, [])
+
+  const promptRestartAfterWorkspaceMigration = useCallback(async () => {
+    await dialog.alert(
+      t('version_migration.restart_message'),
+      t('version_migration.restart_title', '请重启应用')
+    )
+  }, [dialog, t])
 
   useFocusEffect(
     useCallback(() => {
@@ -329,16 +337,20 @@ export function useVersionMigration() {
         )
 
         if (result.imported > 0) {
+          if (isWorkspaceSectionId(sectionId)) {
+            await resyncAfterMigration()
+          } else if (sectionId === 'avatar' && services?.bootstrapper) {
+            await services.bootstrapper.resyncFromDisk()
+          }
           notifyVersionMigrationComplete()
           if (sectionId === 'avatar') {
             invalidateUserAvatarDisplayCache()
             await runtime.settingsManager.flushToDisk()
           }
-          if (services?.bootstrapper && (isWorkspaceSectionId(sectionId) || sectionId === 'avatar')) {
-            await services.bootstrapper.resyncFromDisk()
-          }
+        } else if (isWorkspaceSectionId(sectionId) && result.skipped > 0) {
+          await resyncAfterMigration()
         } else if (
-          isWorkspaceSectionId(sectionId) &&
+          sectionId === 'avatar' &&
           result.skipped > 0 &&
           services?.bootstrapper
         ) {
@@ -389,6 +401,14 @@ export function useVersionMigration() {
           )
         }
 
+        if (
+          isWorkspaceSectionId(sectionId) &&
+          !isFailed &&
+          (result.imported > 0 || result.skipped > 0)
+        ) {
+          await promptRestartAfterWorkspaceMigration()
+        }
+
         await refreshScan()
       } catch (e: unknown) {
         const message = e instanceof Error ? e.message : String(e)
@@ -407,8 +427,10 @@ export function useVersionMigration() {
       customLegacySourceRoot,
       dialog,
       notifyVersionMigrationComplete,
+      promptRestartAfterWorkspaceMigration,
       refreshPermission,
       refreshScan,
+      resyncAfterMigration,
       runWithStorageQuiesced,
       runtime,
       sectionStatuses,
@@ -451,12 +473,10 @@ export function useVersionMigration() {
       )
 
       if (result.imported > 0) {
+        await resyncAfterMigration()
         notifyVersionMigrationComplete()
-        if (services?.bootstrapper) {
-          await services.bootstrapper.resyncFromDisk()
-        }
-      } else if (result.skipped > 0 && services?.bootstrapper) {
-        await services.bootstrapper.resyncFromDisk()
+      } else if (result.skipped > 0) {
+        await resyncAfterMigration()
       }
 
       const summary = t('version_migration.import_result_summary', {
@@ -507,6 +527,10 @@ export function useVersionMigration() {
         )
       }
 
+      if (!isFailed && (result.imported > 0 || result.skipped > 0)) {
+        await promptRestartAfterWorkspaceMigration()
+      }
+
       await refreshScan()
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
@@ -519,11 +543,12 @@ export function useVersionMigration() {
     customLegacySourceRoot,
     dialog,
     notifyVersionMigrationComplete,
+    promptRestartAfterWorkspaceMigration,
     refreshPermission,
     refreshScan,
+    resyncAfterMigration,
     runWithStorageQuiesced,
     runtime,
-    services,
     t,
     toast,
     workspaceSections
