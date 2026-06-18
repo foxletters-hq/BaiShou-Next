@@ -1,4 +1,14 @@
+import { isTtsProviderId, resolveTtsProviderBaseUrl } from './tts-defaults'
+
 const CLONE_TTS_VOICE_ARRAY_KEYS = ['voices', 'data', 'items', 'list'] as const
+const GPT_SOVITS_GPT_DROPDOWN_ID = 5
+const GPT_SOVITS_SOVITS_DROPDOWN_ID = 6
+
+const MIMO_TTS_DEFAULT_MODELS = [
+  'mimo-v2.5-tts',
+  'mimo-v2.5-tts-voicedesign',
+  'mimo-v2.5-tts-voiceclone'
+] as const
 const CLONE_TTS_VOICE_ID_KEYS = [
   'alias',
   'name',
@@ -132,4 +142,172 @@ export async function fetchOpenAiCompatibleModelIds(
 
   const ttsModels = allIds.filter((id) => id.toLowerCase().includes('tts'))
   return ttsModels.length > 0 ? ttsModels : allIds
+}
+
+type GradioConfigComponent = {
+  id?: number
+  props?: {
+    value?: unknown
+    choices?: unknown[]
+  }
+}
+
+function normalizeGradioChoiceLabel(choice: unknown): string | null {
+  if (typeof choice === 'string') {
+    const trimmed = choice.trim()
+    return trimmed || null
+  }
+  if (!Array.isArray(choice) || choice.length === 0) {
+    return null
+  }
+
+  const first = choice[0]
+  const second = choice[1]
+  if (typeof second === 'string' && second.trim()) {
+    return second.trim()
+  }
+  if (typeof first === 'string' && first.trim()) {
+    return first.trim()
+  }
+  return null
+}
+
+function extractGptSovitsChoices(component: GradioConfigComponent | undefined): string[] {
+  if (!component?.props) {
+    return []
+  }
+
+  const values = new Set<string>()
+  const currentValue = normalizeGradioChoiceLabel(component.props.value)
+  if (currentValue) {
+    values.add(currentValue)
+  }
+
+  const rawChoices = Array.isArray(component.props.choices) ? component.props.choices : []
+  for (const choice of rawChoices) {
+    const normalized = normalizeGradioChoiceLabel(choice)
+    if (normalized) {
+      values.add(normalized)
+    }
+  }
+
+  return Array.from(values)
+}
+
+export async function fetchGptSovitsModelIds(baseUrl: string): Promise<string[]> {
+  const trimmedBase = baseUrl.trim().replace(/\/$/, '')
+  if (!trimmedBase) {
+    return ['default']
+  }
+
+  const response = await fetchWithTimeout(`${trimmedBase}/config`)
+  if (!response.ok) {
+    return ['default']
+  }
+
+  const data = (await response.json()) as { components?: GradioConfigComponent[] }
+  const components = Array.isArray(data?.components) ? data.components : []
+  const gptComponent = components.find((component) => component.id === GPT_SOVITS_GPT_DROPDOWN_ID)
+  const sovitsComponent = components.find(
+    (component) => component.id === GPT_SOVITS_SOVITS_DROPDOWN_ID
+  )
+
+  const modelIds = extractGptSovitsChoices(sovitsComponent)
+  const fallbackIds = extractGptSovitsChoices(gptComponent)
+  const combined = modelIds.length > 0 ? modelIds : fallbackIds
+
+  return combined.length > 0 ? combined : ['default']
+}
+
+export async function fetchMimoTtsModelIds(baseUrl: string, apiKey?: string): Promise<string[]> {
+  const trimmedBase = resolveTtsProviderBaseUrl('mimo-tts', baseUrl)
+  try {
+    const models = await fetchOpenAiCompatibleModelIds(trimmedBase, apiKey)
+    const mimoTts = models.filter(
+      (id) => id.toLowerCase().includes('mimo') && id.toLowerCase().includes('tts')
+    )
+    if (mimoTts.length > 0) {
+      return mimoTts
+    }
+  } catch {
+    // fall through to built-in defaults
+  }
+  return [...MIMO_TTS_DEFAULT_MODELS]
+}
+
+async function fetchCloneTtsVoiceIds(baseUrl: string): Promise<string[]> {
+  const trimmedUrl = baseUrl.trim().replace(/\/$/, '')
+  if (!trimmedUrl) {
+    return []
+  }
+
+  const response = await fetchWithTimeout(`${trimmedUrl}/api/voices`)
+  if (!response.ok) {
+    return []
+  }
+  const data = await response.json()
+  return parseCloneTtsVoiceList(data)
+}
+
+export class TtsFetchModelsError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'TtsFetchModelsError'
+  }
+}
+
+/**
+ * 统一的 TTS 模型/音色列表拉取入口（桌面与移动端共用）
+ */
+export async function fetchTtsProviderModels(
+  providerId: string,
+  apiKey: string,
+  baseUrl: string
+): Promise<string[]> {
+  if (!isTtsProviderId(providerId)) {
+    throw new TtsFetchModelsError(`Unknown TTS provider: ${providerId}`)
+  }
+
+  const trimmedKey = apiKey.trim()
+
+  if (providerId === 'clone-tts') {
+    try {
+      return await fetchCloneTtsVoiceIds(baseUrl)
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new TtsFetchModelsError(
+          `请求超时（${TTS_FETCH_TIMEOUT_MS / 1000}s），请检查 CloneTTS 服务地址是否可达`
+        )
+      }
+      return []
+    }
+  }
+
+  if (providerId === 'openai-tts') {
+    try {
+      return await fetchOpenAiCompatibleModelIds(baseUrl, trimmedKey)
+    } catch {
+      return ['tts-1', 'tts-1-hd']
+    }
+  }
+
+  if (providerId === 'mimo-tts') {
+    return fetchMimoTtsModelIds(baseUrl, trimmedKey)
+  }
+
+  if (providerId === 'gpt-sovits') {
+    try {
+      const resolvedBase = resolveTtsProviderBaseUrl('gpt-sovits', baseUrl)
+      return await fetchGptSovitsModelIds(resolvedBase)
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new TtsFetchModelsError(
+          `请求超时（${TTS_FETCH_TIMEOUT_MS / 1000}s），请检查 GPT-SoVITS 服务地址是否可达`
+        )
+      }
+      return ['default']
+    }
+  }
+
+  return []
 }

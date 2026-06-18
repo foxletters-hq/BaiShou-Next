@@ -1,4 +1,11 @@
-export { fetchOpenAiCompatibleModelIds, parseCloneTtsVoiceList } from './fetch-tts-models'
+export {
+  fetchOpenAiCompatibleModelIds,
+  parseCloneTtsVoiceList,
+  fetchGptSovitsModelIds,
+  fetchMimoTtsModelIds,
+  fetchTtsProviderModels,
+  TtsFetchModelsError
+} from './fetch-tts-models'
 export {
   TTS_PROVIDER_IDS,
   TTS_DEFAULT_BASE_URLS,
@@ -30,6 +37,18 @@ export type {
   TtsFormSynthesizeConfig
 } from './synthesize-from-settings'
 export { TtsProviderRegistry } from './tts.registry'
+export {
+  TtsProviderFactory,
+  createDefaultTtsRegistry,
+  getDefaultTtsRegistry,
+  resetDefaultTtsRegistry
+} from './tts-provider.factory'
+export {
+  registerTtsProviderCreator,
+  createTtsProviderForId,
+  listRegisteredTtsProviderIds
+} from './tts-provider-creators'
+export type { TtsProviderCreator } from './tts-provider-creators'
 export { OpenAiTtsProvider } from './openai-tts.provider'
 export { MimoTtsProvider } from './mimo-tts.provider'
 export { CloneTtsProvider } from './clone-tts.provider'

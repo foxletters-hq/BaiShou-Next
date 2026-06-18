@@ -1,9 +1,5 @@
 import {
-  CloneTtsProvider,
-  GptSovitsProvider,
-  MimoTtsProvider,
-  OpenAiTtsProvider,
-  TtsProviderRegistry,
+  getDefaultTtsRegistry,
   synthesizeTtsFromSettings,
   synthesizeTtsFromFormConfig,
   type GlobalModelsConfig,
@@ -17,11 +13,7 @@ export type TtsTestResult =
   | { success: true; audioBase64: string; format: string }
   | { success: false; error: string; errorCode?: string }
 
-const registry = new TtsProviderRegistry()
-registry.register(new OpenAiTtsProvider())
-registry.register(new MimoTtsProvider())
-registry.register(new CloneTtsProvider())
-registry.register(new GptSovitsProvider())
+const registry = getDefaultTtsRegistry()
 
 function toTestResult(
   result: Awaited<ReturnType<typeof synthesizeTtsFromSettings>>
