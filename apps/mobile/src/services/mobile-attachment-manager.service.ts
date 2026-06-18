@@ -42,14 +42,18 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
     prefix = 'agent',
     sourceByteSize?: number
   ): Promise<string> {
-    const persisted = normalizePersistedAvatarPath(absoluteSourcePath)
-    if (persisted?.startsWith('avatars/')) {
-      return persisted
-    }
-
     const avatarsDir = this.isUserAvatarPrefix(prefix)
       ? await this.pathService.getUserAvatarsDirectory()
       : await this.pathService.getAvatarsDirectory()
+
+    const persisted = normalizePersistedAvatarPath(absoluteSourcePath)
+    if (persisted?.startsWith('avatars/')) {
+      const filename = basename(persisted)
+      const dest = joinPath(avatarsDir, filename)
+      if (await this.fileSystem.exists(dest)) {
+        return `avatars/${filename}`
+      }
+    }
     const compressedSource = await compressImageForAvatarImport(absoluteSourcePath, sourceByteSize)
     const ext = inferImageExtension(compressedSource)
     const name = `${prefix}_${Date.now()}.${ext}`
