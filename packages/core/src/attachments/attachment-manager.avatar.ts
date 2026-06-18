@@ -4,13 +4,29 @@ import path from 'node:path'
 import { pathToFileURL, fileURLToPath } from 'node:url'
 import type { IStoragePathService } from '../vault/storage-path.types'
 
+type AvatarPathProvider = IStoragePathService & {
+  getGlobalAgentAvatarsDirectory?: () => Promise<string>
+  listAgentAvatarSearchDirectories?: () => Promise<string[]>
+}
+
 function isUserAvatarRelativePath(relativePath: string): boolean {
   const filename = relativePath.split(/[/\\]/).pop() || relativePath
-  return filename.startsWith('user_avatar')
+  if (filename.startsWith('user_avatar')) return true
+  if (/^avatar_\d+/.test(filename)) return true
+  if (filename.startsWith('avatar_imported_')) return true
+  return false
+}
+
+function isPartnerAvatarImportPrefix(prefix: string): boolean {
+  return prefix === 'agent' || prefix.startsWith('agent_')
 }
 
 export class AttachmentAvatarOps {
-  constructor(private readonly pathProvider: IStoragePathService) {}
+  constructor(private readonly pathProvider: AvatarPathProvider) {}
+
+  private extendedProvider(): AvatarPathProvider {
+    return this.pathProvider
+  }
 
   private isUserAvatarPrefix(prefix: string): boolean {
     return prefix === 'user_avatar' || prefix.startsWith('user_avatar')
@@ -19,6 +35,10 @@ export class AttachmentAvatarOps {
   private async getAvatarsDirectoriesForImport(prefix: string): Promise<string> {
     if (this.isUserAvatarPrefix(prefix)) {
       return await this.pathProvider.getUserAvatarsDirectory()
+    }
+    const extended = this.extendedProvider()
+    if (isPartnerAvatarImportPrefix(prefix) && extended.getGlobalAgentAvatarsDirectory) {
+      return await extended.getGlobalAgentAvatarsDirectory()
     }
     return await this.pathProvider.getAvatarsDirectory()
   }
@@ -31,6 +51,10 @@ export class AttachmentAvatarOps {
       const userDir = await this.pathProvider.getUserAvatarsDirectory()
       const vaultDir = await this.pathProvider.getAvatarsDirectory()
       return [userDir, vaultDir]
+    }
+    const extended = this.extendedProvider()
+    if (extended.listAgentAvatarSearchDirectories) {
+      return extended.listAgentAvatarSearchDirectories()
     }
     return [await this.pathProvider.getAvatarsDirectory()]
   }

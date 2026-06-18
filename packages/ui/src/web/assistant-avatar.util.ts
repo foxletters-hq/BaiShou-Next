@@ -33,6 +33,13 @@ export function resolveWebAssistantAvatarSrc(avatarPath?: string | null): string
   }
   if (isAssistantAvatarRelativePath(avatarPath) || isAssistantAvatarDirectUri(avatarPath)) {
     const normalized = avatarPath.replace(/\\/g, '/')
+    const isDesktopElectron =
+      typeof globalThis !== 'undefined' &&
+      typeof (globalThis as { window?: { electron?: unknown } }).window !== 'undefined' &&
+      Boolean((globalThis as { window?: { electron?: unknown } }).window?.electron)
+    if (isDesktopElectron) {
+      return normalized.startsWith('local://') ? normalized : `local://${normalized}`
+    }
     return normalized.startsWith('secure-file://') ? normalized : `secure-file://${normalized}`
   }
   return WEB_BUILTIN_ASSISTANT_AVATAR_URLS[DEFAULT_BUILTIN_ASSISTANT_AVATAR_ID]

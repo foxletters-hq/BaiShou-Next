@@ -116,6 +116,8 @@ export class GlobalDataBootstrapper {
         logger.info('[Bootstrapper] Skipped Latte until UI language is chosen')
       }
 
+      await pathService.backfillGlobalAgentAvatarsFromVaults()
+
       logger.info('--- ✅ GLOBAL BOOTSTRAPPER FINISHED. SYSTEM IS RATIONALIZED AND READY ---')
       this.notifyRenderersAfterResync()
     } catch (e) {

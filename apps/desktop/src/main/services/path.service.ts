@@ -181,6 +181,73 @@ export class DesktopStoragePathService implements IStoragePathService {
     return dir
   }
 
+  /**
+   * 伙伴头像全局目录（Agent DB 跨工作区共用，头像不随 vault 切换）
+   */
+  public async getGlobalAgentAvatarsDirectory(): Promise<string> {
+    const dir = path.join(app.getPath('userData'), 'AgentAvatars')
+    await fs.mkdir(dir, { recursive: true })
+    return dir
+  }
+
+  /** 解析伙伴头像时依次搜索：全局目录 → 当前 vault → 其余 vault */
+  public async listAgentAvatarSearchDirectories(): Promise<string[]> {
+    const dirs: string[] = []
+    const seen = new Set<string>()
+    const push = (dir: string) => {
+      const normalized = path.normalize(dir)
+      if (seen.has(normalized)) return
+      seen.add(normalized)
+      dirs.push(normalized)
+    }
+
+    push(await this.getGlobalAgentAvatarsDirectory())
+    push(await this.getAvatarsDirectory())
+
+    const root = await this.getRootDirectory()
+    try {
+      const entries = await fs.readdir(root, { withFileTypes: true })
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue
+        push(path.join(root, entry.name, 'Attachments', 'avatars'))
+      }
+    } catch {
+      // ignore unreadable workspace root
+    }
+
+    return dirs
+  }
+
+  /** 将各工作区 Attachments 中的伙伴头像镜像到全局 AgentAvatars 目录 */
+  public async backfillGlobalAgentAvatarsFromVaults(): Promise<void> {
+    const globalDir = await this.getGlobalAgentAvatarsDirectory()
+    const searchDirs = await this.listAgentAvatarSearchDirectories()
+
+    for (const dir of searchDirs) {
+      if (path.normalize(dir) === path.normalize(globalDir)) continue
+      let names: string[] = []
+      try {
+        names = await fs.readdir(dir)
+      } catch {
+        continue
+      }
+      for (const name of names) {
+        if (!name.startsWith('agent_avatar') && !name.startsWith('agent_')) continue
+        const src = path.join(dir, name)
+        const dest = path.join(globalDir, name)
+        try {
+          await fs.access(dest)
+        } catch {
+          try {
+            await fs.copyFile(src, dest)
+          } catch {
+            // skip single file
+          }
+        }
+      }
+    }
+  }
+
   /** 用户头像目录，与移动端一致：`{activeVault}/Attachments/avatars/UserAvatars` */
   public async getUserAvatarsDirectory(): Promise<string> {
     const avatarsDir = await this.getAvatarsDirectory()
