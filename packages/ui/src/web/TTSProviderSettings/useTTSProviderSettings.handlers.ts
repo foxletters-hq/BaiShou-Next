@@ -184,7 +184,10 @@ export function useTTSProviderSettingsHandlers(deps: HandlerDeps) {
     }
 
     const state = configs[providerType]
-    const mimoValidationError = validateMimoTtsSettings(state.modelId || '', state)
+    const mimoValidationError = validateMimoTtsSettings(state.modelId || '', {
+      refAudioPath: state.refAudioPath,
+      promptText: state.promptText
+    })
     if (mimoValidationError) {
       toast.showError(t(`tts.settings.${mimoValidationError}`))
       return

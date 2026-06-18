@@ -139,7 +139,7 @@ export function useTts(t: any) {
 
         if (requestId !== ttsRequestRef.current) return
 
-        if (!result.success) {
+        if (result.success === false) {
           if (result.errorCode === 'tts_cancelled' || result.errorCode === 'tts_empty_content') {
             clearTtsBusyState(requestId)
             return

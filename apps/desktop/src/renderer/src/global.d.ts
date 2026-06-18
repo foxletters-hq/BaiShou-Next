@@ -81,7 +81,49 @@ interface SettingsAPI {
     config: unknown,
     text: string
   ): Promise<import('@baishou/shared').TtsSynthesizeFromSettingsResult>
+  pickTtsRefAudio(): Promise<string | null>
   [key: string]: (...args: unknown[]) => Promise<unknown>
+}
+
+interface PickFilesOptions {
+  title?: string
+  properties?: Array<'openFile' | 'openDirectory' | 'multiSelections' | 'showHiddenFiles'>
+  filters?: Array<{ name: string; extensions: string[] }>
+}
+
+interface PickedFile {
+  id: string
+  fileName: string
+  filePath: string
+  isImage: boolean
+  isPdf: boolean
+  isText: boolean
+  fileSize: number
+}
+
+interface TtsSpeechSegmentPayload {
+  text: string
+  audioBase64: string
+  format: string
+  fromCache: boolean
+}
+
+type TtsSynthesizeSpeechResult =
+  | { success: true; segmentCount: number }
+  | { success: false; errorCode: string; error?: string; statusCode?: number }
+
+interface TtsAPI {
+  synthesize(text: string, providerId?: string, modelId?: string): Promise<unknown>
+  synthesizeSpeech(
+    content: string,
+    options?: {
+      sessionId?: string
+      providerId?: string
+      modelId?: string
+      onSegment?: (segment: TtsSpeechSegmentPayload, index: number) => void | Promise<void>
+    }
+  ): Promise<TtsSynthesizeSpeechResult>
+  cancelSpeech(sessionId: string): Promise<void>
 }
 
 interface VaultAPI {
@@ -112,6 +154,8 @@ interface AppAPI {
   settings: SettingsAPI
   vault: VaultAPI
   storage: StorageAPI
+  tts: TtsAPI
+  pickFiles(options?: PickFilesOptions): Promise<PickedFile[]>
   ensureDefaultLatteAssistant(locale?: string): Promise<void>
   syncDefaultLatteLocale(locale?: string): Promise<void>
   [key: string]: unknown
@@ -151,9 +195,12 @@ interface IncrementalSyncAPI {
   getConfig(): Promise<unknown>
   updateConfig(config: unknown): Promise<{ success: boolean }>
   testConnection(config?: unknown): Promise<boolean>
-  sync(): Promise<unknown>
-  uploadOnly(): Promise<unknown>
-  downloadOnly(): Promise<unknown>
+  sync(runOptions?: import('@baishou/shared').IncrementalSyncRunOptions): Promise<import('@baishou/shared').IncrementalSyncResult>
+  uploadOnly(): Promise<import('@baishou/shared').IncrementalSyncResult>
+  downloadOnly(runOptions?: import('@baishou/shared').IncrementalSyncRunOptions): Promise<import('@baishou/shared').IncrementalSyncResult>
+  orchestratedSync(runOptions?: import('@baishou/shared').IncrementalSyncRunOptions): Promise<import('@baishou/shared').IncrementalSyncResult>
+  orchestratedUploadOnly(): Promise<import('@baishou/shared').IncrementalSyncResult>
+  orchestratedDownloadOnly(runOptions?: import('@baishou/shared').IncrementalSyncRunOptions): Promise<import('@baishou/shared').IncrementalSyncResult>
   getLocalManifest(): Promise<unknown>
   getRemoteManifest(): Promise<unknown>
   refreshLocalManifest(): Promise<unknown>

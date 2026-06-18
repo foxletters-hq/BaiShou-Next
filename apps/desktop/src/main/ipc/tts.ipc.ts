@@ -1,4 +1,4 @@
-import { ipcMain, dialog, BrowserWindow, type WebContents } from 'electron'
+import { ipcMain, dialog, BrowserWindow, type OpenDialogOptions, type WebContents } from 'electron'
 import {
   logger,
   synthesizeTtsFromFormConfig,
@@ -118,14 +118,17 @@ export function registerTtsIPC() {
 
   ipcMain.handle('settings:pick-tts-ref-audio', async (event) => {
     const window = BrowserWindow.fromWebContents(event.sender)
-    const result = await dialog.showOpenDialog(window ?? undefined, {
+    const options: OpenDialogOptions = {
       title: '选择参考音频',
       properties: ['openFile'],
       filters: [
         { name: 'Audio', extensions: ['wav', 'mp3', 'mpeg'] },
         { name: 'All Files', extensions: ['*'] }
       ]
-    })
+    }
+    const result = window
+      ? await dialog.showOpenDialog(window, options)
+      : await dialog.showOpenDialog(options)
 
     if (result.canceled || result.filePaths.length === 0) {
       return null

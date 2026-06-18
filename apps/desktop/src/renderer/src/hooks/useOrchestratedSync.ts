@@ -3,7 +3,32 @@ import { useTranslation } from 'react-i18next'
 import { useSyncStore } from '@baishou/store'
 import { useToast, useDialog } from '@baishou/ui'
 import { runIncrementalSyncWithDivergenceConfirmation } from '@baishou/shared'
+import type { IncrementalSyncResult } from '@baishou/shared'
 import { friendlySyncError } from '../utils/friendly-sync-error'
+
+interface SyncProgress {
+  uploaded: number
+  downloaded: number
+  deletedRemote: number
+  deletedLocal: number
+  conflicts: number
+  skipped: number
+  duration: number
+  sessionId: string
+}
+
+function summarizeSyncResult(result: IncrementalSyncResult): SyncProgress {
+  return {
+    uploaded: result.uploaded.length,
+    downloaded: result.downloaded.length,
+    deletedRemote: result.deletedRemote.length,
+    deletedLocal: result.deletedLocal.length,
+    conflicts: result.conflicted.length,
+    skipped: result.skipped.length,
+    duration: result.duration,
+    sessionId: result.sessionId
+  }
+}
 
 export function useOrchestratedSync() {
   const { t } = useTranslation()
@@ -36,16 +61,11 @@ export function useOrchestratedSync() {
             divergence,
             limit
           }),
-          {
-            title: t('data_sync.error_divergence_first_sync_confirm_title'),
-            confirmText: t('common.confirm', 'Confirm'),
-            cancelText: t('common.cancel', 'Cancel'),
-            destructive: true
-          }
+          t('data_sync.error_divergence_first_sync_confirm_title')
         )
 
-      const result = await runIncrementalSyncWithDivergenceConfirmation(
-        (runOptions) => (window as any).api?.incrementalSync?.orchestratedSync(runOptions),
+      const result = await runIncrementalSyncWithDivergenceConfirmation<IncrementalSyncResult>(
+        (runOptions) => window.api.incrementalSync.orchestratedSync(runOptions),
         confirmHighDivergence
       )
 
@@ -56,12 +76,13 @@ export function useOrchestratedSync() {
         return null
       }
 
+      const summary = summarizeSyncResult(result)
       setSyncResult(result)
       setProgress(null)
       setMessage(t('data_sync.sync_completed', 'Sync Completed'))
       setStatus('success')
       toast.showSuccess(t('data_sync.sync_completed', 'Sync Completed'))
-      return result
+      return summary
     } catch (e: any) {
       const errorMessage = friendlySyncError(
         e?.message || t('data_sync.sync_unknown_error', 'Unknown error'),

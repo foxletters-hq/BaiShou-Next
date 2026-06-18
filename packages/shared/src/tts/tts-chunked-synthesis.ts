@@ -23,6 +23,15 @@ export type TtsSpeechSegmentsResult =
   | { success: true; segments: TtsSpeechSegment[] }
   | TtsSpeechSynthesisFailure
 
+function toTtsSpeechFailure(result: TtsSpeechSynthesisFailure): TtsSpeechSynthesisFailure {
+  return {
+    success: false,
+    errorCode: result.errorCode,
+    error: result.error,
+    statusCode: result.statusCode
+  }
+}
+
 export interface TtsSpeechSynthesisOptions {
   isCancelled?: () => boolean
   onSegmentReady?: (segment: TtsSpeechSegment, index: number) => Promise<void>
@@ -59,8 +68,8 @@ export async function synthesizeTtsSpeechContent(
     const result = await prefetch!
     prefetch = i + 1 < chunks.length ? synthChunk(chunks[i + 1]!) : null
 
-    if (!result.success) {
-      return result
+    if (result.success === false) {
+      return toTtsSpeechFailure(result)
     }
 
     const segment: TtsSpeechSegment = {
@@ -120,8 +129,8 @@ export async function synthesizeAllTtsSpeechSegments(
 
   const segments: TtsSpeechSegment[] = []
   for (const item of settled) {
-    if (!item.result.success) {
-      return item.result
+    if (item.result.success === false) {
+      return toTtsSpeechFailure(item.result)
     }
 
     segments.push({
