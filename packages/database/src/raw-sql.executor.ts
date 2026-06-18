@@ -36,16 +36,17 @@ export async function executeRawSql(
     throw new Error('[executeRawSql] No database client available.')
   }
 
+  const rawClient = client?.session?.client ?? client
   const isReadQuery = isRawSqlReadStatement(statement)
 
   // Expo SQLite (React Native)
-  if (typeof client.getAllAsync === 'function' && typeof client.runAsync === 'function') {
+  if (typeof rawClient.getAllAsync === 'function' && typeof rawClient.runAsync === 'function') {
     if (args.length > 0) {
       if (isReadQuery) {
-        const rows = await client.getAllAsync(statement, args)
+        const rows = await rawClient.getAllAsync(statement, args)
         return { rows }
       }
-      const res = await client.runAsync(statement, args)
+      const res = await rawClient.runAsync(statement, args)
       return {
         rows: [],
         rowsAffected: res.changes,
@@ -53,22 +54,22 @@ export async function executeRawSql(
       }
     }
     if (isReadQuery) {
-      const rows = await client.getAllAsync(statement)
+      const rows = await rawClient.getAllAsync(statement)
       return { rows }
     }
-    await client.runAsync(statement)
+    await rawClient.runAsync(statement)
     return { rows: [] }
   }
 
-  if (typeof client.execute === 'function') {
+  if (typeof rawClient.execute === 'function') {
     if (args.length > 0) {
-      return await client.execute({ sql: statement, args })
+      return await rawClient.execute({ sql: statement, args })
     }
-    return await client.execute(statement)
+    return await rawClient.execute(statement)
   }
 
   if (args.length > 0) {
-    const stmt = client.prepare(statement)
+    const stmt = rawClient.prepare(statement)
     if (isReadQuery) {
       const rows = stmt.all(...args)
       return { rows }
@@ -83,10 +84,10 @@ export async function executeRawSql(
   }
 
   if (isReadQuery) {
-    const rows = client.prepare(statement).all()
+    const rows = rawClient.prepare(statement).all()
     return { rows }
   }
 
-  client.exec(statement)
+  rawClient.exec(statement)
   return { rows: [] }
 }
