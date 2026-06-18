@@ -94,12 +94,26 @@ describe('SummaryManagerService (SSOT refactor)', () => {
     expect(detail?.content).toBe('Unsynced Ghost File Content')
   })
 
-  it('list() should read straight from fast SQLite DB Repo', async () => {
-    mockRepo.getSummaries.mockResolvedValue([{ id: 1 }, { id: 2 }] as any)
+  it('list() should read summaries from active vault files', async () => {
+    mockFileService.listAllSummaries.mockResolvedValue([
+      { type: testType, startDate: start, endDate: end, fullPath: '/vault/Archives/Monthly/2026-03-01.md' }
+    ])
+    mockFileService.readSummary.mockResolvedValue('From disk')
+    mockRepo.getByDateRange.mockResolvedValue({
+      id: 1,
+      type: testType,
+      startDate: start,
+      endDate: end,
+      content: 'From disk',
+      generatedAt: new Date()
+    } as Summary)
+
     const res = await manager.list()
-    expect(mockRepo.getSummaries).toHaveBeenCalled()
-    expect(res.length).toBe(2)
-    expect(mockFileService.listAllSummaries).not.toHaveBeenCalled() // 列表不能挨个读文件拖慢渲染
+
+    expect(mockFileService.listAllSummaries).toHaveBeenCalled()
+    expect(mockRepo.getSummaries).not.toHaveBeenCalled()
+    expect(res).toHaveLength(1)
+    expect(res[0]?.content).toBe('From disk')
   })
 
   it('update() should replace file then trigger DB re-upsert via sync', async () => {

@@ -23,8 +23,6 @@ import { SummaryQueueService } from '../services/summary-queue.service'
 import { pathService, vaultService, getActiveVaultShadowRepo } from './vault.ipc'
 import { fileSystem } from '../services/node-file-system'
 import { CreateSummaryInput, UpdateSummaryInput, SummaryType } from '@baishou/shared'
-import { summariesTable } from '@baishou/database-desktop'
-import { sql } from 'drizzle-orm'
 import { buildSummaryAiClient } from './summary-ai-client'
 
 export function getSummaryManager() {
@@ -152,16 +150,11 @@ export function registerSummaryIPC() {
       } catch (e: any) {
         logger.error('Failed to get shadow_index count', e)
       }
-      const db = connectionManager.getDb()
-      const typeCounts = await db
-        .select({
-          type: summariesTable.type,
-          count: sql<number>`count(*)`.mapWith(Number)
-        })
-        .from(summariesTable)
-        .groupBy(summariesTable.type)
-
-      const countByType = Object.fromEntries(typeCounts.map((row) => [row.type, row.count]))
+      const summaries = await ensureManager().list()
+      const countByType = summaries.reduce<Record<string, number>>((acc, summary) => {
+        acc[summary.type] = (acc[summary.type] ?? 0) + 1
+        return acc
+      }, {})
       return {
         totalDiaryCount,
         weeklyCount: countByType.weekly ?? 0,
