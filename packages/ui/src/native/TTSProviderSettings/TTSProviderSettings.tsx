@@ -9,6 +9,8 @@ import { useTtsProviderSettings } from './useTtsProviderSettings'
 import { ttsProviderSettingsStyles as styles } from './tts-provider-settings.styles'
 import { TtsBasicFields } from './TtsBasicFields'
 import { TtsGptSovitsFields, TtsTestSection } from './TtsGptSovitsFields'
+import { TtsMimoFields } from './TtsMimoFields'
+import { isMimoPresetModel } from '@baishou/shared'
 
 export type { TtsProviderConfig, TTSProviderSettingsProps } from './tts-provider-settings.types'
 
@@ -32,6 +34,11 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = (props) =
         loadingModels={vm.loadingModels}
         modelPlaceholder={vm.modelPlaceholder}
         voicePlaceholder={vm.voicePlaceholder}
+        showVoiceField={
+          vm.config.id !== 'mimo-tts' ||
+          !vm.config.modelId?.trim() ||
+          isMimoPresetModel(vm.config.modelId)
+        }
         getModelOptions={vm.getModelOptions}
         isModelDropdownOpen={vm.isModelDropdownOpen}
         onUpdate={vm.update}
@@ -47,6 +54,14 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = (props) =
         }}
         showSpeedControl={vm.showSpeedControl}
       />
+
+      {vm.isMimoTts && (
+        <TtsMimoFields
+          config={vm.config}
+          onUpdate={vm.update}
+          compact={layout === 'groupCard'}
+        />
+      )}
 
       {vm.isGptSovits && (
         <TtsGptSovitsFields

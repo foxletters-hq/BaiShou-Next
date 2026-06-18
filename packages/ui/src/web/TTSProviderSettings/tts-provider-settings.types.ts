@@ -25,6 +25,8 @@ export interface TTSProviderSettingsProps {
     text: string
   ) => Promise<{ success: boolean; audioBase64?: string; format?: string }>
   onFetchModels?: (providerId: string, apiKey: string, baseUrl: string) => Promise<string[]>
+  /** 桌面端：选择本地参考音频文件 */
+  onPickRefAudio?: () => Promise<string | null>
 }
 
 export interface ProviderLocalState {

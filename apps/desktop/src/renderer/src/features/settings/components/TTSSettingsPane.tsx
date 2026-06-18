@@ -79,6 +79,29 @@ export const TTSSettingsPane: React.FC = () => {
     })
   }, [globalModels, initialProviderStates])
 
+  const handlePickRefAudio = useCallback(async () => {
+    try {
+      const pickTtsRefAudio = window.api?.settings?.pickTtsRefAudio
+      if (pickTtsRefAudio) {
+        return await pickTtsRefAudio()
+      }
+
+      const pickFiles = window.api?.pickFiles
+      if (pickFiles) {
+        const files = await pickFiles({
+          title: '选择参考音频',
+          properties: ['openFile'],
+          filters: [{ name: 'Audio', extensions: ['wav', 'mp3', 'mpeg'] }]
+        })
+        const first = Array.isArray(files) ? files[0] : null
+        return typeof first?.filePath === 'string' ? first.filePath : null
+      }
+    } catch (error) {
+      console.error('[TTS] pick ref audio failed:', error)
+    }
+    return null
+  }, [])
+
   return (
     <div className="settings-pane settings-pane-full">
       <TTSProviderSettings
@@ -87,6 +110,7 @@ export const TTSSettingsPane: React.FC = () => {
         onSaveConfig={handleSaveConfig}
         onTestTts={handleTestTts}
         onFetchModels={handleFetchModels}
+        onPickRefAudio={handlePickRefAudio}
       />
     </div>
   )

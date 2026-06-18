@@ -35,6 +35,7 @@ interface TtsBasicFieldsProps {
   onModelDropdownToggle: () => void
   onModelTextChange: (text: string) => void
   showSpeedControl: boolean
+  showVoiceField?: boolean
 }
 
 export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
@@ -59,7 +60,8 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
   onModelDropdownOpen,
   onModelDropdownToggle,
   onModelTextChange,
-  showSpeedControl
+  showSpeedControl,
+  showVoiceField = true
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -192,22 +194,24 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
         </View>
       </Section>
 
-      <Section>
-        <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('tts.settings.voice_label')}
-        </Text>
-        <Input
-          style={styles.input}
-          value={config.voice}
-          onChangeText={(v) => onUpdate({ voice: v })}
-          placeholder={voicePlaceholder}
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-        <Text style={[styles.helperText, { color: colors.textTertiary }]}>
-          {t('tts.settings.voice_hint')}
-        </Text>
-      </Section>
+      {showVoiceField && (
+        <Section>
+          <Text style={[styles.label, { color: colors.textPrimary }]}>
+            {t('tts.settings.voice_label')}
+          </Text>
+          <Input
+            style={styles.input}
+            value={config.voice}
+            onChangeText={(v) => onUpdate({ voice: v })}
+            placeholder={voicePlaceholder}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <Text style={[styles.helperText, { color: colors.textTertiary }]}>
+            {t('tts.settings.voice_hint')}
+          </Text>
+        </Section>
+      )}
 
       {showSpeedControl && (
         <Section>

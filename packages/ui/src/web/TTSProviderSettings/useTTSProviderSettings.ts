@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { MIMO_TTS_DEFAULT_MODELS } from '@baishou/shared'
 import { useToast } from '../Toast/useToast'
 import type { TTSProviderSettingsProps, ProviderLocalState } from './tts-provider-settings.types'
 import { getInitialConfigs } from './tts-provider-settings.defaults'
@@ -13,7 +14,8 @@ export function useTTSProviderSettings({
   initialProviderStates,
   onSaveConfig,
   onTestTts,
-  onFetchModels
+  onFetchModels,
+  onPickRefAudio
 }: TTSProviderSettingsProps) {
   const { t } = useTranslation()
   const toast = useToast()
@@ -138,7 +140,7 @@ export function useTTSProviderSettings({
       providerType === 'clone-tts' || providerType === 'gpt-sovits'
         ? ['default']
         : providerType === 'mimo-tts'
-          ? ['mimo-v2.5-tts']
+          ? [...MIMO_TTS_DEFAULT_MODELS]
           : ['tts-1', 'tts-1-hd']
     return availableModels.length > 0 ? availableModels : defaults
   }, [providerType, configs])
@@ -243,7 +245,8 @@ export function useTTSProviderSettings({
     handleFetchModels,
     handleTest,
     showSpeedControl,
-    onFetchModels
+    onFetchModels,
+    onPickRefAudio
   }
 }
 

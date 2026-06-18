@@ -1,14 +1,7 @@
 import { isTtsProviderId, resolveTtsProviderBaseUrl } from './tts-defaults'
+import { MIMO_TTS_DEFAULT_MODELS } from './mimo-tts.util'
 
 const CLONE_TTS_VOICE_ARRAY_KEYS = ['voices', 'data', 'items', 'list'] as const
-const GPT_SOVITS_GPT_DROPDOWN_ID = 5
-const GPT_SOVITS_SOVITS_DROPDOWN_ID = 6
-
-const MIMO_TTS_DEFAULT_MODELS = [
-  'mimo-v2.5-tts',
-  'mimo-v2.5-tts-voicedesign',
-  'mimo-v2.5-tts-voiceclone'
-] as const
 const CLONE_TTS_VOICE_ID_KEYS = [
   'alias',
   'name',
@@ -19,6 +12,8 @@ const CLONE_TTS_VOICE_ID_KEYS = [
   'ref_audio',
   'refAudioPath'
 ] as const
+const GPT_SOVITS_GPT_DROPDOWN_ID = 5
+const GPT_SOVITS_SOVITS_DROPDOWN_ID = 6
 
 const TTS_FETCH_TIMEOUT_MS = 30_000
 

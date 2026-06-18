@@ -5,6 +5,7 @@ import {
   TtsProviderConfig
 } from '../types/tts.types'
 import { TtsApiError } from './tts.errors'
+import { normalizeRefAudioPath } from './ref-audio-path.util'
 import { uint8ArrayToBase64 } from './bytes-base64'
 
 const GPT_SOVITS_GRADIO_FN_INDEX = 1
@@ -207,7 +208,7 @@ export class GptSovitsProvider implements TtsProvider {
 
     // GPT-SoVITS 参数映射
     const speed = request.settings.speed ?? 1.0
-    const refAudioPath = (request.settings.refAudioPath as string) || ''
+    const refAudioPath = normalizeRefAudioPath((request.settings.refAudioPath as string) || '')
     const promptText = (request.settings.promptText as string) || ''
     const promptLang = ((request.settings.promptLang as string) || 'zh').toLowerCase()
     const textLang = ((request.settings.textLang as string) || 'zh').toLowerCase()
