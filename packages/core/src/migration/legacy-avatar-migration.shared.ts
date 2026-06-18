@@ -86,7 +86,7 @@ function prioritizeUserAvatarCandidates(
     const baseB = b.split(/[/\\]/).pop() ?? ''
     const score = (base: string, fullPath: string) => {
       if (preferredBaseName && base === preferredBaseName) return 0
-      if (fullPath.includes(`${path.sep}config${path.sep}`) && base.startsWith('avatar.')) return 1
+      if (fullPath.replace(/\\/g, '/').includes('/config/') && base.startsWith('avatar.')) return 1
       if (base.startsWith('user_avatar.')) return 2
       if (base.startsWith('avatar_imported_')) return 3
       if (base.startsWith('avatar_')) return 4

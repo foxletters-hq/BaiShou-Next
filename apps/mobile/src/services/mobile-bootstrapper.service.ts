@@ -17,6 +17,7 @@ export interface MobileBootstrapperDeps {
   assistantManager: AssistantManagerService
   settingsManager: SettingsManagerService
   summarySyncService: SummarySyncService
+  getActiveVaultName?: () => Promise<string>
 }
 
 /**
@@ -94,20 +95,25 @@ export class MobileDataBootstrapper {
 
     logger.info('[MobileBootstrapper] Starting ecosystem resync…')
 
+    const activeVaultName = deps.getActiveVaultName
+      ? await deps.getActiveVaultName().catch(() => undefined)
+      : undefined
+    const resyncOptions = activeVaultName ? { activeVaultName } : undefined
+
     try {
       const shadowScan = deps.shadowIndexSyncService.fullScanVault(true).catch((e) => {
         logger.warn('[MobileBootstrapper] shadow fullScanVault failed:', e as Error)
       })
 
-      const summaryScan = deps.summarySyncService.fullScanArchives().catch((e) => {
+      const summaryScan = deps.summarySyncService.fullScanArchives(resyncOptions).catch((e) => {
         logger.warn('[MobileBootstrapper] summary fullScanArchives failed:', e as Error)
       })
 
-      const assistantScan = deps.assistantManager.fullResyncFromDisks().catch((e) => {
+      const assistantScan = deps.assistantManager.fullResyncFromDisks(resyncOptions).catch((e) => {
         logger.warn('[MobileBootstrapper] assistant fullResyncFromDisks failed:', e as Error)
       })
 
-      const sessionScan = deps.sessionManager.fullResyncFromDisks().catch((e) => {
+      const sessionScan = deps.sessionManager.fullResyncFromDisks(resyncOptions).catch((e) => {
         logger.warn('[MobileBootstrapper] session fullResyncFromDisks failed:', e as Error)
       })
 

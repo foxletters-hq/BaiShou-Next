@@ -1,5 +1,6 @@
 import { SessionRepository } from '@baishou/database'
 import { SessionFileService } from './session-file.service'
+import type { DiskResyncOptions } from '../sync/disk-resync.types'
 
 export class SessionSyncService {
   constructor(
@@ -27,7 +28,7 @@ export class SessionSyncService {
   /**
    * 在启动 WebDAV、全盘映射或主动校验时调用，重建 AI 会话记忆。
    */
-  async fullScanArchives(): Promise<void> {
+  async fullScanArchives(options?: DiskResyncOptions): Promise<void> {
     const allFiles = await this.fileService.listAllSessions()
     const allDbSessions = await this.sessionRepo.findAllSessions(-1)
 
@@ -46,8 +47,12 @@ export class SessionSyncService {
     // 顺向清理：SQLite 中存在但对应的实体文件已销毁（可能是被彻底孤立淘汰了）
     const fileIds = new Set(allFiles.map((f) => f.id))
     const toDeleteIds: string[] = []
+    const activeVaultName = options?.activeVaultName
     for (const dbRecord of allDbSessions) {
       if (!fileIds.has(dbRecord.id)) {
+        if (activeVaultName && dbRecord.vaultName !== activeVaultName) {
+          continue
+        }
         toDeleteIds.push(dbRecord.id)
       }
     }

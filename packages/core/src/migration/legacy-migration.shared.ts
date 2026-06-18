@@ -246,6 +246,20 @@ export async function readLegacyVaultRegistry(
   }
 }
 
+/** 工作区是否已有日记/总结/会话库等用户数据（仅空目录或 config 视为无内容） */
+export async function vaultDirectoryHasUserContent(
+  fileSystem: IFileSystem,
+  rootDir: string,
+  vaultName: string
+): Promise<boolean> {
+  const vaultDir = path.join(rootDir, vaultName)
+  return (
+    (await fileSystem.exists(path.join(vaultDir, 'Journals'))) ||
+    (await fileSystem.exists(path.join(vaultDir, 'Archives'))) ||
+    (await fileSystem.exists(path.join(vaultDir, '.baishou', 'agent.sqlite')))
+  )
+}
+
 export async function discoverVaultNames(
   fileSystem: IFileSystem,
   sourceDir: string

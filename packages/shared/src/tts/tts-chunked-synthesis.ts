@@ -19,6 +19,10 @@ export type TtsSpeechSynthesisResult =
   | { success: true; segmentCount: number }
   | TtsSpeechSynthesisFailure
 
+export type TtsSpeechSegmentsResult =
+  | { success: true; segments: TtsSpeechSegment[] }
+  | TtsSpeechSynthesisFailure
+
 export interface TtsSpeechSynthesisOptions {
   isCancelled?: () => boolean
   onSegmentReady?: (segment: TtsSpeechSegment, index: number) => Promise<void>
@@ -75,4 +79,58 @@ export async function synthesizeTtsSpeechContent(
   }
 
   return { success: true, segmentCount: chunks.length }
+}
+
+/**
+ * 并行合成全部分片后再播放，避免后台时 JS 无法衔接下一段。
+ */
+export async function synthesizeAllTtsSpeechSegments(
+  registry: TtsProviderRegistry,
+  input: Omit<TtsSynthesizeFromSettingsInput, 'text'> & { content: string },
+  options?: Pick<TtsSpeechSynthesisOptions, 'isCancelled' | 'useCache'>
+): Promise<TtsSpeechSegmentsResult> {
+  const chunks = prepareTtsSpeechChunks(input.content)
+  if (!chunks.length) {
+    return { success: false, errorCode: 'tts_empty_content' }
+  }
+
+  if (options?.isCancelled?.()) {
+    return { success: false, errorCode: 'tts_cancelled' }
+  }
+
+  const { content: _content, ...baseInput } = input
+  const synthOptions = { useCache: options?.useCache }
+
+  async function synthChunk(text: string) {
+    return synthesizeTtsFromSettings(registry, { ...baseInput, text }, synthOptions)
+  }
+
+  const settled = await Promise.all(
+    chunks.map(async (text, index) => {
+      const result = await synthChunk(text)
+      return { index, text, result }
+    })
+  )
+
+  if (options?.isCancelled?.()) {
+    return { success: false, errorCode: 'tts_cancelled' }
+  }
+
+  settled.sort((a, b) => a.index - b.index)
+
+  const segments: TtsSpeechSegment[] = []
+  for (const item of settled) {
+    if (!item.result.success) {
+      return item.result
+    }
+
+    segments.push({
+      text: item.text,
+      audioBase64: item.result.audioBase64,
+      format: item.result.format,
+      fromCache: item.result.fromCache ?? false
+    })
+  }
+
+  return { success: true, segments }
 }

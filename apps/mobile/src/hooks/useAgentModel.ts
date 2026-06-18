@@ -108,8 +108,6 @@ export function useAgentModel(_options: UseAgentModelOptions = {}) {
         const persisted = useAgentNavigationStore.getState().getContext(vaultKey)
 
         setCurrentAssistant((prev) => {
-          if (prev && assistants.length === 0) return prev
-
           const stillValid = prev && assistants.find((a) => a.id === prev.id)
           const fromPersisted =
             persisted.assistantId &&

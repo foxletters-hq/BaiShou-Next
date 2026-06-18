@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { AIProviderConfig } from '@baishou/shared'
+import { ProviderType, type AIProviderConfig } from '@baishou/shared'
 import { isValidProviderId } from '../provider-settings'
 
 describe('isValidProviderId', () => {
@@ -14,7 +14,7 @@ describe('isValidProviderId', () => {
       {
         id: 'custom_123',
         name: 'My API',
-        type: 'openai',
+        type: ProviderType.OpenAI,
         apiKey: '',
         baseUrl: 'https://example.com/v1',
         models: [],

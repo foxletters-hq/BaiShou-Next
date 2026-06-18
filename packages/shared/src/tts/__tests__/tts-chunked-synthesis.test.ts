@@ -1,10 +1,28 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { synthesizeTtsSpeechContent } from '../tts-chunked-synthesis'
+import {
+  synthesizeAllTtsSpeechSegments,
+  synthesizeTtsSpeechContent
+} from '../tts-chunked-synthesis'
 import { TtsProviderRegistry } from '../tts.registry'
 import type { TtsProvider } from '../../types/tts.types'
+import type { GlobalModelsConfig } from '../../types/settings.types'
 
 describe('synthesizeTtsSpeechContent', () => {
   const registry = new TtsProviderRegistry()
+  const globalModels = {
+    globalDialogueProviderId: '',
+    globalDialogueModelId: '',
+    globalNamingProviderId: '',
+    globalNamingModelId: '',
+    globalSummaryProviderId: '',
+    globalSummaryModelId: '',
+    globalEmbeddingProviderId: '',
+    globalEmbeddingModelId: '',
+    globalTtsProviderId: 'mock-tts',
+    globalTtsModelId: 'tts-1',
+    globalTtsSettings: { voice: 'alloy', speed: 1, responseFormat: 'mp3' },
+    monthlySummarySource: 'diaries'
+  } satisfies GlobalModelsConfig
 
   const provider: TtsProvider = {
     id: 'mock-tts',
@@ -27,11 +45,7 @@ describe('synthesizeTtsSpeechContent', () => {
     const result = await synthesizeTtsSpeechContent(
       registry,
       {
-        globalModels: {
-          globalTtsProviderId: 'mock-tts',
-          globalTtsModelId: 'tts-1',
-          globalTtsSettings: { voice: 'alloy', speed: 1, responseFormat: 'mp3' }
-        },
+        globalModels,
         content: '你好，world. Done!'
       },
       {
@@ -47,15 +61,32 @@ describe('synthesizeTtsSpeechContent', () => {
     expect(provider.synthesize).toHaveBeenCalledTimes(3)
   })
 
+  it('synthesizes all prepared chunks in parallel', async () => {
+    const result = await synthesizeAllTtsSpeechSegments(
+      registry,
+      {
+        globalModels,
+        content: '你好，world. Done!'
+      },
+      { useCache: false }
+    )
+
+    expect(result).toEqual({
+      success: true,
+      segments: [
+        { text: '你好，', audioBase64: 'audio:你好，', format: 'mp3', fromCache: false },
+        { text: 'world.', audioBase64: 'audio:world.', format: 'mp3', fromCache: false },
+        { text: 'Done!', audioBase64: 'audio:Done!', format: 'mp3', fromCache: false }
+      ]
+    })
+    expect(provider.synthesize).toHaveBeenCalledTimes(3)
+  })
+
   it('strips fenced code blocks before synthesis', async () => {
     await synthesizeTtsSpeechContent(
       registry,
       {
-        globalModels: {
-          globalTtsProviderId: 'mock-tts',
-          globalTtsModelId: 'tts-1',
-          globalTtsSettings: { voice: 'alloy', speed: 1, responseFormat: 'mp3' }
-        },
+        globalModels,
         content: '说明。```js\nconst x=1\n```结束。'
       },
       { useCache: false }

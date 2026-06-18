@@ -37,7 +37,8 @@ import {
   resolveSummaryTemplatesForGeneration,
   resolveSyncDeviceId,
   isConfiguredProviderId,
-  isConfiguredDialogueModelId
+  isConfiguredDialogueModelId,
+  type SummaryPromptLocale
 } from '@baishou/shared'
 import { getTtsPlaybackSettings } from '../services/mobile-tts-settings.service'
 import { shouldRefreshVaultAfterArchiveImport } from '../services/archive-guards.util'
@@ -111,6 +112,7 @@ import {
   rebootstrapAfterStorageRootChange,
   registerVaultBootstrapDeps,
   resumeStorageAfterFileCopy,
+  resyncEcosystemAfterFileMutation,
   switchVaultRuntime,
   deleteVaultWithShadowCleanup,
   type VaultBoundDiaryStack
@@ -173,6 +175,8 @@ interface BaishouContextValue {
   retryStorageSetup: (options?: { forceDeferResync?: boolean }) => Promise<boolean>
   /** 暂停文件监听与 Shadow DB，执行磁盘操作后自动恢复（用于目录迁移） */
   runWithStorageQuiesced: <T>(fn: () => Promise<T>) => Promise<T>
+  /** 版本迁移等直写磁盘后阻塞重建 Shadow 索引，供日记列表热刷新 */
+  resyncAfterMigration: () => Promise<void>
   services: {
     agentService: AgentSessionService
     sessionManager: SessionManagerService
@@ -251,6 +255,7 @@ const BaishouContext = createContext<BaishouContextValue>({
   ecosystemResyncEpoch: 0,
   retryStorageSetup: async () => Platform.OS !== 'android',
   runWithStorageQuiesced: async (fn) => fn(),
+  resyncAfterMigration: async () => {},
   services: null
 })
 
@@ -319,6 +324,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
   const deleteMigratedLegacySourceRef = useRef<() => Promise<boolean>>(async () => false)
   const notifyArchiveRestoreCompleteRef = useRef<(result: ImportResult) => void>(() => {})
   const notifyVersionMigrationCompleteRef = useRef<() => void>(() => {})
+  const resyncAfterMigrationRef = useRef<() => Promise<void>>(async () => {})
   const agentDbRuntimeRef = useRef<AgentDbRuntime | null>(null)
   const reloadAgentDatabaseRef = useRef<() => Promise<void>>(async () => {})
   const archiveFullRestoreDoneRef = useRef(false)
@@ -370,6 +376,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
     ecosystemResyncEpoch: 0,
     retryStorageSetup: (options) => retryStorageSetupRef.current(options),
     runWithStorageQuiesced: (fn) => runWithStorageQuiescedRef.current(fn),
+    resyncAfterMigration: () => resyncAfterMigrationRef.current(),
     services: null
   })
 
@@ -536,7 +543,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         const summaryFileService = new SummaryFileService(pathService, fileSystem)
         const diaryRepoAdapter = diaryStack?.diaryRepoAdapter ?? EMPTY_DIARY_REPO_ADAPTER
         const customTemplates = resolveSummaryTemplatesForGeneration(summaryConfig)
-        const promptLocale = summaryConfig?.promptLocale ?? 'zh'
+        const promptLocale = (summaryConfig?.promptLocale ?? 'zh') as SummaryPromptLocale
         const summaryAiClient = buildMobileSummaryAiClient(settingsManager)
         const missingSummaryDetector = new MissingSummaryDetector(
           diaryRepoAdapter as any,
@@ -1063,7 +1070,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           sessionManager,
           assistantManager,
           settingsManager,
-          summarySyncService
+          summarySyncService,
+          getActiveVaultName: () => pathService.getActiveVaultNameForContext()
         }
 
         const watcherDeps = {
@@ -1577,6 +1585,23 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             }))
           }
 
+          resyncAfterMigrationRef.current = async () => {
+            const stack = diaryStackRef.current
+            const ctx = vaultBootstrapCtxRef.current
+            if (!stack || !ctx) return
+            await resyncEcosystemAfterFileMutation({
+              diaryStack: stack,
+              vaultService: ctx.vaultService,
+              bootstrapDeps: ctx.bootstrapDeps,
+              watcherDeps: ctx.watcherDeps
+            })
+            if (!isMounted) return
+            setValue((prev) => ({
+              ...prev,
+              ecosystemResyncEpoch: prev.ecosystemResyncEpoch + 1
+            }))
+          }
+
           notifyVersionMigrationCompleteRef.current = () => {
             void (async () => {
               let markedComplete = false
@@ -1622,6 +1647,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             ecosystemResyncEpoch: 0,
             retryStorageSetup: (options) => retryStorageSetupRef.current(options),
             runWithStorageQuiesced: (fn) => runWithStorageQuiescedRef.current(fn),
+            resyncAfterMigration: () => resyncAfterMigrationRef.current(),
             services: {
               agentService,
               sessionManager,

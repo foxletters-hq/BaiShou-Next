@@ -74,7 +74,7 @@ describe('SummarySyncService (Ghost indexing)', () => {
     expect(mockRepo.upsert).toHaveBeenCalledTimes(2) // this one and previous one
   })
 
-  it('fullScanArchives() should prune DB ghosts and upsert existing files', async () => {
+  it('fullScanArchives() should prune DB ghosts and upsert existing files during active vault resync', async () => {
     const t2 = new Date()
     mockFileService.listAllSummaries.mockResolvedValue([
       {
@@ -94,7 +94,7 @@ describe('SummarySyncService (Ghost indexing)', () => {
     mockFileService.readSummary.mockResolvedValue('content_xyz')
     mockRepo.getByDateRange.mockResolvedValue(null)
 
-    await service.fullScanArchives()
+    await service.fullScanArchives({ activeVaultName: 'MainVault' })
 
     // 必定触发删除不存在的文件
     expect(mockRepo.delete).toHaveBeenCalledWith(99)
@@ -114,6 +114,18 @@ describe('SummarySyncService (Ghost indexing)', () => {
     await service.fullScanArchives()
 
     expect(mockRepo.delete).not.toHaveBeenCalled()
+    expect(mockRepo.upsert).not.toHaveBeenCalled()
+  })
+
+  it('fullScanArchives() should clear cache for active vault when disk scan is empty', async () => {
+    mockFileService.listAllSummaries.mockResolvedValue([])
+    mockRepo.getSummaries.mockResolvedValue([
+      { id: 42, type: SummaryType.weekly, startDate: start, content: 'old-vault' } as any
+    ])
+
+    await service.fullScanArchives({ activeVaultName: 'EmptyVault' })
+
+    expect(mockRepo.delete).toHaveBeenCalledWith(42)
     expect(mockRepo.upsert).not.toHaveBeenCalled()
   })
 })

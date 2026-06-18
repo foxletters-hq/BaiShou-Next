@@ -2,8 +2,8 @@ import { useState, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
-import { synthesizeTtsSpeechFromSavedSettings } from '../services/mobile-tts-synthesize'
-import { playTtsAudioSegment, stopTtsAudioPlayback } from '../services/play-tts-audio'
+import { synthesizeAllTtsSpeechFromSavedSettings } from '../services/mobile-tts-synthesize'
+import { playTtsAudioSequence, stopTtsAudioPlayback } from '../services/play-tts-audio'
 
 export function useTTS() {
   const { t } = useTranslation()
@@ -45,12 +45,8 @@ export function useTTS() {
           return
         }
 
-        const result = await synthesizeTtsSpeechFromSavedSettings(services.settingsManager, content, {
-          isCancelled: () => requestId !== ttsRequestRef.current,
-          onSegmentReady: async (segment) => {
-            if (requestId !== ttsRequestRef.current) return
-            await playTtsAudioSegment(segment.audioBase64, segment.format)
-          }
+        const result = await synthesizeAllTtsSpeechFromSavedSettings(services.settingsManager, content, {
+          isCancelled: () => requestId !== ttsRequestRef.current
         })
 
         if (requestId !== ttsRequestRef.current) return
@@ -75,6 +71,10 @@ export function useTTS() {
           clearTtsBusyState(requestId)
           return
         }
+
+        await playTtsAudioSequence(result.segments)
+
+        if (requestId !== ttsRequestRef.current) return
 
         clearTtsBusyState(requestId)
       } catch (e: unknown) {

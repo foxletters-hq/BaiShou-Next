@@ -3,10 +3,12 @@ import {
   synthesizeTtsFromSettings,
   synthesizeTtsFromFormConfig,
   synthesizeTtsSpeechContent,
+  synthesizeAllTtsSpeechSegments,
   type GlobalModelsConfig,
   type TtsFormSynthesizeConfig,
   type TtsSpeechSynthesisOptions,
-  type TtsSpeechSynthesisResult
+  type TtsSpeechSynthesisResult,
+  type TtsSpeechSegmentsResult
 } from '@baishou/shared'
 import type { SettingsManagerService } from '@baishou/core-mobile'
 import type { TtsProviderConfig } from '@baishou/ui/native'
@@ -81,6 +83,29 @@ export async function synthesizeTtsFromSavedSettings(
   )
 }
 
+/** 并行合成全部分片，供后台连续播放使用 */
+export async function synthesizeAllTtsSpeechFromSavedSettings(
+  settingsManager: SettingsManagerService,
+  content: string,
+  options?: Pick<TtsSpeechSynthesisOptions, 'isCancelled' | 'useCache'> & {
+    providerId?: string
+    modelId?: string
+  }
+): Promise<TtsSpeechSegmentsResult> {
+  const { providerId, modelId, ...speechOptions } = options ?? {}
+  const { globalModels } = await getTtsPlaybackSettings(settingsManager)
+  return synthesizeAllTtsSpeechSegments(
+    registry,
+    {
+      globalModels: globalModels as GlobalModelsConfig | null | undefined,
+      content,
+      providerId,
+      modelId
+    },
+    speechOptions
+  )
+}
+
 /** 设置页试听：使用表单当前配置，不依赖已保存的 global_models */
 export async function synthesizeTtsFromForm(
   config: TtsProviderConfig,
@@ -102,4 +127,9 @@ export async function synthesizeTtsFromForm(
   return toTestResult(await synthesizeTtsFromFormConfig(registry, formConfig, text))
 }
 
-export type { TtsSpeechSegment, TtsSpeechSynthesisOptions, TtsSpeechSynthesisResult } from '@baishou/shared'
+export type {
+  TtsSpeechSegment,
+  TtsSpeechSynthesisOptions,
+  TtsSpeechSynthesisResult,
+  TtsSpeechSegmentsResult
+} from '@baishou/shared'

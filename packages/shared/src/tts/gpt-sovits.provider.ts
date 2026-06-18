@@ -132,7 +132,7 @@ async function waitForGradioQueueOutput(
     }
 
     const req = httpGet(
-      queueUrl,
+      queueUrl.toString(),
       {
         headers: {
           Accept: 'text/event-stream'

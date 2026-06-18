@@ -37,7 +37,7 @@ describe('legacy-summary-migration.util', () => {
       legacyVaultName: 'Personal',
       sqliteClient: {},
       resolveTargetVaultName: async () => 'Personal',
-      executeRawSql: async (client, sql) => {
+      executeRawSql: async (_client, sql) => {
         if (sql.includes('ATTACH')) return { rows: [] }
         if (sql.includes('PRAGMA')) return { rows: [{ name: 'id' }] }
         if (sql.includes('SELECT * FROM')) {

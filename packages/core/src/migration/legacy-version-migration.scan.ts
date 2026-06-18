@@ -272,7 +272,7 @@ async function collectArchiveStatsForVault(
   const fileCount = await countArchiveMarkdownUnderArchivesDir(fileSystem, archivesDir)
   const bytes = await sumTreeBytes(fileSystem, archivesDir)
   let sqlOnlyCount = 0
-  if (deps) {
+  if (deps?.sqliteClient && deps.executeRawSql) {
     const sources = await countLegacyArchiveSourcesForVault(
       fileSystem,
       sourceRoot,

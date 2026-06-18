@@ -103,7 +103,7 @@ export async function resolveMimoVoiceCloneDataUri(settings: TtsProviderSettings
   return `data:${mime};base64,${uint8ArrayToBase64(bytes)}`
 }
 
-export interface MimoTtsChatCompletionBody {
+export interface MimoTtsChatCompletionBody extends Record<string, unknown> {
   model: string
   messages: Array<{ role: 'user' | 'assistant'; content: string }>
   audio: Record<string, unknown>

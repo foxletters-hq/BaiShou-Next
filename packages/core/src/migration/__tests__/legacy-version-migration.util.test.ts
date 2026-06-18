@@ -71,7 +71,7 @@ describe('legacy-version-migration.util', () => {
     expect(normalizeLegacyPartType('text')).toBe('text')
   })
 
-  it('resolveLegacyVaultTargetName matches workspace suffix rules', () => {
+  it('resolveLegacyVaultTargetName appends suffix when vault name already exists', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.42)
     const existing = new Set(['Personal'])
     expect(resolveLegacyVaultTargetName('Personal', existing, {})).toMatch(/^Personal\d{2}$/)
@@ -79,6 +79,15 @@ describe('legacy-version-migration.util', () => {
       'Personal42'
     )
     expect(resolveLegacyVaultTargetName('工作', existing, {})).toBe('工作')
+    vi.restoreAllMocks()
+  })
+
+  it('resolveLegacyVaultTargetName ignores stale same-name stored map when vault exists', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.42)
+    const existing = new Set(['Personal'])
+    expect(resolveLegacyVaultTargetName('Personal', existing, { Personal: 'Personal' })).toMatch(
+      /^Personal\d{2}$/
+    )
     vi.restoreAllMocks()
   })
 

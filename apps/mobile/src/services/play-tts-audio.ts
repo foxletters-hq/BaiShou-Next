@@ -24,12 +24,32 @@ type AudioPlayer = {
   ) => { remove: () => void }
 }
 
+type PlaylistStatus = {
+  didJustFinish?: boolean
+  currentIndex?: number
+  trackCount?: number
+  playing?: boolean
+}
+
+type AudioPlaylist = {
+  play: () => void
+  pause: () => void
+  destroy: () => void
+  addListener: (
+    event: 'playlistStatusUpdate',
+    listener: (status: PlaylistStatus) => void
+  ) => { remove: () => void }
+}
+
 const PLAYBACK_TIMEOUT_MS = 60_000
 const LOAD_TIMEOUT_MS = 15_000
 
 let activePlayer: AudioPlayer | null = null
 let activeListener: { remove: () => void } | null = null
+let activePlaylist: AudioPlaylist | null = null
+let activePlaylistListener: { remove: () => void } | null = null
 let activeTempUri: string | null = null
+let activeTempUris: string[] = []
 let playbackGeneration = 0
 
 async function loadExpoAudio() {
@@ -53,11 +73,32 @@ async function writeAudioToTempFile(audioBase64: string, format: string): Promis
   return uri
 }
 
+async function cleanupTempFiles(uris: string[]): Promise<void> {
+  await Promise.all(uris.map((uri) => deleteAsync(uri, { idempotent: true }).catch(() => {})))
+}
+
 async function cleanupTempFile(): Promise<void> {
   if (!activeTempUri) return
   const uri = activeTempUri
   activeTempUri = null
   await deleteAsync(uri, { idempotent: true }).catch(() => {})
+}
+
+function releaseActivePlaylist(): void {
+  activePlaylistListener?.remove()
+  activePlaylistListener = null
+  if (activePlaylist) {
+    try {
+      activePlaylist.pause()
+      activePlaylist.destroy()
+    } catch {
+      /* ignore */
+    }
+    activePlaylist = null
+  }
+  const uris = activeTempUris
+  activeTempUris = []
+  void cleanupTempFiles(uris)
 }
 
 function releaseActivePlayer(): void {
@@ -73,6 +114,11 @@ function releaseActivePlayer(): void {
     activePlayer = null
   }
   void cleanupTempFile()
+}
+
+function releaseActivePlayback(): void {
+  releaseActivePlayer()
+  releaseActivePlaylist()
 }
 
 function hasPlaybackFinished(status: AudioStatus): boolean {
@@ -93,7 +139,7 @@ function hasPlaybackFinished(status: AudioStatus): boolean {
 
 export async function stopTtsAudioPlayback(): Promise<void> {
   playbackGeneration += 1
-  releaseActivePlayer()
+  releaseActivePlayback()
 }
 
 async function playPreparedAudioFile(
@@ -101,7 +147,10 @@ async function playPreparedAudioFile(
   generation: number
 ): Promise<void> {
   const { createAudioPlayer, setAudioModeAsync } = await loadExpoAudio()
-  await setAudioModeAsync({ playsInSilentMode: true })
+  await setAudioModeAsync({
+    playsInSilentMode: true,
+    shouldPlayInBackground: true
+  })
 
   const player = createAudioPlayer({ uri: tempUri })
 
@@ -208,13 +257,84 @@ export async function playTtsAudioSequence(
     return
   }
 
+  if (segments.length === 1) {
+    try {
+      await playTtsAudioSegment(segments[0]!.audioBase64, segments[0]!.format)
+      onFinished?.()
+    } catch (error) {
+      onFinished?.()
+      throw error
+    }
+    return
+  }
+
+  const { createAudioPlaylist, setAudioModeAsync } = await loadExpoAudio()
+  await setAudioModeAsync({
+    playsInSilentMode: true,
+    shouldPlayInBackground: true
+  })
+
+  const tempUris: string[] = []
   try {
     for (const segment of segments) {
       if (generation !== playbackGeneration) break
-      await playTtsAudioSegment(segment.audioBase64, segment.format)
+      tempUris.push(await writeAudioToTempFile(segment.audioBase64, segment.format))
     }
+
+    if (generation !== playbackGeneration || !tempUris.length) {
+      await cleanupTempFiles(tempUris)
+      onFinished?.()
+      return
+    }
+
+    activeTempUris = tempUris
+    const playlist = createAudioPlaylist({
+      sources: tempUris.map((uri) => ({ uri })),
+      loop: 'none'
+    })
+    activePlaylist = playlist
+
+    await new Promise<void>((resolve, reject) => {
+      let settled = false
+
+      const finish = () => {
+        if (settled || generation !== playbackGeneration) return
+        settled = true
+        clearTimeout(timeout)
+        releaseActivePlaylist()
+        resolve()
+      }
+
+      const fail = (error: Error) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timeout)
+        releaseActivePlaylist()
+        reject(error)
+      }
+
+      const timeout = setTimeout(() => {
+        fail(new Error('TTS playback timed out'))
+      }, PLAYBACK_TIMEOUT_MS * segments.length)
+
+      activePlaylistListener = playlist.addListener('playlistStatusUpdate', (status) => {
+        if (generation !== playbackGeneration) return
+        if (status.didJustFinish) {
+          finish()
+        }
+      })
+
+      try {
+        playlist.play()
+      } catch (error) {
+        fail(error instanceof Error ? error : new Error('TTS playback failed'))
+      }
+    })
+
     onFinished?.()
   } catch (error) {
+    await cleanupTempFiles(tempUris)
+    activeTempUris = []
     onFinished?.()
     throw error
   }
