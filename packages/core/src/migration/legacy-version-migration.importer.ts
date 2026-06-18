@@ -80,12 +80,12 @@ export interface LegacyVersionMigrationImporterDeps {
   onVaultNameMapped?: (legacyName: string, targetName: string) => Promise<void>
   flushSettingsToDisk?: () => Promise<void>
   onProgress?: (message: string) => void
-  /** 在 runInVaultContext 内读取目标工作区日记原文（用于去重比对） */
-  readTargetJournalRaw?: (dateStr: string) => Promise<string | null>
+  /** 读取映射后的目标工作区日记原文（用于去重比对） */
+  readTargetJournalRaw?: (dateStr: string, targetVaultName: string) => Promise<string | null>
   /** 当前工作区是否已有该伙伴 JSON（用于跳过重复导入） */
   assistantRecordExists?: (assistantId: string) => Promise<boolean>
-  /** 移动端迁移：在 vault 上下文内解析 Journals 根目录（仅写文件、不建影子索引） */
-  getJournalsBaseDirectory?: () => Promise<string>
+  /** 移动端迁移：按映射后的目标工作区解析 Journals 根目录（仅写文件、不建影子索引） */
+  getJournalsBaseDirectory?: (targetVaultName: string) => Promise<string>
   /** 将旧版 db 路径转为当前平台可 ATTACH 的路径 */
   prepareSqliteAttachPath?: (dbPath: string) => Promise<string>
 }
@@ -292,13 +292,9 @@ async function ensureTargetVaultExists(
 ): Promise<string> {
   const targetName = await deps.resolveTargetVaultName(legacyVaultName)
   if (!deps.vaultService.vaultExists(targetName)) {
-    try {
-      await deps.vaultService.createVault(targetName)
-    } catch {
-      await deps.vaultService.switchVault(targetName)
-    }
+    await deps.vaultService.createVault(targetName)
   }
-  if (deps.onVaultNameMapped) {
+  if (deps.onVaultNameMapped && targetName !== legacyVaultName) {
     await deps.onVaultNameMapped(legacyVaultName, targetName)
   }
   return targetName
@@ -446,14 +442,14 @@ export async function importLegacyDiariesForVault(
   let skipped = 0
   let failed = 0
   const failureSamples: string[] = []
+  const targetVaultName = await deps.resolveTargetVaultName(legacyVaultName)
 
   const readTargetRaw = async (dateStr: string): Promise<string | null> => {
     if (readTargetJournalRaw) {
-      return readTargetJournalRaw(dateStr)
+      return readTargetJournalRaw(dateStr, targetVaultName)
     }
-    const targetVault = await deps.resolveTargetVaultName(legacyVaultName)
     const targetPath = buildJournalFilePathFromDateStr(
-      path.join(deps.targetRoot, targetVault, 'Journals'),
+      path.join(deps.targetRoot, targetVaultName, 'Journals'),
       dateStr
     )
     if (!(await fileSystem.exists(targetPath))) return null
@@ -462,10 +458,10 @@ export async function importLegacyDiariesForVault(
 
   await runInVaultContext(legacyVaultName, async () => {
     const journalsBase = deps.getJournalsBaseDirectory
-      ? await deps.getJournalsBaseDirectory()
+      ? await deps.getJournalsBaseDirectory(targetVaultName)
       : path.join(
           deps.targetRoot,
-          await deps.resolveTargetVaultName(legacyVaultName),
+          targetVaultName,
           'Journals'
         )
 
@@ -545,6 +541,35 @@ export async function importLegacyArchivesForVault(
   }
 }
 
+function buildLegacyAssistantInput(
+  row: Record<string, unknown>,
+  id: string,
+  name: string,
+  avatarMap: Record<string, string>
+): InsertAssistantInput {
+  const legacyAvatarPath = row.avatar_path != null ? String(row.avatar_path) : undefined
+  const avatarPath = resolveLegacyAvatarPathInMap(legacyAvatarPath, avatarMap) ?? legacyAvatarPath
+
+  return {
+    id,
+    name,
+    emoji: row.emoji != null ? String(row.emoji) : undefined,
+    description: row.description != null ? String(row.description) : undefined,
+    avatarPath,
+    systemPrompt: row.system_prompt != null ? String(row.system_prompt) : undefined,
+    isDefault: false,
+    isPinned: Number(row.is_pinned) === 1,
+    contextWindow: row.context_window != null ? Number(row.context_window) : undefined,
+    providerId: row.provider_id != null ? String(row.provider_id) : null,
+    modelId: row.model_id != null ? String(row.model_id) : null,
+    compressTokenThreshold:
+      row.compress_token_threshold != null ? Number(row.compress_token_threshold) : undefined,
+    compressKeepTurns:
+      row.compress_keep_turns != null ? Number(row.compress_keep_turns) : undefined,
+    sortOrder: row.sort_order != null ? Number(row.sort_order) : undefined
+  }
+}
+
 export async function importLegacyAssistantsFromRows(
   deps: LegacyVersionMigrationImporterDeps,
   assistants: Record<string, unknown>[],
@@ -574,15 +599,38 @@ export async function importLegacyAssistantsFromRows(
 
     if (priorMap[oldId]) {
       const mappedId = priorMap[oldId]
+      assistantIdMap[oldId] = mappedId
       if (deps.assistantRecordExists && (await deps.assistantRecordExists(mappedId))) {
-        assistantIdMap[oldId] = mappedId
         skipped += 1
         continue
       }
+      try {
+        await assistantManager.ensureDiskFromInput(
+          buildLegacyAssistantInput(row, mappedId, String(row.name ?? mappedId), avatarMap)
+        )
+        imported += 1
+      } catch (error) {
+        failed += 1
+        if (failureSamples.length < 12) {
+          const message = error instanceof Error ? error.message : String(error)
+          failureSamples.push(`伙伴 ${String(row.name ?? oldId)}: ${message}`)
+        }
+      }
+      continue
     }
 
     if (existingIds.has(oldId)) {
       assistantIdMap[oldId] = oldId
+      try {
+        await assistantManager.syncToDisk(oldId)
+      } catch (error) {
+        failed += 1
+        if (failureSamples.length < 12) {
+          const message = error instanceof Error ? error.message : String(error)
+          failureSamples.push(`伙伴 ${String(row.name ?? oldId)}: ${message}`)
+        }
+        continue
+      }
       skipped += 1
       continue
     }
@@ -593,29 +641,9 @@ export async function importLegacyAssistantsFromRows(
     assistantIdMap[oldId] = newId
 
     try {
-      const legacyAvatarPath =
-        row.avatar_path != null ? String(row.avatar_path) : undefined
-      const avatarPath =
-        resolveLegacyAvatarPathInMap(legacyAvatarPath, avatarMap) ?? legacyAvatarPath
-
-      await assistantManager.create({
-        id: newId,
-        name: uniqueName,
-        emoji: row.emoji != null ? String(row.emoji) : undefined,
-        description: row.description != null ? String(row.description) : undefined,
-        avatarPath,
-        systemPrompt: row.system_prompt != null ? String(row.system_prompt) : undefined,
-        isDefault: false,
-        isPinned: Number(row.is_pinned) === 1,
-        contextWindow: row.context_window != null ? Number(row.context_window) : undefined,
-        providerId: row.provider_id != null ? String(row.provider_id) : null,
-        modelId: row.model_id != null ? String(row.model_id) : null,
-        compressTokenThreshold:
-          row.compress_token_threshold != null ? Number(row.compress_token_threshold) : undefined,
-        compressKeepTurns:
-          row.compress_keep_turns != null ? Number(row.compress_keep_turns) : undefined,
-        sortOrder: row.sort_order != null ? Number(row.sort_order) : undefined
-      } satisfies InsertAssistantInput)
+      await assistantManager.create(
+        buildLegacyAssistantInput(row, newId, uniqueName, avatarMap)
+      )
       imported += 1
     } catch (error) {
       failed += 1
