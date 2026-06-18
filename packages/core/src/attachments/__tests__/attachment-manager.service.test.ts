@@ -300,4 +300,38 @@ date: 2026-10-01
     const fromGlobal = await service.resolveAvatarPath(`avatars/${filename}`)
     expect(fromGlobal).toMatch(/user-avatars/i)
   })
+
+  it('resolves partner avatars from global and other vault directories on desktop', async () => {
+    const globalDir = path.join(tempDir, 'agent-global')
+    const activeVaultDir = path.join(tempDir, 'avatars-active')
+    const otherVaultDir = path.join(tempDir, 'avatars-other')
+    await fs.mkdir(globalDir, { recursive: true })
+    await fs.mkdir(activeVaultDir, { recursive: true })
+    await fs.mkdir(otherVaultDir, { recursive: true })
+
+    const filename = 'agent_avatar_123.jpg'
+    await fs.writeFile(path.join(otherVaultDir, filename), 'avatar-bytes')
+
+    mockPathService.getGlobalAgentAvatarsDirectory = vi.fn().mockResolvedValue(globalDir)
+    mockPathService.getAvatarsDirectory.mockResolvedValue(activeVaultDir)
+    mockPathService.listAgentAvatarSearchDirectories = vi
+      .fn()
+      .mockResolvedValue([globalDir, activeVaultDir, otherVaultDir])
+
+    const resolved = await service.resolveAvatarPath(`avatars/${filename}`)
+    expect(resolved).toContain(filename)
+  })
+
+  it('imports partner avatars into global agent directory when available', async () => {
+    const globalDir = path.join(tempDir, 'agent-global')
+    const source = path.join(tempDir, 'source.jpg')
+    await fs.mkdir(globalDir, { recursive: true })
+    await fs.writeFile(source, 'avatar-bytes')
+
+    mockPathService.getGlobalAgentAvatarsDirectory = vi.fn().mockResolvedValue(globalDir)
+
+    const relative = await service.importAvatar(source, 'agent_avatar')
+    expect(relative.startsWith('avatars/agent_avatar_')).toBe(true)
+    expect(existsSync(path.join(globalDir, relative.replace('avatars/', '')))).toBe(true)
+  })
 })
