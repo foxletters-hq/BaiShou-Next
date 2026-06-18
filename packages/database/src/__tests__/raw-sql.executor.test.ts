@@ -31,6 +31,28 @@ describe('executeRawSql (libsql client)', () => {
     expect(rows.rows[0]?.v).toBe('new')
     client.close()
   })
+
+  it('unwraps a Drizzle db session client before using execute()', async () => {
+    const calls: unknown[] = []
+    const drizzleLikeDb = {
+      execute: () => {
+        throw new Error('drizzle execute should not be used for raw SQL')
+      },
+      session: {
+        client: {
+          execute: async (statement: unknown) => {
+            calls.push(statement)
+            return { rows: [{ ok: 1 }] }
+          }
+        }
+      }
+    }
+
+    const result = await executeRawSql(drizzleLikeDb, 'SELECT 1 AS ok')
+
+    expect(result.rows).toEqual([{ ok: 1 }])
+    expect(calls).toEqual(['SELECT 1 AS ok'])
+  })
 })
 
 describe('executeRawSql (better-sqlite3)', () => {
