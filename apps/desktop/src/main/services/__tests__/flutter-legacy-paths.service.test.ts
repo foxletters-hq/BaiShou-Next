@@ -15,7 +15,12 @@ import {
 const mockDocuments = path.join(os.tmpdir(), 'baishou-flutter-legacy-docs')
 
 vi.mock('electron', () => ({
-  app: { getPath: vi.fn((name: string) => (name === 'documents' ? mockDocuments : mockDocuments)) }
+  app: {
+    getPath: vi.fn((name: string) => {
+      if (name === 'temp') return path.join(os.tmpdir(), 'baishou-desktop-migration-temp')
+      return mockDocuments
+    })
+  }
 }))
 
 describe('flutter-legacy-paths.service', () => {
@@ -39,9 +44,9 @@ describe('flutter-legacy-paths.service', () => {
   })
 
   it('does not read machine SP when explicit dir has no prefs and fallback disabled', async () => {
-    await fs.mkdir(path.join(process.env.APPDATA!, 'baishou'), { recursive: true })
+    await fs.mkdir(path.join(process.env.APPDATA!, 'com.baishou', 'baishou'), { recursive: true })
     await fs.writeFile(
-      path.join(process.env.APPDATA!, 'baishou', 'shared_preferences.json'),
+      path.join(process.env.APPDATA!, 'com.baishou', 'baishou', 'shared_preferences.json'),
       JSON.stringify({ 'flutter.user_personas': JSON.stringify({ 本机: { name: 'X' } }) })
     )
     const result = await resolveLegacyPreferencesForSource(sourceDir, {
@@ -80,9 +85,9 @@ describe('flutter-legacy-paths.service', () => {
   })
 
   it('falls back to machine SP only when allowed and source dir has no prefs', async () => {
-    await fs.mkdir(path.join(process.env.APPDATA!, 'baishou'), { recursive: true })
+    await fs.mkdir(path.join(process.env.APPDATA!, 'com.baishou', 'baishou'), { recursive: true })
     await fs.writeFile(
-      path.join(process.env.APPDATA!, 'baishou', 'shared_preferences.json'),
+      path.join(process.env.APPDATA!, 'com.baishou', 'baishou', 'shared_preferences.json'),
       JSON.stringify({
         'flutter.user_personas': JSON.stringify({ 本机身份: { name: 'Machine' } })
       })
@@ -95,9 +100,9 @@ describe('flutter-legacy-paths.service', () => {
   })
 
   it('auto-detect mode (no dir) uses machine SP', async () => {
-    await fs.mkdir(path.join(process.env.APPDATA!, 'baishou'), { recursive: true })
+    await fs.mkdir(path.join(process.env.APPDATA!, 'com.baishou', 'baishou'), { recursive: true })
     await fs.writeFile(
-      path.join(process.env.APPDATA!, 'baishou', 'shared_preferences.json'),
+      path.join(process.env.APPDATA!, 'com.baishou', 'baishou', 'shared_preferences.json'),
       JSON.stringify({
         'flutter.nickname': 'auto-user',
         'flutter.ai_provider': 'openai'
@@ -109,9 +114,9 @@ describe('flutter-legacy-paths.service', () => {
   })
 
   it('migration resolver supplements machine SP when explicit dir has no prefs', async () => {
-    await fs.mkdir(path.join(process.env.APPDATA!, 'baishou'), { recursive: true })
+    await fs.mkdir(path.join(process.env.APPDATA!, 'com.baishou', 'baishou'), { recursive: true })
     await fs.writeFile(
-      path.join(process.env.APPDATA!, 'baishou', 'shared_preferences.json'),
+      path.join(process.env.APPDATA!, 'com.baishou', 'baishou', 'shared_preferences.json'),
       JSON.stringify({
         'flutter.user_personas': JSON.stringify({ 本机身份: { name: 'Machine' } }),
         'flutter.user_nickname': 'Nick'
@@ -121,5 +126,65 @@ describe('flutter-legacy-paths.service', () => {
     expect(result.supplementedFromMachine).toBe(true)
     expect(result.sp?.['user_personas']).toBeTruthy()
     expect(result.config?.['nickname']).toBe('Nick')
+  })
+
+  it('reads original Flutter Windows shared_preferences path (com.baishou/baishou)', async () => {
+    const legacySpDir = path.join(process.env.APPDATA!, 'com.baishou', 'baishou')
+    await fs.mkdir(legacySpDir, { recursive: true })
+    await fs.writeFile(
+      path.join(legacySpDir, 'shared_preferences.json'),
+      JSON.stringify({
+        'flutter.user_personas': JSON.stringify({
+          默认身份: { 姓名: 'Anson', 职业: '全栈开发' }
+        }),
+        'flutter.custom_storage_root': sourceDir
+      })
+    )
+    const { readFlutterSharedPreferencesRaw, resolveVersionMigrationFlutterPrefs } = await import(
+      '../flutter-legacy-paths.service'
+    )
+    const sp = await readFlutterSharedPreferencesRaw()
+    expect(sp?.['user_personas']).toBeTruthy()
+    const result = await resolveVersionMigrationFlutterPrefs(sourceDir)
+    expect(result.supplementedFromMachine).toBe(true)
+    const personas = JSON.parse(String(result.sp?.['user_personas']))
+    expect(personas['默认身份']).toBeTruthy()
+  })
+
+  it('resolveVersionMigrationFlutterPrefs derives config when only machine SP exists', async () => {
+    const { resolveVersionMigrationFlutterPrefs } = await import('../flutter-legacy-paths.service')
+    await fs.mkdir(path.join(process.env.APPDATA!, 'com.baishou', 'baishou'), { recursive: true })
+    await fs.writeFile(
+      path.join(process.env.APPDATA!, 'com.baishou', 'baishou', 'shared_preferences.json'),
+      JSON.stringify({
+        'flutter.user_nickname': 'Desktop',
+        'flutter.global_dialogue_provider_id': 'openai'
+      })
+    )
+    const result = await resolveVersionMigrationFlutterPrefs(sourceDir)
+    expect(result.sp?.['user_nickname']).toBe('Desktop')
+    expect(result.config?.['nickname']).toBe('Desktop')
+    expect(result.supplementedFromMachine).toBe(true)
+  })
+
+  it('migration resolver keeps machine personas when source SP has empty user_personas', async () => {
+    await fs.writeFile(
+      path.join(sourceDir, 'shared_preferences.json'),
+      JSON.stringify({
+        'flutter.user_personas': '',
+        'flutter.user_nickname': 'SourceNick'
+      })
+    )
+    await fs.mkdir(path.join(process.env.APPDATA!, 'com.baishou', 'baishou'), { recursive: true })
+    await fs.writeFile(
+      path.join(process.env.APPDATA!, 'com.baishou', 'baishou', 'shared_preferences.json'),
+      JSON.stringify({
+        'flutter.user_personas': JSON.stringify({ 机器身份: { name: 'Machine' } })
+      })
+    )
+    const result = await resolveLegacyPreferencesForMigration(sourceDir)
+    const personas = JSON.parse(String(result.sp?.['user_personas']))
+    expect(personas['机器身份']).toBeTruthy()
+    expect(result.sp?.['user_nickname']).toBe('SourceNick')
   })
 })
