@@ -5,6 +5,7 @@ import path from 'node:path'
 import Database from 'better-sqlite3'
 import { createNodeFileSystem } from '../../fs/create-node-file-system'
 import { exportLegacyRuntimeArtifacts } from '../legacy-runtime-artifacts.shared'
+import { isBetterSqlite3Available } from './better-sqlite3-available'
 
 async function executeRawSql(
   client: unknown,
@@ -53,7 +54,7 @@ function createAgentSchema(db: Database.Database): void {
   `)
 }
 
-describe('exportLegacyRuntimeArtifacts', () => {
+describe.skipIf(!isBetterSqlite3Available())('exportLegacyRuntimeArtifacts', () => {
   let tempDir: string
   const fileSystem = createNodeFileSystem()
   let db: Database.Database
@@ -81,7 +82,7 @@ describe('exportLegacyRuntimeArtifacts', () => {
   })
 
   afterEach(async () => {
-    db.close()
+    db?.close()
     await fs.rm(tempDir, { recursive: true, force: true }).catch(() => null)
   })
 

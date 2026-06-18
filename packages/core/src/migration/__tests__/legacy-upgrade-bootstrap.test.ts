@@ -8,6 +8,7 @@ import { AssistantManagerService } from '../../assistant/assistant-manager.servi
 import { AssistantFileService } from '../../assistant/assistant-file.service'
 import { MigrationTargetStoragePathService } from '../migration-target-path.service'
 import { migrateLegacyArchiveContents } from '../legacy-archive-migration.shared'
+import { isBetterSqlite3Available } from './better-sqlite3-available'
 
 async function executeRawSql(
   client: unknown,
@@ -72,7 +73,7 @@ function createFullAgentSchema(db: Database.Database): void {
   `)
 }
 
-describe('legacy upgrade bootstrap safety', () => {
+describe.skipIf(!isBetterSqlite3Available())('legacy upgrade bootstrap safety', () => {
   let tempDir: string
   let sourceDir: string
   let targetDir: string
@@ -106,7 +107,7 @@ describe('legacy upgrade bootstrap safety', () => {
   })
 
   afterEach(async () => {
-    db.close()
+    db?.close()
     await fs.rm(tempDir, { recursive: true, force: true }).catch(() => null)
   })
 
