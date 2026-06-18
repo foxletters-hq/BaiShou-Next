@@ -170,21 +170,86 @@ export function generateRemappedId(prefix: string): string {
   return `${prefix}_${Date.now()}_${rand}`
 }
 
+export function parseLegacyIdentityFacts(raw: unknown): Record<string, string> | null {
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim()
+    if (!trimmed) return null
+    try {
+      return parseLegacyIdentityFacts(JSON.parse(trimmed))
+    } catch {
+      return { 身份信息: trimmed }
+    }
+  }
+
+  if (Array.isArray(raw)) {
+    const entries = raw
+      .map((item, index) => [String(index + 1), String(item).trim()] as const)
+      .filter(([, value]) => value.length > 0)
+    return entries.length > 0 ? Object.fromEntries(entries) : null
+  }
+
+  if (raw && typeof raw === 'object') {
+    const entries = Object.entries(raw as Record<string, unknown>)
+      .map(([key, value]) => [key, String(value).trim()] as const)
+      .filter(([key, value]) => key.trim().length > 0 && value.length > 0)
+    return entries.length > 0 ? Object.fromEntries(entries) : null
+  }
+
+  return null
+}
+
 export function parseLegacyPersonasFromSp(
   sp: Record<string, unknown>
 ): Array<{ id: string; facts: Record<string, string> }> {
   const raw = sp['user_personas']
-  if (typeof raw !== 'string') return []
-
-  try {
-    const parsed = JSON.parse(raw) as Record<string, Record<string, string>>
-    return Object.entries(parsed).map(([id, facts]) => ({
-      id,
-      facts: facts ?? {}
-    }))
-  } catch {
-    return []
+  if (typeof raw === 'string' && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw) as Record<string, Record<string, string>>
+      return Object.entries(parsed).map(([id, facts]) => ({
+        id,
+        facts: Object.fromEntries(
+          Object.entries(facts ?? {}).map(([k, v]) => [k, String(v)])
+        )
+      }))
+    } catch {
+      return []
+    }
   }
+
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    return Object.entries(raw as Record<string, Record<string, unknown>>).map(([id, facts]) => ({
+      id,
+      facts: Object.fromEntries(
+        Object.entries(facts ?? {}).map(([k, v]) => [k, String(v)])
+      )
+    }))
+  }
+
+  const facts = parseLegacyIdentityFacts(sp['user_identity_facts'])
+  if (facts) {
+    return [{ id: '默认身份', facts }]
+  }
+
+  return []
+}
+
+/** 从 SP、device_preferences（含 user_personas / identity_facts）解析可导入身份卡 */
+export function resolveLegacyIdentityPersonas(
+  sp: Record<string, unknown> | null | undefined,
+  config: Record<string, unknown> | null | undefined
+): Array<{ id: string; facts: Record<string, string> }> {
+  const fromSp = sp ? parseLegacyPersonasFromSp(sp) : []
+  if (fromSp.length > 0) return fromSp
+
+  const fromConfig = config ? parseLegacyPersonasFromSp(config) : []
+  if (fromConfig.length > 0) return fromConfig
+
+  const identityFacts = parseLegacyIdentityFacts(config?.['identity_facts'])
+  if (identityFacts) {
+    return [{ id: '默认身份', facts: identityFacts }]
+  }
+
+  return []
 }
 
 /** 旧版会话 vault_name 与目标工作区名对齐（空值视为 Personal） */

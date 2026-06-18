@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import {
   isFlutterLegacyUserAvatarFileName,
+  resolveImportedAssistantAvatarPath,
   restoreLegacyUserAvatar
 } from '../legacy-avatar-migration.shared'
 
@@ -15,6 +16,30 @@ describe('isFlutterLegacyUserAvatarFileName', () => {
     expect(
       isFlutterLegacyUserAvatarFileName('fbae6862-bcdb-4c8e-b705-70d29017b306.jpg')
     ).toBe(false)
+  })
+})
+
+describe('resolveImportedAssistantAvatarPath', () => {
+  it('imports from flutter documents dir when sqlite stores an absolute path', async () => {
+    const assistantId = 'fbae6862-bcdb-4c8e-b705-70d29017b306'
+    const fileSystem = {
+      exists: async (p: string) =>
+        p.endsWith(`${assistantId}.jpg`) || p.includes('/Documents/avatars/'),
+      readdir: async () => [],
+      stat: async () => ({ isDirectory: false })
+    } as never
+
+    const importAvatar = vi.fn(async () => 'avatars/agent_avatar_123.jpg')
+
+    const result = await resolveImportedAssistantAvatarPath(fileSystem, {
+      legacyAvatarPath: `C:/Users/Demo/Documents/avatars/${assistantId}.jpg`,
+      assistantId,
+      flutterDocumentsAvatarsDir: 'C:/Users/Demo/Documents/avatars',
+      importAvatar
+    })
+
+    expect(result).toBe('avatars/agent_avatar_123.jpg')
+    expect(importAvatar).toHaveBeenCalled()
   })
 })
 

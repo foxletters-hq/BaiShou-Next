@@ -304,3 +304,75 @@ export function resolveLegacyAvatarPathInMap(
   if (!filename) return undefined
   return avatarMap[filename]
 }
+
+const ASSISTANT_AVATAR_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.gif'] as const
+
+/**
+ * 将旧版伙伴头像解析并导入为 `avatars/…` 相对路径。
+ * 依次尝试：预构建映射 → SP/DB 绝对路径 → Documents/avatars → assistant_avatars 归档目录。
+ */
+export async function resolveImportedAssistantAvatarPath(
+  fileSystem: IFileSystem,
+  options: {
+    legacyAvatarPath?: string | null
+    assistantId?: string
+    sourceRoot?: string
+    avatarMap?: Record<string, string>
+    flutterDocumentsAvatarsDir?: string | null
+    importAvatar: LegacyAvatarImporter
+  }
+): Promise<string | undefined> {
+  const {
+    legacyAvatarPath,
+    assistantId,
+    sourceRoot,
+    avatarMap = {},
+    flutterDocumentsAvatarsDir,
+    importAvatar
+  } = options
+
+  const mapped = resolveLegacyAvatarPathInMap(legacyAvatarPath, avatarMap)
+  if (mapped?.startsWith('avatars/')) return mapped
+
+  const candidates: string[] = []
+  const pushCandidate = (candidate?: string | null) => {
+    if (candidate?.trim()) candidates.push(candidate.trim())
+  }
+
+  pushCandidate(legacyAvatarPath)
+  const basename = legacyAvatarPath?.split(/[/\\]/).pop()
+  if (basename) {
+    if (flutterDocumentsAvatarsDir) {
+      pushCandidate(path.join(flutterDocumentsAvatarsDir, basename))
+    }
+    if (sourceRoot) {
+      pushCandidate(path.join(sourceRoot, 'assistant_avatars', basename))
+    }
+  }
+
+  if (assistantId) {
+    for (const ext of ASSISTANT_AVATAR_EXTENSIONS) {
+      if (flutterDocumentsAvatarsDir) {
+        pushCandidate(path.join(flutterDocumentsAvatarsDir, `${assistantId}${ext}`))
+      }
+      if (sourceRoot) {
+        pushCandidate(path.join(sourceRoot, 'assistant_avatars', `${assistantId}${ext}`))
+      }
+    }
+  }
+
+  const seen = new Set<string>()
+  for (const candidate of candidates) {
+    if (seen.has(candidate)) continue
+    seen.add(candidate)
+    if (!(await fileSystem.exists(candidate))) continue
+    try {
+      const imported = await importAvatar(candidate, 'agent_avatar')
+      if (imported?.startsWith('avatars/')) return imported
+    } catch {
+      // try next candidate
+    }
+  }
+
+  return mapped?.startsWith('avatars/') ? mapped : undefined
+}

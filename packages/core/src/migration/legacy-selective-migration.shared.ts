@@ -356,24 +356,7 @@ export function isValidDateKey(dateKey: string): boolean {
 }
 
 /** 从 SP 或 device_preferences.identity_facts 解析可导入身份卡 */
-export function resolveLegacyIdentityPersonas(
-  sp: Record<string, unknown> | null,
-  config: Record<string, unknown> | null
-): Array<{ id: string; facts: Record<string, string> }> {
-  const fromSp = parseFlutterPersonasFromSp(sp)
-  if (fromSp.length > 0) return fromSp
-
-  const identityFacts = config?.['identity_facts']
-  if (identityFacts && typeof identityFacts === 'object' && !Array.isArray(identityFacts)) {
-    const facts = Object.fromEntries(
-      Object.entries(identityFacts as Record<string, unknown>).map(([k, v]) => [k, String(v)])
-    )
-    if (Object.keys(facts).length > 0) {
-      return [{ id: '默认身份', facts }]
-    }
-  }
-  return []
-}
+export { resolveLegacyIdentityPersonas } from './legacy-version-migration.util'
 
 export async function countArchiveMarkdownFiles(
   fileSystem: IFileSystem,

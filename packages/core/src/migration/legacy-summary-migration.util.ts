@@ -120,18 +120,32 @@ export async function queryLegacySummaryRows(
   for (let i = 0; i < uniquePaths.length; i++) {
     const alias = `legacy_baishou_${i}`
     const rawAttachPath = uniquePaths[i]!
-    const attachPath = prepareSqliteAttachPath
-      ? await prepareSqliteAttachPath(rawAttachPath)
-      : rawAttachPath
     try {
+      const attachPath = prepareSqliteAttachPath
+        ? await prepareSqliteAttachPath(rawAttachPath)
+        : rawAttachPath
+      console.info('[VersionMigration][summary-db] attach', {
+        legacyVaultName,
+        rawAttachPath,
+        attachPath
+      })
       await executeRawSql(sqliteClient, `ATTACH DATABASE '${attachPath}' AS ${alias}`)
       const tableInfo = await executeRawSql(sqliteClient, `PRAGMA ${alias}.table_info('summaries')`)
       if (!tableInfo.rows.length) {
+        console.info('[VersionMigration][summary-db] no summaries table', {
+          legacyVaultName,
+          rawAttachPath
+        })
         await executeRawSql(sqliteClient, `DETACH DATABASE ${alias}`)
         continue
       }
 
       const result = await executeRawSql(sqliteClient, `SELECT * FROM ${alias}.summaries`)
+      console.info('[VersionMigration][summary-db] rows', {
+        legacyVaultName,
+        rawAttachPath,
+        rows: result.rows.length
+      })
       for (const raw of result.rows) {
         const parsed = parseLegacySummaryRow(raw)
         if (!parsed) continue
@@ -142,7 +156,14 @@ export async function queryLegacySummaryRows(
       }
       await executeRawSql(sqliteClient, `DETACH DATABASE ${alias}`)
     } catch (error) {
-      errors.push(error instanceof Error ? error.message : String(error))
+      const message = error instanceof Error ? error.message : String(error)
+      console.warn('[VersionMigration][summary-db] failed', {
+        legacyVaultName,
+        rawAttachPath,
+        alias,
+        error: message
+      })
+      errors.push(message)
       try {
         await executeRawSql(sqliteClient, `DETACH DATABASE ${alias}`)
       } catch {

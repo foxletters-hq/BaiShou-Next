@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises'
 import { existsSync } from 'node:fs'
+import { stripStoragePathScheme } from '@baishou/shared'
 import type { FileEncoding, FileStat, IFileSystem } from './file-system.types'
 
 function enoentError(filePath: string, syscall: string): NodeJS.ErrnoException {
@@ -49,7 +50,7 @@ export class NodeFileSystem implements IFileSystem {
   }
 
   async copyFile(src: string, dest: string): Promise<void> {
-    await fs.cp(src, dest, { recursive: true })
+    await fs.cp(stripStoragePathScheme(src), stripStoragePathScheme(dest), { recursive: true })
   }
 
   async unlink(filePath: string): Promise<void> {

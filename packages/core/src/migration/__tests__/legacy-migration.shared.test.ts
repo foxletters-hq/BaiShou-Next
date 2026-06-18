@@ -140,4 +140,22 @@ describe('legacy-migration.shared', () => {
   it('resolves agent db path under workspace root', () => {
     expect(resolveAgentDbPath('/tmp/BaiShou_Root')).toBe('/tmp/BaiShou_Root/baishou_agent.db')
   })
+
+  it('stages legacy sqlite using native paths (no file:// prefix)', async () => {
+    const { stageLegacySqliteForAttach } = await import('../legacy-migration.shared')
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'legacy-sqlite-stage-'))
+    const legacyDb = path.join(root, '工作', '.baishou', 'baishou.sqlite')
+    await fs.mkdir(path.dirname(legacyDb), { recursive: true })
+    await fs.writeFile(legacyDb, 'sqlite-bytes')
+
+    const staged = await stageLegacySqliteForAttach(
+      fileSystem,
+      legacyDb,
+      path.join(root, 'staging')
+    )
+
+    expect(staged).not.toContain('file:')
+    expect(await fileSystem.exists(staged)).toBe(true)
+    await fs.rm(root, { recursive: true, force: true })
+  })
 })

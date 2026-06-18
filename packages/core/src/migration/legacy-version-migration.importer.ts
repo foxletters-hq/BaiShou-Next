@@ -31,7 +31,7 @@ import {
   restoreLegacyAvatarsFromArchiveLayout,
   restoreLegacyAvatarsFromDocumentsDir,
   restoreLegacyUserAvatar,
-  resolveLegacyAvatarPathInMap,
+  resolveImportedAssistantAvatarPath,
   type LegacyAvatarImporter
 } from './legacy-avatar-migration.shared'
 import {
@@ -39,7 +39,9 @@ import {
   isWorkspaceSectionId,
   legacySessionBelongsToVault,
   normalizeLegacyPartType,
+  parseLegacyIdentityFacts,
   parseLegacyPersonasFromSp,
+  resolveLegacyIdentityPersonas,
   parseWorkspaceSectionId,
   filterAssistantIdMapForVault,
   scopeAssistantIdMapForVault,
@@ -201,13 +203,19 @@ async function queryLegacyAgentRows(
   for (let i = 0; i < uniquePaths.length; i++) {
     const alias = `legacy_import_${i}`
     const rawAttachPath = uniquePaths[i]!
-    const attachPath = deps.prepareSqliteAttachPath
-      ? await deps.prepareSqliteAttachPath(rawAttachPath)
-      : rawAttachPath
     const vaultSpecific = legacyVaultName
       ? isVaultSpecificAgentDb(rawAttachPath, legacyVaultName)
       : false
     try {
+      const attachPath = deps.prepareSqliteAttachPath
+        ? await deps.prepareSqliteAttachPath(rawAttachPath)
+        : rawAttachPath
+      console.info('[VersionMigration][import-agent-db] attach', {
+        legacyVaultName,
+        rawAttachPath,
+        attachPath,
+        vaultSpecific
+      })
       await executeRawSql(sqliteClient, `ATTACH DATABASE '${attachPath}' AS ${alias}`)
 
       const assistantRows = (
@@ -223,6 +231,13 @@ async function queryLegacyAgentRows(
               legacySessionBelongsToVault(row.vault_name, legacyVaultName)
             )
           : sessionRows
+      console.info('[VersionMigration][import-agent-db] rows', {
+        legacyVaultName,
+        rawAttachPath,
+        assistantRows: assistantRows.length,
+        sessionRows: sessionRows.length,
+        filteredSessions: filteredSessions.length
+      })
 
       const sessionAssistantIds = new Set<string>()
       for (const row of filteredSessions) {
@@ -238,6 +253,14 @@ async function queryLegacyAgentRows(
       for (const row of assistantRows) {
         const aid = String(row.id ?? '')
         if (!aid || seenAssistantIds.has(aid)) continue
+        if (
+          legacyVaultName &&
+          !vaultSpecific &&
+          sessionAssistantIds.size > 0 &&
+          !sessionAssistantIds.has(aid)
+        ) {
+          continue
+        }
         seenAssistantIds.add(aid)
         assistants.push(row)
       }
@@ -270,11 +293,14 @@ async function queryLegacyAgentRows(
 
       await executeRawSql(sqliteClient, `DETACH DATABASE ${alias}`)
     } catch (error) {
-      errors.push(
-        error instanceof Error
-          ? error.message
-          : `Failed to attach legacy database at ${attachPath}`
-      )
+      const message = error instanceof Error ? error.message : String(error)
+      console.warn('[VersionMigration][import-agent-db] failed', {
+        legacyVaultName,
+        rawAttachPath,
+        alias,
+        error: message
+      })
+      errors.push(message)
       try {
         await executeRawSql(sqliteClient, `DETACH DATABASE ${alias}`)
       } catch {
@@ -335,6 +361,9 @@ export async function importLegacyAvatarSection(
 
     if (avatarRel) {
       await saveUserAvatarPath(avatarRel)
+      if (deps.flushSettingsToDisk) {
+        await deps.flushSettingsToDisk()
+      }
       return { sectionId: 'avatar', imported: 1, skipped: 0, failed: 0, warnings: [] }
     }
   } catch (error) {
@@ -361,9 +390,17 @@ export async function importLegacyAvatarSection(
 export async function importLegacyPersonasSection(
   deps: LegacyVersionMigrationImporterDeps
 ): Promise<LegacyVersionMigrationImportResult> {
-  const sp = deps.flutterRawSp ?? deps.flutterPrefsConfig
+  const personasFromSp = deps.flutterRawSp ? parseLegacyPersonasFromSp(deps.flutterRawSp) : []
+  const personasFromConfig = deps.flutterPrefsConfig
+    ? parseLegacyPersonasFromSp(deps.flutterPrefsConfig)
+    : []
+  const configIdentityFacts = parseLegacyIdentityFacts(deps.flutterPrefsConfig?.['identity_facts'])
+  const legacyPersonas = resolveLegacyIdentityPersonas(
+    deps.flutterRawSp ?? null,
+    deps.flutterPrefsConfig ?? null
+  )
   const { profileRepo } = deps
-  if (!sp) {
+  if (legacyPersonas.length === 0) {
     return {
       sectionId: 'personas',
       imported: 0,
@@ -378,36 +415,59 @@ export async function importLegacyPersonasSection(
   const personasMap = { ...profile.personas }
   let imported = 0
   let skipped = 0
-  const legacyPersonas = parseLegacyPersonasFromSp(sp)
+  const legacyActivePersonaId =
+    typeof deps.flutterRawSp?.['user_active_persona_id'] === 'string'
+      ? String(deps.flutterRawSp['user_active_persona_id'])
+      : typeof deps.flutterPrefsConfig?.['user_active_persona_id'] === 'string'
+        ? String(deps.flutterPrefsConfig['user_active_persona_id'])
+        : null
 
-  if (legacyPersonas.length === 0) {
-    const identityFacts = sp['identity_facts'] ?? deps.flutterPrefsConfig?.['identity_facts']
-    if (identityFacts && typeof identityFacts === 'object') {
-      const activeId = profile.activePersonaId
-      const active = personasMap[activeId] ?? { id: activeId, facts: {} }
-      personasMap[activeId] = {
-        ...active,
-        facts: { ...active.facts, ...(identityFacts as Record<string, string>) }
-      }
-      imported = 1
-    } else {
-      skipped = 1
+  if (personasFromSp.length === 0 && personasFromConfig.length === 0 && configIdentityFacts) {
+    const activeId = profile.activePersonaId
+    const active = personasMap[activeId] ?? { id: activeId, facts: {} }
+    personasMap[activeId] = {
+      ...active,
+      facts: { ...active.facts, ...configIdentityFacts }
     }
-  } else {
-    for (const legacy of legacyPersonas) {
-      const allIds = new Set([...Object.keys(personasMap), ...existingIds])
-      const newId = resolveUniqueNameWithTwoDigitSuffix(legacy.id, allIds)
-      if (newId === legacy.id && personasMap[legacy.id]) {
-        skipped += 1
-        continue
-      }
-      personasMap[newId] = { id: newId, facts: { ...legacy.facts } }
-      existingIds.add(newId)
-      imported += 1
+    imported = 1
+    await profileRepo.saveProfile({ ...profile, personas: personasMap } satisfies UserProfile)
+    if (deps.flushSettingsToDisk) {
+      await deps.flushSettingsToDisk()
     }
+    return { sectionId: 'personas', imported, skipped, failed: 0, warnings: [] }
   }
 
-  await profileRepo.saveProfile({ ...profile, personas: personasMap } satisfies UserProfile)
+  for (const legacy of legacyPersonas) {
+    const allIds = new Set([...Object.keys(personasMap), ...existingIds])
+    if (personasMap[legacy.id]) {
+      const current = personasMap[legacy.id]
+      const mergedFacts = { ...current.facts, ...legacy.facts }
+      const changed = JSON.stringify(current.facts) !== JSON.stringify(mergedFacts)
+      personasMap[legacy.id] = { ...current, facts: mergedFacts }
+      if (changed) imported += 1
+      else skipped += 1
+      continue
+    }
+
+    const newId = resolveUniqueNameWithTwoDigitSuffix(legacy.id, allIds)
+    personasMap[newId] = { id: newId, facts: { ...legacy.facts } }
+    existingIds.add(newId)
+    imported += 1
+  }
+
+  const activePersonaId =
+    legacyActivePersonaId && personasMap[legacyActivePersonaId]
+      ? legacyActivePersonaId
+      : profile.activePersonaId
+
+  await profileRepo.saveProfile({
+    ...profile,
+    activePersonaId,
+    personas: personasMap
+  } satisfies UserProfile)
+  if (deps.flushSettingsToDisk) {
+    await deps.flushSettingsToDisk()
+  }
   return { sectionId: 'personas', imported, skipped, failed: 0, warnings: [] }
 }
 
@@ -427,7 +487,8 @@ export async function importLegacyConfigSection(
 
   const localCloudSync = await settingsRepo.get('cloud_sync_config')
   await restoreLegacyDevicePreferences(settingsRepo, profileRepo, flutterPrefsConfig, {
-    preserveCloudSync: localCloudSync != null
+    preserveCloudSync: localCloudSync != null,
+    skipProfileFields: true
   })
 
   if (flushSettingsToDisk) {
@@ -595,8 +656,14 @@ export async function importLegacyAssistantsFromRows(
     try {
       const legacyAvatarPath =
         row.avatar_path != null ? String(row.avatar_path) : undefined
-      const avatarPath =
-        resolveLegacyAvatarPathInMap(legacyAvatarPath, avatarMap) ?? legacyAvatarPath
+      const avatarPath = await resolveImportedAssistantAvatarPath(deps.fileSystem, {
+        legacyAvatarPath,
+        assistantId: oldId,
+        sourceRoot: deps.sourceRoot,
+        avatarMap,
+        flutterDocumentsAvatarsDir: deps.flutterDocumentsAvatarsDir,
+        importAvatar: deps.importAvatar
+      })
 
       await assistantManager.create({
         id: newId,
@@ -681,12 +748,20 @@ export async function importLegacyChatsFromRows(
     partsByMessage.set(messageId, list)
   }
 
+  const fallbackAssistantId = Object.values(assistantIdMap)[0]
+
   for (const sessionRow of sessions) {
     const oldSessionId = String(sessionRow.id ?? '')
     if (!oldSessionId) continue
     onProgress?.(String(sessionRow.title ?? oldSessionId))
 
-    const mappedAssistantId = assistantIdMap[String(sessionRow.assistant_id ?? '')]
+    const rawAssistantId =
+      sessionRow.assistant_id != null && String(sessionRow.assistant_id).trim() !== ''
+        ? String(sessionRow.assistant_id)
+        : null
+    const mappedAssistantId = rawAssistantId
+      ? assistantIdMap[rawAssistantId]
+      : fallbackAssistantId
     if (!mappedAssistantId) {
       skipped += 1
       if (!warnings.includes('version_migration.import_chat_missing_assistant')) {
@@ -741,28 +816,28 @@ export async function importLegacyChatsFromRows(
     try {
       const targetVaultName = await deps.resolveTargetVaultName(legacyVaultName)
       await upsertSessionAggregate({
-          session: {
-            id: newSessionId,
-            title: sessionRow.title != null ? String(sessionRow.title) : null,
-            vaultName: targetVaultName,
-            assistantId: mappedAssistantId,
-            isPinned: Number(sessionRow.is_pinned) === 1,
-            systemPrompt:
-              sessionRow.system_prompt != null ? String(sessionRow.system_prompt) : undefined,
-            providerId: sessionRow.provider_id != null ? String(sessionRow.provider_id) : '',
-            modelId: sessionRow.model_id != null ? String(sessionRow.model_id) : '',
-            totalInputTokens:
-              sessionRow.total_input_tokens != null ? Number(sessionRow.total_input_tokens) : 0,
-            totalOutputTokens:
-              sessionRow.total_output_tokens != null ? Number(sessionRow.total_output_tokens) : 0,
-            totalCostMicros:
-              sessionRow.total_cost_micros != null ? Number(sessionRow.total_cost_micros) : 0,
-            createdAt: toDate(sessionRow.created_at),
-            updatedAt: toDate(sessionRow.updated_at)
-          },
-          messages: enrichedMessages
-        })
-        await sessionManager.flushSessionToDisk(newSessionId)
+        session: {
+          id: newSessionId,
+          title: sessionRow.title != null ? String(sessionRow.title) : null,
+          vaultName: targetVaultName,
+          assistantId: mappedAssistantId,
+          isPinned: Number(sessionRow.is_pinned) === 1,
+          systemPrompt:
+            sessionRow.system_prompt != null ? String(sessionRow.system_prompt) : undefined,
+          providerId: sessionRow.provider_id != null ? String(sessionRow.provider_id) : '',
+          modelId: sessionRow.model_id != null ? String(sessionRow.model_id) : '',
+          totalInputTokens:
+            sessionRow.total_input_tokens != null ? Number(sessionRow.total_input_tokens) : 0,
+          totalOutputTokens:
+            sessionRow.total_output_tokens != null ? Number(sessionRow.total_output_tokens) : 0,
+          totalCostMicros:
+            sessionRow.total_cost_micros != null ? Number(sessionRow.total_cost_micros) : 0,
+          createdAt: toDate(sessionRow.created_at),
+          updatedAt: toDate(sessionRow.updated_at)
+        },
+        messages: enrichedMessages
+      })
+      await sessionManager.flushSessionToDisk(newSessionId)
       imported += 1
     } catch (error) {
       failed += 1
@@ -805,20 +880,6 @@ export async function importLegacyWorkspaceSection(
 
   const targetName = await ensureTargetVaultExists(deps, legacyVaultName)
   const vaultNameMap = { [legacyVaultName]: targetName }
-
-  const archiveAvatarMap = await restoreLegacyAvatarsFromArchiveLayout(
-    deps.fileSystem,
-    deps.sourceRoot,
-    deps.importAvatar
-  )
-  const documentsAvatarMap = deps.flutterDocumentsAvatarsDir
-    ? await restoreLegacyAvatarsFromDocumentsDir(
-        deps.fileSystem,
-        deps.flutterDocumentsAvatarsDir,
-        deps.importAvatar
-      )
-    : {}
-  const avatarMap = mergeAvatarMaps(archiveAvatarMap, documentsAvatarMap)
 
   const diaryResult = await importLegacyDiariesForVault(deps, legacyVaultName)
   imported += diaryResult.imported
@@ -900,6 +961,20 @@ export async function importLegacyWorkspaceSection(
   let assistantIdMapLocal: Record<string, string> = { ...priorMap }
 
   await deps.runInVaultContext(legacyVaultName, async () => {
+    const archiveAvatarMap = await restoreLegacyAvatarsFromArchiveLayout(
+      deps.fileSystem,
+      deps.sourceRoot,
+      deps.importAvatar
+    )
+    const documentsAvatarMap = deps.flutterDocumentsAvatarsDir
+      ? await restoreLegacyAvatarsFromDocumentsDir(
+          deps.fileSystem,
+          deps.flutterDocumentsAvatarsDir,
+          deps.importAvatar
+        )
+      : {}
+    const avatarMap = mergeAvatarMaps(archiveAvatarMap, documentsAvatarMap)
+
     const assistantResult = await importLegacyAssistantsFromRows(deps, agentRows.assistants, {
       assistantIdMap: priorMap,
       avatarMap

@@ -129,4 +129,71 @@ describe('legacy-version-migration.scan', () => {
     expect(special?.assistantCount).toBe(1)
     expect(special?.sessionCount).toBe(1)
   })
+
+  it('derives config and personas from flutterRawSp when flutterPrefsConfig is null', async () => {
+    const result = await scanLegacyVersionMigration({
+      fileSystem,
+      sourceRoot: tempDir,
+      sourceDisplayPath: tempDir,
+      flutterPrefsConfig: null,
+      flutterRawSp: {
+        user_nickname: 'Bob',
+        user_personas: JSON.stringify({ 默认: { 城市: '北京' } }),
+        global_dialogue_provider_id: 'openai'
+      },
+      flutterDocumentsAvatarsDir: null,
+      sqliteClient: db,
+      executeRawSql
+    })
+
+    expect(result.globalSections.find((s) => s.sectionId === 'personas')?.available).toBe(true)
+    expect(result.globalSections.find((s) => s.sectionId === 'config')?.available).toBe(true)
+  })
+
+  it('detects personas from device_preferences when SP has no user_personas', async () => {
+    const result = await scanLegacyVersionMigration({
+      fileSystem,
+      sourceRoot: tempDir,
+      sourceDisplayPath: tempDir,
+      flutterPrefsConfig: {
+        user_personas: JSON.stringify({ 备份身份: { name: 'FromConfig' } })
+      },
+      flutterRawSp: {
+        user_nickname: 'Bob',
+        global_dialogue_provider_id: 'openai'
+      },
+      flutterDocumentsAvatarsDir: null,
+      sqliteClient: db,
+      executeRawSql
+    })
+
+    const personasSection = result.globalSections.find((s) => s.sectionId === 'personas')
+    expect(personasSection?.available).toBe(true)
+    expect(personasSection?.count).toBe(1)
+    expect(personasSection?.previewItems?.[0]?.label).toBe('备份身份')
+  })
+
+  it('counts archive markdown under Vault/Archives as summaries', async () => {
+    await fs.mkdir(path.join(tempDir, 'Personal', 'Archives'), { recursive: true })
+    await fs.writeFile(
+      path.join(tempDir, 'Personal', 'Archives', '2024-W03.md'),
+      '---\ntitle: Week 3\n---\n\nsummary body',
+      'utf8'
+    )
+
+    const result = await scanLegacyVersionMigration({
+      fileSystem,
+      sourceRoot: tempDir,
+      sourceDisplayPath: tempDir,
+      flutterPrefsConfig: null,
+      flutterRawSp: null,
+      flutterDocumentsAvatarsDir: null,
+      sqliteClient: db,
+      executeRawSql
+    })
+
+    const personal = result.workspaces[0]!
+    expect(personal.archiveCount).toBeGreaterThanOrEqual(1)
+    expect(personal.available).toBe(true)
+  })
 })
