@@ -170,6 +170,45 @@ describe('legacy-version-migration.importer diaries', () => {
     expect(result.imported).toBe(0)
     expect(writeFile).not.toHaveBeenCalled()
   })
+
+  it('writes diaries into the mapped target vault when the original name conflicts', async () => {
+    const writeFile = vi.fn(async () => undefined)
+    const deps = createDeps({
+      fileSystem: {
+        exists: async (filePath: string) => {
+          if (String(filePath).includes('/target/')) return false
+          return true
+        },
+        readdir: async (dir: string) => {
+          if (dir.endsWith('Journals')) return ['2024-01-15.md']
+          return []
+        },
+        readFile: async () => '---\ndate: 2024-01-15\n---\n\nbody',
+        writeFile,
+        mkdir: vi.fn(async () => undefined),
+        stat: async () => ({ isDirectory: false })
+      } as never,
+      resolveTargetVaultName: async () => 'Personal95',
+      getJournalsBaseDirectory: async (targetVaultName) => `/target/${targetVaultName}/Journals`,
+      readTargetJournalRaw: async (_dateStr, targetVaultName) => {
+        expect(targetVaultName).toBe('Personal95')
+        return null
+      },
+      runInVaultContext: async (_vaultName, fn) => fn()
+    })
+
+    const result = await importLegacyDiariesForVault(
+      { ...deps, sourceRoot: '/legacy' },
+      'Personal'
+    )
+
+    expect(result.imported).toBe(1)
+    expect(writeFile).toHaveBeenCalledWith(
+      '/target/Personal95/Journals/2024/01/2024-01-15.md',
+      expect.any(String),
+      'utf8'
+    )
+  })
 })
 
 describe('legacy-version-migration.importer archives', () => {
