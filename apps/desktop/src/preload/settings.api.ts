@@ -66,7 +66,9 @@ export const settingsApi = {
     fetchProviderModels: (providerId: string, tempKey?: string, tempUrl?: string) =>
       ipcRenderer.invoke('settings:fetch-models', providerId, tempKey, tempUrl),
     testTts: (config: unknown, text: string): Promise<TtsSynthesizeFromSettingsResult> =>
-      ipcRenderer.invoke('settings:tts-test', config, text)
+      ipcRenderer.invoke('settings:tts-test', config, text),
+    pickTtsRefAudio: (): Promise<string | null> =>
+      ipcRenderer.invoke('settings:pick-tts-ref-audio')
   },
 
   vault: {
