@@ -94,12 +94,29 @@ describe('SummaryManagerService (SSOT refactor)', () => {
     expect(detail?.content).toBe('Unsynced Ghost File Content')
   })
 
-  it('list() should read straight from fast SQLite DB Repo', async () => {
-    mockRepo.getSummaries.mockResolvedValue([{ id: 1 }, { id: 2 }] as any)
+  it('list() should return DB rows that exist on current vault disk', async () => {
+    mockRepo.getSummaries.mockResolvedValue([
+      { id: 1, type: testType, startDate: start },
+      { id: 2, type: SummaryType.weekly, startDate: new Date('2026-03-02T00:00:00Z') }
+    ] as any)
+    mockFileService.listAllSummaries.mockResolvedValue([
+      { type: testType, startDate: start, endDate: end, fullPath: '/summary.md' }
+    ] as any)
+
     const res = await manager.list()
+
     expect(mockRepo.getSummaries).toHaveBeenCalled()
-    expect(res.length).toBe(2)
-    expect(mockFileService.listAllSummaries).not.toHaveBeenCalled() // 列表不能挨个读文件拖慢渲染
+    expect(mockFileService.listAllSummaries).toHaveBeenCalled()
+    expect(res.map((item) => item.id)).toEqual([1])
+  })
+
+  it('list() should hide stale DB summaries when current vault has no summary files', async () => {
+    mockRepo.getSummaries.mockResolvedValue([{ id: 1, type: testType, startDate: start }] as any)
+    mockFileService.listAllSummaries.mockResolvedValue([])
+
+    const res = await manager.list()
+
+    expect(res).toEqual([])
   })
 
   it('update() should replace file then trigger DB re-upsert via sync', async () => {

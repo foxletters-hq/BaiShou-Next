@@ -113,4 +113,13 @@ describe('AssistantManagerService (SSOT Enforcer)', () => {
     // The ghost in db should be cleaned, and the valid one should be created.
     expect(mockRepo.create).toHaveBeenCalledWith(dummyAssistant)
   })
+
+  it('fullResyncFromDisks() rebuilds the assistant cache from the active vault disk', async () => {
+    mockFileService.listAllAssistants.mockResolvedValue([])
+    mockRepo.findAll.mockResolvedValue([{ id: 'ast-other', name: 'Other' } as any])
+
+    await manager.fullResyncFromDisks({ activeVaultName: 'Personal' })
+
+    expect(mockRepo.delete).toHaveBeenCalledWith('ast-other')
+  })
 })

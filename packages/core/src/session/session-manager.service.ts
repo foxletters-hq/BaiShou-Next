@@ -66,8 +66,14 @@ export class SessionManagerService {
   /**
    * 获取所有会话列表（findAllSessions 的便捷别名）
    */
-  async list(limit: number = 20, offset: number = 0, assistantId?: string, searchQuery?: string) {
-    return this.findAllSessions(limit, offset, assistantId, searchQuery)
+  async list(
+    limit: number = 20,
+    offset: number = 0,
+    assistantId?: string,
+    searchQuery?: string,
+    options?: { vaultName?: string }
+  ) {
+    return this.findAllSessions(limit, offset, assistantId, searchQuery, options)
   }
 
   async deleteSessions(ids: string[]): Promise<void> {
@@ -87,9 +93,10 @@ export class SessionManagerService {
     limit: number = 20,
     offset: number = 0,
     assistantId?: string,
-    searchQuery?: string
+    searchQuery?: string,
+    options?: { vaultName?: string }
   ) {
-    return this.sessionRepo.findAllSessions(limit, offset, assistantId, searchQuery)
+    return this.sessionRepo.findAllSessions(limit, offset, assistantId, searchQuery, options)
   }
 
   async getSessionById(sessionId: string) {
@@ -112,7 +119,9 @@ export class SessionManagerService {
   /**
    * 对外暴露，当需要触发从云盘恢复数据时调用
    */
-  async fullResyncFromDisks(): Promise<void> {
-    await this.syncService.fullScanArchives()
+  async fullResyncFromDisks(
+    options?: import('../sync/disk-resync.types').DiskResyncOptions
+  ): Promise<void> {
+    await this.syncService.fullScanArchives(options)
   }
 }
