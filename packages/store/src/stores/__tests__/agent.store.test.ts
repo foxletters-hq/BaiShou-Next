@@ -4,7 +4,13 @@ import { useAgentStore } from '../agent.store'
 describe('useAgentStore (Zustand IPC Flow)', () => {
   beforeEach(() => {
     // Clear Zustand store and window mocks before each test
-    useAgentStore.getState().clearSession()
+    useAgentStore.setState({
+      messages: [],
+      isLoading: false,
+      toolCalls: {},
+      searchMode: false,
+      currentSessionId: null
+    })
     vi.useFakeTimers()
   })
 
@@ -17,6 +23,23 @@ describe('useAgentStore (Zustand IPC Flow)', () => {
     const state = useAgentStore.getState()
     expect(state.messages).toEqual([])
     expect(state.isLoading).toBe(false)
+    expect(state.currentSessionId).toBeNull()
+  })
+
+  it('setCurrentSessionId persists across clearSession (messages only)', () => {
+    const store = useAgentStore.getState()
+    store.setCurrentSessionId('session-42')
+    store.addMessage({
+      id: 'm1',
+      role: 'user',
+      content: 'hi',
+      timestamp: new Date()
+    })
+    store.clearSession()
+
+    const next = useAgentStore.getState()
+    expect(next.currentSessionId).toBe('session-42')
+    expect(next.messages).toEqual([])
   })
 
   it('addMessage should append a message to the session', () => {
