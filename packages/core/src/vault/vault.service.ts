@@ -126,6 +126,20 @@ export class VaultService implements IVaultService {
           lastAccessedAt: parseRegistryTimestamp(item.lastAccessedAt, fallbackNow)
         }))
 
+        if (this._vaults.length === 0) {
+          const defaultVaultName = 'Personal'
+          const defaultVaultPath = await this.pathService.getVaultDirectory(defaultVaultName)
+          this._vaults = [
+            {
+              name: defaultVaultName,
+              path: defaultVaultPath,
+              createdAt: fallbackNow,
+              lastAccessedAt: fallbackNow
+            }
+          ]
+          shouldSave = true
+        }
+
         for (let i = 0; i < this._vaults.length; i++) {
           const vault = this._vaults[i]
           if (!vault) continue

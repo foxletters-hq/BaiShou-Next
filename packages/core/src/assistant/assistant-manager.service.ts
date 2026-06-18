@@ -14,6 +14,7 @@ import {
   toPersistedAssistantAvatarPath,
   normalizeDiskAssistantRecord
 } from './assistant-persist.util'
+import type { DiskResyncOptions } from '../sync/disk-resync.types'
 
 /**
  * AI 角色身份卡存储漫游总代理。
@@ -100,10 +101,11 @@ export class AssistantManagerService {
     }
   }
 
-  // Queries directly proxy to db since they are identical and cached
+  // SQLite 是热缓存，当前工作区可见性以 Assistants 目录为准
   async findAll() {
     const items = await this.repo.findAll()
-    return Promise.all(items.map((i) => this.mapAvatarOutput(i)))
+    const fileIds = new Set((await this.fileService.listAllAssistants()).map((f) => f.id))
+    return Promise.all(items.filter((i) => fileIds.has(i.id)).map((i) => this.mapAvatarOutput(i)))
   }
 
   async findById(id: string) {
@@ -112,10 +114,51 @@ export class AssistantManagerService {
     return item
   }
 
+  /** 将 SQLite 中的伙伴快照写入当前工作区 Assistants 目录（文件不存在时） */
+  async syncToDisk(id: string): Promise<void> {
+    const onDisk = await this.fileService.readAssistant(id)
+    if (onDisk?.id) return
+    await this.persistAssistantSnapshot(id)
+  }
+
+  /** 确保伙伴 JSON 存在于当前工作区磁盘（优先复用 DB，否则按输入写入） */
+  async ensureDiskFromInput(input: InsertAssistantInput): Promise<void> {
+    const onDisk = await this.fileService.readAssistant(input.id)
+    if (onDisk?.id) return
+
+    const fromDb = await this.repo.findById(input.id)
+    if (fromDb) {
+      await this.persistAssistantSnapshot(input.id)
+      return
+    }
+
+    await this.processAvatarInput(input)
+    const now = new Date()
+    const snapshot = {
+      ...input,
+      emoji: input.emoji ?? null,
+      description: input.description ?? null,
+      avatarPath: toPersistedAssistantAvatarPath(input.avatarPath ?? null),
+      systemPrompt: input.systemPrompt ?? null,
+      isDefault: input.isDefault ?? false,
+      isPinned: input.isPinned ?? false,
+      contextWindow: input.contextWindow ?? null,
+      providerId: input.providerId ?? null,
+      modelId: input.modelId ?? null,
+      compressTokenThreshold: input.compressTokenThreshold ?? null,
+      compressKeepTurns: input.compressKeepTurns ?? null,
+      assistantKind: normalizeAssistantKind(input.assistantKind),
+      sortOrder: input.sortOrder ?? 0,
+      createdAt: now,
+      updatedAt: now
+    }
+    await this.fileService.writeAssistant(input.id, snapshot)
+  }
+
   /**
    * 启动拉取与云盘恢复阶段的调用
    */
-  async fullResyncFromDisks(): Promise<void> {
+  async fullResyncFromDisks(_options?: DiskResyncOptions): Promise<void> {
     const allFiles = await this.fileService.listAllAssistants()
     const allDb = await this.repo.findAll()
 

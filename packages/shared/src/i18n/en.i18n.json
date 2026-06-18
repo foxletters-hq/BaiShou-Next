@@ -2161,6 +2161,7 @@
     "all_files_access_desc_optional": "Diaries are saved in the app’s private folder—you can write without this permission. To share BaiShou_Root with the desktop app, enable “All files access” in system settings.",
     "enable_external_sync": "Enable desktop sync",
     "all_files_access_settings_hint": "Enable “Allow management of all files” for BaiShou in system settings, then return to the app.",
+    "settings_open_failed": "Could not open system permission settings. Go to Settings → Apps → App management → BaiShou → Permissions → All files access, enable it, then return to the app.",
     "use_external_root_confirm": "Set the data root to external BaiShou_Root (/storage/emulated/0/BaiShou_Root). Use the same path if sharing data with desktop or other devices.",
     "external_root_applied": "Switched to external BaiShou_Root",
     "enable_external_root": "Use external BaiShou_Root",
@@ -2173,7 +2174,9 @@
     "permission_confirm_message": "BaiShou needs access to BaiShou_Root on your device storage. You will be taken to system settings—enable “Allow management of all files”, then return to the app.",
     "permission_confirm_message_xiaomi": "You will be taken to MIUI settings. Under Permissions → Files & documents (or “All files access”), allow BaiShou, then return to the app.",
     "permission_confirm_message_huawei": "You will be taken to EMUI / HarmonyOS settings. Under Permissions → Storage or Files, allow BaiShou, then return to the app.",
-    "permission_confirm_message_oppo": "You will be taken to ColorOS settings. Under Permissions → Storage or All files access, allow BaiShou, then return to the app.",
+    "permission_confirm_message_oppo": "You will be taken to realme / ColorOS permissions. Turning on Storage alone is not enough—tap Set individual permissions, then enable Allow management of all files, and return to the app.",
+    "only_standard_storage_granted": "Storage is on, but BaiShou also needs Allow management of all files to write BaiShou_Root.",
+    "only_standard_storage_granted_oppo": "Storage is enabled, but that is not enough. On this page tap Set individual permissions, enable Allow management of all files, then return to BaiShou.",
     "permission_confirm_message_vivo": "You will be taken to OriginOS settings. Under Permissions → Storage or All files, allow BaiShou, then return to the app.",
     "permission_confirm_message_samsung": "You will be taken to Samsung settings. Under Permissions → Files and media or All files access, allow BaiShou, then return to the app.",
     "permission_confirm_go_settings": "Open settings",
@@ -2300,7 +2303,9 @@
     "legacy_source_manual": "Using a manually selected legacy directory",
     "legacy_source_flutter": "Auto-detected original Flutter BaiShou data directory",
     "legacy_source_migrated": "Using legacy directory from full migration record",
-    "storage_entry_action": "Migrate from legacy by section"
+    "storage_entry_action": "Migrate from legacy by section",
+    "restart_title": "Restart required",
+    "restart_message": "Workspace data has been imported. To ensure diaries, summaries, and companions refresh correctly when switching workspaces, please fully quit BaiShou and open it again."
   },
   "emoji": {
     "categories": "Categories",

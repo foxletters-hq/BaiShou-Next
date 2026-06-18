@@ -3,6 +3,7 @@ import { SummaryGeneratorService } from './summary-generator.service'
 import { SummaryRepository } from '@baishou/database'
 import { MissingSummary, SummaryType } from '@baishou/shared'
 import { SummaryFileService } from '../vault/summary-file.service'
+import type { DiskResyncOptions } from '../sync/disk-resync.types'
 
 export interface SummarySyncCallbacks {
   onProgress?: (missing: MissingSummary, status: string) => void
@@ -92,15 +93,29 @@ export class SummarySyncService {
   /**
    * 网盘启动、重建全库或者数据漫游使用的主动补齐。
    */
-  async fullScanArchives(): Promise<void> {
+  async fullScanArchives(options?: DiskResyncOptions): Promise<void> {
     const allFiles = await this.fileService.listAllSummaries()
 
     for (const f of allFiles) {
       await this.syncSummaryFile(f.type, f.startDate, f.endDate)
     }
 
-    // 多工作空间共用 summaries 缓存表且无 vault_name 列；全量扫描仅做 upsert，不做跨库 ghost 清理。
-    // 单文件删除仍由 syncSummaryFile 在文件缺失时处理。
+    // 普通冷启动路径未就绪时不做跨库 ghost 清理；明确 active vault resync 时，
+    // summaries 表作为当前 vault 的热缓存，可删除磁盘不存在的旧记录。
+    if (!options?.activeVaultName) return
+
+    const allDb = await this.summaryRepo.getSummaries()
+    if (allDb.length === 0) return
+
+    // 顺向孤立检查（找出 DB 中有但 File 中没有的文件）
+    for (const record of allDb) {
+      const isFileExist = allFiles.some(
+        (f) => f.type === record.type && f.startDate.getTime() === record.startDate.getTime()
+      )
+      if (!isFileExist && record.id != null) {
+        await this.summaryRepo.delete(record.id)
+      }
+    }
   }
 
   isCurrentlySyncing(): boolean {

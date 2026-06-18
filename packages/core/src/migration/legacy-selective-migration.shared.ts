@@ -350,7 +350,7 @@ export function personaManifestKey(sourceId: string, facts: Record<string, strin
 
 export function isValidDateKey(dateKey: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return false
-  const [y, m, d] = dateKey.split('-').map(Number)
+  const [y, m, d] = dateKey.split('-').map(Number) as [number, number, number]
   const date = new Date(y, m - 1, d)
   return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d
 }

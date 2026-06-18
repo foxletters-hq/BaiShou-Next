@@ -57,14 +57,23 @@ object ExternalStorageFiles {
     }
 
     fun hasExternalAccess(context: Context): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            Environment.isExternalStorageManager()
-        } else {
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE
-            ) == PackageManager.PERMISSION_GRANTED
+        return StoragePermissionHelper.hasEffectiveExternalAccess(context)
+    }
+
+    private fun canUseFileApi(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (Environment.isExternalStorageManager()) return true
+            if (StoragePermissionHelper.hasAppOpsAllFilesAccess(context)) return true
+        } else if (StoragePermissionHelper.hasStandardStoragePermission(context)) {
+            return true
         }
+        return StoragePermissionHelper.probeBaiShouRootWritable()
+    }
+
+    private fun useTreeAccess(context: Context, uri: String): Boolean {
+        if (canUseFileApi(context)) return false
+        if (!StorageTreeAccess.hasPersistedTree(context)) return false
+        return StorageTreeAccess.isPathUnderTree(context, uriToPath(uri))
     }
 
     fun isExternalPath(path: String): Boolean {
@@ -108,20 +117,16 @@ object ExternalStorageFiles {
     }
 
     fun probeWritable(context: Context): Boolean {
-        if (!hasExternalAccess(context)) return false
-        return try {
-            val root = File(Environment.getExternalStorageDirectory(), "BaiShou_Root")
-            root.mkdirs()
-            val test = File(root, ".write_test")
-            test.writeText("test")
-            test.delete()
-            true
-        } catch (_: Exception) {
-            false
+        if (StorageTreeAccess.hasPersistedTree(context)) {
+            return StorageTreeAccess.probeWritable(context)
         }
+        return StoragePermissionHelper.probeBaiShouRootWritable()
     }
 
     fun getInfo(context: Context, uri: String): Map<String, Any?> {
+        if (useTreeAccess(context, uri)) {
+            return StorageTreeAccess.getInfo(context, uriToPath(uri))
+        }
         val file = resolveFile(context, uri)
         return mapOf(
             "exists" to file.exists(),
@@ -132,6 +137,10 @@ object ExternalStorageFiles {
     }
 
     fun makeDirectory(context: Context, uri: String, intermediates: Boolean) {
+        if (useTreeAccess(context, uri)) {
+            StorageTreeAccess.ensureDirectory(context, uriToPath(uri), intermediates)
+            return
+        }
         val file = resolveFile(context, uri)
         if (file.exists()) return
         val ok = if (intermediates) file.mkdirs() else file.mkdir()
@@ -141,12 +150,26 @@ object ExternalStorageFiles {
     }
 
     fun writeString(context: Context, uri: String, content: String) {
+        if (useTreeAccess(context, uri)) {
+            StorageTreeAccess.writeString(context, uriToPath(uri), content)
+            return
+        }
         val file = resolveFile(context, uri)
         file.parentFile?.mkdirs()
         file.writeText(content)
     }
 
     fun appendString(context: Context, uri: String, content: String) {
+        if (useTreeAccess(context, uri)) {
+            val path = uriToPath(uri)
+            val existing = try {
+                StorageTreeAccess.readString(context, path)
+            } catch (_: Exception) {
+                ""
+            }
+            StorageTreeAccess.writeString(context, path, existing + content)
+            return
+        }
         val file = resolveFile(context, uri)
         file.parentFile?.mkdirs()
         java.io.FileOutputStream(file, true).use { out ->
@@ -163,12 +186,19 @@ object ExternalStorageFiles {
     }
 
     fun writeBase64(context: Context, uri: String, base64: String) {
+        if (useTreeAccess(context, uri)) {
+            StorageTreeAccess.writeBytes(context, uriToPath(uri), Base64.decode(base64, Base64.DEFAULT))
+            return
+        }
         val file = resolveFile(context, uri)
         file.parentFile?.mkdirs()
         file.writeBytes(Base64.decode(base64, Base64.DEFAULT))
     }
 
     fun readString(context: Context, uri: String): String {
+        if (useTreeAccess(context, uri)) {
+            return StorageTreeAccess.readString(context, uriToPath(uri))
+        }
         val file = resolveFile(context, uri)
         if (!file.exists() || file.isDirectory) {
             throw java.io.FileNotFoundException(uri)
@@ -177,6 +207,10 @@ object ExternalStorageFiles {
     }
 
     fun readBase64(context: Context, uri: String): String {
+        if (useTreeAccess(context, uri)) {
+            val bytes = StorageTreeAccess.readBytes(context, uriToPath(uri))
+            return Base64.encodeToString(bytes, Base64.NO_WRAP)
+        }
         val file = resolveFile(context, uri)
         if (!file.exists() || file.isDirectory) {
             throw java.io.FileNotFoundException(uri)
@@ -185,6 +219,10 @@ object ExternalStorageFiles {
     }
 
     fun deletePath(context: Context, uri: String, idempotent: Boolean) {
+        if (useTreeAccess(context, uri)) {
+            StorageTreeAccess.deletePath(context, uriToPath(uri), idempotent)
+            return
+        }
         val file = resolveFile(context, uri)
         if (!file.exists()) {
             if (idempotent) return
@@ -198,6 +236,9 @@ object ExternalStorageFiles {
     }
 
     fun readDirectory(context: Context, uri: String): List<String> {
+        if (useTreeAccess(context, uri)) {
+            return StorageTreeAccess.readDirectory(context, uriToPath(uri))
+        }
         val file = resolveFile(context, uri)
         if (!file.exists() || !file.isDirectory) {
             throw java.io.FileNotFoundException(uri)

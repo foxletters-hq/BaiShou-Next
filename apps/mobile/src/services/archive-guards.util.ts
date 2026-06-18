@@ -1,5 +1,8 @@
-import type { ImportResult, IFileSystem } from '@baishou/core-mobile'
-import { isValidNextArchiveManifestContent } from '@baishou/core/shared'
+import {
+  isValidNextArchiveManifestContent,
+  type ImportResult,
+  type IFileSystem
+} from '@baishou/core-mobile'
 
 export const ARCHIVE_SKIP_TOP_LEVEL = new Set(['database', 'config', 'manifest.json', 'user-data'])
 

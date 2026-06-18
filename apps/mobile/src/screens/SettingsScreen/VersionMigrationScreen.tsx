@@ -81,7 +81,7 @@ function SectionCard({
       {failureSamples && failureSamples.length > 0 ? (
         <View style={styles.previewList}>
           <Text style={[styles.failureTitle, { color: colors.error }]}>
-            {t('version_migration.failure_samples_title', '部分条目导入失败：')}
+            {t('version_migration.failure_samples_title', { defaultValue: '部分条目导入失败：' })}
           </Text>
           {failureSamples.slice(0, 8).map((sample, index) => (
             <Text
@@ -112,14 +112,14 @@ function SectionCard({
       <View style={styles.sectionFooter}>
         <Text style={[styles.statusText, { color: colors.textTertiary }]}>
           {importStatus === 'success'
-            ? t('version_migration.status_success', '已导入')
+            ? t('version_migration.status_success', { defaultValue: '已导入' })
             : importStatus === 'failed'
-              ? t('version_migration.status_failed', '导入失败')
+              ? t('version_migration.status_failed', { defaultValue: '导入失败' })
               : importStatus === 'importing'
-                ? t('version_migration.status_importing', '导入中…')
+                ? t('version_migration.status_importing', { defaultValue: '导入中…' })
                 : available
-                  ? t('version_migration.status_ready', '可导入')
-                  : t('version_migration.status_unavailable', '无数据')}
+                  ? t('version_migration.status_ready', { defaultValue: '可导入' })
+                  : t('version_migration.status_unavailable', { defaultValue: '无数据' })}
         </Text>
         <Pressable
           disabled={!available || importing}
@@ -132,7 +132,9 @@ function SectionCard({
             }
           ]}
         >
-          <Text style={styles.importBtnText}>{t('version_migration.import_action', '导入')}</Text>
+          <Text style={styles.importBtnText}>
+            {t('version_migration.import_action', { defaultValue: '导入' })}
+          </Text>
         </Pressable>
       </View>
     </View>
@@ -174,20 +176,20 @@ export const VersionMigrationScreen: React.FC = () => {
 
   return (
     <StackScreenLayout
-      title={t('version_migration.title', '版本迁移')}
+      title={t('version_migration.title', { defaultValue: '版本迁移' })}
       {...chrome}
       contentStyle={styles.layoutContent}
     >
       <RestoreBlockingOverlay
         visible={overlayVisible}
-        message={t('version_migration.importing', '正在导入旧版数据…')}
+        message={t('version_migration.importing', { defaultValue: '正在导入旧版数据…' })}
         hint={
           importProgress
             ? t('version_migration.importing_item', {
                 name: importProgress,
                 defaultValue: `正在处理：${importProgress}`
               })
-            : t('version_migration.importing_hint', '请勿关闭应用')
+            : t('version_migration.importing_hint', { defaultValue: '请勿关闭应用' })
         }
       />
 
@@ -217,7 +219,7 @@ export const VersionMigrationScreen: React.FC = () => {
               '推荐顺序：全局（头像/身份卡/配置）→ 各工作空间（日记 + 伙伴与会话）'
             )}
           </Text>
-          {handleRequestAllFilesAccess && allFilesAccessGranted === false ? (
+          {allFilesAccessGranted === false ? (
             <StoragePermissionPrompt onRequest={handleRequestAllFilesAccess} mode="required" />
           ) : null}
 
@@ -229,7 +231,7 @@ export const VersionMigrationScreen: React.FC = () => {
               onPress={() => void handleChooseLegacyDirectory()}
               disabled={!pageReady || scanning}
             >
-              {t('version_migration.choose_legacy_directory', '选择旧版目录')}
+              {t('version_migration.choose_legacy_directory', { defaultValue: '选择旧版目录' })}
             </Button>
             {customLegacySourceRoot ? (
               <Button
@@ -239,7 +241,9 @@ export const VersionMigrationScreen: React.FC = () => {
                 onPress={() => void handleClearCustomLegacyDirectory()}
                 disabled={scanning}
               >
-                {t('version_migration.clear_custom_legacy_directory', '恢复自动检测')}
+                {t('version_migration.clear_custom_legacy_directory', {
+                  defaultValue: '恢复自动检测'
+                })}
               </Button>
             ) : null}
           </View>
@@ -250,8 +254,9 @@ export const VersionMigrationScreen: React.FC = () => {
                 <Text style={[styles.hint, { color: colors.textTertiary }]}>{t(legacySourceKindKey)}</Text>
               ) : null}
               <Text style={[styles.mono, { color: colors.textTertiary }]} selectable>
-                {t('version_migration.source_path', '旧版目录：{{path}}', {
-                  path: scanResult.sourceDisplayPath
+                {t('version_migration.source_path', {
+                  path: scanResult.sourceDisplayPath,
+                  defaultValue: '旧版目录：{{path}}'
                 })}
               </Text>
             </>
@@ -265,8 +270,8 @@ export const VersionMigrationScreen: React.FC = () => {
             disabled={!pageReady || scanning}
           >
             {scanning
-              ? t('version_migration.scanning', '正在扫描…')
-              : t('version_migration.rescan', '重新扫描')}
+              ? t('version_migration.scanning', { defaultValue: '正在扫描…' })
+              : t('version_migration.rescan', { defaultValue: '重新扫描' })}
           </Button>
         </View>
 
@@ -274,7 +279,7 @@ export const VersionMigrationScreen: React.FC = () => {
           <View style={styles.loadingRow}>
             <ActivityIndicator color={colors.primary} />
             <Text style={{ color: colors.textSecondary }}>
-              {t('version_migration.scanning', '正在扫描…')}
+              {t('version_migration.scanning', { defaultValue: '正在扫描…' })}
             </Text>
           </View>
         ) : null}
@@ -284,7 +289,9 @@ export const VersionMigrationScreen: React.FC = () => {
             style={[styles.card, { backgroundColor: colors.bgSurface, borderRadius: tokens.radius.lg }]}
           >
             <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
-              {t('version_migration.db_not_ready', '数据库尚未就绪，请稍候后重新扫描。')}
+              {t('version_migration.db_not_ready', {
+                defaultValue: '数据库尚未就绪，请稍候后重新扫描。'
+              })}
             </Text>
           </View>
         ) : null}
@@ -304,7 +311,7 @@ export const VersionMigrationScreen: React.FC = () => {
 
         {globalSections.length > 0 ? (
           <Text style={[styles.groupTitle, { color: colors.textSecondary }]}>
-            {t('version_migration.global_group_title', '全局数据')}
+            {t('version_migration.global_group_title', { defaultValue: '全局数据' })}
           </Text>
         ) : null}
 
@@ -339,7 +346,7 @@ export const VersionMigrationScreen: React.FC = () => {
         {workspaceSections.length > 0 ? (
           <View style={styles.workspaceHeader}>
             <Text style={[styles.groupTitle, { color: colors.textSecondary, marginBottom: 0 }]}>
-              {t('version_migration.workspace_group_title', '工作空间')}
+              {t('version_migration.workspace_group_title', { defaultValue: '工作空间' })}
             </Text>
             {importableWorkspaces.length > 1 ? (
               <Button
@@ -348,7 +355,9 @@ export const VersionMigrationScreen: React.FC = () => {
                 onPress={() => void handleImportAllWorkspaces()}
                 disabled={importingSection != null}
               >
-                {t('version_migration.import_all_workspaces', '导入全部工作空间')}
+                {t('version_migration.import_all_workspaces', {
+                  defaultValue: '导入全部工作空间'
+                })}
               </Button>
             ) : null}
           </View>

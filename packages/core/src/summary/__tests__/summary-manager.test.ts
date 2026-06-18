@@ -116,6 +116,16 @@ describe('SummaryManagerService (SSOT refactor)', () => {
     expect(res[0]?.content).toBe('From disk')
   })
 
+  it('list() should hide stale DB summaries when current vault has no summary files', async () => {
+    mockRepo.getSummaries.mockResolvedValue([{ id: 1, type: testType, startDate: start }] as any)
+    mockFileService.listAllSummaries.mockResolvedValue([])
+
+    const res = await manager.list()
+
+    expect(res).toEqual([])
+    expect(mockRepo.getSummaries).not.toHaveBeenCalled()
+  })
+
   it('update() should replace file then trigger DB re-upsert via sync', async () => {
     mockRepo.getByDateRange.mockResolvedValue({ id: 5, content: 'old' } as any)
 

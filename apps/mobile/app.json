@@ -2,7 +2,7 @@
   "expo": {
     "name": "白守",
     "slug": "mobile",
-    "version": "1.0.9",
+    "version": "1.0.14",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mobile",
@@ -22,7 +22,7 @@
     },
     "android": {
       "package": "com.baishou.baishou",
-      "versionCode": 34,
+      "versionCode": 39,
       "permissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
@@ -42,6 +42,7 @@
     "plugins": [
       "./plugins/withAndroidAdjustNothing.js",
       "./plugins/withAndroidLanPermissions.js",
+      "./plugins/withAndroidStoragePermissions.js",
       "./plugins/withAndroidReleaseSigning.js",
       "./plugins/withAndroidDevVariant.js",
       "expo-dev-client",

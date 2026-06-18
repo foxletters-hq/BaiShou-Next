@@ -31,7 +31,11 @@ export interface IArchiveService {
    * 将 ZIP 完全覆盖，重新映射 device_preferences 和 `vault_registry.json` 中属于该终端的绝对路径！
    * 返回合并的还原结果报表。
    */
-  importFromZip(zipFilePath: string, createSnapshotBefore?: boolean): Promise<ImportResult>
+  importFromZip(
+    zipFilePath: string,
+    createSnapshotBefore?: boolean,
+    onProgress?: (progress: any) => void
+  ): Promise<ImportResult>
 
   /**
    * 在覆盖本地数据前生成保护性快照（仅由 importFromZip / restoreFromSnapshot 内部调用）。
