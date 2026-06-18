@@ -1,5 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { synthesizeTtsSpeechContent } from '../tts-chunked-synthesis'
+import {
+  synthesizeAllTtsSpeechSegments,
+  synthesizeTtsSpeechContent
+} from '../tts-chunked-synthesis'
 import { TtsProviderRegistry } from '../tts.registry'
 import type { TtsProvider } from '../../types/tts.types'
 
@@ -44,6 +47,31 @@ describe('synthesizeTtsSpeechContent', () => {
 
     expect(result).toEqual({ success: true, segmentCount: 3 })
     expect(segments).toEqual(['你好，', 'world.', 'Done!'])
+    expect(provider.synthesize).toHaveBeenCalledTimes(3)
+  })
+
+  it('synthesizes all prepared chunks in parallel', async () => {
+    const result = await synthesizeAllTtsSpeechSegments(
+      registry,
+      {
+        globalModels: {
+          globalTtsProviderId: 'mock-tts',
+          globalTtsModelId: 'tts-1',
+          globalTtsSettings: { voice: 'alloy', speed: 1, responseFormat: 'mp3' }
+        },
+        content: '你好，world. Done!'
+      },
+      { useCache: false }
+    )
+
+    expect(result).toEqual({
+      success: true,
+      segments: [
+        { text: '你好，', audioBase64: 'audio:你好，', format: 'mp3', fromCache: false },
+        { text: 'world.', audioBase64: 'audio:world.', format: 'mp3', fromCache: false },
+        { text: 'Done!', audioBase64: 'audio:Done!', format: 'mp3', fromCache: false }
+      ]
+    })
     expect(provider.synthesize).toHaveBeenCalledTimes(3)
   })
 

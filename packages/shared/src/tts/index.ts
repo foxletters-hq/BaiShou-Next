@@ -44,11 +44,12 @@ export {
   clearGlobalTtsSynthesisCache
 } from './tts-synthesis-cache'
 export type { TtsSynthesisCacheKeyInput, TtsSynthesisCacheEntry } from './tts-synthesis-cache'
-export { synthesizeTtsSpeechContent } from './tts-chunked-synthesis'
+export { synthesizeTtsSpeechContent, synthesizeAllTtsSpeechSegments } from './tts-chunked-synthesis'
 export type {
   TtsSpeechSegment,
   TtsSpeechSynthesisFailure,
   TtsSpeechSynthesisResult,
+  TtsSpeechSegmentsResult,
   TtsSpeechSynthesisOptions
 } from './tts-chunked-synthesis'
 export { TtsProviderRegistry } from './tts.registry'
