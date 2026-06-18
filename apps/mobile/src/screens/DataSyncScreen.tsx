@@ -38,6 +38,14 @@ import { DataSyncConfigSheet } from './DataSyncConfigSheet'
 import { useArchiveImportExport } from '../hooks/useArchiveImportExport'
 import { ArchiveLocalBackupSection } from './DataSyncScreen/ArchiveLocalBackupSection'
 import { applyArchiveImportFeedback } from '../utils/archive-restore-feedback'
+import {
+  buildArchiveImportProgress,
+  reportArchiveImportStage,
+  resolveArchiveImportStageDetail,
+  resolveArchiveImportStageHint,
+  resolveArchiveImportStageMessage,
+  type ArchiveImportProgress
+} from '../services/archive-guards.util'
 
 export const DataSyncScreen: React.FC = () => {
   const { t } = useTranslation()
@@ -64,6 +72,9 @@ export const DataSyncScreen: React.FC = () => {
   tRef.current = t
   const [isSyncing, setIsSyncing] = useState(false)
   const [isRestoring, setIsRestoring] = useState(false)
+  const [cloudRestoreProgress, setCloudRestoreProgress] = useState<ArchiveImportProgress | null>(
+    null
+  )
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false)
   const [selectedRecords, setSelectedRecords] = useState<Set<string>>(new Set())
   const [renamingRecord, setRenamingRecord] = useState<string | null>(null)
@@ -81,7 +92,11 @@ export const DataSyncScreen: React.FC = () => {
     handleImport: handleArchiveImport,
     isImporting: isArchiveImporting,
     importMessage: archiveImportMessage,
-    importHint: archiveImportHint
+    importHint: archiveImportHint,
+    importDetail: archiveImportDetail,
+    importPercent: archiveImportPercent,
+    importSucceeded: archiveImportSucceeded,
+    importFailed: archiveImportFailed
   } = useArchiveImportExport()
 
   const totalSizeString = useMemo(() => {
@@ -291,9 +306,15 @@ export const DataSyncScreen: React.FC = () => {
       })
       if (!confirmed || !cloudSyncService) return
       setIsRestoring(true)
+      setCloudRestoreProgress(buildArchiveImportProgress('preparing'))
       try {
-        const result = await cloudSyncService.restoreFromCloud(syncConfig, filename)
+        const result = await cloudSyncService.restoreFromCloud(
+          syncConfig,
+          filename,
+          (progress) => setCloudRestoreProgress(progress)
+        )
         if (result.success) {
+          reportArchiveImportStage(setCloudRestoreProgress, 'succeeded', { percent: 100 })
           applyArchiveImportFeedback(
             {
               fileCount: -1,
@@ -304,14 +325,25 @@ export const DataSyncScreen: React.FC = () => {
             notifyArchiveRestoreComplete,
             { successMessage: result.message }
           )
+          await new Promise((resolve) => setTimeout(resolve, 900))
         } else {
+          setCloudRestoreProgress(
+            buildArchiveImportProgress('failed', { percent: 100, detail: result.message })
+          )
           toast.showError(result.message)
+          await new Promise((resolve) => setTimeout(resolve, 900))
         }
       } catch (e) {
         logger.error('云端恢复失败', e instanceof Error ? e : String(e))
+        const message = e instanceof Error ? e.message : String(e)
+        setCloudRestoreProgress(
+          buildArchiveImportProgress('failed', { percent: 100, detail: message })
+        )
         toast.showError(t('data_sync.restore_failed'))
+        await new Promise((resolve) => setTimeout(resolve, 900))
       } finally {
         setIsRestoring(false)
+        setCloudRestoreProgress(null)
       }
     },
     [cloudSyncService, dialog, notifyArchiveRestoreComplete, syncConfig, t, toast]
@@ -581,8 +613,37 @@ export const DataSyncScreen: React.FC = () => {
     <>
       <RestoreBlockingOverlay
         visible={isRestoring || isArchiveImporting}
-        message={isArchiveImporting ? archiveImportMessage : undefined}
-        hint={isArchiveImporting ? archiveImportHint : undefined}
+        message={
+          isArchiveImporting
+            ? archiveImportMessage
+            : cloudRestoreProgress
+              ? resolveArchiveImportStageMessage(cloudRestoreProgress)
+              : undefined
+        }
+        hint={
+          isArchiveImporting
+            ? archiveImportHint
+            : cloudRestoreProgress
+              ? resolveArchiveImportStageHint(cloudRestoreProgress)
+              : undefined
+        }
+        detail={
+          isArchiveImporting
+            ? archiveImportDetail
+            : cloudRestoreProgress
+              ? resolveArchiveImportStageDetail(cloudRestoreProgress)
+              : undefined
+        }
+        progress={
+          isArchiveImporting
+            ? archiveImportPercent
+            : cloudRestoreProgress?.percent
+        }
+        succeeded={
+          isArchiveImporting
+            ? archiveImportSucceeded
+            : cloudRestoreProgress?.stage === 'succeeded'
+        }
       />
       <StackScreenLayout
         title={t('data_sync.title')}

@@ -556,7 +556,11 @@ object ExternalStorageFiles {
     }
 
     /** UTF-8 解压备份 ZIP 到目标目录（支持中文文件名） */
-    fun unzipArchive(zipUri: String, destUri: String) {
+    fun unzipArchive(
+        zipUri: String,
+        destUri: String,
+        onProgress: ((current: Int, total: Int, entryName: String) -> Unit)? = null
+    ) {
         val zipFile = resolveAnyFile(zipUri)
         val destDir = resolveAnyFile(destUri)
         if (!zipFile.exists() || !zipFile.isFile) {
@@ -565,7 +569,14 @@ object ExternalStorageFiles {
         destDir.mkdirs()
         ZipFile(zipFile).use { zip ->
             zip.charset = StandardCharsets.UTF_8
-            zip.extractAll(destDir.absolutePath)
+            val headers = zip.fileHeaders.filter { header ->
+                !header.isDirectory && header.fileName.isNotBlank()
+            }
+            val total = headers.size.coerceAtLeast(1)
+            headers.forEachIndexed { index, header ->
+                zip.extractFile(header, destDir.absolutePath)
+                onProgress?.invoke(index + 1, total, header.fileName)
+            }
         }
     }
 
