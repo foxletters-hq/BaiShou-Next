@@ -24,6 +24,8 @@ export interface AgentState {
   isLoading: boolean
   toolCalls: Record<string, any>
   searchMode: boolean
+  /** 当前活跃会话（跨 Tab 卸载保持） */
+  currentSessionId: string | null
 }
 
 export interface AgentActions {
@@ -33,6 +35,7 @@ export interface AgentActions {
   setLoading: (loading: boolean) => void
   addToolCall: (id: string, toolCallName: string, args: any) => void
   clearSession: () => void
+  setCurrentSessionId: (sessionId: string | null) => void
   initIpcListeners: () => void
   sendMessage: (sessionId: string, text: string) => void
   loadMessages: (sessionId: string) => Promise<void>
@@ -47,6 +50,7 @@ export const useAgentStore = createStore<AgentState & AgentActions>(
     isLoading: false,
     toolCalls: {},
     searchMode: false,
+    currentSessionId: null,
 
     addMessage: (message) =>
       set((state: AgentState) => {
@@ -77,6 +81,8 @@ export const useAgentStore = createStore<AgentState & AgentActions>(
       })),
 
     clearSession: () => set({ messages: [], toolCalls: {}, isLoading: false }),
+
+    setCurrentSessionId: (sessionId) => set({ currentSessionId: sessionId }),
 
     setSearchMode: (enabled: boolean) => set({ searchMode: enabled }),
 

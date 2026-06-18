@@ -32,7 +32,6 @@ export const AssistantAvatar: React.FC<AssistantAvatarProps> = ({
       ]}
     >
       <Image
-        key={resolvedAvatarUri ?? avatarPath ?? 'default'}
         source={resolveNativeAssistantAvatarSource(avatarPath, resolvedAvatarUri)}
         style={{ width: size, height: size, borderRadius: radius }}
         resizeMode="cover"
