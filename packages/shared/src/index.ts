@@ -15,6 +15,7 @@ export * from './types/sync.ipc'
 export * from './types/version-control.types'
 export * from './types/rag.types'
 export * from './types/embedding-migration-state.types'
+export * from './types/legacy-migration.types'
 
 export { default as i18n } from './i18n/i18n'
 export * from './i18n/i18n.types'

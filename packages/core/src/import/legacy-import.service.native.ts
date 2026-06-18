@@ -8,7 +8,12 @@ export class LegacyImportService {
     private readonly profileRepo: UserProfileRepository
   ) {}
 
-  async restoreConfig(config: Record<string, unknown>): Promise<void> {
-    await restoreLegacyDevicePreferences(this.settingsRepo, this.profileRepo, config)
+  async restoreConfig(
+    config: Record<string, unknown>,
+    options?: { skipProfileFields?: boolean }
+  ): Promise<void> {
+    await restoreLegacyDevicePreferences(this.settingsRepo, this.profileRepo, config, {
+      skipProfileFields: options?.skipProfileFields
+    })
   }
 }

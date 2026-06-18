@@ -14,8 +14,12 @@ export class LegacyImportService {
     private readonly profileRepo: UserProfileRepository
   ) {}
 
-  async restoreConfig(config: Record<string, unknown>): Promise<void> {
+  async restoreConfig(
+    config: Record<string, unknown>,
+    options?: { skipProfileFields?: boolean }
+  ): Promise<void> {
     await restoreLegacyDevicePreferences(this.settingsRepo, this.profileRepo, config, {
+      skipProfileFields: options?.skipProfileFields,
       importAvatarBase64: async (base64, ext) => {
         const buffer = Buffer.from(base64, 'base64')
         const userDataPath = app.getPath('userData')

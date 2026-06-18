@@ -3,6 +3,8 @@ import type { SettingsRepository, UserProfileRepository } from '@baishou/databas
 export interface LegacyConfigRestoreOptions {
   /** 处理 ZIP 内嵌的 avatar_base64 字段，返回写入后的绝对路径 */
   importAvatarBase64?: (base64: string, ext: string) => Promise<string | null>
+  /** 选择性迁移：身份卡/头像由独立板块处理时不改写 profile */
+  skipProfileFields?: boolean
 }
 
 /**
@@ -14,39 +16,41 @@ export async function restoreLegacyDevicePreferences(
   config: Record<string, unknown>,
   options?: LegacyConfigRestoreOptions
 ): Promise<void> {
-  const profile = await profileRepo.getProfile()
+  if (!options?.skipProfileFields) {
+    const profile = await profileRepo.getProfile()
 
-  if (config['nickname'] && typeof config['nickname'] === 'string') {
-    profile.nickname = config['nickname']
-  }
-
-  if (config['identity_facts'] && typeof config['identity_facts'] === 'object') {
-    const activePersona = profile.personas[profile.activePersonaId] || {
-      id: profile.activePersonaId,
-      facts: {}
+    if (config['nickname'] && typeof config['nickname'] === 'string') {
+      profile.nickname = config['nickname']
     }
-    profile.personas[profile.activePersonaId] = {
-      ...activePersona,
-      facts: {
-        ...activePersona.facts,
-        ...(config['identity_facts'] as Record<string, string>)
+
+    if (config['identity_facts'] && typeof config['identity_facts'] === 'object') {
+      const activePersona = profile.personas[profile.activePersonaId] || {
+        id: profile.activePersonaId,
+        facts: {}
+      }
+      profile.personas[profile.activePersonaId] = {
+        ...activePersona,
+        facts: {
+          ...activePersona.facts,
+          ...(config['identity_facts'] as Record<string, string>)
+        }
       }
     }
-  }
 
-  if (config['avatar_base64'] && typeof config['avatar_base64'] === 'string') {
-    try {
-      const ext = (config['avatar_ext'] as string) || 'jpg'
-      const newPath = await options?.importAvatarBase64?.(config['avatar_base64'], ext)
-      if (newPath) {
-        profile.avatarPath = newPath
+    if (config['avatar_base64'] && typeof config['avatar_base64'] === 'string') {
+      try {
+        const ext = (config['avatar_ext'] as string) || 'jpg'
+        const newPath = await options?.importAvatarBase64?.(config['avatar_base64'], ext)
+        if (newPath) {
+          profile.avatarPath = newPath
+        }
+      } catch {
+        // avatar restore failure should not abort migration
       }
-    } catch {
-      // avatar restore failure should not abort migration
     }
-  }
 
-  await profileRepo.saveProfile(profile)
+    await profileRepo.saveProfile(profile)
+  }
 
   if (config['seed_color'] !== undefined) {
     await settingsRepo.set('theme_seed_color', config['seed_color'])

@@ -55,6 +55,15 @@ describe('LegacyImportService', () => {
     expect(savedProfile.personas!['默认身份卡']!.facts['喜好']).toBe('测试跑通')
   })
 
+  it('should skip profile fields when skipProfileFields is true', async () => {
+    const config = {
+      nickname: '不应写入',
+      identity_facts: { 喜好: '不应写入' }
+    }
+    await service.restoreConfig(config, { skipProfileFields: true })
+    expect(profileRepo.saveProfile).not.toHaveBeenCalled()
+  })
+
   it('should restore legacy AI Provider API Keys', async () => {
     // 模拟非常旧的版本，只有全局配置没有数组
     settingsRepo.getAIProviderConfigs.mockResolvedValue([
