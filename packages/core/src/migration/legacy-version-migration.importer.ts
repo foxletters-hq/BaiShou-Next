@@ -833,6 +833,10 @@ export async function importLegacyWorkspaceSection(
 
   const targetName = await ensureTargetVaultExists(deps, legacyVaultName)
   const vaultNameMap = { [legacyVaultName]: targetName }
+  const scopedDeps: LegacyVersionMigrationImporterDeps = {
+    ...deps,
+    resolveTargetVaultName: async () => targetName
+  }
 
   const archiveAvatarMap = await restoreLegacyAvatarsFromArchiveLayout(
     deps.fileSystem,
@@ -848,7 +852,7 @@ export async function importLegacyWorkspaceSection(
     : {}
   const avatarMap = mergeAvatarMaps(archiveAvatarMap, documentsAvatarMap)
 
-  const diaryResult = await importLegacyDiariesForVault(deps, legacyVaultName)
+  const diaryResult = await importLegacyDiariesForVault(scopedDeps, legacyVaultName)
   imported += diaryResult.imported
   skipped += diaryResult.skipped
   failed += diaryResult.failed
@@ -857,7 +861,7 @@ export async function importLegacyWorkspaceSection(
     warnings.push('version_migration.import_partial_failed')
   }
 
-  const archivesResult = await importLegacyArchivesForVault(deps, legacyVaultName)
+  const archivesResult = await importLegacyArchivesForVault(scopedDeps, legacyVaultName)
   imported += archivesResult.imported
   skipped += archivesResult.skipped
   failed += archivesResult.failed
@@ -873,7 +877,7 @@ export async function importLegacyWorkspaceSection(
     legacyVaultName,
     sqliteClient: deps.sqliteClient,
     executeRawSql: deps.executeRawSql,
-    resolveTargetVaultName: deps.resolveTargetVaultName,
+    resolveTargetVaultName: scopedDeps.resolveTargetVaultName,
     prepareSqliteAttachPath: deps.prepareSqliteAttachPath,
     onProgress: deps.onProgress
   })
@@ -927,8 +931,8 @@ export async function importLegacyWorkspaceSection(
   let agentResultFailureSamples: string[] | undefined
   let assistantIdMapLocal: Record<string, string> = { ...priorMap }
 
-  await deps.runInVaultContext(legacyVaultName, async () => {
-    const assistantResult = await importLegacyAssistantsFromRows(deps, agentRows.assistants, {
+  await scopedDeps.runInVaultContext(legacyVaultName, async () => {
+    const assistantResult = await importLegacyAssistantsFromRows(scopedDeps, agentRows.assistants, {
       assistantIdMap: priorMap,
       avatarMap
     })
@@ -950,7 +954,7 @@ export async function importLegacyWorkspaceSection(
     }
 
     const chatResult = await importLegacyChatsFromRows(
-      deps,
+      scopedDeps,
       agentRows,
       assistantIdMapLocal,
       legacyVaultName
