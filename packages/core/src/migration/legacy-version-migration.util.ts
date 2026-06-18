@@ -150,17 +150,27 @@ export function resolveUniqueNameWithTwoDigitSuffix(
 
 /**
  * 将旧版工作区名解析为新版目标名（与「工作空间」板块导入规则一致）。
- * 已持久化的映射优先；与现有 vault 重名时追加两位后缀。
+ * 已持久化的映射优先；与现有 vault 重名时追加两位后缀，避免与现有磁盘内容冲突。
  */
 export function resolveLegacyVaultTargetName(
   legacyVaultName: string,
   existingNames: Set<string>,
   storedMap: Record<string, string> = {}
 ): string {
-  const mapped = storedMap[legacyVaultName]
-  if (mapped) return mapped
   const trimmed = legacyVaultName.trim()
   if (!trimmed) return legacyVaultName
+
+  const mapped = storedMap[trimmed] ?? storedMap[legacyVaultName]
+  if (mapped) {
+    // 已明确映射到不同名称（如 Personal → Personal95）时沿用
+    if (mapped !== trimmed) return mapped
+    // 过期的「同名映射」：当前已有同名工作区时必须重新分配后缀，避免覆盖
+    if (existingNames.has(trimmed)) {
+      return resolveUniqueNameWithTwoDigitSuffix(trimmed, existingNames)
+    }
+    return mapped
+  }
+
   if (!existingNames.has(trimmed)) return trimmed
   return resolveUniqueNameWithTwoDigitSuffix(trimmed, existingNames)
 }
