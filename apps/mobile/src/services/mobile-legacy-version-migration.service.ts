@@ -8,8 +8,10 @@ import {
   resolveLegacyVaultTargetName,
   scanLegacyVersionMigration,
   buildJournalFilePathFromDateStr,
+  vaultDirectoryHasUserContent,
   type LegacyVersionMigrationBatchImportResult,
   type LegacyVersionMigrationImportResult,
+  type LegacyVersionMigrationImporterDeps,
   type LegacyVersionMigrationScanResult,
   type LegacyVersionMigrationSectionId
 } from '@baishou/core-mobile'
@@ -217,28 +219,70 @@ async function collectExistingTargetVaultNames(
   return existing
 }
 
+async function preResolveWorkspaceTargetVault(
+  runtime: MobileVersionMigrationRuntime,
+  legacyVaultName: string
+): Promise<string> {
+  await runtime.vaultService.initRegistry()
+  const stored = await getStoredVaultNameMap()
+  const existing = await collectExistingTargetVaultNames(runtime)
+  return resolveLegacyVaultTargetName(legacyVaultName, existing, stored)
+}
+
+async function removeEmptyLegacyVaultPlaceholder(
+  runtime: MobileVersionMigrationRuntime,
+  legacyVaultName: string,
+  targetVaultName: string
+): Promise<void> {
+  if (legacyVaultName === targetVaultName) return
+  if (!runtime.vaultService.vaultExists(legacyVaultName)) return
+
+  const rootDir = await runtime.pathService.getRootDirectory()
+  if (await vaultDirectoryHasUserContent(runtime.fileSystem, rootDir, legacyVaultName)) {
+    return
+  }
+
+  const active = await runtime.pathService.getActiveVaultNameForContext()
+  if (active === legacyVaultName) {
+    await runtime.vaultService.switchVault(targetVaultName)
+  }
+  try {
+    await runtime.vaultService.deleteVault(legacyVaultName)
+  } catch {
+    // 占位工作区可能已被删除或仍为活跃工作区
+  }
+}
+
 function buildImporterDeps(
   runtime: MobileVersionMigrationRuntime,
   sourceRoot: string,
   targetRoot: string,
-  onProgress?: (message: string) => void
+  onProgress?: (message: string) => void,
+  pinVaultTargets?: Map<string, string>
 ) {
+  const pinnedTargets = new Map(pinVaultTargets)
   const importAvatar = createMigrationAvatarImporter(runtime.fileSystem, targetRoot, sourceRoot, {
     targetVaultName: () => runtime.pathService.getActiveVaultNameForContext()
   })
 
-  const resolveTargetVaultName = async (legacyVaultName: string): Promise<string> => {
+  const deps = {} as LegacyVersionMigrationImporterDeps
+
+  deps.resolveTargetVaultName = async (legacyVaultName: string): Promise<string> => {
+    const pinned = pinnedTargets.get(legacyVaultName)
+    if (pinned) return pinned
+
     const stored = await getStoredVaultNameMap()
     const existing = await collectExistingTargetVaultNames(runtime)
     const target = resolveLegacyVaultTargetName(legacyVaultName, existing, stored)
+    pinnedTargets.set(legacyVaultName, target)
     if (target !== legacyVaultName && stored[legacyVaultName] !== target) {
       await mergeVaultNameMap({ [legacyVaultName]: target })
     }
     return target
   }
 
-  const runInVaultContext = async <T>(legacyVaultName: string, fn: () => Promise<T>): Promise<T> => {
-    const targetVault = await resolveTargetVaultName(legacyVaultName)
+  deps.runInVaultContext = async <T>(legacyVaultName: string, fn: () => Promise<T>): Promise<T> => {
+    const targetVault = await deps.resolveTargetVaultName(legacyVaultName)
     const originalVault = await runtime.pathService.getActiveVaultNameForContext()
     if (originalVault !== targetVault) {
       await runtime.vaultService.switchVault(targetVault)
@@ -246,69 +290,67 @@ function buildImporterDeps(
     return await fn()
   }
 
-  return {
-    fileSystem: runtime.fileSystem,
-    sourceRoot,
-    targetRoot,
-    flutterPrefsConfig: null as Record<string, unknown> | null,
-    flutterRawSp: null as Record<string, unknown> | null,
-    flutterDocumentsAvatarsDir: resolveMobileFlutterAvatarsDirectory(),
-    sqliteClient: runtime.sqliteClient,
-    executeRawSql,
-    settingsRepo: runtime.settingsRepo,
-    profileRepo: runtime.profileRepo,
-    diaryService: runtime.diaryService,
-    assistantManager: runtime.assistantManager,
-    sessionManager: runtime.sessionManager,
-    vaultService: runtime.vaultService,
-    importAvatar,
-    saveUserAvatarPath: async (relativePath: string) => {
+  deps.fileSystem = runtime.fileSystem
+  deps.sourceRoot = sourceRoot
+  deps.targetRoot = targetRoot
+  deps.flutterPrefsConfig = null
+  deps.flutterRawSp = null
+  deps.flutterDocumentsAvatarsDir = resolveMobileFlutterAvatarsDirectory()
+  deps.sqliteClient = runtime.sqliteClient
+  deps.executeRawSql = executeRawSql
+  deps.settingsRepo = runtime.settingsRepo
+  deps.profileRepo = runtime.profileRepo
+  deps.diaryService = runtime.diaryService
+  deps.assistantManager = runtime.assistantManager
+  deps.sessionManager = runtime.sessionManager
+  deps.vaultService = runtime.vaultService
+  deps.importAvatar = importAvatar
+  deps.saveUserAvatarPath = async (relativePath: string) => {
       const profile = await runtime.profileRepo.getProfile()
       profile.avatarPath = relativePath
       await saveUserProfileToSettings(runtime.settingsManager, profile)
       invalidateUserAvatarDisplayCache(relativePath)
-    },
-    existingAssistantNames: async () => {
+  }
+  deps.existingAssistantNames = async () => {
       const names = new Set<string>()
       for (const a of await runtime.assistantManager.findAll()) {
         names.add(a.name)
       }
       return names
-    },
-    existingSessionIds: async () => collectAllSessionIds(runtime.sessionManager),
-    existingPersonaIds: async () => {
+  }
+  deps.existingSessionIds = async () => collectAllSessionIds(runtime.sessionManager)
+  deps.existingPersonaIds = async () => {
       const profile = await runtime.profileRepo.getProfile()
       return new Set(Object.keys(profile.personas ?? {}))
-    },
-    upsertSessionAggregate: async (aggregate: unknown) => {
-      await runtime.sessionRepo.upsertAggregate(aggregate)
-    },
-    runInVaultContext,
-    resolveTargetVaultName,
-    onVaultNameMapped: async (legacyName: string, targetName: string) => {
-      if (legacyName !== targetName) {
-        await mergeVaultNameMap({ [legacyName]: targetName })
-      }
-    },
-    flushSettingsToDisk: async () => {
-      await runtime.settingsManager.flushToDisk()
-    },
-    onProgress,
-    readTargetJournalRaw: async (dateStr: string, targetVaultName: string) => {
+  }
+  deps.upsertSessionAggregate = async (aggregate: unknown) => {
+    await runtime.sessionRepo.upsertAggregate(aggregate)
+  }
+  deps.onVaultNameMapped = async (legacyName: string, targetName: string) => {
+    if (legacyName !== targetName) {
+      await mergeVaultNameMap({ [legacyName]: targetName })
+    }
+  }
+  deps.flushSettingsToDisk = async () => {
+    await runtime.settingsManager.flushToDisk()
+  }
+  deps.onProgress = onProgress
+  deps.readTargetJournalRaw = async (dateStr: string, targetVaultName: string) => {
       const journalsBase = `${await runtime.pathService.getVaultDirectory(targetVaultName)}/Journals`
       const filePath = buildJournalFilePathFromDateStr(journalsBase, dateStr)
       if (!(await runtime.fileSystem.exists(filePath))) return null
       return runtime.fileSystem.readFile(filePath, 'utf8')
-    },
-    prepareSqliteAttachPath: (dbPath: string) =>
-      prepareMobileSqliteAttachPath(runtime.fileSystem, dbPath),
-    getJournalsBaseDirectory: async (targetVaultName: string) =>
-      `${await runtime.pathService.getVaultDirectory(targetVaultName)}/Journals`,
-    assistantRecordExists: async (assistantId: string) => {
+  }
+  deps.prepareSqliteAttachPath = (dbPath: string) =>
+    prepareMobileSqliteAttachPath(runtime.fileSystem, dbPath)
+  deps.getJournalsBaseDirectory = async (targetVaultName: string) =>
+    `${await runtime.pathService.getVaultDirectory(targetVaultName)}/Journals`
+  deps.assistantRecordExists = async (assistantId: string) => {
       const dir = await runtime.pathService.getAssistantsBaseDirectory()
       return runtime.fileSystem.exists(`${dir}/${assistantId}.json`)
-    }
   }
+
+  return deps
 }
 
 export async function importMobileVersionMigrationSection(
@@ -334,7 +376,23 @@ export async function importMobileVersionMigrationSection(
 
   await runtime.vaultService.initRegistry()
 
-  const deps = buildImporterDeps(runtime, source.sourceRoot, targetRoot, options?.onProgress)
+  const pinVaultTargets = new Map<string, string>()
+  const legacyVaultForSection = parseWorkspaceSectionId(sectionId)
+  if (legacyVaultForSection) {
+    const pinned = await preResolveWorkspaceTargetVault(runtime, legacyVaultForSection)
+    pinVaultTargets.set(legacyVaultForSection, pinned)
+    if (pinned !== legacyVaultForSection) {
+      await mergeVaultNameMap({ [legacyVaultForSection]: pinned })
+    }
+  }
+
+  const deps = buildImporterDeps(
+    runtime,
+    source.sourceRoot,
+    targetRoot,
+    options?.onProgress,
+    pinVaultTargets
+  )
   const [flutterPrefsConfig, flutterRawSp] = await Promise.all([
     readMobileFlutterSharedPreferencesConfig(runtime.fileSystem),
     readMobileFlutterSharedPreferencesRaw(runtime.fileSystem)
@@ -352,6 +410,7 @@ export async function importMobileVersionMigrationSection(
     const existing = await collectExistingTargetVaultNames(runtime)
     const targetVault =
       result.vaultNameMap?.[legacyVaultName] ??
+      pinVaultTargets.get(legacyVaultName) ??
       resolveLegacyVaultTargetName(legacyVaultName, existing, storedVaultMap)
     const activeVault = await runtime.pathService.getActiveVaultNameForContext()
     if (activeVault !== targetVault) {
@@ -360,6 +419,7 @@ export async function importMobileVersionMigrationSection(
     const resyncOptions = { activeVaultName: targetVault }
     await runtime.assistantManager.fullResyncFromDisks(resyncOptions)
     await runtime.sessionManager.fullResyncFromDisks(resyncOptions)
+    await removeEmptyLegacyVaultPlaceholder(runtime, legacyVaultName, targetVault)
   }
 
   if (result.assistantIdMap && Object.keys(result.assistantIdMap).length > 0) {
