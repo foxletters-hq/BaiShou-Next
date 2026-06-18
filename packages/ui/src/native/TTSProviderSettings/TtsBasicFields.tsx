@@ -87,7 +87,7 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
     config.id === 'clone-tts'
       ? 'http://127.0.0.1:8080'
       : config.id === 'gpt-sovits'
-        ? 'http://127.0.0.1:9880'
+        ? 'http://127.0.0.1:9872'
         : config.id === 'mimo-tts'
           ? t('tts.settings.mimo_base_url_placeholder')
           : 'https://api.openai.com/v1'

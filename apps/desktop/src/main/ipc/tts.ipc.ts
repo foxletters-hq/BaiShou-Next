@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron'
-import { logger, synthesizeTtsFromSettings } from '@baishou/shared'
+import { logger, synthesizeTtsFromFormConfig, synthesizeTtsFromSettings } from '@baishou/shared'
 import { settingsManager } from './settings.ipc'
-import { GlobalModelsConfig } from '@baishou/shared'
+import { GlobalModelsConfig, TtsFormSynthesizeConfig } from '@baishou/shared'
 import {
   OpenAiTtsProvider,
   MimoTtsProvider,
@@ -45,4 +45,21 @@ export function registerTtsIPC() {
       return result
     }
   )
+
+  ipcMain.handle('settings:tts-test', async (_event, config: TtsFormSynthesizeConfig, text: string) => {
+    const result = await synthesizeTtsFromFormConfig(registry, config, text)
+
+    if (!result.success) {
+      if (result.errorCode === 'tts_provider_not_supported') {
+        logger.error(`[TTS] No provider found for form config provider: ${config?.id}`)
+      } else if (
+        result.errorCode === 'tts_synthesis_failed' ||
+        result.errorCode === 'tts_api_error'
+      ) {
+        logger.error('[TTS] Form synthesize error:', result.error)
+      }
+    }
+
+    return result
+  })
 }

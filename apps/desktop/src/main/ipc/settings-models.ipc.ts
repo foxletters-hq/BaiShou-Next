@@ -33,6 +33,8 @@ const knownSystemIds = [
 ]
 
 const TTS_FETCH_TIMEOUT_MS = 30_000
+const GPT_SOVITS_GPT_DROPDOWN_ID = 5
+const GPT_SOVITS_SOVITS_DROPDOWN_ID = 6
 
 async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
   const controller = new AbortController()
@@ -42,6 +44,81 @@ async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Respon
   } finally {
     clearTimeout(timer)
   }
+}
+
+type GradioConfigComponent = {
+  id?: number
+  props?: {
+    value?: unknown
+    choices?: unknown[]
+  }
+}
+
+function normalizeGradioChoiceLabel(choice: unknown): string | null {
+  if (typeof choice === 'string') {
+    const trimmed = choice.trim()
+    return trimmed || null
+  }
+  if (!Array.isArray(choice) || choice.length === 0) {
+    return null
+  }
+
+  const first = choice[0]
+  const second = choice[1]
+  if (typeof second === 'string' && second.trim()) {
+    return second.trim()
+  }
+  if (typeof first === 'string' && first.trim()) {
+    return first.trim()
+  }
+  return null
+}
+
+function extractGptSovitsChoices(component: GradioConfigComponent | undefined): string[] {
+  if (!component?.props) {
+    return []
+  }
+
+  const values = new Set<string>()
+  const currentValue = normalizeGradioChoiceLabel(component.props.value)
+  if (currentValue) {
+    values.add(currentValue)
+  }
+
+  const rawChoices = Array.isArray(component.props.choices) ? component.props.choices : []
+  for (const choice of rawChoices) {
+    const normalized = normalizeGradioChoiceLabel(choice)
+    if (normalized) {
+      values.add(normalized)
+    }
+  }
+
+  return Array.from(values)
+}
+
+async function fetchGptSovitsModelIds(baseUrl: string): Promise<string[]> {
+  const trimmedBase = baseUrl.trim().replace(/\/$/, '')
+  if (!trimmedBase) {
+    return ['default']
+  }
+
+  const response = await fetchWithTimeout(`${trimmedBase}/config`)
+  if (!response.ok) {
+    return ['default']
+  }
+
+  const data = (await response.json()) as { components?: GradioConfigComponent[] }
+  const components = Array.isArray(data?.components) ? data.components : []
+  const gptComponent = components.find((component) => component.id === GPT_SOVITS_GPT_DROPDOWN_ID)
+  const sovitsComponent = components.find(
+    (component) => component.id === GPT_SOVITS_SOVITS_DROPDOWN_ID
+  )
+
+  const modelIds = extractGptSovitsChoices(sovitsComponent)
+  const fallbackIds = extractGptSovitsChoices(gptComponent)
+  const combined = modelIds.length > 0 ? modelIds : fallbackIds
+
+  return combined.length > 0 ? combined : ['default']
 }
 
 function withResolvedProviderBaseUrl(
@@ -308,6 +385,21 @@ export function registerSettingsModelsIPC() {
           // @ts-ignore
           logger.error?.('[TTS] Fetch OpenAI-compatible models failed:', err)
           return ['tts-1', 'tts-1-hd']
+        }
+      }
+
+      if (providerId === 'gpt-sovits') {
+        try {
+          const base = resolveTtsProviderBaseUrl('gpt-sovits', tempUrl)
+          return await fetchGptSovitsModelIds(base)
+        } catch (err) {
+          logger.error?.('[TTS] Fetch GPT-SoVITS models failed:', err)
+          if (err instanceof Error && err.name === 'AbortError') {
+            throw new Error(
+              `请求超时（${TTS_FETCH_TIMEOUT_MS / 1000}s），请检查 GPT-SoVITS 服务地址是否可达`
+            )
+          }
+          return ['default']
         }
       }
 

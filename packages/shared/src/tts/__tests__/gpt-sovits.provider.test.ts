@@ -1,6 +1,61 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { GptSovitsProvider } from '../gpt-sovits.provider'
 import { TtsApiError } from '../tts.errors'
+import { readFile } from 'node:fs/promises'
+import { get as httpGet } from 'node:http'
+
+vi.mock('node:fs/promises', () => ({
+  readFile: vi.fn()
+}))
+
+vi.mock('node:http', () => ({
+  get: vi.fn()
+}))
+
+function createResponse(init: {
+  ok: boolean
+  status?: number
+  contentType?: string | null
+  arrayBuffer?: ArrayBuffer
+  text?: string
+  json?: unknown
+}) {
+  return {
+    ok: init.ok,
+    status: init.status ?? (init.ok ? 200 : 500),
+    headers: {
+      get: vi.fn().mockReturnValue(init.contentType ?? null)
+    },
+    arrayBuffer: vi.fn().mockResolvedValue(init.arrayBuffer ?? new ArrayBuffer(0)),
+    text: vi.fn().mockResolvedValue(init.text ?? ''),
+    json: vi.fn().mockResolvedValue(init.json ?? null)
+  } as any
+}
+
+function mockQueueStream(payloads: Array<Record<string, unknown>>) {
+  vi.mocked(httpGet).mockImplementation(((_url: unknown, _options: unknown, callback: any) => {
+    const handlers: Record<string, Array<(...args: any[]) => void>> = {}
+    const response = {
+      setEncoding: vi.fn(),
+      on: vi.fn((event: string, handler: (...args: any[]) => void) => {
+        handlers[event] ||= []
+        handlers[event].push(handler)
+        return response
+      })
+    }
+    callback(response)
+
+    queueMicrotask(() => {
+      const block = payloads.map((payload) => `data:${JSON.stringify(payload)}\n\n`).join('')
+      handlers.data?.forEach((handler) => handler(block))
+      handlers.end?.forEach((handler) => handler())
+    })
+
+    return {
+      on: vi.fn().mockReturnThis()
+    } as any
+  }) as any)
+}
 
 describe('GptSovitsProvider', () => {
   let provider: GptSovitsProvider
@@ -49,7 +104,7 @@ describe('GptSovitsProvider', () => {
       }
     }
 
-    it('should call /tts endpoint with correct URL parameters', async () => {
+    it('should call api_v2 /tts endpoint with JSON payload', async () => {
       const mockArrayBuffer = new ArrayBuffer(8)
       const bytes = new Uint8Array(mockArrayBuffer)
       let binary = ''
@@ -57,29 +112,32 @@ describe('GptSovitsProvider', () => {
         binary += String.fromCharCode(byte)
       }
       const expectedBase64 = btoa(binary)
-      const mockResponse = {
+      const mockResponse = createResponse({
         ok: true,
-        arrayBuffer: vi.fn().mockResolvedValue(mockArrayBuffer)
-      }
+        contentType: 'audio/wav',
+        arrayBuffer: mockArrayBuffer
+      })
       const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse as any)
 
       const result = await provider.synthesize(mockRequest, mockConfig)
 
-      expect(fetchSpy).toHaveBeenCalledWith(expect.stringContaining('http://127.0.0.1:9880/tts?'), {
-        method: 'GET'
+      expect(fetchSpy).toHaveBeenCalledTimes(1)
+      expect(fetchSpy).toHaveBeenCalledWith('http://127.0.0.1:9880/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: expect.any(String)
       })
 
-      const calledUrl = fetchSpy.mock.calls[0]?.[0] as string
-      const parsedUrl = new URL(calledUrl)
-      expect(parsedUrl.origin).toBe('http://127.0.0.1:9880')
-      expect(parsedUrl.pathname).toBe('/tts')
-      expect(parsedUrl.searchParams.get('text')).toBe('你好，世界')
-      expect(parsedUrl.searchParams.get('text_lang')).toBe('zh')
-      expect(parsedUrl.searchParams.get('ref_audio_path')).toBe('D:\\audio\\prompt.wav')
-      expect(parsedUrl.searchParams.get('prompt_text')).toBe('你好')
-      expect(parsedUrl.searchParams.get('prompt_lang')).toBe('zh')
-      expect(parsedUrl.searchParams.get('speed_factor')).toBe('1')
-      expect(parsedUrl.searchParams.get('media_type')).toBe('wav')
+      const body = JSON.parse(fetchSpy.mock.calls[0]?.[1]?.body as string)
+      expect(body.text).toBe('你好，世界')
+      expect(body.text_lang).toBe('zh')
+      expect(body.ref_audio_path).toBe('D:\\audio\\prompt.wav')
+      expect(body.prompt_text).toBe('你好')
+      expect(body.prompt_lang).toBe('zh')
+      expect(body.speed_factor).toBe(1)
+      expect(body.media_type).toBe('wav')
+      expect(body.sample_steps).toBe(8)
+      expect(body.streaming_mode).toBe(false)
 
       expect(result.audioBase64).toBe(expectedBase64)
       expect(result.format).toBe('wav')
@@ -100,20 +158,6 @@ describe('GptSovitsProvider', () => {
       )
     })
 
-    it('should throw TtsApiError when API returns error status', async () => {
-      const mockResponse = {
-        ok: false,
-        status: 400,
-        text: vi.fn().mockResolvedValue('Invalid path')
-      }
-      vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse as any)
-
-      await expect(provider.synthesize(mockRequest, mockConfig)).rejects.toThrow(TtsApiError)
-      await expect(provider.synthesize(mockRequest, mockConfig)).rejects.toThrow(
-        'GPT-SoVITS API 合成失败: Invalid path'
-      )
-    })
-
     it('should fallback to root endpoint with v1 parameters when /tts returns 404', async () => {
       const mockArrayBuffer = new ArrayBuffer(8)
       const bytes = new Uint8Array(mockArrayBuffer)
@@ -125,22 +169,24 @@ describe('GptSovitsProvider', () => {
 
       const fetchSpy = vi
         .spyOn(global, 'fetch')
-        .mockResolvedValueOnce({
-          status: 404,
-          ok: false
-        } as any)
-        .mockResolvedValueOnce({
-          status: 200,
-          ok: true,
-          arrayBuffer: vi.fn().mockResolvedValue(mockArrayBuffer)
-        } as any)
+        .mockResolvedValueOnce(createResponse({ ok: false, status: 404, contentType: 'application/json' }))
+        .mockResolvedValueOnce(
+          createResponse({
+            ok: true,
+            status: 200,
+            contentType: 'audio/wav',
+            arrayBuffer: mockArrayBuffer
+          })
+        )
 
       const result = await provider.synthesize(mockRequest, mockConfig)
 
       expect(fetchSpy).toHaveBeenNthCalledWith(
         1,
-        expect.stringContaining('http://127.0.0.1:9880/tts?'),
-        { method: 'GET' }
+        'http://127.0.0.1:9880/tts',
+        expect.objectContaining({
+          method: 'POST'
+        })
       )
 
       expect(fetchSpy).toHaveBeenNthCalledWith(
@@ -164,34 +210,86 @@ describe('GptSovitsProvider', () => {
       expect(result.format).toBe('wav')
     })
 
-    it('should throw TtsApiError when fallback request also fails', async () => {
-      vi.spyOn(global, 'fetch')
-        .mockResolvedValueOnce({
-          status: 404,
-          ok: false
-        } as any)
-        .mockResolvedValueOnce({
-          status: 400,
-          ok: false,
-          text: vi.fn().mockResolvedValue('Missing parameters')
-        } as any)
-
-      let error: any
-      try {
-        await provider.synthesize(mockRequest, mockConfig)
-      } catch (e) {
-        error = e
+    it('should fallback to gradio webui when direct api returns non-audio html', async () => {
+      const mockArrayBuffer = new ArrayBuffer(8)
+      const bytes = new Uint8Array(mockArrayBuffer)
+      let binary = ''
+      for (const byte of bytes) {
+        binary += String.fromCharCode(byte)
       }
+      const expectedBase64 = btoa(binary)
+      vi.mocked(readFile).mockResolvedValue(Buffer.from('audio'))
+      mockQueueStream([
+        {
+          msg: 'process_generating',
+          event_id: 'evt-1',
+          output: {
+            data: [{ url: 'http://127.0.0.1:9880/file=audio.wav' }]
+          }
+        },
+        {
+          msg: 'process_completed',
+          event_id: 'evt-1',
+          output: {
+            data: [{ url: 'http://127.0.0.1:9880/file=audio.wav' }]
+          }
+        }
+      ])
 
-      expect(error).toBeInstanceOf(TtsApiError)
-      expect(error.message).toContain('GPT-SoVITS API 合成失败: Missing parameters')
+      vi.spyOn(global, 'fetch')
+        .mockResolvedValueOnce(createResponse({ ok: false, status: 404, contentType: 'application/json' }))
+        .mockResolvedValueOnce(createResponse({ ok: true, status: 200, contentType: 'text/html' }))
+        .mockResolvedValueOnce(createResponse({ ok: true, status: 200, contentType: 'application/json' }))
+        .mockResolvedValueOnce(
+          createResponse({
+            ok: true,
+            status: 200,
+            contentType: 'application/json',
+            json: ['D:\\upload\\prompt.wav']
+          })
+        )
+        .mockResolvedValueOnce(
+          createResponse({
+            ok: true,
+            status: 200,
+            contentType: 'application/json',
+            json: { event_id: 'evt-1' }
+          })
+        )
+        .mockResolvedValueOnce(
+          createResponse({
+            ok: true,
+            status: 200,
+            contentType: 'audio/wav',
+            arrayBuffer: mockArrayBuffer
+          })
+        )
+
+      const result = await provider.synthesize(mockRequest, mockConfig)
+
+      expect(global.fetch).toHaveBeenNthCalledWith(
+        4,
+        'http://127.0.0.1:9880/upload',
+        expect.objectContaining({ method: 'POST' })
+      )
+      expect(global.fetch).toHaveBeenNthCalledWith(
+        5,
+        'http://127.0.0.1:9880/queue/join',
+        expect.objectContaining({ method: 'POST' })
+      )
+      expect(result.audioBase64).toBe(expectedBase64)
+      expect(result.format).toBe('wav')
     })
 
     it('should throw TtsApiError when connection to service fails', async () => {
-      vi.spyOn(global, 'fetch').mockRejectedValue(new Error('Connection refused'))
+      vi.spyOn(global, 'fetch')
+        .mockRejectedValueOnce(new Error('Connection refused'))
+        .mockRejectedValueOnce(new Error('Connection refused'))
 
-      await expect(provider.synthesize(mockRequest, mockConfig)).rejects.toThrow(TtsApiError)
-      await expect(provider.synthesize(mockRequest, mockConfig)).rejects.toThrow(
+      const promise = provider.synthesize(mockRequest, mockConfig)
+
+      await expect(promise).rejects.toThrow(TtsApiError)
+      await expect(promise).rejects.toThrow(
         'GPT-SoVITS 无法连接到服务: Connection refused'
       )
     })

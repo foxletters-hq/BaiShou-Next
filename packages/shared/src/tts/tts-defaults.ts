@@ -8,7 +8,7 @@ export const TTS_DEFAULT_BASE_URLS: Record<TtsProviderId, string> = {
   'openai-tts': 'https://api.openai.com/v1',
   'mimo-tts': 'https://api.xiaomimimo.com/v1',
   'clone-tts': 'http://127.0.0.1:8080',
-  'gpt-sovits': 'http://127.0.0.1:9880'
+  'gpt-sovits': 'http://127.0.0.1:9872'
 }
 
 export const TTS_DEFAULT_MODEL_IDS: Record<TtsProviderId, string> = {
