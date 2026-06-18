@@ -35,7 +35,7 @@ export default function TabLayout() {
 
   return (
     <Tabs
-      detachInactiveScreens={false}
+      detachInactiveScreens
       screenOptions={{
         ...fadeTabAnimation,
         tabBarActiveTintColor: colors.primary,

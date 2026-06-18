@@ -47,7 +47,8 @@ interface QueueItem {
 
 export function useSummaryData() {
   const { i18n } = useTranslation()
-  const { services, dbReady, vaultRevision, archiveRestoreEpoch, storageIndexing } = useBaishou()
+  const { services, dbReady, vaultRevision, archiveRestoreEpoch, storageIndexing, ecosystemResyncEpoch } =
+    useBaishou()
   const summaryManager = services?.summaryManager
   const diaryService = services?.diaryService
   const missingSummaryDetector = services?.missingSummaryDetector
@@ -101,11 +102,11 @@ export function useSummaryData() {
     }
   }, [
     dbReady,
-    storageIndexing,
     missingSummaryDetector,
     i18n.language,
     mapDetectedMissing,
-    archiveRestoreEpoch
+    archiveRestoreEpoch,
+    ecosystemResyncEpoch
   ])
 
   const fetchCoreData = useCallback(async () => {
@@ -161,12 +162,12 @@ export function useSummaryData() {
     }
   }, [
     dbReady,
-    storageIndexing,
     summaryManager,
     diaryService,
     bootstrapper,
     vaultRevision,
-    archiveRestoreEpoch
+    archiveRestoreEpoch,
+    ecosystemResyncEpoch
   ])
 
   const fetchData = useCallback(async () => {

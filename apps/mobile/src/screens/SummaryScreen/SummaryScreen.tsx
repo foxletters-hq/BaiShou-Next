@@ -27,7 +27,8 @@ export const SummaryScreen: React.FC = () => {
   const { width } = useWindowDimensions()
   const { colors, isDark } = useNativeTheme()
   const toast = useNativeToast()
-  const { services, dbReady, vaultRevision, archiveRestoreEpoch, storageIndexing } = useBaishou()
+  const { services, dbReady, vaultRevision, archiveRestoreEpoch, storageIndexing, ecosystemResyncEpoch } =
+    useBaishou()
   const [activeTab, setActiveTab] = useState<'panel' | 'gallery'>('panel')
   const slideOffset = useSharedValue(0)
 
@@ -64,10 +65,22 @@ export const SummaryScreen: React.FC = () => {
 
   const prevStatesRef = useRef<typeof generationStates>({})
   const prevTabRef = useRef(activeTab)
+  const activityIndexRef = useRef<Map<string, number> | null>(null)
+  const lastFocusRefreshRef = useRef(0)
   const isWide = width >= 860
+
+  const applyActivityYear = useCallback((year: number, byDate: Map<string, number>) => {
+    const filtered = Array.from(byDate.entries())
+      .filter(([date]) => date.startsWith(`${year}-`))
+      .map(([date, count]) => ({ date, count }))
+    setActivityData(filtered)
+  }, [])
 
   useFocusEffect(
     useCallback(() => {
+      const now = Date.now()
+      if (now - lastFocusRefreshRef.current < 4000) return
+      lastFocusRefreshRef.current = now
       void refreshData()
     }, [refreshData])
   )
@@ -102,48 +115,12 @@ export const SummaryScreen: React.FC = () => {
   useEffect(() => {
     if (!dbReady || storageIndexing || !services) return
 
-    const initActivityData = async () => {
+    let cancelled = false
+    void (async () => {
       try {
         const allDiaries = await services.diaryService.listAll({ limit: 10000 })
-        const dateCountMap = new Map<string, number>()
-        if (allDiaries?.length) {
-          allDiaries.forEach((d: { date: Date | string }) => {
-            const dateObj = d.date instanceof Date ? d.date : new Date(d.date)
-            if (!isNaN(dateObj.getTime())) {
-              const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`
-              dateCountMap.set(dateStr, (dateCountMap.get(dateStr) || 0) + 1)
-            }
-          })
-        }
-        const allData = Array.from(dateCountMap.entries()).map(([date, count]) => ({
-          date,
-          count
-        }))
-        const yearSet = new Set<number>()
-        allData.forEach((d) => {
-          const y = parseInt(d.date.substring(0, 4), 10)
-          if (!isNaN(y)) yearSet.add(y)
-        })
-        const years = Array.from(yearSet).sort((a, b) => a - b)
-        if (years.length === 0) years.push(new Date().getFullYear())
-        setAvailableYears(years)
-        if (!years.includes(selectedYear)) setSelectedYear(years[years.length - 1]!)
-        setActivityData(allData.filter((d) => d.date.startsWith(`${selectedYear}-`)))
-      } catch (e) {
-        console.warn('[SummaryPage] init activity data failed:', e)
-      }
-    }
+        if (cancelled) return
 
-    initActivityData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dbReady, storageIndexing, services, vaultRevision, archiveRestoreEpoch])
-
-  useEffect(() => {
-    if (!dbReady || storageIndexing || !services) return
-
-    const loadYearData = async () => {
-      try {
-        const allDiaries = await services.diaryService.listAll({ limit: 10000 })
         const dateCountMap = new Map<string, number>()
         allDiaries?.forEach((d: { date: Date | string }) => {
           const dateObj = d.date instanceof Date ? d.date : new Date(d.date)
@@ -152,17 +129,38 @@ export const SummaryScreen: React.FC = () => {
             dateCountMap.set(dateStr, (dateCountMap.get(dateStr) || 0) + 1)
           }
         })
-        const filtered = Array.from(dateCountMap.entries())
-          .filter(([date]) => date.startsWith(`${selectedYear}-`))
-          .map(([date, count]) => ({ date, count }))
-        setActivityData(filtered)
-      } catch (e) {
-        console.warn('[SummaryPage] fetch year failed:', e)
-      }
-    }
 
-    loadYearData()
-  }, [dbReady, storageIndexing, services, selectedYear, vaultRevision, archiveRestoreEpoch])
+        activityIndexRef.current = dateCountMap
+        const yearSet = new Set<number>()
+        for (const date of dateCountMap.keys()) {
+          const y = parseInt(date.substring(0, 4), 10)
+          if (!isNaN(y)) yearSet.add(y)
+        }
+        const years = Array.from(yearSet).sort((a, b) => a - b)
+        if (years.length === 0) years.push(new Date().getFullYear())
+
+        let resolvedYear = years[years.length - 1]!
+        setSelectedYear((prev) => {
+          resolvedYear = years.includes(prev) ? prev : years[years.length - 1]!
+          return resolvedYear
+        })
+        setAvailableYears(years)
+        applyActivityYear(resolvedYear, dateCountMap)
+      } catch (e) {
+        console.warn('[SummaryPage] init activity data failed:', e)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [applyActivityYear, dbReady, storageIndexing, services, vaultRevision, archiveRestoreEpoch, ecosystemResyncEpoch])
+
+  useEffect(() => {
+    const dateCountMap = activityIndexRef.current
+    if (!dateCountMap) return
+    applyActivityYear(selectedYear, dateCountMap)
+  }, [applyActivityYear, selectedYear])
 
   useEffect(() => {
     Object.keys(generationStates).forEach((uKey) => {

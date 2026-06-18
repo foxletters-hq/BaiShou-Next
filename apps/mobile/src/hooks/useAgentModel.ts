@@ -10,7 +10,6 @@ import {
 import { useBaishou } from '../providers/BaishouProvider'
 import { useAgentNavigationStore } from '@baishou/store'
 import { listAssistantsForUi, type MobileAssistantUi } from '../lib/mobile-assistant.util'
-import { invalidateAllAvatarDisplayCaches } from '../lib/assistant-avatar-display.util'
 import { waitForVaultEcosystemResync } from '../services/mobile-vault-resync.service'
 
 type Assistant = MobileAssistantUi
@@ -21,7 +20,8 @@ export interface UseAgentModelOptions {
 }
 
 export function useAgentModel(_options: UseAgentModelOptions = {}) {
-  const { services, dbReady, storageReady, vaultRevision } = useBaishou()
+  const { services, dbReady, storageReady, vaultRevision, storageIndexing, ecosystemResyncEpoch } =
+    useBaishou()
 
   const [currentAssistant, setCurrentAssistant] = useState<Assistant | null>(null)
   const [showAssistantPicker, setShowAssistantPicker] = useState(false)
@@ -89,16 +89,15 @@ export function useAgentModel(_options: UseAgentModelOptions = {}) {
 
     const loadDefaultConfig = async () => {
       try {
-        if (vaultRevision > 0) {
+        if (storageIndexing) {
           await waitForVaultEcosystemResync()
         }
 
-        invalidateAllAvatarDisplayCaches()
         const assistants = await listAssistantsForUi(
           services.assistantManager,
           services.attachmentManager,
           services.fileSystem,
-          { preferFileUri: true }
+          { preferFileUri: true, skipAvatarResolve: true }
         )
 
         const nextGlobalModels =
@@ -132,7 +131,15 @@ export function useAgentModel(_options: UseAgentModelOptions = {}) {
     }
 
     void loadDefaultConfig()
-  }, [dbReady, services, storageReady, vaultRevision, applyResolvedModel])
+  }, [
+    dbReady,
+    services,
+    storageReady,
+    vaultRevision,
+    storageIndexing,
+    ecosystemResyncEpoch,
+    applyResolvedModel
+  ])
 
   const handleSelectAssistant = useCallback(
     (assistant: Assistant) => {
