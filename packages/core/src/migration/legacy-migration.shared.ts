@@ -421,6 +421,52 @@ export async function mergeDirectories(
   return failed
 }
 
+/** 仅复制目标尚不存在的文件（不覆盖、不递归合并已存在文件内容） */
+export async function mergeDirectoriesSkipExisting(
+  fileSystem: IFileSystem,
+  src: string,
+  dest: string
+): Promise<string[]> {
+  const failed: string[] = []
+  if (!(await fileSystem.exists(src))) return failed
+
+  let isDirectory = false
+  try {
+    const stat = await fileSystem.stat(src)
+    isDirectory = stat.isDirectory
+  } catch {
+    return failed
+  }
+  if (!isDirectory) return failed
+
+  await fileSystem.mkdir(dest, { recursive: true })
+  const entries = await fileSystem.readdir(src)
+  for (const entry of entries) {
+    const srcPath = path.join(src, entry)
+    const destPath = path.join(dest, entry)
+    let entryIsDirectory = false
+    try {
+      const stat = await fileSystem.stat(srcPath)
+      entryIsDirectory = stat.isDirectory
+    } catch {
+      continue
+    }
+    if (entryIsDirectory) {
+      failed.push(...(await mergeDirectoriesSkipExisting(fileSystem, srcPath, destPath)))
+    } else {
+      if (await fileSystem.exists(destPath)) {
+        continue
+      }
+      try {
+        await fileSystem.copyFile(srcPath, destPath)
+      } catch {
+        failed.push(srcPath)
+      }
+    }
+  }
+  return failed
+}
+
 export async function cleanupLegacyVaultArtifacts(
   fileSystem: IFileSystem,
   vaultDir: string
