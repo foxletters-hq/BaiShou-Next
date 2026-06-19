@@ -3,6 +3,7 @@ import { join } from 'path'
 import { app } from 'electron'
 import { logger } from '@baishou/shared'
 import {
+  hasFlutterLegacyStorageMarkers,
   isMigrationCompleted,
   isLegacyAppRoot,
   targetDirectoryHasData
@@ -57,11 +58,13 @@ export async function resolveDesktopStorageBootstrap(
   const legacyCandidates = await resolveLegacyRootCandidates()
   const primaryLegacy = legacyCandidates[0] ?? null
   const fileSystem = createNodeFileSystem()
-  const installInstanceId = await getDesktopInstallInstanceId()
 
   if (needsOnboarding && primaryLegacy && !customStorageRoot) {
     customStorageRoot = primaryLegacy
   }
+
+  const isWorkspaceMigrationDone = async (root: string) =>
+    isMigrationCompleted(fileSystem, root)
 
   const persistStorageRoot = async (root: string) => {
     await fs.writeFile(
@@ -73,27 +76,19 @@ export async function resolveDesktopStorageBootstrap(
 
   try {
     if (customStorageRoot) {
-      const isLegacy = await isLegacyAppRoot(fileSystem, customStorageRoot)
-      const alreadyMigrated = await isMigrationCompleted(
-        fileSystem,
-        customStorageRoot,
-        installInstanceId
-      )
+      const isFlutterLegacy = await hasFlutterLegacyStorageMarkers(fileSystem, customStorageRoot)
+      const alreadyMigrated = await isWorkspaceMigrationDone(customStorageRoot)
 
-      if (isLegacy && !alreadyMigrated) {
+      if (isFlutterLegacy && !alreadyMigrated) {
         logger.info('[DesktopLegacyBootstrap] Migrating legacy installation at', customStorageRoot)
         await runLegacyMigration(customStorageRoot)
         await persistStorageRoot(customStorageRoot)
         return { storageRoot: customStorageRoot, needsOnboarding: false, migrated: true }
       }
 
-      if (!isLegacy && primaryLegacy) {
+      if (!isFlutterLegacy && primaryLegacy) {
         const currentHasData = await targetDirectoryHasData(fileSystem, customStorageRoot)
-        const legacyAlreadyMigrated = await isMigrationCompleted(
-          fileSystem,
-          primaryLegacy,
-          installInstanceId
-        )
+        const legacyAlreadyMigrated = await isWorkspaceMigrationDone(primaryLegacy)
         if (!currentHasData && !legacyAlreadyMigrated) {
           logger.info(
             '[DesktopLegacyBootstrap] Current storage is empty; adopting legacy data from',
@@ -106,7 +101,7 @@ export async function resolveDesktopStorageBootstrap(
         }
       }
 
-      if (isLegacy && needsOnboarding) {
+      if (isFlutterLegacy && needsOnboarding) {
         await persistStorageRoot(customStorageRoot)
         return { storageRoot: customStorageRoot, needsOnboarding: false, migrated: false }
       }
@@ -117,6 +112,15 @@ export async function resolveDesktopStorageBootstrap(
     }
   } catch (e) {
     logger.error('[DesktopLegacyBootstrap] Legacy migration failed:', e as Error)
+    if (primaryLegacy) {
+      const currentHasData = customStorageRoot
+        ? await targetDirectoryHasData(fileSystem, customStorageRoot).catch(() => false)
+        : false
+      if (!currentHasData) {
+        customStorageRoot = primaryLegacy
+        needsOnboarding = false
+      }
+    }
   }
 
   return {

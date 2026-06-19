@@ -145,4 +145,21 @@ describe.skipIf(!isBetterSqlite3Available())('legacy upgrade bootstrap safety', 
       )
     ).toBe(false)
   })
+
+  it('copies Journals when migrating across different workspace directories', async () => {
+    await migrateLegacyArchiveContents({
+      fileSystem,
+      sourceDir,
+      targetWorkspaceDir: targetDir,
+      sqliteClient: db,
+      executeRawSql,
+      importAvatar: async () => 'avatars/test.png'
+    })
+
+    expect(
+      await fileSystem.exists(
+        path.join(targetDir, 'Personal', 'Journals', '2024', '01', '2024-01-15.md')
+      )
+    ).toBe(true)
+  })
 })
