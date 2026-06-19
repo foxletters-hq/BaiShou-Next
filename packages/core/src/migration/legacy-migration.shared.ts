@@ -147,7 +147,7 @@ export async function isMigrationCompleted(
   return status.installInstanceId === installInstanceId
 }
 
-export async function isLegacyAppRoot(
+export async function hasFlutterLegacyStorageMarkers(
   fileSystem: IFileSystem,
   sourceDir: string
 ): Promise<boolean> {
@@ -168,6 +168,26 @@ export async function isLegacyAppRoot(
       if ((await fileSystem.exists(vaultAgentDb)) || (await fileSystem.exists(vaultRegistry))) {
         return true
       }
+    }
+  } catch {
+    // ignore unreadable roots
+  }
+
+  return false
+}
+
+export async function isLegacyAppRoot(
+  fileSystem: IFileSystem,
+  sourceDir: string
+): Promise<boolean> {
+  if (await hasFlutterLegacyStorageMarkers(fileSystem, sourceDir)) {
+    return true
+  }
+
+  try {
+    const entries = await fileSystem.readdir(sourceDir)
+    for (const name of entries) {
+      if (name.startsWith('.') || name === LEGACY_MIGRATION_STATUS_FILE) continue
       if (await vaultHasJournalMarkdownFiles(fileSystem, sourceDir, name)) {
         return true
       }
@@ -444,6 +464,10 @@ export async function countMigrationTreeFiles(
   return count
 }
 
+function isSamePath(a: string, b: string): boolean {
+  return path.resolve(a) === path.resolve(b)
+}
+
 export async function mergeDirectories(
   fileSystem: IFileSystem,
   src: string,
@@ -455,6 +479,7 @@ export async function mergeDirectories(
 ): Promise<string[]> {
   const failed: string[] = []
   const skipEntries = options?.skipEntryNames ? new Set(options.skipEntryNames) : null
+  if (isSamePath(src, dest)) return failed
   if (!(await fileSystem.exists(src))) return failed
 
   let isDirectory = false
@@ -482,6 +507,7 @@ export async function mergeDirectories(
     if (entryIsDirectory) {
       failed.push(...(await mergeDirectories(fileSystem, srcPath, destPath, options)))
     } else {
+      if (isSamePath(srcPath, destPath)) continue
       options?.onEntry?.(srcPath)
       try {
         await fileSystem.copyFile(srcPath, destPath)
@@ -500,6 +526,7 @@ export async function mergeDirectoriesSkipExisting(
   dest: string
 ): Promise<string[]> {
   const failed: string[] = []
+  if (isSamePath(src, dest)) return failed
   if (!(await fileSystem.exists(src))) return failed
 
   let isDirectory = false
@@ -526,7 +553,7 @@ export async function mergeDirectoriesSkipExisting(
     if (entryIsDirectory) {
       failed.push(...(await mergeDirectoriesSkipExisting(fileSystem, srcPath, destPath)))
     } else {
-      if (await fileSystem.exists(destPath)) {
+      if (isSamePath(srcPath, destPath) || (await fileSystem.exists(destPath))) {
         continue
       }
       try {

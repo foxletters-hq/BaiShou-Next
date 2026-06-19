@@ -240,6 +240,25 @@ describe('ShadowIndexSyncService', () => {
     expect(mockRepo._getRecordCount()).toBe(3)
   })
 
+  it('fullScanVault 应索引 Flutter 旧版扁平布局的日记文件', async () => {
+    const md = `---\ndate: 2024-06-01\n---\n\n旧版扁平日记`
+    await fsp.writeFile(path.join(journalsDir, '2024-06-01.md'), md, 'utf8')
+
+    await service.fullScanVault(true)
+
+    expect(mockRepo._getRecordCount()).toBe(1)
+  })
+
+  it('syncJournal 应读取 Journals 根目录下的扁平日记文件', async () => {
+    const md = `---\ndate: 2024-06-02\n---\n\n扁平单条同步`
+    await fsp.writeFile(path.join(journalsDir, '2024-06-02.md'), md, 'utf8')
+
+    const result = await service.syncJournal('2024-06-02')
+
+    expect(result.isChanged).toBe(true)
+    expect(result.meta?.preview).toContain('扁平单条同步')
+  })
+
   // ── 7. 全量扫描的孤立清理 ──
   it('fullScanVault 应清理数据库中的孤立记录', async () => {
     // 先建两条索引

@@ -6,6 +6,7 @@ import { createNodeFileSystem } from '../../fs/create-node-file-system'
 import {
   dedupeSqlitePaths,
   discoverVaultNames,
+  hasFlutterLegacyStorageMarkers,
   isLegacyAppRoot,
   isMigrationCompleted,
   migrationStatusPath,
@@ -33,11 +34,13 @@ describe('legacy-migration.shared', () => {
     await fs.mkdir(path.join(legacyRoot, '.baishou'), { recursive: true })
     await fs.writeFile(path.join(legacyRoot, '.baishou', 'vault_registry.json'), '[]')
     expect(await isLegacyAppRoot(fileSystem, legacyRoot)).toBe(true)
+    expect(await hasFlutterLegacyStorageMarkers(fileSystem, legacyRoot)).toBe(true)
 
     const legacyRootB = path.join(tempDir, 'legacy-b')
     await fs.mkdir(path.join(legacyRootB, 'Personal', 'Journals'), { recursive: true })
     await fs.writeFile(path.join(legacyRootB, 'Personal', 'Journals', '2024-01-01.md'), '# hi')
     expect(await isLegacyAppRoot(fileSystem, legacyRootB)).toBe(true)
+    expect(await hasFlutterLegacyStorageMarkers(fileSystem, legacyRootB)).toBe(false)
 
     const emptyJournals = path.join(tempDir, 'legacy-empty')
     await fs.mkdir(path.join(emptyJournals, 'Personal', 'Journals'), { recursive: true })
