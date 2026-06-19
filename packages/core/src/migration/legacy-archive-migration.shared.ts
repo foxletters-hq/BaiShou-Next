@@ -119,8 +119,9 @@ export async function migrateLegacyArchiveContents(
     } catch {
       continue
     }
+    const inPlaceMigration = path.resolve(vSource) === path.resolve(vTarget)
     const failed = await mergeDirectories(fileSystem, vSource, vTarget, {
-      skipEntryNames: ['Journals'],
+      skipEntryNames: inPlaceMigration ? ['Journals'] : undefined,
       onEntry: onCopyProgress
     })
     if (failed.length > 0) {

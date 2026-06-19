@@ -113,7 +113,11 @@ export class DiaryWatcherService {
           )
           try {
             const shadowSync = getShadowSync()
-            const results = await shadowSync.syncJournalsBatch(dateStrs)
+            const pathsByDate = new Map<string, string>()
+            for (let i = 0; i < dateStrs.length; i++) {
+              pathsByDate.set(dateStrs[i]!, validPaths[i]!)
+            }
+            const results = await shadowSync.syncJournalsBatch(dateStrs, false, { pathsByDate })
             logger.info(
               `[DiaryWatcher] ✅ syncJournalsBatch 返回 ${results.length} 条结果`,
               JSON.stringify(results.map((r) => ({ isChanged: r.isChanged, hasMeta: !!r.meta })))

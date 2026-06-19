@@ -3,6 +3,40 @@ import * as path from '../fs/path.util'
 
 const JOURNAL_DATE_FILE = /^(\d{4}-\d{2}-\d{2})\.md$/i
 
+/** 标准日记路径：Journals/YYYY/MM/YYYY-MM-DD.md */
+export function buildCanonicalJournalFilePath(journalsBase: string, dateStr: string): string {
+  const year = dateStr.substring(0, 4)
+  const month = dateStr.substring(5, 7)
+  return path.join(journalsBase, year, month, `${dateStr}.md`)
+}
+
+/**
+ * 解析某日日记的实际磁盘路径。
+ * 优先使用调用方提供的 hint，其次标准嵌套布局，最后兼容 Flutter 旧版的扁平布局。
+ */
+export async function resolveJournalFilePath(
+  fileSystem: IFileSystem,
+  journalsBase: string,
+  dateStr: string,
+  hintPath?: string
+): Promise<string | null> {
+  if (hintPath && (await fileSystem.exists(hintPath))) {
+    return hintPath
+  }
+
+  const canonical = buildCanonicalJournalFilePath(journalsBase, dateStr)
+  if (await fileSystem.exists(canonical)) {
+    return canonical
+  }
+
+  const flat = path.join(journalsBase, `${dateStr}.md`)
+  if (await fileSystem.exists(flat)) {
+    return flat
+  }
+
+  return null
+}
+
 async function walkJournalsDir(
   fileSystem: IFileSystem,
   dir: string,

@@ -17,6 +17,10 @@ import {
   ParsedJournal
 } from './shadow-index-sync.types'
 import { parseJournalMarkdown } from './shadow-index-sync.utils'
+import {
+  buildCanonicalJournalFilePath,
+  resolveJournalFilePath
+} from '../journal/journal-files.util'
 
 export type { IEmbeddingCallback }
 
@@ -129,7 +133,11 @@ export class ShadowIndexSyncService {
    * 批量触发日记的并行同步 (内存并行 Hash计算/文件读取 + DB 批量事务)
    * 专治极端压测或拖拽多文件并发引起的 SQLite 拥堵与损坏
    */
-  async syncJournalsBatch(dateStrs: string[], skipRag = false): Promise<JournalSyncResult[]> {
+  async syncJournalsBatch(
+    dateStrs: string[],
+    skipRag = false,
+    options?: { pathsByDate?: ReadonlyMap<string, string> }
+  ): Promise<JournalSyncResult[]> {
     if (this._isSyncDisabled || dateStrs.length === 0) {
       return dateStrs.map(() => ({ meta: null, isChanged: false }))
     }
@@ -148,13 +156,16 @@ export class ShadowIndexSyncService {
 
       await Promise.all(
         chunk.map(async (dateStr) => {
-          const filePath = this._getJournalFilePath(journalBase, dateStr)
+          const filePath = await resolveJournalFilePath(
+            this.fileSystem,
+            journalBase,
+            dateStr,
+            options?.pathsByDate?.get(dateStr)
+          )
           const dateKey = dateStr
 
           // ── 1. 孤立检测 ──
-          const fileExists = await this.fileSystem.exists(filePath)
-
-          if (!fileExists) {
+          if (!filePath) {
             const existingRows = await this.shadowRepo.findByDatePrefix(dateStr)
             if (existingRows.length > 0) {
               for (const row of existingRows) {
@@ -162,7 +173,7 @@ export class ShadowIndexSyncService {
               }
               results.push({ meta: null, isChanged: true })
               events.push({
-                filePath: path.relative(path.dirname(journalBase), filePath),
+                filePath: buildCanonicalJournalFilePath(journalBase, dateStr),
                 result: { meta: null, isChanged: true }
               })
             } else {
@@ -299,7 +310,7 @@ export class ShadowIndexSyncService {
 
       // 1. 收集所有符合 yyyy-MM-dd.md 格式的物理文件日期
       const dateFileRegex = /^(\d{4}-\d{2}-\d{2})\.md$/
-      const targetDates: string[] = []
+      const pathsByDate = new Map<string, string>()
 
       const journalsDirExists = await this.fileSystem.exists(journalsDir)
 
@@ -307,20 +318,25 @@ export class ShadowIndexSyncService {
         await this._walkDir(journalsDir, (filePath) => {
           const fileName = path.basename(filePath)
           const match = dateFileRegex.exec(fileName)
-          if (match && match[1]) {
-            targetDates.push(match[1])
+          if (!match?.[1]) return
+
+          const dateStr = match[1]
+          const canonicalPath = buildCanonicalJournalFilePath(journalsDir, dateStr)
+          const existing = pathsByDate.get(dateStr)
+          if (!existing || path.resolve(filePath) === path.resolve(canonicalPath)) {
+            pathsByDate.set(dateStr, filePath)
           }
         })
       }
 
       // 2. 将整个文件池放进内存并发分块事务系统中处理
-      const uniqueDates = [...new Set(targetDates)]
+      const uniqueDates = [...pathsByDate.keys()]
       if (uniqueDates.length > 0) {
         logger.info(`[ShadowSync] 全量扫描提取到 ${uniqueDates.length} 份文件，进入并行流水线...`)
         const CHUNK_SIZE = 100
         for (let i = 0; i < uniqueDates.length; i += CHUNK_SIZE) {
           const chunk = uniqueDates.slice(i, i + CHUNK_SIZE)
-          await this.syncJournalsBatch(chunk, skipRag)
+          await this.syncJournalsBatch(chunk, skipRag, { pathsByDate })
           this._emitScanProgress({
             indexed: Math.min(i + chunk.length, uniqueDates.length),
             total: uniqueDates.length
@@ -361,15 +377,6 @@ export class ShadowIndexSyncService {
   }
 
   // ── 内部方法 ────────────────────────────
-
-  /**
-   * 获取特定日期的日记文件物理路径
-   * 遵循 yyyy/MM/yyyy-MM-dd.md 存储规约
-   */
-  private _getJournalFilePath(journalBase: string, dateStr: string): string {
-    const [year, month] = dateStr.split('-')
-    return path.join(journalBase, year!, month!, `${dateStr}.md`)
-  }
 
   /**
    * 格式化日期为 YYYY-MM-DD 字符串（本地时区）

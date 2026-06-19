@@ -24,7 +24,7 @@ import {
   resolveLegacyIdentityPersonas,
   sumDirectorySizeBytes
 } from '../legacy-selective-migration.shared'
-import { mergeDirectoriesSkipExisting } from '../legacy-migration.shared'
+import { mergeDirectories, mergeDirectoriesSkipExisting } from '../legacy-migration.shared'
 
 describe('legacy-selective-migration.shared', () => {
   let tempDir: string
@@ -113,6 +113,18 @@ describe('legacy-selective-migration.shared', () => {
     const failed = await mergeDirectoriesSkipExisting(fileSystem, src, dest)
     expect(failed).toEqual([])
     expect(await fs.readFile(path.join(dest, 'a.txt'), 'utf8')).toBe('keep-dest')
+  })
+
+  it('mergeDirectories treats identical src and dest as no-op', async () => {
+    const vaultDir = path.join(tempDir, 'vault')
+    await fs.mkdir(path.join(vaultDir, '.baishou'), { recursive: true })
+    await fs.writeFile(path.join(vaultDir, '.baishou', 'agent.sqlite'), 'legacy-db')
+
+    const failed = await mergeDirectories(fileSystem, vaultDir, vaultDir)
+    expect(failed).toEqual([])
+    expect(await fs.readFile(path.join(vaultDir, '.baishou', 'agent.sqlite'), 'utf8')).toBe(
+      'legacy-db'
+    )
   })
 
   it('isValidDateKey rejects invalid calendar dates', () => {
