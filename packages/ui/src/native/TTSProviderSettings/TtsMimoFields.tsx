@@ -23,7 +23,8 @@ function getRefAudioDisplayName(path: string): string {
 interface TtsMimoFieldsProps {
   config: TtsProviderConfig
   onUpdate: (patch: Partial<TtsProviderConfig>) => void
-  onPickRefAudio?: () => Promise<string | null>
+  onPickRefAudio?: () => Promise<import('@baishou/shared').TtsRefAudioPickValue | null>
+  onPlayRefAudio?: (audioBase64: string, format: string) => Promise<void>
   compact?: boolean
 }
 
@@ -31,6 +32,7 @@ export const TtsMimoFields: React.FC<TtsMimoFieldsProps> = ({
   config,
   onUpdate,
   onPickRefAudio,
+  onPlayRefAudio,
   compact = false
 }) => {
   const { t } = useTranslation()
@@ -55,10 +57,7 @@ export const TtsMimoFields: React.FC<TtsMimoFieldsProps> = ({
 
   const handlePickRefAudio = async () => {
     if (!onPickRefAudio) return
-    const picked = await onPickRefAudio()
-    if (picked) {
-      onUpdate({ refAudioPath: normalizeRefAudioPath(picked) })
-    }
+    await onPickRefAudio()
   }
 
   const stylePromptField = (
@@ -81,6 +80,8 @@ export const TtsMimoFields: React.FC<TtsMimoFieldsProps> = ({
   if (isMimoVoiceCloneModel(modelId)) {
     const refAudioPath = config.refAudioPath?.trim() ?? ''
     const refAudioName = refAudioPath ? getRefAudioDisplayName(refAudioPath) : ''
+    const refAudioBase64 = config.refAudioBase64?.trim() ?? ''
+    const refPlaybackFormat = refAudioPath.toLowerCase().endsWith('.wav') ? 'wav' : 'mp3'
 
     return (
       <>
@@ -102,6 +103,20 @@ export const TtsMimoFields: React.FC<TtsMimoFieldsProps> = ({
                   </Text>
                 </View>
               </Button>
+              {refAudioBase64 && onPlayRefAudio ? (
+                <Button
+                  variant="outline"
+                  style={{ marginTop: 8 }}
+                  onPress={() => void onPlayRefAudio(refAudioBase64, refPlaybackFormat)}
+                >
+                  <View style={styles.refAudioPickButtonContent}>
+                    <MaterialIcons name="volume-up" size={18} color={colors.textSecondary} />
+                    <Text style={[styles.refAudioPickButtonText, { color: colors.textPrimary }]}>
+                      {t('tts.settings.preview_ref_audio_button', '试听参考音频')}
+                    </Text>
+                  </View>
+                </Button>
+              ) : null}
               {refAudioName ? (
                 <Text
                   style={[styles.selectedRefAudioName, { color: colors.textSecondary }]}

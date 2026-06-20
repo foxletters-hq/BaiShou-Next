@@ -7,7 +7,8 @@ import {
   isMimoPresetModel,
   isMimoVoiceCloneModel,
   isMimoVoiceDesignModel,
-  normalizeRefAudioPath
+  normalizeRefAudioPath,
+  parseRefAudioPick
 } from '@baishou/shared'
 import { FolderOpen } from 'lucide-react'
 
@@ -30,20 +31,16 @@ export function TTSProviderSettingsFormVoiceFields({ vm }: { vm: TTSProviderSett
     providerType === 'mimo-tts' && isMimoVoiceDesignModel(mimoModelId)
   const showMimoStylePrompt =
     providerType === 'mimo-tts' &&
-    (isMimoPresetModel(mimoModelId) ||
-      isMimoVoiceCloneModel(mimoModelId) ||
-      !mimoModelId.trim())
+    (isMimoPresetModel(mimoModelId) || isMimoVoiceCloneModel(mimoModelId) || !mimoModelId.trim())
   const showPresetVoice =
-    providerType !== 'mimo-tts' ||
-    !mimoModelId.trim() ||
-    isMimoPresetModel(mimoModelId)
+    providerType !== 'mimo-tts' || !mimoModelId.trim() || isMimoPresetModel(mimoModelId)
 
   const handlePickRefAudio = async () => {
     if (!onPickRefAudio) return
     const picked = await onPickRefAudio()
-    if (picked) {
-      updateCurrentConfig({ refAudioPath: normalizeRefAudioPath(picked) })
-    }
+    const parsed = parseRefAudioPick(picked)
+    if (!parsed || providerType === 'mimo-tts') return
+    updateCurrentConfig({ refAudioPath: parsed.path })
   }
 
   const renderRefAudioField = (label: string, placeholder: string, hint?: string) => (
@@ -122,10 +119,7 @@ export function TTSProviderSettingsFormVoiceFields({ vm }: { vm: TTSProviderSett
             onChange={(e) => updateCurrentConfig({ promptText: e.target.value })}
           />
           <span className={styles.hint}>
-            {t(
-              'tts.settings.mimo_voice_design_hint',
-              '描述越具体，生成的定制音色越贴近预期'
-            )}
+            {t('tts.settings.mimo_voice_design_hint', '描述越具体，生成的定制音色越贴近预期')}
           </span>
         </div>
       )}

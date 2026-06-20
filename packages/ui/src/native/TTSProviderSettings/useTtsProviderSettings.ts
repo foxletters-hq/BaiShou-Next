@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MIMO_TTS_DEFAULT_MODELS, validateMimoTtsSettings } from '@baishou/shared'
+import {
+  MIMO_TTS_DEFAULT_MODELS,
+  MIMO_TTS_VOICECLONE_MODEL_ID,
+  isMimoVoiceCloneModel,
+  normalizeRefAudioPath,
+  parseRefAudioPick,
+  validateMimoTtsSettings
+} from '@baishou/shared'
 import { useNativeToast } from '../Toast'
 import type {
   ProviderLocalState,
@@ -31,9 +38,11 @@ function buildTtsConfig(
     responseFormat,
     availableModels,
     refAudioPath,
+    refAudioBase64,
     promptText,
     promptLang,
-    textLang
+    textLang,
+    stream
   } = state
   return {
     id: providerType,
@@ -42,19 +51,23 @@ function buildTtsConfig(
     apiKey: apiKey.trim(),
     modelId,
     voice:
-      voice.trim() ||
-      (providerType === 'mimo-tts'
-        ? defaultMimoVoice
-        : providerType === 'clone-tts' || providerType === 'gpt-sovits'
-          ? 'default'
-          : 'alloy'),
+      providerType === 'mimo-tts' && isMimoVoiceCloneModel(modelId)
+        ? ''
+        : voice.trim() ||
+          (providerType === 'mimo-tts'
+            ? defaultMimoVoice
+            : providerType === 'clone-tts' || providerType === 'gpt-sovits'
+              ? 'default'
+              : 'alloy'),
     speed,
     responseFormat,
     availableModels,
     refAudioPath,
+    refAudioBase64,
     promptText,
     promptLang,
-    textLang
+    textLang,
+    stream
   }
 }
 
@@ -66,7 +79,8 @@ export function useTtsProviderSettings({
   onSaveConfig,
   onTestTts,
   onFetchModels,
-  onPlayTestAudio
+  onPlayTestAudio,
+  onPickRefAudio
 }: Pick<
   TTSProviderSettingsProps,
   | 'initialConfig'
@@ -77,6 +91,7 @@ export function useTtsProviderSettings({
   | 'onTestTts'
   | 'onFetchModels'
   | 'onPlayTestAudio'
+  | 'onPickRefAudio'
 >) {
   const { t } = useTranslation()
   const toast = useNativeToast()
@@ -297,7 +312,9 @@ export function useTtsProviderSettings({
       const updates =
         providerType === 'clone-tts' || providerType === 'gpt-sovits'
           ? { modelId, voice: modelId }
-          : { modelId }
+          : providerType === 'mimo-tts' && isMimoVoiceCloneModel(modelId)
+            ? { modelId, voice: '', promptText: '' }
+            : { modelId }
       const nextState = { ...configs[providerType], ...updates }
       skipAutoSaveRef.current = true
       updateCurrentConfig(updates)
@@ -340,6 +357,7 @@ export function useTtsProviderSettings({
     state?.baseUrl,
     state?.apiKey,
     state?.refAudioPath,
+    state?.refAudioBase64,
     state?.promptText,
     state?.promptLang,
     state?.textLang
@@ -355,6 +373,7 @@ export function useTtsProviderSettings({
     const state = configs[providerType]
     const mimoValidationError = validateMimoTtsSettings(state.modelId || '', {
       refAudioPath: state.refAudioPath,
+      refAudioBase64: state.refAudioBase64,
       promptText: state.promptText
     })
     if (mimoValidationError) {
@@ -401,6 +420,36 @@ export function useTtsProviderSettings({
         ? defaultMimoVoice
         : 'alloy'
 
+  const handlePickMimoRefAudio = useCallback(async () => {
+    if (!onPickRefAudio) return null
+    const picked = await onPickRefAudio()
+    const parsed = parseRefAudioPick(picked)
+    if (!parsed) return null
+
+    const state = configs[providerType]
+    const updates: Partial<ProviderLocalState> = {
+      refAudioPath: parsed.path,
+      refAudioBase64: parsed.base64,
+      modelId: MIMO_TTS_VOICECLONE_MODEL_ID,
+      voice: '',
+      promptText: ''
+    }
+    const nextState = { ...state, ...updates }
+    skipAutoSaveRef.current = true
+    updateCurrentConfig(updates)
+    if (onSaveConfig) {
+      await persistCurrentConfig(nextState, { silent: true })
+    }
+    return parsed.path
+  }, [
+    onPickRefAudio,
+    configs,
+    providerType,
+    updateCurrentConfig,
+    onSaveConfig,
+    persistCurrentConfig
+  ])
+
   return {
     config,
     providerType,
@@ -422,6 +471,7 @@ export function useTtsProviderSettings({
     handleTest,
     handleFetchModels,
     handleSelectModel,
+    handlePickMimoRefAudio,
     getModelOptions,
     isModelDropdownOpen,
     setIsModelDropdownOpen,

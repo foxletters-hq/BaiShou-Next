@@ -1,7 +1,7 @@
 import { useCallback, type MutableRefObject } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import type { TFunction } from 'i18next'
-import { validateMimoTtsSettings } from '@baishou/shared'
+import { isMimoVoiceCloneModel, validateMimoTtsSettings } from '@baishou/shared'
 import type {
   TtsProviderConfig,
   ProviderLocalState,
@@ -48,9 +48,11 @@ export function buildTtsConfig(
     responseFormat,
     availableModels,
     refAudioPath,
+    refAudioBase64,
     promptText,
     promptLang,
-    textLang
+    textLang,
+    stream
   } = state
   return {
     id: providerType,
@@ -59,19 +61,23 @@ export function buildTtsConfig(
     apiKey: apiKey.trim(),
     modelId,
     voice:
-      voice.trim() ||
-      (providerType === 'mimo-tts'
-        ? defaultMimoVoice
-        : providerType === 'clone-tts' || providerType === 'gpt-sovits'
-          ? 'default'
-          : 'alloy'),
+      providerType === 'mimo-tts' && isMimoVoiceCloneModel(modelId)
+        ? ''
+        : voice.trim() ||
+          (providerType === 'mimo-tts'
+            ? defaultMimoVoice
+            : providerType === 'clone-tts' || providerType === 'gpt-sovits'
+              ? 'default'
+              : 'alloy'),
     speed,
     responseFormat,
     availableModels,
     refAudioPath,
+    refAudioBase64,
     promptText,
     promptLang,
-    textLang
+    textLang,
+    stream
   }
 }
 
@@ -186,6 +192,7 @@ export function useTTSProviderSettingsHandlers(deps: HandlerDeps) {
     const state = configs[providerType]
     const mimoValidationError = validateMimoTtsSettings(state.modelId || '', {
       refAudioPath: state.refAudioPath,
+      refAudioBase64: state.refAudioBase64,
       promptText: state.promptText
     })
     if (mimoValidationError) {

@@ -31,9 +31,12 @@ function mergeInitialConfigEntry(
         ? extra.availableModels
         : configs[id].availableModels,
     refAudioPath: extra.refAudioPath !== undefined ? extra.refAudioPath : configs[id].refAudioPath,
+    refAudioBase64:
+      extra.refAudioBase64 !== undefined ? extra.refAudioBase64 : configs[id].refAudioBase64,
     promptText: extra.promptText !== undefined ? extra.promptText : configs[id].promptText,
     promptLang: extra.promptLang !== undefined ? extra.promptLang : configs[id].promptLang,
-    textLang: extra.textLang !== undefined ? extra.textLang : configs[id].textLang
+    textLang: extra.textLang !== undefined ? extra.textLang : configs[id].textLang,
+    stream: extra.stream !== undefined ? extra.stream : configs[id].stream
   }
 }
 
