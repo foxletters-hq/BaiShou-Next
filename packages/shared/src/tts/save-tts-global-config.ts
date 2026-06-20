@@ -12,9 +12,11 @@ export interface TtsSavePayload {
   responseFormat: string
   availableModels?: string[]
   refAudioPath?: string
+  refAudioBase64?: string
   promptText?: string
   promptLang?: string
   textLang?: string
+  stream?: boolean
 }
 
 export function applyTtsSaveToGlobalModels(
@@ -31,9 +33,11 @@ export function applyTtsSaveToGlobalModels(
     responseFormat: config.responseFormat,
     availableModels: config.availableModels ?? [],
     refAudioPath: config.refAudioPath,
+    refAudioBase64: config.refAudioPath?.trim() ? undefined : config.refAudioBase64,
     promptText: config.promptText,
     promptLang: config.promptLang,
-    textLang: config.textLang
+    textLang: config.textLang,
+    stream: config.stream
   }
 
   const globalTtsSettings: TtsSettings = {
@@ -41,9 +45,11 @@ export function applyTtsSaveToGlobalModels(
     speed: config.speed,
     responseFormat: config.responseFormat,
     refAudioPath: config.refAudioPath,
+    refAudioBase64: config.refAudioPath?.trim() ? undefined : config.refAudioBase64,
     promptText: config.promptText,
     promptLang: config.promptLang,
-    textLang: config.textLang
+    textLang: config.textLang,
+    stream: config.stream
   }
 
   return {

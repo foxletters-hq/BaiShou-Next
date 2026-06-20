@@ -27,9 +27,7 @@ describe('splitTtsTextIntoChunks', () => {
   })
 
   it('does not split decimals at period', () => {
-    expect(splitTtsTextIntoChunks('Version 3.14 is stable.')).toEqual([
-      'Version 3.14 is stable.'
-    ])
+    expect(splitTtsTextIntoChunks('Version 3.14 is stable.')).toEqual(['Version 3.14 is stable.'])
   })
 })
 

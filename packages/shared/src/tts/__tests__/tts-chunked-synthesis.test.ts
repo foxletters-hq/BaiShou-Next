@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import {
+  prepareTtsSpeechChunksForInput,
   synthesizeAllTtsSpeechSegments,
   synthesizeTtsSpeechContent
 } from '../tts-chunked-synthesis'
@@ -103,5 +104,23 @@ describe('synthesizeTtsSpeechContent', () => {
       expect.objectContaining({ text: '结束。' }),
       expect.any(Object)
     )
+  })
+
+  it('uses a single chunk for mimo voiceclone to avoid timbre drift', () => {
+    const mimoCloneModels = {
+      ...globalModels,
+      globalTtsProviderId: 'mimo-tts',
+      globalTtsModelId: 'mimo-v2.5-tts-voiceclone',
+      globalTtsSettings: {
+        voice: '',
+        speed: 1,
+        responseFormat: 'wav',
+        refAudioPath: '/storage/ref.wav',
+        refAudioBase64: 'ZmFrZQ=='
+      }
+    } satisfies GlobalModelsConfig
+
+    const chunks = prepareTtsSpeechChunksForInput('第一句。第二句！第三句？', mimoCloneModels)
+    expect(chunks).toEqual(['第一句。第二句！第三句？'])
   })
 })
