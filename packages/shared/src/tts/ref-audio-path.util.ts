@@ -32,3 +32,12 @@ export function assertMimoVoiceCloneAudioPath(path: string): void {
     )
   }
 }
+
+export function resolveRefAudioMimeType(pathOrName: string): string {
+  const lower = normalizeRefAudioPath(pathOrName).toLowerCase()
+  if (lower.endsWith('.wav')) {
+    return 'audio/wav'
+  }
+  // 官方文档示例使用 audio/mpeg；亦支持 audio/mp3
+  return 'audio/mpeg'
+}
