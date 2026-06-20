@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import type { GlobalModelsConfig } from '@baishou/shared'
-import { clearGlobalTtsSynthesisCache } from '@baishou/shared'
+import { clearGlobalTtsSynthesisCache, clearMimoRefAudioHydrationCache } from '@baishou/shared'
 import type { SettingsManagerService } from '@baishou/core-mobile'
 
 const TTS_PLAYBACK_CACHE_KEY = 'baishou_tts_playback_cache'
@@ -18,11 +18,13 @@ function sleep(ms: number): Promise<void> {
 export function setTtsPlaybackSettingsCache(settings: TtsPlaybackSettings): void {
   memoryCache = settings
   clearGlobalTtsSynthesisCache()
+  clearMimoRefAudioHydrationCache()
   void AsyncStorage.setItem(TTS_PLAYBACK_CACHE_KEY, JSON.stringify(settings)).catch(() => {})
 }
 
 export function clearTtsPlaybackSettingsCache(): void {
   memoryCache = null
+  clearMimoRefAudioHydrationCache()
 }
 
 async function readFromDiskCache(): Promise<TtsPlaybackSettings | null> {
@@ -42,7 +44,11 @@ export async function getTtsPlaybackSettings(
   settingsManager: SettingsManagerService,
   options?: { forceRefresh?: boolean }
 ): Promise<TtsPlaybackSettings> {
-  if (memoryCache && !options?.forceRefresh) return memoryCache
+  if (options?.forceRefresh) {
+    memoryCache = null
+  } else if (memoryCache) {
+    return memoryCache
+  }
 
   const maxAttempts = 5
   for (let attempt = 0; attempt < maxAttempts; attempt++) {

@@ -93,7 +93,9 @@ export async function synthesizeAllTtsSpeechFromSavedSettings(
   }
 ): Promise<TtsSpeechSegmentsResult> {
   const { providerId, modelId, ...speechOptions } = options ?? {}
-  const { globalModels } = await getTtsPlaybackSettings(settingsManager)
+  const { globalModels } = await getTtsPlaybackSettings(settingsManager, {
+    forceRefresh: true
+  })
   return synthesizeAllTtsSpeechSegments(
     registry,
     {
@@ -120,9 +122,11 @@ export async function synthesizeTtsFromForm(
     speed: config.speed,
     responseFormat: config.responseFormat,
     refAudioPath: config.refAudioPath,
+    refAudioBase64: config.refAudioBase64,
     promptText: config.promptText,
     promptLang: config.promptLang,
-    textLang: config.textLang
+    textLang: config.textLang,
+    stream: config.stream
   }
   return toTestResult(await synthesizeTtsFromFormConfig(registry, formConfig, text))
 }
