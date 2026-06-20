@@ -99,6 +99,7 @@ vi.mock('../../ipc/agent-helpers', () => ({
     assistantManager: { create: mockAssistantCreate },
     sessionManager: {
       create: mockSessionCreate,
+      upsertSession: mockSessionCreate,
       insertMessageWithParts: mockInsertMessageWithParts
     },
     realSessionRepo: { togglePin: vi.fn().mockResolvedValue(undefined) }
@@ -193,7 +194,9 @@ describe('LegacySelectiveMigrationService', () => {
       await writeSourceSharedPreferences(sourceDir, {
         备份身份: { name: 'FromBackup' }
       })
-      const identity = (await service.scan(sourceDir)).sections.find((s) => s.id === 'identityCards')
+      const identity = (await service.scan(sourceDir)).sections.find(
+        (s) => s.id === 'identityCards'
+      )
       expect(identity?.detected).toBe(true)
       expect(identity?.count).toBe(1)
     })

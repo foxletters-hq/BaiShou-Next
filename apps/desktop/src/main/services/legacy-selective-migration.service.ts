@@ -2,14 +2,8 @@ import { randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import Database from 'better-sqlite3'
-import {
-  SettingsRepository,
-  UserProfileRepository
-} from '@baishou/database-desktop'
-import {
-  createNodeFileSystem,
-  LegacyImportService
-} from '@baishou/core-desktop'
+import { SettingsRepository, UserProfileRepository } from '@baishou/database-desktop'
+import { createNodeFileSystem, LegacyImportService } from '@baishou/core-desktop'
 import {
   appendTwoRandomDigits,
   buildLegacyDiaryImportItems,
@@ -44,10 +38,7 @@ import type {
   LegacyMigrationSectionPreview,
   LegacySelectiveMigrationManifest
 } from '@baishou/shared'
-import {
-  LEGACY_SELECTIVE_MIGRATION_MANIFEST_KEY,
-  safeParseDate
-} from '@baishou/shared'
+import { LEGACY_SELECTIVE_MIGRATION_MANIFEST_KEY, safeParseDate } from '@baishou/shared'
 import { DesktopAttachmentManagerService } from './desktop-attachment-manager.service'
 import { DesktopStoragePathService } from './path.service'
 import { getAppDb } from '../db'
@@ -197,8 +188,7 @@ function readLegacyBaishouDiaries(dbPath: string): LegacyBaishouDiaryRow[] {
         weather: row.weather != null ? String(row.weather) : undefined,
         mood: row.mood != null ? String(row.mood) : undefined,
         location: row.location != null ? String(row.location) : undefined,
-        locationDetail:
-          row.location_detail != null ? String(row.location_detail) : undefined,
+        locationDetail: row.location_detail != null ? String(row.location_detail) : undefined,
         isFavorite: row.is_favorite === 1 || row.is_favorite === true
       })
     }
@@ -214,12 +204,14 @@ function resolveUserAvatarCandidates(
   options?: { includeMachineAvatarPaths?: boolean }
 ): string[] {
   const includeMachinePaths = options?.includeMachineAvatarPaths ?? true
-  return [...new Set(
-    resolveLegacyAvatarCandidates(sp, sourceDir, {
-      includeMachinePaths,
-      documentsAvatarsDir: includeMachinePaths ? resolveFlutterDocumentsAvatarsDir() : undefined
-    })
-  )].filter((p) => existsSync(p))
+  return [
+    ...new Set(
+      resolveLegacyAvatarCandidates(sp, sourceDir, {
+        includeMachinePaths,
+        documentsAvatarsDir: includeMachinePaths ? resolveFlutterDocumentsAvatarsDir() : undefined
+      })
+    )
+  ].filter((p) => existsSync(p))
 }
 
 function normalizeImportSelection(
@@ -332,7 +324,11 @@ export class LegacySelectiveMigrationService {
     const identityWarnings: string[] = []
     if (personas.length === 0 && isFileOnlyWorkspace) {
       identityWarnings.push('未检测到 shared_preferences.json 或 identity_facts，无法恢复身份卡')
-    } else if (personas.length > 0 && prefs.source === 'device_preferences' && !sp?.['user_personas']) {
+    } else if (
+      personas.length > 0 &&
+      prefs.source === 'device_preferences' &&
+      !sp?.['user_personas']
+    ) {
       identityWarnings.push(
         '仅检测到 device_preferences 中的 active 身份事实，无法恢复全部旧版身份卡'
       )
@@ -390,10 +386,7 @@ export class LegacySelectiveMigrationService {
       markdownEntries.push(...vaultEntries)
       if (vaultEntries.length > 0) {
         markdownCountByVault.set(vaultName, vaultEntries.length)
-        markdownDatesByVault.set(
-          vaultName,
-          new Set(vaultEntries.map((e) => e.dateKey))
-        )
+        markdownDatesByVault.set(vaultName, new Set(vaultEntries.map((e) => e.dateKey)))
       }
       for (const entry of vaultEntries) {
         if (diarySamples.length < 5) {
@@ -482,11 +475,12 @@ export class LegacySelectiveMigrationService {
       sizeBytes: Math.round(chatSize * 0.2),
       sizeLabel: formatMigrationSizeBytes(Math.round(chatSize * 0.2)),
       samples: assistantSamples,
-      warnings: assistantIds.size > 0
-        ? ['导入后伙伴名称将追加两位随机数字', '重复导入将跳过已迁移伙伴']
-        : isFileOnlyWorkspace
-          ? ['未检测到 agent.sqlite，无法从此目录恢复伙伴']
-          : [],
+      warnings:
+        assistantIds.size > 0
+          ? ['导入后伙伴名称将追加两位随机数字', '重复导入将跳过已迁移伙伴']
+          : isFileOnlyWorkspace
+            ? ['未检测到 agent.sqlite，无法从此目录恢复伙伴']
+            : [],
       importable: assistantIds.size > 0
     })
 
@@ -498,11 +492,12 @@ export class LegacySelectiveMigrationService {
       sizeBytes: chatSize,
       sizeLabel: formatMigrationSizeBytes(chatSize),
       samples: [`${sessionCount} 个会话`, `${messageCount} 条消息`],
-      warnings: messageCount > 0
-        ? ['需与伙伴一并导入，聊天记录将绑定到新导入的伙伴', '重复导入将跳过已迁移会话']
-        : isFileOnlyWorkspace
-          ? ['未检测到 agent.sqlite，无法从此目录恢复聊天记录']
-          : [],
+      warnings:
+        messageCount > 0
+          ? ['需与伙伴一并导入，聊天记录将绑定到新导入的伙伴', '重复导入将跳过已迁移会话']
+          : isFileOnlyWorkspace
+            ? ['未检测到 agent.sqlite，无法从此目录恢复聊天记录']
+            : [],
       importable: messageCount > 0 && assistantIds.size > 0
     })
 
@@ -524,7 +519,7 @@ export class LegacySelectiveMigrationService {
         workspaceSamples.push(`${vaultName}/Archives×${archiveStats.count}`)
       }
     }
-  if (workspaceSamples.length < 5) {
+    if (workspaceSamples.length < 5) {
       for (const name of vaultNames) {
         if (workspaceSamples.length >= 5) break
         if (!workspaceSamples.some((s) => s.startsWith(`${name}/`))) {
@@ -582,7 +577,7 @@ export class LegacySelectiveMigrationService {
     const prefs = await resolveLegacyPreferencesForMigration(trimmedSource)
     const sp = prefs.sp
 
-    let manifest = (await settingsRepo.get<LegacySelectiveMigrationManifest>(
+    const manifest = (await settingsRepo.get<LegacySelectiveMigrationManifest>(
       LEGACY_SELECTIVE_MIGRATION_MANIFEST_KEY
     )) ?? { assistants: {}, sessions: {}, diaries: {}, personas: {} }
     manifest.diaries = manifest.diaries ?? {}
@@ -592,9 +587,7 @@ export class LegacySelectiveMigrationService {
     let assistantIdMap = new Map<string, string>(Object.entries(manifest.assistants))
 
     if (selection.avatar) {
-      results.push(
-        await this.importAvatar(trimmedSource, sp, profileRepo, attManager, onProgress)
-      )
+      results.push(await this.importAvatar(trimmedSource, sp, profileRepo, attManager, onProgress))
     }
     if (selection.identityCards) {
       results.push(
@@ -1043,12 +1036,12 @@ export class LegacySelectiveMigrationService {
     return { result, sessionMap }
   }
 
-  private normalizeMessageRole(
-    role: string
-  ): 'system' | 'user' | 'assistant' | 'tool' {
-    return (['system', 'user', 'assistant', 'tool'].includes(role)
-      ? role
-      : 'user') as 'system' | 'user' | 'assistant' | 'tool'
+  private normalizeMessageRole(role: string): 'system' | 'user' | 'assistant' | 'tool' {
+    return (['system', 'user', 'assistant', 'tool'].includes(role) ? role : 'user') as
+      | 'system'
+      | 'user'
+      | 'assistant'
+      | 'tool'
   }
 
   private normalizePartType(type: string): 'text' | 'tool' | 'stepFinish' | 'compaction' {
