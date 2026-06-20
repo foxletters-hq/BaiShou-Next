@@ -1,8 +1,8 @@
 /** 中英文句读分隔：中文 ，。！？； 与英文 , . ! ? ; */
-const TTS_SENTENCE_BOUNDARY_RE =
-  /(?:(?<=[，。！？；])|(?<=[.!?;,])(?!\d))\s*/
+const TTS_SENTENCE_BOUNDARY_RE = /(?:(?<=[，。！？；])|(?<=[.!?;,])(?!\d))\s*/
 
-const FENCED_CODE_BLOCK_RE = /```[^\n]*\n[\s\S]*?```|```[\s\S]*?```|~~~[^\n]*\n[\s\S]*?~~~|~~~[\s\S]*?~~~/g
+const FENCED_CODE_BLOCK_RE =
+  /```[^\n]*\n[\s\S]*?```|```[\s\S]*?```|~~~[^\n]*\n[\s\S]*?~~~|~~~[\s\S]*?~~~/g
 
 const DEFAULT_MAX_CHUNK_CHARS = 400
 

@@ -1,4 +1,5 @@
 import type { TtsSettings } from '../types/settings.types'
+import { isMimoVoiceCloneModel, resolveMimoTtsSynthesisModelId } from './mimo-tts.util'
 
 export const TTS_PROVIDER_IDS = ['openai-tts', 'mimo-tts', 'clone-tts', 'gpt-sovits'] as const
 
@@ -34,9 +35,11 @@ export interface TtsProviderLocalState {
   responseFormat: string
   availableModels: string[]
   refAudioPath?: string
+  refAudioBase64?: string
   promptText?: string
   promptLang?: string
   textLang?: string
+  stream?: boolean
 }
 
 export interface TtsSettingsInitialConfig {
@@ -48,9 +51,11 @@ export interface TtsSettingsInitialConfig {
   speed: number
   responseFormat: string
   refAudioPath: string
+  refAudioBase64: string
   promptText: string
   promptLang: string
   textLang: string
+  stream?: boolean
 }
 
 export function isTtsProviderId(id: string): id is TtsProviderId {
@@ -131,7 +136,11 @@ function mergeTtsProviderEntry(
     baseUrl: partial.baseUrl?.trim() ? partial.baseUrl : defaults.baseUrl,
     apiKey: partial.apiKey !== undefined ? partial.apiKey : defaults.apiKey,
     modelId: partial.modelId?.trim() ? partial.modelId : defaults.modelId,
-    voice: partial.voice?.trim() ? partial.voice : defaults.voice,
+    voice:
+      partial.voice !== undefined
+        ? partial.voice.trim() ||
+          (isMimoVoiceCloneModel(partial.modelId?.trim() || defaults.modelId) ? '' : defaults.voice)
+        : defaults.voice,
     speed: partial.speed ?? defaults.speed,
     responseFormat: partial.responseFormat?.trim()
       ? partial.responseFormat
@@ -141,9 +150,11 @@ function mergeTtsProviderEntry(
         ? partial.availableModels
         : defaults.availableModels,
     refAudioPath: partial.refAudioPath ?? defaults.refAudioPath,
+    refAudioBase64: partial.refAudioBase64 ?? defaults.refAudioBase64,
     promptText: partial.promptText ?? defaults.promptText,
     promptLang: partial.promptLang ?? defaults.promptLang,
-    textLang: partial.textLang ?? defaults.textLang
+    textLang: partial.textLang ?? defaults.textLang,
+    stream: partial.stream ?? defaults.stream
   }
 }
 
@@ -156,6 +167,48 @@ export function mergeTtsPersistedConfigs(
     'mimo-tts': mergeTtsProviderEntry(defaults['mimo-tts'], persisted?.['mimo-tts']),
     'clone-tts': mergeTtsProviderEntry(defaults['clone-tts'], persisted?.['clone-tts']),
     'gpt-sovits': mergeTtsProviderEntry(defaults['gpt-sovits'], persisted?.['gpt-sovits'])
+  }
+}
+
+/** 从 global_models 合并当前供应商的合成参数（globalTtsSettings + 各供应商独立配置） */
+export function resolveTtsSynthesisSettings(
+  globalModels: TtsGlobalModelsSnapshot | null | undefined,
+  providerId: string
+): TtsSettings & { modelId?: string } {
+  const globalSettings = globalModels?.globalTtsSettings ?? {}
+  const providerEntry = globalModels?.globalTtsProviderConfigs?.[providerId] ?? {}
+  const isActiveGlobal = globalModels?.globalTtsProviderId === providerId
+
+  const pickString = (...candidates: Array<string | undefined>): string => {
+    for (const value of candidates) {
+      if (value !== undefined && value !== null && String(value).trim()) {
+        return String(value)
+      }
+    }
+    return ''
+  }
+
+  const refAudioPath = pickString(globalSettings.refAudioPath, providerEntry.refAudioPath)
+  const refAudioBase64 = pickString(globalSettings.refAudioBase64, providerEntry.refAudioBase64)
+  const candidateModelId = pickString(
+    isActiveGlobal ? globalModels?.globalTtsModelId : undefined,
+    providerEntry.modelId
+  )
+
+  return {
+    modelId:
+      providerId === 'mimo-tts'
+        ? resolveMimoTtsSynthesisModelId(candidateModelId, refAudioPath, refAudioBase64)
+        : candidateModelId || undefined,
+    voice: pickString(globalSettings.voice, providerEntry.voice),
+    speed: globalSettings.speed ?? providerEntry.speed ?? 1,
+    responseFormat: pickString(globalSettings.responseFormat, providerEntry.responseFormat),
+    refAudioPath,
+    refAudioBase64,
+    promptText: pickString(globalSettings.promptText, providerEntry.promptText),
+    promptLang: pickString(globalSettings.promptLang, providerEntry.promptLang, 'zh'),
+    textLang: pickString(globalSettings.textLang, providerEntry.textLang, 'zh'),
+    stream: globalSettings.stream ?? providerEntry.stream
   }
 }
 
@@ -201,9 +254,11 @@ export function buildTtsProviderStatesFromGlobal(
     speed: ttsSettings.speed,
     responseFormat: ttsSettings.responseFormat,
     refAudioPath: ttsSettings.refAudioPath,
+    refAudioBase64: ttsSettings.refAudioBase64,
     promptText: ttsSettings.promptText,
     promptLang: ttsSettings.promptLang,
     textLang: ttsSettings.textLang,
+    stream: ttsSettings.stream,
     baseUrl: providerConfigs[savedProviderId]?.baseUrl,
     apiKey: providerConfigs[savedProviderId]?.apiKey,
     availableModels: providerConfigs[savedProviderId]?.availableModels
@@ -224,9 +279,11 @@ export function buildTtsProviderConnectionEntry(
     speed: state.speed,
     responseFormat: state.responseFormat,
     refAudioPath: state.refAudioPath,
+    refAudioBase64: state.refAudioBase64,
     promptText: state.promptText,
     promptLang: state.promptLang,
-    textLang: state.textLang
+    textLang: state.textLang,
+    stream: state.stream
   }
 }
 
@@ -278,8 +335,11 @@ export function buildTtsSettingsInitialConfig(params: {
       getTtsDefaultResponseFormat(activeId),
     refAudioPath:
       (isActiveGlobal ? ttsSettings.refAudioPath : undefined) || local?.refAudioPath || '',
+    refAudioBase64:
+      (isActiveGlobal ? ttsSettings.refAudioBase64 : undefined) || local?.refAudioBase64 || '',
     promptText: (isActiveGlobal ? ttsSettings.promptText : undefined) || local?.promptText || '',
     promptLang: (isActiveGlobal ? ttsSettings.promptLang : undefined) || local?.promptLang || 'zh',
-    textLang: (isActiveGlobal ? ttsSettings.textLang : undefined) || local?.textLang || 'zh'
+    textLang: (isActiveGlobal ? ttsSettings.textLang : undefined) || local?.textLang || 'zh',
+    stream: (isActiveGlobal ? ttsSettings.stream : undefined) ?? local?.stream
   }
 }

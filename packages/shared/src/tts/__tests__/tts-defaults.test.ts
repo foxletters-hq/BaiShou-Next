@@ -4,7 +4,8 @@ import {
   buildTtsSettingsInitialConfig,
   getTtsInitialConfigs,
   mergeTtsPersistedConfigs,
-  resolveTtsProviderBaseUrl
+  resolveTtsProviderBaseUrl,
+  resolveTtsSynthesisSettings
 } from '../tts-defaults'
 import { applyTtsSaveToGlobalModels } from '../save-tts-global-config'
 
@@ -100,6 +101,67 @@ describe('tts-defaults', () => {
     expect(next.globalTtsProviderConfigs?.['openai-tts']).toMatchObject({
       availableModels: ['tts-1', 'tts-1-hd'],
       modelId: 'tts-1'
+    })
+  })
+
+  it('resolveTtsSynthesisSettings upgrades mimo model when ref audio exists in provider config', () => {
+    const settings = resolveTtsSynthesisSettings(
+      {
+        globalTtsProviderId: 'mimo-tts',
+        globalTtsModelId: 'mimo-v2.5-tts',
+        globalTtsSettings: { voice: '冰糖', responseFormat: 'wav' },
+        globalTtsProviderConfigs: {
+          'mimo-tts': {
+            refAudioPath: '/storage/ref.wav'
+          }
+        }
+      },
+      'mimo-tts'
+    )
+
+    expect(settings.modelId).toBe('mimo-v2.5-tts-voiceclone')
+    expect(settings.refAudioPath).toBe('/storage/ref.wav')
+  })
+
+  it('resolveTtsSynthesisSettings upgrades mimo model when refAudioBase64 exists', () => {
+    const settings = resolveTtsSynthesisSettings(
+      {
+        globalTtsProviderId: 'mimo-tts',
+        globalTtsModelId: 'mimo-v2.5-tts',
+        globalTtsSettings: {
+          voice: '',
+          responseFormat: 'wav',
+          refAudioBase64: 'ZmFrZQ=='
+        }
+      },
+      'mimo-tts'
+    )
+
+    expect(settings.modelId).toBe('mimo-v2.5-tts-voiceclone')
+    expect(settings.refAudioBase64).toBe('ZmFrZQ==')
+  })
+
+  it('resolveTtsSynthesisSettings falls back to provider config for refAudioPath', () => {
+    const settings = resolveTtsSynthesisSettings(
+      {
+        globalTtsProviderId: 'openai-tts',
+        globalTtsModelId: 'tts-1',
+        globalTtsSettings: { voice: 'alloy', responseFormat: 'mp3' },
+        globalTtsProviderConfigs: {
+          'mimo-tts': {
+            modelId: 'mimo-v2.5-tts-voiceclone',
+            refAudioPath: '/storage/ref.wav',
+            promptText: 'style'
+          }
+        }
+      },
+      'mimo-tts'
+    )
+
+    expect(settings).toMatchObject({
+      modelId: 'mimo-v2.5-tts-voiceclone',
+      refAudioPath: '/storage/ref.wav',
+      promptText: 'style'
     })
   })
 

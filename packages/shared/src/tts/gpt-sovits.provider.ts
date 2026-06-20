@@ -7,6 +7,7 @@ import {
 import { TtsApiError } from './tts.errors'
 import { normalizeRefAudioPath } from './ref-audio-path.util'
 import { uint8ArrayToBase64 } from './bytes-base64'
+import { readTtsRefAudioBytes } from './tts-ref-audio.util'
 
 const GPT_SOVITS_GRADIO_FN_INDEX = 1
 const GPT_SOVITS_GRADIO_CUT_METHOD = '凑四句一切'
@@ -110,86 +111,69 @@ async function waitForGradioQueueOutput(
   sessionHash: string,
   eventId: string
 ): Promise<Record<string, unknown>> {
-  const { get: httpGet } = await import('node:http')
-  return new Promise((resolve, reject) => {
-    const queueUrl = new URL(`${baseUrl}/queue/data`)
-    queueUrl.searchParams.set('session_hash', sessionHash)
+  const queueUrl = new URL(`${baseUrl}/queue/data`)
+  queueUrl.searchParams.set('session_hash', sessionHash)
 
-    let settled = false
-    let lastOutput: Record<string, unknown> | null = null
-    const finish = (error?: Error, output?: Record<string, unknown>) => {
-      if (settled) {
-        return
-      }
-      settled = true
-      if (error) {
-        reject(error)
-      } else if (output) {
-        resolve(output)
-      } else {
-        reject(new Error('queue stream finished without output'))
-      }
+  const response = await fetch(queueUrl.toString(), {
+    headers: {
+      Accept: 'text/event-stream'
+    }
+  })
+
+  if (!response.ok || !response.body) {
+    throw new Error(`queue stream failed: ${response.status}`)
+  }
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let lastOutput: Record<string, unknown> | null = null
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) {
+      throw new Error('queue stream ended before completion')
     }
 
-    const req = httpGet(
-      queueUrl.toString(),
-      {
-        headers: {
-          Accept: 'text/event-stream'
-        }
-      },
-      (res) => {
-        let buffer = ''
-        res.setEncoding('utf8')
+    buffer += decoder.decode(value, { stream: true })
+    while (buffer.includes('\n\n')) {
+      const separatorIndex = buffer.indexOf('\n\n')
+      const block = buffer.slice(0, separatorIndex)
+      buffer = buffer.slice(separatorIndex + 2)
 
-        res.on('data', (chunk: string) => {
-          buffer += chunk
-          while (buffer.includes('\n\n')) {
-            const separatorIndex = buffer.indexOf('\n\n')
-            const block = buffer.slice(0, separatorIndex)
-            buffer = buffer.slice(separatorIndex + 2)
-
-            const dataLine = block.split(/\r?\n/).find((line) => line.startsWith('data:'))
-            if (!dataLine) {
-              continue
-            }
-
-            const payload = JSON.parse(dataLine.slice(5)) as Record<string, unknown>
-            if (payload.msg === 'heartbeat') {
-              continue
-            }
-            if (payload.event_id !== eventId) {
-              continue
-            }
-
-            const output =
-              payload.output && typeof payload.output === 'object'
-                ? (payload.output as Record<string, unknown>)
-                : null
-
-            if (output && Array.isArray(output.data)) {
-              lastOutput = output
-            }
-
-            if (payload.msg === 'process_completed') {
-              if (output && Array.isArray(output.data)) {
-                finish(undefined, output)
-              } else if (lastOutput) {
-                finish(undefined, lastOutput)
-              } else {
-                finish(new Error(`queue completed without data: ${JSON.stringify(payload)}`))
-              }
-            }
-          }
-        })
-
-        res.on('end', () => finish(new Error('queue stream ended before completion')))
-        res.on('error', (error) => finish(error))
+      const dataLine = block.split(/\r?\n/).find((line) => line.startsWith('data:'))
+      if (!dataLine) {
+        continue
       }
-    )
 
-    req.on('error', (error) => finish(error))
-  })
+      const payload = JSON.parse(dataLine.slice(5)) as Record<string, unknown>
+      if (payload.msg === 'heartbeat') {
+        continue
+      }
+      if (payload.event_id !== eventId) {
+        continue
+      }
+
+      const output =
+        payload.output && typeof payload.output === 'object'
+          ? (payload.output as Record<string, unknown>)
+          : null
+
+      if (output && Array.isArray(output.data)) {
+        lastOutput = output
+      }
+
+      if (payload.msg === 'process_completed') {
+        if (output && Array.isArray(output.data)) {
+          return output
+        }
+        if (lastOutput) {
+          return lastOutput
+        }
+        throw new Error(`queue completed without data: ${JSON.stringify(payload)}`)
+      }
+    }
+  }
 }
 
 export class GptSovitsProvider implements TtsProvider {
@@ -299,10 +283,13 @@ export class GptSovitsProvider implements TtsProvider {
         )
       }
 
-      const { readFile } = await import('node:fs/promises')
-      const audioBytes = await readFile(refAudioPath)
+      const audioBytes = await readTtsRefAudioBytes(refAudioPath, 'gpt-sovits')
       const formData = new FormData()
-      formData.append('files', new Blob([audioBytes]), GPT_SOVITS_GRADIO_UPLOAD_FILENAME)
+      const audioBuffer = audioBytes.buffer.slice(
+        audioBytes.byteOffset,
+        audioBytes.byteOffset + audioBytes.byteLength
+      ) as ArrayBuffer
+      formData.append('files', new Blob([audioBuffer]), GPT_SOVITS_GRADIO_UPLOAD_FILENAME)
 
       const uploadUrl = `${baseUrl}/upload`
       const uploadResponse = await fetch(uploadUrl, { method: 'POST', body: formData })

@@ -20,7 +20,8 @@ export {
   buildTtsSettingsInitialConfig,
   buildTtsProviderStatesFromGlobal,
   buildTtsProviderConnectionEntry,
-  resolveTtsProviderCredentials
+  resolveTtsProviderCredentials,
+  resolveTtsSynthesisSettings
 } from './tts-defaults'
 export type {
   TtsProviderId,
@@ -51,7 +52,11 @@ export {
   clearGlobalTtsSynthesisCache
 } from './tts-synthesis-cache'
 export type { TtsSynthesisCacheKeyInput, TtsSynthesisCacheEntry } from './tts-synthesis-cache'
-export { synthesizeTtsSpeechContent, synthesizeAllTtsSpeechSegments } from './tts-chunked-synthesis'
+export {
+  synthesizeTtsSpeechContent,
+  synthesizeAllTtsSpeechSegments,
+  prepareTtsSpeechChunksForInput
+} from './tts-chunked-synthesis'
 export type {
   TtsSpeechSegment,
   TtsSpeechSynthesisFailure,
@@ -76,19 +81,50 @@ export { OpenAiTtsProvider } from './openai-tts.provider'
 export {
   normalizeRefAudioPath,
   isMimoVoiceCloneAudioExtension,
-  assertMimoVoiceCloneAudioPath
+  assertMimoVoiceCloneAudioPath,
+  resolveRefAudioMimeType
 } from './ref-audio-path.util'
+export {
+  sniffRefAudioFormat,
+  resolveRefAudioMimeFromBytes,
+  assertSupportedRefAudioBase64,
+  assertSupportedRefAudioBytes
+} from './ref-audio-format.util'
+export {
+  readTtsRefAudioBytes,
+  readTtsRefAudioAsDataUri,
+  registerTtsRefAudioReader,
+  registerTtsRefAudioBase64Reader
+} from './tts-ref-audio.util'
+export type { TtsRefAudioReader, TtsRefAudioBase64Reader } from './tts-ref-audio.util'
+export {
+  parseRefAudioPick,
+  refAudioCacheToken,
+  type TtsRefAudioPickResult,
+  type TtsRefAudioPickValue
+} from './ref-audio-pick.util'
 export {
   getMimoTtsModelMode,
   isMimoVoiceCloneModel,
   isMimoVoiceDesignModel,
   isMimoPresetModel,
+  resolveMimoTtsSynthesisModelId,
+  shouldUseMimoTtsStreaming,
+  resolveMimoTtsAudioFormat,
+  MIMO_TTS_VOICECLONE_MODEL_ID,
   validateMimoTtsSettings,
-  registerTtsRefAudioReader,
+  hydrateMimoTtsProviderSettings,
+  prepareMimoTtsFormSynthesis,
+  clearMimoRefAudioHydrationCache,
   MIMO_TTS_DEFAULT_MODELS
 } from './mimo-tts.util'
-export type { MimoTtsModelMode, TtsRefAudioReader } from './mimo-tts.util'
+export type { MimoTtsModelMode } from './mimo-tts.util'
 export { MimoTtsProvider } from './mimo-tts.provider'
+export {
+  collectMimoTtsStreamPcm16,
+  pcm16ToWavBase64,
+  MIMO_TTS_PCM16_SAMPLE_RATE
+} from './mimo-tts-stream.util'
 export { CloneTtsProvider } from './clone-tts.provider'
 export { GptSovitsProvider } from './gpt-sovits.provider'
 export {

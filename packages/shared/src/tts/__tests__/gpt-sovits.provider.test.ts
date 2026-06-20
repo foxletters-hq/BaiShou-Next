@@ -2,14 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { GptSovitsProvider } from '../gpt-sovits.provider'
 import { TtsApiError } from '../tts.errors'
 import { readFile } from 'node:fs/promises'
-import { get as httpGet } from 'node:http'
+import { registerTtsRefAudioReader } from '../tts-ref-audio.util'
 
 vi.mock('node:fs/promises', () => ({
   readFile: vi.fn()
-}))
-
-vi.mock('node:http', () => ({
-  get: vi.fn()
 }))
 
 function createResponse(init: {
@@ -19,6 +15,7 @@ function createResponse(init: {
   arrayBuffer?: ArrayBuffer
   text?: string
   json?: unknown
+  body?: ReadableStream<Uint8Array>
 }) {
   return {
     ok: init.ok,
@@ -26,35 +23,28 @@ function createResponse(init: {
     headers: {
       get: vi.fn().mockReturnValue(init.contentType ?? null)
     },
+    body: init.body ?? null,
     arrayBuffer: vi.fn().mockResolvedValue(init.arrayBuffer ?? new ArrayBuffer(0)),
     text: vi.fn().mockResolvedValue(init.text ?? ''),
     json: vi.fn().mockResolvedValue(init.json ?? null)
   } as any
 }
 
-function mockQueueStream(payloads: Array<Record<string, unknown>>) {
-  vi.mocked(httpGet).mockImplementation(((_url: unknown, _options: unknown, callback: any) => {
-    const handlers: Record<string, Array<(...args: any[]) => void>> = {}
-    const response = {
-      setEncoding: vi.fn(),
-      on: vi.fn((event: string, handler: (...args: any[]) => void) => {
-        handlers[event] ||= []
-        handlers[event].push(handler)
-        return response
-      })
+function createSseFetchResponse(payloads: Array<Record<string, unknown>>) {
+  const encoder = new TextEncoder()
+  const sseBody = payloads.map((payload) => `data:${JSON.stringify(payload)}\n\n`).join('')
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(encoder.encode(sseBody))
+      controller.close()
     }
-    callback(response)
-
-    queueMicrotask(() => {
-      const block = payloads.map((payload) => `data:${JSON.stringify(payload)}\n\n`).join('')
-      handlers.data?.forEach((handler) => handler(block))
-      handlers.end?.forEach((handler) => handler())
-    })
-
-    return {
-      on: vi.fn().mockReturnThis()
-    } as any
-  }) as any)
+  })
+  return createResponse({
+    ok: true,
+    status: 200,
+    contentType: 'text/event-stream',
+    body: stream
+  })
 }
 
 describe('GptSovitsProvider', () => {
@@ -62,6 +52,7 @@ describe('GptSovitsProvider', () => {
 
   beforeEach(() => {
     provider = new GptSovitsProvider()
+    registerTtsRefAudioReader(null)
     vi.restoreAllMocks()
   })
 
@@ -221,22 +212,7 @@ describe('GptSovitsProvider', () => {
       }
       const expectedBase64 = btoa(binary)
       vi.mocked(readFile).mockResolvedValue(Buffer.from('audio'))
-      mockQueueStream([
-        {
-          msg: 'process_generating',
-          event_id: 'evt-1',
-          output: {
-            data: [{ url: 'http://127.0.0.1:9880/file=audio.wav' }]
-          }
-        },
-        {
-          msg: 'process_completed',
-          event_id: 'evt-1',
-          output: {
-            data: [{ url: 'http://127.0.0.1:9880/file=audio.wav' }]
-          }
-        }
-      ])
+      registerTtsRefAudioReader(async () => new Uint8Array([97, 117, 100, 105, 111]))
 
       vi.spyOn(global, 'fetch')
         .mockResolvedValueOnce(
@@ -263,6 +239,24 @@ describe('GptSovitsProvider', () => {
           })
         )
         .mockResolvedValueOnce(
+          createSseFetchResponse([
+            {
+              msg: 'process_generating',
+              event_id: 'evt-1',
+              output: {
+                data: [{ url: 'http://127.0.0.1:9880/file=audio.wav' }]
+              }
+            },
+            {
+              msg: 'process_completed',
+              event_id: 'evt-1',
+              output: {
+                data: [{ url: 'http://127.0.0.1:9880/file=audio.wav' }]
+              }
+            }
+          ])
+        )
+        .mockResolvedValueOnce(
           createResponse({
             ok: true,
             status: 200,
@@ -283,6 +277,14 @@ describe('GptSovitsProvider', () => {
         'http://127.0.0.1:9880/queue/join',
         expect.objectContaining({ method: 'POST' })
       )
+      expect(global.fetch).toHaveBeenNthCalledWith(
+        6,
+        expect.stringMatching(/^http:\/\/127\.0\.0\.1:9880\/queue\/data\?session_hash=/),
+        expect.objectContaining({
+          headers: { Accept: 'text/event-stream' }
+        })
+      )
+      expect(readFile).not.toHaveBeenCalled()
       expect(result.audioBase64).toBe(expectedBase64)
       expect(result.format).toBe('wav')
     })

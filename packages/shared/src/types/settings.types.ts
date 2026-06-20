@@ -35,9 +35,11 @@ export interface TtsProviderConnectionConfig {
   speed?: number
   responseFormat?: string
   refAudioPath?: string
+  refAudioBase64?: string
   promptText?: string
   promptLang?: string
   textLang?: string
+  stream?: boolean
 }
 
 export interface GlobalModelsConfig {

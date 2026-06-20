@@ -1,5 +1,12 @@
+import type { GlobalModelsConfig } from '../types/settings.types'
 import type { TtsProviderRegistry } from './tts.registry'
-import { prepareTtsSpeechChunks } from './tts-text-preprocess'
+import {
+  normalizeTtsWhitespace,
+  prepareTtsSpeechChunks,
+  stripFencedCodeBlocks
+} from './tts-text-preprocess'
+import { resolveTtsSynthesisSettings } from './tts-defaults'
+import { isMimoVoiceCloneModel, resolveMimoTtsSynthesisModelId } from './mimo-tts.util'
 import {
   synthesizeTtsFromSettings,
   type TtsSynthesizeFromSettingsInput,
@@ -39,6 +46,31 @@ export interface TtsSpeechSynthesisOptions {
 }
 
 /**
+ * MiMo 音色复刻每次独立请求会导致音色漂移；官方要求整段 assistant 文本一次合成。
+ * 复刻模式整段朗读，预置音色仍按句分片。
+ */
+export function prepareTtsSpeechChunksForInput(
+  content: string,
+  globalModels: GlobalModelsConfig | null | undefined,
+  providerId?: string
+): string[] {
+  const activeProviderId = providerId || globalModels?.globalTtsProviderId || ''
+  if (activeProviderId === 'mimo-tts' && globalModels) {
+    const merged = resolveTtsSynthesisSettings(globalModels, 'mimo-tts')
+    const modelId = resolveMimoTtsSynthesisModelId(
+      merged.modelId || globalModels.globalTtsModelId,
+      merged.refAudioPath,
+      merged.refAudioBase64
+    )
+    if (isMimoVoiceCloneModel(modelId)) {
+      const single = normalizeTtsWhitespace(stripFencedCodeBlocks(content))
+      return single ? [single] : []
+    }
+  }
+  return prepareTtsSpeechChunks(content)
+}
+
+/**
  * 将完整消息预处理为分片后逐段合成；下一段在播放当前段时预取。
  */
 export async function synthesizeTtsSpeechContent(
@@ -46,7 +78,7 @@ export async function synthesizeTtsSpeechContent(
   input: Omit<TtsSynthesizeFromSettingsInput, 'text'> & { content: string },
   options?: TtsSpeechSynthesisOptions
 ): Promise<TtsSpeechSynthesisResult> {
-  const chunks = prepareTtsSpeechChunks(input.content)
+  const chunks = prepareTtsSpeechChunksForInput(input.content, input.globalModels, input.providerId)
   if (!chunks.length) {
     return { success: false, errorCode: 'tts_empty_content' }
   }
@@ -98,7 +130,7 @@ export async function synthesizeAllTtsSpeechSegments(
   input: Omit<TtsSynthesizeFromSettingsInput, 'text'> & { content: string },
   options?: Pick<TtsSpeechSynthesisOptions, 'isCancelled' | 'useCache'>
 ): Promise<TtsSpeechSegmentsResult> {
-  const chunks = prepareTtsSpeechChunks(input.content)
+  const chunks = prepareTtsSpeechChunksForInput(input.content, input.globalModels, input.providerId)
   if (!chunks.length) {
     return { success: false, errorCode: 'tts_empty_content' }
   }

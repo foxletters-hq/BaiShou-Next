@@ -1,5 +1,6 @@
 import { isTtsProviderId, resolveTtsProviderBaseUrl } from './tts-defaults'
 import { MIMO_TTS_DEFAULT_MODELS } from './mimo-tts.util'
+import { buildMimoTtsAuthHeaders } from './tts-http'
 
 const CLONE_TTS_VOICE_ARRAY_KEYS = ['voices', 'data', 'items', 'list'] as const
 const CLONE_TTS_VOICE_ID_KEYS = [
@@ -88,17 +89,20 @@ export function parseCloneTtsVoiceList(data: unknown): string[] {
 /** 拉取 OpenAI 兼容 /models 列表，支持分页 */
 export async function fetchOpenAiCompatibleModelIds(
   baseUrl: string,
-  apiKey?: string
+  apiKey?: string,
+  headersOverride?: Record<string, string>
 ): Promise<string[]> {
   const trimmedBase = baseUrl.trim().replace(/\/$/, '')
   if (!trimmedBase) {
     return ['tts-1', 'tts-1-hd']
   }
 
-  const headers: Record<string, string> = {}
-  const trimmedKey = apiKey?.trim()
-  if (trimmedKey) {
-    headers.Authorization = `Bearer ${trimmedKey}`
+  const headers: Record<string, string> = headersOverride ? { ...headersOverride } : {}
+  if (!headersOverride) {
+    const trimmedKey = apiKey?.trim()
+    if (trimmedKey) {
+      headers.Authorization = `Bearer ${trimmedKey}`
+    }
   }
 
   const allIds: string[] = []
@@ -216,8 +220,9 @@ export async function fetchGptSovitsModelIds(baseUrl: string): Promise<string[]>
 
 export async function fetchMimoTtsModelIds(baseUrl: string, apiKey?: string): Promise<string[]> {
   const trimmedBase = resolveTtsProviderBaseUrl('mimo-tts', baseUrl)
+  const headers = buildMimoTtsAuthHeaders(apiKey)
   try {
-    const models = await fetchOpenAiCompatibleModelIds(trimmedBase, apiKey)
+    const models = await fetchOpenAiCompatibleModelIds(trimmedBase, apiKey, headers)
     const mimoTts = models.filter(
       (id) => id.toLowerCase().includes('mimo') && id.toLowerCase().includes('tts')
     )
