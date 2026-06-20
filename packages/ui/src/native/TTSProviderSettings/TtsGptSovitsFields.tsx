@@ -1,6 +1,8 @@
 import React from 'react'
 import { View, Text } from 'react-native'
+import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
+import { normalizeRefAudioPath, parseRefAudioPick } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 import { Input } from '../Input/Input'
 import { Select } from '../Select/Select'
@@ -8,10 +10,17 @@ import { Button } from '../Button'
 import type { TtsProviderConfig } from './tts-provider-settings.types'
 import { ttsProviderSettingsStyles as styles } from './tts-provider-settings.styles'
 
+function getRefAudioDisplayName(path: string): string {
+  const normalized = normalizeRefAudioPath(path)
+  const parts = normalized.split(/[/\\]/)
+  return parts[parts.length - 1] || normalized
+}
+
 interface TtsGptSovitsFieldsProps {
   config: TtsProviderConfig
   langOptions: { value: string; label: string }[]
   onUpdate: (patch: Partial<TtsProviderConfig>) => void
+  onPickRefAudio?: () => Promise<import('@baishou/shared').TtsRefAudioPickValue | null>
   compact?: boolean
 }
 
@@ -19,10 +28,13 @@ export const TtsGptSovitsFields: React.FC<TtsGptSovitsFieldsProps> = ({
   config,
   langOptions,
   onUpdate,
+  onPickRefAudio,
   compact = false
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const refAudioPath = config.refAudioPath?.trim() ?? ''
+  const refAudioName = refAudioPath ? getRefAudioDisplayName(refAudioPath) : ''
 
   const Section: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     if (compact) {
@@ -40,20 +52,62 @@ export const TtsGptSovitsFields: React.FC<TtsGptSovitsFieldsProps> = ({
     )
   }
 
+  const handlePickRefAudio = async () => {
+    if (!onPickRefAudio) return
+    const picked = await onPickRefAudio()
+    const parsed = parseRefAudioPick(picked)
+    if (parsed) {
+      onUpdate({ refAudioPath: parsed.path })
+    }
+  }
+
   return (
     <>
       <Section>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('tts.settings.ref_audio_path_label')}
         </Text>
-        <Input
-          style={styles.input}
-          value={config.refAudioPath ?? ''}
-          onChangeText={(v) => onUpdate({ refAudioPath: v })}
-          placeholder={t('tts.settings.ref_audio_path_placeholder')}
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
+        {onPickRefAudio ? (
+          <>
+            <Button variant="outline" onPress={() => void handlePickRefAudio()}>
+              <View style={styles.refAudioPickButtonContent}>
+                <MaterialIcons name="folder-open" size={18} color={colors.textSecondary} />
+                <Text style={[styles.refAudioPickButtonText, { color: colors.textPrimary }]}>
+                  {refAudioPath
+                    ? t('tts.settings.pick_ref_audio_again_button', '重新选择参考音频')
+                    : t('tts.settings.pick_ref_audio_button', '选择参考音频')}
+                </Text>
+              </View>
+            </Button>
+            {refAudioName ? (
+              <Text
+                style={[styles.selectedRefAudioName, { color: colors.textSecondary }]}
+                numberOfLines={2}
+                ellipsizeMode="middle"
+              >
+                {t('tts.settings.mimo_ref_audio_selected', {
+                  name: refAudioName,
+                  defaultValue: `已选择：${refAudioName}`
+                })}
+              </Text>
+            ) : null}
+            <Text style={[styles.helperText, { color: colors.textTertiary, marginBottom: 0 }]}>
+              {t(
+                'tts.settings.mimo_ref_audio_mobile_hint',
+                '点击按钮选择 wav/mp3 参考音频，将保存到外部存储'
+              )}
+            </Text>
+          </>
+        ) : (
+          <Input
+            style={styles.input}
+            value={refAudioPath}
+            onChangeText={(v) => onUpdate({ refAudioPath: normalizeRefAudioPath(v) })}
+            placeholder={t('tts.settings.ref_audio_path_placeholder')}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        )}
       </Section>
 
       <Section>

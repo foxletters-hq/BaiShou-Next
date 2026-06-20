@@ -29,11 +29,16 @@ function mergeInitialConfigEntry(
       initialConfig.refAudioPath !== undefined
         ? initialConfig.refAudioPath
         : configs[id].refAudioPath,
+    refAudioBase64:
+      initialConfig.refAudioBase64 !== undefined
+        ? initialConfig.refAudioBase64
+        : configs[id].refAudioBase64,
     promptText:
       initialConfig.promptText !== undefined ? initialConfig.promptText : configs[id].promptText,
     promptLang:
       initialConfig.promptLang !== undefined ? initialConfig.promptLang : configs[id].promptLang,
-    textLang: initialConfig.textLang !== undefined ? initialConfig.textLang : configs[id].textLang
+    textLang: initialConfig.textLang !== undefined ? initialConfig.textLang : configs[id].textLang,
+    stream: initialConfig.stream !== undefined ? initialConfig.stream : configs[id].stream
   }
 }
 

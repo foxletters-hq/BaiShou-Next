@@ -9,9 +9,11 @@ export interface TtsProviderConfig {
   responseFormat: string
   availableModels?: string[]
   refAudioPath?: string
+  refAudioBase64?: string
   promptText?: string
   promptLang?: string
   textLang?: string
+  stream?: boolean
 }
 
 export interface TTSProviderSettingsProps {
@@ -25,8 +27,8 @@ export interface TTSProviderSettingsProps {
     text: string
   ) => Promise<{ success: boolean; audioBase64?: string; format?: string }>
   onFetchModels?: (providerId: string, apiKey: string, baseUrl: string) => Promise<string[]>
-  /** 桌面端：选择本地参考音频文件 */
-  onPickRefAudio?: () => Promise<string | null>
+  /** 桌面/移动端：选择本地参考音频文件 */
+  onPickRefAudio?: () => Promise<import('@baishou/shared').TtsRefAudioPickValue | null>
 }
 
 export interface ProviderLocalState {
@@ -38,7 +40,9 @@ export interface ProviderLocalState {
   responseFormat: string
   availableModels: string[]
   refAudioPath?: string
+  refAudioBase64?: string
   promptText?: string
   promptLang?: string
   textLang?: string
+  stream?: boolean
 }

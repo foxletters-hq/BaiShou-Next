@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MIMO_TTS_DEFAULT_MODELS } from '@baishou/shared'
+import {
+  isMimoVoiceCloneModel,
+  MIMO_TTS_DEFAULT_MODELS,
+  MIMO_TTS_VOICECLONE_MODEL_ID,
+  parseRefAudioPick
+} from '@baishou/shared'
 import { useToast } from '../Toast/useToast'
 import type { TTSProviderSettingsProps, ProviderLocalState } from './tts-provider-settings.types'
 import { getInitialConfigs } from './tts-provider-settings.defaults'
@@ -168,7 +173,9 @@ export function useTTSProviderSettings({
       const updates =
         providerType === 'clone-tts' || providerType === 'gpt-sovits'
           ? { modelId: val, voice: val }
-          : { modelId: val }
+          : providerType === 'mimo-tts' && isMimoVoiceCloneModel(val)
+            ? { modelId: val, voice: '', promptText: '' }
+            : { modelId: val }
       const nextState = { ...configs[providerType], ...updates }
       skipAutoSaveRef.current = true
       updateCurrentConfig(updates)
@@ -211,6 +218,7 @@ export function useTTSProviderSettings({
     state?.baseUrl,
     state?.apiKey,
     state?.refAudioPath,
+    state?.refAudioBase64,
     state?.promptText,
     state?.promptLang,
     state?.textLang
@@ -218,6 +226,45 @@ export function useTTSProviderSettings({
 
   const showSpeedControl =
     providerType === 'openai-tts' || providerType === 'clone-tts' || providerType === 'gpt-sovits'
+
+  const handlePickMimoRefAudio = useCallback(async () => {
+    if (!onPickRefAudio) return null
+    const picked = await onPickRefAudio()
+    const parsed = parseRefAudioPick(picked)
+    if (!parsed) return null
+
+    const state = configs[providerType]
+    const updates: Partial<ProviderLocalState> = {
+      refAudioPath: parsed.path,
+      refAudioBase64: parsed.base64
+    }
+    if (!isMimoVoiceCloneModel(state.modelId || '')) {
+      updates.modelId = MIMO_TTS_VOICECLONE_MODEL_ID
+      updates.voice = ''
+      updates.promptText = ''
+    }
+    const nextState = { ...state, ...updates }
+    skipAutoSaveRef.current = true
+    updateCurrentConfig(updates)
+    if (onSaveConfig) {
+      await persistCurrentConfig(nextState, { silent: true })
+    }
+    return parsed.path
+  }, [
+    onPickRefAudio,
+    configs,
+    providerType,
+    updateCurrentConfig,
+    onSaveConfig,
+    persistCurrentConfig
+  ])
+
+  const handlePickRefAudioForProvider = useCallback(async () => {
+    if (providerType === 'mimo-tts') {
+      return handlePickMimoRefAudio()
+    }
+    return onPickRefAudio?.() ?? null
+  }, [providerType, handlePickMimoRefAudio, onPickRefAudio])
 
   return {
     t,
@@ -246,7 +293,7 @@ export function useTTSProviderSettings({
     handleTest,
     showSpeedControl,
     onFetchModels,
-    onPickRefAudio
+    onPickRefAudio: handlePickRefAudioForProvider
   }
 }
 
