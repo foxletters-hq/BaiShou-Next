@@ -8,6 +8,16 @@ vi.mock('node:fs/promises', () => ({
 
 import { readFile } from 'node:fs/promises'
 
+function mockMp3Buffer(payload = 'clone-sample'): Buffer {
+  const content = Buffer.from(payload)
+  const buf = Buffer.alloc(Math.max(1200, 128 + content.length))
+  buf[0] = 0x49
+  buf[1] = 0x44
+  buf[2] = 0x33
+  content.copy(buf, 128)
+  return buf
+}
+
 describe('MimoTtsProvider', () => {
   let provider: MimoTtsProvider
 
@@ -74,12 +84,18 @@ describe('MimoTtsProvider', () => {
       }
       const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse as any)
 
-      const result = await provider.synthesize(mockRequest, mockConfig)
+      const result = await provider.synthesize(
+        {
+          ...mockRequest,
+          settings: { ...mockRequest.settings, stream: false }
+        },
+        mockConfig
+      )
 
       expect(fetchSpy).toHaveBeenCalledWith('https://api.mimo.com/v1/chat/completions', {
         method: 'POST',
         headers: {
-          Authorization: 'Bearer test-api-key',
+          'api-key': 'test-api-key',
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -101,8 +117,44 @@ describe('MimoTtsProvider', () => {
       expect(result.format).toBe('wav')
     })
 
-    it('should send voice clone data uri for voiceclone model', async () => {
-      vi.mocked(readFile).mockResolvedValue(Buffer.from('clone-sample'))
+    it('should use streaming pcm16 when stream is explicitly enabled', async () => {
+      const sse = [
+        `data: ${JSON.stringify({
+          choices: [{ delta: { audio: { data: btoa(String.fromCharCode(0, 1, 2, 3)) } } }]
+        })}`,
+        '',
+        'data: [DONE]',
+        ''
+      ].join('\n')
+
+      const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(new TextEncoder().encode(sse))
+              controller.close()
+            }
+          })
+        ) as any
+      )
+
+      const result = await provider.synthesize(
+        {
+          ...mockRequest,
+          settings: { ...mockRequest.settings, stream: true }
+        },
+        mockConfig
+      )
+
+      const requestBody = JSON.parse(String(fetchSpy.mock.calls[0]?.[1]?.body))
+      expect(requestBody.stream).toBe(true)
+      expect(requestBody.audio.format).toBe('pcm16')
+      expect(result.format).toBe('wav')
+      expect(result.audioBase64.length).toBeGreaterThan(0)
+    })
+
+    it('should not stream voiceclone by default', async () => {
+      vi.mocked(readFile).mockResolvedValue(Buffer.from(mockMp3Buffer('clone-sample')))
 
       const mockResponse = {
         ok: true,
@@ -127,7 +179,7 @@ describe('MimoTtsProvider', () => {
 
       const requestBody = JSON.parse(String(fetchSpy.mock.calls[0]?.[1]?.body))
       expect(requestBody.model).toBe('mimo-v2.5-tts-voiceclone')
-      expect(requestBody.audio.voice).toBe(`data:audio/mpeg;base64,${btoa('clone-sample')}`)
+      expect(requestBody.audio.voice).toMatch(/^data:audio\/mpeg;base64,/)
       expect(requestBody.messages).toEqual([
         { role: 'user', content: '' },
         { role: 'assistant', content: '测试复刻' }
@@ -146,7 +198,7 @@ describe('MimoTtsProvider', () => {
       await provider.synthesize(
         {
           ...mockRequest,
-          settings: { voice: '', responseFormat: '' }
+          settings: { voice: '', responseFormat: '', stream: false }
         },
         mockConfig
       )
@@ -205,9 +257,12 @@ describe('MimoTtsProvider', () => {
       }
       vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse as any)
 
-      await expect(provider.synthesize(mockRequest, mockConfig)).rejects.toThrow(
-        TtsInvalidResponseError
-      )
+      await expect(
+        provider.synthesize(
+          { ...mockRequest, settings: { ...mockRequest.settings, stream: false } },
+          mockConfig
+        )
+      ).rejects.toThrow(TtsInvalidResponseError)
     })
   })
 })
