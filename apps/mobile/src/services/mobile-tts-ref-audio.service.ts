@@ -5,7 +5,10 @@ import {
   assertMimoVoiceCloneAudioPath,
   isMimoVoiceCloneAudioExtension,
   normalizeRefAudioPath,
-  registerTtsRefAudioReader
+  registerTtsRefAudioBase64Reader,
+  registerTtsRefAudioReader,
+  assertSupportedRefAudioBase64,
+  type TtsRefAudioPickResult
 } from '@baishou/shared'
 import { joinStoragePath } from './mobile-storage-path.util'
 import { importUriToPath } from './mobile-uri-import'
@@ -16,6 +19,17 @@ const MAX_REF_AUDIO_BYTES = 10 * 1024 * 1024
 
 export interface TtsRefAudioStorageService {
   getRootDirectory(): Promise<string>
+}
+
+const refAudioBase64ByPath = new Map<string, string>()
+
+function stableHash(value: string): string {
+  let hash = 2166136261
+  for (let i = 0; i < value.length; i++) {
+    hash ^= value.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0')
 }
 
 function base64ToUint8Array(base64: string): Uint8Array {
@@ -46,27 +60,62 @@ function buildRefAudioDestPath(rootDir: string, sourceName: string): string {
   return joinStoragePath(rootDir, TTS_REF_AUDIO_DIR, `${Date.now()}_${safeName}`)
 }
 
-/** 向 shared TTS 注册移动端读盘：从 BaiShou_Root 等外部路径读取参考音频 */
+function cacheRefAudioBase64(path: string, base64: string): void {
+  refAudioBase64ByPath.set(normalizeRefAudioPath(path), base64)
+}
+
+async function readRefAudioBase64FromDisk(fileSystem: IFileSystem, path: string): Promise<string> {
+  const normalizedPath = normalizeRefAudioPath(path)
+  assertMimoVoiceCloneAudioPath(normalizedPath)
+  const cached = refAudioBase64ByPath.get(normalizedPath)
+  if (cached) {
+    assertSupportedRefAudioBase64(cached, normalizedPath)
+    console.info('[MiMo TTS] ref_audio_cache_hit', {
+      path: normalizedPath,
+      base64Length: cached.length,
+      base64Hash: stableHash(cached)
+    })
+    return cached
+  }
+
+  const base64 = (await fileSystem.readFile(normalizedPath, 'base64')).trim()
+  if (!base64) {
+    throw new Error('参考音频文件为空或读取失败')
+  }
+  assertSupportedRefAudioBase64(base64, normalizedPath)
+  const approxBytes = Math.floor((base64.length * 3) / 4)
+  if (approxBytes > MAX_REF_AUDIO_BYTES) {
+    throw new Error('参考音频文件不能超过 10MB')
+  }
+  cacheRefAudioBase64(normalizedPath, base64)
+  console.info('[MiMo TTS] ref_audio_read', {
+    path: normalizedPath,
+    approxBytes,
+    base64Length: base64.length,
+    base64Hash: stableHash(base64)
+  })
+  return base64
+}
+
+/** 向 shared TTS 注册移动端读盘：优先 base64 直读，避免字节往返损坏 */
 export function setupMobileTtsRefAudioReader(fileSystem: IFileSystem): void {
+  registerTtsRefAudioBase64Reader(async (path) => {
+    return readRefAudioBase64FromDisk(fileSystem, path)
+  })
+
   registerTtsRefAudioReader(async (path) => {
-    const normalizedPath = normalizeRefAudioPath(path)
-    assertMimoVoiceCloneAudioPath(normalizedPath)
-    const base64 = await fileSystem.readFile(normalizedPath, 'base64')
-    const bytes = base64ToUint8Array(base64)
-    if (bytes.length > MAX_REF_AUDIO_BYTES) {
-      throw new Error('参考音频文件不能超过 10MB')
-    }
-    return bytes
+    const base64 = await readRefAudioBase64FromDisk(fileSystem, path)
+    return base64ToUint8Array(base64)
   })
 }
 
 /**
- * 选择参考音频并写入外部存储（BaiShou_Root/tts-ref-audio），返回绝对路径。
+ * 选择参考音频并写入外部存储（BaiShou_Root/tts-ref-audio），返回路径与 base64。
  */
 export async function pickAndStoreTtsRefAudio(
   fileSystem: IFileSystem,
   pathService: TtsRefAudioStorageService
-): Promise<string | null> {
+): Promise<TtsRefAudioPickResult | null> {
   if (Platform.OS === 'android') {
     await assertExternalStorageReady()
   }
@@ -82,7 +131,7 @@ export async function pickAndStoreTtsRefAudio(
   const asset = pick.assets[0]
   const sourceName = asset.name || asset.uri.split('/').pop() || 'ref-audio.mp3'
   if (!isMimoVoiceCloneAudioExtension(sourceName)) {
-    throw new Error('MiMo 音色复刻仅支持 wav/mp3 参考音频')
+    throw new Error('参考音频仅支持 wav/mp3 格式')
   }
   if (asset.size != null && asset.size > MAX_REF_AUDIO_BYTES) {
     throw new Error('参考音频文件不能超过 10MB')
@@ -103,5 +152,15 @@ export async function pickAndStoreTtsRefAudio(
     throw new Error('参考音频文件不能超过 10MB')
   }
 
-  return normalizeRefAudioPath(destPath)
+  const normalizedPath = normalizeRefAudioPath(destPath)
+  const base64 = await readRefAudioBase64FromDisk(fileSystem, normalizedPath)
+  console.info('[MiMo TTS] ref_audio_picked', {
+    sourceName,
+    destPath: normalizedPath,
+    assetSize: asset.size ?? null,
+    storedSize: stat.size ?? null,
+    base64Length: base64.length,
+    base64Hash: stableHash(base64)
+  })
+  return { path: normalizedPath, base64 }
 }
