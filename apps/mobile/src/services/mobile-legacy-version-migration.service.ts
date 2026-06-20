@@ -161,8 +161,7 @@ export async function scanMobileVersionMigration(
     flutterDocumentsAvatarsDir: resolveMobileFlutterAvatarsDirectory(),
     sqliteClient: runtime.sqliteClient,
     executeRawSql,
-    prepareSqliteAttachPath: (dbPath) =>
-      prepareMobileSqliteAttachPath(runtime.fileSystem, dbPath)
+    prepareSqliteAttachPath: (dbPath) => prepareMobileSqliteAttachPath(runtime.fileSystem, dbPath)
   })
 }
 
@@ -306,22 +305,22 @@ function buildImporterDeps(
   deps.vaultService = runtime.vaultService
   deps.importAvatar = importAvatar
   deps.saveUserAvatarPath = async (relativePath: string) => {
-      const profile = await runtime.profileRepo.getProfile()
-      profile.avatarPath = relativePath
-      await saveUserProfileToSettings(runtime.settingsManager, profile)
-      invalidateUserAvatarDisplayCache(relativePath)
+    const profile = await runtime.profileRepo.getProfile()
+    profile.avatarPath = relativePath
+    await saveUserProfileToSettings(runtime.settingsManager, profile)
+    invalidateUserAvatarDisplayCache(relativePath)
   }
   deps.existingAssistantNames = async () => {
-      const names = new Set<string>()
-      for (const a of await runtime.assistantManager.findAll()) {
-        names.add(a.name)
-      }
-      return names
+    const names = new Set<string>()
+    for (const a of await runtime.assistantManager.findAll()) {
+      names.add(a.name)
+    }
+    return names
   }
   deps.existingSessionIds = async () => collectAllSessionIds(runtime.sessionManager)
   deps.existingPersonaIds = async () => {
-      const profile = await runtime.profileRepo.getProfile()
-      return new Set(Object.keys(profile.personas ?? {}))
+    const profile = await runtime.profileRepo.getProfile()
+    return new Set(Object.keys(profile.personas ?? {}))
   }
   deps.upsertSessionAggregate = async (aggregate: unknown) => {
     await runtime.sessionRepo.upsertAggregate(aggregate)
@@ -336,18 +335,18 @@ function buildImporterDeps(
   }
   deps.onProgress = onProgress
   deps.readTargetJournalRaw = async (dateStr: string, targetVaultName: string) => {
-      const journalsBase = `${await runtime.pathService.getVaultDirectory(targetVaultName)}/Journals`
-      const filePath = buildJournalFilePathFromDateStr(journalsBase, dateStr)
-      if (!(await runtime.fileSystem.exists(filePath))) return null
-      return runtime.fileSystem.readFile(filePath, 'utf8')
+    const journalsBase = `${await runtime.pathService.getVaultDirectory(targetVaultName)}/Journals`
+    const filePath = buildJournalFilePathFromDateStr(journalsBase, dateStr)
+    if (!(await runtime.fileSystem.exists(filePath))) return null
+    return runtime.fileSystem.readFile(filePath, 'utf8')
   }
   deps.prepareSqliteAttachPath = (dbPath: string) =>
     prepareMobileSqliteAttachPath(runtime.fileSystem, dbPath)
   deps.getJournalsBaseDirectory = async (targetVaultName: string) =>
     `${await runtime.pathService.getVaultDirectory(targetVaultName)}/Journals`
   deps.assistantRecordExists = async (assistantId: string) => {
-      const dir = await runtime.pathService.getAssistantsBaseDirectory()
-      return runtime.fileSystem.exists(`${dir}/${assistantId}.json`)
+    const dir = await runtime.pathService.getAssistantsBaseDirectory()
+    return runtime.fileSystem.exists(`${dir}/${assistantId}.json`)
   }
 
   return deps
@@ -400,7 +399,7 @@ export async function importMobileVersionMigrationSection(
   deps.flutterPrefsConfig = flutterPrefsConfig
   deps.flutterRawSp = flutterRawSp
 
-  let assistantIdMap = await getStoredAssistantIdMap()
+  const assistantIdMap = await getStoredAssistantIdMap()
 
   const result = await importLegacyVersionMigrationSection(sectionId, deps, { assistantIdMap })
 

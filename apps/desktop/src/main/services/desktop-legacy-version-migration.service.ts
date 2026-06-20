@@ -6,9 +6,7 @@ import {
   UserProfileRepository,
   connectionManager
 } from '@baishou/database-desktop'
-import {
-  SessionManagerService
-} from '@baishou/core-desktop'
+import { SessionManagerService } from '@baishou/core-desktop'
 import {
   buildJournalFilePathFromDateStr,
   importLegacyVersionMigrationSection,
@@ -24,7 +22,10 @@ import {
   type LegacyVersionMigrationSectionId
 } from '@baishou/core/shared'
 import { normalizeStorageRoot } from '@baishou/shared'
-import type { LegacyVersionMigrationScanPayload, LegacyVersionMigrationSourceKind } from '@baishou/shared'
+import type {
+  LegacyVersionMigrationScanPayload,
+  LegacyVersionMigrationSourceKind
+} from '@baishou/shared'
 import { getAgentManagers } from '../ipc/agent-helpers'
 import { settingsManager } from '../ipc/settings.ipc'
 import { fileSystem, pathService, vaultService } from '../ipc/vault.ipc'
@@ -84,10 +85,7 @@ export async function resolveDesktopVersionMigrationLegacySource(
 
   const candidates = await resolveLegacyRootCandidates()
   for (const candidate of candidates) {
-    if (
-      !rootsEqual(candidate, targetRoot) &&
-      (await isLegacyAppRoot(fileSystem, candidate))
-    ) {
+    if (!rootsEqual(candidate, targetRoot) && (await isLegacyAppRoot(fileSystem, candidate))) {
       return { kind: 'flutter', sourceRoot: candidate, sourceDisplayPath: candidate }
     }
   }
@@ -152,7 +150,10 @@ async function buildImporterDeps(
     return target
   }
 
-  const runInVaultContext = async <T>(legacyVaultName: string, fn: () => Promise<T>): Promise<T> => {
+  const runInVaultContext = async <T>(
+    legacyVaultName: string,
+    fn: () => Promise<T>
+  ): Promise<T> => {
     const targetVault = await resolveTargetVaultName(legacyVaultName)
     const active = vaultService.getActiveVault()?.name
     if (active !== targetVault) {
@@ -314,11 +315,12 @@ export class DesktopLegacyVersionMigrationService {
     const workspaceName = parseWorkspaceSectionId(sectionId)
     if (workspaceName) {
       const targetVault = await deps.resolveTargetVaultName(workspaceName)
-      ;(deps as { diaryService: Awaited<ReturnType<typeof getDiaryManagerForVault>> }).diaryService =
-        await getDiaryManagerForVault(targetVault)
+      ;(
+        deps as { diaryService: Awaited<ReturnType<typeof getDiaryManagerForVault>> }
+      ).diaryService = await getDiaryManagerForVault(targetVault)
     }
 
-    let assistantIdMap = await getStoredAssistantIdMap()
+    const assistantIdMap = await getStoredAssistantIdMap()
     const result = await importLegacyVersionMigrationSection(sectionId, deps, { assistantIdMap })
 
     if (workspaceName && (result.imported > 0 || result.skipped > 0)) {
