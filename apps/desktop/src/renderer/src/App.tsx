@@ -24,6 +24,11 @@ import {
 } from '@baishou/ui'
 import { useTranslation } from 'react-i18next'
 import { useSettingsStore, useSyncStore } from '@baishou/store'
+import {
+  initDesktopRendererCacheCoordinator,
+  handleRendererDomainMutation
+} from './cache/desktop-renderer-cache-coordinator'
+import type { DomainMutationEvent } from '@baishou/shared/cache'
 import { i18n, isRagMemoryEnabled } from '@baishou/shared'
 import { TitleBar } from './components/TitleBar'
 import { IncrementalSyncConfirmHost } from './components/IncrementalSyncConfirmDialog/IncrementalSyncConfirmHost'
@@ -200,6 +205,14 @@ export function App() {
   useZoom()
   const locale = useSettingsStore((s) => s.locale)
   const [archiveImporting, setArchiveImporting] = useState(false)
+
+  useEffect(() => {
+    initDesktopRendererCacheCoordinator()
+    const unsub = (window as any).api?.cache?.onDomainMutation?.((event: DomainMutationEvent) => {
+      handleRendererDomainMutation(event)
+    })
+    return unsub
+  }, [])
 
   useEffect(() => {
     const unsub = (window as any).api?.archive?.onArchiveImportState?.(setArchiveImporting)

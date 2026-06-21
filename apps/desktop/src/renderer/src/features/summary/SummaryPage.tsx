@@ -8,13 +8,13 @@ import {
   ActivityHeatmap,
   useToast
 } from '@baishou/ui'
-import type { ActivityData } from '@baishou/ui'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSummaryData } from './hooks/useSummaryData'
 import { SummaryTabBar } from './components/SummaryTabBar'
 import { SummaryMissingSection } from './components/SummaryMissingSection'
 import { SummaryGalleryView } from './components/SummaryGalleryView'
 import { resolveDesktopSummaryConfig } from './utils/summary-config.util'
+import { peekSummaryDashboardCache } from '../../lib/summary-dashboard-cache'
 import './SummaryPage.css'
 
 export const SummaryPage: React.FC = () => {
@@ -25,104 +25,64 @@ export const SummaryPage: React.FC = () => {
   const [lookbackMonths, setLookbackMonths] = useState(1)
   const [isBatchGenerating, setIsBatchGenerating] = useState(false)
   const [concurrencyLimit, setConcurrencyLimitState] = useState(3)
-  const [activityData, setActivityData] = useState<ActivityData[]>([])
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
-  const [availableYears, setAvailableYears] = useState<number[]>([new Date().getFullYear()])
 
   const {
     summaries,
     stats,
+    activityData,
+    availableYears,
     missingSummaries,
     queueGeneration,
     stopGeneration,
     setConcurrency,
     generationStates,
     isDetectingMissing,
+    refreshDashboard,
+    refreshSummaries,
     refreshData,
-    refreshMissing
-  } = useSummaryData()
+    refreshMissing,
+    scopeKey
+  } = useSummaryData(selectedYear)
 
   const prevStatesRef = useRef<typeof generationStates>({})
   const prevPathRef = useRef(location.pathname)
   const prevTabRef = useRef(activeTab)
-  const selectedYearRef = useRef(selectedYear)
-  selectedYearRef.current = selectedYear
+  const lastFocusRefreshRef = useRef(0)
 
-  const refreshActivityData = useCallback(async () => {
-    if (typeof window === 'undefined' || !window.electron) return
-    try {
-      const allData = await window.electron.ipcRenderer.invoke('diary:activityData', null)
-      const yearSet = new Set<number>()
-      if (allData && allData.length > 0) {
-        allData.forEach((d: ActivityData) => {
-          const y = parseInt(d.date.substring(0, 4), 10)
-          if (!isNaN(y)) yearSet.add(y)
-        })
-      }
-      const years = Array.from(yearSet).sort((a, b) => a - b)
-      if (years.length === 0) years.push(new Date().getFullYear())
-      setAvailableYears(years)
-
-      let yearToShow = selectedYearRef.current
-      if (!years.includes(yearToShow)) {
-        yearToShow = years[years.length - 1]!
-        setSelectedYear(yearToShow)
-      }
-      setActivityData(
-        (allData || []).filter((d: ActivityData) => d.date.startsWith(`${yearToShow}-`))
-      )
-    } catch (e) {
-      console.warn('[SummaryPage] refresh activity data failed:', e)
+  useEffect(() => {
+    if (availableYears.length === 0) return
+    if (!availableYears.includes(selectedYear)) {
+      setSelectedYear(availableYears[availableYears.length - 1]!)
     }
-  }, [])
+  }, [availableYears, selectedYear])
 
-  /** 从总结详情页返回时刷新列表（页面被 MainPageCache 缓存，不会重新挂载） */
+  /** MainPageCache 保活：路由回到 /summary 时 SWR 刷新 dashboard */
   useEffect(() => {
     const prev = prevPathRef.current
     prevPathRef.current = location.pathname
 
     if (prev.startsWith('/summary/') && location.pathname === '/summary') {
-      void refreshData()
+      const now = Date.now()
+      const cacheStale = peekSummaryDashboardCache(scopeKey)?.stale ?? true
+      if (!cacheStale && now - lastFocusRefreshRef.current < 4000) return
+      lastFocusRefreshRef.current = now
+      void refreshDashboard()
     }
-  }, [location.pathname, refreshData])
+  }, [location.pathname, refreshDashboard, scopeKey])
 
-  /** 切回面板时重新检测缺失项（删除总结后从画廊返回面板） */
   useEffect(() => {
     const prev = prevTabRef.current
     prevTabRef.current = activeTab
 
+    if (prev !== 'gallery' && activeTab === 'gallery') {
+      void refreshSummaries()
+    }
     if (prev !== 'panel' && activeTab === 'panel') {
       void refreshMissing()
     }
-  }, [activeTab, refreshMissing])
+  }, [activeTab, refreshMissing, refreshSummaries])
 
-  /** 首次加载与工作空间 resync 后：重建年份列表与热力图 */
-  useEffect(() => {
-    void refreshActivityData()
-  }, [refreshActivityData])
-
-  useEffect(() => {
-    const api = (window as any).api
-    if (!api?.diary?.onSyncEvent) return undefined
-
-    const unsubscribe = api.diary.onSyncEvent((event: { type?: string }) => {
-      if (event?.type !== 'vault-resync-complete' && event?.type !== 'indexing-complete') return
-      void refreshActivityData()
-    })
-
-    return unsubscribe
-  }, [refreshActivityData])
-
-  /** 切换年份时按年份过滤数据 */
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.electron) return
-    window.electron.ipcRenderer
-      .invoke('diary:activityData', selectedYear)
-      .then((data: ActivityData[]) => setActivityData(data || []))
-      .catch((e: any) => console.warn('[SummaryPage] fetch year failed:', e))
-  }, [selectedYear])
-
-  /** 监听生成状态变化，弹出错误提示 */
   useEffect(() => {
     Object.keys(generationStates).forEach((uKey) => {
       const cur = generationStates[uKey]
@@ -175,9 +135,9 @@ export const SummaryPage: React.FC = () => {
       } else {
         toast.showError(t('summary.no_data_to_copy', '当前回溯范围内无已生成的总结回忆'))
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('[SummaryPage] Copy failed:', e)
-      toast.showError(`${t('common.copy_failed', '复制失败')}: ${e?.message || String(e)}`)
+      toast.showError(t('common.copy_failed', '复制失败'))
     }
   }
 

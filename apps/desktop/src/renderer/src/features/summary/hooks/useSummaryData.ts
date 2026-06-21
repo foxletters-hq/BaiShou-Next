@@ -1,22 +1,130 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
+import { filterActivityForYear, type DomainMutationEvent } from '@baishou/shared/cache'
 import { logger } from '@baishou/shared'
+import {
+  commitSummaryDashboardCache,
+  getSummaryDashboardCacheVersion,
+  peekSummaryDashboardCache,
+  subscribeSummaryDashboardCache,
+  type SummaryDashboardSnapshot
+} from '../../../lib/summary-dashboard-cache'
+import { fetchSummaryDashboardSnapshot } from '../services/summary-dashboard.service'
+import { handleRendererDomainMutation } from '../../../cache/desktop-renderer-cache-coordinator'
 
-export function useSummaryData() {
+interface Stats {
+  totalDiaryCount: number
+  totalWeeklyCount: number
+  totalMonthlyCount: number
+  totalQuarterlyCount: number
+  totalYearlyCount: number
+}
+
+const EMPTY_STATS: Stats = {
+  totalDiaryCount: 0,
+  totalWeeklyCount: 0,
+  totalMonthlyCount: 0,
+  totalQuarterlyCount: 0,
+  totalYearlyCount: 0
+}
+
+function snapshotToStats(snapshot: SummaryDashboardSnapshot): Stats {
+  return snapshot.stats
+}
+
+async function resolveVaultScopeKey(): Promise<string> {
+  const api = (window as any).api
+  if (api?.vault?.getActive) {
+    const active = await api.vault.getActive()
+    if (active?.name) return String(active.name)
+  }
+  return 'Personal'
+}
+
+export function useSummaryData(selectedYear: number) {
   const { i18n } = useTranslation()
+  const [scopeKey, setScopeKey] = useState<string>('Personal')
   const [summaries, setSummaries] = useState<any[]>([])
-  const [stats, setStats] = useState({
-    totalDiaryCount: 0,
-    totalWeeklyCount: 0,
-    totalMonthlyCount: 0,
-    totalQuarterlyCount: 0,
-    totalYearlyCount: 0
-  })
+  const [stats, setStats] = useState<Stats>(EMPTY_STATS)
+  const [activityByDate, setActivityByDate] = useState<Record<string, number>>({})
+  const [availableYears, setAvailableYears] = useState<number[]>([new Date().getFullYear()])
   const [missingSummaries, setMissingSummaries] = useState<any[]>([])
   const [isDetectingMissing, setIsDetectingMissing] = useState(false)
   const [generationStates, setGenerationStates] = useState<
     Record<string, { progress: number; phase: number; status: string; error?: string }>
   >({})
+
+  const dashboardFetchRef = useRef(0)
+  const cacheVersion = useSyncExternalStore(
+    subscribeSummaryDashboardCache,
+    getSummaryDashboardCacheVersion
+  )
+  const cacheInvalidationHandledRef = useRef(false)
+
+  useEffect(() => {
+    void resolveVaultScopeKey().then(setScopeKey)
+  }, [])
+
+  useEffect(() => {
+    const unsub = (window as any).api?.cache?.onDomainMutation?.((event: DomainMutationEvent) => {
+      handleRendererDomainMutation(event)
+      if (event.domain === 'vault' && event.action === 'switch' && event.vaultKey) {
+        setScopeKey(event.vaultKey)
+      }
+    })
+    return unsub
+  }, [])
+
+  const applyDashboardSnapshot = useCallback((snapshot: SummaryDashboardSnapshot) => {
+    setStats(snapshotToStats(snapshot))
+    setActivityByDate(snapshot.activityByDate)
+    setAvailableYears(snapshot.availableYears)
+  }, [])
+
+  const hydrateDashboardFromCache = useCallback(() => {
+    const peek = peekSummaryDashboardCache(scopeKey)
+    if (peek) {
+      applyDashboardSnapshot(peek.snapshot)
+      return peek.stale
+    }
+    return true
+  }, [applyDashboardSnapshot, scopeKey])
+
+  const refreshDashboard = useCallback(
+    async (options?: { force?: boolean }) => {
+      if (typeof window === 'undefined' || !window.electron) return
+
+      const stale = hydrateDashboardFromCache()
+      if (!options?.force && !stale) return
+
+      const requestId = ++dashboardFetchRef.current
+      try {
+        const data = await fetchSummaryDashboardSnapshot(scopeKey)
+        if (requestId !== dashboardFetchRef.current) return
+
+        commitSummaryDashboardCache(scopeKey, data)
+        applyDashboardSnapshot({
+          scopeKey,
+          fetchedAt: Date.now(),
+          ...data
+        })
+      } catch (e) {
+        logger.warn('[SummaryData] refreshDashboard failed:', e)
+      }
+    },
+    [applyDashboardSnapshot, hydrateDashboardFromCache, scopeKey]
+  )
+
+  const fetchSummariesForGallery = useCallback(async () => {
+    if (typeof window === 'undefined' || !window.electron) return
+    try {
+      const list = await window.electron.ipcRenderer.invoke('summary:list')
+      setSummaries(list || [])
+    } catch (e) {
+      logger.warn('[SummaryData] summary:list failed:', e)
+      setSummaries([])
+    }
+  }, [])
 
   const fetchMissingSummaries = useCallback(async () => {
     if (typeof window === 'undefined' || !window.electron) return
@@ -27,7 +135,6 @@ export function useSummaryData() {
         'summary:detect-missing',
         i18n.language
       )
-      logger.info(`[RENDERER-DEBUG] summary:detect-missing → ${missing?.length ?? 0} items`)
       setMissingSummaries(missing || [])
     } catch (e) {
       logger.warn('[SummaryData] summary:detect-missing failed:', e)
@@ -62,50 +169,30 @@ export function useSummaryData() {
     }
   }, [])
 
-  const fetchCoreData = useCallback(async () => {
-    if (typeof window === 'undefined' || !window.electron) return
-
-    const [listResult, statsResult] = await Promise.allSettled([
-      window.electron.ipcRenderer.invoke('summary:list'),
-      window.electron.ipcRenderer.invoke('summary:stats')
-    ])
-
-    if (listResult.status === 'fulfilled') {
-      setSummaries(listResult.value || [])
-    } else {
-      logger.warn('[SummaryData] summary:list failed:', listResult.reason)
-      setSummaries([])
-    }
-
-    if (statsResult.status === 'fulfilled') {
-      const st = statsResult.value
-      logger.info('[RENDERER-DEBUG] summary:stats →', st)
-      setStats({
-        totalDiaryCount: st?.totalDiaryCount || 0,
-        totalWeeklyCount: st?.weeklyCount || 0,
-        totalMonthlyCount: st?.monthlyCount || 0,
-        totalQuarterlyCount: st?.quarterlyCount || 0,
-        totalYearlyCount: st?.yearlyCount || 0
-      })
-    } else {
-      logger.warn('[SummaryData] summary:stats failed:', statsResult.reason)
-    }
-  }, [])
-
   const fetchData = useCallback(async () => {
-    await fetchCoreData()
+    await refreshDashboard({ force: true })
     void fetchMissingSummaries()
-  }, [fetchCoreData, fetchMissingSummaries])
+    await fetchSummariesForGallery()
+  }, [fetchMissingSummaries, fetchSummariesForGallery, refreshDashboard])
 
   useEffect(() => {
-    void fetchCoreData()
+    hydrateDashboardFromCache()
+    void refreshDashboard()
     void fetchMissingSummaries()
     fetchQueueState()
-  }, [fetchCoreData, fetchMissingSummaries, fetchQueueState])
+  }, [fetchMissingSummaries, fetchQueueState, hydrateDashboardFromCache, refreshDashboard, scopeKey])
+
+  useEffect(() => {
+    if (!cacheInvalidationHandledRef.current) {
+      cacheInvalidationHandledRef.current = true
+      return
+    }
+    void refreshDashboard()
+  }, [cacheVersion, refreshDashboard])
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.electron) {
-      const handler = (_event: any, queue: any[]) => {
+      const handler = (_event: unknown, queue: any[]) => {
         const map: Record<
           string,
           { progress: number; phase: number; status: string; error?: string }
@@ -115,9 +202,8 @@ export function useSummaryData() {
         })
         setGenerationStates(map)
 
-        // If something completed, eagerly refresh data after a short delay
         if (queue.some((q) => q.status === 'completed')) {
-          setTimeout(fetchData, 1000)
+          setTimeout(() => void fetchData(), 1000)
         }
       }
       const removeListener = window.electron.ipcRenderer.on('summary:queue-progress', handler)
@@ -129,8 +215,7 @@ export function useSummaryData() {
   useEffect(() => {
     if (typeof window !== 'undefined' && window.electron) {
       const handler = () => {
-        logger.info('[SummaryData] summary:file-changed event received, reloading summaries...')
-        fetchData()
+        void fetchData()
       }
       const removeListener = window.electron.ipcRenderer.on('summary:file-changed', handler)
       return () => removeListener()
@@ -144,12 +229,17 @@ export function useSummaryData() {
 
     const unsubscribe = api.diary.onSyncEvent((event: { type?: string }) => {
       if (event?.type !== 'vault-resync-complete' && event?.type !== 'indexing-complete') return
-      logger.info('[SummaryData] vault resync completed, reloading summaries...')
-      void fetchData()
+      void refreshDashboard({ force: true })
+      void fetchSummariesForGallery()
     })
 
     return unsubscribe
-  }, [fetchData])
+  }, [fetchSummariesForGallery, refreshDashboard])
+
+  const activityData = useMemo(
+    () => filterActivityForYear(activityByDate, selectedYear),
+    [activityByDate, selectedYear]
+  )
 
   const queueGeneration = async (items: any[], concurrency?: number) => {
     if (typeof window !== 'undefined' && window.electron) {
@@ -172,6 +262,9 @@ export function useSummaryData() {
   return {
     summaries,
     stats,
+    activityData,
+    availableYears,
+    scopeKey,
     missingSummaries,
     setMissingSummaries,
     queueGeneration,
@@ -179,6 +272,8 @@ export function useSummaryData() {
     setConcurrency,
     generationStates,
     isDetectingMissing,
+    refreshDashboard,
+    refreshSummaries: fetchSummariesForGallery,
     refreshData: fetchData,
     refreshMissing: fetchMissingSummaries
   }
