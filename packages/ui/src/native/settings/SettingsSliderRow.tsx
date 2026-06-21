@@ -11,6 +11,8 @@ export interface SettingsSliderRowProps {
   max: number
   step: number
   onChange: (v: number) => void
+  /** 拖动过程中预览回调，不触发持久化 */
+  onPreviewChange?: (v: number) => void
   formatValue?: (v: number) => string
   /** 松手后再提交，拖动时仅更新本地预览（与共同回忆面板一致） */
   commitOnChangeEnd?: boolean
@@ -24,6 +26,7 @@ export const SettingsSliderRow: React.FC<SettingsSliderRowProps> = ({
   max,
   step,
   onChange,
+  onPreviewChange,
   formatValue = (v) => String(v),
   commitOnChangeEnd = true
 }) => {
@@ -41,11 +44,12 @@ export const SettingsSliderRow: React.FC<SettingsSliderRowProps> = ({
   const handlePreview = useCallback(
     (next: number) => {
       setDraftValue((prev) => (prev === next ? prev : next))
+      onPreviewChange?.(next)
       if (!commitOnChangeEnd && next !== value) {
         onChange(next)
       }
     },
-    [commitOnChangeEnd, onChange, value]
+    [commitOnChangeEnd, onChange, onPreviewChange, value]
   )
 
   const handleCommit = useCallback(

@@ -16,8 +16,12 @@ import {
   type VaultInfo
 } from '@baishou/ui/native'
 import {
+  CHAT_BACKGROUND_BLUR_DEFAULT,
+  CHAT_BACKGROUND_OVERLAY_DEFAULT,
   DEFAULT_USER_PROFILE,
   getUserProfileFromSettings,
+  normalizeChatBackgroundBlur,
+  normalizeChatBackgroundOverlayOpacity,
   saveUserProfileToSettings,
   type UserProfile
 } from '@baishou/shared'
@@ -45,6 +49,10 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
   const [language, setLanguage] = useState('system')
   const [profile, setProfile] = useState<any>({ nickname: '', avatarPath: '' })
   const [chatBackgroundPath, setChatBackgroundPath] = useState<string | null>(null)
+  const [chatBackgroundBlur, setChatBackgroundBlur] = useState(CHAT_BACKGROUND_BLUR_DEFAULT)
+  const [chatBackgroundOverlayOpacity, setChatBackgroundOverlayOpacity] = useState(
+    CHAT_BACKGROUND_OVERLAY_DEFAULT
+  )
   const [resolvedBackgroundUri, setResolvedBackgroundUri] = useState<string | null>(null)
   const [identityProfile, setIdentityProfile] = useState<UserProfileConfig>({
     nickname: DEFAULT_USER_PROFILE.nickname,
@@ -125,6 +133,10 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
         avatarPath: userProfile.avatarPath
       })
       setChatBackgroundPath(userProfile.chatBackgroundPath ?? null)
+      setChatBackgroundBlur(normalizeChatBackgroundBlur(userProfile.chatBackgroundBlur))
+      setChatBackgroundOverlayOpacity(
+        normalizeChatBackgroundOverlayOpacity(userProfile.chatBackgroundOverlayOpacity)
+      )
       setIdentityProfile({
         nickname: userProfile.nickname || '',
         avatarPath: userProfile.avatarPath ?? undefined,
@@ -297,10 +309,14 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
       const userProfile = await getUserProfileFromSettings(services.settingsManager)
       const next: UserProfile = {
         ...userProfile,
-        chatBackgroundPath: null
+        chatBackgroundPath: null,
+        chatBackgroundBlur: CHAT_BACKGROUND_BLUR_DEFAULT,
+        chatBackgroundOverlayOpacity: CHAT_BACKGROUND_OVERLAY_DEFAULT
       }
       await saveUserProfileToSettings(services.settingsManager, next)
       setChatBackgroundPath(null)
+      setChatBackgroundBlur(CHAT_BACKGROUND_BLUR_DEFAULT)
+      setChatBackgroundOverlayOpacity(CHAT_BACKGROUND_OVERLAY_DEFAULT)
       setResolvedBackgroundUri(null)
       toast.showSuccess(t('common.save_success'))
     } catch (e) {
@@ -308,6 +324,29 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
       toast.showError(t('common.errors.save_failed'))
     }
   }, [services, dbReady, t, toast])
+
+  const saveChatBackgroundStyle = useCallback(
+    async (patch: { chatBackgroundBlur?: number; chatBackgroundOverlayOpacity?: number }) => {
+      if (!services || !dbReady) return
+      try {
+        const userProfile = await getUserProfileFromSettings(services.settingsManager)
+        const next: UserProfile = { ...userProfile, ...patch }
+        await saveUserProfileToSettings(services.settingsManager, next)
+        if (patch.chatBackgroundBlur !== undefined) {
+          setChatBackgroundBlur(normalizeChatBackgroundBlur(patch.chatBackgroundBlur))
+        }
+        if (patch.chatBackgroundOverlayOpacity !== undefined) {
+          setChatBackgroundOverlayOpacity(
+            normalizeChatBackgroundOverlayOpacity(patch.chatBackgroundOverlayOpacity)
+          )
+        }
+      } catch (e) {
+        console.error('Save chat background style failed', e)
+        toast.showError(t('common.errors.save_failed'))
+      }
+    },
+    [services, dbReady, t, toast]
+  )
 
   const accountReady = dbReady && !!services
 
@@ -359,8 +398,14 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
             isLast
             backgroundPath={chatBackgroundPath}
             resolvedBackgroundUri={resolvedBackgroundUri}
+            blur={chatBackgroundBlur}
+            overlayOpacity={chatBackgroundOverlayOpacity}
             onPickBackground={handlePickBackground}
             onClearBackground={handleClearBackground}
+            onBlurChange={(value) => void saveChatBackgroundStyle({ chatBackgroundBlur: value })}
+            onOverlayOpacityChange={(value) =>
+              void saveChatBackgroundStyle({ chatBackgroundOverlayOpacity: value })
+            }
           />
         </>
       )}
