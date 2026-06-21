@@ -4,12 +4,16 @@ import { useTranslation } from 'react-i18next'
 import {
   CHAT_BACKGROUND_BLUR_MAX,
   CHAT_BACKGROUND_BLUR_MIN,
-  CHAT_BACKGROUND_OVERLAY_MAX,
-  CHAT_BACKGROUND_OVERLAY_MIN,
+  CHAT_BACKGROUND_OVERLAY_TRANSPARENCY_MIN,
+  CHAT_BACKGROUND_OVERLAY_TRANSPARENCY_MAX,
   normalizeChatBackgroundBlur,
-  normalizeChatBackgroundOverlayOpacity
+  normalizeChatBackgroundOverlayOpacity,
+  chatBackgroundOverlayTransparencyFromOpacity,
+  chatBackgroundOverlayOpacityFromTransparency,
+  chatBackgroundOverlayAlpha,
+  chatBackgroundOverlayTransparencyProgress
 } from '@baishou/shared'
-import '../shared/SettingsListTile.css'
+import { SettingsExpansionTile } from '../shared/SettingsExpansionTile'
 import './ChatBackgroundSettingsCard.css'
 
 export interface ChatBackgroundSettingsProps {
@@ -31,21 +35,30 @@ export const ChatBackgroundSettingsCard: React.FC<ChatBackgroundSettingsProps> =
   onPickBackground,
   onClearBackground,
   onBlurChange,
-  onOverlayOpacityChange
+  onOverlayOpacityChange,
+  embedded = false,
+  isLast = false
 }) => {
   const { t } = useTranslation()
   const committedBlur = normalizeChatBackgroundBlur(blur)
-  const committedOverlay = normalizeChatBackgroundOverlayOpacity(overlayOpacity)
+  const committedOverlayOpacity = normalizeChatBackgroundOverlayOpacity(overlayOpacity)
+  const committedOverlayTransparency =
+    chatBackgroundOverlayTransparencyFromOpacity(committedOverlayOpacity)
   const [draftBlur, setDraftBlur] = useState(committedBlur)
-  const [draftOverlay, setDraftOverlay] = useState(committedOverlay)
+  const [draftOverlayTransparency, setDraftOverlayTransparency] = useState(
+    committedOverlayTransparency
+  )
 
   useEffect(() => {
     setDraftBlur(committedBlur)
   }, [committedBlur])
 
   useEffect(() => {
-    setDraftOverlay(committedOverlay)
-  }, [committedOverlay])
+    setDraftOverlayTransparency(committedOverlayTransparency)
+  }, [committedOverlayTransparency])
+
+  const draftOverlayOpacity = chatBackgroundOverlayOpacityFromTransparency(draftOverlayTransparency)
+  const draftOverlayAlpha = chatBackgroundOverlayAlpha(draftOverlayOpacity)
 
   const subtitle = backgroundPath
     ? t('settings.chat_background_custom', '自定义背景')
@@ -62,34 +75,22 @@ export const ChatBackgroundSettingsCard: React.FC<ChatBackgroundSettingsProps> =
   }, [committedBlur, draftBlur, onBlurChange])
 
   const commitOverlay = useCallback(() => {
-    if (draftOverlay !== committedOverlay) {
-      onOverlayOpacityChange?.(draftOverlay)
+    if (draftOverlayTransparency !== committedOverlayTransparency) {
+      onOverlayOpacityChange?.(
+        chatBackgroundOverlayOpacityFromTransparency(draftOverlayTransparency)
+      )
     }
-  }, [committedOverlay, draftOverlay, onOverlayOpacityChange])
+  }, [committedOverlayTransparency, draftOverlayTransparency, onOverlayOpacityChange])
 
   return (
     <div className="chat-bg-settings-wrapper">
-      <div className="chat-bg-flat-header">
-        <div className="settings-list-tile-leading">
-          <MdWallpaper size={24} />
-        </div>
-        <div className="settings-list-tile-content">
-          <span className="settings-list-tile-title">{t('settings.chat_background', '聊天背景')}</span>
-          <span className="settings-list-tile-subtitle">{subtitle}</span>
-        </div>
-        {backgroundPath ? (
-          <button
-            type="button"
-            className="chat-bg-clear-inline-btn"
-            onClick={onClearBackground}
-          >
-            <MdDelete size={16} />
-            <span>{t('settings.chat_background_reset', '清除背景')}</span>
-          </button>
-        ) : null}
-      </div>
-
-      <div className="chat-bg-flat-body">
+      <SettingsExpansionTile
+        embedded={embedded}
+        isLast={isLast}
+        icon={<MdWallpaper size={24} />}
+        title={t('settings.chat_background', '聊天背景')}
+        subtitle={subtitle}
+      >
         <div className="chat-bg-preview-area" onClick={onPickBackground}>
           {backgroundPath ? (
             <>
@@ -102,10 +103,10 @@ export const ChatBackgroundSettingsCard: React.FC<ChatBackgroundSettingsProps> =
                   transform: draftBlur > 0 ? 'scale(1.08)' : undefined
                 }}
               />
-              {draftOverlay > 0 ? (
+              {draftOverlayAlpha > 0 ? (
                 <div
                   className="chat-bg-preview-scrim"
-                  style={{ backgroundColor: `rgba(0, 0, 0, ${draftOverlay / 100})` }}
+                  style={{ backgroundColor: `rgba(0, 0, 0, ${draftOverlayAlpha})` }}
                 />
               ) : null}
             </>
@@ -121,53 +122,60 @@ export const ChatBackgroundSettingsCard: React.FC<ChatBackgroundSettingsProps> =
         </div>
 
         {backgroundPath ? (
-          <div className="chat-bg-slider-section" onClick={stopRowClick}>
-            <div className="chat-bg-slider-row">
-              <span className="chat-bg-slider-label">
-                {t('settings.chat_background_blur', '背景模糊')}
-              </span>
-              <span className="chat-bg-slider-value">{draftBlur}px</span>
-            </div>
-            <input
-              type="range"
-              className="chat-bg-range-input"
-              min={CHAT_BACKGROUND_BLUR_MIN}
-              max={CHAT_BACKGROUND_BLUR_MAX}
-              step={1}
-              value={draftBlur}
-              onChange={(e) => setDraftBlur(Number(e.target.value))}
-              onMouseUp={commitBlur}
-              onPointerUp={commitBlur}
-              onKeyUp={commitBlur}
-              style={{
-                backgroundSize: `${(draftBlur / CHAT_BACKGROUND_BLUR_MAX) * 100}% 100%`
-              }}
-            />
+          <>
+            <div className="chat-bg-slider-section" onClick={stopRowClick}>
+              <div className="chat-bg-slider-row">
+                <span className="chat-bg-slider-label">
+                  {t('settings.chat_background_blur', '背景模糊')}
+                </span>
+                <span className="chat-bg-slider-value">{draftBlur}px</span>
+              </div>
+              <input
+                type="range"
+                className="chat-bg-range-input"
+                min={CHAT_BACKGROUND_BLUR_MIN}
+                max={CHAT_BACKGROUND_BLUR_MAX}
+                step={1}
+                value={draftBlur}
+                onChange={(e) => setDraftBlur(Number(e.target.value))}
+                onMouseUp={commitBlur}
+                onPointerUp={commitBlur}
+                onKeyUp={commitBlur}
+                style={{
+                  backgroundSize: `${(draftBlur / CHAT_BACKGROUND_BLUR_MAX) * 100}% 100%`
+                }}
+              />
 
-            <div className="chat-bg-slider-row">
-              <span className="chat-bg-slider-label">
-                {t('settings.chat_background_overlay', '遮罩透明度')}
-              </span>
-              <span className="chat-bg-slider-value">{draftOverlay}%</span>
+              <div className="chat-bg-slider-row">
+                <span className="chat-bg-slider-label">
+                  {t('settings.chat_background_overlay', '遮罩透明度')}
+                </span>
+                <span className="chat-bg-slider-value">{draftOverlayTransparency}%</span>
+              </div>
+              <input
+                type="range"
+                className="chat-bg-range-input"
+                min={CHAT_BACKGROUND_OVERLAY_TRANSPARENCY_MIN}
+                max={CHAT_BACKGROUND_OVERLAY_TRANSPARENCY_MAX}
+                step={1}
+                value={draftOverlayTransparency}
+                onChange={(e) => setDraftOverlayTransparency(Number(e.target.value))}
+                onMouseUp={commitOverlay}
+                onPointerUp={commitOverlay}
+                onKeyUp={commitOverlay}
+                style={{
+                  backgroundSize: `${chatBackgroundOverlayTransparencyProgress(draftOverlayTransparency) * 100}% 100%`
+                }}
+              />
             </div>
-            <input
-              type="range"
-              className="chat-bg-range-input"
-              min={CHAT_BACKGROUND_OVERLAY_MIN}
-              max={CHAT_BACKGROUND_OVERLAY_MAX}
-              step={1}
-              value={draftOverlay}
-              onChange={(e) => setDraftOverlay(Number(e.target.value))}
-              onMouseUp={commitOverlay}
-              onPointerUp={commitOverlay}
-              onKeyUp={commitOverlay}
-              style={{
-                backgroundSize: `${(draftOverlay / CHAT_BACKGROUND_OVERLAY_MAX) * 100}% 100%`
-              }}
-            />
-          </div>
+
+            <button type="button" className="chat-bg-reset-btn" onClick={onClearBackground}>
+              <MdDelete size={16} />
+              <span>{t('settings.chat_background_reset', '清除背景')}</span>
+            </button>
+          </>
         ) : null}
-      </div>
+      </SettingsExpansionTile>
     </div>
   )
 }

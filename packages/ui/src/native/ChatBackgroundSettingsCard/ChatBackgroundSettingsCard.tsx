@@ -5,10 +5,13 @@ import { MaterialIcons } from '@expo/vector-icons'
 import {
   CHAT_BACKGROUND_BLUR_MAX,
   CHAT_BACKGROUND_BLUR_MIN,
-  CHAT_BACKGROUND_OVERLAY_MAX,
-  CHAT_BACKGROUND_OVERLAY_MIN,
+  CHAT_BACKGROUND_OVERLAY_TRANSPARENCY_MIN,
+  CHAT_BACKGROUND_OVERLAY_TRANSPARENCY_MAX,
   normalizeChatBackgroundBlur,
-  normalizeChatBackgroundOverlayOpacity
+  normalizeChatBackgroundOverlayOpacity,
+  chatBackgroundOverlayTransparencyFromOpacity,
+  chatBackgroundOverlayOpacityFromTransparency,
+  chatBackgroundOverlayAlpha
 } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 import { SettingsExpansionTile } from '../settings/SettingsExpansionTile'
@@ -42,17 +45,25 @@ export const ChatBackgroundSettingsCard: React.FC<ChatBackgroundSettingsProps> =
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const committedBlur = normalizeChatBackgroundBlur(blur)
-  const committedOverlay = normalizeChatBackgroundOverlayOpacity(overlayOpacity)
+  const committedOverlayOpacity = normalizeChatBackgroundOverlayOpacity(overlayOpacity)
+  const committedOverlayTransparency =
+    chatBackgroundOverlayTransparencyFromOpacity(committedOverlayOpacity)
   const [previewBlur, setPreviewBlur] = useState(committedBlur)
-  const [previewOverlay, setPreviewOverlay] = useState(committedOverlay)
+  const [previewOverlayTransparency, setPreviewOverlayTransparency] = useState(
+    committedOverlayTransparency
+  )
 
   useEffect(() => {
     setPreviewBlur(committedBlur)
   }, [committedBlur])
 
   useEffect(() => {
-    setPreviewOverlay(committedOverlay)
-  }, [committedOverlay])
+    setPreviewOverlayTransparency(committedOverlayTransparency)
+  }, [committedOverlayTransparency])
+
+  const previewOverlayAlpha = chatBackgroundOverlayAlpha(
+    chatBackgroundOverlayOpacityFromTransparency(previewOverlayTransparency)
+  )
 
   const subtitle = backgroundPath
     ? t('settings.chat_background_custom', '自定义背景')
@@ -74,12 +85,12 @@ export const ChatBackgroundSettingsCard: React.FC<ChatBackgroundSettingsProps> =
               resizeMode="cover"
               blurRadius={previewBlur}
             />
-            {previewOverlay > 0 ? (
+            {previewOverlayAlpha > 0 ? (
               <View
                 pointerEvents="none"
                 style={[
                   styles.previewScrim,
-                  { backgroundColor: `rgba(0, 0, 0, ${previewOverlay / 100})` }
+                  { backgroundColor: `rgba(0, 0, 0, ${previewOverlayAlpha})` }
                 ]}
               />
             ) : null}
@@ -119,12 +130,14 @@ export const ChatBackgroundSettingsCard: React.FC<ChatBackgroundSettingsProps> =
             />
             <SettingsSliderRow
               title={t('settings.chat_background_overlay', '遮罩透明度')}
-              value={committedOverlay}
-              min={CHAT_BACKGROUND_OVERLAY_MIN}
-              max={CHAT_BACKGROUND_OVERLAY_MAX}
+              value={committedOverlayTransparency}
+              min={CHAT_BACKGROUND_OVERLAY_TRANSPARENCY_MIN}
+              max={CHAT_BACKGROUND_OVERLAY_TRANSPARENCY_MAX}
               step={1}
-              onChange={(value) => onOverlayOpacityChange?.(value)}
-              onPreviewChange={setPreviewOverlay}
+              onChange={(value) =>
+                onOverlayOpacityChange?.(chatBackgroundOverlayOpacityFromTransparency(value))
+              }
+              onPreviewChange={setPreviewOverlayTransparency}
               formatValue={(value) => `${value}%`}
             />
           </View>
@@ -146,7 +159,10 @@ export const ChatBackgroundSettingsCard: React.FC<ChatBackgroundSettingsProps> =
 const styles = StyleSheet.create({
   previewArea: {
     width: '100%',
+    maxWidth: 480,
+    maxHeight: 270,
     aspectRatio: 16 / 9,
+    alignSelf: 'center',
     borderRadius: 8,
     overflow: 'hidden',
     position: 'relative'
