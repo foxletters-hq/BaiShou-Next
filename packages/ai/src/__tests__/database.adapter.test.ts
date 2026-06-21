@@ -1,11 +1,45 @@
 import { describe, it, expect, vi } from 'vitest'
-import { formatRecallTimestamp } from '@baishou/shared'
+import { formatLocalDate, formatRecallTimestamp, parseDateStr } from '@baishou/shared'
 import { DatabaseAdapter } from '../tools/adapters/database.adapter'
+
+describe('DatabaseAdapter.readSummary', () => {
+  it('queries by local calendar date when startDateIso is YYYY-MM-DD', async () => {
+    const targetDate = parseDateStr('2026-03-10')
+    const generatedAt = new Date(2026, 2, 11)
+    const endDate = new Date(2026, 2, 16)
+    const where = vi.fn().mockReturnValue({
+      limit: vi.fn().mockResolvedValue([
+        {
+          content: '本周总结',
+          generatedAt,
+          endDate
+        }
+      ])
+    })
+    const from = vi.fn().mockReturnValue({ where })
+    const select = vi.fn().mockReturnValue({ from })
+    const db = { select }
+
+    const adapter = new DatabaseAdapter({} as any, {} as any, db as any)
+    const result = await adapter.readSummary('weekly', '2026-03-10')
+
+    expect(select).toHaveBeenCalled()
+    expect(where).toHaveBeenCalled()
+    expect(result).toEqual({
+      content: '本周总结',
+      generatedAt: formatLocalDate(generatedAt),
+      endDateIso: formatLocalDate(endDate)
+    })
+    expect(targetDate.getFullYear()).toBe(2026)
+    expect(targetDate.getMonth()).toBe(2)
+    expect(targetDate.getDate()).toBe(10)
+  })
+})
 
 describe('DatabaseAdapter.searchMessages', () => {
   it('formats result date in local timezone (not UTC ISO date)', async () => {
-    // 东八区 6/21 凌晨 01:30 → UTC 仍为 6/20 17:30，toISOString 会错误标为 6/20
-    const createdAt = new Date('2025-06-20T17:30:00.000Z')
+    // 03/10 凌晨 01:30（本地构造，各时区稳定）
+    const createdAt = new Date(2026, 2, 10, 1, 30)
     const messageRepo = {
       searchMessagesByKeyword: vi.fn().mockResolvedValue([
         {
@@ -23,5 +57,30 @@ describe('DatabaseAdapter.searchMessages', () => {
     expect(results).toHaveLength(1)
     // 与模型上下文 formatMessageTimestamp 一致：按本地日历日，避免凌晨消息被 UTC 标为前一天
     expect(results[0]!.date).toBe(formatRecallTimestamp(createdAt))
+    expect(results[0]!.date).toBe('2026-03-10 01:30')
+    const legacyUtcDate = createdAt.toISOString().split('T')[0]!
+    if (legacyUtcDate !== '2026-03-10') {
+      expect(results[0]!.date).not.toContain(legacyUtcDate)
+    }
+  })
+})
+
+describe('DatabaseAdapter.getAvailableSummaries', () => {
+  it('formats summary ranges with local calendar dates', async () => {
+    const start = new Date(2025, 5, 16)
+    const end = new Date(2026, 2, 11)
+    const orderBy = vi.fn().mockReturnValue({
+      limit: vi.fn().mockResolvedValue([{ start, end }])
+    })
+    const where = vi.fn().mockReturnValue({ orderBy })
+    const from = vi.fn().mockReturnValue({ where })
+    const select = vi.fn().mockReturnValue({ from })
+    const db = { select }
+
+    const adapter = new DatabaseAdapter({} as any, {} as any, db as any)
+    const lines = await adapter.getAvailableSummaries('weekly', 5)
+
+    expect(lines).toEqual([`- ${formatLocalDate(start)} ~ ${formatLocalDate(end)}`])
+    expect(lines[0]).toBe('- 2025-06-16 ~ 2025-06-22')
   })
 })
