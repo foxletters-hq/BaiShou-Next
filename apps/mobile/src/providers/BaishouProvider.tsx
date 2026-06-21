@@ -100,6 +100,7 @@ import { buildMobileSummaryAiClient } from '../services/mobile-summary-ai-client
 import { MobileAttachmentManagerService } from '../services/mobile-attachment-manager.service'
 import { invalidateUserAvatarDisplayCache } from '../lib/user-avatar-display.util'
 import { reconcileUserAvatarProfileAfterStorageChange } from '../lib/user-avatar-reconcile.util'
+import { reconcileAssistantAvatarsAfterStorageChange } from '../lib/assistant-avatar-reconcile.util'
 import { sessionFileWatcher } from '../services/session-file-watcher.service'
 import { summaryFileWatcher } from '../services/summary-file-watcher.service'
 import {
@@ -712,6 +713,11 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               ctx.pathService,
               ctx.fileSystem
             )
+            await reconcileAssistantAvatarsAfterStorageChange(
+              runtime.assistantManager,
+              ctx.pathService,
+              ctx.fileSystem
+            )
 
             const summaryPipeline = await createSummaryPipelineServices({
               drizzleDb: runtime.drizzleDb,
@@ -825,7 +831,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               ...prev,
               vaultRevision: prev.vaultRevision + 1
             }))
-          }
+          },
+          assistantManager
         )
 
         const updaterService = new MobileUpdaterService(settingsManager)
@@ -1185,7 +1192,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                 ...prev,
                 vaultRevision: prev.vaultRevision + 1
               }))
-            }
+            },
+            newRuntime.assistantManager
           )
 
           if (isMounted) {

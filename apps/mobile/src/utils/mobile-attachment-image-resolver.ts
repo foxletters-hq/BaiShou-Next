@@ -1,17 +1,16 @@
 import type { IFileSystem } from '@baishou/core-mobile'
+import { Image } from 'react-native'
 import { guessImageMimeType } from '@baishou/ui/native'
-import { AVATAR_IMPORT_MAX_DIMENSION, shouldCompressAvatarFileSize } from '@baishou/shared'
+import { AVATAR_IMPORT_MAX_DIMENSION } from '@baishou/shared'
 
 /** expo-image-manipulator JPEG 质量：0–1（仅移动端） */
 const AVATAR_IMPORT_JPEG_QUALITY = 0.88
 import {
   toFileUri,
-  externalGetInfoSafe,
-  isExternalStoragePath,
   normalizeExternalStoragePath
 } from '../services/android-external-fs'
+import { ensureAppCacheNoMediaMarker } from '../services/android-nomedia.util'
 import { normalizeImportSourceUri } from '../services/mobile-uri-import'
-import { getInfoAsync } from '../services/mobile-sandbox-fs'
 import {
   ATTACHMENT_PREVIEW_MAX_BYTES,
   ATTACHMENT_THUMB_MAX_BYTES,
@@ -114,66 +113,57 @@ export async function resolveAttachmentImageDataUri(
   return manipulateToDataUri(filePath, width, compress)
 }
 
-/** 导入头像前：仅当原图超过 3MB 时缩放压缩，避免大图卡顿又不过度损失画质 */
-async function resolveAvatarSourceByteSize(sourceUri: string): Promise<number | null> {
-  const absPath = normalizeExternalStoragePath(sourceUri)
-  if (isExternalStoragePath(absPath)) {
-    try {
-      return externalGetInfoSafe(absPath).size
-    } catch {
-      // fall through
-    }
-  }
-
-  const uri = normalizeImportSourceUri(sourceUri)
-
-  try {
-    const info = await getInfoAsync(uri)
-    if (info.exists && !info.isDirectory && typeof info.size === 'number') {
-      return info.size
-    }
-  } catch {
-    // fall through
-  }
-
-  if (sourceUri.startsWith('content://') || uri.startsWith('content://')) {
-    // content:// 无已知大小时不再 fetch 整图测体积（大图会非常慢）；交给 ImagePicker fileSize 或跳过压缩
-    return null
-  }
-
-  return null
+function resolveImageDimensions(uri: string): Promise<{ width: number; height: number } | null> {
+  return new Promise((resolve) => {
+    Image.getSize(
+      uri,
+      (width, height) => resolve({ width, height }),
+      () => resolve(null)
+    )
+  })
 }
 
+function buildAvatarSquareCropActions(width: number, height: number) {
+  const side = Math.min(width, height)
+  if (side <= 0 || width === height) return []
+  return [
+    {
+      crop: {
+        originX: Math.floor((width - side) / 2),
+        originY: Math.floor((height - side) / 2),
+        width: side,
+        height: side
+      }
+    }
+  ]
+}
+
+/** 导入头像前：应用内居中裁剪 + 缩放，输出到沙盒 cache，避免系统裁剪写入相册 */
 export async function compressImageForAvatarImport(
   sourceUri: string,
-  knownByteSize?: number
+  _knownByteSize?: number
 ): Promise<string> {
   const normalizedSource = normalizeImportSourceUri(sourceUri)
-  const byteSize =
-    knownByteSize != null && knownByteSize >= 0
-      ? knownByteSize
-      : await resolveAvatarSourceByteSize(sourceUri)
-  if (byteSize == null || !shouldCompressAvatarFileSize(byteSize)) {
-    return normalizedSource
-  }
-
   const manipulator = await loadManipulator()
   if (!manipulator) return normalizedSource
 
+  await ensureAppCacheNoMediaMarker()
+
   const { manipulateAsync, SaveFormat } = manipulator
+  const dimensions = await resolveImageDimensions(normalizedSource)
+  const actions = dimensions
+    ? buildAvatarSquareCropActions(dimensions.width, dimensions.height)
+    : []
+  actions.push({ resize: { width: AVATAR_IMPORT_MAX_DIMENSION } })
 
   try {
-    const result = await manipulateAsync(
-      normalizedSource,
-      [{ resize: { width: AVATAR_IMPORT_MAX_DIMENSION } }],
-      {
-        compress: AVATAR_IMPORT_JPEG_QUALITY,
-        format: SaveFormat.JPEG
-      }
-    )
+    const result = await manipulateAsync(normalizedSource, actions, {
+      compress: AVATAR_IMPORT_JPEG_QUALITY,
+      format: SaveFormat.JPEG
+    })
     return result.uri
   } catch (e) {
-    console.warn('[AttachmentImage] avatar import compress failed, using original:', e)
+    console.warn('[AttachmentImage] avatar import prepare failed, using original:', e)
     return normalizedSource
   }
 }

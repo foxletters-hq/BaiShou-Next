@@ -30,9 +30,9 @@ export const ProfileSettingsCard: React.FC<NativeProfileSettingsCardProps> = ({
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8
+        allowsEditing: false,
+        quality: 0.8,
+        copyToCacheDirectory: true
       })
 
       if (!result.canceled && result.assets[0]) {
