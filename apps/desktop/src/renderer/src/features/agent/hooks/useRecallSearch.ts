@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { formatLocalDateFromInstant, timestampToMillis } from '@baishou/shared'
+import { formatRecallDiaryDate, formatRecallTimestamp } from '@baishou/shared'
 import type { RecallItem } from '@baishou/ui'
 
 export interface UseRecallSearchResult {
@@ -13,17 +13,6 @@ export interface UseRecallSearchResult {
   ) => Promise<void>
   recallSearchMode: 'semantic' | 'text'
   toggleRecallSearchMode: () => void
-}
-
-/**
- * 回忆搜索 Hook
- *
- * 职责：搜索日记和 RAG 记忆，返回可注入的回忆条目
- */
-const formatRecallDate = (ts: unknown) => {
-  const raw = typeof ts === 'number' ? ts : new Date(ts as string | Date).getTime()
-  const ms = timestampToMillis(Number.isFinite(raw) ? raw : undefined) ?? Date.now()
-  return formatLocalDateFromInstant(ms ?? Date.now()) ?? ''
 }
 
 export function useRecallSearch(): UseRecallSearchResult {
@@ -49,7 +38,7 @@ export function useRecallSearch(): UseRecallSearchResult {
                 type: 'diary',
                 title: d.title || t('common.untitled', '无标题'),
                 snippet: d.snippet || d.content?.substring(0, 100) || '',
-                date: formatRecallDate(d.createdAt)
+                date: formatRecallDiaryDate(d.date ?? d.updatedAt),
               }))
             )
           } else {
@@ -74,7 +63,7 @@ export function useRecallSearch(): UseRecallSearchResult {
                 type: 'memory',
                 title: `[${r.modelId || t('common.system', '系统')}]`,
                 snippet: r.text,
-                date: formatRecallDate(r.createdAt),
+                date: formatRecallTimestamp(r.createdAt),
                 similarity: r.similarity
               }))
             )
