@@ -78,6 +78,7 @@ export function useSummaryData(selectedYear: number) {
   const bootstrapper = services?.bootstrapper
   const autoRescanAttemptedRef = useRef(-1)
   const dashboardFetchRef = useRef(0)
+  const scopeKey = String(vaultRevision)
 
   const cacheVersion = useSyncExternalStore(
     subscribeSummaryDashboardCache,
@@ -109,13 +110,13 @@ export function useSummaryData(selectedYear: number) {
   }, [])
 
   const hydrateDashboardFromCache = useCallback(() => {
-    const peek = peekSummaryDashboardCache(vaultRevision)
+    const peek = peekSummaryDashboardCache(scopeKey)
     if (peek) {
       applyDashboardSnapshot(peek.snapshot)
       return peek.stale
     }
     return true
-  }, [applyDashboardSnapshot, vaultRevision])
+  }, [applyDashboardSnapshot, scopeKey])
 
   useEffect(() => {
     setSummaries([])
@@ -172,9 +173,9 @@ export function useSummaryData(selectedYear: number) {
         const data = await fetchSummaryDashboardSnapshot({ diaryService, summaryManager })
         if (requestId !== dashboardFetchRef.current) return
 
-        commitSummaryDashboardCache(vaultRevision, data)
+        commitSummaryDashboardCache(scopeKey, data)
         applyDashboardSnapshot({
-          vaultRevision,
+          scopeKey,
           fetchedAt: Date.now(),
           ...data
         })
@@ -193,7 +194,7 @@ export function useSummaryData(selectedYear: number) {
       hydrateDashboardFromCache,
       storageIndexing,
       summaryManager,
-      vaultRevision
+      scopeKey
     ]
   )
 
