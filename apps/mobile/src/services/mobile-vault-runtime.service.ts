@@ -746,7 +746,18 @@ async function runVaultBootstrap(
     try {
       const records = await deps.diaryStack.shadowRepo.getAllRecords()
       if (records.length > 0) {
-        logger.info('[VaultRuntime] Shadow index already populated; skipping resync')
+        logger.info('[VaultRuntime] Shadow index already populated; skipping shadow resync')
+        const activeVaultName = deps.vaultService.getActiveVault()?.name
+        if (activeVaultName) {
+          await deps.bootstrapDeps.summarySyncService
+            .fullScanArchives({ activeVaultName })
+            .catch((e) => {
+              logger.warn(
+                '[VaultRuntime] summary fullScanArchives after skip-shadow-resync failed:',
+                e as Error
+              )
+            })
+        }
         await restartVaultWatchers(deps.diaryStack, deps.vaultService, deps.watcherDeps)
         options?.onResyncComplete?.()
         return

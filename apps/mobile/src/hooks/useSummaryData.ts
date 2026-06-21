@@ -74,6 +74,7 @@ export function useSummaryData(selectedYear: number) {
     services,
     dbReady,
     vaultRevision,
+    vaultSwitching,
     archiveRestoreEpoch,
     storageIndexing,
     ecosystemResyncEpoch
@@ -145,7 +146,7 @@ export function useSummaryData(selectedYear: number) {
   )
 
   const fetchMissingSummaries = useCallback(async () => {
-    if (!dbReady || storageIndexing || !missingSummaryDetector) return
+    if (!dbReady || storageIndexing || vaultSwitching || !missingSummaryDetector) return
 
     setIsDetectingMissing(true)
     try {
@@ -163,12 +164,13 @@ export function useSummaryData(selectedYear: number) {
     i18n.language,
     mapDetectedMissing,
     archiveRestoreEpoch,
-    ecosystemResyncEpoch
+    ecosystemResyncEpoch,
+    vaultSwitching
   ])
 
   const refreshDashboard = useCallback(
     async (options?: { force?: boolean }) => {
-      if (!dbReady || storageIndexing || !summaryManager || !diaryService) return
+      if (!dbReady || storageIndexing || vaultSwitching || !summaryManager || !diaryService) return
 
       const stale = hydrateDashboardFromCache()
       if (!options?.force && !stale) return
@@ -200,12 +202,13 @@ export function useSummaryData(selectedYear: number) {
       hydrateDashboardFromCache,
       storageIndexing,
       summaryManager,
-      scopeKey
+      scopeKey,
+      vaultSwitching
     ]
   )
 
   const fetchSummariesForGallery = useCallback(async () => {
-    if (!dbReady || storageIndexing || !summaryManager) return
+    if (!dbReady || storageIndexing || vaultSwitching || !summaryManager) return
 
     try {
       setLoading(true)
@@ -241,7 +244,7 @@ export function useSummaryData(selectedYear: number) {
     } finally {
       setLoading(false)
     }
-  }, [bootstrapper, dbReady, refreshDashboard, storageIndexing, summaryManager, vaultRevision])
+  }, [bootstrapper, dbReady, refreshDashboard, storageIndexing, summaryManager, vaultRevision, vaultSwitching])
 
   useEffect(() => {
     hydrateDashboardFromCache()
@@ -252,7 +255,8 @@ export function useSummaryData(selectedYear: number) {
     hydrateDashboardFromCache,
     refreshDashboard,
     vaultRevision,
-    ecosystemResyncEpoch
+    ecosystemResyncEpoch,
+    vaultSwitching
   ])
 
   useEffect(() => {
