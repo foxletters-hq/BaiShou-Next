@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useBaishou } from '../providers/BaishouProvider'
+import {
+  peekChatBackgroundDisplayCache,
+  resolveChatBackgroundForMobileUi
+} from '../lib/chat-background-display.util'
 
 /**
  * 将 settings 中的 chatBackgroundPath 解析为移动端 Image 可展示的 URI。
@@ -7,7 +11,9 @@ import { useBaishou } from '../providers/BaishouProvider'
  */
 export function useResolvedChatBackground(backgroundPath?: string | null): string | null {
   const { services, dbReady, vaultRevision } = useBaishou()
-  const [uri, setUri] = useState<string | null>(null)
+  const [uri, setUri] = useState<string | null>(
+    () => peekChatBackgroundDisplayCache(backgroundPath) ?? null
+  )
   const prevPathRef = useRef(backgroundPath)
 
   useEffect(() => {
@@ -19,19 +25,22 @@ export function useResolvedChatBackground(backgroundPath?: string | null): strin
       return
     }
 
+    const cached = peekChatBackgroundDisplayCache(backgroundPath)
+    if (cached) {
+      setUri(cached)
+      return
+    }
+
     if (pathChanged) {
       setUri(null)
     }
 
     let cancelled = false
-    void services.attachmentManager
-      .resolveBackgroundPath(backgroundPath)
-      .then((resolved) => {
-        if (!cancelled) setUri(resolved ?? null)
-      })
-      .catch(() => {
-        if (!cancelled) setUri(null)
-      })
+    void resolveChatBackgroundForMobileUi(backgroundPath, services.attachmentManager).then(
+      (resolved) => {
+        if (!cancelled) setUri(resolved)
+      }
+    )
 
     return () => {
       cancelled = true

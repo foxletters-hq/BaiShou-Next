@@ -2,7 +2,6 @@ import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { useRouter, type Href } from 'expo-router'
 import {
   type PromptShortcut,
-  USER_PROFILE_SETTINGS_KEY,
   LATTE_ASSISTANT_NAME,
   normalizeChatBackgroundBlur,
   normalizeChatBackgroundOverlayOpacity
@@ -61,6 +60,7 @@ import { useMobilePromptShortcuts } from '../hooks/useMobilePromptShortcuts'
 import { useResolvedAssistantAvatar } from '../hooks/useResolvedAssistantAvatar'
 import { useResolvedUserAvatar } from '../hooks/useResolvedUserAvatar'
 import { useResolvedChatBackground } from '../hooks/useResolvedChatBackground'
+import { useAgentUserProfile } from '../hooks/useAgentUserProfile'
 import { useAgentChatKeyboardInsets } from '../hooks/useAgentChatKeyboardInsets'
 import { useAgentNavigationPersistence } from '../hooks/useAgentNavigationPersistence'
 import {
@@ -115,13 +115,7 @@ export const AgentScreen = () => {
   const bubbleEditScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [assistants, setAssistants] = useState<MobileAssistantUi[]>([])
-  const [userProfile, setUserProfile] = useState<{
-    nickname: string
-    avatarPath?: string | null
-    chatBackgroundPath?: string | null
-    chatBackgroundBlur?: number
-    chatBackgroundOverlayOpacity?: number
-  }>({ nickname: '' })
+  const userProfile = useAgentUserProfile()
 
   const {
     currentAssistant,
@@ -438,30 +432,6 @@ export const AgentScreen = () => {
       setCurrentAssistant(updated)
     }
   }, [assistants, currentAssistant, setCurrentAssistant])
-
-  useEffect(() => {
-    if (!dbReady || !services) return
-    services.settingsManager
-      .get<{
-        nickname?: string
-        avatarPath?: string | null
-        chatBackgroundPath?: string | null
-        chatBackgroundBlur?: number
-        chatBackgroundOverlayOpacity?: number
-      }>(USER_PROFILE_SETTINGS_KEY)
-      .then((profile) =>
-        setUserProfile({
-          nickname: profile?.nickname || t('agent.chat.you_label', '你'),
-          avatarPath: profile?.avatarPath,
-          chatBackgroundPath: profile?.chatBackgroundPath ?? null,
-          chatBackgroundBlur: normalizeChatBackgroundBlur(profile?.chatBackgroundBlur),
-          chatBackgroundOverlayOpacity: normalizeChatBackgroundOverlayOpacity(
-            profile?.chatBackgroundOverlayOpacity
-          )
-        })
-      )
-      .catch(() => setUserProfile({ nickname: t('agent.chat.you_label', '你') }))
-  }, [dbReady, services, t, vaultRevision])
 
   const pinnedAssistants = useMemo(
     () =>
@@ -790,6 +760,7 @@ export const AgentScreen = () => {
     ? {
         source: { uri: resolvedChatBackgroundUri },
         resizeMode: 'cover' as const,
+        imageStyle: styles.backgroundImageInner,
         blurRadius: chatBackgroundBlur
       }
     : {}
@@ -801,7 +772,11 @@ export const AgentScreen = () => {
         backgroundColor={colors.bgApp}
       />
       <ScreenSafeArea preset="tab" style={{ backgroundColor: colors.bgApp }}>
-        <ChatBackgroundWrapper style={styles.backgroundImage} {...chatBackgroundWrapperProps}>
+        <ChatBackgroundWrapper
+          key={userProfile.chatBackgroundPath ?? 'default-chat-bg'}
+          style={styles.backgroundImage}
+          {...chatBackgroundWrapperProps}
+        >
           {resolvedChatBackgroundUri && chatBackgroundOverlay > 0 ? (
             <View
               pointerEvents="none"
@@ -1135,6 +1110,11 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   container: { flex: 1 },
   backgroundImage: { flex: 1 },
+  backgroundImageInner: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover'
+  },
   loadMore: { paddingVertical: 12, alignItems: 'center' },
   loadMoreText: {
     fontSize: 13,
