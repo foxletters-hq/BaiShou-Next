@@ -349,22 +349,29 @@ export const AgentScreen = () => {
   }, [dbReady, services, storageIndexing, vaultRevision, ecosystemResyncEpoch])
 
   const refreshAssistantsOnFocus = useCallback(() => {
-    if (!dbReady || !services) return
-    const requestId = ++loadAssistantsRequestRef.current
-    void services.assistantManager
-      .findAll()
-      .then((rows) => {
-        if (requestId !== loadAssistantsRequestRef.current) return
-        setAssistants(mapAssistantRowsToUiWithCachedAvatars(rows, { preferFileUri: true }))
-      })
-      .catch(() => {})
-  }, [dbReady, services])
+    void loadAssistants()
+  }, [loadAssistants])
 
   useEffect(() => {
     void loadAssistants()
   }, [loadAssistants])
 
   useThrottledFocusRefresh(refreshAssistantsOnFocus)
+
+  // 伙伴头像/名称变更后同步 currentAssistant，避免聊天界面仍展示旧数据
+  useEffect(() => {
+    if (!currentAssistant?.id) return
+    const updated = assistants.find((a) => a.id === currentAssistant.id)
+    if (!updated) return
+    if (
+      updated.avatarPath !== currentAssistant.avatarPath ||
+      updated.displayAvatarUri !== currentAssistant.displayAvatarUri ||
+      updated.name !== currentAssistant.name ||
+      updated.emoji !== currentAssistant.emoji
+    ) {
+      setCurrentAssistant(updated)
+    }
+  }, [assistants, currentAssistant, setCurrentAssistant])
 
   useEffect(() => {
     if (!dbReady || !services) return
@@ -722,6 +729,7 @@ export const AgentScreen = () => {
             style={styles.list}
             contentContainerStyle={[styles.listContent, { paddingBottom: listBottomPadding }]}
             data={messages}
+            extraData={{ chatAiProfile, chatUserProfile }}
             keyExtractor={(item) => item.id}
             nestedScrollEnabled
             keyboardShouldPersistTaps="always"
