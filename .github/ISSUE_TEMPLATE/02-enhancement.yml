@@ -1,0 +1,43 @@
+name: 需求建议
+description: 明确的功能需求或改进建议 — 优先级较高，会优先考虑实现
+title: "需求建议:"
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 优先级：较高
+
+        **需求建议优先于创意想法**。若描述清晰、与产品方向契合，我们会较高优先级排期实现。
+
+        适合：希望新增/改进某功能、明确的使用场景、可落地的改进方案。
+
+        若是较开放、探索性的想法，请改用 **「创意想法」** 模板。
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 需求描述
+      description: 你希望实现什么？解决什么问题？
+      placeholder: 例如：希望快捷指令内容追加到编辑框，而不是覆盖已有内容
+    validations:
+      required: true
+
+  - type: textarea
+    id: scenario
+    attributes:
+      label: 使用场景
+      description: 在什么情况下会用到？当前有什么不便？
+      placeholder: 描述你的典型使用流程与痛点
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: 版本与设备
+      description: 可选，便于评估平台差异
+      placeholder: Next 1.0.x，设备或系统版本
+    validations:
+      required: false

@@ -1,0 +1,44 @@
+name: Bug 反馈
+description: 程序出错、功能异常、与预期不符 — 最优先处理
+title: "Bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 优先级：最高
+
+        **Bug 为最优先处理类别**，我们会尽快排查与修复。
+
+        提交前建议先 [搜索已有 Issue](https://github.com/Anson-Trio/BaiShou-Next/issues)，避免重复反馈。
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 请说明实际发生了什么，以及你期望的正确行为
+      placeholder: 例如：切换伙伴头像后，聊天界面头像没有刷新，需要退出重进才更新
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 复现步骤
+      description: 若能稳定复现，请按顺序列出操作步骤
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: 版本与设备
+      description: 如 Next 1.0.16、Redmi Turbo 3、HarmonyOS 6.x
+      placeholder: Next 1.0.x，设备或系统版本
+    validations:
+      required: false
