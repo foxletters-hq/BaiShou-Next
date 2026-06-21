@@ -11,7 +11,10 @@ import {
   GIT_INDEX_MAINTENANCE_MAX_ROUNDS,
   GIT_RAW_COMMAND_TIMEOUT_MS,
   GITIGNORE_CONTENT,
-  GIT_SYNC_CONFIG_FILE
+  GIT_SYNC_CONFIG_FILE,
+  STAGE_ADD_CHUNK_SIZE,
+  STAGE_FAST_ADD_THRESHOLD,
+  STAGE_MAX_ARG_CHARS
 } from './git-sync.constants'
 import {
   getAuthenticatedUrl,
@@ -21,6 +24,11 @@ import {
   parseGitlinkPathFromLsFilesLine,
   unquoteGitPath
 } from './git-sync.helpers'
+import {
+  applyGitProcessEnv,
+  getBundledGitBinary,
+  getBundledGitSpawnEnv
+} from './git-binary.registry'
 
 const VAULT_REPAIR_SKIP_DIRS = new Set([
   '.git',
@@ -100,9 +108,13 @@ export abstract class GitSyncInternalBase {
   }
 
   protected async ensureGit(): Promise<SimpleGit> {
+    applyGitProcessEnv()
     const gitRoot = await this.getGitRoot()
     if (!this.git || this.currentGitRoot !== gitRoot) {
-      this.git = simpleGit(gitRoot)
+      this.git = simpleGit({
+        baseDir: gitRoot,
+        binary: getBundledGitBinary()
+      })
       this.currentGitRoot = gitRoot
     }
     return this.git
@@ -201,22 +213,14 @@ export abstract class GitSyncInternalBase {
       .filter(Boolean)
   }
 
-  protected resolveGitBinary(git: SimpleGit): string {
-    const binary = (
-      git as unknown as { executor?: { chain?: { options?: { binary?: string | string[] } } } }
-    ).executor?.chain?.options?.binary
-    if (Array.isArray(binary)) return binary[0] ?? 'git'
-    return binary ?? 'git'
-  }
-
-  protected async runGitWithStdin(git: SimpleGit, args: string[], stdin?: Buffer): Promise<string> {
+  protected async runGitWithStdin(_git: SimpleGit, args: string[], stdin?: Buffer): Promise<string> {
     const gitRoot = await this.getGitRoot()
-    const gitBinary = this.resolveGitBinary(git)
+    const { env, gitBinary } = getBundledGitSpawnEnv({ LC_ALL: 'C.UTF-8' })
     return new Promise((resolve, reject) => {
       const proc = spawn(gitBinary, args, {
         cwd: gitRoot,
         stdio: ['pipe', 'pipe', 'pipe'],
-        env: { ...process.env, LC_ALL: 'C.UTF-8' }
+        env
       })
       let stdout = ''
       let stderr = ''
@@ -374,6 +378,66 @@ export abstract class GitSyncInternalBase {
     return [...paths]
   }
 
+  protected async addPathsToIndex(git: SimpleGit, paths: string[]): Promise<number> {
+    if (paths.length === 0) return 0
+
+    if (paths.length >= STAGE_FAST_ADD_THRESHOLD) {
+      try {
+        await git.add('.')
+        return paths.length
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err)
+        logger.warn(`[GitSync] 批量 git add . 失败，改为分块暂存: ${msg}`)
+      }
+    }
+
+    let staged = 0
+    let chunk: string[] = []
+    let chunkChars = 0
+
+    const flushChunk = async (): Promise<void> => {
+      if (chunk.length === 0) return
+      const current = chunk
+      chunk = []
+      chunkChars = 0
+      try {
+        if (current.length === 1) {
+          await git.add(current[0])
+        } else {
+          await git.add(['--', ...current])
+        }
+        staged += current.length
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err)
+        logger.warn(`[GitSync] 分块暂存失败，改为逐文件: ${msg}`)
+        for (const filePath of current) {
+          try {
+            await git.add(filePath)
+            staged++
+          } catch (fileErr: unknown) {
+            const fileMsg = fileErr instanceof Error ? fileErr.message : String(fileErr)
+            logger.warn(`[GitSync] 跳过无法暂存的文件: ${filePath} (${fileMsg})`)
+          }
+        }
+      }
+    }
+
+    for (const filePath of paths) {
+      const entryChars = filePath.length + 3
+      if (
+        chunk.length > 0 &&
+        (chunk.length >= STAGE_ADD_CHUNK_SIZE || chunkChars + entryChars > STAGE_MAX_ARG_CHARS)
+      ) {
+        await flushChunk()
+      }
+      chunk.push(filePath)
+      chunkChars += entryChars
+    }
+    await flushChunk()
+
+    return staged
+  }
+
   protected async stagePendingChanges(git: SimpleGit): Promise<number> {
     await this.ensureGitignore()
     await this.maintainGitIndex(git)
@@ -385,16 +449,8 @@ export abstract class GitSyncInternalBase {
     }
 
     logger.info(`[GitSync] 暂存 Changes 中的 ${paths.length} 个文件`)
-    let staged = 0
-    for (const filePath of paths) {
-      try {
-        await git.add(filePath)
-        staged++
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err)
-        logger.warn(`[GitSync] 跳过无法暂存的文件: ${filePath} (${msg})`)
-      }
-    }
+    const staged = await this.addPathsToIndex(git, paths)
+    await this.sanitizeGitIndex(git)
     return staged
   }
 

@@ -4,6 +4,9 @@ import { fileURLToPath } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { registerAgentIPC } from './ipc/agent.ipc'
+import { registerDugiteGitBinary } from '@baishou/core-desktop'
+
+registerDugiteGitBinary()
 import { registerSettingsIPC } from './ipc/settings.ipc'
 import { initVaultSystem, registerVaultIPC } from './ipc/vault.ipc'
 import { registerArchiveIPC } from './ipc/archive.ipc'

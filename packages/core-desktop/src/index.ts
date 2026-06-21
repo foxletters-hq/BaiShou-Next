@@ -2,3 +2,4 @@
 export * from '@baishou/core/shared'
 export * from '@baishou/core/desktop'
 export { createNodeFileSystem } from './node-file-system'
+export { registerDugiteGitBinary } from './git-binary.dugite'

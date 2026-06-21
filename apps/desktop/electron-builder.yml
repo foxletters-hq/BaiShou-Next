@@ -15,6 +15,7 @@ asarUnpack:
   - '**/*.node'
   - node_modules/better-sqlite3/**
   - node_modules/sqlite-vec/**
+  - node_modules/dugite/**
 extraResources:
   - from: resources/database
     to: database
