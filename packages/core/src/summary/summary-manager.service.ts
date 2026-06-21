@@ -114,20 +114,37 @@ export class SummaryManagerService {
     return summaries.sort((a, b) => b.startDate.getTime() - a.startDate.getTime())
   }
 
-  /** 统计面板：仅 SQL 聚合，不读磁盘总结正文 */
+  /** 统计面板：按当前工作区磁盘上的总结文件计数，与画廊列表口径一致 */
   async countByType(): Promise<{
     weekly: number
     monthly: number
     quarterly: number
     yearly: number
   }> {
-    const counts = await this.summaryRepo.countByType()
-    return {
-      weekly: counts.weekly ?? 0,
-      monthly: counts.monthly ?? 0,
-      quarterly: counts.quarterly ?? 0,
-      yearly: counts.yearly ?? 0
+    const files = await this.fileSync.listAllSummaries()
+    const counts = {
+      weekly: 0,
+      monthly: 0,
+      quarterly: 0,
+      yearly: 0
     }
+    for (const file of files) {
+      switch (file.type) {
+        case SummaryType.weekly:
+          counts.weekly += 1
+          break
+        case SummaryType.monthly:
+          counts.monthly += 1
+          break
+        case SummaryType.quarterly:
+          counts.quarterly += 1
+          break
+        case SummaryType.yearly:
+          counts.yearly += 1
+          break
+      }
+    }
+    return counts
   }
 
   async delete(type: SummaryType, startDate: Date, endDate: Date): Promise<void> {

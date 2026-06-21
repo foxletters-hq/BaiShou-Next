@@ -5,11 +5,11 @@ import { useToast, useDialog } from '@baishou/ui'
 import {
   assertSyncConfirmAllowed,
   canExecuteIncrementalSyncPlan,
-  hasIncrementalSyncPlanMaterialChange,
   resolvePlanConfirmEligibleAt,
   runIncrementalSyncWithDivergenceConfirmation,
   type IncrementalSyncResult,
-  type IncrementalSyncRunOptions
+  type IncrementalSyncRunOptions,
+  type SyncDeletePropagationChoice
 } from '@baishou/shared'
 import { friendlySyncError } from '../utils/friendly-sync-error'
 
@@ -50,13 +50,14 @@ export function useOrchestratedSync() {
   const progress = useSyncStore((s) => s.progress)
   const planPreview = useSyncStore((s) => s.planPreview)
   const planDialogOpen = useSyncStore((s) => s.planDialogOpen)
+  const planConfirmEligibleAt = useSyncStore((s) => s.planConfirmEligibleAt)
   const setStatus = useSyncStore((s) => s.setStatus)
   const setMessage = useSyncStore((s) => s.setMessage)
   const setSyncResult = useSyncStore((s) => s.setSyncResult)
   const setProgress = useSyncStore((s) => s.setProgress)
   const setPlanPreview = useSyncStore((s) => s.setPlanPreview)
-  const setPlanDialogOpen = useSyncStore((s) => s.setPlanDialogOpen)
   const setPlanConfirmEligibleAt = useSyncStore((s) => s.setPlanConfirmEligibleAt)
+  const showPlanConfirmDialog = useSyncStore((s) => s.showPlanConfirmDialog)
   const clearPlanPreview = useSyncStore((s) => s.clearPlanPreview)
 
   const isSyncing = status === 'syncing'
@@ -79,11 +80,14 @@ export function useOrchestratedSync() {
       setStatus('syncing')
       setMessage(t('data_sync.syncing', 'Syncing...'))
       setSyncResult(null)
-      setProgress(null)
+      setProgress({ phase: 'scanning', current: 0, total: 0 })
 
       const result = await runIncrementalSyncWithDivergenceConfirmation<IncrementalSyncResult>(
         (runOptions) =>
-          window.api.incrementalSync.orchestratedSync(runOptions ?? initialRunOptions),
+          window.api.incrementalSync.orchestratedSync({
+            ...initialRunOptions,
+            ...runOptions
+          }),
         confirmHighDivergence
       )
 
@@ -117,11 +121,15 @@ export function useOrchestratedSync() {
     clearPlanPreview()
   }, [clearPlanPreview])
 
-  const confirmSyncPlan = useCallback(async () => {
+  const confirmSyncPlan = useCallback(async (deletePropagationChoice?: SyncDeletePropagationChoice) => {
     if (confirmingRef.current) return null
 
     const { planPreview: stalePreview, planConfirmEligibleAt } = useSyncStore.getState()
     if (!stalePreview) return null
+
+    if (stalePreview.requiresDeletePropagationChoice && !deletePropagationChoice) {
+      return null
+    }
 
     const canExecute = canExecuteIncrementalSyncPlan(stalePreview)
     try {
@@ -139,34 +147,21 @@ export function useOrchestratedSync() {
     confirmingRef.current = true
     setIsConfirmingPlan(true)
 
-    let preview = stalePreview
     try {
-      preview = await window.api.incrementalSync.planSync(initialRunOptions)
-
-      if (preview.deletePropagationBlocked) {
-        toast.showError(t('data_sync.plan_warning_delete_blocked'))
-        setPlanPreview(preview)
-        setPlanConfirmEligibleAt(resolvePlanConfirmEligibleAt(preview))
-        return null
-      }
-
-      if (preview.changeCount === 0) {
-        clearPlanPreview()
-        if (preview.warnings.length === 0) {
-          toast.showSuccess(t('data_sync.plan_up_to_date', '本地与云端已一致，无需同步'))
-        }
-        return null
-      }
-
-      if (hasIncrementalSyncPlanMaterialChange(stalePreview, preview)) {
-        setPlanPreview(preview)
-        setPlanConfirmEligibleAt(resolvePlanConfirmEligibleAt(preview))
-        toast.showWarning(t('data_sync.plan_changed_reconfirm'))
-        return null
-      }
-
       clearPlanPreview()
-      return await runOrchestratedSync(initialRunOptions)
+      setStatus('syncing')
+      setProgress({
+        phase: 'comparing',
+        current: 0,
+        total: 1,
+        statusText: 'data_sync.progress_registering_vaults'
+      })
+      const runOptions: IncrementalSyncRunOptions = {
+        ...initialRunOptions,
+        unknownVaultPaths: stalePreview.boundaryIssues.unknownVaultPaths,
+        ...(deletePropagationChoice ? { deletePropagationChoice } : {})
+      }
+      return await runOrchestratedSync(runOptions)
     } catch (e: any) {
       const errorMessage = friendlySyncError(
         e?.message || t('data_sync.sync_unknown_error', 'Unknown error'),
@@ -180,16 +175,7 @@ export function useOrchestratedSync() {
       confirmingRef.current = false
       setIsConfirmingPlan(false)
     }
-  }, [
-    clearPlanPreview,
-    runOrchestratedSync,
-    setMessage,
-    setPlanConfirmEligibleAt,
-    setPlanPreview,
-    setStatus,
-    t,
-    toast
-  ])
+  }, [clearPlanPreview, runOrchestratedSync, setMessage, setStatus, setProgress, t, toast])
 
   const startSync = useCallback(async () => {
     if (isSyncing || isPlanning || useSyncStore.getState().planDialogOpen || confirmingRef.current) {
@@ -211,9 +197,7 @@ export function useOrchestratedSync() {
         return null
       }
 
-      setPlanPreview(preview)
-      setPlanDialogOpen(true)
-      setPlanConfirmEligibleAt(resolvePlanConfirmEligibleAt(preview))
+      showPlanConfirmDialog(preview, resolvePlanConfirmEligibleAt(preview))
       setStatus('idle')
       setMessage('')
       return null
@@ -232,9 +216,7 @@ export function useOrchestratedSync() {
     isPlanning,
     isSyncing,
     setMessage,
-    setPlanConfirmEligibleAt,
-    setPlanDialogOpen,
-    setPlanPreview,
+    showPlanConfirmDialog,
     setProgress,
     setStatus,
     setSyncResult,
@@ -252,6 +234,7 @@ export function useOrchestratedSync() {
     progress,
     planPreview,
     planDialogOpen,
+    planConfirmEligibleAt,
     startSync,
     confirmSyncPlan,
     cancelSyncPlan

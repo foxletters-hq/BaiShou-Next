@@ -11,6 +11,8 @@ import {
   DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH,
   resolveSyncDeviceId,
   migrateLegacyIncrementalSyncConfig,
+  type IncrementalSyncRunOptions,
+  type SyncProgressEvent,
   type S3SyncConfig
 } from '@baishou/shared'
 import { listDiskVaultFolderNames, createNodeFileSystem } from '@baishou/core'
@@ -179,11 +181,11 @@ async function resolveSyncPlanContext() {
 }
 
 /** 仅在用户确认执行同步后调用：补登记磁盘/远端工作区 */
-async function ensureVaultsForIncrementalSync(runOptions?: unknown): Promise<string[]> {
+async function ensureVaultsForIncrementalSync(
+  runOptions?: IncrementalSyncRunOptions
+): Promise<string[]> {
   const autoRegistered = [...(await vaultService.syncRegistryWithDisk())]
-  const service = await getSyncService()
-  const preview = await service.planSync(await resolveSyncPlanContext(), runOptions as never)
-  const unknown = preview.boundaryIssues.unknownVaultPaths.filter(
+  const unknown = (runOptions?.unknownVaultPaths ?? []).filter(
     (name) => name !== '__root__' && name !== '__unknown__'
   )
   if (unknown.length > 0) {
@@ -315,15 +317,25 @@ export function registerIncrementalSyncIPC() {
     return preview
   })
 
-  ipcMain.handle('incrementalSync:orchestratedSync', async (event, runOptions) => {
+  ipcMain.handle('incrementalSync:orchestratedSync', async (event, runOptions?: IncrementalSyncRunOptions) => {
+    const publishProgress = (progress: SyncProgressEvent) => {
+      event.sender.send('incrementalSync:progress', progress)
+    }
+    publishProgress({
+      phase: 'comparing',
+      current: 0,
+      total: 1,
+      statusText: 'data_sync.progress_registering_vaults'
+    })
     const autoRegisteredVaults = await ensureVaultsForIncrementalSync(runOptions)
+    ;(await getSyncService()).clearPreparedManifestCache()
     const result = await (
       await getOrchestrator()
     ).sync((progress) => {
-      event.sender.send('incrementalSync:progress', progress)
+      publishProgress(progress)
     }, runOptions)
     await afterIncrementalSync(result, { force: true })
-    return result
+    return { ...result, autoRegisteredVaults }
   })
 
   ipcMain.handle('incrementalSync:orchestratedUploadOnly', async (event) => {
@@ -332,12 +344,16 @@ export function registerIncrementalSyncIPC() {
     })
   })
 
-  ipcMain.handle('incrementalSync:orchestratedDownloadOnly', async (event, runOptions) => {
+  ipcMain.handle('incrementalSync:orchestratedDownloadOnly', async (event, runOptions?: IncrementalSyncRunOptions) => {
+    const publishProgress = (progress: SyncProgressEvent) => {
+      event.sender.send('incrementalSync:progress', progress)
+    }
+    publishProgress({ phase: 'scanning', current: 0, total: 0 })
     await ensureVaultsForIncrementalSync(runOptions)
     const result = await (
       await getOrchestrator()
     ).downloadOnly((progress) => {
-      event.sender.send('incrementalSync:progress', progress)
+      publishProgress(progress)
     }, runOptions)
     await afterIncrementalSync(result)
     return result

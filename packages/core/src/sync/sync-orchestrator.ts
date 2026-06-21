@@ -46,14 +46,23 @@ export class SyncOrchestrator implements ISyncOrchestrator {
     this.isSyncing = false
   }
 
-  private async tryGitCommit(): Promise<void> {
+  private async tryGitCommit(onProgress?: SyncProgressCallback): Promise<void> {
     if (!this.gitService) return
 
     try {
       const isInit = await this.gitService.isInitialized()
-      if (isInit) {
-        await this.gitService.commitAll('sync: 同步前自动保存')
-      }
+      if (!isInit) return
+
+      const status = await this.gitService.getStatus()
+      if (!status.hasChanges) return
+
+      onProgress?.({
+        phase: 'comparing',
+        current: 0,
+        total: 1,
+        statusText: 'data_sync.progress_git_commit'
+      })
+      await this.gitService.commitAll('sync: 同步前自动保存')
     } catch {
       // git 预提交失败不阻塞同步
     }
@@ -70,7 +79,8 @@ export class SyncOrchestrator implements ISyncOrchestrator {
     const startedAt = new Date().toISOString()
 
     try {
-      await this.tryGitCommit()
+      await this.tryGitCommit(onProgress)
+      onProgress?.({ phase: 'comparing', current: 1, total: 1 })
 
       const result = await operation(onProgress)
       result.sessionId = sessionId

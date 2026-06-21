@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  isIncrementalSyncChatBackgroundPath,
   isSqliteRuntimeSyncPath,
   shouldIncludeIncrementalSyncFile,
   shouldScanIncrementalSyncDirectory
@@ -16,6 +17,26 @@ describe('incremental-sync-scan.util', () => {
       false
     )
     expect(shouldIncludeIncrementalSyncFile('baishou_agent.db', 'baishou_agent.db')).toBe(false)
+  })
+
+  it('excludes chat background images from incremental sync', () => {
+    expect(isIncrementalSyncChatBackgroundPath('Personal/Attachments/backgrounds')).toBe(true)
+    expect(isIncrementalSyncChatBackgroundPath('Personal/Attachments/backgrounds/bg_1.jpg')).toBe(
+      true
+    )
+    expect(isIncrementalSyncChatBackgroundPath('Personal/Attachments/avatars/a.png')).toBe(false)
+    expect(
+      shouldScanIncrementalSyncDirectory('backgrounds', 'Personal/Attachments/backgrounds')
+    ).toBe(false)
+    expect(
+      shouldIncludeIncrementalSyncFile(
+        'bg_1.jpg',
+        'Personal/Attachments/backgrounds/bg_1.jpg'
+      )
+    ).toBe(false)
+    expect(shouldIncludeIncrementalSyncFile('photo.jpg', 'Personal/Attachments/diary/photo.jpg')).toBe(
+      true
+    )
   })
 
   it('includes vault root files and settings domain json files', () => {

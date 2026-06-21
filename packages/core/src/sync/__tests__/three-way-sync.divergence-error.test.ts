@@ -37,6 +37,18 @@ describe('ThreeWaySyncService divergence errors', () => {
       deviceId: 'remote',
       files: { 'b.txt': { hash: '2', size: 1, lastModified: 1 } }
     })
+    vi.spyOn(service, 'getRemoteSnapshot').mockResolvedValue({
+      version: 1,
+      updatedAt: 0,
+      deviceId: '',
+      files: {}
+    })
+    vi.spyOn(service, 'getLocalManifest').mockResolvedValue({
+      version: 1,
+      updatedAt: 0,
+      deviceId: '',
+      files: {}
+    })
     vi.spyOn(service, 'getSyncStorageHistoryState').mockResolvedValue('match')
     vi.spyOn(ThreeWaySyncService.prototype as any, 'loadConfig').mockResolvedValue(undefined)
     Object.defineProperty(service, 'config', {

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+﻿import React, { useEffect, useMemo, useState } from 'react'
 import {
   Modal,
   View,
@@ -15,10 +15,15 @@ import type {
   IncrementalSyncVaultSummary
 } from '@baishou/shared'
 import {
-  SYNC_CONFIRM_DELAY_MS,
-  computeSyncConfirmSecondsLeft,
-  isSyncConfirmReady,
-  buildIncrementalSyncBoundaryHints
+  SYNC_CONFIRM_DELAY_SECONDS,
+  canExecuteIncrementalSyncPlan,
+  computeSyncConfirmSecondsLeftUntil,
+  isSyncConfirmEligible,
+  buildIncrementalSyncBoundaryHints,
+  requiresExplicitDeletePropagationChoice,
+  getDeletePropagationChoiceTitleKey,
+  getDeletePropagationChoiceDescKey,
+  type SyncDeletePropagationChoice
 } from '@baishou/shared'
 import { Button } from '../Button'
 import { useNativeTheme } from '../theme'
@@ -26,8 +31,9 @@ import { useNativeTheme } from '../theme'
 export interface IncrementalSyncConfirmDialogProps {
   visible: boolean
   preview: IncrementalSyncPlanPreview | null
+  confirmEligibleAtMs: number | null
   isConfirming?: boolean
-  onConfirm: () => void
+  onConfirm: (choice?: SyncDeletePropagationChoice) => void
   onCancel: () => void
 }
 
@@ -77,18 +83,40 @@ function formatVaultLabel(vaultName: string, t: (key: string, fallback?: string)
 export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialogProps> = ({
   visible,
   preview,
+  confirmEligibleAtMs,
   isConfirming = false,
   onConfirm,
   onCancel
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
-  const [confirmReady, setConfirmReady] = useState(false)
-  const [secondsLeft, setSecondsLeft] = useState(2)
+  const [nowMs, setNowMs] = useState(() => Date.now())
 
-  const canExecuteSync = Boolean(
-    preview && preview.changeCount > 0 && !preview.deletePropagationBlocked
-  )
+  const needsSyncConfirm = Boolean(preview && canExecuteIncrementalSyncPlan(preview))
+
+  const confirmReady = useMemo(() => {
+    if (!needsSyncConfirm) return true
+    if (confirmEligibleAtMs == null) return false
+    return isSyncConfirmEligible(confirmEligibleAtMs, nowMs)
+  }, [needsSyncConfirm, confirmEligibleAtMs, nowMs])
+
+  const secondsLeft = useMemo(() => {
+    if (!needsSyncConfirm) return 0
+    if (confirmEligibleAtMs == null) return SYNC_CONFIRM_DELAY_SECONDS
+    return computeSyncConfirmSecondsLeftUntil(confirmEligibleAtMs, nowMs)
+  }, [needsSyncConfirm, confirmEligibleAtMs, nowMs])
+
+  const primaryButtonLabel = useMemo(() => {
+    if (isConfirming) return t('data_sync.plan_confirming', '正在确认…')
+    if (!needsSyncConfirm) return t('common.close', '关闭')
+    if (!confirmReady) {
+      return t('data_sync.plan_confirm_sync_countdown', {
+        seconds: secondsLeft,
+        defaultValue: '确认同步 ({{seconds}})'
+      })
+    }
+    return t('data_sync.plan_confirm_sync', '确认同步')
+  }, [confirmReady, isConfirming, needsSyncConfirm, secondsLeft, t])
 
   const registeredSet = useMemo(
     () => new Set(preview?.registeredVaults ?? []),
@@ -113,6 +141,8 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
     )
   }, [preview, t])
 
+  const needsDeleteChoice = Boolean(preview && requiresExplicitDeletePropagationChoice(preview))
+
   const otherWarnings = useMemo(() => {
     if (!preview) return []
     const boundaryKeys = new Set([
@@ -120,52 +150,34 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
       'data_sync.plan_warning_disk_vaults_not_in_registry',
       'data_sync.plan_warning_registry_vaults_missing_on_disk'
     ])
-    return preview.warnings.filter((key) => !boundaryKeys.has(key))
+    const skipKeys = new Set(['data_sync.plan_warning_delete_blocked'])
+    return preview.warnings.filter((key) => !boundaryKeys.has(key) && !skipKeys.has(key))
   }, [preview])
 
   useEffect(() => {
-    if (!visible) {
-      setConfirmReady(false)
-      setSecondsLeft(2)
+    if (!visible) return undefined
+
+    setNowMs(Date.now())
+
+    if (!needsSyncConfirm || confirmEligibleAtMs == null) {
       return undefined
     }
 
-    if (!canExecuteSync) {
-      setConfirmReady(true)
-      setSecondsLeft(0)
-      return undefined
-    }
-
-    setConfirmReady(false)
-    setSecondsLeft(2)
-    const startedAt = Date.now()
     const interval = setInterval(() => {
-      const elapsed = Date.now() - startedAt
-      setSecondsLeft(computeSyncConfirmSecondsLeft(elapsed, SYNC_CONFIRM_DELAY_MS))
-      if (isSyncConfirmReady(elapsed, SYNC_CONFIRM_DELAY_MS)) {
-        setConfirmReady(true)
-        clearInterval(interval)
-      }
+      setNowMs(Date.now())
     }, 200)
-
-    const timer = setTimeout(() => {
-      setConfirmReady(true)
-      setSecondsLeft(0)
-    }, SYNC_CONFIRM_DELAY_MS)
 
     return () => {
       clearInterval(interval)
-      clearTimeout(timer)
     }
-  }, [visible, canExecuteSync, preview?.changeCount, preview?.deletePropagationBlocked])
+  }, [visible, needsSyncConfirm, confirmEligibleAtMs])
 
   if (!visible || !preview) return null
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
-      <View style={styles.overlay}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onCancel} accessibilityRole="button" />
-        <View
+      <Pressable style={styles.overlay} onPress={onCancel}>
+        <Pressable
           style={[
             styles.dialog,
             {
@@ -173,41 +185,60 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
               borderColor: colors.borderSubtle
             }
           ]}
+          onPress={(e) => e.stopPropagation()}
         >
-          <View style={styles.dialogHeader}>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>
-              {t('data_sync.plan_confirm_title', '确认同步')}
+          <Text style={[styles.title, { color: colors.textPrimary }]}>
+            {t('data_sync.plan_confirm_title', '确认同步')}
+          </Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+            {t('data_sync.plan_confirm_desc', {
+              count: preview.changeCount,
+              activeVault: preview.activeVaultName ?? t('workspace.no_active', '未选择工作空间')
+            })}
+          </Text>
+
+          {boundaryHints.map((hint, index) => (
+            <Text key={`boundary-${index}`} style={[styles.warningItem, { color: colors.warning }]}>
+              {hint}
             </Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              {t('data_sync.plan_confirm_desc', {
-                count: preview.changeCount,
-                activeVault: preview.activeVaultName ?? t('workspace.no_active', '未选择工作空间')
+          ))}
+
+          {needsDeleteChoice && (
+            <View
+              style={[
+                styles.choicePanel,
+                {
+                  backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                  borderColor: 'rgba(239, 68, 68, 0.25)'
+                }
+              ]}
+            >
+              <Text style={[styles.choiceTitle, { color: colors.textPrimary }]}>
+                {t(getDeletePropagationChoiceTitleKey(preview.deletePropagationReason))}
+              </Text>
+              <Text style={[styles.choiceDesc, { color: colors.textSecondary }]}>
+                {t(getDeletePropagationChoiceDescKey(preview.deletePropagationReason))}
+              </Text>
+              {preview.blockedDeleteCount != null && preview.blockedDeleteCount > 0 && (
+                <Text style={[styles.choiceMeta, { color: colors.textTertiary }]}>
+                  {t('data_sync.plan_delete_choice_blocked_count', {
+                    count: preview.blockedDeleteCount
+                  })}
+                </Text>
+              )}
+            </View>
+          )}
+
+          {otherWarnings.map((key) => (
+            <Text key={key} style={[styles.warningItem, { color: colors.warning }]}>
+              {t(key, {
+                divergence: preview.divergencePercent,
+                limit: preview.maxDivergencePercent
               })}
             </Text>
+          ))}
 
-            {boundaryHints.map((hint, index) => (
-              <Text key={`boundary-${index}`} style={[styles.warningItem, { color: colors.warning }]}>
-                {hint}
-              </Text>
-            ))}
-
-            {otherWarnings.map((key) => (
-              <Text key={key} style={[styles.warningItem, { color: colors.warning }]}>
-                {t(key, {
-                  divergence: preview.divergencePercent,
-                  limit: preview.maxDivergencePercent
-                })}
-              </Text>
-            ))}
-          </View>
-
-          <ScrollView
-            style={styles.vaultList}
-            contentContainerStyle={styles.vaultListContent}
-            nestedScrollEnabled
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator
-          >
+          <ScrollView style={styles.vaultList} contentContainerStyle={styles.vaultListContent}>
             {preview.vaultSummaries.length === 0 ? (
               <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                 {t('data_sync.plan_no_file_changes', '没有需要同步的文件变更')}
@@ -283,35 +314,53 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
             )}
           </ScrollView>
 
-          <View style={styles.dialogFooter}>
-            {canExecuteSync && !confirmReady && (
-              <Text style={[styles.countdownHint, { color: colors.textTertiary }]}>
-                {t('data_sync.plan_confirm_countdown', { seconds: secondsLeft })}
-              </Text>
-            )}
-
-            <View style={styles.actions}>
-              <Button variant="outline" onPress={onCancel} style={styles.actionButton}>
-                {t('common.cancel', '取消')}
-              </Button>
+          <View style={styles.actions}>
+            <Button variant="outline" onPress={onCancel} style={styles.actionButton}>
+              {t('common.cancel', '取消')}
+            </Button>
+            {needsDeleteChoice ? (
+              <View style={styles.choiceActions}>
+                <Button
+                  variant="primary"
+                  destructive
+                  onPress={() => onConfirm('follow-remote')}
+                  disabled={(needsSyncConfirm && !confirmReady) || isConfirming}
+                  isLoading={isConfirming}
+                  style={styles.choiceButton}
+                >
+                  {t('data_sync.plan_delete_choice_follow_remote')}
+                </Button>
+                <Button
+                  variant="primary"
+                  onPress={() => onConfirm('push-local')}
+                  disabled={(needsSyncConfirm && !confirmReady) || isConfirming}
+                  style={styles.choiceButton}
+                >
+                  {t('data_sync.plan_delete_choice_push_local')}
+                </Button>
+                <Button
+                  variant="outline"
+                  onPress={() => onConfirm('skip-deletes')}
+                  disabled={(needsSyncConfirm && !confirmReady) || isConfirming}
+                  style={styles.choiceButton}
+                >
+                  {t('data_sync.plan_delete_choice_skip_deletes')}
+                </Button>
+              </View>
+            ) : (
               <Button
                 variant="primary"
-                destructive={preview.deletePropagationBlocked}
-                onPress={onConfirm}
-                disabled={!confirmReady || preview.deletePropagationBlocked || isConfirming}
+                onPress={() => onConfirm()}
+                disabled={(needsSyncConfirm && !confirmReady) || isConfirming}
                 isLoading={isConfirming}
                 style={styles.actionButton}
               >
-                {isConfirming
-                  ? t('data_sync.plan_confirming', '正在确认…')
-                  : canExecuteSync
-                    ? t('data_sync.plan_confirm_sync', '确认同步')
-                    : t('common.close', '关闭')}
+                {primaryButtonLabel}
               </Button>
-            </View>
+            )}
           </View>
-        </View>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   )
 }
@@ -325,22 +374,9 @@ const styles = StyleSheet.create({
   },
   dialog: {
     maxHeight: '82%',
-    width: '100%',
     borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
-    overflow: 'hidden',
-    zIndex: 1
-  },
-  dialogHeader: {
-    paddingHorizontal: 18,
-    paddingTop: 18,
-    paddingBottom: 10,
-    gap: 10
-  },
-  dialogFooter: {
-    paddingHorizontal: 18,
-    paddingTop: 10,
-    paddingBottom: 18,
+    padding: 18,
     gap: 10
   },
   title: {
@@ -359,13 +395,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(245, 158, 11, 0.1)'
   },
   vaultList: {
-    flexGrow: 0,
-    flexShrink: 1,
-    maxHeight: 360
+    maxHeight: 320
   },
   vaultListContent: {
     gap: 8,
-    paddingHorizontal: 18,
     paddingBottom: 4
   },
   vaultSection: {
@@ -430,6 +463,30 @@ const styles = StyleSheet.create({
   countdownHint: {
     fontSize: 11,
     textAlign: 'right'
+  },
+  choicePanel: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 10,
+    padding: 10,
+    gap: 6
+  },
+  choiceTitle: {
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  choiceDesc: {
+    fontSize: 12,
+    lineHeight: 18
+  },
+  choiceMeta: {
+    fontSize: 11
+  },
+  choiceActions: {
+    flex: 1,
+    gap: 8
+  },
+  choiceButton: {
+    width: '100%'
   },
   actions: {
     flexDirection: 'row',

@@ -7,14 +7,14 @@ import type {
   IncrementalSyncRunOptions
 } from '@baishou/shared'
 import {
-  assertBidirectionalDeletePropagationAllowed,
   assertBidirectionalSyncDivergenceAllowed,
   buildIncrementalSyncPlanPreview,
   getIncrementalSyncStorageId,
+  inspectDeletePropagationBlock,
   isSyncDivergenceConfirmationRequiredError,
   limitExecute,
   resolveIncrementalSyncStorageHistory,
-  SyncDeletePropagationBlockedError,
+  resolveSyncMergeDecisions,
   type IncrementalSyncStorageHistory,
   SYNC_MANIFEST_FILENAME,
   SYNC_MANIFEST_VERSION,
@@ -401,13 +401,13 @@ export class MobileIncrementalEngine {
       this.emptyManifest()
     )
 
-    const decisions = threeWayMerge(localManifest, remoteManifest, ancestorSnapshot)
-    assertBidirectionalDeletePropagationAllowed(
-      decisions,
+    const decisions = resolveSyncMergeDecisions(
+      threeWayMerge(localManifest, remoteManifest, ancestorSnapshot),
       localManifest,
       remoteManifest,
       ancestorSnapshot,
-      previousLocalManifest
+      previousLocalManifest,
+      { deletePropagationChoice: runOptions?.deletePropagationChoice }
     )
 
     let uploaded = 0
@@ -672,25 +672,13 @@ export class MobileIncrementalEngine {
     const previousLocalManifest = await this.readLocalManifestFile().catch(() => this.emptyManifest())
     const decisions = threeWayMerge(localManifest, remoteManifest, ancestorSnapshot)
 
-    let deletePropagationBlocked = false
-    let deletePropagationReason: 'mass_delete' | 'local_data_loss' | 'remote_data_loss' | undefined
-
-    try {
-      assertBidirectionalDeletePropagationAllowed(
-        decisions,
-        localManifest,
-        remoteManifest,
-        ancestorSnapshot,
-        previousLocalManifest
-      )
-    } catch (error) {
-      if (error instanceof SyncDeletePropagationBlockedError) {
-        deletePropagationBlocked = true
-        deletePropagationReason = error.reason
-      } else {
-        throw error
-      }
-    }
+    const deleteBlock = inspectDeletePropagationBlock(
+      decisions,
+      localManifest,
+      remoteManifest,
+      ancestorSnapshot,
+      previousLocalManifest
+    )
 
     return buildIncrementalSyncPlanPreview({
       decisions,
@@ -700,8 +688,10 @@ export class MobileIncrementalEngine {
       requiresHighDivergenceConfirm,
       divergencePercent,
       maxDivergencePercent,
-      deletePropagationBlocked,
-      deletePropagationReason
+      deletePropagationBlocked: deleteBlock != null,
+      deletePropagationReason: deleteBlock?.reason,
+      blockedDeleteCount: deleteBlock?.deleteCount,
+      blockedDeleteDirection: deleteBlock?.direction
     })
   }
 }

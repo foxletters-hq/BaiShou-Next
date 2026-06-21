@@ -19,6 +19,7 @@ export interface SyncState {
   setPlanPreview: (preview: IncrementalSyncPlanPreview | null) => void
   setPlanDialogOpen: (open: boolean) => void
   setPlanConfirmEligibleAt: (eligibleAt: number | null) => void
+  showPlanConfirmDialog: (preview: IncrementalSyncPlanPreview, eligibleAt: number) => void
   clearPlanPreview: () => void
   reset: () => void
 }
@@ -39,6 +40,8 @@ export const useSyncStore = create<SyncState>((set) => ({
   setPlanPreview: (planPreview) => set({ planPreview }),
   setPlanDialogOpen: (planDialogOpen) => set({ planDialogOpen }),
   setPlanConfirmEligibleAt: (planConfirmEligibleAt) => set({ planConfirmEligibleAt }),
+  showPlanConfirmDialog: (planPreview, planConfirmEligibleAt) =>
+    set({ planPreview, planDialogOpen: true, planConfirmEligibleAt }),
   clearPlanPreview: () =>
     set({ planPreview: null, planDialogOpen: false, planConfirmEligibleAt: null }),
   reset: () =>
