@@ -3,7 +3,9 @@ import { useRouter, type Href } from 'expo-router'
 import {
   type PromptShortcut,
   USER_PROFILE_SETTINGS_KEY,
-  LATTE_ASSISTANT_NAME
+  LATTE_ASSISTANT_NAME,
+  normalizeChatBackgroundBlur,
+  normalizeChatBackgroundOverlayOpacity
 } from '@baishou/shared'
 import {
   View,
@@ -70,9 +72,7 @@ import { writeAgentNavigationSnapshot } from '../lib/agent-navigation-persistenc
 import { consumeAssistantsNeedRefresh } from '../lib/assistant-ui-refresh-signal'
 import { waitForVaultEcosystemResync } from '../services/mobile-vault-resync.service'
 import { useThrottledFocusRefresh } from '../hooks/useThrottledFocusRefresh'
-import DEFAULT_CHAT_BG from '@baishou/shared/assets/images/BaiShou-v0.0.1.jpeg'
 
-/** 默认聊天背景图 */
 /** 底部输入栏 + 工具条的大致高度，用于「回到底部」悬浮按钮定位 */
 const INPUT_DOCK_HEIGHT = 136
 /** 编辑态：保存按钮与 token 行距键盘顶部的留白 */
@@ -119,6 +119,8 @@ export const AgentScreen = () => {
     nickname: string
     avatarPath?: string | null
     chatBackgroundPath?: string | null
+    chatBackgroundBlur?: number
+    chatBackgroundOverlayOpacity?: number
   }>({ nickname: '' })
 
   const {
@@ -142,6 +144,11 @@ export const AgentScreen = () => {
   const resolvedCurrentAvatarUri = useResolvedAssistantAvatar(currentAssistant?.avatarPath)
   const resolvedUserAvatarUri = useResolvedUserAvatar(userProfile.avatarPath)
   const resolvedChatBackgroundUri = useResolvedChatBackground(userProfile.chatBackgroundPath)
+  const chatBackgroundBlur = normalizeChatBackgroundBlur(userProfile.chatBackgroundBlur)
+  const chatBackgroundOverlay = normalizeChatBackgroundOverlayOpacity(
+    userProfile.chatBackgroundOverlayOpacity
+  )
+  const hasChatBackground = Boolean(resolvedChatBackgroundUri)
 
   const {
     currentSessionId,
@@ -435,14 +442,22 @@ export const AgentScreen = () => {
   useEffect(() => {
     if (!dbReady || !services) return
     services.settingsManager
-      .get<{ nickname?: string; avatarPath?: string | null; chatBackgroundPath?: string | null }>(
-        USER_PROFILE_SETTINGS_KEY
-      )
+      .get<{
+        nickname?: string
+        avatarPath?: string | null
+        chatBackgroundPath?: string | null
+        chatBackgroundBlur?: number
+        chatBackgroundOverlayOpacity?: number
+      }>(USER_PROFILE_SETTINGS_KEY)
       .then((profile) =>
         setUserProfile({
           nickname: profile?.nickname || t('agent.chat.you_label', '你'),
           avatarPath: profile?.avatarPath,
-          chatBackgroundPath: profile?.chatBackgroundPath ?? null
+          chatBackgroundPath: profile?.chatBackgroundPath ?? null,
+          chatBackgroundBlur: normalizeChatBackgroundBlur(profile?.chatBackgroundBlur),
+          chatBackgroundOverlayOpacity: normalizeChatBackgroundOverlayOpacity(
+            profile?.chatBackgroundOverlayOpacity
+          )
         })
       )
       .catch(() => setUserProfile({ nickname: t('agent.chat.you_label', '你') }))
@@ -770,6 +785,15 @@ export const AgentScreen = () => {
     </View>
   )
 
+  const ChatBackgroundWrapper = resolvedChatBackgroundUri ? ImageBackground : View
+  const chatBackgroundWrapperProps = resolvedChatBackgroundUri
+    ? {
+        source: { uri: resolvedChatBackgroundUri },
+        resizeMode: 'cover' as const,
+        blurRadius: chatBackgroundBlur
+      }
+    : {}
+
   return (
     <>
       <StatusBar
@@ -777,11 +801,16 @@ export const AgentScreen = () => {
         backgroundColor={colors.bgApp}
       />
       <ScreenSafeArea preset="tab" style={{ backgroundColor: colors.bgApp }}>
-        <ImageBackground
-          source={resolvedChatBackgroundUri ? { uri: resolvedChatBackgroundUri } : DEFAULT_CHAT_BG}
-          style={styles.backgroundImage}
-          resizeMode="cover"
-        >
+        <ChatBackgroundWrapper style={styles.backgroundImage} {...chatBackgroundWrapperProps}>
+          {resolvedChatBackgroundUri && chatBackgroundOverlay > 0 ? (
+            <View
+              pointerEvents="none"
+              style={[
+                StyleSheet.absoluteFillObject,
+                { backgroundColor: `rgba(0, 0, 0, ${chatBackgroundOverlay / 100})` }
+              ]}
+            />
+          ) : null}
           <View style={styles.container}>
             <AgentChatAppBar
               modelName={displayModelName || ''}
@@ -869,6 +898,7 @@ export const AgentScreen = () => {
                           item.role === 'assistant' ? () => handleBranch(item.id) : undefined
                         }
                         onBubbleEditingChange={handleBubbleEditingChange}
+                        invertMetaOverBackground={hasChatBackground}
                       />
                     </View>
                   )
@@ -889,6 +919,7 @@ export const AgentScreen = () => {
                           toolCallId: `streaming-${tool.name}-${idx}`
                         }))}
                         aiProfile={chatAiProfile}
+                        invertMetaOverBackground={hasChatBackground}
                       />
                     </View>
                   ) : null
@@ -962,7 +993,7 @@ export const AgentScreen = () => {
               />
             </Animated.View>
           </View>
-        </ImageBackground>
+        </ChatBackgroundWrapper>
       </ScreenSafeArea>
 
       <AgentDrawer

@@ -1,10 +1,13 @@
 import React, { useMemo } from 'react'
 import { TokenBadge, InputBar, ContextChainPanel, useTheme, getProviderIcon } from '@baishou/ui'
 import { MdCloud } from 'react-icons/md'
+import {
+  normalizeChatBackgroundBlur,
+  normalizeChatBackgroundOverlayOpacity
+} from '@baishou/shared'
 import { AgentDialogs } from './components/AgentDialogs'
 import { AgentMessageList } from './components/AgentMessageList'
 import { useAgentChatFlow } from './hooks/useAgentChatFlow'
-import defaultChatBg from '@baishou/shared/assets/images/BaiShou-v0.0.1.jpeg'
 import styles from './AgentScreen.module.css'
 
 /**
@@ -30,17 +33,34 @@ export const AgentScreen: React.FC = () => {
       ? flow.t('agent.no_model_selected', '暂未选择模型')
       : flow.model.currentModelId
 
-  // 聊天背景：优先使用用户自定义背景，否则使用默认背景
-  const chatBackgroundUrl = flow.userProfile?.chatBackgroundPath || defaultChatBg
+  const chatBackgroundUrl = flow.userProfile?.chatBackgroundPath
+  const chatBackgroundBlur = normalizeChatBackgroundBlur(flow.userProfile?.chatBackgroundBlur)
+  const chatBackgroundOverlay = normalizeChatBackgroundOverlayOpacity(
+    flow.userProfile?.chatBackgroundOverlayOpacity
+  )
 
   return (
     <div className={styles.screen}>
-      {/* 聊天背景图 */}
-      <div
-        className={styles.chatBackground}
-        style={{ backgroundImage: `url(${chatBackgroundUrl})` }}
-        aria-hidden
-      />
+      {chatBackgroundUrl ? (
+        <>
+          <div
+            className={styles.chatBackground}
+            style={{
+              backgroundImage: `url(${chatBackgroundUrl})`,
+              filter: chatBackgroundBlur > 0 ? `blur(${chatBackgroundBlur}px)` : undefined,
+              transform: chatBackgroundBlur > 0 ? 'scale(1.06)' : undefined
+            }}
+            aria-hidden
+          />
+          {chatBackgroundOverlay > 0 ? (
+            <div
+              className={styles.chatBackgroundOverlay}
+              style={{ backgroundColor: `rgba(0, 0, 0, ${chatBackgroundOverlay / 100})` }}
+              aria-hidden
+            />
+          ) : null}
+        </>
+      ) : null}
       {/* 顶部状态与控制栏 */}
       <div className={styles.appBar}>
         <button

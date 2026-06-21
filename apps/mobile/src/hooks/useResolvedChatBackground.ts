@@ -3,7 +3,7 @@ import { useBaishou } from '../providers/BaishouProvider'
 
 /**
  * 将 settings 中的 chatBackgroundPath 解析为移动端 Image 可展示的 URI。
- * 如果路径为空则返回 null（使用默认背景）。
+ * 未设置背景时返回 null。
  */
 export function useResolvedChatBackground(backgroundPath?: string | null): string | null {
   const { services, dbReady, vaultRevision } = useBaishou()
