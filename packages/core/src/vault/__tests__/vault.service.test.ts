@@ -86,4 +86,52 @@ describe('VaultService Integration', () => {
     expect(vaults.map((v) => v.name)).toEqual(['Work'])
     expect(await fs.stat(path.join(tempDir, 'vault_registry.json'))).toBeDefined()
   })
+
+  it('syncRegistryWithDisk registers discovered vault folders not in registry', async () => {
+    await fs.mkdir(path.join(tempDir, 'Personal', 'Journals'), { recursive: true })
+    await fs.writeFile(path.join(tempDir, 'Personal', 'Journals', 'a.md'), '# a')
+    await fs.mkdir(path.join(tempDir, 'Work', 'Journals'), { recursive: true })
+    await fs.writeFile(path.join(tempDir, 'Work', 'Journals', 'b.md'), '# b')
+
+    const registryPath = path.join(tempDir, 'vault_registry.json')
+    await fs.writeFile(
+      registryPath,
+      JSON.stringify([
+        {
+          name: 'Personal',
+          path: path.join(tempDir, 'Personal'),
+          createdAt: new Date().toISOString(),
+          lastAccessedAt: new Date().toISOString()
+        }
+      ])
+    )
+
+    await service.initRegistry()
+
+    expect(service.getAllVaults().map((v) => v.name).sort()).toEqual(['Personal', 'Work'])
+  })
+
+  it('ensureVaultsRegistered adds remote-only vault names', async () => {
+    await service.initRegistry()
+    const added = await service.ensureVaultsRegistered(['RemoteVault'])
+    expect(added).toEqual(['RemoteVault'])
+    expect(service.vaultExists('RemoteVault')).toBe(true)
+    expect(
+      await fs.stat(path.join(tempDir, 'RemoteVault', '.baishou'))
+    ).toBeDefined()
+  })
+
+  it('ensureVaultsRegistered does not steal active vault', async () => {
+    await fs.mkdir(path.join(tempDir, 'Personal', 'Journals'), { recursive: true })
+    await fs.writeFile(path.join(tempDir, 'Personal', 'Journals', 'a.md'), '# a')
+    await fs.mkdir(path.join(tempDir, 'Work', 'Journals'), { recursive: true })
+    await fs.writeFile(path.join(tempDir, 'Work', 'Journals', 'b.md'), '# b')
+
+    await service.initRegistry()
+    await service.switchVault('Personal')
+    expect(service.getActiveVault()?.name).toBe('Personal')
+
+    await service.ensureVaultsRegistered(['Work'])
+    expect(service.getActiveVault()?.name).toBe('Personal')
+  })
 })

@@ -191,6 +191,8 @@ export class VaultService implements IVaultService {
       await this.saveRegistry(registryFile)
     }
 
+    await this.syncRegistryWithDisk()
+
     const activeVault = this.getActiveVault()
     if (activeVault) {
       await this.fileSystem.mkdir(activeVault.path, { recursive: true })
@@ -218,6 +220,35 @@ export class VaultService implements IVaultService {
     const result = validateVaultName(vaultName)
     if (!result.ok) return false
     return this._vaults.some((v) => v.name === result.name)
+  }
+
+  public async syncRegistryWithDisk(): Promise<string[]> {
+    const rootDir = await this.pathService.getRootDirectory()
+    const discovered = await discoverLegacyVaultNamesOnDisk(this.fileSystem, rootDir)
+    const missing = discovered.filter((name) => !this._vaults.some((v) => v.name === name))
+    return this.ensureVaultsRegistered(missing)
+  }
+
+  public async ensureVaultsRegistered(vaultNames: Iterable<string>): Promise<string[]> {
+    const rootDir = await this.pathService.getRootDirectory()
+    const registryFile = path.join(rootDir, 'vault_registry.json')
+    const added: string[] = []
+
+    for (const rawName of vaultNames) {
+      const result = validateVaultName(rawName)
+      if (!result.ok) continue
+      const name = result.name
+      if (this._vaults.some((v) => v.name === name)) continue
+
+      await this.addNewVault(name, { touchAccess: false })
+      added.push(name)
+    }
+
+    if (added.length > 0) {
+      await this.saveRegistry(registryFile)
+    }
+
+    return added
   }
 
   public async createVault(vaultName: string): Promise<void> {
@@ -261,18 +292,22 @@ export class VaultService implements IVaultService {
     return result.name
   }
 
-  private async addNewVault(vaultName: string): Promise<void> {
+  private async addNewVault(
+    vaultName: string,
+    options?: { touchAccess?: boolean }
+  ): Promise<void> {
     const newPath = await this.pathService.getVaultDirectory(vaultName)
     await this.fileSystem.mkdir(newPath, { recursive: true })
     await this.fileSystem.mkdir(await this.pathService.getVaultSystemDirectory(vaultName), {
       recursive: true
     })
 
+    const touchAccess = options?.touchAccess !== false
     const newVault: VaultInfo = {
       name: vaultName,
       path: newPath,
       createdAt: new Date(),
-      lastAccessedAt: new Date()
+      lastAccessedAt: touchAccess ? new Date() : new Date(0)
     }
     this._vaults.push(newVault)
   }

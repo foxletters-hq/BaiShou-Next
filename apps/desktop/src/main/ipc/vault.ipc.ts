@@ -20,6 +20,12 @@ export { fileSystem }
  */
 export const vaultService = new VaultService(pathService, fileSystem)
 
+export function notifyVaultRegistryUpdated(): void {
+  BrowserWindow.getAllWindows().forEach((win) => {
+    win.webContents.send('vault:registryUpdated')
+  })
+}
+
 /** 连接全局影子索引库（单库多 Vault，Vault 切换无需重连） */
 export async function connectGlobalShadowDb(): Promise<void> {
   const sysDir = await pathService.getGlobalShadowIndexDirectory()

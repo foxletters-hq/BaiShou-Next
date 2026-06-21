@@ -81,7 +81,12 @@ export const settingsApi = {
     delete: (vaultName: string) => ipcRenderer.invoke('vault:delete', vaultName),
     createDialog: (name?: string) => ipcRenderer.invoke('vault:createDialog', name),
     pickCustomRootPath: () => ipcRenderer.invoke('vault:pickCustomRootPath'),
-    getCustomRootPath: () => ipcRenderer.invoke('vault:getCustomRootPath')
+    getCustomRootPath: () => ipcRenderer.invoke('vault:getCustomRootPath'),
+    onRegistryUpdated: (callback: () => void) => {
+      const handler = () => callback()
+      ipcRenderer.on('vault:registryUpdated', handler)
+      return () => ipcRenderer.removeListener('vault:registryUpdated', handler)
+    }
   },
 
   profile: {
