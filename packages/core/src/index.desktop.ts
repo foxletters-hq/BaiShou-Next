@@ -10,6 +10,7 @@ export * from './import/legacy-import.service'
 
 export * from './sync/git-sync.interface'
 export * from './sync/git-sync.service'
+export * from './sync/git-binary.registry'
 export * from './sync/incremental-sync.interface'
 export * from './sync/version-manager.interface'
 export * from './sync/version-manager.service'

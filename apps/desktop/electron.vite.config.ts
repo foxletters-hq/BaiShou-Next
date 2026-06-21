@@ -46,6 +46,8 @@ export default defineConfig({
             id.startsWith('better-sqlite3/') ||
             id === 'sqlite-vec' ||
             id.startsWith('sqlite-vec/') ||
+            id === 'dugite' ||
+            id.startsWith('dugite/') ||
             id === '@libsql/client' ||
             id.startsWith('@libsql/client/')
           ) {
@@ -60,7 +62,7 @@ export default defineConfig({
       alias: workspaceAliases
     },
     ssr: {
-      external: ['better-sqlite3', 'sqlite-vec', '@libsql/client']
+      external: ['better-sqlite3', 'sqlite-vec', 'dugite', '@libsql/client']
     },
     build: {
       rollupOptions: {
@@ -73,6 +75,7 @@ export default defineConfig({
             id === 'pdf-parse' ||
             id.includes('better-sqlite3') ||
             id.includes('sqlite-vec') ||
+            id.includes('dugite') ||
             id.includes('@libsql/client')
           ) {
             return true

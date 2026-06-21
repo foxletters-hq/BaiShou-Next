@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@baishou/core": "workspace:*",
+    "dugite": "^3.2.2",
     "simple-git": "^3.28.0"
   },
   "devDependencies": {

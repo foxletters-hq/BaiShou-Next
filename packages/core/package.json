@@ -17,7 +17,8 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "node ../../node_modules/vitest/vitest.mjs run --config vitest.config.mts"
+    "test": "node ../../node_modules/vitest/vitest.mjs run --config vitest.config.mts",
+    "test:sync-e2e": "node ../../node_modules/vitest/vitest.mjs run --config vitest.config.mts src/sync/__tests__/incremental-sync.e2e.test.ts src/sync/__tests__/incremental-sync.multi-round.e2e.test.ts"
   },
   "dependencies": {
     "@baishou/ai": "workspace:*",
@@ -25,11 +26,11 @@
     "@baishou/shared": "workspace:*",
     "ai": "^6.0.146",
     "drizzle-orm": "^0.45.2",
+    "simple-git": "^3.28.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/uuid": "^11.0.0",
-    "simple-git": "^3.28.0",
     "typescript": "^6.0.2",
     "vitest": "^4.1.2"
   }
