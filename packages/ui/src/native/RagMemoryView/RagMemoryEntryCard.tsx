@@ -17,6 +17,7 @@ import { ragMemoryStyles as styles } from './rag-memory.styles'
 
 interface RagMemoryEntryCardProps {
   item: RagEntry
+  showSimilarity?: boolean
   activeMenuId: string | null
   setActiveMenuId: (id: string | null) => void
   onDelete?: (id: string) => Promise<void>
@@ -25,6 +26,7 @@ interface RagMemoryEntryCardProps {
 
 export const RagMemoryEntryCard: React.FC<RagMemoryEntryCardProps> = ({
   item,
+  showSimilarity = false,
   activeMenuId,
   setActiveMenuId,
   onDelete,
@@ -110,7 +112,7 @@ export const RagMemoryEntryCard: React.FC<RagMemoryEntryCardProps> = ({
           <Text style={[styles.entryDate, { color: colors.textTertiary }]}>
             {formatRagEntryTimestamp(item.createdAt, item.sourceType)}
           </Text>
-          {item.similarity !== undefined && (
+          {showSimilarity && item.similarity !== undefined && (
             <View style={[styles.entrySimilarity, { backgroundColor: colors.primaryLight }]}>
               <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '700' }}>
                 {(item.similarity * 100).toFixed(0)}%
@@ -128,6 +130,7 @@ const PAGE_SIZES = [10, 20, 30, 50, 100]
 interface RagMemoryEntriesSectionProps {
   entries: RagEntry[]
   searchQuery?: string
+  searchMode?: 'semantic' | 'text'
   totalCount?: number
   currentPage?: number
   pageSize?: number
@@ -139,6 +142,7 @@ interface RagMemoryEntriesSectionProps {
 export const RagMemoryEntriesSection: React.FC<RagMemoryEntriesSectionProps> = ({
   entries,
   searchQuery = '',
+  searchMode = 'text',
   totalCount = 0,
   currentPage = 1,
   pageSize = 10,
@@ -153,6 +157,7 @@ export const RagMemoryEntriesSection: React.FC<RagMemoryEntriesSectionProps> = (
   const effectiveTotal = totalCount > 0 ? totalCount : entries.length
   const totalPages = Math.max(1, Math.ceil(effectiveTotal / pageSize))
   const showPagination = effectiveTotal > 10
+  const showSimilarity = searchMode === 'semantic' && searchQuery.trim().length > 0
 
   return (
     <View>
@@ -170,6 +175,7 @@ export const RagMemoryEntriesSection: React.FC<RagMemoryEntriesSectionProps> = (
           <RagMemoryEntryCard
             key={item.embeddingId}
             item={item}
+            showSimilarity={showSimilarity}
             activeMenuId={activeMenuId}
             setActiveMenuId={setActiveMenuId}
             onDelete={onDeleteEntry}
