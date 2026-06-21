@@ -29,7 +29,7 @@ import { HybridSearchService } from '@baishou/ai'
 import type { MobileStoragePathService } from './path.service'
 import type { MobileAttachmentManagerService } from './mobile-attachment-manager.service'
 import { buildMobileSummaryAiClient } from './mobile-summary-ai-client'
-import { resolveSummaryTemplatesForGeneration } from '@baishou/shared'
+import { resolveSummaryTemplatesForGeneration, logger } from '@baishou/shared'
 
 export type AgentDbRuntime = {
   expoDb: ExpoSqliteDatabase
@@ -109,6 +109,38 @@ export async function createSummaryPipelineServices(options: {
     summarySyncService
   )
   return { summaryManager, summaryGenerator, missingSummaryDetector, summarySyncService }
+}
+
+/** 工作区切换后重建总结管线，并将 SQLite 总结缓存与当前 Vault 磁盘文件对齐 */
+export async function rebindSummaryPipelineForVault(
+  options: {
+    drizzleDb: AppDatabase
+    pathService: MobileStoragePathService
+    fileSystem: IFileSystem
+    settingsManager: SettingsManagerService
+    diaryRepoAdapter: unknown
+    activeVaultName?: string | null
+  }
+): Promise<SummaryPipelineServices> {
+  const pipeline = await createSummaryPipelineServices({
+    drizzleDb: options.drizzleDb,
+    pathService: options.pathService,
+    fileSystem: options.fileSystem,
+    settingsManager: options.settingsManager,
+    diaryRepoAdapter: options.diaryRepoAdapter
+  })
+
+  if (options.activeVaultName) {
+    try {
+      await pipeline.summarySyncService.fullScanArchives({
+        activeVaultName: options.activeVaultName
+      })
+    } catch (e) {
+      logger.warn('[SummaryPipeline] fullScanArchives after vault rebind failed:', e as Error)
+    }
+  }
+
+  return pipeline
 }
 
 export async function createAgentDbRuntime(
