@@ -7,6 +7,7 @@ import tseslint from '@electron-toolkit/eslint-config-ts'
 import eslintConfigPrettier from '@electron-toolkit/eslint-config-prettier'
 import eslintPluginReactHooks from 'eslint-plugin-react-hooks'
 import i18nChineseRule from './scripts/eslint-plugin-i18n-chinese.mjs'
+import { cacheCoordinatorImportRestrictions } from './eslint.cache-coordinator.mjs'
 
 const sharedIgnores = [
   '**/node_modules',
@@ -87,6 +88,7 @@ export function createBaishouEslintConfig(options = {}) {
         ...extraRules
       }
     },
+    cacheCoordinatorImportRestrictions,
     eslintConfigPrettier
   )
 }
