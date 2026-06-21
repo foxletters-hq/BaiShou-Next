@@ -8,7 +8,7 @@ export interface SummaryDashboardStats {
 }
 
 export interface SummaryDashboardSnapshot {
-  /** 工作区 scope（Mobile: vaultRevision 字符串；Desktop: vault 名） */
+  /** 工作区 scope（Mobile: String(vaultRevision)；Desktop: vault 名） */
   scopeKey: string
   stats: SummaryDashboardStats
   /** 日记归档日 → 篇数（热力图稀疏索引） */

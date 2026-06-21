@@ -20,7 +20,7 @@ const SCAN_ROOTS = [
 
 /** 仅在这些路径内允许出现 forbidden 标识符 */
 const ALLOWLIST_PATH_RE =
-  /(?:register-(?:mobile|desktop-main|desktop-renderer)-cache-stores|[-/]cache\/(?:mobile|desktop-(?:main|renderer))-cache-coordinator|summary-dashboard-cache|user-avatar-display\.util|assistant-avatar-display\.util|mobile-mcp-context\.service|agent-helpers\.ts|mobile-attachment-image-cache|chat-attachment-thumbnail\.util|tts-synthesis-cache|mimo-tts\.util|mobile-tts-settings\.service|useAttachmentImageLoader|useChatMessages|__tests__|\.test\.|\.spec\.)/
+  /(?:register-(?:mobile|desktop-main|desktop-renderer)-cache-stores|[-/]cache\/(?:mobile|desktop-(?:main|renderer))-cache-coordinator|summary\.ipc|vault\.ipc|archive\.service|summary-dashboard-cache|user-avatar-display\.util|assistant-avatar-display\.util|mobile-mcp-context\.service|agent-helpers\.ts|mobile-attachment-image-cache|chat-attachment-thumbnail\.util|tts-synthesis-cache|mimo-tts\.util|mobile-tts-settings\.service|useAttachmentImageLoader|useChatMessages|__tests__|\.test\.|\.spec\.)/
 
 const FORBIDDEN_IDENTIFIERS = new Set([
   'invalidateSummaryDashboardCache',
@@ -33,7 +33,8 @@ const FORBIDDEN_IDENTIFIERS = new Set([
   'clearAllAttachmentImageCaches',
   'clearChatAttachmentImageCaches',
   'clearGlobalTtsSynthesisCache',
-  'clearMimoRefAudioHydrationCache'
+  'clearMimoRefAudioHydrationCache',
+  'resetCachedManager'
 ])
 
 const SKIP_DIRS = new Set(['node_modules', 'dist', 'out', 'build', '.turbo', 'coverage'])
