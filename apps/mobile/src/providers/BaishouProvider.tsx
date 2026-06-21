@@ -98,7 +98,7 @@ import { ensureMobileCompressionBridge } from '../services/mobile-compression-ev
 import type { IFileSystem } from '@baishou/core-mobile'
 import { buildMobileSummaryAiClient } from '../services/mobile-summary-ai-client'
 import { MobileAttachmentManagerService } from '../services/mobile-attachment-manager.service'
-import { reconcileUserAvatarProfileAfterStorageChange } from '../lib/user-avatar-reconcile.util'
+import { warmAgentScreenCaches } from '../lib/agent-user-profile.util'
 import { reconcileAssistantAvatarsAfterStorageChange } from '../lib/assistant-avatar-reconcile.util'
 import {
   initMobileCacheCoordinator,
@@ -1728,6 +1728,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             },
             startAgentChat
           })
+          void warmAgentScreenCaches(settingsManager, attachmentManager)
         }
 
         void mobileMcpService?.start().catch((mcpErr) => {

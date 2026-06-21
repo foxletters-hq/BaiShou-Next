@@ -27,10 +27,24 @@ import {
 } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { notifyThemeRefresh } from '../../../lib/theme-events'
+import { notifyUserProfileRefresh } from '../../../lib/user-profile-refresh-signal'
+import {
+  invalidateChatBackgroundDisplayCache,
+  resolveChatBackgroundForMobileUi
+} from '../../../lib/chat-background-display.util'
+import { invalidateAgentUserProfileCache } from '../../../lib/agent-user-profile.util'
 import { ensureDefaultLatteAssistant, syncDefaultLatteAssistantLocale } from '@baishou/core-mobile'
 import { resolveAppUiLanguage } from '../../../lib/device-locale'
 import { SettingsProfileHeader, type SettingsProfileSavePayload } from './SettingsProfileHeader'
 import { MobileAttachmentManagerService } from '../../../services/mobile-attachment-manager.service'
+
+function notifyAgentProfileRefresh(options?: { chatBackgroundChanged?: boolean }) {
+  invalidateAgentUserProfileCache()
+  if (options?.chatBackgroundChanged) {
+    invalidateChatBackgroundDisplayCache()
+  }
+  notifyUserProfileRefresh()
+}
 
 export interface QuickSettingsGroupProps {
   groupCardStyle: object
@@ -195,6 +209,7 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
         avatarPath: next.avatarPath ?? undefined
       }))
       toast.showSuccess(t('common.save_success'))
+      notifyAgentProfileRefresh()
     } catch {
       toast.showError(t('common.errors.save_failed'))
     }
@@ -215,6 +230,7 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
       }
       await saveUserProfileToSettings(services.settingsManager, next)
       setProfile({ nickname: next.nickname, avatarPath: next.avatarPath })
+      notifyAgentProfileRefresh()
     } catch (e) {
       console.error('Save identity failed', e)
     }
@@ -296,7 +312,15 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
       }
       await saveUserProfileToSettings(services.settingsManager, next)
       setChatBackgroundPath(bgPath)
+      invalidateAgentUserProfileCache()
+      invalidateChatBackgroundDisplayCache()
+      const resolvedUri = await resolveChatBackgroundForMobileUi(
+        bgPath,
+        services.attachmentManager
+      )
+      setResolvedBackgroundUri(resolvedUri)
       toast.showSuccess(t('common.save_success'))
+      notifyUserProfileRefresh()
     } catch (e) {
       console.error('Pick background failed', e)
       toast.showError(t('common.errors.save_failed'))
@@ -319,6 +343,7 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
       setChatBackgroundOverlayOpacity(CHAT_BACKGROUND_OVERLAY_DEFAULT)
       setResolvedBackgroundUri(null)
       toast.showSuccess(t('common.save_success'))
+      notifyAgentProfileRefresh({ chatBackgroundChanged: true })
     } catch (e) {
       console.error('Clear background failed', e)
       toast.showError(t('common.errors.save_failed'))
@@ -340,6 +365,7 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
             normalizeChatBackgroundOverlayOpacity(patch.chatBackgroundOverlayOpacity)
           )
         }
+        notifyAgentProfileRefresh()
       } catch (e) {
         console.error('Save chat background style failed', e)
         toast.showError(t('common.errors.save_failed'))
