@@ -4,7 +4,8 @@ import type {
   GitStatus,
   VersionHistoryEntry,
   FileChange,
-  FileDiff
+  FileDiff,
+  GitRollbackAllContext
 } from '@baishou/shared'
 
 export interface GitManagementPageProps {
@@ -57,4 +58,5 @@ export interface GitManagementPageProps {
   // 回滚
   onRollbackFile: (filePath: string, commitHash: string) => Promise<{ success: boolean }>
   onRollbackAll: (commitHash: string) => Promise<{ success: boolean }>
+  onGetRollbackAllContext: (commitHash: string) => Promise<GitRollbackAllContext>
 }

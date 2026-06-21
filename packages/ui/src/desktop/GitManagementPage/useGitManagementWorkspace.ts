@@ -1,8 +1,9 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import type { TFunction } from 'i18next'
 import { isTextDiffablePath } from '@baishou/shared'
 import type { GitManagementPageProps } from './git-management.types'
 import type { FileChange, FileDiff } from '@baishou/shared'
+import type { GitDestructiveConfirmRequest } from './GitDestructiveConfirmDialog'
 
 export interface UseGitManagementWorkspaceParams {
   t: TFunction
@@ -18,6 +19,7 @@ export interface UseGitManagementWorkspaceParams {
   onDiscardAllChanges: GitManagementPageProps['onDiscardAllChanges']
   onRollbackFile: GitManagementPageProps['onRollbackFile']
   onRollbackAll: GitManagementPageProps['onRollbackAll']
+  onGetRollbackAllContext: GitManagementPageProps['onGetRollbackAllContext']
   expandedCommit: string | null
   setExpandedCommit: (value: string | null) => void
   setSelectedCommit: (value: string | null) => void
@@ -30,6 +32,7 @@ export interface UseGitManagementWorkspaceParams {
   setExpandedWorkingFile: (value: { path: string; staged: boolean } | null) => void
   setWorkingFileDiff: (value: FileDiff | null) => void
   handleRefreshStatus: () => Promise<void>
+  handleLoadHistory: () => Promise<void>
 }
 
 export function useGitManagementWorkspace(params: UseGitManagementWorkspaceParams) {
@@ -47,6 +50,7 @@ export function useGitManagementWorkspace(params: UseGitManagementWorkspaceParam
     onDiscardAllChanges,
     onRollbackFile,
     onRollbackAll,
+    onGetRollbackAllContext,
     expandedCommit,
     setExpandedCommit,
     setSelectedCommit,
@@ -58,8 +62,13 @@ export function useGitManagementWorkspace(params: UseGitManagementWorkspaceParam
     expandedWorkingFile,
     setExpandedWorkingFile,
     setWorkingFileDiff,
-    handleRefreshStatus
+    handleRefreshStatus,
+    handleLoadHistory
   } = params
+
+  const [destructiveConfirm, setDestructiveConfirm] =
+    useState<GitDestructiveConfirmRequest>(null)
+  const [isConfirmingDestructive, setIsConfirmingDestructive] = useState(false)
 
   const handleSelectCommit = useCallback(
     async (hash: string) => {
@@ -75,7 +84,7 @@ export function useGitManagementWorkspace(params: UseGitManagementWorkspaceParam
       setCommitChanges(changes)
       setSelectedFileDiff(null)
     },
-    [expandedCommit, onGetCommitChanges]
+    [expandedCommit, onGetCommitChanges, setExpandedCommit, setSelectedCommit, setCommitChanges, setSelectedFileDiff]
   )
 
   const handleViewDiff = useCallback(
@@ -90,7 +99,7 @@ export function useGitManagementWorkspace(params: UseGitManagementWorkspaceParam
       const diff = await onGetFileDiff(filePath, selectedCommit || undefined)
       setSelectedFileDiff(diff)
     },
-    [onGetFileDiff, selectedCommit, expandedFile]
+    [onGetFileDiff, selectedCommit, expandedFile, setExpandedFile, setSelectedFileDiff]
   )
 
   const handleViewWorkingDiff = useCallback(
@@ -105,7 +114,7 @@ export function useGitManagementWorkspace(params: UseGitManagementWorkspaceParam
       const diff = await onGetWorkingDiff(filePath, staged)
       setWorkingFileDiff(diff)
     },
-    [onGetWorkingDiff, expandedWorkingFile]
+    [onGetWorkingDiff, expandedWorkingFile, setExpandedWorkingFile, setWorkingFileDiff]
   )
 
   const handleStageFile = useCallback(
@@ -132,7 +141,7 @@ export function useGitManagementWorkspace(params: UseGitManagementWorkspaceParam
   const handleUnstageFile = useCallback(
     async (filePath: string) => {
       await onUnstageFile(filePath)
-      handleRefreshStatus()
+      await handleRefreshStatus()
     },
     [onUnstageFile, handleRefreshStatus]
   )
@@ -140,64 +149,103 @@ export function useGitManagementWorkspace(params: UseGitManagementWorkspaceParam
   const handleUnstageAll = useCallback(async () => {
     try {
       await onUnstageAll()
-      handleRefreshStatus()
+      await handleRefreshStatus()
     } catch (e: any) {
       onToast(e?.message || t('common.error', '操作失败'), 'error')
     }
   }, [onUnstageAll, handleRefreshStatus, onToast, t])
 
-  const handleDiscardFile = useCallback(
-    async (filePath: string) => {
-      await onDiscardFile(filePath)
-      handleRefreshStatus()
-    },
-    [onDiscardFile, handleRefreshStatus]
-  )
+  const handleDiscardFile = useCallback((filePath: string, options?: { untracked?: boolean }) => {
+    setDestructiveConfirm({ type: 'discard-file', path: filePath, untracked: options?.untracked })
+  }, [])
 
-  const handleDiscardAll = useCallback(async () => {
-    await onDiscardAllChanges()
-    handleRefreshStatus()
-  }, [onDiscardAllChanges, handleRefreshStatus])
+  const handleDiscardAll = useCallback(() => {
+    setDestructiveConfirm({ type: 'discard-all' })
+  }, [])
+
+  const confirmDestructiveAction = useCallback(async () => {
+    if (!destructiveConfirm || isConfirmingDestructive) return
+    setIsConfirmingDestructive(true)
+    try {
+      if (destructiveConfirm.type === 'discard-file') {
+        await onDiscardFile(destructiveConfirm.path)
+        await handleRefreshStatus()
+      } else if (destructiveConfirm.type === 'discard-all') {
+        await onDiscardAllChanges()
+        await handleRefreshStatus()
+      } else if (destructiveConfirm.type === 'rollback') {
+        const result = await onRollbackAll(destructiveConfirm.hash)
+        onToast(
+          result.success
+            ? t('version_control.rollback_success', '回滚成功')
+            : t('version_control.git_rollback_failed', '回滚失败'),
+          result.success ? 'success' : 'error'
+        )
+        if (result.success) {
+          await handleRefreshStatus()
+          await handleLoadHistory()
+        }
+      } else if (destructiveConfirm.type === 'rollback-file') {
+        const result = await onRollbackFile(destructiveConfirm.path, destructiveConfirm.hash)
+        onToast(
+          result.success
+            ? t('version_control.rollback_success', '回滚成功')
+            : t('version_control.git_rollback_failed', '回滚失败'),
+          result.success ? 'success' : 'error'
+        )
+        if (result.success) {
+          await handleRefreshStatus()
+          await handleLoadHistory()
+        }
+      }
+    } catch (e: any) {
+      onToast(e?.message || t('common.error', '操作失败'), 'error')
+    } finally {
+      setIsConfirmingDestructive(false)
+      setDestructiveConfirm(null)
+    }
+  }, [
+    destructiveConfirm,
+    isConfirmingDestructive,
+    onDiscardFile,
+    onDiscardAllChanges,
+    onRollbackAll,
+    onRollbackFile,
+    handleRefreshStatus,
+    handleLoadHistory,
+    onToast,
+    t
+  ])
+
+  const cancelDestructiveAction = useCallback(() => {
+    if (isConfirmingDestructive) return
+    setDestructiveConfirm(null)
+  }, [isConfirmingDestructive])
 
   const handleRollback = useCallback(
-    async (filePath: string) => {
+    (filePath: string) => {
       if (!selectedCommit) return
-      const result = await onRollbackFile(filePath, selectedCommit)
-      onToast(
-        result.success
-          ? t('version_control.rollback_success', '回滚成功')
-          : t('version_control.git_rollback_failed', '回滚失败'),
-        result.success ? 'success' : 'error'
-      )
+      setDestructiveConfirm({
+        type: 'rollback-file',
+        path: filePath,
+        hash: selectedCommit
+      })
     },
-    [selectedCommit, onRollbackFile, onToast, t]
+    [selectedCommit]
   )
 
   const handleRollbackAll = useCallback(
-    async (commitHash: string) => {
-      const result = await onRollbackAll(commitHash)
-      onToast(
-        result.success
-          ? t('version_control.rollback_success', '回滚成功')
-          : t('version_control.git_rollback_failed', '回滚失败'),
-        result.success ? 'success' : 'error'
-      )
+    async (commitHash: string, message?: string) => {
+      try {
+        const context = await onGetRollbackAllContext(commitHash)
+        setDestructiveConfirm({ type: 'rollback', hash: commitHash, message, context })
+      } catch {
+        setDestructiveConfirm({ type: 'rollback', hash: commitHash, message })
+      }
     },
-    [onRollbackAll, onToast, t]
+    [onGetRollbackAllContext]
   )
 
-  const getFileStatusIcon = (status: string) => {
-    switch (status) {
-      case 'added':
-        return 'A'
-      case 'deleted':
-        return 'D'
-      case 'renamed':
-        return 'R'
-      default:
-        return 'M'
-    }
-  }
   return {
     handleSelectCommit,
     handleViewDiff,
@@ -208,6 +256,10 @@ export function useGitManagementWorkspace(params: UseGitManagementWorkspaceParam
     handleUnstageAll,
     handleDiscardFile,
     handleDiscardAll,
+    destructiveConfirm,
+    isConfirmingDestructive,
+    confirmDestructiveAction,
+    cancelDestructiveAction,
     handleRollback,
     handleRollbackAll
   }

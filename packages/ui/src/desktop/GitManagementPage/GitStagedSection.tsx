@@ -63,15 +63,17 @@ export const GitStagedSection: React.FC<GitStagedSectionProps> = ({ vm }) => {
                       {getFileStatusIcon(file.stagedStatus)}
                     </span>
                     <span className="gmp-file-path">{file.path}</span>
-                    <button
-                      className="gmp-btn-tiny"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleUnstageFile(file.path)
-                      }}
-                    >
-                      {t('version_control.unstage', '取消暂存')}
-                    </button>
+                    <div className="gmp-file-actions">
+                      <button
+                        className="gmp-btn-tiny"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleUnstageFile(file.path)
+                        }}
+                      >
+                        {t('version_control.unstage', '取消暂存')}
+                      </button>
+                    </div>
                   </div>
                   {expandedWorkingFile?.path === file.path &&
                     expandedWorkingFile.staged &&

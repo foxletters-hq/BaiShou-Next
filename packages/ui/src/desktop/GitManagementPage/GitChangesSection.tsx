@@ -73,24 +73,26 @@ export const GitChangesSection: React.FC<GitChangesSectionProps> = ({ vm }) => {
                         {getFileStatusIcon(file.unstagedStatus)}
                       </span>
                       <span className="gmp-file-path">{file.path}</span>
-                      <button
-                        className="gmp-btn-tiny"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleStageFile(file.path)
-                        }}
-                      >
-                        {t('version_control.stage', '暂存')}
-                      </button>
-                      <button
-                        className="gmp-btn-tiny"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDiscardFile(file.path)
-                        }}
-                      >
-                        {t('version_control.discard', '撤销')}
-                      </button>
+                      <div className="gmp-file-actions">
+                        <button
+                          className="gmp-btn-tiny"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleStageFile(file.path)
+                          }}
+                        >
+                          {t('version_control.stage', '暂存')}
+                        </button>
+                        <button
+                          className="gmp-btn-tiny"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDiscardFile(file.path)
+                          }}
+                        >
+                          {t('version_control.discard', '撤销')}
+                        </button>
+                      </div>
                     </div>
                     {expandedWorkingFile?.path === file.path &&
                       !expandedWorkingFile.staged &&
@@ -108,15 +110,26 @@ export const GitChangesSection: React.FC<GitChangesSectionProps> = ({ vm }) => {
                     >
                       <span className="gmp-file-badge gmp-file-untracked">U</span>
                       <span className="gmp-file-path">{file}</span>
-                      <button
-                        className="gmp-btn-tiny"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleStageFile(file)
-                        }}
-                      >
-                        {t('version_control.stage', '暂存')}
-                      </button>
+                      <div className="gmp-file-actions">
+                        <button
+                          className="gmp-btn-tiny"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleStageFile(file)
+                          }}
+                        >
+                          {t('version_control.stage', '暂存')}
+                        </button>
+                        <button
+                          className="gmp-btn-tiny"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDiscardFile(file, { untracked: true })
+                          }}
+                        >
+                          {t('version_control.discard', '撤销')}
+                        </button>
+                      </div>
                     </div>
                     {expandedWorkingFile?.path === file &&
                       !expandedWorkingFile.staged &&

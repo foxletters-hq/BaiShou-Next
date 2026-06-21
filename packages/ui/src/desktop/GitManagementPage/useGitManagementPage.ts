@@ -30,7 +30,8 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     onPull,
     onResolveConflict,
     onRollbackFile,
-    onRollbackAll
+    onRollbackAll,
+    onGetRollbackAllContext
   } = props
   const { t } = useTranslation()
 
@@ -219,6 +220,10 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     handleUnstageAll,
     handleDiscardFile,
     handleDiscardAll,
+    destructiveConfirm,
+    isConfirmingDestructive,
+    confirmDestructiveAction,
+    cancelDestructiveAction,
     handleRollback,
     handleRollbackAll
   } = useGitManagementWorkspace({
@@ -235,6 +240,7 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     onDiscardAllChanges,
     onRollbackFile,
     onRollbackAll,
+    onGetRollbackAllContext,
     expandedCommit,
     setExpandedCommit,
     setSelectedCommit,
@@ -246,7 +252,8 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     expandedWorkingFile,
     setExpandedWorkingFile,
     setWorkingFileDiff,
-    handleRefreshStatus
+    handleRefreshStatus,
+    handleLoadHistory
   })
 
   return {
@@ -312,6 +319,10 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     handleUnstageAll,
     handleDiscardFile,
     handleDiscardAll,
+    destructiveConfirm,
+    isConfirmingDestructive,
+    confirmDestructiveAction,
+    cancelDestructiveAction,
     handleRollback,
     handleRollbackAll
   }

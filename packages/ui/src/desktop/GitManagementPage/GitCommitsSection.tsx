@@ -70,7 +70,7 @@ export const GitCommitsSection: React.FC<GitCommitsSectionProps> = ({ vm }) => {
                             className="gmp-btn-small"
                             onClick={(e) => {
                               e.stopPropagation()
-                              handleRollbackAll(entry.commit.hash)
+                              handleRollbackAll(entry.commit.hash, entry.commit.message)
                             }}
                             disabled={entry.isCurrent}
                           >

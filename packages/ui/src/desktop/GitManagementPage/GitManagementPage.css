@@ -597,12 +597,20 @@
 
 .gmp-file-path {
   flex: 1;
+  min-width: 0;
   color: var(--text-secondary);
   font-family: monospace;
   font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.gmp-file-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .gmp-section-empty {
@@ -627,4 +635,68 @@
 
 .gmp-sections-container > .gmp-collapsible-section:last-child {
   border-bottom: none;
+}
+
+.gmp-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.gmp-confirm-dialog {
+  width: min(420px, calc(100vw - 32px));
+  padding: 24px;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.gmp-confirm-icon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.gmp-confirm-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.gmp-confirm-message {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-bottom: 20px;
+  word-break: break-word;
+}
+
+.gmp-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.gmp-btn-secondary {
+  background: var(--bg-surface-normal);
+}
+
+.gmp-btn-danger {
+  background: var(--color-error, #ef4444);
+  border-color: var(--color-error, #ef4444);
+  color: #fff;
+}
+
+.gmp-btn-danger:hover {
+  opacity: 0.9;
 }
