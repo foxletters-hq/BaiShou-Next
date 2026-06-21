@@ -1,4 +1,7 @@
-import { USER_PROFILE_LEGACY_SETTINGS_KEY, USER_PROFILE_SETTINGS_KEY } from '../constants/user-profile.constants'
+import {
+  USER_PROFILE_LEGACY_SETTINGS_KEY,
+  USER_PROFILE_SETTINGS_KEY
+} from '../constants/user-profile.constants'
 import type { CacheKey } from './cache-keys'
 import type { DomainMutationEvent } from './domain-mutation.types'
 import { mutationRuleKey } from './domain-mutation.types'
@@ -36,9 +39,7 @@ function isAvatarRelatedSettingsKey(key: unknown): boolean {
  * 根据领域变更事件解析需失效的缓存键。
  * @returns CacheKey 列表，或 `'all'` 表示应 clear 全部注册缓存
  */
-export function resolveInvalidatedCacheKeys(
-  event: DomainMutationEvent
-): CacheKey[] | 'all' {
+export function resolveInvalidatedCacheKeys(event: DomainMutationEvent): CacheKey[] | 'all' {
   if (event.domain === 'vault' && event.action === 'switch') {
     return 'all'
   }

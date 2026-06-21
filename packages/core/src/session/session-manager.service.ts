@@ -66,12 +66,7 @@ export class SessionManagerService {
   /**
    * 获取所有会话列表（findAllSessions 的便捷别名）
    */
-  async list(
-    limit: number = 20,
-    offset: number = 0,
-    assistantId?: string,
-    searchQuery?: string
-  ) {
+  async list(limit: number = 20, offset: number = 0, assistantId?: string, searchQuery?: string) {
     return this.findAllSessions(limit, offset, assistantId, searchQuery)
   }
 

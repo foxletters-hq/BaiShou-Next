@@ -217,9 +217,7 @@ export function parseLegacyPersonasFromSp(
       const parsed = JSON.parse(raw) as Record<string, Record<string, string>>
       return Object.entries(parsed).map(([id, facts]) => ({
         id,
-        facts: Object.fromEntries(
-          Object.entries(facts ?? {}).map(([k, v]) => [k, String(v)])
-        )
+        facts: Object.fromEntries(Object.entries(facts ?? {}).map(([k, v]) => [k, String(v)]))
       }))
     } catch {
       return []
@@ -229,9 +227,7 @@ export function parseLegacyPersonasFromSp(
   if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
     return Object.entries(raw as Record<string, Record<string, unknown>>).map(([id, facts]) => ({
       id,
-      facts: Object.fromEntries(
-        Object.entries(facts ?? {}).map(([k, v]) => [k, String(v)])
-      )
+      facts: Object.fromEntries(Object.entries(facts ?? {}).map(([k, v]) => [k, String(v)]))
     }))
   }
 
@@ -267,19 +263,15 @@ export function legacySessionBelongsToVault(
   sessionVaultName: unknown,
   legacyVaultName: string
 ): boolean {
-  const normalized = sessionVaultName != null && String(sessionVaultName).trim() !== ''
-    ? String(sessionVaultName)
-    : 'Personal'
+  const normalized =
+    sessionVaultName != null && String(sessionVaultName).trim() !== ''
+      ? String(sessionVaultName)
+      : 'Personal'
   return normalized === legacyVaultName
 }
 
 /** 旧版平铺板块 ID（日记/伙伴/会话/工作空间），导入状态需映射到 workspace: 前缀 */
-const LEGACY_FLAT_WORKSPACE_SECTION_IDS = new Set([
-  'diaries',
-  'assistants',
-  'chats',
-  'workspaces'
-])
+const LEGACY_FLAT_WORKSPACE_SECTION_IDS = new Set(['diaries', 'assistants', 'chats', 'workspaces'])
 
 /**
  * 将持久化的 importedSections 规范为当前 schema。

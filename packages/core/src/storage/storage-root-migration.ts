@@ -1,8 +1,5 @@
 import type { IFileSystem } from '../fs/file-system.types'
-import {
-  mergeDirectories,
-  StorageMigrationCopyError
-} from '../migration/legacy-migration.shared'
+import { mergeDirectories, StorageMigrationCopyError } from '../migration/legacy-migration.shared'
 import {
   isPathInsideStorageRoot,
   isSameStorageRoot,

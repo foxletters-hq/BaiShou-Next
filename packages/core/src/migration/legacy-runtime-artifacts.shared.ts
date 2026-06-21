@@ -202,7 +202,11 @@ export async function writeSessionAggregateFile(
         }
 
         const prefix = wroteMessage ? ',' : ''
-        await fileSystem.appendFile(tempPath, `${prefix}${JSON.stringify(aggregateMessage)}`, 'utf8')
+        await fileSystem.appendFile(
+          tempPath,
+          `${prefix}${JSON.stringify(aggregateMessage)}`,
+          'utf8'
+        )
         wroteMessage = true
       }
 

@@ -2,9 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { resolveInvalidatedCacheKeys } from '../invalidation-rules'
 import type { DomainMutationEvent } from '../domain-mutation.types'
 
-function event(
-  partial: Omit<DomainMutationEvent, 'timestamp'>
-): DomainMutationEvent {
+function event(partial: Omit<DomainMutationEvent, 'timestamp'>): DomainMutationEvent {
   return { ...partial, timestamp: Date.now() }
 }
 

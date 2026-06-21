@@ -65,8 +65,7 @@ export function buildDiaryWritingGuidelinesForSystemPrompt(
   referenceDate: Date = new Date()
 ): string {
   const writingPrompt = resolveDiaryAiWritingPrompt(config)
-  const appendTemplate =
-    config?.appendBlockTemplate?.trim() || DEFAULT_DIARY_APPEND_BLOCK_TEMPLATE
+  const appendTemplate = config?.appendBlockTemplate?.trim() || DEFAULT_DIARY_APPEND_BLOCK_TEMPLATE
   const appendExample = resolveDiaryAppendBlock(config, referenceDate).replace(/\u200B$/, '')
 
   return [

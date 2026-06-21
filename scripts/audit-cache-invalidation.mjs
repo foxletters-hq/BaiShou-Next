@@ -66,13 +66,23 @@ function scanFile(filePath) {
   if (isAllowlisted(filePath)) return []
 
   const text = fs.readFileSync(filePath, 'utf8')
-  const sf = ts.createSourceFile(filePath, text, ts.ScriptTarget.Latest, true, filePath.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
+  const sf = ts.createSourceFile(
+    filePath,
+    text,
+    ts.ScriptTarget.Latest,
+    true,
+    filePath.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+  )
   /** @type {Violation[]} */
   const violations = []
 
   /** @param {ts.Node} node */
   function visit(node) {
-    if (ts.isImportDeclaration(node) && node.importClause?.namedBindings && ts.isNamedImports(node.importClause.namedBindings)) {
+    if (
+      ts.isImportDeclaration(node) &&
+      node.importClause?.namedBindings &&
+      ts.isNamedImports(node.importClause.namedBindings)
+    ) {
       for (const el of node.importClause.namedBindings.elements) {
         const name = el.name.text
         if (FORBIDDEN_IDENTIFIERS.has(name)) {
@@ -82,7 +92,11 @@ function scanFile(filePath) {
       }
     }
 
-    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && FORBIDDEN_IDENTIFIERS.has(node.expression.text)) {
+    if (
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      FORBIDDEN_IDENTIFIERS.has(node.expression.text)
+    ) {
       const { line } = sf.getLineAndCharacterOfPosition(node.expression.getStart(sf))
       violations.push({ file: filePath, line: line + 1, id: node.expression.text, kind: 'call' })
     }
@@ -108,7 +122,9 @@ function main() {
     process.exit(0)
   }
 
-  console.error('[audit-cache-invalidation] 发现违规：请改用 emitDomainMutation / emitSyncMutation / Core 写路径。\n')
+  console.error(
+    '[audit-cache-invalidation] 发现违规：请改用 emitDomainMutation / emitSyncMutation / Core 写路径。\n'
+  )
   for (const v of all) {
     const rel = path.relative(ROOT, v.file).replace(/\\/g, '/')
     console.error(`  ${rel}:${v.line}  ${v.kind} ${v.id}`)

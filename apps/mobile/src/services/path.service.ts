@@ -252,14 +252,14 @@ export class MobileStoragePathService implements IStoragePathService {
     return dir
   }
 
-  private async migrateSnapshotsFromDirectory(
-    sourceDir: string,
-    targetDir: string
-  ): Promise<void> {
+  private async migrateSnapshotsFromDirectory(sourceDir: string, targetDir: string): Promise<void> {
     try {
       const normalizedSource = normalizeStoragePath(sourceDir)
       const normalizedTarget = normalizeStoragePath(targetDir)
-      if (normalizedSource === normalizedTarget || !(await this.fileSystem.exists(normalizedSource))) {
+      if (
+        normalizedSource === normalizedTarget ||
+        !(await this.fileSystem.exists(normalizedSource))
+      ) {
         return
       }
 

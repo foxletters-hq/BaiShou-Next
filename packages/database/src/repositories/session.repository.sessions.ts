@@ -180,7 +180,10 @@ export class SessionCrudOps {
       const allDocs = await this.db.select().from(agentSessionsTable)
       console.log(`[SessionRepo] WARNING: Returned 0, but total rows in DB: ${allDocs.length}`)
       if (allDocs.length > 0) {
-        const sampleIds = [...new Set(allDocs.map((row) => row.assistantId ?? '(null)'))].slice(0, 5)
+        const sampleIds = [...new Set(allDocs.map((row) => row.assistantId ?? '(null)'))].slice(
+          0,
+          5
+        )
         console.log(
           `[SessionRepo] assistantId filter=${normalizedAssistantId}, sample assistant_ids in DB:`,
           sampleIds

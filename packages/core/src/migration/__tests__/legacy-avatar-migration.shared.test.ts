@@ -13,9 +13,9 @@ describe('isFlutterLegacyUserAvatarFileName', () => {
   })
 
   it('rejects assistant avatars in the same documents/avatars directory', () => {
-    expect(
-      isFlutterLegacyUserAvatarFileName('fbae6862-bcdb-4c8e-b705-70d29017b306.jpg')
-    ).toBe(false)
+    expect(isFlutterLegacyUserAvatarFileName('fbae6862-bcdb-4c8e-b705-70d29017b306.jpg')).toBe(
+      false
+    )
   })
 })
 
@@ -48,8 +48,7 @@ describe('restoreLegacyUserAvatar', () => {
     const imports: string[] = []
     const fileSystem = {
       exists: async (p: string) =>
-        p.includes('/app_flutter/avatars/avatar_123.jpg') ||
-        p.includes('/config/avatar.jpg'),
+        p.includes('/app_flutter/avatars/avatar_123.jpg') || p.includes('/config/avatar.jpg'),
       readdir: async (dir: string) => {
         if (dir.endsWith('/avatars')) {
           return ['avatar_123.jpg', 'fbae6862-bcdb-4c8e-b705-70d29017b306.jpg']
@@ -78,8 +77,7 @@ describe('restoreLegacyUserAvatar', () => {
 
   it('falls back to config/avatar.ext from archive export layout', async () => {
     const fileSystem = {
-      exists: async (p: string) =>
-        p.endsWith('/config') || p.endsWith('/config/avatar.png'),
+      exists: async (p: string) => p.endsWith('/config') || p.endsWith('/config/avatar.png'),
       readdir: async (dir: string) => (dir.endsWith('/config') ? ['avatar.png'] : []),
       stat: async () => ({ isDirectory: false })
     } as never

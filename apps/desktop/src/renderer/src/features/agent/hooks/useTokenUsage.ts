@@ -39,10 +39,7 @@ export function useTokenUsage(
   const fetchTokenUsage = useCallback(async (targetSessionId: string) => {
     if (typeof window === 'undefined' || !window.electron) return
     try {
-      const res = await window.electron.ipcRenderer.invoke(
-        'agent:get-token-usage',
-        targetSessionId
-      )
+      const res = await window.electron.ipcRenderer.invoke('agent:get-token-usage', targetSessionId)
       if (res) setTokenUsage(res)
     } catch (error) {
       console.error('[useTokenUsage] fetch failed:', error)

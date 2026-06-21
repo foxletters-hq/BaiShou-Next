@@ -47,7 +47,10 @@ function SectionCard({
 }) {
   return (
     <View
-      style={[styles.sectionCard, { backgroundColor: colors.bgSurface, borderRadius: tokens.radius.lg }]}
+      style={[
+        styles.sectionCard,
+        { backgroundColor: colors.bgSurface, borderRadius: tokens.radius.lg }
+      ]}
     >
       <View style={styles.sectionHeader}>
         <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>{title}</Text>
@@ -206,7 +209,12 @@ export const VersionMigrationScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContent}
         indicatorStyle={scrollIndicatorStyle(isDark)}
       >
-        <View style={[styles.card, { backgroundColor: colors.bgSurface, borderRadius: tokens.radius.lg }]}>
+        <View
+          style={[
+            styles.card,
+            { backgroundColor: colors.bgSurface, borderRadius: tokens.radius.lg }
+          ]}
+        >
           <Text style={[styles.desc, { color: colors.textSecondary }]}>
             {t(
               'version_migration.description',
@@ -251,7 +259,9 @@ export const VersionMigrationScreen: React.FC = () => {
           {scanResult ? (
             <>
               {legacySourceKindKey ? (
-                <Text style={[styles.hint, { color: colors.textTertiary }]}>{t(legacySourceKindKey)}</Text>
+                <Text style={[styles.hint, { color: colors.textTertiary }]}>
+                  {t(legacySourceKindKey)}
+                </Text>
               ) : null}
               <Text style={[styles.mono, { color: colors.textTertiary }]} selectable>
                 {t('version_migration.source_path', {
@@ -286,7 +296,10 @@ export const VersionMigrationScreen: React.FC = () => {
 
         {pageReady && !scanning && dbUnavailable ? (
           <View
-            style={[styles.card, { backgroundColor: colors.bgSurface, borderRadius: tokens.radius.lg }]}
+            style={[
+              styles.card,
+              { backgroundColor: colors.bgSurface, borderRadius: tokens.radius.lg }
+            ]}
           >
             <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
               {t('version_migration.db_not_ready', {
@@ -298,7 +311,10 @@ export const VersionMigrationScreen: React.FC = () => {
 
         {pageReady && !scanning && !dbUnavailable && !scanResult ? (
           <View
-            style={[styles.card, { backgroundColor: colors.bgSurface, borderRadius: tokens.radius.lg }]}
+            style={[
+              styles.card,
+              { backgroundColor: colors.bgSurface, borderRadius: tokens.radius.lg }
+            ]}
           >
             <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
               {t(

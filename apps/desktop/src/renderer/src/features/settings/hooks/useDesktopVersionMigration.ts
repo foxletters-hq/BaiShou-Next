@@ -59,8 +59,9 @@ export function useDesktopVersionMigration() {
       setScanResult(payload.scanResult)
       setSourceKind(payload.sourceKind)
       setCustomSourceRoot(payload.customSourceRoot)
-      const next: Partial<Record<LegacyVersionMigrationSectionId, LegacyVersionMigrationImportStatus>> =
-        {}
+      const next: Partial<
+        Record<LegacyVersionMigrationSectionId, LegacyVersionMigrationImportStatus>
+      > = {}
       for (const id of payload.importedSections) {
         next[id] = 'success'
       }

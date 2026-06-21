@@ -195,12 +195,20 @@ interface IncrementalSyncAPI {
   getConfig(): Promise<unknown>
   updateConfig(config: unknown): Promise<{ success: boolean }>
   testConnection(config?: unknown): Promise<boolean>
-  sync(runOptions?: import('@baishou/shared').IncrementalSyncRunOptions): Promise<import('@baishou/shared').IncrementalSyncResult>
+  sync(
+    runOptions?: import('@baishou/shared').IncrementalSyncRunOptions
+  ): Promise<import('@baishou/shared').IncrementalSyncResult>
   uploadOnly(): Promise<import('@baishou/shared').IncrementalSyncResult>
-  downloadOnly(runOptions?: import('@baishou/shared').IncrementalSyncRunOptions): Promise<import('@baishou/shared').IncrementalSyncResult>
-  orchestratedSync(runOptions?: import('@baishou/shared').IncrementalSyncRunOptions): Promise<import('@baishou/shared').IncrementalSyncResult>
+  downloadOnly(
+    runOptions?: import('@baishou/shared').IncrementalSyncRunOptions
+  ): Promise<import('@baishou/shared').IncrementalSyncResult>
+  orchestratedSync(
+    runOptions?: import('@baishou/shared').IncrementalSyncRunOptions
+  ): Promise<import('@baishou/shared').IncrementalSyncResult>
   orchestratedUploadOnly(): Promise<import('@baishou/shared').IncrementalSyncResult>
-  orchestratedDownloadOnly(runOptions?: import('@baishou/shared').IncrementalSyncRunOptions): Promise<import('@baishou/shared').IncrementalSyncResult>
+  orchestratedDownloadOnly(
+    runOptions?: import('@baishou/shared').IncrementalSyncRunOptions
+  ): Promise<import('@baishou/shared').IncrementalSyncResult>
   getLocalManifest(): Promise<unknown>
   getRemoteManifest(): Promise<unknown>
   refreshLocalManifest(): Promise<unknown>
@@ -211,7 +219,9 @@ interface IncrementalSyncAPI {
 }
 
 interface LegacyMigrationAPI {
-  scan(customSourceRoot?: string | null): Promise<import('@baishou/shared').LegacyVersionMigrationScanPayload>
+  scan(
+    customSourceRoot?: string | null
+  ): Promise<import('@baishou/shared').LegacyVersionMigrationScanPayload>
   pickSource(): Promise<string | null>
   clearCustomSource(): Promise<{ success: boolean }>
   importSection(

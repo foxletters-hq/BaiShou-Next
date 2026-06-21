@@ -1,6 +1,11 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
-import { createBaishouMcpServer, listBaishouMcpToolsForUi, type ToolRegistry, type ToolContext } from '@baishou/ai'
+import {
+  createBaishouMcpServer,
+  listBaishouMcpToolsForUi,
+  type ToolRegistry,
+  type ToolContext
+} from '@baishou/ai'
 import { logger } from '@baishou/shared'
 import * as ExpoCrypto from 'expo-crypto'
 import * as BaishouServer from 'expo-baishou-server'
@@ -74,12 +79,7 @@ export class MobileMcpSdkBridge {
         await this.runWithSessionLock(sessionId, async () => {
           const session = this.sessions.get(sessionId)
           if (!session) {
-            this.resolveJsonRpcError(
-              requestId,
-              404,
-              -32001,
-              `Session not found: ${sessionId}`
-            )
+            this.resolveJsonRpcError(requestId, 404, -32001, `Session not found: ${sessionId}`)
             return
           }
 
