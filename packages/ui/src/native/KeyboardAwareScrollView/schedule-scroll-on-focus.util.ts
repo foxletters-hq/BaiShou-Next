@@ -1,10 +1,9 @@
 import { Platform } from 'react-native'
 
 /**
- * 聚焦输入框后分阶段滚入可见区，覆盖键盘动画与切换焦点场景。
+ * 聚焦输入框后滚入可见区；延迟一次以覆盖键盘弹出动画。
  */
 export function scheduleScrollFocusedInputOnFocus(scroll: () => void): void {
-  scroll()
-  setTimeout(scroll, Platform.OS === 'ios' ? 80 : 160)
-  setTimeout(scroll, Platform.OS === 'ios' ? 340 : 480)
+  requestAnimationFrame(scroll)
+  setTimeout(scroll, Platform.OS === 'ios' ? 280 : 400)
 }
