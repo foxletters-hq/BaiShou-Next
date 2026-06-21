@@ -10,23 +10,16 @@ export interface McpToolListItem {
   category?: string
 }
 
-export const McpToolsListContent: React.FC<{ tools: McpToolListItem[] }> = ({ tools }) => {
+export const McpToolsListContent: React.FC<{ tools: McpToolListItem[]; inline?: boolean }> = ({
+  tools,
+  inline = false
+}) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const { height: screenHeight } = useWindowDimensions()
-  const listMaxHeight = Math.min(400, Math.round(screenHeight * 0.5))
+  const listMaxHeight = inline ? undefined : Math.min(400, Math.round(screenHeight * 0.5))
 
-  return (
-    <ScrollView
-      style={[styles.list, { maxHeight: listMaxHeight }]}
-      contentContainerStyle={styles.listContent}
-      keyboardShouldPersistTaps="handled"
-      nestedScrollEnabled
-      showsVerticalScrollIndicator={false}
-      bounces
-      overScrollMode="always"
-    >
-      {tools.map((tool, index) => {
+  const items = tools.map((tool, index) => {
         const cleanName = tool.displayName || tool.name.replace(/^baishou_/, '')
         const localizedTitle = t(`agent.tools.${cleanName}`, cleanName)
         const localizedDesc = t(`agent.tools.${cleanName}_desc`, tool.description)
@@ -55,9 +48,25 @@ export const McpToolsListContent: React.FC<{ tools: McpToolListItem[] }> = ({ to
               ) : null}
             </View>
             <Text style={[styles.desc, { color: colors.textSecondary }]}>{localizedDesc}</Text>
-          </View>
-        )
-      })}
+        </View>
+      )
+  })
+
+  if (inline) {
+    return <View style={styles.listContent}>{items}</View>
+  }
+
+  return (
+    <ScrollView
+      style={[styles.list, { maxHeight: listMaxHeight }]}
+      contentContainerStyle={styles.listContent}
+      keyboardShouldPersistTaps="handled"
+      nestedScrollEnabled
+      showsVerticalScrollIndicator={false}
+      bounces
+      overScrollMode="always"
+    >
+      {items}
     </ScrollView>
   )
 }

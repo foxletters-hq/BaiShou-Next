@@ -3,25 +3,13 @@ import { randomUUID } from 'node:crypto'
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
-import {
-  ListToolsRequestSchema,
-  CallToolRequestSchema,
-  InitializeRequestSchema,
-  ToolSchema,
-  isInitializeRequest
-} from '@modelcontextprotocol/sdk/types.js'
+import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js'
 import type { SettingsRepository } from '@baishou/database-desktop'
 import { APP_VERSION } from '../../app-version'
 // @ts-ignore
 import { Server as HttpServer } from 'http'
 
-import { z } from 'zod'
-import {
-  ToolRegistry,
-  type ToolContext,
-  buildMcpInstructions,
-  formatMcpToolCallResult
-} from '@baishou/ai'
+import { ToolRegistry, type ToolContext, createBaishouMcpServer } from '@baishou/ai'
 import { isMcpRequestAuthorized, logger } from '@baishou/shared'
 import { buildMcpToolContext } from '../ipc/agent-helpers'
 
@@ -82,12 +70,7 @@ export class McpService {
   }
 
   private createMcpServer(): Server {
-    const server = new Server(
-      { name: 'BaiShou MCP Server', version: APP_VERSION },
-      { capabilities: { tools: { listChanged: false } } }
-    )
-    this.registerServerHandlers(server)
-    return server
+    return createBaishouMcpServer(APP_VERSION, this.toolRegistry, () => this.resolveToolContext())
   }
 
   private setupRoutes() {
@@ -240,40 +223,6 @@ export class McpService {
     }
   }
 
-  private registerServerHandlers(server: Server) {
-    server.setRequestHandler(InitializeRequestSchema, async () => {
-      const { vaultName } = await this.resolveToolContext()
-      return {
-        protocolVersion: '2024-11-05',
-        capabilities: { tools: { listChanged: false } },
-        serverInfo: { name: 'BaiShou MCP Server', version: APP_VERSION },
-        instructions: buildMcpInstructions(vaultName)
-      }
-    })
-
-    server.setRequestHandler(ListToolsRequestSchema, async () => {
-      const context = await this.resolveToolContext()
-      return {
-        tools: this.getAgentToolsMcp(context)
-      }
-    })
-
-    server.setRequestHandler(CallToolRequestSchema, async (request) => {
-      const toolName = request.params.name
-      const args = request.params.arguments || {}
-
-      try {
-        const result = await this.executeAgentTool({ name: toolName, arguments: args })
-        return result as any
-      } catch (e: any) {
-        return {
-          content: [{ type: 'text', text: `Tool execution failed: ${e.message}` }],
-          isError: true
-        }
-      }
-    })
-  }
-
   async start(): Promise<void> {
     if (this.isRunning) return
 
@@ -326,68 +275,5 @@ export class McpService {
   async restart(): Promise<void> {
     await this.stop()
     await this.start()
-  }
-
-  /**
-   * MCP SDK 要求 inputSchema.type === "object"，且包含 properties 与 required。
-   */
-  private toMcpInputSchema(parameters: z.ZodType) {
-    const raw = z.toJSONSchema(parameters) as Record<string, unknown>
-    return {
-      type: 'object' as const,
-      properties: (raw.properties as Record<string, unknown>) ?? {},
-      required: Array.isArray(raw.required) ? raw.required : []
-    }
-  }
-
-  private getAgentToolsMcp(context: ToolContext) {
-    if (!this.toolRegistry) return []
-
-    const tools = this.toolRegistry.getEnabledToolsRaw(context)
-    const mcpTools: Array<{
-      name: string
-      description: string
-      inputSchema: { type: 'object'; properties: Record<string, unknown>; required: string[] }
-    }> = []
-
-    for (const tool of tools) {
-      const name = `baishou_${tool.name}`
-      const inputSchema = this.toMcpInputSchema(tool.parameters)
-      try {
-        const parsed = ToolSchema.parse({
-          name,
-          description: tool.description || name,
-          inputSchema
-        })
-        mcpTools.push({
-          name: parsed.name,
-          description: parsed.description ?? name,
-          inputSchema
-        })
-      } catch (e) {
-        logger.error(`[McpService] Skipping invalid MCP tool "${name}":`, e as any)
-      }
-    }
-
-    return mcpTools
-  }
-
-  private async executeAgentTool(params: Record<string, any>) {
-    const rawName = (params.name || '').replace(/^baishou_/, '')
-    if (!rawName || !this.toolRegistry) {
-      throw new Error('Missing tool name or registry not initialized')
-    }
-
-    const tool = this.toolRegistry.get(rawName)
-    if (!tool) throw new Error(`Tool not found: ${rawName}`)
-
-    const context = await this.resolveToolContext()
-
-    if (!this.toolRegistry.isToolEnabled(rawName, context)) {
-      throw new Error(`Tool not available: ${rawName}`)
-    }
-
-    const result = await tool.execute(params.arguments || {}, context)
-    return formatMcpToolCallResult(typeof result === 'string' ? result : JSON.stringify(result))
   }
 }

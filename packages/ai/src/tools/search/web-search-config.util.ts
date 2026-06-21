@@ -4,4 +4,4 @@ export {
   resolveWebSearchLimits,
   webSearchConfigToUserConfig,
   type WebSearchLimits
-} from '@baishou/shared/src/utils/web-search-config.util'
+} from '@baishou/shared'

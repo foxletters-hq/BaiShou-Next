@@ -6,8 +6,6 @@ import { useNativeTheme } from '../theme'
 import { Input } from '../Input/Input'
 import { Switch } from '../Switch'
 import { settingsHubListStyles as hubStyles } from '../settings/settings-hub.styles'
-import { SettingsExpansionTile } from '../settings/SettingsExpansionTile'
-import { AnimatedCollapse } from '../settings/AnimatedCollapse'
 import { HelpTooltip } from '../Tooltip/HelpTooltip'
 
 export interface NativeMcpSettingsCardProps {
@@ -16,11 +14,8 @@ export interface NativeMcpSettingsCardProps {
   applying?: boolean
   isRunning?: boolean
   activePort?: number
-  embedded?: boolean
-  isLast?: boolean
   onChange: (config: McpServerConfig) => void
   onCopyEndpoint: () => void
-  onShowTools: () => void
 }
 
 export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
@@ -29,11 +24,8 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
   applying = false,
   isRunning = false,
   activePort,
-  embedded = false,
-  isLast = false,
   onChange,
-  onCopyEndpoint,
-  onShowTools
+  onCopyEndpoint
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -64,6 +56,68 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
   const subtitle = localEnabled
     ? t('settings.mcp_running', '运行中 · 端口 $port').replace('$port', String(config.mcpPort))
     : t('settings.mcp_desc', '允许外部 AI 通过 MCP 协议调用白守工具')
+
+  const connectionPanel = (
+    <View style={styles.panel}>
+      {localApplying ? (
+        <View style={styles.loadingOverlay} pointerEvents="none">
+          <ActivityIndicator color={colors.primary} size="small" />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+            {t('settings.mcp_starting', '正在启停服务...')}
+          </Text>
+        </View>
+      ) : null}
+
+      <View
+        style={localApplying ? styles.panelDimmed : undefined}
+        pointerEvents={localApplying ? 'none' : 'auto'}
+      >
+        <View style={[styles.portRow, styles.rowBorder]}>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>
+            {t('settings.mcp_port', '端口')}
+          </Text>
+          <Input
+            style={styles.portInput}
+            keyboardType="number-pad"
+            value={String(config.mcpPort)}
+            onChangeText={(text) => {
+              const val = parseInt(text, 10)
+              if (!isNaN(val)) onChange({ ...config, mcpPort: val })
+            }}
+            onBlur={() => {
+              const port = Math.min(65535, Math.max(1000, config.mcpPort || 31004))
+              onChange({ ...config, mcpPort: port })
+            }}
+          />
+        </View>
+
+        <View style={[styles.row, styles.col, styles.rowBorder]}>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>
+            {t('settings.mcp_endpoint', '连接地址')}
+          </Text>
+          <Text style={[styles.mono, { color: colors.primary }]} selectable>
+            {mcpEndpointUrl}
+          </Text>
+          <Pressable
+            onPress={onCopyEndpoint}
+            style={({ pressed }) => [
+              styles.copyBtn,
+              { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }
+            ]}
+          >
+            <Text style={{ color: colors.textOnPrimary, fontWeight: '600', fontSize: 13 }}>
+              {t('settings.mcp_copy_url', '复制 MCP 地址')}
+            </Text>
+          </Pressable>
+          {isRunning && activePort != null ? (
+            <Text style={[styles.sub, { color: colors.textSecondary }]}>
+              {t('settings.mcp_running').replace('$port', String(activePort))}
+            </Text>
+          ) : null}
+        </View>
+      </View>
+    </View>
+  )
 
   const isDark =
     colors.textPrimary === '#ffffff' ||
@@ -139,112 +193,67 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
       <Text style={{ fontSize: 12, color: colors.textTertiary, fontStyle: 'italic', marginTop: 4 }}>
         {t(
           'settings.mcp_help_note',
-          '请使用上方 /mcp 地址（不要用 /sse）。启用后需保持白守桌面端运行。'
+          '请使用上方 /mcp 地址（不要用 /sse）。启用后需保持白守移动端运行，并确保客户端与手机在同一局域网。'
         )}
       </Text>
     </View>
   )
 
   return (
-    <SettingsExpansionTile
-      embedded={embedded}
-      isLast={isLast}
-      title={t('settings.mcp_title', 'MCP Server')}
-      titleAddon={<HelpTooltip content={mcpHelpContent} />}
-      subtitle={subtitle}
+    <View
+      style={[
+        styles.card,
+        {
+          borderColor: colors.borderSubtle,
+          backgroundColor: colors.bgSurface
+        }
+      ]}
     >
+      <View style={styles.header}>
+        <View style={{ flex: 1, gap: 4 }}>
+          <View style={styles.titleRow}>
+            <Text style={[hubStyles.rowTitle, { color: colors.textPrimary }]}>
+              {t('settings.mcp_title', 'MCP Server')}
+            </Text>
+            <HelpTooltip content={mcpHelpContent} />
+          </View>
+          <Text style={[styles.sub, { color: colors.textSecondary }]}>{subtitle}</Text>
+        </View>
+      </View>
+
       <View style={styles.block}>
-        <View style={styles.row}>
+        <View style={[styles.row, styles.rowBorder]}>
           <Text style={[hubStyles.rowTitle, { color: colors.textPrimary, flex: 1 }]}>
             {t('settings.mcp_enable', '启用 MCP 服务')}
           </Text>
-          <Switch value={localEnabled} disabled={applying} onValueChange={handleToggle} />
+          <Switch value={localEnabled} onValueChange={handleToggle} />
         </View>
-
-        <AnimatedCollapse expanded={localEnabled}>
-          <View style={styles.panel}>
-            {localApplying ? (
-              <View style={styles.loadingOverlay} pointerEvents="none">
-                <ActivityIndicator color={colors.primary} size="small" />
-                <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-                  {t('settings.mcp_starting', '正在启停服务...')}
-                </Text>
-              </View>
-            ) : null}
-
-            <View
-              style={localApplying ? styles.panelDimmed : undefined}
-              pointerEvents={localApplying ? 'none' : 'auto'}
-            >
-              <Pressable
-                onPress={onShowTools}
-                style={({ pressed }) => [styles.row, styles.rowBorder, pressed && { opacity: 0.7 }]}
-              >
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Text style={[hubStyles.rowTitle, { color: colors.textPrimary }]}>
-                    {t('settings.mcp_view_tools', '查看已暴露的工具列表')}
-                  </Text>
-                  <Text style={[styles.sub, { color: colors.textSecondary }]}>
-                    {t('settings.mcp_view_tools_desc')}
-                  </Text>
-                </View>
-                <Text style={[styles.chevron, { color: colors.textTertiary }]}>›</Text>
-              </Pressable>
-
-              <View style={[styles.portRow, styles.rowBorder]}>
-                <Text style={[styles.label, { color: colors.textSecondary }]}>
-                  {t('settings.mcp_port', '端口')}
-                </Text>
-                <Input
-                  style={styles.portInput}
-                  keyboardType="number-pad"
-                  value={String(config.mcpPort)}
-                  onChangeText={(text) => {
-                    const val = parseInt(text, 10)
-                    if (!isNaN(val)) onChange({ ...config, mcpPort: val })
-                  }}
-                  onBlur={() => {
-                    const port = Math.min(65535, Math.max(1000, config.mcpPort || 31004))
-                    onChange({ ...config, mcpPort: port })
-                  }}
-                />
-              </View>
-
-              <View style={[styles.row, styles.col, styles.rowBorder]}>
-                <Text style={[styles.label, { color: colors.textSecondary }]}>
-                  {t('settings.mcp_endpoint', '连接地址')}
-                </Text>
-                <Text style={[styles.mono, { color: colors.primary }]} selectable>
-                  {mcpEndpointUrl}
-                </Text>
-                <Pressable
-                  onPress={onCopyEndpoint}
-                  style={({ pressed }) => [
-                    styles.copyBtn,
-                    { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }
-                  ]}
-                >
-                  <Text style={{ color: colors.textOnPrimary, fontWeight: '600', fontSize: 13 }}>
-                    {t('settings.mcp_copy_url', '复制 MCP 地址')}
-                  </Text>
-                </Pressable>
-                {isRunning && activePort != null ? (
-                  <Text style={[styles.sub, { color: colors.textSecondary }]}>
-                    {t('settings.mcp_running').replace('$port', String(activePort))}
-                  </Text>
-                ) : null}
-              </View>
-            </View>
-          </View>
-        </AnimatedCollapse>
+        {connectionPanel}
       </View>
-    </SettingsExpansionTile>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
+  card: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
+    overflow: 'hidden'
+  },
+  header: {
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 8
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6
+  },
   block: {
-    gap: 0
+    gap: 0,
+    paddingHorizontal: 14,
+    paddingBottom: 4
   },
   row: {
     flexDirection: 'row',
@@ -266,9 +275,6 @@ const styles = StyleSheet.create({
   sub: {
     fontSize: 13,
     lineHeight: 18
-  },
-  chevron: {
-    fontSize: 18
   },
   portRow: {
     flexDirection: 'row',

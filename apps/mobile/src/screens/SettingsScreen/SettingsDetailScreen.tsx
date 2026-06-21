@@ -15,6 +15,7 @@ import { DiaryTemplateSettingsSection } from './components/DiaryTemplateSettings
 import { DiaryAiWritingSettingsSection } from './components/DiaryAiWritingSettingsSection'
 import { AttachmentManagementSection } from './components/AttachmentManagementSection'
 import { DeveloperSettingsSection } from './components/DeveloperSettingsSection'
+import { McpSettingsSection } from './components/McpSettingsSection'
 export interface SettingsDetailScreenProps {
   section: string
 }
@@ -37,6 +38,8 @@ export const SettingsDetailScreen: React.FC<SettingsDetailScreenProps> = ({ sect
         return <RAGMemorySection />
       case 'web-search':
         return <WebSearchSection />
+      case 'mcp':
+        return <McpSettingsSection />
       case 'agent-tools':
         return <AgentToolsSection />
       case 'diary-template':

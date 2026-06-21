@@ -15,6 +15,7 @@
     "test": "node ../../node_modules/vitest/vitest.mjs run --config vitest.config.mts"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@ai-sdk/anthropic": "^3.0.66",
     "@ai-sdk/google": "^3.0.58",
     "@ai-sdk/openai": "^3.0.50",
