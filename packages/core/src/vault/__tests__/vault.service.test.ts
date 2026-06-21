@@ -87,6 +87,30 @@ describe('VaultService Integration', () => {
     expect(await fs.stat(path.join(tempDir, 'vault_registry.json'))).toBeDefined()
   })
 
+  it('syncRegistryWithDisk registers disk vault folders without legacy journal markers', async () => {
+    await fs.mkdir(path.join(tempDir, 'Personal', 'Sessions'), { recursive: true })
+    await fs.writeFile(path.join(tempDir, 'Personal', 'Sessions', 'chat.json'), '{}')
+    await fs.mkdir(path.join(tempDir, 'Side', '.baishou'), { recursive: true })
+    await fs.writeFile(path.join(tempDir, 'Side', '.baishou', 'placeholder.txt'), 'x')
+
+    const registryPath = path.join(tempDir, 'vault_registry.json')
+    await fs.writeFile(
+      registryPath,
+      JSON.stringify([
+        {
+          name: 'Personal',
+          path: path.join(tempDir, 'Personal'),
+          createdAt: new Date().toISOString(),
+          lastAccessedAt: new Date().toISOString()
+        }
+      ])
+    )
+
+    await service.initRegistry()
+
+    expect(service.getAllVaults().map((v) => v.name).sort()).toEqual(['Personal', 'Side'])
+  })
+
   it('syncRegistryWithDisk registers discovered vault folders not in registry', async () => {
     await fs.mkdir(path.join(tempDir, 'Personal', 'Journals'), { recursive: true })
     await fs.writeFile(path.join(tempDir, 'Personal', 'Journals', 'a.md'), '# a')

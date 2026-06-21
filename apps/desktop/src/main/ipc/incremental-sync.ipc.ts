@@ -13,6 +13,7 @@ import {
   migrateLegacyIncrementalSyncConfig,
   type S3SyncConfig
 } from '@baishou/shared'
+import { listDiskVaultFolderNames, createNodeFileSystem } from '@baishou/core'
 import { IncrementalS3Client } from '../services/incremental-s3.client'
 import { IncrementalWebDavClient } from '../services/incremental-webdav.client'
 import { pathService, vaultService, notifyVaultRegistryUpdated } from './vault.ipc'
@@ -165,23 +166,10 @@ async function afterIncrementalSync(
   await globalBootstrapper.fullyResyncAllEcosystems()
 }
 
-async function listDiskVaultFolderNames(syncRoot: string): Promise<string[]> {
-  let entries: fs.Dirent[] = []
-  try {
-    entries = await fs.promises.readdir(syncRoot, { withFileTypes: true })
-  } catch {
-    return []
-  }
-
-  return entries
-    .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
-    .map((entry) => entry.name)
-}
-
 async function resolveSyncPlanContext() {
   const syncRoot = await pathService.getRootDirectory()
   const registeredVaults = vaultService.getAllVaults().map((vault) => vault.name)
-  const diskVaultNames = await listDiskVaultFolderNames(syncRoot)
+  const diskVaultNames = await listDiskVaultFolderNames(createNodeFileSystem(), syncRoot)
   const activeVault = vaultService.getActiveVault()
   return {
     registeredVaults,
@@ -312,7 +300,19 @@ export function registerIncrementalSyncIPC() {
 
   ipcMain.handle('incrementalSync:planSync', async (_, runOptions) => {
     const service = await getSyncService()
-    return service.planSync(await resolveSyncPlanContext(), runOptions as never)
+    await vaultService.syncRegistryWithDisk()
+    let context = await resolveSyncPlanContext()
+    let preview = await service.planSync(context, runOptions as never)
+    const unknown = preview.boundaryIssues.unknownVaultPaths.filter(
+      (name) => name !== '__root__' && name !== '__unknown__'
+    )
+    if (unknown.length > 0) {
+      await vaultService.ensureVaultsRegistered(unknown)
+      notifyVaultRegistryUpdated()
+      context = await resolveSyncPlanContext()
+      preview = await service.planSync(context, runOptions as never)
+    }
+    return preview
   })
 
   ipcMain.handle('incrementalSync:orchestratedSync', async (event, runOptions) => {
