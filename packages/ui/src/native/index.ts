@@ -100,6 +100,7 @@ export * from './EmojiPicker'
 export * from './AssistantAvatar'
 export * from './AssistantAvatarPicker'
 export * from './avatar-image-picker.util'
+export * from './chat-background-image-picker.util'
 export * from './AssistantKindTabBar'
 export * from './AssistantKindBadge'
 export {
