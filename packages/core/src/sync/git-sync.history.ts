@@ -1,7 +1,12 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import { logger } from '@baishou/shared'
-import type { FileChange, FileDiff, VersionHistoryEntry } from '@baishou/shared'
+import type {
+  FileChange,
+  FileDiff,
+  GitRollbackAllContext,
+  VersionHistoryEntry
+} from '@baishou/shared'
 import type { SimpleGit } from 'simple-git'
 import { GitRollbackError } from './sync.errors'
 import { GitSyncCommitMixin } from './git-sync.commit'
@@ -176,19 +181,19 @@ export abstract class GitSyncHistoryMixin extends GitSyncCommitMixin {
         const git = await this.ensureGit()
         const gitRoot = await this.getGitRoot()
         const fullPath = path.join(gitRoot, filePath)
-        logger.info(`[GitSync] 回滚文件: ${filePath} <- ${commitHash}~1`)
+        logger.info(`[GitSync] 软回滚文件: ${filePath}（撤销提交 ${commitHash} 的改动）`)
 
         let restored = false
         try {
-          await git.raw(['restore', '--source', `${commitHash}~1`, '--', filePath])
-          logger.info(`[GitSync] 回滚成功(已恢复): ${filePath}`)
+          await git.raw(['restore', '--source', `${commitHash}~1`, '--worktree', '--', filePath])
+          logger.info(`[GitSync] 回滚成功(已恢复至工作区): ${filePath}`)
           restored = true
         } catch {
           logger.info(`[GitSync] ${filePath} 在旧版本不存在，执行删除`)
           try {
             if (fs.existsSync(fullPath)) {
               await fs.promises.unlink(fullPath)
-              logger.info(`[GitSync] 回滚成功(已删除): ${filePath}`)
+              logger.info(`[GitSync] 回滚成功(已从工作区删除): ${filePath}`)
               restored = true
             }
           } catch (unlinkErr) {
@@ -199,13 +204,29 @@ export abstract class GitSyncHistoryMixin extends GitSyncCommitMixin {
         if (!restored) {
           throw new Error(`无法回滚 ${filePath}: 文件在此版本前后均不存在`)
         }
-
-        await this._commitAll(`回滚文件: ${filePath} ← ${commitHash}`).catch((e) => {
-          logger.warn(`[GitSync] 回滚自动提交失败:`, e as any)
-        })
       } catch (error) {
         logger.error(`[GitSync] 回滚失败 ${filePath}: ${error}`)
         throw new GitRollbackError(error instanceof Error ? error : undefined)
+      }
+    })
+  }
+
+  async getRollbackAllContext(targetCommitHash: string): Promise<GitRollbackAllContext> {
+    return this._withGitLock(async () => {
+      const git = await this.ensureGit()
+      const status = await git.status()
+      let commitsAfterTarget = 0
+      try {
+        const count = await git.raw(['rev-list', '--count', `${targetCommitHash}..HEAD`])
+        commitsAfterTarget = Math.max(0, parseInt(count.trim(), 10) || 0)
+      } catch {
+        commitsAfterTarget = 0
+      }
+
+      return {
+        hasRemote: Boolean(this.config.remote?.url),
+        hasUncommittedChanges: !status.isClean(),
+        commitsAfterTarget
       }
     })
   }
@@ -214,44 +235,15 @@ export abstract class GitSyncHistoryMixin extends GitSyncCommitMixin {
     return this._withGitLock(async () => {
       try {
         const git = await this.ensureGit()
-        logger.info(`[GitSync] 回滚仓库: ${commitHash}`)
-
-        try {
-          await git.raw(['checkout', commitHash, '--', '.'])
-          logger.info(`[GitSync] 仓库回滚成功: ${commitHash}`)
-        } catch (checkoutErr: any) {
-          const msg = checkoutErr?.message || ''
-          if (msg.includes('unable to unlink') || msg.includes('Invalid argument')) {
-            logger.warn(`[GitSync] 整体回滚遇到锁定文件，改为逐文件回滚`)
-            await this.rollbackAllFileByFile(git, commitHash)
-          } else {
-            throw checkoutErr
-          }
-        }
-
-        await this._commitAll(`回滚整仓库到: ${commitHash}`).catch((e) => {
-          logger.warn(`[GitSync] 回滚自动提交失败:`, e as any)
-        })
+        logger.info(`[GitSync] 软回滚仓库到: ${commitHash}（后续提交将保留为未提交变更）`)
+        // mixed reset：HEAD 移到目标提交，其后所有改动留在工作区（未暂存）
+        await git.reset(['--mixed', commitHash])
+        await this.sanitizeGitIndex(git)
+        logger.info(`[GitSync] 仓库已回滚到 ${commitHash}，后续变更已进入工作区`)
       } catch (error) {
         logger.error(`[GitSync] 仓库回滚失败: ${error}`)
         throw new GitRollbackError(error instanceof Error ? error : undefined)
       }
     })
-  }
-
-  protected async rollbackAllFileByFile(git: SimpleGit, commitHash: string): Promise<void> {
-    const diff = await git.diffSummary([`${commitHash}~1`, commitHash])
-    let failCount = 0
-
-    for (const file of diff.files) {
-      try {
-        await git.raw(['checkout', commitHash, '--', file.file])
-      } catch {
-        failCount++
-        logger.warn(`[GitSync] 跳过无法回滚的文件: ${file.file}`)
-      }
-    }
-
-    logger.info(`[GitSync] 逐文件回滚完成，跳过 ${failCount} 个锁定文件`)
   }
 }

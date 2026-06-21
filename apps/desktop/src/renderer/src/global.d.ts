@@ -184,6 +184,9 @@ interface GitAPI {
   getWorkingDiff(filePath: string, staged: boolean): Promise<unknown>
   rollbackFile(filePath: string, commitHash: string): Promise<{ success: boolean }>
   rollbackAll(commitHash: string): Promise<{ success: boolean }>
+  getRollbackAllContext(
+    commitHash: string
+  ): Promise<import('@baishou/shared').GitRollbackAllContext>
   push(): Promise<{ success: boolean; message?: string }>
   pull(): Promise<{ success: boolean; message?: string; conflicts?: string[] }>
   hasConflicts(): Promise<boolean>
