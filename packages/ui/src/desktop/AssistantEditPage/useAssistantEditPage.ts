@@ -40,8 +40,6 @@ export function useAssistantEditPage({ assistant, onSave }: UseAssistantEditPage
   const [providerPickerOpen, setProviderPickerOpen] = useState(false)
   const [pickerProviders, setPickerProviders] = useState<any[]>([])
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [showCompressTooltip, setShowCompressTooltip] = useState(false)
-  const [showKeepTurnsTooltip, setShowKeepTurnsTooltip] = useState(false)
 
   const isUnlimitedContext = contextWindow < 0
   const isCompressDisabled = compressThreshold <= 0
@@ -132,10 +130,6 @@ export function useAssistantEditPage({ assistant, onSave }: UseAssistantEditPage
     pickerProviders,
     showDeleteConfirm,
     setShowDeleteConfirm,
-    showCompressTooltip,
-    setShowCompressTooltip,
-    showKeepTurnsTooltip,
-    setShowKeepTurnsTooltip,
     isUnlimitedContext,
     isCompressDisabled,
     showResetBuiltin,
