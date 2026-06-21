@@ -4,8 +4,12 @@ import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { useDialog } from '../Dialog'
 import { useNativeToast } from '../Toast'
-import * as ImagePicker from 'expo-image-picker'
 import { resolveNativeUserAvatarSource } from '../user-avatar.util'
+import {
+  launchAvatarImageLibraryAsync,
+  requestAvatarLibraryPermission,
+  runAfterOverlayDismiss
+} from '../avatar-image-picker.util'
 
 export interface ProfileData {
   nickname: string
@@ -26,21 +30,35 @@ export const ProfileSettingsCard: React.FC<NativeProfileSettingsCardProps> = ({
   const dialog = useDialog()
   const toast = useNativeToast()
 
-  const handlePickImage = async () => {
+  const pickAvatarFromLibrary = async () => {
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false,
-        quality: 0.8,
-        copyToCacheDirectory: true
-      })
+      if (!(await requestAvatarLibraryPermission())) {
+        toast.showError(t('profile.image_pick_permission', '需要相册权限才能选择图片'))
+        return
+      }
 
+      const result = await launchAvatarImageLibraryAsync()
       if (!result.canceled && result.assets[0]) {
         onSave({ ...profile, avatarPath: result.assets[0].uri })
       }
-    } catch (error) {
+    } catch {
       toast.showError(t('profile.image_pick_error', '选择图片失败'))
     }
+  }
+
+  const handlePickImage = () => {
+    void dialog
+      .choose(t('profile.change_avatar', '更换头像'), [
+        {
+          label: t('profile.pick_from_library', '从相册选择'),
+          value: 'library'
+        }
+      ])
+      .then((choice) => {
+        if (choice === 'library') {
+          runAfterOverlayDismiss(() => void pickAvatarFromLibrary())
+        }
+      })
   }
 
   const handleEditNickname = async () => {
