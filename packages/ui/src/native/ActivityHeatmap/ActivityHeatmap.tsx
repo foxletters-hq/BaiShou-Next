@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { View, Text, StyleSheet, Pressable, Modal, ScrollView } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { formatLocalDate } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 
 export interface ActivityHeatmapProps {
@@ -100,7 +101,7 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
         if (currentDate.getFullYear() !== year) {
           weekData.push(null)
         } else {
-          const dateStr = currentDate.toISOString().split('T')[0]!
+          const dateStr = formatLocalDate(currentDate)
           weekData.push({
             count: dateMap[dateStr] ?? 0,
             date: dateStr

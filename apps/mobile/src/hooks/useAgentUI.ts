@@ -1,7 +1,14 @@
 import { useState, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { formatLocalDateFromInstant, timestampToMillis } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
 import type { RecallItem } from '@baishou/ui/native'
+
+const formatRecallDate = (ts: unknown) => {
+  const raw = typeof ts === 'number' ? ts : new Date(ts as string | Date).getTime()
+  const ms = timestampToMillis(Number.isFinite(raw) ? raw : undefined)
+  return formatLocalDateFromInstant(ms ?? Date.now()) ?? ''
+}
 
 export function useAgentUI() {
   const { t } = useTranslation()
@@ -47,7 +54,7 @@ export function useAgentUI() {
                 type: 'diary' as const,
                 title: d.title || t('common.untitled', '无标题'),
                 snippet: d.snippet || d.content?.substring(0, 100) || '',
-                date: new Date(d.createdAt).toISOString().split('T')[0]
+                date: formatRecallDate(d.createdAt)
               }))
             )
           } else {
@@ -75,7 +82,7 @@ export function useAgentUI() {
             type: 'memory' as const,
             title: t('agent.recall.memory', '记忆'),
             snippet: String(row.text ?? '').substring(0, 150),
-            date: row.createdAt ? new Date(Number(row.createdAt)).toISOString().split('T')[0] : '',
+            date: row.createdAt ? formatRecallDate(Number(row.createdAt)) : '',
             similarity: typeof row.similarity === 'number' ? row.similarity : undefined
           }))
         )

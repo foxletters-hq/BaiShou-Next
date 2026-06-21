@@ -4,6 +4,7 @@ import {
   logger,
   getSummaryRawDataPrefix,
   getSummaryWeekNumber,
+  formatLocalDate,
   type SummaryPromptLocale
 } from '@baishou/shared'
 import { DiaryRepository, SummaryRepository } from '@baishou/database'
@@ -39,8 +40,8 @@ export class SummaryGeneratorService {
       const endDate = target.endDate instanceof Date ? target.endDate : new Date(target.endDate)
       const year = startDate.getFullYear()
       const month = startDate.getMonth() + 1
-      const startStr = startDate.toISOString().split('T')[0] ?? ''
-      const endStr = endDate.toISOString().split('T')[0] ?? ''
+      const startStr = formatLocalDate(startDate)
+      const endStr = formatLocalDate(endDate)
 
       switch (target.type) {
         case SummaryType.weekly:
@@ -131,7 +132,7 @@ export class SummaryGeneratorService {
     if (!diaries.length) return ''
     return diaries
       .map((d) => {
-        const dateStr = d.date.toISOString().split('T')[0] ?? ''
+        const dateStr = formatLocalDate(d.date)
         const content = d.content || '（无内容）'
         const tags = d.tags || '无标签'
         return `#### ${dateStr}\n${content}\n标签: ${tags}`
@@ -153,8 +154,8 @@ export class SummaryGeneratorService {
     if (!weeklies.length) return ''
     return weeklies
       .map((w) => {
-        const startStr = w.startDate.toISOString().split('T')[0] ?? ''
-        const endStr = w.endDate.toISOString().split('T')[0] ?? ''
+        const startStr = formatLocalDate(w.startDate)
+        const endStr = formatLocalDate(w.endDate)
         const content = w.content || '（无内容）'
         return `#### ${startStr} 至 ${endStr} (周记)\n${content}`
       })
@@ -175,7 +176,7 @@ export class SummaryGeneratorService {
     if (!monthlies.length) return ''
     return monthlies
       .map((m) => {
-        const dateStr = m.startDate.toISOString().split('T')[0] ?? ''
+        const dateStr = formatLocalDate(m.startDate)
         const content = m.content || '（无内容）'
         return `#### ${dateStr} (月报)\n${content}`
       })

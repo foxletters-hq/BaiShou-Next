@@ -4,6 +4,7 @@ import {
   MessageRepository,
   type AppDatabase
 } from '@baishou/database'
+import { formatLocalDate, formatLocalDateFromInstant } from '@baishou/shared'
 
 export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
   constructor(
@@ -57,7 +58,7 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
       role: r.role,
       snippet: r.content,
       sessionTitle: r.sessionTitle || '未命名对话',
-      date: new Date(r.createdAt).toISOString().split('T')[0]!
+      date: formatLocalDateFromInstant(r.createdAt) ?? ''
     }))
   }
 
@@ -87,8 +88,8 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
     const s = rows[0]!
     return {
       content: s.content,
-      generatedAt: s.generatedAt.toISOString().split('T')[0]!,
-      endDateIso: s.endDate.toISOString().split('T')[0]!
+      generatedAt: formatLocalDate(s.generatedAt),
+      endDateIso: formatLocalDate(s.endDate)
     }
   }
 
@@ -104,7 +105,7 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
       .limit(limit)
 
     return rows.map(
-      (r: any) => `- ${r.start.toISOString().split('T')[0]} ~ ${r.end.toISOString().split('T')[0]}`
+      (r: any) => `- ${formatLocalDate(r.start)} ~ ${formatLocalDate(r.end)}`
     )
   }
 }
