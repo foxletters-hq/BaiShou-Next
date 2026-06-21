@@ -70,10 +70,9 @@ export class SessionManagerService {
     limit: number = 20,
     offset: number = 0,
     assistantId?: string,
-    searchQuery?: string,
-    options?: { vaultName?: string }
+    searchQuery?: string
   ) {
-    return this.findAllSessions(limit, offset, assistantId, searchQuery, options)
+    return this.findAllSessions(limit, offset, assistantId, searchQuery)
   }
 
   async deleteSessions(ids: string[]): Promise<void> {
@@ -93,10 +92,9 @@ export class SessionManagerService {
     limit: number = 20,
     offset: number = 0,
     assistantId?: string,
-    searchQuery?: string,
-    options?: { vaultName?: string }
+    searchQuery?: string
   ) {
-    return this.sessionRepo.findAllSessions(limit, offset, assistantId, searchQuery, options)
+    return this.sessionRepo.findAllSessions(limit, offset, assistantId, searchQuery)
   }
 
   async getSessionById(sessionId: string) {
