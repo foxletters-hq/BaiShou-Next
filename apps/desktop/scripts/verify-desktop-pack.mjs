@@ -88,11 +88,13 @@ function listAsarEntries() {
 
 /** @param {Set<string>} entries @param {string} packageName @returns {boolean} */
 function hasPackageInAsar(entries, packageName) {
-  const prefix = packageName.startsWith('@')
-    ? `\\node_modules\\${packageName.replace('/', '\\')}\\`
-    : `\\node_modules\\${packageName}\\`
+  // 仅匹配 app 根 node_modules；勿用 includes，否则 @baishou/ui/node_modules/date-fns 会误报
+  const relPath = packageName.startsWith('@')
+    ? `node_modules\\${packageName.replace('/', '\\')}\\package.json`
+    : `node_modules\\${packageName}\\package.json`
   for (const entry of entries) {
-    if (entry.includes(`${prefix}package.json`)) return true
+    const normalized = entry.replace(/\//g, '\\').replace(/^\\+/, '')
+    if (normalized === relPath) return true
   }
   return false
 }
