@@ -5,7 +5,7 @@ import { readEffectiveKeyboardHeight } from './scroll-node-into-view.util'
 function resolveMeasureTarget() {
   const getFocused = TextInput.State?.currentlyFocusedInput
   const focused = getFocused?.()
-  if (focused?.measureInWindow) return focused
+  if (focused) return focused
   return null
 }
 

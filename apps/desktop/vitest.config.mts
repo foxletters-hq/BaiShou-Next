@@ -11,6 +11,7 @@ const workspaceAliases = {
   '@baishou/core/shared': resolve(repoRoot, 'packages/core/src/index.shared.ts'),
   '@baishou/core-desktop': resolve(repoRoot, 'packages/core-desktop'),
   '@baishou/database-desktop': resolve(repoRoot, 'packages/database-desktop'),
+  '@baishou/shared/cache': resolve(repoRoot, 'packages/shared/src/cache/index.ts'),
   '@baishou/shared': resolve(repoRoot, 'packages/shared'),
   '@baishou/store': resolve(repoRoot, 'packages/store'),
   '@baishou/ui': resolve(repoRoot, 'packages/ui/src')
