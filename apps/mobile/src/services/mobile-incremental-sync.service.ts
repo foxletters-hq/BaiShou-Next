@@ -10,7 +10,12 @@ import {
   type S3SyncConfig,
   type IncrementalSyncRunOptions
 } from '@baishou/shared'
-import type { IFileSystem, IArchiveService, SettingsManagerService, AssistantManagerService } from '@baishou/core-mobile'
+import type {
+  IFileSystem,
+  IArchiveService,
+  SettingsManagerService,
+  AssistantManagerService
+} from '@baishou/core-mobile'
 import type { IStoragePathService } from '@baishou/core-mobile'
 import { InteractionManager } from 'react-native'
 import { FileSystemUploadType, uploadAsync } from './mobile-http-transfer'
@@ -301,9 +306,13 @@ export class MobileIncrementalSyncService {
       throw new Error('增量同步未配置或已禁用')
     }
 
-    const result = await this.engine.syncThreeWay(config, (progress) => {
-      onProgress?.(progress)
-    }, runOptions)
+    const result = await this.engine.syncThreeWay(
+      config,
+      (progress) => {
+        onProgress?.(progress)
+      },
+      runOptions
+    )
 
     await this.afterSyncComplete()
 
@@ -338,7 +347,11 @@ export class MobileIncrementalSyncService {
   ): Promise<IncrementalSyncResult> {
     const config = await this.getConfig()
     if (!isConfigReady(config)) throw new Error('增量同步未配置或已禁用')
-    const result = await this.engine.downloadOnly(config, (progress) => onProgress?.(progress), runOptions)
+    const result = await this.engine.downloadOnly(
+      config,
+      (progress) => onProgress?.(progress),
+      runOptions
+    )
     await this.afterSyncComplete()
     return {
       uploaded: 0,

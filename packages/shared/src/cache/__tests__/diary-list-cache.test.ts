@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { registerDiaryListCacheStore, getDiaryListCacheVersion, subscribeDiaryListCache } from '../diary-list-cache'
+import {
+  registerDiaryListCacheStore,
+  getDiaryListCacheVersion,
+  subscribeDiaryListCache
+} from '../diary-list-cache'
 import { applyCacheInvalidation, globalCacheRegistry } from '../index'
 import type { DomainMutationEvent } from '../domain-mutation.types'
 

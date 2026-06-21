@@ -192,71 +192,75 @@ export const NativeDiaryMixedContent = forwardRef<
   useImperativeHandle(
     ref,
     () => ({
-    focusAtOffset(offset: number) {
-      if (!hasImages) {
-        singleInputRef.current?.focus()
-        singleInputRef.current?.setNativeProps?.({ selection: { start: offset, end: offset } })
-        return
-      }
-
-      let pos = 0
-      for (let i = 0; i < blocks.length; i++) {
-        const block = blocks[i]!
-        const len = block.type === 'text' ? block.content.length : block.raw.length
-        if (offset <= pos + len) {
-          if (block.type === 'text') {
-            const local = Math.max(0, Math.min(offset - pos, block.content.length))
-            const input = inputRefs.current[i]
-            input?.focus()
-            input?.setNativeProps?.({ selection: { start: local, end: local } })
-          }
+      focusAtOffset(offset: number) {
+        if (!hasImages) {
+          singleInputRef.current?.focus()
+          singleInputRef.current?.setNativeProps?.({ selection: { start: offset, end: offset } })
           return
         }
-        pos += len
-      }
 
-      if (lastTextBlockIndex >= 0) {
-        focusTextBlock(lastTextBlockIndex)
-      }
-    },
-    blur() {
-      if (!hasImages) {
-        singleInputRef.current?.blur()
-        return
-      }
-      for (const input of inputRefs.current) {
-        input?.blur()
-      }
-    },
-    measureActiveEditorInWindow(callback) {
-      const currentSelection = selectionRef.current
+        let pos = 0
+        for (let i = 0; i < blocks.length; i++) {
+          const block = blocks[i]!
+          const len = block.type === 'text' ? block.content.length : block.raw.length
+          if (offset <= pos + len) {
+            if (block.type === 'text') {
+              const local = Math.max(0, Math.min(offset - pos, block.content.length))
+              const input = inputRefs.current[i]
+              input?.focus()
+              input?.setNativeProps?.({ selection: { start: local, end: local } })
+            }
+            return
+          }
+          pos += len
+        }
 
-      if (!hasImages) {
-        const caret = caretOffsetRef.current || currentSelection?.end || currentSelection?.start || content.length
-        reportCaretRegionInWindow(shellRef.current, content, caret, callback)
-        return
-      }
+        if (lastTextBlockIndex >= 0) {
+          focusTextBlock(lastTextBlockIndex)
+        }
+      },
+      blur() {
+        if (!hasImages) {
+          singleInputRef.current?.blur()
+          return
+        }
+        for (const input of inputRefs.current) {
+          input?.blur()
+        }
+      },
+      measureActiveEditorInWindow(callback) {
+        const currentSelection = selectionRef.current
 
-      const blockIndex = activeTextBlockIndexRef.current
-      const block = blocks[blockIndex]
-      if (block?.type === 'text') {
-        const blockSelection = getTextSelection(block)
-        const caret =
-          caretOffsetRef.current ||
-          blockSelection?.end ||
-          blockSelection?.start ||
-          block.content.length
-        reportCaretRegionInWindow(
-          blockWrapRefs.current[blockIndex] ?? inputRefs.current[blockIndex] ?? null,
-          block.content,
-          caret,
-          callback
-        )
-        return
-      }
+        if (!hasImages) {
+          const caret =
+            caretOffsetRef.current ||
+            currentSelection?.end ||
+            currentSelection?.start ||
+            content.length
+          reportCaretRegionInWindow(shellRef.current, content, caret, callback)
+          return
+        }
 
-      shellRef.current?.measureInWindow(callback)
-    }
+        const blockIndex = activeTextBlockIndexRef.current
+        const block = blocks[blockIndex]
+        if (block?.type === 'text') {
+          const blockSelection = getTextSelection(block)
+          const caret =
+            caretOffsetRef.current ||
+            blockSelection?.end ||
+            blockSelection?.start ||
+            block.content.length
+          reportCaretRegionInWindow(
+            blockWrapRefs.current[blockIndex] ?? inputRefs.current[blockIndex] ?? null,
+            block.content,
+            caret,
+            callback
+          )
+          return
+        }
+
+        shellRef.current?.measureInWindow(callback)
+      }
     }),
     [blocks, content, getTextSelection, hasImages, reportCaretRegionInWindow, selection]
   )
@@ -380,7 +384,8 @@ export const NativeDiaryMixedContent = forwardRef<
           }}
           onFocus={() => {
             activeTextBlockIndexRef.current = 0
-            caretOffsetRef.current = selectionRef.current?.end ?? selectionRef.current?.start ?? content.length
+            caretOffsetRef.current =
+              selectionRef.current?.end ?? selectionRef.current?.start ?? content.length
             onFocus?.()
           }}
           onContentSizeChange={(e) => {

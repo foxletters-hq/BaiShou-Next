@@ -4,9 +4,7 @@ export function shouldSkipSessionRestoreForAssistantMismatch(input: {
   savedAssistantId?: string | null
 }): boolean {
   const { currentAssistantId, savedAssistantId } = input
-  return Boolean(
-    currentAssistantId && savedAssistantId && currentAssistantId !== savedAssistantId
-  )
+  return Boolean(currentAssistantId && savedAssistantId && currentAssistantId !== savedAssistantId)
 }
 
 /** reconcile 节流：相同上下文在窗口期内跳过 */

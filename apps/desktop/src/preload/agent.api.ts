@@ -43,15 +43,13 @@ export const agentApi = {
         sessionId?: string
         providerId?: string
         modelId?: string
-        onSegment?: (
-          segment: TtsSpeechSegmentPayload,
-          index: number
-        ) => void | Promise<void>
+        onSegment?: (segment: TtsSpeechSegmentPayload, index: number) => void | Promise<void>
       }
     ): Promise<TtsSynthesizeSpeechResult> => {
       const sessionId =
         options?.sessionId ??
-        (globalThis.crypto?.randomUUID?.() ?? `tts-${Date.now()}-${Math.random()}`)
+        globalThis.crypto?.randomUUID?.() ??
+        `tts-${Date.now()}-${Math.random()}`
 
       return new Promise<TtsSynthesizeSpeechResult>((resolve, reject) => {
         const onSegmentEvent = async (

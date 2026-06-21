@@ -21,7 +21,11 @@ import type {
   IncrementalSyncResult
 } from '../services/mobile-incremental-sync.service'
 import { useBaishou } from './BaishouProvider'
-import { logger, isIncrementalSyncReady, runIncrementalSyncWithDivergenceConfirmation } from '@baishou/shared'
+import {
+  logger,
+  isIncrementalSyncReady,
+  runIncrementalSyncWithDivergenceConfirmation
+} from '@baishou/shared'
 import { friendlyMobileSyncError } from '../utils/friendly-sync-error'
 
 export type IncrementalSyncMode = 'sync' | 'uploadOnly' | 'downloadOnly'

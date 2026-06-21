@@ -34,10 +34,7 @@ function logSynthesisFailure(
     logger.error(
       `[TTS] No provider found for ID: ${providerId || globalModels?.globalTtsProviderId}`
     )
-  } else if (
-    result.errorCode === 'tts_synthesis_failed' ||
-    result.errorCode === 'tts_api_error'
-  ) {
+  } else if (result.errorCode === 'tts_synthesis_failed' || result.errorCode === 'tts_api_error') {
     logger.error('[TTS] Synthesize error:', result.error)
   }
 }

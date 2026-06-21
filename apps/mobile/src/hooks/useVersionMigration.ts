@@ -307,14 +307,11 @@ export function useVersionMigration() {
       }
 
       if (sectionStatuses[sectionId] === 'success') {
-        const proceedAgain = await dialog.confirm(
-          t('version_migration.reimport_confirm_message'),
-          {
-            title: t('version_migration.reimport_confirm_title', '重复导入'),
-            confirmText: t('version_migration.import_action', '导入'),
-            cancelText: t('common.cancel', '取消')
-          }
-        )
+        const proceedAgain = await dialog.confirm(t('version_migration.reimport_confirm_message'), {
+          title: t('version_migration.reimport_confirm_title', '重复导入'),
+          confirmText: t('version_migration.import_action', '导入'),
+          cancelText: t('common.cancel', '取消')
+        })
         if (!proceedAgain) return
       } else {
         const proceed = await dialog.confirm(t('version_migration.import_confirm_message'), {
@@ -350,11 +347,7 @@ export function useVersionMigration() {
           }
         } else if (isWorkspaceSectionId(sectionId) && result.skipped > 0) {
           await resyncAfterMigration()
-        } else if (
-          sectionId === 'avatar' &&
-          result.skipped > 0 &&
-          services?.bootstrapper
-        ) {
+        } else if (sectionId === 'avatar' && result.skipped > 0 && services?.bootstrapper) {
           await services.bootstrapper.resyncFromDisk()
         }
 

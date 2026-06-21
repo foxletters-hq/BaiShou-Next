@@ -41,7 +41,10 @@ export interface DialogContextState {
     options: ChooseOption[],
     message?: ReactNode
   ) => Promise<string | null>
-  alert: (message: ReactNode, titleOrOptions?: string | Pick<ConfirmOptions, 'title' | 'confirmText'>) => Promise<void>
+  alert: (
+    message: ReactNode,
+    titleOrOptions?: string | Pick<ConfirmOptions, 'title' | 'confirmText'>
+  ) => Promise<void>
   closeAll: () => void
 }
 
@@ -105,7 +108,8 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       message: ReactNode,
       titleOrOptions?: string | Pick<ConfirmOptions, 'title' | 'confirmText'>
     ): Promise<void> => {
-      const options = typeof titleOrOptions === 'string' ? { title: titleOrOptions } : titleOrOptions
+      const options =
+        typeof titleOrOptions === 'string' ? { title: titleOrOptions } : titleOrOptions
       return new Promise((resolve) => {
         setState({
           isOpen: true,

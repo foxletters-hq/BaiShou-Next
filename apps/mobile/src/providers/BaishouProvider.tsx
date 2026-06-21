@@ -405,7 +405,9 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         ...prev,
         storageIndexing: indexing,
         ecosystemResyncEpoch:
-          wasStorageIndexing && !indexing ? prev.ecosystemResyncEpoch + 1 : prev.ecosystemResyncEpoch
+          wasStorageIndexing && !indexing
+            ? prev.ecosystemResyncEpoch + 1
+            : prev.ecosystemResyncEpoch
       }))
       wasStorageIndexing = indexing
     })

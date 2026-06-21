@@ -137,9 +137,7 @@ export const LanTransferScreen: React.FC = () => {
             await new Promise((resolve) => setTimeout(resolve, 900))
           } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : String(e)
-            setImportProgress(
-              buildArchiveImportProgress('failed', { percent: 100, detail: msg })
-            )
+            setImportProgress(buildArchiveImportProgress('failed', { percent: 100, detail: msg }))
             toast.showError(msg || t('lan.import_failed'))
             await new Promise((resolve) => setTimeout(resolve, 900))
           } finally {

@@ -4,10 +4,7 @@ import { usePathname, useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { useDialog } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
-import {
-  LEGACY_MIGRATION_PROMPT_DISMISSED_KEY,
-  ONBOARDING_STORAGE_KEY
-} from '../constants/storage'
+import { LEGACY_MIGRATION_PROMPT_DISMISSED_KEY, ONBOARDING_STORAGE_KEY } from '../constants/storage'
 import {
   isLegacyMigrationPromptExcludedPath,
   LEGACY_MIGRATION_PROMPT_VERSION_MIGRATION_PATH

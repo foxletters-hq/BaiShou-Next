@@ -9,8 +9,7 @@ function ensureWebCryptoPolyfill(): void {
   const g = globalThis as typeof globalThis & { crypto?: Crypto }
   if (typeof g.crypto?.randomUUID === 'function') return
 
-  const randomUUID = () =>
-    ExpoCrypto.randomUUID() as ReturnType<NonNullable<Crypto['randomUUID']>>
+  const randomUUID = () => ExpoCrypto.randomUUID() as ReturnType<NonNullable<Crypto['randomUUID']>>
 
   if (g.crypto && typeof g.crypto === 'object') {
     g.crypto.randomUUID = randomUUID

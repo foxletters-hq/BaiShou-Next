@@ -105,8 +105,6 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
       .orderBy(desc(summariesTable.startDate))
       .limit(limit)
 
-    return rows.map(
-      (r: any) => `- ${formatLocalDate(r.start)} ~ ${formatLocalDate(r.end)}`
-    )
+    return rows.map((r: any) => `- ${formatLocalDate(r.start)} ~ ${formatLocalDate(r.end)}`)
   }
 }

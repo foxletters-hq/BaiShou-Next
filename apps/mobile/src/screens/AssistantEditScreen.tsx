@@ -54,14 +54,9 @@ import {
   isResolvableAssistantAvatarDirectUri,
   normalizeAssistantAvatarDisplayUri
 } from '../lib/assistant-avatar-uri'
-import {
-  resolveAssistantAvatarForMobileUi
-} from '../lib/assistant-avatar-display.util'
+import { resolveAssistantAvatarForMobileUi } from '../lib/assistant-avatar-display.util'
 import { markAssistantsNeedRefresh } from '../lib/assistant-ui-refresh-signal'
-import {
-  launchAvatarImageLibraryAsync,
-  requestAvatarLibraryPermission
-} from '@baishou/ui/native'
+import { launchAvatarImageLibraryAsync, requestAvatarLibraryPermission } from '@baishou/ui/native'
 
 interface Assistant {
   id: string

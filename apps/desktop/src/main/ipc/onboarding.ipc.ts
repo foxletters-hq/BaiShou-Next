@@ -21,10 +21,7 @@ export function registerOnboardingIPC(onComplete: () => void) {
 
       return {
         needsOnboarding: bootstrap.needsOnboarding,
-        currentPath:
-          root ||
-          legacyRoot ||
-          defaultOnboardingStoragePath()
+        currentPath: root || legacyRoot || defaultOnboardingStoragePath()
       }
     } catch {
       const legacyCandidates = await resolveLegacyRootCandidates().catch(() => [])

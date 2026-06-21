@@ -20,10 +20,11 @@ describe('MessageSearchTool', () => {
       ])
     }
 
-    const output = await tool.execute(
-      { query: '噩梦' },
-      { sessionId: 's1', vaultName: '/tmp', messageSearcher: searcher } as ToolContext
-    )
+    const output = await tool.execute({ query: '噩梦' }, {
+      sessionId: 's1',
+      vaultName: '/tmp',
+      messageSearcher: searcher
+    } as ToolContext)
 
     expect(searcher.searchMessages).toHaveBeenCalledWith('噩梦', 10)
     expect(output).toContain(`会话「6月17日更新后」(${localTs})`)
@@ -32,22 +33,20 @@ describe('MessageSearchTool', () => {
   })
 
   it('returns error when query is empty', async () => {
-    const output = await tool.execute(
-      { query: '   ' },
-      { sessionId: 's1', vaultName: '/tmp', messageSearcher: {} as any } as ToolContext
-    )
+    const output = await tool.execute({ query: '   ' }, {
+      sessionId: 's1',
+      vaultName: '/tmp',
+      messageSearcher: {} as any
+    } as ToolContext)
     expect(output).toContain('Error')
   })
 
   it('returns empty message when no hits', async () => {
-    const output = await tool.execute(
-      { query: '不存在的关键词' },
-      {
-        sessionId: 's1',
-        vaultName: '/tmp',
-        messageSearcher: { searchMessages: vi.fn().mockResolvedValue([]) }
-      } as ToolContext
-    )
+    const output = await tool.execute({ query: '不存在的关键词' }, {
+      sessionId: 's1',
+      vaultName: '/tmp',
+      messageSearcher: { searchMessages: vi.fn().mockResolvedValue([]) }
+    } as ToolContext)
     expect(output).toContain('未找到')
   })
 })

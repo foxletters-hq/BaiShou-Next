@@ -229,8 +229,8 @@ export const AgentLayout: React.FC = () => {
   }, [fetchAssistants, loadSessions, loadProfile, urlAssistantId])
 
   const currentAssistant = resolvedAssistantId
-    ? assistants.find((a) => String(a.id) === String(resolvedAssistantId)) ??
-      (isAssistantsLoading ? undefined : assistants.find((a) => a.isDefault))
+    ? (assistants.find((a) => String(a.id) === String(resolvedAssistantId)) ??
+      (isAssistantsLoading ? undefined : assistants.find((a) => a.isDefault)))
     : assistants.find((a) => a.isDefault) || (assistants.length > 0 ? assistants[0] : undefined)
 
   const mappedAssistant = currentAssistant

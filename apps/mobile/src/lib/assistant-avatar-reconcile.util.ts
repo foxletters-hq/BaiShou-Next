@@ -1,4 +1,8 @@
-import type { AssistantManagerService, IFileSystem, IStoragePathService } from '@baishou/core-mobile'
+import type {
+  AssistantManagerService,
+  IFileSystem,
+  IStoragePathService
+} from '@baishou/core-mobile'
 import { DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH } from '@baishou/shared'
 
 async function assistantAvatarFileExists(

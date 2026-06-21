@@ -51,21 +51,18 @@ export const AssistantAvatarPicker: React.FC<AssistantAvatarPickerProps> = ({
   )
 
   const openAvatarChoice = useCallback(async () => {
-    const choice = await dialog.choose(
-      t('agent.assistant.avatar_choice_title', '选择头像'),
-      [
-        {
-          label: t('agent.assistant.select_builtin_avatar', '选择内置头像'),
-          value: 'builtin',
-          leading: <MaterialIcons name="grid-view" size={20} color={colors.primary} />
-        },
-        {
-          label: t('agent.assistant.upload_avatar', '从本地上传'),
-          value: 'upload',
-          leading: <MaterialIcons name="add-photo-alternate" size={20} color={colors.primary} />
-        }
-      ]
-    )
+    const choice = await dialog.choose(t('agent.assistant.avatar_choice_title', '选择头像'), [
+      {
+        label: t('agent.assistant.select_builtin_avatar', '选择内置头像'),
+        value: 'builtin',
+        leading: <MaterialIcons name="grid-view" size={20} color={colors.primary} />
+      },
+      {
+        label: t('agent.assistant.upload_avatar', '从本地上传'),
+        value: 'upload',
+        leading: <MaterialIcons name="add-photo-alternate" size={20} color={colors.primary} />
+      }
+    ])
 
     if (choice === 'builtin') {
       runAfterOverlayDismiss(() => setBuiltinModalOpen(true))

@@ -10,7 +10,10 @@ export async function writeBsV3Fixture(root: string): Promise<void> {
   await fs.mkdir(path.join(root, '.baishou'), { recursive: true })
   await fs.mkdir(path.join(root, 'config'), { recursive: true })
 
-  await fs.writeFile(path.join(root, 'Personal', 'Journals', '2024-06-01.md'), '# Morning diary\n\ncontent A')
+  await fs.writeFile(
+    path.join(root, 'Personal', 'Journals', '2024-06-01.md'),
+    '# Morning diary\n\ncontent A'
+  )
   await fs.writeFile(
     path.join(root, 'Personal', 'Journals', 'note.md'),
     '---\ndate: 2024-06-01\n---\n# Evening\n\ncontent B'

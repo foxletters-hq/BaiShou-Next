@@ -1,6 +1,11 @@
 import type { DomainMutationEvent, DomainMutationListener } from '@baishou/shared/cache'
 
-export type { DomainMutationEvent, DomainMutationListener, MutationDomain, MutationAction } from '@baishou/shared/cache'
+export type {
+  DomainMutationEvent,
+  DomainMutationListener,
+  MutationDomain,
+  MutationAction
+} from '@baishou/shared/cache'
 
 /**
  * 进程内领域变更总线。
@@ -32,8 +37,6 @@ export class DomainMutationBus {
 /** 全局单例：Core 服务 emit，各端 Coordinator subscribe */
 export const domainMutationBus = new DomainMutationBus()
 
-export function emitDomainMutation(
-  event: Omit<DomainMutationEvent, 'timestamp'>
-): void {
+export function emitDomainMutation(event: Omit<DomainMutationEvent, 'timestamp'>): void {
   domainMutationBus.emit(event)
 }

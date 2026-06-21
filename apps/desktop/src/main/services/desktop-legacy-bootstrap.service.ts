@@ -63,8 +63,7 @@ export async function resolveDesktopStorageBootstrap(
     customStorageRoot = primaryLegacy
   }
 
-  const isWorkspaceMigrationDone = async (root: string) =>
-    isMigrationCompleted(fileSystem, root)
+  const isWorkspaceMigrationDone = async (root: string) => isMigrationCompleted(fileSystem, root)
 
   const persistStorageRoot = async (root: string) => {
     await fs.writeFile(

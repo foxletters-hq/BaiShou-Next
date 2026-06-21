@@ -274,10 +274,13 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
 
   const scheduleEditorScroll = useCallback(() => {
     if (editorScrollTimerRef.current) clearTimeout(editorScrollTimerRef.current)
-    editorScrollTimerRef.current = setTimeout(() => {
-      editorScrollTimerRef.current = null
-      scrollEditorIntoView()
-    }, Platform.OS === 'ios' ? 120 : 200)
+    editorScrollTimerRef.current = setTimeout(
+      () => {
+        editorScrollTimerRef.current = null
+        scrollEditorIntoView()
+      },
+      Platform.OS === 'ios' ? 120 : 200
+    )
   }, [scrollEditorIntoView])
 
   useEffect(() => {
@@ -338,7 +341,11 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
           nestedScrollEnabled
           autoScrollToFocusedInput={false}
           extraKeyboardPadding={toolbarHeight + 16}
-          contentContainerStyle={[styles.bodyContent, styles.bodyContentGrow, { paddingBottom: toolbarHeight + 16 }]}
+          contentContainerStyle={[
+            styles.bodyContent,
+            styles.bodyContentGrow,
+            { paddingBottom: toolbarHeight + 16 }
+          ]}
           keyboardShouldPersistTaps="always"
           keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
           showsVerticalScrollIndicator={false}

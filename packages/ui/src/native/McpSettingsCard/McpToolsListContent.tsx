@@ -20,36 +20,34 @@ export const McpToolsListContent: React.FC<{ tools: McpToolListItem[]; inline?: 
   const listMaxHeight = inline ? undefined : Math.min(400, Math.round(screenHeight * 0.5))
 
   const items = tools.map((tool, index) => {
-        const cleanName = tool.displayName || tool.name.replace(/^baishou_/, '')
-        const localizedTitle = t(`agent.tools.${cleanName}`, cleanName)
-        const localizedDesc = t(`agent.tools.${cleanName}_desc`, tool.description)
-        const isLast = index === tools.length - 1
+    const cleanName = tool.displayName || tool.name.replace(/^baishou_/, '')
+    const localizedTitle = t(`agent.tools.${cleanName}`, cleanName)
+    const localizedDesc = t(`agent.tools.${cleanName}_desc`, tool.description)
+    const isLast = index === tools.length - 1
 
-        return (
-          <View
-            key={tool.name}
-            style={[
-              styles.item,
-              !isLast && {
-                borderBottomWidth: StyleSheet.hairlineWidth,
-                borderBottomColor: colors.borderSubtle
-              }
-            ]}
-          >
-            <View style={styles.titleRow}>
-              <Text style={[styles.toolName, { color: colors.primary }]}>{tool.name}</Text>
-              <Text style={[styles.localizedTitle, { color: colors.textPrimary }]}>
-                {localizedTitle}
-              </Text>
-              {tool.category ? (
-                <Text style={[styles.category, { color: colors.textTertiary }]}>
-                  {tool.category}
-                </Text>
-              ) : null}
-            </View>
-            <Text style={[styles.desc, { color: colors.textSecondary }]}>{localizedDesc}</Text>
+    return (
+      <View
+        key={tool.name}
+        style={[
+          styles.item,
+          !isLast && {
+            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomColor: colors.borderSubtle
+          }
+        ]}
+      >
+        <View style={styles.titleRow}>
+          <Text style={[styles.toolName, { color: colors.primary }]}>{tool.name}</Text>
+          <Text style={[styles.localizedTitle, { color: colors.textPrimary }]}>
+            {localizedTitle}
+          </Text>
+          {tool.category ? (
+            <Text style={[styles.category, { color: colors.textTertiary }]}>{tool.category}</Text>
+          ) : null}
         </View>
-      )
+        <Text style={[styles.desc, { color: colors.textSecondary }]}>{localizedDesc}</Text>
+      </View>
+    )
   })
 
   if (inline) {

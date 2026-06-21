@@ -182,7 +182,10 @@ describe('Agent 6: 伙伴聊天功能验证', () => {
 
 describe('Agent 9: 文件附件系统验证', () => {
   it('任务18: ImagePreview 组件已集成到 CodeMirrorEditor', () => {
-    const editorPath = resolve(__dirname, '../../../ui/src/desktop/DiaryEditor/CodeMirrorEditor.tsx')
+    const editorPath = resolve(
+      __dirname,
+      '../../../ui/src/desktop/DiaryEditor/CodeMirrorEditor.tsx'
+    )
     const content = readFileSync(editorPath, 'utf-8')
 
     // 确认导入存在

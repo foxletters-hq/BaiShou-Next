@@ -54,9 +54,7 @@ export function formatLocalDateFromInstant(
 }
 
 /** 时刻戳 → 本地 YYYY-MM-DD HH:mm（与 formatMessageTimestamp 同语义，名称更直观） */
-export function formatLocalDateTime(
-  value: Date | number | undefined | null
-): string | undefined {
+export function formatLocalDateTime(value: Date | number | undefined | null): string | undefined {
   return formatMessageTimestamp(value)
 }
 

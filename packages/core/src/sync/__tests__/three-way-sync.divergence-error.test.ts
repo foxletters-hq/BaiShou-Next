@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { SyncDivergenceExceededError, SyncDivergenceConfirmationRequiredError } from '@baishou/shared'
+import {
+  SyncDivergenceExceededError,
+  SyncDivergenceConfirmationRequiredError
+} from '@baishou/shared'
 import { ThreeWaySyncService } from '../three-way-sync.service'
 import { S3SyncError } from '../sync.errors'
 import type { ICloudSyncClient } from '../../network/cloud-sync.interface'

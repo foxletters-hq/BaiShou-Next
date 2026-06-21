@@ -132,7 +132,10 @@ export async function buildMobileMcpToolContext(
 
     return context
   } catch (e) {
-    logger.warn('[buildMobileMcpToolContext] DB adapters unavailable, using degraded context', e as Error)
+    logger.warn(
+      '[buildMobileMcpToolContext] DB adapters unavailable, using degraded context',
+      e as Error
+    )
     return {
       sessionId: 'mcp-external',
       vaultName,

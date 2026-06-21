@@ -29,9 +29,7 @@ export const AIProviderDetailScreen: React.FC<AIProviderDetailScreenProps> = ({ 
   const [savedProviders, setSavedProviders] = useState<AIProviderConfig[]>(
     () => peekProviderSettingsCache() ?? []
   )
-  const [providersLoaded, setProvidersLoaded] = useState(
-    () => peekProviderSettingsCache() != null
-  )
+  const [providersLoaded, setProvidersLoaded] = useState(() => peekProviderSettingsCache() != null)
 
   useEffect(() => {
     if (!services || !dbReady) return

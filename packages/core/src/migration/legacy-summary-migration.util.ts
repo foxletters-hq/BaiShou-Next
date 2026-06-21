@@ -78,7 +78,9 @@ export async function resolveLegacyBaishouDbPathsForVault(
 }
 
 function parseLegacySummaryRow(row: Record<string, unknown>): LegacySummaryRow | null {
-  const type = String(row.type ?? '').trim().toLowerCase()
+  const type = String(row.type ?? '')
+    .trim()
+    .toLowerCase()
   if (!type) return null
   const content = String(row.content ?? '').trim()
   if (!content) return null
@@ -175,19 +177,17 @@ export async function queryLegacySummaryRows(
   return { rows, errors }
 }
 
-export async function importLegacySqlSummariesForVault(
-  deps: {
-    fileSystem: IFileSystem
-    sourceRoot: string
-    targetRoot: string
-    legacyVaultName: string
-    sqliteClient: unknown
-    executeRawSql: RawSqlExecutor
-    resolveTargetVaultName: (legacyVaultName: string) => Promise<string>
-    prepareSqliteAttachPath?: (dbPath: string) => Promise<string>
-    onProgress?: (message: string) => void
-  }
-): Promise<{ imported: number; skipped: number; failed: number; failureSamples?: string[] }> {
+export async function importLegacySqlSummariesForVault(deps: {
+  fileSystem: IFileSystem
+  sourceRoot: string
+  targetRoot: string
+  legacyVaultName: string
+  sqliteClient: unknown
+  executeRawSql: RawSqlExecutor
+  resolveTargetVaultName: (legacyVaultName: string) => Promise<string>
+  prepareSqliteAttachPath?: (dbPath: string) => Promise<string>
+  onProgress?: (message: string) => void
+}): Promise<{ imported: number; skipped: number; failed: number; failureSamples?: string[] }> {
   const { rows, errors } = await queryLegacySummaryRows(
     deps.fileSystem,
     deps.sourceRoot,

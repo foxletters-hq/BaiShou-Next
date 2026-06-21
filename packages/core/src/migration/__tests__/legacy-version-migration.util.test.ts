@@ -105,9 +105,8 @@ describe('legacy-version-migration.util', () => {
 
 describe('vault-scoped assistant id map', () => {
   it('scopes and filters assistant id map per legacy vault', async () => {
-    const { filterAssistantIdMapForVault, scopeAssistantIdMapForVault } = await import(
-      '../legacy-version-migration.util'
-    )
+    const { filterAssistantIdMapForVault, scopeAssistantIdMapForVault } =
+      await import('../legacy-version-migration.util')
     const global = {
       'Personal::old-a': 'new-a',
       '工作::old-b': 'new-b',

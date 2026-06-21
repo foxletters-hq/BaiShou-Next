@@ -160,7 +160,9 @@ describe('Agent 4: 设置与 UI 细节验证', () => {
   })
 
   it('任务21: descriptionText 和 chipsScrollArea 有内边距', () => {
-    const css = readFile('packages/ui/src/desktop/IdentitySettingsCard/IdentitySettingsCard.module.css')
+    const css = readFile(
+      'packages/ui/src/desktop/IdentitySettingsCard/IdentitySettingsCard.module.css'
+    )
     expect(css).toMatch(/\.descriptionText\s*\{[^}]*padding/)
     expect(css).toMatch(/\.chipsScrollArea\s*\{[^}]*padding/)
   })
@@ -230,7 +232,9 @@ describe('Agent 7: 回忆生成页面验证', () => {
     const cardSections = tsx.match(/cardSection/g)
     expect(cardSections).toBeTruthy()
 
-    const css = readFile('packages/ui/src/desktop/SummarySettingsView/SummarySettingsView.module.css')
+    const css = readFile(
+      'packages/ui/src/desktop/SummarySettingsView/SummarySettingsView.module.css'
+    )
     // 确认有 divider 但没有中间圆角
     expect(css).toContain('divider')
   })

@@ -158,7 +158,8 @@ async function completeFullBootstrap() {
     // 1. 初始化 Vault 系统 (此时 path.service 已经可以读到正确的 rootPath)
     await initVaultSystem()
 
-    const { initDesktopMainCacheCoordinator } = await import('./cache/desktop-main-cache-coordinator')
+    const { initDesktopMainCacheCoordinator } =
+      await import('./cache/desktop-main-cache-coordinator')
     initDesktopMainCacheCoordinator()
 
     // 2. 业务级 IPC 已在 app.whenReady 中提前注册，此处无需重复

@@ -30,7 +30,11 @@ function extractJournalBody(raw: string, dateStr: string): string {
  * 2. 正文相同
  * 3. 目标正文已包含旧版正文（此前经 diaryService 同日合并过）
  */
-export function legacyJournalAlreadyMigrated(legacyRaw: string, targetRaw: string, dateStr: string): boolean {
+export function legacyJournalAlreadyMigrated(
+  legacyRaw: string,
+  targetRaw: string,
+  dateStr: string
+): boolean {
   const legacyNorm = normalizeJournalFileRaw(legacyRaw)
   const targetNorm = normalizeJournalFileRaw(targetRaw)
 

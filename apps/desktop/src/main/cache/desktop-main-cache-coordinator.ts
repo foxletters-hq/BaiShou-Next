@@ -1,6 +1,10 @@
 import { BrowserWindow } from 'electron'
 import { domainMutationBus, emitDomainMutation } from '@baishou/core-desktop'
-import { applyCacheInvalidation, globalCacheRegistry, CACHE_DOMAIN_MUTATION_CHANNEL } from '@baishou/shared/cache'
+import {
+  applyCacheInvalidation,
+  globalCacheRegistry,
+  CACHE_DOMAIN_MUTATION_CHANNEL
+} from '@baishou/shared/cache'
 import type { DomainMutationEvent, MutationAction } from '@baishou/shared/cache'
 import { registerDesktopMainCacheStores } from './register-desktop-main-cache-stores'
 

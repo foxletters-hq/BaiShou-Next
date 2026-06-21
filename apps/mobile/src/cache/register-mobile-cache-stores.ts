@@ -1,8 +1,6 @@
 import { globalCacheRegistry, registerDiaryListCacheStore } from '@baishou/shared/cache'
 import { clearGlobalTtsSynthesisCache, clearMimoRefAudioHydrationCache } from '@baishou/shared'
-import {
-  invalidateAllAvatarDisplayCaches
-} from '../lib/assistant-avatar-display.util'
+import { invalidateAllAvatarDisplayCaches } from '../lib/assistant-avatar-display.util'
 import { invalidateUserAvatarDisplayCache } from '../lib/user-avatar-display.util'
 import { registerSummaryDashboardCacheStore } from '../lib/summary-dashboard-cache'
 import { clearAllAttachmentImageCaches } from '../utils/mobile-attachment-image-cache'

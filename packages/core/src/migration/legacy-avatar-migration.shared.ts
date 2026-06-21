@@ -7,7 +7,8 @@ export type LegacyAvatarImporter = (absoluteSourcePath: string, prefix: string) 
 
 const IMAGE_FILE = /\.(jpe?g|png|gif|webp)$/i
 /** 旧版伙伴头像文件名：{assistantId}.jpg，与 user_profile_service 用户头像命名区分 */
-const FLUTTER_ASSISTANT_AVATAR_FILE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\./i
+const FLUTTER_ASSISTANT_AVATAR_FILE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\./i
 
 /**
  * 旧版 Flutter 用户头像文件名（见 BaiShou user_profile_service.dart / data_archive_manager.dart）：
@@ -232,7 +233,10 @@ export async function restoreLegacyUserAvatar(
   }
 
   if (flutterDocumentsAvatarsDir && (await fileSystem.exists(flutterDocumentsAvatarsDir))) {
-    for (const name of await listFlutterUserAvatarFilesInDir(fileSystem, flutterDocumentsAvatarsDir)) {
+    for (const name of await listFlutterUserAvatarFilesInDir(
+      fileSystem,
+      flutterDocumentsAvatarsDir
+    )) {
       candidatePaths.push(path.join(flutterDocumentsAvatarsDir, name))
     }
   }

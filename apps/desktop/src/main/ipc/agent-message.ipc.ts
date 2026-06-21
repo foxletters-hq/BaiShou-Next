@@ -7,10 +7,7 @@ import {
 import { getAgentManagers, buildStreamConfig } from './agent-helpers'
 import { AgentChatService } from './AgentChatService'
 import { settingsManager } from './settings.ipc'
-import {
-  groupPartsByMessageId,
-  mapAgentMessageForRenderer
-} from './map-agent-message-for-renderer'
+import { groupPartsByMessageId, mapAgentMessageForRenderer } from './map-agent-message-for-renderer'
 
 export function registerMessageIPC() {
   // ==========================================
