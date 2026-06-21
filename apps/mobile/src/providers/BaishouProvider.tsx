@@ -12,6 +12,7 @@ import {
 import {
   createAgentDbRuntime,
   createSummaryPipelineServices,
+  rebindSummaryPipelineForVault,
   type AgentDbRuntime
 } from '../services/mobile-agent-db-runtime'
 import {
@@ -1301,7 +1302,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           }
 
           try {
-            await switchVaultRuntime(vaultName, {
+            const stack = await switchVaultRuntime(vaultName, {
               pathService,
               vaultService,
               fileSystem,
@@ -1313,11 +1314,11 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                   diaryStackRef.current = null
                   setMobileDiaryEmbeddingDeps(null)
                 },
-                onStackReady: (stack) => {
-                  diaryStackRef.current = stack
+                onStackReady: (readyStack) => {
+                  diaryStackRef.current = readyStack
                   const nextRagDeps = {
                     settingsManager,
-                    diaryService: stack.diaryService,
+                    diaryService: readyStack.diaryService,
                     hsRepo,
                     hybridSearchService,
                     registry,
@@ -1325,19 +1326,6 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                   }
                   setMobileDiaryEmbeddingDeps(nextRagDeps)
                   ragServiceRef.current = createMobileRagService(nextRagDeps)
-                  if (!isMounted) return
-                  setValue((prev) => ({
-                    ...prev,
-                    vaultRevision: prev.vaultRevision + 1,
-                    services: prev.services
-                      ? {
-                          ...prev.services,
-                          ragService: ragServiceRef.current,
-                          switchVault,
-                          deleteVault
-                        }
-                      : prev.services
-                  }))
                 },
                 onResyncComplete: () => {
                   if (!isMounted) return
@@ -1348,6 +1336,45 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                 }
               }
             })
+
+            const runtime = agentDbRuntimeRef.current
+            if (runtime && stack && isMounted) {
+              const activeVaultName = vaultService.getActiveVault()?.name ?? null
+              const summaryPipeline = await rebindSummaryPipelineForVault({
+                drizzleDb: runtime.drizzleDb,
+                pathService,
+                fileSystem,
+                settingsManager,
+                diaryRepoAdapter: stack.diaryRepoAdapter,
+                activeVaultName
+              })
+              bootstrapDeps.summarySyncService = summaryPipeline.summarySyncService
+              watcherDeps.summarySyncService = summaryPipeline.summarySyncService
+              registerVaultBootstrapDeps(stack, bootstrapDeps)
+              agentDbRuntimeRef.current = {
+                ...runtime,
+                summaryManager: summaryPipeline.summaryManager,
+                summaryGenerator: summaryPipeline.summaryGenerator,
+                missingSummaryDetector: summaryPipeline.missingSummaryDetector,
+                summarySyncService: summaryPipeline.summarySyncService
+              }
+              setValue((prev) => ({
+                ...prev,
+                vaultRevision: prev.vaultRevision + 1,
+                services: prev.services
+                  ? {
+                      ...prev.services,
+                      ragService: ragServiceRef.current,
+                      summaryManager: summaryPipeline.summaryManager,
+                      summaryGenerator: summaryPipeline.summaryGenerator,
+                      missingSummaryDetector: summaryPipeline.missingSummaryDetector,
+                      switchVault,
+                      deleteVault
+                    }
+                  : prev.services
+              }))
+            }
+
             emitVaultSwitchMutation(vaultName)
           } catch (e) {
             logger.error('[BaishouProvider] switchVault failed:', e as Error)
@@ -1361,6 +1388,12 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
         const deleteVault = async (vaultName: string) => {
           await deleteVaultWithShadowCleanup(vaultName, { vaultService })
+          if (isMounted) {
+            setValue((prev) => ({
+              ...prev,
+              vaultRevision: prev.vaultRevision + 1
+            }))
+          }
         }
 
         if (diaryStack) {
