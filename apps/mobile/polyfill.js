@@ -34,6 +34,25 @@ if (typeof global !== 'undefined' && typeof global.SharedArrayBuffer === 'undefi
   })
 }
 
+// MCP SDK WebStandardStreamableHTTPServerTransport 依赖全局 crypto.randomUUID()（桌面 Node 版用 node:crypto）。
+if (
+  typeof globalThis.crypto === 'undefined' ||
+  typeof globalThis.crypto.randomUUID !== 'function'
+) {
+  const randomUUID = () =>
+    'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0
+      const v = c === 'x' ? r : (r & 0x3) | 0x8
+      return v.toString(16)
+    })
+  const existing = globalThis.crypto
+  if (existing && typeof existing === 'object') {
+    existing.randomUUID = randomUUID
+  } else {
+    globalThis.crypto = { randomUUID }
+  }
+}
+
 // Register expo/fetch before any bundle code runs (AI SDK needs response.body streaming on RN).
 try {
   const { fetch: expoFetch } = require('expo/fetch')

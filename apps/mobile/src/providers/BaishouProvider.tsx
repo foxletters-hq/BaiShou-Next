@@ -84,7 +84,8 @@ import { setMobileDiaryEmbeddingDeps } from '../services/mobile-diary-embedding.
 import { MobileIncrementalSyncService } from '../services/mobile-incremental-sync.service'
 import { MobileMcpService } from '../services/mobile-mcp.service'
 import {
-  buildMobileMcpToolContext
+  buildMobileMcpToolContext,
+  buildMobileMcpToolListContext
 } from '../services/mobile-mcp-context.service'
 import { mobileDataBootstrapper } from '../services/mobile-bootstrapper.service'
 import { vaultFileWatcher } from '../services/vault-file-watcher.service'
@@ -861,17 +862,26 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         // 日记全文搜索器（与桌面端 createDiarySearcher 对齐）
         const getDiarySearcher = () => diaryStackRef.current?.diarySearcher ?? diarySearcher
 
-        mobileMcpService = new MobileMcpService(settingsManager, toolRegistry, () => {
-          const runtime = agentDbRuntimeRef.current
-          return buildMobileMcpToolContext({
-            settingsManager: runtime?.settingsManager ?? settingsManager,
-            pathService,
-            getDiarySearcher,
-            drizzleDb: runtime?.drizzleDb ?? drizzleDb,
-            webSearchResultFetcher: webFetchContent,
-            fetchSearchPage: fetchSearchPageHtml
-          })
-        })
+        mobileMcpService = new MobileMcpService(
+          settingsManager,
+          toolRegistry,
+          () => {
+            const runtime = agentDbRuntimeRef.current
+            return buildMobileMcpToolContext({
+              settingsManager: runtime?.settingsManager ?? settingsManager,
+              pathService,
+              getDiarySearcher,
+              drizzleDb: runtime?.drizzleDb ?? drizzleDb,
+              webSearchResultFetcher: webFetchContent,
+              fetchSearchPage: fetchSearchPageHtml
+            })
+          },
+          () =>
+            buildMobileMcpToolListContext({
+              settingsManager: agentDbRuntimeRef.current?.settingsManager ?? settingsManager,
+              pathService
+            })
+        )
 
         const ragServiceDeps = {
           settingsManager,
@@ -1172,17 +1182,26 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           ctx.ragServiceRef.current = createMobileRagService(nextRagDeps)
           emitSyncMutation('resync-complete', 'agent-db-reload')
 
-          mobileMcpService = new MobileMcpService(newRuntime.settingsManager, toolRegistry, () => {
-            const runtime = agentDbRuntimeRef.current
-            return buildMobileMcpToolContext({
-              settingsManager: runtime?.settingsManager ?? newRuntime.settingsManager,
-              pathService: ctx.pathService,
-              getDiarySearcher,
-              drizzleDb: runtime?.drizzleDb ?? newDrizzleDb,
-              webSearchResultFetcher: webFetchContent,
-              fetchSearchPage: fetchSearchPageHtml
-            })
-          })
+          mobileMcpService = new MobileMcpService(
+            newRuntime.settingsManager,
+            toolRegistry,
+            () => {
+              const runtime = agentDbRuntimeRef.current
+              return buildMobileMcpToolContext({
+                settingsManager: runtime?.settingsManager ?? newRuntime.settingsManager,
+                pathService: ctx.pathService,
+                getDiarySearcher,
+                drizzleDb: runtime?.drizzleDb ?? newDrizzleDb,
+                webSearchResultFetcher: webFetchContent,
+                fetchSearchPage: fetchSearchPageHtml
+              })
+            },
+            () =>
+              buildMobileMcpToolListContext({
+                settingsManager: newRuntime.settingsManager,
+                pathService: ctx.pathService
+              })
+          )
           ctx.mobileMcpService = mobileMcpService
           if (mcpWasRunning) {
             await mobileMcpService.start().catch((mcpErr) => {
