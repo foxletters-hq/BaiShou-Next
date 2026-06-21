@@ -4,7 +4,7 @@ import styles from './ProfileSettingsCard.module.css'
 import { useTranslation } from 'react-i18next'
 import { useDialog } from '../Dialog'
 import { AvatarCropModal } from '../AvatarCropModal'
-import { resolveWebUserAvatarSrc } from '../user-avatar.util'
+import { resolveDesktopUserAvatarSrc } from '../user-avatar.util'
 
 export interface ProfileData {
   nickname: string
@@ -69,7 +69,7 @@ export const ProfileSettingsCard: React.FC<ProfileSettingsCardProps> = ({ profil
         <div className={styles.avatarZone} onClick={handleTriggerPick}>
           <img
             className={styles.avatarImg}
-            src={resolveWebUserAvatarSrc(profile.avatarPath)}
+            src={resolveDesktopUserAvatarSrc(profile.avatarPath)}
             alt="avatar"
           />
           <div className={styles.avatarHover} aria-hidden>

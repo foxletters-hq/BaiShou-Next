@@ -1,7 +1,7 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "dist/web",
+    "outDir": "dist/desktop",
     "rootDir": "src",
     "composite": true,
     "jsx": "react-jsx",
@@ -16,7 +16,7 @@
     "src/images.d.ts",
     "src/index.ts",
     "src/i18n.ts",
-    "src/web/**/*",
+    "src/desktop/**/*",
     "src/hooks/**/*",
     "src/theme/**/*",
     "src/utils/**/*",

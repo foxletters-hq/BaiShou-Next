@@ -3,6 +3,7 @@ import styles from './ActivityHeatmap.module.css'
 
 import { generateHeatmapMatrix, ActivityData } from '../../utils/heatmap-matrix'
 import { useTranslation } from 'react-i18next'
+import { formatLocalDate } from '@baishou/shared'
 
 interface ActivityHeatmapProps {
   data: ActivityData[]
@@ -286,7 +287,7 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
                     <div
                       key={colIndex}
                       className={`${styles.cell} ${getColorLevel(cell.count)}`}
-                      title={`${cell.date.toISOString().split('T')[0]} : ${cell.count} ${t('activity.interactions', '篇日记')}`}
+                      title={`${formatLocalDate(cell.date)} : ${cell.count} ${t('activity.interactions', '篇日记')}`}
                     />
                   ))}
                 </div>

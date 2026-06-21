@@ -10,8 +10,8 @@ import {
 } from '@baishou/shared'
 import { AvatarCropModal } from '../AvatarCropModal'
 import { Modal } from '../Modal/Modal'
-import { WEB_BUILTIN_ASSISTANT_AVATAR_URLS } from '../builtin-assistant-avatar.sources'
-import { resolveWebAssistantAvatarSrc } from '../assistant-avatar.util'
+import { DESKTOP_BUILTIN_ASSISTANT_AVATAR_URLS } from '../builtin-assistant-avatar.sources'
+import { resolveDesktopAssistantAvatarSrc } from '../assistant-avatar.util'
 import styles from './AssistantAvatarPicker.module.css'
 
 export interface AssistantAvatarPickerProps {
@@ -41,7 +41,7 @@ export const AssistantAvatarPicker: React.FC<AssistantAvatarPickerProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const selectedBuiltinId = parseBuiltinAssistantAvatarId(avatarPath)
-  const previewSrc = resolveWebAssistantAvatarSrc(avatarPath)
+  const previewSrc = resolveDesktopAssistantAvatarSrc(avatarPath)
   const previewRadius = Math.max(12, Math.round(previewSize * 0.22))
 
   const triggerUpload = () => {
@@ -139,7 +139,7 @@ export const AssistantAvatarPicker: React.FC<AssistantAvatarPickerProps> = ({
                 aria-label={t('agent.assistant.select_builtin_avatar')}
               >
                 <img
-                  src={WEB_BUILTIN_ASSISTANT_AVATAR_URLS[id]}
+                  src={DESKTOP_BUILTIN_ASSISTANT_AVATAR_URLS[id]}
                   alt=""
                   className={styles.presetImg}
                 />

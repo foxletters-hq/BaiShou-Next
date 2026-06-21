@@ -62,7 +62,7 @@ describe('Agent 2: 伙伴管理 UI 验证', () => {
   })
 
   it('任务6: AvatarEditor 选择图片后打开裁剪组件', () => {
-    const editorTsx = readFile('packages/ui/src/web/AvatarEditor/index.tsx')
+    const editorTsx = readFile('packages/ui/src/desktop/AvatarEditor/index.tsx')
     // 确认导入了 AvatarCropModal
     expect(editorTsx).toContain('AvatarCropModal')
     // 确认有裁剪状态管理
@@ -71,7 +71,7 @@ describe('Agent 2: 伙伴管理 UI 验证', () => {
   })
 
   it('任务7: AssistantEditPage 正确显示供应商图标', () => {
-    const tsx = readUiModule('packages/ui/src/web/AssistantEditPage')
+    const tsx = readUiModule('packages/ui/src/desktop/AssistantEditPage')
     expect(tsx).toContain('getProviderIcon')
     expect(tsx).toContain('modelIcon')
   })
@@ -97,20 +97,20 @@ describe('Agent 2: 伙伴管理 UI 验证', () => {
 
 describe('Agent 3: RAG 记忆管理验证', () => {
   it('任务10: RagMemoryView 背景铺满整个页面', () => {
-    const css = readFile('packages/ui/src/web/RagMemoryView/RagMemoryView.module.css')
+    const css = readFile('packages/ui/src/desktop/RagMemoryView/RagMemoryView.module.css')
     const containerMatch = css.match(/\.page\s*\{[^}]*\}/)
     expect(containerMatch).toBeTruthy()
     expect(containerMatch![0]).toContain('height: 100%')
   })
 
   it('任务11: RAG 分页默认10条，可选 20/30/50/100', () => {
-    const tsx = readUiModule('packages/ui/src/web/RagMemoryView')
+    const tsx = readUiModule('packages/ui/src/desktop/RagMemoryView')
     expect(tsx).toContain('[10, 20, 30, 50, 100]')
     expect(tsx).toContain('pageSize')
   })
 
   it('任务13: "清空当前维度记忆"按钮已删除', () => {
-    const tsx = readUiModule('packages/ui/src/web/RagMemoryView')
+    const tsx = readUiModule('packages/ui/src/desktop/RagMemoryView')
     // onClearDimension 应该不在 JSX 中被调用 (仅在 interface 声明)
     const lines = tsx.split('\n')
     const jsxUsageLines = lines.filter(
@@ -124,7 +124,7 @@ describe('Agent 3: RAG 记忆管理验证', () => {
   })
 
   it('任务14: 搜索支持语义/文本切换，默认语义', () => {
-    const tsx = readUiModule('packages/ui/src/web/RagMemoryView')
+    const tsx = readUiModule('packages/ui/src/desktop/RagMemoryView')
     expect(tsx).toMatch(/searchMode.*semantic/)
     expect(tsx).toContain('toggleSearchMode')
     expect(tsx).toContain('segmentedControl')
@@ -160,27 +160,27 @@ describe('Agent 4: 设置与 UI 细节验证', () => {
   })
 
   it('任务21: descriptionText 和 chipsScrollArea 有内边距', () => {
-    const css = readFile('packages/ui/src/web/IdentitySettingsCard/IdentitySettingsCard.module.css')
+    const css = readFile('packages/ui/src/desktop/IdentitySettingsCard/IdentitySettingsCard.module.css')
     expect(css).toMatch(/\.descriptionText\s*\{[^}]*padding/)
     expect(css).toMatch(/\.chipsScrollArea\s*\{[^}]*padding/)
   })
 
   it('任务25: TTS 模型选项已实现', () => {
-    const tsx = readFile('packages/ui/src/web/AIGlobalModelsView/index.tsx')
+    const tsx = readFile('packages/ui/src/desktop/AIGlobalModelsView/index.tsx')
     expect(tsx).toContain('isTtsModel')
   })
 })
 
 describe('Agent 5: TTS 语音功能验证', () => {
   it('任务26: InputBar 有 TTS 切换按钮', () => {
-    const tsx = readFile('packages/ui/src/web/InputBar/index.tsx')
+    const tsx = readFile('packages/ui/src/desktop/InputBar/index.tsx')
     expect(tsx).toContain('onToggleTtsMode')
     expect(tsx).toContain('ttsMode')
     expect(tsx).toContain('Volume2')
   })
 
   it('任务27: MessageActionBar 有朗读按钮', () => {
-    const tsx = readFile('packages/ui/src/web/MessageActionBar/index.tsx')
+    const tsx = readFile('packages/ui/src/desktop/MessageActionBar/index.tsx')
     expect(tsx).toContain('onReadAloud')
     expect(tsx).toContain('Volume2')
   })
@@ -193,7 +193,7 @@ describe('Agent 5: TTS 语音功能验证', () => {
 
 describe('Agent 6: 伙伴聊天上下文验证', () => {
   it('任务28: 上下文轮数设置端到端流程完整', () => {
-    const editPage = readUiModule('packages/ui/src/web/AssistantEditPage')
+    const editPage = readUiModule('packages/ui/src/desktop/AssistantEditPage')
     expect(editPage).toContain('contextWindow')
 
     const schema = readFile('packages/database/src/schema/agent-assistants.ts')
@@ -207,14 +207,14 @@ describe('Agent 6: 伙伴聊天上下文验证', () => {
   })
 
   it('任务30: ContextChainDialog 组件存在', () => {
-    const tsx = readFile('packages/ui/src/web/ContextChainDialog/index.tsx')
+    const tsx = readFile('packages/ui/src/desktop/ContextChainDialog/index.tsx')
     expect(tsx).toContain('上下文')
     expect(tsx).toContain('压缩摘要')
     expect(tsx).toContain('提示词')
   })
 
   it('任务31: 对话分支功能完整', () => {
-    const actionBar = readFile('packages/ui/src/web/MessageActionBar/index.tsx')
+    const actionBar = readFile('packages/ui/src/desktop/MessageActionBar/index.tsx')
     expect(actionBar).toContain('onBranch')
     expect(actionBar).toContain('GitBranch')
 
@@ -225,18 +225,18 @@ describe('Agent 6: 伙伴聊天上下文验证', () => {
 
 describe('Agent 7: 回忆生成页面验证', () => {
   it('任务17: 卡片 section 合并，无中间圆角', () => {
-    const tsx = readFile('packages/ui/src/web/SummarySettingsView/index.tsx')
+    const tsx = readFile('packages/ui/src/desktop/SummarySettingsView/index.tsx')
     // 确认只有一个 cardSection 包裹
     const cardSections = tsx.match(/cardSection/g)
     expect(cardSections).toBeTruthy()
 
-    const css = readFile('packages/ui/src/web/SummarySettingsView/SummarySettingsView.module.css')
+    const css = readFile('packages/ui/src/desktop/SummarySettingsView/SummarySettingsView.module.css')
     // 确认有 divider 但没有中间圆角
     expect(css).toContain('divider')
   })
 
   it('任务17: Emoji 正确映射 🌱☘️🪴🌳', () => {
-    const tsx = readFile('packages/ui/src/web/SummarySettingsView/index.tsx')
+    const tsx = readFile('packages/ui/src/desktop/SummarySettingsView/index.tsx')
     expect(tsx).toContain("'🌱'")
     expect(tsx).toContain("'☘️'")
     expect(tsx).toContain("'🪴'")
@@ -246,7 +246,7 @@ describe('Agent 7: 回忆生成页面验证', () => {
 
 describe('Agent 8: 记忆画廊验证', () => {
   it('任务19: 侧边栏点击仅切换，不进入编辑', () => {
-    const tsx = readUiModule('packages/ui/src/web/GalleryPanel')
+    const tsx = readUiModule('packages/ui/src/desktop/GalleryPanel')
     // handleItemClick 应该只设置 selectedId
     expect(tsx).toContain('handleItemClick')
     expect(tsx).toContain('setSelectedId')
@@ -264,8 +264,8 @@ describe('Agent 8: 记忆画廊验证', () => {
 
 describe('Agent 9: 文件附件系统验证', () => {
   it('任务18-1: 附件上传组件支持图片/视频/音频', () => {
-    const entry = readFile('packages/ui/src/web/DiaryEditor/AttachmentUploader.tsx')
-    const hook = readFile('packages/ui/src/web/DiaryEditor/useAttachmentUploader.tsx')
+    const entry = readFile('packages/ui/src/desktop/DiaryEditor/AttachmentUploader.tsx')
+    const hook = readFile('packages/ui/src/desktop/DiaryEditor/useAttachmentUploader.tsx')
     expect(entry).toContain('image/*')
     expect(entry).toContain('video/*')
     expect(entry).toContain('audio/*')
@@ -273,33 +273,33 @@ describe('Agent 9: 文件附件系统验证', () => {
   })
 
   it('任务18-1: 支持粘贴上传', () => {
-    const hook = readFile('packages/ui/src/web/DiaryEditor/useAttachmentUploader.tsx')
+    const hook = readFile('packages/ui/src/desktop/DiaryEditor/useAttachmentUploader.tsx')
     expect(hook).toContain('handlePaste')
     expect(hook).toContain('clipboardData')
   })
 
   it('任务18-2: 右键菜单包含打开文件夹和复制', () => {
-    const hook = readFile('packages/ui/src/web/DiaryEditor/useAttachmentUploader.tsx')
+    const hook = readFile('packages/ui/src/desktop/DiaryEditor/useAttachmentUploader.tsx')
     expect(hook).toContain('openAttachmentFolder')
     expect(hook).toContain('copyAttachment')
   })
 
   it('任务18-4: 编辑器渲染附件引用', () => {
-    const tsx = readFile('packages/ui/src/web/DiaryEditor/CodeMirrorEditor.tsx')
+    const tsx = readFile('packages/ui/src/desktop/DiaryEditor/CodeMirrorEditor.tsx')
     expect(tsx).toContain('processAttachments')
     expect(tsx).toContain('attachment/')
   })
 
   it('任务18-3: ImagePreview 组件已集成到 CodeMirrorEditor', () => {
-    const editor = readFile('packages/ui/src/web/DiaryEditor/CodeMirrorEditor.tsx')
-    const hook = readFile('packages/ui/src/web/DiaryEditor/useCodeMirrorEditor.ts')
+    const editor = readFile('packages/ui/src/desktop/DiaryEditor/CodeMirrorEditor.tsx')
+    const hook = readFile('packages/ui/src/desktop/DiaryEditor/useCodeMirrorEditor.ts')
     expect(editor).toContain('import { ImagePreview }')
     expect(hook).toContain('previewSrc')
     expect(editor).toContain('<ImagePreview')
   })
 
   it('任务18-5: MarkdownRenderer 支持附件路径渲染', () => {
-    const renderer = readFile('packages/ui/src/web/MarkdownRenderer/MarkdownRenderer.tsx')
+    const renderer = readFile('packages/ui/src/desktop/MarkdownRenderer/MarkdownRenderer.tsx')
     // 确认有 basePath prop
     expect(renderer).toContain('basePath')
     // 确认有 resolveAttachment 辅助函数

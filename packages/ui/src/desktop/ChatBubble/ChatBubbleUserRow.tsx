@@ -5,7 +5,7 @@ import { ChatBubbleAttachments } from './ChatBubbleAttachments'
 import { ChatBubbleInlineEditor } from './ChatBubbleInlineEditor'
 import { formatRelativeTime } from './chat-bubble.utils'
 import styles from './ChatBubble.module.css'
-import { resolveWebUserAvatarSrc } from '../user-avatar.util'
+import { resolveDesktopUserAvatarSrc } from '../user-avatar.util'
 
 interface ChatBubbleUserRowProps {
   message: MockChatMessage
@@ -92,7 +92,7 @@ export const ChatBubbleUserRow: React.FC<ChatBubbleUserRowProps> = ({
 
     <div className={styles.avatarWrap}>
       <img
-        src={resolveWebUserAvatarSrc(userProfile.avatarPath)}
+        src={resolveDesktopUserAvatarSrc(userProfile.avatarPath)}
         alt="avatar"
         className={styles.avatarImg}
       />

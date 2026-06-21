@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import React from 'react'
+import { formatLocalDate } from '@baishou/shared'
 import './DatePicker.css'
 
 interface DatePickerProps {
@@ -13,11 +14,7 @@ interface DatePickerProps {
 export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, mode = 'date' }) => {
   const { t } = useTranslation()
   // 临时使用原生 input date 验证逻辑
-  const toLocalISOString = (date: Date) => {
-    const tzoffset = date.getTimezoneOffset() * 60000 // offset in milliseconds
-    const localISOTime = new Date(date.getTime() - tzoffset).toISOString().slice(0, 10)
-    return localISOTime
-  }
+  const toLocalISOString = (date: Date) => formatLocalDate(date)
 
   return (
     <div className="date-picker-container">

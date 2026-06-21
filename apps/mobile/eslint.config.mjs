@@ -63,8 +63,8 @@ export default [
                 '请使用 @baishou/database 或 @baishou/database/expo，不要引用桌面数据库入口。'
             },
             {
-              group: ['@baishou/ui/src/web/**', '@baishou/ui/web/**'],
-              message: '请使用 @baishou/ui/native，不要引用 Web 组件。'
+              group: ['@baishou/ui/src/desktop/**', '@baishou/ui/desktop/**'],
+              message: '请使用 @baishou/ui/native，不要引用桌面端 DOM 组件。'
             }
           ]
         }

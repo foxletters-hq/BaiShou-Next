@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { findShortcutCommandConflict } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
-import { useToast } from '../../web/Toast/useToast'
+import { useToast } from '../Toast/useToast'
 import type { PromptShortcut } from './index'
 
 export const PAGE_SIZE_OPTIONS = [5, 10, 15, 20, 25, 30] as const

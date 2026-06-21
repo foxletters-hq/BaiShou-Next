@@ -7,7 +7,7 @@
     ".": "./src/index.ts",
     "./native": "./src/native/index.ts",
     "./chat-attachment-thumbnail": "./src/chat-attachment-thumbnail.ts",
-    "./web/*": "./src/web/*",
+    "./desktop/*": "./src/desktop/*",
     "./native/*": "./src/native/*",
     "./theme/*": "./src/theme/*",
     "./hooks/*": "./src/hooks/*"

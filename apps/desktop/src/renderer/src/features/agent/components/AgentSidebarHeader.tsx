@@ -2,7 +2,7 @@ import React, { startTransition } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { MdUnfoldMore, MdAdd, MdSettings, MdChecklist } from 'react-icons/md'
-import { resolveWebAssistantAvatarSrc, AssistantKindBadge } from '@baishou/ui'
+import { resolveDesktopAssistantAvatarSrc, AssistantKindBadge } from '@baishou/ui'
 import type { AgentAssistant } from './AgentSidebar'
 import styles from './AgentSidebar.module.css'
 import { rememberSettingsReturnPath } from '../../settings/settings-navigation.util'
@@ -29,7 +29,7 @@ const AssistantAvatar: React.FC<AssistantAvatarProps> = ({ assistant, size }) =>
     <div style={shellStyle}>
       <img
         key={assistant.avatarPath ?? assistant.id}
-        src={resolveWebAssistantAvatarSrc(assistant.avatarPath)}
+        src={resolveDesktopAssistantAvatarSrc(assistant.avatarPath)}
         alt={assistant.name}
         style={{
           width: '100%',
