@@ -13,7 +13,12 @@ import {
   RestoreBlockingOverlay,
   ChatBackgroundSettingsCard
 } from '@baishou/ui'
-import { GITHUB_ISSUES_URL, GITHUB_REPO_URL } from '@baishou/shared'
+import {
+  GITHUB_ISSUES_URL,
+  GITHUB_REPO_URL,
+  normalizeChatBackgroundBlur,
+  normalizeChatBackgroundOverlayOpacity
+} from '@baishou/shared'
 import baishouHeroImg from '@baishou/shared/assets/images/Next-1.0.0-banner.jpg'
 import { APP_VERSION } from '../../../../../app-version'
 import { useDesktopStorageSettings } from '../hooks/useDesktopStorageSettings'
@@ -25,7 +30,8 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
   const navigate = useNavigate()
   const settingsNav = useSettingsScopeNavigation()
   const { t } = useTranslation()
-  const { profile, loadProfile } = useUserProfileStore() as any
+  const { profile, loadProfile, pickAndSaveBackground, clearBackground, updateChatBackgroundStyle } =
+    useUserProfileStore() as any
   const [vaults, setVaults] = useState<any[]>([])
   const [activeVault, setActiveVault] = useState<any>(null)
   const [appVersion, setAppVersion] = useState(APP_VERSION)
@@ -170,24 +176,18 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
                 embedded
                 isLast={false}
                 backgroundPath={profile?.chatBackgroundPath || null}
-                onPickBackground={async () => {
-                  if (typeof window !== 'undefined' && window.electron) {
-                    const newPath =
-                      await window.electron.ipcRenderer.invoke('profile:pick-background')
-                    if (newPath && profile) {
-                      const updated = { ...profile, chatBackgroundPath: newPath }
-                      await window.electron.ipcRenderer.invoke('profile:save', updated)
-                      if (loadProfile) await loadProfile()
-                    }
-                  }
-                }}
-                onClearBackground={async () => {
-                  if (profile) {
-                    const updated = { ...profile, chatBackgroundPath: null }
-                    await window.electron.ipcRenderer.invoke('profile:save', updated)
-                    if (loadProfile) await loadProfile()
-                  }
-                }}
+                blur={normalizeChatBackgroundBlur(profile?.chatBackgroundBlur)}
+                overlayOpacity={normalizeChatBackgroundOverlayOpacity(
+                  profile?.chatBackgroundOverlayOpacity
+                )}
+                onPickBackground={() => void pickAndSaveBackground()}
+                onClearBackground={() => void clearBackground()}
+                onBlurChange={(value) =>
+                  void updateChatBackgroundStyle({ chatBackgroundBlur: value })
+                }
+                onOverlayOpacityChange={(value) =>
+                  void updateChatBackgroundStyle({ chatBackgroundOverlayOpacity: value })
+                }
               />
               {settings.hotkeyConfig ? (
                 <>
