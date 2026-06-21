@@ -33,4 +33,8 @@ export function registerProfileIPC() {
   ipcMain.handle('profile:pick-avatar', async () => {
     return await profileService.pickAndSaveAvatar()
   })
+
+  ipcMain.handle('profile:pick-background', async () => {
+    return await profileService.pickAndSaveBackground()
+  })
 }

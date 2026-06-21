@@ -83,6 +83,11 @@ export interface IStoragePathService {
   getUserAvatarsDirectory(): Promise<string>
 
   /**
+   * 聊天背景图目录：Vaults/Personal/Attachments/backgrounds
+   */
+  getChatBackgroundsDirectory(): Promise<string>
+
+  /**
    * 获取日记附件目录
    * 路径结构: Vault/Journals/{year}/{month}/attachment/
    * @param date 日期对象，用于确定年月

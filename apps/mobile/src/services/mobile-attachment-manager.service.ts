@@ -277,6 +277,46 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
     }
   }
 
+  /**
+   * Import a chat background image into the Vault backgrounds pool.
+   * Returns a relative path like 'backgrounds/bg_1234567890.jpg'.
+   */
+  async importBackground(absoluteSourcePath: string): Promise<string> {
+    if (!absoluteSourcePath || absoluteSourcePath.trim() === '') {
+      return absoluteSourcePath
+    }
+    if (absoluteSourcePath.startsWith('backgrounds/')) {
+      return absoluteSourcePath
+    }
+
+    const backgroundsDir = await this.pathService.getChatBackgroundsDirectory()
+    const compressedSource = await compressImageForAvatarImport(absoluteSourcePath)
+    const ext = inferImageExtension(compressedSource)
+    const name = `bg_${Date.now()}.${ext}`
+    const dest = joinPath(backgroundsDir, name)
+    await importUriToPath(compressedSource, dest, this.fileSystem)
+    return `backgrounds/${name}`
+  }
+
+  /**
+   * Resolve a relative background path to an absolute URI for rendering.
+   */
+  async resolveBackgroundPath(relativePath: string): Promise<string> {
+    if (!relativePath?.startsWith('backgrounds/')) {
+      return relativePath
+    }
+
+    const filename = basename(relativePath)
+    const backgroundsDir = await this.pathService.getChatBackgroundsDirectory()
+    const absPath = joinPath(backgroundsDir, filename)
+
+    if (await this.fileSystem.exists(absPath)) {
+      return toFileUri(absPath)
+    }
+
+    throw new Error(`BACKGROUND_FILE_NOT_FOUND: ${relativePath}`)
+  }
+
   /** 从相册选取头像并导入 */
   static async pickAndImportAvatar(
     manager: MobileAttachmentManagerService
@@ -289,5 +329,19 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
     })
     if (result.canceled || !result.assets[0]?.uri) return null
     return manager.importAvatar(result.assets[0].uri, 'user_avatar')
+  }
+
+  /** 从相册选取聊天背景并导入 */
+  static async pickAndImportBackground(
+    manager: MobileAttachmentManagerService
+  ): Promise<string | null> {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!perm.granted) return null
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.9
+    })
+    if (result.canceled || !result.assets[0]?.uri) return null
+    return manager.importBackground(result.assets[0].uri)
   }
 }

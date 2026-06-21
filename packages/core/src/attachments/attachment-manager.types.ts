@@ -92,4 +92,18 @@ export interface IAttachmentManager {
    * @param filePath 绝对路径
    */
   deleteDiaryAttachment(filePath: string): Promise<void>
+
+  /**
+   * Imports a chat background image into the Vault backgrounds pool.
+   * @param absoluteSourcePath The physical path picked by the user.
+   * @returns The relative path representing the imported background (e.g., 'backgrounds/bg_123.jpg').
+   */
+  importBackground(absoluteSourcePath: string): Promise<string>
+
+  /**
+   * Converts a Vault-relative background path back into an absolute URI for native desktop rendering.
+   * @param relativePath The path saved in DB (e.g. 'backgrounds/bg_123.jpg')
+   * @returns Absolute path safely resolvable by the viewer
+   */
+  resolveBackgroundPath(relativePath: string): Promise<string>
 }

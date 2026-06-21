@@ -92,7 +92,8 @@ export const settingsApi = {
   profile: {
     getProfile: () => ipcRenderer.invoke('profile:get-all'),
     saveProfile: (profile: any) => ipcRenderer.invoke('profile:save', profile),
-    pickAndSaveAvatar: () => ipcRenderer.invoke('profile:pick-avatar')
+    pickAndSaveAvatar: () => ipcRenderer.invoke('profile:pick-avatar'),
+    pickAndSaveBackground: () => ipcRenderer.invoke('profile:pick-background')
   },
 
   storage: {

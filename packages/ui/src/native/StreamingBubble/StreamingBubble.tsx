@@ -25,7 +25,7 @@ export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
   onRetry
 }) => {
   const { t } = useTranslation()
-  const { colors, tokens } = useNativeTheme()
+  const { colors, isDark, tokens } = useNativeTheme()
   const auxStyles = useMemo(() => createStreamingBubbleStyles(colors, tokens), [colors, tokens])
 
   const aiName = aiProfile.name || t('agent.chat.ai_label', 'AI')
@@ -92,7 +92,7 @@ export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
             style={[
               chatBubbleStyles.bubble,
               chatBubbleStyles.bubbleEditing,
-              { backgroundColor: colors.bgSurface, borderBottomLeftRadius: 4 }
+              { backgroundColor: isDark ? 'rgba(30, 30, 34, 0.4)' : 'rgba(255, 255, 255, 0.48)', borderBottomLeftRadius: 4 }
             ]}
           >
             {hasReasoning && (

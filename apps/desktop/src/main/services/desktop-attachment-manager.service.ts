@@ -16,4 +16,10 @@ export class DesktopAttachmentManagerService extends AttachmentManagerService {
     const prepared = await prepareAvatarSourceForImport(absoluteSourcePath)
     return super.importAvatar(prepared, prefix)
   }
+
+  override async importBackground(absoluteSourcePath: string): Promise<string> {
+    // Backgrounds also benefit from compression for large images
+    const prepared = await prepareAvatarSourceForImport(absoluteSourcePath)
+    return super.importBackground(prepared)
+  }
 }
