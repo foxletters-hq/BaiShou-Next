@@ -2,6 +2,10 @@ import { useState, useCallback, useEffect, useMemo, useRef, useSyncExternalStore
 import { logger, normalizeDiaryTags } from '@baishou/shared'
 import type { DiaryListFilter } from '@baishou/shared'
 import { getDiaryListCacheVersion, subscribeDiaryListCache } from '@baishou/shared/cache'
+import {
+  getDesktopVaultScopeKey,
+  subscribeDesktopVaultScope
+} from '../../../cache/desktop-vault-scope'
 
 export interface DiaryPageQuery {
   selectedMonth: Date | null
@@ -84,6 +88,12 @@ export function useDiaryData(query: DiaryPageQuery) {
     subscribeDiaryListCache,
     getDiaryListCacheVersion
   )
+  const vaultScopeKey = useSyncExternalStore(subscribeDesktopVaultScope, getDesktopVaultScopeKey)
+
+  useEffect(() => {
+    setEntries([])
+    setTotalCount(0)
+  }, [vaultScopeKey])
 
   const listFilter = useMemo(() => buildListFilter(query), [query])
   const countFilter = useMemo(() => buildCountFilter(query), [query])
@@ -150,7 +160,8 @@ export function useDiaryData(query: DiaryPageQuery) {
     searchTerm ? searchFilterKey : browseMonthKey,
     searchTerm ? 0 : listFilter,
     searchTerm ? 0 : countFilter,
-    diaryListCacheVersion
+    diaryListCacheVersion,
+    vaultScopeKey
   ])
 
   useEffect(() => {

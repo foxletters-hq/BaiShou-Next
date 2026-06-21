@@ -32,10 +32,11 @@ export function getMainPageCacheKey(pathname: string): string | null {
 
 const CachedPageLayer: React.FC<{
   cacheKey: string
+  vaultScopeRevision: number
   isActive: boolean
   hideWhenOverlay: boolean
   Component: React.ComponentType
-}> = ({ cacheKey, isActive, hideWhenOverlay, Component }) => {
+}> = ({ cacheKey, vaultScopeRevision, isActive, hideWhenOverlay, Component }) => {
   const controls = useAnimation()
   const layerActive = isActive && !hideWhenOverlay
 
@@ -58,10 +59,11 @@ const CachedPageLayer: React.FC<{
     return () => {
       cancelled = true
     }
-  }, [layerActive, cacheKey, controls])
+  }, [layerActive, cacheKey, vaultScopeRevision, controls])
 
   return (
     <motion.div
+      key={`${cacheKey}:${vaultScopeRevision}`}
       className={styles.cachedPage}
       hidden={!layerActive}
       aria-hidden={!layerActive}
@@ -77,8 +79,9 @@ const CachedPageLayer: React.FC<{
 
 export const MainPageCache: React.FC<{
   activeKey: string | null
+  vaultScopeRevision: number
   hideActiveWhenOverlay?: boolean
-}> = ({ activeKey, hideActiveWhenOverlay = false }) => {
+}> = ({ activeKey, vaultScopeRevision, hideActiveWhenOverlay = false }) => {
   const [mountedKeys, setMountedKeys] = useState<Set<string>>(() => {
     const initial = new Set<string>()
     if (activeKey) initial.add(activeKey)
@@ -102,8 +105,9 @@ export const MainPageCache: React.FC<{
         if (!Component) return null
         return (
           <CachedPageLayer
-            key={key}
+            key={`${key}:${vaultScopeRevision}`}
             cacheKey={key}
+            vaultScopeRevision={vaultScopeRevision}
             isActive={key === activeKey}
             hideWhenOverlay={hideActiveWhenOverlay && key === activeKey}
             Component={Component}

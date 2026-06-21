@@ -1,11 +1,20 @@
 /** Desktop Renderer 当前 vault scope（与 SWR summary.dashboard 的 scopeKey 对齐） */
 
+const ACTIVE_VAULT_STORAGE_KEY = 'baishou_active_vault'
+
 let scopeKey: string | null = null
+let scopeRevision = 0
 let scopeReady = false
 const listeners = new Set<() => void>()
 
 function notify(): void {
   listeners.forEach((listener) => listener())
+}
+
+function readPersistedVaultName(): string | null {
+  if (typeof window === 'undefined') return null
+  const stored = window.localStorage.getItem(ACTIVE_VAULT_STORAGE_KEY)
+  return stored?.trim() ? stored : null
 }
 
 async function resolveActiveVaultName(): Promise<string> {
@@ -14,23 +23,39 @@ async function resolveActiveVaultName(): Promise<string> {
     const active = await api.vault.getActive()
     if (active?.name) return String(active.name)
   }
-  return 'Personal'
+  return readPersistedVaultName() ?? 'Personal'
 }
 
 export async function initDesktopVaultScope(): Promise<void> {
+  const persisted = readPersistedVaultName()
+  if (persisted) {
+    scopeKey = persisted
+    scopeReady = true
+    notify()
+  }
+
   scopeKey = await resolveActiveVaultName()
   scopeReady = true
   notify()
 }
 
 export function setDesktopVaultScopeKey(key: string): void {
+  if (scopeKey === key) {
+    scopeReady = true
+    return
+  }
   scopeKey = key
+  scopeRevision += 1
   scopeReady = true
   notify()
 }
 
 export function getDesktopVaultScopeKey(): string {
-  return scopeKey ?? 'Personal'
+  return scopeKey ?? readPersistedVaultName() ?? 'Personal'
+}
+
+export function getDesktopVaultScopeRevision(): number {
+  return scopeRevision
 }
 
 export function isDesktopVaultScopeReady(): boolean {

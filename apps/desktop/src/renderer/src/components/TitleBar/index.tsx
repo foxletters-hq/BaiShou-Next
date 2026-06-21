@@ -17,7 +17,7 @@ import { IncrementalSyncPanel, WorkspaceScopeHelpTooltip } from '@baishou/ui'
 import { resolveDiaryHomePath } from '../Sidebar/sidebar-preferences'
 import { useOrchestratedSync } from '../../hooks/useOrchestratedSync'
 import { readActiveVaultNavigationSnapshot } from '../../lib/agent-navigation-persistence'
-import { switchActiveVaultAndReload, persistActiveVaultName } from '../../lib/vault-runtime.util'
+import { switchActiveVault, persistActiveVaultName } from '../../lib/vault-runtime.util'
 
 export const TitleBar: React.FC = () => {
   const { t } = useTranslation()
@@ -77,10 +77,21 @@ export const TitleBar: React.FC = () => {
   }, [location.pathname, fetchVaults])
 
   useEffect(() => {
-    const unsub = (window as any).api?.vault?.onRegistryUpdated?.(() => {
+    const unsubRegistry = (window as any).api?.vault?.onRegistryUpdated?.(() => {
       void fetchVaults()
     })
-    return unsub
+    const unsubMutation = (window as any).api?.cache?.onDomainMutation?.((event: {
+      domain?: string
+      action?: string
+    }) => {
+      if (event.domain === 'vault' && event.action === 'switch') {
+        void fetchVaults()
+      }
+    })
+    return () => {
+      unsubRegistry?.()
+      unsubMutation?.()
+    }
   }, [fetchVaults])
 
   useEffect(() => {
@@ -136,10 +147,13 @@ export const TitleBar: React.FC = () => {
   const handleSwitchVault = async (vaultName: string) => {
     if (isSwitchingVault || vaultName === activeVault?.name) return
     setIsSwitchingVault(true)
+    setShowVaultMenu(false)
     try {
-      await switchActiveVaultAndReload(vaultName)
+      await switchActiveVault(vaultName)
+      await fetchVaults()
     } catch (e) {
       console.error(e)
+    } finally {
       setIsSwitchingVault(false)
     }
   }
