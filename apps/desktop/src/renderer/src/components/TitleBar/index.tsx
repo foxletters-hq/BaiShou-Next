@@ -32,7 +32,7 @@ export const TitleBar: React.FC = () => {
   const vaultMenuRef = useRef<HTMLDivElement>(null)
   const preloadedVaultsRef = useRef<Set<string>>(new Set())
   const [s3Configured, setS3Configured] = useState(false)
-  const { isSyncing, progress, startSync } = useOrchestratedSync()
+  const { isSyncing, isPlanning, progress, startSync } = useOrchestratedSync()
 
   const fetchVaults = useCallback(async (): Promise<boolean> => {
     try {
@@ -75,6 +75,13 @@ export const TitleBar: React.FC = () => {
     if (location.pathname.startsWith('/welcome')) return
     void fetchVaults()
   }, [location.pathname, fetchVaults])
+
+  useEffect(() => {
+    const unsub = (window as any).api?.vault?.onRegistryUpdated?.(() => {
+      void fetchVaults()
+    })
+    return unsub
+  }, [fetchVaults])
 
   useEffect(() => {
     if (!showVaultMenu) return undefined
@@ -187,7 +194,7 @@ export const TitleBar: React.FC = () => {
                 <IncrementalSyncPanel
                   onSync={startSync}
                   isConfigured={s3Configured}
-                  isSyncing={isSyncing}
+                  isSyncing={isSyncing || isPlanning}
                   progress={progress}
                 />
               </div>
