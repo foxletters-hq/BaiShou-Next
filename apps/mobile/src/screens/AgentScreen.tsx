@@ -70,9 +70,9 @@ import { writeAgentNavigationSnapshot } from '../lib/agent-navigation-persistenc
 import { consumeAssistantsNeedRefresh } from '../lib/assistant-ui-refresh-signal'
 import { waitForVaultEcosystemResync } from '../services/mobile-vault-resync.service'
 import { useThrottledFocusRefresh } from '../hooks/useThrottledFocusRefresh'
+import DEFAULT_CHAT_BG from '@baishou/shared/assets/images/BaiShou-v0.0.1.jpeg'
 
 /** 默认聊天背景图 */
-const DEFAULT_CHAT_BG = require('@baishou/shared/assets/images/BaiShou-v0.0.1.jpeg')
 /** 底部输入栏 + 工具条的大致高度，用于「回到底部」悬浮按钮定位 */
 const INPUT_DOCK_HEIGHT = 136
 /** 编辑态：保存按钮与 token 行距键盘顶部的留白 */
@@ -435,7 +435,9 @@ export const AgentScreen = () => {
   useEffect(() => {
     if (!dbReady || !services) return
     services.settingsManager
-      .get<{ nickname?: string; avatarPath?: string | null; chatBackgroundPath?: string | null }>(USER_PROFILE_SETTINGS_KEY)
+      .get<{ nickname?: string; avatarPath?: string | null; chatBackgroundPath?: string | null }>(
+        USER_PROFILE_SETTINGS_KEY
+      )
       .then((profile) =>
         setUserProfile({
           nickname: profile?.nickname || t('agent.chat.you_label', '你'),
@@ -780,175 +782,186 @@ export const AgentScreen = () => {
           style={styles.backgroundImage}
           resizeMode="cover"
         >
-        <View style={styles.container}>
-          <AgentChatAppBar
-            modelName={displayModelName || ''}
-            costMicros={totalCostMicros}
-            onMenuPress={() => setDrawerOpen(true)}
-            onModelPress={() => setShowModelSwitcher(true)}
-            onCostPress={() => setShowCostDialog(true)}
-          />
-
-          <AgentDrawerSwipeZone enabled={drawerSwipeEnabled} onOpen={() => setDrawerOpen(true)}>
-            <FlatList
-              ref={flatListRef}
-              style={styles.list}
-              contentContainerStyle={[styles.listContent, { paddingBottom: listBottomPadding }]}
-              data={messages}
-              extraData={{ chatAiProfile, chatUserProfile }}
-              keyExtractor={(item) => item.id}
-              nestedScrollEnabled
-              keyboardShouldPersistTaps="always"
-              keyboardDismissMode="interactive"
-              ListHeaderComponent={
-                hasMore && showLoadMoreBanner ? (
-                  <TouchableOpacity style={styles.loadMore} onPress={() => void handleLoadMore()}>
-                    <Text style={[styles.loadMoreText, { color: colors.textSecondary }]}>
-                      {t('agent.chat.scroll_up_load_more', '点击或上滑加载更早对话')}
-                    </Text>
-                  </TouchableOpacity>
-                ) : null
-              }
-              renderItem={({ item }) => {
-                const msgWithCompaction = item as typeof item & {
-                  compactionRecord?: { streamTranscript?: string } | null
-                }
-                const isLiveCompressionAnchor =
-                  (compressionPhase === 'auto' || compressionPhase === 'manual') &&
-                  compressionTriggerMessageId === item.id &&
-                  (isCompressing ||
-                    ((Boolean(compressionText?.trim()) || Boolean(compressionReasoning?.trim())) &&
-                      !msgWithCompaction.compactionRecord))
-
-                return (
-                  <View
-                    ref={item.id === editingMessageId ? editingRowRef : undefined}
-                    collapsable={false}
-                    style={styles.bubble}
-                  >
-                    <AgentMessageRow
-                      item={msgWithCompaction as any}
-                      chatUserProfile={chatUserProfile}
-                      chatAiProfile={chatAiProfile}
-                      isLiveCompressionAnchor={isLiveCompressionAnchor}
-                      liveCompression={{
-                        phase: compressionPhase,
-                        summary: compressionText,
-                        reasoning: compressionReasoning,
-                        isActive: isCompressing
-                      }}
-                      onRegenerate={() => handleRegenerate(item.id)}
-                      onResend={item.role === 'user' ? () => void handleResend(item.id) : undefined}
-                      onResendEdit={
-                        item.role === 'user'
-                          ? (content) => handleEditMessage(item.id, content)
-                          : undefined
-                      }
-                      onSaveEdit={
-                        item.role === 'assistant'
-                          ? (content) => handleSaveAssistantEdit(item.id, content)
-                          : undefined
-                      }
-                      onCopy={() => Clipboard.setStringAsync(item.content)}
-                      onDelete={() => handleDeleteMessage(item.id)}
-                      onReadAloud={
-                        item.role === 'assistant'
-                          ? () => handleTtsReadAloud(item.content, item.id)
-                          : undefined
-                      }
-                      isTtsPlaying={ttsPlayingMsgId === item.id}
-                      onShowContext={
-                        item.role === 'assistant' ? () => handleShowContext(item) : undefined
-                      }
-                      onBranch={item.role === 'assistant' ? () => handleBranch(item.id) : undefined}
-                      onBubbleEditingChange={handleBubbleEditingChange}
-                    />
-                  </View>
-                )
-              }}
-              ListFooterComponent={
-                showStreamingFooter ? (
-                  <View>
-                    <StreamingBubble
-                      text={streamingText}
-                      reasoning={streamingReasoning}
-                      isReasoning={isStreaming && !streamingText && !!streamingReasoning}
-                      activeToolName={activeTool?.name ?? null}
-                      completedTools={completedTools.map((tool, idx) => ({
-                        name: tool.name,
-                        durationMs:
-                          tool.endTime && tool.startTime ? tool.endTime - tool.startTime : 0,
-                        result: tool.result,
-                        toolCallId: `streaming-${tool.name}-${idx}`
-                      }))}
-                      aiProfile={chatAiProfile}
-                    />
-                  </View>
-                ) : null
-              }
-              showsVerticalScrollIndicator={false}
-              onContentSizeChange={handleContentSizeChange}
-              onLayout={() => {
-                if (!layoutReadyRef.current) {
-                  layoutReadyRef.current = true
-                  requestAnimationFrame(() => flatListRef.current?.scrollToEnd({ animated: false }))
-                }
-              }}
-              onScroll={handleListScroll}
-              scrollEventThrottle={16}
-              ListEmptyComponent={!isStreaming ? renderEmptyState() : null}
+          <View style={styles.container}>
+            <AgentChatAppBar
+              modelName={displayModelName || ''}
+              costMicros={totalCostMicros}
+              onMenuPress={() => setDrawerOpen(true)}
+              onModelPress={() => setShowModelSwitcher(true)}
+              onCostPress={() => setShowCostDialog(true)}
             />
-          </AgentDrawerSwipeZone>
 
-          {showScrollButton && !isBubbleEditing ? (
-            <Animated.View
-              pointerEvents="box-none"
-              style={[styles.scrollBtnWrap, scrollButtonAnimatedStyle]}
-            >
-              <TouchableOpacity
-                style={[styles.scrollBtn, { backgroundColor: colors.bgSurface }]}
-                onPress={() => scrollToBottom(flatListRef, true)}
-                accessibilityLabel={t('agent.chat.scroll_to_bottom', '回到最新消息')}
+            <AgentDrawerSwipeZone enabled={drawerSwipeEnabled} onOpen={() => setDrawerOpen(true)}>
+              <FlatList
+                ref={flatListRef}
+                style={styles.list}
+                contentContainerStyle={[styles.listContent, { paddingBottom: listBottomPadding }]}
+                data={messages}
+                extraData={{ chatAiProfile, chatUserProfile }}
+                keyExtractor={(item) => item.id}
+                nestedScrollEnabled
+                keyboardShouldPersistTaps="always"
+                keyboardDismissMode="interactive"
+                ListHeaderComponent={
+                  hasMore && showLoadMoreBanner ? (
+                    <TouchableOpacity style={styles.loadMore} onPress={() => void handleLoadMore()}>
+                      <Text style={[styles.loadMoreText, { color: colors.textSecondary }]}>
+                        {t('agent.chat.scroll_up_load_more', '点击或上滑加载更早对话')}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : null
+                }
+                renderItem={({ item }) => {
+                  const msgWithCompaction = item as typeof item & {
+                    compactionRecord?: { streamTranscript?: string } | null
+                  }
+                  const isLiveCompressionAnchor =
+                    (compressionPhase === 'auto' || compressionPhase === 'manual') &&
+                    compressionTriggerMessageId === item.id &&
+                    (isCompressing ||
+                      ((Boolean(compressionText?.trim()) ||
+                        Boolean(compressionReasoning?.trim())) &&
+                        !msgWithCompaction.compactionRecord))
+
+                  return (
+                    <View
+                      ref={item.id === editingMessageId ? editingRowRef : undefined}
+                      collapsable={false}
+                      style={styles.bubble}
+                    >
+                      <AgentMessageRow
+                        item={msgWithCompaction as any}
+                        chatUserProfile={chatUserProfile}
+                        chatAiProfile={chatAiProfile}
+                        isLiveCompressionAnchor={isLiveCompressionAnchor}
+                        liveCompression={{
+                          phase: compressionPhase,
+                          summary: compressionText,
+                          reasoning: compressionReasoning,
+                          isActive: isCompressing
+                        }}
+                        onRegenerate={() => handleRegenerate(item.id)}
+                        onResend={
+                          item.role === 'user' ? () => void handleResend(item.id) : undefined
+                        }
+                        onResendEdit={
+                          item.role === 'user'
+                            ? (content) => handleEditMessage(item.id, content)
+                            : undefined
+                        }
+                        onSaveEdit={
+                          item.role === 'assistant'
+                            ? (content) => handleSaveAssistantEdit(item.id, content)
+                            : undefined
+                        }
+                        onCopy={() => Clipboard.setStringAsync(item.content)}
+                        onDelete={() => handleDeleteMessage(item.id)}
+                        onReadAloud={
+                          item.role === 'assistant'
+                            ? () => handleTtsReadAloud(item.content, item.id)
+                            : undefined
+                        }
+                        isTtsPlaying={ttsPlayingMsgId === item.id}
+                        onShowContext={
+                          item.role === 'assistant' ? () => handleShowContext(item) : undefined
+                        }
+                        onBranch={
+                          item.role === 'assistant' ? () => handleBranch(item.id) : undefined
+                        }
+                        onBubbleEditingChange={handleBubbleEditingChange}
+                      />
+                    </View>
+                  )
+                }}
+                ListFooterComponent={
+                  showStreamingFooter ? (
+                    <View>
+                      <StreamingBubble
+                        text={streamingText}
+                        reasoning={streamingReasoning}
+                        isReasoning={isStreaming && !streamingText && !!streamingReasoning}
+                        activeToolName={activeTool?.name ?? null}
+                        completedTools={completedTools.map((tool, idx) => ({
+                          name: tool.name,
+                          durationMs:
+                            tool.endTime && tool.startTime ? tool.endTime - tool.startTime : 0,
+                          result: tool.result,
+                          toolCallId: `streaming-${tool.name}-${idx}`
+                        }))}
+                        aiProfile={chatAiProfile}
+                      />
+                    </View>
+                  ) : null
+                }
+                showsVerticalScrollIndicator={false}
+                onContentSizeChange={handleContentSizeChange}
+                onLayout={() => {
+                  if (!layoutReadyRef.current) {
+                    layoutReadyRef.current = true
+                    requestAnimationFrame(() =>
+                      flatListRef.current?.scrollToEnd({ animated: false })
+                    )
+                  }
+                }}
+                onScroll={handleListScroll}
+                scrollEventThrottle={16}
+                ListEmptyComponent={!isStreaming ? renderEmptyState() : null}
+              />
+            </AgentDrawerSwipeZone>
+
+            {showScrollButton && !isBubbleEditing ? (
+              <Animated.View
+                pointerEvents="box-none"
+                style={[styles.scrollBtnWrap, scrollButtonAnimatedStyle]}
               >
-                <MaterialIcons name="keyboard-arrow-down" size={22} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </Animated.View>
-          ) : null}
+                <TouchableOpacity
+                  style={[styles.scrollBtn, { backgroundColor: colors.bgSurface }]}
+                  onPress={() => scrollToBottom(flatListRef, true)}
+                  accessibilityLabel={t('agent.chat.scroll_to_bottom', '回到最新消息')}
+                >
+                  <MaterialIcons
+                    name="keyboard-arrow-down"
+                    size={22}
+                    color={colors.textSecondary}
+                  />
+                </TouchableOpacity>
+              </Animated.View>
+            ) : null}
 
-          <Animated.View
-            onLayout={(event) => {
-              const next = Math.ceil(event.nativeEvent.layout.height)
-              if (next > 0 && next !== inputDockHeight) setInputDockHeight(next)
-            }}
-            style={[
-              styles.inputDock,
-              inputDockAnimatedStyle,
-              {
-                backgroundColor: colors.bgSurface,
-                opacity: isBubbleEditing ? 0.92 : 1
-              }
-            ]}
-            pointerEvents={isBubbleEditing ? 'none' : 'auto'}
-          >
-            <InputBar
-              ref={inputBarRef}
-              onSend={handleSend}
-              isLoading={isLoading || isStreaming}
-              onStop={handleStop}
-              composerEnabled={!isBubbleEditing}
-              onInputFocus={handleInputBarFocus}
-              shortcuts={shortcuts}
-              assistantName={assistantDisplayName}
-              onManageShortcuts={() => setShowShortcutSheet(true)}
-              onRecall={() => setShowRecallSheet(true)}
-              onOpenTools={() => router.push('/(tabs)/agent/tools' as Href)}
-              searchMode={searchMode}
-              onToggleSearchMode={toggleSearchMode}
-              ttsMode={ttsMode}
-              onToggleTtsMode={toggleTtsMode}
-            />
-          </Animated.View>
-        </View>
+            <Animated.View
+              onLayout={(event) => {
+                const next = Math.ceil(event.nativeEvent.layout.height)
+                if (next > 0 && next !== inputDockHeight) setInputDockHeight(next)
+              }}
+              style={[
+                styles.inputDock,
+                inputDockAnimatedStyle,
+                {
+                  backgroundColor: colors.bgSurface,
+                  opacity: isBubbleEditing ? 0.92 : 1
+                }
+              ]}
+              pointerEvents={isBubbleEditing ? 'none' : 'auto'}
+            >
+              <InputBar
+                ref={inputBarRef}
+                onSend={handleSend}
+                isLoading={isLoading || isStreaming}
+                onStop={handleStop}
+                composerEnabled={!isBubbleEditing}
+                onInputFocus={handleInputBarFocus}
+                shortcuts={shortcuts}
+                assistantName={assistantDisplayName}
+                onManageShortcuts={() => setShowShortcutSheet(true)}
+                onRecall={() => setShowRecallSheet(true)}
+                onOpenTools={() => router.push('/(tabs)/agent/tools' as Href)}
+                searchMode={searchMode}
+                onToggleSearchMode={toggleSearchMode}
+                ttsMode={ttsMode}
+                onToggleTtsMode={toggleTtsMode}
+              />
+            </Animated.View>
+          </View>
         </ImageBackground>
       </ScreenSafeArea>
 

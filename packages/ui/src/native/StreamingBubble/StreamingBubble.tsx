@@ -92,7 +92,10 @@ export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
             style={[
               chatBubbleStyles.bubble,
               chatBubbleStyles.bubbleEditing,
-              { backgroundColor: isDark ? 'rgba(30, 30, 34, 0.4)' : 'rgba(255, 255, 255, 0.48)', borderBottomLeftRadius: 4 }
+              {
+                backgroundColor: isDark ? 'rgba(30, 30, 34, 0.4)' : 'rgba(255, 255, 255, 0.48)',
+                borderBottomLeftRadius: 4
+              }
             ]}
           >
             {hasReasoning && (
