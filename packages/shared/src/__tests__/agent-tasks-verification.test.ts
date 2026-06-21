@@ -78,7 +78,7 @@ describe('Agent 2: 伙伴管理 UI 验证', () => {
   })
 
   it('任务5: 代码中不存在"长按选择图片"文本', () => {
-    const searchDir = resolve(__dirname, '../../../ui/src/web')
+    const searchDir = resolve(__dirname, '../../../ui/src/desktop')
     const files = getAllTsTsxFiles(searchDir)
 
     for (const file of files) {
@@ -105,7 +105,7 @@ describe('Agent 4: 设置 UI 验证', () => {
   it('任务33: 快捷指令分页选项包含 5/10/15/20/25/30', () => {
     const shortcutHookPath = resolve(
       __dirname,
-      '../../../ui/src/web/PromptShortcutSheet/useShortcutManagerDialog.ts'
+      '../../../ui/src/desktop/PromptShortcutSheet/useShortcutManagerDialog.ts'
     )
     const content = readFileSync(shortcutHookPath, 'utf-8')
 
@@ -115,8 +115,8 @@ describe('Agent 4: 设置 UI 验证', () => {
 
 describe('Agent 5: TTS 功能验证', () => {
   it('任务27: ChatBubble 接受 isTtsPlaying prop 并传递给 MessageActionBar', () => {
-    const typesPath = resolve(__dirname, '../../../ui/src/web/ChatBubble/chat-bubble.types.ts')
-    const bubblePath = resolve(__dirname, '../../../ui/src/web/ChatBubble/ChatBubble.tsx')
+    const typesPath = resolve(__dirname, '../../../ui/src/desktop/ChatBubble/chat-bubble.types.ts')
+    const bubblePath = resolve(__dirname, '../../../ui/src/desktop/ChatBubble/ChatBubble.tsx')
     const typesContent = readFileSync(typesPath, 'utf-8')
     const bubbleContent = readFileSync(bubblePath, 'utf-8')
 
@@ -126,7 +126,7 @@ describe('Agent 5: TTS 功能验证', () => {
     expect(bubbleContent).toContain('isTtsPlaying')
 
     // 确认 MessageActionBar 有对应的视觉反馈
-    const actionBarPath = resolve(__dirname, '../../../ui/src/web/MessageActionBar/index.tsx')
+    const actionBarPath = resolve(__dirname, '../../../ui/src/desktop/MessageActionBar/index.tsx')
     const actionBarContent = readFileSync(actionBarPath, 'utf-8')
     expect(actionBarContent).toContain('isTtsPlaying')
     expect(actionBarContent).toContain('ttsSpinner')
@@ -182,7 +182,7 @@ describe('Agent 6: 伙伴聊天功能验证', () => {
 
 describe('Agent 9: 文件附件系统验证', () => {
   it('任务18: ImagePreview 组件已集成到 CodeMirrorEditor', () => {
-    const editorPath = resolve(__dirname, '../../../ui/src/web/DiaryEditor/CodeMirrorEditor.tsx')
+    const editorPath = resolve(__dirname, '../../../ui/src/desktop/DiaryEditor/CodeMirrorEditor.tsx')
     const content = readFileSync(editorPath, 'utf-8')
 
     // 确认导入存在
@@ -196,7 +196,7 @@ describe('Agent 9: 文件附件系统验证', () => {
   it('任务18: MarkdownRenderer 支持附件路径渲染', () => {
     const rendererPath = resolve(
       __dirname,
-      '../../../ui/src/web/MarkdownRenderer/MarkdownRenderer.tsx'
+      '../../../ui/src/desktop/MarkdownRenderer/MarkdownRenderer.tsx'
     )
     const content = readFileSync(rendererPath, 'utf-8')
 

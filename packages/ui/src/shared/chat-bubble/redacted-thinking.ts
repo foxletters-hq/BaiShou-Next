@@ -1,4 +1,4 @@
-/** 从 AI 正文中剥离 <think>，与 web/native ChatBubble 共用 */
+/** 从 AI 正文中剥离 <think>，与 desktop/native ChatBubble 共用 */
 export function parseRedactedThinking(content: string, reasoning = '') {
   let cleanContent = content || ''
   let cleanReasoning = reasoning || ''

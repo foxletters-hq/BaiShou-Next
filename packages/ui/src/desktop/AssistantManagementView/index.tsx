@@ -2,7 +2,7 @@ import React from 'react'
 import styles from './AssistantManagementView.module.css'
 import { useTranslation } from 'react-i18next'
 import { useDialog } from '../Dialog'
-import { resolveWebAssistantAvatarSrc } from '../assistant-avatar.util'
+import { resolveDesktopAssistantAvatarSrc } from '../assistant-avatar.util'
 import { AssistantKindBadge } from '../AssistantKindBadge'
 import {
   MdAdd,
@@ -85,7 +85,7 @@ export const AssistantManagementView: React.FC<AssistantManagementViewProps> = (
 
                 <div className={styles.avatar}>
                   <img
-                    src={resolveWebAssistantAvatarSrc(assistant.avatarPath)}
+                    src={resolveDesktopAssistantAvatarSrc(assistant.avatarPath)}
                     alt={assistant.name}
                     className={styles.avatarImg}
                   />

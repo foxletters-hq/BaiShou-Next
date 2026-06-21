@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import styles from './Sidebar.module.css'
 import { useTranslation } from 'react-i18next'
-import { isCustomUserAvatar, resolveWebUserAvatarSrc } from '../user-avatar.util'
+import { isCustomUserAvatar, resolveDesktopUserAvatarSrc } from '../user-avatar.util'
 
 export interface NavItem {
   id: string
@@ -113,7 +113,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             src={
               isCustomUserAvatar(user?.avatarUrl)
                 ? user!.avatarUrl!
-                : resolveWebUserAvatarSrc(user?.avatarUrl)
+                : resolveDesktopUserAvatarSrc(user?.avatarUrl)
             }
             alt="Avatar"
           />

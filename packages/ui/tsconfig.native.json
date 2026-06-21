@@ -12,5 +12,5 @@
     "strictNullChecks": false
   },
   "include": ["src/native/**/*", "src/theme/**/*"],
-  "exclude": ["src/web/**/*"]
+  "exclude": ["src/desktop/**/*"]
 }

@@ -3,7 +3,7 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Pin, Trash2 } from 'lucide-react'
 import { MdDragIndicator } from 'react-icons/md'
-import { resolveWebAssistantAvatarSrc } from '../assistant-avatar.util'
+import { resolveDesktopAssistantAvatarSrc } from '../assistant-avatar.util'
 import { AssistantKindBadge } from '../AssistantKindBadge'
 import styles from './AssistantManagementPage.module.css'
 import type { AssistantInfo } from './index'
@@ -41,7 +41,7 @@ export const AssistantListRow = forwardRef<HTMLDivElement, AssistantListRowProps
               width: '100%',
               height: '100%',
               borderRadius: '50%',
-              backgroundImage: `url("${resolveWebAssistantAvatarSrc(assistant.avatarPath)}")`,
+              backgroundImage: `url("${resolveDesktopAssistantAvatarSrc(assistant.avatarPath)}")`,
               backgroundSize: 'cover',
               backgroundPosition: 'center'
             }}
