@@ -157,6 +157,11 @@ export const AgentScreen = () => {
     void loadSessions(true, currentAssistant?.id)
   }, [loadSessions, currentAssistant?.id])
 
+  useEffect(() => {
+    if (!drawerOpen || !dbReady || !currentAssistant?.id) return
+    void loadSessions(true, currentAssistant.id)
+  }, [drawerOpen, dbReady, currentAssistant?.id, loadSessions])
+
   useAgentNavigationPersistence({
     dbReady,
     vaultSwitching,

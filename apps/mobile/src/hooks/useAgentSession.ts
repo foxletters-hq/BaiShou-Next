@@ -266,10 +266,21 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
   const handleSelectSession = useCallback(
     async (sessionId: string) => {
       setCurrentSessionId(sessionId)
-      await loadMessages(sessionId)
     },
-    [loadMessages]
+    [setCurrentSessionId]
   )
+
+  useEffect(() => {
+    if (!currentSessionId) {
+      resetPaginationRefs(paginationRefs)
+      clearSession()
+      setHasMore(false)
+      return
+    }
+    if (!dbReady || !services || vaultSwitching) return
+
+    void loadMessages(currentSessionId)
+  }, [currentSessionId, dbReady, services, vaultSwitching, loadMessages, clearSession])
 
   /** 切换伙伴：清空当前会话，由用户从侧栏手动选择对话 */
   const handleAssistantSwitched = useCallback(
