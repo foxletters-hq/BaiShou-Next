@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import { ToolSchema } from '@modelcontextprotocol/sdk/types.js'
+import { ToolRegistry, buildBaishouMcpToolSchemas, executeBaishouMcpTool } from '@baishou/ai'
 import { McpService } from '../mcp.service'
 
 describe.sequential('McpService', () => {
@@ -19,7 +20,12 @@ describe.sequential('McpService', () => {
         mcpEnabled: true
       })
     }
-    service = new McpService(mockSettingsRepo, undefined, async () => ({
+    const emptyRegistry = {
+      getEnabledToolsRaw: () => [],
+      get: () => undefined,
+      isToolEnabled: () => false
+    } as unknown as ToolRegistry
+    service = new McpService(mockSettingsRepo, emptyRegistry, async () => ({
       sessionId: 'mcp-external',
       vaultName: 'Personal',
       userConfig: {}
@@ -261,21 +267,23 @@ describe.sequential('McpService', () => {
       }
     } as any
 
-    const serviceWithTools = new McpService(mockSettingsRepo, dummyRegistry, async () => ({
+    const context = {
       sessionId: 'mcp-external',
       vaultName: 'Personal',
       userConfig: {}
-    }))
-    const mcpTools = (serviceWithTools as any).getAgentToolsMcp()
+    }
+    const mcpTools = buildBaishouMcpToolSchemas(dummyRegistry as ToolRegistry, context)
 
-    expect(mcpTools).length(1)
+    expect(mcpTools).toHaveLength(1)
     expect(mcpTools[0].name).toBe('baishou_test_tool')
     expect(mcpTools[0].inputSchema.type).toBe('object')
 
-    const executeResult = await (serviceWithTools as any).executeAgentTool({
-      name: 'baishou_test_tool'
-    })
+    const executeResult = await executeBaishouMcpTool(
+      dummyRegistry as ToolRegistry,
+      async () => context,
+      { name: 'baishou_test_tool' }
+    )
     expect(executeResult.isError).toBe(false)
-    expect(executeResult.content[0].text).contain('Test execution result')
+    expect(executeResult.content[0].text).toContain('Test execution result')
   })
 })
