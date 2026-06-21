@@ -22,6 +22,7 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
   const sessionsLoadedFromDbRef = useRef(0)
   const lastVaultRevisionRef = useRef(vaultRevision)
   const lastEcosystemResyncEpochRef = useRef(ecosystemResyncEpoch)
+  const lastDbReadyRef = useRef(dbReady)
 
   useEffect(() => {
     assistantIdRef.current = activeAssistantId
@@ -64,13 +65,11 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
       }
 
       try {
-        const vaultName = await services.pathService.getActiveVaultNameForContext()
         const sessionList = await services.sessionManager.list(
           SESSION_PAGE_SIZE + 1,
           offset,
-          targetAssistantId,
-          undefined,
-          { vaultName }
+          targetAssistantId.trim(),
+          undefined
         )
 
         if (reqId !== lastLoadRequestId.current) return
@@ -117,17 +116,21 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
   const lastActiveAssistantId = useRef<string | undefined>(activeAssistantId)
   useEffect(() => {
     const isAssistantChanged = lastActiveAssistantId.current !== activeAssistantId
+    const dbBecameReady = !lastDbReadyRef.current && dbReady
+    lastDbReadyRef.current = dbReady
     lastActiveAssistantId.current = activeAssistantId
 
-    if (!activeAssistantId) {
-      lastLoadRequestId.current += 1
-      sessionsLoadedFromDbRef.current = 0
-      setSessions([])
-      setHasMoreSessions(false)
+    if (!activeAssistantId || !dbReady) {
+      if (!activeAssistantId) {
+        lastLoadRequestId.current += 1
+        sessionsLoadedFromDbRef.current = 0
+        setSessions([])
+        setHasMoreSessions(false)
+      }
       return
     }
 
-    if (isAssistantChanged) {
+    if (isAssistantChanged || dbBecameReady) {
       lastLoadRequestId.current += 1
       sessionsLoadedFromDbRef.current = 0
       setSessions([])
@@ -142,7 +145,7 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
     }, SESSION_LIST_REFRESH_DEBOUNCE_MS)
 
     return () => clearTimeout(timer)
-  }, [activeAssistantId, loadSessions])
+  }, [activeAssistantId, dbReady, loadSessions])
 
   // vault 切换或后台索引完成后刷新会话列表
   useEffect(() => {
@@ -152,7 +155,7 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
     lastEcosystemResyncEpochRef.current = ecosystemResyncEpoch
 
     if (!vaultChanged && !ecosystemResynced) return
-    if (!activeAssistantId) return
+    if (!activeAssistantId || !dbReady) return
 
     const timer = setTimeout(() => {
       sessionsLoadedFromDbRef.current = 0
@@ -160,7 +163,7 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
     }, SESSION_LIST_REFRESH_DEBOUNCE_MS)
 
     return () => clearTimeout(timer)
-  }, [vaultRevision, ecosystemResyncEpoch, activeAssistantId, loadSessions])
+  }, [vaultRevision, ecosystemResyncEpoch, activeAssistantId, dbReady, loadSessions])
 
   return {
     sessions,
