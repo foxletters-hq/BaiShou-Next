@@ -38,7 +38,8 @@ const IncrementalSyncScreen: React.FC = () => {
   const toast = useNativeToast()
   const dialog = useDialog()
   const { services, dbReady } = useBaishou()
-  const { isSyncing, isConfigured, refreshConfigured, runIncrementalSync } = useIncrementalSync()
+  const { isSyncing, isPlanning, isConfigured, refreshConfigured, runIncrementalSync } =
+    useIncrementalSync()
 
   const [showAccessKey, setShowAccessKey] = useState(false)
   const [showSecretKey, setShowSecretKey] = useState(false)
@@ -174,11 +175,15 @@ const IncrementalSyncScreen: React.FC = () => {
               <Button
                 variant="primary"
                 onPress={handleSync}
-                isDisabled={isConfigured !== true || isSyncing}
-                isLoading={isSyncing}
+                isDisabled={isConfigured !== true || isSyncing || isPlanning}
+                isLoading={isSyncing || isPlanning}
                 style={styles.syncButton}
               >
-                {isSyncing ? t('data_sync.syncing') : t('data_sync.sync_now', '同步')}
+                {isSyncing
+                  ? t('data_sync.syncing')
+                  : isPlanning
+                    ? t('data_sync.planning', '正在分析同步变更…')
+                    : t('data_sync.sync_now', '同步')}
               </Button>
             </>
           ) : null}
