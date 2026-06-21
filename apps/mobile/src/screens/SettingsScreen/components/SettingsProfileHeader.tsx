@@ -59,9 +59,9 @@ export const SettingsProfileHeader: React.FC<SettingsProfileHeaderProps> = ({
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.85
+        allowsEditing: false,
+        quality: 0.85,
+        copyToCacheDirectory: true
       })
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0]

@@ -234,9 +234,9 @@ export const AssistantEditScreen: React.FC = () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8
+        allowsEditing: false,
+        quality: 0.85,
+        copyToCacheDirectory: true
       })
       if (!result.canceled && result.assets[0]) {
         const uri = result.assets[0].uri
