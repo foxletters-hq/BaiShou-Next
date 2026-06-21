@@ -2,6 +2,7 @@ import { Summary, CreateSummaryInput, UpdateSummaryInput, SummaryType } from '@b
 import { SummarySyncService } from './summary-sync.service'
 import { SummaryFileService } from '../vault/summary-file.service'
 import { SummaryRepository } from '@baishou/database'
+import { emitDomainMutation } from '../events'
 
 export class SummaryManagerService {
   constructor(
@@ -26,6 +27,12 @@ export class SummaryManagerService {
     if (!dbRecord) {
       throw new Error('SummarySync failed to materialize record in DB')
     }
+    emitDomainMutation({
+      domain: 'summary',
+      action: 'create',
+      entityId: dbRecord.id,
+      meta: { type: input.type }
+    })
     return dbRecord
   }
 
@@ -46,6 +53,12 @@ export class SummaryManagerService {
     await this.summarySync.syncSummaryFile(type, startDate, endDate)
 
     const updated = await this.summaryRepo.getByDateRange(type, startDate, endDate)
+    emitDomainMutation({
+      domain: 'summary',
+      action: 'update',
+      entityId: updated?.id,
+      meta: { type }
+    })
     return updated!
   }
 
@@ -101,8 +114,25 @@ export class SummaryManagerService {
     return summaries.sort((a, b) => b.startDate.getTime() - a.startDate.getTime())
   }
 
+  /** 统计面板：仅 SQL 聚合，不读磁盘总结正文 */
+  async countByType(): Promise<{
+    weekly: number
+    monthly: number
+    quarterly: number
+    yearly: number
+  }> {
+    const counts = await this.summaryRepo.countByType()
+    return {
+      weekly: counts.weekly ?? 0,
+      monthly: counts.monthly ?? 0,
+      quarterly: counts.quarterly ?? 0,
+      yearly: counts.yearly ?? 0
+    }
+  }
+
   async delete(type: SummaryType, startDate: Date, endDate: Date): Promise<void> {
     await this.fileSync.deleteSummary(type, startDate)
     await this.summarySync.syncSummaryFile(type, startDate, endDate) // 孤立检测将会自动删之
+    emitDomainMutation({ domain: 'summary', action: 'delete', meta: { type } })
   }
 }
