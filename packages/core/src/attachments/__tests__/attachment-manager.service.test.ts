@@ -334,4 +334,37 @@ date: 2026-10-01
     expect(relative.startsWith('avatars/agent_avatar_')).toBe(true)
     expect(existsSync(path.join(globalDir, relative.replace('avatars/', '')))).toBe(true)
   })
+
+  it('does not duplicate chat background when saving resolved local URI', async () => {
+    const backgroundsDir = path.join(tempDir, 'backgrounds')
+    await fs.mkdir(backgroundsDir, { recursive: true })
+    const existingName = 'bg_existing.jpg'
+    const existingPath = path.join(backgroundsDir, existingName)
+    await fs.writeFile(existingPath, 'background-bytes')
+
+    mockPathService.getChatBackgroundsDirectory = vi.fn().mockResolvedValue(backgroundsDir)
+
+    const resolved = await service.resolveBackgroundPath(`backgrounds/${existingName}`)
+    const relative = await service.importBackground(resolved)
+
+    expect(relative).toBe(`backgrounds/${existingName}`)
+    const files = await fs.readdir(backgroundsDir)
+    expect(files).toEqual([existingName])
+  })
+
+  it('does not duplicate chat background when source is already in backgrounds pool', async () => {
+    const backgroundsDir = path.join(tempDir, 'backgrounds')
+    await fs.mkdir(backgroundsDir, { recursive: true })
+    const existingName = 'bg_existing.jpg'
+    const existingPath = path.join(backgroundsDir, existingName)
+    await fs.writeFile(existingPath, 'background-bytes')
+
+    mockPathService.getChatBackgroundsDirectory = vi.fn().mockResolvedValue(backgroundsDir)
+
+    const relative = await service.importBackground(existingPath)
+
+    expect(relative).toBe(`backgrounds/${existingName}`)
+    const files = await fs.readdir(backgroundsDir)
+    expect(files).toEqual([existingName])
+  })
 })
