@@ -19,6 +19,9 @@ import {
 } from './NativeChatBubbleActionsRow'
 import { NativeChatBubbleActionSheet } from './NativeChatBubbleActionSheet'
 import { ChatBubbleAvatar } from './ChatBubbleAvatar'
+import {
+  chatOverBackgroundMetaTextStyle
+} from '../../shared/chat-over-background-meta.style'
 
 export const ChatBubble: React.FC<ChatBubbleProps> = ({
   message,
@@ -34,7 +37,8 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   onShowContext,
   onReadAloud,
   isTtsPlaying,
-  onEditingChange
+  onEditingChange,
+  invertMetaOverBackground = false
 }) => {
   const { t } = useTranslation()
   const { colors, isDark } = useNativeTheme()
@@ -92,7 +96,8 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
           style={[
             styles.nameLabel,
             { color: colors.textSecondary },
-            isUser ? styles.nameLabelUser : styles.nameLabelAssistant
+            isUser ? styles.nameLabelUser : styles.nameLabelAssistant,
+            invertMetaOverBackground ? chatOverBackgroundMetaTextStyle : null
           ]}
         >
           {displayName}
@@ -191,6 +196,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
             onBranch={onBranch}
             onSaveEdit={onSaveEdit}
             onDelete={onDelete}
+            invertMetaOverBackground={invertMetaOverBackground}
           />
         )}
       </View>

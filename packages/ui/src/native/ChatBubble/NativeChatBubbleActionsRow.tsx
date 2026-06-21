@@ -31,6 +31,7 @@ interface NativeChatBubbleActionsRowProps {
   onBranch?: () => void
   onSaveEdit?: (content: string) => void
   onDelete?: () => void
+  invertMetaOverBackground?: boolean
 }
 
 export const NativeChatBubbleActionsRow: React.FC<NativeChatBubbleActionsRowProps> = ({
@@ -47,7 +48,8 @@ export const NativeChatBubbleActionsRow: React.FC<NativeChatBubbleActionsRowProp
   onRegenerate,
   onBranch,
   onSaveEdit,
-  onDelete
+  onDelete,
+  invertMetaOverBackground = false
 }) => {
   const canEdit = isUser || Boolean(onSaveEdit)
 
@@ -63,6 +65,7 @@ export const NativeChatBubbleActionsRow: React.FC<NativeChatBubbleActionsRowProp
         onDelete={onDelete}
         isAI={isAssistant}
         isTtsPlaying={isTtsPlaying}
+        invertOverBackground={invertMetaOverBackground}
       />
       {isAssistant ? <NativeChatBubbleTokenRow colors={colors} message={message} /> : null}
     </View>

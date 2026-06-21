@@ -49,6 +49,7 @@ export interface AgentMessageRowProps {
   onShowContext?: () => void
   onBranch?: () => void
   onBubbleEditingChange?: (editing: boolean, messageId?: string) => void
+  invertMetaOverBackground?: boolean
 }
 
 export const AgentMessageRow: React.FC<AgentMessageRowProps> = ({
@@ -67,7 +68,8 @@ export const AgentMessageRow: React.FC<AgentMessageRowProps> = ({
   isTtsPlaying,
   onShowContext,
   onBranch,
-  onBubbleEditingChange
+  onBubbleEditingChange,
+  invertMetaOverBackground = false
 }) => {
   const persistedCompaction =
     item.role === 'user' && item.compactionRecord ? item.compactionRecord : null
@@ -125,6 +127,7 @@ export const AgentMessageRow: React.FC<AgentMessageRowProps> = ({
         onShowContext={onShowContext}
         onBranch={onBranch}
         onEditingChange={onBubbleEditingChange}
+        invertMetaOverBackground={invertMetaOverBackground}
       />
 
       {(showLiveCompression || showPersistedCompression) && (

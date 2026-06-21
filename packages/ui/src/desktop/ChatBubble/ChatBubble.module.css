@@ -98,6 +98,13 @@
   color: var(--text-tertiary);
 }
 
+/* 自定义聊天背景：名称 / 时间叠在背景图上时自动反色，保证可读性 */
+:global(.chat-over-background) .nameLabel,
+:global(.chat-over-background) .timeLabel {
+  color: #fff;
+  mix-blend-mode: difference;
+}
+
 .userBubbleCard {
   padding: 12px 16px;
   background: var(--bg-glass-surface);

@@ -48,6 +48,11 @@
   margin-bottom: 6px;
 }
 
+:global(.chat-over-background) .nameLabel {
+  color: #fff;
+  mix-blend-mode: difference;
+}
+
 .bubbleCard {
   padding: 12px 16px;
   background: var(--bg-glass-surface);
