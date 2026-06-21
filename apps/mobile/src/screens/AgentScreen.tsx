@@ -64,6 +64,7 @@ import {
   type MobileAssistantUi
 } from '../lib/mobile-assistant.util'
 import { writeAgentNavigationSnapshot } from '../lib/agent-navigation-persistence'
+import { consumeAssistantsNeedRefresh } from '../lib/assistant-ui-refresh-signal'
 import { waitForVaultEcosystemResync } from '../services/mobile-vault-resync.service'
 import { useThrottledFocusRefresh } from '../hooks/useThrottledFocusRefresh'
 /** 底部输入栏 + 工具条的大致高度，用于「回到底部」悬浮按钮定位 */
@@ -356,7 +357,7 @@ export const AgentScreen = () => {
     void loadAssistants()
   }, [loadAssistants])
 
-  useThrottledFocusRefresh(refreshAssistantsOnFocus)
+  useThrottledFocusRefresh(refreshAssistantsOnFocus, 2000, consumeAssistantsNeedRefresh)
 
   // 伙伴头像/名称变更后同步 currentAssistant，避免聊天界面仍展示旧数据
   useEffect(() => {
