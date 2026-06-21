@@ -1,7 +1,8 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react'
 import { logger } from '@baishou/shared'
 import type { DiaryListFilter } from '@baishou/shared'
 import type { DiaryService } from '@baishou/core-mobile'
+import { getDiaryListCacheVersion, subscribeDiaryListCache } from '@baishou/shared/cache'
 
 export interface DiaryPageQuery {
   selectedMonth: Date | null
@@ -95,6 +96,10 @@ export function useDiaryData(
   const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(false)
   const loadRequestIdRef = useRef(0)
+  const diaryListCacheVersion = useSyncExternalStore(
+    subscribeDiaryListCache,
+    getDiaryListCacheVersion
+  )
 
   const rawSearchTerm = query.searchQuery.trim()
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(rawSearchTerm)
@@ -215,6 +220,7 @@ export function useDiaryData(
     query.pageSize,
     vaultRevision,
     ecosystemResyncEpoch,
+    diaryListCacheVersion,
     searchFilterKey,
     debouncedSearchTerm ? 0 : browseMonthKey,
     debouncedSearchTerm ? 0 : listFilter,

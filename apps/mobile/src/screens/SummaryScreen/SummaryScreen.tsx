@@ -81,7 +81,7 @@ export const SummaryScreen: React.FC = () => {
   useFocusEffect(
     useCallback(() => {
       const now = Date.now()
-      const cacheStale = peekSummaryDashboardCache(vaultRevision)?.stale ?? true
+      const cacheStale = peekSummaryDashboardCache(String(vaultRevision))?.stale ?? true
       if (!cacheStale && now - lastFocusRefreshRef.current < 4000) return
       lastFocusRefreshRef.current = now
       void refreshDashboard()

@@ -6,25 +6,11 @@
 import {
   createStaleWhileRevalidateStore,
   globalCacheRegistry,
-  type CacheKey
+  type CacheKey,
+  type SummaryDashboardSnapshot
 } from '@baishou/shared/cache'
 
-export interface SummaryDashboardStats {
-  totalDiaryCount: number
-  totalWeeklyCount: number
-  totalMonthlyCount: number
-  totalQuarterlyCount: number
-  totalYearlyCount: number
-}
-
-export interface SummaryDashboardSnapshot {
-  vaultRevision: number
-  stats: SummaryDashboardStats
-  /** 日记归档日 → 篇数（热力图稀疏索引） */
-  activityByDate: Record<string, number>
-  availableYears: number[]
-  fetchedAt: number
-}
+export type { SummaryDashboardSnapshot, SummaryDashboardStats } from '@baishou/shared/cache'
 
 const SUMMARY_DASHBOARD_CACHE_KEY = 'summary.dashboard' satisfies CacheKey
 
@@ -45,24 +31,24 @@ export function subscribeSummaryDashboardCache(listener: () => void): () => void
   return dashboardStore.subscribe(listener)
 }
 
-export function peekSummaryDashboardCache(vaultRevision: number): {
+export function peekSummaryDashboardCache(scopeKey: string): {
   snapshot: SummaryDashboardSnapshot
   stale: boolean
 } | null {
   registerSummaryDashboardCacheStore()
-  const peek = dashboardStore.peek(String(vaultRevision))
+  const peek = dashboardStore.peek(scopeKey)
   if (!peek) return null
   return { snapshot: peek.value, stale: peek.stale }
 }
 
 export function commitSummaryDashboardCache(
-  vaultRevision: number,
-  data: Omit<SummaryDashboardSnapshot, 'vaultRevision' | 'fetchedAt'>
+  scopeKey: string,
+  data: Omit<SummaryDashboardSnapshot, 'scopeKey' | 'fetchedAt'>
 ): void {
   registerSummaryDashboardCacheStore()
-  dashboardStore.commit(String(vaultRevision), {
+  dashboardStore.commit(scopeKey, {
     ...data,
-    vaultRevision,
+    scopeKey,
     fetchedAt: Date.now()
   })
 }

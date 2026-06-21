@@ -1,4 +1,4 @@
-import { globalCacheRegistry } from '@baishou/shared/cache'
+import { globalCacheRegistry, registerDiaryListCacheStore } from '@baishou/shared/cache'
 import { clearGlobalTtsSynthesisCache, clearMimoRefAudioHydrationCache } from '@baishou/shared'
 import {
   invalidateAllAvatarDisplayCaches
@@ -16,6 +16,7 @@ export function registerMobileCacheStores(): void {
   mobileStoresRegistered = true
 
   registerSummaryDashboardCacheStore()
+  registerDiaryListCacheStore()
 
   globalCacheRegistry.register('avatar.user', {
     invalidate: () => invalidateUserAvatarDisplayCache(),
