@@ -97,7 +97,9 @@ export class GlobalDataBootstrapper {
       const shadowScan = shadowScout.fullScanVault(true)
 
       // 2–5. 其余层与日记扫描并行，缩短冷启动等待
-      const summaryScan = summaryScout.fullScanArchives()
+      const activeVault = vaultService.getActiveVault()
+      const summaryResyncOptions = activeVault ? { activeVaultName: activeVault.name } : undefined
+      const summaryScan = summaryScout.fullScanArchives(summaryResyncOptions)
       const assistantScan = assistantManager.fullResyncFromDisks()
       const sessionScan = sessionManager.fullResyncFromDisks()
       const settingsScan = settingsManager.fullResyncFromDisk()
