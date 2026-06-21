@@ -71,17 +71,22 @@ describe('baishou-mcp-server', () => {
     })
 
     expect(tools).toHaveLength(1)
-    expect(tools[0].name).toBe('baishou_current_time')
-    expect(tools[0].inputSchema.type).toBe('object')
+    const tool = tools[0]!
+    expect(tool.name).toBe('baishou_current_time')
+    expect(tool.inputSchema.type).toBe('object')
   })
 
   it('executeBaishouMcpTool rejects missing registry', async () => {
     await expect(
-      executeBaishouMcpTool(undefined, async () => ({
-        sessionId: 'mcp-external',
-        vaultName: 'Personal',
-        userConfig: {}
-      }), { name: 'baishou_test' })
+      executeBaishouMcpTool(
+        undefined,
+        async () => ({
+          sessionId: 'mcp-external',
+          vaultName: 'Personal',
+          userConfig: {}
+        }),
+        { name: 'baishou_test' }
+      )
     ).rejects.toThrow('Tool registry not initialized')
   })
 

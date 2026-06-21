@@ -23,7 +23,6 @@ export async function launchAvatarImageLibraryAsync(): Promise<ImagePicker.Image
     mediaTypes: ['images'],
     allowsEditing: true,
     aspect: [1, 1],
-    quality: 0.85,
-    copyToCacheDirectory: true
+    quality: 0.85
   })
 }

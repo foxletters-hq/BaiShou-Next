@@ -2,12 +2,12 @@ import { Dimensions, Keyboard, ScrollView, TextInput, type View } from 'react-na
 import type { RefObject } from 'react'
 
 type Measurable = {
-  measureInWindow: (
-    callback: (x: number, y: number, width: number, height: number) => void
-  ) => void
+  measureInWindow: (callback: (x: number, y: number, width: number, height: number) => void) => void
 }
 
-export function readEffectiveKeyboardHeight(windowHeight = Dimensions.get('window').height): number {
+export function readEffectiveKeyboardHeight(
+  windowHeight = Dimensions.get('window').height
+): number {
   const metrics = Keyboard.metrics()
   if (!metrics) return 0
   if (metrics.height > 0) return metrics.height
@@ -25,7 +25,7 @@ function resolveMeasureTarget(
 
   const getFocused = TextInput.State?.currentlyFocusedInput
   const focused = getFocused?.()
-  if (focused?.measureInWindow) return focused
+  if (focused) return focused
   if (fallback?.measureInWindow) return fallback
   return null
 }
@@ -81,8 +81,7 @@ export function scrollScrollViewToRevealNode({
   animated?: boolean
 }): void {
   const windowHeight = Dimensions.get('window').height
-  const keyboardHeight =
-    readEffectiveKeyboardHeight(windowHeight) || keyboardHeightOverride || 0
+  const keyboardHeight = readEffectiveKeyboardHeight(windowHeight) || keyboardHeightOverride || 0
   if (!scrollRef.current || keyboardHeight <= 0) return
 
   const target = resolveMeasureTarget(fallbackMeasureTarget, preferFallbackMeasure)
