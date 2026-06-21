@@ -289,7 +289,7 @@
     "chat_background_reset": "Remove background",
     "chat_background_pick_hint": "Tap to choose a background",
     "chat_background_blur": "Background blur",
-    "chat_background_overlay": "Overlay opacity",
+    "chat_background_overlay": "Overlay transparency",
     "general_section_profile": "Profile & Account",
     "general_section_workspace": "Workspace",
     "general_section_appearance": "Appearance & Language",

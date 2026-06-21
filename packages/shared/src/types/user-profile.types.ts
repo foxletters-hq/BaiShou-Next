@@ -7,7 +7,7 @@ export interface UserProfile {
   avatarFileMissing?: boolean // 头像文件不存在标记（运行时检测，不持久化）
   chatBackgroundPath?: string | null // 聊天背景图相对路径（如 backgrounds/xxx.jpg）
   chatBackgroundBlur?: number // 背景模糊半径（px）
-  chatBackgroundOverlayOpacity?: number // 背景黑色遮罩不透明度（0–100）
+  chatBackgroundOverlayOpacity?: number // 背景黑色遮罩不透明度（存储 0–80，UI 滑条以 20–100% 透明度展示）
   activePersonaId: string // 当前激活的身份卡 ID
   personas: Record<string, Persona> // 所有身份卡字典（键为 personaId）
   recentPersonaIds?: string[] // 最近使用的身份卡 ID 列表（用于快速切换）
