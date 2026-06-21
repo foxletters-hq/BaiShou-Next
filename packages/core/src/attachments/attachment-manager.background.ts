@@ -80,6 +80,8 @@ export class AttachmentBackgroundOps {
       throw new Error('BACKGROUND_FILE_NOT_FOUND')
     }
 
-    return pathToFileURL(absPath).toString().replace(/^file:/i, 'local:')
+    return pathToFileURL(absPath)
+      .toString()
+      .replace(/^file:/i, 'local:')
   }
 }

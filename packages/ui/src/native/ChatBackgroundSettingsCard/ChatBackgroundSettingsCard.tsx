@@ -1,5 +1,12 @@
 import React from 'react'
-import { View, Text, TouchableOpacity, Image, StyleSheet, type ImageSourcePropType } from 'react-native'
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Image,
+  StyleSheet,
+  type ImageSourcePropType
+} from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { SettingsExpansionTile } from '../settings/SettingsExpansionTile'
@@ -31,9 +38,7 @@ export const ChatBackgroundSettingsCard: React.FC<ChatBackgroundSettingsProps> =
     ? t('settings.chat_background_custom', '自定义背景')
     : t('settings.chat_background_default', '默认背景')
 
-  const previewSource = resolvedBackgroundUri
-    ? { uri: resolvedBackgroundUri }
-    : DEFAULT_CHAT_BG
+  const previewSource = resolvedBackgroundUri ? { uri: resolvedBackgroundUri } : DEFAULT_CHAT_BG
 
   return (
     <SettingsExpansionTile
@@ -42,16 +47,8 @@ export const ChatBackgroundSettingsCard: React.FC<ChatBackgroundSettingsProps> =
       title={t('settings.chat_background', '聊天背景')}
       subtitle={subtitle}
     >
-      <TouchableOpacity
-        activeOpacity={0.7}
-        onPress={onPickBackground}
-        style={styles.previewArea}
-      >
-        <Image
-          source={previewSource}
-          style={styles.previewImg}
-          resizeMode="cover"
-        />
+      <TouchableOpacity activeOpacity={0.7} onPress={onPickBackground} style={styles.previewArea}>
+        <Image source={previewSource} style={styles.previewImg} resizeMode="cover" />
         <View style={[styles.previewOverlay, { backgroundColor: 'rgba(0,0,0,0.35)' }]}>
           <Text style={styles.previewOverlayText}>
             {t('settings.chat_background_change', '更换背景')}
