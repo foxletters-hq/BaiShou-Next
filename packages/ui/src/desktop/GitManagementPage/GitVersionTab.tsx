@@ -7,6 +7,7 @@ import { GitChangesSection } from './GitChangesSection'
 import { GitCommitsSection } from './GitCommitsSection'
 import { GitRecentPullsSection } from './GitRecentPullsSection'
 import { GitConflictSection } from './GitConflictSection'
+import { GitDestructiveConfirmDialog } from './GitDestructiveConfirmDialog'
 
 export interface GitVersionTabProps {
   vm: GitManagementViewModel
@@ -35,6 +36,12 @@ export const GitVersionTab: React.FC<GitVersionTabProps> = ({ vm }) => {
         <GitRecentPullsSection vm={vm} />
       </div>
       <GitConflictSection vm={vm} style={{ marginTop: 16 }} />
+      <GitDestructiveConfirmDialog
+        request={vm.destructiveConfirm}
+        isConfirming={vm.isConfirmingDestructive}
+        onConfirm={vm.confirmDestructiveAction}
+        onCancel={vm.cancelDestructiveAction}
+      />
     </motion.div>
   )
 }
