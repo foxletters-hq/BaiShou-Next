@@ -1,4 +1,4 @@
-import { Diary } from '@baishou/shared'
+import { Diary, formatLocalDate } from '@baishou/shared'
 
 export interface ExportOptions {
   format: 'txt' | 'json' | 'md'
@@ -26,7 +26,7 @@ export class DiaryExportServiceImpl implements DiaryExportService {
   private buildText(diaries: Diary[]): string {
     return diaries
       .map((diary) => {
-        const dateStr = diary.date.toISOString().split('T')[0]
+        const dateStr = formatLocalDate(diary.date)
         return `${dateStr}\n${diary.content}\n\n`
       })
       .join('---\n\n')
@@ -38,13 +38,13 @@ export class DiaryExportServiceImpl implements DiaryExportService {
 
     for (const diary of diaries) {
       // Assume "yyyy-MM"
-      const monthStr = diary.date.toISOString().slice(0, 7)
+      const monthStr = formatLocalDate(diary.date).slice(0, 7)
       if (monthStr !== currentMonth) {
         currentMonth = monthStr
         sb.push(`# ${currentMonth}\n\n`)
       }
 
-      const dateStr = diary.date.toISOString().split('T')[0]
+      const dateStr = formatLocalDate(diary.date)
       sb.push(`## ${dateStr}\n`)
 
       const tagsArray = typeof diary.tags === 'string' ? diary.tags.split(',').filter(Boolean) : []

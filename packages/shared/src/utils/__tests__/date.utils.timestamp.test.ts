@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import {
   diaryDateToSourceCreatedSeconds,
+  formatLocalDateFromInstant,
+  formatLocalDateTime,
+  formatLocalTime,
   formatMessageTimestamp,
   formatRagEntryTimestamp,
   formatStoredTimestamp,
@@ -77,6 +80,27 @@ describe('formatMessageTimestamp', () => {
   it('formats Date instances in local time', () => {
     const d = new Date(2026, 5, 15, 8, 9)
     expect(formatMessageTimestamp(d)).toBe('2026-06-15 08:09')
+  })
+})
+
+describe('formatLocalDateFromInstant', () => {
+  it('maps instants to local calendar date', () => {
+    const d = new Date(2025, 5, 21, 1, 30)
+    expect(formatLocalDateFromInstant(d)).toBe('2025-06-21')
+  })
+})
+
+describe('formatLocalDateTime', () => {
+  it('matches formatMessageTimestamp', () => {
+    const d = new Date(2026, 5, 15, 8, 9)
+    expect(formatLocalDateTime(d)).toBe('2026-06-15 08:09')
+  })
+})
+
+describe('formatLocalTime', () => {
+  it('formats local time of day', () => {
+    const d = new Date(2026, 5, 15, 8, 9, 7)
+    expect(formatLocalTime(d)).toBe('08:09:07')
   })
 })
 

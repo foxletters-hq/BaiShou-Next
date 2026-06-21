@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { FileSyncServiceImpl } from '../file-sync.service'
-import { Diary } from '@baishou/shared'
+import { Diary, formatLocalDate } from '@baishou/shared'
 import { createNodeFileSystem } from '../../fs/create-node-file-system'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
@@ -45,7 +45,7 @@ describe('FileSyncService', () => {
 
     const year = sampleDiary.date.getFullYear().toString()
     const month = (sampleDiary.date.getMonth() + 1).toString().padStart(2, '0')
-    const day = sampleDiary.date.toISOString().split('T')[0]
+    const day = formatLocalDate(sampleDiary.date)
 
     const expectedPath = path.join(rootPath, year, month, `${day}.md`)
     expect(fs.existsSync(expectedPath)).toBe(true)

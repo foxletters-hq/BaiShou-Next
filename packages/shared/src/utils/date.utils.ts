@@ -7,9 +7,11 @@
  *   与他们是否跨越了 UTC 零点无关。
  *
  * 核心约定（全链路强制遵守）：
- *   - 系统内流转的日期唯一字符串格式：YYYY-MM-DD（本地时区，无时区标识）
+ *   - 日历日（归档日、总结区间、搜索日期标签）：formatLocalDate → YYYY-MM-DD
+ *   - 具体时刻（消息时间、记忆记录时间、updated_at）：formatLocalDateTime → YYYY-MM-DD HH:mm
+ *   - 仅时分秒：formatLocalTime → HH:mm:ss
  *   - Date 对象构造：使用 new Date(y, m-1, d)（本地时区构造，无 UTC 偏移）
- *   - 绝不使用 toISOString() 表达"日记日期"（仅 updatedAt/createdAt 时间戳可用）
+ *   - 绝不使用 toISOString() 表达用户感知的日期/时间（协议级瞬时戳除外）
  *
  * 对标原版 Flutter：DateFormat('yyyy-MM-dd').format(date)
  */
@@ -33,6 +35,40 @@ export function formatLocalDate(date: Date): string {
   const m = String(date.getMonth() + 1).padStart(2, '0')
   const d = String(date.getDate()).padStart(2, '0')
   return `${y}-${m}-${d}`
+}
+
+function coerceToLocalDate(value: Date | number): Date | undefined {
+  const ms = value instanceof Date ? value.getTime() : (timestampToMillis(value) ?? value)
+  if (!Number.isFinite(ms) || ms < Date.UTC(2000, 0, 1)) return undefined
+  const d = new Date(ms)
+  return Number.isNaN(d.getTime()) ? undefined : d
+}
+
+/** 时刻戳 → 本地日历日 YYYY-MM-DD（搜索标签、分组键、导出标题等） */
+export function formatLocalDateFromInstant(
+  value: Date | number | undefined | null
+): string | undefined {
+  if (value == null) return undefined
+  const d = coerceToLocalDate(value instanceof Date ? value : (value as number))
+  return d ? formatLocalDate(d) : undefined
+}
+
+/** 时刻戳 → 本地 YYYY-MM-DD HH:mm（与 formatMessageTimestamp 同语义，名称更直观） */
+export function formatLocalDateTime(
+  value: Date | number | undefined | null
+): string | undefined {
+  return formatMessageTimestamp(value)
+}
+
+/** 时刻戳 → 本地 HH:mm:ss */
+export function formatLocalTime(value: Date | number | undefined | null): string | undefined {
+  if (value == null) return undefined
+  const d = coerceToLocalDate(value instanceof Date ? value : (value as number))
+  if (!d) return undefined
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mm = String(d.getMinutes()).padStart(2, '0')
+  const ss = String(d.getSeconds()).padStart(2, '0')
+  return `${hh}:${mm}:${ss}`
 }
 
 /**

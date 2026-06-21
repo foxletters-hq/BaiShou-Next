@@ -1,4 +1,4 @@
-import { Diary, Summary, SummaryType, ContextResult } from '@baishou/shared'
+import { Diary, Summary, SummaryType, ContextResult, formatLocalDate } from '@baishou/shared'
 import { DiaryRepository, SummaryRepository } from '@baishou/database'
 
 export class ContextBuilderService {
@@ -92,7 +92,7 @@ export class ContextBuilderService {
 
     allItems.sort((a, b) => a.date.getTime() - b.date.getTime())
 
-    const formatDateStr = (d: Date) => d.toISOString().split('T')[0]
+    const formatDateStr = (d: Date) => formatLocalDate(d)
 
     for (const item of allItems) {
       buffer.push(`## ${item.prefix} ${formatDateStr(item.date)}`)

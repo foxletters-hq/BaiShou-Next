@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { formatLocalDate, timestampToMillis } from '@baishou/shared'
+import { formatLocalDateFromInstant, timestampToMillis } from '@baishou/shared'
 import type { RecallItem } from '@baishou/ui'
 
 export interface UseRecallSearchResult {
@@ -23,7 +23,7 @@ export interface UseRecallSearchResult {
 const formatRecallDate = (ts: unknown) => {
   const raw = typeof ts === 'number' ? ts : new Date(ts as string | Date).getTime()
   const ms = timestampToMillis(Number.isFinite(raw) ? raw : undefined) ?? Date.now()
-  return formatLocalDate(new Date(ms))
+  return formatLocalDateFromInstant(ms ?? Date.now()) ?? ''
 }
 
 export function useRecallSearch(): UseRecallSearchResult {

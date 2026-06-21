@@ -4,6 +4,7 @@ import {
   EMBEDDING_SOURCE_SORT_MILLIS_SQL,
   EMBEDDING_SOURCE_SORT_ORDER_SQL,
   filterUnindexedDiaries,
+  formatLocalDate,
   isRagMemoryEnabled,
   limitExecute,
   resolveBatchEmbedConcurrency,
@@ -276,7 +277,9 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
       let completed = 0
 
       await limitExecute(diaries, batchConcurrency, async (meta) => {
-        const dateLabel = meta.date ? new Date(meta.date).toISOString().slice(0, 10) : ''
+        const dateLabel = meta.date
+          ? formatLocalDate(meta.date instanceof Date ? meta.date : new Date(meta.date))
+          : ''
         onProgress?.({
           current: completed,
           total,

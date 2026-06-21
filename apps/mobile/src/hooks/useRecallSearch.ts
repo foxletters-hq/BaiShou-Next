@@ -1,6 +1,13 @@
 import { useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { formatLocalDateFromInstant, timestampToMillis } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
+
+const formatRecallDate = (ts: unknown) => {
+  const raw = typeof ts === 'number' ? ts : new Date(ts as string | Date).getTime()
+  const ms = timestampToMillis(Number.isFinite(raw) ? raw : undefined)
+  return formatLocalDateFromInstant(ms ?? Date.now()) ?? ''
+}
 
 export interface RecallItem {
   id: string
@@ -41,7 +48,7 @@ export function useRecallSearch(): UseRecallSearchResult {
                 type: 'diary' as const,
                 title: d.title || t('common.untitled', '无标题'),
                 snippet: d.snippet || d.content?.substring(0, 100) || '',
-                date: new Date(d.createdAt).toISOString().split('T')[0]
+                date: formatRecallDate(d.createdAt)
               }))
             )
           } else {
@@ -62,7 +69,7 @@ export function useRecallSearch(): UseRecallSearchResult {
                 type: 'memory' as const,
                 title: t('agent.recall.memory', '记忆'),
                 snippet: r.chunkText.substring(0, 150),
-                date: r.createdAt ? new Date(r.createdAt * 1000).toISOString().split('T')[0] : '',
+                date: formatRecallDate(r.createdAt)
                 similarity: r.score
               }))
             )

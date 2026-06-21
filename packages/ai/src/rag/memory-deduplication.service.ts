@@ -16,7 +16,7 @@ import type {
   ToolVectorStore,
   ToolDeduplicationService
 } from '../tools/agent.tool'
-import { logger } from '@baishou/shared'
+import { logger, formatLocalDateTime } from '@baishou/shared'
 import { wrapLanguageModelWithMiddlewares } from '../middleware/middleware-factory'
 
 /** 相似度 > 此值视为精确重复 */
@@ -201,7 +201,7 @@ export class MemoryDeduplicationServiceImpl implements ToolDeduplicationService 
     try {
       const existingBlock = candidates
         .map((c) => {
-          const ts = c.createdAt ? new Date(c.createdAt).toISOString() : '未知时间'
+          const ts = c.createdAt ? formatLocalDateTime(c.createdAt) ?? '未知时间' : '未知时间'
           return `- [ID: ${c.embeddingId}] ${c.chunkText}（记录于 ${ts}）`
         })
         .join('\n')

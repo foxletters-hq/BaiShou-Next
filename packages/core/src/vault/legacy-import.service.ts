@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import extract from 'extract-zip'
 import os from 'node:os'
-import { DevicePreferences } from '@baishou/shared'
+import { DevicePreferences, formatLocalDate, formatLocalTime, parseDateStr } from '@baishou/shared'
 // 注意这里我们只建立降级写入需要的 Repository，真正的复杂 ORM 会由外部注入
 
 export interface ILegacyDatabaseAdapter {
@@ -112,9 +112,14 @@ export class LegacyArchiveImportService {
   private async _importLegacyDiaries(diariesJson: any[], schemaVersion: number): Promise<number> {
     const grouped = new Map<string, any[]>()
     for (const diary of diariesJson) {
-      const dateObj = diary.date ? new Date(diary.date) : new Date()
-      // yyyy-MM-dd
-      const dayKey = dateObj.toISOString().split('T')[0]!
+      const rawDate = diary.date
+      const dateObj =
+        typeof rawDate === 'string' && /^\d{4}-\d{2}-\d{2}/.test(rawDate)
+          ? parseDateStr(rawDate.split('T')[0]!)
+          : rawDate
+            ? new Date(rawDate)
+            : new Date()
+      const dayKey = formatLocalDate(dateObj)
       if (!grouped.has(dayKey)) grouped.set(dayKey, [])
       grouped.get(dayKey)!.push(diary)
     }
@@ -134,7 +139,7 @@ export class LegacyArchiveImportService {
         const d = list[i]
         if (schemaVersion < 1) {
           const dt = d.created_at ? new Date(d.created_at) : new Date()
-          const t = dt!.toISOString().split('T')[1]!.substring(0, 8)
+          const t = formatLocalTime(dt) ?? '00:00:00'
           buffer += `##### ${t}\n\n`
         }
         buffer += (d.content || '').trim() + '\n'

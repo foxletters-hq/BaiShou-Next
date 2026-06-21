@@ -1,3 +1,5 @@
+import { formatLocalDate } from '@baishou/shared'
+
 export function useRagActions(
   t: any,
   toast: any,
@@ -68,7 +70,7 @@ export function useRagActions(
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `rag-export-${new Date().toISOString().slice(0, 10)}.json`
+        a.download = `rag-export-${formatLocalDate(new Date())}.json`
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)

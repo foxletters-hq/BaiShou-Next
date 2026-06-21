@@ -11,6 +11,8 @@
  * 原始实现：lib/agent/rag/memory_deduplication_service.dart (412 行)
  */
 
+import { formatLocalDateTime } from '@baishou/shared'
+
 // ─── 类型定义 ──────────────────────────────────────────────
 
 export type DeduplicationAction = 'stored' | 'skipped' | 'merged'
@@ -201,7 +203,7 @@ export class MemoryDeduplicationService {
       const existingBlock = candidates
         .map(
           (m) =>
-            `- [ID: ${m.embeddingId}] ${m.chunkText}（记录于 ${new Date(m.createdAt).toISOString()}）`
+            `- [ID: ${m.embeddingId}] ${m.chunkText}（记录于 ${formatLocalDateTime(m.createdAt) ?? '未知时间'}）`
         )
         .join('\n')
 

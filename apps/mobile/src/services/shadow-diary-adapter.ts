@@ -1,6 +1,6 @@
 import type { ShadowIndexRepository } from '@baishou/database'
 import type { DiaryRepository } from '@baishou/database'
-import { parseDateStr, type Diary } from '@baishou/shared'
+import { parseDateStr, formatLocalDate, type Diary } from '@baishou/shared'
 
 /** 将 ShadowIndex 记录适配为 Summary 模块所需的 DiaryRepository 子集 */
 export function createShadowDiaryRepoAdapter(
@@ -37,8 +37,8 @@ export function createShadowDiaryRepoAdapter(
     },
     async findByDateRange(start: Date, end: Date) {
       const records = await shadowRepo.findByDateRange(
-        start.toISOString().slice(0, 10),
-        end.toISOString().slice(0, 10)
+        formatLocalDate(start),
+        formatLocalDate(end)
       )
       return records.map((r) => mapRecord(r as any))
     }
