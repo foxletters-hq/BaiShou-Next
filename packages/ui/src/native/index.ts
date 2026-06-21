@@ -60,6 +60,7 @@ export * from './MessageActionBar'
 // 同步组件
 export * from './IncrementalSyncPanel'
 export * from './IncrementalSyncProgressOverlay'
+export * from './IncrementalSyncConfirmDialog'
 export * from './IncrementalSyncScopeList'
 export * from './SyncModeComparisonNotice'
 export * from './BackupScopeList'

@@ -8,7 +8,8 @@ import {
   s3FetchHeaders,
   signS3Request,
   type S3SyncConfig,
-  type IncrementalSyncRunOptions
+  type IncrementalSyncRunOptions,
+  type IncrementalSyncPlanPreview
 } from '@baishou/shared'
 import type {
   IFileSystem,
@@ -292,6 +293,22 @@ export class MobileIncrementalSyncService {
     } else {
       await testS3(config)
     }
+  }
+
+  async planSync(
+    context: {
+      registeredVaults: string[]
+      diskVaultNames: string[]
+      activeVaultName: string | null
+    },
+    onProgress?: (progress: IncrementalSyncProgress) => void,
+    runOptions?: IncrementalSyncRunOptions
+  ): Promise<IncrementalSyncPlanPreview> {
+    const config = await this.getConfig()
+    if (!isConfigReady(config)) {
+      throw new Error('增量同步未配置或已禁用')
+    }
+    return this.engine.planSync(config, context, runOptions, (progress) => onProgress?.(progress))
   }
 
   /**

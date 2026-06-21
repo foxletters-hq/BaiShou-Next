@@ -88,6 +88,7 @@ export const DiaryScreen: React.FC = () => {
   const skipInitialFocusRefreshRef = useRef(true)
   const {
     isSyncing,
+    isPlanning,
     isEnabled: incrementalSyncEnabled,
     refreshConfigured,
     runIncrementalSync
@@ -383,7 +384,7 @@ export const DiaryScreen: React.FC = () => {
             onSyncPress={
               incrementalSyncEnabled === true ? () => void handleIncrementalSync() : undefined
             }
-            isSyncing={isSyncing}
+            isSyncing={isSyncing || isPlanning}
           />
 
           <DiaryList
