@@ -1,4 +1,5 @@
 import type {
+  IncrementalSyncPlanPreview,
   IncrementalSyncResult,
   SyncProgressCallback,
   IncrementalSyncRunOptions
@@ -6,6 +7,8 @@ import type {
 import {
   assertBidirectionalDeletePropagationAllowed,
   assertBidirectionalSyncDivergenceAllowed,
+  buildIncrementalSyncPlanPreview,
+  isSyncDivergenceConfirmationRequiredError,
   SyncDeletePropagationBlockedError,
   SyncDivergenceConfirmationRequiredError,
   SyncDivergenceExceededError
@@ -275,5 +278,76 @@ export class ThreeWaySyncService
       if (error instanceof SyncDivergenceConfirmationRequiredError) throw error
       throw new S3SyncError('Download failed', error instanceof Error ? error : undefined)
     }
+  }
+
+  async planSync(
+    context: {
+      registeredVaults: string[]
+      diskVaultNames: string[]
+      activeVaultName: string | null
+    },
+    runOptions?: IncrementalSyncRunOptions
+  ): Promise<IncrementalSyncPlanPreview> {
+    await this.loadConfig()
+    if (!this.config.enabled) throw new S3NotConfiguredError()
+
+    const localManifest = await this.buildLocalManifest()
+    const remoteManifest = await this.getRemoteManifest()
+    const storageHistory = await this.getSyncStorageHistoryState()
+
+    let requiresHighDivergenceConfirm = false
+    let divergencePercent: number | undefined
+    let maxDivergencePercent: number | undefined
+
+    try {
+      assertBidirectionalSyncDivergenceAllowed(localManifest, remoteManifest, this.config, {
+        storageHistory,
+        highDivergenceConfirmed: runOptions?.highDivergenceConfirmed
+      })
+    } catch (error) {
+      if (isSyncDivergenceConfirmationRequiredError(error)) {
+        requiresHighDivergenceConfirm = true
+        divergencePercent = error.divergencePercent
+        maxDivergencePercent = error.maxDivergencePercent
+      } else {
+        throw error
+      }
+    }
+
+    const ancestorSnapshot = await this.getRemoteSnapshot()
+    const previousLocalManifest = await this.getLocalManifest()
+    const decisions = threeWayMerge(localManifest, remoteManifest, ancestorSnapshot)
+
+    let deletePropagationBlocked = false
+    let deletePropagationReason: 'mass_delete' | 'local_data_loss' | undefined
+
+    try {
+      assertBidirectionalDeletePropagationAllowed(
+        decisions,
+        localManifest,
+        remoteManifest,
+        ancestorSnapshot,
+        previousLocalManifest
+      )
+    } catch (error) {
+      if (error instanceof SyncDeletePropagationBlockedError) {
+        deletePropagationBlocked = true
+        deletePropagationReason = error.reason
+      } else {
+        throw error
+      }
+    }
+
+    return buildIncrementalSyncPlanPreview({
+      decisions,
+      registeredVaults: context.registeredVaults,
+      diskVaultNames: context.diskVaultNames,
+      activeVaultName: context.activeVaultName,
+      requiresHighDivergenceConfirm,
+      divergencePercent,
+      maxDivergencePercent,
+      deletePropagationBlocked,
+      deletePropagationReason
+    })
   }
 }

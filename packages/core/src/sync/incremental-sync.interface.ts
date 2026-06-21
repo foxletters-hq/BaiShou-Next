@@ -3,7 +3,8 @@ import type {
   SyncManifest,
   IncrementalSyncResult,
   SyncProgressCallback,
-  IncrementalSyncRunOptions
+  IncrementalSyncRunOptions,
+  IncrementalSyncPlanPreview
 } from '@baishou/shared'
 
 /**
@@ -117,4 +118,16 @@ export interface IIncrementalSyncService {
    * 旧版本：桌面端备份到 .versions/，移动端创建 .conflict-*.md
    */
   getLastSyncConflicts(): Promise<string[]>
+
+  /**
+   * 预览本次同步将修改的文件（不执行实际上传/下载/删除）
+   */
+  planSync(
+    context: {
+      registeredVaults: string[]
+      diskVaultNames: string[]
+      activeVaultName: string | null
+    },
+    runOptions?: IncrementalSyncRunOptions
+  ): Promise<IncrementalSyncPlanPreview>
 }
