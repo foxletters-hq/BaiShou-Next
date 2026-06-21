@@ -319,7 +319,7 @@ export class ThreeWaySyncService
     const decisions = threeWayMerge(localManifest, remoteManifest, ancestorSnapshot)
 
     let deletePropagationBlocked = false
-    let deletePropagationReason: 'mass_delete' | 'local_data_loss' | undefined
+    let deletePropagationReason: 'mass_delete' | 'local_data_loss' | 'remote_data_loss' | undefined
 
     try {
       assertBidirectionalDeletePropagationAllowed(

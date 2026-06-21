@@ -61,8 +61,8 @@ async function switchVaultFast(vaultName: string) {
 
   await vaultService.switchVault(vaultName)
 
-  const { invalidateMcpToolContextCache } = await import('./agent-helpers')
-  invalidateMcpToolContextCache()
+  const { emitVaultSwitchMutation } = await import('../cache/desktop-main-cache-coordinator')
+  emitVaultSwitchMutation(vaultName, 'vault-switch')
 
   const { resetCachedManager } = await import('./summary.ipc')
   resetCachedManager()

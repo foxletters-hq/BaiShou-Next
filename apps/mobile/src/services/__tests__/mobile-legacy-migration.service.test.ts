@@ -64,9 +64,8 @@ describe('mobile-legacy-version-migration.state', () => {
         }
       }
     }))
-    const { mergeAssistantIdMap, getStoredAssistantIdMap } = await import(
-      '../mobile-legacy-version-migration.state'
-    )
+    const { mergeAssistantIdMap, getStoredAssistantIdMap } =
+      await import('../mobile-legacy-version-migration.state')
     await mergeAssistantIdMap({ old_a: 'new_a' })
     const map = await getStoredAssistantIdMap()
     expect(map.old_a).toBe('new_a')
@@ -82,9 +81,8 @@ describe('mobile-legacy-version-migration.state', () => {
         }
       }
     }))
-    const { mergeVaultNameMap, getStoredVaultNameMap } = await import(
-      '../mobile-legacy-version-migration.state'
-    )
+    const { mergeVaultNameMap, getStoredVaultNameMap } =
+      await import('../mobile-legacy-version-migration.state')
     await mergeVaultNameMap({ Personal: 'Personal42' })
     const map = await getStoredVaultNameMap()
     expect(map.Personal).toBe('Personal42')

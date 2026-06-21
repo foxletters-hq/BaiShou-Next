@@ -1,18 +1,28 @@
 import * as Crypto from 'expo-crypto'
 import type { IFileSystem } from '@baishou/core-mobile'
-import type { SyncProgressEvent, SyncManifest, S3SyncConfig, ManifestEntry, IncrementalSyncRunOptions } from '@baishou/shared'
+import type {
+  SyncProgressEvent,
+  SyncManifest,
+  S3SyncConfig,
+  ManifestEntry,
+  IncrementalSyncRunOptions
+} from '@baishou/shared'
 import {
   assertBidirectionalDeletePropagationAllowed,
   assertBidirectionalSyncDivergenceAllowed,
+  buildIncrementalSyncPlanPreview,
   getIncrementalSyncStorageId,
+  isSyncDivergenceConfirmationRequiredError,
   limitExecute,
   resolveIncrementalSyncStorageHistory,
+  SyncDeletePropagationBlockedError,
   type IncrementalSyncStorageHistory,
   SYNC_MANIFEST_FILENAME,
   SYNC_MANIFEST_VERSION,
   SYNC_REMOTE_SNAPSHOT_FILENAME,
   SYNC_STORAGE_ID_FILENAME,
-  threeWayMerge
+  threeWayMerge,
+  type IncrementalSyncPlanPreview
 } from '@baishou/shared'
 import {
   shouldIncludeIncrementalSyncFile,
@@ -230,7 +240,9 @@ export class MobileIncrementalEngine {
     return JSON.parse(raw) as SyncManifest
   }
 
-  private async getSyncStorageHistoryState(config: S3SyncConfig): Promise<IncrementalSyncStorageHistory> {
+  private async getSyncStorageHistoryState(
+    config: S3SyncConfig
+  ): Promise<IncrementalSyncStorageHistory> {
     const metaDir = await this.syncMetaDir()
     const storageIdPath = this.storageIdPath(metaDir)
     if (!(await this.fileSystem.exists(storageIdPath))) {
@@ -586,5 +598,87 @@ export class MobileIncrementalEngine {
       failed: 0,
       failedPaths: []
     }
+  }
+
+  async planSync(
+    config: S3SyncConfig,
+    context: {
+      registeredVaults: string[]
+      diskVaultNames: string[]
+      activeVaultName: string | null
+    },
+    runOptions?: IncrementalSyncRunOptions,
+    onProgress?: IncrementalProgressCallback
+  ): Promise<IncrementalSyncPlanPreview> {
+    const syncRoot = await this.syncRoot()
+    const client = new MobileIncrementalCloudClient(config, this.fileSystem)
+    client.setVaultPath(syncRoot)
+
+    onProgress?.({ phase: 'scanning', current: 0, total: 0 })
+    const localManifest = await this.buildLocalManifest((current, total, fileName) => {
+      onProgress?.({ phase: 'scanning', current, total, fileName })
+    })
+    onProgress?.({ phase: 'comparing', current: 0, total: 1 })
+    const remoteManifest = await this.getRemoteManifest(client, (current, total, fileName) => {
+      onProgress?.({ phase: 'comparing', current, total, fileName })
+    })
+    onProgress?.({ phase: 'comparing', current: 1, total: 1 })
+
+    const storageHistory = await this.getSyncStorageHistoryState(config)
+
+    let requiresHighDivergenceConfirm = false
+    let divergencePercent: number | undefined
+    let maxDivergencePercent: number | undefined
+
+    try {
+      assertBidirectionalSyncDivergenceAllowed(localManifest, remoteManifest, config, {
+        storageHistory,
+        highDivergenceConfirmed: runOptions?.highDivergenceConfirmed
+      })
+    } catch (error) {
+      if (isSyncDivergenceConfirmationRequiredError(error)) {
+        requiresHighDivergenceConfirm = true
+        divergencePercent = error.divergencePercent
+        maxDivergencePercent = error.maxDivergencePercent
+      } else {
+        throw error
+      }
+    }
+
+    const ancestorSnapshot = await this.loadRemoteSnapshot(config)
+    const previousLocalManifest = await this.readLocalManifestFile().catch(() => this.emptyManifest())
+    const decisions = threeWayMerge(localManifest, remoteManifest, ancestorSnapshot)
+
+    let deletePropagationBlocked = false
+    let deletePropagationReason: 'mass_delete' | 'local_data_loss' | 'remote_data_loss' | undefined
+
+    try {
+      assertBidirectionalDeletePropagationAllowed(
+        decisions,
+        localManifest,
+        remoteManifest,
+        ancestorSnapshot,
+        previousLocalManifest
+      )
+    } catch (error) {
+      if (error instanceof SyncDeletePropagationBlockedError) {
+        deletePropagationBlocked = true
+        deletePropagationReason = error.reason
+      } else {
+        throw error
+      }
+    }
+
+    return buildIncrementalSyncPlanPreview({
+      decisions,
+      registeredVaults: context.registeredVaults,
+      diskVaultNames: context.diskVaultNames,
+      activeVaultName: context.activeVaultName,
+      requiresHighDivergenceConfirm,
+      divergencePercent,
+      maxDivergencePercent,
+      deletePropagationBlocked,
+      deletePropagationReason
+    })
   }
 }

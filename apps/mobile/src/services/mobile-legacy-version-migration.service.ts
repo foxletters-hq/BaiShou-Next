@@ -36,7 +36,7 @@ import {
 import { stageLegacySqliteForAttach } from '@baishou/core-mobile'
 import { getAppDocumentDirectory } from './mobile-app-paths'
 import { FLUTTER_LEGACY_MIGRATED_SOURCE_KEY } from '../constants/storage'
-import { invalidateUserAvatarDisplayCache } from '../lib/user-avatar-display.util'
+import { emitSyncMutation } from '../cache/mobile-cache-coordinator'
 import {
   getCustomLegacySourceRoot,
   getStoredAssistantIdMap,
@@ -308,7 +308,6 @@ function buildImporterDeps(
     const profile = await runtime.profileRepo.getProfile()
     profile.avatarPath = relativePath
     await saveUserProfileToSettings(runtime.settingsManager, profile)
-    invalidateUserAvatarDisplayCache(relativePath)
   }
   deps.existingAssistantNames = async () => {
     const names = new Set<string>()

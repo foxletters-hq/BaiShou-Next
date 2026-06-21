@@ -68,7 +68,9 @@ export class GlobalDataBootstrapper {
     sessionWatcher.start(activeVault.path)
   }
 
-  private notifyRenderersAfterResync(): void {
+  private async notifyRenderersAfterResync(): Promise<void> {
+    const { emitSyncMutation } = await import('../cache/desktop-main-cache-coordinator')
+    emitSyncMutation('resync-complete', 'global-bootstrapper')
     BrowserWindow.getAllWindows().forEach((w) => {
       w.webContents.send('session:file-changed')
       w.webContents.send('diary:sync-event', { type: 'vault-resync-complete' })
@@ -119,7 +121,7 @@ export class GlobalDataBootstrapper {
       await pathService.backfillGlobalAgentAvatarsFromVaults()
 
       logger.info('--- ✅ GLOBAL BOOTSTRAPPER FINISHED. SYSTEM IS RATIONALIZED AND READY ---')
-      this.notifyRenderersAfterResync()
+      await this.notifyRenderersAfterResync()
     } catch (e) {
       logger.error('--- ❌ GLOBAL BOOTSTRAPPER FAILED. SEVERE SYNCHRONIZATION ERROR ---', e as any)
     }

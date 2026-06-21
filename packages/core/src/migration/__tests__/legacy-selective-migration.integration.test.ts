@@ -75,12 +75,8 @@ describe('legacy-selective-migration integration', () => {
       'Personal'
     )
     const markdownCountByVault = new Map([['Personal', markdown.length]])
-    const markdownDatesByVault = new Map([
-      ['Personal', new Set(markdown.map((e) => e.dateKey))]
-    ])
-    const sqliteByVault = new Map([
-      ['Personal', new Set(['2024-06-01', '2024-06-02'])]
-    ])
+    const markdownDatesByVault = new Map([['Personal', new Set(markdown.map((e) => e.dateKey))]])
+    const sqliteByVault = new Map([['Personal', new Set(['2024-06-01', '2024-06-02'])]])
     expect(
       countImportableDiaryEntries(markdownCountByVault, markdownDatesByVault, sqliteByVault)
     ).toBe(3)
@@ -90,7 +86,10 @@ describe('legacy-selective-migration integration', () => {
     await writeSourceSharedPreferences(sourceRoot, {
       备份身份: { name: 'FromSource' }
     })
-    const raw = await fs.readFile(path.join(sourceRoot, 'config', 'shared_preferences.json'), 'utf8')
+    const raw = await fs.readFile(
+      path.join(sourceRoot, 'config', 'shared_preferences.json'),
+      'utf8'
+    )
     const { parseFlutterSharedPreferencesJson } = await import('../flutter-shared-prefs.util')
     const sp = parseFlutterSharedPreferencesJson(raw)
     const personas = resolveLegacyIdentityPersonas(sp, null)
@@ -134,11 +133,11 @@ describe('legacy-selective-migration integration', () => {
   it.skipIf(!isBetterSqlite3Available())(
     'detects agent.sqlite under vault for scanLegacyDatabases',
     async () => {
-    const ids = await writeLegacyAgentDb(sourceRoot, 'Personal')
-    const { agentDbs } = await scanLegacyDatabases(fileSystem, sourceRoot)
-    expect(agentDbs.length).toBeGreaterThan(0)
-    expect(agentDbs.some((p) => p.includes('agent.sqlite'))).toBe(true)
-    expect(ids.assistantId).toBe('legacy-ast-1')
+      const ids = await writeLegacyAgentDb(sourceRoot, 'Personal')
+      const { agentDbs } = await scanLegacyDatabases(fileSystem, sourceRoot)
+      expect(agentDbs.length).toBeGreaterThan(0)
+      expect(agentDbs.some((p) => p.includes('agent.sqlite'))).toBe(true)
+      expect(ids.assistantId).toBe('legacy-ast-1')
     }
   )
 })

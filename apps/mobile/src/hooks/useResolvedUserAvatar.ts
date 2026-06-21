@@ -8,7 +8,9 @@ import {
 /** 将 settings 中的用户头像路径解析为可展示的本地 URI */
 export function useResolvedUserAvatar(avatarPath?: string | null): string | null {
   const { services, dbReady, vaultRevision } = useBaishou()
-  const [uri, setUri] = useState<string | null>(() => peekUserAvatarDisplayCache(avatarPath) ?? null)
+  const [uri, setUri] = useState<string | null>(
+    () => peekUserAvatarDisplayCache(avatarPath) ?? null
+  )
   const avatarPathRef = useRef(avatarPath)
 
   useEffect(() => {

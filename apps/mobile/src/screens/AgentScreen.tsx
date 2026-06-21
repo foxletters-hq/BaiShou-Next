@@ -8,7 +8,6 @@ import {
 import {
   View,
   StyleSheet,
-  FlatList,
   StatusBar,
   TouchableOpacity,
   Text,
@@ -21,6 +20,7 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent
 } from 'react-native'
+import { FlatList } from 'react-native-gesture-handler'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as Clipboard from 'expo-clipboard'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -42,6 +42,7 @@ import { AgentChatAppBar } from '../components/AgentChatAppBar'
 import { AgentMessageRow } from '../components/AgentMessageRow'
 import { ScreenSafeArea } from '../components/ScreenSafeArea'
 import { AgentDrawer, type AssistantSummary } from '../components/AgentDrawer'
+import { AgentDrawerSwipeZone } from '../components/AgentDrawerSwipeZone'
 import { AssistantPicker } from '../components/AssistantPicker'
 import { ModelSwitcher } from '../components/ModelSwitcher'
 import { ContextChainDialog } from '../components/ContextChainDialog'
@@ -66,6 +67,7 @@ import {
   type MobileAssistantUi
 } from '../lib/mobile-assistant.util'
 import { writeAgentNavigationSnapshot } from '../lib/agent-navigation-persistence'
+import { consumeAssistantsNeedRefresh } from '../lib/assistant-ui-refresh-signal'
 import { waitForVaultEcosystemResync } from '../services/mobile-vault-resync.service'
 import { useThrottledFocusRefresh } from '../hooks/useThrottledFocusRefresh'
 
@@ -96,14 +98,21 @@ export const AgentScreen = () => {
   }, [])
 
   const toast = useNativeToast()
-  const { services, dbReady, vaultRevision, vaultSwitching, storageIndexing, ecosystemResyncEpoch } =
-    useBaishou()
+  const {
+    services,
+    dbReady,
+    vaultRevision,
+    vaultSwitching,
+    storageIndexing,
+    ecosystemResyncEpoch
+  } = useBaishou()
   const flatListRef = useRef<FlatList>(null)
   const inputBarRef = useRef<InputBarRef>(null)
   const editingRowRef = useRef<View>(null)
   const scrollOffsetRef = useRef(0)
   const prevMsgLenRef = useRef(0)
   const layoutReadyRef = useRef(false)
+  const bubbleEditScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [assistants, setAssistants] = useState<MobileAssistantUi[]>([])
   const [userProfile, setUserProfile] = useState<{
@@ -160,6 +169,11 @@ export const AgentScreen = () => {
   const refreshSessionList = useCallback(() => {
     void loadSessions(true, currentAssistant?.id)
   }, [loadSessions, currentAssistant?.id])
+
+  useEffect(() => {
+    if (!drawerOpen || !dbReady || !currentAssistant?.id) return
+    void loadSessions(true, currentAssistant.id)
+  }, [drawerOpen, dbReady, currentAssistant?.id, loadSessions])
 
   useAgentNavigationPersistence({
     dbReady,
@@ -228,6 +242,8 @@ export const AgentScreen = () => {
   } = useAgentUI()
 
   const composerKeyboardLiftEnabled = !drawerOpen && !showShortcutSheet && !showRecallSheet
+  const drawerSwipeEnabled =
+    !drawerOpen && !isBubbleEditing && !showShortcutSheet && !showRecallSheet
   const {
     keyboardInset,
     inputDockAnimatedStyle,
@@ -242,6 +258,15 @@ export const AgentScreen = () => {
     enableComposerKeyboardLift: composerKeyboardLiftEnabled
   })
 
+  const readKeyboardInset = useCallback(() => {
+    const windowHeight = Dimensions.get('window').height
+    const metrics = Keyboard.metrics()
+    if (!metrics) return keyboardInset
+    const rawHeight =
+      metrics.height > 0 ? metrics.height : metrics.screenY > 0 ? windowHeight - metrics.screenY : 0
+    return Math.max(0, Math.ceil(rawHeight) - tabBarHeight)
+  }, [keyboardInset, tabBarHeight])
+
   /** 按行实测位置微调滚动：键盘展开时避开键盘，收起时避开底部工具栏 */
   const scrollEditingMessageIntoView = useCallback(() => {
     if (!editingMessageId) return
@@ -250,9 +275,10 @@ export const AgentScreen = () => {
 
     row.measureInWindow((_x, y, _w, height) => {
       const windowHeight = Dimensions.get('window').height
-      const keyboardOpen = keyboardInset >= 60
+      const effectiveKeyboardInset = readKeyboardInset()
+      const keyboardOpen = effectiveKeyboardInset >= 60
       const safeBottom = keyboardOpen
-        ? windowHeight - keyboardInset - tabBarHeight - BUBBLE_EDIT_KEYBOARD_BUFFER
+        ? windowHeight - effectiveKeyboardInset - tabBarHeight - BUBBLE_EDIT_KEYBOARD_BUFFER
         : windowHeight - tabBarHeight - inputDockHeight - BUBBLE_EDIT_DOCK_GAP
       const rowBottom = y + height
       if (rowBottom <= safeBottom + 4) return
@@ -262,17 +288,43 @@ export const AgentScreen = () => {
         animated: true
       })
     })
-  }, [editingMessageId, keyboardInset, tabBarHeight, inputDockHeight])
+  }, [editingMessageId, readKeyboardInset, tabBarHeight, inputDockHeight])
+
+  const scheduleBubbleEditScroll = useCallback(() => {
+    if (!editingMessageId) return
+    if (bubbleEditScrollTimerRef.current) clearTimeout(bubbleEditScrollTimerRef.current)
+    bubbleEditScrollTimerRef.current = setTimeout(
+      () => {
+        bubbleEditScrollTimerRef.current = null
+        scrollEditingMessageIntoView()
+      },
+      Platform.OS === 'ios' ? 120 : 220
+    )
+  }, [editingMessageId, scrollEditingMessageIntoView])
+
+  useEffect(() => {
+    if (!isBubbleEditing) {
+      if (bubbleEditScrollTimerRef.current) {
+        clearTimeout(bubbleEditScrollTimerRef.current)
+        bubbleEditScrollTimerRef.current = null
+      }
+      return
+    }
+
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
+    const sub = Keyboard.addListener(showEvent, scheduleBubbleEditScroll)
+    return () => sub.remove()
+  }, [isBubbleEditing, scheduleBubbleEditScroll])
 
   useEffect(() => {
     if (!isBubbleEditing || !editingMessageId) return
-    const early = setTimeout(scrollEditingMessageIntoView, Platform.OS === 'ios' ? 80 : 160)
-    const late = setTimeout(scrollEditingMessageIntoView, Platform.OS === 'ios' ? 340 : 480)
-    return () => {
-      clearTimeout(early)
-      clearTimeout(late)
-    }
-  }, [isBubbleEditing, editingMessageId, keyboardInset, scrollEditingMessageIntoView])
+    scheduleBubbleEditScroll()
+  }, [isBubbleEditing, editingMessageId, listBottomPadding, scheduleBubbleEditScroll])
+
+  const handleInputBarFocus = useCallback(() => {
+    handleComposerFocus()
+    requestAnimationFrame(() => scrollToBottom(flatListRef, true))
+  }, [handleComposerFocus, scrollToBottom])
 
   useEffect(() => {
     const overlaysOpen = drawerOpen || showShortcutSheet || showRecallSheet
@@ -363,7 +415,7 @@ export const AgentScreen = () => {
     void loadAssistants()
   }, [loadAssistants])
 
-  useThrottledFocusRefresh(refreshAssistantsOnFocus)
+  useThrottledFocusRefresh(refreshAssistantsOnFocus, 2000, consumeAssistantsNeedRefresh)
 
   // 伙伴头像/名称变更后同步 currentAssistant，避免聊天界面仍展示旧数据
   useEffect(() => {
@@ -737,114 +789,116 @@ export const AgentScreen = () => {
             onCostPress={() => setShowCostDialog(true)}
           />
 
-          <FlatList
-            ref={flatListRef}
-            style={styles.list}
-            contentContainerStyle={[styles.listContent, { paddingBottom: listBottomPadding }]}
-            data={messages}
-            extraData={{ chatAiProfile, chatUserProfile }}
-            keyExtractor={(item) => item.id}
-            nestedScrollEnabled
-            keyboardShouldPersistTaps="always"
-            keyboardDismissMode="interactive"
-            ListHeaderComponent={
-              hasMore && showLoadMoreBanner ? (
-                <TouchableOpacity style={styles.loadMore} onPress={() => void handleLoadMore()}>
-                  <Text style={[styles.loadMoreText, { color: colors.textSecondary }]}>
-                    {t('agent.chat.scroll_up_load_more', '点击或上滑加载更早对话')}
-                  </Text>
-                </TouchableOpacity>
-              ) : null
-            }
-            renderItem={({ item }) => {
-              const msgWithCompaction = item as typeof item & {
-                compactionRecord?: { streamTranscript?: string } | null
+          <AgentDrawerSwipeZone enabled={drawerSwipeEnabled} onOpen={() => setDrawerOpen(true)}>
+            <FlatList
+              ref={flatListRef}
+              style={styles.list}
+              contentContainerStyle={[styles.listContent, { paddingBottom: listBottomPadding }]}
+              data={messages}
+              extraData={{ chatAiProfile, chatUserProfile }}
+              keyExtractor={(item) => item.id}
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="always"
+              keyboardDismissMode="interactive"
+              ListHeaderComponent={
+                hasMore && showLoadMoreBanner ? (
+                  <TouchableOpacity style={styles.loadMore} onPress={() => void handleLoadMore()}>
+                    <Text style={[styles.loadMoreText, { color: colors.textSecondary }]}>
+                      {t('agent.chat.scroll_up_load_more', '点击或上滑加载更早对话')}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null
               }
-              const isLiveCompressionAnchor =
-                (compressionPhase === 'auto' || compressionPhase === 'manual') &&
-                compressionTriggerMessageId === item.id &&
-                (isCompressing ||
-                  ((Boolean(compressionText?.trim()) || Boolean(compressionReasoning?.trim())) &&
-                    !msgWithCompaction.compactionRecord))
+              renderItem={({ item }) => {
+                const msgWithCompaction = item as typeof item & {
+                  compactionRecord?: { streamTranscript?: string } | null
+                }
+                const isLiveCompressionAnchor =
+                  (compressionPhase === 'auto' || compressionPhase === 'manual') &&
+                  compressionTriggerMessageId === item.id &&
+                  (isCompressing ||
+                    ((Boolean(compressionText?.trim()) || Boolean(compressionReasoning?.trim())) &&
+                      !msgWithCompaction.compactionRecord))
 
-              return (
-                <View
-                  ref={item.id === editingMessageId ? editingRowRef : undefined}
-                  collapsable={false}
-                  style={styles.bubble}
-                >
-                  <AgentMessageRow
-                    item={msgWithCompaction as any}
-                    chatUserProfile={chatUserProfile}
-                    chatAiProfile={chatAiProfile}
-                    isLiveCompressionAnchor={isLiveCompressionAnchor}
-                    liveCompression={{
-                      phase: compressionPhase,
-                      summary: compressionText,
-                      reasoning: compressionReasoning,
-                      isActive: isCompressing
-                    }}
-                    onRegenerate={() => handleRegenerate(item.id)}
-                    onResend={item.role === 'user' ? () => void handleResend(item.id) : undefined}
-                    onResendEdit={
-                      item.role === 'user'
-                        ? (content) => handleEditMessage(item.id, content)
-                        : undefined
-                    }
-                    onSaveEdit={
-                      item.role === 'assistant'
-                        ? (content) => handleSaveAssistantEdit(item.id, content)
-                        : undefined
-                    }
-                    onCopy={() => Clipboard.setStringAsync(item.content)}
-                    onDelete={() => handleDeleteMessage(item.id)}
-                    onReadAloud={
-                      item.role === 'assistant'
-                        ? () => handleTtsReadAloud(item.content, item.id)
-                        : undefined
-                    }
-                    isTtsPlaying={ttsPlayingMsgId === item.id}
-                    onShowContext={
-                      item.role === 'assistant' ? () => handleShowContext(item) : undefined
-                    }
-                    onBranch={item.role === 'assistant' ? () => handleBranch(item.id) : undefined}
-                    onBubbleEditingChange={handleBubbleEditingChange}
-                  />
-                </View>
-              )
-            }}
-            ListFooterComponent={
-              showStreamingFooter ? (
-                <View>
-                  <StreamingBubble
-                    text={streamingText}
-                    reasoning={streamingReasoning}
-                    isReasoning={isStreaming && !streamingText && !!streamingReasoning}
-                    activeToolName={activeTool?.name ?? null}
-                    completedTools={completedTools.map((tool, idx) => ({
-                      name: tool.name,
-                      durationMs:
-                        tool.endTime && tool.startTime ? tool.endTime - tool.startTime : 0,
-                      result: tool.result,
-                      toolCallId: `streaming-${tool.name}-${idx}`
-                    }))}
-                    aiProfile={chatAiProfile}
-                  />
-                </View>
-              ) : null
-            }
-            showsVerticalScrollIndicator={false}
-            onContentSizeChange={handleContentSizeChange}
-            onLayout={() => {
-              if (!layoutReadyRef.current) {
-                layoutReadyRef.current = true
-                requestAnimationFrame(() => flatListRef.current?.scrollToEnd({ animated: false }))
+                return (
+                  <View
+                    ref={item.id === editingMessageId ? editingRowRef : undefined}
+                    collapsable={false}
+                    style={styles.bubble}
+                  >
+                    <AgentMessageRow
+                      item={msgWithCompaction as any}
+                      chatUserProfile={chatUserProfile}
+                      chatAiProfile={chatAiProfile}
+                      isLiveCompressionAnchor={isLiveCompressionAnchor}
+                      liveCompression={{
+                        phase: compressionPhase,
+                        summary: compressionText,
+                        reasoning: compressionReasoning,
+                        isActive: isCompressing
+                      }}
+                      onRegenerate={() => handleRegenerate(item.id)}
+                      onResend={item.role === 'user' ? () => void handleResend(item.id) : undefined}
+                      onResendEdit={
+                        item.role === 'user'
+                          ? (content) => handleEditMessage(item.id, content)
+                          : undefined
+                      }
+                      onSaveEdit={
+                        item.role === 'assistant'
+                          ? (content) => handleSaveAssistantEdit(item.id, content)
+                          : undefined
+                      }
+                      onCopy={() => Clipboard.setStringAsync(item.content)}
+                      onDelete={() => handleDeleteMessage(item.id)}
+                      onReadAloud={
+                        item.role === 'assistant'
+                          ? () => handleTtsReadAloud(item.content, item.id)
+                          : undefined
+                      }
+                      isTtsPlaying={ttsPlayingMsgId === item.id}
+                      onShowContext={
+                        item.role === 'assistant' ? () => handleShowContext(item) : undefined
+                      }
+                      onBranch={item.role === 'assistant' ? () => handleBranch(item.id) : undefined}
+                      onBubbleEditingChange={handleBubbleEditingChange}
+                    />
+                  </View>
+                )
+              }}
+              ListFooterComponent={
+                showStreamingFooter ? (
+                  <View>
+                    <StreamingBubble
+                      text={streamingText}
+                      reasoning={streamingReasoning}
+                      isReasoning={isStreaming && !streamingText && !!streamingReasoning}
+                      activeToolName={activeTool?.name ?? null}
+                      completedTools={completedTools.map((tool, idx) => ({
+                        name: tool.name,
+                        durationMs:
+                          tool.endTime && tool.startTime ? tool.endTime - tool.startTime : 0,
+                        result: tool.result,
+                        toolCallId: `streaming-${tool.name}-${idx}`
+                      }))}
+                      aiProfile={chatAiProfile}
+                    />
+                  </View>
+                ) : null
               }
-            }}
-            onScroll={handleListScroll}
-            scrollEventThrottle={16}
-            ListEmptyComponent={!isStreaming ? renderEmptyState() : null}
-          />
+              showsVerticalScrollIndicator={false}
+              onContentSizeChange={handleContentSizeChange}
+              onLayout={() => {
+                if (!layoutReadyRef.current) {
+                  layoutReadyRef.current = true
+                  requestAnimationFrame(() => flatListRef.current?.scrollToEnd({ animated: false }))
+                }
+              }}
+              onScroll={handleListScroll}
+              scrollEventThrottle={16}
+              ListEmptyComponent={!isStreaming ? renderEmptyState() : null}
+            />
+          </AgentDrawerSwipeZone>
 
           {showScrollButton && !isBubbleEditing ? (
             <Animated.View
@@ -882,7 +936,7 @@ export const AgentScreen = () => {
               isLoading={isLoading || isStreaming}
               onStop={handleStop}
               composerEnabled={!isBubbleEditing}
-              onInputFocus={handleComposerFocus}
+              onInputFocus={handleInputBarFocus}
               shortcuts={shortcuts}
               assistantName={assistantDisplayName}
               onManageShortcuts={() => setShowShortcutSheet(true)}

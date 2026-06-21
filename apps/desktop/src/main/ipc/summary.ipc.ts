@@ -24,6 +24,31 @@ import { pathService, vaultService, getActiveVaultShadowRepo } from './vault.ipc
 import { fileSystem } from '../services/node-file-system'
 import { CreateSummaryInput, UpdateSummaryInput, SummaryType } from '@baishou/shared'
 import { buildSummaryAiClient } from './summary-ai-client'
+import { getDiaryManager } from './diary.ipc'
+
+async function fetchDashboardSnapshotPayload(): Promise<{
+  totalDiaryCount: number
+  weeklyCount: number
+  monthlyCount: number
+  quarterlyCount: number
+  yearlyCount: number
+  activityRows: Array<{ date: string; count: number }>
+}> {
+  const [diaryCount, summaryCounts, activityRows] = await Promise.all([
+    getDiaryManager().count(),
+    ensureManager().countByType(),
+    getActiveVaultShadowRepo().getActivityData()
+  ])
+
+  return {
+    totalDiaryCount: diaryCount,
+    weeklyCount: summaryCounts.weekly,
+    monthlyCount: summaryCounts.monthly,
+    quarterlyCount: summaryCounts.quarterly,
+    yearlyCount: summaryCounts.yearly,
+    activityRows
+  }
+}
 
 export function getSummaryManager() {
   const db = connectionManager.getDb()
@@ -136,40 +161,38 @@ export function registerSummaryIPC() {
 
   ipcMain.handle('summary:stats', async () => {
     try {
-      let totalDiaryCount = 0
-      try {
-        const client = shadowConnectionManager.getClient()
-        const activeVault = vaultService.getActiveVault()
-        const vaultName = activeVault?.name ?? ''
-        const result = vaultName
-          ? await client.execute('SELECT COUNT(*) as c FROM journals_index WHERE vault_name = ?', [
-              vaultName
-            ])
-          : await client.execute('SELECT COUNT(*) as c FROM journals_index')
-        totalDiaryCount = (result.rows[0]?.c as number) || 0
-      } catch (e: any) {
-        logger.error('Failed to get shadow_index count', e)
-      }
-      const summaries = await ensureManager().list()
-      const countByType = summaries.reduce<Record<string, number>>((acc, summary) => {
-        acc[summary.type] = (acc[summary.type] ?? 0) + 1
-        return acc
-      }, {})
+      const snapshot = await fetchDashboardSnapshotPayload()
       return {
-        totalDiaryCount,
-        weeklyCount: countByType.weekly ?? 0,
-        monthlyCount: countByType.monthly ?? 0,
-        quarterlyCount: countByType.quarterly ?? 0,
-        yearlyCount: countByType.yearly ?? 0
+        totalDiaryCount: snapshot.totalDiaryCount,
+        weeklyCount: snapshot.weeklyCount,
+        monthlyCount: snapshot.monthlyCount,
+        quarterlyCount: snapshot.quarterlyCount,
+        yearlyCount: snapshot.yearlyCount
       }
-    } catch (err: any) {
-      logger.error('Failed to calculate summary stats:', err)
+    } catch (err: unknown) {
+      logger.error('Failed to calculate summary stats:', err as any)
       return {
         totalDiaryCount: 0,
         weeklyCount: 0,
         monthlyCount: 0,
         quarterlyCount: 0,
         yearlyCount: 0
+      }
+    }
+  })
+
+  ipcMain.handle('summary:dashboard-snapshot', async () => {
+    try {
+      return await fetchDashboardSnapshotPayload()
+    } catch (err: unknown) {
+      logger.error('[SummaryIPC] dashboard-snapshot error:', err as any)
+      return {
+        totalDiaryCount: 0,
+        weeklyCount: 0,
+        monthlyCount: 0,
+        quarterlyCount: 0,
+        yearlyCount: 0,
+        activityRows: [] as Array<{ date: string; count: number }>
       }
     }
   })

@@ -24,6 +24,7 @@
     "@baishou/shared": "workspace:^",
     "@baishou/store": "workspace:*",
     "@baishou/ui": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@expo/vector-icons": "^15.1.1",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/slider": "5.1.2",

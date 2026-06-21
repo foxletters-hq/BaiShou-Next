@@ -18,6 +18,8 @@ import expo.modules.kotlin.modules.ModuleDefinition
 import fi.iki.elonen.NanoHTTPD
 import java.io.File
 import java.io.FileOutputStream
+import java.io.PipedInputStream
+import java.io.PipedOutputStream
 import java.util.HashMap
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -36,9 +38,25 @@ private const val MCP_INFO_JSON =
 private const val LAN_SOCKET_READ_TIMEOUT_MS = 10 * 60 * 1000
 private const val LAN_HTTP_TIMEOUT_MS = 10 * 60 * 1000L
 
+/** MCP 工具调用可能较慢；GET SSE 等待流式响应头 */
+private const val MCP_BUFFERED_TIMEOUT_SEC = 120L
+private const val MCP_STREAM_START_TIMEOUT_SEC = 60L
+
 private data class PendingMcpRequest(
     val latch: CountDownLatch,
-    val response: AtomicReference<String>
+    val dispatchMeta: AtomicReference<McpDispatchMeta?>,
+    val pipeOut: PipedOutputStream,
+    val pipeIn: PipedInputStream
+)
+
+private sealed class McpDispatchMeta {
+    data class Fixed(val statusCode: Int, val headers: Map<String, String>, val body: String) : McpDispatchMeta()
+    data class Stream(val statusCode: Int, val headers: Map<String, String>) : McpDispatchMeta()
+}
+
+private data class ActiveMcpStream(
+    val pipeOut: PipedOutputStream,
+    val pipeIn: PipedInputStream
 )
 
 internal data class McpHttpRequest(
@@ -53,12 +71,65 @@ internal data class McpHttpResponse(
     val body: String
 )
 
+private fun closeQuietly(closeable: AutoCloseable?) {
+    if (closeable == null) return
+    try {
+        closeable.close()
+    } catch (_: Exception) {
+    }
+}
+
+private fun addMcpCorsHeaders(response: NanoHTTPD.Response) {
+    response.addHeader("Access-Control-Allow-Origin", "*")
+    response.addHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+    response.addHeader(
+        "Access-Control-Allow-Headers",
+        "Content-Type, Authorization, Accept, mcp-session-id, Mcp-Session-Id, Last-Event-ID, mcp-protocol-version, MCP-Protocol-Version"
+    )
+}
+
+private fun buildFixedMcpResponse(res: McpHttpResponse): NanoHTTPD.Response {
+    val status = NanoHTTPD.Response.Status.lookup(res.statusCode) ?: NanoHTTPD.Response.Status.INTERNAL_ERROR
+    val contentType = res.headers["content-type"] ?: "application/json"
+    val response = NanoHTTPD.newFixedLengthResponse(status, contentType, res.body)
+    addMcpCorsHeaders(response)
+    val skipKeys = setOf(
+        "access-control-allow-origin",
+        "access-control-allow-methods",
+        "access-control-allow-headers"
+    )
+    for ((key, value) in res.headers) {
+        if (key.lowercase() !in skipKeys) {
+            response.addHeader(key, value)
+        }
+    }
+    return response
+}
+
+private fun buildStreamMcpResponse(meta: McpDispatchMeta.Stream, pipeIn: PipedInputStream): NanoHTTPD.Response {
+    val status = NanoHTTPD.Response.Status.lookup(meta.statusCode) ?: NanoHTTPD.Response.Status.OK
+    val contentType = meta.headers["content-type"] ?: "text/event-stream"
+    val response = NanoHTTPD.newChunkedResponse(status, contentType, pipeIn)
+    addMcpCorsHeaders(response)
+    val skipKeys = setOf(
+        "access-control-allow-origin",
+        "access-control-allow-methods",
+        "access-control-allow-headers"
+    )
+    for ((key, value) in meta.headers) {
+        if (key.lowercase() !in skipKeys) {
+            response.addHeader(key, value)
+        }
+    }
+    return response
+}
+
 internal class BaishouHttpServer(
     port: Int,
     private val context: Context,
     private val authToken: String?,
     private val emitEvent: (String, Map<String, Any>) -> Unit,
-    private val dispatchMcpRequest: (McpHttpRequest) -> McpHttpResponse
+    private val dispatchMcpRequest: (McpHttpRequest) -> NanoHTTPD.Response
 ) : NanoHTTPD(port) {
 
     private fun isAuthorized(session: IHTTPSession): Boolean {
@@ -117,24 +188,6 @@ internal class BaishouHttpServer(
         return if (totalRead > 0) String(buffer, 0, totalRead) else ""
     }
 
-    private fun buildMcpResponse(res: McpHttpResponse): Response {
-        val status = Response.Status.lookup(res.statusCode) ?: Response.Status.INTERNAL_ERROR
-        val contentType = res.headers["content-type"] ?: "application/json"
-        val response = newFixedLengthResponse(status, contentType, res.body)
-        addCorsHeaders(response)
-        val skipKeys = setOf(
-            "access-control-allow-origin",
-            "access-control-allow-methods",
-            "access-control-allow-headers"
-        )
-        for ((key, value) in res.headers) {
-            if (key.lowercase() !in skipKeys) {
-                response.addHeader(key, value)
-            }
-        }
-        return response
-    }
-
     private fun handleMcp(session: IHTTPSession): Response {
         if (session.method == Method.OPTIONS) {
             return corsResponse(Response.Status.OK, MIME_PLAINTEXT, "")
@@ -151,7 +204,7 @@ internal class BaishouHttpServer(
                 Method.POST -> readRequestBody(session)
                 else -> ""
             }
-            buildMcpResponse(dispatchMcpRequest(McpHttpRequest(method, headers, body)))
+            dispatchMcpRequest(McpHttpRequest(method, headers, body))
         } catch (e: Exception) {
             e.printStackTrace()
             corsResponse(
@@ -283,6 +336,7 @@ private const val OPEN_DIRECTORY_TREE_CODE = 8842
 class ExpoBaishouServerModule : Module() {
     private var server: BaishouHttpServer? = null
     private val pendingMcpRequests = ConcurrentHashMap<String, PendingMcpRequest>()
+    private val activeMcpStreams = ConcurrentHashMap<String, ActiveMcpStream>()
     private var pendingDirectoryPromise: Promise? = null
     private val lanHttpClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
@@ -292,11 +346,43 @@ class ExpoBaishouServerModule : Module() {
             .build()
     }
 
-    private fun dispatchMcpRequestToJs(request: McpHttpRequest): McpHttpResponse {
+    private fun parseMcpResponseHeaders(json: org.json.JSONObject): Map<String, String> {
+        val headers = mutableMapOf<String, String>()
+        val headersObj = json.optJSONObject("headers")
+        if (headersObj != null) {
+            val keys = headersObj.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                headers[key] = headersObj.getString(key)
+            }
+        }
+        return headers
+    }
+
+    private fun mcpTimeoutErrorResponse(message: String): NanoHTTPD.Response {
+        val error = org.json.JSONObject()
+            .put("code", -32603)
+            .put("message", message)
+        val body = org.json.JSONObject()
+            .put("jsonrpc", "2.0")
+            .put("id", org.json.JSONObject.NULL)
+            .put("error", error)
+        return buildFixedMcpResponse(
+            McpHttpResponse(
+                500,
+                mapOf("content-type" to "application/json"),
+                body.toString()
+            )
+        )
+    }
+
+    private fun dispatchMcpRequestToJs(request: McpHttpRequest): NanoHTTPD.Response {
         val requestId = UUID.randomUUID().toString()
         val latch = CountDownLatch(1)
-        val responseRef = AtomicReference("")
-        pendingMcpRequests[requestId] = PendingMcpRequest(latch, responseRef)
+        val dispatchMeta = AtomicReference<McpDispatchMeta?>(null)
+        val pipeOut = PipedOutputStream()
+        val pipeIn = PipedInputStream(pipeOut)
+        pendingMcpRequests[requestId] = PendingMcpRequest(latch, dispatchMeta, pipeOut, pipeIn)
 
         sendEvent(
             "onMcpHttpRequest",
@@ -308,38 +394,35 @@ class ExpoBaishouServerModule : Module() {
             )
         )
 
-        val completed = latch.await(25, TimeUnit.SECONDS)
-        pendingMcpRequests.remove(requestId)
+        val timeoutSec =
+            if (request.method == "GET") MCP_STREAM_START_TIMEOUT_SEC else MCP_BUFFERED_TIMEOUT_SEC
+        val completed = latch.await(timeoutSec, TimeUnit.SECONDS)
+        val pending = pendingMcpRequests.remove(requestId)
 
-        if (!completed) {
-            return McpHttpResponse(
-                500,
-                mapOf("content-type" to "application/json"),
-                "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"MCP request timed out after 25s\"},\"id\":null}"
-            )
-        }
-
-        val raw = responseRef.get()
-        if (raw.isBlank()) {
-            return McpHttpResponse(202, emptyMap(), "")
-        }
-
-        return try {
-            val json = org.json.JSONObject(raw)
-            val statusCode = json.optInt("statusCode", 200)
-            val headers = mutableMapOf<String, String>()
-            val headersObj = json.optJSONObject("headers")
-            if (headersObj != null) {
-                val keys = headersObj.keys()
-                while (keys.hasNext()) {
-                    val key = keys.next()
-                    headers[key] = headersObj.getString(key)
-                }
+        if (!completed || pending == null) {
+            pending?.let {
+                closeQuietly(it.pipeOut)
+                closeQuietly(it.pipeIn)
             }
-            val body = json.optString("body", raw)
-            McpHttpResponse(statusCode, headers, body)
-        } catch (_: Exception) {
-            McpHttpResponse(200, mapOf("content-type" to "application/json"), raw)
+            return mcpTimeoutErrorResponse("MCP request timed out after ${timeoutSec}s")
+        }
+
+        val meta = pending.dispatchMeta.get()
+        if (meta == null) {
+            closeQuietly(pending.pipeOut)
+            closeQuietly(pending.pipeIn)
+            return buildFixedMcpResponse(McpHttpResponse(202, emptyMap(), ""))
+        }
+
+        return when (meta) {
+            is McpDispatchMeta.Fixed -> {
+                closeQuietly(pending.pipeOut)
+                closeQuietly(pending.pipeIn)
+                buildFixedMcpResponse(McpHttpResponse(meta.statusCode, meta.headers, meta.body))
+            }
+            is McpDispatchMeta.Stream -> {
+                buildStreamMcpResponse(meta, pending.pipeIn)
+            }
         }
     }
 
@@ -350,8 +433,62 @@ class ExpoBaishouServerModule : Module() {
 
         Function("resolveMcpHttpResponse") { requestId: String, responseBody: String ->
             val pending = pendingMcpRequests[requestId] ?: return@Function false
-            pending.response.set(responseBody)
+            try {
+                if (responseBody.isBlank()) {
+                    pending.dispatchMeta.set(McpDispatchMeta.Fixed(202, emptyMap(), ""))
+                } else {
+                    val json = org.json.JSONObject(responseBody)
+                    val statusCode = json.optInt("statusCode", 200)
+                    val headers = parseMcpResponseHeaders(json)
+                    val body = json.optString("body", responseBody)
+                    pending.dispatchMeta.set(McpDispatchMeta.Fixed(statusCode, headers, body))
+                }
+            } catch (_: Exception) {
+                pending.dispatchMeta.set(
+                    McpDispatchMeta.Fixed(
+                        200,
+                        mapOf("content-type" to "application/json"),
+                        responseBody
+                    )
+                )
+            }
+            closeQuietly(pending.pipeOut)
+            closeQuietly(pending.pipeIn)
             pending.latch.countDown()
+            true
+        }
+
+        Function("beginMcpHttpStream") { requestId: String, responseBody: String ->
+            val pending = pendingMcpRequests[requestId] ?: return@Function false
+            try {
+                val json = org.json.JSONObject(responseBody)
+                val statusCode = json.optInt("statusCode", 200)
+                val headers = parseMcpResponseHeaders(json)
+                pending.dispatchMeta.set(McpDispatchMeta.Stream(statusCode, headers))
+                activeMcpStreams[requestId] = ActiveMcpStream(pending.pipeOut, pending.pipeIn)
+                pending.latch.countDown()
+                true
+            } catch (_: Exception) {
+                false
+            }
+        }
+
+        Function("pushMcpHttpStreamChunk") { requestId: String, chunk: String ->
+            val stream = activeMcpStreams[requestId] ?: return@Function false
+            try {
+                stream.pipeOut.write(chunk.toByteArray(Charsets.UTF_8))
+                stream.pipeOut.flush()
+                true
+            } catch (e: Exception) {
+                e.printStackTrace()
+                false
+            }
+        }
+
+        Function("endMcpHttpStream") { requestId: String ->
+            val stream = activeMcpStreams.remove(requestId) ?: return@Function false
+            closeQuietly(stream.pipeOut)
+            closeQuietly(stream.pipeIn)
             true
         }
 
@@ -381,10 +518,16 @@ class ExpoBaishouServerModule : Module() {
             server?.stop()
             server = null
             pendingMcpRequests.values.forEach { pending ->
-                pending.response.set("")
+                pending.dispatchMeta.set(McpDispatchMeta.Fixed(503, emptyMap(), ""))
+                closeQuietly(pending.pipeOut)
                 pending.latch.countDown()
             }
             pendingMcpRequests.clear()
+            activeMcpStreams.values.forEach { stream ->
+                closeQuietly(stream.pipeOut)
+                closeQuietly(stream.pipeIn)
+            }
+            activeMcpStreams.clear()
         }
 
         AsyncFunction("uploadLanFileAsync") { url: String, filePath: String, promise: Promise ->

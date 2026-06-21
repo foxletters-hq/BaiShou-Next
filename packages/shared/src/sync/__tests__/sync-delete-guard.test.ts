@@ -31,6 +31,19 @@ function deleteRemoteDecision(filePath: string): MergeDecision {
   }
 }
 
+function deleteLocalDecision(filePath: string, hash = 'h'): MergeDecision {
+  const entry = { hash, size: 1, lastModified: 0 }
+  return {
+    filePath,
+    type: 'delete-local',
+    hash: entry.hash,
+    size: entry.size,
+    localEntry: entry,
+    remoteEntry: null,
+    ancestorEntry: entry
+  }
+}
+
 describe('assertBidirectionalDeletePropagationAllowed', () => {
   it('allows a small number of delete-remote decisions', () => {
     const remoteFiles = Object.fromEntries(
@@ -84,5 +97,57 @@ describe('assertBidirectionalDeletePropagationAllowed', () => {
     expect(() =>
       assertBidirectionalDeletePropagationAllowed(decisions, local, remote, ancestor, previousLocal)
     ).toThrow(SyncDeletePropagationBlockedError)
+  })
+
+  it('blocks mass delete-local when remote is empty but local/ancestor are full', () => {
+    const localFiles = Object.fromEntries(
+      Array.from({ length: 20 }, (_, i) => [`file-${i}.md`, `hash-${i}`])
+    )
+    const local = manifest(localFiles)
+    const remote = manifest({})
+    const ancestor = manifest(localFiles)
+    const decisions = threeWayMerge(local, remote, ancestor)
+
+    expect(decisions.filter((d) => d.type === 'delete-local')).toHaveLength(20)
+    expect(() =>
+      assertBidirectionalDeletePropagationAllowed(decisions, local, remote, ancestor)
+    ).toThrow(SyncDeletePropagationBlockedError)
+  })
+
+  it('blocks delete-local when remote lost most files vs ancestor snapshot', () => {
+    const ancestorFiles = Object.fromEntries(
+      Array.from({ length: 10 }, (_, i) => [`file-${i}.md`, `hash-${i}`])
+    )
+    const local = manifest(ancestorFiles)
+    const remote = manifest({ 'file-0.md': 'hash-0' })
+    const ancestor = manifest(ancestorFiles)
+    const decisions = Array.from({ length: 9 }, (_, i) =>
+      deleteLocalDecision(`file-${i + 1}.md`, `hash-${i + 1}`)
+    )
+
+    expect(() =>
+      assertBidirectionalDeletePropagationAllowed(decisions, local, remote, ancestor)
+    ).toThrow(SyncDeletePropagationBlockedError)
+  })
+
+  it('allows a few delete-local when remote shrank but not below ancestor ratio threshold', () => {
+    const ancestorFiles = Object.fromEntries(
+      Array.from({ length: 10 }, (_, i) => [`file-${i}.md`, `hash-${i}`])
+    )
+    const local = manifest(ancestorFiles)
+    const remote = manifest({
+      'file-0.md': 'hash-0',
+      'file-1.md': 'hash-1',
+      'file-2.md': 'hash-2',
+      'file-3.md': 'hash-3'
+    })
+    const ancestor = manifest(ancestorFiles)
+    const decisions = Array.from({ length: 2 }, (_, i) =>
+      deleteLocalDecision(`file-${i + 8}.md`, `hash-${i + 8}`)
+    )
+
+    expect(() =>
+      assertBidirectionalDeletePropagationAllowed(decisions, local, remote, ancestor)
+    ).not.toThrow()
   })
 })

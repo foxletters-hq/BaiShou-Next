@@ -71,3 +71,4 @@ export * from './network/lan-sync.interface'
 export * from './network/cloud-sync.interface'
 
 export * from './shadow-index/shadow-index-sync.service'
+export * from './events'

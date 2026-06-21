@@ -1,7 +1,7 @@
 import { Summary, CreateSummaryInput, UpdateSummaryInput, SummaryType } from '@baishou/shared'
 import { SummaryRepository } from './summary.repository'
 import { summariesTable } from '../schema/summaries'
-import { eq, and, gte } from 'drizzle-orm'
+import { eq, and, gte, sql } from 'drizzle-orm'
 import { AppDatabase } from '../types'
 import { withExpoAgentDatabaseLock } from '../expo-agent-db.lock'
 
@@ -96,6 +96,24 @@ export class SummaryRepositoryImpl implements SummaryRepository {
 
       const rows = await query
       return rows as unknown as Summary[]
+    })
+  }
+
+  async countByType(): Promise<Partial<Record<SummaryType, number>>> {
+    return this.run(async () => {
+      const rows = await this.db
+        .select({
+          type: summariesTable.type,
+          count: sql<number>`count(*)`
+        })
+        .from(summariesTable)
+        .groupBy(summariesTable.type)
+
+      const result: Partial<Record<SummaryType, number>> = {}
+      for (const row of rows) {
+        result[row.type as SummaryType] = Number(row.count) || 0
+      }
+      return result
     })
   }
 

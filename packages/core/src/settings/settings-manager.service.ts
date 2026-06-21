@@ -8,6 +8,7 @@ import {
   type UserProfile
 } from '@baishou/shared'
 import { SettingsFileService } from './settings-file.service'
+import { emitDomainMutation } from '../events'
 
 const PROMPT_SHORTCUTS_KEY = 'prompt_shortcuts_v2'
 
@@ -42,6 +43,7 @@ export class SettingsManagerService {
     if (!shouldTraceSettingsKey(key)) {
       await this.repo.set(key, value)
       await this.flushToDisk()
+      emitDomainMutation({ domain: 'settings', action: 'update', meta: { key } })
       return
     }
     await traceCall(
@@ -50,6 +52,7 @@ export class SettingsManagerService {
       async () => {
         await this.repo.set(key, value)
         await this.flushToDisk()
+        emitDomainMutation({ domain: 'settings', action: 'update', meta: { key } })
       },
       { key, payload: value }
     )

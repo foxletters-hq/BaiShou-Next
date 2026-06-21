@@ -8,9 +8,15 @@ import {
   s3FetchHeaders,
   signS3Request,
   type S3SyncConfig,
-  type IncrementalSyncRunOptions
+  type IncrementalSyncRunOptions,
+  type IncrementalSyncPlanPreview
 } from '@baishou/shared'
-import type { IFileSystem, IArchiveService, SettingsManagerService, AssistantManagerService } from '@baishou/core-mobile'
+import type {
+  IFileSystem,
+  IArchiveService,
+  SettingsManagerService,
+  AssistantManagerService
+} from '@baishou/core-mobile'
 import type { IStoragePathService } from '@baishou/core-mobile'
 import { InteractionManager } from 'react-native'
 import { FileSystemUploadType, uploadAsync } from './mobile-http-transfer'
@@ -19,8 +25,7 @@ import {
   type MobileIncrementalProgress
 } from './mobile-incremental-engine'
 import type { MobileDataBootstrapper } from './mobile-bootstrapper.service'
-import { invalidateAllAvatarDisplayCaches } from '../lib/assistant-avatar-display.util'
-import { invalidateUserAvatarDisplayCache } from '../lib/user-avatar-display.util'
+import { emitSyncMutation } from '../cache/mobile-cache-coordinator'
 import { reconcileUserAvatarProfileAfterStorageChange } from '../lib/user-avatar-reconcile.util'
 import { reconcileAssistantAvatarsAfterStorageChange } from '../lib/assistant-avatar-reconcile.util'
 
@@ -213,8 +218,7 @@ export class MobileIncrementalSyncService {
   }
 
   private afterSyncComplete(): Promise<void> {
-    invalidateAllAvatarDisplayCaches()
-    invalidateUserAvatarDisplayCache()
+    emitSyncMutation('complete', 'incremental-sync')
 
     return new Promise((resolve) => {
       InteractionManager.runAfterInteractions(() => {
@@ -291,6 +295,22 @@ export class MobileIncrementalSyncService {
     }
   }
 
+  async planSync(
+    context: {
+      registeredVaults: string[]
+      diskVaultNames: string[]
+      activeVaultName: string | null
+    },
+    onProgress?: (progress: IncrementalSyncProgress) => void,
+    runOptions?: IncrementalSyncRunOptions
+  ): Promise<IncrementalSyncPlanPreview> {
+    const config = await this.getConfig()
+    if (!isConfigReady(config)) {
+      throw new Error('增量同步未配置或已禁用')
+    }
+    return this.engine.planSync(config, context, runOptions, (progress) => onProgress?.(progress))
+  }
+
   /**
    * 三向合并增量同步（对齐桌面 ThreeWaySyncService.sync）
    */
@@ -303,9 +323,13 @@ export class MobileIncrementalSyncService {
       throw new Error('增量同步未配置或已禁用')
     }
 
-    const result = await this.engine.syncThreeWay(config, (progress) => {
-      onProgress?.(progress)
-    }, runOptions)
+    const result = await this.engine.syncThreeWay(
+      config,
+      (progress) => {
+        onProgress?.(progress)
+      },
+      runOptions
+    )
 
     await this.afterSyncComplete()
 
@@ -340,7 +364,11 @@ export class MobileIncrementalSyncService {
   ): Promise<IncrementalSyncResult> {
     const config = await this.getConfig()
     if (!isConfigReady(config)) throw new Error('增量同步未配置或已禁用')
-    const result = await this.engine.downloadOnly(config, (progress) => onProgress?.(progress), runOptions)
+    const result = await this.engine.downloadOnly(
+      config,
+      (progress) => onProgress?.(progress),
+      runOptions
+    )
     await this.afterSyncComplete()
     return {
       uploaded: 0,

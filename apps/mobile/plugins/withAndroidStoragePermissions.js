@@ -48,8 +48,8 @@ function withAndroidStoragePermissions(config) {
     const queryList = Array.isArray(queries) ? queries : queries ? [queries] : []
     for (const action of STORAGE_SETTINGS_QUERIES) {
       const exists = queryList.some((q) =>
-        (Array.isArray(q.intent) ? q.intent : q.intent ? [q.intent] : []).some(
-          (intent) => intent.action?.some?.((a) => a.$?.['android:name'] === action)
+        (Array.isArray(q.intent) ? q.intent : q.intent ? [q.intent] : []).some((intent) =>
+          intent.action?.some?.((a) => a.$?.['android:name'] === action)
         )
       )
       if (!exists) {

@@ -101,11 +101,7 @@ export class MetadataMigrator {
       '[MetadataMigrator] Legacy Database connection successfully reconnected and schema migrated.'
     )
 
-    await this.restoreDevicePreferencesFromExtract(
-      archiveRoot,
-      rootDir,
-      currentCloudSyncConfig
-    )
+    await this.restoreDevicePreferencesFromExtract(archiveRoot, rootDir, currentCloudSyncConfig)
     return true
   }
 

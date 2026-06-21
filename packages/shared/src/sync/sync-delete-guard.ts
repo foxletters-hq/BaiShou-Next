@@ -1,37 +1,53 @@
 import type { SyncManifest } from '../types/version-control.types'
 import type { MergeDecision } from './three-way-merge'
 
-/** 双向同步因大量远端删除传播被阻断 */
+export type SyncDeletePropagationDirection = 'remote' | 'local'
+
+export type SyncDeletePropagationBlockReason =
+  | 'mass_delete'
+  | 'local_data_loss'
+  | 'remote_data_loss'
+
+/** 双向同步因大量删除传播被阻断 */
 export class SyncDeletePropagationBlockedError extends Error {
   constructor(
-    public readonly deleteRemoteCount: number,
-    public readonly remoteFileCount: number,
-    public readonly reason: 'mass_delete' | 'local_data_loss'
+    public readonly deleteCount: number,
+    public readonly baselineFileCount: number,
+    public readonly direction: SyncDeletePropagationDirection,
+    public readonly reason: SyncDeletePropagationBlockReason
   ) {
     super(
-      `SyncDeletePropagationBlockedError: ${deleteRemoteCount}/${remoteFileCount} remote deletions blocked (${reason})`
+      `SyncDeletePropagationBlockedError: ${deleteCount}/${baselineFileCount} ${direction} deletions blocked (${reason})`
     )
     this.name = 'SyncDeletePropagationBlockedError'
   }
+
+  /** @deprecated 使用 deleteCount */
+  get deleteRemoteCount(): number {
+    return this.direction === 'remote' ? this.deleteCount : 0
+  }
+
+  /** @deprecated 使用 baselineFileCount */
+  get remoteFileCount(): number {
+    return this.direction === 'remote' ? this.baselineFileCount : 0
+  }
 }
 
-/** 触发远端删除传播保护所需的最小远端文件数 */
+/** 触发删除传播保护所需的最小基准文件数 */
 export const SYNC_DELETE_GUARD_MIN_REMOTE_FILES = 5
 
-/** 单次同步允许传播到远端的最大删除占比（0–1） */
+/** 单次同步允许传播的最大删除占比（0–1），适用于远端与本地 */
 export const SYNC_DELETE_GUARD_MAX_REMOTE_DELETE_RATIO = 0.2
+
+export const SYNC_DELETE_GUARD_MAX_DELETE_RATIO = SYNC_DELETE_GUARD_MAX_REMOTE_DELETE_RATIO
 
 /** 当前本地扫描结果相对上次本地 manifest 的疑似数据丢失阈值（0–1） */
 export const SYNC_LOCAL_DATA_LOSS_RATIO = 0.5
 
-/** 当前本地文件数相对祖先快照过少时，视为疑似本地数据丢失（0–1） */
+/** 当前一侧文件数相对祖先快照过少时，视为疑似数据丢失（0–1） */
 export const SYNC_LOCAL_VS_ANCESTOR_MIN_RATIO = 0.3
 
-/**
- * 双向同步前校验：阻止「本地缺失 + 远端未变」被误判为本地删除而批量清空远端。
- * 典型场景：移动端本地数据丢失但 `.baishou/last-remote-manifest.json` 仍保留完整快照。
- */
-export function assertBidirectionalDeletePropagationAllowed(
+function assertDeleteRemotePropagationAllowed(
   decisions: MergeDecision[],
   local: SyncManifest,
   remote: SyncManifest,
@@ -48,9 +64,14 @@ export function assertBidirectionalDeletePropagationAllowed(
 
   if (
     remoteFileCount >= SYNC_DELETE_GUARD_MIN_REMOTE_FILES &&
-    deleteRemoteCount / remoteFileCount > SYNC_DELETE_GUARD_MAX_REMOTE_DELETE_RATIO
+    deleteRemoteCount / remoteFileCount > SYNC_DELETE_GUARD_MAX_DELETE_RATIO
   ) {
-    throw new SyncDeletePropagationBlockedError(deleteRemoteCount, remoteFileCount, 'mass_delete')
+    throw new SyncDeletePropagationBlockedError(
+      deleteRemoteCount,
+      remoteFileCount,
+      'remote',
+      'mass_delete'
+    )
   }
 
   const unchangedRemoteDeletes = deleteRemoteDecisions.filter(
@@ -65,6 +86,7 @@ export function assertBidirectionalDeletePropagationAllowed(
     throw new SyncDeletePropagationBlockedError(
       deleteRemoteCount,
       remoteFileCount,
+      'remote',
       'local_data_loss'
     )
   }
@@ -78,8 +100,72 @@ export function assertBidirectionalDeletePropagationAllowed(
       throw new SyncDeletePropagationBlockedError(
         deleteRemoteCount,
         remoteFileCount,
+        'remote',
         'local_data_loss'
       )
     }
   }
+}
+
+/**
+ * 阻止「远端缺失 + 本地未变」被误判为远端删除而批量清空本地。
+ * 典型场景：云端 manifest 被清空或大量删除，但本地仍保留完整数据。
+ */
+function assertDeleteLocalPropagationAllowed(
+  decisions: MergeDecision[],
+  local: SyncManifest,
+  remote: SyncManifest,
+  ancestor: SyncManifest
+): void {
+  const deleteLocalDecisions = decisions.filter((d) => d.type === 'delete-local')
+  const deleteLocalCount = deleteLocalDecisions.length
+  if (deleteLocalCount === 0) return
+
+  const remoteFileCount = Object.keys(remote.files).length
+  const localFileCount = Object.keys(local.files).length
+  const ancestorFileCount = Object.keys(ancestor.files).length
+
+  if (
+    localFileCount >= SYNC_DELETE_GUARD_MIN_REMOTE_FILES &&
+    deleteLocalCount / localFileCount > SYNC_DELETE_GUARD_MAX_DELETE_RATIO
+  ) {
+    throw new SyncDeletePropagationBlockedError(
+      deleteLocalCount,
+      localFileCount,
+      'local',
+      'mass_delete'
+    )
+  }
+
+  const unchangedLocalDeletes = deleteLocalDecisions.filter(
+    (d) => d.localEntry && d.ancestorEntry && d.localEntry.hash === d.ancestorEntry.hash
+  )
+
+  if (
+    ancestorFileCount >= SYNC_DELETE_GUARD_MIN_REMOTE_FILES &&
+    remoteFileCount < ancestorFileCount * SYNC_LOCAL_VS_ANCESTOR_MIN_RATIO &&
+    unchangedLocalDeletes.length === deleteLocalCount
+  ) {
+    throw new SyncDeletePropagationBlockedError(
+      deleteLocalCount,
+      localFileCount,
+      'local',
+      'remote_data_loss'
+    )
+  }
+}
+
+/**
+ * 双向同步前校验：阻止「本地缺失 + 远端未变」被误判为本地删除而批量清空远端，
+ * 以及「远端缺失 + 本地未变」被误判为远端删除而批量清空本地。
+ */
+export function assertBidirectionalDeletePropagationAllowed(
+  decisions: MergeDecision[],
+  local: SyncManifest,
+  remote: SyncManifest,
+  ancestor: SyncManifest,
+  previousLocal?: SyncManifest
+): void {
+  assertDeleteRemotePropagationAllowed(decisions, local, remote, ancestor, previousLocal)
+  assertDeleteLocalPropagationAllowed(decisions, local, remote, ancestor)
 }

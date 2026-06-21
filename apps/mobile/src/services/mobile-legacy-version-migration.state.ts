@@ -47,9 +47,7 @@ export async function loadVersionMigrationState(): Promise<LegacyVersionMigratio
   }
 }
 
-export async function saveVersionMigrationState(
-  state: LegacyVersionMigrationState
-): Promise<void> {
+export async function saveVersionMigrationState(state: LegacyVersionMigrationState): Promise<void> {
   await AsyncStorage.setItem(VERSION_MIGRATION_STATE_KEY, JSON.stringify(state))
 }
 

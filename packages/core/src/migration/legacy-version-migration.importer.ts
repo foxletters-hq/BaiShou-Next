@@ -22,9 +22,7 @@ import {
   legacyJournalAlreadyMigrated
 } from './legacy-journal-migration.util'
 import { countArchiveMarkdownUnderArchivesDir } from '../vault/archive-files.util'
-import {
-  importLegacySqlSummariesForVault
-} from './legacy-summary-migration.util'
+import { importLegacySqlSummariesForVault } from './legacy-summary-migration.util'
 import {
   mergeAvatarMaps,
   restoreLegacyAvatarsFromArchiveLayout,
@@ -496,9 +494,17 @@ export async function importLegacyConfigSection(
 export async function importLegacyDiariesForVault(
   deps: LegacyVersionMigrationImporterDeps,
   legacyVaultName: string
-): Promise<Pick<LegacyVersionMigrationImportResult, 'imported' | 'skipped' | 'failed' | 'failureSamples'>> {
-  const { fileSystem, sourceRoot, diaryService, onProgress, runInVaultContext, readTargetJournalRaw } =
-    deps
+): Promise<
+  Pick<LegacyVersionMigrationImportResult, 'imported' | 'skipped' | 'failed' | 'failureSamples'>
+> {
+  const {
+    fileSystem,
+    sourceRoot,
+    diaryService,
+    onProgress,
+    runInVaultContext,
+    readTargetJournalRaw
+  } = deps
   let imported = 0
   let skipped = 0
   let failed = 0
@@ -520,11 +526,7 @@ export async function importLegacyDiariesForVault(
   await runInVaultContext(legacyVaultName, async () => {
     const journalsBase = deps.getJournalsBaseDirectory
       ? await deps.getJournalsBaseDirectory(targetVaultName)
-      : path.join(
-          deps.targetRoot,
-          targetVaultName,
-          'Journals'
-        )
+      : path.join(deps.targetRoot, targetVaultName, 'Journals')
 
     await walkJournalFiles(
       fileSystem,
@@ -567,13 +569,20 @@ export async function importLegacyDiariesForVault(
     )
   })
 
-  return { imported, skipped, failed, failureSamples: failureSamples.length > 0 ? failureSamples : undefined }
+  return {
+    imported,
+    skipped,
+    failed,
+    failureSamples: failureSamples.length > 0 ? failureSamples : undefined
+  }
 }
 
 export async function importLegacyArchivesForVault(
   deps: LegacyVersionMigrationImporterDeps,
   legacyVaultName: string
-): Promise<Pick<LegacyVersionMigrationImportResult, 'imported' | 'skipped' | 'failed' | 'failureSamples'>> {
+): Promise<
+  Pick<LegacyVersionMigrationImportResult, 'imported' | 'skipped' | 'failed' | 'failureSamples'>
+> {
   const { fileSystem, sourceRoot, onProgress } = deps
   const sourceArchives = path.join(sourceRoot, legacyVaultName, 'Archives')
   if (!(await fileSystem.exists(sourceArchives))) {
@@ -696,14 +705,16 @@ export async function importLegacyAssistantsFromRows(
       continue
     }
 
-    const uniqueName = resolveUniqueNameWithTwoDigitSuffix(String(row.name ?? '伙伴'), existingNames)
+    const uniqueName = resolveUniqueNameWithTwoDigitSuffix(
+      String(row.name ?? '伙伴'),
+      existingNames
+    )
     existingNames.add(uniqueName)
     const newId = generateRemappedId('legacy_ast')
     assistantIdMap[oldId] = newId
 
     try {
-      const legacyAvatarPath =
-        row.avatar_path != null ? String(row.avatar_path) : undefined
+      const legacyAvatarPath = row.avatar_path != null ? String(row.avatar_path) : undefined
       const avatarPath = await resolveImportedAssistantAvatarPath(deps.fileSystem, {
         legacyAvatarPath,
         assistantId: oldId,
@@ -793,9 +804,7 @@ export async function importLegacyChatsFromRows(
       sessionRow.assistant_id != null && String(sessionRow.assistant_id).trim() !== ''
         ? String(sessionRow.assistant_id)
         : null
-    const mappedAssistantId = rawAssistantId
-      ? assistantIdMap[rawAssistantId]
-      : fallbackAssistantId
+    const mappedAssistantId = rawAssistantId ? assistantIdMap[rawAssistantId] : fallbackAssistantId
     if (!mappedAssistantId) {
       skipped += 1
       if (!warnings.includes('version_migration.import_chat_missing_assistant')) {
@@ -819,7 +828,8 @@ export async function importLegacyChatsFromRows(
           role: String(messageRow.role ?? 'user'),
           isSummary: Number(messageRow.is_summary) === 1,
           orderIndex: messageRow.order_index != null ? Number(messageRow.order_index) : index,
-          inputTokens: messageRow.input_tokens != null ? Number(messageRow.input_tokens) : undefined,
+          inputTokens:
+            messageRow.input_tokens != null ? Number(messageRow.input_tokens) : undefined,
           outputTokens:
             messageRow.output_tokens != null ? Number(messageRow.output_tokens) : undefined,
           costMicros: messageRow.cost_micros != null ? Number(messageRow.cost_micros) : undefined,

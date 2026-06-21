@@ -242,7 +242,11 @@ export class MobileArchiveService implements IArchiveService {
     const skipPreImportSnapshot = await this.shouldSkipPreImportSnapshot(zipFilePath)
 
     reportArchiveImportStage(onProgress, 'preparing')
-    if (createSnapshotBefore && !skipPreImportSnapshot && (await this.storageRootHasData(rootDir))) {
+    if (
+      createSnapshotBefore &&
+      !skipPreImportSnapshot &&
+      (await this.storageRootHasData(rootDir))
+    ) {
       try {
         reportArchiveImportStage(onProgress, 'snapshot')
         const snap = await this.createSnapshot({ preservePaths: [preserveDuringSnapshot] })

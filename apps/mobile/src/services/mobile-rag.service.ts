@@ -367,8 +367,7 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
           text: r.chunkText,
           createdAt: timestampToMillis(r.createdAt) ?? Date.now(),
           sourceType: r.sourceType,
-          sourceId: r.sourceId,
-          similarity: r.score
+          sourceId: r.sourceId
         }))
         return { entries: page, total: fts.length }
       }

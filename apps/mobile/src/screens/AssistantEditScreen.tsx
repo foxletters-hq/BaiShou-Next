@@ -10,7 +10,6 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { MaterialIcons } from '@expo/vector-icons'
-import * as ImagePicker from 'expo-image-picker'
 import {
   useNativeTheme,
   useNativeToast,
@@ -55,10 +54,9 @@ import {
   isResolvableAssistantAvatarDirectUri,
   normalizeAssistantAvatarDisplayUri
 } from '../lib/assistant-avatar-uri'
-import {
-  invalidateAssistantAvatarDisplayCache,
-  resolveAssistantAvatarForMobileUi
-} from '../lib/assistant-avatar-display.util'
+import { resolveAssistantAvatarForMobileUi } from '../lib/assistant-avatar-display.util'
+import { markAssistantsNeedRefresh } from '../lib/assistant-ui-refresh-signal'
+import { launchAvatarImageLibraryAsync, requestAvatarLibraryPermission } from '@baishou/ui/native'
 
 interface Assistant {
   id: string
@@ -232,12 +230,12 @@ export const AssistantEditScreen: React.FC = () => {
 
   const handlePickImage = useCallback(async () => {
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: false,
-        quality: 0.85,
-        copyToCacheDirectory: true
-      })
+      if (!(await requestAvatarLibraryPermission())) {
+        toast.showError(t('profile.image_pick_permission', '需要相册权限才能选择图片'))
+        return
+      }
+
+      const result = await launchAvatarImageLibraryAsync()
       if (!result.canceled && result.assets[0]) {
         const uri = result.assets[0].uri
         setPendingImportUri(uri)
@@ -316,11 +314,8 @@ export const AssistantEditScreen: React.FC = () => {
         await services.assistantManager.update(assistantId, repoInput)
       }
 
-      invalidateAssistantAvatarDisplayCache(repoInput.avatarPath ?? undefined)
-      if (existingAssistant?.avatarPath && existingAssistant.avatarPath !== repoInput.avatarPath) {
-        invalidateAssistantAvatarDisplayCache(existingAssistant.avatarPath)
-      }
       toast.showSuccess(isNew ? t('agent.assistant.created') : t('agent.assistant.updated'))
+      markAssistantsNeedRefresh()
       router.back()
     } catch (e) {
       console.error('Failed to save assistant', e)
@@ -343,6 +338,7 @@ export const AssistantEditScreen: React.FC = () => {
     try {
       await services?.assistantManager.delete(id as string)
       toast.showSuccess(t('agent.assistant.deleted'))
+      markAssistantsNeedRefresh()
       router.back()
     } catch (e) {
       console.error('Failed to delete assistant', e)

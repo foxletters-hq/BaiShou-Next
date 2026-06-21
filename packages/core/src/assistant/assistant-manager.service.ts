@@ -7,6 +7,7 @@ import {
   isDefaultAssistantAvatarPath
 } from '@baishou/shared'
 import { AssistantFileService } from './assistant-file.service'
+import { emitDomainMutation } from '../events'
 import { IAttachmentManager } from '../attachments/attachment-manager.types'
 import {
   pickDefinedAssistantUpdate,
@@ -75,17 +76,35 @@ export class AssistantManagerService {
     }
     await this.repo.create(input)
     await this.persistAssistantSnapshot(input.id)
+    emitDomainMutation({
+      domain: 'settings',
+      action: 'update',
+      meta: { key: `assistant_${input.id}` },
+      reason: 'assistant-create'
+    })
   }
 
   async update(id: string, input: UpdateAssistantInput): Promise<void> {
     await this.processAvatarInput(input)
     await this.repo.update(id, input)
     await this.persistAssistantSnapshot(id)
+    emitDomainMutation({
+      domain: 'settings',
+      action: 'update',
+      meta: { key: `assistant_${id}` },
+      reason: 'assistant-update'
+    })
   }
 
   async delete(id: string): Promise<void> {
     await this.repo.delete(id)
     await this.fileService.deleteAssistant(id)
+    emitDomainMutation({
+      domain: 'settings',
+      action: 'update',
+      meta: { key: `assistant_${id}` },
+      reason: 'assistant-delete'
+    })
   }
 
   async togglePin(id: string, isPinned: boolean): Promise<void> {

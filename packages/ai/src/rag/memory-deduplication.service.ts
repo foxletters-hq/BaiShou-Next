@@ -201,7 +201,7 @@ export class MemoryDeduplicationServiceImpl implements ToolDeduplicationService 
     try {
       const existingBlock = candidates
         .map((c) => {
-          const ts = c.createdAt ? formatLocalDateTime(c.createdAt) ?? '未知时间' : '未知时间'
+          const ts = c.createdAt ? (formatLocalDateTime(c.createdAt) ?? '未知时间') : '未知时间'
           return `- [ID: ${c.embeddingId}] ${c.chunkText}（记录于 ${ts}）`
         })
         .join('\n')

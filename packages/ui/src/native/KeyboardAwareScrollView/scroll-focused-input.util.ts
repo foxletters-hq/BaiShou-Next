@@ -1,19 +1,12 @@
 import { Dimensions, Keyboard, ScrollView, TextInput } from 'react-native'
 import type { RefObject } from 'react'
+import { readEffectiveKeyboardHeight } from './scroll-node-into-view.util'
 
-function resolveKeyboardHeight(reported: number): number {
-  if (reported > 0) return reported
-
-  const metrics = Keyboard.metrics()
-  if (!metrics) return 0
-  if (metrics.height > 0) return metrics.height
-
-  const windowHeight = Dimensions.get('window').height
-  if (metrics.screenY > 0 && windowHeight > metrics.screenY) {
-    return windowHeight - metrics.screenY
-  }
-
-  return 0
+function resolveMeasureTarget() {
+  const getFocused = TextInput.State?.currentlyFocusedInput
+  const focused = getFocused?.()
+  if (focused) return focused
+  return null
 }
 
 /**
@@ -25,17 +18,14 @@ export function scrollFocusedInputIntoView(
   keyboardHeight: number,
   extraOffset = 24
 ): void {
-  const effectiveKeyboardHeight = resolveKeyboardHeight(keyboardHeight)
+  const windowHeight = Dimensions.get('window').height
+  const effectiveKeyboardHeight = readEffectiveKeyboardHeight(windowHeight) || keyboardHeight
   if (!scrollRef.current || effectiveKeyboardHeight <= 0) return
 
-  const getFocused = TextInput.State?.currentlyFocusedInput
-  if (!getFocused) return
-
-  const focused = getFocused()
-  if (!focused?.measureInWindow) return
+  const focused = resolveMeasureTarget()
+  if (!focused) return
 
   focused.measureInWindow((_x, inputY, _w, inputH) => {
-    const windowHeight = Dimensions.get('window').height
     const keyboardTop = windowHeight - effectiveKeyboardHeight
     const inputBottom = inputY + inputH
     const targetBottom = keyboardTop - extraOffset

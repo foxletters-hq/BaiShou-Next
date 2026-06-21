@@ -10,9 +10,11 @@ import {
   toBuiltinAssistantAvatarPath
 } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
+import { useDialog } from '../Dialog'
 import { Modal } from '../Modal'
 import { NATIVE_BUILTIN_ASSISTANT_AVATAR_SOURCES } from '../builtin-assistant-avatar.sources'
 import { resolveNativeAssistantAvatarSource } from '../assistant-avatar.util'
+import { runAfterOverlayDismiss } from '../avatar-image-picker.util'
 
 export interface AssistantAvatarPickerProps {
   avatarPath?: string | null
@@ -31,7 +33,7 @@ export const AssistantAvatarPicker: React.FC<AssistantAvatarPickerProps> = ({
 }) => {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
-  const [choiceModalOpen, setChoiceModalOpen] = useState(false)
+  const dialog = useDialog()
   const [builtinModalOpen, setBuiltinModalOpen] = useState(false)
 
   const selectedBuiltinId = parseBuiltinAssistantAvatarId(avatarPath)
@@ -48,20 +50,31 @@ export const AssistantAvatarPicker: React.FC<AssistantAvatarPickerProps> = ({
     [onSelectBuiltin]
   )
 
-  const handleUpload = () => {
-    setChoiceModalOpen(false)
-    onPressUpload()
-  }
+  const openAvatarChoice = useCallback(async () => {
+    const choice = await dialog.choose(t('agent.assistant.avatar_choice_title', '选择头像'), [
+      {
+        label: t('agent.assistant.select_builtin_avatar', '选择内置头像'),
+        value: 'builtin',
+        leading: <MaterialIcons name="grid-view" size={20} color={colors.primary} />
+      },
+      {
+        label: t('agent.assistant.upload_avatar', '从本地上传'),
+        value: 'upload',
+        leading: <MaterialIcons name="add-photo-alternate" size={20} color={colors.primary} />
+      }
+    ])
 
-  const openBuiltinPicker = () => {
-    setChoiceModalOpen(false)
-    setBuiltinModalOpen(true)
-  }
+    if (choice === 'builtin') {
+      runAfterOverlayDismiss(() => setBuiltinModalOpen(true))
+    } else if (choice === 'upload') {
+      runAfterOverlayDismiss(onPressUpload)
+    }
+  }, [colors.primary, dialog, onPressUpload, t])
 
   return (
     <View style={styles.root}>
       <Pressable
-        onPress={() => setChoiceModalOpen(true)}
+        onPress={() => void openAvatarChoice()}
         accessibilityRole="button"
         accessibilityLabel={t('common.edit_avatar', '点击修改头像')}
         style={[
@@ -76,48 +89,6 @@ export const AssistantAvatarPicker: React.FC<AssistantAvatarPickerProps> = ({
       >
         <Image source={previewSource} style={styles.preview} resizeMode="cover" />
       </Pressable>
-
-      <Modal
-        visible={choiceModalOpen}
-        title={t('agent.assistant.avatar_choice_title', '选择头像')}
-        onClose={() => setChoiceModalOpen(false)}
-      >
-        <View style={styles.actionRow}>
-          <Pressable
-            onPress={openBuiltinPicker}
-            style={[
-              styles.actionBtn,
-              {
-                borderColor: colors.borderMuted,
-                borderRadius: tokens.radius.lg,
-                backgroundColor: colors.bgSurfaceNormal
-              }
-            ]}
-          >
-            <MaterialIcons name="grid-view" size={17} color={colors.primary} />
-            <Text style={[styles.actionBtnText, { color: colors.textPrimary }]} numberOfLines={1}>
-              {t('agent.assistant.select_builtin_avatar', '选择内置头像')}
-            </Text>
-          </Pressable>
-
-          <Pressable
-            onPress={handleUpload}
-            style={[
-              styles.actionBtn,
-              {
-                borderColor: colors.borderMuted,
-                borderRadius: tokens.radius.lg,
-                backgroundColor: colors.bgSurfaceNormal
-              }
-            ]}
-          >
-            <MaterialIcons name="add-photo-alternate" size={17} color={colors.primary} />
-            <Text style={[styles.actionBtnText, { color: colors.textPrimary }]} numberOfLines={1}>
-              {t('agent.assistant.upload_avatar', '从本地上传')}
-            </Text>
-          </Pressable>
-        </View>
-      </Modal>
 
       <Modal
         visible={builtinModalOpen}
@@ -167,28 +138,6 @@ const styles = StyleSheet.create({
   preview: {
     width: '100%',
     height: '100%'
-  },
-  actionRow: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: 10,
-    width: '100%'
-  },
-  actionBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    minWidth: 0
-  },
-  actionBtnText: {
-    fontSize: 13,
-    fontWeight: '600',
-    flexShrink: 1
   },
   modalGrid: {
     flexDirection: 'row',

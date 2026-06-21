@@ -1,12 +1,25 @@
 import { app, dialog, BrowserWindow } from 'electron'
-import { translateMain, resetIncrementalSyncMetaAfterFullRestore, logger, type UserProfile } from '@baishou/shared'
+import {
+  translateMain,
+  resetIncrementalSyncMetaAfterFullRestore,
+  logger,
+  type UserProfile
+} from '@baishou/shared'
 import * as path from 'path'
 import * as fs from 'fs'
 import * as fsp from 'fs/promises'
 import extract from 'extract-zip'
 
-import { IArchiveService, ImportResult, VaultService, createNodeFileSystem } from '@baishou/core-desktop'
-import { resolveArchiveExtractRoot, mergeArchivePrefsPreservingCloudSync } from '@baishou/core/shared'
+import {
+  IArchiveService,
+  ImportResult,
+  VaultService,
+  createNodeFileSystem
+} from '@baishou/core-desktop'
+import {
+  resolveArchiveExtractRoot,
+  mergeArchivePrefsPreservingCloudSync
+} from '@baishou/core/shared'
 import {
   connectionManager,
   shadowConnectionManager,

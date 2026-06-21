@@ -1,3 +1,4 @@
+import type { Action } from 'expo-image-manipulator'
 import type { IFileSystem } from '@baishou/core-mobile'
 import { Image } from 'react-native'
 import { guessImageMimeType } from '@baishou/ui/native'
@@ -5,10 +6,7 @@ import { AVATAR_IMPORT_MAX_DIMENSION } from '@baishou/shared'
 
 /** expo-image-manipulator JPEG 质量：0–1（仅移动端） */
 const AVATAR_IMPORT_JPEG_QUALITY = 0.88
-import {
-  toFileUri,
-  normalizeExternalStoragePath
-} from '../services/android-external-fs'
+import { toFileUri, normalizeExternalStoragePath } from '../services/android-external-fs'
 import { ensureAppCacheNoMediaMarker } from '../services/android-nomedia.util'
 import { normalizeImportSourceUri } from '../services/mobile-uri-import'
 import {
@@ -123,7 +121,7 @@ function resolveImageDimensions(uri: string): Promise<{ width: number; height: n
   })
 }
 
-function buildAvatarSquareCropActions(width: number, height: number) {
+function buildAvatarSquareCropActions(width: number, height: number): Action[] {
   const side = Math.min(width, height)
   if (side <= 0 || width === height) return []
   return [
@@ -151,7 +149,7 @@ export async function compressImageForAvatarImport(
 
   const { manipulateAsync, SaveFormat } = manipulator
   const dimensions = await resolveImageDimensions(normalizedSource)
-  const actions = dimensions
+  const actions: Action[] = dimensions
     ? buildAvatarSquareCropActions(dimensions.width, dimensions.height)
     : []
   actions.push({ resize: { width: AVATAR_IMPORT_MAX_DIMENSION } })

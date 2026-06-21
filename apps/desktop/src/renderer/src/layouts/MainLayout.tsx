@@ -16,7 +16,9 @@ export const MainLayout: React.FC = () => {
 
   // 当处于日记编辑或总结详情等二级子页面时，保持对应底座页面挂载，但隐藏以免与 Outlet 叠层闪烁
   let activeCacheKey = cacheKey
-  if (location.pathname.startsWith('/diary/')) {
+  if (location.pathname.startsWith('/chat')) {
+    activeCacheKey = '/chat'
+  } else if (location.pathname.startsWith('/diary/')) {
     activeCacheKey = '/diary'
   } else if (location.pathname.startsWith('/summary/')) {
     activeCacheKey = '/summary'

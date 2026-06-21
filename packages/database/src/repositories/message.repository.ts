@@ -1,4 +1,4 @@
-import { eq, desc, asc, and, or, sql } from 'drizzle-orm'
+import { eq, desc, asc, and, or, sql, inArray } from 'drizzle-orm'
 import { AgentMessageRepository } from './agent.repository'
 import { AgentMessage, AgentPart } from '@baishou/shared'
 import { AppDatabase } from '../types'
@@ -44,6 +44,21 @@ export class MessageRepository implements AgentMessageRepository {
       .select()
       .from(agentPartsTable)
       .where(eq(agentPartsTable.messageId, messageId))
+      .orderBy(asc(agentPartsTable.createdAt))
+
+    return rows.map((r) => ({
+      ...r,
+      type: r.type as AgentPart['type']
+    }))
+  }
+
+  async getPartsByMessageIds(messageIds: string[]): Promise<AgentPart[]> {
+    if (messageIds.length === 0) return []
+
+    const rows = await this.db
+      .select()
+      .from(agentPartsTable)
+      .where(inArray(agentPartsTable.messageId, messageIds))
       .orderBy(asc(agentPartsTable.createdAt))
 
     return rows.map((r) => ({
