@@ -62,10 +62,7 @@ export function buildAndCacheProviderListItems(
 }
 
 /** 内置目录或已保存的自定义供应商均为有效详情页目标 */
-export function isValidProviderId(
-  providerId: string,
-  savedProviders: AIProviderConfig[]
-): boolean {
+export function isValidProviderId(providerId: string, savedProviders: AIProviderConfig[]): boolean {
   if (BASE_KNOWN_PROVIDERS_CONFIG.some((p) => p.id === providerId)) return true
   return savedProviders.some((p) => p.id === providerId)
 }

@@ -93,8 +93,14 @@ export const AgentScreen = () => {
   }, [])
 
   const toast = useNativeToast()
-  const { services, dbReady, vaultRevision, vaultSwitching, storageIndexing, ecosystemResyncEpoch } =
-    useBaishou()
+  const {
+    services,
+    dbReady,
+    vaultRevision,
+    vaultSwitching,
+    storageIndexing,
+    ecosystemResyncEpoch
+  } = useBaishou()
   const flatListRef = useRef<FlatList>(null)
   const inputBarRef = useRef<InputBarRef>(null)
   const editingRowRef = useRef<View>(null)
@@ -250,11 +256,7 @@ export const AgentScreen = () => {
     const metrics = Keyboard.metrics()
     if (!metrics) return keyboardInset
     const rawHeight =
-      metrics.height > 0
-        ? metrics.height
-        : metrics.screenY > 0
-          ? windowHeight - metrics.screenY
-          : 0
+      metrics.height > 0 ? metrics.height : metrics.screenY > 0 ? windowHeight - metrics.screenY : 0
     return Math.max(0, Math.ceil(rawHeight) - tabBarHeight)
   }, [keyboardInset, tabBarHeight])
 
@@ -284,10 +286,13 @@ export const AgentScreen = () => {
   const scheduleBubbleEditScroll = useCallback(() => {
     if (!editingMessageId) return
     if (bubbleEditScrollTimerRef.current) clearTimeout(bubbleEditScrollTimerRef.current)
-    bubbleEditScrollTimerRef.current = setTimeout(() => {
-      bubbleEditScrollTimerRef.current = null
-      scrollEditingMessageIntoView()
-    }, Platform.OS === 'ios' ? 120 : 220)
+    bubbleEditScrollTimerRef.current = setTimeout(
+      () => {
+        bubbleEditScrollTimerRef.current = null
+        scrollEditingMessageIntoView()
+      },
+      Platform.OS === 'ios' ? 120 : 220
+    )
   }, [editingMessageId, scrollEditingMessageIntoView])
 
   useEffect(() => {
@@ -771,117 +776,114 @@ export const AgentScreen = () => {
             onCostPress={() => setShowCostDialog(true)}
           />
 
-          <AgentDrawerSwipeZone
-            enabled={drawerSwipeEnabled}
-            onOpen={() => setDrawerOpen(true)}
-          >
+          <AgentDrawerSwipeZone enabled={drawerSwipeEnabled} onOpen={() => setDrawerOpen(true)}>
             <FlatList
-            ref={flatListRef}
-            style={styles.list}
-            contentContainerStyle={[styles.listContent, { paddingBottom: listBottomPadding }]}
-            data={messages}
-            extraData={{ chatAiProfile, chatUserProfile }}
-            keyExtractor={(item) => item.id}
-            nestedScrollEnabled
-            keyboardShouldPersistTaps="always"
-            keyboardDismissMode="interactive"
-            ListHeaderComponent={
-              hasMore && showLoadMoreBanner ? (
-                <TouchableOpacity style={styles.loadMore} onPress={() => void handleLoadMore()}>
-                  <Text style={[styles.loadMoreText, { color: colors.textSecondary }]}>
-                    {t('agent.chat.scroll_up_load_more', '点击或上滑加载更早对话')}
-                  </Text>
-                </TouchableOpacity>
-              ) : null
-            }
-            renderItem={({ item }) => {
-              const msgWithCompaction = item as typeof item & {
-                compactionRecord?: { streamTranscript?: string } | null
+              ref={flatListRef}
+              style={styles.list}
+              contentContainerStyle={[styles.listContent, { paddingBottom: listBottomPadding }]}
+              data={messages}
+              extraData={{ chatAiProfile, chatUserProfile }}
+              keyExtractor={(item) => item.id}
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="always"
+              keyboardDismissMode="interactive"
+              ListHeaderComponent={
+                hasMore && showLoadMoreBanner ? (
+                  <TouchableOpacity style={styles.loadMore} onPress={() => void handleLoadMore()}>
+                    <Text style={[styles.loadMoreText, { color: colors.textSecondary }]}>
+                      {t('agent.chat.scroll_up_load_more', '点击或上滑加载更早对话')}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null
               }
-              const isLiveCompressionAnchor =
-                (compressionPhase === 'auto' || compressionPhase === 'manual') &&
-                compressionTriggerMessageId === item.id &&
-                (isCompressing ||
-                  ((Boolean(compressionText?.trim()) || Boolean(compressionReasoning?.trim())) &&
-                    !msgWithCompaction.compactionRecord))
+              renderItem={({ item }) => {
+                const msgWithCompaction = item as typeof item & {
+                  compactionRecord?: { streamTranscript?: string } | null
+                }
+                const isLiveCompressionAnchor =
+                  (compressionPhase === 'auto' || compressionPhase === 'manual') &&
+                  compressionTriggerMessageId === item.id &&
+                  (isCompressing ||
+                    ((Boolean(compressionText?.trim()) || Boolean(compressionReasoning?.trim())) &&
+                      !msgWithCompaction.compactionRecord))
 
-              return (
-                <View
-                  ref={item.id === editingMessageId ? editingRowRef : undefined}
-                  collapsable={false}
-                  style={styles.bubble}
-                >
-                  <AgentMessageRow
-                    item={msgWithCompaction as any}
-                    chatUserProfile={chatUserProfile}
-                    chatAiProfile={chatAiProfile}
-                    isLiveCompressionAnchor={isLiveCompressionAnchor}
-                    liveCompression={{
-                      phase: compressionPhase,
-                      summary: compressionText,
-                      reasoning: compressionReasoning,
-                      isActive: isCompressing
-                    }}
-                    onRegenerate={() => handleRegenerate(item.id)}
-                    onResend={item.role === 'user' ? () => void handleResend(item.id) : undefined}
-                    onResendEdit={
-                      item.role === 'user'
-                        ? (content) => handleEditMessage(item.id, content)
-                        : undefined
-                    }
-                    onSaveEdit={
-                      item.role === 'assistant'
-                        ? (content) => handleSaveAssistantEdit(item.id, content)
-                        : undefined
-                    }
-                    onCopy={() => Clipboard.setStringAsync(item.content)}
-                    onDelete={() => handleDeleteMessage(item.id)}
-                    onReadAloud={
-                      item.role === 'assistant'
-                        ? () => handleTtsReadAloud(item.content, item.id)
-                        : undefined
-                    }
-                    isTtsPlaying={ttsPlayingMsgId === item.id}
-                    onShowContext={
-                      item.role === 'assistant' ? () => handleShowContext(item) : undefined
-                    }
-                    onBranch={item.role === 'assistant' ? () => handleBranch(item.id) : undefined}
-                    onBubbleEditingChange={handleBubbleEditingChange}
-                  />
-                </View>
-              )
-            }}
-            ListFooterComponent={
-              showStreamingFooter ? (
-                <View>
-                  <StreamingBubble
-                    text={streamingText}
-                    reasoning={streamingReasoning}
-                    isReasoning={isStreaming && !streamingText && !!streamingReasoning}
-                    activeToolName={activeTool?.name ?? null}
-                    completedTools={completedTools.map((tool, idx) => ({
-                      name: tool.name,
-                      durationMs:
-                        tool.endTime && tool.startTime ? tool.endTime - tool.startTime : 0,
-                      result: tool.result,
-                      toolCallId: `streaming-${tool.name}-${idx}`
-                    }))}
-                    aiProfile={chatAiProfile}
-                  />
-                </View>
-              ) : null
-            }
-            showsVerticalScrollIndicator={false}
-            onContentSizeChange={handleContentSizeChange}
-            onLayout={() => {
-              if (!layoutReadyRef.current) {
-                layoutReadyRef.current = true
-                requestAnimationFrame(() => flatListRef.current?.scrollToEnd({ animated: false }))
+                return (
+                  <View
+                    ref={item.id === editingMessageId ? editingRowRef : undefined}
+                    collapsable={false}
+                    style={styles.bubble}
+                  >
+                    <AgentMessageRow
+                      item={msgWithCompaction as any}
+                      chatUserProfile={chatUserProfile}
+                      chatAiProfile={chatAiProfile}
+                      isLiveCompressionAnchor={isLiveCompressionAnchor}
+                      liveCompression={{
+                        phase: compressionPhase,
+                        summary: compressionText,
+                        reasoning: compressionReasoning,
+                        isActive: isCompressing
+                      }}
+                      onRegenerate={() => handleRegenerate(item.id)}
+                      onResend={item.role === 'user' ? () => void handleResend(item.id) : undefined}
+                      onResendEdit={
+                        item.role === 'user'
+                          ? (content) => handleEditMessage(item.id, content)
+                          : undefined
+                      }
+                      onSaveEdit={
+                        item.role === 'assistant'
+                          ? (content) => handleSaveAssistantEdit(item.id, content)
+                          : undefined
+                      }
+                      onCopy={() => Clipboard.setStringAsync(item.content)}
+                      onDelete={() => handleDeleteMessage(item.id)}
+                      onReadAloud={
+                        item.role === 'assistant'
+                          ? () => handleTtsReadAloud(item.content, item.id)
+                          : undefined
+                      }
+                      isTtsPlaying={ttsPlayingMsgId === item.id}
+                      onShowContext={
+                        item.role === 'assistant' ? () => handleShowContext(item) : undefined
+                      }
+                      onBranch={item.role === 'assistant' ? () => handleBranch(item.id) : undefined}
+                      onBubbleEditingChange={handleBubbleEditingChange}
+                    />
+                  </View>
+                )
+              }}
+              ListFooterComponent={
+                showStreamingFooter ? (
+                  <View>
+                    <StreamingBubble
+                      text={streamingText}
+                      reasoning={streamingReasoning}
+                      isReasoning={isStreaming && !streamingText && !!streamingReasoning}
+                      activeToolName={activeTool?.name ?? null}
+                      completedTools={completedTools.map((tool, idx) => ({
+                        name: tool.name,
+                        durationMs:
+                          tool.endTime && tool.startTime ? tool.endTime - tool.startTime : 0,
+                        result: tool.result,
+                        toolCallId: `streaming-${tool.name}-${idx}`
+                      }))}
+                      aiProfile={chatAiProfile}
+                    />
+                  </View>
+                ) : null
               }
-            }}
-            onScroll={handleListScroll}
-            scrollEventThrottle={16}
-            ListEmptyComponent={!isStreaming ? renderEmptyState() : null}
+              showsVerticalScrollIndicator={false}
+              onContentSizeChange={handleContentSizeChange}
+              onLayout={() => {
+                if (!layoutReadyRef.current) {
+                  layoutReadyRef.current = true
+                  requestAnimationFrame(() => flatListRef.current?.scrollToEnd({ animated: false }))
+                }
+              }}
+              onScroll={handleListScroll}
+              scrollEventThrottle={16}
+              ListEmptyComponent={!isStreaming ? renderEmptyState() : null}
             />
           </AgentDrawerSwipeZone>
 

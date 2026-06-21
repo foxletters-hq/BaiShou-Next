@@ -36,10 +36,7 @@ export function createShadowDiaryRepoAdapter(
       return records.map((r) => mapRecord(r as any))
     },
     async findByDateRange(start: Date, end: Date) {
-      const records = await shadowRepo.findByDateRange(
-        formatLocalDate(start),
-        formatLocalDate(end)
-      )
+      const records = await shadowRepo.findByDateRange(formatLocalDate(start), formatLocalDate(end))
       return records.map((r) => mapRecord(r as any))
     }
   }

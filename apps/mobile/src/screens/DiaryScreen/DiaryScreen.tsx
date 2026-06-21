@@ -55,8 +55,15 @@ function parseFilterWeathers(saved: string | null): string[] {
 export const DiaryScreen: React.FC = () => {
   const { t } = useTranslation()
   const { colors, isDark } = useNativeTheme()
-  const { services, dbReady, vaultRevision, vaultSwitching, storageIndexing, archiveRestoreEpoch, ecosystemResyncEpoch } =
-    useBaishou()
+  const {
+    services,
+    dbReady,
+    vaultRevision,
+    vaultSwitching,
+    storageIndexing,
+    archiveRestoreEpoch,
+    ecosystemResyncEpoch
+  } = useBaishou()
   const router = useRouter()
   const {
     needsFullFileAccess,
@@ -214,7 +221,9 @@ export const DiaryScreen: React.FC = () => {
     dbReady && !vaultSwitching ? services?.diaryService : undefined,
     diaryQuery,
     {
-      ready: Boolean(dbReady && services?.diaryService && storageReady && !vaultSwitching && !storageIndexing),
+      ready: Boolean(
+        dbReady && services?.diaryService && storageReady && !vaultSwitching && !storageIndexing
+      ),
       vaultRevision,
       ecosystemResyncEpoch
     }

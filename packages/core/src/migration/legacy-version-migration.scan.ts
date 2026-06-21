@@ -148,7 +148,15 @@ async function readLegacyAgentDbStatsForVault(
   }
 
   if (!deps.sqliteClient || !deps.executeRawSql || uniquePaths.length === 0) {
-    return { assistants, sessions, messages, bytes, previewAssistants, previewSessions, attachErrors }
+    return {
+      assistants,
+      sessions,
+      messages,
+      bytes,
+      previewAssistants,
+      previewSessions,
+      attachErrors
+    }
   }
 
   const { sqliteClient, executeRawSql } = deps
@@ -183,9 +191,7 @@ async function readLegacyAgentDbStatsForVault(
 
       const filteredSessions = vaultSpecific
         ? sessionRows
-        : sessionRows.filter((row) =>
-            legacySessionBelongsToVault(row.vault_name, legacyVaultName)
-          )
+        : sessionRows.filter((row) => legacySessionBelongsToVault(row.vault_name, legacyVaultName))
       console.info('[VersionMigration][scan-agent-db] rows', {
         legacyVaultName,
         rawAttachPath,
@@ -213,11 +219,7 @@ async function readLegacyAgentDbStatsForVault(
       for (const row of assistantRows) {
         const aid = String(row.id ?? '')
         if (!aid || allAssistantIds.has(aid)) continue
-        if (
-          !vaultSpecific &&
-          sessionAssistantIds.size > 0 &&
-          !sessionAssistantIds.has(aid)
-        ) {
+        if (!vaultSpecific && sessionAssistantIds.size > 0 && !sessionAssistantIds.has(aid)) {
           continue
         }
         allAssistantIds.add(aid)
@@ -266,7 +268,10 @@ async function collectArchiveStatsForVault(
   fileSystem: IFileSystem,
   sourceRoot: string,
   legacyVaultName: string,
-  deps?: Pick<ScanLegacyVersionMigrationDeps, 'sqliteClient' | 'executeRawSql' | 'prepareSqliteAttachPath'>
+  deps?: Pick<
+    ScanLegacyVersionMigrationDeps,
+    'sqliteClient' | 'executeRawSql' | 'prepareSqliteAttachPath'
+  >
 ): Promise<{ count: number; bytes: number; sqlOnlyCount: number }> {
   const archivesDir = path.join(sourceRoot, legacyVaultName, 'Archives')
   const fileCount = await countArchiveMarkdownUnderArchivesDir(fileSystem, archivesDir)
@@ -314,12 +319,16 @@ function buildGlobalSection(
 export async function scanLegacyVersionMigration(
   deps: ScanLegacyVersionMigrationDeps
 ): Promise<LegacyVersionMigrationScanResult> {
-  const { fileSystem, sourceRoot, sourceDisplayPath, flutterPrefsConfig, flutterRawSp, flutterDocumentsAvatarsDir } =
-    deps
+  const {
+    fileSystem,
+    sourceRoot,
+    sourceDisplayPath,
+    flutterPrefsConfig,
+    flutterRawSp,
+    flutterDocumentsAvatarsDir
+  } = deps
 
-  const effectivePrefsConfig =
-    flutterPrefsConfig ??
-  deriveConfigFromSpForScan(flutterRawSp ?? null)
+  const effectivePrefsConfig = flutterPrefsConfig ?? deriveConfigFromSpForScan(flutterRawSp ?? null)
 
   const vaultNames = await discoverVaultNames(fileSystem, sourceRoot)
 
@@ -352,8 +361,7 @@ export async function scanLegacyVersionMigration(
     fileSystem,
     path.join(sourceRoot, 'config', 'avatar.jpg')
   )
-  const avatarAvailable =
-    avatarFileBytes > 0 || avatarDirBytes > 0 || avatarConfigBytes > 0
+  const avatarAvailable = avatarFileBytes > 0 || avatarDirBytes > 0 || avatarConfigBytes > 0
 
   const personas = resolveLegacyIdentityPersonas(flutterRawSp ?? null, effectivePrefsConfig ?? null)
   const personasFromSp = flutterRawSp ? parseLegacyPersonasFromSp(flutterRawSp) : []
@@ -407,7 +415,12 @@ export async function scanLegacyVersionMigration(
   const workspaces: LegacyVersionMigrationWorkspacePreview[] = []
   for (const legacyVaultName of vaultNames) {
     const journalStats = await collectJournalStatsForVault(fileSystem, sourceRoot, legacyVaultName)
-    const archiveStats = await collectArchiveStatsForVault(fileSystem, sourceRoot, legacyVaultName, deps)
+    const archiveStats = await collectArchiveStatsForVault(
+      fileSystem,
+      sourceRoot,
+      legacyVaultName,
+      deps
+    )
     const agentStats = await readLegacyAgentDbStatsForVault(deps, legacyVaultName)
     const available =
       journalStats.count > 0 ||

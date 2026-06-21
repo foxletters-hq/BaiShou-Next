@@ -295,6 +295,8 @@ export function resolveArchiveImportStageHint(progress: ArchiveImportProgress): 
   return ARCHIVE_IMPORT_STAGE_HINTS[progress.stage]
 }
 
-export function resolveArchiveImportStageDetail(progress: ArchiveImportProgress): string | undefined {
+export function resolveArchiveImportStageDetail(
+  progress: ArchiveImportProgress
+): string | undefined {
   return progress.detail
 }

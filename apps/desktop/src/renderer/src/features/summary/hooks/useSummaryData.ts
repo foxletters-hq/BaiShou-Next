@@ -39,10 +39,7 @@ function snapshotToStats(snapshot: SummaryDashboardSnapshot): Stats {
 export function useSummaryData(selectedYear: number) {
   const { i18n } = useTranslation()
   const scopeKey = useSyncExternalStore(subscribeDesktopVaultScope, getDesktopVaultScopeKey)
-  const scopeReady = useSyncExternalStore(
-    subscribeDesktopVaultScope,
-    isDesktopVaultScopeReady
-  )
+  const scopeReady = useSyncExternalStore(subscribeDesktopVaultScope, isDesktopVaultScopeReady)
 
   const [summaries, setSummaries] = useState<any[]>([])
   const [stats, setStats] = useState<Stats>(EMPTY_STATS)

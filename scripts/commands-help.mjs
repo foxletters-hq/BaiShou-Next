@@ -48,7 +48,10 @@ const sections = [
       ['pnpm release:android', '正式签名 APK → release/BaiShou-v{版本}-Android.apk'],
       ['pnpm release:desktop:linux', 'Linux AppImage → apps/desktop/dist/'],
       ['pnpm release:desktop:win', 'Windows 安装包 → apps/desktop/dist/'],
-      ['gh release create vX.Y.Z --notes-file docs/release/vX.Y.Z.md …', '本地打包后创建 GitHub Release（见 docs/打包须知.md §4）']
+      [
+        'gh release create vX.Y.Z --notes-file docs/release/vX.Y.Z.md …',
+        '本地打包后创建 GitHub Release（见 docs/打包须知.md §4）'
+      ]
     ]
   },
   {

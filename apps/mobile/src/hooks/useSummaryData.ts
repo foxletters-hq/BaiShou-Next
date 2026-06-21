@@ -70,8 +70,14 @@ function snapshotToStats(snapshot: SummaryDashboardSnapshot): Stats {
 
 export function useSummaryData(selectedYear: number) {
   const { i18n } = useTranslation()
-  const { services, dbReady, vaultRevision, archiveRestoreEpoch, storageIndexing, ecosystemResyncEpoch } =
-    useBaishou()
+  const {
+    services,
+    dbReady,
+    vaultRevision,
+    archiveRestoreEpoch,
+    storageIndexing,
+    ecosystemResyncEpoch
+  } = useBaishou()
   const summaryManager = services?.summaryManager
   const diaryService = services?.diaryService
   const missingSummaryDetector = services?.missingSummaryDetector
@@ -241,7 +247,13 @@ export function useSummaryData(selectedYear: number) {
     hydrateDashboardFromCache()
     void refreshDashboard()
     void fetchMissingSummaries()
-  }, [fetchMissingSummaries, hydrateDashboardFromCache, refreshDashboard, vaultRevision, ecosystemResyncEpoch])
+  }, [
+    fetchMissingSummaries,
+    hydrateDashboardFromCache,
+    refreshDashboard,
+    vaultRevision,
+    ecosystemResyncEpoch
+  ])
 
   useEffect(() => {
     if (!cacheInvalidationHandledRef.current) {

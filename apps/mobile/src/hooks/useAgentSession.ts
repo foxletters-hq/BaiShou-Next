@@ -55,8 +55,14 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
   const toast = useNativeToast()
   const { messages, setMessages, clearSession, currentSessionId, setCurrentSessionId } =
     useAgentStore()
-  const { services, dbReady, vaultSwitching, vaultRevision, storageIndexing, ecosystemResyncEpoch } =
-    useBaishou()
+  const {
+    services,
+    dbReady,
+    vaultSwitching,
+    vaultRevision,
+    storageIndexing,
+    ecosystemResyncEpoch
+  } = useBaishou()
   const storageRootRef = useRef<string | null>(null)
 
   const [hasMore, setHasMore] = useState(false)

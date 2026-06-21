@@ -196,7 +196,11 @@ export function resolveMcpHttpResponse(
 ): boolean {
   const payload =
     typeof response === 'string'
-      ? JSON.stringify({ statusCode: 200, headers: { 'content-type': 'application/json' }, body: response })
+      ? JSON.stringify({
+          statusCode: 200,
+          headers: { 'content-type': 'application/json' },
+          body: response
+        })
       : JSON.stringify(response)
   return requireNative().resolveMcpHttpResponse(requestId, payload)
 }

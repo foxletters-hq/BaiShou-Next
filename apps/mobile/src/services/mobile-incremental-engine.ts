@@ -1,6 +1,12 @@
 import * as Crypto from 'expo-crypto'
 import type { IFileSystem } from '@baishou/core-mobile'
-import type { SyncProgressEvent, SyncManifest, S3SyncConfig, ManifestEntry, IncrementalSyncRunOptions } from '@baishou/shared'
+import type {
+  SyncProgressEvent,
+  SyncManifest,
+  S3SyncConfig,
+  ManifestEntry,
+  IncrementalSyncRunOptions
+} from '@baishou/shared'
 import {
   assertBidirectionalDeletePropagationAllowed,
   assertBidirectionalSyncDivergenceAllowed,
@@ -230,7 +236,9 @@ export class MobileIncrementalEngine {
     return JSON.parse(raw) as SyncManifest
   }
 
-  private async getSyncStorageHistoryState(config: S3SyncConfig): Promise<IncrementalSyncStorageHistory> {
+  private async getSyncStorageHistoryState(
+    config: S3SyncConfig
+  ): Promise<IncrementalSyncStorageHistory> {
     const metaDir = await this.syncMetaDir()
     const storageIdPath = this.storageIdPath(metaDir)
     if (!(await this.fileSystem.exists(storageIdPath))) {

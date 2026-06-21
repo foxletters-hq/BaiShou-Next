@@ -42,7 +42,7 @@ export function useRecallSearch(): UseRecallSearchResult {
                 type: 'diary' as const,
                 title: d.title || t('common.untitled', '无标题'),
                 snippet: d.snippet || d.content?.substring(0, 100) || '',
-                date: formatRecallDiaryDate(d.date ?? d.updatedAt),
+                date: formatRecallDiaryDate(d.date ?? d.updatedAt)
               }))
             )
           } else {
