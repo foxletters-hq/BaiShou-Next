@@ -45,6 +45,13 @@ export function formatShortcutInsertText(content: string): string {
   return trimmed.endsWith('\n') ? trimmed : `${trimmed}\n`
 }
 
+/** 将快捷指令正文追加到已有输入；空输入时等同于 formatShortcutInsertText */
+export function appendShortcutInsertText(existing: string, content: string): string {
+  const formatted = formatShortcutInsertText(content)
+  if (!existing) return formatted
+  return `${existing}\n${formatted}`
+}
+
 /** 按 id 与快捷短语去重，保留列表中较早出现的项 */
 export function dedupePromptShortcuts(list: ShortcutLike[]): PromptShortcut[] {
   const seenIds = new Set<string>()
