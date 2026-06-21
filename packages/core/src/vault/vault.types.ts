@@ -40,4 +40,14 @@ export interface IVaultService {
    * @throws {VaultNotFoundError}
    */
   deleteVault(vaultName: string): Promise<void>
+
+  /**
+   * 扫描磁盘上含日记/归档等工作区内容的目录，补登记未注册项（不切换当前活动工作区）
+   */
+  syncRegistryWithDisk(): Promise<string[]>
+
+  /**
+   * 将给定名称补登记进注册表；目录不存在时会创建骨架（用于远端即将下载的工作区）
+   */
+  ensureVaultsRegistered(vaultNames: Iterable<string>): Promise<string[]>
 }
