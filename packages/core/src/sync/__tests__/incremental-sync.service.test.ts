@@ -43,7 +43,8 @@ describe('IncrementalSyncService (three-way merge)', () => {
       getRemoteManifest: vi.fn(),
       getRemoteSnapshot: vi.fn(),
       refreshLocalManifest: vi.fn(),
-      getLastSyncConflicts: vi.fn()
+      getLastSyncConflicts: vi.fn(),
+      planSync: vi.fn()
     } satisfies IIncrementalSyncService
   })
 
