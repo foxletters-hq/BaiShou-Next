@@ -1,6 +1,5 @@
 import type { AssistantManagerService, IFileSystem, IStoragePathService } from '@baishou/core-mobile'
 import { DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH } from '@baishou/shared'
-import { invalidateAssistantAvatarDisplayCache } from './assistant-avatar-display.util'
 
 async function assistantAvatarFileExists(
   avatarPath: string,
@@ -42,8 +41,6 @@ export async function reconcileAssistantAvatarsAfterStorageChange(
     await assistantManager.update(assistant.id, {
       avatarPath: DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH
     })
-    invalidateAssistantAvatarDisplayCache(avatarPath)
-    invalidateAssistantAvatarDisplayCache(DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH)
     fixed += 1
   }
 

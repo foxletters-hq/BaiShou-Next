@@ -31,7 +31,7 @@ import {
   requestStoragePermission
 } from '../services/storage-permission.service'
 import { pickUserDirectory } from '../services/pick-directory.service'
-import { invalidateUserAvatarDisplayCache } from '../lib/user-avatar-display.util'
+import { emitSyncMutation } from '../cache/mobile-cache-coordinator'
 
 type GlobalSectionUiState = LegacyVersionMigrationSectionPreview & {
   importStatus: LegacyVersionMigrationImportStatus
@@ -345,7 +345,7 @@ export function useVersionMigration() {
           }
           notifyVersionMigrationComplete()
           if (sectionId === 'avatar') {
-            invalidateUserAvatarDisplayCache()
+            emitSyncMutation('complete', 'version-migration-avatar')
             await runtime.settingsManager.flushToDisk()
           }
         } else if (isWorkspaceSectionId(sectionId) && result.skipped > 0) {
