@@ -1,4 +1,3 @@
-import { format } from 'date-fns'
 import {
   DEFAULT_DIARY_AI_WRITING_PROMPT,
   DEFAULT_DIARY_APPEND_BLOCK_TEMPLATE,
@@ -6,11 +5,34 @@ import {
 } from '../constants/diary-templates'
 import type { DiaryTemplateConfig } from '../types/settings.types'
 
+function pad2(value: number): string {
+  return String(value).padStart(2, '0')
+}
+
+/** 本地时间格式化，避免 shared 包引入 date-fns 导致 Electron 主进程打包后 require 失败 */
+function formatDiaryTemplateDate(date: Date, pattern: 'HH:mm:ss' | 'yyyy-MM-dd' | 'yyyy-MM-dd HH:mm:ss'): string {
+  const year = date.getFullYear()
+  const month = pad2(date.getMonth() + 1)
+  const day = pad2(date.getDate())
+  const hours = pad2(date.getHours())
+  const minutes = pad2(date.getMinutes())
+  const seconds = pad2(date.getSeconds())
+
+  switch (pattern) {
+    case 'HH:mm:ss':
+      return `${hours}:${minutes}:${seconds}`
+    case 'yyyy-MM-dd':
+      return `${year}-${month}-${day}`
+    case 'yyyy-MM-dd HH:mm:ss':
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+  }
+}
+
 export function applyDiaryTemplateVars(template: string, date: Date = new Date()): string {
   return template
-    .replace(/\{time\}/g, format(date, 'HH:mm:ss'))
-    .replace(/\{date\}/g, format(date, 'yyyy-MM-dd'))
-    .replace(/\{datetime\}/g, format(date, 'yyyy-MM-dd HH:mm:ss'))
+    .replace(/\{time\}/g, formatDiaryTemplateDate(date, 'HH:mm:ss'))
+    .replace(/\{date\}/g, formatDiaryTemplateDate(date, 'yyyy-MM-dd'))
+    .replace(/\{datetime\}/g, formatDiaryTemplateDate(date, 'yyyy-MM-dd HH:mm:ss'))
 }
 
 export function resolveDiaryNewEntryContent(
