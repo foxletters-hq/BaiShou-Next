@@ -9,6 +9,7 @@ import type { NativeStreamingBubbleProps } from './streaming-bubble.types'
 import { createStreamingBubbleStyles } from './streaming-bubble.styles'
 import { ChatBubbleAvatar } from '../ChatBubble/ChatBubbleAvatar'
 import { chatBubbleStyles } from '../ChatBubble/chat-bubble.styles'
+import { chatOverBackgroundMetaTextStyle } from '../../shared/chat-over-background-meta.style'
 import { ToolResultGroupCard } from '../ToolResultGroupCard/ToolResultGroupCard'
 import { StreamingBubbleBouncingDots } from './StreamingBubbleBouncingDots'
 
@@ -22,7 +23,8 @@ export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
   completedTools = [],
   aiProfile = { name: 'AI' },
   error = null,
-  onRetry
+  onRetry,
+  invertMetaOverBackground = false
 }) => {
   const { t } = useTranslation()
   const { colors, isDark, tokens } = useNativeTheme()
@@ -60,7 +62,8 @@ export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
           style={[
             chatBubbleStyles.nameLabel,
             chatBubbleStyles.nameLabelAssistant,
-            { color: colors.textSecondary }
+            { color: colors.textSecondary },
+            invertMetaOverBackground ? chatOverBackgroundMetaTextStyle : null
           ]}
         >
           {aiName}

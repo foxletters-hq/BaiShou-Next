@@ -227,7 +227,10 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
 
   return (
     <>
-      <div className={styles.messageList} ref={scroll.scrollRef}>
+      <div
+        className={`${styles.messageList} ${userProfile?.chatBackgroundPath ? 'chat-over-background' : ''}`}
+        ref={scroll.scrollRef}
+      >
         <div className={styles.messageContent}>
           {chat.hasMore && (
             <button type="button" className={styles.loadMoreBanner} onClick={triggerLoadMore}>

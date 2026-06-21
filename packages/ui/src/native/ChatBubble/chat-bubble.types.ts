@@ -37,4 +37,6 @@ export interface ChatBubbleProps {
   isTtsPlaying?: boolean
   /** 气泡进入/退出内联编辑时通知父级（用于键盘与底部输入栏联动） */
   onEditingChange?: (editing: boolean, messageId?: string) => void
+  /** 自定义聊天背景上为名称与操作按钮启用反色混合 */
+  invertMetaOverBackground?: boolean
 }

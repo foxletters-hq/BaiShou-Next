@@ -20,4 +20,6 @@ export interface NativeStreamingBubbleProps {
   }
   error?: string | null
   onRetry?: () => void
+  /** 自定义聊天背景上为名称启用反色混合 */
+  invertMetaOverBackground?: boolean
 }

@@ -3,6 +3,11 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { NativeIconButton } from '../icons/NativeIconButton'
 import { useNativeTheme } from '../theme'
+import {
+  chatOverBackgroundMetaIconColor,
+  chatOverBackgroundMetaIconStyle,
+  chatOverBackgroundMetaTextStyle
+} from '../../shared/chat-over-background-meta.style'
 
 export interface MessageActionBarProps {
   onCopy: () => void
@@ -14,6 +19,8 @@ export interface MessageActionBarProps {
   onShowContext?: () => void
   isAI?: boolean
   isTtsPlaying?: boolean
+  /** 自定义聊天背景上为操作图标启用反色混合 */
+  invertOverBackground?: boolean
 }
 
 export const MessageActionBar: React.FC<MessageActionBarProps> = ({
@@ -25,11 +32,17 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
   onBranch,
   onShowContext,
   isAI = false,
-  isTtsPlaying = false
+  isTtsPlaying = false,
+  invertOverBackground = false
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const [copied, setCopied] = useState(false)
+
+  const invertIconProps = (skipInvert = false) =>
+    invertOverBackground && !skipInvert
+      ? { color: chatOverBackgroundMetaIconColor, style: chatOverBackgroundMetaIconStyle }
+      : {}
 
   const handleCopy = useCallback(() => {
     onCopy()
@@ -44,6 +57,7 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
         onPress={handleCopy}
         color={copied ? colors.success : undefined}
         accessibilityLabel={t('agent.chat.copy', '复制内容')}
+        {...invertIconProps(copied)}
       />
 
       {isAI && onReadAloud && (
@@ -53,6 +67,7 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
           active={isTtsPlaying}
           loading={isTtsPlaying}
           accessibilityLabel={t('agent.chat.readAloud', '语音朗读')}
+          {...invertIconProps(isTtsPlaying)}
         />
       )}
 
@@ -64,6 +79,7 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
             isAI ? 'agent.chat.edit_ai' : 'agent.chat.edit',
             isAI ? '编辑AI回复' : '编辑我的消息'
           )}
+          {...invertIconProps()}
         />
       )}
 
@@ -72,6 +88,7 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
           name="refresh"
           onPress={onRetry}
           accessibilityLabel={t('agent.chat.retry', '重新发送/生成')}
+          {...invertIconProps()}
         />
       )}
 
@@ -80,17 +97,28 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
           name="call-split"
           onPress={onBranch}
           accessibilityLabel={t('agent.chat.branch', '从此处创建分支')}
+          {...invertIconProps()}
         />
       )}
 
       {onShowContext && (
         <TouchableOpacity
           onPress={onShowContext}
-          style={styles.contextBtn}
+          style={[
+            styles.contextBtn,
+            invertOverBackground ? chatOverBackgroundMetaIconStyle : null
+          ]}
           accessibilityRole="button"
           accessibilityLabel={t('chat.viewContextTree', '查看发送给 AI 的上下文')}
         >
-          <Text style={styles.contextIcon}>🌿</Text>
+          <Text
+            style={[
+              styles.contextIcon,
+              invertOverBackground ? chatOverBackgroundMetaTextStyle : null
+            ]}
+          >
+            🌿
+          </Text>
         </TouchableOpacity>
       )}
 
