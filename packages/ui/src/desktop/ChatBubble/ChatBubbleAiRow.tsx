@@ -3,7 +3,7 @@ import type { MockChatMessage } from '@baishou/shared'
 import { MessageActionBar } from '../MessageActionBar'
 import { MarkdownRenderer } from '../MarkdownRenderer'
 import { ToolResultGroup } from '../ToolResultGroupCard'
-import { resolveWebAssistantAvatarSrc } from '../assistant-avatar.util'
+import { resolveDesktopAssistantAvatarSrc } from '../assistant-avatar.util'
 import { ThinkingBlock } from '../ThinkingBlock'
 import { ChatBubbleAttachments } from './ChatBubbleAttachments'
 import { ChatBubbleInlineEditor } from './ChatBubbleInlineEditor'
@@ -61,7 +61,8 @@ export const ChatBubbleAiRow: React.FC<ChatBubbleAiRowProps> = ({
   <div className={`${styles.bubbleRow} ${styles.aiRow}`}>
     <div className={styles.avatarWrap}>
       <img
-        src={resolveWebAssistantAvatarSrc(aiProfile.avatarPath)}
+        key={aiProfile.avatarPath ?? 'default'}
+        src={resolveDesktopAssistantAvatarSrc(aiProfile.avatarPath)}
         alt="avatar"
         className={styles.avatarImg}
       />

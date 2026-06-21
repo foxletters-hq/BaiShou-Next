@@ -31,6 +31,7 @@ export const ChatBubbleAvatar: React.FC<ChatBubbleAvatarProps> = ({
     <View style={[styles.avatar, { backgroundColor: colors.bgSurfaceHighest }, style]}>
       {variant === 'user' ? (
         <Image
+          key={`user-${avatarPath ?? ''}-${resolvedAvatarUri ?? ''}`}
           source={resolveNativeUserAvatarSource(avatarPath, resolvedAvatarUri)}
           style={styles.avatarImage}
         />
@@ -38,6 +39,7 @@ export const ChatBubbleAvatar: React.FC<ChatBubbleAvatarProps> = ({
         <Text style={styles.avatarText}>{emoji}</Text>
       ) : (
         <Image
+          key={`assistant-${avatarPath ?? ''}-${resolvedAvatarUri ?? ''}`}
           source={resolveNativeAssistantAvatarSource(avatarPath, resolvedAvatarUri)}
           style={styles.avatarImage}
         />

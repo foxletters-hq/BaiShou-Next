@@ -1,5 +1,5 @@
 import React from 'react'
-import { resolveWebAssistantAvatarSrc } from '../assistant-avatar.util'
+import { resolveDesktopAssistantAvatarSrc } from '../assistant-avatar.util'
 import styles from './AssistantAvatar.module.css'
 
 export interface AssistantAvatarProps {
@@ -15,11 +15,12 @@ export const AssistantAvatar: React.FC<AssistantAvatarProps> = ({
   className,
   borderRadius
 }) => {
-  const src = resolveWebAssistantAvatarSrc(avatarPath)
+  const src = resolveDesktopAssistantAvatarSrc(avatarPath)
   const radius = borderRadius ?? Math.round(size * 0.25)
 
   return (
     <img
+      key={avatarPath ?? 'default'}
       src={src}
       alt=""
       className={`${styles.avatar} ${className ?? ''}`}
