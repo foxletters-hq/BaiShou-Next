@@ -63,6 +63,8 @@ declare class ExpoBaishouServerModule extends NativeModule<ServerEvents> {
   externalReadDirectory(path: string): string[]
   localGetInfo(path: string): ExternalPathInfo
   localReadDirectory(path: string): string[]
+  localMd5Hex(path: string): string
+  externalMd5Hex(path: string): string
   localAppendString(path: string, content: string): void
   nativeUnzipArchive(zipPath: string, destDir: string): Promise<void>
   nativeZipArchiveExport(
@@ -437,6 +439,18 @@ export function localGetInfo(path: string): ExternalPathInfo {
 
 export function localReadDirectory(path: string): string[] {
   return callNativeExternal('localReadDirectory', (mod) => mod.localReadDirectory(path))
+}
+
+export function localMd5Hex(path: string): string {
+  const mod = requireNative()
+  if (typeof mod.localMd5Hex !== 'function') {
+    throw new Error(`${NATIVE_REBUILD_HINT}（缺少 localMd5Hex）`)
+  }
+  return mod.localMd5Hex(path)
+}
+
+export function externalMd5Hex(path: string): string {
+  return callNativeExternal('externalMd5Hex', (mod) => mod.externalMd5Hex(path))
 }
 
 export function localAppendString(path: string, content: string): void {
