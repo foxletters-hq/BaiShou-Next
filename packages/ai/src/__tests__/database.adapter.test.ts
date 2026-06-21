@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { formatLocalDate, formatLocalDateFromInstant } from '@baishou/shared'
+import { formatRecallTimestamp } from '@baishou/shared'
 import { DatabaseAdapter } from '../tools/adapters/database.adapter'
 
 describe('DatabaseAdapter.searchMessages', () => {
@@ -22,6 +22,6 @@ describe('DatabaseAdapter.searchMessages', () => {
 
     expect(results).toHaveLength(1)
     // 与模型上下文 formatMessageTimestamp 一致：按本地日历日，避免凌晨消息被 UTC 标为前一天
-    expect(results[0]!.date).toBe(formatLocalDateFromInstant(createdAt))
+    expect(results[0]!.date).toBe(formatRecallTimestamp(createdAt))
   })
 })

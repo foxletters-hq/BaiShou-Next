@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   diaryDateToSourceCreatedSeconds,
+  formatRecallTimestamp,
   formatLocalDateFromInstant,
   formatLocalDateTime,
   formatLocalTime,
@@ -80,6 +81,13 @@ describe('formatMessageTimestamp', () => {
   it('formats Date instances in local time', () => {
     const d = new Date(2026, 5, 15, 8, 9)
     expect(formatMessageTimestamp(d)).toBe('2026-06-15 08:09')
+  })
+})
+
+describe('formatRecallTimestamp', () => {
+  it('formats instants for recall lists and message search', () => {
+    const d = new Date(2025, 5, 21, 1, 30)
+    expect(formatRecallTimestamp(d)).toBe('2025-06-21 01:30')
   })
 })
 
