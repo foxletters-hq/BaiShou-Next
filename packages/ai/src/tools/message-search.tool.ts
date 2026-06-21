@@ -20,7 +20,7 @@ export class MessageSearchTool extends AgentTool<typeof messageSearchParams> {
 
   readonly description =
     'Search past conversation messages across all sessions by keyword. ' +
-    'Returns matching message snippets with session title and date. ' +
+    'Returns matching message snippets with session title and local timestamp. ' +
     'Useful when the user references something discussed before, ' +
     'or when you need to recall previous conversations.'
 
