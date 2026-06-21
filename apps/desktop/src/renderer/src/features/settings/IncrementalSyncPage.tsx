@@ -7,7 +7,7 @@ import styles from './IncrementalSyncPage.module.css'
 
 export const IncrementalSyncPage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const { t } = useTranslation()
-  const { isSyncing, syncResult, progress, startSync } = useOrchestratedSync()
+  const { isSyncing, isPlanning, syncResult, progress, startSync } = useOrchestratedSync()
 
   const formatDuration = (ms: number) => (ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`)
 
@@ -44,9 +44,9 @@ export const IncrementalSyncPage: React.FC<{ embedded?: boolean }> = ({ embedded
         <button
           className={styles.syncButton}
           onClick={() => void startSync()}
-          disabled={isSyncing}
+          disabled={isSyncing || isPlanning}
           style={
-            isSyncing
+            isSyncing || isPlanning
               ? {
                   background: 'var(--bg-surface)',
                   color: 'var(--text-primary)'
@@ -54,8 +54,12 @@ export const IncrementalSyncPage: React.FC<{ embedded?: boolean }> = ({ embedded
               : undefined
           }
         >
-          <RefreshCw size={16} className={isSyncing ? styles.spinning : undefined} />
-          {isSyncing ? t('data_sync.syncing', 'Syncing...') : t('data_sync.sync_now', 'Sync')}
+          <RefreshCw size={16} className={isSyncing || isPlanning ? styles.spinning : undefined} />
+          {isSyncing
+            ? t('data_sync.syncing', 'Syncing...')
+            : isPlanning
+              ? t('data_sync.planning', 'Analyzing sync changes…')
+              : t('data_sync.sync_now', 'Sync')}
         </button>
 
         {isSyncing && progress && progress.total > 0 && (
