@@ -97,6 +97,7 @@ export * from './AgentSessionList'
 export * from './EmojiPicker'
 export * from './AssistantAvatar'
 export * from './AssistantAvatarPicker'
+export * from './avatar-image-picker.util'
 export * from './AssistantKindTabBar'
 export * from './AssistantKindBadge'
 export {
@@ -141,6 +142,8 @@ export { useKeyboardHeight, type UseKeyboardHeightOptions } from './hooks/useKey
 export {
   KeyboardAwareScrollView,
   scrollFocusedInputIntoView,
+  readEffectiveKeyboardHeight,
+  scrollScrollViewToRevealNode,
   useKeyboardAwareScroll,
   scheduleScrollFocusedInputOnFocus,
   type KeyboardAwareScrollViewProps,

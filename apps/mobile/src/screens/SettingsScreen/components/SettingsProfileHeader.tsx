@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react'
 import { View, Text, Pressable, Image, StyleSheet, ActivityIndicator } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
-import * as ImagePicker from 'expo-image-picker'
 import {
   useNativeTheme,
   useDialog,
   useNativeToast,
-  resolveNativeUserAvatarSource
+  resolveNativeUserAvatarSource,
+  launchAvatarImageLibraryAsync,
+  requestAvatarLibraryPermission,
+  runAfterOverlayDismiss
 } from '@baishou/ui/native'
 import { useResolvedUserAvatar } from '../../../hooks/useResolvedUserAvatar'
 
@@ -54,15 +56,15 @@ export const SettingsProfileHeader: React.FC<SettingsProfileHeaderProps> = ({
     pendingPreviewUri ?? resolvedAvatarUri
   )
 
-  const handlePickImage = async () => {
+  const pickAvatarFromLibrary = async () => {
     if (disabled || savingAvatar) return
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: false,
-        quality: 0.85,
-        copyToCacheDirectory: true
-      })
+      if (!(await requestAvatarLibraryPermission())) {
+        toast.showError(t('profile.image_pick_permission', '需要相册权限才能选择图片'))
+        return
+      }
+
+      const result = await launchAvatarImageLibraryAsync()
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0]
         setPendingPreviewUri(asset.uri)
@@ -82,6 +84,23 @@ export const SettingsProfileHeader: React.FC<SettingsProfileHeaderProps> = ({
       setSavingAvatar(false)
       toast.showError(t('profile.image_pick_error', '选择图片失败'))
     }
+  }
+
+  const handlePickImage = () => {
+    if (disabled || savingAvatar) return
+    void dialog
+      .choose(t('profile.change_avatar', '更换头像'), [
+        {
+          label: t('profile.pick_from_library', '从相册选择'),
+          value: 'library',
+          leading: <MaterialIcons name="photo-library" size={20} color={colors.primary} />
+        }
+      ])
+      .then((choice) => {
+        if (choice === 'library') {
+          runAfterOverlayDismiss(() => void pickAvatarFromLibrary())
+        }
+      })
   }
 
   const handleEditNickname = async () => {
