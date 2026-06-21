@@ -2,10 +2,11 @@ import type { Action } from 'expo-image-manipulator'
 import type { IFileSystem } from '@baishou/core-mobile'
 import { Image } from 'react-native'
 import { guessImageMimeType } from '@baishou/ui/native'
-import { AVATAR_IMPORT_MAX_DIMENSION } from '@baishou/shared'
+import { AVATAR_IMPORT_MAX_DIMENSION, CHAT_BACKGROUND_IMPORT_MAX_DIMENSION } from '@baishou/shared'
 
 /** expo-image-manipulator JPEG 质量：0–1（仅移动端） */
 const AVATAR_IMPORT_JPEG_QUALITY = 0.88
+const BACKGROUND_IMPORT_JPEG_QUALITY = 0.88
 import { toFileUri, normalizeExternalStoragePath } from '../services/android-external-fs'
 import { ensureAppCacheNoMediaMarker } from '../services/android-nomedia.util'
 import { normalizeImportSourceUri } from '../services/mobile-uri-import'
@@ -162,6 +163,42 @@ export async function compressImageForAvatarImport(
     return result.uri
   } catch (e) {
     console.warn('[AttachmentImage] avatar import prepare failed, using original:', e)
+    return normalizedSource
+  }
+}
+
+/** 导入聊天背景：保留用户裁剪比例，仅按最长边缩放，避免误用头像正方形裁剪 */
+export async function compressImageForBackgroundImport(sourceUri: string): Promise<string> {
+  const normalizedSource = normalizeImportSourceUri(sourceUri)
+  const manipulator = await loadManipulator()
+  if (!manipulator) return normalizedSource
+
+  await ensureAppCacheNoMediaMarker()
+
+  const { manipulateAsync, SaveFormat } = manipulator
+  const dimensions = await resolveImageDimensions(normalizedSource)
+  if (!dimensions) return normalizedSource
+
+  const { width, height } = dimensions
+  const maxSide = Math.max(width, height)
+  const actions: Action[] = []
+
+  if (maxSide > CHAT_BACKGROUND_IMPORT_MAX_DIMENSION) {
+    if (width >= height) {
+      actions.push({ resize: { width: CHAT_BACKGROUND_IMPORT_MAX_DIMENSION } })
+    } else {
+      actions.push({ resize: { height: CHAT_BACKGROUND_IMPORT_MAX_DIMENSION } })
+    }
+  }
+
+  try {
+    const result = await manipulateAsync(normalizedSource, actions, {
+      compress: BACKGROUND_IMPORT_JPEG_QUALITY,
+      format: SaveFormat.JPEG
+    })
+    return result.uri
+  } catch (e) {
+    console.warn('[AttachmentImage] background import prepare failed, using original:', e)
     return normalizedSource
   }
 }
