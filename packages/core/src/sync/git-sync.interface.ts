@@ -1,5 +1,6 @@
 import type {
   GitCommit,
+  GitRollbackAllContext,
   GitSyncConfig,
   GitStatus,
   FileChange,
@@ -144,20 +145,24 @@ export interface IGitSyncService {
   // ── 回滚操作 ───────────────────────────────────────────────
 
   /**
-   * 回滚指定文件到指定版本
+   * 回滚指定文件：撤销某次提交对该文件的改动，结果保留在工作区（不自动提交）
    * @param filePath - 文件路径
-   * @param commitHash - 目标 commit hash
+   * @param commitHash - 要撤销其改动的提交 hash
    * @throws {GitRollbackError} 回滚失败
    */
   rollbackFile(filePath: string, commitHash: string): Promise<void>
 
   /**
-   * 回滚整个仓库到指定 commit 的状态
-   * 仅更新工作区文件，不移动 HEAD
+   * 回滚整个仓库到指定提交：mixed reset，后续提交保留为未暂存工作区变更
    * @param commitHash - 目标 commit hash
    * @throws {GitRollbackError} 回滚失败
    */
   rollbackAll(commitHash: string): Promise<void>
+
+  /**
+   * 获取整库回滚前的上下文（远程配置、脏工作区、将被移出历史的提交数）
+   */
+  getRollbackAllContext(targetCommitHash: string): Promise<GitRollbackAllContext>
 
   // ── 远程同步 ───────────────────────────────────────────────
 

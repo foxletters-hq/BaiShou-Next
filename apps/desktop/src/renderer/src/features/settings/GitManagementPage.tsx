@@ -119,6 +119,13 @@ export const GitManagementPage: React.FC = () => {
           api?.rollbackFile(filePath, hash) ?? { success: false }
         }
         onRollbackAll={async (hash) => api?.rollbackAll(hash) ?? { success: false }}
+        onGetRollbackAllContext={async (hash) =>
+          api?.getRollbackAllContext(hash) ?? {
+            hasRemote: false,
+            hasUncommittedChanges: false,
+            commitsAfterTarget: 0
+          }
+        }
         onToast={(msg, type) => {
           if (type === 'error') toast.showError(msg)
           else if (type === 'success') toast.showSuccess(msg)

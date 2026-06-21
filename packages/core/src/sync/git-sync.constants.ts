@@ -44,3 +44,12 @@ export const GIT_INDEX_MAINTENANCE_MAX_ROUNDS = 5
 
 /** spawn git 子进程超时（毫秒） */
 export const GIT_RAW_COMMAND_TIMEOUT_MS = 30_000
+
+/** 超过该数量时用 git add . 批量暂存 */
+export const STAGE_FAST_ADD_THRESHOLD = 40
+
+/** 分块 git add 时每块最大文件数 */
+export const STAGE_ADD_CHUNK_SIZE = 50
+
+/** 分块 git add 时 argv 字符上限（兼容 Windows） */
+export const STAGE_MAX_ARG_CHARS = 7000

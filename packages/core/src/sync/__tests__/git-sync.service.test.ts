@@ -470,6 +470,25 @@ describe('GitSyncService', () => {
     })
   })
 
+  describe('GitSyncServiceImpl - unstageAll', () => {
+    it('uses mixed reset to clear the entire staging area', async () => {
+      const mockPathService = {
+        getRootDirectory: vi.fn().mockResolvedValue('/mock/storage-root')
+      } as any
+
+      const impl = new GitSyncServiceImpl(mockPathService)
+      const mockGit = {
+        reset: vi.fn().mockResolvedValue(undefined)
+      } as any
+
+      vi.spyOn(impl as any, 'ensureGit').mockResolvedValue(mockGit)
+
+      await impl.unstageAll()
+
+      expect(mockGit.reset).toHaveBeenCalledWith('mixed')
+    })
+  })
+
   describe('GitSyncServiceImpl - getStatus', () => {
     it('should correctly map untracked files from not_added instead of created', async () => {
       const mockPathService = {
@@ -501,6 +520,150 @@ describe('GitSyncService', () => {
       expect(result.untracked).toEqual(['Journals/2026/05/2026-05-27.md'])
       expect(result.staged).toEqual([])
       expect(result.unstaged).toEqual([])
+    })
+  })
+
+  describe('GitSyncServiceImpl - discardFile', () => {
+    it('uses git clean for untracked files with normalized path matching', async () => {
+      const mockPathService = {
+        getRootDirectory: vi.fn().mockResolvedValue('/mock/storage-root')
+      } as any
+
+      const impl = new GitSyncServiceImpl(mockPathService)
+      const filePath = 'Journals/new.md'
+      const mockGit = {
+        status: vi.fn().mockResolvedValue({
+          not_added: ['Journals\\new.md']
+        }),
+        clean: vi.fn().mockResolvedValue(undefined),
+        checkout: vi.fn()
+      } as any
+
+      vi.spyOn(impl as any, 'ensureGit').mockResolvedValue(mockGit)
+
+      await impl.discardFile(filePath)
+
+      expect(mockGit.clean).toHaveBeenCalledWith('f', ['--', filePath])
+      expect(mockGit.checkout).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('GitSyncServiceImpl - addPathsToIndex', () => {
+    it('falls back to per-file add when chunked add fails', async () => {
+      const mockPathService = {
+        getRootDirectory: vi.fn().mockResolvedValue('/mock/storage-root')
+      } as any
+
+      const impl = new GitSyncServiceImpl(mockPathService)
+      const paths = ['a.md', 'b.md']
+      const mockGit = {
+        add: vi
+          .fn()
+          .mockRejectedValueOnce(new Error('chunk failed'))
+          .mockResolvedValue(undefined)
+      } as any
+
+      const staged = await (impl as any).addPathsToIndex(mockGit, paths)
+
+      expect(staged).toBe(2)
+      expect(mockGit.add).toHaveBeenCalledTimes(3)
+    })
+
+    it('uses git add . for large batches', async () => {
+      const mockPathService = {
+        getRootDirectory: vi.fn().mockResolvedValue('/mock/storage-root')
+      } as any
+
+      const impl = new GitSyncServiceImpl(mockPathService)
+      const paths = Array.from({ length: 40 }, (_, i) => `file-${i}.md`)
+      const mockGit = {
+        add: vi.fn().mockResolvedValue(undefined)
+      } as any
+
+      const staged = await (impl as any).addPathsToIndex(mockGit, paths)
+
+      expect(staged).toBe(40)
+      expect(mockGit.add).toHaveBeenCalledWith('.')
+    })
+  })
+
+  describe('GitSyncServiceImpl - rollbackAll', () => {
+    it('uses mixed reset without auto commit', async () => {
+      const mockPathService = {
+        getRootDirectory: vi.fn().mockResolvedValue('/mock/storage-root')
+      } as any
+
+      const impl = new GitSyncServiceImpl(mockPathService)
+      const mockGit = {
+        reset: vi.fn().mockResolvedValue(undefined)
+      } as any
+
+      vi.spyOn(impl as any, 'ensureGit').mockResolvedValue(mockGit)
+      vi.spyOn(impl as any, 'sanitizeGitIndex').mockResolvedValue(false)
+      vi.spyOn(impl as any, '_commitAll').mockResolvedValue(null)
+
+      await impl.rollbackAll('abc1234')
+
+      expect(mockGit.reset).toHaveBeenCalledWith(['--mixed', 'abc1234'])
+      expect((impl as any)._commitAll).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('GitSyncServiceImpl - rollbackFile', () => {
+    it('restores to worktree only without auto commit', async () => {
+      const mockPathService = {
+        getRootDirectory: vi.fn().mockResolvedValue('/mock/storage-root')
+      } as any
+
+      const impl = new GitSyncServiceImpl(mockPathService)
+      const filePath = 'Journals/2026/05/13.md'
+      const mockGit = {
+        raw: vi.fn().mockResolvedValue('')
+      } as any
+
+      vi.spyOn(impl as any, 'ensureGit').mockResolvedValue(mockGit)
+      vi.spyOn(impl as any, 'getGitRoot').mockResolvedValue('/mock/storage-root')
+      vi.spyOn(impl as any, '_commitAll').mockResolvedValue(null)
+
+      await impl.rollbackFile(filePath, 'abc1234')
+
+      expect(mockGit.raw).toHaveBeenCalledWith([
+        'restore',
+        '--source',
+        'abc1234~1',
+        '--worktree',
+        '--',
+        filePath
+      ])
+      expect((impl as any)._commitAll).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('GitSyncServiceImpl - getRollbackAllContext', () => {
+    it('reports remote, dirty state, and commits after target', async () => {
+      const mockPathService = {
+        getRootDirectory: vi.fn().mockResolvedValue('/mock/storage-root')
+      } as any
+
+      const impl = new GitSyncServiceImpl(mockPathService)
+      ;(impl as any).config = {
+        remote: { url: 'https://github.com/user/repo.git', branch: 'main' }
+      }
+
+      const mockGit = {
+        status: vi.fn().mockResolvedValue({ isClean: () => false }),
+        raw: vi.fn().mockResolvedValue('3\n')
+      } as any
+
+      vi.spyOn(impl as any, 'ensureGit').mockResolvedValue(mockGit)
+
+      const context = await impl.getRollbackAllContext('abc1234')
+
+      expect(context).toEqual({
+        hasRemote: true,
+        hasUncommittedChanges: true,
+        commitsAfterTarget: 3
+      })
     })
   })
 })

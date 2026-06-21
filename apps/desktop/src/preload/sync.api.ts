@@ -149,6 +149,8 @@ export const syncApi = {
     rollbackFile: (filePath: string, commitHash: string) =>
       ipcRenderer.invoke('git:rollbackFile', filePath, commitHash),
     rollbackAll: (commitHash: string) => ipcRenderer.invoke('git:rollbackAll', commitHash),
+    getRollbackAllContext: (commitHash: string) =>
+      ipcRenderer.invoke('git:getRollbackAllContext', commitHash),
     push: () => ipcRenderer.invoke('git:push'),
     pull: () => ipcRenderer.invoke('git:pull'),
     hasConflicts: () => ipcRenderer.invoke('git:hasConflicts'),

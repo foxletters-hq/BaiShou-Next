@@ -106,10 +106,20 @@ export interface S3SyncConfig {
   maxDivergencePercent?: number | null
 }
 
+/** 删除传播冲突时用户选择的处理方式 */
+export type SyncDeletePropagationChoice = 'follow-remote' | 'push-local' | 'skip-deletes'
+
 /** 增量同步执行选项（双向 / 仅下载） */
 export type IncrementalSyncRunOptions = {
   /** 用户已确认本机首次连接时本地与远端差异较大 */
   highDivergenceConfirmed?: boolean
+  /**
+   * 删除传播保护触发后用户选择的处理方式。
+   * 未提供时若存在冲突将中止同步，不会默认上传或删除。
+   */
+  deletePropagationChoice?: SyncDeletePropagationChoice
+  /** 确认同步后待补登记的工作区（避免执行前再次全量 plan） */
+  unknownVaultPaths?: string[]
 }
 
 /** 文件清单条目 */
@@ -292,4 +302,14 @@ export interface GitStatus {
   conflicted: string[]
   /** 是否有任何变更 */
   hasChanges: boolean
+}
+
+/** 整库回滚前的上下文（用于确认提示） */
+export interface GitRollbackAllContext {
+  /** 是否已配置远程仓库 */
+  hasRemote: boolean
+  /** 工作区是否有未提交修改 */
+  hasUncommittedChanges: boolean
+  /** 目标提交之后、当前 HEAD 之前的提交数量 */
+  commitsAfterTarget: number
 }

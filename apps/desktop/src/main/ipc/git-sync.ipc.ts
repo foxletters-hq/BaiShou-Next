@@ -137,6 +137,10 @@ export function registerGitSyncIPC() {
     }
   })
 
+  ipcMain.handle('git:getRollbackAllContext', async (_, commitHash: string) => {
+    return getGitService().getRollbackAllContext(commitHash)
+  })
+
   ipcMain.handle('git:push', async () => {
     try {
       await getGitService().push()
