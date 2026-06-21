@@ -19,8 +19,7 @@ import {
   MdOutlineHub,
   MdSync,
   MdEditNote,
-  MdTextSnippet,
-  MdSwapHoriz
+  MdTextSnippet
 } from 'react-icons/md'
 import { SETTINGS_HUB_PREFIX } from '../../features/settings/settings-route.util'
 
@@ -52,8 +51,7 @@ export const ALL_SIDEBAR_NAV_IDS = [
   'sync',
   'git',
   'attachments',
-  'lan',
-  'legacy-migration'
+  'lan'
 ] as const
 
 export type SidebarNavId = (typeof ALL_SIDEBAR_NAV_IDS)[number]
@@ -64,8 +62,7 @@ export const SYNC_SIDEBAR_NAV_IDS: SidebarNavId[] = [
   'sync',
   'git',
   'attachments',
-  'lan',
-  'legacy-migration'
+  'lan'
 ]
 
 export function reorderSyncNavIdsInOrder(order: readonly string[]): string[] {
@@ -116,7 +113,7 @@ export const SIDEBAR_NAV_GROUPS: SidebarNavGroupDef[] = [
     key: 'sync',
     labelKey: 'sidebar.group_sync',
     defaultLabel: '同步与数据',
-    itemIds: ['incremental-sync', 'sync', 'git', 'attachments', 'lan', 'legacy-migration']
+    itemIds: ['incremental-sync', 'sync', 'git', 'attachments', 'lan']
   }
 ]
 
@@ -139,8 +136,7 @@ export const SIDEBAR_NAV_PATHS: Record<SidebarNavId, string> = {
   sync: `${SETTINGS_HUB_PREFIX}/data-sync`,
   'incremental-sync': `${SETTINGS_HUB_PREFIX}/incremental-sync`,
   attachments: `${SETTINGS_HUB_PREFIX}/attachments`,
-  git: `${SETTINGS_HUB_PREFIX}/git`,
-  'legacy-migration': `${SETTINGS_HUB_PREFIX}/legacy-migration`
+  git: `${SETTINGS_HUB_PREFIX}/git`
 }
 
 export interface SidebarNavItemView {
@@ -242,11 +238,6 @@ export function buildSidebarNavItems(t: TFunction): Record<SidebarNavId, Sidebar
       icon: icon(<MdHistory />),
       label: t('version_control.title', '版本控制'),
       path: `${SETTINGS_HUB_PREFIX}/git`
-    },
-    'legacy-migration': {
-      icon: icon(<MdSwapHoriz />),
-      label: t('legacy_migration.title', '版本迁移'),
-      path: `${SETTINGS_HUB_PREFIX}/legacy-migration`
     }
   }
 }
