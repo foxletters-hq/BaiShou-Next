@@ -145,7 +145,15 @@ export const RAGMemorySection: React.FC = () => {
             await loadRagData(q, mode, maxPage, size)
             return
           }
-          setEntries(res.entries.map((e) => mapEntry(e as Record<string, unknown>, fallbackModel)))
+          setEntries(
+            res.entries.map((e) => {
+              const entry = mapEntry(e as Record<string, unknown>, fallbackModel)
+              if (mode === 'text') {
+                return { ...entry, similarity: undefined }
+              }
+              return entry
+            })
+          )
           setTotalCount(res.total)
         }
 

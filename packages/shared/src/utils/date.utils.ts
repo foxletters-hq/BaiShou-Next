@@ -54,9 +54,7 @@ export function formatLocalDateFromInstant(
 }
 
 /** 时刻戳 → 本地 YYYY-MM-DD HH:mm（与 formatMessageTimestamp 同语义，名称更直观） */
-export function formatLocalDateTime(
-  value: Date | number | undefined | null
-): string | undefined {
+export function formatLocalDateTime(value: Date | number | undefined | null): string | undefined {
   return formatMessageTimestamp(value)
 }
 
@@ -185,10 +183,38 @@ export function formatRecallTimestamp(value: unknown): string {
   return formatLocalDateTime(ms) ?? ''
 }
 
+const LOCAL_DATE_PREFIX_RE = /^(\d{4}-\d{2}-\d{2})/
+
+function coerceRecallDiaryDate(value: unknown): Date | undefined {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? undefined : value
+  }
+  if (typeof value === 'number') {
+    const ms = timestampToMillis(value) ?? value
+    if (!Number.isFinite(ms)) return undefined
+    const d = new Date(ms)
+    return Number.isNaN(d.getTime()) ? undefined : d
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) return undefined
+    const datePart = trimmed.match(LOCAL_DATE_PREFIX_RE)?.[1]
+    if (datePart) {
+      try {
+        return parseDateStr(datePart)
+      } catch {
+        return undefined
+      }
+    }
+    const d = new Date(trimmed)
+    return Number.isNaN(d.getTime()) ? undefined : d
+  }
+  return undefined
+}
+
 /** 回忆列表：日记归档日 → 本地 YYYY-MM-DD */
 export function formatRecallDiaryDate(value: unknown): string {
   if (value == null || value === '') return ''
-  const date = value instanceof Date ? value : new Date(value as string)
-  if (Number.isNaN(date.getTime())) return ''
-  return formatLocalDate(date)
+  const date = coerceRecallDiaryDate(value)
+  return date ? formatLocalDate(date) : ''
 }

@@ -123,8 +123,7 @@ export function useTts(t: any) {
         requestId = ++ttsRequestRef.current
         if (messageId) setTtsPlayingMsgId(messageId)
 
-        const sessionId =
-          globalThis.crypto?.randomUUID?.() ?? `tts-${Date.now()}-${Math.random()}`
+        const sessionId = globalThis.crypto?.randomUUID?.() ?? `tts-${Date.now()}-${Math.random()}`
         ttsSessionIdRef.current = sessionId
 
         const result: TtsSynthesizeSpeechResult = await api.tts.synthesizeSpeech(content, {

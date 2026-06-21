@@ -328,11 +328,7 @@ export function hashDiaryContent(content: string): string {
   return createHash('sha256').update(content.trim()).digest('hex').slice(0, 16)
 }
 
-export function diaryManifestKey(
-  vaultName: string,
-  dateKey: string,
-  contentHash: string
-): string {
+export function diaryManifestKey(vaultName: string, dateKey: string, contentHash: string): string {
   return `${normalizeDiaryImportKey(vaultName, dateKey)}:${contentHash}`
 }
 
@@ -407,7 +403,12 @@ export function resolveLegacyAvatarCandidates(
     paths.push(fromSp.trim())
   }
   if (options.includeMachinePaths && options.documentsAvatarsDir) {
-    for (const name of ['user_avatar.jpg', 'user_avatar.png', 'user_avatar.webp', 'user_avatar.jpeg']) {
+    for (const name of [
+      'user_avatar.jpg',
+      'user_avatar.png',
+      'user_avatar.webp',
+      'user_avatar.jpeg'
+    ]) {
       paths.push(path.join(options.documentsAvatarsDir, name))
     }
   }

@@ -142,9 +142,7 @@ describe('legacy-selective-migration.shared', () => {
   it('hashDiaryContent and diaryManifestKey are stable', () => {
     const hash = hashDiaryContent('hello diary')
     expect(hash).toHaveLength(16)
-    expect(diaryManifestKey('Personal', '2024-06-01', hash)).toBe(
-      `Personal/2024-06-01:${hash}`
-    )
+    expect(diaryManifestKey('Personal', '2024-06-01', hash)).toBe(`Personal/2024-06-01:${hash}`)
   })
 
   it('resolveLegacyIdentityPersonas falls back to identity_facts', () => {

@@ -69,9 +69,7 @@ function resolveIscc() {
 }
 
 if (process.platform !== 'win32') {
-  fail(
-    'Inno Setup 仅支持在 Windows 上编译。请在本机 Windows 执行。'
-  )
+  fail('Inno Setup 仅支持在 Windows 上编译。请在本机 Windows 执行。')
 }
 
 if (!existsSync(unpackedDir)) {

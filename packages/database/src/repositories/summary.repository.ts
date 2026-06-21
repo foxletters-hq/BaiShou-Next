@@ -6,6 +6,7 @@ export interface SummaryRepository {
   update(id: number, summary: UpdateSummaryInput): Promise<Summary>
   getByDateRange(type: SummaryType, start: Date, end: Date): Promise<Summary | null>
   getSummaries(options?: { start?: Date }): Promise<Summary[]>
+  countByType(): Promise<Partial<Record<SummaryType, number>>>
   delete(id: number): Promise<void>
   deleteAll(): Promise<void>
 }

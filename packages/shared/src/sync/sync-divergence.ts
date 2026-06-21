@@ -80,10 +80,7 @@ export function isSyncDivergenceAllowed(
 }
 
 /** 任一侧尚无同步文件时跳过差异保护（典型：首次下载或首次上传） */
-export function shouldSkipSyncDivergenceCheck(
-  local: SyncManifest,
-  remote: SyncManifest
-): boolean {
+export function shouldSkipSyncDivergenceCheck(local: SyncManifest, remote: SyncManifest): boolean {
   const localCount = Object.keys(local.files).length
   const remoteCount = Object.keys(remote.files).length
   return localCount === 0 || remoteCount === 0

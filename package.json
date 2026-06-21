@@ -36,7 +36,8 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,cjs,json,md,yaml,yml,css}\" --ignore-path .prettierignore",
     "ci": "pnpm ci:check",
     "ci:check": "node scripts/ci-check-runner.mjs",
-    "audit:effect-deps": "node scripts/audit-unstable-effect-deps.mjs"
+    "audit:effect-deps": "node scripts/audit-unstable-effect-deps.mjs",
+    "audit:cache-invalidation": "node scripts/audit-cache-invalidation.mjs"
   },
   "devDependencies": {
     "@rolldown/binding-linux-x64-gnu": "1.0.0-rc.12",

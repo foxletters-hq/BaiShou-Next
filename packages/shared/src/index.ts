@@ -127,9 +127,24 @@ export {
   assertBidirectionalDeletePropagationAllowed,
   SYNC_DELETE_GUARD_MIN_REMOTE_FILES,
   SYNC_DELETE_GUARD_MAX_REMOTE_DELETE_RATIO,
+  SYNC_DELETE_GUARD_MAX_DELETE_RATIO,
   SYNC_LOCAL_DATA_LOSS_RATIO,
-  SYNC_LOCAL_VS_ANCESTOR_MIN_RATIO
+  SYNC_LOCAL_VS_ANCESTOR_MIN_RATIO,
+  type SyncDeletePropagationDirection,
+  type SyncDeletePropagationBlockReason
 } from './sync/sync-delete-guard'
+export {
+  SYNC_CONFIRM_DELAY_MS,
+  SyncConfirmNotReadyError,
+  computeSyncConfirmSecondsLeft,
+  isSyncConfirmReady,
+  getSyncConfirmEligibleAt,
+  assertSyncConfirmReady,
+  assertSyncConfirmAllowed,
+  canExecuteIncrementalSyncPlan,
+  resolvePlanConfirmEligibleAt
+} from './sync/sync-confirm-countdown.util'
+export { hasIncrementalSyncPlanMaterialChange } from './sync/incremental-sync-plan-compare.util'
 export { sessionBelongsToActiveVault } from './utils/session-vault.util'
 
 export * from './tts'
@@ -192,3 +207,5 @@ export {
   buildIncrementalSyncBoundaryIssues,
   resolveIncrementalSyncVaultScope
 } from './sync/incremental-sync-plan.util'
+
+export * from './cache'

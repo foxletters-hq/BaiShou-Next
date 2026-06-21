@@ -337,7 +337,9 @@ export class MobileFileSystem implements IFileSystem {
 
     const entries = await this.readdir(targetPath)
     for (const entry of entries) {
-      const childPath = targetPath.endsWith('/') ? `${targetPath}${entry}` : `${targetPath}/${entry}`
+      const childPath = targetPath.endsWith('/')
+        ? `${targetPath}${entry}`
+        : `${targetPath}/${entry}`
       await this.rm(childPath, { recursive: true, force })
     }
     await SandboxFS.deleteAsync(toFileUri(targetPath), { idempotent: force })

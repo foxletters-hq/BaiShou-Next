@@ -100,7 +100,7 @@ describe('useChatMessages', () => {
         await result.current.refreshMessages(2)
       })
 
-      expect(mockRenderer.invoke).toHaveBeenCalledWith('agent:get-messages', 's1', 60, 0)
+      expect(mockRenderer.invoke).toHaveBeenCalledWith('agent:get-messages', 's1', 60, 0, false)
       expect(result.current.messages).toHaveLength(2)
       expect(result.current.messages[0].id).toBe('db-1')
     })

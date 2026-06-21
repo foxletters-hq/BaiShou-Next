@@ -117,4 +117,31 @@ describe('SummaryRepositoryImpl', () => {
     const check = await repo.getSummaries()
     expect(check.length).toBe(0)
   })
+
+  it('should count summaries grouped by type', async () => {
+    await repo.save({
+      type: 'weekly' as SummaryType,
+      startDate,
+      endDate,
+      content: 'W1'
+    })
+    await repo.save({
+      type: 'weekly' as SummaryType,
+      startDate: new Date('2026-04-01T00:00:00.000Z'),
+      endDate: new Date('2026-04-07T23:59:59.000Z'),
+      content: 'W2'
+    })
+    await repo.save({
+      type: 'monthly' as SummaryType,
+      startDate,
+      endDate,
+      content: 'M1'
+    })
+
+    const counts = await repo.countByType()
+    expect(counts.weekly).toBe(2)
+    expect(counts.monthly).toBe(1)
+    expect(counts.quarterly ?? 0).toBe(0)
+    expect(counts.yearly ?? 0).toBe(0)
+  })
 })

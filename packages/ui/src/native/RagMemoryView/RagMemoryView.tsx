@@ -125,6 +125,7 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
           <RagMemoryEntriesSection
             entries={entries}
             searchQuery={searchQuery}
+            searchMode={searchMode}
             totalCount={totalCount}
             currentPage={currentPage}
             pageSize={pageSize}

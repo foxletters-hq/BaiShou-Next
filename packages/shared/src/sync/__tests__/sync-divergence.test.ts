@@ -30,14 +30,24 @@ describe('sync-divergence', () => {
     const local = manifest({ a: '1', b: '2' })
     const remote = manifest({ a: '1', b: 'x' })
     expect(() =>
-      assertBidirectionalSyncDivergenceAllowed(local, remote, { maxDivergencePercent: 50 }, {
-        storageHistory: 'match'
-      })
+      assertBidirectionalSyncDivergenceAllowed(
+        local,
+        remote,
+        { maxDivergencePercent: 50 },
+        {
+          storageHistory: 'match'
+        }
+      )
     ).not.toThrow()
     expect(() =>
-      assertBidirectionalSyncDivergenceAllowed(local, remote, { maxDivergencePercent: 40 }, {
-        storageHistory: 'match'
-      })
+      assertBidirectionalSyncDivergenceAllowed(
+        local,
+        remote,
+        { maxDivergencePercent: 40 },
+        {
+          storageHistory: 'match'
+        }
+      )
     ).toThrow(SyncDivergenceExceededError)
   })
 
@@ -45,9 +55,14 @@ describe('sync-divergence', () => {
     const local = manifest({ a: '1' })
     const remote = manifest({ b: '2' })
     expect(() =>
-      assertBidirectionalSyncDivergenceAllowed(local, remote, { maxDivergencePercent: null }, {
-        storageHistory: 'match'
-      })
+      assertBidirectionalSyncDivergenceAllowed(
+        local,
+        remote,
+        { maxDivergencePercent: null },
+        {
+          storageHistory: 'match'
+        }
+      )
     ).not.toThrow()
     expect(computeManifestDivergencePercent(local, remote)).toBe(100)
   })
@@ -56,15 +71,25 @@ describe('sync-divergence', () => {
     const local = manifest({ a: '1', b: '2' })
     const remote = manifest({ c: '3', d: '4' })
     expect(() =>
-      assertBidirectionalSyncDivergenceAllowed(local, remote, { maxDivergencePercent: 10 }, {
-        storageHistory: 'none'
-      })
+      assertBidirectionalSyncDivergenceAllowed(
+        local,
+        remote,
+        { maxDivergencePercent: 10 },
+        {
+          storageHistory: 'none'
+        }
+      )
     ).toThrow(SyncDivergenceConfirmationRequiredError)
     expect(() =>
-      assertBidirectionalSyncDivergenceAllowed(local, remote, { maxDivergencePercent: 10 }, {
-        storageHistory: 'none',
-        highDivergenceConfirmed: true
-      })
+      assertBidirectionalSyncDivergenceAllowed(
+        local,
+        remote,
+        { maxDivergencePercent: 10 },
+        {
+          storageHistory: 'none',
+          highDivergenceConfirmed: true
+        }
+      )
     ).not.toThrow()
   })
 
@@ -73,9 +98,14 @@ describe('sync-divergence', () => {
     const remote = manifest({ a: '1', b: '2' })
     expect(shouldSkipSyncDivergenceCheck(local, remote)).toBe(true)
     expect(() =>
-      assertBidirectionalSyncDivergenceAllowed(local, remote, { maxDivergencePercent: 10 }, {
-        storageHistory: 'match'
-      })
+      assertBidirectionalSyncDivergenceAllowed(
+        local,
+        remote,
+        { maxDivergencePercent: 10 },
+        {
+          storageHistory: 'match'
+        }
+      )
     ).not.toThrow()
   })
 
@@ -83,9 +113,14 @@ describe('sync-divergence', () => {
     const local = manifest({ a: '1', b: '2' })
     const remote = manifest({ c: '3', d: '4' })
     expect(() =>
-      assertBidirectionalSyncDivergenceAllowed(local, remote, { maxDivergencePercent: 10 }, {
-        storageHistory: 'mismatch'
-      })
+      assertBidirectionalSyncDivergenceAllowed(
+        local,
+        remote,
+        { maxDivergencePercent: 10 },
+        {
+          storageHistory: 'mismatch'
+        }
+      )
     ).toThrow(SyncDivergenceExceededError)
   })
 })

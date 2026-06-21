@@ -4,7 +4,7 @@ import {
   MessageRepository,
   type AppDatabase
 } from '@baishou/database'
-import { formatLocalDate, formatRecallTimestamp } from '@baishou/shared'
+import { formatLocalDate, formatRecallTimestamp, parseDateStr } from '@baishou/shared'
 
 export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
   constructor(
@@ -75,7 +75,8 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
     const { eq, and } = await import('drizzle-orm')
     const { summariesTable } = await import('@baishou/database')
 
-    const targetDate = new Date(startDateIso)
+    const datePart = startDateIso.match(/^(\d{4}-\d{2}-\d{2})/)?.[1]
+    const targetDate = datePart ? parseDateStr(datePart) : new Date(startDateIso)
     const rows = await this.db
       .select()
       .from(summariesTable)
@@ -104,8 +105,6 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
       .orderBy(desc(summariesTable.startDate))
       .limit(limit)
 
-    return rows.map(
-      (r: any) => `- ${formatLocalDate(r.start)} ~ ${formatLocalDate(r.end)}`
-    )
+    return rows.map((r: any) => `- ${formatLocalDate(r.start)} ~ ${formatLocalDate(r.end)}`)
   }
 }

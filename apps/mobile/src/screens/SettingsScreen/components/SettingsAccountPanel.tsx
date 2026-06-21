@@ -26,7 +26,6 @@ import { notifyThemeRefresh } from '../../../lib/theme-events'
 import { ensureDefaultLatteAssistant, syncDefaultLatteAssistantLocale } from '@baishou/core-mobile'
 import { resolveAppUiLanguage } from '../../../lib/device-locale'
 import { SettingsProfileHeader, type SettingsProfileSavePayload } from './SettingsProfileHeader'
-import { invalidateUserAvatarDisplayCache } from '../../../lib/user-avatar-display.util'
 import { MobileAttachmentManagerService } from '../../../services/mobile-attachment-manager.service'
 
 export interface QuickSettingsGroupProps {
@@ -169,10 +168,6 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
           newProfile.avatarSourceByteSize
         )
         avatarPath = importedPath
-        invalidateUserAvatarDisplayCache(importedPath)
-        if (userProfile.avatarPath && userProfile.avatarPath !== avatarPath) {
-          invalidateUserAvatarDisplayCache(userProfile.avatarPath)
-        }
       }
 
       const next: UserProfile = {

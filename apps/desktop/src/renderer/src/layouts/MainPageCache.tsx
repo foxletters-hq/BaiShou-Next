@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, createContext } from 'react'
 import { motion, useAnimation } from 'framer-motion'
 import { DiaryPage } from '../features/diary/DiaryPage'
 import { SummaryPage } from '../features/summary/SummaryPage'
@@ -6,9 +6,12 @@ import { CloudSyncPage } from '../features/settings/CloudSyncPage'
 import { IncrementalSyncPage } from '../features/settings/IncrementalSyncPage'
 import { GitManagementPage } from '../features/settings/GitManagementPage'
 import { SettingsHubPage } from '../features/settings/SettingsHubPage'
+import { AgentChatCachedPage } from '../features/agent/AgentChatCachedPage'
 import { isSettingsHubPath } from '../features/settings/settings-route.util'
 import styles from './MainLayout.module.css'
+
 /** 侧边栏主页面：切换时保持挂载，避免重复加载数据 */
+export const MainPageCacheActiveContext = createContext(true)
 
 export const MAIN_PAGE_CACHE: Record<string, React.ComponentType> = {
   '/diary': DiaryPage,
@@ -16,11 +19,13 @@ export const MAIN_PAGE_CACHE: Record<string, React.ComponentType> = {
   '/data-sync': CloudSyncPage,
   '/incremental-sync': IncrementalSyncPage,
   '/git': GitManagementPage,
-  '/hub': SettingsHubPage
+  '/hub': SettingsHubPage,
+  '/chat': AgentChatCachedPage
 }
 
 export function getMainPageCacheKey(pathname: string): string | null {
   if (pathname in MAIN_PAGE_CACHE) return pathname
+  if (pathname.startsWith('/chat')) return '/chat'
   if (isSettingsHubPath(pathname)) return '/hub'
   return null
 }
@@ -32,9 +37,10 @@ const CachedPageLayer: React.FC<{
   Component: React.ComponentType
 }> = ({ cacheKey, isActive, hideWhenOverlay, Component }) => {
   const controls = useAnimation()
+  const layerActive = isActive && !hideWhenOverlay
 
   useEffect(() => {
-    if (!isActive) return
+    if (!layerActive) return
 
     let cancelled = false
 
@@ -52,17 +58,19 @@ const CachedPageLayer: React.FC<{
     return () => {
       cancelled = true
     }
-  }, [isActive, cacheKey, controls])
+  }, [layerActive, cacheKey, controls])
 
   return (
     <motion.div
       className={styles.cachedPage}
-      hidden={!isActive || hideWhenOverlay}
-      aria-hidden={!isActive || hideWhenOverlay}
+      hidden={!layerActive}
+      aria-hidden={!layerActive}
       initial={false}
       animate={controls}
     >
-      <Component />
+      <MainPageCacheActiveContext.Provider value={layerActive}>
+        <Component />
+      </MainPageCacheActiveContext.Provider>
     </motion.div>
   )
 }

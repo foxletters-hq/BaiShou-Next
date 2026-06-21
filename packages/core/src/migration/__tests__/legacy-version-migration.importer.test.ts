@@ -37,7 +37,12 @@ function createDeps(
     diaryService: {} as never,
     assistantManager: {} as never,
     sessionManager: {} as never,
-    vaultService: { getAllVaults: () => [], vaultExists: () => false, createVault: async () => {}, switchVault: async () => {} } as never,
+    vaultService: {
+      getAllVaults: () => [],
+      vaultExists: () => false,
+      createVault: async () => {},
+      switchVault: async () => {}
+    } as never,
     importAvatar: async () => 'avatars/x.png',
     saveUserAvatarPath: async () => {},
     existingAssistantNames: async () => new Set(),
@@ -276,10 +281,7 @@ describe('legacy-version-migration.importer diaries', () => {
       runInVaultContext: async (_vaultName, fn) => fn()
     })
 
-    const result = await importLegacyDiariesForVault(
-      { ...deps, sourceRoot: '/legacy' },
-      'Personal'
-    )
+    const result = await importLegacyDiariesForVault({ ...deps, sourceRoot: '/legacy' }, 'Personal')
 
     expect(result.skipped).toBe(1)
     expect(result.imported).toBe(0)
@@ -312,10 +314,7 @@ describe('legacy-version-migration.importer diaries', () => {
       runInVaultContext: async (_vaultName, fn) => fn()
     })
 
-    const result = await importLegacyDiariesForVault(
-      { ...deps, sourceRoot: '/legacy' },
-      'Personal'
-    )
+    const result = await importLegacyDiariesForVault({ ...deps, sourceRoot: '/legacy' }, 'Personal')
 
     expect(result.imported).toBe(1)
     expect(writeFile).toHaveBeenCalledWith(

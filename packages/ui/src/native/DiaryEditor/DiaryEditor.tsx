@@ -5,13 +5,17 @@ import {
   StyleSheet,
   TouchableOpacity,
   Text,
-  ScrollView,
   Keyboard,
   LayoutAnimation,
   Platform,
-  Pressable
+  Pressable,
+  Dimensions,
+  type ScrollView
 } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { KeyboardAwareScrollView } from '../KeyboardAwareScrollView'
+import { readEffectiveKeyboardHeight } from '../KeyboardAwareScrollView/scroll-node-into-view.util'
 import { MarkdownToolbar } from '../MarkdownToolbar/MarkdownToolbar'
 import { DiaryEditorAppBarTitle } from '../DiaryEditorAppBarTitle/DiaryEditorAppBarTitle'
 import { TagInput } from '../TagInput/TagInput'
@@ -24,6 +28,9 @@ import {
 } from './NativeDiaryMixedContent'
 import { NativeImagePreviewModal } from './NativeImagePreviewModal'
 import type { DiaryEditorViewMode } from './diary-editor.types'
+
+/** 光标落在键盘上方时，额外保留的编辑留白 */
+const DIARY_EDIT_SCROLL_BUFFER = 72
 
 interface DiaryEditorProps {
   content: string
@@ -69,11 +76,15 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const insets = useSafeAreaInsets()
   const [viewMode, setViewMode] = useState<DiaryEditorViewMode>('edit')
   const [selection, setSelection] = useState({ start: 0, end: 0 })
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null)
   const [toolbarHeight, setToolbarHeight] = useState(52)
+  const editorScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const mixedContentRef = useRef<NativeDiaryMixedContentHandle>(null)
+  const scrollRef = useRef<ScrollView>(null)
+  const scrollYRef = useRef(0)
   const keyboardInsetLockedRef = useRef(false)
   const contentRef = useRef(content)
   const selectionRef = useRef({ start: 0, end: 0 })
@@ -226,6 +237,69 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
 
   const toolbarDockBottom = keyboardHeight
 
+  const scrollEditorIntoView = useCallback(() => {
+    const scrollView = scrollRef.current
+    if (!scrollView) return
+
+    const windowHeight = Dimensions.get('window').height
+    const kbHeight = keyboardHeight || readEffectiveKeyboardHeight(windowHeight)
+    if (kbHeight < 60) return
+
+    const bottomChrome = toolbarHeight + 16
+    const safeBottom = windowHeight - kbHeight - bottomChrome - DIARY_EDIT_SCROLL_BUFFER
+    const safeTop = insets.top + 56
+
+    const measure = mixedContentRef.current?.measureActiveEditorInWindow
+    if (!measure) {
+      scrollView.scrollToEnd({ animated: true })
+      return
+    }
+
+    measure((_x, caretTop, _w, caretHeight) => {
+      const caretBottom = caretTop + caretHeight
+      if (caretBottom <= safeBottom + 8) return
+
+      let delta = caretBottom - safeBottom
+      if (caretTop - delta < safeTop) {
+        delta = Math.max(0, Math.min(delta, caretTop - safeTop))
+      }
+      if (delta < 4) return
+
+      scrollView.scrollTo({
+        y: scrollYRef.current + delta,
+        animated: true
+      })
+    })
+  }, [keyboardHeight, toolbarHeight, insets.top])
+
+  const scheduleEditorScroll = useCallback(() => {
+    if (editorScrollTimerRef.current) clearTimeout(editorScrollTimerRef.current)
+    editorScrollTimerRef.current = setTimeout(
+      () => {
+        editorScrollTimerRef.current = null
+        scrollEditorIntoView()
+      },
+      Platform.OS === 'ios' ? 120 : 200
+    )
+  }, [scrollEditorIntoView])
+
+  useEffect(() => {
+    if (keyboardHeight < 60) return
+    scheduleEditorScroll()
+  }, [keyboardHeight, scheduleEditorScroll])
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
+    const sub = Keyboard.addListener(showEvent, scheduleEditorScroll)
+    return () => {
+      sub.remove()
+      if (editorScrollTimerRef.current) {
+        clearTimeout(editorScrollTimerRef.current)
+        editorScrollTimerRef.current = null
+      }
+    }
+  }, [scheduleEditorScroll])
+
   return (
     <View style={[styles.container, { backgroundColor: colors.bgSurface }]}>
       <View style={[styles.appBar, { borderBottomColor: colors.borderSubtle }]}>
@@ -261,17 +335,24 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
       </View>
 
       <View style={styles.editorBody}>
-        <ScrollView
+        <KeyboardAwareScrollView
+          ref={scrollRef}
           style={styles.body}
           nestedScrollEnabled
+          autoScrollToFocusedInput={false}
+          extraKeyboardPadding={toolbarHeight + 16}
           contentContainerStyle={[
             styles.bodyContent,
             styles.bodyContentGrow,
-            { paddingBottom: toolbarDockBottom + toolbarHeight + 16 }
+            { paddingBottom: toolbarHeight + 16 }
           ]}
           keyboardShouldPersistTaps="always"
           keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
           showsVerticalScrollIndicator={false}
+          onScroll={(event) => {
+            scrollYRef.current = event.nativeEvent.contentOffset.y
+          }}
+          scrollEventThrottle={16}
         >
           <View style={styles.editorMain}>
             {!isSummaryMode && viewMode === 'edit' && (
@@ -318,13 +399,17 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
                 if (Platform.OS === 'android') {
                   requestAnimationFrame(syncFromMetrics)
                 }
+                scheduleEditorScroll()
+              }}
+              onContentSizeChange={() => {
+                if (keyboardHeight >= 60) scheduleEditorScroll()
               }}
               resolveImageUri={resolveImageUri}
               loadImageUri={loadImageUri}
               onImagePress={handlePreviewImagePress}
             />
           </View>
-        </ScrollView>
+        </KeyboardAwareScrollView>
 
         <View
           style={[styles.toolbarDock, { bottom: toolbarDockBottom }]}
@@ -378,7 +463,7 @@ const styles = StyleSheet.create({
   body: { flex: 1 },
   bodyContent: { padding: 16 },
   bodyContentGrow: { flexGrow: 1 },
-  editorMain: { flexGrow: 1 },
+  editorMain: { width: '100%' },
   tagsSection: {
     marginBottom: 12
   },

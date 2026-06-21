@@ -30,7 +30,10 @@ export class SessionCrudOps {
         target: [agentSessionsTable.id],
         set: {
           title: input.title,
-          updatedAt: new Date()
+          updatedAt: new Date(),
+          ...(input.assistantId ? { assistantId: input.assistantId } : {}),
+          ...(input.providerId ? { providerId } : {}),
+          ...(input.modelId ? { modelId } : {})
         }
       })
   }
@@ -60,8 +63,7 @@ export class SessionCrudOps {
     limit: number = 20,
     offset: number = 0,
     assistantId?: string,
-    searchQuery?: string,
-    options?: { vaultName?: string }
+    searchQuery?: string
   ) {
     let matchedSessionIds: string[] = []
 
@@ -131,13 +133,14 @@ export class SessionCrudOps {
     // 组合过滤条件
     const conditions: any[] = []
 
-    if (options?.vaultName) {
-      conditions.push(eq(agentSessionsTable.vaultName, options.vaultName))
-    }
-
-    if (assistantId) {
+    const normalizedAssistantId = assistantId?.trim()
+    if (normalizedAssistantId) {
       conditions.push(
-        or(eq(agentSessionsTable.assistantId, assistantId), isNull(agentSessionsTable.assistantId))
+        or(
+          eq(agentSessionsTable.assistantId, normalizedAssistantId),
+          isNull(agentSessionsTable.assistantId),
+          eq(agentSessionsTable.assistantId, '')
+        )
       )
     }
 
@@ -173,11 +176,18 @@ export class SessionCrudOps {
     console.log(
       `[SessionRepo] findAllSessions(limit=${limit}, offset=${offset}, astId=${assistantId}, query=${searchQuery}) => returned ${results.length} rows.`
     )
-    if (results.length === 0 && !searchQuery) {
+    if (results.length === 0 && !searchQuery && normalizedAssistantId) {
       const allDocs = await this.db.select().from(agentSessionsTable)
       console.log(`[SessionRepo] WARNING: Returned 0, but total rows in DB: ${allDocs.length}`)
       if (allDocs.length > 0) {
-        console.log(`[SessionRepo] The first row in DB has assistantId:`, allDocs[0]!.assistantId)
+        const sampleIds = [...new Set(allDocs.map((row) => row.assistantId ?? '(null)'))].slice(
+          0,
+          5
+        )
+        console.log(
+          `[SessionRepo] assistantId filter=${normalizedAssistantId}, sample assistant_ids in DB:`,
+          sampleIds
+        )
       }
     }
     return results

@@ -45,9 +45,13 @@ export function useTTS() {
           return
         }
 
-        const result = await synthesizeAllTtsSpeechFromSavedSettings(services.settingsManager, content, {
-          isCancelled: () => requestId !== ttsRequestRef.current
-        })
+        const result = await synthesizeAllTtsSpeechFromSavedSettings(
+          services.settingsManager,
+          content,
+          {
+            isCancelled: () => requestId !== ttsRequestRef.current
+          }
+        )
 
         if (requestId !== ttsRequestRef.current) return
 

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import type { PromptShortcut } from '@baishou/shared'
 import {
+  appendShortcutInsertText,
   filterShortcutsByQuery,
-  formatShortcutInsertText,
   getShortcutQuery,
   shouldStartShortcutSession
 } from '@baishou/shared'
@@ -35,7 +35,10 @@ export function useInputBarShortcuts(
 
   const applyShortcut = useCallback(
     (shortcut: PromptShortcut) => {
-      setText(formatShortcutInsertText(shortcut.content))
+      setText((prev) => {
+        const base = prev.startsWith('/') ? '' : prev
+        return appendShortcutInsertText(base, shortcut.content)
+      })
       slashSessionRef.current = false
       setShortcutModeActive(false)
       setSelectedIndex(0)
@@ -129,7 +132,7 @@ export function useInputBarShortcuts(
 
   const insertShortcutContent = useCallback(
     (content: string) => {
-      setText(formatShortcutInsertText(content))
+      setText((prev) => appendShortcutInsertText(prev, content))
       slashSessionRef.current = false
       setShortcutModeActive(false)
       setSelectedIndex(0)

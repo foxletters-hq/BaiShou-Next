@@ -30,13 +30,13 @@ let appCacheNoMediaEnsured = false
 /** 应用 cache 目录写入 .nomedia，避免裁剪/压缩临时图被 MIUI 等相册扫描 */
 export async function ensureAppCacheNoMediaMarker(): Promise<void> {
   if (Platform.OS !== 'android' || appCacheNoMediaEnsured) return
-  appCacheNoMediaEnsured = true
 
   const cacheDir = stripFileScheme(getAppCacheDirectory()).replace(/\/+$/, '')
   const markerUri = toFileUri(joinPath(cacheDir, NOMEDIA_FILE))
 
   try {
     await writeAsStringAsync(markerUri, '')
+    appCacheNoMediaEnsured = true
   } catch (e) {
     console.warn('[NoMedia] failed to create .nomedia in app cache', e)
   }

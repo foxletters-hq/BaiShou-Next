@@ -43,7 +43,7 @@ export interface IncrementalSyncPlanPreview {
   divergencePercent?: number
   maxDivergencePercent?: number
   deletePropagationBlocked: boolean
-  deletePropagationReason?: 'mass_delete' | 'local_data_loss'
+  deletePropagationReason?: 'mass_delete' | 'local_data_loss' | 'remote_data_loss'
   /** 本次预览前自动补登记的工作区 */
   autoRegisteredVaults?: string[]
 }

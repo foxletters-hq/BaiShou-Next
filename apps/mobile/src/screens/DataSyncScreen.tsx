@@ -308,10 +308,8 @@ export const DataSyncScreen: React.FC = () => {
       setIsRestoring(true)
       setCloudRestoreProgress(buildArchiveImportProgress('preparing'))
       try {
-        const result = await cloudSyncService.restoreFromCloud(
-          syncConfig,
-          filename,
-          (progress) => setCloudRestoreProgress(progress)
+        const result = await cloudSyncService.restoreFromCloud(syncConfig, filename, (progress) =>
+          setCloudRestoreProgress(progress)
         )
         if (result.success) {
           reportArchiveImportStage(setCloudRestoreProgress, 'succeeded', { percent: 100 })
@@ -634,15 +632,9 @@ export const DataSyncScreen: React.FC = () => {
               ? resolveArchiveImportStageDetail(cloudRestoreProgress)
               : undefined
         }
-        progress={
-          isArchiveImporting
-            ? archiveImportPercent
-            : cloudRestoreProgress?.percent
-        }
+        progress={isArchiveImporting ? archiveImportPercent : cloudRestoreProgress?.percent}
         succeeded={
-          isArchiveImporting
-            ? archiveImportSucceeded
-            : cloudRestoreProgress?.stage === 'succeeded'
+          isArchiveImporting ? archiveImportSucceeded : cloudRestoreProgress?.stage === 'succeeded'
         }
       />
       <StackScreenLayout

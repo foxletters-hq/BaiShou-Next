@@ -61,6 +61,12 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
         route: { type: 'section', section: 'web-search' }
       },
       {
+        id: 'mcp',
+        titleKey: 'settings.mcp_title',
+        icon: 'hub',
+        route: { type: 'section', section: 'mcp' }
+      },
+      {
         id: 'agent-tools',
         titleKey: 'settings.agent_tools_title',
         icon: 'extension',

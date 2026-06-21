@@ -1,9 +1,4 @@
-import {
-  cacheDirectory,
-  deleteAsync,
-  EncodingType,
-  writeAsStringAsync
-} from './mobile-sandbox-fs'
+import { cacheDirectory, deleteAsync, EncodingType, writeAsStringAsync } from './mobile-sandbox-fs'
 
 type AudioStatus = {
   didJustFinish?: boolean
@@ -142,10 +137,7 @@ export async function stopTtsAudioPlayback(): Promise<void> {
   releaseActivePlayback()
 }
 
-async function playPreparedAudioFile(
-  tempUri: string,
-  generation: number
-): Promise<void> {
+async function playPreparedAudioFile(tempUri: string, generation: number): Promise<void> {
   const { createAudioPlayer, setAudioModeAsync } = await loadExpoAudio()
   await setAudioModeAsync({
     playsInSilentMode: true,

@@ -56,7 +56,13 @@ function injectReleaseSigningConfig(contents) {
     braceDepth -= (line.match(/\}/g) || []).length
 
     if (braceDepth === 0) {
-      lines.splice(i, 0, '        // @generated begin baishou-release-signing-config', ...RELEASE_SIGNING_LINES, '        // @generated end baishou-release-signing-config')
+      lines.splice(
+        i,
+        0,
+        '        // @generated begin baishou-release-signing-config',
+        ...RELEASE_SIGNING_LINES,
+        '        // @generated end baishou-release-signing-config'
+      )
       return lines.join('\n')
     }
   }

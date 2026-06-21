@@ -41,6 +41,9 @@ declare class ExpoBaishouServerModule extends NativeModule<ServerEvents> {
   startServer(port: number, authToken?: string | null): number
   stopServer(): void
   resolveMcpHttpResponse(requestId: string, responseBody: string): boolean
+  beginMcpHttpStream(requestId: string, responseBody: string): boolean
+  pushMcpHttpStreamChunk(requestId: string, chunk: string): boolean
+  endMcpHttpStream(requestId: string): boolean
   hasAllFilesAccess(): boolean
   openAllFilesAccessSettings(): boolean
   getStoragePermissionOemKey(): string
@@ -193,9 +196,31 @@ export function resolveMcpHttpResponse(
 ): boolean {
   const payload =
     typeof response === 'string'
-      ? JSON.stringify({ statusCode: 200, headers: { 'content-type': 'application/json' }, body: response })
+      ? JSON.stringify({
+          statusCode: 200,
+          headers: { 'content-type': 'application/json' },
+          body: response
+        })
       : JSON.stringify(response)
   return requireNative().resolveMcpHttpResponse(requestId, payload)
+}
+
+export function beginMcpHttpStream(
+  requestId: string,
+  response: Pick<McpHttpResponseEnvelope, 'statusCode' | 'headers'>
+): boolean {
+  return requireNative().beginMcpHttpStream(
+    requestId,
+    JSON.stringify({ statusCode: response.statusCode, headers: response.headers })
+  )
+}
+
+export function pushMcpHttpStreamChunk(requestId: string, chunk: string): boolean {
+  return requireNative().pushMcpHttpStreamChunk(requestId, chunk)
+}
+
+export function endMcpHttpStream(requestId: string): boolean {
+  return requireNative().endMcpHttpStream(requestId)
 }
 
 export function onFileReceived(listener: (event: { path: string }) => void) {

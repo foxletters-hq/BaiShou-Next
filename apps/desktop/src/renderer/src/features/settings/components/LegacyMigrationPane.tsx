@@ -3,7 +3,10 @@ import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { RestoreBlockingOverlay } from '@baishou/ui'
 import { formatMigrationMegabytes } from '@baishou/shared'
-import type { LegacyVersionMigrationImportStatus, LegacyVersionMigrationPreviewItem } from '@baishou/shared'
+import type {
+  LegacyVersionMigrationImportStatus,
+  LegacyVersionMigrationPreviewItem
+} from '@baishou/shared'
 import { useDesktopVersionMigration } from '../hooks/useDesktopVersionMigration'
 import './LegacyMigrationPane.css'
 
@@ -48,7 +51,9 @@ function SectionCard({
             : t('version_migration.status_unavailable', '无数据')
 
   return (
-    <article className={`legacy-migration-card legacy-migration-section-card ${importStatus === 'success' ? 'is-imported' : ''}`}>
+    <article
+      className={`legacy-migration-card legacy-migration-section-card ${importStatus === 'success' ? 'is-imported' : ''}`}
+    >
       <div className="legacy-migration-section-card-top">
         <div className="legacy-migration-section-card-head">
           <span className="legacy-migration-section-name">{title}</span>
@@ -243,7 +248,9 @@ export const LegacyMigrationPane: React.FC = () => {
       </section>
 
       {showSectionScanSpinner ? (
-        <div className="legacy-migration-loading">{t('version_migration.scanning', '正在扫描…')}</div>
+        <div className="legacy-migration-loading">
+          {t('version_migration.scanning', '正在扫描…')}
+        </div>
       ) : null}
 
       {globalSections.length > 0 ? (

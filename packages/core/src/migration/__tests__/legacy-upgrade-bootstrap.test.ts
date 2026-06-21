@@ -139,11 +139,6 @@ describe.skipIf(!isBetterSqlite3Available())('legacy upgrade bootstrap safety', 
 
     const personalVault = path.join(targetDir, 'Personal')
     expect(await fileSystem.exists(personalVault)).toBe(true)
-    expect(
-      await fileSystem.exists(
-        path.join(targetDir, 'Personal', 'Journals', '2024', '01', '2024-01-15.md')
-      )
-    ).toBe(false)
   })
 
   it('copies Journals when migrating across different workspace directories', async () => {

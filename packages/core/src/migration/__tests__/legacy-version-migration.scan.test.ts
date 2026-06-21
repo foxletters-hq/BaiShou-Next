@@ -93,7 +93,11 @@ describe('legacy-version-migration.scan', () => {
     const vaultName = 'My Work/Space'
     const journalsDir = path.join(tempDir, vaultName, 'Journals', '2024', '01')
     await fs.mkdir(journalsDir, { recursive: true })
-    await fs.writeFile(path.join(journalsDir, '2024-01-20.md'), '---\ndate: 2024-01-20\n---\n\nx', 'utf8')
+    await fs.writeFile(
+      path.join(journalsDir, '2024-01-20.md'),
+      '---\ndate: 2024-01-20\n---\n\nx',
+      'utf8'
+    )
 
     const agentDbPath = path.join(tempDir, vaultName, '.baishou', 'agent.sqlite')
     await fs.mkdir(path.dirname(agentDbPath), { recursive: true })

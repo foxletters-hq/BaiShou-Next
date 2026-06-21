@@ -35,6 +35,9 @@ const mockPath = path.resolve(projectRoot, 'mocks/node-modules.js')
 
 config.resolver.blockList = [
   ...(Array.isArray(config.resolver.blockList) ? config.resolver.blockList : []),
+  /[/\\]@modelcontextprotocol[/\\]sdk[/\\].*[/\\]server[/\\]streamableHttp\.(js|cjs|mjs|ts)$/,
+  /[/\\]@modelcontextprotocol[/\\]sdk[/\\].*[/\\]server[/\\]sse\.(js|cjs|mjs|ts)$/,
+  /[/\\]@modelcontextprotocol[/\\]sdk[/\\].*[/\\]examples[/\\]/,
   new RegExp(`${path.resolve(workspaceRoot, 'apps/desktop').replace(/[/\\]/g, '[/\\\\]')}.*`),
   new RegExp(
     `${path.resolve(workspaceRoot, 'packages/core/src/index.desktop.ts').replace(/[/\\]/g, '[/\\\\]')}`

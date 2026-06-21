@@ -33,6 +33,7 @@ describe('SummaryManagerService (SSOT refactor)', () => {
       update: vi.fn(),
       getByDateRange: vi.fn(),
       getSummaries: vi.fn(),
+      countByType: vi.fn(),
       delete: vi.fn(),
       deleteAll: vi.fn()
     }
@@ -96,7 +97,12 @@ describe('SummaryManagerService (SSOT refactor)', () => {
 
   it('list() should read summaries from active vault files', async () => {
     mockFileService.listAllSummaries.mockResolvedValue([
-      { type: testType, startDate: start, endDate: end, fullPath: '/vault/Archives/Monthly/2026-03-01.md' }
+      {
+        type: testType,
+        startDate: start,
+        endDate: end,
+        fullPath: '/vault/Archives/Monthly/2026-03-01.md'
+      }
     ])
     mockFileService.readSummary.mockResolvedValue('From disk')
     mockRepo.getByDateRange.mockResolvedValue({
