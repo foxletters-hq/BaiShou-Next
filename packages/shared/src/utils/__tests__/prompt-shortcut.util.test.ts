@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  appendShortcutInsertText,
   dedupePromptShortcuts,
   filterShortcutsByQuery,
   formatShortcutInsertText,
@@ -40,6 +41,13 @@ describe('prompt-shortcut.util', () => {
   it('appends trailing newline when inserting shortcut content', () => {
     expect(formatShortcutInsertText('hello')).toBe('hello\n')
     expect(formatShortcutInsertText('hello\n')).toBe('hello\n')
+  })
+
+  it('appends shortcut content to existing input instead of replacing', () => {
+    expect(appendShortcutInsertText('', 'translate prompt')).toBe('translate prompt\n')
+    expect(appendShortcutInsertText('existing text', 'translate prompt')).toBe(
+      'existing text\ntranslate prompt\n'
+    )
   })
 
   it('dedupes by id and command', () => {
