@@ -8,7 +8,8 @@ import type {
 import {
   SYNC_CONFIRM_DELAY_MS,
   computeSyncConfirmSecondsLeft,
-  isSyncConfirmReady
+  isSyncConfirmReady,
+  buildIncrementalSyncBoundaryHints
 } from '@baishou/shared'
 import styles from './IncrementalSyncConfirmDialog.module.css'
 
@@ -99,30 +100,9 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
 
   const boundaryHints = useMemo(() => {
     if (!preview) return [] as string[]
-    const { boundaryIssues } = preview
-    const hints: string[] = []
-    if (boundaryIssues.unknownVaultPaths.length > 0) {
-      hints.push(
-        t('data_sync.plan_warning_unknown_vault_paths', {
-          paths: boundaryIssues.unknownVaultPaths.join('、')
-        })
-      )
-    }
-    if (boundaryIssues.diskVaultsNotInRegistry.length > 0) {
-      hints.push(
-        t('data_sync.plan_warning_disk_vaults_not_in_registry', {
-          vaults: boundaryIssues.diskVaultsNotInRegistry.join('、')
-        })
-      )
-    }
-    if (boundaryIssues.registryVaultsMissingOnDisk.length > 0) {
-      hints.push(
-        t('data_sync.plan_warning_registry_vaults_missing_on_disk', {
-          missing: boundaryIssues.registryVaultsMissingOnDisk.join('、')
-        })
-      )
-    }
-    return hints
+    return buildIncrementalSyncBoundaryHints(preview.boundaryIssues).map((hint) =>
+      t(hint.messageKey, { [hint.listParam]: hint.names.join('、') })
+    )
   }, [preview, t])
 
   const otherWarnings = useMemo(() => {
@@ -230,10 +210,15 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
                 summary.vaultName === '__root__' ||
                 summary.vaultName === '__unknown__' ||
                 registeredSet.has(summary.vaultName)
+              const statsText = formatVaultStats(summary, t)
 
               return (
                 <section key={summary.vaultName} className={styles.vaultSection}>
-                  <div className={styles.vaultHeader}>
+                  <div
+                    className={`${styles.vaultHeader} ${
+                      displayItems.length > 0 ? styles.vaultHeaderWithFiles : ''
+                    }`}
+                  >
                     <div className={styles.vaultTitleRow}>
                       <span className={styles.vaultName}>{formatVaultLabel(summary.vaultName, t)}</span>
                       <div className={styles.vaultTags}>
@@ -249,7 +234,7 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
                         )}
                       </div>
                     </div>
-                    <span className={styles.vaultStats}>{formatVaultStats(summary, t)}</span>
+                    {statsText && <span className={styles.vaultStats}>{statsText}</span>}
                   </div>
                   {displayItems.length > 0 && (
                     <ul className={styles.fileList}>

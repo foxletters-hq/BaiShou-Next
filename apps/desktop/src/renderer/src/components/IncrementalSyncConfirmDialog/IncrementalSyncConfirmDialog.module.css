@@ -76,39 +76,43 @@
 .vaultSection {
   border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
   border-radius: 10px;
-  overflow: hidden;
   background: var(--bg-surface, #fff);
 }
 
 .vaultHeader {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
+  flex-direction: column;
+  gap: 6px;
   padding: 10px 12px;
   background: var(--bg-subtle, rgba(0, 0, 0, 0.03));
+}
+
+.vaultHeaderWithFiles {
   border-bottom: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06));
 }
 
 .vaultTitleRow {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
-  flex: 1;
 }
 
 .vaultName {
   font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
-  word-break: break-all;
+  flex: 1 1 auto;
+  min-width: 0;
+  word-break: break-word;
 }
 
 .vaultTags {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
+  flex-shrink: 0;
 }
 
 .vaultBadgeActive {
@@ -130,13 +134,12 @@
 }
 
 .vaultStats {
-  flex-shrink: 0;
+  align-self: flex-end;
   font-size: 11px;
   font-weight: 500;
   color: var(--text-tertiary);
   text-align: right;
   line-height: 1.5;
-  white-space: nowrap;
 }
 
 .fileList {

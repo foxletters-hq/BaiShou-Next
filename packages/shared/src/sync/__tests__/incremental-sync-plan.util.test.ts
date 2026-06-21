@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildIncrementalSyncBoundaryHints,
   buildIncrementalSyncBoundaryIssues,
   buildIncrementalSyncPlanPreview,
   resolveIncrementalSyncVaultScope
@@ -44,6 +45,21 @@ describe('incremental-sync-plan.util', () => {
     expect(issues.diskVaultsNotInRegistry).toEqual(['Archive'])
     expect(issues.registryVaultsMissingOnDisk).toEqual(['Work'])
     expect(issues.unknownVaultPaths).toEqual(['Archive'])
+  })
+
+  it('buildIncrementalSyncBoundaryHints avoids duplicate unknown/disk warnings', () => {
+    const issues = buildIncrementalSyncBoundaryIssues({
+      registeredVaults: ['Personal'],
+      diskVaultNames: ['Personal', 'Archive', 'haha'],
+      planItems: [
+        { filePath: 'Archive/a.md', action: 'upload', vaultScope: 'Archive' },
+        { filePath: 'haha/b.md', action: 'download', vaultScope: 'haha' }
+      ]
+    })
+    const hints = buildIncrementalSyncBoundaryHints(issues)
+    expect(hints).toHaveLength(1)
+    expect(hints[0]?.messageKey).toBe('data_sync.plan_warning_unknown_vault_paths')
+    expect(hints[0]?.names).toEqual(['Archive', 'haha'])
   })
 
   it('ignores disk folders without pending plan changes', () => {

@@ -47,6 +47,45 @@ export function buildIncrementalSyncBoundaryIssues(options: {
   }
 }
 
+export type IncrementalSyncBoundaryHintKey =
+  | 'data_sync.plan_warning_unknown_vault_paths'
+  | 'data_sync.plan_warning_disk_vaults_not_in_registry'
+  | 'data_sync.plan_warning_registry_vaults_missing_on_disk'
+
+export interface IncrementalSyncBoundaryHint {
+  messageKey: IncrementalSyncBoundaryHintKey
+  listParam: 'paths' | 'vaults' | 'missing'
+  names: string[]
+}
+
+/** 与 buildIncrementalSyncPlanPreview 的 warnings 优先级一致，避免 UI 重复展示同类边界提示 */
+export function buildIncrementalSyncBoundaryHints(
+  issues: IncrementalSyncBoundaryIssues
+): IncrementalSyncBoundaryHint[] {
+  const hints: IncrementalSyncBoundaryHint[] = []
+  if (issues.unknownVaultPaths.length > 0) {
+    hints.push({
+      messageKey: 'data_sync.plan_warning_unknown_vault_paths',
+      listParam: 'paths',
+      names: issues.unknownVaultPaths
+    })
+  } else if (issues.diskVaultsNotInRegistry.length > 0) {
+    hints.push({
+      messageKey: 'data_sync.plan_warning_disk_vaults_not_in_registry',
+      listParam: 'vaults',
+      names: issues.diskVaultsNotInRegistry
+    })
+  }
+  if (issues.registryVaultsMissingOnDisk.length > 0) {
+    hints.push({
+      messageKey: 'data_sync.plan_warning_registry_vaults_missing_on_disk',
+      listParam: 'missing',
+      names: issues.registryVaultsMissingOnDisk
+    })
+  }
+  return hints
+}
+
 function toPlanItem(decision: MergeDecision): IncrementalSyncPlanItem | null {
   if (decision.type === 'skip') return null
   const action =

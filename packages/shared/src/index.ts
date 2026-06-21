@@ -207,7 +207,12 @@ export type {
 export {
   buildIncrementalSyncPlanPreview,
   buildIncrementalSyncBoundaryIssues,
+  buildIncrementalSyncBoundaryHints,
   resolveIncrementalSyncVaultScope
+} from './sync/incremental-sync-plan.util'
+export type {
+  IncrementalSyncBoundaryHint,
+  IncrementalSyncBoundaryHintKey
 } from './sync/incremental-sync-plan.util'
 
 export * from './cache'
