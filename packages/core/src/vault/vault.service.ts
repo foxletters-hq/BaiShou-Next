@@ -15,6 +15,7 @@ import {
   readLegacyVaultRegistry,
   writeNextVaultRegistry
 } from '../migration/legacy-migration.shared'
+import { listDiskVaultFolderNames } from './vault-disk.util'
 
 function parseRegistryTimestamp(value: unknown, fallback: Date): Date {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -33,6 +34,17 @@ function normalizeRegistryPath(p: string): string {
     .replace(/^file:\/\//, '')
     .replace(/\\/g, '/')
     .replace(/\/$/, '')
+}
+
+async function discoverAllVaultNamesOnDisk(
+  fileSystem: IFileSystem,
+  rootDir: string
+): Promise<string[]> {
+  const [fromFolders, fromLegacy] = await Promise.all([
+    listDiskVaultFolderNames(fileSystem, rootDir),
+    discoverLegacyVaultNamesOnDisk(fileSystem, rootDir)
+  ])
+  return [...new Set([...fromFolders, ...fromLegacy])]
 }
 
 async function vaultDirectoryHasLegacyContent(
@@ -96,7 +108,7 @@ export class VaultService implements IVaultService {
         )
         shouldSave = false
       } else {
-        const discovered = await discoverLegacyVaultNamesOnDisk(this.fileSystem, rootDir)
+        const discovered = await discoverAllVaultNamesOnDisk(this.fileSystem, rootDir)
         if (discovered.length > 0) {
           this._vaults = await writeNextVaultRegistry(this.fileSystem, rootDir, discovered)
           shouldSave = false
@@ -166,7 +178,7 @@ export class VaultService implements IVaultService {
             )
             shouldSave = false
           } else {
-            const discovered = await discoverLegacyVaultNamesOnDisk(this.fileSystem, rootDir)
+            const discovered = await discoverAllVaultNamesOnDisk(this.fileSystem, rootDir)
             if (discovered.length > 0) {
               this._vaults = await writeNextVaultRegistry(this.fileSystem, rootDir, discovered)
               shouldSave = false
@@ -224,9 +236,20 @@ export class VaultService implements IVaultService {
 
   public async syncRegistryWithDisk(): Promise<string[]> {
     const rootDir = await this.pathService.getRootDirectory()
-    const discovered = await discoverLegacyVaultNamesOnDisk(this.fileSystem, rootDir)
-    const missing = discovered.filter((name) => !this._vaults.some((v) => v.name === name))
+    const diskNames = await listDiskVaultFolderNames(this.fileSystem, rootDir)
+    const missing = diskNames.filter((name) => !this.registryCoversDiskFolder(name))
     return this.ensureVaultsRegistered(missing)
+  }
+
+  private registryCoversDiskFolder(diskFolderName: string): boolean {
+    return this._vaults.some((vault) => this.vaultMatchesDiskFolder(vault, diskFolderName))
+  }
+
+  private vaultMatchesDiskFolder(vault: VaultInfo, diskFolderName: string): boolean {
+    if (vault.name === diskFolderName) return true
+    if (sanitizeVaultDirectoryName(vault.name) === diskFolderName) return true
+    const pathBase = normalizeRegistryPath(vault.path).split('/').pop()
+    return pathBase === diskFolderName
   }
 
   public async ensureVaultsRegistered(vaultNames: Iterable<string>): Promise<string[]> {

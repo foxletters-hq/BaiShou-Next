@@ -42,7 +42,7 @@ export interface IVaultService {
   deleteVault(vaultName: string): Promise<void>
 
   /**
-   * 扫描磁盘上含日记/归档等工作区内容的目录，补登记未注册项（不切换当前活动工作区）
+   * 扫描存储根下全部工作区目录，补登记未注册项（不切换当前活动工作区）
    */
   syncRegistryWithDisk(): Promise<string[]>
 
