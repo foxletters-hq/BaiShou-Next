@@ -1,9 +1,20 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBaishou } from '../providers/BaishouProvider'
 import { resolveSummaryConfig } from '../services/mobile-summary-config.util'
 import { SummaryType, logger, type MissingSummary as DetectedMissingSummary } from '@baishou/shared'
 import { appendVaultDebugLog } from '../services/summary-debug-log.util'
+import {
+  commitSummaryDashboardCache,
+  getSummaryDashboardCacheVersion,
+  peekSummaryDashboardCache,
+  subscribeSummaryDashboardCache,
+  type SummaryDashboardSnapshot
+} from '../lib/summary-dashboard-cache'
+import {
+  fetchSummaryDashboardSnapshot,
+  filterActivityForYear
+} from '../services/summary-dashboard.service'
 
 interface Summary {
   id: string
@@ -45,7 +56,19 @@ interface QueueItem {
   error?: string
 }
 
-export function useSummaryData() {
+const EMPTY_STATS: Stats = {
+  totalDiaryCount: 0,
+  totalWeeklyCount: 0,
+  totalMonthlyCount: 0,
+  totalQuarterlyCount: 0,
+  totalYearlyCount: 0
+}
+
+function snapshotToStats(snapshot: SummaryDashboardSnapshot): Stats {
+  return snapshot.stats
+}
+
+export function useSummaryData(selectedYear: number) {
   const { i18n } = useTranslation()
   const { services, dbReady, vaultRevision, archiveRestoreEpoch, storageIndexing, ecosystemResyncEpoch } =
     useBaishou()
@@ -54,36 +77,51 @@ export function useSummaryData() {
   const missingSummaryDetector = services?.missingSummaryDetector
   const bootstrapper = services?.bootstrapper
   const autoRescanAttemptedRef = useRef(-1)
+  const dashboardFetchRef = useRef(0)
+
+  const cacheVersion = useSyncExternalStore(
+    subscribeSummaryDashboardCache,
+    getSummaryDashboardCacheVersion
+  )
+  const cacheInvalidationHandledRef = useRef(false)
+
   const [summaries, setSummaries] = useState<Summary[]>([])
-  const [stats, setStats] = useState<Stats>({
-    totalDiaryCount: 0,
-    totalWeeklyCount: 0,
-    totalMonthlyCount: 0,
-    totalQuarterlyCount: 0,
-    totalYearlyCount: 0
-  })
+  const [stats, setStats] = useState<Stats>(EMPTY_STATS)
+  const [activityByDate, setActivityByDate] = useState<Record<string, number>>({})
+  const [availableYears, setAvailableYears] = useState<number[]>([new Date().getFullYear()])
   const [missingSummaries, setMissingSummaries] = useState<MissingSummary[]>([])
   const [isDetectingMissing, setIsDetectingMissing] = useState(false)
   const [generationStates, setGenerationStates] = useState<Record<string, GenerationState>>({})
   const [loading, setLoading] = useState(true)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isDashboardRefreshing, setIsDashboardRefreshing] = useState(false)
 
-  // 队列状态引用，用于并发控制
   const queueRef = useRef<QueueItem[]>([])
   const activeCountRef = useRef(0)
   const abortControllerRef = useRef<AbortController | null>(null)
   const concurrencyLimitRef = useRef(1)
   const isSchedulingRef = useRef(false)
 
+  const applyDashboardSnapshot = useCallback((snapshot: SummaryDashboardSnapshot) => {
+    setStats(snapshotToStats(snapshot))
+    setActivityByDate(snapshot.activityByDate)
+    setAvailableYears(snapshot.availableYears)
+  }, [])
+
+  const hydrateDashboardFromCache = useCallback(() => {
+    const peek = peekSummaryDashboardCache(vaultRevision)
+    if (peek) {
+      applyDashboardSnapshot(peek.snapshot)
+      return peek.stale
+    }
+    return true
+  }, [applyDashboardSnapshot, vaultRevision])
+
   useEffect(() => {
     setSummaries([])
-    setStats({
-      totalDiaryCount: 0,
-      totalWeeklyCount: 0,
-      totalMonthlyCount: 0,
-      totalQuarterlyCount: 0,
-      totalYearlyCount: 0
-    })
+    setStats(EMPTY_STATS)
+    setActivityByDate({})
+    setAvailableYears([new Date().getFullYear()])
     setMissingSummaries([])
   }, [vaultRevision])
 
@@ -121,8 +159,46 @@ export function useSummaryData() {
     ecosystemResyncEpoch
   ])
 
-  const fetchCoreData = useCallback(async () => {
-    if (!dbReady || storageIndexing || !summaryManager || !diaryService) return
+  const refreshDashboard = useCallback(
+    async (options?: { force?: boolean }) => {
+      if (!dbReady || storageIndexing || !summaryManager || !diaryService) return
+
+      const stale = hydrateDashboardFromCache()
+      if (!options?.force && !stale) return
+
+      const requestId = ++dashboardFetchRef.current
+      setIsDashboardRefreshing(true)
+      try {
+        const data = await fetchSummaryDashboardSnapshot({ diaryService, summaryManager })
+        if (requestId !== dashboardFetchRef.current) return
+
+        commitSummaryDashboardCache(vaultRevision, data)
+        applyDashboardSnapshot({
+          vaultRevision,
+          fetchedAt: Date.now(),
+          ...data
+        })
+      } catch (e) {
+        console.warn('[useSummaryData] refreshDashboard failed:', e)
+      } finally {
+        if (requestId === dashboardFetchRef.current) {
+          setIsDashboardRefreshing(false)
+        }
+      }
+    },
+    [
+      applyDashboardSnapshot,
+      dbReady,
+      diaryService,
+      hydrateDashboardFromCache,
+      storageIndexing,
+      summaryManager,
+      vaultRevision
+    ]
+  )
+
+  const fetchSummariesForGallery = useCallback(async () => {
+    if (!dbReady || storageIndexing || !summaryManager) return
 
     try {
       setLoading(true)
@@ -138,16 +214,10 @@ export function useSummaryData() {
         try {
           await bootstrapper.resyncFromDisk()
           summaryList = await summaryManager.list()
+          await refreshDashboard({ force: true })
         } catch (e) {
           logger.warn('[useSummaryData] auto resync after empty summary list failed:', e as Error)
         }
-      }
-
-      let diaryCount = 0
-      try {
-        diaryCount = await diaryService.count()
-      } catch (e) {
-        logger.warn('[useSummaryData] diary count failed:', e as Error)
       }
 
       setSummaries(
@@ -159,40 +229,38 @@ export function useSummaryData() {
           content: s.content
         }))
       )
-
-      setStats({
-        totalDiaryCount: diaryCount,
-        totalWeeklyCount: summaryList.filter((s) => s.type === 'weekly').length,
-        totalMonthlyCount: summaryList.filter((s) => s.type === 'monthly').length,
-        totalQuarterlyCount: summaryList.filter((s) => s.type === 'quarterly').length,
-        totalYearlyCount: summaryList.filter((s) => s.type === 'yearly').length
-      })
     } catch (e) {
-      console.warn('Failed to fetch summary data', e)
+      console.warn('Failed to fetch summary gallery data', e)
     } finally {
       setLoading(false)
     }
-  }, [
-    dbReady,
-    summaryManager,
-    diaryService,
-    bootstrapper,
-    vaultRevision,
-    archiveRestoreEpoch,
-    ecosystemResyncEpoch
-  ])
-
-  const fetchData = useCallback(async () => {
-    await fetchCoreData()
-    void fetchMissingSummaries()
-  }, [fetchCoreData, fetchMissingSummaries])
+  }, [bootstrapper, dbReady, refreshDashboard, storageIndexing, summaryManager, vaultRevision])
 
   useEffect(() => {
-    void fetchCoreData()
+    hydrateDashboardFromCache()
+    void refreshDashboard()
     void fetchMissingSummaries()
-  }, [fetchCoreData, fetchMissingSummaries])
+  }, [fetchMissingSummaries, hydrateDashboardFromCache, refreshDashboard, vaultRevision, ecosystemResyncEpoch])
 
-  // 广播队列状态到 React 状态
+  useEffect(() => {
+    if (!cacheInvalidationHandledRef.current) {
+      cacheInvalidationHandledRef.current = true
+      return
+    }
+    void refreshDashboard()
+  }, [cacheVersion, refreshDashboard])
+
+  const activityData = useMemo(
+    () => filterActivityForYear(activityByDate, selectedYear),
+    [activityByDate, selectedYear]
+  )
+
+  const fetchData = useCallback(async () => {
+    await refreshDashboard({ force: true })
+    void fetchMissingSummaries()
+    await fetchSummariesForGallery()
+  }, [fetchMissingSummaries, fetchSummariesForGallery, refreshDashboard])
+
   const broadcastState = useCallback(() => {
     const states: Record<string, GenerationState> = {}
     queueRef.current.forEach((item) => {
@@ -206,7 +274,6 @@ export function useSummaryData() {
     setGenerationStates(states)
   }, [])
 
-  // 处理单个任务（定义在 scheduleNext 之前，避免声明前使用）
   const processTask = useCallback(
     async (task: QueueItem) => {
       const signal = abortControllerRef.current?.signal
@@ -219,7 +286,6 @@ export function useSummaryData() {
         task.progress = 5
         broadcastState()
 
-        // 阶段 0: 发送请求中... 停留一小会儿让用户感知到
         await new Promise((r) => setTimeout(r, 500))
         if (signal?.aborted) throw new Error('用户取消了生成')
 
@@ -271,7 +337,6 @@ export function useSummaryData() {
             task.phaseIdx = 1
             task.progress = 25
             broadcastState()
-            // 阶段 1: 正在解析源数据... 停留一小会儿让用户有清晰感知
             await new Promise((r) => setTimeout(r, 600))
           } else if (chunk.includes('STATUS:thinking_via_')) {
             logger.info(`[SummaryQueue] Task ${task.id} entered thinking phase: ${chunk}`)
@@ -288,9 +353,8 @@ export function useSummaryData() {
             broadcastState()
             return
           } else if (!chunk.startsWith('STATUS:')) {
-            // 阶段 3: AI 总结正流式接收生成... 模拟流式打字机效果输出
             const textLength = chunk.length
-            const stepSize = 12 // 每次输出 12 个字
+            const stepSize = 12
             let currentIdx = 0
             while (currentIdx < textLength) {
               if (signal?.aborted) {
@@ -303,7 +367,7 @@ export function useSummaryData() {
               task.phaseIdx = 3
               task.progress = 85
               broadcastState()
-              await new Promise((r) => setTimeout(r, 30)) // 每隔 30ms 输出一次
+              await new Promise((r) => setTimeout(r, 30))
             }
           }
           broadcastState()
@@ -312,7 +376,6 @@ export function useSummaryData() {
         if (task.status === 'error') return
 
         if (finalContent.trim().length > 0) {
-          // 正在保存总结... 停留一小会儿让用户感知到
           task.progress = 95
           broadcastState()
           await new Promise((r) => setTimeout(r, 600))
@@ -366,9 +429,7 @@ export function useSummaryData() {
     [broadcastState, fetchData, services]
   )
 
-  // 调度下一个任务
   const scheduleNext = useCallback(async () => {
-    // 使用标志位防止并发调度
     if (isSchedulingRef.current) return
     isSchedulingRef.current = true
 
@@ -385,23 +446,19 @@ export function useSummaryData() {
         activeCountRef.current++
         broadcastState()
 
-        // 异步处理任务
         processTask(next).finally(() => {
           activeCountRef.current--
           broadcastState()
 
-          // 继续调度下一个
           if (!abortControllerRef.current?.signal.aborted) {
             scheduleNext()
           }
 
-          // 所有任务完成时清理
           if (activeCountRef.current === 0) {
             abortControllerRef.current = null
             setIsGenerating(false)
             void fetchData()
 
-            // 延迟清理已完成的任务
             setTimeout(() => {
               const hasFinished = queueRef.current.some(
                 (q) => q.status === 'completed' || q.status === 'error'
@@ -492,6 +549,8 @@ export function useSummaryData() {
   return {
     summaries,
     stats,
+    activityData,
+    availableYears,
     missingSummaries,
     setMissingSummaries,
     generateSummary,
@@ -500,6 +559,9 @@ export function useSummaryData() {
     setConcurrency,
     generationStates,
     isDetectingMissing,
+    isDashboardRefreshing,
+    refreshDashboard,
+    refreshSummaries: fetchSummariesForGallery,
     refreshData: fetchData,
     refreshMissing: fetchMissingSummaries,
     loading,

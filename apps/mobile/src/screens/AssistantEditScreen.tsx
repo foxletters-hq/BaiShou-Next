@@ -55,7 +55,6 @@ import {
   normalizeAssistantAvatarDisplayUri
 } from '../lib/assistant-avatar-uri'
 import {
-  invalidateAssistantAvatarDisplayCache,
   resolveAssistantAvatarForMobileUi
 } from '../lib/assistant-avatar-display.util'
 import { markAssistantsNeedRefresh } from '../lib/assistant-ui-refresh-signal'
@@ -320,10 +319,6 @@ export const AssistantEditScreen: React.FC = () => {
         await services.assistantManager.update(assistantId, repoInput)
       }
 
-      invalidateAssistantAvatarDisplayCache(repoInput.avatarPath ?? undefined)
-      if (existingAssistant?.avatarPath && existingAssistant.avatarPath !== repoInput.avatarPath) {
-        invalidateAssistantAvatarDisplayCache(existingAssistant.avatarPath)
-      }
       toast.showSuccess(isNew ? t('agent.assistant.created') : t('agent.assistant.updated'))
       markAssistantsNeedRefresh()
       router.back()

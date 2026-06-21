@@ -84,8 +84,7 @@ import { setMobileDiaryEmbeddingDeps } from '../services/mobile-diary-embedding.
 import { MobileIncrementalSyncService } from '../services/mobile-incremental-sync.service'
 import { MobileMcpService } from '../services/mobile-mcp.service'
 import {
-  buildMobileMcpToolContext,
-  invalidateMobileMcpToolContextCache
+  buildMobileMcpToolContext
 } from '../services/mobile-mcp-context.service'
 import { mobileDataBootstrapper } from '../services/mobile-bootstrapper.service'
 import { vaultFileWatcher } from '../services/vault-file-watcher.service'
@@ -98,9 +97,13 @@ import { ensureMobileCompressionBridge } from '../services/mobile-compression-ev
 import type { IFileSystem } from '@baishou/core-mobile'
 import { buildMobileSummaryAiClient } from '../services/mobile-summary-ai-client'
 import { MobileAttachmentManagerService } from '../services/mobile-attachment-manager.service'
-import { invalidateUserAvatarDisplayCache } from '../lib/user-avatar-display.util'
 import { reconcileUserAvatarProfileAfterStorageChange } from '../lib/user-avatar-reconcile.util'
 import { reconcileAssistantAvatarsAfterStorageChange } from '../lib/assistant-avatar-reconcile.util'
+import {
+  initMobileCacheCoordinator,
+  emitSyncMutation,
+  emitVaultSwitchMutation
+} from '../cache/mobile-cache-coordinator'
 import { sessionFileWatcher } from '../services/session-file-watcher.service'
 import { summaryFileWatcher } from '../services/summary-file-watcher.service'
 import {
@@ -383,12 +386,20 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
   })
 
   useEffect(() => {
+    const unsubscribeCacheCoordinator = initMobileCacheCoordinator()
+    return unsubscribeCacheCoordinator
+  }, [])
+
+  useEffect(() => {
     let isMounted = true
     let mobileMcpService: MobileMcpService | null = null
     let wasStorageIndexing = mobileDataBootstrapper.getStatus() === 'running'
     const unsubscribeBootstrapper = mobileDataBootstrapper.subscribe((status) => {
       if (!isMounted) return
       const indexing = status === 'running'
+      if (wasStorageIndexing && !indexing) {
+        emitSyncMutation('resync-complete', 'storage-indexing-complete')
+      }
       setValue((prev) => ({
         ...prev,
         storageIndexing: indexing,
@@ -693,7 +704,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             if (!ctx) return
             // 数据根已被覆盖，旧 diary stack 指向已删除路径，不可再用于 prepareVaultSwitch
             diaryStackRef.current = null
-            invalidateUserAvatarDisplayCache()
+            emitVaultSwitchMutation(undefined, 'archive-restore')
             const stack = await rebootstrapAfterStorageRootChange(
               {
                 pathService: ctx.pathService,
@@ -1159,7 +1170,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           }
           setMobileDiaryEmbeddingDeps(nextRagDeps)
           ctx.ragServiceRef.current = createMobileRagService(nextRagDeps)
-          invalidateMobileMcpToolContextCache()
+          emitSyncMutation('resync-complete', 'agent-db-reload')
 
           mobileMcpService = new MobileMcpService(newRuntime.settingsManager, toolRegistry, () => {
             const runtime = agentDbRuntimeRef.current
@@ -1316,7 +1327,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                 }
               }
             })
-            invalidateMobileMcpToolContextCache()
+            emitVaultSwitchMutation(vaultName)
           } catch (e) {
             logger.error('[BaishouProvider] switchVault failed:', e as Error)
             throw e
@@ -1606,6 +1617,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               watcherDeps: ctx.watcherDeps
             })
             if (!isMounted) return
+            emitSyncMutation('resync-complete', 'ecosystem-resync')
             setValue((prev) => ({
               ...prev,
               ecosystemResyncEpoch: prev.ecosystemResyncEpoch + 1

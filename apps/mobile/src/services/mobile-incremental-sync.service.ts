@@ -19,8 +19,7 @@ import {
   type MobileIncrementalProgress
 } from './mobile-incremental-engine'
 import type { MobileDataBootstrapper } from './mobile-bootstrapper.service'
-import { invalidateAllAvatarDisplayCaches } from '../lib/assistant-avatar-display.util'
-import { invalidateUserAvatarDisplayCache } from '../lib/user-avatar-display.util'
+import { emitSyncMutation } from '../cache/mobile-cache-coordinator'
 import { reconcileUserAvatarProfileAfterStorageChange } from '../lib/user-avatar-reconcile.util'
 import { reconcileAssistantAvatarsAfterStorageChange } from '../lib/assistant-avatar-reconcile.util'
 
@@ -213,8 +212,7 @@ export class MobileIncrementalSyncService {
   }
 
   private afterSyncComplete(): Promise<void> {
-    invalidateAllAvatarDisplayCaches()
-    invalidateUserAvatarDisplayCache()
+    emitSyncMutation('complete', 'incremental-sync')
 
     return new Promise((resolve) => {
       InteractionManager.runAfterInteractions(() => {

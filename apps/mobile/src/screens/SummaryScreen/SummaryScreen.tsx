@@ -21,16 +21,18 @@ import { SummaryTabBar } from './components/SummaryTabBar'
 import { SummaryMissingSection } from './components/SummaryMissingSection'
 import { SummaryGalleryView } from './components/SummaryGalleryView'
 import { resolveSummaryConfig } from '../../services/mobile-summary-config.util'
+import { peekSummaryDashboardCache } from '../../lib/summary-dashboard-cache'
+import { emitSyncMutation } from '../../cache/mobile-cache-coordinator'
 
 export const SummaryScreen: React.FC = () => {
   const { t, i18n } = useTranslation()
   const { width } = useWindowDimensions()
   const { colors, isDark } = useNativeTheme()
   const toast = useNativeToast()
-  const { services, dbReady, vaultRevision, archiveRestoreEpoch, storageIndexing, ecosystemResyncEpoch } =
-    useBaishou()
+  const { services, storageIndexing, vaultRevision } = useBaishou()
   const [activeTab, setActiveTab] = useState<'panel' | 'gallery'>('panel')
   const slideOffset = useSharedValue(0)
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
 
   useEffect(() => {
     slideOffset.value = withTiming(activeTab === 'gallery' ? 1 : 0, { duration: 280 })
@@ -45,51 +47,45 @@ export const SummaryScreen: React.FC = () => {
   const [lookbackMonths, setLookbackMonths] = useState(1)
   const [isBatchGenerating, setIsBatchGenerating] = useState(false)
   const [concurrencyLimit, setConcurrencyLimit] = useState(3)
-  const [activityData, setActivityData] = useState<Array<{ date: string; count: number }>>([])
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
-  const [availableYears, setAvailableYears] = useState<number[]>([new Date().getFullYear()])
   const [isRescanning, setIsRescanning] = useState(false)
 
   const {
     summaries,
     stats,
+    activityData,
+    availableYears,
     missingSummaries,
     generationStates,
     queueGeneration,
     stopGeneration,
     setConcurrency,
     isDetectingMissing,
+    refreshDashboard,
+    refreshSummaries,
     refreshData,
     refreshMissing
-  } = useSummaryData()
+  } = useSummaryData(selectedYear)
 
   const prevStatesRef = useRef<typeof generationStates>({})
   const prevTabRef = useRef(activeTab)
-  const activityIndexRef = useRef<Map<string, number> | null>(null)
   const lastFocusRefreshRef = useRef(0)
   const isWide = width >= 860
 
-  const applyActivityYear = useCallback((year: number, byDate: Map<string, number>) => {
-    const filtered = Array.from(byDate.entries())
-      .filter(([date]) => date.startsWith(`${year}-`))
-      .map(([date, count]) => ({ date, count }))
-    setActivityData(filtered)
-  }, [])
-
   useEffect(() => {
-    activityIndexRef.current = null
-    setActivityData([])
-    setAvailableYears([new Date().getFullYear()])
-    setSelectedYear(new Date().getFullYear())
-  }, [vaultRevision])
+    if (availableYears.length === 0) return
+    if (!availableYears.includes(selectedYear)) {
+      setSelectedYear(availableYears[availableYears.length - 1]!)
+    }
+  }, [availableYears, selectedYear])
 
   useFocusEffect(
     useCallback(() => {
       const now = Date.now()
-      if (now - lastFocusRefreshRef.current < 4000) return
+      const cacheStale = peekSummaryDashboardCache(vaultRevision)?.stale ?? true
+      if (!cacheStale && now - lastFocusRefreshRef.current < 4000) return
       lastFocusRefreshRef.current = now
-      void refreshData()
-    }, [refreshData])
+      void refreshDashboard()
+    }, [refreshDashboard, vaultRevision])
   )
 
   useEffect(() => {
@@ -97,12 +93,12 @@ export const SummaryScreen: React.FC = () => {
     prevTabRef.current = activeTab
 
     if (prev !== 'gallery' && activeTab === 'gallery') {
-      void refreshData()
+      void refreshSummaries()
     }
     if (prev !== 'panel' && activeTab === 'panel') {
       void refreshMissing()
     }
-  }, [activeTab, refreshData, refreshMissing])
+  }, [activeTab, refreshMissing, refreshSummaries])
 
   const checkModelConfigured = async (): Promise<boolean> => {
     if (!services) return false
@@ -118,56 +114,6 @@ export const SummaryScreen: React.FC = () => {
       return false
     }
   }
-
-  useEffect(() => {
-    if (!dbReady || storageIndexing || !services) return
-
-    let cancelled = false
-    void (async () => {
-      try {
-        const allDiaries = await services.diaryService.listAll({ limit: 10000 })
-        if (cancelled) return
-
-        const dateCountMap = new Map<string, number>()
-        allDiaries?.forEach((d: { date: Date | string }) => {
-          const dateObj = d.date instanceof Date ? d.date : new Date(d.date)
-          if (!isNaN(dateObj.getTime())) {
-            const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`
-            dateCountMap.set(dateStr, (dateCountMap.get(dateStr) || 0) + 1)
-          }
-        })
-
-        activityIndexRef.current = dateCountMap
-        const yearSet = new Set<number>()
-        for (const date of dateCountMap.keys()) {
-          const y = parseInt(date.substring(0, 4), 10)
-          if (!isNaN(y)) yearSet.add(y)
-        }
-        const years = Array.from(yearSet).sort((a, b) => a - b)
-        if (years.length === 0) years.push(new Date().getFullYear())
-
-        let resolvedYear = years[years.length - 1]!
-        setSelectedYear((prev) => {
-          resolvedYear = years.includes(prev) ? prev : years[years.length - 1]!
-          return resolvedYear
-        })
-        setAvailableYears(years)
-        applyActivityYear(resolvedYear, dateCountMap)
-      } catch (e) {
-        console.warn('[SummaryPage] init activity data failed:', e)
-      }
-    })()
-
-    return () => {
-      cancelled = true
-    }
-  }, [applyActivityYear, dbReady, storageIndexing, services, vaultRevision, archiveRestoreEpoch, ecosystemResyncEpoch])
-
-  useEffect(() => {
-    const dateCountMap = activityIndexRef.current
-    if (!dateCountMap) return
-    applyActivityYear(selectedYear, dateCountMap)
-  }, [applyActivityYear, selectedYear])
 
   useEffect(() => {
     Object.keys(generationStates).forEach((uKey) => {
@@ -252,6 +198,7 @@ export const SummaryScreen: React.FC = () => {
     if (!services?.bootstrapper || isRescanning || storageIndexing) return
     setIsRescanning(true)
     try {
+      emitSyncMutation('resync-complete', 'manual-rescan')
       await services.bootstrapper.resyncFromDisk()
       await refreshData()
       toast.showSuccess(t('summary.rescan_success'))
