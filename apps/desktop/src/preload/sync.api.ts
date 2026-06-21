@@ -170,6 +170,7 @@ export const syncApi = {
     getRemoteManifest: () => ipcRenderer.invoke('incrementalSync:getRemoteManifest'),
     refreshLocalManifest: () => ipcRenderer.invoke('incrementalSync:refreshLocalManifest'),
     getLastSyncConflicts: () => ipcRenderer.invoke('incrementalSync:getLastSyncConflicts'),
+    planSync: (runOptions?: unknown) => ipcRenderer.invoke('incrementalSync:planSync', runOptions),
     orchestratedSync: (runOptions?: unknown) =>
       ipcRenderer.invoke('incrementalSync:orchestratedSync', runOptions),
     orchestratedUploadOnly: () => ipcRenderer.invoke('incrementalSync:orchestratedUploadOnly'),

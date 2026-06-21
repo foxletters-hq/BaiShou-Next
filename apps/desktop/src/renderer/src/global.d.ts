@@ -205,6 +205,9 @@ interface IncrementalSyncAPI {
   getRemoteManifest(): Promise<unknown>
   refreshLocalManifest(): Promise<unknown>
   getLastSyncConflicts(): Promise<string[]>
+  planSync(
+    runOptions?: import('@baishou/shared').IncrementalSyncRunOptions
+  ): Promise<import('@baishou/shared').IncrementalSyncPlanPreview>
 }
 
 interface LegacyMigrationAPI {

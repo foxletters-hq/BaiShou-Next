@@ -15,7 +15,7 @@ import {
 } from '@baishou/shared'
 import { IncrementalS3Client } from '../services/incremental-s3.client'
 import { IncrementalWebDavClient } from '../services/incremental-webdav.client'
-import { pathService } from './vault.ipc'
+import { pathService, vaultService, notifyVaultRegistryUpdated } from './vault.ipc'
 import { getGitService } from './git-sync.ipc'
 
 let syncService: IIncrementalSyncService | null = null
@@ -165,6 +165,49 @@ async function afterIncrementalSync(
   await globalBootstrapper.fullyResyncAllEcosystems()
 }
 
+async function listDiskVaultFolderNames(syncRoot: string): Promise<string[]> {
+  let entries: fs.Dirent[] = []
+  try {
+    entries = await fs.promises.readdir(syncRoot, { withFileTypes: true })
+  } catch {
+    return []
+  }
+
+  return entries
+    .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
+    .map((entry) => entry.name)
+}
+
+async function resolveSyncPlanContext() {
+  const syncRoot = await pathService.getRootDirectory()
+  const registeredVaults = vaultService.getAllVaults().map((vault) => vault.name)
+  const diskVaultNames = await listDiskVaultFolderNames(syncRoot)
+  const activeVault = vaultService.getActiveVault()
+  return {
+    registeredVaults,
+    diskVaultNames,
+    activeVaultName: activeVault?.name ?? null
+  }
+}
+
+/** 仅在用户确认执行同步后调用：补登记磁盘/远端工作区 */
+async function ensureVaultsForIncrementalSync(runOptions?: unknown): Promise<string[]> {
+  const autoRegistered = [...(await vaultService.syncRegistryWithDisk())]
+  const service = await getSyncService()
+  const preview = await service.planSync(await resolveSyncPlanContext(), runOptions as never)
+  const unknown = preview.boundaryIssues.unknownVaultPaths.filter(
+    (name) => name !== '__root__' && name !== '__unknown__'
+  )
+  if (unknown.length > 0) {
+    autoRegistered.push(...(await vaultService.ensureVaultsRegistered(unknown)))
+  }
+  const unique = [...new Set(autoRegistered)]
+  if (unique.length > 0) {
+    notifyVaultRegistryUpdated()
+  }
+  return unique
+}
+
 export function registerIncrementalSyncIPC() {
   ipcMain.handle('incrementalSync:getConfig', async () => {
     await ensureSyncServicesInitialized()
@@ -267,7 +310,13 @@ export function registerIncrementalSyncIPC() {
     return (await getSyncService()).getLastSyncConflicts()
   })
 
+  ipcMain.handle('incrementalSync:planSync', async (_, runOptions) => {
+    const service = await getSyncService()
+    return service.planSync(await resolveSyncPlanContext(), runOptions as never)
+  })
+
   ipcMain.handle('incrementalSync:orchestratedSync', async (event, runOptions) => {
+    const autoRegisteredVaults = await ensureVaultsForIncrementalSync(runOptions)
     const result = await (
       await getOrchestrator()
     ).sync((progress) => {
@@ -284,6 +333,7 @@ export function registerIncrementalSyncIPC() {
   })
 
   ipcMain.handle('incrementalSync:orchestratedDownloadOnly', async (event, runOptions) => {
+    await ensureVaultsForIncrementalSync(runOptions)
     const result = await (
       await getOrchestrator()
     ).downloadOnly((progress) => {
