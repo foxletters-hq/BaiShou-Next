@@ -4,6 +4,10 @@ export {
 } from './KeyboardAwareScrollView'
 export { scrollFocusedInputIntoView } from './scroll-focused-input.util'
 export {
+  readEffectiveKeyboardHeight,
+  scrollScrollViewToRevealNode
+} from './scroll-node-into-view.util'
+export {
   KeyboardAwareScrollContext,
   useKeyboardAwareScroll,
   type KeyboardAwareScrollContextValue

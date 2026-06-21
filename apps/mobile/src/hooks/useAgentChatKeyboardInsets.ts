@@ -13,6 +13,11 @@ const BUBBLE_EDIT_KEYBOARD_BUFFER = 72
 /** 编辑态且键盘收起时：保存/token 与底部工具栏之间的额外间距 */
 const BUBBLE_EDIT_DOCK_GAP = 16
 
+function readKeyboardHeightFromMetrics(): number {
+  const metrics = Keyboard.metrics()
+  return metrics?.height ?? 0
+}
+
 export function useAgentChatKeyboardInsets({
   tabBarHeight,
   inputDockHeight,
@@ -38,47 +43,57 @@ export function useAgentChatKeyboardInsets({
     [tabBarHeight]
   )
 
-  const applyComposerBottom = useCallback(
+  const applyComposerLift = useCallback(
     (rawHeight: number) => {
       composerBottom.value = Math.max(0, rawHeight - tabBarHeight)
-      syncKeyboardInset(rawHeight)
     },
-    [composerBottom, syncKeyboardInset, tabBarHeight]
+    [composerBottom]
   )
 
-  const clearComposerBottom = useCallback(() => {
+  const clearComposerLift = useCallback(() => {
     composerBottom.value = 0
+  }, [composerBottom])
+
+  const resetKeyboardInset = useCallback(() => {
+    clearComposerLift()
     syncKeyboardInset(0)
-  }, [composerBottom, syncKeyboardInset])
+  }, [clearComposerLift, syncKeyboardInset])
 
   useEffect(() => {
-    const enabled = enableComposerKeyboardLift && !isBubbleEditing
-    liftEnabled.value = enabled ? 1 : 0
-    if (!enabled) {
-      clearComposerBottom()
-      return
+    const liftOn = enableComposerKeyboardLift && !isBubbleEditing
+    liftEnabled.value = liftOn ? 1 : 0
+
+    if (!liftOn) {
+      clearComposerLift()
     }
-    const metrics = Keyboard.metrics()
-    applyComposerBottom(metrics?.height ?? 0)
+
+    const rawHeight = readKeyboardHeightFromMetrics()
+    syncKeyboardInset(rawHeight)
+    if (liftOn && rawHeight > 0) {
+      applyComposerLift(rawHeight)
+    }
   }, [
     enableComposerKeyboardLift,
     isBubbleEditing,
     liftEnabled,
-    clearComposerBottom,
-    applyComposerBottom
+    clearComposerLift,
+    applyComposerLift,
+    syncKeyboardInset
   ])
 
   useAnimatedReaction(
-    () => ({ height: keyboard.height.value, enabled: liftEnabled.value }),
-    ({ height, enabled }, prev) => {
-      if (!enabled) {
-        if (composerBottom.value !== 0) composerBottom.value = 0
-        return
-      }
+    () => ({ height: keyboard.height.value, lift: liftEnabled.value }),
+    ({ height, lift }, prev) => {
       const prevHeight = prev?.height ?? 0
-      if (Math.abs(height - prevHeight) < 1) return
-      composerBottom.value = Math.max(0, height - tabBarHeight)
-      runOnJS(syncKeyboardInset)(height)
+      if (Math.abs(height - prevHeight) >= 1) {
+        runOnJS(syncKeyboardInset)(height)
+      }
+
+      if (lift === 1) {
+        composerBottom.value = Math.max(0, height - tabBarHeight)
+      } else if (composerBottom.value !== 0) {
+        composerBottom.value = 0
+      }
     },
     [syncKeyboardInset, tabBarHeight]
   )
@@ -96,15 +111,12 @@ export function useAgentChatKeyboardInsets({
 
   const handleComposerFocus = useCallback(() => {
     if (!enableComposerKeyboardLift || isBubbleEditing) return
-    const metrics = Keyboard.metrics()
-    if (metrics?.height) {
-      applyComposerBottom(metrics.height)
+    const rawHeight = readKeyboardHeightFromMetrics()
+    if (rawHeight > 0) {
+      syncKeyboardInset(rawHeight)
+      applyComposerLift(rawHeight)
     }
-  }, [enableComposerKeyboardLift, isBubbleEditing, applyComposerBottom])
-
-  const resetKeyboardInset = useCallback(() => {
-    clearComposerBottom()
-  }, [clearComposerBottom])
+  }, [enableComposerKeyboardLift, isBubbleEditing, syncKeyboardInset, applyComposerLift])
 
   const composerInset = enableComposerKeyboardLift ? keyboardInset : 0
   const isEditKeyboardVisible = keyboardInset >= 60
