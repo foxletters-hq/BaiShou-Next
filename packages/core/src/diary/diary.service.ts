@@ -14,6 +14,7 @@ import {
   formatDiaryPreviewText
 } from '@baishou/shared'
 import { DiaryNotFoundError, DiaryDateConflictError } from './diary.types'
+import { emitDomainMutation } from '../events'
 
 /**
  * 彻底脱离双写架构（Anti-pattern）的正统白守日记统筹层：
@@ -72,6 +73,7 @@ export class DiaryService {
       await this.fileSync.writeJournal(finalDiary)
     }
 
+    emitDomainMutation({ domain: 'diary', action: 'create', entityId: finalDiary.id })
     return finalDiary
   }
 
@@ -159,6 +161,7 @@ export class DiaryService {
       this.vaultIndex.remove(id)
     }
 
+    emitDomainMutation({ domain: 'diary', action: 'update', entityId: mergedDiaryToSave.id })
     return mergedDiaryToSave
   }
 
@@ -215,6 +218,8 @@ export class DiaryService {
 
       this.vaultIndex.remove(id)
     }
+
+    emitDomainMutation({ domain: 'diary', action: 'delete', entityId: id })
   }
 
   async findById(id: number): Promise<Diary | null> {
@@ -448,6 +453,10 @@ export class DiaryService {
 
   async count(): Promise<number> {
     return this.shadowRepo.count()
+  }
+
+  async getActivityData(year?: number): Promise<Array<{ date: string; count: number }>> {
+    return this.shadowRepo.getActivityData(year)
   }
 
   /**
