@@ -1,6 +1,7 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react'
 import { logger, normalizeDiaryTags } from '@baishou/shared'
 import type { DiaryListFilter } from '@baishou/shared'
+import { getDiaryListCacheVersion, subscribeDiaryListCache } from '@baishou/shared/cache'
 
 export interface DiaryPageQuery {
   selectedMonth: Date | null
@@ -79,6 +80,10 @@ export function useDiaryData(query: DiaryPageQuery) {
   queryRef.current = query
   const entriesRef = useRef<any[]>([])
   entriesRef.current = entries
+  const diaryListCacheVersion = useSyncExternalStore(
+    subscribeDiaryListCache,
+    getDiaryListCacheVersion
+  )
 
   const listFilter = useMemo(() => buildListFilter(query), [query])
   const countFilter = useMemo(() => buildCountFilter(query), [query])
@@ -144,7 +149,8 @@ export function useDiaryData(query: DiaryPageQuery) {
     query.pageSize,
     searchTerm ? searchFilterKey : browseMonthKey,
     searchTerm ? 0 : listFilter,
-    searchTerm ? 0 : countFilter
+    searchTerm ? 0 : countFilter,
+    diaryListCacheVersion
   ])
 
   useEffect(() => {

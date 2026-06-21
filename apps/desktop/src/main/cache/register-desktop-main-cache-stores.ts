@@ -14,13 +14,9 @@ export function registerDesktopMainCacheStores(): void {
     clear: () => invalidateMcpToolContextCache()
   })
 
+  // summary.gallery / summary.dashboard 的 SWR 在 Renderer；Main 仅在 vault 切换 clearAll 时重建 Manager
   globalCacheRegistry.register('summary.gallery', {
-    invalidate: () => resetCachedManager(),
-    clear: () => resetCachedManager()
-  })
-
-  globalCacheRegistry.register('summary.dashboard', {
-    invalidate: () => resetCachedManager(),
+    invalidate: () => {},
     clear: () => resetCachedManager()
   })
 
