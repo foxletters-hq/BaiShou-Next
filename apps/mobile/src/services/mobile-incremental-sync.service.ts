@@ -10,7 +10,7 @@ import {
   type S3SyncConfig,
   type IncrementalSyncRunOptions
 } from '@baishou/shared'
-import type { IFileSystem, IArchiveService, SettingsManagerService } from '@baishou/core-mobile'
+import type { IFileSystem, IArchiveService, SettingsManagerService, AssistantManagerService } from '@baishou/core-mobile'
 import type { IStoragePathService } from '@baishou/core-mobile'
 import { InteractionManager } from 'react-native'
 import { FileSystemUploadType, uploadAsync } from './mobile-http-transfer'
@@ -22,6 +22,7 @@ import type { MobileDataBootstrapper } from './mobile-bootstrapper.service'
 import { invalidateAllAvatarDisplayCaches } from '../lib/assistant-avatar-display.util'
 import { invalidateUserAvatarDisplayCache } from '../lib/user-avatar-display.util'
 import { reconcileUserAvatarProfileAfterStorageChange } from '../lib/user-avatar-reconcile.util'
+import { reconcileAssistantAvatarsAfterStorageChange } from '../lib/assistant-avatar-reconcile.util'
 
 export type IncrementalSyncProgress = MobileIncrementalProgress
 
@@ -200,7 +201,8 @@ export class MobileIncrementalSyncService {
     private readonly fileSystem: IFileSystem,
     private readonly bootstrapper?: MobileDataBootstrapper,
     deviceId: string = `mobile-${Date.now()}`,
-    onAfterSyncComplete?: () => void
+    onAfterSyncComplete?: () => void,
+    private readonly assistantManager?: AssistantManagerService
   ) {
     this.engine = new MobileIncrementalEngine(pathService, fileSystem, deviceId)
     this.onAfterSyncComplete = onAfterSyncComplete
@@ -226,6 +228,13 @@ export class MobileIncrementalSyncService {
               this.pathService,
               this.fileSystem
             )
+            if (this.assistantManager) {
+              await reconcileAssistantAvatarsAfterStorageChange(
+                this.assistantManager,
+                this.pathService,
+                this.fileSystem
+              )
+            }
           } catch (e: unknown) {
             console.warn('[MobileIncrementalSync] afterSyncComplete failed:', e)
           } finally {

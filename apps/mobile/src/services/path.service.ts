@@ -21,6 +21,7 @@ import {
   normalizeStoragePath,
   requiresAllFilesAccessForPath
 } from './android-external-fs'
+import { ensureAndroidNoMediaMarker } from './android-nomedia.util'
 
 export { EXTERNAL_STORAGE_ROOT }
 
@@ -102,6 +103,14 @@ export class MobileStoragePathService implements IStoragePathService {
   private async ensureDir(dir: string): Promise<void> {
     if (!(await this.fileSystem.exists(dir))) {
       await this.fileSystem.mkdir(dir, { recursive: true })
+    }
+  }
+
+  /** Android：Attachments 等应用数据目录不应被系统相册索引 */
+  private async ensureDirHiddenFromGallery(dir: string): Promise<void> {
+    await this.ensureDir(dir)
+    if (Platform.OS === 'android') {
+      await ensureAndroidNoMediaMarker(dir, this.fileSystem)
     }
   }
 
@@ -318,14 +327,14 @@ export class MobileStoragePathService implements IStoragePathService {
   public async getAttachmentsBaseDirectory(): Promise<string> {
     const name = await this.getActiveVaultName()
     const dir = `${await this.getVaultDirectory(name)}/Attachments`
-    await this.ensureDir(dir)
+    await this.ensureDirHiddenFromGallery(dir)
     return dir
   }
 
   public async getAvatarsDirectory(): Promise<string> {
     const att = await this.getAttachmentsBaseDirectory()
     const dir = `${att}/avatars`
-    await this.ensureDir(dir)
+    await this.ensureDirHiddenFromGallery(dir)
     return dir
   }
 
@@ -345,7 +354,7 @@ export class MobileStoragePathService implements IStoragePathService {
   public async getUserAvatarsDirectory(): Promise<string> {
     const root = await this.getAvatarsDirectory()
     const dir = `${root}/UserAvatars`
-    await this.ensureDir(dir)
+    await this.ensureDirHiddenFromGallery(dir)
     return dir
   }
 }
