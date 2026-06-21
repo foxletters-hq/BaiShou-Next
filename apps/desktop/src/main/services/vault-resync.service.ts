@@ -36,7 +36,7 @@ export function scheduleVaultEcosystemResync(reason: string): Promise<void> {
     .catch((e) => {
       logger.error(`[VaultResync] Background resync failed (${reason}):`, e as any)
     })
-    .finally(() => {
+    .finally(async () => {
       backgroundResyncInFlight = null
     })
 
