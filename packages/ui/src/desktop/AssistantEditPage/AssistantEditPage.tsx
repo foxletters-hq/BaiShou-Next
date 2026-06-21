@@ -32,121 +32,121 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
       <AssistantEditAppBar isEditing={form.isEditing} onBack={onBack} />
 
       <div className={styles.scrollArea}>
-        <div className={styles.formContainer}>
-          <AssistantEditAvatarSection
-            avatarPath={form.avatarPath}
-            onSelectBuiltin={(path) => form.setAvatarPath(path)}
-            onUploadImage={(value) => form.setAvatarPath(value)}
-            showReset={form.showResetBuiltin}
-            onResetToDefault={() => form.setAvatarPath(DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH)}
-          />
+        <div className={`${styles.formContainer} ${styles.contentColumn}`}>
+          <section className={styles.sectionCard}>
+            <AssistantEditAvatarSection
+              avatarPath={form.avatarPath}
+              onSelectBuiltin={(path) => form.setAvatarPath(path)}
+              onUploadImage={(value) => form.setAvatarPath(value)}
+              showReset={form.showResetBuiltin}
+              onResetToDefault={() => form.setAvatarPath(DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH)}
+            />
+          </section>
 
-          <div className={styles.spacer24} />
+          <section className={styles.sectionCard}>
+            <AssistantKindTabBar
+              activeKind={form.assistantKind}
+              onKindChange={form.handleKindChange}
+            />
 
-          <AssistantKindTabBar
-            activeKind={form.assistantKind}
-            onKindChange={form.handleKindChange}
-          />
+            <div className={styles.spacer16} />
 
-          <div className={styles.spacer16} />
+            <h3 className={styles.sectionTitle}>
+              {t('agent.assistant.partner_info_label', '伙伴信息')}
+            </h3>
 
-          <h3 className={styles.sectionTitle}>
-            {t('agent.assistant.partner_info_label', '伙伴信息')}
-          </h3>
+            <div className={styles.spacer16} />
 
-          <div className={styles.spacer16} />
+            <label className={styles.fieldLabel}>{t('agent.assistant.name_label', '名称')}</label>
+            <input
+              className={styles.inputField}
+              value={form.name}
+              onChange={(e) => form.setName(e.target.value)}
+              placeholder={t('agent.assistant.name_hint')}
+            />
 
-          <label className={styles.fieldLabel}>{t('agent.assistant.name_label', '名称')}</label>
-          <input
-            className={styles.inputField}
-            value={form.name}
-            onChange={(e) => form.setName(e.target.value)}
-            placeholder={t('agent.assistant.name_hint')}
-          />
+            <div className={styles.spacer16} />
 
-          <div className={styles.spacer16} />
+            <label className={styles.fieldLabel}>
+              {t('agent.assistant.description_label', '简介')}
+            </label>
+            <ResizableMarkdownEditor
+              content={form.description}
+              onChange={(value) => form.setDescription(value || '')}
+              placeholder={t('agent.assistant.description_hint', '简短描述你的伙伴')}
+              defaultHeight={96}
+              minHeight={72}
+              maxHeight={240}
+            />
 
-          <label className={styles.fieldLabel}>
-            {t('agent.assistant.description_label', '简介')}
-          </label>
-          <ResizableMarkdownEditor
-            content={form.description}
-            onChange={(value) => form.setDescription(value || '')}
-            placeholder={t('agent.assistant.description_hint', '简短描述你的伙伴')}
-            defaultHeight={96}
-            minHeight={72}
-            maxHeight={240}
-          />
+            <div className={styles.spacer16} />
 
-          <div className={styles.spacer24} />
+            <label className={styles.fieldLabel}>{t('agent.assistant.prompt_label', '提示词')}</label>
+            <ResizableMarkdownEditor
+              content={form.systemPrompt}
+              onChange={(value) => form.setSystemPrompt(value || '')}
+              placeholder={t('agent.assistant.prompt_hint', '你是一个AI助手...')}
+              defaultHeight={220}
+              minHeight={140}
+              maxHeight={520}
+            />
+          </section>
 
-          <label className={styles.fieldLabel}>{t('agent.assistant.prompt_label', '提示词')}</label>
-          <ResizableMarkdownEditor
-            content={form.systemPrompt}
-            onChange={(value) => form.setSystemPrompt(value || '')}
-            placeholder={t('agent.assistant.prompt_hint', '你是一个AI助手...')}
-            defaultHeight={220}
-            minHeight={140}
-            maxHeight={520}
-          />
+          <section className={styles.sectionCard}>
+            <AssistantEditModelBinding
+              providerId={form.providerId}
+              modelId={form.modelId}
+              onOpenPicker={() => form.setProviderPickerOpen(true)}
+              onClearBinding={form.clearModelBinding}
+            />
+          </section>
 
-          <div className={styles.spacer24} />
+          <section className={styles.sectionCard}>
+            <AssistantEditContextSection
+              contextWindow={form.contextWindow}
+              isUnlimitedContext={form.isUnlimitedContext}
+              onContextWindowChange={form.setContextWindow}
+            />
+          </section>
 
-          <AssistantEditModelBinding
-            providerId={form.providerId}
-            modelId={form.modelId}
-            onOpenPicker={() => form.setProviderPickerOpen(true)}
-            onClearBinding={form.clearModelBinding}
-          />
-
-          <div className={styles.spacer24} />
-
-          <AssistantEditContextSection
-            contextWindow={form.contextWindow}
-            isUnlimitedContext={form.isUnlimitedContext}
-            onContextWindowChange={form.setContextWindow}
-          />
-
-          <div className={styles.spacer24} />
-
-          <AssistantEditCompressionSection
-            compressThreshold={form.compressThreshold}
-            compressKeepTurns={form.compressKeepTurns}
-            isCompressDisabled={form.isCompressDisabled}
-            showCompressTooltip={form.showCompressTooltip}
-            showKeepTurnsTooltip={form.showKeepTurnsTooltip}
-            onCompressThresholdChange={form.setCompressThreshold}
-            onCompressKeepTurnsChange={form.setCompressKeepTurns}
-            onToggleCompress={(enabled) => form.setCompressThreshold(enabled ? 60000 : 0)}
-            onShowCompressTooltip={form.setShowCompressTooltip}
-            onShowKeepTurnsTooltip={form.setShowKeepTurnsTooltip}
-          />
+          <section className={styles.sectionCard}>
+            <AssistantEditCompressionSection
+              compressThreshold={form.compressThreshold}
+              compressKeepTurns={form.compressKeepTurns}
+              isCompressDisabled={form.isCompressDisabled}
+              onCompressThresholdChange={form.setCompressThreshold}
+              onCompressKeepTurnsChange={form.setCompressKeepTurns}
+              onToggleCompress={(enabled) => form.setCompressThreshold(enabled ? 60000 : 0)}
+            />
+          </section>
         </div>
       </div>
 
       <div className={styles.formFooter}>
-        {form.isEditing && !isLastAssistant && onDelete ? (
+        <div className={`${styles.formFooterInner} ${styles.contentColumn}`}>
+          {form.isEditing && !isLastAssistant && onDelete ? (
+            <button
+              type="button"
+              className={styles.outlineDangerBtn}
+              onClick={() => form.setShowDeleteConfirm(true)}
+              disabled={form.saving}
+            >
+              {t('common.delete', '删除')}
+            </button>
+          ) : null}
           <button
             type="button"
-            className={styles.outlineDangerBtn}
-            onClick={() => form.setShowDeleteConfirm(true)}
-            disabled={form.saving}
+            className={`${styles.filledBtn} ${form.isEditing && !isLastAssistant && onDelete ? '' : styles.filledBtnSolo}`}
+            onClick={form.handleSave}
+            disabled={form.saving || !form.name.trim()}
           >
-            {t('common.delete', '删除')}
+            {form.saving ? (
+              <Loader2 size={20} className={styles.spinIcon} />
+            ) : (
+              t('common.save', '保存')
+            )}
           </button>
-        ) : null}
-        <button
-          type="button"
-          className={styles.filledBtn}
-          onClick={form.handleSave}
-          disabled={form.saving || !form.name.trim()}
-        >
-          {form.saving ? (
-            <Loader2 size={20} className={styles.spinIcon} />
-          ) : (
-            t('common.save', '保存')
-          )}
-        </button>
+        </div>
       </div>
 
       <AssistantModelPicker
