@@ -15,7 +15,10 @@ const VISIBILITY_CONFIGURED_KEY = 'desktop_sidebar_visibility_configured'
 const HIDDEN_ITEMS_KEY = 'desktop_sidebar_hidden_items'
 const NAV_ORDER_KEY = 'desktop_sidebar_nav_order'
 const MIGRATION_VERSION_KEY = 'desktop_sidebar_mv'
-const CURRENT_MIGRATION_VERSION = 1
+const CURRENT_MIGRATION_VERSION = 2
+
+/** 仅从日记区侧边栏移除；仍可通过系统设置访问 */
+const REMOVED_SIDEBAR_NAV_IDS = new Set(['legacy-migration'])
 
 const ALL_NAV_ID_SET = new Set<string>(ALL_SIDEBAR_NAV_IDS)
 
@@ -63,6 +66,10 @@ export function resolveDiaryHomePath(): string {
   return DIARY_HOME_PATH
 }
 
+function stripRemovedSidebarNavIds(order: string[]): string[] {
+  return order.filter((id) => !REMOVED_SIDEBAR_NAV_IDS.has(id))
+}
+
 /** 合并迁移：补全新导航项、应用默认隐藏策略 */
 export function loadSidebarNavOrder(): string[] {
   const defaults = [...ALL_SIDEBAR_NAV_IDS]
@@ -95,14 +102,16 @@ export function loadSidebarNavOrder(): string[] {
           hidden.add(id)
         }
       }
-      persistHiddenNavItems([...hidden].filter((id) => ALL_NAV_ID_SET.has(id)))
+      persistHiddenNavItems(
+        [...hidden].filter((id) => ALL_NAV_ID_SET.has(id) && !REMOVED_SIDEBAR_NAV_IDS.has(id))
+      )
     }
 
     for (const id of defaults) {
       if (!order.includes(id)) order.push(id)
     }
 
-    order = reorderSyncNavIdsInOrder(order)
+    order = reorderSyncNavIdsInOrder(stripRemovedSidebarNavIds(order))
 
     localStorage.setItem(MIGRATION_VERSION_KEY, String(CURRENT_MIGRATION_VERSION))
     localStorage.setItem(NAV_ORDER_KEY, JSON.stringify(order))
@@ -116,7 +125,9 @@ export function loadSidebarNavOrder(): string[] {
       changed = true
     }
   }
-  if (changed) {
+  const beforeStripLength = order.length
+  order = stripRemovedSidebarNavIds(order)
+  if (changed || order.length !== beforeStripLength) {
     localStorage.setItem(NAV_ORDER_KEY, JSON.stringify(order))
   }
 
