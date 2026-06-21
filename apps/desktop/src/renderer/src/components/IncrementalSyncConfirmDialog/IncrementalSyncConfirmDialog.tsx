@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
   IncrementalSyncPlanItem,
@@ -6,18 +6,24 @@ import type {
   IncrementalSyncVaultSummary
 } from '@baishou/shared'
 import {
-  SYNC_CONFIRM_DELAY_MS,
-  computeSyncConfirmSecondsLeft,
-  isSyncConfirmReady,
-  buildIncrementalSyncBoundaryHints
+  SYNC_CONFIRM_DELAY_SECONDS,
+  canExecuteIncrementalSyncPlan,
+  computeSyncConfirmSecondsLeftUntil,
+  isSyncConfirmEligible,
+  buildIncrementalSyncBoundaryHints,
+  requiresExplicitDeletePropagationChoice,
+  getDeletePropagationChoiceTitleKey,
+  getDeletePropagationChoiceDescKey,
+  type SyncDeletePropagationChoice
 } from '@baishou/shared'
 import styles from './IncrementalSyncConfirmDialog.module.css'
 
 interface IncrementalSyncConfirmDialogProps {
   open: boolean
   preview: IncrementalSyncPlanPreview | null
+  confirmEligibleAtMs: number | null
   isConfirming?: boolean
-  onConfirm: () => void
+  onConfirm: (choice?: SyncDeletePropagationChoice) => void
   onCancel: () => void
 }
 
@@ -70,17 +76,29 @@ function formatVaultLabel(vaultName: string, t: (key: string, fallback?: string)
 export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialogProps> = ({
   open,
   preview,
+  confirmEligibleAtMs,
   isConfirming = false,
   onConfirm,
   onCancel
 }) => {
   const { t } = useTranslation()
-  const [confirmReady, setConfirmReady] = useState(false)
-  const [secondsLeft, setSecondsLeft] = useState(2)
+  const onCancelRef = useRef(onCancel)
+  onCancelRef.current = onCancel
+  const [nowMs, setNowMs] = useState(() => Date.now())
 
-  const canExecuteSync = Boolean(
-    preview && preview.changeCount > 0 && !preview.deletePropagationBlocked
-  )
+  const needsSyncConfirm = Boolean(preview && canExecuteIncrementalSyncPlan(preview))
+
+  const confirmReady = useMemo(() => {
+    if (!needsSyncConfirm) return true
+    if (confirmEligibleAtMs == null) return false
+    return isSyncConfirmEligible(confirmEligibleAtMs, nowMs)
+  }, [needsSyncConfirm, confirmEligibleAtMs, nowMs])
+
+  const secondsLeft = useMemo(() => {
+    if (!needsSyncConfirm) return 0
+    if (confirmEligibleAtMs == null) return SYNC_CONFIRM_DELAY_SECONDS
+    return computeSyncConfirmSecondsLeftUntil(confirmEligibleAtMs, nowMs)
+  }, [needsSyncConfirm, confirmEligibleAtMs, nowMs])
 
   const registeredSet = useMemo(
     () => new Set(preview?.registeredVaults ?? []),
@@ -105,6 +123,8 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
     )
   }, [preview, t])
 
+  const needsDeleteChoice = Boolean(preview && requiresExplicitDeletePropagationChoice(preview))
+
   const otherWarnings = useMemo(() => {
     if (!preview) return []
     const boundaryKeys = new Set([
@@ -112,50 +132,45 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
       'data_sync.plan_warning_disk_vaults_not_in_registry',
       'data_sync.plan_warning_registry_vaults_missing_on_disk'
     ])
-    return preview.warnings.filter((key) => !boundaryKeys.has(key))
+    const skipKeys = new Set(['data_sync.plan_warning_delete_blocked'])
+    return preview.warnings.filter((key) => !boundaryKeys.has(key) && !skipKeys.has(key))
   }, [preview])
 
-  useEffect(() => {
-    if (!open) {
-      setConfirmReady(false)
-      setSecondsLeft(2)
-      return undefined
+  const primaryButtonLabel = useMemo(() => {
+    if (isConfirming) return t('data_sync.plan_confirming', '正在确认…')
+    if (!needsSyncConfirm) return t('common.close', '关闭')
+    if (!confirmReady) {
+      return t('data_sync.plan_confirm_sync_countdown', {
+        seconds: secondsLeft,
+        defaultValue: '确认同步 ({{seconds}})'
+      })
     }
+    return t('data_sync.plan_confirm_sync', '确认同步')
+  }, [confirmReady, isConfirming, needsSyncConfirm, secondsLeft, t])
+
+  useEffect(() => {
+    if (!open) return undefined
+
+    setNowMs(Date.now())
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onCancel()
+      if (event.key === 'Escape') onCancelRef.current()
     }
     window.addEventListener('keydown', onKeyDown)
 
-    if (!canExecuteSync) {
-      setConfirmReady(true)
-      setSecondsLeft(0)
+    if (!needsSyncConfirm || confirmEligibleAtMs == null) {
       return () => window.removeEventListener('keydown', onKeyDown)
     }
 
-    setConfirmReady(false)
-    setSecondsLeft(2)
-    const startedAt = Date.now()
     const interval = window.setInterval(() => {
-      const elapsed = Date.now() - startedAt
-      setSecondsLeft(computeSyncConfirmSecondsLeft(elapsed, SYNC_CONFIRM_DELAY_MS))
-      if (isSyncConfirmReady(elapsed, SYNC_CONFIRM_DELAY_MS)) {
-        setConfirmReady(true)
-        window.clearInterval(interval)
-      }
+      setNowMs(Date.now())
     }, 200)
-
-    const timer = window.setTimeout(() => {
-      setConfirmReady(true)
-      setSecondsLeft(0)
-    }, SYNC_CONFIRM_DELAY_MS)
 
     return () => {
       window.removeEventListener('keydown', onKeyDown)
       window.clearInterval(interval)
-      window.clearTimeout(timer)
     }
-  }, [open, canExecuteSync, preview?.changeCount, preview?.deletePropagationBlocked, onCancel])
+  }, [open, needsSyncConfirm, confirmEligibleAtMs])
 
   if (!open || !preview) return null
 
@@ -182,6 +197,24 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
               vaults: preview.autoRegisteredVaults.join('、')
             })}
           </p>
+        )}
+
+        {needsDeleteChoice && (
+          <div className={styles.choicePanel}>
+            <h3 className={styles.choiceTitle}>
+              {t(getDeletePropagationChoiceTitleKey(preview.deletePropagationReason))}
+            </h3>
+            <p className={styles.choiceDesc}>
+              {t(getDeletePropagationChoiceDescKey(preview.deletePropagationReason))}
+            </p>
+            {preview.blockedDeleteCount != null && preview.blockedDeleteCount > 0 && (
+              <p className={styles.choiceMeta}>
+                {t('data_sync.plan_delete_choice_blocked_count', {
+                  count: preview.blockedDeleteCount
+                })}
+              </p>
+            )}
+          </div>
         )}
 
         {otherWarnings.length > 0 && (
@@ -259,30 +292,47 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
           )}
         </div>
 
-        {canExecuteSync && !confirmReady && (
-          <p className={styles.countdownHint}>
-            {t('data_sync.plan_confirm_countdown', { seconds: secondsLeft })}
-          </p>
-        )}
-
         <div className={styles.actions}>
           <button type="button" className={`${styles.btn} ${styles.btnCancel}`} onClick={onCancel}>
             {t('common.cancel', '取消')}
           </button>
-          <button
-            type="button"
-            className={`${styles.btn} ${styles.btnConfirm} ${
-              preview.deletePropagationBlocked ? styles.btnConfirmDanger : ''
-            }`}
-            disabled={!confirmReady || preview.deletePropagationBlocked || isConfirming}
-            onClick={onConfirm}
-          >
-            {isConfirming
-              ? t('data_sync.plan_confirming', '正在确认…')
-              : canExecuteSync
-              ? t('data_sync.plan_confirm_sync', '确认同步')
-              : t('common.close', '关闭')}
-          </button>
+          {needsDeleteChoice ? (
+            <div className={styles.choiceActions}>
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnChoiceDanger}`}
+                disabled={(needsSyncConfirm && !confirmReady) || isConfirming}
+                onClick={() => onConfirm('follow-remote')}
+              >
+                {t('data_sync.plan_delete_choice_follow_remote')}
+              </button>
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnChoice}`}
+                disabled={(needsSyncConfirm && !confirmReady) || isConfirming}
+                onClick={() => onConfirm('push-local')}
+              >
+                {t('data_sync.plan_delete_choice_push_local')}
+              </button>
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnChoiceMuted}`}
+                disabled={(needsSyncConfirm && !confirmReady) || isConfirming}
+                onClick={() => onConfirm('skip-deletes')}
+              >
+                {t('data_sync.plan_delete_choice_skip_deletes')}
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.btnConfirm}`}
+              disabled={(needsSyncConfirm && !confirmReady) || isConfirming}
+              onClick={() => onConfirm()}
+            >
+              {primaryButtonLabel}
+            </button>
+          )}
         </div>
       </div>
     </div>

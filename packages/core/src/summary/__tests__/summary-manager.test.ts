@@ -140,4 +140,33 @@ describe('SummaryManagerService (SSOT refactor)', () => {
     expect(mockFileService.writeSummary).toHaveBeenCalledWith(testType, start, 'NewContent')
     expect(mockSyncService.syncSummaryFile).toHaveBeenCalledWith(testType, start, end)
   })
+
+  it('countByType() should count summaries from current vault files only', async () => {
+    mockFileService.listAllSummaries.mockResolvedValue([
+      {
+        type: SummaryType.weekly,
+        startDate: new Date('2026-03-03'),
+        endDate: new Date('2026-03-09'),
+        fullPath: '/vault/Archives/Weekly/2026-03-03.md'
+      },
+      {
+        type: SummaryType.weekly,
+        startDate: new Date('2026-03-10'),
+        endDate: new Date('2026-03-16'),
+        fullPath: '/vault/Archives/Weekly/2026-03-10.md'
+      },
+      {
+        type: SummaryType.monthly,
+        startDate: new Date('2026-03-01'),
+        endDate: new Date('2026-03-31'),
+        fullPath: '/vault/Archives/Monthly/2026-03-01.md'
+      }
+    ])
+
+    const counts = await manager.countByType()
+
+    expect(mockFileService.listAllSummaries).toHaveBeenCalled()
+    expect(mockRepo.countByType).not.toHaveBeenCalled()
+    expect(counts).toEqual({ weekly: 2, monthly: 1, quarterly: 0, yearly: 0 })
+  })
 })

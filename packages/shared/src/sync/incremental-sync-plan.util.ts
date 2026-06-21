@@ -155,6 +155,8 @@ export function buildIncrementalSyncPlanPreview(options: {
   maxDivergencePercent?: number
   deletePropagationBlocked?: boolean
   deletePropagationReason?: 'mass_delete' | 'local_data_loss' | 'remote_data_loss'
+  blockedDeleteCount?: number
+  blockedDeleteDirection?: 'local' | 'remote'
   extraWarnings?: string[]
 }): IncrementalSyncPlanPreview {
   const skippedCount = options.decisions.filter((d) => d.type === 'skip').length
@@ -197,6 +199,9 @@ export function buildIncrementalSyncPlanPreview(options: {
     divergencePercent: options.divergencePercent,
     maxDivergencePercent: options.maxDivergencePercent,
     deletePropagationBlocked: options.deletePropagationBlocked ?? false,
-    deletePropagationReason: options.deletePropagationReason
+    deletePropagationReason: options.deletePropagationReason,
+    requiresDeletePropagationChoice: options.deletePropagationBlocked ?? false,
+    blockedDeleteCount: options.blockedDeleteCount,
+    blockedDeleteDirection: options.blockedDeleteDirection
   }
 }

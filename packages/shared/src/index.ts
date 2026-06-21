@@ -60,6 +60,7 @@ export {
   INCREMENTAL_SYNC_BAISHOU_ALLOWLIST,
   INCREMENTAL_SYNC_BAISHOU_SETTINGS_PREFIX,
   isSqliteRuntimeSyncPath,
+  isIncrementalSyncChatBackgroundPath,
   shouldIncludeIncrementalSyncFile,
   shouldScanIncrementalSyncDirectory
 } from './utils/incremental-sync-scan.util'
@@ -124,7 +125,11 @@ export {
 export { runIncrementalSyncWithDivergenceConfirmation } from './sync/sync-divergence-run.util'
 export {
   SyncDeletePropagationBlockedError,
+  SyncDeletePropagationChoiceRequiredError,
   assertBidirectionalDeletePropagationAllowed,
+  inspectDeletePropagationBlock,
+  omitBlockedDeletePropagationDecisions,
+  resolveSyncMergeDecisions,
   SYNC_DELETE_GUARD_MIN_REMOTE_FILES,
   SYNC_DELETE_GUARD_MAX_REMOTE_DELETE_RATIO,
   SYNC_DELETE_GUARD_MAX_DELETE_RATIO,
@@ -134,9 +139,18 @@ export {
   type SyncDeletePropagationBlockReason
 } from './sync/sync-delete-guard'
 export {
+  requiresExplicitDeletePropagationChoice,
+  getDeletePropagationChoiceTitleKey,
+  getDeletePropagationChoiceDescKey,
+  type SyncDeletePropagationChoice
+} from './sync/sync-delete-propagation-choice.util'
+export {
   SYNC_CONFIRM_DELAY_MS,
+  SYNC_CONFIRM_DELAY_SECONDS,
   SyncConfirmNotReadyError,
   computeSyncConfirmSecondsLeft,
+  computeSyncConfirmSecondsLeftUntil,
+  isSyncConfirmEligible,
   isSyncConfirmReady,
   getSyncConfirmEligibleAt,
   assertSyncConfirmReady,

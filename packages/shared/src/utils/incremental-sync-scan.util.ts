@@ -43,12 +43,27 @@ function isRootSyncMetaDirectory(rel: string, entryName: string): boolean {
   return entryName === '.baishou' && (rel === '.baishou' || rel === '')
 }
 
+/** 聊天背景图目录（设备本地偏好，不参与增量同步） */
+export function isIncrementalSyncChatBackgroundPath(relativePath: string): boolean {
+  const rel = normalizeRel(relativePath)
+  return (
+    rel === 'Attachments/backgrounds' ||
+    rel.endsWith('/Attachments/backgrounds') ||
+    rel.startsWith('Attachments/backgrounds/') ||
+    rel.includes('/Attachments/backgrounds/')
+  )
+}
+
 export function shouldScanIncrementalSyncDirectory(
   entryName: string,
   relativePath: string
 ): boolean {
   if (SYNC_SKIP_DIR_NAMES.has(entryName)) return false
   const rel = normalizeRel(relativePath)
+
+  if (isIncrementalSyncChatBackgroundPath(rel)) {
+    return false
+  }
 
   if (isRootSyncMetaDirectory(rel, entryName)) {
     return false
@@ -79,6 +94,9 @@ export function shouldScanIncrementalSyncDirectory(
 
 export function shouldIncludeIncrementalSyncFile(entryName: string, relativePath: string): boolean {
   const rel = normalizeRel(relativePath)
+  if (isIncrementalSyncChatBackgroundPath(rel) || isIncrementalSyncChatBackgroundPath(entryName)) {
+    return false
+  }
   if (isSqliteRuntimeSyncPath(rel) || isSqliteRuntimeSyncPath(entryName)) {
     return false
   }

@@ -3,7 +3,9 @@ import type { SyncManifest } from '../../types/version-control.types'
 import type { MergeDecision } from '../three-way-merge'
 import {
   assertBidirectionalDeletePropagationAllowed,
-  SyncDeletePropagationBlockedError
+  resolveSyncMergeDecisions,
+  SyncDeletePropagationBlockedError,
+  SyncDeletePropagationChoiceRequiredError
 } from '../sync-delete-guard'
 import { threeWayMerge } from '../three-way-merge'
 
@@ -84,7 +86,7 @@ describe('assertBidirectionalDeletePropagationAllowed', () => {
     ).toThrow(SyncDeletePropagationBlockedError)
   })
 
-  it('blocks when current local scan lost most files vs previous local manifest', () => {
+  it('allows delete-remote when local lost files intentionally vs previous local manifest', () => {
     const remoteFiles = Object.fromEntries(
       Array.from({ length: 10 }, (_, i) => [`file-${i}.md`, `hash-${i}`])
     )
@@ -96,7 +98,7 @@ describe('assertBidirectionalDeletePropagationAllowed', () => {
 
     expect(() =>
       assertBidirectionalDeletePropagationAllowed(decisions, local, remote, ancestor, previousLocal)
-    ).toThrow(SyncDeletePropagationBlockedError)
+    ).not.toThrow()
   })
 
   it('blocks mass delete-local when remote is empty but local/ancestor are full', () => {
@@ -114,7 +116,7 @@ describe('assertBidirectionalDeletePropagationAllowed', () => {
     ).toThrow(SyncDeletePropagationBlockedError)
   })
 
-  it('blocks delete-local when remote lost most files vs ancestor snapshot', () => {
+  it('blocks delete-local when remote lost most files vs ancestor snapshot without peer sync', () => {
     const ancestorFiles = Object.fromEntries(
       Array.from({ length: 10 }, (_, i) => [`file-${i}.md`, `hash-${i}`])
     )
@@ -128,6 +130,47 @@ describe('assertBidirectionalDeletePropagationAllowed', () => {
     expect(() =>
       assertBidirectionalDeletePropagationAllowed(decisions, local, remote, ancestor)
     ).toThrow(SyncDeletePropagationBlockedError)
+  })
+
+  it('allows mass delete-local when peer synced deletions after our ancestor snapshot', () => {
+    const ancestorFiles = Object.fromEntries(
+      Array.from({ length: 30 }, (_, i) => [`img-${i}.jpg`, `hash-${i}`])
+    )
+    const local = manifest(ancestorFiles)
+    const remote = manifest(
+      Object.fromEntries(
+        Array.from({ length: 5 }, (_, i) => [`img-${i}.jpg`, `hash-${i}`])
+      )
+    )
+    remote.updatedAt = 2_000
+    const ancestor = manifest(ancestorFiles)
+    ancestor.updatedAt = 1_000
+    const decisions = Array.from({ length: 25 }, (_, i) =>
+      deleteLocalDecision(`img-${i + 5}.jpg`, `hash-${i + 5}`)
+    )
+
+    expect(() =>
+      assertBidirectionalDeletePropagationAllowed(decisions, local, remote, ancestor)
+    ).not.toThrow()
+  })
+
+  it('allows mass delete-remote when local user deleted many unchanged remote files', () => {
+    const remoteFiles = Object.fromEntries(
+      Array.from({ length: 30 }, (_, i) => [`img-${i}.jpg`, `hash-${i}`])
+    )
+    const local = manifest(
+      Object.fromEntries(
+        Array.from({ length: 5 }, (_, i) => [`img-${i}.jpg`, `hash-${i}`])
+      )
+    )
+    const remote = manifest(remoteFiles)
+    const ancestor = manifest(remoteFiles)
+    const decisions = threeWayMerge(local, remote, ancestor)
+
+    expect(decisions.filter((d) => d.type === 'delete-remote')).toHaveLength(25)
+    expect(() =>
+      assertBidirectionalDeletePropagationAllowed(decisions, local, remote, ancestor)
+    ).not.toThrow()
   })
 
   it('allows a few delete-local when remote shrank but not below ancestor ratio threshold', () => {
@@ -149,5 +192,24 @@ describe('assertBidirectionalDeletePropagationAllowed', () => {
     expect(() =>
       assertBidirectionalDeletePropagationAllowed(decisions, local, remote, ancestor)
     ).not.toThrow()
+  })
+
+  it('resolveSyncMergeDecisions requires user choice when propagation is blocked', () => {
+    const remoteFiles = Object.fromEntries(
+      Array.from({ length: 20 }, (_, i) => [`file-${i}.md`, `hash-${i}`])
+    )
+    const local = manifest({})
+    const remote = manifest(remoteFiles)
+    const ancestor = remote
+    const decisions = threeWayMerge(local, remote, ancestor)
+
+    expect(() => resolveSyncMergeDecisions(decisions, local, remote, ancestor)).toThrow(
+      SyncDeletePropagationChoiceRequiredError
+    )
+
+    const skipped = resolveSyncMergeDecisions(decisions, local, remote, ancestor, undefined, {
+      deletePropagationChoice: 'skip-deletes'
+    })
+    expect(skipped.some((d) => d.type === 'delete-remote' || d.type === 'delete-local')).toBe(false)
   })
 })

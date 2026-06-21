@@ -3,7 +3,7 @@ import { RefreshCw } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import type { SyncProgressEvent } from '@baishou/shared'
-import { formatSyncProgressStatus } from '../../utils/formatSyncProgress'
+import { formatSyncProgressSummary } from '../../utils/formatSyncProgress'
 import { useToast } from '../Toast/useToast'
 import styles from './IncrementalSyncPanel.module.css'
 
@@ -138,7 +138,7 @@ export const IncrementalSyncPanel: React.FC<IncrementalSyncPanelProps> = ({
         </button>
 
         <AnimatePresence>
-          {isSyncing && progress && progress.total > 0 && (
+          {isSyncing && progress && (
             <motion.div
               className={styles.progressBarContainer}
               initial={{ opacity: 0, y: 8, scale: 0.95 }}
@@ -146,21 +146,34 @@ export const IncrementalSyncPanel: React.FC<IncrementalSyncPanelProps> = ({
               exit={{ opacity: 0, y: 8, scale: 0.95 }}
               transition={{ duration: 0.15 }}
             >
-              <div className={styles.progressTrack}>
-                <div
-                  className={styles.progressFill}
-                  style={{
-                    width: `${Math.round((progress.current / progress.total) * 100)}%`
-                  }}
-                />
-              </div>
-              <div className={styles.progressText}>
-                {progress.current}/{progress.total}
-                {(() => {
-                  const line = formatSyncProgressStatus(progress, t)
-                  return line ? ` · ${line}` : ''
-                })()}
-              </div>
+              {(() => {
+                const summary = formatSyncProgressSummary(progress, t)
+                const ratio =
+                  progress.phase === 'finalizing'
+                    ? 1
+                    : progress.total > 0
+                      ? progress.current / progress.total
+                      : 0
+                return (
+                  <>
+                    <div className={styles.progressTrack}>
+                      <div
+                        className={styles.progressFill}
+                        style={{
+                          width:
+                            progress.total > 0 || progress.phase === 'finalizing'
+                              ? `${Math.round(Math.max(ratio, progress.phase === 'comparing' && progress.current === 0 ? 0.12 : 0) * 100)}%`
+                              : '12%'
+                        }}
+                      />
+                    </div>
+                    <div className={styles.progressText}>
+                      {summary.headline}
+                      {summary.detail ? ` · ${summary.detail}` : ''}
+                    </div>
+                  </>
+                )
+              })()}
             </motion.div>
           )}
         </AnimatePresence>

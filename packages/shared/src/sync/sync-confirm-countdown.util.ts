@@ -1,4 +1,6 @@
-export const SYNC_CONFIRM_DELAY_MS = 2000
+export const SYNC_CONFIRM_DELAY_MS = 5000
+
+export const SYNC_CONFIRM_DELAY_SECONDS = Math.ceil(SYNC_CONFIRM_DELAY_MS / 1000)
 
 export class SyncConfirmNotReadyError extends Error {
   constructor(public readonly remainingMs: number) {
@@ -12,6 +14,17 @@ export function computeSyncConfirmSecondsLeft(
   delayMs: number = SYNC_CONFIRM_DELAY_MS
 ): number {
   return Math.max(0, Math.ceil((delayMs - elapsedMs) / 1000))
+}
+
+export function computeSyncConfirmSecondsLeftUntil(
+  eligibleAtMs: number,
+  nowMs: number = Date.now()
+): number {
+  return Math.max(0, Math.ceil((eligibleAtMs - nowMs) / 1000))
+}
+
+export function isSyncConfirmEligible(eligibleAtMs: number, nowMs: number = Date.now()): boolean {
+  return nowMs >= eligibleAtMs
 }
 
 export function isSyncConfirmReady(
@@ -40,15 +53,14 @@ export function resolvePlanConfirmEligibleAt(
   startedAtMs: number = Date.now(),
   delayMs: number = SYNC_CONFIRM_DELAY_MS
 ): number {
-  const canExecuteSync = preview.changeCount > 0 && !preview.deletePropagationBlocked
-  return canExecuteSync ? getSyncConfirmEligibleAt(startedAtMs, delayMs) : startedAtMs
+  return preview.changeCount > 0 ? getSyncConfirmEligibleAt(startedAtMs, delayMs) : startedAtMs
 }
 
 export function canExecuteIncrementalSyncPlan(preview: {
   changeCount: number
   deletePropagationBlocked: boolean
 }): boolean {
-  return preview.changeCount > 0 && !preview.deletePropagationBlocked
+  return preview.changeCount > 0
 }
 
 /** 可执行同步时必须已过倒计时；eligibleAt 缺失时 fail closed */

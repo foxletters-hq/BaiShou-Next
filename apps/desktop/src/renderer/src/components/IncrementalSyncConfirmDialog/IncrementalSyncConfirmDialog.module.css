@@ -245,3 +245,54 @@
   color: var(--text-tertiary);
   text-align: right;
 }
+
+.choicePanel {
+  margin: 0 0 12px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.choiceTitle {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.choiceDesc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.choiceMeta {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.choiceActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  max-width: 72%;
+}
+
+.btnChoice {
+  color: #fff;
+  background: var(--color-primary, #3b82f6);
+}
+
+.btnChoiceDanger {
+  color: #fff;
+  background: var(--color-error, #ef4444);
+}
+
+.btnChoiceMuted {
+  color: var(--text-secondary);
+  background: var(--bg-subtle, rgba(0, 0, 0, 0.06));
+}

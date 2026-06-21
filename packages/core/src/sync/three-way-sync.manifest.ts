@@ -1,6 +1,6 @@
 import * as fs from 'fs'
 import * as path from 'path'
-import type { SyncManifest, ManifestEntry, S3SyncConfig } from '@baishou/shared'
+import type { SyncManifest, ManifestEntry, S3SyncConfig, SyncProgressCallback } from '@baishou/shared'
 import {
   SYNC_MANIFEST_FILENAME,
   SYNC_MANIFEST_VERSION,
@@ -13,7 +13,73 @@ import {
 import { isSqliteRuntimeSyncPath } from '@baishou/shared'
 import { ThreeWaySyncCore } from './three-way-sync.core'
 
+export type ManifestFileProgressCallback = (
+  current: number,
+  total: number,
+  fileName: string
+) => void
+
+export interface PreparedSyncManifests {
+  localManifest: SyncManifest
+  remoteManifest: SyncManifest
+  ancestorSnapshot: SyncManifest
+  previousLocalManifest: SyncManifest
+  storageHistory: IncrementalSyncStorageHistory
+  preparedAt: number
+}
+
 export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
+  private static readonly MANIFEST_CACHE_TTL_MS = 120_000
+
+  private preparedManifests: PreparedSyncManifests | null = null
+
+  protected invalidatePreparedManifests(): void {
+    this.preparedManifests = null
+  }
+
+  clearPreparedManifestCache(): void {
+    this.invalidatePreparedManifests()
+  }
+
+  protected async prepareSyncManifests(options?: {
+    onProgress?: SyncProgressCallback
+    forceRefresh?: boolean
+  }): Promise<PreparedSyncManifests> {
+    const onProgress = options?.onProgress
+    if (
+      !options?.forceRefresh &&
+      this.preparedManifests &&
+      Date.now() - this.preparedManifests.preparedAt < ThreeWaySyncManifestMixin.MANIFEST_CACHE_TTL_MS
+    ) {
+      onProgress?.({ phase: 'comparing', current: 1, total: 1 })
+      return this.preparedManifests
+    }
+
+    await this.loadConfig()
+
+    onProgress?.({ phase: 'scanning', current: 0, total: 0 })
+    const localManifest = await this.buildLocalManifest((current, total, fileName) => {
+      onProgress?.({ phase: 'scanning', current, total, fileName })
+    })
+
+    onProgress?.({ phase: 'comparing', current: 0, total: 1 })
+    const remoteManifest = await this.getRemoteManifest()
+    onProgress?.({ phase: 'comparing', current: 1, total: 1 })
+
+    const storageHistory = await this.getSyncStorageHistoryState()
+    const ancestorSnapshot = await this.getRemoteSnapshot()
+    const previousLocalManifest = await this.getLocalManifest()
+
+    this.preparedManifests = {
+      localManifest,
+      remoteManifest,
+      ancestorSnapshot,
+      previousLocalManifest,
+      storageHistory,
+      preparedAt: Date.now()
+    }
+    return this.preparedManifests
+  }
   async getConfig(): Promise<S3SyncConfig> {
     await this.loadConfig()
     return this.config
@@ -21,6 +87,7 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
 
   async updateConfig(config: Partial<S3SyncConfig>): Promise<void> {
     this.config = { ...this.config, ...config }
+    this.invalidatePreparedManifests()
     await this.saveConfig()
   }
 
@@ -33,7 +100,9 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
     }
   }
 
-  async buildLocalManifest(): Promise<SyncManifest> {
+  async buildLocalManifest(
+    onFileProgress?: ManifestFileProgressCallback
+  ): Promise<SyncManifest> {
     const syncRoot = await this.getSyncRoot()
     const files = await this.scanLocalFiles()
     const manifest: SyncManifest = {
@@ -43,7 +112,11 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
       files: {}
     }
 
-    for (const relPath of files) {
+    const total = files.length
+    onFileProgress?.(0, total, '')
+
+    for (let index = 0; index < files.length; index++) {
+      const relPath = files[index]!
       const fullPath = path.join(syncRoot, relPath)
       try {
         const hash = await this.computeFileHash(fullPath)
@@ -54,6 +127,7 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
           lastModified: stat.mtimeMs
         }
       } catch {}
+      onFileProgress?.(index + 1, total, relPath)
     }
 
     return manifest

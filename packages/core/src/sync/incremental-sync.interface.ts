@@ -110,6 +110,9 @@ export interface IIncrementalSyncService {
    */
   refreshLocalManifest(): Promise<SyncManifest>
 
+  /** 丢弃 plan/sync 之间缓存的 manifest 快照（例如工作区注册变更后） */
+  clearPreparedManifestCache(): void
+
   // ── 冲突处理 ───────────────────────────────────────────────
 
   /**

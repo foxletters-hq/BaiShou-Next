@@ -220,6 +220,48 @@ describe('threeWayMerge', () => {
     expect(decisions.find((d) => d.filePath === dbShm && d.type === 'download')).toBeUndefined()
   })
 
+  it('should delete remote chat background files instead of downloading them', () => {
+    const bgPath = 'Personal/Attachments/backgrounds/bg_1.jpg'
+    const bgEntry = makeEntry({ hash: 'bg-hash', size: 2048 })
+    const local = makeManifest({})
+    const remote = makeManifest({ [bgPath]: bgEntry })
+    const ancestor = makeManifest({})
+
+    const decisions = threeWayMerge(local, remote, ancestor)
+    const decision = decisions.find((d) => d.filePath === bgPath)
+
+    expect(decision?.type).toBe('delete-remote')
+    expect(decisions.find((d) => d.filePath === bgPath && d.type === 'download')).toBeUndefined()
+  })
+
+  it('should delete-local without ancestor when remote manifest is newer than local file', () => {
+    const filePath = 'Personal/Attachments/diary/photo.jpg'
+    const localEntry = makeEntry({ hash: 'old', lastModified: 1000 })
+    const local = makeManifest({ [filePath]: localEntry })
+    const remote = makeManifest({ 'Personal/Journals/other.md': makeEntry() })
+    remote.updatedAt = 5000
+    const ancestor = makeManifest({})
+
+    const decisions = threeWayMerge(local, remote, ancestor)
+    const decision = decisions.find((d) => d.filePath === filePath)
+
+    expect(decision?.type).toBe('delete-local')
+  })
+
+  it('should upload without ancestor when local file is newer than remote manifest', () => {
+    const newPhotoPath = 'Personal/Attachments/diary/new-photo.jpg'
+    const localEntry = makeEntry({ hash: 'new', lastModified: 9000 })
+    const local = makeManifest({ [newPhotoPath]: localEntry })
+    const remote = makeManifest({ 'Personal/Journals/other.md': makeEntry() })
+    remote.updatedAt = 5000
+    const ancestor = makeManifest({})
+
+    const decisions = threeWayMerge(local, remote, ancestor)
+    const decision = decisions.find((d) => d.filePath === newPhotoPath)
+
+    expect(decision?.type).toBe('upload')
+  })
+
   it('should include file hash and size in decision', () => {
     const entry = makeEntry({ hash: 'abc', size: 999 })
     const local = makeManifest({ [filePath]: entry })

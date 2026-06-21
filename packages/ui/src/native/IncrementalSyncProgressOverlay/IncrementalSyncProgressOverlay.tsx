@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next'
 import type { SyncProgressEvent } from '@baishou/shared'
 import {
   formatSyncProgressStatus,
+  formatSyncProgressPhaseLabel,
   type SyncProgressTranslate
 } from '../../utils/formatSyncProgress'
 import { useNativeTheme } from '../theme'
@@ -44,6 +45,13 @@ function resolveProgressLabel(
 ): string {
   if (progress.action && progress.fileName) {
     return formatSyncProgressStatus({ action: progress.action, fileName: progress.fileName }, t)
+  }
+
+  if (progress.statusText) {
+    return formatSyncProgressPhaseLabel(
+      { phase: progress.phase, statusText: progress.statusText },
+      t
+    )
   }
 
   switch (progress.phase) {

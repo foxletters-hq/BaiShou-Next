@@ -5,10 +5,12 @@ import type {
   IncrementalSyncRunOptions
 } from '@baishou/shared'
 import {
-  assertBidirectionalDeletePropagationAllowed,
   assertBidirectionalSyncDivergenceAllowed,
   buildIncrementalSyncPlanPreview,
+  inspectDeletePropagationBlock,
   isSyncDivergenceConfirmationRequiredError,
+  resolveSyncMergeDecisions,
+  SyncDeletePropagationChoiceRequiredError,
   SyncDeletePropagationBlockedError,
   SyncDivergenceConfirmationRequiredError,
   SyncDivergenceExceededError
@@ -50,23 +52,26 @@ export class ThreeWaySyncService
     }
 
     try {
-      const localManifest = await this.buildLocalManifest()
-      const remoteManifest = await this.getRemoteManifest()
-      const storageHistory = await this.getSyncStorageHistoryState()
+      const prepared = await this.prepareSyncManifests({ onProgress })
+      const {
+        localManifest,
+        remoteManifest,
+        ancestorSnapshot,
+        previousLocalManifest,
+        storageHistory
+      } = prepared
       assertBidirectionalSyncDivergenceAllowed(localManifest, remoteManifest, this.config, {
         storageHistory,
         highDivergenceConfirmed: runOptions?.highDivergenceConfirmed
       })
-      const ancestorSnapshot = await this.getRemoteSnapshot()
-      const previousLocalManifest = await this.getLocalManifest()
 
-      const decisions = threeWayMerge(localManifest, remoteManifest, ancestorSnapshot)
-      assertBidirectionalDeletePropagationAllowed(
-        decisions,
+      const decisions = resolveSyncMergeDecisions(
+        threeWayMerge(localManifest, remoteManifest, ancestorSnapshot),
         localManifest,
         remoteManifest,
         ancestorSnapshot,
-        previousLocalManifest
+        previousLocalManifest,
+        { deletePropagationChoice: runOptions?.deletePropagationChoice }
       )
       const total = decisions.length
       let completedCount = 0
@@ -129,10 +134,13 @@ export class ThreeWaySyncService
       const fileConcurrency = this.config.fileConcurrency || 5
       await limitExecute(decisions, fileConcurrency, syncItem)
 
+      onProgress?.({ phase: 'finalizing', current: 0, total: 1 })
       const finalManifest = await this.buildLocalManifest()
       await this.saveLocalManifest(finalManifest)
       await this.uploadManifest()
       await this.saveRemoteSnapshot(finalManifest)
+      onProgress?.({ phase: 'finalizing', current: 1, total: 1 })
+      this.invalidatePreparedManifests()
 
       this.lastConflicts = result.conflicted
       result.duration = Date.now() - startTime
@@ -140,6 +148,7 @@ export class ThreeWaySyncService
     } catch (error) {
       if (error instanceof SyncDivergenceExceededError) throw error
       if (error instanceof SyncDivergenceConfirmationRequiredError) throw error
+      if (error instanceof SyncDeletePropagationChoiceRequiredError) throw error
       if (error instanceof SyncDeletePropagationBlockedError) throw error
       throw new S3SyncError('Three-way sync failed', error instanceof Error ? error : undefined)
     }
@@ -162,8 +171,13 @@ export class ThreeWaySyncService
     }
 
     try {
-      const localManifest = await this.buildLocalManifest()
+      onProgress?.({ phase: 'scanning', current: 0, total: 0 })
+      const localManifest = await this.buildLocalManifest((current, total, fileName) => {
+        onProgress?.({ phase: 'scanning', current, total, fileName })
+      })
+      onProgress?.({ phase: 'comparing', current: 0, total: 1 })
       const remoteManifest = await this.getRemoteManifest()
+      onProgress?.({ phase: 'comparing', current: 1, total: 1 })
       const entries = Object.entries(localManifest.files)
       const total = entries.length
       let completedCount = 0
@@ -225,14 +239,12 @@ export class ThreeWaySyncService
     }
 
     try {
-      const localManifest = await this.buildLocalManifest()
-      const remoteManifest = await this.getRemoteManifest()
-      const storageHistory = await this.getSyncStorageHistoryState()
+      const prepared = await this.prepareSyncManifests({ onProgress })
+      const { localManifest, remoteManifest, ancestorSnapshot, storageHistory } = prepared
       assertBidirectionalSyncDivergenceAllowed(localManifest, remoteManifest, this.config, {
         storageHistory,
         highDivergenceConfirmed: runOptions?.highDivergenceConfirmed
       })
-      const ancestorSnapshot = await this.getRemoteSnapshot()
 
       const decisions = threeWayMerge(localManifest, remoteManifest, ancestorSnapshot)
       const total = decisions.length
@@ -266,10 +278,13 @@ export class ThreeWaySyncService
       const fileConcurrency = this.config.fileConcurrency || 5
       await limitExecute(decisions, fileConcurrency, downloadItem)
 
+      onProgress?.({ phase: 'finalizing', current: 0, total: 1 })
       const finalManifest = await this.buildLocalManifest()
       await this.saveLocalManifest(finalManifest)
       await this.uploadManifest()
       await this.saveRemoteSnapshot(finalManifest)
+      onProgress?.({ phase: 'finalizing', current: 1, total: 1 })
+      this.invalidatePreparedManifests()
 
       result.duration = Date.now() - startTime
       return result
@@ -291,9 +306,13 @@ export class ThreeWaySyncService
     await this.loadConfig()
     if (!this.config.enabled) throw new S3NotConfiguredError()
 
-    const localManifest = await this.buildLocalManifest()
-    const remoteManifest = await this.getRemoteManifest()
-    const storageHistory = await this.getSyncStorageHistoryState()
+    const {
+      localManifest,
+      remoteManifest,
+      ancestorSnapshot,
+      previousLocalManifest,
+      storageHistory
+    } = await this.prepareSyncManifests()
 
     let requiresHighDivergenceConfirm = false
     let divergencePercent: number | undefined
@@ -314,29 +333,15 @@ export class ThreeWaySyncService
       }
     }
 
-    const ancestorSnapshot = await this.getRemoteSnapshot()
-    const previousLocalManifest = await this.getLocalManifest()
     const decisions = threeWayMerge(localManifest, remoteManifest, ancestorSnapshot)
 
-    let deletePropagationBlocked = false
-    let deletePropagationReason: 'mass_delete' | 'local_data_loss' | 'remote_data_loss' | undefined
-
-    try {
-      assertBidirectionalDeletePropagationAllowed(
-        decisions,
-        localManifest,
-        remoteManifest,
-        ancestorSnapshot,
-        previousLocalManifest
-      )
-    } catch (error) {
-      if (error instanceof SyncDeletePropagationBlockedError) {
-        deletePropagationBlocked = true
-        deletePropagationReason = error.reason
-      } else {
-        throw error
-      }
-    }
+    const deleteBlock = inspectDeletePropagationBlock(
+      decisions,
+      localManifest,
+      remoteManifest,
+      ancestorSnapshot,
+      previousLocalManifest
+    )
 
     return buildIncrementalSyncPlanPreview({
       decisions,
@@ -346,8 +351,10 @@ export class ThreeWaySyncService
       requiresHighDivergenceConfirm,
       divergencePercent,
       maxDivergencePercent,
-      deletePropagationBlocked,
-      deletePropagationReason
+      deletePropagationBlocked: deleteBlock != null,
+      deletePropagationReason: deleteBlock?.reason,
+      blockedDeleteCount: deleteBlock?.deleteCount,
+      blockedDeleteDirection: deleteBlock?.direction
     })
   }
 }

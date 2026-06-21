@@ -44,6 +44,12 @@ export interface IncrementalSyncPlanPreview {
   maxDivergencePercent?: number
   deletePropagationBlocked: boolean
   deletePropagationReason?: 'mass_delete' | 'local_data_loss' | 'remote_data_loss'
+  /** 与 deletePropagationBlocked 同义，需在确认弹窗中选择处理方式 */
+  requiresDeletePropagationChoice?: boolean
+  /** 被保护拦截、待用户确认的删除条数 */
+  blockedDeleteCount?: number
+  /** 被拦截的删除方向 */
+  blockedDeleteDirection?: 'local' | 'remote'
   /** 本次预览前自动补登记的工作区 */
   autoRegisteredVaults?: string[]
 }
