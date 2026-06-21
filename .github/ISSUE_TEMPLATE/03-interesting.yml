@@ -1,0 +1,43 @@
+name: 创意想法
+description: 开放性想法与探索方向 — 优先级相对较低，会酌情安排
+title: "创意:"
+labels:
+  - interesting
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 优先级：酌情安排
+
+        **创意想法会排在 Bug 与需求建议之后**。我们非常欢迎脑洞，但会根据产品方向、成本与收益酌情实现，不一定纳入近期版本。
+
+        适合：方向性设想、体验灵感、尚不成熟的探索。
+
+        若是明确希望尽快落地的功能，请改用 **「需求建议」** 模板。
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 创意描述
+      description: 分享你的想法，以及为什么觉得有价值
+      placeholder: 例如：希望 AI 能更主动地发起互动，而不只是被动回复
+    validations:
+      required: true
+
+  - type: textarea
+    id: inspiration
+    attributes:
+      label: 灵感来源（可选）
+      description: 是否有参考产品、场景或使用案例？
+      placeholder: 可选填写
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: 版本与设备
+      description: 可选
+      placeholder: Next 1.0.x，设备或系统版本
+    validations:
+      required: false
