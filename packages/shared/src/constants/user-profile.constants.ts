@@ -11,6 +11,7 @@ export const USER_PROFILE_LEGACY_SETTINGS_KEY = 'user_profile' as const
 export const DEFAULT_USER_PROFILE: UserProfile = {
   nickname: '白守用户',
   avatarPath: USER_DEFAULT_AVATAR_SENTINEL,
+  chatBackgroundPath: null,
   activePersonaId: '默认身份卡',
   personas: {
     默认身份卡: {

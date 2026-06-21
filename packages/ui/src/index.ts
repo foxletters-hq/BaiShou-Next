@@ -77,6 +77,7 @@ export * from './desktop/SummarySettingsView/index'
 
 export * from './desktop/ProfileSettingsCard/index'
 export * from './desktop/AvatarCropModal/index'
+export * from './desktop/ChatBackgroundSettingsCard/index'
 export * from './desktop/HotkeySettingsCard/index'
 export * from './desktop/McpSettingsCard/index'
 export * from './desktop/DeveloperOptionsView/index'

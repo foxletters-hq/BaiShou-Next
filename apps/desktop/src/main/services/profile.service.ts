@@ -38,6 +38,29 @@ export class ProfileService {
     return await this.attachmentManager.resolveAvatarPath(relativePath)
   }
 
+  /**
+   * 唤起系统文件选择框，让用户选择聊天背景图
+   * 复用头像导入的压缩与路径解析逻辑，但存储到 backgrounds/ 子目录。
+   *
+   * @returns 新背景图的 local:// 绝对路径。如果用户取消选择，则返回 null。
+   */
+  async pickAndSaveBackground(): Promise<string | null> {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: '选择聊天背景图',
+      buttonLabel: '确定',
+      properties: ['openFile'],
+      filters: [{ name: 'Images', extensions: ['jpg', 'png', 'jpeg', 'webp'] }]
+    })
+
+    if (canceled || filePaths.length === 0) {
+      return null
+    }
+
+    const sourcePath = filePaths[0]
+    const relativePath = await this.attachmentManager.importBackground(sourcePath)
+    return await this.attachmentManager.resolveBackgroundPath(relativePath)
+  }
+
   async processProfileInput(input: any) {
     if (
       input.avatarPath &&
@@ -48,6 +71,18 @@ export class ProfileService {
         input.avatarPath = await this.attachmentManager.importAvatar(
           input.avatarPath,
           'user_avatar'
+        )
+      }
+    }
+
+    if (
+      input.chatBackgroundPath &&
+      typeof input.chatBackgroundPath === 'string' &&
+      input.chatBackgroundPath.trim() !== ''
+    ) {
+      if (!input.chatBackgroundPath.startsWith('backgrounds/')) {
+        input.chatBackgroundPath = await this.attachmentManager.importBackground(
+          input.chatBackgroundPath
         )
       }
     }
@@ -63,6 +98,15 @@ export class ProfileService {
           profile.avatarPath = USER_DEFAULT_AVATAR_SENTINEL
           profile.avatarFileMissing = true
         }
+      }
+    }
+    if (profile.chatBackgroundPath && profile.chatBackgroundPath.startsWith('backgrounds/')) {
+      try {
+        profile.chatBackgroundPath = await this.attachmentManager.resolveBackgroundPath(
+          profile.chatBackgroundPath
+        )
+      } catch {
+        profile.chatBackgroundPath = null
       }
     }
     return profile

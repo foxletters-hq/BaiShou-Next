@@ -10,7 +10,8 @@ import {
   StorageSettingsCard,
   IdentitySettingsCard,
   AboutSettingsCard,
-  RestoreBlockingOverlay
+  RestoreBlockingOverlay,
+  ChatBackgroundSettingsCard
 } from '@baishou/ui'
 import { GITHUB_ISSUES_URL, GITHUB_REPO_URL } from '@baishou/shared'
 import baishouHeroImg from '@baishou/shared/assets/images/Next-1.0.0-banner.jpg'
@@ -163,6 +164,30 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
                 onThemeModeChange={settings.setThemeMode}
                 onSeedColorChange={settings.setThemeColor}
                 onLanguageChange={settings.setLocale}
+              />
+              <div className={styles.divider} />
+              <ChatBackgroundSettingsCard
+                embedded
+                isLast={false}
+                backgroundPath={profile?.chatBackgroundPath || null}
+                onPickBackground={async () => {
+                  if (typeof window !== 'undefined' && window.electron) {
+                    const newPath =
+                      await window.electron.ipcRenderer.invoke('profile:pick-background')
+                    if (newPath && profile) {
+                      const updated = { ...profile, chatBackgroundPath: newPath }
+                      await window.electron.ipcRenderer.invoke('profile:save', updated)
+                      if (loadProfile) await loadProfile()
+                    }
+                  }
+                }}
+                onClearBackground={async () => {
+                  if (profile) {
+                    const updated = { ...profile, chatBackgroundPath: null }
+                    await window.electron.ipcRenderer.invoke('profile:save', updated)
+                    if (loadProfile) await loadProfile()
+                  }
+                }}
               />
               {settings.hotkeyConfig ? (
                 <>

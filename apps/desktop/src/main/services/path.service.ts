@@ -278,6 +278,14 @@ export class DesktopStoragePathService implements IStoragePathService {
     return dir
   }
 
+  /** 聊天背景图目录：`{activeVault}/Attachments/backgrounds` */
+  public async getChatBackgroundsDirectory(): Promise<string> {
+    const attDir = await this.getAttachmentsBaseDirectory()
+    const dir = path.join(attDir, 'backgrounds')
+    await fs.mkdir(dir, { recursive: true })
+    return dir
+  }
+
   /**
    * 获取日记附件目录
    * 路径结构: Vault/Journals/{year}/{month}/attachment/

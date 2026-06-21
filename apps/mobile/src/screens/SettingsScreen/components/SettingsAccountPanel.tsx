@@ -11,6 +11,7 @@ import {
   AppearanceSettingsCard,
   IdentitySettingsCard,
   WorkspaceSettingsCard,
+  ChatBackgroundSettingsCard,
   type UserProfileConfig,
   type VaultInfo
 } from '@baishou/ui/native'
@@ -26,6 +27,7 @@ import { ensureDefaultLatteAssistant, syncDefaultLatteAssistantLocale } from '@b
 import { resolveAppUiLanguage } from '../../../lib/device-locale'
 import { SettingsProfileHeader, type SettingsProfileSavePayload } from './SettingsProfileHeader'
 import { invalidateUserAvatarDisplayCache } from '../../../lib/user-avatar-display.util'
+import { MobileAttachmentManagerService } from '../../../services/mobile-attachment-manager.service'
 
 export interface QuickSettingsGroupProps {
   groupCardStyle: object
@@ -43,6 +45,8 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
   const [seedColor, setSeedColor] = useState('#5BA8F5')
   const [language, setLanguage] = useState('system')
   const [profile, setProfile] = useState<any>({ nickname: '', avatarPath: '' })
+  const [chatBackgroundPath, setChatBackgroundPath] = useState<string | null>(null)
+  const [resolvedBackgroundUri, setResolvedBackgroundUri] = useState<string | null>(null)
   const [identityProfile, setIdentityProfile] = useState<UserProfileConfig>({
     nickname: DEFAULT_USER_PROFILE.nickname,
     activePersonaId: DEFAULT_USER_PROFILE.activePersonaId,
@@ -121,6 +125,7 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
         nickname: userProfile.nickname || '',
         avatarPath: userProfile.avatarPath
       })
+      setChatBackgroundPath(userProfile.chatBackgroundPath ?? null)
       setIdentityProfile({
         nickname: userProfile.nickname || '',
         avatarPath: userProfile.avatarPath ?? undefined,
@@ -250,6 +255,65 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
     }
   }
 
+  // Resolve background URI when path changes
+  useEffect(() => {
+    if (!chatBackgroundPath || !services) {
+      setResolvedBackgroundUri(null)
+      return
+    }
+    let cancelled = false
+    void services.attachmentManager
+      .resolveBackgroundPath(chatBackgroundPath)
+      .then((uri) => {
+        if (!cancelled) setResolvedBackgroundUri(uri)
+      })
+      .catch(() => {
+        if (!cancelled) setResolvedBackgroundUri(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [chatBackgroundPath, services])
+
+  const handlePickBackground = useCallback(async () => {
+    if (!services || !dbReady) return
+    try {
+      const bgPath = await MobileAttachmentManagerService.pickAndImportBackground(
+        services.attachmentManager
+      )
+      if (!bgPath) return
+      const userProfile = await getUserProfileFromSettings(services.settingsManager)
+      const next: UserProfile = {
+        ...userProfile,
+        chatBackgroundPath: bgPath
+      }
+      await saveUserProfileToSettings(services.settingsManager, next)
+      setChatBackgroundPath(bgPath)
+      toast.showSuccess(t('common.save_success'))
+    } catch (e) {
+      console.error('Pick background failed', e)
+      toast.showError(t('common.errors.save_failed'))
+    }
+  }, [services, dbReady, t, toast])
+
+  const handleClearBackground = useCallback(async () => {
+    if (!services || !dbReady) return
+    try {
+      const userProfile = await getUserProfileFromSettings(services.settingsManager)
+      const next: UserProfile = {
+        ...userProfile,
+        chatBackgroundPath: null
+      }
+      await saveUserProfileToSettings(services.settingsManager, next)
+      setChatBackgroundPath(null)
+      setResolvedBackgroundUri(null)
+      toast.showSuccess(t('common.save_success'))
+    } catch (e) {
+      console.error('Clear background failed', e)
+      toast.showError(t('common.errors.save_failed'))
+    }
+  }, [services, dbReady, t, toast])
+
   const accountReady = dbReady && !!services
 
   return (
@@ -286,13 +350,22 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
           <SettingsGroupDivider />
           <AppearanceSettingsCard
             embedded
-            isLast
+            isLast={false}
             themeMode={themeMode}
             seedColor={seedColor}
             language={language as 'system' | 'zh' | 'zh-TW' | 'en' | 'ja'}
             onThemeModeChange={handleSaveTheme}
             onSeedColorChange={handleSeedColorChange}
             onLanguageChange={handleSaveLanguage}
+          />
+          <SettingsGroupDivider />
+          <ChatBackgroundSettingsCard
+            embedded
+            isLast
+            backgroundPath={chatBackgroundPath}
+            resolvedBackgroundUri={resolvedBackgroundUri}
+            onPickBackground={handlePickBackground}
+            onClearBackground={handleClearBackground}
           />
         </>
       )}

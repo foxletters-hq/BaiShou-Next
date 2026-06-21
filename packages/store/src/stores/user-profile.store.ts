@@ -10,6 +10,8 @@ export interface UserProfileActions {
   loadProfile: () => Promise<void>
   updateNickname: (nickname: string) => Promise<void>
   pickAndSaveAvatar: () => Promise<void>
+  pickAndSaveBackground: () => Promise<void>
+  clearBackground: () => Promise<void>
 
   // 多身份卡体系 (Persona)
   setActivePersona: (personaId: string) => Promise<void>
@@ -70,6 +72,27 @@ export const useUserProfileStore = createStore<UserProfileState & UserProfileAct
           await syncIpc(newProfile)
         }
       }
+    },
+
+    pickAndSaveBackground: async () => {
+      if (typeof window !== 'undefined' && (window as any).api?.profile) {
+        const newPath = await (window as any).api.profile.pickAndSaveBackground()
+        if (newPath) {
+          const { profile } = get() as UserProfileState
+          if (!profile) return
+          const newProfile = { ...profile, chatBackgroundPath: newPath }
+          set({ profile: newProfile })
+          await syncIpc(newProfile)
+        }
+      }
+    },
+
+    clearBackground: async () => {
+      const { profile } = get() as UserProfileState
+      if (!profile) return
+      const newProfile = { ...profile, chatBackgroundPath: null }
+      set({ profile: newProfile })
+      await syncIpc(newProfile)
     },
 
     setActivePersona: async (personaId: string) => {

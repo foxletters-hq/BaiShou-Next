@@ -357,4 +357,11 @@ export class MobileStoragePathService implements IStoragePathService {
     await this.ensureDirHiddenFromGallery(dir)
     return dir
   }
+
+  public async getChatBackgroundsDirectory(): Promise<string> {
+    const att = await this.getAttachmentsBaseDirectory()
+    const dir = `${att}/backgrounds`
+    await this.ensureDirHiddenFromGallery(dir)
+    return dir
+  }
 }

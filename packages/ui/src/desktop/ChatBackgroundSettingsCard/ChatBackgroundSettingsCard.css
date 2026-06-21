@@ -1,0 +1,66 @@
+.chat-bg-settings-wrapper .settings-expansion-content {
+  padding: 0 16px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chat-bg-preview-area {
+  position: relative;
+  width: 100%;
+  height: 140px;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid var(--border-card, rgba(0, 0, 0, 0.12));
+  transition: all 0.2s;
+}
+
+.chat-bg-preview-area:hover {
+  border-color: var(--color-primary, #5ba8f5);
+}
+
+.chat-bg-preview-area:hover .chat-bg-preview-overlay {
+  opacity: 1;
+}
+
+.chat-bg-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.chat-bg-preview-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.chat-bg-reset-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid var(--border-muted, rgba(0, 0, 0, 0.08));
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--color-error, #ef4444);
+  cursor: pointer;
+  transition: all 0.2s;
+  width: fit-content;
+}
+
+.chat-bg-reset-btn:hover {
+  background: rgba(239, 68, 68, 0.06);
+  border-color: rgba(239, 68, 68, 0.2);
+}

@@ -4,6 +4,7 @@ import { MdCloud } from 'react-icons/md'
 import { AgentDialogs } from './components/AgentDialogs'
 import { AgentMessageList } from './components/AgentMessageList'
 import { useAgentChatFlow } from './hooks/useAgentChatFlow'
+import defaultChatBg from '@baishou/shared/assets/images/BaiShou-v0.0.1.jpeg'
 import styles from './AgentScreen.module.css'
 
 /**
@@ -29,8 +30,17 @@ export const AgentScreen: React.FC = () => {
       ? flow.t('agent.no_model_selected', '暂未选择模型')
       : flow.model.currentModelId
 
+  // 聊天背景：优先使用用户自定义背景，否则使用默认背景
+  const chatBackgroundUrl = flow.userProfile?.chatBackgroundPath || defaultChatBg
+
   return (
     <div className={styles.screen}>
+      {/* 聊天背景图 */}
+      <div
+        className={styles.chatBackground}
+        style={{ backgroundImage: `url(${chatBackgroundUrl})` }}
+        aria-hidden
+      />
       {/* 顶部状态与控制栏 */}
       <div className={styles.appBar}>
         <button

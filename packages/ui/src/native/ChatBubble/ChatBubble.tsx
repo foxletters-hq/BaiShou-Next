@@ -37,7 +37,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   onEditingChange
 }) => {
   const { t } = useTranslation()
-  const { colors } = useNativeTheme()
+  const { colors, isDark } = useNativeTheme()
   const [showActions, setShowActions] = useState(false)
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null)
   const isUser = message.role === 'user'
@@ -104,11 +104,11 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
             edit.isEditing ? styles.bubbleEditing : null,
             edit.isEditing
               ? isUser
-                ? { backgroundColor: colors.bgSurface, borderBottomRightRadius: 4 }
-                : { backgroundColor: colors.bgSurface, borderBottomLeftRadius: 4 }
+                ? { backgroundColor: isDark ? 'rgba(30, 30, 34, 0.4)' : 'rgba(255, 255, 255, 0.48)', borderBottomRightRadius: 4 }
+                : { backgroundColor: isDark ? 'rgba(30, 30, 34, 0.4)' : 'rgba(255, 255, 255, 0.48)', borderBottomLeftRadius: 4 }
               : isUser
-                ? { backgroundColor: colors.bgSurface, borderBottomRightRadius: 4 }
-                : { backgroundColor: colors.bgSurface, borderBottomLeftRadius: 4 }
+                ? { backgroundColor: isDark ? 'rgba(30, 30, 34, 0.4)' : 'rgba(255, 255, 255, 0.48)', borderBottomRightRadius: 4 }
+                : { backgroundColor: isDark ? 'rgba(30, 30, 34, 0.4)' : 'rgba(255, 255, 255, 0.48)', borderBottomLeftRadius: 4 }
           ]}
         >
           {isAssistant && cleanReasoning ? (

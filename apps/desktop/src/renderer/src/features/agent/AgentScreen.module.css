@@ -7,7 +7,19 @@
   background-color: var(--bg-app);
 }
 
+.chatBackground {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
+
 .appBar {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -15,6 +27,9 @@
   gap: 12px;
   flex-shrink: 0;
   --app-bar-chip-height: 32px;
+  background: var(--bg-glass-surface);
+  backdrop-filter: var(--blur-glass);
+  -webkit-backdrop-filter: var(--blur-glass);
 }
 
 .appBarChip {
@@ -81,6 +96,8 @@
 }
 
 .messageList {
+  position: relative;
+  z-index: 1;
   flex: 1;
   overflow-y: auto;
   scroll-behavior: auto;
@@ -125,7 +142,9 @@
   padding: 10px 16px;
   border: 1px dashed var(--border-subtle);
   border-radius: 10px;
-  background: var(--bg-surface-highlight);
+  background: var(--bg-glass-surface);
+  backdrop-filter: var(--blur-glass);
+  -webkit-backdrop-filter: var(--blur-glass);
   color: var(--color-primary);
   font-size: 13px;
   font-weight: 600;
@@ -150,11 +169,13 @@
 }
 
 .inputFooter {
+  position: relative;
+  z-index: 1;
   flex-shrink: 0;
   display: flex;
   justify-content: center;
   padding: 0 16px 12px;
-  background-color: var(--bg-app);
+  background-color: transparent;
   box-sizing: border-box;
   width: 100%;
 }
@@ -174,7 +195,9 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background-color: var(--bg-surface, #ffffff);
+  background: var(--bg-glass-surface);
+  backdrop-filter: var(--blur-glass);
+  -webkit-backdrop-filter: var(--blur-glass);
   border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06));
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   display: flex;
