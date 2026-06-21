@@ -163,8 +163,9 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
-      <Pressable style={styles.overlay} onPress={onCancel}>
-        <Pressable
+      <View style={styles.overlay}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onCancel} accessibilityRole="button" />
+        <View
           style={[
             styles.dialog,
             {
@@ -172,34 +173,41 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
               borderColor: colors.borderSubtle
             }
           ]}
-          onPress={(e) => e.stopPropagation()}
         >
-          <Text style={[styles.title, { color: colors.textPrimary }]}>
-            {t('data_sync.plan_confirm_title', '确认同步')}
-          </Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            {t('data_sync.plan_confirm_desc', {
-              count: preview.changeCount,
-              activeVault: preview.activeVaultName ?? t('workspace.no_active', '未选择工作空间')
-            })}
-          </Text>
-
-          {boundaryHints.map((hint, index) => (
-            <Text key={`boundary-${index}`} style={[styles.warningItem, { color: colors.warning }]}>
-              {hint}
+          <View style={styles.dialogHeader}>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>
+              {t('data_sync.plan_confirm_title', '确认同步')}
             </Text>
-          ))}
-
-          {otherWarnings.map((key) => (
-            <Text key={key} style={[styles.warningItem, { color: colors.warning }]}>
-              {t(key, {
-                divergence: preview.divergencePercent,
-                limit: preview.maxDivergencePercent
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+              {t('data_sync.plan_confirm_desc', {
+                count: preview.changeCount,
+                activeVault: preview.activeVaultName ?? t('workspace.no_active', '未选择工作空间')
               })}
             </Text>
-          ))}
 
-          <ScrollView style={styles.vaultList} contentContainerStyle={styles.vaultListContent}>
+            {boundaryHints.map((hint, index) => (
+              <Text key={`boundary-${index}`} style={[styles.warningItem, { color: colors.warning }]}>
+                {hint}
+              </Text>
+            ))}
+
+            {otherWarnings.map((key) => (
+              <Text key={key} style={[styles.warningItem, { color: colors.warning }]}>
+                {t(key, {
+                  divergence: preview.divergencePercent,
+                  limit: preview.maxDivergencePercent
+                })}
+              </Text>
+            ))}
+          </View>
+
+          <ScrollView
+            style={styles.vaultList}
+            contentContainerStyle={styles.vaultListContent}
+            nestedScrollEnabled
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator
+          >
             {preview.vaultSummaries.length === 0 ? (
               <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                 {t('data_sync.plan_no_file_changes', '没有需要同步的文件变更')}
@@ -275,33 +283,35 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
             )}
           </ScrollView>
 
-          {canExecuteSync && !confirmReady && (
-            <Text style={[styles.countdownHint, { color: colors.textTertiary }]}>
-              {t('data_sync.plan_confirm_countdown', { seconds: secondsLeft })}
-            </Text>
-          )}
+          <View style={styles.dialogFooter}>
+            {canExecuteSync && !confirmReady && (
+              <Text style={[styles.countdownHint, { color: colors.textTertiary }]}>
+                {t('data_sync.plan_confirm_countdown', { seconds: secondsLeft })}
+              </Text>
+            )}
 
-          <View style={styles.actions}>
-            <Button variant="outline" onPress={onCancel} style={styles.actionButton}>
-              {t('common.cancel', '取消')}
-            </Button>
-            <Button
-              variant="primary"
-              destructive={preview.deletePropagationBlocked}
-              onPress={onConfirm}
-              disabled={!confirmReady || preview.deletePropagationBlocked || isConfirming}
-              isLoading={isConfirming}
-              style={styles.actionButton}
-            >
-              {isConfirming
-                ? t('data_sync.plan_confirming', '正在确认…')
-                : canExecuteSync
-                  ? t('data_sync.plan_confirm_sync', '确认同步')
-                  : t('common.close', '关闭')}
-            </Button>
+            <View style={styles.actions}>
+              <Button variant="outline" onPress={onCancel} style={styles.actionButton}>
+                {t('common.cancel', '取消')}
+              </Button>
+              <Button
+                variant="primary"
+                destructive={preview.deletePropagationBlocked}
+                onPress={onConfirm}
+                disabled={!confirmReady || preview.deletePropagationBlocked || isConfirming}
+                isLoading={isConfirming}
+                style={styles.actionButton}
+              >
+                {isConfirming
+                  ? t('data_sync.plan_confirming', '正在确认…')
+                  : canExecuteSync
+                    ? t('data_sync.plan_confirm_sync', '确认同步')
+                    : t('common.close', '关闭')}
+              </Button>
+            </View>
           </View>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   )
 }
@@ -315,9 +325,22 @@ const styles = StyleSheet.create({
   },
   dialog: {
     maxHeight: '82%',
+    width: '100%',
     borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
-    padding: 18,
+    overflow: 'hidden',
+    zIndex: 1
+  },
+  dialogHeader: {
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 10,
+    gap: 10
+  },
+  dialogFooter: {
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    paddingBottom: 18,
     gap: 10
   },
   title: {
@@ -336,10 +359,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(245, 158, 11, 0.1)'
   },
   vaultList: {
-    maxHeight: 320
+    flexGrow: 0,
+    flexShrink: 1,
+    maxHeight: 360
   },
   vaultListContent: {
     gap: 8,
+    paddingHorizontal: 18,
     paddingBottom: 4
   },
   vaultSection: {

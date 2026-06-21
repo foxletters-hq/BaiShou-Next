@@ -17,6 +17,7 @@ import { useIncrementalSync } from '../providers/IncrementalSyncProvider'
 import { StackScreenLayout } from '../components/StackScreenLayout'
 import { getStackScreenChrome } from '../components/stackScreenChrome'
 import { IncrementalSyncConfigSheet } from './IncrementalSyncConfigSheet'
+import { useIncrementalSyncNavigationGuard } from '../hooks/useIncrementalSyncNavigationGuard'
 
 const DEFAULT_CONFIG: S3SyncConfig = {
   enabled: false,
@@ -38,8 +39,10 @@ const IncrementalSyncScreen: React.FC = () => {
   const toast = useNativeToast()
   const dialog = useDialog()
   const { services, dbReady } = useBaishou()
-  const { isSyncing, isPlanning, isConfigured, refreshConfigured, runIncrementalSync } =
+  const { isSyncing, isPlanning, isBusy, isConfigured, refreshConfigured, runIncrementalSync } =
     useIncrementalSync()
+
+  useIncrementalSyncNavigationGuard()
 
   const [showAccessKey, setShowAccessKey] = useState(false)
   const [showSecretKey, setShowSecretKey] = useState(false)
@@ -175,7 +178,7 @@ const IncrementalSyncScreen: React.FC = () => {
               <Button
                 variant="primary"
                 onPress={handleSync}
-                isDisabled={isConfigured !== true || isSyncing || isPlanning}
+                isDisabled={isConfigured !== true || isBusy}
                 isLoading={isSyncing || isPlanning}
                 style={styles.syncButton}
               >
