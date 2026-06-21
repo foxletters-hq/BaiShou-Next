@@ -1,5 +1,9 @@
 import { createStore } from '../create-store'
-import type { UserProfile } from '@baishou/shared'
+import {
+  CHAT_BACKGROUND_BLUR_DEFAULT,
+  CHAT_BACKGROUND_OVERLAY_DEFAULT,
+  type UserProfile
+} from '@baishou/shared'
 
 export interface UserProfileState {
   profile: UserProfile | null
@@ -12,6 +16,10 @@ export interface UserProfileActions {
   pickAndSaveAvatar: () => Promise<void>
   pickAndSaveBackground: () => Promise<void>
   clearBackground: () => Promise<void>
+  updateChatBackgroundStyle: (patch: {
+    chatBackgroundBlur?: number
+    chatBackgroundOverlayOpacity?: number
+  }) => Promise<void>
 
   // 多身份卡体系 (Persona)
   setActivePersona: (personaId: string) => Promise<void>
@@ -90,7 +98,23 @@ export const useUserProfileStore = createStore<UserProfileState & UserProfileAct
     clearBackground: async () => {
       const { profile } = get() as UserProfileState
       if (!profile) return
-      const newProfile = { ...profile, chatBackgroundPath: null }
+      const newProfile = {
+        ...profile,
+        chatBackgroundPath: null,
+        chatBackgroundBlur: CHAT_BACKGROUND_BLUR_DEFAULT,
+        chatBackgroundOverlayOpacity: CHAT_BACKGROUND_OVERLAY_DEFAULT
+      }
+      set({ profile: newProfile })
+      await syncIpc(newProfile)
+    },
+
+    updateChatBackgroundStyle: async (patch: {
+      chatBackgroundBlur?: number
+      chatBackgroundOverlayOpacity?: number
+    }) => {
+      const { profile } = get() as UserProfileState
+      if (!profile) return
+      const newProfile = { ...profile, ...patch }
       set({ profile: newProfile })
       await syncIpc(newProfile)
     },

@@ -1,5 +1,9 @@
 import type { UserProfile } from '../types/user-profile.types'
 import { USER_DEFAULT_AVATAR_SENTINEL } from '../utils/user-avatar.util'
+import {
+  CHAT_BACKGROUND_BLUR_DEFAULT,
+  CHAT_BACKGROUND_OVERLAY_DEFAULT
+} from './chat-background.constants'
 
 /** 用户档案在 system_settings / settings.json 中的 canonical 键（与桌面 UserProfileRepository 对齐） */
 export const USER_PROFILE_SETTINGS_KEY = 'user_profile_data' as const
@@ -12,6 +16,8 @@ export const DEFAULT_USER_PROFILE: UserProfile = {
   nickname: '白守用户',
   avatarPath: USER_DEFAULT_AVATAR_SENTINEL,
   chatBackgroundPath: null,
+  chatBackgroundBlur: CHAT_BACKGROUND_BLUR_DEFAULT,
+  chatBackgroundOverlayOpacity: CHAT_BACKGROUND_OVERLAY_DEFAULT,
   activePersonaId: '默认身份卡',
   personas: {
     默认身份卡: {
