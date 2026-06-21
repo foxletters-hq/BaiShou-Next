@@ -3,12 +3,10 @@ import { HashRouter, Routes, Route, useLocation, Navigate } from 'react-router-d
 import { MainLayout } from './layouts/MainLayout'
 import { CachedRoutePlaceholder } from './layouts/MainPageCache'
 import { HomeScreen } from './features/home/HomeScreen'
-import { AgentScreen } from './features/agent/AgentScreen'
 import { OnboardingScreen } from './features/onboarding/OnboardingScreen'
 import { SessionManagementScreen } from './features/agent/SessionManagementScreen'
 import { AssistantManagementScreen } from './features/agent/AssistantManagementScreen'
 import { AssistantEditScreen } from './features/agent/AssistantEditScreen'
-import { AgentLayout } from './features/agent/AgentLayout'
 
 // Phase 14: Recover Missing Feature Routes
 import { DiaryEditorPage } from './features/diary/DiaryEditorPage'
@@ -28,6 +26,7 @@ import {
   initDesktopRendererCacheCoordinator,
   handleRendererDomainMutation
 } from './cache/desktop-renderer-cache-coordinator'
+import { initDesktopVaultScope, setDesktopVaultScopeKey } from './cache/desktop-vault-scope'
 import type { DomainMutationEvent } from '@baishou/shared/cache'
 import { i18n, isRagMemoryEnabled } from '@baishou/shared'
 import { TitleBar } from './components/TitleBar'
@@ -160,10 +159,8 @@ const AppRoutes = () => {
           {/* 日记区侧边栏内嵌设置（非全屏 overlay） */}
           <Route path="/hub/*" element={<CachedRoutePlaceholder />} />
 
-          {/* AI / Agent Role Routing - Wrapped in AgentLayout */}
-          <Route element={<AgentLayout />}>
-            <Route path="/chat/:sessionId?" element={<AgentScreen />} />
-          </Route>
+          {/* AI / Agent Role Routing - 由 MainPageCache 保活 */}
+          <Route path="/chat/*" element={<CachedRoutePlaceholder />} />
           <Route path="/sessions" element={<SessionManagementScreen />} />
           <Route path="/assistants" element={<AssistantManagementScreen />} />
           <Route path="/assistants/:id" element={<AssistantEditScreen />} />
@@ -208,8 +205,12 @@ export function App() {
 
   useEffect(() => {
     initDesktopRendererCacheCoordinator()
+    void initDesktopVaultScope()
     const unsub = (window as any).api?.cache?.onDomainMutation?.((event: DomainMutationEvent) => {
       handleRendererDomainMutation(event)
+      if (event.domain === 'vault' && event.action === 'switch' && event.vaultKey) {
+        setDesktopVaultScopeKey(event.vaultKey)
+      }
     })
     return unsub
   }, [])

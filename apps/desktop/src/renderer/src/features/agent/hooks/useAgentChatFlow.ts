@@ -256,7 +256,7 @@ export function useAgentChatFlow() {
         throw new Error(saveResult.error)
       }
 
-      await chat.refreshMessages(1, targetSessionId)
+      await chat.refreshLatestMessages(1, targetSessionId)
 
       const savedAttachments = mapSavedAttachmentsForUi(saveResult.attachments)
       if (saveResult.userMessageId && savedAttachments?.length) {
