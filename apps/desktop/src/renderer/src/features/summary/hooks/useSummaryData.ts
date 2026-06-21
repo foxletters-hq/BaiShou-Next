@@ -173,12 +173,14 @@ export function useSummaryData(selectedYear: number) {
   useEffect(() => {
     if (!scopeReady) return
     hydrateDashboardFromCache()
-    void refreshDashboard()
+    void refreshDashboard({ force: true })
     void fetchMissingSummaries()
+    void fetchSummariesForGallery()
     fetchQueueState()
   }, [
     fetchMissingSummaries,
     fetchQueueState,
+    fetchSummariesForGallery,
     hydrateDashboardFromCache,
     refreshDashboard,
     scopeKey,

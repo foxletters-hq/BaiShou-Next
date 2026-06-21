@@ -23,7 +23,7 @@ import baishouHeroImg from '@baishou/shared/assets/images/Next-1.0.0-banner.jpg'
 import { APP_VERSION } from '../../../../../app-version'
 import { useDesktopStorageSettings } from '../hooks/useDesktopStorageSettings'
 import { useSettingsScopeNavigation } from '../hooks/useSettingsScopeNavigation'
-import { switchActiveVaultAndReload, persistActiveVaultName } from '../../../lib/vault-runtime.util'
+import { switchActiveVault, persistActiveVaultName } from '../../../lib/vault-runtime.util'
 import styles from './GeneralSettingsPane.module.css'
 
 export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
@@ -146,7 +146,8 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
                 activeVault={activeVault || vaults[0] || null}
                 onSwitch={async (id) => {
                   if (id === activeVault?.name) return
-                  await switchActiveVaultAndReload(id)
+                  await switchActiveVault(id)
+                  await loadVaults()
                 }}
                 onDelete={async (id) => {
                   await (window as any).api?.vault?.delete(id)

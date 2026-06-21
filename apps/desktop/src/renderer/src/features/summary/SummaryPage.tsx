@@ -22,6 +22,8 @@ export const SummaryPage: React.FC = () => {
   const location = useLocation()
   const toast = useToast()
   const [activeTab, setActiveTab] = useState<'panel' | 'gallery'>('panel')
+  /** 布局模式滞后于 activeTab，避免面板退出动画期间被画廊宽度撑开 */
+  const [layoutTab, setLayoutTab] = useState<'panel' | 'gallery'>('panel')
   const [lookbackMonths, setLookbackMonths] = useState(1)
   const [isBatchGenerating, setIsBatchGenerating] = useState(false)
   const [concurrencyLimit, setConcurrencyLimitState] = useState(3)
@@ -177,11 +179,11 @@ export const SummaryPage: React.FC = () => {
   }
 
   return (
-    <div className={`summary-page-container ${activeTab === 'gallery' ? 'gallery-mode' : ''}`}>
+    <div className={`summary-page-container ${layoutTab === 'gallery' ? 'gallery-mode' : ''}`}>
       <SummaryTabBar activeTab={activeTab} onTabChange={setActiveTab} />
 
       <div className="sp-content">
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="wait" onExitComplete={() => setLayoutTab(activeTab)}>
           {activeTab === 'panel' ? (
             <motion.div
               key="panel"
@@ -190,6 +192,7 @@ export const SummaryPage: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
+              style={{ position: 'relative' }}
             >
               <DashboardHeroBanner />
               <div className="sp-dashboard-layout">

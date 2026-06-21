@@ -1,13 +1,22 @@
-import React from 'react'
-import { Outlet, useLocation } from 'react-router-dom'
+import React, { useEffect, useRef, useSyncExternalStore } from 'react'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sidebar } from '../components/Sidebar'
 import styles from './MainLayout.module.css'
 import { MainPageCache, getMainPageCacheKey } from './MainPageCache'
 import { isSettingsHubPath } from '../features/settings/settings-route.util'
+import {
+  getDesktopVaultScopeRevision,
+  subscribeDesktopVaultScope
+} from '../cache/desktop-vault-scope'
 
 export const MainLayout: React.FC = () => {
   const location = useLocation()
+  const navigate = useNavigate()
+  const vaultScopeRevision = useSyncExternalStore(
+    subscribeDesktopVaultScope,
+    getDesktopVaultScopeRevision
+  )
   const cacheKey = getMainPageCacheKey(location.pathname)
   const showOutlet = cacheKey === null
   const hideCacheForSubRoute =
@@ -26,12 +35,28 @@ export const MainLayout: React.FC = () => {
     activeCacheKey = '/hub'
   }
 
+  const prevVaultScopeRevisionRef = useRef(vaultScopeRevision)
+
+  useEffect(() => {
+    if (prevVaultScopeRevisionRef.current === vaultScopeRevision) return
+    prevVaultScopeRevisionRef.current = vaultScopeRevision
+    if (vaultScopeRevision === 0) return
+
+    if (location.pathname.startsWith('/diary/') || location.pathname.startsWith('/summary/')) {
+      navigate(location.pathname.startsWith('/summary/') ? '/summary' : '/diary', { replace: true })
+    }
+  }, [vaultScopeRevision, location.pathname, navigate])
+
   return (
     <div className={styles.appContainer}>
       <div className={styles.mainContent}>
         <Sidebar />
         <div className={styles.pageContent}>
-          <MainPageCache activeKey={activeCacheKey} hideActiveWhenOverlay={hideCacheForSubRoute} />
+          <MainPageCache
+            activeKey={activeCacheKey}
+            vaultScopeRevision={vaultScopeRevision}
+            hideActiveWhenOverlay={hideCacheForSubRoute}
+          />
 
           <AnimatePresence mode="wait">
             {showOutlet && (
