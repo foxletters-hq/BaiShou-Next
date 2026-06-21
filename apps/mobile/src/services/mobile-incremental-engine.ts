@@ -1,4 +1,3 @@
-import * as Crypto from 'expo-crypto'
 import type { IFileSystem } from '@baishou/core-mobile'
 import type {
   SyncProgressEvent,
@@ -31,6 +30,7 @@ import {
 import type { IStoragePathService } from '@baishou/core-mobile'
 import { getAppCacheDirectory } from './mobile-app-paths'
 import { MobileIncrementalCloudClient } from './mobile-incremental-cloud.client'
+import { md5HexForSyncFile } from './mobile-sync-file-md5.util'
 
 export type MobileIncrementalProgress = Partial<
   Pick<SyncProgressEvent, 'phase' | 'fileName' | 'action' | 'statusText'>
@@ -41,8 +41,19 @@ export type MobileIncrementalProgress = Partial<
 
 type IncrementalProgressCallback = (progress: MobileIncrementalProgress) => void
 
-/** 本地 manifest 哈希并发度（移动端 I/O 密集，适度并行） */
-const MANIFEST_HASH_CONCURRENCY = 8
+/** 目录扫描并发度（同级多目录并行展开） */
+const SCAN_DIR_CONCURRENCY = 8
+/** 单目录内 stat 并发度 */
+const SCAN_STAT_CONCURRENCY = 32
+/** 本地 manifest 哈希并发度 */
+const MANIFEST_HASH_CONCURRENCY = 12
+
+type ScannedSyncFile = {
+  relPath: string
+  fullPath: string
+  size: number
+  mtimeMs: number
+}
 
 function mapDecisionProgress(
   completed: number,
@@ -93,27 +104,61 @@ function joinPath(...parts: string[]): string {
     .join('/')
 }
 
-function bytesToHex(bytes: Uint8Array): string {
-  return Array.from(bytes)
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
-}
+async function scanIncrementalSyncFiles(
+  fileSystem: IFileSystem,
+  syncRoot: string,
+  onProgress?: (discovered: number, fileName: string) => void
+): Promise<ScannedSyncFile[]> {
+  const files: ScannedSyncFile[] = []
+  const queue: Array<{ dir: string; rel: string }> = [{ dir: syncRoot, rel: '' }]
 
-function base64ToBytes(b64: string): Uint8Array {
-  const binary = atob(b64)
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i)
+  while (queue.length > 0) {
+    const batch = queue.splice(0, SCAN_DIR_CONCURRENCY)
+    await Promise.all(
+      batch.map(async ({ dir, rel }) => {
+        let names: string[]
+        try {
+          names = await fileSystem.readdir(dir)
+        } catch {
+          return
+        }
+
+        const entries = await limitExecute(names, SCAN_STAT_CONCURRENCY, async (name) => {
+          const full = joinPath(dir, name)
+          const relPath = rel ? joinPath(rel, name) : name
+          const info = await fileSystem.stat(full).catch(() => null)
+          return { name, full, relPath, info }
+        })
+
+        for (const entry of entries) {
+          if (!entry?.info) continue
+          if (entry.info.isDirectory) {
+            if (shouldScanIncrementalSyncDirectory(entry.name, entry.relPath)) {
+              queue.push({ dir: entry.full, rel: entry.relPath })
+            }
+            continue
+          }
+          if (!entry.info.isFile || !shouldIncludeIncrementalSyncFile(entry.name, entry.relPath)) {
+            continue
+          }
+          files.push({
+            relPath: entry.relPath,
+            fullPath: entry.full,
+            size: entry.info.size ?? 0,
+            mtimeMs: entry.info.mtimeMs ?? Date.now()
+          })
+          if (files.length % 10 === 0) {
+            onProgress?.(files.length, entry.relPath)
+          }
+        }
+      })
+    )
   }
-  return bytes
-}
 
-/** 与桌面一致：文件原始字节 MD5 → hex */
-async function md5File(fileSystem: IFileSystem, filePath: string): Promise<string> {
-  const b64 = await fileSystem.readFile(filePath, 'base64')
-  const bytes = base64ToBytes(b64)
-  const digest = await Crypto.digest(Crypto.CryptoDigestAlgorithm.MD5, Uint8Array.from(bytes))
-  return bytesToHex(new Uint8Array(digest))
+  if (files.length > 0) {
+    onProgress?.(files.length, files[files.length - 1]!.relPath)
+  }
+  return files
 }
 
 export class MobileIncrementalEngine {
@@ -149,30 +194,12 @@ export class MobileIncrementalEngine {
     onProgress?: (current: number, total: number, fileName: string) => void
   ): Promise<SyncManifest> {
     const syncRoot = await this.syncRoot()
-    const files: string[] = []
-
-    const scan = async (dir: string, rel: string) => {
-      const names = await this.fileSystem.readdir(dir)
-      for (const name of names) {
-        const full = joinPath(dir, name)
-        const relPath = rel ? joinPath(rel, name) : name
-        const info = await this.fileSystem.stat(full).catch(() => null)
-        if (!info) continue
-        if (info?.isDirectory) {
-          if (shouldScanIncrementalSyncDirectory(name, relPath)) {
-            await scan(full, relPath)
-          }
-        } else if (info?.isFile && shouldIncludeIncrementalSyncFile(name, relPath)) {
-          files.push(relPath)
-          if (files.length % 5 === 0) {
-            onProgress?.(0, files.length, relPath)
-          }
-        }
-      }
-    }
-
-    await scan(syncRoot, '')
     const cachedManifest = await this.readLocalManifestFile().catch(() => this.emptyManifest())
+
+    const files = await scanIncrementalSyncFiles(this.fileSystem, syncRoot, (discovered, fileName) => {
+      onProgress?.(0, discovered, fileName)
+    })
+
     const manifest: SyncManifest = {
       version: SYNC_MANIFEST_VERSION,
       updatedAt: Date.now(),
@@ -182,21 +209,17 @@ export class MobileIncrementalEngine {
 
     const total = Math.max(files.length, 1)
     let hashedCount = 0
-    await limitExecute(files, MANIFEST_HASH_CONCURRENCY, async (relPath) => {
-      const full = joinPath(syncRoot, relPath)
+    await limitExecute(files, MANIFEST_HASH_CONCURRENCY, async (scanned) => {
       try {
-        const info = await this.fileSystem.stat(full)
-        const cached = cachedManifest.files[relPath]
-        const mtimeMs = info.mtimeMs ?? Date.now()
-        const size = info.size ?? 0
-        if (cached?.hash && cached.size === size && cached.lastModified === mtimeMs) {
-          manifest.files[relPath] = cached
+        const cached = cachedManifest.files[scanned.relPath]
+        if (cached?.hash && cached.size === scanned.size && cached.lastModified === scanned.mtimeMs) {
+          manifest.files[scanned.relPath] = cached
         } else {
-          const hash = await md5File(this.fileSystem, full)
-          manifest.files[relPath] = {
+          const hash = await md5HexForSyncFile(this.fileSystem, scanned.fullPath)
+          manifest.files[scanned.relPath] = {
             hash,
-            size,
-            lastModified: mtimeMs
+            size: scanned.size,
+            lastModified: scanned.mtimeMs
           }
         }
       } catch {
@@ -204,11 +227,11 @@ export class MobileIncrementalEngine {
       }
       hashedCount++
       if (hashedCount % 4 === 0 || hashedCount === files.length) {
-        onProgress?.(hashedCount, total, relPath)
+        onProgress?.(hashedCount, total, scanned.relPath)
       }
     })
     if (files.length > 0) {
-      onProgress?.(files.length, total, files[files.length - 1]!)
+      onProgress?.(files.length, total, files[files.length - 1]!.relPath)
     }
     return manifest
   }

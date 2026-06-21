@@ -667,4 +667,37 @@ object ExternalStorageFiles {
             }
         }
     }
+
+  private fun md5HexFile(file: File): String {
+    val md = java.security.MessageDigest.getInstance("MD5")
+    val buffer = ByteArray(128 * 1024)
+    file.inputStream().buffered().use { input ->
+      var read: Int
+      while (input.read(buffer).also { read = it } != -1) {
+        md.update(buffer, 0, read)
+      }
+    }
+    return md.digest().joinToString("") { b -> "%02x".format(b) }
+  }
+
+  /** 任意本地文件 MD5（hex），流式读取避免整文件进 JS */
+  fun md5HexAny(context: Context, uri: String): String {
+    val file = resolveAnyFile(uri)
+    if (!file.exists() || !file.isFile) {
+      throw java.io.FileNotFoundException(uri)
+    }
+    return md5HexFile(file)
+  }
+
+  /** 外部存储文件 MD5（hex）；SAF 树路径暂不支持，由 JS 回退 */
+  fun md5HexExternal(context: Context, uri: String): String {
+    if (useTreeAccess(context, uri)) {
+      throw UnsupportedOperationException("MD5 via SAF tree is not supported")
+    }
+    val file = resolveFile(context, uri)
+    if (!file.exists() || !file.isFile) {
+      throw java.io.FileNotFoundException(uri)
+    }
+    return md5HexFile(file)
+  }
 }

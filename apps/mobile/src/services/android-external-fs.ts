@@ -15,8 +15,11 @@ import {
   externalAppendString,
   localAppendString,
   isExternalStorageNativeAvailable,
+  isLocalFsNativeAvailable,
   localGetInfo,
-  localReadDirectory
+  localReadDirectory,
+  localMd5Hex,
+  externalMd5Hex
 } from 'expo-baishou-server'
 
 export const EXTERNAL_STORAGE_REBUILD_HINT =
@@ -185,6 +188,24 @@ export function localGetInfoSafe(uriOrPath: string): ExternalPathInfo {
 export function localListDirSafe(uriOrPath: string): string[] {
   ensureNativeModule()
   return localReadDirectory(normalizeStoragePath(uriOrPath))
+}
+
+export function localMd5HexSafe(uriOrPath: string): string | null {
+  if (!isLocalFsNativeAvailable()) return null
+  try {
+    return localMd5Hex(normalizeStoragePath(uriOrPath))
+  } catch {
+    return null
+  }
+}
+
+export function externalMd5HexSafe(uriOrPath: string): string | null {
+  if (!isExternalStorageNativeAvailable()) return null
+  try {
+    return externalMd5Hex(toFileUri(uriOrPath))
+  } catch {
+    return null
+  }
 }
 
 export function externalMoveSafe(from: string, to: string): void {
