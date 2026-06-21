@@ -180,3 +180,15 @@ export * from './utils/attachment-reference.util'
 export * from './utils/version-control-path.util'
 
 export { threeWayMerge, type MergeDecision } from './sync/three-way-merge'
+export type {
+  IncrementalSyncPlanPreview,
+  IncrementalSyncPlanItem,
+  IncrementalSyncVaultSummary,
+  IncrementalSyncBoundaryIssues,
+  IncrementalSyncPlanAction
+} from './types/incremental-sync-plan.types'
+export {
+  buildIncrementalSyncPlanPreview,
+  buildIncrementalSyncBoundaryIssues,
+  resolveIncrementalSyncVaultScope
+} from './sync/incremental-sync-plan.util'
