@@ -115,7 +115,7 @@ export function buildIncrementalSyncPlanPreview(options: {
   divergencePercent?: number
   maxDivergencePercent?: number
   deletePropagationBlocked?: boolean
-  deletePropagationReason?: 'mass_delete' | 'local_data_loss'
+  deletePropagationReason?: 'mass_delete' | 'local_data_loss' | 'remote_data_loss'
   extraWarnings?: string[]
 }): IncrementalSyncPlanPreview {
   const skippedCount = options.decisions.filter((d) => d.type === 'skip').length
