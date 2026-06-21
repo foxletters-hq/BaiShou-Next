@@ -64,8 +64,9 @@ async function switchVaultFast(vaultName: string) {
   const { emitVaultSwitchMutation } = await import('../cache/desktop-main-cache-coordinator')
   emitVaultSwitchMutation(vaultName, 'vault-switch')
 
-  const { resetCachedManager } = await import('./summary.ipc')
-  resetCachedManager()
+  const { rebindSummaryCacheForActiveVault } = await import('./summary.ipc')
+  await rebindSummaryCacheForActiveVault()
+
   const { resetSharedShadowSync } = await import('../services/shadow-sync.registry')
   resetSharedShadowSync()
 
@@ -83,6 +84,9 @@ async function switchVaultFast(vaultName: string) {
 export async function initVaultSystem() {
   await vaultService.initRegistry()
   await connectGlobalShadowDb()
+
+  const { rebindSummaryCacheForActiveVault } = await import('./summary.ipc')
+  await rebindSummaryCacheForActiveVault()
 
   const { globalBootstrapper } = await import('../services/bootstrapper.service')
   await globalBootstrapper.activateVaultRuntime()

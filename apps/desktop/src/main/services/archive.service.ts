@@ -437,10 +437,10 @@ export class DesktopArchiveService implements IArchiveService {
     }
 
     try {
-      const { resetCachedManager } = await import('../ipc/summary.ipc')
-      resetCachedManager()
+      const { rebindSummaryCacheForActiveVault } = await import('../ipc/summary.ipc')
+      await rebindSummaryCacheForActiveVault()
     } catch (e: any) {
-      logger.error('Failed to reset summary cache after import:', e)
+      logger.error('Failed to rebind summary cache after import:', e)
     }
 
     const { globalBootstrapper } = await import('./bootstrapper.service')

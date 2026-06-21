@@ -74,6 +74,28 @@ export function resetCachedManager(): void {
   _queueInitialized = false
 }
 
+/**
+ * 工作区切换 / 冷启动后：失效 Manager 并将 SQLite 总结缓存与当前 Vault 的 Archives 对齐。
+ * summaries 表是全局热缓存，须按 activeVaultName 清理上一工作区的 ghost 记录。
+ */
+export async function rebindSummaryCacheForActiveVault(): Promise<void> {
+  resetCachedManager()
+
+  const activeVault = vaultService.getActiveVault()
+  if (!activeVault) return
+
+  const db = connectionManager.getDb()
+  const summaryRepo = new SummaryRepositoryImpl(db)
+  const fileSync = new SummaryFileService(pathService, fileSystem)
+  const summarySync = new SummarySyncService(null, null, summaryRepo, fileSync)
+
+  try {
+    await summarySync.fullScanArchives({ activeVaultName: activeVault.name })
+  } catch (err: unknown) {
+    logger.warn('[SummaryIPC] fullScanArchives after vault rebind failed:', err as Error)
+  }
+}
+
 let _queueInitialized = false
 
 function ensureQueueReady(): void {
