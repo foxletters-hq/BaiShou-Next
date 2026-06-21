@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
-import { filterActivityForYear, type DomainMutationEvent } from '@baishou/shared/cache'
+import { filterActivityForYear } from '@baishou/shared/cache'
 import { logger } from '@baishou/shared'
 import {
   commitSummaryDashboardCache,
@@ -9,8 +9,12 @@ import {
   subscribeSummaryDashboardCache,
   type SummaryDashboardSnapshot
 } from '../../../lib/summary-dashboard-cache'
+import {
+  getDesktopVaultScopeKey,
+  isDesktopVaultScopeReady,
+  subscribeDesktopVaultScope
+} from '../../../cache/desktop-vault-scope'
 import { fetchSummaryDashboardSnapshot } from '../services/summary-dashboard.service'
-import { handleRendererDomainMutation } from '../../../cache/desktop-renderer-cache-coordinator'
 
 interface Stats {
   totalDiaryCount: number
@@ -32,18 +36,14 @@ function snapshotToStats(snapshot: SummaryDashboardSnapshot): Stats {
   return snapshot.stats
 }
 
-async function resolveVaultScopeKey(): Promise<string> {
-  const api = (window as any).api
-  if (api?.vault?.getActive) {
-    const active = await api.vault.getActive()
-    if (active?.name) return String(active.name)
-  }
-  return 'Personal'
-}
-
 export function useSummaryData(selectedYear: number) {
   const { i18n } = useTranslation()
-  const [scopeKey, setScopeKey] = useState<string>('Personal')
+  const scopeKey = useSyncExternalStore(subscribeDesktopVaultScope, getDesktopVaultScopeKey)
+  const scopeReady = useSyncExternalStore(
+    subscribeDesktopVaultScope,
+    isDesktopVaultScopeReady
+  )
+
   const [summaries, setSummaries] = useState<any[]>([])
   const [stats, setStats] = useState<Stats>(EMPTY_STATS)
   const [activityByDate, setActivityByDate] = useState<Record<string, number>>({})
@@ -60,20 +60,17 @@ export function useSummaryData(selectedYear: number) {
     getSummaryDashboardCacheVersion
   )
   const cacheInvalidationHandledRef = useRef(false)
+  const prevScopeKeyRef = useRef(scopeKey)
 
   useEffect(() => {
-    void resolveVaultScopeKey().then(setScopeKey)
-  }, [])
-
-  useEffect(() => {
-    const unsub = (window as any).api?.cache?.onDomainMutation?.((event: DomainMutationEvent) => {
-      handleRendererDomainMutation(event)
-      if (event.domain === 'vault' && event.action === 'switch' && event.vaultKey) {
-        setScopeKey(event.vaultKey)
-      }
-    })
-    return unsub
-  }, [])
+    if (prevScopeKeyRef.current === scopeKey) return
+    prevScopeKeyRef.current = scopeKey
+    setSummaries([])
+    setStats(EMPTY_STATS)
+    setActivityByDate({})
+    setAvailableYears([new Date().getFullYear()])
+    setMissingSummaries([])
+  }, [scopeKey])
 
   const applyDashboardSnapshot = useCallback((snapshot: SummaryDashboardSnapshot) => {
     setStats(snapshotToStats(snapshot))
@@ -82,17 +79,18 @@ export function useSummaryData(selectedYear: number) {
   }, [])
 
   const hydrateDashboardFromCache = useCallback(() => {
+    if (!scopeReady) return true
     const peek = peekSummaryDashboardCache(scopeKey)
     if (peek) {
       applyDashboardSnapshot(peek.snapshot)
       return peek.stale
     }
     return true
-  }, [applyDashboardSnapshot, scopeKey])
+  }, [applyDashboardSnapshot, scopeKey, scopeReady])
 
   const refreshDashboard = useCallback(
     async (options?: { force?: boolean }) => {
-      if (typeof window === 'undefined' || !window.electron) return
+      if (!scopeReady || typeof window === 'undefined' || !window.electron) return
 
       const stale = hydrateDashboardFromCache()
       if (!options?.force && !stale) return
@@ -112,7 +110,7 @@ export function useSummaryData(selectedYear: number) {
         logger.warn('[SummaryData] refreshDashboard failed:', e)
       }
     },
-    [applyDashboardSnapshot, hydrateDashboardFromCache, scopeKey]
+    [applyDashboardSnapshot, hydrateDashboardFromCache, scopeKey, scopeReady]
   )
 
   const fetchSummariesForGallery = useCallback(async () => {
@@ -176,19 +174,28 @@ export function useSummaryData(selectedYear: number) {
   }, [fetchMissingSummaries, fetchSummariesForGallery, refreshDashboard])
 
   useEffect(() => {
+    if (!scopeReady) return
     hydrateDashboardFromCache()
     void refreshDashboard()
     void fetchMissingSummaries()
     fetchQueueState()
-  }, [fetchMissingSummaries, fetchQueueState, hydrateDashboardFromCache, refreshDashboard, scopeKey])
+  }, [
+    fetchMissingSummaries,
+    fetchQueueState,
+    hydrateDashboardFromCache,
+    refreshDashboard,
+    scopeKey,
+    scopeReady
+  ])
 
   useEffect(() => {
+    if (!scopeReady) return
     if (!cacheInvalidationHandledRef.current) {
       cacheInvalidationHandledRef.current = true
       return
     }
     void refreshDashboard()
-  }, [cacheVersion, refreshDashboard])
+  }, [cacheVersion, refreshDashboard, scopeReady])
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.electron) {
@@ -222,19 +229,6 @@ export function useSummaryData(selectedYear: number) {
     }
     return undefined
   }, [fetchData])
-
-  useEffect(() => {
-    const api = (window as any).api
-    if (!api?.diary?.onSyncEvent) return undefined
-
-    const unsubscribe = api.diary.onSyncEvent((event: { type?: string }) => {
-      if (event?.type !== 'vault-resync-complete' && event?.type !== 'indexing-complete') return
-      void refreshDashboard({ force: true })
-      void fetchSummariesForGallery()
-    })
-
-    return unsubscribe
-  }, [fetchSummariesForGallery, refreshDashboard])
 
   const activityData = useMemo(
     () => filterActivityForYear(activityByDate, selectedYear),

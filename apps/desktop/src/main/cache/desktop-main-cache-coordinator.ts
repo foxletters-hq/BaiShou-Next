@@ -30,8 +30,3 @@ export function emitSyncMutation(
 ): void {
   emitDomainMutation({ domain: 'sync', action, reason })
 }
-
-export function handleExternalDomainMutation(event: DomainMutationEvent): void {
-  applyCacheInvalidation(event, globalCacheRegistry)
-  broadcastCacheMutation(event)
-}

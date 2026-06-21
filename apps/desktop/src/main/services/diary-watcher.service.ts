@@ -123,6 +123,11 @@ export class DiaryWatcherService {
               JSON.stringify(results.map((r) => ({ isChanged: r.isChanged, hasMeta: !!r.meta })))
             )
 
+            if (results.some((r) => r.isChanged)) {
+              const { emitDiaryWatcherMutation } = await import('../cache/domain-mutation-bridge')
+              emitDiaryWatcherMutation('diary-watcher-batch')
+            }
+
             const wins = BrowserWindow.getAllWindows()
             wins.forEach((w) => {
               // 批量发送单独的变化事件给UI (为了兼容现有的 diary:sync-event 监听器)

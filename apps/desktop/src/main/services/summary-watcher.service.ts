@@ -122,6 +122,7 @@ export class SummaryWatcherService {
     this.isProcessing = true
 
     try {
+      let syncedAny = false
       while (this.pendingPaths.size > 0) {
         const pathsToProcess = Array.from(this.pendingPaths)
         this.pendingPaths.clear()
@@ -132,13 +133,19 @@ export class SummaryWatcherService {
 
           try {
             await this.summarySync.syncSummaryFile(parsed.type, parsed.startDate, parsed.endDate)
+            syncedAny = true
           } catch (e: any) {
             logger.error(`[SummaryWatcher] 同步失败: ${changedPath}`, e)
           }
         }
       }
 
-      // 通知 UI 刷新
+      if (syncedAny) {
+        const { emitSummaryWatcherMutation } = await import('../cache/domain-mutation-bridge')
+        emitSummaryWatcherMutation('summary-watcher-batch')
+      }
+
+      // 通知 UI 刷新（legacy 监听保留）
       const wins = BrowserWindow.getAllWindows()
       wins.forEach((w) => {
         w.webContents.send('summary:file-changed')

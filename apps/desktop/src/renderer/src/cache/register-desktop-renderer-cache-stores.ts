@@ -1,4 +1,4 @@
-import { globalCacheRegistry } from '@baishou/shared/cache'
+import { globalCacheRegistry, registerDiaryListCacheStore } from '@baishou/shared/cache'
 import { clearChatAttachmentImageCaches } from '@baishou/ui/chat-attachment-thumbnail'
 import { registerSummaryDashboardCacheStore } from '../lib/summary-dashboard-cache'
 
@@ -9,6 +9,7 @@ export function registerDesktopRendererCacheStores(): void {
   desktopRendererStoresRegistered = true
 
   registerSummaryDashboardCacheStore()
+  registerDiaryListCacheStore()
   globalCacheRegistry.register('chat.attachment', {
     invalidate: () => clearChatAttachmentImageCaches(),
     clear: () => clearChatAttachmentImageCaches()
