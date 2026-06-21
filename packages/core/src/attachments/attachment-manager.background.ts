@@ -1,8 +1,28 @@
 import fs from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { pathToFileURL, fileURLToPath } from 'node:url'
 import type { IStoragePathService } from '../vault/storage-path.types'
+
+function tryParseBackgroundRelativeFromUri(uri: string): string | null {
+  const match = uri.match(/backgrounds[/\\]([^/\\?#]+)/)
+  return match?.[1] ? `backgrounds/${match[1]}` : null
+}
+
+function toFilesystemPath(sourcePath: string): string {
+  if (sourcePath.startsWith('file:')) {
+    return fileURLToPath(sourcePath)
+  }
+  if (sourcePath.startsWith('local:')) {
+    try {
+      const fileUrlNode = sourcePath.replace(/^local:/i, 'file:')
+      return fileURLToPath(fileUrlNode)
+    } catch {
+      return decodeURIComponent(sourcePath.replace(/^local:\/*/i, ''))
+    }
+  }
+  return sourcePath
+}
 
 export class AttachmentBackgroundOps {
   constructor(private readonly pathProvider: IStoragePathService) {}
@@ -20,18 +40,25 @@ export class AttachmentBackgroundOps {
       return absoluteSourcePath
     }
 
-    if (absoluteSourcePath.startsWith('local://')) {
-      try {
-        const { fileURLToPath } = await import('node:url')
-        const fileUrlNode = absoluteSourcePath.replace(/^local:/i, 'file:')
-        absoluteSourcePath = fileURLToPath(fileUrlNode)
-      } catch {
-        absoluteSourcePath = decodeURIComponent(absoluteSourcePath.slice('local://'.length))
+    if (absoluteSourcePath.startsWith('local:')) {
+      const relative = tryParseBackgroundRelativeFromUri(absoluteSourcePath)
+      if (relative) {
+        return relative
       }
     }
 
+    absoluteSourcePath = toFilesystemPath(absoluteSourcePath)
+
     try {
       const backgroundsDir = await this.pathProvider.getChatBackgroundsDirectory()
+      const resolvedSource = path.resolve(absoluteSourcePath)
+      const resolvedBackgroundsDir = path.resolve(backgroundsDir)
+      if (
+        resolvedSource.startsWith(resolvedBackgroundsDir + path.sep) ||
+        resolvedSource === resolvedBackgroundsDir
+      ) {
+        return `backgrounds/${path.basename(resolvedSource)}`
+      }
 
       if (absoluteSourcePath.startsWith('data:image/')) {
         const matches = absoluteSourcePath.match(/^data:image\/([^;]+);base64,(.+)$/)
