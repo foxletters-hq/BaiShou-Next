@@ -1,7 +1,9 @@
 import * as path from 'path'
+import * as fs from 'fs'
 import * as Minio from 'minio'
 import { shouldUseS3PathStyle, listAllS3Objects } from '@baishou/shared'
 import type { ICloudSyncClient, SyncRecord } from '@baishou/core-desktop'
+import { downloadS3ObjectWithRetry } from './s3-stream-download.util'
 
 /**
  * 增量同步 S3 客户端
@@ -18,6 +20,9 @@ export class IncrementalS3Client implements ICloudSyncClient {
   private secretKey: string
   private vaultPath: string | null = null
   private chunkConcurrency: number
+  private downloadSlots: number
+  private activeDownloads = 0
+  private downloadWaiters: Array<() => void> = []
 
   constructor(
     endpoint: string,
@@ -48,6 +53,7 @@ export class IncrementalS3Client implements ICloudSyncClient {
     this.accessKey = accessKey
     this.secretKey = secretKey
     this.chunkConcurrency = chunkConcurrency || 5
+    this.downloadSlots = Math.min(3, this.chunkConcurrency)
 
     let p = basePath || ''
     if (p.startsWith('/')) p = p.substring(1)
@@ -59,6 +65,35 @@ export class IncrementalS3Client implements ICloudSyncClient {
     this.vaultPath = vaultPath
   }
 
+  private async acquireDownloadSlot(): Promise<void> {
+    if (this.activeDownloads < this.downloadSlots) {
+      this.activeDownloads++
+      return
+    }
+
+    await new Promise<void>((resolve) => {
+      this.downloadWaiters.push(() => {
+        this.activeDownloads++
+        resolve()
+      })
+    })
+  }
+
+  private releaseDownloadSlot(): void {
+    this.activeDownloads = Math.max(0, this.activeDownloads - 1)
+    const next = this.downloadWaiters.shift()
+    if (next) next()
+  }
+
+  private async withDownloadSlot<T>(fn: () => Promise<T>): Promise<T> {
+    await this.acquireDownloadSlot()
+    try {
+      return await fn()
+    } finally {
+      this.releaseDownloadSlot()
+    }
+  }
+
   async uploadFile(localFilePath: string): Promise<void> {
     // 从本地绝对路径计算出相对于 vault 根目录的路径，保留完整目录结构
     const relativePath = this.vaultPath
@@ -66,7 +101,6 @@ export class IncrementalS3Client implements ICloudSyncClient {
       : path.basename(localFilePath)
     const objectName = this.basePath + relativePath
 
-    const fs = require('fs')
     const stat = await fs.promises.stat(localFilePath)
     const fileSize = stat.size
     const partSize = 5 * 1024 * 1024 // 5MB
@@ -175,15 +209,10 @@ export class IncrementalS3Client implements ICloudSyncClient {
   }
 
   async downloadFile(remoteFilename: string, localDestPath: string): Promise<void> {
-    // remoteFilename 是相对于 basePath 的远端路径（不含 basePath 前缀）
     const objectName = this.basePath + remoteFilename
-    // 确保目标目录存在
-    const { mkdirSync, existsSync } = require('fs')
-    const dir = path.dirname(localDestPath)
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true })
-    }
-    await this.client.fGetObject(this.bucket, objectName, localDestPath)
+    await this.withDownloadSlot(async () => {
+      await downloadS3ObjectWithRetry(this.client, this.bucket, objectName, localDestPath)
+    })
   }
 
   async listFiles(): Promise<SyncRecord[]> {
