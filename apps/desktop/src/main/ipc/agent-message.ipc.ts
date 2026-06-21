@@ -1,14 +1,16 @@
 import { ipcMain } from 'electron'
-import { mapAttachmentsFromParts } from '@baishou/shared'
 import {
   ContextAtMessageService,
   ContextCompressorService,
-  parseCompactionMarkerData,
   reconcileCompressionStateAfterTruncate
 } from '@baishou/ai'
 import { getAgentManagers, buildStreamConfig } from './agent-helpers'
 import { AgentChatService } from './AgentChatService'
 import { settingsManager } from './settings.ipc'
+import {
+  groupPartsByMessageId,
+  mapAgentMessageForRenderer
+} from './map-agent-message-for-renderer'
 
 export function registerMessageIPC() {
   // ==========================================
@@ -16,53 +18,23 @@ export function registerMessageIPC() {
   // ==========================================
   ipcMain.handle(
     'agent:get-messages',
-    async (_, sessionId: string, limit: number = 20, offset: number = 0) => {
+    async (
+      _,
+      sessionId: string,
+      limit: number = 20,
+      offset: number = 0,
+      includeParts: boolean = false
+    ) => {
       const { realMessageRepo } = getAgentManagers()
       const rows = await realMessageRepo.findBySessionId(sessionId, limit, offset)
+      if (rows.length === 0) return []
 
-      const mapped: any[] = []
-      for (const msg of rows) {
-        const parts = await realMessageRepo.getPartsByMessageId(msg.id)
+      const parts = await realMessageRepo.getPartsByMessageIds(rows.map((row) => row.id))
+      const partsByMessageId = groupPartsByMessageId(parts)
 
-        // 分离 reasoning 和普通 text
-        const textParts = parts.filter((p) => p.type === 'text')
-        const reasoningParts = textParts.filter((p) => p.data?.isReasoning)
-        const normalTextParts = textParts.filter((p) => !p.data?.isReasoning)
-
-        const contentText = normalTextParts.map((p) => p.data?.text || p.data || '').join('\n')
-
-        const reasoningText = reasoningParts.map((p) => p.data?.text || '').join('\n')
-
-        const toolInvocations = parts
-          .filter((p: any) => p.type === 'tool')
-          .map((p: any) => ({
-            state:
-              p.data?.status === 'completed' || p.data?.status === 'failed' ? 'result' : 'call',
-            toolCallId: p.data?.callId || '',
-            toolName: p.data?.name || '',
-            args: p.data?.arguments || {},
-            result: p.data?.result
-          }))
-
-        const attachments = mapAttachmentsFromParts(parts)
-
-        const compactionPart = parts.find((p: any) => p.type === 'compaction')
-        const compactionRecord = compactionPart
-          ? parseCompactionMarkerData(compactionPart.data)
-          : null
-
-        mapped.push({
-          ...msg,
-          content: contentText,
-          reasoning: reasoningText || undefined,
-          toolInvocations: toolInvocations.length > 0 ? toolInvocations : undefined,
-          attachments,
-          hasCompactionMarker: compactionRecord != null,
-          compactionRecord,
-          parts
-        } as any)
-      }
-      return mapped
+      return rows.map((msg) =>
+        mapAgentMessageForRenderer(msg, partsByMessageId.get(msg.id) ?? [], includeParts)
+      )
     }
   )
 

@@ -4,6 +4,9 @@ export const CHAT_ROUNDS_PER_PAGE = 3
 /** 单次从数据库拉取的消息上限（需足够覆盖若干轮，含工具调用） */
 export const CHAT_MESSAGE_FETCH_LIMIT = 60
 
+/** 流结束 / 增量同步时仅拉取尾部消息条数（覆盖一轮含工具调用的常见上限） */
+export const CHAT_TAIL_FETCH_LIMIT = 8
+
 export type ChatLikeMessage = {
   id: string
   role: string

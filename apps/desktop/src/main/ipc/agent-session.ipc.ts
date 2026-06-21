@@ -3,32 +3,9 @@ import * as crypto from 'crypto'
 import { getAgentManagers } from './agent-helpers'
 import { pathService } from './vault.ipc'
 import { settingsManager } from './settings.ipc'
-import { GlobalModelsConfig, logger, sessionBelongsToActiveVault } from '@baishou/shared'
+import { GlobalModelsConfig, logger } from '@baishou/shared'
 import { copyBranchCompressionSnapshots } from '@baishou/ai'
 import { vaultService } from './vault.ipc'
-
-async function resolveActiveVaultContext(): Promise<{
-  name: string | null
-  path: string | null
-}> {
-  try {
-    const active = vaultService.getActiveVault()
-    return { name: active?.name ?? null, path: active?.path ?? null }
-  } catch {
-    return { name: null, path: null }
-  }
-}
-
-function filterSessionsForActiveVault<T extends { vaultName?: string | null }>(
-  rows: T[],
-  activeVaultName: string | null,
-  activeVaultPath: string | null
-): T[] {
-  if (!activeVaultName && !activeVaultPath) return rows
-  return rows.filter((row) =>
-    sessionBelongsToActiveVault(row.vaultName, activeVaultName || 'Personal', activeVaultPath)
-  )
-}
 
 export function registerSessionIPC() {
   // ==========================================
@@ -48,10 +25,8 @@ export function registerSessionIPC() {
         `[IPC] agent:get-sessions - astId=${assistantId}, limit=${limit}, offset=${offset}, query=${searchQuery}`
       )
       const results = await sessionManager.findAllSessions(limit, offset, assistantId, searchQuery)
-      const { name: activeVaultName, path: activeVaultPath } = await resolveActiveVaultContext()
-      const filtered = filterSessionsForActiveVault(results, activeVaultName, activeVaultPath)
-      logger.info(`[IPC] agent:get-sessions - found ${filtered.length} sessions`)
-      return filtered
+      logger.info(`[IPC] agent:get-sessions - found ${results.length} sessions`)
+      return results
     }
   )
 
