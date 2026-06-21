@@ -170,3 +170,25 @@ export function formatMessageTimestamp(
   }
   return formatStoredTimestamp(value)
 }
+
+/** 回忆列表 / 消息搜索：时刻戳 → 本地 YYYY-MM-DD HH:mm */
+export function formatRecallTimestamp(value: unknown): string {
+  if (value == null || value === '') return ''
+  const raw =
+    typeof value === 'number'
+      ? value
+      : value instanceof Date
+        ? value.getTime()
+        : new Date(value as string).getTime()
+  if (!Number.isFinite(raw)) return ''
+  const ms = timestampToMillis(raw) ?? raw
+  return formatLocalDateTime(ms) ?? ''
+}
+
+/** 回忆列表：日记归档日 → 本地 YYYY-MM-DD */
+export function formatRecallDiaryDate(value: unknown): string {
+  if (value == null || value === '') return ''
+  const date = value instanceof Date ? value : new Date(value as string)
+  if (Number.isNaN(date.getTime())) return ''
+  return formatLocalDate(date)
+}

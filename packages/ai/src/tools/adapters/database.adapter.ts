@@ -4,7 +4,7 @@ import {
   MessageRepository,
   type AppDatabase
 } from '@baishou/database'
-import { formatLocalDate, formatLocalDateFromInstant } from '@baishou/shared'
+import { formatLocalDate, formatRecallTimestamp } from '@baishou/shared'
 
 export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
   constructor(
@@ -58,7 +58,7 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
       role: r.role,
       snippet: r.content,
       sessionTitle: r.sessionTitle || '未命名对话',
-      date: formatLocalDateFromInstant(r.createdAt) ?? ''
+      date: formatRecallTimestamp(r.createdAt)
     }))
   }
 
