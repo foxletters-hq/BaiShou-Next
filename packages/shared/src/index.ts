@@ -192,3 +192,5 @@ export {
   buildIncrementalSyncBoundaryIssues,
   resolveIncrementalSyncVaultScope
 } from './sync/incremental-sync-plan.util'
+
+export * from './cache'
