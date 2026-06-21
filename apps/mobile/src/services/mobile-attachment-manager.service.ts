@@ -10,7 +10,7 @@ import type {
 } from '@baishou/core-mobile'
 import { isUserAvatarRelativePath, normalizePersistedAvatarPath } from '@baishou/shared'
 import { joinPath, basename } from '@baishou/core-mobile'
-import { compressImageForAvatarImport } from '../utils/mobile-attachment-image-resolver'
+import { compressImageForAvatarImport, compressImageForBackgroundImport } from '../utils/mobile-attachment-image-resolver'
 import { importUriToPath, inferImageExtension } from './mobile-uri-import'
 import { toFileUri } from './android-external-fs'
 
@@ -290,7 +290,7 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
     }
 
     const backgroundsDir = await this.pathService.getChatBackgroundsDirectory()
-    const compressedSource = await compressImageForAvatarImport(absoluteSourcePath)
+    const compressedSource = await compressImageForBackgroundImport(absoluteSourcePath)
     const ext = inferImageExtension(compressedSource)
     const name = `bg_${Date.now()}.${ext}`
     const dest = joinPath(backgroundsDir, name)
@@ -331,7 +331,7 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
     return manager.importAvatar(result.assets[0].uri, 'user_avatar')
   }
 
-  /** 从相册选取聊天背景并导入 */
+  /** 从相册选取聊天背景并导入（系统 3:4 裁剪框，用户可自行调整） */
   static async pickAndImportBackground(
     manager: MobileAttachmentManagerService
   ): Promise<string | null> {
@@ -339,6 +339,8 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
     if (!perm.granted) return null
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [3, 4],
       quality: 0.9
     })
     if (result.canceled || !result.assets[0]?.uri) return null

@@ -17,6 +17,9 @@ import { useNativeTheme } from '../theme'
 import { SettingsExpansionTile } from '../settings/SettingsExpansionTile'
 import { SettingsSliderRow } from '../settings/SettingsSliderRow'
 
+/** 设置页预览区固定 3:4，与默认裁剪比例一致 */
+const PREVIEW_ASPECT_RATIO = 3 / 4
+
 export interface ChatBackgroundSettingsProps {
   backgroundPath?: string | null
   resolvedBackgroundUri?: string | null
@@ -76,7 +79,17 @@ export const ChatBackgroundSettingsCard: React.FC<ChatBackgroundSettingsProps> =
       title={t('settings.chat_background', '聊天背景')}
       subtitle={subtitle}
     >
-      <TouchableOpacity activeOpacity={0.7} onPress={onPickBackground} style={styles.previewArea}>
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={onPickBackground}
+        style={[
+          styles.previewArea,
+          {
+            aspectRatio: PREVIEW_ASPECT_RATIO,
+            borderColor: colors.borderMuted
+          }
+        ]}
+      >
         {resolvedBackgroundUri ? (
           <View style={styles.previewImageWrap}>
             <Image
@@ -159,13 +172,10 @@ export const ChatBackgroundSettingsCard: React.FC<ChatBackgroundSettingsProps> =
 const styles = StyleSheet.create({
   previewArea: {
     width: '100%',
-    maxWidth: 480,
-    maxHeight: 270,
-    aspectRatio: 16 / 9,
-    alignSelf: 'center',
     borderRadius: 8,
     overflow: 'hidden',
-    position: 'relative'
+    position: 'relative',
+    borderWidth: 1
   },
   previewImageWrap: {
     width: '100%',

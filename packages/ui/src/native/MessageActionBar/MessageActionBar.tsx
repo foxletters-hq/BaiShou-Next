@@ -5,8 +5,7 @@ import { NativeIconButton } from '../icons/NativeIconButton'
 import { useNativeTheme } from '../theme'
 import {
   chatOverBackgroundMetaIconColor,
-  chatOverBackgroundMetaIconStyle,
-  chatOverBackgroundMetaTextStyle
+  chatOverBackgroundMetaIconStyle
 } from '../../shared/chat-over-background-meta.style'
 
 export interface MessageActionBarProps {
@@ -104,21 +103,11 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
       {onShowContext && (
         <TouchableOpacity
           onPress={onShowContext}
-          style={[
-            styles.contextBtn,
-            invertOverBackground ? chatOverBackgroundMetaIconStyle : null
-          ]}
+          style={styles.contextBtn}
           accessibilityRole="button"
           accessibilityLabel={t('chat.viewContextTree', '查看发送给 AI 的上下文')}
         >
-          <Text
-            style={[
-              styles.contextIcon,
-              invertOverBackground ? chatOverBackgroundMetaTextStyle : null
-            ]}
-          >
-            🌿
-          </Text>
+          <Text style={styles.contextIcon}>🌿</Text>
         </TouchableOpacity>
       )}
 
