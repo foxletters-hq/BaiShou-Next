@@ -26,6 +26,7 @@ import { useTranslation } from 'react-i18next'
 import { useSettingsStore, useSyncStore } from '@baishou/store'
 import { i18n, isRagMemoryEnabled } from '@baishou/shared'
 import { TitleBar } from './components/TitleBar'
+import { IncrementalSyncConfirmHost } from './components/IncrementalSyncConfirmDialog/IncrementalSyncConfirmHost'
 import { useZoom } from './hooks/useZoom'
 import { useLegacyUpgradeRagToast } from './hooks/useLegacyUpgradeRagToast'
 import shellStyles from './AppShell.module.css'
@@ -187,6 +188,7 @@ const AppShell: React.FC = () => {
   return (
     <div className={shellStyles.shell}>
       <TitleBar />
+      <IncrementalSyncConfirmHost />
       <div className={shellStyles.content}>
         <AppRoutes />
       </div>
