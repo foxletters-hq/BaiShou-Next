@@ -5,13 +5,17 @@ import type {
   IncrementalSyncPlanPreview,
   IncrementalSyncVaultSummary
 } from '@baishou/shared'
+import {
+  SYNC_CONFIRM_DELAY_MS,
+  computeSyncConfirmSecondsLeft,
+  isSyncConfirmReady
+} from '@baishou/shared'
 import styles from './IncrementalSyncConfirmDialog.module.css'
-
-const CONFIRM_DELAY_MS = 2000
 
 interface IncrementalSyncConfirmDialogProps {
   open: boolean
   preview: IncrementalSyncPlanPreview | null
+  isConfirming?: boolean
   onConfirm: () => void
   onCancel: () => void
 }
@@ -65,6 +69,7 @@ function formatVaultLabel(vaultName: string, t: (key: string, fallback?: string)
 export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialogProps> = ({
   open,
   preview,
+  isConfirming = false,
   onConfirm,
   onCancel
 }) => {
@@ -153,9 +158,8 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
     const startedAt = Date.now()
     const interval = window.setInterval(() => {
       const elapsed = Date.now() - startedAt
-      const remaining = Math.max(0, Math.ceil((CONFIRM_DELAY_MS - elapsed) / 1000))
-      setSecondsLeft(remaining)
-      if (elapsed >= CONFIRM_DELAY_MS) {
+      setSecondsLeft(computeSyncConfirmSecondsLeft(elapsed, SYNC_CONFIRM_DELAY_MS))
+      if (isSyncConfirmReady(elapsed, SYNC_CONFIRM_DELAY_MS)) {
         setConfirmReady(true)
         window.clearInterval(interval)
       }
@@ -164,14 +168,14 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
     const timer = window.setTimeout(() => {
       setConfirmReady(true)
       setSecondsLeft(0)
-    }, CONFIRM_DELAY_MS)
+    }, SYNC_CONFIRM_DELAY_MS)
 
     return () => {
       window.removeEventListener('keydown', onKeyDown)
       window.clearInterval(interval)
       window.clearTimeout(timer)
     }
-  }, [open, canExecuteSync, preview?.changeCount, onCancel])
+  }, [open, canExecuteSync, preview?.changeCount, preview?.deletePropagationBlocked, onCancel])
 
   if (!open || !preview) return null
 
@@ -285,10 +289,12 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
             className={`${styles.btn} ${styles.btnConfirm} ${
               preview.deletePropagationBlocked ? styles.btnConfirmDanger : ''
             }`}
-            disabled={!confirmReady || preview.deletePropagationBlocked}
+            disabled={!confirmReady || preview.deletePropagationBlocked || isConfirming}
             onClick={onConfirm}
           >
-            {canExecuteSync
+            {isConfirming
+              ? t('data_sync.plan_confirming', '正在确认…')
+              : canExecuteSync
               ? t('data_sync.plan_confirm_sync', '确认同步')
               : t('common.close', '关闭')}
           </button>

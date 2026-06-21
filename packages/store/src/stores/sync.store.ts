@@ -10,6 +10,7 @@ export interface SyncState {
   progress: SyncProgressEvent | null
   planPreview: IncrementalSyncPlanPreview | null
   planDialogOpen: boolean
+  planConfirmEligibleAt: number | null
 
   setStatus: (status: SyncStatus) => void
   setMessage: (message: string) => void
@@ -17,6 +18,7 @@ export interface SyncState {
   setProgress: (progress: SyncProgressEvent | null) => void
   setPlanPreview: (preview: IncrementalSyncPlanPreview | null) => void
   setPlanDialogOpen: (open: boolean) => void
+  setPlanConfirmEligibleAt: (eligibleAt: number | null) => void
   clearPlanPreview: () => void
   reset: () => void
 }
@@ -28,6 +30,7 @@ export const useSyncStore = create<SyncState>((set) => ({
   progress: null,
   planPreview: null,
   planDialogOpen: false,
+  planConfirmEligibleAt: null,
 
   setStatus: (status) => set({ status }),
   setMessage: (message) => set({ message }),
@@ -35,7 +38,9 @@ export const useSyncStore = create<SyncState>((set) => ({
   setProgress: (progress) => set({ progress }),
   setPlanPreview: (planPreview) => set({ planPreview }),
   setPlanDialogOpen: (planDialogOpen) => set({ planDialogOpen }),
-  clearPlanPreview: () => set({ planPreview: null, planDialogOpen: false }),
+  setPlanConfirmEligibleAt: (planConfirmEligibleAt) => set({ planConfirmEligibleAt }),
+  clearPlanPreview: () =>
+    set({ planPreview: null, planDialogOpen: false, planConfirmEligibleAt: null }),
   reset: () =>
     set({
       status: 'idle',
@@ -43,6 +48,7 @@ export const useSyncStore = create<SyncState>((set) => ({
       syncResult: null,
       progress: null,
       planPreview: null,
-      planDialogOpen: false
+      planDialogOpen: false,
+      planConfirmEligibleAt: null
     })
 }))
