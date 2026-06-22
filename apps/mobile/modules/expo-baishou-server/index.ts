@@ -76,6 +76,7 @@ declare class ExpoBaishouServerModule extends NativeModule<ServerEvents> {
   externalScanIncrementalSyncFiles(path: string): ExternalIncrementalSyncScanEntry[]
   localGetInfo(path: string): ExternalPathInfo
   localReadDirectory(path: string): string[]
+  localScanIncrementalSyncFiles(path: string): ExternalIncrementalSyncScanEntry[]
   localMd5Hex(path: string): string
   externalMd5Hex(path: string): string
   readFileChunkBase64(path: string, position: number, length: number): string
@@ -478,6 +479,16 @@ export function localGetInfo(path: string): ExternalPathInfo {
 
 export function localReadDirectory(path: string): string[] {
   return callNativeExternal('localReadDirectory', (mod) => mod.localReadDirectory(path))
+}
+
+export function localScanIncrementalSyncFiles(
+  path: string
+): ExternalIncrementalSyncScanEntry[] {
+  const mod = requireNative()
+  if (typeof mod.localScanIncrementalSyncFiles !== 'function') {
+    throw new Error(`${NATIVE_REBUILD_HINT}（缺少 localScanIncrementalSyncFiles）`)
+  }
+  return mod.localScanIncrementalSyncFiles(path) as ExternalIncrementalSyncScanEntry[]
 }
 
 export function localMd5Hex(path: string): string {
