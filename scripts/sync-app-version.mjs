@@ -79,11 +79,25 @@ function syncMobile() {
 
   const appJsonPath = join(appDir, 'app.json')
   const appJson = JSON.parse(readFileSync(appJsonPath, 'utf8'))
+  const manifestPath = join(appDir, 'src/version.json')
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+  const versionCode = manifest.versionCode
+  if (typeof versionCode !== 'number' || !Number.isInteger(versionCode) || versionCode < 1) {
+    throw new Error(`${manifestPath} 缺少有效整数 versionCode（Android 覆盖安装依据，须单调递增）`)
+  }
+
+  let appJsonChanged = false
   if (appJson.expo?.version !== version) {
     appJson.expo.version = version
-    if (writeJsonIfChanged(appJsonPath, appJson)) {
-      console.log(`[sync-app-version] mobile app.json -> ${version}`)
-    }
+    appJsonChanged = true
+  }
+  if (appJson.expo?.android?.versionCode !== versionCode) {
+    appJson.expo.android ??= {}
+    appJson.expo.android.versionCode = versionCode
+    appJsonChanged = true
+  }
+  if (appJsonChanged && writeJsonIfChanged(appJsonPath, appJson)) {
+    console.log(`[sync-app-version] mobile app.json -> ${version} (versionCode ${versionCode})`)
     changed = true
   }
 
