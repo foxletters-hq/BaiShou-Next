@@ -10,6 +10,10 @@ export function setMobileDiaryEmbeddingDeps(deps: MobileRagServiceDeps | null): 
   embeddingDeps = deps
 }
 
+export function getMobileDiaryEmbeddingDeps(): MobileRagServiceDeps | null {
+  return embeddingDeps
+}
+
 export function subscribeDiaryEmbedFailure(listener: () => void): () => void {
   failureListeners.add(listener)
   return () => {

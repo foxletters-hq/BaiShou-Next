@@ -1,28 +1,17 @@
-import { ipcMain, type IpcMainInvokeEvent, BrowserWindow } from 'electron'
+import { ipcMain, type IpcMainInvokeEvent } from 'electron'
 import { memoryEmbeddingsTable } from '@baishou/database-desktop'
 import type { EmbeddingMigrationRollbackConfig } from '@baishou/shared'
 import { getAppDb } from '../db'
-import { eq, sql } from 'drizzle-orm'
-import { getDiaryManager } from './diary.ipc'
-import {
-  getEmbeddingService,
-  getEmbeddingConfig,
-  filterUnindexedDiaries,
-  sortDiariesByDateAsc
-} from './rag.ipc'
+import { sql } from 'drizzle-orm'
+import { getEmbeddingService, getEmbeddingConfig } from './rag.ipc'
 import { DesktopEmbeddingStorage } from './rag.storage'
 import { settingsManager } from './settings.ipc'
 import { getEmbeddingMigrationStateService } from '../services/embedding-migration-state.service'
+import { runControlledDiaryBatchEmbed } from '../services/controlled-diary-batch-embed.service'
 import {
   buildMigrationStreamResult,
-  diaryDateToSourceCreatedSeconds,
-  limitExecute,
   logger,
-  resolveBatchEmbedConcurrency,
-  clearRagDiaryEmbedFailure,
-  hasRagDiaryEmbedFailure,
   toSerializableAiError,
-  type RagConfig,
   type RagMigrationStatusKey,
   type RagMigrationStreamResult
 } from '@baishou/shared'
@@ -161,103 +150,24 @@ export function registerRagBuildIPC() {
   ipcMain.handle('rag:trigger-batch-embed', async (event) => {
     await config.load()
     try {
-      const db = getAppDb()
-      const diaries = await getDiaryManager().listAll({ limit: 10000 })
-
-      const existingRows = await db
-        .select({
-          sourceId: memoryEmbeddingsTable.sourceId,
-          metadataJson: memoryEmbeddingsTable.metadataJson
-        })
-        .from(memoryEmbeddingsTable)
-        .where(eq(memoryEmbeddingsTable.sourceType, 'diary'))
-
-      const embeddedIds = new Set(existingRows.map((row) => row.sourceId))
-      const embeddedUpdatedAtMap = new Map<string, number>()
-
-      for (const row of existingRows) {
-        if (!row.metadataJson) continue
-        try {
-          const meta = JSON.parse(row.metadataJson)
-          if (meta && typeof meta.updated_at === 'number') {
-            const currentMax = embeddedUpdatedAtMap.get(row.sourceId) ?? 0
-            if (meta.updated_at > currentMax) {
-              embeddedUpdatedAtMap.set(row.sourceId, meta.updated_at)
-            }
-          }
-        } catch {}
-      }
-
-      const diariesToEmbed = sortDiariesByDateAsc(
-        filterUnindexedDiaries(diaries, embeddedIds, embeddedUpdatedAtMap)
-      )
-      const total = diariesToEmbed.length
-      const batchRagConfig =
-        (await settingsManager.get<{ batchEmbedConcurrency?: number }>('rag_config')) || {}
-      const batchConcurrency = resolveBatchEmbedConcurrency(batchRagConfig.batchEmbedConcurrency)
-
-      if (total > 0) {
-        await embeddingService.prepareEmbeddingIndex()
-      }
-
-      let completed = 0
-      const reportProgress = (statusText: string) => {
-        event.sender.send('agent:rag-progress', {
-          isRunning: true,
-          type: 'batchEmbed',
-          progress: completed,
-          total,
-          statusText
-        })
-      }
-
-      await limitExecute(diariesToEmbed, batchConcurrency, async (meta) => {
-        const dateLabel = new Date(meta.date).toLocaleDateString()
-        reportProgress(`处理日记: ${dateLabel}`)
-
-        const diary = await getDiaryManager().findById(meta.id)
-        if (!diary?.id || !diary.content?.trim()) {
-          completed++
-          reportProgress(`处理日记: ${dateLabel}`)
-          return
+      await runControlledDiaryBatchEmbed({
+        groupId: 'diary_batch',
+        onProgress: ({ completed, total, statusText }) => {
+          event.sender.send('agent:rag-progress', {
+            isRunning: true,
+            type: 'batchEmbed',
+            progress: completed,
+            total,
+            statusText
+          })
         }
-
-        const d = diary.date
-        const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-        const tagPrefix = meta.tags.length > 0 ? `[标签: ${meta.tags.join(', ')}] ` : ''
-        const sourceCreatedAt = diaryDateToSourceCreatedSeconds(d) * 1000
-
-        await embeddingService.reEmbedText({
-          text: diary.content,
-          sourceType: 'diary',
-          sourceId: diary.id.toString(),
-          groupId: 'diary_batch',
-          chunkPrefix: `${tagPrefix}[${label} 日记:]\n`,
-          metadataJson: JSON.stringify({ updated_at: diary.updatedAt?.getTime() ?? Date.now() }),
-          sourceCreatedAt,
-          skipIndexPrep: true
-        })
-
-        completed++
-        reportProgress(`处理日记: ${dateLabel}`)
       })
-
       event.sender.send('agent:rag-progress', {
         isRunning: false,
-        progress: total,
-        total,
+        progress: 0,
+        total: 0,
         type: 'idle'
       })
-
-      const latestRagConfig =
-        (await settingsManager.get<RagConfig>('rag_config')) || ({} as RagConfig)
-      if (hasRagDiaryEmbedFailure(latestRagConfig)) {
-        await settingsManager.set('rag_config', clearRagDiaryEmbedFailure(latestRagConfig))
-        for (const win of BrowserWindow.getAllWindows()) {
-          win.webContents.send('diary:sync-event', { type: 'embed-failure-cleared' })
-        }
-      }
-
       return true
     } catch (e: unknown) {
       console.error('Batch Embed failed:', e)

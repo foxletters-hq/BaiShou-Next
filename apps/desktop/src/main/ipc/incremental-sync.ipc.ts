@@ -5,6 +5,8 @@ import {
   ThreeWaySyncService,
   SyncOrchestrator,
   OperationLogService,
+  listDiskVaultFolderNames,
+  createNodeFileSystem,
   type IIncrementalSyncService
 } from '@baishou/core-desktop'
 import {
@@ -19,7 +21,6 @@ import {
   type SyncProgressEvent,
   type S3SyncConfig
 } from '@baishou/shared'
-import { listDiskVaultFolderNames, createNodeFileSystem } from '@baishou/core'
 import { IncrementalS3Client } from '../services/incremental-s3.client'
 import { IncrementalWebDavClient } from '../services/incremental-webdav.client'
 import { pathService, vaultService, notifyVaultRegistryUpdated } from './vault.ipc'
@@ -170,6 +171,11 @@ async function afterIncrementalSync(
 
   const { globalBootstrapper } = await import('../services/bootstrapper.service')
   await globalBootstrapper.fullyResyncAllEcosystems()
+
+  const { schedulePostSyncDiaryBatchEmbed } = await import(
+    '../services/controlled-diary-batch-embed.service'
+  )
+  schedulePostSyncDiaryBatchEmbed()
 }
 
 async function resolveSyncPlanContext() {
