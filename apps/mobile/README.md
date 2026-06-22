@@ -1,5 +1,7 @@
 # 白守移动端 (Expo)
 
+官方仅维护并发布 **Android** 客户端。受限于团队精力与开发、测试环境，**暂无 iOS / macOS 版本计划**。
+
 需使用 **开发版安装包**（含 `expo-baishou-server` 等原生模块），**不能用 Expo Go**。
 
 在仓库根目录执行 **`pnpm commands`** 或 **`pnpm commands:mobile`** 可查看命令说明。
