@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import {
   formatLocalDate,
   normalizeWeatherId,
+  normalizeDiaryTags,
   safeParseDate,
   logger,
   resolveDiaryAppendBlock,
@@ -19,6 +20,10 @@ type DiaryEditorInitialState = {
   weather: string
   isFavorite: boolean
   mediaPaths: string[]
+}
+
+function normalizeDiaryContentForCompare(text: string): string {
+  return text.replace(/\r\n/g, '\n')
 }
 
 export function useDiaryEditorPage() {
@@ -54,6 +59,25 @@ export function useDiaryEditorPage() {
 
   const [isLoading, setIsLoading] = useState(true)
   const initialStateRef = useRef<DiaryEditorInitialState | null>(null)
+  const stateSnapshotRef = useRef<DiaryEditorInitialState>({
+    content: '',
+    tags: [],
+    selectedDate: parseInitialDate(),
+    weather: '',
+    isFavorite: false,
+    mediaPaths: []
+  })
+
+  useEffect(() => {
+    stateSnapshotRef.current = {
+      content,
+      tags,
+      selectedDate,
+      weather,
+      isFavorite,
+      mediaPaths
+    }
+  }, [content, tags, selectedDate, weather, isFavorite, mediaPaths])
 
   const loadTemplateConfig = useCallback(async (): Promise<DiaryTemplateConfig> => {
     try {
@@ -103,10 +127,7 @@ export function useDiaryEditorPage() {
 
           if (diary) {
             setDiaryId(diary.id || null)
-            const parsedTags =
-              typeof diary.tags === 'string'
-                ? diary.tags.split(',').filter(Boolean)
-                : diary.tags || []
+            const parsedTags = normalizeDiaryTags(diary.tags)
             const parsedWeather = normalizeWeatherId(diary.weather || '') || ''
             setTags(parsedTags)
             setWeather(parsedWeather)
@@ -165,6 +186,37 @@ export function useDiaryEditorPage() {
     }
   }, [dateStr, isAppendMode, parseInitialDate, loadTemplateConfig])
 
+  // 编辑器挂载并完成首轮同步后，以实际展示状态作为「未修改」基线
+  useEffect(() => {
+    if (isLoading) return
+
+    let cancelled = false
+    let rafId = 0
+
+    const commitBaseline = () => {
+      if (cancelled) return
+      const snap = stateSnapshotRef.current
+      initialStateRef.current = {
+        content: snap.content,
+        tags: [...snap.tags],
+        selectedDate: snap.selectedDate,
+        weather: snap.weather,
+        isFavorite: snap.isFavorite,
+        mediaPaths: [...snap.mediaPaths]
+      }
+      setIsDirty(false)
+    }
+
+    rafId = requestAnimationFrame(() => {
+      rafId = requestAnimationFrame(commitBaseline)
+    })
+
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(rafId)
+    }
+  }, [isLoading, dateStr, isAppendMode])
+
   const autoSave = useCallback(
     async (newContent: string) => {
       if (!newContent.trim() && !diaryId) return
@@ -210,14 +262,25 @@ export function useDiaryEditorPage() {
 
   const handleContentChange = (newContent: string) => {
     setContent(newContent)
-    setIsDirty(true)
+    const baseline = initialStateRef.current
+    if (
+      baseline &&
+      normalizeDiaryContentForCompare(newContent) !==
+        normalizeDiaryContentForCompare(baseline.content)
+    ) {
+      setIsDirty(true)
+    }
   }
 
   const checkIsReallyDirty = (): boolean => {
     if (!initialStateRef.current) return false
     const init = initialStateRef.current
 
-    if (content !== init.content) return true
+    if (
+      normalizeDiaryContentForCompare(content) !== normalizeDiaryContentForCompare(init.content)
+    ) {
+      return true
+    }
     if (weather !== init.weather) return true
     if (isFavorite !== init.isFavorite) return true
     if (formatLocalDate(selectedDate) !== formatLocalDate(init.selectedDate)) return true

@@ -16,6 +16,8 @@ export function useCodeMirrorEditorView(
   const viewRef = useRef<EditorView | null>(null)
   const onChangeRef = useRef(props.onChange)
   const basePathRef = useRef(props.basePath)
+  /** 程序化写入正文时不向上层回传 change，避免误判为「用户已修改」 */
+  const suppressChangeEchoRef = useRef(false)
 
   useEffect(() => {
     onChangeRef.current = props.onChange
@@ -53,7 +55,10 @@ export function useCodeMirrorEditorView(
       content: props.content,
       placeholder: props.placeholder,
       platform,
-      onChange: (content) => onChangeRef.current(content),
+      onChange: (content) => {
+        if (suppressChangeEchoRef.current) return
+        onChangeRef.current(content)
+      },
       extraExtensions: [
         EditorView.domEventHandlers({
           contextmenu: (event, view) => {
@@ -95,13 +100,18 @@ export function useCodeMirrorEditorView(
     const view = viewRef.current
     if (!view) return
     if (props.content !== view.state.doc.toString()) {
-      view.dispatch({
-        changes: {
-          from: 0,
-          to: view.state.doc.length,
-          insert: props.content
-        }
-      })
+      suppressChangeEchoRef.current = true
+      try {
+        view.dispatch({
+          changes: {
+            from: 0,
+            to: view.state.doc.length,
+            insert: props.content
+          }
+        })
+      } finally {
+        suppressChangeEchoRef.current = false
+      }
     }
   }, [props.content])
 
