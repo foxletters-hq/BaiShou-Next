@@ -299,7 +299,7 @@ export class MobileLanSyncService implements ILanSyncService {
     for (const host of hosts) {
       try {
         const controller = new AbortController()
-        const timer = setTimeout(() => controller.abort(), 3000)
+        const timer = setTimeout(() => controller.abort(), 30_000)
         const response = await fetch(`http://${host}:${port}/info`, { signal: controller.signal })
         clearTimeout(timer)
         if (response.ok) return host

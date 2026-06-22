@@ -113,7 +113,7 @@ const IncrementalSyncScreen: React.FC = () => {
 
   const handleSync = useCallback(async () => {
     try {
-      await runIncrementalSync('sync')
+      await runIncrementalSync()
     } catch {
       // 错误提示由全局同步 Provider 处理
     }
