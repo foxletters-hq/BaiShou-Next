@@ -243,7 +243,7 @@ describe('incremental sync E2E simulation', () => {
     await deviceB.deleteFile(journalPath('seed-3'))
     await deviceB.writeFile(journalPath('new-after-delete'), 'fresh')
 
-    const result = await deviceB.sync()
+    const result = await deviceB.sync({ deletePropagationChoice: 'push-local' })
     expect(result.deletedRemote).toEqual(
       expect.arrayContaining([
         journalPath('seed-1'),
@@ -277,10 +277,10 @@ describe('incremental sync E2E simulation', () => {
     for (let i = 1; i <= 25; i++) {
       await desktop.deleteFile(journalPath(`photo-${pad2(i)}`))
     }
-    const desktopResult = await desktop.sync()
+    const desktopResult = await desktop.sync({ deletePropagationChoice: 'push-local' })
     expect(desktopResult.deletedRemote.length).toBe(25)
 
-    const mobileResult = await mobile.sync()
+    const mobileResult = await mobile.sync({ deletePropagationChoice: 'follow-remote' })
     expect(mobileResult.deletedLocal.length).toBe(25)
     expect(mobileResult.uploaded).toHaveLength(0)
 

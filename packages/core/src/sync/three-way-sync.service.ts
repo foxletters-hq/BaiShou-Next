@@ -7,7 +7,10 @@ import type {
 import {
   assertBidirectionalSyncDivergenceAllowed,
   buildIncrementalSyncPlanPreview,
-  inspectDeletePropagationBlock,
+  collectManifestVaultScopes,
+  finalizeIncrementalSyncManifest,
+  buildIncrementalSyncPlanMergeResult,
+  buildIncrementalSyncPlanReuseBaseline,
   isSyncDivergenceConfirmationRequiredError,
   resolveSyncMergeDecisions,
   SyncDeletePropagationChoiceRequiredError,
@@ -84,8 +87,9 @@ export class ThreeWaySyncService
               result.uploaded.push(d.filePath)
               break
             case 'download':
-              await this.downloadFile(d.filePath)
-              result.downloaded.push(d.filePath)
+              if (await this.downloadFile(d.filePath)) {
+                result.downloaded.push(d.filePath)
+              }
               break
             case 'delete-remote':
               await this.deleteRemoteFile(d.filePath)
@@ -103,8 +107,9 @@ export class ThreeWaySyncService
                 result.uploaded.push(d.filePath)
               } else {
                 if (d.localEntry) await this.backupFile(d.filePath, d.localEntry.hash)
-                await this.downloadFile(d.filePath)
-                result.downloaded.push(d.filePath)
+                if (await this.downloadFile(d.filePath)) {
+                  result.downloaded.push(d.filePath)
+                }
               }
               break
             }
@@ -135,7 +140,13 @@ export class ThreeWaySyncService
       await limitExecute(decisions, fileConcurrency, syncItem)
 
       onProgress?.({ phase: 'finalizing', current: 0, total: 1 })
-      const finalManifest = await this.buildLocalManifest()
+      const scanned = await this.buildLocalManifest()
+      const finalManifest = finalizeIncrementalSyncManifest({
+        scanned,
+        baselineRemote: remoteManifest,
+        decisions,
+        deviceId: this.deviceId
+      })
       await this.saveLocalManifest(finalManifest)
       await this.uploadManifest()
       await this.saveRemoteSnapshot(finalManifest)
@@ -151,147 +162,6 @@ export class ThreeWaySyncService
       if (error instanceof SyncDeletePropagationChoiceRequiredError) throw error
       if (error instanceof SyncDeletePropagationBlockedError) throw error
       throw new S3SyncError('Three-way sync failed', error instanceof Error ? error : undefined)
-    }
-  }
-
-  async uploadOnly(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult> {
-    await this.loadConfig()
-    if (!this.config.enabled) throw new S3NotConfiguredError()
-
-    const startTime = Date.now()
-    const result: IncrementalSyncResult = {
-      uploaded: [],
-      downloaded: [],
-      conflicted: [],
-      skipped: [],
-      deletedRemote: [],
-      deletedLocal: [],
-      duration: 0,
-      sessionId: ''
-    }
-
-    try {
-      onProgress?.({ phase: 'scanning', current: 0, total: 0 })
-      const localManifest = await this.buildLocalManifest((current, total, fileName) => {
-        onProgress?.({ phase: 'scanning', current, total, fileName })
-      })
-      onProgress?.({ phase: 'comparing', current: 0, total: 1 })
-      const remoteManifest = await this.getRemoteManifest()
-      onProgress?.({ phase: 'comparing', current: 1, total: 1 })
-      const entries = Object.entries(localManifest.files)
-      const total = entries.length
-      let completedCount = 0
-
-      const uploadItem = async (entry: (typeof entries)[number]) => {
-        const [relPath, localEntry] = entry
-        const remoteEntry = remoteManifest.files[relPath]
-        try {
-          if (!remoteEntry || remoteEntry.hash !== localEntry.hash) {
-            await this.uploadFile(relPath)
-            result.uploaded.push(relPath)
-          } else {
-            result.skipped.push(relPath)
-          }
-        } finally {
-          completedCount++
-          const action = !remoteEntry || remoteEntry.hash !== localEntry.hash ? 'upload' : 'skip'
-          onProgress?.({
-            phase: 'syncing',
-            current: completedCount,
-            total,
-            fileName: relPath,
-            action: action as 'upload' | 'skip'
-          })
-        }
-      }
-
-      const fileConcurrency = this.config.fileConcurrency || 5
-      await limitExecute(entries, fileConcurrency, uploadItem)
-
-      await this.saveLocalManifest(localManifest)
-      await this.uploadManifest()
-      await this.saveRemoteSnapshot(localManifest)
-
-      result.duration = Date.now() - startTime
-      return result
-    } catch (error) {
-      throw new S3SyncError('Upload failed', error instanceof Error ? error : undefined)
-    }
-  }
-
-  async downloadOnly(
-    onProgress?: SyncProgressCallback,
-    runOptions?: IncrementalSyncRunOptions
-  ): Promise<IncrementalSyncResult> {
-    await this.loadConfig()
-    if (!this.config.enabled) throw new S3NotConfiguredError()
-
-    const startTime = Date.now()
-    const result: IncrementalSyncResult = {
-      uploaded: [],
-      downloaded: [],
-      conflicted: [],
-      skipped: [],
-      deletedRemote: [],
-      deletedLocal: [],
-      duration: 0,
-      sessionId: ''
-    }
-
-    try {
-      const prepared = await this.prepareSyncManifests({ onProgress })
-      const { localManifest, remoteManifest, ancestorSnapshot, storageHistory } = prepared
-      assertBidirectionalSyncDivergenceAllowed(localManifest, remoteManifest, this.config, {
-        storageHistory,
-        highDivergenceConfirmed: runOptions?.highDivergenceConfirmed
-      })
-
-      const decisions = threeWayMerge(localManifest, remoteManifest, ancestorSnapshot)
-      const total = decisions.length
-      let completedCount = 0
-
-      const downloadItem = async (d: (typeof decisions)[number]) => {
-        try {
-          if (
-            d.type === 'download' ||
-            (d.type === 'conflict-resolved' && d.direction === 'download')
-          ) {
-            await this.downloadFile(d.filePath)
-            result.downloaded.push(d.filePath)
-          } else if (d.type === 'skip') {
-            result.skipped.push(d.filePath)
-          }
-        } finally {
-          completedCount++
-          const isDownload =
-            d.type === 'download' || (d.type === 'conflict-resolved' && d.direction === 'download')
-          onProgress?.({
-            phase: 'syncing',
-            current: completedCount,
-            total,
-            fileName: d.filePath,
-            action: isDownload ? 'download' : 'skip'
-          })
-        }
-      }
-
-      const fileConcurrency = this.config.fileConcurrency || 5
-      await limitExecute(decisions, fileConcurrency, downloadItem)
-
-      onProgress?.({ phase: 'finalizing', current: 0, total: 1 })
-      const finalManifest = await this.buildLocalManifest()
-      await this.saveLocalManifest(finalManifest)
-      await this.uploadManifest()
-      await this.saveRemoteSnapshot(finalManifest)
-      onProgress?.({ phase: 'finalizing', current: 1, total: 1 })
-      this.invalidatePreparedManifests()
-
-      result.duration = Date.now() - startTime
-      return result
-    } catch (error) {
-      if (error instanceof SyncDivergenceExceededError) throw error
-      if (error instanceof SyncDivergenceConfirmationRequiredError) throw error
-      throw new S3SyncError('Download failed', error instanceof Error ? error : undefined)
     }
   }
 
@@ -333,28 +203,30 @@ export class ThreeWaySyncService
       }
     }
 
-    const decisions = threeWayMerge(localManifest, remoteManifest, ancestorSnapshot)
-
-    const deleteBlock = inspectDeletePropagationBlock(
-      decisions,
+    const { decisions, deleteBlock } = buildIncrementalSyncPlanMergeResult(
       localManifest,
       remoteManifest,
       ancestorSnapshot,
-      previousLocalManifest
+      previousLocalManifest,
+      runOptions
     )
 
-    return buildIncrementalSyncPlanPreview({
-      decisions,
-      registeredVaults: context.registeredVaults,
-      diskVaultNames: context.diskVaultNames,
-      activeVaultName: context.activeVaultName,
-      requiresHighDivergenceConfirm,
-      divergencePercent,
-      maxDivergencePercent,
-      deletePropagationBlocked: deleteBlock != null,
-      deletePropagationReason: deleteBlock?.reason,
-      blockedDeleteCount: deleteBlock?.deleteCount,
-      blockedDeleteDirection: deleteBlock?.direction
-    })
+    return {
+      ...buildIncrementalSyncPlanPreview({
+        decisions,
+        registeredVaults: context.registeredVaults,
+        diskVaultNames: context.diskVaultNames,
+        activeVaultName: context.activeVaultName,
+        manifestVaultScopes: collectManifestVaultScopes(localManifest, remoteManifest),
+        requiresHighDivergenceConfirm,
+        divergencePercent,
+        maxDivergencePercent,
+        deletePropagationBlocked: deleteBlock != null,
+        deletePropagationReason: deleteBlock?.reason,
+        blockedDeleteCount: deleteBlock?.deleteCount,
+        blockedDeleteDirection: deleteBlock?.direction
+      }),
+      planReuseBaseline: buildIncrementalSyncPlanReuseBaseline(localManifest, remoteManifest)
+    }
   }
 }

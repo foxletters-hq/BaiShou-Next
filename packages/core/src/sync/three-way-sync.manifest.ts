@@ -8,7 +8,11 @@ import {
   SYNC_STORAGE_ID_FILENAME,
   getIncrementalSyncStorageId,
   resolveIncrementalSyncStorageHistory,
-  type IncrementalSyncStorageHistory
+  type IncrementalSyncStorageHistory,
+  createEmptySyncManifest,
+  normalizeSyncManifest,
+  reconcileSyncManifestRemovedWithRemoteFiles,
+  isIncrementalSyncRemoteFileNotFoundError
 } from '@baishou/shared'
 import { isSqliteRuntimeSyncPath } from '@baishou/shared'
 import { ThreeWaySyncCore } from './three-way-sync.core'
@@ -33,12 +37,40 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
 
   private preparedManifests: PreparedSyncManifests | null = null
 
+  private planManifestCache: {
+    local: SyncManifest
+    remote: SyncManifest
+  } | null = null
+
   protected invalidatePreparedManifests(): void {
     this.preparedManifests = null
+    this.planManifestCache = null
   }
 
   clearPreparedManifestCache(): void {
     this.invalidatePreparedManifests()
+    this.clearPlanManifestCache()
+  }
+
+  setPlanManifestCache(local: SyncManifest, remote: SyncManifest): void {
+    this.planManifestCache = { local, remote }
+  }
+
+  clearPlanManifestCache(): void {
+    this.planManifestCache = null
+  }
+
+  protected async loadPlanManifestsForPreview(): Promise<{
+    local: SyncManifest
+    remote: SyncManifest
+  }> {
+    if (this.planManifestCache) {
+      return this.planManifestCache
+    }
+    const local = await this.buildLocalManifest()
+    const remote = await this.getRemoteManifest()
+    this.planManifestCache = { local, remote }
+    return this.planManifestCache
   }
 
   protected async prepareSyncManifests(options?: {
@@ -57,14 +89,23 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
 
     await this.loadConfig()
 
-    onProgress?.({ phase: 'scanning', current: 0, total: 0 })
-    const localManifest = await this.buildLocalManifest((current, total, fileName) => {
-      onProgress?.({ phase: 'scanning', current, total, fileName })
-    })
+    let localManifest: SyncManifest
+    let remoteManifest: SyncManifest
 
-    onProgress?.({ phase: 'comparing', current: 0, total: 1 })
-    const remoteManifest = await this.getRemoteManifest()
-    onProgress?.({ phase: 'comparing', current: 1, total: 1 })
+    if (!options?.forceRefresh && this.planManifestCache) {
+      localManifest = this.planManifestCache.local
+      remoteManifest = this.planManifestCache.remote
+      onProgress?.({ phase: 'comparing', current: 1, total: 1 })
+    } else {
+      onProgress?.({ phase: 'scanning', current: 0, total: 0 })
+      localManifest = await this.buildLocalManifest((current, total, fileName) => {
+        onProgress?.({ phase: 'scanning', current, total, fileName })
+      })
+      onProgress?.({ phase: 'comparing', current: 0, total: 1 })
+      remoteManifest = await this.getRemoteManifest()
+      onProgress?.({ phase: 'comparing', current: 1, total: 1 })
+      this.planManifestCache = { local: localManifest, remote: remoteManifest }
+    }
 
     const storageHistory = await this.getSyncStorageHistoryState()
     const ancestorSnapshot = await this.getRemoteSnapshot()
@@ -80,6 +121,7 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
     }
     return this.preparedManifests
   }
+
   async getConfig(): Promise<S3SyncConfig> {
     await this.loadConfig()
     return this.config
@@ -88,6 +130,7 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
   async updateConfig(config: Partial<S3SyncConfig>): Promise<void> {
     this.config = { ...this.config, ...config }
     this.invalidatePreparedManifests()
+    this.clearPlanManifestCache()
     await this.saveConfig()
   }
 
@@ -142,7 +185,7 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
       return JSON.parse(raw) as SyncManifest
     }
 
-    return { version: SYNC_MANIFEST_VERSION, updatedAt: 0, deviceId: '', files: {} }
+    return createEmptySyncManifest()
   }
 
   async refreshLocalManifest(): Promise<SyncManifest> {
@@ -159,7 +202,7 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
     )
 
     if (!manifestFile) {
-      return { version: SYNC_MANIFEST_VERSION, updatedAt: 0, deviceId: '', files: {} }
+      return createEmptySyncManifest()
     }
 
     const metaDir = await this.getSyncMetaDirectory()
@@ -172,9 +215,9 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
 
     try {
       const raw = await fs.promises.readFile(tempPath, 'utf8')
-      const manifest = JSON.parse(raw) as SyncManifest
+      const manifest = normalizeSyncManifest(JSON.parse(raw) as SyncManifest)
 
-      if (manifest && manifest.files) {
+      if (manifest.files) {
         const actualFilesSet = new Set<string>()
         for (const f of remoteFiles) {
           actualFilesSet.add(f.filename.replace(/\\/g, '/'))
@@ -192,6 +235,7 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
           }
         }
         manifest.files = cleanFiles
+        return reconcileSyncManifestRemovedWithRemoteFiles(manifest, actualFilesSet)
       }
 
       return manifest
@@ -224,12 +268,7 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
     const storageIdPath = path.join(metaDir, SYNC_STORAGE_ID_FILENAME)
     const currentStorageId = getIncrementalSyncStorageId(this.config)
 
-    const empty: SyncManifest = {
-      version: SYNC_MANIFEST_VERSION,
-      updatedAt: 0,
-      deviceId: '',
-      files: {}
-    }
+    const empty = createEmptySyncManifest()
 
     if (!fs.existsSync(snapshotPath)) {
       return empty
@@ -298,27 +337,23 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
     }
   }
 
-  protected async downloadFile(relPath: string): Promise<void> {
+  protected async downloadFile(relPath: string): Promise<boolean> {
     if (isSqliteRuntimeSyncPath(relPath)) {
       console.warn(`[ThreeWaySync] Skipping SQLite runtime file download: ${relPath}`)
-      return
+      return false
     }
     const syncRoot = await this.getSyncRoot()
     const fullPath = path.join(syncRoot, relPath)
     await fs.promises.mkdir(path.dirname(fullPath), { recursive: true })
     try {
       await this.cloudClient.downloadFile(relPath, fullPath)
-    } catch (err: any) {
-      const isNotFound =
-        err?.code === 'NotFound' ||
-        err?.statusCode === 404 ||
-        err?.message?.includes('Not Found') ||
-        err?.message?.includes('404')
-      if (isNotFound) {
+      return true
+    } catch (err: unknown) {
+      if (isIncrementalSyncRemoteFileNotFoundError(err)) {
         console.warn(
           `[ThreeWaySync] Remote file is missing (NotFound): ${relPath}. Skipping download.`
         )
-        return
+        return false
       }
       throw err
     }

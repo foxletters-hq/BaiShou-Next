@@ -15,7 +15,7 @@ import type {
  * - 本地版本 = 当前文件系统扫描结果
  * - 远程版本 = 刚从云存储下载的 manifest
  *
- * 不依赖 tombstone，通过三向对比完整追踪新增/修改/删除。
+ * 不依赖显式删除记录，通过三向对比完整追踪新增/修改/删除。
  */
 export interface IIncrementalSyncService {
   // ── 配置 ───────────────────────────────────────────────────
@@ -59,23 +59,6 @@ export interface IIncrementalSyncService {
    * @param onProgress - 可选的进度回调，逐文件处理时触发
    */
   sync(
-    onProgress?: SyncProgressCallback,
-    runOptions?: IncrementalSyncRunOptions
-  ): Promise<IncrementalSyncResult>
-
-  /**
-   * 仅上传变更（不同步下载）
-   * 用于移动端快速备份
-   * @param onProgress - 可选的进度回调
-   */
-  uploadOnly(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult>
-
-  /**
-   * 仅下载变更（不同步上传）
-   * 用于移动端恢复数据
-   * @param onProgress - 可选的进度回调
-   */
-  downloadOnly(
     onProgress?: SyncProgressCallback,
     runOptions?: IncrementalSyncRunOptions
   ): Promise<IncrementalSyncResult>

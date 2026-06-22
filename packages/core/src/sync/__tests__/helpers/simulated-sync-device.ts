@@ -5,6 +5,7 @@ import type { IncrementalSyncRunOptions, S3SyncConfig } from '@baishou/shared'
 import { DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH, SYNC_CONFIG_FILENAME } from '@baishou/shared'
 import type { IStoragePathService } from '../../../vault/storage-path.types'
 import { ThreeWaySyncService } from '../../three-way-sync.service'
+import { GhostDownloadCloudClient } from './ghost-download-cloud-client'
 import { InMemoryIncrementalCloudClient, SharedCloudStore } from './shared-cloud-store'
 
 const DEFAULT_TEST_CONFIG: S3SyncConfig = {
@@ -25,13 +26,15 @@ export type SimulatedSyncDeviceOptions = {
   deviceId: string
   cloudStore: SharedCloudStore
   config?: Partial<S3SyncConfig>
+  /** 使用可模拟下载 404 的云端客户端 */
+  ghostDownloadClient?: boolean
 }
 
 /** 在临时目录中模拟一台设备的 vault + ThreeWaySyncService */
 export class SimulatedSyncDevice {
   readonly rootDir: string
   readonly vaultDir: string
-  readonly cloud: InMemoryIncrementalCloudClient
+  readonly cloud: InMemoryIncrementalCloudClient | GhostDownloadCloudClient
   readonly service: ThreeWaySyncService
 
   constructor(options: SimulatedSyncDeviceOptions) {
@@ -46,7 +49,9 @@ export class SimulatedSyncDevice {
       'utf8'
     )
 
-    this.cloud = new InMemoryIncrementalCloudClient(options.cloudStore)
+    this.cloud = options.ghostDownloadClient
+      ? new GhostDownloadCloudClient(options.cloudStore)
+      : new InMemoryIncrementalCloudClient(options.cloudStore)
     this.cloud.setSyncRoot(this.rootDir)
 
     const pathService: IStoragePathService = {
@@ -87,12 +92,31 @@ export class SimulatedSyncDevice {
     return this.service.sync(undefined, runOptions)
   }
 
-  planSync() {
-    return this.service.planSync({
-      registeredVaults: ['Personal'],
-      diskVaultNames: ['Personal'],
-      activeVaultName: 'Personal'
-    })
+  planSync(runOptions?: IncrementalSyncRunOptions) {
+    return this.service.planSync(
+      {
+        registeredVaults: ['Personal'],
+        diskVaultNames: ['Personal'],
+        activeVaultName: 'Personal'
+      },
+      runOptions
+    )
+  }
+
+  getRemoteManifest() {
+    return this.service.getRemoteManifest()
+  }
+
+  buildLocalManifest() {
+    return this.service.buildLocalManifest()
+  }
+
+  markGhostDownload(relPath: string): void {
+    if (this.cloud instanceof GhostDownloadCloudClient) {
+      this.cloud.markGhostDownload(relPath)
+    } else {
+      throw new Error('markGhostDownload requires ghostDownloadClient: true')
+    }
   }
 
   destroy(): void {

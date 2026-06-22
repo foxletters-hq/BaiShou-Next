@@ -158,4 +158,15 @@ describe('VaultService Integration', () => {
     await service.ensureVaultsRegistered(['Work'])
     expect(service.getActiveVault()?.name).toBe('Personal')
   })
+
+  it('pruneOrphanRegistryVaults removes cross-device ghost vaults without sync data', async () => {
+    await service.initRegistry()
+    await service.ensureVaultsRegistered(['C__Users_Desktop_OldVault'])
+    expect(service.vaultExists('C__Users_Desktop_OldVault')).toBe(true)
+
+    const removed = await service.pruneOrphanRegistryVaults(new Set(['Personal']), ['Personal'])
+    expect(removed).toEqual(['C__Users_Desktop_OldVault'])
+    expect(service.vaultExists('C__Users_Desktop_OldVault')).toBe(false)
+    expect(service.vaultExists('Personal')).toBe(true)
+  })
 })

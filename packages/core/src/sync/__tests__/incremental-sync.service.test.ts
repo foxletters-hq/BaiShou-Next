@@ -36,8 +36,6 @@ describe('IncrementalSyncService (three-way merge)', () => {
       updateConfig: vi.fn(),
       testConnection: vi.fn(),
       sync: vi.fn(),
-      uploadOnly: vi.fn(),
-      downloadOnly: vi.fn(),
       buildLocalManifest: vi.fn(),
       getLocalManifest: vi.fn(),
       getRemoteManifest: vi.fn(),
@@ -161,32 +159,6 @@ describe('IncrementalSyncService (three-way merge)', () => {
     it('should throw ManifestFetchError when remote manifest is unavailable', async () => {
       vi.mocked(service.sync).mockRejectedValue(new ManifestFetchError())
       await expect(service.sync()).rejects.toThrow(ManifestFetchError)
-    })
-  })
-
-  describe('uploadOnly', () => {
-    it('should upload changed files without downloading', async () => {
-      const result = makeResult()
-      result.uploaded = ['Journals/2026/05/new.md']
-      result.downloaded = []
-      vi.mocked(service.uploadOnly).mockResolvedValue(result)
-
-      const res = await service.uploadOnly()
-      expect(res.uploaded).toHaveLength(1)
-      expect(res.downloaded).toHaveLength(0)
-    })
-  })
-
-  describe('downloadOnly', () => {
-    it('should download changed files without uploading', async () => {
-      const result = makeResult()
-      result.downloaded = ['Journals/2026/05/new.md']
-      result.uploaded = []
-      vi.mocked(service.downloadOnly).mockResolvedValue(result)
-
-      const res = await service.downloadOnly()
-      expect(res.downloaded).toHaveLength(1)
-      expect(res.uploaded).toHaveLength(0)
     })
   })
 

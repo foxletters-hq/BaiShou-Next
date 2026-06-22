@@ -75,8 +75,4 @@ describe('ThreeWaySyncService divergence errors', () => {
     vi.spyOn(service, 'getSyncStorageHistoryState').mockResolvedValue('none')
     await expect(service.sync()).rejects.toBeInstanceOf(SyncDivergenceConfirmationRequiredError)
   })
-
-  it('rethrows SyncDivergenceExceededError on downloadOnly', async () => {
-    await expect(service.downloadOnly()).rejects.toBeInstanceOf(SyncDivergenceExceededError)
-  })
 })

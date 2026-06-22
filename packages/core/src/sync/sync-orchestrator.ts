@@ -70,7 +70,7 @@ export class SyncOrchestrator implements ISyncOrchestrator {
 
   private async doSync(
     operation: (onProgress?: SyncProgressCallback) => Promise<IncrementalSyncResult>,
-    direction: 'full-sync' | 'upload-only' | 'download-only',
+    direction: 'full-sync',
     onProgress?: SyncProgressCallback
   ): Promise<IncrementalSyncResult> {
     this.acquireLock()
@@ -150,21 +150,6 @@ export class SyncOrchestrator implements ISyncOrchestrator {
     runOptions?: IncrementalSyncRunOptions
   ): Promise<IncrementalSyncResult> {
     return this.doSync((p) => this.syncService.sync(p, runOptions), 'full-sync', onProgress)
-  }
-
-  async uploadOnly(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult> {
-    return this.doSync((p) => this.syncService.uploadOnly(p), 'upload-only', onProgress)
-  }
-
-  async downloadOnly(
-    onProgress?: SyncProgressCallback,
-    runOptions?: IncrementalSyncRunOptions
-  ): Promise<IncrementalSyncResult> {
-    return this.doSync(
-      (p) => this.syncService.downloadOnly(p, runOptions),
-      'download-only',
-      onProgress
-    )
   }
 
   async getSyncHistory(limit?: number): Promise<SyncSessionLog[]> {

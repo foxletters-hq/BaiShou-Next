@@ -90,3 +90,92 @@ describe('ThreeWaySyncManifestMixin.getRemoteSnapshot', () => {
     expect(result.files).toEqual({})
   })
 })
+
+describe('ThreeWaySyncManifestMixin plan manifest cache', () => {
+  let vaultPath: string
+  let service: ThreeWaySyncService
+
+  const cloudClient = {
+    listFiles: vi.fn().mockResolvedValue([]),
+    uploadFile: vi.fn(),
+    downloadFile: vi.fn(),
+    deleteFile: vi.fn()
+  } as unknown as ICloudSyncClient
+
+  const pathService = {
+    getRootDirectory: vi.fn(),
+    getActiveVaultPath: vi.fn()
+  } as unknown as IStoragePathService
+
+  const cachedLocal = {
+    version: SYNC_MANIFEST_VERSION,
+    updatedAt: 1,
+    deviceId: 'local',
+    files: { 'a.md': { hash: '1', size: 1, lastModified: 1 } }
+  }
+  const cachedRemote = {
+    version: SYNC_MANIFEST_VERSION,
+    updatedAt: 2,
+    deviceId: 'remote',
+    files: { 'b.md': { hash: '2', size: 1, lastModified: 2 } }
+  }
+
+  beforeEach(() => {
+    vaultPath = fs.mkdtempSync(path.join(os.tmpdir(), 'baishou-sync-cache-'))
+    vi.mocked(pathService.getRootDirectory).mockResolvedValue(vaultPath)
+    vi.mocked(pathService.getActiveVaultPath).mockResolvedValue(path.join(vaultPath, 'Personal'))
+    service = new ThreeWaySyncService(pathService, cloudClient, 'desktop-test')
+
+    fs.mkdirSync(path.join(vaultPath, '.baishou'), { recursive: true })
+    fs.writeFileSync(
+      path.join(vaultPath, '.baishou-s3.json'),
+      JSON.stringify({
+        enabled: true,
+        target: 's3',
+        endpoint: 'https://s3.example.com',
+        region: 'us-east-1',
+        bucket: 'bucket-a',
+        path: 'backup_sync',
+        accessKey: 'ak',
+        secretKey: 'sk'
+      }),
+      'utf8'
+    )
+  })
+
+  afterEach(() => {
+    fs.rmSync(vaultPath, { recursive: true, force: true })
+    vi.restoreAllMocks()
+  })
+
+  it('prepareSyncManifests reuses setPlanManifestCache without rescanning', async () => {
+    const buildSpy = vi.spyOn(service, 'buildLocalManifest')
+    const remoteSpy = vi.spyOn(service, 'getRemoteManifest')
+    vi.spyOn(service, 'getRemoteSnapshot').mockResolvedValue({
+      version: SYNC_MANIFEST_VERSION,
+      updatedAt: 0,
+      deviceId: '',
+      files: {}
+    })
+    vi.spyOn(service, 'getLocalManifest').mockResolvedValue({
+      version: SYNC_MANIFEST_VERSION,
+      updatedAt: 0,
+      deviceId: '',
+      files: {}
+    })
+
+    service.setPlanManifestCache(cachedLocal, cachedRemote)
+    const prepared = await (service as any).prepareSyncManifests()
+
+    expect(buildSpy).not.toHaveBeenCalled()
+    expect(remoteSpy).not.toHaveBeenCalled()
+    expect(prepared.localManifest).toBe(cachedLocal)
+    expect(prepared.remoteManifest).toBe(cachedRemote)
+  })
+
+  it('clearPreparedManifestCache also clears plan manifest cache', () => {
+    service.setPlanManifestCache(cachedLocal, cachedRemote)
+    service.clearPreparedManifestCache()
+    expect((service as any).planManifestCache).toBeNull()
+  })
+})

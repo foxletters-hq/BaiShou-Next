@@ -20,8 +20,6 @@ describe('SyncOrchestrator', () => {
   beforeEach(() => {
     orchestrator = {
       sync: vi.fn(),
-      uploadOnly: vi.fn(),
-      downloadOnly: vi.fn(),
       getSyncHistory: vi.fn(),
       testConnection: vi.fn(),
       getConfig: vi.fn(),
@@ -53,31 +51,6 @@ describe('SyncOrchestrator', () => {
     it('should throw S3SyncError when sync fails', async () => {
       vi.mocked(orchestrator.sync).mockRejectedValue(new S3SyncError('Network error'))
       await expect(orchestrator.sync()).rejects.toThrow(S3SyncError)
-    })
-  })
-
-  describe('uploadOnly', () => {
-    it('should upload without downloading', async () => {
-      const result = makeResult()
-      result.downloaded = []
-      vi.mocked(orchestrator.uploadOnly).mockResolvedValue(result)
-
-      const res = await orchestrator.uploadOnly()
-      expect(res.downloaded).toHaveLength(0)
-      expect(res.uploaded.length).toBeGreaterThan(0)
-    })
-  })
-
-  describe('downloadOnly', () => {
-    it('should download without uploading', async () => {
-      const result = makeResult()
-      result.uploaded = []
-      result.downloaded = ['f.md']
-      vi.mocked(orchestrator.downloadOnly).mockResolvedValue(result)
-
-      const res = await orchestrator.downloadOnly()
-      expect(res.uploaded).toHaveLength(0)
-      expect(res.downloaded).toHaveLength(1)
     })
   })
 
