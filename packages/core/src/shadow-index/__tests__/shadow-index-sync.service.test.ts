@@ -276,6 +276,30 @@ describe('ShadowIndexSyncService', () => {
     expect(mockRepo._getRecordCount()).toBe(1)
   })
 
+  it('Journals 目录不存在时不应清理已有影子索引', async () => {
+    await mockRepo.upsert({
+      filePath: '2026/08/2026-08-01.md',
+      date: '2026-08-01',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      contentHash: 'orphan',
+      weather: null,
+      mood: null,
+      location: null,
+      locationDetail: null,
+      isFavorite: false,
+      hasMedia: false,
+      rawContent: 'ghost',
+      tags: ''
+    })
+    expect(mockRepo._getRecordCount()).toBe(1)
+
+    await fsp.rm(journalsDir, { recursive: true, force: true })
+    await service.fullScanVault(true)
+
+    expect(mockRepo._getRecordCount()).toBe(1)
+  })
+
   // ── 8. 同步禁用 ──
   it('禁用同步后 syncJournal 和 fullScanVault 应提早返回', async () => {
     await writeJournal('2026-05-01', '不会被索引的日记')

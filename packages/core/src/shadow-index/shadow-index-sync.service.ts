@@ -19,7 +19,8 @@ import {
 import { parseJournalMarkdown } from './shadow-index-sync.utils'
 import {
   buildCanonicalJournalFilePath,
-  resolveJournalFilePath
+  resolveJournalFilePath,
+  countJournalMarkdownInTree
 } from '../journal/journal-files.util'
 
 export type { IEmbeddingCallback }
@@ -215,7 +216,11 @@ export class ShadowIndexSyncService {
             isFavorite: diary.isFavorite,
             hasMedia: (diary.mediaPaths?.length ?? 0) > 0,
             rawContent: diary.content ?? '',
-            tags: (diary.tags ?? []).join(',')
+            tags: (diary.tags ?? []).join(','),
+            tagColors:
+              Object.keys(diary.tagColors ?? {}).length > 0
+                ? JSON.stringify(diary.tagColors)
+                : null
           })
           parsedDiaries.push(diary)
         })
@@ -252,6 +257,7 @@ export class ShadowIndexSyncService {
             preview:
               (d.content?.length ?? 0) > 120 ? d.content!.substring(0, 120) : (d.content ?? ''),
             tags: d.tags ?? [],
+            tagColors: d.tagColors ?? {},
             updatedAt: d.updatedAt,
             weather: d.weather || undefined,
             mood: d.mood || undefined,
@@ -344,29 +350,41 @@ export class ShadowIndexSyncService {
         }
       }
 
-      // 3. 【关键】清理孤立索引 (Orphaned Index Cleanup)
-      const allRecords = await this.shadowRepo.getAllRecords()
-      const existingDatesSet = new Set(uniqueDates)
+      // 3. 【关键】清理孤立索引：仅当 Journals 可读且枚举数量与磁盘统计一致
+      if (!journalsDirExists) {
+        logger.info('[ShadowSync] Journals 目录不可用，跳过孤立清理')
+      } else {
+        const diskCount = await countJournalMarkdownInTree(this.fileSystem, journalsDir)
+        const scanEnumerationComplete = uniqueDates.length === diskCount
+        if (!scanEnumerationComplete) {
+          logger.warn(
+            `[ShadowSync] 跳过孤立清理：扫描枚举 ${uniqueDates.length} 篇，磁盘统计 ${diskCount} 篇`
+          )
+        } else {
+          const allRecords = await this.shadowRepo.getAllRecords()
+          const existingDatesSet = new Set(uniqueDates)
 
-      for (const record of allRecords) {
-        const dateStr = record.date.split('T')[0] // 提取 yyyy-MM-dd
-        if (!dateStr) continue
+          for (const record of allRecords) {
+            const dateStr = record.date.split('T')[0] // 提取 yyyy-MM-dd
+            if (!dateStr) continue
 
-        // 不需要再去判断 fs.existsSync(filePath)，直接查 Set！
-        if (!existingDatesSet.has(dateStr)) {
-          // 物理文件确实不存在，安全执行影子清理
-          await this.shadowRepo.deleteById(record.id)
+            if (!existingDatesSet.has(dateStr)) {
+              await this.shadowRepo.deleteById(record.id)
 
-          // 同步清理 RAG 碎片
-          if (this.embeddingCallback) {
-            try {
-              await this.embeddingCallback.deleteEmbeddingsBySource('diary', record.id.toString())
-            } catch (e: any) {
-              logger.warn(`[ShadowSync] 清理孤立 RAG 向量失败 (ID=${record.id}):`, e.message)
+              if (this.embeddingCallback) {
+                try {
+                  await this.embeddingCallback.deleteEmbeddingsBySource(
+                    'diary',
+                    record.id.toString()
+                  )
+                } catch (e: any) {
+                  logger.warn(`[ShadowSync] 清理孤立 RAG 向量失败 (ID=${record.id}):`, e.message)
+                }
+              }
+
+              logger.info(`[ShadowSync] 已清理孤立索引: date=${dateStr}, ID=${record.id}`)
             }
           }
-
-          logger.info(`[ShadowSync] 已清理孤立索引: date=${dateStr}, ID=${record.id}`)
         }
       }
     } finally {

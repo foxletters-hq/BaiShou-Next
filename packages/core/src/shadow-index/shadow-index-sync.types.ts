@@ -45,6 +45,7 @@ export interface ParsedJournal {
   date: string
   content: string
   tags: string[]
+  tagColors: Record<string, number>
   createdAt: Date
   updatedAt: Date
   weather?: string
