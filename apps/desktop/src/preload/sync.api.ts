@@ -165,19 +165,17 @@ export const syncApi = {
     updateConfig: (config: any) => ipcRenderer.invoke('incrementalSync:updateConfig', config),
     testConnection: (config?: any) => ipcRenderer.invoke('incrementalSync:testConnection', config),
     sync: (runOptions?: unknown) => ipcRenderer.invoke('incrementalSync:sync', runOptions),
-    uploadOnly: () => ipcRenderer.invoke('incrementalSync:uploadOnly'),
-    downloadOnly: (runOptions?: unknown) =>
-      ipcRenderer.invoke('incrementalSync:downloadOnly', runOptions),
     getLocalManifest: () => ipcRenderer.invoke('incrementalSync:getLocalManifest'),
     getRemoteManifest: () => ipcRenderer.invoke('incrementalSync:getRemoteManifest'),
     refreshLocalManifest: () => ipcRenderer.invoke('incrementalSync:refreshLocalManifest'),
     getLastSyncConflicts: () => ipcRenderer.invoke('incrementalSync:getLastSyncConflicts'),
     planSync: (runOptions?: unknown) => ipcRenderer.invoke('incrementalSync:planSync', runOptions),
+    readVaultRegistryFingerprint: () =>
+      ipcRenderer.invoke('incrementalSync:readVaultRegistryFingerprint'),
+    evaluatePlanDrift: (baseline: unknown) =>
+      ipcRenderer.invoke('incrementalSync:evaluatePlanDrift', baseline),
     orchestratedSync: (runOptions?: unknown) =>
       ipcRenderer.invoke('incrementalSync:orchestratedSync', runOptions),
-    orchestratedUploadOnly: () => ipcRenderer.invoke('incrementalSync:orchestratedUploadOnly'),
-    orchestratedDownloadOnly: (runOptions?: unknown) =>
-      ipcRenderer.invoke('incrementalSync:orchestratedDownloadOnly', runOptions),
     getSyncHistory: (limit?: number) => ipcRenderer.invoke('incrementalSync:getSyncHistory', limit),
     getLastSyncSummary: () => ipcRenderer.invoke('incrementalSync:getLastSyncSummary'),
     onSyncProgress: (callback: (event: any) => void) => {

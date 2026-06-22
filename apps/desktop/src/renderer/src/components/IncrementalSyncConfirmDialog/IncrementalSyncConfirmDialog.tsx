@@ -199,6 +199,14 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
           </p>
         )}
 
+        {preview.prunedRegistryVaults && preview.prunedRegistryVaults.length > 0 && (
+          <p className={styles.warningItem}>
+            {t('data_sync.plan_warning_pruned_registry_vaults', {
+              vaults: preview.prunedRegistryVaults.join('、')
+            })}
+          </p>
+        )}
+
         {needsDeleteChoice && (
           <div className={styles.choicePanel}>
             <h3 className={styles.choiceTitle}>
@@ -223,7 +231,9 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
               <p key={key} className={styles.warningItem}>
                 {t(key, {
                   divergence: preview.divergencePercent,
-                  limit: preview.maxDivergencePercent
+                  limit: preview.maxDivergencePercent,
+                  completed: preview.interruptedSyncResume?.completed,
+                  total: preview.interruptedSyncResume?.total
                 })}
               </p>
             ))}

@@ -5,8 +5,10 @@ import { useToast, useDialog } from '@baishou/ui'
 import {
   assertSyncConfirmAllowed,
   canExecuteIncrementalSyncPlan,
+  resolveIncrementalSyncConfirmReplan,
   resolvePlanConfirmEligibleAt,
   runIncrementalSyncWithDivergenceConfirmation,
+  shouldRequireIncrementalSyncReconfirmAfterReplan,
   type IncrementalSyncResult,
   type IncrementalSyncRunOptions,
   type SyncDeletePropagationChoice
@@ -42,6 +44,7 @@ export function useOrchestratedSync() {
   const toast = useToast()
   const dialog = useDialog()
   const confirmingRef = useRef(false)
+  const planVaultRegistryFingerprintRef = useRef<string | null>(null)
   const [isConfirmingPlan, setIsConfirmingPlan] = useState(false)
 
   const status = useSyncStore((s) => s.status)
@@ -118,64 +121,140 @@ export function useOrchestratedSync() {
   )
 
   const cancelSyncPlan = useCallback(() => {
+    planVaultRegistryFingerprintRef.current = null
     clearPlanPreview()
   }, [clearPlanPreview])
 
-  const confirmSyncPlan = useCallback(async (deletePropagationChoice?: SyncDeletePropagationChoice) => {
-    if (confirmingRef.current) return null
+  const confirmSyncPlan = useCallback(
+    async (deletePropagationChoice?: SyncDeletePropagationChoice) => {
+      if (confirmingRef.current) return null
 
-    const { planPreview: stalePreview, planConfirmEligibleAt } = useSyncStore.getState()
-    if (!stalePreview) return null
+      const { planPreview: stalePreview, planConfirmEligibleAt } = useSyncStore.getState()
+      if (!stalePreview) return null
 
-    if (stalePreview.requiresDeletePropagationChoice && !deletePropagationChoice) {
-      return null
-    }
-
-    const canExecute = canExecuteIncrementalSyncPlan(stalePreview)
-    try {
-      assertSyncConfirmAllowed({
-        canExecuteSync: canExecute,
-        eligibleAtMs: planConfirmEligibleAt
-      })
-    } catch {
-      return null
-    }
-
-    const initialRunOptions: IncrementalSyncRunOptions | undefined =
-      stalePreview.requiresHighDivergenceConfirm ? { highDivergenceConfirmed: true } : undefined
-
-    confirmingRef.current = true
-    setIsConfirmingPlan(true)
-
-    try {
-      clearPlanPreview()
-      setStatus('syncing')
-      setProgress({
-        phase: 'comparing',
-        current: 0,
-        total: 1,
-        statusText: 'data_sync.progress_registering_vaults'
-      })
-      const runOptions: IncrementalSyncRunOptions = {
-        ...initialRunOptions,
-        unknownVaultPaths: stalePreview.boundaryIssues.unknownVaultPaths,
-        ...(deletePropagationChoice ? { deletePropagationChoice } : {})
+      if (stalePreview.requiresDeletePropagationChoice && !deletePropagationChoice) {
+        return null
       }
-      return await runOrchestratedSync(runOptions)
-    } catch (e: any) {
-      const errorMessage = friendlySyncError(
-        e?.message || t('data_sync.sync_unknown_error', 'Unknown error'),
-        t
-      )
-      setMessage(errorMessage)
-      setStatus('error')
-      toast.showError(errorMessage)
-      return null
-    } finally {
-      confirmingRef.current = false
-      setIsConfirmingPlan(false)
-    }
-  }, [clearPlanPreview, runOrchestratedSync, setMessage, setStatus, setProgress, t, toast])
+
+      const canExecute = canExecuteIncrementalSyncPlan(stalePreview)
+      try {
+        assertSyncConfirmAllowed({
+          canExecuteSync: canExecute,
+          eligibleAtMs: planConfirmEligibleAt
+        })
+      } catch {
+        return null
+      }
+
+      const initialRunOptions: IncrementalSyncRunOptions | undefined =
+        stalePreview.requiresHighDivergenceConfirm ? { highDivergenceConfirmed: true } : undefined
+
+      confirmingRef.current = true
+      setIsConfirmingPlan(true)
+
+      let preview = stalePreview
+      try {
+        const currentFingerprint = await window.api.incrementalSync.readVaultRegistryFingerprint()
+        const vaultRegistryChanged =
+          planVaultRegistryFingerprintRef.current != null &&
+          planVaultRegistryFingerprintRef.current !== currentFingerprint
+
+        let localTreeDrifted = false
+        let remoteManifestDrifted = false
+        if (stalePreview.planReuseBaseline) {
+          const drift = await window.api.incrementalSync.evaluatePlanDrift(
+            stalePreview.planReuseBaseline
+          )
+          localTreeDrifted = drift.localTreeDrifted
+          remoteManifestDrifted = drift.remoteManifestDrifted
+        }
+
+        const replanRunOptions: IncrementalSyncRunOptions = {
+          ...initialRunOptions,
+          unknownVaultPaths: stalePreview.boundaryIssues.unknownVaultPaths,
+          ...(deletePropagationChoice ? { deletePropagationChoice } : {})
+        }
+
+        const { needsReplan } = resolveIncrementalSyncConfirmReplan({
+          stalePreview,
+          planPreparedAtMs: stalePreview.planReuseBaseline?.preparedAtMs ?? null,
+          planReuseBaseline: stalePreview.planReuseBaseline,
+          vaultRegistryChanged,
+          highDivergenceConfirmed: Boolean(initialRunOptions?.highDivergenceConfirmed),
+          deletePropagationChoiceProvided: Boolean(deletePropagationChoice),
+          drift: { localTreeDrifted, remoteManifestDrifted }
+        })
+
+        if (needsReplan) {
+          preview = await window.api.incrementalSync.planSync(replanRunOptions)
+          planVaultRegistryFingerprintRef.current =
+            await window.api.incrementalSync.readVaultRegistryFingerprint()
+        }
+
+        if (preview.changeCount === 0 && preview.warnings.length === 0) {
+          clearPlanPreview()
+          toast.showSuccess(t('data_sync.plan_up_to_date', '本地与云端已一致，无需同步'))
+          setStatus('idle')
+          setMessage('')
+          return null
+        }
+
+        if (
+          shouldRequireIncrementalSyncReconfirmAfterReplan(
+            needsReplan,
+            stalePreview,
+            preview,
+            Boolean(deletePropagationChoice)
+          )
+        ) {
+          showPlanConfirmDialog(preview, resolvePlanConfirmEligibleAt(preview))
+          setStatus('idle')
+          setMessage('')
+          toast.showWarning(t('data_sync.plan_changed_reconfirm'))
+          return null
+        }
+
+        if (preview.requiresDeletePropagationChoice && !deletePropagationChoice) {
+          showPlanConfirmDialog(preview, resolvePlanConfirmEligibleAt(preview))
+          setStatus('idle')
+          setMessage('')
+          return null
+        }
+
+        clearPlanPreview()
+        setStatus('syncing')
+        setProgress({
+          phase: 'comparing',
+          current: 0,
+          total: 1,
+          statusText: 'data_sync.progress_registering_vaults'
+        })
+        return await runOrchestratedSync(replanRunOptions)
+      } catch (e: any) {
+        const errorMessage = friendlySyncError(
+          e?.message || t('data_sync.sync_unknown_error', 'Unknown error'),
+          t
+        )
+        setMessage(errorMessage)
+        setStatus('error')
+        toast.showError(errorMessage)
+        return null
+      } finally {
+        confirmingRef.current = false
+        setIsConfirmingPlan(false)
+      }
+    },
+    [
+      clearPlanPreview,
+      runOrchestratedSync,
+      setMessage,
+      setStatus,
+      setProgress,
+      showPlanConfirmDialog,
+      t,
+      toast
+    ]
+  )
 
   const startSync = useCallback(async () => {
     if (isSyncing || isPlanning || useSyncStore.getState().planDialogOpen || confirmingRef.current) {
@@ -197,6 +276,8 @@ export function useOrchestratedSync() {
         return null
       }
 
+      planVaultRegistryFingerprintRef.current =
+        await window.api.incrementalSync.readVaultRegistryFingerprint()
       showPlanConfirmDialog(preview, resolvePlanConfirmEligibleAt(preview))
       setStatus('idle')
       setMessage('')

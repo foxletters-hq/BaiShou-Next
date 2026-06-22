@@ -354,7 +354,7 @@ export class DesktopLanSyncService implements ILanSyncService {
 
   private probeInfo(host: string, port: number): Promise<boolean> {
     return new Promise((resolve) => {
-      const req = http.get({ hostname: host, port, path: '/info', timeout: 3000 }, (res) => {
+      const req = http.get({ hostname: host, port, path: '/info', timeout: 30_000 }, (res) => {
         res.resume()
         resolve(res.statusCode === 200)
       })
