@@ -56,7 +56,6 @@ export async function planIncrementalSyncWithVaultRegistry(
       context.diskVaultNames
     )
     if (pruned.length > 0) {
-      deps.incrementalSyncService.beginPlanSession()
       context = await resolveMobileSyncPlanContext(
         deps.pathService,
         deps.fileSystem,
@@ -79,7 +78,6 @@ export async function planIncrementalSyncWithVaultRegistry(
     const unknown = filterRemoteVaultScopes(preview.boundaryIssues.unknownVaultPaths)
     if (unknown.length > 0) {
       await reconcileVaultRegistryForIncrementalSync(deps.vaultService, unknown)
-      deps.incrementalSyncService.beginPlanSession()
       context = await resolveMobileSyncPlanContext(
         deps.pathService,
         deps.fileSystem,
