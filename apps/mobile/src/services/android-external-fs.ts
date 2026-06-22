@@ -228,3 +228,13 @@ export async function externalCopyFileAsyncSafe(from: string, to: string): Promi
   ensureNativeModule()
   await externalCopyFileAsync(toFileUri(from), toFileUri(to))
 }
+
+/** 增量同步 I/O 用路径规范化（外部存储 / file:// / 沙盒绝对路径） */
+export function normalizeSyncFilePath(filePath: string): string {
+  if (isExternalStoragePath(filePath)) {
+    return normalizeExternalStoragePath(filePath)
+  }
+  return stripFileScheme(filePath)
+}
+
+export { syncIoPathKey } from './mobile-sync-path.util'

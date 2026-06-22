@@ -40,33 +40,60 @@ export async function planIncrementalSyncWithVaultRegistry(
     runOptions?: IncrementalSyncRunOptions
   }
 ): Promise<IncrementalSyncPlanPreview> {
-  await reconcileVaultRegistryForIncrementalSync(deps.vaultService)
+  deps.incrementalSyncService.beginPlanSession()
+  try {
+    await reconcileVaultRegistryForIncrementalSync(deps.vaultService)
 
-  let context = await resolveMobileSyncPlanContext(
-    deps.pathService,
-    deps.fileSystem,
-    deps.vaultService
-  )
-  let preview = await deps.incrementalSyncService.planSync(
-    context,
-    options?.onProgress,
-    options?.runOptions
-  )
-
-  const unknown = filterRemoteVaultScopes(preview.boundaryIssues.unknownVaultPaths)
-  if (unknown.length > 0) {
-    await reconcileVaultRegistryForIncrementalSync(deps.vaultService, unknown)
-    context = await resolveMobileSyncPlanContext(
+    let context = await resolveMobileSyncPlanContext(
       deps.pathService,
       deps.fileSystem,
       deps.vaultService
     )
-    preview = await deps.incrementalSyncService.planSync(
+
+    const scopes = await deps.incrementalSyncService.collectManifestVaultScopes()
+    const pruned = await deps.vaultService.pruneOrphanRegistryVaults(
+      scopes,
+      context.diskVaultNames
+    )
+    if (pruned.length > 0) {
+      deps.incrementalSyncService.beginPlanSession()
+      context = await resolveMobileSyncPlanContext(
+        deps.pathService,
+        deps.fileSystem,
+        deps.vaultService
+      )
+    }
+
+    let preview = await deps.incrementalSyncService.planSync(
       context,
       options?.onProgress,
       options?.runOptions
     )
-  }
+    if (pruned.length > 0) {
+      preview = {
+        ...preview,
+        prunedRegistryVaults: pruned
+      }
+    }
 
-  return preview
+    const unknown = filterRemoteVaultScopes(preview.boundaryIssues.unknownVaultPaths)
+    if (unknown.length > 0) {
+      await reconcileVaultRegistryForIncrementalSync(deps.vaultService, unknown)
+      deps.incrementalSyncService.beginPlanSession()
+      context = await resolveMobileSyncPlanContext(
+        deps.pathService,
+        deps.fileSystem,
+        deps.vaultService
+      )
+      preview = await deps.incrementalSyncService.planSync(
+        context,
+        options?.onProgress,
+        options?.runOptions
+      )
+    }
+
+    return preview
+  } finally {
+    deps.incrementalSyncService.finalizePlanSession()
+  }
 }

@@ -24,6 +24,8 @@ import {
   MobileIncrementalEngine,
   type MobileIncrementalProgress
 } from './mobile-incremental-engine'
+import { MobileIncrementalCloudClient } from './mobile-incremental-cloud.client'
+import { hasRemoteManifestDrift } from './mobile-incremental-plan-reuse.util'
 import type { MobileDataBootstrapper } from './mobile-bootstrapper.service'
 import { emitSyncMutation } from '../cache/mobile-cache-coordinator'
 import { reconcileUserAvatarProfileAfterStorageChange } from '../lib/user-avatar-reconcile.util'
@@ -198,6 +200,8 @@ async function uploadS3(
 export class MobileIncrementalSyncService {
   private readonly engine: MobileIncrementalEngine
   private onAfterSyncComplete?: () => void
+  private postSyncMaintenancePromise: Promise<void> | null = null
+  private postSyncMaintenanceGeneration = 0
 
   constructor(
     private readonly settingsManager: SettingsManagerService,
@@ -217,10 +221,11 @@ export class MobileIncrementalSyncService {
     this.onAfterSyncComplete = handler
   }
 
-  private afterSyncComplete(): Promise<void> {
+  private afterSyncComplete(): void {
     emitSyncMutation('complete', 'incremental-sync')
 
-    return new Promise((resolve) => {
+    const generation = ++this.postSyncMaintenanceGeneration
+    this.postSyncMaintenancePromise = new Promise<void>((resolve) => {
       InteractionManager.runAfterInteractions(() => {
         void (async () => {
           try {
@@ -243,11 +248,23 @@ export class MobileIncrementalSyncService {
             console.warn('[MobileIncrementalSync] afterSyncComplete failed:', e)
           } finally {
             this.onAfterSyncComplete?.()
-            resolve()
+            if (generation === this.postSyncMaintenanceGeneration) {
+              resolve()
+            }
           }
         })()
       })
     })
+  }
+
+  /** 等待后台 resync / 头像等对账完成（传输已结束） */
+  async awaitPostSyncMaintenance(): Promise<void> {
+    const promise = this.postSyncMaintenancePromise
+    if (!promise) return
+    await promise
+    if (this.postSyncMaintenancePromise === promise) {
+      this.postSyncMaintenancePromise = null
+    }
   }
 
   private async rootConfigPath(): Promise<string> {
@@ -311,12 +328,56 @@ export class MobileIncrementalSyncService {
     return this.engine.planSync(config, context, runOptions, (progress) => onProgress?.(progress))
   }
 
+  async collectManifestVaultScopes(): Promise<Set<string>> {
+    const config = await this.getConfig()
+    if (!isConfigReady(config)) {
+      return new Set()
+    }
+    return this.engine.collectManifestVaultScopes(config)
+  }
+
+  beginPlanSession(): void {
+    this.engine.beginPlanSession()
+  }
+
+  endPlanSession(): void {
+    this.engine.endPlanSession()
+  }
+
+  finalizePlanSession(): void {
+    this.engine.finalizePlanSession()
+  }
+
+  peekPendingSyncPlanLocalManifest() {
+    return this.engine.peekPendingSyncLocalManifest()
+  }
+
+  peekPendingSyncPlanRemoteManifest() {
+    return this.engine.peekPendingSyncRemoteManifest()
+  }
+
+  /** 确认同步前检测远端 manifest 是否在弹窗期间发生变化 */
+  async detectRemoteManifestDrift(): Promise<boolean> {
+    const baseline = this.engine.peekPendingSyncRemoteManifest()
+    if (!baseline) return false
+
+    const config = await this.getConfig()
+    if (!isConfigReady(config)) return false
+
+    const syncRoot = await this.pathService.getRootDirectory()
+    const client = new MobileIncrementalCloudClient(config, this.fileSystem)
+    client.setVaultPath(syncRoot)
+    const fresh = await this.engine.getRemoteManifest(client)
+    return hasRemoteManifestDrift(baseline, fresh)
+  }
+
   /**
    * 三向合并增量同步（对齐桌面 ThreeWaySyncService.sync）
    */
   async sync(
     onProgress?: (progress: IncrementalSyncProgress) => void,
-    runOptions?: IncrementalSyncRunOptions
+    runOptions?: IncrementalSyncRunOptions,
+    abortSignal?: AbortSignal
   ): Promise<IncrementalSyncResult> {
     const config = await this.getConfig()
     if (!isConfigReady(config)) {
@@ -328,52 +389,16 @@ export class MobileIncrementalSyncService {
       (progress) => {
         onProgress?.(progress)
       },
-      runOptions
+      runOptions,
+      { signal: abortSignal }
     )
 
-    await this.afterSyncComplete()
+    this.afterSyncComplete()
 
     return {
       uploaded: result.uploaded,
       downloaded: result.downloaded,
       conflicts: result.conflicts,
-      skipped: result.skipped,
-      failed: result.failed
-    }
-  }
-
-  async uploadOnly(
-    onProgress?: (progress: IncrementalSyncProgress) => void
-  ): Promise<IncrementalSyncResult> {
-    const config = await this.getConfig()
-    if (!isConfigReady(config)) throw new Error('增量同步未配置或已禁用')
-    const result = await this.engine.uploadOnly(config, (progress) => onProgress?.(progress))
-    await this.afterSyncComplete()
-    return {
-      uploaded: result.uploaded,
-      downloaded: 0,
-      conflicts: 0,
-      skipped: result.skipped,
-      failed: result.failed
-    }
-  }
-
-  async downloadOnly(
-    onProgress?: (progress: IncrementalSyncProgress) => void,
-    runOptions?: IncrementalSyncRunOptions
-  ): Promise<IncrementalSyncResult> {
-    const config = await this.getConfig()
-    if (!isConfigReady(config)) throw new Error('增量同步未配置或已禁用')
-    const result = await this.engine.downloadOnly(
-      config,
-      (progress) => onProgress?.(progress),
-      runOptions
-    )
-    await this.afterSyncComplete()
-    return {
-      uploaded: 0,
-      downloaded: result.downloaded,
-      conflicts: 0,
       skipped: result.skipped,
       failed: result.failed
     }

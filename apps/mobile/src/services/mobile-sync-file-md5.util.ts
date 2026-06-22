@@ -7,9 +7,10 @@ import {
   isAndroidAppSandboxPath,
   isExternalStoragePath,
   localMd5HexSafe,
-  normalizeExternalStoragePath,
-  stripFileScheme
+  normalizeSyncFilePath
 } from './android-external-fs'
+
+export { normalizeSyncFilePath }
 
 function bytesToHex(bytes: Uint8Array): string {
   return Array.from(bytes)
@@ -49,11 +50,4 @@ export async function md5HexForSyncFile(
   const bytes = base64ToBytes(b64)
   const digest = await Crypto.digest(Crypto.CryptoDigestAlgorithm.MD5, bytes)
   return bytesToHex(new Uint8Array(digest))
-}
-
-export function normalizeSyncFilePath(filePath: string): string {
-  if (isExternalStoragePath(filePath)) {
-    return normalizeExternalStoragePath(filePath)
-  }
-  return stripFileScheme(filePath)
 }
