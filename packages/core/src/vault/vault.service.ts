@@ -274,6 +274,43 @@ export class VaultService implements IVaultService {
     return added
   }
 
+  public async pruneOrphanRegistryVaults(
+    manifestVaultScopes: ReadonlySet<string>,
+    diskVaultNames: readonly string[]
+  ): Promise<string[]> {
+    const activeName = this.getActiveVault()?.name ?? null
+    const removed: string[] = []
+    const kept: VaultInfo[] = []
+
+    for (const vault of this._vaults) {
+      const onDisk = diskVaultNames.some((diskName) => this.vaultMatchesDiskFolder(vault, diskName))
+      const hasSyncData = manifestVaultScopes.has(vault.name)
+      const isActive = vault.name === activeName
+      if (isActive || onDisk || hasSyncData) {
+        kept.push(vault)
+      } else {
+        removed.push(vault.name)
+      }
+    }
+
+    if (removed.length === 0) return []
+
+    this._vaults = kept
+    if (this._vaults.length === 0) {
+      const personalPath = await this.pathService.getVaultDirectory('Personal')
+      this._vaults.push({
+        name: 'Personal',
+        path: personalPath,
+        createdAt: new Date(),
+        lastAccessedAt: new Date()
+      })
+    }
+
+    const rootDir = await this.pathService.getRootDirectory()
+    await this.saveRegistry(path.join(rootDir, 'vault_registry.json'))
+    return removed
+  }
+
   public async createVault(vaultName: string): Promise<void> {
     const name = this.resolveVaultNameOrThrow(vaultName)
     if (this._vaults.some((v) => v.name === name)) {

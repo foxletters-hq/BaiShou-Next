@@ -45,21 +45,6 @@ export interface ISyncOrchestrator {
   ): Promise<IncrementalSyncResult>
 
   /**
-   * 仅上传变更（不同步下载）
-   * @param onProgress - 可选的进度回调
-   */
-  uploadOnly(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult>
-
-  /**
-   * 仅下载变更（不同步上传）
-   * @param onProgress - 可选的进度回调
-   */
-  downloadOnly(
-    onProgress?: SyncProgressCallback,
-    runOptions?: IncrementalSyncRunOptions
-  ): Promise<IncrementalSyncResult>
-
-  /**
    * 获取同步历史记录
    *
    * @param limit - 最大返回条数，默认 20
