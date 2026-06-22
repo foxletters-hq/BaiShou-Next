@@ -4,7 +4,15 @@ import {
   parseImageSrcWithoutWidth,
   parseDiaryContentBlocks,
   serializeDiaryContentBlocks,
-  extractDiaryAttachmentSrcs
+  extractDiaryAttachmentSrcs,
+  buildInlineImageInsertSnippet,
+  ensureInlineImagePreviewSlots,
+  getCursorOffsetAfterInlineImage,
+  getLineIndexForOffset,
+  getInlineImageBlocks,
+  maskImageMarkdownLines,
+  mergeMaskedEditorContent,
+  DIARY_INLINE_IMAGE_SLOT_LINES
 } from '../diary-image-markdown.util'
 
 describe('parseDiaryContentBlocks', () => {
@@ -68,5 +76,53 @@ describe('parseImageSrcWithoutWidth', () => {
 
   it('returns plain src unchanged', () => {
     expect(parseImageSrcWithoutWidth('attachment/foo.png')).toBe('attachment/foo.png')
+  })
+})
+
+describe('inline image editor helpers', () => {
+  it('buildInlineImageInsertSnippet reserves preview blank lines', () => {
+    const snippet = buildInlineImageInsertSnippet('![a](attachment/a.png)')
+    expect(snippet).toBe(`![a](attachment/a.png)\n${'\n'.repeat(DIARY_INLINE_IMAGE_SLOT_LINES)}`)
+  })
+
+  it('getLineIndexForOffset maps global offset to line index', () => {
+    const content = 'line0\nline1\nline2'
+    expect(getLineIndexForOffset(content, 0)).toBe(0)
+    expect(getLineIndexForOffset(content, 6)).toBe(1)
+    expect(getLineIndexForOffset(content, content.length)).toBe(2)
+  })
+
+  it('getCursorOffsetAfterInlineImage skips preview slot lines', () => {
+    const image = '![a](attachment/a.png)'
+    const content = `${image}\n${'\n'.repeat(DIARY_INLINE_IMAGE_SLOT_LINES)}after`
+    const blocks = getInlineImageBlocks(content)
+    expect(blocks).toHaveLength(1)
+    const offset = getCursorOffsetAfterInlineImage(content, blocks[0]!)
+    expect(content.slice(offset)).toBe('after')
+  })
+
+  it('ensureInlineImagePreviewSlots adds blank lines between consecutive images', () => {
+    const content = '![a](attachment/a.png)\n![b](attachment/b.png)'
+    const normalized = ensureInlineImagePreviewSlots(content)
+    const lines = normalized.split('\n')
+    expect(lines[0]).toBe('![a](attachment/a.png)')
+    expect(lines.slice(1, DIARY_INLINE_IMAGE_SLOT_LINES).every((line) => line === '')).toBe(true)
+    expect(lines[DIARY_INLINE_IMAGE_SLOT_LINES]).toBe('![b](attachment/b.png)')
+  })
+
+  it('maskImageMarkdownLines hides image syntax without changing length', () => {
+    const content = 'hello\n![a](attachment/a.png)\nworld'
+    const masked = maskImageMarkdownLines(content)
+    expect(masked.length).toBe(content.length)
+    expect(masked).toBe(`hello\n${' '.repeat('![a](attachment/a.png)'.length)}\nworld`)
+  })
+
+  it('mergeMaskedEditorContent restores image lines from mask', () => {
+    const content = 'hello\n![a](attachment/a.png)\nworld'
+    const masked = maskImageMarkdownLines(content)
+    const edited = masked.replace('world', 'world!')
+    expect(mergeMaskedEditorContent(content, edited)).toBe(
+      'hello\n![a](attachment/a.png)\nworld!'
+    )
   })
 })
