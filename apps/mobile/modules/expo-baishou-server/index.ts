@@ -17,6 +17,11 @@ type ServerEvents = {
     total: number
     detail: string
   }) => void
+  onSyncHttpTransferProgress: (event: {
+    filePath: string
+    writtenBytes: number
+    totalBytes: number
+  }) => void
 }
 
 export type ExternalPathInfo = {
@@ -24,6 +29,13 @@ export type ExternalPathInfo = {
   isDirectory: boolean
   modificationTime: number
   size: number
+}
+
+export type ExternalIncrementalSyncScanEntry = {
+  relPath: string
+  size: number
+  mtimeMs: number
+  isFile: boolean
 }
 
 export type PickDirectoryResult =
@@ -61,10 +73,19 @@ declare class ExpoBaishouServerModule extends NativeModule<ServerEvents> {
   externalReadBase64(path: string): string
   externalDelete(path: string, idempotent: boolean): void
   externalReadDirectory(path: string): string[]
+  externalScanIncrementalSyncFiles(path: string): ExternalIncrementalSyncScanEntry[]
   localGetInfo(path: string): ExternalPathInfo
   localReadDirectory(path: string): string[]
   localMd5Hex(path: string): string
   externalMd5Hex(path: string): string
+  readFileChunkBase64(path: string, position: number, length: number): string
+  cancelHttpUploadFile(filePath?: string | null): void
+  httpUploadFileAsync(
+    url: string,
+    filePath: string,
+    method: string,
+    headers: Record<string, string>
+  ): Promise<{ status: number }>
   localAppendString(path: string, content: string): void
   nativeUnzipArchive(zipPath: string, destDir: string): Promise<void>
   nativeZipArchiveExport(
@@ -139,6 +160,16 @@ export function isNativeArchiveExportAvailable(): boolean {
 export function isLanUploadNativeAvailable(): boolean {
   const mod = getNative()
   return mod != null && typeof mod.uploadLanFileAsync === 'function'
+}
+
+export function isReadFileChunkNativeAvailable(): boolean {
+  const mod = getNative()
+  return mod != null && typeof mod.readFileChunkBase64 === 'function'
+}
+
+export function isHttpFileUploadNativeAvailable(): boolean {
+  const mod = getNative()
+  return mod != null && typeof mod.httpUploadFileAsync === 'function'
 }
 
 export function isNativeDirectoryPickerAvailable(): boolean {
@@ -433,6 +464,14 @@ export function externalReadDirectory(path: string): string[] {
   return callNativeExternal('externalReadDirectory', (mod) => mod.externalReadDirectory(path))
 }
 
+export function externalScanIncrementalSyncFiles(
+  path: string
+): ExternalIncrementalSyncScanEntry[] {
+  return callNativeExternal('externalScanIncrementalSyncFiles', (mod) =>
+    mod.externalScanIncrementalSyncFiles(path)
+  ) as ExternalIncrementalSyncScanEntry[]
+}
+
 export function localGetInfo(path: string): ExternalPathInfo {
   return callNativeExternal('localGetInfo', (mod) => mod.localGetInfo(path))
 }
@@ -451,6 +490,58 @@ export function localMd5Hex(path: string): string {
 
 export function externalMd5Hex(path: string): string {
   return callNativeExternal('externalMd5Hex', (mod) => mod.externalMd5Hex(path))
+}
+
+export function readFileChunkBase64(path: string, position: number, length: number): string {
+  const mod = requireNative()
+  if (typeof mod.readFileChunkBase64 !== 'function') {
+    throw new Error(`${NATIVE_REBUILD_HINT}（缺少 readFileChunkBase64）`)
+  }
+  return mod.readFileChunkBase64(path, position, length)
+}
+
+export function onSyncHttpTransferProgress(
+  listener: (event: { filePath: string; writtenBytes: number; totalBytes: number }) => void
+) {
+  const mod = getNative()
+  if (!mod) {
+    return { remove: () => {} }
+  }
+  return mod.addListener('onSyncHttpTransferProgress', listener)
+}
+
+import { syncIoPathKey } from '../../src/services/mobile-sync-path.util'
+
+export function cancelHttpUploadFile(filePath?: string | null): void {
+  const mod = getNative()
+  if (!mod || typeof mod.cancelHttpUploadFile !== 'function') return
+  mod.cancelHttpUploadFile(filePath ?? null)
+}
+
+export async function httpUploadFileAsync(
+  url: string,
+  filePath: string,
+  method: string,
+  headers: Record<string, string>,
+  onProgress?: (writtenBytes: number, totalBytes: number) => void
+): Promise<{ status: number }> {
+  const mod = requireNative()
+  if (typeof mod.httpUploadFileAsync !== 'function') {
+    throw new Error(`${NATIVE_REBUILD_HINT}（缺少 httpUploadFileAsync）`)
+  }
+  const pathKey = syncIoPathKey(filePath)
+  const subscription = onProgress
+    ? onSyncHttpTransferProgress((event) => {
+        if (syncIoPathKey(event.filePath) === pathKey) {
+          onProgress(event.writtenBytes, event.totalBytes)
+        }
+      })
+    : null
+  try {
+    return await mod.httpUploadFileAsync(url, filePath, method, headers)
+  } finally {
+    subscription?.remove()
+  }
 }
 
 export function localAppendString(path: string, content: string): void {

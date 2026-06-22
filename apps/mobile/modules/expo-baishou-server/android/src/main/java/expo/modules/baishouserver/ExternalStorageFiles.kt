@@ -116,6 +116,49 @@ object ExternalStorageFiles {
         return file.list()?.toList() ?: emptyList()
     }
 
+    /** 递归扫描增量同步候选文件（已应用与 JS 一致的目录/文件过滤） */
+    fun scanIncrementalSyncFiles(context: Context, uri: String): List<Map<String, Any?>> {
+        if (useTreeAccess(context, uri)) {
+            throw UnsupportedOperationException("Tree access incremental scan not supported")
+        }
+        val root = resolveFile(context, uri)
+        if (!root.exists() || !root.isDirectory) {
+            return emptyList()
+        }
+        val results = ArrayList<Map<String, Any?>>()
+        scanIncrementalSyncDirRecursive(root, "", results)
+        return results
+    }
+
+    private fun scanIncrementalSyncDirRecursive(
+        dir: File,
+        rel: String,
+        out: MutableList<Map<String, Any?>>
+    ) {
+        val names = dir.list() ?: return
+        for (name in names) {
+            val childRel = if (rel.isEmpty()) name else "$rel/$name"
+            val child = File(dir, name)
+            if (child.isDirectory) {
+                if (IncrementalSyncScanRules.shouldScanDirectory(name, childRel)) {
+                    scanIncrementalSyncDirRecursive(child, childRel, out)
+                }
+                continue
+            }
+            if (!child.isFile || !IncrementalSyncScanRules.shouldIncludeFile(name, childRel)) {
+                continue
+            }
+            out.add(
+                mapOf(
+                    "relPath" to childRel,
+                    "size" to child.length(),
+                    "mtimeMs" to child.lastModified(),
+                    "isFile" to true
+                )
+            )
+        }
+    }
+
     fun probeWritable(context: Context): Boolean {
         if (StorageTreeAccess.hasPersistedTree(context)) {
             return StorageTreeAccess.probeWritable(context)
@@ -687,6 +730,45 @@ object ExternalStorageFiles {
       throw java.io.FileNotFoundException(uri)
     }
     return md5HexFile(file)
+  }
+
+  /**
+   * 读取任意本地/外部文件指定区间的 Base64（NO_WRAP），供增量同步分片 PUT 使用。
+   * SAF 树路径会整文件读入后切片（大文件较少走 SAF）。
+   */
+  fun readBase64RangeAny(context: Context, uri: String, position: Long, length: Int): String {
+    if (length <= 0) return ""
+    val path = uriToPath(uri)
+    if (useTreeAccess(context, uri)) {
+      val bytes = StorageTreeAccess.readBytes(context, path)
+      val start = position.toInt().coerceIn(0, bytes.size)
+      val end = (position + length).toInt().coerceIn(start, bytes.size)
+      if (start >= end) return ""
+      return Base64.encodeToString(bytes.copyOfRange(start, end), Base64.NO_WRAP)
+    }
+    val file = if (isExternalPath(path)) {
+      resolveFile(context, uri)
+    } else {
+      resolveAnyFile(uri)
+    }
+    if (!file.exists() || !file.isFile) {
+      throw java.io.FileNotFoundException(uri)
+    }
+    val fileLen = file.length()
+    if (position >= fileLen) return ""
+    val actualLength = length.toLong().coerceAtMost(fileLen - position).toInt()
+    if (actualLength <= 0) return ""
+    val buffer = ByteArray(actualLength)
+    java.io.RandomAccessFile(file, "r").use { raf ->
+      raf.seek(position)
+      var read = 0
+      while (read < actualLength) {
+        val n = raf.read(buffer, read, actualLength - read)
+        if (n <= 0) break
+        read += n
+      }
+    }
+    return Base64.encodeToString(buffer, Base64.NO_WRAP)
   }
 
   /** 外部存储文件 MD5（hex）；SAF 树路径暂不支持，由 JS 回退 */
