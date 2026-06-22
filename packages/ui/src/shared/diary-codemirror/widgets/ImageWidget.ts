@@ -37,6 +37,9 @@ export class ImageWidget extends WidgetType {
     if (this.width) {
       this.container.style.width = `${this.width}px`
       this.container.style.maxWidth = '100%'
+    } else {
+      this.container.classList.add('cm-image-container--unsized')
+      this.container.style.maxWidth = `${IMAGE_SIZE_CONFIG.defaultDisplayWidth}px`
     }
 
     this.linkBar = document.createElement('div')
@@ -157,6 +160,14 @@ export class ImageWidget extends WidgetType {
       }
       this.linkBar!.style.display = 'block'
       this.container!.classList.add('cm-image-active')
+    })
+
+    img.addEventListener('dblclick', (e) => {
+      e.stopPropagation()
+      e.preventDefault()
+      if (interactionMode === 'mouse') {
+        this.platform?.onExternalImagePreview?.(this.src)
+      }
     })
 
     if (interactionMode === 'touch') {

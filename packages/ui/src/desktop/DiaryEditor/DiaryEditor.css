@@ -192,9 +192,14 @@
   display: inline-block;
   vertical-align: middle;
   max-width: 100%;
+  width: fit-content;
   margin: 8px 8px;
   border-radius: 8px;
   overflow: visible;
+}
+
+.cm-image-container.cm-image-container--unsized {
+  max-width: min(100%, 520px);
 }
 
 .cm-image-container.cm-image-active {
@@ -204,7 +209,8 @@
 
 .cm-image-resizable {
   display: block;
-  width: 100%;
+  max-width: 100%;
+  width: auto;
   height: auto;
   border-radius: 8px;
   cursor: pointer;
