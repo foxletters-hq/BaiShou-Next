@@ -648,6 +648,11 @@ class ExpoBaishouServerModule : Module() {
             ExternalStorageFiles.readDirectoryAny(context, path)
         }
 
+        Function("localScanIncrementalSyncFiles") { path: String ->
+            val context = appContext.reactContext ?: throw Exception("React context is null")
+            ExternalStorageFiles.scanIncrementalSyncFilesLocal(context, path)
+        }
+
         Function("localMd5Hex") { path: String ->
             val context = appContext.reactContext ?: throw Exception("React context is null")
             ExternalStorageFiles.md5HexAny(context, path)
