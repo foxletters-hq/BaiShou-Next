@@ -21,6 +21,23 @@ function shouldTreatAsFactoryLatteAssistant(input: {
   )
 }
 
+function factoryLatteSeedMatchesAssistant(
+  seed: ReturnType<typeof getDefaultLatteAssistantSeed>,
+  assistant: {
+    name: string
+    description?: string | null
+    systemPrompt?: string | null
+    avatarPath?: string | null
+  }
+): boolean {
+  return (
+    assistant.name === seed.name &&
+    (assistant.description ?? '') === (seed.description ?? '') &&
+    (assistant.systemPrompt ?? '') === (seed.systemPrompt ?? '') &&
+    (isAssistantCustomAvatar(assistant.avatarPath) || assistant.avatarPath === seed.avatarPath)
+  )
+}
+
 function resolveDefaultAssistantId(existingIds: Set<string>): string {
   if (!existingIds.has(DEFAULT_LATTE_ASSISTANT_ID)) return DEFAULT_LATTE_ASSISTANT_ID
   return `latte-${Date.now()}`
@@ -57,7 +74,7 @@ export async function ensureDefaultLatteAssistant(
       a.isDefault &&
       shouldTreatAsFactoryLatteAssistant({ name: a.name, systemPrompt: a.systemPrompt })
   )
-  if (legacyDefault) {
+  if (legacyDefault && !factoryLatteSeedMatchesAssistant(seed, legacyDefault)) {
     await assistantManager.update(legacyDefault.id, {
       name: seed.name,
       description: seed.description,
@@ -85,6 +102,9 @@ export async function syncDefaultLatteAssistantLocale(
   }
 
   const seed = getDefaultLatteAssistantSeed(locale)
+  if (factoryLatteSeedMatchesAssistant(seed, assistant)) {
+    return
+  }
   await assistantManager.update(DEFAULT_LATTE_ASSISTANT_ID, {
     name: seed.name,
     description: seed.description,
