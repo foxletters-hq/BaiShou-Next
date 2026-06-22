@@ -109,7 +109,7 @@ export interface S3SyncConfig {
 /** 删除传播冲突时用户选择的处理方式 */
 export type SyncDeletePropagationChoice = 'follow-remote' | 'push-local' | 'skip-deletes'
 
-/** 增量同步执行选项（双向 / 仅下载） */
+/** 增量同步执行选项（双向同步） */
 export type IncrementalSyncRunOptions = {
   /** 用户已确认本机首次连接时本地与远端差异较大 */
   highDivergenceConfirmed?: boolean
@@ -133,9 +133,23 @@ export interface ManifestEntry {
 }
 
 /**
+ * 远端 manifest 中的显式「已移除」记录（随 manifest 同步到各端）。
+ * 每个路径最多一条；再次删除同一路径会覆盖为最新记录。
+ */
+export interface RemovedManifestEntry {
+  /** 移除时的内容 hash */
+  hash: string
+  /** 移除时的文件大小（字节） */
+  size: number
+  /** 移除时间戳（毫秒） */
+  removedAt: number
+  /** 发起移除的设备 ID */
+  deviceId: string
+}
+
+/**
  * 增量同步文件清单
- * 纯状态快照：只记录当前存在的文件，不记录历史。
- * 文件删除后条目直接移除，体积随文件数线性增长，不随时间膨胀。
+ * `files` 为当前仍存在的文件快照；`removed` 为近期在云端显式移除的路径（有条数上限）。
  */
 export interface SyncManifest {
   /** 清单格式版本号（当前为 1） */
@@ -146,6 +160,8 @@ export interface SyncManifest {
   deviceId: string
   /** 文件清单（key 为 vault 内相对路径） */
   files: Record<string, ManifestEntry>
+  /** 已移除记录（key 为路径；旧客户端无此字段时按空对象处理） */
+  removed?: Record<string, RemovedManifestEntry>
 }
 
 /** 同步操作类型 */
@@ -273,6 +289,10 @@ export interface SyncProgressEvent {
   action?: 'upload' | 'download' | 'delete' | 'skip'
   /** 状态描述文本 */
   statusText?: string
+  /** 当前文件已传输字节（大文件分片上传/下载） */
+  fileBytesDone?: number
+  /** 当前文件总字节 */
+  fileBytesTotal?: number
 }
 
 /** 同步进度回调 */

@@ -234,7 +234,7 @@ describe('threeWayMerge', () => {
     expect(decisions.find((d) => d.filePath === bgPath && d.type === 'download')).toBeUndefined()
   })
 
-  it('should delete-local without ancestor when remote manifest is newer than local file', () => {
+  it('should upload without ancestor when local-only and no remote removed record', () => {
     const filePath = 'Personal/Attachments/diary/photo.jpg'
     const localEntry = makeEntry({ hash: 'old', lastModified: 1000 })
     const local = makeManifest({ [filePath]: localEntry })
@@ -245,7 +245,73 @@ describe('threeWayMerge', () => {
     const decisions = threeWayMerge(local, remote, ancestor)
     const decision = decisions.find((d) => d.filePath === filePath)
 
+    expect(decision?.type).toBe('upload')
+  })
+
+  it('should delete-local without ancestor when remote removed record matches local hash', () => {
+    const filePath = 'Personal/Attachments/diary/photo.jpg'
+    const localEntry = makeEntry({ hash: 'old', lastModified: 1000 })
+    const local = makeManifest({ [filePath]: localEntry })
+    const remote = makeManifest({ 'Personal/Journals/other.md': makeEntry() })
+    remote.removed = {
+      [filePath]: {
+        hash: 'old',
+        size: localEntry.size,
+        removedAt: 5000,
+        deviceId: 'peer-device'
+      }
+    }
+    const ancestor = makeManifest({})
+
+    const decisions = threeWayMerge(local, remote, ancestor)
+    const decision = decisions.find((d) => d.filePath === filePath)
+
     expect(decision?.type).toBe('delete-local')
+  })
+
+  it('should upload without ancestor when remote removed record hash differs from local', () => {
+    const filePath = 'Personal/Attachments/diary/photo.jpg'
+    const localEntry = makeEntry({ hash: 'local-new', lastModified: 1000 })
+    const local = makeManifest({ [filePath]: localEntry })
+    const remote = makeManifest({})
+    remote.removed = {
+      [filePath]: {
+        hash: 'old-remote',
+        size: 1,
+        removedAt: 5000,
+        deviceId: 'peer-device'
+      }
+    }
+    const ancestor = makeManifest({})
+
+    const decisions = threeWayMerge(local, remote, ancestor)
+    const decision = decisions.find((d) => d.filePath === filePath)
+
+    expect(decision?.type).toBe('upload')
+  })
+
+  it('should not iterate removed-only paths that are absent from local, remote, and ancestor', () => {
+    const localPath = 'Personal/Journals/keep.md'
+    const local = makeManifest({ [localPath]: makeEntry({ hash: 'keep' }) })
+    const remote = makeManifest({})
+    const ancestor = makeManifest({})
+    remote.removed = Object.fromEntries(
+      Array.from({ length: 200 }, (_, i) => [
+        `Personal/Journals/removed-only-${i}.md`,
+        {
+          hash: `h-${i}`,
+          size: 1,
+          removedAt: 1000 + i,
+          deviceId: 'peer'
+        }
+      ])
+    )
+
+    const decisions = threeWayMerge(local, remote, ancestor)
+
+    expect(decisions).toHaveLength(1)
+    expect(decisions[0]?.filePath).toBe(localPath)
+    expect(decisions[0]?.type).toBe('upload')
   })
 
   it('should upload without ancestor when local file is newer than remote manifest', () => {

@@ -91,7 +91,7 @@ export type AssertBidirectionalSyncDivergenceOptions = {
   highDivergenceConfirmed?: boolean
 }
 
-/** 双向同步前校验；仅上传（uploadOnly）不调用 */
+/** 双向同步前校验 */
 export function assertBidirectionalSyncDivergenceAllowed(
   local: SyncManifest,
   remote: SyncManifest,
