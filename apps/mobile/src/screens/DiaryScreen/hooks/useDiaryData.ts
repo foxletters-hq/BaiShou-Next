@@ -87,6 +87,15 @@ function searchFilterCacheKey(
   return `${filter.favorite ? 1 : 0}:${(filter.weathers ?? []).join(',')}`
 }
 
+function matchesSelectedMonth(dateValue: Date | string, selectedMonth: Date): boolean {
+  const parsed = new Date(dateValue)
+  if (isNaN(parsed.getTime())) return false
+  return (
+    parsed.getFullYear() === selectedMonth.getFullYear() &&
+    parsed.getMonth() === selectedMonth.getMonth()
+  )
+}
+
 export function useDiaryData(
   diaryService: DiaryService | undefined,
   query: DiaryPageQuery,
@@ -97,6 +106,10 @@ export function useDiaryData(
   const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(false)
   const loadRequestIdRef = useRef(0)
+  const readyRef = useRef(ready)
+  readyRef.current = ready
+  const queryRef = useRef(query)
+  queryRef.current = query
   const diaryListCacheVersion = useSyncExternalStore(
     subscribeDiaryListCache,
     getDiaryListCacheVersion
@@ -104,6 +117,8 @@ export function useDiaryData(
 
   const rawSearchTerm = query.searchQuery.trim()
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(rawSearchTerm)
+  const debouncedSearchTermRef = useRef(debouncedSearchTerm)
+  debouncedSearchTermRef.current = debouncedSearchTerm
 
   useEffect(() => {
     if (!rawSearchTerm) {
@@ -130,6 +145,24 @@ export function useDiaryData(
     [effectiveQuery.filterFavorite, effectiveQuery.filterWeathers]
   )
 
+  const browseIdentity = useMemo(
+    () =>
+      `${browseMonthKey}:${query.page}:${query.pageSize}:${searchFilterKey}:${debouncedSearchTerm}`,
+    [browseMonthKey, query.page, query.pageSize, searchFilterKey, debouncedSearchTerm]
+  )
+  const prevBrowseIdentityRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (prevBrowseIdentityRef.current === browseIdentity) return
+    prevBrowseIdentityRef.current = browseIdentity
+    loadRequestIdRef.current += 1
+    setEntries([])
+    setTotalCount(0)
+    if (ready) {
+      setLoading(true)
+    }
+  }, [browseIdentity, ready])
+
   const loadEntries = useCallback(async () => {
     if (!diaryService) {
       setLoading(false)
@@ -140,12 +173,16 @@ export function useDiaryData(
     setLoading(true)
 
     try {
-      const filter = buildListFilter(effectiveQuery)
-      const countOpts = buildCountFilter(effectiveQuery)
-      const term = effectiveQuery.searchQuery.trim()
-      const searchFilter = buildSearchFilter(effectiveQuery)
-      const pageOffset = (effectiveQuery.page - 1) * effectiveQuery.pageSize
-      const pageLimit = effectiveQuery.pageSize
+      const currentQuery: DiaryPageQuery = {
+        ...queryRef.current,
+        searchQuery: debouncedSearchTermRef.current
+      }
+      const filter = buildListFilter(currentQuery)
+      const countOpts = buildCountFilter(currentQuery)
+      const term = currentQuery.searchQuery.trim()
+      const searchFilter = buildSearchFilter(currentQuery)
+      const pageOffset = (currentQuery.page - 1) * currentQuery.pageSize
+      const pageLimit = currentQuery.pageSize
 
       if (term) {
         const { items, hasMore } = await diaryService.searchPage(term, {
@@ -153,7 +190,7 @@ export function useDiaryData(
           limit: pageLimit,
           offset: pageOffset
         })
-        if (requestId !== loadRequestIdRef.current) return
+        if (requestId !== loadRequestIdRef.current || !readyRef.current) return
 
         setEntries(
           items.map((item) => ({
@@ -173,13 +210,29 @@ export function useDiaryData(
         )
         setTotalCount(hasMore ? pageOffset + pageLimit + 1 : pageOffset + items.length)
       } else {
-        const [items, total] = await Promise.all([
+        const [rawItems, total] = await Promise.all([
           diaryService.listFiltered(filter),
           diaryService.countFiltered(countOpts)
         ])
-        if (requestId !== loadRequestIdRef.current) return
+        if (requestId !== loadRequestIdRef.current || !readyRef.current) return
+
+        let items = rawItems || []
+        if (currentQuery.selectedMonth) {
+          const mismatched = items.filter(
+            (item) => !matchesSelectedMonth(item.date, currentQuery.selectedMonth!)
+          )
+          if (mismatched.length > 0) {
+            logger.warn(
+              `[useDiaryData] listFiltered 返回 ${mismatched.length} 条与月份筛选不符的日记，已客户端过滤`
+            )
+            items = items.filter((item) =>
+              matchesSelectedMonth(item.date, currentQuery.selectedMonth!)
+            )
+          }
+        }
+
         setEntries(
-          (items || []).map((item) => ({
+          items.map((item) => ({
             id: item.id,
             date: item.date,
             content: item.preview ?? '',
@@ -194,7 +247,7 @@ export function useDiaryData(
             updatedAt: item.updatedAt
           }))
         )
-        setTotalCount(typeof total === 'number' ? total : items?.length || 0)
+        setTotalCount(typeof total === 'number' ? total : items.length)
       }
     } catch (err) {
       if (requestId !== loadRequestIdRef.current) return
@@ -204,10 +257,11 @@ export function useDiaryData(
         setLoading(false)
       }
     }
-  }, [diaryService, effectiveQuery])
+  }, [diaryService])
 
   useEffect(() => {
     if (!ready || !diaryService) {
+      loadRequestIdRef.current += 1
       setEntries([])
       setTotalCount(0)
       setLoading(false)
@@ -218,14 +272,10 @@ export function useDiaryData(
     ready,
     diaryService,
     loadEntries,
-    debouncedSearchTerm,
-    query.page,
-    query.pageSize,
+    browseIdentity,
     vaultRevision,
     ecosystemResyncEpoch,
     diaryListCacheVersion,
-    searchFilterKey,
-    debouncedSearchTerm ? 0 : browseMonthKey,
     debouncedSearchTerm ? 0 : listFilter,
     debouncedSearchTerm ? 0 : countFilter
   ])

@@ -19,6 +19,12 @@ import {
   useNativeTheme
 } from '@baishou/ui/native'
 import type { DiaryTagColorRegistry } from '@baishou/shared'
+import {
+  DEFAULT_DIARY_PAGE_SIZE,
+  DIARY_PAGE_SIZE_OPTIONS
+} from '../diary-filter-state.util'
+
+export { DEFAULT_DIARY_PAGE_SIZE, DIARY_PAGE_SIZE_OPTIONS }
 
 export interface DiaryListEntry {
   id: number
@@ -34,9 +40,6 @@ export interface DiaryListEntry {
   /** 语义搜索相似度 0–1，仅语义模式展示 */
   matchSimilarity?: number
 }
-
-export const DEFAULT_DIARY_PAGE_SIZE = 10
-export const DIARY_PAGE_SIZE_OPTIONS = [10, 20, 30, 50, 80, 100] as const
 
 export interface DiaryListProps {
   entries: DiaryListEntry[]
@@ -344,7 +347,7 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
     )
   }
 
-  if (loading && entries.length === 0) {
+  if (loading) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -373,9 +376,11 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
     )
   }
 
+  const listRemountKey = `${selectedMonth?.getTime() ?? 'all'}-${currentPage}-${totalCount}`
+
   return (
     <FlatList
-      key={`diary-grid-${numColumns}`}
+      key={`diary-grid-${numColumns}-${listRemountKey}`}
       data={entries}
       numColumns={numColumns}
       keyExtractor={keyExtractor}
