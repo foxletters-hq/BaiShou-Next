@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import type {
   IncrementalSyncPlanItem,
   IncrementalSyncPlanPreview,
@@ -67,7 +68,7 @@ function formatVaultStats(
   return parts.join(' · ')
 }
 
-function formatVaultLabel(vaultName: string, t: (key: string, fallback?: string) => string): string {
+function formatVaultLabel(vaultName: string, t: TFunction): string {
   if (vaultName === '__root__') return t('data_sync.plan_vault_root', '根目录文件')
   if (vaultName === '__unknown__') return t('data_sync.plan_vault_unknown', '未知工作区')
   return vaultName

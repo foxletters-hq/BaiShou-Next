@@ -91,8 +91,8 @@ export abstract class GitSyncWorkspaceMixin extends GitSyncInitMixin {
     return this._withGitLock(async () => {
       const git = await this.ensureGit()
       logger.info('[GitSync] 取消暂存全部文件')
-      // simple-git 的无参 reset() 为 soft 模式，不会清空暂存区；mixed 才等价于 git reset HEAD
-      await git.reset('mixed')
+      // simple-git 的无参 reset() 为 soft 模式，不会清空暂存区；--mixed 才等价于 git reset HEAD
+      await git.reset(['--mixed'])
     })
   }
 

@@ -7,7 +7,6 @@ import type {
   GitRollbackAllContext,
   VersionHistoryEntry
 } from '@baishou/shared'
-import type { SimpleGit } from 'simple-git'
 import { GitRollbackError } from './sync.errors'
 import { GitSyncCommitMixin } from './git-sync.commit'
 import {

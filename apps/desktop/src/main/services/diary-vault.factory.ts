@@ -50,6 +50,21 @@ class FixedVaultServiceStub implements IVaultService {
   deleteVault(vaultName: string): Promise<void> {
     return vaultService.deleteVault(vaultName)
   }
+
+  syncRegistryWithDisk(): Promise<string[]> {
+    return vaultService.syncRegistryWithDisk()
+  }
+
+  ensureVaultsRegistered(vaultNames: Iterable<string>): Promise<string[]> {
+    return vaultService.ensureVaultsRegistered(vaultNames)
+  }
+
+  pruneOrphanRegistryVaults(
+    manifestVaultScopes: ReadonlySet<string>,
+    diskVaultNames: readonly string[]
+  ): Promise<string[]> {
+    return vaultService.pruneOrphanRegistryVaults(manifestVaultScopes, diskVaultNames)
+  }
 }
 
 export async function getDiaryManagerForVault(vaultName: string): Promise<DiaryService> {
