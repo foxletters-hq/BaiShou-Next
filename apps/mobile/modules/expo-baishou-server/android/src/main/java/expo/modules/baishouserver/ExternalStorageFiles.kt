@@ -122,6 +122,16 @@ object ExternalStorageFiles {
             throw UnsupportedOperationException("Tree access incremental scan not supported")
         }
         val root = resolveFile(context, uri)
+        return scanIncrementalSyncFilesFromRoot(root)
+    }
+
+    /** 应用沙盒等任意本地路径的增量同步扫描（无需外部存储权限） */
+    fun scanIncrementalSyncFilesLocal(context: Context, uri: String): List<Map<String, Any?>> {
+        val root = resolveAnyFile(uri)
+        return scanIncrementalSyncFilesFromRoot(root)
+    }
+
+    private fun scanIncrementalSyncFilesFromRoot(root: File): List<Map<String, Any?>> {
         if (!root.exists() || !root.isDirectory) {
             return emptyList()
         }
