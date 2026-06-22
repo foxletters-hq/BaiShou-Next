@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "noEmit": true,
+    "paths": {
+      "@baishou/ui/shared/diary-codemirror": ["../../../packages/ui/src/shared/diary-codemirror/index.ts"],
+      "@baishou/ui/shared/diary-codemirror/*": ["../../../packages/ui/src/shared/diary-codemirror/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "vite.config.ts"]
+}
