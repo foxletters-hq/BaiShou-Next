@@ -96,6 +96,12 @@ export interface IIncrementalSyncService {
   /** 丢弃 plan/sync 之间缓存的 manifest 快照（例如工作区注册变更后） */
   clearPreparedManifestCache(): void
 
+  /** 预置 plan 预览用的本地/远端 manifest，避免重复扫描 */
+  setPlanManifestCache(local: SyncManifest, remote: SyncManifest): void
+
+  /** 仅丢弃 plan 预览阶段的 manifest 缓存 */
+  clearPlanManifestCache(): void
+
   // ── 冲突处理 ───────────────────────────────────────────────
 
   /**
