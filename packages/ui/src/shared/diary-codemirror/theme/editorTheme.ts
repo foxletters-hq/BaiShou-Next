@@ -1,4 +1,5 @@
 import { EditorView } from '@codemirror/view'
+import { IMAGE_SIZE_CONFIG } from '../utils/image-utils'
 
 export const editorTheme = EditorView.baseTheme({
   '.cm-editor': {
@@ -156,14 +157,17 @@ export const editorTheme = EditorView.baseTheme({
     position: 'relative',
     display: 'block',
     maxWidth: '100%',
-    width: '100%',
+    width: 'fit-content',
     margin: '8px 0',
     boxSizing: 'border-box'
+  },
+  '.cm-image-container.cm-image-container--unsized': {
+    maxWidth: `min(100%, ${IMAGE_SIZE_CONFIG.defaultDisplayWidth}px)`
   },
   '.cm-image-resizable': {
     display: 'block',
     maxWidth: '100%',
-    width: '100%',
+    width: 'auto',
     height: 'auto',
     borderRadius: '8px',
     cursor: 'pointer'

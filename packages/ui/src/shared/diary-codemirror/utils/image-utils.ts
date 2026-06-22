@@ -11,6 +11,8 @@ export interface ParsedImage {
 export const IMAGE_SIZE_CONFIG = {
   minWidth: 100,
   maxWidth: 1200,
+  /** 未在 Markdown 中指定宽度时，编辑器内联预览的默认最大宽度 */
+  defaultDisplayWidth: 520,
   step: 10
 }
 

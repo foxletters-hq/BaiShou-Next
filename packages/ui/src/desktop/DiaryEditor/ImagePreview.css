@@ -46,8 +46,10 @@
 }
 
 .image-preview-container img {
-  max-width: min(92vw, 1200px);
-  max-height: calc(100vh - 160px);
+  max-width: min(86vw, 720px);
+  max-height: min(70vh, 600px);
+  width: auto;
+  height: auto;
   object-fit: contain;
   user-select: none;
   -webkit-user-drag: none;
