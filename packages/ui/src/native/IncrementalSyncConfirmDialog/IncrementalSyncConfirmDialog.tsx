@@ -342,6 +342,14 @@ const PlanConfirmFooter = memo(function PlanConfirmFooter({
     needsSyncConfirm,
     confirmEligibleAtMs
   )
+  const [activeDeleteChoice, setActiveDeleteChoice] =
+    useState<SyncDeletePropagationChoice | null>(null)
+
+  useEffect(() => {
+    if (!isConfirming) {
+      setActiveDeleteChoice(null)
+    }
+  }, [isConfirming])
 
   const primaryButtonLabel = useMemo(() => {
     if (isConfirming) return t('data_sync.plan_confirming', '正在确认…')
@@ -355,7 +363,14 @@ const PlanConfirmFooter = memo(function PlanConfirmFooter({
     return t('data_sync.plan_confirm_sync', '确认同步')
   }, [confirmReady, isConfirming, needsSyncConfirm, secondsLeft, t])
 
-  const choiceDisabled = (needsSyncConfirm && !confirmReady) || isConfirming
+  const choiceDisabled =
+    (needsSyncConfirm && !confirmReady) || isConfirming || activeDeleteChoice != null
+
+  const handleDeleteChoiceConfirm = (choice: SyncDeletePropagationChoice) => {
+    if (choiceDisabled) return
+    setActiveDeleteChoice(choice)
+    onConfirm(choice)
+  }
 
   if (needsDeleteChoice) {
     return (
@@ -363,30 +378,32 @@ const PlanConfirmFooter = memo(function PlanConfirmFooter({
         <Button
           variant="primary"
           destructive
-          onPress={() => onConfirm('follow-remote')}
+          onPress={() => handleDeleteChoiceConfirm('follow-remote')}
           disabled={choiceDisabled}
-          isLoading={isConfirming}
+          isLoading={activeDeleteChoice === 'follow-remote'}
           style={styles.fullWidthButton}
         >
           {t('data_sync.plan_delete_choice_follow_remote')}
         </Button>
         <Button
           variant="primary"
-          onPress={() => onConfirm('push-local')}
+          onPress={() => handleDeleteChoiceConfirm('push-local')}
           disabled={choiceDisabled}
+          isLoading={activeDeleteChoice === 'push-local'}
           style={styles.fullWidthButton}
         >
           {t('data_sync.plan_delete_choice_push_local')}
         </Button>
         <Button
           variant="outline"
-          onPress={() => onConfirm('skip-deletes')}
+          onPress={() => handleDeleteChoiceConfirm('skip-deletes')}
           disabled={choiceDisabled}
+          isLoading={activeDeleteChoice === 'skip-deletes'}
           style={styles.fullWidthButton}
         >
           {t('data_sync.plan_delete_choice_skip_deletes')}
         </Button>
-        <Button variant="outline" onPress={onCancel} style={styles.fullWidthButton}>
+        <Button variant="outline" onPress={onCancel} disabled={choiceDisabled} style={styles.fullWidthButton}>
           {t('common.cancel', '取消')}
         </Button>
       </View>
