@@ -3,7 +3,10 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { createNodeFileSystem } from '../../fs/create-node-file-system'
-import { journalMarkdownExistsInTree } from '../journal-files.util'
+import {
+  collectJournalPathsByDateInTree,
+  journalMarkdownExistsInTree
+} from '../journal-files.util'
 
 describe('journal-files.util', () => {
   let tempDir: string
@@ -30,5 +33,19 @@ describe('journal-files.util', () => {
     expect(await journalMarkdownExistsInTree(fileSystem, path.join(tempDir, 'Journals'))).toBe(
       false
     )
+  })
+
+  it('collectJournalPathsByDateInTree dedupes duplicate dates and prefers canonical layout', async () => {
+    const journalsRoot = path.join(tempDir, 'Journals')
+    const canonicalDir = path.join(journalsRoot, '2024', '06')
+    await fs.mkdir(canonicalDir, { recursive: true })
+    await fs.writeFile(path.join(journalsRoot, '2024-06-01.md'), '# flat')
+    await fs.writeFile(path.join(canonicalDir, '2024-06-01.md'), '# canonical')
+
+    const collected = await collectJournalPathsByDateInTree(fileSystem, journalsRoot)
+
+    expect(collected.fileCount).toBe(2)
+    expect(collected.pathsByDate.size).toBe(1)
+    expect(collected.pathsByDate.get('2024-06-01')).toBe(path.join(canonicalDir, '2024-06-01.md'))
   })
 })
