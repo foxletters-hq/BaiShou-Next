@@ -50,4 +50,12 @@ export interface IVaultService {
    * 将给定名称补登记进注册表；目录不存在时会创建骨架（用于远端即将下载的工作区）
    */
   ensureVaultsRegistered(vaultNames: Iterable<string>): Promise<string[]>
+
+  /**
+   * 移除本机无目录、且本地/远端 manifest 均无文件的空注册项（跨端遗留工作区名）
+   */
+  pruneOrphanRegistryVaults(
+    manifestVaultScopes: ReadonlySet<string>,
+    diskVaultNames: readonly string[]
+  ): Promise<string[]>
 }
