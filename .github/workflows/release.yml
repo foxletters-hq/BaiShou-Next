@@ -78,43 +78,6 @@ jobs:
           name: android-apk
           path: release/BaiShou-*-Android.apk
 
-  # ── Linux (Electron AppImage) ────────────────────────────
-  build-linux:
-    name: Build Linux
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.ref }}
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install Linux build dependencies
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y libgtk-3-dev libnss3-dev libxss1 libasound2t64
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Sync app version
-        run: pnpm sync:app-version
-
-      - name: Build Linux AppImage
-        run: pnpm --filter @baishou/desktop build:linux
-
-      - name: Upload Linux artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux-appimage
-          path: apps/desktop/dist/*.AppImage
-
   # ── Windows (Inno Setup) ───────────────────────────────────
   build-windows:
     name: Build Windows Installer
@@ -154,7 +117,7 @@ jobs:
   release:
     name: Create GitHub Release
     if: ${{ inputs.create_release }}
-    needs: [build-android, build-linux, build-windows]
+    needs: [build-android, build-windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -163,12 +126,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: android-apk
-          path: artifacts/
-
-      - name: Download Linux AppImage
-        uses: actions/download-artifact@v4
-        with:
-          name: linux-appimage
           path: artifacts/
 
       - name: Download Windows installer
@@ -214,13 +171,13 @@ jobs:
             |------|------|------|
             | Android | `-Android.apk` | 允许安装未知来源后安装，可覆盖旧 Flutter 版 |
             | Windows | `-Windows-Setup.exe` | Inno Setup 安装向导，默认 `Program Files\BaiShou` |
-            | Linux | `.AppImage` | 添加可执行权限后运行 |
+
+            **平台说明**：官方仅维护 Android 与 Windows。Linux 可自行编译；iOS / macOS 暂无计划。
 
             ### 更新内容
             请查看 [提交记录](https://github.com/${{ github.repository }}/commits/${{ inputs.tag }})
           files: |
             artifacts/BaiShou-${{ inputs.tag }}-Android.apk
             artifacts/BaiShou-${{ inputs.tag }}-Windows-Setup.exe
-            artifacts/*.AppImage
           draft: false
           prerelease: false
