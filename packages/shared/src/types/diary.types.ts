@@ -28,6 +28,7 @@ export const DiarySchema = z.object({
   date: z.date(),
   content: z.string().min(1),
   tags: z.string().optional().nullable(),
+  tagColors: z.record(z.string(), z.number()).optional().nullable(),
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),
   weather: z.string().optional().nullable(),
@@ -55,6 +56,8 @@ export interface DiaryMeta {
   location?: string
   isFavorite?: boolean
   hasMedia?: boolean
+  /** 从 frontmatter tag_colors 解析的标签配色 */
+  tagColors?: Record<string, number>
 }
 
 /** 日记列表服务端筛选 / 分页参数 */
