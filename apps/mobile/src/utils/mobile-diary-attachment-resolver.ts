@@ -8,6 +8,18 @@ import {
   normalizeExternalStoragePath
 } from '../services/android-external-fs'
 
+/** fileName → 绝对路径，避免重复全库扫描 */
+const diaryAttachmentAbsPathCache = new Map<string, string>()
+
+export function clearDiaryAttachmentAbsPathCache(): void {
+  diaryAttachmentAbsPathCache.clear()
+}
+
+function rememberAbsPath(fileName: string, absPath: string): string {
+  diaryAttachmentAbsPathCache.set(fileName, absPath)
+  return absPath
+}
+
 function guessImageMimeType(fileName: string): string {
   if (/\.png$/i.test(fileName)) return 'image/png'
   if (/\.gif$/i.test(fileName)) return 'image/gif'
@@ -25,9 +37,16 @@ export async function resolveDiaryAttachmentAbsPath(
   const fileName = attachmentSrc.replace(/^attachment\//, '')
   if (!fileName) return null
 
+  const cachedPath = diaryAttachmentAbsPathCache.get(fileName)
+  if (cachedPath && (await fileSystem.exists(cachedPath))) {
+    return cachedPath
+  }
+
   const primaryDir = await pathService.getDiaryAttachmentDirectory(date)
   const primaryPath = normalizeExternalStoragePath(`${primaryDir}/${fileName}`)
-  if (await fileSystem.exists(primaryPath)) return primaryPath
+  if (await fileSystem.exists(primaryPath)) {
+    return rememberAbsPath(fileName, primaryPath)
+  }
 
   const journalsBase = await pathService.getJournalsBaseDirectory()
   const year = date.getFullYear()
@@ -38,7 +57,7 @@ export async function resolveDiaryAttachmentAbsPath(
     const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
     const dir = await pathService.getDiaryAttachmentDirectoryByYearMonth(ym)
     const candidate = normalizeExternalStoragePath(`${dir}/${fileName}`)
-    if (await fileSystem.exists(candidate)) return candidate
+    if (await fileSystem.exists(candidate)) return rememberAbsPath(fileName, candidate)
   }
 
   try {
@@ -51,7 +70,7 @@ export async function resolveDiaryAttachmentAbsPath(
         const candidate = normalizeExternalStoragePath(
           `${journalsBase}/${y}/${m}/attachment/${fileName}`
         )
-        if (await fileSystem.exists(candidate)) return candidate
+        if (await fileSystem.exists(candidate)) return rememberAbsPath(fileName, candidate)
       }
     }
   } catch {
