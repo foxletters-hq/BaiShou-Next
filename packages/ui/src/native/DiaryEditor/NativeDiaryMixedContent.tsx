@@ -1,9 +1,8 @@
-import React, { forwardRef, useCallback, useImperativeHandle, useMemo, useRef } from 'react'
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react'
 import {
   View,
   StyleSheet,
   Pressable,
-  TouchableWithoutFeedback,
   type TextInput as RNTextInput,
   type ViewStyle
 } from 'react-native'
@@ -12,56 +11,23 @@ import { getHeroInputFieldStyle } from '../Input/input-field.styles'
 import { useNativeTheme } from '../theme'
 import { MarkdownRenderer } from '../MarkdownRenderer/MarkdownRenderer'
 import { NativeMarkdownImage } from '../MarkdownRenderer/NativeMarkdownImage'
+import { NativeDiaryInlineImageOverlays } from './NativeDiaryInlineImageOverlays'
 import {
+  ensureInlineImagePreviewSlots,
   extractDiaryAttachmentSrcs,
+  getCursorOffsetAfterInlineImage,
+  getInlineImageBlocks,
+  maskImageMarkdownLines,
+  mergeMaskedEditorContent,
   parseDiaryContentBlocks,
-  serializeDiaryContentBlocks,
-  type DiaryContentBlock
+  type InlineImageBlock
 } from './diary-image-markdown.util'
 
 const TEXT_LINE_HEIGHT = 24
 const CARET_VISIBLE_LINES = 5
 const INPUT_PADDING_TOP = 12
 const EDITOR_SHELL_MIN_HEIGHT = 320
-const LAST_TEXT_MIN_HEIGHT = 160
-const EMPTY_TEXT_MIN_HEIGHT = 40
-
-function ensureEditableBlocks(blocks: DiaryContentBlock[], mode: 'edit' | 'preview') {
-  if (mode !== 'edit') return blocks
-
-  let result = [...blocks]
-  if (result[0]?.type === 'image') {
-    result = [{ type: 'text', content: '', from: 0, to: 0 }, ...result]
-  }
-  const last = result[result.length - 1]
-  if (last?.type === 'image') {
-    const end = serializeDiaryContentBlocks(result).length
-    result = [...result, { type: 'text', content: '', from: end, to: end }]
-  }
-  return result
-}
-
-function getLastTextBlockIndex(blocks: DiaryContentBlock[]): number {
-  for (let i = blocks.length - 1; i >= 0; i--) {
-    if (blocks[i]?.type === 'text') return i
-  }
-  return -1
-}
-
-function getTextBlockMinHeight(
-  block: Extract<DiaryContentBlock, { type: 'text' }>,
-  index: number,
-  blocks: DiaryContentBlock[],
-  mode: 'edit' | 'preview'
-): number {
-  if (mode !== 'edit') return TEXT_LINE_HEIGHT
-  const lastTextIndex = getLastTextBlockIndex(blocks)
-  if (index === lastTextIndex) return LAST_TEXT_MIN_HEIGHT
-  const trimmed = block.content.replace(/\u200B/g, '').trim()
-  if (!trimmed) return EMPTY_TEXT_MIN_HEIGHT
-  const lines = Math.max(1, block.content.split('\n').length)
-  return Math.max(EMPTY_TEXT_MIN_HEIGHT, lines * TEXT_LINE_HEIGHT)
-}
+const COMPACT_EDITOR_MAX_HEIGHT = EDITOR_SHELL_MIN_HEIGHT + 48
 
 export interface NativeDiaryMixedContentHandle {
   focusAtOffset: (offset: number) => void
@@ -108,19 +74,22 @@ export const NativeDiaryMixedContent = forwardRef<
 ) {
   const { colors } = useNativeTheme()
   const hasImages = useMemo(() => extractDiaryAttachmentSrcs(content).length > 0, [content])
-  const blocks = useMemo(
-    () => ensureEditableBlocks(parseDiaryContentBlocks(content), mode),
-    [content, mode]
-  )
-  const singleInputRef = useRef<RNTextInput | null>(null)
-  const inputRefs = useRef<Array<RNTextInput | null>>([])
-  const blockWrapRefs = useRef<Array<View | null>>([])
+  const previewBlocks = useMemo(() => parseDiaryContentBlocks(content), [content])
+  const inlineImageBlocks = useMemo(() => getInlineImageBlocks(content), [content])
+  const maskedContent = useMemo(() => maskImageMarkdownLines(content), [content])
+  const inputRef = useRef<RNTextInput | null>(null)
   const shellRef = useRef<View>(null)
-  const activeTextBlockIndexRef = useRef(0)
   const caretOffsetRef = useRef(0)
   const selectionRef = useRef(selection)
   selectionRef.current = selection
-  const lastTextBlockIndex = useMemo(() => getLastTextBlockIndex(blocks), [blocks])
+
+  useEffect(() => {
+    if (mode !== 'edit' || !hasImages) return
+    const normalized = ensureInlineImagePreviewSlots(content)
+    if (normalized !== content) {
+      onChange?.(normalized)
+    }
+  }, [content, hasImages, mode, onChange])
 
   const editorShellStyle = useMemo((): ViewStyle[] => {
     const field = getHeroInputFieldStyle(colors, { multiline: true })
@@ -134,33 +103,6 @@ export const NativeDiaryMixedContent = forwardRef<
       styles.editorShell
     ]
   }, [colors])
-
-  const focusTextBlock = useCallback(
-    (index: number) => {
-      const input = inputRefs.current[index]
-      input?.focus()
-      const block = blocks[index]
-      if (block?.type === 'text') {
-        const end = block.content.length
-        input?.setNativeProps?.({ selection: { start: end, end: end } })
-      }
-    },
-    [blocks]
-  )
-
-  const getTextSelection = useCallback(
-    (block: Extract<(typeof blocks)[number], { type: 'text' }>) => {
-      if (!selection) return undefined
-      const overlapStart = Math.max(selection.start, block.from)
-      const overlapEnd = Math.min(selection.end, block.to)
-      if (overlapStart > overlapEnd) return undefined
-      return {
-        start: overlapStart - block.from,
-        end: overlapEnd - block.from
-      }
-    },
-    [selection]
-  )
 
   const reportCaretRegionInWindow = useCallback(
     (
@@ -181,119 +123,63 @@ export const NativeDiaryMixedContent = forwardRef<
         const linesAbove = Math.max(1, prefix.split('\n').length)
         const caretLineTop = y + INPUT_PADDING_TOP + (linesAbove - 1) * TEXT_LINE_HEIGHT
         const regionHeight = TEXT_LINE_HEIGHT * CARET_VISIBLE_LINES
-        const caretRegionBottom = caretLineTop + regionHeight
         const hostBottom = y + h
-        // 短内容时整块输入框会压在工具栏上；把露出区域底部扩到输入框底部（上限 EDITOR_SHELL_MIN_HEIGHT）
-        const revealBottom = Math.min(
-          hostBottom,
-          Math.max(caretRegionBottom, caretLineTop + Math.min(h, EDITOR_SHELL_MIN_HEIGHT))
+        const visibleBelowCaret = Math.max(0, hostBottom - caretLineTop)
+        const regionOnlyHeight = Math.min(
+          regionHeight,
+          Math.max(visibleBelowCaret, TEXT_LINE_HEIGHT)
         )
-        const revealHeight = Math.max(regionHeight, revealBottom - caretLineTop)
-        callback(x, caretLineTop, w, revealHeight)
+
+        if (h > COMPACT_EDITOR_MAX_HEIGHT) {
+          callback(x, caretLineTop, w, regionOnlyHeight)
+          return
+        }
+
+        callback(x, caretLineTop, w, Math.max(regionOnlyHeight, hostBottom - caretLineTop))
       })
     },
     []
+  )
+
+  const focusInputAtOffset = useCallback((offset: number) => {
+    const safeOffset = Math.max(0, Math.min(offset, content.length))
+    inputRef.current?.focus()
+    inputRef.current?.setNativeProps?.({ selection: { start: safeOffset, end: safeOffset } })
+    caretOffsetRef.current = safeOffset
+    onSelectionChange?.(safeOffset, safeOffset)
+  }, [content.length, onSelectionChange])
+
+  const handleEditImagePress = useCallback(
+    (block: InlineImageBlock) => {
+      focusInputAtOffset(getCursorOffsetAfterInlineImage(content, block))
+    },
+    [content, focusInputAtOffset]
   )
 
   useImperativeHandle(
     ref,
     () => ({
       focusAtOffset(offset: number) {
-        if (!hasImages) {
-          singleInputRef.current?.focus()
-          singleInputRef.current?.setNativeProps?.({ selection: { start: offset, end: offset } })
-          return
-        }
-
-        let pos = 0
-        for (let i = 0; i < blocks.length; i++) {
-          const block = blocks[i]!
-          const len = block.type === 'text' ? block.content.length : block.raw.length
-          if (offset <= pos + len) {
-            if (block.type === 'text') {
-              const local = Math.max(0, Math.min(offset - pos, block.content.length))
-              const input = inputRefs.current[i]
-              input?.focus()
-              input?.setNativeProps?.({ selection: { start: local, end: local } })
-            }
-            return
-          }
-          pos += len
-        }
-
-        if (lastTextBlockIndex >= 0) {
-          focusTextBlock(lastTextBlockIndex)
-        }
+        focusInputAtOffset(offset)
       },
       blur() {
-        if (!hasImages) {
-          singleInputRef.current?.blur()
-          return
-        }
-        for (const input of inputRefs.current) {
-          input?.blur()
-        }
+        inputRef.current?.blur()
       },
       measureActiveEditorInWindow(callback) {
         const currentSelection = selectionRef.current
-
-        if (!hasImages) {
-          const caret =
-            caretOffsetRef.current ||
-            currentSelection?.end ||
-            currentSelection?.start ||
-            content.length
-          reportCaretRegionInWindow(shellRef.current, content, caret, callback)
-          return
-        }
-
-        const blockIndex = activeTextBlockIndexRef.current
-        const block = blocks[blockIndex]
-        if (block?.type === 'text') {
-          const blockSelection = getTextSelection(block)
-          const caret =
-            caretOffsetRef.current ||
-            blockSelection?.end ||
-            blockSelection?.start ||
-            block.content.length
-          reportCaretRegionInWindow(
-            blockWrapRefs.current[blockIndex] ?? inputRefs.current[blockIndex] ?? null,
-            block.content,
-            caret,
-            callback
-          )
-          return
-        }
-
-        shellRef.current?.measureInWindow(callback)
+        const caret =
+          caretOffsetRef.current ||
+          currentSelection?.end ||
+          currentSelection?.start ||
+          content.length
+        reportCaretRegionInWindow(inputRef.current ?? shellRef.current, content, caret, callback)
       }
     }),
-    [blocks, content, getTextSelection, hasImages, reportCaretRegionInWindow, selection]
+    [content, focusInputAtOffset, reportCaretRegionInWindow]
   )
 
-  const handleTextChange = useCallback(
-    (blockIndex: number, newText: string) => {
-      if (!onChange) return
-      const next = blocks.map((block, index) =>
-        index === blockIndex && block.type === 'text' ? { ...block, content: newText } : block
-      )
-      onChange(serializeDiaryContentBlocks(next))
-    },
-    [blocks, onChange]
-  )
-
-  const handleTextSelectionChange = useCallback(
-    (blockIndex: number, start: number, end: number) => {
-      caretOffsetRef.current = end
-      const block = blocks[blockIndex]
-      if (!block || block.type !== 'text') return
-      onSelectionChange?.(block.from + start, block.from + end)
-    },
-    [blocks, onSelectionChange]
-  )
-
-  const renderInlineBlocks = () =>
-    blocks.map((block, index) => {
+  const renderPreviewBlocks = () =>
+    previewBlocks.map((block, index) => {
       if (block.type === 'image') {
         return (
           <View key={`image-${index}-${block.from}`} style={styles.inlineImageWrap}>
@@ -303,48 +189,7 @@ export const NativeDiaryMixedContent = forwardRef<
               imageStyle={styles.inlineImage}
               syncUri={resolveImageUri?.(block.src) ?? null}
               loadImageUri={loadImageUri}
-              onPress={mode === 'preview' ? onImagePress : undefined}
-            />
-          </View>
-        )
-      }
-
-      if (mode === 'edit') {
-        const blockSelection = getTextSelection(block)
-        const minHeight = getTextBlockMinHeight(block, index, blocks, mode)
-        const isLastText = index === lastTextBlockIndex
-        return (
-          <View
-            key={`text-${index}-${block.from}`}
-            ref={(node) => {
-              blockWrapRefs.current[index] = node
-            }}
-            collapsable={false}
-            style={[styles.inlineTextWrap, isLastText && styles.inlineTextWrapLast, { minHeight }]}
-          >
-            <Input
-              ref={(node) => {
-                inputRefs.current[index] = node
-              }}
-              style={[styles.inlineTextArea, { minHeight }]}
-              multiline
-              scrollEnabled={false}
-              keyboardAware={false}
-              placeholder={index === 0 ? placeholder : undefined}
-              value={block.content}
-              selection={blockSelection}
-              onChangeText={(text) => handleTextChange(index, text)}
-              onSelectionChange={(e) => {
-                const { start, end } = e.nativeEvent.selection
-                handleTextSelectionChange(index, start, end)
-              }}
-              onFocus={() => {
-                activeTextBlockIndexRef.current = index
-                const blockSelection = getTextSelection(block)
-                caretOffsetRef.current =
-                  blockSelection?.end ?? blockSelection?.start ?? block.content.length
-                onFocus?.()
-              }}
+              onPress={onImagePress}
             />
           </View>
         )
@@ -365,68 +210,68 @@ export const NativeDiaryMixedContent = forwardRef<
       )
     })
 
-  const handleShellPress = useCallback(() => {
-    if (mode !== 'edit' || lastTextBlockIndex < 0) return
-    focusTextBlock(lastTextBlockIndex)
-  }, [focusTextBlock, lastTextBlockIndex, mode])
-
-  if (mode === 'edit' && !hasImages) {
+  if (mode === 'edit') {
     return (
       <View ref={shellRef} collapsable={false} style={styles.singleInputShell}>
-        <Input
-          ref={singleInputRef}
-          style={styles.singleTextArea}
-          multiline
-          scrollEnabled={false}
-          keyboardAware={false}
-          placeholder={placeholder}
-          value={content}
-          selection={selection}
-          onChangeText={onChange}
-          onSelectionChange={(e) => {
-            const { start, end } = e.nativeEvent.selection
-            caretOffsetRef.current = end
-            onSelectionChange?.(start, end)
-          }}
-          onFocus={() => {
-            activeTextBlockIndexRef.current = 0
-            caretOffsetRef.current =
-              selectionRef.current?.end ?? selectionRef.current?.start ?? content.length
-            onFocus?.()
-          }}
-          onContentSizeChange={(e) => {
-            const h = e.nativeEvent.contentSize.height
-            if (h > 0) onContentSizeChange?.(h)
-          }}
-        />
+        <View style={styles.inputOverlayHost}>
+          <Input
+            ref={inputRef}
+            style={styles.singleTextArea}
+            multiline
+            scrollEnabled={false}
+            keyboardAware={false}
+            placeholder={placeholder}
+            value={maskedContent}
+            selection={selection}
+            onChangeText={(text) => {
+              onChange?.(mergeMaskedEditorContent(content, text))
+            }}
+            onSelectionChange={(e) => {
+              const { start, end } = e.nativeEvent.selection
+              caretOffsetRef.current = end
+              onSelectionChange?.(start, end)
+            }}
+            onFocus={() => {
+              caretOffsetRef.current =
+                selectionRef.current?.end ?? selectionRef.current?.start ?? content.length
+              onFocus?.()
+            }}
+            onContentSizeChange={(e) => {
+              const h = e.nativeEvent.contentSize.height
+              if (h > 0) onContentSizeChange?.(h)
+            }}
+          />
+          {inlineImageBlocks.length > 0 && (
+            <NativeDiaryInlineImageOverlays
+              content={content}
+              imageBlocks={inlineImageBlocks}
+              backgroundColor={colors.bgSurface}
+              resolveImageUri={resolveImageUri}
+              loadImageUri={loadImageUri}
+              onImagePress={handleEditImagePress}
+            />
+          )}
+        </View>
       </View>
     )
   }
 
-  const body = (
-    <View
-      ref={shellRef}
-      style={editorShellStyle}
-      onLayout={(e) => {
-        const h = e.nativeEvent.layout.height
-        if (h > 0) onContentSizeChange?.(h)
-      }}
-    >
-      {renderInlineBlocks()}
-    </View>
-  )
-
-  if (mode === 'edit') {
+  if (!hasImages) {
     return (
-      <TouchableWithoutFeedback onPress={handleShellPress} accessible={false}>
-        {body}
-      </TouchableWithoutFeedback>
+      <Pressable onPress={onPress} style={styles.previewArea}>
+        <MarkdownRenderer
+          content={content}
+          resolveImageUri={resolveImageUri}
+          loadImageUri={loadImageUri}
+          onImagePress={onImagePress}
+        />
+      </Pressable>
     )
   }
 
   return (
     <Pressable onPress={onPress} style={styles.previewArea}>
-      {body}
+      <View style={editorShellStyle}>{renderPreviewBlocks()}</View>
     </Pressable>
   )
 })
@@ -436,13 +281,19 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     width: '100%'
   },
+  inputOverlayHost: {
+    position: 'relative',
+    width: '100%',
+    zIndex: 0
+  },
   singleTextArea: {
     minHeight: EDITOR_SHELL_MIN_HEIGHT,
     fontSize: 16,
-    lineHeight: TEXT_LINE_HEIGHT,
+    lineHeight: 24,
     textAlignVertical: 'top',
     paddingTop: 12,
-    paddingBottom: 12
+    paddingBottom: 12,
+    zIndex: 0
   },
   editorShell: {
     minHeight: EDITOR_SHELL_MIN_HEIGHT,
@@ -453,22 +304,6 @@ const styles = StyleSheet.create({
   previewArea: {
     minHeight: EDITOR_SHELL_MIN_HEIGHT,
     paddingBottom: 16
-  },
-  inlineTextWrap: {
-    width: '100%'
-  },
-  inlineTextWrapLast: {
-    flexGrow: 1
-  },
-  inlineTextArea: {
-    width: '100%',
-    borderWidth: 0,
-    backgroundColor: 'transparent',
-    paddingHorizontal: 0,
-    paddingVertical: 0,
-    fontSize: 16,
-    lineHeight: TEXT_LINE_HEIGHT,
-    textAlignVertical: 'top'
   },
   inlineImageWrap: {
     width: '100%',

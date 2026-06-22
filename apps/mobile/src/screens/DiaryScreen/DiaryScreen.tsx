@@ -361,7 +361,7 @@ export const DiaryScreen: React.FC = () => {
   }
 
   const handleIncrementalSync = useCallback(async () => {
-    await runIncrementalSync('sync').catch(() => {})
+    await runIncrementalSync().catch(() => {})
   }, [runIncrementalSync])
 
   return (

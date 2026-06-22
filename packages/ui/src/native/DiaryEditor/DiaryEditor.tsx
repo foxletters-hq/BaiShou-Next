@@ -13,8 +13,13 @@ import {
   type ScrollView
 } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { KeyboardAwareScrollView } from '../KeyboardAwareScrollView'
-import { readEffectiveKeyboardHeight } from '../KeyboardAwareScrollView/scroll-node-into-view.util'
+import {
+  computeRevealScrollDelta,
+  readEffectiveKeyboardHeight
+} from '../KeyboardAwareScrollView/scroll-node-into-view.util'
+import { buildInlineImageInsertSnippet } from './diary-image-markdown.util'
 import { MarkdownToolbar } from '../MarkdownToolbar/MarkdownToolbar'
 import { DiaryEditorAppBarTitle } from '../DiaryEditorAppBarTitle/DiaryEditorAppBarTitle'
 import { TagInput } from '../TagInput/TagInput'
@@ -75,6 +80,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const insets = useSafeAreaInsets()
   const [viewMode, setViewMode] = useState<DiaryEditorViewMode>('edit')
   const [selection, setSelection] = useState({ start: 0, end: 0 })
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null)
@@ -174,7 +180,8 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
     const anchor = { ...selectionRef.current }
     const markdowns = await onPickImages()
     if (!markdowns.length) return
-    const block = (markdowns.length > 1 ? '\n\n' : '') + markdowns.join('\n\n') + '\n'
+    const snippets = markdowns.map((md) => buildInlineImageInsertSnippet(md))
+    const block = (markdowns.length > 1 ? '\n\n' : '') + snippets.join('\n\n') + '\n'
     insertAtPosition(anchor.start, anchor.end, block)
   }
 
@@ -245,6 +252,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
 
     const bottomChrome = toolbarHeight + 16
     const safeBottom = windowHeight - kbHeight - bottomChrome - DIARY_EDIT_SCROLL_BUFFER
+    const safeTop = insets.top + 56
 
     const measure = mixedContentRef.current?.measureActiveEditorInWindow
     if (!measure) {
@@ -253,15 +261,20 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
     }
 
     measure((_x, nodeTop, _w, nodeHeight) => {
-      const nodeBottom = nodeTop + nodeHeight
-      if (nodeBottom <= safeBottom + 4) return
+      const delta = computeRevealScrollDelta({
+        nodeTop,
+        nodeBottom: nodeTop + nodeHeight,
+        safeTop,
+        safeBottom
+      })
+      if (delta <= 0) return
 
       scrollView.scrollTo({
-        y: scrollYRef.current + (nodeBottom - safeBottom),
+        y: scrollYRef.current + delta,
         animated: true
       })
     })
-  }, [keyboardHeight, toolbarHeight])
+  }, [keyboardHeight, toolbarHeight, insets.top])
 
   const scheduleEditorScroll = useCallback(() => {
     if (editorScrollTimerRef.current) clearTimeout(editorScrollTimerRef.current)
