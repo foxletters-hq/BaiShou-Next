@@ -57,6 +57,7 @@
         }
       ],
       "./plugins/withAndroidPlainSplash.js",
+      "./plugins/withDiaryEditorWebView.js",
       "expo-image",
       "expo-audio",
       "expo-web-browser",

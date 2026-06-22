@@ -31,6 +31,15 @@ console.log(`
 `)
 
 console.log('🧹 清理缓存…\n')
+const buildEditor = spawnSync('pnpm', ['run', 'build:diary-editor'], {
+  cwd: mobileRoot,
+  stdio: 'inherit',
+  shell: process.platform === 'win32'
+})
+if (buildEditor.status !== 0) {
+  process.exit(buildEditor.status ?? 1)
+}
+
 const cacheResult = spawnSync(process.execPath, [path.join(__dirname, 'clear-cache.mjs')], {
   cwd: mobileRoot,
   stdio: 'inherit'
