@@ -19,6 +19,7 @@ import { IncrementalSyncProvider } from '@/src/providers/IncrementalSyncProvider
 import { useDiaryEmbedFailureToast } from '@/src/hooks/useDiaryEmbedFailureToast'
 import { useLegacyUpgradeRagToast } from '@/src/hooks/useLegacyUpgradeRagToast'
 import { LegacyMigrationPrompt } from '@/src/components/LegacyMigrationPrompt'
+import { preloadDiaryEditorWebViewSource, resetDiaryEditorWebViewSourceCache } from '@/src/hooks/useDiaryEditorWebViewSource'
 import {
   buildAppNavigationTheme,
   buildThemedFadeStackOptions
@@ -45,6 +46,13 @@ function AppContent() {
   const { dbReady, services } = useBaishou()
   useDiaryEmbedFailureToast()
   useLegacyUpgradeRagToast()
+
+  useEffect(() => {
+    if (__DEV__) {
+      resetDiaryEditorWebViewSourceCache()
+    }
+    void preloadDiaryEditorWebViewSource()
+  }, [])
 
   useEffect(() => {
     if (!dbReady || !services) return

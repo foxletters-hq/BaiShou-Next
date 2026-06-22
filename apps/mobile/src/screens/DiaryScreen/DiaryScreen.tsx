@@ -305,7 +305,8 @@ export const DiaryScreen: React.FC = () => {
         weather: e.weather,
         mood: e.mood,
         location: e.location,
-        isFavorite: e.isFavorite
+        isFavorite: e.isFavorite,
+        tagColors: e.tagColors
       }
     })
   }, [entries])

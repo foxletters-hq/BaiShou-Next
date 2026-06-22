@@ -124,6 +124,7 @@ import {
   deleteVaultWithShadowCleanup,
   type VaultBoundDiaryStack
 } from '../services/mobile-vault-runtime.service'
+import { consumeAppUpgradeShadowResync } from '../services/mobile-app-upgrade-shadow.util'
 import { logger } from '@baishou/shared'
 import type {
   SessionRepository as SessionRepositoryType,
@@ -1262,6 +1263,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
           const activeVault = vaultService.getActiveVault()
           if (activeVault?.path) {
+            const forceShadowResync = await consumeAppUpgradeShadowResync()
             await activateVaultRuntime(
               {
                 pathService,
@@ -1274,6 +1276,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               {
                 deferResync: true,
                 forceDeferResync: options?.forceDeferResync,
+                forceShadowResync,
                 resyncReason: options?.resyncReason ?? 'cold-start',
                 onResyncComplete: () => {
                   if (!isMounted) return

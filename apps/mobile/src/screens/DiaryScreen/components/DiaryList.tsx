@@ -18,6 +18,7 @@ import {
   StoragePermissionPrompt,
   useNativeTheme
 } from '@baishou/ui/native'
+import type { DiaryTagColorRegistry } from '@baishou/shared'
 
 export interface DiaryListEntry {
   id: number
@@ -29,6 +30,7 @@ export interface DiaryListEntry {
   mood?: string
   location?: string
   isFavorite?: boolean
+  tagColors?: DiaryTagColorRegistry
   /** 语义搜索相似度 0–1，仅语义模式展示 */
   matchSimilarity?: number
 }
@@ -151,6 +153,7 @@ const DiaryListRow = memo(function DiaryListRow({
         id={item.id}
         contentSnippet={item.preview || noContentLabel}
         tags={item.tags || []}
+        tagColorRegistry={item.tagColors}
         createdAt={item.date}
         weather={item.weather}
         mood={item.mood}
@@ -223,6 +226,7 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
       <DiaryListRow
         item={item}
         noContentLabel={noContentLabel}
+        tagColorRegistry={item.tagColors}
         onGoToEditor={onGoToEditor}
         onDeleteEntry={onDeleteEntry}
       />
