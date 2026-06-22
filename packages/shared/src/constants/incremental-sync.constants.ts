@@ -7,6 +7,9 @@ export const SYNC_REMOTE_SNAPSHOT_FILENAME = 'last-remote-manifest.json'
 /** `SyncManifest.version` 当前格式版本 */
 export const SYNC_MANIFEST_VERSION = 1
 
+/** 远端 manifest 中「已移除记录」最大条数（同一路径只占一条） */
+export const SYNC_MANIFEST_REMOVED_MAX_ENTRIES = 20000
+
 /** 增量同步云目标配置（位于存储根目录） */
 export const SYNC_CONFIG_FILENAME = '.baishou-s3.json'
 

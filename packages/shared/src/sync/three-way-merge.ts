@@ -3,6 +3,7 @@ import {
   isIncrementalSyncChatBackgroundPath,
   isSqliteRuntimeSyncPath
 } from '../utils/incremental-sync-scan.util'
+import { isRemoteRemovalRecorded } from './sync-manifest-removed.util'
 
 /** 合并决策 */
 export interface MergeDecision {
@@ -35,6 +36,7 @@ export function threeWayMerge(
   remote: SyncManifest,
   ancestor: SyncManifest
 ): MergeDecision[] {
+  // removed 仅在「本地有、远端无、祖先无」时按需查表，无需并入路径并集
   const allPaths = new Set([
     ...Object.keys(local.files),
     ...Object.keys(remote.files),
@@ -70,10 +72,7 @@ export function threeWayMerge(
     const remoteEntry = remote.files[filePath] ?? null
     const ancestorEntry = ancestor.files[filePath] ?? null
 
-    const decision = decide(filePath, localEntry, remoteEntry, ancestorEntry, {
-      remoteManifestUpdatedAt: remote.updatedAt,
-      remoteFileCount: Object.keys(remote.files).length
-    })
+    const decision = decide(filePath, localEntry, remoteEntry, ancestorEntry, remote)
     if (decision) {
       decisions.push(decision)
     }
@@ -82,17 +81,14 @@ export function threeWayMerge(
   return decisions
 }
 
-type DecideContext = {
-  remoteManifestUpdatedAt: number
-  remoteFileCount: number
-}
+type DecideContext = SyncManifest
 
 function decide(
   filePath: string,
   local: ManifestEntry | null,
   remote: ManifestEntry | null,
   ancestor: ManifestEntry | null,
-  context: DecideContext
+  remoteManifest: DecideContext
 ): MergeDecision | null {
   if (!local && remote && ancestor) {
     return mkDecision('delete-remote', filePath, remote, local, remote, ancestor)
@@ -131,11 +127,7 @@ function decide(
   }
 
   if (local && !remote && !ancestor) {
-    // 无祖先时：若远端已有其他文件且 manifest 比本文件更新，更可能是对端已删而非全新本地文件
-    if (
-      context.remoteFileCount > 0 &&
-      context.remoteManifestUpdatedAt > local.lastModified
-    ) {
+    if (isRemoteRemovalRecorded(remoteManifest, filePath, local)) {
       return mkDecision('delete-local', filePath, local, local, remote, ancestor)
     }
     return mkDecision('upload', filePath, local, local, remote, ancestor)
