@@ -159,6 +159,48 @@ export {
   resolvePlanConfirmEligibleAt
 } from './sync/sync-confirm-countdown.util'
 export { hasIncrementalSyncPlanMaterialChange } from './sync/incremental-sync-plan-compare.util'
+export {
+  INCREMENTAL_SYNC_PLAN_REUSE_TTL_MS,
+  buildIncrementalSyncPlanReuseBaseline,
+  buildSyncManifestRemovedFingerprint,
+  buildSyncTreeFingerprint,
+  evaluateIncrementalSyncPlanDrift,
+  hasLocalSyncTreeDrift,
+  hasRemoteManifestDrift,
+  readVaultRegistryFingerprint,
+  shouldReplanIncrementalSyncOnConfirm,
+  summarizeScannedSyncFiles,
+  summarizeSyncManifestFiles,
+  type IncrementalSyncPlanReuseBaseline,
+  type IncrementalSyncPlanReuseOptions,
+  type LocalSyncTreeSummary,
+  type SyncTreeEntrySummary
+} from './sync/incremental-sync-plan-reuse.util'
+export { buildIncrementalSyncPlanMergeResult } from './sync/incremental-sync-plan-decisions.util'
+export {
+  resolveIncrementalSyncConfirmReplan,
+  shouldRequireIncrementalSyncReconfirmAfterReplan,
+  type IncrementalSyncConfirmReplanInput,
+  type IncrementalSyncConfirmReplanResult
+} from './sync/incremental-sync-confirm-replan.util'
+export { isIncrementalSyncRemoteFileNotFoundError } from './sync/sync-download-errors.util'
+export {
+  SYNC_MANIFEST_REMOVED_MAX_ENTRIES,
+} from './constants/incremental-sync.constants'
+export {
+  applySyncDecisionRemovedSideEffects,
+  clearSyncManifestRemoved,
+  createEmptySyncManifest,
+  finalizeIncrementalSyncManifest,
+  getSyncManifestRemovedEntry,
+  getSyncManifestRemovedMap,
+  isRemoteRemovalRecorded,
+  normalizeSyncManifest,
+  pruneSyncManifestRemoved,
+  reconcileSyncManifestRemovedWithRemoteFiles,
+  recordSyncManifestRemoved
+} from './sync/sync-manifest-removed.util'
+export type { RemovedManifestEntry } from './types/version-control.types'
 export { sessionBelongsToActiveVault } from './utils/session-vault.util'
 
 export * from './tts'
@@ -222,7 +264,9 @@ export {
   buildIncrementalSyncPlanPreview,
   buildIncrementalSyncBoundaryIssues,
   buildIncrementalSyncBoundaryHints,
-  resolveIncrementalSyncVaultScope
+  resolveIncrementalSyncVaultScope,
+  collectManifestVaultScopes,
+  isRegistryVaultOnDisk
 } from './sync/incremental-sync-plan.util'
 export type {
   IncrementalSyncBoundaryHint,

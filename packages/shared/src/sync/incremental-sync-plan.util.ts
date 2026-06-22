@@ -4,6 +4,7 @@ import type {
   IncrementalSyncPlanPreview,
   IncrementalSyncVaultSummary
 } from '../types/incremental-sync-plan.types'
+import type { SyncManifest } from '../types/version-control.types'
 import type { MergeDecision } from './three-way-merge'
 
 const ROOT_SCOPE = '__root__'
@@ -18,10 +19,38 @@ export function resolveIncrementalSyncVaultScope(filePath: string): string {
   return normalized.slice(0, slash)
 }
 
+/** 与 core vault-name.util 一致：判断注册名是否已有对应磁盘目录 */
+export function isRegistryVaultOnDisk(
+  vaultName: string,
+  diskVaultNames: readonly string[]
+): boolean {
+  const diskSet = new Set(diskVaultNames)
+  if (diskSet.has(vaultName)) return true
+  const sanitized = vaultName.replace(/[\\/:%#?*\x00-\x1f]/g, '_').trim() || 'vault'
+  return diskSet.has(sanitized)
+}
+
+/** 汇总 manifest 中出现的工作区作用域（不含 __root__ / __unknown__） */
+export function collectManifestVaultScopes(
+  ...manifests: Array<Pick<SyncManifest, 'files'>>
+): Set<string> {
+  const scopes = new Set<string>()
+  for (const manifest of manifests) {
+    for (const filePath of Object.keys(manifest.files)) {
+      const scope = resolveIncrementalSyncVaultScope(filePath)
+      if (scope !== ROOT_SCOPE && scope !== UNKNOWN_SCOPE) {
+        scopes.add(scope)
+      }
+    }
+  }
+  return scopes
+}
+
 export function buildIncrementalSyncBoundaryIssues(options: {
   registeredVaults: string[]
   diskVaultNames: string[]
   planItems: IncrementalSyncPlanItem[]
+  manifestVaultScopes?: ReadonlySet<string>
 }): IncrementalSyncBoundaryIssues {
   const registered = new Set(options.registeredVaults)
   const planVaultScopes = new Set(
@@ -37,8 +66,13 @@ export function buildIncrementalSyncBoundaryIssues(options: {
     (name) => !registered.has(name) && planVaultScopes.has(name)
   )
 
-  const onDisk = new Set(options.diskVaultNames)
-  const registryVaultsMissingOnDisk = options.registeredVaults.filter((name) => !onDisk.has(name))
+  const registryVaultsMissingOnDisk = options.registeredVaults.filter((name) => {
+    if (isRegistryVaultOnDisk(name, options.diskVaultNames)) return false
+    const hasPlan = planVaultScopes.has(name)
+    const hasManifest = options.manifestVaultScopes?.has(name) ?? false
+    // 仅警告本机确实需要同步数据、但缺少目录的工作区（其它设备遗留的空注册项不提示）
+    return hasPlan || hasManifest
+  })
 
   return {
     unknownVaultPaths,
@@ -150,6 +184,7 @@ export function buildIncrementalSyncPlanPreview(options: {
   registeredVaults: string[]
   diskVaultNames: string[]
   activeVaultName: string | null
+  manifestVaultScopes?: ReadonlySet<string>
   requiresHighDivergenceConfirm?: boolean
   divergencePercent?: number
   maxDivergencePercent?: number
@@ -167,7 +202,8 @@ export function buildIncrementalSyncPlanPreview(options: {
   const boundaryIssues = buildIncrementalSyncBoundaryIssues({
     registeredVaults: options.registeredVaults,
     diskVaultNames: options.diskVaultNames,
-    planItems: items
+    planItems: items,
+    manifestVaultScopes: options.manifestVaultScopes
   })
 
   const warnings = [...(options.extraWarnings ?? [])]

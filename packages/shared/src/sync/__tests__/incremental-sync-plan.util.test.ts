@@ -40,11 +40,28 @@ describe('incremental-sync-plan.util', () => {
           action: 'upload',
           vaultScope: 'Archive'
         }
-      ]
+      ],
+      manifestVaultScopes: new Set(['Personal', 'Archive', 'Work'])
     })
     expect(issues.diskVaultsNotInRegistry).toEqual(['Archive'])
     expect(issues.registryVaultsMissingOnDisk).toEqual(['Work'])
     expect(issues.unknownVaultPaths).toEqual(['Archive'])
+  })
+
+  it('ignores registry-only vaults without manifest data or pending changes', () => {
+    const issues = buildIncrementalSyncBoundaryIssues({
+      registeredVaults: ['Personal', 'C__Users_Desktop_OldVault'],
+      diskVaultNames: ['Personal'],
+      planItems: [
+        {
+          filePath: 'Personal/a.md',
+          action: 'upload',
+          vaultScope: 'Personal'
+        }
+      ],
+      manifestVaultScopes: new Set(['Personal'])
+    })
+    expect(issues.registryVaultsMissingOnDisk).toEqual([])
   })
 
   it('buildIncrementalSyncBoundaryHints avoids duplicate unknown/disk warnings', () => {
