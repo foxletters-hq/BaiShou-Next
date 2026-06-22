@@ -32,6 +32,7 @@ pnpm sync:icons:check
 pnpm typecheck
 pnpm audit:cache-invalidation
 pnpm turbo run test --continue
+pnpm --filter @baishou/mobile run build:diary-editor
 pnpm --filter @baishou/desktop exec eslint -c ../../eslint.desktop.ci.mjs . --cache --quiet
 pnpm --filter @baishou/mobile exec eslint -c ../../eslint.mobile.ci.mjs . --cache --quiet
 pnpm format:check

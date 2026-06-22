@@ -2,7 +2,7 @@
 
 [简体中文](README.md) | [繁體中文](docs/3-Project/README_TW.md) | [English](docs/3-Project/README_EN.md) | [日本語](docs/3-Project/README_JA.md)
 
-[语录收藏](./docs/3-Project/quotes-collection/quotes-collection.md) · [优质二创](./docs/3-Project/fan-creations/fan-creations.md)
+[语录收藏](./docs/3-Project/quotes-collection/quotes-collection.md) · [优质二创](./docs/3-Project/fan-creations/fan-creations.md) · [技术分享](./docs/4-技术分享/0-README.md)
 
 > 以纯白誓约，守护彼此一生。
 
