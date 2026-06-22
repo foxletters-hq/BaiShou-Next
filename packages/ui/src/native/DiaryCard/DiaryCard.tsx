@@ -7,7 +7,10 @@ import {
   normalizeWeatherId,
   weatherI18nKey,
   WEATHER_IDS,
-  formatDiaryPreviewText
+  formatDiaryPreviewText,
+  getDiaryTagColorIndex,
+  resolveDiaryTagColorIndex,
+  type DiaryTagColorRegistry
 } from '@baishou/shared'
 import type { WeatherId } from '@baishou/shared'
 import { WeatherEmoji } from '../WeatherIcon'
@@ -23,6 +26,7 @@ interface DiaryCardProps {
   isFavorite?: boolean
   /** 语义搜索相似度 0–1 */
   matchSimilarity?: number
+  tagColorRegistry?: DiaryTagColorRegistry
   onClick?: () => void
   onEdit?: () => void
   onDelete?: () => void
@@ -38,6 +42,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
   location,
   isFavorite,
   matchSimilarity,
+  tagColorRegistry,
   onClick,
   onEdit,
   onDelete
@@ -67,17 +72,16 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
     return weather
   })()
 
+  const tagPalette = [
+    { bg: colors.accentBlue + '15', fg: colors.accentBlue },
+    { bg: colors.accentGreen + '15', fg: colors.accentGreen },
+    { bg: colors.warning + '15', fg: colors.warning },
+    { bg: colors.accentPurple + '15', fg: colors.accentPurple }
+  ]
+
   const getTagColor = (tag: string) => {
-    // 使用主题颜色，确保深浅模式下对比度一致
-    const tagColors = [
-      { bg: colors.accentBlue + '15', fg: colors.accentBlue },
-      { bg: colors.accentGreen + '15', fg: colors.accentGreen },
-      { bg: colors.warning + '15', fg: colors.warning },
-      { bg: colors.accentPurple + '15', fg: colors.accentPurple }
-    ]
-    let sum = 0
-    for (let i = 0; i < tag.length; i++) sum += tag.charCodeAt(i)
-    return tagColors[sum % tagColors.length]!
+    const index = resolveDiaryTagColorIndex(tag, tagColorRegistry)
+    return tagPalette[index] ?? tagPalette[getDiaryTagColorIndex(tag)]!
   }
 
   const previewText = formatDiaryPreviewText(contentSnippet)

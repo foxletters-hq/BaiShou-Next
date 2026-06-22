@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import {
   View,
   StyleSheet,
@@ -9,32 +9,23 @@ import {
   LayoutAnimation,
   Platform,
   Pressable,
-  Dimensions,
-  type ScrollView
+  ActivityIndicator,
+  Alert
 } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { KeyboardAwareScrollView } from '../KeyboardAwareScrollView'
-import {
-  computeRevealScrollDelta,
-  readEffectiveKeyboardHeight
-} from '../KeyboardAwareScrollView/scroll-node-into-view.util'
-import { buildInlineImageInsertSnippet } from './diary-image-markdown.util'
 import { MarkdownToolbar } from '../MarkdownToolbar/MarkdownToolbar'
 import { DiaryEditorAppBarTitle } from '../DiaryEditorAppBarTitle/DiaryEditorAppBarTitle'
-import { TagInput } from '../TagInput/TagInput'
 import { WeatherPicker } from '../WeatherPicker/WeatherPicker'
 import { useNativeTheme } from '../theme'
 import { useKeyboardHeight } from '../hooks/useKeyboardHeight'
 import {
-  NativeDiaryMixedContent,
-  type NativeDiaryMixedContentHandle
-} from './NativeDiaryMixedContent'
+  NativeDiaryCodeMirrorEditor,
+  type NativeDiaryCodeMirrorEditorHandle,
+  type DiaryEditorWebViewDocument
+} from './NativeDiaryCodeMirrorEditor'
 import { NativeImagePreviewModal } from './NativeImagePreviewModal'
-import type { DiaryEditorViewMode } from './diary-editor.types'
-
-/** 光标落在键盘与工具栏上方时，额外保留的编辑留白 */
-const DIARY_EDIT_SCROLL_BUFFER = 24
+import type { DiaryTagColorRegistry } from '../../shared/diary-codemirror/types'
+import { deleteMarkdownRange } from './diary-cm-content.util'
 
 interface DiaryEditorProps {
   content: string
@@ -45,6 +36,7 @@ interface DiaryEditorProps {
   isFavorite?: boolean
   onContentChange: (content: string) => void
   onTagsChange: (tags: string[]) => void
+  tagColorRegistry?: DiaryTagColorRegistry
   onDateChange: (date: Date) => void
   onWeatherChange?: (weather: string) => void
   onFavoriteChange?: (isFavorite: boolean) => void
@@ -53,11 +45,16 @@ interface DiaryEditorProps {
   /** 从相册选取并上传图片，返回要插入的 Markdown 片段 */
   onPickImages?: () => Promise<string[]>
   pickingImages?: boolean
-  /** attachment/xxx → file:// 本地路径 */
-  resolveAttachmentUri?: (src: string) => string | null | undefined
-  /** attachment/xxx → data: URI（Android 外部存储） */
-  loadAttachmentImageUri?: (src: string) => Promise<string | null>
+  /** WebView 文档（由宿主 app 预加载后传入） */
+  editorWebViewSource: DiaryEditorWebViewDocument | null
+  /** WebView 页面是否处于聚焦态（离开页面时卸载 WebView，P-5） */
+  webViewActive?: boolean
+  /** attachment/xxx → data: 或 file: URI（异步桥接） */
+  resolveAttachmentUrl?: (src: string) => Promise<string | null>
 }
+
+/** 工具栏遮挡 + 额外留白，供 WebView 内计算安全滚动区域 */
+const EDITOR_BOTTOM_SCROLL_INSET_BUFFER = 20
 
 export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   content,
@@ -67,7 +64,8 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   weather = '',
   isFavorite = false,
   onContentChange,
-  onTagsChange,
+  onTagsChange: _onTagsChange,
+  tagColorRegistry,
   onDateChange,
   onWeatherChange,
   onFavoriteChange,
@@ -75,20 +73,15 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   onCancel,
   onPickImages,
   pickingImages = false,
-  resolveAttachmentUri,
-  loadAttachmentImageUri
+  editorWebViewSource,
+  webViewActive = true,
+  resolveAttachmentUrl
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
-  const insets = useSafeAreaInsets()
-  const [viewMode, setViewMode] = useState<DiaryEditorViewMode>('edit')
-  const [selection, setSelection] = useState({ start: 0, end: 0 })
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null)
-  const [toolbarHeight, setToolbarHeight] = useState(52)
-  const editorScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const mixedContentRef = useRef<NativeDiaryMixedContentHandle>(null)
-  const scrollRef = useRef<ScrollView>(null)
-  const scrollYRef = useRef(0)
+  const [toolbarHeight, setToolbarHeight] = useState(61)
+  const editorRef = useRef<NativeDiaryCodeMirrorEditorHandle>(null)
   const keyboardInsetLockedRef = useRef(false)
   const contentRef = useRef(content)
   const selectionRef = useRef({ start: 0, end: 0 })
@@ -107,7 +100,6 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
 
   const syncSelection = useCallback((sel: { start: number; end: number }) => {
     selectionRef.current = sel
-    setSelection(sel)
   }, [])
 
   const prevContentLenRef = useRef(0)
@@ -128,7 +120,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   const refocusEditor = useCallback(
     (sel: { start: number; end: number }) => {
       requestAnimationFrame(() => {
-        mixedContentRef.current?.focusAtOffset(sel.start)
+        editorRef.current?.focusAtOffset(sel.start)
         if (Platform.OS === 'android') {
           requestAnimationFrame(syncFromMetrics)
         }
@@ -142,27 +134,19 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
       const current = contentRef.current
       const safeStart = Math.max(0, Math.min(start, current.length))
       const safeEnd = Math.max(safeStart, Math.min(end, current.length))
-      const newText = current.substring(0, safeStart) + snippet + current.substring(safeEnd)
       const cursor = safeStart + snippet.length
       const sel = { start: cursor, end: cursor }
+
       toolbarInsertingRef.current = true
       pendingSelectionRef.current = sel
-      onContentChange(newText)
+      editorRef.current?.insertAtRange(safeStart, safeEnd, snippet)
       syncSelection(sel)
       refocusEditor(sel)
       requestAnimationFrame(() => {
         toolbarInsertingRef.current = false
       })
     },
-    [onContentChange, syncSelection, refocusEditor]
-  )
-
-  const insertAtSelection = useCallback(
-    (snippet: string) => {
-      const { start, end } = selectionRef.current
-      insertAtPosition(start, end, snippet)
-    },
-    [insertAtPosition]
+    [syncSelection, refocusEditor]
   )
 
   const handleInsertText = useCallback(
@@ -180,8 +164,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
     const anchor = { ...selectionRef.current }
     const markdowns = await onPickImages()
     if (!markdowns.length) return
-    const snippets = markdowns.map((md) => buildInlineImageInsertSnippet(md))
-    const block = (markdowns.length > 1 ? '\n\n' : '') + snippets.join('\n\n') + '\n'
+    const block = (markdowns.length > 1 ? '\n\n' : '') + markdowns.join('\n\n') + '\n'
     insertAtPosition(anchor.start, anchor.end, block)
   }
 
@@ -207,102 +190,42 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
       LayoutAnimation.create(0, LayoutAnimation.Types.linear, 'opacity')
     )
     resetKeyboard()
-    mixedContentRef.current?.blur()
+    editorRef.current?.blur()
     Keyboard.dismiss()
   }, [resetKeyboard])
 
-  const handlePreviewImagePress = useCallback((_src: string, resolvedUri: string) => {
-    setPreviewImageUri(resolvedUri)
+  const handleImagePreview = useCallback((_srcRaw: string, resolvedUrl: string) => {
+    setPreviewImageUri(resolvedUrl)
   }, [])
 
-  const handleSwitchToEdit = useCallback(() => {
-    setViewMode('edit')
-    requestAnimationFrame(() => {
-      mixedContentRef.current?.focusAtOffset(selectionRef.current.end)
-    })
-  }, [])
-
-  const resolveImageUri = useMemo(() => {
-    if (!resolveAttachmentUri) return undefined
-    return (src: string) => {
-      if (src.startsWith('attachment/')) {
-        return resolveAttachmentUri(src)
-      }
-      return resolveAttachmentUri(src) ?? src
-    }
-  }, [resolveAttachmentUri])
-
-  const loadImageUri = useMemo(() => {
-    if (!loadAttachmentImageUri) return undefined
-    return (src: string) => {
-      if (!src.startsWith('attachment/')) return Promise.resolve(null)
-      return loadAttachmentImageUri(src)
-    }
-  }, [loadAttachmentImageUri])
+  const handleImageAction = useCallback(
+    (payload: DiaryCmImageActionPayload) => {
+      if (payload.action !== 'delete') return
+      Alert.alert(
+        t('common.confirm', '确认'),
+        t('diary.delete_image_confirm', '确定删除这张图片吗？'),
+        [
+          { text: t('common.cancel', '取消'), style: 'cancel' },
+          {
+            text: t('common.delete', '删除'),
+            style: 'destructive',
+            onPress: () => {
+              onContentChange(
+                deleteMarkdownRange(contentRef.current, payload.from, payload.to)
+              )
+            }
+          }
+        ]
+      )
+    },
+    [onContentChange, t]
+  )
 
   const toolbarDockBottom = keyboardHeight
-
-  const scrollEditorIntoView = useCallback(() => {
-    const scrollView = scrollRef.current
-    if (!scrollView) return
-
-    const windowHeight = Dimensions.get('window').height
-    const kbHeight = keyboardHeight || readEffectiveKeyboardHeight(windowHeight)
-    if (kbHeight < 60) return
-
-    const bottomChrome = toolbarHeight + 16
-    const safeBottom = windowHeight - kbHeight - bottomChrome - DIARY_EDIT_SCROLL_BUFFER
-    const safeTop = insets.top + 56
-
-    const measure = mixedContentRef.current?.measureActiveEditorInWindow
-    if (!measure) {
-      scrollView.scrollToEnd({ animated: true })
-      return
-    }
-
-    measure((_x, nodeTop, _w, nodeHeight) => {
-      const delta = computeRevealScrollDelta({
-        nodeTop,
-        nodeBottom: nodeTop + nodeHeight,
-        safeTop,
-        safeBottom
-      })
-      if (delta <= 0) return
-
-      scrollView.scrollTo({
-        y: scrollYRef.current + delta,
-        animated: true
-      })
-    })
-  }, [keyboardHeight, toolbarHeight, insets.top])
-
-  const scheduleEditorScroll = useCallback(() => {
-    if (editorScrollTimerRef.current) clearTimeout(editorScrollTimerRef.current)
-    editorScrollTimerRef.current = setTimeout(
-      () => {
-        editorScrollTimerRef.current = null
-        scrollEditorIntoView()
-      },
-      Platform.OS === 'ios' ? 120 : 200
-    )
-  }, [scrollEditorIntoView])
-
-  useEffect(() => {
-    if (keyboardHeight < 60) return
-    scheduleEditorScroll()
-  }, [keyboardHeight, scheduleEditorScroll])
-
-  useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
-    const sub = Keyboard.addListener(showEvent, scheduleEditorScroll)
-    return () => {
-      sub.remove()
-      if (editorScrollTimerRef.current) {
-        clearTimeout(editorScrollTimerRef.current)
-        editorScrollTimerRef.current = null
-      }
-    }
-  }, [scheduleEditorScroll])
+  const editorPlaceholder = t(
+    'diary.tag_editor_hint',
+    '首行输入 #标签 后按回车，再写正文…'
+  )
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bgSurface }]}>
@@ -338,82 +261,66 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
         </TouchableOpacity>
       </View>
 
+      {!isSummaryMode && onWeatherChange && (
+        <View style={[styles.metaBar, { borderBottomColor: colors.borderSubtle }]}>
+          <WeatherPicker value={weather} onChange={onWeatherChange} />
+          <Pressable
+            style={({ pressed }) => [
+              styles.favBtn,
+              {
+                opacity: pressed ? 0.85 : 1,
+                backgroundColor: isFavorite ? colors.primaryLight : colors.bgSurface,
+                borderColor: isFavorite ? colors.warning : colors.borderSubtle
+              }
+            ]}
+            onPress={() => onFavoriteChange?.(!isFavorite)}
+            accessibilityLabel={isFavorite ? t('diary.unfavorite') : t('diary.favorite')}
+          >
+            <MaterialIcons
+              name={isFavorite ? 'favorite' : 'favorite-border'}
+              size={20}
+              color={isFavorite ? colors.warning : colors.textTertiary}
+            />
+          </Pressable>
+        </View>
+      )}
+
       <View style={styles.editorBody}>
-        <KeyboardAwareScrollView
-          ref={scrollRef}
-          style={styles.body}
-          nestedScrollEnabled
-          autoScrollToFocusedInput={false}
-          extraKeyboardPadding={toolbarHeight + 16}
-          contentContainerStyle={[
-            styles.bodyContent,
-            styles.bodyContentGrow,
-            { paddingBottom: toolbarHeight + 16 }
-          ]}
-          keyboardShouldPersistTaps="always"
-          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
-          showsVerticalScrollIndicator={false}
-          onScroll={(event) => {
-            scrollYRef.current = event.nativeEvent.contentOffset.y
-          }}
-          scrollEventThrottle={16}
-        >
-          <View style={styles.editorMain}>
-            {!isSummaryMode && viewMode === 'edit' && (
-              <View style={styles.tagsSection}>
-                <TagInput tags={tags} onChange={onTagsChange} />
-              </View>
-            )}
-
-            {!isSummaryMode && onWeatherChange && viewMode === 'edit' && (
-              <View style={[styles.metaBar, { borderBottomColor: colors.borderSubtle }]}>
-                <WeatherPicker value={weather} onChange={onWeatherChange} />
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.favBtn,
-                    {
-                      opacity: pressed ? 0.85 : 1,
-                      backgroundColor: isFavorite ? colors.primaryLight : colors.bgSurface,
-                      borderColor: isFavorite ? colors.warning : colors.borderSubtle
-                    }
-                  ]}
-                  onPress={() => onFavoriteChange?.(!isFavorite)}
-                  accessibilityLabel={isFavorite ? t('diary.unfavorite') : t('diary.favorite')}
-                >
-                  <MaterialIcons
-                    name={isFavorite ? 'favorite' : 'favorite-border'}
-                    size={20}
-                    color={isFavorite ? colors.warning : colors.textTertiary}
-                  />
-                </Pressable>
-              </View>
-            )}
-
-            <NativeDiaryMixedContent
-              ref={mixedContentRef}
+        <View style={styles.editorPane}>
+          {editorWebViewSource ? (
+            <NativeDiaryCodeMirrorEditor
+              ref={editorRef}
+              editorWebViewSource={editorWebViewSource}
+              active={webViewActive}
               content={content}
-              mode={viewMode === 'edit' ? 'edit' : 'preview'}
-              placeholder={t('diary.editor_hint')}
-              selection={selection}
+              editable
+              placeholder={editorPlaceholder}
               onChange={onContentChange}
               onSelectionChange={handleSelectionChange}
-              onPress={viewMode === 'preview' ? handleSwitchToEdit : undefined}
               onFocus={() => {
                 keyboardInsetLockedRef.current = false
                 if (Platform.OS === 'android') {
                   requestAnimationFrame(syncFromMetrics)
                 }
-                scheduleEditorScroll()
               }}
-              onContentSizeChange={() => {
-                if (keyboardHeight >= 60) scheduleEditorScroll()
-              }}
-              resolveImageUri={resolveImageUri}
-              loadImageUri={loadImageUri}
-              onImagePress={handlePreviewImagePress}
+              onImagePreview={handleImagePreview}
+              onImageAction={handleImageAction}
+              resolveAttachmentUrl={resolveAttachmentUrl}
+              tagColorRegistry={tagColorRegistry}
+              keyboardInset={keyboardHeight}
+              bottomScrollInset={toolbarHeight + EDITOR_BOTTOM_SCROLL_INSET_BUFFER}
+              fillViewport
+              style={styles.editorFill}
             />
-          </View>
-        </KeyboardAwareScrollView>
+          ) : (
+            <View style={styles.editorLoadFallback}>
+              <ActivityIndicator color={colors.primary} />
+              <Text style={[styles.editorLoadHint, { color: colors.textSecondary }]}>
+                {t('diary.editor_webview_loading', '正在加载编辑器…')}
+              </Text>
+            </View>
+          )}
+        </View>
 
         <View
           style={[styles.toolbarDock, { bottom: toolbarDockBottom }]}
@@ -423,12 +330,6 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
           }}
         >
           <MarkdownToolbar
-            viewMode={viewMode}
-            onViewModeChange={(mode) => {
-              if (mode === 'edit') handleSwitchToEdit()
-              else setViewMode('preview')
-            }}
-            onHideKeyboard={snapKeyboardChromeAway}
             onInsertText={handleInsertText}
             onPickImages={onPickImages ? handlePickImages : undefined}
             pickingImages={pickingImages}
@@ -455,29 +356,13 @@ const styles = StyleSheet.create({
   appBarCenter: { flex: 1, alignItems: 'center', minWidth: 0 },
   saveBtn: { paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20 },
   saveBtnText: { fontWeight: '600', fontSize: 14 },
-  editorBody: {
-    flex: 1,
-    position: 'relative'
-  },
-  toolbarDock: {
-    position: 'absolute',
-    left: 0,
-    right: 0
-  },
-  body: { flex: 1 },
-  bodyContent: { padding: 16 },
-  bodyContentGrow: { flexGrow: 1 },
-  editorMain: { width: '100%' },
-  tagsSection: {
-    marginBottom: 12
-  },
   metaBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
-    marginBottom: 16,
-    paddingBottom: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderBottomWidth: 1
   },
   favBtn: {
@@ -488,5 +373,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0
+  },
+  editorBody: {
+    flex: 1,
+    position: 'relative'
+  },
+  editorPane: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 8
+  },
+  editorFill: {
+    flex: 1
+  },
+  toolbarDock: {
+    position: 'absolute',
+    left: 0,
+    right: 0
+  },
+  editorLoadFallback: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    paddingVertical: 48
+  },
+  editorLoadHint: {
+    fontSize: 13,
+    textAlign: 'center',
+    paddingHorizontal: 24
   }
 })
