@@ -16,13 +16,13 @@ export function formatSyncProgressStatus(
 
   switch (event.action) {
     case 'upload':
-      return t('data_sync.progress_upload', 'Upload: {{path}}', { path })
+      return t('data_sync.progress_upload', '上传：{{path}}', { path })
     case 'download':
-      return t('data_sync.progress_download', 'Download: {{path}}', { path })
+      return t('data_sync.progress_download', '下载：{{path}}', { path })
     case 'delete':
-      return t('data_sync.progress_delete', 'Delete: {{path}}', { path })
+      return t('data_sync.progress_delete', '删除：{{path}}', { path })
     case 'skip':
-      return t('data_sync.progress_skip', 'Skip: {{path}}', { path })
+      return t('data_sync.progress_skip', '跳过：{{path}}', { path })
     default:
       return path
   }
