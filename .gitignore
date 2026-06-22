@@ -20,7 +20,7 @@ build/
 tsconfig.tsbuildinfo
 
 # ─── Electron ──────────────────────────────────────────────
-release/
+/release/
 *.dmg
 *.exe
 *.msi
