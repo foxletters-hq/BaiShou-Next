@@ -3,6 +3,7 @@ import type { IFileSystem } from '../fs/file-system.types'
 import * as path from '../fs/path.util'
 import { IStoragePathService } from '../vault/storage-path.types'
 import { parseJournalMarkdown } from './journal-markdown.parser'
+import { resolveJournalFilePath } from '../journal/journal-files.util'
 
 export interface FileSyncService {
   writeJournal(diary: CreateDiaryInput | Diary): Promise<void>
@@ -50,6 +51,16 @@ export class FileSyncServiceImpl implements FileSyncService {
       if (tagArr.length > 0) lines.push(`tags: [${tagArr.join(', ')}]`)
     }
 
+    if ('tagColors' in diary && diary.tagColors) {
+      const colorMap =
+        typeof diary.tagColors === 'string'
+          ? diary.tagColors
+          : JSON.stringify(diary.tagColors)
+      if (colorMap && colorMap !== '{}') {
+        lines.push(`tag_colors: ${colorMap}`)
+      }
+    }
+
     if ('weather' in diary && diary.weather) lines.push(`weather: ${diary.weather}`)
     if ('mood' in diary && diary.mood) lines.push(`mood: ${diary.mood}`)
     if ('location' in diary && diary.location) lines.push(`location: ${diary.location}`)
@@ -68,9 +79,9 @@ export class FileSyncServiceImpl implements FileSyncService {
 
   async readJournal(date: Date): Promise<Diary | null> {
     const rootPath = await this.pathService.getJournalsBaseDirectory()
-    const filePath = this.buildFilePath(rootPath, date)
-
-    if (!(await this.fileSystem.exists(filePath))) return null
+    const dateStr = formatLocalDate(date)
+    const filePath = await resolveJournalFilePath(this.fileSystem, rootPath, dateStr)
+    if (!filePath) return null
 
     const raw = await this.fileSystem.readFile(filePath, 'utf8')
     return this._parseMarkdown(raw, date)
@@ -78,9 +89,9 @@ export class FileSyncServiceImpl implements FileSyncService {
 
   async deleteJournalFile(date: Date): Promise<void> {
     const rootPath = await this.pathService.getJournalsBaseDirectory()
-    const filePath = this.buildFilePath(rootPath, date)
-
-    if (await this.fileSystem.exists(filePath)) {
+    const dateStr = formatLocalDate(date)
+    const filePath = await resolveJournalFilePath(this.fileSystem, rootPath, dateStr)
+    if (filePath && (await this.fileSystem.exists(filePath))) {
       await this.fileSystem.unlink(filePath)
     }
   }
@@ -98,6 +109,8 @@ export class FileSyncServiceImpl implements FileSyncService {
       date: parseDateStr(parsed.date) ?? fallbackDate,
       content: parsed.content,
       tags: parsed.tags.length > 0 ? parsed.tags.join(',') : undefined,
+      tagColors:
+        Object.keys(parsed.tagColors).length > 0 ? JSON.stringify(parsed.tagColors) : undefined,
       createdAt: parsed.createdAt,
       updatedAt: parsed.updatedAt,
       weather: parsed.weather,

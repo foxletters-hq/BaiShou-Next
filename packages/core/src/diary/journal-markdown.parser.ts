@@ -1,4 +1,4 @@
-import { parseDateStr } from '@baishou/shared'
+import { parseDateStr, normalizeDiaryTagColorRegistry } from '@baishou/shared'
 import type { ParsedJournal } from '../shadow-index/shadow-index-sync.types'
 
 function safeParseDateTime(value: string | undefined, fallback: Date): Date {
@@ -103,6 +103,12 @@ function parseFrontmatterMeta(metaBlock: string): Record<string, string> {
   return meta
 }
 
+function parseTagColors(meta: Record<string, string>): Record<string, number> {
+  const raw = meta['tag_colors'] || meta['tagColors']
+  if (!raw) return {}
+  return normalizeDiaryTagColorRegistry(raw)
+}
+
 function parseTags(meta: Record<string, string>, metaBlock: string): string[] {
   const listTags = parseYamlListTags(metaBlock)
   if (listTags.length > 0) return listTags
@@ -126,6 +132,7 @@ export function parseJournalMarkdown(raw: string, fallbackDate: string): ParsedJ
 
   const meta = split ? parseFrontmatterMeta(split.metaBlock) : {}
   const tags = split ? parseTags(meta, split.metaBlock) : []
+  const tagColors = split ? parseTagColors(meta) : {}
 
   const dateStr = meta['date']
   const parsedDate = dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? dateStr : fallbackDate
@@ -146,6 +153,7 @@ export function parseJournalMarkdown(raw: string, fallbackDate: string): ParsedJ
     date: parsedDate,
     content,
     tags,
+    tagColors,
     createdAt: safeParseDateTime(
       meta['created_at'] || meta['createdAt'],
       meta['date'] ? parseDateStr(parsedDate) : now

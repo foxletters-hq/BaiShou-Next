@@ -11,7 +11,9 @@ import {
   formatLocalDate,
   parseDateStr,
   weatherMatchesFilter,
-  formatDiaryPreviewText
+  formatDiaryPreviewText,
+  mergeDiaryTagColorRegistries,
+  normalizeDiaryTagColorRegistry
 } from '@baishou/shared'
 import { DiaryNotFoundError, DiaryDateConflictError } from './diary.types'
 import { emitDomainMutation } from '../events'
@@ -422,6 +424,7 @@ export class DiaryService {
       rawContent?: string | null
       tags?: string | null
       tagsStr?: string | null
+      tagColors?: string | null
     },
     previewOverride?: string
   ): DiaryMeta {
@@ -434,6 +437,7 @@ export class DiaryService {
         .filter(Boolean)
     }
 
+    const tagColors = normalizeDiaryTagColorRegistry(s.tagColors)
     const rawContent = s.rawContent ?? ''
     return {
       id: s.id,
@@ -442,6 +446,7 @@ export class DiaryService {
         previewOverride || (rawContent ? rawContent.substring(0, 500) : '')
       ),
       tags: parsedTags,
+      tagColors: Object.keys(tagColors).length > 0 ? tagColors : undefined,
       updatedAt: s.updatedAt ? new Date(s.updatedAt) : undefined,
       weather: s.weather || undefined,
       mood: s.mood || undefined,
@@ -487,6 +492,13 @@ export class DiaryService {
     parseTags(target.tags).forEach((t) => mergedTags.add(t))
     parseTags(source.tags).forEach((t) => mergedTags.add(t))
     source.tags = Array.from(mergedTags).join(',')
+
+    const mergedTagColors = mergeDiaryTagColorRegistries(
+      normalizeDiaryTagColorRegistry(target.tagColors),
+      normalizeDiaryTagColorRegistry(source.tagColors)
+    )
+    source.tagColors =
+      Object.keys(mergedTagColors).length > 0 ? JSON.stringify(mergedTagColors) : undefined
 
     // 其他必要元数据如果有丢失则补充
     source.weather = source.weather ?? target.weather

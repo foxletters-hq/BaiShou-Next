@@ -72,4 +72,16 @@ tags: [日记, 生活]
     const parsed = parseJournalMarkdown(raw, '2025-02-20')
     expect(parsed?.tags).toEqual(['日记', '生活'])
   })
+
+  it('应解析 tag_colors JSON', () => {
+    const raw = `---
+id: 5
+date: 2025-02-20
+tags: [日记, 生活]
+tag_colors: {"日记":1,"生活":3}
+---
+内容`
+    const parsed = parseJournalMarkdown(raw, '2025-02-20')
+    expect(parsed?.tagColors).toEqual({ 日记: 1, 生活: 3 })
+  })
 })
