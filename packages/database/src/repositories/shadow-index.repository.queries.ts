@@ -164,7 +164,8 @@ export class ShadowIndexQueryOps {
       isFavorite: Boolean(row.is_favorite ?? row.isFavorite),
       hasMedia: Boolean(row.has_media ?? row.hasMedia),
       rawContent: (row.raw_content ?? row.rawContent ?? null) as string | null,
-      tags: (row.tags ?? null) as string | null
+      tags: (row.tags ?? null) as string | null,
+      tagColors: (row.tag_colors ?? row.tagColors ?? null) as string | null
     }
   }
 
