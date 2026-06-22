@@ -31,6 +31,7 @@ export * from './vault/vault.service'
 export * from './attachments/attachment-manager.types'
 export * from './diary/diary.types'
 export * from './journal/journal-files.util'
+export * from './journal/journal-index-probe.util'
 export { parseJournalMarkdown } from './diary/journal-markdown.parser'
 
 export * from './session/session-file.service'

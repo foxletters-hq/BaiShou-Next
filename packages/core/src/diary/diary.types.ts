@@ -2,6 +2,7 @@ export interface CreateDiaryInput {
   date: Date
   content: string
   tags?: string
+  tagColors?: string
   weather?: string
   mood?: string
   location?: string

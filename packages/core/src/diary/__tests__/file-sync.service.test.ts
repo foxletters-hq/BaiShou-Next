@@ -80,4 +80,24 @@ describe('FileSyncService', () => {
     const readBack = await service.readJournal(sampleDiary.date)
     expect(readBack).toBeNull()
   })
+
+  it('should read Flutter flat layout journal files', async () => {
+    const flatPath = path.join(rootPath, '2025-06-10.md')
+    const md = `---\ndate: 2025-06-10\nid: 42\n---\n\n扁平布局正文`
+    fs.mkdirSync(rootPath, { recursive: true })
+    fs.writeFileSync(flatPath, md, 'utf8')
+
+    const readBack = await service.readJournal(new Date(2025, 5, 10))
+    expect(readBack?.id).toBe(42)
+    expect(readBack?.content).toBe('扁平布局正文')
+  })
+
+  it('should delete Flutter flat layout journal files', async () => {
+    const flatPath = path.join(rootPath, '2025-06-11.md')
+    fs.mkdirSync(rootPath, { recursive: true })
+    fs.writeFileSync(flatPath, '---\ndate: 2025-06-11\n---\n\nx', 'utf8')
+
+    await service.deleteJournalFile(new Date(2025, 5, 11))
+    expect(fs.existsSync(flatPath)).toBe(false)
+  })
 })
