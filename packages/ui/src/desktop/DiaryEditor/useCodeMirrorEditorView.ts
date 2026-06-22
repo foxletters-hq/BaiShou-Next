@@ -1,22 +1,10 @@
 import { useCallback, useEffect, useRef } from 'react'
-import { EditorState } from '@codemirror/state'
+import { EditorView } from '@codemirror/view'
 import {
-  EditorView,
-  keymap,
-  placeholder as cmPlaceholder,
-  highlightActiveLine
-} from '@codemirror/view'
-import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
-import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
-import { searchKeymap } from '@codemirror/search'
-import {
-  livePreviewPlugin,
-  livePreviewSyntaxHighlighting,
-  forceImageRefresh
-} from './codeMirrorDecorations'
-import { markdownKeymap } from './codeMirrorEditor.keymap'
-import { editorTheme } from './codeMirrorTheme'
-import { attachmentUrlPlugin } from './codeMirrorAttachmentPlugin'
+  createDiaryCodeMirror,
+  forceImageRefresh,
+  type DiaryCmPlatform
+} from '../../shared/diary-codemirror'
 import type { CodeMirrorEditorProps, TextContextMenuState } from './codeMirrorEditor.types'
 
 export function useCodeMirrorEditorView(
@@ -55,66 +43,43 @@ export function useCodeMirrorEditorView(
     const container = containerRef.current
     if (!container) return
 
-    const extensions = [
-      EditorView.lineWrapping,
-      highlightActiveLine(),
-      history(),
-      markdownKeymap,
-      keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
-      markdown({ base: markdownLanguage }),
-      cmPlaceholder(props.placeholder || ''),
-      livePreviewPlugin(resolveUrl),
-      livePreviewSyntaxHighlighting(),
-      attachmentUrlPlugin(resolveUrl),
-      EditorView.updateListener.of((update) => {
-        if (update.docChanged) {
-          onChangeRef.current(update.state.doc.toString())
-        }
-      }),
-      EditorView.domEventHandlers({
-        click: (event) => {
-          const target = event.target as HTMLElement
-          if (target.closest('.cm-image-container')) {
-            return false
-          }
-          if (target.tagName === 'IMG') {
-            const src = (target as HTMLImageElement).src
-            if (src && !src.startsWith('attachment/')) {
-              setPreviewSrc(src)
+    const platform: DiaryCmPlatform = {
+      resolveAttachmentUrl: resolveUrl,
+      interactionMode: 'mouse',
+      onExternalImagePreview: (src) => setPreviewSrc(src)
+    }
+
+    const view = createDiaryCodeMirror(container, {
+      content: props.content,
+      placeholder: props.placeholder,
+      platform,
+      onChange: (content) => onChangeRef.current(content),
+      extraExtensions: [
+        EditorView.domEventHandlers({
+          contextmenu: (event, view) => {
+            const target = event.target as HTMLElement
+            if (target.closest('.cm-image-container')) {
+              return false
             }
+
+            event.preventDefault()
+            event.stopPropagation()
+
+            const { from, to } = view.state.selection.main
+            setTextContextMenu({
+              x: event.clientX,
+              y: event.clientY,
+              hasSelection: from !== to
+            })
+            return true
           }
-          return false
-        },
-        contextmenu: (event, view) => {
-          const target = event.target as HTMLElement
-          if (target.closest('.cm-image-container')) {
-            return false
-          }
-
-          event.preventDefault()
-          event.stopPropagation()
-
-          const { from, to } = view.state.selection.main
-          setTextContextMenu({
-            x: event.clientX,
-            y: event.clientY,
-            hasSelection: from !== to
-          })
-          return true
-        }
-      }),
-      editorTheme
-    ]
-
-    const state = EditorState.create({
-      doc: props.content,
-      extensions
+        })
+      ]
     })
 
-    const view = new EditorView({ state, parent: container })
     viewRef.current = view
 
-    const docLength = state.doc.length
+    const docLength = view.state.doc.length
     view.dispatch({
       selection: { anchor: docLength, head: docLength }
     })
