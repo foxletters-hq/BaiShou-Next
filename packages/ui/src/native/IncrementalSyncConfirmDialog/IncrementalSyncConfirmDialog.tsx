@@ -355,51 +355,58 @@ const PlanConfirmFooter = memo(function PlanConfirmFooter({
     return t('data_sync.plan_confirm_sync', '确认同步')
   }, [confirmReady, isConfirming, needsSyncConfirm, secondsLeft, t])
 
+  const choiceDisabled = (needsSyncConfirm && !confirmReady) || isConfirming
+
+  if (needsDeleteChoice) {
+    return (
+      <View style={[styles.deleteChoiceFooter, { borderTopColor: colors.borderSubtle }]}>
+        <Button
+          variant="primary"
+          destructive
+          onPress={() => onConfirm('follow-remote')}
+          disabled={choiceDisabled}
+          isLoading={isConfirming}
+          style={styles.fullWidthButton}
+        >
+          {t('data_sync.plan_delete_choice_follow_remote')}
+        </Button>
+        <Button
+          variant="primary"
+          onPress={() => onConfirm('push-local')}
+          disabled={choiceDisabled}
+          style={styles.fullWidthButton}
+        >
+          {t('data_sync.plan_delete_choice_push_local')}
+        </Button>
+        <Button
+          variant="outline"
+          onPress={() => onConfirm('skip-deletes')}
+          disabled={choiceDisabled}
+          style={styles.fullWidthButton}
+        >
+          {t('data_sync.plan_delete_choice_skip_deletes')}
+        </Button>
+        <Button variant="outline" onPress={onCancel} style={styles.fullWidthButton}>
+          {t('common.cancel', '取消')}
+        </Button>
+      </View>
+    )
+  }
+
   return (
-    <View style={[styles.actions, { borderTopColor: colors.borderSubtle }]}>
+    <View style={[styles.actionsRow, { borderTopColor: colors.borderSubtle }]}>
       <Button variant="outline" onPress={onCancel} style={styles.actionButton}>
         {t('common.cancel', '取消')}
       </Button>
-      {needsDeleteChoice ? (
-        <View style={styles.choiceActions}>
-          <Button
-            variant="primary"
-            destructive
-            onPress={() => onConfirm('follow-remote')}
-            disabled={(needsSyncConfirm && !confirmReady) || isConfirming}
-            isLoading={isConfirming}
-            style={styles.choiceButton}
-          >
-            {t('data_sync.plan_delete_choice_follow_remote')}
-          </Button>
-          <Button
-            variant="primary"
-            onPress={() => onConfirm('push-local')}
-            disabled={(needsSyncConfirm && !confirmReady) || isConfirming}
-            style={styles.choiceButton}
-          >
-            {t('data_sync.plan_delete_choice_push_local')}
-          </Button>
-          <Button
-            variant="outline"
-            onPress={() => onConfirm('skip-deletes')}
-            disabled={(needsSyncConfirm && !confirmReady) || isConfirming}
-            style={styles.choiceButton}
-          >
-            {t('data_sync.plan_delete_choice_skip_deletes')}
-          </Button>
-        </View>
-      ) : (
-        <Button
-          variant="primary"
-          onPress={() => onConfirm()}
-          disabled={(needsSyncConfirm && !confirmReady) || isConfirming}
-          isLoading={isConfirming}
-          style={styles.actionButton}
-        >
-          {primaryButtonLabel}
-        </Button>
-      )}
+      <Button
+        variant="primary"
+        onPress={() => onConfirm()}
+        disabled={choiceDisabled}
+        isLoading={isConfirming}
+        style={styles.actionButton}
+      >
+        {primaryButtonLabel}
+      </Button>
     </View>
   )
 })
@@ -598,14 +605,18 @@ const styles = StyleSheet.create({
   choiceMeta: {
     fontSize: 11
   },
-  choiceActions: {
-    flex: 1,
+  deleteChoiceFooter: {
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    paddingBottom: 18,
+    borderTopWidth: StyleSheet.hairlineWidth,
     gap: 8
   },
-  choiceButton: {
-    width: '100%'
+  fullWidthButton: {
+    width: '100%',
+    alignSelf: 'stretch'
   },
-  actions: {
+  actionsRow: {
     flexDirection: 'row',
     gap: 10,
     paddingHorizontal: 18,
