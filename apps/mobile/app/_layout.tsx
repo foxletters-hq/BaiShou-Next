@@ -26,6 +26,7 @@ import {
 } from '@/src/navigation/themedNavigation'
 import { NativeAppThemeBridge } from '@/src/providers/NativeAppThemeBridge'
 import { HeroUIThemeBridge } from '@/src/providers/HeroUIThemeBridge'
+import '@/src/screens/DiaryScreen/diary-filter-state.util'
 
 export const unstable_settings = {
   // 深链进入子页面时，栈底保留 tabs 而非引导页
