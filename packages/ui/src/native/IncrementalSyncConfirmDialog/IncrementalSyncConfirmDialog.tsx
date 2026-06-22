@@ -203,6 +203,14 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
             </Text>
           ))}
 
+          {preview.prunedRegistryVaults && preview.prunedRegistryVaults.length > 0 && (
+            <Text style={[styles.warningItem, { color: colors.warning }]}>
+              {t('data_sync.plan_warning_pruned_registry_vaults', {
+                vaults: preview.prunedRegistryVaults.join('、')
+              })}
+            </Text>
+          )}
+
           {needsDeleteChoice && (
             <View
               style={[
@@ -233,12 +241,20 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
             <Text key={key} style={[styles.warningItem, { color: colors.warning }]}>
               {t(key, {
                 divergence: preview.divergencePercent,
-                limit: preview.maxDivergencePercent
+                limit: preview.maxDivergencePercent,
+                completed: preview.interruptedSyncResume?.completed,
+                total: preview.interruptedSyncResume?.total
               })}
             </Text>
           ))}
 
-          <ScrollView style={styles.vaultList} contentContainerStyle={styles.vaultListContent}>
+          <ScrollView
+            style={styles.vaultList}
+            contentContainerStyle={styles.vaultListContent}
+            nestedScrollEnabled
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator
+          >
             {preview.vaultSummaries.length === 0 ? (
               <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                 {t('data_sync.plan_no_file_changes', '没有需要同步的文件变更')}

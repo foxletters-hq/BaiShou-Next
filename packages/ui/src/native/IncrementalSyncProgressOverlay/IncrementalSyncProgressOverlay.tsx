@@ -19,7 +19,10 @@ import {
 import { useNativeTheme } from '../theme'
 
 export type IncrementalSyncProgressOverlayState = Partial<
-  Pick<SyncProgressEvent, 'phase' | 'fileName' | 'action' | 'statusText'>
+  Pick<
+    SyncProgressEvent,
+    'phase' | 'fileName' | 'action' | 'statusText' | 'fileBytesDone' | 'fileBytesTotal'
+  >
 > & {
   current: number
   total: number
@@ -39,12 +42,39 @@ export interface IncrementalSyncProgressOverlayProps {
   onRequestClose?: () => void
 }
 
+function formatBytesShort(bytes: number): string {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${bytes} B`
+}
+
 function resolveProgressLabel(
   progress: IncrementalSyncProgressOverlayState,
   t: SyncProgressTranslate
 ): string {
   if (progress.action && progress.fileName) {
-    return formatSyncProgressStatus({ action: progress.action, fileName: progress.fileName }, t)
+    const base = formatSyncProgressStatus({ action: progress.action, fileName: progress.fileName }, t)
+    const total = progress.fileBytesTotal ?? 0
+    const done = progress.fileBytesDone ?? 0
+    let line = base
+    if (total > 0 && done >= 0) {
+      const pct = Math.min(100, Math.round((done / total) * 100))
+      const sizeLabel =
+        total > 1024 * 1024
+          ? ` (${pct}% · ${formatBytesShort(done)}/${formatBytesShort(total)})`
+          : total > 32 * 1024
+            ? ` (${pct}%)`
+            : ''
+      line = `${base}${sizeLabel}`
+    }
+    if (progress.statusText) {
+      const statusLabel = formatSyncProgressPhaseLabel(
+        { phase: progress.phase, statusText: progress.statusText },
+        t
+      )
+      line = `${line} · ${statusLabel}`
+    }
+    return line
   }
 
   if (progress.statusText) {
@@ -68,7 +98,12 @@ function resolveProgressLabel(
       }
       return t('data_sync.syncing', '同步中…')
     default:
-      return progress.statusText ?? t('data_sync.syncing', '同步中…')
+      return progress.statusText
+        ? formatSyncProgressPhaseLabel(
+            { phase: progress.phase, statusText: progress.statusText },
+            t
+          )
+        : t('data_sync.syncing', '同步中…')
   }
 }
 
@@ -85,14 +120,54 @@ export const IncrementalSyncProgressOverlay: React.FC<IncrementalSyncProgressOve
   const { colors, tokens } = useNativeTheme()
   const progressAnim = useRef(new Animated.Value(0)).current
   const enterAnim = useRef(new Animated.Value(0)).current
+  const pulseAnim = useRef(new Animated.Value(0)).current
   const wasVisibleRef = useRef(false)
+
+  const fileFraction =
+    progress?.fileBytesTotal && progress.fileBytesTotal > 0 && progress.fileBytesDone != null
+      ? Math.min(1, progress.fileBytesDone / progress.fileBytesTotal)
+      : 0
+
+  const hasActiveByteProgress =
+    (progress?.fileBytesTotal ?? 0) > 0 && (progress?.fileBytesDone ?? 0) > 0
+
+  const showTransferPulse =
+    progress?.phase === 'syncing' &&
+    Boolean(progress?.statusText || progress?.action) &&
+    (progress?.fileBytesTotal ?? 0) > 0 &&
+    !hasActiveByteProgress
 
   const ratio =
     progress?.phase === 'finalizing'
       ? 1
       : progress && progress.total > 0
-        ? Math.min(1, progress.current / progress.total)
+        ? Math.min(1, (progress.current + fileFraction) / progress.total)
         : 0
+
+  useEffect(() => {
+    if (!showTransferPulse) {
+      pulseAnim.setValue(0)
+      return
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 900,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: false
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0,
+          duration: 900,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: false
+        })
+      ])
+    )
+    loop.start()
+    return () => loop.stop()
+  }, [pulseAnim, showTransferPulse])
 
   useEffect(() => {
     Animated.timing(progressAnim, {
@@ -198,7 +273,29 @@ export const IncrementalSyncProgressOverlay: React.FC<IncrementalSyncProgressOve
       </View>
 
       <View style={[styles.track, { backgroundColor: colors.bgSurfaceNormal }]}>
-        {resolvedProgress.total > 0 || resolvedProgress.phase === 'finalizing' ? (
+        {showTransferPulse ? (
+          <Animated.View
+            style={[
+              styles.fill,
+              styles.indeterminate,
+              {
+                backgroundColor: colors.primary,
+                opacity: pulseAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.45, 1]
+                }),
+                transform: [
+                  {
+                    translateX: pulseAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ['0%', '185%']
+                    })
+                  }
+                ]
+              }
+            ]}
+          />
+        ) : resolvedProgress.total > 0 || resolvedProgress.phase === 'finalizing' ? (
           <Animated.View
             style={[
               styles.fill,
