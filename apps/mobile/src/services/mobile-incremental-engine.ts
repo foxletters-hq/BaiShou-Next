@@ -71,8 +71,8 @@ export type MobileIncrementalProgress = Partial<
 
 type IncrementalProgressCallback = (progress: MobileIncrementalProgress) => void
 
-/** 本地 manifest 哈希并发度 */
-const MANIFEST_HASH_CONCURRENCY = 12
+/** 本地 manifest 哈希并发度（原生 MD5 以 I/O 为主，可适当提高） */
+const MANIFEST_HASH_CONCURRENCY = 16
 
 const SYNC_ACTIVITY_STATUS: Record<string, string> = {
   preparing: '正在连接…',
@@ -174,11 +174,17 @@ export class MobileIncrementalEngine {
     this.pendingSyncRemoteManifest = null
   }
 
-  /** 规划结束：保留本地/远端 manifest 供随后执行同步复用 */
+  /** 规划结束：保留本地/远端 manifest 供随后执行同步复用，并落盘本地 manifest 供下次规划跳过未变更文件的哈希 */
   finalizePlanSession(): void {
     if (this.planManifestCache?.local) {
       this.pendingSyncLocalManifest = this.planManifestCache.local
       this.pendingSyncRemoteManifest = this.planManifestCache.remote
+      void this.saveLocalManifest(this.planManifestCache.local).catch((error: unknown) => {
+        console.warn(
+          '[MobileIncremental] save local manifest after plan failed:',
+          error instanceof Error ? error.message : String(error)
+        )
+      })
     }
     this.planManifestCache = null
   }
@@ -218,13 +224,14 @@ export class MobileIncrementalEngine {
     client.setVaultPath(syncRoot)
 
     onProgress?.({ phase: 'scanning', current: 0, total: 0 })
-    const local = await this.buildLocalManifest((current, total, fileName) => {
+    const localPromise = this.buildLocalManifest((current, total, fileName) => {
       onProgress?.({ phase: 'scanning', current, total, fileName })
     })
     onProgress?.({ phase: 'comparing', current: 0, total: 1 })
-    const remote = await this.getRemoteManifest(client, (current, total, fileName) => {
+    const remotePromise = this.getRemoteManifest(client, (current, total, fileName) => {
       onProgress?.({ phase: 'comparing', current, total, fileName })
     })
+    const [local, remote] = await Promise.all([localPromise, remotePromise])
     onProgress?.({ phase: 'comparing', current: 1, total: 1 })
 
     this.planManifestCache = { local, remote }
@@ -262,7 +269,12 @@ export class MobileIncrementalEngine {
     onProgress?: (current: number, total: number, fileName: string) => void
   ): Promise<SyncManifest> {
     const syncRoot = await this.syncRoot()
-    const cachedManifest = await this.readLocalManifestFile().catch(() => this.emptyManifest())
+    const diskCached = await this.readLocalManifestFile().catch(() => this.emptyManifest())
+    const cachedManifest = this.mergeManifestFileCaches(
+      diskCached,
+      this.pendingSyncLocalManifest,
+      this.planManifestCache?.local
+    )
 
     const files = await scanIncrementalSyncFilesForManifest(this.fileSystem, syncRoot, (discovered, fileName) => {
       onProgress?.(0, discovered, fileName)
@@ -612,6 +624,35 @@ export class MobileIncrementalEngine {
 
   private emptyManifest(): SyncManifest {
     return createEmptySyncManifest(this.deviceId)
+  }
+
+  /** 合并磁盘与内存中的 manifest 条目，较新的来源覆盖较旧（用于跳过未变更文件的 MD5） */
+  private mergeManifestFileCaches(...sources: Array<SyncManifest | null | undefined>): SyncManifest {
+    const merged = this.emptyManifest()
+    for (const source of sources) {
+      if (!source?.files) continue
+      Object.assign(merged.files, source.files)
+    }
+    return merged
+  }
+
+  private async fetchRemoteManifestLight(
+    config: S3SyncConfig,
+    syncRoot: string
+  ): Promise<SyncManifest> {
+    const client = new MobileIncrementalCloudClient(config, this.fileSystem)
+    client.setVaultPath(syncRoot)
+    const rel = `.baishou/${SYNC_MANIFEST_FILENAME}`
+    const temp = `${getAppCacheDirectory()}temp-remote-scopes-${Date.now()}.json`
+    try {
+      await client.downloadFile(rel, temp)
+      const raw = await this.fileSystem.readFile(temp)
+      return normalizeSyncManifest(JSON.parse(raw) as SyncManifest)
+    } catch {
+      return this.emptyManifest()
+    } finally {
+      await this.fileSystem.unlink(temp).catch(() => {})
+    }
   }
 
   private async readLocalManifestFile(): Promise<SyncManifest> {
@@ -977,8 +1018,25 @@ export class MobileIncrementalEngine {
   }
 
   async collectManifestVaultScopes(config: S3SyncConfig): Promise<Set<string>> {
-    const { local, remote } = await this.loadPlanManifests(config)
-    return collectManifestVaultScopes(local, remote)
+    if (this.planManifestCache) {
+      return collectManifestVaultScopes(this.planManifestCache.local, this.planManifestCache.remote)
+    }
+
+    const syncRoot = await this.syncRoot()
+    const [scanned, remote] = await Promise.all([
+      scanIncrementalSyncFilesForManifest(this.fileSystem, syncRoot),
+      this.fetchRemoteManifestLight(config, syncRoot)
+    ])
+    const localFromScan: SyncManifest = {
+      ...this.emptyManifest(),
+      files: Object.fromEntries(
+        scanned.map((file) => [
+          file.relPath,
+          { hash: '', size: file.size, lastModified: file.mtimeMs }
+        ])
+      )
+    }
+    return collectManifestVaultScopes(localFromScan, remote)
   }
 
   async planSync(

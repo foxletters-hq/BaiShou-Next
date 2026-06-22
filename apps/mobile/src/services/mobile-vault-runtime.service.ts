@@ -6,6 +6,7 @@ import {
   VaultService,
   journalMarkdownExistsInTree,
   countJournalMarkdownInTree,
+  probeJournalShadowResyncNeeded,
   path,
   type IFileSystem,
   type IStoragePathService,
@@ -728,6 +729,8 @@ async function runVaultBootstrap(
     deferResync?: boolean
     /** 跳过上架日记存在时的阻塞全量扫描（旧版迁移完成后使用，避免 OOM 闪退） */
     forceDeferResync?: boolean
+    /** 应用升级等场景强制全量影子 resync，忽略「索引已有记录」快路径 */
+    forceShadowResync?: boolean
     skipFullResync?: boolean
     resyncReason?: string
     onResyncComplete?: () => void
@@ -744,9 +747,22 @@ async function runVaultBootstrap(
 
   if (!options?.forceDeferResync) {
     try {
-      const records = await deps.diaryStack.shadowRepo.getAllRecords()
-      if (records.length > 0) {
-        logger.info('[VaultRuntime] Shadow index already populated; skipping shadow resync')
+      const activeVault = deps.vaultService.getActiveVault()
+      const shadowCount = await deps.diaryStack.shadowRepo.count()
+      const journalsDir = activeVault?.path
+        ? path.join(activeVault.path, 'Journals')
+        : await deps.pathService.getJournalsBaseDirectory()
+      const probe = await probeJournalShadowResyncNeeded(
+        deps.fileSystem,
+        journalsDir,
+        shadowCount,
+        { forceResync: options?.forceShadowResync }
+      )
+
+      if (!probe.needsResync) {
+        logger.info(
+          `[VaultRuntime] Shadow index aligned with disk (${probe.shadowCount} entries); skipping shadow resync`
+        )
         const activeVaultName = deps.vaultService.getActiveVault()?.name
         if (activeVaultName) {
           await deps.bootstrapDeps.summarySyncService
@@ -762,6 +778,10 @@ async function runVaultBootstrap(
         options?.onResyncComplete?.()
         return
       }
+
+      logger.info(
+        `[VaultRuntime] Shadow resync required (${probe.reason ?? 'unknown'}); disk=${probe.diskCount}, shadow=${probe.shadowCount}`
+      )
     } catch (e) {
       logger.warn('[VaultRuntime] Failed to probe shadow index before resync:', e as Error)
     }
@@ -839,6 +859,8 @@ export type ActivateVaultRuntimeOptions = {
   deferResync?: boolean
   /** 强制后台 resync，不因磁盘已有日记而阻塞全量扫描 */
   forceDeferResync?: boolean
+  /** 应用升级等场景强制全量影子 resync */
+  forceShadowResync?: boolean
   resyncReason?: string
   onResyncComplete?: () => void
 }
@@ -869,6 +891,7 @@ export async function activateVaultRuntime(
   await runVaultBootstrap(deps, {
     deferResync: options?.deferResync ?? true,
     forceDeferResync: options?.forceDeferResync,
+    forceShadowResync: options?.forceShadowResync,
     resyncReason: options?.resyncReason ?? 'cold-start',
     onResyncComplete: options?.onResyncComplete
   })
