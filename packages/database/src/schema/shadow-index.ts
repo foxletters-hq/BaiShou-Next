@@ -33,7 +33,9 @@ export const shadowJournalIndexTable = sqliteTable(
     /** 原始 Markdown 正文（不含 Frontmatter） */
     rawContent: text('raw_content'),
     /** 以逗号分隔的标签字符串（eg: "日记,美食,旅行"） */
-    tags: text('tags')
+    tags: text('tags'),
+    /** frontmatter tag_colors JSON 缓存 */
+    tagColors: text('tag_colors')
   },
   (t) => ({
     vaultFilePathUniq: uniqueIndex('journals_index_vault_file_path_unique').on(

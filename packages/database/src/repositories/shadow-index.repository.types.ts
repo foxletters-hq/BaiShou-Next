@@ -39,6 +39,8 @@ export interface UpsertShadowIndexPayload {
   rawContent: string
   /** 逗号分隔的标签字符串 */
   tags: string
+  /** frontmatter tag_colors JSON */
+  tagColors?: string | null
 }
 
 /**
@@ -56,6 +58,7 @@ export interface ShadowFTSResult {
 export type ShadowJournalRow = ShadowJournalRecord & {
   rawContent?: string | null
   tags?: string | null
+  tagColors?: string | null
 }
 
 export interface DiaryListFilterOptions {

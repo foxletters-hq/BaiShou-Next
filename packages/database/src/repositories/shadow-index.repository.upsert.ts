@@ -60,11 +60,12 @@ async function loadIdPathMaps(database: UpsertDb, vaultName: string): Promise<Id
 function buildUpsertSet(
   indexData: Omit<
     UpsertShadowIndexPayload,
-    'rawContent' | 'tags' | 'id' | 'filePath' | 'vaultName'
+    'rawContent' | 'tags' | 'tagColors' | 'id' | 'filePath' | 'vaultName'
   >,
   vaultName: string,
   rawContent: string,
-  tags: string
+  tags: string,
+  tagColors: string | null
 ) {
   return {
     vaultName,
@@ -79,7 +80,8 @@ function buildUpsertSet(
     isFavorite: indexData.isFavorite,
     hasMedia: indexData.hasMedia,
     rawContent,
-    tags
+    tags,
+    tagColors
   }
 }
 
@@ -130,17 +132,20 @@ async function upsertOne(
   const {
     rawContent,
     tags,
+    tagColors = null,
     id: requestedId,
     filePath: _path,
     vaultName: _vault,
     ...indexData
   } = payload
 
+  const serializedTagColors = tagColors ?? null
+
   const existingId = maps.idByPath.get(filePath)
   if (existingId != null) {
     await db
       .update(shadowJournalIndexTable)
-      .set(buildUpsertSet(indexData, vaultName, rawContent, tags))
+      .set(buildUpsertSet(indexData, vaultName, rawContent, tags, serializedTagColors))
       .where(
         and(
           eq(shadowJournalIndexTable.id, existingId),
@@ -165,7 +170,8 @@ async function upsertOne(
     ...indexData,
     filePath,
     rawContent,
-    tags
+    tags,
+    tagColors: serializedTagColors
   }
 
   // 关键：用 ON CONFLICT (id) DO UPDATE 原子处理 PK 冲突。
@@ -179,7 +185,7 @@ async function upsertOne(
     .values(insertId != null ? { ...baseValues, id: insertId } : baseValues)
     .onConflictDoUpdate({
       target: shadowJournalIndexTable.id,
-      set: buildUpsertSet(indexData, vaultName, rawContent, tags)
+      set: buildUpsertSet(indexData, vaultName, rawContent, tags, serializedTagColors)
     })
     .returning({ id: shadowJournalIndexTable.id })
 
@@ -202,16 +208,19 @@ function upsertOneSync(
   const {
     rawContent,
     tags,
+    tagColors = null,
     id: requestedId,
     filePath: _path,
     vaultName: _vault,
     ...indexData
   } = payload
 
+  const serializedTagColors = tagColors ?? null
+
   const existingId = maps.idByPath.get(filePath)
   if (existingId != null) {
     tx.update(shadowJournalIndexTable)
-      .set(buildUpsertSet(indexData, vaultName, rawContent, tags))
+      .set(buildUpsertSet(indexData, vaultName, rawContent, tags, serializedTagColors))
       .where(
         and(
           eq(shadowJournalIndexTable.id, existingId),
@@ -237,7 +246,8 @@ function upsertOneSync(
     ...indexData,
     filePath,
     rawContent,
-    tags
+    tags,
+    tagColors: serializedTagColors
   }
 
   // 关键：用 ON CONFLICT (id) DO UPDATE 原子处理 PK 冲突。
@@ -248,7 +258,7 @@ function upsertOneSync(
     .values(insertId != null ? { ...baseValues, id: insertId } : baseValues)
     .onConflictDoUpdate({
       target: shadowJournalIndexTable.id,
-      set: buildUpsertSet(indexData, vaultName, rawContent, tags)
+      set: buildUpsertSet(indexData, vaultName, rawContent, tags, serializedTagColors)
     })
     .returning({ id: shadowJournalIndexTable.id })
     .all() as any
