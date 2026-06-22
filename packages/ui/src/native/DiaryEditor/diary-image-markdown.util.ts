@@ -14,11 +14,8 @@ export const DIARY_IMAGE_SIZE = {
   step: 10
 } as const
 
-/** 编辑态内联图片预览占位行数（与 TextInput lineHeight 对齐） */
-export const DIARY_INLINE_IMAGE_SLOT_LINES = 9
-export const DIARY_INLINE_IMAGE_LINE_HEIGHT = 24
-export const DIARY_INLINE_IMAGE_PREVIEW_HEIGHT =
-  DIARY_INLINE_IMAGE_SLOT_LINES * DIARY_INLINE_IMAGE_LINE_HEIGHT
+/** 旧版 TextInput overlay 方案预留的占位空行数（仅 stripLegacyInlineImageSlots 使用） */
+const LEGACY_INLINE_IMAGE_SLOT_LINES = 9
 
 const IMAGE_LINE_REGEX = /^!\[([^\]]*)\]\(([^ |)]+)(?:\s*\|\s*(\d+))?\)\s*$/
 
@@ -106,129 +103,8 @@ export function getInlineImageBlocks(content: string): InlineImageBlock[] {
   )
 }
 
-export function getLineIndexForOffset(content: string, offset: number): number {
-  const clamped = Math.max(0, Math.min(offset, content.length))
-  if (clamped === 0) return 0
-  return content.slice(0, clamped).split('\n').length - 1
-}
-
-export function isImageMarkdownLine(line: string): boolean {
+function isImageMarkdownLine(line: string): boolean {
   return IMAGE_LINE_REGEX.test(line)
-}
-
-/** 为缺少占位空行的旧日记补齐预览区域，避免多张图片 overlay 叠在一起 */
-export function ensureInlineImagePreviewSlots(content: string): string {
-  const re = new RegExp(IMAGE_REGEX.source, 'g')
-  let result = ''
-  let lastIndex = 0
-  let match: RegExpExecArray | null
-
-  while ((match = re.exec(content)) !== null) {
-    const imageEnd = match.index + match[0].length
-    result += content.slice(lastIndex, imageEnd)
-
-    let pos = imageEnd
-    let blankCount = 0
-    while (pos < content.length && content[pos] === '\n') {
-      blankCount += 1
-      pos += 1
-    }
-
-    result += content.slice(imageEnd, pos)
-    if (blankCount < DIARY_INLINE_IMAGE_SLOT_LINES) {
-      result += '\n'.repeat(DIARY_INLINE_IMAGE_SLOT_LINES - blankCount)
-    }
-
-    lastIndex = pos
-  }
-
-  result += content.slice(lastIndex)
-  return result
-}
-
-/** 编辑态隐藏图片 Markdown 原文（等长空格），避免与预览图重叠显示 */
-export function maskImageMarkdownLines(content: string): string {
-  return content
-    .split('\n')
-    .map((line) => (isImageMarkdownLine(line) ? ' '.repeat(line.length) : line))
-    .join('\n')
-}
-
-/** 将编辑后的遮罩文本合并回真实 Markdown */
-export function mergeMaskedEditorContent(original: string, maskedEdited: string): string {
-  if (original === maskedEdited) return original
-
-  const origLines = original.split('\n')
-  const editLines = maskedEdited.split('\n')
-
-  if (origLines.length === editLines.length) {
-    const merged: string[] = []
-    for (let i = 0; i < origLines.length; i++) {
-      const orig = origLines[i]!
-      const edit = editLines[i]!
-      if (isImageMarkdownLine(orig)) {
-        if (edit === ' '.repeat(orig.length)) {
-          merged.push(orig)
-        }
-        continue
-      }
-      merged.push(edit)
-    }
-    return merged.join('\n')
-  }
-
-  const merged: string[] = []
-  let editIndex = 0
-  for (let i = 0; i < origLines.length; i++) {
-    const orig = origLines[i]!
-    if (isImageMarkdownLine(orig)) {
-      const mask = ' '.repeat(orig.length)
-      while (editIndex < editLines.length && editLines[editIndex] !== mask) {
-        merged.push(editLines[editIndex]!)
-        editIndex += 1
-      }
-      if (editIndex < editLines.length && editLines[editIndex] === mask) {
-        merged.push(orig)
-        editIndex += 1
-      }
-      continue
-    }
-
-    if (editIndex < editLines.length) {
-      merged.push(editLines[editIndex]!)
-      editIndex += 1
-    } else {
-      merged.push(orig)
-    }
-  }
-
-  while (editIndex < editLines.length) {
-    merged.push(editLines[editIndex]!)
-    editIndex += 1
-  }
-
-  return merged.join('\n')
-}
-
-/** 插入图片 Markdown 并在其后预留预览占位空行 */
-export function buildInlineImageInsertSnippet(markdown: string): string {
-  const trimmed = markdown.trimEnd()
-  return `${trimmed}\n${'\n'.repeat(DIARY_INLINE_IMAGE_SLOT_LINES)}`
-}
-
-/** 点击图片后，将光标放到图片预览区域之后 */
-export function getCursorOffsetAfterInlineImage(
-  content: string,
-  imageBlock: Pick<InlineImageBlock, 'from' | 'to'>
-): number {
-  let pos = imageBlock.to
-  if (content[pos] === '\n') pos += 1
-  let skipped = 0
-  while (pos < content.length && content[pos] === '\n' && skipped < DIARY_INLINE_IMAGE_SLOT_LINES) {
-    pos += 1
-    skipped += 1
-  }
-  return pos
 }
 
 export function findImageAtOffset(text: string, offset: number): ParsedDiaryImage | null {
@@ -262,6 +138,37 @@ export function buildImageMarkdown(alt: string, src: string, width?: number): st
 /** 渲染前剥离宽度语法，移动端以默认尺寸显示图片 */
 export function stripImageWidthInMarkdown(text: string): string {
   return text.replace(/!\[([^\]]*)\]\(([^ |)]+)\s*\|\s*(\d+)\)/g, '![$1]($2)')
+}
+
+/** 迁移：去掉旧版内联图片预览占位的多余空行（9 行占位 → 单空行） */
+export function stripLegacyInlineImageSlots(content: string): string {
+  const lines = content.split('\n')
+  const result: string[] = []
+  let i = 0
+
+  while (i < lines.length) {
+    const line = lines[i]!
+    result.push(line)
+
+    if (isImageMarkdownLine(line)) {
+      i += 1
+      let blankCount = 0
+      while (i < lines.length && lines[i] === '') {
+        blankCount += 1
+        i += 1
+      }
+      if (blankCount >= LEGACY_INLINE_IMAGE_SLOT_LINES) {
+        result.push('')
+      } else {
+        for (let j = 0; j < blankCount; j++) result.push('')
+      }
+      continue
+    }
+
+    i += 1
+  }
+
+  return result.join('\n')
 }
 
 /** 从已解析的 img src 中去掉宽度后缀（| 283 或 ?width=283） */
