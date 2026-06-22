@@ -6,13 +6,18 @@ import {
 } from '@baishou/shared'
 import { Platform } from 'react-native'
 import { logger } from '@baishou/shared'
-import { isExternalStoragePath } from './android-external-fs'
-import { externalScanIncrementalSyncFiles } from 'expo-baishou-server'
+import {
+  externalScanIncrementalSyncFiles,
+  isLocalFsNativeAvailable,
+  localScanIncrementalSyncFiles,
+  type ExternalIncrementalSyncScanEntry
+} from 'expo-baishou-server'
+import { isAndroidAppSandboxPath, isExternalStoragePath } from './android-external-fs'
 
 /** 目录扫描并发度（同级多目录并行展开） */
-const SCAN_DIR_CONCURRENCY = 8
+const SCAN_DIR_CONCURRENCY = 12
 /** 单目录内 stat 并发度 */
-const SCAN_STAT_CONCURRENCY = 32
+const SCAN_STAT_CONCURRENCY = 48
 
 export type ScannedSyncFile = {
   relPath: string
@@ -29,6 +34,52 @@ function joinPath(...parts: string[]): string {
     })
     .filter(Boolean)
     .join('/')
+}
+
+function mapNativeScanEntries(
+  syncRoot: string,
+  entries: ExternalIncrementalSyncScanEntry[]
+): ScannedSyncFile[] {
+  return entries.map((entry) => ({
+    relPath: entry.relPath,
+    fullPath: joinPath(syncRoot, entry.relPath),
+    size: entry.size,
+    mtimeMs: entry.mtimeMs
+  }))
+}
+
+function tryNativeIncrementalSyncScan(syncRoot: string): ScannedSyncFile[] | null {
+  if (Platform.OS !== 'android') return null
+
+  if (isExternalStoragePath(syncRoot)) {
+    try {
+      const entries = externalScanIncrementalSyncFiles(syncRoot)
+      if (entries.length === 0) return null
+      return mapNativeScanEntries(syncRoot, entries)
+    } catch (error) {
+      logger.warn(
+        '[IncrementalSyncScan] external native scan failed, falling back to JS scan',
+        error instanceof Error ? error : String(error)
+      )
+      return null
+    }
+  }
+
+  if (isLocalFsNativeAvailable() && isAndroidAppSandboxPath(syncRoot)) {
+    try {
+      const entries = localScanIncrementalSyncFiles(syncRoot)
+      if (entries.length === 0) return null
+      return mapNativeScanEntries(syncRoot, entries)
+    } catch (error) {
+      logger.warn(
+        '[IncrementalSyncScan] local native scan failed, falling back to JS scan',
+        error instanceof Error ? error : String(error)
+      )
+      return null
+    }
+  }
+
+  return null
 }
 
 async function scanIncrementalSyncFilesJs(
@@ -88,35 +139,23 @@ async function scanIncrementalSyncFilesJs(
   return files
 }
 
-/** 外部存储优先原生递归扫描，失败时回退 JS readdir+stat */
+/** 外部存储 / 沙盒优先原生递归扫描，失败时回退 JS readdir+stat */
 export async function scanIncrementalSyncFilesForManifest(
   fileSystem: IFileSystem,
   syncRoot: string,
   onProgress?: (discovered: number, fileName: string) => void
 ): Promise<ScannedSyncFile[]> {
-  if (Platform.OS === 'android' && isExternalStoragePath(syncRoot)) {
-    try {
-      const entries = externalScanIncrementalSyncFiles(syncRoot)
-      if (entries.length === 0) {
-        logger.warn('[IncrementalSyncScan] native scan returned 0 files, falling back to JS scan')
-        return scanIncrementalSyncFilesJs(fileSystem, syncRoot, onProgress)
-      }
-      const files = entries.map((entry) => ({
-        relPath: entry.relPath,
-        fullPath: joinPath(syncRoot, entry.relPath),
-        size: entry.size,
-        mtimeMs: entry.mtimeMs
-      }))
-      if (files.length > 0) {
-        onProgress?.(files.length, files[files.length - 1]!.relPath)
-      }
-      return files
-    } catch (error) {
-      logger.warn(
-        '[IncrementalSyncScan] native scan failed, falling back to JS scan',
-        error instanceof Error ? error : String(error)
-      )
+  const nativeFiles = tryNativeIncrementalSyncScan(syncRoot)
+  if (nativeFiles) {
+    if (nativeFiles.length === 0) {
+      logger.warn('[IncrementalSyncScan] native scan returned 0 files, falling back to JS scan')
+      return scanIncrementalSyncFilesJs(fileSystem, syncRoot, onProgress)
     }
+    if (nativeFiles.length > 0) {
+      onProgress?.(nativeFiles.length, nativeFiles[nativeFiles.length - 1]!.relPath)
+    }
+    return nativeFiles
   }
+
   return scanIncrementalSyncFilesJs(fileSystem, syncRoot, onProgress)
 }
