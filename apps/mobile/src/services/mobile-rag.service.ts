@@ -149,6 +149,91 @@ export async function embedDiaryEntry(
   }
 }
 
+export type ControlledDiaryBatchEmbedResult = {
+  embedded: number
+  total: number
+  skipped: boolean
+  skipReason?: string
+}
+
+export async function runControlledDiaryBatchEmbed(
+  deps: MobileRagServiceDeps,
+  options?: {
+    onProgress?: RagProgressCallback
+    groupId?: string
+  }
+): Promise<ControlledDiaryBatchEmbedResult> {
+  const ragConfig = (await deps.settingsManager.get<{ ragEnabled?: boolean }>('rag_config')) || {}
+  if (!isRagMemoryEnabled({ ragEnabled: ragConfig.ragEnabled ?? true })) {
+    return { embedded: 0, total: 0, skipped: true, skipReason: 'rag-disabled' }
+  }
+
+  const adapter = await resolveEmbeddingAdapter(deps)
+  if (!adapter) {
+    return { embedded: 0, total: 0, skipped: true, skipReason: 'embedding-not-configured' }
+  }
+
+  const globalModels = await deps.settingsManager.get<any>('global_models')
+  const dimension = globalModels?.globalEmbeddingDimension
+  if (dimension > 0) {
+    await deps.hsRepo.initVectorIndex(dimension)
+  }
+
+  const allDiaries = sortDiariesByDateAsc(await deps.diaryService.listAll({ limit: 10000 }))
+  const { embeddedIds, embeddedUpdatedAtMap } = await loadEmbeddedDiaryIndex(deps)
+  const diaries = filterUnindexedDiaries(allDiaries, embeddedIds, embeddedUpdatedAtMap)
+  const total = diaries.length
+  const groupId = options?.groupId ?? 'diary_batch'
+
+  if (total === 0) {
+    return { embedded: 0, total: 0, skipped: true, skipReason: 'nothing-to-embed' }
+  }
+
+  const ragSettings =
+    (await deps.settingsManager.get<{ batchEmbedConcurrency?: number }>('rag_config')) || {}
+  const batchConcurrency = resolveBatchEmbedConcurrency(ragSettings.batchEmbedConcurrency)
+  let embedded = 0
+  let completed = 0
+
+  await limitExecute(diaries, batchConcurrency, async (meta) => {
+    const dateLabel = meta.date
+      ? formatLocalDate(meta.date instanceof Date ? meta.date : new Date(meta.date))
+      : ''
+    options?.onProgress?.({
+      current: completed,
+      total,
+      status: `处理日记: ${dateLabel}`
+    })
+
+    const diary = await deps.diaryService.findById(meta.id)
+    if (!diary?.id || !diary.content?.trim()) {
+      completed++
+      return
+    }
+
+    const d = diary.date instanceof Date ? diary.date : new Date(diary.date)
+    await embedDiaryEntry(deps, {
+      diaryId: diary.id,
+      content: diary.content,
+      tags: meta.tags ?? [],
+      date: d,
+      updatedAt: diary.updatedAt ?? new Date(),
+      groupId
+    })
+
+    embedded++
+    completed++
+    options?.onProgress?.({
+      current: completed,
+      total,
+      status: `处理日记: ${dateLabel}`
+    })
+  })
+
+  logger.info('[MobileRag] controlled batch embed finished', { embedded, total, groupId })
+  return { embedded, total, skipped: false }
+}
+
 export function createMobileRagService(deps: MobileRagServiceDeps) {
   const service = {
     async getStats(): Promise<{ totalCount: number; currentDimension: number }> {
@@ -255,67 +340,19 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
     },
 
     async batchEmbed(onProgress?: RagProgressCallback): Promise<number> {
-      const adapter = await resolveEmbeddingAdapter(deps)
-      if (!adapter) {
+      const result = await runControlledDiaryBatchEmbed(deps, {
+        onProgress,
+        groupId: 'diary_batch'
+      })
+      if (result.skipped && result.skipReason === 'embedding-not-configured') {
         throw new Error('嵌入模型未配置')
       }
 
-      const globalModels = await deps.settingsManager.get<any>('global_models')
-      const dimension = globalModels?.globalEmbeddingDimension
-      if (dimension > 0) {
-        await deps.hsRepo.initVectorIndex(dimension)
-      }
-
-      const allDiaries = sortDiariesByDateAsc(await deps.diaryService.listAll({ limit: 10000 }))
-      const { embeddedIds, embeddedUpdatedAtMap } = await loadEmbeddedDiaryIndex(deps)
-      const diaries = filterUnindexedDiaries(allDiaries, embeddedIds, embeddedUpdatedAtMap)
-      const total = diaries.length
-      const ragSettings =
-        (await deps.settingsManager.get<{ batchEmbedConcurrency?: number }>('rag_config')) || {}
-      const batchConcurrency = resolveBatchEmbedConcurrency(ragSettings.batchEmbedConcurrency)
-      let embedded = 0
-      let completed = 0
-
-      await limitExecute(diaries, batchConcurrency, async (meta) => {
-        const dateLabel = meta.date
-          ? formatLocalDate(meta.date instanceof Date ? meta.date : new Date(meta.date))
-          : ''
-        onProgress?.({
-          current: completed,
-          total,
-          status: `处理日记: ${dateLabel}`
-        })
-
-        const diary = await deps.diaryService.findById(meta.id)
-        if (!diary?.id || !diary.content?.trim()) {
-          completed++
-          return
-        }
-
-        const d = diary.date instanceof Date ? diary.date : new Date(diary.date)
-        await embedDiaryEntry(deps, {
-          diaryId: diary.id,
-          content: diary.content,
-          tags: meta.tags ?? [],
-          date: d,
-          updatedAt: diary.updatedAt ?? new Date(),
-          groupId: 'diary_batch'
-        })
-
-        embedded++
-        completed++
-        onProgress?.({
-          current: completed,
-          total,
-          status: `处理日记: ${dateLabel}`
-        })
-      })
-
       const ragConfig = (await deps.settingsManager.get<any>('rag_config')) || {}
-      ragConfig.totalEmbeddings = embedded
+      ragConfig.totalEmbeddings = result.embedded
       await deps.settingsManager.set('rag_config', ragConfig)
 
-      return embedded
+      return result.embedded
     },
 
     async queryEntries(params: {
