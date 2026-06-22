@@ -34,7 +34,10 @@ if (!existsSync(keyProperties)) {
   process.exit(1)
 }
 
-console.log('📦 同步应用版本…')
+console.log('🎨 同步应用图标…')
+run(process.execPath, [path.join(repoRoot, 'scripts/sync-app-icon.mjs')], repoRoot)
+
+console.log('\n📦 同步应用版本…')
 run(process.execPath, [path.join(repoRoot, 'scripts/sync-app-version.mjs')], repoRoot)
 
 console.log('\n🔧 Expo prebuild（注入 release 签名配置）…')
