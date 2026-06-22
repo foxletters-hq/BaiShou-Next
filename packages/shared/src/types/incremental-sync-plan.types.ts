@@ -1,4 +1,5 @@
 import type { MergeDecision } from '../sync/three-way-merge'
+import type { IncrementalSyncPlanReuseBaseline } from '../sync/incremental-sync-plan-reuse.util'
 
 export type IncrementalSyncPlanAction =
   | 'upload'
@@ -52,6 +53,12 @@ export interface IncrementalSyncPlanPreview {
   blockedDeleteDirection?: 'local' | 'remote'
   /** 本次预览前自动补登记的工作区 */
   autoRegisteredVaults?: string[]
+  /** 上次中断的同步进度（仅在有 resume 警告时填充） */
+  interruptedSyncResume?: { completed: number; total: number }
+  /** 本次规划前从注册表移除的跨端幽灵工作区 */
+  prunedRegistryVaults?: string[]
+  /** 规划完成时的本地/远端指纹，供确认前漂移检测 */
+  planReuseBaseline?: IncrementalSyncPlanReuseBaseline
 }
 
 export type IncrementalSyncPlanDecision = Pick<MergeDecision, 'filePath' | 'type' | 'direction'>

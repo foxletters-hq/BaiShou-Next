@@ -45,16 +45,12 @@ export enum SyncIpcChannels {
   INCREMENTAL_SYNC_UPDATE_CONFIG = 'incrementalSync:updateConfig',
   INCREMENTAL_SYNC_TEST_CONNECTION = 'incrementalSync:testConnection',
   INCREMENTAL_SYNC_NOW = 'incrementalSync:sync',
-  INCREMENTAL_SYNC_UPLOAD_ONLY = 'incrementalSync:uploadOnly',
-  INCREMENTAL_SYNC_DOWNLOAD_ONLY = 'incrementalSync:downloadOnly',
   INCREMENTAL_SYNC_GET_LOCAL_MANIFEST = 'incrementalSync:getLocalManifest',
   INCREMENTAL_SYNC_GET_REMOTE_MANIFEST = 'incrementalSync:getRemoteManifest',
   INCREMENTAL_SYNC_REFRESH_MANIFEST = 'incrementalSync:refreshLocalManifest',
   INCREMENTAL_SYNC_GET_CONFLICTS = 'incrementalSync:getLastSyncConflicts',
   // 同步编排器 (一键同步 API)
   INCREMENTAL_SYNC_ORCHESTRATED_SYNC = 'incrementalSync:orchestratedSync',
-  INCREMENTAL_SYNC_ORCHESTRATED_UPLOAD_ONLY = 'incrementalSync:orchestratedUploadOnly',
-  INCREMENTAL_SYNC_ORCHESTRATED_DOWNLOAD_ONLY = 'incrementalSync:orchestratedDownloadOnly',
   INCREMENTAL_SYNC_GET_SYNC_HISTORY = 'incrementalSync:getSyncHistory',
   INCREMENTAL_SYNC_GET_LAST_SUMMARY = 'incrementalSync:getLastSyncSummary',
 
