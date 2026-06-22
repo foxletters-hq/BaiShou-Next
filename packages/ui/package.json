@@ -7,13 +7,16 @@
     ".": "./src/index.ts",
     "./native": "./src/native/index.ts",
     "./chat-attachment-thumbnail": "./src/chat-attachment-thumbnail.ts",
+    "./shared/diary-codemirror": "./src/shared/diary-codemirror/index.ts",
+    "./shared/diary-codemirror/*": "./src/shared/diary-codemirror/*",
     "./desktop/*": "./src/desktop/*",
     "./native/*": "./src/native/*",
     "./theme/*": "./src/theme/*",
     "./hooks/*": "./src/hooks/*"
   },
   "scripts": {
-    "typecheck": "tsc -b --dry"
+    "typecheck": "tsc -b --dry",
+    "test": "node ../../node_modules/vitest/vitest.mjs run --config vitest.config.ts"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",
@@ -78,6 +81,7 @@
     "react-native-draggable-flatlist": ">=4",
     "react-native-gesture-handler": ">=2",
     "react-native-reanimated": ">=4",
-    "react-native-svg": ">=15"
+    "react-native-svg": ">=15",
+    "react-native-webview": ">=13"
   }
 }

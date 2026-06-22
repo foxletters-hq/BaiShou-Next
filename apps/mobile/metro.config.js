@@ -13,7 +13,7 @@ config.resolver.nodeModulesPaths = [
   path.resolve(workspaceRoot, 'node_modules')
 ]
 
-config.resolver.assetExts.push('wasm')
+config.resolver.assetExts.push('wasm', 'html', 'bundle')
 
 // SVG 编译为 react-native-svg 组件（打进 JS 包），避免 Release 运行时再去读 android_res 资源
 config.transformer = {
