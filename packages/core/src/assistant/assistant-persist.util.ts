@@ -62,6 +62,21 @@ export interface DiskAssistantRecord {
 }
 
 /** 将磁盘 JSON 记录规范化为 SQLite / 写盘可识别的字段 */
+function sortRecordKeysDeep(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(sortRecordKeysDeep)
+  }
+  if (value && typeof value === 'object') {
+    const obj = value as Record<string, unknown>
+    const sorted: Record<string, unknown> = {}
+    for (const key of Object.keys(obj).sort()) {
+      sorted[key] = sortRecordKeysDeep(obj[key])
+    }
+    return sorted
+  }
+  return value
+}
+
 export function normalizeDiskAssistantRecord(
   raw: Record<string, unknown> | null | undefined
 ): DiskAssistantRecord | null {
@@ -88,5 +103,20 @@ export function normalizeDiskAssistantRecord(
     data.sortOrder = Number.isFinite(parsed) ? parsed : 0
   }
 
+  if (data.createdAt != null) {
+    const ms = toAssistantUpdatedAtMs(data.createdAt)
+    data.createdAt = ms != null ? new Date(ms).toISOString() : data.createdAt
+  }
+  if (data.updatedAt != null) {
+    const ms = toAssistantUpdatedAtMs(data.updatedAt)
+    data.updatedAt = ms != null ? new Date(ms).toISOString() : data.updatedAt
+  }
+
   return data
+}
+
+/** 用于判断伙伴 JSON 语义是否变化，避免无意义写盘触发增量同步 */
+export function stableAssistantDiskJson(data: Record<string, unknown>): string {
+  const normalized = normalizeDiskAssistantRecord(data)
+  return JSON.stringify(sortRecordKeysDeep(normalized ?? data), null, 2)
 }

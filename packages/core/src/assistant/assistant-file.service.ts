@@ -1,6 +1,7 @@
 import type { IFileSystem } from '../fs/file-system.types'
 import * as path from '../fs/path.util'
 import { IStoragePathService } from '../vault/storage-path.types'
+import { stableAssistantDiskJson } from './assistant-persist.util'
 
 export class AssistantFileService {
   constructor(
@@ -17,7 +18,17 @@ export class AssistantFileService {
   async writeAssistant(id: string, data: any): Promise<string> {
     const dir = await this.getDirectory()
     const fullPath = path.join(dir, `${id}.json`)
-    await this.fileSystem.writeFile(fullPath, JSON.stringify(data, null, 2), 'utf8')
+    const nextContent = stableAssistantDiskJson(data as Record<string, unknown>)
+    try {
+      const existing = await this.fileSystem.readFile(fullPath, 'utf8')
+      const existingContent = stableAssistantDiskJson(JSON.parse(existing) as Record<string, unknown>)
+      if (existingContent === nextContent) {
+        return fullPath
+      }
+    } catch (e: any) {
+      if (e.code !== 'ENOENT') throw e
+    }
+    await this.fileSystem.writeFile(fullPath, nextContent, 'utf8')
     return fullPath
   }
 
