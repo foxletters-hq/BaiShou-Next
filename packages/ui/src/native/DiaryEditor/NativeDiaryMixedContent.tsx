@@ -179,11 +179,17 @@ export const NativeDiaryMixedContent = forwardRef<
         const safeOffset = Math.max(0, Math.min(caretOffset, text.length))
         const prefix = text.slice(0, safeOffset)
         const linesAbove = Math.max(1, prefix.split('\n').length)
-        const caretTop = y + INPUT_PADDING_TOP + (linesAbove - 1) * TEXT_LINE_HEIGHT
+        const caretLineTop = y + INPUT_PADDING_TOP + (linesAbove - 1) * TEXT_LINE_HEIGHT
         const regionHeight = TEXT_LINE_HEIGHT * CARET_VISIBLE_LINES
-        const maxTop = y + Math.max(h, regionHeight) - regionHeight
-        const clampedTop = Math.min(Math.max(caretTop, y), maxTop)
-        callback(x, clampedTop, w, regionHeight)
+        const caretRegionBottom = caretLineTop + regionHeight
+        const hostBottom = y + h
+        // 短内容时整块输入框会压在工具栏上；把露出区域底部扩到输入框底部（上限 EDITOR_SHELL_MIN_HEIGHT）
+        const revealBottom = Math.min(
+          hostBottom,
+          Math.max(caretRegionBottom, caretLineTop + Math.min(h, EDITOR_SHELL_MIN_HEIGHT))
+        )
+        const revealHeight = Math.max(regionHeight, revealBottom - caretLineTop)
+        callback(x, caretLineTop, w, revealHeight)
       })
     },
     []

@@ -13,7 +13,6 @@ import {
   type ScrollView
 } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { KeyboardAwareScrollView } from '../KeyboardAwareScrollView'
 import { readEffectiveKeyboardHeight } from '../KeyboardAwareScrollView/scroll-node-into-view.util'
 import { MarkdownToolbar } from '../MarkdownToolbar/MarkdownToolbar'
@@ -29,8 +28,8 @@ import {
 import { NativeImagePreviewModal } from './NativeImagePreviewModal'
 import type { DiaryEditorViewMode } from './diary-editor.types'
 
-/** 光标落在键盘上方时，额外保留的编辑留白 */
-const DIARY_EDIT_SCROLL_BUFFER = 72
+/** 光标落在键盘与工具栏上方时，额外保留的编辑留白 */
+const DIARY_EDIT_SCROLL_BUFFER = 24
 
 interface DiaryEditorProps {
   content: string
@@ -76,7 +75,6 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
-  const insets = useSafeAreaInsets()
   const [viewMode, setViewMode] = useState<DiaryEditorViewMode>('edit')
   const [selection, setSelection] = useState({ start: 0, end: 0 })
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null)
@@ -247,7 +245,6 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
 
     const bottomChrome = toolbarHeight + 16
     const safeBottom = windowHeight - kbHeight - bottomChrome - DIARY_EDIT_SCROLL_BUFFER
-    const safeTop = insets.top + 56
 
     const measure = mixedContentRef.current?.measureActiveEditorInWindow
     if (!measure) {
@@ -255,22 +252,16 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
       return
     }
 
-    measure((_x, caretTop, _w, caretHeight) => {
-      const caretBottom = caretTop + caretHeight
-      if (caretBottom <= safeBottom + 8) return
-
-      let delta = caretBottom - safeBottom
-      if (caretTop - delta < safeTop) {
-        delta = Math.max(0, Math.min(delta, caretTop - safeTop))
-      }
-      if (delta < 4) return
+    measure((_x, nodeTop, _w, nodeHeight) => {
+      const nodeBottom = nodeTop + nodeHeight
+      if (nodeBottom <= safeBottom + 4) return
 
       scrollView.scrollTo({
-        y: scrollYRef.current + delta,
+        y: scrollYRef.current + (nodeBottom - safeBottom),
         animated: true
       })
     })
-  }, [keyboardHeight, toolbarHeight, insets.top])
+  }, [keyboardHeight, toolbarHeight])
 
   const scheduleEditorScroll = useCallback(() => {
     if (editorScrollTimerRef.current) clearTimeout(editorScrollTimerRef.current)
