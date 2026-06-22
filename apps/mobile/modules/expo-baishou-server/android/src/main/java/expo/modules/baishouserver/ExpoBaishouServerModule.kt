@@ -429,7 +429,7 @@ class ExpoBaishouServerModule : Module() {
     override fun definition() = ModuleDefinition {
         Name("ExpoBaishouServer")
 
-        Events("onFileReceived", "onMcpHttpRequest", "onLanUploadStarted", "onLanUploadProgress", "onStorageRootCopyProgress", "onArchiveImportProgress")
+        Events("onFileReceived", "onMcpHttpRequest", "onLanUploadStarted", "onLanUploadProgress", "onStorageRootCopyProgress", "onArchiveImportProgress", "onSyncHttpTransferProgress")
 
         Function("resolveMcpHttpResponse") { requestId: String, responseBody: String ->
             val pending = pendingMcpRequests[requestId] ?: return@Function false
@@ -632,6 +632,11 @@ class ExpoBaishouServerModule : Module() {
             ExternalStorageFiles.readDirectory(context, path)
         }
 
+        Function("externalScanIncrementalSyncFiles") { path: String ->
+            val context = appContext.reactContext ?: throw Exception("React context is null")
+            ExternalStorageFiles.scanIncrementalSyncFiles(context, path)
+        }
+
         /** 应用沙盒等任意本地路径（无需外部存储权限） */
         Function("localGetInfo") { path: String ->
             val context = appContext.reactContext ?: throw Exception("React context is null")
@@ -651,6 +656,41 @@ class ExpoBaishouServerModule : Module() {
         Function("externalMd5Hex") { path: String ->
             val context = appContext.reactContext ?: throw Exception("React context is null")
             ExternalStorageFiles.md5HexExternal(context, path)
+        }
+
+        Function("readFileChunkBase64") { path: String, position: Double, length: Int ->
+            val context = appContext.reactContext ?: throw Exception("React context is null")
+            ExternalStorageFiles.readBase64RangeAny(context, path, position.toLong(), length)
+        }
+
+        Function("cancelHttpUploadFile") { filePath: String? ->
+            HttpFileTransfer.cancelUpload(filePath)
+        }
+
+        AsyncFunction("httpUploadFileAsync") {
+            url: String,
+            filePath: String,
+            method: String,
+            headers: Map<String, String>,
+            promise: Promise
+        ->
+            Thread {
+                try {
+                    val status = HttpFileTransfer.uploadFile(url, filePath, method, headers) { written, total ->
+                        sendEvent(
+                            "onSyncHttpTransferProgress",
+                            mapOf(
+                                "filePath" to filePath,
+                                "writtenBytes" to written,
+                                "totalBytes" to total
+                            )
+                        )
+                    }
+                    promise.resolve(mapOf("status" to status))
+                } catch (e: Exception) {
+                    promise.reject("E_HTTP_UPLOAD", e.message ?: "HTTP upload failed", e)
+                }
+            }.start()
         }
 
         Function("localAppendString") { path: String, content: String ->
