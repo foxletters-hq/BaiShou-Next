@@ -125,6 +125,12 @@ import {
   type VaultBoundDiaryStack
 } from '../services/mobile-vault-runtime.service'
 import { consumeAppUpgradeShadowResync } from '../services/mobile-app-upgrade-shadow.util'
+import {
+  bindShadowVaultScanState,
+  getShadowVaultScanning,
+  subscribeShadowVaultScanning,
+  unbindShadowVaultScanState
+} from '../services/mobile-shadow-scan-state.service'
 import { logger } from '@baishou/shared'
 import type {
   SessionRepository as SessionRepositoryType,
@@ -396,10 +402,13 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let isMounted = true
     let mobileMcpService: MobileMcpService | null = null
-    let wasStorageIndexing = mobileDataBootstrapper.getStatus() === 'running'
-    const unsubscribeBootstrapper = mobileDataBootstrapper.subscribe((status) => {
+    let wasStorageIndexing =
+      mobileDataBootstrapper.getStatus() === 'running' || getShadowVaultScanning()
+
+    const publishStorageIndexing = () => {
       if (!isMounted) return
-      const indexing = status === 'running'
+      const indexing =
+        mobileDataBootstrapper.getStatus() === 'running' || getShadowVaultScanning()
       if (wasStorageIndexing && !indexing) {
         emitSyncMutation('resync-complete', 'storage-indexing-complete')
       }
@@ -412,6 +421,13 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             : prev.ecosystemResyncEpoch
       }))
       wasStorageIndexing = indexing
+    }
+
+    const unsubscribeBootstrapper = mobileDataBootstrapper.subscribe(() => {
+      publishStorageIndexing()
+    })
+    const unsubscribeShadowScan = subscribeShadowVaultScanning(() => {
+      publishStorageIndexing()
     })
 
     async function init() {
@@ -1401,7 +1417,9 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
         if (diaryStack) {
           storageReady = true
-          void runStorageBootstrap().catch((e) => {
+          try {
+            await runStorageBootstrap()
+          } catch (e) {
             if (Platform.OS === 'android' && isExternalStorageRequiredError(e)) {
               logger.info(
                 '[BaishouProvider] Vault bootstrap deferred until external storage is granted'
@@ -1409,13 +1427,13 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               if (isMounted) {
                 setValue((prev) => ({ ...prev, storageReady: false }))
               }
-              return
+            } else {
+              logger.error('[BaishouProvider] Vault bootstrap failed:', e as Error)
+              if (isMounted) {
+                setValue((prev) => ({ ...prev, storageReady: false }))
+              }
             }
-            logger.error('[BaishouProvider] Vault bootstrap failed:', e as Error)
-            if (isMounted) {
-              setValue((prev) => ({ ...prev, storageReady: false }))
-            }
-          })
+          }
         }
 
         retryStorageSetupRef.current = async (options?: { forceDeferResync?: boolean }) => {
@@ -1786,6 +1804,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
     return () => {
       isMounted = false
       unsubscribeBootstrapper()
+      unsubscribeShadowScan()
+      unbindShadowVaultScanState()
       vaultFileWatcher.stop()
       sessionFileWatcher.stop()
       summaryFileWatcher.stop()

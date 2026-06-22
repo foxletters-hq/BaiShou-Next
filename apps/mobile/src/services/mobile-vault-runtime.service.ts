@@ -40,6 +40,10 @@ function diaryPreviewFromRaw(raw: string | null | undefined): string {
 }
 import { mobileDataBootstrapper, type MobileBootstrapperDeps } from './mobile-bootstrapper.service'
 import {
+  bindShadowVaultScanState,
+  unbindShadowVaultScanState
+} from './mobile-shadow-scan-state.service'
+import {
   scheduleVaultEcosystemResync,
   waitForVaultEcosystemResync
 } from './mobile-vault-resync.service'
@@ -378,6 +382,7 @@ export async function prepareVaultSwitch(currentStack?: VaultBoundDiaryStack): P
   if (currentStack) {
     currentStack.shadowIndexSyncService.setSyncEnabled(false)
   }
+  unbindShadowVaultScanState()
   await stopVaultWatchers()
   if (currentStack) {
     await currentStack.shadowIndexSyncService.waitForScan()
@@ -836,6 +841,7 @@ async function restartVaultWatchers(
     shadowIndexSyncService: diaryStack.shadowIndexSyncService,
     fileSystem: watcherDeps.fileSystem
   })
+  bindShadowVaultScanState(diaryStack.shadowIndexSyncService)
 
   if (options?.skipSessionSummary) {
     sessionFileWatcher.stop()
