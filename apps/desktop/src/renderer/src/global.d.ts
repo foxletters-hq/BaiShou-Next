@@ -201,15 +201,7 @@ interface IncrementalSyncAPI {
   sync(
     runOptions?: import('@baishou/shared').IncrementalSyncRunOptions
   ): Promise<import('@baishou/shared').IncrementalSyncResult>
-  uploadOnly(): Promise<import('@baishou/shared').IncrementalSyncResult>
-  downloadOnly(
-    runOptions?: import('@baishou/shared').IncrementalSyncRunOptions
-  ): Promise<import('@baishou/shared').IncrementalSyncResult>
   orchestratedSync(
-    runOptions?: import('@baishou/shared').IncrementalSyncRunOptions
-  ): Promise<import('@baishou/shared').IncrementalSyncResult>
-  orchestratedUploadOnly(): Promise<import('@baishou/shared').IncrementalSyncResult>
-  orchestratedDownloadOnly(
     runOptions?: import('@baishou/shared').IncrementalSyncRunOptions
   ): Promise<import('@baishou/shared').IncrementalSyncResult>
   getLocalManifest(): Promise<unknown>
@@ -219,6 +211,14 @@ interface IncrementalSyncAPI {
   planSync(
     runOptions?: import('@baishou/shared').IncrementalSyncRunOptions
   ): Promise<import('@baishou/shared').IncrementalSyncPlanPreview>
+  readVaultRegistryFingerprint(): Promise<string>
+  evaluatePlanDrift(
+    baseline: import('@baishou/shared').IncrementalSyncPlanReuseBaseline
+  ): Promise<{
+    localTreeDrifted: boolean
+    remoteManifestDrifted: boolean
+    ttlExpired: boolean
+  }>
 }
 
 interface LegacyMigrationAPI {

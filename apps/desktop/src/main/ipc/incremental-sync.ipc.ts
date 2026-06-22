@@ -11,6 +11,10 @@ import {
   DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH,
   resolveSyncDeviceId,
   migrateLegacyIncrementalSyncConfig,
+  collectManifestVaultScopes,
+  evaluateIncrementalSyncPlanDrift,
+  readVaultRegistryFingerprint,
+  type IncrementalSyncPlanReuseBaseline,
   type IncrementalSyncRunOptions,
   type SyncProgressEvent,
   type S3SyncConfig
@@ -268,22 +272,6 @@ export function registerIncrementalSyncIPC() {
     return result
   })
 
-  ipcMain.handle('incrementalSync:uploadOnly', async (event) => {
-    return (await getOrchestrator()).uploadOnly((progress) => {
-      event.sender.send('incrementalSync:progress', progress)
-    })
-  })
-
-  ipcMain.handle('incrementalSync:downloadOnly', async (event, runOptions) => {
-    const result = await (
-      await getOrchestrator()
-    ).downloadOnly((progress) => {
-      event.sender.send('incrementalSync:progress', progress)
-    }, runOptions)
-    await afterIncrementalSync(result)
-    return result
-  })
-
   ipcMain.handle('incrementalSync:getLocalManifest', async () => {
     return (await getSyncService()).getLocalManifest()
   })
@@ -302,20 +290,70 @@ export function registerIncrementalSyncIPC() {
 
   ipcMain.handle('incrementalSync:planSync', async (_, runOptions) => {
     const service = await getSyncService()
+    service.clearPlanManifestCache()
     await vaultService.syncRegistryWithDisk()
     let context = await resolveSyncPlanContext()
-    let preview = await service.planSync(context, runOptions as never)
-    const unknown = preview.boundaryIssues.unknownVaultPaths.filter(
-      (name) => name !== '__root__' && name !== '__unknown__'
+
+    const localManifest = await service.buildLocalManifest()
+    const remoteManifest = await service.getRemoteManifest()
+    service.setPlanManifestCache(localManifest, remoteManifest)
+    const manifestScopes = collectManifestVaultScopes(localManifest, remoteManifest)
+    const pruned = await vaultService.pruneOrphanRegistryVaults(
+      manifestScopes,
+      context.diskVaultNames
     )
-    if (unknown.length > 0) {
-      await vaultService.ensureVaultsRegistered(unknown)
+    if (pruned.length > 0) {
       notifyVaultRegistryUpdated()
       context = await resolveSyncPlanContext()
-      preview = await service.planSync(context, runOptions as never)
     }
-    return preview
+
+    try {
+      let preview = await service.planSync(context, runOptions as never)
+      const unknown = preview.boundaryIssues.unknownVaultPaths.filter(
+        (name) => name !== '__root__' && name !== '__unknown__'
+      )
+      if (unknown.length > 0) {
+        await vaultService.ensureVaultsRegistered(unknown)
+        notifyVaultRegistryUpdated()
+        context = await resolveSyncPlanContext()
+        service.clearPlanManifestCache()
+        preview = await service.planSync(context, runOptions as never)
+      }
+      if (pruned.length > 0) {
+        preview = { ...preview, prunedRegistryVaults: pruned }
+      }
+      return preview
+    } finally {
+      service.clearPreparedManifestCache()
+    }
   })
+
+  ipcMain.handle('incrementalSync:readVaultRegistryFingerprint', async () => {
+    const root = await pathService.getRootDirectory()
+    const nodeFs = createNodeFileSystem()
+    const registryPath = path.join(root, 'vault_registry.json')
+    return readVaultRegistryFingerprint(
+      {
+        exists: (p) => nodeFs.exists(p),
+        stat: async (p) => {
+          const stat = await fs.promises.stat(p)
+          return { mtimeMs: stat.mtimeMs }
+        },
+        readFile: (p) => fs.promises.readFile(p, 'utf8')
+      },
+      registryPath
+    )
+  })
+
+  ipcMain.handle(
+    'incrementalSync:evaluatePlanDrift',
+    async (_, baseline: IncrementalSyncPlanReuseBaseline) => {
+      const service = await getSyncService()
+      const local = await service.buildLocalManifest()
+      const remote = await service.getRemoteManifest()
+      return evaluateIncrementalSyncPlanDrift(baseline, local, remote)
+    }
+  )
 
   ipcMain.handle('incrementalSync:orchestratedSync', async (event, runOptions?: IncrementalSyncRunOptions) => {
     const publishProgress = (progress: SyncProgressEvent) => {
@@ -336,27 +374,6 @@ export function registerIncrementalSyncIPC() {
     }, runOptions)
     await afterIncrementalSync(result, { force: true })
     return { ...result, autoRegisteredVaults }
-  })
-
-  ipcMain.handle('incrementalSync:orchestratedUploadOnly', async (event) => {
-    return (await getOrchestrator()).uploadOnly((progress) => {
-      event.sender.send('incrementalSync:progress', progress)
-    })
-  })
-
-  ipcMain.handle('incrementalSync:orchestratedDownloadOnly', async (event, runOptions?: IncrementalSyncRunOptions) => {
-    const publishProgress = (progress: SyncProgressEvent) => {
-      event.sender.send('incrementalSync:progress', progress)
-    }
-    publishProgress({ phase: 'scanning', current: 0, total: 0 })
-    await ensureVaultsForIncrementalSync(runOptions)
-    const result = await (
-      await getOrchestrator()
-    ).downloadOnly((progress) => {
-      publishProgress(progress)
-    }, runOptions)
-    await afterIncrementalSync(result)
-    return result
   })
 
   ipcMain.handle('incrementalSync:getSyncHistory', async (_, limit?: number) => {
