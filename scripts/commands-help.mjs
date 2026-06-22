@@ -20,7 +20,7 @@ const sections = [
   },
   {
     id: 'mobile',
-    title: '移动端 · Android（不能用 Expo Go，须开发版 APK）',
+    title: '移动端 · Android（官方支持；无 iOS；不能用 Expo Go）',
     commands: [
       [
         'pnpm mobile:setup',
@@ -35,19 +35,19 @@ const sections = [
     title: '桌面端 · 构建',
     commands: [
       ['pnpm build:desktop', '构建 Electron 桌面应用（开发用 out/）'],
-      ['pnpm release:desktop:linux', '★ 发布：Linux AppImage → apps/desktop/dist'],
-      ['pnpm release:desktop:win', '★ 发布：Windows 安装包 → apps/desktop/dist']
+      ['pnpm release:desktop:win', '★ 官方发版：Windows 安装包 → apps/desktop/dist'],
+      ['pnpm release:desktop:linux', '自行编译 Linux AppImage（非官方发版）→ apps/desktop/dist']
     ]
   },
   {
     id: 'release',
-    title: '发布 · Android / 桌面',
+    title: '发布 · Android / Windows（官方）',
     commands: [
-      ['pnpm release:all', '★ 一键正式打包：Android + Linux + Windows'],
+      ['pnpm release:all', '★ 一键官方打包：Android + Windows'],
       ['pnpm release:setup-signing', '从旧版 BaiShou 复制 android/key.properties（不入库）'],
       ['pnpm release:android', '正式签名 APK → release/BaiShou-v{版本}-Android.apk'],
-      ['pnpm release:desktop:linux', 'Linux AppImage → apps/desktop/dist/'],
       ['pnpm release:desktop:win', 'Windows 安装包 → apps/desktop/dist/'],
+      ['pnpm release:desktop:linux', 'Linux 自行编译 AppImage（非官方，不入 Release）'],
       [
         'gh release create vX.Y.Z --notes-file docs/release/vX.Y.Z.md …',
         '本地打包后创建 GitHub Release（见 docs/打包须知.md §4）'
@@ -85,6 +85,7 @@ if (filter && list.length === 0) {
 }
 
 console.log('\n白守 Next — 常用命令\n')
+console.log('官方平台：Android + Windows。Linux 可自行编译；iOS / macOS 暂无计划。\n')
 console.log('查看分类: pnpm commands mobile | desktop | ci\n')
 
 for (const section of list) {
