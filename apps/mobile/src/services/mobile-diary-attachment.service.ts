@@ -1,6 +1,7 @@
 import * as ImagePicker from 'expo-image-picker'
 import type { IFileSystem, IStoragePathService } from '@baishou/core-mobile'
 import { importUriToPath } from './mobile-uri-import'
+import { normalizeExternalStoragePath } from './android-external-fs'
 
 export interface DiaryAttachmentUploadResult {
   success: boolean
@@ -82,6 +83,15 @@ export async function uploadDiaryAttachments(
         const dest = `${attachDir}/${newFileName}`
 
         await importUriToPath(uri, dest, fileSystem)
+
+        const normalizedDest = normalizeExternalStoragePath(dest)
+        const normalizedAttachDir = normalizeExternalStoragePath(attachDir).replace(/\/$/, '')
+        if (!normalizedDest.startsWith(`${normalizedAttachDir}/`)) {
+          throw new Error(`附件未写入 attachment 目录: ${normalizedDest}`)
+        }
+        if (!(await fileSystem.exists(normalizedDest))) {
+          throw new Error(`附件写入后不存在: ${normalizedDest}`)
+        }
 
         return {
           success: true,

@@ -11,7 +11,7 @@ import {
 } from '../utils/mobile-attachment-image-cache'
 import { normalizeExternalStoragePath } from '../utils/mobile-attachment-display-path.util'
 
-const MAX_CONCURRENT_LOADS = 4
+const MAX_CONCURRENT_LOADS = 6
 let activeLoads = 0
 const waitQueue: Array<() => void> = []
 

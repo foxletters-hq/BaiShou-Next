@@ -23,6 +23,7 @@ export {
 
 const THUMB_RESIZE_WIDTH = 256
 const PREVIEW_RESIZE_WIDTH = 2048
+const EDITOR_RESIZE_WIDTH = 1280
 
 type ManipulatorModule = typeof import('expo-image-manipulator')
 
@@ -102,13 +103,23 @@ export async function resolveAttachmentImageDataUri(
   filePath: string,
   purpose: AttachmentImagePurpose
 ): Promise<string | null> {
-  const maxBytes = purpose === 'preview' ? ATTACHMENT_PREVIEW_MAX_BYTES : ATTACHMENT_THUMB_MAX_BYTES
+  const maxBytes =
+    purpose === 'preview'
+      ? ATTACHMENT_PREVIEW_MAX_BYTES
+      : purpose === 'editor'
+        ? ATTACHMENT_EDITOR_MAX_BYTES
+        : ATTACHMENT_THUMB_MAX_BYTES
 
   const direct = await readSmallFileAsDataUri(fileSystem, filePath, maxBytes)
   if (direct) return direct
 
-  const width = purpose === 'preview' ? PREVIEW_RESIZE_WIDTH : THUMB_RESIZE_WIDTH
-  const compress = purpose === 'preview' ? 0.85 : 0.72
+  const width =
+    purpose === 'preview'
+      ? PREVIEW_RESIZE_WIDTH
+      : purpose === 'editor'
+        ? EDITOR_RESIZE_WIDTH
+        : THUMB_RESIZE_WIDTH
+  const compress = purpose === 'preview' ? 0.85 : purpose === 'editor' ? 0.82 : 0.72
   return manipulateToDataUri(filePath, width, compress)
 }
 
