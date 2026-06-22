@@ -2,12 +2,25 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { View, StyleSheet, ActivityIndicator } from 'react-native'
 import { ScreenSafeArea } from '../../components/ScreenSafeArea'
 import { useTranslation } from 'react-i18next'
+import { useIsFocused } from '@react-navigation/native'
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router'
-import { DiaryEditor, useNativeTheme, useDialog, useNativeToast } from '@baishou/ui/native'
+import {
+  DiaryEditor,
+  isLikelyEditorBundleLeak,
+  useNativeTheme,
+  useDialog,
+  useNativeToast
+} from '@baishou/ui/native'
 import { mergeDiaryTags } from '@baishou/ai'
 import {
   resolveDiaryAppendBlock,
   resolveDiaryNewEntryContent,
+  composeDiaryEditorContent,
+  parseDiaryEditorContent,
+  normalizeDiaryTagColorRegistry,
+  pickEntryTagColors,
+  syncDiaryTagColorRegistry,
+  type DiaryTagColorRegistry,
   type DiaryTemplateConfig
 } from '@baishou/shared'
 import { useBaishou } from '../../providers/BaishouProvider'
@@ -18,8 +31,10 @@ import {
 } from '../../services/mobile-diary-attachment.service'
 import { useStoragePermission } from '../../hooks/useStoragePermission'
 import { useAttachmentImageLoader } from '../../hooks/useAttachmentImageLoader'
-import { extractDiaryAttachmentSrcs } from '@baishou/ui/native'
-import { resolveDiaryAttachmentImageDataUri } from '../../utils/mobile-diary-attachment-resolver'
+import { useDiaryEditorWebViewSource } from '../../hooks/useDiaryEditorWebViewSource'
+import { resolveDiaryAttachmentUrlForWebView } from '../../services/diary-cm-attachment-url.service'
+import { extractDiaryAttachmentRefs } from '../../utils/diary-attachment-prefetch.util'
+import { clearDiaryAttachmentAbsPathCache } from '../../utils/mobile-diary-attachment-resolver'
 import { FullFileAccessGate } from '../../components/FullFileAccessGate'
 import {
   assertExternalStorageReady,
@@ -53,6 +68,10 @@ export const DiaryEditorScreen: React.FC = () => {
   const isDirtyRef = useRef(false)
   const originalTagsRef = useRef<string[]>([])
   const [pickingImages, setPickingImages] = useState(false)
+  const editorWebViewSource = useDiaryEditorWebViewSource()
+  const isFocused = useIsFocused()
+  const [tagColorRegistry, setTagColorRegistry] = useState<DiaryTagColorRegistry>({})
+  const previousTagsRef = useRef<string[]>([])
 
   const isAppendMode = append === '1'
 
@@ -70,6 +89,7 @@ export const DiaryEditorScreen: React.FC = () => {
       id?: number | null
       content: string
       tags?: string | string[] | null
+      tagColors?: string | Record<string, number> | null
       date: Date
       weather?: string | null
       isFavorite?: boolean
@@ -78,6 +98,9 @@ export const DiaryEditorScreen: React.FC = () => {
     now: Date
   ) => {
     const parsedTags = parseDiaryTags(diary.tags)
+    const entryTagColors = normalizeDiaryTagColorRegistry(diary.tagColors)
+    setTagColorRegistry(entryTagColors)
+    previousTagsRef.current = parsedTags
     originalTagsRef.current = parsedTags
     setExistingId(diary.id ?? null)
     setSelectedDate(diary.date)
@@ -87,12 +110,19 @@ export const DiaryEditorScreen: React.FC = () => {
     if (isAppendMode) {
       const existing = (diary.content || '').trimEnd()
       const timeMark = resolveDiaryAppendBlock(templateConfig, now)
-      setContent(existing ? existing + timeMark : timeMark.trimStart())
-      setOriginalContent(existing)
+      const safeExisting = isLikelyEditorBundleLeak(existing) ? '' : existing
+      setContent(safeExisting ? safeExisting + timeMark : timeMark.trimStart())
+      setOriginalContent(safeExisting)
       setTags([])
+      previousTagsRef.current = []
+      setTagColorRegistry({})
     } else {
-      setContent(diary.content)
-      setOriginalContent(diary.content)
+      const safeContent = isLikelyEditorBundleLeak(diary.content) ? '' : diary.content
+      if (safeContent !== diary.content) {
+        toast.showError(t('diary.content_corrupted_hint', '日记正文异常，已阻止加载损坏内容，请从备份恢复'))
+      }
+      setContent(composeDiaryEditorContent(safeContent, parsedTags))
+      setOriginalContent(safeContent)
       setTags(parsedTags)
     }
   }
@@ -120,11 +150,13 @@ export const DiaryEditorScreen: React.FC = () => {
             applyLoadedDiary(existing, templateConfig, now)
           } else {
             originalTagsRef.current = []
+            setTagColorRegistry({})
             setContent(resolveDiaryNewEntryContent(templateConfig, now))
             setSelectedDate(new Date(date))
           }
         } else {
           originalTagsRef.current = []
+          setTagColorRegistry({})
           setContent(resolveDiaryNewEntryContent(templateConfig, now))
         }
       } catch (e) {
@@ -143,20 +175,28 @@ export const DiaryEditorScreen: React.FC = () => {
   const handleSave = async () => {
     if (!services) return
 
+    if (isLikelyEditorBundleLeak(content)) {
+      toast.showError(t('diary.content_corrupted_hint', '日记正文异常，已阻止保存损坏内容'))
+      return
+    }
+
     try {
       await assertExternalStorageReady()
+      const { tags: parsedTags, body } = parseDiaryEditorContent(content)
       const mergedTags = isAppendMode
-        ? mergeDiaryTags(originalTagsRef.current.join(', '), tags.join(','))
-        : tags.join(',')
+        ? mergeDiaryTags(originalTagsRef.current.join(', '), parsedTags.join(','))
+        : parsedTags.join(',')
+      const entryTagColors = pickEntryTagColors(parsedTags, tagColorRegistry)
       const input = {
-        content,
+        content: body,
         tags: mergedTags,
+        tagColors:
+          Object.keys(entryTagColors).length > 0 ? JSON.stringify(entryTagColors) : undefined,
         date: selectedDate,
         weather: weather || undefined,
         isFavorite
       }
 
-      // 统一使用下沉到 DiaryService 中的 save 接口，自动处理新建、更新与冲突自动合并
       await services.diaryService.save(existingId, input)
       setIsDirty(false)
       isDirtyRef.current = false
@@ -185,7 +225,14 @@ export const DiaryEditorScreen: React.FC = () => {
   }
 
   const handleContentChange = (text: string) => {
+    const { tags: parsedTags } = parseDiaryEditorContent(text)
+    setTagColorRegistry((prev) => {
+      const next = syncDiaryTagColorRegistry(parsedTags, previousTagsRef.current, prev)
+      previousTagsRef.current = parsedTags
+      return next
+    })
     setContent(text)
+    setTags(parsedTags)
     setIsDirty(true)
     isDirtyRef.current = true
   }
@@ -208,69 +255,51 @@ export const DiaryEditorScreen: React.FC = () => {
     isDirtyRef.current = true
   }
 
-  const [attachmentUriMap, setAttachmentUriMap] = useState<Record<string, string>>({})
+  const attachmentCacheRef = useRef<Record<string, string>>({})
   const { loadImageUri } = useAttachmentImageLoader(services?.fileSystem)
 
   useEffect(() => {
-    if (!services?.pathService || !services?.fileSystem) return
-    const srcs = extractDiaryAttachmentSrcs(content)
-    if (srcs.length === 0) {
-      setAttachmentUriMap({})
-      return
-    }
+    attachmentCacheRef.current = {}
+    clearDiaryAttachmentAbsPathCache()
+  }, [selectedDate])
 
-    let cancelled = false
-    void (async () => {
-      try {
-        const map: Record<string, string> = {}
-        for (const src of srcs) {
-          const dataUri = await resolveDiaryAttachmentImageDataUri(
-            services.pathService!,
-            services.fileSystem,
-            selectedDate,
-            src,
-            (absPath) => loadImageUri(absPath, 'preview')
-          )
-          if (dataUri) map[src] = dataUri
-        }
-        if (!cancelled) setAttachmentUriMap(map)
-      } catch (e) {
-        console.error('Failed to resolve diary attachment URIs:', e)
-      }
-    })()
-
-    return () => {
-      cancelled = true
-    }
-  }, [content, selectedDate, services?.pathService, services?.fileSystem, loadImageUri])
-
-  const resolveAttachmentUri = useCallback(
-    (src: string) => {
-      if (src.startsWith('attachment/')) {
-        return attachmentUriMap[src] ?? null
-      }
-      return src
-    },
-    [attachmentUriMap]
-  )
-
-  const loadAttachmentImageUri = useCallback(
-    async (src: string) => {
-      if (!src.startsWith('attachment/') || !services?.pathService || !services?.fileSystem) {
-        return null
-      }
-      const cached = attachmentUriMap[src]
+  const resolveAttachmentUrl = useCallback(
+    async (src: string): Promise<string | null> => {
+      if (!src.startsWith('attachment/')) return src
+      const cached = attachmentCacheRef.current[src]
       if (cached) return cached
-      return resolveDiaryAttachmentImageDataUri(
+      if (!services?.pathService || !services?.fileSystem) return null
+      const url = await resolveDiaryAttachmentUrlForWebView(
         services.pathService,
         services.fileSystem,
         selectedDate,
         src,
-        (absPath) => loadImageUri(absPath, 'preview')
+        (absPath) => loadImageUri(absPath, 'editor')
       )
+      if (url) {
+        attachmentCacheRef.current = { ...attachmentCacheRef.current, [src]: url }
+      }
+      return url
     },
-    [attachmentUriMap, loadImageUri, selectedDate, services?.pathService, services?.fileSystem]
+    [loadImageUri, selectedDate, services?.pathService, services?.fileSystem]
   )
+
+  useEffect(() => {
+    if (!content || !services?.pathService || !services?.fileSystem) return
+    const refs = extractDiaryAttachmentRefs(content)
+    if (!refs.length) return
+
+    let cancelled = false
+    void Promise.all(
+      refs.map(async (src) => {
+        if (cancelled) return
+        await resolveAttachmentUrl(src)
+      })
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [content, resolveAttachmentUrl, services?.fileSystem, services?.pathService])
 
   const handlePickImages = useCallback(async (): Promise<string[]> => {
     if (!services?.pathService) return []
@@ -315,7 +344,6 @@ export const DiaryEditorScreen: React.FC = () => {
     }
   }
 
-  // 拦截系统返回键 / 侧滑返回手势
   useEffect(() => {
     const unsub = navigation.addListener('beforeRemove', (e) => {
       if (!isDirtyRef.current) return
@@ -355,15 +383,17 @@ export const DiaryEditorScreen: React.FC = () => {
           selectedDate={selectedDate}
           weather={weather || ''}
           isFavorite={isFavorite}
+          editorWebViewSource={editorWebViewSource}
+          webViewActive={isFocused}
           onContentChange={handleContentChange}
           onTagsChange={handleTagsChange}
+          tagColorRegistry={tagColorRegistry}
           onDateChange={setSelectedDate}
           onWeatherChange={handleWeatherChange}
           onFavoriteChange={handleFavoriteChange}
           onPickImages={handlePickImages}
           pickingImages={pickingImages}
-          resolveAttachmentUri={resolveAttachmentUri}
-          loadAttachmentImageUri={loadAttachmentImageUri}
+          resolveAttachmentUrl={resolveAttachmentUrl}
           onSave={handleSave}
           onCancel={handleBack}
         />

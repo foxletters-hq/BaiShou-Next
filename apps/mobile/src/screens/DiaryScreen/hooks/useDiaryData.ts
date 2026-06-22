@@ -23,6 +23,7 @@ export interface DiaryListEntryData {
   mood?: string
   location?: string
   isFavorite?: boolean
+  tagColors?: Record<string, number>
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -164,6 +165,7 @@ export function useDiaryData(
             mood: item.mood,
             location: item.location,
             isFavorite: item.isFavorite,
+            tagColors: item.tagColors,
             createdAt: item.updatedAt,
             updatedAt: item.updatedAt,
             content: ''
@@ -187,6 +189,7 @@ export function useDiaryData(
             mood: item.mood,
             location: item.location,
             isFavorite: item.isFavorite,
+            tagColors: item.tagColors,
             createdAt: item.updatedAt,
             updatedAt: item.updatedAt
           }))
