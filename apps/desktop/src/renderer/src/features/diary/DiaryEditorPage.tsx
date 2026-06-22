@@ -39,26 +39,11 @@ export const DiaryEditorPage: React.FC = () => {
         mediaPaths={editor.mediaPaths}
         isSaving={editor.isSaving}
         onContentChange={editor.handleContentChange}
-        onTagsChange={(newTags) => {
-          editor.setTags(newTags)
-          editor.setIsDirty(true)
-        }}
-        onDateChange={(newDate) => {
-          editor.setSelectedDate(newDate)
-          editor.setIsDirty(true)
-        }}
-        onWeatherChange={(v) => {
-          editor.setWeather(v)
-          editor.setIsDirty(true)
-        }}
-        onFavoriteChange={(v) => {
-          editor.setIsFavorite(v)
-          editor.setIsDirty(true)
-        }}
-        onMediaPathsChange={(v) => {
-          editor.setMediaPaths(v)
-          editor.setIsDirty(true)
-        }}
+        onTagsChange={editor.setTags}
+        onDateChange={editor.setSelectedDate}
+        onWeatherChange={editor.setWeather}
+        onFavoriteChange={editor.setIsFavorite}
+        onMediaPathsChange={editor.setMediaPaths}
         onSave={editor.handleSave}
         onCancel={editor.handleBack}
       />
