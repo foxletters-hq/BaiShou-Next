@@ -110,6 +110,45 @@ export const agentApi = {
   ensureDefaultLatteAssistant: (locale?: string) =>
     ipcRenderer.invoke('agent:ensure-default-latte-assistant', locale),
 
+  agentGate: {
+    reply: (input: {
+      requestId: string
+      reply: import('@baishou/shared').AgentGateReply
+      message?: string
+      selectedOptionIds?: string[]
+    }) => ipcRenderer.invoke('agent-gate:reply', input),
+    getConfig: () => ipcRenderer.invoke('agent-gate:get-config'),
+    setTrustMode: (trustMode: import('@baishou/shared').AgentGateTrustMode) =>
+      ipcRenderer.invoke('agent-gate:set-trust-mode', trustMode),
+    removeAllowlistEntry: (entryId: string) =>
+      ipcRenderer.invoke('agent-gate:remove-allowlist-entry', entryId),
+    onAsked: (callback: (request: import('@baishou/shared').AgentGateRequest) => void) => {
+      const handler = (_: unknown, request: import('@baishou/shared').AgentGateRequest) =>
+        callback(request)
+      ipcRenderer.on('agent-gate:asked', handler)
+      return () => ipcRenderer.removeListener('agent-gate:asked', handler)
+    },
+    onReplied: (
+      callback: (payload: {
+        sessionId: string
+        requestId: string
+        reply: import('@baishou/shared').AgentGateReply
+      }) => void
+    ) => {
+      const handler = (_: unknown, payload: Parameters<typeof callback>[0]) => callback(payload)
+      ipcRenderer.on('agent-gate:replied', handler)
+      return () => ipcRenderer.removeListener('agent-gate:replied', handler)
+    },
+    onAllowlistChanged: (
+      callback: (allowlist: import('@baishou/shared').AgentGateAllowlistEntry[]) => void
+    ) => {
+      const handler = (_: unknown, allowlist: import('@baishou/shared').AgentGateAllowlistEntry[]) =>
+        callback(allowlist)
+      ipcRenderer.on('agent-gate:allowlist-changed', handler)
+      return () => ipcRenderer.removeListener('agent-gate:allowlist-changed', handler)
+    }
+  },
+
   // RAG System
   rag: {
     getStats: () => ipcRenderer.invoke('rag:get-stats'),

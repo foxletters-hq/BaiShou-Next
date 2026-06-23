@@ -34,6 +34,10 @@ export const settingsApi = {
     setToolManagementConfig: (config: any) =>
       ipcRenderer.invoke('settings:set-tool-management-config', config),
 
+    getBaishouAgentGateConfig: () => ipcRenderer.invoke('settings:get-baishou-agent-gate-config'),
+    setBaishouAgentGateConfig: (config: any) =>
+      ipcRenderer.invoke('settings:set-baishou-agent-gate-config', config),
+
     getSearchModeEnabled: () => ipcRenderer.invoke('settings:get-search-mode-enabled'),
     setSearchModeEnabled: (enabled: boolean) =>
       ipcRenderer.invoke('settings:set-search-mode-enabled', enabled),
