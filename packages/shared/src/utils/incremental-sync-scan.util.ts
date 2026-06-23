@@ -106,6 +106,9 @@ export function shouldIncludeIncrementalSyncFile(entryName: string, relativePath
       ? rel.endsWith('.json') && !entryName.endsWith('.tmp')
       : false
   }
+  if (rel.endsWith('/.baishou/external_paths.json') && entryName === 'external_paths.json') {
+    return true
+  }
   if (rel.includes('/.baishou/') || rel.startsWith('.baishou/')) return false
   if (entryName.startsWith('.')) return false
   return true
