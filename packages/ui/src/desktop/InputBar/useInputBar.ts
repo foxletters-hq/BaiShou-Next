@@ -9,12 +9,17 @@ import {
   type MockChatAttachment
 } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
+import { useComposerDraft } from '../../shared/composer-draft'
 
 export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputBarRef>) {
   const {
     isLoading,
     onSend,
     onStop,
+    composerBlocked = false,
+    onComposerBlocked,
+    composerDraftKey,
+    composerDraftStorage,
     assistantName,
     onAssistantTap,
     onRecall,
@@ -31,6 +36,14 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
   const { t, i18n } = useTranslation()
   const [text, setText] = useState('')
   const [attachments, setAttachments] = useState<MockChatAttachment[]>([])
+  const [isSending, setIsSending] = useState(false)
+  const { clearDraft } = useComposerDraft({
+    draftKey: composerDraftKey,
+    draftStorage: composerDraftStorage,
+    text,
+    setText,
+    draftSyncSuspended: isSending
+  })
   const [showToolbar, setShowToolbar] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('baishou_toolbar_open') === 'true'
@@ -106,13 +119,28 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
     focus: () => textareaRef.current?.focus()
   }))
 
-  const handleSend = () => {
-    if ((!text.trim() && attachments.length === 0) || isLoading) return
-    onSend(text.trim(), attachments.length > 0 ? [...attachments] : undefined, searchMode)
-    setText('')
-    setAttachments([])
-    if (textareaRef.current) {
-      textareaRef.current.style.height = expand.isExpanded ? '100%' : 'auto'
+  const handleSend = async () => {
+    if ((!text.trim() && attachments.length === 0) || isLoading || isSending) return
+    if (composerBlocked) {
+      onComposerBlocked?.()
+      return
+    }
+
+    setIsSending(true)
+    try {
+      const accepted = await Promise.resolve(
+        onSend(text.trim(), attachments.length > 0 ? [...attachments] : undefined, searchMode)
+      )
+      if (accepted !== false) {
+        setText('')
+        setAttachments([])
+        await clearDraft()
+        if (textareaRef.current) {
+          textareaRef.current.style.height = expand.isExpanded ? '100%' : 'auto'
+        }
+      }
+    } finally {
+      setIsSending(false)
     }
   }
 
@@ -173,6 +201,7 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
     toggleSearchMode: () => onToggleSearchMode?.(),
     handlePromptShortcut,
     isLoading,
+    isSending,
     onStop,
     assistantName,
     onAssistantTap,

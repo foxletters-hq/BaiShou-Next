@@ -59,6 +59,7 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
     toggleSearchMode,
     handlePromptShortcut,
     isLoading,
+    isSending,
     onStop,
     assistantName,
     onAssistantTap,
@@ -306,7 +307,7 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
                 <motion.button
                   className={`${styles.actionBtn} ${styles.sendBtn} ${!text.trim() && attachments.length === 0 ? styles.sendBtnDisabled : ''}`}
                   onClick={handleSend}
-                  disabled={!text.trim() && attachments.length === 0}
+                  disabled={isSending || (!text.trim() && attachments.length === 0)}
                   type="button"
                   whileTap={{ scale: 0.92 }}
                 >

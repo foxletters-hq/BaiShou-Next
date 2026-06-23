@@ -1,10 +1,18 @@
 import type { MockChatAttachment } from '@baishou/shared'
 import type { PromptShortcut } from '../PromptShortcutSheet'
+import type {
+  ComposerDraftStorage,
+  ComposerOnSend
+} from '../../shared/composer-draft'
 
 export interface InputBarProps {
   isLoading: boolean
-  onSend: (text: string, attachments?: MockChatAttachment[], searchMode?: boolean) => void
+  onSend: ComposerOnSend
   onStop?: () => void
+  composerBlocked?: boolean
+  onComposerBlocked?: () => void
+  composerDraftKey?: string
+  composerDraftStorage?: ComposerDraftStorage
   assistantName?: string
   onAssistantTap?: () => void
   onRecall?: () => void

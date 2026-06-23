@@ -21,7 +21,7 @@ import { useRecallSearch } from './useRecallSearch'
 import { useAssistantResolver } from './useAssistantResolver'
 import { useTranslation } from 'react-i18next'
 import { useTts } from './useTts'
-import { mapSavedAttachmentsForUi } from '@baishou/shared'
+import { mapSavedAttachmentsForUi, isConfiguredDialogueModelId, isConfiguredProviderId } from '@baishou/shared'
 
 /**
  * 封装 Agent 聊天页面的全部业务状态流转、时序哨兵以及大模型对话控制逻辑的自定义控制器 Hook。
@@ -239,9 +239,21 @@ export function useAgentChatFlow() {
   }, [chat.messages, stream.isStreaming, tts.ttsMode, tts.handleTtsReadAloud, sessionId])
 
   // ── 9. 发送与停止消息 ──
-  const handleSend = async (text: string, attachments?: any[], search?: boolean) => {
+  const handleSend = async (
+    text: string,
+    attachments?: any[],
+    search?: boolean
+  ): Promise<boolean> => {
     let targetSessionId = sessionId
     setSearchMode(search ?? false)
+
+    if (
+      !isConfiguredProviderId(model.currentProviderId) ||
+      !isConfiguredDialogueModelId(model.currentModelId)
+    ) {
+      toast.showInfo(t('agent.error.no_model', '请先在顶部选择一个模型'))
+      return false
+    }
 
     try {
       if (!targetSessionId) {
@@ -263,16 +275,7 @@ export function useAgentChatFlow() {
         chat.ensureMessageAttachments(saveResult.userMessageId, savedAttachments)
       }
 
-      if (!sessionId) {
-        if (loadSessions) {
-          await loadSessions(true, currentAssistant?.id ? String(currentAssistant.id) : undefined)
-        }
-        const astId = currentAssistant?.id ? String(currentAssistant.id) : ''
-        navigate(`/chat/${targetSessionId}${astId ? `?assistantId=${astId}` : ''}`, {
-          replace: true
-        })
-      }
-
+      const wasNewSession = !sessionId
       chat.setStreamSessionId(targetSessionId)
       scroll.beginFollowIfAtBottom()
       await stream.startChat(
@@ -284,11 +287,24 @@ export function useAgentChatFlow() {
         search,
         saveResult.userMessageId
       )
+
+      if (wasNewSession) {
+        if (loadSessions) {
+          await loadSessions(true, currentAssistant?.id ? String(currentAssistant.id) : undefined)
+        }
+        const astId = currentAssistant?.id ? String(currentAssistant.id) : ''
+        navigate(`/chat/${targetSessionId}${astId ? `?assistantId=${astId}` : ''}`, {
+          replace: true
+        })
+      }
+
+      return true
     } catch (e: any) {
       console.error('[AgentScreen] send failed:', e)
       toast.showError(
         t('agent.error.send_failed', '发送消息失败: {{msg}}', { msg: e?.message || '未知错误' })
       )
+      return false
     }
   }
 

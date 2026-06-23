@@ -1,13 +1,17 @@
 import React, { useMemo } from 'react'
-import { TokenBadge, InputBar, ContextChainPanel, useTheme, getProviderIcon } from '@baishou/ui'
+import { TokenBadge, InputBar, ContextChainPanel, useTheme, getProviderIcon, toast } from '@baishou/ui'
+import { createWebComposerDraftStorage } from '@baishou/ui/src/shared/composer-draft'
 import { MdCloud } from 'react-icons/md'
 import {
   normalizeChatBackgroundBlur,
-  normalizeChatBackgroundOverlayOpacity
+  normalizeChatBackgroundOverlayOpacity,
+  isConfiguredDialogueModelId,
+  isConfiguredProviderId
 } from '@baishou/shared'
 import { AgentDialogs } from './components/AgentDialogs'
 import { AgentMessageList } from './components/AgentMessageList'
 import { useAgentChatFlow } from './hooks/useAgentChatFlow'
+import { useDesktopComposerDraftKey } from './hooks/useDesktopComposerDraftKey'
 import styles from './AgentScreen.module.css'
 
 /**
@@ -32,6 +36,12 @@ export const AgentScreen: React.FC = () => {
     flow.model.currentModelId === 'unknown'
       ? flow.t('agent.no_model_selected', '暂未选择模型')
       : flow.model.currentModelId
+
+  const composerDraftStorage = useMemo(() => createWebComposerDraftStorage(), [])
+  const composerDraftKey = useDesktopComposerDraftKey(flow.sessionId)
+  const composerBlocked =
+    !isConfiguredProviderId(flow.model.currentProviderId) ||
+    !isConfiguredDialogueModelId(flow.model.currentModelId)
 
   const chatBackgroundUrl = flow.userProfile?.chatBackgroundPath
   const chatBackgroundBlur = normalizeChatBackgroundBlur(flow.userProfile?.chatBackgroundBlur)
@@ -225,6 +235,12 @@ export const AgentScreen: React.FC = () => {
             isLoading={flow.stream.isStreaming || flow.stream.isBridgeActive || flow.stream.isCompressing}
             onSend={flow.handleSend}
             onStop={flow.handleStop}
+            composerBlocked={composerBlocked}
+            onComposerBlocked={() =>
+              toast.showInfo(flow.t('agent.error.no_model', '请先在顶部选择一个模型'))
+            }
+            composerDraftKey={composerDraftKey}
+            composerDraftStorage={composerDraftStorage}
             shortcuts={flow.shortcuts}
             assistantName={flow.currentAssistant?.name || 'BaiShou'}
             onAssistantTap={() => flow.setShowAssistantPicker(true)}

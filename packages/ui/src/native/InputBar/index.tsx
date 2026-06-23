@@ -35,13 +35,25 @@ import {
   pickAttachmentsFromPhotoLibrary,
   type PickAttachmentsResult
 } from './attachment-picker.util'
+import {
+  useComposerDraft,
+  type ComposerDraftStorage,
+  type ComposerOnSend
+} from '../../shared/composer-draft'
 
 const TOOLBAR_ANIM_MS = 200
 
 export interface InputBarProps {
   isLoading: boolean
-  onSend: (text: string, attachments?: MockChatAttachment[]) => void
+  /** 返回 false 时保留输入内容与草稿 */
+  onSend: ComposerOnSend
   onStop?: () => void
+  /** 为 true 时不发送并触发 onComposerBlocked */
+  composerBlocked?: boolean
+  onComposerBlocked?: () => void
+  /** 传入后自动持久化/恢复未发送草稿（按会话隔离） */
+  composerDraftKey?: string
+  composerDraftStorage?: ComposerDraftStorage
   assistantName?: string
   onAssistantTap?: () => void
   onRecall?: () => void
@@ -84,7 +96,11 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
       ttsMode = 'manual',
       onToggleTtsMode,
       onInputFocus,
-      composerEnabled = true
+      composerEnabled = true,
+      composerBlocked = false,
+      onComposerBlocked,
+      composerDraftKey,
+      composerDraftStorage
     },
     ref
   ) => {
@@ -95,6 +111,14 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
     const inputRef = useRef<any>(null)
     const [text, setText] = useState('')
     const [attachments, setAttachments] = useState<MockChatAttachment[]>([])
+    const [isSending, setIsSending] = useState(false)
+    const { clearDraft } = useComposerDraft({
+      draftKey: composerDraftKey,
+      draftStorage: composerDraftStorage,
+      text,
+      setText,
+      draftSyncSuspended: isSending
+    })
     const [showToolbar, setShowToolbar] = useState(true)
     const toolbarProgress = useSharedValue(1)
     const localizedShortcuts = useMemo(() => {
@@ -205,14 +229,40 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
       }
     }))
 
-    const handleSend = () => {
+    const handleSend = useCallback(async () => {
       if (shortcutHandlers.shortcutModeActive && text.startsWith('/')) return
-      if ((text.trim() || attachments.length > 0) && !isLoading) {
-        onSend(text.trim(), attachments.length > 0 ? [...attachments] : undefined)
-        setText('')
-        setAttachments([])
+      if (!text.trim() && attachments.length === 0) return
+      if (isLoading || isSending) return
+
+      if (composerBlocked) {
+        onComposerBlocked?.()
+        return
       }
-    }
+
+      setIsSending(true)
+      try {
+        const accepted = await Promise.resolve(
+          onSend(text.trim(), attachments.length > 0 ? [...attachments] : undefined)
+        )
+        if (accepted !== false) {
+          setText('')
+          setAttachments([])
+          await clearDraft()
+        }
+      } finally {
+        setIsSending(false)
+      }
+    }, [
+      attachments,
+      clearDraft,
+      composerBlocked,
+      isLoading,
+      isSending,
+      onComposerBlocked,
+      onSend,
+      shortcutHandlers.shortcutModeActive,
+      text
+    ])
 
     const handleShortcutPress = () => {
       onManageShortcuts?.()
@@ -419,13 +469,13 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
                     style={[
                       styles.sendBtn,
                       { backgroundColor: colors.primary },
-                      !text.trim() &&
-                        attachments.length === 0 && {
-                          backgroundColor: colors.textTertiary
-                        }
+                      (isSending || (!text.trim() && attachments.length === 0)) && {
+                        backgroundColor: colors.textTertiary,
+                        opacity: isSending ? 0.72 : 1
+                      }
                     ]}
                     onPress={handleSend}
-                    disabled={!text.trim() && attachments.length === 0}
+                    disabled={isSending || (!text.trim() && attachments.length === 0)}
                     accessibilityLabel={t('common.send', '发送')}
                   >
                     <MaterialIcons name="arrow-upward" size={18} color={colors.textOnPrimary} />
