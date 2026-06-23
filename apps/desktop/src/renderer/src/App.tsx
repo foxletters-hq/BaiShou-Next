@@ -218,6 +218,7 @@ const AppRoutes = () => {
 
           {/* AI / Agent Role Routing - 由 MainPageCache 保活 */}
           <Route path="/chat/*" element={<CachedRoutePlaceholder />} />
+          <Route path="/agent-workspace/*" element={<CachedRoutePlaceholder />} />
           <Route path="/sessions" element={<SessionManagementScreen />} />
           <Route path="/assistants" element={<AssistantManagementScreen />} />
           <Route path="/assistants/:id" element={<AssistantEditScreen />} />

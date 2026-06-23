@@ -29,6 +29,8 @@ export const MainLayout: React.FC = () => {
   let activeCacheKey = cacheKey
   if (location.pathname.startsWith('/chat')) {
     activeCacheKey = '/chat'
+  } else if (location.pathname.startsWith('/agent-workspace')) {
+    activeCacheKey = '/agent-workspace'
   } else if (location.pathname.startsWith('/diary/')) {
     activeCacheKey = '/diary'
   } else if (location.pathname.startsWith('/summary/')) {
