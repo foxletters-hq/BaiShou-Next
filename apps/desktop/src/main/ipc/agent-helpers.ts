@@ -17,6 +17,7 @@ import {
   AssistantManagerService
 } from '@baishou/core-desktop'
 import { DesktopAttachmentManagerService } from '../services/desktop-attachment-manager.service'
+import { getAgentGate } from '../services/agent-gate.service'
 import { fileSystem, pathService, vaultService } from './vault.ipc'
 import { settingsManager } from './settings.ipc'
 import {
@@ -33,7 +34,10 @@ import {
   resolveAppUiLanguageFromSystemLocale,
   type AssistantEmojiPrefs,
   DEFAULT_TOOL_MANAGEMENT_CONFIG,
-  resolveWebSearchEnabled
+  resolveWebSearchEnabled,
+  BAISHOU_AGENT_GATE_CONFIG_KEY,
+  DEFAULT_BAISHOU_AGENT_GATE_CONFIG,
+  type BaishouAgentGateConfig
 } from '@baishou/shared'
 
 import { searchService } from '../services/search.service'
@@ -288,6 +292,15 @@ export async function buildAgentUserConfigFromSettings(options?: {
       ? resolveAppUiLanguageFromSystemLocale(app.getLocale())
       : rawLanguage
 
+  const agentGateStored =
+    (await settingsManager.get<BaishouAgentGateConfig>(BAISHOU_AGENT_GATE_CONFIG_KEY)) ??
+    DEFAULT_BAISHOU_AGENT_GATE_CONFIG
+  const baishou_agent_gate_config: BaishouAgentGateConfig = {
+    ...agentGateStored,
+    exclusionList: [...(agentGateStored.exclusionList ?? [])],
+    allowlist: [...(agentGateStored.allowlist ?? [])]
+  }
+
   return {
     ragEnabled: ragConfig?.ragEnabled ?? true,
     hasEmbeddingModel,
@@ -311,7 +324,8 @@ export async function buildAgentUserConfigFromSettings(options?: {
       normalizeEmojiToolConfig(toolManagementConfig.emojiConfig),
       options?.assistantEmojiPrefs ?? { emojiGroupId: options?.emojiGroupId }
     ),
-    locale
+    locale,
+    baishou_agent_gate_config
   }
 }
 
@@ -450,7 +464,8 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
     summaryReader: dbAdapter,
     deduplicationService: dedupService,
     webSearchResultFetcher: createWebSearchResultFetcher(),
-    fetchSearchPage: createFetchSearchPage()
+    fetchSearchPage: createFetchSearchPage(),
+    agentGate: await getAgentGate()
   })
 
   mcpToolContextCache = {

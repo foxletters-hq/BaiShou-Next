@@ -5,6 +5,8 @@ import { registerMessageIPC } from './agent-message.ipc'
 import { registerAttachmentIPC } from './agent-attachment.ipc'
 import { registerPricingIPC } from './pricing.ipc'
 import { registerTtsIPC } from './tts.ipc'
+import { registerAgentGateIPC } from './agent-gate.ipc'
+import { registerAgentWorkspaceIPC } from './agent-workspace.ipc'
 import { TitleGeneratorService } from '@baishou/ai'
 import { getAgentManagers } from './agent-helpers'
 import { BrowserWindow } from 'electron'
@@ -20,6 +22,8 @@ export function registerAgentIPC() {
   registerAttachmentIPC()
   registerPricingIPC()
   registerTtsIPC()
+  registerAgentGateIPC()
+  registerAgentWorkspaceIPC()
 
   // 绑定自动命名成功后的回调，同步到磁盘并通知前端刷新
   TitleGeneratorService.onTitleUpdated = async (sessionId, newTitle) => {
