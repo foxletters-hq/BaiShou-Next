@@ -54,7 +54,11 @@ export const AgentPartTypeSchema = z.enum([
   /** 用户上传的图片（独立 part，对齐多模态 user message 结构） */
   'image',
   'attachment',
-  'context_snapshot'
+  'context_snapshot',
+  /** BaishouAgentGate 伙伴操作门控（待确认 / 已决议） */
+  'agent_gate',
+  /** Agent 工作区文件变更（折叠摘要 + 可选 diff） */
+  'file_change'
 ])
 
 export const AgentPartSchema = z.object({
