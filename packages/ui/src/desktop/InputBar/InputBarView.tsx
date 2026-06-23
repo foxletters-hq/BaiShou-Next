@@ -248,7 +248,7 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
               <textarea
                 ref={textareaRef}
                 className={`${styles.textarea} ${isExpanded ? styles.textareaExpanded : ''}`}
-                placeholder={t('agent.chat.input_hint', 'Type a message...')}
+                placeholder={t('agent.chat.input_hint', 'Type a message… Shift+Enter for new line')}
                 value={text}
                 onChange={handleTextChange}
                 onKeyDown={handleKeyDown}
