@@ -332,12 +332,6 @@ function registerGlobalStreamIpcListeners(): () => void {
   window.addEventListener('baishou:compression-stream-reset', onCompressionStreamReset)
 
   return () => {
-    ipc.removeListener('agent:stream-chunk', onStreamChunk)
-    ipc.removeListener('agent:reasoning-chunk', onReasoningChunk)
-    ipc.removeListener('agent:tool-start', onToolStart)
-    ipc.removeListener('agent:tool-result', onToolResult)
-    ipc.removeListener('agent:stream-finish', onStreamFinish)
-    ipc.removeListener('agent:compression-event', onCompressionEvent)
     window.removeEventListener('baishou:compression-stream-reset', onCompressionStreamReset)
     clearAgentStreamIpcListeners(ipc)
   }
