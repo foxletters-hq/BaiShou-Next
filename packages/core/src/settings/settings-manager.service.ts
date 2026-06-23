@@ -7,8 +7,10 @@ import {
   stripLegacyDefaultSummaryTemplates,
   USER_PROFILE_SETTINGS_KEY,
   normalizePersistedAvatarPath,
+  BAISHOU_AGENT_GATE_CONFIG_KEY,
   type UserProfile,
-  type SummaryConfig
+  type SummaryConfig,
+  type BaishouAgentGateConfig
 } from '@baishou/shared'
 import { SettingsFileService } from './settings-file.service'
 import {
@@ -105,6 +107,14 @@ export class SettingsManagerService {
   async delete(key: string): Promise<void> {
     await this.repo.delete(key)
     await this.flushToDisk()
+  }
+
+  async getBaishouAgentGateConfig(): Promise<BaishouAgentGateConfig> {
+    return this.repo.getBaishouAgentGateConfig()
+  }
+
+  async setBaishouAgentGateConfig(config: BaishouAgentGateConfig): Promise<void> {
+    await this.set(BAISHOU_AGENT_GATE_CONFIG_KEY, config)
   }
 
   private async flushToDiskUnlocked(): Promise<void> {
