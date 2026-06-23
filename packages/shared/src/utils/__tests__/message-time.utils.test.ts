@@ -56,4 +56,10 @@ describe('stripLeakedMessageTimeFromAssistantText', () => {
       '<message-time>2026-01-15 10:00</message-time>\n<message-content>\n回复正文\n</message-content>'
     expect(stripLeakedMessageTimeFromAssistantText(raw)).toBe('回复正文')
   })
+
+  it('unwraps message-content after stray thinking close tag', () => {
+    const raw =
+      '</thinking>\n<message-time>2026-02-10 14:20</message-time>\n<message-content>好的，这个问题我们已经定位到了。</message-content>'
+    expect(stripLeakedMessageTimeFromAssistantText(raw)).toBe('好的，这个问题我们已经定位到了。')
+  })
 })

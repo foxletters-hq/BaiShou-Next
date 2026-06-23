@@ -26,7 +26,9 @@ export const chatBubbleStyles = StyleSheet.create({
   },
   bubbleWrapperAssistant: {
     alignItems: 'flex-start',
-    marginRight: 24
+    marginRight: 24,
+    flex: 1,
+    width: '100%'
   },
   bubbleWrapperEditing: {
     width: '88%',
@@ -54,7 +56,9 @@ export const chatBubbleStyles = StyleSheet.create({
   bubble: {
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 16
+    borderRadius: 16,
+    alignSelf: 'stretch',
+    width: '100%'
   },
   text: {
     fontSize: 15,

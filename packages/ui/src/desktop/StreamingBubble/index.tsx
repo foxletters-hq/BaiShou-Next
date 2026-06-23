@@ -6,6 +6,7 @@ import styles from './StreamingBubble.module.css'
 import { MarkdownRenderer } from '../MarkdownRenderer'
 import { ThinkingBlock } from '../ThinkingBlock'
 import { AssistantAvatar } from '../AssistantAvatar'
+import { parseRedactedThinking } from '../../shared/chat-bubble/redacted-thinking'
 import { motion } from 'framer-motion'
 
 export interface ToolExecution {
@@ -44,36 +45,11 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
   const hasTools = completedTools.length > 0 || !!activeToolName
   const aiName = aiProfile.name || t('agent.chat.ai_label')
 
-  // 零副作用过滤提取 <think> 标签，彻底避免 AI 回复夹带人机/思考杂质
-  const { cleanText, cleanReasoning } = useMemo(() => {
-    let cleanText = text
-    let cleanReasoning = reasoning
-
-    // 1. 匹配并提取完整的 <think>...</think>
-    const thinkRegex = /<think>([\s\S]*?)<\/think>/gi
-    let match
-    while ((match = thinkRegex.exec(text)) !== null) {
-      if (match[1]) {
-        cleanReasoning += (cleanReasoning ? '\n' : '') + match[1].trim()
-      }
-    }
-    cleanText = cleanText.replace(thinkRegex, '')
-
-    // 2. 匹配未闭合的 <think> （如流式输出中）
-    if (cleanText.includes('<think>')) {
-      const parts = cleanText.split('<think>')
-      cleanText = parts[0] || ''
-      const unclosed = parts.slice(1).join('<think>')
-      if (unclosed) {
-        cleanReasoning += (cleanReasoning ? '\n' : '') + unclosed.trim()
-      }
-    }
-
-    return {
-      cleanText: cleanText.trim(),
-      cleanReasoning: cleanReasoning.trim()
-    }
-  }, [text, reasoning])
+  // 零副作用过滤提取 think 标签，并脱壳误泄漏的 message 元数据
+  const { cleanContent: cleanText, cleanReasoning } = useMemo(
+    () => parseRedactedThinking(text, reasoning),
+    [text, reasoning]
+  )
 
   const hasReasoning = cleanReasoning.length > 0
   const hasText = cleanText.length > 0
