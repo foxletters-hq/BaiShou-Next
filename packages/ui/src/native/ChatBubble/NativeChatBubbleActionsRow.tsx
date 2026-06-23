@@ -32,6 +32,7 @@ interface NativeChatBubbleActionsRowProps {
   onSaveEdit?: (content: string) => void
   onDelete?: () => void
   invertMetaOverBackground?: boolean
+  retryDisabled?: boolean
 }
 
 export const NativeChatBubbleActionsRow: React.FC<NativeChatBubbleActionsRowProps> = ({
@@ -49,7 +50,8 @@ export const NativeChatBubbleActionsRow: React.FC<NativeChatBubbleActionsRowProp
   onBranch,
   onSaveEdit,
   onDelete,
-  invertMetaOverBackground = false
+  invertMetaOverBackground = false,
+  retryDisabled = false
 }) => {
   const canEdit = isUser || Boolean(onSaveEdit)
 
@@ -66,6 +68,8 @@ export const NativeChatBubbleActionsRow: React.FC<NativeChatBubbleActionsRowProp
         isAI={isAssistant}
         isTtsPlaying={isTtsPlaying}
         invertOverBackground={invertMetaOverBackground}
+        comfortableTouch
+        retryDisabled={retryDisabled}
       />
       {isAssistant ? <NativeChatBubbleTokenRow colors={colors} message={message} /> : null}
     </View>
@@ -95,20 +99,20 @@ export const NativeChatBubbleEditActions: React.FC<NativeChatBubbleEditActionsPr
     <View style={styles.editActions}>
       <TouchableOpacity
         onPress={onCancel}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        style={[styles.editBtn, { borderColor: colors.borderSubtle }]}
+        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        style={[styles.editBtn, styles.comfortableEditBtn, { borderColor: colors.borderSubtle }]}
       >
-        <Text style={[styles.editBtnText, { color: colors.textSecondary }]}>
+        <Text style={[styles.editBtnText, styles.comfortableEditBtnText, { color: colors.textSecondary }]}>
           {t('common.cancel', '取消')}
         </Text>
       </TouchableOpacity>
       {isUser && onResendEdit && (
         <TouchableOpacity
           onPress={onResendEdit}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          style={[styles.editBtn, { backgroundColor: colors.primary }]}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          style={[styles.editBtn, styles.comfortableEditBtn, { backgroundColor: colors.primary }]}
         >
-          <Text style={[styles.editBtnText, { color: colors.textOnPrimary }]}>
+          <Text style={[styles.editBtnText, styles.comfortableEditBtnText, { color: colors.textOnPrimary }]}>
             {t('agent.chat.resend', '重新发送')}
           </Text>
         </TouchableOpacity>
@@ -116,10 +120,10 @@ export const NativeChatBubbleEditActions: React.FC<NativeChatBubbleEditActionsPr
       {isAssistant && onSaveEdit && (
         <TouchableOpacity
           onPress={onSaveEdit}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          style={[styles.editBtn, { backgroundColor: colors.primary }]}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          style={[styles.editBtn, styles.comfortableEditBtn, { backgroundColor: colors.primary }]}
         >
-          <Text style={[styles.editBtnText, { color: colors.textOnPrimary }]}>
+          <Text style={[styles.editBtnText, styles.comfortableEditBtnText, { color: colors.textOnPrimary }]}>
             {t('common.save', '保存')}
           </Text>
         </TouchableOpacity>

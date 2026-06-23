@@ -13,6 +13,7 @@ interface NativeIconButtonProps {
   active?: boolean
   loading?: boolean
   danger?: boolean
+  disabled?: boolean
   accessibilityLabel?: string
   style?: ViewStyle
 }
@@ -25,18 +26,25 @@ export const NativeIconButton: React.FC<NativeIconButtonProps> = ({
   active = false,
   loading = false,
   danger = false,
+  disabled = false,
   accessibilityLabel,
   style
 }) => {
   const { colors } = useNativeTheme()
   const iconColor =
     color ?? (danger ? colors.error : active ? colors.primary : colors.textSecondary)
+  const isDisabled = disabled || !onPress
 
   return (
     <TouchableOpacity
-      style={[styles.btn, active && { backgroundColor: colors.primaryLight }, style]}
+      style={[
+        styles.btn,
+        active && { backgroundColor: colors.primaryLight },
+        isDisabled && styles.disabled,
+        style
+      ]}
       onPress={onPress}
-      disabled={!onPress}
+      disabled={isDisabled}
       activeOpacity={0.6}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       accessibilityLabel={accessibilityLabel}
@@ -59,5 +67,8 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center'
+  },
+  disabled: {
+    opacity: 0.4
   }
 })

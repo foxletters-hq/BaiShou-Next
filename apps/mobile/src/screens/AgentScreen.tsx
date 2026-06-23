@@ -71,6 +71,8 @@ import {
 import { writeAgentNavigationSnapshot } from '../lib/agent-navigation-persistence'
 import { consumeAssistantsNeedRefresh } from '../lib/assistant-ui-refresh-signal'
 import { waitForVaultEcosystemResync } from '../services/mobile-vault-resync.service'
+import { useAgentComposerDraftKey } from '../hooks/useAgentComposerDraftKey'
+import { mobileComposerDraftStorage } from '../lib/mobile-composer-draft.storage'
 import { useThrottledFocusRefresh } from '../hooks/useThrottledFocusRefresh'
 
 /** 底部输入栏 + 工具条的大致高度，用于「回到底部」悬浮按钮定位 */
@@ -137,7 +139,8 @@ export const AgentScreen = () => {
     handleSelectAssistant,
     handleSelectModel,
     setCurrentAssistant,
-    syncWithSession
+    syncWithSession,
+    hasConfiguredDialogueModel
   } = useAgentModel()
 
   const { sessions, hasMoreSessions, isLoadingMoreSessions, sessionListScrollKey, loadSessions } =
@@ -171,6 +174,8 @@ export const AgentScreen = () => {
     modelId: currentModelId ?? undefined
   })
 
+  const composerDraftKey = useAgentComposerDraftKey(currentSessionId)
+
   useEffect(() => {
     syncWithSession(currentSessionId)
   }, [currentSessionId, syncWithSession])
@@ -200,6 +205,8 @@ export const AgentScreen = () => {
 
   const {
     isStreaming,
+    isStreamBridgeActive,
+    isRetryActionBusy,
     isCompressing,
     compressionPhase,
     compressionText,
@@ -743,10 +750,37 @@ export const AgentScreen = () => {
   )
 
   const showStreamingFooter = useMemo(() => {
-    if (!isStreaming || isCompressing) return false
     const lastMessage = messages[messages.length - 1]
-    return lastMessage?.role !== 'assistant'
-  }, [isStreaming, isCompressing, messages])
+    const assistantPersistedDuringBridge =
+      (isStreaming || isStreamBridgeActive) &&
+      lastMessage?.role === 'assistant' &&
+      Boolean(
+        lastMessage.content?.trim() ||
+          lastMessage.reasoning?.trim() ||
+          (lastMessage.toolInvocations?.length ?? 0) > 0
+      )
+
+    if (assistantPersistedDuringBridge) return false
+
+    const showStreamingBubble =
+      (isStreaming || isStreamBridgeActive) &&
+      (!isCompressing ||
+        Boolean(streamingText.trim()) ||
+        Boolean(streamingReasoning.trim()) ||
+        activeTool ||
+        completedTools.length > 0)
+
+    return showStreamingBubble && lastMessage?.role !== 'assistant'
+  }, [
+    isStreaming,
+    isStreamBridgeActive,
+    isCompressing,
+    messages,
+    streamingText,
+    streamingReasoning,
+    activeTool,
+    completedTools.length
+  ])
 
   const renderEmptyState = () => (
     <View style={styles.empty}>
@@ -897,6 +931,7 @@ export const AgentScreen = () => {
                         }
                         onBubbleEditingChange={handleBubbleEditingChange}
                         invertMetaOverBackground={hasChatBackground}
+                        retryDisabled={isRetryActionBusy || isStreaming || isCompressing}
                       />
                     </View>
                   )
@@ -981,6 +1016,12 @@ export const AgentScreen = () => {
                 onSend={handleSend}
                 isLoading={isLoading || isStreaming}
                 onStop={handleStop}
+                composerBlocked={!hasConfiguredDialogueModel}
+                onComposerBlocked={() =>
+                  toast.showInfo(t('agent.error.no_model', '请先在顶部选择一个模型'))
+                }
+                composerDraftKey={composerDraftKey}
+                composerDraftStorage={mobileComposerDraftStorage}
                 composerEnabled={!isBubbleEditing}
                 onInputFocus={handleInputBarFocus}
                 shortcuts={shortcuts}

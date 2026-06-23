@@ -38,7 +38,8 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   onReadAloud,
   isTtsPlaying,
   onEditingChange,
-  invertMetaOverBackground = false
+  invertMetaOverBackground = false,
+  retryDisabled = false
 }) => {
   const { t } = useTranslation()
   const { colors, isDark } = useNativeTheme()
@@ -129,7 +130,13 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
           ]}
         >
           {isAssistant && cleanReasoning ? (
-            <View style={{ marginBottom: cleanContent || toolInvocations.length ? 8 : 0 }}>
+            <View
+              style={{
+                marginBottom: cleanContent || toolInvocations.length ? 8 : 0,
+                alignSelf: 'stretch',
+                width: '100%'
+              }}
+            >
               <ThinkingBlock
                 content={cleanReasoning}
                 isThinking={false}
@@ -197,6 +204,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
             onSaveEdit={onSaveEdit}
             onDelete={onDelete}
             invertMetaOverBackground={invertMetaOverBackground}
+            retryDisabled={retryDisabled}
           />
         )}
       </View>

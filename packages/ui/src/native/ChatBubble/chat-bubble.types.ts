@@ -39,4 +39,6 @@ export interface ChatBubbleProps {
   onEditingChange?: (editing: boolean, messageId?: string) => void
   /** 自定义聊天背景上为名称与操作按钮启用反色混合 */
   invertMetaOverBackground?: boolean
+  /** 重试/重新发送处理中时禁用，避免连点 */
+  retryDisabled?: boolean
 }
