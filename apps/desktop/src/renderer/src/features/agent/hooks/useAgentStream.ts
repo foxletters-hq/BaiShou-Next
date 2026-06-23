@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef, useContext } from 'react'
+import type { AgentGateReply, AgentGateRequest } from '@baishou/shared'
 import { MainPageCacheActiveContext } from '../../../layouts/main-page-cache.context'
 import {
   ensureGlobalStreamIpcListeners,
@@ -70,6 +71,15 @@ export interface UseAgentStreamResult {
   ) => Promise<void>
   stopChat: () => void
   reset: () => void
+  beginStreaming: (sessionId: string) => void
+  pendingAgentGate: AgentGateRequest | null
+  isAgentGateReplying: boolean
+  replyAgentGate: (input: {
+    requestId: string
+    reply: AgentGateReply
+    message?: string
+    selectedOptionIds?: string[]
+  }) => Promise<void>
 }
 
 export function useAgentStream(currentSessionId?: string): UseAgentStreamResult {
@@ -276,6 +286,8 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
       state.compressionText = ''
       state.compressionReasoning = ''
       state.compressionTriggerMessageId = null
+      state.pendingAgentGate = null
+      state.isAgentGateReplying = false
       clearStreamBridgeState(state)
     })
   }, [currentSessionId])
@@ -295,7 +307,9 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
         completedTools: [],
         pendingEmojis: [],
         error: null,
-        isBridgeActive: false
+        isBridgeActive: false,
+        pendingAgentGate: null,
+        isAgentGateReplying: false
       }
 
   return {
@@ -312,11 +326,15 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
     completedTools: activeState.completedTools,
     pendingEmojis: activeState.pendingEmojis,
     error: activeState.error,
+    pendingAgentGate: activeState.pendingAgentGate,
+    isAgentGateReplying: activeState.isAgentGateReplying,
     saveUserMessage,
     startChat,
     editChat,
     resendChat,
     stopChat,
-    reset
+    reset,
+    beginStreaming,
+    replyAgentGate
   }
 }

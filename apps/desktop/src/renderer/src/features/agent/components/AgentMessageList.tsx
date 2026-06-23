@@ -12,8 +12,10 @@ import {
   StreamingBubble,
   CompressionDivider,
   CompressionActivityBar,
+  AgentGatePartBubble,
   resolveActiveToolDisplayName
 } from '@baishou/ui'
+import type { AgentGatePartData } from '@baishou/shared'
 import { useSettingsStore } from '@baishou/store'
 import { useMessageActions } from '../hooks/useMessageActions'
 import styles from '../AgentScreen.module.css'
@@ -366,6 +368,9 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
               : (persistedCompaction?.phase ?? 'auto')
 
             const bubbleAttachments = msg.attachments ?? mapAttachmentsFromParts(msg.parts)
+            const agentGateParts = (msg.parts ?? []).filter(
+              (part: { type?: string }) => part.type === 'agent_gate'
+            )
 
             const bubbleMessage = {
               id: msg.id,
@@ -386,6 +391,9 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
 
             return (
               <React.Fragment key={msg.id}>
+                {agentGateParts.map((part: { id: string; data?: unknown }) => (
+                  <AgentGatePartBubble key={part.id} data={part.data as AgentGatePartData} />
+                ))}
                 <ChatBubble
                   message={bubbleMessage}
                   userProfile={{
