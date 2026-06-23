@@ -21,4 +21,27 @@ describe('parseRedactedThinking', () => {
     expect(result.cleanReasoning).toBe('已有推理')
     expect(result.cleanContent).toBe('好的，这个问题我们已经定位到了。')
   })
+
+  it('moves content after close tag in reasoning stream back to body', () => {
+    const reasoning = `Let me summarize Jan-May.${CLOSE_REDacted}好的，我把一月到五月的月度总结都翻出来了。`
+    const content = '🗓️ 前五个月速览'
+    const result = parseRedactedThinking(content, reasoning)
+
+    expect(result.cleanReasoning).toBe('Let me summarize Jan-May.')
+    expect(result.cleanContent).toContain('好的，我把一月到五月的月度总结都翻出来了。')
+    expect(result.cleanContent).toContain('🗓️ 前五个月速览')
+    expect(result.cleanReasoning).not.toContain(CLOSE_REDacted)
+    expect(result.cleanReasoning).not.toContain('好的')
+  })
+
+  it('strips leading close tag from text stream when thinking lived in reasoning channel', () => {
+    const reasoning = 'English planning for the reply.'
+    const content = `${CLOSE_REDacted}\n好的，开头段落。\n\n## 标题`
+    const result = parseRedactedThinking(content, reasoning)
+
+    expect(result.cleanReasoning).toBe('English planning for the reply.')
+    expect(result.cleanContent).toContain('好的，开头段落。')
+    expect(result.cleanContent).toContain('## 标题')
+    expect(result.cleanContent).not.toContain(CLOSE_REDacted)
+  })
 })
