@@ -28,6 +28,7 @@ import { SettingsContentView } from './SettingsContentView'
 import { getSettingsRouteSegment, settingsPathForScope } from './settings-route.util'
 import { resolveSettingsReturnPath } from './settings-navigation.util'
 import { pathnameToSettingsTabId, SETTINGS_TAB_SEGMENTS } from './settings-tabs.util'
+import { useRagRuntimeBridge } from './hooks/useRagRuntimeBridge'
 
 type SettingsTabItem =
   | { kind: 'divider' }
@@ -42,6 +43,7 @@ export const SettingsShell: React.FC = () => {
   const location = useLocation()
   const [isClosing, setIsClosing] = useState(false)
   const activeTab = pathnameToSettingsTabId(location.pathname)
+  useRagRuntimeBridge()
 
   const TABS = useMemo<SettingsTabItem[]>(
     () => [

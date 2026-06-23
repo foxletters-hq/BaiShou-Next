@@ -264,6 +264,36 @@ export class DiaryService {
     return null
   }
 
+  /**
+   * 批量加载日记正文供 RAG 嵌入：优先使用影子索引中的 rawContent，避免逐篇读磁盘。
+   */
+  async findByIdsForEmbedding(ids: number[]): Promise<Map<number, Diary>> {
+    const result = new Map<number, Diary>()
+    if (ids.length === 0) return result
+
+    const rows = await this.shadowRepo.findByIds(ids)
+    const diskFallbackIds: number[] = []
+
+    for (const shadow of rows) {
+      const dateStr = String(shadow.date).split('T')[0]!
+      const date = parseDateStr(dateStr)
+      if (shadow.rawContent?.trim()) {
+        result.set(shadow.id, this.buildDiaryFromShadowRow(shadow, date))
+      } else {
+        diskFallbackIds.push(shadow.id)
+      }
+    }
+
+    for (const id of diskFallbackIds) {
+      const diary = await this.findById(id)
+      if (diary?.id) {
+        result.set(id, diary)
+      }
+    }
+
+    return result
+  }
+
   private buildDiaryFromShadowRow(
     shadow: NonNullable<Awaited<ReturnType<ShadowIndexRepository['findById']>>>,
     date: Date

@@ -1,6 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useSyncExternalStore } from 'react'
 import { useRagSystem } from './useRagSystem'
 import { useRagActions } from './useRagActions'
+import {
+  getCachedRagStats,
+  setCachedRagStats,
+  subscribeRagRuntime
+} from '../rag-runtime-cache'
 
 interface UseRagSettingsProps {
   settings: any
@@ -16,6 +21,14 @@ interface UseRagSettingsProps {
   alert: (message: string, title?: string) => Promise<void>
 }
 
+function useRagStatsFromCache() {
+  return useSyncExternalStore(
+    subscribeRagRuntime,
+    () => getCachedRagStats(),
+    () => getCachedRagStats()
+  )
+}
+
 export function useRagSettings({
   settings,
   t,
@@ -24,13 +37,9 @@ export function useRagSettings({
   prompt,
   alert
 }: UseRagSettingsProps) {
-  const [ragStats, setRagStats] = useState<any>({
-    totalCount: 0,
-    currentDimension: 0,
-    totalSizeText: '0 KB'
-  })
+  const ragStats = useRagStatsFromCache()
   const [ragEntries, setRagEntries] = useState<any[]>([])
-  const [ragTotalCount, setRagTotalCount] = useState(0)
+  const [ragTotalCount, setRagTotalCount] = useState(() => getCachedRagStats().totalCount)
 
   const [searchQuery, setSearchQuery] = useState('')
   const [searchMode, setSearchMode] = useState<'semantic' | 'text'>('semantic')
@@ -44,9 +53,6 @@ export function useRagSettings({
 
   const loadRagData = async (q: string, mode: 'semantic' | 'text', page: number, size: number) => {
     try {
-      const s = await (window as any).api?.rag?.getStats()
-      if (s) setRagStats(s)
-
       const limit = size
       const offset = (page - 1) * limit
       const params: any = { limit, offset, mode, withTotal: true }
@@ -59,7 +65,18 @@ export function useRagSettings({
         }
       }
 
-      const res = await (window as any).api?.rag?.queryEntries(params)
+      const [statsResult, entriesResult] = await Promise.all([
+        (window as any).api?.rag?.getStats(),
+        (window as any).api?.rag?.queryEntries(params)
+      ])
+
+      if (statsResult) {
+        setCachedRagStats(statsResult)
+      }
+
+      const s = statsResult ?? getCachedRagStats()
+      const res = entriesResult
+
       if (res) {
         if (res.entries && typeof res.total === 'number') {
           const total = res.total
@@ -83,6 +100,8 @@ export function useRagSettings({
           setRagEntries(res)
           setRagTotalCount(s ? s.totalCount || 0 : 0)
         }
+      } else if (s) {
+        setRagTotalCount(s.totalCount || 0)
       }
 
       await checkMigrationStatus()
@@ -126,6 +145,12 @@ export function useRagSettings({
     handleExportEmbeddings,
     handleManageBackups
   } = useRagActions(t, toast, confirm, prompt, alert, fetchRagInfo, setIsProcessing)
+
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setRagTotalCount(ragStats.totalCount)
+    }
+  }, [ragStats.totalCount, searchQuery])
 
   useEffect(() => {
     loadRagData(searchQuery, searchMode, currentPage, pageSize)

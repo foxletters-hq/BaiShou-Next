@@ -149,6 +149,10 @@ export async function runControlledDiaryBatchEmbed(
 
   await embeddingService.prepareEmbeddingIndex()
 
+  const diaryById = await getDiaryManager().findByIdsForEmbedding(
+    diariesToEmbed.map((meta) => meta.id)
+  )
+
   let completed = 0
   let embedded = 0
   let loadSkipped = 0
@@ -161,7 +165,7 @@ export async function runControlledDiaryBatchEmbed(
       total
     )
 
-    const diary = await getDiaryManager().findById(meta.id)
+    const diary = diaryById.get(meta.id)
     if (!diary?.id || !diary.content?.trim()) {
       loadSkipped++
       completed++
