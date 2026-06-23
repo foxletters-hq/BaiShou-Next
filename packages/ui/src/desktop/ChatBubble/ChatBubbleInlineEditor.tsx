@@ -33,7 +33,7 @@ export const ChatBubbleInlineEditor: React.FC<ChatBubbleInlineEditorProps> = ({
         value={editedContent}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={onKeyDown}
-        rows={3}
+        rows={10}
       />
       <div className={styles.editorActions}>
         <button

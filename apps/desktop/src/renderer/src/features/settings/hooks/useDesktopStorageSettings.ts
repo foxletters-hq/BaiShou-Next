@@ -29,6 +29,7 @@ function getStorageApi() {
           path: string | null
           defaultPath: string
           journalFileCount: number
+          pathAvailableOnDevice?: boolean
         }>
         pickExternalJournalsDirectory?: () => Promise<string | null>
         setExternalJournalsDirectory?: (targetPath: string) => Promise<{
@@ -41,6 +42,7 @@ function getStorageApi() {
           path: string | null
           defaultPath: string
           summaryFileCount: number
+          pathAvailableOnDevice?: boolean
         }>
         pickExternalSummariesDirectory?: () => Promise<string | null>
         setExternalSummariesDirectory?: (targetPath: string) => Promise<{
@@ -76,11 +78,13 @@ export function useDesktopStorageSettings(onStatsRefresh?: () => Promise<void>) 
   const [externalJournalsFileCount, setExternalJournalsFileCount] = useState<number | undefined>(
     undefined
   )
+  const [externalJournalsPathAvailable, setExternalJournalsPathAvailable] = useState(true)
   const [externalSummariesPath, setExternalSummariesPath] = useState<string | null>(null)
   const [externalSummariesDefaultPath, setExternalSummariesDefaultPath] = useState('')
   const [externalSummariesFileCount, setExternalSummariesFileCount] = useState<number | undefined>(
     undefined
   )
+  const [externalSummariesPathAvailable, setExternalSummariesPathAvailable] = useState(true)
   const [storageBusy, setStorageBusy] = useState<StorageBusyState>('idle')
   const [migrationProgress, setMigrationProgress] = useState('')
 
@@ -95,12 +99,14 @@ export function useDesktopStorageSettings(onStatsRefresh?: () => Promise<void>) 
         setExternalJournalsPath(journalsInfo.path)
         setExternalJournalsDefaultPath(journalsInfo.defaultPath)
         setExternalJournalsFileCount(journalsInfo.journalFileCount)
+        setExternalJournalsPathAvailable(journalsInfo.pathAvailableOnDevice ?? true)
       }
       const summariesInfo = await getStorageApi()?.getExternalSummariesInfo?.()
       if (summariesInfo) {
         setExternalSummariesPath(summariesInfo.path)
         setExternalSummariesDefaultPath(summariesInfo.defaultPath)
         setExternalSummariesFileCount(summariesInfo.summaryFileCount)
+        setExternalSummariesPathAvailable(summariesInfo.pathAvailableOnDevice ?? true)
       }
       if (onStatsRefresh) {
         await onStatsRefresh()
@@ -462,9 +468,11 @@ export function useDesktopStorageSettings(onStatsRefresh?: () => Promise<void>) 
     externalJournalsPath,
     externalJournalsDefaultPath,
     externalJournalsFileCount,
+    externalJournalsPathAvailable,
     externalSummariesPath,
     externalSummariesDefaultPath,
     externalSummariesFileCount,
+    externalSummariesPathAvailable,
     storageBusy,
     overlayVisible,
     overlayMessage,
