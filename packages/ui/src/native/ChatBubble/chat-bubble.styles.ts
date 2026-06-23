@@ -28,7 +28,8 @@ export const chatBubbleStyles = StyleSheet.create({
     alignItems: 'flex-start',
     marginRight: 24,
     flex: 1,
-    width: '100%'
+    width: '88%',
+    maxWidth: '88%'
   },
   bubbleWrapperEditing: {
     width: '88%',
@@ -103,6 +104,14 @@ export const chatBubbleStyles = StyleSheet.create({
   editBtnText: {
     fontSize: 13,
     fontWeight: '600'
+  },
+  comfortableEditBtn: {
+    minHeight: 32,
+    paddingHorizontal: 14,
+    paddingVertical: 7
+  },
+  comfortableEditBtnText: {
+    fontSize: 13
   },
   actionsRow: {
     flexDirection: 'row',
