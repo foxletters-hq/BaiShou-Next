@@ -2,6 +2,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Platform } from 'react-native'
 import type { IFileSystem, IStoragePathService } from '@baishou/core-mobile'
 import { sanitizeVaultDirectoryName } from '@baishou/core-mobile'
+import {
+  readVaultExternalPaths,
+  resolveJournalsBaseDirectory,
+  resolveSummariesBaseDirectory
+} from '@baishou/core-mobile'
 import { getAppDocumentDirectory } from './mobile-app-paths'
 import { joinStoragePath } from './mobile-storage-path.util'
 import {
@@ -288,16 +293,30 @@ export class MobileStoragePathService implements IStoragePathService {
 
   public async getJournalsBaseDirectory(): Promise<string> {
     const name = await this.getActiveVaultName()
-    const dir = `${await this.getVaultDirectory(name)}/Journals`
-    await this.ensureDir(dir)
-    return dir
+    const vaultDir = await this.getVaultDirectory(name)
+    const sysDir = await this.getVaultSystemDirectory(name)
+    const external = await readVaultExternalPaths(this.fileSystem, sysDir)
+    const resolved = resolveJournalsBaseDirectory(vaultDir, external)
+    if (external.journalsDirectory?.trim() && (await this.fileSystem.exists(resolved))) {
+      return resolved
+    }
+    const internal = joinStoragePath(vaultDir, 'Journals')
+    await this.ensureDir(internal)
+    return internal
   }
 
   public async getSummariesBaseDirectory(): Promise<string> {
     const name = await this.getActiveVaultName()
-    const dir = `${await this.getVaultDirectory(name)}/Archives`
-    await this.ensureDir(dir)
-    return dir
+    const vaultDir = await this.getVaultDirectory(name)
+    const sysDir = await this.getVaultSystemDirectory(name)
+    const external = await readVaultExternalPaths(this.fileSystem, sysDir)
+    const resolved = resolveSummariesBaseDirectory(vaultDir, external)
+    if (external.summariesDirectory?.trim() && (await this.fileSystem.exists(resolved))) {
+      return resolved
+    }
+    const internal = joinStoragePath(vaultDir, 'Archives')
+    await this.ensureDir(internal)
+    return internal
   }
 
   public async getLegacyArchivesDirectory(): Promise<string | null> {

@@ -54,6 +54,8 @@ import {
   type SessionTouchState
 } from './mobile-incremental-flush.util'
 import { scanIncrementalSyncFilesForManifest } from './mobile-incremental-sync-scan.util'
+import { resolveMobileIncrementalSyncFullPath } from './mobile-incremental-sync-path.util'
+import { loadVaultExternalSyncMounts, type VaultExternalSyncMount } from '@baishou/core-mobile'
 import {
   resolveSyncFileConcurrencyFromDecisions,
   shouldTrustRemoteHashAfterDownload
@@ -151,6 +153,7 @@ export class MobileIncrementalEngine {
   /** 用户确认规划后、执行同步前复用的远端 manifest（跳过一次远端拉取） */
   private pendingSyncRemoteManifest: SyncManifest | null = null
   private manifestCommitQueue = new IncrementalManifestCommitQueue()
+  private externalSyncMounts: VaultExternalSyncMount[] | null = null
 
   constructor(
     private readonly pathService: IStoragePathService,
@@ -160,6 +163,27 @@ export class MobileIncrementalEngine {
 
   getLastConflicts(): string[] {
     return [...this.lastConflicts]
+  }
+
+  private invalidateExternalSyncMounts(): void {
+    this.externalSyncMounts = null
+  }
+
+  private async getExternalSyncMounts(syncRoot: string): Promise<VaultExternalSyncMount[]> {
+    if (!this.externalSyncMounts) {
+      this.externalSyncMounts = await loadVaultExternalSyncMounts(this.fileSystem, syncRoot)
+    }
+    return this.externalSyncMounts
+  }
+
+  private async resolveSyncFullPath(syncRoot: string, relPath: string): Promise<string> {
+    const mounts = await this.getExternalSyncMounts(syncRoot)
+    return resolveMobileIncrementalSyncFullPath(
+      this.fileSystem,
+      syncRoot,
+      relPath,
+      mounts
+    )
   }
 
   beginPlanSession(): void {
@@ -351,7 +375,7 @@ export class MobileIncrementalEngine {
     const total = pathsToRehash.length
     let done = 0
     await limitExecute(pathsToRehash, MANIFEST_HASH_CONCURRENCY, async (relPath) => {
-      const fullPath = joinPath(syncRoot, relPath)
+      const fullPath = await this.resolveSyncFullPath(syncRoot, relPath)
       const stat = await this.fileSystem.stat(fullPath).catch(() => null)
       if (!stat?.isFile) {
         delete manifest.files[relPath]
@@ -391,7 +415,7 @@ export class MobileIncrementalEngine {
     }
 
     const applyDownloadedEntry = async (relPath: string, remoteEntry: ManifestEntry | null) => {
-      const fullPath = joinPath(syncRoot, relPath)
+      const fullPath = await this.resolveSyncFullPath(syncRoot, relPath)
       const stat = await this.fileSystem.stat(fullPath).catch(() => null)
       if (!stat?.isFile) {
         delete next.files[relPath]
@@ -779,7 +803,7 @@ export class MobileIncrementalEngine {
   }
 
   private async backupLocalFile(syncRoot: string, relPath: string): Promise<void> {
-    const src = joinPath(syncRoot, relPath)
+    const src = await this.resolveSyncFullPath(syncRoot, relPath)
     if (!(await this.fileSystem.exists(src))) return
     const backupFile = joinPath(syncRoot, '.versions', relPath, `${Date.now()}.bak`)
     const bdir = backupFile.replace(/\/[^/]+$/, '')
@@ -798,9 +822,10 @@ export class MobileIncrementalEngine {
     runOptions?: IncrementalSyncRunOptions,
     execution?: MobileIncrementalExecutionContext
   ): Promise<MobileIncrementalSyncOutcome> {
+    const syncRoot = await this.syncRoot()
+    this.invalidateExternalSyncMounts()
     const reusedLocalManifest = this.takePendingSyncLocalManifest()
     const reusedRemoteManifest = this.takePendingSyncRemoteManifest()
-    const syncRoot = await this.syncRoot()
     const metaDir = await this.syncMetaDir()
     const client = new MobileIncrementalCloudClient(config, this.fileSystem)
     client.setVaultPath(syncRoot)
@@ -891,7 +916,7 @@ export class MobileIncrementalEngine {
         return undefined
       }
 
-      const fullPath = joinPath(syncRoot, d.filePath)
+      const fullPath = await this.resolveSyncFullPath(syncRoot, d.filePath)
       const action = resolveAction()
       if (action === 'upload' || action === 'download') {
         this.trackInFlightTransfer(inFlight, fullPath, d.filePath, action)
