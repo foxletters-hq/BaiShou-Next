@@ -311,7 +311,7 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
     const metaDir = await this.getSyncMetaDirectory()
     const manifestPath = path.join(metaDir, SYNC_MANIFEST_FILENAME)
     if (fs.existsSync(manifestPath)) {
-      await this.cloudClient.uploadFile(manifestPath)
+      await this.cloudClient.uploadFile(manifestPath, `.baishou/${SYNC_MANIFEST_FILENAME}`)
     }
   }
 
@@ -332,7 +332,7 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
     }
     const fullPath = await this.resolveSyncFullPath(relPath)
     if (fs.existsSync(fullPath)) {
-      await this.cloudClient.uploadFile(fullPath)
+      await this.cloudClient.uploadFile(fullPath, relPath.replace(/\\/g, '/'))
     }
   }
 

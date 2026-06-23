@@ -5,6 +5,7 @@ import type { S3SyncConfig } from '@baishou/shared'
 import {
   shouldIncludeIncrementalSyncFileWithExternalConfig,
   shouldScanIncrementalSyncDirectoryWithExternalMounts,
+  shouldExcludeIncrementalSyncRootScanEntry,
   migrateLegacyIncrementalSyncConfig,
   type VaultExternalSyncMount,
   resolveIncrementalSyncRelPath
@@ -112,10 +113,16 @@ export abstract class ThreeWaySyncCore {
         const fullPath = path.join(dir, entry.name)
         const relPath = relativePath ? path.join(relativePath, entry.name) : entry.name
         if (entry.isDirectory()) {
-          if (shouldScanIncrementalSyncDirectoryWithExternalMounts(entry.name, relPath, mounts)) {
+          if (
+            shouldScanIncrementalSyncDirectoryWithExternalMounts(entry.name, relPath, mounts) &&
+            !shouldExcludeIncrementalSyncRootScanEntry(fullPath, relPath, mounts)
+          ) {
             await scan(fullPath, relPath)
           }
-        } else if (shouldIncludeIncrementalSyncFileWithExternalConfig(entry.name, relPath)) {
+        } else if (
+          shouldIncludeIncrementalSyncFileWithExternalConfig(entry.name, relPath) &&
+          !shouldExcludeIncrementalSyncRootScanEntry(fullPath, relPath, mounts)
+        ) {
           files.add(relPath.replace(/\\/g, '/'))
         }
       }

@@ -3,11 +3,15 @@ import type { IFileSystem } from '../fs/file-system.types'
 import * as path from '../fs/path.util'
 import { IStoragePathService } from '../vault/storage-path.types'
 import { parseJournalMarkdown } from './journal-markdown.parser'
-import { resolveJournalFilePath } from '../journal/journal-files.util'
+import {
+  resolveJournalFilePath,
+  resolveShadowJournalAbsolutePath
+} from '../journal/journal-files.util'
 
 export interface FileSyncService {
   writeJournal(diary: CreateDiaryInput | Diary): Promise<void>
-  readJournal(date: Date): Promise<Diary | null>
+  /** @param shadowFilePath 影子索引中的相对路径，用于非标准嵌套布局 */
+  readJournal(date: Date, shadowFilePath?: string): Promise<Diary | null>
   deleteJournalFile(date: Date): Promise<void>
   fullScanVault(): Promise<void>
 }
@@ -83,10 +87,13 @@ export class FileSyncServiceImpl implements FileSyncService {
     await this.fileSystem.writeFile(filePath, lines.join('\n'), 'utf8')
   }
 
-  async readJournal(date: Date): Promise<Diary | null> {
+  async readJournal(date: Date, shadowFilePath?: string): Promise<Diary | null> {
     const rootPath = await this.pathService.getJournalsBaseDirectory()
     const dateStr = formatLocalDate(date)
-    const filePath = await resolveJournalFilePath(this.fileSystem, rootPath, dateStr)
+    const hintPath = shadowFilePath
+      ? resolveShadowJournalAbsolutePath(rootPath, shadowFilePath)
+      : undefined
+    const filePath = await resolveJournalFilePath(this.fileSystem, rootPath, dateStr, hintPath)
     if (!filePath) return null
 
     const raw = await this.fileSystem.readFile(filePath, 'utf8')

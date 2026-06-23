@@ -463,4 +463,71 @@ describe('DiaryService - Single Source of Truth architecture', () => {
       expect(mockShadowRepo.searchFTS).toHaveBeenCalledTimes(2)
     })
   })
+
+  describe('findById', () => {
+    it('passes shadow file path when reading from disk', async () => {
+      const date = parseDateStr('2025-08-01')
+      mockShadowSync.syncJournal.mockResolvedValue({ isChanged: false, meta: null })
+      mockShadowRepo.findById.mockResolvedValue({
+        id: 10,
+        date: '2025-08-01',
+        filePath: '2.日记/2025/08/2025-08-01.md',
+        contentHash: '',
+        createdAt: '',
+        updatedAt: '',
+        isFavorite: false,
+        hasMedia: false,
+        weather: null,
+        mood: null,
+        location: null,
+        locationDetail: null,
+        vaultName: 'TestVault',
+        rawContent: '影子正文'
+      })
+      mockFileSync.readJournal.mockResolvedValue({
+        id: 10,
+        date,
+        content: '磁盘正文',
+        isFavorite: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        mediaPaths: []
+      })
+
+      const result = await service.findById(10)
+
+      expect(mockFileSync.readJournal).toHaveBeenCalledWith(date, '2.日记/2025/08/2025-08-01.md')
+      expect(result?.content).toBe('磁盘正文')
+    })
+
+    it('falls back to shadow raw content when disk read is empty', async () => {
+      const date = parseDateStr('2025-08-02')
+      mockShadowSync.syncJournal.mockResolvedValue({ isChanged: false, meta: null })
+      mockShadowRepo.findById.mockResolvedValue({
+        id: 11,
+        date: '2025-08-02',
+        filePath: 'missing/2025-08-02.md',
+        contentHash: '',
+        createdAt: '',
+        updatedAt: '2025-08-02T10:00:00.000Z',
+        isFavorite: true,
+        hasMedia: false,
+        weather: null,
+        mood: null,
+        location: null,
+        locationDetail: null,
+        vaultName: 'TestVault',
+        rawContent: '仅影子索引中的正文',
+        tags: 'a,b'
+      })
+      mockFileSync.readJournal.mockResolvedValue(null)
+
+      const result = await service.findById(11)
+
+      expect(result?.id).toBe(11)
+      expect(result?.content).toBe('仅影子索引中的正文')
+      expect(result?.tags).toBe('a,b')
+      expect(result?.isFavorite).toBe(true)
+    })
+  })
 })

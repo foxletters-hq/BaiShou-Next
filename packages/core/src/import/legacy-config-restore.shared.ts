@@ -174,12 +174,6 @@ async function restoreAgentBehavior(
   if (config['agent_context_window_size'] !== undefined) {
     behavior.agentContextWindowSize = config['agent_context_window_size'] as number
   }
-  if (config['companion_compress_tokens'] !== undefined) {
-    behavior.companionCompressTokens = config['companion_compress_tokens'] as number
-  }
-  if (config['companion_truncate_tokens'] !== undefined) {
-    behavior.companionTruncateTokens = config['companion_truncate_tokens'] as number
-  }
   if (config['agent_persona']) behavior.agentPersona = config['agent_persona'] as string
   if (config['agent_guidelines']) behavior.agentGuidelines = config['agent_guidelines'] as string
   await settingsRepo.setAgentBehaviorConfig(behavior)

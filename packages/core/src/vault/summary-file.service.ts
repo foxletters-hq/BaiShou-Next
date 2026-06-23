@@ -86,11 +86,7 @@ export class SummaryFileService {
     return fullPath
   }
 
-  private async readSummaryFileAt(
-    typeDir: string,
-    type: SummaryType,
-    fileName: string
-  ): Promise<string | null> {
+  private async readSummaryFileAt(typeDir: string, fileName: string): Promise<string | null> {
     const fullPath = await findExistingSummaryFileInTypeDir(
       this.fileSystem,
       typeDir,
@@ -128,7 +124,7 @@ export class SummaryFileService {
     // 优先尝试读取标准格式文件名
     for (const baseDir of searchDirs) {
       const typeDir = path.join(baseDir, typeDirName)
-      const content = await this.readSummaryFileAt(typeDir, type, standardFileName)
+      const content = await this.readSummaryFileAt(typeDir, standardFileName)
       if (content != null) return content
     }
 
@@ -136,7 +132,7 @@ export class SummaryFileService {
     if (standardFileName !== transitionFileName) {
       for (const baseDir of searchDirs) {
         const typeDir = path.join(baseDir, typeDirName)
-        const content = await this.readSummaryFileAt(typeDir, type, transitionFileName)
+        const content = await this.readSummaryFileAt(typeDir, transitionFileName)
         if (content != null) return content
       }
     }

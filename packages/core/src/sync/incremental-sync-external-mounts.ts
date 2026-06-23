@@ -19,6 +19,11 @@ function isSameNormalizedPath(a: string, b: string): boolean {
   return path.resolve(a) === path.resolve(b)
 }
 
+/**
+ * 加载本机可用的外部日记/总结挂载。
+ * external_paths.json 为设备本地配置；仅当本机路径存在且不同于 vault 内默认目录时才挂载，
+ * 否则增量同步只扫描工作区（syncRoot）内的 Journals/Archives。
+ */
 export async function loadVaultExternalSyncMounts(
   fileSystem: IFileSystem,
   syncRoot: string

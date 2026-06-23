@@ -12,6 +12,25 @@ export function isJournalPathUnderSkippedDir(filePath: string): boolean {
   return parts.some((segment) => JOURNAL_TREE_SKIP_DIR_NAMES.has(segment))
 }
 
+function isAbsolutePath(p: string): boolean {
+  return p.startsWith('/') || p.startsWith('\\') || /^[A-Za-z]:/.test(p)
+}
+
+/**
+ * 将影子索引中的 file_path 还原为磁盘绝对路径。
+ * 入库时使用 path.relative(path.dirname(journalBase), absolutePath)，此处逆运算。
+ */
+export function resolveShadowJournalAbsolutePath(
+  journalsBase: string,
+  shadowFilePath: string
+): string {
+  if (isAbsolutePath(shadowFilePath)) {
+    return shadowFilePath
+  }
+  const normalized = shadowFilePath.replace(/\\/g, '/')
+  return path.join(path.dirname(journalsBase), normalized)
+}
+
 /** 标准日记路径：Journals/YYYY/MM/YYYY-MM-DD.md */
 export function buildCanonicalJournalFilePath(journalsBase: string, dateStr: string): string {
   const year = dateStr.substring(0, 4)

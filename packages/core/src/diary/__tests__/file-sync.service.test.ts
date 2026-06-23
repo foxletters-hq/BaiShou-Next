@@ -118,4 +118,20 @@ describe('FileSyncService', () => {
     const content = fs.readFileSync(flatPath, 'utf8')
     expect(content).toContain('新内容')
   })
+
+  it('should read journal via shadow file path hint for non-canonical nested layout', async () => {
+    const nestedDir = path.join(path.dirname(rootPath), 'nested', 'folder')
+    fs.mkdirSync(nestedDir, { recursive: true })
+    const nestedFile = path.join(nestedDir, '2025-07-20.md')
+    const md = `---\ndate: 2025-07-20\nid: 77\n---\n\n嵌套目录正文`
+    fs.writeFileSync(nestedFile, md, 'utf8')
+
+    const shadowPath = path
+      .relative(path.dirname(rootPath), nestedFile)
+      .replace(/\\/g, '/')
+
+    const readBack = await service.readJournal(new Date(2025, 6, 20), shadowPath)
+    expect(readBack?.id).toBe(77)
+    expect(readBack?.content).toBe('嵌套目录正文')
+  })
 })

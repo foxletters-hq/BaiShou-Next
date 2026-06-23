@@ -3,8 +3,12 @@ import {
   buildVaultArchivesSyncPrefix,
   buildVaultJournalsSyncPrefix,
   externalAbsPathToSyncRelPath,
+  isAbsPathUnderExternalSyncMount,
+  isUsingExternalVaultDirectory,
   isVaultExternalPathsConfigRelPath,
+  normalizeIncrementalSyncAbsPathForCompare,
   resolveIncrementalSyncRelPath,
+  shouldExcludeIncrementalSyncRootScanEntry,
   shouldScanIncrementalSyncDirectoryWithExternalMounts,
   type VaultExternalSyncMount
 } from '../incremental-sync-external-paths.util'
@@ -45,7 +49,7 @@ describe('incremental-sync-external-paths.util', () => {
     ).toBe('C:/Vaults/Personal/Sessions/chat.json')
   })
 
-  it('detects external_paths.json sync file', () => {
+  it('detects external_paths.json config rel path pattern', () => {
     expect(isVaultExternalPathsConfigRelPath('Personal/.baishou/external_paths.json')).toBe(true)
   })
 
@@ -75,5 +79,69 @@ describe('incremental-sync-external-paths.util', () => {
         'D:/Notes/2.日记/Archives/Weekly/2025/2025-01-06.md'
       )
     ).toBe('Personal/Archives/Weekly/2025/2025-01-06.md')
+  })
+
+  it('detects abs paths under external mount base', () => {
+    const inRootMount: VaultExternalSyncMount = {
+      vaultName: 'Personal',
+      kind: 'journals',
+      absBase: 'C:/Vaults/Obsidian/2.日记',
+      syncPrefix: buildVaultJournalsSyncPrefix('Personal')
+    }
+    expect(isAbsPathUnderExternalSyncMount('C:/Vaults/Obsidian/2.日记', [inRootMount])).toBe(true)
+    expect(
+      isAbsPathUnderExternalSyncMount('C:/Vaults/Obsidian/2.日记/2024/06/01.md', [inRootMount])
+    ).toBe(true)
+    expect(isAbsPathUnderExternalSyncMount('C:/Vaults/Obsidian/other', [inRootMount])).toBe(false)
+    expect(isAbsPathUnderExternalSyncMount('D:/Notes/2.日记', [journalsMount])).toBe(true)
+  })
+
+  it('normalizes Android emulated prefix and Windows drive case for compare', () => {
+    expect(normalizeIncrementalSyncAbsPathForCompare('/emulated/0/Download/foo')).toBe(
+      '/storage/emulated/0/Download/foo'
+    )
+    expect(normalizeIncrementalSyncAbsPathForCompare('C:/Vaults/Journals')).toBe(
+      'c:/vaults/journals'
+    )
+    expect(
+      isAbsPathUnderExternalSyncMount('C:/Vaults/Obsidian/2.日记/01.md', [
+        {
+          vaultName: 'Personal',
+          kind: 'journals',
+          absBase: 'c:/Vaults/Obsidian/2.日记',
+          syncPrefix: buildVaultJournalsSyncPrefix('Personal')
+        }
+      ])
+    ).toBe(true)
+  })
+
+  it('excludes internal Journals rel path when external mount exists', () => {
+    expect(
+      shouldExcludeIncrementalSyncRootScanEntry(
+        'C:/Vaults/Personal/Journals/2024-01-01.md',
+        'Personal/Journals/2024-01-01.md',
+        [journalsMount]
+      )
+    ).toBe(true)
+  })
+
+  it('detects configured external directory usage', () => {
+    expect(
+      isUsingExternalVaultDirectory(
+        'D:/Notes/2.日记',
+        'D:/Notes/2.日记',
+        'C:/Vaults/Personal/Journals'
+      )
+    ).toBe(true)
+    expect(
+      isUsingExternalVaultDirectory(
+        'C:/Vaults/Personal/Journals',
+        'C:/Vaults/Personal/Journals',
+        'C:/Vaults/Personal/Journals'
+      )
+    ).toBe(false)
+    expect(isUsingExternalVaultDirectory(null, 'C:/Vaults/Personal/Journals', 'C:/Vaults/Personal/Journals')).toBe(
+      false
+    )
   })
 })

@@ -24,6 +24,38 @@ export function normalizeIncrementalSyncAbsPath(absPath: string): string {
   return absPath.replace(/\\/g, '/').replace(/\/$/, '')
 }
 
+/** 用于挂载子树比较：统一斜杠、Android 存储前缀、Windows 大小写 */
+export function normalizeIncrementalSyncAbsPathForCompare(absPath: string): string {
+  let normalized = normalizeIncrementalSyncAbsPath(absPath)
+  if (normalized.startsWith('file://')) {
+    try {
+      normalized = normalizeIncrementalSyncAbsPath(decodeURIComponent(normalized.slice('file://'.length)))
+    } catch {
+      normalized = normalizeIncrementalSyncAbsPath(normalized.slice('file://'.length))
+    }
+  }
+  if (normalized.startsWith('/emulated/0')) {
+    normalized = `/storage/emulated/0${normalized.slice('/emulated/0'.length)}`
+  }
+  if (/^[A-Za-z]:/.test(normalized)) {
+    normalized = normalized.toLowerCase()
+  }
+  return normalized
+}
+
+/** 是否实际使用外部目录（已配置且与 vault 内默认路径不同） */
+export function isUsingExternalVaultDirectory(
+  configuredExternalPath: string | null | undefined,
+  resolvedDirectory: string,
+  defaultDirectory: string
+): boolean {
+  if (!configuredExternalPath?.trim()) return false
+  return (
+    normalizeIncrementalSyncAbsPathForCompare(resolvedDirectory) !==
+    normalizeIncrementalSyncAbsPathForCompare(defaultDirectory)
+  )
+}
+
 export function buildVaultJournalsSyncPrefix(vaultName: string): string {
   return `${vaultName}/Journals`
 }
@@ -37,13 +69,11 @@ export function isVaultExternalPathsConfigRelPath(relativePath: string): boolean
   return rel.endsWith(`/.baishou/${VAULT_EXTERNAL_PATHS_SYNC_FILENAME}`)
 }
 
+/** 与 shouldIncludeIncrementalSyncFile 相同；保留命名以区分外部挂载扫描调用点 */
 export function shouldIncludeIncrementalSyncFileWithExternalConfig(
   entryName: string,
   relativePath: string
 ): boolean {
-  if (isVaultExternalPathsConfigRelPath(relativePath) && entryName === VAULT_EXTERNAL_PATHS_SYNC_FILENAME) {
-    return true
-  }
   return shouldIncludeIncrementalSyncFile(entryName, relativePath)
 }
 
@@ -109,6 +139,21 @@ export function resolveIncrementalSyncRelPath(
   return joinPath(syncRoot, relPath)
 }
 
+/** 判断绝对路径是否落在外部挂载根目录或其子树内（用于根扫描时排除字面路径重复） */
+export function isAbsPathUnderExternalSyncMount(
+  absPath: string,
+  mounts: readonly VaultExternalSyncMount[]
+): boolean {
+  const normalized = normalizeIncrementalSyncAbsPathForCompare(absPath)
+  for (const mount of mounts) {
+    const base = normalizeIncrementalSyncAbsPathForCompare(mount.absBase)
+    if (normalized === base || normalized.startsWith(`${base}/`)) {
+      return true
+    }
+  }
+  return false
+}
+
 export function isInternalDefaultJournalsOrArchivesRelPath(
   relPath: string,
   mounts: readonly VaultExternalSyncMount[]
@@ -124,5 +169,16 @@ export function isInternalDefaultJournalsOrArchivesRelPath(
   if (dirName === 'Archives') {
     return mounts.some((m) => m.vaultName === vaultName && m.kind === 'summaries')
   }
+  return false
+}
+
+/** 根扫描结果是否应排除（物理子树重复或内部 Journals/Archives 字面路径） */
+export function shouldExcludeIncrementalSyncRootScanEntry(
+  fullPath: string,
+  relPath: string,
+  mounts: readonly VaultExternalSyncMount[]
+): boolean {
+  if (isAbsPathUnderExternalSyncMount(fullPath, mounts)) return true
+  if (isInternalDefaultJournalsOrArchivesRelPath(relPath, mounts)) return true
   return false
 }

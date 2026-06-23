@@ -6,7 +6,8 @@ import { createNodeFileSystem } from '../../fs/create-node-file-system'
 import {
   collectJournalPathsByDateInTree,
   isJournalPathUnderSkippedDir,
-  journalMarkdownExistsInTree
+  journalMarkdownExistsInTree,
+  resolveShadowJournalAbsolutePath
 } from '../journal-files.util'
 
 describe('journal-files.util', () => {
@@ -74,6 +75,17 @@ describe('journal-files.util', () => {
 
     expect(collected.fileCount).toBe(2)
     expect(collected.pathsByDate.size).toBe(1)
-    expect(collected.pathsByDate.get('2024-06-01')).toBe(path.join(canonicalDir, '2024-06-01.md'))
+    const preferred = collected.pathsByDate.get('2024-06-01')!
+    expect(preferred.replace(/\\/g, '/')).toBe(
+      path.resolve(canonicalDir, '2024-06-01.md').replace(/\\/g, '/')
+    )
+  })
+
+  it('resolveShadowJournalAbsolutePath inverts shadow relative path from journal base parent', () => {
+    const journalsBase = 'D:\\Notes\\Vault\\2.日记'
+    const shadowPath = '2.日记/2024/06/2024-06-01.md'
+    expect(path.resolve(resolveShadowJournalAbsolutePath(journalsBase, shadowPath))).toBe(
+      path.resolve('D:\\Notes\\Vault', '2.日记', '2024', '06', '2024-06-01.md')
+    )
   })
 })

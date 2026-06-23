@@ -246,7 +246,51 @@ export class DiaryService {
     // HEALING: Lazily trigger sync to heal any out-of-sync local file editing
     this.shadowSync.syncJournal(dateStr).catch((e) => console.warn('Lazy sync failed', e))
 
-    return this.fileSync.readJournal(date)
+    const fromDisk = await this.fileSync.readJournal(date, shadow.filePath)
+    if (fromDisk?.content?.trim()) {
+      if (!fromDisk.id) fromDisk.id = shadow.id
+      return fromDisk
+    }
+
+    if (shadow.rawContent?.trim()) {
+      return this.buildDiaryFromShadowRow(shadow, date)
+    }
+
+    if (fromDisk) {
+      if (!fromDisk.id) fromDisk.id = shadow.id
+      return fromDisk
+    }
+
+    return null
+  }
+
+  private buildDiaryFromShadowRow(
+    shadow: NonNullable<Awaited<ReturnType<ShadowIndexRepository['findById']>>>,
+    date: Date
+  ): Diary {
+    const tagsSource = shadow.tags ?? ''
+    const parsedTags = tagsSource
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean)
+
+    return {
+      id: shadow.id,
+      date,
+      content: shadow.rawContent ?? '',
+      tags: parsedTags.length > 0 ? parsedTags.join(',') : undefined,
+      tagColors:
+        Object.keys(normalizeDiaryTagColorRegistry(shadow.tagColors)).length > 0
+          ? normalizeDiaryTagColorRegistry(shadow.tagColors)
+          : undefined,
+      updatedAt: shadow.updatedAt ? new Date(shadow.updatedAt) : undefined,
+      weather: shadow.weather ?? undefined,
+      mood: shadow.mood ?? undefined,
+      location: shadow.location ?? undefined,
+      locationDetail: shadow.locationDetail ?? undefined,
+      isFavorite: shadow.isFavorite,
+      mediaPaths: []
+    }
   }
 
   /** 批量读取影子索引元数据（不读磁盘日记正文，供搜索列表等场景） */

@@ -60,6 +60,15 @@ describe('incremental-sync-scan.util', () => {
     expect(shouldScanIncrementalSyncDirectory('sync-log', 'Personal/.baishou/sync-log')).toBe(false)
   })
 
+  it('excludes device-local external_paths.json from incremental sync', () => {
+    expect(
+      shouldIncludeIncrementalSyncFile(
+        'external_paths.json',
+        'Personal/.baishou/external_paths.json'
+      )
+    ).toBe(false)
+  })
+
   it('excludes root .baishou sync metadata and other dot directories', () => {
     expect(shouldScanIncrementalSyncDirectory('.baishou', '.baishou')).toBe(false)
     expect(shouldScanIncrementalSyncDirectory('sync-log', '.baishou/sync-log')).toBe(false)

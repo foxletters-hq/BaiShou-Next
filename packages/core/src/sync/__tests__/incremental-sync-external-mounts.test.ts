@@ -44,4 +44,18 @@ describe('incremental-sync-external-mounts', () => {
       `${buildVaultJournalsSyncPrefix('Personal')}/2024/06/2024-06-01.md`
     )
   })
+
+  it('does not load mount when external directory is missing on this device', async () => {
+    const missingExternal = path.join(tempDir, 'missing-external-journals')
+    const vaultDir = path.join(tempDir, 'Personal')
+    await fs.mkdir(path.join(vaultDir, '.baishou'), { recursive: true })
+    await fs.writeFile(
+      path.join(vaultDir, '.baishou', 'external_paths.json'),
+      JSON.stringify({ journalsDirectory: missingExternal }),
+      'utf8'
+    )
+
+    const mounts = await loadVaultExternalSyncMounts(fileSystem, tempDir)
+    expect(mounts).toHaveLength(0)
+  })
 })

@@ -106,9 +106,7 @@ export function shouldIncludeIncrementalSyncFile(entryName: string, relativePath
       ? rel.endsWith('.json') && !entryName.endsWith('.tmp')
       : false
   }
-  if (rel.endsWith('/.baishou/external_paths.json') && entryName === 'external_paths.json') {
-    return true
-  }
+  // external_paths.json 为设备本地配置（日记/总结绝对路径），不参与跨设备增量同步
   if (rel.includes('/.baishou/') || rel.startsWith('.baishou/')) return false
   if (entryName.startsWith('.')) return false
   return true

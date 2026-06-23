@@ -3,6 +3,7 @@ import * as path from '../fs/path.util'
 
 export const VAULT_EXTERNAL_PATHS_FILE = 'external_paths.json'
 
+/** 设备本地配置：各端外部日记/总结绝对路径，不参与增量同步跨设备传播 */
 export interface VaultExternalPathsConfig {
   /** 工作区外的自定义日记 Markdown 根目录（绝对路径） */
   journalsDirectory?: string | null
