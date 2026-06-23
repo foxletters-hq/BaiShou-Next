@@ -109,6 +109,7 @@ const DiaryEmbedFailureNotifier = () => {
 }
 
 import { ErrorBoundary } from './ErrorBoundary'
+import { DesktopSettingsOverlayContext } from './layouts/desktop-settings-overlay.context'
 
 const AppRoutes = () => {
   const location = useLocation()
@@ -137,7 +138,7 @@ const AppRoutes = () => {
   const mainRoutesLocation = isSettings ? backgroundLocation : location
 
   return (
-    <>
+    <DesktopSettingsOverlayContext.Provider value={isSettings}>
       <Routes location={mainRoutesLocation}>
         <Route path="/welcome" element={<OnboardingScreen />} />
 
@@ -180,7 +181,7 @@ const AppRoutes = () => {
           />
         </Routes>
       )}
-    </>
+    </DesktopSettingsOverlayContext.Provider>
   )
 }
 

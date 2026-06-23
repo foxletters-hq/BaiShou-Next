@@ -9,17 +9,11 @@ import {
   flattenRoundSlice,
   groupMessagesIntoRounds
 } from '../utils/chat-round-pagination'
+import { clearStreamBridgeForSession } from './useAgentStream'
 import {
   chatSessionMessageCache,
   type SessionMessageCacheEntry
 } from '../utils/chat-session-message-cache'
-
-export interface PendingAssistantMsg {
-  id: string
-  content: string
-  reasoning?: string
-  toolInvocations?: any[]
-}
 
 export type CompactionAnchor = {
   messageId: string
@@ -61,7 +55,6 @@ export interface UseChatMessagesResult {
   messages: any[]
   setMessages: React.Dispatch<React.SetStateAction<any[]>>
   hasMore: boolean
-  pendingAssistantMsg: PendingAssistantMsg | null
   compactionAnchor: CompactionAnchor | null
   loadMore: () => Promise<void>
   refreshMessages: (retryCount?: number, overrideSessionId?: string) => Promise<boolean>
@@ -192,7 +185,6 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
 
   const [messages, setMessages] = useState<any[]>([])
   const [hasMore, setHasMore] = useState(false)
-  const [pendingAssistantMsg, setPendingAssistantMsg] = useState<PendingAssistantMsg | null>(null)
   const [compactionAnchor, setCompactionAnchor] = useState<CompactionAnchor | null>(null)
   const currentSessionIdRef = useRef<string | null>(null)
   const streamSessionIdRef = useRef<string | null>(null)
@@ -421,7 +413,6 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
       pendingUsageByMessageIdRef.current.clear()
       setCompactionAnchor(null)
       currentSessionIdRef.current = null
-      setPendingAssistantMsg(null)
       return
     }
 
@@ -433,7 +424,6 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
 
       currentSessionIdRef.current = sessionId
       pendingUsageByMessageIdRef.current.clear()
-      setPendingAssistantMsg(null)
 
       const restored = restoreSessionCache(sessionId)
       if (restored) {
@@ -575,33 +565,22 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
   const prevStreamingRef = useRef(isStreaming)
   useEffect(() => {
     if (prevStreamingRef.current && !isStreaming && sessionId) {
-      if (streamSessionIdRef.current === sessionId && (streamingText || streamingReasoning)) {
-        setPendingAssistantMsg({
-          id: `pending-${Date.now()}`,
-          content: streamingText,
-          reasoning: streamingReasoning || undefined
-        })
+      if (streamSessionIdRef.current !== sessionId) {
+        prevStreamingRef.current = isStreaming
+        return
       }
 
       const sync = async () => {
-        await new Promise((r) => setTimeout(r, 100))
         const success = await refreshLatestMessages(3)
-        setPendingAssistantMsg(null)
         if (success && sessionId) {
           persistSessionCache(sessionId)
+          clearStreamBridgeForSession(sessionId)
         }
       }
       void sync()
     }
     prevStreamingRef.current = isStreaming
-  }, [
-    isStreaming,
-    sessionId,
-    streamingText,
-    streamingReasoning,
-    refreshLatestMessages,
-    persistSessionCache
-  ])
+  }, [isStreaming, sessionId, refreshLatestMessages, persistSessionCache])
 
   const loadMore = useCallback(async () => {
     if (!sessionId) return
@@ -683,16 +662,16 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
       const idx = messageCacheRef.current.findIndex((m) => m.id === messageId)
       if (idx === -1) return
 
-      const truncated = messageCacheRef.current.slice(0, idx + 1)
-      if (truncated[idx]) {
+      const truncated = messageCacheRef.current.slice(0, idx + 1).map((m, i) => {
+        if (i < idx) return m
         const trimmedContent = options?.content?.trim()
-        truncated[idx] = {
-          ...truncated[idx],
+        return {
+          ...m,
           ...(trimmedContent ? { content: trimmedContent } : {}),
           compactionRecord: undefined,
           hasCompactionMarker: false
         }
-      }
+      })
       messageCacheRef.current = truncated
       loadedFromEndRef.current = truncated.length
 
@@ -711,7 +690,6 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
     messages,
     setMessages,
     hasMore,
-    pendingAssistantMsg,
     compactionAnchor,
     loadMore,
     refreshMessages,

@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useEffect, useRef } from 'react'
+import React, { useMemo, useCallback, useEffect, useRef, useState } from 'react'
 import { mapAttachmentsFromParts } from '@baishou/shared'
 import {
   ChatBubble,
@@ -140,6 +140,8 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
   )
 
   const loadMoreLockRef = useRef(false)
+  const [showLoadMoreButton, setShowLoadMoreButton] = useState(false)
+  const LOAD_MORE_TOP_THRESHOLD_PX = 120
 
   const triggerLoadMore = useCallback(() => {
     if (!chat.hasMore || loadMoreLockRef.current) return
@@ -162,13 +164,14 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
     if (!el) return
 
     const onScroll = () => {
-      if (el.scrollTop > 100 || !chat.hasMore || loadMoreLockRef.current) return
-      triggerLoadMore()
+      const nearTop = el.scrollTop < LOAD_MORE_TOP_THRESHOLD_PX
+      setShowLoadMoreButton(nearTop && chat.hasMore)
     }
 
+    onScroll()
     el.addEventListener('scroll', onScroll, { passive: true })
     return () => el.removeEventListener('scroll', onScroll)
-  }, [chat.hasMore, triggerLoadMore, scroll.scrollRef])
+  }, [chat.hasMore, scroll.scrollRef])
 
   const compactionAnchor = chat.compactionAnchor as
     | { messageId: string; record: Record<string, unknown> }
@@ -219,6 +222,16 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
     return t(`agent.tools.${stream.activeTool.name}`, stream.activeTool.name)
   }, [stream.activeTool, settings.webSearchConfig, t])
 
+  const lastMessage = chat.messages[chat.messages.length - 1]
+  const assistantPersistedDuringBridge =
+    stream.isBridgeActive &&
+    lastMessage?.role === 'assistant' &&
+    Boolean(
+      lastMessage.content?.trim() ||
+        lastMessage.reasoning?.trim() ||
+        (lastMessage.toolInvocations?.length ?? 0) > 0
+    )
+
   return (
     <>
       <div
@@ -226,9 +239,13 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
         ref={scroll.scrollRef}
       >
         <div className={styles.messageContent}>
-          {chat.hasMore && (
-            <button type="button" className={styles.loadMoreBanner} onClick={triggerLoadMore}>
-              {t('agent.chat.scroll_up_load_more', '点击或上滑加载更早对话')}
+          {showLoadMoreButton && (
+            <button
+              type="button"
+              className={`${styles.loadMoreBanner} ${styles.loadMoreBannerSticky}`}
+              onClick={triggerLoadMore}
+            >
+              {t('agent.chat.load_earlier_messages', '加载更早对话')}
             </button>
           )}
 
@@ -242,10 +259,7 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
             const isLiveCompressionAnchor =
               (stream.compressionPhase === 'auto' || stream.compressionPhase === 'manual') &&
               stream.compressionTriggerMessageId === msg.id &&
-              (stream.isCompressing ||
-                ((Boolean(stream.compressionText?.trim()) ||
-                  Boolean(stream.compressionReasoning?.trim())) &&
-                  !msg.compactionRecord))
+              stream.isCompressing
 
             const persistedCompaction =
               msg.role === 'user' && msg.compactionRecord
@@ -351,7 +365,17 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
             )
           })}
 
-          {stream.isStreaming && !stream.isCompressing && (
+          {(() => {
+            const showStreamingBubble =
+              (stream.isStreaming || stream.isBridgeActive) &&
+              !assistantPersistedDuringBridge &&
+              (!stream.isCompressing ||
+                Boolean(stream.text?.trim()) ||
+                Boolean(stream.reasoning?.trim()) ||
+                stream.activeTool ||
+                stream.completedTools.length > 0)
+
+            return showStreamingBubble ? (
             <StreamingBubble
               text={stream.text}
               reasoning={stream.reasoning}
@@ -364,31 +388,12 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
                 emoji: currentAssistant?.emoji
               }}
             />
-          )}
+            ) : null
+          })()}
 
-          {chat.pendingAssistantMsg && (
-            <ChatBubble
-              key={chat.pendingAssistantMsg.id}
-              message={{
-                id: chat.pendingAssistantMsg.id,
-                sessionId: sessionId || 'default-session',
-                role: 'assistant',
-                content: chat.pendingAssistantMsg.content,
-                reasoning: chat.pendingAssistantMsg.reasoning,
-                timestamp: new Date(),
-                isReasoning: Boolean(
-                  chat.pendingAssistantMsg.reasoning && !chat.pendingAssistantMsg.content
-                )
-              }}
-              aiProfile={{
-                name: currentAssistant?.name || 'AI',
-                avatarPath: currentAssistant?.avatarPath,
-                emoji: currentAssistant?.emoji
-              }}
-            />
-          )}
-
-          {chat.messages.length === 0 && !stream.isStreaming && !chat.pendingAssistantMsg && (
+          {chat.messages.length === 0 &&
+            !stream.isStreaming &&
+            !stream.isBridgeActive && (
             <div style={{ flex: 1 }} />
           )}
         </div>

@@ -166,46 +166,68 @@ describe('useChatMessages', () => {
     })
   })
 
-  describe('pendingAssistantMsg', () => {
-    it('should show pending assistant when stream finishes on matching session', () => {
+  describe('stream finish sync', () => {
+    it('should refresh messages and clear stream bridge when stream finishes on matching session', async () => {
+      const fetchSpy = vi.fn().mockResolvedValue([
+        { id: 'u1', role: 'user', content: 'hi', orderIndex: 0 },
+        { id: 'a1', role: 'assistant', content: 'AI 回复内容', orderIndex: 1 }
+      ])
+      mockRenderer.invoke.mockImplementation(fetchSpy)
+
       const { result, rerender } = renderHook(
-        ({ isStreaming, text }) =>
+        ({ isStreaming }) =>
           useChatMessages({
             sessionId: 's1',
             isStreaming,
-            streamingText: text,
+            streamingText: '',
             streamingReasoning: ''
           }),
-        { initialProps: { isStreaming: true, text: '' } }
+        { initialProps: { isStreaming: true } }
       )
 
       act(() => {
         result.current.setStreamSessionId('s1')
       })
-      rerender({ isStreaming: false, text: 'AI 回复内容' })
+      rerender({ isStreaming: false })
 
-      expect(result.current.pendingAssistantMsg).toBeTruthy()
-      expect(result.current.pendingAssistantMsg?.content).toBe('AI 回复内容')
+      await act(async () => {
+        await Promise.resolve()
+      })
+
+      expect(fetchSpy).toHaveBeenCalled()
     })
 
-    it('should NOT show pending assistant for stream from different session', () => {
+    it('should NOT refresh when stream finishes for a different session', async () => {
+      const fetchSpy = vi.fn().mockResolvedValue([])
+      mockRenderer.invoke.mockImplementation(fetchSpy)
+
       const { result, rerender } = renderHook(
-        ({ isStreaming, text }) =>
+        ({ isStreaming }) =>
           useChatMessages({
             sessionId: 's1',
             isStreaming,
-            streamingText: text,
+            streamingText: '',
             streamingReasoning: ''
           }),
-        { initialProps: { isStreaming: true, text: '' } }
+        { initialProps: { isStreaming: true } }
       )
+
+      await act(async () => {
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+      fetchSpy.mockClear()
 
       act(() => {
         result.current.setStreamSessionId('s2')
       })
-      rerender({ isStreaming: false, text: '其他会话的内容' })
+      rerender({ isStreaming: false })
 
-      expect(result.current.pendingAssistantMsg).toBeNull()
+      await act(async () => {
+        await Promise.resolve()
+      })
+
+      expect(fetchSpy).not.toHaveBeenCalled()
     })
   })
 })

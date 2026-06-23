@@ -222,7 +222,7 @@ export const AgentScreen: React.FC = () => {
           )}
           <InputBar
             ref={flow.inputBarRef}
-            isLoading={flow.stream.isStreaming}
+            isLoading={flow.stream.isStreaming || flow.stream.isBridgeActive || flow.stream.isCompressing}
             onSend={flow.handleSend}
             onStop={flow.handleStop}
             shortcuts={flow.shortcuts}

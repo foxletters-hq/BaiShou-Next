@@ -157,6 +157,17 @@
   background: rgba(var(--color-primary-rgb), 0.06);
 }
 
+.loadMoreBanner:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.loadMoreBannerSticky {
+  position: sticky;
+  top: 8px;
+  z-index: 2;
+}
+
 .messageList::-webkit-scrollbar {
   width: 6px;
 }

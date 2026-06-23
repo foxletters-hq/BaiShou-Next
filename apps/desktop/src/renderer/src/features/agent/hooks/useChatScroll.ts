@@ -211,12 +211,32 @@ export function useChatScroll(params: UseChatScrollParams): UseChatScrollResult 
 
     const newestMsg = messages[messages.length - 1]
     const isNewMessageAdded = newestMsg?.id && newestMsg.id !== prevNewestIdRef.current
+    const isNewUserMessage = isNewMessageAdded && newestMsg?.role === 'user'
 
-    if (isNewMessageAdded || isStreaming || streamingText || activeTool) {
+    // 新用户消息落库或工具执行时贴底；助手消息 DB 回写不重复贴底。
+    if (isNewUserMessage || activeTool) {
       followScrollToBottom()
     }
     prevNewestIdRef.current = newestMsg?.id || null
-  }, [messages, streamingText, streamingReasoning, isStreaming, activeTool, followScrollToBottom])
+  }, [messages, activeTool, followScrollToBottom])
+
+  const streamFollowRafRef = useRef<number | null>(null)
+  useLayoutEffect(() => {
+    if (!isStreaming || followModeRef.current !== 'following') return
+
+    if (streamFollowRafRef.current != null) return
+    streamFollowRafRef.current = requestAnimationFrame(() => {
+      streamFollowRafRef.current = null
+      jumpToBottomInstant()
+    })
+
+    return () => {
+      if (streamFollowRafRef.current != null) {
+        cancelAnimationFrame(streamFollowRafRef.current)
+        streamFollowRafRef.current = null
+      }
+    }
+  }, [isStreaming, streamingText, streamingReasoning, jumpToBottomInstant])
 
   return {
     scrollRef,

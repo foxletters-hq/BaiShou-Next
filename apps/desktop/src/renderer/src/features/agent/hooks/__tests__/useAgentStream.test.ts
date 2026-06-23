@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import { useAgentStream } from '../useAgentStream'
+import { useAgentStream, __resetAgentStreamIpcForTests } from '../useAgentStream'
 
 function setupWindowMock() {
   const listeners: Record<string, Function> = {}
@@ -30,7 +30,6 @@ function teardownWindowMock() {
   const win = (globalThis as any).window || globalThis
   if (win) {
     delete win.electron
-    delete (win as any).__baishou_stream_registered
   }
 }
 
@@ -42,9 +41,11 @@ describe('useAgentStream', () => {
     const setup = setupWindowMock()
     mockRenderer = setup.mockRenderer
     emit = setup.emit
+    __resetAgentStreamIpcForTests()
   })
 
   afterEach(() => {
+    __resetAgentStreamIpcForTests()
     teardownWindowMock()
     vi.restoreAllMocks()
   })
@@ -135,6 +136,7 @@ describe('useAgentStream', () => {
     })
 
     it('should clear previously accumulated text on new chat', async () => {
+      vi.useFakeTimers()
       const { result } = renderHook(() => useAgentStream('s1'))
 
       mockRenderer.invoke.mockResolvedValue(true)
@@ -148,6 +150,9 @@ describe('useAgentStream', () => {
       act(() => {
         emit('agent:stream-chunk', { sessionId: 's1', chunk: 'World' })
       })
+      act(() => {
+        vi.advanceTimersByTime(50)
+      })
       expect(result.current.text).toBe('HelloWorld')
 
       mockRenderer.invoke.mockResolvedValue(true)
@@ -155,6 +160,7 @@ describe('useAgentStream', () => {
         await result.current.startChat('s1', 'second')
       })
       expect(result.current.text).toBe('')
+      vi.useRealTimers()
     })
   })
 
@@ -177,6 +183,7 @@ describe('useAgentStream', () => {
     })
 
     it('should accumulate text from stream-chunk events', () => {
+      vi.useFakeTimers()
       const { result } = renderHook(() => useAgentStream('s1'))
       act(() => {
         emit('agent:stream-chunk', { sessionId: 's1', chunk: 'Hello ' })
@@ -184,15 +191,60 @@ describe('useAgentStream', () => {
       act(() => {
         emit('agent:stream-chunk', { sessionId: 's1', chunk: 'World' })
       })
+      act(() => {
+        vi.advanceTimersByTime(50)
+      })
       expect(result.current.text).toBe('Hello World')
+      vi.useRealTimers()
+    })
+
+    it('should register IPC listeners only once when multiple hooks mount', () => {
+      vi.useFakeTimers()
+      const { result: r1 } = renderHook(() => useAgentStream('s1'))
+      const { result: r2 } = renderHook(() => useAgentStream('s2'))
+
+      act(() => {
+        emit('agent:stream-chunk', { sessionId: 's1', chunk: 'Hi' })
+      })
+      act(() => {
+        vi.advanceTimersByTime(50)
+      })
+
+      expect(r1.current.text).toBe('Hi')
+      expect(r2.current.text).toBe('')
+      expect(mockRenderer.on).toHaveBeenCalledTimes(6)
+      vi.useRealTimers()
+    })
+
+    it('should set isBridgeActive on stream-finish when content exists', () => {
+      vi.useFakeTimers()
+      const { result } = renderHook(() => useAgentStream('s1'))
+      act(() => {
+        emit('agent:stream-chunk', { sessionId: 's1', chunk: 'done' })
+      })
+      act(() => {
+        vi.advanceTimersByTime(50)
+      })
+      act(() => {
+        emit('agent:stream-finish', { sessionId: 's1', success: true })
+      })
+      expect(result.current.isStreaming).toBe(false)
+      expect(result.current.isBridgeActive).toBe(true)
+      expect(result.current.text).toBe('done')
+      vi.useRealTimers()
     })
 
     it('should accumulate reasoning from reasoning-chunk events', () => {
+      vi.useFakeTimers()
       const { result } = renderHook(() => useAgentStream('s1'))
       act(() => {
         emit('agent:reasoning-chunk', { sessionId: 's1', chunk: 'thinking...' })
       })
+      act(() => {
+        vi.advanceTimersByTime(50)
+      })
       expect(result.current.reasoning).toBe('thinking...')
+      vi.useRealTimers()
     })
 
     it('should handle tool-start event', () => {
