@@ -17,7 +17,8 @@ import type {
   SummaryConfig,
   ToolManagementConfig,
   McpServerConfig,
-  HotkeyConfig
+  HotkeyConfig,
+  BaishouAgentGateConfig
 } from '@baishou/shared'
 import { withExpoAgentDatabaseLock } from '../expo-agent-db.lock'
 import {
@@ -29,8 +30,10 @@ import {
   DEFAULT_SUMMARY_CONFIG,
   DEFAULT_TOOL_MANAGEMENT_CONFIG,
   DEFAULT_MCP_SERVER_CONFIG,
-  DEFAULT_HOTKEY_CONFIG
+  DEFAULT_HOTKEY_CONFIG,
+  DEFAULT_BAISHOU_AGENT_GATE_CONFIG
 } from './settings.defaults'
+import { BAISHOU_AGENT_GATE_CONFIG_KEY } from '@baishou/shared'
 
 export class SettingsRepository {
   constructor(private readonly db: any) {}
@@ -236,5 +239,15 @@ export class SettingsRepository {
   }
   async setHotkeyConfig(config: HotkeyConfig): Promise<void> {
     await this.set('hotkey_config', config)
+  }
+
+  async getBaishouAgentGateConfig(): Promise<BaishouAgentGateConfig> {
+    return (
+      (await this.get<BaishouAgentGateConfig>(BAISHOU_AGENT_GATE_CONFIG_KEY)) ??
+      DEFAULT_BAISHOU_AGENT_GATE_CONFIG
+    )
+  }
+  async setBaishouAgentGateConfig(config: BaishouAgentGateConfig): Promise<void> {
+    await this.set(BAISHOU_AGENT_GATE_CONFIG_KEY, config)
   }
 }
