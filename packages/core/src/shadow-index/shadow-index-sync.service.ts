@@ -337,7 +337,7 @@ export class ShadowIndexSyncService {
       const journalsDirExists = await this.fileSystem.exists(journalsDir)
       const { pathsByDate } = journalsDirExists
         ? await collectJournalPathsByDateInTree(this.fileSystem, journalsDir)
-        : { pathsByDate: new Map<string, string>(), fileCount: 0 }
+        : { pathsByDate: new Map<string, string>() }
 
       const uniqueDates = [...pathsByDate.keys()]
       if (uniqueDates.length > 0) {
