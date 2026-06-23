@@ -256,5 +256,33 @@ This is legacy markdown content.`
       expect(summaries[0]?.type).toBe(SummaryType.weekly)
       expect(summaries[0]?.fullPath).toContain('2026-05-18.md')
     })
+
+    it('should read, write, list and delete summaries under {Type}/{YYYY}/ layout', async () => {
+      const startDate = new Date(2026, 4, 1)
+      const nestedDir = path.join(summariesDir, 'Monthly', '2026')
+      await fs.mkdir(nestedDir, { recursive: true })
+      await fs.writeFile(path.join(nestedDir, '2026-05-01.md'), 'nested monthly', 'utf8')
+
+      const listed = await service.listAllSummaries()
+      expect(listed.some((s) => s.fullPath.includes('Monthly/2026/2026-05-01.md'))).toBe(true)
+
+      const read = await service.readSummary(SummaryType.monthly, startDate)
+      expect(read).toBe('nested monthly')
+
+      await service.writeSummary(SummaryType.monthly, startDate, 'updated nested')
+      const raw = await fs.readFile(path.join(nestedDir, '2026-05-01.md'), 'utf8')
+      expect(raw).toBe('updated nested')
+
+      await service.deleteSummary(SummaryType.monthly, startDate)
+      await expect(fs.access(path.join(nestedDir, '2026-05-01.md'))).rejects.toThrow()
+    })
+
+    it('should write new weekly summaries into year subfolder by default', async () => {
+      const startDate = new Date(2026, 5, 8)
+      const written = await service.writeSummary(SummaryType.weekly, startDate, 'new week')
+      expect(written.replace(/\\/g, '/')).toContain('Weekly/2026/2026-06-08.md')
+      const read = await service.readSummary(SummaryType.weekly, startDate)
+      expect(read).toBe('new week')
+    })
   })
 })

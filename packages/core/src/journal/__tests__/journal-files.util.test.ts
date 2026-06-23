@@ -5,6 +5,7 @@ import path from 'node:path'
 import { createNodeFileSystem } from '../../fs/create-node-file-system'
 import {
   collectJournalPathsByDateInTree,
+  isJournalPathUnderSkippedDir,
   journalMarkdownExistsInTree
 } from '../journal-files.util'
 
@@ -33,6 +34,33 @@ describe('journal-files.util', () => {
     expect(await journalMarkdownExistsInTree(fileSystem, path.join(tempDir, 'Journals'))).toBe(
       false
     )
+  })
+
+  it('collectJournalPathsByDateInTree skips Archives subdirectory', async () => {
+    const journalsRoot = path.join(tempDir, 'Journals')
+    await fs.mkdir(path.join(journalsRoot, '2024', '06'), { recursive: true })
+    await fs.writeFile(path.join(journalsRoot, '2024', '06', '2024-06-01.md'), '# diary')
+    await fs.mkdir(path.join(journalsRoot, 'Archives', 'Weekly', '2025'), { recursive: true })
+    await fs.writeFile(
+      path.join(journalsRoot, 'Archives', 'Weekly', '2025', '2025-01-06.md'),
+      '# summary'
+    )
+
+    const collected = await collectJournalPathsByDateInTree(fileSystem, journalsRoot)
+
+    expect(collected.fileCount).toBe(1)
+    expect(collected.pathsByDate.size).toBe(1)
+    expect(collected.pathsByDate.has('2024-06-01')).toBe(true)
+    expect(collected.pathsByDate.has('2025-01-06')).toBe(false)
+  })
+
+  it('isJournalPathUnderSkippedDir detects Archives in path', () => {
+    expect(
+      isJournalPathUnderSkippedDir('D:\\Notes\\2.日记\\Archives\\Weekly\\2025\\2025-01-06.md')
+    ).toBe(true)
+    expect(
+      isJournalPathUnderSkippedDir('/vault/Journals/2024/06/2024-06-01.md')
+    ).toBe(false)
   })
 
   it('collectJournalPathsByDateInTree dedupes duplicate dates and prefers canonical layout', async () => {

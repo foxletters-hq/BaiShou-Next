@@ -311,6 +311,50 @@ describe('DiaryService - Single Source of Truth architecture', () => {
       )
     })
 
+    it('should resolve shadow id when existing file has no id frontmatter', async () => {
+      const inputDate = parseDateStr('2026-06-24')
+      const input = { date: inputDate, content: '追加内容', isFavorite: false }
+
+      mockFileSync.readJournal.mockResolvedValue({
+        date: inputDate,
+        content: 'Obsidian 正文',
+        isFavorite: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        mediaPaths: []
+      } as Diary)
+      mockShadowRepo.findById.mockResolvedValue(null)
+      mockShadowRepo.findByDate.mockResolvedValue({
+        id: 55,
+        date: '2026-06-24',
+        filePath: '2026-06-24.md',
+        contentHash: '',
+        createdAt: '',
+        updatedAt: '',
+        isFavorite: false,
+        hasMedia: false,
+        weather: null,
+        mood: null,
+        location: null,
+        locationDetail: null,
+        vaultName: 'TestVault'
+      })
+      mockShadowSync.syncJournal.mockResolvedValue({
+        isChanged: false,
+        meta: {
+          id: 55,
+          date: inputDate,
+          preview: 'Obsidian 正文\n\n追加内容',
+          tags: [],
+          updatedAt: new Date()
+        }
+      })
+
+      const result = await service.save(null, input)
+      expect(result.id).toBe(55)
+      expect(mockShadowRepo.findByDate).toHaveBeenCalledWith('2026-06-24')
+    })
+
     it('should delegate to update() when id is provided', async () => {
       const inputDate = parseDateStr('2026-03-31')
       const input = { date: inputDate, content: 'Updated content' }

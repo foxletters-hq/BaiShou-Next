@@ -31,9 +31,15 @@ export class FileSyncServiceImpl implements FileSyncService {
     return path.join(rootPath, year, month, `${dateStr}.md`)
   }
 
+  private async resolveWriteFilePath(rootPath: string, date: Date): Promise<string> {
+    const dateStr = formatLocalDate(date)
+    const existingPath = await resolveJournalFilePath(this.fileSystem, rootPath, dateStr)
+    return existingPath ?? this.buildFilePath(rootPath, date)
+  }
+
   async writeJournal(diary: CreateDiaryInput | Diary): Promise<void> {
     const rootPath = await this.pathService.getJournalsBaseDirectory()
-    const filePath = this.buildFilePath(rootPath, diary.date)
+    const filePath = await this.resolveWriteFilePath(rootPath, diary.date)
 
     await this.ensureDir(path.dirname(filePath))
 

@@ -100,4 +100,22 @@ describe('FileSyncService', () => {
     await service.deleteJournalFile(new Date(2025, 5, 11))
     expect(fs.existsSync(flatPath)).toBe(false)
   })
+
+  it('should update an existing flat layout journal in place', async () => {
+    const flatPath = path.join(rootPath, '2025-06-12.md')
+    fs.mkdirSync(rootPath, { recursive: true })
+    fs.writeFileSync(flatPath, '---\ndate: 2025-06-12\n---\n\n旧内容', 'utf8')
+
+    await service.writeJournal({
+      ...sampleDiary,
+      id: 99,
+      date: new Date(2025, 5, 12),
+      content: '新内容'
+    })
+
+    expect(fs.existsSync(flatPath)).toBe(true)
+    expect(fs.existsSync(path.join(rootPath, '2025', '06', '2025-06-12.md'))).toBe(false)
+    const content = fs.readFileSync(flatPath, 'utf8')
+    expect(content).toContain('新内容')
+  })
 })

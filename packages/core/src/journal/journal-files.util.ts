@@ -3,6 +3,15 @@ import * as path from '../fs/path.util'
 
 const JOURNAL_DATE_FILE = /^(\d{4}-\d{2}-\d{2})\.md$/i
 
+/** 与日记同级的总结目录名（外部 Obsidian 布局：2.日记/Archives） */
+export const JOURNAL_TREE_SKIP_DIR_NAMES = new Set(['Archives'])
+
+/** 路径是否位于日记树中应跳过的子目录（扫描与 Chokidar 监听共用） */
+export function isJournalPathUnderSkippedDir(filePath: string): boolean {
+  const parts = filePath.split(/[/\\]/)
+  return parts.some((segment) => JOURNAL_TREE_SKIP_DIR_NAMES.has(segment))
+}
+
 /** 标准日记路径：Journals/YYYY/MM/YYYY-MM-DD.md */
 export function buildCanonicalJournalFilePath(journalsBase: string, dateStr: string): string {
   const year = dateStr.substring(0, 4)
@@ -88,6 +97,7 @@ export async function collectJournalPathsByDateInTree(
       try {
         const stat = await fileSystem.stat(fullPath)
         if (stat.isDirectory) {
+          if (JOURNAL_TREE_SKIP_DIR_NAMES.has(name)) continue
           await walk(fullPath)
         }
       } catch {
@@ -123,6 +133,7 @@ async function walkJournalsDir(
     try {
       const stat = await fileSystem.stat(fullPath)
       if (stat.isDirectory) {
+        if (JOURNAL_TREE_SKIP_DIR_NAMES.has(name)) continue
         count += await walkJournalsDir(fileSystem, fullPath, onMatch)
       }
     } catch {

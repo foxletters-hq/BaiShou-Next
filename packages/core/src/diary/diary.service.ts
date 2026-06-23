@@ -82,8 +82,23 @@ export class DiaryService {
   // formatDateString 已移除，全链路统一使用 @baishou/shared 的 formatLocalDate
 
   async update(id: number, input: UpdateDiaryInput): Promise<Diary> {
-    // 使用影子索引查询要修改的文件的历史日历
-    const existingShadow = await this.shadowRepo.findById(id)
+    let resolvedId = id
+    let existingShadow = await this.shadowRepo.findById(resolvedId)
+
+    const inputDate = input.date
+      ? input.date instanceof Date
+        ? input.date
+        : parseDateStr(String(input.date).split('T')[0]!)
+      : undefined
+
+    if (!existingShadow && inputDate) {
+      const healedShadow = await this.resolveDiaryShadowForDate(inputDate, resolvedId)
+      if (healedShadow) {
+        resolvedId = healedShadow.id
+        existingShadow = healedShadow
+      }
+    }
+
     if (!existingShadow) {
       throw new DiaryNotFoundError(id)
     }
@@ -96,15 +111,10 @@ export class DiaryService {
     const existingDiary = await this.fileSync.readJournal(existingDate)
     if (!existingDiary) {
       // 如果由于各种奇怪原因，文件被人删了但索引还存留
-      throw new DiaryNotFoundError(id)
+      throw new DiaryNotFoundError(resolvedId)
     }
 
     // 确保 input.date 是 Date 对象（前端 IPC 传递可能会变成 string）
-    const inputDate = input.date
-      ? input.date instanceof Date
-        ? input.date
-        : parseDateStr(String(input.date).split('T')[0]!)
-      : undefined
 
     // 比对日期字符串（对齐原版 oldDateStr != fmt.format(date)）
     const oldDateStr = formatLocalDate(existingDate)
@@ -128,7 +138,7 @@ export class DiaryService {
     }
 
     // 模拟数据落盘（此时文件指纹一定会变动）
-    const finalId = conflictId || id
+    const finalId = conflictId || resolvedId
     const mergedDiaryToSave: Diary = {
       ...existingDiary,
       ...input,
@@ -144,23 +154,23 @@ export class DiaryService {
 
     if (inputDate && isDateJumped) {
       await this.shadowSync.syncJournal(existingDateStr) // 这会触发删除旧索引的孤立清理
-      this.vaultIndex.remove(id) // 安全清理防鬼影
+      this.vaultIndex.remove(resolvedId) // 安全清理防鬼影
     }
 
     const syncResult = await this.shadowSync.syncJournal(formatLocalDate(targetDate))
 
     if (syncResult.meta) {
       this.vaultIndex.upsert(syncResult.meta)
-      const resolvedId = syncResult.meta.id
-      if (mergedDiaryToSave.id !== resolvedId) {
-        mergedDiaryToSave.id = resolvedId
+      const syncedId = syncResult.meta.id
+      if (mergedDiaryToSave.id !== syncedId) {
+        mergedDiaryToSave.id = syncedId
         await this.fileSync.writeJournal(mergedDiaryToSave)
       } else {
-        mergedDiaryToSave.id = resolvedId
+        mergedDiaryToSave.id = syncedId
       }
     } else {
       // 预防性清理防止鬼影
-      this.vaultIndex.remove(id)
+      this.vaultIndex.remove(resolvedId)
     }
 
     emitDomainMutation({ domain: 'diary', action: 'update', entityId: mergedDiaryToSave.id })
@@ -194,8 +204,11 @@ export class DiaryService {
     if (existingDiary) {
       // 若已存在，则合并内容并做更新
       this._mergeDiaries(input, existingDiary)
-      const finalId = existingDiary.id ?? Date.now()
-      return this.update(finalId, {
+      const resolvedId = await this.resolveDiaryIdForDate(inputDate, existingDiary.id)
+      if (!resolvedId) {
+        throw new DiaryNotFoundError(existingDiary.id ?? 0)
+      }
+      return this.update(resolvedId, {
         ...input,
         date: inputDate
       })
@@ -462,6 +475,36 @@ export class DiaryService {
 
   async getActivityData(year?: number): Promise<Array<{ date: string; count: number }>> {
     return this.shadowRepo.getActivityData(year)
+  }
+
+  private async resolveDiaryShadowForDate(
+    date: Date,
+    preferredId?: number | null
+  ): Promise<Awaited<ReturnType<ShadowIndexRepository['findByDate']>> | null> {
+    if (preferredId) {
+      const byId = await this.shadowRepo.findById(preferredId)
+      if (byId) return byId
+    }
+
+    const dateStr = formatLocalDate(date)
+    const byDate = await this.shadowRepo.findByDate(dateStr)
+    if (byDate) return byDate
+
+    const syncResult = await this.shadowSync.syncJournal(dateStr)
+    if (!syncResult.meta) return null
+
+    return (
+      (await this.shadowRepo.findById(syncResult.meta.id)) ??
+      (await this.shadowRepo.findByDate(dateStr))
+    )
+  }
+
+  private async resolveDiaryIdForDate(
+    date: Date,
+    preferredId?: number | null
+  ): Promise<number | null> {
+    const shadow = await this.resolveDiaryShadowForDate(date, preferredId)
+    return shadow?.id ?? null
   }
 
   /**
