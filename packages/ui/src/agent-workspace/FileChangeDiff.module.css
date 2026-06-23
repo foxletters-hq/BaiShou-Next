@@ -1,0 +1,44 @@
+.diff {
+  margin: 0;
+  padding: 8px 0;
+  border-radius: 0 0 8px 8px;
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+  border-top: none;
+  background: var(--bg-code, rgba(0, 0, 0, 0.02));
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  overflow: auto;
+  max-height: 320px;
+}
+
+.diff > div {
+  padding: 0 10px;
+  white-space: pre;
+}
+
+.add {
+  background: rgba(46, 160, 67, 0.12);
+  color: #1a7f37;
+}
+
+.del {
+  background: rgba(248, 81, 73, 0.12);
+  color: #cf222e;
+}
+
+.hunk {
+  color: var(--text-secondary, #666);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.context {
+  color: var(--text-primary, #1a1a1a);
+}
+
+.empty {
+  padding: 10px 12px;
+  color: var(--text-secondary, #888);
+  font-style: italic;
+  font-family: inherit;
+}
