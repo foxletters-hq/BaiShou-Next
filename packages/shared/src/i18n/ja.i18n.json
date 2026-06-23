@@ -62,7 +62,16 @@
     "exit_hint": "もう一度押すと終了します",
     "search_hint": "記憶を検索...",
     "please_search": "検索",
-    "weekdays": ["", "月", "火", "水", "木", "金", "土", "日"],
+    "weekdays": [
+      "",
+      "月",
+      "火",
+      "水",
+      "木",
+      "金",
+      "土",
+      "日"
+    ],
     "months": [
       "1月",
       "2月",
@@ -492,9 +501,9 @@
     "write_diary_button": "日記を書く",
     "check_storage_permission": "ストレージ権限を確認",
     "monthly_summary_data_source": "月次レポートのデータソース",
-    "monthly_summary_data_source_desc": "どちらの選択肢も当月の週記を読みます。必要なら当月の日記も合わせて読みます",
-    "read_only_weeklies": "当月の週記のみ",
-    "read_all_diaries": "週記 + 当月の日記",
+    "monthly_summary_data_source_desc": "月次レポート生成時に AI が読み込む素材を選択します",
+    "read_only_weeklies": "週報のみを読み込む",
+    "read_all_diaries": "すべての日記を読み込む",
     "agent_tools_title": "ツール管理",
     "agent_tools_desc": "パートナーが使用できるツールの管理、オン・オフ、パラメータ設定",
     "agent_tools_category_diary": "日記ツール",
@@ -527,8 +536,8 @@
     "summary_inject_shared_memory": "生成前に共有の思い出を注入",
     "summary_inject_shared_memory_desc": "オンにすると、今期開始より前の数か月分の共有の思い出をテンプレートと今期の元データの間に挿入し、一貫性を高めます。今期以降の内容は含めません。",
     "summary_inject_lookback_label": "遡及月数",
-    "summary_ai_prompt_title": "まとめ生成テンプレート",
-    "summary_ai_prompt_desc": "週・月・季・年まとめのユーザー側テンプレート。言語ごとに編集できます。",
+    "summary_ai_prompt_title": "AI プロンプト",
+    "summary_ai_prompt_desc": "サマリー生成時のAIの役割、出力形式、行動境界を定義します。",
     "summary_ai_prompt_hint": "AIがサマリーを抽出・生成する際のガイドラインを記入...",
     "summary_prompt_locale_hint": "編集中のプロンプト言語",
     "summary_prompt_generation_locale": "自動生成サマリーは「一般設定」の言語テンプレートを使用します。上のチップで他言語を編集できます。",
@@ -789,7 +798,14 @@
     "summary_data_source_quarterly": "季報：その四半期の月報",
     "summary_data_source_yearly": "年報：その年の季報",
     "summary_generation_templates_title": "まとめ生成テンプレート",
-    "summary_generation_templates_desc": "週・月・季・年まとめのユーザー側テンプレート。言語ごとに編集できます。"
+    "summary_generation_templates_desc": "週・月・季・年まとめのユーザー側テンプレート。言語ごとに編集できます。",
+    "agent_gate_title": "パートナー操作ゲート",
+    "agent_gate_desc": "書き込みや変更などの敏感な操作の前に確認を求めるかを制御します。",
+    "agent_gate_manual": "都度確認",
+    "agent_gate_full_trust": "完全信頼",
+    "agent_gate_exclusion_title": "常に確認が必要な操作",
+    "agent_gate_allowlist_title": "常に許可リスト",
+    "agent_gate_allowlist_empty": "まだ項目がありません。チャットで「常に許可」を押すとここに表示されます。"
   },
   "data_sync": {
     "title": "データ同期",
@@ -1061,7 +1077,7 @@
     "progress_fetching_remote": "リモートマニフェストを取得中…",
     "progress_git_commit": "ローカル Git 版を保存中…",
     "progress_registering_vaults": "ワークスペースを準備中…",
-    "progress_finalizing": "ローカル索引を完了中…",
+    "progress_finalizing": "同期状態を保存中…",
     "progress_hydrate_sessions": "セッション索引を反映中…",
     "progress_index_local": "ローカル索引を更新中…",
     "progress_index_journals": "日記索引をスキャン中…",
@@ -1496,11 +1512,11 @@
     "dev_mode_hint": "あと $count 回タップで開発者モードになります",
     "oss_license_label": "オープンソースライセンス",
     "visit_github": "GitHub リポジトリを表示",
-    "copy_diagnostic_log": "診断ログを共有",
-    "copy_diagnostic_log_desc": "最近のアプリログを TXT ファイルに書き出して共有し、クラッシュ報告に使えます。直前にクラッシュした場合は、先にアプリを再起動してから書き出してください。",
-    "copy_diagnostic_log_action": "書き出して共有",
-    "copy_diagnostic_log_success": "診断ログを書き出しました。送信先アプリを選んでください。",
-    "copy_diagnostic_log_failed": "書き出しまたは共有に失敗しました。後でもう一度お試しください。",
+    "copy_diagnostic_log": "診断ログをコピー",
+    "copy_diagnostic_log_desc": "最近のアプリログをコピーして、クラッシュ報告に使えます。直前にクラッシュした場合は、先にアプリを再起動してからコピーしてください。",
+    "copy_diagnostic_log_action": "クリップボードにコピー",
+    "copy_diagnostic_log_success": "診断ログをクリップボードにコピーしました（{{count}} 文字）",
+    "copy_diagnostic_log_failed": "コピーに失敗しました。後でもう一度お試しください。",
     "copy_diagnostic_log_share_unavailable": "この端末ではファイル共有を利用できません",
     "love_message": "🌸 桜と暁はいつも Anson を愛しています ❤️"
   },
@@ -1662,7 +1678,9 @@
       "compress_context_upstream": "コンテキスト上行圧縮",
       "compress_context_upstream_desc": "次のモデルリクエストの前に、古い会話をローリング要約にまとめます（上行）。",
       "compress_context_downstream": "コンテキスト下行圧縮",
-      "compress_context_downstream_desc": "アシスタント応答の保存後に要約を更新し、長いツール出力を剪定します（下行）。"
+      "compress_context_downstream_desc": "アシスタント応答の保存後に要約を更新し、長いツール出力を剪定します（下行）。",
+      "companion_ask": "パートナー質問",
+      "companion_ask_desc": "ユーザーに確認質問をし、必要なら選択肢を提示します。回答までブロックします。"
     },
     "chat": {
       "companion_mode": "ディープ・コンパニオン",
@@ -1694,7 +1712,7 @@
       "ai_label": "AIパートナー",
       "regenerate": "再生成",
       "copy": "コピー",
-      "input_hint": "メッセージを入力...",
+      "input_hint": "メッセージを入力… Shift+Enter で改行",
       "err_no_model": "設定でAIモデルを先に設定してください",
       "cost_detail_title": "費用見積詳細",
       "cost_total": "合計消費",
@@ -2271,7 +2289,8 @@
     "swipe_again_to_exit": "もう一度スワイプして終了",
     "exit_app_confirm_title": "アプリを終了",
     "exit_app_confirm_message": "百守を終了しますか？",
-    "exit_app": "終了"
+    "exit_app": "終了",
+    "agent_workspace": "Agent"
   },
   "titlebar": {
     "minimize": "最小化",
@@ -2546,7 +2565,8 @@
     "no_diff": "无差异",
     "commit_placeholder": "コミットメッセージを入力（空欄の場合はタイムスタンプを使用）",
     "remote_url_hint": "例: https://github.com/username/vault.git",
-    "remote_username_hint": "例: github-user（HTTPS のみ）"
+    "remote_username_hint": "例: github-user（HTTPS のみ）",
+    "author_not_configured": "コミット前に「Git コミット署名」でユーザー名とメールアドレスを設定してください"
   },
   "tts": {
     "settings": {
@@ -2604,5 +2624,65 @@
       "testing": "测试中...",
       "test_button": "测试"
     }
+  },
+  "agent_workspace": {
+    "folder": "作業フォルダ",
+    "no_folder": "フォルダ未選択",
+    "pick_folder": "フォルダを選択",
+    "pick_folder_hint": "先にフォルダを選択してください",
+    "collapse_sidebar": "サイドバーを閉じる",
+    "expand_sidebar": "サイドバーを開く",
+    "sessions_title": "セッション",
+    "no_sessions": "ワークスペースセッションはありません",
+    "delete_session": "セッションを削除",
+    "delete_session_confirm": "このワークスペースセッションを削除しますか？会話履歴も削除されます。",
+    "file_tree": "ファイルツリー",
+    "empty_tree": "フォルダは空です",
+    "empty_state": "左側でフォルダを開き、会話を選ぶか新しい Agent 会話を始めてください。",
+    "new_session": "新しい会話",
+    "open_folder": "フォルダを開く",
+    "no_sessions_in_folder": "会話がありません",
+    "select_session_hint": "左側でフォルダを展開して会話を選ぶか、下の入力欄から新規会話を開始してください。",
+    "workspaces_title": "ワークスペース",
+    "add_workspace": "ワークスペースを追加",
+    "no_workspace": "ワークスペースがありません",
+    "pick_workspace_hint": "先にワークスペースを選択または追加してください",
+    "select_change_hint": "ファイルを選択して diff を表示",
+    "collapse_changes_panel": "変更パネルを閉じる",
+    "expand_changes_panel": "変更パネルを開く",
+    "input_placeholder": "このフォルダで行いたい変更を説明してください…"
+  },
+  "file_change": {
+    "changes_title": "変更一覧",
+    "no_changes": "ファイル変更はまだありません"
+  },
+  "round_rollback": {
+    "action": "このラウンドをロールバック",
+    "confirm_title": "このラウンドの変更をロールバックしますか？",
+    "confirm_desc": "このラウンド開始前のファイル状態に戻します。元に戻せません。",
+    "confirm": "ロールバック",
+    "cancel": "キャンセル",
+    "success": "ラウンドをロールバックしました",
+    "failed": "ロールバックに失敗しました"
+  },
+  "agent_gate": {
+    "dock_title": "パートナー操作の確認",
+    "dock_desc": "パートナーが確認が必要な操作を実行しようとしています。",
+    "proactive_desc": "パートナーから質問があります。",
+    "lifecycle_desc": "セッションが自動処理に入る前に確認が必要です。",
+    "dock_action": "操作: {{action}}",
+    "reject": "拒否",
+    "always": "常に許可",
+    "once": "今回のみ許可",
+    "always_disabled_hint": "この操作は除外リストにあり、常に許可できません",
+    "reject_feedback_placeholder": "拒否理由や修正方針を入力…",
+    "custom_answer_placeholder": "回答やフィードバックを入力…",
+    "custom_answer": "自由入力",
+    "submit_answer": "回答を送信",
+    "confirm": "確認",
+    "pending_badge": "確認待ち",
+    "resolved_badge": "確認済み",
+    "unavailable": "操作確認サービスが利用できません",
+    "reply_failed": "確認の送信に失敗しました"
   }
 }
