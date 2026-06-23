@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react'
 import { TokenBadge, InputBar, ContextChainPanel, useTheme, getProviderIcon, toast } from '@baishou/ui'
-import { createWebComposerDraftStorage } from '@baishou/ui/src/shared/composer-draft'
+import { createWebComposerDraftStorage } from '@baishou/ui/shared/composer-draft'
 import { MdCloud } from 'react-icons/md'
 import {
   normalizeChatBackgroundBlur,
