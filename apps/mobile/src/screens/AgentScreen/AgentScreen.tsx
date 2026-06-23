@@ -3,6 +3,7 @@ import { StatusBar } from 'react-native'
 import { ScreenSafeArea } from '../../components/ScreenSafeArea'
 import { AgentChatList } from './components/AgentChatList'
 import { AgentScreenOverlays } from './components/AgentScreenOverlays'
+import { AgentGateCardHost } from '../../components/agent-gate/AgentGateCardHost'
 import { useAgentScreenController } from './hooks/useAgentScreenController'
 
 export const AgentScreen = () => {
@@ -113,6 +114,7 @@ export const AgentScreen = () => {
           toggleTtsMode={c.toggleTtsMode}
         />
       </ScreenSafeArea>
+      <AgentGateCardHost request={c.pendingAgentGate} onReply={c.replyAgentGate} />
       <AgentScreenOverlays
         drawerOpen={c.drawerOpen}
         setDrawerOpen={c.setDrawerOpen}

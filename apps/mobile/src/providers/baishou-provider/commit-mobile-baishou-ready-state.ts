@@ -23,6 +23,8 @@ export async function commitMobileBaishouReadyState(
   const settingsManager = s.settingsManager
   const memorySearch = s.memorySearch
   const startAgentChat = s.startAgentChat
+  const agentGate = s.agentGate
+  const reloadAgentGateConfig = s.reloadAgentGateConfig
   const buildSharedContext = s.buildSharedContext
   const buildSharedContextPreview = s.buildSharedContextPreview
   const getContextAtMessage = s.getContextAtMessage
@@ -170,7 +172,9 @@ export async function commitMobileBaishouReadyState(
         buildSharedContextPreview,
         getContextAtMessage
       },
-      startAgentChat
+      startAgentChat,
+      agentGate,
+      reloadAgentGateConfig
     })
     InteractionManager.runAfterInteractions(() => {
       void runDeferredVaultStartup()

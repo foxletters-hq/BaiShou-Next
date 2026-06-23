@@ -5,7 +5,12 @@ import {
   isConfiguredProviderId,
   logger
 } from '@baishou/shared'
-import { AgentSessionService, type StreamChatCallbacks } from '@baishou/ai'
+import {
+  AgentSessionService,
+  type IBaishouAgentGate,
+  type StreamChatCallbacks
+} from '@baishou/ai'
+import type { BaishouAgentGateConfig } from '@baishou/shared'
 import {
   buildMobileStreamUserConfig,
   resolveAssistantContextWindow,
@@ -21,8 +26,17 @@ export function createStartAgentChat(deps: {
   registry: AIProviderRegistry
   agentDbRuntimeRef: typeof agentDbRuntimeRef
   getDiarySearcher: () => ToolDiarySearcher | undefined
+  getAgentGate?: () => IBaishouAgentGate | undefined
+  persistBaishouAgentGateConfig?: (config: BaishouAgentGateConfig) => Promise<void>
 }) {
-  const { agentService, toolRegistry, registry, getDiarySearcher } = deps
+  const {
+    agentService,
+    toolRegistry,
+    registry,
+    getDiarySearcher,
+    getAgentGate,
+    persistBaishouAgentGateConfig
+  } = deps
   return async (
     sessionId: string,
     userText: string,
@@ -127,7 +141,9 @@ export function createStartAgentChat(deps: {
           forceRecompress: overrides?.forceRecompress,
           streamClaimGeneration: overrides?.streamClaimGeneration,
           attachments: overrides?.attachments as any,
-          flushSessionToDisk: (id) => runtime.sessionManager.flushSessionToDisk(id)
+          flushSessionToDisk: (id) => runtime.sessionManager.flushSessionToDisk(id),
+          agentGate: getAgentGate?.(),
+          persistBaishouAgentGateConfig
         },
         callbacks
       )

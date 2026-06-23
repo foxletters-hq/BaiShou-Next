@@ -8,6 +8,9 @@ import {
   webSearchConfigToUserConfig
 } from '@baishou/ai'
 import {
+  BAISHOU_AGENT_GATE_CONFIG_KEY,
+  DEFAULT_BAISHOU_AGENT_GATE_CONFIG,
+  type BaishouAgentGateConfig,
   buildDiaryWritingGuidelinesForSystemPrompt,
   formatUserCardFromProfile,
   getUserProfileFromSettings,
@@ -132,6 +135,14 @@ export async function buildMobileStreamUserConfig(
     featureSettings.language || appSettings.language,
     i18n.language
   )
+  const agentGateStored =
+    (await settingsManager.get<BaishouAgentGateConfig>(BAISHOU_AGENT_GATE_CONFIG_KEY)) ??
+    DEFAULT_BAISHOU_AGENT_GATE_CONFIG
+  const baishou_agent_gate_config: BaishouAgentGateConfig = {
+    ...agentGateStored,
+    exclusionList: [...(agentGateStored.exclusionList ?? [])],
+    allowlist: [...(agentGateStored.allowlist ?? [])]
+  }
 
   return {
     ragEnabled: ragConfig?.ragEnabled ?? true,
@@ -159,7 +170,8 @@ export async function buildMobileStreamUserConfig(
       normalizeEmojiToolConfig(toolManagementConfig.emojiConfig),
       assistantEmojiPrefs
     ),
-    locale
+    locale,
+    baishou_agent_gate_config
   }
 }
 
