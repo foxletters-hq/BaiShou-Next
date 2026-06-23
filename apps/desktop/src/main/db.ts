@@ -1,9 +1,9 @@
 import { app } from 'electron'
-import { join } from 'path'
+import { resolveAgentDbPath as resolveSharedAgentDbPath } from '@baishou/core/shared'
 import { initNodeDatabase, AppDatabase } from '@baishou/database-desktop'
 import { logger } from '@baishou/shared'
-import { renameSync, existsSync } from 'fs'
-import { resolveAgentDbPath as resolveSharedAgentDbPath } from '@baishou/core/shared'
+import { renameSync, existsSync, mkdirSync } from 'fs'
+import { dirname, join } from 'path'
 
 export function resolveAgentDbPath(workspaceRoot?: string | null): string {
   if (workspaceRoot && workspaceRoot.trim() !== '') {
@@ -82,6 +82,7 @@ export function getAppDb(customBasePath?: string): AppDatabase {
   if (!_appDb) {
     logger.info(`[DB] Agent DB 初始化，路径: ${agentDbPath}`)
     try {
+      mkdirSync(dirname(agentDbPath), { recursive: true })
       _appDb = initNodeDatabase(agentDbPath, (err) => {
         handleMalformedDb(agentDbPath, err)
       })
