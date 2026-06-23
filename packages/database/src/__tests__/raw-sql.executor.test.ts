@@ -56,11 +56,26 @@ describe('executeRawSql (libsql client)', () => {
 })
 
 describe('executeRawSql (better-sqlite3)', () => {
-  it('runs PRAGMA foreign_keys assignment via run()', async () => {
-    const Database = (await import('better-sqlite3')).default
-    const db = new Database(':memory:')
+  it('runs PRAGMA foreign_keys assignment via exec()', async () => {
+    const execCalls: string[] = []
+    const db = {
+      prepare(statement: string) {
+        return {
+          run: () => {
+            execCalls.push(`run:${statement}`)
+            return { changes: 0, lastInsertRowid: 0 }
+          },
+          all: () => []
+        }
+      },
+      exec(statement: string) {
+        execCalls.push(statement)
+      }
+    }
+
     await executeRawSql(db, 'PRAGMA foreign_keys=OFF')
     await executeRawSql(db, 'PRAGMA foreign_keys=ON')
-    db.close()
+
+    expect(execCalls).toEqual(['PRAGMA foreign_keys=OFF', 'PRAGMA foreign_keys=ON'])
   })
 })
