@@ -1,6 +1,6 @@
 import type { IFileSystem, IStoragePathService } from '@baishou/core-mobile'
-import type { VaultService } from '@baishou/core'
-import { listDiskVaultFolderNames } from '@baishou/core'
+import type { VaultService } from '@baishou/core-mobile'
+import { listDiskVaultFolderNames } from '@baishou/core-mobile'
 
 export async function resolveMobileSyncPlanContext(
   pathService: IStoragePathService,

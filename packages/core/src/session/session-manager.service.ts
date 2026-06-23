@@ -113,7 +113,7 @@ export class SessionManagerService {
    * 对外暴露，当需要触发从云盘恢复数据时调用
    */
   async fullResyncFromDisks(
-    options?: import('../sync/disk-resync.types').DiskResyncOptions
+    options?: import('../vault/disk-resync.types').DiskResyncOptions
   ): Promise<void> {
     await this.syncService.fullScanArchives(options)
   }

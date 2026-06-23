@@ -1,4 +1,4 @@
-import type { VaultService } from '@baishou/core'
+import type { VaultService } from '@baishou/core-mobile'
 import type { IFileSystem, IStoragePathService } from '@baishou/core-mobile'
 import type { IncrementalSyncPlanPreview, IncrementalSyncRunOptions } from '@baishou/shared'
 import { resolveMobileSyncPlanContext } from './incremental-sync-plan-context'

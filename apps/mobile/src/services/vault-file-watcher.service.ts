@@ -1,5 +1,5 @@
 import { AppState, type AppStateStatus } from 'react-native'
-import { collectJournalPathsByDateInTree } from '@baishou/core'
+import { collectJournalPathsByDateInTree } from '@baishou/core-mobile'
 import type { IFileSystem, ShadowIndexSyncService } from '@baishou/core-mobile'
 import { logger } from '@baishou/shared'
 

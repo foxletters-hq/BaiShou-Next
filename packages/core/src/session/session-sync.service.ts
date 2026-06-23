@@ -1,6 +1,6 @@
 import { SessionRepository } from '@baishou/database'
 import { SessionFileService } from './session-file.service'
-import type { DiskResyncOptions } from '../sync/disk-resync.types'
+import type { DiskResyncOptions } from '../vault/disk-resync.types'
 
 export class SessionSyncService {
   constructor(
