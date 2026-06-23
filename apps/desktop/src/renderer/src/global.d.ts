@@ -99,12 +99,75 @@ interface SettingsAPI {
   getGlobalModels(): Promise<import('@baishou/shared').GlobalModelsConfig | null>
   getLegacyUpgradeNoticeState(): Promise<{ pending: boolean; shownCount: number }>
   markLegacyUpgradeNoticeShown(): Promise<number>
+  getBaishouAgentGateConfig(): Promise<import('@baishou/shared').BaishouAgentGateConfig>
+  setBaishouAgentGateConfig(
+    config: import('@baishou/shared').BaishouAgentGateConfig
+  ): Promise<void>
   testTts(
     config: unknown,
     text: string
   ): Promise<import('@baishou/shared').TtsSynthesizeFromSettingsResult>
   pickTtsRefAudio(): Promise<string | null>
   [key: string]: (...args: unknown[]) => Promise<unknown>
+}
+
+interface AgentGateAPI {
+  reply(input: {
+    requestId: string
+    reply: import('@baishou/shared').AgentGateReply
+    message?: string
+    selectedOptionIds?: string[]
+  }): Promise<{ success: boolean }>
+  getConfig(): Promise<import('@baishou/shared').BaishouAgentGateConfig>
+  setTrustMode(
+    trustMode: import('@baishou/shared').AgentGateTrustMode
+  ): Promise<import('@baishou/shared').BaishouAgentGateConfig>
+  removeAllowlistEntry(entryId: string): Promise<{ success: boolean }>
+  onAsked(callback: (request: import('@baishou/shared').AgentGateRequest) => void): () => void
+  onReplied(
+    callback: (payload: {
+      sessionId: string
+      requestId: string
+      reply: import('@baishou/shared').AgentGateReply
+    }) => void
+  ): () => void
+  onAllowlistChanged(
+    callback: (allowlist: import('@baishou/shared').AgentGateAllowlistEntry[]) => void
+  ): () => void
+}
+
+interface AgentWorkspaceAPI {
+  pickFolder(): Promise<string | null>
+  listDir(
+    rootPath: string,
+    relativePath?: string
+  ): Promise<import('@baishou/shared').AgentWorkspaceDirEntry[]>
+  readFile(
+    rootPath: string,
+    relativePath: string
+  ): Promise<import('@baishou/shared').AgentWorkspaceReadFileResult>
+  createSession(params: {
+    id?: string
+    folderRoot: string
+    assistantId?: string
+    title?: string
+  }): Promise<string>
+  getBinding(
+    sessionId: string
+  ): Promise<{ sessionId: string; folderRoot: string } | null>
+  listSessions(): Promise<import('@baishou/shared').AgentWorkspaceSessionListItem[]>
+  deleteSession(sessionId: string): Promise<{ success: boolean }>
+  chat(params: {
+    sessionId: string
+    text: string
+    userMessageId?: string
+    providerId?: string
+    modelId?: string
+  }): Promise<boolean>
+  rollbackRound(params: {
+    sessionId: string
+    userMessageId: string
+  }): Promise<{ restored: string[]; deleted: string[]; skipped: string[] }>
 }
 
 interface PickFilesOptions {
@@ -180,6 +243,9 @@ interface AppAPI {
   pickFiles(options?: PickFilesOptions): Promise<PickedFile[]>
   ensureDefaultLatteAssistant(locale?: string): Promise<void>
   syncDefaultLatteLocale(locale?: string): Promise<void>
+  agentGate: AgentGateAPI
+  agentWorkspace: AgentWorkspaceAPI
+  getMessages(sessionId: string): Promise<unknown>
   [key: string]: unknown
 }
 

@@ -7,6 +7,7 @@ import { IncrementalSyncPage } from '../features/settings/IncrementalSyncPage'
 import { GitManagementPage } from '../features/settings/GitManagementPage'
 import { SettingsHubPage } from '../features/settings/SettingsHubPage'
 import { AgentChatCachedPage } from '../features/agent/AgentChatCachedPage'
+import { AgentWorkspaceCachedPage } from '../features/agent-workspace/AgentWorkspaceCachedPage'
 import { isSettingsHubPath } from '../features/settings/settings-route.util'
 import styles from './MainLayout.module.css'
 import { MainPageCacheActiveContext } from './main-page-cache.context'
@@ -25,12 +26,14 @@ export const MAIN_PAGE_CACHE: Record<string, React.ComponentType> = {
   '/incremental-sync': IncrementalSyncPage,
   '/git': GitManagementPage,
   '/hub': SettingsHubPage,
-  '/chat': AgentChatCachedPage
+  '/chat': AgentChatCachedPage,
+  '/agent-workspace': AgentWorkspaceCachedPage
 }
 
 export function getMainPageCacheKey(pathname: string): string | null {
   if (pathname in MAIN_PAGE_CACHE) return pathname
   if (pathname.startsWith('/chat')) return '/chat'
+  if (pathname.startsWith('/agent-workspace')) return '/agent-workspace'
   if (isSettingsHubPath(pathname)) return '/hub'
   return null
 }

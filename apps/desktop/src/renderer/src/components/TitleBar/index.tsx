@@ -10,7 +10,7 @@ import { useOrchestratedSync } from '../../hooks/useOrchestratedSync'
 import { readActiveVaultNavigationSnapshot } from '../../lib/agent-navigation-persistence'
 import { switchActiveVault, persistActiveVaultName } from '../../lib/vault-runtime.util'
 import { INCREMENTAL_SYNC_CONFIG_CHANGED_EVENT } from '../../lib/incremental-sync-config-events'
-import { BookOpen, ChevronDown, FolderSync, Minus, Sparkles, Square, X } from 'lucide-react'
+import { BookOpen, Boxes, ChevronDown, FolderSync, Minus, Sparkles, Square, X } from 'lucide-react'
 
 export const TitleBar: React.FC = () => {
   const { t } = useTranslation()
@@ -168,9 +168,11 @@ export const TitleBar: React.FC = () => {
   }
 
   // Tabs logic corresponding to Flutter tab controller
-  const isAgent = location.pathname.startsWith('/agent') || location.pathname.startsWith('/chat')
+  const isCompanionChat = location.pathname.startsWith('/chat')
+  const isAgentWorkspace = location.pathname.startsWith('/agent-workspace')
   const isSettings = location.pathname.startsWith('/settings')
   const isOnboarding = location.pathname.startsWith('/welcome')
+  const isDiaryTab = !isCompanionChat && !isAgentWorkspace && !isSettings
 
   return (
     <div className={`${styles.titleBar} ${isOnboarding ? styles.titleBarOnboarding : ''}`}>
@@ -178,14 +180,14 @@ export const TitleBar: React.FC = () => {
         {!isOnboarding && (
           <div className={styles.tabsContainer}>
             <div
-              className={`${styles.tab} ${!isAgent && !isSettings ? styles.activeTab : ''}`}
+              className={`${styles.tab} ${isDiaryTab ? styles.activeTab : ''}`}
               onClick={() => navigate(resolveDiaryHomePath())}
             >
               <BookOpen className={styles.tabIcon} />
               <span>{t('nav.diary', '日记')}</span>
             </div>
             <div
-              className={`${styles.tab} ${isAgent && !isSettings ? styles.activeTab : ''}`}
+              className={`${styles.tab} ${isCompanionChat && !isSettings ? styles.activeTab : ''}`}
               onClick={() => {
                 const saved = readActiveVaultNavigationSnapshot()
                 navigate(saved ? buildAgentChatNavigationPath(saved) : '/chat')
@@ -193,6 +195,13 @@ export const TitleBar: React.FC = () => {
             >
               <Sparkles className={styles.tabIcon} />
               <span>{t('nav.agent', '伙伴')}</span>
+            </div>
+            <div
+              className={`${styles.tab} ${isAgentWorkspace && !isSettings ? styles.activeTab : ''}`}
+              onClick={() => navigate('/agent-workspace')}
+            >
+              <Boxes className={styles.tabIcon} />
+              <span>{t('nav.agent_workspace', 'Agent')}</span>
             </div>
           </div>
         )}
