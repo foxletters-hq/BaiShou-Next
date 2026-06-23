@@ -1,3 +1,5 @@
+import { buildMessageMetadataSystemPromptLines } from '@baishou/shared'
+
 export interface SystemPromptBuilderOptions {
   vaultName: string
   tools: Record<string, any> // 此刻所有通过了验证准备好交给模型的 Tool 实例集
@@ -58,10 +60,7 @@ export class SystemPromptBuilder {
 
     buffer.push('<system_context>')
     buffer.push(`[System Current Date / Time]: ${dateStr} (UTC${tzSign}${tzOffset})`)
-    buffer.push(
-      'Messages in context use metadata blocks: <message-time>YYYY-MM-DD HH:mm</message-time> and <message-content>…</message-content> (user, assistant, system, tool). ' +
-        'Your NEW replies must be plain text inside the assistant message only—never include these tags.'
-    )
+    buffer.push(...buildMessageMetadataSystemPromptLines())
     buffer.push(`[Current Vault / Workspace]: ${vaultName}`)
     buffer.push('</system_context>')
     buffer.push('')
@@ -102,8 +101,8 @@ export class SystemPromptBuilder {
         buffer.push(
           'Note: Web search tool is not enabled yet. ' +
             'If the user asks about recent events or current information that requires web search, ' +
-            'respond with: "您还未启用网络搜索，请在工具栏开启后重试。" ' +
-            'Do NOT say "disabled" or "禁用".'
+            'reply in Chinese with exactly: "您还未启用网络搜索，请在工具栏开启后重试。" ' +
+            'Do not use the English word "disabled" or the Chinese word "禁用".'
         )
         buffer.push('')
       }

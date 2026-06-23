@@ -44,4 +44,13 @@ describe('parseRedactedThinking', () => {
     expect(result.cleanContent).toContain('## 标题')
     expect(result.cleanContent).not.toContain(CLOSE_REDacted)
   })
+
+  it('sanitizes malformed nested message-time tags from fixture regression', () => {
+    const content =
+      '</thinking>\n<message-time>2026-02-10 16:40</message-time>\n<message-content>\n<message-time>2026-02-10 16:40</time>\n明白，先按照这个方案推进第一阶段。'
+    const result = parseRedactedThinking(content, 'the milestone still matters.')
+
+    expect(result.cleanReasoning).toBe('the milestone still matters.')
+    expect(result.cleanContent).toBe('明白，先按照这个方案推进第一阶段。')
+  })
 })
