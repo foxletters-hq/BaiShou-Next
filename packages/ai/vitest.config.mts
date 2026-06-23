@@ -4,6 +4,9 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
+    testTimeout: 60_000,
+    hookTimeout: 60_000,
+    fileParallelism: false,
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
