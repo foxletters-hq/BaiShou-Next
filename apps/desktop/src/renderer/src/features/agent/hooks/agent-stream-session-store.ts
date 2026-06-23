@@ -1,6 +1,7 @@
 import {
   createStreamingTextDisplayBuffer,
   isAgentStreamAbortError,
+  type AgentGateRequest,
   type StreamingTextDisplayBuffer
 } from '@baishou/shared'
 export interface SessionStreamState {
@@ -18,6 +19,8 @@ export interface SessionStreamState {
   error: string | null
   activeToolStartTime?: number
   isBridgeActive: boolean
+  pendingAgentGate: AgentGateRequest | null
+  isAgentGateReplying: boolean
 }
 
 export interface ToolExecution {
@@ -148,6 +151,8 @@ export function clearStreamBridgeState(state: SessionStreamState): void {
   state.activeTool = null
   state.activeToolStartTime = undefined
   state.pendingEmojis = []
+  state.pendingAgentGate = null
+  state.isAgentGateReplying = false
 }
 
 /** 消息列表已从 DB 刷新后清除桥接态，避免 StreamingBubble 与 ChatBubble 短暂并存 */
@@ -173,7 +178,9 @@ export function getOrCreateSessionState(sessionId: string): SessionStreamState {
       completedTools: [],
       pendingEmojis: [],
       error: null,
-      isBridgeActive: false
+      isBridgeActive: false,
+      pendingAgentGate: null,
+      isAgentGateReplying: false
     }
   }
   return sessionStates[sessionId]
@@ -385,8 +392,32 @@ function registerGlobalStreamIpcListeners(): () => void {
   ipc.on('agent:compression-event', onCompressionEvent)
   window.addEventListener('baishou:compression-stream-reset', onCompressionStreamReset)
 
+  const onAgentGateAsked = (request: AgentGateRequest) => {
+    if (!request?.sessionId) return
+    updateSessionState(request.sessionId, (state) => {
+      state.pendingAgentGate = request
+      state.isAgentGateReplying = false
+    })
+  }
+
+  const onAgentGateReplied = (payload: { sessionId?: string; requestId?: string }) => {
+    const sId = payload?.sessionId
+    if (!sId) return
+    updateSessionState(sId, (state) => {
+      if (state.pendingAgentGate?.id === payload.requestId) {
+        state.pendingAgentGate = null
+        state.isAgentGateReplying = false
+      }
+    })
+  }
+
+  const unsubscribeAsked = window.api?.agentGate?.onAsked?.(onAgentGateAsked)
+  const unsubscribeReplied = window.api?.agentGate?.onReplied?.(onAgentGateReplied)
+
   return () => {
     window.removeEventListener('baishou:compression-stream-reset', onCompressionStreamReset)
+    unsubscribeAsked?.()
+    unsubscribeReplied?.()
     clearAgentStreamIpcListeners(ipc)
   }
 }
