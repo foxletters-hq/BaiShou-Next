@@ -163,7 +163,6 @@ describe('incremental sync E2E simulation', () => {
     cloud = new SharedCloudStore()
     devices = []
 
-    const deviceA = createDevice('device-a')
     const deviceB = createDevice('device-b')
 
     // 模拟旧版本误上传到云端的背景图（含合法 manifest）

@@ -4,7 +4,6 @@ import { SharedCloudStore } from './helpers/shared-cloud-store'
 import {
   assertCloudMatchesCanonical,
   assertDevicesMatchCanonical,
-  CanonicalSyncState,
   journalPath,
   pad2,
   runPullRounds,

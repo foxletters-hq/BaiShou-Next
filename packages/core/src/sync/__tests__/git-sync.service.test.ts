@@ -485,7 +485,7 @@ describe('GitSyncService', () => {
 
       await impl.unstageAll()
 
-      expect(mockGit.reset).toHaveBeenCalledWith('mixed')
+      expect(mockGit.reset).toHaveBeenCalledWith(['--mixed'])
     })
   })
 
