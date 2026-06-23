@@ -1,5 +1,5 @@
 import type { AppDatabase } from '@baishou/database'
-import type { ToolContext, ToolDiarySearcher } from '@baishou/ai'
+import type { ToolContext, ToolDiarySearcher, IBaishouAgentGate } from '@baishou/ai'
 import {
   AIProviderRegistry,
   DatabaseAdapter,
@@ -22,6 +22,7 @@ export interface MobileMcpToolContextDeps {
   settingsManager: SettingsManagerService
   pathService: MobileStoragePathService
   getDiarySearcher: () => ToolDiarySearcher | undefined
+  getAgentGate?: () => IBaishouAgentGate | undefined
   drizzleDb: unknown
   webSearchResultFetcher: (url: string) => Promise<string>
   fetchSearchPage: (url: string) => Promise<string>
@@ -76,7 +77,8 @@ export async function buildMobileMcpToolContext(
       userConfig,
       diarySearcher: deps.getDiarySearcher(),
       webSearchResultFetcher: deps.webSearchResultFetcher,
-      fetchSearchPage: deps.fetchSearchPage
+      fetchSearchPage: deps.fetchSearchPage,
+      agentGate: deps.getAgentGate?.()
     }
   }
 
@@ -123,7 +125,8 @@ export async function buildMobileMcpToolContext(
       summaryReader: dbAdapter,
       deduplicationService: dedupService,
       webSearchResultFetcher: deps.webSearchResultFetcher,
-      fetchSearchPage: deps.fetchSearchPage
+      fetchSearchPage: deps.fetchSearchPage,
+      agentGate: deps.getAgentGate?.()
     })
 
     mobileMcpToolContextCache = {
@@ -144,7 +147,8 @@ export async function buildMobileMcpToolContext(
       userConfig,
       diarySearcher: deps.getDiarySearcher(),
       webSearchResultFetcher: deps.webSearchResultFetcher,
-      fetchSearchPage: deps.fetchSearchPage
+      fetchSearchPage: deps.fetchSearchPage,
+      agentGate: deps.getAgentGate?.()
     }
   }
 }

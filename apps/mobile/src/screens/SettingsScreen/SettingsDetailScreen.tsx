@@ -11,6 +11,7 @@ import { AIModelsSection } from './components/AIModelsSection'
 import { RAGMemorySection } from './components/RAGMemorySection'
 import { WebSearchSection } from './components/WebSearchSection'
 import { AgentToolsSection } from './components/AgentToolsSection'
+import { AgentGateSettingsSection } from './components/AgentGateSettingsSection'
 import { SummarySettingsSection } from './components/SummarySettingsSection'
 import { DiaryTemplateSettingsSection } from './components/DiaryTemplateSettingsSection'
 import { AttachmentManagementSection } from './components/AttachmentManagementSection'
@@ -46,6 +47,8 @@ export const SettingsDetailScreen: React.FC<SettingsDetailScreenProps> = ({ sect
         return <McpSettingsSection />
       case 'agent-tools':
         return <AgentToolsSection />
+      case 'agent-gate':
+        return <AgentGateSettingsSection />
       case 'diary-template':
       case 'diary-ai-writing':
         return <DiaryTemplateSettingsSection />
