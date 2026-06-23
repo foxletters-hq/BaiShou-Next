@@ -52,7 +52,7 @@ export interface AgentMessageRowProps {
   invertMetaOverBackground?: boolean
 }
 
-export const AgentMessageRow: React.FC<AgentMessageRowProps> = ({
+export const AgentMessageRow = React.memo(function AgentMessageRow({
   item,
   chatUserProfile,
   chatAiProfile,
@@ -145,7 +145,7 @@ export const AgentMessageRow: React.FC<AgentMessageRowProps> = ({
       )}
     </View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   row: {

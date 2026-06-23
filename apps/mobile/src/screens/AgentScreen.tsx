@@ -80,6 +80,13 @@ const BUBBLE_EDIT_KEYBOARD_BUFFER = 72
 /** 编辑态且键盘收起时：保存/token 与底部工具栏之间的额外间距 */
 const BUBBLE_EDIT_DOCK_GAP = 16
 
+const IDLE_LIVE_COMPRESSION = {
+  phase: 'auto' as const,
+  summary: '',
+  reasoning: '',
+  isActive: false
+}
+
 export const AgentScreen = () => {
   const router = useRouter()
   const { t, i18n } = useTranslation()
@@ -111,6 +118,7 @@ export const AgentScreen = () => {
   const editingRowRef = useRef<View>(null)
   const scrollOffsetRef = useRef(0)
   const prevMsgLenRef = useRef(0)
+  const prevLastMessageIdRef = useRef<string | null>(null)
   const layoutReadyRef = useRef(false)
   const bubbleEditScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -223,6 +231,7 @@ export const AgentScreen = () => {
 
   const [showLoadMoreBanner, setShowLoadMoreBanner] = useState(false)
   const loadMoreLockRef = useRef(false)
+  const contentSizeFollowRafRef = useRef<number | null>(null)
 
   const {
     showCostDialog,
@@ -241,6 +250,10 @@ export const AgentScreen = () => {
     recallSearchMode,
     toggleRecallSearchMode
   } = useAgentUI()
+
+  const followStreamBottom = useCallback(() => {
+    scrollToBottom(flatListRef, false, false)
+  }, [scrollToBottom])
 
   const composerKeyboardLiftEnabled = !drawerOpen && !showShortcutSheet && !showRecallSheet
   const drawerSwipeEnabled =
@@ -341,28 +354,32 @@ export const AgentScreen = () => {
 
   const handleListScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent
+      const { contentOffset } = event.nativeEvent
       scrollOffsetRef.current = contentOffset.y
       handleScroll(event)
 
-      const canScroll = contentSize.height > layoutMeasurement.height + 50
       const nearTop = contentOffset.y < 100
-      setShowLoadMoreBanner(hasMore && (nearTop || !canScroll))
-
-      if (layoutReadyRef.current && canScroll && nearTop && hasMore && !loadMoreLockRef.current) {
-        loadMoreLockRef.current = true
-        void handleLoadMore().finally(() => {
-          loadMoreLockRef.current = false
-        })
-      }
+      setShowLoadMoreBanner(hasMore && nearTop)
     },
-    [handleScroll, hasMore, handleLoadMore]
+    [handleScroll, hasMore]
   )
 
   useEffect(() => {
     layoutReadyRef.current = false
     prevMsgLenRef.current = 0
+    prevLastMessageIdRef.current = null
   }, [currentSessionId])
+
+  useEffect(() => {
+    const last = messages[messages.length - 1]
+    const isNewUserMessage =
+      last?.role === 'user' && last?.id && last.id !== prevLastMessageIdRef.current
+    if (isNewUserMessage) {
+      scrollToBottom(flatListRef, true, false)
+    }
+    prevLastMessageIdRef.current = last?.id ?? null
+    prevMsgLenRef.current = messages.length
+  }, [messages, scrollToBottom])
 
   useEffect(() => {
     if (!hasMore) {
@@ -659,19 +676,14 @@ export const AgentScreen = () => {
     [currentSessionId, services, searchMode, toast, t]
   )
 
-  useEffect(() => {
-    if (messages.length > 0 && messages.length > prevMsgLenRef.current) {
-      prevMsgLenRef.current = messages.length
-      requestAnimationFrame(() => flatListRef.current?.scrollToEnd({ animated: true }))
-    }
-  }, [messages])
-
   const handleContentSizeChange = useCallback(() => {
-    if (messages.length > prevMsgLenRef.current) {
-      prevMsgLenRef.current = messages.length
-      requestAnimationFrame(() => flatListRef.current?.scrollToEnd({ animated: true }))
-    }
-  }, [messages.length])
+    if (!isStreaming) return
+    if (contentSizeFollowRafRef.current != null) return
+    contentSizeFollowRafRef.current = requestAnimationFrame(() => {
+      contentSizeFollowRafRef.current = null
+      followStreamBottom()
+    })
+  }, [isStreaming, followStreamBottom])
 
   const totalInputTokens = tokenUsage?.inputTokens || 0
   const totalOutputTokens = tokenUsage?.outputTokens || 0
@@ -808,9 +820,19 @@ export const AgentScreen = () => {
                 keyboardDismissMode="interactive"
                 ListHeaderComponent={
                   hasMore && showLoadMoreBanner ? (
-                    <TouchableOpacity style={styles.loadMore} onPress={() => void handleLoadMore()}>
-                      <Text style={[styles.loadMoreText, { color: colors.textSecondary }]}>
-                        {t('agent.chat.scroll_up_load_more', '点击或上滑加载更早对话')}
+                    <TouchableOpacity
+                      style={[
+                        styles.loadMore,
+                        {
+                          borderColor: colors.borderSubtle,
+                          backgroundColor: colors.bgGlassSurface ?? colors.bgSurface
+                        }
+                      ]}
+                      onPress={() => void handleLoadMore()}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={[styles.loadMoreText, { color: colors.primary }]}>
+                        {t('agent.chat.load_earlier_messages', '加载更早对话')}
                       </Text>
                     </TouchableOpacity>
                   ) : null
@@ -822,10 +844,16 @@ export const AgentScreen = () => {
                   const isLiveCompressionAnchor =
                     (compressionPhase === 'auto' || compressionPhase === 'manual') &&
                     compressionTriggerMessageId === item.id &&
-                    (isCompressing ||
-                      ((Boolean(compressionText?.trim()) ||
-                        Boolean(compressionReasoning?.trim())) &&
-                        !msgWithCompaction.compactionRecord))
+                    isCompressing
+
+                  const liveCompression = isLiveCompressionAnchor
+                    ? {
+                        phase: compressionPhase,
+                        summary: compressionText,
+                        reasoning: compressionReasoning,
+                        isActive: isCompressing
+                      }
+                    : IDLE_LIVE_COMPRESSION
 
                   return (
                     <View
@@ -838,12 +866,7 @@ export const AgentScreen = () => {
                         chatUserProfile={chatUserProfile}
                         chatAiProfile={chatAiProfile}
                         isLiveCompressionAnchor={isLiveCompressionAnchor}
-                        liveCompression={{
-                          phase: compressionPhase,
-                          summary: compressionText,
-                          reasoning: compressionReasoning,
-                          isActive: isCompressing
-                        }}
+                        liveCompression={liveCompression}
                         onRegenerate={() => handleRegenerate(item.id)}
                         onResend={
                           item.role === 'user' ? () => void handleResend(item.id) : undefined
@@ -900,6 +923,10 @@ export const AgentScreen = () => {
                   ) : null
                 }
                 showsVerticalScrollIndicator={false}
+                initialNumToRender={10}
+                maxToRenderPerBatch={8}
+                windowSize={9}
+                removeClippedSubviews={Platform.OS === 'android'}
                 onContentSizeChange={handleContentSizeChange}
                 onLayout={() => {
                   if (!layoutReadyRef.current) {
@@ -910,7 +937,7 @@ export const AgentScreen = () => {
                   }
                 }}
                 onScroll={handleListScroll}
-                scrollEventThrottle={16}
+                scrollEventThrottle={100}
                 ListEmptyComponent={!isStreaming ? renderEmptyState() : null}
               />
             </AgentDrawerSwipeZone>
@@ -1115,11 +1142,19 @@ const styles = StyleSheet.create({
     height: '100%',
     resizeMode: 'cover'
   },
-  loadMore: { paddingVertical: 12, alignItems: 'center' },
+  loadMore: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderRadius: 10
+  },
   loadMoreText: {
     fontSize: 13,
-    fontWeight: '600',
-    textDecorationLine: 'underline'
+    fontWeight: '600'
   },
   list: { flex: 1 },
   listContent: { paddingVertical: 24, paddingHorizontal: 0, flexGrow: 1 },

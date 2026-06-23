@@ -20,6 +20,7 @@ import { mapSavedAttachmentsForMobileUi } from '../utils/mobile-attachment-ui.ut
 import { subscribeMobileCompressionEvents } from '../services/mobile-compression-event.service'
 
 const COMPRESSION_DELTA_RENDER_INTERVAL_MS = 80
+const STREAM_DELTA_RENDER_INTERVAL_MS = 50
 
 interface TokenUsage {
   inputTokens: number
@@ -91,6 +92,9 @@ export function useAgentStream(
   const compressionTextBufferRef = useRef('')
   const compressionReasoningBufferRef = useRef('')
   const compressionFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const streamingTextBufferRef = useRef('')
+  const streamingReasoningBufferRef = useRef('')
+  const streamingFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const streamFinalizeLockRef = useRef<string | null>(null)
 
   const isActiveSession = useCallback(
@@ -116,6 +120,43 @@ export function useAgentStream(
       flushCompressionBuffersToState()
     }, COMPRESSION_DELTA_RENDER_INTERVAL_MS)
   }, [flushCompressionBuffersToState])
+
+  const clearStreamingFlushTimer = useCallback(() => {
+    if (!streamingFlushTimerRef.current) return
+    clearTimeout(streamingFlushTimerRef.current)
+    streamingFlushTimerRef.current = null
+  }, [])
+
+  const flushStreamingBuffersToState = useCallback(() => {
+    setStreamingText(streamingTextBufferRef.current)
+    setStreamingReasoning(streamingReasoningBufferRef.current)
+  }, [])
+
+  const scheduleStreamingFlush = useCallback(() => {
+    if (streamingFlushTimerRef.current) return
+    streamingFlushTimerRef.current = setTimeout(() => {
+      streamingFlushTimerRef.current = null
+      flushStreamingBuffersToState()
+    }, STREAM_DELTA_RENDER_INTERVAL_MS)
+  }, [flushStreamingBuffersToState])
+
+  const appendStreamingTextDelta = useCallback(
+    (chunk: string) => {
+      if (!chunk) return
+      streamingTextBufferRef.current += chunk
+      scheduleStreamingFlush()
+    },
+    [scheduleStreamingFlush]
+  )
+
+  const appendStreamingReasoningDelta = useCallback(
+    (chunk: string) => {
+      if (!chunk) return
+      streamingReasoningBufferRef.current += chunk
+      scheduleStreamingFlush()
+    },
+    [scheduleStreamingFlush]
+  )
 
   const resetCompressionBuffers = useCallback(() => {
     compressionTextBufferRef.current = ''
@@ -269,15 +310,21 @@ export function useAgentStream(
     scheduleCompressionFlush
   ])
 
-  useEffect(() => () => clearCompressionFlushTimer(), [clearCompressionFlushTimer])
+  useEffect(() => () => {
+    clearCompressionFlushTimer()
+    clearStreamingFlushTimer()
+  }, [clearCompressionFlushTimer, clearStreamingFlushTimer])
 
   const resetStreamingBuffers = useCallback(() => {
+    streamingTextBufferRef.current = ''
+    streamingReasoningBufferRef.current = ''
+    clearStreamingFlushTimer()
     setStreamingText('')
     setStreamingReasoning('')
     activeToolRef.current = null
     setActiveTool(null)
     setCompletedTools([])
-  }, [])
+  }, [clearStreamingFlushTimer])
 
   const handleToolCallStart = useCallback((toolName: string) => {
     const tool = { name: toolName, startTime: Date.now() }
@@ -364,6 +411,8 @@ export function useAgentStream(
           await syncTokenUsageFromSession(sessionId)
         }
       } finally {
+        clearStreamingFlushTimer()
+        flushStreamingBuffersToState()
         setIsStreaming(false)
         resetStreamingBuffers()
         if (streamFinalizeLockRef.current === sessionId) {
@@ -372,6 +421,8 @@ export function useAgentStream(
       }
     },
     [
+      clearStreamingFlushTimer,
+      flushStreamingBuffersToState,
       reloadMessagesFromDb,
       resetStreamingBuffers,
       setLoading,
@@ -407,18 +458,19 @@ export function useAgentStream(
       setIsStreaming(true)
       setStreamError(null)
       resetStreamingBuffers()
+      resetCompressionBuffers()
+      setIsCompressing(false)
+      setCompressionText('')
+      setCompressionReasoning('')
+      setCompressionTriggerMessageId(null)
 
-      let currentText = ''
       try {
         await startAgentChat?.(
           sessionId,
           userMessage.content,
           {
-            onTextDelta: (chunk) => {
-              currentText += chunk
-              setStreamingText(currentText)
-            },
-            onReasoningDelta: (chunk) => setStreamingReasoning((prev) => prev + chunk),
+            onTextDelta: appendStreamingTextDelta,
+            onReasoningDelta: appendStreamingReasoningDelta,
             onToolCallStart: handleToolCallStart,
             onToolCallResult: handleToolCallResult,
             onFinish: () => {
@@ -456,7 +508,9 @@ export function useAgentStream(
       setLoading,
       startAgentChat,
       handleToolCallStart,
-      handleToolCallResult
+      handleToolCallResult,
+      appendStreamingTextDelta,
+      appendStreamingReasoningDelta
     ]
   )
 
@@ -565,18 +619,12 @@ export function useAgentStream(
       }
 
       try {
-        let currentText = ''
         await startAgentChat?.(
           sessionId,
           text,
           {
-            onTextDelta: (chunk) => {
-              currentText += chunk
-              setStreamingText(currentText)
-            },
-            onReasoningDelta: (chunk) => {
-              setStreamingReasoning((prev) => prev + chunk)
-            },
+            onTextDelta: appendStreamingTextDelta,
+            onReasoningDelta: appendStreamingReasoningDelta,
             onToolCallStart: handleToolCallStart,
             onToolCallResult: handleToolCallResult,
             onFinish: () => {
@@ -618,7 +666,9 @@ export function useAgentStream(
       resetStreamingBuffers,
       interruptActiveStream,
       handleToolCallStart,
-      handleToolCallResult
+      handleToolCallResult,
+      appendStreamingTextDelta,
+      appendStreamingReasoningDelta
     ]
   )
 
@@ -708,6 +758,12 @@ export function useAgentStream(
 
       const epoch = ++retryEpochRef.current
 
+      resetCompressionBuffers()
+      setIsCompressing(false)
+      setCompressionText('')
+      setCompressionReasoning('')
+      setCompressionTriggerMessageId(null)
+
       try {
         const dbMsg = await services.sessionRepo.getMessageById(messageId)
         if (!dbMsg) return
@@ -752,6 +808,12 @@ export function useAgentStream(
       if (!currentSessionId || !services?.snapshotRepo || !newContent.trim()) return
 
       const epoch = ++retryEpochRef.current
+
+      resetCompressionBuffers()
+      setIsCompressing(false)
+      setCompressionText('')
+      setCompressionReasoning('')
+      setCompressionTriggerMessageId(null)
 
       try {
         const dbMsg = await services.sessionRepo.getMessageById(messageId)

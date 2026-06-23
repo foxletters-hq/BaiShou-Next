@@ -24,9 +24,9 @@ export function useAgentUI() {
     setShowScrollButton(!isAtBottom)
   }, [])
 
-  const scrollToBottom = useCallback((flatListRef: any, force = false) => {
+  const scrollToBottom = useCallback((flatListRef: any, force = false, animated = true) => {
     if (flatListRef.current && (!isUserScrollingRef.current || force)) {
-      flatListRef.current.scrollToEnd({ animated: true })
+      flatListRef.current.scrollToEnd({ animated })
       if (force) {
         setShowScrollButton(false)
         isUserScrollingRef.current = false
