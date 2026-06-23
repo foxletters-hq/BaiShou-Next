@@ -211,9 +211,11 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
                 externalJournalsPath={storageSettings.externalJournalsPath}
                 externalJournalsDefaultPath={storageSettings.externalJournalsDefaultPath}
                 externalJournalsFileCount={storageSettings.externalJournalsFileCount}
+                externalJournalsPathAvailable={storageSettings.externalJournalsPathAvailable}
                 externalSummariesPath={storageSettings.externalSummariesPath}
                 externalSummariesDefaultPath={storageSettings.externalSummariesDefaultPath}
                 externalSummariesFileCount={storageSettings.externalSummariesFileCount}
+                externalSummariesPathAvailable={storageSettings.externalSummariesPathAvailable}
                 sqliteSizeStats={storageStats.sqliteSizeStats}
                 vectorDbStats={storageStats.vectorDbStats}
                 mediaCacheStats={storageStats.mediaCacheStats}

@@ -10,9 +10,11 @@ export interface StorageSettingsCardProps {
   externalJournalsPath?: string | null
   externalJournalsDefaultPath?: string
   externalJournalsFileCount?: number
+  externalJournalsPathAvailable?: boolean
   externalSummariesPath?: string | null
   externalSummariesDefaultPath?: string
   externalSummariesFileCount?: number
+  externalSummariesPathAvailable?: boolean
   sqliteSizeStats?: string
   vectorDbStats?: string
   mediaCacheStats?: string
@@ -40,9 +42,11 @@ export const StorageSettingsCard: React.FC<StorageSettingsCardProps> = ({
   externalJournalsPath = null,
   externalJournalsDefaultPath,
   externalJournalsFileCount,
+  externalJournalsPathAvailable = true,
   externalSummariesPath = null,
   externalSummariesDefaultPath,
   externalSummariesFileCount,
+  externalSummariesPathAvailable = true,
   onChangeRoot,
   onChangeDirectory,
   changeDirectoryLabel,
@@ -121,6 +125,14 @@ export const StorageSettingsCard: React.FC<StorageSettingsCardProps> = ({
                   externalJournalsDefaultPath ||
                   t('storage.external_journals_default', '使用工作区内 Journals')}
               </span>
+              {externalJournalsPath && !externalJournalsPathAvailable ? (
+                <span className="settings-list-tile-subtitle storage-settings-warning">
+                  {t(
+                    'storage.external_path_not_available_on_device',
+                    '该路径在本机不可访问（可能来自其他设备的同步配置）'
+                  )}
+                </span>
+              ) : null}
               {typeof externalJournalsFileCount === 'number' ? (
                 <span className="settings-list-tile-subtitle">
                   {t('storage.external_journals_scan_count', {
@@ -132,7 +144,7 @@ export const StorageSettingsCard: React.FC<StorageSettingsCardProps> = ({
               <span className="settings-list-tile-subtitle">
                 {t(
                   'storage.external_journals_hint',
-                  '可将 Obsidian 等外部日记文件夹指向此处；伙伴与同步仍使用上方数据根目录。'
+                  '本机读写位置，不会同步到其他设备。云端增量同步以工作区虚拟路径 Personal/Journals 为准。'
                 )}
               </span>
             </div>
@@ -176,6 +188,14 @@ export const StorageSettingsCard: React.FC<StorageSettingsCardProps> = ({
                   externalSummariesDefaultPath ||
                   t('storage.external_summaries_default', '使用工作区内 Archives')}
               </span>
+              {externalSummariesPath && !externalSummariesPathAvailable ? (
+                <span className="settings-list-tile-subtitle storage-settings-warning">
+                  {t(
+                    'storage.external_path_not_available_on_device',
+                    '该路径在本机不可访问（可能来自其他设备的同步配置）'
+                  )}
+                </span>
+              ) : null}
               {typeof externalSummariesFileCount === 'number' ? (
                 <span className="settings-list-tile-subtitle">
                   {t('storage.external_summaries_scan_count', {
@@ -187,7 +207,7 @@ export const StorageSettingsCard: React.FC<StorageSettingsCardProps> = ({
               <span className="settings-list-tile-subtitle">
                 {t(
                   'storage.external_summaries_hint',
-                  '可将外部总结文件夹指向此处；需包含 Weekly/Monthly/Quarterly/Yearly 子目录。'
+                  '本机读写位置，不会同步到其他设备。云端以工作区虚拟路径 Personal/Archives 为准。'
                 )}
               </span>
             </div>

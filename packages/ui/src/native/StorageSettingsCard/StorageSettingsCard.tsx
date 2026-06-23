@@ -12,9 +12,11 @@ export interface NativeStorageSettingsCardProps {
   externalJournalsPath?: string | null
   externalJournalsDefaultPath?: string
   externalJournalsFileCount?: number
+  externalJournalsPathAvailable?: boolean
   externalSummariesPath?: string | null
   externalSummariesDefaultPath?: string
   externalSummariesFileCount?: number
+  externalSummariesPathAvailable?: boolean
   onChangeDirectory?: () => void | Promise<void>
   changeDirectoryLabel?: string
   onMigrateDirectory?: () => void | Promise<void>
@@ -36,9 +38,11 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
   externalJournalsPath = null,
   externalJournalsDefaultPath,
   externalJournalsFileCount,
+  externalJournalsPathAvailable = true,
   externalSummariesPath = null,
   externalSummariesDefaultPath,
   externalSummariesFileCount,
+  externalSummariesPathAvailable = true,
   onChangeDirectory,
   changeDirectoryLabel,
   onMigrateDirectory,
@@ -107,7 +111,10 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
         </View>
       ) : null}
 
-      {(onChangeExternalJournalsDirectory || onClearExternalJournalsDirectory) && (
+      {(externalJournalsDefaultPath ||
+        externalJournalsPath ||
+        onChangeExternalJournalsDirectory ||
+        onClearExternalJournalsDirectory) && (
         <View style={styles.sectionBlock}>
           <Text style={[hubStyles.rowTitle, { color: colors.textPrimary }]}>
             {t('storage.external_journals_title', '外部日记目录')}
@@ -117,6 +124,14 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
               externalJournalsDefaultPath ||
               t('storage.external_journals_default', '使用工作区内 Journals')}
           </Text>
+          {externalJournalsPath && !externalJournalsPathAvailable ? (
+            <Text style={[styles.hint, { color: colors.warning ?? colors.textTertiary }]}>
+              {t(
+                'storage.external_path_not_available_on_device',
+                '该路径在本机不可访问（可能来自其他设备的同步配置）'
+              )}
+            </Text>
+          ) : null}
           {typeof externalJournalsFileCount === 'number' ? (
             <Text style={[styles.hint, { color: colors.textTertiary }]}>
               {t('storage.external_journals_scan_count', {
@@ -128,7 +143,7 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
           <Text style={[styles.hint, { color: colors.textTertiary }]}>
             {t(
               'storage.external_journals_hint',
-              '可将 Obsidian 等外部日记文件夹指向此处；增量同步会一并纳入。'
+              '本机读写位置，不会同步到其他设备。云端增量同步以工作区虚拟路径 Personal/Journals 为准。'
             )}
           </Text>
           <View style={styles.actions}>
@@ -156,7 +171,10 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
         </View>
       )}
 
-      {(onChangeExternalSummariesDirectory || onClearExternalSummariesDirectory) && (
+      {(externalSummariesDefaultPath ||
+        externalSummariesPath ||
+        onChangeExternalSummariesDirectory ||
+        onClearExternalSummariesDirectory) && (
         <View style={styles.sectionBlock}>
           <Text style={[hubStyles.rowTitle, { color: colors.textPrimary }]}>
             {t('storage.external_summaries_title', '外部总结目录')}
@@ -166,6 +184,14 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
               externalSummariesDefaultPath ||
               t('storage.external_summaries_default', '使用工作区内 Archives')}
           </Text>
+          {externalSummariesPath && !externalSummariesPathAvailable ? (
+            <Text style={[styles.hint, { color: colors.warning ?? colors.textTertiary }]}>
+              {t(
+                'storage.external_path_not_available_on_device',
+                '该路径在本机不可访问（可能来自其他设备的同步配置）'
+              )}
+            </Text>
+          ) : null}
           {typeof externalSummariesFileCount === 'number' ? (
             <Text style={[styles.hint, { color: colors.textTertiary }]}>
               {t('storage.external_summaries_scan_count', {
@@ -177,7 +203,7 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
           <Text style={[styles.hint, { color: colors.textTertiary }]}>
             {t(
               'storage.external_summaries_hint',
-              '可将外部总结文件夹指向此处；需包含 Weekly/Monthly/Quarterly/Yearly 子目录。'
+              '本机读写位置，不会同步到其他设备。云端以工作区虚拟路径 Personal/Archives 为准。'
             )}
           </Text>
           <View style={styles.actions}>

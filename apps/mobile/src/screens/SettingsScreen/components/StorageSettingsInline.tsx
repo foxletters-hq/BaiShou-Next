@@ -38,9 +38,11 @@ export const StorageSettingsInline: React.FC<StorageSettingsInlineProps> = ({
     externalJournalsPath,
     externalJournalsDefaultPath,
     externalJournalsFileCount,
+    externalJournalsPathAvailable,
     externalSummariesPath,
     externalSummariesDefaultPath,
     externalSummariesFileCount,
+    externalSummariesPathAvailable,
     externalPathsBusy,
     externalPickerVisible,
     externalPickerInitialPath,
@@ -101,9 +103,11 @@ export const StorageSettingsInline: React.FC<StorageSettingsInlineProps> = ({
         externalJournalsPath={externalJournalsPath}
         externalJournalsDefaultPath={externalJournalsDefaultPath}
         externalJournalsFileCount={externalJournalsFileCount}
+        externalJournalsPathAvailable={externalJournalsPathAvailable}
         externalSummariesPath={externalSummariesPath}
         externalSummariesDefaultPath={externalSummariesDefaultPath}
         externalSummariesFileCount={externalSummariesFileCount}
+        externalSummariesPathAvailable={externalSummariesPathAvailable}
         onChangeExternalJournalsDirectory={
           showExternalPathActions ? handleChangeExternalJournalsDirectory : undefined
         }
