@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { StorageSettingsCard, RestoreBlockingOverlay } from '@baishou/ui/native'
 import { useStorageSettings } from '../../../hooks/useStorageSettings'
+import { useMobileExternalVaultPaths } from '../../../hooks/useMobileExternalVaultPaths'
 import { useFlutterLegacyMigrationSettings } from '../../../hooks/useFlutterLegacyMigrationSettings'
 import { DirectoryPickerModal } from '../../../components/DirectoryPickerModal'
 
@@ -33,9 +34,28 @@ export const StorageSettingsInline: React.FC<StorageSettingsInlineProps> = ({
     fileSystem
   } = useStorageSettings()
 
+  const {
+    externalJournalsPath,
+    externalJournalsDefaultPath,
+    externalJournalsFileCount,
+    externalSummariesPath,
+    externalSummariesDefaultPath,
+    externalSummariesFileCount,
+    externalPathsBusy,
+    externalPickerVisible,
+    externalPickerInitialPath,
+    closeExternalDirectoryPicker,
+    handleExternalDirectorySelected,
+    handleChangeExternalJournalsDirectory,
+    handleClearExternalJournalsDirectory,
+    handleChangeExternalSummariesDirectory,
+    handleClearExternalSummariesDirectory,
+    showExternalPathActions
+  } = useMobileExternalVaultPaths()
+
   const { showMigrateFromFlutterLegacy } = useFlutterLegacyMigrationSettings()
 
-  const overlayVisible = storageBusy !== 'idle'
+  const overlayVisible = storageBusy !== 'idle' || externalPathsBusy
   const overlayMessage =
     storageBusy === 'switching'
       ? t('storage.switching_directory', '正在更换目录...')
@@ -78,6 +98,24 @@ export const StorageSettingsInline: React.FC<StorageSettingsInlineProps> = ({
         onRequestAllFilesAccess={
           Platform.OS === 'android' ? handleRequestAllFilesAccess : undefined
         }
+        externalJournalsPath={externalJournalsPath}
+        externalJournalsDefaultPath={externalJournalsDefaultPath}
+        externalJournalsFileCount={externalJournalsFileCount}
+        externalSummariesPath={externalSummariesPath}
+        externalSummariesDefaultPath={externalSummariesDefaultPath}
+        externalSummariesFileCount={externalSummariesFileCount}
+        onChangeExternalJournalsDirectory={
+          showExternalPathActions ? handleChangeExternalJournalsDirectory : undefined
+        }
+        onClearExternalJournalsDirectory={
+          showExternalPathActions ? handleClearExternalJournalsDirectory : undefined
+        }
+        onChangeExternalSummariesDirectory={
+          showExternalPathActions ? handleChangeExternalSummariesDirectory : undefined
+        }
+        onClearExternalSummariesDirectory={
+          showExternalPathActions ? handleClearExternalSummariesDirectory : undefined
+        }
       />
       <DirectoryPickerModal
         visible={pickerVisible}
@@ -85,6 +123,13 @@ export const StorageSettingsInline: React.FC<StorageSettingsInlineProps> = ({
         initialPath={storageRootPath}
         onClose={closeDirectoryPicker}
         onSelect={(path) => handleDirectorySelected(path)}
+      />
+      <DirectoryPickerModal
+        visible={externalPickerVisible}
+        fileSystem={fileSystem}
+        initialPath={externalPickerInitialPath}
+        onClose={closeExternalDirectoryPicker}
+        onSelect={(path) => handleExternalDirectorySelected(path)}
       />
     </>
   )

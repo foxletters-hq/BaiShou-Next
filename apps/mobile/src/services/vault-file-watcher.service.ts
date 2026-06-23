@@ -16,7 +16,7 @@ export interface VaultFileWatcherDeps {
  * 使用嵌套目录遍历替代周期性 fullScanVault，避免扫描中途索引抖动导致列表错乱。
  */
 export class VaultFileWatcherService {
-  private vaultPath: string | null = null
+  private journalsPath: string | null = null
   private deps: VaultFileWatcherDeps | null = null
   private intervalId: ReturnType<typeof setInterval> | null = null
   private debounceTimer: ReturnType<typeof setTimeout> | null = null
@@ -25,13 +25,13 @@ export class VaultFileWatcherService {
   private pendingDates = new Set<string>()
   private isProcessing = false
 
-  start(vaultPath: string, deps: VaultFileWatcherDeps): void {
+  start(journalsBasePath: string, deps: VaultFileWatcherDeps): void {
     this.stop()
-    this.vaultPath = vaultPath
+    this.journalsPath = journalsBasePath
     this.deps = deps
     this.lastMtimes.clear()
 
-    logger.info(`[VaultFileWatcher] Starting for ${vaultPath}`)
+    logger.info(`[VaultFileWatcher] Starting for ${journalsBasePath}`)
 
     this.appStateSub = AppState.addEventListener('change', this.onAppStateChange)
     if (AppState.currentState === 'active') {
@@ -51,7 +51,7 @@ export class VaultFileWatcherService {
     }
     this.pendingDates.clear()
     this.lastMtimes.clear()
-    this.vaultPath = null
+    this.journalsPath = null
     this.deps = null
     logger.info('[VaultFileWatcher] Stopped')
   }
@@ -87,9 +87,9 @@ export class VaultFileWatcherService {
   }
 
   private async scanOnce(): Promise<void> {
-    if (!this.vaultPath || !this.deps) return
+    if (!this.journalsPath || !this.deps) return
 
-    const journalsPath = `${this.vaultPath}/Journals`
+    const journalsPath = this.journalsPath
     const { fileSystem } = this.deps
 
     try {

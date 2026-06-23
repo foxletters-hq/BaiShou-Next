@@ -837,7 +837,8 @@ async function restartVaultWatchers(
     return
   }
 
-  vaultFileWatcher.start(activeVault.path, {
+  const journalsDir = await watcherDeps.pathService.getJournalsBaseDirectory()
+  vaultFileWatcher.start(journalsDir, {
     shadowIndexSyncService: diaryStack.shadowIndexSyncService,
     fileSystem: watcherDeps.fileSystem
   })
