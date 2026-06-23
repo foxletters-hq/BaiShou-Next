@@ -1,0 +1,135 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 16px 108px;
+  pointer-events: none;
+}
+
+.dock {
+  width: min(560px, 100%);
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: var(--bg-surface, #fff);
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.16);
+}
+
+.title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.description {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+}
+
+.meta {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-tertiary, var(--text-secondary));
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.1));
+  padding: 10px 12px;
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-primary);
+}
+
+.optionSelected {
+  border-color: var(--color-primary, #5ba8f5);
+  background: color-mix(in srgb, var(--color-primary, #5ba8f5) 10%, transparent);
+}
+
+.optionLabel {
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.btn {
+  border: none;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btnReject {
+  color: #b91c1c;
+  background: color-mix(in srgb, #ef4444 12%, transparent);
+}
+
+.btnOnce {
+  color: var(--text-primary);
+  background: var(--bg-surface-variant, rgba(0, 0, 0, 0.05));
+}
+
+.btnAlways {
+  color: #fff;
+  background: var(--color-primary, #5ba8f5);
+}
+
+.feedback {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.feedbackInput {
+  width: 100%;
+  min-height: 72px;
+  resize: vertical;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.1));
+  padding: 10px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--bg-surface, #fff);
+  color: var(--text-primary);
+}
+
+.feedbackActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
