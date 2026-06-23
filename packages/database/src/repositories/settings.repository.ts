@@ -148,7 +148,17 @@ export class SettingsRepository {
   }
 
   async getAgentBehaviorConfig(): Promise<AgentBehaviorConfig> {
-    return (await this.get<AgentBehaviorConfig>('agent_behavior')) ?? DEFAULT_AGENT_BEHAVIOR
+    const raw = await this.get<Partial<AgentBehaviorConfig> & Record<string, unknown>>(
+      'agent_behavior'
+    )
+    if (!raw) return { ...DEFAULT_AGENT_BEHAVIOR }
+    return {
+      agentContextWindowSize:
+        raw.agentContextWindowSize ?? DEFAULT_AGENT_BEHAVIOR.agentContextWindowSize,
+      agentPersona: raw.agentPersona ?? DEFAULT_AGENT_BEHAVIOR.agentPersona,
+      agentGuidelines: raw.agentGuidelines ?? DEFAULT_AGENT_BEHAVIOR.agentGuidelines,
+      pinnedAssistantIds: raw.pinnedAssistantIds ?? DEFAULT_AGENT_BEHAVIOR.pinnedAssistantIds
+    }
   }
   async setAgentBehaviorConfig(config: AgentBehaviorConfig): Promise<void> {
     await this.set('agent_behavior', config)

@@ -2,15 +2,22 @@ import { AgentSessionService } from './agent-session.service'
 import type { IStreamEmitter } from './stream-emitter.interface'
 import {
   abortAllAgentStreamSessions,
+  abortAgentStreamSession,
   claimAgentStreamSession,
   releaseAgentStreamSession
 } from './stream-session-guard'
+import { clearCompressionSessionLock } from './compression-session-lock'
 
 const agentService = new AgentSessionService()
 
 export class AgentChatCoreService {
-  public static stopStream() {
-    abortAllAgentStreamSessions()
+  public static stopStream(sessionId?: string) {
+    if (sessionId) {
+      abortAgentStreamSession(sessionId)
+      clearCompressionSessionLock(sessionId)
+    } else {
+      abortAllAgentStreamSessions()
+    }
     return true
   }
 

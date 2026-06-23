@@ -50,6 +50,7 @@ export type { SessionCompressionConfig } from './context-compression.utils'
 export type CompressionRunOptions = {
   /** 方案 A：触发发送前压缩的用户消息 ID */
   triggerUserMessageId?: string
+  abortSignal?: AbortSignal
 }
 
 export type RecompressResult = {
@@ -110,6 +111,10 @@ export class ContextCompressorService {
       const compressionConfig =
         config ?? (await resolveSessionCompressionConfig(sessionId, sessionRepo))
 
+      if (runOptions?.abortSignal?.aborted) {
+        throw new DOMException('The operation was aborted', 'AbortError')
+      }
+
       const usableWindow = usableContextTokens(
         compressionConfig.modelContextWindow ?? 0,
         compressionConfig.reservedTokens
@@ -136,6 +141,9 @@ export class ContextCompressorService {
         latestSnapshot
       )
       if (!resolveCompressionTrigger(contextTokens, compressionConfig)) {
+        logger.info(
+          `[ContextCompressor] Session(${sessionId}) skip: ~${contextTokens} tokens below threshold ${compressionConfig.threshold}.`
+        )
         return false
       }
 
@@ -189,7 +197,8 @@ export class ContextCompressorService {
         toCompress,
         compressionConfig,
         latestSnapshot?.summaryText ?? null,
-        providerType
+        providerType,
+        runOptions?.abortSignal
       )
       if (!generated) {
         emitCompressionLifecycle({ type: 'finish', sessionId, phase: 'auto', ok: false })
@@ -243,9 +252,15 @@ export class ContextCompressorService {
       return true
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
-      logger.error('[ContextCompressor] Compression failed:', message)
+      const aborted = e instanceof DOMException && e.name === 'AbortError'
+      if (!aborted) {
+        logger.error('[ContextCompressor] Compression failed:', message)
+      }
       if (compressionStarted) {
         emitCompressionLifecycle({ type: 'finish', sessionId, phase: 'auto', ok: false })
+      }
+      if (aborted) {
+        throw e
       }
       return false
     }
@@ -394,7 +409,8 @@ export class ContextCompressorService {
     toCompress: MessageWithParts[],
     compressionConfig: SessionCompressionConfig,
     priorSummaryText: string | null,
-    providerType: string
+    providerType: string,
+    abortSignal?: AbortSignal
   ): Promise<{
     text: string
     reasoning?: string
@@ -423,15 +439,19 @@ export class ContextCompressorService {
         sessionId
       }),
       messages,
-      temperature: 0.1
+      temperature: 0.1,
+      abortSignal
     })
 
     let streamed: Awaited<ReturnType<typeof consumeCompressionModelStream>>
     try {
-      streamed = await consumeCompressionModelStream(streamResult, sessionId)
+      streamed = await consumeCompressionModelStream(streamResult, sessionId, abortSignal)
     } catch (streamErr: unknown) {
-      const detail = streamErr instanceof Error ? streamErr.message : String(streamErr)
-      logger.error(`[ContextCompressor] Session(${sessionId}) model stream failed: ${detail}`)
+      const aborted = streamErr instanceof DOMException && streamErr.name === 'AbortError'
+      if (!aborted) {
+        const detail = streamErr instanceof Error ? streamErr.message : String(streamErr)
+        logger.error(`[ContextCompressor] Session(${sessionId}) model stream failed: ${detail}`)
+      }
       throw streamErr
     }
 

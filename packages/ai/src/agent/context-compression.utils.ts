@@ -1,6 +1,7 @@
 import type { ModelMessage } from 'ai'
 import type { SessionRepository } from '@baishou/database'
 import { AssistantRepository } from '@baishou/database'
+import { DEFAULT_LATTE_ASSISTANT_ID } from '@baishou/shared'
 import {
   buildCompressionPreviousSummaryBlock,
   shouldWrapRoleForModel,
@@ -84,34 +85,31 @@ export function getModelContextWindow(
 }
 
 /**
- * 触发压缩时的上下文 token 估算：优先用最近一条 assistant 的 usage，否则文本估算 + 摘要。
+ * 触发压缩时的上下文 token 估算：仅按「摘要 + 快照后保留消息」文本估算。
+ * 不使用 API usage（与伙伴阈值比较的应是实际上下文，而非上一轮计费体量）。
  */
 export function estimateContextTokensForTrigger(
-  allMessages: MessageWithParts[],
+  _allMessages: MessageWithParts[],
   messagesAfterSnapshot: MessageWithParts[],
   latestSnapshot: { summaryText?: string | null } | null
 ): number {
-  for (let i = allMessages.length - 1; i >= 0; i--) {
-    const m = allMessages[i]!
-    if (m.role !== 'assistant') continue
-    const input = m.inputTokens ?? 0
-    const output = m.outputTokens ?? 0
-    if (input + output > 0) {
-      const msgsAfter = allMessages.slice(i + 1)
-      let tokens = input + output
-      if (msgsAfter.length > 0) {
-        tokens += estimateMessagesTokens(msgsAfter, true)
-      }
-      return tokens
-    }
-  }
-
   let tokens = estimateMessagesTokens(messagesAfterSnapshot, true)
   const summary = latestSnapshot?.summaryText?.trim()
   if (summary) {
     tokens += estimateTextTokens(summary)
   }
   return tokens
+}
+
+/** 从伙伴记录读取压缩阈值；无效值视为 0（关闭） */
+export function readCompressTokenThreshold(
+  assistant: { compressTokenThreshold?: number | null } | null | undefined
+): number {
+  const raw = assistant?.compressTokenThreshold
+  if (raw == null) return 0
+  const n = typeof raw === 'number' ? raw : Number(raw)
+  if (!Number.isFinite(n) || n < 0) return 0
+  return Math.floor(n)
 }
 
 /** 为压缩调用预留的 token（输出 + 系统提示 + 工具）：窗口的 20%，夹在 8k–40k */
@@ -125,11 +123,6 @@ export function usableContextTokens(window: number, reserved?: number): number {
   if (window <= 0) return 0
   const r = reserved ?? reservedTokensFor(window)
   return Math.max(0, window - r)
-}
-
-export function shouldCompressContext(currentContextTokens: number, threshold: number): boolean {
-  if (threshold <= 0) return false
-  return currentContextTokens > threshold
 }
 
 /**
@@ -654,7 +647,12 @@ export async function resolveSessionCompressionConfig(
   try {
     const session = await sessionRepo.getSessionById?.(sessionId)
     const astRepo = new AssistantRepository(sessionRepo.db)
-    const ast = session?.assistantId ? await astRepo.findById(session.assistantId) : null
+
+    const linkedAssistantId = session?.assistantId?.trim()
+    let ast = linkedAssistantId ? await astRepo.findById(linkedAssistantId) : null
+    if (!ast) {
+      ast = await astRepo.findById(DEFAULT_LATTE_ASSISTANT_ID)
+    }
 
     const modelContextWindow = getModelContextWindow(
       session?.modelId,
@@ -667,7 +665,7 @@ export async function resolveSessionCompressionConfig(
         : undefined
 
     return {
-      threshold: ast?.compressTokenThreshold ?? 0,
+      threshold: readCompressTokenThreshold(ast),
       keepTurns: ast?.compressKeepTurns ?? 3,
       systemPrompt: ast?.compressSystemPrompt?.trim() || undefined,
       modelContextWindow,

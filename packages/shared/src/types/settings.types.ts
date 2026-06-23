@@ -65,8 +65,6 @@ export interface GlobalModelsConfig {
  */
 export interface AgentBehaviorConfig {
   agentContextWindowSize: number // Agent 上下文窗口大小（默认 20）
-  companionCompressTokens: number // 深度陪伴模式触发压缩的 Token 数（默认 8000）
-  companionTruncateTokens: number // 深度陪伴模式压缩时截断多少 token 以前的对话（默认 4000）
   agentPersona: string // Agent 角色人设描述
   agentGuidelines: string // Agent 行为准则
   pinnedAssistantIds: string[] // 侧边栏置顶助手列表 (最多 3 个)

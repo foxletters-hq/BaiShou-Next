@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import {
-  shouldCompressContext,
   resolveSnapshotCutoffIndex,
   getMessagesAfterSnapshot,
   splitMessagesForCompression,
@@ -15,6 +14,8 @@ import {
   getModelContextWindow,
   usableContextTokens,
   resolveCompressionTrigger,
+  estimateContextTokensForTrigger,
+  readCompressTokenThreshold,
   computeTailStartMessageId,
   DEFAULT_MODEL_CONTEXT_WINDOW
 } from '../agent/context-compression.utils'
@@ -39,10 +40,10 @@ function msg(
 }
 
 describe('context-compression.utils', () => {
-  it('shouldCompress respects threshold 0 as disabled', () => {
-    expect(shouldCompressContext(100_000, 0)).toBe(false)
-    expect(shouldCompressContext(100_000, 8000)).toBe(true)
-    expect(shouldCompressContext(5000, 8000)).toBe(false)
+  it('resolveCompressionTrigger respects explicit threshold', () => {
+    expect(resolveCompressionTrigger(100_000, { threshold: 0, keepTurns: 3 })).toBe(false)
+    expect(resolveCompressionTrigger(100_000, { threshold: 8000, keepTurns: 3 })).toBe(true)
+    expect(resolveCompressionTrigger(5000, { threshold: 8000, keepTurns: 3 })).toBe(false)
   })
 
   it('resolveSnapshotCutoffIndex finds by message id and legacy orderIndex', () => {
@@ -311,6 +312,57 @@ describe('context-compression.utils', () => {
     // disabled → never (unless force)
     expect(resolveCompressionTrigger(999_999, { threshold: 0, keepTurns: 3 })).toBe(false)
     expect(resolveCompressionTrigger(0, { threshold: 0, keepTurns: 3, force: true })).toBe(true)
+  })
+
+  it('estimateContextTokensForTrigger ignores stale usage after snapshot', () => {
+    const snapshot = {
+      id: 1,
+      sessionId: 's1',
+      summaryText: 'short summary',
+      coveredUpToMessageId: '1',
+      messageCount: 2,
+      tokenCount: null,
+      createdAt: new Date()
+    }
+    const messages = [
+      msg('1', 'user', 1, 'old'),
+      msg('2', 'assistant', 2, 'old reply'),
+      msg('3', 'user', 3, 'ai')
+    ]
+    messages[1]!.inputTokens = 350_000
+    messages[1]!.outputTokens = 5_000
+
+    const after = getMessagesAfterSnapshot(messages, snapshot)
+    const tokens = estimateContextTokensForTrigger(messages, after, snapshot)
+
+    expect(tokens).toBeLessThan(10_000)
+    expect(
+      resolveCompressionTrigger(tokens, { threshold: 300_000, keepTurns: 3 })
+    ).toBe(false)
+  })
+
+  it('estimateContextTokensForTrigger ignores inflated API usage', () => {
+    const messages = [
+      msg('1', 'user', 1, 'hi'),
+      msg('2', 'assistant', 2, 'hello'),
+      msg('3', 'user', 3, 'follow up')
+    ]
+    messages[1]!.inputTokens = 350_000
+    messages[1]!.outputTokens = 5_000
+
+    const after = getMessagesAfterSnapshot(messages, null)
+    const tokens = estimateContextTokensForTrigger(messages, after, null)
+
+    expect(tokens).toBeLessThan(1_000)
+    expect(
+      resolveCompressionTrigger(tokens, { threshold: 300_000, keepTurns: 3 })
+    ).toBe(false)
+  })
+
+  it('readCompressTokenThreshold normalizes assistant values', () => {
+    expect(readCompressTokenThreshold({ compressTokenThreshold: 300_000 })).toBe(300_000)
+    expect(readCompressTokenThreshold({ compressTokenThreshold: 0 })).toBe(0)
+    expect(readCompressTokenThreshold(null)).toBe(0)
   })
 
   it('splitMessagesForCompression returns tailStartMessageId on retain slice', () => {

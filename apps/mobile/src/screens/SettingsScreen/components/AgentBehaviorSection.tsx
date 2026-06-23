@@ -2,7 +2,6 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme, useNativeToast, useDialog, Input, Button } from '@baishou/ui/native'
-import { logger } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import type { AgentBehaviorConfig } from '@baishou/shared'
 import { DEFAULT_AGENT_BEHAVIOR } from '@baishou/database'
@@ -17,13 +16,8 @@ export const AgentBehaviorSection: React.FC = () => {
   const [config, setConfig] = useState<AgentBehaviorConfig>(DEFAULT_AGENT_BEHAVIOR)
   const [dirty, setDirty] = useState(false)
 
-  // 编辑中的文本状态，用于解决清空输入框时 state 与显示不同步的问题
   const [editingContextWindowSize, setEditingContextWindowSize] = useState('')
-  const [editingCompressTokens, setEditingCompressTokens] = useState('')
-  const [editingTruncateTokens, setEditingTruncateTokens] = useState('')
   const [isEditingContextWindowSize, setIsEditingContextWindowSize] = useState(false)
-  const [isEditingCompressTokens, setIsEditingCompressTokens] = useState(false)
-  const [isEditingTruncateTokens, setIsEditingTruncateTokens] = useState(false)
 
   useEffect(() => {
     if (!dbReady || !services) return
@@ -33,10 +27,7 @@ export const AgentBehaviorSection: React.FC = () => {
         if (saved) {
           const merged = { ...DEFAULT_AGENT_BEHAVIOR, ...saved }
           setConfig(merged)
-          // 初始化编辑状态
           setEditingContextWindowSize(String(merged.agentContextWindowSize))
-          setEditingCompressTokens(String(merged.companionCompressTokens))
-          setEditingTruncateTokens(String(merged.companionTruncateTokens))
         }
       } catch (e) {
         console.warn('加载 Agent 行为配置失败', e)
@@ -76,7 +67,7 @@ export const AgentBehaviorSection: React.FC = () => {
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean)
-        .slice(0, 3) // 限制最多 3 个
+        .slice(0, 3)
       updateConfig({ pinnedAssistantIds: ids })
     },
     [updateConfig]
@@ -84,7 +75,6 @@ export const AgentBehaviorSection: React.FC = () => {
 
   return (
     <View style={styles.section}>
-      {/* 上下文窗口大小 */}
       <View style={[styles.card, { backgroundColor: colors.bgSurfaceHighest }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('settings.context_window_size')}
@@ -112,7 +102,6 @@ export const AgentBehaviorSection: React.FC = () => {
             if (!isNaN(num) && num > 0) {
               updateConfig({ agentContextWindowSize: num })
             } else {
-              // 恢复原值
               setEditingContextWindowSize(String(config.agentContextWindowSize))
             }
           }}
@@ -121,77 +110,15 @@ export const AgentBehaviorSection: React.FC = () => {
         />
       </View>
 
-      {/* 伙伴压缩 Token 阈值 */}
       <View style={[styles.card, { backgroundColor: colors.bgSurfaceHighest }]}>
-        <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('settings.compress_token_threshold')}
+        <Text style={[styles.hint, { color: colors.textTertiary, marginBottom: 0 }]}>
+          {t(
+            'settings.compression_threshold_in_assistant_hint',
+            '对话压缩 Token 阈值请在「伙伴编辑 → 记忆」中按伙伴单独配置，不在此全局设置。'
+          )}
         </Text>
-        <Text style={[styles.hint, { color: colors.textTertiary }]}>
-          {t('settings.compress_token_threshold_hint')}
-        </Text>
-        <Input
-          value={
-            isEditingCompressTokens ? editingCompressTokens : String(config.companionCompressTokens)
-          }
-          onChangeText={(text) => {
-            setEditingCompressTokens(text)
-            setIsEditingCompressTokens(true)
-          }}
-          onFocus={() => {
-            setEditingCompressTokens(String(config.companionCompressTokens))
-            setIsEditingCompressTokens(true)
-          }}
-          onBlur={() => {
-            setIsEditingCompressTokens(false)
-            const num = parseInt(editingCompressTokens, 10)
-            if (!isNaN(num) && num > 0) {
-              updateConfig({ companionCompressTokens: num })
-            } else {
-              // 恢复原值
-              setEditingCompressTokens(String(config.companionCompressTokens))
-            }
-          }}
-          keyboardType="number-pad"
-          placeholder="8000"
-        />
       </View>
 
-      {/* 伙伴截断 Token 阈值 */}
-      <View style={[styles.card, { backgroundColor: colors.bgSurfaceHighest }]}>
-        <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('settings.truncate_token_threshold')}
-        </Text>
-        <Text style={[styles.hint, { color: colors.textTertiary }]}>
-          {t('settings.truncate_token_threshold_hint')}
-        </Text>
-        <Input
-          value={
-            isEditingTruncateTokens ? editingTruncateTokens : String(config.companionTruncateTokens)
-          }
-          onChangeText={(text) => {
-            setEditingTruncateTokens(text)
-            setIsEditingTruncateTokens(true)
-          }}
-          onFocus={() => {
-            setEditingTruncateTokens(String(config.companionTruncateTokens))
-            setIsEditingTruncateTokens(true)
-          }}
-          onBlur={() => {
-            setIsEditingTruncateTokens(false)
-            const num = parseInt(editingTruncateTokens, 10)
-            if (!isNaN(num) && num > 0) {
-              updateConfig({ companionTruncateTokens: num })
-            } else {
-              // 恢复原值
-              setEditingTruncateTokens(String(config.companionTruncateTokens))
-            }
-          }}
-          keyboardType="number-pad"
-          placeholder="4000"
-        />
-      </View>
-
-      {/* Agent 人格设定 */}
       <View style={[styles.card, { backgroundColor: colors.bgSurfaceHighest }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('settings.agent_persona')}
@@ -209,7 +136,6 @@ export const AgentBehaviorSection: React.FC = () => {
         />
       </View>
 
-      {/* Agent 指导方针 */}
       <View style={[styles.card, { backgroundColor: colors.bgSurfaceHighest }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('settings.agent_guidelines')}
@@ -227,7 +153,6 @@ export const AgentBehaviorSection: React.FC = () => {
         />
       </View>
 
-      {/* 置顶助手 ID 列表 */}
       <View style={[styles.card, { backgroundColor: colors.bgSurfaceHighest }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('settings.pinned_assistant_ids')}
@@ -242,7 +167,6 @@ export const AgentBehaviorSection: React.FC = () => {
         />
       </View>
 
-      {/* 操作按钮 */}
       <View style={styles.actions}>
         <Button variant="outline" className="flex-1" onPress={handleResetDefaults}>
           {t('settings.reset_defaults')}

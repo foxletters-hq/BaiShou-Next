@@ -48,7 +48,6 @@ export * from './settings/settings-file.service'
 export * from './settings/settings-manager.service'
 
 export * from './session/compression-prompt'
-export * from './session/compression.service'
 export * from './session/system-prompt-builder'
 export * from './session/model-pricing.service'
 export * from './session/memory-deduplication.service'

@@ -12,8 +12,8 @@ import {
 import { searchService } from '../services/search.service'
 
 export class AgentChatService {
-  public static stopStream() {
-    const stopped = AgentChatCoreService.stopStream()
+  public static stopStream(sessionId?: string) {
+    const stopped = AgentChatCoreService.stopStream(sessionId)
     searchService.requestAbort()
     void searchService.closeAllSearchWindows()
     return stopped
@@ -120,11 +120,14 @@ export class AgentChatService {
       return true
     } catch (error: any) {
       if (error.name === 'AbortError') {
-        event.sender.send('agent:stream-finish', { success: true })
+        event.sender.send('agent:stream-finish', { sessionId: args.sessionId, success: true })
         return true
       }
       logger.error('Agent IPC stream error:', error)
-      event.sender.send('agent:stream-finish', { error: error.message || 'Stream Error' })
+      event.sender.send('agent:stream-finish', {
+        sessionId: args.sessionId,
+        error: error.message || 'Stream Error'
+      })
       return false
     } finally {
       AgentChatCoreService.resetAbortController()

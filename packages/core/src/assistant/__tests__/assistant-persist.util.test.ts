@@ -40,6 +40,17 @@ describe('normalizeDiskAssistantRecord', () => {
     })
     expect(normalized?.assistantKind).toBe('companion')
   })
+
+  it('maps snake_case compression fields to camelCase', () => {
+    const normalized = normalizeDiskAssistantRecord({
+      id: 'a1',
+      compress_token_threshold: 300000,
+      compress_keep_turns: 5
+    })
+    expect(normalized?.compressTokenThreshold).toBe(300000)
+    expect(normalized?.compressKeepTurns).toBe(5)
+    expect(normalized?.compress_token_threshold).toBeUndefined()
+  })
 })
 
 describe('stableAssistantDiskJson', () => {

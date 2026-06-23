@@ -46,7 +46,7 @@ export interface StreamChatOptions {
   streamClaimGeneration?: number
   userMessageId?: string // 明确指定回复针对的用户消息 ID
   skipUserMessageRecording?: boolean // 用户消息已提前落库时，跳过重复记录
-  forceRecompress?: boolean // 编辑/重发截断后强制重建压缩摘要
+  forceRecompress?: boolean // 编辑/重发截断后允许重新判定压缩（截断已清除 marker/无效快照）
 }
 
 export interface StreamChatCallbacks {

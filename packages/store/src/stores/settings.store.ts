@@ -185,8 +185,6 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
 
               const defaultAgentBehavior: AgentBehaviorConfig = {
                 agentContextWindowSize: 20,
-                companionCompressTokens: 8000,
-                companionTruncateTokens: 4000,
                 agentPersona: '',
                 agentGuidelines: '',
                 pinnedAssistantIds: []

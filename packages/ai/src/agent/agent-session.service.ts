@@ -69,8 +69,7 @@ export class AgentSessionService {
       abortSignal,
       streamClaimGeneration,
       userMessageId,
-      skipUserMessageRecording,
-      forceRecompress
+      skipUserMessageRecording
     } = options
 
     try {
@@ -87,22 +86,20 @@ export class AgentSessionService {
       // 2. 若上下文 token 超过阈值或逼近模型窗口，先同步压缩再构建窗口
       const compressionConfig = await resolveSessionCompressionConfig(sessionId, sessionRepo)
       {
+        if (abortSignal?.aborted) {
+          throw new DOMException('The operation was aborted', 'AbortError')
+        }
         const rawForEstimate = (await sessionRepo.getMessagesBySession(
           sessionId,
           COMPRESSION_MESSAGE_FETCH_LIMIT
         )) as import('./message.adapter').MessageWithParts[]
-        // 重发/编辑截断后 token 可能低于阈值，但仍需强制重压缩（内容可能已变）。
-        // 普通发送也会提前落库用户消息，因此不能用 skipUserMessageRecording 判断。
-        const canForceRecompress = forceRecompress === true && rawForEstimate.length >= 4
-        const compressionConfigForRun = canForceRecompress
-          ? { ...compressionConfig, force: true }
-          : compressionConfig
         const latestSnap = await snapshotRepo.getLatestSnapshot(sessionId)
         const afterSnap = getMessagesAfterSnapshot(rawForEstimate, latestSnap)
         const contextTokens = estimateContextTokensForTrigger(rawForEstimate, afterSnap, latestSnap)
-        if (resolveCompressionTrigger(contextTokens, compressionConfigForRun)) {
+        // 重发/编辑截断后仅重新判定阈值；截断流程已清除 marker/无效快照，不再 force 绕过阈值。
+        if (resolveCompressionTrigger(contextTokens, compressionConfig)) {
           logger.info(
-            `[AgentSessionService] Context ~${contextTokens} tokens hit compression trigger (threshold=${compressionConfigForRun.threshold}, window=${compressionConfigForRun.modelContextWindow ?? 0}, force=${Boolean(compressionConfigForRun.force)}), compressing before request.`
+            `[AgentSessionService] Context ~${contextTokens} tokens hit compression trigger (threshold=${compressionConfig.threshold}, window=${compressionConfig.modelContextWindow ?? 0}, force=${Boolean(compressionConfig.force)}), compressing before request.`
           )
           const compressed = await ContextCompressorService.tryCompress(
             provider,
@@ -110,10 +107,16 @@ export class AgentSessionService {
             sessionRepo,
             snapshotRepo,
             sessionId,
-            compressionConfigForRun,
+            compressionConfig,
             provider.config?.type ?? '',
-            userMessageId ? { triggerUserMessageId: userMessageId } : undefined
+            {
+              ...(userMessageId ? { triggerUserMessageId: userMessageId } : {}),
+              abortSignal
+            }
           )
+          if (abortSignal?.aborted) {
+            throw new DOMException('The operation was aborted', 'AbortError')
+          }
           if (compressed) {
             const allForPrune = (await sessionRepo.getMessagesBySession(
               sessionId,
@@ -402,11 +405,14 @@ export class AgentSessionService {
       }
     } catch (e: unknown) {
       const err = e instanceof Error ? e : new Error(String(e))
-      logger.error('[AgentSessionService] Error in streamChat:', err.message)
-      if (err.stack) {
-        logger.error('[AgentSessionService] Stack:', err.stack)
+      const aborted = err.name === 'AbortError'
+      if (!aborted) {
+        logger.error('[AgentSessionService] Error in streamChat:', err.message)
+        if (err.stack) {
+          logger.error('[AgentSessionService] Stack:', err.stack)
+        }
       }
-      if ((e as { cause?: unknown })?.cause) {
+      if (!aborted && (e as { cause?: unknown })?.cause) {
         logger.error('[AgentSessionService] Cause:', {
           cause: String((e as { cause?: unknown }).cause)
         })
@@ -420,13 +426,15 @@ export class AgentSessionService {
           (e as { statusCode?: number }).statusCode
         )
       }
-      if ((e as { responseHeaders?: unknown })?.responseHeaders) {
+      if (!aborted && (e as { responseHeaders?: unknown })?.responseHeaders) {
         logger.error(
           '[AgentSessionService] Response headers:',
           JSON.stringify((e as { responseHeaders?: unknown }).responseHeaders)
         )
       }
-      callbacks?.onError?.(err)
+      if (!aborted) {
+        callbacks?.onError?.(err)
+      }
       throw err
     }
   }

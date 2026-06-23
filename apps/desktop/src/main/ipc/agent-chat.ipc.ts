@@ -51,8 +51,8 @@ export function registerChatIPC() {
   // ==========================================
   // API: 停止对话流
   // ==========================================
-  ipcMain.handle('agent:stop-stream', async () => {
-    return AgentChatService.stopStream()
+  ipcMain.handle('agent:stop-stream', async (_, sessionId?: string) => {
+    return AgentChatService.stopStream(sessionId)
   })
 
   // ==========================================
