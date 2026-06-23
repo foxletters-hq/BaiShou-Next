@@ -35,6 +35,14 @@ export const AgentLayout: React.FC = () => {
   const [standaloneSessionDoc, setStandaloneSessionDoc] = useState<any>(null)
   const resolvedAssistantIdRef = useRef<string | undefined>(undefined)
   const restoredNavigationRef = useRef(false)
+  const navigationIntentRef = useRef(0)
+
+  const bumpNavigationIntent = () => {
+    navigationIntentRef.current += 1
+  }
+
+  const shouldAbortNavigationRestore = (intentAtStart: number) =>
+    navigationIntentRef.current !== intentAtStart
 
   const sanitizeAssistantId = (raw: unknown): string | undefined => {
     if (typeof raw === 'string' && raw.length > 0) return raw
@@ -119,9 +127,12 @@ export const AgentLayout: React.FC = () => {
     restoredNavigationRef.current = true
 
     void (async () => {
+      const restoreIntentAtStart = navigationIntentRef.current
+
       if (saved.sessionId && typeof window !== 'undefined' && window.electron) {
         try {
           const doc = await window.electron.ipcRenderer.invoke('agent:get-session', saved.sessionId)
+          if (shouldAbortNavigationRestore(restoreIntentAtStart)) return
           if (!doc) {
             navigate(
               saved.assistantId
@@ -132,6 +143,7 @@ export const AgentLayout: React.FC = () => {
             return
           }
         } catch (error) {
+          if (shouldAbortNavigationRestore(restoreIntentAtStart)) return
           console.warn('[AgentLayout] Failed to restore saved session:', error)
           navigate(
             saved.assistantId
@@ -142,6 +154,7 @@ export const AgentLayout: React.FC = () => {
           return
         }
       }
+      if (shouldAbortNavigationRestore(restoreIntentAtStart)) return
       navigate(buildAgentChatNavigationPath(saved), { replace: true })
     })()
   }, [sessionId, urlAssistantId, navigate])
@@ -277,6 +290,9 @@ export const AgentLayout: React.FC = () => {
       astId = defaultAst?.id || 'default'
     }
 
+    bumpNavigationIntent()
+    setStandaloneSessionDoc(null)
+
     const vaultKey =
       (typeof window !== 'undefined' && window.localStorage.getItem('baishou_active_vault')) ||
       'default'
@@ -289,6 +305,7 @@ export const AgentLayout: React.FC = () => {
 
   const handleAssistantSwitched = async (assistant: AgentAssistant) => {
     const astId = String(assistant.id)
+    bumpNavigationIntent()
     resolvedAssistantIdRef.current = astId
     restoredNavigationRef.current = true
 
@@ -364,11 +381,12 @@ export const AgentLayout: React.FC = () => {
         searchQuery={searchQuery}
         pinnedAssistants={pinnedAssistants}
         onSearchQueryChanged={setSearchQuery}
-        onSessionSelected={(id) =>
+        onSessionSelected={(id) => {
+          bumpNavigationIntent()
           navigate(
             currentAssistant?.id ? `/chat/${id}?assistantId=${currentAssistant.id}` : `/chat/${id}`
           )
-        }
+        }}
         onNewSession={handleNewChat}
         onAssistantSwitched={handleAssistantSwitched}
         onPinSession={async (id) => {

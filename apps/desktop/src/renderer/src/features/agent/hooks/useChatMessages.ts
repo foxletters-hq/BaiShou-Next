@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react'
 import type { MockChatAttachment } from '@baishou/shared'
 import {
   CHAT_MESSAGE_FETCH_LIMIT,
@@ -68,7 +68,7 @@ export interface UseChatMessagesResult {
   refreshLatestMessages: (retryCount?: number, overrideSessionId?: string) => Promise<boolean>
   optimisticRemove: (optimisticId: string) => void
   setStreamSessionId: (id: string | null) => void
-  truncateMessages: (messageId: string) => void
+  truncateMessages: (messageId: string, options?: { content?: string }) => void
   ensureMessageAttachments: (messageId: string, attachments: MockChatAttachment[]) => void
 }
 
@@ -407,7 +407,7 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
     [sessionId, ingestFetchedTail]
   )
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!sessionId) {
       if (currentSessionIdRef.current) {
         persistSessionCache(currentSessionIdRef.current)
@@ -441,18 +441,24 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
         return
       }
 
+      setMessages([])
+      setHasMore(false)
       loadedFromEndRef.current = 0
       messageCacheRef.current = []
       roundWindowStartRef.current = 0
       fetchHasMoreRef.current = false
+      setCompactionAnchor(null)
 
       const loadMessages = async () => {
+        if (currentSessionIdRef.current !== sessionId) return
         try {
           const fetched = await fetchMessagesFromIpc(sessionId, CHAT_MESSAGE_FETCH_LIMIT, 0)
+          if (currentSessionIdRef.current !== sessionId) return
           if (fetched) {
             ingestFetchedTail(fetched, false)
           }
         } catch (e) {
+          if (currentSessionIdRef.current !== sessionId) return
           console.error('[useChatMessages] DB fetch error:', e)
           setMessages([])
           setHasMore(false)
@@ -673,14 +679,16 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
   )
 
   const truncateMessages = useCallback(
-    (messageId: string) => {
+    (messageId: string, options?: { content?: string }) => {
       const idx = messageCacheRef.current.findIndex((m) => m.id === messageId)
       if (idx === -1) return
 
       const truncated = messageCacheRef.current.slice(0, idx + 1)
       if (truncated[idx]) {
+        const trimmedContent = options?.content?.trim()
         truncated[idx] = {
           ...truncated[idx],
+          ...(trimmedContent ? { content: trimmedContent } : {}),
           compactionRecord: undefined,
           hasCompactionMarker: false
         }

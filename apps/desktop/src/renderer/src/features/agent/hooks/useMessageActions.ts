@@ -83,7 +83,7 @@ export function useMessageActions({
   const handleResendEdit = async (msg: any, newContent: string) => {
     if (!sessionId || !newContent.trim()) return
     const epoch = bumpRetryEpoch()
-    chat.truncateMessages(msg.id)
+    chat.truncateMessages(msg.id, { content: newContent })
     chat.setStreamSessionId(sessionId)
     try {
       await stream.editChat(

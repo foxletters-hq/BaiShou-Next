@@ -108,17 +108,8 @@
   flex: 1;
   overflow-y: auto;
   scroll-behavior: auto;
-  scroll-snap-type: y proximity;
   display: flex;
   flex-direction: column;
-}
-
-.pageSnapAnchor {
-  flex-shrink: 0;
-  height: 1px;
-  scroll-snap-align: start;
-  scroll-snap-stop: normal;
-  pointer-events: none;
 }
 
 .messageContent {

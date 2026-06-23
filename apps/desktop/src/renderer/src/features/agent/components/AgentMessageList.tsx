@@ -8,7 +8,6 @@ import {
 } from '@baishou/ui'
 import { useSettingsStore } from '@baishou/store'
 import { useMessageActions } from '../hooks/useMessageActions'
-import { buildRoundIndexByMessageId, isRoundPageStart } from '../utils/chat-round-pagination'
 import styles from '../AgentScreen.module.css'
 
 interface AgentMessageListProps {
@@ -171,11 +170,6 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
     return () => el.removeEventListener('scroll', onScroll)
   }, [chat.hasMore, triggerLoadMore, scroll.scrollRef])
 
-  const roundIndexByMessageId = useMemo(
-    () => buildRoundIndexByMessageId(chat.messages),
-    [chat.messages]
-  )
-
   const compactionAnchor = chat.compactionAnchor as
     | { messageId: string; record: Record<string, unknown> }
     | null
@@ -302,12 +296,8 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
               costMicros: msg.costMicros
             }
 
-            const roundIndex = roundIndexByMessageId.get(msg.id) ?? 0
-            const showPageSnap = isRoundPageStart(roundIndex)
-
             return (
               <React.Fragment key={msg.id}>
-                {showPageSnap && <div className={styles.pageSnapAnchor} aria-hidden />}
                 <ChatBubble
                   message={bubbleMessage}
                   userProfile={{
