@@ -3,7 +3,7 @@ import {
   LEGACY_UPGRADE_RAG_NOTICE_COUNT_KEY,
   LEGACY_UPGRADE_RAG_PENDING_KEY
 } from '@baishou/core/shared'
-import { resolveWebSearchEnabled } from '@baishou/shared'
+import { resolveWebSearchEnabled, BAISHOU_AGENT_GATE_CONFIG_KEY } from '@baishou/shared'
 import { settingsManager } from './settings.ipc'
 
 /**
@@ -71,6 +71,21 @@ export function registerSettingsAppIPC() {
   ipcMain.handle('settings:set-tool-management-config', async (_, config: any) => {
     await settingsManager.set('tool_management_config', config)
     return true
+  })
+
+  ipcMain.handle('settings:get-baishou-agent-gate-config', async () => {
+    const { getAgentGateConfig } = await import('../services/agent-gate.service')
+    return getAgentGateConfig()
+  })
+
+  ipcMain.handle('settings:set-baishou-agent-gate-config', async (_, config: any) => {
+    const { ensureAgentGateRuntime } = await import('../services/agent-gate.service')
+    const rt = await ensureAgentGateRuntime()
+    const next = rt.getConfig()
+    if (config?.trustMode !== undefined) next.trustMode = config.trustMode
+    if (Array.isArray(config?.allowlist)) next.allowlist = [...config.allowlist]
+    await settingsManager.set(BAISHOU_AGENT_GATE_CONFIG_KEY, next)
+    return next
   })
 
   ipcMain.handle('settings:get-search-mode-enabled', async () => {
