@@ -63,8 +63,11 @@ export class GlobalDataBootstrapper {
       logger.warn('[Bootstrapper] Git 自动初始化失败:', e as any)
     }
 
-    diaryWatcher.start(activeVault.path)
-    summaryWatcher.start(activeVault.path)
+    diaryWatcher.start(await pathService.getJournalsBaseDirectory())
+    summaryWatcher.start(
+      await pathService.getSummariesBaseDirectory(),
+      activeVault.path
+    )
     sessionWatcher.start(activeVault.path)
   }
 

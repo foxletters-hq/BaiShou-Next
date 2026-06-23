@@ -27,13 +27,17 @@ export class SummaryWatcherService {
   /** 写入抑制表：path → 过期时间戳。防止 App 自身写入触发循环同步。 */
   private suppressedPaths = new Map<string, number>()
 
-  public start(vaultPath: string) {
+  public start(summariesBasePath: string, vaultPath?: string) {
     this.stop()
-    this.summariesPath = path.join(vaultPath, 'Archives')
-    this.archivesPath = path.join(vaultPath, 'Summaries')
+    this.summariesPath = summariesBasePath
+    this.archivesPath = vaultPath ? path.join(vaultPath, 'Summaries') : null
 
-    // 确保 Archives 目录存在
-    if (!fs.existsSync(this.summariesPath)) {
+    const defaultArchives = vaultPath ? path.join(vaultPath, 'Archives') : null
+    const isExternal =
+      defaultArchives &&
+      path.normalize(summariesBasePath) !== path.normalize(defaultArchives)
+
+    if (!isExternal && !fs.existsSync(this.summariesPath)) {
       try {
         fs.mkdirSync(this.summariesPath, { recursive: true })
       } catch (e: any) {
@@ -49,9 +53,9 @@ export class SummaryWatcherService {
 
     // 收集需要监听的目录（Summaries + 可选的 Archives）
     const watchDirs: string[] = [this.summariesPath]
-    if (fs.existsSync(this.archivesPath)) {
+    if (this.archivesPath && fs.existsSync(this.archivesPath)) {
       watchDirs.push(this.archivesPath)
-      logger.info(`[SummaryWatcher] 同时监听旧版 Archives 目录: ${this.archivesPath}`)
+      logger.info(`[SummaryWatcher] 同时监听旧版 Summaries 目录: ${this.archivesPath}`)
     }
 
     // 初始化 Chokidar 监听（递归监听子目录 Weekly/Monthly/...）
@@ -59,7 +63,8 @@ export class SummaryWatcherService {
       ignored: /(^|[\/\\])\../,
       ignoreInitial: true,
       disableGlobbing: true,
-      depth: 1
+      // depth 2：兼容 Archives/{Weekly|Monthly|Quarterly}/{YYYY}/*.md
+      depth: isExternal ? undefined : 2
     } as any)
 
     this.watcher.on('all', (eventName, fullPath) => {
@@ -162,17 +167,21 @@ export class SummaryWatcherService {
   private parseSummaryPath(
     fullPath: string
   ): { type: SummaryType; startDate: Date; endDate: Date } | null {
-    const dirName = path.basename(path.dirname(fullPath))
-    const fileName = path.basename(fullPath) // 保留扩展名，因为 parseFileNameToDateRange 需要含扩展名（如 .md）
+    const parentDir = path.basename(path.dirname(fullPath))
+    const grandparentDir = path.basename(path.dirname(path.dirname(fullPath)))
+    const fileName = path.basename(fullPath)
 
-    // 从目录名推断 type
     const typeMap: Record<string, SummaryType> = {
       Weekly: SummaryType.weekly,
       Monthly: SummaryType.monthly,
       Quarterly: SummaryType.quarterly,
       Yearly: SummaryType.yearly
     }
-    const type = typeMap[dirName]
+
+    let type = typeMap[parentDir]
+    if (!type && /^\d{4}$/.test(parentDir)) {
+      type = typeMap[grandparentDir]
+    }
     if (!type) return null
 
     if (!this.summaryFileService) return null

@@ -3,8 +3,16 @@ import * as path from 'path'
 import * as fs from 'fs/promises'
 import { sanitizeVaultDirectoryName } from '@baishou/core-desktop'
 import { IStoragePathService } from '@baishou/core-desktop'
+import {
+  readVaultExternalPaths,
+  resolveJournalsBaseDirectory,
+  resolveSummariesBaseDirectory,
+  patchVaultExternalPaths
+} from '@baishou/core/shared'
+import { fileSystem } from './node-file-system'
 
 export class DesktopStoragePathService implements IStoragePathService {
+  private readonly vaultFileSystem = fileSystem
   private getSettingsFile(): string {
     return path.join(app.getPath('userData'), 'baishou_settings.json')
   }
@@ -128,26 +136,101 @@ export class DesktopStoragePathService implements IStoragePathService {
     return dir
   }
 
+  public async getExternalJournalsDirectory(vaultName?: string): Promise<string | null> {
+    const name = vaultName ?? (await this.getActiveVaultName())
+    const sysDir = await this.getVaultSystemDirectory(name)
+    const external = await readVaultExternalPaths(this.vaultFileSystem, sysDir)
+    return external.journalsDirectory?.trim() || null
+  }
+
+  public async setExternalJournalsDirectory(
+    journalsDirectory: string | null,
+    vaultName?: string
+  ): Promise<void> {
+    const name = vaultName ?? (await this.getActiveVaultName())
+    const sysDir = await this.getVaultSystemDirectory(name)
+    await patchVaultExternalPaths(this.vaultFileSystem, sysDir, {
+      journalsDirectory: journalsDirectory?.trim() || null
+    })
+  }
+
+  public async getExternalSummariesDirectory(vaultName?: string): Promise<string | null> {
+    const name = vaultName ?? (await this.getActiveVaultName())
+    const sysDir = await this.getVaultSystemDirectory(name)
+    const external = await readVaultExternalPaths(this.vaultFileSystem, sysDir)
+    return external.summariesDirectory?.trim() || null
+  }
+
+  public async setExternalSummariesDirectory(
+    summariesDirectory: string | null,
+    vaultName?: string
+  ): Promise<void> {
+    const name = vaultName ?? (await this.getActiveVaultName())
+    const sysDir = await this.getVaultSystemDirectory(name)
+    await patchVaultExternalPaths(this.vaultFileSystem, sysDir, {
+      summariesDirectory: summariesDirectory?.trim() || null
+    })
+  }
+
+  private async resolveActiveJournalsBaseDirectory(): Promise<string> {
+    const vaultName = await this.getActiveVaultName()
+    const vaultDir = await this.getVaultDirectory(vaultName)
+    const sysDir = await this.getVaultSystemDirectory(vaultName)
+    const external = await readVaultExternalPaths(this.vaultFileSystem, sysDir)
+    return resolveJournalsBaseDirectory(vaultDir, external)
+  }
+
   public async getJournalsBaseDirectory(): Promise<string> {
-    const activeDir = await this.getActiveVaultDirectory()
-    const dir = path.join(activeDir, 'Journals')
+    const dir = await this.resolveActiveJournalsBaseDirectory()
+    const external = await this.getExternalJournalsDirectory()
+    if (external) {
+      const stat = await fs.stat(dir).catch(() => null)
+      if (!stat?.isDirectory()) {
+        throw new Error(`外部日记目录不可用：${dir}`)
+      }
+      return dir
+    }
     await fs.mkdir(dir, { recursive: true })
     return dir
   }
 
+  private async resolveActiveSummariesBaseDirectory(): Promise<string> {
+    const vaultName = await this.getActiveVaultName()
+    const vaultDir = await this.getVaultDirectory(vaultName)
+    const sysDir = await this.getVaultSystemDirectory(vaultName)
+    const external = await readVaultExternalPaths(this.vaultFileSystem, sysDir)
+    return resolveSummariesBaseDirectory(vaultDir, external)
+  }
+
   public async getSummariesBaseDirectory(): Promise<string> {
-    const activeDir = await this.getActiveVaultDirectory()
-    const dir = path.join(activeDir, 'Archives')
+    const dir = await this.resolveActiveSummariesBaseDirectory()
+    const external = await this.getExternalSummariesDirectory()
+    if (external) {
+      const stat = await fs.stat(dir).catch(() => null)
+      if (!stat?.isDirectory()) {
+        throw new Error(`外部总结目录不可用：${dir}`)
+      }
+      return dir
+    }
     await fs.mkdir(dir, { recursive: true })
     return dir
   }
 
   public async getLegacyArchivesDirectory(): Promise<string | null> {
     const activeDir = await this.getActiveVaultDirectory()
-    const dir = path.join(activeDir, 'Archives')
+    const internalArchives = path.join(activeDir, 'Archives')
+    const external = await this.getExternalSummariesDirectory()
+    if (external && path.normalize(external) !== path.normalize(internalArchives)) {
+      try {
+        await fs.access(internalArchives)
+        return internalArchives
+      } catch {
+        return null
+      }
+    }
     try {
-      await fs.access(dir)
-      return dir
+      await fs.access(internalArchives)
+      return internalArchives
     } catch {
       return null
     }

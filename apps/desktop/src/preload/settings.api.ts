@@ -115,6 +115,28 @@ export const settingsApi = {
       const listener = () => callback()
       ipcRenderer.on('storage:root-changed', listener)
       return () => ipcRenderer.removeListener('storage:root-changed', listener)
+    },
+    getExternalJournalsInfo: () => ipcRenderer.invoke('storage:getExternalJournalsInfo'),
+    pickExternalJournalsDirectory: () => ipcRenderer.invoke('storage:pickExternalJournalsDirectory'),
+    setExternalJournalsDirectory: (targetPath: string) =>
+      ipcRenderer.invoke('storage:setExternalJournalsDirectory', targetPath),
+    clearExternalJournalsDirectory: () => ipcRenderer.invoke('storage:clearExternalJournalsDirectory'),
+    onJournalsPathChanged: (callback: () => void) => {
+      const listener = () => callback()
+      ipcRenderer.on('storage:journals-path-changed', listener)
+      return () => ipcRenderer.removeListener('storage:journals-path-changed', listener)
+    },
+    getExternalSummariesInfo: () => ipcRenderer.invoke('storage:getExternalSummariesInfo'),
+    pickExternalSummariesDirectory: () =>
+      ipcRenderer.invoke('storage:pickExternalSummariesDirectory'),
+    setExternalSummariesDirectory: (targetPath: string) =>
+      ipcRenderer.invoke('storage:setExternalSummariesDirectory', targetPath),
+    clearExternalSummariesDirectory: () =>
+      ipcRenderer.invoke('storage:clearExternalSummariesDirectory'),
+    onSummariesPathChanged: (callback: () => void) => {
+      const listener = () => callback()
+      ipcRenderer.on('storage:summaries-path-changed', listener)
+      return () => ipcRenderer.removeListener('storage:summaries-path-changed', listener)
     }
   }
 }
