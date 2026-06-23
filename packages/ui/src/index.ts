@@ -74,6 +74,10 @@ export {
 
 export * from './desktop/RagMemoryView/index'
 export * from './desktop/AgentToolsView/index'
+export * from './desktop/AgentGateDock/index'
+export * from './desktop/AgentGatePartBubble/index'
+export * from './agent-gate/index'
+export * from './agent-workspace/index'
 export * from './desktop/WebSearchSettingsView/index'
 export * from './desktop/SummarySettingsView/index'
 
