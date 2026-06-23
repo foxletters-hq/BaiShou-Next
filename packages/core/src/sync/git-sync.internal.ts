@@ -7,6 +7,8 @@ import type { GitSyncConfig } from '@baishou/shared'
 import { GitInitError } from './sync.errors'
 import type { IStoragePathService } from '../vault/storage-path.types'
 import {
+  DEFAULT_GIT_AUTHOR_EMAIL,
+  DEFAULT_GIT_AUTHOR_NAME,
   DEFAULT_GIT_SYNC_CONFIG,
   GIT_INDEX_MAINTENANCE_MAX_ROUNDS,
   GIT_RAW_COMMAND_TIMEOUT_MS,
@@ -137,6 +139,72 @@ export abstract class GitSyncInternalBase {
   protected async saveConfig(): Promise<void> {
     const configPath = await this.ensureRootConfigPath()
     await fs.promises.writeFile(configPath, JSON.stringify(this.config, null, 2), 'utf8')
+  }
+
+  protected async readGitConfigValue(
+    git: SimpleGit,
+    key: string,
+    scope?: 'local' | 'global'
+  ): Promise<string | undefined> {
+    try {
+      const args = ['config', '--get']
+      if (scope === 'global') args.push('--global')
+      args.push(key)
+      const result = await git.raw(args)
+      const trimmed = result?.trim()
+      return trimmed || undefined
+    } catch {
+      return undefined
+    }
+  }
+
+  /** 提交前确保本地仓库已配置 user.name / user.email */
+  protected async ensureAuthorIdentity(git: SimpleGit): Promise<void> {
+    await this.loadConfig()
+
+    let name = this.config.userName?.trim()
+    let email = this.config.userEmail?.trim()
+
+    if (!name) {
+      name = await this.readGitConfigValue(git, 'user.name')
+    }
+    if (!email) {
+      email = await this.readGitConfigValue(git, 'user.email')
+    }
+    if (!name) {
+      name = await this.readGitConfigValue(git, 'user.name', 'global')
+    }
+    if (!email) {
+      email = await this.readGitConfigValue(git, 'user.email', 'global')
+    }
+    if (!name) {
+      name = DEFAULT_GIT_AUTHOR_NAME
+    }
+    if (!email) {
+      email = DEFAULT_GIT_AUTHOR_EMAIL
+    }
+
+    const currentName = await this.readGitConfigValue(git, 'user.name')
+    const currentEmail = await this.readGitConfigValue(git, 'user.email')
+    if (currentName !== name) {
+      await git.addConfig('user.name', name)
+    }
+    if (currentEmail !== email) {
+      await git.addConfig('user.email', email)
+    }
+
+    let configChanged = false
+    if (!this.config.userName?.trim()) {
+      this.config.userName = name
+      configChanged = true
+    }
+    if (!this.config.userEmail?.trim()) {
+      this.config.userEmail = email
+      configChanged = true
+    }
+    if (configChanged) {
+      await this.saveConfig()
+    }
   }
 
   protected async ensureGitignore(): Promise<void> {
@@ -402,7 +470,8 @@ export abstract class GitSyncInternalBase {
       chunkChars = 0
       try {
         if (current.length === 1) {
-          await git.add(current[0])
+          const file = current[0]
+          if (file) await git.add(file)
         } else {
           await git.add(['--', ...current])
         }

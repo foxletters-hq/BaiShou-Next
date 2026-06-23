@@ -123,7 +123,10 @@ describe('ShadowIndexSyncService', () => {
       switchVault: async () => {},
       deleteVault: async () => {},
       vaultExists: () => true,
-      createVault: async () => {}
+      createVault: async () => {},
+      syncRegistryWithDisk: async () => [],
+      ensureVaultsRegistered: async () => [],
+      pruneOrphanRegistryVaults: async () => []
     }
 
     mockEmbeddingCb = {

@@ -1,7 +1,13 @@
 import type { GitSyncConfig } from '@baishou/shared'
 
+/** 内置 Git 无全局配置时的默认提交签名（用户可在设置中覆盖） */
+export const DEFAULT_GIT_AUTHOR_NAME = 'BaiShou'
+export const DEFAULT_GIT_AUTHOR_EMAIL = 'baishou@local'
+
 export const DEFAULT_GIT_SYNC_CONFIG: GitSyncConfig = {
-  enabled: false
+  enabled: false,
+  userName: DEFAULT_GIT_AUTHOR_NAME,
+  userEmail: DEFAULT_GIT_AUTHOR_EMAIL
 }
 
 /** 存储根 `.gitignore`：覆盖全部工作区（Vault） */

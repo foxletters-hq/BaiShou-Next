@@ -13,20 +13,13 @@ export abstract class GitSyncInitMixin extends GitSyncInternalBase {
         const git = await this.ensureGit()
         await git.init()
         await this.ensureGitignore()
-        await this.loadConfig()
-
-        if (this.config.userName) {
-          await git.addConfig('user.name', this.config.userName)
-        }
-        if (this.config.userEmail) {
-          await git.addConfig('user.email', this.config.userEmail)
-        }
+        await this.ensureAuthorIdentity(git)
 
         await git.add('.gitignore')
         try {
           await git.commit('初始化 Git 版本管理')
         } catch (commitErr) {
-          logger.warn(`[GitSync] 初始提交失败 (可能是未配置 user.name/email):`, commitErr as any)
+          logger.warn('[GitSync] 初始提交失败:', commitErr as any)
         }
 
         if (this.config.remote?.url) {
