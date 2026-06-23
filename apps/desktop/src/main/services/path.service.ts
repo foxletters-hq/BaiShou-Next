@@ -9,6 +9,7 @@ import {
   resolveSummariesBaseDirectory,
   patchVaultExternalPaths
 } from '@baishou/core/shared'
+import { logger } from '@baishou/shared'
 import { fileSystem } from './node-file-system'
 
 export class DesktopStoragePathService implements IStoragePathService {
@@ -181,14 +182,21 @@ export class DesktopStoragePathService implements IStoragePathService {
   }
 
   public async getJournalsBaseDirectory(): Promise<string> {
+    const vaultName = await this.getActiveVaultName()
+    const vaultDir = await this.getVaultDirectory(vaultName)
     const dir = await this.resolveActiveJournalsBaseDirectory()
     const external = await this.getExternalJournalsDirectory()
     if (external) {
       const stat = await fs.stat(dir).catch(() => null)
-      if (!stat?.isDirectory()) {
-        throw new Error(`外部日记目录不可用：${dir}`)
+      if (stat?.isDirectory()) {
+        return dir
       }
-      return dir
+      logger.warn(
+        `[PathService] 外部日记目录不可用，回退至工作区内 Journals: ${dir}`
+      )
+      const internal = path.join(vaultDir, 'Journals')
+      await fs.mkdir(internal, { recursive: true })
+      return internal
     }
     await fs.mkdir(dir, { recursive: true })
     return dir
@@ -203,14 +211,21 @@ export class DesktopStoragePathService implements IStoragePathService {
   }
 
   public async getSummariesBaseDirectory(): Promise<string> {
+    const vaultName = await this.getActiveVaultName()
+    const vaultDir = await this.getVaultDirectory(vaultName)
     const dir = await this.resolveActiveSummariesBaseDirectory()
     const external = await this.getExternalSummariesDirectory()
     if (external) {
       const stat = await fs.stat(dir).catch(() => null)
-      if (!stat?.isDirectory()) {
-        throw new Error(`外部总结目录不可用：${dir}`)
+      if (stat?.isDirectory()) {
+        return dir
       }
-      return dir
+      logger.warn(
+        `[PathService] 外部总结目录不可用，回退至工作区内 Archives: ${dir}`
+      )
+      const internal = path.join(vaultDir, 'Archives')
+      await fs.mkdir(internal, { recursive: true })
+      return internal
     }
     await fs.mkdir(dir, { recursive: true })
     return dir

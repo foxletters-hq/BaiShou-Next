@@ -2,8 +2,9 @@ import { BrowserWindow } from 'electron'
 import { SummarySyncService, SummaryFileService } from '@baishou/core-desktop'
 import { SummaryRepositoryImpl, connectionManager } from '@baishou/database-desktop'
 import { app } from 'electron'
+import * as path from 'path'
 import { ensureDefaultLatteAssistant } from '@baishou/core-desktop'
-import { logger, resolveBootstrapUiLocale } from '@baishou/shared'
+import { isUsingExternalVaultDirectory, logger, resolveBootstrapUiLocale } from '@baishou/shared'
 
 import { pathService, vaultService } from '../ipc/vault.ipc'
 import { fileSystem } from './node-file-system'
@@ -63,11 +64,28 @@ export class GlobalDataBootstrapper {
       logger.warn('[Bootstrapper] Git 自动初始化失败:', e as any)
     }
 
-    diaryWatcher.start(await pathService.getJournalsBaseDirectory())
-    summaryWatcher.start(
-      await pathService.getSummariesBaseDirectory(),
-      activeVault.path
+    const journalsDir = await pathService.getJournalsBaseDirectory()
+    const summariesDir = await pathService.getSummariesBaseDirectory()
+    const vaultDir = await pathService.getVaultDirectory(activeVault.name)
+    const externalJournals = await pathService.getExternalJournalsDirectory(activeVault.name)
+    const externalSummaries = await pathService.getExternalSummariesDirectory(activeVault.name)
+    const defaultJournalsDir = path.join(vaultDir, 'Journals')
+    const defaultSummariesDir = path.join(vaultDir, 'Archives')
+    const isExternalJournals = isUsingExternalVaultDirectory(
+      externalJournals,
+      journalsDir,
+      defaultJournalsDir
     )
+    const isExternalSummaries = isUsingExternalVaultDirectory(
+      externalSummaries,
+      summariesDir,
+      defaultSummariesDir
+    )
+
+    diaryWatcher.start(journalsDir, { createIfMissing: !isExternalJournals })
+    summaryWatcher.start(summariesDir, activeVault.path, {
+      createIfMissing: !isExternalSummaries
+    })
     sessionWatcher.start(activeVault.path)
   }
 

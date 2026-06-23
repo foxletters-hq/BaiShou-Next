@@ -20,18 +20,26 @@ export class DiaryWatcherService {
   private isProcessing = false
   private globalDebounceTimer: NodeJS.Timeout | null = null
 
-  public start(journalsPath: string) {
+  public start(journalsPath: string, options?: { createIfMissing?: boolean }) {
     this.stop()
     this.journalsPath = journalsPath
+    const createIfMissing = options?.createIfMissing ?? true
 
     logger.info(`[DiaryWatcher] 🚀 journalsPath = ${this.journalsPath}`)
 
     if (!fs.existsSync(this.journalsPath)) {
-      try {
-        fs.mkdirSync(this.journalsPath, { recursive: true })
-        logger.info(`[DiaryWatcher] 📁 日记目录已创建`)
-      } catch (e: any) {
-        logger.error(`[DiaryWatcher] ❌ 无法创建日记目录:`, e)
+      if (createIfMissing) {
+        try {
+          fs.mkdirSync(this.journalsPath, { recursive: true })
+          logger.info(`[DiaryWatcher] 📁 日记目录已创建`)
+        } catch (e: any) {
+          logger.error(`[DiaryWatcher] ❌ 无法创建日记目录:`, e)
+        }
+      } else {
+        logger.warn(
+          `[DiaryWatcher] 外部日记目录不存在，跳过监听: ${this.journalsPath}`
+        )
+        return
       }
     }
 

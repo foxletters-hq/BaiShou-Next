@@ -82,8 +82,8 @@ export class IncrementalWebDavClient implements ICloudSyncClient {
     }
   }
 
-  async uploadFile(localFilePath: string): Promise<void> {
-    const relativePath = this.relativePath(localFilePath)
+  async uploadFile(localFilePath: string, remoteRelPath?: string): Promise<void> {
+    const relativePath = remoteRelPath?.replace(/\\/g, '/') ?? this.relativePath(localFilePath)
     const remotePath = this.remotePath(relativePath)
     const dir = path.dirname(remotePath)
     if (dir !== this.basePath.slice(0, -1)) {

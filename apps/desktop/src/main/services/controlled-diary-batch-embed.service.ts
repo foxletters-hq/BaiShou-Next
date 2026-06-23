@@ -27,6 +27,8 @@ export type ControlledDiaryBatchEmbedProgress = {
 
 export type ControlledDiaryBatchEmbedResult = {
   embedded: number
+  /** 无正文、无法读取而跳过的日记篇数 */
+  loadSkipped: number
   total: number
   skipped: boolean
   skipReason?: string
@@ -105,16 +107,22 @@ export async function runControlledDiaryBatchEmbed(
 
   const ragConfig = (await settingsManager.get<RagConfig>('rag_config')) || ({} as RagConfig)
   if (!isRagMemoryEnabled(ragConfig)) {
-    return { embedded: 0, total: 0, skipped: true, skipReason: 'rag-disabled' }
+    return { embedded: 0, loadSkipped: 0, total: 0, skipped: true, skipReason: 'rag-disabled' }
   }
 
   const embeddingService = getEmbeddingService()
   if (!embeddingService.isConfigured) {
-    return { embedded: 0, total: 0, skipped: true, skipReason: 'embedding-not-configured' }
+    return {
+      embedded: 0,
+      loadSkipped: 0,
+      total: 0,
+      skipped: true,
+      skipReason: 'embedding-not-configured'
+    }
   }
 
   if (embeddingService.isMigrationRunning()) {
-    return { embedded: 0, total: 0, skipped: true, skipReason: 'migration-running' }
+    return { embedded: 0, loadSkipped: 0, total: 0, skipped: true, skipReason: 'migration-running' }
   }
 
   const diaries = await getDiaryManager().listAll({ limit: 10000 })
@@ -132,7 +140,7 @@ export async function runControlledDiaryBatchEmbed(
         win.webContents.send('diary:sync-event', { type: 'embed-failure-cleared' })
       }
     }
-    return { embedded: 0, total: 0, skipped: true, skipReason: 'nothing-to-embed' }
+    return { embedded: 0, loadSkipped: 0, total: 0, skipped: true, skipReason: 'nothing-to-embed' }
   }
 
   const batchRagConfig =
@@ -143,14 +151,24 @@ export async function runControlledDiaryBatchEmbed(
 
   let completed = 0
   let embedded = 0
+  let loadSkipped = 0
 
   await limitExecute(diariesToEmbed, batchConcurrency, async (meta) => {
     const dateLabel = new Date(meta.date).toLocaleDateString()
-    reportProgress(options, { completed, total, statusText: `处理日记: ${dateLabel}` }, total)
+    reportProgress(
+      options,
+      { completed, total, statusText: `已嵌入 ${embedded}/${total}（处理中: ${dateLabel}）` },
+      total
+    )
 
     const diary = await getDiaryManager().findById(meta.id)
     if (!diary?.id || !diary.content?.trim()) {
+      loadSkipped++
       completed++
+      logger.warn('[ControlledDiaryBatchEmbed] 跳过无正文日记', {
+        diaryId: meta.id,
+        date: dateLabel
+      })
       return
     }
 
@@ -172,7 +190,11 @@ export async function runControlledDiaryBatchEmbed(
 
     embedded++
     completed++
-    reportProgress(options, { completed, total, statusText: `处理日记: ${dateLabel}` }, total)
+    reportProgress(
+      options,
+      { completed, total, statusText: `已嵌入 ${embedded}/${total}（处理中: ${dateLabel}）` },
+      total
+    )
   })
 
   if (options?.broadcastProgress) {
@@ -193,13 +215,19 @@ export async function runControlledDiaryBatchEmbed(
     }
   }
 
-  logger.info('[ControlledDiaryBatchEmbed] finished', { embedded, total, groupId })
-  return { embedded, total, skipped: false }
+  logger.info('[ControlledDiaryBatchEmbed] finished', {
+    embedded,
+    loadSkipped,
+    total,
+    groupId
+  })
+  return { embedded, loadSkipped, total, skipped: false }
 }
 
 async function runPostSyncDiaryBatchEmbedLoop(): Promise<ControlledDiaryBatchEmbedResult> {
   let lastResult: ControlledDiaryBatchEmbedResult = {
     embedded: 0,
+    loadSkipped: 0,
     total: 0,
     skipped: true,
     skipReason: 'not-started'
@@ -235,6 +263,7 @@ export function schedulePostSyncDiaryBatchEmbed(): void {
       })
       return {
         embedded: 0,
+        loadSkipped: 0,
         total: 0,
         skipped: true,
         skipReason: 'failed'

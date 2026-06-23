@@ -123,10 +123,21 @@ export async function applyExternalSummariesDirectory(targetPath: string | null)
   )
 }
 
+async function isExternalPathAvailableOnDevice(externalPath: string | null): Promise<boolean> {
+  if (!externalPath?.trim()) return true
+  try {
+    await fs.access(externalPath)
+    return true
+  } catch {
+    return false
+  }
+}
+
 export async function getExternalJournalsDirectoryInfo(): Promise<{
   path: string | null
   defaultPath: string
   journalFileCount: number
+  pathAvailableOnDevice: boolean
 }> {
   const active = vaultService.getActiveVault()
   const vaultDir = active
@@ -138,10 +149,12 @@ export async function getExternalJournalsDirectoryInfo(): Promise<{
   const journalFileCount = scanDir
     ? await countJournalMarkdownInTree(vaultFileSystem, scanDir).catch(() => 0)
     : 0
+  const pathAvailableOnDevice = await isExternalPathAvailableOnDevice(external)
   return {
     path: external,
     defaultPath,
-    journalFileCount
+    journalFileCount,
+    pathAvailableOnDevice
   }
 }
 
@@ -149,6 +162,7 @@ export async function getExternalSummariesDirectoryInfo(): Promise<{
   path: string | null
   defaultPath: string
   summaryFileCount: number
+  pathAvailableOnDevice: boolean
 }> {
   const active = vaultService.getActiveVault()
   const vaultDir = active
@@ -160,9 +174,11 @@ export async function getExternalSummariesDirectoryInfo(): Promise<{
   const summaryFileCount = scanDir
     ? await countSummaryMarkdownInArchivesTree(vaultFileSystem, scanDir).catch(() => 0)
     : 0
+  const pathAvailableOnDevice = await isExternalPathAvailableOnDevice(external)
   return {
     path: external,
     defaultPath,
-    summaryFileCount
+    summaryFileCount,
+    pathAvailableOnDevice
   }
 }

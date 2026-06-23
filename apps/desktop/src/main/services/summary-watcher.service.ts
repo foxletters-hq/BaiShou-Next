@@ -27,21 +27,34 @@ export class SummaryWatcherService {
   /** 写入抑制表：path → 过期时间戳。防止 App 自身写入触发循环同步。 */
   private suppressedPaths = new Map<string, number>()
 
-  public start(summariesBasePath: string, vaultPath?: string) {
+  public start(
+    summariesBasePath: string,
+    vaultPath?: string,
+    options?: { createIfMissing?: boolean }
+  ) {
     this.stop()
     this.summariesPath = summariesBasePath
     this.archivesPath = vaultPath ? path.join(vaultPath, 'Summaries') : null
+    const createIfMissing = options?.createIfMissing ?? true
 
     const defaultArchives = vaultPath ? path.join(vaultPath, 'Archives') : null
     const isExternal =
       defaultArchives &&
       path.normalize(summariesBasePath) !== path.normalize(defaultArchives)
 
-    if (!isExternal && !fs.existsSync(this.summariesPath)) {
-      try {
-        fs.mkdirSync(this.summariesPath, { recursive: true })
-      } catch (e: any) {
-        logger.error(`[SummaryWatcher] 无法创建 Archives 目录:`, e)
+    if (!fs.existsSync(this.summariesPath)) {
+      if (isExternal) {
+        logger.warn(
+          `[SummaryWatcher] 外部总结目录不存在，跳过监听: ${this.summariesPath}`
+        )
+        return
+      }
+      if (createIfMissing) {
+        try {
+          fs.mkdirSync(this.summariesPath, { recursive: true })
+        } catch (e: any) {
+          logger.error(`[SummaryWatcher] 无法创建 Archives 目录:`, e)
+        }
       }
     }
 
