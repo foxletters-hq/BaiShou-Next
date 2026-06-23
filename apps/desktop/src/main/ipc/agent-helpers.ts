@@ -57,7 +57,6 @@ import {
   type ToolContext
 } from '@baishou/ai'
 import { getDiaryManager } from './diary.ipc'
-import { logger } from '@baishou/shared'
 
 export const toolRegistry = new ToolRegistry()
 export const agentService = new AgentSessionService()
