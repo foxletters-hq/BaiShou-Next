@@ -1,8 +1,16 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { createStreamingTextDisplayBuffer, type StreamingTextDisplayBuffer } from '@baishou/shared'
+import {
+  createStreamingTextDisplayBuffer,
+  AgentGateReply,
+  type AgentGateRequest,
+  type StreamingTextDisplayBuffer
+} from '@baishou/shared'
+import { useTranslation } from 'react-i18next'
+import { useNativeToast } from '@baishou/ui/native'
 
 import { useBaishou } from '../providers/BaishouProvider'
 import { subscribeMobileCompressionEvents } from '../services/mobile-compression-event.service'
+import { subscribeMobileAgentGateEvents } from '../services/mobile-agent-gate.service'
 import { useAgentStreamBridge } from './useAgentStream-bridge'
 import { useAgentStreamFinish } from './useAgentStream-finish'
 import { useAgentStreamChat } from './useAgentStream-chat'
@@ -30,7 +38,9 @@ export function useAgentStream(
   refreshSessionMessages?: RefreshSessionMessagesFn,
   bumpReloadEpoch?: () => void
 ) {
-  const { services, vaultSwitching } = useBaishou()
+  const { services, vaultSwitching, agentGate } = useBaishou()
+  const { t } = useTranslation()
+  const toast = useNativeToast()
   const releaseRetryActionRef = useRef<() => void>(() => {})
 
   const [isStreaming, setIsStreaming] = useState(false)
@@ -48,6 +58,7 @@ export function useAgentStream(
   const [compressionTriggerMessageId, setCompressionTriggerMessageId] = useState<string | null>(
     null
   )
+  const [pendingAgentGate, setPendingAgentGate] = useState<AgentGateRequest | null>(null)
 
   const searchModeRef = useRef(searchMode)
   searchModeRef.current = searchMode
@@ -56,6 +67,8 @@ export function useAgentStream(
   const activeToolRef = useRef<ToolCallInfo | null>(null)
   const currentSessionIdRef = useRef(currentSessionId)
   currentSessionIdRef.current = currentSessionId
+  const pendingAgentGateIdRef = useRef<string | null>(null)
+  pendingAgentGateIdRef.current = pendingAgentGate?.id ?? null
   const streamingTextDisplayRef = useRef<StreamingTextDisplayBuffer | null>(null)
   const streamingReasoningDisplayRef = useRef<StreamingTextDisplayBuffer | null>(null)
   const compressionTextDisplayRef = useRef<StreamingTextDisplayBuffer | null>(null)
@@ -287,6 +300,47 @@ export function useAgentStream(
   }, [bridge, finish, services])
 
   useEffect(() => {
+    return subscribeMobileAgentGateEvents((event) => {
+      if (event.type === 'agent_gate.allowlist_changed') return
+      if (event.type === 'agent_gate.asked') {
+        if (event.request.sessionId !== currentSessionIdRef.current) return
+        setPendingAgentGate(event.request)
+        return
+      }
+      if (event.type === 'agent_gate.replied') {
+        if (event.sessionId !== currentSessionIdRef.current) return
+        if (pendingAgentGateIdRef.current === event.requestId) {
+          setPendingAgentGate(null)
+        }
+      }
+    })
+  }, [])
+
+  const replyAgentGate = useCallback(
+    async (
+      requestId: string,
+      reply: AgentGateReply,
+      extras?: { message?: string; selectedOptionIds?: string[] }
+    ) => {
+      if (!agentGate) {
+        toast.showError(t('agent_gate.unavailable', '操作确认服务未就绪'))
+        return
+      }
+      try {
+        await agentGate.reply({ requestId, reply, ...extras })
+        if (pendingAgentGateIdRef.current === requestId) {
+          setPendingAgentGate(null)
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        toast.showError(msg || t('agent_gate.reply_failed', '确认操作失败'))
+        throw e
+      }
+    },
+    [agentGate, toast, t]
+  )
+
+  useEffect(() => {
     if (vaultSwitching) {
       bridge.interruptActiveStream()
     }
@@ -313,6 +367,8 @@ export function useAgentStream(
     activeTool,
     completedTools,
     pendingEmojis,
+    pendingAgentGate,
+    replyAgentGate,
     handleSend: chat.handleSend,
     handleStop: actions.handleStop,
     handleRegenerate: actions.handleRegenerate,

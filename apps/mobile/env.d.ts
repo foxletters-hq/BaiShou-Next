@@ -1,6 +1,6 @@
 /// <reference types="expo/types" />
 
-/** 静态资源模块（与桌面端 / UI 包声明一致，避免 VS Code 报无法识别 import） */
+/** 静态资源模块（与桌面端 / UI 包声明一致，避免编辑器类型检查报无法识别 import） */
 declare module '*.module.css' {
   const classes: { readonly [key: string]: string }
   export default classes

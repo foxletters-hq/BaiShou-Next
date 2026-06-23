@@ -40,6 +40,7 @@ import type { SummarySyncService } from '@baishou/core-mobile'
 import { createArchiveDbBridge } from './archive-db-bridge'
 import { createMemorySearch } from './memory-search'
 import { createStartAgentChat } from './start-agent-chat'
+import { createMobileAgentGateRuntime } from './agent-gate-runtime'
 import { assignReloadAgentDatabaseHandler } from './reload-agent-database'
 import { createGetContextAtMessage } from './get-context-at-message'
 import type { MobileBaishouInitContext } from './init-context'
@@ -168,12 +169,15 @@ export async function bootstrapMobileSyncLayer(
   }
 
   const memorySearch = createMemorySearch({ pathService, registry, agentDbRuntimeRef })
+  const agentGateRuntime = createMobileAgentGateRuntime(settingsManager)
   const startAgentChat = createStartAgentChat({
     agentService,
     toolRegistry,
     registry,
     agentDbRuntimeRef,
-    getDiarySearcher
+    getDiarySearcher,
+    getAgentGate: agentGateRuntime.getAgentGate,
+    persistBaishouAgentGateConfig: agentGateRuntime.persistBaishouAgentGateConfig
   })
   ensureMobileCompressionBridge()
 
@@ -251,6 +255,8 @@ export async function bootstrapMobileSyncLayer(
     ragServiceRef,
     memorySearch,
     startAgentChat,
+    agentGate: agentGateRuntime.getAgentGate(),
+    reloadAgentGateConfig: agentGateRuntime.reloadAgentGateConfig,
     getContextAtMessage,
     bootstrapDeps,
     watcherDeps,
