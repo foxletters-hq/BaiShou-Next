@@ -1,0 +1,23 @@
+.preview {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 0 0 8px 8px;
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+  border-top: none;
+  background: var(--bg-code, rgba(0, 0, 0, 0.02));
+  font-size: 12px;
+  line-height: 1.5;
+  overflow: auto;
+  max-height: 200px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.preview code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.empty {
+  color: var(--text-secondary, #888);
+  font-style: italic;
+}
