@@ -55,6 +55,20 @@ export async function reconcileCompressionStateAfterTruncate(
   }
 }
 
+export type TruncateSessionOptions = {
+  /** 截断后同步 JSON 会话文件，避免 file watcher 从磁盘恢复已删消息 */
+  flushSessionToDisk?: (sessionId: string) => Promise<void>
+}
+
+export function truncateOptionsWithDiskFlush(
+  sessionManager?: { flushSessionToDisk(sessionId: string): Promise<void> }
+): TruncateSessionOptions | undefined {
+  if (!sessionManager) return undefined
+  return {
+    flushSessionToDisk: (sessionId) => sessionManager.flushSessionToDisk(sessionId)
+  }
+}
+
 /**
  * 从 cutoffOrderIndex 之后截断会话：删除后续消息、回滚无效压缩快照、清除截断点上的 compaction marker。
  * 用于重发/编辑/重新生成，确保后续压缩 UI 与上下文可被重新生成。
@@ -63,7 +77,8 @@ export async function truncateSessionAfterOrderIndex(
   sessionRepo: SessionRepository,
   snapshotRepo: SnapshotRepository,
   sessionId: string,
-  cutoffOrderIndex: number
+  cutoffOrderIndex: number,
+  options?: TruncateSessionOptions
 ): Promise<void> {
   await sessionRepo.deleteMessagesAfter(sessionId, cutoffOrderIndex)
   await reconcileCompressionStateAfterTruncate(
@@ -72,4 +87,7 @@ export async function truncateSessionAfterOrderIndex(
     sessionId,
     cutoffOrderIndex
   )
+  if (options?.flushSessionToDisk) {
+    await options.flushSessionToDisk(sessionId)
+  }
 }
