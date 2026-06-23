@@ -1,0 +1,273 @@
+.sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-subtle);
+  background: var(--bg-app);
+  overflow: hidden;
+  font-family: var(--font-family-main, inherit);
+}
+
+.collapsedRail {
+  width: 40px;
+  flex-shrink: 0;
+  height: 100%;
+  border: none;
+  border-right: 1px solid var(--border-subtle);
+  background: var(--bg-app);
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 14px;
+  color: var(--text-secondary);
+}
+
+.collapsedRail:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.headerTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.collapseBtn {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 4px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.collapseBtn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-primary);
+}
+
+.toolbar {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.addFolderBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px dashed var(--border-subtle);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.addFolderBtn:hover {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.35);
+}
+
+.treePane {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 6px 12px;
+}
+
+.placeholder {
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.folderTree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.folderNode + .folderNode {
+  margin-top: 2px;
+}
+
+.folderRow {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  text-align: left;
+  padding: 7px 8px;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-family: inherit;
+}
+
+.folderRow:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.folderRowFocused {
+  background: rgba(var(--color-primary-rgb, 91, 168, 245), 0.06);
+}
+
+.folderChevron {
+  display: inline-flex;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.folderIcon {
+  display: inline-flex;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.folderName {
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folderCount {
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--bg-muted, rgba(0, 0, 0, 0.05));
+}
+
+.sessionTree {
+  list-style: none;
+  margin: 2px 0 4px;
+  padding: 0 0 0 28px;
+}
+
+.sessionEmpty {
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.sessionNode {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.sessionBtn {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  padding: 7px 10px;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-family: inherit;
+}
+
+.sessionBtn:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.sessionBtnActive {
+  border-color: var(--border-subtle);
+  background: rgba(var(--color-primary-rgb, 91, 168, 245), 0.1);
+}
+
+.sessionTitle {
+  width: 100%;
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sessionMeta {
+  width: 100%;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.sessionDeleteBtn {
+  flex-shrink: 0;
+  width: 26px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  font-family: inherit;
+  opacity: 0;
+}
+
+.sessionNode:hover .sessionDeleteBtn,
+.sessionBtnActive + .sessionDeleteBtn {
+  opacity: 1;
+}
+
+.sessionDeleteBtn:hover {
+  background: rgba(220, 38, 38, 0.08);
+  color: #dc2626;
+}
+
+.newSessionBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-link, var(--primary, #2563eb));
+  font-size: 12px;
+  font-family: inherit;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.newSessionBtn:hover {
+  background: rgba(var(--color-primary-rgb, 91, 168, 245), 0.08);
+}
