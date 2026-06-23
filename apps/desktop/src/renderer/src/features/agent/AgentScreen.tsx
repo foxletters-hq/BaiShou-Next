@@ -16,6 +16,7 @@ import {
   isConfiguredProviderId
 } from '@baishou/shared'
 import { AgentDialogs } from './components/AgentDialogs'
+import { AgentGateDock } from '@baishou/ui'
 import { AgentMessageList } from './components/AgentMessageList'
 import { useAgentChatFlow } from './hooks/useAgentChatFlow'
 import { useDesktopComposerDraftKey } from './hooks/useDesktopComposerDraftKey'
@@ -179,6 +180,12 @@ export const AgentScreen: React.FC = () => {
         currentAssistant={flow.currentAssistant}
         providers={flow.providers}
         inputBarRef={flow.inputBarRef}
+      />
+
+      <AgentGateDock
+        request={flow.stream.pendingAgentGate}
+        isReplying={flow.stream.isAgentGateReplying}
+        onReply={flow.stream.replyAgentGate}
       />
 
       {flow.contextDialogState.flatEntries && (
