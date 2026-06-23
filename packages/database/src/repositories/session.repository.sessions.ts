@@ -1,4 +1,4 @@
-import { eq, desc, or, isNull, sql, and, inArray } from 'drizzle-orm'
+import { eq, desc, or, sql, and, inArray } from 'drizzle-orm'
 import type { AppDatabase } from '../types'
 import { agentSessionsTable } from '../schema/agent-sessions'
 import { agentMessagesTable as messagesTbl } from '../schema/agent-messages'
@@ -135,13 +135,7 @@ export class SessionCrudOps {
 
     const normalizedAssistantId = assistantId?.trim()
     if (normalizedAssistantId) {
-      conditions.push(
-        or(
-          eq(agentSessionsTable.assistantId, normalizedAssistantId),
-          isNull(agentSessionsTable.assistantId),
-          eq(agentSessionsTable.assistantId, '')
-        )
-      )
+      conditions.push(eq(agentSessionsTable.assistantId, normalizedAssistantId))
     }
 
     if (searchQuery && searchQuery.trim()) {

@@ -39,6 +39,7 @@ export const AgentLayout: React.FC = () => {
 
   const bumpNavigationIntent = () => {
     navigationIntentRef.current += 1
+    return navigationIntentRef.current
   }
 
   const shouldAbortNavigationRestore = (intentAtStart: number) =>
@@ -305,9 +306,10 @@ export const AgentLayout: React.FC = () => {
 
   const handleAssistantSwitched = async (assistant: AgentAssistant) => {
     const astId = String(assistant.id)
-    bumpNavigationIntent()
+    const switchIntentAtStart = bumpNavigationIntent()
     resolvedAssistantIdRef.current = astId
     restoredNavigationRef.current = true
+    setStandaloneSessionDoc(null)
 
     const vaultKey =
       (typeof window !== 'undefined' && window.localStorage.getItem('baishou_active_vault')) ||
@@ -316,26 +318,30 @@ export const AgentLayout: React.FC = () => {
     useAgentNavigationStore.getState().setContext(vaultKey, snapshot)
     writeAgentNavigationSnapshot(vaultKey, snapshot)
 
+    // 立即离开旧会话，避免切换过程中仍渲染上一页消息
+    navigate(buildAgentChatNavigationPath(snapshot), { replace: true })
     void loadSessions(true, astId)
 
     if (typeof window !== 'undefined' && window.electron) {
       try {
         const sessionsList = await window.electron.ipcRenderer.invoke(
           'agent:list-sessions-by-assistant',
-          assistant.id
+          astId
         )
+        if (shouldAbortNavigationRestore(switchIntentAtStart)) return
         if (sessionsList && sessionsList.length > 0) {
           const sorted = sessionsList.sort(
             (a: any, b: any) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
           )
-          navigate(`/chat/${sorted[0].id}?assistantId=${assistant.id}`)
-          return
+          navigate(
+            buildAgentChatNavigationPath({ assistantId: astId, sessionId: sorted[0].id }),
+            { replace: true }
+          )
         }
       } catch (e) {
         console.error('[AgentLayout] Failed to switch to existing session', e)
       }
     }
-    handleNewChat(assistant.id)
   }
 
   const handleDelete = async (id: string) => {

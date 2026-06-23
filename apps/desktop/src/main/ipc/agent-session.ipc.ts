@@ -131,8 +131,14 @@ export function registerSessionIPC() {
 
   ipcMain.handle('agent:list-sessions-by-assistant', async (_, assistantId: string) => {
     const { sessionManager } = getAgentManagers()
-    const all = await sessionManager.findAllSessions()
-    return all.filter((s) => s.assistantId === assistantId)
+    const normalized =
+      typeof assistantId === 'string'
+        ? assistantId.trim()
+        : assistantId != null
+          ? String(assistantId).trim()
+          : ''
+    if (!normalized) return []
+    return sessionManager.findAllSessions(-1, 0, normalized)
   })
 
   // 对话分支：从指定消息位置复制一个新会话
