@@ -5,6 +5,7 @@ import { IAIProvider } from '../providers/provider.interface'
 import { ModelPricingService } from '../pricing/model-pricing.service'
 import { mergeStreamUsageFromSdk, normalizeTokenUsageForBilling } from './token-usage.util'
 import { StreamAccumulator } from './stream-accumulator'
+import { resolveAssistantParentOrderIndex } from './agent-session-persist.utils'
 // @ts-ignore
 import { SnapshotRepository } from '@baishou/database'
 
@@ -26,6 +27,7 @@ export interface PersistResultParams {
   provider: IAIProvider
   modelId: string
   skipUserMessageRecording?: boolean
+  userMessageId?: string
   streamError: any
   dbHistory?: any[]
   systemPrompt?: string
@@ -56,18 +58,14 @@ export async function persistResult(params: PersistResultParams): Promise<{
     provider,
     modelId,
     skipUserMessageRecording,
+    userMessageId,
     streamError
   } = params
 
-  // 用户消息已经在 streamChat 开始时保存，这里只需要获取当前的 orderIndex
-  const history = await sessionRepo.getMessagesBySession(sessionId, 1)
-  const lastOrder = history.length > 0 && history[0] ? history[0].orderIndex : 0
-  let userOrderIndex = lastOrder
-
-  // 如果是重发/编辑模式，需要计算正确的 orderIndex
-  if (skipUserMessageRecording) {
-    userOrderIndex = lastOrder
-  }
+  const userOrderIndex = await resolveAssistantParentOrderIndex(sessionRepo, sessionId, {
+    skipUserMessageRecording,
+    userMessageId
+  })
 
   // ======== 构建 assistant 消息 Parts ========
   const assistantMsgId = generateUUID()

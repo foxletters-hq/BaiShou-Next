@@ -1,6 +1,6 @@
 import { type ActionDeps, type StreamRunConfig, runStreamWithPersistence } from './base.action'
 import type { SessionRepository, SnapshotRepository } from '@baishou/database'
-import { truncateSessionAfterOrderIndex } from '../session-truncate.utils'
+import { truncateSessionAfterOrderIndex, truncateOptionsWithDiskFlush } from '../session-truncate.utils'
 
 export async function runResendAction(
   deps: ActionDeps,
@@ -34,7 +34,8 @@ export async function runResendAction(
     sessionRepo,
     snapshotRepo,
     deps.sessionId,
-    targetMsg.orderIndex
+    targetMsg.orderIndex,
+    truncateOptionsWithDiskFlush(deps.sessionManager)
   )
 
   return runStreamWithPersistence(deps, {
