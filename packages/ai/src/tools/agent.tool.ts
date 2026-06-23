@@ -1,5 +1,11 @@
 import { z } from 'zod'
 import { tool } from 'ai'
+import type { AgentGateToolMetadata, AgentSessionKind, FileChangePartData } from '@baishou/shared'
+import type { AgentRoundCheckpointService } from '../agent-workspace/agent-round-checkpoint.service'
+import type { WorkspaceFsAdapter } from '../agent-workspace/workspace-fs'
+import { resolveAgentGateToolMetadata } from '../baishou-agent-gate/agent-gate-tool-metadata'
+import { wrapVercelToolExecuteWithAgentGate } from '../baishou-agent-gate/baishou-agent-gate-tool.interceptor'
+import type { IBaishouAgentGate } from '../baishou-agent-gate/baishou-agent-gate.service'
 
 /**
  * 嵌入服务接口——工具不关心具体实现（DIP）
@@ -168,6 +174,17 @@ export interface ToolContext {
   contextCompressionRunner?: {
     run(phase: 'upstream' | 'downstream', options?: { force?: boolean }): Promise<string>
   }
+  /** Per-session BaishouAgentGate instance for mutating tool confirmation */
+  agentGate?: IBaishouAgentGate
+  /** Agent workspace session context (folder sandbox + round checkpoints) */
+  workspace?: {
+    folderRoot: string
+    sessionKind?: AgentSessionKind
+    fs?: WorkspaceFsAdapter
+    roundCheckpointService?: AgentRoundCheckpointService
+    roundCheckpointId?: string
+    onFileChange?: (change: FileChangePartData) => void
+  }
 }
 
 /**
@@ -225,6 +242,11 @@ export abstract class AgentTool<TArgs extends z.ZodType = any> {
     return []
   }
 
+  /** Optional gate metadata; override per tool or rely on registry defaults */
+  get agentGateMetadata(): AgentGateToolMetadata | undefined {
+    return resolveAgentGateToolMetadata(this.name)
+  }
+
   /**
    * 工具的执行逻辑
    * @param args 强类型推导后的执行参数
@@ -237,23 +259,32 @@ export abstract class AgentTool<TArgs extends z.ZodType = any> {
    * 将面向对象的 AgentTool 转化为 Vercel AI SDK 的 CoreTool 格式
    */
   toVercelTool(context: ToolContext): any {
+    const runExecute = async (args: z.infer<TArgs>) => {
+      try {
+        console.log(
+          `[AgentTool] Executing tool "${this.name}" with args:`,
+          JSON.stringify(args).slice(0, 200)
+        )
+        const result = await this.execute(args, context)
+        console.log(`[AgentTool] Tool "${this.name}" completed successfully`)
+        return result
+      } catch (e: any) {
+        console.error(`[AgentTool] Tool "${this.name}" threw an unhandled error:`, e)
+        return `工具执行失败 (${this.name}): ${e?.message || String(e)}`
+      }
+    }
+
+    const execute = wrapVercelToolExecuteWithAgentGate(
+      this.name,
+      this.agentGateMetadata,
+      context,
+      runExecute
+    )
+
     return tool({
       description: this.description,
       inputSchema: this.parameters,
-      execute: async (args: z.infer<TArgs>) => {
-        try {
-          console.log(
-            `[AgentTool] Executing tool "${this.name}" with args:`,
-            JSON.stringify(args).slice(0, 200)
-          )
-          const result = await this.execute(args, context)
-          console.log(`[AgentTool] Tool "${this.name}" completed successfully`)
-          return result
-        } catch (e: any) {
-          console.error(`[AgentTool] Tool "${this.name}" threw an unhandled error:`, e)
-          return `工具执行失败 (${this.name}): ${e?.message || String(e)}`
-        }
-      }
+      execute
     })
   }
 }

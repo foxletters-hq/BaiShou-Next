@@ -2,8 +2,10 @@ import { ToolVectorStore, ToolMessageSearcher, VectorSearchResult } from '../age
 import {
   SqliteHybridSearchRepository,
   MessageRepository,
+  summariesTable,
   type AppDatabase
 } from '@baishou/database'
+import { eq, and, desc } from 'drizzle-orm'
 import { formatLocalDate, formatRecallTimestamp, parseDateStr } from '@baishou/shared'
 
 export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
@@ -83,17 +85,12 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
     generatedAt: string
     endDateIso: string
   } | null> {
-    const { eq, and } = await import('drizzle-orm')
-    const { summariesTable } = await import('@baishou/database')
-
     const datePart = startDateIso.match(/^(\d{4}-\d{2}-\d{2})/)?.[1]
     const targetDate = datePart ? parseDateStr(datePart) : new Date(startDateIso)
     const rows = await this.db
       .select()
       .from(summariesTable)
-      .where(
-        and(eq(summariesTable.type as any, type as any), eq(summariesTable.startDate, targetDate))
-      )
+      .where(and(eq(summariesTable.type as any, type as any), eq(summariesTable.startDate, targetDate)))
       .limit(1)
 
     if (rows.length === 0) return null
@@ -106,9 +103,6 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
   }
 
   async getAvailableSummaries(type: string, limit: number = 5): Promise<string[]> {
-    const { eq, desc } = await import('drizzle-orm')
-    const { summariesTable } = await import('@baishou/database')
-
     const rows = await this.db
       .select({ start: summariesTable.startDate, end: summariesTable.endDate })
       .from(summariesTable)
