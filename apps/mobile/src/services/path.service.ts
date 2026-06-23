@@ -5,7 +5,8 @@ import { sanitizeVaultDirectoryName } from '@baishou/core-mobile'
 import {
   readVaultExternalPaths,
   resolveJournalsBaseDirectory,
-  resolveSummariesBaseDirectory
+  resolveSummariesBaseDirectory,
+  patchVaultExternalPaths
 } from '@baishou/core-mobile'
 import { getAppDocumentDirectory } from './mobile-app-paths'
 import { joinStoragePath } from './mobile-storage-path.util'
@@ -233,6 +234,42 @@ export class MobileStoragePathService implements IStoragePathService {
   public async getActiveVaultSettingsDirectory(): Promise<string> {
     const name = await this.getActiveVaultName()
     return this.getVaultSystemDirectory(name)
+  }
+
+  public async getExternalJournalsDirectory(vaultName?: string): Promise<string | null> {
+    const name = vaultName ?? (await this.getActiveVaultName())
+    const sysDir = await this.getVaultSystemDirectory(name)
+    const external = await readVaultExternalPaths(this.fileSystem, sysDir)
+    return external.journalsDirectory?.trim() || null
+  }
+
+  public async setExternalJournalsDirectory(
+    journalsDirectory: string | null,
+    vaultName?: string
+  ): Promise<void> {
+    const name = vaultName ?? (await this.getActiveVaultName())
+    const sysDir = await this.getVaultSystemDirectory(name)
+    await patchVaultExternalPaths(this.fileSystem, sysDir, {
+      journalsDirectory: journalsDirectory?.trim() || null
+    })
+  }
+
+  public async getExternalSummariesDirectory(vaultName?: string): Promise<string | null> {
+    const name = vaultName ?? (await this.getActiveVaultName())
+    const sysDir = await this.getVaultSystemDirectory(name)
+    const external = await readVaultExternalPaths(this.fileSystem, sysDir)
+    return external.summariesDirectory?.trim() || null
+  }
+
+  public async setExternalSummariesDirectory(
+    summariesDirectory: string | null,
+    vaultName?: string
+  ): Promise<void> {
+    const name = vaultName ?? (await this.getActiveVaultName())
+    const sysDir = await this.getVaultSystemDirectory(name)
+    await patchVaultExternalPaths(this.fileSystem, sysDir, {
+      summariesDirectory: summariesDirectory?.trim() || null
+    })
   }
 
   /**
