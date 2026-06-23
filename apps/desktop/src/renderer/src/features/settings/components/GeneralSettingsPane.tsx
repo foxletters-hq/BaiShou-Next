@@ -208,11 +208,29 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
                 embedded
                 isLast
                 storageRootPath={storageSettings.storageRootPath || storageStats.storageRootPath}
+                externalJournalsPath={storageSettings.externalJournalsPath}
+                externalJournalsDefaultPath={storageSettings.externalJournalsDefaultPath}
+                externalJournalsFileCount={storageSettings.externalJournalsFileCount}
+                externalSummariesPath={storageSettings.externalSummariesPath}
+                externalSummariesDefaultPath={storageSettings.externalSummariesDefaultPath}
+                externalSummariesFileCount={storageSettings.externalSummariesFileCount}
                 sqliteSizeStats={storageStats.sqliteSizeStats}
                 vectorDbStats={storageStats.vectorDbStats}
                 mediaCacheStats={storageStats.mediaCacheStats}
                 onChangeDirectory={storageSettings.handleChangeDirectory}
                 onMigrateDirectory={storageSettings.handleMigrateDirectory}
+                onChangeExternalJournalsDirectory={
+                  storageSettings.handleChangeExternalJournalsDirectory
+                }
+                onClearExternalJournalsDirectory={
+                  storageSettings.handleClearExternalJournalsDirectory
+                }
+                onChangeExternalSummariesDirectory={
+                  storageSettings.handleChangeExternalSummariesDirectory
+                }
+                onClearExternalSummariesDirectory={
+                  storageSettings.handleClearExternalSummariesDirectory
+                }
                 onClearCache={async () => {
                   await (window as any).api?.storage?.clearCache()
                   if ((window as any).api?.storage) {

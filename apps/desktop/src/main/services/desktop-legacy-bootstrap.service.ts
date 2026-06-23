@@ -14,6 +14,7 @@ import { resolveLegacyRootCandidates } from './flutter-legacy-paths.service'
 import { LegacyMigrationService } from './legacy-migration.service'
 import { getDesktopInstallInstanceId } from './install-instance.service'
 import { getAppDb, resetAppDb } from '../db'
+import { isDesktopDevRuntime, resolveDefaultDevStorageRoot, resolveDevEffectiveStorageRoot, shouldRewriteDevStorageRoot } from '../dev-user-data'
 
 export interface DesktopLegacyBootstrapResult {
   storageRoot: string
@@ -55,11 +56,31 @@ export async function resolveDesktopStorageBootstrap(
     // no settings yet
   }
 
-  const legacyCandidates = await resolveLegacyRootCandidates()
+  if (isDesktopDevRuntime()) {
+    if (shouldRewriteDevStorageRoot(customStorageRoot)) {
+      const devRoot = resolveDevEffectiveStorageRoot(customStorageRoot)
+      logger.warn(
+        `[DesktopLegacyBootstrap] Dev runtime ignored external storage root (${customStorageRoot}); using ${devRoot}`
+      )
+      customStorageRoot = devRoot
+      needsOnboarding = false
+      await fs.mkdir(devRoot, { recursive: true })
+      await fs.writeFile(
+        settingsPath,
+        JSON.stringify({ custom_storage_root: devRoot }, null, 2),
+        'utf-8'
+      )
+    } else if (customStorageRoot) {
+      customStorageRoot = resolveDevEffectiveStorageRoot(customStorageRoot)
+    }
+  }
+
+  const legacyCandidates = isDesktopDevRuntime() ? [] : await resolveLegacyRootCandidates()
   const primaryLegacy = legacyCandidates[0] ?? null
   const fileSystem = createNodeFileSystem()
 
-  if (needsOnboarding && primaryLegacy && !customStorageRoot) {
+  // 开发版不自动挂载本机 Flutter 旧版 / 稳定版工作区，避免 dev 与生产数据混用
+  if (!isDesktopDevRuntime() && needsOnboarding && primaryLegacy && !customStorageRoot) {
     customStorageRoot = primaryLegacy
   }
 
@@ -78,14 +99,14 @@ export async function resolveDesktopStorageBootstrap(
       const isFlutterLegacy = await hasFlutterLegacyStorageMarkers(fileSystem, customStorageRoot)
       const alreadyMigrated = await isWorkspaceMigrationDone(customStorageRoot)
 
-      if (isFlutterLegacy && !alreadyMigrated) {
+      if (isFlutterLegacy && !alreadyMigrated && !isDesktopDevRuntime()) {
         logger.info('[DesktopLegacyBootstrap] Migrating legacy installation at', customStorageRoot)
         await runLegacyMigration(customStorageRoot)
         await persistStorageRoot(customStorageRoot)
         return { storageRoot: customStorageRoot, needsOnboarding: false, migrated: true }
       }
 
-      if (!isFlutterLegacy && primaryLegacy) {
+      if (!isDesktopDevRuntime() && !isFlutterLegacy && primaryLegacy) {
         const currentHasData = await targetDirectoryHasData(fileSystem, customStorageRoot)
         const legacyAlreadyMigrated = await isWorkspaceMigrationDone(primaryLegacy)
         if (!currentHasData && !legacyAlreadyMigrated) {
@@ -111,7 +132,7 @@ export async function resolveDesktopStorageBootstrap(
     }
   } catch (e) {
     logger.error('[DesktopLegacyBootstrap] Legacy migration failed:', e as Error)
-    if (primaryLegacy) {
+    if (!isDesktopDevRuntime() && primaryLegacy) {
       const currentHasData = customStorageRoot
         ? await targetDirectoryHasData(fileSystem, customStorageRoot).catch(() => false)
         : false
@@ -122,8 +143,10 @@ export async function resolveDesktopStorageBootstrap(
     }
   }
 
+  const devDefaultRoot = isDesktopDevRuntime() ? resolveDefaultDevStorageRoot() : ''
+
   return {
-    storageRoot: customStorageRoot || primaryLegacy || '',
+    storageRoot: customStorageRoot || (isDesktopDevRuntime() ? devDefaultRoot : primaryLegacy || ''),
     needsOnboarding,
     migrated: false
   }
@@ -147,5 +170,7 @@ export async function resolvePickedStorageDirectory(pickedPath: string): Promise
 }
 
 export function defaultOnboardingStoragePath(): string {
-  return join(app.getPath('userData'), 'Vaults')
+  return isDesktopDevRuntime()
+    ? resolveDefaultDevStorageRoot()
+    : join(app.getPath('userData'), 'Vaults')
 }

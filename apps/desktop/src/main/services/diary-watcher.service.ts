@@ -1,6 +1,7 @@
 import { BrowserWindow } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
+import { isJournalPathUnderSkippedDir } from '@baishou/core/shared'
 import { getShadowSync } from '../ipc/diary.ipc'
 import { logger } from '@baishou/shared'
 import * as chokidar from 'chokidar'
@@ -19,30 +20,31 @@ export class DiaryWatcherService {
   private isProcessing = false
   private globalDebounceTimer: NodeJS.Timeout | null = null
 
-  public start(vaultPath: string) {
+  public start(journalsPath: string) {
     this.stop()
-    this.journalsPath = path.join(vaultPath, 'Journals')
+    this.journalsPath = journalsPath
 
     logger.info(`[DiaryWatcher] 🚀 journalsPath = ${this.journalsPath}`)
 
-    // 确保 Journals 目录存在（第一次打开可能未创建）
     if (!fs.existsSync(this.journalsPath)) {
       try {
         fs.mkdirSync(this.journalsPath, { recursive: true })
-        logger.info(`[DiaryWatcher] 📁 Journals 目录已创建`)
+        logger.info(`[DiaryWatcher] 📁 日记目录已创建`)
       } catch (e: any) {
-        logger.error(`[DiaryWatcher] ❌ 无法创建 Journals 目录:`, e)
+        logger.error(`[DiaryWatcher] ❌ 无法创建日记目录:`, e)
       }
     }
 
     // 初始化 Chokidar 监听 (去除 awaitWriteFinish 防止因体积未变导致的响应延迟或者漏事件，去除 cwd 防止路径匹配失效)
     this.watcher = chokidar.watch(this.journalsPath, {
-      ignored: /(^|[\/\\])\../, // 忽略隐藏文件
+      ignored: (filePath: string) =>
+        /(^|[\/\\])\../.test(filePath) || isJournalPathUnderSkippedDir(filePath),
       ignoreInitial: true, // 初始加载时不触发 add 事件
       disableGlobbing: true // 因为直接传绝对路径，关掉 glob 解析提升一点性能和健壮性
     } as any)
 
     this.watcher.on('all', (eventName, fullPath) => {
+      if (isJournalPathUnderSkippedDir(fullPath)) return
       // 只要是 .md 文件的 增、改、删 就触发同步
       if (!fullPath.endsWith('.md')) return
       if (eventName === 'add' || eventName === 'change' || eventName === 'unlink') {
@@ -99,6 +101,7 @@ export class DiaryWatcherService {
         const dateFileRegex = /^(\d{4}-\d{2}-\d{2})\.md$/
 
         for (const changedPath of pathsToProcess) {
+          if (isJournalPathUnderSkippedDir(changedPath)) continue
           const fileName = path.basename(changedPath)
           const match = dateFileRegex.exec(fileName)
           if (match && match[1]) {
