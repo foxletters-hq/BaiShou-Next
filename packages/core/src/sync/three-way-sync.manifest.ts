@@ -50,6 +50,7 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
   clearPreparedManifestCache(): void {
     this.invalidatePreparedManifests()
     this.clearPlanManifestCache()
+    this.invalidateExternalSyncMounts()
   }
 
   setPlanManifestCache(local: SyncManifest, remote: SyncManifest): void {
@@ -146,7 +147,6 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
   async buildLocalManifest(
     onFileProgress?: ManifestFileProgressCallback
   ): Promise<SyncManifest> {
-    const syncRoot = await this.getSyncRoot()
     const files = await this.scanLocalFiles()
     const manifest: SyncManifest = {
       version: SYNC_MANIFEST_VERSION,
@@ -160,7 +160,7 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
 
     for (let index = 0; index < files.length; index++) {
       const relPath = files[index]!
-      const fullPath = path.join(syncRoot, relPath)
+      const fullPath = await this.resolveSyncFullPath(relPath)
       try {
         const hash = await this.computeFileHash(fullPath)
         const stat = await fs.promises.stat(fullPath)
@@ -330,8 +330,7 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
       console.warn(`[ThreeWaySync] Skipping SQLite runtime file upload: ${relPath}`)
       return
     }
-    const syncRoot = await this.getSyncRoot()
-    const fullPath = path.join(syncRoot, relPath)
+    const fullPath = await this.resolveSyncFullPath(relPath)
     if (fs.existsSync(fullPath)) {
       await this.cloudClient.uploadFile(fullPath)
     }
@@ -342,8 +341,7 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
       console.warn(`[ThreeWaySync] Skipping SQLite runtime file download: ${relPath}`)
       return false
     }
-    const syncRoot = await this.getSyncRoot()
-    const fullPath = path.join(syncRoot, relPath)
+    const fullPath = await this.resolveSyncFullPath(relPath)
     await fs.promises.mkdir(path.dirname(fullPath), { recursive: true })
     try {
       await this.cloudClient.downloadFile(relPath, fullPath)
@@ -364,8 +362,7 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
   }
 
   protected async deleteLocalFile(relPath: string): Promise<void> {
-    const syncRoot = await this.getSyncRoot()
-    const fullPath = path.join(syncRoot, relPath)
+    const fullPath = await this.resolveSyncFullPath(relPath)
     if (fs.existsSync(fullPath)) {
       if (this.versionManager) {
         try {
@@ -386,8 +383,7 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
 
   protected async backupFile(relPath: string, _hash: string): Promise<void> {
     if (!this.versionManager) return
-    const syncRoot = await this.getSyncRoot()
-    const fullPath = path.join(syncRoot, relPath)
+    const fullPath = await this.resolveSyncFullPath(relPath)
     if (fs.existsSync(fullPath)) {
       try {
         await this.versionManager.backup(fullPath)

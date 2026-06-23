@@ -65,6 +65,20 @@ export {
   shouldScanIncrementalSyncDirectory
 } from './utils/incremental-sync-scan.util'
 export {
+  VAULT_EXTERNAL_PATHS_SYNC_FILENAME,
+  buildVaultArchivesSyncPrefix,
+  buildVaultJournalsSyncPrefix,
+  externalAbsPathToSyncRelPath,
+  isVaultExternalPathsConfigRelPath,
+  normalizeIncrementalSyncAbsPath,
+  normalizeIncrementalSyncRelPath,
+  resolveIncrementalSyncRelPath,
+  shouldIncludeIncrementalSyncFileWithExternalConfig,
+  shouldScanIncrementalSyncDirectoryWithExternalMounts,
+  type VaultExternalSyncKind,
+  type VaultExternalSyncMount
+} from './utils/incremental-sync-external-paths.util'
+export {
   WEBDAV_SHALLOW_LIST_CONCURRENCY,
   parseWebDavPropfindEntries,
   toRelativeWebDavPath,

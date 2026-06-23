@@ -3,19 +3,28 @@ import * as path from 'path'
 import * as crypto from 'crypto'
 import type { S3SyncConfig } from '@baishou/shared'
 import {
-  shouldIncludeIncrementalSyncFile,
-  shouldScanIncrementalSyncDirectory,
-  migrateLegacyIncrementalSyncConfig
+  shouldIncludeIncrementalSyncFileWithExternalConfig,
+  shouldScanIncrementalSyncDirectoryWithExternalMounts,
+  migrateLegacyIncrementalSyncConfig,
+  type VaultExternalSyncMount,
+  resolveIncrementalSyncRelPath
 } from '@baishou/shared'
 import type { ICloudSyncClient } from '../network/cloud-sync.interface'
 import type { IStoragePathService } from '../vault/storage-path.types'
 import type { IVersionManager } from './version-manager.interface'
 import { DEFAULT_S3_SYNC_CONFIG, S3_CONFIG_FILE } from './three-way-sync.constants'
+import { createNodeFileSystem } from '../fs/create-node-file-system'
+import {
+  loadVaultExternalSyncMounts,
+  scanAllVaultExternalSyncMountFiles
+} from './incremental-sync-external-mounts'
 
 export abstract class ThreeWaySyncCore {
   protected config: S3SyncConfig = { ...DEFAULT_S3_SYNC_CONFIG }
   protected lastConflicts: string[] = []
   protected readonly configFileName = S3_CONFIG_FILE
+  private externalSyncMounts: VaultExternalSyncMount[] | null = null
+  private readonly syncFileSystem = createNodeFileSystem()
 
   constructor(
     protected readonly pathService: IStoragePathService,
@@ -68,6 +77,24 @@ export abstract class ThreeWaySyncCore {
     await fs.promises.writeFile(configPath, JSON.stringify(this.config, null, 2), 'utf8')
   }
 
+  protected invalidateExternalSyncMounts(): void {
+    this.externalSyncMounts = null
+  }
+
+  protected async getVaultExternalSyncMounts(): Promise<VaultExternalSyncMount[]> {
+    if (!this.externalSyncMounts) {
+      const syncRoot = await this.getSyncRoot()
+      this.externalSyncMounts = await loadVaultExternalSyncMounts(this.syncFileSystem, syncRoot)
+    }
+    return this.externalSyncMounts
+  }
+
+  protected async resolveSyncFullPath(relPath: string): Promise<string> {
+    const syncRoot = await this.getSyncRoot()
+    const mounts = await this.getVaultExternalSyncMounts()
+    return resolveIncrementalSyncRelPath(syncRoot, relPath, mounts, path.join)
+  }
+
   protected async computeFileHash(filePath: string): Promise<string> {
     const content = await fs.promises.readFile(filePath)
     return crypto.createHash('md5').update(content).digest('hex')
@@ -75,7 +102,9 @@ export abstract class ThreeWaySyncCore {
 
   protected async scanLocalFiles(): Promise<string[]> {
     const syncRoot = await this.getSyncRoot()
-    const files: string[] = []
+    this.invalidateExternalSyncMounts()
+    const mounts = await this.getVaultExternalSyncMounts()
+    const files = new Set<string>()
 
     const scan = async (dir: string, relativePath: string) => {
       const entries = await fs.promises.readdir(dir, { withFileTypes: true })
@@ -83,16 +112,22 @@ export abstract class ThreeWaySyncCore {
         const fullPath = path.join(dir, entry.name)
         const relPath = relativePath ? path.join(relativePath, entry.name) : entry.name
         if (entry.isDirectory()) {
-          if (shouldScanIncrementalSyncDirectory(entry.name, relPath)) {
+          if (shouldScanIncrementalSyncDirectoryWithExternalMounts(entry.name, relPath, mounts)) {
             await scan(fullPath, relPath)
           }
-        } else if (shouldIncludeIncrementalSyncFile(entry.name, relPath)) {
-          files.push(relPath.replace(/\\/g, '/'))
+        } else if (shouldIncludeIncrementalSyncFileWithExternalConfig(entry.name, relPath)) {
+          files.add(relPath.replace(/\\/g, '/'))
         }
       }
     }
 
     await scan(syncRoot, '')
-    return files
+
+    const externalFiles = await scanAllVaultExternalSyncMountFiles(this.syncFileSystem, syncRoot)
+    for (const { relPath } of externalFiles) {
+      files.add(relPath)
+    }
+
+    return Array.from(files)
   }
 }
