@@ -57,6 +57,7 @@ import {
   type ToolContext
 } from '@baishou/ai'
 import { getDiaryManager } from './diary.ipc'
+import { logger } from '@baishou/shared'
 
 export const toolRegistry = new ToolRegistry()
 export const agentService = new AgentSessionService()
@@ -210,7 +211,11 @@ export function createDiarySearcher() {
         }
       }
     }
-  } catch {
+  } catch (e) {
+    logger.warn(
+      '[Agent] createDiarySearcher failed; diary CRUD tools will be unavailable:',
+      e instanceof Error ? e.message : String(e)
+    )
     return undefined
   }
 }

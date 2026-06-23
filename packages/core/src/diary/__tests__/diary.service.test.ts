@@ -156,10 +156,15 @@ describe('DiaryService - Single Source of Truth architecture', () => {
 
     await service.update(99, { content: 'New' })
 
+    expect(mockFileSync.readJournal).toHaveBeenCalledWith(
+      expect.any(Date),
+      '2026/03/2026-03-30.md'
+    )
     expect(mockFileSync.writeJournal).toHaveBeenCalledWith(
       expect.objectContaining({
         content: 'New'
-      })
+      }),
+      '2026/03/2026-03-30.md'
     )
     expect(mockShadowSync.syncJournal).toHaveBeenCalledWith('2026-03-30')
     expect(mockVaultIndex.upsert).toHaveBeenCalled()
@@ -307,7 +312,8 @@ describe('DiaryService - Single Source of Truth architecture', () => {
         expect.objectContaining({
           content: 'Original text\n\nAdditional text',
           tags: 'tag1,tag2'
-        })
+        }),
+        ''
       )
     })
 
@@ -399,7 +405,8 @@ describe('DiaryService - Single Source of Truth architecture', () => {
       expect(mockFileSync.writeJournal).toHaveBeenCalledWith(
         expect.objectContaining({
           content: 'Updated content'
-        })
+        }),
+        ''
       )
     })
   })
@@ -461,6 +468,42 @@ describe('DiaryService - Single Source of Truth architecture', () => {
       expect(items[0]!.id).toBe(2)
       expect(hasMore).toBe(true)
       expect(mockShadowRepo.searchFTS).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  describe('findByDate', () => {
+    it('passes shadow file path when reading by date from disk', async () => {
+      const date = parseDateStr('2025-08-03')
+      mockShadowRepo.findByDate.mockResolvedValue({
+        id: 12,
+        date: '2025-08-03',
+        filePath: 'Daily/2025-08-03.md',
+        contentHash: '',
+        createdAt: '',
+        updatedAt: '',
+        isFavorite: false,
+        hasMedia: false,
+        weather: null,
+        mood: null,
+        location: null,
+        locationDetail: null,
+        vaultName: 'TestVault'
+      })
+      mockShadowSync.syncJournal.mockResolvedValue({ isChanged: false, meta: null })
+      mockFileSync.readJournal.mockResolvedValue({
+        id: 12,
+        date,
+        content: '外部日记正文',
+        isFavorite: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        mediaPaths: []
+      })
+
+      const result = await service.findByDate(date)
+
+      expect(mockFileSync.readJournal).toHaveBeenCalledWith(date, 'Daily/2025-08-03.md')
+      expect(result?.content).toBe('外部日记正文')
     })
   })
 

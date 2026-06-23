@@ -9,10 +9,11 @@ import {
 } from '../journal/journal-files.util'
 
 export interface FileSyncService {
-  writeJournal(diary: CreateDiaryInput | Diary): Promise<void>
+  /** @param shadowFilePath 影子索引中的相对路径，用于非标准嵌套布局 */
+  writeJournal(diary: CreateDiaryInput | Diary, shadowFilePath?: string): Promise<void>
   /** @param shadowFilePath 影子索引中的相对路径，用于非标准嵌套布局 */
   readJournal(date: Date, shadowFilePath?: string): Promise<Diary | null>
-  deleteJournalFile(date: Date): Promise<void>
+  deleteJournalFile(date: Date, shadowFilePath?: string): Promise<void>
   fullScanVault(): Promise<void>
 }
 
@@ -35,15 +36,27 @@ export class FileSyncServiceImpl implements FileSyncService {
     return path.join(rootPath, year, month, `${dateStr}.md`)
   }
 
-  private async resolveWriteFilePath(rootPath: string, date: Date): Promise<string> {
+  private async resolveWriteFilePath(
+    rootPath: string,
+    date: Date,
+    shadowFilePath?: string
+  ): Promise<string> {
     const dateStr = formatLocalDate(date)
-    const existingPath = await resolveJournalFilePath(this.fileSystem, rootPath, dateStr)
+    const hintPath = shadowFilePath
+      ? resolveShadowJournalAbsolutePath(rootPath, shadowFilePath)
+      : undefined
+    const existingPath = await resolveJournalFilePath(
+      this.fileSystem,
+      rootPath,
+      dateStr,
+      hintPath
+    )
     return existingPath ?? this.buildFilePath(rootPath, date)
   }
 
-  async writeJournal(diary: CreateDiaryInput | Diary): Promise<void> {
+  async writeJournal(diary: CreateDiaryInput | Diary, shadowFilePath?: string): Promise<void> {
     const rootPath = await this.pathService.getJournalsBaseDirectory()
-    const filePath = await this.resolveWriteFilePath(rootPath, diary.date)
+    const filePath = await this.resolveWriteFilePath(rootPath, diary.date, shadowFilePath)
 
     await this.ensureDir(path.dirname(filePath))
 
@@ -100,10 +113,18 @@ export class FileSyncServiceImpl implements FileSyncService {
     return this._parseMarkdown(raw, date)
   }
 
-  async deleteJournalFile(date: Date): Promise<void> {
+  async deleteJournalFile(date: Date, shadowFilePath?: string): Promise<void> {
     const rootPath = await this.pathService.getJournalsBaseDirectory()
     const dateStr = formatLocalDate(date)
-    const filePath = await resolveJournalFilePath(this.fileSystem, rootPath, dateStr)
+    const hintPath = shadowFilePath
+      ? resolveShadowJournalAbsolutePath(rootPath, shadowFilePath)
+      : undefined
+    const filePath = await resolveJournalFilePath(
+      this.fileSystem,
+      rootPath,
+      dateStr,
+      hintPath
+    )
     if (filePath && (await this.fileSystem.exists(filePath))) {
       await this.fileSystem.unlink(filePath)
     }

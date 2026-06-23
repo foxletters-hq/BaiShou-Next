@@ -107,8 +107,8 @@ export class DiaryService {
     const existingDateStr = sdStr.split('T')[0]!
     const existingDate = parseDateStr(existingDateStr)
 
-    // 尝试拉出物理正本文件
-    const existingDiary = await this.fileSync.readJournal(existingDate)
+    // 尝试拉出物理正本文件（沿用影子索引中的实际路径，兼容外部 Obsidian 非标准布局）
+    const existingDiary = await this.fileSync.readJournal(existingDate, existingShadow.filePath)
     if (!existingDiary) {
       // 如果由于各种奇怪原因，文件被人删了但索引还存留
       throw new DiaryNotFoundError(resolvedId)
@@ -146,7 +146,7 @@ export class DiaryService {
       updatedAt: new Date()
     }
     if (inputDate) mergedDiaryToSave.date = inputDate
-    await this.fileSync.writeJournal(mergedDiaryToSave)
+    await this.fileSync.writeJournal(mergedDiaryToSave, existingShadow.filePath)
 
     // 呼唤影子同步引擎进行更新重算和提取
     // 如果修改了日期，那么目标文件名也变了，要对新的日期发出同步令，对旧日期由于删除了它会自动触发孤立清除
@@ -164,7 +164,7 @@ export class DiaryService {
       const syncedId = syncResult.meta.id
       if (mergedDiaryToSave.id !== syncedId) {
         mergedDiaryToSave.id = syncedId
-        await this.fileSync.writeJournal(mergedDiaryToSave)
+        await this.fileSync.writeJournal(mergedDiaryToSave, existingShadow.filePath)
       } else {
         mergedDiaryToSave.id = syncedId
       }
@@ -305,19 +305,19 @@ export class DiaryService {
   }
 
   async findByDate(date: Date): Promise<Diary | null> {
-    // 穿透底层：真相直接来在物理文件
-    const diary = await this.fileSync.readJournal(date)
+    const dateStr = formatLocalDate(date)
+    const shadow = await this.shadowRepo.findByDate(dateStr)
+
+    // 穿透底层：真相来自物理文件；优先使用影子索引记录的实际路径（外部存储 / Obsidian 布局）
+    const diary = await this.fileSync.readJournal(date, shadow?.filePath)
 
     // 补救机制：如果物理文件遗漏了头部属性的 ID
-    if (diary && !diary.id) {
-      const shadow = await this.shadowRepo.findByDate(formatLocalDate(date))
-      if (shadow) diary.id = shadow.id
+    if (diary && !diary.id && shadow) {
+      diary.id = shadow.id
     }
 
     // HEALING: Lazily trigger sync to heal any out-of-sync local file editing
-    this.shadowSync
-      .syncJournal(formatLocalDate(date))
-      .catch((e) => console.warn('Lazy sync failed', e))
+    this.shadowSync.syncJournal(dateStr).catch((e) => console.warn('Lazy sync failed', e))
 
     return diary
   }
