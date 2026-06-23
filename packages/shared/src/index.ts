@@ -1,6 +1,8 @@
 export * from './types/diary.types'
 export * from './types/summary.types'
 export * from './types/agent.types'
+export * from './baishou-agent-gate'
+export * from './agent-workspace'
 export * from './types/settings.types'
 export {
   ProviderType,
