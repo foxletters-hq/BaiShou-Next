@@ -47,6 +47,7 @@ export interface PersistResultParams {
   namingModelId?: string
   /** 用户配置，用于查找 emoji_send 工具对应的表情包文件 */
   userConfig?: Record<string, any>
+  agentGateParts?: import('@baishou/shared').AgentGatePartData[]
 }
 
 /**
@@ -137,6 +138,16 @@ export async function persistResult(params: PersistResultParams): Promise<{
       sessionId,
       type: 'tool',
       data: toolData
+    })
+  }
+
+  for (const gatePart of params.agentGateParts ?? []) {
+    partsToInsert.push({
+      id: generateUUID(),
+      messageId: assistantMsgId,
+      sessionId,
+      type: 'agent_gate',
+      data: gatePart
     })
   }
 
