@@ -6,8 +6,9 @@ import { useNativeToast, useDialog } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import { MobileStoragePathService } from '../services/path.service'
 import {
-  applyExternalJournalsDirectory,
-  applyExternalSummariesDirectory,
+  applyExternalJournalsDirectoryWithResync,
+  applyExternalSummariesDirectoryWithResync,
+  ExternalPathResyncFailedError,
   getExternalJournalsDirectoryInfo,
   getExternalSummariesDirectoryInfo
 } from '../services/mobile-external-vault-paths.service'
@@ -49,9 +50,11 @@ export function useMobileExternalVaultPaths() {
   const [externalJournalsPath, setExternalJournalsPath] = useState<string | null>(null)
   const [externalJournalsDefaultPath, setExternalJournalsDefaultPath] = useState('')
   const [externalJournalsFileCount, setExternalJournalsFileCount] = useState(0)
+  const [externalJournalsPathAvailable, setExternalJournalsPathAvailable] = useState(true)
   const [externalSummariesPath, setExternalSummariesPath] = useState<string | null>(null)
   const [externalSummariesDefaultPath, setExternalSummariesDefaultPath] = useState('')
   const [externalSummariesFileCount, setExternalSummariesFileCount] = useState(0)
+  const [externalSummariesPathAvailable, setExternalSummariesPathAvailable] = useState(true)
   const [pickerVisible, setPickerVisible] = useState(false)
   const [pickerTarget, setPickerTarget] = useState<ExternalVaultPathPickerTarget | null>(null)
   const [busy, setBusy] = useState(false)
@@ -67,9 +70,11 @@ export function useMobileExternalVaultPaths() {
       setExternalJournalsPath(journals.path)
       setExternalJournalsDefaultPath(displayPath(journals.defaultPath))
       setExternalJournalsFileCount(journals.journalFileCount)
+      setExternalJournalsPathAvailable(journals.pathAvailableOnDevice)
       setExternalSummariesPath(summaries.path)
       setExternalSummariesDefaultPath(displayPath(summaries.defaultPath))
       setExternalSummariesFileCount(summaries.summaryFileCount)
+      setExternalSummariesPathAvailable(summaries.pathAvailableOnDevice)
     } catch (e) {
       console.warn('[useMobileExternalVaultPaths] refresh failed', e)
     }
@@ -130,10 +135,19 @@ export function useMobileExternalVaultPaths() {
       try {
         const count =
           target === 'journals'
-            ? await applyExternalJournalsDirectory(pathService, services.fileSystem, targetPath)
-            : await applyExternalSummariesDirectory(pathService, services.fileSystem, targetPath)
+            ? await applyExternalJournalsDirectoryWithResync(
+                pathService,
+                services.fileSystem,
+                targetPath,
+                resyncAfterMigration
+              )
+            : await applyExternalSummariesDirectoryWithResync(
+                pathService,
+                services.fileSystem,
+                targetPath,
+                resyncAfterMigration
+              )
 
-        await resyncAfterMigration()
         await refreshExternalPathsInfo()
 
         const successKey =
@@ -150,6 +164,21 @@ export function useMobileExternalVaultPaths() {
           })
         )
       } catch (e: unknown) {
+        if (e instanceof ExternalPathResyncFailedError) {
+          await refreshExternalPathsInfo()
+          toast.showError(
+            e.rolledBack
+              ? t('storage.external_path_resync_failed_rolled_back', {
+                  error: e.message,
+                  defaultValue: `同步失败，已恢复先前配置：${e.message}`
+                })
+              : t('storage.external_path_resync_failed', {
+                  error: e.message,
+                  defaultValue: `同步失败且未能恢复先前配置：${e.message}`
+                })
+          )
+          return
+        }
         const code = e instanceof Error ? e.message : String(e)
         toast.showError(mapExternalPathError(t, code, target))
       } finally {
@@ -177,14 +206,25 @@ export function useMobileExternalVaultPaths() {
       if (!confirmed) return
 
       setBusy(true)
+      const pathService = services.pathService as MobileStoragePathService
+
       try {
-        const pathService = services.pathService as MobileStoragePathService
         if (target === 'journals') {
-          await applyExternalJournalsDirectory(pathService, services.fileSystem, null)
+          await applyExternalJournalsDirectoryWithResync(
+            pathService,
+            services.fileSystem,
+            null,
+            resyncAfterMigration
+          )
         } else {
-          await applyExternalSummariesDirectory(pathService, services.fileSystem, null)
+          await applyExternalSummariesDirectoryWithResync(
+            pathService,
+            services.fileSystem,
+            null,
+            resyncAfterMigration
+          )
         }
-        await resyncAfterMigration()
+
         await refreshExternalPathsInfo()
         toast.showSuccess(
           t(
@@ -194,6 +234,21 @@ export function useMobileExternalVaultPaths() {
           )
         )
       } catch (e: unknown) {
+        if (e instanceof ExternalPathResyncFailedError) {
+          await refreshExternalPathsInfo()
+          toast.showError(
+            e.rolledBack
+              ? t('storage.external_path_resync_failed_rolled_back', {
+                  error: e.message,
+                  defaultValue: `同步失败，已恢复先前配置：${e.message}`
+                })
+              : t('storage.external_path_resync_failed', {
+                  error: e.message,
+                  defaultValue: `同步失败且未能恢复先前配置：${e.message}`
+                })
+          )
+          return
+        }
         const message = e instanceof Error ? e.message : String(e)
         toast.showError(
           t(`storage.external_${target}_clear_failed`, {
@@ -260,9 +315,11 @@ export function useMobileExternalVaultPaths() {
     externalJournalsPath: externalJournalsPath ? displayPath(externalJournalsPath) : null,
     externalJournalsDefaultPath,
     externalJournalsFileCount,
+    externalJournalsPathAvailable,
     externalSummariesPath: externalSummariesPath ? displayPath(externalSummariesPath) : null,
     externalSummariesDefaultPath,
     externalSummariesFileCount,
+    externalSummariesPathAvailable,
     externalPathsBusy: busy,
     externalPickerVisible: pickerVisible,
     externalPickerInitialPath: pickerInitialPath,

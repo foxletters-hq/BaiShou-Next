@@ -6,6 +6,7 @@ import {
   VaultService,
   journalMarkdownExistsInTree,
   countJournalMarkdownInTree,
+  countSummaryMarkdownInArchivesTree,
   probeJournalShadowResyncNeeded,
   path,
   type IFileSystem,
@@ -25,6 +26,7 @@ import {
   logger,
   parseDateStr,
   resolveDiaryAppendBlock,
+  isUsingExternalVaultDirectory,
   type DiaryTemplateConfig
 } from '@baishou/shared'
 import { mergeDiaryTags, type ToolDiaryMutationResult } from '@baishou/ai'
@@ -48,6 +50,7 @@ import {
   waitForVaultEcosystemResync
 } from './mobile-vault-resync.service'
 import { vaultFileWatcher } from './vault-file-watcher.service'
+import type { MobileExternalPathService } from './mobile-external-vault-paths.service'
 import { sessionFileWatcher } from './session-file-watcher.service'
 import { summaryFileWatcher } from './summary-file-watcher.service'
 import { createShadowDiaryRepoAdapter } from './shadow-diary-adapter'
@@ -516,7 +519,11 @@ export async function rebootstrapAfterStorageRootChange(
     await prepareVaultSwitch(deps.diaryStack)
     await deps.vaultService.initRegistry()
     if (blockingResync) {
-      await preferActiveVaultWithJournalsOnDisk(deps)
+      await preferActiveVaultWithJournalsOnDisk({
+        vaultService: deps.vaultService,
+        fileSystem: deps.fileSystem,
+        pathService: deps.pathService as MobileExternalPathService
+      })
     }
     await connectGlobalShadowDb(deps)
     if (blockingResync) {
@@ -617,6 +624,7 @@ async function shouldDeferVaultResync(
     diaryStack: VaultBoundDiaryStack
     vaultService: VaultService
     fileSystem: IFileSystem
+    pathService: IStoragePathService
   },
   requested?: boolean,
   forceDefer?: boolean,
@@ -634,7 +642,7 @@ async function shouldDeferVaultResync(
     const active = deps.vaultService.getActiveVault()
     if (!active?.path) return true
 
-    const journalsDir = path.join(active.path, 'Journals')
+    const journalsDir = await deps.pathService.getJournalsBaseDirectory()
     const hasOnDisk = await journalMarkdownExistsInTree(deps.fileSystem, journalsDir)
     if (hasOnDisk) {
       if (resyncReason === 'archive-full-restore') {
@@ -677,15 +685,25 @@ async function countArchiveMarkdownInTree(
 async function preferActiveVaultWithJournalsOnDisk(deps: {
   vaultService: VaultService
   fileSystem: IFileSystem
+  pathService: MobileExternalPathService
 }): Promise<void> {
   const vaults = deps.vaultService.getAllVaults()
   if (vaults.length === 0) return
 
   const scored: Array<{ name: string; score: number; journals: number; archives: number }> = []
   for (const vault of vaults) {
-    const journalsDir = path.join(vault.path, 'Journals')
+    const externalJournals = await deps.pathService.getExternalJournalsDirectory(vault.name)
+    const externalSummaries = await deps.pathService.getExternalSummariesDirectory(vault.name)
+    const journalsDir = externalJournals ?? path.join(vault.path, 'Journals')
     const journalCount = await countJournalMarkdownInTree(deps.fileSystem, journalsDir)
-    const archiveCount = await countArchiveMarkdownInTree(deps.fileSystem, vault.path)
+
+    let archiveCount = 0
+    if (externalSummaries) {
+      archiveCount = await countSummaryMarkdownInArchivesTree(deps.fileSystem, externalSummaries)
+    } else {
+      archiveCount = await countArchiveMarkdownInTree(deps.fileSystem, vault.path)
+    }
+
     scored.push({
       name: vault.name,
       score: journalCount + archiveCount,
@@ -838,10 +856,25 @@ async function restartVaultWatchers(
   }
 
   const journalsDir = await watcherDeps.pathService.getJournalsBaseDirectory()
-  vaultFileWatcher.start(journalsDir, {
-    shadowIndexSyncService: diaryStack.shadowIndexSyncService,
-    fileSystem: watcherDeps.fileSystem
-  })
+  const vaultDir = await watcherDeps.pathService.getVaultDirectory(activeVault.name)
+  const externalJournals = await (
+    watcherDeps.pathService as MobileExternalPathService
+  ).getExternalJournalsDirectory(activeVault.name)
+  const defaultJournalsDir = path.join(vaultDir, 'Journals')
+  const isExternalJournals = isUsingExternalVaultDirectory(
+    externalJournals,
+    journalsDir,
+    defaultJournalsDir
+  )
+
+  vaultFileWatcher.start(
+    journalsDir,
+    {
+      shadowIndexSyncService: diaryStack.shadowIndexSyncService,
+      fileSystem: watcherDeps.fileSystem
+    },
+    { createIfMissing: !isExternalJournals }
+  )
   bindShadowVaultScanState(diaryStack.shadowIndexSyncService)
 
   if (options?.skipSessionSummary) {

@@ -18,6 +18,7 @@ export interface VaultFileWatcherDeps {
 export class VaultFileWatcherService {
   private journalsPath: string | null = null
   private deps: VaultFileWatcherDeps | null = null
+  private createIfMissing = true
   private intervalId: ReturnType<typeof setInterval> | null = null
   private debounceTimer: ReturnType<typeof setTimeout> | null = null
   private appStateSub: { remove: () => void } | null = null
@@ -25,10 +26,15 @@ export class VaultFileWatcherService {
   private pendingDates = new Set<string>()
   private isProcessing = false
 
-  start(journalsBasePath: string, deps: VaultFileWatcherDeps): void {
+  start(
+    journalsBasePath: string,
+    deps: VaultFileWatcherDeps,
+    options?: { createIfMissing?: boolean }
+  ): void {
     this.stop()
     this.journalsPath = journalsBasePath
     this.deps = deps
+    this.createIfMissing = options?.createIfMissing ?? true
     this.lastMtimes.clear()
 
     logger.info(`[VaultFileWatcher] Starting for ${journalsBasePath}`)
@@ -53,6 +59,7 @@ export class VaultFileWatcherService {
     this.lastMtimes.clear()
     this.journalsPath = null
     this.deps = null
+    this.createIfMissing = true
     logger.info('[VaultFileWatcher] Stopped')
   }
 
@@ -95,7 +102,13 @@ export class VaultFileWatcherService {
     try {
       const exists = await fileSystem.exists(journalsPath)
       if (!exists) {
-        await fileSystem.mkdir(journalsPath, { recursive: true })
+        if (this.createIfMissing) {
+          await fileSystem.mkdir(journalsPath, { recursive: true })
+        } else {
+          logger.warn(
+            `[VaultFileWatcher] External journals directory missing, skipping scan: ${journalsPath}`
+          )
+        }
         return
       }
 

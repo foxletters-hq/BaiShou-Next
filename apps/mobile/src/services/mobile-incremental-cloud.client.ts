@@ -205,8 +205,8 @@ export class MobileIncrementalCloudClient {
     return `${getAppCacheDirectory()}sync_${prefix}_${Date.now()}_${name}`
   }
 
-  async uploadFile(localFilePath: string): Promise<void> {
-    const rel = this.relFromLocal(localFilePath)
+  async uploadFile(localFilePath: string, remoteRelPath?: string): Promise<void> {
+    const rel = remoteRelPath?.replace(/\\/g, '/') ?? this.relFromLocal(localFilePath)
     await withTransientNetworkRetry(
       async () => {
         if (this.config.target === 'webdav') {

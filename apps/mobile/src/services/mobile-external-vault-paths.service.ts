@@ -3,6 +3,7 @@ import {
   countJournalMarkdownInTree,
   countSummaryMarkdownInArchivesTree
 } from '@baishou/core-mobile'
+import { normalizeExternalStoragePath } from './android-external-fs'
 import { joinStoragePath } from './mobile-storage-path.util'
 import { validateStorageDirectoryWritable } from './storage-migration.service'
 
@@ -31,7 +32,7 @@ async function validateExternalDirectory(
   fileSystem: IFileSystem,
   targetPath: string
 ): Promise<ExternalDirectoryValidation> {
-  const normalized = targetPath.trim()
+  const normalized = normalizeExternalStoragePath(targetPath.trim())
   if (!normalized) {
     return { valid: false, code: 'NOT_DIRECTORY' }
   }
@@ -73,6 +74,85 @@ export async function validateExternalSummariesDirectory(
   return { valid: true, path: base.path, summaryFileCount }
 }
 
+async function isExternalPathAvailableOnDevice(
+  fileSystem: IFileSystem,
+  externalPath: string | null
+): Promise<boolean> {
+  if (!externalPath?.trim()) return true
+  const normalized = normalizeExternalStoragePath(externalPath)
+  try {
+    return await fileSystem.exists(normalized)
+  } catch {
+    return false
+  }
+}
+
+export class ExternalPathResyncFailedError extends Error {
+  readonly rolledBack: boolean
+
+  constructor(message: string, rolledBack: boolean) {
+    super(message)
+    this.name = 'ExternalPathResyncFailedError'
+    this.rolledBack = rolledBack
+  }
+}
+
+async function restoreExternalPathConfig(
+  pathService: MobileExternalPathService,
+  target: 'journals' | 'summaries',
+  vaultName: string,
+  previousPath: string | null
+): Promise<boolean> {
+  try {
+    if (target === 'journals') {
+      await pathService.setExternalJournalsDirectory(previousPath, vaultName)
+    } else {
+      await pathService.setExternalSummariesDirectory(previousPath, vaultName)
+    }
+    return true
+  } catch {
+    return false
+  }
+}
+
+export async function applyExternalJournalsDirectoryWithResync(
+  pathService: MobileExternalPathService,
+  fileSystem: IFileSystem,
+  targetPath: string | null,
+  resync: () => Promise<void>
+): Promise<number> {
+  const name = await pathService.getActiveVaultNameForContext()
+  const previousPath = await pathService.getExternalJournalsDirectory(name)
+  const count = await applyExternalJournalsDirectory(pathService, fileSystem, targetPath)
+  try {
+    await resync()
+  } catch (error) {
+    const rolledBack = await restoreExternalPathConfig(pathService, 'journals', name, previousPath)
+    const message = error instanceof Error ? error.message : String(error)
+    throw new ExternalPathResyncFailedError(message, rolledBack)
+  }
+  return count
+}
+
+export async function applyExternalSummariesDirectoryWithResync(
+  pathService: MobileExternalPathService,
+  fileSystem: IFileSystem,
+  targetPath: string | null,
+  resync: () => Promise<void>
+): Promise<number> {
+  const name = await pathService.getActiveVaultNameForContext()
+  const previousPath = await pathService.getExternalSummariesDirectory(name)
+  const count = await applyExternalSummariesDirectory(pathService, fileSystem, targetPath)
+  try {
+    await resync()
+  } catch (error) {
+    const rolledBack = await restoreExternalPathConfig(pathService, 'summaries', name, previousPath)
+    const message = error instanceof Error ? error.message : String(error)
+    throw new ExternalPathResyncFailedError(message, rolledBack)
+  }
+  return count
+}
+
 export async function getExternalJournalsDirectoryInfo(
   pathService: MobileExternalPathService,
   fileSystem: IFileSystem
@@ -80,6 +160,7 @@ export async function getExternalJournalsDirectoryInfo(
   path: string | null
   defaultPath: string
   journalFileCount: number
+  pathAvailableOnDevice: boolean
 }> {
   const name = await pathService.getActiveVaultNameForContext()
   const vaultDir = await pathService.getVaultDirectory(name)
@@ -89,7 +170,8 @@ export async function getExternalJournalsDirectoryInfo(
   const journalFileCount = scanDir
     ? await countJournalMarkdownInTree(fileSystem, scanDir).catch(() => 0)
     : 0
-  return { path: external, defaultPath, journalFileCount }
+  const pathAvailableOnDevice = await isExternalPathAvailableOnDevice(fileSystem, external)
+  return { path: external, defaultPath, journalFileCount, pathAvailableOnDevice }
 }
 
 export async function getExternalSummariesDirectoryInfo(
@@ -99,6 +181,7 @@ export async function getExternalSummariesDirectoryInfo(
   path: string | null
   defaultPath: string
   summaryFileCount: number
+  pathAvailableOnDevice: boolean
 }> {
   const name = await pathService.getActiveVaultNameForContext()
   const vaultDir = await pathService.getVaultDirectory(name)
@@ -108,7 +191,8 @@ export async function getExternalSummariesDirectoryInfo(
   const summaryFileCount = scanDir
     ? await countSummaryMarkdownInArchivesTree(fileSystem, scanDir).catch(() => 0)
     : 0
-  return { path: external, defaultPath, summaryFileCount }
+  const pathAvailableOnDevice = await isExternalPathAvailableOnDevice(fileSystem, external)
+  return { path: external, defaultPath, summaryFileCount, pathAvailableOnDevice }
 }
 
 export async function applyExternalJournalsDirectory(

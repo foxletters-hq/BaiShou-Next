@@ -280,7 +280,9 @@ export class MobileIncrementalEngine {
   ): Promise<void> {
     const task = this.manifestUploadQueue
       .catch(() => {})
-      .then(() => client.uploadFile(this.manifestPath(metaDir)))
+      .then(() =>
+        client.uploadFile(this.manifestPath(metaDir), `.baishou/${SYNC_MANIFEST_FILENAME}`)
+      )
     this.manifestUploadQueue = task
     return task
   }
@@ -934,7 +936,7 @@ export class MobileIncrementalEngine {
       try {
         switch (d.type) {
           case 'upload':
-            await client.uploadFile(fullPath)
+            await client.uploadFile(fullPath, d.filePath)
             uploaded++
             mutated = true
             break
@@ -958,7 +960,7 @@ export class MobileIncrementalEngine {
             conflicted.push(d.filePath)
             if (d.direction === 'upload') {
               await this.backupLocalFile(syncRoot, d.filePath)
-              await client.uploadFile(fullPath)
+              await client.uploadFile(fullPath, d.filePath)
               uploaded++
             } else {
               await this.backupLocalFile(syncRoot, d.filePath)

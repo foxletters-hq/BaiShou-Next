@@ -2,7 +2,8 @@ import type { IFileSystem } from '@baishou/core-mobile'
 import { limitExecute } from '@baishou/shared'
 import {
   shouldIncludeIncrementalSyncFileWithExternalConfig,
-  shouldScanIncrementalSyncDirectoryWithExternalMounts
+  shouldScanIncrementalSyncDirectoryWithExternalMounts,
+  shouldExcludeIncrementalSyncRootScanEntry
 } from '@baishou/shared'
 import { loadVaultExternalSyncMounts, scanVaultExternalSyncMountFiles } from '@baishou/core-mobile'
 import { Platform } from 'react-native'
@@ -13,7 +14,7 @@ import {
   localScanIncrementalSyncFiles,
   type ExternalIncrementalSyncScanEntry
 } from 'expo-baishou-server'
-import { isAndroidAppSandboxPath, isExternalStoragePath } from './android-external-fs'
+import { isAndroidAppSandboxPath, isExternalStoragePath, normalizeExternalStoragePath } from './android-external-fs'
 
 /** 目录扫描并发度（同级多目录并行展开） */
 const SCAN_DIR_CONCURRENCY = 12
@@ -41,12 +42,31 @@ function mapNativeScanEntries(
   syncRoot: string,
   entries: ExternalIncrementalSyncScanEntry[]
 ): ScannedSyncFile[] {
+  const normalizedRoot = normalizeExternalStoragePath(syncRoot)
   return entries.map((entry) => ({
     relPath: entry.relPath,
-    fullPath: joinPath(syncRoot, entry.relPath),
+    fullPath: normalizeExternalStoragePath(joinPath(normalizedRoot, entry.relPath)),
     size: entry.size,
     mtimeMs: entry.mtimeMs
   }))
+}
+
+function shouldExcludeMobileScannedSyncFile(
+  file: ScannedSyncFile,
+  syncRoot: string,
+  mounts: Awaited<ReturnType<typeof loadVaultExternalSyncMounts>>
+): boolean {
+  const normalizedRoot = normalizeExternalStoragePath(syncRoot)
+  const candidatePaths = [
+    file.fullPath,
+    normalizeExternalStoragePath(joinPath(normalizedRoot, file.relPath))
+  ]
+  for (const candidate of candidatePaths) {
+    if (shouldExcludeIncrementalSyncRootScanEntry(candidate, file.relPath, mounts)) {
+      return true
+    }
+  }
+  return false
 }
 
 function tryNativeIncrementalSyncScan(syncRoot: string): ScannedSyncFile[] | null {
@@ -114,7 +134,12 @@ async function scanIncrementalSyncFilesJs(
           if (!entry?.info) continue
           if (entry.info.isDirectory) {
             if (
-              shouldScanIncrementalSyncDirectoryWithExternalMounts(entry.name, entry.relPath, mounts)
+              shouldScanIncrementalSyncDirectoryWithExternalMounts(entry.name, entry.relPath, mounts) &&
+              !shouldExcludeIncrementalSyncRootScanEntry(
+                normalizeExternalStoragePath(entry.full),
+                entry.relPath,
+                mounts
+              )
             ) {
               queue.push({ dir: entry.full, rel: entry.relPath })
             }
@@ -122,7 +147,12 @@ async function scanIncrementalSyncFilesJs(
           }
           if (
             !entry.info.isFile ||
-            !shouldIncludeIncrementalSyncFileWithExternalConfig(entry.name, entry.relPath)
+            !shouldIncludeIncrementalSyncFileWithExternalConfig(entry.name, entry.relPath) ||
+            shouldExcludeIncrementalSyncRootScanEntry(
+              normalizeExternalStoragePath(entry.full),
+              entry.relPath,
+              mounts
+            )
           ) {
             continue
           }
@@ -174,7 +204,10 @@ export async function scanIncrementalSyncFilesForManifest(
       return scanIncrementalSyncFilesJs(fileSystem, syncRoot, onProgress)
     }
     const mounts = await loadVaultExternalSyncMounts(fileSystem, syncRoot)
-    const byRel = new Map(nativeFiles.map((file) => [file.relPath, file]))
+    const dedupedNative = nativeFiles.filter(
+      (file) => !shouldExcludeMobileScannedSyncFile(file, syncRoot, mounts)
+    )
+    const byRel = new Map(dedupedNative.map((file) => [file.relPath, file]))
     for (const mount of mounts) {
       const externalFiles = await scanVaultExternalSyncMountFiles(fileSystem, mount)
       for (const file of externalFiles) {
