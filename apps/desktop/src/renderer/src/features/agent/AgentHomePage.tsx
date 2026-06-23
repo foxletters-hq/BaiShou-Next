@@ -25,6 +25,7 @@ export const AgentHomePage: React.FC = () => {
   const handleSend = (text: string) => {
     const newId = `new-${Date.now()}`
     navigate(`/chat/${newId}?init=${encodeURIComponent(text)}`)
+    return true
   }
 
   return (
