@@ -1,3 +1,4 @@
+import './dev-user-data.bootstrap'
 import { app, shell, BrowserWindow, ipcMain, Menu, protocol, net } from 'electron'
 import { join } from 'path'
 import { fileURLToPath } from 'url'
