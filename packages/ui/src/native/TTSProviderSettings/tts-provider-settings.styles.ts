@@ -42,6 +42,12 @@ export const ttsProviderSettingsStyles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 8
   },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8
+  },
   sliderValue: {
     fontSize: 13,
     fontWeight: '600'
