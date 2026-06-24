@@ -126,18 +126,30 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
       return
     }
 
+    const pendingText = text
+    const pendingAttachments = attachments.length > 0 ? [...attachments] : []
+    const hadSearchMode = searchMode
+
+    setText('')
+    setAttachments([])
+    if (textareaRef.current) {
+      textareaRef.current.style.height = expand.isExpanded ? '100%' : 'auto'
+    }
+
     setIsSending(true)
     try {
       const accepted = await Promise.resolve(
-        onSend(text.trim(), attachments.length > 0 ? [...attachments] : undefined, searchMode)
+        onSend(
+          pendingText.trim(),
+          pendingAttachments.length > 0 ? pendingAttachments : undefined,
+          hadSearchMode
+        )
       )
-      if (accepted !== false) {
-        setText('')
-        setAttachments([])
+      if (accepted === false) {
+        setText(pendingText)
+        setAttachments(pendingAttachments)
+      } else {
         await clearDraft()
-        if (textareaRef.current) {
-          textareaRef.current.style.height = expand.isExpanded ? '100%' : 'auto'
-        }
       }
     } finally {
       setIsSending(false)
