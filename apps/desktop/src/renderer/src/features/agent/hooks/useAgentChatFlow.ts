@@ -278,15 +278,6 @@ export function useAgentChatFlow() {
       const wasNewSession = !sessionId
       chat.setStreamSessionId(targetSessionId)
       scroll.beginFollowIfAtBottom()
-      await stream.startChat(
-        targetSessionId,
-        text,
-        model.currentProviderId,
-        model.currentModelId,
-        saveResult.attachments,
-        search,
-        saveResult.userMessageId
-      )
 
       if (wasNewSession) {
         if (loadSessions) {
@@ -296,6 +287,25 @@ export function useAgentChatFlow() {
         navigate(`/chat/${targetSessionId}${astId ? `?assistantId=${astId}` : ''}`, {
           replace: true
         })
+      }
+
+      try {
+        await stream.startChat(
+          targetSessionId,
+          text,
+          model.currentProviderId,
+          model.currentModelId,
+          saveResult.attachments,
+          search,
+          saveResult.userMessageId
+        )
+      } catch (streamError: any) {
+        console.error('[AgentScreen] stream failed:', streamError)
+        toast.showError(
+          t('agent.error.send_failed', '发送消息失败: {{msg}}', {
+            msg: streamError?.message || '未知错误'
+          })
+        )
       }
 
       return true

@@ -239,14 +239,21 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
         return
       }
 
+      const pendingText = text
+      const pendingAttachments = attachments.length > 0 ? [...attachments] : []
+
+      setText('')
+      setAttachments([])
+
       setIsSending(true)
       try {
         const accepted = await Promise.resolve(
-          onSend(text.trim(), attachments.length > 0 ? [...attachments] : undefined)
+          onSend(pendingText.trim(), pendingAttachments.length > 0 ? pendingAttachments : undefined)
         )
-        if (accepted !== false) {
-          setText('')
-          setAttachments([])
+        if (accepted === false) {
+          setText(pendingText)
+          setAttachments(pendingAttachments)
+        } else {
           await clearDraft()
         }
       } finally {

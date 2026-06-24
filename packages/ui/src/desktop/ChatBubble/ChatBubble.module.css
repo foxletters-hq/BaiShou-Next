@@ -148,8 +148,6 @@
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
-  align-self: flex-end;
-  text-align: right;
   max-width: 100%;
 }
 
