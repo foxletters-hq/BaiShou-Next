@@ -44,6 +44,13 @@ export const DataSyncPane: React.FC<DataSyncPaneProps> = ({ settings }) => {
         onImportZip={async (filePath: string) => {
           await (window as any).api?.archive?.importZip(filePath)
         }}
+        onImportProgress={(callback) =>
+          (window as any).api?.archive?.onArchiveImportProgress?.(
+            (progress: { detail?: string }) => {
+              if (progress.detail) callback(progress.detail)
+            }
+          ) ?? (() => {})
+        }
         onPickArchiveFile={async () => {
           return await (window as any).api?.archive?.pickZip(archiveLocale)
         }}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   MdOutlineStorage,
@@ -18,14 +18,29 @@ export interface DataManagementCardProps {
   onExport?: () => void
   onImport?: () => Promise<void>
   onPickFile?: () => Promise<string | null>
+  onImportProgress?: (callback: (detail: string) => void) => () => void
   /** 平铺展示导入/导出，不包在可折叠区块内 */
   flat?: boolean
+}
+
+function formatImportProgressDetail(detail: string): string {
+  const vaultMatch = /^vault:(\d+)\/(\d+):(.+)$/.exec(detail)
+  if (vaultMatch) {
+    return `正在迁移工作区 ${vaultMatch[1]}/${vaultMatch[2]}：${vaultMatch[3]}`
+  }
+
+  const parts = detail.replace(/\\/g, '/').split('/').filter(Boolean)
+  if (parts.length > 0) {
+    return `正在复制：${parts.slice(-3).join('/')}`
+  }
+  return detail
 }
 
 export const DataManagementCard: React.FC<DataManagementCardProps> = ({
   onExportZip,
   onImportZip,
   onPickFile,
+  onImportProgress,
   flat = false
 }) => {
   const { t } = useTranslation()
@@ -33,6 +48,12 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
   const toast = useToast()
   const [isExporting, setIsExporting] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
+  const [importProgressDetail, setImportProgressDetail] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!onImportProgress) return
+    return onImportProgress((detail) => setImportProgressDetail(formatImportProgressDetail(detail)))
+  }, [onImportProgress])
 
   const handleExport = async () => {
     setIsExporting(true)
@@ -54,6 +75,7 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
     if (!confirmed) return
 
     setIsImporting(true)
+    setImportProgressDetail(null)
     let willReload = false
     try {
       await onImportZip!(filePath)
@@ -63,13 +85,20 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
     } catch (e: any) {
       toast.showError(t('settings.restore_failed', { error: e.message }))
     } finally {
+      if (!willReload) setImportProgressDetail(null)
       if (!willReload) setIsImporting(false)
     }
   }
 
   return (
     <>
-      <RestoreBlockingOverlay visible={isImporting} />
+      <RestoreBlockingOverlay
+        visible={isImporting}
+        hint={
+          importProgressDetail ??
+          t('settings.restoring_data_hint', '请勿关闭应用或进行其他操作，恢复完成后将自动刷新')
+        }
+      />
       {flat ? (
         <div className="about-settings-wrapper">
           <button

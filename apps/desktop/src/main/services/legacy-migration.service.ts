@@ -31,7 +31,11 @@ export class LegacyMigrationService {
   public async migrate(
     sourceDir: string,
     targetWorkspaceDir: string,
-    options?: { source?: LegacyMigrationSource; installInstanceId?: string }
+    options?: {
+      source?: LegacyMigrationSource
+      installInstanceId?: string
+      onCopyProgress?: (entryPath: string) => void
+    }
   ): Promise<boolean> {
     const installInstanceId = options?.installInstanceId
     if (
@@ -107,7 +111,8 @@ export class LegacyMigrationService {
             : null,
         onTableError: (tableName, error) => {
           logger.warn(`[LegacyMigration] SQL Table ${tableName} error:`, error as Error)
-        }
+        },
+        onCopyProgress: options?.onCopyProgress
       })
 
       try {
