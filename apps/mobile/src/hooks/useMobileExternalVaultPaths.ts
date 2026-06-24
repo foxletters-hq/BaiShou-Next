@@ -54,6 +54,15 @@ export function useMobileExternalVaultPaths() {
   const [externalSummariesPath, setExternalSummariesPath] = useState<string | null>(null)
   const [externalSummariesDefaultPath, setExternalSummariesDefaultPath] = useState('')
   const [externalSummariesFileCount, setExternalSummariesFileCount] = useState(0)
+  const [externalSummariesFileCounts, setExternalSummariesFileCounts] = useState<
+    | {
+        weekly: number
+        monthly: number
+        quarterly: number
+        yearly: number
+      }
+    | undefined
+  >(undefined)
   const [externalSummariesPathAvailable, setExternalSummariesPathAvailable] = useState(true)
   const [pickerVisible, setPickerVisible] = useState(false)
   const [pickerTarget, setPickerTarget] = useState<ExternalVaultPathPickerTarget | null>(null)
@@ -74,6 +83,7 @@ export function useMobileExternalVaultPaths() {
       setExternalSummariesPath(summaries.path)
       setExternalSummariesDefaultPath(displayPath(summaries.defaultPath))
       setExternalSummariesFileCount(summaries.summaryFileCount)
+      setExternalSummariesFileCounts(summaries.summaryFileCounts)
       setExternalSummariesPathAvailable(summaries.pathAvailableOnDevice)
     } catch (e) {
       console.warn('[useMobileExternalVaultPaths] refresh failed', e)
@@ -308,8 +318,8 @@ export function useMobileExternalVaultPaths() {
 
   const pickerInitialPath =
     pickerTarget === 'summaries'
-      ? externalSummariesPath ?? externalSummariesDefaultPath
-      : externalJournalsPath ?? externalJournalsDefaultPath
+      ? (externalSummariesPath ?? externalSummariesDefaultPath)
+      : (externalJournalsPath ?? externalJournalsDefaultPath)
 
   return {
     externalJournalsPath: externalJournalsPath ? displayPath(externalJournalsPath) : null,
@@ -319,6 +329,7 @@ export function useMobileExternalVaultPaths() {
     externalSummariesPath: externalSummariesPath ? displayPath(externalSummariesPath) : null,
     externalSummariesDefaultPath,
     externalSummariesFileCount,
+    externalSummariesFileCounts,
     externalSummariesPathAvailable,
     externalPathsBusy: busy,
     externalPickerVisible: pickerVisible,

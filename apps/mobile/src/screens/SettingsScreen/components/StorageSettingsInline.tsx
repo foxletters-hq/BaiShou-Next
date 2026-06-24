@@ -42,6 +42,7 @@ export const StorageSettingsInline: React.FC<StorageSettingsInlineProps> = ({
     externalSummariesPath,
     externalSummariesDefaultPath,
     externalSummariesFileCount,
+    externalSummariesFileCounts,
     externalSummariesPathAvailable,
     externalPathsBusy,
     externalPickerVisible,
@@ -107,6 +108,7 @@ export const StorageSettingsInline: React.FC<StorageSettingsInlineProps> = ({
         externalSummariesPath={externalSummariesPath}
         externalSummariesDefaultPath={externalSummariesDefaultPath}
         externalSummariesFileCount={externalSummariesFileCount}
+        externalSummariesFileCounts={externalSummariesFileCounts}
         externalSummariesPathAvailable={externalSummariesPathAvailable}
         onChangeExternalJournalsDirectory={
           showExternalPathActions ? handleChangeExternalJournalsDirectory : undefined

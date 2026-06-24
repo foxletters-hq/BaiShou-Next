@@ -16,6 +16,12 @@ export interface NativeStorageSettingsCardProps {
   externalSummariesPath?: string | null
   externalSummariesDefaultPath?: string
   externalSummariesFileCount?: number
+  externalSummariesFileCounts?: {
+    weekly: number
+    monthly: number
+    quarterly: number
+    yearly: number
+  }
   externalSummariesPathAvailable?: boolean
   onChangeDirectory?: () => void | Promise<void>
   changeDirectoryLabel?: string
@@ -42,6 +48,7 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
   externalSummariesPath = null,
   externalSummariesDefaultPath,
   externalSummariesFileCount,
+  externalSummariesFileCounts,
   externalSummariesPathAvailable = true,
   onChangeDirectory,
   changeDirectoryLabel,
@@ -197,6 +204,18 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
               {t('storage.external_summaries_scan_count', {
                 count: externalSummariesFileCount,
                 defaultValue: `已识别 {{count}} 篇总结 Markdown`
+              })}
+            </Text>
+          ) : null}
+          {externalSummariesFileCounts ? (
+            <Text style={[styles.hint, { color: colors.textTertiary }]}>
+              {t('storage.external_summaries_scan_breakdown', {
+                weekly: externalSummariesFileCounts.weekly,
+                monthly: externalSummariesFileCounts.monthly,
+                quarterly: externalSummariesFileCounts.quarterly,
+                yearly: externalSummariesFileCounts.yearly,
+                defaultValue:
+                  '其中周记 {{weekly}} · 月记 {{monthly}} · 季报 {{quarterly}} · 年记 {{yearly}}'
               })}
             </Text>
           ) : null}
