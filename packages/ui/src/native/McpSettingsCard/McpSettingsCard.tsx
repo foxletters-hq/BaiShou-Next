@@ -1,6 +1,7 @@
 import React from 'react'
-import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, Alert } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { MaterialIcons } from '@expo/vector-icons'
 import type { McpServerConfig } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 import { Input } from '../Input/Input'
@@ -17,6 +18,8 @@ export interface NativeMcpSettingsCardProps {
   activePort?: number
   onChange: (config: McpServerConfig) => void
   onCopyEndpoint: () => void
+  onCopyToken?: () => void
+  onRefreshToken?: () => void
 }
 
 export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
@@ -26,7 +29,9 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
   isRunning = false,
   activePort,
   onChange,
-  onCopyEndpoint
+  onCopyEndpoint,
+  onCopyToken,
+  onRefreshToken
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -52,6 +57,25 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
     }
     // 立即响应外部，使父级 applying 立刻变成 true 触发渐进式两阶段渲染
     onChange({ ...config, mcpEnabled: value })
+  }
+
+  const handleRefreshToken = () => {
+    if (!onRefreshToken) return
+    Alert.alert(
+      t('settings.mcp_refresh_token_title', '刷新访问令牌'),
+      t(
+        'settings.mcp_refresh_token_message',
+        '刷新后旧令牌将立即失效，已配置的外部客户端需要更新 Authorization 头。确定要继续吗？'
+      ),
+      [
+        { text: t('common.cancel', '取消'), style: 'cancel' },
+        {
+          text: t('settings.mcp_refresh_token_confirm', '刷新令牌'),
+          style: 'destructive',
+          onPress: onRefreshToken
+        }
+      ]
+    )
   }
 
   const subtitle = localEnabled
@@ -116,6 +140,43 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
             </Text>
           ) : null}
         </View>
+
+        {config.mcpAuthToken ? (
+          <View style={[styles.row, styles.col, styles.rowBorder]}>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>
+              {t('settings.mcp_auth_token', '访问令牌')}
+            </Text>
+            <Text style={[styles.mono, { color: colors.primary }]} selectable>
+              {config.mcpAuthToken}
+            </Text>
+            <View style={styles.tokenActions}>
+              {onRefreshToken ? (
+                <Pressable
+                  onPress={handleRefreshToken}
+                  style={({ pressed }) => [
+                    styles.iconBtn,
+                    { backgroundColor: colors.bgApp, opacity: pressed ? 0.7 : 1 }
+                  ]}
+                  accessibilityLabel={t('settings.mcp_refresh_token', '刷新访问令牌')}
+                >
+                  <MaterialIcons name="refresh" size={20} color={colors.textSecondary} />
+                </Pressable>
+              ) : null}
+              {onCopyToken ? (
+                <Pressable
+                  onPress={onCopyToken}
+                  style={({ pressed }) => [
+                    styles.iconBtn,
+                    { backgroundColor: colors.bgApp, opacity: pressed ? 0.7 : 1 }
+                  ]}
+                  accessibilityLabel={t('settings.mcp_copy_token', '复制访问令牌')}
+                >
+                  <MaterialIcons name="content-copy" size={18} color={colors.textSecondary} />
+                </Pressable>
+              ) : null}
+            </View>
+          </View>
+        ) : null}
       </View>
     </View>
   )
@@ -163,7 +224,7 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
             marginTop: 4
           }}
         >
-          {buildMcpClientJsonExample(mcpEndpointUrl)}
+          {buildMcpClientJsonExample(mcpEndpointUrl, config.mcpAuthToken)}
         </Text>
       </View>
       <Text style={{ fontSize: 12, color: colors.textTertiary, fontStyle: 'italic', marginTop: 4 }}>
@@ -273,6 +334,16 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
+    borderRadius: 8
+  },
+  tokenActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8
+  },
+  iconBtn: {
+    padding: 8,
     borderRadius: 8
   },
   panel: {

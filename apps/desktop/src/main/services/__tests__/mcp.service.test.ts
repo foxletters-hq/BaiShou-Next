@@ -7,25 +7,28 @@ import { ToolSchema } from '@modelcontextprotocol/sdk/types.js'
 import { ToolRegistry, buildBaishouMcpToolSchemas, executeBaishouMcpTool } from '@baishou/ai'
 import { McpService } from '../mcp.service'
 
+const getDesktopMcpServerConfigMock = vi.hoisted(() => vi.fn())
+
+vi.mock('../desktop-mcp-config.store', () => ({
+  getDesktopMcpServerConfig: getDesktopMcpServerConfigMock
+}))
+
 describe.sequential('McpService', () => {
-  let mockSettingsRepo: any
   let service: McpService
   let testPort: number
 
   beforeEach(() => {
     testPort = 35700 + Math.floor(Math.random() * 1000)
-    mockSettingsRepo = {
-      getMcpServerConfig: vi.fn().mockResolvedValue({
-        mcpPort: testPort,
-        mcpEnabled: true
-      })
-    }
+    getDesktopMcpServerConfigMock.mockResolvedValue({
+      mcpPort: testPort,
+      mcpEnabled: true
+    })
     const emptyRegistry = {
       getEnabledToolsRaw: () => [],
       get: () => undefined,
       isToolEnabled: () => false
     } as unknown as ToolRegistry
-    service = new McpService(mockSettingsRepo, emptyRegistry, async () => ({
+    service = new McpService(emptyRegistry, async () => ({
       sessionId: 'mcp-external',
       vaultName: 'Personal',
       userConfig: {}
@@ -164,7 +167,7 @@ describe.sequential('McpService', () => {
       get: () => undefined
     } as any
 
-    const server = new McpService(mockSettingsRepo, dummyRegistry)
+    const server = new McpService(dummyRegistry)
     await server.start()
 
     const client = new Client({ name: 'BaiShou', version: '1.0.0' }, { capabilities: {} })

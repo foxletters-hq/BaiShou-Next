@@ -4,6 +4,7 @@ import { join } from 'path'
 import type { SettingsRepository } from '@baishou/database-desktop'
 import { DEFAULT_MCP_SERVER_CONFIG } from '@baishou/database-desktop'
 import type { McpServerConfig } from '@baishou/shared'
+import { ensureMcpAuthToken, refreshMcpAuthToken } from '@baishou/shared'
 import { isDesktopDevBuild } from '../app-identity'
 
 export const DESKTOP_MCP_CONFIG_FILE = 'device_mcp_server_config.json'
@@ -84,7 +85,19 @@ export async function migrateDesktopMcpConfigFromSharedSettings(
 }
 
 export async function getDesktopMcpServerConfig(): Promise<McpServerConfig> {
-  return (await readLocalConfig()) ?? defaultMcpConfig()
+  const cfg = (await readLocalConfig()) ?? defaultMcpConfig()
+  const withToken = ensureMcpAuthToken(cfg)
+  if (withToken.mcpAuthToken !== cfg.mcpAuthToken) {
+    await writeLocalConfig(withToken)
+  }
+  return withToken
+}
+
+export async function refreshDesktopMcpAuthToken(): Promise<McpServerConfig> {
+  const cfg = await getDesktopMcpServerConfig()
+  const next = refreshMcpAuthToken(cfg)
+  await writeLocalConfig(next)
+  return next
 }
 
 export async function setDesktopMcpServerConfig(

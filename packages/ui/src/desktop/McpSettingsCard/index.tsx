@@ -1,6 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdOutlineHub, MdExpandMore, MdContentCopy } from 'react-icons/md'
+import { MdOutlineHub, MdExpandMore, MdContentCopy, MdRefresh } from 'react-icons/md'
 import '../shared/SettingsListTile.css'
 import {
   isSettingsInlineHelpTarget,
@@ -20,6 +20,7 @@ export interface McpServerConfig {
 interface McpSettingsCardProps {
   config: McpServerConfig
   onChange: (config: McpServerConfig) => void
+  onRefreshToken?: () => void | Promise<void>
   /** 独立设置页：平铺展示，无折叠头 */
   standalone?: boolean
 }
@@ -31,10 +32,12 @@ export type { McpToolInfo } from './McpToolsListPanel'
 export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
   config,
   onChange,
+  onRefreshToken,
   standalone = false
 }) => {
   const { t } = useTranslation()
   const [collapsed, setCollapsed] = React.useState(true)
+  const [showRefreshConfirm, setShowRefreshConfirm] = React.useState(false)
   const toast = useToast()
 
   const mcpUrl = buildMcpUrl(config.mcpPort)
@@ -91,6 +94,48 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
     }
   }
 
+  const handleConfirmRefreshToken = async () => {
+    setShowRefreshConfirm(false)
+    try {
+      await onRefreshToken?.()
+      toast.showSuccess(t('settings.mcp_token_refreshed', '访问令牌已刷新'))
+    } catch {
+      toast.showError(t('common.errors.save_failed', '保存失败'))
+    }
+  }
+
+  const refreshConfirmDialog = showRefreshConfirm ? (
+    <div className={styles.confirmOverlay} onClick={() => setShowRefreshConfirm(false)}>
+      <div className={styles.confirmBox} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.confirmTitle}>
+          {t('settings.mcp_refresh_token_title', '刷新访问令牌')}
+        </div>
+        <div className={styles.confirmMessage}>
+          {t(
+            'settings.mcp_refresh_token_message',
+            '刷新后旧令牌将立即失效，已配置的外部客户端需要更新 Authorization 头。确定要继续吗？'
+          )}
+        </div>
+        <div className={styles.confirmActions}>
+          <button
+            type="button"
+            className={styles.confirmCancelBtn}
+            onClick={() => setShowRefreshConfirm(false)}
+          >
+            {t('common.cancel', '取消')}
+          </button>
+          <button
+            type="button"
+            className={styles.confirmDangerBtn}
+            onClick={() => void handleConfirmRefreshToken()}
+          >
+            {t('settings.mcp_refresh_token_confirm', '刷新令牌')}
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null
+
   const connectionContent = (
     <div className={standalone ? styles.standaloneConnectionSection : styles.connectionSection}>
       <div className={styles.portRow}>
@@ -124,15 +169,28 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
         <div className={styles.endpointRow}>
           <span className={styles.endpointLabel}>{t('settings.mcp_auth_token', '访问令牌')}</span>
           <span className={styles.endpointUrl}>{config.mcpAuthToken}</span>
-          <button
-            type="button"
-            className={styles.copyBtn}
-            onClick={handleCopyToken}
-            aria-label={t('settings.mcp_copy_token', '复制访问令牌')}
-            title={t('common.copy', '复制')}
-          >
-            <MdContentCopy size={18} />
-          </button>
+          <div className={styles.tokenActions}>
+            {onRefreshToken ? (
+              <button
+                type="button"
+                className={styles.copyBtn}
+                onClick={() => setShowRefreshConfirm(true)}
+                aria-label={t('settings.mcp_refresh_token', '刷新访问令牌')}
+                title={t('settings.mcp_refresh_token', '刷新访问令牌')}
+              >
+                <MdRefresh size={18} />
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className={styles.copyBtn}
+              onClick={handleCopyToken}
+              aria-label={t('settings.mcp_copy_token', '复制访问令牌')}
+              title={t('common.copy', '复制')}
+            >
+              <MdContentCopy size={18} />
+            </button>
+          </div>
         </div>
       ) : null}
     </div>
@@ -154,6 +212,7 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
       <div className={styles.standaloneRoot}>
         {enableRow}
         {connectionCollapse}
+        {refreshConfirmDialog}
       </div>
     )
   }
@@ -210,6 +269,7 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
           {connectionCollapse}
         </div>
       </div>
+      {refreshConfirmDialog}
     </div>
   )
 }

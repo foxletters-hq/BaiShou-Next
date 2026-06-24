@@ -26,6 +26,20 @@ export const McpSettingsSection: React.FC = () => {
     }
   }
 
+  const handleCopyToken = async () => {
+    if (!mcp.config.mcpAuthToken) return
+    try {
+      await Clipboard.setStringAsync(mcp.config.mcpAuthToken)
+      toast.showSuccess(t('common.copied'))
+    } catch {
+      toast.showError(t('common.copy_failed'))
+    }
+  }
+
+  const handleRefreshToken = () => {
+    void mcp.refreshAuthToken()
+  }
+
   if (mcp.loading) {
     return (
       <View style={styles.loading}>
@@ -44,6 +58,8 @@ export const McpSettingsSection: React.FC = () => {
         activePort={mcp.activePort}
         onChange={(next) => void mcp.persistConfig(next)}
         onCopyEndpoint={() => void handleCopyEndpoint()}
+        onCopyToken={() => void handleCopyToken()}
+        onRefreshToken={handleRefreshToken}
       />
       <McpToolsListPanel tools={mcp.tools} loading={mcp.toolsLoading} failed={mcp.toolsFailed} />
     </View>
