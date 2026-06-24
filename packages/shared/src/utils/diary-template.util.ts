@@ -16,29 +16,28 @@ function pad2(value: number): string {
 }
 
 /** 本地时间格式化，避免 shared 包引入 date-fns 导致 Electron 主进程打包后 require 失败 */
-function formatDiaryTemplateDate(date: Date, pattern: 'HH:mm:ss' | 'yyyy-MM-dd' | 'yyyy-MM-dd HH:mm:ss'): string {
+function formatDiaryTemplateDate(date: Date, pattern: 'HH:mm' | 'yyyy-MM-dd' | 'yyyy-MM-dd HH:mm'): string {
   const year = date.getFullYear()
   const month = pad2(date.getMonth() + 1)
   const day = pad2(date.getDate())
   const hours = pad2(date.getHours())
   const minutes = pad2(date.getMinutes())
-  const seconds = pad2(date.getSeconds())
 
   switch (pattern) {
-    case 'HH:mm:ss':
-      return `${hours}:${minutes}:${seconds}`
+    case 'HH:mm':
+      return `${hours}:${minutes}`
     case 'yyyy-MM-dd':
       return `${year}-${month}-${day}`
-    case 'yyyy-MM-dd HH:mm:ss':
-      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+    case 'yyyy-MM-dd HH:mm':
+      return `${year}-${month}-${day} ${hours}:${minutes}`
   }
 }
 
 export function applyDiaryTemplateVars(template: string, date: Date = new Date()): string {
   return template
-    .replace(/\{time\}/g, formatDiaryTemplateDate(date, 'HH:mm:ss'))
+    .replace(/\{time\}/g, formatDiaryTemplateDate(date, 'HH:mm'))
     .replace(/\{date\}/g, formatDiaryTemplateDate(date, 'yyyy-MM-dd'))
-    .replace(/\{datetime\}/g, formatDiaryTemplateDate(date, 'yyyy-MM-dd HH:mm:ss'))
+    .replace(/\{datetime\}/g, formatDiaryTemplateDate(date, 'yyyy-MM-dd HH:mm'))
 }
 
 function trimDiaryTemplateValue(value: string): string {
@@ -128,7 +127,9 @@ export function buildDiaryFormatRulesFromTemplates(
     '关于 diary_edit 追加模式（append）：',
     `- 追加记录模板：${appendTemplate}`,
     `- 按当前时间解析后的插入示例：${JSON.stringify(appendExample)}`,
-    '- 系统会在 content 之前自动插入上述时间块；请勿在 content 中重复写入时间标题行。',
+    '- 系统会在 content 之前自动插入上述时间块；请勿在 content 中重复写入纯时间标题行。',
+    '- 若 content 以「时间 + 小标题」的 Markdown 标题行开头（例如 ###### 14:30 - 下午茶），系统将以该行为本章标题，不再额外插入纯时间块。',
+    '- 请勿先写纯时间标题、再另起一条带小标题的时间标题；若使用小标题，一条时间标题行即可。',
     '',
     '通用：标签请通过工具的 tags 参数传递，不要只写在正文中。'
   ].join('\n')
@@ -144,32 +145,42 @@ export function resolveDiaryAiWritingPrompt(
 
 const DIARY_TIMESTAMP_HEADING_LINE_RE = /^#{1,6}\s+\d{2}:\d{2}(:\d{2})?\s*$/
 
-/** 正文是否以 Markdown 时间标题行开头（##### / ###### HH:mm:ss 等） */
-export function contentStartsWithDiaryTimestampHeading(content: string): boolean {
-  const firstLine =
-    content
-      .replace(/^\uFEFF/, '')
-      .trimStart()
-      .split('\n')[0]
-      ?.trim() ?? ''
-  return DIARY_TIMESTAMP_HEADING_LINE_RE.test(firstLine)
+/** 带小标题的章节行，如 ###### 14:30 - 下午茶 */
+const DIARY_TITLED_SECTION_HEADING_LINE_RE =
+  /^#{1,6}\s+\d{2}:\d{2}(:\d{2})?\s*[-–—:：]\s*.+/
+
+function getFirstDiaryContentLine(content: string): string {
+  return content.replace(/^\uFEFF/, '').trimStart().split('\n')[0]?.trim() ?? ''
 }
 
-/** 去掉 Agent 在 append 正文中误写的时间标题行，避免与系统插入块重复 */
+/** 正文是否以 Markdown 纯时间标题行开头（##### / ###### HH:mm 等；兼容旧版 HH:mm:ss） */
+export function contentStartsWithDiaryTimestampHeading(content: string): boolean {
+  return DIARY_TIMESTAMP_HEADING_LINE_RE.test(getFirstDiaryContentLine(content))
+}
+
+/** 正文是否以「时间 + 小标题」章节行开头（例如 ###### 14:30 - 下午茶） */
+export function contentStartsWithDiaryTitledSectionHeading(content: string): boolean {
+  return DIARY_TITLED_SECTION_HEADING_LINE_RE.test(getFirstDiaryContentLine(content))
+}
+
+/** 去掉 Agent 在 append 正文中误写的纯时间标题行，避免与系统插入块重复 */
 export function stripLeadingDiaryTimestampHeading(content: string): string {
   const normalized = content.replace(/^\uFEFF/, '')
   const lines = normalized.split('\n')
-  if (lines.length === 0) return content
-
-  const first = lines[0]?.trim() ?? ''
-  if (!DIARY_TIMESTAMP_HEADING_LINE_RE.test(first)) {
-    return content
+  let index = 0
+  while (index < lines.length) {
+    const trimmed = lines[index]?.trim() ?? ''
+    if (trimmed === '') {
+      index++
+      continue
+    }
+    if (DIARY_TIMESTAMP_HEADING_LINE_RE.test(trimmed)) {
+      index++
+      continue
+    }
+    break
   }
-
-  let index = 1
-  while (index < lines.length && lines[index]?.trim() === '') {
-    index++
-  }
+  if (index === 0) return content
   return lines.slice(index).join('\n')
 }
 
@@ -179,11 +190,15 @@ export function prepareDiaryWriteContent(
   config: DiaryTemplateConfig | null | undefined,
   date: Date = new Date()
 ): string {
+  const body = stripLeadingDiaryTimestampHeading(content)
+  if (contentStartsWithDiaryTitledSectionHeading(body)) {
+    return body
+  }
   if (contentStartsWithDiaryTimestampHeading(content)) {
     return content
   }
   const block = resolveDiaryNewEntryContent(config, date).replace(/\u200B$/, '')
-  return block + content
+  return block + body
 }
 
 /**
@@ -210,8 +225,11 @@ export function prepareDiaryAppendContent(
   config: DiaryTemplateConfig | null | undefined,
   date: Date = new Date()
 ): string {
-  const block = resolveDiaryAppendBlock(config, date)
   const body = stripLeadingDiaryTimestampHeading(content)
+  if (contentStartsWithDiaryTitledSectionHeading(body)) {
+    return joinDiaryContentWithAppendBlock(existingContent, '') + body
+  }
+  const block = resolveDiaryAppendBlock(config, date)
   return joinDiaryContentWithAppendBlock(existingContent, block) + body
 }
 
