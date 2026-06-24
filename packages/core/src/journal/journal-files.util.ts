@@ -1,16 +1,10 @@
+import { JOURNAL_TREE_SKIP_DIR_NAMES, isJournalPathUnderSkippedDir } from '@baishou/shared'
 import type { IFileSystem } from '../fs/file-system.types'
 import * as path from '../fs/path.util'
 
+export { JOURNAL_TREE_SKIP_DIR_NAMES, isJournalPathUnderSkippedDir }
+
 const JOURNAL_DATE_FILE = /^(\d{4}-\d{2}-\d{2})\.md$/i
-
-/** 与日记同级的总结目录名（外部 Obsidian 布局：2.日记/Archives） */
-export const JOURNAL_TREE_SKIP_DIR_NAMES = new Set(['Archives'])
-
-/** 路径是否位于日记树中应跳过的子目录（扫描与 Chokidar 监听共用） */
-export function isJournalPathUnderSkippedDir(filePath: string): boolean {
-  const parts = filePath.split(/[/\\]/)
-  return parts.some((segment) => JOURNAL_TREE_SKIP_DIR_NAMES.has(segment))
-}
 
 function isAbsolutePath(p: string): boolean {
   return p.startsWith('/') || p.startsWith('\\') || /^[A-Za-z]:/.test(p)

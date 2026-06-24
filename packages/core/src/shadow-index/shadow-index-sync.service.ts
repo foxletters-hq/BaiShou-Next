@@ -20,7 +20,8 @@ import { parseJournalMarkdown } from './shadow-index-sync.utils'
 import {
   buildCanonicalJournalFilePath,
   resolveJournalFilePath,
-  collectJournalPathsByDateInTree
+  collectJournalPathsByDateInTree,
+  isJournalPathUnderSkippedDir
 } from '../journal/journal-files.util'
 
 export type { IEmbeddingCallback }
@@ -353,33 +354,41 @@ export class ShadowIndexSyncService {
         }
       }
 
-      // 3. 清理孤立索引：枚举成功且 Journals 可读时，按唯一日期对齐
+      // 3. 清理孤立索引：按有效文件路径对齐（跳过 Archives 等总结目录）
       if (!journalsDirExists) {
         logger.info('[ShadowSync] Journals 目录不可用，跳过孤立清理')
       } else {
-        const existingDatesSet = new Set(uniqueDates)
+        const validRelativePaths = new Set(
+          [...pathsByDate.values()].map((absPath) =>
+            normalizeShadowFilePath(path.relative(path.dirname(journalsDir), absPath))
+          )
+        )
         const allRecords = await this.shadowRepo.getAllRecords()
 
         for (const record of allRecords) {
-          const dateStr = record.date.split('T')[0]
-          if (!dateStr) continue
+          const normalizedRecordPath = normalizeShadowFilePath(record.filePath)
+          const underSkippedDir = isJournalPathUnderSkippedDir(record.filePath)
+          const pathStillValid = validRelativePaths.has(normalizedRecordPath)
 
-          if (!existingDatesSet.has(dateStr)) {
-            await this.shadowRepo.deleteById(record.id)
+          if (!underSkippedDir && pathStillValid) continue
 
-            if (this.embeddingCallback) {
-              try {
-                await this.embeddingCallback.deleteEmbeddingsBySource(
-                  'diary',
-                  record.id.toString()
-                )
-              } catch (e: any) {
-                logger.warn(`[ShadowSync] 清理孤立 RAG 向量失败 (ID=${record.id}):`, e.message)
-              }
+          await this.shadowRepo.deleteById(record.id)
+
+          if (this.embeddingCallback) {
+            try {
+              await this.embeddingCallback.deleteEmbeddingsBySource(
+                'diary',
+                record.id.toString()
+              )
+            } catch (e: any) {
+              logger.warn(`[ShadowSync] 清理孤立 RAG 向量失败 (ID=${record.id}):`, e.message)
             }
-
-            logger.info(`[ShadowSync] 已清理孤立索引: date=${dateStr}, ID=${record.id}`)
           }
+
+          const reason = underSkippedDir ? 'summary-path' : 'orphan-path'
+          logger.info(
+            `[ShadowSync] 已清理索引 (${reason}): path=${record.filePath}, ID=${record.id}`
+          )
         }
       }
     } finally {

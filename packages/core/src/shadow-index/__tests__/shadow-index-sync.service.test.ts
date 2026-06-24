@@ -264,7 +264,6 @@ describe('ShadowIndexSyncService', () => {
 
   // ── 7. 全量扫描的孤立清理 ──
   it('fullScanVault 应清理数据库中的孤立记录', async () => {
-    // 先建两条索引
     await writeJournal('2026-04-01', '保留的日记')
     await writeJournal('2026-04-02', '将被删除的日记')
 
@@ -276,6 +275,31 @@ describe('ShadowIndexSyncService', () => {
 
     // 再次全扫
     await service.fullScanVault(true)
+    expect(mockRepo._getRecordCount()).toBe(1)
+  })
+
+  it('fullScanVault 应清理误入影子索引的 Archives 周总结', async () => {
+    await writeJournal('2026-04-01', '真实日记')
+    await service.syncJournal('2026-04-01')
+    await mockRepo.upsert({
+      filePath: 'Journals/Archives/Weekly/2026/2026-04-01.md',
+      date: '2026-04-01',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      contentHash: 'summary',
+      weather: null,
+      mood: null,
+      location: null,
+      locationDetail: null,
+      isFavorite: false,
+      hasMedia: false,
+      rawContent: '周总结',
+      tags: ''
+    })
+    expect(mockRepo._getRecordCount()).toBe(2)
+
+    await service.fullScanVault(true)
+
     expect(mockRepo._getRecordCount()).toBe(1)
   })
 

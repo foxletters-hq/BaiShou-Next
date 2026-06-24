@@ -144,6 +144,19 @@ describe('ShadowIndexRepository', () => {
       expect(await repo.count()).toBe(1)
       expect((await repo.findByDate(dateIso))?.rawContent).toBe('updated content')
     })
+
+    it('count excludes shadow rows under Archives summary directories', async () => {
+      await repo.upsert({
+        ...generateDummyPayload('2026-04-01T00:00:00.000Z', 'diary'),
+        filePath: 'Journals/2026/04/2026-04-01.md'
+      })
+      await repo.upsert({
+        ...generateDummyPayload('2026-04-01T00:00:00.000Z', 'weekly summary'),
+        filePath: 'Journals/Archives/Weekly/2026/2026-04-01.md'
+      })
+
+      expect(await repo.count()).toBe(1)
+    })
   })
 
   describe('Full Text Search (FTS5)', () => {
