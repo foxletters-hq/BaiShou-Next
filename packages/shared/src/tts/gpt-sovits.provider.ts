@@ -8,6 +8,7 @@ import { TtsApiError } from './tts.errors'
 import { normalizeRefAudioPath } from './ref-audio-path.util'
 import { uint8ArrayToBase64 } from './bytes-base64'
 import { readTtsRefAudioBytes } from './tts-ref-audio.util'
+import { resolveRefAudioMimeFromBytes } from './ref-audio-format.util'
 
 const GPT_SOVITS_GRADIO_FN_INDEX = 1
 const GPT_SOVITS_GRADIO_CUT_METHOD = '凑四句一切'
@@ -16,6 +17,43 @@ const GPT_SOVITS_GRADIO_TOP_P = 1
 const GPT_SOVITS_GRADIO_TEMPERATURE = 1
 const GPT_SOVITS_GRADIO_PAUSE_SECOND = 0.3
 const GPT_SOVITS_GRADIO_UPLOAD_FILENAME = 'reference.wav'
+
+function toUploadFileUri(path: string): string {
+  if (/^file:\/\//i.test(path)) {
+    return path
+  }
+  // React Native FormData file parts expect a file:// URI.
+  return `file://${path.replace(/\\/g, '/')}`
+}
+
+function isUnsupportedBlobPartError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  return /Creating blobs from 'ArrayBuffer' and 'ArrayBufferView' are not supported/i.test(message)
+}
+
+function createGradioUploadFormData(refAudioPath: string, audioBytes: Uint8Array): FormData {
+  const formData = new FormData()
+  const mime = resolveRefAudioMimeFromBytes(audioBytes, refAudioPath)
+  try {
+    const audioBuffer = audioBytes.buffer.slice(
+      audioBytes.byteOffset,
+      audioBytes.byteOffset + audioBytes.byteLength
+    ) as ArrayBuffer
+    formData.append('files', new Blob([audioBuffer], { type: mime }), GPT_SOVITS_GRADIO_UPLOAD_FILENAME)
+    return formData
+  } catch (error) {
+    if (!isUnsupportedBlobPartError(error)) {
+      throw error
+    }
+  }
+
+  formData.append('files', {
+    uri: toUploadFileUri(refAudioPath),
+    name: GPT_SOVITS_GRADIO_UPLOAD_FILENAME,
+    type: mime
+  } as unknown as Blob)
+  return formData
+}
 
 function normalizePositiveInt(value: unknown, fallback: number): number {
   const parsed = typeof value === 'string' ? Number.parseInt(value, 10) : Number(value)
@@ -120,8 +158,13 @@ async function waitForGradioQueueOutput(
     }
   })
 
-  if (!response.ok || !response.body) {
+  if (!response.ok) {
     throw new Error(`queue stream failed: ${response.status}`)
+  }
+
+  if (!response.body) {
+    const sseText = await response.text()
+    return extractGradioQueueOutputFromSseText(sseText, eventId)
   }
 
   const reader = response.body.getReader()
@@ -174,6 +217,54 @@ async function waitForGradioQueueOutput(
       }
     }
   }
+}
+
+function extractGradioQueueOutputFromSseText(
+  sseText: string,
+  eventId: string
+): Record<string, unknown> {
+  let lastOutput: Record<string, unknown> | null = null
+  const blocks = sseText.split(/\r?\n\r?\n/)
+
+  for (const block of blocks) {
+    const dataLine = block.split(/\r?\n/).find((line) => line.startsWith('data:'))
+    if (!dataLine) {
+      continue
+    }
+
+    const payload = JSON.parse(dataLine.slice(5)) as Record<string, unknown>
+    if (payload.msg === 'heartbeat') {
+      continue
+    }
+    if (payload.event_id !== eventId) {
+      continue
+    }
+
+    const output =
+      payload.output && typeof payload.output === 'object'
+        ? (payload.output as Record<string, unknown>)
+        : null
+
+    if (output && Array.isArray(output.data)) {
+      lastOutput = output
+    }
+
+    if (payload.msg === 'process_completed') {
+      if (output && Array.isArray(output.data)) {
+        return output
+      }
+      if (lastOutput) {
+        return lastOutput
+      }
+      throw new Error(`queue completed without data: ${JSON.stringify(payload)}`)
+    }
+  }
+
+  if (lastOutput) {
+    return lastOutput
+  }
+
+  throw new Error('queue stream ended before completion')
 }
 
 export class GptSovitsProvider implements TtsProvider {
@@ -284,12 +375,7 @@ export class GptSovitsProvider implements TtsProvider {
       }
 
       const audioBytes = await readTtsRefAudioBytes(refAudioPath, 'gpt-sovits')
-      const formData = new FormData()
-      const audioBuffer = audioBytes.buffer.slice(
-        audioBytes.byteOffset,
-        audioBytes.byteOffset + audioBytes.byteLength
-      ) as ArrayBuffer
-      formData.append('files', new Blob([audioBuffer]), GPT_SOVITS_GRADIO_UPLOAD_FILENAME)
+      const formData = createGradioUploadFormData(refAudioPath, audioBytes)
 
       const uploadUrl = `${baseUrl}/upload`
       const uploadResponse = await fetch(uploadUrl, { method: 'POST', body: formData })
