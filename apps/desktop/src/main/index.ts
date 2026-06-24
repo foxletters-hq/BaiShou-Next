@@ -1,4 +1,9 @@
-import './dev-user-data.bootstrap'
+import './app-identity'
+import {
+  DESKTOP_APP_ID,
+  DESKTOP_DEV_APP_ID,
+  isDesktopDevBuild
+} from './app-identity'
 import { app, shell, BrowserWindow, ipcMain, Menu, protocol, net } from 'electron'
 import { join } from 'path'
 import { fileURLToPath } from 'url'
@@ -172,7 +177,19 @@ async function completeFullBootstrap() {
     // 3. 这里的逻辑在引导完成后或者已有配置时执行
     if (mainWindow) {
       const settingsRepo = new SettingsRepository(getAppDb())
-      const hotkeyService = new HotkeyService(settingsRepo, mainWindow)
+      const { settingsManager } = await import('./ipc/settings.ipc')
+      const { purgeDeviceLocalSettingsFromAgentDb } =
+        await import('./services/desktop-device-settings.util')
+      await purgeDeviceLocalSettingsFromAgentDb(settingsRepo, () =>
+        settingsManager.flushToDisk()
+      )
+
+      const { migrateDesktopHotkeyConfigFromSharedSettings, desktopHotkeyConfigStore } =
+        await import('./services/desktop-hotkey-config.store')
+      await migrateDesktopHotkeyConfigFromSharedSettings(settingsRepo, () =>
+        settingsManager.flushToDisk()
+      )
+      const hotkeyService = new HotkeyService(desktopHotkeyConfigStore, mainWindow)
       hotkeyService.start()
       setHotkeyService(hotkeyService)
 
@@ -198,9 +215,10 @@ app.whenReady().then(async () => {
   // like model-pricing.service that may be proxy-sensitive
   ;(global as any).customNetFetch = net.fetch
 
-  // Set app user model id for windows
-  electronApp.setAppUserModelId('com.electron.app')
-  app.setName('白守')
+  // Windows 任务栏分组：开发端与稳定端使用不同 AppUserModelId，避免混为一组
+  electronApp.setAppUserModelId(
+    isDesktopDevBuild() ? DESKTOP_DEV_APP_ID : DESKTOP_APP_ID
+  )
 
   // Register local protocol for secure local asset rendering
   protocol.handle('local', async (request) => {
