@@ -20,18 +20,18 @@ describe('diary-template.util', () => {
 
   it('replaces template variables', () => {
     expect(applyDiaryTemplateVars('##### {time} on {date} ({datetime})', fixedDate)).toBe(
-      '##### 15:30:45 on 2026-06-11 (2026-06-11 15:30:45)'
+      '##### 15:30 on 2026-06-11 (2026-06-11 15:30)'
     )
   })
 
   it('uses defaults when config is empty', () => {
-    expect(resolveDiaryNewEntryContent({}, fixedDate)).toBe('##### 15:30:45\n\n\u200B')
-    expect(resolveDiaryAppendBlock({}, fixedDate)).toBe('\n\n##### 15:30:45\n\n\u200B')
+    expect(resolveDiaryNewEntryContent({}, fixedDate)).toBe('##### 15:30\n\n\u200B')
+    expect(resolveDiaryAppendBlock({}, fixedDate)).toBe('\n\n##### 15:30\n\n\u200B')
   })
 
   it('uses custom templates from config', () => {
     const content = resolveDiaryNewEntryContent({ newEntryTemplate: '## {time}' }, fixedDate)
-    expect(content).toBe('## 15:30:45')
+    expect(content).toBe('## 15:30')
   })
 
   it('derives format rules from templates without legacy default prompt', () => {
@@ -40,7 +40,7 @@ describe('diary-template.util', () => {
       fixedDate
     )
     expect(rules).toContain('## {time}')
-    expect(rules).toContain('## 15:30:45')
+    expect(rules).toContain('## 15:30')
     expect(rules).not.toContain(LEGACY_DEFAULT_DIARY_AI_WRITING_PROMPT)
   })
 
@@ -84,22 +84,22 @@ describe('diary-template.util', () => {
   it('prepareDiaryWriteContent prepends new entry template when heading is missing', () => {
     const config = { newEntryTemplate: '###### {time}\n\n\u200B' }
     expect(prepareDiaryWriteContent('今天很开心', config, fixedDate)).toBe(
-      '###### 15:30:45\n\n今天很开心'
+      '###### 15:30\n\n今天很开心'
     )
   })
 
   it('prepareDiaryAppendContent uses append template and strips duplicate heading', () => {
     const config = { appendBlockTemplate: '\n\n###### {time}\n\n\u200B' }
     expect(
-      prepareDiaryAppendContent('已有正文', '###### 15:30:45\n\n新增内容', config, fixedDate)
-    ).toBe('已有正文\n\n###### 15:30:45\n\n新增内容')
+      prepareDiaryAppendContent('已有正文', '###### 15:30\n\n新增内容', config, fixedDate)
+    ).toBe('已有正文\n\n###### 15:30\n\n新增内容')
   })
 
   it('prepareDiaryAppendContent inserts newline when append template lacks leading breaks', () => {
     const config = { appendBlockTemplate: '###### {time}\n\n' }
     expect(
       prepareDiaryAppendContent('三个人安静地缩在一起，慢慢稳下来了。', '今天很充实', config, fixedDate)
-    ).toBe('三个人安静地缩在一起，慢慢稳下来了。\n\n###### 15:30:45\n\n今天很充实')
+    ).toBe('三个人安静地缩在一起，慢慢稳下来了。\n\n###### 15:30\n\n今天很充实')
   })
 
   it('joinDiaryContentWithAppendBlock preserves template leading breaks', () => {
@@ -110,5 +110,37 @@ describe('diary-template.util', () => {
 
   it('stripLeadingDiaryTimestampHeading removes h6 timestamp line', () => {
     expect(stripLeadingDiaryTimestampHeading('###### 09:01:02\n\n正文')).toBe('正文')
+  })
+
+  it('stripLeadingDiaryTimestampHeading removes multiple leading pure timestamp lines', () => {
+    expect(
+      stripLeadingDiaryTimestampHeading('###### 01:20:43\n\n###### 01:14 - 现场实操\n\n正文')
+    ).toBe('###### 01:14 - 现场实操\n\n正文')
+  })
+
+  it('prepareDiaryAppendContent skips system block when content has titled section heading', () => {
+    const config = { appendBlockTemplate: '\n\n###### {time}\n\n\u200B' }
+    expect(
+      prepareDiaryAppendContent(
+        '已有正文',
+        '###### 01:14 - 现场实操：撤回、棒棒糖、和一整套炒包菜\n\n新增内容',
+        config,
+        fixedDate
+      )
+    ).toBe(
+      '已有正文\n\n###### 01:14 - 现场实操：撤回、棒棒糖、和一整套炒包菜\n\n新增内容'
+    )
+  })
+
+  it('prepareDiaryAppendContent strips leading pure timestamp before titled heading', () => {
+    const config = { appendBlockTemplate: '\n\n###### {time}\n\n\u200B' }
+    expect(
+      prepareDiaryAppendContent(
+        '已有正文',
+        '###### 01:20:43\n\n###### 01:14 - 现场实操\n\n新增内容',
+        config,
+        fixedDate
+      )
+    ).toBe('已有正文\n\n###### 01:14 - 现场实操\n\n新增内容')
   })
 })
