@@ -90,7 +90,7 @@ export const RagMemoryConfigBlock: React.FC<RagMemoryConfigBlockProps> = ({ conf
             <HelpTooltip
               content={t(
                 'settings.rag_batch_embed_concurrency_hint',
-                '同时嵌入的日记篇数。数值越大越快，但更容易触发 API 限流；建议 2–3。'
+                '同时嵌入的日记篇数。数值越大越快，但更容易触发 API 限流；默认 20，遇限流可调低。'
               )}
             />
           </div>

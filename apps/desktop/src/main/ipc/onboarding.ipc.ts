@@ -8,7 +8,7 @@ import {
   resolvePickedStorageDirectory
 } from '../services/desktop-legacy-bootstrap.service'
 import { resolveLegacyRootCandidates } from '../services/flutter-legacy-paths.service'
-import { isDesktopDevRuntime } from '../dev-user-data'
+import { isDesktopDevBuild } from '../app-identity'
 
 export function registerOnboardingIPC(onComplete: () => void) {
   const settingsPath = path.join(app.getPath('userData'), 'baishou_settings.json')
@@ -16,22 +16,30 @@ export function registerOnboardingIPC(onComplete: () => void) {
   ipcMain.handle('onboarding:check', async () => {
     try {
       const bootstrap = await resolveDesktopStorageBootstrap(settingsPath)
-      const legacyRoot = isDesktopDevRuntime()
-        ? null
-        : ((await resolveLegacyRootCandidates())[0] ?? null)
+      const legacyCandidates = await resolveLegacyRootCandidates()
+      const legacyRoot = legacyCandidates[0] ?? null
       const root = bootstrap.storageRoot?.trim()
+
+      let currentPath: string
+      if (root) {
+        currentPath = root
+      } else if (bootstrap.needsOnboarding && isDesktopDevBuild()) {
+        currentPath = defaultOnboardingStoragePath()
+      } else {
+        currentPath = legacyRoot || defaultOnboardingStoragePath()
+      }
 
       return {
         needsOnboarding: bootstrap.needsOnboarding,
-        currentPath: root || legacyRoot || defaultOnboardingStoragePath()
+        currentPath
       }
     } catch {
-      const legacyRoot = isDesktopDevRuntime()
-        ? null
-        : ((await resolveLegacyRootCandidates().catch(() => []))[0] ?? null)
+      const legacyCandidates = await resolveLegacyRootCandidates().catch(() => [])
       return {
         needsOnboarding: true,
-        currentPath: legacyRoot || defaultOnboardingStoragePath()
+        currentPath: isDesktopDevBuild()
+          ? defaultOnboardingStoragePath()
+          : legacyCandidates[0] || defaultOnboardingStoragePath()
       }
     }
   })

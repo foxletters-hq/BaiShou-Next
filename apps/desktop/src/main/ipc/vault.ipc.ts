@@ -100,7 +100,6 @@ export function registerVaultIPC() {
     const { pickStorageDirectory, changeStorageRootDirectory } =
       await import('../services/desktop-storage-directory.service')
     const window = BrowserWindow.fromWebContents(event.sender)
-    if (!window) return null
 
     const newPath = await pickStorageDirectory(window)
     if (!newPath) return null

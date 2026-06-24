@@ -65,6 +65,8 @@ export interface GlobalModelsConfig {
  */
 export interface AgentBehaviorConfig {
   agentContextWindowSize: number // Agent 上下文窗口大小（默认 20）
+  companionCompressTokens?: number // 深度陪伴模式触发压缩的 Token 数（默认 8000）
+  companionTruncateTokens?: number // 深度陪伴模式压缩时截断多少 token 以前的对话（默认 4000）
   agentPersona: string // Agent 角色人设描述
   agentGuidelines: string // Agent 行为准则
   pinnedAssistantIds: string[] // 侧边栏置顶助手列表 (最多 3 个)
@@ -77,7 +79,7 @@ export interface RagConfig {
   ragEnabled: boolean // 是否启用全局记忆（RAG检索，默认 true）
   ragTopK: number // 检索返回的前 K 个最相似结果（默认 20）
   ragSimilarityThreshold: number // 相似度阈值过滤（默认 0.4）
-  /** 批量嵌入日记时的并行篇数（1–5，默认 3） */
+  /** 批量嵌入日记时的并行篇数（1–20，默认 20） */
   batchEmbedConcurrency?: number
   /** 最近一次日记自动嵌入失败的时间戳（毫秒），用于 RAG 页非阻塞提示 */
   lastDiaryEmbedFailureAt?: number

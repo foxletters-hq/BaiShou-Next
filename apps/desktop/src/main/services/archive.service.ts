@@ -20,6 +20,7 @@ import {
   resolveArchiveExtractRoot,
   mergeArchivePrefsPreservingCloudSync
 } from '@baishou/core/shared'
+import { DESKTOP_DEVICE_LOCAL_AGENT_DB_KEYS } from './desktop-device-settings.util'
 import {
   connectionManager,
   shadowConnectionManager,
@@ -373,6 +374,7 @@ export class DesktopArchiveService implements IArchiveService {
           const settingsRepo = new SettingsRepository(getAppDb())
           for (const [key, value] of Object.entries(prefs)) {
             if (key === 'user_profile_data' || key === 'user_profile') continue
+            if (DESKTOP_DEVICE_LOCAL_AGENT_DB_KEYS.includes(key as (typeof DESKTOP_DEVICE_LOCAL_AGENT_DB_KEYS)[number])) continue
             if (value !== undefined && value !== null) {
               await settingsRepo.set(key, value)
             }

@@ -65,7 +65,6 @@ export const toast = {
     toast.show(message, {
       type: 'info',
       duration: 3000,
-      iconColor: '#2563EB',
       ...options
     })
   },

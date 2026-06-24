@@ -143,7 +143,9 @@ export function registerDeveloperIPC() {
         'config.json',
         'app-settings.json',
         'baishou_logs',
-        'baishou_settings.json'
+        'baishou_settings.json',
+        'device_hotkey_config.json',
+        'device_mcp_server_config.json'
       ]
 
       for (const target of targets) {

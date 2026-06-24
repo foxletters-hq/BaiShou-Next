@@ -185,6 +185,8 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
 
               const defaultAgentBehavior: AgentBehaviorConfig = {
                 agentContextWindowSize: 20,
+                companionCompressTokens: 8000,
+                companionTruncateTokens: 4000,
                 agentPersona: '',
                 agentGuidelines: '',
                 pinnedAssistantIds: []
@@ -194,7 +196,7 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
                 ragEnabled: true,
                 ragTopK: 20,
                 ragSimilarityThreshold: 0.4,
-                batchEmbedConcurrency: 3
+                batchEmbedConcurrency: 20
               }
 
               const defaultWebSearchConfig: WebSearchConfig = {

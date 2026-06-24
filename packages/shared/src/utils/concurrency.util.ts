@@ -1,6 +1,6 @@
 export const BATCH_EMBED_CONCURRENCY_MIN = 1
-export const BATCH_EMBED_CONCURRENCY_MAX = 5
-export const DEFAULT_BATCH_EMBED_CONCURRENCY = 3
+export const BATCH_EMBED_CONCURRENCY_MAX = 20
+export const DEFAULT_BATCH_EMBED_CONCURRENCY = 20
 
 /** Clamp user-configured batch-embed diary concurrency. */
 export function resolveBatchEmbedConcurrency(value: unknown): number {

@@ -217,6 +217,8 @@ export const DEFAULT_GLOBAL_MODELS: GlobalModelsConfig = {
 
 export const DEFAULT_AGENT_BEHAVIOR: AgentBehaviorConfig = {
   agentContextWindowSize: 20,
+  companionCompressTokens: 8000,
+  companionTruncateTokens: 4000,
   agentPersona: '你是 AI 伙伴，帮助用户回顾日记和生活记录。',
   agentGuidelines: '请使用工具查阅日记内容，不要编造。引用时注明日期。',
   pinnedAssistantIds: []
@@ -226,7 +228,7 @@ export const DEFAULT_RAG_CONFIG: RagConfig = {
   ragEnabled: true,
   ragTopK: 20,
   ragSimilarityThreshold: 0.4,
-  batchEmbedConcurrency: 3
+  batchEmbedConcurrency: 20
 }
 
 export const DEFAULT_WEB_SEARCH_CONFIG: WebSearchConfig = {

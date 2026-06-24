@@ -15,6 +15,7 @@ import { sessionWatcher } from './session-watcher.service'
 import { resetSyncService } from '../ipc/incremental-sync.ipc'
 import { resetGitService } from '../ipc/git-sync.ipc'
 import { getMcpService, bootstrapMcpServer } from './mcp-runtime'
+import { resolvePickedStorageDirectory } from './desktop-legacy-bootstrap.service'
 
 export type StorageTargetValidationCode =
   | 'SAME_PATH'
@@ -29,15 +30,20 @@ export type StorageTargetValidation =
 let quiesceDepth = 0
 let mcpWasRunningBeforeQuiesce = false
 
-export async function pickStorageDirectory(window: BrowserWindow): Promise<string | null> {
-  const result = await dialog.showOpenDialog(window, {
+export async function pickStorageDirectory(
+  window?: BrowserWindow | null
+): Promise<string | null> {
+  const dialogOptions = {
     title: 'Select Data Root Directory',
-    properties: ['openDirectory', 'createDirectory']
-  })
+    properties: ['openDirectory', 'createDirectory'] as ('openDirectory' | 'createDirectory')[]
+  }
+  const result = window
+    ? await dialog.showOpenDialog(window, dialogOptions)
+    : await dialog.showOpenDialog(dialogOptions)
   if (result.canceled || result.filePaths.length === 0) {
     return null
   }
-  return result.filePaths[0]!
+  return resolvePickedStorageDirectory(result.filePaths[0]!)
 }
 
 export async function validateStorageTarget(targetPath: string): Promise<StorageTargetValidation> {
