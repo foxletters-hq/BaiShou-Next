@@ -19,7 +19,6 @@ import {
   MdOutlineHub,
   MdSync,
   MdEditNote,
-  MdTextSnippet,
   MdSwapHoriz
 } from 'react-icons/md'
 import './SettingsPage.css'
@@ -101,14 +100,8 @@ export const SettingsShell: React.FC = () => {
       {
         id: 15,
         kind: 'item',
-        label: t('settings.diary_template_title', '日记模板'),
+        label: t('settings.diary_template_title', '日记格式'),
         icon: <MdEditNote />
-      },
-      {
-        id: 16,
-        kind: 'item',
-        label: t('settings.diary_partner_writing_title', '伙伴书写规范'),
-        icon: <MdTextSnippet />
       },
       {
         id: 7,

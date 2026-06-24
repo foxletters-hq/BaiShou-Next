@@ -7,6 +7,7 @@ import {
   normalizeDiaryTags,
   safeParseDate,
   logger,
+  joinDiaryContentWithAppendBlock,
   resolveDiaryAppendBlock,
   resolveDiaryNewEntryContent,
   type DiaryTemplateConfig
@@ -140,9 +141,8 @@ export function useDiaryEditorPage() {
             initialMedia = diary.mediaPaths || []
 
             if (isAppendMode) {
-              const existing = (diary.content || '').trimEnd()
               const timeMark = resolveDiaryAppendBlock(templateConfig, now)
-              initialContent = existing ? existing + timeMark : timeMark.trimStart()
+              initialContent = joinDiaryContentWithAppendBlock(diary.content || '', timeMark)
             } else {
               initialContent = diary.content || ''
             }

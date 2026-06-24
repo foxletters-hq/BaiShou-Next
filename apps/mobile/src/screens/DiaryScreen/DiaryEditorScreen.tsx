@@ -13,6 +13,7 @@ import {
 } from '@baishou/ui/native'
 import { mergeDiaryTags } from '@baishou/ai'
 import {
+  joinDiaryContentWithAppendBlock,
   resolveDiaryAppendBlock,
   resolveDiaryNewEntryContent,
   composeDiaryEditorContent,
@@ -108,11 +109,10 @@ export const DiaryEditorScreen: React.FC = () => {
     setIsFavorite(diary.isFavorite || false)
 
     if (isAppendMode) {
-      const existing = (diary.content || '').trimEnd()
+      const safeExisting = isLikelyEditorBundleLeak(diary.content || '') ? '' : diary.content || ''
       const timeMark = resolveDiaryAppendBlock(templateConfig, now)
-      const safeExisting = isLikelyEditorBundleLeak(existing) ? '' : existing
-      setContent(safeExisting ? safeExisting + timeMark : timeMark.trimStart())
-      setOriginalContent(safeExisting)
+      setContent(joinDiaryContentWithAppendBlock(safeExisting, timeMark))
+      setOriginalContent(safeExisting.trimEnd())
       setTags([])
       previousTagsRef.current = []
       setTagColorRegistry({})

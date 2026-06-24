@@ -90,12 +90,6 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
         route: { type: 'section', section: 'diary-template' }
       },
       {
-        id: 'diary-ai-writing',
-        titleKey: 'settings.diary_partner_writing_title',
-        icon: 'text-snippet',
-        route: { type: 'section', section: 'diary-ai-writing' }
-      },
-      {
         id: 'summary',
         titleKey: 'settings.summary_settings_title',
         icon: 'auto-awesome',

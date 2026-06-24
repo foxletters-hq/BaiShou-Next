@@ -18,8 +18,7 @@ import {
   MdHistory,
   MdOutlineHub,
   MdSync,
-  MdEditNote,
-  MdTextSnippet
+  MdEditNote
 } from 'react-icons/md'
 import { SETTINGS_HUB_PREFIX } from '../../features/settings/settings-route.util'
 
@@ -36,7 +35,6 @@ export const ALL_SIDEBAR_NAV_IDS = [
   'diary',
   'summary',
   'diary-template',
-  'diary-ai-writing',
   'general',
   'mcp',
   'ai-services',
@@ -89,7 +87,7 @@ export const SIDEBAR_NAV_GROUPS: SidebarNavGroupDef[] = [
     key: 'diary',
     labelKey: 'sidebar.group_diary',
     defaultLabel: '日记与回忆',
-    itemIds: ['diary', 'summary', 'diary-template', 'diary-ai-writing', 'summary-settings']
+    itemIds: ['diary', 'summary', 'diary-template', 'summary-settings']
   },
   {
     key: 'settings-general',
@@ -121,7 +119,6 @@ export const SIDEBAR_NAV_PATHS: Record<SidebarNavId, string> = {
   diary: '/diary',
   summary: '/summary',
   'diary-template': `${SETTINGS_HUB_PREFIX}/diary-template`,
-  'diary-ai-writing': `${SETTINGS_HUB_PREFIX}/diary-ai-writing`,
   general: `${SETTINGS_HUB_PREFIX}/general`,
   mcp: `${SETTINGS_HUB_PREFIX}/mcp`,
   'ai-services': `${SETTINGS_HUB_PREFIX}/ai-services`,
@@ -156,13 +153,8 @@ export function buildSidebarNavItems(t: TFunction): Record<SidebarNavId, Sidebar
     },
     'diary-template': {
       icon: icon(<MdEditNote />),
-      label: t('settings.diary_template_title', '日记模板'),
+      label: t('settings.diary_template_title', '日记格式'),
       path: `${SETTINGS_HUB_PREFIX}/diary-template`
-    },
-    'diary-ai-writing': {
-      icon: icon(<MdTextSnippet />),
-      label: t('settings.diary_partner_writing_title', '伙伴书写规范'),
-      path: `${SETTINGS_HUB_PREFIX}/diary-ai-writing`
     },
     general: {
       icon: icon(<MdOutlineSettings />),

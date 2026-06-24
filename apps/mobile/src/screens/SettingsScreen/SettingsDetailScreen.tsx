@@ -12,7 +12,6 @@ import { WebSearchSection } from './components/WebSearchSection'
 import { AgentToolsSection } from './components/AgentToolsSection'
 import { SummarySettingsSection } from './components/SummarySettingsSection'
 import { DiaryTemplateSettingsSection } from './components/DiaryTemplateSettingsSection'
-import { DiaryAiWritingSettingsSection } from './components/DiaryAiWritingSettingsSection'
 import { AttachmentManagementSection } from './components/AttachmentManagementSection'
 import { DeveloperSettingsSection } from './components/DeveloperSettingsSection'
 import { McpSettingsSection } from './components/McpSettingsSection'
@@ -43,9 +42,8 @@ export const SettingsDetailScreen: React.FC<SettingsDetailScreenProps> = ({ sect
       case 'agent-tools':
         return <AgentToolsSection />
       case 'diary-template':
-        return <DiaryTemplateSettingsSection />
       case 'diary-ai-writing':
-        return <DiaryAiWritingSettingsSection />
+        return <DiaryTemplateSettingsSection />
       case 'summary':
         return <SummarySettingsSection />
       case 'attachments':
