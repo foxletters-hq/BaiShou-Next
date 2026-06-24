@@ -55,4 +55,20 @@ describe('minimax-tts-stream.util', () => {
     const bytes = await collectMinimaxTtsStreamAudio(response)
     expect(Array.from(bytes)).toEqual([0xff, 0xfb, 0x90, 0x00])
   })
+
+  it('collectMinimaxTtsStreamAudio falls back to response.text() when body stream is unavailable', async () => {
+    const sse = [
+      `data: ${JSON.stringify({
+        data: { audio: 'fffb9000', status: 2 },
+        base_resp: { status_code: 0, status_msg: 'success' }
+      })}`,
+      ''
+    ].join('\n')
+
+    const response = new Response(sse)
+    Object.defineProperty(response, 'body', { value: null })
+
+    const bytes = await collectMinimaxTtsStreamAudio(response)
+    expect(Array.from(bytes)).toEqual([0xff, 0xfb, 0x90, 0x00])
+  })
 })

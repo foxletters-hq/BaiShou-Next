@@ -63,11 +63,48 @@ function consumeMinimaxStreamChunk(
   appendHexChunks(partialHexChunks, audio)
 }
 
+function consumeMinimaxStreamLine(
+  rawLine: string,
+  partialHexChunks: string[],
+  finalHexRef: { value: string | null }
+): void {
+  const line = rawLine.trim()
+  if (!line) return
+
+  const payloadText = line.startsWith('data:') ? line.slice(5).trim() : line
+  const payload = parseMinimaxStreamPayload(payloadText)
+  if (payload) {
+    consumeMinimaxStreamChunk(payload, partialHexChunks, finalHexRef)
+  }
+}
+
+function finalizeMinimaxStreamAudio(
+  partialHexChunks: string[],
+  finalHexRef: { value: string | null }
+): Uint8Array {
+  if (finalHexRef.value) {
+    return hexToUint8Array(finalHexRef.value)
+  }
+  return mergeHexChunks(partialHexChunks)
+}
+
+function collectMinimaxTtsStreamFromText(text: string): Uint8Array {
+  const partialHexChunks: string[] = []
+  const finalHexRef = { value: null as string | null }
+
+  for (const rawLine of text.split('\n')) {
+    consumeMinimaxStreamLine(rawLine, partialHexChunks, finalHexRef)
+  }
+
+  return finalizeMinimaxStreamAudio(partialHexChunks, finalHexRef)
+}
+
 /** 解析 MiniMax T2A 流式响应（SSE data 行或逐行 JSON）并拼接音频字节 */
 export async function collectMinimaxTtsStreamAudio(response: Response): Promise<Uint8Array> {
   const reader = response.body?.getReader()
+  // React Native 默认 fetch 不提供 ReadableStream body，回退整包 text 解析
   if (!reader) {
-    throw new Error('MiniMax TTS 流式响应无 body')
+    return collectMinimaxTtsStreamFromText(await response.text())
   }
 
   const decoder = new TextDecoder()
@@ -84,29 +121,13 @@ export async function collectMinimaxTtsStreamAudio(response: Response): Promise<
     buffer = lines.pop() || ''
 
     for (const rawLine of lines) {
-      const line = rawLine.trim()
-      if (!line) continue
-
-      const payloadText = line.startsWith('data:') ? line.slice(5).trim() : line
-      const payload = parseMinimaxStreamPayload(payloadText)
-      if (payload) {
-        consumeMinimaxStreamChunk(payload, partialHexChunks, finalHexRef)
-      }
+      consumeMinimaxStreamLine(rawLine, partialHexChunks, finalHexRef)
     }
   }
 
-  const tail = buffer.trim()
-  if (tail) {
-    const payloadText = tail.startsWith('data:') ? tail.slice(5).trim() : tail
-    const payload = parseMinimaxStreamPayload(payloadText)
-    if (payload) {
-      consumeMinimaxStreamChunk(payload, partialHexChunks, finalHexRef)
-    }
+  if (buffer.trim()) {
+    consumeMinimaxStreamLine(buffer, partialHexChunks, finalHexRef)
   }
 
-  if (finalHexRef.value) {
-    return hexToUint8Array(finalHexRef.value)
-  }
-
-  return mergeHexChunks(partialHexChunks)
+  return finalizeMinimaxStreamAudio(partialHexChunks, finalHexRef)
 }

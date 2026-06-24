@@ -54,11 +54,47 @@ function extractStreamAudioBase64(payload: unknown): string | null {
   return typeof data === 'string' && data.trim() ? data : null
 }
 
+function collectMimoTtsStreamFromText(text: string): Uint8Array {
+  const pcmChunks: Uint8Array[] = []
+
+  for (const rawLine of text.split('\n')) {
+    const line = rawLine.trim()
+    if (!line.startsWith('data:')) continue
+
+    const data = line.slice(5).trim()
+    if (!data || data === '[DONE]') continue
+
+    try {
+      const json = JSON.parse(data) as unknown
+      const audioBase64 = extractStreamAudioBase64(json)
+      if (audioBase64) {
+        appendPcmChunk(pcmChunks, base64ToUint8Array(audioBase64))
+      }
+    } catch {
+      /* 忽略非 JSON 行 */
+    }
+  }
+
+  if (!pcmChunks.length) {
+    throw new Error('MiMo TTS 流式响应未包含音频数据')
+  }
+
+  const total = pcmChunks.reduce((sum, chunk) => sum + chunk.length, 0)
+  const merged = new Uint8Array(total)
+  let offset = 0
+  for (const chunk of pcmChunks) {
+    merged.set(chunk, offset)
+    offset += chunk.length
+  }
+  return merged
+}
+
 /** 解析 MiMo TTS SSE（OpenAI chat/completions 流式格式）并拼接 pcm16 */
 export async function collectMimoTtsStreamPcm16(response: Response): Promise<Uint8Array> {
   const reader = response.body?.getReader()
+  // React Native 默认 fetch 不提供 ReadableStream body，回退整包 text 解析
   if (!reader) {
-    throw new Error('MiMo TTS 流式响应无 body')
+    return collectMimoTtsStreamFromText(await response.text())
   }
 
   const decoder = new TextDecoder()
