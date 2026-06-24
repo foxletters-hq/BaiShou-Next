@@ -25,7 +25,8 @@ import {
   formatDiaryPreviewText,
   logger,
   parseDateStr,
-  resolveDiaryAppendBlock,
+  prepareDiaryAppendContent,
+  prepareDiaryWriteContent,
   isUsingExternalVaultDirectory,
   type DiaryTemplateConfig
 } from '@baishou/shared'
@@ -244,6 +245,9 @@ export function createVaultBoundDiaryStack(deps: {
     },
     async writeEntry(date: string, content: string, tags?: string) {
       try {
+        const templateConfig: DiaryTemplateConfig = deps.settingsManager
+          ? (await deps.settingsManager.get<DiaryTemplateConfig>('diary_template_config')) || {}
+          : {}
         const tagsStr = tags
           ?.split(',')
           .map((s) => s.trim())
@@ -251,7 +255,7 @@ export function createVaultBoundDiaryStack(deps: {
           .join(',')
         await diaryService.create({
           date: parseDateStr(date),
-          content,
+          content: prepareDiaryWriteContent(content, templateConfig, new Date()),
           ...(tagsStr ? { tags: tagsStr } : {})
         })
         return { ok: true as const }
@@ -283,8 +287,12 @@ export function createVaultBoundDiaryStack(deps: {
           const templateConfig: DiaryTemplateConfig = deps.settingsManager
             ? (await deps.settingsManager.get<DiaryTemplateConfig>('diary_template_config')) || {}
             : {}
-          const block = resolveDiaryAppendBlock(templateConfig, new Date()).replace(/\u200B$/, '')
-          finalContent = existing.content.trimEnd() + block + content
+          finalContent = prepareDiaryAppendContent(
+            existing.content,
+            content,
+            templateConfig,
+            new Date()
+          )
         }
 
         await diaryService.update(existing.id, {

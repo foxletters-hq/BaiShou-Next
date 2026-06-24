@@ -24,7 +24,8 @@ import {
   GlobalModelsConfig,
   formatDiaryPreviewText,
   buildDiaryWritingGuidelinesForSystemPrompt,
-  resolveDiaryAppendBlock,
+  prepareDiaryAppendContent,
+  prepareDiaryWriteContent,
   logger,
   parseDateStr,
   formatUserCardFromProfile,
@@ -136,6 +137,7 @@ export function createDiarySearcher() {
       async writeEntry(date: string, content: string, tags?: string) {
         try {
           const diaryService = getDiaryManager()
+          const templateConfig = (await settingsManager.get<any>('diary_template_config')) || {}
           const tagsStr = tags
             ?.split(',')
             .map((s) => s.trim())
@@ -143,7 +145,7 @@ export function createDiarySearcher() {
             .join(',')
           await diaryService.create({
             date: parseDateStr(date),
-            content,
+            content: prepareDiaryWriteContent(content, templateConfig, new Date()),
             ...(tagsStr ? { tags: tagsStr } : {})
           })
           return { ok: true as const }
@@ -174,8 +176,12 @@ export function createDiarySearcher() {
           let finalContent = content
           if (mode === 'append') {
             const templateConfig = (await settingsManager.get<any>('diary_template_config')) || {}
-            const block = resolveDiaryAppendBlock(templateConfig, new Date()).replace(/\u200B$/, '')
-            finalContent = existing.content.trimEnd() + block + content
+            finalContent = prepareDiaryAppendContent(
+              existing.content,
+              content,
+              templateConfig,
+              new Date()
+            )
           }
 
           await diaryService.update(existing.id, {
