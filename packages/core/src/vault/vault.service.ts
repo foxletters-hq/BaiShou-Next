@@ -162,6 +162,18 @@ export class VaultService implements IVaultService {
           }
         }
 
+        const diskWithContent = await discoverLegacyVaultNamesOnDisk(this.fileSystem, rootDir)
+        if (diskWithContent.length > this._vaults.length) {
+          const legacyEntries = await readLegacyVaultRegistry(this.fileSystem, rootDir)
+          this._vaults = await writeNextVaultRegistry(
+            this.fileSystem,
+            rootDir,
+            diskWithContent,
+            legacyEntries
+          )
+          shouldSave = false
+        }
+
         const active = this.getActiveVault()
         if (
           active &&

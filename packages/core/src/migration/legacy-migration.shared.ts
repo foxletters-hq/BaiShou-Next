@@ -20,6 +20,19 @@ export const LEGACY_MIGRATION_STATUS_FILE = '.baishou_next_migration.json'
 export const LEGACY_REGISTRY_RELATIVE = '.baishou/vault_registry.json'
 export const NEXT_REGISTRY_FILENAME = 'vault_registry.json'
 
+/** 归档根目录下不属于工作区的文件夹（与移动端 ARCHIVE_SKIP_TOP_LEVEL 对齐） */
+export const LEGACY_ARCHIVE_SKIP_TOP_LEVEL = new Set([
+  'config',
+  'assistant_avatars',
+  'database',
+  'manifest.json',
+  'user-data',
+  'node_modules',
+  'snapshots',
+  'temp',
+  '.snapshots'
+])
+
 export const LEGACY_AGENT_MERGE_TABLES = [
   'agent_assistants',
   'agent_sessions',
@@ -312,6 +325,32 @@ export async function discoverVaultNames(
   }
 
   return discovered.length > 0 ? discovered : ['Personal']
+}
+
+/**
+ * 解析 Flutter 归档导入时应迁移的工作区列表。
+ * 优先使用 legacy registry，但仅保留源目录中真实存在的 vault 文件夹。
+ */
+export async function resolveLegacyImportVaultNames(
+  fileSystem: IFileSystem,
+  sourceDir: string
+): Promise<string[]> {
+  const candidateNames = await discoverVaultNames(fileSystem, sourceDir)
+  const present: string[] = []
+
+  for (const name of candidateNames) {
+    if (!name || LEGACY_ARCHIVE_SKIP_TOP_LEVEL.has(name)) continue
+    const vaultDir = path.join(sourceDir, name)
+    try {
+      const stat = await fileSystem.stat(vaultDir)
+      if (!stat.isDirectory) continue
+    } catch {
+      continue
+    }
+    present.push(name)
+  }
+
+  return present.length > 0 ? present : ['Personal']
 }
 
 export async function writeNextVaultRegistry(

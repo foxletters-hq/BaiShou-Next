@@ -7,6 +7,7 @@ import {
   mergeDirectories,
   mergeLegacySqliteDatabases,
   readLegacyVaultRegistry,
+  resolveLegacyImportVaultNames,
   scanLegacyDatabases,
   StorageMigrationCopyError,
   writeNextVaultRegistry,
@@ -107,7 +108,7 @@ export async function migrateLegacyArchiveContents(
   await rectifyAssistantAvatarPaths(sqliteClient, executeRawSql, avatarMap)
 
   const legacyRegistry = await readLegacyVaultRegistry(fileSystem, sourceDir)
-  const vaultNames = await discoverVaultNames(fileSystem, sourceDir)
+  const vaultNames = await resolveLegacyImportVaultNames(fileSystem, sourceDir)
 
   for (const vName of vaultNames) {
     const vSource = path.join(sourceDir, vName)

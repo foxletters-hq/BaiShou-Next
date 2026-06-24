@@ -73,22 +73,26 @@ export class MetadataMigrator {
     const legacyService = new LegacyMigrationService()
     const { getDesktopInstallInstanceId } = await import('./install-instance.service')
     const installInstanceId = await getDesktopInstallInstanceId()
-    const stagingDir = path.join(path.dirname(rootDir), `.baishou_migration_staging_${Date.now()}`)
-    await fsp.mkdir(stagingDir, { recursive: true })
+
+    if (fs.existsSync(rootDir)) {
+      try {
+        await fsp.rm(rootDir, { recursive: true, force: true })
+      } catch (e) {
+        logger.error('[MetadataMigrator] Failed to wipe workspace root before legacy import:', e)
+        throw e
+      }
+    }
+    await fsp.mkdir(rootDir, { recursive: true })
 
     try {
       resetAppDb()
-      await legacyService.migrate(archiveRoot, stagingDir, {
+      // 直接迁移到最终工作区，避免 extract → staging → rename 的第二次全量复制（与移动端一致）
+      await legacyService.migrate(archiveRoot, rootDir, {
         source: 'flutter_zip',
         installInstanceId
       })
-
-      if (fs.existsSync(rootDir)) {
-        await fsp.rm(rootDir, { recursive: true, force: true })
-      }
-      await fsp.rename(stagingDir, rootDir)
     } catch (migrationError) {
-      await fsp.rm(stagingDir, { recursive: true, force: true }).catch(() => {})
+      await fsp.rm(rootDir, { recursive: true, force: true }).catch(() => {})
       throw migrationError
     }
 

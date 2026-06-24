@@ -18,7 +18,8 @@ import {
 } from '@baishou/core-desktop'
 import {
   resolveArchiveExtractRoot,
-  mergeArchivePrefsPreservingCloudSync
+  mergeArchivePrefsPreservingCloudSync,
+  targetDirectoryHasData
 } from '@baishou/core/shared'
 import { DESKTOP_DEVICE_LOCAL_AGENT_DB_KEYS } from './desktop-device-settings.util'
 import {
@@ -96,9 +97,14 @@ export class DesktopArchiveService implements IArchiveService {
   ): Promise<ImportResult> {
     let snapshotPath: string | undefined
 
-    if (createSnapshotBefore) {
+    if (createSnapshotBefore && (await this.shouldCreatePreImportSnapshot())) {
+      logger.info('[ArchiveService] Creating pre-import snapshot to protect existing workspace data…')
       const snap = await this.createSnapshot()
       if (snap) snapshotPath = snap
+    } else if (createSnapshotBefore) {
+      logger.info(
+        '[ArchiveService] Skipping pre-import snapshot: workspace is empty, nothing to protect.'
+      )
     }
 
     broadcastArchiveImportState(true)
@@ -475,6 +481,16 @@ export class DesktopArchiveService implements IArchiveService {
 
   public async batchDeleteSnapshots(filenames: string[]): Promise<number> {
     return new SnapshotManager().batchDelete(filenames)
+  }
+
+  /** 仅当本地工作区已有数据时才创建导入前快照（与移动端一致；空工作区无需先导出一份空备份） */
+  private async shouldCreatePreImportSnapshot(): Promise<boolean> {
+    try {
+      const rootDir = await this.pathService.getRootDirectory()
+      return await targetDirectoryHasData(this.fileSystem, rootDir)
+    } catch {
+      return true
+    }
   }
 
   private async restoreUserAvatarsFromExtract(extractDir: string): Promise<void> {

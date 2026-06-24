@@ -13,6 +13,7 @@ import {
   normalizeSqliteAttachPath,
   readLegacyVaultRegistry,
   resolveAgentDbPath,
+  resolveLegacyImportVaultNames,
   writeMigrationStatus,
   writeNextVaultRegistry
 } from '../legacy-migration.shared'
@@ -93,6 +94,19 @@ describe('legacy-migration.shared', () => {
     const fallbackRoot = path.join(tempDir, 'fallback')
     await fs.mkdir(path.join(fallbackRoot, 'Personal', 'Journals'), { recursive: true })
     expect(await discoverVaultNames(fileSystem, fallbackRoot)).toEqual(['Personal'])
+  })
+
+  it('resolveLegacyImportVaultNames skips registry entries missing on disk', async () => {
+    const sourceRoot = path.join(tempDir, 'import-source')
+    await fs.mkdir(path.join(sourceRoot, '.baishou'), { recursive: true })
+    await fs.writeFile(
+      path.join(sourceRoot, '.baishou', 'vault_registry.json'),
+      JSON.stringify([{ name: 'Personal' }, { name: 'MissingVault' }, { name: 'config' }])
+    )
+    await fs.mkdir(path.join(sourceRoot, 'Personal', 'Journals'), { recursive: true })
+    await fs.mkdir(path.join(sourceRoot, 'config'), { recursive: true })
+
+    expect(await resolveLegacyImportVaultNames(fileSystem, sourceRoot)).toEqual(['Personal'])
   })
 
   it('tracks migration completion status at workspace root', async () => {
