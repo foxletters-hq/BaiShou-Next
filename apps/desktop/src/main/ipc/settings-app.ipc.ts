@@ -82,13 +82,18 @@ export function registerSettingsAppIPC() {
   })
 
   ipcMain.handle('settings:get-mcp-server-config', async () => {
-    return (await settingsManager.get<any>('mcp_server_config')) || null
+    const { getDesktopMcpServerConfig } = await import('../services/desktop-mcp-config.store')
+    return getDesktopMcpServerConfig()
   })
 
   ipcMain.handle('settings:set-mcp-server-config', async (_, config: any) => {
     const { ensureMcpAuthToken } = await import('@baishou/shared')
     const nextConfig = ensureMcpAuthToken(config)
-    await settingsManager.set('mcp_server_config', nextConfig)
+    const { SettingsRepository } = await import('@baishou/database-desktop')
+    const { getAppDb } = await import('../db')
+    const { setDesktopMcpServerConfig } = await import('../services/desktop-mcp-config.store')
+    const settingsRepo = new SettingsRepository(getAppDb())
+    await setDesktopMcpServerConfig(nextConfig, settingsRepo, () => settingsManager.flushToDisk())
     const { applyMcpServerConfig } = await import('../services/mcp-runtime')
     await applyMcpServerConfig(nextConfig)
     return nextConfig
@@ -108,11 +113,16 @@ export function registerSettingsAppIPC() {
   })
 
   ipcMain.handle('settings:get-hotkey-config', async () => {
-    return (await settingsManager.get<any>('hotkey_config')) || null
+    const { getDesktopHotkeyConfig } = await import('../services/desktop-hotkey-config.store')
+    return getDesktopHotkeyConfig()
   })
 
   ipcMain.handle('settings:set-hotkey-config', async (_, config: any) => {
-    await settingsManager.set('hotkey_config', config)
+    const { SettingsRepository } = await import('@baishou/database-desktop')
+    const { getAppDb } = await import('../db')
+    const { setDesktopHotkeyConfig } = await import('../services/desktop-hotkey-config.store')
+    const settingsRepo = new SettingsRepository(getAppDb())
+    await setDesktopHotkeyConfig(config, settingsRepo, () => settingsManager.flushToDisk())
     const { getHotkeyService } = await import('./settings.ipc')
     const service = getHotkeyService()
     if (service) {
