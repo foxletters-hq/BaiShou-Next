@@ -66,6 +66,7 @@ export interface SettingsActions {
   setSummaryConfig: (config: SummaryConfig) => Promise<void>
   setToolManagementConfig: (config: ToolManagementConfig) => Promise<void>
   setMcpServerConfig: (config: McpServerConfig) => Promise<void>
+  refreshMcpAuthToken: () => Promise<McpServerConfig | void>
   setHotkeyConfig: (config: HotkeyConfig) => Promise<void>
   setCloudSyncConfig: (config: any) => Promise<void>
 }
@@ -350,6 +351,13 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
           set({ mcpServerConfig: config })
           if (typeof window !== 'undefined' && (window as any).api?.settings) {
             const saved = await (window as any).api.settings.setMcpServerConfig(config)
+            if (saved) set({ mcpServerConfig: saved })
+          }
+        },
+
+        refreshMcpAuthToken: async () => {
+          if (typeof window !== 'undefined' && (window as any).api?.settings?.refreshMcpAuthToken) {
+            const saved = await (window as any).api.settings.refreshMcpAuthToken()
             if (saved) set({ mcpServerConfig: saved })
           }
         },

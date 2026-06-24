@@ -99,6 +99,20 @@ export function registerSettingsAppIPC() {
     return nextConfig
   })
 
+  ipcMain.handle('settings:refresh-mcp-auth-token', async () => {
+    const { refreshDesktopMcpAuthToken, setDesktopMcpServerConfig } = await import(
+      '../services/desktop-mcp-config.store'
+    )
+    const { SettingsRepository } = await import('@baishou/database-desktop')
+    const { getAppDb } = await import('../db')
+    const nextConfig = await refreshDesktopMcpAuthToken()
+    const settingsRepo = new SettingsRepository(getAppDb())
+    await setDesktopMcpServerConfig(nextConfig, settingsRepo, () => settingsManager.flushToDisk())
+    const { applyMcpServerConfig } = await import('../services/mcp-runtime')
+    await applyMcpServerConfig(nextConfig)
+    return nextConfig
+  })
+
   ipcMain.handle('settings:get-mcp-tools', async () => {
     const { toolRegistry, buildMcpToolContext } = await import('./agent-helpers')
     if (!toolRegistry) return []

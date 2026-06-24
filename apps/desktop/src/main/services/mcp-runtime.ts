@@ -1,7 +1,6 @@
 import type { McpServerConfig } from '@baishou/shared'
-import { SettingsRepository } from '@baishou/database-desktop'
 import { logger } from '@baishou/shared'
-import { getAppDb } from '../db'
+import { getDesktopMcpServerConfig } from './desktop-mcp-config.store'
 import { toolRegistry } from '../ipc/agent-helpers'
 import { McpService } from './mcp.service'
 
@@ -10,8 +9,7 @@ let lastApplied: McpServerConfig | null = null
 
 function ensureMcpService(): McpService {
   if (!mcpService) {
-    const settingsRepo = new SettingsRepository(getAppDb())
-    mcpService = new McpService(settingsRepo, toolRegistry)
+    mcpService = new McpService(toolRegistry)
   }
   return mcpService
 }
@@ -55,8 +53,7 @@ export async function applyMcpServerConfig(config: McpServerConfig): Promise<voi
 
 /** Start MCP on app boot when enabled in settings. */
 export async function bootstrapMcpServer(): Promise<void> {
-  const settingsRepo = new SettingsRepository(getAppDb())
-  const config = await settingsRepo.getMcpServerConfig()
+  const config = await getDesktopMcpServerConfig()
   ensureMcpService()
   await applyMcpServerConfig(config)
 }
