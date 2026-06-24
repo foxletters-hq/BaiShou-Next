@@ -115,6 +115,13 @@ export const ttsProviderSettingsStyles = StyleSheet.create({
     gap: 8,
     alignItems: 'center'
   },
+  testInputWrap: {
+    flex: 1,
+    minWidth: 0
+  },
+  testButtonWrap: {
+    flexShrink: 0
+  },
   refAudioPickButtonContent: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -129,9 +136,6 @@ export const ttsProviderSettingsStyles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     marginTop: 8
-  },
-  testInput: {
-    flex: 1
   },
   saveActions: {
     flexDirection: 'row',

@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { ScrollView } from 'react-native'
 import {
   applyTtsSaveToGlobalModels,
   buildTtsProviderStatesFromGlobal,
@@ -10,7 +9,10 @@ import {
   TTSProviderSettings,
   type ProviderLocalState,
   type TtsProviderConfig,
-  useNativeToast
+  useNativeToast,
+  KeyboardAwareScrollView,
+  scrollIndicatorStyle,
+  useNativeTheme
 } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { synthesizeTtsFromForm } from '../../../services/mobile-tts-synthesize'
@@ -26,6 +28,7 @@ export interface TTSSettingsSectionProps {
 
 export const TTSSettingsSection: React.FC<TTSSettingsSectionProps> = ({ providerId }) => {
   const toast = useNativeToast()
+  const { colors, isDark } = useNativeTheme()
   const { services, dbReady } = useBaishou()
   const [activeProviderId, setActiveProviderId] = useState(providerId)
   const [initialConfig, setInitialConfig] = useState<Partial<TtsProviderConfig> | undefined>()
@@ -102,8 +105,10 @@ export const TTSSettingsSection: React.FC<TTSSettingsSectionProps> = ({ provider
   if (!configReady) return null
 
   return (
-    <ScrollView
+    <KeyboardAwareScrollView
       style={{ flex: 1 }}
+      contentContainerStyle={{ paddingBottom: 24 }}
+      indicatorStyle={scrollIndicatorStyle(isDark)}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
@@ -131,6 +136,6 @@ export const TTSSettingsSection: React.FC<TTSSettingsSectionProps> = ({ provider
           }}
         />
       </SettingsGroupCard>
-    </ScrollView>
+    </KeyboardAwareScrollView>
   )
 }

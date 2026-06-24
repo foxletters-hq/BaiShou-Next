@@ -179,23 +179,28 @@ export const TtsTestSection: React.FC<TtsTestSectionProps> = ({
           {t('tts.settings.test_label')}
         </Text>
         <View style={styles.testRow}>
-          <Input
-            style={[styles.input, styles.testInput]}
-            value={testText}
-            onChangeText={onTestTextChange}
-            placeholder={t('tts.settings.test_placeholder')}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          <Button
-            variant="outline"
-            onPress={onTest}
-            isLoading={testing}
-            isDisabled={!canTest || testing}
-            className="min-w-[72px] px-3.5"
-          >
-            {testing ? t('tts.settings.testing') : t('tts.settings.test_button')}
-          </Button>
+          <View style={styles.testInputWrap}>
+            <Input
+              style={styles.input}
+              className="min-w-0 w-full"
+              value={testText}
+              onChangeText={onTestTextChange}
+              placeholder={t('tts.settings.test_placeholder')}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+          <View style={styles.testButtonWrap}>
+            <Button
+              variant="outline"
+              onPress={onTest}
+              isLoading={testing}
+              isDisabled={!canTest || testing}
+              className="min-w-[72px] px-3.5"
+            >
+              {testing ? t('tts.settings.testing') : t('tts.settings.test_button')}
+            </Button>
+          </View>
         </View>
       </View>
     </View>
