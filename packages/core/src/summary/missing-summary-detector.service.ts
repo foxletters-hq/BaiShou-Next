@@ -87,11 +87,8 @@ export class MissingSummaryDetector {
       )
 
       if (hasEntry) {
-        const hasSummary = existingSummaries.some(
-          (s) =>
-            s.startDate.getFullYear() === currentStart.getFullYear() &&
-            s.startDate.getMonth() === currentStart.getMonth() &&
-            s.startDate.getDate() === currentStart.getDate()
+        const hasSummary = existingSummaries.some((s) =>
+          this.summaryCoversWeek(s, currentStart, currentEnd)
         )
 
         if (!hasSummary) {
@@ -116,6 +113,14 @@ export class MissingSummaryDetector {
       if (currentStart.getFullYear() > now.getFullYear() + 1) break // safenet
     }
     return missing
+  }
+
+  /** 周记文件名常为周内任意一天（如 2026-01-13），与按周一对齐的检测周做区间重叠判断 */
+  private summaryCoversWeek(summary: Summary, weekStart: Date, weekEnd: Date): boolean {
+    return (
+      summary.startDate.getTime() <= weekEnd.getTime() &&
+      summary.endDate.getTime() >= weekStart.getTime()
+    )
   }
 
   private getMissingMonthly(

@@ -1,16 +1,12 @@
 import type { IFileSystem } from '../fs/file-system.types'
 import * as path from '../fs/path.util'
 import { SummaryType } from '@baishou/shared'
-
-const SUMMARY_TYPE_DIRS = ['Weekly', 'Monthly', 'Quarterly', 'Yearly'] as const
 const YEAR_DIR_NAME = /^\d{4}$/
 
 /** Weekly / Monthly / Quarterly 支持 Archives/{Type}/{YYYY}/*.md 一层年份子目录 */
 export function summaryTypeSupportsYearSubdir(type: SummaryType): boolean {
   return (
-    type === SummaryType.weekly ||
-    type === SummaryType.monthly ||
-    type === SummaryType.quarterly
+    type === SummaryType.weekly || type === SummaryType.monthly || type === SummaryType.quarterly
   )
 }
 
@@ -114,17 +110,49 @@ export async function listMarkdownInSummaryTypeDir(
 }
 
 /** 统计 Archives 树下各类型子目录中的总结 Markdown 数量 */
+export type SummaryArchivesMarkdownCounts = {
+  total: number
+  weekly: number
+  monthly: number
+  quarterly: number
+  yearly: number
+}
+
+export async function countSummaryMarkdownInArchivesTreeByType(
+  fileSystem: IFileSystem,
+  archivesBase: string
+): Promise<SummaryArchivesMarkdownCounts> {
+  const counts: SummaryArchivesMarkdownCounts = {
+    total: 0,
+    weekly: 0,
+    monthly: 0,
+    quarterly: 0,
+    yearly: 0
+  }
+  if (!(await fileSystem.exists(archivesBase))) return counts
+
+  const typeKeys = [
+    ['Weekly', 'weekly'],
+    ['Monthly', 'monthly'],
+    ['Quarterly', 'quarterly'],
+    ['Yearly', 'yearly']
+  ] as const
+
+  for (const [dirName, key] of typeKeys) {
+    const typeDir = path.join(archivesBase, dirName)
+    const files = await listMarkdownInSummaryTypeDir(fileSystem, typeDir)
+    counts[key] = files.length
+    counts.total += files.length
+  }
+
+  return counts
+}
+
+/** 统计 Archives 树下各类型子目录中的总结 Markdown 数量 */
 export async function countSummaryMarkdownInArchivesTree(
   fileSystem: IFileSystem,
   archivesBase: string
 ): Promise<number> {
-  if (!(await fileSystem.exists(archivesBase))) return 0
-
-  let count = 0
-  for (const typeDirName of SUMMARY_TYPE_DIRS) {
-    const typeDir = path.join(archivesBase, typeDirName)
-    const files = await listMarkdownInSummaryTypeDir(fileSystem, typeDir)
-    count += files.length
-  }
-  return count
+  const counts = await countSummaryMarkdownInArchivesTreeByType(fileSystem, archivesBase)
+  return counts.total
 }

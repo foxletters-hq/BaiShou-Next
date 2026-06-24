@@ -134,4 +134,24 @@ describe('MissingSummaryDetector', () => {
 
     vi.useRealTimers()
   })
+
+  it('should treat weekly summary with non-Monday startDate as covering that calendar week', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-01-20T12:00:00Z'))
+
+    const diaries = [makeDiary('2026-01-13T12:00:00Z')]
+    const existingWeekly = makeSummary(
+      SummaryType.weekly,
+      '2026-01-13T00:00:00',
+      '2026-01-19T23:59:59'
+    )
+
+    const detector = new MissingSummaryDetector({} as any, {} as any)
+    const missing = (detector as any).detectMissing(diaries, [existingWeekly], 'zh')
+    const weeklies = missing.filter((m: any) => m.type === SummaryType.weekly)
+
+    expect(weeklies).toHaveLength(0)
+
+    vi.useRealTimers()
+  })
 })
