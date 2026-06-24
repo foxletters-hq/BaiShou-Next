@@ -7,6 +7,7 @@ import { Input } from '../Input/Input'
 import { Switch } from '../Switch'
 import { settingsHubListStyles as hubStyles } from '../settings/settings-hub.styles'
 import { HelpTooltip } from '../Tooltip/HelpTooltip'
+import { buildMcpClientJsonExample } from '../../shared/mcp-client-config.util'
 
 export interface NativeMcpSettingsCardProps {
   config: McpServerConfig
@@ -141,31 +142,13 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
           1.{' '}
           {t(
             'settings.mcp_help_cursor_1',
-            '打开 Cursor 设置 → Features → MCP（或编辑项目/全局 mcp.json）。'
+            '打开或创建 Cursor 全局配置文件（Windows：%USERPROFILE%\\.cursor\\mcp.json，macOS/Linux：~/.cursor/mcp.json）。'
           )}
           {'\n'}
           2.{' '}
           {t(
             'settings.mcp_help_cursor_2',
-            '添加服务器，将 url 设为上方连接地址，保存后重启 Cursor 或刷新 MCP 列表。'
-          )}
-        </Text>
-      </View>
-      <View style={{ gap: 4 }}>
-        <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary }}>
-          {t('settings.mcp_help_json_title', 'JSON 配置客户端')}
-        </Text>
-        <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>
-          1.{' '}
-          {t(
-            'settings.mcp_help_json_1',
-            '在客户端的 MCP 设置中打开 JSON 配置，于 mcpServers 中新增服务器。'
-          )}
-          {'\n'}
-          2.{' '}
-          {t(
-            'settings.mcp_help_json_2',
-            '将 type 设为 streamableHttp，baseUrl 设为上方连接地址（必须以 /mcp 结尾）。'
+            '将下方配置粘贴到 mcpServers 中（url 请使用上方连接地址），保存后重启 Cursor 或刷新 MCP 列表。'
           )}
         </Text>
         <Text
@@ -180,14 +163,7 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
             marginTop: 4
           }}
         >
-          {`{
-  "mcpServers": {
-    "baishou": {
-      "type": "streamableHttp",
-      "baseUrl": "${mcpEndpointUrl}"
-    }
-  }
-}`}
+          {buildMcpClientJsonExample(mcpEndpointUrl)}
         </Text>
       </View>
       <Text style={{ fontSize: 12, color: colors.textTertiary, fontStyle: 'italic', marginTop: 4 }}>

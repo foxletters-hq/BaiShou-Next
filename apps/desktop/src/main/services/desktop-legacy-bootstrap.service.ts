@@ -1,5 +1,5 @@
 import * as fs from 'fs/promises'
-import { join } from 'path'
+import { dirname, join, resolve } from 'path'
 import { app } from 'electron'
 import { logger } from '@baishou/shared'
 import {
@@ -20,6 +20,43 @@ export interface DesktopLegacyBootstrapResult {
   storageRoot: string
   needsOnboarding: boolean
   migrated: boolean
+}
+
+interface DesktopSettingsFile {
+  custom_storage_root?: string
+}
+
+function normalizeComparablePath(filePath: string): string {
+  return resolve(filePath).replace(/\\/g, '/').replace(/\/$/, '').toLowerCase()
+}
+
+export function resolveLegacyDesktopSettingsCandidates(appDataDir: string): string[] {
+  return [
+    // Older Electron builds used the package name (@baishou/desktop) as app name/userData.
+    join(appDataDir, '@baishou', 'desktop', 'baishou_settings.json')
+  ]
+}
+
+async function readStorageRootFromSettingsFile(settingsPath: string): Promise<string | null> {
+  try {
+    const data = await fs.readFile(settingsPath, 'utf-8')
+    const settings = JSON.parse(data) as DesktopSettingsFile
+    return settings.custom_storage_root?.trim() || null
+  } catch {
+    return null
+  }
+}
+
+async function recoverStorageRootFromLegacyDesktopSettings(
+  settingsPath: string
+): Promise<string | null> {
+  const currentSettingsPath = normalizeComparablePath(settingsPath)
+  for (const candidate of resolveLegacyDesktopSettingsCandidates(app.getPath('appData'))) {
+    if (normalizeComparablePath(candidate) === currentSettingsPath) continue
+    const root = await readStorageRootFromSettingsFile(candidate)
+    if (root) return root
+  }
+  return null
 }
 
 async function runLegacyMigration(targetDir: string): Promise<void> {
@@ -45,15 +82,27 @@ export async function resolveDesktopStorageBootstrap(
   let customStorageRoot = ''
   let needsOnboarding = true
 
-  try {
-    const data = await fs.readFile(settingsPath, 'utf-8')
-    const settings = JSON.parse(data) as { custom_storage_root?: string }
-    if (settings.custom_storage_root?.trim()) {
-      customStorageRoot = settings.custom_storage_root.trim()
+  const persistStorageRoot = async (root: string) => {
+    await fs.mkdir(dirname(settingsPath), { recursive: true })
+    await fs.writeFile(
+      settingsPath,
+      JSON.stringify({ custom_storage_root: root }, null, 2),
+      'utf-8'
+    )
+  }
+
+  const existingRoot = await readStorageRootFromSettingsFile(settingsPath)
+  if (existingRoot) {
+    customStorageRoot = existingRoot
+    needsOnboarding = false
+  } else {
+    const recoveredRoot = await recoverStorageRootFromLegacyDesktopSettings(settingsPath)
+    if (recoveredRoot) {
+      customStorageRoot = recoveredRoot
       needsOnboarding = false
+      await persistStorageRoot(recoveredRoot)
+      logger.info('[DesktopLegacyBootstrap] Recovered storage root from legacy desktop settings')
     }
-  } catch {
-    // no settings yet
   }
 
   const legacyCandidates = await resolveLegacyRootCandidates()
@@ -65,14 +114,6 @@ export async function resolveDesktopStorageBootstrap(
   }
 
   const isWorkspaceMigrationDone = async (root: string) => isMigrationCompleted(fileSystem, root)
-
-  const persistStorageRoot = async (root: string) => {
-    await fs.writeFile(
-      settingsPath,
-      JSON.stringify({ custom_storage_root: root }, null, 2),
-      'utf-8'
-    )
-  }
 
   try {
     if (customStorageRoot) {

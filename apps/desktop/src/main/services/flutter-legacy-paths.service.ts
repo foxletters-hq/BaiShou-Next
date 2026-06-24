@@ -276,6 +276,13 @@ export function resolveFlutterDocumentsAvatarsDir(): string {
   return join(app.getPath('documents'), 'avatars')
 }
 
+async function hasNextWorkspaceMarkers(sourceDir: string): Promise<boolean> {
+  return (
+    existsSync(join(sourceDir, 'vault_registry.json')) ||
+    existsSync(join(sourceDir, 'baishou_agent.db'))
+  )
+}
+
 /**
  * 探测旧版 Flutter 工作区根目录候选（自定义路径优先，其次默认 Documents）。
  */
@@ -297,6 +304,9 @@ export async function resolveLegacyRootCandidates(): Promise<string[]> {
     if (seen.has(normalized)) continue
     seen.add(normalized)
     try {
+      // Root-level Next markers mean this path is already a BaiShou Next workspace.
+      // Do not let stale Flutter shared_preferences re-adopt it as a legacy root.
+      if (await hasNextWorkspaceMarkers(candidate)) continue
       if (await isLegacyAppRoot(fileSystem, candidate)) {
         unique.push(candidate)
       }

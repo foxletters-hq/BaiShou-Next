@@ -228,7 +228,7 @@ export const DiaryTemplateSettingsSection: React.FC = () => {
         <Text style={[styles.varsHint, { color: colors.textSecondary }]}>
           {t(
             'settings.diary_template_vars_hint',
-            '可用变量：{time} 当前时间 (HH:mm:ss)，{date} 日期 (yyyy-MM-dd)，{datetime} 完整日期时间'
+            '可用变量：{time} 当前时间 (HH:mm)，{date} 日期 (yyyy-MM-dd)，{datetime} 完整日期时间 (yyyy-MM-dd HH:mm)'
           )}
         </Text>
 
