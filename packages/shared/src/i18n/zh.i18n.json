@@ -2333,6 +2333,7 @@
     "external_summaries_default": "使用工作区内 Archives",
     "external_summaries_hint": "本机读写位置，不会同步到其他设备。云端以工作区虚拟路径 Personal/Archives 为准；需包含 Weekly/Monthly/Quarterly/Yearly 子目录。",
     "external_summaries_scan_count": "已识别 {{count}} 篇总结 Markdown",
+    "external_summaries_scan_breakdown": "其中周记 {{weekly}} · 月记 {{monthly}} · 季报 {{quarterly}} · 年记 {{yearly}}",
     "external_summaries_pick": "选择总结目录",
     "external_summaries_clear": "恢复默认目录",
     "external_summaries_confirm": "将把当前工作区的总结读写指向所选文件夹（不会移动或删除原文件）。是否继续？",

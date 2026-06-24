@@ -32,7 +32,7 @@ import {
   enterAgentMigrationArchiveImport,
   exitAgentMigrationArchiveImport
 } from '@baishou/database-desktop'
-import { getAppDb } from '../db'
+import { getAppDb, resetAppDb } from '../db'
 import { DesktopStoragePathService } from './path.service'
 import { ZipExporter, ARCHIVE_USER_AVATARS_ZIP_PREFIX } from './ZipExporter'
 import { MetadataMigrator } from './MetadataMigrator'
@@ -142,6 +142,7 @@ export class DesktopArchiveService implements IArchiveService {
       }
 
       await connectionManager.disconnect()
+      resetAppDb()
       try {
         await shadowConnectionManager.disconnect()
       } catch (e: any) {
@@ -465,14 +466,26 @@ export class DesktopArchiveService implements IArchiveService {
       logger.error('Failed to rebind summary cache after import:', e)
     }
 
-    const { globalBootstrapper } = await import('./bootstrapper.service')
-    await globalBootstrapper.fullyResyncAllEcosystems()
+    this.scheduleBootstrapResyncAfterImport()
 
     return {
       fileCount: -1,
       profileRestored: true,
       snapshotPath
     }
+  }
+
+  private scheduleBootstrapResyncAfterImport(): void {
+    void (async () => {
+      try {
+        const { globalBootstrapper } = await import('./bootstrapper.service')
+        await globalBootstrapper.fullyResyncAllEcosystems()
+      } catch (e: unknown) {
+        logger.error('[ArchiveService] Background resync after import failed:', {
+          error: e instanceof Error ? e.message : String(e)
+        })
+      }
+    })()
   }
 
   public async listSnapshots(): Promise<{ filename: string; createdAt: number; size: number }[]> {

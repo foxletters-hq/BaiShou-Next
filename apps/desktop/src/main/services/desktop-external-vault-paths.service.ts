@@ -2,7 +2,8 @@ import * as fs from 'fs/promises'
 import * as path from 'path'
 import {
   countJournalMarkdownInTree,
-  countSummaryMarkdownInArchivesTree
+  countSummaryMarkdownInArchivesTreeByType,
+  type SummaryArchivesMarkdownCounts
 } from '@baishou/core/shared'
 import { fileSystem } from './node-file-system'
 import { pathService, vaultService } from '../ipc/vault.ipc'
@@ -47,7 +48,10 @@ export type ExternalJournalsValidation =
   | { valid: false; code: 'NOT_DIRECTORY' | 'NOT_ACCESSIBLE' | 'NOT_WRITABLE' }
 
 export type ExternalSummariesValidation =
-  | ({ valid: true; path: string } & { summaryFileCount: number })
+  | ({ valid: true; path: string } & {
+      summaryFileCount: number
+      summaryFileCounts: SummaryArchivesMarkdownCounts
+    })
   | { valid: false; code: 'NOT_DIRECTORY' | 'NOT_ACCESSIBLE' | 'NOT_WRITABLE' }
 
 export async function validateExternalJournalsDirectory(
@@ -64,8 +68,16 @@ export async function validateExternalSummariesDirectory(
 ): Promise<ExternalSummariesValidation> {
   const base = await validateExternalDirectory(targetPath)
   if (!base.valid) return base
-  const summaryFileCount = await countSummaryMarkdownInArchivesTree(vaultFileSystem, base.path)
-  return { valid: true, path: base.path, summaryFileCount }
+  const summaryFileCounts = await countSummaryMarkdownInArchivesTreeByType(
+    vaultFileSystem,
+    base.path
+  )
+  return {
+    valid: true,
+    path: base.path,
+    summaryFileCount: summaryFileCounts.total,
+    summaryFileCounts
+  }
 }
 
 async function refreshVaultFileWatchersAndResync(reason: string): Promise<void> {
@@ -162,6 +174,7 @@ export async function getExternalSummariesDirectoryInfo(): Promise<{
   path: string | null
   defaultPath: string
   summaryFileCount: number
+  summaryFileCounts: SummaryArchivesMarkdownCounts
   pathAvailableOnDevice: boolean
 }> {
   const active = vaultService.getActiveVault()
@@ -171,14 +184,21 @@ export async function getExternalSummariesDirectoryInfo(): Promise<{
   const defaultPath = vaultDir ? path.join(vaultDir, 'Archives') : ''
   const external = await pathService.getExternalSummariesDirectory(active?.name)
   const scanDir = external ?? defaultPath
-  const summaryFileCount = scanDir
-    ? await countSummaryMarkdownInArchivesTree(vaultFileSystem, scanDir).catch(() => 0)
-    : 0
+  const summaryFileCounts = scanDir
+    ? await countSummaryMarkdownInArchivesTreeByType(vaultFileSystem, scanDir).catch(() => ({
+        total: 0,
+        weekly: 0,
+        monthly: 0,
+        quarterly: 0,
+        yearly: 0
+      }))
+    : { total: 0, weekly: 0, monthly: 0, quarterly: 0, yearly: 0 }
   const pathAvailableOnDevice = await isExternalPathAvailableOnDevice(external)
   return {
     path: external,
     defaultPath,
-    summaryFileCount,
+    summaryFileCount: summaryFileCounts.total,
+    summaryFileCounts,
     pathAvailableOnDevice
   }
 }

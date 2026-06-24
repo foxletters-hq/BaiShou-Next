@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow } from 'electron'
+import { ipcMain, BrowserWindow, dialog } from 'electron'
 import { app } from 'electron'
 import fs from 'fs'
 import path from 'path'
@@ -10,6 +10,32 @@ import {
   validateStorageTarget,
   type StorageTargetValidation
 } from '../services/desktop-storage-directory.service'
+import {
+  applyExternalJournalsDirectory,
+  applyExternalSummariesDirectory,
+  getExternalJournalsDirectoryInfo,
+  getExternalSummariesDirectoryInfo,
+  validateExternalJournalsDirectory,
+  validateExternalSummariesDirectory
+} from '../services/desktop-external-vault-paths.service'
+
+function broadcastStorageEvent(channel: string): void {
+  for (const window of BrowserWindow.getAllWindows()) {
+    window.webContents.send(channel)
+  }
+}
+
+async function pickExternalVaultDirectory(window?: BrowserWindow | null): Promise<string | null> {
+  const options = {
+    title: 'Select External Directory',
+    properties: ['openDirectory', 'createDirectory'] as ('openDirectory' | 'createDirectory')[]
+  }
+  const result = window
+    ? await dialog.showOpenDialog(window, options)
+    : await dialog.showOpenDialog(options)
+  if (result.canceled || result.filePaths.length === 0) return null
+  return result.filePaths[0]?.trim() || null
+}
 
 export function registerStorageIPC() {
   ipcMain.handle('storage:getStats', async () => {
@@ -84,5 +110,59 @@ export function registerStorageIPC() {
 
   ipcMain.handle('storage:vacuumDb', async () => {
     return true
+  })
+
+  ipcMain.handle('storage:getExternalJournalsInfo', async () => {
+    return getExternalJournalsDirectoryInfo()
+  })
+
+  ipcMain.handle('storage:pickExternalJournalsDirectory', async (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    return pickExternalVaultDirectory(window)
+  })
+
+  ipcMain.handle('storage:setExternalJournalsDirectory', async (_, targetPath: string) => {
+    const validation = await validateExternalJournalsDirectory(targetPath)
+    if (!validation.valid) {
+      throw new Error(validation.code)
+    }
+    await applyExternalJournalsDirectory(validation.path)
+    broadcastStorageEvent('storage:journals-path-changed')
+    return { ok: true as const, journalFileCount: validation.journalFileCount }
+  })
+
+  ipcMain.handle('storage:clearExternalJournalsDirectory', async () => {
+    await applyExternalJournalsDirectory(null)
+    broadcastStorageEvent('storage:journals-path-changed')
+    return { ok: true as const }
+  })
+
+  ipcMain.handle('storage:getExternalSummariesInfo', async () => {
+    return getExternalSummariesDirectoryInfo()
+  })
+
+  ipcMain.handle('storage:pickExternalSummariesDirectory', async (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    return pickExternalVaultDirectory(window)
+  })
+
+  ipcMain.handle('storage:setExternalSummariesDirectory', async (_, targetPath: string) => {
+    const validation = await validateExternalSummariesDirectory(targetPath)
+    if (!validation.valid) {
+      throw new Error(validation.code)
+    }
+    await applyExternalSummariesDirectory(validation.path)
+    broadcastStorageEvent('storage:summaries-path-changed')
+    return {
+      ok: true as const,
+      summaryFileCount: validation.summaryFileCount,
+      summaryFileCounts: validation.summaryFileCounts
+    }
+  })
+
+  ipcMain.handle('storage:clearExternalSummariesDirectory', async () => {
+    await applyExternalSummariesDirectory(null)
+    broadcastStorageEvent('storage:summaries-path-changed')
+    return { ok: true as const }
   })
 }

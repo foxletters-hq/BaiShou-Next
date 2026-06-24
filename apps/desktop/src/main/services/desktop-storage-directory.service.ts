@@ -5,7 +5,11 @@ import {
   validateStorageDirectoryWritable
 } from '@baishou/core-desktop'
 import { isPathInsideStorageRoot, isSameStorageRoot, logger } from '@baishou/shared'
-import { shadowConnectionManager } from '@baishou/database-desktop'
+import {
+  connectionManager,
+  installDatabaseSchema,
+  shadowConnectionManager
+} from '@baishou/database-desktop'
 import { pathService, vaultService, connectGlobalShadowDb } from '../ipc/vault.ipc'
 import { fileSystem } from './node-file-system'
 import { settingsManager } from '../ipc/settings.ipc'
@@ -16,6 +20,7 @@ import { resetSyncService } from '../ipc/incremental-sync.ipc'
 import { resetGitService } from '../ipc/git-sync.ipc'
 import { getMcpService, bootstrapMcpServer } from './mcp-runtime'
 import { resolvePickedStorageDirectory } from './desktop-legacy-bootstrap.service'
+import { getAppDb, resetAppDb } from '../db'
 
 export type StorageTargetValidationCode =
   | 'SAME_PATH'
@@ -30,9 +35,16 @@ export type StorageTargetValidation =
 let quiesceDepth = 0
 let mcpWasRunningBeforeQuiesce = false
 
-export async function pickStorageDirectory(
-  window?: BrowserWindow | null
-): Promise<string | null> {
+export async function reconnectAgentDbForCurrentStorageRoot(): Promise<void> {
+  const storageRoot = await pathService.getRootDirectory()
+  resetAppDb()
+  const db = getAppDb(storageRoot)
+  connectionManager.setDb(db)
+  await installDatabaseSchema(db)
+  logger.info('[StorageDirectory] Agent DB reconnected for storage root:', storageRoot)
+}
+
+export async function pickStorageDirectory(window?: BrowserWindow | null): Promise<string | null> {
   const dialogOptions = {
     title: 'Select Data Root Directory',
     properties: ['openDirectory', 'createDirectory'] as ('openDirectory' | 'createDirectory')[]
@@ -107,6 +119,7 @@ export async function resumeStorageAfterFileCopy(): Promise<void> {
   quiesceDepth -= 1
   if (quiesceDepth > 0) return
 
+  await reconnectAgentDbForCurrentStorageRoot()
   await vaultService.initRegistry()
   await connectGlobalShadowDb()
 

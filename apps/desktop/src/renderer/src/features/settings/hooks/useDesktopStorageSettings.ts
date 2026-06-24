@@ -1,9 +1,14 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { useDialog, useToast } from '@baishou/ui'
 
-type StorageBusyState = 'idle' | 'migrating' | 'switching'
+type StorageBusyState =
+  | 'idle'
+  | 'migrating'
+  | 'switching'
+  | 'external-journals'
+  | 'external-summaries'
 
 type StorageTargetValidation =
   | { valid: true; sourceRoot: string; hasData: boolean }
@@ -42,12 +47,24 @@ function getStorageApi() {
           path: string | null
           defaultPath: string
           summaryFileCount: number
+          summaryFileCounts?: {
+            weekly: number
+            monthly: number
+            quarterly: number
+            yearly: number
+          }
           pathAvailableOnDevice?: boolean
         }>
         pickExternalSummariesDirectory?: () => Promise<string | null>
         setExternalSummariesDirectory?: (targetPath: string) => Promise<{
           ok: boolean
           summaryFileCount?: number
+          summaryFileCounts?: {
+            weekly: number
+            monthly: number
+            quarterly: number
+            yearly: number
+          }
         }>
         clearExternalSummariesDirectory?: () => Promise<{ ok: boolean }>
         onSummariesPathChanged?: (cb: () => void) => () => void
@@ -84,9 +101,19 @@ export function useDesktopStorageSettings(onStatsRefresh?: () => Promise<void>) 
   const [externalSummariesFileCount, setExternalSummariesFileCount] = useState<number | undefined>(
     undefined
   )
+  const [externalSummariesFileCounts, setExternalSummariesFileCounts] = useState<
+    | {
+        weekly: number
+        monthly: number
+        quarterly: number
+        yearly: number
+      }
+    | undefined
+  >(undefined)
   const [externalSummariesPathAvailable, setExternalSummariesPathAvailable] = useState(true)
   const [storageBusy, setStorageBusy] = useState<StorageBusyState>('idle')
   const [migrationProgress, setMigrationProgress] = useState('')
+  const suppressExternalPathRefreshRef = useRef(false)
 
   const refreshStorageInfo = useCallback(async () => {
     try {
@@ -106,6 +133,7 @@ export function useDesktopStorageSettings(onStatsRefresh?: () => Promise<void>) 
         setExternalSummariesPath(summariesInfo.path)
         setExternalSummariesDefaultPath(summariesInfo.defaultPath)
         setExternalSummariesFileCount(summariesInfo.summaryFileCount)
+        setExternalSummariesFileCounts(summariesInfo.summaryFileCounts)
         setExternalSummariesPathAvailable(summariesInfo.pathAvailableOnDevice ?? true)
       }
       if (onStatsRefresh) {
@@ -140,6 +168,7 @@ export function useDesktopStorageSettings(onStatsRefresh?: () => Promise<void>) 
     if (api?.onJournalsPathChanged) {
       unsubs.push(
         api.onJournalsPathChanged(() => {
+          if (suppressExternalPathRefreshRef.current) return
           void refreshStorageInfo()
         })
       )
@@ -147,6 +176,7 @@ export function useDesktopStorageSettings(onStatsRefresh?: () => Promise<void>) 
     if (api?.onSummariesPathChanged) {
       unsubs.push(
         api.onSummariesPathChanged(() => {
+          if (suppressExternalPathRefreshRef.current) return
           void refreshStorageInfo()
         })
       )
@@ -352,8 +382,15 @@ export function useDesktopStorageSettings(onStatsRefresh?: () => Promise<void>) 
     )
     if (!confirmed) return
 
+    setStorageBusy('external-journals')
+    suppressExternalPathRefreshRef.current = true
     try {
       const result = await api?.setExternalJournalsDirectory?.(picked)
+      setExternalJournalsPath(picked)
+      setExternalJournalsPathAvailable(true)
+      if (typeof result?.journalFileCount === 'number') {
+        setExternalJournalsFileCount(result.journalFileCount)
+      }
       await refreshStorageInfo()
       const count = result?.journalFileCount
       toast.showSuccess(
@@ -365,6 +402,9 @@ export function useDesktopStorageSettings(onStatsRefresh?: () => Promise<void>) 
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
       toast.showError(mapExternalJournalsError(message))
+    } finally {
+      suppressExternalPathRefreshRef.current = false
+      setStorageBusy('idle')
     }
   }, [dialog, mapExternalJournalsError, refreshStorageInfo, t, toast])
 
@@ -382,8 +422,18 @@ export function useDesktopStorageSettings(onStatsRefresh?: () => Promise<void>) 
     )
     if (!confirmed) return
 
+    setStorageBusy('external-summaries')
+    suppressExternalPathRefreshRef.current = true
     try {
       const result = await api?.setExternalSummariesDirectory?.(picked)
+      setExternalSummariesPath(picked)
+      setExternalSummariesPathAvailable(true)
+      if (typeof result?.summaryFileCount === 'number') {
+        setExternalSummariesFileCount(result.summaryFileCount)
+      }
+      if (result?.summaryFileCounts) {
+        setExternalSummariesFileCounts(result.summaryFileCounts)
+      }
       await refreshStorageInfo()
       const count = result?.summaryFileCount
       toast.showSuccess(
@@ -395,6 +445,9 @@ export function useDesktopStorageSettings(onStatsRefresh?: () => Promise<void>) 
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
       toast.showError(mapExternalSummariesError(message))
+    } finally {
+      suppressExternalPathRefreshRef.current = false
+      setStorageBusy('idle')
     }
   }, [dialog, mapExternalSummariesError, refreshStorageInfo, t, toast])
 
@@ -408,8 +461,12 @@ export function useDesktopStorageSettings(onStatsRefresh?: () => Promise<void>) 
     )
     if (!confirmed) return
 
+    setStorageBusy('external-summaries')
+    suppressExternalPathRefreshRef.current = true
     try {
       await getStorageApi()?.clearExternalSummariesDirectory?.()
+      setExternalSummariesPath(null)
+      setExternalSummariesPathAvailable(true)
       await refreshStorageInfo()
       toast.showSuccess(t('storage.external_summaries_cleared', '已恢复默认总结目录'))
     } catch (e: unknown) {
@@ -420,6 +477,9 @@ export function useDesktopStorageSettings(onStatsRefresh?: () => Promise<void>) 
           defaultValue: `恢复失败：${message}`
         })
       )
+    } finally {
+      suppressExternalPathRefreshRef.current = false
+      setStorageBusy('idle')
     }
   }, [dialog, refreshStorageInfo, t, toast])
 
@@ -433,8 +493,12 @@ export function useDesktopStorageSettings(onStatsRefresh?: () => Promise<void>) 
     )
     if (!confirmed) return
 
+    setStorageBusy('external-journals')
+    suppressExternalPathRefreshRef.current = true
     try {
       await getStorageApi()?.clearExternalJournalsDirectory?.()
+      setExternalJournalsPath(null)
+      setExternalJournalsPathAvailable(true)
       await refreshStorageInfo()
       toast.showSuccess(t('storage.external_journals_cleared', '已恢复默认日记目录'))
     } catch (e: unknown) {
@@ -445,6 +509,9 @@ export function useDesktopStorageSettings(onStatsRefresh?: () => Promise<void>) 
           defaultValue: `恢复失败：${message}`
         })
       )
+    } finally {
+      suppressExternalPathRefreshRef.current = false
+      setStorageBusy('idle')
     }
   }, [dialog, refreshStorageInfo, t, toast])
 
@@ -452,16 +519,22 @@ export function useDesktopStorageSettings(onStatsRefresh?: () => Promise<void>) 
   const overlayMessage =
     storageBusy === 'switching'
       ? t('storage.switching_directory', '正在更换目录...')
-      : t('storage.migrating_data', '正在迁移数据...')
+      : storageBusy === 'external-journals'
+        ? t('storage.external_journals_applying', '正在切换外部日记目录...')
+        : storageBusy === 'external-summaries'
+          ? t('storage.external_summaries_applying', '正在切换外部总结目录...')
+          : t('storage.migrating_data', '正在迁移数据...')
   const overlayHint =
     storageBusy === 'switching'
       ? t('storage.switching_directory_hint', '请勿关闭应用')
-      : migrationProgress
-        ? t('storage.migrating_item', {
-            name: migrationProgress,
-            defaultValue: `正在复制：${migrationProgress}`
-          })
-        : t('storage.migrating_data_hint', '请勿关闭应用，原目录数据不会被删除')
+      : storageBusy === 'external-journals' || storageBusy === 'external-summaries'
+        ? t('storage.external_path_applying_hint', '正在扫描所选目录并重建索引，请勿关闭应用')
+        : migrationProgress
+          ? t('storage.migrating_item', {
+              name: migrationProgress,
+              defaultValue: `正在复制：${migrationProgress}`
+            })
+          : t('storage.migrating_data_hint', '请勿关闭应用，原目录数据不会被删除')
 
   return {
     storageRootPath,
@@ -472,6 +545,7 @@ export function useDesktopStorageSettings(onStatsRefresh?: () => Promise<void>) 
     externalSummariesPath,
     externalSummariesDefaultPath,
     externalSummariesFileCount,
+    externalSummariesFileCounts,
     externalSummariesPathAvailable,
     storageBusy,
     overlayVisible,
