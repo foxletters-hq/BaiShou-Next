@@ -1,4 +1,10 @@
-export const TTS_PROVIDER_IDS = ['openai-tts', 'mimo-tts', 'clone-tts', 'gpt-sovits'] as const
+export const TTS_PROVIDER_IDS = [
+  'openai-tts',
+  'mimo-tts',
+  'minimax-tts',
+  'clone-tts',
+  'gpt-sovits'
+] as const
 
 export type TtsProviderId = (typeof TTS_PROVIDER_IDS)[number]
 

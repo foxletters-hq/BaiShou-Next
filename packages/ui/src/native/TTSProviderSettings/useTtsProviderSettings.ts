@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next'
 import {
   MIMO_TTS_DEFAULT_MODELS,
   MIMO_TTS_VOICECLONE_MODEL_ID,
+  MINIMAX_TTS_DEFAULT_MODELS,
+  MINIMAX_TTS_DEFAULT_VOICE,
   isMimoVoiceCloneModel,
   normalizeRefAudioPath,
   parseRefAudioPick,
@@ -56,9 +58,11 @@ function buildTtsConfig(
         : voice.trim() ||
           (providerType === 'mimo-tts'
             ? defaultMimoVoice
-            : providerType === 'clone-tts' || providerType === 'gpt-sovits'
-              ? 'default'
-              : 'alloy'),
+            : providerType === 'minimax-tts'
+              ? MINIMAX_TTS_DEFAULT_VOICE
+              : providerType === 'clone-tts' || providerType === 'gpt-sovits'
+                ? 'default'
+                : 'alloy'),
     speed,
     responseFormat,
     availableModels,
@@ -117,6 +121,8 @@ export function useTtsProviderSettings({
           return t('tts.settings.provider_openai')
         case 'mimo-tts':
           return t('tts.settings.provider_mimo')
+        case 'minimax-tts':
+          return t('tts.settings.provider_minimax')
         case 'clone-tts':
           return t('tts.settings.provider_clone')
         case 'gpt-sovits':
@@ -134,6 +140,7 @@ export function useTtsProviderSettings({
     () => [
       { value: 'openai-tts', label: getProviderName('openai-tts') },
       { value: 'mimo-tts', label: getProviderName('mimo-tts') },
+      { value: 'minimax-tts', label: getProviderName('minimax-tts') },
       { value: 'clone-tts', label: getProviderName('clone-tts') },
       { value: 'gpt-sovits', label: getProviderName('gpt-sovits') }
     ],
@@ -152,12 +159,19 @@ export function useTtsProviderSettings({
   )
 
   const formatOptions = useMemo(
-    () => [
-      { value: 'mp3', label: 'MP3' },
-      { value: 'wav', label: 'WAV' },
-      { value: 'aac', label: 'AAC' }
-    ],
-    []
+    () =>
+      providerType === 'minimax-tts'
+        ? [
+            { value: 'mp3', label: 'MP3' },
+            { value: 'wav', label: 'WAV' },
+            { value: 'flac', label: 'FLAC' }
+          ]
+        : [
+            { value: 'mp3', label: 'MP3' },
+            { value: 'wav', label: 'WAV' },
+            { value: 'aac', label: 'AAC' }
+          ],
+    [providerType]
   )
 
   useEffect(() => {
@@ -225,6 +239,7 @@ export function useTtsProviderSettings({
   const getDefaultModelOptions = useCallback(() => {
     if (providerType === 'clone-tts' || providerType === 'gpt-sovits') return ['default']
     if (providerType === 'mimo-tts') return [...MIMO_TTS_DEFAULT_MODELS]
+    if (providerType === 'minimax-tts') return [...MINIMAX_TTS_DEFAULT_MODELS]
     return ['tts-1', 'tts-1-hd']
   }, [providerType])
 
@@ -360,7 +375,8 @@ export function useTtsProviderSettings({
     state?.refAudioBase64,
     state?.promptText,
     state?.promptLang,
-    state?.textLang
+    state?.textLang,
+    state?.stream
   ])
 
   const handleTest = async () => {
@@ -404,21 +420,28 @@ export function useTtsProviderSettings({
   }
 
   const showSpeedControl =
-    providerType === 'openai-tts' || providerType === 'clone-tts' || providerType === 'gpt-sovits'
+    providerType === 'openai-tts' ||
+    providerType === 'minimax-tts' ||
+    providerType === 'clone-tts' ||
+    providerType === 'gpt-sovits'
 
   const modelPlaceholder =
     providerType === 'clone-tts' || providerType === 'gpt-sovits'
       ? 'default'
       : providerType === 'mimo-tts'
         ? 'mimo-v2.5-tts'
-        : 'tts-1'
+        : providerType === 'minimax-tts'
+          ? 'speech-2.8-hd'
+          : 'tts-1'
 
   const voicePlaceholder =
     providerType === 'clone-tts' || providerType === 'gpt-sovits'
       ? 'default'
       : providerType === 'mimo-tts'
         ? defaultMimoVoice
-        : 'alloy'
+        : providerType === 'minimax-tts'
+          ? MINIMAX_TTS_DEFAULT_VOICE
+          : 'alloy'
 
   const handlePickMimoRefAudio = useCallback(async () => {
     if (!onPickRefAudio) return null

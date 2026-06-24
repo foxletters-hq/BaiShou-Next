@@ -47,7 +47,12 @@ export function TTSProviderSettingsFormConnectionFields({
                       'tts.settings.mimo_base_url_placeholder',
                       '留空使用默认服务，或填入自定义服务 URL'
                     )
-                  : 'https://api.openai.com/v1'
+                  : providerType === 'minimax-tts'
+                    ? t(
+                        'tts.settings.minimax_base_url_placeholder',
+                        '留空使用 https://api.minimaxi.com/v1，或填入备用节点'
+                      )
+                    : 'https://api.openai.com/v1'
           }
           value={currentConfig.baseUrl}
           onChange={(e) => updateCurrentConfig({ baseUrl: e.target.value })}

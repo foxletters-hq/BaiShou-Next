@@ -1,7 +1,7 @@
 import { useCallback, type MutableRefObject } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import type { TFunction } from 'i18next'
-import { isMimoVoiceCloneModel, validateMimoTtsSettings } from '@baishou/shared'
+import { isMimoVoiceCloneModel, validateMimoTtsSettings, MINIMAX_TTS_DEFAULT_VOICE } from '@baishou/shared'
 import type {
   TtsProviderConfig,
   ProviderLocalState,
@@ -66,9 +66,11 @@ export function buildTtsConfig(
         : voice.trim() ||
           (providerType === 'mimo-tts'
             ? defaultMimoVoice
-            : providerType === 'clone-tts' || providerType === 'gpt-sovits'
-              ? 'default'
-              : 'alloy'),
+            : providerType === 'minimax-tts'
+              ? MINIMAX_TTS_DEFAULT_VOICE
+              : providerType === 'clone-tts' || providerType === 'gpt-sovits'
+                ? 'default'
+                : 'alloy'),
     speed,
     responseFormat,
     availableModels,

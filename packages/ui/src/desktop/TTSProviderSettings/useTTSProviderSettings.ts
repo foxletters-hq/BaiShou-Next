@@ -4,6 +4,8 @@ import {
   isMimoVoiceCloneModel,
   MIMO_TTS_DEFAULT_MODELS,
   MIMO_TTS_VOICECLONE_MODEL_ID,
+  MINIMAX_TTS_DEFAULT_MODELS,
+  MINIMAX_TTS_DEFAULT_VOICE,
   parseRefAudioPick
 } from '@baishou/shared'
 import { useToast } from '../Toast/useToast'
@@ -85,6 +87,8 @@ export function useTTSProviderSettings({
           return t('tts.settings.provider_openai', 'OpenAI 兼容 TTS')
         case 'mimo-tts':
           return t('tts.settings.provider_mimo', '小米 MiMo TTS')
+        case 'minimax-tts':
+          return t('tts.settings.provider_minimax', 'MiniMax TTS')
         case 'clone-tts':
           return t('tts.settings.provider_clone', 'CloneTTS 本地服务')
         case 'gpt-sovits':
@@ -100,6 +104,7 @@ export function useTTSProviderSettings({
     () => [
       { value: 'openai-tts', label: getProviderName('openai-tts') },
       { value: 'mimo-tts', label: getProviderName('mimo-tts') },
+      { value: 'minimax-tts', label: getProviderName('minimax-tts') },
       { value: 'clone-tts', label: getProviderName('clone-tts') },
       { value: 'gpt-sovits', label: getProviderName('gpt-sovits') }
     ],
@@ -119,11 +124,18 @@ export function useTTSProviderSettings({
 
   const defaultMimoVoice = t('tts.settings.default_voice_mimo', '冰糖')
 
-  const formatOptions = [
-    { value: 'mp3', label: 'MP3' },
-    { value: 'wav', label: 'WAV' },
-    { value: 'aac', label: 'AAC' }
-  ]
+  const formatOptions =
+    providerType === 'minimax-tts'
+      ? [
+          { value: 'mp3', label: 'MP3' },
+          { value: 'wav', label: 'WAV' },
+          { value: 'flac', label: 'FLAC' }
+        ]
+      : [
+          { value: 'mp3', label: 'MP3' },
+          { value: 'wav', label: 'WAV' },
+          { value: 'aac', label: 'AAC' }
+        ]
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -146,7 +158,9 @@ export function useTTSProviderSettings({
         ? ['default']
         : providerType === 'mimo-tts'
           ? [...MIMO_TTS_DEFAULT_MODELS]
-          : ['tts-1', 'tts-1-hd']
+          : providerType === 'minimax-tts'
+            ? [...MINIMAX_TTS_DEFAULT_MODELS]
+            : ['tts-1', 'tts-1-hd']
     return availableModels.length > 0 ? availableModels : defaults
   }, [providerType, configs])
 
@@ -221,11 +235,15 @@ export function useTTSProviderSettings({
     state?.refAudioBase64,
     state?.promptText,
     state?.promptLang,
-    state?.textLang
+    state?.textLang,
+    state?.stream
   ])
 
   const showSpeedControl =
-    providerType === 'openai-tts' || providerType === 'clone-tts' || providerType === 'gpt-sovits'
+    providerType === 'openai-tts' ||
+    providerType === 'minimax-tts' ||
+    providerType === 'clone-tts' ||
+    providerType === 'gpt-sovits'
 
   const handlePickMimoRefAudio = useCallback(async () => {
     if (!onPickRefAudio) return null
