@@ -3,12 +3,11 @@ import * as path from '../fs/path.util'
 import { logger } from '@baishou/shared'
 import {
   cleanupLegacyVaultArtifacts,
-  discoverVaultNames,
   mergeDirectories,
   mergeLegacySqliteDatabases,
   readLegacyVaultRegistry,
   resolveLegacyImportVaultNames,
-  scanLegacyDatabases,
+  scanLegacyDatabasesForVaults,
   StorageMigrationCopyError,
   writeNextVaultRegistry,
   type RawSqlExecutor
@@ -98,19 +97,30 @@ export async function migrateLegacyArchiveContents(
     await saveUserAvatarPath(userAvatarRel)
   }
 
-  const { baishouDbs } = await scanLegacyDatabases(fileSystem, sourceDir)
-  // 伙伴/会话由「版本迁移」按工作空间导入，启动迁移不合并 agent 表
-  await mergeLegacySqliteDatabases(sqliteClient, executeRawSql, [], baishouDbs, {
-    includeMemoryEmbeddings: false,
-    onTableError
-  })
-
-  await rectifyAssistantAvatarPaths(sqliteClient, executeRawSql, avatarMap)
-
   const legacyRegistry = await readLegacyVaultRegistry(fileSystem, sourceDir)
   const vaultNames = await resolveLegacyImportVaultNames(fileSystem, sourceDir)
 
+  const { baishouDbs } = await scanLegacyDatabasesForVaults(fileSystem, sourceDir, vaultNames)
+  // 伙伴/会话由「版本迁移」按工作空间导入，启动迁移不合并 agent 表
+  if (baishouDbs.length > 0) {
+    logger.info(
+      `[migrateLegacyArchiveContents] Merging ${baishouDbs.length} baishou.sqlite file(s).`
+    )
+    await mergeLegacySqliteDatabases(sqliteClient, executeRawSql, [], baishouDbs, {
+      includeMemoryEmbeddings: false,
+      onTableError
+    })
+  }
+
+  await rectifyAssistantAvatarPaths(sqliteClient, executeRawSql, avatarMap)
+
+  let vaultIndex = 0
   for (const vName of vaultNames) {
+    vaultIndex += 1
+    onCopyProgress?.(`vault:${vaultIndex}/${vaultNames.length}:${vName}`)
+    logger.info(
+      `[migrateLegacyArchiveContents] Copying vault ${vaultIndex}/${vaultNames.length}: ${vName}`
+    )
     const vSource = path.join(sourceDir, vName)
     const vTarget = path.join(targetWorkspaceDir, vName)
     if (!(await fileSystem.exists(vSource))) continue
@@ -128,7 +138,7 @@ export async function migrateLegacyArchiveContents(
     if (failed.length > 0) {
       throw new StorageMigrationCopyError(failed)
     }
-    await cleanupLegacyVaultArtifacts(fileSystem, vTarget)
+    await cleanupLegacyVaultArtifacts(fileSystem, vTarget, { preserveAgentSqlite: true })
   }
 
   await writeNextVaultRegistry(fileSystem, targetWorkspaceDir, vaultNames, legacyRegistry)

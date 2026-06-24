@@ -43,6 +43,9 @@ export const LEGACY_AGENT_MERGE_TABLES = [
 
 export const LEGACY_BAISHOUL_MERGE_TABLES = ['diaries', 'summaries'] as const
 
+/** 低于此体积的 agent.sqlite 视为空壳工作区 */
+export const MIN_AGENT_SQLITE_BYTES_FOR_IMPORT = 49_152
+
 export type LegacyMigrationSource = 'flutter_desktop' | 'flutter_mobile' | 'flutter_zip'
 
 export interface LegacyMigrationStatus {
@@ -258,6 +261,36 @@ export async function scanLegacyDatabases(
   return { agentDbs, baishouDbs }
 }
 
+/** 仅扫描指定工作区与全局 `.baishou` 下的 legacy SQLite，避免全树递归扫到无关目录 */
+export async function scanLegacyDatabasesForVaults(
+  fileSystem: IFileSystem,
+  sourceDir: string,
+  vaultNames: string[]
+): Promise<{ agentDbs: string[]; baishouDbs: string[] }> {
+  const agentDbs: string[] = []
+  const baishouDbs: string[] = []
+
+  async function collectFromDir(dir: string): Promise<void> {
+    const sub = await scanLegacyDatabases(fileSystem, dir)
+    agentDbs.push(...sub.agentDbs)
+    baishouDbs.push(...sub.baishouDbs)
+  }
+
+  const globalBaishouDir = path.join(sourceDir, '.baishou')
+  if (await fileSystem.exists(globalBaishouDir)) {
+    await collectFromDir(globalBaishouDir)
+  }
+
+  for (const vaultName of vaultNames) {
+    const vaultBaishouDir = path.join(sourceDir, vaultName, '.baishou')
+    if (await fileSystem.exists(vaultBaishouDir)) {
+      await collectFromDir(vaultBaishouDir)
+    }
+  }
+
+  return { agentDbs, baishouDbs }
+}
+
 export async function readLegacyVaultRegistry(
   fileSystem: IFileSystem,
   sourceDir: string
@@ -291,6 +324,44 @@ export async function vaultDirectoryHasUserContent(
     (await fileSystem.exists(path.join(vaultDir, 'Archives'))) ||
     (await fileSystem.exists(path.join(vaultDir, '.baishou', 'agent.sqlite')))
   )
+}
+
+/** 归档导入时是否值得迁移该工作区（跳过 registry 残留的空壳目录） */
+export async function vaultHasImportableLegacyArchiveContent(
+  fileSystem: IFileSystem,
+  sourceDir: string,
+  vaultName: string
+): Promise<boolean> {
+  const vaultDir = path.join(sourceDir, vaultName)
+  if (await journalMarkdownExistsInTree(fileSystem, path.join(vaultDir, 'Journals'))) {
+    return true
+  }
+
+  const archivesDir = path.join(vaultDir, 'Archives')
+  if (await fileSystem.exists(archivesDir)) {
+    if ((await countMigrationTreeFiles(fileSystem, archivesDir)) > 0) {
+      return true
+    }
+  }
+
+  const baishouPath = path.join(vaultDir, '.baishou', 'baishou.sqlite')
+  if (await fileSystem.exists(baishouPath)) {
+    return true
+  }
+
+  const agentPath = path.join(vaultDir, '.baishou', 'agent.sqlite')
+  if (await fileSystem.exists(agentPath)) {
+    try {
+      const stat = await fileSystem.stat(agentPath)
+      if ((stat.size ?? 0) >= MIN_AGENT_SQLITE_BYTES_FOR_IMPORT) {
+        return true
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return false
 }
 
 export async function discoverVaultNames(
@@ -345,6 +416,9 @@ export async function resolveLegacyImportVaultNames(
       const stat = await fileSystem.stat(vaultDir)
       if (!stat.isDirectory) continue
     } catch {
+      continue
+    }
+    if (!(await vaultHasImportableLegacyArchiveContent(fileSystem, sourceDir, name))) {
       continue
     }
     present.push(name)
@@ -607,11 +681,14 @@ export async function mergeDirectoriesSkipExisting(
 
 export async function cleanupLegacyVaultArtifacts(
   fileSystem: IFileSystem,
-  vaultDir: string
+  vaultDir: string,
+  options?: { preserveAgentSqlite?: boolean }
 ): Promise<void> {
   await purgeShadowIndexFilesInDirectory(fileSystem, path.join(vaultDir, '.baishou'))
 
-  const filesToRemove = ['agent.sqlite', 'baishou.sqlite']
+  const filesToRemove = options?.preserveAgentSqlite
+    ? ['baishou.sqlite']
+    : ['agent.sqlite', 'baishou.sqlite']
   for (const fileName of filesToRemove) {
     try {
       await fileSystem.unlink(path.join(vaultDir, '.baishou', fileName))

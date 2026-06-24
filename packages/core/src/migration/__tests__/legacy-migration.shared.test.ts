@@ -104,6 +104,11 @@ describe('legacy-migration.shared', () => {
       JSON.stringify([{ name: 'Personal' }, { name: 'MissingVault' }, { name: 'config' }])
     )
     await fs.mkdir(path.join(sourceRoot, 'Personal', 'Journals'), { recursive: true })
+    await fs.writeFile(
+      path.join(sourceRoot, 'Personal', 'Journals', '2024-01-01.md'),
+      '# hello',
+      'utf8'
+    )
     await fs.mkdir(path.join(sourceRoot, 'config'), { recursive: true })
 
     expect(await resolveLegacyImportVaultNames(fileSystem, sourceRoot)).toEqual(['Personal'])

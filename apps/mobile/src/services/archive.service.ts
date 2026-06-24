@@ -17,7 +17,7 @@ import {
   resolveAgentDbPath,
   resolveArchivePayloadRoot,
   mergeArchivePrefsPreservingCloudSync,
-  discoverVaultNames,
+  resolveLegacyImportVaultNames,
   type IFileSystem,
   type IStoragePathService
 } from '@baishou/core-mobile'
@@ -315,7 +315,7 @@ export class MobileArchiveService implements IArchiveService {
         }
 
         try {
-          const vaultNames = await discoverVaultNames(this.fileSystem, payloadDir)
+          const vaultNames = await resolveLegacyImportVaultNames(this.fileSystem, payloadDir)
           const copyTotal = await estimateLegacyFlutterZipCopyFiles(
             this.fileSystem,
             payloadDir,
