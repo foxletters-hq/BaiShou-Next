@@ -3,12 +3,14 @@ import { OpenAiTtsProvider } from './openai-tts.provider'
 import { MimoTtsProvider } from './mimo-tts.provider'
 import { CloneTtsProvider } from './clone-tts.provider'
 import { GptSovitsProvider } from './gpt-sovits.provider'
+import { MinimaxTtsProvider } from './minimax-tts.provider'
 
 export type TtsProviderCreator = () => TtsProvider
 
 const builtinCreators = new Map<string, TtsProviderCreator>([
   ['openai-tts', () => new OpenAiTtsProvider()],
   ['mimo-tts', () => new MimoTtsProvider()],
+  ['minimax-tts', () => new MinimaxTtsProvider()],
   ['clone-tts', () => new CloneTtsProvider()],
   ['gpt-sovits', () => new GptSovitsProvider()]
 ])

@@ -7,6 +7,7 @@ import {
 } from './tts-text-preprocess'
 import { resolveTtsSynthesisSettings } from './tts-defaults'
 import { isMimoVoiceCloneModel, resolveMimoTtsSynthesisModelId } from './mimo-tts.util'
+import { resolveTtsStreamingEnabled } from './tts-stream.util'
 import {
   synthesizeTtsFromSettings,
   type TtsSynthesizeFromSettingsInput,
@@ -67,6 +68,20 @@ export function prepareTtsSpeechChunksForInput(
       return single ? [single] : []
     }
   }
+
+  if (activeProviderId === 'minimax-tts' && globalModels) {
+    const merged = resolveTtsSynthesisSettings(globalModels, 'minimax-tts')
+    const streamEnabled = resolveTtsStreamingEnabled(
+      'minimax-tts',
+      merged.stream as boolean | undefined,
+      merged.modelId || globalModels.globalTtsModelId
+    )
+    if (streamEnabled) {
+      const single = normalizeTtsWhitespace(stripFencedCodeBlocks(content))
+      return single ? [single] : []
+    }
+  }
+
   return prepareTtsSpeechChunks(content)
 }
 
