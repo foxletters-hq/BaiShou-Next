@@ -1,7 +1,10 @@
 import { globalShortcut, BrowserWindow } from 'electron'
-import type { SettingsRepository } from '@baishou/database-desktop'
 import type { HotkeyConfig } from '@baishou/shared'
 import { logger } from '@baishou/shared'
+
+export interface HotkeyConfigReader {
+  getHotkeyConfig(): Promise<HotkeyConfig>
+}
 
 /**
  * 全局快捷键服务 (桌面端系统级)
@@ -11,14 +14,14 @@ export class HotkeyService {
   private isEnabled = false
 
   constructor(
-    private readonly settingsRepo: SettingsRepository,
+    private readonly configStore: HotkeyConfigReader,
     private readonly mainWindow: BrowserWindow
   ) {}
 
   async start(): Promise<void> {
     logger.info('[HotkeyService] 🚀 Starting HotkeyService initialization...')
     try {
-      const config = await this.settingsRepo.getHotkeyConfig()
+      const config = await this.configStore.getHotkeyConfig()
       logger.info('[HotkeyService] 📦 Loaded config from DB:', JSON.stringify(config))
 
       this.isEnabled = config?.hotkeyEnabled ?? false

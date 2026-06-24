@@ -8,6 +8,7 @@ import {
   type UserProfile
 } from '@baishou/shared'
 import { SettingsFileService } from './settings-file.service'
+import { SETTINGS_SYNC_EXCLUDED_KEYS } from './settings-domain.util'
 import { emitDomainMutation } from '../events'
 
 const PROMPT_SHORTCUTS_KEY = 'prompt_shortcuts_v2'
@@ -114,6 +115,7 @@ export class SettingsManagerService {
     const settingsMap = await this.fileService.readAllSettings()
     // 如果外层是 {} 依然继续，只是不更新罢了。
     for (const key of Object.keys(settingsMap)) {
+      if (SETTINGS_SYNC_EXCLUDED_KEYS.has(key)) continue
       let value = settingsMap[key]
       if (key === USER_PROFILE_SETTINGS_KEY && value && typeof value === 'object') {
         const profile = value as UserProfile

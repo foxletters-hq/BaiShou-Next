@@ -50,4 +50,18 @@ describe('SettingsManagerService (Global Vault KV SSOT)', () => {
     expect(mockRepo.set).toHaveBeenCalledWith('key-x', 'val-x')
     expect(mockRepo.set).toHaveBeenCalledWith('key-y', 'val-y')
   })
+
+  it('fullResyncFromDisk() skips device-local settings keys', async () => {
+    mockFileService.readAllSettings.mockResolvedValue({
+      'key-x': 'val-x',
+      hotkey_config: { hotkeyEnabled: true, hotkeyModifier: 'Alt', hotkeyKey: 'S' },
+      mcp_server_config: { mcpEnabled: true, mcpPort: 31004 }
+    })
+
+    await manager.fullResyncFromDisk()
+
+    expect(mockRepo.set).toHaveBeenCalledWith('key-x', 'val-x')
+    expect(mockRepo.set).not.toHaveBeenCalledWith('hotkey_config', expect.anything())
+    expect(mockRepo.set).not.toHaveBeenCalledWith('mcp_server_config', expect.anything())
+  })
 })
