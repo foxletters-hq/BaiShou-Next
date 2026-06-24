@@ -10,7 +10,7 @@ export function useCloudSyncPanel(props: CloudSyncPanelProps) {
   const { t } = useTranslation()
   const noLimitLabel = t('data_sync.no_limit', 'No Limit')
   const { savedConfig, onSaveConfig, onListRecords, onListSnapshots, onDownloadBackup } = props
-  const { onExportZip, onImportZip, onPickArchiveFile } = props
+  const { onExportZip, onImportZip, onPickArchiveFile, onImportProgress } = props
 
   const [config, setConfig] = useState(() => ({
     ...DEFAULT_SYNC_CONFIG,
@@ -77,6 +77,7 @@ export function useCloudSyncPanel(props: CloudSyncPanelProps) {
     onExportZip,
     onImportZip,
     onPickArchiveFile,
+    onImportProgress,
     onSaveConfig,
     savedConfig,
     ...actions

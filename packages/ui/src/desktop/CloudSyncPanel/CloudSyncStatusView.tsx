@@ -14,7 +14,14 @@ export interface CloudSyncStatusViewProps {
 }
 
 export const CloudSyncStatusView: React.FC<CloudSyncStatusViewProps> = ({ vm }) => {
-  const { showCountModal, activeTab, onExportZip, onImportZip, onPickArchiveFile } = vm
+  const {
+    showCountModal,
+    activeTab,
+    onExportZip,
+    onImportZip,
+    onPickArchiveFile,
+    onImportProgress
+  } = vm
   const showLocalArchive = Boolean(onExportZip && onImportZip && onPickArchiveFile)
 
   return (
@@ -34,6 +41,7 @@ export const CloudSyncStatusView: React.FC<CloudSyncStatusViewProps> = ({ vm }) 
             onExportZip={onExportZip!}
             onImportZip={onImportZip!}
             onPickFile={onPickArchiveFile!}
+            onImportProgress={onImportProgress}
           />
         ) : (
           <CloudSyncRecordList vm={vm} />

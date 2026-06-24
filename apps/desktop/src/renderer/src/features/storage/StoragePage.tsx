@@ -28,6 +28,13 @@ export const StoragePage: React.FC = () => {
             await window.electron.ipcRenderer.invoke('archive:import', zipPath, true)
           }
         }}
+        onImportProgress={(callback) =>
+          (window as any).api?.archive?.onArchiveImportProgress?.(
+            (progress: { detail?: string }) => {
+              if (progress.detail) callback(progress.detail)
+            }
+          ) ?? (() => {})
+        }
       />
       <StorageSettingsCard
         onRefreshStats={async () => {

@@ -49,4 +49,5 @@ export interface CloudSyncPanelProps {
   onExportZip?: () => Promise<void>
   onImportZip?: (filePath: string) => Promise<void>
   onPickArchiveFile?: () => Promise<string | null>
+  onImportProgress?: (callback: (detail: string) => void) => () => void
 }

@@ -55,7 +55,8 @@ export class MetadataMigrator {
     tempExtractDir: string,
     rootDir: string,
     globalShadowDir?: string | null,
-    currentCloudSyncConfig?: unknown
+    currentCloudSyncConfig?: unknown,
+    onMigrationProgress?: (detail: string) => void
   ): Promise<boolean> {
     const archiveRoot = await resolveArchiveExtractRoot(this.fileSystem, tempExtractDir)
     const isLegacy = await shouldImportAsFlutterLegacyArchive(
@@ -78,7 +79,10 @@ export class MetadataMigrator {
       try {
         await fsp.rm(rootDir, { recursive: true, force: true })
       } catch (e) {
-        logger.error('[MetadataMigrator] Failed to wipe workspace root before legacy import:', e)
+        logger.error(
+          '[MetadataMigrator] Failed to wipe workspace root before legacy import:',
+          e instanceof Error ? e : String(e)
+        )
         throw e
       }
     }
@@ -89,7 +93,11 @@ export class MetadataMigrator {
       // 直接迁移到最终工作区，避免 extract → staging → rename 的第二次全量复制（与移动端一致）
       await legacyService.migrate(archiveRoot, rootDir, {
         source: 'flutter_zip',
-        installInstanceId
+        installInstanceId,
+        onCopyProgress: (entryPath) => {
+          onMigrationProgress?.(entryPath)
+          logger.info('[MetadataMigrator] Legacy import progress:', entryPath)
+        }
       })
     } catch (migrationError) {
       await fsp.rm(rootDir, { recursive: true, force: true }).catch(() => {})

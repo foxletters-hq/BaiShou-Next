@@ -44,6 +44,12 @@ function broadcastArchiveImportState(importing: boolean): void {
   }
 }
 
+function broadcastArchiveImportProgress(detail: string): void {
+  for (const window of BrowserWindow.getAllWindows()) {
+    window.webContents.send('archive:import-progress', { detail })
+  }
+}
+
 export class DesktopArchiveService implements IArchiveService {
   private readonly fileSystem = createNodeFileSystem()
 
@@ -98,7 +104,9 @@ export class DesktopArchiveService implements IArchiveService {
     let snapshotPath: string | undefined
 
     if (createSnapshotBefore && (await this.shouldCreatePreImportSnapshot())) {
-      logger.info('[ArchiveService] Creating pre-import snapshot to protect existing workspace data…')
+      logger.info(
+        '[ArchiveService] Creating pre-import snapshot to protect existing workspace data…'
+      )
       const snap = await this.createSnapshot()
       if (snap) snapshotPath = snap
     } else if (createSnapshotBefore) {
@@ -241,7 +249,8 @@ export class DesktopArchiveService implements IArchiveService {
       tempExtractDir,
       rootDir,
       globalShadowDir,
-      currentCloudSyncConfig
+      currentCloudSyncConfig,
+      (detail) => broadcastArchiveImportProgress(detail)
     )
 
     if (!migrated) {
@@ -380,7 +389,12 @@ export class DesktopArchiveService implements IArchiveService {
           const settingsRepo = new SettingsRepository(getAppDb())
           for (const [key, value] of Object.entries(prefs)) {
             if (key === 'user_profile_data' || key === 'user_profile') continue
-            if (DESKTOP_DEVICE_LOCAL_AGENT_DB_KEYS.includes(key as (typeof DESKTOP_DEVICE_LOCAL_AGENT_DB_KEYS)[number])) continue
+            if (
+              DESKTOP_DEVICE_LOCAL_AGENT_DB_KEYS.includes(
+                key as (typeof DESKTOP_DEVICE_LOCAL_AGENT_DB_KEYS)[number]
+              )
+            )
+              continue
             if (value !== undefined && value !== null) {
               await settingsRepo.set(key, value)
             }

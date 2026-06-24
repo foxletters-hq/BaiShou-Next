@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Download, Loader2, Upload } from 'lucide-react'
 import { useDialog } from '../Dialog'
@@ -7,22 +7,43 @@ import { RestoreBlockingOverlay } from '../RestoreBlockingOverlay'
 import panelStyles from './LocalArchiveBackupPanel.module.css'
 import styles from './CloudSyncPanel.module.css'
 
+function formatImportProgressDetail(detail: string): string {
+  const vaultMatch = /^vault:(\d+)\/(\d+):(.+)$/.exec(detail)
+  if (vaultMatch) {
+    return `正在迁移工作区 ${vaultMatch[1]}/${vaultMatch[2]}：${vaultMatch[3]}`
+  }
+
+  const parts = detail.replace(/\\/g, '/').split('/').filter(Boolean)
+  if (parts.length > 0) {
+    return `正在复制：${parts.slice(-3).join('/')}`
+  }
+  return detail
+}
+
 export interface LocalArchiveBackupPanelProps {
   onExportZip: () => Promise<void>
   onImportZip: (filePath: string) => Promise<void>
   onPickFile: () => Promise<string | null>
+  onImportProgress?: (callback: (detail: string) => void) => () => void
 }
 
 export const LocalArchiveBackupPanel: React.FC<LocalArchiveBackupPanelProps> = ({
   onExportZip,
   onImportZip,
-  onPickFile
+  onPickFile,
+  onImportProgress
 }) => {
   const { t } = useTranslation()
   const dialog = useDialog()
   const toast = useToast()
   const [isExporting, setIsExporting] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
+  const [importProgressDetail, setImportProgressDetail] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!onImportProgress) return
+    return onImportProgress((detail) => setImportProgressDetail(formatImportProgressDetail(detail)))
+  }, [onImportProgress])
 
   const handleExport = async () => {
     setIsExporting(true)
@@ -43,6 +64,7 @@ export const LocalArchiveBackupPanel: React.FC<LocalArchiveBackupPanelProps> = (
     if (!confirmed) return
 
     setIsImporting(true)
+    setImportProgressDetail(null)
     let willReload = false
     try {
       await onImportZip(filePath)
@@ -53,6 +75,7 @@ export const LocalArchiveBackupPanel: React.FC<LocalArchiveBackupPanelProps> = (
       const message = e instanceof Error ? e.message : String(e)
       toast.showError(t('settings.restore_failed', { error: message }))
     } finally {
+      if (!willReload) setImportProgressDetail(null)
       if (!willReload) setIsImporting(false)
     }
   }
@@ -61,7 +84,13 @@ export const LocalArchiveBackupPanel: React.FC<LocalArchiveBackupPanelProps> = (
 
   return (
     <>
-      <RestoreBlockingOverlay visible={isImporting} />
+      <RestoreBlockingOverlay
+        visible={isImporting}
+        hint={
+          importProgressDetail ??
+          t('settings.restoring_data_hint', '请勿关闭应用或进行其他操作，恢复完成后将自动刷新')
+        }
+      />
       <div className={panelStyles.panel}>
         <p className={panelStyles.desc}>
           {t(
