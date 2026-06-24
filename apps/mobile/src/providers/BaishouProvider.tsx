@@ -96,6 +96,8 @@ import { mobilePricingService, type MobilePricingService } from '../services/mob
 import type { VaultFileWatcherService } from '../services/vault-file-watcher.service'
 import type { MobileDataBootstrapper } from '../services/mobile-bootstrapper.service'
 import { ensureMobileCompressionBridge } from '../services/mobile-compression-event.service'
+import { recompressSessionContext } from '../services/mobile-context-recompress.service'
+import { setContextRecompressInvoker } from '@baishou/store'
 import type { IFileSystem } from '@baishou/core-mobile'
 import { buildMobileSummaryAiClient } from '../services/mobile-summary-ai-client'
 import { MobileAttachmentManagerService } from '../services/mobile-attachment-manager.service'
@@ -1811,6 +1813,26 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
       summaryFileWatcher.stop()
       void mobileMcpService?.stop()
     }
+  }, [])
+
+  useEffect(() => {
+    setContextRecompressInvoker(async (sessionId) => {
+      const runtime = agentDbRuntimeRef.current
+      const ctx = vaultBootstrapCtxRef.current
+      if (!runtime || !ctx) {
+        return { ok: false, error: 'Database not ready' }
+      }
+      return recompressSessionContext(
+        {
+          sessionRepo: runtime.sessionRepo,
+          snapshotRepo: runtime.snapshotRepo,
+          settingsManager: runtime.settingsManager,
+          registry: ctx.registry
+        },
+        sessionId
+      )
+    })
+    return () => setContextRecompressInvoker(null)
   }, [])
 
   return <BaishouContext.Provider value={value}>{children}</BaishouContext.Provider>

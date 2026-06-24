@@ -6,6 +6,9 @@ import { MarkdownRenderer } from '../MarkdownRenderer'
 import { ThinkingBlock } from '../ThinkingBlock'
 import { getLabelBadgeColor } from './context-chain-dialog.utils'
 import { COMPRESSION_SUMMARY_SELECTION_KEY, type useContextChainView } from './useContextChainView'
+import { ContextChainRecompressBar } from './ContextChainRecompressBar'
+import { ContextChainRecompressProgress } from './ContextChainRecompressProgress'
+import { CompressionActivityBar } from '../CompressionActivityBar'
 
 type ContextChainView = ReturnType<typeof useContextChainView>
 
@@ -14,13 +17,29 @@ interface ContextChainDetailPageProps {
   detailKey: string
   onBack: () => void
   onClose: () => void
+  sessionId?: string
+  recompressBusy?: boolean
+  recompressStartedAt?: number
+  recompressStreamText?: string
+  recompressStreamReasoning?: string
+  recompressError?: string | null
+  onRecompress?: () => void
+  onRecompressDismissError?: () => void
 }
 
 export const ContextChainDetailPage: React.FC<ContextChainDetailPageProps> = ({
   view,
   detailKey,
   onBack,
-  onClose
+  onClose,
+  sessionId,
+  recompressBusy = false,
+  recompressStartedAt,
+  recompressStreamText = '',
+  recompressStreamReasoning = '',
+  recompressError = null,
+  onRecompress,
+  onRecompressDismissError
 }) => {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
@@ -46,19 +65,41 @@ export const ContextChainDetailPage: React.FC<ContextChainDetailPageProps> = ({
     if (isCompression) {
       return (
         <>
-          {view.compressionReasoningText ? (
-            <ThinkingBlock
-              content={view.compressionReasoningText}
-              completedStatusLabel={t('agent.chat.thought_process', '思考过程')}
-              defaultOpen={false}
+          {sessionId && onRecompress ? (
+            <ContextChainRecompressBar
+              busy={recompressBusy}
+              error={recompressError}
+              onRecompress={onRecompress}
+              onDismissError={onRecompressDismissError}
             />
           ) : null}
-          {view.compressionSummaryText ? (
-            <MarkdownRenderer content={view.compressionSummaryText} variant="ancillary" />
+          {recompressBusy ? (
+            <>
+              <ContextChainRecompressProgress startedAt={recompressStartedAt} />
+              <CompressionActivityBar
+                phase="manual"
+                summary={recompressStreamText}
+                reasoning={recompressStreamReasoning}
+                isActive
+              />
+            </>
           ) : (
-            <Text style={{ fontSize: 14, color: colors.textSecondary }}>
-              {t('agent.chat.no_content', '[无内容]')}
-            </Text>
+            <>
+              {view.compressionReasoningText ? (
+                <ThinkingBlock
+                  content={view.compressionReasoningText}
+                  completedStatusLabel={t('agent.chat.thought_process', '思考过程')}
+                  defaultOpen={false}
+                />
+              ) : null}
+              {view.compressionSummaryText ? (
+                <MarkdownRenderer content={view.compressionSummaryText} variant="ancillary" />
+              ) : (
+                <Text style={{ fontSize: 14, color: colors.textSecondary }}>
+                  {t('agent.chat.no_content', '[无内容]')}
+                </Text>
+              )}
+            </>
           )}
         </>
       )

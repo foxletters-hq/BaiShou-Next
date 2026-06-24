@@ -24,6 +24,14 @@ export interface NativeContextChainDialogProps {
   compressedContent?: string
   originalContent?: string
   systemPrompt?: string
+  sessionId?: string
+  recompressBusy?: boolean
+  recompressStartedAt?: number
+  recompressStreamText?: string
+  recompressStreamReasoning?: string
+  recompressError?: string | null
+  onRecompress?: () => void
+  onRecompressDismissError?: () => void
 }
 
 export type ContextChainTab = 'context' | 'compressed' | 'original' | 'prompt'

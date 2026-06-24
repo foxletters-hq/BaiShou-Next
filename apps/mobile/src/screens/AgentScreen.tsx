@@ -34,7 +34,7 @@ import {
   PromptShortcutSheet
 } from '@baishou/ui/native'
 import { useNativeTheme, useNativeToast } from '@baishou/ui/native'
-import { useAgentStore, useAgentNavigationStore } from '@baishou/store'
+import { useAgentStore, useAgentNavigationStore, useContextCompressionStore } from '@baishou/store'
 import { useTranslation } from 'react-i18next'
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
 import Animated from 'react-native-reanimated'
@@ -616,6 +616,7 @@ export const AgentScreen = () => {
 
   const [contextDialogState, setContextDialogState] = useState<{
     visible: boolean
+    sessionId?: string
     message: any
     flatEntries: any[]
     meta?: any
@@ -626,6 +627,56 @@ export const AgentScreen = () => {
     message: {},
     flatEntries: []
   })
+
+  const activeContextSessionId = contextDialogState.sessionId ?? currentSessionId ?? undefined
+  const contextRecompressJob = useContextCompressionStore((s) =>
+    activeContextSessionId ? s.jobs[activeContextSessionId] : undefined
+  )
+  const storeRunRecompress = useContextCompressionStore((s) => s.runRecompress)
+  const storeClearRecompressError = useContextCompressionStore((s) => s.clearError)
+
+  const runContextRecompress = useCallback(
+    async (targetSessionId: string) => {
+      if (!targetSessionId) return
+      const result = await storeRunRecompress(targetSessionId)
+      if (result?.ok && result.summaryText) {
+        setContextDialogState((prev) => ({
+          ...prev,
+          compressedContent: result.summaryText,
+          flatEntries: prev.flatEntries?.map((entry: { kind?: string; summaryText?: string }) =>
+            entry.kind === 'compression-summary'
+              ? { ...entry, summaryText: result.summaryText }
+              : entry
+          )
+        }))
+      }
+    },
+    [storeRunRecompress]
+  )
+
+  const dismissContextRecompressError = useCallback(() => {
+    if (activeContextSessionId) storeClearRecompressError(activeContextSessionId)
+  }, [activeContextSessionId, storeClearRecompressError])
+
+  useEffect(() => {
+    if (!contextDialogState.visible || !isCompressing || compressionPhase !== 'manual') return
+    if (!compressionText.trim() && !compressionReasoning.trim()) return
+    setContextDialogState((prev) => ({
+      ...prev,
+      compressedContent: compressionText || prev.compressedContent,
+      flatEntries: prev.flatEntries?.map((entry: { kind?: string; summaryText?: string }) =>
+        entry.kind === 'compression-summary' && compressionText
+          ? { ...entry, summaryText: compressionText }
+          : entry
+      )
+    }))
+  }, [
+    contextDialogState.visible,
+    isCompressing,
+    compressionPhase,
+    compressionText,
+    compressionReasoning
+  ])
 
   const handleBranch = useCallback(
     async (messageId: string) => {
@@ -658,6 +709,7 @@ export const AgentScreen = () => {
         const vm = result.viewModel
         setContextDialogState({
           visible: true,
+          sessionId: currentSessionId ?? undefined,
           message: {
             ...message,
             inputTokens: message.inputTokens,
@@ -1169,6 +1221,25 @@ export const AgentScreen = () => {
         meta={contextDialogState.meta}
         compressedContent={contextDialogState.compressedContent}
         systemPrompt={contextDialogState.systemPrompt}
+        sessionId={activeContextSessionId}
+        recompressBusy={contextRecompressJob?.status === 'running'}
+        recompressStartedAt={
+          contextRecompressJob?.status === 'running' ? contextRecompressJob.startedAt : undefined
+        }
+        recompressStreamText={
+          isCompressing && compressionPhase === 'manual' ? compressionText : ''
+        }
+        recompressStreamReasoning={
+          isCompressing && compressionPhase === 'manual' ? compressionReasoning : ''
+        }
+        recompressError={
+          contextRecompressJob?.status === 'error' ? contextRecompressJob.error : null
+        }
+        onRecompress={() => {
+          const sid = contextDialogState.sessionId ?? currentSessionId
+          if (sid) void runContextRecompress(sid)
+        }}
+        onRecompressDismissError={dismissContextRecompressError}
       />
     </>
   )

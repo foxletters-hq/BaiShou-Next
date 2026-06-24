@@ -23,6 +23,14 @@ export interface ContextChainDialogProps {
   meta?: CallChainPanelMeta
   compressedContent?: string
   systemPrompt?: string
+  sessionId?: string
+  recompressBusy?: boolean
+  recompressStartedAt?: number
+  recompressStreamText?: string
+  recompressStreamReasoning?: string
+  recompressError?: string | null
+  onRecompress?: () => void
+  onRecompressDismissError?: () => void
 }
 
 export const ContextChainDialog: React.FC<ContextChainDialogProps> = (props) => {
@@ -46,6 +54,14 @@ export const ContextChainDialog: React.FC<ContextChainDialogProps> = (props) => 
       meta={props.meta}
       compressedContent={props.compressedContent}
       systemPrompt={props.systemPrompt}
+      sessionId={props.sessionId}
+      recompressBusy={props.recompressBusy}
+      recompressStartedAt={props.recompressStartedAt}
+      recompressStreamText={props.recompressStreamText}
+      recompressStreamReasoning={props.recompressStreamReasoning}
+      recompressError={props.recompressError}
+      onRecompress={props.onRecompress}
+      onRecompressDismissError={props.onRecompressDismissError}
     />
   )
 }
