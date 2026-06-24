@@ -7,9 +7,9 @@ export function isMarkdownHeadingLine(line: string): boolean {
   return /^#{1,6}\s/.test(line.trim())
 }
 
-/** 日记时间戳行（##### HH:mm:ss） */
+/** 日记时间戳行（Markdown 标题 + HH:mm:ss，支持 1–6 级） */
 export function isDiaryTimestampLine(line: string): boolean {
-  return /^#####\s*\d{2}:\d{2}:\d{2}/.test(line.trim())
+  return /^#{1,6}\s*\d{2}:\d{2}(:\d{2})?\s*$/.test(line.trim())
 }
 
 /** 该行不参与标签解析 / 不着色（标题、时间戳） */

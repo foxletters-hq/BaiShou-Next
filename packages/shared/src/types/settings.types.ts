@@ -120,7 +120,12 @@ export interface DiaryTemplateConfig {
   newEntryTemplate?: string
   /** 追加记录时插入的时间块，支持 {time} {date} {datetime} */
   appendBlockTemplate?: string
-  /** 伙伴调用写日记 / 编辑日记工具时的书写提示词 */
+  /**
+   * 伙伴写日记时的可选补充说明（风格/内容要求，不含时间标题格式）。
+   * 时间标题格式由 newEntryTemplate / appendBlockTemplate 统一决定。
+   */
+  writingStyleSupplement?: string
+  /** @deprecated 旧字段；读取时会迁移到 writingStyleSupplement，新写入请用 writingStyleSupplement */
   aiWritingPrompt?: string
 }
 
