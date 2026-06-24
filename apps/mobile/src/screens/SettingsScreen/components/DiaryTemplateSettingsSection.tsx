@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import {
   DEFAULT_DIARY_APPEND_BLOCK_TEMPLATE,
@@ -201,15 +201,27 @@ export const DiaryTemplateSettingsSection: React.FC = () => {
             '由上方模板自动推导，无需单独维护格式提示词。'
           )}
         </Text>
-        <Input
-          value={agentPreview}
-          multiline
-          textarea
-          numberOfLines={12}
-          style={{ minHeight: 200, lineHeight: 20, opacity: 0.85 }}
-          containerStyle={{ marginBottom: 8 }}
-          editable={false}
-        />
+        <View
+          style={[
+            styles.previewBox,
+            {
+              backgroundColor: colors.bgSurface,
+              borderColor: colors.borderStrong
+            }
+          ]}
+        >
+          <ScrollView
+            style={styles.previewScroll}
+            contentContainerStyle={styles.previewScrollContent}
+            nestedScrollEnabled
+            showsVerticalScrollIndicator
+            keyboardShouldPersistTaps="handled"
+          >
+            <Text style={[styles.previewText, { color: colors.textPrimary }]} selectable>
+              {agentPreview}
+            </Text>
+          </ScrollView>
+        </View>
       </SettingsGroupCard>
 
       <SettingsGroupCard>
@@ -264,6 +276,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     marginBottom: 12
+  },
+  previewBox: {
+    borderWidth: 1,
+    borderRadius: 16,
+    borderCurve: 'continuous',
+    overflow: 'hidden',
+    marginBottom: 8
+  },
+  previewScroll: {
+    maxHeight: 220
+  },
+  previewScrollContent: {
+    paddingHorizontal: 12,
+    paddingVertical: 10
+  },
+  previewText: {
+    fontSize: 14,
+    lineHeight: 20,
+    opacity: 0.85
   },
   loadingRow: {
     minHeight: 120,
