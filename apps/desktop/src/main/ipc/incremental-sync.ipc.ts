@@ -7,6 +7,7 @@ import {
   OperationLogService,
   listDiskVaultFolderNames,
   createNodeFileSystem,
+  S3NotConfiguredError,
   type IIncrementalSyncService
 } from '@baishou/core-desktop'
 import {
@@ -220,7 +221,6 @@ export function registerIncrementalSyncIPC() {
   ipcMain.handle('incrementalSync:updateConfig', async (_, config: Partial<S3SyncConfig>) => {
     const merged = {
       ...getDefaultSyncConfig(),
-      enabled: true,
       ...config
     }
     await createSyncService(merged)
@@ -234,7 +234,6 @@ export function registerIncrementalSyncIPC() {
     if (config) {
       const merged = {
         ...getDefaultSyncConfig(),
-        enabled: true,
         ...config
       }
       if (merged.target === 'webdav' && merged.webdavUrl) {
@@ -296,6 +295,11 @@ export function registerIncrementalSyncIPC() {
 
   ipcMain.handle('incrementalSync:planSync', async (_, runOptions) => {
     const service = await getSyncService()
+    const config = await service.getConfig()
+    if (!config.enabled) {
+      throw new S3NotConfiguredError()
+    }
+
     service.clearPlanManifestCache()
     await vaultService.syncRegistryWithDisk()
     let context = await resolveSyncPlanContext()

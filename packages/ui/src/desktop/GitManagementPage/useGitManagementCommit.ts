@@ -34,6 +34,28 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
 
   const performCommit = useCallback(async (msg: string) => onCommitAll(msg), [onCommitAll])
 
+  const isAuthorNotConfiguredError = useCallback((error: unknown) => {
+    const e = error as { name?: string; message?: string; cause?: { message?: string } }
+    const message = `${e?.message ?? ''} ${e?.cause?.message ?? ''}`.toLowerCase()
+    return (
+      e?.name === 'GitConfigError' ||
+      message.includes('author identity') ||
+      message.includes('user.name') ||
+      message.includes('user.email') ||
+      message.includes('tell me who you are')
+    )
+  }, [])
+
+  const notifyAuthorNotConfigured = useCallback(() => {
+    onToast(
+      t(
+        'version_control.author_not_configured',
+        '请先在「Git 提交签名」中填写用户名和邮箱后再提交'
+      ),
+      'error'
+    )
+  }, [onToast, t])
+
   const notifyCommitOutcome = useCallback(
     (fileCount: number, mode: 'local' | 'push') => {
       if (fileCount === 0) {
@@ -84,6 +106,8 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
       const errorMsg = e?.message || ''
       if (errorMsg.includes('No changes')) {
         notifyCommitOutcome(0, 'local')
+      } else if (isAuthorNotConfiguredError(e)) {
+        notifyAuthorNotConfigured()
       } else {
         onToast(errorMsg || t('version_control.git_commit_failed', '提交失败'), 'error')
       }
@@ -92,6 +116,8 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
     commitMessage,
     performCommit,
     notifyCommitOutcome,
+    isAuthorNotConfiguredError,
+    notifyAuthorNotConfigured,
     onToast,
     t,
     handleRefreshStatus,
@@ -129,6 +155,8 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
       const errorMsg = e?.message || ''
       if (errorMsg.includes('No changes')) {
         notifyCommitOutcome(0, 'push')
+      } else if (isAuthorNotConfiguredError(e)) {
+        notifyAuthorNotConfigured()
       } else {
         onToast(e?.message || t('version_control.git_commit_failed', '提交失败'), 'error')
       }
@@ -137,6 +165,8 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
     commitMessage,
     performCommit,
     notifyCommitOutcome,
+    isAuthorNotConfiguredError,
+    notifyAuthorNotConfigured,
     onPush,
     onToast,
     t,

@@ -1,16 +1,19 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { useSyncStore } from '@baishou/store'
 import { useToast, useDialog } from '@baishou/ui'
 import {
   assertSyncConfirmAllowed,
   canExecuteIncrementalSyncPlan,
+  isIncrementalSyncReady,
   resolveIncrementalSyncConfirmReplan,
   resolvePlanConfirmEligibleAt,
   runIncrementalSyncWithDivergenceConfirmation,
   shouldRequireIncrementalSyncReconfirmAfterReplan,
   type IncrementalSyncResult,
   type IncrementalSyncRunOptions,
+  type S3SyncConfig,
   type SyncDeletePropagationChoice
 } from '@baishou/shared'
 import { friendlySyncError } from '../utils/friendly-sync-error'
@@ -37,6 +40,27 @@ function summarizeSyncResult(result: IncrementalSyncResult): SyncProgress {
     duration: result.duration,
     sessionId: result.sessionId
   }
+}
+
+async function readIncrementalSyncConfig(): Promise<S3SyncConfig | null> {
+  try {
+    return (await window.api.incrementalSync.getConfig()) as S3SyncConfig
+  } catch {
+    return null
+  }
+}
+
+function resolveSyncNotReadyMessage(config: S3SyncConfig | null, t: TFunction): string {
+  if (config?.enabled === false) {
+    return t(
+      'data_sync.error_sync_disabled',
+      '请先在设置中开启「文件同步」开关后再同步'
+    )
+  }
+  return t(
+    'data_sync.error_not_configured',
+    '同步服务尚未启用或配置不完整'
+  )
 }
 
 export function useOrchestratedSync() {
@@ -131,6 +155,16 @@ export function useOrchestratedSync() {
 
       const { planPreview: stalePreview, planConfirmEligibleAt } = useSyncStore.getState()
       if (!stalePreview) return null
+
+      const syncConfig = await readIncrementalSyncConfig()
+      if (!isIncrementalSyncReady(syncConfig)) {
+        clearPlanPreview()
+        const errorMessage = resolveSyncNotReadyMessage(syncConfig, t)
+        setMessage(errorMessage)
+        setStatus('idle')
+        toast.showWarning(errorMessage)
+        return null
+      }
 
       if (stalePreview.requiresDeletePropagationChoice && !deletePropagationChoice) {
         return null
@@ -261,6 +295,15 @@ export function useOrchestratedSync() {
       return null
     }
 
+    const syncConfig = await readIncrementalSyncConfig()
+    if (!isIncrementalSyncReady(syncConfig)) {
+      const errorMessage = resolveSyncNotReadyMessage(syncConfig, t)
+      setMessage(errorMessage)
+      setStatus('idle')
+      toast.showWarning(errorMessage)
+      return null
+    }
+
     setStatus('planning')
     setMessage(t('data_sync.planning', '正在分析同步变更…'))
     setSyncResult(null)
@@ -291,7 +334,7 @@ export function useOrchestratedSync() {
       setStatus('error')
       setProgress(null)
       toast.showError(errorMessage)
-      throw e
+      return null
     }
   }, [
     isPlanning,

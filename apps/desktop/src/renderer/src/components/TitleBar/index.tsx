@@ -18,6 +18,7 @@ import { resolveDiaryHomePath } from '../Sidebar/sidebar-preferences'
 import { useOrchestratedSync } from '../../hooks/useOrchestratedSync'
 import { readActiveVaultNavigationSnapshot } from '../../lib/agent-navigation-persistence'
 import { switchActiveVault, persistActiveVaultName } from '../../lib/vault-runtime.util'
+import { INCREMENTAL_SYNC_CONFIG_CHANGED_EVENT } from '../../lib/incremental-sync-config-events'
 
 export const TitleBar: React.FC = () => {
   const { t } = useTranslation()
@@ -117,23 +118,29 @@ export const TitleBar: React.FC = () => {
     let cancelled = false
     let retryTimer: ReturnType<typeof setTimeout> | undefined
     let retries = 0
-    const fetchConfig = async () => {
+
+    const fetchSyncConfig = async () => {
       try {
         const cfg = await (window as any).api?.incrementalSync?.getConfig?.()
         if (!cancelled) setS3Configured(isIncrementalSyncReady(cfg))
+        retries = 0
       } catch {
         if (!cancelled && retries < 5) {
           retries++
-          retryTimer = setTimeout(fetchConfig, 1000)
+          retryTimer = setTimeout(fetchSyncConfig, 1000)
         }
       }
     }
-    fetchConfig()
+
+    void fetchSyncConfig()
+    window.addEventListener(INCREMENTAL_SYNC_CONFIG_CHANGED_EVENT, fetchSyncConfig)
+
     return () => {
       cancelled = true
       if (retryTimer) clearTimeout(retryTimer)
+      window.removeEventListener(INCREMENTAL_SYNC_CONFIG_CHANGED_EVENT, fetchSyncConfig)
     }
-  }, [])
+  }, [location.pathname])
 
   const preloadVault = (vaultName: string) => {
     if (!vaultName || vaultName === activeVault?.name) return

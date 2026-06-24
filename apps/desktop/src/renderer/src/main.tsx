@@ -6,18 +6,11 @@ import './styles/index.css'
 import '@baishou/shared'
 
 window.onerror = (message, _s, _l, _c, error) => {
-  document.body.innerHTML = `<div style="background:#222;color:red;padding:20px;font-size:16px;white-space:pre-wrap;height:100vh;">
-    <h1>FATAL ERROR</h1>
-    <b>Message:</b> ${message}<br/>
-    <b>Stack:</b> ${error?.stack || 'No stack'}
-  </div>`
+  console.error('[renderer] uncaught error:', message, error)
 }
 
 window.addEventListener('unhandledrejection', (event) => {
-  document.body.innerHTML = `<div style="background:#222;color:orange;padding:20px;font-size:16px;white-space:pre-wrap;height:100vh;">
-    <h1>UNHANDLED PROMISE REJECTION</h1>
-    <b>Reason:</b> ${event.reason?.stack || event.reason}
-  </div>`
+  console.error('[renderer] unhandled promise rejection:', event.reason)
 })
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
