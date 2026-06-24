@@ -68,6 +68,11 @@ config.resolver.blockList = [
   )
 ]
 
+const databaseNativeEntry = path.resolve(
+  workspaceRoot,
+  'packages/database/src/index.native.ts'
+)
+
 const defaultResolveRequest = config.resolver.resolveRequest
 
 config.resolver.resolveRequest = (context, moduleName, platform) => {
@@ -77,6 +82,14 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   ) {
     return {
       filePath: mockPath,
+      type: 'sourceFile'
+    }
+  }
+
+  // Expo Web / SSR 不走 react-native export condition，会误解析到 index.ts → index.desktop（已被 blockList）
+  if (moduleName === '@baishou/database') {
+    return {
+      filePath: databaseNativeEntry,
       type: 'sourceFile'
     }
   }
