@@ -14,7 +14,8 @@ import {
   createDiarySearcher,
   createWebSearchResultFetcher,
   createFetchSearchPage,
-  buildStreamConfig
+  buildStreamConfig,
+  resolveStreamDialogueSelection
 } from './agent-helpers'
 import { settingsManager } from './settings.ipc'
 import { searchService } from '../services/search.service'
@@ -143,13 +144,19 @@ export class AgentChatService {
   ) {
     const { sessionManager } = getAgentManagers()
     try {
-      const { provider, globalModels, systemModels, userConfig } =
-        await this.buildStreamConfigForSession(
-          args.sessionId,
-          args.providerId,
-          args.modelId,
-          args.searchMode
-        )
+      const prefs = await this.getAssistantSessionPrefs(args.sessionId)
+      const resolved = await resolveStreamDialogueSelection({
+        sessionId: args.sessionId,
+        requestedProviderId: args.providerId,
+        requestedModelId: args.modelId
+      })
+      const { provider, systemModels, userConfig } = await buildStreamConfig(
+        resolved.providerId,
+        resolved.modelId,
+        args.searchMode,
+        prefs.assistantContextWindow,
+        prefs.assistantEmojiPrefs
+      )
 
       await this.runStreamChat({
         event,
@@ -157,7 +164,7 @@ export class AgentChatService {
         userText: args.text,
         userMessageId: args.userMsgId,
         provider,
-        modelId: args.modelId || globalModels?.globalDialogueModelId || 'deepseek-chat',
+        modelId: resolved.modelId,
         systemModels,
         userConfig,
         attachments: args.attachments,
