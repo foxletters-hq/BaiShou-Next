@@ -27,6 +27,13 @@ let _appDb: AppDatabase | null = null
 
 let _appDbPath: string | null = null
 
+let _resetBlocker: (() => boolean) | null = null
+
+/** 嵌入向量迁移进行中时阻止 resetAppDb，避免备份表丢失导致迁移卡死。 */
+export function setAppDbResetBlocker(checker: () => boolean): void {
+  _resetBlocker = checker
+}
+
 /**
  * 处理数据库文件物理损坏的自动恢复
  */
@@ -152,6 +159,10 @@ export function getAppDbPath(): string | null {
 }
 
 export function resetAppDb(): void {
+  if (_resetBlocker?.()) {
+    logger.warn('[DB] resetAppDb 已跳过：嵌入向量迁移正在进行中')
+    return
+  }
   if (_appDb) {
     try {
       const client = (_appDb as any)?.session?.client

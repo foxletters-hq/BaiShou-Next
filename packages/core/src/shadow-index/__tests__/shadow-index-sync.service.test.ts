@@ -10,6 +10,7 @@ import { IVaultService, VaultInfo } from '../../vault/vault.types'
 
 // ── Mock: ShadowIndexRepository ──────────
 class MockShadowIndexRepository {
+  vaultName = 'TestVault'
   private records: any[] = []
   private idCounter = 1
 

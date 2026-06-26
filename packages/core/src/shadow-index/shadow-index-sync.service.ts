@@ -3,7 +3,7 @@ import {
   UpsertShadowIndexPayload,
   normalizeShadowFilePath
 } from '@baishou/database'
-import { parseDateStr, DiaryMeta, logger } from '@baishou/shared'
+import { parseDateStr, DiaryMeta, logger, buildDiaryEmbeddingSourceId } from '@baishou/shared'
 
 import type { IFileSystem } from '../fs/file-system.types'
 import { md5Hex } from '../fs/md5'
@@ -254,7 +254,10 @@ export class ShadowIndexSyncService {
         logger.info(`[ShadowSync] 已批量清理孤立索引 ID=${req.id} (日期: ${req.dateStr})`)
         if (this.embeddingCallback) {
           try {
-            await this.embeddingCallback.deleteEmbeddingsBySource('diary', req.id.toString())
+            await this.embeddingCallback.deleteEmbeddingsBySource(
+              'diary',
+              buildDiaryEmbeddingSourceId(this.shadowRepo.vaultName, req.id)
+            )
           } catch (e: any) {}
         }
       }
@@ -378,7 +381,7 @@ export class ShadowIndexSyncService {
             try {
               await this.embeddingCallback.deleteEmbeddingsBySource(
                 'diary',
-                record.id.toString()
+                buildDiaryEmbeddingSourceId(this.shadowRepo.vaultName, record.id)
               )
             } catch (e: any) {
               logger.warn(`[ShadowSync] 清理孤立 RAG 向量失败 (ID=${record.id}):`, e.message)

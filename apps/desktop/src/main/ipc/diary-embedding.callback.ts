@@ -1,12 +1,17 @@
 import { BrowserWindow } from 'electron'
 import type { IEmbeddingCallback } from '@baishou/core-desktop'
 import {
+  buildDiaryEmbeddingGroupId,
+  buildDiaryEmbeddingSourceId,
   diaryDateToSourceCreatedSeconds,
   isRagMemoryEnabled,
   markRagDiaryEmbedFailure,
   clearRagDiaryEmbedFailure,
   hasRagDiaryEmbedFailure
 } from '@baishou/shared'
+
+import { vaultService } from './vault.ipc'
+import { deleteDiaryEmbeddingAliases } from '../services/diary-embedding.util'
 
 function broadcastDiaryEmbedFailed(): void {
   for (const win of BrowserWindow.getAllWindows()) {
@@ -49,11 +54,15 @@ export const embeddingCallback: IEmbeddingCallback = {
       const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
       const tagPrefix = params.tags.length > 0 ? `[标签: ${params.tags.join(', ')}] ` : ''
 
+      const vaultName = vaultService.getActiveVault()?.name ?? 'Personal'
+      const sourceId = buildDiaryEmbeddingSourceId(vaultName, params.diaryId)
+
+      await deleteDiaryEmbeddingAliases(vaultName, params.diaryId)
       await embeddingService.reEmbedText({
         text: params.content,
         sourceType: 'diary',
-        sourceId: params.diaryId.toString(),
-        groupId: 'diary_auto',
+        sourceId,
+        groupId: buildDiaryEmbeddingGroupId(vaultName),
         chunkPrefix: `${tagPrefix}[${label} 日记:]\n`,
         metadataJson: JSON.stringify({ updated_at: params.updatedAt.getTime() }),
         sourceCreatedAt: diaryDateToSourceCreatedSeconds(d) * 1000

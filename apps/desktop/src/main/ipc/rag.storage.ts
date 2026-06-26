@@ -11,6 +11,22 @@ const ROLLBACK_TABLE = 'memory_embeddings_rollback'
 /** 清空前自动备份表名 */
 const SAFETY_BACKUP_TABLE = 'memory_embeddings_safety_backup'
 
+let embeddingWriteMutex: Promise<void> = Promise.resolve()
+
+async function withEmbeddingWriteLock<T>(action: () => Promise<T>): Promise<T> {
+  const previous = embeddingWriteMutex
+  let release!: () => void
+  embeddingWriteMutex = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  await previous
+  try {
+    return await action()
+  } finally {
+    release()
+  }
+}
+
 export class DesktopEmbeddingStorage implements IEmbeddingStorage {
   async initVectorIndex(_dimension: number): Promise<void> {
     // Drizzle 迁移已管理 memory_embeddings 表结构，此处无需额外操作
@@ -28,52 +44,56 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
     modelId: string
     sourceCreatedAt?: number
   }): Promise<void> {
-    const db = getAppDb()
-    const vectorBuffer = Buffer.from(new Float32Array(params.embedding).buffer)
+    await withEmbeddingWriteLock(async () => {
+      const db = getAppDb()
+      const vectorBuffer = Buffer.from(new Float32Array(params.embedding).buffer)
 
-    await db
-      .insert(memoryEmbeddingsTable)
-      .values({
-        embeddingId: params.id,
-        sourceType: params.sourceType,
-        sourceId: params.sourceId,
-        groupId: params.groupId,
-        chunkIndex: params.chunkIndex,
-        chunkText: params.chunkText,
-        metadataJson: params.metadataJson || '{}',
-        embedding: vectorBuffer,
-        dimension: params.embedding.length,
-        modelId: params.modelId,
-        createdAt: new Date(),
-        sourceCreatedAt: new Date(
-          normalizeUnixToSeconds(params.sourceCreatedAt ?? Date.now()) * 1000
-        )
-      })
-      .onConflictDoUpdate({
-        target: [memoryEmbeddingsTable.embeddingId],
-        set: {
+      await db
+        .insert(memoryEmbeddingsTable)
+        .values({
+          embeddingId: params.id,
+          sourceType: params.sourceType,
+          sourceId: params.sourceId,
+          groupId: params.groupId,
+          chunkIndex: params.chunkIndex,
           chunkText: params.chunkText,
+          metadataJson: params.metadataJson || '{}',
           embedding: vectorBuffer,
           dimension: params.embedding.length,
           modelId: params.modelId,
-          metadataJson: params.metadataJson || '{}',
+          createdAt: new Date(),
           sourceCreatedAt: new Date(
             normalizeUnixToSeconds(params.sourceCreatedAt ?? Date.now()) * 1000
           )
-        }
-      })
+        })
+        .onConflictDoUpdate({
+          target: [memoryEmbeddingsTable.embeddingId],
+          set: {
+            chunkText: params.chunkText,
+            embedding: vectorBuffer,
+            dimension: params.embedding.length,
+            modelId: params.modelId,
+            metadataJson: params.metadataJson || '{}',
+            sourceCreatedAt: new Date(
+              normalizeUnixToSeconds(params.sourceCreatedAt ?? Date.now()) * 1000
+            )
+          }
+        })
+    })
   }
 
   async deleteEmbeddingsBySource(sourceType: string, sourceId: string): Promise<void> {
-    const db = getAppDb()
-    await db
-      .delete(memoryEmbeddingsTable)
-      .where(
-        and(
-          eq(memoryEmbeddingsTable.sourceType, sourceType),
-          eq(memoryEmbeddingsTable.sourceId, sourceId)
+    await withEmbeddingWriteLock(async () => {
+      const db = getAppDb()
+      await db
+        .delete(memoryEmbeddingsTable)
+        .where(
+          and(
+            eq(memoryEmbeddingsTable.sourceType, sourceType),
+            eq(memoryEmbeddingsTable.sourceId, sourceId)
+          )
         )
-      )
+    })
   }
 
   async clearEmbeddings(): Promise<void> {
@@ -222,16 +242,29 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
   // ── 迁移实现（对标 SqliteHybridSearchRepository） ──────────────────
 
   async hasPendingMigration(): Promise<boolean> {
-    const db = getAppDb()
-    const checkTable = await db.all(
-      sql`SELECT name FROM sqlite_master WHERE type='table' AND name=${BACKUP_TABLE}`
-    )
-    if (checkTable.length === 0) return false
+    if (!(await this.hasMigrationBackupTable())) return false
 
+    const db = getAppDb()
     const countRows = await db.all(
       sql.raw(`SELECT count(*) as c FROM ${BACKUP_TABLE} WHERE is_migrated = 0`)
     )
     return Number((countRows[0] as any)?.c ?? 0) > 0
+  }
+
+  async hasMigrationBackupTable(): Promise<boolean> {
+    const db = getAppDb()
+    const checkTable = await db.all(
+      sql`SELECT name FROM sqlite_master WHERE type='table' AND name=${BACKUP_TABLE}`
+    )
+    return checkTable.length > 0
+  }
+
+  async hasMigrationRollbackTable(): Promise<boolean> {
+    const db = getAppDb()
+    const checkTable = await db.all(
+      sql`SELECT name FROM sqlite_master WHERE type='table' AND name=${ROLLBACK_TABLE}`
+    )
+    return checkTable.length > 0
   }
 
   async countHeterogeneousEmbeddings(currentModelId: string): Promise<number> {
@@ -337,26 +370,30 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
   }
 
   async createMigrationBackup(): Promise<number> {
-    const db = getAppDb()
-    await db.run(sql.raw(`DROP TABLE IF EXISTS ${BACKUP_TABLE}`))
-    await db.run(
-      sql.raw(`
+    return withEmbeddingWriteLock(async () => {
+      const db = getAppDb()
+      await db.run(sql.raw(`DROP TABLE IF EXISTS ${BACKUP_TABLE}`))
+      await db.run(
+        sql.raw(`
       CREATE TABLE ${BACKUP_TABLE} AS
       SELECT embedding_id, source_type, source_id, group_id, chunk_index, chunk_text,
              metadata_json, source_created_at, 0 as is_migrated
       FROM memory_embeddings
     `)
-    )
-    await db.run(
-      sql.raw(`CREATE INDEX IF NOT EXISTS idx_backup_migrated ON ${BACKUP_TABLE}(is_migrated)`)
-    )
-    const countRows = await db.all(sql.raw(`SELECT count(*) as c FROM ${BACKUP_TABLE}`))
-    return Number((countRows[0] as any)?.c ?? 0)
+      )
+      await db.run(
+        sql.raw(`CREATE INDEX IF NOT EXISTS idx_backup_migrated ON ${BACKUP_TABLE}(is_migrated)`)
+      )
+      const countRows = await db.all(sql.raw(`SELECT count(*) as c FROM ${BACKUP_TABLE}`))
+      return Number((countRows[0] as any)?.c ?? 0)
+    })
   }
 
   async dropMigrationBackup(): Promise<void> {
-    const db = getAppDb()
-    await db.run(sql.raw(`DROP TABLE IF EXISTS ${BACKUP_TABLE}`))
+    await withEmbeddingWriteLock(async () => {
+      const db = getAppDb()
+      await db.run(sql.raw(`DROP TABLE IF EXISTS ${BACKUP_TABLE}`))
+    })
   }
 
   async clearAndReinitEmbeddings(_dimension: number): Promise<void> {
@@ -395,10 +432,15 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
   }
 
   async markBackupChunkMigrated(embeddingId: string): Promise<void> {
-    const db = getAppDb()
-    await db.run(
-      sql`UPDATE ${sql.raw(BACKUP_TABLE)} SET is_migrated = 1 WHERE embedding_id = ${embeddingId}`
-    )
+    await withEmbeddingWriteLock(async () => {
+      if (!(await this.hasMigrationBackupTable())) {
+        throw new Error(`Migration backup table ${BACKUP_TABLE} is missing`)
+      }
+      const db = getAppDb()
+      await db.run(
+        sql`UPDATE ${sql.raw(BACKUP_TABLE)} SET is_migrated = 1 WHERE embedding_id = ${embeddingId}`
+      )
+    })
   }
 
   async verifyMigrationComplete(modelId: string): Promise<[boolean, boolean]> {
