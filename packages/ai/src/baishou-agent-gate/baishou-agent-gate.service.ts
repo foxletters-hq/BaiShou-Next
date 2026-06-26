@@ -8,6 +8,7 @@ import {
   AgentGateEffect,
   AgentGateReply,
   AgentGateRequestStatus,
+  canPermanentlyAllowAgentGateAction,
   createAgentGateRequestId,
   DEFAULT_BAISHOU_AGENT_GATE_CONFIG,
   type AgentGateAssertInput,
@@ -58,7 +59,9 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
   async assertWithResolution(input: AgentGateAssertInput): Promise<AgentGateResolution> {
     const effect = this.policy.evaluate({
       action: input.action,
-      toolDisabled: false
+      toolDisabled: false,
+      resources: input.resources,
+      metadata: input.metadata
     })
 
     if (effect === AgentGateEffect.Allow) {
@@ -80,7 +83,9 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
   async ask(input: AgentGateAssertInput): Promise<AgentGateRequest> {
     const effect = this.policy.evaluate({
       action: input.action,
-      toolDisabled: false
+      toolDisabled: false,
+      resources: input.resources,
+      metadata: input.metadata
     })
     const request = this.createRequest(input)
     if (effect === AgentGateEffect.Ask) {
@@ -99,7 +104,13 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
 
     const { request } = entry
 
-    if (input.reply === AgentGateReply.Always && this.policy.isExcluded(request.action)) {
+    if (
+      input.reply === AgentGateReply.Always &&
+      !canPermanentlyAllowAgentGateAction(request.action, {
+        exclusionList: this.policy.getConfig().exclusionList,
+        metadata: request.metadata
+      })
+    ) {
       throw new AgentGateAlwaysNotAllowedError(request.action)
     }
 
