@@ -3,9 +3,12 @@ import {
   diaryDateToSourceCreatedSeconds,
   EMBEDDING_SOURCE_SORT_MILLIS_SQL,
   EMBEDDING_SOURCE_SORT_ORDER_SQL,
+  buildDiaryEmbeddingGroupId,
+  buildDiaryEmbeddingSourceId,
   clearRagDiaryEmbedFailure,
   filterUnindexedDiaries,
   formatLocalDate,
+  filterDiaryScopedSearchResults,
   hasRagDiaryEmbedFailure,
   isRagMemoryEnabled,
   limitExecute,
@@ -18,6 +21,21 @@ import {
 } from '@baishou/shared'
 import { SqliteHybridSearchRepository } from '@baishou/database'
 import type { SettingsManagerService, DiaryService } from '@baishou/core-mobile'
+import {
+  MobileRagAbortError,
+  mobileRagOperationControl
+} from './mobile-rag-operation-control'
+import {
+  countDiaryEmbeddingsForVault,
+  deleteDiaryEmbeddingAliases,
+  purgeAllLegacyDiaryEmbeddings,
+  purgeLegacyDiaryEmbeddingsForVault
+} from './mobile-diary-embedding.util'
+import type { MobileRagVaultScope } from './mobile-rag-vault-scope'
+import { listVaultDiaryMetas, loadVaultDiariesForEmbedding } from './mobile-rag-vault-diary'
+import type { DiaryMeta } from '@baishou/shared'
+
+export { MobileRagAbortError } from './mobile-rag-operation-control'
 
 const HYBRID_SEARCH_TABLE = 'memory_embeddings'
 const PREPARE_DIMENSION_MAX_ATTEMPTS = 3
@@ -103,6 +121,29 @@ export interface MobileRagServiceDeps {
   hybridSearchService: HybridSearchService
   registry: AIProviderRegistry
   rawSqlClient: unknown
+  vaultScope?: MobileRagVaultScope
+}
+
+type RawSqlClient = {
+  execute?: (q: { sql: string; args: unknown[] }) => Promise<{ rows: unknown[] }>
+}
+
+function defaultVaultScope(): MobileRagVaultScope {
+  return {
+    resolveActiveVaultName: async () => 'Personal',
+    listVaultNames: async () => ['Personal']
+  }
+}
+
+async function resolveVaultScope(deps: MobileRagServiceDeps): Promise<MobileRagVaultScope> {
+  return deps.vaultScope ?? defaultVaultScope()
+}
+
+function diaryVaultListFilterSql(vaultGroupId: string): { clause: string; args: string[] } {
+  return {
+    clause: `(source_type != 'diary' OR group_id = ?)`,
+    args: [vaultGroupId]
+  }
 }
 
 async function resolveEmbeddingAdapter(
@@ -128,7 +169,9 @@ export type EmbedDiaryEntryParams = {
   tags: string[]
   date: Date | string
   updatedAt: Date
-  groupId: string
+  /** @deprecated 请改用 vaultName；保留兼容旧调用 */
+  groupId?: string
+  vaultName?: string
 }
 
 export type EmbedDiaryEntryOptions = {
@@ -137,7 +180,10 @@ export type EmbedDiaryEntryOptions = {
   skipRagEnabledCheck?: boolean
 }
 
-async function loadEmbeddedDiaryIndex(deps: MobileRagServiceDeps): Promise<{
+async function loadEmbeddedDiaryIndex(
+  deps: MobileRagServiceDeps,
+  vaultName: string
+): Promise<{
   embeddedIds: Set<string>
   embeddedUpdatedAtMap: Map<string, number>
 }> {
@@ -150,9 +196,10 @@ async function loadEmbeddedDiaryIndex(deps: MobileRagServiceDeps): Promise<{
     return { embeddedIds, embeddedUpdatedAtMap }
   }
 
+  const groupId = buildDiaryEmbeddingGroupId(vaultName)
   const result = await client.execute({
-    sql: `SELECT source_id as sourceId, metadata_json as metadataJson FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = 'diary'`,
-    args: []
+    sql: `SELECT source_id as sourceId, metadata_json as metadataJson FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = 'diary' AND group_id = ?`,
+    args: [groupId]
   })
 
   for (const row of (result.rows || []) as Array<{
@@ -196,8 +243,11 @@ export async function embedDiaryEntry(
     await prepareMobileEmbeddingIndex(deps, adapter)
   }
 
-  const sourceId = String(params.diaryId)
-  await deps.hsRepo.deleteEmbeddingsBySource('diary', sourceId)
+  const scope = await resolveVaultScope(deps)
+  const resolvedVault = params.vaultName?.trim() || (await scope.resolveActiveVaultName())
+  const sourceId = buildDiaryEmbeddingSourceId(resolvedVault, params.diaryId)
+  const groupId = buildDiaryEmbeddingGroupId(resolvedVault)
+  await deleteDiaryEmbeddingAliases(deps.hsRepo, resolvedVault, params.diaryId)
 
   const d = params.date instanceof Date ? params.date : new Date(params.date)
   const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -208,7 +258,7 @@ export async function embedDiaryEntry(
     text: prefixedText,
     sourceType: 'diary',
     sourceId,
-    groupId: params.groupId,
+    groupId,
     sourceCreatedAt: diaryDateToSourceCreatedSeconds(d) * 1000,
     metadataJson,
     requireSuccess: true as const
@@ -234,9 +284,12 @@ export async function runControlledDiaryBatchEmbed(
   deps: MobileRagServiceDeps,
   options?: {
     onProgress?: RagProgressCallback
+    /** @deprecated 请改用 vaultName */
     groupId?: string
+    vaultName?: string
   }
 ): Promise<ControlledDiaryBatchEmbedResult> {
+  mobileRagOperationControl.reset()
   const ragConfig = (await deps.settingsManager.get<{ ragEnabled?: boolean }>('rag_config')) || {}
   if (!isRagMemoryEnabled({ ragEnabled: ragConfig.ragEnabled ?? true })) {
     return { embedded: 0, failed: 0, total: 0, skipped: true, skipReason: 'rag-disabled' }
@@ -255,13 +308,53 @@ export async function runControlledDiaryBatchEmbed(
     return { embedded: 0, failed: 0, total: 0, skipped: true, skipReason: 'prepare-failed' }
   }
 
-  const allDiaries = sortDiariesByDateAsc(await deps.diaryService.listAll({ limit: 10000 }))
-  const { embeddedIds, embeddedUpdatedAtMap } = await loadEmbeddedDiaryIndex(deps)
-  const diaries = filterUnindexedDiaries(allDiaries, embeddedIds, embeddedUpdatedAtMap)
-  const total = diaries.length
-  const groupId = options?.groupId ?? 'diary_batch'
+  const purgedLegacy = await purgeAllLegacyDiaryEmbeddings(
+    deps.rawSqlClient as RawSqlClient | undefined
+  )
+  if (purgedLegacy > 0) {
+    logger.info('[MobileRag] purged legacy diary vectors', { count: purgedLegacy })
+  }
 
-  if (total === 0) {
+  const vaultScope = await resolveVaultScope(deps)
+  const shadowDb = vaultScope.getShadowDb?.() ?? null
+  const vaultNames = options?.vaultName?.trim()
+    ? [options.vaultName.trim()]
+    : await vaultScope.listVaultNames()
+  const activeVaultName = await vaultScope.resolveActiveVaultName()
+
+  type VaultEmbedPlan = {
+    vaultName: string
+    diariesToEmbed: DiaryMeta[]
+    allDiaryIds: number[]
+  }
+
+  const vaultPlans: VaultEmbedPlan[] = []
+  let globalTotal = 0
+
+  for (const vaultName of vaultNames) {
+    const allDiaries = sortDiariesByDateAsc(
+      shadowDb
+        ? await listVaultDiaryMetas(shadowDb, vaultName)
+        : vaultName === activeVaultName
+          ? await deps.diaryService.listAll({ limit: 10000 })
+          : []
+    )
+    const { embeddedIds, embeddedUpdatedAtMap } = await loadEmbeddedDiaryIndex(deps, vaultName)
+    const resolveSourceId = (meta: { id: unknown }) =>
+      buildDiaryEmbeddingSourceId(vaultName, meta.id as number)
+    const diariesToEmbed = filterUnindexedDiaries(allDiaries, embeddedIds, embeddedUpdatedAtMap, {
+      resolveSourceId
+    })
+    if (diariesToEmbed.length === 0) continue
+    vaultPlans.push({
+      vaultName,
+      diariesToEmbed,
+      allDiaryIds: allDiaries.map((d) => d.id)
+    })
+    globalTotal += diariesToEmbed.length
+  }
+
+  if (globalTotal === 0) {
     await finalizeBatchEmbedRagConfig(deps, false)
     return { embedded: 0, failed: 0, total: 0, skipped: true, skipReason: 'nothing-to-embed' }
   }
@@ -269,88 +362,138 @@ export async function runControlledDiaryBatchEmbed(
   const ragSettings =
     (await deps.settingsManager.get<{ batchEmbedConcurrency?: number }>('rag_config')) || {}
   const batchConcurrency = resolveMobileBatchEmbedConcurrency(ragSettings.batchEmbedConcurrency)
-  const diaryById = await deps.diaryService.findByIdsForEmbedding(diaries.map((meta) => meta.id))
 
   const progress = { embedded: 0, failed: 0, completed: 0 }
 
   const reportProgress = (status: string) => {
     options?.onProgress?.({
       current: progress.completed,
-      total,
+      total: globalTotal,
       status
     })
   }
 
-  await limitExecute(diaries, batchConcurrency, async (meta) => {
-    const dateLabel = meta.date
-      ? formatLocalDate(meta.date instanceof Date ? meta.date : new Date(meta.date))
-      : ''
+  for (const plan of vaultPlans) {
+    const { vaultName, diariesToEmbed, allDiaryIds } = plan
+    await purgeLegacyDiaryEmbeddingsForVault(
+      deps.rawSqlClient as RawSqlClient | undefined,
+      vaultName,
+      allDiaryIds
+    )
 
-    try {
-      reportProgress(`处理日记: ${dateLabel}（${progress.completed}/${total}）`)
+    const diaryById = shadowDb
+      ? await loadVaultDiariesForEmbedding(
+          shadowDb,
+          vaultName,
+          diariesToEmbed.map((meta) => meta.id)
+        )
+      : await deps.diaryService.findByIdsForEmbedding(diariesToEmbed.map((meta) => meta.id))
 
-      const diary = diaryById.get(meta.id)
-      if (!diary?.id || !diary.content?.trim()) {
+    await limitExecute(diariesToEmbed, batchConcurrency, async (meta) => {
+      if (mobileRagOperationControl.isAborted) {
         return
       }
 
-      const d = diary.date instanceof Date ? diary.date : new Date(diary.date)
-      await embedDiaryEntry(
-        deps,
-        {
-          diaryId: diary.id,
-          content: diary.content,
-          tags: meta.tags ?? [],
-          date: d,
-          updatedAt: diary.updatedAt ?? new Date(),
-          groupId
-        },
-        { adapter, skipIndexPrep: true, skipRagEnabledCheck: true }
-      )
+      const dateLabel = meta.date
+        ? formatLocalDate(meta.date instanceof Date ? meta.date : new Date(meta.date))
+        : ''
 
-      progress.embedded++
-    } catch (error) {
-      progress.failed++
-      logger.warn('[MobileRag] diary embed failed', {
-        diaryId: meta.id,
-        date: dateLabel,
-        error
-      })
-    } finally {
-      progress.completed++
-      reportProgress(
-        `已嵌入 ${progress.embedded}/${total}（${progress.failed > 0 ? `失败 ${progress.failed} · ` : ''}${dateLabel}）`
-      )
-    }
-  })
+      try {
+        reportProgress(
+          `[${vaultName}] 处理日记: ${dateLabel}（${progress.completed}/${globalTotal}）`
+        )
+
+        if (mobileRagOperationControl.isAborted) {
+          return
+        }
+
+        const diary = diaryById.get(meta.id)
+        const content = diary && 'content' in diary ? diary.content : undefined
+        if (!diary || !content?.trim()) {
+          return
+        }
+
+        const d =
+          diary.date instanceof Date ? diary.date : new Date(String(diary.date ?? meta.date))
+        await deleteDiaryEmbeddingAliases(deps.hsRepo, vaultName, meta.id)
+        await embedDiaryEntry(
+          deps,
+          {
+            diaryId: meta.id,
+            content,
+            tags: meta.tags ?? [],
+            date: d,
+            updatedAt:
+              ('updatedAt' in diary && diary.updatedAt instanceof Date
+                ? diary.updatedAt
+                : meta.updatedAt) ?? new Date(),
+            vaultName
+          },
+          { adapter, skipIndexPrep: true, skipRagEnabledCheck: true }
+        )
+
+        progress.embedded++
+      } catch (error) {
+        if (mobileRagOperationControl.isAborted) {
+          return
+        }
+        progress.failed++
+        logger.warn('[MobileRag] diary embed failed', {
+          vaultName,
+          diaryId: meta.id,
+          date: dateLabel,
+          error
+        })
+      } finally {
+        progress.completed++
+        reportProgress(
+          `[${vaultName}] 已嵌入 ${progress.embedded}/${globalTotal}${progress.failed > 0 ? `（失败 ${progress.failed}）` : ''}（${dateLabel}）`
+        )
+      }
+    })
+  }
 
   await finalizeBatchEmbedRagConfig(deps, progress.failed > 0)
+
+  if (mobileRagOperationControl.isAborted) {
+    logger.info('[MobileRag] controlled batch embed aborted', {
+      embedded: progress.embedded,
+      failed: progress.failed,
+      total: globalTotal
+    })
+    throw new MobileRagAbortError(progress.embedded)
+  }
 
   logger.info('[MobileRag] controlled batch embed finished', {
     embedded: progress.embedded,
     failed: progress.failed,
-    total,
-    groupId
+    total: globalTotal,
+    vaultCount: vaultPlans.length
   })
   return {
     embedded: progress.embedded,
     failed: progress.failed,
-    total,
+    total: globalTotal,
     skipped: false
   }
 }
 
 export function createMobileRagService(deps: MobileRagServiceDeps) {
   const service = {
-    async getStats(): Promise<{ totalCount: number; currentDimension: number }> {
+    async getStats(): Promise<{
+      totalCount: number
+      currentDimension: number
+      diaryCountForVault: number
+      activeVaultName: string
+    }> {
+      const vaultScope = await resolveVaultScope(deps)
+      const activeVaultName = await vaultScope.resolveActiveVaultName()
       const globalModels = (await deps.settingsManager.get<any>('global_models')) || {}
+      const rawClient = deps.rawSqlClient as RawSqlClient | undefined
       let totalCount = 0
       try {
-        const client = deps.rawSqlClient as {
-          execute?: (q: { sql: string; args: unknown[] }) => Promise<{ rows: unknown[] }>
-        }
-        if (client?.execute) {
-          const result = await client.execute({
+        if (rawClient?.execute) {
+          const result = await rawClient.execute({
             sql: `SELECT COUNT(*) as count FROM ${HYBRID_SEARCH_TABLE}`,
             args: []
           })
@@ -365,6 +508,8 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         totalCount = ragConfig.totalEmbeddings || 0
       }
 
+      const diaryCountForVault = await countDiaryEmbeddingsForVault(rawClient, activeVaultName)
+
       let currentDimension = globalModels.globalEmbeddingDimension || 0
       try {
         const meta = await deps.hsRepo.getCurrentEmbeddingMeta()
@@ -375,7 +520,7 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         logger.warn('[MobileRag] getCurrentEmbeddingMeta failed', e as Error)
       }
 
-      return { totalCount, currentDimension }
+      return { totalCount, currentDimension, diaryCountForVault, activeVaultName }
     },
 
     async hasModelMismatch(): Promise<boolean> {
@@ -404,7 +549,12 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
     },
 
     async reembedAll(onProgress?: RagProgressCallback): Promise<number> {
+      mobileRagOperationControl.reset()
       await deps.hsRepo.clearEmbeddings()
+
+      if (mobileRagOperationControl.isAborted) {
+        throw new MobileRagAbortError(0)
+      }
 
       const globalModels = (await deps.settingsManager.get<any>('global_models')) || {}
       globalModels.globalEmbeddingDimension = 0
@@ -415,9 +565,21 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
       await deps.settingsManager.set('rag_config', ragConfig)
 
       onProgress?.({ current: 0, total: 1, status: 'detect-dimension' })
+      if (mobileRagOperationControl.isAborted) {
+        throw new MobileRagAbortError(0)
+      }
+
       await service.detectDimension()
 
+      if (mobileRagOperationControl.isAborted) {
+        throw new MobileRagAbortError(0)
+      }
+
       return service.batchEmbed(onProgress)
+    },
+
+    requestOperationAbort(): void {
+      mobileRagOperationControl.requestAbort()
     },
 
     async detectDimension(): Promise<number> {
@@ -476,6 +638,10 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
     }): Promise<{ entries: Array<Record<string, unknown>>; total: number }> {
       const limit = params.limit ?? 10
       const offset = params.offset ?? 0
+      const vaultScope = await resolveVaultScope(deps)
+      const activeVaultName = await vaultScope.resolveActiveVaultName()
+      const vaultGroupId = buildDiaryEmbeddingGroupId(activeVaultName)
+      const scopeFilter = diaryVaultListFilterSql(vaultGroupId)
 
       if (params.mode === 'semantic' && params.keyword?.trim()) {
         const adapter = await resolveEmbeddingAdapter(deps)
@@ -485,11 +651,14 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
             const baseLimit = Math.max(limit, 50)
             const fetchLimit =
               params.minSimilarity != null ? Math.min(baseLimit * 4, 500) : baseLimit
-            const results = await deps.hsRepo.queryNativeVector(
-              vector,
-              fetchLimit,
-              params.minSimilarity,
-              params.sourceType
+            const results = filterDiaryScopedSearchResults(
+              await deps.hsRepo.queryNativeVector(
+                vector,
+                fetchLimit,
+                params.minSimilarity,
+                params.sourceType
+              ),
+              activeVaultName
             )
             const entries = results.map((r) => ({
               embeddingId: r.messageId,
@@ -508,7 +677,10 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
 
       const keyword = params.keyword?.trim()
       if (keyword) {
-        const fts = await deps.hsRepo.queryFTS(keyword, limit + offset)
+        const fts = filterDiaryScopedSearchResults(
+          await deps.hsRepo.queryFTS(keyword, limit + offset),
+          activeVaultName
+        )
         const page = fts.slice(offset, offset + limit).map((r) => ({
           embeddingId: r.messageId,
           text: r.chunkText,
@@ -519,14 +691,12 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         return { entries: page, total: fts.length }
       }
 
-      const client = deps.rawSqlClient as {
-        execute?: (q: { sql: string; args: unknown[] }) => Promise<{ rows: unknown[] }>
-      }
+      const client = deps.rawSqlClient as RawSqlClient | undefined
       if (!client?.execute) return { entries: [], total: 0 }
 
       const countRes = await client.execute({
-        sql: `SELECT COUNT(*) as count FROM ${HYBRID_SEARCH_TABLE}`,
-        args: []
+        sql: `SELECT COUNT(*) as count FROM ${HYBRID_SEARCH_TABLE} WHERE ${scopeFilter.clause}`,
+        args: [...scopeFilter.args]
       })
       const countRow = countRes.rows?.[0] as Record<string, number> | undefined
       const total = Number(countRow?.count ?? 0)
@@ -535,9 +705,10 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         sql: `SELECT embedding_id as embeddingId, chunk_text as text, source_type as sourceType,
               ${EMBEDDING_SOURCE_SORT_MILLIS_SQL} as createdAt
               FROM ${HYBRID_SEARCH_TABLE}
+              WHERE ${scopeFilter.clause}
               ORDER BY ${EMBEDDING_SOURCE_SORT_ORDER_SQL}
               LIMIT ? OFFSET ?`,
-        args: [limit, offset]
+        args: [...scopeFilter.args, limit, offset]
       })
       const entries = ((listRes.rows || []) as Array<Record<string, unknown>>).map((row) => ({
         ...row,

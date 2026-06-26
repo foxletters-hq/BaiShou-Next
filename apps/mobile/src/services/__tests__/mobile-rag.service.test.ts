@@ -61,9 +61,10 @@ describe('embedDiaryEntry', () => {
       )
     ).rejects.toThrow('incomplete vectors')
 
-    expect(deps.hsRepo.deleteEmbeddingsBySource).toHaveBeenCalledTimes(2)
-    expect(deps.hsRepo.deleteEmbeddingsBySource).toHaveBeenNthCalledWith(1, 'diary', '42')
+    expect(deps.hsRepo.deleteEmbeddingsBySource).toHaveBeenCalledTimes(3)
+    expect(deps.hsRepo.deleteEmbeddingsBySource).toHaveBeenNthCalledWith(1, 'diary', 'Personal#42')
     expect(deps.hsRepo.deleteEmbeddingsBySource).toHaveBeenNthCalledWith(2, 'diary', '42')
+    expect(deps.hsRepo.deleteEmbeddingsBySource).toHaveBeenNthCalledWith(3, 'diary', 'Personal#42')
   })
 })
 

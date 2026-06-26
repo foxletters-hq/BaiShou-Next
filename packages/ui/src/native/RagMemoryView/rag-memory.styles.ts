@@ -57,6 +57,12 @@ export const ragMemoryStyles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 4
   },
+  migrationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4
+  },
   alertDesc: {
     fontSize: 13,
     lineHeight: 18

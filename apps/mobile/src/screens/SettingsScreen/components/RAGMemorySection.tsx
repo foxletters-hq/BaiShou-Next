@@ -9,7 +9,8 @@ import {
   type MockAiProviderModel,
   type RagConfig,
   type RagEntry,
-  type RagState
+  type RagState,
+  type RagStats
 } from '@baishou/ui/native'
 import {
   AIProviderConfig,
@@ -21,6 +22,7 @@ import {
 } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { useMobileRagSystem } from '../../../hooks/useMobileRagSystem'
+import { MobileRagAbortError } from '../../../services/mobile-rag.service'
 import { TextPromptModal } from './TextPromptModal'
 
 const DEFAULT_RAG_CONFIG: RagConfig = {
@@ -51,7 +53,7 @@ export const RAGMemorySection: React.FC = () => {
   const dialog = useDialog()
 
   const [config, setConfig] = useState<RagConfig>(DEFAULT_RAG_CONFIG)
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<RagStats>({
     totalCount: 0,
     currentDimension: 0,
     totalSizeText: '0 KB'
@@ -76,6 +78,7 @@ export const RAGMemorySection: React.FC = () => {
 
   const [promptMode, setPromptMode] = useState<PromptMode>(null)
   const [promptDefault, setPromptDefault] = useState('')
+  const [ragCancelBusy, setRagCancelBusy] = useState(false)
   const editEntryRef = useRef<RagEntry | null>(null)
 
   const stateRef = useRef({ searchQuery, searchMode, currentPage, pageSize })
@@ -113,7 +116,9 @@ export const RAGMemorySection: React.FC = () => {
         setStats({
           totalCount: ragStats.totalCount,
           currentDimension: ragStats.currentDimension,
-          totalSizeText: `${(ragStats.totalCount * 2.5).toFixed(1)} KB`
+          totalSizeText: `${(ragStats.totalCount * 2.5).toFixed(1)} KB`,
+          diaryCountForVault: ragStats.diaryCountForVault,
+          activeVaultName: ragStats.activeVaultName
         })
 
         const limit = size
@@ -282,6 +287,12 @@ export const RAGMemorySection: React.FC = () => {
     await openModelSwitcher()
   }, [config, dialog, openModelSwitcher, t, services, dbReady])
 
+  useEffect(() => {
+    if (!ragState.isRunning) {
+      setRagCancelBusy(false)
+    }
+  }, [ragState.isRunning])
+
   const handleSearch = (query: string, mode: 'semantic' | 'text') => {
     setSearchQuery(query)
     setSearchMode(mode)
@@ -365,8 +376,19 @@ export const RAGMemorySection: React.FC = () => {
       toast.showSuccess(t('settings.rag_batch_embed_done', { count: String(count) }))
       await loadRagData()
     } catch (e: unknown) {
+      if (e instanceof MobileRagAbortError) {
+        toast.showWarning(
+          t('settings.rag_batch_embed_aborted', {
+            count: String(e.embeddedCount),
+            defaultValue: `已取消，已完成 ${e.embeddedCount} 篇嵌入`
+          })
+        )
+        await loadRagData()
+        return
+      }
       toast.showError(e instanceof Error ? e.message : t('settings.rag_batch_embed_failed'))
     } finally {
+      setRagCancelBusy(false)
       setRagState({
         isRunning: false,
         type: 'idle',
@@ -376,6 +398,31 @@ export const RAGMemorySection: React.FC = () => {
       })
     }
   }
+
+  const handleCancelRagOperation = useCallback(async () => {
+    if (!services?.ragService) return
+    const confirmed = await dialog.confirm(
+      t(
+        'settings.rag_migration_cancel_confirm',
+        '确定要取消当前嵌入任务吗？进行中的请求会在完成后停止，不会继续处理下一篇。'
+      ),
+      {
+        title: t('common.warning', '警告'),
+        confirmText: t('settings.rag_migration_cancel', '取消'),
+        cancelText: t('common.back', '返回')
+      }
+    )
+    if (!confirmed) return
+
+    setRagCancelBusy(true)
+    setRagState((prev) => ({
+      ...prev,
+      isRunning: true,
+      statusKey: 'settings.rag_migration_aborting',
+      statusText: t('settings.rag_migration_aborting', '正在取消并停止嵌入…')
+    }))
+    services.ragService.requestOperationAbort()
+  }, [dialog, services?.ragService, t])
 
   const handleClearAll = async () => {
     setPromptMode('clear')
@@ -466,6 +513,7 @@ export const RAGMemorySection: React.FC = () => {
       setCurrentPage(1)
       await loadRagData('', 'text', 1, pageSize)
     }
+    setRagCancelBusy(false)
   }, [handleReembedAfterModelChange, loadRagData, pageSize])
 
   return (
@@ -488,6 +536,8 @@ export const RAGMemorySection: React.FC = () => {
         onDetectDimension={handleDetectDimension}
         onBatchEmbed={handleBatchEmbed}
         onTriggerMigration={handleTriggerMigration}
+        onCancelMigration={handleCancelRagOperation}
+        migrationCancelBusy={ragCancelBusy}
         onAddManualMemory={handleAddManualMemory}
         onClearAll={handleClearAll}
         onSearch={handleSearch}

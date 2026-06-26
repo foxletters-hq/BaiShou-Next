@@ -38,9 +38,16 @@ export const RagMemoryStatsSection: React.FC<RagMemoryStatsSectionProps> = ({
         ]}
       >
         <MaterialCommunityIcons name="database-outline" size={14} color={colors.primary} />
-        <Text style={[styles.statValue, { color: colors.primary }]}>{stats.totalCount}</Text>
+        <Text style={[styles.statValue, { color: colors.primary }]}>
+          {stats.diaryCountForVault != null ? stats.diaryCountForVault : stats.totalCount}
+        </Text>
         <Text style={[styles.statLabel, { color: colors.primary }]}>
-          {t('settings.rag_total_count')}
+          {stats.diaryCountForVault != null && stats.activeVaultName
+            ? t('settings.rag_vault_diary_count', {
+                vault: stats.activeVaultName,
+                defaultValue: '{{vault}} 日记向量'
+              })
+            : t('settings.rag_total_count')}
         </Text>
       </View>
 

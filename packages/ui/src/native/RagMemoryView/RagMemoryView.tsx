@@ -47,6 +47,8 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
   onConfigureModel,
   onDetectDimension,
   onTriggerMigration,
+  onCancelMigration,
+  migrationCancelBusy,
   onPageChange
 }) => {
   const ragOn = config.ragEnabled
@@ -91,6 +93,8 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
             ragState={ragState}
             hasMismatchModel={hasMismatchModel}
             onTriggerMigration={onTriggerMigration}
+            onCancelMigration={onCancelMigration}
+            migrationCancelBusy={migrationCancelBusy}
           />
 
           <SettingsCardDivider />

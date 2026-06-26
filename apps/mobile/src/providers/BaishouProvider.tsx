@@ -39,6 +39,7 @@ import {
   resolveSyncDeviceId,
   isConfiguredProviderId,
   isConfiguredDialogueModelId,
+  filterDiaryScopedSearchResults,
   type SummaryPromptLocale
 } from '@baishou/shared'
 import { getTtsPlaybackSettings } from '../services/mobile-tts-settings.service'
@@ -81,6 +82,7 @@ import { getAppDocumentDirectory } from '../services/mobile-app-paths'
 import { MobileLanSyncService } from '../services/lan-sync.service'
 import { MobileCloudSyncService } from '../services/cloud-sync.service'
 import { createMobileRagService, type MobileRagService } from '../services/mobile-rag.service'
+import { attachMobileRagVaultScope } from '../services/mobile-rag-vault-scope'
 import { setMobileDiaryEmbeddingDeps } from '../services/mobile-diary-embedding.service'
 import { MobileIncrementalSyncService } from '../services/mobile-incremental-sync.service'
 import { MobileMcpService } from '../services/mobile-mcp.service'
@@ -792,14 +794,18 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               logger.warn('[BaishouProvider] Agent FTS backfill after archive import failed:', e)
             })
 
-            const nextRagDeps = {
-              settingsManager: runtime.settingsManager,
-              diaryService: stack.diaryService,
-              hsRepo: runtime.hsRepo,
-              hybridSearchService: runtime.hybridSearchService,
-              registry: ctx.registry,
-              rawSqlClient: runtime.sqlExecutor
-            }
+            const nextRagDeps = attachMobileRagVaultScope(
+              {
+                settingsManager: runtime.settingsManager,
+                diaryService: stack.diaryService,
+                hsRepo: runtime.hsRepo,
+                hybridSearchService: runtime.hybridSearchService,
+                registry: ctx.registry,
+                rawSqlClient: runtime.sqlExecutor
+              },
+              pathService,
+              vaultService
+            )
             setMobileDiaryEmbeddingDeps(nextRagDeps)
             ctx.ragServiceRef.current = createMobileRagService(nextRagDeps)
             if (isMounted) {
@@ -905,14 +911,18 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             })
         )
 
-        const ragServiceDeps = {
-          settingsManager,
-          diaryService: diaryServiceProxy,
-          hsRepo,
-          hybridSearchService,
-          registry,
-          rawSqlClient: sqlExecutor
-        }
+        const ragServiceDeps = attachMobileRagVaultScope(
+          {
+            settingsManager,
+            diaryService: diaryServiceProxy,
+            hsRepo,
+            hybridSearchService,
+            registry,
+            rawSqlClient: sqlExecutor
+          },
+          pathService,
+          vaultService
+        )
         setMobileDiaryEmbeddingDeps(ragServiceDeps)
         const ragServiceRef = {
           current: createMobileRagService(ragServiceDeps)
@@ -929,6 +939,24 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           if (!query.trim()) return []
           const runtime = agentDbRuntimeRef.current
           if (!runtime) return []
+          const activeVault = await pathService
+            .getActiveVaultNameForContext()
+            .catch(() => 'Personal')
+          const mapScopedResults = (
+            rows: Array<{
+              chunkText: string
+              score: number
+              createdAt?: number
+              sourceType?: string
+              sessionId?: string
+              groupId?: string
+            }>
+          ) =>
+            filterDiaryScopedSearchResults(rows, activeVault).map((r) => ({
+              chunkText: r.chunkText,
+              score: r.score,
+              createdAt: r.createdAt
+            }))
           try {
             const providers = (await runtime.settingsManager.get<any[]>('ai_providers')) || []
             const globalModels = await runtime.settingsManager.get<any>('global_models')
@@ -940,22 +968,14 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             if (!embeddingProviderId || !embeddingModelId) {
               logger.warn('[MemorySearch] 嵌入模型未配置，降级为 FTS 搜索')
               const ftsResults = await runtime.hsRepo.queryFTS(query, options?.topK ?? 20)
-              return ftsResults.map((r) => ({
-                chunkText: r.chunkText,
-                score: r.score,
-                createdAt: r.createdAt
-              }))
+              return mapScopedResults(ftsResults)
             }
 
             const embeddingProviderConfig = providers.find((p: any) => p.id === embeddingProviderId)
             if (!embeddingProviderConfig) {
               logger.warn('[MemorySearch] 嵌入供应商配置未找到，降级为 FTS 搜索')
               const ftsResults = await runtime.hsRepo.queryFTS(query, options?.topK ?? 20)
-              return ftsResults.map((r) => ({
-                chunkText: r.chunkText,
-                score: r.score,
-                createdAt: r.createdAt
-              }))
+              return mapScopedResults(ftsResults)
             }
 
             const embeddingProvider = registry.getOrUpdateProvider(embeddingProviderConfig)
@@ -970,11 +990,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             if (!queryVector) {
               logger.warn('[MemorySearch] 查询向量生成失败，降级为 FTS 搜索')
               const ftsResults = await runtime.hsRepo.queryFTS(query, options?.topK ?? 20)
-              return ftsResults.map((r) => ({
-                chunkText: r.chunkText,
-                score: r.score,
-                createdAt: r.createdAt
-              }))
+              return mapScopedResults(ftsResults)
             }
 
             // 执行混合搜索（FTS + 向量 RRF 融合）
@@ -988,19 +1004,11 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               similarityThreshold: minScore
             })
 
-            return results.map((r) => ({
-              chunkText: r.chunkText,
-              score: r.score,
-              createdAt: r.createdAt
-            }))
+            return mapScopedResults(results)
           } catch (e) {
             logger.error('[MemorySearch] RAG 搜索失败，降级为 FTS:', e as Error)
             const ftsResults = await runtime.hsRepo.queryFTS(query, options?.topK ?? 20)
-            return ftsResults.map((r) => ({
-              chunkText: r.chunkText,
-              score: r.score,
-              createdAt: r.createdAt
-            }))
+            return mapScopedResults(ftsResults)
           }
         }
 
@@ -1192,14 +1200,18 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           ctx.watcherDeps.summarySyncService = newRuntime.summarySyncService
 
           const stack = diaryStackRef.current
-          const nextRagDeps = {
-            settingsManager: newRuntime.settingsManager,
-            diaryService: stack?.diaryService ?? diaryServiceProxy,
-            hsRepo: newRuntime.hsRepo,
-            hybridSearchService: newRuntime.hybridSearchService,
-            registry: ctx.registry,
-            rawSqlClient: newRuntime.sqlExecutor
-          }
+          const nextRagDeps = attachMobileRagVaultScope(
+            {
+              settingsManager: newRuntime.settingsManager,
+              diaryService: stack?.diaryService ?? diaryServiceProxy,
+              hsRepo: newRuntime.hsRepo,
+              hybridSearchService: newRuntime.hybridSearchService,
+              registry: ctx.registry,
+              rawSqlClient: newRuntime.sqlExecutor
+            },
+            pathService,
+            vaultService
+          )
           setMobileDiaryEmbeddingDeps(nextRagDeps)
           ctx.ragServiceRef.current = createMobileRagService(nextRagDeps)
           emitSyncMutation('resync-complete', 'agent-db-reload')
@@ -1337,14 +1349,18 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                 },
                 onStackReady: (readyStack) => {
                   diaryStackRef.current = readyStack
-                  const nextRagDeps = {
-                    settingsManager,
-                    diaryService: readyStack.diaryService,
-                    hsRepo,
-                    hybridSearchService,
-                    registry,
-                    rawSqlClient: sqlExecutor
-                  }
+                  const nextRagDeps = attachMobileRagVaultScope(
+                    {
+                      settingsManager,
+                      diaryService: readyStack.diaryService,
+                      hsRepo,
+                      hybridSearchService,
+                      registry,
+                      rawSqlClient: sqlExecutor
+                    },
+                    pathService,
+                    vaultService
+                  )
                   setMobileDiaryEmbeddingDeps(nextRagDeps)
                   ragServiceRef.current = createMobileRagService(nextRagDeps)
                 },
@@ -1463,22 +1479,20 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                 })
             diaryStackRef.current = stack
 
-            ragServiceRef.current = createMobileRagService({
-              settingsManager,
-              diaryService: stack.diaryService,
-              hsRepo,
-              hybridSearchService,
-              registry,
-              rawSqlClient: sqlExecutor
-            })
-            setMobileDiaryEmbeddingDeps({
-              settingsManager,
-              diaryService: stack.diaryService,
-              hsRepo,
-              hybridSearchService,
-              registry,
-              rawSqlClient: sqlExecutor
-            })
+            const ragDeps = attachMobileRagVaultScope(
+              {
+                settingsManager,
+                diaryService: stack.diaryService,
+                hsRepo,
+                hybridSearchService,
+                registry,
+                rawSqlClient: sqlExecutor
+              },
+              pathService,
+              vaultService
+            )
+            ragServiceRef.current = createMobileRagService(ragDeps)
+            setMobileDiaryEmbeddingDeps(ragDeps)
             if (isMounted) {
               setValue((prev) => ({
                 ...prev,

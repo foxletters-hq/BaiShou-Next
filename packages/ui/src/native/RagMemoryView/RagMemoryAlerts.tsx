@@ -8,24 +8,33 @@ import { ragMemoryStyles as styles } from './rag-memory.styles'
 interface RagMemoryAlertsProps {
   ragState: RagState
   hasMismatchModel: boolean
+  migrationCancelBusy?: boolean
   onTriggerMigration?: () => Promise<void>
+  onCancelMigration?: () => Promise<void>
 }
 
 export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
   ragState,
   hasMismatchModel,
-  onTriggerMigration
+  migrationCancelBusy = false,
+  onTriggerMigration,
+  onCancelMigration
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
 
-  const isReembedding =
-    ragState.isRunning && (ragState.type === 'reembed' || ragState.type === 'migration')
-  const showEmbedError = !isReembedding && !!ragState.error
+  const isLongRunning =
+    ragState.isRunning &&
+    (ragState.type === 'reembed' ||
+      ragState.type === 'migration' ||
+      ragState.type === 'batchEmbed')
+  const isAborting =
+    migrationCancelBusy || ragState.statusKey === 'settings.rag_migration_aborting'
+  const showEmbedError = !isLongRunning && !!ragState.error
 
   return (
     <>
-      {isReembedding && (
+      {isLongRunning && (
         <View
           style={[
             styles.alertBox,
@@ -35,9 +44,37 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
             }
           ]}
         >
-          <Text style={[styles.alertTitle, { color: colors.primary }]}>
-            {t('settings.rag_migrating')}
-          </Text>
+          <View style={styles.migrationRow}>
+            <Text style={[styles.alertTitle, { color: colors.primary, flex: 1 }]}>
+              {isAborting
+                ? t('settings.rag_migration_aborting', '正在取消并停止嵌入…')
+                : t('settings.rag_migrating', '知识库正在迁移中...')}
+            </Text>
+            {onCancelMigration ? (
+              <TouchableOpacity
+                onPress={() => void onCancelMigration()}
+                disabled={isAborting}
+                activeOpacity={0.7}
+                style={[
+                  styles.alertAction,
+                  {
+                    backgroundColor: colors.bgSurface,
+                    borderColor: colors.primaryTrackMuted,
+                    marginTop: 0,
+                    paddingVertical: 6,
+                    paddingHorizontal: 10,
+                    opacity: isAborting ? 0.5 : 1
+                  }
+                ]}
+              >
+                <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 12 }}>
+                  {isAborting
+                    ? t('settings.rag_migration_cancelling', '取消中...')
+                    : t('settings.rag_migration_cancel', '取消')}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
           {ragState.statusText ? (
             <Text style={[styles.alertDesc, { color: colors.textSecondary }]}>
               {ragState.statusText}
@@ -83,7 +120,7 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
         </View>
       )}
 
-      {!isReembedding && hasMismatchModel && (
+      {!isLongRunning && hasMismatchModel && (
         <View
           style={[
             styles.alertBox,

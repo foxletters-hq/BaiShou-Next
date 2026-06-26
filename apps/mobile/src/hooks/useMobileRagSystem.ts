@@ -4,6 +4,7 @@ import { useNativeToast, useDialog } from '@baishou/ui/native'
 import type { TFunction } from 'i18next'
 import { classifyAiApiCallError, formatAiApiCallError } from '@baishou/shared'
 import type { MobileRagService, RagProgressCallback } from '../services/mobile-rag.service'
+import { MobileRagAbortError } from '../services/mobile-rag.service'
 import type { RagState } from '@baishou/ui/native'
 
 function localizeRagEmbedError(raw: string, t: TFunction): string {
@@ -88,6 +89,18 @@ export function useMobileRagSystem(ragService: MobileRagService | undefined) {
       )
       return true
     } catch (e: unknown) {
+      if (e instanceof MobileRagAbortError) {
+        setRagState(idleRagState())
+        toast.showWarning(
+          e.embeddedCount > 0
+            ? t('settings.rag_batch_embed_aborted', {
+                count: String(e.embeddedCount),
+                defaultValue: `已取消，已完成 ${e.embeddedCount} 篇嵌入`
+              })
+            : t('settings.rag_migration_cancelled', '迁移已取消。')
+        )
+        return false
+      }
       const detail = localizeRagEmbedError(extractErrorMessage(e), t)
       setRagState({
         ...idleRagState(),

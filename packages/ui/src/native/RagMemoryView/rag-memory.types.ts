@@ -11,6 +11,8 @@ export interface RagStats {
   totalCount: number
   currentDimension: number
   totalSizeText: string
+  diaryCountForVault?: number
+  activeVaultName?: string
 }
 
 export interface RagState {
@@ -19,6 +21,7 @@ export interface RagState {
   progress: number
   total: number
   statusText: string
+  statusKey?: string
   error?: string
 }
 
@@ -63,4 +66,5 @@ export interface RagMemoryViewProps {
   onConfigureModel?: () => void
   onDetectDimension?: () => Promise<void>
   onPageChange?: (page: number, pageSize: number) => void
+  migrationCancelBusy?: boolean
 }

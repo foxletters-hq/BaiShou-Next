@@ -37,13 +37,16 @@ const mobileDiaryEmbeddingCallback: IEmbeddingCallback = {
     if (!deps) return
 
     try {
+      const vaultName = deps.vaultScope
+        ? await deps.vaultScope.resolveActiveVaultName()
+        : 'Personal'
       await embedDiaryEntry(deps, {
         diaryId: params.diaryId,
         content: params.content,
         tags: params.tags,
         date: params.date,
         updatedAt: params.updatedAt,
-        groupId: 'diary_auto'
+        vaultName
       })
     } catch (e) {
       logger.warn('[MobileDiaryEmbed] RAG 嵌入失败', e as Error)
