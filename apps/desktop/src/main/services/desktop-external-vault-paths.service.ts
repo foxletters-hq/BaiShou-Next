@@ -1,4 +1,5 @@
 import * as fs from 'fs/promises'
+import { constants as fsConstants } from 'node:fs'
 import * as path from 'path'
 import {
   countJournalMarkdownInTree,
@@ -32,10 +33,8 @@ async function validateExternalDirectory(targetPath: string): Promise<ExternalDi
     return { valid: false, code: 'NOT_ACCESSIBLE' }
   }
 
-  const testFile = `${normalized}/.baishou_write_test`
   try {
-    await fs.writeFile(testFile, 'ok', 'utf8')
-    await fs.unlink(testFile).catch(() => null)
+    await fs.access(normalized, fsConstants.R_OK | fsConstants.W_OK)
   } catch {
     return { valid: false, code: 'NOT_WRITABLE' }
   }

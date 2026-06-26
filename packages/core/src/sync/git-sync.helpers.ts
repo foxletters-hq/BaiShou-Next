@@ -113,8 +113,20 @@ export function isIncrementalSyncConflictBackupPath(filePath: string): boolean {
   return /\.conflict-\d+/.test(base)
 }
 
+export function isStorageWriteProbePath(filePath: string): boolean {
+  const base = normalizeGitPath(filePath).split('/').pop() ?? filePath
+  return (
+    base === '.write_test' ||
+    base === '.baishou_write_test' ||
+    base.startsWith('.write_test_')
+  )
+}
+
 export function isExcludedFromVersionControl(filePath: string): boolean {
   const normalized = normalizeGitPath(filePath)
+  if (isStorageWriteProbePath(normalized)) {
+    return true
+  }
   if (isBaishouManagedPath(normalized)) {
     return true
   }

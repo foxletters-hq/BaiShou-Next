@@ -1,3 +1,4 @@
+import path from 'node:path'
 import type { DesktopStoragePathService } from '../services/path.service'
 
 export type AttachmentAllowedRoots = {
@@ -23,11 +24,19 @@ export function resetAttachmentAllowedRootsCache(): void {
   allowedRootsPromise = null
 }
 
+function isPathUnderRoot(targetPath: string, rootPath: string): boolean {
+  const root = path.resolve(rootPath)
+  const target = path.resolve(targetPath)
+  const relative = path.relative(root, target)
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))
+}
+
 export function isPathUnderAllowedRoots(
   resolvedPath: string,
   roots: AttachmentAllowedRoots
 ): boolean {
   return (
-    resolvedPath.startsWith(roots.attachmentsBase) || resolvedPath.startsWith(roots.journalsBase)
+    isPathUnderRoot(resolvedPath, roots.attachmentsBase) ||
+    isPathUnderRoot(resolvedPath, roots.journalsBase)
   )
 }

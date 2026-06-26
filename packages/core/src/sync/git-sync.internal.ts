@@ -22,10 +22,15 @@ import {
   getAuthenticatedUrl,
   isBaishouManagedPath,
   isExcludedFromVersionControl,
+  isStorageWriteProbePath,
   mapWorkingStatus,
   parseGitlinkPathFromLsFilesLine,
   unquoteGitPath
 } from './git-sync.helpers'
+import {
+  cleanupStorageWriteProbeFiles,
+  unlinkStorageWriteProbeIfPresent
+} from './storage-write-probe.cleanup'
 import {
   applyGitProcessEnv,
   getBundledGitBinary,
@@ -241,6 +246,10 @@ export abstract class GitSyncInternalBase {
           content += '\n# 增量同步冲突备份\n**/*.conflict-*\n'
           modified = true
         }
+        if (!content.includes('.write_test')) {
+          content += '\n# 存储路径可写性探测（勿入库）\n.write_test\n.write_test_*\n.baishou_write_test\n'
+          modified = true
+        }
         if (modified) {
           await fs.promises.writeFile(gitignorePath, content, 'utf8')
         }
@@ -250,6 +259,11 @@ export abstract class GitSyncInternalBase {
     }
 
     await this.untrackBaishouDir()
+
+    const removed = await cleanupStorageWriteProbeFiles(gitRoot, 1)
+    if (removed > 0) {
+      logger.info(`[GitSync] 已清理 ${removed} 个历史存储探测临时文件`)
+    }
   }
 
   protected async untrackBaishouDir(): Promise<void> {
@@ -370,6 +384,12 @@ export abstract class GitSyncInternalBase {
 
   /** 修复 gitlink / 清理索引；有界循环，避免递归 getStatus */
   protected async maintainGitIndex(git: SimpleGit): Promise<void> {
+    const gitRoot = await this.getGitRoot()
+    const removed = await cleanupStorageWriteProbeFiles(gitRoot, 1)
+    if (removed > 0) {
+      logger.info(`[GitSync] 已清理 ${removed} 个历史存储探测临时文件`)
+    }
+
     for (let round = 0; round < GIT_INDEX_MAINTENANCE_MAX_ROUNDS; round++) {
       const repaired = await this.repairVaultGitlinks(git)
       const sanitized = await this.sanitizeGitIndex(git)
@@ -407,6 +427,9 @@ export abstract class GitSyncInternalBase {
     for (const filePath of indexed) {
       if (this.isExcludedFromVersionControl(filePath)) {
         toRemove.add(filePath)
+        if (isStorageWriteProbePath(filePath)) {
+          await unlinkStorageWriteProbeIfPresent(gitRoot, filePath)
+        }
       }
     }
 
@@ -430,6 +453,7 @@ export abstract class GitSyncInternalBase {
 
   protected async collectUnstagedPaths(git: SimpleGit): Promise<string[]> {
     const status = await git.status()
+    const gitRoot = await this.getGitRoot()
     const paths = new Set<string>()
 
     for (const file of status.files) {
@@ -440,7 +464,13 @@ export abstract class GitSyncInternalBase {
       }
     }
     for (const p of status.not_added) {
-      if (!this.isExcludedFromVersionControl(p)) paths.add(p)
+      if (this.isExcludedFromVersionControl(p)) continue
+      try {
+        if (!fs.existsSync(path.join(gitRoot, p))) continue
+      } catch {
+        continue
+      }
+      paths.add(p)
     }
 
     return [...paths]

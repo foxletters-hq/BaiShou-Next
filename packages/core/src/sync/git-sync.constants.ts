@@ -39,6 +39,9 @@ snapshots/
 temp/
 .snapshots/
 *.tmp
+.write_test
+.write_test_*
+.baishou_write_test
 .DS_Store
 Thumbs.db
 `

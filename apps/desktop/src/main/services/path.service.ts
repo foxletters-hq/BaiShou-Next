@@ -1,7 +1,8 @@
 import { app } from 'electron'
 import * as path from 'path'
+import { constants as fsConstants } from 'node:fs'
 import * as fs from 'fs/promises'
-import { sanitizeVaultDirectoryName } from '@baishou/core-desktop'
+import { sanitizeVaultDirectoryName, cleanupStorageWriteProbeFiles } from '@baishou/core-desktop'
 import { IStoragePathService } from '@baishou/core-desktop'
 import {
   readVaultExternalPaths,
@@ -14,6 +15,19 @@ import { fileSystem } from './node-file-system'
 
 export class DesktopStoragePathService implements IStoragePathService {
   private readonly vaultFileSystem = fileSystem
+  private legacyWriteProbeCleanupDone = false
+
+  private scheduleLegacyWriteProbeCleanup(rootDir: string): void {
+    if (this.legacyWriteProbeCleanupDone) return
+    this.legacyWriteProbeCleanupDone = true
+    void cleanupStorageWriteProbeFiles(rootDir, 1)
+      .then((removed) => {
+        if (removed > 0) {
+          logger.info(`[PathService] 已清理 ${removed} 个历史存储探测临时文件`)
+        }
+      })
+      .catch(() => {})
+  }
   private getSettingsFile(): string {
     return path.join(app.getPath('userData'), 'baishou_settings.json')
   }
@@ -44,18 +58,8 @@ export class DesktopStoragePathService implements IStoragePathService {
     if (customPath && customPath.trim() !== '') {
       try {
         await fs.mkdir(customPath, { recursive: true })
-
-        // 可写性测试 (Writeability test)
-        const testFile = path.join(
-          customPath,
-          `.write_test_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
-        )
-        await fs.writeFile(testFile, 'test', 'utf-8')
-        try {
-          await fs.unlink(testFile)
-        } catch (e) {
-          // Ignore delete failure (e.g. windows locking)
-        }
+        await fs.access(customPath, fsConstants.R_OK | fsConstants.W_OK)
+        this.scheduleLegacyWriteProbeCleanup(customPath)
         return customPath
       } catch (e) {
         console.warn(
@@ -68,6 +72,7 @@ export class DesktopStoragePathService implements IStoragePathService {
     // Default Fallback
     const rootDir = path.join(app.getPath('userData'), 'Vaults')
     await fs.mkdir(rootDir, { recursive: true })
+    this.scheduleLegacyWriteProbeCleanup(rootDir)
     return rootDir
   }
 
