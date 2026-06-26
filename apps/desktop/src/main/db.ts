@@ -82,7 +82,10 @@ export function getAppDb(customBasePath?: string): AppDatabase {
   if (!_appDb) {
     logger.info(`[DB] Agent DB 初始化，路径: ${agentDbPath}`)
     try {
-      mkdirSync(dirname(agentDbPath), { recursive: true })
+      const dbDir = dirname(agentDbPath)
+      if (!existsSync(dbDir)) {
+        mkdirSync(dbDir, { recursive: true })
+      }
       _appDb = initNodeDatabase(agentDbPath, (err) => {
         handleMalformedDb(agentDbPath, err)
       })
