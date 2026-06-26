@@ -1,8 +1,8 @@
 import { app } from 'electron'
 import * as fs from 'fs/promises'
 import * as path from 'path'
-import type { AgentRoundCheckpoint } from '@baishou/shared'
-import { logger } from '@baishou/shared'
+import type { AgentRoundCheckpoint, AgentDialogueSelectionState, AgentDialogueSelectionSwitchEvent } from '@baishou/shared'
+import { detectDialogueSelectionSwitches, logger } from '@baishou/shared'
 
 interface WorkspaceSessionBinding {
   sessionId: string
@@ -10,6 +10,8 @@ interface WorkspaceSessionBinding {
   folderDisplayName?: string
   updatedAt: string
   checkpointsByUserMessageId: Record<string, string>
+  selection?: AgentDialogueSelectionState
+  lastSelectionSwitch?: AgentDialogueSelectionSwitchEvent
 }
 
 interface WorkspaceSessionStoreFile {
@@ -147,4 +149,32 @@ export async function loadSessionCheckpointsIntoService(
     .filter((checkpoint): checkpoint is AgentRoundCheckpoint => Boolean(checkpoint))
   hydrateCheckpointService(service, checkpoints)
   logger.info(`[WorkspaceSessionStore] hydrated ${checkpoints.length} checkpoints for ${sessionId}`)
+}
+
+export async function updateWorkspaceSessionSelection(
+  sessionId: string,
+  next: AgentDialogueSelectionState
+): Promise<AgentDialogueSelectionSwitchEvent | undefined> {
+  const store = await loadStore()
+  const binding = store.bindings[sessionId]
+  if (!binding) return undefined
+
+  const switches = detectDialogueSelectionSwitches(binding.selection, next, sessionId)
+  binding.selection = next
+  if (switches.length > 0) {
+    binding.lastSelectionSwitch = switches[switches.length - 1]
+    logger.info(
+      `[WorkspaceSessionStore] selection switch session=${sessionId} kinds=${switches.map((e) => e.kind).join(',')}`
+    )
+  }
+  binding.updatedAt = new Date().toISOString()
+  await saveStore()
+  return binding.lastSelectionSwitch
+}
+
+export async function getWorkspaceSessionSelection(
+  sessionId: string
+): Promise<AgentDialogueSelectionState | null> {
+  const store = await loadStore()
+  return store.bindings[sessionId]?.selection ?? null
 }

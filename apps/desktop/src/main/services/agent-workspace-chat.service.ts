@@ -3,7 +3,15 @@ import {
   AgentRoundCheckpointService,
   createNodeWorkspaceFs
 } from '@baishou/ai'
-import { BAISHOU_AGENT_GATE_CONFIG_KEY, logger, type BaishouAgentGateConfig } from '@baishou/shared'
+import {
+  BAISHOU_AGENT_GATE_CONFIG_KEY,
+  logger,
+  type BaishouAgentGateConfig,
+  buildAgentDialogueSelectionState,
+  resolveDialogueModelSelection,
+  toStorageDialogueIds,
+  type GlobalModelsConfig
+} from '@baishou/shared'
 import type { IpcMainInvokeEvent } from 'electron'
 import { ElectronStreamEmitter } from '../ipc/electron-stream-emitter'
 import {
@@ -12,6 +20,8 @@ import {
   createFetchSearchPage,
   createWebSearchResultFetcher,
   getAgentManagers,
+  invalidateMcpToolContextCache,
+  resolveStreamDialogueSelection,
   toolRegistry
 } from '../ipc/agent-helpers'
 import { settingsManager } from '../ipc/settings.ipc'
@@ -22,8 +32,13 @@ import {
   getWorkspaceSessionBinding,
   loadSessionCheckpointsIntoService,
   saveWorkspaceCheckpoint,
-  touchWorkspaceSession
+  touchWorkspaceSession,
+  updateWorkspaceSessionSelection
 } from './agent-workspace-session.store'
+import {
+  pushActiveWorkspaceStreamSessionId,
+  removeActiveWorkspaceStreamSessionId
+} from './agent-workspace-tool-context'
 import { AgentChatService } from '../ipc/AgentChatService'
 
 const checkpointService = new AgentRoundCheckpointService(createNodeWorkspaceFs())
@@ -45,35 +60,42 @@ export async function createWorkspaceAgentSession(params: {
     /* use default */
   }
 
-  let providerId = 'default'
-  let modelId = 'default'
+  let assistantProviderId: string | undefined
+  let assistantModelId: string | undefined
   if (params.assistantId) {
     const assistant = await assistantManager.findById(params.assistantId)
     if (assistant) {
-      providerId = assistant.providerId || 'default'
-      modelId = assistant.modelId || 'default'
+      assistantProviderId = assistant.providerId ?? undefined
+      assistantModelId = assistant.modelId ?? undefined
     }
   }
 
-  if (providerId === 'default' || modelId === 'default') {
-    const globalModels = await settingsManager.get<{
-      globalDialogueProviderId?: string
-      globalDialogueModelId?: string
-    }>('global_models')
-    if (providerId === 'default') providerId = globalModels?.globalDialogueProviderId || 'default'
-    if (modelId === 'default') modelId = globalModels?.globalDialogueModelId || 'default'
-  }
+  const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
+  const resolved = resolveDialogueModelSelection({
+    assistantProviderId,
+    assistantModelId,
+    globalDialogueProviderId: globalModels?.globalDialogueProviderId,
+    globalDialogueModelId: globalModels?.globalDialogueModelId
+  })
+  const storageIds = toStorageDialogueIds(resolved)
 
   await sessionManager.upsertSession({
     id: params.id,
     vaultName,
-    providerId,
-    modelId,
+    providerId: storageIds.providerId,
+    modelId: storageIds.modelId,
     assistantId: params.assistantId,
     title: params.title || '工作区对话'
   } as never)
 
   await bindWorkspaceSession(params.id, params.folderRoot)
+  await updateWorkspaceSessionSelection(
+    params.id,
+    buildAgentDialogueSelectionState({
+      assistantId: params.assistantId,
+      resolved
+    })
+  )
   await loadSessionCheckpointsIntoService(params.id, checkpointService)
   return params.id
 }
@@ -96,38 +118,44 @@ export async function runWorkspaceStreamChat(params: {
   const { realSessionRepo, realSnapshotRepo } = getAgentManagers()
   const assistantContextWindow = await AgentChatService.getAssistantContextWindow(params.sessionId)
 
-  const { provider, globalModels, systemModels, userConfig } = await buildStreamConfig(
-    params.providerId,
-    params.modelId,
+  const resolved = await resolveStreamDialogueSelection({
+    sessionId: params.sessionId,
+    requestedProviderId: params.providerId,
+    requestedModelId: params.modelId
+  })
+
+  const { provider, systemModels, userConfig } = await buildStreamConfig(
+    resolved.providerId,
+    resolved.modelId,
     false,
     assistantContextWindow
   )
 
-  const resolvedModelId =
-    params.modelId || globalModels?.globalDialogueModelId || 'deepseek-chat'
+  pushActiveWorkspaceStreamSessionId(params.sessionId)
+  invalidateMcpToolContextCache()
+  try {
+    let roundCheckpointId: string | undefined
+    if (params.userMessageId) {
+      const checkpoint = await checkpointService.capturePaths({
+        sessionId: params.sessionId,
+        userMessageId: params.userMessageId,
+        folderRoot,
+        paths: []
+      })
+      roundCheckpointId = checkpoint.id
+      await saveWorkspaceCheckpoint(checkpoint)
+    }
 
-  let roundCheckpointId: string | undefined
-  if (params.userMessageId) {
-    const checkpoint = await checkpointService.capturePaths({
-      sessionId: params.sessionId,
-      userMessageId: params.userMessageId,
-      folderRoot,
-      paths: []
-    })
-    roundCheckpointId = checkpoint.id
-    await saveWorkspaceCheckpoint(checkpoint)
-  }
+    const emitter = new ElectronStreamEmitter(params.event)
+    const agentGate = await getAgentGate()
 
-  const emitter = new ElectronStreamEmitter(params.event)
-  const agentGate = await getAgentGate()
-
-  await AgentChatCoreService.runStreamChat({
+    await AgentChatCoreService.runStreamChat({
     emitter,
     sessionId: params.sessionId,
     userText: params.userText,
     userMessageId: params.userMessageId,
     provider,
-    modelId: resolvedModelId,
+    modelId: resolved.modelId,
     systemModels,
     userConfig: {
       ...userConfig,
@@ -152,7 +180,19 @@ export async function runWorkspaceStreamChat(params: {
       roundCheckpointId
     }
   })
-  await touchWorkspaceSession(params.sessionId)
+    await touchWorkspaceSession(params.sessionId)
+    const session = await realSessionRepo.getSessionById(params.sessionId)
+    await updateWorkspaceSessionSelection(
+      params.sessionId,
+      buildAgentDialogueSelectionState({
+        assistantId: session?.assistantId,
+        resolved
+      })
+    )
+  } finally {
+    removeActiveWorkspaceStreamSessionId(params.sessionId)
+    invalidateMcpToolContextCache()
+  }
 }
 
 export async function rollbackWorkspaceRound(params: {
