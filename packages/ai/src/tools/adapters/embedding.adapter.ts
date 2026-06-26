@@ -2,11 +2,16 @@ import { ToolEmbeddingService } from '../agent.tool'
 import { IAIProvider } from '../../providers/provider.interface'
 import { embed } from 'ai'
 import { SqliteHybridSearchRepository } from '@baishou/database'
+import { logger } from '@baishou/shared'
+import { normalizeEmbeddingVector } from '../../rag/embedding-chunk'
 
 /** 最大分块 token 数（对齐原版 1024 字符≈512 token） */
 const MAX_CHUNK_LENGTH = 1024
 /** 分块重叠字符数 */
 const CHUNK_OVERLAP = 128
+/** 单篇日记内分块嵌入并发数（对齐桌面 EmbeddingService） */
+const CHUNK_EMBED_CONCURRENCY = 3
+const EMBED_MAX_ATTEMPTS = 3
 
 export class EmbeddingAdapter implements ToolEmbeddingService {
   /**
@@ -27,16 +32,41 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
   async embedQuery(text: string): Promise<number[] | null> {
     try {
       const { embedding } = await embed({
-        model: this.provider.getEmbeddingModel
-          ? this.provider.getEmbeddingModel(this.modelId)
-          : (this.provider.getLanguageModel(this.modelId) as any),
+        model: this.provider.getEmbeddingModel(this.modelId),
         value: text
       })
-      return embedding
+      return embedding?.length ? normalizeEmbeddingVector(embedding) : null
     } catch (e) {
-      console.warn('[EmbeddingAdapter] 查询特征抽取失败', e)
+      logger.warn('[EmbeddingAdapter] 查询特征抽取失败', { error: e })
       return null
     }
+  }
+
+  private async embedQueryWithRetry(text: string, label: string): Promise<number[] | null> {
+    let lastError: unknown
+    for (let attempt = 1; attempt <= EMBED_MAX_ATTEMPTS; attempt++) {
+      try {
+        const { embedding } = await embed({
+          model: this.provider.getEmbeddingModel(this.modelId),
+          value: text
+        })
+        if (embedding?.length) {
+          return normalizeEmbeddingVector(embedding)
+        }
+        lastError = new Error('empty embedding vector')
+      } catch (e) {
+        lastError = e
+        if (attempt < EMBED_MAX_ATTEMPTS) {
+          const delayMs = attempt * 1000
+          logger.warn(`[EmbeddingAdapter] ${label} retry ${attempt}/${EMBED_MAX_ATTEMPTS}`, {
+            error: e
+          })
+          await new Promise((resolve) => setTimeout(resolve, delayMs))
+        }
+      }
+    }
+    logger.error(`[EmbeddingAdapter] ${label} failed`, { error: lastError })
+    return null
   }
 
   async embedText(options: {
@@ -46,42 +76,57 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
     groupId: string
     sourceCreatedAt?: number
     metadataJson?: string
-    /** 为 true 时，若所有分块均未成功嵌入则抛出错误 */
+    /** 为 true 时，任一分块失败或全部失败均抛出错误（日记嵌入路径使用） */
     requireSuccess?: boolean
   }): Promise<void> {
     if (!this.hybridRepo) {
       throw new Error('hybridRepo must be provided to store embeddings permanently.')
     }
+    const hybridRepo = this.hybridRepo
 
-    // 对齐原版：长文本先分块，每块独立嵌入入库
+    // 对齐原版：长文本先分块，每块独立嵌入入库（分块级有限并发）
     const chunks = splitIntoChunks(options.text)
     let successCount = 0
 
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i]!
-      const embVector = await this.embedQuery(chunk)
+    const embedOneChunk = async (index: number): Promise<boolean> => {
+      const chunk = chunks[index]!
+      const embVector = await this.embedQueryWithRetry(chunk, `chunk ${index}`)
       if (!embVector) {
-        console.warn(`[EmbeddingAdapter] 分块 ${i} 嵌入失败，跳过`)
-        continue
+        return false
       }
 
-      successCount++
-      await this.hybridRepo.insertEmbedding({
-        id: `${options.sourceId}_chunk_${i}`,
+      await hybridRepo.insertEmbedding({
+        id: `${options.sourceId}_chunk_${index}`,
         sourceType: options.sourceType,
         sourceId: options.sourceId,
         groupId: options.groupId,
-        chunkIndex: i,
+        chunkIndex: index,
         chunkText: chunk,
         metadataJson: options.metadataJson || '{}',
         embedding: embVector,
         modelId: this.modelId,
         sourceCreatedAt: options.sourceCreatedAt ?? Date.now()
       })
+      return true
     }
 
-    if (options.requireSuccess && chunks.length > 0 && successCount === 0) {
-      throw new Error('Embedding API returned no vectors')
+    for (let start = 0; start < chunks.length; start += CHUNK_EMBED_CONCURRENCY) {
+      const end = Math.min(start + CHUNK_EMBED_CONCURRENCY, chunks.length)
+      const results = await Promise.all(
+        Array.from({ length: end - start }, (_, offset) => embedOneChunk(start + offset))
+      )
+      successCount += results.filter(Boolean).length
+    }
+
+    if (options.requireSuccess && chunks.length > 0) {
+      if (successCount === 0) {
+        throw new Error(`Embedding API returned no vectors (model: ${this.modelId})`)
+      }
+      if (successCount < chunks.length) {
+        throw new Error(
+          `Embedding API returned incomplete vectors (${successCount}/${chunks.length} chunks, model: ${this.modelId})`
+        )
+      }
     }
   }
 }
