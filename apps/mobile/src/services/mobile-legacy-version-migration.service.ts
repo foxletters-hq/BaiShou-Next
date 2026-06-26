@@ -59,9 +59,9 @@ function normalizeLegacyRootUri(path: string): string {
 }
 
 export type LegacySourceResolution =
-  | { kind: 'manual'; sourceRoot: string; sourceDisplayPath: string }
-  | { kind: 'flutter'; sourceRoot: string; sourceDisplayPath: string }
-  | { kind: 'migrated'; sourceRoot: string; sourceDisplayPath: string }
+  | { kind: 'manual'; sourceRoot: string; sourceDisplayPath: string; inPlace: boolean }
+  | { kind: 'flutter'; sourceRoot: string; sourceDisplayPath: string; inPlace: boolean }
+  | { kind: 'migrated'; sourceRoot: string; sourceDisplayPath: string; inPlace: boolean }
 
 /** 解析版本迁移用的旧版根目录：手动选择 > Flutter 原版 > 整包迁移记录 */
 export async function resolveVersionMigrationLegacySource(
@@ -76,35 +76,39 @@ export async function resolveVersionMigrationLegacySource(
       return {
         kind: 'manual',
         sourceRoot: normalized,
-        sourceDisplayPath: displayPath(normalized)
+        sourceDisplayPath: displayPath(normalized),
+        inPlace: rootsEqual(normalized, targetRoot)
       }
     }
   }
 
   const candidates = await collectLegacyCandidateRoots(fileSystem)
   const flutterPrimary = pickPrimaryFlutterLegacySource(candidates, targetRoot)
-  if (
-    flutterPrimary &&
-    !rootsEqual(flutterPrimary, targetRoot) &&
-    (await isLegacyAppRoot(fileSystem, flutterPrimary))
-  ) {
+  if (flutterPrimary && (await isLegacyAppRoot(fileSystem, flutterPrimary))) {
     return {
       kind: 'flutter',
       sourceRoot: flutterPrimary,
-      sourceDisplayPath: displayPath(flutterPrimary)
+      sourceDisplayPath: displayPath(flutterPrimary),
+      inPlace: rootsEqual(flutterPrimary, targetRoot)
+    }
+  }
+
+  if (await isLegacyAppRoot(fileSystem, targetRoot)) {
+    return {
+      kind: 'flutter',
+      sourceRoot: targetRoot,
+      sourceDisplayPath: displayPath(targetRoot),
+      inPlace: true
     }
   }
 
   const migratedSource = await AsyncStorage.getItem(FLUTTER_LEGACY_MIGRATED_SOURCE_KEY)
-  if (
-    migratedSource &&
-    !rootsEqual(migratedSource, targetRoot) &&
-    (await isLegacyAppRoot(fileSystem, migratedSource))
-  ) {
+  if (migratedSource && (await isLegacyAppRoot(fileSystem, migratedSource))) {
     return {
       kind: 'migrated',
       sourceRoot: migratedSource,
-      sourceDisplayPath: displayPath(migratedSource)
+      sourceDisplayPath: displayPath(migratedSource),
+      inPlace: rootsEqual(migratedSource, targetRoot)
     }
   }
 

@@ -36,11 +36,16 @@ export function DesktopLegacyMigrationPrompt() {
         if (!pending) return
 
         const migrate = await dialog.confirm(
-          t('settings.flutter_legacy_migration_prompt_message', {
-            source: pending.sourceDisplayPath,
-            target: pending.targetDisplayPath,
-            defaultValue: `检测到旧版白守的数据仍在：\n${pending.sourceDisplayPath}\n\n是否复制到新版目录？\n${pending.targetDisplayPath}\n\n迁移过程不会删除原目录。`
-          }),
+          pending.inPlace
+            ? t('settings.flutter_legacy_migration_prompt_message_in_place', {
+                path: pending.sourceDisplayPath,
+                defaultValue: `检测到旧版白守数据仍在当前目录：\n${pending.sourceDisplayPath}\n\n新版数据结构已变更，需要在此目录原位转换（合并 SQLite、注册表等），不会删除原文件。\n\n是否前往「版本迁移」按板块导入？`
+              })
+            : t('settings.flutter_legacy_migration_prompt_message', {
+                source: pending.sourceDisplayPath,
+                target: pending.targetDisplayPath,
+                defaultValue: `检测到旧版白守的数据仍在：\n${pending.sourceDisplayPath}\n\n是否复制到新版目录？\n${pending.targetDisplayPath}\n\n迁移过程不会删除原目录。`
+              }),
           {
             title: t('settings.flutter_legacy_migration_prompt_title', '发现旧版数据'),
             confirmText: t('settings.flutter_legacy_migration_settings_action', '从旧版白守迁移数据'),

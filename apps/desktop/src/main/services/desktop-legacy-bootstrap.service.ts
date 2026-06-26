@@ -1,7 +1,7 @@
 import * as fs from 'fs/promises'
 import { dirname, join } from 'path'
 import { app } from 'electron'
-import { logger } from '@baishou/shared'
+import { logger, isSameStorageRoot } from '@baishou/shared'
 import {
   detectFlutterLegacyMigrationPending,
   isLegacyAppRoot,
@@ -200,6 +200,12 @@ export async function detectDesktopFlutterLegacyMigrationPending(
   const fileSystem = createNodeFileSystem()
   const installInstanceId = await getDesktopInstallInstanceId()
   const rawCandidates = await buildLegacyRootCandidateInputs()
+  const hasStorageRoot = rawCandidates.some((candidate) =>
+    isSameStorageRoot(candidate.path, storageRoot)
+  )
+  if (!hasStorageRoot && storageRoot.trim()) {
+    rawCandidates.unshift({ path: storageRoot, fromFlutterSp: false })
+  }
 
   return detectFlutterLegacyMigrationPending(fileSystem, {
     targetRoot: storageRoot,

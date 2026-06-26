@@ -52,6 +52,7 @@ export type DesktopLegacySourceResolution = {
   kind: LegacyVersionMigrationSourceKind
   sourceRoot: string
   sourceDisplayPath: string
+  inPlace: boolean
 }
 
 function rootsEqual(a: string, b: string): boolean {
@@ -80,13 +81,32 @@ export async function resolveDesktopVersionMigrationLegacySource(
 ): Promise<DesktopLegacySourceResolution | null> {
   const manual = customSourceRoot ?? (await getCustomLegacySourceRoot())
   if (manual && (await isLegacyAppRoot(fileSystem, manual))) {
-    return { kind: 'manual', sourceRoot: manual, sourceDisplayPath: manual }
+    return {
+      kind: 'manual',
+      sourceRoot: manual,
+      sourceDisplayPath: manual,
+      inPlace: rootsEqual(manual, targetRoot)
+    }
   }
 
   const candidates = await resolveLegacyRootCandidates()
   for (const candidate of candidates) {
-    if (!rootsEqual(candidate, targetRoot) && (await isLegacyAppRoot(fileSystem, candidate))) {
-      return { kind: 'flutter', sourceRoot: candidate, sourceDisplayPath: candidate }
+    if (await isLegacyAppRoot(fileSystem, candidate)) {
+      return {
+        kind: 'flutter',
+        sourceRoot: candidate,
+        sourceDisplayPath: candidate,
+        inPlace: rootsEqual(candidate, targetRoot)
+      }
+    }
+  }
+
+  if (await isLegacyAppRoot(fileSystem, targetRoot)) {
+    return {
+      kind: 'flutter',
+      sourceRoot: targetRoot,
+      sourceDisplayPath: targetRoot,
+      inPlace: true
     }
   }
 
@@ -95,12 +115,13 @@ export async function resolveDesktopVersionMigrationLegacySource(
     LEGACY_SELECTIVE_MIGRATION_MANIFEST_KEY
   )
   const migratedSource = manifest?.lastSourceDir?.trim()
-  if (
-    migratedSource &&
-    !rootsEqual(migratedSource, targetRoot) &&
-    (await isLegacyAppRoot(fileSystem, migratedSource))
-  ) {
-    return { kind: 'migrated', sourceRoot: migratedSource, sourceDisplayPath: migratedSource }
+  if (migratedSource && (await isLegacyAppRoot(fileSystem, migratedSource))) {
+    return {
+      kind: 'migrated',
+      sourceRoot: migratedSource,
+      sourceDisplayPath: migratedSource,
+      inPlace: rootsEqual(migratedSource, targetRoot)
+    }
   }
 
   return null
@@ -258,7 +279,8 @@ export class DesktopLegacyVersionMigrationService {
         scanResult: null,
         sourceKind: null,
         customSourceRoot: storedCustom,
-        importedSections: state?.importedSections ?? []
+        importedSections: state?.importedSections ?? [],
+        inPlace: false
       }
     }
 
@@ -286,7 +308,8 @@ export class DesktopLegacyVersionMigrationService {
       scanResult,
       sourceKind: source.kind,
       customSourceRoot: storedCustom,
-      importedSections
+      importedSections,
+      inPlace: source.inPlace
     }
   }
 

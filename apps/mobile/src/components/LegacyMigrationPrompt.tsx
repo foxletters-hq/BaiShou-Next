@@ -40,10 +40,15 @@ export function LegacyMigrationPrompt() {
         dialogShownRef.current = true
 
         const migrate = await dialog.confirm(
-          t('legacy_migration.prompt_message', {
-            source: pendingFlutterLegacyMigration.sourceDisplayPath,
-            defaultValue: `检测到旧版白守数据，仍在：\n${pendingFlutterLegacyMigration.sourceDisplayPath}\n\n导入过程仅复制文件，不会删除原目录。是否现在前往「版本迁移」按板块导入？`
-          }),
+          pendingFlutterLegacyMigration.inPlace
+            ? t('settings.flutter_legacy_migration_prompt_message_in_place', {
+                path: pendingFlutterLegacyMigration.sourceDisplayPath,
+                defaultValue: `检测到旧版白守数据仍在当前目录：\n${pendingFlutterLegacyMigration.sourceDisplayPath}\n\n新版数据结构已变更，需要在此目录原位转换（合并 SQLite、注册表等），不会删除原文件。\n\n是否前往「版本迁移」按板块导入？`
+              })
+            : t('legacy_migration.prompt_message', {
+                source: pendingFlutterLegacyMigration.sourceDisplayPath,
+                defaultValue: `检测到旧版白守数据，仍在：\n${pendingFlutterLegacyMigration.sourceDisplayPath}\n\n导入过程仅复制文件，不会删除原目录。是否现在前往「版本迁移」按板块导入？`
+              }),
           {
             title: t('legacy_migration.prompt_title', '导入旧版数据'),
             confirmText: t('legacy_migration.prompt_migrate', '去导入'),

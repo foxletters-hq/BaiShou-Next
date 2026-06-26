@@ -23,6 +23,8 @@ export interface FlutterLegacyMigrationPending {
   targetRoot: string
   sourceDisplayPath: string
   targetDisplayPath: string
+  /** 旧版数据与当前工作区根目录相同，需在原目录做结构转换而非复制到新目录 */
+  inPlace: boolean
   confidenceScore: number
   detectionReason: string
 }
@@ -135,26 +137,39 @@ export async function detectFlutterLegacyMigrationPending(
   }
 
   const scored = await collectScoredLegacyRootCandidates(fileSystem, options.rawCandidates)
-  const primary = scored[0]
-  if (!primary) return null
+  let sourceRoot = scored[0]?.path ?? null
+  let confidenceScore = scored[0]?.score ?? LEGACY_ROOT_MIN_CONFIDENCE_SCORE
+  let detectionReason = scored[0]?.reasons.join(',') ?? ''
 
-  const sourceRoot = primary.path
-  const migrationTarget = resolveLegacyMigrationTargetRoot(sourceRoot)
+  if (!sourceRoot && (await isLegacyAppRoot(fileSystem, targetRoot))) {
+    sourceRoot = targetRoot
+    detectionReason = 'in_place_legacy_markers'
+  }
 
-  if (isSameStorageRoot(sourceRoot, migrationTarget) && isSameStorageRoot(migrationTarget, targetRoot)) {
+  if (!sourceRoot || !(await isLegacyAppRoot(fileSystem, sourceRoot))) {
     return null
   }
 
   if (isSameStorageRoot(sourceRoot, targetRoot)) {
-    return null
+    return {
+      sourceRoot,
+      targetRoot,
+      sourceDisplayPath: displayLegacyMigrationPath(sourceRoot),
+      targetDisplayPath: displayLegacyMigrationPath(targetRoot),
+      inPlace: true,
+      confidenceScore,
+      detectionReason: detectionReason || 'in_place_legacy_markers'
+    }
   }
 
+  const migrationTarget = resolveLegacyMigrationTargetRoot(sourceRoot)
   return {
     sourceRoot,
     targetRoot: migrationTarget,
     sourceDisplayPath: displayLegacyMigrationPath(sourceRoot),
     targetDisplayPath: displayLegacyMigrationPath(migrationTarget),
-    confidenceScore: primary.score,
-    detectionReason: primary.reasons.join(',')
+    inPlace: false,
+    confidenceScore,
+    detectionReason
   }
 }

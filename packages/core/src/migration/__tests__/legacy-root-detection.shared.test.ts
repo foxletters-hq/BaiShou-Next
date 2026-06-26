@@ -5,6 +5,7 @@ import path from 'node:path'
 import { createNodeFileSystem } from '../../fs/create-node-file-system'
 import {
   collectScoredLegacyRootCandidates,
+  detectFlutterLegacyMigrationPending,
   evaluateLegacyRootCandidate,
   LEGACY_ROOT_MIN_CONFIDENCE_SCORE
 } from '../legacy-root-detection.shared'
@@ -55,5 +56,39 @@ describe('legacy-root-detection.shared', () => {
     expect(scored).toHaveLength(1)
     expect(scored[0]?.hasStrongMarkers).toBe(true)
     expect(scored[0]?.score).toBeGreaterThanOrEqual(LEGACY_ROOT_MIN_CONFIDENCE_SCORE)
+  })
+
+  it('detects in-place legacy upgrade when source equals current workspace root', async () => {
+    const legacyRoot = path.join(tempDir, 'BaiShou_Root')
+    await writeBsV3Fixture(legacyRoot)
+
+    const pending = await detectFlutterLegacyMigrationPending(fileSystem, {
+      targetRoot: legacyRoot,
+      installInstanceId: 'install-a',
+      rawCandidates: [{ path: legacyRoot, fromFlutterSp: false }]
+    })
+
+    expect(pending).not.toBeNull()
+    expect(pending?.inPlace).toBe(true)
+    expect(pending?.sourceRoot).toBe(legacyRoot)
+    expect(pending?.targetRoot).toBe(legacyRoot)
+  })
+
+  it('detects cross-directory migration when legacy root differs from workspace root', async () => {
+    const legacyRoot = path.join(tempDir, 'legacy')
+    const targetRoot = path.join(tempDir, 'next-vaults')
+    await writeBsV3Fixture(legacyRoot)
+    await fs.mkdir(targetRoot, { recursive: true })
+
+    const pending = await detectFlutterLegacyMigrationPending(fileSystem, {
+      targetRoot,
+      installInstanceId: 'install-a',
+      rawCandidates: [{ path: legacyRoot, fromFlutterSp: false }]
+    })
+
+    expect(pending).not.toBeNull()
+    expect(pending?.inPlace).toBe(false)
+    expect(pending?.sourceRoot).toBe(legacyRoot)
+    expect(pending?.targetRoot).toBe(legacyRoot)
   })
 })
