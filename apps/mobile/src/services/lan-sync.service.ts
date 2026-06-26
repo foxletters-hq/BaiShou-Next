@@ -115,7 +115,10 @@ export class MobileLanSyncService implements ILanSyncService {
 
     const dedupKey = getLanDeviceDedupKey(device)
     const previous = this.activeDevices.get(dedupKey)
-    if (previous && lanDevicesEquivalent(previous, device)) return
+    if (previous && lanDevicesEquivalent(previous, device)) {
+      this.deviceFoundCb(device)
+      return
+    }
 
     if (previous && previous.rawServiceId !== device.rawServiceId) {
       this.serviceNameToDedupKey.delete(previous.rawServiceId)

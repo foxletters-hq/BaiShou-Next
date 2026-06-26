@@ -101,39 +101,56 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
     deviceSeenAtRef.current.clear()
     setDevices([])
 
-    const connInfo = await onStartBroadcasting()
+    try {
+      const connInfo = await onStartBroadcasting()
 
-    const cleanupParts: Array<(() => void) | void> = []
-    if (onDiscoveryResetListener) {
-      cleanupParts.push(
-        onDiscoveryResetListener(() => {
-          deviceSeenAtRef.current.clear()
-          setDevices([])
-        })
-      )
-    }
-
-    const cleanup = await onStartDiscovery(
-      (dev) => {
-        if (isSelfDevice(dev, connInfo)) return
-        markDeviceSeen(dev)
-        setDevices((prev) => upsertDiscoveredLanDevice(prev, dev))
-      },
-      (id) => {
-        setDevices((prev) => removeDiscoveredLanDevice(prev, id))
+      const cleanupParts: Array<(() => void) | void> = []
+      if (onDiscoveryResetListener) {
+        cleanupParts.push(
+          onDiscoveryResetListener(() => {
+            deviceSeenAtRef.current.clear()
+            setDevices([])
+          })
+        )
       }
-    )
-    if (typeof cleanup === 'function') {
-      cleanupParts.push(cleanup)
-    }
-    if (cleanupParts.length > 0) {
-      discoveryCleanupRef.current = () => {
-        for (const part of cleanupParts) {
-          if (typeof part === 'function') {
-            part()
+
+      const cleanup = await onStartDiscovery(
+        (dev) => {
+          if (isSelfDevice(dev, connInfo)) return
+          markDeviceSeen(dev)
+          setDevices((prev) => upsertDiscoveredLanDevice(prev, dev))
+        },
+        (id) => {
+          setDevices((prev) => removeDiscoveredLanDevice(prev, id))
+        }
+      )
+      if (typeof cleanup === 'function') {
+        cleanupParts.push(cleanup)
+      }
+      if (cleanupParts.length > 0) {
+        discoveryCleanupRef.current = () => {
+          for (const part of cleanupParts) {
+            if (typeof part === 'function') {
+              part()
+            }
           }
         }
       }
+    } catch (error) {
+      console.error('[LanSyncCard] failed to start LAN transfer', error)
+      setIsActive(false)
+      setDevices([])
+      deviceSeenAtRef.current.clear()
+      discoveryCleanupRef.current?.()
+      discoveryCleanupRef.current = null
+      await onStopDiscovery().catch(() => {})
+      await onStopBroadcasting().catch(() => {})
+      toast.showError(
+        t(
+          'lan_transfer.scan_failed',
+          error instanceof Error ? error.message : '局域网扫描启动失败'
+        )
+      )
     }
   }
 
