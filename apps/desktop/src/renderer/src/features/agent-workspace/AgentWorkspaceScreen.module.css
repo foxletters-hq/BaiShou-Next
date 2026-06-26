@@ -14,48 +14,11 @@
   flex-direction: column;
   height: 100%;
   position: relative;
+  background-color: var(--bg-app);
 }
 
 .toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.toolbarMain {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.workspaceBadge {
-  font-size: 12px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(var(--color-primary-rgb, 91, 168, 245), 0.1);
-  color: var(--text-secondary);
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.title {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.sessionBadge {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--bg-muted, rgba(0, 0, 0, 0.05));
-  color: var(--text-secondary);
+  display: none;
 }
 
 .chatStage {
@@ -63,6 +26,7 @@
   min-height: 0;
   overflow: auto;
   padding: 16px;
+  background-color: var(--bg-app);
 }
 
 .emptyState {
@@ -88,6 +52,33 @@
 
 .primaryBtn:hover {
   filter: brightness(1.05);
+}
+
+.addWorkspaceBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 10px;
+  background: var(--color-primary, #5ba8f5);
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  transition: filter 0.2s;
+}
+
+.addWorkspaceBtn:hover {
+  filter: brightness(1.05);
+}
+
+.addWorkspaceBtnIcon {
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1;
 }
 
 .messages {
@@ -118,6 +109,22 @@
 }
 
 .inputArea {
-  padding: 12px 16px 16px;
-  border-top: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+  padding: 0 16px 12px;
+  background-color: transparent;
+}
+
+.noModelHint {
+  margin: 0 0 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--color-surface-elevated, rgba(0, 0, 0, 0.04));
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.inputBlocked {
+  opacity: 0.55;
+  pointer-events: none;
 }

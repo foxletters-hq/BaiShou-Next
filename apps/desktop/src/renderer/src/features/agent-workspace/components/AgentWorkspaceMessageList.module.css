@@ -49,6 +49,16 @@
   line-height: 1.6;
 }
 
+.assistantReasoning {
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--bg-app, rgba(0, 0, 0, 0.03));
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
 .rollbackBtn {
   flex-shrink: 0;
   padding: 6px 10px;
@@ -62,4 +72,21 @@
 
 .rollbackBtn:hover {
   background: var(--color-surface-elevated, rgba(0, 0, 0, 0.04));
+}
+
+.fileChangeError {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(244, 67, 54, 0.35);
+  background: rgba(244, 67, 54, 0.08);
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.streamToolErrors {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  color: rgba(244, 67, 54, 0.95);
+  font-size: 12px;
+  line-height: 1.5;
 }

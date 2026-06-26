@@ -5,28 +5,9 @@
   display: flex;
   flex-direction: column;
   border-left: 1px solid var(--border-subtle);
-  background: var(--bg-app);
+  background: var(--bg-surface);
   overflow: hidden;
   font-family: var(--font-family-main, inherit);
-}
-
-.collapsedRail {
-  width: 40px;
-  flex-shrink: 0;
-  height: 100%;
-  border: none;
-  border-left: 1px solid var(--border-subtle);
-  background: var(--bg-app);
-  cursor: pointer;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding-top: 14px;
-  color: var(--text-secondary);
-}
-
-.collapsedRail:hover {
-  background: rgba(0, 0, 0, 0.03);
 }
 
 .header {
@@ -36,6 +17,7 @@
   gap: 8px;
   padding: 12px;
   border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
 }
 
 .headerTitle {
@@ -63,23 +45,26 @@
   color: var(--text-primary);
 }
 
-.listPane {
-  flex: 0 0 auto;
-  max-height: 38%;
-  min-height: 120px;
-  display: flex;
-  flex-direction: column;
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
   padding: 8px 10px;
-  border-bottom: 1px solid var(--border-subtle);
-  overflow: hidden;
 }
 
 .changeList {
   list-style: none;
   margin: 0;
   padding: 0;
-  overflow: auto;
-  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.changeItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 
 .changeBtn {
@@ -133,36 +118,17 @@
   font-variant-numeric: tabular-nums;
 }
 
-.diffPane {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
+.inlineDiff {
+  border: 1px solid var(--border-subtle);
+  border-top: none;
+  border-radius: 0 0 10px 10px;
   overflow: hidden;
-}
-
-.diffHeader {
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border-subtle);
   background: var(--bg-surface);
 }
 
-.diffPath {
-  font-size: 12px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  color: var(--text-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  display: block;
-}
-
 .diffBody {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
   max-height: none !important;
-  height: 100%;
+  height: auto;
   border: none !important;
   border-radius: 0 !important;
 }
