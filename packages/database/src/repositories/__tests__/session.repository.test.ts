@@ -134,6 +134,17 @@ describe('SessionRepository', () => {
     })
   })
 
+  describe('updateSessionDialogueModel', () => {
+    it('should update provider and model of an existing session', async () => {
+      await repo.updateSessionDialogueModel('s1', 'openai', 'gpt-4o')
+      expect(mockUpdate).toHaveBeenCalled()
+      expect(mockSet).toHaveBeenCalledWith(
+        expect.objectContaining({ providerId: 'openai', modelId: 'gpt-4o' })
+      )
+      expect(mockWhere).toHaveBeenCalled()
+    })
+  })
+
   describe('deleteMessage', () => {
     it('should delete a specific message and its parts', async () => {
       await repo.deleteMessage('s1', 'm1')
