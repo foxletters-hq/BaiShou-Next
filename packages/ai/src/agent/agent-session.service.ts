@@ -54,6 +54,11 @@ import { WorkspaceSessionBuffer } from '../agent-workspace/workspace-session-buf
 import type { IBaishouAgentGate } from '../baishou-agent-gate/baishou-agent-gate.service'
 import type { MessageWithParts } from './message.adapter'
 import { onAgentGateLifecycle } from './agent-gate-lifecycle'
+import {
+  AgentSessionRuntimeRecorder,
+  bridgeStreamChunkToRuntimeEvents,
+  createSessionRuntimeBridgeState
+} from './session-runtime-event'
 
 export type { StreamChatOptions, StreamChatCallbacks } from './agent-session.types'
 
@@ -111,6 +116,22 @@ export class AgentSessionService {
       sessionAgentGate?.cancelSession(sessionId, 'stream aborted')
     }
     abortSignal?.addEventListener('abort', onAbortCancelGate, { once: true })
+
+    const runtimeRecorder = new AgentSessionRuntimeRecorder()
+    const runtimeBridgeState = createSessionRuntimeBridgeState()
+    let runtimeInterruptedRecorded = false
+    const recordRuntimeInterrupted = (reason: string) => {
+      if (runtimeInterruptedRecorded) return
+      runtimeInterruptedRecorded = true
+      runtimeRecorder.record({
+        type: 'session.interrupted',
+        sessionId,
+        reason,
+        timestamp: Date.now()
+      })
+    }
+    const onAbortRuntime = () => recordRuntimeInterrupted('aborted')
+    abortSignal?.addEventListener('abort', onAbortRuntime, { once: true })
 
     try {
       const { gate: sessionAgentGateResolved } = resolveSessionAgentGate({
@@ -448,6 +469,14 @@ export class AgentSessionService {
         }
       }
 
+      runtimeRecorder.record({
+        type: 'session.prompt_admitted',
+        sessionId,
+        userMessageId,
+        sessionKind: workspaceOptions?.sessionKind,
+        timestamp: Date.now()
+      })
+
       const cachingCtx = {
         providerType: effectiveProviderType,
         providerId: provider.config?.id,
@@ -472,7 +501,21 @@ export class AgentSessionService {
       // 5. 使用统一的 StreamChunkAdapter 消费流
       const accumulator = new StreamAccumulator()
       const adapter = new StreamChunkAdapter(accumulator, {
-        onChunk: (chunk) => this.dispatchChunkToCallbacks(chunk, callbacks)
+        onChunk: (chunk) => {
+          this.dispatchChunkToCallbacks(chunk, callbacks)
+          const runtimeEvents = bridgeStreamChunkToRuntimeEvents(
+            sessionId,
+            chunk,
+            runtimeBridgeState
+          )
+          for (const event of runtimeEvents) {
+            if (event.type === 'session.interrupted') {
+              recordRuntimeInterrupted(event.reason)
+            } else {
+              runtimeRecorder.record(event)
+            }
+          }
+        }
       })
 
       let streamError = (await adapter.consumeStream(streamResult)).error
@@ -510,6 +553,7 @@ export class AgentSessionService {
         logger.info(
           `[AgentSessionService] Skip persist for session ${sessionId}: stream superseded`
         )
+        recordRuntimeInterrupted('superseded')
         return
       }
 
@@ -558,9 +602,29 @@ export class AgentSessionService {
 
       // 7. 向外抛出完成/错误回调（仅一次，避免覆盖真实 API 错误）
       if (streamError && !isAgentStreamAbortError(streamError) && !abortSignal?.aborted) {
+        runtimeRecorder.record({
+          type: 'session.stream_finished',
+          sessionId,
+          success: false,
+          error: streamError.message,
+          timestamp: Date.now()
+        })
         callbacks?.onError?.(streamError)
-      } else if (callbacks?.onFinish) {
-        callbacks.onFinish({
+      } else if (!streamError) {
+        runtimeRecorder.record({
+          type: 'session.stream_finished',
+          sessionId,
+          success: true,
+          messageId: usageResult.assistantMessageId,
+          usage: {
+            inputTokens: usageResult.inputTokens,
+            outputTokens: usageResult.outputTokens,
+            cacheReadInputTokens: usageResult.cacheReadInputTokens,
+            cacheWriteInputTokens: usageResult.cacheWriteInputTokens
+          },
+          timestamp: Date.now()
+        })
+        callbacks?.onFinish?.({
           messageId: usageResult.assistantMessageId,
           inputTokens: usageResult.inputTokens,
           outputTokens: usageResult.outputTokens,
@@ -572,6 +636,15 @@ export class AgentSessionService {
     } catch (e: unknown) {
       const err = e instanceof Error ? e : new Error(String(e))
       const aborted = isAgentStreamAbortError(err) || abortSignal?.aborted === true
+      if (!aborted) {
+        runtimeRecorder.record({
+          type: 'session.stream_finished',
+          sessionId,
+          success: false,
+          error: err.message,
+          timestamp: Date.now()
+        })
+      }
       if (!aborted) {
         logger.error('[AgentSessionService] Error in streamChat:', err.message)
         if (err.stack) {
@@ -605,6 +678,7 @@ export class AgentSessionService {
     } finally {
       unsubGateBuffer()
       abortSignal?.removeEventListener('abort', onAbortCancelGate)
+      abortSignal?.removeEventListener('abort', onAbortRuntime)
       sessionAgentGate?.cancelSession(sessionId, 'stream ended')
     }
   }
