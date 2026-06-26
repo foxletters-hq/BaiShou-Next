@@ -262,5 +262,5 @@ export const DEFAULT_MCP_SERVER_CONFIG: McpServerConfig = {
 export const DEFAULT_HOTKEY_CONFIG: HotkeyConfig = {
   hotkeyEnabled: false,
   hotkeyModifier: 'Alt',
-  hotkeyKey: 'S'
+  hotkeyKey: 'Space'
 }
