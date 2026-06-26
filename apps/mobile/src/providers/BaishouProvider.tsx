@@ -1577,14 +1577,18 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               if (archiveFullRestoreDoneRef.current) {
                 const stack = diaryStackRef.current
                 if (stack && ctx && runtime) {
-                  const resumedRagDeps = {
-                    settingsManager: runtime.settingsManager,
-                    diaryService: stack.diaryService,
-                    hsRepo: runtime.hsRepo,
-                    hybridSearchService: runtime.hybridSearchService,
-                    registry: ctx.registry,
-                    rawSqlClient: runtime.sqlExecutor
-                  }
+                  const resumedRagDeps = attachMobileRagVaultScope(
+                    {
+                      settingsManager: runtime.settingsManager,
+                      diaryService: stack.diaryService,
+                      hsRepo: runtime.hsRepo,
+                      hybridSearchService: runtime.hybridSearchService,
+                      registry: ctx.registry,
+                      rawSqlClient: runtime.sqlExecutor
+                    },
+                    ctx.pathService,
+                    ctx.vaultService
+                  )
                   setMobileDiaryEmbeddingDeps(resumedRagDeps)
                   ctx.ragServiceRef.current = createMobileRagService(resumedRagDeps)
                 }
@@ -1601,14 +1605,18 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                       watcherDeps: ctx.watcherDeps
                     })
                     diaryStackRef.current = resumedStack
-                    const resumedRagDeps = {
-                      settingsManager: runtime.settingsManager,
-                      diaryService: resumedStack.diaryService,
-                      hsRepo: runtime.hsRepo,
-                      hybridSearchService: runtime.hybridSearchService,
-                      registry: ctx.registry,
-                      rawSqlClient: runtime.sqlExecutor
-                    }
+                    const resumedRagDeps = attachMobileRagVaultScope(
+                      {
+                        settingsManager: runtime.settingsManager,
+                        diaryService: resumedStack.diaryService,
+                        hsRepo: runtime.hsRepo,
+                        hybridSearchService: runtime.hybridSearchService,
+                        registry: ctx.registry,
+                        rawSqlClient: runtime.sqlExecutor
+                      },
+                      ctx.pathService,
+                      ctx.vaultService
+                    )
                     setMobileDiaryEmbeddingDeps(resumedRagDeps)
                     ctx.ragServiceRef.current = createMobileRagService(resumedRagDeps)
                   } catch (caughtResumeError) {
