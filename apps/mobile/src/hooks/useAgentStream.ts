@@ -11,7 +11,9 @@ import {
 import {
   isConfiguredDialogueModelId,
   isConfiguredProviderId,
-  deriveSessionTitleFromUserText
+  deriveSessionTitleFromUserText,
+  createStreamingTextDisplayBuffer,
+  type StreamingTextDisplayBuffer
 } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
 import { saveUserMessage } from '../services/mobile-agent-message.service'
@@ -20,8 +22,11 @@ import { mapSessionMessageFromDb } from '../utils/map-session-message.util'
 import { mapSavedAttachmentsForMobileUi } from '../utils/mobile-attachment-ui.util'
 import { subscribeMobileCompressionEvents } from '../services/mobile-compression-event.service'
 
-const COMPRESSION_DELTA_RENDER_INTERVAL_MS = 80
-const STREAM_DELTA_RENDER_INTERVAL_MS = 50
+const MOBILE_STREAM_DISPLAY_OPTIONS = {
+  lineRevealMs: 180,
+  maxCatchUpLines: 1,
+  segmentMaxChars: 18
+} as const
 
 interface TokenUsage {
   inputTokens: number
@@ -54,7 +59,8 @@ export function useAgentStream(
       waitForLatestUsage?: boolean
       commitToUi?: boolean
     }
-  ) => Promise<boolean>
+  ) => Promise<boolean>,
+  bumpReloadEpoch?: () => void
 ) {
   const { t } = useTranslation()
   const toast = useNativeToast()
@@ -90,12 +96,37 @@ export function useAgentStream(
   const activeToolRef = useRef<ToolCallInfo | null>(null)
   const currentSessionIdRef = useRef(currentSessionId)
   currentSessionIdRef.current = currentSessionId
-  const compressionTextBufferRef = useRef('')
-  const compressionReasoningBufferRef = useRef('')
-  const compressionFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const streamingTextBufferRef = useRef('')
-  const streamingReasoningBufferRef = useRef('')
-  const streamingFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const streamingTextDisplayRef = useRef<StreamingTextDisplayBuffer | null>(null)
+  const streamingReasoningDisplayRef = useRef<StreamingTextDisplayBuffer | null>(null)
+  const compressionTextDisplayRef = useRef<StreamingTextDisplayBuffer | null>(null)
+  const compressionReasoningDisplayRef = useRef<StreamingTextDisplayBuffer | null>(null)
+
+  useEffect(() => {
+    streamingTextDisplayRef.current = createStreamingTextDisplayBuffer(
+      (text) => setStreamingText(text),
+      MOBILE_STREAM_DISPLAY_OPTIONS
+    )
+    streamingReasoningDisplayRef.current = createStreamingTextDisplayBuffer(
+      (text) => setStreamingReasoning(text),
+      MOBILE_STREAM_DISPLAY_OPTIONS
+    )
+    compressionTextDisplayRef.current = createStreamingTextDisplayBuffer(
+      (text) => setCompressionText(text),
+      MOBILE_STREAM_DISPLAY_OPTIONS
+    )
+    compressionReasoningDisplayRef.current = createStreamingTextDisplayBuffer(
+      (text) => setCompressionReasoning(text),
+      MOBILE_STREAM_DISPLAY_OPTIONS
+    )
+
+    return () => {
+      streamingTextDisplayRef.current?.reset()
+      streamingReasoningDisplayRef.current?.reset()
+      compressionTextDisplayRef.current?.reset()
+      compressionReasoningDisplayRef.current?.reset()
+    }
+  }, [])
+
   const streamFinalizeLockRef = useRef<string | null>(null)
   const finishStreamPassRef = useRef(0)
   const isStreamingRef = useRef(false)
@@ -115,67 +146,45 @@ export function useAgentStream(
     []
   )
 
-  const clearCompressionFlushTimer = useCallback(() => {
-    if (!compressionFlushTimerRef.current) return
-    clearTimeout(compressionFlushTimerRef.current)
-    compressionFlushTimerRef.current = null
+  const clearStreamingDisplayBuffers = useCallback(() => {
+    streamingTextDisplayRef.current?.reset()
+    streamingReasoningDisplayRef.current?.reset()
   }, [])
 
-  const flushCompressionBuffersToState = useCallback(() => {
-    setCompressionText(compressionTextBufferRef.current)
-    setCompressionReasoning(compressionReasoningBufferRef.current)
+  const flushStreamingDisplayBuffers = useCallback(() => {
+    streamingTextDisplayRef.current?.flush()
+    streamingReasoningDisplayRef.current?.flush()
   }, [])
 
-  const scheduleCompressionFlush = useCallback(() => {
-    if (compressionFlushTimerRef.current) return
-    compressionFlushTimerRef.current = setTimeout(() => {
-      compressionFlushTimerRef.current = null
-      flushCompressionBuffersToState()
-    }, COMPRESSION_DELTA_RENDER_INTERVAL_MS)
-  }, [flushCompressionBuffersToState])
-
-  const clearStreamingFlushTimer = useCallback(() => {
-    if (!streamingFlushTimerRef.current) return
-    clearTimeout(streamingFlushTimerRef.current)
-    streamingFlushTimerRef.current = null
+  const appendStreamingTextDelta = useCallback((chunk: string) => {
+    streamingTextDisplayRef.current?.push(chunk)
   }, [])
 
-  const flushStreamingBuffersToState = useCallback(() => {
-    setStreamingText(streamingTextBufferRef.current)
-    setStreamingReasoning(streamingReasoningBufferRef.current)
+  const appendStreamingReasoningDelta = useCallback((chunk: string) => {
+    streamingReasoningDisplayRef.current?.push(chunk)
   }, [])
 
-  const scheduleStreamingFlush = useCallback(() => {
-    if (streamingFlushTimerRef.current) return
-    streamingFlushTimerRef.current = setTimeout(() => {
-      streamingFlushTimerRef.current = null
-      flushStreamingBuffersToState()
-    }, STREAM_DELTA_RENDER_INTERVAL_MS)
-  }, [flushStreamingBuffersToState])
+  const resetCompressionDisplayBuffers = useCallback(() => {
+    compressionTextDisplayRef.current?.reset()
+    compressionReasoningDisplayRef.current?.reset()
+  }, [])
 
-  const appendStreamingTextDelta = useCallback(
-    (chunk: string) => {
-      if (!chunk) return
-      streamingTextBufferRef.current += chunk
-      scheduleStreamingFlush()
-    },
-    [scheduleStreamingFlush]
-  )
+  const flushCompressionDisplayBuffers = useCallback(() => {
+    compressionTextDisplayRef.current?.flush()
+    compressionReasoningDisplayRef.current?.flush()
+  }, [])
 
-  const appendStreamingReasoningDelta = useCallback(
-    (chunk: string) => {
-      if (!chunk) return
-      streamingReasoningBufferRef.current += chunk
-      scheduleStreamingFlush()
-    },
-    [scheduleStreamingFlush]
-  )
+  const appendCompressionTextDelta = useCallback((chunk: string) => {
+    compressionTextDisplayRef.current?.push(chunk)
+  }, [])
+
+  const appendCompressionReasoningDelta = useCallback((chunk: string) => {
+    compressionReasoningDisplayRef.current?.push(chunk)
+  }, [])
 
   const resetCompressionBuffers = useCallback(() => {
-    compressionTextBufferRef.current = ''
-    compressionReasoningBufferRef.current = ''
-    clearCompressionFlushTimer()
-  }, [clearCompressionFlushTimer])
+    resetCompressionDisplayBuffers()
+  }, [resetCompressionDisplayBuffers])
 
   const syncTokenUsageFromSession = useCallback(
     async (sessionId: string) => {
@@ -260,6 +269,28 @@ export function useAgentStream(
     ]
   )
 
+  /** 串行：后端截断 → 从 DB 刷新 UI，成功后才允许继续流式输出 */
+  const truncateSessionAndSyncUi = useCallback(
+    async (sessionId: string, cutoffOrderIndex: number, epoch: number): Promise<boolean> => {
+      if (!services?.snapshotRepo) return false
+      if (epoch !== retryEpochRef.current) return false
+
+      await truncateSessionAfterOrderIndex(
+        services.sessionRepo,
+        services.snapshotRepo,
+        sessionId,
+        cutoffOrderIndex,
+        truncateOptionsWithDiskFlush(services.sessionManager)
+      )
+      if (epoch !== retryEpochRef.current) return false
+
+      const synced = await reloadMessagesFromDb(sessionId, { preserveWindow: false })
+      if (epoch !== retryEpochRef.current) return false
+      return synced
+    },
+    [services, reloadMessagesFromDb]
+  )
+
   useEffect(() => {
     if (!currentSessionId) {
       setTokenUsage({
@@ -294,20 +325,17 @@ export function useAgentStream(
       }
 
       if (event.type === 'reasoning-delta') {
-        compressionReasoningBufferRef.current += event.chunk ?? ''
-        scheduleCompressionFlush()
+        appendCompressionReasoningDelta(event.chunk ?? '')
         return
       }
 
       if (event.type === 'delta') {
-        compressionTextBufferRef.current += event.chunk ?? ''
-        scheduleCompressionFlush()
+        appendCompressionTextDelta(event.chunk ?? '')
         return
       }
 
       if (event.type === 'finish') {
-        clearCompressionFlushTimer()
-        flushCompressionBuffersToState()
+        flushCompressionDisplayBuffers()
         setIsCompressing(false)
         if (!event.ok) {
           resetCompressionBuffers()
@@ -348,26 +376,17 @@ export function useAgentStream(
     reloadMessagesFromDb,
     services,
     resetCompressionBuffers,
-    clearCompressionFlushTimer,
-    flushCompressionBuffersToState,
-    scheduleCompressionFlush
+    flushCompressionDisplayBuffers,
+    appendCompressionTextDelta,
+    appendCompressionReasoningDelta
   ])
 
-  useEffect(() => () => {
-    clearCompressionFlushTimer()
-    clearStreamingFlushTimer()
-  }, [clearCompressionFlushTimer, clearStreamingFlushTimer])
-
   const resetStreamingBuffers = useCallback(() => {
-    streamingTextBufferRef.current = ''
-    streamingReasoningBufferRef.current = ''
-    clearStreamingFlushTimer()
-    setStreamingText('')
-    setStreamingReasoning('')
+    clearStreamingDisplayBuffers()
     activeToolRef.current = null
     setActiveTool(null)
     setCompletedTools([])
-  }, [clearStreamingFlushTimer])
+  }, [clearStreamingDisplayBuffers])
 
   const handleToolCallStart = useCallback((toolName: string) => {
     const tool = { name: toolName, startTime: Date.now() }
@@ -416,6 +435,7 @@ export function useAgentStream(
   const beginRetryAction = useCallback(() => {
     const epoch = ++retryEpochRef.current
     finishStreamPassRef.current += 1
+    bumpReloadEpoch?.()
     interruptActiveStream()
     resetCompressionBuffers()
     setIsCompressing(false)
@@ -423,7 +443,7 @@ export function useAgentStream(
     setCompressionReasoning('')
     setCompressionTriggerMessageId(null)
     return epoch
-  }, [interruptActiveStream, resetCompressionBuffers])
+  }, [interruptActiveStream, resetCompressionBuffers, bumpReloadEpoch])
 
   const acquireRetryAction = useCallback((): number | null => {
     if (retryActionInFlightRef.current || isStreamingRef.current) return null
@@ -462,10 +482,10 @@ export function useAgentStream(
       streamAbortRef.current = null
 
       const hasBufferedOutput =
-        Boolean(streamingTextBufferRef.current.trim()) ||
-        Boolean(streamingReasoningBufferRef.current.trim())
+        Boolean(streamingTextDisplayRef.current?.getFullText().trim()) ||
+        Boolean(streamingReasoningDisplayRef.current?.getFullText().trim())
       if (hasBufferedOutput && isActiveSession(sessionId)) {
-        flushStreamingBuffersToState()
+        flushStreamingDisplayBuffers()
         setIsStreamBridgeActive(true)
       }
 
@@ -479,7 +499,7 @@ export function useAgentStream(
         if (!isActiveSession(sessionId)) return
 
         let reloaded = await reloadMessagesFromDb(sessionId, {
-          preserveWindow: false,
+          preserveWindow: true,
           retryCount: 5,
           waitForLatestUsage: options?.waitForLatestUsage ?? false,
           commitToUi: true
@@ -487,7 +507,7 @@ export function useAgentStream(
 
         if (!reloaded && isActiveSession(sessionId)) {
           reloaded = await reloadMessagesFromDb(sessionId, {
-            preserveWindow: false,
+            preserveWindow: true,
             retryCount: 2,
             waitForLatestUsage: false,
             commitToUi: true
@@ -503,10 +523,17 @@ export function useAgentStream(
           await syncTokenUsageFromSession(sessionId)
         }
       } finally {
-        clearStreamingFlushTimer()
         setIsStreaming(false)
-        setIsStreamBridgeActive(false)
-        resetStreamingBuffers()
+        if (isActiveSession(sessionId)) {
+          setTimeout(() => {
+            if (!isActiveSession(sessionId)) return
+            setIsStreamBridgeActive(false)
+            resetStreamingBuffers()
+          }, 80)
+        } else {
+          setIsStreamBridgeActive(false)
+          resetStreamingBuffers()
+        }
         if (streamFinalizeLockRef.current === sessionId) {
           streamFinalizeLockRef.current = null
         }
@@ -520,8 +547,7 @@ export function useAgentStream(
       }
     },
     [
-      clearStreamingFlushTimer,
-      flushStreamingBuffersToState,
+      flushStreamingDisplayBuffers,
       reloadMessagesFromDb,
       resetStreamingBuffers,
       releaseRetryAction,
@@ -840,17 +866,16 @@ export function useAgentStream(
         }
         if (epoch !== retryEpochRef.current) return
 
-        await truncateSessionAfterOrderIndex(
-          services.sessionRepo,
-          services.snapshotRepo,
+        const synced = await truncateSessionAndSyncUi(
           currentSessionId,
           dbUser.orderIndex,
-          truncateOptionsWithDiskFlush(services.sessionManager)
+          epoch
         )
-        if (epoch !== retryEpochRef.current) return
-
-        await reloadMessagesFromDb(currentSessionId, { preserveWindow: false })
-        if (epoch !== retryEpochRef.current) return
+        if (!synced) {
+          releaseRetryActionIfSetupFailed(epoch)
+          toast.showError(t('agent.chat.resend_failed', '重新发送失败'))
+          return
+        }
 
         await streamFromExistingUserMessage(
           currentSessionId,
@@ -875,11 +900,10 @@ export function useAgentStream(
       currentModelId,
       toast,
       t,
-      finishStream,
       acquireRetryAction,
       releaseRetryActionIfSetupFailed,
       streamFromExistingUserMessage,
-      reloadMessagesFromDb
+      truncateSessionAndSyncUi
     ]
   )
 
@@ -901,17 +925,16 @@ export function useAgentStream(
         }
         if (epoch !== retryEpochRef.current) return
 
-        await truncateSessionAfterOrderIndex(
-          services.sessionRepo,
-          services.snapshotRepo,
+        const synced = await truncateSessionAndSyncUi(
           currentSessionId,
           dbMsg.orderIndex,
-          truncateOptionsWithDiskFlush(services.sessionManager)
+          epoch
         )
-        if (epoch !== retryEpochRef.current) return
-
-        await reloadMessagesFromDb(currentSessionId, { preserveWindow: false })
-        if (epoch !== retryEpochRef.current) return
+        if (!synced) {
+          releaseRetryActionIfSetupFailed(epoch)
+          toast.showError(t('agent.chat.resend_failed', '重新发送失败'))
+          return
+        }
 
         await streamFromExistingUserMessage(
           currentSessionId,
@@ -935,8 +958,8 @@ export function useAgentStream(
       messages,
       acquireRetryAction,
       releaseRetryActionIfSetupFailed,
-      reloadMessagesFromDb,
       streamFromExistingUserMessage,
+      truncateSessionAndSyncUi,
       toast,
       t
     ]
@@ -961,17 +984,16 @@ export function useAgentStream(
         await services.sessionRepo.updateMessageTextPart(messageId, newContent.trim())
         if (epoch !== retryEpochRef.current) return
 
-        await truncateSessionAfterOrderIndex(
-          services.sessionRepo,
-          services.snapshotRepo,
+        const synced = await truncateSessionAndSyncUi(
           currentSessionId,
           dbMsg.orderIndex,
-          truncateOptionsWithDiskFlush(services.sessionManager)
+          epoch
         )
-        if (epoch !== retryEpochRef.current) return
-
-        await reloadMessagesFromDb(currentSessionId, { preserveWindow: false })
-        if (epoch !== retryEpochRef.current) return
+        if (!synced) {
+          releaseRetryActionIfSetupFailed(epoch)
+          toast.showError(t('agent.chat.resend_failed', '重新发送失败'))
+          return
+        }
 
         const storeMsg = messages.find((m) => m.id === messageId)
         await streamFromExistingUserMessage(
@@ -996,8 +1018,8 @@ export function useAgentStream(
       messages,
       acquireRetryAction,
       releaseRetryActionIfSetupFailed,
-      reloadMessagesFromDb,
       streamFromExistingUserMessage,
+      truncateSessionAndSyncUi,
       toast,
       t
     ]
@@ -1026,6 +1048,7 @@ export function useAgentStream(
         { confirmText: t('common.delete', '删除'), destructive: true }
       )
       if (!confirmed) return
+      bumpReloadEpoch?.()
       try {
         await services.sessionRepo.deleteMessageAndFollowing(currentSessionId, messageId)
         if (services.snapshotRepo) {
@@ -1035,13 +1058,16 @@ export function useAgentStream(
             currentSessionId
           )
         }
-        await reloadMessagesFromDb(currentSessionId, { preserveWindow: false })
+        const synced = await reloadMessagesFromDb(currentSessionId, { preserveWindow: false })
+        if (!synced) {
+          toast.showError(t('common.delete_failed', '删除失败'))
+        }
       } catch (e) {
         console.error('Failed to delete message', e)
         toast.showError(t('common.delete_failed', '删除失败'))
       }
     },
-    [currentSessionId, services, dialog, t, toast, reloadMessagesFromDb]
+    [currentSessionId, services, dialog, t, toast, reloadMessagesFromDb, bumpReloadEpoch]
   )
 
   const updateTokenUsage = useCallback((usage: Partial<TokenUsage>) => {

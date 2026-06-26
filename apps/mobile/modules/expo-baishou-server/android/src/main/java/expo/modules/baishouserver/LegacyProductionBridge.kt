@@ -147,8 +147,11 @@ object LegacyProductionBridge {
         }
 
         val externalRoot = File(Environment.getExternalStorageDirectory(), "BaiShou_Root")
-        if (countJournalMarkdownFiles(externalRoot) > 0) {
-            result["reason"] = "external_already_has_journals"
+        val externalHasAgent = hasLegacySqliteMarkers(externalRoot)
+        val externalHasJournals = countJournalMarkdownFiles(externalRoot) > 0
+        // 外部已有完整旧版数据则跳过；若仅有日记但缺 agent.sqlite（常见于 Dev 先迁日记、聊天未镜像），仍尝试合并
+        if (externalHasAgent && externalHasJournals) {
+            result["reason"] = "external_already_has_legacy_data"
             return result
         }
 
@@ -217,6 +220,18 @@ object LegacyProductionBridge {
         return false
     }
 
+    private fun shouldOverwriteWhenMirroring(file: File): Boolean {
+        if (file.parentFile?.name == "Journals") return true
+        // 合并 .baishou 下的 agent/baishou sqlite，避免 Dev 外部目录缺聊天库或为空壳
+        val parentName = file.parentFile?.name ?: return false
+        if (parentName == ".baishou") {
+            val n = file.name.lowercase()
+            return n == "agent.sqlite" || n == "baishou.sqlite" ||
+                n.startsWith("agent.sqlite-") || n.startsWith("baishou.sqlite-")
+        }
+        return false
+    }
+
     private fun copyTreeMerge(source: File, target: File): Int {
         if (!source.exists() || !source.isDirectory) return 0
         target.mkdirs()
@@ -227,7 +242,8 @@ object LegacyProductionBridge {
                 journalCopied += copyTreeMerge(entry, dest)
             } else {
                 try {
-                    val overwrite = entry.parentFile?.name == "Journals"
+                    val overwrite = shouldOverwriteWhenMirroring(entry)
+                    if (dest.exists() && !overwrite) return@forEach
                     entry.copyTo(dest, overwrite = overwrite)
                     if (entry.parentFile?.name == "Journals" && entry.name.endsWith(".md", ignoreCase = true)) {
                         journalCopied++

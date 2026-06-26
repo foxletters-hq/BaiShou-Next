@@ -13,8 +13,9 @@ import {
 } from '@baishou/ui/native'
 import {
   AIProviderConfig,
-  DEFAULT_BATCH_EMBED_CONCURRENCY,
   GlobalModelsConfig,
+  MOBILE_DEFAULT_BATCH_EMBED_CONCURRENCY,
+  resolveMobileBatchEmbedConcurrency,
   filterProvidersForModelSwitcher,
   type RagConfig as SharedRagConfig
 } from '@baishou/shared'
@@ -26,7 +27,14 @@ const DEFAULT_RAG_CONFIG: RagConfig = {
   ragEnabled: true,
   ragTopK: 20,
   ragSimilarityThreshold: 0.4,
-  batchEmbedConcurrency: DEFAULT_BATCH_EMBED_CONCURRENCY
+  batchEmbedConcurrency: MOBILE_DEFAULT_BATCH_EMBED_CONCURRENCY
+}
+
+function clampMobileRagConfig(config: RagConfig): RagConfig {
+  return {
+    ...config,
+    batchEmbedConcurrency: resolveMobileBatchEmbedConcurrency(config.batchEmbedConcurrency)
+  }
 }
 
 type PromptMode = 'manual' | 'edit' | 'clear' | null
@@ -172,13 +180,21 @@ export const RAGMemorySection: React.FC = () => {
         (await services.settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
       setProviders(providerList)
       const saved = (await services.settingsManager.get<SharedRagConfig>('rag_config')) ?? null
-      setConfig({
-        ragEnabled: saved?.ragEnabled ?? DEFAULT_RAG_CONFIG.ragEnabled,
-        ragTopK: saved?.ragTopK ?? DEFAULT_RAG_CONFIG.ragTopK,
-        ragSimilarityThreshold:
-          saved?.ragSimilarityThreshold ?? DEFAULT_RAG_CONFIG.ragSimilarityThreshold,
-        batchEmbedConcurrency: saved?.batchEmbedConcurrency ?? DEFAULT_BATCH_EMBED_CONCURRENCY
-      })
+      const loaded = clampMobileRagConfig({
+          ragEnabled: saved?.ragEnabled ?? DEFAULT_RAG_CONFIG.ragEnabled,
+          ragTopK: saved?.ragTopK ?? DEFAULT_RAG_CONFIG.ragTopK,
+          ragSimilarityThreshold:
+            saved?.ragSimilarityThreshold ?? DEFAULT_RAG_CONFIG.ragSimilarityThreshold,
+          batchEmbedConcurrency:
+            saved?.batchEmbedConcurrency ?? MOBILE_DEFAULT_BATCH_EMBED_CONCURRENCY
+        })
+      setConfig(loaded)
+      if (
+        saved?.batchEmbedConcurrency != null &&
+        loaded.batchEmbedConcurrency !== saved.batchEmbedConcurrency
+      ) {
+        await services.settingsManager.set('rag_config', loaded)
+      }
       await loadRagData('', 'text', 1, 10)
     }
     void init()
@@ -246,8 +262,9 @@ export const RAGMemorySection: React.FC = () => {
 
   const saveConfig = async (next: RagConfig) => {
     if (!services || !dbReady) return
-    await services.settingsManager.set('rag_config', next)
-    setConfig(next)
+    const clamped = clampMobileRagConfig(next)
+    await services.settingsManager.set('rag_config', clamped)
+    setConfig(clamped)
   }
 
   const handleSemanticUnavailable = useCallback(async () => {

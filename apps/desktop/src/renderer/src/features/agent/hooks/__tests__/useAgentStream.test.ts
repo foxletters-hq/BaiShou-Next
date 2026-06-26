@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
+import { STREAM_LINE_REVEAL_MS } from '@baishou/shared'
 import { useAgentStream, __resetAgentStreamIpcForTests } from '../useAgentStream'
 
 function setupWindowMock() {
@@ -145,15 +146,15 @@ describe('useAgentStream', () => {
       })
 
       act(() => {
-        emit('agent:stream-chunk', { sessionId: 's1', chunk: 'Hello' })
+        emit('agent:stream-chunk', { sessionId: 's1', chunk: 'Hello\n' })
       })
       act(() => {
-        emit('agent:stream-chunk', { sessionId: 's1', chunk: 'World' })
+        emit('agent:stream-chunk', { sessionId: 's1', chunk: 'World\n' })
       })
       act(() => {
-        vi.advanceTimersByTime(50)
+        vi.advanceTimersByTime(STREAM_LINE_REVEAL_MS * 2)
       })
-      expect(result.current.text).toBe('HelloWorld')
+      expect(result.current.text).toBe('Hello\nWorld\n')
 
       mockRenderer.invoke.mockResolvedValue(true)
       await act(async () => {
@@ -186,15 +187,15 @@ describe('useAgentStream', () => {
       vi.useFakeTimers()
       const { result } = renderHook(() => useAgentStream('s1'))
       act(() => {
-        emit('agent:stream-chunk', { sessionId: 's1', chunk: 'Hello ' })
+        emit('agent:stream-chunk', { sessionId: 's1', chunk: 'Hello' })
       })
       act(() => {
         emit('agent:stream-chunk', { sessionId: 's1', chunk: 'World' })
       })
       act(() => {
-        vi.advanceTimersByTime(50)
+        emit('agent:stream-finish', { sessionId: 's1', success: true })
       })
-      expect(result.current.text).toBe('Hello World')
+      expect(result.current.text).toBe('HelloWorld')
       vi.useRealTimers()
     })
 
@@ -204,13 +205,13 @@ describe('useAgentStream', () => {
       const { result: r2 } = renderHook(() => useAgentStream('s2'))
 
       act(() => {
-        emit('agent:stream-chunk', { sessionId: 's1', chunk: 'Hi' })
+        emit('agent:stream-chunk', { sessionId: 's1', chunk: 'Hi\n' })
       })
       act(() => {
-        vi.advanceTimersByTime(50)
+        vi.advanceTimersByTime(STREAM_LINE_REVEAL_MS)
       })
 
-      expect(r1.current.text).toBe('Hi')
+      expect(r1.current.text).toBe('Hi\n')
       expect(r2.current.text).toBe('')
       expect(mockRenderer.on).toHaveBeenCalledTimes(6)
       vi.useRealTimers()
@@ -223,7 +224,7 @@ describe('useAgentStream', () => {
         emit('agent:stream-chunk', { sessionId: 's1', chunk: 'done' })
       })
       act(() => {
-        vi.advanceTimersByTime(50)
+        vi.advanceTimersByTime(STREAM_LINE_REVEAL_MS)
       })
       act(() => {
         emit('agent:stream-finish', { sessionId: 's1', success: true })
@@ -241,7 +242,7 @@ describe('useAgentStream', () => {
         emit('agent:reasoning-chunk', { sessionId: 's1', chunk: 'thinking...' })
       })
       act(() => {
-        vi.advanceTimersByTime(50)
+        emit('agent:stream-finish', { sessionId: 's1', success: true })
       })
       expect(result.current.reasoning).toBe('thinking...')
       vi.useRealTimers()

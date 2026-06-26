@@ -36,6 +36,7 @@ import {
   generateRemappedId,
   isWorkspaceSectionId,
   legacySessionBelongsToVault,
+  normalizeLegacyPartData,
   normalizeLegacyPartType,
   parseLegacyIdentityFacts,
   parseLegacyPersonasFromSp,
@@ -821,7 +822,7 @@ export async function importLegacyChatsFromRows(
       .sort((a, b) => Number(a.order_index ?? 0) - Number(b.order_index ?? 0))
       .map((messageRow, index) => {
         const oldMessageId = String(messageRow.id ?? generateRemappedId('legacy_msg'))
-        const newMessageId = generateRemappedId('legacy_msg')
+        const newMessageId = oldMessageId
         return {
           id: newMessageId,
           sessionId: newSessionId,
@@ -837,20 +838,13 @@ export async function importLegacyChatsFromRows(
           modelId: messageRow.model_id != null ? String(messageRow.model_id) : undefined,
           createdAt: toDate(messageRow.created_at),
           parts: (partsByMessage.get(oldMessageId) ?? []).map((partRow) => {
-            let data: unknown = partRow.data
-            if (typeof data === 'string') {
-              try {
-                data = JSON.parse(data)
-              } catch {
-                // keep raw
-              }
-            }
+            const partType = normalizeLegacyPartType(partRow.type)
             return {
-              id: generateRemappedId('legacy_part'),
+              id: String(partRow.id ?? generateRemappedId('legacy_part')),
               messageId: newMessageId,
               sessionId: newSessionId,
-              type: normalizeLegacyPartType(partRow.type),
-              data,
+              type: partType,
+              data: normalizeLegacyPartData(partRow.data, partType),
               createdAt: toDate(partRow.created_at)
             }
           })

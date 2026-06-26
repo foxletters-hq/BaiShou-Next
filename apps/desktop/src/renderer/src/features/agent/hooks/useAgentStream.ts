@@ -1,4 +1,8 @@
 import { useEffect, useState, useCallback, useRef, useContext } from 'react'
+import {
+  createStreamingTextDisplayBuffer,
+  type StreamingTextDisplayBuffer
+} from '@baishou/shared'
 import { MainPageCacheActiveContext } from '../../../layouts/main-page-cache.context'
 
 export interface ToolExecution {
@@ -74,10 +78,78 @@ interface SessionStreamState {
 // ── 全局多会话流状态存储 ──
 const sessionStates: Record<string, SessionStreamState> = {}
 const sessionListeners: Record<string, Set<() => void>> = {}
-const COMPRESSION_DELTA_RENDER_INTERVAL_MS = 80
-const STREAM_DELTA_RENDER_INTERVAL_MS = 50
-const compressionDeltaNotifyTimers: Record<string, ReturnType<typeof setTimeout> | undefined> = {}
-const streamDeltaNotifyTimers: Record<string, ReturnType<typeof setTimeout> | undefined> = {}
+const streamTextDisplayBuffers: Record<string, StreamingTextDisplayBuffer> = {}
+const streamReasoningDisplayBuffers: Record<string, StreamingTextDisplayBuffer> = {}
+const compressionTextDisplayBuffers: Record<string, StreamingTextDisplayBuffer> = {}
+const compressionReasoningDisplayBuffers: Record<string, StreamingTextDisplayBuffer> = {}
+
+function ensureStreamTextDisplayBuffer(sessionId: string): StreamingTextDisplayBuffer {
+  if (!streamTextDisplayBuffers[sessionId]) {
+    streamTextDisplayBuffers[sessionId] = createStreamingTextDisplayBuffer((text) => {
+      updateSessionState(sessionId, (state) => {
+        state.text = text
+      }, { notify: false })
+      notifySessionListeners(sessionId)
+    })
+  }
+  return streamTextDisplayBuffers[sessionId]
+}
+
+function ensureStreamReasoningDisplayBuffer(sessionId: string): StreamingTextDisplayBuffer {
+  if (!streamReasoningDisplayBuffers[sessionId]) {
+    streamReasoningDisplayBuffers[sessionId] = createStreamingTextDisplayBuffer((text) => {
+      updateSessionState(sessionId, (state) => {
+        state.reasoning = text
+      }, { notify: false })
+      notifySessionListeners(sessionId)
+    })
+  }
+  return streamReasoningDisplayBuffers[sessionId]
+}
+
+function ensureCompressionTextDisplayBuffer(sessionId: string): StreamingTextDisplayBuffer {
+  if (!compressionTextDisplayBuffers[sessionId]) {
+    compressionTextDisplayBuffers[sessionId] = createStreamingTextDisplayBuffer((text) => {
+      updateSessionState(sessionId, (state) => {
+        state.compressionText = text
+      }, { notify: false })
+      notifySessionListeners(sessionId)
+    })
+  }
+  return compressionTextDisplayBuffers[sessionId]
+}
+
+function ensureCompressionReasoningDisplayBuffer(sessionId: string): StreamingTextDisplayBuffer {
+  if (!compressionReasoningDisplayBuffers[sessionId]) {
+    compressionReasoningDisplayBuffers[sessionId] = createStreamingTextDisplayBuffer((text) => {
+      updateSessionState(sessionId, (state) => {
+        state.compressionReasoning = text
+      }, { notify: false })
+      notifySessionListeners(sessionId)
+    })
+  }
+  return compressionReasoningDisplayBuffers[sessionId]
+}
+
+function resetStreamDisplayBuffers(sessionId: string): void {
+  ensureStreamTextDisplayBuffer(sessionId).reset()
+  ensureStreamReasoningDisplayBuffer(sessionId).reset()
+}
+
+function flushStreamDisplayBuffers(sessionId: string): void {
+  streamTextDisplayBuffers[sessionId]?.flush()
+  streamReasoningDisplayBuffers[sessionId]?.flush()
+}
+
+function resetCompressionDisplayBuffers(sessionId: string): void {
+  compressionTextDisplayBuffers[sessionId]?.reset()
+  compressionReasoningDisplayBuffers[sessionId]?.reset()
+}
+
+function flushCompressionDisplayBuffers(sessionId: string): void {
+  compressionTextDisplayBuffers[sessionId]?.flush()
+  compressionReasoningDisplayBuffers[sessionId]?.flush()
+}
 
 function clearCompressionStreamState(state: SessionStreamState): void {
   state.isCompressing = false
@@ -97,6 +169,7 @@ function clearStreamBridgeState(state: SessionStreamState): void {
 
 /** 消息列表已从 DB 刷新后清除桥接态，避免 StreamingBubble 与 ChatBubble 短暂并存 */
 export function clearStreamBridgeForSession(sessionId: string): void {
+  resetStreamDisplayBuffers(sessionId)
   updateSessionState(sessionId, (state) => {
     clearStreamBridgeState(state)
   })
@@ -126,24 +199,6 @@ function notifySessionListeners(sessionId: string) {
   if (sessionListeners[sessionId]) {
     sessionListeners[sessionId].forEach((listener) => listener())
   }
-}
-
-function scheduleCompressionDeltaNotify(sessionId: string) {
-  if (compressionDeltaNotifyTimers[sessionId]) return
-
-  compressionDeltaNotifyTimers[sessionId] = setTimeout(() => {
-    compressionDeltaNotifyTimers[sessionId] = undefined
-    notifySessionListeners(sessionId)
-  }, COMPRESSION_DELTA_RENDER_INTERVAL_MS)
-}
-
-function scheduleStreamDeltaNotify(sessionId: string) {
-  if (streamDeltaNotifyTimers[sessionId]) return
-
-  streamDeltaNotifyTimers[sessionId] = setTimeout(() => {
-    streamDeltaNotifyTimers[sessionId] = undefined
-    notifySessionListeners(sessionId)
-  }, STREAM_DELTA_RENDER_INTERVAL_MS)
 }
 
 function updateSessionState(
@@ -188,28 +243,14 @@ function registerGlobalStreamIpcListeners(): () => void {
     const sId = typeof payload === 'object' ? payload?.sessionId : null
     const chunk = typeof payload === 'object' ? payload?.chunk : payload
     if (!sId) return
-    updateSessionState(
-      sId,
-      (state) => {
-        state.text += chunk
-      },
-      { notify: false }
-    )
-    scheduleStreamDeltaNotify(sId)
+    ensureStreamTextDisplayBuffer(sId).push(chunk ?? '')
   }
 
   const onReasoningChunk = (_: unknown, payload: any) => {
     const sId = typeof payload === 'object' ? payload?.sessionId : null
     const chunk = typeof payload === 'object' ? payload?.chunk : payload
     if (!sId) return
-    updateSessionState(
-      sId,
-      (state) => {
-        state.reasoning += chunk
-      },
-      { notify: false }
-    )
-    scheduleStreamDeltaNotify(sId)
+    ensureStreamReasoningDisplayBuffer(sId).push(chunk ?? '')
   }
 
   const onToolStart = (_: unknown, payload: any) => {
@@ -238,13 +279,12 @@ function registerGlobalStreamIpcListeners(): () => void {
   const onStreamFinish = (_: unknown, payload: any) => {
     const sId = typeof payload === 'object' ? payload?.sessionId : null
     if (!sId) return
-    if (streamDeltaNotifyTimers[sId]) {
-      clearTimeout(streamDeltaNotifyTimers[sId])
-      streamDeltaNotifyTimers[sId] = undefined
-    }
+    flushStreamDisplayBuffers(sId)
+    const fullText = streamTextDisplayBuffers[sId]?.getFullText() ?? ''
+    const fullReasoning = streamReasoningDisplayBuffers[sId]?.getFullText() ?? ''
     updateSessionState(sId, (state) => {
       state.isStreaming = false
-      state.isBridgeActive = Boolean(state.text.trim() || state.reasoning.trim())
+      state.isBridgeActive = Boolean(fullText.trim() || fullReasoning.trim())
       if (payload?.error) {
         state.error = payload.error
       }
@@ -273,21 +313,15 @@ function registerGlobalStreamIpcListeners(): () => void {
     if (!sId || !event?.type) return
 
     if (event.type === 'reasoning-delta' || event.type === 'delta') {
-      updateSessionState(
-        sId,
-        (state) => {
-          if (event.type === 'reasoning-delta') {
-            state.compressionReasoning += event.chunk ?? ''
-          } else {
-            state.compressionText += event.chunk ?? ''
-          }
-        },
-        { notify: false }
-      )
-      scheduleCompressionDeltaNotify(sId)
+      if (event.type === 'reasoning-delta') {
+        ensureCompressionReasoningDisplayBuffer(sId).push(event.chunk ?? '')
+      } else {
+        ensureCompressionTextDisplayBuffer(sId).push(event.chunk ?? '')
+      }
     } else {
       updateSessionState(sId, (state) => {
         if (event.type === 'start') {
+          resetCompressionDisplayBuffers(sId)
           state.isCompressing = true
           state.compressionPhase = event.phase === 'manual' ? 'manual' : 'auto'
           state.compressionText = ''
@@ -295,6 +329,7 @@ function registerGlobalStreamIpcListeners(): () => void {
           state.compressionTriggerMessageId =
             typeof event.triggerUserMessageId === 'string' ? event.triggerUserMessageId : null
         } else if (event.type === 'finish') {
+          flushCompressionDisplayBuffers(sId)
           state.isCompressing = false
           state.compressionText = ''
           state.compressionReasoning = ''
@@ -316,6 +351,7 @@ function registerGlobalStreamIpcListeners(): () => void {
     const detail = (e as CustomEvent<{ sessionId?: string }>).detail
     const sId = detail?.sessionId
     if (!sId) return
+    resetCompressionDisplayBuffers(sId)
     updateSessionState(sId, (state) => {
       state.compressionText = ''
       state.compressionReasoning = ''
@@ -358,15 +394,17 @@ export function __resetAgentStreamIpcForTests(): void {
   for (const key of Object.keys(sessionListeners)) {
     delete sessionListeners[key]
   }
-  for (const key of Object.keys(streamDeltaNotifyTimers)) {
-    const timer = streamDeltaNotifyTimers[key]
-    if (timer) clearTimeout(timer)
-    delete streamDeltaNotifyTimers[key]
+  for (const key of Object.keys(streamTextDisplayBuffers)) {
+    delete streamTextDisplayBuffers[key]
   }
-  for (const key of Object.keys(compressionDeltaNotifyTimers)) {
-    const timer = compressionDeltaNotifyTimers[key]
-    if (timer) clearTimeout(timer)
-    delete compressionDeltaNotifyTimers[key]
+  for (const key of Object.keys(streamReasoningDisplayBuffers)) {
+    delete streamReasoningDisplayBuffers[key]
+  }
+  for (const key of Object.keys(compressionTextDisplayBuffers)) {
+    delete compressionTextDisplayBuffers[key]
+  }
+  for (const key of Object.keys(compressionReasoningDisplayBuffers)) {
+    delete compressionReasoningDisplayBuffers[key]
   }
 }
 
@@ -438,6 +476,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
       searchMode?: boolean,
       userMsgId?: string
     ): Promise<void> => {
+      resetStreamDisplayBuffers(sessionId)
       updateSessionState(sessionId, (state) => {
         state.isStreaming = true
         state.isBridgeActive = false
@@ -474,6 +513,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
       attachments?: any[],
       searchMode?: boolean
     ) => {
+      resetStreamDisplayBuffers(sessionId)
       updateSessionState(sessionId, (state) => {
         state.isStreaming = true
         state.isBridgeActive = false
@@ -509,6 +549,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
       providerId?: string,
       modelId?: string
     ) => {
+      resetStreamDisplayBuffers(sessionId)
       updateSessionState(sessionId, (state) => {
         state.isStreaming = true
         state.isBridgeActive = false
@@ -563,6 +604,8 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
 
   const reset = useCallback(() => {
     if (!currentSessionId) return
+    resetStreamDisplayBuffers(currentSessionId)
+    resetCompressionDisplayBuffers(currentSessionId)
     updateSessionState(currentSessionId, (state) => {
       state.error = null
       state.isStreaming = false

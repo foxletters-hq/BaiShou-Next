@@ -6,7 +6,7 @@ settings:
 
 patchedDependencies:
   '@ai-sdk/openai@3.0.50':
-    hash: d3014dcabb409b5286fca9d21d9fd962f34876bd28973689965b1b628f39dfad
+    hash: 64ee5c9f21e7bb683cba396c5bab92cf6f96b8ddcf6d0f781534efa8e1622a74
     path: patches/@ai-sdk+openai@3.0.50.patch
 
 importers:
@@ -462,7 +462,7 @@ importers:
         version: 3.0.58(zod@4.3.6)
       '@ai-sdk/openai':
         specifier: ^3.0.50
-        version: 3.0.50(patch_hash=d3014dcabb409b5286fca9d21d9fd962f34876bd28973689965b1b628f39dfad)(zod@4.3.6)
+        version: 3.0.50(patch_hash=64ee5c9f21e7bb683cba396c5bab92cf6f96b8ddcf6d0f781534efa8e1622a74)(zod@4.3.6)
       '@baishou/database':
         specifier: workspace:*
         version: link:../database
@@ -9220,7 +9220,7 @@ snapshots:
       '@ai-sdk/provider-utils': 4.0.22(zod@4.3.6)
       zod: 4.3.6
 
-  '@ai-sdk/openai@3.0.50(patch_hash=d3014dcabb409b5286fca9d21d9fd962f34876bd28973689965b1b628f39dfad)(zod@4.3.6)':
+  '@ai-sdk/openai@3.0.50(patch_hash=64ee5c9f21e7bb683cba396c5bab92cf6f96b8ddcf6d0f781534efa8e1622a74)(zod@4.3.6)':
     dependencies:
       '@ai-sdk/provider': 3.0.8
       '@ai-sdk/provider-utils': 4.0.22(zod@4.3.6)

@@ -5,9 +5,9 @@ import { useNativeTheme } from '../theme'
 import { SettingsSliderRow } from '../settings/SettingsSliderRow'
 import { settingsCardStyles } from '../settings/settings-card.styles'
 import {
-  BATCH_EMBED_CONCURRENCY_MAX,
   BATCH_EMBED_CONCURRENCY_MIN,
-  DEFAULT_BATCH_EMBED_CONCURRENCY
+  MOBILE_BATCH_EMBED_CONCURRENCY_CAP,
+  resolveMobileBatchEmbedConcurrency
 } from '@baishou/shared'
 import type { RagConfig } from './rag-memory.types'
 
@@ -56,9 +56,9 @@ export const RagMemoryRetrievalSection: React.FC<RagMemoryRetrievalSectionProps>
       <SettingsSliderRow
         title={t('settings.rag_batch_embed_concurrency', '批量嵌入并发')}
         description={t('settings.rag_batch_embed_concurrency_hint')}
-        value={config.batchEmbedConcurrency ?? DEFAULT_BATCH_EMBED_CONCURRENCY}
+        value={resolveMobileBatchEmbedConcurrency(config.batchEmbedConcurrency)}
         min={BATCH_EMBED_CONCURRENCY_MIN}
-        max={BATCH_EMBED_CONCURRENCY_MAX}
+        max={MOBILE_BATCH_EMBED_CONCURRENCY_CAP}
         step={1}
         onChange={(v) => onChange({ ...config, batchEmbedConcurrency: v })}
       />

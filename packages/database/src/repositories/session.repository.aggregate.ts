@@ -74,6 +74,15 @@ export class SessionAggregateSync {
 
     const stmts: Array<{ sql: string; args?: any[] }> = []
 
+    // 全量替换会话：先删 parts/messages，避免 INSERT OR IGNORE 留下无 parts 的旧消息（迁移/磁盘同步常见）
+    stmts.push({
+      sql: 'DELETE FROM agent_parts WHERE session_id = ?',
+      args: [session.id]
+    })
+    stmts.push({
+      sql: 'DELETE FROM agent_messages WHERE session_id = ?',
+      args: [session.id]
+    })
     stmts.push({
       sql: 'DELETE FROM agent_sessions WHERE id = ?',
       args: [session.id]

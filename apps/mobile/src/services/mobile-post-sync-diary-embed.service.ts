@@ -1,6 +1,9 @@
 import { logger } from '@baishou/shared'
 
-import { getMobileDiaryEmbeddingDeps } from './mobile-diary-embedding.service'
+import {
+  getMobileDiaryEmbeddingDeps,
+  notifyDiaryEmbedFailure
+} from './mobile-diary-embedding.service'
 import {
   runControlledDiaryBatchEmbed,
   type ControlledDiaryBatchEmbedResult
@@ -12,6 +15,7 @@ let rerunRequested = false
 async function runPostSyncDiaryBatchEmbedLoop(): Promise<ControlledDiaryBatchEmbedResult> {
   let lastResult: ControlledDiaryBatchEmbedResult = {
     embedded: 0,
+    failed: 0,
     total: 0,
     skipped: true,
     skipReason: 'not-started'
@@ -21,17 +25,15 @@ async function runPostSyncDiaryBatchEmbedLoop(): Promise<ControlledDiaryBatchEmb
     rerunRequested = false
     const deps = getMobileDiaryEmbeddingDeps()
     if (!deps) {
-      return { embedded: 0, total: 0, skipped: true, skipReason: 'deps-unavailable' }
+      return { embedded: 0, failed: 0, total: 0, skipped: true, skipReason: 'deps-unavailable' }
     }
 
     lastResult = await runControlledDiaryBatchEmbed(deps, {
       groupId: 'diary_post_sync'
     })
 
-    if (lastResult.embedded > 0) {
-      const ragConfig = (await deps.settingsManager.get<any>('rag_config')) || {}
-      ragConfig.totalEmbeddings = lastResult.embedded
-      await deps.settingsManager.set('rag_config', ragConfig)
+    if (lastResult.failed > 0 || lastResult.skipReason === 'prepare-failed') {
+      notifyDiaryEmbedFailure()
     }
   } while (rerunRequested)
 
@@ -48,8 +50,10 @@ export function schedulePostSyncDiaryBatchEmbed(): void {
   inFlight = runPostSyncDiaryBatchEmbedLoop()
     .catch((error: unknown) => {
       logger.warn('[MobilePostSyncEmbed] post-sync batch embed failed', error as Error)
+      notifyDiaryEmbedFailure()
       return {
         embedded: 0,
+        failed: 0,
         total: 0,
         skipped: true,
         skipReason: 'failed'

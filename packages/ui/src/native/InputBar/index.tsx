@@ -507,7 +507,9 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth
   },
   composerBlock: {
-    position: 'relative'
+    position: 'relative',
+    overflow: 'visible',
+    zIndex: 20
   },
   toolbarContent: {
     gap: 8,
