@@ -12,6 +12,8 @@ import {
 const BUBBLE_EDIT_KEYBOARD_BUFFER = 72
 /** 编辑态且键盘收起时：保存/token 与底部工具栏之间的额外间距 */
 const BUBBLE_EDIT_DOCK_GAP = 16
+/** 流式输出时列表底部额外留白：把最新气泡抬高到输入栏上方，留出可读空间 */
+const STREAMING_LIST_BOTTOM_BUFFER = 56
 
 function readKeyboardHeightFromMetrics(): number {
   const metrics = Keyboard.metrics()
@@ -22,13 +24,16 @@ export function useAgentChatKeyboardInsets({
   tabBarHeight,
   inputDockHeight,
   isBubbleEditing,
-  enableComposerKeyboardLift = true
+  enableComposerKeyboardLift = true,
+  streamingActive = false
 }: {
   tabBarHeight: number
   inputDockHeight: number
   isBubbleEditing: boolean
   /** 为 false 时主输入栏不随键盘上移（侧边栏/弹层打开时） */
   enableComposerKeyboardLift?: boolean
+  /** 流式输出中：加大列表底部 padding，防止 StreamingBubble 与输入栏重叠 */
+  streamingActive?: boolean
 }) {
   const keyboard = useAnimatedKeyboard()
   const [keyboardInset, setKeyboardInset] = useState(0)
@@ -157,11 +162,12 @@ export function useAgentChatKeyboardInsets({
 
   const composerInset = enableComposerKeyboardLift ? keyboardInset : 0
   const isEditKeyboardVisible = keyboardInset >= 60
+  const streamingBuffer = streamingActive && !isBubbleEditing ? STREAMING_LIST_BOTTOM_BUFFER : 0
   const listBottomPadding = isBubbleEditing
     ? isEditKeyboardVisible
       ? keyboardInset + BUBBLE_EDIT_KEYBOARD_BUFFER + 16
       : inputDockHeight + BUBBLE_EDIT_KEYBOARD_BUFFER + BUBBLE_EDIT_DOCK_GAP
-    : inputDockHeight + composerInset + 24
+    : inputDockHeight + composerInset + 24 + streamingBuffer
 
   return {
     keyboardInset,
