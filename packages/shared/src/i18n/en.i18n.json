@@ -755,7 +755,7 @@
     "rag_diary_embed_pending_detail": "A recently saved or edited diary could not be written to memory vectors (network may have dropped). Your diary text is safe—tap below to finish embedding.",
     "rag_operation_failed": "Embedding operation failed",
     "rag_batch_embed_concurrency": "Batch embed concurrency",
-    "rag_batch_embed_concurrency_hint": "How many diaries to embed in parallel. Higher is faster but more likely to hit API rate limits; 2–3 is recommended.",
+    "rag_batch_embed_concurrency_hint": "How many diaries to embed in parallel. Higher is faster but more likely to hit API rate limits; default is 20—lower if you hit rate limits.",
     "rag_add_manual": "Add Snapshot",
     "rag_add_manual_success": "Memory fragment added",
     "rag_add_manual_failed": "Failed to add: ",
@@ -2798,7 +2798,8 @@
     "select_change_hint": "Select a file to view diff",
     "collapse_changes_panel": "Collapse changes panel",
     "expand_changes_panel": "Expand changes panel",
-    "input_placeholder": "Describe the changes you want in this folder…"
+    "input_placeholder": "Describe the changes you want in this folder…",
+    "change_avatar": "Change icon"
   },
   "file_change": {
     "changes_title": "Changes",

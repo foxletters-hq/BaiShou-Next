@@ -50,6 +50,7 @@ export * from './assistant/ensure-default-latte-assistant'
 
 export * from './settings/settings-file.service'
 export * from './settings/settings-manager.service'
+export * from './settings/settings-domain.util'
 
 export * from './session/compression-prompt'
 export * from './session/system-prompt-builder'

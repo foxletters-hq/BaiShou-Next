@@ -715,7 +715,7 @@
     "rag_diary_embed_pending_detail": "最近保存或修改的日记未能写入记忆向量（可能是网络中断）。日记正文已安全保存，可点击下方按钮补全嵌入。",
     "rag_operation_failed": "向量嵌入操作失败",
     "rag_batch_embed_concurrency": "批量嵌入并发",
-    "rag_batch_embed_concurrency_hint": "同时嵌入的日记篇数。数值越大越快，但更容易触发 API 限流；建议 2–3。",
+    "rag_batch_embed_concurrency_hint": "同时嵌入的日记篇数。数值越大越快，但更容易触发 API 限流；默认 20，遇限流可调低。",
     "rag_add_manual": "添加手动记忆片段",
     "rag_add_manual_success": "记忆片段已添加",
     "rag_add_manual_failed": "添加失败: ",
@@ -2867,7 +2867,8 @@
     "select_change_hint": "选择文件查看 diff",
     "collapse_changes_panel": "收起变更面板",
     "expand_changes_panel": "展开变更面板",
-    "input_placeholder": "描述你想对文件夹做的修改…"
+    "input_placeholder": "描述你想对文件夹做的修改…",
+    "change_avatar": "更改图标"
   },
   "file_change": {
     "changes_title": "变更列表",
