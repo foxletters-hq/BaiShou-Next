@@ -162,7 +162,8 @@ export function extractMessageText(msg: MessageWithParts): string {
         result?: unknown
         arguments?: unknown
         name?: string
-      }
+      } | null
+      if (!data) continue
       if (data.result !== undefined) {
         chunks.push(typeof data.result === 'string' ? data.result : JSON.stringify(data.result))
       } else if (data.arguments !== undefined) {
@@ -177,11 +178,11 @@ export function extractMessageText(msg: MessageWithParts): string {
         }
       }
     } else if (p.type === 'image') {
-      const att = p.data as { name?: string; fileName?: string }
-      chunks.push(`[图片附件 ${att.name || att.fileName || ''}]`)
+      const att = p.data as { name?: string; fileName?: string } | null | undefined
+      chunks.push(`[图片附件 ${att?.name || att?.fileName || ''}]`)
     } else if (p.type === 'attachment') {
-      const att = p.data as { textContent?: string; name?: string; fileName?: string }
-      if (att.textContent) {
+      const att = p.data as { textContent?: string; name?: string; fileName?: string } | null | undefined
+      if (att?.textContent) {
         chunks.push(`[附件 ${att.name || att.fileName || ''}]\n${att.textContent}`)
       }
     }
@@ -204,7 +205,8 @@ export function extractMessageTextForCompression(msg: MessageWithParts): string 
       const text = typeof data === 'string' ? data : data?.text
       if (text) chunks.push(text)
     } else if (p.type === 'tool') {
-      const data = p.data as { result?: unknown; arguments?: unknown }
+      const data = p.data as { result?: unknown; arguments?: unknown } | null
+      if (!data) continue
       if (data.result !== undefined) {
         const raw = typeof data.result === 'string' ? data.result : JSON.stringify(data.result)
         chunks.push(truncateForCompression(raw, TOOL_OUTPUT_MAX_CHARS))
@@ -220,11 +222,11 @@ export function extractMessageTextForCompression(msg: MessageWithParts): string 
         }
       }
     } else if (p.type === 'image') {
-      const att = p.data as { name?: string; fileName?: string }
-      chunks.push(`[图片附件 ${att.name || att.fileName || ''}]`)
+      const att = p.data as { name?: string; fileName?: string } | null | undefined
+      chunks.push(`[图片附件 ${att?.name || att?.fileName || ''}]`)
     } else if (p.type === 'attachment') {
-      const att = p.data as { textContent?: string; name?: string; fileName?: string }
-      if (att.textContent) {
+      const att = p.data as { textContent?: string; name?: string; fileName?: string } | null | undefined
+      if (att?.textContent) {
         chunks.push(`[附件 ${att.name || att.fileName || ''}]\n${att.textContent}`)
       }
     }

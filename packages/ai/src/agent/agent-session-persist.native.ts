@@ -95,6 +95,10 @@ export async function persistResult(params: PersistResultParams): Promise<{
 
   // 推送工具 Call & Result Part
   for (const tc of accumulator.toolCalls) {
+    if (!tc?.callId || !tc?.name) {
+      logger.warn('[Persist Result] Skip malformed tool-call snapshot:', tc)
+      continue
+    }
     const resultObj = accumulator.toolResults.find((tr) => tr.callId === tc.callId)
     partsToInsert.push({
       id: generateUUID(),
@@ -130,9 +134,11 @@ export async function persistResult(params: PersistResultParams): Promise<{
           outputTokens: streamUsage.outputTokens
         }
       }
-    } catch (e: any) {
-      const isNoOutputError = e?.[Symbol.for('vercel.ai.error.AI_NoOutputGeneratedError')] === true
-      if (e.name === 'AbortError') {
+    } catch (e: unknown) {
+      const isNoOutputError =
+        (e as { [key: symbol]: unknown } | null)?.[Symbol.for('vercel.ai.error.AI_NoOutputGeneratedError')] ===
+        true
+      if (e instanceof Error && e.name === 'AbortError') {
         logger.info(
           '[AgentSessionService Debug] streamResult.usage read gracefully skipped (stream aborted by user).'
         )
@@ -177,14 +183,15 @@ export async function persistResult(params: PersistResultParams): Promise<{
     }
 
     // 累加计算 tokens 及账单微美分成本
+    const providerId = provider?.config?.id ?? 'unknown'
     costMicros = await ModelPricingService.getInstance().calculateCostMicros(
-      provider.config.id,
+      providerId,
       modelId,
       normalizeTokenUsageForBilling(streamUsage)
     )
 
     logger.info('\n================== 计费日志 ==================')
-    logger.info(`模型: ${modelId} (${provider.config.id})`)
+    logger.info(`模型: ${modelId} (${providerId})`)
     logger.info(
       `Tokens消耗: 输入 ${finalUsage.inputTokens} | 输出 ${finalUsage.outputTokens} | 缓存读 ${streamUsage.cacheReadInputTokens} | 缓存写 ${streamUsage.cacheWriteInputTokens}`
     )
@@ -215,7 +222,7 @@ export async function persistResult(params: PersistResultParams): Promise<{
         cacheReadInputTokens: streamUsage.cacheReadInputTokens,
         cacheWriteInputTokens: streamUsage.cacheWriteInputTokens,
         costMicros: costMicros,
-        providerId: provider.config.id,
+        providerId: provider?.config?.id ?? 'unknown',
         modelId: modelId
       },
       partsToInsert
