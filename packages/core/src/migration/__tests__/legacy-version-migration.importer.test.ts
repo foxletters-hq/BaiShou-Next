@@ -217,6 +217,61 @@ describe('legacy-version-migration.importer chats', () => {
     )
     expect(flushSessionToDisk).toHaveBeenCalledWith('legacy-session')
   })
+
+  it('preserves legacy message ids and normalizes v3 text parts', async () => {
+    const upsertSessionAggregate = vi.fn(async () => {})
+    const deps = createDeps({
+      upsertSessionAggregate,
+      sessionManager: { flushSessionToDisk: vi.fn(async () => {}) } as never,
+      existingSessionIds: async () => new Set(),
+      resolveTargetVaultName: async () => 'Personal'
+    })
+
+    await importLegacyChatsFromRows(
+      deps,
+      {
+        sessions: [
+          {
+            id: 'legacy-session',
+            title: '旧会话',
+            assistant_id: 'legacy-assistant',
+            provider_id: 'gemini',
+            model_id: 'gemini-3'
+          }
+        ],
+        messages: [{ id: 'legacy-msg-1', session_id: 'legacy-session', role: 'user', order_index: 0 }],
+        parts: [
+          {
+            id: 'legacy-part-1',
+            message_id: 'legacy-msg-1',
+            session_id: 'legacy-session',
+            type: 'text',
+            data: '{"text":"历史消息"}'
+          }
+        ],
+        errors: []
+      },
+      { 'legacy-assistant': 'new-assistant' },
+      'Personal'
+    )
+
+    expect(upsertSessionAggregate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messages: [
+          expect.objectContaining({
+            id: 'legacy-msg-1',
+            parts: [
+              expect.objectContaining({
+                id: 'legacy-part-1',
+                messageId: 'legacy-msg-1',
+                data: { text: '历史消息' }
+              })
+            ]
+          })
+        ]
+      })
+    )
+  })
 })
 
 describe('legacy-version-migration.importer diaries', () => {
