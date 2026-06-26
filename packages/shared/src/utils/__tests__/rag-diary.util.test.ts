@@ -2,7 +2,11 @@ import { describe, it, expect } from 'vitest'
 import {
   sortDiariesByDateAsc,
   sortDiariesByDateDesc,
-  filterUnindexedDiaries
+  filterUnindexedDiaries,
+  buildDiaryEmbeddingSourceId,
+  buildDiaryEmbeddingGroupId,
+  isLegacyDiaryEmbeddingSourceId,
+  filterDiaryScopedSearchResults
 } from '../rag-diary.util'
 
 describe('sortDiariesByDateAsc', () => {
@@ -34,18 +38,44 @@ describe('sortDiariesByDateDesc', () => {
   })
 })
 
+describe('diary embedding keys', () => {
+  it('builds vault-scoped source and group ids', () => {
+    expect(buildDiaryEmbeddingSourceId('Personal', 42)).toBe('Personal#42')
+    expect(buildDiaryEmbeddingGroupId('Personal')).toBe('diary:Personal')
+    expect(isLegacyDiaryEmbeddingSourceId('42')).toBe(true)
+    expect(isLegacyDiaryEmbeddingSourceId('Personal#42')).toBe(false)
+  })
+})
+
+describe('filterDiaryScopedSearchResults', () => {
+  it('keeps non-diary rows and filters diary rows by vault group', () => {
+    const results = [
+      { sourceType: 'chat', sessionId: 'sess-1', chunkText: 'a' },
+      { sourceType: 'diary', sessionId: 'diary:Personal', chunkText: 'b' },
+      { sourceType: 'diary', sessionId: 'diary:Work', chunkText: 'c' },
+      { sourceType: 'diary', groupId: 'diary:Personal', chunkText: 'd' }
+    ]
+
+    const filtered = filterDiaryScopedSearchResults(results, 'Personal')
+
+    expect(filtered.map((r) => r.chunkText)).toEqual(['a', 'b', 'd'])
+  })
+})
+
 describe('filterUnindexedDiaries', () => {
   it('includes diaries that have never been indexed', () => {
     const diaries = [
       { id: 1, updatedAt: new Date('2026-05-20T00:00:00Z') },
       { id: 2, updatedAt: new Date('2026-05-20T00:00:00Z') }
     ]
-    const embeddedIds = new Set(['1'])
+    const embeddedIds = new Set([buildDiaryEmbeddingSourceId('Personal', 1)])
     const embeddedUpdatedAtMap = new Map<string, number>([
-      ['1', new Date('2026-05-20T00:00:00Z').getTime()]
+      [buildDiaryEmbeddingSourceId('Personal', 1), new Date('2026-05-20T00:00:00Z').getTime()]
     ])
 
-    const result = filterUnindexedDiaries(diaries, embeddedIds, embeddedUpdatedAtMap)
+    const result = filterUnindexedDiaries(diaries, embeddedIds, embeddedUpdatedAtMap, {
+      resolveSourceId: (d) => buildDiaryEmbeddingSourceId('Personal', d.id)
+    })
 
     expect(result).toHaveLength(1)
     expect(result[0]?.id).toBe(2)
