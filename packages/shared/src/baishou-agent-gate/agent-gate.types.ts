@@ -21,11 +21,31 @@ export interface AgentGateAllowlistEntry {
   sourceRequestId?: string
 }
 
+/** Resource kinds that permission patterns can target */
+export type AgentGateResourceKind =
+  | 'file_path'
+  | 'workspace_path'
+  | 'external_path'
+  | 'shell_command'
+
+export interface AgentGateResourceRef {
+  kind: AgentGateResourceKind
+  value: string
+}
+
+export interface AgentGatePermissionRule {
+  action: string
+  pattern?: string
+  effect: AgentGateEffect
+}
+
 export interface BaishouAgentGateConfig {
   trustMode: AgentGateTrustMode
   exclusionList: string[]
   allowlist: AgentGateAllowlistEntry[]
   actionRules?: Partial<Record<string, AgentGateEffect>>
+  /** Explicit wildcard rules; actionRules are derived into rules at evaluation time */
+  permissionRules?: AgentGatePermissionRule[]
 }
 
 export interface AgentGateRequest {
@@ -64,6 +84,10 @@ export interface AgentGateResolution {
 export interface AgentGateEvaluateInput {
   action: string
   toolDisabled?: boolean
+  /** Optional resource targets for pattern-based rules */
+  resources?: AgentGateResourceRef[]
+  /** Gate request metadata (forceExclusion, legacy path fields, etc.) */
+  metadata?: Record<string, unknown>
 }
 
 export interface AgentGateAssertInput {
@@ -76,6 +100,8 @@ export interface AgentGateAssertInput {
   options?: AgentGateOption[]
   allowCustomInput?: boolean
   metadata?: Record<string, unknown>
+  /** Structured resource targets; derived from metadata when omitted */
+  resources?: AgentGateResourceRef[]
   messageId?: string
   toolCallId?: string
 }
@@ -91,6 +117,7 @@ export interface AgentGateToolMetadata {
   forceExclusion?: boolean
   buildTitle?: (args: unknown, ctx: unknown) => string
   buildMetadata?: (args: unknown, ctx: unknown) => Record<string, unknown>
+  buildResources?: (args: unknown, ctx: unknown) => AgentGateResourceRef[]
 }
 
 export interface AgentGateAskedEvent {
