@@ -14,6 +14,14 @@ import {
   listWorkspaceSessions,
   removeWorkspaceSession
 } from '../services/agent-workspace-session.store'
+import {
+  addAgentWorkspace,
+  getLastActiveWorkspaceId,
+  listAgentWorkspaces,
+  pickWorkspaceAvatarImage,
+  setLastActiveWorkspaceId,
+  updateAgentWorkspace
+} from '../services/agent-workspace-registry.store'
 import { getAgentManagers } from './agent-helpers'
 
 const MAX_READ_BYTES = 512 * 1024
@@ -79,6 +87,39 @@ export function registerAgentWorkspaceIPC(): void {
 
     if (result.canceled || !result.filePaths[0]) return null
     return path.resolve(result.filePaths[0])
+  })
+
+  ipcMain.handle('agent-workspace:list-workspaces', async () => {
+    return listAgentWorkspaces()
+  })
+
+  ipcMain.handle('agent-workspace:add-workspace', async (_, folderRoot: string) => {
+    if (!folderRoot?.trim()) return null
+    return addAgentWorkspace(folderRoot)
+  })
+
+  ipcMain.handle(
+    'agent-workspace:update-workspace',
+    async (
+      _,
+      params: { workspaceId: string; patch: import('@baishou/shared').AgentWorkspaceEntryUpdate }
+    ) => {
+      return updateAgentWorkspace(params.workspaceId, params.patch ?? {})
+    }
+  )
+
+  ipcMain.handle('agent-workspace:get-last-active-workspace-id', async () => {
+    return getLastActiveWorkspaceId()
+  })
+
+  ipcMain.handle('agent-workspace:set-last-active-workspace-id', async (_, workspaceId: string | null) => {
+    await setLastActiveWorkspaceId(workspaceId)
+    return true
+  })
+
+  ipcMain.handle('agent-workspace:pick-avatar', async (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    return pickWorkspaceAvatarImage(window)
   })
 
   ipcMain.handle(
@@ -223,7 +264,7 @@ export function registerAgentWorkspaceIPC(): void {
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
         logger.error('[AgentWorkspaceIPC] chat failed:', message)
-        event.sender.send('agent:stream-finish', { error: message })
+        event.sender.send('agent:stream-finish', { sessionId: params.sessionId, error: message })
         return false
       }
     }
