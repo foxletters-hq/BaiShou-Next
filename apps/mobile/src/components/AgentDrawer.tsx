@@ -1,12 +1,19 @@
-import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react'
-import { View, Text, Modal, Pressable, TouchableOpacity, StyleSheet } from 'react-native'
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import {
+  View,
+  Text,
+  Modal,
+  Pressable,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator
+} from 'react-native'
 import Animated, {
   cancelAnimation,
   Easing,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
   withTiming
 } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -54,8 +61,9 @@ interface AgentDrawerProps {
 }
 
 const DRAWER_WIDTH = 280
-const DRAWER_OPEN_SPRING = { damping: 28, stiffness: 280, mass: 0.88, overshootClamping: true }
-const DRAWER_CLOSE_SPRING = { damping: 32, stiffness: 340, mass: 0.82, overshootClamping: true }
+const DRAWER_OPEN_MS = 260
+const DRAWER_CLOSE_MS = 220
+const DRAWER_EASE = Easing.bezier(0.4, 0, 0.2, 1)
 
 function DrawerAssistantAvatar({ assistant, size }: { assistant: AssistantSummary; size: number }) {
   return (
@@ -68,7 +76,7 @@ function DrawerAssistantAvatar({ assistant, size }: { assistant: AssistantSummar
   )
 }
 
-export const AgentDrawer: React.FC<AgentDrawerProps> = ({
+function AgentDrawerComponent({
   visible,
   onClose,
   currentAssistant,
@@ -87,12 +95,14 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
   onPinSession,
   onDeleteSession,
   onRenameSession
-}) => {
+}: AgentDrawerProps) {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
+  const [listReady, setListReady] = useState(false)
+  const sessionListMountedRef = useRef(false)
   const slideX = useSharedValue(-DRAWER_WIDTH)
   const backdropOpacity = useSharedValue(0)
 
@@ -106,6 +116,14 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
 
   const finishClose = useCallback(() => {
     setMounted(false)
+    setListReady(false)
+    sessionListMountedRef.current = false
+  }, [])
+
+  const onOpenAnimationEnd = useCallback(() => {
+    if (sessionListMountedRef.current) return
+    sessionListMountedRef.current = true
+    setListReady(true)
   }, [])
 
   useLayoutEffect(() => {
@@ -121,23 +139,32 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
   useEffect(() => {
     if (!mounted) return
 
+    cancelAnimation(slideX)
+    cancelAnimation(backdropOpacity)
+
     if (visible) {
-      slideX.value = withSpring(0, DRAWER_OPEN_SPRING)
+      slideX.value = withTiming(0, { duration: DRAWER_OPEN_MS, easing: DRAWER_EASE }, (finished) => {
+        if (finished) runOnJS(onOpenAnimationEnd)()
+      })
       backdropOpacity.value = withTiming(1, {
-        duration: 260,
-        easing: Easing.out(Easing.cubic)
+        duration: DRAWER_OPEN_MS,
+        easing: DRAWER_EASE
       })
       return
     }
 
-    slideX.value = withSpring(-DRAWER_WIDTH, DRAWER_CLOSE_SPRING, (finished) => {
-      if (finished) runOnJS(finishClose)()
-    })
+    slideX.value = withTiming(
+      -DRAWER_WIDTH,
+      { duration: DRAWER_CLOSE_MS, easing: Easing.in(Easing.cubic) },
+      (finished) => {
+        if (finished) runOnJS(finishClose)()
+      }
+    )
     backdropOpacity.value = withTiming(0, {
-      duration: 220,
+      duration: DRAWER_CLOSE_MS,
       easing: Easing.in(Easing.cubic)
     })
-  }, [visible, mounted, slideX, backdropOpacity, finishClose])
+  }, [visible, mounted, slideX, backdropOpacity, finishClose, onOpenAnimationEnd])
 
   const handleSelect = (id: string) => {
     onSelectSession(id)
@@ -321,17 +348,23 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
             </View>
 
             <View style={styles.listWrap}>
-              <AgentSessionList
-                sessions={sessions}
-                scrollKey={sessionListScrollKey}
-                onSelect={handleSelect}
-                onPin={handlePin}
-                onDelete={handleDelete}
-                onRename={handleRename}
-                hasMore={hasMoreSessions}
-                isLoadingMore={isLoadingMoreSessions}
-                onLoadMore={handleLoadMore}
-              />
+              {listReady ? (
+                <AgentSessionList
+                  sessions={sessions}
+                  scrollKey={sessionListScrollKey}
+                  onSelect={handleSelect}
+                  onPin={handlePin}
+                  onDelete={handleDelete}
+                  onRename={handleRename}
+                  hasMore={hasMoreSessions}
+                  isLoadingMore={isLoadingMoreSessions}
+                  onLoadMore={handleLoadMore}
+                />
+              ) : (
+                <View style={styles.listPlaceholder}>
+                  <ActivityIndicator size="small" color={colors.textTertiary} />
+                </View>
+              )}
             </View>
           </View>
         </Animated.View>
@@ -339,6 +372,8 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
     </Modal>
   )
 }
+
+export const AgentDrawer = React.memo(AgentDrawerComponent)
 
 const styles = StyleSheet.create({
   overlay: {
@@ -462,5 +497,11 @@ const styles = StyleSheet.create({
   },
   listWrap: {
     flex: 1
+  },
+  listPlaceholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 24
   }
 })
