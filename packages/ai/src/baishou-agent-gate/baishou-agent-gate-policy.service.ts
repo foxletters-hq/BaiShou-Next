@@ -1,6 +1,11 @@
 import {
   AgentGateEffect,
   AgentGateTrustMode,
+  evaluateAgentGatePermissionRules,
+  extractAgentGateResourcesFromMetadata,
+  isAgentGateActionForceExcluded,
+  mergeAgentGateResources,
+  resolveAgentGatePermissionRules,
   type AgentGateEvaluateInput,
   type BaishouAgentGateConfig
 } from '@baishou/shared'
@@ -23,7 +28,10 @@ export class BaishouAgentGatePolicyService implements IAgentGatePolicy {
   }
 
   isExcluded(action: string): boolean {
-    return this.configProvider().exclusionList.includes(action)
+    const config = this.configProvider()
+    return (
+      config.exclusionList.includes(action) || isAgentGateActionForceExcluded(action)
+    )
   }
 
   evaluate(input: AgentGateEvaluateInput): AgentGateEffect {
@@ -32,9 +40,25 @@ export class BaishouAgentGatePolicyService implements IAgentGatePolicy {
     }
 
     const config = this.configProvider()
+    const forceExcluded = isAgentGateActionForceExcluded(input.action, input.metadata)
+    const resources = mergeAgentGateResources(
+      input.resources,
+      extractAgentGateResourcesFromMetadata(input.metadata)
+    )
 
-    if (config.exclusionList.includes(input.action)) {
+    if (config.exclusionList.includes(input.action) || forceExcluded) {
       return AgentGateEffect.Ask
+    }
+
+    const permissionRules = resolveAgentGatePermissionRules(config)
+    const ruleEffect = evaluateAgentGatePermissionRules({
+      action: input.action,
+      resources,
+      rules: permissionRules,
+      forceExcluded
+    })
+    if (ruleEffect != null) {
+      return ruleEffect
     }
 
     if (config.trustMode === AgentGateTrustMode.FullTrust) {
@@ -43,11 +67,6 @@ export class BaishouAgentGatePolicyService implements IAgentGatePolicy {
 
     if (this.allowlistStore.has(input.action)) {
       return AgentGateEffect.Allow
-    }
-
-    const rule = config.actionRules?.[input.action]
-    if (rule) {
-      return rule
     }
 
     return AgentGateEffect.Ask

@@ -59,6 +59,18 @@ describe('BaishouAgentGatePolicyService', () => {
     expect(policy.evaluate({ action: 'diary_delete' })).toBe(AgentGateEffect.Ask)
   })
 
+  it('forceExclusion 动作在 allowlist 命中时仍 ask', () => {
+    const config = {
+      trustMode: AgentGateTrustMode.Manual,
+      exclusionList: [],
+      allowlist: [{ id: 'bagal_ws', action: 'workspace_delete', createdAt: 1 }]
+    }
+    const allowlist = new BaishouAgentGateAllowlistStore(() => config)
+    const policy = new BaishouAgentGatePolicyService(() => config, allowlist)
+
+    expect(policy.evaluate({ action: 'workspace_delete' })).toBe(AgentGateEffect.Ask)
+  })
+
   it('allowlist 命中则 allow', () => {
     const config = {
       trustMode: AgentGateTrustMode.Manual,
@@ -83,6 +95,98 @@ describe('BaishouAgentGatePolicyService', () => {
     expect(policy.evaluate({ action: 'diary_edit', toolDisabled: true })).toBe(
       AgentGateEffect.Deny
     )
+  })
+
+  it('legacy actionRules 仍生效', () => {
+    const config = {
+      trustMode: AgentGateTrustMode.Manual,
+      exclusionList: [],
+      allowlist: [],
+      actionRules: { diary_edit: AgentGateEffect.Allow }
+    }
+    const allowlist = new BaishouAgentGateAllowlistStore(() => config)
+    const policy = new BaishouAgentGatePolicyService(() => config, allowlist)
+
+    expect(policy.evaluate({ action: 'diary_edit' })).toBe(AgentGateEffect.Allow)
+  })
+
+  it('permissionRules 支持路径 pattern', () => {
+    const config = {
+      trustMode: AgentGateTrustMode.Manual,
+      exclusionList: [],
+      allowlist: [],
+      permissionRules: [
+        {
+          action: 'workspace_write',
+          pattern: 'src/**',
+          effect: AgentGateEffect.Allow
+        }
+      ]
+    }
+    const allowlist = new BaishouAgentGateAllowlistStore(() => config)
+    const policy = new BaishouAgentGatePolicyService(() => config, allowlist)
+
+    expect(
+      policy.evaluate({
+        action: 'workspace_write',
+        resources: [{ kind: 'workspace_path', value: 'src/foo.ts' }]
+      })
+    ).toBe(AgentGateEffect.Allow)
+
+    expect(
+      policy.evaluate({
+        action: 'workspace_write',
+        resources: [{ kind: 'workspace_path', value: 'docs/readme.md' }]
+      })
+    ).toBe(AgentGateEffect.Ask)
+  })
+
+  it('permissionRules deny 优先于 full_trust', () => {
+    const config = {
+      trustMode: AgentGateTrustMode.FullTrust,
+      exclusionList: [],
+      allowlist: [],
+      permissionRules: [
+        {
+          action: 'workspace_write',
+          pattern: 'secrets/**',
+          effect: AgentGateEffect.Deny
+        }
+      ]
+    }
+    const allowlist = new BaishouAgentGateAllowlistStore(() => config)
+    const policy = new BaishouAgentGatePolicyService(() => config, allowlist)
+
+    expect(
+      policy.evaluate({
+        action: 'workspace_write',
+        resources: [{ kind: 'workspace_path', value: 'secrets/key.pem' }]
+      })
+    ).toBe(AgentGateEffect.Deny)
+  })
+
+  it('force exclusion 在 allowlist 与 allow 规则下仍 ask', () => {
+    const config = {
+      trustMode: AgentGateTrustMode.FullTrust,
+      exclusionList: [],
+      allowlist: [{ id: 'bagal_ws', action: 'workspace_delete', createdAt: 1 }],
+      permissionRules: [
+        {
+          action: 'workspace_delete',
+          pattern: '**/*',
+          effect: AgentGateEffect.Allow
+        }
+      ]
+    }
+    const allowlist = new BaishouAgentGateAllowlistStore(() => config)
+    const policy = new BaishouAgentGatePolicyService(() => config, allowlist)
+
+    expect(
+      policy.evaluate({
+        action: 'workspace_delete',
+        resources: [{ kind: 'workspace_path', value: 'src/foo.ts' }]
+      })
+    ).toBe(AgentGateEffect.Ask)
   })
 })
 
@@ -153,6 +257,49 @@ describe('BaishouAgentGateService', () => {
       ...baseAssertInput,
       action: 'diary_delete',
       title: '删除日记'
+    })
+    const [request] = gate.listPending()
+
+    await expect(
+      gate.reply({ requestId: request!.id, reply: AgentGateReply.Always })
+    ).rejects.toBeInstanceOf(AgentGateAlwaysNotAllowedError)
+
+    await gate.reply({ requestId: request!.id, reply: AgentGateReply.Once })
+    await pending
+  })
+
+  it('forceExclusion 元数据动作不能 always，即使不在 exclusionList', async () => {
+    const { gate } = createBaishouAgentGate({
+      config: {
+        trustMode: AgentGateTrustMode.Manual,
+        exclusionList: [],
+        allowlist: []
+      }
+    })
+
+    const pending = gate.assert({
+      ...baseAssertInput,
+      action: 'workspace_delete',
+      title: '删除工作区文件',
+      metadata: { forceExclusion: true }
+    })
+    const [request] = gate.listPending()
+
+    await expect(
+      gate.reply({ requestId: request!.id, reply: AgentGateReply.Always })
+    ).rejects.toBeInstanceOf(AgentGateAlwaysNotAllowedError)
+
+    await gate.reply({ requestId: request!.id, reply: AgentGateReply.Once })
+    await pending
+  })
+
+  it('默认排除的 workspace_delete 不能 always', async () => {
+    const { gate } = createBaishouAgentGate()
+
+    const pending = gate.assert({
+      ...baseAssertInput,
+      action: 'workspace_delete',
+      title: '删除工作区文件'
     })
     const [request] = gate.listPending()
 

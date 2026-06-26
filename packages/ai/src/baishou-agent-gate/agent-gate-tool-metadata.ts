@@ -1,5 +1,6 @@
 import {
   AgentGateRiskLevel,
+  type AgentGateResourceRef,
   type AgentGateToolMetadata
 } from '@baishou/shared'
 
@@ -8,6 +9,25 @@ type GateArgs = Record<string, unknown>
 function diaryDateTitle(prefix: string, args: unknown): string {
   const date = (args as GateArgs).date
   return typeof date === 'string' && date ? `${prefix} ${date}` : prefix
+}
+
+function workspacePathResources(args: unknown): AgentGateResourceRef[] {
+  const path = (args as GateArgs).path
+  if (typeof path !== 'string' || !path) return []
+  return [{ kind: 'workspace_path', value: path }]
+}
+
+function workspaceRenameResources(args: unknown): AgentGateResourceRef[] {
+  const path = (args as GateArgs).path
+  const newPath = (args as GateArgs).new_path
+  const resources: AgentGateResourceRef[] = []
+  if (typeof path === 'string' && path) {
+    resources.push({ kind: 'workspace_path', value: path })
+  }
+  if (typeof newPath === 'string' && newPath) {
+    resources.push({ kind: 'workspace_path', value: newPath })
+  }
+  return resources
 }
 
 /** Default gate metadata for mutating diary / memory tools */
@@ -63,8 +83,10 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
       return typeof path === 'string' && path ? `写入文件 ${path}` : '写入工作区文件'
     },
     buildMetadata: (args) => ({
-      path: (args as GateArgs).path
-    })
+      path: (args as GateArgs).path,
+      workspacePath: (args as GateArgs).path
+    }),
+    buildResources: workspacePathResources
   },
   workspace_patch: {
     action: 'workspace_patch',
@@ -74,8 +96,10 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
       return typeof path === 'string' && path ? `修改文件 ${path}` : '修改工作区文件'
     },
     buildMetadata: (args) => ({
-      path: (args as GateArgs).path
-    })
+      path: (args as GateArgs).path,
+      workspacePath: (args as GateArgs).path
+    }),
+    buildResources: workspacePathResources
   },
   workspace_delete: {
     action: 'workspace_delete',
@@ -86,8 +110,10 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
       return typeof path === 'string' && path ? `删除文件 ${path}` : '删除工作区文件'
     },
     buildMetadata: (args) => ({
-      path: (args as GateArgs).path
-    })
+      path: (args as GateArgs).path,
+      workspacePath: (args as GateArgs).path
+    }),
+    buildResources: workspacePathResources
   },
   workspace_rename: {
     action: 'workspace_rename',
@@ -102,8 +128,10 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
     },
     buildMetadata: (args) => ({
       path: (args as GateArgs).path,
-      new_path: (args as GateArgs).new_path
-    })
+      new_path: (args as GateArgs).new_path,
+      workspacePath: (args as GateArgs).path
+    }),
+    buildResources: workspaceRenameResources
   }
 }
 

@@ -4,6 +4,8 @@ import {
   AgentGateCorrectedError,
   AgentGateDeniedError,
   AgentGateRejectedError,
+  extractAgentGateResourcesFromMetadata,
+  mergeAgentGateResources,
   type AgentGateToolMetadata
 } from '@baishou/shared'
 import type { ToolContext } from '../tools/agent.tool'
@@ -38,10 +40,17 @@ export function wrapVercelToolExecuteWithAgentGate<TArgs>(
 
     const action = metadata.action ?? toolName
     const title = metadata.buildTitle?.(args, context) ?? defaultGateTitle(toolName)
+    const builtMetadata = metadata.buildMetadata?.(args, context) ?? {}
+    const resources = mergeAgentGateResources(
+      metadata.buildResources?.(args, context),
+      extractAgentGateResourcesFromMetadata(builtMetadata)
+    )
     const gateMetadata = {
       toolName,
       riskLevel: metadata.riskLevel,
-      ...(metadata.buildMetadata?.(args, context) ?? {})
+      ...(metadata.forceExclusion ? { forceExclusion: true } : {}),
+      ...builtMetadata,
+      ...(resources.length > 0 ? { resources } : {})
     }
 
     try {
@@ -51,7 +60,8 @@ export function wrapVercelToolExecuteWithAgentGate<TArgs>(
         kind: AgentGateKind.Tool,
         action,
         title,
-        metadata: gateMetadata
+        metadata: gateMetadata,
+        resources: resources.length > 0 ? resources : undefined
       })
     } catch (error) {
       if (isAgentGateControlError(error)) {
