@@ -715,7 +715,7 @@
     "rag_diary_embed_pending_detail": "最近儲存或修改的日記未能寫入記憶向量（可能是網路中斷）。日記正文已安全儲存，可點擊下方按鈕補全嵌入。",
     "rag_operation_failed": "向量嵌入操作失敗",
     "rag_batch_embed_concurrency": "批次嵌入並行",
-    "rag_batch_embed_concurrency_hint": "同時嵌入的日記篇數。數值越大越快，但更容易觸發 API 限流；建議 2–3。",
+    "rag_batch_embed_concurrency_hint": "同時嵌入的日記篇數。數值越大越快，但更容易觸發 API 限流；預設 20，遇限流可調低。",
     "rag_add_manual": "新增手動記憶片段",
     "rag_add_manual_success": "已新增記憶",
     "rag_add_manual_failed": "新增記憶失敗",

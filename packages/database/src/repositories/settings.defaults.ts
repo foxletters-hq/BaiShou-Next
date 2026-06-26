@@ -246,7 +246,7 @@ export const DEFAULT_RAG_CONFIG: RagConfig = {
   ragEnabled: true,
   ragTopK: 20,
   ragSimilarityThreshold: 0.4,
-  batchEmbedConcurrency: 3
+  batchEmbedConcurrency: 20
 }
 
 export const DEFAULT_WEB_SEARCH_CONFIG: WebSearchConfig = {
