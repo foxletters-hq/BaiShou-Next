@@ -23,6 +23,7 @@ import { SqliteHybridSearchRepository } from '@baishou/database'
 import type { SettingsManagerService, DiaryService } from '@baishou/core-mobile'
 import {
   MobileRagAbortError,
+  abortableMobileRagDelay,
   mobileRagOperationControl
 } from './mobile-rag-operation-control'
 import {
@@ -39,6 +40,43 @@ export { MobileRagAbortError } from './mobile-rag-operation-control'
 
 const HYBRID_SEARCH_TABLE = 'memory_embeddings'
 const PREPARE_DIMENSION_MAX_ATTEMPTS = 3
+
+let batchEmbedInFlight: Promise<ControlledDiaryBatchEmbedResult> | null = null
+let batchEmbedRerunRequested = false
+let reembedInFlight = false
+let deferredPostSyncEmbed = false
+
+function isMobileRagBatchBusy(): boolean {
+  return batchEmbedInFlight != null || reembedInFlight
+}
+
+export function isMobileRagReembedInFlight(): boolean {
+  return reembedInFlight
+}
+
+export function requestDeferredPostSyncEmbed(): void {
+  deferredPostSyncEmbed = true
+}
+
+export function isDeferredPostSyncEmbedPending(): boolean {
+  return deferredPostSyncEmbed
+}
+
+async function flushDeferredPostSyncEmbed(): Promise<void> {
+  if (!deferredPostSyncEmbed) return
+  deferredPostSyncEmbed = false
+  const { schedulePostSyncDiaryBatchEmbed } = await import('./mobile-post-sync-diary-embed.service')
+  schedulePostSyncDiaryBatchEmbed()
+}
+
+/** @internal 仅供单元测试重置模块级并发状态 */
+export function resetMobileRagBatchStateForTests(): void {
+  batchEmbedInFlight = null
+  batchEmbedRerunRequested = false
+  reembedInFlight = false
+  deferredPostSyncEmbed = false
+  mobileRagOperationControl.reset()
+}
 
 type StoredRagConfig = RagConfig & { totalEmbeddings?: number }
 
@@ -93,7 +131,7 @@ async function prepareMobileEmbeddingIndex(
       vector = await adapter.embedQuery('hi')
       if (vector?.length) break
       if (attempt < PREPARE_DIMENSION_MAX_ATTEMPTS) {
-        await new Promise((resolve) => setTimeout(resolve, attempt * 1000))
+        await abortableMobileRagDelay(attempt * 1000, mobileRagOperationControl)
       }
     }
     if (!vector?.length) {
@@ -275,12 +313,32 @@ export async function embedDiaryEntry(
 export type ControlledDiaryBatchEmbedResult = {
   embedded: number
   failed: number
+  /** 无正文而跳过的日记篇数 */
+  loadSkipped?: number
   total: number
   skipped: boolean
   skipReason?: string
 }
 
-export async function runControlledDiaryBatchEmbed(
+function resolveControlledDiaryBatchEmbedCount(result: ControlledDiaryBatchEmbedResult): number {
+  if (result.skipped && result.skipReason === 'migration-running') {
+    throw new Error('嵌入任务正在进行中，请稍后再试')
+  }
+  if (result.skipped && result.skipReason === 'embedding-not-configured') {
+    throw new Error('嵌入模型未配置')
+  }
+  if (result.skipped && result.skipReason === 'prepare-failed') {
+    throw new Error('嵌入 API 未返回有效向量，请检查模型配置与网络')
+  }
+  if (result.failed > 0) {
+    throw new Error(
+      `成功嵌入 ${result.embedded} 篇，${result.failed} 篇失败（共 ${result.total} 篇待处理）`
+    )
+  }
+  return result.embedded
+}
+
+async function runControlledDiaryBatchEmbedCore(
   deps: MobileRagServiceDeps,
   options?: {
     onProgress?: RagProgressCallback
@@ -303,6 +361,9 @@ export async function runControlledDiaryBatchEmbed(
   try {
     await prepareMobileEmbeddingIndex(deps, adapter)
   } catch (error) {
+    if (error instanceof MobileRagAbortError) {
+      throw error
+    }
     logger.error('[MobileRag] prepare embedding index failed', { error })
     await finalizeBatchEmbedRagConfig(deps, true)
     return { embedded: 0, failed: 0, total: 0, skipped: true, skipReason: 'prepare-failed' }
@@ -332,6 +393,12 @@ export async function runControlledDiaryBatchEmbed(
   let globalTotal = 0
 
   for (const vaultName of vaultNames) {
+    if (!shadowDb && vaultName !== activeVaultName) {
+      logger.warn('[MobileRag] skipping non-active vault batch embed without shadow index', {
+        vaultName,
+        activeVaultName
+      })
+    }
     const allDiaries = sortDiariesByDateAsc(
       shadowDb
         ? await listVaultDiaryMetas(shadowDb, vaultName)
@@ -363,7 +430,7 @@ export async function runControlledDiaryBatchEmbed(
     (await deps.settingsManager.get<{ batchEmbedConcurrency?: number }>('rag_config')) || {}
   const batchConcurrency = resolveMobileBatchEmbedConcurrency(ragSettings.batchEmbedConcurrency)
 
-  const progress = { embedded: 0, failed: 0, completed: 0 }
+  const progress = { embedded: 0, failed: 0, loadSkipped: 0, completed: 0 }
 
   const reportProgress = (status: string) => {
     options?.onProgress?.({
@@ -410,12 +477,12 @@ export async function runControlledDiaryBatchEmbed(
         const diary = diaryById.get(meta.id)
         const content = diary && 'content' in diary ? diary.content : undefined
         if (!diary || !content?.trim()) {
+          progress.loadSkipped++
           return
         }
 
         const d =
           diary.date instanceof Date ? diary.date : new Date(String(diary.date ?? meta.date))
-        await deleteDiaryEmbeddingAliases(deps.hsRepo, vaultName, meta.id)
         await embedDiaryEntry(
           deps,
           {
@@ -447,7 +514,7 @@ export async function runControlledDiaryBatchEmbed(
       } finally {
         progress.completed++
         reportProgress(
-          `[${vaultName}] 已嵌入 ${progress.embedded}/${globalTotal}${progress.failed > 0 ? `（失败 ${progress.failed}）` : ''}（${dateLabel}）`
+          `[${vaultName}] 已嵌入 ${progress.embedded}/${globalTotal}${progress.failed > 0 ? `（失败 ${progress.failed}）` : ''}${progress.loadSkipped > 0 ? `（跳过 ${progress.loadSkipped}）` : ''}（${dateLabel}）`
         )
       }
     })
@@ -467,18 +534,100 @@ export async function runControlledDiaryBatchEmbed(
   logger.info('[MobileRag] controlled batch embed finished', {
     embedded: progress.embedded,
     failed: progress.failed,
+    loadSkipped: progress.loadSkipped,
     total: globalTotal,
     vaultCount: vaultPlans.length
   })
   return {
     embedded: progress.embedded,
     failed: progress.failed,
+    loadSkipped: progress.loadSkipped,
     total: globalTotal,
     skipped: false
   }
 }
 
+export async function runControlledDiaryBatchEmbed(
+  deps: MobileRagServiceDeps,
+  options?: {
+    onProgress?: RagProgressCallback
+    /** @deprecated 请改用 vaultName */
+    groupId?: string
+    vaultName?: string
+    /** 同步后调度：合并重复请求，等待当前任务结束后必要时再跑一轮 */
+    coalesceRerun?: boolean
+  }
+): Promise<ControlledDiaryBatchEmbedResult> {
+  if (batchEmbedInFlight) {
+    if (options?.coalesceRerun) {
+      batchEmbedRerunRequested = true
+      return batchEmbedInFlight
+    }
+    return { embedded: 0, failed: 0, total: 0, skipped: true, skipReason: 'migration-running' }
+  }
+  if (reembedInFlight) {
+    if (options?.coalesceRerun) {
+      requestDeferredPostSyncEmbed()
+    }
+    return { embedded: 0, failed: 0, total: 0, skipped: true, skipReason: 'migration-running' }
+  }
+
+  const runLoop = async (): Promise<ControlledDiaryBatchEmbedResult> => {
+    let lastResult: ControlledDiaryBatchEmbedResult = {
+      embedded: 0,
+      failed: 0,
+      total: 0,
+      skipped: true,
+      skipReason: 'not-started'
+    }
+    do {
+      batchEmbedRerunRequested = false
+      lastResult = await runControlledDiaryBatchEmbedCore(deps, options)
+    } while (batchEmbedRerunRequested && !mobileRagOperationControl.isAborted)
+    return lastResult
+  }
+
+  batchEmbedInFlight = runLoop().finally(() => {
+    batchEmbedInFlight = null
+  })
+  return batchEmbedInFlight
+}
+
 export function createMobileRagService(deps: MobileRagServiceDeps) {
+  const reembedAllInternal = async (onProgress?: RagProgressCallback): Promise<number> => {
+    mobileRagOperationControl.reset()
+    await deps.hsRepo.clearEmbeddings()
+
+    if (mobileRagOperationControl.isAborted) {
+      throw new MobileRagAbortError(0)
+    }
+
+    const globalModels = (await deps.settingsManager.get<any>('global_models')) || {}
+    globalModels.globalEmbeddingDimension = 0
+    await deps.settingsManager.set('global_models', globalModels)
+
+    const ragConfig = (await deps.settingsManager.get<any>('rag_config')) || {}
+    ragConfig.totalEmbeddings = 0
+    await deps.settingsManager.set('rag_config', ragConfig)
+
+    onProgress?.({ current: 0, total: 1, status: 'detect-dimension' })
+    if (mobileRagOperationControl.isAborted) {
+      throw new MobileRagAbortError(0)
+    }
+
+    await service.detectDimension()
+
+    if (mobileRagOperationControl.isAborted) {
+      throw new MobileRagAbortError(0)
+    }
+
+    const result = await runControlledDiaryBatchEmbedCore(deps, {
+      onProgress,
+      groupId: 'diary_batch'
+    })
+    return resolveControlledDiaryBatchEmbedCount(result)
+  }
+
   const service = {
     async getStats(): Promise<{
       totalCount: number
@@ -549,33 +698,16 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
     },
 
     async reembedAll(onProgress?: RagProgressCallback): Promise<number> {
-      mobileRagOperationControl.reset()
-      await deps.hsRepo.clearEmbeddings()
-
-      if (mobileRagOperationControl.isAborted) {
-        throw new MobileRagAbortError(0)
+      if (isMobileRagBatchBusy()) {
+        throw new Error('嵌入任务正在进行中，请稍后再试')
       }
-
-      const globalModels = (await deps.settingsManager.get<any>('global_models')) || {}
-      globalModels.globalEmbeddingDimension = 0
-      await deps.settingsManager.set('global_models', globalModels)
-
-      const ragConfig = (await deps.settingsManager.get<any>('rag_config')) || {}
-      ragConfig.totalEmbeddings = 0
-      await deps.settingsManager.set('rag_config', ragConfig)
-
-      onProgress?.({ current: 0, total: 1, status: 'detect-dimension' })
-      if (mobileRagOperationControl.isAborted) {
-        throw new MobileRagAbortError(0)
+      reembedInFlight = true
+      try {
+        return await reembedAllInternal(onProgress)
+      } finally {
+        reembedInFlight = false
+        await flushDeferredPostSyncEmbed()
       }
-
-      await service.detectDimension()
-
-      if (mobileRagOperationControl.isAborted) {
-        throw new MobileRagAbortError(0)
-      }
-
-      return service.batchEmbed(onProgress)
     },
 
     requestOperationAbort(): void {
@@ -612,19 +744,7 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         onProgress,
         groupId: 'diary_batch'
       })
-      if (result.skipped && result.skipReason === 'embedding-not-configured') {
-        throw new Error('嵌入模型未配置')
-      }
-      if (result.skipped && result.skipReason === 'prepare-failed') {
-        throw new Error('嵌入 API 未返回有效向量，请检查模型配置与网络')
-      }
-      if (result.failed > 0) {
-        throw new Error(
-          `成功嵌入 ${result.embedded} 篇，${result.failed} 篇失败（共 ${result.total} 篇待处理）`
-        )
-      }
-
-      return result.embedded
+      return resolveControlledDiaryBatchEmbedCount(result)
     },
 
     async queryEntries(params: {
