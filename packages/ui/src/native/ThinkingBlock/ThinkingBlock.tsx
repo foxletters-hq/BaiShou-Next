@@ -12,7 +12,7 @@ import { useNativeTheme } from '../theme'
 import { MarkdownRenderer } from '../MarkdownRenderer'
 import { CollapsibleHeight } from '../CollapsibleHeight'
 
-const MAX_PREVIEW_LINES = 5
+const MAX_PREVIEW_LINES = 3
 const PREVIEW_LINE_HEIGHT = 14
 const CHEVRON_MS = 250
 
@@ -105,19 +105,19 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
 
   const previewLines = useMemo(() => {
     if (!content) return []
-    const lines = isThinking ? content.split('\n').slice(0, -1) : content.split('\n')
+    const lines = content.split('\n')
     return lines.filter((line) => line.trim() !== '')
-  }, [content, isThinking])
+  }, [content])
 
   const previewHeight = useMemo(() => {
     const visibleCount = Math.min(previewLines.length, MAX_PREVIEW_LINES)
     if (visibleCount < 1) return 38
-    return Math.min(120, Math.max(visibleCount + 1, 2) * PREVIEW_LINE_HEIGHT + 8)
+    return Math.min(70, Math.max(visibleCount, 2) * PREVIEW_LINE_HEIGHT + 8)
   }, [previewLines.length])
 
   if (!content && !(forceVisible && isThinking)) return null
 
-  const showCollapsedPreview = isThinking && !isOpen
+  const showCollapsedPreview = !isOpen && previewLines.length > 0
   const hasBody = Boolean(content) || (forceVisible && isThinking)
   const bodyExpanded = isOpen || showCollapsedPreview
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Keyboard } from 'react-native'
+import { AppState, Keyboard, Platform } from 'react-native'
 import {
   useAnimatedKeyboard,
   useAnimatedReaction,
@@ -97,6 +97,43 @@ export function useAgentChatKeyboardInsets({
     },
     [syncKeyboardInset, tabBarHeight]
   )
+
+  // 切到其他 App 时系统会收起键盘，但 useAnimatedKeyboard 可能不更新，需主动复位
+  useEffect(() => {
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
+    const hideSub = Keyboard.addListener(hideEvent, resetKeyboardInset)
+
+    const appStateSub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'background' || nextState === 'inactive') {
+        resetKeyboardInset()
+        return
+      }
+
+      if (nextState !== 'active') return
+
+      const rawHeight = readKeyboardHeightFromMetrics()
+      if (rawHeight <= 0) {
+        resetKeyboardInset()
+        return
+      }
+
+      syncKeyboardInset(rawHeight)
+      if (enableComposerKeyboardLift && !isBubbleEditing) {
+        applyComposerLift(rawHeight)
+      }
+    })
+
+    return () => {
+      hideSub.remove()
+      appStateSub.remove()
+    }
+  }, [
+    resetKeyboardInset,
+    syncKeyboardInset,
+    applyComposerLift,
+    enableComposerKeyboardLift,
+    isBubbleEditing
+  ])
 
   const inputDockAnimatedStyle = useAnimatedStyle(() => ({
     bottom: composerBottom.value

@@ -161,6 +161,7 @@ export const AgentScreen = () => {
     hasMore,
     messages,
     refreshSessionMessages,
+    bumpReloadEpoch,
     handleLoadMore,
     handleSelectSession,
     handleAssistantSwitched,
@@ -233,7 +234,8 @@ export const AgentScreen = () => {
     setCurrentSessionId,
     refreshSessionList,
     searchMode,
-    refreshSessionMessages
+    refreshSessionMessages,
+    bumpReloadEpoch
   )
 
   const [showLoadMoreBanner, setShowLoadMoreBanner] = useState(false)
@@ -610,9 +612,20 @@ export const AgentScreen = () => {
           handleTtsReadAloud(lastMsg.content, lastMsg.id)
         }
       }
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => scrollToBottom(flatListRef, true, false))
+      })
     }
     prevIsStreamingRef.current = isStreaming
-  }, [isStreaming, refreshSessionList, handleTtsReadAloud])
+  }, [isStreaming, refreshSessionList, handleTtsReadAloud, scrollToBottom])
+
+  const prevStreamBridgeRef = useRef(isStreamBridgeActive)
+  useEffect(() => {
+    if (prevStreamBridgeRef.current && !isStreamBridgeActive) {
+      requestAnimationFrame(() => scrollToBottom(flatListRef, true, false))
+    }
+    prevStreamBridgeRef.current = isStreamBridgeActive
+  }, [isStreamBridgeActive, scrollToBottom])
 
   const [contextDialogState, setContextDialogState] = useState<{
     visible: boolean
@@ -736,13 +749,13 @@ export const AgentScreen = () => {
   )
 
   const handleContentSizeChange = useCallback(() => {
-    if (!isStreaming) return
+    if (!isStreaming && !isStreamBridgeActive) return
     if (contentSizeFollowRafRef.current != null) return
     contentSizeFollowRafRef.current = requestAnimationFrame(() => {
       contentSizeFollowRafRef.current = null
       followStreamBottom()
     })
-  }, [isStreaming, followStreamBottom])
+  }, [isStreaming, isStreamBridgeActive, followStreamBottom])
 
   const totalInputTokens = tokenUsage?.inputTokens || 0
   const totalOutputTokens = tokenUsage?.outputTokens || 0
@@ -802,37 +815,34 @@ export const AgentScreen = () => {
   )
 
   const showStreamingFooter = useMemo(() => {
-    const lastMessage = messages[messages.length - 1]
-    const assistantPersistedDuringBridge =
-      (isStreaming || isStreamBridgeActive) &&
-      lastMessage?.role === 'assistant' &&
-      Boolean(
-        lastMessage.content?.trim() ||
-          lastMessage.reasoning?.trim() ||
-          (lastMessage.toolInvocations?.length ?? 0) > 0
-      )
+    if (!isStreaming && !isStreamBridgeActive) return false
 
-    if (assistantPersistedDuringBridge) return false
-
-    const showStreamingBubble =
-      (isStreaming || isStreamBridgeActive) &&
-      (!isCompressing ||
-        Boolean(streamingText.trim()) ||
-        Boolean(streamingReasoning.trim()) ||
-        activeTool ||
-        completedTools.length > 0)
-
-    return showStreamingBubble && lastMessage?.role !== 'assistant'
+    return (
+      !isCompressing ||
+      Boolean(streamingText.trim()) ||
+      Boolean(streamingReasoning.trim()) ||
+      activeTool ||
+      completedTools.length > 0
+    )
   }, [
     isStreaming,
     isStreamBridgeActive,
     isCompressing,
-    messages,
     streamingText,
     streamingReasoning,
     activeTool,
     completedTools.length
   ])
+
+  /** 流式/交接期间隐藏已落库的 assistant，避免与 StreamingBubble 重复并减少高度突变 */
+  const flatListMessages = useMemo(() => {
+    if (!showStreamingFooter) return messages
+    const last = messages[messages.length - 1]
+    if (last?.role === 'assistant') {
+      return messages.slice(0, -1)
+    }
+    return messages
+  }, [messages, showStreamingFooter])
 
   const renderEmptyState = () => (
     <View style={styles.empty}>
@@ -898,7 +908,7 @@ export const AgentScreen = () => {
                 ref={flatListRef}
                 style={styles.list}
                 contentContainerStyle={[styles.listContent, { paddingBottom: listBottomPadding }]}
-                data={messages}
+                data={flatListMessages}
                 extraData={{ chatAiProfile, chatUserProfile }}
                 keyExtractor={(item) => item.id}
                 nestedScrollEnabled
@@ -1005,6 +1015,7 @@ export const AgentScreen = () => {
                         }))}
                         aiProfile={chatAiProfile}
                         invertMetaOverBackground={hasChatBackground}
+                        reserveActionBarSpace={isStreamBridgeActive}
                       />
                     </View>
                   ) : null
@@ -1346,6 +1357,8 @@ const styles = StyleSheet.create({
   inputDock: {
     position: 'absolute',
     left: 0,
-    right: 0
+    right: 0,
+    overflow: 'visible',
+    zIndex: 10
   }
 })

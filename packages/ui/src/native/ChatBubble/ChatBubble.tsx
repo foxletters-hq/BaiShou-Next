@@ -108,6 +108,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
           style={[
             styles.bubble,
             edit.isEditing ? styles.bubbleEditing : null,
+            !edit.isEditing && isUser ? styles.bubbleUser : null,
             edit.isEditing
               ? isUser
                 ? {

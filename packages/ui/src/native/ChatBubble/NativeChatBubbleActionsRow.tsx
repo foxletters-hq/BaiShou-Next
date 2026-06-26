@@ -56,7 +56,7 @@ export const NativeChatBubbleActionsRow: React.FC<NativeChatBubbleActionsRowProp
   const canEdit = isUser || Boolean(onSaveEdit)
 
   return (
-    <View style={styles.actionsRow}>
+    <View style={[styles.actionsRow, isUser ? styles.actionsRowUser : null]}>
       <MessageActionBar
         onCopy={onCopy}
         onEdit={canEdit ? onStartEdit : undefined}

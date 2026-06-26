@@ -80,6 +80,8 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
   }
   const lastVaultRevisionRef = useRef(vaultRevision)
   const lastEcosystemResyncEpochRef = useRef(ecosystemResyncEpoch)
+  /** 递增后使进行中的 DB 刷新放弃写回 UI，避免截断前发起的 reload 覆盖乐观截断 */
+  const reloadEpochRef = useRef(0)
 
   const resetSessionState = useCallback(() => {
     setCurrentSessionId(null)
@@ -127,6 +129,10 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
     [setMessages]
   )
 
+  const bumpReloadEpoch = useCallback(() => {
+    reloadEpochRef.current += 1
+  }, [])
+
   const ingestFetchedTail = useCallback(
     (fetched: SessionMessage[], preserveWindow: boolean) => {
       messageCacheRef.current = dedupeMessagesById(fetched)
@@ -162,6 +168,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
       const retryCount = options?.retryCount ?? 1
       const waitForLatestUsage = options?.waitForLatestUsage ?? false
       const commitToUi = options?.commitToUi ?? true
+      const commitEpoch = reloadEpochRef.current
 
       let mapped: SessionMessage[] | null = null
 
@@ -201,7 +208,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
         return false
       }
 
-      if (commitToUi) {
+      if (commitToUi && commitEpoch === reloadEpochRef.current) {
         ingestFetchedTail(mapped, options?.preserveWindow ?? false)
       }
 
@@ -407,6 +414,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
     messages,
     loadMessages,
     refreshSessionMessages,
+    bumpReloadEpoch,
     handleLoadMore,
     handleSelectSession,
     handleAssistantSwitched,

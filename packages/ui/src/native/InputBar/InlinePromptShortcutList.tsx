@@ -1,5 +1,5 @@
-import React, { memo, useRef } from 'react'
-import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native'
+import React, { memo, useEffect, useRef } from 'react'
+import { View, Text, Pressable, FlatList, StyleSheet } from 'react-native'
 import Animated, { Easing, Keyframe } from 'react-native-reanimated'
 import type { PromptShortcut } from '@baishou/shared'
 import {
@@ -11,6 +11,9 @@ import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 
 const PANEL_MAX_HEIGHT = 220
+const HEADER_BLOCK_HEIGHT = 32
+const LIST_MAX_HEIGHT = PANEL_MAX_HEIGHT - HEADER_BLOCK_HEIGHT
+const ROW_HEIGHT = 56
 
 const shortcutEnter = new Keyframe({
   0: {
@@ -60,6 +63,7 @@ const ShortcutRow = memo(function ShortcutRow({
 }: ShortcutRowProps) {
   return (
     <Pressable
+      delayPressIn={80}
       onPress={() => onSelect(shortcut)}
       style={[
         styles.row,
@@ -98,6 +102,18 @@ export const InlinePromptShortcutList: React.FC<InlinePromptShortcutListProps> =
   }
 
   const { shortcuts: displayShortcuts, selectedIndex: displaySelectedIndex } = snapshotRef.current
+  const listRef = useRef<FlatList<PromptShortcut>>(null)
+
+  useEffect(() => {
+    if (!visible || displayShortcuts.length === 0 || displaySelectedIndex < 0) return
+    requestAnimationFrame(() => {
+      listRef.current?.scrollToIndex({
+        index: displaySelectedIndex,
+        viewPosition: 0.5,
+        animated: true
+      })
+    })
+  }, [visible, displaySelectedIndex, displayShortcuts.length])
 
   return visible ? (
     <Animated.View
@@ -115,32 +131,46 @@ export const InlinePromptShortcutList: React.FC<InlinePromptShortcutListProps> =
       <Text style={[styles.header, { color: colors.textSecondary }]}>
         {t('shortcut.title', '快捷指令')}
       </Text>
-      <ScrollView
+      <FlatList
+        ref={listRef}
+        data={displayShortcuts}
+        keyExtractor={(item) => item.id}
         keyboardShouldPersistTaps="handled"
         style={styles.list}
+        contentContainerStyle={styles.listContent}
         nestedScrollEnabled
+        bounces
+        overScrollMode="always"
         showsVerticalScrollIndicator={displayShortcuts.length > 4}
-      >
-        {displayShortcuts.length === 0 ? (
+        getItemLayout={(_, index) => ({
+          length: ROW_HEIGHT,
+          offset: ROW_HEIGHT * index,
+          index
+        })}
+        onScrollToIndexFailed={(info) => {
+          listRef.current?.scrollToOffset({
+            offset: info.averageItemLength * info.index,
+            animated: true
+          })
+        }}
+        ListEmptyComponent={
           <Text style={[styles.empty, { color: colors.textTertiary }]}>
             {t('shortcut.no_match', '找不到任何匹配的快捷指令...')}
           </Text>
-        ) : (
-          displayShortcuts.map((item, index) => {
-            const localized = localizePromptShortcut(item, labels)
-            return (
-              <ShortcutRow
-                key={item.id}
-                shortcut={localized}
-                selected={index === displaySelectedIndex}
-                onSelect={onSelect}
-                command={getShortcutCommand(localized)}
-                colors={colors}
-              />
-            )
-          })
-        )}
-      </ScrollView>
+        }
+        renderItem={({ item, index }) => {
+          const localized = localizePromptShortcut(item, labels)
+          return (
+            <ShortcutRow
+              shortcut={localized}
+              selected={index === displaySelectedIndex}
+              onSelect={onSelect}
+              command={getShortcutCommand(localized)}
+              colors={colors}
+            />
+          )
+        }}
+      />
     </Animated.View>
   ) : null
 }
@@ -157,6 +187,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: StyleSheet.hairlineWidth,
     maxHeight: PANEL_MAX_HEIGHT,
+    flexDirection: 'column',
     overflow: 'hidden'
   },
   header: {
@@ -169,7 +200,12 @@ const styles = StyleSheet.create({
     paddingBottom: 6
   },
   list: {
-    maxHeight: 180
+    flexGrow: 0,
+    flexShrink: 1,
+    maxHeight: LIST_MAX_HEIGHT
+  },
+  listContent: {
+    paddingBottom: 6
   },
   row: {
     flexDirection: 'row',

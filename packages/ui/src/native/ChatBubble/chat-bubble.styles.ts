@@ -22,7 +22,9 @@ export const chatBubbleStyles = StyleSheet.create({
   },
   bubbleWrapperUser: {
     alignItems: 'flex-end',
-    marginLeft: 24
+    alignSelf: 'flex-end',
+    marginLeft: 24,
+    maxWidth: '88%'
   },
   bubbleWrapperAssistant: {
     alignItems: 'flex-start',
@@ -60,6 +62,11 @@ export const chatBubbleStyles = StyleSheet.create({
     borderRadius: 16,
     alignSelf: 'stretch',
     width: '100%'
+  },
+  bubbleUser: {
+    alignSelf: 'flex-end',
+    width: undefined,
+    maxWidth: '100%'
   },
   text: {
     fontSize: 15,
@@ -121,6 +128,12 @@ export const chatBubbleStyles = StyleSheet.create({
     gap: 8,
     marginTop: 6,
     width: '100%'
+  },
+  actionsRowUser: {
+    alignSelf: 'flex-end',
+    width: undefined,
+    maxWidth: '100%',
+    justifyContent: 'flex-end'
   },
   actionChip: {
     paddingHorizontal: 8,
