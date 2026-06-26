@@ -1,151 +1,147 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useSettingsStore } from '@baishou/store'
 import {
-  isConfiguredDialogueModelId,
-  isConfiguredProviderId,
+  buildAgentDialogueSelectionState,
+  detectDialogueSelectionSwitches,
   resolveDialogueModelSelection,
-  resolveProviderListDialogueFallback
+  type AgentDialogueSelectionState,
+  type AgentDialogueSelectionSwitchEvent,
+  type DialogueModelSelectionSource,
+  UNCONFIGURED_DIALOGUE_MODEL_SENTINEL
 } from '@baishou/shared'
 
 export interface UseModelSelectionParams {
   sessionId: string | undefined
-  currentAssistant: any
+  currentAssistant: { id?: string | number; providerId?: string; modelId?: string } | undefined
 }
 
 export interface UseModelSelectionResult {
   currentProviderId: string
   currentModelId: string
+  modelSelectionSource: DialogueModelSelectionSource
+  selectionState: AgentDialogueSelectionState
+  lastSelectionSwitch: AgentDialogueSelectionSwitchEvent | null
   setCurrentProviderId: (id: string) => void
   setCurrentModelId: (id: string) => void
-  /** 手动选模：更新 UI，并在有会话时写回 Sessions/*.json（供增量同步跨端） */
-  selectDialogueModel: (providerId: string, modelId: string) => Promise<void>
   userManuallySetModelRef: React.MutableRefObject<boolean>
+}
+
+function applyResolvedToUi(resolved: ReturnType<typeof resolveDialogueModelSelection>): {
+  providerId: string
+  modelId: string
+} {
+  return {
+    providerId: resolved.providerId ?? UNCONFIGURED_DIALOGUE_MODEL_SENTINEL,
+    modelId: resolved.modelId ?? UNCONFIGURED_DIALOGUE_MODEL_SENTINEL
+  }
 }
 
 /**
  * 模型选择 Hook
  *
- * 职责：
- * 1. 优先恢复会话已持久化的模型，再回退到伙伴/全局默认
- * 2. 用户手动切换时写回会话，随增量同步带到另一端
+ * 权威解析链：伙伴 → 用户手动选择 → 全局默认 → none（unknown 哨兵，不伪造默认模型）。
  */
 export function useModelSelection(params: UseModelSelectionParams): UseModelSelectionResult {
   const { sessionId, currentAssistant } = params
   const settings = useSettingsStore()
 
-  const providers = settings?.providers || []
-  const providerFallback = resolveProviderListDialogueFallback(providers)
-  const fallbackProviderId = providerFallback.providerId || 'unknown'
-  const fallbackModelId = providerFallback.modelId || 'unknown'
-
-  const initialResolved = resolveDialogueModelSelection({
-    globalDialogueProviderId: settings.globalModels?.globalDialogueProviderId,
-    globalDialogueModelId: settings.globalModels?.globalDialogueModelId,
-    fallbackProviderId,
-    fallbackModelId
-  })
+  const assistantId =
+    currentAssistant?.id != null ? String(currentAssistant.id) : undefined
 
   const [currentProviderId, setCurrentProviderId] = useState<string>(
-    initialResolved.providerId || fallbackProviderId
+    UNCONFIGURED_DIALOGUE_MODEL_SENTINEL
   )
   const [currentModelId, setCurrentModelId] = useState<string>(
-    initialResolved.modelId || fallbackModelId
+    UNCONFIGURED_DIALOGUE_MODEL_SENTINEL
   )
+  const [modelSelectionSource, setModelSelectionSource] =
+    useState<DialogueModelSelectionSource>('none')
+  const [selectionState, setSelectionState] = useState<AgentDialogueSelectionState>(() =>
+    buildAgentDialogueSelectionState({
+      assistantId,
+      resolved: { providerId: null, modelId: null, source: 'none' }
+    })
+  )
+  const [lastSelectionSwitch, setLastSelectionSwitch] =
+    useState<AgentDialogueSelectionSwitchEvent | null>(null)
+
   const userManuallySetModelRef = useRef<boolean>(false)
   const prevSessionIdRef = useRef<string | null>(null)
+  const selectionStateRef = useRef<AgentDialogueSelectionState>(selectionState)
+
+  const commitResolved = useCallback(
+    (resolved: ReturnType<typeof resolveDialogueModelSelection>) => {
+      const next = buildAgentDialogueSelectionState({ assistantId, resolved })
+      const switches = detectDialogueSelectionSwitches(selectionStateRef.current, next, sessionId)
+      selectionStateRef.current = next
+      setSelectionState(next)
+      setModelSelectionSource(resolved.source)
+      if (switches.length > 0) {
+        setLastSelectionSwitch(switches[switches.length - 1] ?? null)
+      }
+    },
+    [assistantId, sessionId]
+  )
 
   useEffect(() => {
-    const sessionChanged = prevSessionIdRef.current !== (sessionId || null)
-    if (sessionChanged) {
+    if (prevSessionIdRef.current !== sessionId) {
       userManuallySetModelRef.current = false
       prevSessionIdRef.current = sessionId || null
     }
 
-    let cancelled = false
+    if (userManuallySetModelRef.current) return
 
-    const syncFromSessionOrDefaults = async () => {
-      if (sessionId && typeof window !== 'undefined' && window.electron) {
-        try {
-          const session = await window.electron.ipcRenderer.invoke('agent:get-session', sessionId)
-          if (
-            !cancelled &&
-            session &&
-            isConfiguredProviderId(session.providerId) &&
-            isConfiguredDialogueModelId(session.modelId)
-          ) {
-            userManuallySetModelRef.current = true
-            setCurrentProviderId(String(session.providerId).trim())
-            setCurrentModelId(String(session.modelId).trim())
-            return
-          }
-        } catch (e) {
-          console.warn('[useModelSelection] load session model failed', e)
-        }
-      }
+    const resolved = resolveDialogueModelSelection({
+      assistantProviderId: currentAssistant?.providerId,
+      assistantModelId: currentAssistant?.modelId,
+      globalDialogueProviderId: settings.globalModels?.globalDialogueProviderId,
+      globalDialogueModelId: settings.globalModels?.globalDialogueModelId
+    })
+    const ui = applyResolvedToUi(resolved)
+    setCurrentProviderId(ui.providerId)
+    setCurrentModelId(ui.modelId)
+    commitResolved(resolved)
+  }, [sessionId, currentAssistant, settings.globalModels, assistantId, commitResolved])
 
-      if (cancelled || userManuallySetModelRef.current) return
+  useEffect(() => {
+    if (!userManuallySetModelRef.current) return
 
-      const resolved = resolveDialogueModelSelection({
-        assistantProviderId: (currentAssistant as any)?.providerId,
-        assistantModelId: (currentAssistant as any)?.modelId,
-        globalDialogueProviderId: settings.globalModels?.globalDialogueProviderId,
-        globalDialogueModelId: settings.globalModels?.globalDialogueModelId,
-        fallbackProviderId,
-        fallbackModelId
-      })
+    const resolved = resolveDialogueModelSelection({
+      assistantProviderId: currentAssistant?.providerId,
+      assistantModelId: currentAssistant?.modelId,
+      requestedProviderId: currentProviderId,
+      requestedModelId: currentModelId,
+      globalDialogueProviderId: settings.globalModels?.globalDialogueProviderId,
+      globalDialogueModelId: settings.globalModels?.globalDialogueModelId
+    })
+    commitResolved(resolved)
+  }, [
+    currentProviderId,
+    currentModelId,
+    currentAssistant,
+    settings.globalModels,
+    assistantId,
+    commitResolved
+  ])
 
-      if (resolved.providerId && resolved.modelId) {
-        setCurrentProviderId(resolved.providerId)
-        setCurrentModelId(resolved.modelId)
-        return
-      }
+  const setRequestedProviderId = useCallback((id: string) => {
+    userManuallySetModelRef.current = true
+    setCurrentProviderId(id)
+  }, [])
 
-      setCurrentProviderId(fallbackProviderId)
-      setCurrentModelId(fallbackModelId)
-    }
-
-    void syncFromSessionOrDefaults()
-    return () => {
-      cancelled = true
-    }
-  }, [sessionId, currentAssistant, settings.globalModels, fallbackProviderId, fallbackModelId])
-
-  const selectDialogueModel = useCallback(
-    async (providerId: string, modelId: string) => {
-      userManuallySetModelRef.current = true
-      setCurrentProviderId(providerId)
-      setCurrentModelId(modelId)
-
-      if (
-        !sessionId ||
-        typeof window === 'undefined' ||
-        !window.electron ||
-        !isConfiguredProviderId(providerId) ||
-        !isConfiguredDialogueModelId(modelId)
-      ) {
-        return
-      }
-
-      try {
-        await window.electron.ipcRenderer.invoke(
-          'agent:update-session-dialogue-model',
-          sessionId,
-          providerId,
-          modelId
-        )
-      } catch (e) {
-        console.warn('[useModelSelection] persist session model failed', e)
-      }
-    },
-    [sessionId]
-  )
+  const setRequestedModelId = useCallback((id: string) => {
+    userManuallySetModelRef.current = true
+    setCurrentModelId(id)
+  }, [])
 
   return {
     currentProviderId,
     currentModelId,
-    setCurrentProviderId,
-    setCurrentModelId,
-    selectDialogueModel,
+    modelSelectionSource,
+    selectionState,
+    lastSelectionSwitch,
+    setCurrentProviderId: setRequestedProviderId,
+    setCurrentModelId: setRequestedModelId,
     userManuallySetModelRef
   }
 }
