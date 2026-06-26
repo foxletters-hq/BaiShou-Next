@@ -3,7 +3,6 @@ import { View, Text, Pressable } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { parseRedactedThinking } from '../../shared/chat-bubble/redacted-thinking'
 import { useNativeTheme } from '../theme'
-import { MarkdownRenderer } from '../MarkdownRenderer/MarkdownRenderer'
 import { ThinkingBlock } from '../ThinkingBlock/ThinkingBlock'
 import type { NativeStreamingBubbleProps } from './streaming-bubble.types'
 import { createStreamingBubbleStyles } from './streaming-bubble.styles'
@@ -12,6 +11,7 @@ import { chatBubbleStyles } from '../ChatBubble/chat-bubble.styles'
 import { chatOverBackgroundMetaTextStyle } from '../../shared/chat-over-background-meta.style'
 import { ToolResultGroupCard } from '../ToolResultGroupCard/ToolResultGroupCard'
 import { StreamingBubbleBouncingDots } from './StreamingBubbleBouncingDots'
+import { StreamingMarkdownLines } from './StreamingMarkdownLines'
 
 export type { ToolExecution, NativeStreamingBubbleProps } from './streaming-bubble.types'
 
@@ -24,7 +24,8 @@ export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
   aiProfile = { name: 'AI' },
   error = null,
   onRetry,
-  invertMetaOverBackground = false
+  invertMetaOverBackground = false,
+  reserveActionBarSpace = false
 }) => {
   const { t } = useTranslation()
   const { colors, isDark, tokens } = useNativeTheme()
@@ -132,7 +133,8 @@ export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
               </View>
             ) : null}
 
-            {hasText && <MarkdownRenderer content={cleanText} variant="chat" />}
+            {hasText && <StreamingMarkdownLines content={cleanText} variant="chat" />}
+            {reserveActionBarSpace ? <View style={auxStyles.actionBarSpacer} /> : null}
           </View>
         ) : (
           <View style={auxStyles.dotsWrap}>

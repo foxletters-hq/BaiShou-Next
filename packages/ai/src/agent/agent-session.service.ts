@@ -43,6 +43,7 @@ import { StreamChatOptions, StreamChatCallbacks } from './agent-session.types'
 import { persistResult } from './agent-session-persist'
 import { messageHasImageAttachments } from './attachment-content.builder'
 import { isAgentStreamSessionClaimActive } from './stream-session-guard'
+import { buildToolCallRepairHandler } from './tool-call-repair.util'
 
 export type { StreamChatOptions, StreamChatCallbacks } from './agent-session.types'
 
@@ -328,6 +329,7 @@ export class AgentSessionService {
         tools: enabledTools,
         stopWhen: stepCountIs(10),
         abortSignal,
+        experimental_repairToolCall: buildToolCallRepairHandler(),
         ...(hasSegmenter && cjkSegmenter
           ? { experimental_transform: smoothStream({ chunking: cjkSegmenter }) }
           : {})

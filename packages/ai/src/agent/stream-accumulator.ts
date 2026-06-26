@@ -119,7 +119,8 @@ export class StreamAccumulator {
       }
 
       case 'tool-call': {
-        if (p.toolCallId) {
+        const toolName = String(p.toolName ?? '').trim()
+        if (p.toolCallId && toolName) {
           const legacyArgs =
             p.args ?? (p.providerMetadata as Record<string, unknown> | undefined)?.raw
           const rawInput = (legacyArgs as { input?: unknown } | undefined)?.input
@@ -128,7 +129,7 @@ export class StreamAccumulator {
 
           this._toolCalls.set(String(p.toolCallId), {
             callId: String(p.toolCallId),
-            name: String(p.toolName || ''),
+            name: toolName,
             arguments: inputArgs
           })
         }
@@ -136,7 +137,7 @@ export class StreamAccumulator {
       }
 
       case 'tool-result': {
-        if (p.toolCallId) {
+        if (p.toolCallId && this._toolCalls.has(String(p.toolCallId))) {
           const raw = (p.providerMetadata as Record<string, unknown> | undefined)?.raw
           const res = p.output ?? p.result ?? raw
           this._toolResults.set(String(p.toolCallId), {

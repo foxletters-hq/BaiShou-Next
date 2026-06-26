@@ -22,4 +22,6 @@ export interface NativeStreamingBubbleProps {
   onRetry?: () => void
   /** 自定义聊天背景上为名称启用反色混合 */
   invertMetaOverBackground?: boolean
+  /** 流结束交接期：预留与 ChatBubble 操作栏等高的空间，避免列表跳动 */
+  reserveActionBarSpace?: boolean
 }
