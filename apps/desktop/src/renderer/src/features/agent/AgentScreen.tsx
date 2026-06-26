@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react'
 import { TokenBadge, InputBar, ContextChainPanel, useTheme, getProviderIcon, toast } from '@baishou/ui'
 import { createWebComposerDraftStorage } from '@baishou/ui/shared/composer-draft'
-import { MdCloud } from 'react-icons/md'
+import { MdAutoAwesome, MdCloud } from 'react-icons/md'
 import {
   normalizeChatBackgroundBlur,
   normalizeChatBackgroundOverlayOpacity,
@@ -32,10 +32,11 @@ export const AgentScreen: React.FC = () => {
     )
   }, [flow.model.currentProviderId, flow.providers, isDark])
 
-  const displayModelName =
-    flow.model.currentModelId === 'unknown'
-      ? flow.t('agent.no_model_selected', '暂未选择模型')
-      : flow.model.currentModelId
+  const noModelSelected = !isConfiguredDialogueModelId(flow.model.currentModelId)
+
+  const displayModelName = noModelSelected
+    ? flow.t('agent.no_model_selected', '暂未选择模型')
+    : flow.model.currentModelId
 
   const composerDraftStorage = useMemo(() => createWebComposerDraftStorage(), [])
   const composerDraftKey = useDesktopComposerDraftKey(flow.sessionId)
@@ -79,7 +80,13 @@ export const AgentScreen: React.FC = () => {
           onClick={() => flow.setShowModelSwitcher(true)}
         >
           <span className={styles.modelProviderIcon} aria-hidden>
-            {providerIconUrl ? <img src={providerIconUrl} alt="" /> : <MdCloud size={18} />}
+            {providerIconUrl ? (
+              <img src={providerIconUrl} alt="" />
+            ) : noModelSelected ? (
+              <MdAutoAwesome size={18} />
+            ) : (
+              <MdCloud size={18} />
+            )}
           </span>
           <span className={styles.modelName}>{displayModelName}</span>
           <span className={styles.chevron}>▼</span>

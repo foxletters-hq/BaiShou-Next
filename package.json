@@ -62,6 +62,7 @@
     },
     "onlyBuiltDependencies": [
       "better-sqlite3",
+      "dugite",
       "electron",
       "electron-winstaller",
       "esbuild",
