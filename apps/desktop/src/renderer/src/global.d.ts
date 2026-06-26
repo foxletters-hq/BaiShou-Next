@@ -10,11 +10,32 @@ interface ElectronAPI {
   process?: any
 }
 
+interface FlutterLegacyMigrationPending {
+  sourceRoot: string
+  targetRoot: string
+  sourceDisplayPath: string
+  targetDisplayPath: string
+  confidenceScore: number
+  detectionReason: string
+}
+
 interface OnboardingAPI {
-  check(): Promise<{ currentPath: string }>
+  check(): Promise<{
+    needsOnboarding: boolean
+    currentPath: string
+    pendingFlutterLegacyMigration: FlutterLegacyMigrationPending | null
+  }>
   pickDirectory(): Promise<string | null>
   setDirectory(path: string): Promise<void>
   finish(): Promise<void>
+  detectLegacyMigrationPending(): Promise<{
+    pendingFlutterLegacyMigration: FlutterLegacyMigrationPending | null
+  }>
+  dismissLegacyMigrationPrompt(): Promise<boolean>
+  runFlutterLegacyMigration(payload: {
+    sourceRoot: string
+    targetRoot: string
+  }): Promise<{ success: boolean }>
   onReady(callback: () => void): () => void
 }
 

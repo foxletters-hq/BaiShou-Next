@@ -33,6 +33,7 @@ import { TitleBar } from './components/TitleBar'
 import { IncrementalSyncConfirmHost } from './components/IncrementalSyncConfirmDialog/IncrementalSyncConfirmHost'
 import { useZoom } from './hooks/useZoom'
 import { useLegacyUpgradeRagToast } from './hooks/useLegacyUpgradeRagToast'
+import { DesktopLegacyMigrationPrompt } from './components/DesktopLegacyMigrationPrompt'
 import shellStyles from './AppShell.module.css'
 
 const SettingsPage = lazy(() =>
@@ -296,6 +297,7 @@ export function App() {
         <ToastProvider />
         <RestoreBlockingOverlay visible={archiveImporting} />
         <GlobalErrorHandler />
+        <DesktopLegacyMigrationPrompt />
         <DiaryEmbedFailureNotifier />
         <GlobalInputContextMenu />
         <ErrorBoundary>

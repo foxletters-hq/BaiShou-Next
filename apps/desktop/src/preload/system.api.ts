@@ -24,6 +24,11 @@ export const systemApi = {
     pickDirectory: () => ipcRenderer.invoke('onboarding:pick-directory'),
     setDirectory: (path: string) => ipcRenderer.invoke('onboarding:set-directory', path),
     finish: () => ipcRenderer.invoke('onboarding:finish'),
+    detectLegacyMigrationPending: () => ipcRenderer.invoke('onboarding:detect-legacy-pending'),
+    dismissLegacyMigrationPrompt: () =>
+      ipcRenderer.invoke('onboarding:dismiss-legacy-migration-prompt'),
+    runFlutterLegacyMigration: (payload: { sourceRoot: string; targetRoot: string }) =>
+      ipcRenderer.invoke('onboarding:run-flutter-legacy-migration', payload),
     onReady: (callback: () => void) => {
       const handler = () => callback()
       ipcRenderer.on('onboarding:ready', handler)
