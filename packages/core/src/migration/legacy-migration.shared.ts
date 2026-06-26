@@ -6,6 +6,7 @@ import {
   LEGACY_UPGRADE_RAG_PENDING_KEY,
   LEGACY_UPGRADE_RAG_NOTICE_COUNT_KEY
 } from '@baishou/shared'
+import { isFilesystemRootPath } from '../storage/workspace-root.util'
 import { journalMarkdownExistsInTree } from '../journal/journal-files.util'
 import { sanitizeVaultDirectoryName } from '../vault/vault-name.util'
 import type { VaultInfo } from '../vault/vault.types'
@@ -198,6 +199,11 @@ export async function isLegacyAppRoot(
 ): Promise<boolean> {
   if (await hasFlutterLegacyStorageMarkers(fileSystem, sourceDir)) {
     return true
+  }
+
+  // 盘符根目录仅接受强特征；避免把 D:\ 下任意含 Journals 的文件夹误判为白守根目录。
+  if (isFilesystemRootPath(sourceDir)) {
+    return false
   }
 
   try {

@@ -4,7 +4,9 @@
 
 export * from './fs'
 export * from './storage/storage-root-migration'
+export * from './storage/workspace-root.util'
 export * from './migration/legacy-migration.shared'
+export * from './migration/legacy-root-detection.shared'
 export * from './migration/flutter-shared-prefs.util'
 export * from './migration/legacy-avatar-migration.shared'
 export * from './migration/legacy-archive-migration.shared'
