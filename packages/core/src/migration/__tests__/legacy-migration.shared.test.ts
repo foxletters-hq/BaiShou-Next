@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
+import { normalizeStorageRoot } from '@baishou/shared'
 import { createNodeFileSystem } from '../../fs/create-node-file-system'
 import {
   dedupeSqlitePaths,
@@ -14,6 +15,8 @@ import {
   readLegacyVaultRegistry,
   resolveAgentDbPath,
   resolveLegacyImportVaultNames,
+  resolveLegacyAgentDbPathsForVault,
+  MIN_AGENT_SQLITE_BYTES_FOR_IMPORT,
   writeMigrationStatus,
   writeNextVaultRegistry
 } from '../legacy-migration.shared'
@@ -179,5 +182,21 @@ describe('legacy-migration.shared', () => {
     expect(staged).not.toContain('file:')
     expect(await fileSystem.exists(staged)).toBe(true)
     await fs.rm(root, { recursive: true, force: true })
+  })
+
+  it('resolveLegacyAgentDbPathsForVault prefers global db when vault agent.sqlite is a shell', async () => {
+    const root = path.join(tempDir, 'BaiShou_Root')
+    const vaultDb = path.join(root, 'Personal', '.baishou', 'agent.sqlite')
+    const globalDb = path.join(root, '.baishou', 'agent.sqlite')
+    await fs.mkdir(path.dirname(vaultDb), { recursive: true })
+    await fs.mkdir(path.dirname(globalDb), { recursive: true })
+    await fs.writeFile(vaultDb, 'x'.repeat(128))
+    await fs.writeFile(globalDb, 'x'.repeat(MIN_AGENT_SQLITE_BYTES_FOR_IMPORT + 1024))
+
+    const resolved = await resolveLegacyAgentDbPathsForVault(fileSystem, root, 'Personal')
+    expect(resolved.map(normalizeStorageRoot)).toContain(normalizeStorageRoot(globalDb))
+    expect(
+      resolved.some((p) => normalizeStorageRoot(p).endsWith('Personal/.baishou/agent.sqlite'))
+    ).toBe(false)
   })
 })

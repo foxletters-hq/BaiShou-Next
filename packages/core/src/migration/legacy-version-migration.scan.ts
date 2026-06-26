@@ -5,8 +5,9 @@ import { countArchiveMarkdownUnderArchivesDir } from '../vault/archive-files.uti
 import { countLegacyArchiveSourcesForVault } from './legacy-summary-migration.util'
 import {
   discoverVaultNames,
+  isVaultSpecificLegacyAgentDb,
   normalizeSqliteAttachPath,
-  scanLegacyDatabases,
+  resolveLegacyAgentDbPathsForVault,
   type RawSqlExecutor
 } from './legacy-migration.shared'
 import {
@@ -93,28 +94,6 @@ async function fileSizeIfExists(fileSystem: IFileSystem, filePath: string): Prom
   }
 }
 
-async function resolveLegacyAgentDbPathsForVault(
-  fileSystem: IFileSystem,
-  sourceRoot: string,
-  legacyVaultName: string
-): Promise<string[]> {
-  const vaultDb = path.join(sourceRoot, legacyVaultName, '.baishou', 'agent.sqlite')
-  if (await fileSystem.exists(vaultDb)) {
-    return [vaultDb]
-  }
-  const rootDb = path.join(sourceRoot, '.baishou', 'agent.sqlite')
-  if (await fileSystem.exists(rootDb)) {
-    return [rootDb]
-  }
-  const { agentDbs } = await scanLegacyDatabases(fileSystem, sourceRoot)
-  return agentDbs
-}
-
-function isVaultSpecificAgentDb(dbPath: string, legacyVaultName: string): boolean {
-  const normalized = dbPath.replace(/\\/g, '/')
-  return normalized.includes(`/${legacyVaultName}/.baishou/agent.sqlite`)
-}
-
 interface LegacyAgentDbStats {
   assistants: number
   sessions: number
@@ -166,7 +145,7 @@ async function readLegacyAgentDbStatsForVault(
   for (let i = 0; i < uniquePaths.length; i++) {
     const alias = `legacy_scan_${i}`
     const rawAttachPath = uniquePaths[i]!
-    const vaultSpecific = isVaultSpecificAgentDb(rawAttachPath, legacyVaultName)
+    const vaultSpecific = isVaultSpecificLegacyAgentDb(rawAttachPath, legacyVaultName)
     try {
       const attachPath = deps.prepareSqliteAttachPath
         ? await deps.prepareSqliteAttachPath(rawAttachPath)

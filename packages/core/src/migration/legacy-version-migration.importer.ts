@@ -13,6 +13,8 @@ import {
   normalizeSqliteAttachPath,
   mergeDirectories,
   scanLegacyDatabases,
+  isVaultSpecificLegacyAgentDb,
+  resolveLegacyAgentDbPathsForVault,
   type RawSqlExecutor
 } from './legacy-migration.shared'
 import { restoreLegacyDevicePreferences } from '../import/legacy-config-restore.shared'
@@ -152,28 +154,6 @@ function diaryInputFromParsed(
   }
 }
 
-async function resolveLegacyAgentDbPathsForVault(
-  fileSystem: IFileSystem,
-  sourceRoot: string,
-  legacyVaultName: string
-): Promise<string[]> {
-  const vaultDb = path.join(sourceRoot, legacyVaultName, '.baishou', 'agent.sqlite')
-  if (await fileSystem.exists(vaultDb)) {
-    return [vaultDb]
-  }
-  const rootDb = path.join(sourceRoot, '.baishou', 'agent.sqlite')
-  if (await fileSystem.exists(rootDb)) {
-    return [rootDb]
-  }
-  const { agentDbs } = await scanLegacyDatabases(fileSystem, sourceRoot)
-  return agentDbs
-}
-
-function isVaultSpecificAgentDb(dbPath: string, legacyVaultName: string): boolean {
-  const normalized = dbPath.replace(/\\/g, '/')
-  return normalized.includes(`/${legacyVaultName}/.baishou/agent.sqlite`)
-}
-
 async function queryLegacyAgentRows(
   deps: LegacyVersionMigrationImporterDeps,
   options?: { legacyVaultName?: string }
@@ -203,7 +183,7 @@ async function queryLegacyAgentRows(
     const alias = `legacy_import_${i}`
     const rawAttachPath = uniquePaths[i]!
     const vaultSpecific = legacyVaultName
-      ? isVaultSpecificAgentDb(rawAttachPath, legacyVaultName)
+      ? isVaultSpecificLegacyAgentDb(rawAttachPath, legacyVaultName)
       : false
     try {
       const attachPath = deps.prepareSqliteAttachPath
