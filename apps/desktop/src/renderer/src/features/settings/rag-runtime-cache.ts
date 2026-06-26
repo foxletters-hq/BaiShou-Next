@@ -10,6 +10,7 @@ export interface RagRuntimeActiveState {
   progress: number
   total: number
   statusText: string
+  statusKey?: string
   error?: string
   aborted?: boolean
   rollbackApplied?: boolean

@@ -9,6 +9,7 @@ interface RagMemoryAlertsProps {
   ragState: RagState
   hasMismatchModel: boolean
   migrationState?: EmbeddingMigrationStateView | null
+  migrationCancelBusy?: boolean
   onTriggerMigration?: () => Promise<void>
   onCancelMigration?: () => Promise<void>
   onRestoreMigration?: () => Promise<void>
@@ -19,6 +20,7 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
   ragState,
   hasMismatchModel,
   migrationState,
+  migrationCancelBusy = false,
   onTriggerMigration,
   onCancelMigration,
   onRestoreMigration,
@@ -26,6 +28,8 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
 }) => {
   const { t } = useTranslation()
   const isMigrating = ragState.isRunning && ragState.type === 'migration'
+  const isAborting =
+    ragState.statusKey === 'settings.rag_migration_aborting' || migrationCancelBusy
   const showEmbedError = !isMigrating && !!ragState.error
   const showInterrupted =
     !isMigrating &&
@@ -41,15 +45,20 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
           <div className={styles.migrationRow}>
             <div className={styles.spinner}></div>
             <span className={styles.migTitle}>
-              {t('settings.rag_migrating', '知识库正在迁移中...')}
+              {isAborting
+                ? t('settings.rag_migration_aborting', '正在取消迁移并恢复数据...')
+                : t('settings.rag_migrating', '知识库正在迁移中...')}
             </span>
             {onCancelMigration && (
               <button
                 type="button"
                 className={styles.migrationCancelBtn}
+                disabled={isAborting}
                 onClick={() => void onCancelMigration()}
               >
-                {t('settings.rag_migration_cancel', '取消迁移')}
+                {isAborting
+                  ? t('settings.rag_migration_cancelling', '取消中...')
+                  : t('settings.rag_migration_cancel', '取消迁移')}
               </button>
             )}
           </div>

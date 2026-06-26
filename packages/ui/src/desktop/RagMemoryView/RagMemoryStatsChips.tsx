@@ -28,8 +28,17 @@ export const RagMemoryStatsChips: React.FC<RagMemoryStatsChipsProps> = ({
         <span className={styles.chipIcon}>
           <MdStorage size={14} />
         </span>
-        <span className={styles.chipLabel}>{t('settings.rag_total_count', '总条目:')}</span>
-        <span className={styles.chipStrong}>{stats.totalCount}</span>
+        <span className={styles.chipLabel}>
+          {stats.diaryCountForVault != null && stats.activeVaultName
+            ? t('settings.rag_vault_diary_count', {
+                vault: stats.activeVaultName,
+                defaultValue: '{{vault}} 日记向量:'
+              })
+            : t('settings.rag_total_count', '总条目:')}
+        </span>
+        <span className={styles.chipStrong}>
+          {stats.diaryCountForVault != null ? stats.diaryCountForVault : stats.totalCount}
+        </span>
       </div>
       <div className={`${styles.statChip} ${styles.chipGreen}`}>
         <span className={styles.chipIcon}>

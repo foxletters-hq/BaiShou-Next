@@ -285,10 +285,23 @@ export function useRagSystem(
     ) {
       return
     }
+
+    const runningState = getCachedRagActiveState()
+    patchCachedRagActiveState({
+      ...runningState,
+      isRunning: true,
+      type: 'migration',
+      statusKey: 'settings.rag_migration_aborting',
+      statusText: t(
+        'settings.rag_migration_aborting',
+        '迁移失败，正在恢复迁移前的向量数据与嵌入模型...'
+      )
+    })
     setIsProcessing(true)
+
     try {
       await (window as any).api?.rag?.cancelMigration()
-      if (activeRagState.isRunning && activeRagState.type === 'migration') {
+      if (runningState.isRunning && runningState.type === 'migration') {
         await Promise.race([waitForMigrationIdle(), new Promise((r) => setTimeout(r, 120_000))])
       }
       await fetchRagInfo()

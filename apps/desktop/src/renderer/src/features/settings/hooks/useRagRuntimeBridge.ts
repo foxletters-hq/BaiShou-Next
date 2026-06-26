@@ -6,6 +6,7 @@ import {
 } from '@baishou/shared'
 import {
   getCachedRagStats,
+  getCachedRagActiveState,
   patchCachedRagStats,
   setCachedRagActiveState
 } from '../rag-runtime-cache'
@@ -80,7 +81,13 @@ export function useRagRuntimeBridge(): void {
           ? localizeRagEmbedError(extractIpcErrorMessage({ message: state.error.trim() }), t)
           : undefined
 
-      setCachedRagActiveState({ ...state, statusText, error: errorText })
+      setCachedRagActiveState({
+        ...getCachedRagActiveState(),
+        ...state,
+        statusText,
+        statusKey: state.statusKey,
+        error: errorText
+      })
 
       if (state.isRunning) {
         scheduleStatsRefresh(1200)
