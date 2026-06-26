@@ -194,6 +194,17 @@ export class SessionCrudOps {
       .where(eq(agentSessionsTable.id, sessionId))
   }
 
+  async updateSessionDialogueModel(
+    sessionId: string,
+    providerId: string,
+    modelId: string
+  ): Promise<void> {
+    await this.db
+      .update(agentSessionsTable)
+      .set({ providerId, modelId, updatedAt: new Date() })
+      .where(eq(agentSessionsTable.id, sessionId))
+  }
+
   async deleteSessions(ids: string[]): Promise<void> {
     if (ids.length === 0) return
     const { inArray } = await import('drizzle-orm')

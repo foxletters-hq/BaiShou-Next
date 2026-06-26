@@ -49,6 +49,10 @@ export class SessionRepository {
     return this.run(() => this.crudOps.updateSessionTitle(...args))
   }
 
+  updateSessionDialogueModel(...args: Parameters<SessionCrudOps['updateSessionDialogueModel']>) {
+    return this.run(() => this.crudOps.updateSessionDialogueModel(...args))
+  }
+
   deleteSessions(...args: Parameters<SessionCrudOps['deleteSessions']>) {
     return this.run(() => this.crudOps.deleteSessions(...args))
   }

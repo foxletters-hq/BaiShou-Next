@@ -221,4 +221,56 @@ describe('persistResult token estimation', () => {
     const insertedMessage = sessionRepo.insertMessageWithParts.mock.calls[0]![0]
     expect(insertedMessage.orderIndex).toBe(3)
   })
+
+  it('does not crash when streamResult.usage rejects with undefined', async () => {
+    vi.spyOn(ModelPricingService.getInstance(), 'calculateCostMicros').mockResolvedValue(0)
+
+    const sessionRepo = {
+      getMessagesBySession: vi.fn().mockResolvedValue([{ orderIndex: 1 }]),
+      insertMessageWithParts: vi.fn().mockResolvedValue(undefined),
+      updateTokenUsage: vi.fn().mockResolvedValue(undefined)
+    }
+
+    const snapshotRepo = {
+      getLatestSnapshot: vi.fn().mockResolvedValue(null)
+    }
+
+    const provider = {
+      config: {
+        id: 'mock-provider',
+        type: 'openai'
+      }
+    }
+
+    const accumulator = {
+      text: 'search summary',
+      reasoning: '',
+      toolCalls: [{ callId: 'call_1', name: 'web_search', arguments: '{"q":"news"}' }],
+      toolResults: [{ callId: 'call_1', result: 'ok' }],
+      usage: {
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheReadInputTokens: 0,
+        cacheWriteInputTokens: 0
+      }
+    }
+
+    const streamResult = {
+      usage: Promise.reject(undefined)
+    }
+
+    await persistResult({
+      sessionId: 's1',
+      rawUserText: 'search news',
+      streamResult: streamResult as any,
+      accumulator: accumulator as any,
+      sessionRepo: sessionRepo as any,
+      snapshotRepo: snapshotRepo as any,
+      provider: provider as any,
+      modelId: 'gpt-4',
+      streamError: null
+    })
+
+    expect(sessionRepo.insertMessageWithParts).toHaveBeenCalled()
+  })
 })

@@ -41,4 +41,6 @@ export interface ChatBubbleProps {
   invertMetaOverBackground?: boolean
   /** 重试/重新发送处理中时禁用，避免连点 */
   retryDisabled?: boolean
+  /** 为 false 时不展示思考过程（移动端完成后默认隐藏） */
+  showReasoning?: boolean
 }

@@ -39,7 +39,8 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   isTtsPlaying,
   onEditingChange,
   invertMetaOverBackground = false,
-  retryDisabled = false
+  retryDisabled = false,
+  showReasoning = true
 }) => {
   const { t } = useTranslation()
   const { colors, isDark } = useNativeTheme()
@@ -130,7 +131,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                   }
           ]}
         >
-          {isAssistant && cleanReasoning ? (
+          {isAssistant && showReasoning && cleanReasoning ? (
             <View
               style={{
                 marginBottom: cleanContent || toolInvocations.length ? 8 : 0,

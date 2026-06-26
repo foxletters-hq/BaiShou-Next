@@ -12,6 +12,8 @@ export interface StreamingTextDisplayBufferOptions {
   partialFlushMs?: number
   maxCatchUpLines?: number
   segmentMaxChars?: number
+  /** 无完整分段可揭示时，仍展示尾部 partial 单元（更平滑的逐字感） */
+  showPartialDuringGap?: boolean
 }
 
 export interface StreamingTextDisplayBuffer {
@@ -96,6 +98,7 @@ export function createStreamingTextDisplayBuffer(
   const lineRevealMs = options?.lineRevealMs ?? STREAM_LINE_REVEAL_MS
   const maxCatchUpLines = options?.maxCatchUpLines ?? STREAM_MAX_CATCHUP_LINES
   const segmentMaxChars = options?.segmentMaxChars ?? STREAM_SEGMENT_MAX_CHARS
+  const showPartialDuringGap = options?.showPartialDuringGap ?? false
 
   let buffer = ''
   let revealedUnitCount = 0
@@ -144,10 +147,18 @@ export function createStreamingTextDisplayBuffer(
     push(delta: string) {
       if (!delta) return
       buffer += delta
-      includePartialUnit = false
-      const { completeUnits } = splitStreamingRevealUnits(buffer, segmentMaxChars)
+      const { completeUnits, partialUnit } = splitStreamingRevealUnits(buffer, segmentMaxChars)
       if (completeUnits.length > revealedUnitCount) {
+        includePartialUnit = false
         scheduleLineReveal()
+        return
+      }
+
+      if (showPartialDuringGap && partialUnit) {
+        includePartialUnit = true
+        emitDisplay()
+      } else {
+        includePartialUnit = false
       }
     },
 

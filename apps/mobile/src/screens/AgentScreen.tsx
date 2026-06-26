@@ -62,6 +62,7 @@ import { useResolvedUserAvatar } from '../hooks/useResolvedUserAvatar'
 import { useResolvedChatBackground } from '../hooks/useResolvedChatBackground'
 import { useAgentUserProfile } from '../hooks/useAgentUserProfile'
 import { useAgentChatKeyboardInsets } from '../hooks/useAgentChatKeyboardInsets'
+import { useAgentChatScroll } from '../hooks/useAgentChatScroll'
 import { useAgentNavigationPersistence } from '../hooks/useAgentNavigationPersistence'
 import {
   hydrateAssistantsForUi,
@@ -119,10 +120,9 @@ export const AgentScreen = () => {
   const inputBarRef = useRef<InputBarRef>(null)
   const editingRowRef = useRef<View>(null)
   const scrollOffsetRef = useRef(0)
-  const prevMsgLenRef = useRef(0)
-  const prevLastMessageIdRef = useRef<string | null>(null)
   const layoutReadyRef = useRef(false)
   const bubbleEditScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const currentSessionIdRef = useRef<string | null>(null)
 
   const [assistants, setAssistants] = useState<MobileAssistantUi[]>([])
   const userProfile = useAgentUserProfile()
@@ -141,7 +141,7 @@ export const AgentScreen = () => {
     setCurrentAssistant,
     syncWithSession,
     hasConfiguredDialogueModel
-  } = useAgentModel()
+  } = useAgentModel({ currentSessionIdRef })
 
   const { sessions, hasMoreSessions, isLoadingMoreSessions, sessionListScrollKey, loadSessions } =
     useAgentSessions(currentAssistant?.id)
@@ -175,10 +175,12 @@ export const AgentScreen = () => {
     modelId: currentModelId ?? undefined
   })
 
+  currentSessionIdRef.current = currentSessionId
+
   const composerDraftKey = useAgentComposerDraftKey(currentSessionId)
 
   useEffect(() => {
-    syncWithSession(currentSessionId)
+    void syncWithSession(currentSessionId)
   }, [currentSessionId, syncWithSession])
 
   const refreshSessionList = useCallback(() => {
@@ -187,7 +189,10 @@ export const AgentScreen = () => {
 
   useEffect(() => {
     if (!drawerOpen || !dbReady || !currentAssistant?.id) return
-    void loadSessions(true, currentAssistant.id)
+    const timer = setTimeout(() => {
+      void loadSessions(true, currentAssistant.id)
+    }, 280)
+    return () => clearTimeout(timer)
   }, [drawerOpen, dbReady, currentAssistant?.id, loadSessions])
 
   useAgentNavigationPersistence({
@@ -216,6 +221,7 @@ export const AgentScreen = () => {
     streamError,
     streamingText,
     streamingReasoning,
+    isReasoningStreaming,
     tokenUsage,
     activeTool,
     completedTools,
@@ -240,11 +246,9 @@ export const AgentScreen = () => {
 
   const [showLoadMoreBanner, setShowLoadMoreBanner] = useState(false)
   const loadMoreLockRef = useRef(false)
-  const contentSizeFollowRafRef = useRef<number | null>(null)
 
   const {
     showCostDialog,
-    showScrollButton,
     showShortcutSheet,
     showRecallSheet,
     recallItems,
@@ -252,17 +256,36 @@ export const AgentScreen = () => {
     setShowCostDialog,
     setShowShortcutSheet,
     setShowRecallSheet,
-    handleScroll,
-    scrollToBottom,
     handleRecallSearch,
     handleInjectRecall,
     recallSearchMode,
     toggleRecallSearchMode
   } = useAgentUI()
 
-  const followStreamBottom = useCallback(() => {
-    scrollToBottom(flatListRef, false, false)
-  }, [scrollToBottom])
+  const {
+    showScrollButton,
+    handleListScroll: handleChatListScroll,
+    handleScrollBeginDrag,
+    handleScrollEndDrag,
+    handleMomentumScrollBegin,
+    handleMomentumScrollEnd,
+    scrollToBottom,
+    beginFollowIfAtBottom,
+    onContentSizeChange: handleChatContentSizeChange,
+    bindFlatList
+  } = useAgentChatScroll({
+    sessionId: currentSessionId,
+    messages,
+    streamingText,
+    streamingReasoning,
+    isStreaming,
+    isStreamBridgeActive,
+    activeTool
+  })
+
+  useEffect(() => {
+    bindFlatList(flatListRef)
+  }, [bindFlatList])
 
   const composerKeyboardLiftEnabled = !drawerOpen && !showShortcutSheet && !showRecallSheet
   const drawerSwipeEnabled =
@@ -271,6 +294,7 @@ export const AgentScreen = () => {
     keyboardInset,
     inputDockAnimatedStyle,
     scrollButtonAnimatedStyle,
+    listSpacerAnimatedStyle,
     listBottomPadding,
     handleComposerFocus,
     resetKeyboardInset
@@ -278,7 +302,8 @@ export const AgentScreen = () => {
     tabBarHeight,
     inputDockHeight,
     isBubbleEditing,
-    enableComposerKeyboardLift: composerKeyboardLiftEnabled
+    enableComposerKeyboardLift: composerKeyboardLiftEnabled,
+    streamingActive: isStreaming || isStreamBridgeActive
   })
 
   const readKeyboardInset = useCallback(() => {
@@ -346,16 +371,26 @@ export const AgentScreen = () => {
 
   const handleInputBarFocus = useCallback(() => {
     handleComposerFocus()
-    requestAnimationFrame(() => scrollToBottom(flatListRef, true))
+    requestAnimationFrame(() => scrollToBottom(flatListRef, false))
   }, [handleComposerFocus, scrollToBottom])
+
+  const handleSendWithScroll = useCallback(
+    async (text: string, attachments?: unknown[], sendSearchMode?: boolean) => {
+      beginFollowIfAtBottom(flatListRef)
+      return handleSend(text, attachments, sendSearchMode)
+    },
+    [beginFollowIfAtBottom, handleSend]
+  )
 
   useEffect(() => {
     const overlaysOpen = drawerOpen || showShortcutSheet || showRecallSheet
-    if (overlaysOpen) {
-      resetKeyboardInset()
-      inputBarRef.current?.blur()
+    if (!overlaysOpen) return
+    resetKeyboardInset()
+    inputBarRef.current?.blur()
+    const frame = requestAnimationFrame(() => {
       Keyboard.dismiss()
-    }
+    })
+    return () => cancelAnimationFrame(frame)
   }, [drawerOpen, showShortcutSheet, showRecallSheet, resetKeyboardInset])
 
   const { shortcuts, addShortcut, updateShortcut, deleteShortcut, reorderShortcuts } =
@@ -363,32 +398,18 @@ export const AgentScreen = () => {
 
   const handleListScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const { contentOffset } = event.nativeEvent
-      scrollOffsetRef.current = contentOffset.y
-      handleScroll(event)
+      scrollOffsetRef.current = event.nativeEvent.contentOffset.y
+      handleChatListScroll(event)
 
-      const nearTop = contentOffset.y < 100
+      const nearTop = event.nativeEvent.contentOffset.y < 100
       setShowLoadMoreBanner(hasMore && nearTop)
     },
-    [handleScroll, hasMore]
+    [handleChatListScroll, hasMore]
   )
 
   useEffect(() => {
     layoutReadyRef.current = false
-    prevMsgLenRef.current = 0
-    prevLastMessageIdRef.current = null
   }, [currentSessionId])
-
-  useEffect(() => {
-    const last = messages[messages.length - 1]
-    const isNewUserMessage =
-      last?.role === 'user' && last?.id && last.id !== prevLastMessageIdRef.current
-    if (isNewUserMessage) {
-      scrollToBottom(flatListRef, true, false)
-    }
-    prevLastMessageIdRef.current = last?.id ?? null
-    prevMsgLenRef.current = messages.length
-  }, [messages, scrollToBottom])
 
   useEffect(() => {
     if (!hasMore) {
@@ -612,20 +633,9 @@ export const AgentScreen = () => {
           handleTtsReadAloud(lastMsg.content, lastMsg.id)
         }
       }
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => scrollToBottom(flatListRef, true, false))
-      })
     }
     prevIsStreamingRef.current = isStreaming
-  }, [isStreaming, refreshSessionList, handleTtsReadAloud, scrollToBottom])
-
-  const prevStreamBridgeRef = useRef(isStreamBridgeActive)
-  useEffect(() => {
-    if (prevStreamBridgeRef.current && !isStreamBridgeActive) {
-      requestAnimationFrame(() => scrollToBottom(flatListRef, true, false))
-    }
-    prevStreamBridgeRef.current = isStreamBridgeActive
-  }, [isStreamBridgeActive, scrollToBottom])
+  }, [isStreaming, refreshSessionList, handleTtsReadAloud])
 
   const [contextDialogState, setContextDialogState] = useState<{
     visible: boolean
@@ -749,13 +759,8 @@ export const AgentScreen = () => {
   )
 
   const handleContentSizeChange = useCallback(() => {
-    if (!isStreaming && !isStreamBridgeActive) return
-    if (contentSizeFollowRafRef.current != null) return
-    contentSizeFollowRafRef.current = requestAnimationFrame(() => {
-      contentSizeFollowRafRef.current = null
-      followStreamBottom()
-    })
-  }, [isStreaming, isStreamBridgeActive, followStreamBottom])
+    handleChatContentSizeChange(flatListRef)
+  }, [handleChatContentSizeChange])
 
   const totalInputTokens = tokenUsage?.inputTokens || 0
   const totalOutputTokens = tokenUsage?.outputTokens || 0
@@ -907,7 +912,7 @@ export const AgentScreen = () => {
               <FlatList
                 ref={flatListRef}
                 style={styles.list}
-                contentContainerStyle={[styles.listContent, { paddingBottom: listBottomPadding }]}
+                contentContainerStyle={styles.listContent}
                 data={flatListMessages}
                 extraData={{ chatAiProfile, chatUserProfile }}
                 keyExtractor={(item) => item.id}
@@ -999,12 +1004,12 @@ export const AgentScreen = () => {
                   )
                 }}
                 ListFooterComponent={
-                  showStreamingFooter ? (
-                    <View>
+                  <View>
+                    {showStreamingFooter ? (
                       <StreamingBubble
                         text={streamingText}
                         reasoning={streamingReasoning}
-                        isReasoning={isStreaming && !streamingText && !!streamingReasoning}
+                        isReasoning={isReasoningStreaming}
                         activeToolName={activeTool?.name ?? null}
                         completedTools={completedTools.map((tool, idx) => ({
                           name: tool.name,
@@ -1017,8 +1022,9 @@ export const AgentScreen = () => {
                         invertMetaOverBackground={hasChatBackground}
                         reserveActionBarSpace={isStreamBridgeActive}
                       />
-                    </View>
-                  ) : null
+                    ) : null}
+                    <Animated.View style={listSpacerAnimatedStyle} />
+                  </View>
                 }
                 showsVerticalScrollIndicator={false}
                 initialNumToRender={10}
@@ -1035,7 +1041,11 @@ export const AgentScreen = () => {
                   }
                 }}
                 onScroll={handleListScroll}
-                scrollEventThrottle={100}
+                onScrollBeginDrag={handleScrollBeginDrag}
+                onScrollEndDrag={handleScrollEndDrag}
+                onMomentumScrollBegin={handleMomentumScrollBegin}
+                onMomentumScrollEnd={handleMomentumScrollEnd}
+                scrollEventThrottle={16}
                 ListEmptyComponent={!isStreaming ? renderEmptyState() : null}
               />
             </AgentDrawerSwipeZone>
@@ -1076,7 +1086,7 @@ export const AgentScreen = () => {
             >
               <InputBar
                 ref={inputBarRef}
-                onSend={handleSend}
+                onSend={handleSendWithScroll}
                 isLoading={isLoading || isStreaming}
                 onStop={handleStop}
                 composerBlocked={!hasConfiguredDialogueModel}

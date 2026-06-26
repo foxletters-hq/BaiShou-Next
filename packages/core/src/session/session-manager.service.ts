@@ -63,6 +63,15 @@ export class SessionManagerService {
     await this.flushSessionToDisk(sessionId)
   }
 
+  async updateSessionDialogueModel(
+    sessionId: string,
+    providerId: string,
+    modelId: string
+  ): Promise<void> {
+    await this.sessionRepo.updateSessionDialogueModel(sessionId, providerId, modelId)
+    await this.flushSessionToDisk(sessionId)
+  }
+
   /**
    * 获取所有会话列表（findAllSessions 的便捷别名）
    */

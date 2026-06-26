@@ -23,9 +23,18 @@ import { mapSavedAttachmentsForMobileUi } from '../utils/mobile-attachment-ui.ut
 import { subscribeMobileCompressionEvents } from '../services/mobile-compression-event.service'
 
 const MOBILE_STREAM_DISPLAY_OPTIONS = {
-  lineRevealMs: 180,
+  lineRevealMs: 240,
   maxCatchUpLines: 1,
-  segmentMaxChars: 18
+  segmentMaxChars: 14,
+  showPartialDuringGap: true
+} as const
+
+/** 思考预览：更快揭示、保留 partial，便于折叠区逐行滚动 */
+const MOBILE_REASONING_STREAM_DISPLAY_OPTIONS = {
+  lineRevealMs: 80,
+  maxCatchUpLines: 4,
+  segmentMaxChars: 28,
+  showPartialDuringGap: true
 } as const
 
 interface TokenUsage {
@@ -71,6 +80,7 @@ export function useAgentStream(
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingText, setStreamingText] = useState('')
   const [streamingReasoning, setStreamingReasoning] = useState('')
+  const [isReasoningStreaming, setIsReasoningStreaming] = useState(false)
   const [tokenUsage, setTokenUsage] = useState<TokenUsage>({
     inputTokens: 0,
     outputTokens: 0,
@@ -108,7 +118,7 @@ export function useAgentStream(
     )
     streamingReasoningDisplayRef.current = createStreamingTextDisplayBuffer(
       (text) => setStreamingReasoning(text),
-      MOBILE_STREAM_DISPLAY_OPTIONS
+      MOBILE_REASONING_STREAM_DISPLAY_OPTIONS
     )
     compressionTextDisplayRef.current = createStreamingTextDisplayBuffer(
       (text) => setCompressionText(text),
@@ -149,6 +159,7 @@ export function useAgentStream(
   const clearStreamingDisplayBuffers = useCallback(() => {
     streamingTextDisplayRef.current?.reset()
     streamingReasoningDisplayRef.current?.reset()
+    setIsReasoningStreaming(false)
   }, [])
 
   const flushStreamingDisplayBuffers = useCallback(() => {
@@ -157,10 +168,16 @@ export function useAgentStream(
   }, [])
 
   const appendStreamingTextDelta = useCallback((chunk: string) => {
+    if (chunk) {
+      setIsReasoningStreaming(false)
+    }
     streamingTextDisplayRef.current?.push(chunk)
   }, [])
 
   const appendStreamingReasoningDelta = useCallback((chunk: string) => {
+    if (chunk) {
+      setIsReasoningStreaming(true)
+    }
     streamingReasoningDisplayRef.current?.push(chunk)
   }, [])
 
@@ -1086,6 +1103,7 @@ export function useAgentStream(
     streamError,
     streamingText,
     streamingReasoning,
+    isReasoningStreaming,
     tokenUsage,
     activeTool,
     completedTools,

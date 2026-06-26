@@ -1,17 +1,17 @@
 import React, { useMemo, useRef } from 'react'
 import { View, StyleSheet } from 'react-native'
-import Animated, { FadeInDown } from 'react-native-reanimated'
+import Animated, { FadeIn } from 'react-native-reanimated'
 import { splitStreamingRevealUnits } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 
-const LINE_ENTER_DURATION_MS = 520
+const LINE_ENTER_DURATION_MS = 320
 
 export interface StreamingMarkdownLinesProps {
   content: string
   variant?: 'chat' | 'ancillary'
 }
 
-/** 流式正文：按视觉行分段渲染，新行瀑布式淡入，避免 Markdown 整段重绘。 */
+/** 流式正文：按视觉行分段渲染，新行柔和淡入，避免 Markdown 整段重绘。 */
 export function StreamingMarkdownLines({
   content,
   variant = 'chat'
@@ -19,7 +19,7 @@ export function StreamingMarkdownLines({
   const { colors } = useNativeTheme()
   const isAncillary = variant === 'ancillary'
   const lines = useMemo(() => {
-    const { completeUnits, partialUnit } = splitStreamingRevealUnits(content, 18)
+    const { completeUnits, partialUnit } = splitStreamingRevealUnits(content, 14)
     const rows = partialUnit ? [...completeUnits, partialUnit] : completeUnits
     return rows.map((line) => line.replace(/\n+$/g, '')).filter((line) => line.length > 0)
   }, [content])
@@ -37,17 +37,19 @@ export function StreamingMarkdownLines({
     <View>
       {lines.map((line, index) => {
         const shouldAnimate = index >= animateFromIndex
+        const isPartialLine = index === lines.length - 1 && !line.endsWith('\n')
 
         if (shouldAnimate) {
           return (
             <Animated.View
               key={`stream-line-${index}`}
-              entering={FadeInDown.duration(LINE_ENTER_DURATION_MS)}
+              entering={FadeIn.duration(LINE_ENTER_DURATION_MS)}
             >
               <Animated.Text
                 style={[
                   styles.line,
                   isAncillary ? styles.ancillaryLine : null,
+                  isPartialLine ? styles.partialLine : null,
                   { color: isAncillary ? colors.textSecondary : colors.textPrimary }
                 ]}
               >
@@ -63,6 +65,7 @@ export function StreamingMarkdownLines({
               style={[
                 styles.line,
                 isAncillary ? styles.ancillaryLine : null,
+                isPartialLine ? styles.partialLine : null,
                 { color: isAncillary ? colors.textSecondary : colors.textPrimary }
               ]}
             >
@@ -84,5 +87,8 @@ const styles = StyleSheet.create({
   ancillaryLine: {
     fontSize: 14,
     lineHeight: 20
+  },
+  partialLine: {
+    opacity: 0.92
   }
 })

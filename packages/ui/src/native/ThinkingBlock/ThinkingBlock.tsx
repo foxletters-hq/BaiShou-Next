@@ -12,8 +12,9 @@ import { useNativeTheme } from '../theme'
 import { MarkdownRenderer } from '../MarkdownRenderer'
 import { CollapsibleHeight } from '../CollapsibleHeight'
 
-const MAX_PREVIEW_LINES = 3
+const DEFAULT_MAX_PREVIEW_LINES = 3
 const PREVIEW_LINE_HEIGHT = 14
+const PREVIEW_WRAP_CHARS = 32
 const CHEVRON_MS = 250
 
 export interface ThinkingBlockProps {
@@ -26,6 +27,41 @@ export interface ThinkingBlockProps {
   forceVisible?: boolean
   activeStatusLabel?: string
   completedStatusLabel?: string
+  /** 折叠预览最多显示行数（流式思考建议 2） */
+  maxPreviewLines?: number
+  /** 为 true 时仅在 isThinking 期间展示（思考结束后整块隐藏） */
+  streamingPreviewOnly?: boolean
+}
+
+/** 流式预览：保留进行中的末行（无换行时也能看到逐字输出） */
+function buildStreamingPreviewLines(content: string, isThinking: boolean): string[] {
+  if (!content) return []
+  const lines = content.split('\n')
+  if (!isThinking) {
+    return lines.filter((line) => line.trim() !== '')
+  }
+  const completeLines =
+    lines.length > 1 ? lines.slice(0, -1).filter((line) => line.trim() !== '') : []
+  const inProgressLine = lines[lines.length - 1] ?? ''
+  if (inProgressLine.trim() !== '') {
+    completeLines.push(inProgressLine)
+  }
+  return completeLines
+}
+
+/** 无换行长段拆成多行，便于折叠区逐行滚动 */
+function expandLongLinesForPreview(lines: string[], maxChars = PREVIEW_WRAP_CHARS): string[] {
+  const result: string[] = []
+  for (const line of lines) {
+    if (line.length <= maxChars) {
+      result.push(line)
+      continue
+    }
+    for (let index = 0; index < line.length; index += maxChars) {
+      result.push(line.slice(index, index + maxChars))
+    }
+  }
+  return result
 }
 
 /** 对齐 desktop ThinkingBlock：折叠时高度与内容同步裁剪，而非先卸载内容再收高度 */
@@ -38,7 +74,9 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
   headerIcon = '✨',
   forceVisible = false,
   activeStatusLabel,
-  completedStatusLabel
+  completedStatusLabel,
+  maxPreviewLines = DEFAULT_MAX_PREVIEW_LINES,
+  streamingPreviewOnly = false
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -104,22 +142,23 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
   }, [isThinking, displayTime, timeText, t, activeStatusLabel, completedStatusLabel])
 
   const previewLines = useMemo(() => {
-    if (!content) return []
-    const lines = content.split('\n')
-    return lines.filter((line) => line.trim() !== '')
-  }, [content])
+    const raw = buildStreamingPreviewLines(content, isThinking)
+    return isThinking ? expandLongLinesForPreview(raw) : raw
+  }, [content, isThinking])
 
-  const previewHeight = useMemo(() => {
-    const visibleCount = Math.min(previewLines.length, MAX_PREVIEW_LINES)
-    if (visibleCount < 1) return 38
-    return Math.min(70, Math.max(visibleCount, 2) * PREVIEW_LINE_HEIGHT + 8)
-  }, [previewLines.length])
+  const visiblePreviewLines = useMemo(
+    () => previewLines.slice(-maxPreviewLines),
+    [previewLines, maxPreviewLines]
+  )
 
+  const previewHeight = Math.max(visiblePreviewLines.length, 1) * PREVIEW_LINE_HEIGHT
+  const showTopFade = previewLines.length > maxPreviewLines
+
+  if (streamingPreviewOnly && !isThinking) return null
   if (!content && !(forceVisible && isThinking)) return null
 
-  const showCollapsedPreview = !isOpen && previewLines.length > 0
-  const hasBody = Boolean(content) || (forceVisible && isThinking)
-  const bodyExpanded = isOpen || showCollapsedPreview
+  const showCollapsedPreview = isThinking && !isOpen && visiblePreviewLines.length > 0
+  const showExpandedBody = isOpen && (Boolean(content) || (forceVisible && isThinking))
 
   return (
     <View
@@ -146,33 +185,37 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
         </Animated.View>
       </TouchableOpacity>
 
-      {hasBody && (
-        <CollapsibleHeight expanded={bodyExpanded} animation="ease" durationMs={300}>
+      {showCollapsedPreview ? (
+        <View style={[styles.previewBody, { borderTopColor: colors.borderSubtle }]}>
+          <View style={[styles.previewContainer, { height: previewHeight }]}>
+            <View style={styles.previewLinesColumn}>
+              {visiblePreviewLines.map((line, index) => (
+                <Text
+                  key={`${index}-${line.slice(0, 16)}-${line.length}`}
+                  style={[styles.previewLine, { color: colors.textTertiary }]}
+                  numberOfLines={1}
+                >
+                  {line}
+                </Text>
+              ))}
+            </View>
+            {showTopFade ? (
+              <View
+                style={[styles.previewFade, { backgroundColor: colors.bgSurface }]}
+                pointerEvents="none"
+              />
+            ) : null}
+          </View>
+        </View>
+      ) : null}
+
+      {showExpandedBody ? (
+        <CollapsibleHeight expanded animation="ease" durationMs={300}>
           <View style={[styles.body, { borderTopColor: colors.borderSubtle }]}>
-            {showCollapsedPreview ? (
-              <View style={[styles.previewContainer, { height: previewHeight }]}>
-                <View style={styles.previewScroll}>
-                  {previewLines.slice(-MAX_PREVIEW_LINES).map((line, index) => (
-                    <Text
-                      key={`${index}-${line.slice(0, 12)}`}
-                      style={[styles.previewLine, { color: colors.textTertiary }]}
-                      numberOfLines={1}
-                    >
-                      {line}
-                    </Text>
-                  ))}
-                </View>
-                <View
-                  style={[styles.previewFade, { backgroundColor: colors.bgSurface }]}
-                  pointerEvents="none"
-                />
-              </View>
-            ) : (
-              <MarkdownRenderer content={content} variant="ancillary" />
-            )}
+            <MarkdownRenderer content={content} variant="ancillary" />
           </View>
         </CollapsibleHeight>
-      )}
+      ) : null}
     </View>
   )
 }
@@ -206,6 +249,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     lineHeight: 19
   },
+  previewBody: {
+    paddingHorizontal: 14,
+    paddingTop: 4,
+    paddingBottom: 6,
+    borderTopWidth: StyleSheet.hairlineWidth
+  },
   body: {
     paddingHorizontal: 14,
     paddingTop: 10,
@@ -214,23 +263,23 @@ const styles = StyleSheet.create({
   },
   previewContainer: {
     overflow: 'hidden',
-    position: 'relative'
+    position: 'relative',
+    width: '100%'
   },
-  previewScroll: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    paddingBottom: 2
+  previewLinesColumn: {
+    justifyContent: 'flex-start'
   },
   previewLine: {
     fontSize: 11,
-    lineHeight: PREVIEW_LINE_HEIGHT
+    lineHeight: PREVIEW_LINE_HEIGHT,
+    opacity: 0.68
   },
   previewFade: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: '60%',
-    opacity: 0.85
+    height: 8,
+    opacity: 0.38
   }
 })

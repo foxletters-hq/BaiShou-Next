@@ -119,7 +119,7 @@ export class StreamAccumulator {
       }
 
       case 'tool-call': {
-        const toolName = String(p.toolName ?? '').trim()
+        const toolName = String(p.toolName ?? p.name ?? '').trim()
         if (p.toolCallId && toolName) {
           const legacyArgs =
             p.args ?? (p.providerMetadata as Record<string, unknown> | undefined)?.raw

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatRecallDiaryDate, formatRecallTimestamp } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
@@ -9,30 +9,11 @@ export function useAgentUI() {
   const { services } = useBaishou()
 
   const [showCostDialog, setShowCostDialog] = useState(false)
-  const [showScrollButton, setShowScrollButton] = useState(false)
   const [showShortcutSheet, setShowShortcutSheet] = useState(false)
   const [showRecallSheet, setShowRecallSheet] = useState(false)
   const [recallItems, setRecallItems] = useState<RecallItem[]>([])
   const [isSearchingRecall, setIsSearchingRecall] = useState(false)
   const [recallSearchMode, setRecallSearchMode] = useState<'semantic' | 'text'>('semantic')
-  const isUserScrollingRef = useRef(false)
-
-  const handleScroll = useCallback((event: any) => {
-    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent
-    const isAtBottom = contentSize.height - contentOffset.y - layoutMeasurement.height < 150
-    isUserScrollingRef.current = !isAtBottom
-    setShowScrollButton(!isAtBottom)
-  }, [])
-
-  const scrollToBottom = useCallback((flatListRef: any, force = false, animated = true) => {
-    if (flatListRef.current && (!isUserScrollingRef.current || force)) {
-      flatListRef.current.scrollToEnd({ animated })
-      if (force) {
-        setShowScrollButton(false)
-        isUserScrollingRef.current = false
-      }
-    }
-  }, [])
 
   const handleRecallSearch = useCallback(
     async (query: string, tab: 'diary' | 'memory', mode?: 'semantic' | 'text') => {
@@ -100,17 +81,13 @@ export function useAgentUI() {
 
   return {
     showCostDialog,
-    showScrollButton,
     showShortcutSheet,
     showRecallSheet,
     recallItems,
     isSearchingRecall,
     setShowCostDialog,
-    setShowScrollButton,
     setShowShortcutSheet,
     setShowRecallSheet,
-    handleScroll,
-    scrollToBottom,
     handleRecallSearch,
     handleInjectRecall,
     recallSearchMode,
