@@ -1,4 +1,15 @@
 import { z } from 'zod'
+import type {
+  AgentDialogueSelectionState,
+  AgentDialogueSelectionSwitchEvent,
+  DialogueModelSelectionSource
+} from '../utils/agent-dialogue-model.util'
+
+export type {
+  AgentDialogueSelectionState,
+  AgentDialogueSelectionSwitchEvent,
+  DialogueModelSelectionSource
+}
 
 export const AgentSessionKindSchema = z.enum(['companion', 'workspace'])
 
@@ -19,6 +30,10 @@ export type WorkspaceSessionMetadata = z.infer<typeof WorkspaceSessionMetadataSc
 export interface AgentSessionMetadata {
   sessionKind?: AgentSessionKind
   workspace?: WorkspaceSessionMetadata
+  /** 当前伙伴与模型选择及来源（工作区/Agent 会话 UI 与流式发送对齐） */
+  selection?: AgentDialogueSelectionState
+  /** 最近一次助手/模型切换记录（轻量，可选） */
+  lastSelectionSwitch?: AgentDialogueSelectionSwitchEvent
 }
 
 export interface AgentWorkspaceDirEntry {
@@ -54,4 +69,19 @@ export interface AgentWorkspaceSessionListItem {
   folderRoot: string
   folderDisplayName: string
   updatedAt: string
+}
+
+/** Agent 页左侧工作区条目（本地文件夹 + 可自定义方形图标） */
+export interface AgentWorkspaceEntry {
+  id: string
+  folderRoot: string
+  displayName: string
+  avatarPath?: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AgentWorkspaceEntryUpdate {
+  displayName?: string
+  avatarPath?: string | null
 }
