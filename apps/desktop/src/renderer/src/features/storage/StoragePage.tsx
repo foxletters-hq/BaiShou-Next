@@ -14,8 +14,9 @@ export const StoragePage: React.FC = () => {
       <DataManagementCard
         onExportZip={async () => {
           if (typeof window !== 'undefined' && window.electron) {
-            await window.electron.ipcRenderer.invoke('archive:export', i18n.language)
+            return window.electron.ipcRenderer.invoke('archive:export', i18n.language)
           }
+          return null
         }}
         onPickFile={async () => {
           if (typeof window !== 'undefined' && window.electron) {

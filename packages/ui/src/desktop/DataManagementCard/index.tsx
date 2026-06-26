@@ -11,9 +11,10 @@ import { useToast } from '../Toast/useToast'
 import '../shared/SettingsListTile.css'
 import { SettingsExpansionTile } from '../shared/SettingsExpansionTile'
 import { RestoreBlockingOverlay } from '../RestoreBlockingOverlay'
+import { formatExportErrorMessage } from '../archive-export.util'
 
 export interface DataManagementCardProps {
-  onExportZip?: () => Promise<void>
+  onExportZip?: () => Promise<string | null | undefined>
   onImportZip?: (filePath: string) => Promise<void>
   onExport?: () => void
   onImport?: () => Promise<void>
@@ -58,7 +59,19 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
   const handleExport = async () => {
     setIsExporting(true)
     try {
-      await onExportZip()
+      const filePath = await onExportZip?.()
+      if (filePath) {
+        toast.showSuccess(
+          t('settings.export_success_desc', {
+            defaultValue: '备份 ZIP 文件已保存在:\n{{path}}',
+            path: filePath
+          })
+        )
+      }
+    } catch (e: unknown) {
+      toast.showError(
+        t('settings.export_failed', { error: formatExportErrorMessage(e, t) })
+      )
     } finally {
       setIsExporting(false)
     }
@@ -93,10 +106,17 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
   return (
     <>
       <RestoreBlockingOverlay
-        visible={isImporting}
+        visible={isImporting || isExporting}
         hint={
-          importProgressDetail ??
-          t('settings.restoring_data_hint', '请勿关闭应用或进行其他操作，恢复完成后将自动刷新')
+          isExporting
+            ? t('settings.exporting_data', '正在导出数据...')
+            : importProgressDetail ??
+              t('settings.restoring_data_hint', '请勿关闭应用或进行其他操作，恢复完成后将自动刷新')
+        }
+        message={
+          isExporting
+            ? t('settings.exporting_data', '正在导出数据...')
+            : undefined
         }
       />
       {flat ? (

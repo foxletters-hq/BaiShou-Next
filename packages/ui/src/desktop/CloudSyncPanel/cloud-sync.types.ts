@@ -46,7 +46,7 @@ export interface CloudSyncPanelProps {
   onDeleteSnapshot?: (filename: string) => Promise<boolean>
   onBatchDeleteSnapshots?: (filenames: string[]) => Promise<number>
   onRenameSnapshot?: (oldName: string, newName: string) => Promise<boolean>
-  onExportZip?: () => Promise<void>
+  onExportZip?: () => Promise<string | null | undefined>
   onImportZip?: (filePath: string) => Promise<void>
   onPickArchiveFile?: () => Promise<string | null>
   onImportProgress?: (callback: (detail: string) => void) => () => void

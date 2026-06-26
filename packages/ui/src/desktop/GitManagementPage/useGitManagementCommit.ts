@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import type { TFunction } from 'i18next'
+import { isDiskFullError } from '@baishou/shared'
 import type { GitManagementPageProps } from './git-management.types'
 import type { FileChange, FileDiff } from '@baishou/shared'
 
@@ -33,6 +34,20 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
   } = params
 
   const performCommit = useCallback(async (msg: string) => onCommitAll(msg), [onCommitAll])
+
+  const formatGitErrorMessage = useCallback(
+    (error: unknown) => {
+      const message = (error as { message?: string })?.message || ''
+      if (isDiskFullError(message)) {
+        return t(
+          'settings.error_disk_full',
+          '磁盘空间不足，请清理空间后重试。Git 同步与数据导出都需要足够的可用磁盘空间。'
+        )
+      }
+      return message
+    },
+    [t]
+  )
 
   const isAuthorNotConfiguredError = useCallback((error: unknown) => {
     const e = error as { name?: string; message?: string; cause?: { message?: string } }
@@ -109,7 +124,7 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
       } else if (isAuthorNotConfiguredError(e)) {
         notifyAuthorNotConfigured()
       } else {
-        onToast(errorMsg || t('version_control.git_commit_failed', '提交失败'), 'error')
+        onToast(formatGitErrorMessage(e) || t('version_control.git_commit_failed', '提交失败'), 'error')
       }
     }
   }, [
@@ -118,6 +133,7 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
     notifyCommitOutcome,
     isAuthorNotConfiguredError,
     notifyAuthorNotConfigured,
+    formatGitErrorMessage,
     onToast,
     t,
     handleRefreshStatus,
@@ -148,7 +164,12 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
       onToast(
         pushResult.success
           ? t('version_control.push_success', '推送成功')
-          : pushResult.message || t('version_control.git_push_failed', '推送失败'),
+          : isDiskFullError(pushResult.message || '')
+            ? t(
+                'settings.error_disk_full',
+                '磁盘空间不足，请清理空间后重试。Git 同步与数据导出都需要足够的可用磁盘空间。'
+              )
+            : pushResult.message || t('version_control.git_push_failed', '推送失败'),
         pushResult.success ? 'success' : 'error'
       )
     } catch (e: any) {
@@ -158,7 +179,7 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
       } else if (isAuthorNotConfiguredError(e)) {
         notifyAuthorNotConfigured()
       } else {
-        onToast(e?.message || t('version_control.git_commit_failed', '提交失败'), 'error')
+        onToast(formatGitErrorMessage(e) || t('version_control.git_commit_failed', '提交失败'), 'error')
       }
     }
   }, [
@@ -167,6 +188,7 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
     notifyCommitOutcome,
     isAuthorNotConfiguredError,
     notifyAuthorNotConfigured,
+    formatGitErrorMessage,
     onPush,
     onToast,
     t,

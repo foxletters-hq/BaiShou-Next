@@ -4,6 +4,7 @@ import { Download, Loader2, Upload } from 'lucide-react'
 import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
 import { RestoreBlockingOverlay } from '../RestoreBlockingOverlay'
+import { formatExportErrorMessage } from '../archive-export.util'
 import panelStyles from './LocalArchiveBackupPanel.module.css'
 import styles from './CloudSyncPanel.module.css'
 
@@ -21,7 +22,7 @@ function formatImportProgressDetail(detail: string): string {
 }
 
 export interface LocalArchiveBackupPanelProps {
-  onExportZip: () => Promise<void>
+  onExportZip: () => Promise<string | null | undefined>
   onImportZip: (filePath: string) => Promise<void>
   onPickFile: () => Promise<string | null>
   onImportProgress?: (callback: (detail: string) => void) => () => void
@@ -48,7 +49,19 @@ export const LocalArchiveBackupPanel: React.FC<LocalArchiveBackupPanelProps> = (
   const handleExport = async () => {
     setIsExporting(true)
     try {
-      await onExportZip()
+      const filePath = await onExportZip()
+      if (filePath) {
+        toast.showSuccess(
+          t('settings.export_success_desc', {
+            defaultValue: '备份 ZIP 文件已保存在:\n{{path}}',
+            path: filePath
+          })
+        )
+      }
+    } catch (e: unknown) {
+      toast.showError(
+        t('settings.export_failed', { error: formatExportErrorMessage(e, t) })
+      )
     } finally {
       setIsExporting(false)
     }
@@ -85,10 +98,17 @@ export const LocalArchiveBackupPanel: React.FC<LocalArchiveBackupPanelProps> = (
   return (
     <>
       <RestoreBlockingOverlay
-        visible={isImporting}
+        visible={isImporting || isExporting}
         hint={
-          importProgressDetail ??
-          t('settings.restoring_data_hint', '请勿关闭应用或进行其他操作，恢复完成后将自动刷新')
+          isExporting
+            ? t('settings.exporting_data', '正在导出数据...')
+            : importProgressDetail ??
+              t('settings.restoring_data_hint', '请勿关闭应用或进行其他操作，恢复完成后将自动刷新')
+        }
+        message={
+          isExporting
+            ? t('settings.exporting_data', '正在导出数据...')
+            : undefined
         }
       />
       <div className={panelStyles.panel}>

@@ -10,6 +10,7 @@ export * from './import/legacy-import.service'
 
 export * from './sync/git-sync.interface'
 export * from './sync/git-sync.service'
+export * from './sync/storage-write-probe.cleanup'
 export * from './sync/git-binary.registry'
 export * from './sync/incremental-sync.interface'
 export * from './sync/version-manager.interface'
@@ -21,6 +22,8 @@ export * from './sync/operation-log.interface'
 export * from './sync/operation-log.service'
 export * from './sync/three-way-merge'
 export * from './sync/three-way-sync.service'
+
+export * from './archive/zip-export-scan.util'
 
 export { createNodeFileSystem } from './fs/create-node-file-system'
 export { NodeFileSystem } from './fs/node-file-system'

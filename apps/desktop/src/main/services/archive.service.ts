@@ -3,8 +3,10 @@ import {
   translateMain,
   resetIncrementalSyncMetaAfterFullRestore,
   logger,
+  isPathInsideStorageRoot,
   type UserProfile
 } from '@baishou/shared'
+import { assertArchiveExportOutputPathSafe, estimateArchiveExportSize } from '@baishou/core-desktop'
 import * as path from 'path'
 import * as fs from 'fs'
 import * as fsp from 'fs/promises'
@@ -50,6 +52,40 @@ function broadcastArchiveImportProgress(detail: string): void {
   }
 }
 
+function formatExportBytes(bytes: number): string {
+  if (bytes <= 0) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
+  const value = bytes / 1024 ** index
+  return `${value.toFixed(index === 0 ? 0 : 2)} ${units[index]}`
+}
+
+function resolveDefaultExportSavePath(defaultName: string, storageRoot: string): string {
+  const candidates = [
+    app.getPath('desktop'),
+    app.getPath('documents'),
+    app.getPath('downloads'),
+    app.getPath('temp')
+  ]
+  for (const dir of candidates) {
+    if (!isPathInsideStorageRoot(dir, storageRoot)) {
+      return path.join(dir, defaultName)
+    }
+  }
+  return path.join(app.getPath('temp'), defaultName)
+}
+
+function formatArchiveExportPathError(locale: string | undefined, code: string): string {
+  if (code === 'ARCHIVE_EXPORT_OUTPUT_INSIDE_STORAGE') {
+    return translateMain(
+      locale,
+      'settings.archive_export_inside_storage',
+      '不能将备份保存到白守的数据存储目录内，否则会把正在生成的 ZIP 再次打包进去。请选择桌面、文档等外部位置。'
+    )
+  }
+  return code
+}
+
 export class DesktopArchiveService implements IArchiveService {
   private readonly fileSystem = createNodeFileSystem()
 
@@ -69,6 +105,8 @@ export class DesktopArchiveService implements IArchiveService {
     const dt = new Date()
     const ts = `${dt.getFullYear()}${(dt.getMonth() + 1).toString().padStart(2, '0')}${dt.getDate().toString().padStart(2, '0')}_${dt.getHours().toString().padStart(2, '0')}${dt.getMinutes().toString().padStart(2, '0')}`
     const defaultName = `BaiShou_Vault_Backup_${ts}.zip`
+    const rootDir = await this.pathService.getRootDirectory()
+    const defaultSavePath = resolveDefaultExportSavePath(defaultName, rootDir)
 
     const { canceled, filePath } = await dialog.showSaveDialog((parentWindow || undefined) as any, {
       title: translateMain(
@@ -76,7 +114,7 @@ export class DesktopArchiveService implements IArchiveService {
         'settings.archive_export_save_title',
         'Export BaiShou data backup'
       ),
-      defaultPath: defaultName,
+      defaultPath: defaultSavePath,
       filters: [
         {
           name: translateMain(locale, 'settings.archive_zip_filter_name', 'ZIP Archives'),
@@ -87,8 +125,53 @@ export class DesktopArchiveService implements IArchiveService {
 
     if (canceled || !filePath) return null
 
-    await new ZipExporter(this.pathService).exportToPath(filePath)
-    return filePath
+    try {
+      assertArchiveExportOutputPathSafe(filePath, rootDir)
+    } catch (e: unknown) {
+      const code = e instanceof Error ? e.message : String(e)
+      throw new Error(formatArchiveExportPathError(locale, code))
+    }
+
+    const estimate = await estimateArchiveExportSize(rootDir, filePath)
+    logger.info(
+      `[ArchiveService] Export scope: ${estimate.fileCount} files, ${formatExportBytes(estimate.totalBytes)} from ${estimate.rootDir}`
+    )
+
+    const warnThresholdBytes = 500 * 1024 * 1024
+    if (estimate.totalBytes > warnThresholdBytes) {
+      const sizeLabel = formatExportBytes(estimate.totalBytes)
+      const { response } = await dialog.showMessageBox((parentWindow || undefined) as any, {
+        type: 'warning',
+        title: translateMain(locale, 'settings.archive_export_large_title', '导出体积异常'),
+        message: translateMain(
+          locale,
+          'settings.archive_export_large_message',
+          `即将打包约 ${sizeLabel}（${estimate.fileCount} 个文件），是否继续？`
+        ),
+        detail: translateMain(
+          locale,
+          'settings.archive_export_large_detail',
+          `数据来源：${estimate.rootDir}\n\n若远大于你在白守里看到的数据量，请取消并在设置中检查存储根目录是否指向了过大的文件夹。`
+        ),
+        buttons: [
+          translateMain(locale, 'settings.archive_export_large_continue', '继续导出'),
+          translateMain(locale, 'common.cancel', '取消')
+        ],
+        defaultId: 1,
+        cancelId: 1
+      })
+      if (response !== 0) return null
+    }
+
+    try {
+      await new ZipExporter(this.pathService).exportToPath(filePath)
+      return filePath
+    } catch (e: unknown) {
+      await fsp.unlink(filePath).catch(() => {})
+      const msg = e instanceof Error ? e.message : String(e)
+      logger.error('[ArchiveService] Export failed:', msg)
+      throw e instanceof Error ? e : new Error(msg)
+    }
   }
 
   public async createSnapshot(): Promise<string | null> {

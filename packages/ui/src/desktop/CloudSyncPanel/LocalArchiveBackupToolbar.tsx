@@ -5,10 +5,11 @@ import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
 import { Tooltip } from '../Tooltip/Tooltip'
 import { RestoreBlockingOverlay } from '../RestoreBlockingOverlay'
+import { formatExportErrorMessage } from '../archive-export.util'
 import styles from './CloudSyncPanel.module.css'
 
 export interface LocalArchiveBackupToolbarProps {
-  onExportZip: () => Promise<void>
+  onExportZip: () => Promise<string | null | undefined>
   onImportZip: (filePath: string) => Promise<void>
   onPickFile: () => Promise<string | null>
 }
@@ -27,7 +28,19 @@ export const LocalArchiveBackupToolbar: React.FC<LocalArchiveBackupToolbarProps>
   const handleExport = async () => {
     setIsExporting(true)
     try {
-      await onExportZip()
+      const filePath = await onExportZip()
+      if (filePath) {
+        toast.showSuccess(
+          t('settings.export_success_desc', {
+            defaultValue: '备份 ZIP 文件已保存在:\n{{path}}',
+            path: filePath
+          })
+        )
+      }
+    } catch (e: unknown) {
+      toast.showError(
+        t('settings.export_failed', { error: formatExportErrorMessage(e, t) })
+      )
     } finally {
       setIsExporting(false)
     }
@@ -61,7 +74,14 @@ export const LocalArchiveBackupToolbar: React.FC<LocalArchiveBackupToolbarProps>
 
   return (
     <>
-      <RestoreBlockingOverlay visible={isImporting} />
+      <RestoreBlockingOverlay
+        visible={isImporting || isExporting}
+        message={
+          isExporting
+            ? t('settings.exporting_data', '正在导出数据...')
+            : undefined
+        }
+      />
       <div className={styles.localArchiveToolbar}>
         <span className={styles.localArchiveLabel}>
           {t('settings.local_archive_backup', '本地全量备份')}
