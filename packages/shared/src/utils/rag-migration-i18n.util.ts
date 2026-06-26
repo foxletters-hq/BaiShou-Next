@@ -32,7 +32,9 @@ const MIGRATION_STATUS_DEFAULTS: Record<RagMigrationStatusKey, string> = {
   [RAG_MIGRATION_STATUS.abortedConsecutiveFailures]:
     'Migration stopped after {{limit}} consecutive failures. Previous data and embedding model have been restored.',
   [RAG_MIGRATION_STATUS.cancelled]:
-    'Migration cancelled. Previous data and embedding model have been restored.'
+    'Migration cancelled. Previous data and embedding model have been restored.',
+  [RAG_MIGRATION_STATUS.backupLost]:
+    'Migration backup table is missing. Start a new embedding migration; if a rollback snapshot exists, try Restore migration backup in settings.'
 }
 
 export function resolveMigrationStatusText(

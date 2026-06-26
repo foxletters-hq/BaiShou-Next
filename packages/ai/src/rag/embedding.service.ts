@@ -16,7 +16,8 @@ import {
   type EmbeddingMigrationDeps,
   type MigrationLifecycle
 } from './embedding-migration'
-import { migrationControl, type MigrationControl } from './migration-control'
+import { migrationControl, type MigrationControl, MigrationAbortError, abortableDelay } from './migration-control'
+import { withEmbeddingSlot } from './embedding-concurrency'
 import type { EmbeddingMigrationRollbackConfig } from '@baishou/shared'
 
 /** Migration path uses createMigrationBackup, clearAndReinitEmbeddings, doReEmbedFromBackup (embedding-migration.ts). */
@@ -193,6 +194,8 @@ export class EmbeddingService {
       }
 
       const chunks = this.splitIntoChunks(params.text)
+      // 批量路径（skipIndexPrep）不再叠加分块并发，避免「日记并发 × 分块并发」把主进程/API 打满。
+      const chunkParallel = params.skipIndexPrep ? 1 : 3
 
       const futures: Promise<void>[] = []
 
@@ -201,29 +204,31 @@ export class EmbeddingService {
           ? `${params.chunkPrefix}${chunk.text}`
           : chunk.text
 
-        const future = this.retryEmbed(async () => {
-          const { embedding } = await embed({
-            model: aiModel,
-            value: embeddingInput
-          })
+        const future = withEmbeddingSlot(() =>
+          this.retryEmbed(async () => {
+            const { embedding } = await embed({
+              model: aiModel,
+              value: embeddingInput
+            })
 
-          await this.db.insertEmbedding({
-            id: uuidv4(),
-            sourceType: params.sourceType,
-            sourceId: params.sourceId,
-            groupId: params.groupId,
-            chunkIndex: chunk.index,
-            chunkText: embeddingInput,
-            metadataJson: params.metadataJson || '{}',
-            embedding: this.normalize(embedding),
-            modelId,
-            sourceCreatedAt: params.sourceCreatedAt
-          })
-        }, `embedText chunk ${chunk.index}`)
+            await this.db.insertEmbedding({
+              id: uuidv4(),
+              sourceType: params.sourceType,
+              sourceId: params.sourceId,
+              groupId: params.groupId,
+              chunkIndex: chunk.index,
+              chunkText: embeddingInput,
+              metadataJson: params.metadataJson || '{}',
+              embedding: this.normalize(embedding),
+              modelId,
+              sourceCreatedAt: params.sourceCreatedAt
+            })
+          }, `embedText chunk ${chunk.index}`)
+        )
 
         futures.push(future)
 
-        if (futures.length >= 3) {
+        if (futures.length >= chunkParallel) {
           await Promise.all(futures)
           futures.length = 0
         }
@@ -334,17 +339,24 @@ export class EmbeddingService {
     maxAttempts = 3
   ): Promise<void> {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      if (migrationControl.isAborted) {
+        throw new MigrationAbortError()
+      }
       try {
         await action()
         return
       } catch (error) {
+        if (error instanceof MigrationAbortError) throw error
+        if (migrationControl.isAborted) {
+          throw new MigrationAbortError()
+        }
         if (attempt < maxAttempts) {
           const delayMs = attempt * 1000
           logger.warn(
             `${label} fallback (attempt ${attempt}/${maxAttempts}), retrying in ${delayMs}ms:`,
             { error }
           )
-          await new Promise((r) => setTimeout(r, delayMs))
+          await abortableDelay(delayMs, migrationControl)
         } else {
           logger.error(`${label} failed completely:`, { error })
           throw error

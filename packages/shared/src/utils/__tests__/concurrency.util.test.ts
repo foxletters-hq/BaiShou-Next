@@ -5,10 +5,10 @@ import {
 } from '../concurrency.util'
 
 describe('resolveBatchEmbedConcurrency', () => {
-  it('defaults invalid values to 20', () => {
-    expect(resolveBatchEmbedConcurrency(undefined)).toBe(20)
-    expect(resolveBatchEmbedConcurrency('')).toBe(20)
-    expect(resolveBatchEmbedConcurrency(NaN)).toBe(20)
+  it('defaults invalid values to 3', () => {
+    expect(resolveBatchEmbedConcurrency(undefined)).toBe(3)
+    expect(resolveBatchEmbedConcurrency('')).toBe(3)
+    expect(resolveBatchEmbedConcurrency(NaN)).toBe(3)
   })
 
   it('clamps to 1–20', () => {

@@ -108,6 +108,8 @@ export interface IEmbeddingStorage {
 
   // --- 迁移用的 ---
   hasPendingMigration(): Promise<boolean>
+  hasMigrationBackupTable(): Promise<boolean>
+  hasMigrationRollbackTable(): Promise<boolean>
   countHeterogeneousEmbeddings(currentModelId: string): Promise<number>
   createMigrationBackup(): Promise<number>
   dropMigrationBackup(): Promise<void>

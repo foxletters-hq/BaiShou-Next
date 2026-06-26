@@ -8,7 +8,7 @@ import {
 } from '@baishou/shared'
 import type { IEmbeddingConfig, IEmbeddingStorage, MigrationProgress } from './embedding.types'
 import { normalizeEmbeddingVector } from './embedding-chunk'
-import { MigrationControl, MIGRATION_CONSECUTIVE_FAILURE_LIMIT } from './migration-control'
+import { MigrationControl, MigrationAbortError, MIGRATION_CONSECUTIVE_FAILURE_LIMIT } from './migration-control'
 
 export type EmbeddingMigrationDeps = {
   config: IEmbeddingConfig
@@ -27,6 +27,34 @@ export type MigrationLifecycle = {
 }
 
 type BackupChunkRow = Record<string, unknown>
+
+const BACKUP_TABLE_MISSING = 'migration_backup_table_missing'
+
+function getAbortGenerator(
+  deps: EmbeddingMigrationDeps,
+  control: MigrationControl,
+  total: number,
+  completed: number,
+  failed: number
+): AsyncGenerator<MigrationProgress, void, unknown> | null {
+  if (!control.isAborted) return null
+  return abortMigration(deps, total, completed, failed, RAG_MIGRATION_STATUS.cancelled)
+}
+
+function isMigrationAbortError(error: unknown): boolean {
+  return error instanceof MigrationAbortError
+}
+
+function isBackupTableMissingError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false
+  if (error.message === BACKUP_TABLE_MISSING) return true
+  if (error.message.includes(BACKUP_TABLE_MISSING)) return true
+  const cause = (error as { cause?: unknown }).cause
+  if (cause instanceof Error && cause.message.includes('no such table: memory_embeddings_backup')) {
+    return true
+  }
+  return error.message.includes('no such table: memory_embeddings_backup')
+}
 
 function normalizeBackupChunk(chunk: BackupChunkRow) {
   return assertMigrationBackupRow(mapMigrationBackupRow(chunk))
@@ -81,6 +109,11 @@ export async function* migrateEmbeddings(
 
     yield { total: 0, completed: 0, statusKey: RAG_MIGRATION_STATUS.backingUp }
     const rollbackCount = await deps.db.createRollbackSnapshot()
+    const earlyAbort = getAbortGenerator(deps, control, 0, 0, 0)
+    if (earlyAbort) {
+      yield* earlyAbort
+      return
+    }
     if (rollbackCount === 0) {
       await deps.db.dropRollbackSnapshot()
       await deps.lifecycle?.markIdle()
@@ -89,6 +122,11 @@ export async function* migrateEmbeddings(
     }
 
     const total = await deps.db.createMigrationBackup()
+    const backupAbort = getAbortGenerator(deps, control, total, 0, 0)
+    if (backupAbort) {
+      yield* backupAbort
+      return
+    }
     if (total === 0) {
       await deps.db.dropMigrationBackup()
       await deps.db.dropRollbackSnapshot()
@@ -100,6 +138,11 @@ export async function* migrateEmbeddings(
     await deps.lifecycle?.markInProgress(deps.rollbackConfig)
 
     yield { total, completed: 0, statusKey: RAG_MIGRATION_STATUS.detectingDimension }
+    const dimAbort = getAbortGenerator(deps, control, total, 0, 0)
+    if (dimAbort) {
+      yield* dimAbort
+      return
+    }
     let newDimension = 0
     try {
       const { embedding } = await embed({ model: clientModel, value: 'hi' })
@@ -134,6 +177,12 @@ export async function* migrateEmbeddings(
 
     await deps.db.clearAndReinitEmbeddings(newDimension)
     await deps.config.setGlobalEmbeddingDimension(newDimension)
+
+    const reembedAbort = getAbortGenerator(deps, control, total, 0, 0)
+    if (reembedAbort) {
+      yield* reembedAbort
+      return
+    }
 
     yield* reEmbedFromBackup(deps, clientModel, modelId, total, control)
   } finally {
@@ -187,7 +236,26 @@ export async function* continueMigration(
     }
 
     const clientModel = provider.getEmbeddingModel(modelId)
-    const remaining = await deps.db.getUnmigratedCount()
+    const hasBackup = await deps.db.hasMigrationBackupTable()
+    const remaining = hasBackup ? await deps.db.getUnmigratedCount() : 0
+
+    if (!hasBackup) {
+      if (await deps.db.hasMigrationRollbackTable()) {
+        logger.error('[EmbeddingMigration] Resume requested but backup table is missing')
+        await deps.lifecycle?.markInterrupted()
+        yield {
+          total: remaining,
+          completed: 0,
+          statusKey: RAG_MIGRATION_STATUS.backupLost,
+          statusParams: { remaining }
+        }
+        return
+      }
+      await deps.db.dropRollbackSnapshot()
+      await deps.lifecycle?.markCompleted()
+      yield { total: 0, completed: 0, statusKey: RAG_MIGRATION_STATUS.finished }
+      return
+    }
 
     if (remaining === 0) {
       await deps.db.dropMigrationBackup()
@@ -221,15 +289,26 @@ async function* abortMigration(
   }
 
   try {
-    await deps.db.restoreRollbackSnapshot()
-    if (deps.rollbackConfig && deps.config.restoreEmbeddingModelConfig) {
-      await deps.config.restoreEmbeddingModelConfig(deps.rollbackConfig)
+    const hasRollback = await deps.db.hasMigrationRollbackTable()
+    if (hasRollback) {
+      await deps.db.restoreRollbackSnapshot()
+      if (deps.rollbackConfig && deps.config.restoreEmbeddingModelConfig) {
+        await deps.config.restoreEmbeddingModelConfig(deps.rollbackConfig)
+      }
+    } else {
+      logger.warn(
+        '[EmbeddingMigration] Rollback snapshot missing during abort; skipping vector restore'
+      )
     }
-    await deps.db.dropMigrationBackup()
-    await deps.db.dropRollbackSnapshot()
+
+    if (await deps.db.hasMigrationBackupTable()) {
+      await deps.db.dropMigrationBackup()
+    }
+    if (await deps.db.hasMigrationRollbackTable()) {
+      await deps.db.dropRollbackSnapshot()
+    }
   } catch (e) {
     logger.error('Failed to restore embedding migration rollback snapshot', { error: e })
-    throw e
   }
 
   await deps.lifecycle?.markIdle()
@@ -261,6 +340,19 @@ async function* reEmbedFromBackup(
   while (true) {
     if (control.isAborted) {
       yield* abortMigration(deps, total, completed, failed, RAG_MIGRATION_STATUS.cancelled)
+      return
+    }
+
+    if (!(await deps.db.hasMigrationBackupTable())) {
+      logger.error('[EmbeddingMigration] Backup table disappeared during re-embedding')
+      await deps.lifecycle?.markInterrupted()
+      yield {
+        total,
+        completed,
+        failed,
+        statusKey: RAG_MIGRATION_STATUS.backupLost,
+        statusParams: { completed, total }
+      }
       return
     }
 
@@ -314,15 +406,34 @@ async function* reEmbedFromBackup(
             modelId,
             sourceCreatedAt: chunk.sourceCreatedAt
           })
-
-          await deps.db.markBackupChunkMigrated(chunk.embeddingId)
         }, `migrate chunk ${chunk.embeddingId}`)
+
+        if (!(await deps.db.hasMigrationBackupTable())) {
+          throw new Error(BACKUP_TABLE_MISSING)
+        }
+        await deps.db.markBackupChunkMigrated(chunk.embeddingId)
         completed++
         consecutiveFailures = 0
       } catch (e) {
+        if (isMigrationAbortError(e) || control.isAborted) {
+          yield* abortMigration(deps, total, completed, failed, RAG_MIGRATION_STATUS.cancelled)
+          return
+        }
         failed++
         consecutiveFailures++
         logger.error(`Migration failed for chunk ${chunk.embeddingId}`, { error: e })
+        if (isBackupTableMissingError(e)) {
+          yield buildProgressState(total, completed, failed)
+          await deps.lifecycle?.markInterrupted()
+          yield {
+            total,
+            completed,
+            failed,
+            statusKey: RAG_MIGRATION_STATUS.backupLost,
+            statusParams: { completed, total }
+          }
+          return
+        }
         if (consecutiveFailures >= MIGRATION_CONSECUTIVE_FAILURE_LIMIT) {
           yield buildProgressState(total, completed, failed)
           yield* abortMigration(
