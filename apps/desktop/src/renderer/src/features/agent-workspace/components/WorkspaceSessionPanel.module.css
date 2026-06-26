@@ -1,0 +1,149 @@
+.panel {
+  width: 248px;
+  flex-shrink: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  overflow: hidden;
+  font-family: var(--font-family-main, inherit);
+}
+
+.header {
+  padding: 14px 14px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.workspaceName {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspacePath {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.newSessionBtn {
+  margin-top: 12px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: none;
+  border-radius: 10px;
+  background: var(--color-primary, #5ba8f5);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  padding: 9px 12px;
+  cursor: pointer;
+}
+
+.newSessionBtn:hover {
+  filter: brightness(1.04);
+}
+
+.newSessionBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.sessionList {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px;
+}
+
+.placeholder {
+  margin: 0;
+  padding: 12px 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.sessionNode {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.sessionBtn {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  text-align: left;
+  padding: 8px 10px;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-family: inherit;
+}
+
+.sessionBtn:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.sessionBtnActive {
+  border-color: var(--border-subtle);
+  background: rgba(var(--color-primary-rgb, 91, 168, 245), 0.1);
+}
+
+.sessionTitle {
+  width: 100%;
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sessionMeta {
+  width: 100%;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.sessionDeleteBtn {
+  flex-shrink: 0;
+  width: 26px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  font-family: inherit;
+  opacity: 0;
+}
+
+.sessionNode:hover .sessionDeleteBtn,
+.sessionBtnActive + .sessionDeleteBtn {
+  opacity: 1;
+}
+
+.sessionDeleteBtn:hover {
+  background: rgba(220, 38, 38, 0.08);
+  color: #dc2626;
+}
