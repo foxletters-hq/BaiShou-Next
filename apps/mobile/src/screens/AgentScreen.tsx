@@ -189,7 +189,10 @@ export const AgentScreen = () => {
 
   useEffect(() => {
     if (!drawerOpen || !dbReady || !currentAssistant?.id) return
-    void loadSessions(true, currentAssistant.id)
+    const timer = setTimeout(() => {
+      void loadSessions(true, currentAssistant.id)
+    }, 280)
+    return () => clearTimeout(timer)
   }, [drawerOpen, dbReady, currentAssistant?.id, loadSessions])
 
   useAgentNavigationPersistence({
@@ -291,6 +294,7 @@ export const AgentScreen = () => {
     keyboardInset,
     inputDockAnimatedStyle,
     scrollButtonAnimatedStyle,
+    listSpacerAnimatedStyle,
     listBottomPadding,
     handleComposerFocus,
     resetKeyboardInset
@@ -367,7 +371,7 @@ export const AgentScreen = () => {
 
   const handleInputBarFocus = useCallback(() => {
     handleComposerFocus()
-    requestAnimationFrame(() => scrollToBottom(flatListRef, true))
+    requestAnimationFrame(() => scrollToBottom(flatListRef, false))
   }, [handleComposerFocus, scrollToBottom])
 
   const handleSendWithScroll = useCallback(
@@ -380,11 +384,13 @@ export const AgentScreen = () => {
 
   useEffect(() => {
     const overlaysOpen = drawerOpen || showShortcutSheet || showRecallSheet
-    if (overlaysOpen) {
-      resetKeyboardInset()
-      inputBarRef.current?.blur()
+    if (!overlaysOpen) return
+    resetKeyboardInset()
+    inputBarRef.current?.blur()
+    const frame = requestAnimationFrame(() => {
       Keyboard.dismiss()
-    }
+    })
+    return () => cancelAnimationFrame(frame)
   }, [drawerOpen, showShortcutSheet, showRecallSheet, resetKeyboardInset])
 
   const { shortcuts, addShortcut, updateShortcut, deleteShortcut, reorderShortcuts } =
@@ -1017,7 +1023,7 @@ export const AgentScreen = () => {
                         reserveActionBarSpace={isStreamBridgeActive}
                       />
                     ) : null}
-                    <View style={{ height: listBottomPadding }} />
+                    <Animated.View style={listSpacerAnimatedStyle} />
                   </View>
                 }
                 showsVerticalScrollIndicator={false}
