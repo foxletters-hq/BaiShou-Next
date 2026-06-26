@@ -1,6 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdChevronRight, MdDifference } from 'react-icons/md'
+import { MdChevronRight } from 'react-icons/md'
 import type { WorkspaceChangeEntry } from '@baishou/shared'
 import { FileChangeDiff, formatFileChangeStats, fileChangeKindLabel } from '@baishou/ui'
 import styles from './WorkspaceChangesPanel.module.css'
@@ -8,7 +8,7 @@ import styles from './WorkspaceChangesPanel.module.css'
 export interface WorkspaceChangesPanelProps {
   changes: WorkspaceChangeEntry[]
   selectedChangeId: string | null
-  onSelectChange: (changeId: string) => void
+  onSelectChange: (changeId: string | null) => void
   collapsed: boolean
   onToggleCollapsed: () => void
   className?: string
@@ -23,19 +23,9 @@ export const WorkspaceChangesPanel: React.FC<WorkspaceChangesPanelProps> = ({
   className
 }) => {
   const { t } = useTranslation()
-  const selectedChange = changes.find((c) => c.id === selectedChangeId) ?? null
 
   if (collapsed) {
-    return (
-      <button
-        type="button"
-        className={`${styles.collapsedRail} ${className ?? ''}`}
-        onClick={onToggleCollapsed}
-        title={t('agent_workspace.expand_changes_panel', '展开变更面板')}
-      >
-        <MdDifference size={20} aria-hidden />
-      </button>
-    )
+    return null
   }
 
   return (
@@ -52,7 +42,7 @@ export const WorkspaceChangesPanel: React.FC<WorkspaceChangesPanelProps> = ({
         </button>
       </div>
 
-      <div className={styles.listPane}>
+      <div className={styles.body}>
         {changes.length === 0 ? (
           <p className={styles.placeholder}>{t('file_change.no_changes', '暂无文件变更')}</p>
         ) : (
@@ -60,11 +50,12 @@ export const WorkspaceChangesPanel: React.FC<WorkspaceChangesPanelProps> = ({
             {changes.map((change) => {
               const isActive = change.id === selectedChangeId
               return (
-                <li key={change.id}>
+                <li key={change.id} className={styles.changeItem}>
                   <button
                     type="button"
                     className={`${styles.changeBtn} ${isActive ? styles.changeBtnActive : ''}`}
-                    onClick={() => onSelectChange(change.id)}
+                    onClick={() => onSelectChange(isActive ? null : change.id)}
+                    aria-expanded={isActive}
                   >
                     <span className={styles.changeKind}>{fileChangeKindLabel(t, change.kind)}</span>
                     <span className={styles.changePath} title={change.path}>
@@ -74,25 +65,15 @@ export const WorkspaceChangesPanel: React.FC<WorkspaceChangesPanelProps> = ({
                       {formatFileChangeStats(change.additions, change.deletions)}
                     </span>
                   </button>
+                  {isActive ? (
+                    <div className={styles.inlineDiff}>
+                      <FileChangeDiff data={change.data} className={styles.diffBody} />
+                    </div>
+                  ) : null}
                 </li>
               )
             })}
           </ul>
-        )}
-      </div>
-
-      <div className={styles.diffPane}>
-        {selectedChange ? (
-          <>
-            <div className={styles.diffHeader}>
-              <span className={styles.diffPath} title={selectedChange.path}>
-                {selectedChange.path}
-              </span>
-            </div>
-            <FileChangeDiff data={selectedChange.data} className={styles.diffBody} />
-          </>
-        ) : (
-          <p className={styles.placeholder}>{t('agent_workspace.select_change_hint', '选择文件查看 diff')}</p>
         )}
       </div>
     </aside>
