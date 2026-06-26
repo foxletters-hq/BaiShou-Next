@@ -365,7 +365,12 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
         setHotkeyConfig: async (config) => {
           set({ hotkeyConfig: config })
           if (typeof window !== 'undefined' && (window as any).api?.settings) {
-            await (window as any).api.settings.setHotkeyConfig(config)
+            const result = await (window as any).api.settings.setHotkeyConfig(config)
+            if (config.hotkeyEnabled && result?.registered === false) {
+              console.warn(
+                '[SettingsStore] Global hotkey registration failed; combo may be reserved or used by another app.'
+              )
+            }
           }
         },
 

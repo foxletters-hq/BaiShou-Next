@@ -139,10 +139,8 @@ export function registerSettingsAppIPC() {
     await setDesktopHotkeyConfig(config, settingsRepo, () => settingsManager.flushToDisk())
     const { getHotkeyService } = await import('./settings.ipc')
     const service = getHotkeyService()
-    if (service) {
-      service.update(config)
-    }
-    return true
+    const registered = service ? service.update(config) : null
+    return { ok: registered !== false, registered }
   })
 
   ipcMain.handle('settings:get-cloud-sync-config', async () => {

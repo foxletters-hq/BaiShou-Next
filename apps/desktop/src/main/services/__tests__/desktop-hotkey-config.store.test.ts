@@ -8,7 +8,9 @@ const appMock = vi.hoisted(() => ({
 const fspMock = vi.hoisted(() => ({
   readFile: vi.fn(),
   writeFile: vi.fn(),
-  mkdir: vi.fn()
+  mkdir: vi.fn(),
+  rename: vi.fn(),
+  unlink: vi.fn()
 }))
 
 vi.mock('electron', () => ({ app: appMock }))
@@ -21,6 +23,8 @@ describe('desktop-hotkey-config.store', () => {
     appMock.getPath.mockReturnValue('/mock/userData')
     fspMock.mkdir.mockResolvedValue(undefined)
     fspMock.writeFile.mockResolvedValue(undefined)
+    fspMock.rename.mockResolvedValue(undefined)
+    fspMock.unlink.mockResolvedValue(undefined)
   })
 
   it('reads config from userData file', async () => {
@@ -29,6 +33,30 @@ describe('desktop-hotkey-config.store', () => {
 
     const { getDesktopHotkeyConfig } = await import('../desktop-hotkey-config.store')
     await expect(getDesktopHotkeyConfig()).resolves.toEqual(config)
+  })
+
+  it('recovers hotkey config when JSON has trailing garbage', async () => {
+    const config = { hotkeyEnabled: true, hotkeyModifier: 'Alt', hotkeyKey: 'S' }
+    fspMock.readFile.mockResolvedValue(`${JSON.stringify(config, null, 2)}}\n`)
+
+    const { getDesktopHotkeyConfig } = await import('../desktop-hotkey-config.store')
+    await expect(getDesktopHotkeyConfig()).resolves.toEqual(config)
+    expect(fspMock.writeFile).toHaveBeenCalledWith(
+      join('/mock/userData', 'device_hotkey_config.json.tmp'),
+      JSON.stringify(config, null, 2),
+      'utf8'
+    )
+  })
+
+  it('falls back to default when JSON is unrecoverable', async () => {
+    fspMock.readFile.mockResolvedValue('{ this is not json at all [')
+
+    const { getDesktopHotkeyConfig } = await import('../desktop-hotkey-config.store')
+    await expect(getDesktopHotkeyConfig()).resolves.toEqual({
+      hotkeyEnabled: false,
+      hotkeyModifier: 'Alt',
+      hotkeyKey: 'Space'
+    })
   })
 
   it('migrates legacy shared settings into userData once', async () => {
@@ -45,9 +73,13 @@ describe('desktop-hotkey-config.store', () => {
     await migrateDesktopHotkeyConfigFromSharedSettings(settingsRepo as any)
 
     expect(fspMock.writeFile).toHaveBeenCalledWith(
-      join('/mock/userData', 'device_hotkey_config.json'),
+      join('/mock/userData', 'device_hotkey_config.json.tmp'),
       JSON.stringify(legacy, null, 2),
       'utf8'
+    )
+    expect(fspMock.rename).toHaveBeenCalledWith(
+      join('/mock/userData', 'device_hotkey_config.json.tmp'),
+      join('/mock/userData', 'device_hotkey_config.json')
     )
     expect(settingsRepo.delete).toHaveBeenCalledWith('hotkey_config')
 

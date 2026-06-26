@@ -15,6 +15,7 @@ interface FlutterLegacyMigrationPending {
   targetRoot: string
   sourceDisplayPath: string
   targetDisplayPath: string
+  inPlace: boolean
   confidenceScore: number
   detectionReason: string
 }

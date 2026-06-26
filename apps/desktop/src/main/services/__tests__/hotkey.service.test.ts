@@ -64,17 +64,24 @@ describe('HotkeyService', () => {
   })
 
   it('should update and re-register hotkey', () => {
-    service.update({
+    const registered = service.update({
       hotkeyEnabled: true,
       hotkeyModifier: 'Ctrl',
       hotkeyKey: 'Space'
     })
     expect(globalShortcut.unregisterAll).toHaveBeenCalled()
-    // Ctrl 被映射为 CommandOrControl, Space 照样保留
-    expect(globalShortcut.register).toHaveBeenCalledWith(
-      'CommandOrControl+SPACE',
-      expect.any(Function)
-    )
+    expect(globalShortcut.register).toHaveBeenCalledWith('CommandOrControl+Space', expect.any(Function))
+    expect(registered).toBe(true)
+  })
+
+  it('should map CommandOrControl modifier from settings UI', () => {
+    const registered = service.update({
+      hotkeyEnabled: true,
+      hotkeyModifier: 'CommandOrControl',
+      hotkeyKey: 'Q'
+    })
+    expect(globalShortcut.register).toHaveBeenCalledWith('CommandOrControl+Q', expect.any(Function))
+    expect(registered).toBe(true)
   })
 
   it('should unregister all on stop', () => {
