@@ -1,6 +1,10 @@
 import { AgentGateTrustMode } from './agent-gate.enums'
 
-export const DEFAULT_AGENT_GATE_EXCLUSION_LIST = ['diary_delete', 'memory_delete'] as const
+export const DEFAULT_AGENT_GATE_EXCLUSION_LIST = [
+  'diary_delete',
+  'memory_delete',
+  'workspace_delete'
+] as const
 
 export const AGENT_GATE_REQUEST_ID_PREFIX = 'bag_'
 export const AGENT_GATE_ALLOWLIST_ENTRY_ID_PREFIX = 'bagal_'
