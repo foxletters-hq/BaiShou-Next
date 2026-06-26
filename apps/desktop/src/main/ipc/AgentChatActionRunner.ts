@@ -7,7 +7,9 @@ import {
   toolRegistry,
   createDiarySearcher,
   createWebSearchResultFetcher,
-  createFetchSearchPage
+  createFetchSearchPage,
+  buildStreamConfig,
+  resolveStreamDialogueSelection
 } from './agent-helpers'
 import { AgentChatService } from './AgentChatService'
 
@@ -37,19 +39,25 @@ export class AgentChatActionRunner {
     requestedProviderId?: string,
     requestedModelId?: string
   ) {
-    const { provider, globalModels, systemModels, userConfig } =
-      await AgentChatService.buildStreamConfigForSession(
-        sessionId,
-        requestedProviderId,
-        requestedModelId,
-        searchMode
-      )
+    const prefs = await AgentChatService.getAssistantSessionPrefs(sessionId)
+    const resolved = await resolveStreamDialogueSelection({
+      sessionId,
+      requestedProviderId,
+      requestedModelId
+    })
+    const { provider, systemModels, userConfig } = await buildStreamConfig(
+      resolved.providerId,
+      resolved.modelId,
+      searchMode,
+      prefs.assistantContextWindow,
+      prefs.assistantEmojiPrefs
+    )
 
     return AgentChatActionCoreRunner.regenerate(
       buildActionDeps(event, sessionId),
       {
         provider,
-        modelId: requestedModelId || globalModels?.globalDialogueModelId || 'deepseek-chat',
+        modelId: resolved.modelId,
         systemModels,
         userConfig
       },
@@ -67,19 +75,25 @@ export class AgentChatActionRunner {
     attachments?: unknown[],
     searchMode?: boolean
   ) {
-    const { provider, globalModels, systemModels, userConfig } =
-      await AgentChatService.buildStreamConfigForSession(
-        sessionId,
-        requestedProviderId,
-        requestedModelId,
-        searchMode
-      )
+    const prefs = await AgentChatService.getAssistantSessionPrefs(sessionId)
+    const resolved = await resolveStreamDialogueSelection({
+      sessionId,
+      requestedProviderId,
+      requestedModelId
+    })
+    const { provider, systemModels, userConfig } = await buildStreamConfig(
+      resolved.providerId,
+      resolved.modelId,
+      searchMode,
+      prefs.assistantContextWindow,
+      prefs.assistantEmojiPrefs
+    )
 
     return AgentChatActionCoreRunner.editMessage(
       buildActionDeps(event, sessionId),
       {
         provider,
-        modelId: requestedModelId || globalModels?.globalDialogueModelId || 'deepseek-chat',
+        modelId: resolved.modelId,
         systemModels,
         userConfig,
         attachments
@@ -97,19 +111,25 @@ export class AgentChatActionRunner {
     requestedProviderId?: string,
     requestedModelId?: string
   ) {
-    const { provider, globalModels, systemModels, userConfig } =
-      await AgentChatService.buildStreamConfigForSession(
-        sessionId,
-        requestedProviderId,
-        requestedModelId,
-        searchMode
-      )
+    const prefs = await AgentChatService.getAssistantSessionPrefs(sessionId)
+    const resolved = await resolveStreamDialogueSelection({
+      sessionId,
+      requestedProviderId,
+      requestedModelId
+    })
+    const { provider, systemModels, userConfig } = await buildStreamConfig(
+      resolved.providerId,
+      resolved.modelId,
+      searchMode,
+      prefs.assistantContextWindow,
+      prefs.assistantEmojiPrefs
+    )
 
     return AgentChatActionCoreRunner.resend(
       buildActionDeps(event, sessionId),
       {
         provider,
-        modelId: requestedModelId || globalModels?.globalDialogueModelId || 'deepseek-chat',
+        modelId: resolved.modelId,
         systemModels,
         userConfig
       },

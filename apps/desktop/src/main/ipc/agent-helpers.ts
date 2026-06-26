@@ -18,6 +18,7 @@ import {
 } from '@baishou/core-desktop'
 import { DesktopAttachmentManagerService } from '../services/desktop-attachment-manager.service'
 import { getAgentGate } from '../services/agent-gate.service'
+import { resolveActiveWorkspaceToolContext } from '../services/agent-workspace-tool-context'
 import { fileSystem, pathService, vaultService } from './vault.ipc'
 import { settingsManager } from './settings.ipc'
 import {
@@ -37,7 +38,10 @@ import {
   resolveWebSearchEnabled,
   BAISHOU_AGENT_GATE_CONFIG_KEY,
   DEFAULT_BAISHOU_AGENT_GATE_CONFIG,
-  type BaishouAgentGateConfig
+  type BaishouAgentGateConfig,
+  coalesceConfiguredId,
+  requireResolvedDialogueModel,
+  type ResolvedDialogueModel
 } from '@baishou/shared'
 
 import { searchService } from '../services/search.service'
@@ -329,6 +333,40 @@ export async function buildAgentUserConfigFromSettings(options?: {
   }
 }
 
+/** 流式对话权威模型链：伙伴 → 请求 → 全局 → 错误（不伪造默认模型） */
+export async function resolveStreamDialogueSelection(params: {
+  sessionId?: string
+  requestedProviderId?: string
+  requestedModelId?: string
+}): Promise<ResolvedDialogueModel & { providerId: string; modelId: string }> {
+  const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
+  let assistantProviderId: string | undefined
+  let assistantModelId: string | undefined
+
+  if (params.sessionId) {
+    try {
+      const { realSessionRepo, realAssistantRepo } = getAgentManagers()
+      const session = await realSessionRepo.getSessionById(params.sessionId)
+      if (session?.assistantId) {
+        const assistant = await realAssistantRepo.findById(session.assistantId)
+        assistantProviderId = assistant?.providerId ?? undefined
+        assistantModelId = assistant?.modelId ?? undefined
+      }
+    } catch (e: any) {
+      logger.warn('[resolveStreamDialogueSelection] failed to load assistant:', e?.message || e)
+    }
+  }
+
+  return requireResolvedDialogueModel({
+    assistantProviderId,
+    assistantModelId,
+    requestedProviderId: params.requestedProviderId,
+    requestedModelId: params.requestedModelId,
+    globalDialogueProviderId: globalModels?.globalDialogueProviderId,
+    globalDialogueModelId: globalModels?.globalDialogueModelId
+  })
+}
+
 /**
  * 构建 Agent 流式调用所需的通用配置
  * @param assistantContextWindow 助手的上下文轮数配置，优先于全局配置
@@ -467,6 +505,11 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
     fetchSearchPage: createFetchSearchPage(),
     agentGate: await getAgentGate()
   })
+
+  const activeWorkspace = resolveActiveWorkspaceToolContext()
+  if (activeWorkspace) {
+    context.workspace = activeWorkspace
+  }
 
   mcpToolContextCache = {
     vaultName,
