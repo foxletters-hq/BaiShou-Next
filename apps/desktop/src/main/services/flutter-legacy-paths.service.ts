@@ -7,9 +7,10 @@ import {
   assembleDevicePreferencesFromFlutterSp,
   extractFlutterCustomStorageRoot,
   hasMeaningfulFlutterPreferences,
-  parseFlutterSharedPreferencesJson
+  parseFlutterSharedPreferencesJson,
+  type LegacyRootCandidate
 } from '@baishou/core/shared'
-import { createNodeFileSystem, isLegacyAppRoot } from '@baishou/core-desktop'
+import { createNodeFileSystem } from '@baishou/core-desktop'
 
 export interface VersionMigrationFlutterPrefs {
   config: Record<string, unknown> | null
@@ -283,36 +284,49 @@ async function hasNextWorkspaceMarkers(sourceDir: string): Promise<boolean> {
   )
 }
 
-/**
- * 探测旧版 Flutter 工作区根目录候选（自定义路径优先，其次默认 Documents）。
- */
-export async function resolveLegacyRootCandidates(): Promise<string[]> {
-  const candidates: string[] = []
+export interface LegacyRootCandidateInput {
+  path: string
+  fromFlutterSp: boolean
+}
+
+export async function buildLegacyRootCandidateInputs(): Promise<LegacyRootCandidateInput[]> {
+  const inputs: LegacyRootCandidateInput[] = []
   const sp = await readFlutterSharedPreferencesRaw()
   if (sp) {
     const customRoot = extractFlutterCustomStorageRoot(sp)
-    if (customRoot) candidates.push(customRoot)
+    if (customRoot) {
+      inputs.push({ path: customRoot, fromFlutterSp: true })
+    }
   }
 
-  candidates.push(join(app.getPath('documents'), 'BaiShou_Root'))
+  inputs.push({ path: join(app.getPath('documents'), 'BaiShou_Root'), fromFlutterSp: false })
+  return inputs
+}
 
+/**
+ * 探测旧版 Flutter 工作区根目录候选（自定义路径优先，其次默认 Documents）。
+ */
+export async function resolveScoredLegacyRootCandidates(): Promise<LegacyRootCandidate[]> {
+  const { collectScoredLegacyRootCandidates } = await import('@baishou/core/shared')
   const fileSystem = createNodeFileSystem()
-  const unique: string[] = []
-  const seen = new Set<string>()
-  for (const candidate of candidates) {
-    const normalized = candidate.replace(/\\/g, '/').replace(/\/$/, '')
-    if (seen.has(normalized)) continue
-    seen.add(normalized)
+  const inputs = await buildLegacyRootCandidateInputs()
+  const filtered: LegacyRootCandidateInput[] = []
+
+  for (const candidate of inputs) {
     try {
-      // Root-level Next markers mean this path is already a BaiShou Next workspace.
-      // Do not let stale Flutter shared_preferences re-adopt it as a legacy root.
-      if (await hasNextWorkspaceMarkers(candidate)) continue
-      if (await isLegacyAppRoot(fileSystem, candidate)) {
-        unique.push(candidate)
+      if (await hasNextWorkspaceMarkers(candidate.path)) {
+        continue
       }
+      filtered.push(candidate)
     } catch {
       // ignore unreadable
     }
   }
-  return unique
+
+  return collectScoredLegacyRootCandidates(fileSystem, filtered)
+}
+
+export async function resolveLegacyRootCandidates(): Promise<string[]> {
+  const scored = await resolveScoredLegacyRootCandidates()
+  return scored.map((candidate) => candidate.path)
 }

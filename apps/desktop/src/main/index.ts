@@ -268,7 +268,7 @@ app.whenReady().then(async () => {
     win?.close()
   })
 
-  // 引导检查 + Flutter 旧版自动迁移
+  // 引导检查 + Flutter 旧版数据探测（迁移需用户确认）
   const settingsPath = join(app.getPath('userData'), 'baishou_settings.json')
   const { resolveDesktopStorageBootstrap } =
     await import('./services/desktop-legacy-bootstrap.service')
@@ -276,8 +276,10 @@ app.whenReady().then(async () => {
   const needsOnboarding = bootstrap.needsOnboarding
   const customStorageRoot = bootstrap.storageRoot
 
-  if (bootstrap.migrated) {
-    logger.info('[Bootstrapper] Local Auto-Migration Completed! Skipped Onboarding.')
+  if (bootstrap.pendingFlutterLegacyMigration) {
+    logger.info(
+      '[Bootstrapper] Pending Flutter legacy migration detected; waiting for user confirmation.'
+    )
   }
 
   // ── 核心变更：在确定存储路径后，再初始化全局 Agent DB ──

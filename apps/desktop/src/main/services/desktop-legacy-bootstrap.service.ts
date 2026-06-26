@@ -1,16 +1,20 @@
 import * as fs from 'fs/promises'
-import { dirname, join, resolve } from 'path'
+import { dirname, join } from 'path'
 import { app } from 'electron'
 import { logger } from '@baishou/shared'
 import {
-  hasFlutterLegacyStorageMarkers,
-  isMigrationCompleted,
+  detectFlutterLegacyMigrationPending,
   isLegacyAppRoot,
-  targetDirectoryHasData
+  isValidWorkspaceRoot,
+  sanitizePersistedWorkspaceRoot,
+  type FlutterLegacyMigrationPending
 } from '@baishou/core/shared'
 import { createNodeFileSystem } from '@baishou/core-desktop'
 import { connectionManager, installDatabaseSchema } from '@baishou/database-desktop'
-import { resolveLegacyRootCandidates } from './flutter-legacy-paths.service'
+import {
+  buildLegacyRootCandidateInputs,
+  resolveScoredLegacyRootCandidates
+} from './flutter-legacy-paths.service'
 import { LegacyMigrationService } from './legacy-migration.service'
 import { getDesktopInstallInstanceId } from './install-instance.service'
 import { getAppDb, resetAppDb } from '../db'
@@ -20,31 +24,113 @@ export interface DesktopLegacyBootstrapResult {
   storageRoot: string
   needsOnboarding: boolean
   migrated: boolean
+  pendingFlutterLegacyMigration: FlutterLegacyMigrationPending | null
 }
+
+export {
+  resolveLegacyMigrationTargetRoot,
+  sanitizePersistedWorkspaceRoot
+} from '@baishou/core/shared'
 
 interface DesktopSettingsFile {
   custom_storage_root?: string
+  onboarding_completed?: boolean
+  /** 引导中途已选目录但未 finish；用于区分升级老用户与未完成引导。 */
+  onboarding_in_progress?: boolean
+}
+
+const LEGACY_PROMPT_DISMISSED_FILE = 'legacy_migration_prompt_dismissed.json'
+
+async function readDesktopSettingsFile(settingsPath: string): Promise<DesktopSettingsFile> {
+  try {
+    const data = await fs.readFile(settingsPath, 'utf-8')
+    return JSON.parse(data) as DesktopSettingsFile
+  } catch {
+    return {}
+  }
+}
+
+async function writeDesktopSettingsFile(
+  settingsPath: string,
+  settings: DesktopSettingsFile
+): Promise<void> {
+  await fs.mkdir(dirname(settingsPath), { recursive: true })
+  await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2), 'utf-8')
+}
+
+export async function isDesktopOnboardingCompleted(settingsPath: string): Promise<boolean> {
+  const settings = await readDesktopSettingsFile(settingsPath)
+  return settings.onboarding_completed === true
+}
+
+export async function markDesktopOnboardingCompleted(settingsPath: string): Promise<void> {
+  const settings = await readDesktopSettingsFile(settingsPath)
+  if (settings.onboarding_completed === true) return
+  settings.onboarding_completed = true
+  delete settings.onboarding_in_progress
+  await writeDesktopSettingsFile(settingsPath, settings)
+}
+
+/** 升级老用户：已有存储路径且从未进入「引导中途」状态，视为已完成引导。 */
+async function maybeCompleteOnboardingForLegacyInstall(
+  settingsPath: string,
+  settings: DesktopSettingsFile
+): Promise<void> {
+  if (settings.onboarding_completed === true) return
+  if (settings.onboarding_in_progress === true) return
+  if (!settings.custom_storage_root?.trim()) return
+  await markDesktopOnboardingCompleted(settingsPath)
+}
+
+export async function writeDesktopOnboardingDirectory(
+  settingsPath: string,
+  dirPath: string
+): Promise<void> {
+  const settings = await readDesktopSettingsFile(settingsPath)
+  settings.custom_storage_root = sanitizePersistedWorkspaceRoot(dirPath)
+  if (settings.onboarding_completed !== true) {
+    settings.onboarding_in_progress = true
+  }
+  await writeDesktopSettingsFile(settingsPath, settings)
+}
+
+export async function finishDesktopOnboarding(settingsPath: string): Promise<void> {
+  const settings = await readDesktopSettingsFile(settingsPath)
+  if (!settings.custom_storage_root?.trim()) {
+    settings.custom_storage_root = defaultDesktopStorageRoot()
+    logger.info('[Onboarding] Persisted default storage root:', settings.custom_storage_root)
+  }
+  settings.onboarding_completed = true
+  delete settings.onboarding_in_progress
+  await writeDesktopSettingsFile(settingsPath, settings)
+}
+
+export function validateFlutterLegacyMigrationTarget(targetDir: string): string {
+  const sanitized = sanitizePersistedWorkspaceRoot(targetDir.trim())
+  if (!isValidWorkspaceRoot(sanitized)) {
+    throw new Error('Invalid migration target directory')
+  }
+  return sanitized
 }
 
 function normalizeComparablePath(filePath: string): string {
-  return resolve(filePath).replace(/\\/g, '/').replace(/\/$/, '').toLowerCase()
+  return sanitizePersistedWorkspaceRoot(filePath).replace(/\\/g, '/').replace(/\/$/, '').toLowerCase()
 }
 
 export function resolveLegacyDesktopSettingsCandidates(appDataDir: string): string[] {
-  return [
-    // Older Electron builds used the package name (@baishou/desktop) as app name/userData.
-    join(appDataDir, '@baishou', 'desktop', 'baishou_settings.json')
-  ]
+  return [join(appDataDir, '@baishou', 'desktop', 'baishou_settings.json')]
+}
+
+export function defaultDesktopStorageRoot(): string {
+  if (isDesktopDevBuild()) {
+    return join(app.getPath('userData'), 'Vaults')
+  }
+  return join(app.getPath('documents'), 'BaiShou_Root')
 }
 
 async function readStorageRootFromSettingsFile(settingsPath: string): Promise<string | null> {
-  try {
-    const data = await fs.readFile(settingsPath, 'utf-8')
-    const settings = JSON.parse(data) as DesktopSettingsFile
-    return settings.custom_storage_root?.trim() || null
-  } catch {
-    return null
-  }
+  const settings = await readDesktopSettingsFile(settingsPath)
+  return settings.custom_storage_root?.trim() || null
 }
 
 async function recoverStorageRootFromLegacyDesktopSettings(
@@ -59,135 +145,149 @@ async function recoverStorageRootFromLegacyDesktopSettings(
   return null
 }
 
-async function runLegacyMigration(targetDir: string): Promise<void> {
+async function persistStorageRoot(settingsPath: string, root: string): Promise<void> {
+  const settings = await readDesktopSettingsFile(settingsPath)
+  settings.custom_storage_root = sanitizePersistedWorkspaceRoot(root)
+  await writeDesktopSettingsFile(settingsPath, settings)
+}
+
+export async function isDesktopLegacyMigrationPromptDismissed(): Promise<boolean> {
+  try {
+    const dismissedPath = join(app.getPath('userData'), LEGACY_PROMPT_DISMISSED_FILE)
+    const raw = await fs.readFile(dismissedPath, 'utf-8')
+    const parsed = JSON.parse(raw) as { dismissed?: boolean }
+    return parsed.dismissed === true
+  } catch {
+    return false
+  }
+}
+
+export async function dismissDesktopLegacyMigrationPrompt(): Promise<void> {
+  const dismissedPath = join(app.getPath('userData'), LEGACY_PROMPT_DISMISSED_FILE)
+  await fs.mkdir(dirname(dismissedPath), { recursive: true })
+  await fs.writeFile(dismissedPath, JSON.stringify({ dismissed: true }, null, 2), 'utf-8')
+}
+
+export async function runDesktopFlutterLegacyMigration(
+  sourceDir: string,
+  targetDir: string
+): Promise<void> {
+  const safeTarget = validateFlutterLegacyMigrationTarget(targetDir)
   const installInstanceId = await getDesktopInstallInstanceId()
   const legacyService = new LegacyMigrationService()
-  await legacyService.migrate(targetDir, targetDir, {
+  await legacyService.migrate(sourceDir, safeTarget, {
     source: 'flutter_desktop',
     installInstanceId
   })
   resetAppDb()
-  const migratedDb = getAppDb(targetDir)
+  const migratedDb = getAppDb(safeTarget)
   connectionManager.setDb(migratedDb)
   await installDatabaseSchema(migratedDb)
 }
 
+export async function resolvePendingFlutterLegacyMigration(
+  settingsPath: string
+): Promise<FlutterLegacyMigrationPending | null> {
+  if (!(await isDesktopOnboardingCompleted(settingsPath))) return null
+  if (await isDesktopLegacyMigrationPromptDismissed()) return null
+  const bootstrap = await resolveDesktopStorageBootstrap(settingsPath)
+  return bootstrap.pendingFlutterLegacyMigration
+}
+
+export async function detectDesktopFlutterLegacyMigrationPending(
+  storageRoot: string
+): Promise<FlutterLegacyMigrationPending | null> {
+  const fileSystem = createNodeFileSystem()
+  const installInstanceId = await getDesktopInstallInstanceId()
+  const rawCandidates = await buildLegacyRootCandidateInputs()
+
+  return detectFlutterLegacyMigrationPending(fileSystem, {
+    targetRoot: storageRoot,
+    installInstanceId,
+    rawCandidates
+  })
+}
+
 /**
- * 启动时解析存储根目录，并在检测到 Flutter 旧版数据时自动迁移。
- * 覆盖：首次安装、已完成引导但指向空目录、以及指向 legacy 根但未写入迁移标记等情况。
+ * 启动时解析存储根目录，并检测 Flutter 旧版数据（不自动迁移，由用户确认后执行）。
  */
 export async function resolveDesktopStorageBootstrap(
   settingsPath: string
 ): Promise<DesktopLegacyBootstrapResult> {
   let customStorageRoot = ''
-  let needsOnboarding = true
 
-  const persistStorageRoot = async (root: string) => {
-    await fs.mkdir(dirname(settingsPath), { recursive: true })
-    await fs.writeFile(
-      settingsPath,
-      JSON.stringify({ custom_storage_root: root }, null, 2),
-      'utf-8'
-    )
-  }
+  const settingsAtStart = await readDesktopSettingsFile(settingsPath)
+  const existingRoot = settingsAtStart.custom_storage_root?.trim() || null
 
-  const existingRoot = await readStorageRootFromSettingsFile(settingsPath)
   if (existingRoot) {
-    customStorageRoot = existingRoot
-    needsOnboarding = false
+    customStorageRoot = sanitizePersistedWorkspaceRoot(existingRoot)
+    if (normalizeComparablePath(existingRoot) !== normalizeComparablePath(customStorageRoot)) {
+      await persistStorageRoot(settingsPath, customStorageRoot)
+      logger.info(
+        `[DesktopLegacyBootstrap] Sanitized persisted storage root: ${existingRoot} -> ${customStorageRoot}`
+      )
+    }
+    await maybeCompleteOnboardingForLegacyInstall(settingsPath, settingsAtStart)
   } else {
     const recoveredRoot = await recoverStorageRootFromLegacyDesktopSettings(settingsPath)
     if (recoveredRoot) {
-      customStorageRoot = recoveredRoot
-      needsOnboarding = false
-      await persistStorageRoot(recoveredRoot)
+      customStorageRoot = sanitizePersistedWorkspaceRoot(recoveredRoot)
+      await persistStorageRoot(settingsPath, customStorageRoot)
+      await markDesktopOnboardingCompleted(settingsPath)
       logger.info('[DesktopLegacyBootstrap] Recovered storage root from legacy desktop settings')
     }
   }
 
-  const legacyCandidates = await resolveLegacyRootCandidates()
-  const primaryLegacy = legacyCandidates[0] ?? null
-  const fileSystem = createNodeFileSystem()
-
-  if (needsOnboarding && primaryLegacy && !customStorageRoot && !isDesktopDevBuild()) {
-    customStorageRoot = primaryLegacy
+  if (!customStorageRoot) {
+    customStorageRoot = defaultDesktopStorageRoot()
   }
 
-  const isWorkspaceMigrationDone = async (root: string) => isMigrationCompleted(fileSystem, root)
+  const needsOnboarding = !(await isDesktopOnboardingCompleted(settingsPath))
+  const safeStorageRoot = sanitizePersistedWorkspaceRoot(customStorageRoot)
+  const scoredLegacy = await resolveScoredLegacyRootCandidates()
+  if (scoredLegacy.length > 0) {
+    const primary = scoredLegacy[0]!
+    logger.info(
+      `[DesktopLegacyBootstrap] Legacy candidate detected: ${primary.path} score=${primary.score} reasons=${primary.reasons.join(',')}`
+    )
+  }
 
-  try {
-    if (customStorageRoot) {
-      const isFlutterLegacy = await hasFlutterLegacyStorageMarkers(fileSystem, customStorageRoot)
-      const alreadyMigrated = await isWorkspaceMigrationDone(customStorageRoot)
+  const pendingFlutterLegacyMigration =
+    await detectDesktopFlutterLegacyMigrationPending(safeStorageRoot)
 
-      if (isFlutterLegacy && !alreadyMigrated) {
-        logger.info('[DesktopLegacyBootstrap] Migrating legacy installation at', customStorageRoot)
-        await runLegacyMigration(customStorageRoot)
-        await persistStorageRoot(customStorageRoot)
-        return { storageRoot: customStorageRoot, needsOnboarding: false, migrated: true }
-      }
-
-      if (!isFlutterLegacy && primaryLegacy) {
-        const currentHasData = await targetDirectoryHasData(fileSystem, customStorageRoot)
-        const legacyAlreadyMigrated = await isWorkspaceMigrationDone(primaryLegacy)
-        if (!currentHasData && !legacyAlreadyMigrated) {
-          logger.info(
-            '[DesktopLegacyBootstrap] Current storage is empty; adopting legacy data from',
-            primaryLegacy
-          )
-          await runLegacyMigration(primaryLegacy)
-          customStorageRoot = primaryLegacy
-          await persistStorageRoot(customStorageRoot)
-          return { storageRoot: customStorageRoot, needsOnboarding: false, migrated: true }
-        }
-      }
-
-      if (isFlutterLegacy && needsOnboarding) {
-        await persistStorageRoot(customStorageRoot)
-        return { storageRoot: customStorageRoot, needsOnboarding: false, migrated: false }
-      }
-
-      if (customStorageRoot && !needsOnboarding) {
-        return { storageRoot: customStorageRoot, needsOnboarding: false, migrated: false }
-      }
-    }
-  } catch (e) {
-    logger.error('[DesktopLegacyBootstrap] Legacy migration failed:', e as Error)
-    if (primaryLegacy) {
-      const currentHasData = customStorageRoot
-        ? await targetDirectoryHasData(fileSystem, customStorageRoot).catch(() => false)
-        : false
-      if (!currentHasData) {
-        customStorageRoot = primaryLegacy
-        needsOnboarding = false
-      }
-    }
+  if (pendingFlutterLegacyMigration) {
+    logger.info(
+      `[DesktopLegacyBootstrap] Pending Flutter legacy migration: ${pendingFlutterLegacyMigration.sourceRoot} -> ${pendingFlutterLegacyMigration.targetRoot} (${pendingFlutterLegacyMigration.detectionReason})`
+    )
   }
 
   return {
-    storageRoot: customStorageRoot || primaryLegacy || '',
+    storageRoot: safeStorageRoot,
     needsOnboarding,
-    migrated: false
+    migrated: false,
+    pendingFlutterLegacyMigration
   }
 }
 
-/** 引导页选目录：已是 Flutter 旧版根目录则原样使用，否则追加 baishou-data 子目录 */
+/** 引导页选目录：已是 Flutter 旧版根目录则落到安全子目录，否则追加 baishou-data 子目录 */
 export async function resolvePickedStorageDirectory(pickedPath: string): Promise<string> {
   const normalized = pickedPath.trim()
   if (!normalized) return normalized
 
   const fileSystem = createNodeFileSystem()
   if (await isLegacyAppRoot(fileSystem, normalized)) {
-    return normalized
+    return sanitizePersistedWorkspaceRoot(normalized)
   }
 
   const separator = normalized.includes('\\') ? '\\' : '/'
   const dirSuffix = 'baishou-data'
-  return normalized.endsWith(separator)
+  const withSuffix = normalized.endsWith(separator)
     ? `${normalized}${dirSuffix}`
     : `${normalized}${separator}${dirSuffix}`
+
+  return sanitizePersistedWorkspaceRoot(withSuffix)
 }
 
 export function defaultOnboardingStoragePath(): string {
-  return join(app.getPath('userData'), 'Vaults')
+  return defaultDesktopStorageRoot()
 }

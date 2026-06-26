@@ -1,14 +1,19 @@
 import { ipcMain, dialog, app } from 'electron'
-import * as fs from 'fs/promises'
-import * as path from 'path'
 import { logger } from '@baishou/shared'
 import {
   defaultOnboardingStoragePath,
+  dismissDesktopLegacyMigrationPrompt,
+  finishDesktopOnboarding,
   resolveDesktopStorageBootstrap,
-  resolvePickedStorageDirectory
+  resolvePendingFlutterLegacyMigration,
+  resolvePickedStorageDirectory,
+  runDesktopFlutterLegacyMigration,
+  validateFlutterLegacyMigrationTarget,
+  writeDesktopOnboardingDirectory
 } from '../services/desktop-legacy-bootstrap.service'
 import { resolveLegacyRootCandidates } from '../services/flutter-legacy-paths.service'
 import { isDesktopDevBuild } from '../app-identity'
+import * as path from 'path'
 
 export function registerOnboardingIPC(onComplete: () => void) {
   const settingsPath = path.join(app.getPath('userData'), 'baishou_settings.json')
@@ -16,22 +21,15 @@ export function registerOnboardingIPC(onComplete: () => void) {
   ipcMain.handle('onboarding:check', async () => {
     try {
       const bootstrap = await resolveDesktopStorageBootstrap(settingsPath)
-      const legacyCandidates = await resolveLegacyRootCandidates()
-      const legacyRoot = legacyCandidates[0] ?? null
-      const root = bootstrap.storageRoot?.trim()
+      const pending = await resolvePendingFlutterLegacyMigration(settingsPath)
 
-      let currentPath: string
-      if (root) {
-        currentPath = root
-      } else if (bootstrap.needsOnboarding && isDesktopDevBuild()) {
-        currentPath = defaultOnboardingStoragePath()
-      } else {
-        currentPath = legacyRoot || defaultOnboardingStoragePath()
-      }
+      const root = bootstrap.storageRoot?.trim()
+      const currentPath = root || defaultOnboardingStoragePath()
 
       return {
         needsOnboarding: bootstrap.needsOnboarding,
-        currentPath
+        currentPath,
+        pendingFlutterLegacyMigration: pending
       }
     } catch {
       const legacyCandidates = await resolveLegacyRootCandidates().catch(() => [])
@@ -39,7 +37,8 @@ export function registerOnboardingIPC(onComplete: () => void) {
         needsOnboarding: true,
         currentPath: isDesktopDevBuild()
           ? defaultOnboardingStoragePath()
-          : legacyCandidates[0] || defaultOnboardingStoragePath()
+          : legacyCandidates[0] || defaultOnboardingStoragePath(),
+        pendingFlutterLegacyMigration: null
       }
     }
   })
@@ -53,67 +52,46 @@ export function registerOnboardingIPC(onComplete: () => void) {
   })
 
   ipcMain.handle('onboarding:set-directory', async (_, dirPath: string) => {
-    let settings: Record<string, unknown> = {}
-    try {
-      const data = await fs.readFile(settingsPath, 'utf-8')
-      settings = JSON.parse(data)
-    } catch {}
-
-    settings.custom_storage_root = dirPath
-    await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2), 'utf-8')
+    await writeDesktopOnboardingDirectory(settingsPath, dirPath)
     return true
   })
 
-  ipcMain.handle('onboarding:finish', async () => {
-    let settings: { custom_storage_root?: string } = {}
-    try {
-      const data = await fs.readFile(settingsPath, 'utf-8')
-      settings = JSON.parse(data) as { custom_storage_root?: string }
-    } catch {
-      /* first launch — create settings file below */
-    }
+  ipcMain.handle('onboarding:dismiss-legacy-migration-prompt', async () => {
+    await dismissDesktopLegacyMigrationPrompt()
+    return true
+  })
 
-    // 用户未手动改路径时，渲染进程可能未调用 set-directory；在此兜底持久化默认路径
-    if (!settings.custom_storage_root?.trim()) {
-      settings.custom_storage_root = path.join(app.getPath('userData'), 'Vaults')
-      await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2), 'utf-8')
-      logger.info('[Onboarding] Persisted default storage root:', settings.custom_storage_root)
-    }
+  ipcMain.handle('onboarding:detect-legacy-pending', async () => {
+    const pending = await resolvePendingFlutterLegacyMigration(settingsPath)
+    return { pendingFlutterLegacyMigration: pending }
+  })
 
-    try {
-      const dirPath = settings.custom_storage_root?.trim()
-      if (dirPath) {
-        const { LegacyMigrationService } = await import('../services/legacy-migration.service')
-        const { getDesktopInstallInstanceId } = await import('../services/install-instance.service')
-        const { isMigrationCompleted } = await import('@baishou/core/shared')
-        const { createNodeFileSystem } = await import('@baishou/core-desktop')
-        const { connectionManager, installDatabaseSchema } =
-          await import('@baishou/database-desktop')
-        const { getAppDb, resetAppDb } = await import('../db')
-
-        const legacyService = new LegacyMigrationService()
-        const fileSystem = createNodeFileSystem()
-        const installInstanceId = await getDesktopInstallInstanceId()
-
-        if (
-          (await legacyService.isLegacyAppRoot(dirPath)) &&
-          !(await isMigrationCompleted(fileSystem, dirPath, installInstanceId))
-        ) {
-          logger.info('[Onboarding] Migrating legacy root selected during onboarding:', dirPath)
-          await legacyService.migrate(dirPath, dirPath, {
-            source: 'flutter_desktop',
-            installInstanceId
-          })
-          resetAppDb()
-          const migratedDb = getAppDb(dirPath)
-          connectionManager.setDb(migratedDb)
-          await installDatabaseSchema(migratedDb)
-        }
+  ipcMain.handle(
+    'onboarding:run-flutter-legacy-migration',
+    async (
+      _,
+      payload: { sourceRoot: string; targetRoot: string }
+    ): Promise<{ success: boolean }> => {
+      const sourceRoot = payload?.sourceRoot?.trim()
+      const targetRoot = payload?.targetRoot?.trim()
+      if (!sourceRoot || !targetRoot) {
+        throw new Error('Invalid migration paths')
       }
-    } catch (error) {
-      logger.error('[Onboarding] Legacy migration on finish failed:', error as Error)
-    }
 
+      const safeTarget = validateFlutterLegacyMigrationTarget(targetRoot)
+
+      logger.info(
+        `[Onboarding] User confirmed Flutter legacy migration from ${sourceRoot} to ${safeTarget}`
+      )
+      await runDesktopFlutterLegacyMigration(sourceRoot, safeTarget)
+
+      await writeDesktopOnboardingDirectory(settingsPath, safeTarget)
+      return { success: true }
+    }
+  )
+
+  ipcMain.handle('onboarding:finish', async () => {
+    await finishDesktopOnboarding(settingsPath)
     onComplete()
     return true
   })
