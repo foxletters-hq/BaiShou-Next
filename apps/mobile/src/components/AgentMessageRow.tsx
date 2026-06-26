@@ -72,7 +72,7 @@ export const AgentMessageRow = React.memo(function AgentMessageRow({
   onBubbleEditingChange,
   invertMetaOverBackground = false,
   retryDisabled = false
-}) {
+}: AgentMessageRowProps) {
   const persistedCompaction =
     item.role === 'user' && item.compactionRecord ? item.compactionRecord : null
 

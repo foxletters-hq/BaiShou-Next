@@ -112,9 +112,10 @@ export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
               >
                 <ThinkingBlock
                   content={cleanReasoning}
-                  isThinking={isReasoning && !hasText}
-                  defaultOpen={!hasText}
-                  autoCollapse={hasText}
+                  isThinking={isReasoning}
+                  defaultOpen={false}
+                  autoCollapse
+                  maxPreviewLines={2}
                 />
               </View>
             )}
