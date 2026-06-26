@@ -138,6 +138,15 @@ interface AgentGateAPI {
 
 interface AgentWorkspaceAPI {
   pickFolder(): Promise<string | null>
+  listWorkspaces(): Promise<import('@baishou/shared').AgentWorkspaceEntry[]>
+  addWorkspace(folderRoot: string): Promise<import('@baishou/shared').AgentWorkspaceEntry | null>
+  updateWorkspace(
+    workspaceId: string,
+    patch: import('@baishou/shared').AgentWorkspaceEntryUpdate
+  ): Promise<import('@baishou/shared').AgentWorkspaceEntry | null>
+  getLastActiveWorkspaceId(): Promise<string | undefined>
+  setLastActiveWorkspaceId(workspaceId: string | null): Promise<boolean>
+  pickAvatar(): Promise<string | null>
   listDir(
     rootPath: string,
     relativePath?: string
