@@ -1,6 +1,6 @@
 import {
   AgentGateKind,
-  DEFAULT_AGENT_GATE_EXCLUSION_LIST,
+  canPermanentlyAllowAgentGateAction,
   type AgentGateReply,
   type AgentGateRequest
 } from '@baishou/shared'
@@ -14,10 +14,7 @@ export interface AgentGateReplyPayload {
 
 export function canAlwaysAllowForRequest(request: AgentGateRequest): boolean {
   if (request.kind !== AgentGateKind.Tool) return false
-  if (request.metadata?.forceExclusion === true) return false
-  return !DEFAULT_AGENT_GATE_EXCLUSION_LIST.includes(
-    request.action as (typeof DEFAULT_AGENT_GATE_EXCLUSION_LIST)[number]
-  )
+  return canPermanentlyAllowAgentGateAction(request.action, { metadata: request.metadata })
 }
 
 export function shouldShowProactiveOptions(request: AgentGateRequest): boolean {
