@@ -121,7 +121,7 @@ export class ZipExporter {
           }
         }
       } catch (e: unknown) {
-        logger.error(`Failed to pack dir ${dirPath}`, e)
+        logger.error(`Failed to pack dir ${dirPath}`, e as Error)
       }
     }
 
@@ -151,7 +151,7 @@ export class ZipExporter {
           await addDirectory(legacyAvatarsDir, ARCHIVE_USER_AVATARS_ZIP_PREFIX)
         }
       } catch (e: unknown) {
-        logger.warn('Failed to pack legacy UserAvatars directory', e)
+        logger.warn('Failed to pack legacy UserAvatars directory', e as Error)
       }
     }
 
@@ -180,7 +180,7 @@ export class ZipExporter {
           await executeRawSql(dbInstance.session.client, 'PRAGMA wal_checkpoint(TRUNCATE)')
         }
       } catch (e: unknown) {
-        logger.error('Failed to checkpoint WAL:', e)
+        logger.error('Failed to checkpoint WAL:', e as Error)
       }
       archive.file(sqliteDbPath, { name: 'database/baishou_agent.db' })
     }

@@ -20,7 +20,6 @@ import {
   mapBaishouDbToVaultName,
   mergeDirectoriesSkipExisting,
   normalizeLegacyPartData,
-  normalizeLegacyPartType,
   personaManifestKey,
   resolveLegacyAvatarCandidates,
   resolveLegacyIdentityPersonas,

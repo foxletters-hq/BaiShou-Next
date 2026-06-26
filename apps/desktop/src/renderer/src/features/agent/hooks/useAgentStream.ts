@@ -578,14 +578,8 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
   const stopChat = useCallback(() => {
     const sessionId = currentSessionId
     if (sessionId) {
-      if (streamDeltaNotifyTimers[sessionId]) {
-        clearTimeout(streamDeltaNotifyTimers[sessionId])
-        streamDeltaNotifyTimers[sessionId] = undefined
-      }
-      if (compressionDeltaNotifyTimers[sessionId]) {
-        clearTimeout(compressionDeltaNotifyTimers[sessionId])
-        compressionDeltaNotifyTimers[sessionId] = undefined
-      }
+      flushStreamDisplayBuffers(sessionId)
+      flushCompressionDisplayBuffers(sessionId)
       updateSessionState(sessionId, (state) => {
         state.isStreaming = false
         state.isBridgeActive = false
