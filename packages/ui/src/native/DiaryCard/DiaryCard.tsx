@@ -9,6 +9,7 @@ import {
   WEATHER_IDS,
   formatDiaryPreviewText,
   getDiaryTagColorIndex,
+  limitDiaryPreviewTags,
   resolveDiaryTagColorIndex,
   type DiaryTagColorRegistry
 } from '@baishou/shared'
@@ -85,6 +86,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
   }
 
   const previewText = formatDiaryPreviewText(contentSnippet)
+  const { visibleTags: previewTags, overflowCount: tagOverflowCount } = limitDiaryPreviewTags(tags)
 
   return (
     <TouchableOpacity
@@ -160,9 +162,9 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
         {/* RN LinearGradient mask typically requires react-native-linear-gradient, mock with simple overlap or fade */}
       </View>
 
-      {tags.length > 0 && (
+      {previewTags.length > 0 && (
         <View style={styles.tagsContainer}>
-          {tags.map((tag) => {
+          {previewTags.map((tag) => {
             const { bg, fg } = getTagColor(tag)
             return (
               <View key={tag} style={[styles.tag, { backgroundColor: bg }]}>
@@ -170,6 +172,13 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
               </View>
             )
           })}
+          {tagOverflowCount > 0 ? (
+            <View style={[styles.tag, { backgroundColor: colors.bgSurfaceHighest }]}>
+              <Text style={[styles.tagText, { color: colors.textSecondary }]}>
+                +{tagOverflowCount}
+              </Text>
+            </View>
+          ) : null}
         </View>
       )}
 
@@ -255,7 +264,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginTop: 20,
-    gap: 8
+    gap: 8,
+    maxHeight: 52,
+    overflow: 'hidden'
   },
   tag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   tagText: { fontSize: 12, fontWeight: '600' },
