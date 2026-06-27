@@ -544,7 +544,6 @@ describe('DiaryService - Single Source of Truth architecture', () => {
     })
 
     it('falls back to shadow raw content when disk read is empty', async () => {
-      const date = parseDateStr('2025-08-02')
       mockShadowSync.syncJournal.mockResolvedValue({ isChanged: false, meta: null })
       mockShadowRepo.findById.mockResolvedValue({
         id: 11,

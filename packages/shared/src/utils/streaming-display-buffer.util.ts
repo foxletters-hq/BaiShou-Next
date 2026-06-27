@@ -48,7 +48,7 @@ export function splitStreamingRevealUnits(
     let unitEnd = index
 
     while (unitEnd < text.length) {
-      const ch = text[unitEnd]
+      const ch = text.charAt(unitEnd)
       unitEnd += 1
       if (ch === '\n') break
       if (/[。！？.!?]/.test(ch)) break
