@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   buildFlutterLegacySummaryMarkdown,
+  countLegacyArchiveSourcesForVault,
   importLegacySqlSummariesForVault
 } from '../legacy-summary-migration.util'
 
@@ -61,5 +62,30 @@ describe('legacy-summary-migration.util', () => {
 
     expect(result.imported).toBe(1)
     expect(writes.some((p) => p.includes('/target/Personal/Archives/Weekly/'))).toBe(true)
+  })
+
+  it('counts legacy SQL summaries without reading summary content', async () => {
+    const executedSql: string[] = []
+    const result = await countLegacyArchiveSourcesForVault(
+      {
+        exists: async (p: string) => String(p).includes('baishou.sqlite'),
+        readdir: async () => [],
+        stat: async () => ({ isFile: false, isDirectory: false })
+      } as never,
+      '/legacy',
+      'Personal',
+      {},
+      async (_client, sql) => {
+        executedSql.push(sql)
+        if (sql.includes('ATTACH')) return { rows: [] }
+        if (sql.includes('PRAGMA')) return { rows: [{ name: 'id' }] }
+        if (sql.includes('COUNT(*)')) return { rows: [{ c: 2 }] }
+        return { rows: [] }
+      }
+    )
+
+    expect(result.sqlCount).toBe(2)
+    expect(executedSql.some((sql) => sql.includes('SELECT * FROM'))).toBe(false)
+    expect(executedSql.some((sql) => sql.includes('COUNT(*)'))).toBe(true)
   })
 })
