@@ -53,8 +53,35 @@ vi.mock('../node-file-system', () => ({
   fileSystem: {}
 }))
 
+const invalidateMcpToolContextCacheMock = vi.hoisted(() => vi.fn())
+
 vi.mock('../../ipc/settings.ipc', () => ({
-  settingsManager: { flushToDisk: vi.fn() }
+  settingsManager: {
+    flushToDisk: vi.fn(),
+    fullResyncFromDisk: vi.fn()
+  }
+}))
+
+vi.mock('../../ipc/agent-helpers', () => ({
+  invalidateMcpToolContextCache: invalidateMcpToolContextCacheMock
+}))
+
+vi.mock('../vault-resync.service', () => ({
+  scheduleVaultEcosystemResync: vi.fn().mockResolvedValue(undefined)
+}))
+
+vi.mock('../bootstrapper.service', () => ({
+  globalBootstrapper: {
+    activateVaultRuntime: vi.fn().mockResolvedValue(undefined)
+  }
+}))
+
+vi.mock('../shadow-sync.registry', () => ({
+  resetSharedShadowSync: vi.fn()
+}))
+
+vi.mock('../../ipc/attachment-path-cache', () => ({
+  resetAttachmentAllowedRootsCache: vi.fn()
 }))
 
 vi.mock('../diary-watcher.service', () => ({
@@ -78,8 +105,8 @@ vi.mock('../../ipc/git-sync.ipc', () => ({
 }))
 
 vi.mock('../mcp-runtime', () => ({
-  getMcpService: vi.fn(() => null),
-  bootstrapMcpServer: vi.fn()
+  getMcpService: vi.fn(() => ({ running: false, stop: vi.fn().mockResolvedValue(undefined) })),
+  bootstrapMcpServer: vi.fn().mockResolvedValue(undefined)
 }))
 
 vi.mock('../desktop-legacy-bootstrap.service', () => ({
@@ -104,5 +131,27 @@ describe('desktop-storage-directory.service', () => {
     expect(dbMock.getAppDb).toHaveBeenCalledWith('D:/new-workspace')
     expect(databaseMock.connectionManager.setDb).toHaveBeenCalledWith(dbInstanceMock)
     expect(databaseMock.installDatabaseSchema).toHaveBeenCalledWith(dbInstanceMock)
+  })
+
+  it('resyncs settings from disk before restarting MCP after storage resume', async () => {
+    const mcpRuntime = await import('../mcp-runtime')
+    const { settingsManager } = await import('../../ipc/settings.ipc')
+
+    vi.mocked(mcpRuntime.getMcpService).mockReturnValue({
+      running: true,
+      stop: vi.fn().mockResolvedValue(undefined)
+    } as never)
+
+    const { quiesceStorageForFileCopy, resumeStorageAfterFileCopy } =
+      await import('../desktop-storage-directory.service')
+
+    await quiesceStorageForFileCopy()
+    await resumeStorageAfterFileCopy()
+
+    expect(settingsManager.fullResyncFromDisk).toHaveBeenCalledBefore(
+      mcpRuntime.bootstrapMcpServer as never
+    )
+    expect(invalidateMcpToolContextCacheMock).toHaveBeenCalled()
+    expect(mcpRuntime.bootstrapMcpServer).toHaveBeenCalled()
   })
 })

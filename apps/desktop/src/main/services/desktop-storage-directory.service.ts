@@ -19,6 +19,7 @@ import { sessionWatcher } from './session-watcher.service'
 import { resetSyncService } from '../ipc/incremental-sync.ipc'
 import { resetGitService } from '../ipc/git-sync.ipc'
 import { getMcpService, bootstrapMcpServer } from './mcp-runtime'
+import { invalidateMcpToolContextCache } from '../ipc/agent-helpers'
 import { resolvePickedStorageDirectory } from './desktop-legacy-bootstrap.service'
 import { getAppDb, resetAppDb } from '../db'
 
@@ -136,6 +137,13 @@ export async function resumeStorageAfterFileCopy(): Promise<void> {
 
   const { scheduleVaultEcosystemResync } = await import('./vault-resync.service')
   scheduleVaultEcosystemResync('storage-root-changed')
+
+  try {
+    await settingsManager.fullResyncFromDisk()
+    invalidateMcpToolContextCache()
+  } catch (e) {
+    logger.warn('[StorageDirectory] settings fullResyncFromDisk failed after root change:', e as Error)
+  }
 
   if (mcpWasRunningBeforeQuiesce) {
     try {
