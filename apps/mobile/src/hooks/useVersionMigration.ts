@@ -52,8 +52,7 @@ export function useVersionMigration() {
     dbReady,
     runWithStorageQuiesced,
     vaultRevision,
-    notifyVersionMigrationComplete,
-    resyncAfterMigration
+    notifyVersionMigrationComplete
   } = useBaishou()
 
   const [pageReady, setPageReady] = useState(false)
@@ -62,6 +61,7 @@ export function useVersionMigration() {
   const [importingSection, setImportingSection] = useState<LegacyVersionMigrationSectionId | null>(
     null
   )
+  const [importBusy, setImportBusy] = useState(false)
   const [importProgress, setImportProgress] = useState('')
   const [sectionStatuses, setSectionStatuses] = useState<
     Partial<Record<LegacyVersionMigrationSectionId, LegacyVersionMigrationImportStatus>>
@@ -322,6 +322,7 @@ export function useVersionMigration() {
         if (!proceed) return
       }
 
+      setImportBusy(true)
       setImportingSection(sectionId)
       setImportProgress('')
       setSectionStatuses((prev) => ({ ...prev, [sectionId]: 'importing' }))
@@ -330,14 +331,16 @@ export function useVersionMigration() {
         const result = await runWithStorageQuiesced(() =>
           importMobileVersionMigrationSection(runtime, sectionId, {
             onProgress: (msg) => setImportProgress(msg),
-            legacySourceRoot: customLegacySourceRoot
+            legacySourceRoot: customLegacySourceRoot,
+            skipPostImportDiskResync: isWorkspaceSectionId(sectionId)
           })
         )
 
+        setImportingSection(null)
+        setImportProgress('')
+
         if (result.imported > 0) {
-          if (isWorkspaceSectionId(sectionId)) {
-            await resyncAfterMigration()
-          } else if (sectionId === 'avatar' && services?.bootstrapper) {
+          if (sectionId === 'avatar' && services?.bootstrapper) {
             await services.bootstrapper.resyncFromDisk()
           }
           notifyVersionMigrationComplete()
@@ -345,8 +348,6 @@ export function useVersionMigration() {
             emitSyncMutation('complete', 'version-migration-avatar')
             await runtime.settingsManager.flushToDisk()
           }
-        } else if (isWorkspaceSectionId(sectionId) && result.skipped > 0) {
-          await resyncAfterMigration()
         } else if (sectionId === 'avatar' && result.skipped > 0 && services?.bootstrapper) {
           await services.bootstrapper.resyncFromDisk()
         }
@@ -398,7 +399,7 @@ export function useVersionMigration() {
         if (
           isWorkspaceSectionId(sectionId) &&
           !isFailed &&
-          (result.imported > 0 || result.skipped > 0)
+          result.imported > 0
         ) {
           await promptRestartAfterWorkspaceMigration()
         }
@@ -415,6 +416,7 @@ export function useVersionMigration() {
       } finally {
         setImportingSection(null)
         setImportProgress('')
+        setImportBusy(false)
       }
     },
     [
@@ -424,7 +426,6 @@ export function useVersionMigration() {
       promptRestartAfterWorkspaceMigration,
       refreshPermission,
       refreshScan,
-      resyncAfterMigration,
       runWithStorageQuiesced,
       runtime,
       sectionStatuses,
@@ -451,6 +452,7 @@ export function useVersionMigration() {
     })
     if (!proceed) return
 
+    setImportBusy(true)
     setImportingSection(targets[0]!.sectionId)
     setImportProgress('')
 
@@ -466,11 +468,11 @@ export function useVersionMigration() {
         )
       )
 
+      setImportingSection(null)
+      setImportProgress('')
+
       if (result.imported > 0) {
-        await resyncAfterMigration()
         notifyVersionMigrationComplete()
-      } else if (result.skipped > 0) {
-        await resyncAfterMigration()
       }
 
       const summary = t('version_migration.import_result_summary', {
@@ -521,7 +523,7 @@ export function useVersionMigration() {
         )
       }
 
-      if (!isFailed && (result.imported > 0 || result.skipped > 0)) {
+      if (!isFailed && result.imported > 0) {
         await promptRestartAfterWorkspaceMigration()
       }
 
@@ -532,6 +534,7 @@ export function useVersionMigration() {
     } finally {
       setImportingSection(null)
       setImportProgress('')
+      setImportBusy(false)
     }
   }, [
     customLegacySourceRoot,
@@ -540,7 +543,6 @@ export function useVersionMigration() {
     promptRestartAfterWorkspaceMigration,
     refreshPermission,
     refreshScan,
-    resyncAfterMigration,
     runWithStorageQuiesced,
     runtime,
     t,
@@ -564,6 +566,7 @@ export function useVersionMigration() {
     globalSections,
     workspaceSections,
     importingSection,
+    importBusy,
     importProgress,
     refreshScan,
     handleImportSection,

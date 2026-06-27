@@ -2384,7 +2384,7 @@
     "legacy_source_migrated": "Using legacy directory from full migration record",
     "storage_entry_action": "Migrate from legacy by section",
     "restart_title": "Restart required",
-    "restart_message": "Workspace data has been imported. To ensure diaries, summaries, and companions refresh correctly when switching workspaces, please fully quit BaiShou and open it again."
+    "restart_message": "Workspace data has been imported. Until you restart, diaries, summaries, and chat lists may not show the latest content. To refresh everything correctly when switching workspaces, fully quit BaiShou and open it again — do not just send the app to the background."
   },
   "emoji": {
     "categories": "Categories",

@@ -1229,6 +1229,14 @@ export async function importLegacyChatsFromRows(
   }
 }
 
+type LegacyChatImportCandidate = {
+  sessionRow: Record<string, unknown>
+  oldSessionId: string
+  newSessionId: string
+  mappedAssistantId: string
+  attachPath: string
+}
+
 async function importLegacyChatsFromSources(
   deps: LegacyVersionMigrationImporterDeps,
   rows: Pick<LegacyAgentRows, 'sessions' | 'errors' | 'sessionSources'>,
@@ -1245,11 +1253,12 @@ async function importLegacyChatsFromSources(
   const warnings: string[] = []
   const failureSamples: string[] = []
   const fallbackAssistantId = Object.values(assistantIdMap)[0]
+  const sessionsByAttachPath = new Map<string, LegacyChatImportCandidate[]>()
+  let attachGroupIndex = 0
 
   for (const sessionRow of sessions) {
     const oldSessionId = String(sessionRow.id ?? '')
     if (!oldSessionId) continue
-    onProgress?.(String(sessionRow.title ?? oldSessionId))
 
     const rawAssistantId =
       sessionRow.assistant_id != null && String(sessionRow.assistant_id).trim() !== ''
@@ -1276,30 +1285,58 @@ async function importLegacyChatsFromSources(
       continue
     }
 
-    const alias = `legacy_chat_${hashString(oldSessionId)}`
+    const group = sessionsByAttachPath.get(source.attachPath) ?? []
+    group.push({
+      sessionRow,
+      oldSessionId,
+      newSessionId,
+      mappedAssistantId,
+      attachPath: source.attachPath
+    })
+    sessionsByAttachPath.set(source.attachPath, group)
+  }
+
+  for (const [attachPath, candidates] of sessionsByAttachPath) {
+    attachGroupIndex += 1
+    const alias = `legacy_chat_${attachGroupIndex}_${hashString(attachPath)}`
     let attached = false
     try {
       await deps.executeRawSql(
         deps.sqliteClient,
-        `ATTACH DATABASE ${quoteSqlString(source.attachPath)} AS ${alias}`
+        `ATTACH DATABASE ${quoteSqlString(attachPath)} AS ${alias}`
       )
       attached = true
-      await streamLegacySessionFromSource({
-        deps,
-        alias,
-        oldSessionId,
-        newSessionId,
-        sessionRow,
-        mappedAssistantId,
-        legacyVaultName
-      })
-      imported += 1
+
+      for (const candidate of candidates) {
+        const { sessionRow, oldSessionId, newSessionId, mappedAssistantId } = candidate
+        onProgress?.(String(sessionRow.title ?? oldSessionId))
+        try {
+          await streamLegacySessionFromSource({
+            deps,
+            alias,
+            oldSessionId,
+            newSessionId,
+            sessionRow,
+            mappedAssistantId,
+            legacyVaultName
+          })
+          imported += 1
+        } catch (error) {
+          failed += 1
+          if (failureSamples.length < 12) {
+            const title = String(sessionRow.title ?? oldSessionId)
+            const message = error instanceof Error ? error.message : String(error)
+            failureSamples.push(`会话 ${title}: ${message}`)
+          }
+        }
+      }
     } catch (error) {
       failed += 1
+      const message = error instanceof Error ? error.message : String(error)
       if (failureSamples.length < 12) {
-        const title = String(sessionRow.title ?? oldSessionId)
-        const message = error instanceof Error ? error.message : String(error)
-        failureSamples.push(`会话 ${title}: ${message}`)
+        failureSamples.push(
+          `无法连接旧版会话数据库（影响 ${candidates.length} 个会话）: ${message}`
+        )
       }
     } finally {
       if (attached) {
@@ -1338,6 +1375,8 @@ export async function importLegacyWorkspaceSection(
   let imported = 0
   let skipped = 0
   let failed = 0
+
+  deps.onProgress?.(legacyVaultName)
 
   const targetName = await ensureTargetVaultExists(deps, legacyVaultName)
   const vaultNameMap = { [legacyVaultName]: targetName }

@@ -314,6 +314,138 @@ describe('legacy-version-migration.importer chats', () => {
     ).toBe(true)
   })
 
+  it('attaches legacy agent db once when importing multiple sessions from the same source', async () => {
+    const executedSql: string[] = []
+    const writtenFiles = new Map<string, string>()
+    const createAssistant = vi.fn(async () => {})
+
+    const deps = createDeps({
+      fileSystem: {
+        exists: async (p: string) =>
+          String(p) === '/legacy/Personal/.baishou/agent.sqlite' || writtenFiles.has(String(p)),
+        readdir: async () => [],
+        stat: async (p: string) => ({
+          isFile: String(p).endsWith('agent.sqlite'),
+          isDirectory: false,
+          size: 1024 * 1024
+        }),
+        mkdir: async () => {},
+        writeFile: async (p: string, data: string) => {
+          writtenFiles.set(String(p), data)
+        },
+        appendFile: async (p: string, data: string) => {
+          writtenFiles.set(String(p), `${writtenFiles.get(String(p)) ?? ''}${data}`)
+        },
+        unlink: async (p: string) => {
+          writtenFiles.delete(String(p))
+        },
+        rename: async (oldPath: string, newPath: string) => {
+          const data = writtenFiles.get(String(oldPath))
+          if (data != null) {
+            writtenFiles.set(String(newPath), data)
+            writtenFiles.delete(String(oldPath))
+          }
+        }
+      } as never,
+      assistantManager: {
+        findAll: async () => [],
+        create: createAssistant
+      } as never,
+      sessionManager: { flushSessionToDisk: vi.fn(async () => {}) } as never,
+      upsertSessionAggregate: vi.fn(async () => {}),
+      getSessionsBaseDirectory: async () => '/target/Personal/Sessions',
+      existingAssistantNames: async () => new Set(),
+      existingSessionIds: async () => new Set(),
+      resolveTargetVaultName: async () => 'Personal',
+      vaultService: {
+        getAllVaults: () => [],
+        vaultExists: () => true,
+        createVault: async () => {},
+        switchVault: async () => {}
+      } as never,
+      executeRawSql: async (_client, statement, args = []) => {
+        executedSql.push(statement)
+        if (statement.includes('agent_assistants')) {
+          return { rows: [{ id: 'legacy-assistant', name: '旧伙伴' }] }
+        }
+        if (statement.includes('agent_sessions ORDER BY id')) {
+          return {
+            rows:
+              Number(args[1] ?? 0) === 0
+                ? [
+                    {
+                      id: 'legacy-session-a',
+                      title: '会话 A',
+                      assistant_id: 'legacy-assistant',
+                      provider_id: 'gemini',
+                      model_id: 'gemini-3'
+                    },
+                    {
+                      id: 'legacy-session-b',
+                      title: '会话 B',
+                      assistant_id: 'legacy-assistant',
+                      provider_id: 'gemini',
+                      model_id: 'gemini-3'
+                    }
+                  ]
+                : []
+          }
+        }
+        if (statement.includes("table_info('agent_messages')")) {
+          return { rows: [{ name: 'order_index' }] }
+        }
+        if (statement.includes("table_info('agent_parts')")) {
+          return { rows: [{ name: 'order_index' }] }
+        }
+        if (statement.includes('FROM legacy_chat_') && statement.includes('agent_messages')) {
+          const sessionId = String(args[0] ?? '')
+          return {
+            rows:
+              Number(args[2] ?? 0) === 0
+                ? [
+                    {
+                      id: `${sessionId}-message`,
+                      session_id: sessionId,
+                      role: 'user',
+                      order_index: 0
+                    }
+                  ]
+                : []
+          }
+        }
+        if (statement.includes('FROM legacy_chat_') && statement.includes('agent_parts')) {
+          const messageId = String(args[0] ?? '')
+          return {
+            rows:
+              Number(args[2] ?? 0) === 0
+                ? [
+                    {
+                      id: `${messageId}-part`,
+                      message_id: messageId,
+                      session_id: messageId.replace(/-message$/, ''),
+                      type: 'text',
+                      data: '{"text":"历史消息"}'
+                    }
+                  ]
+                : []
+          }
+        }
+        return { rows: [] }
+      }
+    })
+
+    const result = await importLegacyWorkspaceSection(deps, 'Personal')
+
+    expect(result.failed).toBe(0)
+    const chatAttachCount = executedSql.filter(
+      (sql) => sql.includes('ATTACH DATABASE') && sql.includes('AS legacy_chat_')
+    ).length
+    expect(chatAttachCount).toBe(1)
+    expect(writtenFiles.has('/target/Personal/Sessions/legacy-session-a.json')).toBe(true)
+    expect(writtenFiles.has('/target/Personal/Sessions/legacy-session-b.json')).toBe(true)
+    expect(result.imported).toBeGreaterThanOrEqual(2)
+  })
+
   it('imports legacy sessions with empty assistant_id using the fallback assistant', async () => {
     const upsertSessionAggregate = vi.fn(async () => {})
     const flushSessionToDisk = vi.fn(async () => {})

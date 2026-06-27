@@ -155,6 +155,7 @@ export const VersionMigrationScreen: React.FC = () => {
     globalSections,
     workspaceSections,
     importingSection,
+    importBusy,
     importProgress,
     refreshScan,
     handleImportSection,
@@ -351,7 +352,7 @@ export const VersionMigrationScreen: React.FC = () => {
             failureSamples={section.failureSamples}
             importStatus={section.importStatus}
             available={section.available}
-            importing={importingSection != null}
+            importing={importBusy}
             onImport={() => void handleImportSection(section.sectionId)}
             colors={colors}
             tokens={tokens}
@@ -369,7 +370,7 @@ export const VersionMigrationScreen: React.FC = () => {
                 variant="outline"
                 style={{ backgroundColor: colors.bgSurface }}
                 onPress={() => void handleImportAllWorkspaces()}
-                disabled={importingSection != null}
+                disabled={importBusy}
               >
                 {t('version_migration.import_all_workspaces', {
                   defaultValue: '导入全部工作空间'
@@ -398,7 +399,7 @@ export const VersionMigrationScreen: React.FC = () => {
               failureSamples={workspace.failureSamples}
               importStatus={workspace.importStatus}
               available={workspace.available}
-              importing={importingSection != null}
+              importing={importBusy}
               onImport={() => void handleImportSection(workspace.sectionId)}
               colors={colors}
               tokens={tokens}

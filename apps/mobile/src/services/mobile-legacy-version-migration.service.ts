@@ -360,7 +360,12 @@ function buildImporterDeps(
 export async function importMobileVersionMigrationSection(
   runtime: MobileVersionMigrationRuntime,
   sectionId: LegacyVersionMigrationSectionId,
-  options?: { onProgress?: (message: string) => void; legacySourceRoot?: string | null }
+  options?: {
+    onProgress?: (message: string) => void
+    legacySourceRoot?: string | null
+    /** 工作区导入后会提示重启，跳过耗时的磁盘全量 resync */
+    skipPostImportDiskResync?: boolean
+  }
 ): Promise<LegacyVersionMigrationImportResult> {
   const targetRoot = await runtime.getTargetRoot()
   const source = await resolveVersionMigrationLegacySource(
@@ -420,9 +425,11 @@ export async function importMobileVersionMigrationSection(
     if (activeVault !== targetVault) {
       await runtime.vaultService.switchVault(targetVault)
     }
-    const resyncOptions = { activeVaultName: targetVault }
-    await runtime.assistantManager.fullResyncFromDisks(resyncOptions)
-    await runtime.sessionManager.fullResyncFromDisks(resyncOptions)
+    if (!options?.skipPostImportDiskResync) {
+      const resyncOptions = { activeVaultName: targetVault }
+      await runtime.assistantManager.fullResyncFromDisks(resyncOptions)
+      await runtime.sessionManager.fullResyncFromDisks(resyncOptions)
+    }
     await removeEmptyLegacyVaultPlaceholder(runtime, legacyVaultName, targetVault)
   }
 
@@ -447,7 +454,11 @@ export async function importMobileVersionMigrationSection(
 export async function importMobileVersionMigrationAllWorkspaces(
   runtime: MobileVersionMigrationRuntime,
   workspaceSectionIds: LegacyVersionMigrationSectionId[],
-  options?: { onProgress?: (message: string) => void; legacySourceRoot?: string | null }
+  options?: {
+    onProgress?: (message: string) => void
+    legacySourceRoot?: string | null
+    skipPostImportDiskResync?: boolean
+  }
 ): Promise<LegacyVersionMigrationBatchImportResult> {
   let totalImported = 0
   let totalSkipped = 0
@@ -461,7 +472,8 @@ export async function importMobileVersionMigrationAllWorkspaces(
   for (const sectionId of workspaceSectionIds) {
     const result = await importMobileVersionMigrationSection(runtime, sectionId, {
       ...options,
-      onProgress: options?.onProgress
+      onProgress: options?.onProgress,
+      skipPostImportDiskResync: options?.skipPostImportDiskResync ?? true
     })
     sectionResults.push(result)
     totalImported += result.imported
