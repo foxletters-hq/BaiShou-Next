@@ -34,6 +34,10 @@ import {
 } from './mobile-diary-embedding.util'
 import type { MobileRagVaultScope } from './mobile-rag-vault-scope'
 import { listVaultDiaryMetas, loadVaultDiariesForEmbedding } from './mobile-rag-vault-diary'
+import {
+  patchCachedMobileRagState,
+  resetCachedMobileRagActiveState
+} from './mobile-rag-runtime-cache'
 import type { DiaryMeta } from '@baishou/shared'
 
 export { MobileRagAbortError } from './mobile-rag-operation-control'
@@ -151,6 +155,34 @@ export type RagProgressCallback = (progress: {
   total: number
   status: string
 }) => void
+
+type RagProgressOperationType = 'batchEmbed' | 'reembed' | 'migration'
+
+function broadcastRagProgress(
+  type: RagProgressOperationType,
+  progress: { current: number; total: number; status?: string }
+): void {
+  patchCachedMobileRagState({
+    isRunning: true,
+    type,
+    progress: progress.current,
+    total: progress.total,
+    statusText: progress.status ?? ''
+  })
+}
+
+function chainRagProgressCallback(
+  type: RagProgressOperationType,
+  onProgress?: RagProgressCallback
+): RagProgressCallback | undefined {
+  if (!onProgress) {
+    return (progress) => broadcastRagProgress(type, progress)
+  }
+  return (progress) => {
+    onProgress(progress)
+    broadcastRagProgress(type, progress)
+  }
+}
 
 export interface MobileRagServiceDeps {
   settingsManager: SettingsManagerService
@@ -342,12 +374,16 @@ async function runControlledDiaryBatchEmbedCore(
   deps: MobileRagServiceDeps,
   options?: {
     onProgress?: RagProgressCallback
+    progressType?: RagProgressOperationType
     /** @deprecated 请改用 vaultName */
     groupId?: string
     vaultName?: string
   }
 ): Promise<ControlledDiaryBatchEmbedResult> {
   mobileRagOperationControl.reset()
+  const progressType = options?.progressType ?? 'batchEmbed'
+  const onProgress = chainRagProgressCallback(progressType, options?.onProgress)
+  try {
   const ragConfig = (await deps.settingsManager.get<{ ragEnabled?: boolean }>('rag_config')) || {}
   if (!isRagMemoryEnabled({ ragEnabled: ragConfig.ragEnabled ?? true })) {
     return { embedded: 0, failed: 0, total: 0, skipped: true, skipReason: 'rag-disabled' }
@@ -426,6 +462,12 @@ async function runControlledDiaryBatchEmbedCore(
     return { embedded: 0, failed: 0, total: 0, skipped: true, skipReason: 'nothing-to-embed' }
   }
 
+  onProgress?.({
+    current: 0,
+    total: globalTotal,
+    status: ''
+  })
+
   const ragSettings =
     (await deps.settingsManager.get<{ batchEmbedConcurrency?: number }>('rag_config')) || {}
   const batchConcurrency = resolveMobileBatchEmbedConcurrency(ragSettings.batchEmbedConcurrency)
@@ -433,7 +475,7 @@ async function runControlledDiaryBatchEmbedCore(
   const progress = { embedded: 0, failed: 0, loadSkipped: 0, completed: 0 }
 
   const reportProgress = (status: string) => {
-    options?.onProgress?.({
+    onProgress?.({
       current: progress.completed,
       total: globalTotal,
       status
@@ -545,6 +587,9 @@ async function runControlledDiaryBatchEmbedCore(
     total: globalTotal,
     skipped: false
   }
+  } finally {
+    resetCachedMobileRagActiveState()
+  }
 }
 
 export async function runControlledDiaryBatchEmbed(
@@ -596,6 +641,7 @@ export async function runControlledDiaryBatchEmbed(
 export function createMobileRagService(deps: MobileRagServiceDeps) {
   const reembedAllInternal = async (onProgress?: RagProgressCallback): Promise<number> => {
     mobileRagOperationControl.reset()
+    const reportReembedProgress = chainRagProgressCallback('reembed', onProgress)
     await deps.hsRepo.clearEmbeddings()
 
     if (mobileRagOperationControl.isAborted) {
@@ -610,7 +656,7 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
     ragConfig.totalEmbeddings = 0
     await deps.settingsManager.set('rag_config', ragConfig)
 
-    onProgress?.({ current: 0, total: 1, status: 'detect-dimension' })
+    reportReembedProgress?.({ current: 0, total: 1, status: 'detect-dimension' })
     if (mobileRagOperationControl.isAborted) {
       throw new MobileRagAbortError(0)
     }
@@ -623,6 +669,7 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
 
     const result = await runControlledDiaryBatchEmbedCore(deps, {
       onProgress,
+      progressType: 'reembed',
       groupId: 'diary_batch'
     })
     return resolveControlledDiaryBatchEmbedCount(result)

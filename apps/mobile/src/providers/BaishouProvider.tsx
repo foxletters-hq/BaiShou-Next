@@ -75,6 +75,7 @@ import {
 } from '../services/mobile-context-at-message.service'
 import { createMobileFileSystem } from '../services/create-mobile-file-system'
 import { setupMobileLocalFileReader } from '../services/mobile-local-file-reader.service'
+import { setupMobileImageCompressor } from '../services/mobile-image-compressor.service'
 import { setupMobileTtsRefAudioReader } from '../services/mobile-tts-ref-audio.service'
 import { MobileArchiveService } from '../services/archive.service'
 import type { MobileArchiveDbBridge } from '../services/mobile-archive-db.bridge'
@@ -453,6 +454,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
         const fileSystem = createMobileFileSystem()
         setupMobileLocalFileReader(fileSystem)
+        setupMobileImageCompressor()
         setupMobileTtsRefAudioReader(fileSystem)
         const pathService = new MobileStoragePathService(fileSystem) as any
 
