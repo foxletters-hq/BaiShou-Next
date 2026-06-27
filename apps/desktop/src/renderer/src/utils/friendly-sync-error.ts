@@ -6,6 +6,12 @@ export function friendlySyncError(msg: string, t: TFunction): string {
   let cleanMsg = msg.replace(/^Error:\s*/i, '')
   cleanMsg = cleanMsg.replace(/^Error invoking remote method '.*?':\s*/i, '')
 
+  if (cleanMsg.includes('SyncIpcTimeoutError') || cleanMsg.includes('SyncIpcStallError')) {
+    return t('data_sync.sync_timeout_failed', {
+      max: 3,
+      defaultValue: '同步请求超时，已重试 3 次仍未响应，请检查网络连接后重试'
+    })
+  }
   if (cleanMsg.includes('SyncInProgressError') || cleanMsg.includes('already in progress')) {
     return t('data_sync.error_in_progress', 'Sync is already in progress. Please wait.')
   }

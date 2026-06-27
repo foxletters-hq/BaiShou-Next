@@ -1037,6 +1037,8 @@
     "stat_duration": "耗时",
     "syncing": "同步中...",
     "planning": "正在分析同步变更…",
+    "sync_retrying": "同步请求超时，正在重试 ({{attempt}}/{{max}})…",
+    "sync_timeout_failed": "同步请求超时，已重试 {{max}} 次仍未响应，请检查网络连接后重试",
     "planning_blocking_hint": "正在分析同步变更，请勿离开或操作其他功能",
     "sync_blocking_hint": "同步进行中，请勿离开或操作其他功能",
     "sync_in_progress_leave_blocked": "同步进行中，请稍候完成后再操作",

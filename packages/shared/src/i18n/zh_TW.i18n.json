@@ -959,6 +959,8 @@
     "stat_duration": "耗時",
     "syncing": "同步中...",
     "planning": "正在分析同步變更…",
+    "sync_retrying": "同步請求超時，正在重試 ({{attempt}}/{{max}})…",
+    "sync_timeout_failed": "同步請求超時，已重試 {{max}} 次仍未回應，請檢查網路連線後重試",
     "planning_blocking_hint": "正在分析同步變更，請勿離開或操作其他功能",
     "sync_blocking_hint": "同步進行中，請勿離開或操作其他功能",
     "sync_in_progress_leave_blocked": "同步進行中，請稍候完成後再操作",

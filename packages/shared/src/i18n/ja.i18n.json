@@ -973,6 +973,8 @@
     "stat_duration": "所要時間",
     "syncing": "同期中...",
     "planning": "同期の変更を分析中…",
+    "sync_retrying": "同期リクエストがタイムアウトしました。再試行中 ({{attempt}}/{{max}})…",
+    "sync_timeout_failed": "同期リクエストがタイムアウトしました。{{max}} 回再試行しても応答がありません。ネットワークを確認して再試行してください。",
     "planning_blocking_hint": "同期の変更を分析中です。この画面から離れないでください。",
     "sync_blocking_hint": "同期中です。この画面から離れないでください。",
     "sync_in_progress_leave_blocked": "同期中です。完了までお待ちください。",

@@ -993,6 +993,8 @@
     "stat_duration": "Duration",
     "syncing": "Syncing...",
     "planning": "Analyzing sync changes…",
+    "sync_retrying": "Sync request timed out, retrying ({{attempt}}/{{max}})…",
+    "sync_timeout_failed": "Sync request timed out after {{max}} retries. Please check your network and try again.",
     "planning_blocking_hint": "Analyzing sync changes. Please stay on this screen.",
     "sync_blocking_hint": "Sync in progress. Please stay on this screen.",
     "sync_in_progress_leave_blocked": "Sync in progress. Please wait until it finishes.",
