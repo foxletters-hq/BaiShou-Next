@@ -15,3 +15,26 @@ export function normalizeDiaryTags(tags: unknown): string[] {
   }
   return []
 }
+
+/** 预览卡片默认最多展示的标签数，避免标签挤占正文区域 */
+export const DIARY_PREVIEW_TAG_LIMIT = 4
+
+export type LimitedDiaryPreviewTags = {
+  visibleTags: string[]
+  overflowCount: number
+}
+
+/** 预览卡片标签截断：保留前 N 个，其余计入 overflowCount */
+export function limitDiaryPreviewTags(
+  tags: string[] | null | undefined,
+  maxVisible = DIARY_PREVIEW_TAG_LIMIT
+): LimitedDiaryPreviewTags {
+  const normalized = normalizeDiaryTags(tags)
+  if (normalized.length <= maxVisible) {
+    return { visibleTags: normalized, overflowCount: 0 }
+  }
+  return {
+    visibleTags: normalized.slice(0, maxVisible),
+    overflowCount: normalized.length - maxVisible
+  }
+}

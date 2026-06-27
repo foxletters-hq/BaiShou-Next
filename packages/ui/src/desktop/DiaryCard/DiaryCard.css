@@ -92,6 +92,14 @@
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 20px;
+  max-height: 52px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.diary-card-v2-tag-overflow {
+  background-color: rgba(148, 163, 184, 0.18) !important;
+  color: var(--text-secondary) !important;
 }
 
 .diary-card-v2-tag {

@@ -1,7 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import type { DiaryMeta } from '@baishou/shared'
-import { getWeatherEmoji } from '@baishou/shared'
+import { getWeatherEmoji, limitDiaryPreviewTags } from '@baishou/shared'
 // @ts-ignore
 import styles from './DiaryMetaCard.module.css'
 
@@ -58,7 +58,7 @@ export const DiaryMetaCard: React.FC<DiaryMetaCardProps> = ({ meta, onDelete, on
   const weekday = WEEKDAY_NAMES[d.getDay()]
   const yearMonth = `${d.getFullYear()} · ${MONTH_NAMES[d.getMonth()]}`
   const time = formatTime(d)
-  const visibleTags = (meta.tags || []).filter((t) => t.trim().length > 0)
+  const { visibleTags, overflowCount: tagOverflowCount } = limitDiaryPreviewTags(meta.tags)
 
   return (
     <div className={styles.card} onClick={onClick} data-testid="diary-meta-card">
@@ -106,6 +106,9 @@ export const DiaryMetaCard: React.FC<DiaryMetaCardProps> = ({ meta, onDelete, on
               #{t}
             </span>
           ))}
+          {tagOverflowCount > 0 ? (
+            <span className={`${styles.tag} ${styles.tagOverflow}`}>+{tagOverflowCount}</span>
+          ) : null}
         </div>
       )}
 

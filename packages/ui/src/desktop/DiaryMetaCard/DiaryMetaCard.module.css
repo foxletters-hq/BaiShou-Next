@@ -137,6 +137,9 @@
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 12px;
+  max-height: 52px;
+  overflow: hidden;
+  flex-shrink: 0;
 }
 
 .tag {
@@ -164,6 +167,11 @@
 .tagPurple {
   background-color: #faf5ff;
   color: #7e22ce;
+}
+
+.tagOverflow {
+  background-color: rgba(148, 163, 184, 0.18);
+  color: var(--color-on-surface-variant);
 }
 
 .deleteBtn {

@@ -325,8 +325,8 @@
 
 /* 内容预览 */
 .diary-card-content {
-  flex: 1;
-  min-height: 0;
+  flex: 1 1 auto;
+  min-height: 72px;
   overflow: hidden;
   position: relative;
   margin-bottom: 8px;
@@ -402,6 +402,14 @@
   gap: 8px;
   margin-top: 12px;
   padding-right: 0;
+  flex-shrink: 0;
+  max-height: 52px;
+  overflow: hidden;
+}
+
+.diary-card-tag-overflow {
+  background-color: var(--bg-surface-highest, rgba(148, 163, 184, 0.18));
+  color: var(--text-secondary);
 }
 
 .diary-card-tag {

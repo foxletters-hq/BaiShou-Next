@@ -3,6 +3,7 @@ import { Edit3, Trash2, Heart } from 'lucide-react'
 import { MarkdownRenderer } from '@baishou/ui'
 import {
   getWeatherEmoji,
+  limitDiaryPreviewTags,
   normalizeWeatherId,
   weatherI18nKey,
   WEATHER_IDS,
@@ -135,6 +136,9 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
   )
   const yearMonth = `${entry.date.getFullYear()} · ${t(MONTH_NAMES_KEYS[entry.date.getMonth()], MONTH_NAMES_DEFAULT[entry.date.getMonth()])}`
   const visibleTags = entry.tags.filter((t) => t.trim().length > 0)
+  const { visibleTags: previewTags, overflowCount: tagOverflowCount } = limitDiaryPreviewTags(
+    visibleTags
+  )
 
   const weatherLabelFallback: Record<WeatherId, string> = {
     sunny: '晴',
@@ -212,13 +216,16 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
       </div>
 
       {/* 标签 */}
-      {visibleTags.length > 0 && (
+      {previewTags.length > 0 && (
         <div className="diary-card-tags">
-          {visibleTags.map((tag, idx) => (
+          {previewTags.map((tag, idx) => (
             <span key={idx} className={`diary-card-tag ${getTagColor(tag)}`}>
               #{tag}
             </span>
           ))}
+          {tagOverflowCount > 0 ? (
+            <span className="diary-card-tag diary-card-tag-overflow">+{tagOverflowCount}</span>
+          ) : null}
         </div>
       )}
 
