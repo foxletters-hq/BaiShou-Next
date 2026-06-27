@@ -242,6 +242,7 @@ async function buildImporterDeps(
     },
     prepareSqliteAttachPath: prepareLegacySqliteAttachPath,
     getJournalsBaseDirectory: async () => pathService.getJournalsBaseDirectory(),
+    getSessionsBaseDirectory: async () => pathService.getSessionsBaseDirectory(),
     assistantRecordExists: async (assistantId: string) => {
       const dir = await pathService.getAssistantsBaseDirectory()
       return fileSystem.exists(join(dir, `${assistantId}.json`))

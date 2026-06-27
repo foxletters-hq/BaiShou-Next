@@ -347,6 +347,8 @@ function buildImporterDeps(
     prepareMobileSqliteAttachPath(runtime.fileSystem, dbPath)
   deps.getJournalsBaseDirectory = async (targetVaultName: string) =>
     `${await runtime.pathService.getVaultDirectory(targetVaultName)}/Journals`
+  deps.getSessionsBaseDirectory = async (targetVaultName: string) =>
+    `${await runtime.pathService.getVaultDirectory(targetVaultName)}/Sessions`
   deps.assistantRecordExists = async (assistantId: string) => {
     const dir = await runtime.pathService.getAssistantsBaseDirectory()
     return runtime.fileSystem.exists(`${dir}/${assistantId}.json`)
