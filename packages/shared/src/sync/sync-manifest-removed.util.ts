@@ -2,7 +2,11 @@ import {
   SYNC_MANIFEST_REMOVED_MAX_ENTRIES,
   SYNC_MANIFEST_VERSION
 } from '../constants/incremental-sync.constants'
-import type { ManifestEntry, RemovedManifestEntry, SyncManifest } from '../types/version-control.types'
+import type {
+  ManifestEntry,
+  RemovedManifestEntry,
+  SyncManifest
+} from '../types/version-control.types'
 import type { MergeDecision } from './three-way-merge'
 
 /** 空清单（含空的已移除记录表） */
@@ -117,8 +121,7 @@ export function applySyncDecisionRemovedSideEffects(
 
   switch (decision.type) {
     case 'delete-remote': {
-      const source =
-        decision.remoteEntry ?? decision.ancestorEntry ?? decision.localEntry ?? null
+      const source = decision.remoteEntry ?? decision.ancestorEntry ?? decision.localEntry ?? null
       if (source) {
         next = recordSyncManifestRemoved(next, filePath, source, deviceId)
       }

@@ -66,8 +66,7 @@ export function useGitManagementWorkspace(params: UseGitManagementWorkspaceParam
     handleLoadHistory
   } = params
 
-  const [destructiveConfirm, setDestructiveConfirm] =
-    useState<GitDestructiveConfirmRequest>(null)
+  const [destructiveConfirm, setDestructiveConfirm] = useState<GitDestructiveConfirmRequest>(null)
   const [isConfirmingDestructive, setIsConfirmingDestructive] = useState(false)
 
   const handleSelectCommit = useCallback(
@@ -84,7 +83,14 @@ export function useGitManagementWorkspace(params: UseGitManagementWorkspaceParam
       setCommitChanges(changes)
       setSelectedFileDiff(null)
     },
-    [expandedCommit, onGetCommitChanges, setExpandedCommit, setSelectedCommit, setCommitChanges, setSelectedFileDiff]
+    [
+      expandedCommit,
+      onGetCommitChanges,
+      setExpandedCommit,
+      setSelectedCommit,
+      setCommitChanges,
+      setSelectedFileDiff
+    ]
   )
 
   const handleViewDiff = useCallback(

@@ -1,4 +1,11 @@
-import { keymap, ViewPlugin, Decoration, type DecorationSet, type EditorView, type ViewUpdate } from '@codemirror/view'
+import {
+  keymap,
+  ViewPlugin,
+  Decoration,
+  type DecorationSet,
+  type EditorView,
+  type ViewUpdate
+} from '@codemirror/view'
 import { StateEffect } from '@codemirror/state'
 import { shouldSkipDiaryTagExtractionLine } from '@baishou/shared'
 import {
@@ -9,8 +16,7 @@ import {
 
 export { setActiveDiaryTagColorRegistry, getActiveDiaryTagColorRegistry }
 
-export const refreshDiaryTagColorRegistryEffect =
-  StateEffect.define<Record<string, number>>()
+export const refreshDiaryTagColorRegistryEffect = StateEffect.define<Record<string, number>>()
 
 const TAG_TOKEN_RE = /#([^\s#]+)/g
 

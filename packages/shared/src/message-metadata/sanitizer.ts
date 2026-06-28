@@ -1,7 +1,6 @@
 const BRACKET_TIME_PREFIX = /^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}\]\s*/
 const BRACKET_TIME_GLOBAL = /\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}\]\s*/g
-const TAG_TIME_LINE =
-  /<message-time>\d{4}-\d{2}-\d{2} \d{2}:\d{2}<\/(?:message-time|time)>\s*/gi
+const TAG_TIME_LINE = /<message-time>\d{4}-\d{2}-\d{2} \d{2}:\d{2}<\/(?:message-time|time)>\s*/gi
 const TAG_TIME_GLOBAL = /<message-time>\d{4}-\d{2}-\d{2} \d{2}:\d{2}<\/message-time>\s*/g
 const TAG_CONTENT_BLOCK = /<message-content>\s*([\s\S]*?)\s*<\/message-content>/gi
 const ORPHAN_MESSAGE_CONTENT_TAG = /<\/?message-content>/gi

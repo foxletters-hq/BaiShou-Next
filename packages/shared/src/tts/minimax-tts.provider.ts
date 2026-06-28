@@ -60,10 +60,7 @@ function buildMinimaxTtsRequestBody(
   }
 }
 
-function parseMinimaxSyncResponse(
-  resJson: MinimaxT2aV2Response,
-  httpStatus: number
-): Uint8Array {
+function parseMinimaxSyncResponse(resJson: MinimaxT2aV2Response, httpStatus: number): Uint8Array {
   const statusCode = resJson.base_resp?.status_code
   if (statusCode !== undefined && statusCode !== 0) {
     const statusMsg = resJson.base_resp?.status_msg || 'unknown error'

@@ -69,9 +69,7 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
         )
       }
     } catch (e: unknown) {
-      toast.showError(
-        t('settings.export_failed', { error: formatExportErrorMessage(e, t) })
-      )
+      toast.showError(t('settings.export_failed', { error: formatExportErrorMessage(e, t) }))
     } finally {
       setIsExporting(false)
     }
@@ -110,14 +108,10 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
         hint={
           isExporting
             ? t('settings.exporting_data', '正在导出数据...')
-            : importProgressDetail ??
-              t('settings.restoring_data_hint', '请勿关闭应用或进行其他操作，恢复完成后将自动刷新')
+            : (importProgressDetail ??
+              t('settings.restoring_data_hint', '请勿关闭应用或进行其他操作，恢复完成后将自动刷新'))
         }
-        message={
-          isExporting
-            ? t('settings.exporting_data', '正在导出数据...')
-            : undefined
-        }
+        message={isExporting ? t('settings.exporting_data', '正在导出数据...') : undefined}
       />
       {flat ? (
         <div className="about-settings-wrapper">

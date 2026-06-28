@@ -1,6 +1,9 @@
 import { type ActionDeps, type StreamRunConfig, runStreamWithPersistence } from './base.action'
 import type { SessionRepository, SnapshotRepository } from '@baishou/database'
-import { truncateSessionAfterOrderIndex, truncateOptionsWithDiskFlush } from '../session-truncate.utils'
+import {
+  truncateSessionAfterOrderIndex,
+  truncateOptionsWithDiskFlush
+} from '../session-truncate.utils'
 
 export async function runEditMessageAction(
   deps: ActionDeps,

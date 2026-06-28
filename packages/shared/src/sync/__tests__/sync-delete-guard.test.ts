@@ -138,9 +138,7 @@ describe('assertBidirectionalDeletePropagationAllowed', () => {
     )
     const local = manifest(ancestorFiles)
     const remote = manifest(
-      Object.fromEntries(
-        Array.from({ length: 5 }, (_, i) => [`img-${i}.jpg`, `hash-${i}`])
-      )
+      Object.fromEntries(Array.from({ length: 5 }, (_, i) => [`img-${i}.jpg`, `hash-${i}`]))
     )
     remote.updatedAt = 2_000
     const ancestor = manifest(ancestorFiles)
@@ -159,9 +157,7 @@ describe('assertBidirectionalDeletePropagationAllowed', () => {
       Array.from({ length: 30 }, (_, i) => [`img-${i}.jpg`, `hash-${i}`])
     )
     const local = manifest(
-      Object.fromEntries(
-        Array.from({ length: 5 }, (_, i) => [`img-${i}.jpg`, `hash-${i}`])
-      )
+      Object.fromEntries(Array.from({ length: 5 }, (_, i) => [`img-${i}.jpg`, `hash-${i}`]))
     )
     const remote = manifest(remoteFiles)
     const ancestor = manifest(remoteFiles)

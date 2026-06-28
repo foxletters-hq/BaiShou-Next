@@ -124,7 +124,10 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
       } else if (isAuthorNotConfiguredError(e)) {
         notifyAuthorNotConfigured()
       } else {
-        onToast(formatGitErrorMessage(e) || t('version_control.git_commit_failed', '提交失败'), 'error')
+        onToast(
+          formatGitErrorMessage(e) || t('version_control.git_commit_failed', '提交失败'),
+          'error'
+        )
       }
     }
   }, [
@@ -179,7 +182,10 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
       } else if (isAuthorNotConfiguredError(e)) {
         notifyAuthorNotConfigured()
       } else {
-        onToast(formatGitErrorMessage(e) || t('version_control.git_commit_failed', '提交失败'), 'error')
+        onToast(
+          formatGitErrorMessage(e) || t('version_control.git_commit_failed', '提交失败'),
+          'error'
+        )
       }
     }
   }, [

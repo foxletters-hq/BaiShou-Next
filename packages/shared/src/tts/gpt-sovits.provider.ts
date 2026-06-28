@@ -39,7 +39,11 @@ function createGradioUploadFormData(refAudioPath: string, audioBytes: Uint8Array
       audioBytes.byteOffset,
       audioBytes.byteOffset + audioBytes.byteLength
     ) as ArrayBuffer
-    formData.append('files', new Blob([audioBuffer], { type: mime }), GPT_SOVITS_GRADIO_UPLOAD_FILENAME)
+    formData.append(
+      'files',
+      new Blob([audioBuffer], { type: mime }),
+      GPT_SOVITS_GRADIO_UPLOAD_FILENAME
+    )
     return formData
   } catch (error) {
     if (!isUnsupportedBlobPartError(error)) {

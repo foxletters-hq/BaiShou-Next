@@ -204,9 +204,7 @@ export {
   type IncrementalSyncConfirmReplanResult
 } from './sync/incremental-sync-confirm-replan.util'
 export { isIncrementalSyncRemoteFileNotFoundError } from './sync/sync-download-errors.util'
-export {
-  SYNC_MANIFEST_REMOVED_MAX_ENTRIES,
-} from './constants/incremental-sync.constants'
+export { SYNC_MANIFEST_REMOVED_MAX_ENTRIES } from './constants/incremental-sync.constants'
 export {
   applySyncDecisionRemovedSideEffects,
   clearSyncManifestRemoved,

@@ -31,9 +31,7 @@ export class ShadowIndexQueryOps {
 
   /** 排除 Archives 等总结子目录中误入影子索引的记录 */
   private journalPathNotUnderSkippedDirs() {
-    const clauses = buildJournalTreeSkipSqlLikeClauses('file_path').map(
-      (clause) => sql.raw(clause)
-    )
+    const clauses = buildJournalTreeSkipSqlLikeClauses('file_path').map((clause) => sql.raw(clause))
     return and(...clauses)
   }
 

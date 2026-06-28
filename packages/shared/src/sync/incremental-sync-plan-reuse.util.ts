@@ -108,7 +108,9 @@ export function hasRemoteManifestDrift(baseline: SyncManifest, current: SyncMani
   if (hasLocalSyncTreeDrift(baselineFiles, currentFiles)) {
     return true
   }
-  return buildSyncManifestRemovedFingerprint(baseline) !== buildSyncManifestRemovedFingerprint(current)
+  return (
+    buildSyncManifestRemovedFingerprint(baseline) !== buildSyncManifestRemovedFingerprint(current)
+  )
 }
 
 export type IncrementalSyncPlanReuseBaseline = {

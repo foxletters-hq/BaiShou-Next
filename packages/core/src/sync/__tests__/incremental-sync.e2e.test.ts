@@ -1,7 +1,10 @@
 import * as crypto from 'crypto'
 import { afterEach, describe, expect, it } from 'vitest'
 import { SyncDivergenceConfirmationRequiredError, SYNC_MANIFEST_VERSION } from '@baishou/shared'
-import { SimulatedSyncDevice, type SimulatedSyncDeviceOptions } from './helpers/simulated-sync-device'
+import {
+  SimulatedSyncDevice,
+  type SimulatedSyncDeviceOptions
+} from './helpers/simulated-sync-device'
 import { SharedCloudStore } from './helpers/shared-cloud-store'
 
 function md5(content: string): string {
@@ -244,11 +247,7 @@ describe('incremental sync E2E simulation', () => {
 
     const result = await deviceB.sync({ deletePropagationChoice: 'push-local' })
     expect(result.deletedRemote).toEqual(
-      expect.arrayContaining([
-        journalPath('seed-1'),
-        journalPath('seed-2'),
-        journalPath('seed-3')
-      ])
+      expect.arrayContaining([journalPath('seed-1'), journalPath('seed-2'), journalPath('seed-3')])
     )
     expect(result.uploaded).toContain(journalPath('new-after-delete'))
     expect(cloud.has(journalPath('seed-1'))).toBe(false)
@@ -264,11 +263,7 @@ describe('incremental sync E2E simulation', () => {
     const baseTime = Date.now()
 
     for (let i = 1; i <= 30; i++) {
-      await desktop.writeFile(
-        journalPath(`photo-${pad2(i)}`),
-        `image-${pad2(i)}`,
-        baseTime + i
-      )
+      await desktop.writeFile(journalPath(`photo-${pad2(i)}`), `image-${pad2(i)}`, baseTime + i)
     }
     await desktop.sync()
     await mobile.sync()

@@ -37,14 +37,9 @@ export function buildIncrementalSyncPlanMergeResult(
 
   if (runOptions?.deletePropagationChoice) {
     return {
-      decisions: resolveSyncMergeDecisions(
-        rawDecisions,
-        local,
-        remote,
-        ancestor,
-        previousLocal,
-        { deletePropagationChoice: runOptions.deletePropagationChoice }
-      ),
+      decisions: resolveSyncMergeDecisions(rawDecisions, local, remote, ancestor, previousLocal, {
+        deletePropagationChoice: runOptions.deletePropagationChoice
+      }),
       deleteBlock: null
     }
   }

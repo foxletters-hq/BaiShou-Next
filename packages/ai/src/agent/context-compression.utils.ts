@@ -181,7 +181,10 @@ export function extractMessageText(msg: MessageWithParts): string {
       const att = p.data as { name?: string; fileName?: string } | null | undefined
       chunks.push(`[图片附件 ${att?.name || att?.fileName || ''}]`)
     } else if (p.type === 'attachment') {
-      const att = p.data as { textContent?: string; name?: string; fileName?: string } | null | undefined
+      const att = p.data as
+        | { textContent?: string; name?: string; fileName?: string }
+        | null
+        | undefined
       if (att?.textContent) {
         chunks.push(`[附件 ${att.name || att.fileName || ''}]\n${att.textContent}`)
       }
@@ -225,7 +228,10 @@ export function extractMessageTextForCompression(msg: MessageWithParts): string 
       const att = p.data as { name?: string; fileName?: string } | null | undefined
       chunks.push(`[图片附件 ${att?.name || att?.fileName || ''}]`)
     } else if (p.type === 'attachment') {
-      const att = p.data as { textContent?: string; name?: string; fileName?: string } | null | undefined
+      const att = p.data as
+        | { textContent?: string; name?: string; fileName?: string }
+        | null
+        | undefined
       if (att?.textContent) {
         chunks.push(`[附件 ${att.name || att.fileName || ''}]\n${att.textContent}`)
       }

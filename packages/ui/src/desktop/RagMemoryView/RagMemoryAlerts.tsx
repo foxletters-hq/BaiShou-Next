@@ -28,8 +28,7 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
 }) => {
   const { t } = useTranslation()
   const isMigrating = ragState.isRunning && ragState.type === 'migration'
-  const isAborting =
-    ragState.statusKey === 'settings.rag_migration_aborting' || migrationCancelBusy
+  const isAborting = ragState.statusKey === 'settings.rag_migration_aborting' || migrationCancelBusy
   const showEmbedError = !isMigrating && !!ragState.error
   const showInterrupted =
     !isMigrating &&

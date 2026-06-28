@@ -38,9 +38,7 @@ export const LocalArchiveBackupToolbar: React.FC<LocalArchiveBackupToolbarProps>
         )
       }
     } catch (e: unknown) {
-      toast.showError(
-        t('settings.export_failed', { error: formatExportErrorMessage(e, t) })
-      )
+      toast.showError(t('settings.export_failed', { error: formatExportErrorMessage(e, t) }))
     } finally {
       setIsExporting(false)
     }
@@ -76,11 +74,7 @@ export const LocalArchiveBackupToolbar: React.FC<LocalArchiveBackupToolbarProps>
     <>
       <RestoreBlockingOverlay
         visible={isImporting || isExporting}
-        message={
-          isExporting
-            ? t('settings.exporting_data', '正在导出数据...')
-            : undefined
-        }
+        message={isExporting ? t('settings.exporting_data', '正在导出数据...') : undefined}
       />
       <div className={styles.localArchiveToolbar}>
         <span className={styles.localArchiveLabel}>

@@ -336,9 +336,7 @@ describe('context-compression.utils', () => {
     const tokens = estimateContextTokensForTrigger(messages, after, snapshot)
 
     expect(tokens).toBeLessThan(10_000)
-    expect(
-      resolveCompressionTrigger(tokens, { threshold: 300_000, keepTurns: 3 })
-    ).toBe(false)
+    expect(resolveCompressionTrigger(tokens, { threshold: 300_000, keepTurns: 3 })).toBe(false)
   })
 
   it('estimateContextTokensForTrigger ignores inflated API usage', () => {
@@ -354,9 +352,7 @@ describe('context-compression.utils', () => {
     const tokens = estimateContextTokensForTrigger(messages, after, null)
 
     expect(tokens).toBeLessThan(1_000)
-    expect(
-      resolveCompressionTrigger(tokens, { threshold: 300_000, keepTurns: 3 })
-    ).toBe(false)
+    expect(resolveCompressionTrigger(tokens, { threshold: 300_000, keepTurns: 3 })).toBe(false)
   })
 
   it('readCompressTokenThreshold normalizes assistant values', () => {

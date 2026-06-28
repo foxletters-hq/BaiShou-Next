@@ -17,10 +17,9 @@ function resolveDugiteGitDirectory(): string {
   if (cachedGitDir) return cachedGitDir
 
   const dugitePackageRoot = path.dirname(require.resolve('dugite/package.json'))
-  const gitDir = path.join(dugitePackageRoot, 'git').replace(
-    /[\\/]app\.asar([\\/])/,
-    `${path.sep}app.asar.unpacked$1`
-  )
+  const gitDir = path
+    .join(dugitePackageRoot, 'git')
+    .replace(/[\\/]app\.asar([\\/])/, `${path.sep}app.asar.unpacked$1`)
 
   const gitBinary =
     process.platform === 'win32'

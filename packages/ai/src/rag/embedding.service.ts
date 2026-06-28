@@ -16,7 +16,12 @@ import {
   type EmbeddingMigrationDeps,
   type MigrationLifecycle
 } from './embedding-migration'
-import { migrationControl, type MigrationControl, MigrationAbortError, abortableDelay } from './migration-control'
+import {
+  migrationControl,
+  type MigrationControl,
+  MigrationAbortError,
+  abortableDelay
+} from './migration-control'
 import { withEmbeddingSlot } from './embedding-concurrency'
 import type { EmbeddingMigrationRollbackConfig } from '@baishou/shared'
 

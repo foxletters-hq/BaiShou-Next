@@ -57,8 +57,7 @@ export function formatSyncProgressSummary(
   t: SyncProgressTranslate
 ): { headline: string; detail: string } {
   const phaseLabel = formatSyncProgressPhaseLabel(event, t)
-  const fileLine =
-    event.action && event.fileName ? formatSyncProgressStatus(event, t) : ''
+  const fileLine = event.action && event.fileName ? formatSyncProgressStatus(event, t) : ''
 
   if (event.phase === 'syncing' && event.total > 0) {
     return {

@@ -1,9 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import {
-  MigrationControl,
-  MigrationAbortError,
-  abortableDelay
-} from '../migration-control'
+import { MigrationControl, MigrationAbortError, abortableDelay } from '../migration-control'
 
 describe('abortableDelay', () => {
   it('throws MigrationAbortError when abort is requested during wait', async () => {

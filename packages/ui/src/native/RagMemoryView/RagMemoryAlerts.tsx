@@ -25,11 +25,8 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
 
   const isLongRunning =
     ragState.isRunning &&
-    (ragState.type === 'reembed' ||
-      ragState.type === 'migration' ||
-      ragState.type === 'batchEmbed')
-  const isAborting =
-    migrationCancelBusy || ragState.statusKey === 'settings.rag_migration_aborting'
+    (ragState.type === 'reembed' || ragState.type === 'migration' || ragState.type === 'batchEmbed')
+  const isAborting = migrationCancelBusy || ragState.statusKey === 'settings.rag_migration_aborting'
   const showEmbedError = !isLongRunning && !!ragState.error
 
   return (

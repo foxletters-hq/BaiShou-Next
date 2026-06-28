@@ -47,7 +47,11 @@ export const ContextChainRecompressBar: React.FC<ContextChainRecompressBarProps>
             {error}
           </Text>
           {onDismissError ? (
-            <Pressable onPress={onDismissError} hitSlop={8} style={{ marginLeft: tokens.spacing.sm }}>
+            <Pressable
+              onPress={onDismissError}
+              hitSlop={8}
+              style={{ marginLeft: tokens.spacing.sm }}
+            >
               <Text style={{ fontSize: 13, color: colors.primary }}>
                 {t('common.dismiss', '关闭')}
               </Text>

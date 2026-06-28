@@ -12,10 +12,7 @@ export interface StreamingMarkdownLinesProps {
 }
 
 /** 流式正文：按视觉行分段渲染，新行柔和淡入，避免 Markdown 整段重绘。 */
-export function StreamingMarkdownLines({
-  content,
-  variant = 'chat'
-}: StreamingMarkdownLinesProps) {
+export function StreamingMarkdownLines({ content, variant = 'chat' }: StreamingMarkdownLinesProps) {
   const { colors } = useNativeTheme()
   const isAncillary = variant === 'ancillary'
   const lines = useMemo(() => {

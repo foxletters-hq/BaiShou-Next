@@ -258,10 +258,7 @@ export function useDiaryCodeMirrorBridge(
           optionsRef.current.onImageAction?.(message.payload)
           return
         case 'imagePreview':
-          optionsRef.current.onImagePreview?.(
-            message.payload.srcRaw,
-            message.payload.resolvedUrl
-          )
+          optionsRef.current.onImagePreview?.(message.payload.srcRaw, message.payload.resolvedUrl)
           return
         case 'contentHeight': {
           const height = message.payload.height
@@ -278,10 +275,7 @@ export function useDiaryCodeMirrorBridge(
           return
         }
         case 'caretViewport':
-          optionsRef.current.onCaretViewport?.(
-            message.payload.top,
-            message.payload.bottom
-          )
+          optionsRef.current.onCaretViewport?.(message.payload.top, message.payload.bottom)
           return
         case 'panScroll':
           optionsRef.current.onPanScroll?.(message.payload.deltaY)

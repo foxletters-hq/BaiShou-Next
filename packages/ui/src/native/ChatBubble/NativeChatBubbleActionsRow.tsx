@@ -102,7 +102,13 @@ export const NativeChatBubbleEditActions: React.FC<NativeChatBubbleEditActionsPr
         hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         style={[styles.editBtn, styles.comfortableEditBtn, { borderColor: colors.borderSubtle }]}
       >
-        <Text style={[styles.editBtnText, styles.comfortableEditBtnText, { color: colors.textSecondary }]}>
+        <Text
+          style={[
+            styles.editBtnText,
+            styles.comfortableEditBtnText,
+            { color: colors.textSecondary }
+          ]}
+        >
           {t('common.cancel', '取消')}
         </Text>
       </TouchableOpacity>
@@ -112,7 +118,13 @@ export const NativeChatBubbleEditActions: React.FC<NativeChatBubbleEditActionsPr
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           style={[styles.editBtn, styles.comfortableEditBtn, { backgroundColor: colors.primary }]}
         >
-          <Text style={[styles.editBtnText, styles.comfortableEditBtnText, { color: colors.textOnPrimary }]}>
+          <Text
+            style={[
+              styles.editBtnText,
+              styles.comfortableEditBtnText,
+              { color: colors.textOnPrimary }
+            ]}
+          >
             {t('agent.chat.resend', '重新发送')}
           </Text>
         </TouchableOpacity>
@@ -123,7 +135,13 @@ export const NativeChatBubbleEditActions: React.FC<NativeChatBubbleEditActionsPr
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           style={[styles.editBtn, styles.comfortableEditBtn, { backgroundColor: colors.primary }]}
         >
-          <Text style={[styles.editBtnText, styles.comfortableEditBtnText, { color: colors.textOnPrimary }]}>
+          <Text
+            style={[
+              styles.editBtnText,
+              styles.comfortableEditBtnText,
+              { color: colors.textOnPrimary }
+            ]}
+          >
             {t('common.save', '保存')}
           </Text>
         </TouchableOpacity>

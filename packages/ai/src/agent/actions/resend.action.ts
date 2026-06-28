@@ -1,7 +1,10 @@
 import { type ActionDeps, type StreamRunConfig, runStreamWithPersistence } from './base.action'
 import type { SessionRepository, SnapshotRepository } from '@baishou/database'
 import { normalizePartData } from '@baishou/shared'
-import { truncateSessionAfterOrderIndex, truncateOptionsWithDiskFlush } from '../session-truncate.utils'
+import {
+  truncateSessionAfterOrderIndex,
+  truncateOptionsWithDiskFlush
+} from '../session-truncate.utils'
 
 export async function runResendAction(
   deps: ActionDeps,
@@ -28,7 +31,11 @@ export async function runResendAction(
   const userText = textParts
     .map((p) => {
       const data = normalizePartData(p.data)
-      return typeof data.text === 'string' ? data.text : typeof data.content === 'string' ? data.content : ''
+      return typeof data.text === 'string'
+        ? data.text
+        : typeof data.content === 'string'
+          ? data.content
+          : ''
     })
     .join('\n')
   if (!userText) {

@@ -29,7 +29,9 @@ export function normalizeIncrementalSyncAbsPathForCompare(absPath: string): stri
   let normalized = normalizeIncrementalSyncAbsPath(absPath)
   if (normalized.startsWith('file://')) {
     try {
-      normalized = normalizeIncrementalSyncAbsPath(decodeURIComponent(normalized.slice('file://'.length)))
+      normalized = normalizeIncrementalSyncAbsPath(
+        decodeURIComponent(normalized.slice('file://'.length))
+      )
     } catch {
       normalized = normalizeIncrementalSyncAbsPath(normalized.slice('file://'.length))
     }

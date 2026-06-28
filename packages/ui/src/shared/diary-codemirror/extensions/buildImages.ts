@@ -40,8 +40,7 @@ export function collectImageDecorations(
 
     const line = doc.lineAt(matchStart)
     const onActiveLine = isCursorOnLine(line.from, line.to, cursors)
-    const showLinkBar =
-      platform?.interactionMode !== 'touch' && onActiveLine
+    const showLinkBar = platform?.interactionMode !== 'touch' && onActiveLine
 
     const alt = match[1] ?? ''
     const srcRaw = match[2] ?? ''

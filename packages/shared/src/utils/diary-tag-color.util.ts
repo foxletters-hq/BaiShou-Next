@@ -46,7 +46,9 @@ export function pickDiaryTagColorIndex(exclude?: number): number {
   if (exclude === undefined) {
     return Math.floor(Math.random() * DIARY_TAG_COLOR_COUNT)
   }
-  const pool = Array.from({ length: DIARY_TAG_COLOR_COUNT }, (_, i) => i).filter((i) => i !== exclude)
+  const pool = Array.from({ length: DIARY_TAG_COLOR_COUNT }, (_, i) => i).filter(
+    (i) => i !== exclude
+  )
   return pool[Math.floor(Math.random() * pool.length)] ?? exclude
 }
 

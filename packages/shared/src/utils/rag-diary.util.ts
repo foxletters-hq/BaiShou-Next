@@ -11,7 +11,11 @@ export function sortDiariesByDateDesc<T extends { date: Date }>(diaries: T[]): T
 export const DIARY_EMBED_GROUP_PREFIX = 'diary:'
 
 /** 旧版未按工作空间隔离的日记嵌入 groupId（迁移时需清理） */
-export const LEGACY_DIARY_EMBED_GROUP_IDS = ['diary_batch', 'diary_auto', 'diary_post_sync'] as const
+export const LEGACY_DIARY_EMBED_GROUP_IDS = [
+  'diary_batch',
+  'diary_auto',
+  'diary_post_sync'
+] as const
 
 const DIARY_EMBED_SOURCE_SEP = '#'
 
