@@ -1,6 +1,6 @@
 import React from 'react'
-import { View, Text, TouchableOpacity } from 'react-native'
-import { MaterialCommunityIcons } from '@expo/vector-icons'
+import { View, Text, TouchableOpacity, Platform } from 'react-native'
+import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import type { RagStats } from './rag-memory.types'
@@ -25,6 +25,23 @@ export const RagMemoryStatsSection: React.FC<RagMemoryStatsSectionProps> = ({
   const { colors } = useNativeTheme()
 
   const dimensionText = stats.currentDimension > 0 ? String(stats.currentDimension) : '—'
+  const useMaterialIcons = Platform.OS === 'android'
+  const StatIcon = useMaterialIcons ? MaterialIcons : MaterialCommunityIcons
+  type MaterialIconName = React.ComponentProps<typeof MaterialIcons>['name']
+  type CommunityIconName = React.ComponentProps<typeof MaterialCommunityIcons>['name']
+  const statIcons = useMaterialIcons
+    ? ({
+        count: 'sd-storage',
+        model: 'hub',
+        dimension: 'call-merge',
+        refresh: 'refresh'
+      } satisfies Record<string, MaterialIconName>)
+    : ({
+        count: 'database-outline',
+        model: 'hub',
+        dimension: 'vector-combine',
+        refresh: 'refresh'
+      } satisfies Record<string, CommunityIconName>)
 
   return (
     <View style={styles.statsRow}>
@@ -37,7 +54,7 @@ export const RagMemoryStatsSection: React.FC<RagMemoryStatsSectionProps> = ({
           }
         ]}
       >
-        <MaterialCommunityIcons name="database-outline" size={14} color={colors.primary} />
+        <StatIcon name={statIcons.count as never} size={14} color={colors.primary} />
         <Text style={[styles.statValue, { color: colors.primary }]}>
           {stats.diaryCountForVault != null ? stats.diaryCountForVault : stats.totalCount}
         </Text>
@@ -63,7 +80,7 @@ export const RagMemoryStatsSection: React.FC<RagMemoryStatsSectionProps> = ({
         disabled={!onConfigureModel}
         activeOpacity={0.7}
       >
-        <MaterialCommunityIcons name="hub" size={14} color={colors.success} />
+        <StatIcon name={statIcons.model as never} size={14} color={colors.success} />
         <Text
           style={[styles.statValue, { color: colors.success }]}
           numberOfLines={1}
@@ -85,7 +102,7 @@ export const RagMemoryStatsSection: React.FC<RagMemoryStatsSectionProps> = ({
           }
         ]}
       >
-        <MaterialCommunityIcons name="vector-combine" size={14} color={colors.textSecondary} />
+        <StatIcon name={statIcons.dimension as never} size={14} color={colors.textSecondary} />
         <Text style={[styles.statValue, { color: colors.textPrimary }]}>{dimensionText}</Text>
         <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
           {t('settings.rag_dimension')}
@@ -105,7 +122,7 @@ export const RagMemoryStatsSection: React.FC<RagMemoryStatsSectionProps> = ({
         disabled={isBusy || !onDetectDimension}
         activeOpacity={0.7}
       >
-        <MaterialCommunityIcons name="refresh" size={14} color={colors.primary} />
+        <StatIcon name={statIcons.refresh as never} size={14} color={colors.primary} />
         <Text style={[styles.statValue, { color: colors.primary, fontSize: 12 }]} numberOfLines={2}>
           {t('settings.rag_detect_dimension')}
         </Text>

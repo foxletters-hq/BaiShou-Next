@@ -83,6 +83,30 @@ export const RagMemorySearchSection: React.FC<RagMemorySearchSectionProps> = ({
             autoCorrect={false}
             autoCapitalize="none"
           />
+        ) : Platform.OS === 'android' ? (
+          <View style={[styles.searchInputWrap, styles.androidSearchRow]}>
+            <MaterialIcons name="search" size={18} color={colors.textSecondary} />
+            <TextInput
+              style={[styles.searchInput, styles.searchInputCompact, { color: colors.textPrimary }]}
+              value={searchQuery}
+              onChangeText={handleQueryChange}
+              placeholder={placeholder}
+              placeholderTextColor={colors.textTertiary}
+              autoFocus={autoFocus}
+              returnKeyType="search"
+              autoCorrect={false}
+              autoCapitalize="none"
+            />
+            {searchQuery.length > 0 ? (
+              <TouchableOpacity
+                onPress={handleClear}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                activeOpacity={0.7}
+              >
+                <MaterialIcons name="close" size={16} color={colors.textTertiary} />
+              </TouchableOpacity>
+            ) : null}
+          </View>
         ) : (
           <Input
             className="min-h-0 flex-1 border-0 bg-transparent px-0"
@@ -186,6 +210,11 @@ const styles = StyleSheet.create({
     borderWidth: 0,
     padding: 0,
     margin: 0
+  },
+  androidSearchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6
   },
   searchInput: {
     fontSize: 14,

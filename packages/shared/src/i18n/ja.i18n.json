@@ -1419,6 +1419,11 @@
     "dev_mode_hint": "あと $count 回タップで開発者モードになります",
     "oss_license_label": "オープンソースライセンス",
     "visit_github": "GitHub リポジトリを表示",
+    "copy_diagnostic_log": "診断ログをコピー",
+    "copy_diagnostic_log_desc": "最近のアプリログをコピーして、クラッシュ報告に使えます。直前にクラッシュした場合は、先にアプリを再起動してからコピーしてください。",
+    "copy_diagnostic_log_action": "クリップボードにコピー",
+    "copy_diagnostic_log_success": "診断ログをクリップボードにコピーしました（{{count}} 文字）",
+    "copy_diagnostic_log_failed": "コピーに失敗しました。後でもう一度お試しください。",
     "love_message": "🌸 桜と暁はいつも Anson を愛しています ❤️"
   },
   "updater": {

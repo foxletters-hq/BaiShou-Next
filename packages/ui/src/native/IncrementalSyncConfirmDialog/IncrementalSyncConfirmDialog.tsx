@@ -7,7 +7,8 @@ import {
   Pressable,
   ScrollView,
   useWindowDimensions,
-  type ViewStyle
+  type ViewStyle,
+  type TextStyle
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type {
@@ -37,7 +38,7 @@ export interface IncrementalSyncConfirmDialogProps {
   onCancel: () => void
 }
 
-function actionStyle(action: IncrementalSyncPlanItem['action']): ViewStyle {
+function actionTagStyle(action: IncrementalSyncPlanItem['action']): TextStyle {
   switch (action) {
     case 'upload':
       return { backgroundColor: 'rgba(59, 130, 246, 0.14)' }
@@ -74,9 +75,14 @@ function formatVaultStats(
   return parts.join(' · ')
 }
 
-function formatVaultLabel(vaultName: string, t: (key: string, fallback?: string) => string): string {
-  if (vaultName === '__root__') return t('data_sync.plan_vault_root', '根目录文件')
-  if (vaultName === '__unknown__') return t('data_sync.plan_vault_unknown', '未知工作区')
+function formatVaultLabel(
+  vaultName: string,
+  t: (key: string, options?: { defaultValue?: string }) => string
+): string {
+  if (vaultName === '__root__')
+    return t('data_sync.plan_vault_root', { defaultValue: '根目录文件' })
+  if (vaultName === '__unknown__')
+    return t('data_sync.plan_vault_unknown', { defaultValue: '未知工作区' })
   return vaultName
 }
 
@@ -292,7 +298,7 @@ const PlanScrollContent = memo(function PlanScrollContent({ preview }: PlanScrol
                   <Text
                     style={[
                       styles.actionTag,
-                      actionStyle(item.action),
+                      actionTagStyle(item.action),
                       { color: colors.textPrimary }
                     ]}
                   >
@@ -342,8 +348,9 @@ const PlanConfirmFooter = memo(function PlanConfirmFooter({
     needsSyncConfirm,
     confirmEligibleAtMs
   )
-  const [activeDeleteChoice, setActiveDeleteChoice] =
-    useState<SyncDeletePropagationChoice | null>(null)
+  const [activeDeleteChoice, setActiveDeleteChoice] = useState<SyncDeletePropagationChoice | null>(
+    null
+  )
 
   useEffect(() => {
     if (!isConfirming) {
@@ -403,7 +410,12 @@ const PlanConfirmFooter = memo(function PlanConfirmFooter({
         >
           {t('data_sync.plan_delete_choice_skip_deletes')}
         </Button>
-        <Button variant="outline" onPress={onCancel} disabled={choiceDisabled} style={styles.fullWidthButton}>
+        <Button
+          variant="outline"
+          onPress={onCancel}
+          disabled={choiceDisabled}
+          style={styles.fullWidthButton}
+        >
           {t('common.cancel', '取消')}
         </Button>
       </View>

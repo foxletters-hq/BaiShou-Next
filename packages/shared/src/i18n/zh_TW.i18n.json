@@ -1405,6 +1405,11 @@
     "dev_mode_hint": "再點 $count 次進入開發者模式",
     "oss_license_label": "開源協議",
     "visit_github": "訪問 GitHub 倉庫",
+    "copy_diagnostic_log": "複製診斷日誌",
+    "copy_diagnostic_log_desc": "複製最近的應用日誌，便於回報閃退等問題。若剛發生閃退，請先重新開啟 App 再複製。",
+    "copy_diagnostic_log_action": "複製到剪貼簿",
+    "copy_diagnostic_log_success": "診斷日誌已複製到剪貼簿（{{count}} 字元）",
+    "copy_diagnostic_log_failed": "複製失敗，請稍後重試",
     "love_message": "🌸櫻&曉 永遠愛著Anson❤️"
   },
   "updater": {

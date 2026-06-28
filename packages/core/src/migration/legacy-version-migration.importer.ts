@@ -839,7 +839,7 @@ async function loadLegacyMessagesForSession(
   oldSessionId: string,
   newSessionId: string
 ) {
-  const messages = []
+  const messages: ReturnType<typeof buildLegacyMessageAggregate>[] = []
   const messageOrderBy = await resolveLegacyOrderBy(deps, alias, 'agent_messages')
   const partOrderBy = await resolveLegacyOrderBy(deps, alias, 'agent_parts')
   let offset = 0

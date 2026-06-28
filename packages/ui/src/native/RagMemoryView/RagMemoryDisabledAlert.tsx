@@ -1,7 +1,7 @@
 import React from 'react'
-import { View, Text } from 'react-native'
+import { View, Text, Platform } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { MaterialCommunityIcons } from '@expo/vector-icons'
+import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons'
 import { useNativeTheme } from '../theme'
 import { ragMemoryStyles as styles } from './rag-memory.styles'
 
@@ -25,7 +25,11 @@ export const RagMemoryDisabledAlert: React.FC<RagMemoryDisabledAlertProps> = ({ 
         }
       ]}
     >
-      <MaterialCommunityIcons name="alert" size={18} color={colors.error} />
+      {Platform.OS === 'android' ? (
+        <MaterialIcons name="warning" size={18} color={colors.error} />
+      ) : (
+        <MaterialCommunityIcons name="alert" size={18} color={colors.error} />
+      )}
       <Text style={[styles.disabledAlertText, { color: colors.onErrorContainer }]}>
         {t('settings.rag_disabled_alert')}
       </Text>

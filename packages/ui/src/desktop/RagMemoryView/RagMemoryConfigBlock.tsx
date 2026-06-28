@@ -15,8 +15,19 @@ interface RagMemoryConfigBlockProps {
   onChange: (config: RagConfig) => void
 }
 
+function coerceNumber(value: unknown, fallback: number): number {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
 export const RagMemoryConfigBlock: React.FC<RagMemoryConfigBlockProps> = ({ config, onChange }) => {
   const { t } = useTranslation()
+  const ragTopK = coerceNumber(config.ragTopK, 30)
+  const ragSimilarityThreshold = coerceNumber(config.ragSimilarityThreshold, 0.4)
+  const batchEmbedConcurrency = coerceNumber(
+    config.batchEmbedConcurrency,
+    DEFAULT_BATCH_EMBED_CONCURRENCY
+  )
 
   return (
     <div className={styles.configBlock}>
@@ -47,10 +58,10 @@ export const RagMemoryConfigBlock: React.FC<RagMemoryConfigBlockProps> = ({ conf
             min="1"
             max="50"
             step="1"
-            value={config.ragTopK || 30}
+            value={ragTopK}
             onChange={(e) => onChange({ ...config, ragTopK: parseInt(e.target.value) })}
           />
-          <span className={styles.paramValueBlue}>{config.ragTopK || 30}</span>
+          <span className={styles.paramValueBlue}>{ragTopK}</span>
         </div>
         <div className={styles.paramSliderRow}>
           <div className={styles.paramLabelGroup}>
@@ -70,7 +81,7 @@ export const RagMemoryConfigBlock: React.FC<RagMemoryConfigBlockProps> = ({ conf
             min="0"
             max="1"
             step="0.05"
-            value={config.ragSimilarityThreshold ?? 0.4}
+            value={ragSimilarityThreshold}
             onChange={(e) =>
               onChange({
                 ...config,
@@ -78,9 +89,7 @@ export const RagMemoryConfigBlock: React.FC<RagMemoryConfigBlockProps> = ({ conf
               })
             }
           />
-          <span className={styles.paramValueBlue}>
-            {(config.ragSimilarityThreshold ?? 0.4).toFixed(2)}
-          </span>
+          <span className={styles.paramValueBlue}>{ragSimilarityThreshold.toFixed(2)}</span>
         </div>
         <div className={styles.paramSliderRow}>
           <div className={styles.paramLabelGroup}>
@@ -100,7 +109,7 @@ export const RagMemoryConfigBlock: React.FC<RagMemoryConfigBlockProps> = ({ conf
             min={BATCH_EMBED_CONCURRENCY_MIN}
             max={BATCH_EMBED_CONCURRENCY_MAX}
             step="1"
-            value={config.batchEmbedConcurrency ?? DEFAULT_BATCH_EMBED_CONCURRENCY}
+            value={batchEmbedConcurrency}
             onChange={(e) =>
               onChange({
                 ...config,
@@ -108,9 +117,7 @@ export const RagMemoryConfigBlock: React.FC<RagMemoryConfigBlockProps> = ({ conf
               })
             }
           />
-          <span className={styles.paramValueBlue}>
-            {config.batchEmbedConcurrency ?? DEFAULT_BATCH_EMBED_CONCURRENCY}
-          </span>
+          <span className={styles.paramValueBlue}>{batchEmbedConcurrency}</span>
         </div>
       </div>
     </div>

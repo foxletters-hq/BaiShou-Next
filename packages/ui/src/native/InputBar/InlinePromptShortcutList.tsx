@@ -63,7 +63,6 @@ const ShortcutRow = memo(function ShortcutRow({
 }: ShortcutRowProps) {
   return (
     <Pressable
-      delayPressIn={80}
       onPress={() => onSelect(shortcut)}
       style={[
         styles.row,

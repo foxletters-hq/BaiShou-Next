@@ -1508,6 +1508,11 @@
     "dev_mode_hint": "再点 $count 次进入开发者模式",
     "oss_license_label": "开源协议",
     "visit_github": "访问 GitHub 仓库",
+    "copy_diagnostic_log": "复制诊断日志",
+    "copy_diagnostic_log_desc": "复制最近的应用日志，便于反馈闪退等问题。若刚发生闪退，请先重新打开 App 再复制。",
+    "copy_diagnostic_log_action": "复制到剪贴板",
+    "copy_diagnostic_log_success": "诊断日志已复制到剪贴板（{{count}} 字符）",
+    "copy_diagnostic_log_failed": "复制失败，请稍后重试",
     "love_message": "🌸樱&晓 永远爱着Anson❤️"
   },
   "updater": {

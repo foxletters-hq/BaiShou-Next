@@ -24,7 +24,10 @@ import {
   type DiaryEditorWebViewDocument
 } from './NativeDiaryCodeMirrorEditor'
 import { NativeImagePreviewModal } from './NativeImagePreviewModal'
-import type { DiaryTagColorRegistry } from '../../shared/diary-codemirror/types'
+import type {
+  DiaryTagColorRegistry,
+  DiaryCmImageActionPayload
+} from '../../shared/diary-codemirror/types'
 import { deleteMarkdownRange } from './diary-cm-content.util'
 
 interface DiaryEditorProps {
@@ -210,9 +213,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
             text: t('common.delete', '删除'),
             style: 'destructive',
             onPress: () => {
-              onContentChange(
-                deleteMarkdownRange(contentRef.current, payload.from, payload.to)
-              )
+              onContentChange(deleteMarkdownRange(contentRef.current, payload.from, payload.to))
             }
           }
         ]
@@ -222,10 +223,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   )
 
   const toolbarDockBottom = keyboardHeight
-  const editorPlaceholder = t(
-    'diary.tag_editor_hint',
-    '首行输入 #标签 后按回车，再写正文…'
-  )
+  const editorPlaceholder = t('diary.tag_editor_hint', '首行输入 #标签 后按回车，再写正文…')
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bgSurface }]}>

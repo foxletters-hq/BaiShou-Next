@@ -33,6 +33,18 @@ export class SessionFileService {
     }
   }
 
+  async getSessionFileByteSize(sessionId: string): Promise<number | undefined> {
+    const dir = await this.getDirectory()
+    const fullPath = path.join(dir, `${sessionId}.json`)
+    try {
+      const stat = await this.fileSystem.stat(fullPath)
+      if (!stat.isFile) return undefined
+      return stat.size
+    } catch {
+      return undefined
+    }
+  }
+
   async deleteSession(sessionId: string): Promise<void> {
     const dir = await this.getDirectory()
     const fullPath = path.join(dir, `${sessionId}.json`)

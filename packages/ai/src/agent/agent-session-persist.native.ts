@@ -96,7 +96,7 @@ export async function persistResult(params: PersistResultParams): Promise<{
   // 推送工具 Call & Result Part
   for (const tc of accumulator.toolCalls) {
     if (!tc?.callId || !tc?.name) {
-      logger.warn('[Persist Result] Skip malformed tool-call snapshot:', tc)
+      logger.warn('[Persist Result] Skip malformed tool-call snapshot:', JSON.stringify(tc))
       continue
     }
     const resultObj = accumulator.toolResults.find((tr) => tr.callId === tc.callId)
@@ -136,8 +136,9 @@ export async function persistResult(params: PersistResultParams): Promise<{
       }
     } catch (e: unknown) {
       const isNoOutputError =
-        (e as { [key: symbol]: unknown } | null)?.[Symbol.for('vercel.ai.error.AI_NoOutputGeneratedError')] ===
-        true
+        (e as { [key: symbol]: unknown } | null)?.[
+          Symbol.for('vercel.ai.error.AI_NoOutputGeneratedError')
+        ] === true
       if (e instanceof Error && e.name === 'AbortError') {
         logger.info(
           '[AgentSessionService Debug] streamResult.usage read gracefully skipped (stream aborted by user).'
@@ -147,7 +148,7 @@ export async function persistResult(params: PersistResultParams): Promise<{
           '[AgentSessionService Debug] streamResult.usage skipped (no model output generated).'
         )
       } else {
-        logger.warn('[AgentSessionService Debug] Failed to read streamResult.usage:', e)
+        logger.warn('[AgentSessionService Debug] Failed to read streamResult.usage:', e as Error)
       }
     }
 

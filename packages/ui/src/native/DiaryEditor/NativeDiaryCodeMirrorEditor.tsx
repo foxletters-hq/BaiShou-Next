@@ -23,24 +23,23 @@ export interface NativeDiaryCodeMirrorEditorHandle {
   insertAtRange: (start: number, end: number, text: string) => void
 }
 
-export interface NativeDiaryCodeMirrorEditorProps
-  extends Pick<
-    UseDiaryCodeMirrorBridgeOptions,
-    | 'content'
-    | 'placeholder'
-    | 'editable'
-    | 'onChange'
-    | 'onSelectionChange'
-    | 'onFocus'
-    | 'onBlur'
-    | 'onContentHeight'
-    | 'onCaretViewport'
-    | 'onPanScroll'
-    | 'tagColorRegistry'
-    | 'onImageAction'
-    | 'onImagePreview'
-    | 'resolveAttachmentUrl'
-  > {
+export interface NativeDiaryCodeMirrorEditorProps extends Pick<
+  UseDiaryCodeMirrorBridgeOptions,
+  | 'content'
+  | 'placeholder'
+  | 'editable'
+  | 'onChange'
+  | 'onSelectionChange'
+  | 'onFocus'
+  | 'onBlur'
+  | 'onContentHeight'
+  | 'onCaretViewport'
+  | 'onPanScroll'
+  | 'tagColorRegistry'
+  | 'onImageAction'
+  | 'onImagePreview'
+  | 'resolveAttachmentUrl'
+> {
   /** WebView 文档（同目录 index.html + bundle，由宿主 app 预加载后传入） */
   editorWebViewSource: DiaryEditorWebViewDocument
   /** 页面聚焦时为 true；false 时卸载 WebView 释放内存（P-5） */
@@ -55,6 +54,7 @@ export interface NativeDiaryCodeMirrorEditorProps
   minHeight?: number
   /** 填满父级剩余空间，在固定顶栏布局下启用 */
   fillViewport?: boolean
+  style?: ViewStyle
 }
 
 export const NativeDiaryCodeMirrorEditor = forwardRef<
@@ -243,7 +243,9 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
           onLoadEnd={handleLoadEnd}
           onError={handleWebViewError}
           onHttpError={handleWebViewError}
-          onConsoleMessage={handleConsoleMessage}
+          {...(Platform.OS === 'android'
+            ? ({ onConsoleMessage: handleConsoleMessage } as Record<string, unknown>)
+            : {})}
           style={webViewStyle}
           containerStyle={webViewContainerStyle}
           mixedContentMode="always"

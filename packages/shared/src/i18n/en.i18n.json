@@ -1460,6 +1460,11 @@
     "dev_mode_hint": "Tap $count more times for developer mode",
     "oss_license_label": "Open Source Licenses",
     "visit_github": "Visit GitHub Repository",
+    "copy_diagnostic_log": "Copy Diagnostic Log",
+    "copy_diagnostic_log_desc": "Copy recent app logs to help report crashes. If the app just crashed, reopen it before copying.",
+    "copy_diagnostic_log_action": "Copy to Clipboard",
+    "copy_diagnostic_log_success": "Diagnostic log copied to clipboard ({{count}} chars)",
+    "copy_diagnostic_log_failed": "Failed to copy log. Please try again later.",
     "love_message": "🌸 Sakura & Akatsuki always love Anson ❤️"
   },
   "updater": {

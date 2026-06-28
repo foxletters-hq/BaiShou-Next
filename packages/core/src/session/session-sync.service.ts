@@ -31,10 +31,20 @@ export class SessionSyncService {
   async fullScanArchives(options?: DiskResyncOptions): Promise<void> {
     const allFiles = await this.fileService.listAllSessions()
     const allDbSessions = await this.sessionRepo.findAllSessions(-1)
+    const maxBytes = options?.maxSessionJsonReadBytes
 
     // 逆向覆写：将存在于 File 系统的数据全部更新倒入 SQLite 中
     for (const f of allFiles) {
       try {
+        if (maxBytes != null) {
+          const byteSize = await this.fileService.getSessionFileByteSize(f.id)
+          if (byteSize != null && byteSize > maxBytes) {
+            console.warn(
+              `[SessionSyncService] skip oversized session ${f.id} (${byteSize} bytes, limit ${maxBytes})`
+            )
+            continue
+          }
+        }
         const sessionData = await this.fileService.readSession(f.id)
         if (sessionData) {
           await this.sessionRepo.upsertAggregate(sessionData)
