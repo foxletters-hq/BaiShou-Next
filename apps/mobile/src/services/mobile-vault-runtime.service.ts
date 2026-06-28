@@ -44,6 +44,7 @@ function diaryPreviewFromRaw(raw: string | null | undefined): string {
 import { mobileDataBootstrapper, type MobileBootstrapperDeps } from './mobile-bootstrapper.service'
 import {
   bindShadowVaultScanState,
+  getShadowVaultScanning,
   unbindShadowVaultScanState
 } from './mobile-shadow-scan-state.service'
 import {
@@ -530,7 +531,7 @@ export async function rebootstrapAfterStorageRootChange(
       await preferActiveVaultWithJournalsOnDisk({
         vaultService: deps.vaultService,
         fileSystem: deps.fileSystem,
-        pathService: deps.pathService as MobileExternalPathService
+        pathService: deps.pathService as unknown as MobileExternalPathService
       })
     }
     await connectGlobalShadowDb(deps)
@@ -866,7 +867,7 @@ async function restartVaultWatchers(
   const journalsDir = await watcherDeps.pathService.getJournalsBaseDirectory()
   const vaultDir = await watcherDeps.pathService.getVaultDirectory(activeVault.name)
   const externalJournals = await (
-    watcherDeps.pathService as MobileExternalPathService
+    watcherDeps.pathService as unknown as MobileExternalPathService
   ).getExternalJournalsDirectory(activeVault.name)
   const defaultJournalsDir = path.join(vaultDir, 'Journals')
   const isExternalJournals = isUsingExternalVaultDirectory(
@@ -892,14 +893,40 @@ async function restartVaultWatchers(
   }
 
   const sessionsDir = await watcherDeps.pathService.getSessionsBaseDirectory()
-  sessionFileWatcher.start(sessionsDir, {
+  void startSessionFileWatcherWhenStorageQuiet(sessionsDir, {
     sessionFileService: watcherDeps.sessionFileService,
     sessionSyncService: watcherDeps.sessionSyncService,
     sessionManager: watcherDeps.sessionManager,
     fileSystem: watcherDeps.fileSystem
   })
 
-  summaryFileWatcher.start(watcherDeps.summarySyncService)
+  void startSummaryFileWatcherWhenStorageQuiet(watcherDeps.summarySyncService)
+}
+
+async function startSummaryFileWatcherWhenStorageQuiet(
+  summarySync: SummarySyncService
+): Promise<void> {
+  await mobileDataBootstrapper.waitUntilIdle()
+  while (getShadowVaultScanning()) {
+    await new Promise((resolve) => setTimeout(resolve, 200))
+  }
+  summaryFileWatcher.start(summarySync)
+}
+
+async function startSessionFileWatcherWhenStorageQuiet(
+  sessionsDir: string,
+  deps: {
+    sessionFileService: SessionFileService
+    sessionSyncService: SessionSyncService
+    sessionManager: SessionManagerService
+    fileSystem: IFileSystem
+  }
+): Promise<void> {
+  await mobileDataBootstrapper.waitUntilIdle()
+  while (getShadowVaultScanning()) {
+    await new Promise((resolve) => setTimeout(resolve, 200))
+  }
+  sessionFileWatcher.start(sessionsDir, deps)
 }
 
 export type ActivateVaultRuntimeOptions = {

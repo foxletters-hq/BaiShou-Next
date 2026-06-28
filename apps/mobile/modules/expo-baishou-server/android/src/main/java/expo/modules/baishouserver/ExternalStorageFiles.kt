@@ -256,6 +256,7 @@ object ExternalStorageFiles {
         if (!file.exists() || file.isDirectory) {
             throw java.io.FileNotFoundException(uri)
         }
+        MobileExternalReadLimits.assertReadableTextBytes(file.length(), file.absolutePath)
         return file.readText()
     }
 
@@ -268,6 +269,7 @@ object ExternalStorageFiles {
         if (!file.exists() || file.isDirectory) {
             throw java.io.FileNotFoundException(uri)
         }
+        MobileExternalReadLimits.assertReadableTextBytes(file.length(), file.absolutePath)
         return Base64.encodeToString(file.readBytes(), Base64.NO_WRAP)
     }
 

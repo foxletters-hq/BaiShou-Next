@@ -7,6 +7,12 @@ import type {
 import type { IFileSystem } from '@baishou/core-mobile'
 import { joinPath } from '@baishou/core-mobile'
 import { logger } from '@baishou/shared'
+import { appendDiagnosticBreadcrumb } from './mobile-diagnostic-log.service'
+import {
+  MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES,
+  exceedsMobileExternalTextReadLimit,
+  isOversizedReadFailure
+} from './mobile-file-read-limits'
 
 type WatcherDeps = {
   sessionFileService: SessionFileService
@@ -23,6 +29,7 @@ export class SessionFileWatcherService {
   private appStateSub: { remove: () => void } | null = null
   private sessionsDir: string | null = null
   private mtimes = new Map<string, number>()
+  private skippedOversized = new Set<string>()
   private deps: WatcherDeps | null = null
   private tickInFlight = false
 
@@ -42,6 +49,7 @@ export class SessionFileWatcherService {
     this.appStateSub = null
     this.sessionsDir = null
     this.mtimes.clear()
+    this.skippedOversized.clear()
     this.deps = null
   }
 
@@ -65,12 +73,26 @@ export class SessionFileWatcherService {
         if (!name.endsWith('.json')) continue
         const fp = joinPath(this.sessionsDir, name)
         let mtime = 0
+        let size: number | undefined
         try {
           const st = await this.deps.fileSystem.stat(fp)
-          mtime = (st as { mtimeMs?: number }).mtimeMs ?? Date.now()
+          mtime = st.mtimeMs ?? Date.now()
+          size = st.size
         } catch {
           continue
         }
+
+        if (exceedsMobileExternalTextReadLimit(size)) {
+          if (!this.skippedOversized.has(fp)) {
+            this.skippedOversized.add(fp)
+            const msg = `[SessionFileWatcher] skip oversized session ${name} (${size} bytes, limit ${MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES})`
+            logger.warn(msg)
+            appendDiagnosticBreadcrumb(msg)
+          }
+          this.mtimes.set(fp, mtime)
+          continue
+        }
+
         const prev = this.mtimes.get(fp)
         if (prev !== undefined && prev === mtime) continue
         this.mtimes.set(fp, mtime)
@@ -78,6 +100,15 @@ export class SessionFileWatcherService {
         try {
           await this.deps.sessionSyncService.syncSessionFile(sessionId)
         } catch (e) {
+          if (isOversizedReadFailure(e)) {
+            if (!this.skippedOversized.has(fp)) {
+              this.skippedOversized.add(fp)
+              const msg = `[SessionFileWatcher] skip oversized session ${name} after read failure (${String((e as Error)?.message ?? e).slice(0, 160)})`
+              logger.warn(msg)
+              appendDiagnosticBreadcrumb(msg)
+            }
+            continue
+          }
           logger.warn(`[SessionFileWatcher] sync failed for ${name}:`, e as Error)
         }
       }

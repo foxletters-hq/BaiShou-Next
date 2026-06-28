@@ -25,6 +25,11 @@ import {
 } from './android-external-fs'
 import * as SandboxFS from './mobile-sandbox-fs'
 import { normalizeMtimeToMs } from '../utils/fs-mtime.util'
+import {
+  formatOversizedFileError,
+  normalizeExternalFileByteSize,
+  shouldBlockMobileExternalTextRead
+} from './mobile-file-read-limits'
 
 /** 跨存储边界时允许 base64 回退的最大文件大小（更大文件会 OOM） */
 const CROSS_STORAGE_BASE64_MAX_BYTES = 4 * 1024 * 1024
@@ -55,7 +60,7 @@ function fileStatFromNativeInfo(
   return {
     isFile: !info.isDirectory,
     isDirectory: info.isDirectory,
-    size: info.size,
+    size: normalizeExternalFileByteSize(info.size),
     mtimeMs: info.modificationTime != null ? normalizeMtimeToMs(info.modificationTime) : undefined
   }
 }
@@ -95,12 +100,24 @@ export class MobileFileSystem implements IFileSystem {
       if (!info.exists || info.isDirectory) {
         throw enoentError(filePath, 'open')
       }
+      if (encoding !== 'base64') {
+        const byteSize = normalizeExternalFileByteSize(info.size)
+        if (shouldBlockMobileExternalTextRead(byteSize)) {
+          throw formatOversizedFileError(filePath, byteSize!)
+        }
+      }
       return encoding === 'base64' ? externalReadB64Safe(filePath) : externalReadTextSafe(filePath)
     }
     const uri = toFileUri(filePath)
     const info = await SandboxFS.getInfoAsync(uri)
     if (!info.exists) {
       throw enoentError(filePath, 'open')
+    }
+    if (encoding !== 'base64') {
+      const byteSize = normalizeExternalFileByteSize(info.size)
+      if (shouldBlockMobileExternalTextRead(byteSize)) {
+        throw formatOversizedFileError(filePath, byteSize!)
+      }
     }
     return SandboxFS.readAsStringAsync(uri, {
       encoding: encoding === 'base64' ? SandboxFS.EncodingType.Base64 : undefined
@@ -161,6 +178,13 @@ export class MobileFileSystem implements IFileSystem {
 
     if (isExternalStoragePath(filePath)) {
       if (await this.exists(filePath)) {
+        const info = externalGetInfoSafe(filePath)
+        if (encoding !== 'base64') {
+          const byteSize = normalizeExternalFileByteSize(info.size)
+          if (shouldBlockMobileExternalTextRead(byteSize)) {
+            throw formatOversizedFileError(filePath, byteSize!)
+          }
+        }
         const existing =
           encoding === 'base64' ? externalReadB64Safe(filePath) : externalReadTextSafe(filePath)
         if (encoding === 'base64') {

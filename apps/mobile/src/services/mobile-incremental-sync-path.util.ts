@@ -1,8 +1,6 @@
 import type { IFileSystem } from '@baishou/core-mobile'
-import {
-  loadVaultExternalSyncMounts,
-  type VaultExternalSyncMount
-} from '@baishou/core-mobile'
+import { loadVaultExternalSyncMounts } from '@baishou/core-mobile'
+import type { VaultExternalSyncMount } from '@baishou/shared'
 import { resolveIncrementalSyncRelPath } from '@baishou/shared'
 import { joinStoragePath } from './mobile-storage-path.util'
 

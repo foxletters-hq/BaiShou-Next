@@ -19,10 +19,7 @@ import {
   useNativeTheme
 } from '@baishou/ui/native'
 import type { DiaryTagColorRegistry } from '@baishou/shared'
-import {
-  DEFAULT_DIARY_PAGE_SIZE,
-  DIARY_PAGE_SIZE_OPTIONS
-} from '../diary-filter-state.util'
+import { DEFAULT_DIARY_PAGE_SIZE, DIARY_PAGE_SIZE_OPTIONS } from '../diary-filter-state.util'
 
 export { DEFAULT_DIARY_PAGE_SIZE, DIARY_PAGE_SIZE_OPTIONS }
 
@@ -229,7 +226,6 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
       <DiaryListRow
         item={item}
         noContentLabel={noContentLabel}
-        tagColorRegistry={item.tagColors}
         onGoToEditor={onGoToEditor}
         onDeleteEntry={onDeleteEntry}
       />

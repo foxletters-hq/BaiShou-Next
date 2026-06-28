@@ -79,6 +79,7 @@ import { setupMobileImageCompressor } from '../services/mobile-image-compressor.
 import { setupMobileTtsRefAudioReader } from '../services/mobile-tts-ref-audio.service'
 import { MobileArchiveService } from '../services/archive.service'
 import type { MobileArchiveDbBridge } from '../services/mobile-archive-db.bridge'
+import { checkpointAgentDatabaseForExport } from '../services/mobile-agent-db-checkpoint.util'
 import { getAppDocumentDirectory } from '../services/mobile-app-paths'
 import { MobileLanSyncService } from '../services/lan-sync.service'
 import { MobileCloudSyncService } from '../services/cloud-sync.service'
@@ -106,6 +107,7 @@ import { buildMobileSummaryAiClient } from '../services/mobile-summary-ai-client
 import { MobileAttachmentManagerService } from '../services/mobile-attachment-manager.service'
 import { warmAgentScreenCaches } from '../lib/agent-user-profile.util'
 import { reconcileAssistantAvatarsAfterStorageChange } from '../lib/assistant-avatar-reconcile.util'
+import { reconcileUserAvatarProfileAfterStorageChange } from '../lib/user-avatar-reconcile.util'
 import {
   initMobileCacheCoordinator,
   emitSyncMutation,
@@ -412,8 +414,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
     const publishStorageIndexing = () => {
       if (!isMounted) return
-      const indexing =
-        mobileDataBootstrapper.getStatus() === 'running' || getShadowVaultScanning()
+      const indexing = mobileDataBootstrapper.getStatus() === 'running' || getShadowVaultScanning()
       if (wasStorageIndexing && !indexing) {
         emitSyncMutation('resync-complete', 'storage-indexing-complete')
       }
@@ -657,7 +658,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             if (!runtime) return
             await runtime.settingsManager.flushToDisk()
             try {
-              await runtime.expoDb.execAsync('PRAGMA wal_checkpoint(FULL)')
+              await checkpointAgentDatabaseForExport((sql) => runtime.expoDb.execAsync(sql))
             } catch (checkpointError) {
               logger.error(
                 '[MobileArchive] WAL checkpoint before export failed:',
@@ -666,6 +667,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               throw new Error('数据库刷盘失败，已取消导出以保护备份完整性')
             }
           },
+          runArchiveExportQuiesced: async (fn) => runWithStorageQuiescedRef.current(fn),
           getMaxSnapshotCount: async () => {
             const runtime = agentDbRuntimeRef.current
             if (!runtime) return 5

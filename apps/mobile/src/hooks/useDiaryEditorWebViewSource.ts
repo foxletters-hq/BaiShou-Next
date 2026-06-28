@@ -43,11 +43,12 @@ async function readAssetUri(moduleId: number): Promise<string | null> {
 }
 
 async function buildFingerprint(htmlUri: string, bundleUri: string): Promise<string> {
-  const [htmlInfo, bundleInfo] = await Promise.all([
-    getInfoAsync(htmlUri, { size: true }),
-    getInfoAsync(bundleUri, { size: true })
-  ])
-  return `${htmlInfo.size ?? 0}:${bundleInfo.size ?? 0}:${bundleInfo.modificationTime ?? 0}`
+  const [htmlInfo, bundleInfo] = await Promise.all([getInfoAsync(htmlUri), getInfoAsync(bundleUri)])
+  const htmlSize = htmlInfo.exists && 'size' in htmlInfo ? (htmlInfo.size ?? 0) : 0
+  const bundleSize = bundleInfo.exists && 'size' in bundleInfo ? (bundleInfo.size ?? 0) : 0
+  const bundleMtime =
+    bundleInfo.exists && 'modificationTime' in bundleInfo ? (bundleInfo.modificationTime ?? 0) : 0
+  return `${htmlSize}:${bundleSize}:${bundleMtime}`
 }
 
 async function stageDiaryEditorBundle(
@@ -64,7 +65,10 @@ async function stageDiaryEditorBundle(
 async function readDiaryEditorWebViewSource(): Promise<DiaryEditorWebViewSource | null> {
   try {
     const [htmlUri, bundleUri] = await Promise.all([
+      // RN/Metro 静态资源只能通过 require 加载（无法用 ESM import）
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       readAssetUri(require('../../assets/diary-editor/index.html')),
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       readAssetUri(require('../../assets/diary-editor/diary-editor.bundle'))
     ])
 
@@ -85,10 +89,7 @@ async function readDiaryEditorWebViewSource(): Promise<DiaryEditorWebViewSource 
       return null
     }
 
-    if (
-      bundleJs.length < MIN_BUNDLE_CHARS ||
-      !bundleJs.includes('__diaryCmOnNativeMessage')
-    ) {
+    if (bundleJs.length < MIN_BUNDLE_CHARS || !bundleJs.includes('__diaryCmOnNativeMessage')) {
       console.error(
         `[DiaryEditor] diary-editor.bundle 无效（${bundleJs.length} chars）。请重新 build:diary-editor`
       )
@@ -105,9 +106,7 @@ async function readDiaryEditorWebViewSource(): Promise<DiaryEditorWebViewSource 
         readAsStringAsync(FINGERPRINT_FILE).catch(() => null)
       ])
       needsStage =
-        !stagedHtmlInfo.exists ||
-        !stagedBundleInfo.exists ||
-        savedFingerprint !== fingerprint
+        !stagedHtmlInfo.exists || !stagedBundleInfo.exists || savedFingerprint !== fingerprint
     } catch {
       needsStage = true
     }

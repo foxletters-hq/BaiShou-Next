@@ -11,6 +11,7 @@ import { toFileUri, normalizeExternalStoragePath } from '../services/android-ext
 import { ensureAppCacheNoMediaMarker } from '../services/android-nomedia.util'
 import { normalizeImportSourceUri } from '../services/mobile-uri-import'
 import {
+  ATTACHMENT_EDITOR_MAX_BYTES,
   ATTACHMENT_PREVIEW_MAX_BYTES,
   ATTACHMENT_THUMB_MAX_BYTES,
   type AttachmentImagePurpose

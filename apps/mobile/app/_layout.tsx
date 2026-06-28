@@ -19,7 +19,10 @@ import { IncrementalSyncProvider } from '@/src/providers/IncrementalSyncProvider
 import { useDiaryEmbedFailureToast } from '@/src/hooks/useDiaryEmbedFailureToast'
 import { useLegacyUpgradeRagToast } from '@/src/hooks/useLegacyUpgradeRagToast'
 import { LegacyMigrationPrompt } from '@/src/components/LegacyMigrationPrompt'
-import { preloadDiaryEditorWebViewSource, resetDiaryEditorWebViewSourceCache } from '@/src/hooks/useDiaryEditorWebViewSource'
+import {
+  preloadDiaryEditorWebViewSource,
+  resetDiaryEditorWebViewSourceCache
+} from '@/src/hooks/useDiaryEditorWebViewSource'
 import {
   buildAppNavigationTheme,
   buildThemedFadeStackOptions
@@ -27,6 +30,7 @@ import {
 import { NativeAppThemeBridge } from '@/src/providers/NativeAppThemeBridge'
 import { HeroUIThemeBridge } from '@/src/providers/HeroUIThemeBridge'
 import '@/src/screens/DiaryScreen/diary-filter-state.util'
+import { installMobileDiagnosticLog } from '@/src/services/install-mobile-diagnostic-log'
 
 export const unstable_settings = {
   // 深链进入子页面时，栈底保留 tabs 而非引导页
@@ -118,6 +122,10 @@ function AppContent() {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    installMobileDiagnosticLog()
+  }, [])
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>

@@ -868,7 +868,7 @@ export const AgentScreen = () => {
     </View>
   )
 
-  const ChatBackgroundWrapper = resolvedChatBackgroundUri ? ImageBackground : View
+  const ChatBackgroundWrapper = (resolvedChatBackgroundUri ? ImageBackground : View) as typeof View
   const chatBackgroundWrapperProps = resolvedChatBackgroundUri
     ? {
         source: { uri: resolvedChatBackgroundUri },
@@ -1247,9 +1247,7 @@ export const AgentScreen = () => {
         recompressStartedAt={
           contextRecompressJob?.status === 'running' ? contextRecompressJob.startedAt : undefined
         }
-        recompressStreamText={
-          isCompressing && compressionPhase === 'manual' ? compressionText : ''
-        }
+        recompressStreamText={isCompressing && compressionPhase === 'manual' ? compressionText : ''}
         recompressStreamReasoning={
           isCompressing && compressionPhase === 'manual' ? compressionReasoning : ''
         }
