@@ -17,8 +17,5 @@ export function useAgentComposerDraftKey(sessionId: string | null) {
     }
   }, [services, vaultRevision])
 
-  return useMemo(
-    () => `agent-composer:${vaultKey}:${sessionId ?? 'new'}`,
-    [vaultKey, sessionId]
-  )
+  return useMemo(() => `agent-composer:${vaultKey}:${sessionId ?? 'new'}`, [vaultKey, sessionId])
 }

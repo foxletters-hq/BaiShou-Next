@@ -14,7 +14,11 @@ import {
   localScanIncrementalSyncFiles,
   type ExternalIncrementalSyncScanEntry
 } from 'expo-baishou-server'
-import { isAndroidAppSandboxPath, isExternalStoragePath, normalizeExternalStoragePath } from './android-external-fs'
+import {
+  isAndroidAppSandboxPath,
+  isExternalStoragePath,
+  normalizeExternalStoragePath
+} from './android-external-fs'
 
 /** 目录扫描并发度（同级多目录并行展开） */
 const SCAN_DIR_CONCURRENCY = 12
@@ -134,7 +138,11 @@ async function scanIncrementalSyncFilesJs(
           if (!entry?.info) continue
           if (entry.info.isDirectory) {
             if (
-              shouldScanIncrementalSyncDirectoryWithExternalMounts(entry.name, entry.relPath, mounts) &&
+              shouldScanIncrementalSyncDirectoryWithExternalMounts(
+                entry.name,
+                entry.relPath,
+                mounts
+              ) &&
               !shouldExcludeIncrementalSyncRootScanEntry(
                 normalizeExternalStoragePath(entry.full),
                 entry.relPath,

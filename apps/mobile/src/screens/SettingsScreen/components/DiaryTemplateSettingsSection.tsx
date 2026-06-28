@@ -1,5 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native'
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  ScrollView
+} from 'react-native'
 import { useTranslation } from 'react-i18next'
 import {
   DEFAULT_DIARY_APPEND_BLOCK_TEMPLATE,
@@ -25,7 +32,9 @@ export const DiaryTemplateSettingsSection: React.FC = () => {
   useEffect(() => {
     if (!hydrated || dirty) return
     setLocalNewEntry(config.newEntryTemplate?.trim() || DEFAULT_DIARY_NEW_ENTRY_TEMPLATE)
-    setLocalAppendBlock(config.appendBlockTemplate?.trimEnd() || DEFAULT_DIARY_APPEND_BLOCK_TEMPLATE)
+    setLocalAppendBlock(
+      config.appendBlockTemplate?.trimEnd() || DEFAULT_DIARY_APPEND_BLOCK_TEMPLATE
+    )
     setLocalSupplement(resolveDiaryWritingStyleSupplement(config))
   }, [hydrated, config, dirty])
 
@@ -49,7 +58,9 @@ export const DiaryTemplateSettingsSection: React.FC = () => {
         aiWritingPrompt: undefined
       })
       setLocalNewEntry(next.newEntryTemplate?.trim() || DEFAULT_DIARY_NEW_ENTRY_TEMPLATE)
-      setLocalAppendBlock(next.appendBlockTemplate?.trimEnd() || DEFAULT_DIARY_APPEND_BLOCK_TEMPLATE)
+      setLocalAppendBlock(
+        next.appendBlockTemplate?.trimEnd() || DEFAULT_DIARY_APPEND_BLOCK_TEMPLATE
+      )
       setLocalSupplement(resolveDiaryWritingStyleSupplement(next))
       setDirty(false)
       toast.showSuccess(t('settings.saved'))

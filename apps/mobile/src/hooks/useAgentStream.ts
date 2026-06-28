@@ -883,11 +883,7 @@ export function useAgentStream(
         }
         if (epoch !== retryEpochRef.current) return
 
-        const synced = await truncateSessionAndSyncUi(
-          currentSessionId,
-          dbUser.orderIndex,
-          epoch
-        )
+        const synced = await truncateSessionAndSyncUi(currentSessionId, dbUser.orderIndex, epoch)
         if (!synced) {
           releaseRetryActionIfSetupFailed(epoch)
           toast.showError(t('agent.chat.resend_failed', '重新发送失败'))
@@ -942,11 +938,7 @@ export function useAgentStream(
         }
         if (epoch !== retryEpochRef.current) return
 
-        const synced = await truncateSessionAndSyncUi(
-          currentSessionId,
-          dbMsg.orderIndex,
-          epoch
-        )
+        const synced = await truncateSessionAndSyncUi(currentSessionId, dbMsg.orderIndex, epoch)
         if (!synced) {
           releaseRetryActionIfSetupFailed(epoch)
           toast.showError(t('agent.chat.resend_failed', '重新发送失败'))
@@ -1001,11 +993,7 @@ export function useAgentStream(
         await services.sessionRepo.updateMessageTextPart(messageId, newContent.trim())
         if (epoch !== retryEpochRef.current) return
 
-        const synced = await truncateSessionAndSyncUi(
-          currentSessionId,
-          dbMsg.orderIndex,
-          epoch
-        )
+        const synced = await truncateSessionAndSyncUi(currentSessionId, dbMsg.orderIndex, epoch)
         if (!synced) {
           releaseRetryActionIfSetupFailed(epoch)
           toast.showError(t('agent.chat.resend_failed', '重新发送失败'))

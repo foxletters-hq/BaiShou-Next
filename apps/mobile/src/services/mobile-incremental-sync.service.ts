@@ -244,9 +244,8 @@ export class MobileIncrementalSyncService {
                 this.fileSystem
               )
             }
-            const { schedulePostSyncDiaryBatchEmbed } = await import(
-              './mobile-post-sync-diary-embed.service'
-            )
+            const { schedulePostSyncDiaryBatchEmbed } =
+              await import('./mobile-post-sync-diary-embed.service')
             schedulePostSyncDiaryBatchEmbed()
           } catch (e: unknown) {
             console.warn('[MobileIncrementalSync] afterSyncComplete failed:', e)

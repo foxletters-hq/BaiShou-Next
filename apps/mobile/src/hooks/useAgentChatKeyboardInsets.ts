@@ -80,8 +80,7 @@ export function useAgentChatKeyboardInsets({
   }, [inputDockHeight, inputDockHeightSv])
 
   useEffect(() => {
-    streamingBufferSv.value =
-      streamingActive && !isBubbleEditing ? STREAMING_LIST_BOTTOM_BUFFER : 0
+    streamingBufferSv.value = streamingActive && !isBubbleEditing ? STREAMING_LIST_BOTTOM_BUFFER : 0
   }, [streamingActive, isBubbleEditing, streamingBufferSv])
 
   useEffect(() => {
@@ -222,7 +221,9 @@ export function useAgentChatKeyboardInsets({
     ? isEditKeyboardVisible
       ? keyboardInset + BUBBLE_EDIT_KEYBOARD_BUFFER + 16
       : inputDockHeight + BUBBLE_EDIT_KEYBOARD_BUFFER + BUBBLE_EDIT_DOCK_GAP
-    : inputDockHeight + keyboardInset + COMPOSER_LIST_GAP +
+    : inputDockHeight +
+      keyboardInset +
+      COMPOSER_LIST_GAP +
       (streamingActive ? STREAMING_LIST_BOTTOM_BUFFER : 0)
 
   return {

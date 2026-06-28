@@ -120,7 +120,11 @@ function applyTheme(theme: DiaryCmTheme): void {
   document.body.style.color = theme.textPrimary
 }
 
-function smoothScrollElementTo(element: HTMLElement, targetTop: number, duration = CARET_SCROLL_DURATION_MS): void {
+function smoothScrollElementTo(
+  element: HTMLElement,
+  targetTop: number,
+  duration = CARET_SCROLL_DURATION_MS
+): void {
   if (caretScrollFrameId !== null) {
     cancelAnimationFrame(caretScrollFrameId)
     caretScrollFrameId = null
@@ -186,10 +190,7 @@ function scheduleEnsureCaretVisible(): void {
 function applyBottomScrollInset(bottom: number): void {
   bottomScrollInsetPx = Math.max(0, bottom)
   if (!view) return
-  view.scrollDOM.style.setProperty(
-    '--diary-bottom-scroll-inset',
-    `${bottomScrollInsetPx}px`
-  )
+  view.scrollDOM.style.setProperty('--diary-bottom-scroll-inset', `${bottomScrollInsetPx}px`)
 }
 
 function setScrollInsets(bottom: number): void {
@@ -496,8 +497,9 @@ function listenForNativeMessages(): void {
 }
 
 function exposeNativeMessageBridge(): void {
-  ;(window as unknown as { __diaryCmOnNativeMessage?: (raw: unknown) => void }).__diaryCmOnNativeMessage =
-    handleRnMessage
+  ;(
+    window as unknown as { __diaryCmOnNativeMessage?: (raw: unknown) => void }
+  ).__diaryCmOnNativeMessage = handleRnMessage
 }
 
 function bootstrap(): void {

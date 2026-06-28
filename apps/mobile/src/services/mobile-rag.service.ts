@@ -384,209 +384,215 @@ async function runControlledDiaryBatchEmbedCore(
   const progressType = options?.progressType ?? 'batchEmbed'
   const onProgress = chainRagProgressCallback(progressType, options?.onProgress)
   try {
-  const ragConfig = (await deps.settingsManager.get<{ ragEnabled?: boolean }>('rag_config')) || {}
-  if (!isRagMemoryEnabled({ ragEnabled: ragConfig.ragEnabled ?? true })) {
-    return { embedded: 0, failed: 0, total: 0, skipped: true, skipReason: 'rag-disabled' }
-  }
-
-  const adapter = await resolveEmbeddingAdapter(deps)
-  if (!adapter) {
-    return { embedded: 0, failed: 0, total: 0, skipped: true, skipReason: 'embedding-not-configured' }
-  }
-
-  try {
-    await prepareMobileEmbeddingIndex(deps, adapter)
-  } catch (error) {
-    if (error instanceof MobileRagAbortError) {
-      throw error
+    const ragConfig = (await deps.settingsManager.get<{ ragEnabled?: boolean }>('rag_config')) || {}
+    if (!isRagMemoryEnabled({ ragEnabled: ragConfig.ragEnabled ?? true })) {
+      return { embedded: 0, failed: 0, total: 0, skipped: true, skipReason: 'rag-disabled' }
     }
-    logger.error('[MobileRag] prepare embedding index failed', { error })
-    await finalizeBatchEmbedRagConfig(deps, true)
-    return { embedded: 0, failed: 0, total: 0, skipped: true, skipReason: 'prepare-failed' }
-  }
 
-  const purgedLegacy = await purgeAllLegacyDiaryEmbeddings(
-    deps.rawSqlClient as RawSqlClient | undefined
-  )
-  if (purgedLegacy > 0) {
-    logger.info('[MobileRag] purged legacy diary vectors', { count: purgedLegacy })
-  }
+    const adapter = await resolveEmbeddingAdapter(deps)
+    if (!adapter) {
+      return {
+        embedded: 0,
+        failed: 0,
+        total: 0,
+        skipped: true,
+        skipReason: 'embedding-not-configured'
+      }
+    }
 
-  const vaultScope = await resolveVaultScope(deps)
-  const shadowDb = vaultScope.getShadowDb?.() ?? null
-  const vaultNames = options?.vaultName?.trim()
-    ? [options.vaultName.trim()]
-    : await vaultScope.listVaultNames()
-  const activeVaultName = await vaultScope.resolveActiveVaultName()
+    try {
+      await prepareMobileEmbeddingIndex(deps, adapter)
+    } catch (error) {
+      if (error instanceof MobileRagAbortError) {
+        throw error
+      }
+      logger.error('[MobileRag] prepare embedding index failed', { error })
+      await finalizeBatchEmbedRagConfig(deps, true)
+      return { embedded: 0, failed: 0, total: 0, skipped: true, skipReason: 'prepare-failed' }
+    }
 
-  type VaultEmbedPlan = {
-    vaultName: string
-    diariesToEmbed: DiaryMeta[]
-    allDiaryIds: number[]
-  }
+    const purgedLegacy = await purgeAllLegacyDiaryEmbeddings(
+      deps.rawSqlClient as RawSqlClient | undefined
+    )
+    if (purgedLegacy > 0) {
+      logger.info('[MobileRag] purged legacy diary vectors', { count: purgedLegacy })
+    }
 
-  const vaultPlans: VaultEmbedPlan[] = []
-  let globalTotal = 0
+    const vaultScope = await resolveVaultScope(deps)
+    const shadowDb = vaultScope.getShadowDb?.() ?? null
+    const vaultNames = options?.vaultName?.trim()
+      ? [options.vaultName.trim()]
+      : await vaultScope.listVaultNames()
+    const activeVaultName = await vaultScope.resolveActiveVaultName()
 
-  for (const vaultName of vaultNames) {
-    if (!shadowDb && vaultName !== activeVaultName) {
-      logger.warn('[MobileRag] skipping non-active vault batch embed without shadow index', {
+    type VaultEmbedPlan = {
+      vaultName: string
+      diariesToEmbed: DiaryMeta[]
+      allDiaryIds: number[]
+    }
+
+    const vaultPlans: VaultEmbedPlan[] = []
+    let globalTotal = 0
+
+    for (const vaultName of vaultNames) {
+      if (!shadowDb && vaultName !== activeVaultName) {
+        logger.warn('[MobileRag] skipping non-active vault batch embed without shadow index', {
+          vaultName,
+          activeVaultName
+        })
+      }
+      const allDiaries = sortDiariesByDateAsc(
+        shadowDb
+          ? await listVaultDiaryMetas(shadowDb, vaultName)
+          : vaultName === activeVaultName
+            ? await deps.diaryService.listAll({ limit: 10000 })
+            : []
+      )
+      const { embeddedIds, embeddedUpdatedAtMap } = await loadEmbeddedDiaryIndex(deps, vaultName)
+      const resolveSourceId = (meta: { id: unknown }) =>
+        buildDiaryEmbeddingSourceId(vaultName, meta.id as number)
+      const diariesToEmbed = filterUnindexedDiaries(allDiaries, embeddedIds, embeddedUpdatedAtMap, {
+        resolveSourceId
+      })
+      if (diariesToEmbed.length === 0) continue
+      vaultPlans.push({
         vaultName,
-        activeVaultName
+        diariesToEmbed,
+        allDiaryIds: allDiaries.map((d) => d.id)
+      })
+      globalTotal += diariesToEmbed.length
+    }
+
+    if (globalTotal === 0) {
+      await finalizeBatchEmbedRagConfig(deps, false)
+      return { embedded: 0, failed: 0, total: 0, skipped: true, skipReason: 'nothing-to-embed' }
+    }
+
+    onProgress?.({
+      current: 0,
+      total: globalTotal,
+      status: ''
+    })
+
+    const ragSettings =
+      (await deps.settingsManager.get<{ batchEmbedConcurrency?: number }>('rag_config')) || {}
+    const batchConcurrency = resolveMobileBatchEmbedConcurrency(ragSettings.batchEmbedConcurrency)
+
+    const progress = { embedded: 0, failed: 0, loadSkipped: 0, completed: 0 }
+
+    const reportProgress = (status: string) => {
+      onProgress?.({
+        current: progress.completed,
+        total: globalTotal,
+        status
       })
     }
-    const allDiaries = sortDiariesByDateAsc(
-      shadowDb
-        ? await listVaultDiaryMetas(shadowDb, vaultName)
-        : vaultName === activeVaultName
-          ? await deps.diaryService.listAll({ limit: 10000 })
-          : []
-    )
-    const { embeddedIds, embeddedUpdatedAtMap } = await loadEmbeddedDiaryIndex(deps, vaultName)
-    const resolveSourceId = (meta: { id: unknown }) =>
-      buildDiaryEmbeddingSourceId(vaultName, meta.id as number)
-    const diariesToEmbed = filterUnindexedDiaries(allDiaries, embeddedIds, embeddedUpdatedAtMap, {
-      resolveSourceId
-    })
-    if (diariesToEmbed.length === 0) continue
-    vaultPlans.push({
-      vaultName,
-      diariesToEmbed,
-      allDiaryIds: allDiaries.map((d) => d.id)
-    })
-    globalTotal += diariesToEmbed.length
-  }
 
-  if (globalTotal === 0) {
-    await finalizeBatchEmbedRagConfig(deps, false)
-    return { embedded: 0, failed: 0, total: 0, skipped: true, skipReason: 'nothing-to-embed' }
-  }
+    for (const plan of vaultPlans) {
+      const { vaultName, diariesToEmbed, allDiaryIds } = plan
+      await purgeLegacyDiaryEmbeddingsForVault(
+        deps.rawSqlClient as RawSqlClient | undefined,
+        vaultName,
+        allDiaryIds
+      )
 
-  onProgress?.({
-    current: 0,
-    total: globalTotal,
-    status: ''
-  })
+      const diaryById = shadowDb
+        ? await loadVaultDiariesForEmbedding(
+            shadowDb,
+            vaultName,
+            diariesToEmbed.map((meta) => meta.id)
+          )
+        : await deps.diaryService.findByIdsForEmbedding(diariesToEmbed.map((meta) => meta.id))
 
-  const ragSettings =
-    (await deps.settingsManager.get<{ batchEmbedConcurrency?: number }>('rag_config')) || {}
-  const batchConcurrency = resolveMobileBatchEmbedConcurrency(ragSettings.batchEmbedConcurrency)
-
-  const progress = { embedded: 0, failed: 0, loadSkipped: 0, completed: 0 }
-
-  const reportProgress = (status: string) => {
-    onProgress?.({
-      current: progress.completed,
-      total: globalTotal,
-      status
-    })
-  }
-
-  for (const plan of vaultPlans) {
-    const { vaultName, diariesToEmbed, allDiaryIds } = plan
-    await purgeLegacyDiaryEmbeddingsForVault(
-      deps.rawSqlClient as RawSqlClient | undefined,
-      vaultName,
-      allDiaryIds
-    )
-
-    const diaryById = shadowDb
-      ? await loadVaultDiariesForEmbedding(
-          shadowDb,
-          vaultName,
-          diariesToEmbed.map((meta) => meta.id)
-        )
-      : await deps.diaryService.findByIdsForEmbedding(diariesToEmbed.map((meta) => meta.id))
-
-    await limitExecute(diariesToEmbed, batchConcurrency, async (meta) => {
-      if (mobileRagOperationControl.isAborted) {
-        return
-      }
-
-      const dateLabel = meta.date
-        ? formatLocalDate(meta.date instanceof Date ? meta.date : new Date(meta.date))
-        : ''
-
-      try {
-        reportProgress(
-          `[${vaultName}] 处理日记: ${dateLabel}（${progress.completed}/${globalTotal}）`
-        )
-
+      await limitExecute(diariesToEmbed, batchConcurrency, async (meta) => {
         if (mobileRagOperationControl.isAborted) {
           return
         }
 
-        const diary = diaryById.get(meta.id)
-        const content = diary && 'content' in diary ? diary.content : undefined
-        if (!diary || !content?.trim()) {
-          progress.loadSkipped++
-          return
-        }
+        const dateLabel = meta.date
+          ? formatLocalDate(meta.date instanceof Date ? meta.date : new Date(meta.date))
+          : ''
 
-        const d =
-          diary.date instanceof Date ? diary.date : new Date(String(diary.date ?? meta.date))
-        await embedDiaryEntry(
-          deps,
-          {
+        try {
+          reportProgress(
+            `[${vaultName}] 处理日记: ${dateLabel}（${progress.completed}/${globalTotal}）`
+          )
+
+          if (mobileRagOperationControl.isAborted) {
+            return
+          }
+
+          const diary = diaryById.get(meta.id)
+          const content = diary && 'content' in diary ? diary.content : undefined
+          if (!diary || !content?.trim()) {
+            progress.loadSkipped++
+            return
+          }
+
+          const d =
+            diary.date instanceof Date ? diary.date : new Date(String(diary.date ?? meta.date))
+          await embedDiaryEntry(
+            deps,
+            {
+              diaryId: meta.id,
+              content,
+              tags: meta.tags ?? [],
+              date: d,
+              updatedAt:
+                ('updatedAt' in diary && diary.updatedAt instanceof Date
+                  ? diary.updatedAt
+                  : meta.updatedAt) ?? new Date(),
+              vaultName
+            },
+            { adapter, skipIndexPrep: true, skipRagEnabledCheck: true }
+          )
+
+          progress.embedded++
+        } catch (error) {
+          if (mobileRagOperationControl.isAborted) {
+            return
+          }
+          progress.failed++
+          logger.warn('[MobileRag] diary embed failed', {
+            vaultName,
             diaryId: meta.id,
-            content,
-            tags: meta.tags ?? [],
-            date: d,
-            updatedAt:
-              ('updatedAt' in diary && diary.updatedAt instanceof Date
-                ? diary.updatedAt
-                : meta.updatedAt) ?? new Date(),
-            vaultName
-          },
-          { adapter, skipIndexPrep: true, skipRagEnabledCheck: true }
-        )
-
-        progress.embedded++
-      } catch (error) {
-        if (mobileRagOperationControl.isAborted) {
-          return
+            date: dateLabel,
+            error
+          })
+        } finally {
+          progress.completed++
+          reportProgress(
+            `[${vaultName}] 已嵌入 ${progress.embedded}/${globalTotal}${progress.failed > 0 ? `（失败 ${progress.failed}）` : ''}${progress.loadSkipped > 0 ? `（跳过 ${progress.loadSkipped}）` : ''}（${dateLabel}）`
+          )
         }
-        progress.failed++
-        logger.warn('[MobileRag] diary embed failed', {
-          vaultName,
-          diaryId: meta.id,
-          date: dateLabel,
-          error
-        })
-      } finally {
-        progress.completed++
-        reportProgress(
-          `[${vaultName}] 已嵌入 ${progress.embedded}/${globalTotal}${progress.failed > 0 ? `（失败 ${progress.failed}）` : ''}${progress.loadSkipped > 0 ? `（跳过 ${progress.loadSkipped}）` : ''}（${dateLabel}）`
-        )
-      }
-    })
-  }
+      })
+    }
 
-  await finalizeBatchEmbedRagConfig(deps, progress.failed > 0)
+    await finalizeBatchEmbedRagConfig(deps, progress.failed > 0)
 
-  if (mobileRagOperationControl.isAborted) {
-    logger.info('[MobileRag] controlled batch embed aborted', {
+    if (mobileRagOperationControl.isAborted) {
+      logger.info('[MobileRag] controlled batch embed aborted', {
+        embedded: progress.embedded,
+        failed: progress.failed,
+        total: globalTotal
+      })
+      throw new MobileRagAbortError(progress.embedded)
+    }
+
+    logger.info('[MobileRag] controlled batch embed finished', {
       embedded: progress.embedded,
       failed: progress.failed,
-      total: globalTotal
+      loadSkipped: progress.loadSkipped,
+      total: globalTotal,
+      vaultCount: vaultPlans.length
     })
-    throw new MobileRagAbortError(progress.embedded)
-  }
-
-  logger.info('[MobileRag] controlled batch embed finished', {
-    embedded: progress.embedded,
-    failed: progress.failed,
-    loadSkipped: progress.loadSkipped,
-    total: globalTotal,
-    vaultCount: vaultPlans.length
-  })
-  return {
-    embedded: progress.embedded,
-    failed: progress.failed,
-    loadSkipped: progress.loadSkipped,
-    total: globalTotal,
-    skipped: false
-  }
+    return {
+      embedded: progress.embedded,
+      failed: progress.failed,
+      loadSkipped: progress.loadSkipped,
+      total: globalTotal,
+      skipped: false
+    }
   } finally {
     resetCachedMobileRagActiveState()
   }

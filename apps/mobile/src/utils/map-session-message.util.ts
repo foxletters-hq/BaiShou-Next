@@ -1,4 +1,8 @@
-import { mapAttachmentsFromParts, normalizePartData, resolveAttachmentAbsolutePath } from '@baishou/shared'
+import {
+  mapAttachmentsFromParts,
+  normalizePartData,
+  resolveAttachmentAbsolutePath
+} from '@baishou/shared'
 import type { AgentMessagePart } from '@baishou/store'
 import { parseCompactionMarkerData, type CompactionMarkerData } from '@baishou/ai'
 import { resolveMobileAttachmentFilePath } from './mobile-attachment-ui.util'

@@ -396,11 +396,7 @@ export function useVersionMigration() {
           )
         }
 
-        if (
-          isWorkspaceSectionId(sectionId) &&
-          !isFailed &&
-          result.imported > 0
-        ) {
+        if (isWorkspaceSectionId(sectionId) && !isFailed && result.imported > 0) {
           await promptRestartAfterWorkspaceMigration()
         }
 

@@ -99,11 +99,11 @@ export const DiaryScreen: React.FC = () => {
 
   const diaryListReady = Boolean(
     isFilterRestored &&
-      dbReady &&
-      services?.diaryService &&
-      storageReady &&
-      !vaultSwitching &&
-      !storageIndexing
+    dbReady &&
+    services?.diaryService &&
+    storageReady &&
+    !vaultSwitching &&
+    !storageIndexing
   )
 
   const { entries, totalCount, loading, loadEntries } = useDiaryData(

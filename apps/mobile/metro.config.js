@@ -68,10 +68,7 @@ config.resolver.blockList = [
   )
 ]
 
-const databaseNativeEntry = path.resolve(
-  workspaceRoot,
-  'packages/database/src/index.native.ts'
-)
+const databaseNativeEntry = path.resolve(workspaceRoot, 'packages/database/src/index.native.ts')
 
 const defaultResolveRequest = config.resolver.resolveRequest
 

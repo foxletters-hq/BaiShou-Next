@@ -49,9 +49,7 @@ fs.writeFileSync(outPath, template)
 
 const shellSize = fs.statSync(outPath).size
 if (shellSize > MAX_SHELL_HTML_BYTES) {
-  console.error(
-    `generate-shell-html: shell 过大 (${shellSize} bytes)，不应内联 bundle`
-  )
+  console.error(`generate-shell-html: shell 过大 (${shellSize} bytes)，不应内联 bundle`)
   process.exit(1)
 }
 

@@ -314,10 +314,7 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
       setChatBackgroundPath(bgPath)
       invalidateAgentUserProfileCache()
       invalidateChatBackgroundDisplayCache()
-      const resolvedUri = await resolveChatBackgroundForMobileUi(
-        bgPath,
-        services.attachmentManager
-      )
+      const resolvedUri = await resolveChatBackgroundForMobileUi(bgPath, services.attachmentManager)
       setResolvedBackgroundUri(resolvedUri)
       toast.showSuccess(t('common.save_success'))
       notifyUserProfileRefresh()

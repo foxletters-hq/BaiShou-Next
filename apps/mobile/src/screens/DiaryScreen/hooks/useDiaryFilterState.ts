@@ -12,7 +12,12 @@ import {
 type DiaryFilterPatch = Partial<
   Pick<
     DiaryFilterState,
-    'searchQuery' | 'selectedMonth' | 'filterWeathers' | 'filterFavorite' | 'currentPage' | 'pageSize'
+    | 'searchQuery'
+    | 'selectedMonth'
+    | 'filterWeathers'
+    | 'filterFavorite'
+    | 'currentPage'
+    | 'pageSize'
   >
 >
 
@@ -42,29 +47,47 @@ export function useDiaryFilterState(_dbReady: boolean) {
     setState((prev) => ({ ...prev, ...patch }))
   }, [])
 
-  const setSearchQuery = useCallback((searchQuery: string) => {
-    patchFilter({ searchQuery })
-  }, [patchFilter])
+  const setSearchQuery = useCallback(
+    (searchQuery: string) => {
+      patchFilter({ searchQuery })
+    },
+    [patchFilter]
+  )
 
-  const setSelectedMonth = useCallback((selectedMonth: Date | null) => {
-    patchFilter({ selectedMonth })
-  }, [patchFilter])
+  const setSelectedMonth = useCallback(
+    (selectedMonth: Date | null) => {
+      patchFilter({ selectedMonth })
+    },
+    [patchFilter]
+  )
 
-  const setFilterWeathers = useCallback((filterWeathers: string[]) => {
-    patchFilter({ filterWeathers })
-  }, [patchFilter])
+  const setFilterWeathers = useCallback(
+    (filterWeathers: string[]) => {
+      patchFilter({ filterWeathers })
+    },
+    [patchFilter]
+  )
 
-  const setFilterFavorite = useCallback((filterFavorite: boolean) => {
-    patchFilter({ filterFavorite })
-  }, [patchFilter])
+  const setFilterFavorite = useCallback(
+    (filterFavorite: boolean) => {
+      patchFilter({ filterFavorite })
+    },
+    [patchFilter]
+  )
 
-  const setCurrentPage = useCallback((currentPage: number) => {
-    patchFilter({ currentPage })
-  }, [patchFilter])
+  const setCurrentPage = useCallback(
+    (currentPage: number) => {
+      patchFilter({ currentPage })
+    },
+    [patchFilter]
+  )
 
-  const setPageSize = useCallback((pageSize: number) => {
-    patchFilter({ pageSize })
-  }, [patchFilter])
+  const setPageSize = useCallback(
+    (pageSize: number) => {
+      patchFilter({ pageSize })
+    },
+    [patchFilter]
+  )
 
   const resetFilters = useCallback(() => {
     patchFilter({
@@ -83,7 +106,14 @@ export function useDiaryFilterState(_dbReady: boolean) {
       return
     }
     patchFilter({ currentPage: 1 })
-  }, [state.selectedMonth, state.searchQuery, state.filterWeathers, state.filterFavorite, state.restored, patchFilter])
+  }, [
+    state.selectedMonth,
+    state.searchQuery,
+    state.filterWeathers,
+    state.filterFavorite,
+    state.restored,
+    patchFilter
+  ])
 
   useEffect(() => {
     if (!state.restored) return
@@ -94,9 +124,10 @@ export function useDiaryFilterState(_dbReady: boolean) {
 
   useEffect(() => {
     if (!state.restored) return
-    AsyncStorage.setItem(DIARY_FILTER_STORAGE_KEYS.selectedMonth, formatSavedMonth(state.selectedMonth)).catch(
-      (e) => logger.error('保存选中月份失败', e)
-    )
+    AsyncStorage.setItem(
+      DIARY_FILTER_STORAGE_KEYS.selectedMonth,
+      formatSavedMonth(state.selectedMonth)
+    ).catch((e) => logger.error('保存选中月份失败', e))
   }, [state.selectedMonth, state.restored])
 
   useEffect(() => {
@@ -109,15 +140,16 @@ export function useDiaryFilterState(_dbReady: boolean) {
 
   useEffect(() => {
     if (!state.restored) return
-    AsyncStorage.setItem(DIARY_FILTER_STORAGE_KEYS.filterFavorite, String(state.filterFavorite)).catch(
-      (e) => logger.error('保存收藏筛选失败', e)
-    )
+    AsyncStorage.setItem(
+      DIARY_FILTER_STORAGE_KEYS.filterFavorite,
+      String(state.filterFavorite)
+    ).catch((e) => logger.error('保存收藏筛选失败', e))
   }, [state.filterFavorite, state.restored])
 
   useEffect(() => {
     if (!state.restored) return
-    AsyncStorage.setItem(DIARY_FILTER_STORAGE_KEYS.currentPage, String(state.currentPage)).catch((e) =>
-      logger.error('保存页码失败', e)
+    AsyncStorage.setItem(DIARY_FILTER_STORAGE_KEYS.currentPage, String(state.currentPage)).catch(
+      (e) => logger.error('保存页码失败', e)
     )
   }, [state.currentPage, state.restored])
 

@@ -143,9 +143,13 @@ function AgentDrawerComponent({
     cancelAnimation(backdropOpacity)
 
     if (visible) {
-      slideX.value = withTiming(0, { duration: DRAWER_OPEN_MS, easing: DRAWER_EASE }, (finished) => {
-        if (finished) runOnJS(onOpenAnimationEnd)()
-      })
+      slideX.value = withTiming(
+        0,
+        { duration: DRAWER_OPEN_MS, easing: DRAWER_EASE },
+        (finished) => {
+          if (finished) runOnJS(onOpenAnimationEnd)()
+        }
+      )
       backdropOpacity.value = withTiming(1, {
         duration: DRAWER_OPEN_MS,
         easing: DRAWER_EASE

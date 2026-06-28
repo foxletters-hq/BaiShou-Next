@@ -248,13 +248,7 @@ export function useAgentChatScroll({
     if (!ref) return
     if (!isStreaming && !isStreamBridgeActive) return
     followStreamBottom(ref)
-  }, [
-    streamingText,
-    streamingReasoning,
-    isStreaming,
-    isStreamBridgeActive,
-    followStreamBottom
-  ])
+  }, [streamingText, streamingReasoning, isStreaming, isStreamBridgeActive, followStreamBottom])
 
   const prevIsStreamingRef = useRef(isStreaming)
   useEffect(() => {
