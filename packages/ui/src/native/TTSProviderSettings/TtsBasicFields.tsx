@@ -11,10 +11,7 @@ import { HelpTooltip } from '../Tooltip/HelpTooltip'
 import type { TtsProviderConfig } from './tts-provider-settings.types'
 import { TtsModelCombobox } from './TtsModelCombobox'
 import { Switch } from '../Switch/Switch'
-import {
-  isMimoVoiceCloneModel,
-  supportsTtsProviderStreaming
-} from '@baishou/shared'
+import { isMimoVoiceCloneModel, supportsTtsProviderStreaming } from '@baishou/shared'
 import { ttsProviderSettingsStyles as styles } from './tts-provider-settings.styles'
 
 interface TtsBasicFieldsProps {
@@ -231,7 +228,11 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
               {t('tts.settings.speed_label')}
             </Text>
             <Text style={[styles.sliderValue, { color: colors.primary }]}>
-              {config.speed.toFixed(1)}x
+              {(typeof config.speed === 'number' && Number.isFinite(config.speed)
+                ? config.speed
+                : Number(config.speed) || 1
+              ).toFixed(1)}
+              x
             </Text>
           </View>
           <NativeSlider

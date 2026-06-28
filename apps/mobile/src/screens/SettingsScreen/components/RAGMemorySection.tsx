@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ActivityIndicator, InteractionManager, Platform, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import {
@@ -9,7 +10,6 @@ import {
   type MockAiProviderModel,
   type RagConfig,
   type RagEntry,
-  type RagState,
   type RagStats
 } from '@baishou/ui/native'
 import {
@@ -23,6 +23,7 @@ import {
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { useMobileRagSystem } from '../../../hooks/useMobileRagSystem'
 import { MobileRagAbortError } from '../../../services/mobile-rag.service'
+import { appendDiagnosticBreadcrumb } from '../../../services/mobile-diagnostic-log.service'
 import { TextPromptModal } from './TextPromptModal'
 
 const DEFAULT_RAG_CONFIG: RagConfig = {
@@ -32,9 +33,20 @@ const DEFAULT_RAG_CONFIG: RagConfig = {
   batchEmbedConcurrency: MOBILE_DEFAULT_BATCH_EMBED_CONCURRENCY
 }
 
+/** 持久化/迁移可能把数值存成字符串，统一兜底，避免下游 toFixed 等数值方法崩溃 */
+function coerceNumber(value: unknown, fallback: number): number {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
 function clampMobileRagConfig(config: RagConfig): RagConfig {
   return {
     ...config,
+    ragTopK: coerceNumber(config.ragTopK, DEFAULT_RAG_CONFIG.ragTopK),
+    ragSimilarityThreshold: coerceNumber(
+      config.ragSimilarityThreshold,
+      DEFAULT_RAG_CONFIG.ragSimilarityThreshold
+    ),
     batchEmbedConcurrency: resolveMobileBatchEmbedConcurrency(config.batchEmbedConcurrency)
   }
 }
@@ -48,7 +60,7 @@ function buildEmbeddingProviders(providers: AIProviderConfig[]): MockAiProviderM
 export const RAGMemorySection: React.FC = () => {
   const { t } = useTranslation()
   const router = useRouter()
-  const { services, dbReady } = useBaishou()
+  const { services, dbReady, storageIndexing, ecosystemResyncEpoch } = useBaishou()
   const toast = useNativeToast()
   const dialog = useDialog()
 
@@ -80,6 +92,38 @@ export const RAGMemorySection: React.FC = () => {
   const [promptDefault, setPromptDefault] = useState('')
   const [ragCancelBusy, setRagCancelBusy] = useState(false)
   const editEntryRef = useRef<RagEntry | null>(null)
+  const [androidRenderStage, setAndroidRenderStage] = useState(Platform.OS === 'android' ? 0 : 2)
+
+  useEffect(() => {
+    appendDiagnosticBreadcrumb('RAGMemorySection mount')
+    if (Platform.OS !== 'android') {
+      return () => {
+        appendDiagnosticBreadcrumb('RAGMemorySection unmount')
+      }
+    }
+
+    appendDiagnosticBreadcrumb('RAG android render stage 0 (shell)')
+    let interactionTask: { cancel: () => void } | undefined
+    const frame = requestAnimationFrame(() => {
+      appendDiagnosticBreadcrumb('RAG android render stage 1 (view)')
+      setAndroidRenderStage(1)
+      interactionTask = InteractionManager.runAfterInteractions(() => {
+        appendDiagnosticBreadcrumb('RAG android render stage 2 (full)')
+        setAndroidRenderStage(2)
+      })
+    })
+
+    return () => {
+      cancelAnimationFrame(frame)
+      interactionTask?.cancel()
+      appendDiagnosticBreadcrumb('RAGMemorySection unmount')
+    }
+  }, [])
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return
+    appendDiagnosticBreadcrumb(`RAG android render stage active: ${androidRenderStage}`)
+  }, [androidRenderStage])
 
   const stateRef = useRef({ searchQuery, searchMode, currentPage, pageSize })
   useEffect(() => {
@@ -103,14 +147,24 @@ export const RAGMemorySection: React.FC = () => {
       size: number = stateRef.current.pageSize
     ) => {
       if (!services?.ragService || !dbReady) return
+      if (storageIndexing) {
+        appendDiagnosticBreadcrumb('RAG loadRagData skipped: storage indexing')
+        return
+      }
+
+      appendDiagnosticBreadcrumb(`RAG loadRagData start mode=${mode} page=${page}`)
 
       try {
+        appendDiagnosticBreadcrumb('RAG getStats start')
         const ragStats = await services.ragService.getStats()
+        appendDiagnosticBreadcrumb('RAG getStats done')
+        appendDiagnosticBreadcrumb('RAG global models load start')
         const globalModels =
           (await services.settingsManager.get<{
             globalEmbeddingProviderId?: string
             globalEmbeddingModelId?: string
           }>('global_models')) || {}
+        appendDiagnosticBreadcrumb('RAG global models load done')
         setEmbeddingProviderId(globalModels.globalEmbeddingProviderId)
         setEmbeddingModelId(globalModels.globalEmbeddingModelId)
         setStats({
@@ -144,7 +198,11 @@ export const RAGMemorySection: React.FC = () => {
           }
         }
 
+        appendDiagnosticBreadcrumb(
+          `RAG queryEntries start mode=${params.mode} limit=${params.limit}`
+        )
         const res = await services.ragService.queryEntries(params)
+        appendDiagnosticBreadcrumb(`RAG queryEntries done total=${res.total}`)
         const fallbackModel = globalModels.globalEmbeddingModelId
 
         if (q.trim() && mode === 'semantic') {
@@ -169,23 +227,43 @@ export const RAGMemorySection: React.FC = () => {
           )
           setTotalCount(res.total)
         }
-
-        await checkModelMismatch()
       } catch (e: unknown) {
+        appendDiagnosticBreadcrumb(
+          `RAG loadRagData failed: ${e instanceof Error ? e.message : String(e)}`
+        )
         toast.showError(e instanceof Error ? e.message : t('settings.rag_operation_failed'))
       }
+
+      try {
+        appendDiagnosticBreadcrumb('RAG checkModelMismatch start')
+        await checkModelMismatch()
+        appendDiagnosticBreadcrumb('RAG checkModelMismatch done')
+      } catch (e: unknown) {
+        appendDiagnosticBreadcrumb(
+          `RAG checkModelMismatch failed: ${e instanceof Error ? e.message : String(e)}`
+        )
+        console.warn('[RAGMemorySection] checkModelMismatch failed', e)
+      }
     },
-    [services, dbReady, checkModelMismatch, toast, t]
+    [services, dbReady, storageIndexing, checkModelMismatch, toast, t]
   )
 
   useEffect(() => {
     if (!dbReady || !services) return
-    const init = async () => {
-      const providerList =
-        (await services.settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
-      setProviders(providerList)
-      const saved = (await services.settingsManager.get<SharedRagConfig>('rag_config')) ?? null
-      const loaded = clampMobileRagConfig({
+    if (storageIndexing) {
+      appendDiagnosticBreadcrumb('RAG init deferred: storage indexing')
+      return
+    }
+    let cancelled = false
+
+    const runInit = async () => {
+      try {
+        const providerList =
+          (await services.settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
+        if (cancelled) return
+        setProviders(providerList)
+        const saved = (await services.settingsManager.get<SharedRagConfig>('rag_config')) ?? null
+        const loaded = clampMobileRagConfig({
           ragEnabled: saved?.ragEnabled ?? DEFAULT_RAG_CONFIG.ragEnabled,
           ragTopK: saved?.ragTopK ?? DEFAULT_RAG_CONFIG.ragTopK,
           ragSimilarityThreshold:
@@ -193,17 +271,40 @@ export const RAGMemorySection: React.FC = () => {
           batchEmbedConcurrency:
             saved?.batchEmbedConcurrency ?? MOBILE_DEFAULT_BATCH_EMBED_CONCURRENCY
         })
-      setConfig(loaded)
-      if (
-        saved?.batchEmbedConcurrency != null &&
-        loaded.batchEmbedConcurrency !== saved.batchEmbedConcurrency
-      ) {
-        await services.settingsManager.set('rag_config', loaded)
+        if (cancelled) return
+        setConfig(loaded)
+        if (
+          saved?.batchEmbedConcurrency != null &&
+          loaded.batchEmbedConcurrency !== saved.batchEmbedConcurrency
+        ) {
+          await services.settingsManager.set('rag_config', loaded)
+        }
+        if (cancelled) return
+        appendDiagnosticBreadcrumb('RAG init config loaded')
+        await loadRagData('', 'text', 1, 10)
+        appendDiagnosticBreadcrumb('RAG init loadRagData finished')
+      } catch (e: unknown) {
+        if (!cancelled) {
+          toast.showError(e instanceof Error ? e.message : t('settings.rag_operation_failed'))
+        }
       }
-      await loadRagData('', 'text', 1, 10)
     }
-    void init()
-  }, [dbReady, services, loadRagData])
+
+    if (Platform.OS === 'android') {
+      const task = InteractionManager.runAfterInteractions(() => {
+        void runInit()
+      })
+      return () => {
+        cancelled = true
+        task.cancel()
+      }
+    }
+
+    void runInit()
+    return () => {
+      cancelled = true
+    }
+  }, [dbReady, services, storageIndexing, ecosystemResyncEpoch, loadRagData, toast, t])
 
   const embeddingProviders = useMemo(() => buildEmbeddingProviders(providers), [providers])
 
@@ -518,34 +619,40 @@ export const RAGMemorySection: React.FC = () => {
 
   return (
     <>
-      <RagMemoryView
-        config={config}
-        stats={stats}
-        ragState={ragState}
-        hasMismatchModel={hasMismatchModel}
-        embeddingModelId={embeddingModelId}
-        entries={entries}
-        totalCount={totalCount}
-        currentPage={currentPage}
-        pageSize={pageSize}
-        searchQuery={searchQuery}
-        searchMode={searchMode}
-        semanticAvailable={semanticAvailable}
-        onSemanticUnavailable={() => void handleSemanticUnavailable()}
-        onChange={saveConfig}
-        onDetectDimension={handleDetectDimension}
-        onBatchEmbed={handleBatchEmbed}
-        onTriggerMigration={handleTriggerMigration}
-        onCancelMigration={handleCancelRagOperation}
-        migrationCancelBusy={ragCancelBusy}
-        onAddManualMemory={handleAddManualMemory}
-        onClearAll={handleClearAll}
-        onSearch={handleSearch}
-        onDeleteEntry={handleDeleteEntry}
-        onEditEntry={handleEditEntry}
-        onConfigureModel={openModelSwitcher}
-        onPageChange={handlePageChange}
-      />
+      {Platform.OS === 'android' && (androidRenderStage < 1 || storageIndexing) ? (
+        <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+          <ActivityIndicator size="small" />
+        </View>
+      ) : (
+        <RagMemoryView
+          config={config}
+          stats={stats}
+          ragState={ragState}
+          hasMismatchModel={hasMismatchModel}
+          embeddingModelId={embeddingModelId}
+          entries={entries}
+          totalCount={totalCount}
+          currentPage={currentPage}
+          pageSize={pageSize}
+          searchQuery={searchQuery}
+          searchMode={searchMode}
+          semanticAvailable={semanticAvailable}
+          onSemanticUnavailable={() => void handleSemanticUnavailable()}
+          onChange={saveConfig}
+          onDetectDimension={handleDetectDimension}
+          onBatchEmbed={handleBatchEmbed}
+          onTriggerMigration={handleTriggerMigration}
+          onCancelMigration={handleCancelRagOperation}
+          migrationCancelBusy={ragCancelBusy}
+          onAddManualMemory={handleAddManualMemory}
+          onClearAll={handleClearAll}
+          onSearch={androidRenderStage >= 2 ? handleSearch : undefined}
+          onDeleteEntry={handleDeleteEntry}
+          onEditEntry={handleEditEntry}
+          onConfigureModel={openModelSwitcher}
+          onPageChange={handlePageChange}
+        />
+      )}
 
       <ModelSwitcher
         isOpen={showModelSwitcher}

@@ -2,7 +2,7 @@
   "expo": {
     "name": "白守",
     "slug": "mobile",
-    "version": "1.1.10",
+    "version": "1.1.24",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mobile",
@@ -12,9 +12,7 @@
       "bundleIdentifier": "com.baishou.baishou",
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "用于在同一 Wi-Fi 下发现附近的设备并进行数据备份传输。",
-        "NSBonjourServices": [
-          "_baishou._tcp"
-        ],
+        "NSBonjourServices": ["_baishou._tcp"],
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
         }
@@ -22,7 +20,7 @@
     },
     "android": {
       "package": "com.baishou.baishou",
-      "versionCode": 53,
+      "versionCode": 67,
       "permissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",

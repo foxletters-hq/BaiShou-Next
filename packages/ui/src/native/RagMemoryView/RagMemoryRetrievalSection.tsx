@@ -16,12 +16,21 @@ interface RagMemoryRetrievalSectionProps {
   onChange: (config: RagConfig) => void
 }
 
+/** 持久化/迁移可能把数值存成字符串，统一兜底，避免 toFixed 等数值方法在 render 阶段崩溃 */
+function coerceNumber(value: unknown, fallback: number): number {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
 export const RagMemoryRetrievalSection: React.FC<RagMemoryRetrievalSectionProps> = ({
   config,
   onChange
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+
+  const ragTopK = coerceNumber(config.ragTopK, 20)
+  const ragSimilarityThreshold = coerceNumber(config.ragSimilarityThreshold, 0.4)
 
   return (
     <View>
@@ -31,7 +40,7 @@ export const RagMemoryRetrievalSection: React.FC<RagMemoryRetrievalSectionProps>
 
       <SettingsSliderRow
         title={t('settings.rag_top_k')}
-        value={config.ragTopK}
+        value={ragTopK}
         min={1}
         max={20}
         step={1}
@@ -40,11 +49,11 @@ export const RagMemoryRetrievalSection: React.FC<RagMemoryRetrievalSectionProps>
 
       <SettingsSliderRow
         title={t('settings.rag_similarity_threshold')}
-        value={config.ragSimilarityThreshold}
+        value={ragSimilarityThreshold}
         min={0}
         max={1}
         step={0.01}
-        formatValue={(v) => v.toFixed(2)}
+        formatValue={(v) => coerceNumber(v, 0).toFixed(2)}
         onChange={(v) =>
           onChange({
             ...config,
