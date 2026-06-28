@@ -177,7 +177,12 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
 
   return (
     <div className={styles.overlay} onClick={onCancel}>
-      <div className={styles.dialog} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+      <div
+        className={styles.dialog}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
         <h2 className={styles.title}>{t('data_sync.plan_confirm_title', '确认同步')}</h2>
         <p className={styles.subtitle}>
           {t('data_sync.plan_confirm_desc', {
@@ -243,7 +248,9 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
 
         <div className={styles.vaultList}>
           {preview.vaultSummaries.length === 0 ? (
-            <p className={styles.subtitle}>{t('data_sync.plan_no_file_changes', '没有需要同步的文件变更')}</p>
+            <p className={styles.subtitle}>
+              {t('data_sync.plan_no_file_changes', '没有需要同步的文件变更')}
+            </p>
           ) : (
             preview.vaultSummaries.map((summary) => {
               const vaultItems = itemsByVault.get(summary.vaultName) ?? []
@@ -264,7 +271,9 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
                     }`}
                   >
                     <div className={styles.vaultTitleRow}>
-                      <span className={styles.vaultName}>{formatVaultLabel(summary.vaultName, t)}</span>
+                      <span className={styles.vaultName}>
+                        {formatVaultLabel(summary.vaultName, t)}
+                      </span>
                       <div className={styles.vaultTags}>
                         {isActive && (
                           <span className={styles.vaultBadgeActive}>
@@ -285,7 +294,10 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
                       {displayItems.map((item) => (
                         <li key={`${item.action}:${item.filePath}`} className={styles.fileItem}>
                           <span className={`${styles.actionTag} ${actionClass(item.action)}`}>
-                            {t(`data_sync.plan_action_${item.action.replace(/-/g, '_')}`, item.action)}
+                            {t(
+                              `data_sync.plan_action_${item.action.replace(/-/g, '_')}`,
+                              item.action
+                            )}
                           </span>
                           <span className={styles.filePath}>{item.filePath}</span>
                         </li>

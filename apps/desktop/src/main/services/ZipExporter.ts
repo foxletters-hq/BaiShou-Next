@@ -92,10 +92,7 @@ export class ZipExporter {
     })
   }
 
-  private async appendArchiveContents(
-    archive: archiver.Archiver,
-    rootDir: string
-  ): Promise<void> {
+  private async appendArchiveContents(archive: archiver.Archiver, rootDir: string): Promise<void> {
     const ctx = this.scanContext
     if (!ctx) {
       throw new Error('Archive export scan context is not initialized')

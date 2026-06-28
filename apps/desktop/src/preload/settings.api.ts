@@ -118,10 +118,12 @@ export const settingsApi = {
       return () => ipcRenderer.removeListener('storage:root-changed', listener)
     },
     getExternalJournalsInfo: () => ipcRenderer.invoke('storage:getExternalJournalsInfo'),
-    pickExternalJournalsDirectory: () => ipcRenderer.invoke('storage:pickExternalJournalsDirectory'),
+    pickExternalJournalsDirectory: () =>
+      ipcRenderer.invoke('storage:pickExternalJournalsDirectory'),
     setExternalJournalsDirectory: (targetPath: string) =>
       ipcRenderer.invoke('storage:setExternalJournalsDirectory', targetPath),
-    clearExternalJournalsDirectory: () => ipcRenderer.invoke('storage:clearExternalJournalsDirectory'),
+    clearExternalJournalsDirectory: () =>
+      ipcRenderer.invoke('storage:clearExternalJournalsDirectory'),
     onJournalsPathChanged: (callback: () => void) => {
       const listener = () => callback()
       ipcRenderer.on('storage:journals-path-changed', listener)

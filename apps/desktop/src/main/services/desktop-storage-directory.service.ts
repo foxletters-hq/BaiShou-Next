@@ -142,7 +142,10 @@ export async function resumeStorageAfterFileCopy(): Promise<void> {
     await settingsManager.fullResyncFromDisk()
     invalidateMcpToolContextCache()
   } catch (e) {
-    logger.warn('[StorageDirectory] settings fullResyncFromDisk failed after root change:', e as Error)
+    logger.warn(
+      '[StorageDirectory] settings fullResyncFromDisk failed after root change:',
+      e as Error
+    )
   }
 
   if (mcpWasRunningBeforeQuiesce) {

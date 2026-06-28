@@ -66,10 +66,7 @@ async function loadEmbeddedDiaryIndex(vaultName: string): Promise<{
     })
     .from(memoryEmbeddingsTable)
     .where(
-      and(
-        eq(memoryEmbeddingsTable.sourceType, 'diary'),
-        eq(memoryEmbeddingsTable.groupId, groupId)
-      )
+      and(eq(memoryEmbeddingsTable.sourceType, 'diary'), eq(memoryEmbeddingsTable.groupId, groupId))
     )
     .groupBy(memoryEmbeddingsTable.sourceId)
 
@@ -115,7 +112,14 @@ export async function runControlledDiaryBatchEmbed(
 
   const ragConfig = (await settingsManager.get<RagConfig>('rag_config')) || ({} as RagConfig)
   if (!isRagMemoryEnabled(ragConfig)) {
-    return { embedded: 0, loadSkipped: 0, failed: 0, total: 0, skipped: true, skipReason: 'rag-disabled' }
+    return {
+      embedded: 0,
+      loadSkipped: 0,
+      failed: 0,
+      total: 0,
+      skipped: true,
+      skipReason: 'rag-disabled'
+    }
   }
 
   const embeddingService = getEmbeddingService()
@@ -155,7 +159,9 @@ export async function runControlledDiaryBatchEmbed(
   }
 
   const vaults = vaultService.getAllVaults()
-  type DiaryMetaList = Awaited<ReturnType<Awaited<ReturnType<typeof getDiaryManagerForVault>>['listAll']>>
+  type DiaryMetaList = Awaited<
+    ReturnType<Awaited<ReturnType<typeof getDiaryManagerForVault>>['listAll']>
+  >
   const vaultPlans: Array<{
     vaultName: string
     diariesToEmbed: DiaryMetaList
@@ -173,7 +179,11 @@ export async function runControlledDiaryBatchEmbed(
       filterUnindexedDiaries(diaries, embeddedIds, embeddedUpdatedAtMap, { resolveSourceId })
     )
     if (diariesToEmbed.length === 0) continue
-    vaultPlans.push({ vaultName: vault.name, diariesToEmbed, allDiaryIds: diaries.map((d) => d.id) })
+    vaultPlans.push({
+      vaultName: vault.name,
+      diariesToEmbed,
+      allDiaryIds: diaries.map((d) => d.id)
+    })
     globalTotal += diariesToEmbed.length
   }
 
@@ -184,7 +194,14 @@ export async function runControlledDiaryBatchEmbed(
         win.webContents.send('diary:sync-event', { type: 'embed-failure-cleared' })
       }
     }
-    return { embedded: 0, loadSkipped: 0, failed: 0, total: 0, skipped: true, skipReason: 'nothing-to-embed' }
+    return {
+      embedded: 0,
+      loadSkipped: 0,
+      failed: 0,
+      total: 0,
+      skipped: true,
+      skipReason: 'nothing-to-embed'
+    }
   }
 
   let globalCompleted = 0
@@ -219,8 +236,7 @@ export async function runControlledDiaryBatchEmbed(
     })
   }
 
-  const latestRagConfig =
-    (await settingsManager.get<RagConfig>('rag_config')) || ({} as RagConfig)
+  const latestRagConfig = (await settingsManager.get<RagConfig>('rag_config')) || ({} as RagConfig)
   if (hasRagDiaryEmbedFailure(latestRagConfig)) {
     await settingsManager.set('rag_config', clearRagDiaryEmbedFailure(latestRagConfig))
     for (const win of BrowserWindow.getAllWindows()) {
@@ -240,7 +256,9 @@ export async function runControlledDiaryBatchEmbed(
 
 type VaultEmbedPlan = {
   vaultName: string
-  diariesToEmbed: Awaited<ReturnType<Awaited<ReturnType<typeof getDiaryManagerForVault>>['listAll']>>
+  diariesToEmbed: Awaited<
+    ReturnType<Awaited<ReturnType<typeof getDiaryManagerForVault>>['listAll']>
+  >
   allDiaryIds: Array<number | string>
 }
 

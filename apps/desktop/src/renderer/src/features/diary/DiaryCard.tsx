@@ -136,9 +136,8 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
   )
   const yearMonth = `${entry.date.getFullYear()} · ${t(MONTH_NAMES_KEYS[entry.date.getMonth()], MONTH_NAMES_DEFAULT[entry.date.getMonth()])}`
   const visibleTags = entry.tags.filter((t) => t.trim().length > 0)
-  const { visibleTags: previewTags, overflowCount: tagOverflowCount } = limitDiaryPreviewTags(
-    visibleTags
-  )
+  const { visibleTags: previewTags, overflowCount: tagOverflowCount } =
+    limitDiaryPreviewTags(visibleTags)
 
   const weatherLabelFallback: Record<WeatherId, string> = {
     sunny: '晴',

@@ -45,9 +45,8 @@ describe('desktop-mcp-config.store', () => {
     isDesktopDevBuildMock.mockReturnValue(true)
     fspMock.readFile.mockRejectedValue(Object.assign(new Error('missing'), { code: 'ENOENT' }))
 
-    const { getDesktopMcpServerConfig, DESKTOP_DEV_DEFAULT_MCP_PORT } = await import(
-      '../desktop-mcp-config.store'
-    )
+    const { getDesktopMcpServerConfig, DESKTOP_DEV_DEFAULT_MCP_PORT } =
+      await import('../desktop-mcp-config.store')
     const config = await getDesktopMcpServerConfig()
     expect(config.mcpPort).toBe(DESKTOP_DEV_DEFAULT_MCP_PORT)
     expect(config.mcpEnabled).toBe(false)
@@ -65,9 +64,8 @@ describe('desktop-mcp-config.store', () => {
       delete: vi.fn().mockResolvedValue(undefined)
     }
 
-    const { migrateDesktopMcpConfigFromSharedSettings } = await import(
-      '../desktop-mcp-config.store'
-    )
+    const { migrateDesktopMcpConfigFromSharedSettings } =
+      await import('../desktop-mcp-config.store')
     await migrateDesktopMcpConfigFromSharedSettings(settingsRepo as any)
 
     expect(fspMock.writeFile).toHaveBeenCalledWith(

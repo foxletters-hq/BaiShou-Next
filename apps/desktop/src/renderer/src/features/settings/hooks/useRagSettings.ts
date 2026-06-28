@@ -1,11 +1,7 @@
 import { useState, useEffect, useRef, useSyncExternalStore } from 'react'
 import { useRagSystem } from './useRagSystem'
 import { useRagActions } from './useRagActions'
-import {
-  getCachedRagStats,
-  setCachedRagStats,
-  subscribeRagRuntime
-} from '../rag-runtime-cache'
+import { getCachedRagStats, setCachedRagStats, subscribeRagRuntime } from '../rag-runtime-cache'
 
 interface UseRagSettingsProps {
   settings: any

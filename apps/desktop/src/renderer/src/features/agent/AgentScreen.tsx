@@ -1,5 +1,12 @@
 import React, { useMemo } from 'react'
-import { TokenBadge, InputBar, ContextChainPanel, useTheme, getProviderIcon, toast } from '@baishou/ui'
+import {
+  TokenBadge,
+  InputBar,
+  ContextChainPanel,
+  useTheme,
+  getProviderIcon,
+  toast
+} from '@baishou/ui'
 import { createWebComposerDraftStorage } from '@baishou/ui/shared/composer-draft'
 import { MdAutoAwesome, MdCloud } from 'react-icons/md'
 import {
@@ -239,7 +246,9 @@ export const AgentScreen: React.FC = () => {
           )}
           <InputBar
             ref={flow.inputBarRef}
-            isLoading={flow.stream.isStreaming || flow.stream.isBridgeActive || flow.stream.isCompressing}
+            isLoading={
+              flow.stream.isStreaming || flow.stream.isBridgeActive || flow.stream.isCompressing
+            }
             onSend={flow.handleSend}
             onStop={flow.handleStop}
             composerBlocked={composerBlocked}

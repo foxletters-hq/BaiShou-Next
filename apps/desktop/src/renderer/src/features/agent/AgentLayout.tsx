@@ -333,10 +333,9 @@ export const AgentLayout: React.FC = () => {
           const sorted = sessionsList.sort(
             (a: any, b: any) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
           )
-          navigate(
-            buildAgentChatNavigationPath({ assistantId: astId, sessionId: sorted[0].id }),
-            { replace: true }
-          )
+          navigate(buildAgentChatNavigationPath({ assistantId: astId, sessionId: sorted[0].id }), {
+            replace: true
+          })
         }
       } catch (e) {
         console.error('[AgentLayout] Failed to switch to existing session', e)

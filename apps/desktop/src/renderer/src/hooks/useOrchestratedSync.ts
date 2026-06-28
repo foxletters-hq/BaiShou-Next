@@ -58,15 +58,9 @@ async function readIncrementalSyncConfig(): Promise<S3SyncConfig | null> {
 
 function resolveSyncNotReadyMessage(config: S3SyncConfig | null, t: TFunction): string {
   if (config?.enabled === false) {
-    return t(
-      'data_sync.error_sync_disabled',
-      '请先在设置中开启「文件同步」开关后再同步'
-    )
+    return t('data_sync.error_sync_disabled', '请先在设置中开启「文件同步」开关后再同步')
   }
-  return t(
-    'data_sync.error_not_configured',
-    '同步服务尚未启用或配置不完整'
-  )
+  return t('data_sync.error_not_configured', '同步服务尚未启用或配置不完整')
 }
 
 export function useOrchestratedSync() {
@@ -225,8 +219,7 @@ export function useOrchestratedSync() {
         let remoteManifestDrifted = false
         if (stalePreview.planReuseBaseline) {
           const drift = await withSyncIpcTimeoutAndRetry(
-            () =>
-              window.api.incrementalSync.evaluatePlanDrift(stalePreview.planReuseBaseline!),
+            () => window.api.incrementalSync.evaluatePlanDrift(stalePreview.planReuseBaseline!),
             { timeoutMs: SYNC_IPC_PLAN_TIMEOUT_MS, onRetry: notifySyncRetry }
           )
           localTreeDrifted = drift.localTreeDrifted
@@ -328,7 +321,12 @@ export function useOrchestratedSync() {
   )
 
   const startSync = useCallback(async () => {
-    if (isSyncing || isPlanning || useSyncStore.getState().planDialogOpen || confirmingRef.current) {
+    if (
+      isSyncing ||
+      isPlanning ||
+      useSyncStore.getState().planDialogOpen ||
+      confirmingRef.current
+    ) {
       return null
     }
 

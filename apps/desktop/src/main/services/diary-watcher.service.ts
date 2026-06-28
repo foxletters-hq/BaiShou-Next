@@ -36,9 +36,7 @@ export class DiaryWatcherService {
           logger.error(`[DiaryWatcher] ❌ 无法创建日记目录:`, e)
         }
       } else {
-        logger.warn(
-          `[DiaryWatcher] 外部日记目录不存在，跳过监听: ${this.journalsPath}`
-        )
+        logger.warn(`[DiaryWatcher] 外部日记目录不存在，跳过监听: ${this.journalsPath}`)
         return
       }
     }

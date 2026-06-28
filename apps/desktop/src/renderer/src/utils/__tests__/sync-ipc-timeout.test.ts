@@ -44,10 +44,10 @@ describe('withSyncIpcTimeoutAndRetry', () => {
 
   it('throws SyncIpcTimeoutError after max retries', async () => {
     await expect(
-      withSyncIpcTimeoutAndRetry(
-        () => new Promise<string>(() => undefined),
-        { timeoutMs: 20, maxRetries: 1 }
-      )
+      withSyncIpcTimeoutAndRetry(() => new Promise<string>(() => undefined), {
+        timeoutMs: 20,
+        maxRetries: 1
+      })
     ).rejects.toBeInstanceOf(SyncIpcTimeoutError)
   })
 })

@@ -196,9 +196,7 @@ export class DesktopStoragePathService implements IStoragePathService {
       if (stat?.isDirectory()) {
         return dir
       }
-      logger.warn(
-        `[PathService] 外部日记目录不可用，回退至工作区内 Journals: ${dir}`
-      )
+      logger.warn(`[PathService] 外部日记目录不可用，回退至工作区内 Journals: ${dir}`)
       const internal = path.join(vaultDir, 'Journals')
       await fs.mkdir(internal, { recursive: true })
       return internal
@@ -225,9 +223,7 @@ export class DesktopStoragePathService implements IStoragePathService {
       if (stat?.isDirectory()) {
         return dir
       }
-      logger.warn(
-        `[PathService] 外部总结目录不可用，回退至工作区内 Archives: ${dir}`
-      )
+      logger.warn(`[PathService] 外部总结目录不可用，回退至工作区内 Archives: ${dir}`)
       const internal = path.join(vaultDir, 'Archives')
       await fs.mkdir(internal, { recursive: true })
       return internal

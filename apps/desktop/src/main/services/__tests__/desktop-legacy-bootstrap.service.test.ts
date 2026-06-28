@@ -130,6 +130,8 @@ describe('desktop onboarding completion', () => {
   it('sanitizes and validates migration target paths', () => {
     expect(validateFlutterLegacyMigrationTarget('D:\\')).toBe('D:\\BaiShou_Root')
     expect(validateFlutterLegacyMigrationTarget('C:\\BaiShou_Root')).toBe('C:\\BaiShou_Root')
-    expect(() => validateFlutterLegacyMigrationTarget('')).toThrow('Invalid migration target directory')
+    expect(() => validateFlutterLegacyMigrationTarget('')).toThrow(
+      'Invalid migration target directory'
+    )
   })
 })

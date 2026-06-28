@@ -10,8 +10,5 @@ export function useDesktopComposerDraftKey(sessionId: string | undefined) {
 
   useEffect(() => subscribeDesktopVaultScope(() => setVaultKey(getDesktopVaultScopeKey())), [])
 
-  return useMemo(
-    () => `agent-composer:${vaultKey}:${sessionId ?? 'new'}`,
-    [vaultKey, sessionId]
-  )
+  return useMemo(() => `agent-composer:${vaultKey}:${sessionId ?? 'new'}`, [vaultKey, sessionId])
 }

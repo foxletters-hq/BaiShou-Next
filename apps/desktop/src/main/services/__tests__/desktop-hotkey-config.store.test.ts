@@ -67,9 +67,8 @@ describe('desktop-hotkey-config.store', () => {
       delete: vi.fn().mockResolvedValue(undefined)
     }
 
-    const { migrateDesktopHotkeyConfigFromSharedSettings, getDesktopHotkeyConfig } = await import(
-      '../desktop-hotkey-config.store'
-    )
+    const { migrateDesktopHotkeyConfigFromSharedSettings, getDesktopHotkeyConfig } =
+      await import('../desktop-hotkey-config.store')
     await migrateDesktopHotkeyConfigFromSharedSettings(settingsRepo as any)
 
     expect(fspMock.writeFile).toHaveBeenCalledWith(

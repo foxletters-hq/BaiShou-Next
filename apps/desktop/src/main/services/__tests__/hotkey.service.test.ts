@@ -70,7 +70,10 @@ describe('HotkeyService', () => {
       hotkeyKey: 'Space'
     })
     expect(globalShortcut.unregisterAll).toHaveBeenCalled()
-    expect(globalShortcut.register).toHaveBeenCalledWith('CommandOrControl+Space', expect.any(Function))
+    expect(globalShortcut.register).toHaveBeenCalledWith(
+      'CommandOrControl+Space',
+      expect.any(Function)
+    )
     expect(registered).toBe(true)
   })
 

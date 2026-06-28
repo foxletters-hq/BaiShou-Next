@@ -228,8 +228,8 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
     lastMessage?.role === 'assistant' &&
     Boolean(
       lastMessage.content?.trim() ||
-        lastMessage.reasoning?.trim() ||
-        (lastMessage.toolInvocations?.length ?? 0) > 0
+      lastMessage.reasoning?.trim() ||
+      (lastMessage.toolInvocations?.length ?? 0) > 0
     )
 
   return (
@@ -376,24 +376,22 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
                 stream.completedTools.length > 0)
 
             return showStreamingBubble ? (
-            <StreamingBubble
-              text={stream.text}
-              reasoning={stream.reasoning}
-              isReasoning={Boolean(stream.reasoning && !stream.text)}
-              activeToolName={activeToolDisplayName}
-              completedTools={stream.completedTools}
-              aiProfile={{
-                name: currentAssistant?.name || 'AI',
-                avatarPath: currentAssistant?.avatarPath,
-                emoji: currentAssistant?.emoji
-              }}
-            />
+              <StreamingBubble
+                text={stream.text}
+                reasoning={stream.reasoning}
+                isReasoning={Boolean(stream.reasoning && !stream.text)}
+                activeToolName={activeToolDisplayName}
+                completedTools={stream.completedTools}
+                aiProfile={{
+                  name: currentAssistant?.name || 'AI',
+                  avatarPath: currentAssistant?.avatarPath,
+                  emoji: currentAssistant?.emoji
+                }}
+              />
             ) : null
           })()}
 
-          {chat.messages.length === 0 &&
-            !stream.isStreaming &&
-            !stream.isBridgeActive && (
+          {chat.messages.length === 0 && !stream.isStreaming && !stream.isBridgeActive && (
             <div style={{ flex: 1 }} />
           )}
         </div>

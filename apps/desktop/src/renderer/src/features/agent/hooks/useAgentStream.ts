@@ -1,8 +1,5 @@
 import { useEffect, useState, useCallback, useRef, useContext } from 'react'
-import {
-  createStreamingTextDisplayBuffer,
-  type StreamingTextDisplayBuffer
-} from '@baishou/shared'
+import { createStreamingTextDisplayBuffer, type StreamingTextDisplayBuffer } from '@baishou/shared'
 import { MainPageCacheActiveContext } from '../../../layouts/main-page-cache.context'
 
 export interface ToolExecution {
@@ -86,9 +83,13 @@ const compressionReasoningDisplayBuffers: Record<string, StreamingTextDisplayBuf
 function ensureStreamTextDisplayBuffer(sessionId: string): StreamingTextDisplayBuffer {
   if (!streamTextDisplayBuffers[sessionId]) {
     streamTextDisplayBuffers[sessionId] = createStreamingTextDisplayBuffer((text) => {
-      updateSessionState(sessionId, (state) => {
-        state.text = text
-      }, { notify: false })
+      updateSessionState(
+        sessionId,
+        (state) => {
+          state.text = text
+        },
+        { notify: false }
+      )
       notifySessionListeners(sessionId)
     })
   }
@@ -98,9 +99,13 @@ function ensureStreamTextDisplayBuffer(sessionId: string): StreamingTextDisplayB
 function ensureStreamReasoningDisplayBuffer(sessionId: string): StreamingTextDisplayBuffer {
   if (!streamReasoningDisplayBuffers[sessionId]) {
     streamReasoningDisplayBuffers[sessionId] = createStreamingTextDisplayBuffer((text) => {
-      updateSessionState(sessionId, (state) => {
-        state.reasoning = text
-      }, { notify: false })
+      updateSessionState(
+        sessionId,
+        (state) => {
+          state.reasoning = text
+        },
+        { notify: false }
+      )
       notifySessionListeners(sessionId)
     })
   }
@@ -110,9 +115,13 @@ function ensureStreamReasoningDisplayBuffer(sessionId: string): StreamingTextDis
 function ensureCompressionTextDisplayBuffer(sessionId: string): StreamingTextDisplayBuffer {
   if (!compressionTextDisplayBuffers[sessionId]) {
     compressionTextDisplayBuffers[sessionId] = createStreamingTextDisplayBuffer((text) => {
-      updateSessionState(sessionId, (state) => {
-        state.compressionText = text
-      }, { notify: false })
+      updateSessionState(
+        sessionId,
+        (state) => {
+          state.compressionText = text
+        },
+        { notify: false }
+      )
       notifySessionListeners(sessionId)
     })
   }
@@ -122,9 +131,13 @@ function ensureCompressionTextDisplayBuffer(sessionId: string): StreamingTextDis
 function ensureCompressionReasoningDisplayBuffer(sessionId: string): StreamingTextDisplayBuffer {
   if (!compressionReasoningDisplayBuffers[sessionId]) {
     compressionReasoningDisplayBuffers[sessionId] = createStreamingTextDisplayBuffer((text) => {
-      updateSessionState(sessionId, (state) => {
-        state.compressionReasoning = text
-      }, { notify: false })
+      updateSessionState(
+        sessionId,
+        (state) => {
+          state.compressionReasoning = text
+        },
+        { notify: false }
+      )
       notifySessionListeners(sessionId)
     })
   }
@@ -590,9 +603,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
       })
     }
     if (typeof window !== 'undefined' && window.electron) {
-      window.electron.ipcRenderer
-        .invoke('agent:stop-stream', sessionId)
-        .catch(console.error)
+      window.electron.ipcRenderer.invoke('agent:stop-stream', sessionId).catch(console.error)
     }
   }, [currentSessionId])
 

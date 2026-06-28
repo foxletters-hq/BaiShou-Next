@@ -1,9 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  classifyAiApiCallError,
-  resolveMigrationStatusText
-} from '@baishou/shared'
+import { classifyAiApiCallError, resolveMigrationStatusText } from '@baishou/shared'
 import {
   getCachedRagStats,
   getCachedRagActiveState,

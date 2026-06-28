@@ -1,9 +1,5 @@
 import './app-identity'
-import {
-  DESKTOP_APP_ID,
-  DESKTOP_DEV_APP_ID,
-  isDesktopDevBuild
-} from './app-identity'
+import { DESKTOP_APP_ID, DESKTOP_DEV_APP_ID, isDesktopDevBuild } from './app-identity'
 import { app, shell, BrowserWindow, ipcMain, Menu, protocol, net } from 'electron'
 import { join } from 'path'
 import { fileURLToPath } from 'url'
@@ -180,9 +176,7 @@ async function completeFullBootstrap() {
       const { settingsManager } = await import('./ipc/settings.ipc')
       const { purgeDeviceLocalSettingsFromAgentDb } =
         await import('./services/desktop-device-settings.util')
-      await purgeDeviceLocalSettingsFromAgentDb(settingsRepo, () =>
-        settingsManager.flushToDisk()
-      )
+      await purgeDeviceLocalSettingsFromAgentDb(settingsRepo, () => settingsManager.flushToDisk())
 
       const { migrateDesktopHotkeyConfigFromSharedSettings, desktopHotkeyConfigStore } =
         await import('./services/desktop-hotkey-config.store')
@@ -216,9 +210,7 @@ app.whenReady().then(async () => {
   ;(global as any).customNetFetch = net.fetch
 
   // Windows 任务栏分组：开发端与稳定端使用不同 AppUserModelId，避免混为一组
-  electronApp.setAppUserModelId(
-    isDesktopDevBuild() ? DESKTOP_DEV_APP_ID : DESKTOP_APP_ID
-  )
+  electronApp.setAppUserModelId(isDesktopDevBuild() ? DESKTOP_DEV_APP_ID : DESKTOP_APP_ID)
 
   // Register local protocol for secure local asset rendering
   protocol.handle('local', async (request) => {

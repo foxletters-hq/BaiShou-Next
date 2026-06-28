@@ -114,7 +114,10 @@ export function validateFlutterLegacyMigrationTarget(targetDir: string): string 
 }
 
 function normalizeComparablePath(filePath: string): string {
-  return sanitizePersistedWorkspaceRoot(filePath).replace(/\\/g, '/').replace(/\/$/, '').toLowerCase()
+  return sanitizePersistedWorkspaceRoot(filePath)
+    .replace(/\\/g, '/')
+    .replace(/\/$/, '')
+    .toLowerCase()
 }
 
 export function resolveLegacyDesktopSettingsCandidates(appDataDir: string): string[] {

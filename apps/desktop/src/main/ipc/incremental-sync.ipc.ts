@@ -173,9 +173,8 @@ async function afterIncrementalSync(
   const { globalBootstrapper } = await import('../services/bootstrapper.service')
   await globalBootstrapper.fullyResyncAllEcosystems()
 
-  const { schedulePostSyncDiaryBatchEmbed } = await import(
-    '../services/controlled-diary-batch-embed.service'
-  )
+  const { schedulePostSyncDiaryBatchEmbed } =
+    await import('../services/controlled-diary-batch-embed.service')
   schedulePostSyncDiaryBatchEmbed()
 }
 
@@ -365,26 +364,29 @@ export function registerIncrementalSyncIPC() {
     }
   )
 
-  ipcMain.handle('incrementalSync:orchestratedSync', async (event, runOptions?: IncrementalSyncRunOptions) => {
-    const publishProgress = (progress: SyncProgressEvent) => {
-      event.sender.send('incrementalSync:progress', progress)
+  ipcMain.handle(
+    'incrementalSync:orchestratedSync',
+    async (event, runOptions?: IncrementalSyncRunOptions) => {
+      const publishProgress = (progress: SyncProgressEvent) => {
+        event.sender.send('incrementalSync:progress', progress)
+      }
+      publishProgress({
+        phase: 'comparing',
+        current: 0,
+        total: 1,
+        statusText: 'data_sync.progress_registering_vaults'
+      })
+      const autoRegisteredVaults = await ensureVaultsForIncrementalSync(runOptions)
+      ;(await getSyncService()).clearPreparedManifestCache()
+      const result = await (
+        await getOrchestrator()
+      ).sync((progress) => {
+        publishProgress(progress)
+      }, runOptions)
+      await afterIncrementalSync(result, { force: true })
+      return { ...result, autoRegisteredVaults }
     }
-    publishProgress({
-      phase: 'comparing',
-      current: 0,
-      total: 1,
-      statusText: 'data_sync.progress_registering_vaults'
-    })
-    const autoRegisteredVaults = await ensureVaultsForIncrementalSync(runOptions)
-    ;(await getSyncService()).clearPreparedManifestCache()
-    const result = await (
-      await getOrchestrator()
-    ).sync((progress) => {
-      publishProgress(progress)
-    }, runOptions)
-    await afterIncrementalSync(result, { force: true })
-    return { ...result, autoRegisteredVaults }
-  })
+  )
 
   ipcMain.handle('incrementalSync:getSyncHistory', async (_, limit?: number) => {
     return (await getOrchestrator()).getSyncHistory(limit)

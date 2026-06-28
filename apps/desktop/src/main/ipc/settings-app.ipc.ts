@@ -100,9 +100,8 @@ export function registerSettingsAppIPC() {
   })
 
   ipcMain.handle('settings:refresh-mcp-auth-token', async () => {
-    const { refreshDesktopMcpAuthToken, setDesktopMcpServerConfig } = await import(
-      '../services/desktop-mcp-config.store'
-    )
+    const { refreshDesktopMcpAuthToken, setDesktopMcpServerConfig } =
+      await import('../services/desktop-mcp-config.store')
     const { SettingsRepository } = await import('@baishou/database-desktop')
     const { getAppDb } = await import('../db')
     const nextConfig = await refreshDesktopMcpAuthToken()

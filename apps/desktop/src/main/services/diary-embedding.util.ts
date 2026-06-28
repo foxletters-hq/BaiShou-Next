@@ -46,9 +46,7 @@ export async function purgeLegacyDiaryEmbeddingsForVault(
     .returning({ id: memoryEmbeddingsTable.id })
 
   if (result.length > 0) {
-    console.info(
-      `[DiaryEmbed] purged ${result.length} legacy diary vectors for vault ${vaultName}`
-    )
+    console.info(`[DiaryEmbed] purged ${result.length} legacy diary vectors for vault ${vaultName}`)
   }
   return result.length
 }
@@ -82,10 +80,7 @@ export async function countDiaryEmbeddingsForVault(vaultName: string): Promise<n
     .select({ count: sql<number>`count(*)` })
     .from(memoryEmbeddingsTable)
     .where(
-      and(
-        eq(memoryEmbeddingsTable.sourceType, 'diary'),
-        eq(memoryEmbeddingsTable.groupId, groupId)
-      )
+      and(eq(memoryEmbeddingsTable.sourceType, 'diary'), eq(memoryEmbeddingsTable.groupId, groupId))
     )
   return Number(rows[0]?.count ?? 0)
 }

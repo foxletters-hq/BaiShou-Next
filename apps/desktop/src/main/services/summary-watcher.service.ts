@@ -39,14 +39,11 @@ export class SummaryWatcherService {
 
     const defaultArchives = vaultPath ? path.join(vaultPath, 'Archives') : null
     const isExternal =
-      defaultArchives &&
-      path.normalize(summariesBasePath) !== path.normalize(defaultArchives)
+      defaultArchives && path.normalize(summariesBasePath) !== path.normalize(defaultArchives)
 
     if (!fs.existsSync(this.summariesPath)) {
       if (isExternal) {
-        logger.warn(
-          `[SummaryWatcher] 外部总结目录不存在，跳过监听: ${this.summariesPath}`
-        )
+        logger.warn(`[SummaryWatcher] 外部总结目录不存在，跳过监听: ${this.summariesPath}`)
         return
       }
       if (createIfMissing) {
