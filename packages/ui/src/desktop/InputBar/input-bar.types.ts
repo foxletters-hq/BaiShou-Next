@@ -1,9 +1,6 @@
 import type { MockChatAttachment } from '@baishou/shared'
 import type { PromptShortcut } from '../PromptShortcutSheet'
-import type {
-  ComposerDraftStorage,
-  ComposerOnSend
-} from '../../shared/composer-draft'
+import type { ComposerDraftStorage, ComposerOnSend } from '../../shared/composer-draft'
 
 export interface InputBarProps {
   isLoading: boolean

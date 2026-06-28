@@ -50,9 +50,7 @@ describe('useDiaryCodeMirrorBridge ready queue', () => {
   })
 
   it('queues outbound commands until WebView ready, then flushes after init', () => {
-    const { result } = renderHook(() =>
-      useDiaryCodeMirrorBridge({ content: 'seed', theme })
-    )
+    const { result } = renderHook(() => useDiaryCodeMirrorBridge({ content: 'seed', theme }))
     const postMessage = attachMockWebView(result.current)
 
     act(() => {
@@ -78,9 +76,7 @@ describe('useDiaryCodeMirrorBridge ready queue', () => {
   })
 
   it('sends commands immediately once ready', () => {
-    const { result } = renderHook(() =>
-      useDiaryCodeMirrorBridge({ content: 'live', theme })
-    )
+    const { result } = renderHook(() => useDiaryCodeMirrorBridge({ content: 'live', theme }))
     const postMessage = attachMockWebView(result.current)
     markReady(result.current)
     postMessage.mockClear()
@@ -94,9 +90,7 @@ describe('useDiaryCodeMirrorBridge ready queue', () => {
   })
 
   it('does not inject JavaScript when posting toolbar commands', () => {
-    const { result } = renderHook(() =>
-      useDiaryCodeMirrorBridge({ content: 'live', theme })
-    )
+    const { result } = renderHook(() => useDiaryCodeMirrorBridge({ content: 'live', theme }))
     const postMessage = attachMockWebView(result.current)
     markReady(result.current)
     const inject = result.current.webViewRef.current?.injectJavaScript as ReturnType<typeof vi.fn>
@@ -161,9 +155,7 @@ describe('useDiaryCodeMirrorBridge echo suppress', () => {
 describe('useDiaryCodeMirrorBridge onWebViewMessage', () => {
   it('ignores malformed WebView payloads', () => {
     const onChange = vi.fn()
-    const { result } = renderHook(() =>
-      useDiaryCodeMirrorBridge({ content: 'x', theme, onChange })
-    )
+    const { result } = renderHook(() => useDiaryCodeMirrorBridge({ content: 'x', theme, onChange }))
     attachMockWebView(result.current)
 
     act(() => {
@@ -179,9 +171,7 @@ describe('useDiaryCodeMirrorBridge onWebViewMessage', () => {
 
   it('requests ready again when load ends before handshake', () => {
     vi.useFakeTimers()
-    const { result } = renderHook(() =>
-      useDiaryCodeMirrorBridge({ content: 'seed', theme })
-    )
+    const { result } = renderHook(() => useDiaryCodeMirrorBridge({ content: 'seed', theme }))
     const postMessage = attachMockWebView(result.current)
 
     act(() => {

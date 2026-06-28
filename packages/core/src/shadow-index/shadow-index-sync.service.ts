@@ -240,9 +240,7 @@ export class ShadowIndexSyncService {
             rawContent: diary.content ?? '',
             tags: (diary.tags ?? []).join(','),
             tagColors:
-              Object.keys(diary.tagColors ?? {}).length > 0
-                ? JSON.stringify(diary.tagColors)
-                : null
+              Object.keys(diary.tagColors ?? {}).length > 0 ? JSON.stringify(diary.tagColors) : null
           })
           parsedDiaries.push(diary)
         })

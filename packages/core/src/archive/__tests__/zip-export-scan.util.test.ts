@@ -46,9 +46,9 @@ describe('zip-export-scan.util', () => {
   })
 
   it('rejects export output inside storage root', () => {
-    expect(() =>
-      assertArchiveExportOutputPathSafe('D:\\Vaults\\backup.zip', 'D:\\Vaults')
-    ).toThrow('ARCHIVE_EXPORT_OUTPUT_INSIDE_STORAGE')
+    expect(() => assertArchiveExportOutputPathSafe('D:\\Vaults\\backup.zip', 'D:\\Vaults')).toThrow(
+      'ARCHIVE_EXPORT_OUTPUT_INSIDE_STORAGE'
+    )
     expect(() =>
       assertArchiveExportOutputPathSafe('D:\\Desktop\\backup.zip', 'D:\\Vaults')
     ).not.toThrow()

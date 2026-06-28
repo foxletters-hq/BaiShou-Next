@@ -58,9 +58,7 @@ export function splitStreamingRevealUnits(
     const unit = text.slice(index, unitEnd)
     if (unitEnd >= text.length) {
       const isComplete =
-        unit.endsWith('\n') ||
-        /[。！？.!?]$/.test(unit) ||
-        unit.length >= segmentMaxChars
+        unit.endsWith('\n') || /[。！？.!?]$/.test(unit) || unit.length >= segmentMaxChars
       if (isComplete) {
         completeUnits.push(unit)
         return { completeUnits, partialUnit: '' }

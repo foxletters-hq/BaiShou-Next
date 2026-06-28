@@ -247,7 +247,8 @@ export abstract class GitSyncInternalBase {
           modified = true
         }
         if (!content.includes('.write_test')) {
-          content += '\n# 存储路径可写性探测（勿入库）\n.write_test\n.write_test_*\n.baishou_write_test\n'
+          content +=
+            '\n# 存储路径可写性探测（勿入库）\n.write_test\n.write_test_*\n.baishou_write_test\n'
           modified = true
         }
         if (modified) {
@@ -295,7 +296,11 @@ export abstract class GitSyncInternalBase {
       .filter(Boolean)
   }
 
-  protected async runGitWithStdin(_git: SimpleGit, args: string[], stdin?: Buffer): Promise<string> {
+  protected async runGitWithStdin(
+    _git: SimpleGit,
+    args: string[],
+    stdin?: Buffer
+  ): Promise<string> {
     const gitRoot = await this.getGitRoot()
     const { env, gitBinary } = getBundledGitSpawnEnv({ LC_ALL: 'C.UTF-8' })
     return new Promise((resolve, reject) => {

@@ -87,11 +87,7 @@ export class SummaryFileService {
   }
 
   private async readSummaryFileAt(typeDir: string, fileName: string): Promise<string | null> {
-    const fullPath = await findExistingSummaryFileInTypeDir(
-      this.fileSystem,
-      typeDir,
-      fileName
-    )
+    const fullPath = await findExistingSummaryFileInTypeDir(this.fileSystem, typeDir, fileName)
     if (!fullPath) return null
     try {
       const content = await this.fileSystem.readFile(fullPath, 'utf8')
@@ -172,11 +168,7 @@ export class SummaryFileService {
     for (const baseDir of searchDirs) {
       const typeDir = path.join(baseDir, typeDirName)
       for (const fileName of [standardFileName, transitionFileName]) {
-        const existing = await findExistingSummaryFileInTypeDir(
-          this.fileSystem,
-          typeDir,
-          fileName
-        )
+        const existing = await findExistingSummaryFileInTypeDir(this.fileSystem, typeDir, fileName)
         if (!existing) continue
         try {
           await this.fileSystem.unlink(existing)

@@ -19,9 +19,7 @@ import {
 } from './NativeChatBubbleActionsRow'
 import { NativeChatBubbleActionSheet } from './NativeChatBubbleActionSheet'
 import { ChatBubbleAvatar } from './ChatBubbleAvatar'
-import {
-  chatOverBackgroundMetaTextStyle
-} from '../../shared/chat-over-background-meta.style'
+import { chatOverBackgroundMetaTextStyle } from '../../shared/chat-over-background-meta.style'
 
 export const ChatBubble: React.FC<ChatBubbleProps> = ({
   message,

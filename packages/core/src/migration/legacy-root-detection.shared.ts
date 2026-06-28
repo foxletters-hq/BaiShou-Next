@@ -6,7 +6,11 @@ import {
   isValidWorkspaceRoot,
   resolveLegacyMigrationTargetRoot
 } from '../storage/workspace-root.util'
-import { hasFlutterLegacyStorageMarkers, isLegacyAppRoot, isMigrationCompleted } from './legacy-migration.shared'
+import {
+  hasFlutterLegacyStorageMarkers,
+  isLegacyAppRoot,
+  isMigrationCompleted
+} from './legacy-migration.shared'
 
 export const LEGACY_ROOT_MIN_CONFIDENCE_SCORE = 15
 
@@ -43,9 +47,7 @@ export async function evaluateLegacyRootCandidate(
 
   const onFilesystemRoot = isFilesystemRootPath(trimmed)
   if (onFilesystemRoot && !hasStrongMarkers) {
-    logger.info(
-      `[LegacyRootDetection] Rejected filesystem root without strong markers: ${trimmed}`
-    )
+    logger.info(`[LegacyRootDetection] Rejected filesystem root without strong markers: ${trimmed}`)
     return null
   }
 

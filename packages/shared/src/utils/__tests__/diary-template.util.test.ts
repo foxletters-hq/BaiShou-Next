@@ -45,12 +45,14 @@ describe('diary-template.util', () => {
   })
 
   it('migrates legacy aiWritingPrompt to supplement', () => {
-    expect(
-      resolveDiaryWritingStyleSupplement({ aiWritingPrompt: '用第一人称记录' })
-    ).toBe('用第一人称记录')
+    expect(resolveDiaryWritingStyleSupplement({ aiWritingPrompt: '用第一人称记录' })).toBe(
+      '用第一人称记录'
+    )
     expect(resolveDiaryWritingStyleSupplement({})).toBe('')
     expect(
-      resolveDiaryWritingStyleSupplement({ aiWritingPrompt: LEGACY_DEFAULT_DIARY_AI_WRITING_PROMPT })
+      resolveDiaryWritingStyleSupplement({
+        aiWritingPrompt: LEGACY_DEFAULT_DIARY_AI_WRITING_PROMPT
+      })
     ).toBe('')
   })
 
@@ -98,7 +100,12 @@ describe('diary-template.util', () => {
   it('prepareDiaryAppendContent inserts newline when append template lacks leading breaks', () => {
     const config = { appendBlockTemplate: '###### {time}\n\n' }
     expect(
-      prepareDiaryAppendContent('三个人安静地缩在一起，慢慢稳下来了。', '今天很充实', config, fixedDate)
+      prepareDiaryAppendContent(
+        '三个人安静地缩在一起，慢慢稳下来了。',
+        '今天很充实',
+        config,
+        fixedDate
+      )
     ).toBe('三个人安静地缩在一起，慢慢稳下来了。\n\n###### 15:30\n\n今天很充实')
   })
 
@@ -127,9 +134,7 @@ describe('diary-template.util', () => {
         config,
         fixedDate
       )
-    ).toBe(
-      '已有正文\n\n###### 01:14 - 现场实操：撤回、棒棒糖、和一整套炒包菜\n\n新增内容'
-    )
+    ).toBe('已有正文\n\n###### 01:14 - 现场实操：撤回、棒棒糖、和一整套炒包菜\n\n新增内容')
   })
 
   it('prepareDiaryAppendContent strips leading pure timestamp before titled heading', () => {

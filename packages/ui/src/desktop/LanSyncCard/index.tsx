@@ -146,10 +146,7 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
       await onStopDiscovery().catch(() => {})
       await onStopBroadcasting().catch(() => {})
       toast.showError(
-        t(
-          'lan_transfer.scan_failed',
-          error instanceof Error ? error.message : '局域网扫描启动失败'
-        )
+        t('lan_transfer.scan_failed', error instanceof Error ? error.message : '局域网扫描启动失败')
       )
     }
   }

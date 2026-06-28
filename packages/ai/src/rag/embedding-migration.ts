@@ -8,7 +8,11 @@ import {
 } from '@baishou/shared'
 import type { IEmbeddingConfig, IEmbeddingStorage, MigrationProgress } from './embedding.types'
 import { normalizeEmbeddingVector } from './embedding-chunk'
-import { MigrationControl, MigrationAbortError, MIGRATION_CONSECUTIVE_FAILURE_LIMIT } from './migration-control'
+import {
+  MigrationControl,
+  MigrationAbortError,
+  MIGRATION_CONSECUTIVE_FAILURE_LIMIT
+} from './migration-control'
 
 export type EmbeddingMigrationDeps = {
   config: IEmbeddingConfig

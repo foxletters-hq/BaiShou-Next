@@ -75,10 +75,7 @@ export function isExcludedArchiveOutputPath(
   return comparableStoragePath(absolutePath) === ctx.excludedOutputComparablePath
 }
 
-export function assertArchiveExportOutputPathSafe(
-  outputPath: string,
-  storageRoot: string
-): void {
+export function assertArchiveExportOutputPathSafe(outputPath: string, storageRoot: string): void {
   if (isPathInsideStorageRoot(outputPath, storageRoot)) {
     throw new Error('ARCHIVE_EXPORT_OUTPUT_INSIDE_STORAGE')
   }

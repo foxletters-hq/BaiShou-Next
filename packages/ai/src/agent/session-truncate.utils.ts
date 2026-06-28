@@ -60,9 +60,9 @@ export type TruncateSessionOptions = {
   flushSessionToDisk?: (sessionId: string) => Promise<void>
 }
 
-export function truncateOptionsWithDiskFlush(
-  sessionManager?: { flushSessionToDisk(sessionId: string): Promise<void> }
-): TruncateSessionOptions | undefined {
+export function truncateOptionsWithDiskFlush(sessionManager?: {
+  flushSessionToDisk(sessionId: string): Promise<void>
+}): TruncateSessionOptions | undefined {
   if (!sessionManager) return undefined
   return {
     flushSessionToDisk: (sessionId) => sessionManager.flushSessionToDisk(sessionId)

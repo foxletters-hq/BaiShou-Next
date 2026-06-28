@@ -5,7 +5,9 @@ export const TTS_STREAM_CAPABLE_PROVIDER_IDS = ['mimo-tts', 'minimax-tts'] as co
 
 export type TtsStreamCapableProviderId = (typeof TTS_STREAM_CAPABLE_PROVIDER_IDS)[number]
 
-export function supportsTtsProviderStreaming(providerId: string): providerId is TtsStreamCapableProviderId {
+export function supportsTtsProviderStreaming(
+  providerId: string
+): providerId is TtsStreamCapableProviderId {
   return (TTS_STREAM_CAPABLE_PROVIDER_IDS as readonly string[]).includes(providerId)
 }
 

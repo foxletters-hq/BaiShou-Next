@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { ensureMcpAuthToken, isMcpRequestAuthorized, refreshMcpAuthToken } from '../../utils/mcp-auth.util'
+import {
+  ensureMcpAuthToken,
+  isMcpRequestAuthorized,
+  refreshMcpAuthToken
+} from '../../utils/mcp-auth.util'
 
 describe('mcp-auth.util', () => {
   it('generates token when enabling MCP without one', () => {

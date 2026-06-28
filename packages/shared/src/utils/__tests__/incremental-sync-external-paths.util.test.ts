@@ -140,8 +140,12 @@ describe('incremental-sync-external-paths.util', () => {
         'C:/Vaults/Personal/Journals'
       )
     ).toBe(false)
-    expect(isUsingExternalVaultDirectory(null, 'C:/Vaults/Personal/Journals', 'C:/Vaults/Personal/Journals')).toBe(
-      false
-    )
+    expect(
+      isUsingExternalVaultDirectory(
+        null,
+        'C:/Vaults/Personal/Journals',
+        'C:/Vaults/Personal/Journals'
+      )
+    ).toBe(false)
   })
 })

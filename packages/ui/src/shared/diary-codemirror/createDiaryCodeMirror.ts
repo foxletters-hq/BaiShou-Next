@@ -11,7 +11,11 @@ import { searchKeymap } from '@codemirror/search'
 import { livePreviewPlugin } from './extensions/livePreviewPlugin'
 import { livePreviewSyntaxHighlighting } from './extensions/syntax'
 import { markdownKeymap } from './extensions/keymap'
-import { editorTheme, mobileTouchEditorLayoutTheme, mobileTouchViewportTheme } from './theme/editorTheme'
+import {
+  editorTheme,
+  mobileTouchEditorLayoutTheme,
+  mobileTouchViewportTheme
+} from './theme/editorTheme'
 import { attachmentUrlPlugin } from './extensions/attachmentUrlPlugin'
 import { diaryTagLineKeymap, diaryTagLinePlugin } from './extensions/diaryTagLinePlugin'
 import type { DiaryCmPlatform } from './types'

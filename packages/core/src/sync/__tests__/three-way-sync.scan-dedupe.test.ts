@@ -63,7 +63,9 @@ describe('ThreeWaySyncCore.scanLocalFiles in-root external dedupe', () => {
       'utf8'
     )
 
-    const files = await (service as unknown as { scanLocalFiles: () => Promise<string[]> }).scanLocalFiles()
+    const files = await (
+      service as unknown as { scanLocalFiles: () => Promise<string[]> }
+    ).scanLocalFiles()
 
     expect(files).toContain(`${buildVaultJournalsSyncPrefix('Personal')}/2024/06/2024-06-01.md`)
     expect(files.some((rel) => rel.includes('Obsidian/journals'))).toBe(false)

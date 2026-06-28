@@ -106,13 +106,7 @@ describe('useComposerDraft', () => {
     const setText = vi.fn()
 
     const { rerender } = renderHook(
-      ({
-        draftKey,
-        draftSyncSuspended
-      }: {
-        draftKey: string
-        draftSyncSuspended: boolean
-      }) =>
+      ({ draftKey, draftSyncSuspended }: { draftKey: string; draftSyncSuspended: boolean }) =>
         useComposerDraft({
           draftKey,
           draftStorage: storage,

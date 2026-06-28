@@ -614,8 +614,7 @@ export class DiaryService {
       normalizeDiaryTagColorRegistry(target.tagColors),
       normalizeDiaryTagColorRegistry(source.tagColors)
     )
-    source.tagColors =
-      Object.keys(mergedTagColors).length > 0 ? mergedTagColors : undefined
+    source.tagColors = Object.keys(mergedTagColors).length > 0 ? mergedTagColors : undefined
 
     // 其他必要元数据如果有丢失则补充
     source.weather = source.weather ?? target.weather

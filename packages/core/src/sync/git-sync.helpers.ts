@@ -115,11 +115,7 @@ export function isIncrementalSyncConflictBackupPath(filePath: string): boolean {
 
 export function isStorageWriteProbePath(filePath: string): boolean {
   const base = normalizeGitPath(filePath).split('/').pop() ?? filePath
-  return (
-    base === '.write_test' ||
-    base === '.baishou_write_test' ||
-    base.startsWith('.write_test_')
-  )
+  return base === '.write_test' || base === '.baishou_write_test' || base.startsWith('.write_test_')
 }
 
 export function isExcludedFromVersionControl(filePath: string): boolean {

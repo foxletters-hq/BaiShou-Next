@@ -156,10 +156,7 @@ describe('DiaryService - Single Source of Truth architecture', () => {
 
     await service.update(99, { content: 'New' })
 
-    expect(mockFileSync.readJournal).toHaveBeenCalledWith(
-      expect.any(Date),
-      '2026/03/2026-03-30.md'
-    )
+    expect(mockFileSync.readJournal).toHaveBeenCalledWith(expect.any(Date), '2026/03/2026-03-30.md')
     expect(mockFileSync.writeJournal).toHaveBeenCalledWith(
       expect.objectContaining({
         content: 'New'

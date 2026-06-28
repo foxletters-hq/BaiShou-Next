@@ -22,7 +22,9 @@ describe('collectImageDecorations (C-3 / C-4)', () => {
   }
 
   it('does not widgetize images inside fenced code blocks', () => {
-    const editorView = createView('```\n![x](attachment/hidden.png)\n```\n\n![y](attachment/visible.png)')
+    const editorView = createView(
+      '```\n![x](attachment/hidden.png)\n```\n\n![y](attachment/visible.png)'
+    )
     const marks: { from: number; to: number; value: Decoration }[] = []
     const ranges = collectImageDecorations(editorView, [], undefined, marks)
 
@@ -33,9 +35,7 @@ describe('collectImageDecorations (C-3 / C-4)', () => {
   })
 
   it('does not widgetize non-image markdown like video links', () => {
-    const editorView = createView(
-      '[video](attachment/clip.mp4)\n\n![photo](attachment/photo.png)'
-    )
+    const editorView = createView('[video](attachment/clip.mp4)\n\n![photo](attachment/photo.png)')
     const marks: { from: number; to: number; value: Decoration }[] = []
     const ranges = collectImageDecorations(editorView, [], undefined, marks)
 

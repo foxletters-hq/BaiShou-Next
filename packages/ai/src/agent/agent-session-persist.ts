@@ -137,8 +137,9 @@ export async function persistResult(params: PersistResultParams): Promise<{
       }
     } catch (e: unknown) {
       const isNoOutputError =
-        (e as { [key: symbol]: unknown } | null)?.[Symbol.for('vercel.ai.error.AI_NoOutputGeneratedError')] ===
-        true
+        (e as { [key: symbol]: unknown } | null)?.[
+          Symbol.for('vercel.ai.error.AI_NoOutputGeneratedError')
+        ] === true
       if (e instanceof Error && e.name === 'AbortError') {
         logger.info(
           '[AgentSessionService Debug] streamResult.usage read gracefully skipped (stream aborted by user).'

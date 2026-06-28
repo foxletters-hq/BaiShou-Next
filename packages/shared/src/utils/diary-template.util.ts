@@ -16,7 +16,10 @@ function pad2(value: number): string {
 }
 
 /** 本地时间格式化，避免 shared 包引入 date-fns 导致 Electron 主进程打包后 require 失败 */
-function formatDiaryTemplateDate(date: Date, pattern: 'HH:mm' | 'yyyy-MM-dd' | 'yyyy-MM-dd HH:mm'): string {
+function formatDiaryTemplateDate(
+  date: Date,
+  pattern: 'HH:mm' | 'yyyy-MM-dd' | 'yyyy-MM-dd HH:mm'
+): string {
   const year = date.getFullYear()
   const month = pad2(date.getMonth() + 1)
   const day = pad2(date.getDate())
@@ -66,10 +69,7 @@ export function resolveDiaryNewEntryContent(
   config: DiaryTemplateConfig | null | undefined,
   date: Date = new Date()
 ): string {
-  const template = resolveDiaryTemplate(
-    config?.newEntryTemplate,
-    DEFAULT_DIARY_NEW_ENTRY_TEMPLATE
-  )
+  const template = resolveDiaryTemplate(config?.newEntryTemplate, DEFAULT_DIARY_NEW_ENTRY_TEMPLATE)
   return applyDiaryTemplateVars(template, date)
 }
 
@@ -146,11 +146,16 @@ export function resolveDiaryAiWritingPrompt(
 const DIARY_TIMESTAMP_HEADING_LINE_RE = /^#{1,6}\s+\d{2}:\d{2}(:\d{2})?\s*$/
 
 /** 带小标题的章节行，如 ###### 14:30 - 下午茶 */
-const DIARY_TITLED_SECTION_HEADING_LINE_RE =
-  /^#{1,6}\s+\d{2}:\d{2}(:\d{2})?\s*[-–—:：]\s*.+/
+const DIARY_TITLED_SECTION_HEADING_LINE_RE = /^#{1,6}\s+\d{2}:\d{2}(:\d{2})?\s*[-–—:：]\s*.+/
 
 function getFirstDiaryContentLine(content: string): string {
-  return content.replace(/^\uFEFF/, '').trimStart().split('\n')[0]?.trim() ?? ''
+  return (
+    content
+      .replace(/^\uFEFF/, '')
+      .trimStart()
+      .split('\n')[0]
+      ?.trim() ?? ''
+  )
 }
 
 /** 正文是否以 Markdown 纯时间标题行开头（##### / ###### HH:mm 等；兼容旧版 HH:mm:ss） */

@@ -45,12 +45,7 @@ export class FileSyncServiceImpl implements FileSyncService {
     const hintPath = shadowFilePath
       ? resolveShadowJournalAbsolutePath(rootPath, shadowFilePath)
       : undefined
-    const existingPath = await resolveJournalFilePath(
-      this.fileSystem,
-      rootPath,
-      dateStr,
-      hintPath
-    )
+    const existingPath = await resolveJournalFilePath(this.fileSystem, rootPath, dateStr, hintPath)
     return existingPath ?? this.buildFilePath(rootPath, date)
   }
 
@@ -76,9 +71,7 @@ export class FileSyncServiceImpl implements FileSyncService {
 
     if ('tagColors' in diary && diary.tagColors) {
       const colorMap =
-        typeof diary.tagColors === 'string'
-          ? diary.tagColors
-          : JSON.stringify(diary.tagColors)
+        typeof diary.tagColors === 'string' ? diary.tagColors : JSON.stringify(diary.tagColors)
       if (colorMap && colorMap !== '{}') {
         lines.push(`tag_colors: ${colorMap}`)
       }
@@ -119,12 +112,7 @@ export class FileSyncServiceImpl implements FileSyncService {
     const hintPath = shadowFilePath
       ? resolveShadowJournalAbsolutePath(rootPath, shadowFilePath)
       : undefined
-    const filePath = await resolveJournalFilePath(
-      this.fileSystem,
-      rootPath,
-      dateStr,
-      hintPath
-    )
+    const filePath = await resolveJournalFilePath(this.fileSystem, rootPath, dateStr, hintPath)
     if (filePath && (await this.fileSystem.exists(filePath))) {
       await this.fileSystem.unlink(filePath)
     }

@@ -21,7 +21,9 @@ export class AssistantFileService {
     const nextContent = stableAssistantDiskJson(data as Record<string, unknown>)
     try {
       const existing = await this.fileSystem.readFile(fullPath, 'utf8')
-      const existingContent = stableAssistantDiskJson(JSON.parse(existing) as Record<string, unknown>)
+      const existingContent = stableAssistantDiskJson(
+        JSON.parse(existing) as Record<string, unknown>
+      )
       if (existingContent === nextContent) {
         return fullPath
       }

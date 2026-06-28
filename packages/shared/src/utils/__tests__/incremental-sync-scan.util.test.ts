@@ -29,14 +29,11 @@ describe('incremental-sync-scan.util', () => {
       shouldScanIncrementalSyncDirectory('backgrounds', 'Personal/Attachments/backgrounds')
     ).toBe(false)
     expect(
-      shouldIncludeIncrementalSyncFile(
-        'bg_1.jpg',
-        'Personal/Attachments/backgrounds/bg_1.jpg'
-      )
+      shouldIncludeIncrementalSyncFile('bg_1.jpg', 'Personal/Attachments/backgrounds/bg_1.jpg')
     ).toBe(false)
-    expect(shouldIncludeIncrementalSyncFile('photo.jpg', 'Personal/Attachments/diary/photo.jpg')).toBe(
-      true
-    )
+    expect(
+      shouldIncludeIncrementalSyncFile('photo.jpg', 'Personal/Attachments/diary/photo.jpg')
+    ).toBe(true)
   })
 
   it('includes vault root files and settings domain json files', () => {

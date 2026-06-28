@@ -7,7 +7,7 @@ import { MESSAGE_CONTENT_TAG, MESSAGE_TIME_TAG } from './constants'
 export function buildMessageMetadataSystemPromptLines(): string[] {
   return [
     '[Historical message format]',
-    'The host injects metadata around stored text in context (this is not part of the author\'s original wording):',
+    "The host injects metadata around stored text in context (this is not part of the author's original wording):",
     `- <${MESSAGE_TIME_TAG}>YYYY-MM-DD HH:mm</${MESSAGE_TIME_TAG}> — when THAT message was sent.`,
     `- <${MESSAGE_CONTENT_TAG}>…</${MESSAGE_CONTENT_TAG}> — that message's stored body.`,
     'User, assistant, system, and tool messages may use this wrapper when replayed.',
