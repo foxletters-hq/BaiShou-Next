@@ -17,14 +17,19 @@ export function isDesktopDevBuild(): boolean {
  * 与移动端 com.baishou.baishou.dev 并存策略一致。
  */
 export function configureDesktopAppIdentity(): void {
+  // 早启动 / 测试环境下 electron app 可能为部分 mock，缺方法时安全跳过
+  if (typeof app?.setName !== 'function') return
+
   if (app.isPackaged) {
     app.setName(DESKTOP_APP_NAME)
     return
   }
 
   app.setName(DESKTOP_DEV_APP_NAME)
-  const devUserData = join(app.getPath('appData'), DESKTOP_DEV_APP_NAME)
-  app.setPath('userData', devUserData)
+  if (typeof app.getPath === 'function' && typeof app.setPath === 'function') {
+    const devUserData = join(app.getPath('appData'), DESKTOP_DEV_APP_NAME)
+    app.setPath('userData', devUserData)
+  }
 }
 
 configureDesktopAppIdentity()

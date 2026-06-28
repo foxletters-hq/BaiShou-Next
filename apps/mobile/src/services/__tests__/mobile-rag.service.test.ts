@@ -154,10 +154,14 @@ describe('runControlledDiaryBatchEmbed', () => {
             id,
             content: `diary-${id}`,
             date: new Date('2024-01-01'),
-            updatedAt: new Date('2024-01-02')
+            updatedAt: new Date('2024-01-02'),
+            isFavorite: false,
+            mediaPaths: []
           }
         ]
-      ])
+      ]) as Awaited<
+        ReturnType<NonNullable<MobileRagServiceDeps['diaryService']['findByIdsForEmbedding']>>
+      >
     })
     vi.spyOn(EmbeddingAdapter.prototype, 'embedText').mockResolvedValue(undefined)
 
@@ -189,10 +193,14 @@ describe('runControlledDiaryBatchEmbed', () => {
             id: 1,
             content: 'diary-1',
             date: new Date('2024-01-01'),
-            updatedAt: new Date('2024-01-02')
+            updatedAt: new Date('2024-01-02'),
+            isFavorite: false,
+            mediaPaths: []
           }
         ]
-      ])
+      ]) as Awaited<
+        ReturnType<NonNullable<MobileRagServiceDeps['diaryService']['findByIdsForEmbedding']>>
+      >
     })
     vi.spyOn(EmbeddingAdapter.prototype, 'embedText').mockImplementation(async () => {
       mobileRagOperationControl.requestAbort()
@@ -236,11 +244,11 @@ describe('runControlledDiaryBatchEmbed', () => {
 
     const deps = createDeps({
       settingsManager: {
-        get: vi.fn(async (key: string) => settingsStore[key]),
+        get: vi.fn(async (key: string) => settingsStore[key] ?? null),
         set: vi.fn(async (key: string, value: unknown) => {
           settingsStore[key] = value
         })
-      }
+      } as unknown as MobileRagServiceDeps['settingsManager']
     })
 
     vi.spyOn(EmbeddingAdapter.prototype, 'embedQuery').mockResolvedValue(null)
@@ -269,9 +277,11 @@ describe('createMobileRagService.reembedAll', () => {
 
   it('clears vectors and batch embeds without hitting migration-running guard', async () => {
     const deps = createDeps()
-    deps.diaryService.listAll = vi.fn().mockResolvedValue([
-      { id: 1, date: new Date('2024-01-01'), tags: [], updatedAt: new Date('2024-01-02') }
-    ])
+    deps.diaryService.listAll = vi
+      .fn()
+      .mockResolvedValue([
+        { id: 1, date: new Date('2024-01-01'), tags: [], updatedAt: new Date('2024-01-02') }
+      ])
     deps.diaryService.findByIdsForEmbedding = vi.fn().mockResolvedValue(
       new Map([
         [
@@ -307,9 +317,8 @@ describe('createMobileRagService.reembedAll', () => {
     })
 
     vi.spyOn(EmbeddingAdapter.prototype, 'embedQuery').mockImplementation(async () => {
-      const { schedulePostSyncDiaryBatchEmbed } = await import(
-        '../mobile-post-sync-diary-embed.service'
-      )
+      const { schedulePostSyncDiaryBatchEmbed } =
+        await import('../mobile-post-sync-diary-embed.service')
       schedulePostSyncDiaryBatchEmbed()
       expect(isMobileRagReembedInFlight()).toBe(true)
       expect(isDeferredPostSyncEmbedPending()).toBe(true)

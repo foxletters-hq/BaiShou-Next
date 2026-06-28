@@ -59,9 +59,7 @@ describe('journal-files.util', () => {
     expect(
       isJournalPathUnderSkippedDir('D:\\Notes\\2.日记\\Archives\\Weekly\\2025\\2025-01-06.md')
     ).toBe(true)
-    expect(
-      isJournalPathUnderSkippedDir('/vault/Journals/2024/06/2024-06-01.md')
-    ).toBe(false)
+    expect(isJournalPathUnderSkippedDir('/vault/Journals/2024/06/2024-06-01.md')).toBe(false)
   })
 
   it('collectJournalPathsByDateInTree dedupes duplicate dates and prefers canonical layout', async () => {
@@ -84,8 +82,12 @@ describe('journal-files.util', () => {
   it('resolveShadowJournalAbsolutePath inverts shadow relative path from journal base parent', () => {
     const journalsBase = 'D:\\Notes\\Vault\\2.日记'
     const shadowPath = '2.日记/2024/06/2024-06-01.md'
-    expect(path.resolve(resolveShadowJournalAbsolutePath(journalsBase, shadowPath))).toBe(
-      path.resolve('D:\\Notes\\Vault', '2.日记', '2024', '06', '2024-06-01.md')
+    expect(
+      path.resolve(resolveShadowJournalAbsolutePath(journalsBase, shadowPath)).replace(/\\/g, '/')
+    ).toBe(
+      path
+        .resolve('D:\\Notes\\Vault', '2.日记', '2024', '06', '2024-06-01.md')
+        .replace(/\\/g, '/')
     )
   })
 })

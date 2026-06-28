@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable @typescript-eslint/explicit-function-return-type -- 纯 .mjs 构建脚本，无 TS 类型注解 */
 /**
  * 打包前结束会锁定原生模块或 dist 目录的进程：
  * - BaiShou.exe（已安装/解压版）
@@ -33,17 +34,18 @@ function killByImageName(imageName, label) {
   } else if (/not found|没有找到|no running instance/i.test(killOutput)) {
     // 进程已退出
   } else {
-    console.warn(`[ensure-not-running] 未能自动结束 ${label}；若打包报 EPERM/Access denied，请手动结束后再试。`)
+    console.warn(
+      `[ensure-not-running] 未能自动结束 ${label}；若打包报 EPERM/Access denied，请手动结束后再试。`
+    )
     if (killOutput.trim()) console.warn(killOutput.trim())
   }
   return true
 }
 
 function killProjectElectronProcesses() {
-  const root = repoRoot.replace(/'/g, "''")
   const ps = [
     '$root = [System.IO.Path]::GetFullPath($args[0])',
-    "Get-CimInstance Win32_Process -Filter \"name='electron.exe'\" -ErrorAction SilentlyContinue |",
+    'Get-CimInstance Win32_Process -Filter "name=\'electron.exe\'" -ErrorAction SilentlyContinue |',
     'Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith($root, [System.StringComparison]::OrdinalIgnoreCase) } |',
     'ForEach-Object { $_.ProcessId }'
   ].join(' ')
@@ -64,8 +66,7 @@ function killProjectElectronProcesses() {
   return true
 }
 
-const killed =
-  killByImageName('BaiShou.exe', 'BaiShou.exe') || killProjectElectronProcesses()
+const killed = killByImageName('BaiShou.exe', 'BaiShou.exe') || killProjectElectronProcesses()
 
 if (killed) {
   spawnSync('powershell', ['-NoProfile', '-Command', 'Start-Sleep -Milliseconds 500'], {

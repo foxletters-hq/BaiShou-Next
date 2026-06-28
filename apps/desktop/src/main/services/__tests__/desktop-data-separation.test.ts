@@ -17,10 +17,7 @@ import {
   DESKTOP_DEV_APP_ID
 } from '../../app-identity'
 import { DESKTOP_HOTKEY_CONFIG_FILE } from '../desktop-hotkey-config.store'
-import {
-  DESKTOP_MCP_CONFIG_FILE,
-  DESKTOP_DEV_DEFAULT_MCP_PORT
-} from '../desktop-mcp-config.store'
+import { DESKTOP_MCP_CONFIG_FILE, DESKTOP_DEV_DEFAULT_MCP_PORT } from '../desktop-mcp-config.store'
 import { DESKTOP_DEVICE_LOCAL_AGENT_DB_KEYS } from '../desktop-device-settings.util'
 
 /**
@@ -49,9 +46,13 @@ describe('desktop data separation contract', () => {
     expect(DESKTOP_DEV_DEFAULT_MCP_PORT).toBe(31005)
   })
 
-  it('documents per-instance userData layout on Windows', () => {
-    const appData = 'C:\\Users\\Me\\AppData\\Roaming'
-    expect(join(appData, DESKTOP_DEV_APP_NAME)).toBe('C:\\Users\\Me\\AppData\\Roaming\\白守 Dev')
-    expect(join(appData, DESKTOP_APP_NAME)).toBe('C:\\Users\\Me\\AppData\\Roaming\\白守')
-  })
+  // 该用例断言 Windows 反斜杠布局，仅在 Windows 上运行（Linux/CI 上自动跳过）
+  it.runIf(process.platform === 'win32')(
+    'documents per-instance userData layout on Windows',
+    () => {
+      const appData = 'C:\\Users\\Me\\AppData\\Roaming'
+      expect(join(appData, DESKTOP_DEV_APP_NAME)).toBe('C:\\Users\\Me\\AppData\\Roaming\\白守 Dev')
+      expect(join(appData, DESKTOP_APP_NAME)).toBe('C:\\Users\\Me\\AppData\\Roaming\\白守')
+    }
+  )
 })

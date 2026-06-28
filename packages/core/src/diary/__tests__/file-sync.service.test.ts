@@ -3,29 +3,31 @@ import { FileSyncServiceImpl } from '../file-sync.service'
 import { Diary, formatLocalDate } from '@baishou/shared'
 import { createNodeFileSystem } from '../../fs/create-node-file-system'
 import * as fs from 'node:fs'
+import * as os from 'node:os'
 import * as path from 'node:path'
 
 describe('FileSyncService', () => {
-  const rootPath = path.join(__dirname, '.test_diaries')
+  // 使用系统临时目录作为根，避免测试把 nested/ 兄弟目录写入受版本控制的源码目录造成污染
+  let baseDir: string
+  let rootPath: string
   let service: FileSyncServiceImpl
   const fileSystem = createNodeFileSystem()
 
   beforeEach(() => {
+    baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'baishou-file-sync-'))
+    rootPath = path.join(baseDir, '.test_diaries')
+    fs.mkdirSync(rootPath, { recursive: true })
     service = new FileSyncServiceImpl(
       {
         getJournalsBaseDirectory: async () => rootPath
       } as any,
       fileSystem
     )
-    if (fs.existsSync(rootPath)) {
-      fs.rmSync(rootPath, { recursive: true, force: true })
-    }
-    fs.mkdirSync(rootPath, { recursive: true })
   })
 
   afterEach(() => {
-    if (fs.existsSync(rootPath)) {
-      fs.rmSync(rootPath, { recursive: true, force: true })
+    if (fs.existsSync(baseDir)) {
+      fs.rmSync(baseDir, { recursive: true, force: true })
     }
   })
 
@@ -126,9 +128,7 @@ describe('FileSyncService', () => {
     const md = `---\ndate: 2025-07-20\nid: 77\n---\n\n嵌套目录正文`
     fs.writeFileSync(nestedFile, md, 'utf8')
 
-    const shadowPath = path
-      .relative(path.dirname(rootPath), nestedFile)
-      .replace(/\\/g, '/')
+    const shadowPath = path.relative(path.dirname(rootPath), nestedFile).replace(/\\/g, '/')
 
     const readBack = await service.readJournal(new Date(2025, 6, 20), shadowPath)
     expect(readBack?.id).toBe(77)
@@ -141,9 +141,7 @@ describe('FileSyncService', () => {
     const nestedFile = path.join(nestedDir, '2025-07-21.md')
     fs.writeFileSync(nestedFile, '---\ndate: 2025-07-21\nid: 88\n---\n\n旧正文', 'utf8')
 
-    const shadowPath = path
-      .relative(path.dirname(rootPath), nestedFile)
-      .replace(/\\/g, '/')
+    const shadowPath = path.relative(path.dirname(rootPath), nestedFile).replace(/\\/g, '/')
 
     await service.writeJournal(
       {
