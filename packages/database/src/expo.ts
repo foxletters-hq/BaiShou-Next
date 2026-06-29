@@ -37,6 +37,8 @@ import { EMBEDDED_AGENT_MIGRATIONS } from './embedded-agent-migrations'
 import { withExpoAgentDatabaseLock, waitForExpoAgentDatabaseIdle } from './expo-agent-db.lock'
 import { logger } from '@baishou/shared'
 export * from './migration-context'
+export * from './sqlite-corruption.util'
+export * from './expo-agent-db.recovery'
 
 export type ExpoDatabaseInstallResult = {
   expoDb: ExpoSqliteDatabase
