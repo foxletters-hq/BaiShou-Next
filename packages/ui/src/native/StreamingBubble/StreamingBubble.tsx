@@ -118,10 +118,13 @@ export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
             {hasTools ? (
               <View style={{ marginBottom: hasText ? 8 : 0, alignSelf: 'stretch', width: '100%' }}>
                 <ToolResultGroupCard
-                  invocations={completedTools.map((tool, idx) => ({
+                  completedTools={completedTools.map((tool, idx) => ({
+                    name: tool.name,
+                    durationMs: tool.durationMs ?? 0,
                     toolCallId: tool.toolCallId ?? `streaming-${tool.name}-${idx}`,
-                    toolName: tool.name,
-                    result: tool.result ?? null
+                    startTime: tool.toolCallId ?? idx,
+                    result: tool.result,
+                    args: tool.args
                   }))}
                   activeToolName={activeToolName}
                   defaultExpanded

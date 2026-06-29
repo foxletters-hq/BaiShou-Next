@@ -53,6 +53,41 @@ export function ThinkChevron({
   )
 }
 
+/** 对齐桌面 ToolOutlined / CloseCircleOutlined */
+export function ToolStatusIcon({
+  loading,
+  status,
+  color,
+  errorColor
+}: {
+  loading: boolean
+  status: 'loading' | 'success' | 'error'
+  color: string
+  errorColor: string
+}) {
+  if (loading) {
+    return (
+      <View style={styles.iconBox}>
+        <ActivityIndicator size="small" color={color} />
+      </View>
+    )
+  }
+
+  if (status === 'error') {
+    return (
+      <View style={styles.iconBox}>
+        <MaterialIcons name="cancel" size={16} color={errorColor} />
+      </View>
+    )
+  }
+
+  return (
+    <View style={styles.iconBox}>
+      <MaterialIcons name="build" size={15} color={color} />
+    </View>
+  )
+}
+
 const styles = StyleSheet.create({
   iconBox: {
     width: 18,

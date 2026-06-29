@@ -3,6 +3,7 @@ export interface ToolExecution {
   durationMs?: number
   result?: unknown
   toolCallId?: string
+  args?: unknown
 }
 
 export interface NativeStreamingBubbleProps {
