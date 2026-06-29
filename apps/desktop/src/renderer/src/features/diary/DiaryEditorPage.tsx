@@ -32,7 +32,6 @@ export const DiaryEditorPage: React.FC = () => {
     >
       <DiaryEditor
         content={editor.content}
-        tags={editor.tags}
         selectedDate={editor.selectedDate}
         weather={editor.weather}
         mood={editor.mood}
@@ -40,7 +39,6 @@ export const DiaryEditorPage: React.FC = () => {
         mediaPaths={editor.mediaPaths}
         isSaving={editor.isSaving}
         onContentChange={editor.handleContentChange}
-        onTagsChange={editor.setTags}
         onDateChange={editor.setSelectedDate}
         onWeatherChange={editor.setWeather}
         onMoodChange={editor.setMood}

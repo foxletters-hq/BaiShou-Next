@@ -90,17 +90,12 @@
   background: var(--bg-surface-low);
 }
 
-.de-tags-section {
-  margin-bottom: 16px;
-  flex-shrink: 0;
-}
-
 /* 元数据栏 */
 .de-meta-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 8px;
+  margin-bottom: 12px;
   flex-shrink: 0;
 }
 
@@ -108,18 +103,20 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: 1;
-  flex-wrap: wrap;
+  flex: 0 0 auto;
   min-width: 0;
 }
 
 .de-meta-pickers .wp-container {
-  flex: 0 1 auto;
+  flex: 0 0 auto;
+  min-width: 0;
+  width: auto;
 }
 
 .de-meta-pickers .wp-trigger {
   width: auto;
-  min-width: 132px;
+  min-width: 108px;
+  max-width: 148px;
 }
 
 .de-meta-fav-btn {
@@ -162,6 +159,17 @@
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   overflow: hidden;
+  --tag-0-fg: #3b82f6;
+  --tag-1-fg: #10b981;
+  --tag-2-fg: #f59e0b;
+  --tag-3-fg: #8b5cf6;
+}
+
+[data-theme='dark'] .de-content-section {
+  --tag-0-fg: #60a5fa;
+  --tag-1-fg: #34d399;
+  --tag-2-fg: #fbbf24;
+  --tag-3-fg: #a78bfa;
 }
 
 /* CodeMirror Editor Wrapper */

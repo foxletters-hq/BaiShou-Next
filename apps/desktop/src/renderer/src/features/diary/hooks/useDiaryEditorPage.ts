@@ -11,13 +11,15 @@ import {
   joinDiaryContentWithAppendBlock,
   resolveDiaryAppendBlock,
   resolveDiaryNewEntryContent,
+  composeDiaryEditorContent,
+  parseDiaryEditorContent,
+  mergeDiaryTags,
   type DiaryTemplateConfig
 } from '@baishou/shared'
 import { useToast } from '@baishou/ui'
 
 type DiaryEditorInitialState = {
   content: string
-  tags: string[]
   selectedDate: Date
   weather: string
   mood: string
@@ -47,7 +49,6 @@ export function useDiaryEditorPage() {
   }, [dateStr, searchParams])
 
   const [content, setContent] = useState('')
-  const [tags, setTags] = useState<string[]>([])
   const [selectedDate, setSelectedDate] = useState<Date>(() => parseInitialDate())
   const [weather, setWeather] = useState('')
   const [mood, setMood] = useState('')
@@ -55,17 +56,12 @@ export function useDiaryEditorPage() {
   const [isDirty, setIsDirty] = useState(false)
   const [diaryId, setDiaryId] = useState<number | null>(null)
   const [mediaPaths, setMediaPaths] = useState<string[]>([])
-  const tagsRef = useRef<string[]>(tags)
-
-  useEffect(() => {
-    tagsRef.current = tags
-  }, [tags])
+  const originalTagsRef = useRef<string[]>([])
 
   const [isLoading, setIsLoading] = useState(true)
   const initialStateRef = useRef<DiaryEditorInitialState | null>(null)
   const stateSnapshotRef = useRef<DiaryEditorInitialState>({
     content: '',
-    tags: [],
     selectedDate: parseInitialDate(),
     weather: '',
     mood: '',
@@ -76,14 +72,13 @@ export function useDiaryEditorPage() {
   useEffect(() => {
     stateSnapshotRef.current = {
       content,
-      tags,
       selectedDate,
       weather,
       mood,
       isFavorite,
       mediaPaths
     }
-  }, [content, tags, selectedDate, weather, mood, isFavorite, mediaPaths])
+  }, [content, selectedDate, weather, mood, isFavorite, mediaPaths])
 
   const loadTemplateConfig = useCallback(async (): Promise<DiaryTemplateConfig> => {
     try {
@@ -110,7 +105,6 @@ export function useDiaryEditorPage() {
         setContent(initialContent)
         initialStateRef.current = {
           content: initialContent,
-          tags: [],
           selectedDate: parseInitialDate(),
           weather: '',
           mood: '',
@@ -127,7 +121,6 @@ export function useDiaryEditorPage() {
           if (cancelled) return
 
           let initialContent = ''
-          let initialTags: string[] = []
           let initialWeather = ''
           let initialMood = ''
           let initialFavorite = false
@@ -138,13 +131,12 @@ export function useDiaryEditorPage() {
             const parsedTags = normalizeDiaryTags(diary.tags)
             const parsedWeather = normalizeWeatherId(diary.weather || '') || ''
             const parsedMood = normalizeMoodId(diary.mood || '') || ''
-            setTags(parsedTags)
             setWeather(parsedWeather)
             setMood(parsedMood)
             setIsFavorite(diary.isFavorite || false)
             setMediaPaths(diary.mediaPaths || [])
 
-            initialTags = parsedTags
+            originalTagsRef.current = parsedTags
             initialWeather = parsedWeather
             initialMood = parsedMood
             initialFavorite = diary.isFavorite || false
@@ -154,16 +146,16 @@ export function useDiaryEditorPage() {
               const timeMark = resolveDiaryAppendBlock(templateConfig, now)
               initialContent = joinDiaryContentWithAppendBlock(diary.content || '', timeMark)
             } else {
-              initialContent = diary.content || ''
+              initialContent = composeDiaryEditorContent(diary.content || '', parsedTags)
             }
           } else {
             initialContent = resolveDiaryNewEntryContent(templateConfig, now)
+            originalTagsRef.current = []
           }
 
           setContent(initialContent)
           initialStateRef.current = {
             content: initialContent,
-            tags: initialTags,
             selectedDate: parseInitialDate(),
             weather: initialWeather,
             mood: initialMood,
@@ -176,7 +168,6 @@ export function useDiaryEditorPage() {
           setContent(fallback)
           initialStateRef.current = {
             content: fallback,
-            tags: [],
             selectedDate: parseInitialDate(),
             weather: '',
             mood: '',
@@ -210,7 +201,6 @@ export function useDiaryEditorPage() {
       const snap = stateSnapshotRef.current
       initialStateRef.current = {
         content: snap.content,
-        tags: [...snap.tags],
         selectedDate: snap.selectedDate,
         weather: snap.weather,
         mood: snap.mood,
@@ -236,15 +226,19 @@ export function useDiaryEditorPage() {
       try {
         if (typeof window !== 'undefined' && (window as any).api?.diary) {
           const selectedDateStr = formatLocalDate(selectedDate)
+          const { tags: parsedTags, body } = parseDiaryEditorContent(newContent)
+          const mergedTags = isAppendMode
+            ? mergeDiaryTags(originalTagsRef.current.join(', '), parsedTags.join(','))
+            : parsedTags.join(',')
 
           const payload = {
             date: selectedDateStr,
-            content: newContent,
-            title: newContent
+            content: body,
+            title: body
               .replace(/^#{1,6}\s*/gm, '')
               .split('\n')[0]
               .substring(0, 50),
-            tags: tagsRef.current,
+            tags: mergedTags,
             weather,
             mood,
             isFavorite,
@@ -260,7 +254,6 @@ export function useDiaryEditorPage() {
         setIsDirty(false)
         initialStateRef.current = {
           content: newContent,
-          tags: tagsRef.current,
           selectedDate,
           weather,
           mood,
@@ -272,7 +265,7 @@ export function useDiaryEditorPage() {
         throw e
       }
     },
-    [selectedDate, weather, mood, isFavorite, diaryId, mediaPaths]
+    [selectedDate, weather, mood, isFavorite, diaryId, mediaPaths, isAppendMode]
   )
 
   const handleContentChange = (newContent: string) => {
@@ -300,10 +293,6 @@ export function useDiaryEditorPage() {
     if (mood !== init.mood) return true
     if (isFavorite !== init.isFavorite) return true
     if (formatLocalDate(selectedDate) !== formatLocalDate(init.selectedDate)) return true
-
-    const currentTagsSorted = [...tags].sort().join(',')
-    const initTagsSorted = [...init.tags].sort().join(',')
-    if (currentTagsSorted !== initTagsSorted) return true
 
     const currentMediaSorted = [...mediaPaths].sort().join(',')
     const initMediaSorted = [...init.mediaPaths].sort().join(',')
@@ -350,7 +339,6 @@ export function useDiaryEditorPage() {
     t,
     isLoading,
     content,
-    tags,
     selectedDate,
     weather,
     mood,
@@ -364,7 +352,6 @@ export function useDiaryEditorPage() {
     handleBack,
     handleSave,
     goBackToSidebar,
-    setTags,
     setSelectedDate,
     setWeather,
     setMood,

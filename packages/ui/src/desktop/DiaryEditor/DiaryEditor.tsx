@@ -14,14 +14,12 @@ import { MOOD_FLUENT_ICON_SRC } from '../../shared/mood-fluent-assets'
 import { WEATHER_FLUENT_ICON_SRC } from '../../shared/weather-fluent-assets'
 import { CodeMirrorEditor, CodeMirrorEditorHandle } from './CodeMirrorEditor'
 import { DiaryEditorAppBarTitle } from '../DiaryEditorAppBarTitle/DiaryEditorAppBarTitle'
-import { TagInput } from '../TagInput'
 import { WeatherPicker } from './WeatherPicker'
 import { DiaryAttachmentItem, getInsertMarkdown } from './AttachmentUploader'
 import './DiaryEditor.css'
 
 interface DiaryEditorProps {
   content: string
-  tags: string[]
   selectedDate: Date
   isSummaryMode?: boolean
   weather?: string
@@ -30,13 +28,12 @@ interface DiaryEditorProps {
   mediaPaths?: string[]
   isSaving?: boolean
   onContentChange: (content: string) => void
-  onTagsChange: (tags: string[]) => void
   onDateChange: (date: Date) => void
   onWeatherChange?: (weather: string) => void
   onMoodChange?: (mood: string) => void
   onFavoriteChange?: (isFavorite: boolean) => void
   onMediaPathsChange?: (mediaPaths: string[]) => void
-  onSave?: (content: string, tags: string[], date: Date) => void
+  onSave?: (content: string, date: Date) => void
   onCancel?: () => void
 }
 
@@ -51,7 +48,6 @@ function fileToBase64(file: File): Promise<string> {
 
 export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   content,
-  tags,
   selectedDate,
   isSummaryMode = false,
   weather = '',
@@ -60,7 +56,6 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   mediaPaths = [],
   isSaving = false,
   onContentChange,
-  onTagsChange,
   onDateChange,
   onWeatherChange,
   onMoodChange,
@@ -238,7 +233,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
         <div className="de-app-bar-actions">
           <button
             className="de-save-btn"
-            onClick={() => onSave?.(content, tags, selectedDate)}
+            onClick={() => onSave?.(content, selectedDate)}
             disabled={isSaving}
           >
             {isSaving ? (
@@ -255,12 +250,6 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
 
       <div className="de-body-column">
         <div className="de-expanded-list">
-          {!isSummaryMode && (
-            <div className="de-tags-section">
-              <TagInput tags={tags} onChange={onTagsChange} />
-            </div>
-          )}
-
           {!isSummaryMode && (
             <div className="de-meta-bar">
               <div className="de-meta-pickers">
@@ -307,7 +296,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
               ref={editorRef}
               content={content}
               onChange={(val) => onContentChange(val || '')}
-              placeholder={t('diary.editor_hint', '记录下这一刻...')}
+              placeholder={t('diary.tag_editor_hint', '首行输入 #标签 后按回车，再写正文…')}
               basePath={attachmentBasePath}
               onPasteFiles={handlePasteFiles}
               onDropFiles={handlePasteFiles}

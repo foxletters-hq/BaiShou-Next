@@ -48,6 +48,7 @@ export function useCodeMirrorEditorView(
     const platform: DiaryCmPlatform = {
       resolveAttachmentUrl: resolveUrl,
       interactionMode: 'mouse',
+      tagLineMode: true,
       onExternalImagePreview: (src) => setPreviewSrc(src)
     }
 

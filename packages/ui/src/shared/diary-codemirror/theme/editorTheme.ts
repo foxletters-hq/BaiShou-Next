@@ -179,34 +179,35 @@ export const editorTheme = EditorView.baseTheme({
     lineHeight: '1.7'
   },
   '.cm-diary-tag-token': {
-    display: 'inline-block',
-    borderRadius: '12px',
-    padding: '2px 8px',
-    margin: '3px 4px 3px 0',
+    display: 'inline',
+    borderRadius: '10px',
+    padding: '1px 6px',
+    margin: '0 4px 0 0',
+    fontSize: 'inherit',
     fontWeight: '500',
-    lineHeight: '1.35',
-    verticalAlign: 'top',
+    lineHeight: 'inherit',
+    verticalAlign: 'baseline',
     boxDecorationBreak: 'clone',
     WebkitBoxDecorationBreak: 'clone'
   },
   '.cm-diary-tag-c0': {
-    color: 'var(--tag-0-fg)',
-    backgroundColor: 'color-mix(in srgb, var(--tag-0-fg) 15%, transparent)'
+    color: 'var(--tag-0-fg, #3b82f6)',
+    backgroundColor: 'color-mix(in srgb, var(--tag-0-fg, #3b82f6) 15%, transparent)'
   },
   '.cm-diary-tag-c1': {
-    color: 'var(--tag-1-fg)',
-    backgroundColor: 'color-mix(in srgb, var(--tag-1-fg) 15%, transparent)'
+    color: 'var(--tag-1-fg, #10b981)',
+    backgroundColor: 'color-mix(in srgb, var(--tag-1-fg, #10b981) 15%, transparent)'
   },
   '.cm-diary-tag-c2': {
-    color: 'var(--tag-2-fg)',
-    backgroundColor: 'color-mix(in srgb, var(--tag-2-fg) 15%, transparent)'
+    color: 'var(--tag-2-fg, #f59e0b)',
+    backgroundColor: 'color-mix(in srgb, var(--tag-2-fg, #f59e0b) 15%, transparent)'
   },
   '.cm-diary-tag-c3': {
-    color: 'var(--tag-3-fg)',
-    backgroundColor: 'color-mix(in srgb, var(--tag-3-fg) 15%, transparent)'
+    color: 'var(--tag-3-fg, #8b5cf6)',
+    backgroundColor: 'color-mix(in srgb, var(--tag-3-fg, #8b5cf6) 15%, transparent)'
   },
   '& .cm-line:has(.cm-diary-tag-token)': {
-    lineHeight: '2.25'
+    lineHeight: 'inherit'
   }
 })
 
