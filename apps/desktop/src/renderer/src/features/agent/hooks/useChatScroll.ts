@@ -225,18 +225,21 @@ export function useChatScroll(params: UseChatScrollParams): UseChatScrollResult 
     if (!isStreaming || followModeRef.current !== 'following') return
 
     if (streamFollowRafRef.current != null) return
+
     streamFollowRafRef.current = requestAnimationFrame(() => {
       streamFollowRafRef.current = null
       jumpToBottomInstant()
     })
+  }, [isStreaming, streamingText, streamingReasoning, jumpToBottomInstant])
 
+  useEffect(() => {
     return () => {
       if (streamFollowRafRef.current != null) {
         cancelAnimationFrame(streamFollowRafRef.current)
         streamFollowRafRef.current = null
       }
     }
-  }, [isStreaming, streamingText, streamingReasoning, jumpToBottomInstant])
+  }, [isStreaming])
 
   return {
     scrollRef,

@@ -2,6 +2,11 @@ import { useEffect, useState, useCallback, useRef, useContext } from 'react'
 import { createStreamingTextDisplayBuffer, type StreamingTextDisplayBuffer } from '@baishou/shared'
 import { MainPageCacheActiveContext } from '../../../layouts/main-page-cache.context'
 
+/** 桌面 Agent + XMarkdown：每个 chunk 立即透传全文，流式 Markdown 由 XMarkdown 负责 */
+const DESKTOP_AGENT_STREAM_DISPLAY_OPTIONS = {
+  immediate: true
+} as const
+
 export interface ToolExecution {
   name: string
   startTime: number
@@ -82,32 +87,38 @@ const compressionReasoningDisplayBuffers: Record<string, StreamingTextDisplayBuf
 
 function ensureStreamTextDisplayBuffer(sessionId: string): StreamingTextDisplayBuffer {
   if (!streamTextDisplayBuffers[sessionId]) {
-    streamTextDisplayBuffers[sessionId] = createStreamingTextDisplayBuffer((text) => {
-      updateSessionState(
-        sessionId,
-        (state) => {
-          state.text = text
-        },
-        { notify: false }
-      )
-      notifySessionListeners(sessionId)
-    })
+    streamTextDisplayBuffers[sessionId] = createStreamingTextDisplayBuffer(
+      (text) => {
+        updateSessionState(
+          sessionId,
+          (state) => {
+            state.text = text
+          },
+          { notify: false }
+        )
+        notifySessionListeners(sessionId)
+      },
+      DESKTOP_AGENT_STREAM_DISPLAY_OPTIONS
+    )
   }
   return streamTextDisplayBuffers[sessionId]
 }
 
 function ensureStreamReasoningDisplayBuffer(sessionId: string): StreamingTextDisplayBuffer {
   if (!streamReasoningDisplayBuffers[sessionId]) {
-    streamReasoningDisplayBuffers[sessionId] = createStreamingTextDisplayBuffer((text) => {
-      updateSessionState(
-        sessionId,
-        (state) => {
-          state.reasoning = text
-        },
-        { notify: false }
-      )
-      notifySessionListeners(sessionId)
-    })
+    streamReasoningDisplayBuffers[sessionId] = createStreamingTextDisplayBuffer(
+      (text) => {
+        updateSessionState(
+          sessionId,
+          (state) => {
+            state.reasoning = text
+          },
+          { notify: false }
+        )
+        notifySessionListeners(sessionId)
+      },
+      DESKTOP_AGENT_STREAM_DISPLAY_OPTIONS
+    )
   }
   return streamReasoningDisplayBuffers[sessionId]
 }

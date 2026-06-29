@@ -10,7 +10,7 @@ import {
   useAgentStore,
   useContextCompressionStore
 } from '@baishou/store'
-import { useAgentStream } from './useAgentStream'
+import { useAgentStream, clearStreamBridgeForSession } from './useAgentStream'
 import { useChatMessages } from './useChatMessages'
 import { useSessionManager } from './useSessionManager'
 import { useModelSelection } from './useModelSelection'
@@ -64,6 +64,20 @@ export function useAgentChatFlow() {
   })
   useStreamError(stream.error, stream.isStreaming)
   const recall = useRecallSearch()
+
+  // 助手消息已落库展示后，清除流式桥接态（避免 StreamingBubble 与 ChatBubble 并存）
+  useEffect(() => {
+    if (!sessionId || !stream.isBridgeActive) return
+    const lastMessage = chat.messages[chat.messages.length - 1]
+    if (
+      lastMessage?.role === 'assistant' &&
+      (Boolean(lastMessage.content?.trim()) ||
+        Boolean(lastMessage.reasoning?.trim()) ||
+        (lastMessage.toolInvocations?.length ?? 0) > 0)
+    ) {
+      clearStreamBridgeForSession(sessionId)
+    }
+  }, [sessionId, stream.isBridgeActive, chat.messages])
 
   // ── 2. Store 状态订阅 ──
   const settings = useSettingsStore()

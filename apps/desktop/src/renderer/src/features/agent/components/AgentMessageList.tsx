@@ -380,6 +380,7 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
                 text={stream.text}
                 reasoning={stream.reasoning}
                 isReasoning={Boolean(stream.reasoning && !stream.text)}
+                isTextStreaming={stream.isStreaming}
                 activeToolName={activeToolDisplayName}
                 completedTools={stream.completedTools}
                 aiProfile={{
