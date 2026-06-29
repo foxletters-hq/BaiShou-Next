@@ -16,6 +16,19 @@ export function normalizeDiaryTags(tags: unknown): string[] {
   return []
 }
 
+/** 合并日记标签字符串，去重并保持顺序（先 existing 后 incoming） */
+export function mergeDiaryTags(existing: string | null | undefined, incoming: string): string {
+  const existingArr = (existing || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  const incomingArr = incoming
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  return Array.from(new Set([...existingArr, ...incomingArr])).join(', ')
+}
+
 /** 预览卡片默认最多展示的标签数，避免标签挤占正文区域 */
 export const DIARY_PREVIEW_TAG_LIMIT = 4
 

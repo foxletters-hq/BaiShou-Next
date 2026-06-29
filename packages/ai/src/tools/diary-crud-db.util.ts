@@ -1,18 +1,9 @@
 import type { ToolContext } from './agent.tool'
+import { mergeDiaryTags } from '@baishou/shared'
+
+export { mergeDiaryTags }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
-
-export function mergeDiaryTags(existing: string | null | undefined, incoming: string): string {
-  const existingArr = (existing || '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
-  const incomingArr = incoming
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
-  return Array.from(new Set([...existingArr, ...incomingArr])).join(', ')
-}
 
 /** 为无 DiaryService 的宿主（纯文件写入）构建标准 frontmatter 包裹的正文 */
 export function buildJournalMarkdownForTool(date: string, content: string, tags?: string): string {
