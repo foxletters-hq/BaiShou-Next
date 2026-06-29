@@ -17,6 +17,7 @@ import {
 } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
 import { saveUserMessage } from '../services/mobile-agent-message.service'
+import { runMobileAgentDbWrite } from '../services/mobile-agent-db-write.util'
 import { buildInsertSessionInput } from '../utils/session-input.util'
 import { mapSessionMessageFromDb } from '../utils/map-session-message.util'
 import { mapSavedAttachmentsForMobileUi } from '../utils/mobile-attachment-ui.util'
@@ -281,13 +282,18 @@ export function useAgentStream(
       if (!services?.snapshotRepo) return false
       if (epoch !== retryEpochRef.current) return false
 
-      await truncateSessionAfterOrderIndex(
-        services.sessionRepo,
-        services.snapshotRepo,
-        sessionId,
-        cutoffOrderIndex,
-        truncateOptionsWithDiskFlush(services.sessionManager)
-      )
+      await runMobileAgentDbWrite(`truncateSession(${sessionId})`, async (runtime) => {
+        if (!runtime.snapshotRepo) {
+          throw new Error('Snapshot repository unavailable')
+        }
+        await truncateSessionAfterOrderIndex(
+          runtime.sessionRepo,
+          runtime.snapshotRepo,
+          sessionId,
+          cutoffOrderIndex,
+          truncateOptionsWithDiskFlush(runtime.sessionManager)
+        )
+      })
       if (epoch !== retryEpochRef.current) return false
 
       const synced = await reloadMessagesFromDb(sessionId, { preserveWindow: false })
@@ -690,20 +696,22 @@ export function useAgentStream(
           const vaultName = await services.pathService
             .getActiveVaultNameForContext()
             .catch(() => 'Personal')
-          await services.sessionManager.upsertSession(
-            buildInsertSessionInput(
-              {
-                id: newSessionId,
-                title:
-                  deriveSessionTitleFromUserText(sessionTitleSource) ||
-                  t('agent.sessions.default_title', '新对话'),
-                assistantId: currentAssistant?.id,
-                providerId: currentProviderId || undefined,
-                modelId: currentModelId || undefined
-              },
-              vaultName
+          await runMobileAgentDbWrite('upsertSession', async (runtime) => {
+            await runtime.sessionManager.upsertSession(
+              buildInsertSessionInput(
+                {
+                  id: newSessionId,
+                  title:
+                    deriveSessionTitleFromUserText(sessionTitleSource) ||
+                    t('agent.sessions.default_title', '新对话'),
+                  assistantId: currentAssistant?.id,
+                  providerId: currentProviderId || undefined,
+                  modelId: currentModelId || undefined
+                },
+                vaultName
+              )
             )
-          )
+          })
           sessionId = newSessionId
         } catch (e) {
           console.error('Failed to create session', e)

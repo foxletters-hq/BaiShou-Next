@@ -14,12 +14,12 @@ import {
   SessionManagerService,
   SessionFileService,
   SessionSyncService,
+  SummarySyncService,
   AssistantFileService,
   AssistantManagerService,
   SettingsFileService,
   SettingsManagerService,
   SummaryFileService,
-  SummarySyncService,
   SummaryManagerService,
   MissingSummaryDetector,
   SummaryGeneratorService,
@@ -28,6 +28,14 @@ import {
 import { HybridSearchService } from '@baishou/ai'
 import type { MobileStoragePathService } from './path.service'
 import type { MobileAttachmentManagerService } from './mobile-attachment-manager.service'
+import {
+  RecoveryAwareSessionSyncService,
+  RecoveryAwareSummarySyncService
+} from './recovery-aware-sync.services'
+import {
+  mobileAgentDbRecovery,
+  type MobileAgentDbRecoveryCoordinator
+} from './mobile-agent-db-recovery.coordinator'
 import { buildMobileSummaryAiClient } from './mobile-summary-ai-client'
 import { resolveSummaryTemplatesForGeneration, logger } from '@baishou/shared'
 
@@ -41,6 +49,7 @@ export type AgentDbRuntime = {
   profileRepo: UserProfileRepository
   snapshotRepo: SnapshotRepository
   sessionManager: SessionManagerService
+  sessionSyncService: SessionSyncService
   assistantManager: AssistantManagerService
   settingsManager: SettingsManagerService
   summaryManager: SummaryManagerService
@@ -59,6 +68,7 @@ export type CreateAgentDbRuntimeOptions = {
   fileSystem: IFileSystem
   attachmentManager: MobileAttachmentManagerService
   diaryRepoAdapter: unknown
+  recovery?: MobileAgentDbRecoveryCoordinator
 }
 
 export type SummaryPipelineServices = {
@@ -75,8 +85,10 @@ export async function createSummaryPipelineServices(options: {
   fileSystem: IFileSystem
   settingsManager: SettingsManagerService
   diaryRepoAdapter: unknown
+  recovery?: MobileAgentDbRecoveryCoordinator
 }): Promise<SummaryPipelineServices> {
   const { drizzleDb, pathService, fileSystem, settingsManager, diaryRepoAdapter } = options
+  const recovery = options.recovery ?? mobileAgentDbRecovery
   const summaryRepo = new SummaryRepositoryImpl(drizzleDb)
   const summaryConfig = (await settingsManager.get<Record<string, unknown>>('summary_config')) || {}
   const customTemplates = resolveSummaryTemplatesForGeneration(summaryConfig) as Record<
@@ -97,11 +109,12 @@ export async function createSummaryPipelineServices(options: {
     customTemplates,
     promptLocale
   )
-  const summarySyncService = new SummarySyncService(
+  const summarySyncService = new RecoveryAwareSummarySyncService(
     missingSummaryDetector,
     summaryGenerator,
     summaryRepo,
-    summaryFileService
+    summaryFileService,
+    recovery
   )
   const summaryManager = new SummaryManagerService(
     summaryRepo,
@@ -119,13 +132,15 @@ export async function rebindSummaryPipelineForVault(options: {
   settingsManager: SettingsManagerService
   diaryRepoAdapter: unknown
   activeVaultName?: string | null
+  recovery?: MobileAgentDbRecoveryCoordinator
 }): Promise<SummaryPipelineServices> {
   const pipeline = await createSummaryPipelineServices({
     drizzleDb: options.drizzleDb,
     pathService: options.pathService,
     fileSystem: options.fileSystem,
     settingsManager: options.settingsManager,
-    diaryRepoAdapter: options.diaryRepoAdapter
+    diaryRepoAdapter: options.diaryRepoAdapter,
+    recovery: options.recovery ?? mobileAgentDbRecovery
   })
 
   if (options.activeVaultName) {
@@ -146,6 +161,7 @@ export async function createAgentDbRuntime(
 ): Promise<AgentDbRuntime> {
   const { expoDb, drizzleDb, pathService, fileSystem, attachmentManager, diaryRepoAdapter } =
     options
+  const recovery = options.recovery ?? mobileAgentDbRecovery
 
   const sessionRepo = new SessionRepository(drizzleDb)
   const assistantRepo = new AssistantRepository(drizzleDb)
@@ -155,7 +171,11 @@ export async function createAgentDbRuntime(
   const snapshotRepo = new SnapshotRepository(drizzleDb)
 
   const sessionFileService = new SessionFileService(pathService, fileSystem)
-  const sessionSyncService = new SessionSyncService(sessionRepo, sessionFileService)
+  const sessionSyncService = new RecoveryAwareSessionSyncService(
+    sessionRepo,
+    sessionFileService,
+    recovery
+  )
   const sessionManager = new SessionManagerService(
     sessionRepo,
     sessionFileService,
@@ -178,7 +198,8 @@ export async function createAgentDbRuntime(
       pathService,
       fileSystem,
       settingsManager,
-      diaryRepoAdapter
+      diaryRepoAdapter,
+      recovery
     })
 
   const sqlExecutor = createSqlExecutorFromDrizzleDb(drizzleDb)
@@ -195,6 +216,7 @@ export async function createAgentDbRuntime(
     profileRepo,
     snapshotRepo,
     sessionManager,
+    sessionSyncService,
     assistantManager,
     settingsManager,
     summaryManager,

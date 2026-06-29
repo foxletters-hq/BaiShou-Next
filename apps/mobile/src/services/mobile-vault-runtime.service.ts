@@ -850,7 +850,7 @@ async function runVaultBootstrap(
   options?.onResyncComplete?.()
 }
 
-async function restartVaultWatchers(
+export async function restartVaultWatchers(
   diaryStack: VaultBoundDiaryStack,
   vaultService: VaultService,
   watcherDeps: VaultRuntimeWatcherDeps,

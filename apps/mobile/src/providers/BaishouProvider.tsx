@@ -7,6 +7,7 @@ import {
   backfillExpoAgentMessagesFts,
   enterAgentMigrationArchiveImport,
   exitAgentMigrationArchiveImport,
+  verifyExpoAgentDatabaseIntegrity,
   type ExpoSqliteDatabase
 } from '@baishou/database/expo'
 import {
@@ -15,6 +16,7 @@ import {
   rebindSummaryPipelineForVault,
   type AgentDbRuntime
 } from '../services/mobile-agent-db-runtime'
+import { agentDbRuntimeRef } from '../services/mobile-agent-db-runtime-ref'
 import {
   SessionManagerService,
   DiaryService,
@@ -80,6 +82,18 @@ import { setupMobileTtsRefAudioReader } from '../services/mobile-tts-ref-audio.s
 import { MobileArchiveService } from '../services/archive.service'
 import type { MobileArchiveDbBridge } from '../services/mobile-archive-db.bridge'
 import { checkpointAgentDatabaseForExport } from '../services/mobile-agent-db-checkpoint.util'
+import {
+  mobileAgentDbRecovery,
+  MOBILE_AGENT_DB_NAME,
+  quarantineMobileAgentDatabase,
+  rebuildMobileAgentDatabase
+} from '../services/mobile-agent-db-recovery.service'
+import { resyncAgentDbCachesFromDisk } from '../services/mobile-agent-db-resync.util'
+import {
+  RecoveryAwareSessionSyncService,
+  RecoveryAwareSummarySyncService
+} from '../services/recovery-aware-sync.services'
+import { MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES } from '../services/mobile-file-read-limits'
 import { getAppDocumentDirectory } from '../services/mobile-app-paths'
 import { MobileLanSyncService } from '../services/lan-sync.service'
 import { MobileCloudSyncService } from '../services/cloud-sync.service'
@@ -125,6 +139,7 @@ import {
   quiesceStorageForFileCopy,
   rebootstrapAfterStorageRootChange,
   registerVaultBootstrapDeps,
+  restartVaultWatchers,
   resumeStorageAfterFileCopy,
   resyncEcosystemAfterFileMutation,
   switchVaultRuntime,
@@ -222,6 +237,7 @@ interface BaishouContextValue {
     vaultFileWatcher: VaultFileWatcherService
     switchVault: (vaultName: string) => Promise<void>
     deleteVault: (vaultName: string) => Promise<void>
+    createDemoVault: () => Promise<{ vaultName: string; diaryCount: number; summaryCount: number }>
     memorySearch: (
       query: string,
       options?: { topK?: number; minScore?: number }
@@ -346,7 +362,6 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
   const notifyArchiveRestoreCompleteRef = useRef<(result: ImportResult) => void>(() => {})
   const notifyVersionMigrationCompleteRef = useRef<() => void>(() => {})
   const resyncAfterMigrationRef = useRef<() => Promise<void>>(async () => {})
-  const agentDbRuntimeRef = useRef<AgentDbRuntime | null>(null)
   const reloadAgentDatabaseRef = useRef<() => Promise<void>>(async () => {})
   const archiveFullRestoreDoneRef = useRef(false)
   const vaultBootstrapCtxRef = useRef<{
@@ -438,11 +453,35 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
     async function init() {
       try {
+        const openAgentDatabase = (options?: { newConnection?: boolean }) => () =>
+          SQLite.openDatabaseAsync(
+            MOBILE_AGENT_DB_NAME,
+            options?.newConnection ? { useNewConnection: true } : undefined
+          ) as Promise<ExpoSqliteDatabase>
+
         // 1. 初始化 SQLite 环境（单例，避免并发 open + 迁移）
-        const { drizzleDb, expoDb, sqliteVecLoaded, sqliteVecLoadReason } =
-          await ensureExpoAgentDatabaseInstalled(
-            () => SQLite.openDatabaseAsync('baishou_next_mobile.db') as Promise<ExpoSqliteDatabase>
+        let install = await ensureExpoAgentDatabaseInstalled(openAgentDatabase())
+
+        const fileSystem = createMobileFileSystem()
+        setupMobileLocalFileReader(fileSystem)
+        setupMobileImageCompressor()
+        setupMobileTtsRefAudioReader(fileSystem)
+        const pathService = new MobileStoragePathService(fileSystem) as any
+
+        const startupIntegrity = await verifyExpoAgentDatabaseIntegrity(install.expoDb)
+        let agentDbRebuiltAtStartup = false
+        if (!startupIntegrity.ok) {
+          logger.warn(
+            `[BaishouProvider] Agent DB startup integrity failed (${startupIntegrity.detail ?? 'unknown'}), rebuilding…`
           )
+          install = await rebuildMobileAgentDatabase(
+            fileSystem,
+            openAgentDatabase({ newConnection: true })
+          )
+          agentDbRebuiltAtStartup = true
+        }
+
+        const { drizzleDb, expoDb, sqliteVecLoaded, sqliteVecLoadReason } = install
 
         if (sqliteVecLoaded) {
           logger.info('[BaishouProvider] Native sqlite-vec extension active on agent database.')
@@ -452,12 +491,6 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             sqliteVecLoadReason
           )
         }
-
-        const fileSystem = createMobileFileSystem()
-        setupMobileLocalFileReader(fileSystem)
-        setupMobileImageCompressor()
-        setupMobileTtsRefAudioReader(fileSystem)
-        const pathService = new MobileStoragePathService(fileSystem) as any
 
         // 3. 构建 Repositories
         const sessionRepo = new SessionRepository(drizzleDb)
@@ -525,7 +558,11 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
         // 4. 构建 Core Services并进行依赖注入
         const sessionFileService = new SessionFileService(pathService, fileSystem)
-        const sessionSyncService = new SessionSyncService(sessionRepo, sessionFileService)
+        const sessionSyncService = new RecoveryAwareSessionSyncService(
+          sessionRepo,
+          sessionFileService,
+          mobileAgentDbRecovery
+        )
         const sessionManager = new SessionManagerService(
           sessionRepo,
           sessionFileService,
@@ -598,11 +635,12 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           customTemplates as Record<string, string>,
           promptLocale
         )
-        const summarySyncService = new SummarySyncService(
+        const summarySyncService = new RecoveryAwareSummarySyncService(
           missingSummaryDetector,
           summaryGenerator,
           summaryRepo,
-          summaryFileService
+          summaryFileService,
+          mobileAgentDbRecovery
         )
         const summaryManager = new SummaryManagerService(
           summaryRepo,
@@ -620,13 +658,6 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
         const agentService = new AgentSessionService()
 
-        const MOBILE_DB_NAME = 'baishou_next_mobile.db'
-        const openAgentDatabase = (options?: { newConnection?: boolean }) => () =>
-          SQLite.openDatabaseAsync(
-            MOBILE_DB_NAME,
-            options?.newConnection ? { useNewConnection: true } : undefined
-          ) as Promise<ExpoSqliteDatabase>
-
         const sqlExecutor = createSqlExecutorFromDrizzleDb(drizzleDb)
         const hsRepo = new SqliteHybridSearchRepository(sqlExecutor)
         const hybridSearchService = new HybridSearchService(hsRepo)
@@ -641,6 +672,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           profileRepo,
           snapshotRepo,
           sessionManager,
+          sessionSyncService,
           assistantManager,
           settingsManager,
           summaryManager,
@@ -704,11 +736,12 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               cloud_sync_config: await runtime.settingsRepo.get('cloud_sync_config' as never)
             }
           },
-          getAgentDatabaseUri: async () => `${getAppDocumentDirectory()}SQLite/${MOBILE_DB_NAME}`,
+          getAgentDatabaseUri: async () =>
+            `${getAppDocumentDirectory()}SQLite/${MOBILE_AGENT_DB_NAME}`,
           replaceAgentDatabaseFrom: async (sourceUri) => {
             await releaseExpoAgentDatabaseInstall()
             const sqliteDir = `${getAppDocumentDirectory()}SQLite/`
-            const destBase = `${sqliteDir}${MOBILE_DB_NAME}`
+            const destBase = `${sqliteDir}${MOBILE_AGENT_DB_NAME}`
             for (const suffix of ['', '-wal', '-shm']) {
               const candidate = `${destBase}${suffix}`
               if (await fileSystem.exists(candidate)) {
@@ -1111,7 +1144,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                 skipUserMessageRecording: overrides?.skipUserMessageRecording,
                 forceRecompress: overrides?.forceRecompress,
                 streamClaimGeneration: overrides?.streamClaimGeneration,
-                attachments: overrides?.attachments as any
+                attachments: overrides?.attachments as any,
+                flushSessionToDisk: (id) => runtime.sessionManager.flushSessionToDisk(id)
               },
               callbacks
             )
@@ -1134,7 +1168,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           sessionManager,
           assistantManager,
           settingsManager,
-          summarySyncService,
+          summarySyncService: summarySyncService as SummarySyncService,
           getActiveVaultName: () => pathService.getActiveVaultNameForContext()
         }
 
@@ -1142,9 +1176,9 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           pathService,
           fileSystem,
           sessionFileService,
-          sessionSyncService,
+          sessionSyncService: sessionSyncService as SessionSyncService,
           sessionManager,
-          summarySyncService
+          summarySyncService: summarySyncService as SummarySyncService
         }
 
         vaultBootstrapCtxRef.current = {
@@ -1170,6 +1204,9 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           if (mcpWasRunning && priorMcp) {
             await priorMcp.stop()
           }
+
+          await releaseExpoAgentDatabaseInstall()
+          await quarantineMobileAgentDatabase(ctx.fileSystem)
 
           const { drizzleDb: newDrizzleDb, expoDb: newExpoDb } =
             await ensureExpoAgentDatabaseInstalled(openAgentDatabase({ newConnection: true }))
@@ -1201,9 +1238,14 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           ctx.bootstrapDeps.settingsManager = newRuntime.settingsManager
           ctx.bootstrapDeps.summarySyncService = newRuntime.summarySyncService
           ctx.watcherDeps.sessionManager = newRuntime.sessionManager
+          ctx.watcherDeps.sessionSyncService = newRuntime.sessionSyncService
           ctx.watcherDeps.summarySyncService = newRuntime.summarySyncService
 
           const stack = diaryStackRef.current
+          if (stack) {
+            registerVaultBootstrapDeps(stack, ctx.bootstrapDeps)
+            await restartVaultWatchers(stack, vaultService, ctx.watcherDeps)
+          }
           const nextRagDeps = attachMobileRagVaultScope(
             {
               settingsManager: newRuntime.settingsManager,
@@ -1285,6 +1327,43 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                   }
                 : prev.services
             }))
+          }
+        }
+
+        mobileAgentDbRecovery.registerReload(async () => {
+          await reloadAgentDatabaseRef.current()
+        })
+        mobileAgentDbRecovery.registerAfterReload(async () => {
+          const ctx = vaultBootstrapCtxRef.current
+          const runtime = agentDbRuntimeRef.current
+          if (!ctx || !runtime) {
+            throw new Error('Agent DB 运行时未就绪，无法从磁盘重同步')
+          }
+          const activeVaultName = ctx.vaultService.getActiveVault()?.name
+          await mobileAgentDbRecovery.runBare(async () => {
+            await resyncAgentDbCachesFromDisk({
+              runtime,
+              activeVaultName,
+              maxSessionJsonReadBytes: MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES
+            })
+          })
+        })
+
+        if (
+          agentDbRebuiltAtStartup &&
+          agentDbRuntimeRef.current &&
+          vaultService.getActiveVault()?.name
+        ) {
+          try {
+            await mobileAgentDbRecovery.runBare(async () => {
+              await resyncAgentDbCachesFromDisk({
+                runtime: agentDbRuntimeRef.current!,
+                activeVaultName: vaultService.getActiveVault()?.name,
+                maxSessionJsonReadBytes: MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES
+              })
+            })
+          } catch (e) {
+            logger.warn('[BaishouProvider] post-startup-rebuild agent resync failed:', e as Error)
           }
         }
 
@@ -1435,6 +1514,28 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               vaultRevision: prev.vaultRevision + 1
             }))
           }
+        }
+
+        const createDemoVault = async () => {
+          const result = await mobileDeveloperService.createDemoVault({
+            vaultService,
+            switchVault,
+            getDiaryService: () => {
+              const stack = diaryStackRef.current
+              if (!stack) {
+                throw new Error('Diary stack unavailable')
+              }
+              return stack.diaryService
+            },
+            getSummaryManager: () => agentDbRuntimeRef.current?.summaryManager
+          })
+          if (isMounted) {
+            setValue((prev) => ({
+              ...prev,
+              vaultRevision: prev.vaultRevision + 1
+            }))
+          }
+          return result
         }
 
         if (diaryStack) {
@@ -1797,6 +1898,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               vaultFileWatcher,
               switchVault,
               deleteVault,
+              createDemoVault,
               memorySearch,
               mobileMcpService,
               ragService: ragServiceRef.current,
