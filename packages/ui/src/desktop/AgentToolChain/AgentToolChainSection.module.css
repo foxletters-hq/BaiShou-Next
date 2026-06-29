@@ -1,0 +1,47 @@
+.root {
+  width: 100%;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.root:last-child {
+  margin-bottom: 0;
+}
+
+.toolThink {
+  width: 100%;
+}
+
+.staticStatus {
+  cursor: default;
+  pointer-events: none;
+}
+
+.staticStatus :global(.ant-think-status-down-icon) {
+  display: none;
+}
+
+.titleRow {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.titleText {
+  min-width: 0;
+}
+
+.duration {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary, rgba(0, 0, 0, 0.45));
+  font-weight: 400;
+}
+
+.errorIcon {
+  color: var(--color-error);
+}

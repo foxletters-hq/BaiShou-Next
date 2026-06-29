@@ -1,10 +1,9 @@
 import { useTranslation } from 'react-i18next'
 import React, { useMemo } from 'react'
-import { ChevronDown, CheckCircle2, Loader2 } from 'lucide-react'
-import shared from '../shared/CollapsibleAncillaryBlock.module.css'
 import styles from './StreamingBubble.module.css'
 import { parseRedactedThinking } from '../../shared/chat-bubble/redacted-thinking'
 import { AgentMarkdownRenderer, AgentThinkSection } from '../AgentMarkdown'
+import { AgentToolChainSection } from '../AgentToolChain'
 import { AssistantAvatar } from '../AssistantAvatar'
 
 export interface ToolExecution {
@@ -83,9 +82,10 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
 
                 {/* 工具调用 */}
                 {hasTools && (
-                  <ToolExecutionGroup
+                  <AgentToolChainSection
                     completedTools={completedTools}
                     activeToolName={activeToolName}
+                    isStreaming
                   />
                 )}
 
@@ -113,86 +113,12 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
   )
 }
 
-const ToolExecutionGroup: React.FC<{
-  completedTools: ToolExecution[]
-  activeToolName?: string | null
-}> = ({ completedTools, activeToolName }) => {
-  const { t } = useTranslation()
-  const totalTools = completedTools.length + (activeToolName ? 1 : 0)
-
-  const title =
-    activeToolName && completedTools.length === 0
-      ? t('agent.tools.tool_call', '工具调用')
-      : t('agent.tools.tool_call_results', '工具调用 · {{count}} 个结果', {
-          count: totalTools
-        })
-
-  return (
-    <div className={shared.shell}>
-      <div className={shared.header}>
-        <div className={shared.headerIcon}>🎧</div>
-        <span className={shared.headerTitle}>{title}</span>
-        <div className={`${shared.headerChevron} ${shared.headerChevronOpen}`}>
-          <ChevronDown size={14} strokeWidth={2} />
-        </div>
-      </div>
-
-      <div className={styles.toolList}>
-        {completedTools.map((tool, idx) => {
-          const durationText =
-            tool.durationMs < 1000
-              ? `${tool.durationMs}ms`
-              : `${(tool.durationMs / 1000).toFixed(1)}s`
-          return (
-            <div key={idx} className={styles.toolItem}>
-              <span className={styles.toolStatusIcon}>
-                <CheckCircle2 size={14} />
-              </span>
-              <span className={styles.toolItemName}>
-                {t(`agent.tools.${tool.name}`, tool.name)}
-              </span>
-              <span className={styles.toolItemDuration}>{durationText}</span>
-            </div>
-          )
-        })}
-
-        {activeToolName && <ActiveToolItem name={activeToolName} />}
-      </div>
-    </div>
-  )
-}
-
 const BouncingDotsIndicator: React.FC = () => {
   return (
     <div className={styles.bouncingDots}>
       <div className={styles.dot}></div>
       <div className={styles.dot}></div>
       <div className={styles.dot}></div>
-    </div>
-  )
-}
-
-const ActiveToolItem: React.FC<{ name: string }> = ({ name }) => {
-  const { t } = useTranslation()
-  const [dots, setDots] = React.useState('.')
-
-  React.useEffect(() => {
-    const timer = setInterval(() => {
-      setDots((prev) => {
-        if (prev === '...') return '.'
-        if (prev === '..') return '...'
-        return '..'
-      })
-    }, 600)
-    return () => clearInterval(timer)
-  }, [])
-
-  return (
-    <div className={`${styles.toolItem} ${styles.pulsing}`}>
-      <Loader2 size={14} className={styles.toolStatusSpinner} />
-      <span className={styles.activeToolName}>
-        {t(`agent.tools.${name}`, name)} {dots}
-      </span>
     </div>
   )
 }
