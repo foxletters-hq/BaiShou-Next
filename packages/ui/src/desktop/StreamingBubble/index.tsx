@@ -3,10 +3,9 @@ import React, { useMemo } from 'react'
 import { ChevronDown, CheckCircle2, Loader2 } from 'lucide-react'
 import shared from '../shared/CollapsibleAncillaryBlock.module.css'
 import styles from './StreamingBubble.module.css'
-import { ThinkingBlock } from '../ThinkingBlock'
-import { AssistantAvatar } from '../AssistantAvatar'
 import { parseRedactedThinking } from '../../shared/chat-bubble/redacted-thinking'
-import { AgentMarkdownRenderer } from '../AgentMarkdown'
+import { AgentMarkdownRenderer, AgentThinkSection } from '../AgentMarkdown'
+import { AssistantAvatar } from '../AssistantAvatar'
 
 export interface ToolExecution {
   name: string
@@ -53,7 +52,7 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
     [text, reasoning]
   )
 
-  const hasReasoning = cleanReasoning.length > 0
+  const hasReasoning = cleanReasoning.length > 0 || isReasoning
   const hasText = cleanText.length > 0
 
   return (
@@ -79,13 +78,7 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
               <div className={styles.bubbleCard}>
                 {/* Reasoning 块 - 移到 bubbleCard 内部 */}
                 {hasReasoning && (
-                  <ThinkingBlock
-                    content={cleanReasoning}
-                    isThinking={isReasoning}
-                    defaultOpen={false}
-                    autoCollapse
-                    maxPreviewLines={2}
-                  />
+                  <AgentThinkSection content={cleanReasoning} isStreaming={isReasoning} />
                 )}
 
                 {/* 工具调用 */}

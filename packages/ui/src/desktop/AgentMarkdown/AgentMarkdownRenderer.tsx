@@ -1,13 +1,18 @@
 import React, { useMemo } from 'react'
 import XMarkdown from '@ant-design/x-markdown'
+import { XProvider } from '@ant-design/x'
+import { theme } from 'antd'
 import '@ant-design/x-markdown/es/XMarkdown/index.css'
 import '@ant-design/x-markdown/themes/light.css'
 import '@ant-design/x-markdown/themes/dark.css'
 import 'highlight.js/styles/github.css'
+import { useTheme } from '../../hooks/useTheme'
 import { agentMarkedConfig, buildAgentStreamingOptions } from './agent-markdown.config'
 import styles from './AgentMarkdownRenderer.module.css'
 import { useAgentMarkdownComponents } from './useAgentMarkdownComponents'
 import { useAgentMarkdownThemeClass } from './useAgentMarkdownThemeClass'
+
+const CUSTOM_THINK_TAG_PATTERN = /<(redacted_thinking|think|thinking)(?:\s|>)/i
 
 export interface AgentMarkdownRendererProps {
   content: string
@@ -18,6 +23,8 @@ export interface AgentMarkdownRendererProps {
   className?: string
   /** ancillary：思考块等附属内容 */
   variant?: 'chat' | 'ancillary'
+  /** 外层已有 XProvider 时设为 false */
+  wrapXProvider?: boolean
 }
 
 /**
@@ -29,11 +36,20 @@ export const AgentMarkdownRenderer: React.FC<AgentMarkdownRendererProps> = ({
   isStreaming = false,
   plainText = false,
   className,
-  variant = 'chat'
+  variant = 'chat',
+  wrapXProvider = true
 }) => {
+  const { isDark } = useTheme()
   const themeClass = useAgentMarkdownThemeClass()
   const components = useAgentMarkdownComponents()
   const streaming = useMemo(() => buildAgentStreamingOptions(isStreaming), [isStreaming])
+  const escapeRawHtml = useMemo(() => !CUSTOM_THINK_TAG_PATTERN.test(content), [content])
+  const xProviderTheme = useMemo(
+    () => ({
+      algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm
+    }),
+    [isDark]
+  )
 
   if (plainText) {
     return <div className={`${styles.plainText} ${className ?? ''}`}>{content}</div>
@@ -41,16 +57,23 @@ export const AgentMarkdownRenderer: React.FC<AgentMarkdownRendererProps> = ({
 
   const variantClass = variant === 'ancillary' ? styles.ancillary : styles.root
 
-  return (
+  const markdown = (
     <XMarkdown
       content={content}
       config={agentMarkedConfig}
       className={`x-markdown ${themeClass} ${variantClass} ${className ?? ''}`}
-      escapeRawHtml
+      escapeRawHtml={escapeRawHtml}
       openLinksInNewTab
       protectCustomTagNewlines
+      paragraphTag="div"
       streaming={streaming}
       components={components}
     />
   )
+
+  if (!wrapXProvider) {
+    return markdown
+  }
+
+  return <XProvider theme={xProviderTheme}>{markdown}</XProvider>
 }

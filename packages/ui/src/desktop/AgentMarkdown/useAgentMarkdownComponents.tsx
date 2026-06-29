@@ -2,9 +2,16 @@ import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ComponentProps as XMarkdownComponentProps } from '@ant-design/x-markdown'
 import markdownStyles from '../MarkdownRenderer/MarkdownRenderer.module.css'
+import { AgentThinkBlock } from './AgentThinkBlock'
 import { agentIncompleteMarkdownComponents } from './agent-markdown-incomplete'
 
-/** 桌面 Agent 气泡内保留的 Markdown 定制：代码复制 + 流式占位 */
+const thinkTags = {
+  think: AgentThinkBlock,
+  thinking: AgentThinkBlock,
+  redacted_thinking: AgentThinkBlock
+} as const
+
+/** 桌面 Agent 气泡内保留的 Markdown 定制：代码复制 + 流式占位 + Think */
 export function useAgentMarkdownComponents() {
   const { t } = useTranslation()
 
@@ -60,6 +67,7 @@ export function useAgentMarkdownComponents() {
 
     return {
       ...agentIncompleteMarkdownComponents,
+      ...thinkTags,
       a: Link,
       code: Code
     }
