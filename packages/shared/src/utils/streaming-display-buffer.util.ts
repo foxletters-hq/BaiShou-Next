@@ -14,6 +14,11 @@ export interface StreamingTextDisplayBufferOptions {
   segmentMaxChars?: number
   /** 无完整分段可揭示时，仍展示尾部 partial 单元（更平滑的逐字感） */
   showPartialDuringGap?: boolean
+  /**
+   * 每次 push 立即输出完整缓冲（配合 XMarkdown 流式 Markdown 渲染，不做逐段显现）。
+   * 与 Playground 一致：UI 侧只负责累积全文，未完成语法由 XMarkdown 处理。
+   */
+  immediate?: boolean
 }
 
 export interface StreamingTextDisplayBuffer {
@@ -97,6 +102,7 @@ export function createStreamingTextDisplayBuffer(
   const maxCatchUpLines = options?.maxCatchUpLines ?? STREAM_MAX_CATCHUP_LINES
   const segmentMaxChars = options?.segmentMaxChars ?? STREAM_SEGMENT_MAX_CHARS
   const showPartialDuringGap = options?.showPartialDuringGap ?? false
+  const immediate = options?.immediate ?? false
 
   let buffer = ''
   let revealedUnitCount = 0
@@ -145,6 +151,10 @@ export function createStreamingTextDisplayBuffer(
     push(delta: string) {
       if (!delta) return
       buffer += delta
+      if (immediate) {
+        onDisplayChange(buffer)
+        return
+      }
       const { completeUnits, partialUnit } = splitStreamingRevealUnits(buffer, segmentMaxChars)
       if (completeUnits.length > revealedUnitCount) {
         includePartialUnit = false
@@ -181,6 +191,9 @@ export function createStreamingTextDisplayBuffer(
     },
 
     getDisplayText() {
+      if (immediate) {
+        return buffer
+      }
       return buildStreamingDisplayText(
         buffer,
         revealedUnitCount,

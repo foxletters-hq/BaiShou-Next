@@ -107,4 +107,18 @@ describe('createStreamingTextDisplayBuffer', () => {
     expect(displays.at(-1)).toBe('')
     expect(buffer.getFullText()).toBe('')
   })
+
+  it('immediate mode emits full buffer on every push (XMarkdown path)', () => {
+    const displays: string[] = []
+    const buffer = createStreamingTextDisplayBuffer((text) => displays.push(text), {
+      immediate: true
+    })
+
+    buffer.push('# Hel')
+    expect(displays.at(-1)).toBe('# Hel')
+
+    buffer.push('lo\n')
+    expect(displays.at(-1)).toBe('# Hello\n')
+    expect(buffer.getDisplayText()).toBe('# Hello\n')
+  })
 })
