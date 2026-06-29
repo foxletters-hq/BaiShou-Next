@@ -3,11 +3,10 @@ import React, { useMemo } from 'react'
 import { ChevronDown, CheckCircle2, Loader2 } from 'lucide-react'
 import shared from '../shared/CollapsibleAncillaryBlock.module.css'
 import styles from './StreamingBubble.module.css'
-import { MarkdownRenderer } from '../MarkdownRenderer'
 import { ThinkingBlock } from '../ThinkingBlock'
 import { AssistantAvatar } from '../AssistantAvatar'
 import { parseRedactedThinking } from '../../shared/chat-bubble/redacted-thinking'
-import { motion } from 'framer-motion'
+import { AgentMarkdownRenderer } from '../AgentMarkdown'
 
 export interface ToolExecution {
   name: string
@@ -18,6 +17,8 @@ export interface StreamingBubbleProps {
   text: string
   reasoning?: string
   isReasoning?: boolean
+  /** 正文是否仍在流式输出（桥接态应为 false，以便 XMarkdown 刷新未完成语法） */
+  isTextStreaming?: boolean
   activeToolName?: string | null
   completedTools?: ToolExecution[]
   aiProfile?: {
@@ -34,6 +35,7 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
   text,
   reasoning = '',
   isReasoning = false,
+  isTextStreaming = true,
   activeToolName = null,
   completedTools = [],
   aiProfile = { name: 'AI' },
@@ -55,12 +57,7 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
   const hasText = cleanText.length > 0
 
   return (
-    <motion.div
-      className={styles.container}
-      initial={{ opacity: 0, scale: 0.95, y: 10 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-    >
+    <div className={styles.container}>
       <div className={styles.avatarWrap}>
         <AssistantAvatar avatarPath={aiProfile.avatarPath} size={36} borderRadius="50%" />
       </div>
@@ -84,9 +81,10 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
                 {hasReasoning && (
                   <ThinkingBlock
                     content={cleanReasoning}
-                    isThinking={isReasoning && !hasText}
-                    defaultOpen={true}
-                    autoCollapse={false}
+                    isThinking={isReasoning}
+                    defaultOpen={false}
+                    autoCollapse
+                    maxPreviewLines={2}
                   />
                 )}
 
@@ -98,8 +96,9 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
                   />
                 )}
 
-                {/* 正文内容 */}
-                {hasText && <MarkdownRenderer content={cleanText} isStreaming={true} />}
+                {hasText && (
+                  <AgentMarkdownRenderer content={cleanText} isStreaming={isTextStreaming} />
+                )}
               </div>
             ) : (
               <div className={styles.dotsWrap}>
@@ -117,7 +116,7 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
           </>
         )}
       </div>
-    </motion.div>
+    </div>
   )
 }
 

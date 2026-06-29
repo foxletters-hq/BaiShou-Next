@@ -11,24 +11,7 @@
   color: var(--text-primary) !important;
 }
 
-.streaming p:last-of-type,
-.streaming li:last-of-type,
-.streaming pre:last-of-type,
-.streaming blockquote:last-of-type {
-  animation: streamLineReveal 0.36s ease-out;
-}
-
-@keyframes streamLineReveal {
-  from {
-    opacity: 0.35;
-    transform: translateY(4px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+/* 流式逐段显现由 streaming-display-buffer 负责；此处不再对 last-of-type 做 CSS 动画，避免每 90ms 重绘时反复触发 translateY 导致抖动 */
 
 .list {
   padding-left: 20px;
