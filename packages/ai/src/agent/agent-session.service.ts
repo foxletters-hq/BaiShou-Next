@@ -70,7 +70,8 @@ export class AgentSessionService {
       abortSignal,
       streamClaimGeneration,
       userMessageId,
-      skipUserMessageRecording
+      skipUserMessageRecording,
+      flushSessionToDisk
     } = options
 
     try {
@@ -123,7 +124,9 @@ export class AgentSessionService {
               sessionId,
               COMPRESSION_MESSAGE_FETCH_LIMIT
             )) as import('./message.adapter').MessageWithParts[]
-            ContextCompressorService.schedulePrune(sessionRepo, sessionId, allForPrune)
+            await ContextCompressorService.runPrune(sessionRepo, sessionId, allForPrune, {
+              flushSessionToDisk
+            })
           }
         }
       }
@@ -214,7 +217,9 @@ export class AgentSessionService {
               sessionId,
               COMPRESSION_MESSAGE_FETCH_LIMIT
             )) as import('./message.adapter').MessageWithParts[]
-            ContextCompressorService.schedulePrune(sessionRepo, sessionId, allForPrune)
+            await ContextCompressorService.runPrune(sessionRepo, sessionId, allForPrune, {
+              flushSessionToDisk
+            })
           }
           const phaseLabel =
             phase === 'upstream'
@@ -391,6 +396,12 @@ export class AgentSessionService {
         namingProvider: systemModels?.namingProvider,
         namingModelId: systemModels?.namingModelId
       })
+
+      if (!streamError && accumulator.toolCalls.length > 0) {
+        await ContextCompressorService.runPrune(sessionRepo, sessionId, undefined, {
+          flushSessionToDisk
+        })
+      }
 
       // 7. 向外抛出完成/错误回调（仅一次，避免覆盖真实 API 错误）
       if (streamError) {

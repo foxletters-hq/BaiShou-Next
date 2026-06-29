@@ -17,7 +17,7 @@ export class SessionFileService {
   async writeSession(sessionId: string, sessionData: any): Promise<string> {
     const dir = await this.getDirectory()
     const fullPath = path.join(dir, `${sessionId}.json`)
-    await this.fileSystem.writeFile(fullPath, JSON.stringify(sessionData, null, 2), 'utf8')
+    await this.fileSystem.writeFile(fullPath, JSON.stringify(sessionData), 'utf8')
     return fullPath
   }
 

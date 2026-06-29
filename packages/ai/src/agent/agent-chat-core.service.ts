@@ -43,6 +43,7 @@ export class AgentChatCoreService {
     diarySearcher: unknown
     webSearchResultFetcher: unknown
     fetchSearchPage: unknown
+    flushSessionToDisk?: (sessionId: string) => Promise<void>
   }) {
     const claim = claimAgentStreamSession(params.sessionId)
 
@@ -66,7 +67,8 @@ export class AgentChatCoreService {
           webSearchResultFetcher: params.webSearchResultFetcher,
           fetchSearchPage: params.fetchSearchPage,
           abortSignal: claim.signal,
-          streamClaimGeneration: claim.generation
+          streamClaimGeneration: claim.generation,
+          flushSessionToDisk: params.flushSessionToDisk
         } as Parameters<typeof agentService.streamChat>[0],
         {
           onTextDelta: (chunk) => params.emitter.sendChunk(params.sessionId, chunk),

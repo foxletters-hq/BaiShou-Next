@@ -47,6 +47,8 @@ export interface StreamChatOptions {
   userMessageId?: string // 明确指定回复针对的用户消息 ID
   skipUserMessageRecording?: boolean // 用户消息已提前落库时，跳过重复记录
   forceRecompress?: boolean // 编辑/重发截断后允许重新判定压缩（截断已清除 marker/无效快照）
+  /** 修剪 tool payload 后写回外部 session JSON */
+  flushSessionToDisk?: (sessionId: string) => Promise<void>
 }
 
 export interface StreamChatCallbacks {

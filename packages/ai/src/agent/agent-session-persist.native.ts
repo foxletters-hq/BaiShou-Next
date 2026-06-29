@@ -6,6 +6,7 @@ import { ModelPricingService } from '../pricing/model-pricing.service'
 import { mergeStreamUsageFromSdk, normalizeTokenUsageForBilling } from './token-usage.util'
 import { StreamAccumulator } from './stream-accumulator'
 import { resolveAssistantParentOrderIndex } from './agent-session-persist.utils'
+import { sanitizeToolPayloadForStorage } from './session-tool-payload-sanitizer'
 // @ts-ignore
 import { SnapshotRepository } from '@baishou/database'
 
@@ -100,18 +101,19 @@ export async function persistResult(params: PersistResultParams): Promise<{
       continue
     }
     const resultObj = accumulator.toolResults.find((tr) => tr.callId === tc.callId)
+    const toolData = sanitizeToolPayloadForStorage({
+      callId: tc.callId,
+      name: tc.name,
+      arguments: tc.arguments,
+      result: resultObj ? resultObj.result : undefined,
+      status: resultObj ? 'completed' : 'failed'
+    })
     partsToInsert.push({
       id: generateUUID(),
       messageId: assistantMsgId,
       sessionId,
       type: 'tool',
-      data: {
-        callId: tc.callId,
-        name: tc.name,
-        arguments: tc.arguments,
-        result: resultObj ? resultObj.result : undefined,
-        status: resultObj ? 'completed' : 'failed'
-      }
+      data: toolData
     })
   }
 

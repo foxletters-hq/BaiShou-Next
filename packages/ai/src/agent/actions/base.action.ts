@@ -58,7 +58,10 @@ export async function runStreamWithPersistence(
       toolRegistry: deps.toolRegistry,
       diarySearcher: deps.diarySearcher,
       webSearchResultFetcher: deps.webSearchResultFetcher,
-      fetchSearchPage: deps.fetchSearchPage
+      fetchSearchPage: deps.fetchSearchPage,
+      flushSessionToDisk: deps.sessionManager
+        ? (sessionId) => deps.sessionManager!.flushSessionToDisk(sessionId)
+        : undefined
     })
     if (deps.sessionManager) {
       try {

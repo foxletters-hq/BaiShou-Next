@@ -89,9 +89,28 @@ export class ContextCompressorService {
   static schedulePrune(
     sessionRepo: SessionRepository,
     sessionId: string,
-    allMessages?: MessageWithParts[]
+    allMessages?: MessageWithParts[],
+    options?: { flushSessionToDisk?: (sessionId: string) => Promise<void> }
   ): void {
-    void CompressionPruneService.pruneSession(sessionRepo, sessionId, allMessages)
+    void ContextCompressorService.runPrune(sessionRepo, sessionId, allMessages, options)
+  }
+
+  static async runPrune(
+    sessionRepo: SessionRepository,
+    sessionId: string,
+    allMessages?: MessageWithParts[],
+    options?: { flushSessionToDisk?: (sessionId: string) => Promise<void> }
+  ): Promise<number> {
+    const count = await CompressionPruneService.pruneSession(sessionRepo, sessionId, allMessages)
+    if (count > 0 && options?.flushSessionToDisk) {
+      try {
+        await options.flushSessionToDisk(sessionId)
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e)
+        logger.warn('[ContextCompressor] flushSessionToDisk after prune failed:', message)
+      }
+    }
+    return count
   }
 
   static async compress(

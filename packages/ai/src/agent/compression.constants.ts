@@ -9,6 +9,18 @@ export const PRUNE_PROTECT_TOKENS = 40_000
 /** 至少剪出这么多 token 才执行 prune */
 export const PRUNE_MINIMUM_TOKENS = 20_000
 
+/** 历史 tool payload 保护窗口：最近 N 个用户回合保留完整内容 */
+export const PRUNE_PROTECT_USER_TURNS = 5
+
+/** 单个 tool payload 超过此字节数时，即使在保护窗口内也提前修剪 */
+export const TOOL_PAYLOAD_MAX_BYTES = 256 * 1024
+
+/** 修剪后保留的正文预览长度 */
+export const TOOL_PAYLOAD_PREVIEW_CHARS = 200
+
+/** 入库时 generic tool payload 超过此字节数则立即瘦身 */
+export const TOOL_PAYLOAD_STORE_MAX_BYTES = 8 * 1024
+
 /** 送入摘要模型的单条 tool 文本上限 */
 export const TOOL_OUTPUT_MAX_CHARS = 2_000
 
