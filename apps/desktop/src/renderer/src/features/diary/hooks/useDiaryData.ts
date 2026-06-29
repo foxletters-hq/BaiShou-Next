@@ -11,6 +11,7 @@ export interface DiaryPageQuery {
   selectedMonth: Date | null
   searchQuery: string
   filterWeathers: string[]
+  filterMoods: string[]
   filterFavorite: boolean
   page: number
   pageSize: number
@@ -36,10 +37,14 @@ function buildListFilter(query: DiaryPageQuery): DiaryListFilter {
     filter.weathers = query.filterWeathers
   }
 
+  if (query.filterMoods.length > 0) {
+    filter.moods = query.filterMoods
+  }
+
   return filter
 }
 
-/** 搜索模式：跨月全文检索，仅保留天气/收藏筛选 */
+/** 搜索模式：跨月全文检索，仅保留天气/心情/收藏筛选 */
 function buildSearchFilter(
   query: DiaryPageQuery
 ): Omit<DiaryListFilter, 'limit' | 'offset' | 'orderBy'> {
@@ -51,6 +56,10 @@ function buildSearchFilter(
 
   if (query.filterWeathers.length > 0) {
     filter.weathers = query.filterWeathers
+  }
+
+  if (query.filterMoods.length > 0) {
+    filter.moods = query.filterMoods
   }
 
   return filter
@@ -95,14 +104,26 @@ export function useDiaryData(query: DiaryPageQuery) {
     setTotalCount(0)
   }, [vaultScopeKey])
 
-  const listFilter = useMemo(() => buildListFilter(query), [query])
-  const countFilter = useMemo(() => buildCountFilter(query), [query])
   const searchTerm = query.searchQuery.trim()
   const browseMonthKey = query.selectedMonth?.getTime() ?? 0
   const searchFilterKey = useMemo(
-    () => `${query.filterFavorite ? 1 : 0}:${query.filterWeathers.join(',')}`,
-    [query.filterFavorite, query.filterWeathers]
+    () => `${query.filterFavorite ? 1 : 0}:${query.filterWeathers.join(',')}:${query.filterMoods.join(',')}`,
+    [query.filterFavorite, query.filterWeathers, query.filterMoods]
   )
+  const browseFilterKey = useMemo(
+    () => `${browseMonthKey}:${searchFilterKey}`,
+    [browseMonthKey, searchFilterKey]
+  )
+  const prevBrowseFilterKeyRef = useRef(browseFilterKey)
+
+  useEffect(() => {
+    if (prevBrowseFilterKeyRef.current === browseFilterKey) return
+    prevBrowseFilterKeyRef.current = browseFilterKey
+    if (!searchTerm) {
+      setEntries([])
+      setTotalCount(0)
+    }
+  }, [browseFilterKey, searchTerm])
 
   const loadEntries = useCallback(async (options?: { silent?: boolean }) => {
     const silent = options?.silent ?? false
@@ -157,9 +178,7 @@ export function useDiaryData(query: DiaryPageQuery) {
     searchTerm,
     query.page,
     query.pageSize,
-    searchTerm ? searchFilterKey : browseMonthKey,
-    searchTerm ? 0 : listFilter,
-    searchTerm ? 0 : countFilter,
+    searchTerm ? searchFilterKey : browseFilterKey,
     diaryListCacheVersion,
     vaultScopeKey
   ])

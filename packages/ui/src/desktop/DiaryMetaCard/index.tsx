@@ -1,7 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import type { DiaryMeta } from '@baishou/shared'
-import { limitDiaryPreviewTags, resolveWeatherId } from '@baishou/shared'
+import { limitDiaryPreviewTags, resolveWeatherId, resolveMoodId } from '@baishou/shared'
 import { MoodEmoji } from '../MoodIcon'
 import { WeatherEmoji } from '../WeatherIcon'
 // @ts-ignore
@@ -77,7 +77,7 @@ export const DiaryMetaCard: React.FC<DiaryMetaCardProps> = ({ meta, onDelete, on
                   <WeatherEmoji weather={meta.weather} size={14} />
                 </span>
               )}
-              {meta.mood && (
+              {resolveMoodId(meta.mood) && (
                 <span className={styles.iconOutlineBadge} title={meta.mood}>
                   <MoodEmoji mood={meta.mood} size={14} />
                 </span>

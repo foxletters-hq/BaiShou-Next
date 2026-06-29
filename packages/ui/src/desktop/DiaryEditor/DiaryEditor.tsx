@@ -206,6 +206,12 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
 
   const normalizedMood = normalizeMoodId(mood)
 
+  useEffect(() => {
+    if (normalizedMood && normalizedMood !== mood) {
+      onMoodChange?.(normalizedMood)
+    }
+  }, [normalizedMood, mood, onMoodChange])
+
   return (
     <div className="diary-editor-scaffold">
       <div className="de-app-bar">

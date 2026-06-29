@@ -2,8 +2,14 @@ import { useTranslation } from 'react-i18next'
 import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { normalizeWeatherId, normalizeDiaryTags, type WeatherId } from '@baishou/shared'
-import { WEATHER_IDS } from '@baishou/shared'
+import {
+  normalizeWeatherId,
+  normalizeMoodIdForFilter,
+  normalizeDiaryTags,
+  type WeatherId,
+  type MoodId
+} from '@baishou/shared'
+import { WEATHER_IDS, MOOD_IDS } from '@baishou/shared'
 import { useDiaryData } from './hooks/useDiaryData'
 import { useStorageIndexing } from './hooks/useStorageIndexing'
 import type { DiaryEntry } from './DiaryCard'
@@ -54,6 +60,20 @@ export const DiaryPage: React.FC = () => {
   const [filterFavorite, setFilterFavorite] = useState(
     () => sessionStorage.getItem('diary_filterFavorite') === 'true'
   )
+  const [filterMoods, setFilterMoods] = useState<string[]>(() => {
+    try {
+      const saved = sessionStorage.getItem('diary_filterMoods')
+      if (!saved) return []
+      const parsed = JSON.parse(saved) as unknown
+      if (!Array.isArray(parsed)) return []
+      const ids = parsed
+        .map((m) => normalizeMoodIdForFilter(String(m)))
+        .filter((m): m is MoodId => m != null)
+      return [...new Set(ids)]
+    } catch {
+      return []
+    }
+  })
 
   // 分页状态（持久化到 sessionStorage）
   const [currentPage, setCurrentPage] = useState(() => {
@@ -103,6 +123,9 @@ export const DiaryPage: React.FC = () => {
     sessionStorage.setItem('diary_filterFavorite', String(filterFavorite))
   }, [filterFavorite])
   useEffect(() => {
+    sessionStorage.setItem('diary_filterMoods', JSON.stringify(filterMoods))
+  }, [filterMoods])
+  useEffect(() => {
     sessionStorage.setItem('diary_currentPage', String(currentPage))
   }, [currentPage])
   useEffect(() => {
@@ -113,7 +136,7 @@ export const DiaryPage: React.FC = () => {
   useEffect(() => {
     setCurrentPage(1)
     gridScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' })
-  }, [selectedMonth, searchQuery, filterWeathers, filterFavorite])
+  }, [selectedMonth, searchQuery, filterWeathers, filterMoods, filterFavorite])
 
   useEffect(() => {
     gridScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' })
@@ -124,11 +147,12 @@ export const DiaryPage: React.FC = () => {
       selectedMonth,
       searchQuery,
       filterWeathers,
+      filterMoods,
       filterFavorite,
       page: currentPage,
       pageSize
     }),
-    [selectedMonth, searchQuery, filterWeathers, filterFavorite, currentPage, pageSize]
+    [selectedMonth, searchQuery, filterWeathers, filterMoods, filterFavorite, currentPage, pageSize]
   )
   const { entries, totalCount, loading, loadEntries } = useDiaryData(diaryQuery)
   const storageIndexing = useStorageIndexing()
@@ -239,6 +263,8 @@ export const DiaryPage: React.FC = () => {
         onMonthChange={setSelectedMonth}
         filterWeathers={filterWeathers}
         onFilterWeathersChange={setFilterWeathers}
+        filterMoods={filterMoods}
+        onFilterMoodsChange={setFilterMoods}
         filterFavorite={filterFavorite}
         onFilterFavoriteChange={setFilterFavorite}
         todayEntry={todayEntry}

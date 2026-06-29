@@ -44,12 +44,14 @@ export const DiaryScreen: React.FC = () => {
     searchQuery,
     selectedMonth,
     filterWeathers,
+    filterMoods,
     filterFavorite,
     currentPage,
     pageSize,
     setSearchQuery,
     setSelectedMonth,
     setFilterWeathers,
+    setFilterMoods,
     setFilterFavorite,
     setCurrentPage,
     setPageSize,
@@ -80,6 +82,7 @@ export const DiaryScreen: React.FC = () => {
       [DIARY_FILTER_STORAGE_KEYS.selectedMonth, 'all'],
       [DIARY_FILTER_STORAGE_KEYS.searchQuery, ''],
       [DIARY_FILTER_STORAGE_KEYS.filterWeathers, '[]'],
+      [DIARY_FILTER_STORAGE_KEYS.filterMoods, '[]'],
       [DIARY_FILTER_STORAGE_KEYS.filterFavorite, 'false'],
       [DIARY_FILTER_STORAGE_KEYS.currentPage, '1']
     ]).catch((e) => logger.error('归档恢复后重置日记筛选失败', e instanceof Error ? e : String(e)))
@@ -90,11 +93,12 @@ export const DiaryScreen: React.FC = () => {
       selectedMonth,
       searchQuery,
       filterWeathers,
+      filterMoods,
       filterFavorite,
       page: currentPage,
       pageSize
     }),
-    [selectedMonth, searchQuery, filterWeathers, filterFavorite, currentPage, pageSize]
+    [selectedMonth, searchQuery, filterWeathers, filterMoods, filterFavorite, currentPage, pageSize]
   )
 
   const diaryListReady = Boolean(
@@ -267,6 +271,8 @@ export const DiaryScreen: React.FC = () => {
             onMonthChange={setSelectedMonth}
             filterWeathers={filterWeathers}
             onFilterWeathersChange={setFilterWeathers}
+            filterMoods={filterMoods}
+            onFilterMoodsChange={setFilterMoods}
             filterFavorite={filterFavorite}
             onFilterFavoriteChange={setFilterFavorite}
             onSyncPress={

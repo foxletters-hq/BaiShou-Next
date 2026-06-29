@@ -11,6 +11,7 @@ export interface DiaryPageQuery {
   selectedMonth: Date | null
   searchQuery: string
   filterWeathers: string[]
+  filterMoods: string[]
   filterFavorite: boolean
   page: number
   pageSize: number
@@ -64,10 +65,14 @@ function buildListFilter(query: DiaryPageQuery): DiaryListFilter {
     filter.weathers = query.filterWeathers
   }
 
+  if (query.filterMoods.length > 0) {
+    filter.moods = query.filterMoods
+  }
+
   return filter
 }
 
-/** 搜索模式：跨月全文检索，仅保留天气/收藏筛选 */
+/** 搜索模式：跨月全文检索，仅保留天气/心情/收藏筛选 */
 function buildSearchFilter(
   query: DiaryPageQuery
 ): Omit<DiaryListFilter, 'limit' | 'offset' | 'orderBy'> {
@@ -81,6 +86,10 @@ function buildSearchFilter(
     filter.weathers = query.filterWeathers
   }
 
+  if (query.filterMoods.length > 0) {
+    filter.moods = query.filterMoods
+  }
+
   return filter
 }
 
@@ -92,7 +101,7 @@ function buildCountFilter(query: DiaryPageQuery): Omit<DiaryListFilter, 'limit' 
 function searchFilterCacheKey(
   filter: Omit<DiaryListFilter, 'limit' | 'offset' | 'orderBy'>
 ): string {
-  return `${filter.favorite ? 1 : 0}:${(filter.weathers ?? []).join(',')}`
+  return `${filter.favorite ? 1 : 0}:${(filter.weathers ?? []).join(',')}:${(filter.moods ?? []).join(',')}`
 }
 
 function matchesSelectedMonth(dateValue: Date | string, selectedMonth: Date): boolean {
@@ -154,7 +163,7 @@ export function useDiaryData(
   const browseMonthKey = effectiveQuery.selectedMonth?.getTime() ?? 0
   const searchFilterKey = useMemo(
     () => searchFilterCacheKey(buildSearchFilter(effectiveQuery)),
-    [effectiveQuery.filterFavorite, effectiveQuery.filterWeathers]
+    [effectiveQuery.filterFavorite, effectiveQuery.filterWeathers, effectiveQuery.filterMoods]
   )
 
   const browseIdentity = useMemo(

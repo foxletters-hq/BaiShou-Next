@@ -9,6 +9,7 @@ import {
   limitDiaryPreviewTags,
   resolveDiaryTagColorIndex,
   resolveWeatherId,
+  resolveMoodId,
   type DiaryTagColorRegistry
 } from '@baishou/shared'
 import { WeatherEmoji } from '../WeatherIcon'
@@ -111,7 +112,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
                   <WeatherEmoji weather={weather} size={14} />
                 </View>
               ) : null}
-              {mood ? (
+              {resolveMoodId(mood) ? (
                 <View
                   style={[
                     styles.iconOutlineBadge,
