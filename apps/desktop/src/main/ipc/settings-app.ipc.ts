@@ -114,15 +114,21 @@ export function registerSettingsAppIPC() {
 
   ipcMain.handle('settings:get-mcp-tools', async () => {
     const { toolRegistry, buildMcpToolContext } = await import('./agent-helpers')
+    const { logger } = await import('@baishou/shared')
     if (!toolRegistry) return []
-    const context = await buildMcpToolContext()
-    const tools = toolRegistry.getEnabledToolsRaw(context)
-    return tools.map((tool: any) => ({
-      name: `baishou_${tool.name}`,
-      displayName: tool.displayName,
-      description: tool.description,
-      category: tool.category
-    }))
+    try {
+      const context = await buildMcpToolContext()
+      const tools = toolRegistry.getEnabledToolsRaw(context)
+      return tools.map((tool: any) => ({
+        name: `baishou_${tool.name}`,
+        displayName: tool.displayName,
+        description: tool.description,
+        category: tool.category
+      }))
+    } catch (e) {
+      logger.warn('[settings:get-mcp-tools] Failed to list MCP tools:', e as Error)
+      return []
+    }
   })
 
   ipcMain.handle('settings:get-hotkey-config', async () => {

@@ -230,9 +230,9 @@ export function registerSummaryIPC() {
       const diaryRepoAdapter = {
         async list() {
           const records = await shadowRepo.listAll()
-          logger.info('[DEBUG-IPC] shadowRepo.listAll count:', records.length)
+          logger.debug('[DEBUG-IPC] shadowRepo.listAll count:', records.length)
           if (records.length > 0) {
-            logger.info('[DEBUG-IPC] Sample record date field:', {
+            logger.debug('[DEBUG-IPC] Sample record date field:', {
               date: records[0].date,
               type: typeof records[0].date
             })
