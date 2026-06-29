@@ -27,6 +27,8 @@ export interface DiaryAppBarProps {
   onFilterFavoriteChange: (v: boolean) => void
   onSyncPress?: () => void
   isSyncing?: boolean
+  /** 搜索 debounce 进行中 */
+  isSearchPending?: boolean
 }
 
 export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
@@ -39,7 +41,8 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
   filterFavorite,
   onFilterFavoriteChange,
   onSyncPress,
-  isSyncing = false
+  isSyncing = false,
+  isSearchPending = false
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -94,6 +97,13 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
               autoCapitalize="none"
             />
           </View>
+          {isSearchPending ? (
+            <ActivityIndicator
+              size="small"
+              color={colors.primary}
+              style={styles.searchPendingSpinner}
+            />
+          ) : null}
           <TouchableOpacity
             onPress={closeSearch}
             style={styles.closeSearchBtn}
@@ -159,7 +169,11 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
               accessibilityRole="button"
               accessibilityLabel={t('common.search_hint')}
             >
-              <MaterialIcons name="search" size={22} color={colors.textPrimary} />
+              {isSearchPending ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <MaterialIcons name="search" size={22} color={colors.textPrimary} />
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -301,6 +315,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     minHeight: 40
+  },
+  searchPendingSpinner: {
+    marginRight: 4
   },
   searchSectionWrap: {
     flex: 1,

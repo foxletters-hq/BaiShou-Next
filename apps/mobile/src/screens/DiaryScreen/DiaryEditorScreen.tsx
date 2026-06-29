@@ -61,6 +61,7 @@ export const DiaryEditorScreen: React.FC = () => {
   const [tags, setTags] = useState<string[]>([])
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [weather, setWeather] = useState<string | null>(null)
+  const [mood, setMood] = useState<string | null>(null)
   const [isFavorite, setIsFavorite] = useState(false)
   const [existingId, setExistingId] = useState<number | null>(null)
   const [originalContent, setOriginalContent] = useState('')
@@ -93,6 +94,7 @@ export const DiaryEditorScreen: React.FC = () => {
       tagColors?: string | Record<string, number> | null
       date: Date
       weather?: string | null
+      mood?: string | null
       isFavorite?: boolean
     },
     templateConfig: DiaryTemplateConfig,
@@ -106,6 +108,7 @@ export const DiaryEditorScreen: React.FC = () => {
     setExistingId(diary.id ?? null)
     setSelectedDate(diary.date)
     setWeather(diary.weather || null)
+    setMood(diary.mood || null)
     setIsFavorite(diary.isFavorite || false)
 
     if (isAppendMode) {
@@ -195,6 +198,7 @@ export const DiaryEditorScreen: React.FC = () => {
         tagColors: Object.keys(entryTagColors).length > 0 ? entryTagColors : undefined,
         date: selectedDate,
         weather: weather || undefined,
+        mood: mood || undefined,
         isFavorite
       }
 
@@ -240,6 +244,12 @@ export const DiaryEditorScreen: React.FC = () => {
 
   const handleTagsChange = (newTags: string[]) => {
     setTags(newTags)
+    setIsDirty(true)
+    isDirtyRef.current = true
+  }
+
+  const handleMoodChange = (newMood: string) => {
+    setMood(newMood || null)
     setIsDirty(true)
     isDirtyRef.current = true
   }
@@ -383,6 +393,7 @@ export const DiaryEditorScreen: React.FC = () => {
           tags={tags}
           selectedDate={selectedDate}
           weather={weather || ''}
+          mood={mood || ''}
           isFavorite={isFavorite}
           editorWebViewSource={editorWebViewSource}
           webViewActive={isFocused}
@@ -391,6 +402,7 @@ export const DiaryEditorScreen: React.FC = () => {
           tagColorRegistry={tagColorRegistry}
           onDateChange={setSelectedDate}
           onWeatherChange={handleWeatherChange}
+          onMoodChange={handleMoodChange}
           onFavoriteChange={handleFavoriteChange}
           onPickImages={handlePickImages}
           pickingImages={pickingImages}

@@ -45,6 +45,8 @@ export interface DiaryListProps {
   pageSize: number
   selectedMonth: Date | null
   loading: boolean
+  /** 有列表缓存时的后台刷新（不替换整页为 spinner） */
+  refreshing?: boolean
   /** 已授权但外部存储尚未挂载完成 */
   storagePending?: boolean
   /** 外部存储挂载耗时较长，后台仍在继续 */
@@ -157,7 +159,6 @@ const DiaryListRow = memo(function DiaryListRow({
         createdAt={item.date}
         weather={item.weather}
         mood={item.mood}
-        location={item.location}
         isFavorite={item.isFavorite}
         matchSimilarity={item.matchSimilarity}
         onClick={handleOpen}
@@ -175,6 +176,7 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
   pageSize,
   selectedMonth,
   loading,
+  refreshing = false,
   storagePending = false,
   storageSlow = false,
   storageMountFailed = false,
@@ -236,8 +238,17 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
   const keyExtractor = useCallback((item: DiaryListEntry) => String(item.id), [])
 
   const listHeader = useMemo(
-    () => (showPagination ? <DiaryPaginationBar placement="top" {...paginationBarProps} /> : null),
-    [paginationBarProps, showPagination]
+    () => (
+      <>
+        {refreshing ? (
+          <View style={styles.refreshBar}>
+            <ActivityIndicator size="small" color={colors.primary} />
+          </View>
+        ) : null}
+        {showPagination ? <DiaryPaginationBar placement="top" {...paginationBarProps} /> : null}
+      </>
+    ),
+    [colors.primary, paginationBarProps, refreshing, showPagination]
   )
 
   const listFooter = useMemo(
@@ -326,7 +337,7 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
     )
   }
 
-  if (storageIndexing && entries.length === 0 && totalCount === 0) {
+  if (storageIndexing && entries.length === 0 && totalCount === 0 && loading) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -343,7 +354,7 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
     )
   }
 
-  if (loading) {
+  if (loading && entries.length === 0) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -372,11 +383,9 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
     )
   }
 
-  const listRemountKey = `${selectedMonth?.getTime() ?? 'all'}-${currentPage}-${totalCount}`
-
   return (
     <FlatList
-      key={`diary-grid-${numColumns}-${listRemountKey}`}
+      key={`diary-grid-${numColumns}`}
       data={entries}
       numColumns={numColumns}
       keyExtractor={keyExtractor}
@@ -387,6 +396,7 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
       columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : undefined}
       ListHeaderComponent={listHeader}
       ListFooterComponent={listFooter}
+      extraData={`${currentPage}-${selectedMonth?.getTime() ?? 'all'}-${totalCount}-${refreshing ? 1 : 0}`}
       initialNumToRender={8}
       maxToRenderPerBatch={6}
       windowSize={7}
@@ -440,6 +450,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 120
+  },
+  refreshBar: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8
   },
   columnWrapper: {
     gap: 12

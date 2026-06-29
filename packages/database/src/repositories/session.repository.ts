@@ -103,6 +103,10 @@ export class SessionRepository {
     return this.run(() => this.crudOps.updatePartsDataFallback(...args))
   }
 
+  updatePartsDataById(...args: Parameters<SessionCrudOps['updatePartsDataById']>) {
+    return this.run(() => this.crudOps.updatePartsDataById(...args))
+  }
+
   getSessionAggregate(...args: Parameters<SessionAggregateSync['getSessionAggregate']>) {
     return this.run(() => this.aggregateSync.getSessionAggregate(...args))
   }

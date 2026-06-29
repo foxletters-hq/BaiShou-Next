@@ -350,13 +350,37 @@ export class ShadowIndexQueryOps {
   }
 
   async listFiltered(options: DiaryListFilterOptions = {}): Promise<ShadowJournalRow[]> {
+    /** 列表 preview 专用：raw_content 仅取前 500 字，不可用于需要全文的场景 */
     const where = this.buildListFilterWhere(options)
     const orderFn =
       options.orderBy === 'asc'
         ? asc(shadowJournalIndexTable.date)
         : desc(shadowJournalIndexTable.date)
 
-    let query = this.database.select().from(shadowJournalIndexTable).where(where).orderBy(orderFn)
+    let query = this.database
+      .select({
+        id: shadowJournalIndexTable.id,
+        vaultName: shadowJournalIndexTable.vaultName,
+        filePath: shadowJournalIndexTable.filePath,
+        date: shadowJournalIndexTable.date,
+        createdAt: shadowJournalIndexTable.createdAt,
+        updatedAt: shadowJournalIndexTable.updatedAt,
+        contentHash: shadowJournalIndexTable.contentHash,
+        weather: shadowJournalIndexTable.weather,
+        mood: shadowJournalIndexTable.mood,
+        location: shadowJournalIndexTable.location,
+        locationDetail: shadowJournalIndexTable.locationDetail,
+        isFavorite: shadowJournalIndexTable.isFavorite,
+        hasMedia: shadowJournalIndexTable.hasMedia,
+        tags: shadowJournalIndexTable.tags,
+        tagColors: shadowJournalIndexTable.tagColors,
+        rawContent: sql<string | null>`substr(${shadowJournalIndexTable.rawContent}, 1, 500)`.as(
+          'raw_content'
+        )
+      })
+      .from(shadowJournalIndexTable)
+      .where(where)
+      .orderBy(orderFn)
     if (options.limit != null && options.limit > 0) {
       query = query.limit(options.limit) as typeof query
     }

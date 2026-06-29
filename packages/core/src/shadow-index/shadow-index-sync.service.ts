@@ -260,9 +260,9 @@ export class ShadowIndexSyncService {
         }
       }
 
-      // ── 5. 提交超重型批量事务 ──
+      // ── 5. 批量写入影子索引 ──
       if (payloads.length > 0) {
-        logger.info(`[ShadowSync] 正在开启巨型批量事务，并入 ${payloads.length} 篇日志...`)
+        logger.info(`[ShadowSync] 批量写入影子索引：${payloads.length} 篇日记`)
         const rowIds = await this.shadowRepo.batchUpsert(payloads)
 
         for (let j = 0; j < payloads.length; j++) {

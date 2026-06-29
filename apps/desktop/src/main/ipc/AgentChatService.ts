@@ -52,7 +52,7 @@ export class AgentChatService {
     skipUserMessageRecording?: boolean
     forceRecompress?: boolean
   }) {
-    const { realSessionRepo, realSnapshotRepo } = getAgentManagers()
+    const { realSessionRepo, realSnapshotRepo, sessionManager } = getAgentManagers()
     const emitter = new ElectronStreamEmitter(params.event)
 
     await AgentChatCoreService.runStreamChat({
@@ -72,7 +72,8 @@ export class AgentChatService {
       toolRegistry,
       diarySearcher: createDiarySearcher(),
       webSearchResultFetcher: createWebSearchResultFetcher(),
-      fetchSearchPage: createFetchSearchPage()
+      fetchSearchPage: createFetchSearchPage(),
+      flushSessionToDisk: (sessionId) => sessionManager.flushSessionToDisk(sessionId)
     })
   }
 

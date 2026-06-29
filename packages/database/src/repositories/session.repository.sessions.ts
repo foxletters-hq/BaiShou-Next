@@ -244,4 +244,24 @@ export class SessionCrudOps {
     const { inArray } = await import('drizzle-orm')
     await this.db.update(partsTbl).set({ data: fallbackData }).where(inArray(partsTbl.id, partIds))
   }
+
+  async updatePartsDataById(updates: Array<{ id: string; data: unknown }>): Promise<void> {
+    if (updates.length === 0) return
+    const { eq } = await import('drizzle-orm')
+
+    if (usesSyncTransaction(this.db)) {
+      await (this.db as any).transaction((tx: any) => {
+        for (const update of updates) {
+          tx.update(partsTbl).set({ data: update.data }).where(eq(partsTbl.id, update.id)).run()
+        }
+      })
+      return
+    }
+
+    await this.db.transaction(async (tx) => {
+      for (const update of updates) {
+        await tx.update(partsTbl).set({ data: update.data }).where(eq(partsTbl.id, update.id))
+      }
+    })
+  }
 }

@@ -98,15 +98,10 @@ export const DiaryScreen: React.FC = () => {
   )
 
   const diaryListReady = Boolean(
-    isFilterRestored &&
-    dbReady &&
-    services?.diaryService &&
-    storageReady &&
-    !vaultSwitching &&
-    !storageIndexing
+    isFilterRestored && dbReady && services?.diaryService && storageReady && !vaultSwitching
   )
 
-  const { entries, totalCount, loading, loadEntries } = useDiaryData(
+  const { entries, totalCount, loading, searchPending, loadEntries } = useDiaryData(
     dbReady && !vaultSwitching ? services?.diaryService : undefined,
     diaryQuery,
     {
@@ -141,7 +136,7 @@ export const DiaryScreen: React.FC = () => {
         skipInitialFocusRefreshRef.current = false
         return
       }
-      void loadEntries()
+      void loadEntries({ silent: true })
     }, [diaryDataReady, diaryListReady, isSyncing, loadEntries])
   )
 
@@ -243,7 +238,7 @@ export const DiaryScreen: React.FC = () => {
     if (deletingId === null || !services) return
     try {
       await services.diaryService.delete(deletingId)
-      await loadEntries()
+      await loadEntries({ silent: false })
       setDeletingId(null)
     } catch (e) {
       logger.error('删除日记失败', e instanceof Error ? e : String(e))
@@ -254,7 +249,8 @@ export const DiaryScreen: React.FC = () => {
     await runIncrementalSync().catch(() => {})
   }, [runIncrementalSync])
 
-  const listLoading = vaultSwitching || !isFilterRestored || loading
+  const listLoading = vaultSwitching || !isFilterRestored || (loading && entries.length === 0)
+  const listRefreshing = loading && entries.length > 0
 
   return (
     <>
@@ -277,6 +273,7 @@ export const DiaryScreen: React.FC = () => {
               incrementalSyncEnabled === true ? () => void handleIncrementalSync() : undefined
             }
             isSyncing={isSyncing || isPlanning}
+            isSearchPending={searchPending}
           />
 
           <DiaryList
@@ -286,6 +283,7 @@ export const DiaryScreen: React.FC = () => {
             pageSize={pageSize}
             selectedMonth={selectedMonth}
             loading={listLoading}
+            refreshing={listRefreshing}
             storagePending={isStoragePending}
             storageSlow={mountSlow}
             storageMountFailed={mountFailed}
