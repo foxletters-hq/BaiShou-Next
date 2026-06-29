@@ -203,6 +203,7 @@ export function useDesktopStorageSettings(onStatsRefresh?: () => Promise<void>) 
       setStorageBusy('switching')
       try {
         await getStorageApi()?.changeDirectory?.(targetPath)
+        await (window as any).api?.vault?.waitForResync?.()
         await refreshStorageInfo()
         return true
       } catch (e: unknown) {

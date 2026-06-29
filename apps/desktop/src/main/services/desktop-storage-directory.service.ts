@@ -138,6 +138,9 @@ export async function resumeStorageAfterFileCopy(): Promise<void> {
   const { scheduleVaultEcosystemResync } = await import('./vault-resync.service')
   scheduleVaultEcosystemResync('storage-root-changed')
 
+  const { emitStorageRootChangedMutation } = await import('../cache/desktop-main-cache-coordinator')
+  emitStorageRootChangedMutation(vaultService.getActiveVault()?.name)
+
   try {
     await settingsManager.fullResyncFromDisk()
     invalidateMcpToolContextCache()

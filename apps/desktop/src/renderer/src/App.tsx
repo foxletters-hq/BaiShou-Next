@@ -26,7 +26,11 @@ import {
   initDesktopRendererCacheCoordinator,
   handleRendererDomainMutation
 } from './cache/desktop-renderer-cache-coordinator'
-import { initDesktopVaultScope, setDesktopVaultScopeKey } from './cache/desktop-vault-scope'
+import {
+  initDesktopVaultScope,
+  refreshDesktopVaultScopeAfterStorageRootChange,
+  setDesktopVaultScopeKey
+} from './cache/desktop-vault-scope'
 import type { DomainMutationEvent } from '@baishou/shared/cache'
 import { i18n, isRagMemoryEnabled } from '@baishou/shared'
 import { TitleBar } from './components/TitleBar'
@@ -210,9 +214,20 @@ export function App() {
     void initDesktopVaultScope()
     const unsub = (window as any).api?.cache?.onDomainMutation?.((event: DomainMutationEvent) => {
       handleRendererDomainMutation(event)
-      if (event.domain === 'vault' && event.action === 'switch' && event.vaultKey) {
-        setDesktopVaultScopeKey(event.vaultKey)
+      if (event.domain === 'vault' && event.action === 'switch') {
+        if (event.reason === 'storage-root-changed') {
+          void refreshDesktopVaultScopeAfterStorageRootChange()
+        } else if (event.vaultKey) {
+          setDesktopVaultScopeKey(event.vaultKey)
+        }
       }
+    })
+    return unsub
+  }, [])
+
+  useEffect(() => {
+    const unsub = (window as any).api?.storage?.onRootChanged?.(() => {
+      void refreshDesktopVaultScopeAfterStorageRootChange()
     })
     return unsub
   }, [])

@@ -92,6 +92,14 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
     fetchVersion()
   }, [loadProfile, loadVaults])
 
+  useEffect(() => {
+    const unsub = (window as any).api?.storage?.onRootChanged?.(() => {
+      void loadVaults()
+      void refreshStorageStats()
+    })
+    return unsub
+  }, [loadVaults])
+
   const identityProfile = profile || {
     nickname: '',
     avatarPath: '',

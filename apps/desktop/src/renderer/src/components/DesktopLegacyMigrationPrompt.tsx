@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useDialog } from '@baishou/ui'
@@ -24,6 +24,16 @@ export function DesktopLegacyMigrationPrompt() {
   const location = useLocation()
   const promptInFlightRef = useRef<Promise<void> | null>(null)
   const dialogShownRef = useRef(false)
+  const [storageRootChangeToken, setStorageRootChangeToken] = useState(0)
+
+  useEffect(() => {
+    const unsub = window.api?.storage?.onRootChanged?.(() => {
+      dialogShownRef.current = false
+      promptInFlightRef.current = null
+      setStorageRootChangeToken((token) => token + 1)
+    })
+    return unsub
+  }, [])
 
   useEffect(() => {
     if (isLegacyMigrationPromptExcludedPath(location.pathname)) return
@@ -63,7 +73,7 @@ export function DesktopLegacyMigrationPrompt() {
     })()
 
     void promptInFlightRef.current
-  }, [dialog, location.pathname, navigate, t])
+  }, [dialog, location.pathname, navigate, storageRootChangeToken, t])
 
   return null
 }
