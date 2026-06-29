@@ -5,8 +5,8 @@ import { parseRedactedThinking } from '../../shared/chat-bubble/redacted-thinkin
 import { useNativeTheme } from '../../native/theme'
 import { NativeChatBubbleInlineEditor } from './NativeChatBubbleInlineEditor'
 import { AgentMarkdownRenderer } from '../AgentMarkdown'
+import { AgentThinkSection } from '../AgentThinkSection'
 import { NativeImagePreviewModal } from '../DiaryEditor/NativeImagePreviewModal'
-import { ThinkingBlock } from '../ThinkingBlock/ThinkingBlock'
 import { ToolResultGroupCard } from '../ToolResultGroupCard/ToolResultGroupCard'
 import type { MockChatAttachment } from '@baishou/shared'
 import type { ChatBubbleProps } from './chat-bubble.types'
@@ -41,7 +41,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   showReasoning = true
 }) => {
   const { t } = useTranslation()
-  const { colors, isDark } = useNativeTheme()
+  const { colors } = useNativeTheme()
   const [showActions, setShowActions] = useState(false)
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null)
   const isUser = message.role === 'user'
@@ -111,20 +111,20 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
             edit.isEditing
               ? isUser
                 ? {
-                    backgroundColor: isDark ? 'rgba(30, 30, 34, 0.4)' : 'rgba(255, 255, 255, 0.48)',
+                    backgroundColor: colors.bgSurface,
                     borderBottomRightRadius: 4
                   }
                 : {
-                    backgroundColor: isDark ? 'rgba(30, 30, 34, 0.4)' : 'rgba(255, 255, 255, 0.48)',
+                    backgroundColor: colors.bgSurface,
                     borderBottomLeftRadius: 4
                   }
               : isUser
                 ? {
-                    backgroundColor: isDark ? 'rgba(30, 30, 34, 0.4)' : 'rgba(255, 255, 255, 0.48)',
+                    backgroundColor: colors.bgSurface,
                     borderBottomRightRadius: 4
                   }
                 : {
-                    backgroundColor: isDark ? 'rgba(30, 30, 34, 0.4)' : 'rgba(255, 255, 255, 0.48)',
+                    backgroundColor: colors.bgSurface,
                     borderBottomLeftRadius: 4
                   }
           ]}
@@ -137,12 +137,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                 width: '100%'
               }}
             >
-              <ThinkingBlock
-                content={cleanReasoning}
-                isThinking={false}
-                defaultOpen={false}
-                autoCollapse
-              />
+              <AgentThinkSection content={cleanReasoning} />
             </View>
           ) : null}
 
