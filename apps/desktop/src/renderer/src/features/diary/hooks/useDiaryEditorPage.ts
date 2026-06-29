@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import {
   formatLocalDate,
   normalizeWeatherId,
+  normalizeMoodId,
   normalizeDiaryTags,
   safeParseDate,
   logger,
@@ -19,6 +20,7 @@ type DiaryEditorInitialState = {
   tags: string[]
   selectedDate: Date
   weather: string
+  mood: string
   isFavorite: boolean
   mediaPaths: string[]
 }
@@ -48,6 +50,7 @@ export function useDiaryEditorPage() {
   const [tags, setTags] = useState<string[]>([])
   const [selectedDate, setSelectedDate] = useState<Date>(() => parseInitialDate())
   const [weather, setWeather] = useState('')
+  const [mood, setMood] = useState('')
   const [isFavorite, setIsFavorite] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
   const [diaryId, setDiaryId] = useState<number | null>(null)
@@ -65,6 +68,7 @@ export function useDiaryEditorPage() {
     tags: [],
     selectedDate: parseInitialDate(),
     weather: '',
+    mood: '',
     isFavorite: false,
     mediaPaths: []
   })
@@ -75,10 +79,11 @@ export function useDiaryEditorPage() {
       tags,
       selectedDate,
       weather,
+      mood,
       isFavorite,
       mediaPaths
     }
-  }, [content, tags, selectedDate, weather, isFavorite, mediaPaths])
+  }, [content, tags, selectedDate, weather, mood, isFavorite, mediaPaths])
 
   const loadTemplateConfig = useCallback(async (): Promise<DiaryTemplateConfig> => {
     try {
@@ -108,6 +113,7 @@ export function useDiaryEditorPage() {
           tags: [],
           selectedDate: parseInitialDate(),
           weather: '',
+          mood: '',
           isFavorite: false,
           mediaPaths: []
         }
@@ -123,6 +129,7 @@ export function useDiaryEditorPage() {
           let initialContent = ''
           let initialTags: string[] = []
           let initialWeather = ''
+          let initialMood = ''
           let initialFavorite = false
           let initialMedia: string[] = []
 
@@ -130,13 +137,16 @@ export function useDiaryEditorPage() {
             setDiaryId(diary.id || null)
             const parsedTags = normalizeDiaryTags(diary.tags)
             const parsedWeather = normalizeWeatherId(diary.weather || '') || ''
+            const parsedMood = normalizeMoodId(diary.mood || '') || ''
             setTags(parsedTags)
             setWeather(parsedWeather)
+            setMood(parsedMood)
             setIsFavorite(diary.isFavorite || false)
             setMediaPaths(diary.mediaPaths || [])
 
             initialTags = parsedTags
             initialWeather = parsedWeather
+            initialMood = parsedMood
             initialFavorite = diary.isFavorite || false
             initialMedia = diary.mediaPaths || []
 
@@ -156,6 +166,7 @@ export function useDiaryEditorPage() {
             tags: initialTags,
             selectedDate: parseInitialDate(),
             weather: initialWeather,
+            mood: initialMood,
             isFavorite: initialFavorite,
             mediaPaths: initialMedia
           }
@@ -168,6 +179,7 @@ export function useDiaryEditorPage() {
             tags: [],
             selectedDate: parseInitialDate(),
             weather: '',
+            mood: '',
             isFavorite: false,
             mediaPaths: []
           }
@@ -201,6 +213,7 @@ export function useDiaryEditorPage() {
         tags: [...snap.tags],
         selectedDate: snap.selectedDate,
         weather: snap.weather,
+        mood: snap.mood,
         isFavorite: snap.isFavorite,
         mediaPaths: [...snap.mediaPaths]
       }
@@ -233,6 +246,7 @@ export function useDiaryEditorPage() {
               .substring(0, 50),
             tags: tagsRef.current,
             weather,
+            mood,
             isFavorite,
             mediaPaths
           }
@@ -249,6 +263,7 @@ export function useDiaryEditorPage() {
           tags: tagsRef.current,
           selectedDate,
           weather,
+          mood,
           isFavorite,
           mediaPaths
         }
@@ -257,7 +272,7 @@ export function useDiaryEditorPage() {
         throw e
       }
     },
-    [selectedDate, weather, isFavorite, diaryId, mediaPaths]
+    [selectedDate, weather, mood, isFavorite, diaryId, mediaPaths]
   )
 
   const handleContentChange = (newContent: string) => {
@@ -282,6 +297,7 @@ export function useDiaryEditorPage() {
       return true
     }
     if (weather !== init.weather) return true
+    if (mood !== init.mood) return true
     if (isFavorite !== init.isFavorite) return true
     if (formatLocalDate(selectedDate) !== formatLocalDate(init.selectedDate)) return true
 
@@ -337,6 +353,7 @@ export function useDiaryEditorPage() {
     tags,
     selectedDate,
     weather,
+    mood,
     isFavorite,
     mediaPaths,
     isDirty,
@@ -350,6 +367,7 @@ export function useDiaryEditorPage() {
     setTags,
     setSelectedDate,
     setWeather,
+    setMood,
     setIsFavorite,
     setMediaPaths,
     setIsDirty

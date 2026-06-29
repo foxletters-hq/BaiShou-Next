@@ -310,6 +310,16 @@
   letter-spacing: 0.5px;
 }
 
+.diary-card-icon-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 4px;
+  background: transparent;
+  border: 0.5px solid var(--color-primary);
+  border-radius: var(--radius-xs);
+}
+
 .diary-card-menu-icon {
   color: var(--text-tertiary);
   font-size: 20px;

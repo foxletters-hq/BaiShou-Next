@@ -2,11 +2,16 @@ import { useTranslation } from 'react-i18next'
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import {
   WEATHER_IDS,
-  getWeatherEmoji,
   weatherI18nKey,
   normalizeWeatherId,
+  MOOD_IDS,
+  getMoodLabelFallback,
+  moodI18nKey,
+  normalizeMoodId,
   type WeatherId
 } from '@baishou/shared'
+import { MOOD_FLUENT_ICON_SRC } from '../../shared/mood-fluent-assets'
+import { WEATHER_FLUENT_ICON_SRC } from '../../shared/weather-fluent-assets'
 import { CodeMirrorEditor, CodeMirrorEditorHandle } from './CodeMirrorEditor'
 import { DiaryEditorAppBarTitle } from '../DiaryEditorAppBarTitle/DiaryEditorAppBarTitle'
 import { TagInput } from '../TagInput'
@@ -177,7 +182,8 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
       { value: '', label: t('diary.weather.default', '天气') },
       ...WEATHER_IDS.map((id) => ({
         value: id,
-        label: `${getWeatherEmoji(id)} ${t(`diary.weather.${weatherI18nKey(id)}`, weatherLabelFallback[id])}`
+        iconSrc: WEATHER_FLUENT_ICON_SRC[id],
+        label: t(`diary.weather.${weatherI18nKey(id)}`, weatherLabelFallback[id])
       }))
     ],
     [t]
@@ -191,18 +197,19 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
     }
   }, [normalizedWeather, weather, onWeatherChange])
 
-  const MOOD_OPTIONS = [
-    { value: '', label: t('diary.mood.default', '心情') },
-    { value: 'Happy', label: `😊 ${t('diary.mood.happy', '开心')}` },
-    { value: 'Content', label: `😌 ${t('diary.mood.content', '满足')}` },
-    { value: 'Peaceful', label: `🕊️ ${t('diary.mood.peaceful', '平静')}` },
-    { value: 'Excited', label: `🤩 ${t('diary.mood.excited', '兴奋')}` },
-    { value: 'Grateful', label: `🙏 ${t('diary.mood.grateful', '感恩')}` },
-    { value: 'Reflective', label: `🤔 ${t('diary.mood.reflective', '沉思')}` },
-    { value: 'Melancholy', label: `😢 ${t('diary.mood.melancholy', '忧伤')}` },
-    { value: 'Anxious', label: `😰 ${t('diary.mood.anxious', '焦虑')}` },
-    { value: 'Glorious', label: `🌟 ${t('diary.mood.glorious', '灿烂')}` }
-  ]
+  const MOOD_OPTIONS = useMemo(
+    () => [
+      { value: '', label: t('diary.mood.default', '心情') },
+      ...MOOD_IDS.map((id) => ({
+        value: id,
+        iconSrc: MOOD_FLUENT_ICON_SRC[id],
+        label: t(`diary.mood.${moodI18nKey(id)}`, getMoodLabelFallback(id))
+      }))
+    ],
+    [t]
+  )
+
+  const normalizedMood = normalizeMoodId(mood)
 
   return (
     <div className="diary-editor-scaffold">
@@ -256,12 +263,24 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
 
           {!isSummaryMode && (
             <div className="de-meta-bar">
-              <WeatherPicker
-                value={normalizedWeather}
-                options={WEATHER_OPTIONS}
-                onChange={(v) => onWeatherChange?.(v)}
-                placeholder={t('diary.weather.default', '天气')}
-              />
+              <div className="de-meta-pickers">
+                {onWeatherChange && (
+                  <WeatherPicker
+                    value={normalizedWeather}
+                    options={WEATHER_OPTIONS}
+                    onChange={(v) => onWeatherChange(v)}
+                    placeholder={t('diary.weather.default', '天气')}
+                  />
+                )}
+                {onMoodChange && (
+                  <WeatherPicker
+                    value={normalizedMood}
+                    options={MOOD_OPTIONS}
+                    onChange={(v) => onMoodChange(v)}
+                    placeholder={t('diary.mood.default', '心情')}
+                  />
+                )}
+              </div>
               <button
                 className={`de-meta-fav-btn${isFavorite ? ' active' : ''}`}
                 onClick={() => onFavoriteChange?.(!isFavorite)}

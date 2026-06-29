@@ -1219,6 +1219,7 @@
     },
     "mood_label": "Mood",
     "mood": {
+      "default": "Mood",
       "happy": "Happy",
       "satisfied": "Satisfied",
       "calm": "Calm",

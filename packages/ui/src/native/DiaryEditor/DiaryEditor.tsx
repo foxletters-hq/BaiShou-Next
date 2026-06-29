@@ -16,6 +16,7 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { MarkdownToolbar } from '../MarkdownToolbar/MarkdownToolbar'
 import { DiaryEditorAppBarTitle } from '../DiaryEditorAppBarTitle/DiaryEditorAppBarTitle'
 import { WeatherPicker } from '../WeatherPicker/WeatherPicker'
+import { MoodPicker } from '../MoodPicker/MoodPicker'
 import { useNativeTheme } from '../theme'
 import { useKeyboardHeight } from '../hooks/useKeyboardHeight'
 import {
@@ -36,12 +37,14 @@ interface DiaryEditorProps {
   selectedDate: Date
   isSummaryMode?: boolean
   weather?: string
+  mood?: string
   isFavorite?: boolean
   onContentChange: (content: string) => void
   onTagsChange: (tags: string[]) => void
   tagColorRegistry?: DiaryTagColorRegistry
   onDateChange: (date: Date) => void
   onWeatherChange?: (weather: string) => void
+  onMoodChange?: (mood: string) => void
   onFavoriteChange?: (isFavorite: boolean) => void
   onSave?: (content: string, tags: string[], date: Date) => void
   onCancel?: () => void
@@ -65,12 +68,14 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   selectedDate,
   isSummaryMode = false,
   weather = '',
+  mood = '',
   isFavorite = false,
   onContentChange,
   onTagsChange: _onTagsChange,
   tagColorRegistry,
   onDateChange,
   onWeatherChange,
+  onMoodChange,
   onFavoriteChange,
   onSave,
   onCancel,
@@ -259,9 +264,12 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
         </TouchableOpacity>
       </View>
 
-      {!isSummaryMode && onWeatherChange && (
+      {!isSummaryMode && (onWeatherChange || onMoodChange) && (
         <View style={[styles.metaBar, { borderBottomColor: colors.borderSubtle }]}>
-          <WeatherPicker value={weather} onChange={onWeatherChange} />
+          <View style={styles.metaPickers}>
+            {onWeatherChange ? <WeatherPicker value={weather} onChange={onWeatherChange} /> : null}
+            {onMoodChange ? <MoodPicker value={mood} onChange={onMoodChange} /> : null}
+          </View>
           <Pressable
             style={({ pressed }) => [
               styles.favBtn,
@@ -362,6 +370,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderBottomWidth: 1
+  },
+  metaPickers: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+    flexWrap: 'wrap'
   },
   favBtn: {
     width: 40,

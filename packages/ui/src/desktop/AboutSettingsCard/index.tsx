@@ -23,6 +23,7 @@ export interface AboutSettingsCardProps {
   onOpenFeedback?: () => void
   onOpenCompressionTestSession?: (sessionId: string) => void
   onOpenOnboarding?: () => void
+  onDemoVaultCreated?: (vaultName: string) => Promise<void>
 }
 
 export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
@@ -31,7 +32,8 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
   onOpenGithubRepo,
   onOpenFeedback,
   onOpenCompressionTestSession,
-  onOpenOnboarding
+  onOpenOnboarding,
+  onDemoVaultCreated
 }) => {
   const { t } = useTranslation()
   const toast = useToast()
@@ -245,6 +247,7 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
         <DeveloperOptionsView
           onOpenCompressionTestSession={onOpenCompressionTestSession}
           onOpenOnboarding={onOpenOnboarding}
+          onDemoVaultCreated={onDemoVaultCreated}
         />
       </div>
     </div>

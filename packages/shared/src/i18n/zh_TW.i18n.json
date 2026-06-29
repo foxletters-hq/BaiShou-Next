@@ -1165,6 +1165,7 @@
     },
     "mood_label": "心情",
     "mood": {
+      "default": "心情",
       "happy": "開心",
       "satisfied": "滿足",
       "calm": "平靜",

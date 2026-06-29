@@ -1179,6 +1179,7 @@
     },
     "mood_label": "気分",
     "mood": {
+      "default": "気分",
       "happy": "嬉しい",
       "satisfied": "満足",
       "calm": "穏やか",

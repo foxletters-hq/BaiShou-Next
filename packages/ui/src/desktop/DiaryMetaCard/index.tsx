@@ -1,7 +1,9 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import type { DiaryMeta } from '@baishou/shared'
-import { getWeatherEmoji, limitDiaryPreviewTags } from '@baishou/shared'
+import { limitDiaryPreviewTags, resolveWeatherId } from '@baishou/shared'
+import { MoodEmoji } from '../MoodIcon'
+import { WeatherEmoji } from '../WeatherIcon'
 // @ts-ignore
 import styles from './DiaryMetaCard.module.css'
 
@@ -70,6 +72,16 @@ export const DiaryMetaCard: React.FC<DiaryMetaCardProps> = ({ meta, onDelete, on
             <div className={styles.weekdayRow}>
               <span className={styles.weekday}>{weekday}</span>
               <span className={styles.yearMonth}>{yearMonth}</span>
+              {resolveWeatherId(meta.weather) && (
+                <span className={styles.iconOutlineBadge}>
+                  <WeatherEmoji weather={meta.weather} size={14} />
+                </span>
+              )}
+              {meta.mood && (
+                <span className={styles.iconOutlineBadge} title={meta.mood}>
+                  <MoodEmoji mood={meta.mood} size={14} />
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -81,19 +93,6 @@ export const DiaryMetaCard: React.FC<DiaryMetaCardProps> = ({ meta, onDelete, on
 
       {/* Time */}
       <div className={styles.time}>{time}</div>
-
-      {/* 元数据：天气、心情、位置 */}
-      {(meta.weather || meta.mood || meta.location) && (
-        <div className={styles.metaRow}>
-          {meta.weather && (
-            <span className={styles.metaBadge}>
-              {getWeatherEmoji(meta.weather)} {meta.weather}
-            </span>
-          )}
-          {meta.mood && <span className={styles.metaBadge}>{meta.mood}</span>}
-          {meta.location && <span className={styles.metaBadge}>📍 {meta.location}</span>}
-        </div>
-      )}
 
       {/* Content Preview */}
       <div className={styles.preview}>{meta.preview}</div>

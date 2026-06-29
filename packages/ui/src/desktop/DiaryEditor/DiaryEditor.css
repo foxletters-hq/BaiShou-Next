@@ -104,7 +104,26 @@
   flex-shrink: 0;
 }
 
+.de-meta-pickers {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.de-meta-pickers .wp-container {
+  flex: 0 1 auto;
+}
+
+.de-meta-pickers .wp-trigger {
+  width: auto;
+  min-width: 132px;
+}
+
 .de-meta-fav-btn {
+  margin-left: auto;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: 8px;

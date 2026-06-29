@@ -35,6 +35,7 @@ export const DiaryEditorPage: React.FC = () => {
         tags={editor.tags}
         selectedDate={editor.selectedDate}
         weather={editor.weather}
+        mood={editor.mood}
         isFavorite={editor.isFavorite}
         mediaPaths={editor.mediaPaths}
         isSaving={editor.isSaving}
@@ -42,6 +43,7 @@ export const DiaryEditorPage: React.FC = () => {
         onTagsChange={editor.setTags}
         onDateChange={editor.setSelectedDate}
         onWeatherChange={editor.setWeather}
+        onMoodChange={editor.setMood}
         onFavoriteChange={editor.setIsFavorite}
         onMediaPathsChange={editor.setMediaPaths}
         onSave={editor.handleSave}

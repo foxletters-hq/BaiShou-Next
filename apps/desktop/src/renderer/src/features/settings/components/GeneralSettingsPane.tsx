@@ -269,6 +269,9 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
                 onOpenFeedback={() => window.api.shell.openExternal(GITHUB_ISSUES_URL)}
                 onOpenCompressionTestSession={(sessionId) => navigate(`/chat/${sessionId}`)}
                 onOpenOnboarding={() => navigate('/welcome?preview=1')}
+                onDemoVaultCreated={async (vaultName) => {
+                  await switchActiveVault(vaultName)
+                }}
               />
             </div>
           </section>

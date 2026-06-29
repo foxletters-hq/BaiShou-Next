@@ -1,14 +1,7 @@
 import React from 'react'
 import { Edit3, Trash2, Heart } from 'lucide-react'
-import { MarkdownRenderer } from '@baishou/ui'
-import {
-  getWeatherEmoji,
-  limitDiaryPreviewTags,
-  normalizeWeatherId,
-  weatherI18nKey,
-  WEATHER_IDS,
-  type WeatherId
-} from '@baishou/shared'
+import { MarkdownRenderer, MoodEmoji, WeatherEmoji } from '@baishou/ui'
+import { limitDiaryPreviewTags, resolveWeatherId } from '@baishou/shared'
 
 /** 星期几名称 */
 const WEEKDAY_NAMES_KEYS = [
@@ -139,31 +132,6 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
   const { visibleTags: previewTags, overflowCount: tagOverflowCount } =
     limitDiaryPreviewTags(visibleTags)
 
-  const weatherLabelFallback: Record<WeatherId, string> = {
-    sunny: '晴',
-    cloudy: '多云',
-    overcast: '阴',
-    light_rain: '小雨',
-    heavy_rain: '大雨',
-    snow: '雪',
-    fog: '雾',
-    windy: '风'
-  }
-
-  const weatherLabel = (() => {
-    if (!entry.weather) return ''
-    const id = normalizeWeatherId(entry.weather)
-    if ((WEATHER_IDS as readonly string[]).includes(id)) {
-      return t(
-        `diary.weather.${weatherI18nKey(id as WeatherId)}`,
-        weatherLabelFallback[id as WeatherId]
-      )
-    }
-    return entry.weather
-  })()
-
-  const weatherEmoji = getWeatherEmoji(normalizeWeatherId(entry.weather) || entry.weather)
-
   return (
     <div className="diary-card" onClick={onClick}>
       {/* 头部：日期 + 星期 + 收藏 */}
@@ -174,6 +142,16 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
             <div className="diary-card-weekday-row">
               <span className="diary-card-weekday">{weekday}</span>
               <span className="diary-card-yearmonth">{yearMonth}</span>
+              {resolveWeatherId(entry.weather) && (
+                <span className="diary-card-icon-badge">
+                  <WeatherEmoji weather={entry.weather} size={14} />
+                </span>
+              )}
+              {entry.mood && (
+                <span className="diary-card-icon-badge">
+                  <MoodEmoji mood={entry.mood} size={14} />
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -181,19 +159,6 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
           <Heart size={18} className="diary-card-fav-star" fill="currentColor" />
         )}
       </div>
-
-      {/* 元数据：天气、心情、位置 */}
-      {(entry.weather || entry.mood || entry.location) && (
-        <div className="diary-card-meta-row">
-          {entry.weather && (
-            <span className="diary-card-meta-badge">
-              {weatherEmoji} {weatherLabel}
-            </span>
-          )}
-          {entry.mood && <span className="diary-card-meta-badge">{entry.mood}</span>}
-          {entry.location && <span className="diary-card-meta-badge">📍 {entry.location}</span>}
-        </div>
-      )}
 
       {/* 内容预览 */}
       <div className="diary-card-content">

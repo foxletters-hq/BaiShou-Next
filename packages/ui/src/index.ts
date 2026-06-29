@@ -20,6 +20,8 @@ export * from './desktop/HelpTooltip/index'
 
 export * from './desktop/DiaryCard/index'
 export * from './desktop/DiaryMetaCard/index'
+export * from './desktop/MoodIcon/index'
+export * from './desktop/WeatherIcon/index'
 export * from './desktop/TimelineNode/index'
 export * from './desktop/TagInput/index'
 export * from './desktop/DatePicker/index'
