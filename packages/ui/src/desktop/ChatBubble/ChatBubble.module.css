@@ -109,9 +109,7 @@
 
 .userBubbleCard {
   padding: 12px 16px;
-  background: var(--bg-glass-surface);
-  backdrop-filter: var(--blur-glass);
-  -webkit-backdrop-filter: var(--blur-glass);
+  background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   color: var(--text-primary);
   border-radius: 20px 4px 20px 20px;
@@ -133,9 +131,7 @@
 }
 
 .editingBubbleCard {
-  background: var(--bg-glass-surface);
-  backdrop-filter: var(--blur-glass);
-  -webkit-backdrop-filter: var(--blur-glass);
+  background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   width: 800px !important;
@@ -155,9 +151,7 @@
 
 .aiBubbleCard {
   padding: 12px 16px;
-  background: var(--bg-glass-surface);
-  backdrop-filter: var(--blur-glass);
-  -webkit-backdrop-filter: var(--blur-glass);
+  background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   color: var(--text-primary);
   border-radius: 4px 20px 20px 20px;
