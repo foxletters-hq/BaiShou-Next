@@ -1,5 +1,5 @@
-/** 移动端外部存储 UTF-8 整文件读入上限（约 16MB），超出易在 256MB 堆上限设备 OOM */
-export const MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES = 16 * 1024 * 1024
+/** 移动端外部存储 UTF-8 整文件读入上限（160MB） */
+export const MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES = 160 * 1024 * 1024
 
 export function normalizeExternalFileByteSize(size: unknown): number | undefined {
   if (typeof size === 'number' && Number.isFinite(size) && size >= 0) {

@@ -8,8 +8,8 @@ import {
 } from '../mobile-file-read-limits'
 
 describe('mobile-file-read-limits', () => {
-  it('uses 16MB text read cap', () => {
-    expect(MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES).toBe(16 * 1024 * 1024)
+  it('uses 160MB text read cap', () => {
+    expect(MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES).toBe(160 * 1024 * 1024)
   })
 
   it('formats EFBIG error with size details', () => {
@@ -38,7 +38,7 @@ describe('mobile-file-read-limits', () => {
     expect(
       isOversizedReadFailure(
         new Error(
-          'File too large to read into memory (268501000 bytes, limit 16777216): /tmp/huge.json'
+          'File too large to read into memory (268501000 bytes, limit 167772160): /tmp/huge.json'
         )
       )
     ).toBe(true)
