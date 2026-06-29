@@ -3,7 +3,14 @@ import {
   UpsertShadowIndexPayload,
   normalizeShadowFilePath
 } from '@baishou/database'
-import { parseDateStr, DiaryMeta, logger, buildDiaryEmbeddingSourceId } from '@baishou/shared'
+import {
+  parseDateStr,
+  DiaryMeta,
+  logger,
+  buildDiaryEmbeddingSourceId,
+  normalizeMoodId,
+  normalizeWeatherId
+} from '@baishou/shared'
 
 import type { IFileSystem } from '../fs/file-system.types'
 import { md5Hex } from '../fs/md5'
@@ -231,8 +238,8 @@ export class ShadowIndexSyncService {
             createdAt: diary.createdAt.toISOString(),
             updatedAt: diary.updatedAt.toISOString(),
             contentHash: currentHash,
-            weather: diary.weather ?? null,
-            mood: diary.mood ?? null,
+            weather: diary.weather ? normalizeWeatherId(diary.weather) || null : null,
+            mood: diary.mood ? normalizeMoodId(diary.mood) || null : null,
             location: diary.location ?? null,
             locationDetail: diary.locationDetail ?? null,
             isFavorite: diary.isFavorite,

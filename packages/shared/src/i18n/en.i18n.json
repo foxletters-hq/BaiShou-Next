@@ -1204,6 +1204,7 @@
     "filter": "Filter",
     "filter_favorite": "Favorites",
     "filter_weather": "Weather",
+    "filter_mood": "Mood",
     "clear_filter": "Clear",
     "weather_label": "Weather",
     "weather": {

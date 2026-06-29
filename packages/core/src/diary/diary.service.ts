@@ -11,6 +11,9 @@ import {
   formatLocalDate,
   parseDateStr,
   weatherMatchesFilter,
+  moodMatchesFilter,
+  resolveWeatherId,
+  resolveMoodId,
   formatDiaryPreviewText,
   mergeDiaryTagColorRegistries,
   normalizeDiaryTagColorRegistry
@@ -421,6 +424,7 @@ export class DiaryService {
     return Boolean(
       filter.favorite ||
       (filter.weathers && filter.weathers.length > 0) ||
+      (filter.moods && filter.moods.length > 0) ||
       (filter.year != null && filter.month != null)
     )
   }
@@ -456,6 +460,7 @@ export class DiaryService {
     const hasExtraFilter =
       options?.favorite ||
       (options?.weathers && options.weathers.length > 0) ||
+      (options?.moods && options.moods.length > 0) ||
       (options?.year != null && options?.month != null)
 
     if (!hasExtraFilter) {
@@ -494,6 +499,9 @@ export class DiaryService {
     if (filter.favorite && !meta.isFavorite) return false
     if (filter.weathers && filter.weathers.length > 0) {
       if (!weatherMatchesFilter(meta.weather, filter.weathers)) return false
+    }
+    if (filter.moods && filter.moods.length > 0) {
+      if (!moodMatchesFilter(meta.mood, filter.moods)) return false
     }
     return true
   }
@@ -535,8 +543,8 @@ export class DiaryService {
       tags: parsedTags,
       tagColors: Object.keys(tagColors).length > 0 ? tagColors : undefined,
       updatedAt: s.updatedAt ? new Date(s.updatedAt) : undefined,
-      weather: s.weather || undefined,
-      mood: s.mood || undefined,
+      weather: resolveWeatherId(s.weather) ?? undefined,
+      mood: resolveMoodId(s.mood) ?? undefined,
       location: s.location || undefined,
       isFavorite: s.isFavorite || false,
       hasMedia: s.hasMedia || false

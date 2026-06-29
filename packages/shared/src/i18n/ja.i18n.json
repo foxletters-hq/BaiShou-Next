@@ -1164,6 +1164,7 @@
     "filter": "フィルター",
     "filter_favorite": "お気に入り",
     "filter_weather": "天気",
+    "filter_mood": "気分",
     "clear_filter": "クリア",
     "weather_label": "天気",
     "weather": {

@@ -50,10 +50,93 @@ const MOOD_LABEL_FALLBACK: Record<MoodId, string> = {
   Glorious: '灿烂'
 }
 
+/** Legacy / demo Chinese labels → canonical id */
+const MOOD_LABEL_TO_ID: Record<string, MoodId> = Object.fromEntries(
+  MOOD_IDS.map((id) => [MOOD_LABEL_FALLBACK[id], id])
+) as Record<string, MoodId>
+
+/** Fallback emoji → canonical id */
+const MOOD_EMOJI_TO_ID: Record<string, MoodId> = Object.fromEntries(
+  MOOD_IDS.map((id) => [MOOD_EMOJI[id], id])
+) as Record<string, MoodId>
+
+/** English aliases → canonical id */
+const MOOD_ALIASES: Record<string, MoodId> = {
+  happy: 'Happy',
+  content: 'Content',
+  peaceful: 'Peaceful',
+  calm: 'Peaceful',
+  excited: 'Excited',
+  grateful: 'Grateful',
+  reflective: 'Reflective',
+  thoughtful: 'Reflective',
+  melancholy: 'Melancholy',
+  sad: 'Melancholy',
+  anxious: 'Anxious',
+  glorious: 'Glorious',
+  radiant: 'Glorious'
+}
+
+function storedVariantsForMoodId(canonical: MoodId): string[] {
+  const variants = new Set<string>([canonical, MOOD_EMOJI[canonical]])
+  for (const [label, id] of Object.entries(MOOD_LABEL_TO_ID)) {
+    if (id === canonical) variants.add(label)
+  }
+  for (const [alias, id] of Object.entries(MOOD_ALIASES)) {
+    if (id === canonical) variants.add(alias)
+  }
+  return [...variants]
+}
+
+/** Normalize stored mood to canonical id (or passthrough unknown). */
 export function normalizeMoodId(value?: string | null): string {
   if (!value) return ''
-  if ((MOOD_IDS as readonly string[]).includes(value)) return value
-  return value
+  const trimmed = value.trim()
+  if (!trimmed) return ''
+  if ((MOOD_IDS as readonly string[]).includes(trimmed)) return trimmed
+  const fromEmoji = MOOD_EMOJI_TO_ID[trimmed]
+  if (fromEmoji) return fromEmoji
+  const alias = MOOD_ALIASES[trimmed] ?? MOOD_ALIASES[trimmed.toLowerCase()]
+  if (alias) return alias
+  const fromLabel = MOOD_LABEL_TO_ID[trimmed]
+  if (fromLabel) return fromLabel
+  return trimmed
+}
+
+/** Resolve to canonical MoodId, or null when unknown. */
+export function resolveMoodId(value?: string | null): MoodId | null {
+  const id = normalizeMoodId(value)
+  if (!id || !(MOOD_IDS as readonly string[]).includes(id)) return null
+  return id as MoodId
+}
+
+export function normalizeMoodIdForFilter(value?: string | null): MoodId | null {
+  return resolveMoodId(value)
+}
+
+/** All values that should match a filter chip (canonical + legacy labels/aliases). */
+export function expandMoodFilterValues(filterIds: string[]): string[] {
+  const expanded = new Set<string>()
+  for (const id of filterIds) {
+    const canonical = resolveMoodId(id)
+    if (!canonical) continue
+    for (const variant of storedVariantsForMoodId(canonical)) {
+      expanded.add(variant)
+    }
+  }
+  return [...expanded]
+}
+
+export function moodMatchesFilter(
+  storedMood: string | undefined | null,
+  filterIds: string[]
+): boolean {
+  if (filterIds.length === 0) return true
+  if (!storedMood) return false
+  const expanded = expandMoodFilterValues(filterIds)
+  const normalized = resolveMoodId(storedMood)
+  if (!normalized) return false
+  return expanded.includes(storedMood) || expanded.includes(normalized)
 }
 
 export function moodI18nKey(id: MoodId): string {
@@ -61,9 +144,8 @@ export function moodI18nKey(id: MoodId): string {
 }
 
 export function getMoodEmoji(id: MoodId | string): string {
-  if ((MOOD_IDS as readonly string[]).includes(id)) {
-    return MOOD_EMOJI[id as MoodId]
-  }
+  const resolved = resolveMoodId(id)
+  if (resolved) return MOOD_EMOJI[resolved]
   return '😶'
 }
 

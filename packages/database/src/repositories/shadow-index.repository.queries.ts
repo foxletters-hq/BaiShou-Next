@@ -1,4 +1,8 @@
-import { expandWeatherFilterValues, buildJournalTreeSkipSqlLikeClauses } from '@baishou/shared'
+import {
+  expandMoodFilterValues,
+  expandWeatherFilterValues,
+  buildJournalTreeSkipSqlLikeClauses
+} from '@baishou/shared'
 import { eq, sql, like, and, inArray, desc, asc, gte, lte } from 'drizzle-orm'
 import { shadowJournalIndexTable } from '../schema/shadow-index'
 import type { AppDatabase } from '../types'
@@ -344,6 +348,11 @@ export class ShadowIndexQueryOps {
     if (options.weathers && options.weathers.length > 0) {
       const expanded = expandWeatherFilterValues(options.weathers)
       conditions.push(inArray(shadowJournalIndexTable.weather, expanded))
+    }
+
+    if (options.moods && options.moods.length > 0) {
+      const expanded = expandMoodFilterValues(options.moods)
+      conditions.push(inArray(shadowJournalIndexTable.mood, expanded))
     }
 
     return and(...conditions)

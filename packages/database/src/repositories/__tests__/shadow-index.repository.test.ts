@@ -299,5 +299,31 @@ describe('ShadowIndexRepository', () => {
       expect(await repo.count()).toBe(0)
       expect(await otherRepo.count()).toBe(1)
     })
+
+    it('listFiltered matches mood by canonical id and legacy label', async () => {
+      await repo.upsert({
+        ...generateDummyPayload('2026-06-09T15:12:00.000Z', 'happy diary'),
+        mood: 'Happy',
+        filePath: 'Journals/2026/06/2026-06-09.md'
+      })
+      await repo.upsert({
+        ...generateDummyPayload('2026-06-10T10:00:00.000Z', 'legacy mood diary'),
+        mood: '开心',
+        filePath: 'Journals/2026/06/2026-06-10.md'
+      })
+      await repo.upsert({
+        ...generateDummyPayload('2026-06-11T10:00:00.000Z', 'no mood diary'),
+        filePath: 'Journals/2026/06/2026-06-11.md'
+      })
+
+      const happyRows = await repo.listFiltered({ moods: ['Happy'], year: 2026, month: 6 })
+      expect(happyRows).toHaveLength(2)
+
+      const peacefulRows = await repo.listFiltered({ moods: ['Peaceful'], year: 2026, month: 6 })
+      expect(peacefulRows).toHaveLength(0)
+
+      const count = await repo.countFiltered({ moods: ['Happy'], year: 2026, month: 6 })
+      expect(count).toBe(2)
+    })
   })
 })

@@ -1248,6 +1248,7 @@
     "filter": "筛选",
     "filter_favorite": "收藏",
     "filter_weather": "天气",
+    "filter_mood": "心情",
     "clear_filter": "清除",
     "weather_label": "天气",
     "weather": {
@@ -1439,6 +1440,7 @@
     "clear_filter": "清除",
     "filter_favorite": "收藏",
     "filter_weather": "天气",
+    "filter_mood": "心情",
     "stop": "停止",
     "generation_stopped": "已停止生成",
     "content_placeholder": "输入总结内容...",

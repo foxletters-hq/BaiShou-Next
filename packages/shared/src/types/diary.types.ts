@@ -67,6 +67,7 @@ export interface DiaryListFilter {
   month?: number
   favorite?: boolean
   weathers?: string[]
+  moods?: string[]
   limit?: number
   offset?: number
   orderBy?: 'asc' | 'desc'
