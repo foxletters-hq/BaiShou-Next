@@ -3,7 +3,7 @@ import { View, Text, Pressable } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { parseRedactedThinking } from '../../shared/chat-bubble/redacted-thinking'
 import { useNativeTheme } from '../theme'
-import { ThinkingBlock } from '../ThinkingBlock/ThinkingBlock'
+import { AgentThinkSection } from '../AgentThinkSection'
 import type { NativeStreamingBubbleProps } from './streaming-bubble.types'
 import { createStreamingBubbleStyles } from './streaming-bubble.styles'
 import { ChatBubbleAvatar } from '../ChatBubble/ChatBubbleAvatar'
@@ -29,7 +29,7 @@ export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
   reserveActionBarSpace = false
 }) => {
   const { t } = useTranslation()
-  const { colors, isDark, tokens } = useNativeTheme()
+  const { colors, tokens } = useNativeTheme()
   const auxStyles = useMemo(() => createStreamingBubbleStyles(colors, tokens), [colors, tokens])
 
   const aiName = aiProfile.name || t('agent.chat.ai_label', 'AI')
@@ -39,7 +39,7 @@ export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
     [text, reasoning]
   )
 
-  const hasReasoning = cleanReasoning.length > 0
+  const hasReasoning = cleanReasoning.length > 0 || isReasoning
   const hasText = cleanText.length > 0
   const hasTools = completedTools.length > 0 || !!activeToolName
 
@@ -98,7 +98,7 @@ export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
               chatBubbleStyles.bubble,
               chatBubbleStyles.bubbleEditing,
               {
-                backgroundColor: isDark ? 'rgba(30, 30, 34, 0.4)' : 'rgba(255, 255, 255, 0.48)',
+                backgroundColor: colors.bgSurface,
                 borderBottomLeftRadius: 4
               }
             ]}
@@ -111,13 +111,7 @@ export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
                   width: '100%'
                 }}
               >
-                <ThinkingBlock
-                  content={cleanReasoning}
-                  isThinking={isReasoning}
-                  defaultOpen={false}
-                  autoCollapse
-                  maxPreviewLines={2}
-                />
+                <AgentThinkSection content={cleanReasoning} isStreaming={isReasoning} />
               </View>
             )}
 
