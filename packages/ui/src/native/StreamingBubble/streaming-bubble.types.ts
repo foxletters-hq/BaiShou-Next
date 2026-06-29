@@ -9,6 +9,8 @@ export interface NativeStreamingBubbleProps {
   text: string
   reasoning?: string
   isReasoning?: boolean
+  /** 正文是否仍在流式输出（桥接态应为 false） */
+  isTextStreaming?: boolean
   activeToolName?: string | null
   completedTools?: ToolExecution[]
   aiProfile?: {

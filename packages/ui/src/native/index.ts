@@ -52,6 +52,7 @@ export * from './StatisticCard'
 
 // 聊天增强组件
 export * from './ThinkingBlock'
+export * from './AgentMarkdown'
 export * from './CompressionActivityBar'
 export * from './CompressionDivider'
 export * from './ToolResultGroupCard'

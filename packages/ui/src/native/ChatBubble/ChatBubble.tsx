@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { parseRedactedThinking } from '../../shared/chat-bubble/redacted-thinking'
 import { useNativeTheme } from '../../native/theme'
 import { NativeChatBubbleInlineEditor } from './NativeChatBubbleInlineEditor'
-import { MarkdownRenderer } from '../MarkdownRenderer/MarkdownRenderer'
+import { AgentMarkdownRenderer } from '../AgentMarkdown'
 import { NativeImagePreviewModal } from '../DiaryEditor/NativeImagePreviewModal'
 import { ThinkingBlock } from '../ThinkingBlock/ThinkingBlock'
 import { ToolResultGroupCard } from '../ToolResultGroupCard/ToolResultGroupCard'
@@ -166,7 +166,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                 <NativeChatBubbleAttachments attachments={attachments} isUserBubble={isUser} />
               ) : null}
               {isAssistant && cleanContent ? (
-                <MarkdownRenderer
+                <AgentMarkdownRenderer
                   content={cleanContent}
                   variant="chat"
                   onImagePress={(_src, resolvedUri) => setPreviewImageUri(resolvedUri)}

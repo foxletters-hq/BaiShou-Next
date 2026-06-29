@@ -12,7 +12,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { HelpTooltip } from '../Tooltip/HelpTooltip'
-import { MarkdownRenderer } from '../MarkdownRenderer'
+import { AgentMarkdownRenderer } from '../AgentMarkdown'
 import type { NativeContextChainDialogProps, ContextChainTab } from './context-chain-dialog.types'
 import { buildContextChainTabs } from './context-chain-dialog.utils'
 import { ContextChainStatsBar } from './ContextChainStatsBar'
@@ -336,11 +336,11 @@ export const ContextChainDialog: React.FC<NativeContextChainDialogProps> = ({
                             />
                           </>
                         ) : (
-                          <MarkdownRenderer content={view.compressedContent} variant="ancillary" />
+                          <AgentMarkdownRenderer content={view.compressedContent} variant="ancillary" />
                         )}
                       </>
                     ) : view.activeTab === 'prompt' && view.systemPrompt ? (
-                      <MarkdownRenderer content={view.systemPrompt} variant="ancillary" />
+                      <AgentMarkdownRenderer content={view.systemPrompt} plainText />
                     ) : null
                   ) : (
                     renderLegacyContent()

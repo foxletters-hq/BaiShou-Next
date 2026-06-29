@@ -2,7 +2,7 @@ import React from 'react'
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
-import { MarkdownRenderer } from '../MarkdownRenderer'
+import { AgentMarkdownRenderer } from '../AgentMarkdown'
 import { ThinkingBlock } from '../ThinkingBlock'
 import { getLabelBadgeColor } from './context-chain-dialog.utils'
 import { COMPRESSION_SUMMARY_SELECTION_KEY, type useContextChainView } from './useContextChainView'
@@ -93,7 +93,7 @@ export const ContextChainDetailPage: React.FC<ContextChainDetailPageProps> = ({
                 />
               ) : null}
               {view.compressionSummaryText ? (
-                <MarkdownRenderer content={view.compressionSummaryText} variant="ancillary" />
+                <AgentMarkdownRenderer content={view.compressionSummaryText} variant="ancillary" />
               ) : (
                 <Text style={{ fontSize: 14, color: colors.textSecondary }}>
                   {t('agent.chat.no_content', '[无内容]')}
@@ -125,9 +125,10 @@ export const ContextChainDetailPage: React.FC<ContextChainDetailPageProps> = ({
 
     if (selected.content) {
       return (
-        <MarkdownRenderer
+        <AgentMarkdownRenderer
           content={selected.content}
           variant={isSystemPrompt || selected.label === '系统提示词' ? 'chat' : 'ancillary'}
+          plainText={isSystemPrompt || selected.label === '系统提示词'}
         />
       )
     }

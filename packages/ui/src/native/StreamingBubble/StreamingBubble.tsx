@@ -11,7 +11,7 @@ import { chatBubbleStyles } from '../ChatBubble/chat-bubble.styles'
 import { chatOverBackgroundMetaTextStyle } from '../../shared/chat-over-background-meta.style'
 import { ToolResultGroupCard } from '../ToolResultGroupCard/ToolResultGroupCard'
 import { StreamingBubbleBouncingDots } from './StreamingBubbleBouncingDots'
-import { StreamingMarkdownLines } from './StreamingMarkdownLines'
+import { AgentMarkdownRenderer } from '../AgentMarkdown'
 
 export type { ToolExecution, NativeStreamingBubbleProps } from './streaming-bubble.types'
 
@@ -19,6 +19,7 @@ export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
   text,
   reasoning = '',
   isReasoning = false,
+  isTextStreaming = true,
   activeToolName = null,
   completedTools = [],
   aiProfile = { name: 'AI' },
@@ -134,7 +135,13 @@ export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
               </View>
             ) : null}
 
-            {hasText && <StreamingMarkdownLines content={cleanText} variant="chat" />}
+            {hasText && (
+              <AgentMarkdownRenderer
+                content={cleanText}
+                isStreaming={isTextStreaming}
+                variant="chat"
+              />
+            )}
             {reserveActionBarSpace ? <View style={auxStyles.actionBarSpacer} /> : null}
           </View>
         ) : (

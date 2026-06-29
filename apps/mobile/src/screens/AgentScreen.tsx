@@ -1010,6 +1010,7 @@ export const AgentScreen = () => {
                         text={streamingText}
                         reasoning={streamingReasoning}
                         isReasoning={isReasoningStreaming}
+                        isTextStreaming={isStreaming}
                         activeToolName={activeTool?.name ?? null}
                         completedTools={completedTools.map((tool, idx) => ({
                           name: tool.name,

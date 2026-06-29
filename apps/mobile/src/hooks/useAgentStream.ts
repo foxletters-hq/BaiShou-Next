@@ -22,19 +22,8 @@ import { mapSessionMessageFromDb } from '../utils/map-session-message.util'
 import { mapSavedAttachmentsForMobileUi } from '../utils/mobile-attachment-ui.util'
 import { subscribeMobileCompressionEvents } from '../services/mobile-compression-event.service'
 
-const MOBILE_STREAM_DISPLAY_OPTIONS = {
-  lineRevealMs: 240,
-  maxCatchUpLines: 1,
-  segmentMaxChars: 14,
-  showPartialDuringGap: true
-} as const
-
-/** 思考预览：更快揭示、保留 partial，便于折叠区逐行滚动 */
-const MOBILE_REASONING_STREAM_DISPLAY_OPTIONS = {
-  lineRevealMs: 80,
-  maxCatchUpLines: 4,
-  segmentMaxChars: 28,
-  showPartialDuringGap: true
+const MOBILE_AGENT_STREAM_DISPLAY_OPTIONS = {
+  immediate: true
 } as const
 
 interface TokenUsage {
@@ -114,19 +103,19 @@ export function useAgentStream(
   useEffect(() => {
     streamingTextDisplayRef.current = createStreamingTextDisplayBuffer(
       (text) => setStreamingText(text),
-      MOBILE_STREAM_DISPLAY_OPTIONS
+      MOBILE_AGENT_STREAM_DISPLAY_OPTIONS
     )
     streamingReasoningDisplayRef.current = createStreamingTextDisplayBuffer(
       (text) => setStreamingReasoning(text),
-      MOBILE_REASONING_STREAM_DISPLAY_OPTIONS
+      MOBILE_AGENT_STREAM_DISPLAY_OPTIONS
     )
     compressionTextDisplayRef.current = createStreamingTextDisplayBuffer(
       (text) => setCompressionText(text),
-      MOBILE_STREAM_DISPLAY_OPTIONS
+      MOBILE_AGENT_STREAM_DISPLAY_OPTIONS
     )
     compressionReasoningDisplayRef.current = createStreamingTextDisplayBuffer(
       (text) => setCompressionReasoning(text),
-      MOBILE_STREAM_DISPLAY_OPTIONS
+      MOBILE_AGENT_STREAM_DISPLAY_OPTIONS
     )
 
     return () => {

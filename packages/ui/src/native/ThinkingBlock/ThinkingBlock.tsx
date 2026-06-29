@@ -9,7 +9,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
-import { MarkdownRenderer } from '../MarkdownRenderer'
+import { AgentMarkdownRenderer } from '../AgentMarkdown'
 import { CollapsibleHeight } from '../CollapsibleHeight'
 
 const DEFAULT_MAX_PREVIEW_LINES = 3
@@ -212,7 +212,11 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
       {showExpandedBody ? (
         <CollapsibleHeight expanded animation="ease" durationMs={300}>
           <View style={[styles.body, { borderTopColor: colors.borderSubtle }]}>
-            <MarkdownRenderer content={content} variant="ancillary" />
+            <AgentMarkdownRenderer
+              content={content}
+              isStreaming={isThinking}
+              variant="ancillary"
+            />
           </View>
         </CollapsibleHeight>
       ) : null}
