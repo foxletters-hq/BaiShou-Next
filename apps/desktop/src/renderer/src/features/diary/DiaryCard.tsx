@@ -1,7 +1,7 @@
 import React from 'react'
 import { Edit3, Trash2, Heart } from 'lucide-react'
 import { MarkdownRenderer, MoodEmoji, WeatherEmoji } from '@baishou/ui'
-import { limitDiaryPreviewTags, resolveWeatherId } from '@baishou/shared'
+import { limitDiaryPreviewTags, resolveWeatherId, resolveMoodId } from '@baishou/shared'
 
 /** 星期几名称 */
 const WEEKDAY_NAMES_KEYS = [
@@ -147,7 +147,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
                   <WeatherEmoji weather={entry.weather} size={14} />
                 </span>
               )}
-              {entry.mood && (
+              {resolveMoodId(entry.mood) && (
                 <span className="diary-card-icon-badge">
                   <MoodEmoji mood={entry.mood} size={14} />
                 </span>

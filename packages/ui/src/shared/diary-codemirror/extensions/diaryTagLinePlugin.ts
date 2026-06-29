@@ -112,10 +112,9 @@ function runDiaryTagEnter(view: EditorView): boolean {
   }
 
   if (afterCursor.trim() === '') {
-    const insert = lineText.trim() === '' ? '\n' : '\n\n'
     view.dispatch({
-      changes: { from: line.to, insert },
-      selection: { anchor: line.to + insert.length }
+      changes: { from: line.to, insert: '\n' },
+      selection: { anchor: line.to + 1 }
     })
     return true
   }

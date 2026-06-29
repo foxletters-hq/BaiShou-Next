@@ -15,6 +15,7 @@ type DiaryFilterPatch = Partial<
     | 'searchQuery'
     | 'selectedMonth'
     | 'filterWeathers'
+    | 'filterMoods'
     | 'filterFavorite'
     | 'currentPage'
     | 'pageSize'
@@ -68,6 +69,13 @@ export function useDiaryFilterState(_dbReady: boolean) {
     [patchFilter]
   )
 
+  const setFilterMoods = useCallback(
+    (filterMoods: string[]) => {
+      patchFilter({ filterMoods })
+    },
+    [patchFilter]
+  )
+
   const setFilterFavorite = useCallback(
     (filterFavorite: boolean) => {
       patchFilter({ filterFavorite })
@@ -94,6 +102,7 @@ export function useDiaryFilterState(_dbReady: boolean) {
       searchQuery: '',
       selectedMonth: null,
       filterWeathers: [],
+      filterMoods: [],
       filterFavorite: false,
       currentPage: 1
     })
@@ -110,6 +119,7 @@ export function useDiaryFilterState(_dbReady: boolean) {
     state.selectedMonth,
     state.searchQuery,
     state.filterWeathers,
+    state.filterMoods,
     state.filterFavorite,
     state.restored,
     patchFilter
@@ -141,6 +151,14 @@ export function useDiaryFilterState(_dbReady: boolean) {
   useEffect(() => {
     if (!state.restored) return
     AsyncStorage.setItem(
+      DIARY_FILTER_STORAGE_KEYS.filterMoods,
+      JSON.stringify(state.filterMoods)
+    ).catch((e) => logger.error('保存心情筛选失败', e))
+  }, [state.filterMoods, state.restored])
+
+  useEffect(() => {
+    if (!state.restored) return
+    AsyncStorage.setItem(
       DIARY_FILTER_STORAGE_KEYS.filterFavorite,
       String(state.filterFavorite)
     ).catch((e) => logger.error('保存收藏筛选失败', e))
@@ -165,6 +183,7 @@ export function useDiaryFilterState(_dbReady: boolean) {
     setSearchQuery,
     setSelectedMonth,
     setFilterWeathers,
+    setFilterMoods,
     setFilterFavorite,
     setCurrentPage,
     setPageSize,

@@ -13,8 +13,8 @@ import {
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
-import { WEATHER_IDS, weatherI18nKey, type WeatherId } from '@baishou/shared'
-import { YearMonthPicker, useNativeTheme, WeatherEmoji } from '@baishou/ui/native'
+import { WEATHER_IDS, weatherI18nKey, MOOD_IDS, moodI18nKey, getMoodLabelFallback, type WeatherId, type MoodId } from '@baishou/shared'
+import { YearMonthPicker, useNativeTheme, WeatherEmoji, MoodEmoji } from '@baishou/ui/native'
 
 export interface DiaryAppBarProps {
   searchQuery: string
@@ -23,6 +23,8 @@ export interface DiaryAppBarProps {
   onMonthChange: (m: Date | null) => void
   filterWeathers: string[]
   onFilterWeathersChange: (weathers: string[]) => void
+  filterMoods: string[]
+  onFilterMoodsChange: (moods: string[]) => void
   filterFavorite: boolean
   onFilterFavoriteChange: (v: boolean) => void
   onSyncPress?: () => void
@@ -38,6 +40,8 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
   onMonthChange,
   filterWeathers,
   onFilterWeathersChange,
+  filterMoods,
+  onFilterMoodsChange,
   filterFavorite,
   onFilterFavoriteChange,
   onSyncPress,
@@ -49,12 +53,15 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
   const [isSearching, setIsSearching] = useState(false)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
 
-  const hasActiveFilters = filterWeathers.length > 0 || filterFavorite
+  const hasActiveFilters = filterWeathers.length > 0 || filterMoods.length > 0 || filterFavorite
 
   const getWeatherLabel = (id: WeatherId) => t(`diary.weather.${weatherI18nKey(id)}`, id)
+  const getMoodLabel = (id: MoodId) =>
+    t(`diary.mood.${moodI18nKey(id)}`, getMoodLabelFallback(id))
 
   const clearFilters = () => {
     onFilterWeathersChange([])
+    onFilterMoodsChange([])
     onFilterFavoriteChange(false)
   }
 
@@ -247,6 +254,49 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
                       accessibilityState={{ selected: active }}
                     >
                       <WeatherEmoji weather={weather} size={22} />
+                      <Text
+                        style={[
+                          styles.weatherOptionLabel,
+                          { color: active ? colors.primary : colors.textPrimary }
+                        ]}
+                      >
+                        {label}
+                      </Text>
+                      {active ? (
+                        <MaterialIcons name="check" size={18} color={colors.primary} />
+                      ) : (
+                        <View style={styles.weatherCheckPlaceholder} />
+                      )}
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+
+              <Text style={[styles.filterSectionLabel, { color: colors.textTertiary }]}>
+                {t('diary.filter_mood')}
+              </Text>
+              <View style={styles.weatherList}>
+                {MOOD_IDS.map((mood) => {
+                  const active = filterMoods.includes(mood)
+                  const label = getMoodLabel(mood)
+                  return (
+                    <TouchableOpacity
+                      key={mood}
+                      style={[
+                        styles.weatherOption,
+                        active && { backgroundColor: colors.primaryLight }
+                      ]}
+                      onPress={() =>
+                        onFilterMoodsChange(
+                          active
+                            ? filterMoods.filter((m) => m !== mood)
+                            : [...filterMoods, mood]
+                        )
+                      }
+                      accessibilityLabel={label}
+                      accessibilityState={{ selected: active }}
+                    >
+                      <MoodEmoji mood={mood} size={22} />
                       <Text
                         style={[
                           styles.weatherOptionLabel,

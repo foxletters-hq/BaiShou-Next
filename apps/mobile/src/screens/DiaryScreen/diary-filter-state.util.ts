@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { WEATHER_IDS, normalizeWeatherId, type WeatherId } from '@baishou/shared'
+import { WEATHER_IDS, normalizeWeatherId, MOOD_IDS, normalizeMoodIdForFilter, type WeatherId, type MoodId } from '@baishou/shared'
 
 export const DEFAULT_DIARY_PAGE_SIZE = 10
 export const DIARY_PAGE_SIZE_OPTIONS = [10, 20, 30, 50, 80, 100] as const
@@ -8,6 +8,7 @@ export const DIARY_FILTER_STORAGE_KEYS = {
   searchQuery: 'diary_searchQuery',
   selectedMonth: 'diary_selectedMonth',
   filterWeathers: 'diary_filterWeathers',
+  filterMoods: 'diary_filterMoods',
   filterFavorite: 'diary_filterFavorite',
   currentPage: 'diary_currentPage',
   pageSize: 'diary_pageSize'
@@ -18,6 +19,7 @@ export type DiaryFilterState = {
   searchQuery: string
   selectedMonth: Date | null
   filterWeathers: string[]
+  filterMoods: string[]
   filterFavorite: boolean
   currentPage: number
   pageSize: number
@@ -69,12 +71,26 @@ function parseFilterWeathers(saved: string | null): string[] {
   }
 }
 
+function parseFilterMoods(saved: string | null): string[] {
+  if (!saved) return []
+  try {
+    const parsed = JSON.parse(saved) as unknown
+    if (!Array.isArray(parsed)) return []
+    return parsed
+      .map((m) => normalizeMoodIdForFilter(String(m)))
+      .filter((m): m is MoodId => m != null)
+  } catch {
+    return []
+  }
+}
+
 export function createDefaultDiaryFilterState(restored = false): DiaryFilterState {
   return {
     restored,
     searchQuery: '',
     selectedMonth: null,
     filterWeathers: [],
+    filterMoods: [],
     filterFavorite: false,
     currentPage: 1,
     pageSize: DEFAULT_DIARY_PAGE_SIZE
@@ -82,11 +98,12 @@ export function createDefaultDiaryFilterState(restored = false): DiaryFilterStat
 }
 
 export async function loadDiaryFilterState(): Promise<DiaryFilterState> {
-  const [savedQuery, savedMonth, savedWeathers, savedFavorite, savedPage, savedPageSize] =
+  const [savedQuery, savedMonth, savedWeathers, savedMoods, savedFavorite, savedPage, savedPageSize] =
     await Promise.all([
       AsyncStorage.getItem(DIARY_FILTER_STORAGE_KEYS.searchQuery),
       AsyncStorage.getItem(DIARY_FILTER_STORAGE_KEYS.selectedMonth),
       AsyncStorage.getItem(DIARY_FILTER_STORAGE_KEYS.filterWeathers),
+      AsyncStorage.getItem(DIARY_FILTER_STORAGE_KEYS.filterMoods),
       AsyncStorage.getItem(DIARY_FILTER_STORAGE_KEYS.filterFavorite),
       AsyncStorage.getItem(DIARY_FILTER_STORAGE_KEYS.currentPage),
       AsyncStorage.getItem(DIARY_FILTER_STORAGE_KEYS.pageSize)
@@ -97,6 +114,7 @@ export async function loadDiaryFilterState(): Promise<DiaryFilterState> {
   if (savedQuery != null) state.searchQuery = savedQuery
   if (savedMonth != null) state.selectedMonth = parseSavedMonth(savedMonth)
   state.filterWeathers = parseFilterWeathers(savedWeathers)
+  state.filterMoods = parseFilterMoods(savedMoods)
   if (savedFavorite === 'true') state.filterFavorite = true
 
   if (state.selectedMonth == null && savedPage) {

@@ -1,5 +1,5 @@
 import React from 'react'
-import { getMoodEmoji, MOOD_IDS, normalizeMoodId } from '@baishou/shared'
+import { getMoodEmoji, resolveMoodId } from '@baishou/shared'
 import { getMoodFluentIconSrc } from '../../shared/mood-fluent-assets'
 
 export interface MoodEmojiProps {
@@ -10,13 +10,11 @@ export interface MoodEmojiProps {
 
 /** Fluent Emoji 3D 离线图标，未知心情回退系统 emoji */
 export const MoodEmoji: React.FC<MoodEmojiProps> = ({ mood, size = 18, className }) => {
-  const id = normalizeMoodId(mood)
+  const id = resolveMoodId(mood)
+  if (!id) return null
+
   const src = getMoodFluentIconSrc(id)
   const fallback = getMoodEmoji(id)
-
-  if (!id || !(MOOD_IDS as readonly string[]).includes(id)) {
-    return null
-  }
 
   if (!src) {
     return (
