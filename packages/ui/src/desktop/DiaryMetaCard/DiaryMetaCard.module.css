@@ -147,16 +147,23 @@
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 12px;
+  /* 两行标签：20px × 2 + 8px 行距，留少量余量避免 +N 被裁切 */
   max-height: 52px;
   overflow: hidden;
   flex-shrink: 0;
 }
 
 .tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 20px;
   padding: 4px 10px;
   border-radius: 8px;
   font-size: 12px;
   font-weight: 600;
+  line-height: 1;
 }
 
 .tagBlue {

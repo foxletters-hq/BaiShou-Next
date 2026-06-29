@@ -238,8 +238,16 @@ const styles = StyleSheet.create({
     maxHeight: 52,
     overflow: 'hidden'
   },
-  tag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  tagText: { fontSize: 12, fontWeight: '600' },
+  tag: {
+    flexDirection: 'row',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    minHeight: 20,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  tagText: { fontSize: 12, fontWeight: '600', lineHeight: 12 },
   actionsDivider: { height: 1, marginTop: 20, marginBottom: 12 },
   actionsBox: { flexDirection: 'row', justifyContent: 'flex-end', gap: 16 },
   actionBtn: { flexDirection: 'row', alignItems: 'center', padding: 8 },

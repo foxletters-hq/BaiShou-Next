@@ -423,10 +423,16 @@
 }
 
 .diary-card-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 20px;
   padding: 4px 10px;
   border-radius: var(--radius-sm);
   font-size: 12px;
   font-weight: 600;
+  line-height: 1;
 }
 
 /* 标签颜色变体 — 使用语义化强调色 */

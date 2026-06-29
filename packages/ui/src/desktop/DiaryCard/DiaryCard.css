@@ -103,10 +103,16 @@
 }
 
 .diary-card-v2-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 20px;
   padding: 4px 10px;
   border-radius: 8px;
   font-size: 12px;
   font-weight: 600;
+  line-height: 1;
 }
 
 .diary-card-v2-actions {
