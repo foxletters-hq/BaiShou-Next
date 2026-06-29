@@ -35,10 +35,23 @@ export const DeveloperSettingsSection: React.FC = () => {
   }
 
   const handleLoadDemo = () => {
-    runAction(t('developer.load_demo_data'), t('developer.load_demo_full_desc'), async () => {
-      await services!.developerService.loadDemoData(services!.diaryService)
-      toast.showSuccess(t('developer.load_demo_success'))
-    })
+    void (async () => {
+      const confirmed = await dialog.confirm(t('developer.load_demo_full_desc'), {
+        title: t('developer.load_demo_data'),
+        confirmText: t('common.confirm')
+      })
+      if (!confirmed || !services || !dbReady) return
+      setBusy(true)
+      try {
+        const result = await services.createDemoVault()
+        toast.showSuccess(t('developer.load_demo_success', { vaultName: result.vaultName }))
+      } catch (e: unknown) {
+        const errMsg = e instanceof Error ? e.message : String(e)
+        toast.showError(errMsg)
+      } finally {
+        setBusy(false)
+      }
+    })()
   }
 
   const handleClearAll = () => {

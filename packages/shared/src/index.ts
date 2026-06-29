@@ -235,6 +235,7 @@ export * from './utils/diary-template.util'
 export * from './types/summary-prompt.types'
 export * from './utils/summary-template.util'
 export * from './constants/weather.constants'
+export * from './constants/mood.constants'
 export * from './constants/github.constants'
 export * from './constants/rag-migration.constants'
 export * from './constants/legacy-migration.constants'
@@ -296,3 +297,5 @@ export type {
 } from './sync/incremental-sync-plan.util'
 
 export * from './cache'
+
+export * from './demo-data'

@@ -16,11 +16,14 @@ export interface DeveloperOptionsViewProps {
   onOpenCompressionTestSession?: (sessionId: string) => void
   /** 打开开屏引导页（预览模式，桌面端传入） */
   onOpenOnboarding?: () => void
+  /** 演示工作空间创建完成后同步前端 Vault 状态（桌面端传入） */
+  onDemoVaultCreated?: (vaultName: string) => Promise<void>
 }
 
 export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
   onOpenCompressionTestSession,
-  onOpenOnboarding
+  onOpenOnboarding,
+  onDemoVaultCreated
 }) => {
   const { t } = useTranslation()
   const { confirm, alert } = useDialog()
@@ -31,14 +34,31 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
   const toast = useToast()
 
   const handleLoadDemoData = async () => {
+    const confirmed = await confirm(
+      t(
+        'developer.load_demo_full_desc',
+        '将创建新的「演示空间」工作空间，切换至该空间并写入脱敏演示数据，不影响当前工作空间。'
+      ),
+      t('developer.load_demo_data', '创建演示工作空间')
+    )
+    if (!confirmed) return
+
     setIsLoadingDemo(true)
     try {
       if (typeof window !== 'undefined' && (window as any).electron) {
-        await (window as any).electron.ipcRenderer.invoke('developer:load-demo-data')
-        toast.showSuccess(t('developer.load_demo_success', '模拟数据注入成功'))
+        const result = await (window as any).electron.ipcRenderer.invoke('developer:load-demo-data')
+        const vaultName = result?.vaultName as string | undefined
+        if (vaultName && onDemoVaultCreated) {
+          await onDemoVaultCreated(vaultName)
+        }
+        toast.showSuccess(
+          t('developer.load_demo_success', '已创建演示工作空间「{{vaultName}}」', {
+            vaultName: vaultName ?? t('developer.demo_vault_fallback', '演示空间')
+          })
+        )
       }
     } catch (e: any) {
-      toast.showError(t('developer.load_demo_failed', '注入失败: ') + e.message)
+      toast.showError(t('developer.load_demo_failed', '创建失败: ') + e.message)
     } finally {
       setIsLoadingDemo(false)
     }
@@ -220,10 +240,13 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
           />
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 'bold', fontSize: 15 }}>
-              {t('developer.load_demo_data', '加载演示数据')}
+              {t('developer.load_demo_data', '创建演示工作空间')}
             </div>
             <div style={{ fontSize: 13, color: 'var(--color-on-surface-variant)' }}>
-              {t('developer.load_demo_desc', '注入五十条用于体验排版及数据流转的虚拟日记。')}
+              {t(
+                'developer.load_demo_desc',
+                '新建独立工作空间并写入 66 条日记与 17 篇总结（脱敏演示数据）。'
+              )}
             </div>
           </div>
           {isLoadingDemo ? (

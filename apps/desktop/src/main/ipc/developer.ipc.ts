@@ -1,8 +1,7 @@
 import { app, ipcMain } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
-import { getDiaryManager } from './diary.ipc'
-import { INITIAL_DIARIES } from '../services/demo-data'
+import { createDemoVaultWithData } from '../services/create-demo-vault.service'
 import { resetAppDb } from '../db'
 import { shadowConnectionManager } from '@baishou/database-desktop'
 import { pathService } from './vault.ipc'
@@ -17,41 +16,7 @@ import {
 
 export function registerDeveloperIPC() {
   ipcMain.handle('developer:load-demo-data', async () => {
-    const diaryManager = getDiaryManager()
-    const now = new Date()
-
-    for (const demo of INITIAL_DIARIES) {
-      let entryDate: Date
-      if (demo.dateFixed) {
-        entryDate = new Date(demo.dateFixed)
-      } else {
-        entryDate = new Date(now.getTime())
-        if (demo.dateDaysOffset) {
-          entryDate.setDate(entryDate.getDate() + demo.dateDaysOffset)
-        }
-        if (demo.dateMinutesOffset) {
-          entryDate.setMinutes(entryDate.getMinutes() + demo.dateMinutesOffset)
-        }
-      }
-
-      const existing = await diaryManager.findByDate(entryDate)
-      if (existing) {
-        // 追加模式
-        await diaryManager.update(existing.id!, {
-          content: existing.content + '\n\n---\n\n' + demo.content,
-          tags: Array.from(new Set([...(existing.tags || []), ...(demo.tags || [])])).join(','),
-          mood: demo.mood || existing.mood
-        })
-      } else {
-        await diaryManager.create({
-          date: entryDate,
-          content: demo.content,
-          tags: (demo.tags || []).join(','),
-          mood: demo.mood
-        })
-      }
-    }
-    return true
+    return createDemoVaultWithData()
   })
 
   ipcMain.handle('developer:insert-compression-test-session', async () => {

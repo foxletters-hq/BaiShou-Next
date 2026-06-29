@@ -2,14 +2,23 @@ import * as SQLite from 'expo-sqlite'
 import { deleteAsync } from './mobile-sandbox-fs'
 import { getAppDocumentDirectory } from './mobile-app-paths'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import type { DiaryService, VaultService } from '@baishou/core-mobile'
+import type { VaultService } from '@baishou/core-mobile'
+import type { DiaryService, SummaryManagerService } from '@baishou/core-mobile'
 import type { IFileSystem } from '@baishou/core-mobile'
 import type { SessionManagerService, AssistantManagerService } from '@baishou/core-mobile'
 import { logger } from '@baishou/shared'
-import { INITIAL_DIARIES, type DemoDiaryEntry } from './demo-data'
+import { createDemoVault, type CreateDemoVaultResult } from './demo-data'
+import type { DemoDiaryWriter, DemoSummaryWriter } from '@baishou/shared'
 import type { MobileStoragePathService } from './path.service'
 
 const MOBILE_DB_NAME = 'baishou_next_mobile.db'
+
+export interface CreateDemoVaultMobileDeps {
+  vaultService: VaultService
+  switchVault: (vaultName: string) => Promise<void>
+  getDiaryService: () => DiaryService
+  getSummaryManager: () => SummaryManagerService | undefined
+}
 
 export interface MobileDeveloperServiceDeps {
   diaryService: DiaryService
@@ -27,30 +36,22 @@ export type ClearDataResult = {
 }
 
 export class MobileDeveloperService {
-  async loadDemoData(diaryService: DiaryService): Promise<boolean> {
-    const now = new Date()
-
-    for (const demo of INITIAL_DIARIES) {
-      const entryDate = this.resolveDemoDate(demo, now)
-      const existing = await diaryService.findByDate(entryDate)
-
-      if (existing) {
-        await diaryService.update(existing.id!, {
-          content: existing.content + '\n\n---\n\n' + demo.content,
-          tags: Array.from(new Set([...(existing.tags || []), ...(demo.tags || [])])).join(','),
-          mood: demo.mood || existing.mood
-        })
-      } else {
-        await diaryService.create({
-          date: entryDate,
-          content: demo.content,
-          tags: (demo.tags || []).join(','),
-          mood: demo.mood
-        })
+  async createDemoVault(deps: CreateDemoVaultMobileDeps): Promise<CreateDemoVaultResult> {
+    return createDemoVault({
+      listVaultNames: () => deps.vaultService.getAllVaults().map((vault) => vault.name),
+      createVault: (name) => deps.vaultService.createVault(name),
+      activateVault: (name) => deps.switchVault(name),
+      resolveWriters: async () => {
+        const summaryManager = deps.getSummaryManager()
+        if (!summaryManager) {
+          throw new Error('Summary manager unavailable after vault switch')
+        }
+        return {
+          diaryWriter: deps.getDiaryService() as DemoDiaryWriter,
+          summaryWriter: summaryManager as DemoSummaryWriter
+        }
       }
-    }
-
-    return true
+    })
   }
 
   async clearAllData(deps: MobileDeveloperServiceDeps): Promise<ClearDataResult> {
@@ -121,20 +122,6 @@ export class MobileDeveloperService {
       logger.error('[Developer] clearAgentData failed:', e)
       return { success: false, message: e?.message || String(e) }
     }
-  }
-
-  private resolveDemoDate(demo: DemoDiaryEntry, now: Date): Date {
-    if (demo.dateFixed) {
-      return new Date(demo.dateFixed)
-    }
-    const entryDate = new Date(now.getTime())
-    if (demo.dateDaysOffset) {
-      entryDate.setDate(entryDate.getDate() + demo.dateDaysOffset)
-    }
-    if (demo.dateMinutesOffset) {
-      entryDate.setMinutes(entryDate.getMinutes() + demo.dateMinutesOffset)
-    }
-    return entryDate
   }
 
   private async clearDirectory(fileSystem: IFileSystem, dirPath: string): Promise<void> {
