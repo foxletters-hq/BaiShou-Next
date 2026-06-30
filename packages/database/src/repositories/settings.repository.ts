@@ -85,6 +85,31 @@ export class SettingsRepository {
     return result
   }
 
+  /** 含 updatedAt，供设置磁盘重同步时与域文件 mtime 比较 */
+  async getAllEntriesMeta(): Promise<
+    Record<string, { value: unknown; updatedAt: Date }>
+  > {
+    return withExpoAgentDatabaseLock(this.db, () => this.getAllEntriesMetaUnlocked())
+  }
+
+  private async getAllEntriesMetaUnlocked(): Promise<
+    Record<string, { value: unknown; updatedAt: Date }>
+  > {
+    const rows = await this.db.select().from(systemSettingsTable)
+    const result: Record<string, { value: unknown; updatedAt: Date }> = {}
+    for (const r of rows) {
+      try {
+        result[r.key] = {
+          value: JSON.parse(r.value),
+          updatedAt: r.updatedAt instanceof Date ? r.updatedAt : new Date(r.updatedAt)
+        }
+      } catch {
+        // skip unparseable entries
+      }
+    }
+    return result
+  }
+
   /**
    * 将任意数据模型序列化为 JSON 字符串，并保存至数据库。支持插入和更新 (Upsert)。
    */

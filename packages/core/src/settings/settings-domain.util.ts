@@ -54,3 +54,15 @@ export function mergeDomainFileContents(
   }
   return merged
 }
+
+/** 磁盘域文件 mtime 不新于 SQLite 写入时，跳过 fullResyncFromDisk 覆盖 */
+export function shouldApplyDiskSettingsKey(
+  diskFileMtimeMs: number | null | undefined,
+  sqliteUpdatedAt: Date | null | undefined
+): boolean {
+  if (sqliteUpdatedAt == null) return true
+  const dbMs = sqliteUpdatedAt.getTime()
+  if (!Number.isFinite(dbMs)) return true
+  if (diskFileMtimeMs == null || diskFileMtimeMs <= 0) return true
+  return diskFileMtimeMs >= dbMs
+}

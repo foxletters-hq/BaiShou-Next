@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode, useRef } from 'react'
-import { Platform } from 'react-native'
+import { AppState, Platform } from 'react-native'
 import * as SQLite from 'expo-sqlite'
 import {
   ensureExpoAgentDatabaseInstalled,
@@ -42,6 +42,7 @@ import {
   isConfiguredProviderId,
   isConfiguredDialogueModelId,
   filterDiaryScopedSearchResults,
+  isAgentStreamAbortError,
   type SummaryPromptLocale
 } from '@baishou/shared'
 import { getTtsPlaybackSettings } from '../services/mobile-tts-settings.service'
@@ -421,6 +422,19 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
     return unsubscribeCacheCoordinator
   }, [])
 
+  /** 进后台前刷盘，避免 ecosystem resync 用陈旧磁盘 JSON 覆盖 SQLite 中的供应商等设置 */
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (nextState !== 'background' && nextState !== 'inactive') return
+      const runtime = agentDbRuntimeRef.current
+      if (!runtime) return
+      void runtime.settingsManager.flushToDisk().catch((e) => {
+        logger.warn('[BaishouProvider] settings flush on background failed:', e as Error)
+      })
+    })
+    return () => sub.remove()
+  }, [])
+
   useEffect(() => {
     let isMounted = true
     let mobileMcpService: MobileMcpService | null = null
@@ -453,14 +467,14 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
     async function init() {
       try {
-        const openAgentDatabase = (options?: { newConnection?: boolean }) => () =>
+        const openAgentDatabase = (options?: { useNewConnection?: boolean }) =>
           SQLite.openDatabaseAsync(
             MOBILE_AGENT_DB_NAME,
-            options?.newConnection ? { useNewConnection: true } : undefined
+            options?.useNewConnection ? { useNewConnection: true } : undefined
           ) as Promise<ExpoSqliteDatabase>
 
         // 1. 初始化 SQLite 环境（单例，避免并发 open + 迁移）
-        let install = await ensureExpoAgentDatabaseInstalled(openAgentDatabase())
+        let install = await ensureExpoAgentDatabaseInstalled(openAgentDatabase)
 
         const fileSystem = createMobileFileSystem()
         setupMobileLocalFileReader(fileSystem)
@@ -476,7 +490,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           )
           install = await rebuildMobileAgentDatabase(
             fileSystem,
-            openAgentDatabase({ newConnection: true })
+            (options) => openAgentDatabase({ ...options, useNewConnection: true })
           )
           agentDbRebuiltAtStartup = true
         }
@@ -1150,7 +1164,9 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               callbacks
             )
           } catch (e) {
-            logger.error('Mobile Agent Chat Failed:', e as Error)
+            if (!isAgentStreamAbortError(e)) {
+              logger.error('Mobile Agent Chat Failed:', e as Error)
+            }
             throw e
           }
         }
@@ -1209,7 +1225,9 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           await quarantineMobileAgentDatabase(ctx.fileSystem)
 
           const { drizzleDb: newDrizzleDb, expoDb: newExpoDb } =
-            await ensureExpoAgentDatabaseInstalled(openAgentDatabase({ newConnection: true }))
+            await ensureExpoAgentDatabaseInstalled((options) =>
+              openAgentDatabase({ ...options, useNewConnection: true })
+            )
 
           const diaryRepoAdapter =
             diaryStackRef.current?.diaryRepoAdapter ?? EMPTY_DIARY_REPO_ADAPTER

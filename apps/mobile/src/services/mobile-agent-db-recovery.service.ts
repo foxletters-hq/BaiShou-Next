@@ -2,7 +2,7 @@ import * as SQLite from 'expo-sqlite'
 import {
   releaseExpoAgentDatabaseInstall,
   ensureExpoAgentDatabaseInstalled,
-  type ExpoSqliteDatabase
+  type OpenExpoAgentDatabaseFn
 } from '@baishou/database/expo'
 import type { IFileSystem } from '@baishou/core-mobile'
 import { logger } from '@baishou/shared'
@@ -53,7 +53,7 @@ export async function quarantineMobileAgentDatabase(fileSystem: IFileSystem): Pr
 
 export async function rebuildMobileAgentDatabase(
   fileSystem: IFileSystem,
-  openDatabase: () => Promise<ExpoSqliteDatabase>
+  openDatabase: OpenExpoAgentDatabaseFn
 ) {
   await releaseExpoAgentDatabaseInstall()
   await quarantineMobileAgentDatabase(fileSystem)

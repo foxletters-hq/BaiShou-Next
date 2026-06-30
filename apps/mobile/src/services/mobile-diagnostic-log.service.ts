@@ -32,6 +32,7 @@ let persistedTail = ''
 let flushTimer: ReturnType<typeof setTimeout> | undefined
 let captureInstalled = false
 let lastPersistError: string | undefined
+let capturingConsole = false
 
 function getLogFilePath(): string {
   const base = stripFileScheme(getAppCacheDirectory())
@@ -227,8 +228,14 @@ function wrapConsoleMethod(
 ): (...args: unknown[]) => void {
   return (...args: unknown[]) => {
     original(...args)
-    buffer.append(level, serializeDiagnosticArgs(args))
-    schedulePersist()
+    if (capturingConsole) return
+    capturingConsole = true
+    try {
+      buffer.append(level, serializeDiagnosticArgs(args))
+      schedulePersist()
+    } finally {
+      capturingConsole = false
+    }
   }
 }
 
@@ -255,7 +262,11 @@ export function installMobileDiagnosticLogCapture(): void {
   consoleRef.log = wrapConsoleMethod('info', originalLog)
   consoleRef.info = wrapConsoleMethod('info', originalInfo)
   consoleRef.warn = wrapConsoleMethod('warn', originalWarn)
-  consoleRef.error = wrapConsoleMethod('error', originalError)
+  // Dev LogBox uses console.error stack frames as the displayed source. Keeping
+  // error unwrapped preserves the real component stack while debugging render loops.
+  if (!__DEV__) {
+    consoleRef.error = wrapConsoleMethod('error', originalError)
+  }
   consoleRef.debug = wrapConsoleMethod('debug', originalDebug)
 
   appendDiagnosticBreadcrumb('diagnostic log capture installed')

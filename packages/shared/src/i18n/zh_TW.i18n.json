@@ -1942,6 +1942,7 @@
       "vision_not_supported": "當前模型不支持圖片識別哦，可以換成視覺模型再試試呢~"
     },
     "generation_failed": "回覆生成失敗",
+    "stream_cancelled": "取消成功",
     "trace_title": "調用追踪 [{{modelId}}]",
     "default_assistant_name": "Latte",
     "default_assistant_prompt": "你是 Latte（拉提），白守 App 的專屬 AI 夥伴。",

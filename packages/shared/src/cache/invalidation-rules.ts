@@ -24,7 +24,13 @@ const INVALIDATION_RULES: Record<string, CacheKey[]> = {
     'mcp.toolContext',
     'diary.list'
   ],
-  'sync.resync-complete': ['summary.dashboard', 'diary.list', 'summary.gallery']
+  'sync.resync-complete': [
+    'summary.dashboard',
+    'diary.list',
+    'summary.gallery',
+    'settings.aiProviders',
+    'mcp.toolContext'
+  ]
 }
 
 function isAvatarRelatedSettingsKey(key: unknown): boolean {
@@ -57,6 +63,9 @@ export function resolveInvalidatedCacheKeys(event: DomainMutationEvent): CacheKe
     }
     if (settingsKey === 'tts_settings' || settingsKey === 'tts_config') {
       return ['tts.synthesis']
+    }
+    if (settingsKey === 'ai_providers' || settingsKey === 'global_models') {
+      return ['settings.aiProviders', 'mcp.toolContext']
     }
   }
 

@@ -8,7 +8,11 @@ import {
   type UserProfile
 } from '@baishou/shared'
 import { SettingsFileService } from './settings-file.service'
-import { SETTINGS_SYNC_EXCLUDED_KEYS } from './settings-domain.util'
+import {
+  getSettingsDomainFileName,
+  SETTINGS_SYNC_EXCLUDED_KEYS,
+  shouldApplyDiskSettingsKey
+} from './settings-domain.util'
 import { emitDomainMutation } from '../events'
 
 const PROMPT_SHORTCUTS_KEY = 'prompt_shortcuts_v2'
@@ -112,10 +116,21 @@ export class SettingsManagerService {
    * Vault或网口新数据接连时
    */
   async fullResyncFromDisk(): Promise<void> {
-    const settingsMap = await this.fileService.readAllSettings()
-    // 如果外层是 {} 依然继续，只是不更新罢了。
+    const { settings: settingsMap, domainFileMtimeMs } =
+      await this.fileService.readAllSettingsForResync()
+    const sqliteMeta = await this.repo.getAllEntriesMeta()
+    let sqliteNewerThanDisk = false
+
     for (const key of Object.keys(settingsMap)) {
       if (SETTINGS_SYNC_EXCLUDED_KEYS.has(key)) continue
+
+      const fileName = getSettingsDomainFileName(key)
+      const diskMtime = domainFileMtimeMs[fileName] ?? 0
+      if (!shouldApplyDiskSettingsKey(diskMtime, sqliteMeta[key]?.updatedAt ?? null)) {
+        sqliteNewerThanDisk = true
+        continue
+      }
+
       let value = settingsMap[key]
       if (key === USER_PROFILE_SETTINGS_KEY && value && typeof value === 'object') {
         const profile = value as UserProfile
@@ -129,7 +144,7 @@ export class SettingsManagerService {
       await this.repo.set(key, value)
     }
     const migrated = await migrateUserProfileSettingsKey(this.repo)
-    if (migrated) {
+    if (sqliteNewerThanDisk || migrated) {
       await this.flushToDiskUnlocked()
     }
   }

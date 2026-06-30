@@ -2006,6 +2006,7 @@
       "vision_not_supported": "This model doesn't support image recognition — try switching to a vision model~"
     },
     "generation_failed": "Reply generation failed",
+    "stream_cancelled": "Generation cancelled",
     "trace_title": "Trace [{{modelId}}]",
     "default_assistant_name": "Latte",
     "default_assistant_prompt": "You are Latte, BaiShou's dedicated AI companion.",

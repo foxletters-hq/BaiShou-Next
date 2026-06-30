@@ -1956,6 +1956,7 @@
       "vision_not_supported": "このモデルは画像認識に対応していません。ビジョンモデルに切り替えて試してみてくださいね〜"
     },
     "generation_failed": "返信の生成に失敗しました",
+    "stream_cancelled": "生成をキャンセルしました",
     "trace_title": "トレース [{{modelId}}]",
     "default_assistant_name": "Latte",
     "default_assistant_prompt": "あなたは Latte（ラテ）、白守 App の専属 AI パートナーです。",

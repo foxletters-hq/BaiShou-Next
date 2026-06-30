@@ -70,14 +70,24 @@ export function initExpoDatabase(expoDb: ExpoSqliteDatabase): {
   return { drizzleDb, driver }
 }
 
+export type OpenExpoAgentDatabaseFn = (options?: {
+  useNewConnection?: boolean
+}) => Promise<ExpoSqliteDatabase>
+
 /** 初始化 Expo SQLite：执行 Agent 迁移（影子索引已迁至 per-vault shadow_index_v2.db） */
 export async function installExpoDatabaseSchema(expoDb: ExpoSqliteDatabase): Promise<{
   drizzleDb: AppDatabase
   driver: ExpoSqliteDriver
 }> {
-  const { drizzleDb, driver } = initExpoDatabase(expoDb)
-  const migrationService = new MigrationService(drizzleDb, expoDb, '', EMBEDDED_AGENT_MIGRATIONS)
+  // 须在 drizzle() 之前完成迁移：drizzle-orm 会占用 prepareSync，与 getAllAsync/runAsync 混用会在 Android NPE
+  const migrationService = new MigrationService(
+    expoDb as unknown as AppDatabase,
+    expoDb,
+    '',
+    EMBEDDED_AGENT_MIGRATIONS
+  )
   await migrationService.runMigrations()
+  const { drizzleDb, driver } = initExpoDatabase(expoDb)
   await withExpoAgentDatabaseLock(drizzleDb, () => dropLegacyAgentShadowTables(expoDb))
   return { drizzleDb, driver }
 }
@@ -86,28 +96,49 @@ export async function installExpoDatabaseSchema(expoDb: ExpoSqliteDatabase): Pro
  * 保证 Agent 主库只初始化一次。
  * 避免 React Strict Mode / 热重载下并发 open + 迁移，在 Android 上触发 prepareSync NPE。
  */
+async function runExpoAgentDatabaseInstall(
+  openDatabase: OpenExpoAgentDatabaseFn
+): Promise<ExpoDatabaseInstallResult> {
+  const expoDb = await openDatabase()
+  const { drizzleDb, driver } = await installExpoDatabaseSchema(expoDb)
+  const vecLoad = await loadExpoSqliteVecExtension(expoDb)
+  if (vecLoad.loaded) {
+    logger.info('[VectorSearch] expo sqlite-vec extension loaded on agent database')
+  } else {
+    logger.warn(
+      '[VectorSearch] expo sqlite-vec not loaded; vector search will use JS fallback.',
+      vecLoad.reason
+    )
+  }
+  return {
+    expoDb,
+    drizzleDb,
+    driver,
+    sqliteVecLoaded: vecLoad.loaded,
+    sqliteVecLoadReason: vecLoad.reason
+  }
+}
+
 export async function ensureExpoAgentDatabaseInstalled(
-  openDatabase: () => Promise<ExpoSqliteDatabase>
+  openDatabase: OpenExpoAgentDatabaseFn
 ): Promise<ExpoDatabaseInstallResult> {
   if (!expoAgentDatabaseInstall) {
     expoAgentDatabaseInstall = (async () => {
-      const expoDb = await openDatabase()
-      const vecLoad = await loadExpoSqliteVecExtension(expoDb)
-      if (vecLoad.loaded) {
-        logger.info('[VectorSearch] expo sqlite-vec extension loaded on agent database')
-      } else {
+      try {
+        return await runExpoAgentDatabaseInstall(openDatabase)
+      } catch (firstError) {
         logger.warn(
-          '[VectorSearch] expo sqlite-vec not loaded; vector search will use JS fallback.',
-          vecLoad.reason
+          '[ExpoDB] Agent DB 首次初始化失败，尝试 useNewConnection 重试（常见于开发热重载）',
+          firstError
         )
-      }
-      const { drizzleDb, driver } = await installExpoDatabaseSchema(expoDb)
-      return {
-        expoDb,
-        drizzleDb,
-        driver,
-        sqliteVecLoaded: vecLoad.loaded,
-        sqliteVecLoadReason: vecLoad.reason
+        try {
+          return await runExpoAgentDatabaseInstall((options) =>
+            openDatabase({ ...options, useNewConnection: true })
+          )
+        } catch (retryError) {
+          expoAgentDatabaseInstall = null
+          throw retryError
+        }
       }
     })()
   }

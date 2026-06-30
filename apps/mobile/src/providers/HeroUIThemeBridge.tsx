@@ -17,6 +17,9 @@ export function HeroUIThemeBridge({ children }: { children: React.ReactNode }) {
 
   const providerConfig = useMemo(
     () => ({
+      devInfo: {
+        stylingPrinciples: false
+      },
       toast: {
         maxVisibleToasts: 1,
         defaultProps: {

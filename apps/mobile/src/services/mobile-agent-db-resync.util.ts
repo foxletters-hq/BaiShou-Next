@@ -34,6 +34,14 @@ export async function resyncAgentDbCachesFromDisk(options: {
     resyncErrors.push(`summary: ${message}`)
   }
 
+  try {
+    await runtime.settingsManager.fullResyncFromDisk()
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e)
+    logger.warn('[AgentDbRecovery] settings fullResyncFromDisk failed:', e as Error)
+    resyncErrors.push(`settings: ${message}`)
+  }
+
   if (resyncErrors.length > 0) {
     throw new Error(`磁盘重同步未完全成功 (${resyncErrors.join('; ')})`)
   }
