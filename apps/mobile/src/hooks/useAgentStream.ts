@@ -13,6 +13,7 @@ import {
   isConfiguredProviderId,
   deriveSessionTitleFromUserText,
   createStreamingTextDisplayBuffer,
+  isAgentStreamAbortError,
   type StreamingTextDisplayBuffer
 } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
@@ -70,7 +71,6 @@ export function useAgentStream(
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingText, setStreamingText] = useState('')
   const [streamingReasoning, setStreamingReasoning] = useState('')
-  const [isReasoningStreaming, setIsReasoningStreaming] = useState(false)
   const [tokenUsage, setTokenUsage] = useState<TokenUsage>({
     inputTokens: 0,
     outputTokens: 0,
@@ -103,11 +103,11 @@ export function useAgentStream(
 
   useEffect(() => {
     streamingTextDisplayRef.current = createStreamingTextDisplayBuffer(
-      (text) => setStreamingText(text),
+      setStreamingText,
       MOBILE_AGENT_STREAM_DISPLAY_OPTIONS
     )
     streamingReasoningDisplayRef.current = createStreamingTextDisplayBuffer(
-      (text) => setStreamingReasoning(text),
+      setStreamingReasoning,
       MOBILE_AGENT_STREAM_DISPLAY_OPTIONS
     )
     compressionTextDisplayRef.current = createStreamingTextDisplayBuffer(
@@ -133,6 +133,7 @@ export function useAgentStream(
   const reloadInFlightRef = useRef<Promise<boolean> | null>(null)
   const retryActionInFlightRef = useRef(false)
   const pendingRetryReleaseEpochRef = useRef<number | null>(null)
+  const userStoppedStreamRef = useRef(false)
 
   const [isStreamBridgeActive, setIsStreamBridgeActive] = useState(false)
   const [isRetryActionBusy, setIsRetryActionBusy] = useState(false)
@@ -149,7 +150,6 @@ export function useAgentStream(
   const clearStreamingDisplayBuffers = useCallback(() => {
     streamingTextDisplayRef.current?.reset()
     streamingReasoningDisplayRef.current?.reset()
-    setIsReasoningStreaming(false)
   }, [])
 
   const flushStreamingDisplayBuffers = useCallback(() => {
@@ -158,16 +158,10 @@ export function useAgentStream(
   }, [])
 
   const appendStreamingTextDelta = useCallback((chunk: string) => {
-    if (chunk) {
-      setIsReasoningStreaming(false)
-    }
     streamingTextDisplayRef.current?.push(chunk)
   }, [])
 
   const appendStreamingReasoningDelta = useCallback((chunk: string) => {
-    if (chunk) {
-      setIsReasoningStreaming(true)
-    }
     streamingReasoningDisplayRef.current?.push(chunk)
   }, [])
 
@@ -192,6 +186,24 @@ export function useAgentStream(
   const resetCompressionBuffers = useCallback(() => {
     resetCompressionDisplayBuffers()
   }, [resetCompressionDisplayBuffers])
+
+  /** 对齐 desktop stopChat：立即停止流式/压缩 UI，不等待 DB reload */
+  const stopStreamingUiImmediately = useCallback(() => {
+    streamAbortRef.current?.()
+    streamAbortRef.current = null
+    isStreamingRef.current = false
+    setIsStreaming(false)
+    setIsStreamBridgeActive(false)
+    setIsCompressing(false)
+    setLoading(false)
+    activeToolRef.current = null
+    setActiveTool(null)
+    setCompletedTools([])
+    resetCompressionBuffers()
+    setCompressionText('')
+    setCompressionReasoning('')
+    setCompressionTriggerMessageId(null)
+  }, [resetCompressionBuffers, setLoading])
 
   const syncTokenUsageFromSession = useCallback(
     async (sessionId: string) => {
@@ -419,21 +431,15 @@ export function useAgentStream(
   /** 中断当前流式/压缩 UI，避免重发或新消息与旧生成并行 */
   const interruptActiveStream = useCallback(
     (options?: { keepStreamingFlag?: boolean }) => {
-      streamAbortRef.current?.()
-      streamAbortRef.current = null
-      setIsStreamBridgeActive(false)
-      if (!options?.keepStreamingFlag) {
-        setIsStreaming(false)
+      finishStreamPassRef.current += 1
+      stopStreamingUiImmediately()
+      if (options?.keepStreamingFlag) {
+        isStreamingRef.current = true
+        setIsStreaming(true)
       }
-      setIsCompressing(false)
-      setLoading(false)
-      resetCompressionBuffers()
-      setCompressionText('')
-      setCompressionReasoning('')
-      setCompressionTriggerMessageId(null)
       resetStreamingBuffers()
     },
-    [resetCompressionBuffers, resetStreamingBuffers, setLoading]
+    [stopStreamingUiImmediately, resetStreamingBuffers]
   )
 
   // 工作区切换时中断流式生成，避免旧会话的流写入新 UI
@@ -479,84 +485,100 @@ export function useAgentStream(
     [releaseRetryAction]
   )
 
-  /** 流结束：先从 DB 刷新消息，再收起 StreamingBubble，避免列表高度突变 */
+  const finishStreamInFlightRef = useRef<Promise<void> | null>(null)
+
+  /** 流结束：先刷盘并 reload，再一次性切到列表气泡（避免 bridge 双实例整屏闪烁） */
   const finishStream = useCallback(
     async (
       sessionId: string,
       options?: { waitForLatestUsage?: boolean; releaseRetryEpoch?: number }
     ) => {
       const finishPass = ++finishStreamPassRef.current
-      if (streamFinalizeLockRef.current === sessionId) return
-      streamFinalizeLockRef.current = sessionId
       const releaseEpoch = options?.releaseRetryEpoch ?? null
 
-      setLoading(false)
-      streamAbortRef.current = null
+      const runFinalize = async () => {
+        streamFinalizeLockRef.current = sessionId
 
-      const hasBufferedOutput =
-        Boolean(streamingTextDisplayRef.current?.getFullText().trim()) ||
-        Boolean(streamingReasoningDisplayRef.current?.getFullText().trim())
-      if (hasBufferedOutput && isActiveSession(sessionId)) {
-        flushStreamingDisplayBuffers()
-        setIsStreamBridgeActive(true)
-      }
+        setLoading(false)
+        streamAbortRef.current = null
 
-      try {
-        try {
-          await services?.sessionManager.flushSessionToDisk(sessionId)
-        } catch {
-          /* ignore */
+        const hasBufferedOutput =
+          Boolean(streamingTextDisplayRef.current?.getFullText().trim()) ||
+          Boolean(streamingReasoningDisplayRef.current?.getFullText().trim())
+        if (hasBufferedOutput && isActiveSession(sessionId)) {
+          flushStreamingDisplayBuffers()
         }
 
-        if (!isActiveSession(sessionId)) return
+        try {
+          try {
+            await services?.sessionManager.flushSessionToDisk(sessionId)
+          } catch {
+            /* ignore */
+          }
 
-        let reloaded = await reloadMessagesFromDb(sessionId, {
-          preserveWindow: true,
-          retryCount: 5,
-          waitForLatestUsage: options?.waitForLatestUsage ?? false,
-          commitToUi: true
-        })
+          if (!isActiveSession(sessionId)) return
 
-        if (!reloaded && isActiveSession(sessionId)) {
-          reloaded = await reloadMessagesFromDb(sessionId, {
+          let reloaded = await reloadMessagesFromDb(sessionId, {
             preserveWindow: true,
-            retryCount: 2,
-            waitForLatestUsage: false,
+            retryCount: 5,
+            waitForLatestUsage: options?.waitForLatestUsage ?? false,
             commitToUi: true
           })
-        }
 
-        if (!reloaded && isActiveSession(sessionId)) {
-          await syncTokenUsageFromSession(sessionId)
-        }
-      } catch (e) {
-        console.error('Failed to finish stream', e)
-        if (isActiveSession(sessionId)) {
-          await syncTokenUsageFromSession(sessionId)
-        }
-      } finally {
-        setIsStreaming(false)
-        if (isActiveSession(sessionId)) {
-          setTimeout(() => {
-            if (!isActiveSession(sessionId)) return
-            setIsStreamBridgeActive(false)
-            resetStreamingBuffers()
-          }, 80)
-        } else {
+          if (!reloaded && isActiveSession(sessionId)) {
+            reloaded = await reloadMessagesFromDb(sessionId, {
+              preserveWindow: true,
+              retryCount: 2,
+              waitForLatestUsage: false,
+              commitToUi: true
+            })
+          }
+
+          if (!reloaded && isActiveSession(sessionId)) {
+            await syncTokenUsageFromSession(sessionId)
+          }
+        } catch (e) {
+          console.error('Failed to finish stream', e)
+          if (isActiveSession(sessionId)) {
+            await syncTokenUsageFromSession(sessionId)
+          }
+        } finally {
+          if (streamFinalizeLockRef.current === sessionId) {
+            streamFinalizeLockRef.current = null
+          }
+
+          // 作废较早的 finish（如停止后又发起新流式输出）
+          if (finishPass !== finishStreamPassRef.current) {
+            if (
+              releaseEpoch !== null &&
+              pendingRetryReleaseEpochRef.current === releaseEpoch
+            ) {
+              releaseRetryAction()
+            }
+            return
+          }
+
+          isStreamingRef.current = false
+          setIsStreaming(false)
           setIsStreamBridgeActive(false)
           resetStreamingBuffers()
-        }
-        if (streamFinalizeLockRef.current === sessionId) {
-          streamFinalizeLockRef.current = null
-        }
-        if (
-          finishPass === finishStreamPassRef.current &&
-          releaseEpoch !== null &&
-          pendingRetryReleaseEpochRef.current === releaseEpoch
-        ) {
-          releaseRetryAction()
+          if (
+            releaseEpoch !== null &&
+            pendingRetryReleaseEpochRef.current === releaseEpoch
+          ) {
+            releaseRetryAction()
+          }
         }
       }
+
+      const prev = finishStreamInFlightRef.current
+      const task = (prev ? prev.then(runFinalize, runFinalize) : runFinalize()).finally(() => {
+        if (finishStreamInFlightRef.current === task) {
+          finishStreamInFlightRef.current = null
+        }
+      })
+      finishStreamInFlightRef.current = task
+      return task
     },
     [
       flushStreamingDisplayBuffers,
@@ -593,9 +615,11 @@ export function useAgentStream(
       }
 
       const fail = (errorMsg: string) => {
+        if (userStoppedStreamRef.current || isAgentStreamAbortError(errorMsg)) return
         setStreamError(errorMsg)
       }
 
+      userStoppedStreamRef.current = false
       interruptActiveStream()
       const claim = claimAgentStreamSession(sessionId)
       streamAbortRef.current = claim.abort
@@ -620,6 +644,7 @@ export function useAgentStream(
             onToolCallResult: handleToolCallResult,
             onFinish: () => {},
             onError: (err) => {
+              if (userStoppedStreamRef.current || isAgentStreamAbortError(err)) return
               fail(err.message || t('app.unknown_error', '未知网络或系统错误'))
             }
           },
@@ -640,8 +665,13 @@ export function useAgentStream(
           releaseRetryEpoch: releaseEpoch ?? undefined
         })
       } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e)
-        fail(msg)
+        if (userStoppedStreamRef.current || isAgentStreamAbortError(e)) {
+          userStoppedStreamRef.current = false
+          setStreamError(null)
+        } else {
+          const msg = e instanceof Error ? e.message : String(e)
+          fail(msg)
+        }
         await finishStream(sessionId, {
           waitForLatestUsage: true,
           releaseRetryEpoch: releaseEpoch ?? undefined
@@ -749,6 +779,7 @@ export function useAgentStream(
         onSessionListRefresh?.()
       }
 
+      userStoppedStreamRef.current = false
       interruptActiveStream({ keepStreamingFlag: true })
       const claim = claimAgentStreamSession(sessionId)
       streamAbortRef.current = claim.abort
@@ -770,6 +801,7 @@ export function useAgentStream(
       resetStreamingBuffers()
 
       const failStream = (errorMsg: string) => {
+        if (userStoppedStreamRef.current || isAgentStreamAbortError(errorMsg)) return
         setStreamError(errorMsg)
       }
 
@@ -784,6 +816,7 @@ export function useAgentStream(
             onToolCallResult: handleToolCallResult,
             onFinish: () => {},
             onError: (err) => {
+              if (userStoppedStreamRef.current || isAgentStreamAbortError(err)) return
               failStream(err.message || t('app.unknown_error', '未知网络或系统错误'))
             }
           },
@@ -800,8 +833,13 @@ export function useAgentStream(
         )
         await finishStream(sessionId!, { waitForLatestUsage: true })
       } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : String(e)
-        failStream(msg)
+        if (userStoppedStreamRef.current || isAgentStreamAbortError(e)) {
+          userStoppedStreamRef.current = false
+          setStreamError(null)
+        } else {
+          const msg = e instanceof Error ? e.message : String(e)
+          failStream(msg)
+        }
         await finishStream(sessionId!, { waitForLatestUsage: true })
       }
 
@@ -831,15 +869,31 @@ export function useAgentStream(
 
   const handleStop = useCallback(() => {
     const sessionId = currentSessionIdRef.current
-    streamAbortRef.current?.()
-    streamAbortRef.current = null
+    userStoppedStreamRef.current = true
+    finishStreamPassRef.current += 1
     setStreamError(null)
+    flushStreamingDisplayBuffers()
+    stopStreamingUiImmediately()
+    resetStreamingBuffers()
+    toast.showSuccess(t('agent.stream_cancelled', '取消成功'))
+
+    if (retryActionInFlightRef.current) {
+      pendingRetryReleaseEpochRef.current = null
+      releaseRetryAction()
+    }
+
     if (sessionId) {
       void finishStream(sessionId, { waitForLatestUsage: true })
-    } else {
-      interruptActiveStream()
     }
-  }, [finishStream, interruptActiveStream])
+  }, [
+    flushStreamingDisplayBuffers,
+    stopStreamingUiImmediately,
+    resetStreamingBuffers,
+    releaseRetryAction,
+    finishStream,
+    toast,
+    t
+  ])
 
   const handleRegenerate = useCallback(
     async (messageId: string) => {
@@ -858,6 +912,7 @@ export function useAgentStream(
 
       const failRegenerate = (errorMsg: string) => {
         if (epoch !== retryEpochRef.current) return
+        if (userStoppedStreamRef.current || isAgentStreamAbortError(errorMsg)) return
         setStreamError(errorMsg)
       }
 
@@ -897,8 +952,13 @@ export function useAgentStream(
           { retryReleaseEpoch: epoch }
         )
       } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e)
-        failRegenerate(msg)
+        if (userStoppedStreamRef.current || isAgentStreamAbortError(e)) {
+          userStoppedStreamRef.current = false
+          setStreamError(null)
+        } else {
+          const msg = e instanceof Error ? e.message : String(e)
+          failRegenerate(msg)
+        }
         releaseRetryActionIfSetupFailed(epoch)
       }
     },
@@ -1088,7 +1148,6 @@ export function useAgentStream(
     streamError,
     streamingText,
     streamingReasoning,
-    isReasoningStreaming,
     tokenUsage,
     activeTool,
     completedTools,

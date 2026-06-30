@@ -6,11 +6,10 @@ import {
   type MarkdownRendererProps,
   type MarkdownRendererVariant
 } from '../MarkdownRenderer/MarkdownRenderer'
-import { FluidAgentMarkdownRenderer } from './FluidAgentMarkdownRenderer'
 
 export interface AgentMarkdownRendererProps {
   content: string
-  /** 流式进行中：稳定块 Markdown + 当前块 printer */
+  /** 流式进行中：由 Streamdown 原生 streamingAnimation 处理渐显 */
   isStreaming?: boolean
   variant?: MarkdownRendererVariant
   plainText?: boolean
@@ -22,11 +21,11 @@ export interface AgentMarkdownRendererProps {
 
 /**
  * 移动端 Agent Markdown。
- * 流式期间：稳定块走 MarkdownRenderer，当前块走 FluidAgentMarkdownRenderer printer；结束后完整 Markdown 解析。
+ * 流式与历史消息统一走 Streamdown（react-native-streamdown + enriched-markdown 原生渐显）。
  */
 export const AgentMarkdownRenderer = React.memo(function AgentMarkdownRenderer({
   content,
-  isStreaming = false,
+  isStreaming: _isStreaming = false,
   variant = 'chat',
   plainText = false,
   style,
@@ -41,20 +40,6 @@ export const AgentMarkdownRenderer = React.memo(function AgentMarkdownRenderer({
       <Text style={[styles.plainText, { color: colors.textPrimary }, style as object]}>
         {content}
       </Text>
-    )
-  }
-
-  if (isStreaming) {
-    return (
-      <FluidAgentMarkdownRenderer
-        content={content}
-        variant={variant}
-        isStreaming
-        style={style}
-        resolveImageUri={resolveImageUri}
-        loadImageUri={loadImageUri}
-        onImagePress={onImagePress}
-      />
     )
   }
 
