@@ -1,4 +1,8 @@
-import { TOOL_PAYLOAD_PREVIEW_CHARS, TOOL_PAYLOAD_STORE_MAX_BYTES } from './compression.constants'
+import {
+  TOOL_PAYLOAD_PREVIEW_CHARS,
+  TOOL_PAYLOAD_PRUNE_FIELD_MAX_BYTES,
+  TOOL_PAYLOAD_STORE_MAX_BYTES
+} from './compression.constants'
 
 export type ToolPartData = {
   callId?: string
@@ -17,7 +21,6 @@ export type ToolPartData = {
 }
 
 const DATE_HEADER_RE = /(?:^|\n)## (\d{4}-\d{2}-\d{2})/g
-const GENERIC_ARG_TRUNCATE_BYTES = TOOL_PAYLOAD_PREVIEW_CHARS * 4
 
 function parseArguments(args: unknown): Record<string, unknown> | null {
   if (args == null) return null
@@ -63,12 +66,15 @@ function extractDiaryDates(text: string): string[] {
   return [...dates]
 }
 
-function slimLargeStringFields(source: Record<string, unknown>): Record<string, unknown> {
+function slimLargeStringFields(
+  source: Record<string, unknown>,
+  fieldMaxBytes: number
+): Record<string, unknown> {
   const next: Record<string, unknown> = {}
   let changed = false
 
   for (const [key, value] of Object.entries(source)) {
-    if (typeof value === 'string' && stringByteLength(value) > GENERIC_ARG_TRUNCATE_BYTES) {
+    if (typeof value === 'string' && stringByteLength(value) > fieldMaxBytes) {
       next[`${key}Preview`] = buildPreview(value)
       next[`${key}Length`] = value.length
       changed = true
@@ -83,9 +89,12 @@ function slimLargeStringFields(source: Record<string, unknown>): Record<string, 
   return next
 }
 
-function sanitizeDiaryWriteEditPayload(data: ToolPartData): ToolPartData {
+function sanitizeDiaryWriteEditPayload(
+  data: ToolPartData,
+  fieldMaxBytes: number = TOOL_PAYLOAD_PRUNE_FIELD_MAX_BYTES
+): ToolPartData {
   const args = parseArguments(data.arguments)
-  if (!args) return sanitizeGenericToolPayload(data)
+  if (!args) return sanitizeGenericToolPayload(data, fieldMaxBytes)
 
   const content = typeof args.content === 'string' ? args.content : ''
   const { content: _removed, ...restArgs } = args
@@ -115,16 +124,19 @@ function sanitizeDiaryReadPayload(data: ToolPartData): ToolPartData {
   }
 }
 
-function sanitizeGenericToolPayload(data: ToolPartData): ToolPartData {
+function sanitizeGenericToolPayload(
+  data: ToolPartData,
+  fieldMaxBytes: number = TOOL_PAYLOAD_PRUNE_FIELD_MAX_BYTES
+): ToolPartData {
   const next: ToolPartData = { ...data }
   let changed = false
 
   const args = parseArguments(data.arguments)
   const argsText = stringifyPayloadValue(data.arguments)
-  if (args && argsText && stringByteLength(argsText) > GENERIC_ARG_TRUNCATE_BYTES) {
-    next.arguments = slimLargeStringFields(args)
+  if (args && argsText && stringByteLength(argsText) > fieldMaxBytes) {
+    next.arguments = slimLargeStringFields(args, fieldMaxBytes)
     changed = true
-  } else if (!args && argsText && stringByteLength(argsText) > GENERIC_ARG_TRUNCATE_BYTES) {
+  } else if (!args && argsText && stringByteLength(argsText) > fieldMaxBytes) {
     next.arguments = {
       argumentsPreview: buildPreview(argsText),
       argumentsLength: argsText.length,
@@ -134,7 +146,7 @@ function sanitizeGenericToolPayload(data: ToolPartData): ToolPartData {
   }
 
   const resultText = stringifyPayloadValue(data.result)
-  if (resultText && stringByteLength(resultText) > GENERIC_ARG_TRUNCATE_BYTES) {
+  if (resultText && stringByteLength(resultText) > fieldMaxBytes) {
     next.result = `[内容已修剪，长度 ${resultText.length} 字]`
     next.resultPreview = buildPreview(resultText)
     next.resultLength = resultText.length
@@ -177,18 +189,12 @@ export function sanitizeToolPayloadForStorage(data: unknown): unknown {
   if (name === 'diary_write' || name === 'diary_edit') {
     return sanitizeDiaryWriteEditPayload(d)
   }
-  if (name === 'diary_read') {
-    const resultText = stringifyPayloadValue(d.result)
-    if (resultText && stringByteLength(resultText) > GENERIC_ARG_TRUNCATE_BYTES) {
-      return sanitizeDiaryReadPayload(d)
-    }
-    return data
-  }
 
+  // 入库默认保留完整 result；仅极端超大 payload 才兜底瘦身
   if (estimateToolPayloadSize(d) <= TOOL_PAYLOAD_STORE_MAX_BYTES) {
     return data
   }
-  return sanitizeGenericToolPayload(d)
+  return sanitizeGenericToolPayload(d, TOOL_PAYLOAD_STORE_MAX_BYTES)
 }
 
 export function sanitizeToolPayloadForPrune(data: unknown): unknown {
@@ -202,7 +208,11 @@ export function sanitizeToolPayloadForPrune(data: unknown): unknown {
     return sanitizeDiaryWriteEditPayload(d)
   }
   if (name === 'diary_read') {
-    return sanitizeDiaryReadPayload(d)
+    const resultText = stringifyPayloadValue(d.result)
+    if (resultText && stringByteLength(resultText) > TOOL_PAYLOAD_PRUNE_FIELD_MAX_BYTES) {
+      return sanitizeDiaryReadPayload(d)
+    }
+    return data
   }
   return sanitizeGenericToolPayload(d)
 }
