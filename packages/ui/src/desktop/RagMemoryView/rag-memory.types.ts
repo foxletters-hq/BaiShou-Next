@@ -6,6 +6,7 @@ export interface RagConfig {
   ragEnabled: boolean
   batchEmbedConcurrency?: number
   lastDiaryEmbedFailureAt?: number
+  lastDiaryEmbedFailureMessage?: string
 }
 
 export interface RagStats {

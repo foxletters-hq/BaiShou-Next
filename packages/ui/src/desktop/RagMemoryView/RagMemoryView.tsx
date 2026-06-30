@@ -88,6 +88,7 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
 
         <RagMemoryDiaryEmbedHint
           failedAt={config.lastDiaryEmbedFailureAt}
+          failedMessage={config.lastDiaryEmbedFailureMessage}
           onBatchEmbed={onBatchEmbed}
         />
 

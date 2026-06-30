@@ -4,6 +4,7 @@ import {
   buildDiaryEmbeddingGroupId,
   buildDiaryEmbeddingSourceId,
   diaryDateToSourceCreatedSeconds,
+  formatAiApiCallError,
   isRagMemoryEnabled,
   markRagDiaryEmbedFailure,
   clearRagDiaryEmbedFailure,
@@ -13,18 +14,19 @@ import {
 import { vaultService } from './vault.ipc'
 import { deleteDiaryEmbeddingAliases } from '../services/diary-embedding.util'
 
-function broadcastDiaryEmbedFailed(): void {
+function broadcastDiaryEmbedFailed(message: string): void {
   for (const win of BrowserWindow.getAllWindows()) {
-    win.webContents.send('diary:sync-event', { type: 'embed-failed' })
+    win.webContents.send('diary:sync-event', { type: 'embed-failed', message })
   }
 }
 
-async function persistDiaryEmbedFailure(): Promise<void> {
+async function persistDiaryEmbedFailure(error: unknown): Promise<void> {
   const { settingsManager } = await import('./settings.ipc')
   const ragConfig = (await settingsManager.get<any>('rag_config')) || {}
   if (!isRagMemoryEnabled(ragConfig)) return
-  await settingsManager.set('rag_config', markRagDiaryEmbedFailure(ragConfig))
-  broadcastDiaryEmbedFailed()
+  const message = formatAiApiCallError(error)
+  await settingsManager.set('rag_config', markRagDiaryEmbedFailure(ragConfig, message))
+  broadcastDiaryEmbedFailed(message)
 }
 
 async function clearDiaryEmbedFailureIfSet(): Promise<void> {
@@ -70,7 +72,7 @@ export const embeddingCallback: IEmbeddingCallback = {
       await clearDiaryEmbedFailureIfSet()
     } catch (e: any) {
       console.error('[DiaryIPC] RAG 嵌入发生异常:', e)
-      await persistDiaryEmbedFailure()
+      await persistDiaryEmbedFailure(e)
     }
   },
 

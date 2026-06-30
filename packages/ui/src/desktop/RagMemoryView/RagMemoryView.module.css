@@ -827,6 +827,17 @@ input:checked + .slider:before {
   color: var(--text-secondary, #64748b);
 }
 
+.embedHintError {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--color-error, #dc2626);
+  background: var(--color-error-container, rgba(239, 68, 68, 0.08));
+  border-radius: 8px;
+  word-break: break-word;
+}
+
 .embedHintAction {
   padding: 6px 14px;
   font-size: 13px;

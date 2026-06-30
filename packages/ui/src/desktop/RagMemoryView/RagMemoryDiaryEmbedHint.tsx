@@ -5,11 +5,13 @@ import styles from './RagMemoryView.module.css'
 
 interface RagMemoryDiaryEmbedHintProps {
   failedAt?: number
+  failedMessage?: string
   onBatchEmbed?: () => Promise<void>
 }
 
 export const RagMemoryDiaryEmbedHint: React.FC<RagMemoryDiaryEmbedHintProps> = ({
   failedAt,
+  failedMessage,
   onBatchEmbed
 }) => {
   const { t } = useTranslation()
@@ -31,6 +33,9 @@ export const RagMemoryDiaryEmbedHint: React.FC<RagMemoryDiaryEmbedHintProps> = (
       </button>
       {expanded ? (
         <div className={styles.embedHintBody}>
+          {failedMessage ? (
+            <p className={styles.embedHintError}>{failedMessage}</p>
+          ) : null}
           <p className={styles.embedHintDesc}>
             {t(
               'settings.rag_diary_embed_pending_detail',
