@@ -121,4 +121,51 @@ describe('createStreamingTextDisplayBuffer', () => {
     expect(displays.at(-1)).toBe('# Hello\n')
     expect(buffer.getDisplayText()).toBe('# Hello\n')
   })
+
+  it('reveals partial text by minimum chunk size instead of per character', () => {
+    const displays: string[] = []
+    const buffer = createStreamingTextDisplayBuffer((text) => displays.push(text), {
+      showPartialDuringGap: true,
+      partialRevealMinChars: 3,
+      partialRevealMs: 1000,
+      segmentMaxChars: 20
+    })
+
+    buffer.push('你')
+    expect(displays).toHaveLength(0)
+
+    buffer.push('好')
+    expect(displays).toHaveLength(0)
+
+    buffer.push('呀')
+    expect(displays.at(-1)).toBe('你好呀')
+
+    buffer.push('啊')
+    expect(displays.at(-1)).toBe('你好呀')
+
+    buffer.push('哈')
+    expect(displays.at(-1)).toBe('你好呀')
+
+    buffer.push('哈')
+    expect(displays.at(-1)).toBe('你好呀啊哈哈')
+  })
+
+  it('reveals a short partial after the wait threshold', () => {
+    const displays: string[] = []
+    const buffer = createStreamingTextDisplayBuffer((text) => displays.push(text), {
+      showPartialDuringGap: true,
+      partialRevealMinChars: 10,
+      partialRevealMs: 120,
+      segmentMaxChars: 20
+    })
+
+    buffer.push('hi')
+    expect(displays).toHaveLength(0)
+
+    vi.advanceTimersByTime(119)
+    expect(displays).toHaveLength(0)
+
+    vi.advanceTimersByTime(1)
+    expect(displays.at(-1)).toBe('hi')
+  })
 })

@@ -10,6 +10,8 @@ export interface NativeStreamingBubbleProps {
   text: string
   reasoning?: string
   isReasoning?: boolean
+  /** reasoning 正文是否走 Streamdown 渐显 */
+  isThinkStreaming?: boolean
   /** 正文是否仍在流式输出（桥接态应为 false） */
   isTextStreaming?: boolean
   activeToolName?: string | null

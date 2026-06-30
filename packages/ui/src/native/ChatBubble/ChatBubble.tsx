@@ -38,7 +38,9 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   onEditingChange,
   invertMetaOverBackground = false,
   retryDisabled = false,
-  showReasoning = true
+  showReasoning = true,
+  liveStream,
+  deferAssistantChrome = false
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -47,10 +49,16 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   const isUser = message.role === 'user'
   const isAssistant = message.role === 'assistant'
 
+  const sourceContent = liveStream?.content ?? message.content ?? ''
+  const sourceReasoning = liveStream?.reasoning ?? message.reasoning ?? ''
+
   const { cleanContent, cleanReasoning } = useMemo(
-    () => parseRedactedThinking(message.content || '', message.reasoning || ''),
-    [message.content, message.reasoning]
+    () => parseRedactedThinking(sourceContent, sourceReasoning),
+    [sourceContent, sourceReasoning]
   )
+
+  const markdownStreaming = Boolean(liveStream?.isTextStreaming)
+  const thinkStreaming = Boolean(liveStream?.isThinkStreaming)
 
   const editableContent = isAssistant
     ? cleanContent || message.content || ''
@@ -104,6 +112,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
         </Text>
 
         <View
+          collapsable={false}
           style={[
             styles.bubble,
             edit.isEditing ? styles.bubbleEditing : null,
@@ -137,7 +146,11 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                 width: '100%'
               }}
             >
-              <AgentThinkSection content={cleanReasoning} />
+              <AgentThinkSection
+                content={cleanReasoning}
+                isStreaming={thinkStreaming}
+                isMarkdownStreaming={thinkStreaming}
+              />
             </View>
           ) : null}
 
@@ -156,16 +169,23 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
               />
             </View>
           ) : (
-            <Pressable onLongPress={() => setShowActions(true)} delayLongPress={500}>
+            <Pressable
+              style={styles.bubblePressable}
+              onLongPress={() => setShowActions(true)}
+              delayLongPress={500}
+            >
               {attachments.length > 0 ? (
                 <NativeChatBubbleAttachments attachments={attachments} isUserBubble={isUser} />
               ) : null}
               {isAssistant && cleanContent ? (
-                <AgentMarkdownRenderer
-                  content={cleanContent}
-                  variant="chat"
-                  onImagePress={(_src, resolvedUri) => setPreviewImageUri(resolvedUri)}
-                />
+                <View style={styles.markdownSlot}>
+                  <AgentMarkdownRenderer
+                    content={cleanContent}
+                    variant="chat"
+                    isStreaming={markdownStreaming}
+                    onImagePress={(_src, resolvedUri) => setPreviewImageUri(resolvedUri)}
+                  />
+                </View>
               ) : !isAssistant && message.content ? (
                 <Text style={[styles.text, { color: colors.textPrimary }]}>{message.content}</Text>
               ) : null}
@@ -182,6 +202,8 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
             onResendEdit={onResendEdit ? edit.handleResendEdit : undefined}
             onSaveEdit={onSaveEdit ? edit.handleSaveEdit : undefined}
           />
+        ) : isAssistant && deferAssistantChrome ? (
+          <View style={styles.deferredChromeSpacer} />
         ) : (
           <NativeChatBubbleActionsRow
             colors={colors}

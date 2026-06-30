@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
+import React, { useRef, useEffect, useLayoutEffect, useState, useCallback, useMemo } from 'react'
 import { useRouter, type Href } from 'expo-router'
 import {
   type PromptShortcut,
@@ -18,10 +18,10 @@ import {
   Dimensions,
   Keyboard,
   ImageBackground,
+  ScrollView,
   type NativeScrollEvent,
   type NativeSyntheticEvent
 } from 'react-native'
-import { FlatList } from 'react-native-gesture-handler'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as Clipboard from 'expo-clipboard'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -63,6 +63,11 @@ import { useResolvedChatBackground } from '../hooks/useResolvedChatBackground'
 import { useAgentUserProfile } from '../hooks/useAgentUserProfile'
 import { useAgentChatKeyboardInsets } from '../hooks/useAgentChatKeyboardInsets'
 import { useAgentChatScroll } from '../hooks/useAgentChatScroll'
+import {
+  logAgentScrollEvent,
+  logAgentUiEvent,
+  setAgentScrollDebugContext
+} from '../utils/agent-scroll-diagnostics'
 import { useAgentNavigationPersistence } from '../hooks/useAgentNavigationPersistence'
 import {
   hydrateAssistantsForUi,
@@ -90,6 +95,11 @@ const IDLE_LIVE_COMPRESSION = {
   isActive: false
 }
 
+/** 列表内流式助手气泡的稳定 key，落库前后保持同一挂载点 */
+const LIVE_ASSISTANT_STREAM_KEY = 'live-assistant-stream'
+/** linger 结束后再保留 live 展示，等布局稳定后再释放 minHeight */
+const HOLD_LIVE_PRESENTATION_MS = 320
+
 export const AgentScreen = () => {
   const router = useRouter()
   const { t, i18n } = useTranslation()
@@ -101,6 +111,8 @@ export const AgentScreen = () => {
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   const [inputDockHeight, setInputDockHeight] = useState(INPUT_DOCK_HEIGHT)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [holdLivePresentation, setHoldLivePresentation] = useState(false)
+  const [keepLiveRowAfterHold, setKeepLiveRowAfterHold] = useState(false)
 
   const handleBubbleEditingChange = useCallback((editing: boolean, messageId?: string) => {
     setIsBubbleEditing(editing)
@@ -116,7 +128,7 @@ export const AgentScreen = () => {
     storageIndexing,
     ecosystemResyncEpoch
   } = useBaishou()
-  const flatListRef = useRef<FlatList>(null)
+  const flatListRef = useRef<ScrollView>(null)
   const inputBarRef = useRef<InputBarRef>(null)
   const editingRowRef = useRef<View>(null)
   const scrollOffsetRef = useRef(0)
@@ -212,6 +224,7 @@ export const AgentScreen = () => {
   const {
     isStreaming,
     isStreamBridgeActive,
+    streamPresentationLinger,
     isRetryActionBusy,
     isCompressing,
     compressionPhase,
@@ -221,7 +234,6 @@ export const AgentScreen = () => {
     streamError,
     streamingText,
     streamingReasoning,
-    isReasoningStreaming,
     tokenUsage,
     activeTool,
     completedTools,
@@ -271,13 +283,15 @@ export const AgentScreen = () => {
     handleMomentumScrollEnd,
     scrollToBottom,
     beginFollowIfAtBottom,
-    onContentSizeChange: handleChatContentSizeChange,
+    handleContentSizeChange,
+    contentAnchorMinHeight,
+    beginContentHandoff,
+    releaseContentHandoff,
+    finalizeContentHandoff,
     bindFlatList
   } = useAgentChatScroll({
     sessionId: currentSessionId,
     messages,
-    streamingText,
-    streamingReasoning,
     isStreaming,
     isStreamBridgeActive,
     activeTool
@@ -302,8 +316,7 @@ export const AgentScreen = () => {
     tabBarHeight,
     inputDockHeight,
     isBubbleEditing,
-    enableComposerKeyboardLift: composerKeyboardLiftEnabled,
-    streamingActive: isStreaming || isStreamBridgeActive
+    enableComposerKeyboardLift: composerKeyboardLiftEnabled
   })
 
   const readKeyboardInset = useCallback(() => {
@@ -331,8 +344,8 @@ export const AgentScreen = () => {
       const rowBottom = y + height
       if (rowBottom <= safeBottom + 4) return
 
-      flatListRef.current?.scrollToOffset({
-        offset: scrollOffsetRef.current + (rowBottom - safeBottom),
+      flatListRef.current?.scrollTo({
+        y: scrollOffsetRef.current + (rowBottom - safeBottom),
         animated: true
       })
     })
@@ -396,13 +409,21 @@ export const AgentScreen = () => {
   const { shortcuts, addShortcut, updateShortcut, deleteShortcut, reorderShortcuts } =
     useMobilePromptShortcuts()
 
+  const handleListContentSizeChange = useCallback(
+    (_width: number, height: number) => {
+      handleContentSizeChange(flatListRef, height)
+    },
+    [handleContentSizeChange]
+  )
+
   const handleListScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       scrollOffsetRef.current = event.nativeEvent.contentOffset.y
       handleChatListScroll(event)
 
       const nearTop = event.nativeEvent.contentOffset.y < 100
-      setShowLoadMoreBanner(hasMore && nearTop)
+      const nextShowLoadMore = hasMore && nearTop
+      setShowLoadMoreBanner((prev) => (prev === nextShowLoadMore ? prev : nextShowLoadMore))
     },
     [handleChatListScroll, hasMore]
   )
@@ -758,10 +779,6 @@ export const AgentScreen = () => {
     [currentSessionId, services, searchMode, toast, t]
   )
 
-  const handleContentSizeChange = useCallback(() => {
-    handleChatContentSizeChange(flatListRef)
-  }, [handleChatContentSizeChange])
-
   const totalInputTokens = tokenUsage?.inputTokens || 0
   const totalOutputTokens = tokenUsage?.outputTokens || 0
   const totalCacheReadInputTokens = tokenUsage?.cacheReadInputTokens || 0
@@ -819,19 +836,36 @@ export const AgentScreen = () => {
     [userProfile, t, resolvedUserAvatarUri]
   )
 
-  const showStreamingFooter = useMemo(() => {
-    if (!isStreaming && !isStreamBridgeActive) return false
+  const showStreamingFooter = isStreaming || isStreamBridgeActive
 
-    return (
-      !isCompressing ||
-      Boolean(streamingText.trim()) ||
-      Boolean(streamingReasoning.trim()) ||
-      activeTool ||
-      completedTools.length > 0
+  const lastMessage = messages[messages.length - 1]
+  /** 对齐桌面 AgentMessageList：助手已落库后改由列表 ChatBubble 展示，不再挂 Footer StreamingBubble */
+  const assistantPersistedInList = useMemo(() => {
+    if (lastMessage?.role !== 'assistant') return false
+    return Boolean(
+      lastMessage.content?.trim() ||
+        lastMessage.reasoning?.trim() ||
+        ((lastMessage.toolInvocations?.length ?? 0) > 0)
     )
+  }, [lastMessage])
+
+  const showStreamingBubble = useMemo(() => {
+    if (!showStreamingFooter) return false
+    if (assistantPersistedInList) return false
+    // 对齐桌面：流式/桥接期间占位（含重发后尚无 token 的空白阶段）
+    if (
+      isCompressing &&
+      !streamingText.trim() &&
+      !streamingReasoning.trim() &&
+      !activeTool &&
+      completedTools.length === 0
+    ) {
+      return false
+    }
+    return true
   }, [
-    isStreaming,
-    isStreamBridgeActive,
+    showStreamingFooter,
+    assistantPersistedInList,
     isCompressing,
     streamingText,
     streamingReasoning,
@@ -839,15 +873,228 @@ export const AgentScreen = () => {
     completedTools.length
   ])
 
-  /** 流式/交接期间隐藏已落库的 assistant，避免与 StreamingBubble 重复并减少高度突变 */
-  const flatListMessages = useMemo(() => {
-    if (!showStreamingFooter) return messages
-    const last = messages[messages.length - 1]
-    if (last?.role === 'assistant') {
-      return messages.slice(0, -1)
+  useEffect(() => {
+    setAgentScrollDebugContext({
+      sessionId: currentSessionId,
+      messagesCount: messages.length,
+      isStreaming,
+      isStreamBridgeActive,
+      showStreamingFooter,
+      showStreamingBubble,
+      assistantPersistedInList
+    })
+  }, [
+    currentSessionId,
+    messages.length,
+    isStreaming,
+    isStreamBridgeActive,
+    showStreamingFooter,
+    showStreamingBubble,
+    assistantPersistedInList
+  ])
+
+  const prevShowStreamingBubbleRef = useRef(showStreamingBubble)
+  useEffect(() => {
+    if (prevShowStreamingBubbleRef.current === showStreamingBubble) return
+    logAgentScrollEvent('streaming_bubble_visibility', {
+      showStreamingBubble,
+      assistantPersistedInList,
+      messagesCount: messages.length,
+      offsetY: Math.round(scrollOffsetRef.current)
+    })
+    prevShowStreamingBubbleRef.current = showStreamingBubble
+  }, [showStreamingBubble, assistantPersistedInList, messages.length])
+
+  const prevShowStreamingFooterRef = useRef(showStreamingFooter)
+  useEffect(() => {
+    if (prevShowStreamingFooterRef.current === showStreamingFooter) return
+    logAgentScrollEvent('footer_visibility', {
+      showStreamingFooter,
+      messagesCount: messages.length,
+      offsetY: Math.round(scrollOffsetRef.current)
+    })
+    prevShowStreamingFooterRef.current = showStreamingFooter
+  }, [showStreamingFooter, messages.length])
+
+  useEffect(() => {
+    setAgentScrollDebugContext({
+      visibleMessagesCount: messages.length
+    })
+  }, [messages.length])
+
+  /** 对齐桌面 AgentMessageList：有 reasoning 且尚无正文时视为思考中 */
+  const streamingReasoningActive = useMemo(
+    () => Boolean(streamingReasoning.trim() && !streamingText.trim()),
+    [streamingReasoning, streamingText]
+  )
+
+  /** 思考正文走 Streamdown 渐显：纯思考阶段或整段流式未结束 */
+  const streamingThinkActive = useMemo(
+    () =>
+      Boolean(
+        streamingReasoning.trim() &&
+          (streamingReasoningActive || isStreaming || isStreamBridgeActive)
+      ),
+    [streamingReasoning, streamingReasoningActive, isStreaming, isStreamBridgeActive]
+  )
+
+  const streamingCompletedTools = useMemo(
+    () =>
+      completedTools.map((tool, idx) => ({
+        name: tool.name,
+        durationMs: tool.endTime && tool.startTime ? tool.endTime - tool.startTime : 0,
+        result: tool.result,
+        toolCallId: `streaming-${tool.name}-${idx}`
+      })),
+    [completedTools]
+  )
+
+  const showStreamingTail = showStreamingBubble
+  const liveAssistantActive =
+    showStreamingFooter || streamPresentationLinger || holdLivePresentation
+  const hasStreamingBody = Boolean(
+    streamingText.trim() ||
+      streamingReasoning.trim() ||
+      activeTool ||
+      completedTools.length > 0
+  )
+
+  const chatRows = useMemo(() => {
+    const rows: Array<
+      { kind: 'message'; item: (typeof messages)[number] } | { kind: 'stream-tail' }
+    > = messages.map((item) => ({ kind: 'message', item }))
+    if (showStreamingTail) {
+      rows.push({ kind: 'stream-tail' })
     }
-    return messages
-  }, [messages, showStreamingFooter])
+    return rows
+  }, [messages, showStreamingTail])
+
+  const bubbleTextStreaming = isStreaming || isStreamBridgeActive
+
+  const liveStreamProps = useMemo(
+    () => ({
+      content: streamingText,
+      reasoning: streamingReasoning,
+      isTextStreaming: bubbleTextStreaming,
+      isThinkStreaming:
+        !assistantPersistedInList && streamingThinkActive && bubbleTextStreaming
+    }),
+    [
+      streamingText,
+      streamingReasoning,
+      bubbleTextStreaming,
+      streamingThinkActive,
+      assistantPersistedInList
+    ]
+  )
+
+  /** 尚无正文时仅用 StreamingBubble 显示等待点；有内容后统一走 ChatBubble */
+  const renderStreamingDots = useCallback(
+    () => (
+      <View key={LIVE_ASSISTANT_STREAM_KEY} style={styles.bubble}>
+        <StreamingBubble
+          text=""
+          reasoning=""
+          isReasoning={false}
+          isThinkStreaming={false}
+          isTextStreaming={bubbleTextStreaming}
+          activeToolName={activeTool?.name ?? null}
+          completedTools={streamingCompletedTools}
+          aiProfile={chatAiProfile}
+          invertMetaOverBackground={hasChatBackground}
+        />
+      </View>
+    ),
+    [
+      bubbleTextStreaming,
+      activeTool?.name,
+      streamingCompletedTools,
+      chatAiProfile,
+      hasChatBackground
+    ]
+  )
+
+  useEffect(() => {
+    logAgentUiEvent('linger_change', { streamPresentationLinger })
+  }, [streamPresentationLinger])
+
+  useEffect(() => {
+    logAgentUiEvent('live_assistant_active', { liveAssistantActive, hasStreamingBody })
+  }, [liveAssistantActive, hasStreamingBody])
+
+  useEffect(() => {
+    if (isStreaming || isStreamBridgeActive) {
+      setHoldLivePresentation(true)
+      setKeepLiveRowAfterHold(false)
+    }
+  }, [isStreaming, isStreamBridgeActive])
+
+  useEffect(() => {
+    if (streamPresentationLinger) {
+      setHoldLivePresentation(true)
+      return
+    }
+    if (!holdLivePresentation) return
+    const timer = setTimeout(() => setHoldLivePresentation(false), HOLD_LIVE_PRESENTATION_MS)
+    return () => clearTimeout(timer)
+  }, [streamPresentationLinger, holdLivePresentation])
+
+  const prevAssistantPersistedRef = useRef(assistantPersistedInList)
+  const prevLingerRef = useRef(streamPresentationLinger)
+  useLayoutEffect(() => {
+    if (
+      !prevAssistantPersistedRef.current &&
+      assistantPersistedInList &&
+      (isStreaming || isStreamBridgeActive || streamPresentationLinger)
+    ) {
+      beginContentHandoff()
+      logAgentUiEvent('assistant_persisted', { messageId: lastMessage?.id })
+    }
+    prevAssistantPersistedRef.current = assistantPersistedInList
+  }, [
+    assistantPersistedInList,
+    beginContentHandoff,
+    isStreaming,
+    isStreamBridgeActive,
+    streamPresentationLinger,
+    lastMessage?.id
+  ])
+
+  useLayoutEffect(() => {
+    if (prevLingerRef.current && !streamPresentationLinger) {
+      logAgentUiEvent('linger_end_chrome_show', { messageId: lastMessage?.id })
+    }
+    prevLingerRef.current = streamPresentationLinger
+  }, [streamPresentationLinger, lastMessage?.id])
+
+  const prevHoldLiveRef = useRef(holdLivePresentation)
+  useLayoutEffect(() => {
+    if (prevHoldLiveRef.current && !holdLivePresentation) {
+      setKeepLiveRowAfterHold(true)
+      finalizeContentHandoff()
+      requestAnimationFrame(() => {
+        setKeepLiveRowAfterHold(false)
+      })
+    }
+    prevHoldLiveRef.current = holdLivePresentation
+  }, [holdLivePresentation, finalizeContentHandoff])
+
+  const listContentStyle = useMemo(
+    () =>
+      contentAnchorMinHeight != null
+        ? [styles.listContent, { minHeight: contentAnchorMinHeight }]
+        : styles.listContent,
+    [contentAnchorMinHeight]
+  )
+
+  const listFooter = useMemo(
+    () => (
+      <View>
+        <Animated.View style={listSpacerAnimatedStyle} />
+      </View>
+    ),
+    [listSpacerAnimatedStyle]
+  )
 
   const renderEmptyState = () => (
     <View style={styles.empty}>
@@ -909,36 +1156,88 @@ export const AgentScreen = () => {
             />
 
             <AgentDrawerSwipeZone enabled={drawerSwipeEnabled} onOpen={() => setDrawerOpen(true)}>
-              <FlatList
+              <ScrollView
                 ref={flatListRef}
                 style={styles.list}
-                contentContainerStyle={styles.listContent}
-                data={flatListMessages}
-                extraData={{ chatAiProfile, chatUserProfile }}
-                keyExtractor={(item) => item.id}
+                contentContainerStyle={listContentStyle}
                 nestedScrollEnabled
                 keyboardShouldPersistTaps="always"
                 keyboardDismissMode="interactive"
-                ListHeaderComponent={
-                  hasMore && showLoadMoreBanner ? (
-                    <TouchableOpacity
-                      style={[
-                        styles.loadMore,
-                        {
-                          borderColor: colors.borderSubtle,
-                          backgroundColor: colors.bgGlassSurface ?? colors.bgSurface
-                        }
-                      ]}
-                      onPress={() => void handleLoadMore()}
-                      activeOpacity={0.75}
-                    >
-                      <Text style={[styles.loadMoreText, { color: colors.primary }]}>
-                        {t('agent.chat.load_earlier_messages', '加载更早对话')}
-                      </Text>
-                    </TouchableOpacity>
-                  ) : null
-                }
-                renderItem={({ item }) => {
+                showsVerticalScrollIndicator={false}
+                onLayout={() => {
+                  if (!layoutReadyRef.current) {
+                    layoutReadyRef.current = true
+                    requestAnimationFrame(() =>
+                      flatListRef.current?.scrollToEnd({ animated: false })
+                    )
+                  }
+                }}
+                onScroll={handleListScroll}
+                onScrollBeginDrag={handleScrollBeginDrag}
+                onScrollEndDrag={handleScrollEndDrag}
+                onMomentumScrollBegin={handleMomentumScrollBegin}
+                onMomentumScrollEnd={handleMomentumScrollEnd}
+                onContentSizeChange={handleListContentSizeChange}
+                scrollEventThrottle={16}
+              >
+                {hasMore && showLoadMoreBanner ? (
+                  <TouchableOpacity
+                    style={[
+                      styles.loadMore,
+                      {
+                        borderColor: colors.borderSubtle,
+                        backgroundColor: colors.bgGlassSurface ?? colors.bgSurface
+                      }
+                    ]}
+                    onPress={() => void handleLoadMore()}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={[styles.loadMoreText, { color: colors.primary }]}>
+                      {t('agent.chat.load_earlier_messages', '加载更早对话')}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+
+                {!isStreaming && !isStreamBridgeActive && messages.length === 0
+                  ? renderEmptyState()
+                  : null}
+
+                {chatRows.map((row) => {
+                  if (row.kind === 'stream-tail') {
+                    if (!hasStreamingBody) {
+                      return renderStreamingDots()
+                    }
+                  }
+
+                  const item = row.kind === 'message' ? row.item : null
+                  if (!item) {
+                    const tailItem = {
+                      id: LIVE_ASSISTANT_STREAM_KEY,
+                      role: 'assistant' as const,
+                      content: streamingText,
+                      reasoning: streamingReasoning,
+                      toolInvocations: streamingCompletedTools
+                    }
+                    return (
+                      <View key={LIVE_ASSISTANT_STREAM_KEY} style={styles.bubble}>
+                        <AgentMessageRow
+                          item={tailItem as any}
+                          chatUserProfile={chatUserProfile}
+                          chatAiProfile={chatAiProfile}
+                          isLiveCompressionAnchor={false}
+                          liveCompression={IDLE_LIVE_COMPRESSION}
+                          liveStream={liveStreamProps}
+                          deferAssistantChrome
+                          onRegenerate={() => {}}
+                          onCopy={() => {}}
+                          onDelete={() => {}}
+                          invertMetaOverBackground={hasChatBackground}
+                          retryDisabled
+                        />
+                      </View>
+                    )
+                  }
+
                   const msgWithCompaction = item as typeof item & {
                     compactionRecord?: { streamTranscript?: string } | null
                   }
@@ -956,8 +1255,34 @@ export const AgentScreen = () => {
                       }
                     : IDLE_LIVE_COMPRESSION
 
+                  const isLastAssistant =
+                    item.role === 'assistant' && item.id === lastMessage?.id
+                  const isLiveAssistantRow =
+                    isLastAssistant && (liveAssistantActive || keepLiveRowAfterHold)
+                  const rowKey = isLastAssistant ? LIVE_ASSISTANT_STREAM_KEY : item.id
+
+                  const rowLiveStream = isLiveAssistantRow
+                    ? {
+                        content: assistantPersistedInList
+                          ? item.content
+                          : streamingText.trim() || item.content,
+                        reasoning: assistantPersistedInList
+                          ? item.reasoning || ''
+                          : streamingReasoning.trim() || item.reasoning || '',
+                        isTextStreaming: bubbleTextStreaming,
+                        isThinkStreaming: assistantPersistedInList
+                          ? false
+                          : liveStreamProps.isThinkStreaming
+                      }
+                    : undefined
+
+                  const deferChromeForRow =
+                    isLiveAssistantRow &&
+                    (isStreaming || isStreamBridgeActive || streamPresentationLinger)
+
                   return (
                     <View
+                      key={rowKey}
                       ref={item.id === editingMessageId ? editingRowRef : undefined}
                       collapsable={false}
                       style={styles.bubble}
@@ -968,6 +1293,8 @@ export const AgentScreen = () => {
                         chatAiProfile={chatAiProfile}
                         isLiveCompressionAnchor={isLiveCompressionAnchor}
                         liveCompression={liveCompression}
+                        liveStream={rowLiveStream}
+                        deferAssistantChrome={deferChromeForRow}
                         onRegenerate={() => handleRegenerate(item.id)}
                         onResend={
                           item.role === 'user' ? () => void handleResend(item.id) : undefined
@@ -1002,53 +1329,10 @@ export const AgentScreen = () => {
                       />
                     </View>
                   )
-                }}
-                ListFooterComponent={
-                  <View>
-                    {showStreamingFooter ? (
-                      <StreamingBubble
-                        text={streamingText}
-                        reasoning={streamingReasoning}
-                        isReasoning={isReasoningStreaming}
-                        isTextStreaming={isStreaming}
-                        activeToolName={activeTool?.name ?? null}
-                        completedTools={completedTools.map((tool, idx) => ({
-                          name: tool.name,
-                          durationMs:
-                            tool.endTime && tool.startTime ? tool.endTime - tool.startTime : 0,
-                          result: tool.result,
-                          toolCallId: `streaming-${tool.name}-${idx}`
-                        }))}
-                        aiProfile={chatAiProfile}
-                        invertMetaOverBackground={hasChatBackground}
-                        reserveActionBarSpace={isStreamBridgeActive}
-                      />
-                    ) : null}
-                    <Animated.View style={listSpacerAnimatedStyle} />
-                  </View>
-                }
-                showsVerticalScrollIndicator={false}
-                initialNumToRender={10}
-                maxToRenderPerBatch={8}
-                windowSize={9}
-                removeClippedSubviews={Platform.OS === 'android'}
-                onContentSizeChange={handleContentSizeChange}
-                onLayout={() => {
-                  if (!layoutReadyRef.current) {
-                    layoutReadyRef.current = true
-                    requestAnimationFrame(() =>
-                      flatListRef.current?.scrollToEnd({ animated: false })
-                    )
-                  }
-                }}
-                onScroll={handleListScroll}
-                onScrollBeginDrag={handleScrollBeginDrag}
-                onScrollEndDrag={handleScrollEndDrag}
-                onMomentumScrollBegin={handleMomentumScrollBegin}
-                onMomentumScrollEnd={handleMomentumScrollEnd}
-                scrollEventThrottle={16}
-                ListEmptyComponent={!isStreaming ? renderEmptyState() : null}
-              />
+                })}
+
+                {listFooter}
+              </ScrollView>
             </AgentDrawerSwipeZone>
 
             {showScrollButton && !isBubbleEditing ? (
@@ -1289,8 +1573,9 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   list: { flex: 1 },
-  listContent: { paddingVertical: 24, paddingHorizontal: 0, flexGrow: 1 },
-  bubble: { marginBottom: 20 },
+  /** 不用 flexGrow:1，否则内容变短（流式 Footer 移除）时 ScrollView 常把 offset 钳到 0 */
+  listContent: { paddingTop: 24, paddingBottom: 17, paddingHorizontal: 0 },
+  bubble: { marginBottom: 14 },
   toolStatusContainer: {
     paddingHorizontal: 16,
     paddingVertical: 10,

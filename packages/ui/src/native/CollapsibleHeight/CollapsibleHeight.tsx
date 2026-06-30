@@ -32,15 +32,29 @@ export const CollapsibleHeight: React.FC<CollapsibleHeightProps> = ({
 }) => {
   const [measuredHeight, setMeasuredHeight] = useState(0)
   const animatedHeight = useSharedValue(0)
+  const instantMode = durationMs <= 0
 
   const onContentLayout = (event: LayoutChangeEvent) => {
     const nextHeight = Math.ceil(event.nativeEvent.layout.height)
-    if (nextHeight > 0 && nextHeight !== measuredHeight) {
+    if (nextHeight <= 0) return
+    if (Math.abs(nextHeight - measuredHeight) <= 1) return
+
+    if (instantMode) {
+      animatedHeight.value = expanded ? nextHeight : 0
       setMeasuredHeight(nextHeight)
+      return
     }
+
+    setMeasuredHeight(nextHeight)
   }
 
   useEffect(() => {
+    if (!instantMode) return
+    animatedHeight.value = expanded ? measuredHeight : 0
+  }, [animatedHeight, instantMode, expanded, measuredHeight])
+
+  useEffect(() => {
+    if (instantMode) return
     const target = expanded ? measuredHeight : 0
     if (animation === 'ease') {
       animatedHeight.value = withTiming(target, {
@@ -55,7 +69,7 @@ export const CollapsibleHeight: React.FC<CollapsibleHeightProps> = ({
       mass: 0.8,
       overshootClamping: true
     })
-  }, [animatedHeight, expanded, measuredHeight, animation, durationMs])
+  }, [animatedHeight, instantMode, expanded, measuredHeight, animation, durationMs])
 
   const clipStyle = useAnimatedStyle(() => ({
     height: animatedHeight.value

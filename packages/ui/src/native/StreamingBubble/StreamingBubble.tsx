@@ -15,10 +15,11 @@ import { AgentMarkdownRenderer } from '../AgentMarkdown'
 
 export type { ToolExecution, NativeStreamingBubbleProps } from './streaming-bubble.types'
 
-export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
+export const StreamingBubble = React.memo(function StreamingBubble({
   text,
   reasoning = '',
   isReasoning = false,
+  isThinkStreaming = false,
   isTextStreaming = true,
   activeToolName = null,
   completedTools = [],
@@ -27,7 +28,7 @@ export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
   onRetry,
   invertMetaOverBackground = false,
   reserveActionBarSpace = false
-}) => {
+}: NativeStreamingBubbleProps) {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
   const auxStyles = useMemo(() => createStreamingBubbleStyles(colors, tokens), [colors, tokens])
@@ -94,6 +95,7 @@ export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
           </View>
         ) : hasText || hasReasoning || hasTools ? (
           <View
+            collapsable={false}
             style={[
               chatBubbleStyles.bubble,
               chatBubbleStyles.bubbleEditing,
@@ -111,7 +113,11 @@ export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
                   width: '100%'
                 }}
               >
-                <AgentThinkSection content={cleanReasoning} isStreaming={isReasoning} />
+                <AgentThinkSection
+                  content={cleanReasoning}
+                  isStreaming={isReasoning}
+                  isMarkdownStreaming={isThinkStreaming}
+                />
               </View>
             )}
 
@@ -127,17 +133,18 @@ export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
                     args: tool.args
                   }))}
                   activeToolName={activeToolName}
-                  defaultExpanded
                 />
               </View>
             ) : null}
 
             {hasText && (
-              <AgentMarkdownRenderer
-                content={cleanText}
-                isStreaming={isTextStreaming}
-                variant="chat"
-              />
+              <View style={chatBubbleStyles.markdownSlot}>
+                <AgentMarkdownRenderer
+                  content={cleanText}
+                  isStreaming={isTextStreaming}
+                  variant="chat"
+                />
+              </View>
             )}
             {reserveActionBarSpace ? <View style={auxStyles.actionBarSpacer} /> : null}
           </View>
@@ -149,4 +156,4 @@ export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
       </View>
     </View>
   )
-}
+})

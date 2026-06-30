@@ -25,7 +25,7 @@ export interface AgentMarkdownRendererProps {
  */
 export const AgentMarkdownRenderer = React.memo(function AgentMarkdownRenderer({
   content,
-  isStreaming: _isStreaming = false,
+  isStreaming = false,
   variant = 'chat',
   plainText = false,
   style,
@@ -49,6 +49,7 @@ export const AgentMarkdownRenderer = React.memo(function AgentMarkdownRenderer({
     <View style={styles.root}>
       <MarkdownRenderer
         content={content}
+        isStreaming={isStreaming}
         variant={variant}
         style={style}
         resolveImageUri={resolveImageUri}
@@ -61,7 +62,8 @@ export const AgentMarkdownRenderer = React.memo(function AgentMarkdownRenderer({
 
 const styles = StyleSheet.create({
   root: {
-    alignSelf: 'stretch'
+    alignSelf: 'stretch',
+    width: '100%'
   },
   plainText: {
     fontSize: 14,

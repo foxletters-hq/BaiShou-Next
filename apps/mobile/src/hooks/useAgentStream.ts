@@ -28,6 +28,10 @@ const MOBILE_AGENT_STREAM_DISPLAY_OPTIONS = {
   immediate: true
 } as const
 
+const STREAM_PRESENTATION_LINGER_MS = 520
+/** 与 AgentScreen HOLD_LIVE_PRESENTATION_MS 对齐：linger 结束后再清 buffer */
+const STREAM_BUFFER_HOLD_AFTER_LINGER_MS = 320
+
 interface TokenUsage {
   inputTokens: number
   outputTokens: number
@@ -130,17 +134,32 @@ export function useAgentStream(
   const streamFinalizeLockRef = useRef<string | null>(null)
   const finishStreamPassRef = useRef(0)
   const isStreamingRef = useRef(false)
+  const isStreamBridgeActiveRef = useRef(false)
+  const streamPresentationLingerRef = useRef(false)
   const reloadInFlightRef = useRef<Promise<boolean> | null>(null)
   const retryActionInFlightRef = useRef(false)
   const pendingRetryReleaseEpochRef = useRef<number | null>(null)
   const userStoppedStreamRef = useRef(false)
+  const streamBridgeReleaseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const streamPresentationLingerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const streamBufferHoldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [isStreamBridgeActive, setIsStreamBridgeActive] = useState(false)
+  /** 流结束后短暂保留 StreamingBubble，避免一切 ChatBubble 时高度突变 + 滚动闪烁 */
+  const [streamPresentationLinger, setStreamPresentationLinger] = useState(false)
   const [isRetryActionBusy, setIsRetryActionBusy] = useState(false)
 
   useEffect(() => {
     isStreamingRef.current = isStreaming
   }, [isStreaming])
+
+  useEffect(() => {
+    isStreamBridgeActiveRef.current = isStreamBridgeActive
+  }, [isStreamBridgeActive])
+
+  useEffect(() => {
+    streamPresentationLingerRef.current = streamPresentationLinger
+  }, [streamPresentationLinger])
 
   const isActiveSession = useCallback(
     (sessionId: string) => currentSessionIdRef.current === sessionId,
@@ -189,6 +208,19 @@ export function useAgentStream(
 
   /** 对齐 desktop stopChat：立即停止流式/压缩 UI，不等待 DB reload */
   const stopStreamingUiImmediately = useCallback(() => {
+    if (streamBridgeReleaseTimerRef.current) {
+      clearTimeout(streamBridgeReleaseTimerRef.current)
+      streamBridgeReleaseTimerRef.current = null
+    }
+    if (streamPresentationLingerTimerRef.current) {
+      clearTimeout(streamPresentationLingerTimerRef.current)
+      streamPresentationLingerTimerRef.current = null
+    }
+    if (streamBufferHoldTimerRef.current) {
+      clearTimeout(streamBufferHoldTimerRef.current)
+      streamBufferHoldTimerRef.current = null
+    }
+    setStreamPresentationLinger(false)
     streamAbortRef.current?.()
     streamAbortRef.current = null
     isStreamingRef.current = false
@@ -203,7 +235,11 @@ export function useAgentStream(
     setCompressionText('')
     setCompressionReasoning('')
     setCompressionTriggerMessageId(null)
-  }, [resetCompressionBuffers, setLoading])
+    clearStreamingDisplayBuffers()
+    activeToolRef.current = null
+    setActiveTool(null)
+    setCompletedTools([])
+  }, [resetCompressionBuffers, clearStreamingDisplayBuffers, setLoading])
 
   const syncTokenUsageFromSession = useCallback(
     async (sessionId: string) => {
@@ -412,6 +448,41 @@ export function useAgentStream(
     setCompletedTools([])
   }, [clearStreamingDisplayBuffers])
 
+  const releaseStreamBridge = useCallback(() => {
+    if (streamBridgeReleaseTimerRef.current) {
+      clearTimeout(streamBridgeReleaseTimerRef.current)
+      streamBridgeReleaseTimerRef.current = null
+    }
+    setIsStreamBridgeActive(false)
+    setStreamPresentationLinger(true)
+    if (streamPresentationLingerTimerRef.current) {
+      clearTimeout(streamPresentationLingerTimerRef.current)
+    }
+    if (streamBufferHoldTimerRef.current) {
+      clearTimeout(streamBufferHoldTimerRef.current)
+      streamBufferHoldTimerRef.current = null
+    }
+    streamPresentationLingerTimerRef.current = setTimeout(() => {
+      streamPresentationLingerTimerRef.current = null
+      setStreamPresentationLinger(false)
+    }, STREAM_PRESENTATION_LINGER_MS)
+    streamBufferHoldTimerRef.current = setTimeout(() => {
+      streamBufferHoldTimerRef.current = null
+      resetStreamingBuffers()
+    }, STREAM_PRESENTATION_LINGER_MS + STREAM_BUFFER_HOLD_AFTER_LINGER_MS)
+  }, [resetStreamingBuffers])
+
+  const beginStreamBridgeHandoff = useCallback(() => {
+    if (streamBridgeReleaseTimerRef.current) {
+      clearTimeout(streamBridgeReleaseTimerRef.current)
+    }
+    setIsStreamBridgeActive(true)
+    streamBridgeReleaseTimerRef.current = setTimeout(() => {
+      streamBridgeReleaseTimerRef.current = null
+      releaseStreamBridge()
+    }, 300)
+  }, [releaseStreamBridge])
+
   const handleToolCallStart = useCallback((toolName: string) => {
     const tool = { name: toolName, startTime: Date.now() }
     activeToolRef.current = tool
@@ -464,7 +535,14 @@ export function useAgentStream(
   }, [interruptActiveStream, resetCompressionBuffers, bumpReloadEpoch])
 
   const acquireRetryAction = useCallback((): number | null => {
-    if (retryActionInFlightRef.current || isStreamingRef.current) return null
+    if (
+      retryActionInFlightRef.current ||
+      isStreamingRef.current ||
+      isStreamBridgeActiveRef.current ||
+      streamPresentationLingerRef.current
+    ) {
+      return null
+    }
     retryActionInFlightRef.current = true
     setIsRetryActionBusy(true)
     return beginRetryAction()
@@ -558,10 +636,9 @@ export function useAgentStream(
             return
           }
 
+          beginStreamBridgeHandoff()
           isStreamingRef.current = false
           setIsStreaming(false)
-          setIsStreamBridgeActive(false)
-          resetStreamingBuffers()
           if (
             releaseEpoch !== null &&
             pendingRetryReleaseEpochRef.current === releaseEpoch
@@ -583,7 +660,7 @@ export function useAgentStream(
     [
       flushStreamingDisplayBuffers,
       reloadMessagesFromDb,
-      resetStreamingBuffers,
+      beginStreamBridgeHandoff,
       releaseRetryAction,
       setLoading,
       services,
@@ -1139,6 +1216,7 @@ export function useAgentStream(
   return {
     isStreaming,
     isStreamBridgeActive,
+    streamPresentationLinger,
     isRetryActionBusy,
     isCompressing,
     compressionPhase,

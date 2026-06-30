@@ -15,6 +15,7 @@ import {
   dedupeMessagesById
 } from '../utils/chat-round-pagination'
 import { messageHasUsageStats } from '../utils/message-usage.util'
+import { logAgentScrollEvent } from '../utils/agent-scroll-diagnostics'
 
 interface SessionMessage {
   id: string
@@ -148,7 +149,14 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
         start = Math.min(start, computeInitialRoundWindowStart(rounds.length))
       }
 
-      return syncFromCache(start)
+      const result = syncFromCache(start)
+      logAgentScrollEvent('messages_reload', {
+        fetchedCount: fetched.length,
+        displayCount: result.display.length,
+        roundWindowStart: result.roundWindowStart,
+        preserveWindow
+      })
+      return result
     },
     [syncFromCache]
   )

@@ -41,6 +41,14 @@ export interface ChatBubbleProps {
   invertMetaOverBackground?: boolean
   /** 重试/重新发送处理中时禁用，避免连点 */
   retryDisabled?: boolean
-  /** 为 false 时不展示思考过程（移动端完成后默认隐藏） */
+  /** 流式期间用 liveStream 覆盖展示内容，避免与 StreamingBubble 互换 */
+  liveStream?: {
+    content?: string
+    reasoning?: string
+    isTextStreaming?: boolean
+    isThinkStreaming?: boolean
+  }
+  /** 流式/桥接期间隐藏操作栏与 token 行，避免结束时布局突增 */
+  deferAssistantChrome?: boolean
   showReasoning?: boolean
 }

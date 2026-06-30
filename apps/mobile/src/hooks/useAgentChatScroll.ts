@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, type RefObject } from 'react'
-import type { FlatList, NativeScrollEvent, NativeSyntheticEvent } from 'react-native'
+import type { NativeScrollEvent, NativeSyntheticEvent, ScrollView } from 'react-native'
+import { logAgentScrollEvent } from '../utils/agent-scroll-diagnostics'
 
 const BOTTOM_THRESHOLD_PX = 48
 
@@ -8,8 +9,6 @@ export type ScrollFollowMode = 'following' | 'idle'
 export interface UseAgentChatScrollParams {
   sessionId: string | null
   messages: Array<{ id?: string; role?: string }>
-  streamingText: string
-  streamingReasoning: string
   isStreaming: boolean
   isStreamBridgeActive: boolean
   activeTool: { name: string } | null
@@ -22,18 +21,10 @@ function isNearBottom(nativeEvent: NativeScrollEvent, threshold = BOTTOM_THRESHO
 
 /**
  * 聊天列表滚动跟随（对齐 desktop useChatScroll 状态机）
- *
- * - following：流式/新消息时自动贴底
- * - idle：用户离开底部后停止跟随，显示回到底部按钮
- *
- * 进入 following：切换会话、点击回到底部、发送时已在底部、在底部继续向下滚
- * 退出 following：向上滚、离开底部区域
  */
 export function useAgentChatScroll({
   sessionId,
   messages,
-  streamingText,
-  streamingReasoning,
   isStreaming,
   isStreamBridgeActive,
   activeTool
@@ -42,6 +33,9 @@ export function useAgentChatScroll({
   const followModeRef = useRef<ScrollFollowMode>('following')
   const [followMode, setFollowMode] = useState<ScrollFollowMode>('following')
   const [showScrollButton, setShowScrollButton] = useState(false)
+  const [contentAnchorMinHeight, setContentAnchorMinHeight] = useState<number | undefined>(
+    undefined
+  )
   const prevSessionIdRef = useRef<string | null>(sessionId)
   const pendingInstantBottomRef = useRef(false)
   const suppressInterruptRef = useRef(0)
@@ -50,14 +44,18 @@ export function useAgentChatScroll({
   const isMomentumScrollingRef = useRef(false)
   const lastScrollOffsetRef = useRef(0)
   const lastScrollMetricsRef = useRef<NativeScrollEvent | null>(null)
-  const streamFollowRafRef = useRef<number | null>(null)
-  const contentSizeFollowRafRef = useRef<number | null>(null)
+  const contentFollowRafRef = useRef<number | null>(null)
   const smoothSettleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const scrollGenerationRef = useRef(0)
   const prevNewestIdRef = useRef<string | null>(null)
-  const flatListRefHolder = useRef<RefObject<FlatList | null> | null>(null)
+  const scrollViewRefHolder = useRef<RefObject<ScrollView | null> | null>(null)
+  const contentResizeLogThrottleRef = useRef(0)
+  const peakContentHeightRef = useRef(0)
+  const lastContentHeightRef = useRef(0)
+  const streamingFollowRafRef = useRef<number | null>(null)
 
   const setFollowModeState = useCallback((mode: ScrollFollowMode) => {
+    if (followModeRef.current === mode) return
     followModeRef.current = mode
     setFollowMode(mode)
     setShowScrollButton(mode === 'idle')
@@ -80,61 +78,107 @@ export function useAgentChatScroll({
       clearTimeout(smoothSettleTimerRef.current)
       smoothSettleTimerRef.current = null
     }
-    if (streamFollowRafRef.current != null) {
-      cancelAnimationFrame(streamFollowRafRef.current)
-      streamFollowRafRef.current = null
-    }
-    if (contentSizeFollowRafRef.current != null) {
-      cancelAnimationFrame(contentSizeFollowRafRef.current)
-      contentSizeFollowRafRef.current = null
+    if (contentFollowRafRef.current != null) {
+      cancelAnimationFrame(contentFollowRafRef.current)
+      contentFollowRafRef.current = null
     }
   }, [])
 
-  const jumpToBottomInstant = useCallback((flatListRef: RefObject<FlatList | null>) => {
-    if (!flatListRef.current) return
-    suppressInterruptRef.current += 2
-    flatListRef.current.scrollToEnd({ animated: false })
-    requestAnimationFrame(() => {
-      flatListRef.current?.scrollToEnd({ animated: false })
+  const jumpToBottomInstant = useCallback((scrollViewRef: RefObject<ScrollView | null>) => {
+    if (!scrollViewRef.current) return
+    suppressInterruptRef.current += 1
+    scrollViewRef.current.scrollToEnd({ animated: false })
+  }, [])
+
+  const releaseContentHandoff = useCallback(() => {
+    setContentAnchorMinHeight((prev) => {
+      if (prev != null) {
+        logAgentScrollEvent('content_handoff_end', { prevAnchor: Math.round(prev) })
+      }
+      return undefined
+    })
+    peakContentHeightRef.current = 0
+  }, [])
+
+  /** 布局交接期用 minHeight 托住列表，避免内容变矮时 offset 被钳到顶部；仅由 releaseContentHandoff 显式释放 */
+  const beginContentHandoff = useCallback(() => {
+    if (followModeRef.current !== 'following') return
+
+    const anchor = Math.max(peakContentHeightRef.current, lastContentHeightRef.current)
+    if (anchor <= 0) return
+
+    setContentAnchorMinHeight((prev) => {
+      const next = Math.max(prev ?? 0, anchor)
+      if ((prev ?? 0) < next - 1) {
+        logAgentScrollEvent('content_handoff_begin', { anchorH: Math.round(next) })
+      }
+      return next
     })
   }, [])
 
-  const followScrollToBottom = useCallback(
-    (flatListRef: RefObject<FlatList | null>) => {
+  /** 在释放 minHeight 前先校正滚动位置，避免 offset 超出新内容高度被钳到顶部 */
+  const finalizeContentHandoff = useCallback(() => {
+    releaseContentHandoff()
+    requestAnimationFrame(() => {
+      const ref = scrollViewRefHolder.current
+      if (ref?.current && followModeRef.current === 'following') {
+        ref.current.scrollToEnd({ animated: false })
+      }
+    })
+  }, [releaseContentHandoff])
+
+  const scheduleFollowBottom = useCallback(
+    (scrollViewRef: RefObject<ScrollView | null>) => {
       if (followModeRef.current !== 'following') return
-      jumpToBottomInstant(flatListRef)
+      if (isUserDraggingRef.current || isMomentumScrollingRef.current) return
+      if (contentFollowRafRef.current != null) return
+
+      contentFollowRafRef.current = requestAnimationFrame(() => {
+        contentFollowRafRef.current = null
+        if (isUserDraggingRef.current || isMomentumScrollingRef.current) return
+        jumpToBottomInstant(scrollViewRef)
+      })
     },
     [jumpToBottomInstant]
   )
 
+  const followScrollToBottom = useCallback(
+    (scrollViewRef: RefObject<ScrollView | null>) => {
+      if (followModeRef.current !== 'following') return
+      scheduleFollowBottom(scrollViewRef)
+    },
+    [scheduleFollowBottom]
+  )
+
   const beginFollowIfAtBottom = useCallback(
-    (flatListRef: RefObject<FlatList | null>) => {
-      flatListRefHolder.current = flatListRef
+    (scrollViewRef: RefObject<ScrollView | null>) => {
+      scrollViewRefHolder.current = scrollViewRef
       const metrics = lastScrollMetricsRef.current
       if (metrics && !isNearBottom(metrics)) return
       enterFollowing()
-      jumpToBottomInstant(flatListRef)
+      jumpToBottomInstant(scrollViewRef)
     },
     [enterFollowing, jumpToBottomInstant]
   )
 
   const scrollToBottom = useCallback(
-    (flatListRef: RefObject<FlatList | null>, animated = true) => {
-      if (!flatListRef.current) return
-      flatListRefHolder.current = flatListRef
+    (scrollViewRef: RefObject<ScrollView | null>, animated = true) => {
+      if (!scrollViewRef.current) return
+      scrollViewRefHolder.current = scrollViewRef
       enterFollowing()
       isSmoothScrollingRef.current = true
+      suppressInterruptRef.current += 2
       const scrollGeneration = ++scrollGenerationRef.current
       if (smoothSettleTimerRef.current) {
         clearTimeout(smoothSettleTimerRef.current)
       }
-      flatListRef.current.scrollToEnd({ animated })
+      scrollViewRef.current.scrollToEnd({ animated })
 
       const settleMs = animated ? 720 : 0
       smoothSettleTimerRef.current = setTimeout(() => {
         smoothSettleTimerRef.current = null
         if (scrollGeneration !== scrollGenerationRef.current || isUserDraggingRef.current) return
-        flatListRef.current?.scrollToEnd({ animated: false })
+        jumpToBottomInstant(scrollViewRef)
         requestAnimationFrame(() => {
           if (scrollGeneration !== scrollGenerationRef.current || isUserDraggingRef.current) return
           enterFollowing()
@@ -142,7 +186,7 @@ export function useAgentChatScroll({
         })
       }, settleMs)
     },
-    [enterFollowing]
+    [enterFollowing, jumpToBottomInstant]
   )
 
   const handleListScroll = useCallback(
@@ -150,8 +194,27 @@ export function useAgentChatScroll({
       const nativeEvent = event.nativeEvent
       lastScrollMetricsRef.current = nativeEvent
       const offsetY = nativeEvent.contentOffset.y
-      const deltaY = offsetY - lastScrollOffsetRef.current
+      const prevOffsetY = lastScrollOffsetRef.current
+      const deltaY = offsetY - prevOffsetY
       lastScrollOffsetRef.current = offsetY
+
+      if (
+        typeof __DEV__ !== 'undefined' &&
+        __DEV__ &&
+        prevOffsetY > 300 &&
+        offsetY < 80 &&
+        prevOffsetY - offsetY > 250
+      ) {
+        logAgentScrollEvent('jump_to_top', {
+          fromY: Math.round(prevOffsetY),
+          toY: Math.round(offsetY),
+          contentH: Math.round(nativeEvent.contentSize.height),
+          viewportH: Math.round(nativeEvent.layoutMeasurement.height),
+          deltaY: Math.round(deltaY)
+        })
+      }
+
+      if (isSmoothScrollingRef.current) return
 
       if (isUserDraggingRef.current || isMomentumScrollingRef.current) {
         if (!isNearBottom(nativeEvent)) {
@@ -159,8 +222,6 @@ export function useAgentChatScroll({
         }
         return
       }
-
-      if (isSmoothScrollingRef.current) return
 
       if (suppressInterruptRef.current > 0) {
         suppressInterruptRef.current -= 1
@@ -178,116 +239,125 @@ export function useAgentChatScroll({
     [enterFollowing, exitFollowing]
   )
 
-  const followStreamBottom = useCallback(
-    (flatListRef: RefObject<FlatList | null>) => {
-      if (!isStreaming && !isStreamBridgeActive) return
-      if (followModeRef.current !== 'following') return
-      if (isUserDraggingRef.current || isMomentumScrollingRef.current) return
-      if (streamFollowRafRef.current != null) return
-
-      streamFollowRafRef.current = requestAnimationFrame(() => {
-        streamFollowRafRef.current = null
-        if (isUserDraggingRef.current || isMomentumScrollingRef.current) return
-        jumpToBottomInstant(flatListRef)
-      })
-    },
-    [isStreaming, isStreamBridgeActive, jumpToBottomInstant]
-  )
-
-  const onContentSizeChange = useCallback(
-    (flatListRef: RefObject<FlatList | null>) => {
-      if (!isStreaming && !isStreamBridgeActive) return
-      if (followModeRef.current !== 'following') return
-      if (isUserDraggingRef.current || isMomentumScrollingRef.current) return
-      if (contentSizeFollowRafRef.current != null) return
-
-      contentSizeFollowRafRef.current = requestAnimationFrame(() => {
-        contentSizeFollowRafRef.current = null
-        if (isUserDraggingRef.current || isMomentumScrollingRef.current) return
-        jumpToBottomInstant(flatListRef)
-      })
-    },
-    [isStreaming, isStreamBridgeActive, jumpToBottomInstant]
-  )
-
   useEffect(() => {
     if (prevSessionIdRef.current !== sessionId) {
       prevSessionIdRef.current = sessionId
       pendingInstantBottomRef.current = true
       prevNewestIdRef.current = null
       lastScrollOffsetRef.current = 0
+      releaseContentHandoff()
       enterFollowing()
+      logAgentScrollEvent('session_change', { sessionId })
     }
-  }, [sessionId, enterFollowing])
+  }, [sessionId, enterFollowing, releaseContentHandoff])
 
   useEffect(() => {
     if (!pendingInstantBottomRef.current || messages.length === 0) return
-    const ref = flatListRefHolder.current
+    const ref = scrollViewRefHolder.current
     if (!ref) return
+    logAgentScrollEvent('pending_instant_bottom', { messagesCount: messages.length })
     jumpToBottomInstant(ref)
     pendingInstantBottomRef.current = false
     enterFollowing()
   }, [sessionId, messages.length, jumpToBottomInstant, enterFollowing])
 
+  const newestMessageId = messages[messages.length - 1]?.id ?? null
+  const newestMessageRole = messages[messages.length - 1]?.role ?? null
+
   useEffect(() => {
     if (pendingInstantBottomRef.current) return
 
-    const newestMsg = messages[messages.length - 1]
-    const isNewMessageAdded = newestMsg?.id && newestMsg.id !== prevNewestIdRef.current
-    const isNewUserMessage = isNewMessageAdded && newestMsg?.role === 'user'
+    const isNewMessageAdded = newestMessageId && newestMessageId !== prevNewestIdRef.current
+    const isNewUserMessage = isNewMessageAdded && newestMessageRole === 'user'
 
     if (isNewUserMessage || activeTool) {
-      const ref = flatListRefHolder.current
+      const ref = scrollViewRefHolder.current
       if (ref) followScrollToBottom(ref)
     }
-    prevNewestIdRef.current = newestMsg?.id ?? null
-  }, [messages, activeTool, followScrollToBottom])
+    prevNewestIdRef.current = newestMessageId
+  }, [newestMessageId, newestMessageRole, activeTool, followScrollToBottom])
 
-  useEffect(() => {
-    const ref = flatListRefHolder.current
-    if (!ref) return
-    if (!isStreaming && !isStreamBridgeActive) return
-    followStreamBottom(ref)
-  }, [streamingText, streamingReasoning, isStreaming, isStreamBridgeActive, followStreamBottom])
+  const handleContentSizeChange = useCallback(
+    (scrollViewRef: RefObject<ScrollView | null>, contentHeight: number) => {
+      const now = Date.now()
+      if (now - contentResizeLogThrottleRef.current > 400) {
+        contentResizeLogThrottleRef.current = now
+        const metrics = lastScrollMetricsRef.current
+        const viewportH = metrics?.layoutMeasurement.height ?? 0
+        const maxOffset = Math.max(0, contentHeight - viewportH)
+        logAgentScrollEvent('content_size', {
+          contentH: Math.round(contentHeight),
+          offsetY: Math.round(lastScrollOffsetRef.current),
+          maxOffset: Math.round(maxOffset),
+          streaming: isStreaming || isStreamBridgeActive,
+          anchorMinH: contentAnchorMinHeight ?? 0
+        })
+      }
 
-  const prevIsStreamingRef = useRef(isStreaming)
+      if (contentHeight > 0) {
+        const prevHeight = lastContentHeightRef.current
+        lastContentHeightRef.current = contentHeight
+        if (isStreaming || isStreamBridgeActive) {
+          peakContentHeightRef.current = Math.max(peakContentHeightRef.current, contentHeight)
+        }
+
+        if (!isStreaming && !isStreamBridgeActive) return
+        if (followModeRef.current !== 'following') return
+        if (!scrollViewRef.current) return
+        if (Math.abs(contentHeight - prevHeight) < 1) return
+        if (streamingFollowRafRef.current != null) return
+
+        streamingFollowRafRef.current = requestAnimationFrame(() => {
+          streamingFollowRafRef.current = null
+          if (followModeRef.current !== 'following') return
+          jumpToBottomInstant(scrollViewRef)
+        })
+      }
+    },
+    [isStreaming, isStreamBridgeActive, jumpToBottomInstant, contentAnchorMinHeight]
+  )
+
+  const streamingActiveRef = useRef(isStreaming || isStreamBridgeActive)
   useEffect(() => {
-    const ref = flatListRefHolder.current
-    if (prevIsStreamingRef.current && !isStreaming && ref) {
-      followScrollToBottom(ref)
+    const wasStreaming = streamingActiveRef.current
+    const nowStreaming = isStreaming || isStreamBridgeActive
+
+    if (wasStreaming && !nowStreaming) {
+      logAgentScrollEvent('stream_end', {
+        shouldFollow: followModeRef.current === 'following',
+        savedOffset: Math.round(lastScrollOffsetRef.current),
+        peakContentH: Math.round(peakContentHeightRef.current)
+      })
+    } else if (!wasStreaming && nowStreaming) {
+      releaseContentHandoff()
+      lastContentHeightRef.current = 0
+      logAgentScrollEvent('stream_start')
     }
-    prevIsStreamingRef.current = isStreaming
-  }, [isStreaming, followScrollToBottom])
 
-  const prevStreamBridgeRef = useRef(isStreamBridgeActive)
-  useEffect(() => {
-    const ref = flatListRefHolder.current
-    if (prevStreamBridgeRef.current && !isStreamBridgeActive && ref) {
-      followScrollToBottom(ref)
-    }
-    prevStreamBridgeRef.current = isStreamBridgeActive
-  }, [isStreamBridgeActive, followScrollToBottom])
+    streamingActiveRef.current = nowStreaming
+  }, [isStreaming, isStreamBridgeActive, releaseContentHandoff])
 
   useEffect(() => {
     return () => {
       if (smoothSettleTimerRef.current) {
         clearTimeout(smoothSettleTimerRef.current)
       }
-      if (streamFollowRafRef.current != null) {
-        cancelAnimationFrame(streamFollowRafRef.current)
+      if (contentFollowRafRef.current != null) {
+        cancelAnimationFrame(contentFollowRafRef.current)
       }
-      if (contentSizeFollowRafRef.current != null) {
-        cancelAnimationFrame(contentSizeFollowRafRef.current)
+      if (streamingFollowRafRef.current != null) {
+        cancelAnimationFrame(streamingFollowRafRef.current)
       }
     }
   }, [])
 
-  const bindFlatList = useCallback((flatListRef: RefObject<FlatList | null>) => {
-    flatListRefHolder.current = flatListRef
+  const bindFlatList = useCallback((scrollViewRef: RefObject<ScrollView | null>) => {
+    scrollViewRefHolder.current = scrollViewRef
   }, [])
 
   const handleScrollBeginDrag = useCallback(() => {
     isUserDraggingRef.current = true
+    if (isSmoothScrollingRef.current) return
     cancelPendingProgrammaticScroll()
     exitFollowing()
   }, [cancelPendingProgrammaticScroll, exitFollowing])
@@ -298,8 +368,14 @@ export function useAgentChatScroll({
       lastScrollOffsetRef.current = event.nativeEvent.contentOffset.y
       isUserDraggingRef.current = false
 
+      if (isSmoothScrollingRef.current) return
+
       if (streamingActive) {
-        exitFollowing()
+        if (isNearBottom(event.nativeEvent)) {
+          enterFollowing()
+        } else {
+          exitFollowing()
+        }
         return
       }
 
@@ -315,6 +391,7 @@ export function useAgentChatScroll({
 
   const handleMomentumScrollBegin = useCallback(() => {
     isMomentumScrollingRef.current = true
+    if (isSmoothScrollingRef.current) return
     cancelPendingProgrammaticScroll()
     exitFollowing()
   }, [cancelPendingProgrammaticScroll, exitFollowing])
@@ -325,8 +402,14 @@ export function useAgentChatScroll({
       lastScrollOffsetRef.current = event.nativeEvent.contentOffset.y
       isMomentumScrollingRef.current = false
 
+      if (isSmoothScrollingRef.current) return
+
       if (streamingActive) {
-        exitFollowing()
+        if (isNearBottom(event.nativeEvent)) {
+          enterFollowing()
+        } else {
+          exitFollowing()
+        }
         return
       }
 
@@ -342,6 +425,10 @@ export function useAgentChatScroll({
   return {
     followMode,
     showScrollButton,
+    contentAnchorMinHeight,
+    beginContentHandoff,
+    releaseContentHandoff,
+    finalizeContentHandoff,
     handleListScroll,
     handleScrollBeginDrag,
     handleScrollEndDrag,
@@ -349,8 +436,7 @@ export function useAgentChatScroll({
     handleMomentumScrollEnd,
     scrollToBottom,
     beginFollowIfAtBottom,
-    followStreamBottom,
-    onContentSizeChange,
+    handleContentSizeChange,
     bindFlatList
   }
 }

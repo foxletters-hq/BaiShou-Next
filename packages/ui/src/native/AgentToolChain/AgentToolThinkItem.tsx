@@ -118,7 +118,7 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
               styles.content,
               {
                 borderLeftColor: colors.borderMuted,
-                marginTop: expanded ? 8 : 0
+                paddingTop: 8
               }
             ]}
           >

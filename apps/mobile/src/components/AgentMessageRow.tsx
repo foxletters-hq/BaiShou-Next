@@ -51,6 +51,13 @@ export interface AgentMessageRowProps {
   onBubbleEditingChange?: (editing: boolean, messageId?: string) => void
   invertMetaOverBackground?: boolean
   retryDisabled?: boolean
+  liveStream?: {
+    content?: string
+    reasoning?: string
+    isTextStreaming?: boolean
+    isThinkStreaming?: boolean
+  }
+  deferAssistantChrome?: boolean
 }
 
 export const AgentMessageRow = React.memo(function AgentMessageRow({
@@ -71,7 +78,9 @@ export const AgentMessageRow = React.memo(function AgentMessageRow({
   onBranch,
   onBubbleEditingChange,
   invertMetaOverBackground = false,
-  retryDisabled = false
+  retryDisabled = false,
+  liveStream,
+  deferAssistantChrome = false
 }: AgentMessageRowProps) {
   const persistedCompaction =
     item.role === 'user' && item.compactionRecord ? item.compactionRecord : null
@@ -131,6 +140,8 @@ export const AgentMessageRow = React.memo(function AgentMessageRow({
         onEditingChange={onBubbleEditingChange}
         invertMetaOverBackground={invertMetaOverBackground}
         retryDisabled={retryDisabled}
+        liveStream={liveStream}
+        deferAssistantChrome={deferAssistantChrome}
       />
 
       {(showLiveCompression || showPersistedCompression) && (

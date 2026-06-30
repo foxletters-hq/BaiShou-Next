@@ -42,10 +42,7 @@ export const AgentToolChainSection: React.FC<AgentToolChainSectionProps> = ({
           <AgentToolThinkItem
             key={model.key}
             model={model}
-            autoExpand={
-              (isStreaming && model.status === 'loading') ||
-              (defaultExpanded && model.hasContent)
-            }
+            autoExpand={defaultExpanded && model.hasContent}
           />
         ))}
     </View>
@@ -55,7 +52,6 @@ export const AgentToolChainSection: React.FC<AgentToolChainSectionProps> = ({
 const styles = StyleSheet.create({
   root: {
     width: '100%',
-    marginBottom: 8,
-    gap: 2
+    gap: 8
   }
 })

@@ -23,8 +23,8 @@ export function ThinkStatusIcon({
 }) {
   if (loading) {
     return (
-      <View style={styles.iconBox}>
-        <ActivityIndicator size="small" color={color} />
+      <View style={styles.iconBox} collapsable={false}>
+        <ActivityIndicator key="think-spinner" size="small" color={color} />
       </View>
     )
   }

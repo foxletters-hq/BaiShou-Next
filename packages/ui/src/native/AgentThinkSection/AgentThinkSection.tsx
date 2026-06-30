@@ -16,7 +16,10 @@ import { ThinkChevron, ThinkStatusIcon } from './ThinkStatusIcon'
 
 export interface AgentThinkSectionProps {
   content: string
+  /** 状态行：标题闪烁、流式期间自动展开 */
   isStreaming?: boolean
+  /** reasoning 正文是否走 Streamdown 渐显（可与正文流式重叠） */
+  isMarkdownStreaming?: boolean
 }
 
 const AnimatedText = Animated.createAnimatedComponent(Text)
@@ -25,14 +28,18 @@ const AnimatedText = Animated.createAnimatedComponent(Text)
  * 对齐桌面 @ant-design/x Think：状态行 + 左侧竖线内容区。
  * reasoning 直接渲染，不包 think 标签。
  */
-export const AgentThinkSection: React.FC<AgentThinkSectionProps> = ({
+export function AgentThinkSection({
   content,
-  isStreaming = false
-}) => {
+  isStreaming = false,
+  isMarkdownStreaming
+}: AgentThinkSectionProps) {
   const { colors } = useNativeTheme()
   const body = content.trim()
   const { title, loading, expanded, setExpanded } = useAgentThinkPresentation(isStreaming)
   const blinkOpacity = useSharedValue(1)
+
+  const markdownStreaming = isMarkdownStreaming ?? isStreaming
+  const thinkExpanded = expanded
 
   useEffect(() => {
     if (!isStreaming) {
@@ -54,7 +61,12 @@ export const AgentThinkSection: React.FC<AgentThinkSectionProps> = ({
     opacity: isStreaming ? blinkOpacity.value : 1
   }))
 
-  if (!isStreaming && !body) return null
+  if (!thinkExpanded && !body && !isStreaming) return null
+
+  const thinkBody = body ? (
+    <AgentMarkdownRenderer content={body} variant="ancillary" isStreaming={markdownStreaming} />
+  ) : null
+  const visibleThinkBody = thinkExpanded ? thinkBody : null
 
   return (
     <View style={styles.root}>
@@ -62,7 +74,7 @@ export const AgentThinkSection: React.FC<AgentThinkSectionProps> = ({
         style={styles.statusRow}
         onPress={() => setExpanded(!expanded)}
         accessibilityRole="button"
-        accessibilityState={{ expanded }}
+        accessibilityState={{ expanded: thinkExpanded }}
       >
         <ThinkStatusIcon loading={loading} color={colors.textSecondary} />
         <AnimatedText
@@ -75,32 +87,43 @@ export const AgentThinkSection: React.FC<AgentThinkSectionProps> = ({
         >
           {title}
         </AnimatedText>
-        <ThinkChevron expanded={expanded} color={colors.textTertiary} />
+        <ThinkChevron expanded={thinkExpanded} color={colors.textTertiary} />
       </Pressable>
 
-      <CollapsibleHeight expanded={expanded} animation="ease" durationMs={250}>
+      {markdownStreaming && thinkExpanded ? (
         <View
           style={[
             styles.content,
             {
               borderLeftColor: colors.borderMuted,
-              marginTop: expanded ? 8 : 0
+              paddingTop: 8
             }
           ]}
         >
-          {body ? (
-            <AgentMarkdownRenderer content={body} variant="ancillary" isStreaming={isStreaming} />
-          ) : null}
+          {visibleThinkBody}
         </View>
-      </CollapsibleHeight>
+      ) : (
+        <CollapsibleHeight expanded={thinkExpanded} animation="ease" durationMs={250}>
+          <View
+            style={[
+              styles.content,
+              {
+                borderLeftColor: colors.borderMuted,
+                paddingTop: 8
+              }
+            ]}
+          >
+            {visibleThinkBody}
+          </View>
+        </CollapsibleHeight>
+      )}
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   root: {
-    width: '100%',
-    marginBottom: 8
+    width: '100%'
   },
   statusRow: {
     flexDirection: 'row',
@@ -118,6 +141,7 @@ const styles = StyleSheet.create({
   content: {
     width: '100%',
     paddingLeft: 12,
-    borderLeftWidth: 2
+    borderLeftWidth: 2,
+    overflow: 'hidden'
   }
 })

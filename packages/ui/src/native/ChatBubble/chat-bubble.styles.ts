@@ -1,5 +1,11 @@
 import { StyleSheet } from 'react-native'
 
+/**
+ * EnrichedMarkdownText 末行常少报一行左右高度，文字会画在布局框外；
+ * 在气泡内为 Markdown 槽位预留底部缓冲，让圆角背景包住最后一行。
+ */
+export const CHAT_MARKDOWN_BOTTOM_GUARD = 10
+
 export const chatBubbleStyles = StyleSheet.create({
   container: {
     marginVertical: 8,
@@ -27,11 +33,12 @@ export const chatBubbleStyles = StyleSheet.create({
     maxWidth: '88%'
   },
   bubbleWrapperAssistant: {
+    flexShrink: 1,
     alignItems: 'flex-start',
+    alignSelf: 'flex-start',
     marginRight: 24,
-    flex: 1,
-    width: '88%',
-    maxWidth: '88%'
+    maxWidth: '88%',
+    minWidth: 0
   },
   bubbleWrapperEditing: {
     width: '88%',
@@ -61,7 +68,17 @@ export const chatBubbleStyles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 16,
     alignSelf: 'stretch',
+    width: '100%',
+    overflow: 'visible'
+  },
+  bubblePressable: {
+    alignSelf: 'stretch',
     width: '100%'
+  },
+  markdownSlot: {
+    alignSelf: 'stretch',
+    width: '100%',
+    paddingBottom: CHAT_MARKDOWN_BOTTOM_GUARD
   },
   bubbleUser: {
     alignSelf: 'flex-end',
@@ -143,6 +160,11 @@ export const chatBubbleStyles = StyleSheet.create({
   actionChipText: {
     fontSize: 12,
     fontWeight: '500'
+  },
+  /** 流式期间占位，高度对齐操作栏 + token 行，避免显示 chrome 时突增 */
+  deferredChromeSpacer: {
+    height: 36,
+    width: '100%'
   },
   tokenRow: {
     flexDirection: 'row',

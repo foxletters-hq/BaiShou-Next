@@ -28,7 +28,8 @@ export function buildStreamdownMarkdownStyle(
   const bodyFontSize = isAncillary ? 14 : 15
   const bodyLineHeight = isAncillary ? 20 : 24
   const bodyColor = isAncillary ? colors.textSecondary : colors.textPrimary
-  const paragraphMargin = isAncillary ? 4 : isChat ? 6 : 8
+  /** 末行由 CHAT_MARKDOWN_BOTTOM_GUARD 托底，段落间距改由 lineHeight 自然分隔 */
+  const paragraphMargin = isAncillary ? 4 : isChat ? 0 : 8
   const headingScale = isChat ? 0.85 : 1
   const codeFontSize = isAncillary ? 12 : 13
 
