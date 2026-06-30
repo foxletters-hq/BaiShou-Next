@@ -702,6 +702,7 @@
     "rag_batch_embed_done": "一括埋め込みが完了しました",
     "rag_batch_embed_failed": "一括埋め込みに失敗しました：{{message}}",
     "rag_diary_auto_embed_failed": "日記は保存されましたが、記憶の埋め込みに失敗しました。設定 → RAG 記憶で「未インデックスの日記を一括埋め込み」を実行してください。",
+    "rag_diary_auto_embed_failed_with_reason": "日記は保存されましたが、記憶の埋め込みに失敗しました：{{message}}。設定 → RAG 記憶で「未インデックスの日記を一括埋め込み」を実行してください。",
     "rag_diary_embed_pending_chip": "未完了の日記記憶埋め込みがあります",
     "rag_diary_embed_pending_detail": "最近保存または編集した日記を記憶ベクトルに書き込めませんでした（ネットワーク切断の可能性があります）。日記本文は安全に保存されています。下のボタンで埋め込みを完了できます。",
     "rag_operation_failed": "ベクトル埋め込み操作に失敗しました",

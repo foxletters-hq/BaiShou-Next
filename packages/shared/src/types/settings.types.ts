@@ -83,6 +83,8 @@ export interface RagConfig {
   batchEmbedConcurrency?: number
   /** 最近一次日记自动嵌入失败的时间戳（毫秒），用于 RAG 页非阻塞提示 */
   lastDiaryEmbedFailureAt?: number
+  /** 最近一次日记自动嵌入失败的原因（用户可读） */
+  lastDiaryEmbedFailureMessage?: string
 }
 
 /**

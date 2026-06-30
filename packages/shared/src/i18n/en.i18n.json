@@ -713,6 +713,7 @@
     "rag_batch_embed_done": "Batch embedding completed",
     "rag_batch_embed_failed": "Batch embedding failed: {{message}}",
     "rag_diary_auto_embed_failed": "Diary saved, but memory embedding failed. Open Settings → RAG Memory and tap \"Scan Unindexed Diaries\" to re-embed.",
+    "rag_diary_auto_embed_failed_with_reason": "Diary saved, but memory embedding failed: {{message}}. Open Settings → RAG Memory and tap \"Scan Unindexed Diaries\" to re-embed.",
     "legacy_upgrade_rag_notice": "Diaries, summaries, and AI companions were restored from the legacy app. RAG memory needs to be re-embedded in Settings → RAG Memory.",
     "rag_diary_embed_pending_chip": "Diary memory embedding incomplete",
     "rag_diary_embed_pending_detail": "A recently saved or edited diary could not be written to memory vectors (network may have dropped). Your diary text is safe—tap below to finish embedding.",

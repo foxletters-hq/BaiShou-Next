@@ -686,6 +686,7 @@
     "rag_batch_embed_done": "批量嵌入已完成",
     "rag_batch_embed_failed": "批量嵌入失败：{{message}}",
     "rag_diary_auto_embed_failed": "日记已保存，但记忆嵌入未成功。请前往 设置 → RAG 记忆，点击「全量扫描未索引日记」补全嵌入。",
+    "rag_diary_auto_embed_failed_with_reason": "日记已保存，但记忆嵌入未成功：{{message}}。请前往 设置 → RAG 记忆，点击「全量扫描未索引日记」补全嵌入。",
     "legacy_upgrade_rag_notice": "已从旧版继承日记、总结和 AI 伙伴。RAG 记忆需要重新嵌入，请前往 设置 → RAG 记忆 执行全量扫描。",
     "rag_diary_embed_pending_chip": "有未完成的日记记忆嵌入",
     "rag_diary_embed_pending_detail": "最近保存或修改的日记未能写入记忆向量（可能是网络中断）。日记正文已安全保存，可点击下方按钮补全嵌入。",

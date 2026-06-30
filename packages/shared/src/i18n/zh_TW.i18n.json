@@ -609,6 +609,7 @@
     "rag_batch_embed_done": "批次嵌入已完成",
     "rag_batch_embed_failed": "批次嵌入失敗：{{message}}",
     "rag_diary_auto_embed_failed": "日記已儲存，但記憶嵌入未成功。請前往 設定 → RAG 記憶，點擊「全量掃描未索引日記」補全嵌入。",
+    "rag_diary_auto_embed_failed_with_reason": "日記已儲存，但記憶嵌入未成功：{{message}}。請前往 設定 → RAG 記憶，點擊「全量掃描未索引日記」補全嵌入。",
     "rag_diary_embed_pending_chip": "有未完成的日記記憶嵌入",
     "rag_diary_embed_pending_detail": "最近儲存或修改的日記未能寫入記憶向量（可能是網路中斷）。日記正文已安全儲存，可點擊下方按鈕補全嵌入。",
     "rag_operation_failed": "向量嵌入操作失敗",
