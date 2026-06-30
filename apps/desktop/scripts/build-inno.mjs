@@ -48,10 +48,13 @@ function resolveIscc() {
   const fromEnv = process.env.ISCC?.trim()
   if (fromEnv && existsSync(fromEnv)) return fromEnv
 
+  const localAppData = process.env.LOCALAPPDATA?.trim()
   const candidates = [
     'C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe',
-    'C:\\Program Files\\Inno Setup 6\\ISCC.exe'
-  ]
+    'C:\\Program Files\\Inno Setup 6\\ISCC.exe',
+    localAppData ? join(localAppData, 'Programs', 'Inno Setup 6', 'ISCC.exe') : null,
+    localAppData ? join(localAppData, 'Inno Setup 6', 'ISCC.exe') : null
+  ].filter((candidate) => candidate != null)
   for (const candidate of candidates) {
     if (existsSync(candidate)) return candidate
   }
