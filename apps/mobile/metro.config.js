@@ -1,12 +1,16 @@
 const { getDefaultConfig } = require('expo/metro-config')
 const path = require('path')
+const { getBundleModeMetroConfig } = require('react-native-worklets/bundleMode')
 
 const projectRoot = __dirname
 const workspaceRoot = path.resolve(projectRoot, '../..')
 
-const config = getDefaultConfig(projectRoot)
+let config = getDefaultConfig(projectRoot)
 
 config.watchFolders = [...(config.watchFolders || []), workspaceRoot]
+
+const workletsDir = path.resolve(projectRoot, 'node_modules/react-native-worklets/.worklets')
+config.watchFolders.push(workletsDir)
 
 config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, 'node_modules'),
@@ -70,9 +74,17 @@ config.resolver.blockList = [
 
 const databaseNativeEntry = path.resolve(workspaceRoot, 'packages/database/src/index.native.ts')
 
-const defaultResolveRequest = config.resolver.resolveRequest
+const preBundleResolveRequest = config.resolver.resolveRequest
+
+config = getBundleModeMetroConfig(config)
+
+const bundleModeResolveRequest = config.resolver.resolveRequest
 
 config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName.startsWith('react-native-worklets/.worklets/')) {
+    return bundleModeResolveRequest(context, moduleName, platform)
+  }
+
   if (
     moduleName.startsWith('node:') ||
     nodeBuiltinPrefixes.some((p) => moduleName === p || moduleName.startsWith(p + '/'))
@@ -83,7 +95,6 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     }
   }
 
-  // Expo Web / SSR 不走 react-native export condition，会误解析到 index.ts → index.desktop（已被 blockList）
   if (moduleName === '@baishou/database') {
     return {
       filePath: databaseNativeEntry,
@@ -91,9 +102,8 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     }
   }
 
-  // Expo SDK 55 默认 resolveRequest 为 null，必须回退到 context.resolveRequest（Metro 内置解析器）
-  if (typeof defaultResolveRequest === 'function') {
-    return defaultResolveRequest(context, moduleName, platform)
+  if (typeof preBundleResolveRequest === 'function') {
+    return preBundleResolveRequest(context, moduleName, platform)
   }
   return context.resolveRequest(context, moduleName, platform)
 }
