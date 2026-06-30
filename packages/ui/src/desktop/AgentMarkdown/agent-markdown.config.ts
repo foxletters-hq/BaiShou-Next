@@ -1,5 +1,8 @@
 import Latex from '@ant-design/x-markdown/plugins/Latex'
-import type { StreamingOption } from '@ant-design/x-markdown'
+import type { ComponentProps } from 'react'
+import type XMarkdown from '@ant-design/x-markdown'
+
+type StreamingOption = NonNullable<ComponentProps<typeof XMarkdown>['streaming']>
 
 export const agentMarkedConfig = {
   gfm: true,

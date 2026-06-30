@@ -13,7 +13,7 @@ export const ToolResultContent = React.memo(function ToolResultContent({
 
   return (
     <div className={styles.resultViewport}>
-      {presentation.mode !== 'structured' && presentation.sourceUrl ? (
+      {presentation.mode === 'plain' && presentation.sourceUrl ? (
         <a
           href={presentation.sourceUrl}
           target="_blank"
