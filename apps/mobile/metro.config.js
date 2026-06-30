@@ -1,16 +1,41 @@
 const { getDefaultConfig } = require('expo/metro-config')
+const fs = require('fs')
 const path = require('path')
 const { getBundleModeMetroConfig } = require('react-native-worklets/bundleMode')
 
 const projectRoot = __dirname
 const workspaceRoot = path.resolve(projectRoot, '../..')
 
+function resolveWorkletsWatchDir() {
+  const candidates = [
+    path.resolve(projectRoot, 'node_modules/react-native-worklets/.worklets'),
+    path.resolve(workspaceRoot, 'node_modules/react-native-worklets/.worklets')
+  ]
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      return candidate
+    }
+  }
+  try {
+    const pkgRoot = path.dirname(
+      require.resolve('react-native-worklets/package.json', {
+        paths: [projectRoot, workspaceRoot]
+      })
+    )
+    return path.join(pkgRoot, '.worklets')
+  } catch {
+    return candidates[1]
+  }
+}
+
 let config = getDefaultConfig(projectRoot)
 
 config.watchFolders = [...(config.watchFolders || []), workspaceRoot]
 
-const workletsDir = path.resolve(projectRoot, 'node_modules/react-native-worklets/.worklets')
-config.watchFolders.push(workletsDir)
+const workletsDir = resolveWorkletsWatchDir()
+if (!config.watchFolders.includes(workletsDir)) {
+  config.watchFolders.push(workletsDir)
+}
 
 config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, 'node_modules'),
