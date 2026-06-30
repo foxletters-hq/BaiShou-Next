@@ -58,7 +58,9 @@
   },
   "pnpm": {
     "patchedDependencies": {
-      "@ai-sdk/openai@3.0.50": "patches/@ai-sdk+openai@3.0.50.patch"
+      "@ai-sdk/openai@3.0.50": "patches/@ai-sdk+openai@3.0.50.patch",
+      "metro@0.83.7": "patches/metro@0.83.7.patch",
+      "metro-runtime@0.83.7": "patches/metro-runtime@0.83.7.patch"
     },
     "onlyBuiltDependencies": [
       "better-sqlite3",
