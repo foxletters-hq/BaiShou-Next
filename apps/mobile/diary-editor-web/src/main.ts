@@ -1,8 +1,10 @@
 import { Compartment } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
+import { redo, undo } from '@codemirror/commands'
 import {
   createDiaryCodeMirror,
   forceImageRefresh,
+  toggleMarkdownMark,
   type DiaryCmPlatform
 } from '@baishou/ui/shared/diary-codemirror'
 import {
@@ -455,6 +457,15 @@ function handleRnMessage(raw: unknown): void {
       break
     case 'insertAtCursor':
       insertAtCursor(message.payload.text)
+      break
+    case 'toggleMarkdownMark':
+      if (view) toggleMarkdownMark(view, message.payload.marker)
+      break
+    case 'undo':
+      if (view) undo(view)
+      break
+    case 'redo':
+      if (view) redo(view)
       break
     case 'setSelection':
       setSelection(message.payload.start, message.payload.end)

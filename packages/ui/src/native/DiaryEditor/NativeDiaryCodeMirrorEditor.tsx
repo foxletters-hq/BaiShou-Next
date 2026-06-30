@@ -1,7 +1,7 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo } from 'react'
 import { Platform, StyleSheet, View, type ViewStyle } from 'react-native'
 import { WebView } from 'react-native-webview'
-import type { DiaryCmTheme } from '../../shared/diary-codemirror/types'
+import type { DiaryCmTheme, DiaryCmMarkdownMark } from '../../shared/diary-codemirror/types'
 import { useNativeTheme } from '../theme'
 import { buildDiaryCmThemeFromNative } from './diary-cm-theme.util'
 import {
@@ -21,6 +21,9 @@ export interface NativeDiaryCodeMirrorEditorHandle {
   blur: () => void
   insertAtCursor: (text: string) => void
   insertAtRange: (start: number, end: number, text: string) => void
+  undo: () => void
+  redo: () => void
+  toggleMarkdownMark: (marker: DiaryCmMarkdownMark) => void
 }
 
 export interface NativeDiaryCodeMirrorEditorProps extends Pick<
@@ -136,9 +139,20 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
       focusAtOffset: bridge.focusAtOffset,
       blur: bridge.blur,
       insertAtCursor: bridge.insertAtCursor,
-      insertAtRange: bridge.insertAtRange
+      insertAtRange: bridge.insertAtRange,
+      undo: bridge.undo,
+      redo: bridge.redo,
+      toggleMarkdownMark: bridge.toggleMarkdownMark
     }),
-    [bridge.blur, bridge.focusAtOffset, bridge.insertAtCursor, bridge.insertAtRange]
+    [
+      bridge.blur,
+      bridge.focusAtOffset,
+      bridge.insertAtCursor,
+      bridge.insertAtRange,
+      bridge.redo,
+      bridge.toggleMarkdownMark,
+      bridge.undo
+    ]
   )
 
   const webViewSource = useMemo(

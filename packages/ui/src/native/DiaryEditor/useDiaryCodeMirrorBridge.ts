@@ -9,6 +9,7 @@ import {
   type DiaryCmInitPayload,
   type DiaryCmTheme,
   type DiaryCmToWebViewMessage,
+  type DiaryCmMarkdownMark,
   type DiaryTagColorRegistry
 } from '../../shared/diary-codemirror/types'
 import { DiaryCmAttachmentUrlCache } from './diary-cm-attachment-url-cache'
@@ -51,6 +52,9 @@ export interface DiaryCodeMirrorBridgeApi {
   blur: () => void
   insertAtCursor: (text: string) => void
   insertAtRange: (start: number, end: number, text: string) => void
+  undo: () => void
+  redo: () => void
+  toggleMarkdownMark: (marker: DiaryCmMarkdownMark) => void
   isReady: () => boolean
   setScrollInsets: (bottom: number) => void
   scrollCaretIntoView: () => void
@@ -431,6 +435,21 @@ export function useDiaryCodeMirrorBridge(
     enqueueOrSend({ type: 'scrollCaretIntoView' })
   }, [enqueueOrSend])
 
+  const undo = useCallback(() => {
+    enqueueOrSend({ type: 'undo' })
+  }, [enqueueOrSend])
+
+  const redo = useCallback(() => {
+    enqueueOrSend({ type: 'redo' })
+  }, [enqueueOrSend])
+
+  const toggleMarkdownMark = useCallback(
+    (marker: DiaryCmMarkdownMark) => {
+      enqueueOrSend({ type: 'toggleMarkdownMark', payload: { marker } })
+    },
+    [enqueueOrSend]
+  )
+
   return {
     webViewRef,
     onWebViewMessage,
@@ -440,6 +459,9 @@ export function useDiaryCodeMirrorBridge(
     blur,
     insertAtCursor,
     insertAtRange,
+    undo,
+    redo,
+    toggleMarkdownMark,
     isReady: () => isReadyRef.current,
     setScrollInsets,
     scrollCaretIntoView

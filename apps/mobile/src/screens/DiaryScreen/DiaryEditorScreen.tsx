@@ -33,6 +33,7 @@ import {
 import { useStoragePermission } from '../../hooks/useStoragePermission'
 import { useAttachmentImageLoader } from '../../hooks/useAttachmentImageLoader'
 import { useDiaryEditorWebViewSource } from '../../hooks/useDiaryEditorWebViewSource'
+import { useMarkdownToolbarOrder } from '../../hooks/useMarkdownToolbarOrder'
 import { resolveDiaryAttachmentUrlForWebView } from '../../services/diary-cm-attachment-url.service'
 import { extractDiaryAttachmentRefs } from '../../utils/diary-attachment-prefetch.util'
 import { clearDiaryAttachmentAbsPathCache } from '../../utils/mobile-diary-attachment-resolver'
@@ -56,6 +57,7 @@ export const DiaryEditorScreen: React.FC = () => {
   const navigation = useNavigation()
   const { services, dbReady } = useBaishou()
   const { granted: storageGranted, request: requestStorage } = useStoragePermission()
+  const { toolOrder, saveToolOrder } = useMarkdownToolbarOrder()
 
   const [content, setContent] = useState('')
   const [tags, setTags] = useState<string[]>([])
@@ -407,6 +409,8 @@ export const DiaryEditorScreen: React.FC = () => {
           onPickImages={handlePickImages}
           pickingImages={pickingImages}
           resolveAttachmentUrl={resolveAttachmentUrl}
+          markdownToolbarOrder={toolOrder}
+          onMarkdownToolbarOrderChange={saveToolOrder}
           onSave={handleSave}
           onCancel={handleBack}
         />

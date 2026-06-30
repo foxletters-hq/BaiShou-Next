@@ -14,6 +14,7 @@ import {
 } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { MarkdownToolbar } from '../MarkdownToolbar/MarkdownToolbar'
+import type { MarkdownToolbarToolId } from '../MarkdownToolbar/markdown-toolbar.types'
 import { DiaryEditorAppBarTitle } from '../DiaryEditorAppBarTitle/DiaryEditorAppBarTitle'
 import { WeatherPicker } from '../WeatherPicker/WeatherPicker'
 import { MoodPicker } from '../MoodPicker/MoodPicker'
@@ -57,6 +58,8 @@ interface DiaryEditorProps {
   webViewActive?: boolean
   /** attachment/xxx → data: 或 file: URI（异步桥接） */
   resolveAttachmentUrl?: (src: string) => Promise<string | null>
+  markdownToolbarOrder?: MarkdownToolbarToolId[]
+  onMarkdownToolbarOrderChange?: (order: MarkdownToolbarToolId[]) => void
 }
 
 /** 工具栏遮挡 + 额外留白，供 WebView 内计算安全滚动区域 */
@@ -83,7 +86,9 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   pickingImages = false,
   editorWebViewSource,
   webViewActive = true,
-  resolveAttachmentUrl
+  resolveAttachmentUrl,
+  markdownToolbarOrder,
+  onMarkdownToolbarOrderChange
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -165,6 +170,29 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
       insertAtPosition(start, end, prefix + selectedText + suffix)
     },
     [insertAtPosition]
+  )
+
+  const runEditorCommand = useCallback((command: () => void) => {
+    toolbarInsertingRef.current = true
+    command()
+    requestAnimationFrame(() => {
+      toolbarInsertingRef.current = false
+    })
+  }, [])
+
+  const handleUndo = useCallback(() => {
+    runEditorCommand(() => editorRef.current?.undo())
+  }, [runEditorCommand])
+
+  const handleRedo = useCallback(() => {
+    runEditorCommand(() => editorRef.current?.redo())
+  }, [runEditorCommand])
+
+  const handleToggleMark = useCallback(
+    (marker: '**' | '*' | '`' | '~~') => {
+      runEditorCommand(() => editorRef.current?.toggleMarkdownMark(marker))
+    },
+    [runEditorCommand]
   )
 
   const handlePickImages = async () => {
@@ -337,8 +365,13 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
         >
           <MarkdownToolbar
             onInsertText={handleInsertText}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+            onToggleMark={handleToggleMark}
             onPickImages={onPickImages ? handlePickImages : undefined}
             pickingImages={pickingImages}
+            toolOrder={markdownToolbarOrder}
+            onToolOrderChange={onMarkdownToolbarOrderChange}
           />
         </View>
       </View>
