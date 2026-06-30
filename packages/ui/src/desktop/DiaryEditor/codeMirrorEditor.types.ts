@@ -1,5 +1,12 @@
+import type { DiaryCmMarkdownMark } from '../../shared/diary-codemirror/types'
+
 export interface CodeMirrorEditorHandle {
   insertAtCursor: (text: string) => void
+  insertWrappedText: (prefix: string, suffix?: string) => void
+  undo: () => void
+  redo: () => void
+  toggleMarkdownMark: (marker: DiaryCmMarkdownMark) => void
+  focus: () => void
 }
 
 export interface CodeMirrorEditorProps {

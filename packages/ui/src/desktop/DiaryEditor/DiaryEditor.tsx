@@ -14,6 +14,7 @@ import { MOOD_FLUENT_ICON_SRC } from '../../shared/mood-fluent-assets'
 import { WEATHER_FLUENT_ICON_SRC } from '../../shared/weather-fluent-assets'
 import { CodeMirrorEditor, CodeMirrorEditorHandle } from './CodeMirrorEditor'
 import { DiaryEditorAppBarTitle } from '../DiaryEditorAppBarTitle/DiaryEditorAppBarTitle'
+import { DiaryMarkdownToolbar } from './DiaryMarkdownToolbar'
 import { WeatherPicker } from './WeatherPicker'
 import { DiaryAttachmentItem, getInsertMarkdown } from './AttachmentUploader'
 import './DiaryEditor.css'
@@ -68,6 +69,8 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   const [attachments, setAttachments] = useState<DiaryAttachmentItem[]>([])
   const [attachmentBasePath, setAttachmentBasePath] = useState('')
   const editorRef = useRef<CodeMirrorEditorHandle>(null)
+  const imageInputRef = useRef<HTMLInputElement>(null)
+  const [pickingImages, setPickingImages] = useState(false)
   const mediaPathsRef = useRef(mediaPaths)
 
   useEffect(() => {
@@ -212,6 +215,45 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
     }
   }, [normalizedMood, mood, onMoodChange])
 
+  const handleInsertText = useCallback((prefix: string, suffix = '') => {
+    editorRef.current?.insertWrappedText(prefix, suffix)
+  }, [])
+
+  const handleUndo = useCallback(() => {
+    editorRef.current?.undo()
+  }, [])
+
+  const handleRedo = useCallback(() => {
+    editorRef.current?.redo()
+  }, [])
+
+  const handleToggleMark = useCallback((marker: '**' | '*' | '`' | '~~') => {
+    editorRef.current?.toggleMarkdownMark(marker)
+  }, [])
+
+  const handlePickImages = useCallback(() => {
+    imageInputRef.current?.click()
+  }, [])
+
+  const handleImageInputChange = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(event.target.files ?? [])
+      event.target.value = ''
+      if (!files.length) return
+
+      setPickingImages(true)
+      try {
+        const markdowns = await handlePasteFiles(files)
+        if (!markdowns.length) return
+        const block = `${markdowns.length > 1 ? '\n\n' : ''}${markdowns.join('\n\n')}\n`
+        editorRef.current?.insertAtCursor(block)
+      } finally {
+        setPickingImages(false)
+      }
+    },
+    [handlePasteFiles]
+  )
+
   return (
     <div className="diary-editor-scaffold">
       <div className="de-app-bar">
@@ -307,6 +349,26 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
               onPasteFiles={handlePasteFiles}
               onDropFiles={handlePasteFiles}
             />
+            {!isSummaryMode && (
+              <>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  hidden
+                  onChange={(event) => void handleImageInputChange(event)}
+                />
+                <DiaryMarkdownToolbar
+                  onInsertText={handleInsertText}
+                  onUndo={handleUndo}
+                  onRedo={handleRedo}
+                  onToggleMark={handleToggleMark}
+                  onPickImages={handlePickImages}
+                  pickingImages={pickingImages}
+                />
+              </>
+            )}
           </div>
         </div>
       </div>
