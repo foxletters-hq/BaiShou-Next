@@ -2155,7 +2155,8 @@
   "nav": {
     "diary": "日記",
     "agent": "パートナー",
-    "summary": "概要"
+    "summary": "概要",
+    "swipe_again_to_exit": "もう一度スワイプして終了"
   },
   "titlebar": {
     "minimize": "最小化",

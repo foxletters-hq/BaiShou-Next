@@ -2213,7 +2213,8 @@
     "diary": "Diary",
     "agent": "Partner",
     "summary": "Archive",
-    "settings": "Settings"
+    "settings": "Settings",
+    "swipe_again_to_exit": "Swipe again to exit"
   },
   "image_preview": {
     "zoom_in": "Zoom in",

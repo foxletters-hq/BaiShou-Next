@@ -2263,7 +2263,8 @@
     "diary": "日记",
     "agent": "伙伴",
     "summary": "归档",
-    "settings": "设置"
+    "settings": "设置",
+    "swipe_again_to_exit": "再次滑动退出"
   },
   "image_preview": {
     "zoom_in": "放大",

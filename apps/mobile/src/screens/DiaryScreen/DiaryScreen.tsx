@@ -13,6 +13,7 @@ import { DiaryFab } from './components/DiaryFab'
 import { DiaryList, type DiaryListEntry } from './components/DiaryList'
 import { useDiaryData, type DiaryPageQuery } from './hooks/useDiaryData'
 import { useDiaryFilterState } from './hooks/useDiaryFilterState'
+import { useDiaryRootExitGuard } from './hooks/useDiaryRootExitGuard'
 import { useIncrementalSync } from '../../providers/IncrementalSyncProvider'
 import { DIARY_FILTER_STORAGE_KEYS } from './diary-filter-state.util'
 
@@ -68,6 +69,8 @@ export const DiaryScreen: React.FC = () => {
     refreshConfigured,
     runIncrementalSync
   } = useIncrementalSync()
+
+  useDiaryRootExitGuard()
 
   useFocusEffect(
     useCallback(() => {

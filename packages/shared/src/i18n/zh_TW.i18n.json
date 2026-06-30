@@ -2223,7 +2223,8 @@
   "nav": {
     "diary": "日記",
     "agent": "夥伴",
-    "summary": "概覽"
+    "summary": "概覽",
+    "swipe_again_to_exit": "再次滑動退出"
   },
   "titlebar": {
     "minimize": "最小化",
