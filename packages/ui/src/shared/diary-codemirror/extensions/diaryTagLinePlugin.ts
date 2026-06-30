@@ -82,6 +82,10 @@ function runDiaryTagEnter(view: EditorView): boolean {
   const { state } = view
   const head = state.selection.main.head
   const line = state.doc.lineAt(head)
+
+  // 列表行交给 listContinuation 处理
+  if (/^\s*[-*+]\s/.test(line.text)) return false
+
   if (shouldSkipDiaryTagExtractionLine(line.text)) return false
 
   const lineText = line.text

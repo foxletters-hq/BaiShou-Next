@@ -1,4 +1,30 @@
-import { Decoration } from '@codemirror/view'
+import { Decoration, WidgetType } from '@codemirror/view'
+
+class ListBulletWidget extends WidgetType {
+  toDOM(): HTMLElement {
+    const el = document.createElement('span')
+    el.className = 'cm-list-bullet'
+    el.textContent = '•'
+    el.setAttribute('aria-hidden', 'true')
+    return el
+  }
+
+  eq(): boolean {
+    return true
+  }
+
+  ignoreEvent(): boolean {
+    return true
+  }
+}
+
+const listBulletWidget = new ListBulletWidget()
+
+/** 将 `- ` 等列表标记替换为圆点 */
+export const listMarkerReplace = Decoration.replace({
+  widget: listBulletWidget,
+  inclusive: false
+})
 
 export const hideMark = Decoration.replace({})
 

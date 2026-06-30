@@ -1,7 +1,7 @@
 import { keymap } from '@codemirror/view'
 import type { EditorView } from '@codemirror/view'
 
-function toggleMarkdownMark(view: EditorView, marker: string): boolean {
+export function toggleMarkdownMark(view: EditorView, marker: string): boolean {
   const { from, to } = view.state.selection.main
   const selText = view.state.sliceDoc(from, to)
   const mLen = marker.length

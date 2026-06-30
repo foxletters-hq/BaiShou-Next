@@ -168,11 +168,6 @@ export function collectTreeDecorations(
         return
       }
 
-      if (name === 'ListMark') {
-        pushDecoration(marks, hideMark, node.from, node.to)
-        return
-      }
-
       if (name === 'TaskMarker') {
         pushDecoration(marks, hideMark, node.from, node.to)
       }

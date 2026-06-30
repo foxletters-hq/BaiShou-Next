@@ -87,6 +87,12 @@ export interface DiaryCmSetScrollInsetsPayload {
   bottom: number
 }
 
+export type DiaryCmMarkdownMark = '**' | '*' | '`' | '~~'
+
+export interface DiaryCmToggleMarkdownMarkPayload {
+  marker: DiaryCmMarkdownMark
+}
+
 export type DiaryCmToWebViewMessage =
   | { type: 'init'; payload: DiaryCmInitPayload }
   | { type: 'setContent'; payload: DiaryCmSetContentPayload }
@@ -95,6 +101,9 @@ export type DiaryCmToWebViewMessage =
   | { type: 'setSelection'; payload: DiaryCmSetSelectionPayload }
   | { type: 'setEditable'; payload: DiaryCmSetEditablePayload }
   | { type: 'setScrollInsets'; payload: DiaryCmSetScrollInsetsPayload }
+  | { type: 'toggleMarkdownMark'; payload: DiaryCmToggleMarkdownMarkPayload }
+  | { type: 'undo' }
+  | { type: 'redo' }
   | { type: 'scrollCaretIntoView' }
   | { type: 'focus' }
   | { type: 'blur' }

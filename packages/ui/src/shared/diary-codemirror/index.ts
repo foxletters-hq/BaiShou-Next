@@ -26,7 +26,7 @@ export {
 export { livePreviewSyntaxHighlighting } from './extensions/syntax'
 export { livePreviewPlugin } from './extensions/livePreviewPlugin'
 export { attachmentUrlPlugin } from './extensions/attachmentUrlPlugin'
-export { markdownKeymap } from './extensions/keymap'
+export { markdownKeymap, toggleMarkdownMark } from './extensions/keymap'
 export { buildMarkerHidingDecorations } from './extensions/build'
 
 export { ImageWidget } from './widgets/ImageWidget'

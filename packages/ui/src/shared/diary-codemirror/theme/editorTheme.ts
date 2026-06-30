@@ -86,6 +86,16 @@ export const editorTheme = EditorView.baseTheme({
     color: 'var(--text-secondary)',
     margin: '8px 0'
   },
+  '.cm-list-bullet': {
+    display: 'inline-block',
+    width: '1.1em',
+    marginRight: '0.2em',
+    color: 'var(--text-secondary)',
+    fontWeight: '600',
+    userSelect: 'none',
+    pointerEvents: 'none',
+    verticalAlign: 'baseline'
+  },
   '.cm-code': {
     fontFamily: "'Fira Code', 'Courier New', monospace",
     backgroundColor: 'var(--bg-surface-normal)',
