@@ -1,21 +1,16 @@
-import React, { useMemo } from 'react'
+import React from 'react'
 import { View, Text, StyleSheet } from 'react-native'
-import Animated, { FadeIn } from 'react-native-reanimated'
-import { splitStreamingRevealUnits } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 import {
   MarkdownRenderer,
   type MarkdownRendererProps,
   type MarkdownRendererVariant
 } from '../MarkdownRenderer/MarkdownRenderer'
-import {
-  nativeAgentStreamSegmentMaxChars,
-  nativeAgentStreamingFadeMs
-} from './agent-markdown.config'
+import { FluidAgentMarkdownRenderer } from './FluidAgentMarkdownRenderer'
 
 export interface AgentMarkdownRendererProps {
   content: string
-  /** 流式进行中：已闭合段落即时 Markdown，尾部未完成片段渐显 */
+  /** 流式进行中：稳定块 Markdown + 当前块 printer */
   isStreaming?: boolean
   variant?: MarkdownRendererVariant
   plainText?: boolean
@@ -26,10 +21,10 @@ export interface AgentMarkdownRendererProps {
 }
 
 /**
- * 移动端 Agent 专用 Markdown（react-native-markdown-display）。
- * 流式策略对齐桌面 XMarkdown：全文即时累积 + 尾部渐显，无光标。
+ * 移动端 Agent Markdown。
+ * 流式期间：稳定块走 MarkdownRenderer，当前块走 FluidAgentMarkdownRenderer printer；结束后完整 Markdown 解析。
  */
-export const AgentMarkdownRenderer: React.FC<AgentMarkdownRendererProps> = ({
+export const AgentMarkdownRenderer = React.memo(function AgentMarkdownRenderer({
   content,
   isStreaming = false,
   variant = 'chat',
@@ -38,20 +33,8 @@ export const AgentMarkdownRenderer: React.FC<AgentMarkdownRendererProps> = ({
   resolveImageUri,
   loadImageUri,
   onImagePress
-}) => {
+}: AgentMarkdownRendererProps) {
   const { colors } = useNativeTheme()
-  const isAncillary = variant === 'ancillary'
-
-  const { committed, partial } = useMemo(() => {
-    if (!isStreaming || !content) {
-      return { committed: content, partial: '' }
-    }
-    const { completeUnits, partialUnit } = splitStreamingRevealUnits(
-      content,
-      nativeAgentStreamSegmentMaxChars
-    )
-    return { committed: completeUnits.join(''), partial: partialUnit }
-  }, [content, isStreaming])
 
   if (plainText) {
     return (
@@ -61,36 +44,35 @@ export const AgentMarkdownRenderer: React.FC<AgentMarkdownRendererProps> = ({
     )
   }
 
-  const markdownContent = isStreaming ? committed : content
+  if (isStreaming) {
+    return (
+      <FluidAgentMarkdownRenderer
+        content={content}
+        variant={variant}
+        isStreaming
+        style={style}
+        resolveImageUri={resolveImageUri}
+        loadImageUri={loadImageUri}
+        onImagePress={onImagePress}
+      />
+    )
+  }
+
+  if (!content) return null
 
   return (
     <View style={styles.root}>
-      {markdownContent ? (
-        <MarkdownRenderer
-          content={markdownContent}
-          variant={variant}
-          style={style}
-          resolveImageUri={resolveImageUri}
-          loadImageUri={loadImageUri}
-          onImagePress={onImagePress}
-        />
-      ) : null}
-      {isStreaming && partial ? (
-        <Animated.Text
-          key={partial}
-          entering={FadeIn.duration(nativeAgentStreamingFadeMs)}
-          style={[
-            styles.partialTail,
-            isAncillary ? styles.partialTailAncillary : null,
-            { color: isAncillary ? colors.textSecondary : colors.textPrimary }
-          ]}
-        >
-          {partial}
-        </Animated.Text>
-      ) : null}
+      <MarkdownRenderer
+        content={content}
+        variant={variant}
+        style={style}
+        resolveImageUri={resolveImageUri}
+        loadImageUri={loadImageUri}
+        onImagePress={onImagePress}
+      />
     </View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   root: {
@@ -99,14 +81,5 @@ const styles = StyleSheet.create({
   plainText: {
     fontSize: 14,
     lineHeight: 22
-  },
-  partialTail: {
-    fontSize: 15,
-    lineHeight: 24,
-    opacity: 0.65
-  },
-  partialTailAncillary: {
-    fontSize: 14,
-    lineHeight: 20
   }
 })
