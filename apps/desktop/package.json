@@ -1,6 +1,6 @@
 {
   "name": "@baishou/desktop",
-  "version": "1.1.7",
+  "version": "1.1.8",
   "description": "白守 (BaiShou) — 记录你珍贵的回忆",
   "main": "./out/main/index.js",
   "author": "example.com",
