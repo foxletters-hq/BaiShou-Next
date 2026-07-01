@@ -47,6 +47,16 @@ export interface ChatBubbleProps {
     reasoning?: string
     isTextStreaming?: boolean
     isThinkStreaming?: boolean
+    /** 进行中的工具展示名（已本地化） */
+    activeToolName?: string | null
+    /** 流式阶段已完成的工具（与 StreamingBubble 同结构） */
+    completedTools?: Array<{
+      name: string
+      durationMs: number
+      toolCallId?: string
+      result?: unknown
+      args?: unknown
+    }>
   }
   /** 流式/桥接期间隐藏操作栏与 token 行，避免结束时布局突增 */
   deferAssistantChrome?: boolean

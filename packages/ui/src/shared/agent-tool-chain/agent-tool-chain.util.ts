@@ -96,10 +96,15 @@ export function buildAgentToolChainItems(options: {
   }
 
   for (const [index, inv] of (options.invocations ?? []).entries()) {
-    const key = inv.toolCallId || inv.toolName || `inv-${index}`
+    const invToolName =
+      inv.toolName ||
+      (inv as { name?: string }).name ||
+      inv.toolCallId ||
+      'tool'
+    const key = inv.toolCallId || invToolName || `inv-${index}`
     upsertItem({
       key,
-      toolName: inv.toolName || inv.toolCallId || 'tool',
+      toolName: invToolName,
       status: isToolError(inv) ? 'error' : 'success',
       invocation: inv,
       hasContent: hasInvocationContent(inv)

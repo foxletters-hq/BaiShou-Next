@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  getToolDisplayName,
   normalizeToolResultPlainText,
+  resolveActiveToolDisplayName,
   resolveToolResultPresentation,
   unwrapPlainToolResultText
 } from '../tool-result.util'
@@ -15,6 +17,33 @@ describe('normalizeToolResultPlainText', () => {
 describe('unwrapPlainToolResultText', () => {
   it('unwraps vercel text output objects', () => {
     expect(unwrapPlainToolResultText({ type: 'text', value: 'hello' })).toBe('hello')
+  })
+})
+
+describe('getToolDisplayName', () => {
+  const t = (key: string, fallback?: string) => (key === 'agent.tools.diary_search' ? '日记搜索' : fallback ?? key)
+
+  it('reads legacy name field when toolName is missing', () => {
+    expect(
+      getToolDisplayName(
+        { toolCallId: 'call-1', name: 'diary_search' } as { toolCallId: string; toolName?: string },
+        t
+      )
+    ).toBe('日记搜索')
+  })
+})
+
+describe('resolveActiveToolDisplayName', () => {
+  const t = (key: string, fallback?: string) => {
+    if (key === 'agent.tools.web_search') return '网络搜索'
+    if (key === 'settings.web_search_engine_exa_mcp') return 'Exa MCP'
+    return fallback ?? key
+  }
+
+  it('includes search engine label for web_search', () => {
+    expect(resolveActiveToolDisplayName({ name: 'web_search' }, t, 'exa-mcp')).toBe(
+      '网络搜索 (Exa MCP)'
+    )
   })
 })
 

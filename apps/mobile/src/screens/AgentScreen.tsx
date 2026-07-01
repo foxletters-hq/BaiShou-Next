@@ -2,10 +2,12 @@ import React, { useRef, useEffect, useLayoutEffect, useState, useCallback, useMe
 import { useRouter, type Href } from 'expo-router'
 import {
   type PromptShortcut,
+  type WebSearchConfig,
   LATTE_ASSISTANT_NAME,
   normalizeChatBackgroundBlur,
   normalizeChatBackgroundOverlayOpacity
 } from '@baishou/shared'
+import { DEFAULT_WEB_SEARCH_CONFIG } from '@baishou/database'
 import {
   View,
   StyleSheet,
@@ -31,7 +33,8 @@ import {
   StreamingBubble,
   RecallDialog,
   ChatCostDialog,
-  PromptShortcutSheet
+  PromptShortcutSheet,
+  resolveActiveToolDisplayName
 } from '@baishou/ui/native'
 import { useNativeTheme, useNativeToast } from '@baishou/ui/native'
 import { useAgentStore, useAgentNavigationStore, useContextCompressionStore } from '@baishou/store'
@@ -113,6 +116,9 @@ export const AgentScreen = () => {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [holdLivePresentation, setHoldLivePresentation] = useState(false)
   const [keepLiveRowAfterHold, setKeepLiveRowAfterHold] = useState(false)
+  const [webSearchEngine, setWebSearchEngine] = useState<WebSearchConfig['webSearchEngine']>(
+    DEFAULT_WEB_SEARCH_CONFIG.webSearchEngine
+  )
 
   const handleBubbleEditingChange = useCallback((editing: boolean, messageId?: string) => {
     setIsBubbleEditing(editing)
@@ -138,6 +144,16 @@ export const AgentScreen = () => {
 
   const [assistants, setAssistants] = useState<MobileAssistantUi[]>([])
   const userProfile = useAgentUserProfile()
+
+  useEffect(() => {
+    if (!dbReady || !services) return
+    void (async () => {
+      const saved =
+        (await services.settingsManager.get<WebSearchConfig>('web_search_config')) ??
+        DEFAULT_WEB_SEARCH_CONFIG
+      setWebSearchEngine(saved.webSearchEngine ?? DEFAULT_WEB_SEARCH_CONFIG.webSearchEngine)
+    })()
+  }, [dbReady, services])
 
   const {
     currentAssistant,
@@ -254,6 +270,11 @@ export const AgentScreen = () => {
     searchMode,
     refreshSessionMessages,
     bumpReloadEpoch
+  )
+
+  const activeToolDisplayName = useMemo(
+    () => resolveActiveToolDisplayName(activeTool, t, webSearchEngine),
+    [activeTool, t, webSearchEngine]
   )
 
   const [showLoadMoreBanner, setShowLoadMoreBanner] = useState(false)
@@ -944,7 +965,7 @@ export const AgentScreen = () => {
         name: tool.name,
         durationMs: tool.endTime && tool.startTime ? tool.endTime - tool.startTime : 0,
         result: tool.result,
-        toolCallId: `streaming-${tool.name}-${idx}`
+        toolCallId: tool.toolCallId ?? `streaming-${tool.name}-${idx}`
       })),
     [completedTools]
   )
@@ -977,14 +998,18 @@ export const AgentScreen = () => {
       reasoning: streamingReasoning,
       isTextStreaming: bubbleTextStreaming,
       isThinkStreaming:
-        !assistantPersistedInList && streamingThinkActive && bubbleTextStreaming
+        !assistantPersistedInList && streamingThinkActive && bubbleTextStreaming,
+      activeToolName: activeToolDisplayName,
+      completedTools: streamingCompletedTools
     }),
     [
       streamingText,
       streamingReasoning,
       bubbleTextStreaming,
       streamingThinkActive,
-      assistantPersistedInList
+      assistantPersistedInList,
+      activeToolDisplayName,
+      streamingCompletedTools
     ]
   )
 
@@ -998,7 +1023,7 @@ export const AgentScreen = () => {
           isReasoning={false}
           isThinkStreaming={false}
           isTextStreaming={bubbleTextStreaming}
-          activeToolName={activeTool?.name ?? null}
+          activeToolName={activeToolDisplayName}
           completedTools={streamingCompletedTools}
           aiProfile={chatAiProfile}
           invertMetaOverBackground={hasChatBackground}
@@ -1007,7 +1032,7 @@ export const AgentScreen = () => {
     ),
     [
       bubbleTextStreaming,
-      activeTool?.name,
+      activeToolDisplayName,
       streamingCompletedTools,
       chatAiProfile,
       hasChatBackground
@@ -1215,8 +1240,7 @@ export const AgentScreen = () => {
                       id: LIVE_ASSISTANT_STREAM_KEY,
                       role: 'assistant' as const,
                       content: streamingText,
-                      reasoning: streamingReasoning,
-                      toolInvocations: streamingCompletedTools
+                      reasoning: streamingReasoning
                     }
                     return (
                       <View key={LIVE_ASSISTANT_STREAM_KEY} style={styles.bubble}>
@@ -1574,7 +1598,7 @@ const styles = StyleSheet.create({
   },
   list: { flex: 1 },
   /** 不用 flexGrow:1，否则内容变短（流式 Footer 移除）时 ScrollView 常把 offset 钳到 0 */
-  listContent: { paddingTop: 24, paddingBottom: 17, paddingHorizontal: 0 },
+  listContent: { paddingTop: 24, paddingBottom: 0, paddingHorizontal: 0 },
   bubble: { marginBottom: 14 },
   toolStatusContainer: {
     paddingHorizontal: 16,

@@ -4,15 +4,17 @@ import {
   useAnimatedKeyboard,
   useAnimatedReaction,
   useAnimatedStyle,
-  useSharedValue
+  useSharedValue,
+  withTiming,
+  Easing
 } from 'react-native-reanimated'
 
 /** 编辑态：保存按钮与 token 行距键盘顶部的留白 */
 const BUBBLE_EDIT_KEYBOARD_BUFFER = 72
 /** 编辑态且键盘收起时：保存/token 与底部工具栏之间的额外间距 */
 const BUBBLE_EDIT_DOCK_GAP = 16
-/** 列表底部与输入栏之间的留白（原 24，缩减约 30%） */
-const COMPOSER_LIST_GAP = 17
+/** 列表底部与输入栏之间的留白（由 footer spacer 承担，勿与 listContent.paddingBottom 重复） */
+const COMPOSER_LIST_GAP = 12
 
 function readKeyboardHeightFromMetrics(): number {
   const metrics = Keyboard.metrics()
@@ -54,6 +56,29 @@ export function useAgentChatKeyboardInsets({
     [tabBarHeight]
   )
 
+  const applyListSpacerForComposer = useCallback(
+    (rawHeight: number, durationMs = 250) => {
+      const inset = computeComposerInset(rawHeight, tabBarHeight)
+      const target = inputDockHeightSv.value + inset + COMPOSER_LIST_GAP
+      listSpacerHeight.value =
+        durationMs > 0
+          ? withTiming(target, { duration: durationMs, easing: Easing.out(Easing.cubic) })
+          : target
+    },
+    [listSpacerHeight, tabBarHeight, inputDockHeightSv]
+  )
+
+  const resetListSpacerForComposer = useCallback(
+    (durationMs = 250) => {
+      const target = inputDockHeightSv.value + COMPOSER_LIST_GAP
+      listSpacerHeight.value =
+        durationMs > 0
+          ? withTiming(target, { duration: durationMs, easing: Easing.out(Easing.cubic) })
+          : target
+    },
+    [listSpacerHeight, inputDockHeightSv]
+  )
+
   const applyComposerLift = useCallback(
     (rawHeight: number) => {
       composerBottom.value = computeComposerInset(rawHeight, tabBarHeight)
@@ -69,11 +94,17 @@ export function useAgentChatKeyboardInsets({
     keyboardVisibleSv.value = 0
     clearComposerLift()
     syncKeyboardInset(0)
-  }, [clearComposerLift, syncKeyboardInset, keyboardVisibleSv])
+    if (isBubbleEditingSv.value === 0) {
+      resetListSpacerForComposer(Platform.OS === 'ios' ? 250 : 0)
+    }
+  }, [clearComposerLift, syncKeyboardInset, keyboardVisibleSv, isBubbleEditingSv, resetListSpacerForComposer])
 
   useEffect(() => {
     inputDockHeightSv.value = inputDockHeight
-  }, [inputDockHeight, inputDockHeightSv])
+    if (keyboardVisibleSv.value === 0 && isBubbleEditingSv.value === 0) {
+      listSpacerHeight.value = inputDockHeight + COMPOSER_LIST_GAP
+    }
+  }, [inputDockHeight, inputDockHeightSv, keyboardVisibleSv, isBubbleEditingSv, listSpacerHeight])
 
   useEffect(() => {
     const liftOn = enableComposerKeyboardLift && !isBubbleEditing
@@ -130,11 +161,7 @@ export function useAgentChatKeyboardInsets({
         listSpacerHeight.value = editKeyboardVisible
           ? inset + BUBBLE_EDIT_KEYBOARD_BUFFER + 16
           : dockH + BUBBLE_EDIT_KEYBOARD_BUFFER + BUBBLE_EDIT_DOCK_GAP
-        return
       }
-
-      const composerInset = shouldLift ? inset : 0
-      listSpacerHeight.value = dockH + composerInset + COMPOSER_LIST_GAP
     },
     [tabBarHeight]
   )
@@ -150,11 +177,16 @@ export function useAgentChatKeyboardInsets({
       syncKeyboardInset(height)
       if (enableComposerKeyboardLift && !isBubbleEditing) {
         applyComposerLift(height)
+        applyListSpacerForComposer(height, event.duration ?? 250)
       }
     }
-    const onHide = () => {
+    const onHide = (event?: KeyboardEvent) => {
       keyboardVisibleSv.value = 0
+      clearComposerLift()
       syncKeyboardInset(0)
+      if (enableComposerKeyboardLift && !isBubbleEditing) {
+        resetListSpacerForComposer(event?.duration ?? (Platform.OS === 'ios' ? 250 : 0))
+      }
     }
 
     const showSub = Keyboard.addListener(showEvent, onShow)
@@ -164,7 +196,16 @@ export function useAgentChatKeyboardInsets({
       showSub.remove()
       hideSub.remove()
     }
-  }, [syncKeyboardInset, keyboardVisibleSv, enableComposerKeyboardLift, isBubbleEditing, applyComposerLift])
+  }, [
+    syncKeyboardInset,
+    keyboardVisibleSv,
+    enableComposerKeyboardLift,
+    isBubbleEditing,
+    applyComposerLift,
+    applyListSpacerForComposer,
+    resetListSpacerForComposer,
+    clearComposerLift
+  ])
 
   // 切到其他 App 时系统会收起键盘，但 useAnimatedKeyboard 可能不更新，需主动复位
   useEffect(() => {
@@ -190,6 +231,7 @@ export function useAgentChatKeyboardInsets({
       syncKeyboardInset(rawHeight)
       if (enableComposerKeyboardLift && !isBubbleEditing) {
         applyComposerLift(rawHeight)
+        applyListSpacerForComposer(rawHeight, 0)
       }
     })
 
@@ -201,6 +243,7 @@ export function useAgentChatKeyboardInsets({
     resetKeyboardInset,
     syncKeyboardInset,
     applyComposerLift,
+    applyListSpacerForComposer,
     enableComposerKeyboardLift,
     isBubbleEditing,
     keyboardVisibleSv
@@ -224,8 +267,15 @@ export function useAgentChatKeyboardInsets({
     if (rawHeight > 0) {
       keyboardVisibleSv.value = 1
       applyComposerLift(rawHeight)
+      applyListSpacerForComposer(rawHeight, 0)
     }
-  }, [enableComposerKeyboardLift, isBubbleEditing, applyComposerLift, keyboardVisibleSv])
+  }, [
+    enableComposerKeyboardLift,
+    isBubbleEditing,
+    applyComposerLift,
+    applyListSpacerForComposer,
+    keyboardVisibleSv
+  ])
 
   const isEditKeyboardVisible = keyboardInset >= 60
   const listBottomPadding = isBubbleEditing

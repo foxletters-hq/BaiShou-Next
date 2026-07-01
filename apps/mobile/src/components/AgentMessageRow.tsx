@@ -56,6 +56,14 @@ export interface AgentMessageRowProps {
     reasoning?: string
     isTextStreaming?: boolean
     isThinkStreaming?: boolean
+    activeToolName?: string | null
+    completedTools?: Array<{
+      name: string
+      durationMs: number
+      toolCallId?: string
+      result?: unknown
+      args?: unknown
+    }>
   }
   deferAssistantChrome?: boolean
 }

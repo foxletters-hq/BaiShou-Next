@@ -94,11 +94,44 @@ export function resolveToolResultPresentation(invocation: ToolInvocationLike): T
   }
 }
 
+function readInvocationToolName(invocation: ToolInvocationLike): string | undefined {
+  if (invocation.toolName) return invocation.toolName
+  const legacyName = (invocation as { name?: string }).name
+  return typeof legacyName === 'string' && legacyName.trim() ? legacyName.trim() : undefined
+}
+
+const WEB_SEARCH_ENGINE_LABEL_KEYS: Record<string, string> = {
+  'local-google': 'settings.web_search_engine_local_google',
+  'local-bing': 'settings.web_search_engine_local_bing',
+  duckduckgo: 'settings.web_search_engine_duckduckgo',
+  tavily: 'settings.web_search_engine_tavily',
+  'exa-mcp': 'settings.web_search_engine_exa_mcp',
+  exa: 'settings.web_search_engine_exa',
+  anysearch: 'settings.web_search_engine_anysearch'
+}
+
+/** 流式进行中的工具展示名（与桌面 AgentMessageList 对齐） */
+export function resolveActiveToolDisplayName(
+  activeTool: { name: string } | null | undefined,
+  t: (key: string, fallback?: string) => string,
+  webSearchEngine = 'exa-mcp'
+): string | null {
+  if (!activeTool?.name) return null
+  if (activeTool.name === 'web_search') {
+    const engineKey = WEB_SEARCH_ENGINE_LABEL_KEYS[webSearchEngine]
+    const engineLabel = engineKey
+      ? t(engineKey, webSearchEngine)
+      : webSearchEngine
+    return `${t('agent.tools.web_search', '网络搜索')} (${engineLabel})`
+  }
+  return t(`agent.tools.${activeTool.name}`, activeTool.name)
+}
+
 export function getToolDisplayName(
   invocation: ToolInvocationLike,
   t: (key: string, fallback?: string) => string
 ): string {
-  const rawName = invocation.toolName
+  const rawName = readInvocationToolName(invocation)
   if (rawName) return t(`agent.tools.${rawName}`, rawName)
   const callId = invocation.toolCallId
   if (!callId) return t('agent.tools.tool_invocation', 'tool_invocation')

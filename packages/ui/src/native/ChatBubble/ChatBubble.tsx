@@ -81,6 +81,14 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   }>
   const attachments = (message.attachments || []) as MockChatAttachment[]
 
+  const streamingCompletedTools = liveStream?.completedTools ?? []
+  const streamingActiveToolName = liveStream?.activeToolName ?? null
+  const showStreamingTools =
+    isAssistant &&
+    liveStream &&
+    (streamingCompletedTools.length > 0 || Boolean(streamingActiveToolName))
+  const showPersistedTools = isAssistant && !showStreamingTools && toolInvocations.length > 0
+
   return (
     <View style={[styles.container, isUser ? styles.containerUser : styles.containerAssistant]}>
       {isAssistant && aiProfile ? (
@@ -141,7 +149,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
           {isAssistant && showReasoning && cleanReasoning ? (
             <View
               style={{
-                marginBottom: cleanContent || toolInvocations.length ? 8 : 0,
+                marginBottom: cleanContent || showStreamingTools || showPersistedTools ? 8 : 0,
                 alignSelf: 'stretch',
                 width: '100%'
               }}
@@ -154,7 +162,17 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
             </View>
           ) : null}
 
-          {isAssistant && toolInvocations.length > 0 ? (
+          {showStreamingTools ? (
+            <View style={{ marginBottom: cleanContent ? 8 : 0 }}>
+              <ToolResultGroupCard
+                completedTools={streamingCompletedTools}
+                activeToolName={streamingActiveToolName}
+                defaultExpanded
+              />
+            </View>
+          ) : null}
+
+          {showPersistedTools ? (
             <View style={{ marginBottom: cleanContent ? 8 : 0 }}>
               <ToolResultGroupCard invocations={toolInvocations} />
             </View>

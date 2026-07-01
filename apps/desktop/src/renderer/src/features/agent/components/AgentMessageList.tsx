@@ -4,7 +4,8 @@ import {
   ChatBubble,
   StreamingBubble,
   CompressionDivider,
-  CompressionActivityBar
+  CompressionActivityBar,
+  resolveActiveToolDisplayName
 } from '@baishou/ui'
 import { useSettingsStore } from '@baishou/store'
 import { useMessageActions } from '../hooks/useMessageActions'
@@ -206,21 +207,15 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
     </>
   )
 
-  const activeToolDisplayName = useMemo(() => {
-    if (!stream.activeTool) return null
-    if (stream.activeTool.name === 'web_search') {
-      const engine = settings.webSearchConfig?.webSearchEngine || 'exa-mcp'
-      const engineNames: Record<string, string> = {
-        'local-google': t('settings.web_search_engine_local_google', 'Google 本地搜索'),
-        'local-bing': t('settings.web_search_engine_local_bing', 'Bing 本地搜索'),
-        duckduckgo: t('settings.web_search_engine_duckduckgo', 'DuckDuckGo'),
-        tavily: t('settings.web_search_engine_tavily', 'Tavily API'),
-        'exa-mcp': t('settings.web_search_engine_exa_mcp', 'Exa MCP')
-      }
-      return `${t('agent.tools.web_search', '网络搜索')} (${engineNames[engine] || engine})`
-    }
-    return t(`agent.tools.${stream.activeTool.name}`, stream.activeTool.name)
-  }, [stream.activeTool, settings.webSearchConfig, t])
+  const activeToolDisplayName = useMemo(
+    () =>
+      resolveActiveToolDisplayName(
+        stream.activeTool,
+        t,
+        settings.webSearchConfig?.webSearchEngine
+      ),
+    [stream.activeTool, settings.webSearchConfig, t]
+  )
 
   const lastMessage = chat.messages[chat.messages.length - 1]
   const assistantPersistedDuringBridge =

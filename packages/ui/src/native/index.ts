@@ -157,3 +157,5 @@ export {
   type KeyboardAwareScrollViewProps,
   type KeyboardAwareScrollContextValue
 } from './KeyboardAwareScrollView'
+
+export { resolveActiveToolDisplayName } from '../shared/tool-result.util'
