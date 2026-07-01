@@ -3,7 +3,7 @@ import type { TtsProviderRegistry } from './tts.registry'
 import {
   normalizeTtsWhitespace,
   prepareTtsSpeechChunks,
-  stripFencedCodeBlocks
+  stripMarkdownForTts
 } from './tts-text-preprocess'
 import { resolveTtsSynthesisSettings } from './tts-defaults'
 import { isMimoVoiceCloneModel, resolveMimoTtsSynthesisModelId } from './mimo-tts.util'
@@ -64,7 +64,7 @@ export function prepareTtsSpeechChunksForInput(
       merged.refAudioBase64
     )
     if (isMimoVoiceCloneModel(modelId)) {
-      const single = normalizeTtsWhitespace(stripFencedCodeBlocks(content))
+      const single = normalizeTtsWhitespace(stripMarkdownForTts(content))
       return single ? [single] : []
     }
   }
@@ -77,7 +77,7 @@ export function prepareTtsSpeechChunksForInput(
       merged.modelId || globalModels.globalTtsModelId
     )
     if (streamEnabled) {
-      const single = normalizeTtsWhitespace(stripFencedCodeBlocks(content))
+      const single = normalizeTtsWhitespace(stripMarkdownForTts(content))
       return single ? [single] : []
     }
   }

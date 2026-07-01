@@ -42,10 +42,17 @@ export type {
 export { uint8ArrayToBase64, base64ToUint8Array } from './bytes-base64'
 export {
   stripFencedCodeBlocks,
+  stripMarkdownForTts,
   normalizeTtsWhitespace,
   splitTtsTextIntoChunks,
   prepareTtsSpeechChunks
 } from './tts-text-preprocess'
+export {
+  getTtsPlaybackGeneration,
+  registerTtsPlaybackStopHandler,
+  stopAllTtsPlayback
+} from './tts-playback-coordinator'
+export type { TtsPlaybackStopHandler } from './tts-playback-coordinator'
 export {
   TtsSynthesisCache,
   buildTtsSynthesisCacheKey,
