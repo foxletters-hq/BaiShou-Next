@@ -1,4 +1,4 @@
-import { mergeDisabledToolIds, normalizeAssistantKind } from '@baishou/shared'
+import { mergeDisabledToolIds, normalizeAssistantKind, isAutoInjectCurrentTimeEnabled } from '@baishou/shared'
 import {
   MessageRepository,
   SqliteHybridSearchRepository,
@@ -112,11 +112,21 @@ export async function buildSystemPromptForSession(
   const enabledTools = await resolveEnabledToolsForSession(params)
   const sessionObj = await params.sessionRepo.getSessionById?.(params.sessionId)
 
+  let mergedUserConfig = params.userConfig
   let effectiveSystemPrompt: string | undefined
   if (sessionObj?.assistantId && params.assistantRepo) {
     const ast = await params.assistantRepo.findById(sessionObj.assistantId)
     if (ast?.systemPrompt) {
       effectiveSystemPrompt = ast.systemPrompt
+    }
+    mergedUserConfig = {
+      ...params.userConfig,
+      disabledToolIds: mergeDisabledToolIds(
+        Array.isArray(params.userConfig?.disabledToolIds)
+          ? (params.userConfig.disabledToolIds as string[])
+          : [],
+        normalizeAssistantKind(ast?.assistantKind)
+      )
     }
   }
 
@@ -129,6 +139,11 @@ export async function buildSystemPromptForSession(
     diaryAiWritingPrompt:
       typeof params.userConfig?.diaryAiWritingPrompt === 'string'
         ? params.userConfig.diaryAiWritingPrompt
+        : undefined,
+    injectCurrentTime: isAutoInjectCurrentTimeEnabled(
+      Array.isArray(mergedUserConfig['disabledToolIds'])
+        ? (mergedUserConfig['disabledToolIds'] as string[])
         : undefined
+    )
   })
 }

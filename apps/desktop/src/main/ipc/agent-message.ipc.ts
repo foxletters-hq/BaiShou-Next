@@ -4,7 +4,8 @@ import {
   ContextCompressorService,
   reconcileCompressionStateAfterTruncate
 } from '@baishou/ai'
-import { getAgentManagers, buildStreamConfig } from './agent-helpers'
+import { isAutoInjectCurrentTimeEnabled } from '@baishou/shared'
+import { getAgentManagers, buildStreamConfig, buildAgentUserConfigFromSettings } from './agent-helpers'
 import { AgentChatService } from './AgentChatService'
 import { settingsManager } from './settings.ipc'
 import { groupPartsByMessageId, mapAgentMessageForRenderer } from './map-agent-message-for-renderer'
@@ -71,7 +72,12 @@ export function registerMessageIPC() {
           recentCount,
           modelId: session?.modelId,
           providerType: session?.providerId,
-          systemPrompt
+          systemPrompt,
+          wrapMessageTime: isAutoInjectCurrentTimeEnabled(
+            Array.isArray(userConfig?.disabledToolIds)
+              ? (userConfig.disabledToolIds as string[])
+              : undefined
+          )
         }
       )
     }
@@ -94,12 +100,22 @@ export function registerMessageIPC() {
       return { ok: false, error: 'No model configured for this session' }
     }
 
+    const userConfig = await buildAgentUserConfigFromSettings()
+    const wrapMessageTime = isAutoInjectCurrentTimeEnabled(
+      Array.isArray(userConfig?.disabledToolIds)
+        ? (userConfig.disabledToolIds as string[])
+        : undefined
+    )
+
     return ContextCompressorService.recompressCurrentSnapshot(
       provider,
       resolvedModelId,
       realSessionRepo,
       realSnapshotRepo,
-      sessionId
+      sessionId,
+      undefined,
+      provider.config?.type ?? '',
+      { wrapMessageTime }
     )
   })
 

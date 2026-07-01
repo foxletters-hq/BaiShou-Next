@@ -1,8 +1,9 @@
 import { ContextCompressorService, AIProviderRegistry } from '@baishou/ai'
 import type { SessionRepository, SnapshotRepository } from '@baishou/database'
 import type { SettingsManagerService } from '@baishou/core-mobile'
-import { isConfiguredDialogueModelId } from '@baishou/shared'
+import { isConfiguredDialogueModelId, isAutoInjectCurrentTimeEnabled } from '@baishou/shared'
 import type { RecompressResult } from '@baishou/store'
+import { buildMobileStreamUserConfig } from './mobile-context-at-message.service'
 
 export type MobileContextRecompressDeps = {
   sessionRepo: SessionRepository
@@ -41,6 +42,13 @@ export async function recompressSessionContext(
     return { ok: false, error: 'No model configured for this session' }
   }
 
+  const userConfig = await buildMobileStreamUserConfig(deps.settingsManager, false)
+  const wrapMessageTime = isAutoInjectCurrentTimeEnabled(
+    Array.isArray(userConfig.disabledToolIds)
+      ? (userConfig.disabledToolIds as string[])
+      : undefined
+  )
+
   return ContextCompressorService.recompressCurrentSnapshot(
     provider,
     resolvedModelId,
@@ -48,6 +56,7 @@ export async function recompressSessionContext(
     deps.snapshotRepo,
     sessionId,
     undefined,
-    config.type ?? config.providerType ?? ''
+    config.type ?? config.providerType ?? '',
+    { wrapMessageTime }
   )
 }

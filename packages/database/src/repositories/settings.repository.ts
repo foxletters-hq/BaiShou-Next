@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { SHORTCUT_TRACE_CHAIN, traceCall } from '@baishou/shared'
+import { SHORTCUT_TRACE_CHAIN, traceCall, normalizeToolManagementConfig } from '@baishou/shared'
 import { systemSettingsTable } from '../schema/system-settings'
 
 const TRACED_SETTINGS_KEYS = new Set(['prompt_shortcuts_v2', 'prompt_shortcuts'])
@@ -211,10 +211,10 @@ export class SettingsRepository {
   }
 
   async getToolManagementConfig(): Promise<ToolManagementConfig> {
-    return (
+    const raw =
       (await this.get<ToolManagementConfig>('tool_management_config')) ??
       DEFAULT_TOOL_MANAGEMENT_CONFIG
-    )
+    return normalizeToolManagementConfig(raw)
   }
   async setToolManagementConfig(config: ToolManagementConfig): Promise<void> {
     await this.set('tool_management_config', config)

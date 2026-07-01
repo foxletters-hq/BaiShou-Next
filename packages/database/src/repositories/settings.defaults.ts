@@ -264,7 +264,7 @@ export const DEFAULT_SUMMARY_CONFIG: SummaryConfig = {
 export const DEFAULT_DIARY_TEMPLATE_CONFIG: DiaryTemplateConfig = {}
 
 export const DEFAULT_TOOL_MANAGEMENT_CONFIG: ToolManagementConfig = {
-  disabledToolIds: [],
+  disabledToolIds: ['auto_inject_time'],
   customConfigs: {}
 }
 

@@ -506,15 +506,20 @@ const COMPRESSION_ROLE_LABELS: Record<string, string> = {
 }
 
 /** 将待压缩消息格式化为带角色标记的原文，避免模型只看见助手尾句 */
-export function formatMessagesAsCompressionTranscript(messages: MessageWithParts[]): string {
+export function formatMessagesAsCompressionTranscript(
+  messages: MessageWithParts[],
+  options?: { wrapMessageTime?: boolean }
+): string {
+  const wrapMessageTime = options?.wrapMessageTime !== false
   const blocks: string[] = []
   for (const msg of messages) {
     const text = extractMessageText(msg).trim()
     if (!text) continue
     const label = COMPRESSION_ROLE_LABELS[msg.role] ?? msg.role
-    const bodyBlock = shouldWrapRoleForModel(msg.role)
-      ? wrapMessageBodyForModel(text, msg.createdAt)
-      : text
+    const bodyBlock =
+      wrapMessageTime && shouldWrapRoleForModel(msg.role)
+        ? wrapMessageBodyForModel(text, msg.createdAt)
+        : text
     blocks.push(`【${label}】\n${bodyBlock}`)
   }
   return blocks.join('\n\n---\n\n')
@@ -525,10 +530,12 @@ export function formatMessagesAsCompressionTranscript(messages: MessageWithParts
  */
 export function buildCompressionUserMessageContent(
   messages: MessageWithParts[],
-  priorSummaryText?: string | null
+  priorSummaryText?: string | null,
+  options?: { wrapMessageTime?: boolean }
 ): string | null {
   const transcript = formatMessagesAsCompressionTranscript(
-    cloneMessagesForCompressionModel(messages)
+    cloneMessagesForCompressionModel(messages),
+    options
   ).trim()
   if (!transcript) return null
 

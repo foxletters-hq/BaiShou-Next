@@ -15,7 +15,8 @@ import {
   isVisionModel,
   logger,
   mergeDisabledToolIds,
-  normalizeAssistantKind
+  normalizeAssistantKind,
+  isAutoInjectCurrentTimeEnabled
 } from '@baishou/shared'
 import { resolveEffectiveProviderType } from '../providers/opencodego/opencodego.model-protocol'
 
@@ -90,6 +91,38 @@ export class AgentSessionService {
         baseUrl: provider.config?.baseUrl
       })
 
+      const sessionObj = await sessionRepo.getSessionById?.(sessionId)
+
+      let mergedUserConfig = userConfig || {}
+      let effectiveSystemPrompt = systemPrompt
+      if (sessionObj?.assistantId) {
+        const astRepo = new AssistantRepository(
+          (sessionRepo as any).db || (sessionRepo as any).database
+        )
+        const ast = await astRepo.findById(sessionObj.assistantId)
+        if (ast) {
+          const assistantKind = normalizeAssistantKind(ast.assistantKind)
+          mergedUserConfig = {
+            ...mergedUserConfig,
+            disabledToolIds: mergeDisabledToolIds(
+              Array.isArray(mergedUserConfig['disabledToolIds'])
+                ? (mergedUserConfig['disabledToolIds'] as string[])
+                : [],
+              assistantKind
+            )
+          }
+          if (ast.systemPrompt) {
+            effectiveSystemPrompt = ast.systemPrompt
+          }
+        }
+      }
+
+      const injectMessageTime = isAutoInjectCurrentTimeEnabled(
+        Array.isArray(mergedUserConfig['disabledToolIds'])
+          ? (mergedUserConfig['disabledToolIds'] as string[])
+          : undefined
+      )
+
       // 2. 若上下文 token 超过阈值或逼近模型窗口，先同步压缩再构建窗口
       const compressionConfig = await resolveSessionCompressionConfig(sessionId, sessionRepo)
       {
@@ -118,7 +151,8 @@ export class AgentSessionService {
             resolveEffectiveProviderType(provider.config?.type ?? '', modelId),
             {
               ...(userMessageId ? { triggerUserMessageId: userMessageId } : {}),
-              abortSignal
+              abortSignal,
+              wrapMessageTime: injectMessageTime
             }
           )
           if (abortSignal?.aborted) {
@@ -146,7 +180,8 @@ export class AgentSessionService {
       const coreMessages = await MessageAdapter.toVercelMessages(
         dbHistory,
         modelId,
-        effectiveProviderType
+        effectiveProviderType,
+        { wrapMessageTime: injectMessageTime }
       )
 
       if (userMessageId && !dbHistory.some((message) => message.id === userMessageId)) {
@@ -194,8 +229,6 @@ export class AgentSessionService {
         )
       }
 
-      const sessionObj = await sessionRepo.getSessionById?.(sessionId)
-
       const contextCompressionRunner = {
         run: async (phase: 'upstream' | 'downstream', opts?: { force?: boolean }) => {
           const config = await resolveSessionCompressionConfig(sessionId, sessionRepo)
@@ -215,7 +248,10 @@ export class AgentSessionService {
             sessionId,
             merged,
             resolveEffectiveProviderType(provider.config?.type ?? '', modelId),
-            userMessageId ? { triggerUserMessageId: userMessageId } : undefined
+            {
+              ...(userMessageId ? { triggerUserMessageId: userMessageId } : {}),
+              wrapMessageTime: injectMessageTime
+            }
           )
           if (ok) {
             const allForPrune = (await sessionRepo.getMessagesBySession(
@@ -233,30 +269,6 @@ export class AgentSessionService {
           return ok
             ? `Context compression (${phaseLabel}) completed. Rolling summary updated.`
             : `No compression (${phaseLabel}): below threshold (use force=true) or not enough history.`
-        }
-      }
-
-      let mergedUserConfig = userConfig || {}
-      let effectiveSystemPrompt = systemPrompt
-      if (sessionObj?.assistantId) {
-        const astRepo = new AssistantRepository(
-          (sessionRepo as any).db || (sessionRepo as any).database
-        )
-        const ast = await astRepo.findById(sessionObj.assistantId)
-        if (ast) {
-          const assistantKind = normalizeAssistantKind(ast.assistantKind)
-          mergedUserConfig = {
-            ...mergedUserConfig,
-            disabledToolIds: mergeDisabledToolIds(
-              Array.isArray(mergedUserConfig['disabledToolIds'])
-                ? (mergedUserConfig['disabledToolIds'] as string[])
-                : [],
-              assistantKind
-            )
-          }
-          if (ast.systemPrompt) {
-            effectiveSystemPrompt = ast.systemPrompt
-          }
         }
       }
 
@@ -284,7 +296,8 @@ export class AgentSessionService {
         diaryAiWritingPrompt:
           typeof userConfig?.['diaryAiWritingPrompt'] === 'string'
             ? userConfig['diaryAiWritingPrompt']
-            : undefined
+            : undefined,
+        injectCurrentTime: injectMessageTime
       })
 
       // 4. 调用 Vercel streamText
@@ -360,7 +373,7 @@ export class AgentSessionService {
       )
 
       const hasModelOutput =
-        Boolean(accumulator.text.trim()) ||
+        Boolean(accumulator.sanitizedText.trim()) ||
         Boolean(accumulator.reasoning.trim()) ||
         accumulator.toolCalls.length > 0
 

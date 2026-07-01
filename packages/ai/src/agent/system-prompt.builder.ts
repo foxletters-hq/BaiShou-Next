@@ -8,6 +8,8 @@ export interface SystemPromptBuilderOptions {
   userProfileBlock?: string
   /** 伙伴使用写日记 / 编辑日记工具时的书写规范 */
   diaryAiWritingPrompt?: string
+  /** 是否在 system prompt 中注入当前时间，默认 true（兼容旧配置） */
+  injectCurrentTime?: boolean
 }
 
 export class SystemPromptBuilder {
@@ -21,7 +23,8 @@ export class SystemPromptBuilder {
       customPersona,
       customGuidelines,
       userProfileBlock,
-      diaryAiWritingPrompt
+      diaryAiWritingPrompt,
+      injectCurrentTime = true
     } = options
 
     const buffer: string[] = []
@@ -45,22 +48,23 @@ export class SystemPromptBuilder {
       buffer.push('')
     }
 
-    // [不可动摇底线]：精准时间坐标，AI 最缺乏的就是时间观念
-    const now = new Date()
-    const tzOffset = -now.getTimezoneOffset() / 60
-    const tzSign = tzOffset >= 0 ? '+' : ''
-
-    // YYYY-MM-DD HH:mm
-    const dateStr =
-      `${now.getFullYear()}-` +
-      `${String(now.getMonth() + 1).padStart(2, '0')}-` +
-      `${String(now.getDate()).padStart(2, '0')} ` +
-      `${String(now.getHours()).padStart(2, '0')}:` +
-      `${String(now.getMinutes()).padStart(2, '0')}`
-
     buffer.push('<system_context>')
-    buffer.push(`[System Current Date / Time]: ${dateStr} (UTC${tzSign}${tzOffset})`)
-    buffer.push(...buildMessageMetadataSystemPromptLines())
+    if (injectCurrentTime) {
+      const now = new Date()
+      const tzOffset = -now.getTimezoneOffset() / 60
+      const tzSign = tzOffset >= 0 ? '+' : ''
+
+      // YYYY-MM-DD HH:mm
+      const dateStr =
+        `${now.getFullYear()}-` +
+        `${String(now.getMonth() + 1).padStart(2, '0')}-` +
+        `${String(now.getDate()).padStart(2, '0')} ` +
+        `${String(now.getHours()).padStart(2, '0')}:` +
+        `${String(now.getMinutes()).padStart(2, '0')}`
+
+      buffer.push(`[System Current Date / Time]: ${dateStr} (UTC${tzSign}${tzOffset})`)
+    }
+    buffer.push(...buildMessageMetadataSystemPromptLines({ injectCurrentTime }))
     buffer.push(`[Current Vault / Workspace]: ${vaultName}`)
     buffer.push('</system_context>')
     buffer.push('')

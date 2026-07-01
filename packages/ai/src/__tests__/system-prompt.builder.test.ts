@@ -10,12 +10,28 @@ describe('SystemPromptBuilder', () => {
     })
 
     expect(prompt).toContain('<system_context>')
+    expect(prompt).toContain('[System Current Date / Time]')
     expect(prompt).toContain(`<${MESSAGE_TIME_TAG}>`)
     expect(prompt).toContain(`<${MESSAGE_CONTENT_TAG}>`)
     expect(prompt).toContain('[Historical message format]')
     expect(prompt).toContain('[Output format]')
     expect(prompt).toContain('Never output')
     expect(prompt).toContain('plain natural language only')
+  })
+
+  it('omits system current time when injectCurrentTime is false', () => {
+    const prompt = SystemPromptBuilder.build({
+      vaultName: 'Personal',
+      tools: {},
+      injectCurrentTime: false
+    })
+
+    expect(prompt).toContain('<system_context>')
+    expect(prompt).not.toContain('[System Current Date / Time]')
+    expect(prompt).not.toContain('[Historical message format]')
+    expect(prompt).toContain('**current_time** tool')
+    expect(prompt).toContain('plain text without per-message timestamps')
+    expect(prompt).toContain('[Current Vault / Workspace]: Personal')
   })
 
   it('frames web search disabled copy as a quoted user-facing Chinese sentence', () => {

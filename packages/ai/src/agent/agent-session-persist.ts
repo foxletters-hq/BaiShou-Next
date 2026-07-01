@@ -18,6 +18,13 @@ function generateUUID(): string {
   })
 }
 
+function resolveAssistantTextForStorage(accumulator: StreamAccumulator): string {
+  if (typeof accumulator.sanitizedText === 'string') {
+    return accumulator.sanitizedText
+  }
+  return sanitizeAssistantGeneratedText(accumulator.text)
+}
+
 export interface PersistResultParams {
   sessionId: string
   rawUserText: string
@@ -73,13 +80,14 @@ export async function persistResult(params: PersistResultParams): Promise<{
   const partsToInsert: any[] = []
 
   // 推送文本 Part
-  if (accumulator.text) {
+  const assistantText = resolveAssistantTextForStorage(accumulator)
+  if (assistantText) {
     partsToInsert.push({
       id: generateUUID(),
       messageId: assistantMsgId,
       sessionId,
       type: 'text',
-      data: { text: sanitizeAssistantGeneratedText(accumulator.text) }
+      data: { text: assistantText }
     })
   }
 

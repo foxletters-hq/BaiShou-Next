@@ -1,4 +1,4 @@
-import { mapAttachmentsFromParts, normalizePartData } from '@baishou/shared'
+import { mapAttachmentsFromParts, normalizePartData, unwrapMessageMetadataForDisplay } from '@baishou/shared'
 import { parseCompactionMarkerData } from '@baishou/ai'
 import type { AgentMessage, AgentPart } from '@baishou/shared'
 
@@ -20,8 +20,12 @@ export type RendererAgentMessage = AgentMessage & {
 
 function textFromPartData(data: unknown): string {
   const normalized = normalizePartData(data)
-  if (typeof normalized.text === 'string') return normalized.text
-  if (typeof normalized.content === 'string') return normalized.content
+  if (typeof normalized.text === 'string') {
+    return unwrapMessageMetadataForDisplay(normalized.text)
+  }
+  if (typeof normalized.content === 'string') {
+    return unwrapMessageMetadataForDisplay(normalized.content)
+  }
   return ''
 }
 

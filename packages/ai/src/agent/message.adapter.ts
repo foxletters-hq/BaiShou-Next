@@ -24,8 +24,10 @@ export class MessageAdapter {
   static async toVercelMessages(
     dbMessages: MessageWithParts[],
     activeModelId?: string,
-    activeProviderType?: string
+    activeProviderType?: string,
+    options?: { wrapMessageTime?: boolean }
   ): Promise<ModelMessage[]> {
+    const metadataOptions = { wrapMessageTime: options?.wrapMessageTime !== false }
     const vercelMessages: ModelMessage[] = []
 
     for (const msg of dbMessages) {
@@ -66,7 +68,8 @@ export class MessageAdapter {
         const finalContent = injectModelMetadata(
           finalizeUserContentParts(contentParts),
           msg.role,
-          msg.createdAt
+          msg.createdAt,
+          metadataOptions
         )
 
         vercelMessages.push({
@@ -128,7 +131,8 @@ export class MessageAdapter {
             role: 'assistant',
             content: injectModelMetadataIntoAssistantParts(
               contentParts,
-              msg.createdAt
+              msg.createdAt,
+              metadataOptions
             ) as AssistantContent
           })
 
@@ -137,7 +141,8 @@ export class MessageAdapter {
               role: 'tool',
               content: injectModelMetadataIntoToolResults(
                 toolResultParts as ToolResultTextOutput[],
-                msg.createdAt
+                msg.createdAt,
+                metadataOptions
               ) as ToolContent
             })
           }
@@ -174,7 +179,8 @@ export class MessageAdapter {
             role: 'tool',
             content: injectModelMetadataIntoToolResults(
               resultParts as ToolResultTextOutput[],
-              msg.createdAt
+              msg.createdAt,
+              metadataOptions
             ) as ToolContent
           })
         }

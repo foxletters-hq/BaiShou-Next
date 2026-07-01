@@ -247,6 +247,18 @@ describe('context-compression.utils', () => {
     expect(content!.indexOf('<previous-summary>')).toBeLessThan(content!.indexOf('【用户】'))
   })
 
+  it('buildCompressionUserMessageContent omits message-time when wrapMessageTime is false', () => {
+    const sentAt = new Date(2026, 5, 15, 10, 0)
+    const messages = [
+      msg('1', 'user', 1, '但是感觉会很慢喵', sentAt),
+      msg('2', 'assistant', 2, '确实会慢', sentAt)
+    ]
+    const content = buildCompressionUserMessageContent(messages, null, { wrapMessageTime: false })
+    expect(content).not.toContain('<message-time>')
+    expect(content).toContain('但是感觉会很慢喵')
+    expect(content).toContain('【用户】')
+  })
+
   it('trimLeadingOrphanMessagesAfterSnapshot drops dangling assistant prefix', () => {
     const messages = [msg('2', 'assistant', 2, 'orphan'), msg('3', 'user', 3, 'c')]
     expect(trimLeadingOrphanMessagesAfterSnapshot(messages).map((m) => m.id)).toEqual(['3'])

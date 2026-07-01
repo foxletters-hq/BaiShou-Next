@@ -66,7 +66,61 @@ export function resolveCompressionPromptLocale(locale?: string): CompressionProm
   return 'zh'
 }
 
-export function getDefaultCompressionSystemPrompt(locale?: string): string {
+/** 关闭 auto inject time 时，压缩输入为纯文本 transcript（无 <message-time> 元数据） */
+const PLAIN_TRANSCRIPT_INPUT_LINES: Record<CompressionPromptLocale, string> = {
+  zh: '输入为带【用户】【助手】【工具】标记的多轮对话原文（纯文本，不含 per-message 时间标签）；若含 <previous-summary>…</previous-summary>，表示上一轮滚动摘要，请与新对话合并。',
+  en: 'The input is multi-turn dialogue marked with [User], [Assistant], and [Tool] as plain text without per-message timestamp tags. If it contains <previous-summary>…</previous-summary>, that is the prior rolling summary—merge it with the new dialogue.',
+  'zh-TW':
+    '輸入為帶【用戶】【助手】【工具】標記的多輪對話原文（純文本，不含 per-message 時間標籤）；若含 <previous-summary>…</previous-summary>，表示上一輪滾動摘要，請與新對話合併。',
+  ja: '入力は【ユーザー】【アシスタント】【ツール】ラベル付きの多ターン会話原文（プレーンテキスト、メッセージ単位の時間タグなし）です。<previous-summary>…</previous-summary> がある場合は前回のローリング要約なので、新しい会話と統合してください。'
+}
+
+const METADATA_TRANSCRIPT_INPUT_LINES: Record<CompressionPromptLocale, string> = {
+  zh: '输入为带【用户】【助手】【工具】标记的多轮对话原文；各角色消息均可能含 <message-time> 与 <message-content> 元数据块；若含 <previous-summary>…</previous-summary>，表示上一轮滚动摘要，请与新对话合并。',
+  en: 'The input is multi-turn dialogue marked with [User], [Assistant], and [Tool]. All roles may use <message-time> and <message-content> metadata blocks. If it contains <previous-summary>…</previous-summary>, that is the prior rolling summary—merge it with the new dialogue.',
+  'zh-TW':
+    '輸入為帶【用戶】【助手】【工具】標記的多輪對話原文；各角色訊息均可能含 <message-time> 與 <message-content> 元數據塊；若含 <previous-summary>…</previous-summary>，表示上一輪滾動摘要，請與新對話合併。',
+  ja: '入力は【ユーザー】【アシスタント】【ツール】ラベル付きの多ターン会話原文です。各ロールのメッセージに <message-time> と <message-content> のメタデータブロックがある場合があります。<previous-summary>…</previous-summary> がある場合は前回のローリング要約なので、新しい会話と統合してください。'
+}
+
+export interface CompressionSystemPromptOptions {
+  /** 是否与对话上下文一致地包含 <message-time> 元数据描述，默认 true */
+  wrapMessageTime?: boolean
+}
+
+function applyCompressionTranscriptInputLine(
+  prompt: string,
+  locale: CompressionPromptLocale,
+  wrapMessageTime: boolean
+): string {
+  if (wrapMessageTime) return prompt
+  const from = METADATA_TRANSCRIPT_INPUT_LINES[locale]
+  const to = PLAIN_TRANSCRIPT_INPUT_LINES[locale]
+  return prompt.includes(from) ? prompt.replace(from, to) : prompt
+}
+
+export function getDefaultCompressionSystemPrompt(
+  locale?: string,
+  options?: CompressionSystemPromptOptions
+): string {
   const key = resolveCompressionPromptLocale(locale)
-  return DEFAULT_COMPRESSION_SYSTEM_PROMPTS[key]
+  const wrapMessageTime = options?.wrapMessageTime !== false
+  return applyCompressionTranscriptInputLine(
+    DEFAULT_COMPRESSION_SYSTEM_PROMPTS[key],
+    key,
+    wrapMessageTime
+  )
+}
+
+/** 按 wrapMessageTime 调整压缩 system prompt（含用户自定义 prompt） */
+export function adaptCompressionSystemPrompt(
+  prompt: string,
+  locale?: string,
+  options?: CompressionSystemPromptOptions
+): string {
+  return applyCompressionTranscriptInputLine(
+    prompt,
+    resolveCompressionPromptLocale(locale),
+    options?.wrapMessageTime !== false
+  )
 }

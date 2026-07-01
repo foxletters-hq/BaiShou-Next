@@ -26,6 +26,16 @@ function unwrapMessageContentBlocks(text: string): string {
     prev = rest
     rest = rest.replace(TAG_CONTENT_BLOCK, (_, inner: string) => inner ?? '')
   }
+
+  const openTag = '<message-content>'
+  const openIdx = rest.lastIndexOf(openTag)
+  if (openIdx >= 0) {
+    const afterOpen = rest.indexOf('</message-content>', openIdx)
+    if (afterOpen < 0) {
+      rest = rest.slice(openIdx + openTag.length).trimStart()
+    }
+  }
+
   return rest
 }
 
@@ -68,6 +78,15 @@ export function sanitizeAssistantGeneratedText(text: string): string {
   }
 
   return stripOrphanMetadataTags(rest).trim()
+}
+
+/** 聊天 UI 展示用：若正文误含 message 元数据标签则脱壳（不落库逻辑） */
+export function unwrapMessageMetadataForDisplay(text: string): string {
+  const raw = text ?? ''
+  if (!raw.includes('<message-content>') && !raw.includes('<message-time>')) {
+    return raw
+  }
+  return sanitizeAssistantGeneratedText(raw)
 }
 
 /** @deprecated 使用 sanitizeAssistantGeneratedText */

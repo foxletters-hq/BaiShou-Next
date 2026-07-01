@@ -30,7 +30,9 @@ import {
   parseDateStr,
   formatUserCardFromProfile,
   isConfiguredProviderId,
-  isConfiguredDialogueModelId
+  isConfiguredDialogueModelId,
+  normalizeToolManagementConfig,
+  DEFAULT_TOOL_MANAGEMENT_CONFIG
 } from '@baishou/shared'
 
 function previewDiaryRow(raw: string | null | undefined): string {
@@ -346,7 +348,9 @@ export async function buildAgentUserConfigFromSettings(options?: {
   hasEmbeddingModel?: boolean
 }): Promise<Record<string, unknown>> {
   const ragConfig = await settingsManager.get<any>('rag_config')
-  const toolManagementConfig = await settingsManager.get<any>('tool_management_config')
+  const toolManagementConfig = normalizeToolManagementConfig(
+    (await settingsManager.get<any>('tool_management_config')) ?? DEFAULT_TOOL_MANAGEMENT_CONFIG
+  )
   const behaviorConfig = await settingsManager.get<any>('agent_behavior_config')
   const webSearchConfig = await settingsManager.get<any>('web_search_config')
   const diaryTemplateConfig = (await settingsManager.get<any>('diary_template_config')) || {}
@@ -368,7 +372,7 @@ export async function buildAgentUserConfigFromSettings(options?: {
   return {
     ragEnabled: ragConfig?.ragEnabled ?? true,
     hasEmbeddingModel,
-    disabledToolIds: toolManagementConfig?.disabledToolIds || [],
+    disabledToolIds: toolManagementConfig.disabledToolIds,
     recentCount:
       options?.assistantContextWindow !== undefined
         ? options.assistantContextWindow < 0

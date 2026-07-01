@@ -10,6 +10,9 @@ import {
   buildDiaryWritingGuidelinesForSystemPrompt,
   formatUserCardFromProfile,
   getUserProfileFromSettings,
+  isAutoInjectCurrentTimeEnabled,
+  normalizeToolManagementConfig,
+  DEFAULT_TOOL_MANAGEMENT_CONFIG,
   type DiaryTemplateConfig
 } from '@baishou/shared'
 import {
@@ -72,7 +75,9 @@ export async function buildMobileStreamUserConfig(
   assistantContextWindow?: number
 ): Promise<Record<string, unknown>> {
   const ragConfig = await settingsManager.get<any>('rag_config')
-  const toolManagementConfig = await settingsManager.get<any>('tool_management_config')
+  const toolManagementConfig = normalizeToolManagementConfig(
+    (await settingsManager.get<any>('tool_management_config')) ?? DEFAULT_TOOL_MANAGEMENT_CONFIG
+  )
   const behaviorConfig = await settingsManager.get<any>('agent_behavior_config')
   const webSearchConfig = await settingsManager.get<any>('web_search_config')
   const globalModels = await settingsManager.get<any>('global_models')
@@ -92,7 +97,7 @@ export async function buildMobileStreamUserConfig(
   return {
     ragEnabled: ragConfig?.ragEnabled ?? true,
     hasEmbeddingModel,
-    disabledToolIds: toolManagementConfig?.disabledToolIds || [],
+    disabledToolIds: toolManagementConfig.disabledToolIds,
     recentCount:
       assistantContextWindow !== undefined
         ? assistantContextWindow < 0
@@ -209,7 +214,12 @@ export async function loadContextAtMessage(
       recentCount,
       modelId,
       providerType: provider?.config?.type,
-      systemPrompt
+      systemPrompt,
+      wrapMessageTime: isAutoInjectCurrentTimeEnabled(
+        Array.isArray(userConfig.disabledToolIds)
+          ? (userConfig.disabledToolIds as string[])
+          : undefined
+      )
     }
   )
 

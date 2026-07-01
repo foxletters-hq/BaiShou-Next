@@ -73,6 +73,10 @@ export class StreamAccumulator {
   private _toolResults: Map<string, ToolResultSnapshot> = new Map()
 
   get text(): string {
+    return this._textBuffer
+  }
+
+  get sanitizedText(): string {
     return sanitizeAssistantGeneratedText(this._textBuffer)
   }
 

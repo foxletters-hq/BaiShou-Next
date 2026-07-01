@@ -7,7 +7,8 @@ import { SnapshotRepository } from '@baishou/database'
 import {
   CompressionErrorCode,
   compressionError,
-  getDefaultCompressionSystemPrompt
+  getDefaultCompressionSystemPrompt,
+  adaptCompressionSystemPrompt
 } from '@baishou/shared'
 import { logger } from '@baishou/shared'
 import { MessageWithParts } from './message.adapter'
@@ -51,6 +52,8 @@ export type CompressionRunOptions = {
   /** 方案 A：触发发送前压缩的用户消息 ID */
   triggerUserMessageId?: string
   abortSignal?: AbortSignal
+  /** 是否在压缩 transcript 中包裹消息时间元数据，默认 true */
+  wrapMessageTime?: boolean
 }
 
 export type RecompressResult = {
@@ -217,7 +220,8 @@ export class ContextCompressorService {
         compressionConfig,
         latestSnapshot?.summaryText ?? null,
         providerType,
-        runOptions?.abortSignal
+        runOptions?.abortSignal,
+        { wrapMessageTime: runOptions?.wrapMessageTime }
       )
       if (!generated) {
         emitCompressionLifecycle({ type: 'finish', sessionId, phase: 'auto', ok: false })
@@ -292,7 +296,8 @@ export class ContextCompressorService {
     snapshotRepo: SnapshotRepository,
     sessionId: string,
     config?: SessionCompressionConfig,
-    providerType = ''
+    providerType = '',
+    options?: { wrapMessageTime?: boolean }
   ): Promise<RecompressResult> {
     emitCompressionLifecycle({ type: 'start', sessionId, phase: 'manual' })
     const locked = await runRecompressWithSessionLock(sessionId, async () => {
@@ -343,7 +348,9 @@ export class ContextCompressorService {
           toCompress,
           compressionConfig,
           previousSnapshot?.summaryText ?? null,
-          providerType
+          providerType,
+          undefined,
+          { wrapMessageTime: options?.wrapMessageTime }
         )
 
         if (!generated?.text.trim()) {
@@ -429,7 +436,8 @@ export class ContextCompressorService {
     compressionConfig: SessionCompressionConfig,
     priorSummaryText: string | null,
     providerType: string,
-    abortSignal?: AbortSignal
+    abortSignal?: AbortSignal,
+    options?: { wrapMessageTime?: boolean }
   ): Promise<{
     text: string
     reasoning?: string
@@ -443,9 +451,12 @@ export class ContextCompressorService {
       modelId,
       sessionId
     })
-    const systemBase = compressionConfig.systemPrompt?.trim() || getDefaultCompressionSystemPrompt()
+    const wrapMessageTime = options?.wrapMessageTime !== false
+    const rawSystem =
+      compressionConfig.systemPrompt?.trim() || getDefaultCompressionSystemPrompt()
+    const systemBase = adaptCompressionSystemPrompt(rawSystem, undefined, { wrapMessageTime })
 
-    const userContent = buildCompressionUserMessageContent(toCompress, priorSummaryText)
+    const userContent = buildCompressionUserMessageContent(toCompress, priorSummaryText, options)
     if (!userContent) return null
 
     const messages: ModelMessage[] = [{ role: 'user', content: userContent }]

@@ -76,4 +76,10 @@ describe('stripLeakedMessageTimeFromAssistantText', () => {
       '</thinking>\n<message-time>2026-02-10 16:40</message-time>\n<message-content>\n<message-time>2026-02-10 16:40</time>'
     expect(stripLeakedMessageTimeFromAssistantText(raw)).toBe('')
   })
+
+  it('unwraps unclosed message-content block (partial model leak)', () => {
+    const raw =
+      '<message-time>2026-07-01 12:00</message-time>\n<message-content>\n你好，今天怎么样'
+    expect(stripLeakedMessageTimeFromAssistantText(raw)).toBe('你好，今天怎么样')
+  })
 })

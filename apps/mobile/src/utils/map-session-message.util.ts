@@ -1,7 +1,8 @@
 import {
   mapAttachmentsFromParts,
   normalizePartData,
-  resolveAttachmentAbsolutePath
+  resolveAttachmentAbsolutePath,
+  unwrapMessageMetadataForDisplay
 } from '@baishou/shared'
 import type { AgentMessagePart } from '@baishou/store'
 import { parseCompactionMarkerData, type CompactionMarkerData } from '@baishou/ai'
@@ -9,8 +10,12 @@ import { resolveMobileAttachmentFilePath } from './mobile-attachment-ui.util'
 
 function textFromPartData(data: unknown): string {
   const normalized = normalizePartData(data)
-  if (typeof normalized.text === 'string') return normalized.text
-  if (typeof normalized.content === 'string') return normalized.content
+  if (typeof normalized.text === 'string') {
+    return unwrapMessageMetadataForDisplay(normalized.text)
+  }
+  if (typeof normalized.content === 'string') {
+    return unwrapMessageMetadataForDisplay(normalized.content)
+  }
   return ''
 }
 
