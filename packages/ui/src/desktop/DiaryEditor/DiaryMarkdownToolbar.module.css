@@ -1,11 +1,46 @@
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
+  gap: 4px;
+  padding: 8px 8px;
   border-top: 1px solid var(--border-subtle);
   background: var(--bg-surface);
   flex-shrink: 0;
+}
+
+.scrollBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 34px;
+  flex-shrink: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-surface-low, var(--bg-surface));
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s,
+    opacity 0.15s;
+}
+
+.scrollBtn:hover:not(:disabled) {
+  background: var(--bg-surface-highest);
+  color: var(--text-primary);
+  border-color: var(--border-muted, var(--border-subtle));
+}
+
+.scrollBtn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.scrollIcon {
+  width: 18px;
+  height: 18px;
 }
 
 .viewport {

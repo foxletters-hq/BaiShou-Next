@@ -60,6 +60,8 @@ interface DiaryEditorProps {
   resolveAttachmentUrl?: (src: string) => Promise<string | null>
   markdownToolbarOrder?: MarkdownToolbarToolId[]
   onMarkdownToolbarOrderChange?: (order: MarkdownToolbarToolId[]) => void
+  onReadAloud?: () => void
+  isTtsPlaying?: boolean
 }
 
 /** 工具栏遮挡 + 额外留白，供 WebView 内计算安全滚动区域 */
@@ -88,7 +90,9 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   webViewActive = true,
   resolveAttachmentUrl,
   markdownToolbarOrder,
-  onMarkdownToolbarOrderChange
+  onMarkdownToolbarOrderChange,
+  onReadAloud,
+  isTtsPlaying = false
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -292,11 +296,36 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
         </TouchableOpacity>
       </View>
 
-      {!isSummaryMode && (onWeatherChange || onMoodChange) && (
+      {!isSummaryMode && (onWeatherChange || onMoodChange || onReadAloud) && (
         <View style={[styles.metaBar, { borderBottomColor: colors.borderSubtle }]}>
           <View style={styles.metaPickers}>
             {onWeatherChange ? <WeatherPicker value={weather} onChange={onWeatherChange} /> : null}
             {onMoodChange ? <MoodPicker value={mood} onChange={onMoodChange} /> : null}
+            {onReadAloud ? (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.ttsBtn,
+                  {
+                    opacity: pressed ? 0.85 : 1,
+                    backgroundColor: isTtsPlaying ? colors.primaryLight : colors.bgSurface,
+                    borderColor: isTtsPlaying ? colors.primary : colors.borderSubtle
+                  }
+                ]}
+                onPress={onReadAloud}
+                disabled={!content.trim() && !isTtsPlaying}
+                accessibilityLabel={t('agent.chat.readAloud', '语音朗读')}
+              >
+                {isTtsPlaying ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <MaterialIcons
+                    name="volume-up"
+                    size={20}
+                    color={content.trim() ? colors.textSecondary : colors.textTertiary}
+                  />
+                )}
+              </Pressable>
+            ) : null}
           </View>
           <Pressable
             style={({ pressed }) => [
@@ -412,6 +441,15 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap'
   },
   favBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0
+  },
+  ttsBtn: {
     width: 40,
     height: 40,
     borderRadius: 8,

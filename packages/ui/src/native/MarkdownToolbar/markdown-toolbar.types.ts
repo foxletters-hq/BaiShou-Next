@@ -58,7 +58,7 @@ export const MARKDOWN_TOOLBAR_TOOL_META: Record<MarkdownToolbarToolId, MarkdownT
 }
 
 function isLegacyIgnoredId(id: string): boolean {
-  return id === 'divider' || id.startsWith('divider_')
+  return id === 'divider' || id.startsWith('divider_') || id === 'readAloud'
 }
 
 export function normalizeMarkdownToolbarOrder(

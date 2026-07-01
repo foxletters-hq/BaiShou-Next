@@ -150,6 +150,49 @@
   background: var(--color-warning-light, rgba(245, 158, 11, 0.08));
 }
 
+.de-meta-tts-btn {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  transition:
+    color 0.2s,
+    border-color 0.2s,
+    background 0.2s;
+}
+
+.de-meta-tts-btn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light, rgba(99, 102, 241, 0.08));
+  color: var(--text-primary);
+}
+
+.de-meta-tts-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.de-meta-tts-btn.active {
+  color: var(--color-primary);
+  border-color: color-mix(in srgb, var(--color-primary) 35%, var(--border-subtle));
+}
+
+.de-meta-tts-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.de-meta-tts-spinner {
+  animation: de-spin 0.8s linear infinite;
+}
+
 .de-content-section {
   flex: 1;
   display: flex;

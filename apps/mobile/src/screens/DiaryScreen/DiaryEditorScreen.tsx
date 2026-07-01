@@ -34,6 +34,7 @@ import { useStoragePermission } from '../../hooks/useStoragePermission'
 import { useAttachmentImageLoader } from '../../hooks/useAttachmentImageLoader'
 import { useDiaryEditorWebViewSource } from '../../hooks/useDiaryEditorWebViewSource'
 import { useMarkdownToolbarOrder } from '../../hooks/useMarkdownToolbarOrder'
+import { useTTS } from '../../hooks/useTTS'
 import { resolveDiaryAttachmentUrlForWebView } from '../../services/diary-cm-attachment-url.service'
 import { extractDiaryAttachmentRefs } from '../../utils/diary-attachment-prefetch.util'
 import { clearDiaryAttachmentAbsPathCache } from '../../utils/mobile-diary-attachment-resolver'
@@ -42,6 +43,8 @@ import {
   assertExternalStorageReady,
   isExternalStorageRequiredError
 } from '../../services/storage-permission.service'
+
+const DIARY_TTS_PLAYBACK_ID = 'diary-editor'
 
 export const DiaryEditorScreen: React.FC = () => {
   const { t } = useTranslation()
@@ -58,6 +61,7 @@ export const DiaryEditorScreen: React.FC = () => {
   const { services, dbReady } = useBaishou()
   const { granted: storageGranted, request: requestStorage } = useStoragePermission()
   const { toolOrder, saveToolOrder } = useMarkdownToolbarOrder()
+  const { ttsPlayingMsgId, handleTtsReadAloud } = useTTS()
 
   const [content, setContent] = useState('')
   const [tags, setTags] = useState<string[]>([])
@@ -76,6 +80,10 @@ export const DiaryEditorScreen: React.FC = () => {
   const isFocused = useIsFocused()
   const [tagColorRegistry, setTagColorRegistry] = useState<DiaryTagColorRegistry>({})
   const previousTagsRef = useRef<string[]>([])
+
+  const handleReadAloud = useCallback(() => {
+    void handleTtsReadAloud(content, DIARY_TTS_PLAYBACK_ID)
+  }, [content, handleTtsReadAloud])
 
   const isAppendMode = append === '1'
 
@@ -411,6 +419,8 @@ export const DiaryEditorScreen: React.FC = () => {
           resolveAttachmentUrl={resolveAttachmentUrl}
           markdownToolbarOrder={toolOrder}
           onMarkdownToolbarOrderChange={saveToolOrder}
+          onReadAloud={handleReadAloud}
+          isTtsPlaying={ttsPlayingMsgId === DIARY_TTS_PLAYBACK_ID}
           onSave={handleSave}
           onCancel={handleBack}
         />

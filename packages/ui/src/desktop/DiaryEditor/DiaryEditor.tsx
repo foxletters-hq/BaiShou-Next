@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import { Loader2, Volume2 } from 'lucide-react'
 import {
   WEATHER_IDS,
   weatherI18nKey,
@@ -36,6 +37,8 @@ interface DiaryEditorProps {
   onMediaPathsChange?: (mediaPaths: string[]) => void
   onSave?: (content: string, date: Date) => void
   onCancel?: () => void
+  onReadAloud?: () => void
+  isTtsPlaying?: boolean
 }
 
 function fileToBase64(file: File): Promise<string> {
@@ -63,7 +66,9 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   onFavoriteChange,
   onMediaPathsChange,
   onSave,
-  onCancel
+  onCancel,
+  onReadAloud,
+  isTtsPlaying = false
 }) => {
   const { t } = useTranslation()
   const [attachments, setAttachments] = useState<DiaryAttachmentItem[]>([])
@@ -298,7 +303,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
 
       <div className="de-body-column">
         <div className="de-expanded-list">
-          {!isSummaryMode && (
+          {!isSummaryMode && (onWeatherChange || onMoodChange || onReadAloud) && (
             <div className="de-meta-bar">
               <div className="de-meta-pickers">
                 {onWeatherChange && (
@@ -316,6 +321,23 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
                     onChange={(v) => onMoodChange(v)}
                     placeholder={t('diary.mood.default', '心情')}
                   />
+                )}
+                {onReadAloud && (
+                  <button
+                    type="button"
+                    className={`de-meta-tts-btn${isTtsPlaying ? ' active' : ''}`}
+                    onClick={onReadAloud}
+                    disabled={!content.trim() && !isTtsPlaying}
+                    title={t('agent.chat.readAloud', '语音朗读')}
+                    aria-label={t('agent.chat.readAloud', '语音朗读')}
+                    aria-busy={isTtsPlaying}
+                  >
+                    {isTtsPlaying ? (
+                      <Loader2 className="de-meta-tts-icon de-meta-tts-spinner" />
+                    ) : (
+                      <Volume2 className="de-meta-tts-icon" />
+                    )}
+                  </button>
                 )}
               </div>
               <button

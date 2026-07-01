@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { DiaryCmMarkdownMark } from '../../shared/diary-codemirror/types'
 import styles from './DiaryMarkdownToolbar.module.css'
 
@@ -11,6 +12,8 @@ export interface DiaryMarkdownToolbarProps {
   onPickImages?: () => void
   pickingImages?: boolean
 }
+
+const SCROLL_STEP_PX = 148
 
 function ToolbarDivider() {
   return <span className={styles.divider} aria-hidden />
@@ -25,10 +28,69 @@ export function DiaryMarkdownToolbar({
   pickingImages = false
 }: DiaryMarkdownToolbarProps) {
   const { t } = useTranslation()
+  const viewportRef = useRef<HTMLDivElement>(null)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
+
+  const updateScrollAffordance = useCallback(() => {
+    const viewport = viewportRef.current
+    if (!viewport) return
+    const maxScroll = viewport.scrollWidth - viewport.clientWidth
+    if (maxScroll <= 2) {
+      setCanScrollLeft(false)
+      setCanScrollRight(false)
+      return
+    }
+    setCanScrollLeft(viewport.scrollLeft > 2)
+    setCanScrollRight(maxScroll - viewport.scrollLeft > 2)
+  }, [])
+
+  useLayoutEffect(() => {
+    const viewport = viewportRef.current
+    if (!viewport) return
+
+    updateScrollAffordance()
+
+    const observer =
+      typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateScrollAffordance) : null
+    observer?.observe(viewport)
+    if (viewport.firstElementChild) {
+      observer?.observe(viewport.firstElementChild)
+    }
+
+    window.addEventListener('resize', updateScrollAffordance)
+    return () => {
+      observer?.disconnect()
+      window.removeEventListener('resize', updateScrollAffordance)
+    }
+  }, [updateScrollAffordance])
+
+  const scrollToolbar = useCallback((direction: -1 | 1) => {
+    viewportRef.current?.scrollBy({ left: direction * SCROLL_STEP_PX, behavior: 'smooth' })
+  }, [])
+
+  const showScrollControls = canScrollLeft || canScrollRight
 
   return (
     <div className={styles.toolbar}>
-      <div className={styles.viewport}>
+      {showScrollControls ? (
+        <button
+          type="button"
+          className={styles.scrollBtn}
+          onClick={() => scrollToolbar(-1)}
+          disabled={!canScrollLeft}
+          title={t('diary.toolbar_scroll_left', '向左滚动工具栏')}
+          aria-label={t('diary.toolbar_scroll_left', '向左滚动工具栏')}
+        >
+          <ChevronLeft className={styles.scrollIcon} />
+        </button>
+      ) : null}
+
+      <div
+        ref={viewportRef}
+        className={styles.viewport}
+        onScroll={updateScrollAffordance}
+      >
         <div className={styles.scroll}>
           <button
             type="button"
@@ -180,6 +242,19 @@ export function DiaryMarkdownToolbar({
           </button>
         </div>
       </div>
+
+      {showScrollControls ? (
+        <button
+          type="button"
+          className={styles.scrollBtn}
+          onClick={() => scrollToolbar(1)}
+          disabled={!canScrollRight}
+          title={t('diary.toolbar_scroll_right', '向右滚动工具栏')}
+          aria-label={t('diary.toolbar_scroll_right', '向右滚动工具栏')}
+        >
+          <ChevronRight className={styles.scrollIcon} />
+        </button>
+      ) : null}
     </div>
   )
 }
