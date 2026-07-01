@@ -36,4 +36,4 @@
 | English  | [fan-creations/fan-creations.en.md](fan-creations/fan-creations.en.md) |
 | 日本語   | [fan-creations/fan-creations.ja.md](fan-creations/fan-creations.ja.md) |
 
-贡献与开发规范见 [../0-README.md](../0-README.md)。
+贡献与开发规范见 [../0-README.md](../0-README.md)。贡献政策（多语言）见 [../2-Submit/2-Contributing-Guide.md](../2-Submit/2-Contributing-Guide.md)。

@@ -2,6 +2,8 @@
 
 **读者**：本仓库的所有 AI 助手（Cursor Agent 等）与人类贡献者。提交或提 PR 前请通读本文。
 
+**贡献政策**：什么值得做、新功能是否应先开 Issue，见 [2-Contributing-Guide.md](./2-Contributing-Guide.md)（[繁中](./2-Contributing-Guide.tw.md) · [EN](./2-Contributing-Guide.en.md) · [JA](./2-Contributing-Guide.ja.md)）。
+
 **协作方式**：不要直接向上游 `main` 推送。请先 **Fork** 仓库，在自己的 Fork 上开发，完成后向上游 **发起 Pull Request**。
 
 编码结构见 [1-AI-Code-Rule.md](../1-AI-Code/1-AI-Code-Rule.md)。Git 命令速查见 [git-commands.md](../git-commands.md)。
