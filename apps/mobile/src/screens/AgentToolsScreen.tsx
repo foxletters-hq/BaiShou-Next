@@ -1,15 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import type { ToolManagementConfig } from '@baishou/shared'
+import { normalizeToolManagementConfig, DEFAULT_TOOL_MANAGEMENT_CONFIG } from '@baishou/shared'
 import { AgentToolsView, useNativeTheme } from '@baishou/ui/native'
 import { useTranslation } from 'react-i18next'
 import { useBaishou } from '../providers/BaishouProvider'
 import { StackScreenLayout } from '../components/StackScreenLayout'
 import { getStackScreenChrome } from '../components/stackScreenChrome'
 
-const DEFAULT_CONFIG: ToolManagementConfig = {
-  disabledToolIds: [],
-  customConfigs: {}
-}
+const DEFAULT_CONFIG: ToolManagementConfig = DEFAULT_TOOL_MANAGEMENT_CONFIG
 
 export const AgentToolsScreen: React.FC = () => {
   const { t } = useTranslation()
@@ -30,7 +28,7 @@ export const AgentToolsScreen: React.FC = () => {
           await services.settingsManager.set('tool_management_config', legacy)
         }
       }
-      setConfig({ ...DEFAULT_CONFIG, ...saved })
+      setConfig(normalizeToolManagementConfig({ ...DEFAULT_CONFIG, ...saved }))
     })()
   }, [dbReady, services])
 
@@ -38,7 +36,7 @@ export const AgentToolsScreen: React.FC = () => {
     async (next: ToolManagementConfig) => {
       setConfig(next)
       if (!services || !dbReady) return
-      await services.settingsManager.set('tool_management_config', next)
+      await services.settingsManager.set('tool_management_config', normalizeToolManagementConfig(next))
     },
     [dbReady, services]
   )

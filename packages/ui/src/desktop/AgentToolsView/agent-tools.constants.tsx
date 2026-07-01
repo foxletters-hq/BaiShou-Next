@@ -12,7 +12,8 @@ import {
   FileText,
   MessageSquare,
   Database,
-  DatabaseZap
+  DatabaseZap,
+  Clock
 } from 'lucide-react'
 import type { AgentToolDef } from './agent-tools.types'
 
@@ -91,6 +92,13 @@ export function buildAgentTools(t: (key: string, fallback: string) => string): A
       name: t('agent.tools.memory_delete', '记忆删除'),
       icon: <DatabaseZap size={20} />,
       tooltipKey: 'agent.tools.memory_delete_tooltip'
+    },
+    {
+      id: 'auto_inject_time',
+      category: 'general',
+      name: t('agent.tools.auto_inject_time', '当前时间'),
+      icon: <Clock size={20} />,
+      tooltipKey: 'agent.tools.auto_inject_time_tooltip'
     }
   ]
 }

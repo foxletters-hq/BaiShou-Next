@@ -3,7 +3,8 @@ import { persist, devtools } from 'zustand/middleware'
 import {
   i18n,
   resolveSummaryPromptLocale,
-  resolveAppUiLanguageFromSystemLocale
+  resolveAppUiLanguageFromSystemLocale,
+  AUTO_INJECT_TIME_TOOL_ID
 } from '@baishou/shared'
 import { useAssistantStore } from './assistant.store'
 import type {
@@ -217,7 +218,7 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
               }
 
               const defaultToolManagementConfig: ToolManagementConfig = {
-                disabledToolIds: [],
+                disabledToolIds: [AUTO_INJECT_TIME_TOOL_ID],
                 customConfigs: {}
               }
 

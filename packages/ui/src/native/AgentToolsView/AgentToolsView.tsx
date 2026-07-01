@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import React, { useMemo, useState } from 'react'
+import { normalizeToolManagementConfig } from '@baishou/shared'
 import {
   View,
   Text,
@@ -53,7 +54,8 @@ const TOOL_ICONS: Record<string, keyof typeof MaterialIcons.glyphMap> = {
   summary_read: 'description',
   message_search: 'message',
   memory_store: 'storage',
-  memory_delete: 'delete-forever'
+  memory_delete: 'delete-forever',
+  auto_inject_time: 'schedule'
 }
 
 // Mapping category IDs to MaterialIcons glyphs
@@ -130,6 +132,12 @@ const getAgentTools = (t: (key: string, fallback: string) => string): AgentToolD
     category: 'memory',
     name: t('agent.tools.memory_delete', '记忆删除'),
     tooltipKey: 'agent.tools.memory_delete_tooltip'
+  },
+  {
+    id: 'auto_inject_time',
+    category: 'general',
+    name: t('agent.tools.auto_inject_time', '当前时间'),
+    tooltipKey: 'agent.tools.auto_inject_time_tooltip'
   }
 ]
 
@@ -142,6 +150,9 @@ const getCategoryMeta = (t: (key: string, fallback: string) => string) => ({
   },
   memory: {
     label: t('settings.agent_tools_category_memory', '记忆工具')
+  },
+  general: {
+    label: t('settings.agent_tools_category_general', '通用工具')
   }
 })
 
@@ -155,11 +166,14 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
 
   const [showCommunity, setShowCommunity] = useState(false)
 
+  const normalizedConfig = useMemo(() => normalizeToolManagementConfig(config), [config])
   const allTools = useMemo(() => getAgentTools(t), [t])
   const categoryMeta = useMemo(() => getCategoryMeta(t), [t])
 
   const toggleTool = (toolId: string) => {
-    const disabledList = Array.isArray(config.disabledToolIds) ? [...config.disabledToolIds] : []
+    const disabledList = Array.isArray(normalizedConfig.disabledToolIds)
+      ? [...normalizedConfig.disabledToolIds]
+      : []
     const isCurrentlyEnabled = !disabledList.includes(toolId)
 
     if (isCurrentlyEnabled) {
@@ -168,20 +182,20 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
       const idx = disabledList.indexOf(toolId)
       if (idx > -1) disabledList.splice(idx, 1)
     }
-    onChange({ ...config, disabledToolIds: disabledList })
+    onChange({ ...normalizedConfig, disabledToolIds: disabledList })
   }
 
   const setToolParam = (toolId: string, key: string, value: unknown) => {
-    const customConfigs = { ...(config.customConfigs || {}) }
+    const customConfigs = { ...(normalizedConfig.customConfigs || {}) }
     if (!customConfigs[toolId]) {
       customConfigs[toolId] = {}
     }
     customConfigs[toolId] = { ...customConfigs[toolId], [key]: value }
-    onChange({ ...config, customConfigs })
+    onChange({ ...normalizedConfig, customConfigs })
   }
 
   const getToolParam = (toolId: string, param: ToolConfigParam) => {
-    const customConfigs = config.customConfigs || {}
+    const customConfigs = normalizedConfig.customConfigs || {}
     if (customConfigs[toolId] && customConfigs[toolId][param.key] !== undefined) {
       return customConfigs[toolId][param.key]
     }
@@ -266,56 +280,64 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
   )
 
   const renderToolCard = (tool: AgentToolDef, isLastInGroup: boolean) => {
-    const isEnabled = !(config.disabledToolIds || []).includes(tool.id)
+    const isEnabled = !(normalizedConfig.disabledToolIds || []).includes(tool.id)
     const hasParams = tool.configurableParams && tool.configurableParams.length > 0
     const toolIcon = TOOL_ICONS[tool.id] || 'extension'
 
     return (
       <View
         key={tool.id}
-        style={[
-          !isLastInGroup && {
-            borderBottomWidth: 1,
-            borderBottomColor: colors.borderStrong
-          },
-          { opacity: isEnabled ? 1 : 0.75 }
-        ]}
+        style={
+          !isLastInGroup
+            ? {
+                borderBottomWidth: 1,
+                borderBottomColor: colors.borderStrong
+              }
+            : undefined
+        }
       >
         <View style={styles.cardMain}>
-          <View
-            style={[
-              styles.toolIconWrapper,
-              {
-                backgroundColor: isEnabled ? colors.primaryLight : colors.bgSurfaceNormal
-              }
-            ]}
-          >
-            <MaterialIcons
-              name={toolIcon}
-              size={20}
-              color={isEnabled ? colors.primary : colors.textSecondary}
-            />
-          </View>
-          <View style={styles.toolInfo}>
-            <View style={styles.toolNameRow}>
-              <Text
-                style={[
-                  styles.toolName,
-                  { color: isEnabled ? colors.textPrimary : colors.textSecondary }
-                ]}
-              >
-                {tool.name}
-              </Text>
-              <HelpTooltip
-                content={t(tool.tooltipKey, t(`agent.tools.${tool.id}_desc`, ''))}
-                size={16}
+          <View style={[styles.cardMainLeading, !isEnabled && styles.cardMainDisabled]}>
+            <View
+              style={[
+                styles.toolIconWrapper,
+                {
+                  backgroundColor: isEnabled ? colors.primaryLight : colors.bgSurfaceNormal
+                }
+              ]}
+            >
+              <MaterialIcons
+                name={toolIcon}
+                size={20}
+                color={isEnabled ? colors.primary : colors.textSecondary}
               />
-              <View style={[styles.toolIdTag, { backgroundColor: colors.bgSurfaceNormal }]}>
-                <Text style={[styles.toolIdText, { color: colors.textSecondary }]}>{tool.id}</Text>
+            </View>
+            <View style={styles.toolInfo}>
+              <View style={styles.toolNameRow}>
+                <Text
+                  style={[
+                    styles.toolName,
+                    { color: isEnabled ? colors.textPrimary : colors.textSecondary }
+                  ]}
+                  numberOfLines={1}
+                >
+                  {tool.name}
+                </Text>
+                <HelpTooltip
+                  content={t(tool.tooltipKey, t(`agent.tools.${tool.id}_desc`, ''))}
+                  size={16}
+                />
+                <View style={[styles.toolIdTag, { backgroundColor: colors.bgSurfaceNormal }]}>
+                  <Text style={[styles.toolIdText, { color: colors.textSecondary }]} numberOfLines={1}>
+                    {tool.id}
+                  </Text>
+                </View>
               </View>
             </View>
           </View>
-          <Switch value={isEnabled} onValueChange={() => toggleTool(tool.id)} />
+          <View style={styles.switchSlot}>
+            <Switch value={isEnabled} onValueChange={() => toggleTool(tool.id)} />
+          </View>
         </View>
 
         {hasParams && isEnabled && (
@@ -562,6 +584,19 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     gap: 12
   },
+  cardMainLeading: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minWidth: 0
+  },
+  cardMainDisabled: {
+    opacity: 0.75
+  },
+  switchSlot: {
+    flexShrink: 0
+  },
   toolIconWrapper: {
     padding: 6,
     borderRadius: 8,
@@ -572,21 +607,26 @@ const styles = StyleSheet.create({
   },
   toolInfo: {
     flex: 1,
+    minWidth: 0,
     justifyContent: 'center'
   },
   toolNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8
+    gap: 8,
+    minWidth: 0
   },
   toolName: {
     fontSize: 15,
-    fontWeight: '600'
+    fontWeight: '600',
+    flexShrink: 1
   },
   toolIdTag: {
     paddingHorizontal: 6,
     paddingVertical: 1,
-    borderRadius: 4
+    borderRadius: 4,
+    flexShrink: 0,
+    maxWidth: 120
   },
   toolIdText: {
     fontSize: 10,

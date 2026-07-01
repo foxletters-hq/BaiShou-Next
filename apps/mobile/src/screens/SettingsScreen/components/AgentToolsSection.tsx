@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react'
 import { View } from 'react-native'
 import type { ToolManagementConfig } from '@baishou/shared'
+import { AUTO_INJECT_TIME_TOOL_ID, normalizeToolManagementConfig } from '@baishou/shared'
 import { AgentToolsView } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 
 const DEFAULT_TOOL_MANAGEMENT_CONFIG: ToolManagementConfig = {
-  disabledToolIds: [],
+  disabledToolIds: [AUTO_INJECT_TIME_TOOL_ID],
   customConfigs: {}
 }
 
@@ -19,13 +20,18 @@ export const AgentToolsSection: React.FC = () => {
       const saved =
         (await services.settingsManager.get<ToolManagementConfig>('tool_management_config')) ??
         DEFAULT_TOOL_MANAGEMENT_CONFIG
-      setConfig({ ...DEFAULT_TOOL_MANAGEMENT_CONFIG, ...saved })
+      setConfig(
+        normalizeToolManagementConfig({ ...DEFAULT_TOOL_MANAGEMENT_CONFIG, ...saved })
+      )
     })()
   }, [dbReady, services])
 
   const persist = async (next: ToolManagementConfig) => {
     if (!services || !dbReady) return
-    await services.settingsManager.set('tool_management_config', next)
+    await services.settingsManager.set(
+      'tool_management_config',
+      normalizeToolManagementConfig(next)
+    )
     setConfig(next)
   }
 
