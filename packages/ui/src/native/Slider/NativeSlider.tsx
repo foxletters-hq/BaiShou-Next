@@ -4,6 +4,7 @@ import {
   StyleSheet,
   Platform,
   PanResponder,
+  InteractionManager,
   type GestureResponderEvent,
   type LayoutChangeEvent,
   type StyleProp,
@@ -40,6 +41,7 @@ export type NativeSliderProps = {
 
 const THUMB_SIZE = 20
 const ANDROID_TRACK_HORIZONTAL_PADDING = 10
+const ANDROID_CUSTOM_TRACK_HEIGHT = 6
 
 function SliderTrack({
   progress,
@@ -55,13 +57,20 @@ function SliderTrack({
   disabled?: boolean
 }) {
   const clamped = Math.min(1, Math.max(0, progress))
+  const trackTransparent = maxTrack === 'transparent'
+  const fillTransparent = minTrack === 'transparent'
+
   return (
     <View style={[trackStyles.root, disabled && trackStyles.disabled]} pointerEvents="none">
-      <View style={[trackStyles.track, { backgroundColor: maxTrack }]}>
-        <View
-          style={[trackStyles.fill, { width: `${clamped * 100}%`, backgroundColor: minTrack }]}
-        />
-      </View>
+      {!trackTransparent ? (
+        <View style={[trackStyles.track, { backgroundColor: maxTrack }]}>
+          {!fillTransparent ? (
+            <View
+              style={[trackStyles.fill, { width: `${clamped * 100}%`, backgroundColor: minTrack }]}
+            />
+          ) : null}
+        </View>
+      ) : null}
       <View
         style={[
           trackStyles.thumb,
@@ -103,6 +112,24 @@ export const NativeSlider: React.FC<NativeSliderProps> = ({
   const isSlidingRef = useRef(false)
 
   const platformScale = Platform.OS === 'android' ? getAndroidSliderIntegerScale(step) : 1
+  const useCustomAndroidTrack = Platform.OS === 'android' && platformScale > 1
+  const [androidReady, setAndroidReady] = useState(!useCustomAndroidTrack)
+
+  useEffect(() => {
+    if (!useCustomAndroidTrack) {
+      setAndroidReady(true)
+      return
+    }
+    setAndroidReady(false)
+  }, [useCustomAndroidTrack])
+
+  useEffect(() => {
+    if (useCustomAndroidTrack) return
+    if (Platform.OS !== 'android') return
+    const task = InteractionManager.runAfterInteractions(() => setAndroidReady(true))
+    return () => task.cancel()
+  }, [useCustomAndroidTrack])
+
   const nativeProps = useMemo(
     () => toNativeSliderProps(value, minValue, maxValue, step, platformScale),
     [value, minValue, maxValue, step, platformScale]
@@ -124,7 +151,7 @@ export const NativeSlider: React.FC<NativeSliderProps> = ({
   const thumb = thumbOptions?.thumbColor ?? thumbTintColor ?? colors.primary
 
   const progress = nativeProgress(
-    Platform.OS === 'android' ? nativeValue : nativeProps.value,
+    Platform.OS === 'android' && useCustomAndroidTrack ? nativeValue : nativeProps.value,
     nativeProps.minimumValue,
     nativeProps.maximumValue
   )
@@ -183,7 +210,7 @@ export const NativeSlider: React.FC<NativeSliderProps> = ({
     setAndroidSliderWidth(event.nativeEvent.layout.width)
   }
 
-  if (Platform.OS === 'android') {
+  if (useCustomAndroidTrack) {
     return (
       <View
         style={[styles.wrap, style]}
@@ -203,36 +230,38 @@ export const NativeSlider: React.FC<NativeSliderProps> = ({
 
   return (
     <View style={[styles.wrap, style]}>
-      <CommunitySlider
-        style={styles.slider}
-        value={nativeValue}
-        minimumValue={nativeProps.minimumValue}
-        maximumValue={nativeProps.maximumValue}
-        step={nativeProps.step}
-        disabled={disabled}
-        minimumTrackTintColor={minTrack}
-        maximumTrackTintColor={maxTrack}
-        thumbTintColor={thumb}
-        onValueChange={(raw) => {
-          isSlidingRef.current = true
-          setNativeValue(raw)
-          nativeValueRef.current = raw
-          emit(raw, 'change')
-        }}
-        onSlidingComplete={(raw) => {
-          isSlidingRef.current = false
-          setNativeValue(raw)
-          nativeValueRef.current = raw
-          emit(raw, 'end')
-        }}
-      />
+      {androidReady ? (
+        <CommunitySlider
+          style={styles.slider}
+          value={nativeValue}
+          minimumValue={nativeProps.minimumValue}
+          maximumValue={nativeProps.maximumValue}
+          step={nativeProps.step}
+          disabled={disabled}
+          minimumTrackTintColor={minTrack}
+          maximumTrackTintColor={maxTrack}
+          thumbTintColor={thumb}
+          onValueChange={(raw) => {
+            isSlidingRef.current = true
+            setNativeValue(raw)
+            nativeValueRef.current = raw
+            emit(raw, 'change')
+          }}
+          onSlidingComplete={(raw) => {
+            isSlidingRef.current = false
+            setNativeValue(raw)
+            nativeValueRef.current = raw
+            emit(raw, 'end')
+          }}
+        />
+      ) : null}
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   wrap: {
-    width: '100%',
+    flex: 1,
     justifyContent: 'center',
     minHeight: NATIVE_SLIDER_HEIGHT
   },
@@ -253,13 +282,13 @@ const trackStyles = StyleSheet.create({
     opacity: 0.5
   },
   track: {
-    height: 4,
-    borderRadius: 2,
+    height: ANDROID_CUSTOM_TRACK_HEIGHT,
+    borderRadius: ANDROID_CUSTOM_TRACK_HEIGHT / 2,
     overflow: 'hidden'
   },
   fill: {
     height: '100%',
-    borderRadius: 2
+    borderRadius: ANDROID_CUSTOM_TRACK_HEIGHT / 2
   },
   thumb: {
     position: 'absolute',

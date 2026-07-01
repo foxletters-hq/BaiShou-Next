@@ -5,7 +5,6 @@ import { Text, TouchableOpacity, View } from 'react-native'
 import { useNativeTheme } from '../theme'
 import type { AppearanceSettingsProps } from './appearance-settings.types'
 import { PRESET_THEME_COLORS, isPresetThemeColor } from '../../theme/preset-theme-colors'
-import { hslToHex } from './appearance-color.utils'
 import { appearanceSettingsStyles as styles } from './appearance-settings.styles'
 import { AppearanceSettingsColorModal } from './AppearanceSettingsColorModal'
 import { CustomThemeColorDot } from './CustomThemeColorDot'
@@ -24,11 +23,6 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const [showColorModal, setShowColorModal] = useState(false)
-  const [hue, setHue] = useState(0)
-  const [sat, setSat] = useState(100)
-  const [lit, setLit] = useState(50)
-
-  const previewColor = hslToHex(hue, sat, lit)
 
   const languageOptions = useMemo(
     () => [
@@ -51,15 +45,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
   const isCustomColor = !isPresetThemeColor(seedColor)
 
   const openColorPicker = () => {
-    setHue(190)
-    setSat(60)
-    setLit(75)
     setShowColorModal(true)
-  }
-
-  const saveColor = () => {
-    onSeedColorChange(previewColor)
-    setShowColorModal(false)
   }
 
   const content = (
@@ -166,15 +152,12 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
 
       <AppearanceSettingsColorModal
         visible={showColorModal}
-        previewColor={previewColor}
-        hue={hue}
-        sat={sat}
-        lit={lit}
-        onHueChange={setHue}
-        onSatChange={setSat}
-        onLitChange={setLit}
+        initialColor={seedColor}
         onClose={() => setShowColorModal(false)}
-        onSave={saveColor}
+        onSave={(color) => {
+          onSeedColorChange(color)
+          setShowColorModal(false)
+        }}
       />
     </>
   )
