@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: 贡献政策（请先阅读）
+    url: https://github.com/Anson-Trio/BaiShou-Next/blob/main/docs/2-Submit/2-Contributing-Guide.md
+    about: 欢迎 Bug 修复；新功能请先开 Issue，勿直接 PR
   - name: 查看已有 Issue
     url: https://github.com/Anson-Trio/BaiShou-Next/issues
     about: 提交前先搜索，避免重复反馈
