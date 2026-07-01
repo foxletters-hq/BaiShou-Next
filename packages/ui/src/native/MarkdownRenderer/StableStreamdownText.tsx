@@ -14,14 +14,18 @@ export function StableStreamdownText({
   remendConfig,
   selectable = true,
   hideTablesWhileStreaming = false,
+  streamingAnimation = false,
   ...enrichedMarkdownProps
-}: StreamdownTextProps & { hideTablesWhileStreaming?: boolean }) {
+}: StreamdownTextProps & {
+  hideTablesWhileStreaming?: boolean
+  streamingAnimation?: boolean
+}) {
   const processedMarkdown = useStableStreamdownMarkdown(markdown, remendConfig)
 
   return (
     <EnrichedMarkdownText
       markdown={processedMarkdown}
-      streamingAnimation
+      {...(streamingAnimation ? { streamingAnimation: true } : {})}
       selectable={selectable}
       md4cFlags={STREAMING_MD4C_FLAGS}
       streamingConfig={

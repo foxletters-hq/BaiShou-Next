@@ -4,6 +4,7 @@ import { StreamdownText } from 'react-native-streamdown'
 import { EnrichedMarkdownText } from 'react-native-enriched-markdown'
 import { useNativeTheme } from '../theme'
 import { LegacyMarkdownRenderer } from './LegacyMarkdownRenderer'
+import { StableStreamdownText } from './StableStreamdownText'
 import { useStableStreamdownMarkdown } from './useStableStreamdownMarkdown'
 import {
   buildStreamdownMarkdownStyle,
@@ -97,29 +98,40 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = (props) => {
 
   if (!displayContent) return null
 
+  const streamdownCommonProps = {
+    allowTrailingMargin: useTrailingMargin,
+    flavor: streamFlavor,
+    markdown: displayContent,
+    markdownStyle,
+    md4cFlags: STATIC_MD4C_FLAGS,
+    onLinkPress: handleLinkPress,
+    selectable: true as const,
+    containerStyle: nativeContainerStyle
+  }
+
+  // chat / ancillary：始终同一渲染器，避免流结束瞬间 StreamdownText ↔ Static 互换闪烁
+  if (variant === 'chat' || variant === 'ancillary') {
+    return (
+      <View style={markdownContainerStyle}>
+        <StableStreamdownText
+          {...streamdownCommonProps}
+          hideTablesWhileStreaming={isStreaming}
+          streamingAnimation={isStreaming}
+        />
+      </View>
+    )
+  }
+
   return (
     <View style={markdownContainerStyle}>
       {isStreaming ? (
         <StreamdownText
-          allowTrailingMargin={useTrailingMargin}
-          flavor={streamFlavor}
-          markdown={displayContent}
-          markdownStyle={markdownStyle}
-          md4cFlags={STATIC_MD4C_FLAGS}
-          onLinkPress={handleLinkPress}
-          selectable
-          containerStyle={nativeContainerStyle}
+          {...streamdownCommonProps}
           streamingConfig={{ tableMode: 'hidden' }}
         />
       ) : (
         <StaticStreamdownText
-          allowTrailingMargin={useTrailingMargin}
-          flavor={streamFlavor}
-          markdown={displayContent}
-          markdownStyle={markdownStyle}
-          onLinkPress={handleLinkPress}
-          selectable
-          containerStyle={nativeContainerStyle}
+          {...streamdownCommonProps}
         />
       )}
     </View>

@@ -949,14 +949,21 @@ export const AgentScreen = () => {
     [streamingReasoning, streamingText]
   )
 
+  /** 与 bubbleTextStreaming 对齐：linger / hold 期间仍视为展示态，避免结束帧切组件 */
+  const markdownPresentationActive =
+    isStreaming ||
+    isStreamBridgeActive ||
+    streamPresentationLinger ||
+    holdLivePresentation
+
   /** 思考正文走 Streamdown 渐显：纯思考阶段或整段流式未结束 */
   const streamingThinkActive = useMemo(
     () =>
       Boolean(
         streamingReasoning.trim() &&
-          (streamingReasoningActive || isStreaming || isStreamBridgeActive)
+          (streamingReasoningActive || markdownPresentationActive)
       ),
-    [streamingReasoning, streamingReasoningActive, isStreaming, isStreamBridgeActive]
+    [streamingReasoning, streamingReasoningActive, markdownPresentationActive]
   )
 
   const streamingCompletedTools = useMemo(
@@ -990,7 +997,7 @@ export const AgentScreen = () => {
     return rows
   }, [messages, showStreamingTail])
 
-  const bubbleTextStreaming = isStreaming || isStreamBridgeActive
+  const bubbleTextStreaming = markdownPresentationActive
 
   const liveStreamProps = useMemo(
     () => ({
@@ -1295,14 +1302,13 @@ export const AgentScreen = () => {
                           : streamingReasoning.trim() || item.reasoning || '',
                         isTextStreaming: bubbleTextStreaming,
                         isThinkStreaming: assistantPersistedInList
-                          ? false
+                          ? bubbleTextStreaming && Boolean((item.reasoning || '').trim())
                           : liveStreamProps.isThinkStreaming
                       }
                     : undefined
 
                   const deferChromeForRow =
-                    isLiveAssistantRow &&
-                    (isStreaming || isStreamBridgeActive || streamPresentationLinger)
+                    isLiveAssistantRow && markdownPresentationActive
 
                   return (
                     <View
