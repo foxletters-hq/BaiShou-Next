@@ -30,7 +30,9 @@ export function useTTSProviderSettings({
   const [providerType, setProviderType] = useState<string>('openai-tts')
   const [configs, setConfigs] = useState<Record<string, ProviderLocalState>>(getInitialConfigs)
 
-  const [testText, setTestText] = useState('')
+  const [testText, setTestText] = useState(() =>
+    t('tts.settings.test_default', '你好呀，我是Latte，今天怎么样？')
+  )
   const [isTesting, setIsTesting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isLoadingModels, setIsLoadingModels] = useState(false)

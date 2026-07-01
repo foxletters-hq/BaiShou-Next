@@ -2602,7 +2602,7 @@
       "format_label": "Audio Format",
       "test_label": "Test TTS",
       "test_placeholder": "Enter test text",
-      "test_default": "Hello, how are you doing today?",
+      "test_default": "Hi, I'm Latte. How's your day going?",
       "testing": "Testing...",
       "test_button": "Test"
     }
