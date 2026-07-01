@@ -51,12 +51,14 @@ export class MessageAdapter {
             }
           } else if (p.type === 'image') {
             await appendImagePartToContentParts(contentParts, p.data as any, {
-              modelId: activeModelId
+              modelId: activeModelId,
+              providerKey: activeProviderType
             })
           } else if (p.type === 'attachment') {
             await appendFileAttachmentToContentParts(contentParts, p.data as any, {
               modelId: activeModelId,
-              providerType: activeProviderType
+              providerType: activeProviderType,
+              providerKey: activeProviderType
             })
           }
         }

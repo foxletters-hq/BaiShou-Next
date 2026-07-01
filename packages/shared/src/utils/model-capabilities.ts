@@ -1,22 +1,16 @@
+import {
+  isProviderListedVisionModel,
+  normalizeModelBaseId
+} from './provider-vision-models'
+import { isVisionModelInSnapshot } from './vision-models.snapshot'
+
 function getLowerBaseModelName(id: string): string {
-  if (!id) return ''
-  const normalizedId = id.toLowerCase().startsWith('accounts/fireworks/models/')
-    ? id.replace(/(\d)p(?=\d)/g, '$1.')
-    : id
+  return normalizeModelBaseId(id)
+}
 
-  const parts = normalizedId.split('/')
-  let baseModelName = (parts[parts.length - 1] || '').toLowerCase()
-
-  if (baseModelName.endsWith(':free')) {
-    baseModelName = baseModelName.replace(':free', '')
-  }
-  if (baseModelName.endsWith('(free)')) {
-    baseModelName = baseModelName.replace('(free)', '')
-  }
-  if (baseModelName.endsWith(':cloud')) {
-    baseModelName = baseModelName.replace(':cloud', '')
-  }
-  return baseModelName
+function isVisionModelByRegex(modelId: string): boolean {
+  const baseName = getLowerBaseModelName(modelId)
+  return VISION_REGEX.test(baseName) || IMAGE_ENHANCEMENT_MODELS_REGEX.test(baseName) || false
 }
 
 const visionAllowedModels = [
@@ -57,7 +51,7 @@ const visionAllowedModels = [
   'o3(?:-[\\w-]+)?',
   'o4(?:-[\\w-]+)?',
   'deepseek-vl(?:[\\w-]+)?',
-  'kimi-k2\\.[56](?:-[\\w-]+)?',
+  'kimi-k2(?:\\.\\d+)?(?:-[\\w-]+)?',
   'kimi-latest',
   'gemma-?[3-4](?:[-.\\w]+)?',
   'doubao-seed-1[.-][68](?:-[\\w-]+)?',
@@ -74,7 +68,7 @@ const visionAllowedModels = [
   'mistral-large-(2512|latest)',
   'mistral-medium-(2508|latest)',
   'mistral-small',
-  'mimo-v2\\.5$',
+  'mimo-v2(?:\\.\\d+)?(?:-[\\w-]+)?',
   'mimo-v2-omni(?:-[\\w-]+)?',
   'glm-5v-turbo'
 ]
@@ -108,12 +102,18 @@ const IMAGE_ENHANCEMENT_MODELS = [
 const IMAGE_ENHANCEMENT_MODELS_REGEX = new RegExp(IMAGE_ENHANCEMENT_MODELS.join('|'), 'i')
 
 /**
- * 判断模型是否支持图片识别（多模态视觉能力）
+ * 判断模型是否支持图片识别（多模态视觉输入）
+ *
+ * 优先级：手工覆盖 → 模型名（快照 + 正则）；不按供应商否定，避免硅基流动等路径式 id 误判。
  */
-export function isVisionModel(modelId: string): boolean {
+export function isVisionModel(modelId: string, providerKey?: string): boolean {
   if (!modelId) return false
-  const baseName = getLowerBaseModelName(modelId)
-  return VISION_REGEX.test(baseName) || IMAGE_ENHANCEMENT_MODELS_REGEX.test(baseName) || false
+
+  if (isProviderListedVisionModel(providerKey, modelId)) return true
+
+  if (isVisionModelInSnapshot(modelId, providerKey)) return true
+
+  return isVisionModelByRegex(modelId)
 }
 
 /**

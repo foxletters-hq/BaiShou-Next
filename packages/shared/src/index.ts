@@ -28,6 +28,8 @@ export { logger } from './utils/logger'
 export { traceCall, SHORTCUT_TRACE_CHAIN } from './utils/call-trace'
 export * from './utils/prompt-shortcut.util'
 export * from './utils/model-capabilities'
+export * from './utils/provider-vision-models'
+export * from './utils/vision-models.snapshot'
 
 // Mock 数据与类型（供开发阶段跨包使用）
 export * from './mock/agent.mock'

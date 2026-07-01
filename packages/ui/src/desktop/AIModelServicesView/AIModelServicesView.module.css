@@ -499,6 +499,9 @@
 }
 
 .modelNameText {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
   font-size: 14px;
   color: var(--text-primary);
   font-weight: 500;

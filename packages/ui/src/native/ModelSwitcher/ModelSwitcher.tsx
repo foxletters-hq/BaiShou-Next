@@ -15,6 +15,7 @@ import { useNativeTheme } from '../theme'
 import { Input } from '../Input/Input'
 import { Button } from '../Button'
 import { ProviderBrandIcon } from '../ProviderBrandIcon'
+import { ModelVisionBadge } from '../../shared/ModelVisionBadge'
 
 export interface MockAiProviderModel {
   id: string
@@ -237,18 +238,25 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
                             providerType={provider.type}
                             size={16}
                           />
-                          <Text
-                            style={[
-                              styles.modelName,
-                              {
-                                color: isSelected ? colors.onPrimaryContainer : colors.textPrimary,
-                                fontWeight: isSelected ? '600' : '400'
-                              }
-                            ]}
-                            numberOfLines={1}
-                          >
-                            {modelId}
-                          </Text>
+                          <View style={styles.modelNameRow}>
+                            <Text
+                              style={[
+                                styles.modelName,
+                                {
+                                  color: isSelected ? colors.onPrimaryContainer : colors.textPrimary,
+                                  fontWeight: isSelected ? '600' : '400'
+                                }
+                              ]}
+                              numberOfLines={1}
+                            >
+                              {modelId}
+                            </Text>
+                            <ModelVisionBadge
+                              modelId={modelId}
+                              providerKey={provider.id}
+                              size={14}
+                            />
+                          </View>
                           {isSelected && (
                             <MaterialIcons name="check" size={18} color={colors.primary} />
                           )}
@@ -362,8 +370,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 8
   },
-  modelName: {
+  modelNameRow: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    minWidth: 0
+  },
+  modelName: {
+    flexShrink: 1,
     fontSize: 14
   }
 })

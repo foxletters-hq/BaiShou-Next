@@ -97,6 +97,7 @@ export * from './MarkdownRenderer'
 
 // 工具组件
 export * from './ModelSwitcherPopup'
+export * from '../shared/ModelVisionBadge'
 export * from './PromptShortcutSheet'
 export * from './AssistantPickerSheet'
 export * from './ChatCostDialog'

@@ -14,6 +14,7 @@ import {
 import styles from './AIModelServicesView.module.css'
 import { Switch } from '../Switch/Switch'
 import { HelpTooltip } from '../HelpTooltip'
+import { ModelVisionBadge } from '../../shared/ModelVisionBadge'
 import type { AIModelServicesViewModel } from './useAIModelServicesView'
 
 export interface AIModelServicesConfigPaneProps {
@@ -224,6 +225,10 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
                                 className={`${styles.modelNameText} ${isChecked ? styles.modelNameChecked : ''}`}
                               >
                                 {mdl}
+                                <ModelVisionBadge
+                                  modelId={mdl}
+                                  providerKey={vm.selectedProviderId}
+                                />
                               </span>
                             </div>
                             <Switch
