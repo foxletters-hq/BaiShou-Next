@@ -14,7 +14,7 @@ const BUBBLE_EDIT_KEYBOARD_BUFFER = 72
 /** 编辑态且键盘收起时：保存/token 与底部工具栏之间的额外间距 */
 const BUBBLE_EDIT_DOCK_GAP = 16
 /** 列表底部与输入栏之间的留白（由 footer spacer 承担，勿与 listContent.paddingBottom 重复） */
-const COMPOSER_LIST_GAP = 12
+const COMPOSER_LIST_GAP = 4
 
 function readKeyboardHeightFromMetrics(): number {
   const metrics = Keyboard.metrics()
@@ -254,7 +254,7 @@ export function useAgentChatKeyboardInsets({
   }))
 
   const scrollButtonAnimatedStyle = useAnimatedStyle(() => ({
-    bottom: composerBottom.value + inputDockHeightSv.value + 12
+    bottom: composerBottom.value + inputDockHeightSv.value + COMPOSER_LIST_GAP
   }))
 
   const listSpacerAnimatedStyle = useAnimatedStyle(() => ({

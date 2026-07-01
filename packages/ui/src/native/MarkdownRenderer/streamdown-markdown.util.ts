@@ -147,6 +147,17 @@ export function buildStreamdownMarkdownStyle(
   }
 }
 
+/**
+ * CommonMark 会吞掉段落末尾换行，但 TextInput 编辑态仍保留。
+ * 将尾部换行转为硬换行（行末两空格），使展示与编辑一致。
+ */
+export function preserveChatTrailingNewlines(content: string): string {
+  const trailing = content.match(/\n+$/)
+  if (!trailing) return content
+  const base = content.slice(0, -trailing[0].length)
+  return base + '  \n'.repeat(trailing[0].length)
+}
+
 /** 剥离零宽字符与日记宽度语法，并将可同步解析的 attachment 图片写回可加载 URI */
 export function prepareNativeStreamdownMarkdown(
   content: string,

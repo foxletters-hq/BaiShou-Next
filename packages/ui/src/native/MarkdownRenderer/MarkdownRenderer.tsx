@@ -8,7 +8,8 @@ import { useStableStreamdownMarkdown } from './useStableStreamdownMarkdown'
 import {
   buildStreamdownMarkdownStyle,
   markdownNeedsLegacyImageRenderer,
-  prepareNativeStreamdownMarkdown
+  prepareNativeStreamdownMarkdown,
+  preserveChatTrailingNewlines
 } from './streamdown-markdown.util'
 import { useMarkdownLinkPress } from './useMarkdownLinkPress'
 
@@ -70,14 +71,15 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = (props) => {
     [colors, variant]
   )
 
-  const displayContent = useMemo(
-    () => prepareNativeStreamdownMarkdown(content, resolveImageUri),
-    [content, resolveImageUri]
-  )
+  const useTrailingMargin = variant === 'chat' || variant === 'ancillary'
+
+  const displayContent = useMemo(() => {
+    const prepared = prepareNativeStreamdownMarkdown(content, resolveImageUri)
+    return useTrailingMargin ? preserveChatTrailingNewlines(prepared) : prepared
+  }, [content, resolveImageUri, useTrailingMargin])
 
   const streamFlavor =
     variant === 'chat' || isStreaming || variant === 'ancillary' ? 'commonmark' : 'github'
-  const useTrailingMargin = variant === 'chat' || variant === 'ancillary'
   const markdownContainerStyle =
     variant === 'chat' || variant === 'ancillary'
       ? [styles.containerCompact, style]

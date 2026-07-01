@@ -1,8 +1,21 @@
 import { describe, it, expect } from 'vitest'
 import {
   prepareNativeStreamdownMarkdown,
-  markdownNeedsLegacyImageRenderer
+  markdownNeedsLegacyImageRenderer,
+  preserveChatTrailingNewlines
 } from '../streamdown-markdown.util'
+
+describe('preserveChatTrailingNewlines', () => {
+  it('converts trailing newlines to hard breaks', () => {
+    expect(preserveChatTrailingNewlines('hello\n')).toBe('hello  \n')
+    expect(preserveChatTrailingNewlines('hello\n\n')).toBe('hello  \n  \n')
+  })
+
+  it('leaves content without trailing newline unchanged', () => {
+    expect(preserveChatTrailingNewlines('hello')).toBe('hello')
+    expect(preserveChatTrailingNewlines('hello\nworld')).toBe('hello\nworld')
+  })
+})
 
 describe('prepareNativeStreamdownMarkdown', () => {
   it('strips zero-width chars and image width syntax', () => {

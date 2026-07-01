@@ -1599,7 +1599,7 @@ const styles = StyleSheet.create({
   list: { flex: 1 },
   /** 不用 flexGrow:1，否则内容变短（流式 Footer 移除）时 ScrollView 常把 offset 钳到 0 */
   listContent: { paddingTop: 24, paddingBottom: 0, paddingHorizontal: 0 },
-  bubble: { marginBottom: 14 },
+  bubble: { marginBottom: 6 },
   toolStatusContainer: {
     paddingHorizontal: 16,
     paddingVertical: 10,

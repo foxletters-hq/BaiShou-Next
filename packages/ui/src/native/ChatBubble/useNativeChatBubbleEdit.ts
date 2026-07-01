@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Keyboard } from 'react-native'
+import { InteractionManager } from 'react-native'
 
 export function useNativeChatBubbleEdit(
   initialContent: string,
@@ -19,8 +19,17 @@ export function useNativeChatBubbleEdit(
     }
   }, [isEditing, messageId, onEditingChange])
 
+  useEffect(() => {
+    if (!isEditing) return
+    const task = InteractionManager.runAfterInteractions(() => {
+      requestAnimationFrame(() => {
+        editInputRef.current?.focus()
+      })
+    })
+    return () => task.cancel()
+  }, [isEditing])
+
   const handleStartEdit = () => {
-    Keyboard.dismiss()
     setEditContent(initialContent)
     setIsEditing(true)
   }

@@ -109,7 +109,7 @@ export const chatBubbleStyles = StyleSheet.create({
     width: '100%',
     fontSize: 15,
     lineHeight: 22,
-    minHeight: 100,
+    minHeight: 72,
     maxHeight: 260,
     padding: 0
   },
