@@ -8,7 +8,7 @@
 
 **BaiShou** is an open-source, privacy-first **AI memory companion**: record your life and diaries locally, let AI partners truly _remember_ you, and fight forgetting together.
 
-We warmly welcome your contributions—Issues, PRs, documentation, and ideas. BaiShou has come this far thanks to every friend who helped and challenged us along the way; because of you, it keeps getting better. If you would like to carry this promise forward, please read the [Contributing](#contributing) section below.
+We thank everyone who wants to help BaiShou grow. If you would like to contribute, please read [Contributing](#contributing) below first: **bug fixes and documentation improvements are most welcome**; for new features, open an Issue before coding—without prior discussion, merges are less likely.
 
 > **Important:** The previous Flutter client ([Anson-Trio/BaiShou](https://github.com/Anson-Trio/BaiShou)) is **no longer maintained**. All future features and releases happen in this repository **BaiShou-Next** (a monorepo for desktop Electron + mobile Expo). Please **Star / Watch** this repo for updates.
 
@@ -102,11 +102,18 @@ See [submission guidelines](../2-Submit/1-Submit-Rule.md) (Chinese).
 
 #### Contributing
 
+Thank you for wanting to help. Please understand our collaboration stance first:
+
+- **Most welcome**: reproducible bug reports and **bug-fix PRs** (with tests and `pnpm ci:check`).
+- **New feature PRs**: every product direction for BaiShou is carefully planned. **Open a Feature Proposal Issue first** and wait for maintainer feedback—**do not open a PR first**. Without prior discussion, merges are less likely.
+
+Full policy (multilingual): [Contributing policy](../2-Submit/2-Contributing-Guide.en.md) ([zh-CN](../2-Submit/2-Contributing-Guide.md) · [zh-TW](../2-Submit/2-Contributing-Guide.tw.md) · [ja](../2-Submit/2-Contributing-Guide.ja.md))
+
+Technical workflow:
+
 1. **Fork** this repo and work on a feature branch (do not push directly to upstream `main`).
 2. Coding conventions: [AI coding rules](../1-AI-Code/1-AI-Code-Rule.md) (Chinese).
 3. Before opening a PR, run **`pnpm ci:check`** and follow commit message rules in [submission guidelines](../2-Submit/1-Submit-Rule.md).
-
-Issues and PRs are welcome. Discuss ideas in GitHub Issues.
 
 ---
 

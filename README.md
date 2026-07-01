@@ -8,7 +8,7 @@
 
 **白守**是一款开源的、注重隐私的 **AI 记忆陪伴**软件：在本地记录你的生活与日记，让 AI 伙伴真正「记得」你，并陪你对抗遗忘。
 
-我们非常欢迎你的参与——无论是 Issue、PR、文档还是想法。白守能走到今天，离不开每一位朋友的帮助与鞭策；也正因为有你们，它才会越来越好。若你愿意一起把这份约定延续下去，请先阅读下方的 [贡献指南](#贡献指南)。
+我们感谢每一位愿意帮助白守的朋友。白守能走到今天，离不开你们的帮助与鞭策。若你愿意参与，请先阅读下方的 [贡献指南](#贡献指南)：**我们最欢迎 Bug 修复与文档改进**；新功能请先开 Issue 讨论，未事先沟通时合并可能性较低。
 
 > **请注意**：此前基于 Flutter 的客户端（[Anson-Trio/BaiShou](https://github.com/Anson-Trio/BaiShou)）**已不再维护**；后续所有功能更新与版本发布均在本仓库 **BaiShou-Next** 进行（桌面 Electron + 移动 Expo 的 monorepo）。请 Star / Watch 本仓库以获取最新动态。
 
@@ -107,11 +107,18 @@ pnpm ci:check
 
 #### 贡献指南
 
+我们感谢每一位愿意帮助白守的人，但请先了解本项目的协作立场：
+
+- **我们最欢迎**：可复现的 Bug 报告，以及针对已确认问题的 **Bug 修复 PR**（含测试与 `pnpm ci:check`）。
+- **新功能 PR**：白守的每一个发展方向都经过严格思考，请先 **在 Issues 中开「功能提议」** 并等待维护者回复，**不要直接开 PR**。未事先沟通时，合并可能性较低。
+
+完整说明（多语言）：[贡献政策](./docs/2-Submit/2-Contributing-Guide.md)（[繁中](./docs/2-Submit/2-Contributing-Guide.tw.md) · [English](./docs/2-Submit/2-Contributing-Guide.en.md) · [日本語](./docs/2-Submit/2-Contributing-Guide.ja.md)）
+
+技术流程：
+
 1. 在 GitHub **Fork** 本仓库，在功能分支上开发（勿直接向上游 `main` 推送）。
 2. 编码与目录规范见 [AI 编码规范](./docs/1-AI-Code/1-AI-Code-Rule.md)。
 3. 开 PR 前运行 **`pnpm ci:check`**，并遵循 [提交规范](./docs/2-Submit/1-Submit-Rule.md) 中的 Commit Message 约定。
-
-我们非常欢迎 Issue 与 PR。若有想法或疑问，欢迎在 Issues 中讨论。
 
 ---
 
