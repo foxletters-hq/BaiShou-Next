@@ -106,7 +106,7 @@ export function useTtsProviderSettings({
   const [testing, setTesting] = useState(false)
   const [loadingModels, setLoadingModels] = useState(false)
   const [testText, setTestText] = useState(() =>
-    t('tts.settings.test_default', '你好，今天过得怎么样？')
+    t('tts.settings.test_default', '你好呀，我是Latte，今天怎么样？')
   )
   const [showApiKey, setShowApiKey] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)

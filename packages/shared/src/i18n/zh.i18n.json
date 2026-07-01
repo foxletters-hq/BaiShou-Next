@@ -2684,7 +2684,7 @@
       "format_label": "音频格式",
       "test_label": "测试 TTS",
       "test_placeholder": "输入测试文本",
-      "test_default": "你好，今天过得怎么样？",
+      "test_default": "你好呀，我是Latte，今天怎么样？",
       "testing": "测试中...",
       "test_button": "测试"
     }

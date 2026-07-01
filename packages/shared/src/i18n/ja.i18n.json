@@ -2487,7 +2487,7 @@
       "format_label": "音频格式",
       "test_label": "测试 TTS",
       "test_placeholder": "テスト文を入力",
-      "test_default": "こんにちは、今日はどうですか？",
+      "test_default": "こんにちは、Latte です。今日はどう？",
       "testing": "测试中...",
       "test_button": "测试"
     }
