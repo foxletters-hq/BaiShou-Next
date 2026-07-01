@@ -1,4 +1,5 @@
-import type { Decoration, EditorView } from '@codemirror/view'
+import type { EditorState } from '@codemirror/state'
+import type { Decoration } from '@codemirror/view'
 import { isCursorInRange } from './cursor'
 import { listMarkerReplace } from './styles'
 
@@ -17,11 +18,11 @@ function pushDecoration(
 
 /** 基于行文本渲染列表圆点（不依赖语法树解析时机） */
 export function collectListLineDecorations(
-  view: EditorView,
+  state: EditorState,
   cursors: number[],
   marks: DecorationMark[]
 ): void {
-  const doc = view.state.doc
+  const doc = state.doc
 
   for (let lineNum = 1; lineNum <= doc.lines; lineNum += 1) {
     const line = doc.line(lineNum)

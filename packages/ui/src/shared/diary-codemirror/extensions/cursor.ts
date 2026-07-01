@@ -1,7 +1,7 @@
-import type { EditorView } from '@codemirror/view'
+import type { EditorState } from '@codemirror/state'
 
-export function getCursorPositions(view: EditorView): number[] {
-  return view.state.selection.ranges.map((r) => r.head)
+export function getCursorPositions(state: EditorState): number[] {
+  return state.selection.ranges.map((r) => r.head)
 }
 
 /** CodeMirror 文档位置区间：from 含，to 不含 */

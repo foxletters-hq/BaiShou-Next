@@ -96,6 +96,273 @@ export const editorTheme = EditorView.baseTheme({
     pointerEvents: 'none',
     verticalAlign: 'baseline'
   },
+
+  // GFM 表格 live preview
+  '.cm-table-separator-line': {
+    display: 'none !important'
+  },
+  '.cm-table-line': {
+    width: '100%',
+    maxWidth: '100%',
+    boxSizing: 'border-box',
+    borderLeft: '1.5px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.22)))',
+    borderRight: '1.5px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.22)))',
+    paddingLeft: '2px',
+    paddingRight: '2px'
+  },
+  '.cm-table-line-first': {
+    borderTop: '1.5px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.22)))',
+    borderTopLeftRadius: '8px',
+    borderTopRightRadius: '8px',
+    marginTop: '12px'
+  },
+  '.cm-table-line-last': {
+    borderBottom: '1.5px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.22)))',
+    borderBottomLeftRadius: '8px',
+    borderBottomRightRadius: '8px',
+    marginBottom: '12px'
+  },
+  '.cm-table-line:not(.cm-table-line-last)': {
+    borderBottom: '1px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.14)))'
+  },
+  '.cm-table-line-active': {
+    backgroundColor: 'transparent'
+  },
+  '.cm-table-header-line': {
+    fontWeight: '600',
+    backgroundColor: 'var(--cm-table-header-bg, var(--bg-surface-normal, rgba(0, 0, 0, 0.04)))'
+  },
+  '.cm-table-row-line': {
+    backgroundColor: 'var(--bg-editor, transparent)'
+  },
+  '.cm-table-cell': {
+    display: 'inline-block',
+    verticalAlign: 'top',
+    width: 'calc(100% / var(--cm-table-cols, 1))',
+    maxWidth: 'calc(100% / var(--cm-table-cols, 1))',
+    minWidth: '0',
+    padding: '6px 12px',
+    boxSizing: 'border-box',
+    borderRight: '1.5px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.18)))',
+    wordBreak: 'break-word',
+    whiteSpace: 'normal'
+  },
+  '.cm-table-cell-last': {
+    borderRight: 'none'
+  },
+  '.cm-table-header-cell': {
+    fontWeight: '600',
+    color: 'var(--text-primary)'
+  },
+
+  // Obsidian 风格表格块预览与操作控件
+  '.cm-table-block': {
+    margin: '12px 0',
+    width: '100%',
+    maxWidth: '100%',
+    position: 'relative',
+    userSelect: 'auto'
+  },
+  '.cm-table-chrome-top': {
+    display: 'flex',
+    alignItems: 'stretch',
+    gap: '0',
+    marginBottom: '2px'
+  },
+  '.cm-table-chrome-corner': {
+    width: '28px',
+    flexShrink: '0'
+  },
+  '.cm-table-col-handles': {
+    display: 'flex',
+    flex: '1',
+    gap: '0',
+    minWidth: '0'
+  },
+  '.cm-table-chrome-body': {
+    display: 'grid',
+    gridTemplateColumns: '28px minmax(0, 1fr) 28px',
+    gridTemplateRows: 'auto 28px',
+    columnGap: '4px',
+    rowGap: '4px',
+    alignItems: 'stretch',
+    position: 'relative'
+  },
+  '.cm-table-main-column': {
+    display: 'contents'
+  },
+  '.cm-table-row-handles': {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0',
+    width: '28px',
+    flexShrink: '0',
+    gridColumn: '1',
+    gridRow: '1',
+    alignSelf: 'start'
+  },
+  '.cm-table-grid-shell': {
+    gridColumn: '2',
+    gridRow: '1',
+    minWidth: '0',
+    border: '1.5px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.22)))',
+    borderRadius: '8px',
+    overflow: 'hidden',
+    backgroundColor: 'var(--bg-editor, transparent)'
+  },
+  '.cm-table-preview': {
+    width: '100%',
+    borderCollapse: 'collapse',
+    tableLayout: 'fixed',
+    fontSize: '14px',
+    border: 'none',
+    borderRadius: '0'
+  },
+  '.cm-table-preview th, .cm-table-preview td': {
+    borderRight: '1.5px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.18)))',
+    borderBottom: '1px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.14)))',
+    padding: '8px 10px',
+    verticalAlign: 'top',
+    wordBreak: 'break-word',
+    cursor: 'text'
+  },
+  '.cm-table-cell-editable': {
+    outline: 'none',
+    minHeight: '1.4em',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    cursor: 'text',
+    userSelect: 'text'
+  },
+  '.cm-table-cell-editable:focus': {
+    boxShadow: 'inset 0 0 0 2px color-mix(in srgb, var(--color-primary, #5ba8f5) 45%, transparent)',
+    borderRadius: '4px'
+  },
+  '.cm-table-preview th': {
+    backgroundColor: 'var(--cm-table-header-bg, var(--bg-surface-normal, rgba(0, 0, 0, 0.04)))',
+    fontWeight: '600'
+  },
+  '.cm-table-preview tr:last-child td': {
+    borderBottom: 'none'
+  },
+  '.cm-table-preview th:last-child, .cm-table-preview td:last-child': {
+    borderRight: 'none'
+  },
+  '.cm-table-handle': {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    border: '1px solid var(--border-subtle, rgba(0, 0, 0, 0.12))',
+    borderRadius: '6px',
+    background: 'var(--bg-surface-normal, rgba(0, 0, 0, 0.03))',
+    color: 'var(--text-secondary)',
+    fontSize: '11px',
+    lineHeight: '1',
+    padding: '0',
+    cursor: 'grab',
+    touchAction: 'none',
+    userSelect: 'none',
+    WebkitUserSelect: 'none',
+    WebkitTouchCallout: 'none'
+  },
+  '.cm-table-handle--touch': {
+    cursor: 'pointer'
+  },
+  '.cm-table-handle--dragging': {
+    opacity: '0.55',
+    cursor: 'grabbing'
+  },
+  '.cm-table-handle--drop-target': {
+    borderColor: 'var(--color-primary, #5ba8f5)',
+    background: 'color-mix(in srgb, var(--color-primary, #5ba8f5) 12%, transparent)'
+  },
+  '.cm-table-col-handle': {
+    flex: '0 0 auto',
+    minHeight: '24px',
+    margin: '0'
+  },
+  '.cm-table-row-handle': {
+    flex: '0 0 auto',
+    minHeight: '0',
+    margin: '0'
+  },
+  '.cm-table-row-handle--header': {
+    cursor: 'default',
+    opacity: '0.45'
+  },
+  '.cm-table-add-btn': {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxSizing: 'border-box',
+    borderRadius: '8px',
+    border: '1.5px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.22)))',
+    background: 'var(--bg-surface-normal, rgba(0, 0, 0, 0.02))',
+    color: 'var(--text-secondary)',
+    fontSize: '18px',
+    lineHeight: '1',
+    padding: '0',
+    cursor: 'pointer',
+    flexShrink: '0',
+    touchAction: 'manipulation'
+  },
+  '.cm-table-add-col': {
+    gridColumn: '3',
+    gridRow: '1',
+    alignSelf: 'stretch',
+    width: '28px',
+    minHeight: '0'
+  },
+  '.cm-table-add-row': {
+    gridColumn: '2',
+    gridRow: '2',
+    width: '100%',
+    height: '28px',
+    minHeight: '28px'
+  },
+  '.cm-table-context-menu-layer': {
+    position: 'fixed',
+    inset: '0',
+    zIndex: '199',
+    pointerEvents: 'auto'
+  },
+  '.cm-table-context-menu-backdrop': {
+    position: 'absolute',
+    inset: '0',
+    background: 'transparent',
+    pointerEvents: 'auto'
+  },
+  '.cm-table-context-menu': {
+    position: 'fixed',
+    zIndex: '200',
+    minWidth: '120px',
+    padding: '4px',
+    borderRadius: '8px',
+    border: '1px solid var(--border-subtle)',
+    background: 'var(--bg-surface, #fff)',
+    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)'
+  },
+  '.cm-table-context-menu-item': {
+    display: 'block',
+    width: '100%',
+    textAlign: 'left',
+    border: 'none',
+    background: 'transparent',
+    color: 'var(--text-primary)',
+    fontSize: '13px',
+    padding: '8px 10px',
+    borderRadius: '6px',
+    cursor: 'pointer'
+  },
+  '.cm-table-context-menu-item:disabled': {
+    opacity: '0.45',
+    cursor: 'default'
+  },
+  '.cm-table-context-menu-item:not(:disabled):hover': {
+    background: 'var(--bg-surface-normal, rgba(0, 0, 0, 0.05))'
+  },
+
   '.cm-code': {
     fontFamily: "'Fira Code', 'Courier New', monospace",
     backgroundColor: 'var(--bg-surface-normal)',

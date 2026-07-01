@@ -19,6 +19,8 @@ import {
 import { attachmentUrlPlugin } from './extensions/attachmentUrlPlugin'
 import { diaryTagLineKeymap, diaryTagLinePlugin } from './extensions/diaryTagLinePlugin'
 import { listContinuationExtension } from './extensions/listContinuationKeymap'
+import { tableCellExtension } from './extensions/tableCellKeymap'
+import { tableEditorPlugin } from './extensions/tableEditorPlugin'
 import type { DiaryCmPlatform } from './types'
 
 export interface CreateDiaryCodeMirrorOptions {
@@ -48,6 +50,8 @@ export function createDiaryCodeMirrorExtensions(
     highlightActiveLine(),
     history(),
     ...(platform.tagLineMode ? [Prec.high(diaryTagLineKeymap), diaryTagLinePlugin] : []),
+    tableCellExtension,
+    tableEditorPlugin,
     listContinuationExtension,
     markdownKeymap,
     keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),

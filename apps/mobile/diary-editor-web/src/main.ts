@@ -251,6 +251,14 @@ function applyTouchNoInternalScroll(editorView: EditorView): void {
 
 let touchPanLastY: number | null = null
 let touchPanRelayInstalled = false
+let touchPanDisabled = false
+
+function shouldDisableTouchPanRelay(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false
+  return !!target.closest(
+    '.cm-table-handle, .cm-table-add-btn, .cm-table-context-menu, .cm-table-context-menu-layer'
+  )
+}
 
 function installTouchParentScrollRelay(): void {
   if (touchPanRelayInstalled) return
@@ -259,7 +267,8 @@ function installTouchParentScrollRelay(): void {
   document.addEventListener(
     'touchstart',
     (e) => {
-      if (e.touches.length !== 1) {
+      touchPanDisabled = shouldDisableTouchPanRelay(e.target)
+      if (touchPanDisabled || e.touches.length !== 1) {
         touchPanLastY = null
         return
       }
@@ -271,7 +280,7 @@ function installTouchParentScrollRelay(): void {
   document.addEventListener(
     'touchmove',
     (e) => {
-      if (touchPanLastY === null || e.touches.length !== 1) return
+      if (touchPanDisabled || touchPanLastY === null || e.touches.length !== 1) return
       const y = e.touches[0]?.clientY ?? touchPanLastY
       const deltaY = touchPanLastY - y
       touchPanLastY = y
@@ -284,6 +293,7 @@ function installTouchParentScrollRelay(): void {
 
   const endTouchPan = () => {
     touchPanLastY = null
+    touchPanDisabled = false
   }
   document.addEventListener('touchend', endTouchPan, { passive: true, capture: true })
   document.addEventListener('touchcancel', endTouchPan, { passive: true, capture: true })

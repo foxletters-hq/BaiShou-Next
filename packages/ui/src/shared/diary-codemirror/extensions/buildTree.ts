@@ -1,4 +1,5 @@
-import { Decoration, type EditorView } from '@codemirror/view'
+import type { EditorState } from '@codemirror/state'
+import { Decoration } from '@codemirror/view'
 import { syntaxTree } from '@codemirror/language'
 import type { SyntaxNodeRef } from '@lezer/common'
 import {
@@ -14,6 +15,7 @@ import {
 } from './styles'
 import { isCursorInRange, isCursorOnLine } from './cursor'
 import type { ImageRange } from './buildImages'
+import { rangeOverlapsTableBlocks, type TableBlockRange } from './buildTableChrome'
 
 type DecorationMark = { from: number; to: number; value: Decoration }
 
@@ -27,16 +29,21 @@ function pushDecoration(
 }
 
 export function collectTreeDecorations(
-  view: EditorView,
+  state: EditorState,
   cursors: number[],
   imageRanges: ImageRange[],
-  marks: DecorationMark[]
+  marks: DecorationMark[],
+  widgetizedTables: TableBlockRange[] = []
 ): void {
-  const tree = syntaxTree(view.state)
-  const doc = view.state.doc
+  const tree = syntaxTree(state)
+  const doc = state.doc
 
   tree.iterate({
     enter(node: SyntaxNodeRef) {
+      if (rangeOverlapsTableBlocks(node.from, node.to, widgetizedTables)) {
+        return false
+      }
+
       const insideImage = imageRanges.some((r) => node.from >= r.from && node.to <= r.to)
       if (insideImage) {
         return false

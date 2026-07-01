@@ -1,4 +1,5 @@
-import { Decoration, type EditorView } from '@codemirror/view'
+import type { EditorState } from '@codemirror/state'
+import { Decoration } from '@codemirror/view'
 import { syntaxTree } from '@codemirror/language'
 import { ImageWidget } from '../widgets/ImageWidget'
 import { isCursorOnLine } from './cursor'
@@ -9,14 +10,14 @@ const IMAGE_MARKDOWN_REGEX = /!\[([^\]]*)\]\(([^ |)]+)(?:\s*\|\s*(\d+))?\)/g
 export type ImageRange = { from: number; to: number }
 
 export function collectImageDecorations(
-  view: EditorView,
+  state: EditorState,
   cursors: number[],
   platform: DiaryCmPlatform | undefined,
   marks: { from: number; to: number; value: Decoration }[]
 ): ImageRange[] {
   const resolveUrl = platform?.resolveAttachmentUrl
-  const tree = syntaxTree(view.state)
-  const doc = view.state.doc
+  const tree = syntaxTree(state)
+  const doc = state.doc
   const docText = doc.toString()
   const imageRanges: ImageRange[] = []
   let match

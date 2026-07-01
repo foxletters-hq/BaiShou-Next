@@ -41,6 +41,8 @@ export const codeBlockMark = Decoration.mark({ class: 'cm-rendered-codeBlock' })
 export const codeMarkStyle = Decoration.mark({ class: 'cm-rendered-codeMark' })
 export const linkMark = Decoration.mark({ class: 'cm-rendered-link' })
 
+export const tableSeparatorLineStyle = Decoration.line({ class: 'cm-table-separator-line' })
+
 export const codeLineStyle = Decoration.line({ class: 'cm-code-line' })
 export const codeLineStyleTop = Decoration.line({
   class: 'cm-code-line cm-code-line-top'
