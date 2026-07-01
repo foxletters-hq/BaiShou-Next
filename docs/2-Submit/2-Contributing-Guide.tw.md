@@ -1,0 +1,161 @@
+# 貢獻政策
+
+[简体中文](./2-Contributing-Guide.md) | [繁體中文](./2-Contributing-Guide.tw.md) | [English](./2-Contributing-Guide.en.md) | [日本語](./2-Contributing-Guide.ja.md)
+
+**讀者**：所有希望參與 BaiShou-Next 的人類貢獻者與 AI 助手。
+
+本文說明 **什麼類型的貢獻我們歡迎**、**什麼需要先討論**，以及功能提議 Issue 應包含哪些資訊。  
+提交流程與 CI 見 [1-Submit-Rule.md](./1-Submit-Rule.md)（簡體中文）；編碼規範見 [1-AI-Code-Rule.md](../1-AI-Code/1-AI-Code-Rule.md)（簡體中文）。
+
+---
+
+## 1. 我們的立場（請先讀）
+
+白守是一款注重隱私的 AI 記憶陪伴產品。**產品方向、互動與資料模型**都需要長期、審慎地規劃，而不是由外部 PR 隨意疊加功能堆出來的。
+
+因此：
+
+| 類型 | 我們的態度 |
+| ---- | ---------- |
+| **Bug 修復**（可重現、有測試、過 CI） | **歡迎** |
+| **文件糾錯、錯別字、表述不清** | **歡迎** |
+| **可重現的 Bug Issue**（含環境、步驟、期望/實際） | **歡迎** |
+| **未经討論的新功能 PR** | **請先開 Issue 討論；未事先溝通時合併可能性較低** |
+| **引入新 UI 庫 / 新依賴 / Schema 變更** | **必須先開 Issue 並獲維護者明確同意** |
+
+> **一句話**：請先確認「這件事該不該做」，再考慮「怎麼做」。  
+> 能用 Issue 把動機和方案說清楚，比直接丟一個大 PR 更有可能被接受。
+
+---
+
+## 2. 我們最歡迎的貢獻：修 Bug
+
+### 2.1 提 Bug Issue
+
+請使用 [Bug 回饋](https://github.com/Anson-Trio/BaiShou-Next/issues/new?template=01-bug.yml) 模板，盡量包含：
+
+- 白守版本 / 分支、桌面端或行動端、作業系統
+- **重現步驟**（從乾淨狀態開始）
+- **期望行為** vs **實際行為**
+- 相關日誌、截圖（注意打碼隱私與 API Key）
+
+### 2.2 提 Bug 修復 PR
+
+1. 最好在對應 Issue 下討論，或 PR 描述中連結 Issue。
+2. 遵循 [1-AI-Code-Rule.md](../1-AI-Code/1-AI-Code-Rule.md)：**除單行熱修外，須有測試**。
+3. PR 前執行 `pnpm ci:check`（見 [1-Submit-Rule.md](./1-Submit-Rule.md)）。
+4. 說明根因、修復思路、你如何驗證。
+
+小範圍、動機清晰、測試完備的 Bug PR 是我們最願意 Review 和合併的。
+
+---
+
+## 3. 新功能：先 Issue，後程式碼（且請三思）
+
+### 3.1 為什麼新功能要先討論
+
+- 白守的核心是「記憶陪伴」與本地隱私，功能會牽動 **資料模型、AI 工具鏈、多端一致性、備份相容** 等，不是 UI 上多一個按鈕那麼簡單。
+- 本 monorepo 同時維護 **Electron 桌面端** 與 **Expo 行動端**，許多改動需要雙端對齊或明確說明「僅一端」的理由。
+
+**在未與維護者達成一致前提交的 Feature PR，維護者有權直接關閉，且不保證 Review。**
+
+### 3.2 若你仍希望提議新功能
+
+請 **只開 Issue**（使用 [功能提議](https://github.com/Anson-Trio/BaiShou-Next/issues/new?template=02-enhancement.yml) 模板），**不要先寫幾百行 PR**。
+
+你可以用 AI 輔助起草 Issue，但 **發布前你必須親自讀過**，確保技術描述準確、範圍合理。維護者需要的是你的判斷，不是未經核對的 AI 流水帳。
+
+#### Issue 必填清單
+
+```markdown
+## 功能提議
+
+### 1. 要解決什麼問題？
+（使用者場景、痛點；與白守「記憶陪伴 / 本地隱私」定位的關係）
+
+### 2. 提議的方案（使用者可見行為）
+（互動草圖、入口位置、與現有功能是否重複）
+
+### 3. 技術方案概要
+- **擬改動的套件/目錄**（見下方 monorepo 地圖）
+- **是否涉及資料庫 Schema**（是 / 否；若是有遷移計劃）
+- **桌面端 / 行動端 / 雙端** 範圍
+- **新增依賴**（套件名、體積、為何不能用現有技術棧）
+
+### 4. UI 與元件
+- 是否新增 UI？複用 `packages/ui` 現有元件還是新寫？
+- **若引入第三方元件庫**：庫名、版本、授權條款、與 [UI 主題規範](../1-AI-Code/2-UI-Theme-Rule.md) 的適配方式（本倉庫 **禁止** 硬編碼顏色，須走主題變數）
+- 深淺模式、多語言（簡中/繁中/英/日）是否考慮
+
+### 5. 實施步驟（你打算怎麼做）
+1. …
+2. …
+3. …
+
+### 6. 測試與驗證計劃
+- 擬增加的單元/整合測試
+- 手動驗證路徑
+
+### 7. 風險與替代方案
+- 對現有使用者資料、備份、同步的影響
+- 若不做此功能，有無更輕量的替代
+
+### 8. 你是否願意在 Issue 被接受後實現？
+（是 / 否 / 僅能提供思路）
+```
+
+維護者會在 Issue 中回覆：**接受 / 需要修改 / 婉拒 / 暫緩**。  
+**只有明確「可以接受」或「歡迎 PR」後**，再 Fork 開發並提 PR。
+
+### 3.3 monorepo 地圖（寫「涉及哪些東西」時參考）
+
+| 路徑 | 職責 |
+| ---- | ---- |
+| `apps/desktop` | Electron 桌面客戶端（React + electron-vite） |
+| `apps/mobile` | Expo / React Native 行動端 |
+| `packages/core` | 跨端核心業務邏輯 |
+| `packages/core-desktop` / `core-mobile` | 平台特化核心 |
+| `packages/ai` | AI Provider、Agent、工具呼叫 |
+| `packages/database` / `database-desktop` | libSQL/SQLite + Drizzle |
+| `packages/ui` | 共享 UI 元件、主題、日記編輯器等 |
+| `packages/shared` / `store` | 通用工具、狀態 |
+
+功能改動往往同時觸及 **UI + core + database + 雙端 app**；Issue 裡應誠實列出範圍，而不是只改一個檔案。
+
+### 3.4 通常需要維護者事前批准的事項
+
+（與 [1-AI-Code-Rule.md §6](../1-AI-Code/1-AI-Code-Rule.md) 一致）
+
+- 新 npm 依賴（尤其 Native addon、>500KB、新構建鏈）
+- 資料庫 Schema 或遷移
+- 公共 API / IPC 的 Breaking Change
+- 新第三方 UI 元件庫
+- CI / 發布流水線變更
+
+---
+
+## 4. 其他貢獻
+
+- **文件**：修正錯誤、補充開發說明 — 歡迎 PR。
+- **想法與討論**：可在 Issue 中討論（如 [創意想法](https://github.com/Anson-Trio/BaiShou-Next/issues/new?template=03-interesting.yml) 模板），但不等於會納入路線圖。
+- **Fork 自用**：AGPLv3 允許；若修改後對外提供服務，請遵守協議開源修改版。
+
+---
+
+## 5. PR 會被關閉的常見原因
+
+- 未關聯事先同意的 Feature Issue
+- 未跑或未通過 `pnpm ci:check`
+- 缺少測試（非 trivial fix）
+- 引入未經批准的依賴或 UI 庫
+- 破壞主題規範（硬編碼顏色等）
+- 範圍過大、一次 PR 混合多個無關主題
+
+---
+
+## 6. 相關文件
+
+- [提交規範](./1-Submit-Rule.md)（簡體中文）
+- [AI 編碼規範](../1-AI-Code/1-AI-Code-Rule.md)（簡體中文）
+- [UI 主題規範](../1-AI-Code/2-UI-Theme-Rule.md)（簡體中文）
+- [文件索引](../0-README.md)（簡體中文）
