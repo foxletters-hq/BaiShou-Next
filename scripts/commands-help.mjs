@@ -67,6 +67,15 @@ const sections = [
     ]
   },
   {
+    id: 'sync',
+    title: '同步生成物',
+    commands: [
+      ['pnpm sync', '★ 同步图标、版本号、供应商图标、视觉模型快照（manifest 未变时快速跳过）'],
+      ['pnpm sync:check', 'CI 校验生成物是否最新'],
+      ['pnpm sync --only=providers', '仅同步单项（icons / version / providers / vision）']
+    ]
+  },
+  {
     id: 'db',
     title: '数据库',
     commands: [

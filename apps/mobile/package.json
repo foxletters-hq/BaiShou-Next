@@ -4,7 +4,7 @@
   "version": "1.1.31",
   "scripts": {
     "commands": "node ../../scripts/commands-help.mjs mobile",
-    "predev": "node ../../scripts/sync-app-icon.mjs && node ../../scripts/sync-app-version.mjs && pnpm run build:diary-editor",
+    "predev": "node ../../scripts/sync-all.mjs && pnpm run build:diary-editor",
     "dev": "node ./scripts/start-dev.mjs",
     "dev:clear": "node ./scripts/run-android.mjs",
     "install:apk": "node ./scripts/install-apk.mjs",

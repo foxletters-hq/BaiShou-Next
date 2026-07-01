@@ -52,11 +52,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Sync app icons
-        run: pnpm sync:icons
-
-      - name: Sync app version
-        run: pnpm sync:app-version
+      - name: Sync generated assets
+        run: pnpm sync
 
       - name: Prepare Android signing
         run: |
@@ -101,8 +98,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Sync app version
-        run: pnpm sync:app-version
+      - name: Sync generated assets
+        run: pnpm sync
 
       - name: Build Windows installer
         run: pnpm --filter @baishou/desktop build:win

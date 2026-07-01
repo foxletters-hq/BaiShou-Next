@@ -16,11 +16,13 @@ import {
   prepareAndroidInstall,
   printAndroidInstallFailureHelp,
   printDevConnectionHelp,
-  setupAdbReverse
+  setupAdbReverse,
+  startReverseKeeper
 } from './mobile-dev-env.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const mobileRoot = path.resolve(__dirname, '..')
+const repoRoot = path.resolve(mobileRoot, '../..')
 const host = getLanIp()
 
 console.log(`
@@ -29,6 +31,15 @@ console.log(`
    → 开发包包名 com.baishou.baishou.dev（桌面显示「白守 Dev」），与正式版并存
    → 完成后在仓库根目录执行 pnpm dev:mobile 启动 Metro
 `)
+
+console.log('🔄 同步生成物…\n')
+const syncResult = spawnSync(process.execPath, [path.join(repoRoot, 'scripts/sync-all.mjs')], {
+  cwd: repoRoot,
+  stdio: 'inherit'
+})
+if (syncResult.status !== 0) {
+  process.exit(syncResult.status ?? 1)
+}
 
 console.log('🧹 清理缓存…\n')
 const buildEditor = spawnSync('pnpm', ['run', 'build:diary-editor'], {
@@ -58,6 +69,8 @@ printDevConnectionHelp(host, METRO_PORT)
 
 const args = ['expo', 'run:android', '--port', String(METRO_PORT), '--no-build-cache']
 
+const stopReverseKeeper = startReverseKeeper(METRO_PORT)
+
 const child = spawn('npx', args, {
   cwd: mobileRoot,
   env: devClientEnv(),
@@ -66,6 +79,7 @@ const child = spawn('npx', args, {
 })
 
 child.on('exit', (code) => {
+  stopReverseKeeper()
   if (code !== 0) {
     const apk = path.join(mobileRoot, 'android/app/build/outputs/apk/debug/app-debug.apk')
     if (fs.existsSync(apk) && hasAdbDevice()) {

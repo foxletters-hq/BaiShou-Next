@@ -115,7 +115,7 @@ try {
 if (checkOnly) {
   if (stale) {
     console.error(
-      '[sync-app-version] 版本清单与 package.json / app.json 不一致，请执行: pnpm sync:app-version'
+      '[sync-app-version] 版本清单与 package.json / app.json 不一致，请执行: pnpm sync'
     )
     process.exit(1)
   }
