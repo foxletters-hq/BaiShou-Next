@@ -1,43 +1,106 @@
-name: 需求建议
-description: 明确的功能需求或改进建议 — 优先级较高，会优先考虑实现
-title: '需求建议:'
+name: 功能提议
+description: 提议新功能前必读 — 请先开 Issue 讨论，勿直接提交 PR
+title: '功能提议: '
 labels:
-  - enhancement
+  - feature-proposal
 body:
   - type: markdown
     attributes:
       value: |
-        ## 优先级：较高
+        ## 请先阅读贡献政策
 
-        **需求建议优先于创意想法**。若描述清晰、与产品方向契合，我们会较高优先级排期实现。
+        白守的每一个发展方向都需要严格思考。
 
-        适合：希望新增/改进某功能、明确的使用场景、可落地的改进方案。
+        - 请 **只开 Issue**，等待维护者回复后再写代码
+        - 可用 AI 辅助起草，但 **发布前你必须亲自读过**，确保技术描述准确
 
-        若是较开放、探索性的想法，请改用 **「创意想法」** 模板。
+        完整说明：[贡献政策](https://github.com/Anson-Trio/BaiShou-Next/blob/main/docs/2-Submit/2-Contributing-Guide.md)
+
+        若是开放性脑洞、尚不成熟的想法，请改用 **「创意想法」** 模板。
 
   - type: textarea
-    id: description
+    id: problem
     attributes:
-      label: 需求描述
-      description: 你希望实现什么？解决什么问题？
-      placeholder: 例如：希望快捷指令内容追加到编辑框，而不是覆盖已有内容
+      label: 1. 要解决什么问题？
+      description: 用户场景、痛点；与白守「记忆陪伴 / 本地隐私」定位的关系
+      placeholder: 描述你想解决的用户问题，以及为什么对白守有意义
     validations:
       required: true
 
   - type: textarea
-    id: scenario
+    id: solution
     attributes:
-      label: 使用场景
-      description: 在什么情况下会用到？当前有什么不便？
-      placeholder: 描述你的典型使用流程与痛点
+      label: 2. 提议的方案（用户可见行为）
+      description: 交互草图、入口位置、与现有功能是否重复
+      placeholder: 用户会看到什么、怎么操作、与现有功能有何不同
+    validations:
+      required: true
+
+  - type: textarea
+    id: technical
+    attributes:
+      label: 3. 技术方案概要
+      description: |
+        拟改动的包/目录（apps/desktop、apps/mobile、packages/core、packages/ui 等）；
+        是否涉及数据库 Schema；桌面端/移动端/双端；新增依赖及理由
+      placeholder: |
+        - 拟改动：packages/ui, apps/desktop, ...
+        - Schema：否 / 是（迁移计划：...）
+        - 范围：双端 / 仅桌面 / 仅移动
+        - 新依赖：无 / xxx（理由：...）
+    validations:
+      required: true
+
+  - type: textarea
+    id: ui
+    attributes:
+      label: 4. UI 与组件
+      description: |
+        是否复用 packages/ui；若引入第三方组件库，请写明库名、版本、许可证、
+        以及如何适配主题规范（禁止硬编码颜色）
+      placeholder: |
+        - 复用现有组件 / 新写 / 引入 xxx 组件库
+        - 深浅模式、多语言（简中/繁中/英/日）考虑：...
     validations:
       required: false
 
-  - type: input
-    id: version
+  - type: textarea
+    id: steps
     attributes:
-      label: 版本与设备
-      description: 可选，便于评估平台差异
-      placeholder: Next 1.0.x，设备或系统版本
+      label: 5. 实施步骤（你打算怎么做）
+      description: 分步骤列出你的实现计划
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: testing
+    attributes:
+      label: 6. 测试与验证计划
+      description: 拟增加的测试与手动验证路径
+      placeholder: 单元测试、集成测试、手动验证步骤
     validations:
       required: false
+
+  - type: textarea
+    id: risks
+    attributes:
+      label: 7. 风险与替代方案
+      description: 对现有用户数据、备份、同步的影响；更轻量的替代方案
+      placeholder: 数据迁移风险、是否有更简单的做法
+    validations:
+      required: false
+
+  - type: dropdown
+    id: willing
+    attributes:
+      label: 8. Issue 被接受后，你是否愿意实现？
+      options:
+        - 是，我愿意在维护者同意后提交 PR
+        - 否，仅提供思路
+        - 不确定，视讨论结果而定
+    validations:
+      required: true
