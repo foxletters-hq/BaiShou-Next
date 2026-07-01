@@ -16,6 +16,8 @@ export * from './rag/memory-deduplication.service'
 
 // Providers
 export * from './providers/openai.provider'
+export * from './providers/opencodego/opencodego.model-protocol'
+export * from './providers/opencodego/opencodego.provider'
 
 // Tools
 export * from './tools/agent.tool'

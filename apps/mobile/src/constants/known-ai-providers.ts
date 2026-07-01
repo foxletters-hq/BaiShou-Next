@@ -91,6 +91,12 @@ export const BASE_KNOWN_PROVIDERS_CONFIG = [
     isSystem: true
   },
   {
+    id: 'opencodego',
+    name: 'OpenCode Go',
+    defaultBase: 'https://opencode.ai/zen/go/v1',
+    isSystem: true
+  },
+  {
     id: 'mistral',
     name: 'Mistral',
     defaultBase: 'https://api.mistral.ai/v1',
@@ -132,7 +138,8 @@ export const PROVIDER_NAME_I18N_MAP: Record<string, string> = {
   minimax: 'aiProviders.minimax',
   vertexai: 'aiProviders.vertexai',
   vercel: 'aiProviders.vercel',
-  xiaomimimo: 'aiProviders.xiaomimimo'
+  xiaomimimo: 'aiProviders.xiaomimimo',
+  opencodego: 'aiProviders.opencodego'
 }
 
 export const PROVIDER_TYPES = [
@@ -144,6 +151,7 @@ export const PROVIDER_TYPES = [
   'ollama',
   'siliconflow',
   'openrouter',
+  'opencodego',
   'dashscope',
   'doubao',
   'grok',

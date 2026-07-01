@@ -23,6 +23,7 @@ const knownSystemIds = [
   'ollama',
   'siliconflow',
   'openrouter',
+  'opencodego',
   'dashscope',
   'doubao',
   'grok',

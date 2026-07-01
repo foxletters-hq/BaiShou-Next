@@ -125,6 +125,20 @@ export const DEFAULT_AI_PROVIDERS: AIProviderConfig[] = [
     apiKey: ''
   },
   {
+    id: 'opencodego',
+    name: 'OpenCode Go',
+    type: 'opencodego' as any,
+    baseUrl: 'https://opencode.ai/zen/go/v1',
+    models: [],
+    enabledModels: [],
+    isEnabled: false,
+    defaultDialogueModel: '',
+    defaultNamingModel: '',
+    isSystem: true,
+    sortOrder: 8,
+    apiKey: ''
+  },
+  {
     id: 'dashscope',
     name: '通义千问 (百炼)',
     type: 'dashscope' as any,
@@ -135,7 +149,7 @@ export const DEFAULT_AI_PROVIDERS: AIProviderConfig[] = [
     defaultDialogueModel: '',
     defaultNamingModel: '',
     isSystem: true,
-    sortOrder: 8,
+    sortOrder: 9,
     apiKey: ''
   },
   {

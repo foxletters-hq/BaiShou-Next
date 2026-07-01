@@ -22,6 +22,7 @@ export const PROVIDER_DEFAULT_BASE_URLS: Record<string, string> = {
   hunyuan: 'https://api.hunyuan.cloud.tencent.com/v1',
   vertexai: 'https://aiplatform.googleapis.com/v1',
   vercel: 'https://ai-gateway.vercel.sh/v1/ai',
+  opencodego: 'https://opencode.ai/zen/go/v1',
   custom: 'https://api.openai.com/v1'
 }
 

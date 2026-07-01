@@ -17,6 +17,7 @@ import {
   mergeDisabledToolIds,
   normalizeAssistantKind
 } from '@baishou/shared'
+import { resolveEffectiveProviderType } from '../providers/opencodego/opencodego.model-protocol'
 
 // --- 新挂载的智慧引擎组件 ---
 import { ContextWindowBuilder } from './context-window.builder'
@@ -77,8 +78,12 @@ export class AgentSessionService {
     try {
       // 1. 获取基础模型，然后用 Vercel 原生 middleware 包装
       const baseModel = provider.getLanguageModel(modelId)
+      const effectiveProviderType = resolveEffectiveProviderType(
+        provider.config?.type || 'openai',
+        modelId
+      )
       const model = wrapLanguageModelWithMiddlewares(baseModel, {
-        providerType: provider.config?.type || 'openai',
+        providerType: effectiveProviderType,
         providerId: provider.config?.id,
         modelId,
         sessionId,
@@ -110,7 +115,7 @@ export class AgentSessionService {
             snapshotRepo,
             sessionId,
             compressionConfig,
-            provider.config?.type ?? '',
+            resolveEffectiveProviderType(provider.config?.type ?? '', modelId),
             {
               ...(userMessageId ? { triggerUserMessageId: userMessageId } : {}),
               abortSignal
@@ -141,14 +146,14 @@ export class AgentSessionService {
       const coreMessages = await MessageAdapter.toVercelMessages(
         dbHistory,
         modelId,
-        provider.config?.type
+        effectiveProviderType
       )
 
       if (userMessageId && !dbHistory.some((message) => message.id === userMessageId)) {
         throw new Error('无法发送：用户消息未加载到上下文，请重试')
       }
 
-      const providerType = (provider.config?.type || 'openai') as ProviderType
+      const providerType = effectiveProviderType as ProviderType
       const messageMiddlewareChain = buildMiddlewareChain(providerType)
       const messagesForModel = messageMiddlewareChain.isEmpty
         ? coreMessages
@@ -209,7 +214,7 @@ export class AgentSessionService {
             snapshotRepo,
             sessionId,
             merged,
-            provider.config?.type ?? '',
+            resolveEffectiveProviderType(provider.config?.type ?? '', modelId),
             userMessageId ? { triggerUserMessageId: userMessageId } : undefined
           )
           if (ok) {
@@ -294,7 +299,7 @@ export class AgentSessionService {
       if (
         attachments?.length &&
         messageHasImageAttachments(attachments) &&
-        !isVisionModel(modelId)
+        !isVisionModel(modelId, provider.config?.id ?? provider.config?.type)
       ) {
         throw new Error('VISION_NOT_SUPPORTED')
       }
@@ -320,7 +325,7 @@ export class AgentSessionService {
       }
 
       const cachingCtx = {
-        providerType: provider.config?.type || 'openai',
+        providerType: effectiveProviderType,
         providerId: provider.config?.id,
         modelId,
         sessionId,
