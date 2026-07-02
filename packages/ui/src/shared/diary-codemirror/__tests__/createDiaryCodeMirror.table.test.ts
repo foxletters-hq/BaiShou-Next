@@ -48,4 +48,25 @@ describe('createDiaryCodeMirror with table', () => {
     expect(parent.textContent).toContain('A')
     view.destroy()
   })
+
+  it('moves cursor outside table when selection enters table source', async () => {
+    parent = document.createElement('div')
+    parent.style.width = '400px'
+    document.body.appendChild(parent)
+    const content = '| A | B |\n| --- | --- |\n| 1 | 2 |\n\n'
+
+    const view = createDiaryCodeMirror(parent, {
+      content,
+      platform: { resolveAttachmentUrl: (u) => u, interactionMode: 'mouse' }
+    })
+
+    view.dispatch({ selection: { anchor: 2, head: 2 } })
+    await new Promise((resolve) => queueMicrotask(resolve))
+
+    const gapFrom = view.state.doc.line(4).from
+    expect(view.state.selection.main.head).toBeGreaterThanOrEqual(gapFrom - 1)
+    expect(view.state.doc.toString()).toBe(content)
+
+    view.destroy()
+  })
 })

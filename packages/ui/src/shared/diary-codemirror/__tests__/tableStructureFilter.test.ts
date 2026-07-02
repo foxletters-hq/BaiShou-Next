@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
+import { allowTableStructureEdit } from '../table/tableEffects'
 import { isTableStructureChangeAllowed } from '../extensions/tableStructureFilter'
 import { tableCellExtension } from '../extensions/tableCellKeymap'
 
@@ -70,22 +71,47 @@ describe('tableStructureProtectFilter', () => {
     expect(after).toBe(before)
   })
 
-  it('allows deleting an entire table row', () => {
-    const doc = '| a | b |\n| c | d |\n\n'
+  it('blocks deleting an entire table row from the main editor', () => {
+    const doc = '| a | b |\n| --- | --- |\n| c | d |\n\n'
+    const line = doc.indexOf('| c')
+    const lineEnd = doc.indexOf('\n', line)
+    const editorView = createView(doc, line)
+    const before = editorView.state.doc.toString()
+    editorView.dispatch({
+      changes: { from: line, to: lineEnd + 1, insert: '' }
+    })
+    expect(editorView.state.doc.toString()).toBe(before)
+  })
+
+  it('allows deleting a table row via table structure annotation', () => {
+    const doc = '| a | b |\n| --- | --- |\n| c | d |\n\n'
     const line = doc.indexOf('| c')
     const lineEnd = doc.indexOf('\n', line)
     const editorView = createView(doc, line)
     editorView.dispatch({
-      changes: { from: line, to: lineEnd + 1, insert: '' }
+      changes: { from: line, to: lineEnd + 1, insert: '' },
+      annotations: allowTableStructureEdit.of(true)
     })
-    expect(editorView.state.doc.toString()).toBe('| a | b |\n\n')
+    expect(editorView.state.doc.toString()).toBe('| a | b |\n| --- | --- |\n\n')
   })
 
-  it('allows inserting <br> inside a cell', () => {
-    const doc = '| a | b |\n'
+  it('blocks inserting cell content in table markdown from the main editor', () => {
+    const doc = '| a | b |\n| --- | --- |\n'
     const pos = doc.indexOf('a') + 1
     const editorView = createView(doc, pos)
+    const before = editorView.state.doc.toString()
     editorView.dispatch({ changes: { from: pos, to: pos, insert: '<br>' } })
+    expect(editorView.state.doc.toString()).toBe(before)
+  })
+
+  it('allows inserting cell content via table structure annotation', () => {
+    const doc = '| a | b |\n| --- | --- |\n'
+    const pos = doc.indexOf('a') + 1
+    const editorView = createView(doc, pos)
+    editorView.dispatch({
+      changes: { from: pos, to: pos, insert: '<br>' },
+      annotations: allowTableStructureEdit.of(true)
+    })
     expect(editorView.state.doc.toString()).toContain('a<br>')
   })
 

@@ -1,65 +1,44 @@
-import { describe, it, expect, afterEach, vi, beforeEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { createDiaryCodeMirror } from '../createDiaryCodeMirror'
+import { setActiveTableCell } from '../table/tableActiveCell'
+import { forceTableRefresh } from '../table/tableEffects'
+import {
+  longPressChromeHandle,
+  touchPoint,
+  TABLE_CHROME_LONG_PRESS_MS
+} from './tableTouchHelpers'
 
-describe('TableBlockWidget touch handles', () => {
+describe('TableBlockWidget touch', () => {
   let parent: HTMLElement | null = null
 
-  beforeEach(() => {
-    vi.useFakeTimers()
-  })
-
   afterEach(() => {
-    vi.useRealTimers()
     parent?.remove()
     parent = null
-    document.querySelectorAll('.cm-table-context-menu-layer').forEach((el) => el.remove())
-  })
-
-  it('opens column menu after long press on touch handle', () => {
-    parent = document.createElement('div')
-    parent.style.width = '400px'
-    document.body.appendChild(parent)
-
-    const view = createDiaryCodeMirror(parent, {
-      content: '| A | B |\n| --- | --- |\n| 1 | 2 |',
-      platform: { resolveAttachmentUrl: (u) => u, interactionMode: 'touch' }
-    })
-
-    const handle = parent.querySelector('.cm-table-col-handle') as HTMLButtonElement | null
-    expect(handle).toBeTruthy()
-
-    handle!.dispatchEvent(new TouchEvent('touchstart', { touches: [touch(10, 10)] }))
-    vi.advanceTimersByTime(420)
-    handle!.dispatchEvent(new TouchEvent('touchend', { changedTouches: [touch(10, 10)] }))
-    expect(document.querySelector('.cm-table-context-menu')).toBeTruthy()
-    expect(document.querySelector('.cm-table-context-menu')?.textContent).toContain('删除列')
-
-    view.destroy()
-  })
-
-  it('does not open menu when finger moves beyond threshold', () => {
-    parent = document.createElement('div')
-    parent.style.width = '400px'
-    document.body.appendChild(parent)
-
-    const view = createDiaryCodeMirror(parent, {
-      content: '| A | B |\n| --- | --- |\n| 1 | 2 |',
-      platform: { resolveAttachmentUrl: (u) => u, interactionMode: 'touch' }
-    })
-
-    const handle = parent.querySelector('.cm-table-col-handle') as HTMLButtonElement | null
-    handle!.dispatchEvent(new TouchEvent('touchstart', { touches: [touch(10, 10)] }))
-    handle!.dispatchEvent(
-      new TouchEvent('touchmove', { touches: [touch(40, 10)] })
+    document.querySelectorAll('.cm-table-sheet-layer, .cm-table-context-menu-layer').forEach((el) =>
+      el.remove()
     )
-    vi.advanceTimersByTime(420)
-    handle!.dispatchEvent(new TouchEvent('touchend', { changedTouches: [touch(40, 10)] }))
-    expect(document.querySelector('.cm-table-context-menu')).toBeFalsy()
-
-    view.destroy()
+    vi.useRealTimers()
   })
 
-  it('keeps menu open when tapping menu padding without passing through', () => {
+  function activateFirstCell(view: ReturnType<typeof createDiaryCodeMirror>): void {
+    view.dispatch({
+      effects: [
+        setActiveTableCell.of({ tableFrom: 0, rowIndex: 0, colIndex: 0 }),
+        forceTableRefresh.of(null)
+      ]
+    })
+  }
+
+  function openColMenu(view: ReturnType<typeof createDiaryCodeMirror>): HTMLElement {
+    activateFirstCell(view)
+    const handle = parent!.querySelector('.cm-table-col-handle') as HTMLElement
+    longPressChromeHandle(handle)
+    vi.advanceTimersByTime(TABLE_CHROME_LONG_PRESS_MS + 20)
+    return handle
+  }
+
+  it('opens column menu from column handle after long press', () => {
+    vi.useFakeTimers()
     parent = document.createElement('div')
     parent.style.width = '400px'
     document.body.appendChild(parent)
@@ -69,26 +48,42 @@ describe('TableBlockWidget touch handles', () => {
       platform: { resolveAttachmentUrl: (u) => u, interactionMode: 'touch' }
     })
 
-    const handle = parent.querySelector('.cm-table-col-handle') as HTMLButtonElement | null
-    handle!.dispatchEvent(new TouchEvent('touchstart', { touches: [touch(10, 10)] }))
-    vi.advanceTimersByTime(420)
-    handle!.dispatchEvent(new TouchEvent('touchend', { changedTouches: [touch(10, 10)] }))
+    openColMenu(view)
 
-    const menu = document.querySelector('.cm-table-context-menu') as HTMLElement | null
+    expect(document.querySelector('.cm-table-sheet-layer')).toBeTruthy()
+    expect(document.querySelector('.cm-table-sheet')?.textContent).toContain('删除列')
+
+    view.destroy()
+  })
+
+  it('closes menu when tapping dismiss zone above sheet', () => {
+    vi.useFakeTimers()
+    parent = document.createElement('div')
+    parent.style.width = '400px'
+    document.body.appendChild(parent)
+
+    const view = createDiaryCodeMirror(parent, {
+      content: '| A | B |\n| --- | --- |\n| 1 | 2 |',
+      platform: { resolveAttachmentUrl: (u) => u, interactionMode: 'touch' }
+    })
+
+    openColMenu(view)
+
+    const menu = document.querySelector('.cm-table-sheet') as HTMLElement | null
     expect(menu).toBeTruthy()
     menu!.dispatchEvent(
-      new TouchEvent('touchstart', { bubbles: true, touches: [touch(12, 12)] })
+      new TouchEvent('touchstart', { bubbles: true, touches: [touchPoint(menu!, 12, 12)] })
     )
-    expect(document.querySelector('.cm-table-context-menu-layer')).toBeTruthy()
+    expect(document.querySelector('.cm-table-sheet-layer')).toBeTruthy()
 
-    const backdrop = document.querySelector(
-      '.cm-table-context-menu-backdrop'
-    ) as HTMLElement | null
+    const dismiss = document.querySelector('.cm-table-sheet-dismiss') as HTMLElement | null
     vi.advanceTimersByTime(400)
-    backdrop!.dispatchEvent(
-      new TouchEvent('touchend', { bubbles: true, changedTouches: [touch(1, 1)] })
+    dismiss!.dispatchEvent(
+      new TouchEvent('touchstart', { bubbles: true, cancelable: true, touches: [touchPoint(dismiss!, 1, 1)] })
     )
-    expect(document.querySelector('.cm-table-context-menu-layer')).toBeFalsy()
+    vi.advanceTimersByTime(SHEET_ANIM_MS)
+
+    expect(document.querySelector('.cm-table-sheet-layer')).toBeFalsy()
 
     view.destroy()
   })
@@ -106,21 +101,59 @@ describe('TableBlockWidget touch handles', () => {
 
     view.destroy()
   })
+
+  it('places cursor on paragraph line after table when tapping below block', async () => {
+    parent = document.createElement('div')
+    parent.style.width = '400px'
+    document.body.appendChild(parent)
+
+    const content = '| A | B |\n| --- | --- |\n| 1 | 2 |\n\n'
+    const view = createDiaryCodeMirror(parent, {
+      content,
+      platform: { resolveAttachmentUrl: (u) => u, interactionMode: 'touch' }
+    })
+
+    const gapFrom = view.state.doc.line(4).from
+    view.dispatch({ selection: { anchor: gapFrom } })
+    await new Promise((r) => queueMicrotask(r))
+
+    expect(view.state.selection.main.head).toBeGreaterThan(gapFrom)
+    expect(parent.querySelector('.cm-table-gap-line')).toBeTruthy()
+
+    view.destroy()
+  })
+
+  it('deletes table from corner menu after confirmation', async () => {
+    vi.useFakeTimers()
+    parent = document.createElement('div')
+    parent.style.width = '400px'
+    document.body.appendChild(parent)
+
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const view = createDiaryCodeMirror(parent, {
+      content: '| A | B |\n| --- | --- |\n| 1 | 2 |',
+      platform: { resolveAttachmentUrl: (u) => u, interactionMode: 'touch' }
+    })
+
+    activateFirstCell(view)
+    const corner = parent.querySelector('.cm-table-corner-menu') as HTMLElement
+    longPressChromeHandle(corner)
+    vi.advanceTimersByTime(TABLE_CHROME_LONG_PRESS_MS + 20)
+
+    const deleteBtn = [...document.querySelectorAll('.cm-table-sheet-item')].find((el) =>
+      el.textContent?.includes('删除表格')
+    ) as HTMLButtonElement | undefined
+    expect(deleteBtn).toBeTruthy()
+    deleteBtn!.click()
+
+    await vi.waitFor(() => {
+      expect(confirm).toHaveBeenCalled()
+      expect(view.state.doc.toString()).toBe('')
+    })
+
+    confirm.mockRestore()
+    view.destroy()
+  })
 })
 
-function touch(clientX: number, clientY: number): Touch {
-  return {
-    clientX,
-    clientY,
-    identifier: 0,
-    pageX: clientX,
-    pageY: clientY,
-    screenX: clientX,
-    screenY: clientY,
-    radiusX: 0,
-    radiusY: 0,
-    rotationAngle: 0,
-    force: 1,
-    target: document.body
-  } as Touch
-}
+const SHEET_ANIM_MS = 400
