@@ -4,6 +4,7 @@ import { EditorView } from '@codemirror/view'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { isTableSeparatorLine } from '../extensions/buildTable'
 import { buildMarkerHidingDecorations } from '../extensions/build'
+import { buildTablePreviewDecorations } from '../extensions/tablePreviewField'
 import { countTableColumns } from '../extensions/tableCell.utils'
 
 describe('isTableSeparatorLine', () => {
@@ -58,7 +59,7 @@ describe('buildMarkerHidingDecorations table preview', () => {
   it('shows table block widget when cursor is outside the table', () => {
     const doc = '| Name | Value |\n| --- | --- |\n| foo | bar |\n'
     const editorView = createView(doc, doc.length)
-    const deco = buildMarkerHidingDecorations(editorView.state)
+    const deco = buildTablePreviewDecorations(editorView.state)
 
     let hasTableBlockWidget = false
     const iter = deco.iter()
@@ -78,7 +79,7 @@ describe('buildMarkerHidingDecorations table preview', () => {
     const doc = '| Name | Value |\n| --- | --- |\n| foo | bar |\n'
     const cursorPos = doc.indexOf('foo')
     const editorView = createView(doc, cursorPos)
-    const deco = buildMarkerHidingDecorations(editorView.state)
+    const deco = buildTablePreviewDecorations(editorView.state)
 
     let hasTableBlockWidget = false
     const iter = deco.iter()
