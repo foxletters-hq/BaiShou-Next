@@ -21,6 +21,14 @@ export interface ISearchQueryOptions {
   vectorWeight?: number // RRF 合成时向量占比，默认 0.7
 }
 
+/** 向量/FTS 检索可选过滤（先按时间收窄候选，再做语义/关键词排序）。 */
+export interface VectorSearchQueryFilter {
+  threshold?: number
+  sourceType?: string
+  startMs?: number
+  endMs?: number
+}
+
 /**
  * 供 Hybrid 搜索服务调用的仓储适配器模型。
  * 由于 SQLite 在没有 vec 拓展或者其他轻量数据库中欠缺底层 KNN，$native 接口可能不存在或引发异常，因此允许优雅降级。
@@ -35,12 +43,20 @@ export interface IHybridSearchStorage {
   /**
    * 获取纯正 FTS (全文关键字) 查询返回的对象集，其内的 Score 可以是无意义的分词命中最值
    */
-  queryFTS(keyword: string, limit: number): Promise<ISearchResult[]>
+  queryFTS(
+    keyword: string,
+    limit: number,
+    filter?: Pick<VectorSearchQueryFilter, 'startMs' | 'endMs'>
+  ): Promise<ISearchResult[]>
 
   /**
    * 向量检索：优先原生 vec_distance_cosine / vector_top_k，不可用时自动 JS 降级。
    */
-  queryNativeVector(vector: number[], limit: number, threshold?: number): Promise<ISearchResult[]>
+  queryNativeVector(
+    vector: number[],
+    limit: number,
+    filter?: VectorSearchQueryFilter
+  ): Promise<ISearchResult[]>
 
   /**
    * 一次性取回 embedding 供外部内存 KNN（会话级等解耦场景；HybridSearchService 不再依赖此路径）。

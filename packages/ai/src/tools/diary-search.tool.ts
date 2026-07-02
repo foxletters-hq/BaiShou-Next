@@ -35,6 +35,8 @@ export class DiarySearchTool extends AgentTool<typeof diarySearchParams> {
     "Search the user's PERSONAL DIARY/JOURNAL entries by keyword. " +
     'Returns matching diary dates and content snippets. ' +
     'Use this when the user asks about their own past experiences, memories, or personal records.\n\n' +
+    'REQUIRED when specific names, people, places, events, or dates are not clearly established in the ' +
+    'current conversation: search before answering; do not guess or fabricate.\n\n' +
     "IMPORTANT: This tool ONLY searches the user's personal diary entries stored locally, " +
     'NOT the internet. To search the internet, use the web_search tool instead.'
 

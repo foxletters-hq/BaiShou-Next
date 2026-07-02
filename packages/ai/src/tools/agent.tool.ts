@@ -30,8 +30,17 @@ export interface VectorSearchResult {
 /**
  * 向量数据库接口——用于搜索和删除嵌入
  */
+export interface VectorSearchTimeFilter {
+  startMs?: number
+  endMs?: number
+}
+
 export interface ToolVectorStore {
-  searchSimilar(queryEmbedding: number[], topK: number): Promise<VectorSearchResult[]>
+  searchSimilar(
+    queryEmbedding: number[],
+    topK: number,
+    timeFilter?: VectorSearchTimeFilter
+  ): Promise<VectorSearchResult[]>
   deleteBySource(sourceType: string, sourceId: string): Promise<void>
   /**
    * 将一个指定的日记文件从向量库中抹去
@@ -43,12 +52,14 @@ export interface ToolVectorStore {
   indexFile?(filePath: string): Promise<void>
   searchFts?(
     query: string,
-    limit: number
+    limit: number,
+    timeFilter?: VectorSearchTimeFilter
   ): Promise<
     Array<{
       messageId: string
       sessionId: string
       snippet: string
+      createdAt?: number
     }>
   >
 }
@@ -136,6 +147,8 @@ export interface ToolDiarySearcher {
   deleteEntry?(date: string): Promise<ToolDiaryMutationResult>
 }
 
+import type { DiaryReadGuard } from './diary-read-guard.util'
+
 /**
  * 传递给工具执行的上下文
  */
@@ -148,6 +161,8 @@ export interface ToolContext {
   summaryReader?: ToolSummaryReader
   deduplicationService?: ToolDeduplicationService
   diarySearcher?: ToolDiarySearcher
+  /** 同一轮任务内 diary_edit 前置 diary_read 校验 */
+  diaryReadGuard?: DiaryReadGuard
   userConfig?: Record<string, unknown>
   /** 允许外部注入基于宿主系统（如 Electron / Web）的真正搜索页面执行器，如果没有则降级走 Native Fetch */
   webSearchResultFetcher?: (url: string) => Promise<string>

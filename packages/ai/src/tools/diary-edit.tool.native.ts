@@ -24,6 +24,7 @@ export class DiaryEditTool extends AgentTool<typeof diaryEditParams> {
 
   readonly description =
     'Modify an existing diary entry. ' +
+    'REQUIRED: call diary_read for the same date in this turn before editing. ' +
     'Default mode is "append", which adds new content with an automatically inserted timestamp header. ' +
     'Use "overwrite" mode to replace the entire content. ' +
     'Tags are automatically merged with existing ones.'
