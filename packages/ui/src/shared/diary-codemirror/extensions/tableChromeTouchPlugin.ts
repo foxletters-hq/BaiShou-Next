@@ -7,6 +7,11 @@ import {
   openChromeMenuForTrigger
 } from '../table/tableContextMenu'
 import {
+  hitTestInteractableChromeAtPoint,
+  isInteractableChromeElement
+} from '../table/tableChromeHitTest'
+import { isTableSheetOpen } from '../table/tableSheetInteraction'
+import {
   TABLE_CHROME_LONG_PRESS_MS,
   TABLE_CHROME_LONG_PRESS_MOVE_TOLERANCE_PX
 } from '../table/tableChromeTouchConstants'
@@ -22,32 +27,15 @@ function isImmediateChromeAction(trigger: HTMLElement): boolean {
   )
 }
 
-function hitTestChromeAtPoint(view: EditorView, x: number, y: number): HTMLElement | null {
-  if (typeof document.elementFromPoint === 'function') {
-    const fromPoint = isTableChromeTouchTarget(document.elementFromPoint(x, y))
-    if (fromPoint) return fromPoint
-  }
-
-  const selectors = '.cm-table-handle, .cm-table-corner-menu, .cm-table-add-btn'
-  for (const el of view.dom.querySelectorAll(selectors)) {
-    const rect = (el as HTMLElement).getBoundingClientRect()
-    if (rect.width <= 0 || rect.height <= 0) continue
-    if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
-      return el as HTMLElement
-    }
-  }
-  return null
-}
-
 function resolveTouchTarget(view: EditorView, event: TouchEvent): HTMLElement | null {
   if (event.target instanceof Element) {
     const fromTarget = isTableChromeTouchTarget(event.target)
-    if (fromTarget) return fromTarget
+    if (fromTarget && isInteractableChromeElement(fromTarget)) return fromTarget
   }
 
   const touch = event.changedTouches[0] ?? event.touches[0]
   if (!touch) return null
-  return hitTestChromeAtPoint(view, touch.clientX, touch.clientY)
+  return hitTestInteractableChromeAtPoint(view, touch.clientX, touch.clientY)
 }
 
 function resolveTableFromBlock(block: HTMLElement, view: EditorView) {
@@ -97,7 +85,7 @@ export function tableChromeTouchPlugin(platform?: DiaryCmPlatform): Extension {
 
       private readonly onTouchStart = (event: TouchEvent) => this.handleTouchStart(event)
       private readonly onTouchMove = (event: TouchEvent) => this.handleTouchMove(event)
-      private readonly onTouchEnd = () => this.clearLongPress()
+      private readonly onTouchEnd = (event: TouchEvent) => this.handleTouchEnd(event)
       private readonly onTouchCancel = () => this.clearLongPress()
 
       constructor(private readonly view: EditorView) {
@@ -133,6 +121,10 @@ export function tableChromeTouchPlugin(platform?: DiaryCmPlatform): Extension {
           return
         }
 
+        event.preventDefault()
+        event.stopPropagation()
+        dismissEditorKeyboardForChrome(this.view)
+
         const touch = event.touches[0]
         if (!touch) return
 
@@ -156,6 +148,29 @@ export function tableChromeTouchPlugin(platform?: DiaryCmPlatform): Extension {
           }
           openChromeFromTrigger(this.view, activeTrigger, activeEvent)
         }, TABLE_CHROME_LONG_PRESS_MS)
+      }
+
+      private handleTouchEnd(event: TouchEvent): void {
+        const activeTrigger = this.pressTrigger
+        this.clearLongPress()
+
+        if (activeTrigger && isInteractableChromeElement(activeTrigger)) {
+          event.preventDefault()
+          event.stopPropagation()
+          dismissEditorKeyboardForChrome(this.view)
+          return
+        }
+
+        if (isTableSheetOpen()) return
+
+        if (event.target instanceof Element) {
+          const fromTarget = isTableChromeTouchTarget(event.target)
+          if (fromTarget && isInteractableChromeElement(fromTarget)) {
+            event.preventDefault()
+            event.stopPropagation()
+            dismissEditorKeyboardForChrome(this.view)
+          }
+        }
       }
 
       private handleTouchMove(event: TouchEvent): void {

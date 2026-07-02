@@ -6,7 +6,8 @@ import {
   getTableCellBoundsFromSyntax,
   isTableContentLine
 } from './tableCell.utils'
-import { rangeOverlapsTableMarkdown } from '../table/tableBounds'
+import { findTableRangeAt, rangeOverlapsTableMarkdown } from '../table/tableBounds'
+import { placeCursorAfterTable } from '../table/tableFocus'
 import { TABLE_CELL_LINE_BREAK, tableStructureProtectFilter } from './tableStructureFilter'
 import { isTableSeparatorLine } from './buildTable'
 
@@ -120,12 +121,25 @@ function handleTableBeforeInput(event: InputEvent, view: EditorView): boolean {
     if (
       event.inputType === 'deleteContentBackward' ||
       event.inputType === 'deleteContentForward' ||
-      event.inputType === 'deleteByCut' ||
-      event.inputType.startsWith('insert')
+      event.inputType === 'deleteByCut'
     ) {
       event.preventDefault()
       return true
     }
+
+    // insert 类：head 误落在表格 markdown 区间（如 setContent 后 head=0），
+    // 同步重定向到表后正文，让输入落到正确位置而不是被吞掉
+    if (event.inputType.startsWith('insert')) {
+      const range = findTableRangeAt(view.state, from)
+      if (range && from <= range.rowTo) {
+        placeCursorAfterTable(view, range.rowTo)
+        // 不 preventDefault：让 beforeinput 用新 selection 完成插入
+        return false
+      }
+    }
+
+    event.preventDefault()
+    return true
   }
 
   const line = view.state.doc.lineAt(from)
