@@ -9,12 +9,17 @@ import { useNativeTheme } from '../theme'
 
 export type ToastType = 'info' | 'success' | 'error' | 'warning'
 
+export interface ToastShowOptions {
+  duration?: number
+  onDismiss?: () => void
+}
+
 interface ToastContextType {
-  showToast: (message: string, type?: ToastType) => void
-  showSuccess: (message: string) => void
-  showError: (message: string) => void
-  showInfo: (message: string) => void
-  showWarning: (message: string) => void
+  showToast: (message: string, type?: ToastType, options?: ToastShowOptions) => void
+  showSuccess: (message: string, options?: ToastShowOptions) => void
+  showError: (message: string, options?: ToastShowOptions) => void
+  showInfo: (message: string, options?: ToastShowOptions) => void
+  showWarning: (message: string, options?: ToastShowOptions) => void
 }
 
 const ToastContext = createContext<ToastContextType | null>(null)
@@ -72,9 +77,10 @@ const toastExit = new Keyframe({
 type BaishouHeroToastProps = ToastComponentProps & {
   message: string
   type: ToastType
+  onDismiss?: () => void
 }
 
-const BaishouHeroToast: React.FC<BaishouHeroToastProps> = ({ id, message, type, hide }) => {
+const BaishouHeroToast: React.FC<BaishouHeroToastProps> = ({ id, message, type, hide, onDismiss }) => {
   const { isDark, colors } = useNativeTheme()
   const { width } = useWindowDimensions()
 
@@ -98,7 +104,10 @@ const BaishouHeroToast: React.FC<BaishouHeroToastProps> = ({ id, message, type, 
         style={{ maxWidth: toastMaxWidth }} // 仅设置最大宽度约束，实现自适应宽度
       >
         <Pressable
-          onPress={() => hide(id)}
+          onPress={() => {
+            onDismiss?.()
+            hide(id)
+          }}
           style={[
             styles.toast,
             {
@@ -124,12 +133,17 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const { toast, isToastVisible } = useToast()
 
   const presentToast = useCallback(
-    (message: string, type: ToastType = 'info') => {
+    (message: string, type: ToastType = 'info', options?: ToastShowOptions) => {
+      const duration = options?.duration ?? durationForType(type)
+      const onDismiss = options?.onDismiss
+
       const showNext = () => {
         toast.show({
           id: STATUS_TOAST_ID,
-          duration: durationForType(type),
-          component: (props) => <BaishouHeroToast {...props} message={message} type={type} />
+          duration,
+          component: (props) => (
+            <BaishouHeroToast {...props} message={message} type={type} onDismiss={onDismiss} />
+          )
         })
       }
 
@@ -147,10 +161,10 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const ctx = useMemo<ToastContextType>(
     () => ({
       showToast: presentToast,
-      showSuccess: (message) => presentToast(message, 'success'),
-      showError: (message) => presentToast(message, 'error'),
-      showInfo: (message) => presentToast(message, 'info'),
-      showWarning: (message) => presentToast(message, 'warning')
+      showSuccess: (message, options) => presentToast(message, 'success', options),
+      showError: (message, options) => presentToast(message, 'error', options),
+      showInfo: (message, options) => presentToast(message, 'info', options),
+      showWarning: (message, options) => presentToast(message, 'warning', options)
     }),
     [presentToast]
   )

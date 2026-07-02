@@ -11,10 +11,10 @@ import {
   IdentitySettingsCard,
   AboutSettingsCard,
   RestoreBlockingOverlay,
-  ChatBackgroundSettingsCard
+  ChatBackgroundSettingsCard,
+  useOpenFeedbackChannel
 } from '@baishou/ui'
 import {
-  GITHUB_ISSUES_URL,
   GITHUB_REPO_URL,
   normalizeChatBackgroundBlur,
   normalizeChatBackgroundOverlayOpacity
@@ -40,6 +40,7 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
   const [vaults, setVaults] = useState<any[]>([])
   const [activeVault, setActiveVault] = useState<any>(null)
   const [appVersion, setAppVersion] = useState(APP_VERSION)
+  const openFeedback = useOpenFeedbackChannel((url) => window.api.shell.openExternal(url))
 
   const [storageStats, setStorageStats] = useState({
     storageRootPath: 'Loading...',
@@ -274,7 +275,7 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
                 version={appVersion}
                 heroImageSrc={baishouHeroImg}
                 onOpenGithubRepo={() => window.api.shell.openExternal(GITHUB_REPO_URL)}
-                onOpenFeedback={() => window.api.shell.openExternal(GITHUB_ISSUES_URL)}
+                onOpenFeedback={() => void openFeedback()}
                 onOpenCompressionTestSession={(sessionId) => navigate(`/chat/${sessionId}`)}
                 onOpenOnboarding={() => navigate('/welcome?preview=1')}
                 onDemoVaultCreated={async (vaultName) => {

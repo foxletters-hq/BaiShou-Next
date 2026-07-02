@@ -85,6 +85,7 @@ export * from './desktop/McpSettingsCard/index'
 export * from './desktop/DeveloperOptionsView/index'
 
 export * from './desktop/AboutSettingsCard/index'
+export * from './desktop/feedback/useOpenFeedbackChannel'
 export * from './desktop/AssistantManagementView/index'
 export * from './desktop/AssistantMatrixCard/index'
 export * from './desktop/UpdateChecker/index'

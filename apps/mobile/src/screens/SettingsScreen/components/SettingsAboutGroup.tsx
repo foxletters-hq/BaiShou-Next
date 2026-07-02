@@ -3,8 +3,7 @@ import { View, Text, StyleSheet, type ViewStyle } from 'react-native'
 import { useRouter } from 'expo-router'
 import * as WebBrowser from 'expo-web-browser'
 import { useTranslation } from 'react-i18next'
-import { GITHUB_ISSUES_URL } from '@baishou/shared'
-import { AboutSettingsCard, SettingsGroupDivider, useNativeTheme } from '@baishou/ui/native'
+import { AboutSettingsCard, SettingsGroupDivider, useNativeTheme, useOpenFeedbackChannel } from '@baishou/ui/native'
 import { UpdateSettingsSection } from './UpdateSettingsSection'
 
 interface SettingsAboutGroupProps {
@@ -15,6 +14,7 @@ export const SettingsAboutGroup: React.FC<SettingsAboutGroupProps> = ({ groupCar
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const router = useRouter()
+  const openFeedback = useOpenFeedbackChannel((url) => WebBrowser.openBrowserAsync(url))
 
   return (
     <View style={styles.groupBlock}>
@@ -26,7 +26,7 @@ export const SettingsAboutGroup: React.FC<SettingsAboutGroupProps> = ({ groupCar
           embedded
           onNavigateAbout={() => router.push('/settings/about')}
           onNavigatePrivacy={() => router.push('/settings/privacy')}
-          onOpenFeedback={() => void WebBrowser.openBrowserAsync(GITHUB_ISSUES_URL)}
+          onOpenFeedback={() => void openFeedback()}
         />
         <SettingsGroupDivider />
         <UpdateSettingsSection embedded />

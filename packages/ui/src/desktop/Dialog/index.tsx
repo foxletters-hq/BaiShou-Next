@@ -3,7 +3,6 @@ import React, {
   useContext,
   useState,
   ReactNode,
-  useRef,
   useCallback,
   useEffect
 } from 'react'
@@ -13,6 +12,14 @@ import { Button } from '../Button/Button'
 import { Input } from '../Input/Input'
 import styles from './Dialog.module.css'
 
+export interface ChooseOption {
+  label: string
+  value: string
+  destructive?: boolean
+  leading?: ReactNode
+  centered?: boolean
+}
+
 export interface DialogContextState {
   confirm: (message: ReactNode, title?: string) => Promise<boolean>
   prompt: (
@@ -21,13 +28,18 @@ export interface DialogContextState {
     title?: string,
     isMultiline?: boolean
   ) => Promise<string | null>
+  choose: (
+    title: string | undefined,
+    options: ChooseOption[],
+    message?: ReactNode
+  ) => Promise<string | null>
   alert: (message: ReactNode, title?: string) => Promise<void>
   closeAll: () => void
 }
 
 const DialogContext = createContext<DialogContextState | null>(null)
 
-type DialogType = 'alert' | 'confirm' | 'prompt'
+type DialogType = 'alert' | 'confirm' | 'prompt' | 'choose'
 
 interface DialogState {
   isOpen: boolean
@@ -36,6 +48,7 @@ interface DialogState {
   message: ReactNode
   defaultValue?: string
   isMultiline?: boolean
+  chooseOptions?: ChooseOption[]
   resolve?: (value: any) => void
 }
 
@@ -56,18 +69,37 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     })
   }, [])
 
-  const closeAll = useCallback(() => {
+  const dismissDialog = useCallback(() => {
     setState((prev) => {
-      if (prev.resolve) prev.resolve(prev.type === 'prompt' ? null : false)
+      if (!prev.isOpen) return prev
+      if (prev.resolve) {
+        if (prev.type === 'prompt' || prev.type === 'choose') prev.resolve(null)
+        else if (prev.type === 'confirm') prev.resolve(false)
+        else prev.resolve(undefined)
+      }
       return { ...prev, isOpen: false }
     })
   }, [])
 
-  // 组件卸载时关闭弹窗
+  const closeAll = useCallback(() => {
+    setState((prev) => {
+      if (prev.resolve) {
+        prev.resolve(prev.type === 'prompt' || prev.type === 'choose' ? null : false)
+      }
+      return { ...prev, isOpen: false }
+    })
+  }, [])
+
   useEffect(() => {
     return () => {
       if (state.isOpen && state.resolve) {
-        state.resolve(state.type === 'prompt' ? null : false)
+        state.resolve(
+          state.type === 'prompt' || state.type === 'choose'
+            ? null
+            : state.type === 'confirm'
+              ? false
+              : undefined
+        )
       }
     }
   }, [state.isOpen, state.resolve, state.type])
@@ -83,6 +115,26 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setState({ isOpen: true, type: 'confirm', message, title, resolve })
     })
   }, [])
+
+  const choose = useCallback(
+    (
+      title: string | undefined,
+      options: ChooseOption[],
+      message?: ReactNode
+    ): Promise<string | null> => {
+      return new Promise((resolve) => {
+        setState({
+          isOpen: true,
+          type: 'choose',
+          title,
+          message: message ?? '',
+          chooseOptions: options,
+          resolve
+        })
+      })
+    },
+    []
+  )
 
   const prompt = useCallback(
     (
@@ -107,18 +159,27 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     []
   )
 
+  const showTitle =
+    state.type !== 'prompt' && state.type !== 'confirm' ? state.title : undefined
+
   return (
-    <DialogContext.Provider value={{ alert, confirm, prompt, closeAll }}>
+    <DialogContext.Provider value={{ alert, confirm, prompt, choose, closeAll }}>
       {children}
       {state.isOpen && (
         <Modal
           isOpen={state.isOpen}
-          onClose={() => closeDialog(state.type === 'prompt' ? null : false)}
-          title={state.type === 'confirm' || state.type === 'prompt' ? undefined : state.title}
+          onClose={dismissDialog}
+          title={showTitle}
           zIndex={1100}
         >
           <div className={styles.dialogContent}>
-            <div className={styles.message}>{state.message}</div>
+            {state.type !== 'choose' ? <div className={styles.message}>{state.message}</div> : null}
+
+            {state.type === 'choose' &&
+            typeof state.message === 'string' &&
+            state.message.trim().length > 0 ? (
+              <div className={styles.message}>{state.message}</div>
+            ) : null}
 
             {state.type === 'prompt' &&
               (state.isMultiline ? (
@@ -153,22 +214,57 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 />
               ))}
 
-            <div className={styles.actions}>
-              {state.type !== 'alert' && (
-                <Button
-                  variant="text"
-                  onClick={() => closeDialog(state.type === 'prompt' ? null : false)}
-                >
+            {state.type === 'choose' && state.chooseOptions ? (
+              <div className={styles.chooseList}>
+                {state.chooseOptions.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={[
+                      styles.chooseItem,
+                      opt.leading ? styles.chooseItemWithLeading : '',
+                      opt.centered ? styles.chooseItemCentered : ''
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    onClick={() => closeDialog(opt.value)}
+                  >
+                    {opt.leading ? <span className={styles.chooseLeading}>{opt.leading}</span> : null}
+                    <span
+                      className={styles.chooseLabel}
+                      style={opt.destructive ? { color: 'var(--color-error)' } : undefined}
+                    >
+                      {opt.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            {state.type === 'choose' ? (
+              <div className={styles.actions}>
+                <Button variant="text" onClick={() => closeDialog(null)}>
                   {t('common.cancel', '取消')}
                 </Button>
-              )}
-              <Button
-                variant="elevated"
-                onClick={() => closeDialog(state.type === 'prompt' ? promptValue : true)}
-              >
-                {t('common.confirm', '确定')}
-              </Button>
-            </div>
+              </div>
+            ) : (
+              <div className={styles.actions}>
+                {state.type !== 'alert' && (
+                  <Button
+                    variant="text"
+                    onClick={() => closeDialog(state.type === 'prompt' ? null : false)}
+                  >
+                    {t('common.cancel', '取消')}
+                  </Button>
+                )}
+                <Button
+                  variant="elevated"
+                  onClick={() => closeDialog(state.type === 'prompt' ? promptValue : true)}
+                >
+                  {t('common.confirm', '确定')}
+                </Button>
+              </div>
+            )}
           </div>
         </Modal>
       )}
