@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
-  InputBar,
   AgentGateDock,
   useDialog,
   AssistantPickerSheet,
@@ -18,20 +17,15 @@ import {
   formatDialogueModelLabel,
   type WorkspaceChangeEntry
 } from '@baishou/shared'
-import { WorkspaceIconRail } from './components/WorkspaceIconRail'
-import { WorkspaceSessionPanel } from './components/WorkspaceSessionPanel'
-import { AgentWorkspaceChatBar } from './components/AgentWorkspaceChatBar'
-import { WorkspaceChangesPanel } from './components/WorkspaceChangesPanel'
-import { AgentWorkspaceMessageList } from './components/AgentWorkspaceMessageList'
 import { useWorkspaceAgentStream } from './hooks/useWorkspaceAgentStream'
 import { useWorkspaceChatMessages } from './hooks/useWorkspaceChatMessages'
 import { useWorkspaceRuntimeRefresh } from './hooks/useWorkspaceRuntimeRefresh'
 import { formatWorkspaceRollbackSummary } from './utils/workspace-rollback.util'
-import { useWorkspaceSessions } from './hooks/useWorkspaceSessions'
 import { useAgentWorkspaces } from './hooks/useAgentWorkspaces'
 import { useAgentWorkspaceChrome } from './hooks/useAgentWorkspaceChrome'
 import { useStreamError } from '../agent/hooks/useStreamError'
 import { workspaceEntryMatchesFolder } from './utils/workspace-display.util'
+import { WorkbenchShell } from './workbench/WorkbenchShell'
 import styles from './AgentWorkspaceScreen.module.css'
 
 interface WorkspaceOutletContext {
@@ -49,7 +43,6 @@ export const AgentWorkspaceScreen: React.FC = () => {
   const { sessionId } = useParams()
   const navigate = useNavigate()
   const { folderRoot, setFolderRoot } = useOutletContext<WorkspaceOutletContext>()
-  const { sessions, loading: loadingSessions } = useWorkspaceSessions()
   const {
     workspaces,
     activeWorkspace,
@@ -60,9 +53,7 @@ export const AgentWorkspaceScreen: React.FC = () => {
     loading: loadingWorkspaces
   } = useAgentWorkspaces()
   const chrome = useAgentWorkspaceChrome(sessionId)
-  const [rightCollapsed, setRightCollapsed] = useState(true)
   const [changes, setChanges] = useState<WorkspaceChangeEntry[]>([])
-  const [selectedChangeId, setSelectedChangeId] = useState<string | null>(null)
   const syncedFolderKeysRef = useRef(new Set<string>())
 
   const stream = useWorkspaceAgentStream(sessionId)
@@ -112,14 +103,9 @@ export const AgentWorkspaceScreen: React.FC = () => {
 
   const handleChangesUpdate = useCallback((nextChanges: WorkspaceChangeEntry[]) => {
     setChanges(nextChanges)
-    setSelectedChangeId((prev) => {
-      if (prev && nextChanges.some((c) => c.id === prev)) return prev
-      return nextChanges[0]?.id ?? null
-    })
   }, [])
 
   const handleRuntimeRefresh = useCallback(() => {
-    setSelectedChangeId(null)
     void chat.refresh()
   }, [chat])
 
@@ -135,22 +121,8 @@ export const AgentWorkspaceScreen: React.FC = () => {
   useEffect(() => {
     if (!sessionId || sessionId === 'new-session') {
       setChanges([])
-      setSelectedChangeId(null)
     }
   }, [sessionId])
-
-  const handleSelectWorkspace = useCallback(
-    async (workspaceId: string) => {
-      await selectWorkspace(workspaceId)
-      const workspace = workspaces.find((entry) => entry.id === workspaceId)
-      if (workspace) {
-        setFolderRoot(workspace.folderRoot)
-        setSelectedChangeId(null)
-        navigate('/agent-workspace')
-      }
-    },
-    [navigate, selectWorkspace, setFolderRoot, workspaces]
-  )
 
   const handleAddWorkspace = useCallback(async () => {
     try {
@@ -168,68 +140,6 @@ export const AgentWorkspaceScreen: React.FC = () => {
       )
     }
   }, [addWorkspaceFromPicker, dialog, setFolderRoot, t])
-
-  const handleChangeAvatar = useCallback(
-    async (workspaceId: string) => {
-      await updateWorkspaceAvatar(workspaceId)
-    },
-    [updateWorkspaceAvatar]
-  )
-
-  const handleNewSession = useCallback(() => {
-    if (!activeFolderRoot) return
-    setSelectedChangeId(null)
-    navigate('/agent-workspace')
-  }, [activeFolderRoot, navigate])
-
-  const handleSelectSession = useCallback(
-    async (targetSessionId: string) => {
-      if (targetSessionId === sessionId) return
-      try {
-        const binding = await window.api.agentWorkspace.getBinding(targetSessionId)
-        if (binding?.folderRoot) {
-          setFolderRoot(binding.folderRoot)
-          const workspace = workspaces.find((entry) =>
-            workspaceEntryMatchesFolder(entry, binding.folderRoot)
-          )
-          if (workspace) {
-            await selectWorkspace(workspace.id)
-          }
-        }
-      } catch {
-        /* ignore */
-      }
-      setSelectedChangeId(null)
-      navigate(`/agent-workspace/${targetSessionId}`)
-    },
-    [navigate, sessionId, selectWorkspace, setFolderRoot, workspaces]
-  )
-
-  const handleDeleteSession = useCallback(
-    async (targetSessionId: string) => {
-      const confirmed = await dialog.confirm(
-        t('agent_workspace.delete_session_confirm', '确定删除此工作区会话？相关对话记录也会被移除。'),
-        t('agent_workspace.delete_session', '删除会话')
-      )
-      if (!confirmed) return
-
-      try {
-        await window.api.agentWorkspace.deleteSession(targetSessionId)
-        notifyWorkspaceSessionsChanged()
-        if (targetSessionId === sessionId) {
-          setSelectedChangeId(null)
-          navigate('/agent-workspace')
-        }
-      } catch (error) {
-        console.error('[AgentWorkspaceScreen] delete session failed:', error)
-        await dialog.alert(
-          t('common.error', '操作失败'),
-          t('agent_workspace.delete_session', '删除会话')
-        )
-      }
-    },
-    [dialog, navigate, sessionId, t]
-  )
 
   const handleSend = useCallback(
     async (text: string) => {
@@ -308,7 +218,6 @@ export const AgentWorkspaceScreen: React.FC = () => {
       if (!confirmed) return
 
       try {
-        setSelectedChangeId(null)
         const result = await stream.rollbackRound(sessionId, userMessageId)
         notifyWorkspaceSessionsChanged()
         await chat.refresh()
@@ -328,140 +237,70 @@ export const AgentWorkspaceScreen: React.FC = () => {
     [chat, dialog, sessionId, stream, t]
   )
 
+  const layoutScopeKey = resolvedActiveWorkspace?.id ?? activeFolderRoot
+
   return (
     <div className={styles.screen}>
-      <WorkspaceIconRail
-        workspaces={workspaces}
-        activeWorkspaceId={resolvedActiveWorkspace?.id}
-        onSelectWorkspace={(id) => void handleSelectWorkspace(id)}
-        onAddWorkspace={() => void handleAddWorkspace()}
-        onChangeAvatar={(id) => void handleChangeAvatar(id)}
-      />
-
-      {resolvedActiveWorkspace ? (
-        <WorkspaceSessionPanel
-          workspace={resolvedActiveWorkspace}
-          sessions={sessions}
-          activeSessionId={sessionId}
-          loadingSessions={loadingSessions}
-          onNewSession={handleNewSession}
-          onSelectSession={(id) => void handleSelectSession(id)}
-          onDeleteSession={(id) => void handleDeleteSession(id)}
-        />
-      ) : null}
-
-      <div className={styles.main}>
-        <AgentWorkspaceChatBar
-          currentAssistant={
-            chrome.currentAssistant
+      <WorkbenchShell
+        folderRoot={activeFolderRoot}
+        layoutScopeKey={layoutScopeKey}
+        changes={changes}
+        onOpenFolder={() => void handleAddWorkspace()}
+        agentPanel={{
+          hasWorkspace,
+          hasConfiguredModel,
+          sessionId,
+          chrome: {
+            currentAssistant: chrome.currentAssistant
               ? {
                   id: String(chrome.currentAssistant.id),
                   name: chrome.currentAssistant.name,
                   avatarPath: chrome.currentAssistant.avatarPath
                 }
-              : undefined
-          }
-          currentProviderId={chrome.model.currentProviderId}
-          currentModelId={chrome.model.currentModelId}
-          providers={chrome.providers}
-          inputTokens={chrome.tokens.totalInputTokens}
-          outputTokens={chrome.tokens.totalOutputTokens}
-          costMicros={chrome.tokens.estimatedCost * 1_000_000}
-          onAssistantClick={() => chrome.setShowAssistantPicker(true)}
-          onModelClick={() => chrome.setShowModelSwitcher(true)}
-          onCostClick={() => chrome.setShowCostDialog(true)}
-          changesPanelCollapsed={rightCollapsed}
-          onToggleChangesPanel={() => setRightCollapsed((v) => !v)}
-        />
-
-        <div className={styles.chatStage}>
-          {!hasWorkspace ? (
-            <div className={styles.emptyState}>
-              <button
-                type="button"
-                className={styles.addWorkspaceBtn}
-                onClick={() => void handleAddWorkspace()}
-              >
-                <span className={styles.addWorkspaceBtnIcon} aria-hidden>
-                  +
-                </span>
-                {t('agent_workspace.add_workspace', '添加工作区')}
-              </button>
-            </div>
-          ) : !sessionId || sessionId === 'new-session' ? (
-            <div className={styles.emptyState}>
-              <p>
-                {t(
-                  'agent_workspace.select_session_hint',
-                  '选择左侧会话，或在下方输入开始新对话。'
-                )}
-              </p>
-            </div>
-          ) : (
-            <AgentWorkspaceMessageList
-              sessionId={sessionId}
-              messages={chat.messages}
-              pendingAssistantMsg={chat.pendingAssistantMsg}
-              streamingText={stream.text}
-              streamingReasoning={stream.reasoning}
-              isStreaming={stream.isStreaming}
-              streamError={stream.error}
-              activeToolName={stream.activeTool?.name ?? null}
-              completedTools={stream.completedTools}
-              failedTools={stream.failedTools}
-              assistantProfile={
-                chrome.currentAssistant
-                  ? {
-                      name: chrome.currentAssistant.name,
-                      avatarPath: chrome.currentAssistant.avatarPath,
-                      emoji: chrome.currentAssistant.emoji
-                    }
-                  : undefined
+              : undefined,
+            currentProviderId: chrome.model.currentProviderId,
+            currentModelId: chrome.model.currentModelId,
+            providers: chrome.providers,
+            totalInputTokens: chrome.tokens.totalInputTokens,
+            totalOutputTokens: chrome.tokens.totalOutputTokens,
+            estimatedCost: chrome.tokens.estimatedCost,
+            onAssistantClick: () => chrome.setShowAssistantPicker(true),
+            onModelClick: () => chrome.setShowModelSwitcher(true),
+            onCostClick: () => chrome.setShowCostDialog(true)
+          },
+          chat: {
+            messages: chat.messages,
+            pendingAssistantMsg: chat.pendingAssistantMsg
+          },
+          stream: {
+            text: stream.text,
+            reasoning: stream.reasoning,
+            isStreaming: stream.isStreaming,
+            error: stream.error,
+            activeToolName: stream.activeTool?.name ?? null,
+            completedTools: stream.completedTools,
+            failedTools: stream.failedTools,
+            stopChat: stream.stopChat
+          },
+          assistantProfile: chrome.currentAssistant
+            ? {
+                name: chrome.currentAssistant.name,
+                avatarPath: chrome.currentAssistant.avatarPath,
+                emoji: chrome.currentAssistant.emoji
               }
-              onRollbackRound={handleRollback}
-              onChangesUpdate={handleChangesUpdate}
-            />
-          )}
-        </div>
+            : undefined,
+          onSend: (text) => void handleSend(text),
+          onRollbackRound: (id) => void handleRollback(id),
+          onChangesUpdate: handleChangesUpdate,
+          onAssistantTap: () => chrome.setShowAssistantPicker(true),
+          assistantName: chrome.currentAssistant?.name || t('agent.partner_label', '伙伴')
+        }}
+      />
 
-        {hasWorkspace ? (
-          <div className={styles.inputArea}>
-            {!hasConfiguredModel ? (
-              <p className={styles.noModelHint} role="status">
-                {t(
-                  'agent_workspace.no_model_send_hint',
-                  '请先在顶部选择一个对话模型，然后才能发送消息。'
-                )}
-              </p>
-            ) : null}
-            <div
-              className={!hasConfiguredModel ? styles.inputBlocked : undefined}
-              aria-disabled={!hasConfiguredModel}
-            >
-              <InputBar
-                isLoading={stream.isStreaming}
-                onSend={(text) => void handleSend(text)}
-                onStop={stream.stopChat}
-                assistantName={chrome.currentAssistant?.name || t('agent.partner_label', '伙伴')}
-                onAssistantTap={() => chrome.setShowAssistantPicker(true)}
-              />
-            </div>
-          </div>
-        ) : null}
-
-        <AgentGateDock
-          request={stream.pendingAgentGate}
-          isReplying={stream.isAgentGateReplying}
-          onReply={(payload) => void stream.replyAgentGate(payload)}
-        />
-      </div>
-
-      <WorkspaceChangesPanel
-        changes={changes}
-        selectedChangeId={selectedChangeId}
-        onSelectChange={setSelectedChangeId}
-        collapsed={rightCollapsed}
-        onToggleCollapsed={() => setRightCollapsed((v) => !v)}
+      <AgentGateDock
+        request={stream.pendingAgentGate}
+        isReplying={stream.isAgentGateReplying}
+        onReply={(payload) => void stream.replyAgentGate(payload)}
       />
 
       <ChatCostDialog
