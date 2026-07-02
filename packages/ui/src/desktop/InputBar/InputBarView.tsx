@@ -213,6 +213,13 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
                         onClick={onToggleTtsMode}
                       />
                     )}
+                    {onOpenTools && (
+                      <QuickActionChip
+                        icon={<MdApps size={14} />}
+                        label={t('settings.agent_tools_title', '工具管理')}
+                        onClick={onOpenTools}
+                      />
+                    )}
                   </div>
                 </div>
                 {toolbarOverflow && (
