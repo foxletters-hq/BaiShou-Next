@@ -10,7 +10,7 @@ import { useOrchestratedSync } from '../../hooks/useOrchestratedSync'
 import { readActiveVaultNavigationSnapshot } from '../../lib/agent-navigation-persistence'
 import { switchActiveVault, persistActiveVaultName } from '../../lib/vault-runtime.util'
 import { INCREMENTAL_SYNC_CONFIG_CHANGED_EVENT } from '../../lib/incremental-sync-config-events'
-import { BookOpen, Boxes, ChevronDown, FolderSync, Minus, Sparkles, Square, X } from 'lucide-react'
+import { BookOpen, ChevronDown, FolderSync, Minus, Sparkles, Square, X } from 'lucide-react'
 
 export const TitleBar: React.FC = () => {
   const { t } = useTranslation()
@@ -196,13 +196,6 @@ export const TitleBar: React.FC = () => {
               <Sparkles className={styles.tabIcon} />
               <span>{t('nav.agent', '伙伴')}</span>
             </div>
-            <div
-              className={`${styles.tab} ${isAgentWorkspace && !isSettings ? styles.activeTab : ''}`}
-              onClick={() => navigate('/agent-workspace')}
-            >
-              <Boxes className={styles.tabIcon} />
-              <span>{t('nav.agent_workspace', 'Agent')}</span>
-            </div>
           </div>
         )}
       </div>
@@ -221,6 +214,7 @@ export const TitleBar: React.FC = () => {
               </div>
             )}
 
+            {!isAgentWorkspace ? (
             <div
               className={styles.vaultSwitcherWrapper}
               ref={vaultMenuRef}
@@ -271,6 +265,7 @@ export const TitleBar: React.FC = () => {
                 </div>
               )}
             </div>
+            ) : null}
 
             <div className={styles.divider}></div>
           </>

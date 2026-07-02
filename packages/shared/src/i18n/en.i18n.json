@@ -2381,7 +2381,8 @@
     "exit_app_confirm_title": "Exit app",
     "exit_app_confirm_message": "Are you sure you want to exit BaiShou?",
     "exit_app": "Exit",
-    "agent_workspace": "Agent"
+    "agent_workspace": "Agent",
+    "workbench": "Workbench"
   },
   "image_preview": {
     "zoom_in": "Zoom in",
@@ -2839,5 +2840,24 @@
     "resolved_badge": "Resolved",
     "unavailable": "Action confirmation is unavailable",
     "reply_failed": "Failed to submit confirmation"
+  },
+  "workbench": {
+    "files": "Files",
+    "search": "Search",
+    "git": "Git",
+    "search_placeholder": "Search file names…",
+    "search_empty": "Type to search files in the workspace",
+    "git_empty": "Git changes view coming soon",
+    "open_folder_title": "Open a folder",
+    "open_folder_desc": "Choose a folder as the workbench root to browse files and collaborate with Agent.",
+    "collapse_agent": "Collapse Agent panel",
+    "expand_agent": "Expand Agent panel",
+    "changed_files": "{{count}} changed files",
+    "preview_unsupported": "Editing is not supported for this file type. Preview only.",
+    "loading_file": "Loading file…",
+    "load_file_failed": "Failed to load file",
+    "new_tab": "New tab",
+    "settings": "Settings",
+    "diary": "Diary"
   }
 }

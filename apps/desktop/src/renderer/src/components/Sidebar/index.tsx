@@ -128,10 +128,11 @@ export const Sidebar: React.FC = () => {
 
   const isAgentMode =
     location.pathname.startsWith('/chat') || location.pathname.startsWith('/agent')
+  const isWorkbenchMode = location.pathname.startsWith('/agent-workspace')
 
   const isInSettings = isSettingsOverlayPath(location.pathname)
 
-  if (isAgentMode) return null
+  if (isAgentMode || isWorkbenchMode) return null
 
   return (
     <>

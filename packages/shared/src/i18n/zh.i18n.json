@@ -2418,7 +2418,8 @@
     "exit_app_confirm_title": "退出应用",
     "exit_app_confirm_message": "确定要退出百守吗？",
     "exit_app": "退出",
-    "agent_workspace": "Agent"
+    "agent_workspace": "Agent",
+    "workbench": "工作台"
   },
   "image_preview": {
     "zoom_in": "放大",
@@ -2908,5 +2909,24 @@
     "resolved_badge": "已确认",
     "unavailable": "操作确认服务未就绪",
     "reply_failed": "确认操作失败"
+  },
+  "workbench": {
+    "files": "文件",
+    "search": "搜索",
+    "git": "Git",
+    "search_placeholder": "搜索文件名…",
+    "search_empty": "输入关键词搜索工作区文件",
+    "git_empty": "Git 变更视图即将推出",
+    "open_folder_title": "打开文件夹",
+    "open_folder_desc": "选择一个文件夹作为工作台根目录，浏览文件并与 Agent 协作。",
+    "collapse_agent": "收起 Agent 面板",
+    "expand_agent": "展开 Agent 面板",
+    "changed_files": "{{count}} 个文件已变更",
+    "preview_unsupported": "此文件类型暂不支持编辑，仅显示预览。",
+    "loading_file": "正在加载文件…",
+    "load_file_failed": "无法加载文件",
+    "new_tab": "新标签页",
+    "settings": "设置",
+    "diary": "日记"
   }
 }

@@ -2290,7 +2290,8 @@
     "exit_app_confirm_title": "アプリを終了",
     "exit_app_confirm_message": "百守を終了しますか？",
     "exit_app": "終了",
-    "agent_workspace": "Agent"
+    "agent_workspace": "Agent",
+    "workbench": "ワークベンチ"
   },
   "titlebar": {
     "minimize": "最小化",
@@ -2684,5 +2685,24 @@
     "resolved_badge": "確認済み",
     "unavailable": "操作確認サービスが利用できません",
     "reply_failed": "確認の送信に失敗しました"
+  },
+  "workbench": {
+    "files": "ファイル",
+    "search": "検索",
+    "git": "Git",
+    "search_placeholder": "ファイル名を検索…",
+    "search_empty": "キーワードを入力してワークスペース内を検索",
+    "git_empty": "Git 変更ビューは近日公開",
+    "open_folder_title": "フォルダを開く",
+    "open_folder_desc": "ワークベンチのルートフォルダを選択し、ファイルを閲覧して Agent と協業します。",
+    "collapse_agent": "Agent パネルを閉じる",
+    "expand_agent": "Agent パネルを開く",
+    "changed_files": "{{count}} 件のファイルが変更されました",
+    "preview_unsupported": "このファイル形式は編集に対応していません。プレビューのみです。",
+    "loading_file": "ファイルを読み込み中…",
+    "load_file_failed": "ファイルを読み込めませんでした",
+    "new_tab": "新しいタブ",
+    "settings": "設定",
+    "diary": "日記"
   }
 }
