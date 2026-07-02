@@ -24,9 +24,9 @@ pnpm run build:diary-editor
 
 ## 开发热更新（W-9）
 
-| 模式 | 说明 |
-|------|------|
-| **默认** | Metro 打包 `assets/diary-editor/` 静态资源；改 TS 后需重跑 `build:diary-editor` |
+| 模式          | 说明                                                                                                              |
+| ------------- | ----------------------------------------------------------------------------------------------------------------- |
+| **默认**      | Metro 打包 `assets/diary-editor/` 静态资源；改 TS 后需重跑 `build:diary-editor`                                   |
 | **localhost** | 本地 serve bundle + WebView 加载 `http://localhost:...`；设 `DIARY_CM_WEBVIEW_CLEARTEXT=1` 开启 Android cleartext |
 
 ## 运行要求
@@ -38,10 +38,10 @@ pnpm run build:diary-editor
 
 协议定义：`packages/ui/src/shared/diary-codemirror/types.ts`（方案第 7 节）
 
-| 方向 | 主要消息 |
-|------|----------|
+| 方向         | 主要消息                                                                                    |
+| ------------ | ------------------------------------------------------------------------------------------- |
 | RN → WebView | `init`, `setContent`, `insertAtCursor`, `setEditable`, `resolveUrlResponse`, `requestReady` |
-| WebView → RN | `ready`, `change`, `resolveUrlRequest`, `imageAction`, `imagePreview`, `contentHeight` |
+| WebView → RN | `ready`, `change`, `resolveUrlRequest`, `imageAction`, `imagePreview`, `contentHeight`      |
 
 竞态：`ready` 前命令入队；`setContent` 回声抑制；URL 解析 10s 超时。
 

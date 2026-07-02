@@ -184,8 +184,7 @@ export async function runControlledDiaryBatchEmbed(
     })
   }
 
-  const latestRagConfig =
-    (await settingsManager.get<RagConfig>('rag_config')) || ({} as RagConfig)
+  const latestRagConfig = (await settingsManager.get<RagConfig>('rag_config')) || ({} as RagConfig)
   if (hasRagDiaryEmbedFailure(latestRagConfig)) {
     await settingsManager.set('rag_config', clearRagDiaryEmbedFailure(latestRagConfig))
     for (const win of BrowserWindow.getAllWindows()) {

@@ -12,9 +12,7 @@
       "bundleIdentifier": "com.baishou.baishou",
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "用于在同一 Wi-Fi 下发现附近的设备并进行数据备份传输。",
-        "NSBonjourServices": [
-          "_baishou._tcp"
-        ],
+        "NSBonjourServices": ["_baishou._tcp"],
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
         }

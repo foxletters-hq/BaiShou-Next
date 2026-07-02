@@ -19,7 +19,10 @@ import { IncrementalSyncProvider } from '@/src/providers/IncrementalSyncProvider
 import { useDiaryEmbedFailureToast } from '@/src/hooks/useDiaryEmbedFailureToast'
 import { useLegacyUpgradeRagToast } from '@/src/hooks/useLegacyUpgradeRagToast'
 import { LegacyMigrationPrompt } from '@/src/components/LegacyMigrationPrompt'
-import { preloadDiaryEditorWebViewSource, resetDiaryEditorWebViewSourceCache } from '@/src/hooks/useDiaryEditorWebViewSource'
+import {
+  preloadDiaryEditorWebViewSource,
+  resetDiaryEditorWebViewSourceCache
+} from '@/src/hooks/useDiaryEditorWebViewSource'
 import {
   buildAppNavigationTheme,
   buildThemedFadeStackOptions

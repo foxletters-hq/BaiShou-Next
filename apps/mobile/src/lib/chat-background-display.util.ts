@@ -10,9 +10,7 @@ export function invalidateChatBackgroundDisplayCache(backgroundPath?: string): v
   chatBackgroundDisplayCache.clear()
 }
 
-export function peekChatBackgroundDisplayCache(
-  backgroundPath?: string | null
-): string | undefined {
+export function peekChatBackgroundDisplayCache(backgroundPath?: string | null): string | undefined {
   if (!backgroundPath?.startsWith('backgrounds/')) return undefined
   return chatBackgroundDisplayCache.get(backgroundPath)
 }

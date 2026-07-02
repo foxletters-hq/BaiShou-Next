@@ -557,10 +557,7 @@ describe('GitSyncService', () => {
       const impl = new GitSyncServiceImpl(mockPathService)
       const paths = ['a.md', 'b.md']
       const mockGit = {
-        add: vi
-          .fn()
-          .mockRejectedValueOnce(new Error('chunk failed'))
-          .mockResolvedValue(undefined)
+        add: vi.fn().mockRejectedValueOnce(new Error('chunk failed')).mockResolvedValue(undefined)
       } as any
 
       const staged = await (impl as any).addPathsToIndex(mockGit, paths)

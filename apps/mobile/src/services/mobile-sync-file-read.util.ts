@@ -7,13 +7,13 @@ import {
   httpUploadFileAsync,
   readFileChunkBase64
 } from 'expo-baishou-server'
-import {
-  isExternalStoragePath,
-  normalizeSyncFilePath,
-  toFileUri
-} from './android-external-fs'
+import { isExternalStoragePath, normalizeSyncFilePath, toFileUri } from './android-external-fs'
 import { syncIoPathKey } from './mobile-sync-path.util'
-import { raceWithIncrementalSyncAbort, throwIfIncrementalSyncAborted, isIncrementalSyncAbortedError } from './mobile-incremental-sync-abort.util'
+import {
+  raceWithIncrementalSyncAbort,
+  throwIfIncrementalSyncAborted,
+  isIncrementalSyncAbortedError
+} from './mobile-incremental-sync-abort.util'
 
 const BASE64_DECODE_CHUNK = 8192
 

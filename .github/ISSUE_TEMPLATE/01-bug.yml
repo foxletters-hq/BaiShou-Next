@@ -1,6 +1,6 @@
 name: Bug 反馈
 description: 程序出错、功能异常、与预期不符 — 最优先处理
-title: "Bug: "
+title: 'Bug: '
 labels:
   - bug
 body:

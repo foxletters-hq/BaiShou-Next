@@ -53,9 +53,7 @@ export class FileSyncServiceImpl implements FileSyncService {
 
     if ('tagColors' in diary && diary.tagColors) {
       const colorMap =
-        typeof diary.tagColors === 'string'
-          ? diary.tagColors
-          : JSON.stringify(diary.tagColors)
+        typeof diary.tagColors === 'string' ? diary.tagColors : JSON.stringify(diary.tagColors)
       if (colorMap && colorMap !== '{}') {
         lines.push(`tag_colors: ${colorMap}`)
       }

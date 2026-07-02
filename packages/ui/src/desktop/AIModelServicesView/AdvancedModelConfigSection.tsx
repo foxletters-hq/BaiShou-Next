@@ -102,10 +102,7 @@ export const AdvancedModelConfigSection: React.FC<AdvancedModelConfigSectionProp
           <label className={styles.advancedConfigLabel}>
             {t('ai_config.topP', 'Top P')}
             <HelpTooltip
-              content={t(
-                'ai_config.topP_help',
-                '累计概率阈值采样。范围 0-1，值越小输出越确定。'
-              )}
+              content={t('ai_config.topP_help', '累计概率阈值采样。范围 0-1，值越小输出越确定。')}
               size={14}
             />
           </label>

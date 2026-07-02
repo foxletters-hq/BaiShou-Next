@@ -30,8 +30,13 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
   const navigate = useNavigate()
   const settingsNav = useSettingsScopeNavigation()
   const { t } = useTranslation()
-  const { profile, loadProfile, pickAndSaveBackground, clearBackground, updateChatBackgroundStyle } =
-    useUserProfileStore() as any
+  const {
+    profile,
+    loadProfile,
+    pickAndSaveBackground,
+    clearBackground,
+    updateChatBackgroundStyle
+  } = useUserProfileStore() as any
   const [vaults, setVaults] = useState<any[]>([])
   const [activeVault, setActiveVault] = useState<any>(null)
   const [appVersion, setAppVersion] = useState(APP_VERSION)

@@ -10,7 +10,10 @@ function pad2(value: number): string {
 }
 
 /** 本地时间格式化，避免 shared 包引入 date-fns 导致 Electron 主进程打包后 require 失败 */
-function formatDiaryTemplateDate(date: Date, pattern: 'HH:mm:ss' | 'yyyy-MM-dd' | 'yyyy-MM-dd HH:mm:ss'): string {
+function formatDiaryTemplateDate(
+  date: Date,
+  pattern: 'HH:mm:ss' | 'yyyy-MM-dd' | 'yyyy-MM-dd HH:mm:ss'
+): string {
   const year = date.getFullYear()
   const month = pad2(date.getMonth() + 1)
   const day = pad2(date.getDate())

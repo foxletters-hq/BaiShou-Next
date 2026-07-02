@@ -212,9 +212,7 @@ interface IncrementalSyncAPI {
     runOptions?: import('@baishou/shared').IncrementalSyncRunOptions
   ): Promise<import('@baishou/shared').IncrementalSyncPlanPreview>
   readVaultRegistryFingerprint(): Promise<string>
-  evaluatePlanDrift(
-    baseline: import('@baishou/shared').IncrementalSyncPlanReuseBaseline
-  ): Promise<{
+  evaluatePlanDrift(baseline: import('@baishou/shared').IncrementalSyncPlanReuseBaseline): Promise<{
     localTreeDrifted: boolean
     remoteManifestDrifted: boolean
     ttlExpired: boolean

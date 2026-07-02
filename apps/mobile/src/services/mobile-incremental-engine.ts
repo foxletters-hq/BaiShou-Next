@@ -276,9 +276,13 @@ export class MobileIncrementalEngine {
       this.planManifestCache?.local
     )
 
-    const files = await scanIncrementalSyncFilesForManifest(this.fileSystem, syncRoot, (discovered, fileName) => {
-      onProgress?.(0, discovered, fileName)
-    })
+    const files = await scanIncrementalSyncFilesForManifest(
+      this.fileSystem,
+      syncRoot,
+      (discovered, fileName) => {
+        onProgress?.(0, discovered, fileName)
+      }
+    )
 
     const manifest: SyncManifest = {
       version: SYNC_MANIFEST_VERSION,
@@ -292,7 +296,11 @@ export class MobileIncrementalEngine {
     await limitExecute(files, MANIFEST_HASH_CONCURRENCY, async (scanned) => {
       try {
         const cached = cachedManifest.files[scanned.relPath]
-        if (cached?.hash && cached.size === scanned.size && cached.lastModified === scanned.mtimeMs) {
+        if (
+          cached?.hash &&
+          cached.size === scanned.size &&
+          cached.lastModified === scanned.mtimeMs
+        ) {
           manifest.files[scanned.relPath] = cached
         } else {
           const hash = await md5HexForSyncFile(this.fileSystem, scanned.fullPath)
@@ -482,8 +490,7 @@ export class MobileIncrementalEngine {
         state.lastFile,
         state.startedAt
       )
-    const ensureLocalFlushed = () =>
-      coordinator.flushLocalIfNeeded(true, saveLocal, saveSnapshot)
+    const ensureLocalFlushed = () => coordinator.flushLocalIfNeeded(true, saveLocal, saveSnapshot)
 
     return {
       async afterMutation(manifest: SyncManifest) {
@@ -627,7 +634,9 @@ export class MobileIncrementalEngine {
   }
 
   /** 合并磁盘与内存中的 manifest 条目，较新的来源覆盖较旧（用于跳过未变更文件的 MD5） */
-  private mergeManifestFileCaches(...sources: Array<SyncManifest | null | undefined>): SyncManifest {
+  private mergeManifestFileCaches(
+    ...sources: Array<SyncManifest | null | undefined>
+  ): SyncManifest {
     const merged = this.emptyManifest()
     for (const source of sources) {
       if (!source?.files) continue
@@ -883,7 +892,10 @@ export class MobileIncrementalEngine {
         if (d.type === 'upload' || (d.type === 'conflict-resolved' && d.direction === 'upload')) {
           return 'upload'
         }
-        if (d.type === 'download' || (d.type === 'conflict-resolved' && d.direction === 'download')) {
+        if (
+          d.type === 'download' ||
+          (d.type === 'conflict-resolved' && d.direction === 'download')
+        ) {
           return 'download'
         }
         if (d.type === 'delete-remote' || d.type === 'delete-local') return 'delete'
@@ -979,7 +991,11 @@ export class MobileIncrementalEngine {
         lastFile: d.filePath,
         startedAt: sessionStartedAt
       })
-      if (d.type !== 'skip' || progressState.completed === totalDecisions || progressState.completed % 24 === 0) {
+      if (
+        d.type !== 'skip' ||
+        progressState.completed === totalDecisions ||
+        progressState.completed % 24 === 0
+      ) {
         onProgress?.(mapDecisionProgress(progressState.completed, totalDecisions, d))
       }
     })
@@ -1076,7 +1092,9 @@ export class MobileIncrementalEngine {
     }
 
     const ancestorSnapshot = await this.loadRemoteSnapshot(config)
-    const previousLocalManifest = await this.readLocalManifestFile().catch(() => this.emptyManifest())
+    const previousLocalManifest = await this.readLocalManifestFile().catch(() =>
+      this.emptyManifest()
+    )
     const { decisions, deleteBlock } = buildIncrementalSyncPlanMergeResult(
       localManifest,
       remoteManifest,

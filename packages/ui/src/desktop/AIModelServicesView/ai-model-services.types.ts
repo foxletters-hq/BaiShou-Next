@@ -1,3 +1,5 @@
+import type { AiProviderAdvancedConfig } from '@baishou/shared'
+
 export interface AIProviderConfig {
   providerId: string
   name?: string
@@ -10,6 +12,7 @@ export interface AIProviderConfig {
   models?: string[]
   enabledModels?: string[]
   defaultDialogueModel?: string
+  advancedConfig?: AiProviderAdvancedConfig
 }
 
 export interface AIModelServicesViewProps {

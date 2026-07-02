@@ -3,7 +3,14 @@ import type { SyncProgressEvent, ManifestEntry, MergeDecision } from '@baishou/s
 type SyncProgressSlice = Partial<
   Pick<
     SyncProgressEvent,
-    'phase' | 'fileName' | 'action' | 'statusText' | 'fileBytesDone' | 'fileBytesTotal' | 'current' | 'total'
+    | 'phase'
+    | 'fileName'
+    | 'action'
+    | 'statusText'
+    | 'fileBytesDone'
+    | 'fileBytesTotal'
+    | 'current'
+    | 'total'
   >
 >
 
@@ -15,9 +22,7 @@ export function mergeIncrementalSyncProgress(
   if (!prev) return next
 
   const merged: SyncProgressSlice = { ...prev, ...next }
-  const sameFile = Boolean(
-    next.fileName && prev.fileName && prev.fileName === next.fileName
-  )
+  const sameFile = Boolean(next.fileName && prev.fileName && prev.fileName === next.fileName)
   const nextHasBytes =
     next.fileBytesDone != null && next.fileBytesDone >= 0 && (next.fileBytesTotal ?? 0) > 0
   const nextExplicitFileReset =

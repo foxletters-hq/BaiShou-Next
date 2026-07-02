@@ -1,6 +1,6 @@
 name: 需求建议
 description: 明确的功能需求或改进建议 — 优先级较高，会优先考虑实现
-title: "需求建议:"
+title: '需求建议:'
 labels:
   - enhancement
 body:

@@ -565,6 +565,54 @@
   opacity: 0.9;
 }
 
+/* === Advanced Config Section === */
+.advancedConfigGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.advancedConfigItem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.advancedConfigLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.advancedConfigInput {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--bg-surface-normal);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.advancedConfigInput:focus {
+  outline: none;
+  border-color: var(--border-strong);
+  background: var(--bg-surface);
+}
+
+.advancedConfigInput::placeholder {
+  color: var(--text-tertiary);
+}
+
+.advancedConfigInput::-webkit-inner-spin-button,
+.advancedConfigInput::-webkit-outer-spin-button {
+  opacity: 1;
+}
+
 /* Switch UI */
 .switch {
   position: relative;

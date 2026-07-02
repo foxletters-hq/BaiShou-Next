@@ -109,15 +109,7 @@ export function useOrchestratedSync() {
       toast.showSuccess(t('data_sync.sync_completed', 'Sync Completed'))
       return summary
     },
-    [
-      confirmHighDivergence,
-      setMessage,
-      setProgress,
-      setStatus,
-      setSyncResult,
-      t,
-      toast
-    ]
+    [confirmHighDivergence, setMessage, setProgress, setStatus, setSyncResult, t, toast]
   )
 
   const cancelSyncPlan = useCallback(() => {
@@ -257,7 +249,12 @@ export function useOrchestratedSync() {
   )
 
   const startSync = useCallback(async () => {
-    if (isSyncing || isPlanning || useSyncStore.getState().planDialogOpen || confirmingRef.current) {
+    if (
+      isSyncing ||
+      isPlanning ||
+      useSyncStore.getState().planDialogOpen ||
+      confirmingRef.current
+    ) {
       return null
     }
 

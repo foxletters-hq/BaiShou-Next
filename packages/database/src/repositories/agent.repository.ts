@@ -1,4 +1,4 @@
-import { AgentSession, AgentMessage } from '@baishou/shared'
+import { AgentSession, AgentMessage, AgentPart } from '@baishou/shared'
 
 export interface AgentSessionRepository {
   findById(id: string): Promise<AgentSession | null>
@@ -16,4 +16,5 @@ export interface AgentSessionRepository {
 export interface AgentMessageRepository {
   findBySessionId(sessionId: string, limit?: number): Promise<AgentMessage[]>
   create(input: Omit<AgentMessage, 'id' | 'createdAt'>): Promise<AgentMessage>
+  getPartsByMessageId(messageId: string): Promise<AgentPart[]>
 }

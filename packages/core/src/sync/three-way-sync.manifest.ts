@@ -1,6 +1,11 @@
 import * as fs from 'fs'
 import * as path from 'path'
-import type { SyncManifest, ManifestEntry, S3SyncConfig, SyncProgressCallback } from '@baishou/shared'
+import type {
+  SyncManifest,
+  ManifestEntry,
+  S3SyncConfig,
+  SyncProgressCallback
+} from '@baishou/shared'
 import {
   SYNC_MANIFEST_FILENAME,
   SYNC_MANIFEST_VERSION,
@@ -81,7 +86,8 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
     if (
       !options?.forceRefresh &&
       this.preparedManifests &&
-      Date.now() - this.preparedManifests.preparedAt < ThreeWaySyncManifestMixin.MANIFEST_CACHE_TTL_MS
+      Date.now() - this.preparedManifests.preparedAt <
+        ThreeWaySyncManifestMixin.MANIFEST_CACHE_TTL_MS
     ) {
       onProgress?.({ phase: 'comparing', current: 1, total: 1 })
       return this.preparedManifests
@@ -143,9 +149,7 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
     }
   }
 
-  async buildLocalManifest(
-    onFileProgress?: ManifestFileProgressCallback
-  ): Promise<SyncManifest> {
+  async buildLocalManifest(onFileProgress?: ManifestFileProgressCallback): Promise<SyncManifest> {
     const syncRoot = await this.getSyncRoot()
     const files = await this.scanLocalFiles()
     const manifest: SyncManifest = {

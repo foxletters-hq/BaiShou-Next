@@ -112,16 +112,14 @@ export async function createSummaryPipelineServices(options: {
 }
 
 /** 工作区切换后重建总结管线，并将 SQLite 总结缓存与当前 Vault 磁盘文件对齐 */
-export async function rebindSummaryPipelineForVault(
-  options: {
-    drizzleDb: AppDatabase
-    pathService: MobileStoragePathService
-    fileSystem: IFileSystem
-    settingsManager: SettingsManagerService
-    diaryRepoAdapter: unknown
-    activeVaultName?: string | null
-  }
-): Promise<SummaryPipelineServices> {
+export async function rebindSummaryPipelineForVault(options: {
+  drizzleDb: AppDatabase
+  pathService: MobileStoragePathService
+  fileSystem: IFileSystem
+  settingsManager: SettingsManagerService
+  diaryRepoAdapter: unknown
+  activeVaultName?: string | null
+}): Promise<SummaryPipelineServices> {
   const pipeline = await createSummaryPipelineServices({
     drizzleDb: options.drizzleDb,
     pathService: options.pathService,

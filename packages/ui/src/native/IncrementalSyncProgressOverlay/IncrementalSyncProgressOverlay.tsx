@@ -53,7 +53,10 @@ function resolveProgressLabel(
   t: SyncProgressTranslate
 ): string {
   if (progress.action && progress.fileName) {
-    const base = formatSyncProgressStatus({ action: progress.action, fileName: progress.fileName }, t)
+    const base = formatSyncProgressStatus(
+      { action: progress.action, fileName: progress.fileName },
+      t
+    )
     const total = progress.fileBytesTotal ?? 0
     const done = progress.fileBytesDone ?? 0
     let line = base
@@ -238,8 +241,7 @@ export const IncrementalSyncProgressOverlay: React.FC<IncrementalSyncProgressOve
     ]
   }
 
-  const resolvedBlockingTitle =
-    blockingTitle ?? t('data_sync.syncing', '同步中…')
+  const resolvedBlockingTitle = blockingTitle ?? t('data_sync.syncing', '同步中…')
   const resolvedBlockingHint =
     blockingHint ??
     (resolvedProgress.phase === 'scanning' || resolvedProgress.phase === 'comparing'
@@ -333,7 +335,12 @@ export const IncrementalSyncProgressOverlay: React.FC<IncrementalSyncProgressOve
         statusBarTranslucent
         onRequestClose={onRequestClose}
       >
-        <View style={[styles.blockingOverlay, { backgroundColor: colors.overlay || 'rgba(0,0,0,0.55)' }]}>
+        <View
+          style={[
+            styles.blockingOverlay,
+            { backgroundColor: colors.overlay || 'rgba(0,0,0,0.55)' }
+          ]}
+        >
           {banner}
         </View>
       </Modal>

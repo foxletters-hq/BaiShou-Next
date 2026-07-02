@@ -1,10 +1,7 @@
 import React, { useMemo } from 'react'
 import { TokenBadge, InputBar, ContextChainPanel, useTheme, getProviderIcon } from '@baishou/ui'
 import { MdCloud } from 'react-icons/md'
-import {
-  normalizeChatBackgroundBlur,
-  normalizeChatBackgroundOverlayOpacity
-} from '@baishou/shared'
+import { normalizeChatBackgroundBlur, normalizeChatBackgroundOverlayOpacity } from '@baishou/shared'
 import { AgentDialogs } from './components/AgentDialogs'
 import { AgentMessageList } from './components/AgentMessageList'
 import { useAgentChatFlow } from './hooks/useAgentChatFlow'

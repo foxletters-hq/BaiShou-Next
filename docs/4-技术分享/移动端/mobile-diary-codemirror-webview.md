@@ -54,11 +54,11 @@ flowchart LR
   E --> F["挂载 CodeMirror"]
 ```
 
-| 层级 | 职责 |
-| ---- | ---- |
-| **RN 壳** | 标签、天气、保存、Markdown 工具栏、页面导航 |
+| 层级           | 职责                                              |
+| -------------- | ------------------------------------------------- |
+| **RN 壳**      | 标签、天气、保存、Markdown 工具栏、页面导航       |
 | **WebView 客** | 仅 CodeMirror 编辑区（Live Preview、图片 widget） |
-| **共享层** | Markdown 解析、CM 扩展、主题变量；桌面与移动同源 |
+| **共享层**     | Markdown 解析、CM 扩展、主题变量；桌面与移动同源  |
 
 ---
 
@@ -88,13 +88,13 @@ flowchart LR
 **文件**：`packages/ui/src/native/DiaryEditor/useDiaryCodeMirrorBridge.ts`  
 **协议**：`packages/ui/src/shared/diary-codemirror/types.ts`
 
-| RN → WebView | WebView → RN |
-| ------------ | ------------ |
-| `init`（内容、主题、placeholder） | `ready` |
-| `setContent` / `insertAtCursor` | `change`（全文） |
-| `setEditable` / `focus` / `blur` | `selectionChange` / `contentHeight` |
-| `resolveUrlResponse` | `resolveUrlRequest`（attachment 图片） |
-| `requestReady` | `imageAction` / `imagePreview` |
+| RN → WebView                      | WebView → RN                           |
+| --------------------------------- | -------------------------------------- |
+| `init`（内容、主题、placeholder） | `ready`                                |
+| `setContent` / `insertAtCursor`   | `change`（全文）                       |
+| `setEditable` / `focus` / `blur`  | `selectionChange` / `contentHeight`    |
+| `resolveUrlResponse`              | `resolveUrlRequest`（attachment 图片） |
+| `requestReady`                    | `imageAction` / `imagePreview`         |
 
 **竞态规则**（协议注释 7.3 节）：
 
@@ -121,25 +121,25 @@ WebView 嵌在 RN 布局中；主题由 `useNativeTheme()` 转为 `DiaryCmTheme`
 
 ### 3.1 空白 / 页面上显示 JS 源码
 
-| 现象 | WebView 区域空白，或整段 minified JS 当正文显示 |
-| ---- | ----------------------------------------------- |
-| 根因 | HTML 与 `editor.js` 被 Expo 拆到不同 asset 目录；`<script src="editor.js">` 404 |
-| 尝试 | 内联整份 bundle 进单文件 `index.html`（~550KB） |
-| 新问题 | 单文件可读，但 Android 用 `file://` URI 加载时常**不执行内联 `<script>`** |
+| 现象   | WebView 区域空白，或整段 minified JS 当正文显示                                 |
+| ------ | ------------------------------------------------------------------------------- |
+| 根因   | HTML 与 `editor.js` 被 Expo 拆到不同 asset 目录；`<script src="editor.js">` 404 |
+| 尝试   | 内联整份 bundle 进单文件 `index.html`（~550KB）                                 |
+| 新问题 | 单文件可读，但 Android 用 `file://` URI 加载时常**不执行内联 `<script>`**       |
 
 ### 3.2 `source={{ html: 550KB }}` 仍空白
 
-| 现象 | RN 日志显示 bundle 字符数正确，无 WebView 内 console |
-| ---- | ---------------------------------------------------- |
-| 根因 | 改用 `loadDataWithBaseURL` 后，部分设备仍不执行超大内联 script；握手从未完成 |
-| 日志特征 | 有 `loadStart` / `loadEnd`，无 `received ready` |
+| 现象     | RN 日志显示 bundle 字符数正确，无 WebView 内 console                         |
+| -------- | ---------------------------------------------------------------------------- |
+| 根因     | 改用 `loadDataWithBaseURL` 后，部分设备仍不执行超大内联 script；握手从未完成 |
+| 日志特征 | 有 `loadStart` / `loadEnd`，无 `received ready`                              |
 
 ### 3.3 `injectJavaScript` 注入 551KB 失败
 
 | 现象 | `[DiaryEditor Bridge] boot probe: __diaryCmOnNativeMessage missing` → `inject inline script (551211 chars)` → `force init` 仍无 `ready` |
 | ---- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| 根因 | ① Android `evaluateJavascript` 对超长字符串不稳定；② 把 540KB JS 嵌进 RN 模板字符串时，`${`、反引号等会破坏语法，**静默失败** |
-| 结论 | **不能**把整包 CM 当 fallback 用 `injectJavaScript` 灌进去 |
+| 根因 | ① Android `evaluateJavascript` 对超长字符串不稳定；② 把 540KB JS 嵌进 RN 模板字符串时，`${`、反引号等会破坏语法，**静默失败**           |
+| 结论 | **不能**把整包 CM 当 fallback 用 `injectJavaScript` 灌进去                                                                              |
 
 ### 3.4 最终解法（当前方案）
 
@@ -164,12 +164,12 @@ WebView → source={{ uri, baseUrl }} 加载 shell，外部 script 拉 bundle
 
 ### 3.5 其他踩坑（简表）
 
-| 问题 | 处理 |
-| ---- | ---- |
-| 误报「缺少 bundle」 | 校验改为查找 `__diaryCmOnNativeMessage`，而非 esbuild 压缩后的函数名 |
-| 日记 content 被 bundle 污染 | `isLikelyEditorBundleLeak()` 拦截写入；加载时提示恢复 |
-| Metro 不识别 `.bundle` | `metro.config.js` → `assetExts.push('bundle')`，需 `dev:mobile:clear` |
-| `__DEV__` 在 vitest 未定义 | 桥接日志用 `typeof __DEV__ !== 'undefined' && __DEV__` |
+| 问题                        | 处理                                                                  |
+| --------------------------- | --------------------------------------------------------------------- |
+| 误报「缺少 bundle」         | 校验改为查找 `__diaryCmOnNativeMessage`，而非 esbuild 压缩后的函数名  |
+| 日记 content 被 bundle 污染 | `isLikelyEditorBundleLeak()` 拦截写入；加载时提示恢复                 |
+| Metro 不识别 `.bundle`      | `metro.config.js` → `assetExts.push('bundle')`，需 `dev:mobile:clear` |
+| `__DEV__` 在 vitest 未定义  | 桥接日志用 `typeof __DEV__ !== 'undefined' && __DEV__`                |
 
 ---
 
@@ -177,23 +177,23 @@ WebView → source={{ uri, baseUrl }} 加载 shell，外部 script 拉 bundle
 
 ### 4.1 一次性成本（进入编辑页）
 
-| 项目 | 量级 | 说明 |
-| ---- | ---- | ---- |
-| Bundle 复制 | ~540KB，通常 &lt;100ms | 仅 fingerprint 变化时执行 |
-| WebView 冷启动 | 数百 ms | 创建 WebView + 解析执行 JS |
-| `init` 握手 | 数十 ms | ready → init → mountEditor |
-| 内存 | 约 +30～80MB | WebView 进程 + CM DOM |
+| 项目           | 量级                   | 说明                       |
+| -------------- | ---------------------- | -------------------------- |
+| Bundle 复制    | ~540KB，通常 &lt;100ms | 仅 fingerprint 变化时执行  |
+| WebView 冷启动 | 数百 ms                | 创建 WebView + 解析执行 JS |
+| `init` 握手    | 数十 ms                | ready → init → mountEditor |
+| 内存           | 约 +30～80MB           | WebView 进程 + CM DOM      |
 
 成本**集中在打开编辑页**，非常驻。
 
 ### 4.2 运行时（打字、滚动）
 
-| 项目 | 影响 |
-| ---- | ---- |
-| 每次按键 `change` 传全文 | 普通日记长度几乎无感；超长（&gt;50KB）可考虑 debounce |
-| `postMessage` + `injectJavaScript` 双发 | 工具栏操作多一次极小求值；纯打字主路径不依赖 inject |
-| CodeMirror Live Preview | 比 `TextInput` 重，与桌面体验一致 |
-| `contentHeight` | ResizeObserver，仅在布局变化时触发 |
+| 项目                                    | 影响                                                  |
+| --------------------------------------- | ----------------------------------------------------- |
+| 每次按键 `change` 传全文                | 普通日记长度几乎无感；超长（&gt;50KB）可考虑 debounce |
+| `postMessage` + `injectJavaScript` 双发 | 工具栏操作多一次极小求值；纯打字主路径不依赖 inject   |
+| CodeMirror Live Preview                 | 比 `TextInput` 重，与桌面体验一致                     |
+| `contentHeight`                         | ResizeObserver，仅在布局变化时触发                    |
 
 ### 4.3 已有优化
 
@@ -210,17 +210,17 @@ WebView → source={{ uri, baseUrl }} 加载 shell，外部 script 拉 bundle
 
 ## 5. 关键文件索引
 
-| 路径 | 作用 |
-| ---- | ---- |
-| `apps/mobile/diary-editor-web/index.template.html` | shell 模板 |
-| `apps/mobile/diary-editor-web/src/main.ts` | WebView bootstrap、桥接入口 |
-| `apps/mobile/diary-editor-web/scripts/generate-shell-html.mjs` | 生成 shell `index.html` |
-| `apps/mobile/diary-editor-web/vite.config.ts` | 打出 `diary-editor.bundle` |
-| `apps/mobile/src/hooks/useDiaryEditorWebViewSource.ts` | 预加载、校验、复制到同目录 |
-| `packages/ui/src/native/DiaryEditor/useDiaryCodeMirrorBridge.ts` | RN↔WebView 桥接 |
-| `packages/ui/src/native/DiaryEditor/NativeDiaryCodeMirrorEditor.tsx` | WebView 组件 |
-| `packages/ui/src/shared/diary-codemirror/` | 共享 CM 核心 |
-| `apps/mobile/metro.config.js` | `assetExts` 含 `bundle`、`html` |
+| 路径                                                                 | 作用                            |
+| -------------------------------------------------------------------- | ------------------------------- |
+| `apps/mobile/diary-editor-web/index.template.html`                   | shell 模板                      |
+| `apps/mobile/diary-editor-web/src/main.ts`                           | WebView bootstrap、桥接入口     |
+| `apps/mobile/diary-editor-web/scripts/generate-shell-html.mjs`       | 生成 shell `index.html`         |
+| `apps/mobile/diary-editor-web/vite.config.ts`                        | 打出 `diary-editor.bundle`      |
+| `apps/mobile/src/hooks/useDiaryEditorWebViewSource.ts`               | 预加载、校验、复制到同目录      |
+| `packages/ui/src/native/DiaryEditor/useDiaryCodeMirrorBridge.ts`     | RN↔WebView 桥接                 |
+| `packages/ui/src/native/DiaryEditor/NativeDiaryCodeMirrorEditor.tsx` | WebView 组件                    |
+| `packages/ui/src/shared/diary-codemirror/`                           | 共享 CM 核心                    |
+| `apps/mobile/metro.config.js`                                        | `assetExts` 含 `bundle`、`html` |
 
 ---
 

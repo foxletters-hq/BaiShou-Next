@@ -81,7 +81,9 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
 
             <div className={styles.spacer16} />
 
-            <label className={styles.fieldLabel}>{t('agent.assistant.prompt_label', '提示词')}</label>
+            <label className={styles.fieldLabel}>
+              {t('agent.assistant.prompt_label', '提示词')}
+            </label>
             <ResizableMarkdownEditor
               content={form.systemPrompt}
               onChange={(value) => form.setSystemPrompt(value || '')}

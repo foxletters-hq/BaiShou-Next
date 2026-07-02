@@ -75,10 +75,18 @@ export class TitleGeneratorService {
 
       // 请求产生名字
       // 我们用无系统的生成，只基于短句
+      // 从提供商配置中提取高级参数（命名任务固定使用 temperature: 0.1，其他参数可选）
+      const advancedConfig = provider.config?.advancedConfig || {}
+
       const { text } = await generateText({
         model,
-        prompt: `请根据用户的这句话，为这段对话起一个极为简短、直指主题的名称。\n要求：\n1. 不能超过 15 个字符\n2. 不能使用类似“对话名称：”这样的前置说明，直接输出最终的名字字符串\n用户的首句话为：\n"""\n${userTrivialText}\n"""\n请输出标题：`,
-        temperature: 0.1 // 主打严谨摘要而不是创造力
+        prompt: `请根据用户的这句话，为这段对话起一个极为简短、直指主题的名称。\n要求：\n1. 不能超过 15 个字符\n2. 不能使用类似”对话名称：”这样的前置说明，直接输出最终的名字字符串\n用户的首句话为：\n”””\n${userTrivialText}\n”””\n请输出标题：`,
+        temperature: 0.1, // 主打严谨摘要而不是创造力
+        topK: advancedConfig.topK,
+        topP: advancedConfig.topP,
+        maxOutputTokens: advancedConfig.maxTokens,
+        frequencyPenalty: advancedConfig.frequencyPenalty,
+        presencePenalty: advancedConfig.presencePenalty
       })
 
       const cleanTitle = text.trim()

@@ -85,10 +85,7 @@ async function readDiaryEditorWebViewSource(): Promise<DiaryEditorWebViewSource 
       return null
     }
 
-    if (
-      bundleJs.length < MIN_BUNDLE_CHARS ||
-      !bundleJs.includes('__diaryCmOnNativeMessage')
-    ) {
+    if (bundleJs.length < MIN_BUNDLE_CHARS || !bundleJs.includes('__diaryCmOnNativeMessage')) {
       console.error(
         `[DiaryEditor] diary-editor.bundle 无效（${bundleJs.length} chars）。请重新 build:diary-editor`
       )
@@ -105,9 +102,7 @@ async function readDiaryEditorWebViewSource(): Promise<DiaryEditorWebViewSource 
         readAsStringAsync(FINGERPRINT_FILE).catch(() => null)
       ])
       needsStage =
-        !stagedHtmlInfo.exists ||
-        !stagedBundleInfo.exists ||
-        savedFingerprint !== fingerprint
+        !stagedHtmlInfo.exists || !stagedBundleInfo.exists || savedFingerprint !== fingerprint
     } catch {
       needsStage = true
     }

@@ -10,6 +10,7 @@ import { MdCloud } from 'react-icons/md'
 import styles from './AIModelServicesView.module.css'
 import type { AIModelServicesViewProps } from './ai-model-services.types'
 import { useAIModelProviderActions } from './useAIModelProviderActions'
+import type { AiProviderAdvancedConfig } from '@baishou/shared'
 import {
   BASE_KNOWN_PROVIDERS_CONFIG,
   PROVIDER_NAME_I18N_MAP,
@@ -70,6 +71,7 @@ export function useAIModelServicesView(props: AIModelServicesViewProps) {
   const [localFormData, setLocalFormData] = useState<{
     baseUrl: string
     apiKey: string
+    advancedConfig?: AiProviderAdvancedConfig
   }>({
     baseUrl: '',
     apiKey: ''

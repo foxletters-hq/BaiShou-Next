@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import type { TFunction } from 'i18next'
 import { renderProviderIcon, renderProviderTypeIcon } from './ai-model-services.icons'
 import { isChatModelForConnectionTest, resolveProviderBaseUrl } from '@baishou/shared'
+import type { AiProviderAdvancedConfig } from '@baishou/shared'
 import type { AIProviderConfig, AIModelServicesViewProps } from './ai-model-services.types'
 
 export interface UseAIModelProviderActionsParams {
@@ -15,8 +16,14 @@ export interface UseAIModelProviderActionsParams {
   onFetchModels: AIModelServicesViewProps['onFetchModels']
   selectedProviderId: string
   setSelectedProviderId: (id: string) => void
-  localFormData: { baseUrl: string; apiKey: string }
-  setLocalFormData: React.Dispatch<React.SetStateAction<{ baseUrl: string; apiKey: string }>>
+  localFormData: { baseUrl: string; apiKey: string; advancedConfig?: AiProviderAdvancedConfig }
+  setLocalFormData: React.Dispatch<
+    React.SetStateAction<{
+      baseUrl: string
+      apiKey: string
+      advancedConfig?: AiProviderAdvancedConfig
+    }>
+  >
   activeProviderMeta: {
     id: string
     name: string
@@ -85,7 +92,8 @@ export function useAIModelProviderActions(params: UseAIModelProviderActionsParam
     const config: Partial<AIProviderConfig> = providers[pid] || {}
     setLocalFormData({
       baseUrl: config.apiBaseUrl || '',
-      apiKey: config.apiKey || ''
+      apiKey: config.apiKey || '',
+      advancedConfig: config.advancedConfig
     })
   }
 
@@ -98,7 +106,8 @@ export function useAIModelProviderActions(params: UseAIModelProviderActionsParam
   const handleSaveCurrentProviderConfig = () => {
     void persistProviderUpdate(selectedProviderId, {
       apiBaseUrl: effectiveBaseUrl(),
-      apiKey: localFormData.apiKey
+      apiKey: localFormData.apiKey,
+      advancedConfig: localFormData.advancedConfig
     })
       .then(() => {
         toast.showSuccess(t('ai_config.save_success', '$id 配置已保存', { id: selectedProviderId }))

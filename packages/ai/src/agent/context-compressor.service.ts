@@ -415,6 +415,9 @@ export class ContextCompressorService {
 
     const messages: ModelMessage[] = [{ role: 'user', content: userContent }]
 
+    // 从提供商配置中提取高级参数（压缩固定使用 temperature: 0.1，其他参数可选）
+    const advancedConfig = provider.config?.advancedConfig || {}
+
     const streamResult = streamText({
       model,
       system: buildCachedSystemForStream(systemBase, {
@@ -423,7 +426,12 @@ export class ContextCompressorService {
         sessionId
       }),
       messages,
-      temperature: 0.1
+      temperature: 0.1, // 压缩任务固定低温度
+      topK: advancedConfig.topK,
+      topP: advancedConfig.topP,
+      maxOutputTokens: advancedConfig.maxTokens,
+      frequencyPenalty: advancedConfig.frequencyPenalty,
+      presencePenalty: advancedConfig.presencePenalty
     })
 
     let streamed: Awaited<ReturnType<typeof consumeCompressionModelStream>>

@@ -84,7 +84,9 @@ if (skipped.length > 0) {
   console.log(`\n⏭️  已跳过: ${skipped.join('、')}`)
 }
 
-console.log('\nℹ️  官方不提供 Linux / iOS / macOS 安装包。Linux 自行编译：pnpm release:desktop:linux')
+console.log(
+  '\nℹ️  官方不提供 Linux / iOS / macOS 安装包。Linux 自行编译：pnpm release:desktop:linux'
+)
 
 if (failed.length > 0) {
   console.error(`\n❌ 以下步骤失败: ${failed.join('、')}`)

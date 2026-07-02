@@ -10,7 +10,10 @@ import type {
 } from '@baishou/core-mobile'
 import { isUserAvatarRelativePath, normalizePersistedAvatarPath } from '@baishou/shared'
 import { joinPath, basename } from '@baishou/core-mobile'
-import { compressImageForAvatarImport, compressImageForBackgroundImport } from '../utils/mobile-attachment-image-resolver'
+import {
+  compressImageForAvatarImport,
+  compressImageForBackgroundImport
+} from '../utils/mobile-attachment-image-resolver'
 import { importUriToPath, inferImageExtension } from './mobile-uri-import'
 import { toFileUri } from './android-external-fs'
 

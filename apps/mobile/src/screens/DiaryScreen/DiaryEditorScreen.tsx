@@ -119,7 +119,9 @@ export const DiaryEditorScreen: React.FC = () => {
     } else {
       const safeContent = isLikelyEditorBundleLeak(diary.content) ? '' : diary.content
       if (safeContent !== diary.content) {
-        toast.showError(t('diary.content_corrupted_hint', '日记正文异常，已阻止加载损坏内容，请从备份恢复'))
+        toast.showError(
+          t('diary.content_corrupted_hint', '日记正文异常，已阻止加载损坏内容，请从备份恢复')
+        )
       }
       setContent(composeDiaryEditorContent(safeContent, parsedTags))
       setOriginalContent(safeContent)

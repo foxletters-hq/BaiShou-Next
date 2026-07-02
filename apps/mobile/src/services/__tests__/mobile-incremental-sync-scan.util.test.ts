@@ -12,8 +12,7 @@ const localScanIncrementalSyncFiles = vi.fn()
 vi.mock('expo-baishou-server', () => ({
   externalScanIncrementalSyncFiles: (...args: unknown[]) =>
     externalScanIncrementalSyncFiles(...args),
-  localScanIncrementalSyncFiles: (...args: unknown[]) =>
-    localScanIncrementalSyncFiles(...args),
+  localScanIncrementalSyncFiles: (...args: unknown[]) => localScanIncrementalSyncFiles(...args),
   isLocalFsNativeAvailable: () => true
 }))
 
@@ -40,7 +39,9 @@ describe('scanIncrementalSyncFilesForManifest', () => {
 
     expect(files).toHaveLength(1)
     expect(files[0]?.relPath).toBe('a.md')
-    expect(externalScanIncrementalSyncFiles).toHaveBeenCalledWith('/storage/emulated/0/BaiShou_Root')
+    expect(externalScanIncrementalSyncFiles).toHaveBeenCalledWith(
+      '/storage/emulated/0/BaiShou_Root'
+    )
   })
 
   it('沙盒路径优先本地原生扫描', async () => {
