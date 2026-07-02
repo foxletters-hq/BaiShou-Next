@@ -34,6 +34,7 @@ import {
 import type { DomainMutationEvent } from '@baishou/shared/cache'
 import { i18n, isRagMemoryEnabled } from '@baishou/shared'
 import { TitleBar } from './components/TitleBar'
+import { NetworkProvider } from './providers/NetworkProvider'
 import { IncrementalSyncConfirmHost } from './components/IncrementalSyncConfirmDialog/IncrementalSyncConfirmHost'
 import { useZoom } from './hooks/useZoom'
 import { useLegacyUpgradeRagToast } from './hooks/useLegacyUpgradeRagToast'
@@ -319,17 +320,19 @@ export function App() {
 
   return (
     <HashRouter>
-      <DialogProvider>
-        <ToastProvider />
-        <RestoreBlockingOverlay visible={archiveImporting} />
-        <GlobalErrorHandler />
-        <DesktopLegacyMigrationPrompt />
-        <DiaryEmbedFailureNotifier />
-        <GlobalInputContextMenu />
-        <ErrorBoundary>
-          <AppShell />
-        </ErrorBoundary>
-      </DialogProvider>
+      <NetworkProvider>
+        <DialogProvider>
+          <ToastProvider />
+          <RestoreBlockingOverlay visible={archiveImporting} />
+          <GlobalErrorHandler />
+          <DesktopLegacyMigrationPrompt />
+          <DiaryEmbedFailureNotifier />
+          <GlobalInputContextMenu />
+          <ErrorBoundary>
+            <AppShell />
+          </ErrorBoundary>
+        </DialogProvider>
+      </NetworkProvider>
     </HashRouter>
   )
 }

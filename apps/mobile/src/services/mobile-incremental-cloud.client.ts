@@ -54,32 +54,29 @@ function rethrowUnlessTransientNativeUploadError(error: unknown, signal?: AbortS
   if (!isTransientNetworkError(error)) throw error
 }
 
-function isTransientNetworkError(error: unknown): boolean {
-  const message =
-    error instanceof Error ? error.message : typeof error === 'string' ? error : String(error)
-  return /network request failed|failed to fetch|timed out|timeout|econnreset|enetunreach/i.test(
-    message
-  )
-}
+import {
+  isTransientNetworkError,
+  withTransientNetworkRetry as withSharedTransientNetworkRetry
+} from '../utils/transient-network-error.util'
 
 async function withTransientNetworkRetry<T>(
   run: () => Promise<T>,
   retries = 4,
   signal?: AbortSignal
 ): Promise<T> {
-  let lastError: unknown
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    throwIfIncrementalSyncAborted(signal)
-    try {
-      return await run()
-    } catch (error) {
-      if (isIncrementalSyncAbortedError(error)) throw error
-      lastError = error
-      if (attempt >= retries || !isTransientNetworkError(error)) throw error
-      await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** attempt))
+  return withSharedTransientNetworkRetry(
+    async () => {
+      throwIfIncrementalSyncAborted(signal)
+      return run()
+    },
+    {
+      retries,
+      shouldRetry: (error) => {
+        if (isIncrementalSyncAbortedError(error)) return false
+        return isTransientNetworkError(error)
+      }
     }
-  }
-  throw lastError
+  )
 }
 
 export type IncrementalSyncRecord = {

@@ -15,14 +15,11 @@ import { getSystemLanguage, resolveAppUiLanguage } from '@/src/lib/device-locale
 import { useNativeTheme, DialogProvider } from '@baishou/ui/native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { BaishouProvider, useBaishou } from '@/src/providers/BaishouProvider'
+import { NetworkProvider } from '@/src/providers/NetworkProvider'
 import { IncrementalSyncProvider } from '@/src/providers/IncrementalSyncProvider'
 import { useDiaryEmbedFailureToast } from '@/src/hooks/useDiaryEmbedFailureToast'
 import { useLegacyUpgradeRagToast } from '@/src/hooks/useLegacyUpgradeRagToast'
 import { LegacyMigrationPrompt } from '@/src/components/LegacyMigrationPrompt'
-import {
-  preloadDiaryEditorWebViewSource,
-  resetDiaryEditorWebViewSourceCache
-} from '@/src/hooks/useDiaryEditorWebViewSource'
 import {
   buildAppNavigationTheme,
   buildThemedFadeStackOptions
@@ -51,13 +48,6 @@ function AppContent() {
   const { dbReady, services } = useBaishou()
   useDiaryEmbedFailureToast()
   useLegacyUpgradeRagToast()
-
-  useEffect(() => {
-    if (__DEV__) {
-      resetDiaryEditorWebViewSourceCache()
-    }
-    void preloadDiaryEditorWebViewSource()
-  }, [])
 
   useEffect(() => {
     if (!dbReady || !services) return
@@ -130,16 +120,18 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <BaishouProvider>
-          <NativeAppThemeBridge>
-            <HeroUIThemeBridge>
-              <DialogProvider>
-                <IncrementalSyncProvider>
-                  <LegacyMigrationPrompt />
-                  <AppContent />
-                </IncrementalSyncProvider>
-              </DialogProvider>
-            </HeroUIThemeBridge>
-          </NativeAppThemeBridge>
+          <NetworkProvider>
+            <NativeAppThemeBridge>
+              <HeroUIThemeBridge>
+                <DialogProvider>
+                  <IncrementalSyncProvider>
+                    <LegacyMigrationPrompt />
+                    <AppContent />
+                  </IncrementalSyncProvider>
+                </DialogProvider>
+              </HeroUIThemeBridge>
+            </NativeAppThemeBridge>
+          </NetworkProvider>
         </BaishouProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

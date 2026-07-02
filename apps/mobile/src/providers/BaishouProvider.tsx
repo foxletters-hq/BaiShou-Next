@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode, useRef } from 'react'
-import { AppState, Platform } from 'react-native'
+import { AppState, InteractionManager, Platform } from 'react-native'
 import * as SQLite from 'expo-sqlite'
 import {
   ensureExpoAgentDatabaseInstalled,
@@ -930,9 +930,6 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         const pricingService = mobilePricingService
 
         void pricingService.ensureLoaded()
-        void updaterService.checkOnBootIfEnabled().catch((e) => {
-          logger.warn('[MobileUpdater] boot check failed:', e)
-        })
 
         const toolRegistry = new ToolRegistry()
         const registry = AIProviderRegistry.getInstance()
@@ -1367,22 +1364,68 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           })
         })
 
-        if (
-          agentDbRebuiltAtStartup &&
-          agentDbRuntimeRef.current &&
-          vaultService.getActiveVault()?.name
-        ) {
-          try {
-            await mobileAgentDbRecovery.runBare(async () => {
-              await resyncAgentDbCachesFromDisk({
-                runtime: agentDbRuntimeRef.current!,
-                activeVaultName: vaultService.getActiveVault()?.name,
-                maxSessionJsonReadBytes: MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES
+        const runDeferredVaultStartup = async () => {
+          if (!isMounted) return
+
+          if (
+            agentDbRebuiltAtStartup &&
+            agentDbRuntimeRef.current &&
+            vaultService.getActiveVault()?.name
+          ) {
+            try {
+              await mobileAgentDbRecovery.runBare(async () => {
+                await resyncAgentDbCachesFromDisk({
+                  runtime: agentDbRuntimeRef.current!,
+                  activeVaultName: vaultService.getActiveVault()?.name,
+                  maxSessionJsonReadBytes: MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES
+                })
               })
-            })
-          } catch (e) {
-            logger.warn('[BaishouProvider] post-startup-rebuild agent resync failed:', e as Error)
+            } catch (e) {
+              logger.warn('[BaishouProvider] post-startup-rebuild agent resync failed:', e as Error)
+            }
           }
+
+          if (diaryStackRef.current) {
+            try {
+              await runStorageBootstrap()
+            } catch (e) {
+              if (Platform.OS === 'android' && isExternalStorageRequiredError(e)) {
+                logger.info(
+                  '[BaishouProvider] Vault bootstrap deferred until external storage is granted'
+                )
+                if (isMounted) {
+                  setValue((prev) => ({ ...prev, storageReady: false }))
+                }
+              } else {
+                logger.error('[BaishouProvider] Vault bootstrap failed:', e as Error)
+                if (isMounted) {
+                  setValue((prev) => ({ ...prev, storageReady: false }))
+                }
+              }
+            }
+          }
+
+          if (Platform.OS === 'android') {
+            const needsStorageMount = !diaryStackRef.current
+            if (needsStorageMount && (await hasStoragePermission())) {
+              const mounted = await retryStorageSetupRef.current()
+              if (mounted && isMounted) {
+                setValue((prev) => ({ ...prev, storageReady: true }))
+              }
+            }
+          }
+
+          if (isMounted) {
+            void warmAgentScreenCaches(settingsManager, attachmentManager)
+          }
+
+          void mobileMcpService?.start().catch((mcpErr) => {
+            logger.warn('[BaishouProvider] MCP server failed to start:', mcpErr as Error)
+          })
+
+          void updaterService.checkOnBootIfEnabled().catch((e) => {
+            logger.warn('[MobileUpdater] boot check failed:', e)
+          })
         }
 
         const runStorageBootstrap = async (options?: {
@@ -1558,23 +1601,6 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
         if (diaryStack) {
           storageReady = true
-          try {
-            await runStorageBootstrap()
-          } catch (e) {
-            if (Platform.OS === 'android' && isExternalStorageRequiredError(e)) {
-              logger.info(
-                '[BaishouProvider] Vault bootstrap deferred until external storage is granted'
-              )
-              if (isMounted) {
-                setValue((prev) => ({ ...prev, storageReady: false }))
-              }
-            } else {
-              logger.error('[BaishouProvider] Vault bootstrap failed:', e as Error)
-              if (isMounted) {
-                setValue((prev) => ({ ...prev, storageReady: false }))
-              }
-            }
-          }
         }
 
         retryStorageSetupRef.current = async (options?: { forceDeferResync?: boolean }) => {
@@ -1813,11 +1839,6 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
         void getTtsPlaybackSettings(settingsManager).catch(() => {})
 
-        if (Platform.OS === 'android' && !storageReady && (await hasStoragePermission())) {
-          const mounted = await retryStorageSetupRef.current()
-          if (mounted) storageReady = true
-        }
-
         if (isMounted) {
           notifyArchiveRestoreCompleteRef.current = (result: ImportResult) => {
             if (!isMounted || !shouldRefreshVaultAfterArchiveImport(result)) return
@@ -1930,12 +1951,10 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             },
             startAgentChat
           })
-          void warmAgentScreenCaches(settingsManager, attachmentManager)
+          InteractionManager.runAfterInteractions(() => {
+            void runDeferredVaultStartup()
+          })
         }
-
-        void mobileMcpService?.start().catch((mcpErr) => {
-          logger.warn('[BaishouProvider] MCP server failed to start:', mcpErr as Error)
-        })
       } catch (e) {
         if (isExternalStorageRequiredError(e)) {
           logger.info(
