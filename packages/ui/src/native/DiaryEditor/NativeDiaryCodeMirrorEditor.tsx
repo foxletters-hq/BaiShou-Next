@@ -1,7 +1,12 @@
-import React, { forwardRef, useEffect, useImperativeHandle, useMemo } from 'react'
-import { Platform, StyleSheet, View, type ViewStyle } from 'react-native'
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react'
+import { Keyboard, Platform, StyleSheet, View, type ViewStyle } from 'react-native'
 import { WebView } from 'react-native-webview'
-import type { DiaryCmTheme, DiaryCmMarkdownMark } from '../../shared/diary-codemirror/types'
+import type {
+  DiaryCmConfirmRequestPayload,
+  DiaryCmTheme,
+  DiaryCmMarkdownMark
+} from '../../shared/diary-codemirror/types'
+import { useDialog } from '../Dialog/Dialog'
 import { useNativeTheme } from '../theme'
 import { buildDiaryCmThemeFromNative } from './diary-cm-theme.util'
 import {
@@ -24,6 +29,7 @@ export interface NativeDiaryCodeMirrorEditorHandle {
   undo: () => void
   redo: () => void
   toggleMarkdownMark: (marker: DiaryCmMarkdownMark) => void
+  deleteRange: (from: number, to: number) => void
 }
 
 export interface NativeDiaryCodeMirrorEditorProps extends Pick<
@@ -96,6 +102,26 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
     [colors, isDark, themeOverride]
   )
 
+  const dialog = useDialog()
+
+  const handleDismissKeyboard = useCallback(() => {
+    Keyboard.dismiss()
+  }, [])
+
+  const handleConfirmRequest = useCallback(
+    (payload: DiaryCmConfirmRequestPayload, respond: (confirmed: boolean) => void) => {
+      void dialog
+        .confirm(payload.message, {
+          title: payload.title ?? '确认删除',
+          confirmText: payload.confirmText ?? '删除',
+          cancelText: payload.cancelText ?? '取消',
+          destructive: payload.destructive ?? true
+        })
+        .then(respond)
+    },
+    [dialog]
+  )
+
   const bridge = useDiaryCodeMirrorBridge({
     content,
     placeholder,
@@ -112,26 +138,31 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
     onImageAction,
     onImagePreview,
     resolveAttachmentUrl,
-    bottomScrollInset
+    bottomScrollInset,
+    onDismissKeyboard: handleDismissKeyboard,
+    onConfirmRequest: handleConfirmRequest
   })
 
   useEffect(() => {
     if (!active) bridge.blur()
   }, [active, bridge.blur])
 
-  useEffect(() => {
-    bridge.setScrollInsets(bottomScrollInset)
-    if (bottomScrollInset > 0) {
-      requestAnimationFrame(() => bridge.scrollCaretIntoView())
-    }
-  }, [bottomScrollInset, bridge.setScrollInsets, bridge.scrollCaretIntoView])
+  const prevKeyboardInsetRef = useRef(0)
 
   useEffect(() => {
+    bridge.setScrollInsets(bottomScrollInset)
+  }, [bottomScrollInset, bridge.setScrollInsets])
+
+  useEffect(() => {
+    const prev = prevKeyboardInsetRef.current
+    prevKeyboardInsetRef.current = keyboardInset
     if (keyboardInset <= 0) return
+    // 仅在键盘刚弹出时滚一次，避免高度动画期间反复把视图拽回
+    if (prev > 0) return
     const delayMs = Platform.OS === 'ios' ? 120 : 220
     const timer = setTimeout(() => bridge.scrollCaretIntoView(), delayMs)
     return () => clearTimeout(timer)
-  }, [keyboardInset, bottomScrollInset, bridge.scrollCaretIntoView])
+  }, [keyboardInset, bridge.scrollCaretIntoView])
 
   useImperativeHandle(
     ref,
@@ -142,7 +173,8 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
       insertAtRange: bridge.insertAtRange,
       undo: bridge.undo,
       redo: bridge.redo,
-      toggleMarkdownMark: bridge.toggleMarkdownMark
+      toggleMarkdownMark: bridge.toggleMarkdownMark,
+      deleteRange: bridge.deleteRange
     }),
     [
       bridge.blur,
@@ -151,7 +183,8 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
       bridge.insertAtRange,
       bridge.redo,
       bridge.toggleMarkdownMark,
-      bridge.undo
+      bridge.undo,
+      bridge.deleteRange
     ]
   )
 
@@ -264,7 +297,6 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
           containerStyle={webViewContainerStyle}
           mixedContentMode="always"
           setSupportMultipleWindows={false}
-          androidLayerType="hardware"
           {...(Platform.OS === 'ios'
             ? {
                 allowingReadAccessToURL: editorWebViewSource.baseUrl,
