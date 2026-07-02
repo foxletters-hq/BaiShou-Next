@@ -15,8 +15,15 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
 
   // --- ToolVectorStore 实现 ---
 
-  async searchSimilar(queryEmbedding: number[], topK: number): Promise<VectorSearchResult[]> {
-    const rows = await this.hybridRepo.queryNativeVector(queryEmbedding, topK)
+  async searchSimilar(
+    queryEmbedding: number[],
+    topK: number,
+    timeFilter?: { startMs?: number; endMs?: number }
+  ): Promise<VectorSearchResult[]> {
+    const rows = await this.hybridRepo.queryNativeVector(queryEmbedding, topK, {
+      startMs: timeFilter?.startMs,
+      endMs: timeFilter?.endMs
+    })
     return rows.map((r: any) => ({
       sourceType: r.source || 'chat',
       sourceId: r.messageId,
@@ -39,12 +46,20 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
     // 日记文件的向量索引由 ShadowIndexSyncService 的文件监听自动处理，此处为 no-op
   }
 
-  async searchFts(query: string, limit: number) {
-    const rows = await this.hybridRepo.queryFTS(query, limit)
+  async searchFts(
+    query: string,
+    limit: number,
+    timeFilter?: { startMs?: number; endMs?: number }
+  ) {
+    const rows = await this.hybridRepo.queryFTS(query, limit, {
+      startMs: timeFilter?.startMs,
+      endMs: timeFilter?.endMs
+    })
     return rows.map((r: any) => ({
       messageId: r.messageId,
       sessionId: r.sessionId,
-      snippet: r.chunkText
+      snippet: r.chunkText,
+      createdAt: r.createdAt
     }))
   }
 

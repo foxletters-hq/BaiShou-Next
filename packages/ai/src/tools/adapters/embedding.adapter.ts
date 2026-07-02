@@ -4,6 +4,7 @@ import { embed } from 'ai'
 import { SqliteHybridSearchRepository } from '@baishou/database'
 import { logger } from '@baishou/shared'
 import { normalizeEmbeddingVector } from '../../rag/embedding-chunk'
+import { SEMANTIC_SEARCH_TIMEOUT_MS, withPromiseTimeout } from '@baishou/shared'
 
 /** 最大分块 token 数（对齐原版 1024 字符≈512 token） */
 const MAX_CHUNK_LENGTH = 1024
@@ -31,10 +32,14 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
 
   async embedQuery(text: string): Promise<number[] | null> {
     try {
-      const { embedding } = await embed({
-        model: this.provider.getEmbeddingModel(this.modelId),
-        value: text
-      })
+      const { embedding } = await withPromiseTimeout(
+        embed({
+          model: this.provider.getEmbeddingModel(this.modelId),
+          value: text
+        }),
+        SEMANTIC_SEARCH_TIMEOUT_MS,
+        'embedQuery'
+      )
       return embedding?.length ? normalizeEmbeddingVector(embedding) : null
     } catch (e) {
       logger.warn('[EmbeddingAdapter] 查询特征抽取失败', { error: e })
