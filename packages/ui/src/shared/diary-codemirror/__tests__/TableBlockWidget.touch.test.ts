@@ -118,7 +118,7 @@ describe('TableBlockWidget touch', () => {
     await new Promise((r) => queueMicrotask(r))
 
     expect(view.state.selection.main.head).toBeGreaterThan(gapFrom)
-    expect(parent.querySelector('.cm-table-gap-line')).toBeTruthy()
+    expect(parent.querySelector('.cm-table-block')).toBeTruthy()
 
     view.destroy()
   })
@@ -139,6 +139,10 @@ describe('TableBlockWidget touch', () => {
     const corner = parent.querySelector('.cm-table-corner-menu') as HTMLElement
     longPressChromeHandle(corner)
     vi.advanceTimersByTime(TABLE_CHROME_LONG_PRESS_MS + 20)
+
+    await vi.waitFor(() => {
+      expect(document.querySelector('.cm-table-sheet-item')).toBeTruthy()
+    })
 
     const deleteBtn = [...document.querySelectorAll('.cm-table-sheet-item')].find((el) =>
       el.textContent?.includes('删除表格')

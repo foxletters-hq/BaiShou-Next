@@ -98,7 +98,7 @@ describe('TableBlockWidget mouse interactions', () => {
     view.destroy()
   })
 
-  it('places editor cursor on paragraph line after table gap on desktop', async () => {
+  it('redirects cursor from blank line after table to following paragraph on desktop', async () => {
     parent = document.createElement('div')
     parent.style.width = '400px'
     document.body.appendChild(parent)
@@ -115,7 +115,7 @@ describe('TableBlockWidget mouse interactions', () => {
     await new Promise((r) => queueMicrotask(r))
 
     expect(view.state.selection.main.head).toBeGreaterThan(gapFrom)
-    expect(parent.querySelector('.cm-table-gap-line')).toBeTruthy()
+    expect(parent.querySelector('.cm-table-block')).toBeTruthy()
 
     view.destroy()
   })
@@ -192,7 +192,7 @@ describe('TableBlockWidget mouse interactions', () => {
       ]
     })
     expect(
-      parent.querySelector('textarea.cm-table-cell-input[data-row="0"][data-col="1"]')
+      parent.querySelector('.cm-table-cell-source[data-row="0"][data-col="1"]')
     ).toBeTruthy()
 
     const colHandles = [...parent.querySelectorAll('.cm-table-col-handle')]
