@@ -10,7 +10,7 @@ import {
   buildStreamdownMarkdownStyle,
   markdownNeedsLegacyImageRenderer,
   prepareNativeStreamdownMarkdown,
-  preserveChatTrailingNewlines
+  preserveChatDisplayNewlines
 } from './streamdown-markdown.util'
 import { useMarkdownLinkPress } from './useMarkdownLinkPress'
 
@@ -76,7 +76,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = (props) => {
 
   const displayContent = useMemo(() => {
     const prepared = prepareNativeStreamdownMarkdown(content, resolveImageUri)
-    return useTrailingMargin ? preserveChatTrailingNewlines(prepared) : prepared
+    return useTrailingMargin ? preserveChatDisplayNewlines(prepared) : prepared
   }, [content, resolveImageUri, useTrailingMargin])
 
   const streamFlavor =
