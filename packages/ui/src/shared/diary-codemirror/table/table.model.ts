@@ -66,6 +66,7 @@ export function parseTableFromDoc(doc: Text, from: number, to: number): ParsedTa
 
   const separator = lines[separatorIndex]!
   const bodyRows: ParsedTableRow[] = []
+  let lastPipeRowTo = separator.to
 
   for (let i = separatorIndex + 1; i < lines.length; i++) {
     const line = lines[i]!
@@ -76,11 +77,12 @@ export function parseTableFromDoc(doc: Text, from: number, to: number): ParsedTa
       lineTo: line.to,
       cells: normalizeRowCells(cells, headerCells.length)
     })
+    lastPipeRowTo = line.to
   }
 
   return {
     from: lines[0]!.from,
-    to: lines[lines.length - 1]!.to,
+    to: lastPipeRowTo,
     header: {
       lineFrom: lines[0]!.from,
       lineTo: lines[0]!.to,
