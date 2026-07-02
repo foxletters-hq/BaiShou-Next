@@ -7,13 +7,14 @@ import {
   type DiaryCmFromWebViewMessage,
   type DiaryCmImageActionPayload,
   type DiaryCmInitPayload,
+  type DiaryCmConfirmRequestPayload,
   type DiaryCmTheme,
   type DiaryCmToWebViewMessage,
   type DiaryCmMarkdownMark,
   type DiaryTagColorRegistry
 } from '../../shared/diary-codemirror/types'
 import { DiaryCmAttachmentUrlCache } from './diary-cm-attachment-url-cache'
-import { isLikelyEditorBundleLeak } from './diary-cm-content.util'
+import { isLikelyEditorBundleLeak, looksLikeExternalContentReplace } from './diary-cm-content.util'
 
 interface PendingUrlRequest {
   timeoutId: ReturnType<typeof setTimeout>
@@ -41,6 +42,13 @@ export interface UseDiaryCodeMirrorBridgeOptions {
   resolveAttachmentUrl?: (srcRaw: string) => Promise<string | null>
   /** WebView 内滚动时需预留的底部遮挡高度（如 RN 浮动工具栏） */
   bottomScrollInset?: number
+  /** 表格把手菜单等场景：收起系统输入法 */
+  onDismissKeyboard?: () => void
+  /** 表格删除等破坏性操作确认 */
+  onConfirmRequest?: (
+    payload: DiaryCmConfirmRequestPayload,
+    respond: (confirmed: boolean) => void
+  ) => void
 }
 
 export interface DiaryCodeMirrorBridgeApi {
@@ -58,6 +66,7 @@ export interface DiaryCodeMirrorBridgeApi {
   isReady: () => boolean
   setScrollInsets: (bottom: number) => void
   scrollCaretIntoView: () => void
+  deleteRange: (from: number, to: number) => void
 }
 
 function buildInitPayload(
@@ -111,6 +120,7 @@ export function useDiaryCodeMirrorBridge(
   const lastEditableRef = useRef<boolean | null>(null)
   const loadEndRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const initSentForLoadRef = useRef(false)
+  const webViewOwnsContentRef = useRef(false)
 
   const optionsRef = useRef(options)
   optionsRef.current = options
@@ -169,6 +179,7 @@ export function useDiaryCodeMirrorBridge(
       opts.bottomScrollInset ?? 0
     )
     lastEditableRef.current = opts.editable ?? true
+    webViewOwnsContentRef.current = false
     postToWebView({ type: 'init', payload })
     lastWebViewContentRef.current = opts.content
     editorMountedRef.current = true
@@ -182,6 +193,7 @@ export function useDiaryCodeMirrorBridge(
     isReadyRef.current = false
     editorMountedRef.current = false
     initSentForLoadRef.current = false
+    webViewOwnsContentRef.current = false
     pendingOutboundRef.current = []
     lastWebViewContentRef.current = null
     lastEditableRef.current = null
@@ -243,6 +255,7 @@ export function useDiaryCodeMirrorBridge(
           const next = message.payload.content
           if (isLikelyEditorBundleLeak(next)) return
           lastWebViewContentRef.current = next
+          webViewOwnsContentRef.current = true
           if (echoSuppressContentRef.current !== null && next === echoSuppressContentRef.current) {
             echoSuppressContentRef.current = null
             return
@@ -284,6 +297,31 @@ export function useDiaryCodeMirrorBridge(
         case 'panScroll':
           optionsRef.current.onPanScroll?.(message.payload.deltaY)
           return
+        case 'debug': {
+          const { scope, tag, detail } = message.payload
+          const extra = detail ? ` ${JSON.stringify(detail)}` : ''
+          logBridge(`${scope ?? 'webview'}: ${tag}${extra}`)
+          return
+        }
+        case 'dismissKeyboard':
+          optionsRef.current.onDismissKeyboard?.()
+          return
+        case 'confirmRequest': {
+          const { requestId } = message.payload
+          const respond = (confirmed: boolean) => {
+            enqueueOrSend({
+              type: 'confirmResponse',
+              payload: { requestId, confirmed }
+            })
+          }
+          const handler = optionsRef.current.onConfirmRequest
+          if (handler) {
+            handler(message.payload, respond)
+          } else {
+            respond(false)
+          }
+          return
+        }
         case 'focus':
           optionsRef.current.onFocus?.()
           return
@@ -343,6 +381,7 @@ export function useDiaryCodeMirrorBridge(
     (nextContent: string) => {
       if (isLikelyEditorBundleLeak(nextContent)) return
       echoSuppressContentRef.current = nextContent
+      webViewOwnsContentRef.current = false
       enqueueOrSend({ type: 'setContent', payload: { content: nextContent } })
       lastWebViewContentRef.current = nextContent
     },
@@ -352,6 +391,12 @@ export function useDiaryCodeMirrorBridge(
   useEffect(() => {
     if (!isReadyRef.current) return
     if (content === lastWebViewContentRef.current) return
+
+    if (webViewOwnsContentRef.current) {
+      const prev = lastWebViewContentRef.current ?? ''
+      if (!looksLikeExternalContentReplace(prev, content)) return
+    }
+
     pushSetContent(content)
   }, [content, pushSetContent])
 
@@ -435,6 +480,13 @@ export function useDiaryCodeMirrorBridge(
     enqueueOrSend({ type: 'scrollCaretIntoView' })
   }, [enqueueOrSend])
 
+  const deleteRange = useCallback(
+    (from: number, to: number) => {
+      enqueueOrSend({ type: 'deleteRange', payload: { from, to } })
+    },
+    [enqueueOrSend]
+  )
+
   const undo = useCallback(() => {
     enqueueOrSend({ type: 'undo' })
   }, [enqueueOrSend])
@@ -464,6 +516,7 @@ export function useDiaryCodeMirrorBridge(
     toggleMarkdownMark,
     isReady: () => isReadyRef.current,
     setScrollInsets,
-    scrollCaretIntoView
+    scrollCaretIntoView,
+    deleteRange
   }
 }

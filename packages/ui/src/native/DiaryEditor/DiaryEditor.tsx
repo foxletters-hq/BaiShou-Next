@@ -30,7 +30,6 @@ import type {
   DiaryTagColorRegistry,
   DiaryCmImageActionPayload
 } from '../../shared/diary-codemirror/types'
-import { deleteMarkdownRange } from './diary-cm-content.util'
 
 interface DiaryEditorProps {
   content: string
@@ -250,13 +249,13 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
             text: t('common.delete', '删除'),
             style: 'destructive',
             onPress: () => {
-              onContentChange(deleteMarkdownRange(contentRef.current, payload.from, payload.to))
+              editorRef.current?.deleteRange(payload.from, payload.to)
             }
           }
         ]
       )
     },
-    [onContentChange, t]
+    [t]
   )
 
   const toolbarDockBottom = keyboardHeight

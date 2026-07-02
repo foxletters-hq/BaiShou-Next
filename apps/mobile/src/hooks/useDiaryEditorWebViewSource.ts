@@ -62,6 +62,51 @@ async function stageDiaryEditorBundle(
   await writeAsStringAsync(FINGERPRINT_FILE, fingerprint)
 }
 
+async function readBundledAssetContent(
+  htmlUri: string,
+  bundleUri: string
+): Promise<{ shellHtml: string; bundleJs: string; fingerprint: string } | null> {
+  const [shellHtml, bundleJs] = await Promise.all([
+    readAsStringAsync(htmlUri),
+    readAsStringAsync(bundleUri)
+  ])
+
+  if (!isValidShellHtml(shellHtml)) {
+    console.error(
+      `[DiaryEditor] index.html 无效（${shellHtml.length} chars）。请执行: cd apps/mobile && pnpm run build:diary-editor 后重启 Metro`
+    )
+    return null
+  }
+
+  if (bundleJs.length < MIN_BUNDLE_CHARS || !bundleJs.includes('__diaryCmOnNativeMessage')) {
+    console.error(
+      `[DiaryEditor] diary-editor.bundle 无效（${bundleJs.length} chars）。请重新 build:diary-editor`
+    )
+    return null
+  }
+
+  const fingerprint = await buildFingerprint(htmlUri, bundleUri)
+  return { shellHtml, bundleJs, fingerprint }
+}
+
+async function isStagedBundleCurrent(fingerprint: string): Promise<boolean> {
+  try {
+    const [stagedHtmlInfo, stagedBundleInfo, savedFingerprint] = await Promise.all([
+      getInfoAsync(STAGING_HTML),
+      getInfoAsync(STAGING_BUNDLE),
+      readAsStringAsync(FINGERPRINT_FILE).catch(() => null)
+    ])
+    return (
+      stagedHtmlInfo.exists &&
+      stagedBundleInfo.exists &&
+      savedFingerprint === fingerprint &&
+      ('size' in stagedBundleInfo ? (stagedBundleInfo.size ?? 0) : 0) >= MIN_BUNDLE_CHARS
+    )
+  } catch {
+    return false
+  }
+}
+
 async function readDiaryEditorWebViewSource(): Promise<DiaryEditorWebViewSource | null> {
   try {
     const [htmlUri, bundleUri] = await Promise.all([
@@ -77,50 +122,25 @@ async function readDiaryEditorWebViewSource(): Promise<DiaryEditorWebViewSource 
       return null
     }
 
-    const [shellHtml, bundleJs] = await Promise.all([
-      readAsStringAsync(htmlUri),
-      readAsStringAsync(bundleUri)
-    ])
-
-    if (!isValidShellHtml(shellHtml)) {
-      console.error(
-        `[DiaryEditor] index.html 无效（${shellHtml.length} chars）。请执行: cd apps/mobile && pnpm run build:diary-editor 后重启 Metro`
-      )
-      return null
-    }
-
-    if (bundleJs.length < MIN_BUNDLE_CHARS || !bundleJs.includes('__diaryCmOnNativeMessage')) {
-      console.error(
-        `[DiaryEditor] diary-editor.bundle 无效（${bundleJs.length} chars）。请重新 build:diary-editor`
-      )
-      return null
-    }
-
     const fingerprint = await buildFingerprint(htmlUri, bundleUri)
-    let needsStage = true
-
-    try {
-      const [stagedHtmlInfo, stagedBundleInfo, savedFingerprint] = await Promise.all([
-        getInfoAsync(STAGING_HTML),
-        getInfoAsync(STAGING_BUNDLE),
-        readAsStringAsync(FINGERPRINT_FILE).catch(() => null)
-      ])
-      needsStage =
-        !stagedHtmlInfo.exists || !stagedBundleInfo.exists || savedFingerprint !== fingerprint
-    } catch {
-      needsStage = true
-    }
-
-    if (needsStage) {
-      await stageDiaryEditorBundle(htmlUri, bundleUri, fingerprint)
+    if (await isStagedBundleCurrent(fingerprint)) {
       if (typeof __DEV__ !== 'undefined' && __DEV__) {
-        console.log('[DiaryEditor] 已复制 WebView bundle 到同目录:', STAGING_DIR)
+        console.log('[DiaryEditor] WebView bundle 已缓存，跳过全量读取:', STAGING_HTML)
+      }
+      return {
+        uri: STAGING_HTML,
+        baseUrl: STAGING_DIR
       }
     }
 
+    const bundled = await readBundledAssetContent(htmlUri, bundleUri)
+    if (!bundled) return null
+
+    await stageDiaryEditorBundle(htmlUri, bundleUri, bundled.fingerprint)
     if (typeof __DEV__ !== 'undefined' && __DEV__) {
+      console.log('[DiaryEditor] 已复制 WebView bundle 到同目录:', STAGING_DIR)
       console.log(
-        `[DiaryEditor] WebView bundle 就绪: shell=${shellHtml.length} chars, js=${bundleJs.length}, uri=${STAGING_HTML}`
+        `[DiaryEditor] WebView bundle 就绪: shell=${bundled.shellHtml.length} chars, js=${bundled.bundleJs.length}, uri=${STAGING_HTML}`
       )
     }
 
@@ -140,7 +160,7 @@ export function resetDiaryEditorWebViewSourceCache(): void {
   preloadPromise = null
 }
 
-/** 全局预加载 WebView HTML（P-4） */
+/** 懒加载 WebView HTML（首次进入编辑器时调用） */
 export function preloadDiaryEditorWebViewSource(): Promise<DiaryEditorWebViewSource | null> {
   if (cachedSource) return Promise.resolve(cachedSource)
   if (!preloadPromise) {

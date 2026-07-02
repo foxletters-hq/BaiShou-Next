@@ -1,4 +1,4 @@
-import { Compartment } from '@codemirror/state'
+import { Compartment, EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { redo, undo } from '@codemirror/commands'
 import {
@@ -11,6 +11,7 @@ import {
   refreshDiaryTagColorRegistryEffect,
   setActiveDiaryTagColorRegistry
 } from '@baishou/ui/shared/diary-codemirror/extensions/diaryTagLinePlugin'
+import { resolveTableConfirmResponse } from '@baishou/ui/shared/diary-codemirror/table/tableConfirm'
 import type { DiaryCmTheme } from '@baishou/ui/shared/diary-codemirror/types'
 
 import type { InitPayload, RnToWebViewMessage, WebViewToRnMessage } from './types'
@@ -21,11 +22,19 @@ let contentHeightObserver: ResizeObserver | null = null
 let activeScrollMode: 'viewport' | 'document' = 'document'
 let bottomScrollInsetPx = 0
 let caretScrollFrameId: number | null = null
+let suppressCaretScrollOnce = false
+/** 用户手动滚动后，暂停自动把视图拽回光标 */
+let userScrollLockUntil = 0
+let programmaticScroll = false
+let scrollListenerInstalled = false
+
+/** 用户手动滚动后，暂停自动拽回光标的时长 */
+const USER_SCROLL_LOCK_MS = 3000
 
 /** 光标与底部遮挡区之间的额外留白 */
 const CARET_SCROLL_BOTTOM_BUFFER_PX = 12
-const CARET_SCROLL_TOP_BUFFER_PX = 16
-const CARET_SCROLL_DURATION_MS = 320
+/** 光标与顶部可视区之间的留白，点击上方正文时平滑上滚 */
+const CARET_SCROLL_TOP_BUFFER_PX = 48
 
 const editableCompartment = new Compartment()
 
@@ -108,8 +117,10 @@ function applyTheme(theme: DiaryCmTheme): void {
   root.style.setProperty('--text-secondary', theme.textSecondary)
   root.style.setProperty('--text-tertiary', theme.textSecondary)
   root.style.setProperty('--bg-editor', theme.bgEditor)
+  root.style.setProperty('--bg-surface', theme.bgEditor)
   root.style.setProperty('--bg-surface-normal', theme.bgEditor)
   root.style.setProperty('--border-subtle', theme.borderColor)
+  root.style.setProperty('--color-danger', theme.isDark ? '#f87171' : '#e5484d')
   root.style.setProperty('--color-primary', theme.primary)
   root.style.setProperty(
     '--color-primary-light',
@@ -122,71 +133,191 @@ function applyTheme(theme: DiaryCmTheme): void {
   document.body.style.color = theme.textPrimary
 }
 
-function smoothScrollElementTo(
-  element: HTMLElement,
-  targetTop: number,
-  duration = CARET_SCROLL_DURATION_MS
-): void {
-  if (caretScrollFrameId !== null) {
-    cancelAnimationFrame(caretScrollFrameId)
-    caretScrollFrameId = null
-  }
+function cancelCaretScrollAnimation(): void {
+  if (caretScrollFrameId === null) return
+  cancelAnimationFrame(caretScrollFrameId)
+  caretScrollFrameId = null
+}
 
-  const maxTop = Math.max(0, element.scrollHeight - element.clientHeight)
-  const clampedTarget = Math.max(0, Math.min(targetTop, maxTop))
-  const start = element.scrollTop
-  const change = clampedTarget - start
-  if (Math.abs(change) < 1) return
+function isTableCellInputFocused(): boolean {
+  const active = document.activeElement
+  return active instanceof HTMLTextAreaElement && active.classList.contains('cm-table-cell-input')
+}
 
-  const startTime = performance.now()
-  const tick = (now: number) => {
-    const progress = Math.min((now - startTime) / duration, 1)
-    const ease = 1 - Math.pow(1 - progress, 4)
-    element.scrollTop = start + change * ease
-    if (progress < 1) {
-      caretScrollFrameId = requestAnimationFrame(tick)
-    } else {
-      caretScrollFrameId = null
+function isCaretNearPostTableZone(): boolean {
+  if (!view) return false
+  const head = view.state.selection.main.head
+  const doc = view.state.doc
+
+  for (const block of view.dom.querySelectorAll('.cm-table-block')) {
+    const tableTo = Number((block as HTMLElement).dataset.tableTo)
+    if (Number.isNaN(tableTo) || head <= tableTo) continue
+    try {
+      const closingLine = doc.lineAt(tableTo)
+      const headLine = doc.lineAt(head)
+      if (headLine.number <= closingLine.number + 4) return true
+    } catch {
+      /* ignore */
     }
   }
-  caretScrollFrameId = requestAnimationFrame(tick)
+
+  return false
+}
+
+/** 表后区域 coordsAtPos 常落在表格 widget 顶部，改用正文行的 DOM 矩形 */
+function resolveCaretViewportRect(editorView: EditorView, pos: number): DOMRect | null {
+  if (isCaretNearPostTableZone()) {
+    try {
+      const line = editorView.state.doc.lineAt(pos)
+      const domAt = editorView.domAtPos(line.from)
+      let node: Node | null = domAt.node
+      if (node.nodeType === Node.TEXT_NODE) node = node.parentElement
+      const lineEl = (node instanceof Element ? node : node?.parentElement)?.closest('.cm-line')
+      if (lineEl) return lineEl.getBoundingClientRect()
+    } catch {
+      /* fall through */
+    }
+  }
+
+  const coords = editorView.coordsAtPos(pos)
+  if (!coords) return null
+  return new DOMRect(coords.left, coords.top, coords.right - coords.left, coords.bottom - coords.top)
+}
+
+function clearUserScrollLockForContentEdit(target: EventTarget | null): void {
+  if (!(target instanceof Element)) return
+  if (
+    target.closest(
+      '.cm-table-block, .cm-table-context-menu, .cm-table-context-menu-layer, .cm-table-sheet-layer'
+    )
+  ) {
+    return
+  }
+  userScrollLockUntil = 0
+}
+
+function isUserScrollLocked(): boolean {
+  return Date.now() < userScrollLockUntil
+}
+
+function lockUserScroll(): void {
+  userScrollLockUntil = Date.now() + USER_SCROLL_LOCK_MS
+}
+
+function applyProgrammaticScrollTop(targetScrollTop: number): void {
+  if (!view) return
+  programmaticScroll = true
+  view.scrollDOM.scrollTop = targetScrollTop
+  requestAnimationFrame(() => {
+    programmaticScroll = false
+  })
+}
+
+function smoothApplyProgrammaticScrollTop(targetScrollTop: number, onDone?: () => void): void {
+  if (!view) {
+    onDone?.()
+    return
+  }
+  const scrollDOM = view.scrollDOM
+  const start = scrollDOM.scrollTop
+  const change = targetScrollTop - start
+  if (Math.abs(change) < 2) {
+    onDone?.()
+    return
+  }
+
+  cancelCaretScrollAnimation()
+  const duration = Math.min(520, Math.max(260, Math.abs(change) * 0.55))
+  const startTime = performance.now()
+  programmaticScroll = true
+
+  const step = (now: number) => {
+    const progress = Math.min((now - startTime) / duration, 1)
+    const ease = 1 - Math.pow(1 - progress, 4)
+    scrollDOM.scrollTop = start + change * ease
+    if (progress < 1) {
+      caretScrollFrameId = requestAnimationFrame(step)
+    } else {
+      caretScrollFrameId = null
+      programmaticScroll = false
+      onDone?.()
+    }
+  }
+  caretScrollFrameId = requestAnimationFrame(step)
+}
+
+function installUserScrollListener(editorView: EditorView): void {
+  if (scrollListenerInstalled) return
+  scrollListenerInstalled = true
+
+  editorView.scrollDOM.addEventListener(
+    'scroll',
+    () => {
+      if (programmaticScroll) return
+      lockUserScroll()
+    },
+    { passive: true }
+  )
+
+  editorView.scrollDOM.addEventListener(
+    'touchstart',
+    () => {
+      lockUserScroll()
+    },
+    { passive: true }
+  )
+}
+
+function shouldAutoScrollCaret(): boolean {
+  if (!view || activeScrollMode !== 'viewport') return false
+  if (isUserScrollLocked()) return false
+  if (isTableCellInputFocused()) return false
+  return true
 }
 
 function computeCaretScrollTarget(): number | null {
-  if (!view || activeScrollMode !== 'viewport') return null
+  if (!shouldAutoScrollCaret()) return null
 
-  const pos = view.state.selection.main.head
-  const coords = view.coordsAtPos(pos)
-  if (!coords) return null
+  const pos = view!.state.selection.main.head
+  const caretRect = resolveCaretViewportRect(view!, pos)
+  if (!caretRect) return null
 
-  const { scrollDOM } = view
+  const { scrollDOM } = view!
   const scrollRect = scrollDOM.getBoundingClientRect()
   const chromeBottom = bottomScrollInsetPx + CARET_SCROLL_BOTTOM_BUFFER_PX
-  const safeBottom = scrollRect.top + scrollDOM.clientHeight - chromeBottom
   const safeTop = scrollRect.top + CARET_SCROLL_TOP_BUFFER_PX
-  let targetScrollTop = scrollDOM.scrollTop
+  const safeBottom = scrollRect.top + scrollDOM.clientHeight - chromeBottom
 
-  if (coords.bottom > safeBottom) {
-    targetScrollTop += coords.bottom - safeBottom
-  } else if (coords.top < safeTop) {
-    targetScrollTop -= safeTop - coords.top
-  } else {
-    return null
+  let targetScrollTop: number | null = null
+  if (caretRect.bottom > safeBottom) {
+    targetScrollTop = scrollDOM.scrollTop + (caretRect.bottom - safeBottom)
+  } else if (caretRect.top < safeTop) {
+    targetScrollTop = scrollDOM.scrollTop + (caretRect.top - safeTop)
   }
+
+  if (targetScrollTop === null) return null
 
   const maxTop = Math.max(0, scrollDOM.scrollHeight - scrollDOM.clientHeight)
   return Math.max(0, Math.min(targetScrollTop, maxTop))
 }
 
-function ensureCaretVisible(): void {
-  if (!view || activeScrollMode !== 'viewport') return
-  const targetScrollTop = computeCaretScrollTarget()
-  if (targetScrollTop === null) return
-  smoothScrollElementTo(view.scrollDOM, targetScrollTop)
+function scheduleSmoothCaretScroll(onDone?: () => void): void {
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => ensureCaretVisible(onDone))
+  })
 }
 
-function scheduleEnsureCaretVisible(): void {
-  window.requestAnimationFrame(() => ensureCaretVisible())
+function ensureCaretVisible(onDone?: () => void): void {
+  const targetScrollTop = computeCaretScrollTarget()
+  if (targetScrollTop === null) {
+    onDone?.()
+    return
+  }
+  smoothApplyProgrammaticScrollTop(targetScrollTop, onDone)
+}
+
+function scheduleEnsureCaretVisible(onDone?: () => void): void {
+  scheduleSmoothCaretScroll(onDone)
 }
 
 function applyBottomScrollInset(bottom: number): void {
@@ -197,22 +328,38 @@ function applyBottomScrollInset(bottom: number): void {
 
 function setScrollInsets(bottom: number): void {
   applyBottomScrollInset(bottom)
-  scheduleEnsureCaretVisible()
 }
 
 function reportContentMetrics(): void {
   if (!view) return
 
   const contentRect = view.contentDOM.getBoundingClientRect()
-  const pos = view.state.selection.main.head
-  const coords = view.coordsAtPos(pos)
   const contentTop = contentRect.top
+
+  if (isTableCellInputFocused()) {
+    const input = document.activeElement as HTMLTextAreaElement
+    const inputRect = input.getBoundingClientRect()
+    const caretTop = Math.max(0, inputRect.top - contentTop)
+    const caretBottom = Math.max(0, inputRect.bottom - contentTop)
+    postToNative({
+      type: 'caretViewport',
+      payload: { top: caretTop, bottom: caretBottom }
+    })
+    const neededHeight = Math.ceil(
+      Math.max(contentRect.height, caretBottom + CARET_BOTTOM_BUFFER_PX, 120)
+    )
+    postToNative({ type: 'contentHeight', payload: { height: neededHeight } })
+    return
+  }
+
+  const pos = view.state.selection.main.head
+  const caretRect = resolveCaretViewportRect(view, pos)
 
   let caretTop = contentRect.height
   let caretBottom = contentRect.height
-  if (coords) {
-    caretTop = coords.top - contentTop
-    caretBottom = coords.bottom - contentTop
+  if (caretRect) {
+    caretTop = caretRect.top - contentTop
+    caretBottom = caretRect.bottom - contentTop
     postToNative({
       type: 'caretViewport',
       payload: { top: Math.max(0, caretTop), bottom: Math.max(0, caretBottom) }
@@ -256,7 +403,7 @@ let touchPanDisabled = false
 function shouldDisableTouchPanRelay(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false
   return !!target.closest(
-    '.cm-table-handle, .cm-table-add-btn, .cm-table-context-menu, .cm-table-context-menu-layer'
+    '.cm-table-handle, .cm-table-add-btn, .cm-table-corner-menu, .cm-table-context-menu, .cm-table-context-menu-layer, .cm-table-sheet-layer'
   )
 }
 
@@ -314,12 +461,20 @@ function mountEditor(init: InitPayload): void {
   const theme = init.theme ?? DEFAULT_THEME
   applyTheme(theme)
   view?.destroy()
+  delete window.__diaryCmPlaceCursorAfterTable
+  scrollListenerInstalled = false
   contentHeightObserver?.disconnect()
 
   const editable = init.editable ?? true
   const isTouch = init.interactionMode === 'touch'
   const scrollMode = init.scrollMode ?? 'document'
   activeScrollMode = scrollMode
+  if (isTouch) {
+    window.__tableChromeDebug = typeof __DEV__ !== 'undefined' && __DEV__
+    window.__diaryCmPlaceCursorAfterTable = (editorView) => {
+      scheduleEnsureCaretVisible(() => editorView.focus())
+    }
+  }
   applyBottomScrollInset(init.scrollInsets?.bottom ?? 0)
 
   view = createDiaryCodeMirror(container, {
@@ -333,6 +488,20 @@ function mountEditor(init: InitPayload): void {
     },
     extraExtensions: [
       editableCompartment.of(EditorView.editable.of(editable)),
+      ...(isTouch && scrollMode === 'viewport'
+        ? [
+            EditorState.transactionFilter.of((tr) => {
+              if (!tr.selection) return tr
+              return tr.startState.update({
+                changes: tr.changes,
+                selection: tr.selection,
+                effects: tr.effects,
+                annotations: tr.annotations,
+                scrollIntoView: false
+              })
+            })
+          ]
+        : []),
       EditorView.updateListener.of((update) => {
         if (update.selectionSet) {
           const { from, to } = update.state.selection.main
@@ -347,13 +516,43 @@ function mountEditor(init: InitPayload): void {
         if (update.docChanged && init.interactionMode === 'touch') {
           window.requestAnimationFrame(() => {
             reportContentMetrics()
-            if (scrollMode === 'viewport') scheduleEnsureCaretVisible()
+            if (scrollMode === 'viewport') {
+              if (suppressCaretScrollOnce) {
+                suppressCaretScrollOnce = false
+              } else {
+                scheduleEnsureCaretVisible()
+              }
+            }
           })
         }
       }),
       EditorView.domEventHandlers({
-        click: () => {
+        touchstart: (event) => {
+          cancelCaretScrollAnimation()
+          const target = event.target
+          if (
+            target instanceof Element &&
+            target.closest(
+              '.cm-table-handle, .cm-table-corner-menu, .cm-table-add-btn, .cm-table-context-menu-layer, .cm-table-sheet-layer'
+            )
+          ) {
+            return false
+          }
           if (init.interactionMode === 'touch' && scrollMode === 'viewport') {
+            clearUserScrollLockForContentEdit(target)
+          }
+          return false
+        },
+        touchend: (event) => {
+          if (init.interactionMode === 'touch' && scrollMode === 'viewport') {
+            clearUserScrollLockForContentEdit(event.target)
+            scheduleEnsureCaretVisible()
+          }
+          return false
+        },
+        click: (event) => {
+          if (init.interactionMode === 'touch' && scrollMode === 'viewport') {
+            clearUserScrollLockForContentEdit(event.target)
             scheduleEnsureCaretVisible()
           }
           return false
@@ -362,6 +561,12 @@ function mountEditor(init: InitPayload): void {
           postToNative({ type: 'focus' })
           if (init.interactionMode === 'touch' && scrollMode === 'viewport') {
             scheduleEnsureCaretVisible()
+          }
+          return false
+        },
+        focusin: (event) => {
+          if ((event.target as Element).closest('.cm-table-cell-input')) {
+            window.requestAnimationFrame(() => reportContentMetrics())
           }
           return false
         },
@@ -378,6 +583,7 @@ function mountEditor(init: InitPayload): void {
   if (isTouch) {
     if (scrollMode === 'viewport') {
       applyTouchViewportLayout(view)
+      installUserScrollListener(view)
     } else {
       applyTouchNoInternalScroll(view)
       installTouchParentScrollRelay()
@@ -400,13 +606,39 @@ function setEditable(editable: boolean): void {
 
 function setContent(content: string): void {
   if (!view) return
-  if (content === view.state.doc.toString()) return
+  const current = view.state.doc.toString()
+  if (content === current) return
+
+  const { anchor, head } = view.state.selection.main
+  const scrollTop = view.scrollDOM.scrollTop
+  const mapPos = (pos: number) => Math.max(0, Math.min(pos, content.length))
 
   suppressChangeEcho = true
+  suppressCaretScrollOnce = true
   view.dispatch({
-    changes: { from: 0, to: view.state.doc.length, insert: content }
+    changes: { from: 0, to: current.length, insert: content },
+    selection: { anchor: mapPos(anchor), head: mapPos(head) },
+    scrollIntoView: false
   })
+  view.scrollDOM.scrollTop = scrollTop
   suppressChangeEcho = false
+}
+
+function deleteRange(from: number, to: number): void {
+  if (!view) return
+  const doc = view.state.doc
+  const safeFrom = Math.max(0, Math.min(from, doc.length))
+  const safeTo = Math.max(safeFrom, Math.min(to, doc.length))
+  if (safeFrom === safeTo) return
+
+  const savedScrollTop = view.scrollDOM.scrollTop
+  suppressCaretScrollOnce = true
+  view.dispatch({
+    changes: { from: safeFrom, to: safeTo, insert: '' },
+    selection: { anchor: safeFrom, head: safeFrom },
+    scrollIntoView: false
+  })
+  view.scrollDOM.scrollTop = savedScrollTop
 }
 
 function insertAtCursor(text: string): void {
@@ -462,6 +694,9 @@ function handleRnMessage(raw: unknown): void {
     case 'setContent':
       setContent(message.payload.content)
       break
+    case 'deleteRange':
+      deleteRange(message.payload.from, message.payload.to)
+      break
     case 'setTagColorRegistry':
       applyTagColorRegistry(message.payload.registry)
       break
@@ -498,6 +733,9 @@ function handleRnMessage(raw: unknown): void {
       break
     case 'resolveUrlResponse':
       handleResolveUrlResponse(message.payload.requestId, message.payload.url)
+      break
+    case 'confirmResponse':
+      resolveTableConfirmResponse(message.payload.requestId, message.payload.confirmed)
       break
     case 'requestReady':
       postToNative({ type: 'ready' })
