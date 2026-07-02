@@ -17,6 +17,8 @@ import {
   sortDiariesByDateAsc,
   timestampToMillis,
   logger,
+  SEMANTIC_SEARCH_TIMEOUT_MS,
+  withPromiseTimeout,
   type RagConfig
 } from '@baishou/shared'
 import { SqliteHybridSearchRepository } from '@baishou/database'
@@ -817,35 +819,44 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
       const scopeFilter = diaryVaultListFilterSql(vaultGroupId)
 
       if (params.mode === 'semantic' && params.keyword?.trim()) {
-        const adapter = await resolveEmbeddingAdapter(deps)
-        if (adapter) {
-          const vector = await adapter.embedQuery(params.keyword)
-          if (vector?.length) {
-            const baseLimit = Math.max(limit, 50)
-            const fetchLimit =
-              params.minSimilarity != null ? Math.min(baseLimit * 4, 500) : baseLimit
-            const results = filterDiaryScopedSearchResults(
-              await deps.hsRepo.queryNativeVector(
-                vector,
-                fetchLimit,
-                params.minSimilarity,
-                params.sourceType
-              ),
-              activeVaultName
-            )
-            const entries = results.map((r) => ({
-              embeddingId: r.messageId,
-              text: r.chunkText,
-              createdAt: timestampToMillis(r.createdAt) ?? Date.now(),
-              sourceType: r.sourceType,
-              sourceId: r.sourceId,
-              similarity: r.score
-            }))
-            const sliced = entries.slice(offset, offset + limit)
-            return { entries: sliced, total: entries.length }
-          }
+        const keyword = params.keyword.trim()
+        try {
+          return await withPromiseTimeout(
+            (async () => {
+              const adapter = await resolveEmbeddingAdapter(deps)
+              if (!adapter) return { entries: [], total: 0 }
+
+              const vector = await adapter.embedQuery(keyword)
+              if (!vector?.length) return { entries: [], total: 0 }
+
+              const baseLimit = Math.max(limit, 50)
+              const fetchLimit =
+                params.minSimilarity != null ? Math.min(baseLimit * 4, 500) : baseLimit
+              const results = filterDiaryScopedSearchResults(
+                await deps.hsRepo.queryNativeVector(vector, fetchLimit, {
+                  threshold: params.minSimilarity,
+                  sourceType: params.sourceType
+                }),
+                activeVaultName
+              )
+              const entries = results.map((r) => ({
+                embeddingId: r.messageId,
+                text: r.chunkText,
+                createdAt: timestampToMillis(r.createdAt) ?? Date.now(),
+                sourceType: r.sourceType,
+                sourceId: r.sourceId,
+                similarity: r.score
+              }))
+              const sliced = entries.slice(offset, offset + limit)
+              return { entries: sliced, total: entries.length }
+            })(),
+            SEMANTIC_SEARCH_TIMEOUT_MS,
+            'semantic search'
+          )
+        } catch (error) {
+          logger.warn('[mobile-rag] semantic search failed', { error })
+          throw error
         }
-        return { entries: [], total: 0 }
       }
 
       const keyword = params.keyword?.trim()

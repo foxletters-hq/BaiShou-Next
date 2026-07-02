@@ -26,6 +26,30 @@ export function resolveMobileBatchEmbedConcurrency(value: unknown): number {
   )
 }
 
+/** 语义搜索 / 嵌入查询默认超时（毫秒） */
+export const SEMANTIC_SEARCH_TIMEOUT_MS = 15_000
+
+export async function withPromiseTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  label = 'operation'
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`${label} timed out after ${ms}ms`)),
+          ms
+        )
+      })
+    ])
+  } finally {
+    if (timer !== undefined) clearTimeout(timer)
+  }
+}
+
 /** Run async work over items with a fixed concurrency limit. */
 export async function limitExecute<T, R>(
   items: T[],

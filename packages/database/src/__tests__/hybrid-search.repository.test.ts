@@ -170,5 +170,82 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
       expect(res).toHaveLength(1)
       expect(res[0]!.messageId).toBe('fts1')
     })
+
+    it('queryFTS filters by source_created_at range before keyword match', async () => {
+      const marchSeconds = Math.floor(new Date(2024, 2, 15).getTime() / 1000)
+      const juneSeconds = Math.floor(new Date(2024, 5, 10).getTime() / 1000)
+
+      await repo.insertEmbedding({
+        id: 'fts-march',
+        sourceType: 'test',
+        sourceId: 'src',
+        groupId: 'sess',
+        chunkIndex: 0,
+        chunkText: 'march fox diary',
+        embedding: [1, 0, 0],
+        modelId: 'x',
+        sourceCreatedAt: marchSeconds
+      })
+      await repo.insertEmbedding({
+        id: 'fts-june',
+        sourceType: 'test',
+        sourceId: 'src',
+        groupId: 'sess',
+        chunkIndex: 1,
+        chunkText: 'june fox diary',
+        embedding: [0, 1, 0],
+        modelId: 'x',
+        sourceCreatedAt: juneSeconds
+      })
+
+      const startMs = new Date(2024, 2, 1).getTime()
+      const endMs = new Date(2024, 2, 31).getTime() + 24 * 60 * 60 * 1000 - 1
+      const res = await repo.queryFTS('fox', 5, { startMs, endMs })
+
+      expect(res).toHaveLength(1)
+      expect(res[0]!.messageId).toBe('fts-march')
+    })
+  })
+
+  describe('Date range vector filter', () => {
+    it('queryNativeVector filters candidates before JS cosine ranking', async () => {
+      const marchSeconds = Math.floor(new Date(2024, 2, 15).getTime() / 1000)
+      const juneSeconds = Math.floor(new Date(2024, 5, 10).getTime() / 1000)
+
+      await repo.insertEmbedding({
+        id: 'vec-march',
+        sourceType: 'c',
+        sourceId: 's',
+        groupId: 'range_group',
+        chunkIndex: 0,
+        chunkText: 'March match',
+        embedding: [0.2, 0.9, 0],
+        modelId: 'm',
+        sourceCreatedAt: marchSeconds
+      })
+      await repo.insertEmbedding({
+        id: 'vec-june',
+        sourceType: 'c',
+        sourceId: 's',
+        groupId: 'range_group',
+        chunkIndex: 0,
+        chunkText: 'June best match',
+        embedding: [0.95, 0.1, 0],
+        modelId: 'm',
+        sourceCreatedAt: juneSeconds
+      })
+
+      const originalSupport = repo.supportsNativeVectorSearch
+      repo.supportsNativeVectorSearch = () => false
+
+      const startMs = new Date(2024, 2, 1).getTime()
+      const endMs = new Date(2024, 2, 31).getTime() + 24 * 60 * 60 * 1000 - 1
+      const results = await repo.queryNativeVector([1, 0, 0], 5, { startMs, endMs })
+
+      expect(results).toHaveLength(1)
+      expect(results[0]!.messageId).toBe('vec-march')
+
+      repo.supportsNativeVectorSearch = originalSupport
+    })
   })
 })
