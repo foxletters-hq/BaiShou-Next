@@ -28,8 +28,13 @@ import {
 import { NativeImagePreviewModal } from './NativeImagePreviewModal'
 import type {
   DiaryTagColorRegistry,
-  DiaryCmImageActionPayload
+  DiaryCmImageActionPayload,
+  DiaryCmTableSheetRequestPayload,
+  DiaryCmTableSheetResponsePayload
 } from '../../shared/diary-codemirror/types'
+import { confirmMessageForDestructiveItem } from '../../shared/diary-codemirror/table/tableConfirm'
+import { useDialog } from '../Dialog/Dialog'
+import { TableChromeBottomSheet } from './TableChromeBottomSheet'
 
 interface DiaryEditorProps {
   content: string
@@ -66,6 +71,10 @@ interface DiaryEditorProps {
 /** 工具栏遮挡 + 额外留白，供 WebView 内计算安全滚动区域 */
 const EDITOR_BOTTOM_SCROLL_INSET_BUFFER = 20
 
+type ActiveTableSheet = DiaryCmTableSheetRequestPayload & {
+  respond: (response: DiaryCmTableSheetResponsePayload) => void
+}
+
 export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   content,
   tags,
@@ -95,8 +104,10 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const dialog = useDialog()
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null)
   const [toolbarHeight, setToolbarHeight] = useState(61)
+  const [tableSheet, setTableSheet] = useState<ActiveTableSheet | null>(null)
   const editorRef = useRef<NativeDiaryCodeMirrorEditorHandle>(null)
   const keyboardInsetLockedRef = useRef(false)
   const contentRef = useRef(content)
@@ -259,6 +270,58 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   )
 
   const toolbarDockBottom = keyboardHeight
+
+  const handleDismissEditorKeyboard = useCallback(() => {
+    Keyboard.dismiss()
+  }, [])
+
+  const handleTableSheetRequest = useCallback(
+    (
+      payload: DiaryCmTableSheetRequestPayload,
+      respond: (response: DiaryCmTableSheetResponsePayload) => void
+    ) => {
+      Keyboard.dismiss()
+      keyboardInsetLockedRef.current = true
+      setTableSheet((prev) => {
+        if (prev) {
+          prev.respond({ requestId: prev.requestId, action: 'dismiss' })
+        }
+        return { ...payload, respond }
+      })
+    },
+    []
+  )
+
+  const closeTableSheet = useCallback(() => {
+    setTableSheet((current) => {
+      if (current) {
+        current.respond({ requestId: current.requestId, action: 'dismiss' })
+      }
+      keyboardInsetLockedRef.current = false
+      return null
+    })
+  }, [])
+
+  const handleTableSheetPick = useCallback(
+    async (itemId: string) => {
+      if (!tableSheet) return
+      const item = tableSheet.sections.flatMap((section) => section.items).find((i) => i.id === itemId)
+      if (item?.destructive) {
+        const confirmed = await dialog.confirm(confirmMessageForDestructiveItem(item), {
+          title: t('common.confirm_delete', '确认删除'),
+          confirmText: t('common.delete', '删除'),
+          cancelText: t('common.cancel', '取消'),
+          destructive: true
+        })
+        if (!confirmed) return
+      }
+      const { requestId, respond } = tableSheet
+      keyboardInsetLockedRef.current = false
+      setTableSheet(null)
+      respond({ requestId, action: 'pick', itemId })
+    },
+    [dialog, t, tableSheet]
+  )
   const editorPlaceholder = t('diary.tag_editor_hint', '首行输入 #标签 后按回车，再写正文…')
 
   return (
@@ -373,6 +436,8 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
               bottomScrollInset={toolbarHeight + EDITOR_BOTTOM_SCROLL_INSET_BUFFER}
               fillViewport
               style={styles.editorFill}
+              onDismissKeyboard={handleDismissEditorKeyboard}
+              onTableSheetRequest={handleTableSheetRequest}
             />
           ) : (
             <View style={styles.editorLoadFallback}>
@@ -383,6 +448,17 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
             </View>
           )}
         </View>
+
+        {tableSheet ? (
+          <TableChromeBottomSheet
+            visible
+            title={tableSheet.title}
+            sections={tableSheet.sections}
+            bottomOffset={toolbarDockBottom + toolbarHeight}
+            onPick={(itemId) => void handleTableSheetPick(itemId)}
+            onDismiss={closeTableSheet}
+          />
+        ) : null}
 
         <View
           style={[styles.toolbarDock, { bottom: toolbarDockBottom }]}
@@ -459,7 +535,8 @@ const styles = StyleSheet.create({
   },
   editorBody: {
     flex: 1,
-    position: 'relative'
+    position: 'relative',
+    overflow: 'hidden'
   },
   editorPane: {
     flex: 1,
@@ -473,7 +550,9 @@ const styles = StyleSheet.create({
   toolbarDock: {
     position: 'absolute',
     left: 0,
-    right: 0
+    right: 0,
+    zIndex: 10,
+    elevation: 10
   },
   editorLoadFallback: {
     flex: 1,

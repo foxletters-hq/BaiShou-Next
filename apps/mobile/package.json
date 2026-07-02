@@ -4,8 +4,10 @@
   "version": "1.1.33",
   "scripts": {
     "commands": "node ../../scripts/commands-help.mjs mobile",
-    "predev": "node ../../scripts/sync-all.mjs && pnpm run build:diary-editor",
+    "rebuild:dev-artifacts": "node ./scripts/rebuild-dev-artifacts.mjs",
+    "predev": "pnpm run rebuild:dev-artifacts",
     "dev": "node ./scripts/start-dev.mjs",
+    "predev:clear": "pnpm run rebuild:dev-artifacts",
     "dev:clear": "node ./scripts/run-android.mjs",
     "install:apk": "node ./scripts/install-apk.mjs",
     "connect": "node ./scripts/connect-device.mjs",

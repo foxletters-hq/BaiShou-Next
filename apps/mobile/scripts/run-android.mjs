@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * 全量重装：清 Metro / .expo / Gradle 缓存 → 无构建缓存重编 → 安装开发版 APK。
+ * 全量重装：sync + diary-editor bundle（pnpm predev:clear）→ 清 Metro / .expo / Gradle 缓存
+ * → 无构建缓存重编 → 安装开发版 APK。
  * 对应根目录 pnpm dev:mobile:clear；日常只改 JS 请用 pnpm dev:mobile。
  */
 import { spawn, spawnSync } from 'node:child_process'
@@ -22,34 +23,28 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const mobileRoot = path.resolve(__dirname, '..')
-const repoRoot = path.resolve(mobileRoot, '../..')
 const host = getLanIp()
 
 console.log(`
 📌 全量重装 Android 开发版（非 Expo Go）
+   → 同步生成物 + 重打 diary-editor WebView bundle（predev:clear）
    → 清 Metro / .expo / Gradle 缓存，重新编译并安装 APK
    → 开发包包名 com.baishou.baishou.dev（桌面显示「白守 Dev」），与正式版并存
    → 完成后在仓库根目录执行 pnpm dev:mobile 启动 Metro
 `)
 
-console.log('🔄 同步生成物…\n')
-const syncResult = spawnSync(process.execPath, [path.join(repoRoot, 'scripts/sync-all.mjs')], {
-  cwd: repoRoot,
-  stdio: 'inherit'
-})
-if (syncResult.status !== 0) {
-  process.exit(syncResult.status ?? 1)
+// pnpm dev:clear 会先跑 predev:clear；直接 node 本脚本时在此补跑
+if (process.env.npm_lifecycle_event !== 'dev:clear') {
+  const rebuildResult = spawnSync(process.execPath, [path.join(__dirname, 'rebuild-dev-artifacts.mjs')], {
+    cwd: mobileRoot,
+    stdio: 'inherit'
+  })
+  if (rebuildResult.status !== 0) {
+    process.exit(rebuildResult.status ?? 1)
+  }
 }
 
 console.log('🧹 清理缓存…\n')
-const buildEditor = spawnSync('pnpm', ['run', 'build:diary-editor'], {
-  cwd: mobileRoot,
-  stdio: 'inherit',
-  shell: process.platform === 'win32'
-})
-if (buildEditor.status !== 0) {
-  process.exit(buildEditor.status ?? 1)
-}
 
 const cacheResult = spawnSync(process.execPath, [path.join(__dirname, 'clear-cache.mjs')], {
   cwd: mobileRoot,

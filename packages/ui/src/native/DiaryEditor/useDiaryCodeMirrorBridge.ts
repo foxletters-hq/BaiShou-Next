@@ -8,6 +8,8 @@ import {
   type DiaryCmImageActionPayload,
   type DiaryCmInitPayload,
   type DiaryCmConfirmRequestPayload,
+  type DiaryCmTableSheetRequestPayload,
+  type DiaryCmTableSheetResponsePayload,
   type DiaryCmTheme,
   type DiaryCmToWebViewMessage,
   type DiaryCmMarkdownMark,
@@ -48,6 +50,11 @@ export interface UseDiaryCodeMirrorBridgeOptions {
   onConfirmRequest?: (
     payload: DiaryCmConfirmRequestPayload,
     respond: (confirmed: boolean) => void
+  ) => void
+  /** 表格把手菜单（RN 原生底部抽屉，显示在 Markdown 工具栏之上） */
+  onTableSheetRequest?: (
+    payload: DiaryCmTableSheetRequestPayload,
+    respond: (response: DiaryCmTableSheetResponsePayload) => void
   ) => void
 }
 
@@ -319,6 +326,20 @@ export function useDiaryCodeMirrorBridge(
             handler(message.payload, respond)
           } else {
             respond(false)
+          }
+          return
+        }
+        case 'tableSheetRequest': {
+          const handler = optionsRef.current.onTableSheetRequest
+          if (handler) {
+            handler(message.payload, (response) => {
+              enqueueOrSend({ type: 'tableSheetResponse', payload: response })
+            })
+          } else {
+            enqueueOrSend({
+              type: 'tableSheetResponse',
+              payload: { requestId: message.payload.requestId, action: 'dismiss' }
+            })
           }
           return
         }

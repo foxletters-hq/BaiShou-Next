@@ -6,9 +6,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const outDir = path.resolve(__dirname, '../assets/diary-editor')
 const sharedDiaryCm = path.resolve(__dirname, '../../../packages/ui/src/shared/diary-codemirror')
 
+const buildId = new Date().toISOString()
+
 /** WebView 内联 CM bundle：IIFE 单文件，target 兼容 Android System WebView / WKWebView */
 export default defineConfig({
   root: __dirname,
+  define: {
+    __DIARY_EDITOR_BUILD_ID__: JSON.stringify(buildId)
+  },
   resolve: {
     alias: {
       '@baishou/ui/shared/diary-codemirror': sharedDiaryCm

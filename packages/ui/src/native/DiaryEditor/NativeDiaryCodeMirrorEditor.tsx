@@ -19,6 +19,8 @@ const EDITOR_MIN_HEIGHT = 320
 export interface DiaryEditorWebViewDocument {
   uri: string
   baseUrl: string
+  /** bundle 版本戳；变化时强制 WebView remount */
+  cacheKey: string
 }
 
 export interface NativeDiaryCodeMirrorEditorHandle {
@@ -48,6 +50,9 @@ export interface NativeDiaryCodeMirrorEditorProps extends Pick<
   | 'onImageAction'
   | 'onImagePreview'
   | 'resolveAttachmentUrl'
+  | 'onDismissKeyboard'
+  | 'onConfirmRequest'
+  | 'onTableSheetRequest'
 > {
   /** WebView 文档（同目录 index.html + bundle，由宿主 app 预加载后传入） */
   editorWebViewSource: DiaryEditorWebViewDocument
@@ -90,6 +95,9 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
     onImageAction,
     onImagePreview,
     resolveAttachmentUrl,
+    onDismissKeyboard,
+    onConfirmRequest,
+    onTableSheetRequest,
     style,
     minHeight = EDITOR_MIN_HEIGHT,
     fillViewport = false
@@ -104,11 +112,11 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
 
   const dialog = useDialog()
 
-  const handleDismissKeyboard = useCallback(() => {
+  const defaultDismissKeyboard = useCallback(() => {
     Keyboard.dismiss()
   }, [])
 
-  const handleConfirmRequest = useCallback(
+  const defaultConfirmRequest = useCallback(
     (payload: DiaryCmConfirmRequestPayload, respond: (confirmed: boolean) => void) => {
       void dialog
         .confirm(payload.message, {
@@ -121,6 +129,9 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
     },
     [dialog]
   )
+
+  const handleDismissKeyboard = onDismissKeyboard ?? defaultDismissKeyboard
+  const handleConfirmRequest = onConfirmRequest ?? defaultConfirmRequest
 
   const bridge = useDiaryCodeMirrorBridge({
     content,
@@ -140,7 +151,8 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
     resolveAttachmentUrl,
     bottomScrollInset,
     onDismissKeyboard: handleDismissKeyboard,
-    onConfirmRequest: handleConfirmRequest
+    onConfirmRequest: handleConfirmRequest,
+    onTableSheetRequest
   })
 
   useEffect(() => {
@@ -249,9 +261,14 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
     }
   }
 
+  const webViewCacheKey = `${editorWebViewSource.uri}:${editorWebViewSource.cacheKey}`
+
   const handleLoadStart = () => {
     if (typeof __DEV__ !== 'undefined' && __DEV__) {
-      console.log('[DiaryEditor WebView] loadStart', editorWebViewSource.uri)
+      console.log('[DiaryEditor WebView] loadStart', {
+        uri: editorWebViewSource.uri,
+        cacheKey: editorWebViewSource.cacheKey
+      })
     }
     bridge.onWebViewLoadStart()
   }
@@ -267,7 +284,7 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
     <View style={shellStyle} collapsable={false}>
       {active ? (
         <WebView
-          key={editorWebViewSource.uri}
+          key={webViewCacheKey}
           ref={bridge.webViewRef}
           source={webViewSource}
           originWhitelist={['*']}
@@ -313,7 +330,7 @@ const styles = StyleSheet.create({
   shell: {
     alignSelf: 'stretch',
     width: '100%',
-    overflow: 'visible'
+    overflow: 'hidden'
   },
   webViewContainer: {
     width: '100%'
