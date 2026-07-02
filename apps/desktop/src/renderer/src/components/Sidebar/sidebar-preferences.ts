@@ -15,7 +15,7 @@ const VISIBILITY_CONFIGURED_KEY = 'desktop_sidebar_visibility_configured'
 const HIDDEN_ITEMS_KEY = 'desktop_sidebar_hidden_items'
 const NAV_ORDER_KEY = 'desktop_sidebar_nav_order'
 const MIGRATION_VERSION_KEY = 'desktop_sidebar_mv'
-const CURRENT_MIGRATION_VERSION = 2
+const CURRENT_MIGRATION_VERSION = 3
 
 /** 仅从日记区侧边栏移除；仍可通过系统设置访问 */
 const REMOVED_SIDEBAR_NAV_IDS = new Set(['legacy-migration'])
@@ -112,6 +112,15 @@ export function loadSidebarNavOrder(): string[] {
     }
 
     order = reorderSyncNavIdsInOrder(stripRemovedSidebarNavIds(order))
+
+    if (mv < 3 && !order.includes('workbench')) {
+      const diaryIndex = order.indexOf('diary')
+      if (diaryIndex >= 0) {
+        order.splice(diaryIndex + 1, 0, 'workbench')
+      } else {
+        order.unshift('workbench')
+      }
+    }
 
     localStorage.setItem(MIGRATION_VERSION_KEY, String(CURRENT_MIGRATION_VERSION))
     localStorage.setItem(NAV_ORDER_KEY, JSON.stringify(order))
