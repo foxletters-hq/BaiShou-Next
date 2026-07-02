@@ -1,21 +1,19 @@
 import { WidgetType, EditorView } from '@codemirror/view'
-import type { ParsedTable } from '../table/table.model'
-import {
-  decodeTableCellText,
-  encodeTableCellText,
-  normalizeTableCellDisplay
-} from '../table/tableCellText'
+import { type ParsedTable, tableContentSignature } from '../table/table.model'
+import { normalizeTableCellDisplay } from '../table/tableCellText'
 import { resolveTableKeyAction, type TableKeyCommand } from '../table/tableKeyResolver'
 import type { ActiveTableCell } from '../table/tableActiveCell'
 import { setActiveTableCell } from '../table/tableActiveCell'
 import {
-  forceTableRefresh,
-  invokePlaceCursorAfterTable,
-  invokeTableAction,
-  pendingTableCellFocus
-} from '../table/tableEffects'
+  blurTableCellEditor,
+  dispatchTableModelFromBlock,
+  focusTableCellSource,
+  readCellSourceRaw
+} from '../table/tableDom'
+import { invokeTableAction, pendingTableCellFocus } from '../table/tableEffects'
 import type { DiaryCmPlatform } from '../types'
 import { findTableToByFrom } from '../table/tableBounds'
+import { placeCursorAfterTable } from '../table/tableFocus'
 import {
   buildColMenuItems,
   buildColMenuSections,
@@ -28,11 +26,7 @@ import {
 import type { TableChromeSelection } from '../table/tableChromeSelection'
 import { createTableGripIcon, createTableGridIcon } from './tableChromeIcons'
 
-const TABLE_CELL_SYNC_MS = 280
-
 const tableWidgetHeightCache = new Map<string, number>()
-
-let suppressTableCellBlurSync = false
 
 function eventInteractionTarget(event: Event): Element | null {
   const target = event.target
@@ -58,12 +52,11 @@ export class TableBlockWidget extends WidgetType {
   }
 
   eq(other: TableBlockWidget): boolean {
-    const cellsKey = (t: ParsedTable) =>
-      [t.header.cells.join('\0'), ...t.bodyRows.map((r) => r.cells.join('\0'))].join('\n')
     return (
       this.table.from === other.table.from &&
-      this.table.to === other.table.to &&
-      cellsKey(this.table) === cellsKey(other.table) &&
+      this.table.columnCount === other.table.columnCount &&
+      this.table.bodyRows.length === other.table.bodyRows.length &&
+      tableContentSignature(this.table) === tableContentSignature(other.table) &&
       this.activeCell?.rowIndex === other.activeCell?.rowIndex &&
       this.activeCell?.colIndex === other.activeCell?.colIndex &&
       this.chromeSelection?.kind === other.chromeSelection?.kind &&
@@ -123,9 +116,13 @@ export class TableBlockWidget extends WidgetType {
     tableShell.className = 'cm-table-grid-shell'
     tableShell.appendChild(tableEl)
 
+    const scrollHost = document.createElement('div')
+    scrollHost.className = 'cm-table-scroll-host'
+    scrollHost.appendChild(tableShell)
+
     const tableColumn = document.createElement('div')
     tableColumn.className = 'cm-table-main-column'
-    tableColumn.appendChild(tableShell)
+    tableColumn.appendChild(scrollHost)
     tableColumn.appendChild(this.createAddBtn('row'))
     bodyWrap.appendChild(tableColumn)
     bodyWrap.appendChild(this.createAddBtn('col'))
@@ -137,7 +134,16 @@ export class TableBlockWidget extends WidgetType {
       this.syncChromeLayout()
       this.observeChromeLayout()
       this.cacheWidgetHeight(root)
-      this.focusActiveInputIfNeeded()
+      if (this.activeCell && this.rootEl) {
+        requestAnimationFrame(() => {
+          if (!this.rootEl || !this.activeCell) return
+          focusTableCellSource(
+            this.rootEl,
+            this.activeCell.rowIndex,
+            this.activeCell.colIndex
+          )
+        })
+      }
     })
 
     return root
@@ -192,17 +198,6 @@ export class TableBlockWidget extends WidgetType {
     })
     tableEl.appendChild(tbody)
     return tableEl
-  }
-
-  private focusActiveInputIfNeeded(): void {
-    if (!this.activeCell) return
-    const input = this.rootEl?.querySelector(
-      `textarea.cm-table-cell-input[data-row="${this.activeCell.rowIndex}"][data-col="${this.activeCell.colIndex}"]`
-    ) as HTMLTextAreaElement | null
-    if (!input || document.activeElement === input) return
-    input.focus()
-    const end = input.value.length
-    input.setSelectionRange(end, end)
   }
 
   private cacheWidgetHeight(root: HTMLElement): void {
@@ -268,9 +263,12 @@ export class TableBlockWidget extends WidgetType {
 
     if (
       interactive.closest(
-        'button, [role="button"], textarea, .cm-table-cell-display, .cm-table-handle, .cm-table-corner-menu, .cm-table-add-btn, .cm-table-context-menu, .cm-table-context-menu-layer'
+        'button, [role="button"], .cm-table-cell-source, .cm-table-handle, .cm-table-corner-menu, .cm-table-add-btn, .cm-table-context-menu, .cm-table-context-menu-layer'
       )
     ) {
+      return false
+    }
+    if (event.type === 'click' || event.type === 'touchend' || event.type === 'touchstart') {
       return false
     }
     return true
@@ -287,12 +285,6 @@ export class TableBlockWidget extends WidgetType {
     btn.appendChild(createTableGridIcon(3, 3))
     this.bindTableMenu(btn)
     return btn
-  }
-
-  private isCellActive(rowIndex: number, colIndex: number): boolean {
-    return (
-      this.activeCell?.rowIndex === rowIndex && this.activeCell?.colIndex === colIndex
-    )
   }
 
   private createCell(raw: string, rowIndex: number, colIndex: number, isHeader: boolean): HTMLElement {
@@ -313,273 +305,143 @@ export class TableBlockWidget extends WidgetType {
       el.classList.add('cm-table-grid-cell--row-selected')
     }
 
-    if (this.isCellActive(rowIndex, colIndex)) {
-      el.appendChild(this.createCellInput(raw, rowIndex, colIndex))
-    } else {
-      el.appendChild(this.createCellDisplay(raw, rowIndex, colIndex))
-    }
-
+    el.appendChild(this.createEditableCell(raw, rowIndex, colIndex))
     return el
   }
 
-  private createCellDisplay(raw: string, rowIndex: number, colIndex: number): HTMLElement {
-    const span = document.createElement('span')
-    span.className = 'cm-table-cell-display'
-    span.textContent = normalizeTableCellDisplay(raw) || '\u00a0'
-    span.dataset.row = String(rowIndex)
-    span.dataset.col = String(colIndex)
+  private createEditableCell(raw: string, rowIndex: number, colIndex: number): HTMLElement {
+    const source = document.createElement('div')
+    source.className = 'cm-table-cell-source'
+    source.contentEditable = 'true'
+    source.spellcheck = false
+    source.dataset.row = String(rowIndex)
+    source.dataset.col = String(colIndex)
+    source.dataset.raw = raw
+    source.textContent = normalizeTableCellDisplay(raw) || ''
 
-    const activate = (e: Event) => {
-      e.preventDefault()
-      e.stopPropagation()
-      this.activateCell(rowIndex, colIndex)
+    let composing = false
+    const commit = () => {
+      if (!this.rootEl) return
+      const view = this.editorView()
+      if (!view) return
+      source.dataset.raw = readCellSourceRaw(source)
+      dispatchTableModelFromBlock(view, this.rootEl)
     }
 
-    span.addEventListener('mousedown', (e) => {
-      if (this.platform?.interactionMode === 'mouse') activate(e)
+    source.addEventListener('compositionstart', () => {
+      composing = true
     })
-    span.addEventListener('click', activate)
-    span.addEventListener(
-      'touchend',
-      (e) => {
-        e.stopPropagation()
-        activate(e)
-      },
-      { passive: false }
-    )
-
-    return span
-  }
-
-  private createCellInput(raw: string, rowIndex: number, colIndex: number): HTMLTextAreaElement {
-    const input = document.createElement('textarea')
-    input.className = 'cm-table-cell-input'
-    input.rows = 1
-    input.spellcheck = false
-    input.dataset.row = String(rowIndex)
-    input.dataset.col = String(colIndex)
-    input.dataset.tableFrom = String(this.table.from)
-    input.value = decodeTableCellText(raw)
-
-    input.addEventListener('focus', () => {
+    source.addEventListener('compositionend', () => {
+      composing = false
+      commit()
+    })
+    source.addEventListener('input', (event) => {
+      if (composing || (event as InputEvent).isComposing) return
+      commit()
+    })
+    source.addEventListener('focus', () => {
       this.syncActiveHandles(rowIndex, colIndex)
+      const view = this.editorView()
+      if (!view) return
+      view.dispatch({
+        effects: setActiveTableCell.of({
+          tableFrom: this.table.from,
+          rowIndex,
+          colIndex
+        })
+      })
     })
-
-    input.addEventListener('keydown', (e) => {
-      const command = mapTableKeyCommand(e)
+    source.addEventListener('blur', () => {
+      source.dataset.raw = readCellSourceRaw(source)
+    })
+    source.addEventListener('keydown', (event) => {
+      const command = mapTableKeyCommand(event)
       if (!command) return
       const action = resolveTableKeyAction(this.table, rowIndex, colIndex, command)
       if (!action) return
-      e.preventDefault()
-      e.stopPropagation()
-      this.applyKeyAction(action, input, rowIndex, colIndex)
+      event.preventDefault()
+      event.stopPropagation()
+      this.handleCellKeyAction(action, rowIndex, colIndex)
+    })
+    source.addEventListener('paste', (event) => {
+      event.preventDefault()
+      const text = (event.clipboardData?.getData('text/plain') ?? '').replace(/[\r\n]+/g, ' ')
+      const selection = source.ownerDocument.getSelection()
+      if (!selection || selection.rangeCount === 0) return
+      const range = selection.getRangeAt(0)
+      range.deleteContents()
+      range.insertNode(document.createTextNode(text))
+      range.collapse(false)
+      selection.removeAllRanges()
+      selection.addRange(range)
+      commit()
     })
 
-    input.addEventListener('paste', (e) => {
-      e.preventDefault()
-      const text = (e.clipboardData?.getData('text/plain') ?? '').replace(/[\r\n]+/g, ' ')
-      const start = input.selectionStart ?? input.value.length
-      const end = input.selectionEnd ?? input.value.length
-      input.setRangeText(text, start, end, 'end')
-      this.scheduleCellInputSync(input, rowIndex, colIndex)
-    })
-
-    input.addEventListener('input', () => {
-      if (/[\r\n]/.test(input.value)) {
-        input.value = input.value.replace(/[\r\n]+/g, ' ')
-        const end = input.value.length
-        input.setSelectionRange(end, end)
-      }
-      this.scheduleCellInputSync(input, rowIndex, colIndex)
-    })
-
-    input.addEventListener('blur', () => {
-      if (suppressTableCellBlurSync) return
-      this.flushCellInputSync(input, rowIndex, colIndex)
-    })
-
-    return input
+    return source
   }
 
-  private cellInputSyncTimers = new WeakMap<HTMLTextAreaElement, ReturnType<typeof setTimeout>>()
-
-  private scheduleCellInputSync(
-    input: HTMLTextAreaElement,
+  private handleCellKeyAction(
+    action: ReturnType<typeof resolveTableKeyAction>,
     rowIndex: number,
     colIndex: number
   ): void {
-    const existing = this.cellInputSyncTimers.get(input)
-    if (existing) clearTimeout(existing)
-    const timer = setTimeout(() => {
-      this.cellInputSyncTimers.delete(input)
-      this.syncCellFromInput(input, rowIndex, colIndex, true)
-    }, TABLE_CELL_SYNC_MS)
-    this.cellInputSyncTimers.set(input, timer)
-  }
-
-  private flushCellInputSync(
-    input: HTMLTextAreaElement,
-    rowIndex: number,
-    colIndex: number
-  ): void {
-    const existing = this.cellInputSyncTimers.get(input)
-    if (existing) {
-      clearTimeout(existing)
-      this.cellInputSyncTimers.delete(input)
-    }
-    this.syncCellFromInput(input, rowIndex, colIndex, false)
-  }
-
-  private flushActiveCellInput(): void {
-    const input = this.rootEl?.querySelector(
-      'textarea.cm-table-cell-input'
-    ) as HTMLTextAreaElement | null
-    if (!input) return
-    const rowIndex = Number(input.dataset.row)
-    const colIndex = Number(input.dataset.col)
-    if (Number.isNaN(rowIndex) || Number.isNaN(colIndex)) return
-    suppressTableCellBlurSync = true
-    this.flushCellInputSync(input, rowIndex, colIndex)
-    requestAnimationFrame(() => {
-      suppressTableCellBlurSync = false
-    })
-  }
-
-  private activateCell(rowIndex: number, colIndex: number): void {
-    this.flushActiveCellInput()
+    if (!action || !this.rootEl) return
     const view = this.editorView()
     if (!view) return
-    view.dispatch({
-      effects: [
-        setActiveTableCell.of({ tableFrom: this.table.from, rowIndex, colIndex }),
-        pendingTableCellFocus.of({ tableFrom: this.table.from, rowIndex, colIndex }),
-        forceTableRefresh.of(null)
-      ]
-    })
-  }
-
-  private applyKeyAction(
-    action: ReturnType<typeof resolveTableKeyAction>,
-    input: HTMLTextAreaElement,
-    rowIndex: number,
-    colIndex: number
-  ): void {
-    if (!action) return
 
     switch (action.kind) {
       case 'insert-inline-break': {
-        const start = input.selectionStart ?? input.value.length
-        const end = input.selectionEnd ?? input.value.length
-        input.setRangeText(action.insertText, start, end, 'end')
-        this.scheduleCellInputSync(input, rowIndex, colIndex)
+        const selection = document.getSelection()
+        if (!selection || selection.rangeCount === 0) return
+        const range = selection.getRangeAt(0)
+        range.deleteContents()
+        range.insertNode(document.createTextNode(action.insertText))
+        range.collapse(false)
+        selection.removeAllRanges()
+        selection.addRange(range)
+        this.commitFocusedCell()
         return
       }
       case 'focus-cell': {
-        this.commitCellInput(input, rowIndex, colIndex, action)
+        this.commitFocusedCell()
+        focusTableCellSource(this.rootEl, action.rowIndex, action.colIndex)
+        view.dispatch({
+          effects: [
+            setActiveTableCell.of({
+              tableFrom: this.table.from,
+              rowIndex: action.rowIndex,
+              colIndex: action.colIndex
+            }),
+            pendingTableCellFocus.of({
+              tableFrom: this.table.from,
+              rowIndex: action.rowIndex,
+              colIndex: action.colIndex
+            })
+          ]
+        })
         return
       }
       case 'insert-row-below': {
-        this.commitCellInput(input, rowIndex, colIndex, action)
+        this.commitFocusedCell()
+        this.runAction({ type: 'addRow', tableFrom: this.table.from, tableTo: this.table.to })
         return
       }
-      case 'exit-after':
-        this.flushCellInputSync(input, rowIndex, colIndex)
-        this.exitTableEditing()
+      case 'exit-after': {
+        this.commitFocusedCell()
+        blurTableCellEditor()
+        view.dispatch({ effects: setActiveTableCell.of(null) })
+        const tableTo = findTableToByFrom(view.state, this.table.from) ?? this.table.to
+        placeCursorAfterTable(view, tableTo)
         return
-    }
-  }
-
-  private commitCellInput(
-    input: HTMLTextAreaElement,
-    rowIndex: number,
-    colIndex: number,
-    next:
-      | { kind: 'focus-cell'; rowIndex: number; colIndex: number }
-      | { kind: 'insert-row-below'; afterRowIndex: number }
-  ): void {
-    const value = encodeTableCellText(input.value)
-    const current = this.getCellRaw(rowIndex, colIndex)
-
-    suppressTableCellBlurSync = true
-
-    if (next.kind === 'insert-row-below') {
-      if (value !== current) {
-        this.runAction({
-          type: 'updateCell',
-          tableFrom: this.table.from,
-          tableTo: this.table.to,
-          rowIndex,
-          colIndex,
-          value
-        })
       }
-      this.runAction({ type: 'addRow', tableFrom: this.table.from, tableTo: this.table.to })
-      requestAnimationFrame(() => {
-        suppressTableCellBlurSync = false
-      })
-      return
     }
-
-    const focusAfter = { rowIndex: next.rowIndex, colIndex: next.colIndex }
-    if (value !== current) {
-      this.runAction({
-        type: 'updateCell',
-        tableFrom: this.table.from,
-        tableTo: this.table.to,
-        rowIndex,
-        colIndex,
-        value,
-        focusAfter
-      })
-    } else {
-      this.activateCell(focusAfter.rowIndex, focusAfter.colIndex)
-    }
-    requestAnimationFrame(() => {
-      suppressTableCellBlurSync = false
-    })
   }
 
-  private syncCellFromInput(
-    input: HTMLTextAreaElement,
-    rowIndex: number,
-    colIndex: number,
-    preserveFocus = false
-  ): void {
-    const value = encodeTableCellText(input.value)
-    const current = this.getCellRaw(rowIndex, colIndex)
-    if (value === current) return
-    this.runAction({
-      type: 'updateCell',
-      tableFrom: this.table.from,
-      tableTo: this.table.to,
-      rowIndex,
-      colIndex,
-      value,
-      ...(preserveFocus
-        ? {
-            focusAfter: {
-              rowIndex,
-              colIndex,
-              selectionStart: input.selectionStart ?? input.value.length,
-              selectionEnd: input.selectionEnd ?? input.value.length
-            }
-          }
-        : {})
-    })
-  }
-
-  private getCellRaw(rowIndex: number, colIndex: number): string {
-    if (rowIndex < 0) return this.table.header.cells[colIndex] ?? ''
-    return this.table.bodyRows[rowIndex]?.cells[colIndex] ?? ''
-  }
-
-  private exitTableEditing(): void {
-    this.flushActiveCellInput()
+  private commitFocusedCell(): void {
+    if (!this.rootEl) return
     const view = this.editorView()
     if (!view) return
-    const tableTo = findTableToByFrom(view.state, this.table.from) ?? this.table.to
-    view.dispatch({ effects: setActiveTableCell.of(null) })
-    invokePlaceCursorAfterTable(view, tableTo)
+    dispatchTableModelFromBlock(view, this.rootEl)
   }
 
   private syncActiveHandles(rowIndex?: number, colIndex?: number): void {
@@ -639,7 +501,7 @@ export class TableBlockWidget extends WidgetType {
   private bindMenuTrigger(btn: HTMLElement, open: (e?: Event) => void): void {
     if (this.platform?.interactionMode === 'touch') return
     const runOpen = (e?: Event) => {
-      this.flushActiveCellInput()
+      this.commitFocusedCell()
       open(e)
     }
     btn.addEventListener('click', (e) => runOpen(e))

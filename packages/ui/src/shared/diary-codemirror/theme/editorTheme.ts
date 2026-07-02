@@ -156,29 +156,21 @@ export const editorTheme = EditorView.baseTheme({
   },
 
   // Live Preview 表格块预览与操作控件
-  '.cm-table-anchor-line': {
-    padding: '0 !important'
-  },
-  '.cm-table-hidden-line': {
-    height: '0',
-    minHeight: '0',
-    padding: '0 !important',
-    lineHeight: '0',
-    fontSize: '0',
-    overflow: 'hidden'
-  },
-  '.cm-table-gap-line': {
-    minHeight: '1.5em',
-    padding: '0 !important',
-    lineHeight: '1.5',
-    fontSize: 'inherit'
-  },
   '.cm-table-block': {
     margin: '8px 0 4px',
     width: '100%',
     maxWidth: '100%',
     position: 'relative',
-    userSelect: 'auto'
+    userSelect: 'auto',
+    // 块级 widget 可能比源码行更高；默认可穿透，仅交互子元素接收触摸
+    pointerEvents: 'none'
+  },
+  '.cm-table-block .cm-table-cell-source, .cm-table-block .cm-table-handle, .cm-table-block .cm-table-corner-menu, .cm-table-block .cm-table-add-btn, .cm-table-block .cm-table-context-menu, .cm-table-block .cm-table-context-menu-layer, .cm-table-block .cm-table-sheet-layer': {
+    pointerEvents: 'auto'
+  },
+  '.cm-table-scroll-host': {
+    overflowX: 'auto',
+    maxWidth: '100%'
   },
   '.cm-table-block--touch .cm-table-chrome-body': {
     columnGap: '2px',
@@ -302,16 +294,7 @@ export const editorTheme = EditorView.baseTheme({
     padding: '0',
     position: 'relative'
   },
-  '.cm-table-cell-display': {
-    display: 'block',
-    minHeight: '1.4em',
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    cursor: 'text',
-    userSelect: 'none'
-  },
-  '.cm-table-cell-input': {
+  '.cm-table-cell-source': {
     display: 'block',
     width: '100%',
     minHeight: '1.4em',
@@ -319,7 +302,6 @@ export const editorTheme = EditorView.baseTheme({
     padding: '0',
     border: 'none',
     outline: 'none',
-    resize: 'none',
     background: 'transparent',
     color: 'inherit',
     font: 'inherit',
@@ -327,6 +309,9 @@ export const editorTheme = EditorView.baseTheme({
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     boxSizing: 'border-box',
+    cursor: 'text'
+  },
+  '.cm-table-cell-source:focus': {
     boxShadow: 'inset 0 0 0 2px color-mix(in srgb, var(--color-primary, #5ba8f5) 45%, transparent)',
     borderRadius: '4px'
   },

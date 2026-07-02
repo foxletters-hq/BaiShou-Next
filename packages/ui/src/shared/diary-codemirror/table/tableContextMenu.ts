@@ -1,10 +1,21 @@
 import type { EditorView } from '@codemirror/view'
 import type { ParsedTable } from './table.model'
+import { setActiveTableCell } from './tableActiveCell'
 import { invokeTableAction } from './tableEffects'
 import { setTableChromeSelection } from './tableChromeSelection'
 import { logTableChrome } from './tableChromeDebug'
 import { confirmMessageForDestructiveItem, requestTableConfirm } from './tableConfirm'
 import { ensureTableSheetGlobalStyles } from './tableSheetGlobalStyles'
+import {
+  dismissKeyboardForSheetInteraction,
+  markTableSheetClosed,
+  markTableSheetOpen
+} from './tableSheetInteraction'
+import {
+  blurActiveTableCellInput,
+  dismissEditorKeyboardForChrome
+} from './tableChromeKeyboard'
+import { requestNativeTableSheet, closeNativeTableSheets } from './tableNativeSheet'
 
 declare global {
   interface Window {
@@ -35,27 +46,7 @@ export function isTableChromeTouchTarget(el: Element | null): HTMLElement | null
   return el.closest(CHROME_TOUCH_SELECTOR) as HTMLElement | null
 }
 
-export function blurActiveTableCellInput(): void {
-  const active = document.activeElement
-  if (active instanceof HTMLTextAreaElement && active.classList.contains('cm-table-cell-input')) {
-    active.blur()
-  }
-}
-
-/** 点把手时收起输入法，避免菜单与键盘叠在一起 */
-export function dismissEditorKeyboardForChrome(view: EditorView): void {
-  blurActiveTableCellInput()
-  const active = document.activeElement
-  if (active instanceof HTMLElement) {
-    active.blur()
-  }
-  view.contentDOM.blur()
-  try {
-    window.ReactNativeWebView?.postMessage(JSON.stringify({ type: 'dismissKeyboard' }))
-  } catch {
-    /* ignore */
-  }
-}
+export { blurActiveTableCellInput, dismissEditorKeyboardForChrome } from './tableChromeKeyboard'
 
 /**
  * Android WebView：在 touchstart / pointerdown 立即响应，不等待 touchend（长按只会震动、菜单不出）。
@@ -108,6 +99,7 @@ function shouldOpenChromeMenu(): boolean {
 }
 
 function closeAllTableMenus(): void {
+  closeNativeTableSheets()
   document.querySelectorAll(MENU_LAYER_SELECTOR).forEach((el) => el.remove())
   lastChromeMenuOpenAt = 0
 }
@@ -282,28 +274,21 @@ function getVisualViewportBox(): { top: number; left: number; width: number; hei
   }
 }
 
-function readBottomChromeInsetPx(): number {
-  const scroller = document.querySelector('.cm-scroller') as HTMLElement | null
-  if (!scroller) return 0
-  const raw = getComputedStyle(scroller).getPropertyValue('--diary-bottom-scroll-inset').trim()
-  const parsed = Number.parseFloat(raw)
-  return Number.isFinite(parsed) ? parsed : 0
-}
-
-/** Android WebView：fixed+flex-end 会按文档高度布局，sheet 须锚定 visualViewport 底部 */
+/** 菜单贴 WebView 视口最底（不预留 RN 工具栏高度；工具栏在 WebView 外） */
 function pinTableSheetToVisualViewport(
   layer: HTMLElement,
   sheet: HTMLElement
 ): () => void {
   const apply = () => {
     const box = getVisualViewportBox()
-    const bottomInset = Math.max(0, readBottomChromeInsetPx())
+    const layerTop = box.top
+    const layerHeight = Math.max(box.height, window.innerHeight - box.top)
 
     layer.style.position = 'fixed'
-    layer.style.top = `${box.top}px`
+    layer.style.top = `${layerTop}px`
     layer.style.left = `${box.left}px`
     layer.style.width = `${box.width}px`
-    layer.style.height = `${box.height}px`
+    layer.style.height = `${layerHeight}px`
     layer.style.right = 'auto'
     layer.style.bottom = 'auto'
     layer.style.display = 'flex'
@@ -313,17 +298,19 @@ function pinTableSheetToVisualViewport(
     layer.style.pointerEvents = 'none'
     layer.style.overflow = 'hidden'
 
-    sheet.style.marginBottom = `${bottomInset}px`
-    sheet.style.maxHeight = `${Math.max(180, box.height - bottomInset - 16)}px`
+    sheet.style.marginBottom = '0'
+    sheet.style.maxHeight = `${Math.max(200, layerHeight * 0.72)}px`
   }
 
   apply()
   const vv = window.visualViewport
   vv?.addEventListener('resize', apply)
   vv?.addEventListener('scroll', apply)
+  window.addEventListener('resize', apply)
   return () => {
     vv?.removeEventListener('resize', apply)
     vv?.removeEventListener('scroll', apply)
+    window.removeEventListener('resize', apply)
   }
 }
 
@@ -350,6 +337,22 @@ export function showTableBottomSheet(
   onClose?: () => void
 ): void {
   closeAllTableMenus()
+  if (requestNativeTableSheet(title, sections, onPick, onClose)) {
+    logTableChrome('showTableBottomSheet:native', {
+      title,
+      itemCount: sections.reduce((n, s) => n + s.items.length, 0)
+    })
+    return
+  }
+  showDomTableBottomSheet(title, sections, onPick, onClose)
+}
+
+function showDomTableBottomSheet(
+  title: string,
+  sections: TableMenuSection[],
+  onPick: (id: string) => void,
+  onClose?: () => void
+): void {
   ensureTableSheetGlobalStyles()
   logTableChrome('showTableBottomSheet:start', {
     title,
@@ -388,11 +391,13 @@ export function showTableBottomSheet(
     unpinViewport()
     layer.remove()
     restorePageOverflowAfterSheet()
+    markTableSheetClosed()
     onClose?.()
   }
 
   const close = () => {
     if (layer.classList.contains('cm-table-sheet-layer--closing')) return
+    dismissKeyboardForSheetInteraction()
     animateCloseTableSheet(layer, sheet, finishClose)
   }
 
@@ -407,6 +412,7 @@ export function showTableBottomSheet(
     }
     e.preventDefault()
     e.stopPropagation()
+    dismissKeyboardForSheetInteraction()
     close()
   }
 
@@ -437,6 +443,7 @@ export function showTableBottomSheet(
   layer.appendChild(dismissZone)
   layer.appendChild(sheet)
   unlockPageOverflowForSheet()
+  markTableSheetOpen()
   document.body.appendChild(layer)
   unpinViewport = pinTableSheetToVisualViewport(layer, sheet)
 
@@ -583,6 +590,9 @@ export function openChromeMenuForTrigger(
   }
 
   dismissEditorKeyboardForChrome(view)
+  if (touch) {
+    view.dispatch({ effects: setActiveTableCell.of(null) })
+  }
 
   const rect = trigger.getBoundingClientRect()
   const x = rect.left

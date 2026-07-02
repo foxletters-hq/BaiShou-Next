@@ -1,6 +1,8 @@
 import { EditorSelection, EditorState, type Text } from '@codemirror/state'
 import type { EditorView } from '@codemirror/view'
-import { setActiveTableCell } from './tableActiveCell'
+import { clearActiveTableCellEffects } from './tableActiveCell'
+import { blurTableCellEditor, focusTableCellSource } from './tableDom'
+import { logDiaryBridge } from '../diaryBridgeDebug'
 import { resolvePostTableCursor, postTableSeparatorChange } from './tablePostGap'
 
 /** 结构变更写入时，若表后缺少换行则补一个 */
@@ -22,6 +24,8 @@ declare global {
 }
 
 export function placeCursorAfterTable(view: EditorView, tableRowTo: number): void {
+  blurTableCellEditor()
+
   const doc = view.state.doc
   const separatorChange = postTableSeparatorChange(doc, tableRowTo)
   let workingDoc = doc
@@ -51,16 +55,25 @@ export function placeCursorAfterTable(view: EditorView, tableRowTo: number): voi
   view.dispatch({
     ...(changes.length ? { changes } : {}),
     selection: EditorSelection.cursor(mapPosToOriginal(cursor)),
-    effects: setActiveTableCell.of(null),
+    effects: clearActiveTableCellEffects(view.state),
     scrollIntoView: false
+  })
+
+  // 必须在用户手势内同步 focus，否则 iOS WebView 不弹键盘；滚动延后单独处理
+  view.focus()
+
+  logDiaryBridge('tableFocus', 'placeCursorAfterTable', {
+    tableRowTo,
+    cursor: mapPosToOriginal(cursor),
+    docLength: doc.length,
+    hadSeparator: !!separatorChange,
+    hadGapChange: !!change
   })
 
   const afterPlace = window.__diaryCmPlaceCursorAfterTable
   if (typeof afterPlace === 'function') {
     afterPlace(view)
-    return
   }
-  view.focus()
 }
 
 export function focusTableCellInEditor(
@@ -68,24 +81,15 @@ export function focusTableCellInEditor(
   tableFrom: number,
   rowIndex: number,
   colIndex: number,
-  selection?: { start: number; end: number }
+  _selection?: { start: number; end: number }
 ): boolean {
-  const input = view.dom.querySelector(
-    `.cm-table-block[data-table-from="${tableFrom}"] textarea.cm-table-cell-input[data-row="${rowIndex}"][data-col="${colIndex}"]`
-  ) as HTMLTextAreaElement | null
-  if (!input) return false
-
-  input.focus()
-  const end = input.value.length
-  const start = selection?.start ?? end
-  const selEnd = selection?.end ?? end
-  input.setSelectionRange(Math.min(start, end), Math.min(selEnd, end))
-  return true
+  const block = view.dom.querySelector(
+    `.cm-table-block[data-table-from="${tableFrom}"]`
+  ) as HTMLElement | null
+  if (!block) return false
+  return focusTableCellSource(block, rowIndex, colIndex)
 }
 
 export function blurTableCellInput(): void {
-  const active = document.activeElement
-  if (active instanceof HTMLTextAreaElement && active.classList.contains('cm-table-cell-input')) {
-    active.blur()
-  }
+  blurTableCellEditor()
 }

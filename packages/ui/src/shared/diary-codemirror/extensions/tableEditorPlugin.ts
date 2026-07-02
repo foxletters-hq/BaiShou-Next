@@ -1,5 +1,8 @@
-import { type Extension } from '@codemirror/state'
 import { EditorView, ViewPlugin, type ViewUpdate, Decoration } from '@codemirror/view'
+import { EditorSelection, Prec } from '@codemirror/state'
+import { keymap } from '@codemirror/view'
+import { ensureSyntaxTree, syntaxTree } from '@codemirror/language'
+import type { SyntaxNode } from '@lezer/common'
 import { parseTableFromDoc } from '../table/table.model'
 import {
   addTableColumnMarkdown,
@@ -19,21 +22,31 @@ import {
   type TableCellFocusTarget,
   type TableEditorAction
 } from '../table/tableEffects'
-import { findTableRangeAt, findTableToByFrom } from '../table/tableBounds'
+import { findTableNodeBounds, findTableRangeAt, resolveTableSurfaceRange } from '../table/tableBounds'
+import { blurTableCellEditor, isTableCellEditorFocused } from '../table/tableDom'
 import {
-  resolvePostTableCursor,
   collectPostTableGapRepairsForState,
-  isOnStructuralTableGapLine
+  isOnStructuralTableGapLine,
+  resolvePostTableCursor
 } from '../table/tablePostGap'
 import {
   ensureTableMarkdownTrailingNewline,
   focusTableCellInEditor,
   placeCursorAfterTable
 } from '../table/tableFocus'
-import { setActiveTableCell } from '../table/tableActiveCell'
+import { setActiveTableCell, clearActiveTableCellEffects } from '../table/tableActiveCell'
+import { logDiaryBridge } from '../diaryBridgeDebug'
 import { getCursorPositions, isCursorInRange } from './cursor'
-import type { DiaryCmPlatform } from '../types'
-import { syntaxTree } from '@codemirror/language'
+
+function resolveTableReplaceRange(
+  state: import('@codemirror/state').EditorState,
+  pipeTableFrom: number,
+  pipeTableTo: number
+): { from: number; to: number } {
+  const bounds = findTableNodeBounds(state, pipeTableFrom)
+  if (bounds) return { from: bounds.nodeFrom, to: bounds.nodeTo }
+  return { from: pipeTableFrom, to: pipeTableTo }
+}
 
 function applyTableMarkdown(
   view: EditorView,
@@ -43,7 +56,8 @@ function applyTableMarkdown(
   focusAfter?: TableCellFocusTarget
 ): void {
   if (!nextMarkdown) return
-  const markdown = ensureTableMarkdownTrailingNewline(view.state.doc, tableTo, nextMarkdown)
+  const range = resolveTableReplaceRange(view.state, tableFrom, tableTo)
+  const markdown = ensureTableMarkdownTrailingNewline(view.state.doc, range.to, nextMarkdown)
   const effects = [forceTableRefresh.of(null)]
   if (focusAfter) {
     effects.push(
@@ -58,7 +72,7 @@ function applyTableMarkdown(
     )
   }
   view.dispatch({
-    changes: { from: tableFrom, to: tableTo, insert: markdown },
+    changes: { from: range.from, to: range.to, insert: markdown },
     effects,
     annotations: allowTableStructureEdit.of(true)
   })
@@ -76,7 +90,8 @@ function handleTableAction(view: EditorView, action: TableEditorAction): void {
         action.colIndex,
         action.value
       )
-      const unchanged = !next || next === view.state.doc.sliceString(table.from, table.to)
+      const range = resolveTableReplaceRange(view.state, table.from, table.to)
+      const unchanged = !next || next === view.state.doc.sliceString(range.from, range.to)
       if (unchanged) {
         if (action.focusAfter) {
           view.dispatch({
@@ -107,14 +122,16 @@ function handleTableAction(view: EditorView, action: TableEditorAction): void {
     case 'addRow':
       applyTableMarkdown(view, table.from, table.to, addTableRowMarkdown(table))
       return
-    case 'deleteTable':
+    case 'deleteTable': {
+      const range = resolveTableReplaceRange(view.state, table.from, table.to)
       view.dispatch({
-        changes: { from: table.from, to: table.to, insert: '' },
+        changes: { from: range.from, to: range.to, insert: '' },
         effects: [forceTableRefresh.of(null), setActiveTableCell.of(null)],
-        selection: { anchor: table.from },
+        selection: { anchor: range.from },
         annotations: allowTableStructureEdit.of(true)
       })
       return
+    }
     case 'deleteColumn':
       applyTableMarkdown(
         view,
@@ -148,36 +165,8 @@ function handleTableAction(view: EditorView, action: TableEditorAction): void {
 }
 
 function isTableCellFocused(): boolean {
-  const active = document.activeElement
-  return active instanceof HTMLTextAreaElement && active.classList.contains('cm-table-cell-input')
+  return isTableCellEditorFocused()
 }
-
-function resolveTableToFromBlock(block: Element, state: EditorView['state']): number | null {
-  const tableFrom = Number((block as HTMLElement).dataset.tableFrom)
-  if (Number.isNaN(tableFrom)) return null
-  return findTableToByFrom(state, tableFrom)
-}
-
-/** 文档以表格结尾（其后仅有空白）时返回该表格结束位置，用于末尾 padding 点击兜底 */
-function findTrailingTable(state: EditorView['state']): number | null {
-  const tree = syntaxTree(state)
-  let lastTableTo: number | null = null
-  tree.iterate({
-    enter(node) {
-      if (node.type.name !== 'Table') return
-      const table = parseTableFromDoc(state.doc, node.from, node.to)
-      if (table) lastTableTo = table.to
-    }
-  })
-  if (lastTableTo == null) return null
-  const trailing = state.doc.sliceString(lastTableTo)
-  if (/\S/.test(trailing)) return null
-  return lastTableTo
-}
-
-/** 交给控件自身处理的触摸目标（不接管光标） */
-const TABLE_TOUCH_PASS_SELECTOR =
-  '.cm-table-cell-display, .cm-table-cell-input, .cm-table-handle, .cm-table-add-btn, [role="button"], button, .cm-table-context-menu, .cm-table-context-menu-layer, .cm-table-sheet-layer'
 
 function isOnPostTableInputLine(view: EditorView, head: number, tableRowTo: number): boolean {
   if (head <= tableRowTo) return false
@@ -190,100 +179,55 @@ function isOnPostTableInputLine(view: EditorView, head: number, tableRowTo: numb
   }
 }
 
-/** 隐藏表格源码区视为原子区间，避免光标落入管道符文本 */
+/** 表边界 Backspace：先选中整张表，再次删除才移除（避免吞并表后段落） */
+function backspaceAtTableBoundary(view: EditorView): boolean {
+  const { state } = view
+  const sel = state.selection.main
+  if (!sel.empty) return false
+  const pos = sel.head
+  if (pos === 0) return false
+
+  const tree = syntaxTree(state)
+  let tableBefore: SyntaxNode | null = null
+
+  tree.iterate({
+    from: Math.max(0, pos - 2),
+    to: pos,
+    enter(n) {
+      if (n.name !== 'Table') return
+      if (n.to === pos || n.to + 1 === pos) {
+        tableBefore = n.node
+      }
+    }
+  })
+
+  if (!tableBefore) return false
+
+  const range = tableBefore
+  view.dispatch({
+    selection: EditorSelection.range(range.from, range.to)
+  })
+  return true
+}
+
+/** 整表 replace 后，表格源码区为原子区间（与 widget 表面区间一致） */
 export const tableAtomicRanges = EditorView.atomicRanges.of((view) => {
   const marks: { from: number; to: number; value: Decoration }[] = []
   const tree = syntaxTree(view.state)
   tree.iterate({
     enter(node) {
       if (node.type.name !== 'Table') return
-      const table = parseTableFromDoc(view.state.doc, node.from, node.to)
-      if (!table) return
-      const openingLine = view.state.doc.lineAt(table.from)
-      const closingLine = view.state.doc.lineAt(table.to)
-      let hiddenLineFrom = openingLine.to + 1
-      while (hiddenLineFrom <= closingLine.to) {
-        const hiddenLine = view.state.doc.lineAt(hiddenLineFrom)
-        marks.push({
-          from: hiddenLine.from,
-          to: hiddenLine.to,
-          value: Decoration.replace({})
-        })
-        hiddenLineFrom = hiddenLine.to + 1
-      }
+      const surface = resolveTableSurfaceRange(view.state, node.from, node.to)
+      if (!surface) return
+      marks.push({
+        from: surface.replaceFrom,
+        to: surface.replaceTo,
+        value: Decoration.replace({})
+      })
     }
   })
   return marks.length ? Decoration.set(marks, true) : Decoration.none
 })
-
-export function tableTouchPlugin(platform?: DiaryCmPlatform): Extension {
-  return ViewPlugin.fromClass(
-    class {
-      private readonly onTouchEnd = (event: TouchEvent) => this.handleTouchEnd(event)
-
-      constructor(private readonly view: EditorView) {
-        if (platform?.interactionMode !== 'touch') return
-        view.dom.addEventListener('touchend', this.onTouchEnd, { passive: false })
-      }
-
-      destroy() {
-        if (platform?.interactionMode !== 'touch') return
-        this.view.dom.removeEventListener('touchend', this.onTouchEnd)
-      }
-
-      private handleTouchEnd(event: TouchEvent) {
-        if (platform?.interactionMode !== 'touch') return
-        if (event.changedTouches.length !== 1) return
-        if (isTableCellFocused()) return
-
-        const touch = event.changedTouches[0]
-        if (!touch) return
-
-        const target = event.target
-        if (target instanceof Element) {
-          // 单元格 / 把手 / 菜单等交互控件：交给它们自身处理
-          if (target.closest(TABLE_TOUCH_PASS_SELECTOR)) return
-
-          // 点击落在表格块 DOM 内的非交互区域（含表格下方衔接条）
-          const block = target.closest('.cm-table-block')
-          if (block) {
-            const tableTo = resolveTableToFromBlock(block, this.view.state)
-            if (tableTo != null) this.takeover(tableTo)
-            return
-          }
-        }
-
-        const doc = this.view.state.doc
-        const pos = this.safePosAtCoords(touch)
-
-        // 点在内容末尾/末尾空白 padding：若文档以表格结尾则定位到表格后
-        if (pos == null || pos >= doc.length) {
-          const tableTo = findTrailingTable(this.view.state)
-          if (tableTo != null) this.takeover(tableTo)
-          return
-        }
-
-        // CM 会把光标放进被 widget 替换的隐藏表格源码里
-        const range = findTableRangeAt(this.view.state, pos)
-        if (range) this.takeover(range.rowTo)
-        // 命中普通文本：完全不干预，让 CM 正常定位并弹出键盘
-      }
-
-      private safePosAtCoords(touch: Touch): number | null {
-        try {
-          return this.view.posAtCoords({ x: touch.clientX, y: touch.clientY })
-        } catch {
-          return null
-        }
-      }
-
-      private takeover(tableTo: number): void {
-        this.view.dispatch({ effects: setActiveTableCell.of(null) })
-        placeCursorAfterTable(this.view, tableTo)
-      }
-    }
-  )
-}
 
 export const tableEditorPlugin = ViewPlugin.fromClass(
   class {
@@ -306,6 +250,9 @@ export const tableEditorPlugin = ViewPlugin.fromClass(
         )
         if (!fromTableAction) {
           this.schedulePostTableGapRepairs(update.view)
+          // 外部全量替换（RN setContent）后，原 selection 可能落入新表格 markdown
+          // 区间；docChanged 不一定伴随 selectionSet，需主动检查并重定向出表格
+          this.scheduleKeepSelectionOutsideTables(update.view)
         }
       }
       if (update.selectionSet) {
@@ -378,23 +325,30 @@ export const tableEditorPlugin = ViewPlugin.fromClass(
       })
     }
 
-    /** 光标误入被 widget 隐藏的表格源码区时，移到表后正文行 */
+    /** 光标误入 Table 节点覆盖的源码区时，移到表后正文 */
     private keepSelectionOutsideTables(view: EditorView) {
-      if (isTableCellFocused()) return
+      // setContent 全量替换后语法树可能尚未 parse，需同步确保至少扫到文档末尾
+      ensureSyntaxTree(view.state, view.state.doc.length, 200)
 
       const { head } = view.state.selection.main
       const doc = view.state.doc
-      const tree = syntaxTree(view.state)
       let redirected = false
-      tree.iterate({
+
+      syntaxTree(view.state).iterate({
         enter(node) {
           if (redirected || node.type.name !== 'Table') return
           const table = parseTableFromDoc(doc, node.from, node.to)
           if (!table) return
           if (isOnStructuralTableGapLine(doc, head, table.to)) {
+            const { cursor } = resolvePostTableCursor(doc, table.to)
+            if (head === cursor) return
             redirected = true
-            view.dispatch({ effects: setActiveTableCell.of(null) })
+            logDiaryBridge('tableEditor', 'redirect:gap-line', { head, tableTo: table.to })
+            blurTableCellEditor()
+            const effects = clearActiveTableCellEffects(view.state)
+            if (effects.length) view.dispatch({ effects })
             placeCursorAfterTable(view, table.to)
+            return false
           }
         }
       })
@@ -402,15 +356,44 @@ export const tableEditorPlugin = ViewPlugin.fromClass(
 
       const range = findTableRangeAt(view.state, head)
       if (!range) return
-      if (head > range.rowTo) {
+
+      // 主编辑器 head 在表格 markdown 区内时必须移出；单元格 contenteditable 有焦点时
+      // CM head 仍可能卡在 0，不能因 cell 焦点而跳过重定向
+      const headInsideTableMarkdown = head <= range.rowTo
+      if (!headInsideTableMarkdown && isTableCellFocused()) return
+
+      if (head > range.rowTo && head < range.nodeTo) {
+        logDiaryBridge('tableEditor', 'redirect:swallowed-in-node', {
+          head,
+          tableFrom: range.from,
+          rowTo: range.rowTo,
+          nodeTo: range.nodeTo
+        })
+        blurTableCellEditor()
+        const effects = clearActiveTableCellEffects(view.state)
+        if (effects.length) view.dispatch({ effects })
+        placeCursorAfterTable(view, range.rowTo)
         return
       }
+
+      if (head > range.rowTo) return
       if (isOnPostTableInputLine(view, head, range.rowTo)) return
 
-      view.dispatch({ effects: setActiveTableCell.of(null) })
+      logDiaryBridge('tableEditor', 'redirect:inside-table', {
+        head,
+        tableFrom: range.from,
+        tableTo: range.rowTo
+      })
+      blurTableCellEditor()
+      const effects = clearActiveTableCellEffects(view.state)
+      if (effects.length) view.dispatch({ effects })
       placeCursorAfterTable(view, range.rowTo)
     }
   }
+)
+
+export const tableBoundaryBackspaceKeymap = Prec.high(
+  keymap.of([{ key: 'Backspace', run: backspaceAtTableBoundary }])
 )
 
 export function isCursorInsideTable(view: EditorView): boolean {

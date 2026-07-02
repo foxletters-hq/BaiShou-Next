@@ -63,6 +63,27 @@ export function isOnStructuralTableGapLine(doc: Text, head: number, tableRowTo: 
   }
 }
 
+/** 给定文档位置是否落在某张表的结构性 gap 行上；返回对应 table.to */
+export function findTableRowToForGapPos(
+  state: EditorState,
+  pos: number
+): number | null {
+  const doc = state.doc
+  let found: number | null = null
+  syntaxTree(state).iterate({
+    enter(node) {
+      if (found != null || node.type.name !== 'Table') return
+      const table = parseTableFromDoc(doc, node.from, node.to)
+      if (!table) return
+      if (isOnStructuralTableGapLine(doc, pos, table.to)) {
+        found = table.to
+        return false
+      }
+    }
+  })
+  return found
+}
+
 /** 表后是否存在空白 gap 行（用于装饰） */
 export function hasPostTableGapLine(doc: Text, tableTo: number): boolean {
   const closing = tableClosingLine(doc, tableTo)
