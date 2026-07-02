@@ -17,6 +17,7 @@ import {
   type StreamingTextDisplayBuffer
 } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
+import { isTransientNetworkError } from '../utils/transient-network-error.util'
 import { saveUserMessage } from '../services/mobile-agent-message.service'
 import { runMobileAgentDbWrite } from '../services/mobile-agent-db-write.util'
 import { buildInsertSessionInput } from '../utils/session-input.util'
@@ -31,6 +32,8 @@ const MOBILE_AGENT_STREAM_DISPLAY_OPTIONS = {
 const STREAM_PRESENTATION_LINGER_MS = 520
 /** 与 AgentScreen HOLD_LIVE_PRESENTATION_MS 对齐：linger 结束后再清 buffer */
 const STREAM_BUFFER_HOLD_AFTER_LINGER_MS = 320
+/** 零输出时的瞬时网络错误最多自动重试次数 */
+const STREAM_ZERO_OUTPUT_NETWORK_RETRIES = 2
 
 interface TokenUsage {
   inputTokens: number
@@ -143,6 +146,8 @@ export function useAgentStream(
   const streamBridgeReleaseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const streamPresentationLingerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const streamBufferHoldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const streamAttemptErrorRef = useRef<string | null>(null)
+  const completedToolsCountRef = useRef(0)
 
   const [isStreamBridgeActive, setIsStreamBridgeActive] = useState(false)
   /** 流结束后短暂保留 StreamingBubble，避免一切 ChatBubble 时高度突变 + 滚动闪烁 */
@@ -160,6 +165,19 @@ export function useAgentStream(
   useEffect(() => {
     streamPresentationLingerRef.current = streamPresentationLinger
   }, [streamPresentationLinger])
+
+  useEffect(() => {
+    completedToolsCountRef.current = completedTools.length
+  }, [completedTools])
+
+  const hasStreamOutput = useCallback(() => {
+    return (
+      Boolean(streamingTextDisplayRef.current?.getFullText().trim()) ||
+      Boolean(streamingReasoningDisplayRef.current?.getFullText().trim()) ||
+      Boolean(activeToolRef.current) ||
+      completedToolsCountRef.current > 0
+    )
+  }, [])
 
   const isActiveSession = useCallback(
     (sessionId: string) => currentSessionIdRef.current === sessionId,
@@ -513,6 +531,84 @@ export function useAgentStream(
     [stopStreamingUiImmediately, resetStreamingBuffers]
   )
 
+  type AgentStreamOverrides = NonNullable<Parameters<NonNullable<typeof startAgentChat>>[3]>
+
+  const invokeAgentStreamChat = useCallback(
+    async (
+      sessionId: string,
+      userText: string,
+      overrides: AgentStreamOverrides,
+      onFail: (errorMsg: string) => void
+    ) => {
+      if (!startAgentChat) return
+
+      let activeOverrides = overrides
+
+      for (let attempt = 0; attempt <= STREAM_ZERO_OUTPUT_NETWORK_RETRIES; attempt++) {
+        streamAttemptErrorRef.current = null
+
+        if (attempt > 0) {
+          userStoppedStreamRef.current = false
+          setStreamError(null)
+          interruptActiveStream({ keepStreamingFlag: true })
+          resetStreamingBuffers()
+          const claim = claimAgentStreamSession(sessionId)
+          streamAbortRef.current = claim.abort
+          activeOverrides = {
+            ...activeOverrides,
+            abortSignal: claim.signal,
+            streamClaimGeneration: claim.generation
+          }
+        }
+
+        let thrownError: unknown = null
+        try {
+          await startAgentChat(
+            sessionId,
+            userText,
+            {
+              onTextDelta: appendStreamingTextDelta,
+              onReasoningDelta: appendStreamingReasoningDelta,
+              onToolCallStart: handleToolCallStart,
+              onToolCallResult: handleToolCallResult,
+              onFinish: () => {},
+              onError: (err) => {
+                if (userStoppedStreamRef.current || isAgentStreamAbortError(err)) return
+                const msg = err.message || t('app.unknown_error', '未知网络或系统错误')
+                streamAttemptErrorRef.current = msg
+                onFail(msg)
+              }
+            },
+            activeOverrides
+          )
+        } catch (e) {
+          thrownError = e
+          if (userStoppedStreamRef.current || isAgentStreamAbortError(e)) return
+          const msg = e instanceof Error ? e.message : String(e)
+          streamAttemptErrorRef.current = msg
+          onFail(msg)
+        }
+
+        const retryableError = thrownError ?? streamAttemptErrorRef.current
+        if (!retryableError) break
+        if (hasStreamOutput()) break
+        if (attempt >= STREAM_ZERO_OUTPUT_NETWORK_RETRIES) break
+        if (!isTransientNetworkError(retryableError)) break
+      }
+    },
+    [
+      startAgentChat,
+      t,
+      interruptActiveStream,
+      resetStreamingBuffers,
+      hasStreamOutput,
+      appendStreamingTextDelta,
+      appendStreamingReasoningDelta,
+      handleToolCallStart,
+      handleToolCallResult
+    ]
+  )
+
   // 工作区切换时中断流式生成，避免旧会话的流写入新 UI
   useEffect(() => {
     if (vaultSwitching) {
@@ -711,20 +807,9 @@ export function useAgentStream(
       setCompressionTriggerMessageId(null)
 
       try {
-        await startAgentChat?.(
+        await invokeAgentStreamChat(
           sessionId,
           userMessage.content,
-          {
-            onTextDelta: appendStreamingTextDelta,
-            onReasoningDelta: appendStreamingReasoningDelta,
-            onToolCallStart: handleToolCallStart,
-            onToolCallResult: handleToolCallResult,
-            onFinish: () => {},
-            onError: (err) => {
-              if (userStoppedStreamRef.current || isAgentStreamAbortError(err)) return
-              fail(err.message || t('app.unknown_error', '未知网络或系统错误'))
-            }
-          },
           {
             providerId: currentProviderId || undefined,
             modelId: currentModelId || undefined,
@@ -735,7 +820,8 @@ export function useAgentStream(
             forceRecompress: true,
             streamClaimGeneration: claim.generation,
             attachments: userMessage.attachments
-          }
+          },
+          fail
         )
         await finishStream(sessionId, {
           waitForLatestUsage: true,
@@ -765,11 +851,7 @@ export function useAgentStream(
       releaseRetryAction,
       resetStreamingBuffers,
       setLoading,
-      startAgentChat,
-      handleToolCallStart,
-      handleToolCallResult,
-      appendStreamingTextDelta,
-      appendStreamingReasoningDelta
+      invokeAgentStreamChat
     ]
   )
 
@@ -883,20 +965,9 @@ export function useAgentStream(
       }
 
       try {
-        await startAgentChat?.(
+        await invokeAgentStreamChat(
           sessionId,
           text,
-          {
-            onTextDelta: appendStreamingTextDelta,
-            onReasoningDelta: appendStreamingReasoningDelta,
-            onToolCallStart: handleToolCallStart,
-            onToolCallResult: handleToolCallResult,
-            onFinish: () => {},
-            onError: (err) => {
-              if (userStoppedStreamRef.current || isAgentStreamAbortError(err)) return
-              failStream(err.message || t('app.unknown_error', '未知网络或系统错误'))
-            }
-          },
           {
             providerId: currentProviderId || undefined,
             modelId: currentModelId || undefined,
@@ -906,7 +977,8 @@ export function useAgentStream(
             skipUserMessageRecording: true,
             streamClaimGeneration: claim.generation,
             attachments: saveResult.attachments
-          }
+          },
+          failStream
         )
         await finishStream(sessionId!, { waitForLatestUsage: true })
       } catch (e: unknown) {
@@ -937,10 +1009,8 @@ export function useAgentStream(
       finishStream,
       resetStreamingBuffers,
       interruptActiveStream,
-      handleToolCallStart,
-      handleToolCallResult,
-      appendStreamingTextDelta,
-      appendStreamingReasoningDelta
+      invokeAgentStreamChat,
+      toast
     ]
   )
 

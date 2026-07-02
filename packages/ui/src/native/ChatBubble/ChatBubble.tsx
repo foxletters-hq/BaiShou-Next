@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { View, Text, Pressable } from 'react-native'
+import { View, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { parseRedactedThinking } from '../../shared/chat-bubble/redacted-thinking'
 import { useNativeTheme } from '../../native/theme'
@@ -17,7 +17,6 @@ import {
   NativeChatBubbleActionsRow,
   NativeChatBubbleEditActions
 } from './NativeChatBubbleActionsRow'
-import { NativeChatBubbleActionSheet } from './NativeChatBubbleActionSheet'
 import { ChatBubbleAvatar } from './ChatBubbleAvatar'
 import { chatOverBackgroundMetaTextStyle } from '../../shared/chat-over-background-meta.style'
 
@@ -44,7 +43,6 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
-  const [showActions, setShowActions] = useState(false)
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null)
   const isUser = message.role === 'user'
   const isAssistant = message.role === 'assistant'
@@ -187,11 +185,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
               />
             </View>
           ) : (
-            <Pressable
-              style={styles.bubblePressable}
-              onLongPress={() => setShowActions(true)}
-              delayLongPress={500}
-            >
+            <View style={styles.bubblePressable}>
               {attachments.length > 0 ? (
                 <NativeChatBubbleAttachments attachments={attachments} isUserBubble={isUser} />
               ) : null}
@@ -205,9 +199,11 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                   />
                 </View>
               ) : !isAssistant && message.content ? (
-                <Text style={[styles.text, { color: colors.textPrimary }]}>{message.content}</Text>
+                <Text style={[styles.text, { color: colors.textPrimary }]} selectable>
+                  {message.content}
+                </Text>
               ) : null}
-            </Pressable>
+            </View>
           )}
         </View>
 
@@ -253,25 +249,6 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
           style={{ marginLeft: 8 }}
         />
       ) : null}
-
-      <NativeChatBubbleActionSheet
-        visible={showActions}
-        isUser={isUser}
-        isAssistant={isAssistant}
-        message={message}
-        onClose={() => setShowActions(false)}
-        onStartEdit={() => {
-          edit.handleStartEdit()
-          setShowActions(false)
-        }}
-        onCopy={onCopy}
-        onResend={onResend}
-        onReadAloud={onReadAloud}
-        onShowContext={onShowContext}
-        onRegenerate={onRegenerate}
-        onBranch={onBranch}
-        onDelete={onDelete}
-      />
 
       <NativeImagePreviewModal uri={previewImageUri} onClose={() => setPreviewImageUri(null)} />
     </View>

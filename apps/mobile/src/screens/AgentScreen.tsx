@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useLayoutEffect, useState, useCallback, useMemo } from 'react'
-import { useRouter, type Href } from 'expo-router'
+import { useRouter, type Href, useFocusEffect } from 'expo-router'
 import {
   type PromptShortcut,
   type WebSearchConfig,
@@ -121,8 +121,55 @@ export const AgentScreen = () => {
   )
 
   const handleBubbleEditingChange = useCallback((editing: boolean, messageId?: string) => {
+    if (editing) {
+      if (bubbleEditRestoreTimerRef.current) {
+        clearTimeout(bubbleEditRestoreTimerRef.current)
+        bubbleEditRestoreTimerRef.current = null
+      }
+      preBubbleEditScrollOffsetRef.current = scrollOffsetRef.current
+    }
     setIsBubbleEditing(editing)
     setEditingMessageId(editing && messageId ? messageId : null)
+  }, [])
+
+  const restorePreBubbleEditScroll = useCallback(() => {
+    const saved = preBubbleEditScrollOffsetRef.current
+    if (saved == null) return
+
+    const finishRestore = () => {
+      const target = preBubbleEditScrollOffsetRef.current
+      if (target == null) return
+      preBubbleEditScrollOffsetRef.current = null
+      flatListRef.current?.scrollTo({ y: target, animated: true })
+      scrollOffsetRef.current = target
+    }
+
+    if (bubbleEditRestoreTimerRef.current) {
+      clearTimeout(bubbleEditRestoreTimerRef.current)
+      bubbleEditRestoreTimerRef.current = null
+    }
+
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
+    if (Keyboard.isVisible?.()) {
+      const sub = Keyboard.addListener(hideEvent, () => {
+        sub.remove()
+        if (bubbleEditRestoreTimerRef.current) {
+          clearTimeout(bubbleEditRestoreTimerRef.current)
+          bubbleEditRestoreTimerRef.current = null
+        }
+        requestAnimationFrame(finishRestore)
+      })
+      bubbleEditRestoreTimerRef.current = setTimeout(() => {
+        bubbleEditRestoreTimerRef.current = null
+        sub.remove()
+        finishRestore()
+      }, 400)
+      return
+    }
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(finishRestore)
+    })
   }, [])
 
   const toast = useNativeToast()
@@ -138,9 +185,12 @@ export const AgentScreen = () => {
   const inputBarRef = useRef<InputBarRef>(null)
   const editingRowRef = useRef<View>(null)
   const scrollOffsetRef = useRef(0)
+  const preBubbleEditScrollOffsetRef = useRef<number | null>(null)
   const layoutReadyRef = useRef(false)
   const bubbleEditScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const bubbleEditRestoreTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const currentSessionIdRef = useRef<string | null>(null)
+  const [listViewportHeight, setListViewportHeight] = useState(0)
 
   const [assistants, setAssistants] = useState<MobileAssistantUi[]>([])
   const userProfile = useAgentUserProfile()
@@ -303,6 +353,7 @@ export const AgentScreen = () => {
     handleMomentumScrollBegin,
     handleMomentumScrollEnd,
     scrollToBottom,
+    scrollToBottomOnFocus,
     beginFollowIfAtBottom,
     handleContentSizeChange,
     contentAnchorMinHeight,
@@ -322,6 +373,12 @@ export const AgentScreen = () => {
     bindFlatList(flatListRef)
   }, [bindFlatList])
 
+  useFocusEffect(
+    useCallback(() => {
+      scrollToBottomOnFocus()
+    }, [scrollToBottomOnFocus])
+  )
+
   const composerKeyboardLiftEnabled = !drawerOpen && !showShortcutSheet && !showRecallSheet
   const drawerSwipeEnabled =
     !drawerOpen && !isBubbleEditing && !showShortcutSheet && !showRecallSheet
@@ -330,7 +387,6 @@ export const AgentScreen = () => {
     inputDockAnimatedStyle,
     scrollButtonAnimatedStyle,
     listSpacerAnimatedStyle,
-    listBottomPadding,
     handleComposerFocus,
     resetKeyboardInset
   } = useAgentChatKeyboardInsets({
@@ -401,7 +457,26 @@ export const AgentScreen = () => {
   useEffect(() => {
     if (!isBubbleEditing || !editingMessageId) return
     scheduleBubbleEditScroll()
-  }, [isBubbleEditing, editingMessageId, listBottomPadding, scheduleBubbleEditScroll])
+  }, [isBubbleEditing, editingMessageId, scheduleBubbleEditScroll])
+
+  const wasBubbleEditingRef = useRef(false)
+  useEffect(() => {
+    if (wasBubbleEditingRef.current && !isBubbleEditing) {
+      if (Keyboard.isVisible?.() !== true) {
+        resetKeyboardInset()
+      }
+      restorePreBubbleEditScroll()
+    }
+    wasBubbleEditingRef.current = isBubbleEditing
+  }, [isBubbleEditing, resetKeyboardInset, restorePreBubbleEditScroll])
+
+  useEffect(() => {
+    return () => {
+      if (bubbleEditRestoreTimerRef.current) {
+        clearTimeout(bubbleEditRestoreTimerRef.current)
+      }
+    }
+  }, [])
 
   const handleInputBarFocus = useCallback(() => {
     handleComposerFocus()
@@ -1111,13 +1186,24 @@ export const AgentScreen = () => {
     prevHoldLiveRef.current = holdLivePresentation
   }, [holdLivePresentation, finalizeContentHandoff])
 
-  const listContentStyle = useMemo(
-    () =>
-      contentAnchorMinHeight != null
-        ? [styles.listContent, { minHeight: contentAnchorMinHeight }]
-        : styles.listContent,
-    [contentAnchorMinHeight]
-  )
+  const listContentStyle = useMemo(() => {
+    const showEmptyState =
+      !isStreaming && !isStreamBridgeActive && messages.length === 0
+
+    if (showEmptyState && listViewportHeight > 0) {
+      return [styles.listContent, styles.listContentEmpty, { minHeight: listViewportHeight }]
+    }
+    if (contentAnchorMinHeight != null) {
+      return [styles.listContent, { minHeight: contentAnchorMinHeight }]
+    }
+    return styles.listContent
+  }, [
+    contentAnchorMinHeight,
+    isStreamBridgeActive,
+    isStreaming,
+    listViewportHeight,
+    messages.length
+  ])
 
   const listFooter = useMemo(
     () => (
@@ -1196,12 +1282,18 @@ export const AgentScreen = () => {
                 keyboardShouldPersistTaps="always"
                 keyboardDismissMode="interactive"
                 showsVerticalScrollIndicator={false}
-                onLayout={() => {
+                onLayout={(event) => {
+                  const height = Math.ceil(event.nativeEvent.layout.height)
+                  if (height > 0) {
+                    setListViewportHeight((prev) => (prev === height ? prev : height))
+                  }
                   if (!layoutReadyRef.current) {
                     layoutReadyRef.current = true
-                    requestAnimationFrame(() =>
-                      flatListRef.current?.scrollToEnd({ animated: false })
-                    )
+                    if (messages.length > 0) {
+                      requestAnimationFrame(() =>
+                        flatListRef.current?.scrollToEnd({ animated: false })
+                      )
+                    }
                   }
                 }}
                 onScroll={handleListScroll}
@@ -1393,8 +1485,7 @@ export const AgentScreen = () => {
                 styles.inputDock,
                 inputDockAnimatedStyle,
                 {
-                  backgroundColor: colors.bgSurface,
-                  opacity: isBubbleEditing ? 0.92 : 1
+                  backgroundColor: colors.bgSurface
                 }
               ]}
               pointerEvents={isBubbleEditing ? 'none' : 'auto'}
@@ -1603,8 +1694,9 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   list: { flex: 1 },
-  /** 不用 flexGrow:1，否则内容变短（流式 Footer 移除）时 ScrollView 常把 offset 钳到 0 */
+  /** 有消息时不用 flexGrow，避免流式 Footer 移除后 offset 被钳到 0 */
   listContent: { paddingTop: 24, paddingBottom: 0, paddingHorizontal: 0 },
+  listContentEmpty: { flexGrow: 1 },
   bubble: { marginBottom: 6 },
   toolStatusContainer: {
     paddingHorizontal: 16,
@@ -1638,7 +1730,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: '24%',
     paddingHorizontal: 24
   },
   emptyIconCircle: {

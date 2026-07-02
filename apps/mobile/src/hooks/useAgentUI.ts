@@ -2,11 +2,13 @@ import { useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatRecallDiaryDate, formatRecallTimestamp } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
+import { useNativeToast } from '@baishou/ui/native'
 import type { RecallItem } from '@baishou/ui/native'
 
 export function useAgentUI() {
   const { t } = useTranslation()
   const { services } = useBaishou()
+  const toast = useNativeToast()
 
   const [showCostDialog, setShowCostDialog] = useState(false)
   const [showShortcutSheet, setShowShortcutSheet] = useState(false)
@@ -63,12 +65,15 @@ export function useAgentUI() {
         )
       } catch (err) {
         console.error('[AgentUI] Search fail:', err)
+        if (err instanceof Error && err.message.includes('timed out')) {
+          toast.showWarning(t('agent.recall.search_timeout', '语义搜索超时，请稍后重试'))
+        }
         setRecallItems([])
       } finally {
         setIsSearchingRecall(false)
       }
     },
-    [services, t, recallSearchMode]
+    [services, t, recallSearchMode, toast]
   )
 
   const toggleRecallSearchMode = useCallback(() => {
