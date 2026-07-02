@@ -2,10 +2,9 @@ import { StyleSheet } from 'react-native'
 
 /**
  * EnrichedMarkdownText 末行常少报一行左右高度，文字会画在布局框外；
- * 在气泡内为 Markdown 槽位预留底部缓冲，让圆角背景包住最后一行。
- * 与 allowTrailingMargin 叠加，不宜过大（约半行）。
+ * chat 变体已启用 allowTrailingMargin，此处仅保留少量缓冲。
  */
-export const CHAT_MARKDOWN_BOTTOM_GUARD = 12
+export const CHAT_MARKDOWN_BOTTOM_GUARD = 4
 
 export const chatBubbleStyles = StyleSheet.create({
   container: {

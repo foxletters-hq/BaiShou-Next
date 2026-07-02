@@ -78,7 +78,9 @@ export async function buildMobileStreamUserConfig(
   const toolManagementConfig = normalizeToolManagementConfig(
     (await settingsManager.get<any>('tool_management_config')) ?? DEFAULT_TOOL_MANAGEMENT_CONFIG
   )
-  const behaviorConfig = await settingsManager.get<any>('agent_behavior_config')
+  const behaviorConfig =
+    (await settingsManager.get<any>('agent_behavior')) ??
+    (await settingsManager.get<any>('agent_behavior_config'))
   const webSearchConfig = await settingsManager.get<any>('web_search_config')
   const globalModels = await settingsManager.get<any>('global_models')
   const diaryTemplateConfig =
@@ -110,7 +112,12 @@ export async function buildMobileStreamUserConfig(
       ...(webSearchConfig || {})
     }),
     diaryAiWritingPrompt: buildDiaryWritingGuidelinesForSystemPrompt(diaryTemplateConfig),
-    userCard: formatUserCardFromProfile(userProfile)
+    userCard: formatUserCardFromProfile(userProfile),
+    agentGuidelines:
+      typeof behaviorConfig?.agentGuidelines === 'string' &&
+      behaviorConfig.agentGuidelines.trim().length > 0
+        ? behaviorConfig.agentGuidelines.trim()
+        : undefined
   }
 }
 

@@ -1,5 +1,25 @@
-import { useState, useRef, useEffect } from 'react'
-import { InteractionManager } from 'react-native'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import {
+  InteractionManager,
+  Keyboard,
+  LayoutAnimation,
+  Platform,
+  UIManager
+} from 'react-native'
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true)
+}
+
+function configureEditExitAnimation(): void {
+  LayoutAnimation.configureNext(
+    LayoutAnimation.create(
+      250,
+      LayoutAnimation.Types.easeInEaseOut,
+      LayoutAnimation.Properties.opacity
+    )
+  )
+}
 
 export function useNativeChatBubbleEdit(
   initialContent: string,
@@ -11,13 +31,16 @@ export function useNativeChatBubbleEdit(
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState(initialContent)
   const editInputRef = useRef<any>(null)
+  const isEditingRef = useRef(isEditing)
+  isEditingRef.current = isEditing
 
   useEffect(() => {
-    onEditingChange?.(isEditing, isEditing ? messageId : undefined)
     return () => {
-      if (isEditing) onEditingChange?.(false, messageId)
+      if (isEditingRef.current) {
+        onEditingChange?.(false, messageId)
+      }
     }
-  }, [isEditing, messageId, onEditingChange])
+  }, [messageId, onEditingChange])
 
   useEffect(() => {
     if (!isEditing) return
@@ -32,25 +55,34 @@ export function useNativeChatBubbleEdit(
   const handleStartEdit = () => {
     setEditContent(initialContent)
     setIsEditing(true)
+    onEditingChange?.(true, messageId)
   }
+
+  const endEditing = useCallback(() => {
+    configureEditExitAnimation()
+    editInputRef.current?.blur()
+    Keyboard.dismiss()
+    setIsEditing(false)
+    onEditingChange?.(false, messageId)
+  }, [messageId, onEditingChange])
 
   const handleSaveEdit = () => {
     if (editContent.trim()) {
       onSaveEdit?.(editContent.trim())
-      setIsEditing(false)
+      endEditing()
     }
   }
 
   const handleResendEdit = () => {
     if (editContent.trim()) {
       onResendEdit?.(editContent.trim())
-      setIsEditing(false)
+      endEditing()
     }
   }
 
   const handleCancelEdit = () => {
     setEditContent(initialContent)
-    setIsEditing(false)
+    endEditing()
   }
 
   return {

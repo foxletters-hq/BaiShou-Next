@@ -36,8 +36,9 @@ export function useAgentChatScroll({
   const [contentAnchorMinHeight, setContentAnchorMinHeight] = useState<number | undefined>(
     undefined
   )
-  const prevSessionIdRef = useRef<string | null>(sessionId)
+  const prevSessionIdRef = useRef<string | null>(null)
   const pendingInstantBottomRef = useRef(false)
+  const prevMessagesLengthRef = useRef(0)
   const suppressInterruptRef = useRef(0)
   const isSmoothScrollingRef = useRef(false)
   const isUserDraggingRef = useRef(false)
@@ -252,14 +253,45 @@ export function useAgentChatScroll({
   }, [sessionId, enterFollowing, releaseContentHandoff])
 
   useEffect(() => {
-    if (!pendingInstantBottomRef.current || messages.length === 0) return
+    if (messages.length === 0) {
+      prevMessagesLengthRef.current = 0
+      return
+    }
+
     const ref = scrollViewRefHolder.current
-    if (!ref) return
-    logAgentScrollEvent('pending_instant_bottom', { messagesCount: messages.length })
-    jumpToBottomInstant(ref)
-    pendingInstantBottomRef.current = false
-    enterFollowing()
+    const reloadedFromEmpty =
+      prevMessagesLengthRef.current === 0 &&
+      messages.length > 0 &&
+      followModeRef.current === 'following'
+
+    if (ref && (pendingInstantBottomRef.current || reloadedFromEmpty)) {
+      logAgentScrollEvent('pending_instant_bottom', {
+        messagesCount: messages.length,
+        reloadedFromEmpty
+      })
+      jumpToBottomInstant(ref)
+      pendingInstantBottomRef.current = false
+      enterFollowing()
+    }
+
+    prevMessagesLengthRef.current = messages.length
   }, [sessionId, messages.length, jumpToBottomInstant, enterFollowing])
+
+  const scrollToBottomOnFocus = useCallback(() => {
+    pendingInstantBottomRef.current = true
+    enterFollowing()
+    releaseContentHandoff()
+    lastScrollOffsetRef.current = 0
+
+    const ref = scrollViewRefHolder.current
+    if (!ref || messages.length === 0) return
+
+    requestAnimationFrame(() => {
+      jumpToBottomInstant(ref)
+      pendingInstantBottomRef.current = false
+      requestAnimationFrame(() => jumpToBottomInstant(ref))
+    })
+  }, [messages.length, jumpToBottomInstant, enterFollowing, releaseContentHandoff])
 
   const newestMessageId = messages[messages.length - 1]?.id ?? null
   const newestMessageRole = messages[messages.length - 1]?.role ?? null
@@ -435,6 +467,7 @@ export function useAgentChatScroll({
     handleMomentumScrollBegin,
     handleMomentumScrollEnd,
     scrollToBottom,
+    scrollToBottomOnFocus,
     beginFollowIfAtBottom,
     handleContentSizeChange,
     bindFlatList
