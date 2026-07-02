@@ -1,4 +1,5 @@
-import { buildMessageMetadataSystemPromptLines } from '@baishou/shared'
+import { buildMessageMetadataSystemPromptLines, type AssistantKind } from '@baishou/shared'
+import { buildToolUsageGuidelines } from './tool-usage-guidelines.util'
 
 export interface SystemPromptBuilderOptions {
   vaultName: string
@@ -8,6 +9,8 @@ export interface SystemPromptBuilderOptions {
   userProfileBlock?: string
   /** 伙伴使用写日记 / 编辑日记工具时的书写规范 */
   diaryAiWritingPrompt?: string
+  /** 亲密伙伴 / 工作伙伴，影响能力边界说明 */
+  assistantKind?: AssistantKind
   /** 是否在 system prompt 中注入当前时间，默认 true（兼容旧配置） */
   injectCurrentTime?: boolean
 }
@@ -24,6 +27,7 @@ export class SystemPromptBuilder {
       customGuidelines,
       userProfileBlock,
       diaryAiWritingPrompt,
+      assistantKind = 'companion',
       injectCurrentTime = true
     } = options
 
@@ -69,14 +73,27 @@ export class SystemPromptBuilder {
     buffer.push('</system_context>')
     buffer.push('')
 
+    if (assistantKind === 'work') {
+      buffer.push('<assistant_capabilities>')
+      buffer.push('Partner type: Work Partner (工作伙伴).')
+      buffer.push(
+        'Scope: knowledge lookup, web search, and work assistance only. ' +
+          'Diary read/write, structured summaries, vector/memory search, and cross-session message search are NOT available—do not claim to access them.'
+      )
+      buffer.push('</assistant_capabilities>')
+      buffer.push('')
+    }
+
     // 工具可用性宣告
     const availableToolIds = Object.keys(tools)
+    const toolUsageGuidelines = buildToolUsageGuidelines(availableToolIds)
+
     if (availableToolIds.length > 0) {
       buffer.push('<available_tools>')
       buffer.push('Available Tools:')
       buffer.push(
-        'All tools are optional. Use one only when it clearly improves the answer; ' +
-          'prefer information already in the conversation (including any rolling compression summary) when sufficient.'
+        'Use a tool when it improves accuracy or when the tool usage guidelines below mark it as required. ' +
+          'If the current conversation (including any rolling compression summary) already contains sufficient facts, you may answer without tools.'
       )
       buffer.push('')
       for (const id of availableToolIds) {
@@ -88,9 +105,12 @@ export class SystemPromptBuilder {
       buffer.push('')
 
       // 高级逻辑防降级：如果用户今天关了 RAG 或是关了 VectorSearch，必须给 AI 打预防针，防止它乱报错
+      const hasDiaryOrSummaryTools = availableToolIds.some(
+        (id) => id.startsWith('diary_') || id === 'summary_read'
+      )
       if (
-        !availableToolIds.includes('memory_store') ||
-        !availableToolIds.includes('vector_search')
+        hasDiaryOrSummaryTools &&
+        (!availableToolIds.includes('memory_store') || !availableToolIds.includes('vector_search'))
       ) {
         buffer.push(
           'Note: Memory/RAG tools are currently disabled by the user. ' +
@@ -110,12 +130,28 @@ export class SystemPromptBuilder {
         )
         buffer.push('')
       }
+
       buffer.push('</available_tools>')
       buffer.push('')
     } else {
       buffer.push('<available_tools>')
       buffer.push('No tools are currently available.')
       buffer.push('</available_tools>')
+      buffer.push('')
+    }
+
+    if (toolUsageGuidelines) {
+      buffer.push('<tool_usage_guidelines>')
+      buffer.push(toolUsageGuidelines)
+      buffer.push('</tool_usage_guidelines>')
+      buffer.push('')
+    }
+
+    if (assistantKind === 'companion' && toolUsageGuidelines) {
+      buffer.push('<assistant_capabilities>')
+      buffer.push('Partner type: Companion (亲密伙伴).')
+      buffer.push('Diary and memory tools may be available—follow the tool usage guidelines strictly.')
+      buffer.push('</assistant_capabilities>')
       buffer.push('')
     }
 
