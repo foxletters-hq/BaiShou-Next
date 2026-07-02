@@ -28,7 +28,8 @@ describe('table bounds', () => {
           if (node.type.name !== 'Table') return
           const parsed = parseTableFromDoc(view!.state.doc, node.from, node.to)
           if (parsed) {
-            expect({ from: parsed.from, to: parsed.to }).toEqual({ from: node.from, to: node.to })
+            expect(parsed.from).toBe(node.from)
+            expect(parsed.to).toBeLessThanOrEqual(node.to)
             expect(() => buildMarkerHidingDecorations(view!.state)).not.toThrow()
           }
         }

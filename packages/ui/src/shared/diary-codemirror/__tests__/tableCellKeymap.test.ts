@@ -40,13 +40,14 @@ describe('tableCellKeymap', () => {
     return view
   }
 
-  it('inserts <br> instead of splitting the table row', () => {
+  it('blocks direct edits inside table markdown from the main editor', () => {
     const doc = '| Name | Value |\n| --- | --- |\n| foo | bar |\n'
     const cursorPos = doc.indexOf('foo') + 2
     const editorView = createView(doc, cursorPos)
+    const before = editorView.state.doc.toString()
 
     expect(insertTableCellLineBreak(editorView)).toBe(true)
-    expect(editorView.state.doc.toString()).toContain('fo<br>o')
+    expect(editorView.state.doc.toString()).toBe(before)
     expect(editorView.state.doc.lines).toBe(4)
   })
 
