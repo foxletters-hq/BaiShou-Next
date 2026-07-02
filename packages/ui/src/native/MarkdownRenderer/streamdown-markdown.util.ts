@@ -148,14 +148,26 @@ export function buildStreamdownMarkdownStyle(
 }
 
 /**
- * CommonMark 会吞掉段落末尾换行，但 TextInput 编辑态仍保留。
- * 将尾部换行转为硬换行（行末两空格），使展示与编辑一致。
+ * CommonMark 会吞掉段落内单换行，但 TextInput 编辑态仍保留。
+ * 将段落内单换行与尾部换行转为硬换行（行末两空格），使展示与编辑一致。
  */
-export function preserveChatTrailingNewlines(content: string): string {
+export function preserveChatDisplayNewlines(content: string): string {
   const trailing = content.match(/\n+$/)
-  if (!trailing) return content
-  const base = content.slice(0, -trailing[0].length)
-  return base + '  \n'.repeat(trailing[0].length)
+  const trailingNewlineCount = trailing ? trailing[0].length : 0
+  const base = trailingNewlineCount > 0 ? content.slice(0, -trailingNewlineCount) : content
+
+  const normalized = base
+    .split(/\n\n/)
+    .map((paragraph) => paragraph.replace(/\n/g, '  \n'))
+    .join('\n\n')
+
+  if (trailingNewlineCount === 0) return normalized
+  return normalized + '  \n'.repeat(trailingNewlineCount)
+}
+
+/** @deprecated 使用 preserveChatDisplayNewlines */
+export function preserveChatTrailingNewlines(content: string): string {
+  return preserveChatDisplayNewlines(content)
 }
 
 /** 剥离零宽字符与日记宽度语法，并将可同步解析的 attachment 图片写回可加载 URI */
