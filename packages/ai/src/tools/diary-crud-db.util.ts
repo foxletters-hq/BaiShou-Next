@@ -1,7 +1,15 @@
 import type { ToolContext } from './agent.tool'
 import { mergeDiaryTags } from '@baishou/shared'
+import { createDiaryReadGuard } from './diary-read-guard.util'
 
 export { mergeDiaryTags }
+
+export function ensureDiaryReadGuard(context: ToolContext) {
+  if (!context.diaryReadGuard) {
+    context.diaryReadGuard = createDiaryReadGuard()
+  }
+  return context.diaryReadGuard
+}
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
@@ -47,6 +55,11 @@ export async function runDiaryReadViaDb(
     results.push(`## ${row.date}\n\n${row.content}\n`)
   }
 
+  const validDates = args.dates.filter((date) => DATE_RE.test(date)).slice(0, 20)
+  if (validDates.length > 0) {
+    ensureDiaryReadGuard(context).markRead(validDates)
+  }
+
   return results.join('\n---\n\n')
 }
 
@@ -81,6 +94,13 @@ export async function runDiaryEditViaDb(
   }
   if (!DATE_RE.test(args.date)) {
     return `Error: Invalid date format "${args.date}". Expected YYYY-MM-DD.`
+  }
+
+  if (context.diaryReadGuard && !context.diaryReadGuard.hasRead(args.date)) {
+    return (
+      `Error: diary_read is required before diary_edit. ` +
+      `Call diary_read with date "${args.date}" first in this turn, then retry diary_edit.`
+    )
   }
 
   const result = await context.diarySearcher.editEntry({
