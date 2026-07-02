@@ -17,12 +17,36 @@ export interface ParsedTable {
   columnCount: number
 }
 
+/** 按管道符切分列，保留空列；支持 `\|` 转义 */
+export function splitTableRowCells(lineText: string): string[] {
+  let s = lineText.trim()
+  if (s.startsWith('|')) s = s.slice(1)
+  if (s.endsWith('|')) s = s.slice(0, -1)
+
+  const cells: string[] = []
+  let buf = ''
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i]
+    if (ch === '\\' && i + 1 < s.length) {
+      buf += ch + s[i + 1]
+      i++
+      continue
+    }
+    if (ch === '|') {
+      cells.push(buf.trim())
+      buf = ''
+      continue
+    }
+    buf += ch
+  }
+  cells.push(buf.trim())
+  return cells
+}
+
 export function parseCellsFromLine(lineText: string): string[] {
   const trimmed = lineText.trim()
   if (!trimmed.startsWith('|')) return []
-  const inner = trimmed.replace(/^\|/, '').replace(/\|$/, '')
-  if (!inner.trim()) return []
-  return inner.split('|').map((cell) => cell.trim())
+  return splitTableRowCells(lineText)
 }
 
 export function formatTableRow(cells: string[]): string {
@@ -41,6 +65,13 @@ export function serializeTable(headerCells: string[], bodyRows: string[][]): str
     ...bodyRows.map((row) => formatTableRow(normalizeRowCells(row, colCount)))
   ]
   return lines.join('\n')
+}
+
+/** 用于 TableBlockWidget.eq：检测 doc 侧内容变更（undo / 桥接同步） */
+export function tableContentSignature(table: ParsedTable): string {
+  const header = table.header.cells.join('\u001f')
+  const rows = table.bodyRows.map((row) => row.cells.join('\u001f')).join('\u001e')
+  return `${table.from}:${table.columnCount}:${header}\u001d${rows}`
 }
 
 function normalizeRowCells(cells: string[], columnCount: number): string[] {

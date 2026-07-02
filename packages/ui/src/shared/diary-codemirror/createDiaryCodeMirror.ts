@@ -9,6 +9,7 @@ import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirro
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { searchKeymap } from '@codemirror/search'
 import { livePreviewPlugin } from './extensions/livePreviewPlugin'
+import { tablePreviewField } from './extensions/tablePreviewField'
 import { livePreviewSyntaxHighlighting } from './extensions/syntax'
 import { markdownKeymap } from './extensions/keymap'
 import {
@@ -20,8 +21,10 @@ import { attachmentUrlPlugin } from './extensions/attachmentUrlPlugin'
 import { diaryTagLineKeymap, diaryTagLinePlugin } from './extensions/diaryTagLinePlugin'
 import { listContinuationExtension } from './extensions/listContinuationKeymap'
 import { tableCellExtension } from './extensions/tableCellKeymap'
-import { tableEditorPlugin, tableTouchPlugin, tableAtomicRanges } from './extensions/tableEditorPlugin'
+import { tableEditorPlugin, tableAtomicRanges, tableBoundaryBackspaceKeymap } from './extensions/tableEditorPlugin'
 import { tableChromeTouchPlugin } from './extensions/tableChromeTouchPlugin'
+import { tablePostTableTouchPlugin } from './extensions/tablePostTableTouchPlugin'
+import { diarySyntaxTreeGrowthPlugin } from './extensions/diarySyntaxTreeGrowth'
 import { activeTableCellField } from './table/tableActiveCell'
 import { tableChromeSelectionField } from './table/tableChromeSelection'
 import type { DiaryCmPlatform } from './types'
@@ -56,15 +59,18 @@ export function createDiaryCodeMirrorExtensions(
     activeTableCellField,
     tableChromeSelectionField,
     tableAtomicRanges,
+    tableBoundaryBackspaceKeymap,
     tableCellExtension,
     tableEditorPlugin,
-    tableTouchPlugin(platform),
+    diarySyntaxTreeGrowthPlugin,
     tableChromeTouchPlugin(platform),
+    tablePostTableTouchPlugin(platform),
     listContinuationExtension,
     markdownKeymap,
     keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
     markdown({ base: markdownLanguage }),
     cmPlaceholder(placeholder || ''),
+    tablePreviewField(platform),
     livePreviewPlugin(platform),
     livePreviewSyntaxHighlighting(),
     attachmentUrlPlugin(resolveUrl),

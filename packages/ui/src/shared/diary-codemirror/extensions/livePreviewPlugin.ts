@@ -2,9 +2,7 @@ import { StateField, type Transaction } from '@codemirror/state'
 import { EditorView, type DecorationSet } from '@codemirror/view'
 import { syntaxTree } from '@codemirror/language'
 import { forceImageRefresh } from './effects'
-import { forceTableRefresh } from '../table/tableEffects'
-import { setActiveTableCell } from '../table/tableActiveCell'
-import { setTableChromeSelection } from '../table/tableChromeSelection'
+import { diarySyntaxTreeGrowthEffect } from './diarySyntaxTreeGrowth'
 import { buildMarkerHidingDecorations } from './build'
 import type { DiaryCmPlatform } from '../types'
 
@@ -26,15 +24,11 @@ function shouldRebuildDecorations(tr: Transaction): boolean {
   if (!tr.startState.selection.eq(tr.state.selection)) return true
   if (syntaxTree(tr.state) !== syntaxTree(tr.startState)) return true
   return tr.effects.some(
-    (e) =>
-      e.is(forceImageRefresh) ||
-      e.is(forceTableRefresh) ||
-      e.is(setActiveTableCell) ||
-      e.is(setTableChromeSelection)
+    (e) => e.is(forceImageRefresh) || e.is(diarySyntaxTreeGrowthEffect)
   )
 }
 
-/** 块级 replace 装饰必须通过 StateField 提供，不能放在 ViewPlugin 里 */
+/** 行内/列表/非表块 live preview 装饰（表格 widget 由 tablePreviewField 独立提供） */
 export function livePreviewPlugin(
   resolveUrlOrPlatform?: ((url: string) => string) | DiaryCmPlatform
 ) {

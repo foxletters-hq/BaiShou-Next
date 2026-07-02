@@ -120,6 +120,7 @@ export type DiaryCmToWebViewMessage =
   | { type: 'blur' }
   | { type: 'resolveUrlResponse'; payload: DiaryCmResolveUrlResponsePayload }
   | { type: 'confirmResponse'; payload: DiaryCmConfirmResponsePayload }
+  | { type: 'tableSheetResponse'; payload: DiaryCmTableSheetResponsePayload }
   /** RN 未收到 ready 时请求 WebView 重新发送 ready */
   | { type: 'requestReady' }
 
@@ -185,6 +186,29 @@ export interface DiaryCmConfirmRequestPayload {
   destructive?: boolean
 }
 
+export interface DiaryCmTableSheetMenuItemPayload {
+  id: string
+  label: string
+  disabled?: boolean
+  destructive?: boolean
+}
+
+export interface DiaryCmTableSheetSectionPayload {
+  items: DiaryCmTableSheetMenuItemPayload[]
+}
+
+export interface DiaryCmTableSheetRequestPayload {
+  requestId: string
+  title: string
+  sections: DiaryCmTableSheetSectionPayload[]
+}
+
+export interface DiaryCmTableSheetResponsePayload {
+  requestId: string
+  action: 'pick' | 'dismiss'
+  itemId?: string
+}
+
 export type DiaryCmFromWebViewMessage =
   | { type: 'ready' }
   | { type: 'change'; payload: DiaryCmChangePayload }
@@ -198,6 +222,7 @@ export type DiaryCmFromWebViewMessage =
   | { type: 'debug'; payload: DiaryCmDebugPayload }
   | { type: 'dismissKeyboard' }
   | { type: 'confirmRequest'; payload: DiaryCmConfirmRequestPayload }
+  | { type: 'tableSheetRequest'; payload: DiaryCmTableSheetRequestPayload }
   | { type: 'focus' }
   | { type: 'blur' }
 
@@ -242,6 +267,7 @@ export function isDiaryCmFromWebViewMessage(value: unknown): value is DiaryCmFro
     type === 'debug' ||
     type === 'dismissKeyboard' ||
     type === 'confirmRequest' ||
+    type === 'tableSheetRequest' ||
     type === 'focus' ||
     type === 'blur'
   )

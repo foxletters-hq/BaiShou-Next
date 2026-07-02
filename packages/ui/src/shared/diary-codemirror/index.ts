@@ -25,6 +25,12 @@ export {
 
 export { livePreviewSyntaxHighlighting } from './extensions/syntax'
 export { livePreviewPlugin } from './extensions/livePreviewPlugin'
+export {
+  tablePreviewField,
+  buildTablePreviewDecorations,
+  changeAffectsTables,
+  changeOverlapsTableDecorations
+} from './extensions/tablePreviewField'
 export { attachmentUrlPlugin } from './extensions/attachmentUrlPlugin'
 export { markdownKeymap, toggleMarkdownMark } from './extensions/keymap'
 export { buildMarkerHidingDecorations } from './extensions/build'
