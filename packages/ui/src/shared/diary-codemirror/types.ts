@@ -74,6 +74,11 @@ export interface DiaryCmResolveUrlResponsePayload {
   url: string | null
 }
 
+export interface DiaryCmConfirmResponsePayload {
+  requestId: string
+  confirmed: boolean
+}
+
 export interface DiaryCmSetEditablePayload {
   editable: boolean
 }
@@ -93,9 +98,15 @@ export interface DiaryCmToggleMarkdownMarkPayload {
   marker: DiaryCmMarkdownMark
 }
 
+export interface DiaryCmDeleteRangePayload {
+  from: number
+  to: number
+}
+
 export type DiaryCmToWebViewMessage =
   | { type: 'init'; payload: DiaryCmInitPayload }
   | { type: 'setContent'; payload: DiaryCmSetContentPayload }
+  | { type: 'deleteRange'; payload: DiaryCmDeleteRangePayload }
   | { type: 'setTagColorRegistry'; payload: DiaryCmSetTagColorRegistryPayload }
   | { type: 'insertAtCursor'; payload: DiaryCmInsertAtCursorPayload }
   | { type: 'setSelection'; payload: DiaryCmSetSelectionPayload }
@@ -108,6 +119,7 @@ export type DiaryCmToWebViewMessage =
   | { type: 'focus' }
   | { type: 'blur' }
   | { type: 'resolveUrlResponse'; payload: DiaryCmResolveUrlResponsePayload }
+  | { type: 'confirmResponse'; payload: DiaryCmConfirmResponsePayload }
   /** RN 未收到 ready 时请求 WebView 重新发送 ready */
   | { type: 'requestReady' }
 
@@ -158,6 +170,21 @@ export interface DiaryCmPanScrollPayload {
   deltaY: number
 }
 
+export interface DiaryCmDebugPayload {
+  scope?: string
+  tag: string
+  detail?: Record<string, unknown> | null
+}
+
+export interface DiaryCmConfirmRequestPayload {
+  requestId: string
+  title?: string
+  message: string
+  confirmText?: string
+  cancelText?: string
+  destructive?: boolean
+}
+
 export type DiaryCmFromWebViewMessage =
   | { type: 'ready' }
   | { type: 'change'; payload: DiaryCmChangePayload }
@@ -168,6 +195,9 @@ export type DiaryCmFromWebViewMessage =
   | { type: 'contentHeight'; payload: DiaryCmContentHeightPayload }
   | { type: 'caretViewport'; payload: DiaryCmCaretViewportPayload }
   | { type: 'panScroll'; payload: DiaryCmPanScrollPayload }
+  | { type: 'debug'; payload: DiaryCmDebugPayload }
+  | { type: 'dismissKeyboard' }
+  | { type: 'confirmRequest'; payload: DiaryCmConfirmRequestPayload }
   | { type: 'focus' }
   | { type: 'blur' }
 
@@ -209,6 +239,9 @@ export function isDiaryCmFromWebViewMessage(value: unknown): value is DiaryCmFro
     type === 'contentHeight' ||
     type === 'caretViewport' ||
     type === 'panScroll' ||
+    type === 'debug' ||
+    type === 'dismissKeyboard' ||
+    type === 'confirmRequest' ||
     type === 'focus' ||
     type === 'blur'
   )

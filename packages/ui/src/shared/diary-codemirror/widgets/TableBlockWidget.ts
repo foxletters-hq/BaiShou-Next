@@ -1,23 +1,60 @@
 import { WidgetType, EditorView } from '@codemirror/view'
 import type { ParsedTable } from '../table/table.model'
-import { invokeTableAction } from '../table/tableEffects'
+import {
+  decodeTableCellText,
+  encodeTableCellText,
+  normalizeTableCellDisplay
+} from '../table/tableCellText'
+import { resolveTableKeyAction, type TableKeyCommand } from '../table/tableKeyResolver'
+import type { ActiveTableCell } from '../table/tableActiveCell'
+import { setActiveTableCell } from '../table/tableActiveCell'
+import {
+  forceTableRefresh,
+  invokePlaceCursorAfterTable,
+  invokeTableAction,
+  pendingTableCellFocus
+} from '../table/tableEffects'
 import type { DiaryCmPlatform } from '../types'
+import { findTableToByFrom } from '../table/tableBounds'
+import {
+  buildColMenuItems,
+  buildColMenuSections,
+  buildRowMenuItems,
+  buildRowMenuSections,
+  showTableBottomSheet,
+  showTableContextMenu,
+  type TableMenuItem
+} from '../table/tableContextMenu'
+import type { TableChromeSelection } from '../table/tableChromeSelection'
+import { createTableGripIcon, createTableGridIcon } from './tableChromeIcons'
 
-const LONG_PRESS_MS = 420
-const TOUCH_DRAG_THRESHOLD_PX = 20
+const TABLE_CELL_SYNC_MS = 280
+
+const tableWidgetHeightCache = new Map<string, number>()
 
 let suppressTableCellBlurSync = false
 
-type MenuItem = { id: string; label: string; disabled?: boolean }
+function eventInteractionTarget(event: Event): Element | null {
+  const target = event.target
+  if (target instanceof Element) return target
+  if (target instanceof Node) return target.parentElement
+  return null
+}
+
+type MenuItem = TableMenuItem
 
 export class TableBlockWidget extends WidgetType {
   private rootEl: HTMLElement | null = null
+  private readonly heightCacheKey: string
 
   constructor(
     private readonly table: ParsedTable,
-    private readonly platform?: DiaryCmPlatform
+    private readonly activeCell: ActiveTableCell | null,
+    private readonly platform?: DiaryCmPlatform,
+    private readonly chromeSelection: TableChromeSelection | null = null
   ) {
     super()
+    this.heightCacheKey = `${table.from}:${table.to}:${table.columnCount}:${table.bodyRows.length}`
   }
 
   eq(other: TableBlockWidget): boolean {
@@ -26,20 +63,38 @@ export class TableBlockWidget extends WidgetType {
     return (
       this.table.from === other.table.from &&
       this.table.to === other.table.to &&
-      cellsKey(this.table) === cellsKey(other.table)
+      cellsKey(this.table) === cellsKey(other.table) &&
+      this.activeCell?.rowIndex === other.activeCell?.rowIndex &&
+      this.activeCell?.colIndex === other.activeCell?.colIndex &&
+      this.chromeSelection?.kind === other.chromeSelection?.kind &&
+      this.chromeSelection?.index === other.chromeSelection?.index
     )
+  }
+
+  get estimatedHeight(): number {
+    return tableWidgetHeightCache.get(this.heightCacheKey) ?? -1
   }
 
   toDOM(): HTMLElement {
     const root = document.createElement('div')
     this.rootEl = root
+    const isTouch = this.platform?.interactionMode === 'touch'
     root.className = 'cm-table-block'
+    if (this.activeCell) {
+      root.classList.add('cm-table-block--has-active-cell')
+    }
+    if (isTouch) {
+      root.classList.add('cm-table-block--touch')
+    }
     root.dataset.tableFrom = String(this.table.from)
-    root.addEventListener('mousedown', (e) => {
-      const target = e.target as HTMLElement
-      if (target.closest('.cm-table-cell-editable, button, .cm-table-context-menu')) return
-      e.preventDefault()
-    })
+    root.dataset.tableTo = String(this.table.to)
+    if (this.chromeSelection?.kind === 'col') {
+      root.dataset.selectedCol = String(this.chromeSelection.index)
+      root.classList.add('cm-table-block--col-selected')
+    } else if (this.chromeSelection?.kind === 'row') {
+      root.dataset.selectedRow = String(this.chromeSelection.index)
+      root.classList.add('cm-table-block--row-selected')
+    }
 
     const topBar = document.createElement('div')
     topBar.className = 'cm-table-chrome-top'
@@ -63,12 +118,66 @@ export class TableBlockWidget extends WidgetType {
     })
     bodyWrap.appendChild(rowHandles)
 
+    const tableEl = this.buildTableElement()
+    const tableShell = document.createElement('div')
+    tableShell.className = 'cm-table-grid-shell'
+    tableShell.appendChild(tableEl)
+
+    const tableColumn = document.createElement('div')
+    tableColumn.className = 'cm-table-main-column'
+    tableColumn.appendChild(tableShell)
+    tableColumn.appendChild(this.createAddBtn('row'))
+    bodyWrap.appendChild(tableColumn)
+    bodyWrap.appendChild(this.createAddBtn('col'))
+
+    root.appendChild(bodyWrap)
+
+    this.syncActiveHandles()
+    requestAnimationFrame(() => {
+      this.syncChromeLayout()
+      this.observeChromeLayout()
+      this.cacheWidgetHeight(root)
+      this.focusActiveInputIfNeeded()
+    })
+
+    return root
+  }
+
+  private createAddBtn(kind: 'row' | 'col'): HTMLElement {
+    const isTouch = this.platform?.interactionMode === 'touch'
+    const btn = this.createChromeTrigger(isTouch ? 'div' : 'button')
+    btn.className = `cm-table-add-btn cm-table-add-${kind}`
+    btn.setAttribute('aria-label', kind === 'row' ? '添加行' : '添加列')
+    const icon = document.createElement('span')
+    icon.className = 'cm-table-add-btn-icon'
+    icon.textContent = '+'
+    btn.appendChild(icon)
+
+    const run = () => {
+      this.runAction({
+        type: kind === 'row' ? 'addRow' : 'addColumn',
+        tableFrom: this.table.from,
+        tableTo: this.table.to
+      })
+    }
+
+    if (!isTouch) {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        run()
+      })
+    }
+    return btn
+  }
+
+  private buildTableElement(): HTMLTableElement {
     const tableEl = document.createElement('table')
     tableEl.className = 'cm-table-preview'
     const thead = document.createElement('thead')
     const headTr = document.createElement('tr')
     this.table.header.cells.forEach((cell, colIndex) => {
-      headTr.appendChild(this.createEditableCell(cell, -1, colIndex, true, tableEl))
+      headTr.appendChild(this.createCell(cell, -1, colIndex, true))
     })
     thead.appendChild(headTr)
     tableEl.appendChild(thead)
@@ -77,52 +186,30 @@ export class TableBlockWidget extends WidgetType {
     this.table.bodyRows.forEach((row, rowIndex) => {
       const tr = document.createElement('tr')
       row.cells.forEach((cell, colIndex) => {
-        tr.appendChild(this.createEditableCell(cell, rowIndex, colIndex, false, tableEl))
+        tr.appendChild(this.createCell(cell, rowIndex, colIndex, false))
       })
       tbody.appendChild(tr)
     })
     tableEl.appendChild(tbody)
-    const tableShell = document.createElement('div')
-    tableShell.className = 'cm-table-grid-shell'
-    tableShell.appendChild(tableEl)
+    return tableEl
+  }
 
-    const tableColumn = document.createElement('div')
-    tableColumn.className = 'cm-table-main-column'
-    tableColumn.appendChild(tableShell)
+  private focusActiveInputIfNeeded(): void {
+    if (!this.activeCell) return
+    const input = this.rootEl?.querySelector(
+      `textarea.cm-table-cell-input[data-row="${this.activeCell.rowIndex}"][data-col="${this.activeCell.colIndex}"]`
+    ) as HTMLTextAreaElement | null
+    if (!input || document.activeElement === input) return
+    input.focus()
+    const end = input.value.length
+    input.setSelectionRange(end, end)
+  }
 
-    const addRowBtn = document.createElement('button')
-    addRowBtn.type = 'button'
-    addRowBtn.className = 'cm-table-add-btn cm-table-add-row'
-    addRowBtn.setAttribute('aria-label', '添加行')
-    addRowBtn.textContent = '+'
-    addRowBtn.addEventListener('click', (e) => {
-      e.preventDefault()
-      e.stopPropagation()
-      this.runAction({ type: 'addRow', tableFrom: this.table.from, tableTo: this.table.to })
-    })
-    tableColumn.appendChild(addRowBtn)
-
-    bodyWrap.appendChild(tableColumn)
-
-    const addColBtn = document.createElement('button')
-    addColBtn.type = 'button'
-    addColBtn.className = 'cm-table-add-btn cm-table-add-col'
-    addColBtn.setAttribute('aria-label', '添加列')
-    addColBtn.textContent = '+'
-    addColBtn.addEventListener('click', (e) => {
-      e.preventDefault()
-      e.stopPropagation()
-      this.runAction({ type: 'addColumn', tableFrom: this.table.from, tableTo: this.table.to })
-    })
-    bodyWrap.appendChild(addColBtn)
-    root.appendChild(bodyWrap)
-
-    requestAnimationFrame(() => {
-      this.syncChromeLayout()
-      this.observeChromeLayout()
-    })
-
-    return root
+  private cacheWidgetHeight(root: HTMLElement): void {
+    const height = root.getBoundingClientRect().height
+    if (height > 0) {
+      tableWidgetHeightCache.set(this.heightCacheKey, height)
+    }
   }
 
   private chromeLayoutObserver: ResizeObserver | null = null
@@ -131,11 +218,13 @@ export class TableBlockWidget extends WidgetType {
     const shell = this.rootEl?.querySelector('.cm-table-grid-shell')
     if (!shell || typeof ResizeObserver === 'undefined') return
     this.chromeLayoutObserver?.disconnect()
-    this.chromeLayoutObserver = new ResizeObserver(() => this.syncChromeLayout())
+    this.chromeLayoutObserver = new ResizeObserver(() => {
+      this.syncChromeLayout()
+      if (this.rootEl) this.cacheWidgetHeight(this.rootEl)
+    })
     this.chromeLayoutObserver.observe(shell)
   }
 
-  /** 把手尺寸与表格真实行列像素对齐 */
   private syncChromeLayout(): void {
     const root = this.rootEl
     if (!root) return
@@ -170,143 +259,268 @@ export class TableBlockWidget extends WidgetType {
     if (!this.rootEl) return false
     const target = event.target
     if (!(target instanceof Node)) return false
-    return this.rootEl.contains(target)
+    if (!this.rootEl.contains(target)) return false
+    const interactive = eventInteractionTarget(event)
+    if (!interactive) return true
+
+    // CM #1639：widget 内 selectionchange 若返回 true 会导致选区乱跳
+    if (event.type === 'selectionchange') return false
+
+    if (
+      interactive.closest(
+        'button, [role="button"], textarea, .cm-table-cell-display, .cm-table-handle, .cm-table-corner-menu, .cm-table-add-btn, .cm-table-context-menu, .cm-table-context-menu-layer'
+      )
+    ) {
+      return false
+    }
+    return true
   }
 
   private createCorner(): HTMLElement {
-    const el = document.createElement('div')
-    el.className = 'cm-table-chrome-corner'
-    return el
+    const isTouch = this.platform?.interactionMode === 'touch'
+    const btn = this.createChromeTrigger(isTouch ? 'div' : 'button')
+    btn.className = 'cm-table-chrome-corner cm-table-corner-menu'
+    if (this.platform?.interactionMode === 'touch') {
+      btn.classList.add('cm-table-handle--touch')
+    }
+    btn.setAttribute('aria-label', '表格菜单')
+    btn.appendChild(createTableGridIcon(3, 3))
+    this.bindTableMenu(btn)
+    return btn
   }
 
-  private createEditableCell(
-    raw: string,
-    rowIndex: number,
-    colIndex: number,
-    isHeader: boolean,
-    tableEl: HTMLElement
-  ): HTMLElement {
+  private isCellActive(rowIndex: number, colIndex: number): boolean {
+    return (
+      this.activeCell?.rowIndex === rowIndex && this.activeCell?.colIndex === colIndex
+    )
+  }
+
+  private createCell(raw: string, rowIndex: number, colIndex: number, isHeader: boolean): HTMLElement {
     const el = document.createElement(isHeader ? 'th' : 'td')
-    el.className = 'cm-table-cell-editable'
-    el.contentEditable = 'true'
-    el.spellcheck = false
+    el.className = 'cm-table-grid-cell'
     el.dataset.row = String(rowIndex)
     el.dataset.col = String(colIndex)
-    el.dataset.tableFrom = String(this.table.from)
-    this.writeCellContent(el, raw)
+    if (
+      this.chromeSelection?.kind === 'col' &&
+      this.chromeSelection.index === colIndex
+    ) {
+      el.classList.add('cm-table-grid-cell--col-selected')
+    }
+    if (
+      this.chromeSelection?.kind === 'row' &&
+      this.chromeSelection.index === rowIndex
+    ) {
+      el.classList.add('cm-table-grid-cell--row-selected')
+    }
 
-    const syncIfChanged = () => this.syncCellFromElement(el, rowIndex, colIndex)
-
-    const goNextCell = () => this.navigateToNextCell(el, tableEl, rowIndex, colIndex)
-
-    el.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault()
-        e.stopPropagation()
-        goNextCell()
-      }
-    })
-
-    el.addEventListener('beforeinput', (e) => {
-      const inputType = (e as InputEvent).inputType
-      if (inputType === 'insertLineBreak' || inputType === 'insertParagraph') {
-        e.preventDefault()
-        e.stopPropagation()
-        goNextCell()
-      }
-    })
-
-    el.addEventListener('paste', (e) => {
-      e.preventDefault()
-      const text = (e.clipboardData?.getData('text/plain') ?? '').replace(/[\r\n]+/g, ' ')
-      document.execCommand('insertText', false, text)
-    })
-
-    el.addEventListener('input', () => {
-      const text = el.innerText
-      if (!/[\r\n]/.test(text)) return
-      const flat = text.replace(/[\r\n]+/g, ' ')
-      el.textContent = flat
-      const range = document.createRange()
-      const sel = window.getSelection()
-      range.selectNodeContents(el)
-      range.collapse(false)
-      sel?.removeAllRanges()
-      sel?.addRange(range)
-    })
-
-    el.addEventListener('blur', () => {
-      if (suppressTableCellBlurSync) return
-      syncIfChanged()
-    })
+    if (this.isCellActive(rowIndex, colIndex)) {
+      el.appendChild(this.createCellInput(raw, rowIndex, colIndex))
+    } else {
+      el.appendChild(this.createCellDisplay(raw, rowIndex, colIndex))
+    }
 
     return el
   }
 
-  private syncCellFromElement(el: HTMLElement, rowIndex: number, colIndex: number): void {
-    const value = this.readCellContent(el)
-    const current = this.normalizeCellRaw(this.getCellRaw(rowIndex, colIndex))
-    if (value === current) return
-    this.runAction({
-      type: 'updateCell',
-      tableFrom: this.table.from,
-      tableTo: this.table.to,
-      rowIndex,
-      colIndex,
-      value
+  private createCellDisplay(raw: string, rowIndex: number, colIndex: number): HTMLElement {
+    const span = document.createElement('span')
+    span.className = 'cm-table-cell-display'
+    span.textContent = normalizeTableCellDisplay(raw) || '\u00a0'
+    span.dataset.row = String(rowIndex)
+    span.dataset.col = String(colIndex)
+
+    const activate = (e: Event) => {
+      e.preventDefault()
+      e.stopPropagation()
+      this.activateCell(rowIndex, colIndex)
+    }
+
+    span.addEventListener('mousedown', (e) => {
+      if (this.platform?.interactionMode === 'mouse') activate(e)
     })
+    span.addEventListener('click', activate)
+    span.addEventListener(
+      'touchend',
+      (e) => {
+        e.stopPropagation()
+        activate(e)
+      },
+      { passive: false }
+    )
+
+    return span
   }
 
-  private getCellRaw(rowIndex: number, colIndex: number): string {
-    if (rowIndex < 0) return this.table.header.cells[colIndex] ?? ''
-    return this.table.bodyRows[rowIndex]?.cells[colIndex] ?? ''
+  private createCellInput(raw: string, rowIndex: number, colIndex: number): HTMLTextAreaElement {
+    const input = document.createElement('textarea')
+    input.className = 'cm-table-cell-input'
+    input.rows = 1
+    input.spellcheck = false
+    input.dataset.row = String(rowIndex)
+    input.dataset.col = String(colIndex)
+    input.dataset.tableFrom = String(this.table.from)
+    input.value = decodeTableCellText(raw)
+
+    input.addEventListener('focus', () => {
+      this.syncActiveHandles(rowIndex, colIndex)
+    })
+
+    input.addEventListener('keydown', (e) => {
+      const command = mapTableKeyCommand(e)
+      if (!command) return
+      const action = resolveTableKeyAction(this.table, rowIndex, colIndex, command)
+      if (!action) return
+      e.preventDefault()
+      e.stopPropagation()
+      this.applyKeyAction(action, input, rowIndex, colIndex)
+    })
+
+    input.addEventListener('paste', (e) => {
+      e.preventDefault()
+      const text = (e.clipboardData?.getData('text/plain') ?? '').replace(/[\r\n]+/g, ' ')
+      const start = input.selectionStart ?? input.value.length
+      const end = input.selectionEnd ?? input.value.length
+      input.setRangeText(text, start, end, 'end')
+      this.scheduleCellInputSync(input, rowIndex, colIndex)
+    })
+
+    input.addEventListener('input', () => {
+      if (/[\r\n]/.test(input.value)) {
+        input.value = input.value.replace(/[\r\n]+/g, ' ')
+        const end = input.value.length
+        input.setSelectionRange(end, end)
+      }
+      this.scheduleCellInputSync(input, rowIndex, colIndex)
+    })
+
+    input.addEventListener('blur', () => {
+      if (suppressTableCellBlurSync) return
+      this.flushCellInputSync(input, rowIndex, colIndex)
+    })
+
+    return input
   }
 
-  private normalizeCellRaw(raw: string): string {
-    return raw
-      .split(/<br\s*\/?>/gi)
-      .map((p) => p.trim())
-      .filter(Boolean)
-      .join(' ')
-  }
+  private cellInputSyncTimers = new WeakMap<HTMLTextAreaElement, ReturnType<typeof setTimeout>>()
 
-  private getNextCellCoords(
-    rowIndex: number,
-    colIndex: number
-  ): { rowIndex: number; colIndex: number } {
-    const colCount = this.table.columnCount
-    const rowCount = this.table.bodyRows.length
-
-    let nextRow = rowIndex
-    let nextCol = colIndex + 1
-
-    if (nextCol >= colCount) {
-      nextCol = 0
-      nextRow += 1
-    }
-
-    if (nextRow >= rowCount) {
-      nextRow = -1
-      nextCol = 0
-    } else if (nextRow < -1) {
-      nextRow = -1
-      nextCol = 0
-    }
-
-    return { rowIndex: nextRow, colIndex: nextCol }
-  }
-
-  private navigateToNextCell(
-    el: HTMLElement,
-    tableEl: HTMLElement,
+  private scheduleCellInputSync(
+    input: HTMLTextAreaElement,
     rowIndex: number,
     colIndex: number
   ): void {
-    const value = this.readCellContent(el)
-    const current = this.normalizeCellRaw(this.getCellRaw(rowIndex, colIndex))
-    const focusAfter = this.getNextCellCoords(rowIndex, colIndex)
+    const existing = this.cellInputSyncTimers.get(input)
+    if (existing) clearTimeout(existing)
+    const timer = setTimeout(() => {
+      this.cellInputSyncTimers.delete(input)
+      this.syncCellFromInput(input, rowIndex, colIndex, true)
+    }, TABLE_CELL_SYNC_MS)
+    this.cellInputSyncTimers.set(input, timer)
+  }
+
+  private flushCellInputSync(
+    input: HTMLTextAreaElement,
+    rowIndex: number,
+    colIndex: number
+  ): void {
+    const existing = this.cellInputSyncTimers.get(input)
+    if (existing) {
+      clearTimeout(existing)
+      this.cellInputSyncTimers.delete(input)
+    }
+    this.syncCellFromInput(input, rowIndex, colIndex, false)
+  }
+
+  private flushActiveCellInput(): void {
+    const input = this.rootEl?.querySelector(
+      'textarea.cm-table-cell-input'
+    ) as HTMLTextAreaElement | null
+    if (!input) return
+    const rowIndex = Number(input.dataset.row)
+    const colIndex = Number(input.dataset.col)
+    if (Number.isNaN(rowIndex) || Number.isNaN(colIndex)) return
+    suppressTableCellBlurSync = true
+    this.flushCellInputSync(input, rowIndex, colIndex)
+    requestAnimationFrame(() => {
+      suppressTableCellBlurSync = false
+    })
+  }
+
+  private activateCell(rowIndex: number, colIndex: number): void {
+    this.flushActiveCellInput()
+    const view = this.editorView()
+    if (!view) return
+    view.dispatch({
+      effects: [
+        setActiveTableCell.of({ tableFrom: this.table.from, rowIndex, colIndex }),
+        pendingTableCellFocus.of({ tableFrom: this.table.from, rowIndex, colIndex }),
+        forceTableRefresh.of(null)
+      ]
+    })
+  }
+
+  private applyKeyAction(
+    action: ReturnType<typeof resolveTableKeyAction>,
+    input: HTMLTextAreaElement,
+    rowIndex: number,
+    colIndex: number
+  ): void {
+    if (!action) return
+
+    switch (action.kind) {
+      case 'insert-inline-break': {
+        const start = input.selectionStart ?? input.value.length
+        const end = input.selectionEnd ?? input.value.length
+        input.setRangeText(action.insertText, start, end, 'end')
+        this.scheduleCellInputSync(input, rowIndex, colIndex)
+        return
+      }
+      case 'focus-cell': {
+        this.commitCellInput(input, rowIndex, colIndex, action)
+        return
+      }
+      case 'insert-row-below': {
+        this.commitCellInput(input, rowIndex, colIndex, action)
+        return
+      }
+      case 'exit-after':
+        this.flushCellInputSync(input, rowIndex, colIndex)
+        this.exitTableEditing()
+        return
+    }
+  }
+
+  private commitCellInput(
+    input: HTMLTextAreaElement,
+    rowIndex: number,
+    colIndex: number,
+    next:
+      | { kind: 'focus-cell'; rowIndex: number; colIndex: number }
+      | { kind: 'insert-row-below'; afterRowIndex: number }
+  ): void {
+    const value = encodeTableCellText(input.value)
+    const current = this.getCellRaw(rowIndex, colIndex)
 
     suppressTableCellBlurSync = true
+
+    if (next.kind === 'insert-row-below') {
+      if (value !== current) {
+        this.runAction({
+          type: 'updateCell',
+          tableFrom: this.table.from,
+          tableTo: this.table.to,
+          rowIndex,
+          colIndex,
+          value
+        })
+      }
+      this.runAction({ type: 'addRow', tableFrom: this.table.from, tableTo: this.table.to })
+      requestAnimationFrame(() => {
+        suppressTableCellBlurSync = false
+      })
+      return
+    }
+
+    const focusAfter = { rowIndex: next.rowIndex, colIndex: next.colIndex }
     if (value !== current) {
       this.runAction({
         type: 'updateCell',
@@ -318,45 +532,166 @@ export class TableBlockWidget extends WidgetType {
         focusAfter
       })
     } else {
-      this.focusCellElement(tableEl, focusAfter.rowIndex, focusAfter.colIndex)
-      requestAnimationFrame(() => {
-        suppressTableCellBlurSync = false
-      })
-      return
+      this.activateCell(focusAfter.rowIndex, focusAfter.colIndex)
     }
     requestAnimationFrame(() => {
       suppressTableCellBlurSync = false
     })
   }
 
-  private focusCellElement(tableEl: HTMLElement, rowIndex: number, colIndex: number): void {
-    const next = tableEl.querySelector(
-      `[data-row="${rowIndex}"][data-col="${colIndex}"]`
-    ) as HTMLElement | null
-    if (!next) return
-    next.focus()
-    const range = document.createRange()
-    const sel = window.getSelection()
-    range.selectNodeContents(next)
-    range.collapse(false)
-    sel?.removeAllRanges()
-    sel?.addRange(range)
+  private syncCellFromInput(
+    input: HTMLTextAreaElement,
+    rowIndex: number,
+    colIndex: number,
+    preserveFocus = false
+  ): void {
+    const value = encodeTableCellText(input.value)
+    const current = this.getCellRaw(rowIndex, colIndex)
+    if (value === current) return
+    this.runAction({
+      type: 'updateCell',
+      tableFrom: this.table.from,
+      tableTo: this.table.to,
+      rowIndex,
+      colIndex,
+      value,
+      ...(preserveFocus
+        ? {
+            focusAfter: {
+              rowIndex,
+              colIndex,
+              selectionStart: input.selectionStart ?? input.value.length,
+              selectionEnd: input.selectionEnd ?? input.value.length
+            }
+          }
+        : {})
+    })
   }
 
-  private readCellContent(el: HTMLElement): string {
-    return el.innerText.replace(/\u00a0/g, ' ').replace(/[\r\n]+/g, ' ').trim()
+  private getCellRaw(rowIndex: number, colIndex: number): string {
+    if (rowIndex < 0) return this.table.header.cells[colIndex] ?? ''
+    return this.table.bodyRows[rowIndex]?.cells[colIndex] ?? ''
   }
 
-  private writeCellContent(el: HTMLElement, raw: string): void {
-    el.textContent = this.normalizeCellRaw(raw)
+  private exitTableEditing(): void {
+    this.flushActiveCellInput()
+    const view = this.editorView()
+    if (!view) return
+    const tableTo = findTableToByFrom(view.state, this.table.from) ?? this.table.to
+    view.dispatch({ effects: setActiveTableCell.of(null) })
+    invokePlaceCursorAfterTable(view, tableTo)
+  }
+
+  private syncActiveHandles(rowIndex?: number, colIndex?: number): void {
+    const root = this.rootEl
+    if (!root) return
+    const activeRow =
+      this.chromeSelection?.kind === 'row'
+        ? this.chromeSelection.index
+        : (rowIndex ?? this.activeCell?.rowIndex)
+    const activeCol =
+      this.chromeSelection?.kind === 'col'
+        ? this.chromeSelection.index
+        : (colIndex ?? this.activeCell?.colIndex)
+    if (activeRow == null && activeCol == null) return
+
+    root.classList.add('cm-table-block--has-active-cell')
+    root.querySelectorAll('.cm-table-col-handle').forEach((handle) => {
+      const handleCol = Number((handle as HTMLElement).dataset.colIndex)
+      handle.classList.toggle(
+        'cm-table-handle--active',
+        activeCol != null && handleCol === activeCol
+      )
+    })
+    root.querySelectorAll('.cm-table-row-handle').forEach((handle) => {
+      const handleRow = Number((handle as HTMLElement).dataset.rowIndex)
+      handle.classList.toggle(
+        'cm-table-handle--active',
+        activeRow != null && handleRow === activeRow
+      )
+    })
+  }
+
+  private bindTableMenu(btn: HTMLElement): void {
+    const open = () => {
+      const rect = btn.getBoundingClientRect()
+      this.showMenu(
+        [{ id: 'delete-table', label: '删除表格', destructive: true }],
+        rect.left,
+        rect.bottom + 4,
+        (id) => {
+          if (id !== 'delete-table') return
+          this.runAction({
+            type: 'deleteTable',
+            tableFrom: this.table.from,
+            tableTo: this.table.to
+          })
+        }
+      )
+    }
+
+    this.bindMenuTrigger(btn, open)
+  }
+
+  /**
+   * 鼠标端触发（click / contextmenu）。触摸端一律走 installTouchDelegation。
+   */
+  private bindMenuTrigger(btn: HTMLElement, open: (e?: Event) => void): void {
+    if (this.platform?.interactionMode === 'touch') return
+    const runOpen = (e?: Event) => {
+      this.flushActiveCellInput()
+      open(e)
+    }
+    btn.addEventListener('click', (e) => runOpen(e))
+    btn.addEventListener('contextmenu', (e) => runOpen(e))
+  }
+
+  private bindHandleMenuClick(
+    btn: HTMLElement,
+    openMenu: (clientX: number, clientY: number) => void
+  ): void {
+    let dragged = false
+    btn.addEventListener('dragstart', () => {
+      dragged = true
+    })
+    btn.addEventListener('dragend', () => {
+      requestAnimationFrame(() => {
+        dragged = false
+      })
+    })
+
+    const openFromButton = (e?: Event) => {
+      if (dragged) return
+      e?.preventDefault()
+      e?.stopPropagation()
+      const rect = btn.getBoundingClientRect()
+      openMenu(rect.left, rect.bottom + 4)
+    }
+
+    this.bindMenuTrigger(btn, openFromButton)
+  }
+
+  private createChromeTrigger(tagName: 'button' | 'div'): HTMLElement {
+    if (tagName === 'button') {
+      const btn = document.createElement('button')
+      btn.type = 'button'
+      return btn
+    }
+    const el = document.createElement('div')
+    el.setAttribute('role', 'button')
+    el.tabIndex = -1
+    return el
   }
 
   private createColHandle(colIndex: number): HTMLElement {
-    const btn = document.createElement('button')
-    btn.type = 'button'
+    const isTouch = this.platform?.interactionMode === 'touch'
+    const btn = this.createChromeTrigger(isTouch ? 'div' : 'button')
     btn.className = 'cm-table-handle cm-table-col-handle'
+    if (this.platform?.interactionMode === 'touch') {
+      btn.classList.add('cm-table-handle--touch')
+    }
     btn.setAttribute('aria-label', `列 ${colIndex + 1}`)
-    btn.textContent = '⋮⋮'
+    btn.appendChild(createTableGripIcon())
     btn.dataset.colIndex = String(colIndex)
 
     this.bindHandleMenu(btn, () => this.colMenuItems(colIndex), (from, to) => {
@@ -372,15 +707,17 @@ export class TableBlockWidget extends WidgetType {
   }
 
   private createRowHandle(rowIndex: number, label: string): HTMLElement {
-    const btn = document.createElement('button')
-    btn.type = 'button'
+    const isTouch = this.platform?.interactionMode === 'touch'
+    const btn = this.createChromeTrigger(isTouch ? 'div' : 'button')
     btn.className = 'cm-table-handle cm-table-row-handle'
+    if (this.platform?.interactionMode === 'touch') {
+      btn.classList.add('cm-table-handle--touch')
+    }
     btn.setAttribute('aria-label', label)
-    btn.textContent = '⋮⋮'
+    btn.appendChild(createTableGripIcon())
+    btn.dataset.rowIndex = String(rowIndex)
 
-    if (rowIndex >= 0) {
-      btn.dataset.rowIndex = String(rowIndex)
-    } else {
+    if (rowIndex < 0) {
       btn.classList.add('cm-table-row-handle--header')
     }
 
@@ -396,120 +733,42 @@ export class TableBlockWidget extends WidgetType {
     return btn
   }
 
-  /** 桌面端：拖拽排序 + 右键菜单；移动端：仅长按出菜单 */
   private bindHandleMenu(
     btn: HTMLElement,
     items: () => MenuItem[],
     onReorder?: (fromIndex: number, toIndex: number) => void
   ): void {
-    const isTouch = this.platform?.interactionMode === 'touch'
     const kind = btn.classList.contains('cm-table-col-handle') ? 'col' : 'row'
     const index = Number(btn.dataset.colIndex ?? btn.dataset.rowIndex)
     const handleSelector = kind === 'col' ? '.cm-table-col-handle' : '.cm-table-row-handle'
     const dataKey = kind === 'col' ? 'colIndex' : 'rowIndex'
 
     const openMenu = (clientX: number, clientY: number) => {
-      this.showMenu(items(), clientX, clientY, (id) => {
-        this.runMenuAction(btn, id)
-      })
+      const colIndex = Number(btn.dataset.colIndex)
+      const rowIndex = Number(btn.dataset.rowIndex)
+      const isCol = kind === 'col'
+      const index = isCol ? colIndex : rowIndex
+      const sections = isCol
+        ? buildColMenuSections(this.table, colIndex)
+        : buildRowMenuSections(this.table, rowIndex)
+      const title = isCol ? `第 ${colIndex + 1} 列` : rowIndex < 0 ? '表头' : `第 ${rowIndex + 1} 行`
+      this.showMenu(
+        sections.flatMap((s) => s.items),
+        clientX,
+        clientY,
+        (id) => this.runMenuAction(btn, id),
+        { title, sections }
+      )
     }
 
-    if (isTouch) {
-      btn.draggable = false
-      btn.classList.add('cm-table-handle--touch')
-      let pressTime = 0
-      let startX = 0
-      let startY = 0
-      let moved = false
-      let menuOpened = false
+    this.bindHandleMenuClick(btn, openMenu)
 
-      const openMenuFromHandle = () => {
-        menuOpened = true
-        const rect = btn.getBoundingClientRect()
-        openMenu(rect.left, rect.bottom + 4)
-      }
-
-      const onPressStart = (clientX: number, clientY: number) => {
-        menuOpened = false
-        pressTime = Date.now()
-        startX = clientX
-        startY = clientY
-        moved = false
-      }
-
-      const onPressMove = (clientX: number, clientY: number) => {
-        const dx = Math.abs(clientX - startX)
-        const dy = Math.abs(clientY - startY)
-        if (dx > TOUCH_DRAG_THRESHOLD_PX || dy > TOUCH_DRAG_THRESHOLD_PX) {
-          moved = true
-        }
-      }
-
-      const onPressEnd = () => {
-        if (!moved && pressTime > 0 && Date.now() - pressTime >= LONG_PRESS_MS) {
-          openMenuFromHandle()
-        }
-        pressTime = 0
-        moved = false
-      }
-
-      btn.addEventListener(
-        'touchstart',
-        (e) => {
-          if (e.touches.length !== 1) return
-          const touch = e.touches[0]
-          if (!touch) return
-          onPressStart(touch.clientX, touch.clientY)
-        },
-        { passive: true }
-      )
-
-      btn.addEventListener(
-        'touchmove',
-        (e) => {
-          if (e.touches.length !== 1) return
-          const touch = e.touches[0]
-          if (!touch) return
-          onPressMove(touch.clientX, touch.clientY)
-        },
-        { passive: true }
-      )
-
-      btn.addEventListener('touchend', onPressEnd, { passive: true })
-      btn.addEventListener('touchcancel', onPressEnd, { passive: true })
-
-      btn.addEventListener('pointerdown', (e) => {
-        if (e.pointerType === 'mouse') return
-        onPressStart(e.clientX, e.clientY)
-      })
-      btn.addEventListener('pointermove', (e) => {
-        if (e.pointerType === 'mouse' || pressTime === 0) return
-        onPressMove(e.clientX, e.clientY)
-      })
-      btn.addEventListener('pointerup', (e) => {
-        if (e.pointerType === 'mouse') return
-        onPressEnd()
-      })
-      btn.addEventListener('pointercancel', (e) => {
-        if (e.pointerType === 'mouse') return
-        onPressEnd()
-      })
-
-      btn.addEventListener('click', (e) => {
-        if (menuOpened) {
-          e.preventDefault()
-          e.stopPropagation()
-          menuOpened = false
-        }
-      })
+    if (!onReorder || Number.isNaN(index) || index < 0) {
       return
     }
 
-    if (!onReorder || Number.isNaN(index) || index < 0) {
-      btn.addEventListener('contextmenu', (e) => {
-        e.preventDefault()
-        openMenu(e.clientX, e.clientY)
-      })
+    if (this.platform?.interactionMode === 'touch') {
+      btn.draggable = false
       return
     }
 
@@ -542,10 +801,6 @@ export class TableBlockWidget extends WidgetType {
       if (Number.isNaN(fromIndex) || Number.isNaN(toIndex) || fromIndex === toIndex) return
       onReorder(fromIndex, toIndex)
     })
-    btn.addEventListener('contextmenu', (e) => {
-      e.preventDefault()
-      openMenu(e.clientX, e.clientY)
-    })
   }
 
   private highlightDropTarget(target: HTMLElement | null, selector: string): void {
@@ -561,29 +816,14 @@ export class TableBlockWidget extends WidgetType {
   }
 
   private colMenuItems(colIndex: number): MenuItem[] {
-    const colCount = this.table.columnCount
-    return [
-      { id: 'left', label: '左移', disabled: colIndex <= 0 },
-      { id: 'right', label: '右移', disabled: colIndex >= colCount - 1 },
-      { id: 'delete', label: '删除列', disabled: colCount <= 1 }
-    ]
+    return buildColMenuItems(this.table, colIndex)
   }
 
   private rowMenuItems(rowIndex: number): MenuItem[] {
-    if (rowIndex < 0) {
-      return [{ id: 'noop', label: '表头不可删除', disabled: true }]
-    }
-    const rowCount = this.table.bodyRows.length
-    return [
-      { id: 'up', label: '上移', disabled: rowIndex <= 0 },
-      { id: 'down', label: '下移', disabled: rowIndex >= rowCount - 1 },
-      { id: 'delete', label: '删除行' }
-    ]
+    return buildRowMenuItems(this.table, rowIndex)
   }
 
-  private runAction(
-    action: Parameters<typeof invokeTableAction>[1]
-  ): void {
+  private runAction(action: Parameters<typeof invokeTableAction>[1]): void {
     const view = this.editorView()
     if (!view) return
     invokeTableAction(view, action)
@@ -655,100 +895,27 @@ export class TableBlockWidget extends WidgetType {
     items: MenuItem[],
     clientX: number,
     clientY: number,
-    onPick: (id: string) => void
+    onPick: (id: string) => void,
+    options?: { title?: string; sections?: { items: MenuItem[] }[] }
   ): void {
-    document.querySelector('.cm-table-context-menu-layer')?.remove()
-
-    const layer = document.createElement('div')
-    layer.className = 'cm-table-context-menu-layer'
-
-    const backdrop = document.createElement('div')
-    backdrop.className = 'cm-table-context-menu-backdrop'
-    backdrop.setAttribute('aria-hidden', 'true')
-
-    const menu = document.createElement('div')
-    menu.className = 'cm-table-context-menu'
-    menu.setAttribute('role', 'menu')
-    menu.style.left = `${clientX}px`
-    menu.style.top = `${clientY}px`
-
-    const openedAt = Date.now()
-    const close = () => layer.remove()
-    const canCloseFromBackdrop = () => Date.now() - openedAt > 360
-
-    const absorbPointer = (e: Event) => {
-      e.preventDefault()
-      e.stopPropagation()
+    if (this.platform?.interactionMode === 'touch') {
+      const sections = options?.sections ?? [{ items }]
+      showTableBottomSheet(options?.title ?? '表格', sections, onPick)
+      return
     }
-
-    const closeFromBackdrop = (e: Event) => {
-      if (!canCloseFromBackdrop()) {
-        absorbPointer(e)
-        return
-      }
-      absorbPointer(e)
-      close()
-    }
-
-    backdrop.addEventListener('mousedown', closeFromBackdrop)
-    backdrop.addEventListener('click', closeFromBackdrop)
-    backdrop.addEventListener('touchend', closeFromBackdrop, { passive: false })
-
-    const stopMenuBubble = (e: Event) => {
-      e.stopPropagation()
-    }
-    menu.addEventListener('mousedown', stopMenuBubble)
-    menu.addEventListener('mouseup', stopMenuBubble)
-    menu.addEventListener('click', stopMenuBubble)
-    menu.addEventListener('touchstart', stopMenuBubble, { passive: true })
-    menu.addEventListener('touchend', stopMenuBubble, { passive: true })
-
-    for (const item of items) {
-      const btn = document.createElement('button')
-      btn.type = 'button'
-      btn.className = 'cm-table-context-menu-item'
-      btn.textContent = item.label
-      btn.disabled = Boolean(item.disabled)
-      btn.setAttribute('role', 'menuitem')
-
-      let picked = false
-      const pick = (e: Event) => {
-        e.preventDefault()
-        e.stopPropagation()
-        if (picked) return
-        picked = true
-        if (!item.disabled) onPick(item.id)
-        close()
-      }
-
-      btn.addEventListener('click', pick)
-      btn.addEventListener('touchend', pick, { passive: false })
-      menu.appendChild(btn)
-    }
-
-    layer.appendChild(backdrop)
-    layer.appendChild(menu)
-
-    const mount = this.editorView()?.dom ?? document.body
-    mount.appendChild(layer)
-
-    requestAnimationFrame(() => {
-      const rect = menu.getBoundingClientRect()
-      const pad = 8
-      let x = clientX
-      let y = clientY
-      if (x + rect.width > window.innerWidth - pad) {
-        x = Math.max(pad, window.innerWidth - rect.width - pad)
-      }
-      if (y + rect.height > window.innerHeight - pad) {
-        y = Math.max(pad, window.innerHeight - rect.height - pad)
-      }
-      menu.style.left = `${x}px`
-      menu.style.top = `${y}px`
-    })
+    showTableContextMenu(items, clientX, clientY, onPick)
   }
 
   private editorView(): EditorView | null {
     return this.rootEl ? EditorView.findFromDOM(this.rootEl) : null
   }
+}
+
+function mapTableKeyCommand(event: KeyboardEvent): TableKeyCommand | null {
+  if (event.key === 'Tab' && event.shiftKey) return 'shift-tab'
+  if (event.key === 'Tab') return 'tab'
+  if (event.key === 'Enter' && event.shiftKey) return 'shift-enter'
+  if (event.key === 'Enter') return 'enter'
+  if (event.key === 'Escape') return 'escape'
+  return null
 }

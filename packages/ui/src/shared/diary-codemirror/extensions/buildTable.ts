@@ -6,6 +6,8 @@ import { isCursorInRange, isCursorOnLine } from './cursor'
 import { hideMark } from './styles'
 import { isLastTableCellInRow, countTableColumns } from './tableCell.utils'
 import type { TableBlockRange } from './buildTableChrome'
+import { parseTableFromDoc } from '../table/table.model'
+import { isTableContentLine } from './tableCell.utils'
 
 type DecorationMark = { from: number; to: number; value: Decoration }
 
@@ -77,8 +79,9 @@ function cellMarkDecoration(isHeader: boolean, isLast: boolean): Decoration {
   return Decoration.mark({ class: classes })
 }
 
-function isWidgetizedTable(tableFrom: number, tableTo: number, blocks: TableBlockRange[]): boolean {
-  return blocks.some((b) => b.from === tableFrom && b.to === tableTo)
+/** 该表格是否已由 TableBlockWidget 接管（按 tableFrom 匹配，勿与 Lezer node.to 强一致） */
+function isWidgetizedTable(tableFrom: number, widgetizedTables: TableBlockRange[]): boolean {
+  return widgetizedTables.some((b) => b.from === tableFrom)
 }
 
 function decorateTableBlockLines(
@@ -97,12 +100,14 @@ function decorateTableBlockLines(
       if (node.type.name !== 'Table') return
 
       const tableFrom = node.from
-      const tableTo = node.to
-      if (isWidgetizedTable(tableFrom, tableTo, widgetizedTables)) return
+      if (isWidgetizedTable(tableFrom, widgetizedTables)) return
+
+      const parsed = parseTableFromDoc(doc, node.from, node.to)
+      if (!parsed) return
 
       const contentLines: Array<{ from: number; kind: 'header' | 'row' }> = []
-      const startLineNum = doc.lineAt(node.from).number
-      const endLineNum = doc.lineAt(node.to).number
+      const startLineNum = doc.lineAt(parsed.from).number
+      const endLineNum = doc.lineAt(parsed.to).number
       let headerLineText: string | null = null
 
       for (let lineNum = startLineNum; lineNum <= endLineNum; lineNum += 1) {
@@ -114,6 +119,8 @@ function decorateTableBlockLines(
           }
           continue
         }
+
+        if (!isTableContentLine(curLine.text)) continue
 
         if (lineNum === startLineNum) {
           headerLineText = curLine.text
@@ -167,7 +174,7 @@ export function collectTableDecorations(
       if (!isInsideTable(node)) return
 
       const tableRoot = findTableRoot(node)
-      if (tableRoot && isWidgetizedTable(tableRoot.from, tableRoot.to, widgetizedTables)) return
+      if (tableRoot && isWidgetizedTable(tableRoot.from, widgetizedTables)) return
 
       const line = doc.lineAt(node.from)
       const onActiveLine = isCursorOnLine(line.from, line.to, cursors)

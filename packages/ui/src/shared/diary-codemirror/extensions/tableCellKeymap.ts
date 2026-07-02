@@ -6,8 +6,14 @@ import {
   getTableCellBoundsFromSyntax,
   isTableContentLine
 } from './tableCell.utils'
+import { rangeOverlapsTableMarkdown } from '../table/tableBounds'
 import { TABLE_CELL_LINE_BREAK, tableStructureProtectFilter } from './tableStructureFilter'
 import { isTableSeparatorLine } from './buildTable'
+
+function selectionTouchesTableMarkdown(view: EditorView): boolean {
+  const { from, to } = view.state.selection.main
+  return rangeOverlapsTableMarkdown(view.state, from, to)
+}
 
 function getCellContext(view: EditorView) {
   const { from, to } = view.state.selection.main
@@ -24,8 +30,9 @@ function getCellContext(view: EditorView) {
   return { kind: 'cell' as const, bounds, line }
 }
 
-/** 单元格内换行：插入 <br>，避免拆行破坏表格结构 */
+/** 单元格内换行：插入 <br>，避免拆行破坏表格结构（仅非 widget 直编场景；表格块内应使用单元格 textarea） */
 export function insertTableCellLineBreak(view: EditorView): boolean {
+  if (selectionTouchesTableMarkdown(view)) return true
   const ctx = getCellContext(view)
   if (!ctx || ctx.kind === 'separator') return false
   if (!ctx.bounds) return false
@@ -40,7 +47,10 @@ export function insertTableCellLineBreak(view: EditorView): boolean {
 
 function protectTableDelimiterBackspace(view: EditorView): boolean {
   const { from, to } = view.state.selection.main
-  if (from !== to) return false
+  if (from !== to) {
+    return selectionTouchesTableMarkdown(view)
+  }
+  if (selectionTouchesTableMarkdown(view)) return true
 
   const line = view.state.doc.lineAt(from)
   if (!isTableContentLine(line.text)) return false
@@ -58,7 +68,10 @@ function protectTableDelimiterBackspace(view: EditorView): boolean {
 
 function protectTableDelimiterDelete(view: EditorView): boolean {
   const { from, to } = view.state.selection.main
-  if (from !== to) return false
+  if (from !== to) {
+    return selectionTouchesTableMarkdown(view)
+  }
+  if (selectionTouchesTableMarkdown(view)) return true
 
   const line = view.state.doc.lineAt(from)
   if (!isTableContentLine(line.text)) return false
@@ -75,6 +88,7 @@ function protectTableDelimiterDelete(view: EditorView): boolean {
 }
 
 function handleTableEnter(view: EditorView): boolean {
+  if (selectionTouchesTableMarkdown(view)) return true
   return insertTableCellLineBreak(view)
 }
 
@@ -88,7 +102,31 @@ function handleTableDelete(view: EditorView): boolean {
 
 function handleTableBeforeInput(event: InputEvent, view: EditorView): boolean {
   const { from, to } = view.state.selection.main
+  if (from !== to && selectionTouchesTableMarkdown(view)) {
+    if (
+      event.inputType === 'deleteContentBackward' ||
+      event.inputType === 'deleteContentForward' ||
+      event.inputType === 'deleteByCut' ||
+      event.inputType.startsWith('insert')
+    ) {
+      event.preventDefault()
+      return true
+    }
+  }
+
   if (from !== to) return false
+
+  if (selectionTouchesTableMarkdown(view)) {
+    if (
+      event.inputType === 'deleteContentBackward' ||
+      event.inputType === 'deleteContentForward' ||
+      event.inputType === 'deleteByCut' ||
+      event.inputType.startsWith('insert')
+    ) {
+      event.preventDefault()
+      return true
+    }
+  }
 
   const line = view.state.doc.lineAt(from)
 

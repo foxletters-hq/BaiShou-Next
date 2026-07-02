@@ -63,8 +63,18 @@ export function useCodeMirrorEditorView(
       extraExtensions: [
         EditorView.domEventHandlers({
           contextmenu: (event, view) => {
-            const target = event.target as HTMLElement
-            if (target.closest('.cm-image-container')) {
+            const rawTarget = event.target
+            const target =
+              rawTarget instanceof Element
+                ? rawTarget
+                : rawTarget instanceof Node
+                  ? rawTarget.parentElement
+                  : null
+            if (
+              target?.closest(
+                '.cm-image-container, .cm-table-block, .cm-table-context-menu-layer'
+              )
+            ) {
               return false
             }
 
