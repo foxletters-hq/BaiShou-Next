@@ -13,16 +13,36 @@ For submission and CI, see [1-Submit-Rule.md](./1-Submit-Rule.md). For coding ru
 
 BaiShou is a privacy-focused AI memory companion. **Product direction, interaction design, and data models** require long-term, careful planning—not ad-hoc feature stacking via external PRs.
 
+To stay sustainable and **reduce maintainer overhead**, we currently take a tighter stance on external PRs. This is not about rejecting contributors—it is about avoiding wasted effort on both sides when there has been no prior alignment.
+
 | Type | Our stance |
 | ---- | ---------- |
-| **Bug fixes** (reproducible, tested, CI green) | **Welcome** |
+| **Bug-fix PRs** (reproducible, tested, CI green, clear motivation) | **Accepted selectively**; small, high-quality fixes are what we are most willing to review |
 | **Documentation fixes** (typos, unclear wording) | **Welcome** |
 | **Reproducible Bug Issues** (environment, steps, expected vs actual) | **Welcome** |
-| **New feature PRs without prior discussion** | **Open an Issue first; unlikely to merge without prior agreement** |
+| **New feature PRs** | **Not accepted for now**; if you have a feature design, open an Issue first |
+| **Purely AI-generated PRs the submitter does not understand** | **No review**; a waste of the submitter's compute and the maintainer's time |
+| **PRs that do not follow repo conventions** | **Not accepted** (see [1-AI-Code-Rule.md](../1-AI-Code/1-AI-Code-Rule.md)) |
 | **New UI libraries / dependencies / Schema changes** | **Issue first; maintainer approval required** |
 
-> **In short**: Decide whether something *should* be done before worrying about *how*.  
+> **In short**: Decide whether something *should* be done and whether you *truly understand the relevant code* before worrying about *how*.  
 > A clear Issue is more likely to succeed than a large surprise PR.
+
+### 1.1 Maintainer capacity and review boundaries
+
+Maintainer time is limited. Every PR requires reading, understanding, verification, and possibly back-and-forth. **We will not spend review effort on**:
+
+1. **Pure AI output**: PRs generated in bulk by AI that the submitter has not read line by line and cannot explain clearly in the PR or Issue. AI may assist drafting, but **you are responsible for the code and conclusions**.
+2. **Lack of code understanding**: PRs that cannot explain root cause, impact scope, or that clearly mismatch existing architecture.
+3. **Convention violations**: e.g. `pnpm ci:check` not run, missing tests, theme or directory rule violations (see [1-Submit-Rule.md](./1-Submit-Rule.md)).
+
+If you are unsure whether a change fits, **discuss in an Issue first**—do not open a PR and hope for the best.
+
+### 1.2 PR target branch
+
+If you intend to open a PR, set the **base branch** to upstream **`Baishou-dev`**.
+
+**PRs targeting `main` are invalid.** Maintainers will not review or respond to them and will close them directly.
 
 ---
 
@@ -44,22 +64,23 @@ Use the [Bug report](https://github.com/Anson-Trio/BaiShou-Next/issues/new?templ
 3. Run `pnpm ci:check` before opening a PR (see [1-Submit-Rule.md](./1-Submit-Rule.md)).
 4. Explain root cause, fix approach, and how you verified.
 
-Small, focused, well-tested bug PRs are what we are most willing to review and merge.
+Small, focused, well-tested bug PRs are what we are most willing to review. **Not every bug-fix PR will be merged**—maintainers weigh scope, risk, and current priorities.
 
 ---
 
-## 3. New features: Issue first, code later (think twice)
+## 3. New features: Issue discussion only (feature PRs not accepted for now)
 
-### 3.1 Why new features need discussion first
+### 3.1 Why we are not accepting feature PRs for now
 
 - BaiShou centers on memory companionship and local privacy. Features touch **data models, AI tooling, cross-platform consistency, backup compatibility**, and more—not just an extra button.
 - This monorepo ships **Electron desktop** and **Expo mobile** together. Many changes need both platforms aligned, or a clear reason for single-platform scope.
+- Maintainer capacity is limited. **We are not accepting new feature PRs at this stage** to avoid a queue of misaligned code.
 
-**Feature PRs opened without maintainer agreement may be closed without review.**
+**If you have a feature design, use an Issue to align with maintainers first. Feature PRs opened without prior discussion may be closed without review.**
 
 ### 3.2 If you still want to propose a feature
 
-**Open an Issue only** (use the [Feature proposal](https://github.com/Anson-Trio/BaiShou-Next/issues/new?template=02-enhancement.yml) template). **Do not open a large PR first.**
+**Open an Issue only** (use the [Feature proposal](https://github.com/Anson-Trio/BaiShou-Next/issues/new?template=02-enhancement.yml) template). **Do not open a feature PR.**
 
 You may use AI to draft the Issue, but **you must read and verify it before posting**. We need your judgment, not unchecked AI output.
 
@@ -102,8 +123,8 @@ You may use AI to draft the Issue, but **you must read and verify it before post
 (yes / no / ideas only)
 ```
 
-Maintainers will reply: **accepted / needs changes / declined / deferred**.  
-**Only after explicit "accepted" or "PR welcome"** should you fork and open a PR.
+Maintainers will reply: **accepted for discussion / needs changes / declined / deferred**.  
+**Even if an Issue is accepted, that does not mean you may open a feature PR right away**—wait until maintainers explicitly say "PR welcome" and the project stage allows it before forking and submitting.
 
 ### 3.3 Monorepo map (for "what would change")
 
@@ -142,7 +163,11 @@ Feature work often spans **UI + core + database + both apps**. Be honest about s
 
 ## 5. Common reasons PRs are closed
 
-- No prior accepted Feature Issue
+- **New feature PRs submitted during the current stage** (open an Issue to discuss design first)
+- **Purely AI-generated PRs the submitter cannot explain** (motivation, impact)
+- **PRs showing lack of code understanding or failure to follow repo conventions**
+- **PRs targeting `main`** (submit to `Baishou-dev` instead)
+- No prior accepted Feature Issue (when maintainers have said PRs are welcome)
 - `pnpm ci:check` not run or failing
 - Missing tests (non-trivial fix)
 - Unapproved dependencies or UI libraries

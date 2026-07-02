@@ -2,13 +2,13 @@
 
 [简体中文](../../README.md) | [繁體中文](README_TW.md) | [English](README_EN.md) | [日本語](README_JA.md)
 
-[Quote collection](quotes-collection/quotes-collection.en.md) · [Quality fan creations](fan-creations/fan-creations.en.md)
+[Contributing](#contributing) · [Quote collection](quotes-collection/quotes-collection.en.md) · [Quality fan creations](fan-creations/fan-creations.en.md)
 
 > A pure white oath, guarding each other for a lifetime.
 
 **BaiShou** is an open-source, privacy-first **AI memory companion**: record your life and diaries locally, let AI partners truly _remember_ you, and fight forgetting together.
 
-We thank everyone who wants to help BaiShou grow. If you would like to contribute, please read [Contributing](#contributing) below first: **bug fixes and documentation improvements are most welcome**; for new features, open an Issue before coding—without prior discussion, merges are less likely.
+We thank everyone who wants to help BaiShou grow. If you would like to contribute, please read [Contributing](#contributing) below first: **bug reports and documentation fixes are most welcome**; bug-fix PRs are accepted selectively; **new feature PRs are not accepted for now**—open an Issue to discuss design first.
 
 > **Important:** The previous Flutter client ([Anson-Trio/BaiShou](https://github.com/Anson-Trio/BaiShou)) is **no longer maintained**. All future features and releases happen in this repository **BaiShou-Next** (a monorepo for desktop Electron + mobile Expo). Please **Star / Watch** this repo for updates.
 
@@ -104,16 +104,22 @@ See [submission guidelines](../2-Submit/1-Submit-Rule.md) (Chinese).
 
 Thank you for wanting to help. Please understand our collaboration stance first:
 
-- **Most welcome**: reproducible bug reports and **bug-fix PRs** (with tests and `pnpm ci:check`).
-- **New feature PRs**: every product direction for BaiShou is carefully planned. **Open a Feature Proposal Issue first** and wait for maintainer feedback—**do not open a PR first**. Without prior discussion, merges are less likely.
+- **Most welcome**: reproducible bug reports and documentation fixes.
+- **Accepted selectively**: small, high-quality **bug-fix PRs** for confirmed issues (with tests and `pnpm ci:check`).
+- **New feature PRs**: **not accepted for now**. If you have a feature design, **open a Feature Proposal Issue** and align with maintainers—**do not open a PR first**.
+- **No review**: purely AI-generated PRs, PRs you do not understand, or PRs that do not follow repo conventions.
+
+> **In short**: Decide whether something *should* be done and whether you *truly understand the relevant code* before worrying about *how*.  
+> A clear Issue is more likely to succeed than a large surprise PR.
 
 Full policy (multilingual): [Contributing policy](../2-Submit/2-Contributing-Guide.en.md) ([zh-CN](../2-Submit/2-Contributing-Guide.md) · [zh-TW](../2-Submit/2-Contributing-Guide.tw.md) · [ja](../2-Submit/2-Contributing-Guide.ja.md))
 
 Technical workflow:
 
 1. **Fork** this repo and work on a feature branch (do not push directly to upstream `main`).
-2. Coding conventions: [AI coding rules](../1-AI-Code/1-AI-Code-Rule.md) (Chinese).
-3. Before opening a PR, run **`pnpm ci:check`** and follow commit message rules in [submission guidelines](../2-Submit/1-Submit-Rule.md).
+2. When opening a PR upstream, set the **base branch to `Baishou-dev`**; PRs targeting `main` are invalid and will not be reviewed or responded to.
+3. Coding conventions: [AI coding rules](../1-AI-Code/1-AI-Code-Rule.md) (Chinese).
+4. Before opening a PR, run **`pnpm ci:check`** and follow commit message rules in [submission guidelines](../2-Submit/1-Submit-Rule.md).
 
 ---
 

@@ -2,13 +2,13 @@
 
 [简体中文](../../README.md) | [繁體中文](README_TW.md) | [English](README_EN.md) | [日本語](README_JA.md)
 
-[語錄收藏](quotes-collection/quotes-collection.tw.md) · [優質二創](fan-creations/fan-creations.tw.md)
+[貢獻指南](#貢獻指南) · [語錄收藏](quotes-collection/quotes-collection.tw.md) · [優質二創](fan-creations/fan-creations.tw.md)
 
 > 以純白誓約，守護彼此一生。
 
 **白守**是一款開源的、注重隱私的 **AI 記憶陪伴**軟體：在本地記錄你的生活與日記，讓 AI 夥伴真正「記得」你，並陪你對抗遺忘。
 
-我們感謝每一位願意幫助白守的朋友。白守能走到今天，離不開你們的幫助與鞭策。若你願意參與，請先閱讀下方的 [貢獻指南](#貢獻指南)：**我們最歡迎 Bug 修復與文件改進**；新功能請先開 Issue 討論，未事先溝通時合併可能性較低。
+我們感謝每一位願意幫助白守的朋友。白守能走到今天，離不開你們的幫助與鞭策。若你願意參與，請先閱讀下方的 [貢獻指南](#貢獻指南)：**我們最歡迎 Bug 報告與文件改進**；Bug 修復 PR 視情況接受；**新功能 PR 暫不接收**，請先開 Issue 討論設計。
 
 > **請注意**：此前基於 Flutter 的客戶端（[Anson-Trio/BaiShou](https://github.com/Anson-Trio/BaiShou)）**已不再維護**；後續所有功能更新與版本發布均在本倉庫 **BaiShou-Next** 進行（桌面 Electron + 行動 Expo 的 monorepo）。請 Star / Watch 本倉庫以取得最新動態。
 
@@ -104,16 +104,22 @@ pnpm ci:check
 
 我們感謝每一位願意幫助白守的人，但請先了解本專案的協作立場：
 
-- **我們最歡迎**：可重現的 Bug 報告，以及針對已確認問題的 **Bug 修復 PR**（含測試與 `pnpm ci:check`）。
-- **新功能 PR**：白守的每一個發展方向都經過嚴格思考，請先 **在 Issues 中開「功能提議」** 並等待維護者回覆，**不要直接開 PR**。未事先溝通時，合併可能性較低。
+- **我們最歡迎**：可重現的 Bug 報告、文件糾錯。
+- **視情況接受**：針對已確認問題、小範圍且高品質的 **Bug 修復 PR**（含測試與 `pnpm ci:check`）。
+- **新功能 PR**：**當前暫不接收**。若有功能設計想法，請 **在 Issues 中開「功能提議」** 與維護者梳理清楚，**不要直接開 PR**。
+- **不審核**：純 AI 生成、你對相關程式碼並不理解、或未遵循倉庫規範的 PR。
+
+> **一句話**：請先確認「這件事該不該做、你是否真正理解相關程式碼」，再考慮「怎麼做」。  
+> 能用 Issue 把動機和方案說清楚，比直接丟一個大 PR 更有可能被接受。
 
 完整說明（多語言）：[貢獻政策](../2-Submit/2-Contributing-Guide.tw.md)（[簡中](../2-Submit/2-Contributing-Guide.md) · [English](../2-Submit/2-Contributing-Guide.en.md) · [日本語](../2-Submit/2-Contributing-Guide.ja.md)）
 
 技術流程：
 
 1. 在 GitHub **Fork** 本倉庫，在功能分支上開發（勿直接向上游 `main` 推送）。
-2. 編碼與目錄規範見 [AI 編碼規範](../1-AI-Code/1-AI-Code-Rule.md)（簡體中文）。
-3. 開 PR 前執行 **`pnpm ci:check`**，並遵循 [提交規範](../2-Submit/1-Submit-Rule.md) 中的 Commit Message 約定。
+2. 向上游開 PR 時，**目標分支（base）選擇 `Baishou-dev`**；以 `main` 為目標的 PR 視為無效，不予審核與回覆。
+3. 編碼與目錄規範見 [AI 編碼規範](../1-AI-Code/1-AI-Code-Rule.md)（簡體中文）。
+4. 開 PR 前執行 **`pnpm ci:check`**，並遵循 [提交規範](../2-Submit/1-Submit-Rule.md) 中的 Commit Message 約定。
 
 ---
 
