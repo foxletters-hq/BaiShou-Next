@@ -1,5 +1,7 @@
 import { EditorState, type Transaction } from '@codemirror/state'
 import type { Text, TextLine } from '@codemirror/state'
+import { allowTableStructureEdit } from '../table/tableEffects'
+import { rangeOverlapsTableMarkdown } from '../table/tableBounds'
 import { isTableSeparatorLine } from './buildTable'
 import { isTableContentLine } from './tableCell.utils'
 
@@ -116,17 +118,39 @@ function insertionSplitsTableRow(
   return false
 }
 
+function changeTouchesTableMarkdown(
+  state: EditorState,
+  fromA: number,
+  toA: number,
+  inserted: string
+): boolean {
+  if (fromA < toA && rangeOverlapsTableMarkdown(state, fromA, toA)) {
+    return true
+  }
+  if (inserted.length > 0 && rangeOverlapsTableMarkdown(state, fromA, toA)) {
+    return true
+  }
+  return false
+}
+
 /** 是否允许该事务修改文档（保护表格管道符与行结构） */
 export function isTableStructureChangeAllowed(tr: Transaction): boolean {
   if (!tr.docChanged) return true
+  if (tr.annotation(allowTableStructureEdit)) return true
 
   const oldDoc = tr.startState.doc
+  const state = tr.startState
 
   let allowed = true
   tr.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
     if (!allowed) return
 
     const insertedText = inserted.toString()
+    if (changeTouchesTableMarkdown(state, fromA, toA, insertedText)) {
+      allowed = false
+      return
+    }
+
     const tableLinesInDelete = collectTableLinesInRange(oldDoc, fromA, toA)
 
     if (fromA < toA) {

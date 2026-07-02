@@ -155,23 +155,93 @@ export const editorTheme = EditorView.baseTheme({
     color: 'var(--text-primary)'
   },
 
-  // Obsidian 风格表格块预览与操作控件
+  // Live Preview 表格块预览与操作控件
+  '.cm-table-anchor-line': {
+    padding: '0 !important'
+  },
+  '.cm-table-hidden-line': {
+    height: '0',
+    minHeight: '0',
+    padding: '0 !important',
+    lineHeight: '0',
+    fontSize: '0',
+    overflow: 'hidden'
+  },
+  '.cm-table-gap-line': {
+    minHeight: '1.5em',
+    padding: '0 !important',
+    lineHeight: '1.5',
+    fontSize: 'inherit'
+  },
   '.cm-table-block': {
-    margin: '12px 0',
+    margin: '8px 0 4px',
     width: '100%',
     maxWidth: '100%',
     position: 'relative',
     userSelect: 'auto'
   },
+  '.cm-table-block--touch .cm-table-chrome-body': {
+    columnGap: '2px',
+    rowGap: '2px'
+  },
+  '.cm-table-block--touch .cm-table-corner-menu': {
+    opacity: '0',
+    pointerEvents: 'none'
+  },
+  '.cm-table-block--touch .cm-table-add-btn': {
+    opacity: '0',
+    pointerEvents: 'none'
+  },
+  '.cm-table-block--touch.cm-table-block--has-active-cell .cm-table-handle': {
+    opacity: '0.55',
+    pointerEvents: 'auto'
+  },
+  '.cm-table-block--touch.cm-table-block--has-active-cell .cm-table-handle--active': {
+    opacity: '1'
+  },
+  '.cm-table-block--touch.cm-table-block--has-active-cell .cm-table-corner-menu': {
+    opacity: '1',
+    pointerEvents: 'auto'
+  },
+  '.cm-table-block--touch.cm-table-block--has-active-cell .cm-table-add-btn': {
+    opacity: '1',
+    pointerEvents: 'auto'
+  },
+  '.cm-table-cursor-after': {
+    display: 'none'
+  },
   '.cm-table-chrome-top': {
     display: 'flex',
     alignItems: 'stretch',
-    gap: '0',
-    marginBottom: '2px'
+    gap: '2px',
+    marginBottom: '2px',
+    position: 'relative',
+    zIndex: '5'
   },
   '.cm-table-chrome-corner': {
-    width: '28px',
+    width: '24px',
     flexShrink: '0'
+  },
+  '.cm-table-corner-menu': {
+    height: '24px',
+    minWidth: '24px',
+    minHeight: '24px',
+    position: 'relative',
+    zIndex: '6',
+    border: 'none',
+    borderRadius: '4px',
+    background: 'transparent',
+    color: 'var(--text-tertiary, rgba(0, 0, 0, 0.35))',
+    lineHeight: '1',
+    padding: '0',
+    cursor: 'pointer',
+    touchAction: 'manipulation',
+    userSelect: 'none',
+    WebkitUserSelect: 'none',
+    WebkitTouchCallout: 'none',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   '.cm-table-col-handles': {
     display: 'flex',
@@ -181,10 +251,10 @@ export const editorTheme = EditorView.baseTheme({
   },
   '.cm-table-chrome-body': {
     display: 'grid',
-    gridTemplateColumns: '28px minmax(0, 1fr) 28px',
-    gridTemplateRows: 'auto 28px',
-    columnGap: '4px',
-    rowGap: '4px',
+    gridTemplateColumns: '24px minmax(0, 1fr) 24px',
+    gridTemplateRows: 'auto 24px',
+    columnGap: '2px',
+    rowGap: '2px',
     alignItems: 'stretch',
     position: 'relative'
   },
@@ -195,18 +265,20 @@ export const editorTheme = EditorView.baseTheme({
     display: 'flex',
     flexDirection: 'column',
     gap: '0',
-    width: '28px',
+    width: '24px',
     flexShrink: '0',
     gridColumn: '1',
     gridRow: '1',
-    alignSelf: 'start'
+    alignSelf: 'start',
+    position: 'relative',
+    zIndex: '5'
   },
   '.cm-table-grid-shell': {
     gridColumn: '2',
     gridRow: '1',
     minWidth: '0',
-    border: '1.5px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.22)))',
-    borderRadius: '8px',
+    border: '1px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.16)))',
+    borderRadius: '6px',
     overflow: 'hidden',
     backgroundColor: 'var(--bg-editor, transparent)'
   },
@@ -219,23 +291,42 @@ export const editorTheme = EditorView.baseTheme({
     borderRadius: '0'
   },
   '.cm-table-preview th, .cm-table-preview td': {
-    borderRight: '1.5px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.18)))',
-    borderBottom: '1px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.14)))',
+    borderRight: '1px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.12)))',
+    borderBottom: '1px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.1)))',
     padding: '8px 10px',
     verticalAlign: 'top',
     wordBreak: 'break-word',
     cursor: 'text'
   },
-  '.cm-table-cell-editable': {
-    outline: 'none',
+  '.cm-table-grid-cell': {
+    padding: '0',
+    position: 'relative'
+  },
+  '.cm-table-cell-display': {
+    display: 'block',
     minHeight: '1.4em',
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     cursor: 'text',
-    userSelect: 'text'
+    userSelect: 'none'
   },
-  '.cm-table-cell-editable:focus': {
+  '.cm-table-cell-input': {
+    display: 'block',
+    width: '100%',
+    minHeight: '1.4em',
+    margin: '0',
+    padding: '0',
+    border: 'none',
+    outline: 'none',
+    resize: 'none',
+    background: 'transparent',
+    color: 'inherit',
+    font: 'inherit',
+    lineHeight: 'inherit',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    boxSizing: 'border-box',
     boxShadow: 'inset 0 0 0 2px color-mix(in srgb, var(--color-primary, #5ba8f5) 45%, transparent)',
     borderRadius: '4px'
   },
@@ -253,18 +344,48 @@ export const editorTheme = EditorView.baseTheme({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    border: '1px solid var(--border-subtle, rgba(0, 0, 0, 0.12))',
-    borderRadius: '6px',
-    background: 'var(--bg-surface-normal, rgba(0, 0, 0, 0.03))',
-    color: 'var(--text-secondary)',
-    fontSize: '11px',
+    border: 'none',
+    borderRadius: '4px',
+    background: 'transparent',
+    color: 'var(--text-tertiary, rgba(0, 0, 0, 0.35))',
     lineHeight: '1',
     padding: '0',
     cursor: 'grab',
-    touchAction: 'none',
+    opacity: '0',
+    pointerEvents: 'none',
+    touchAction: 'manipulation',
+    minWidth: '24px',
+    minHeight: '24px',
     userSelect: 'none',
     WebkitUserSelect: 'none',
-    WebkitTouchCallout: 'none'
+    WebkitTouchCallout: 'none',
+    position: 'relative'
+  },
+  '.cm-table-grip-icon, .cm-table-grid-icon': {
+    fill: 'currentColor',
+    display: 'block',
+    flexShrink: '0'
+  },
+  '.cm-table-block--touch .cm-table-handle::before': {
+    content: '""',
+    position: 'absolute',
+    inset: '-8px'
+  },
+  '.cm-table-handle--active, .cm-table-handle--dragging, .cm-table-handle--drop-target': {
+    opacity: '1',
+    pointerEvents: 'auto'
+  },
+  '.cm-table-block--has-active-cell .cm-table-handle': {
+    opacity: '0.45',
+    pointerEvents: 'auto'
+  },
+  '.cm-table-block--has-active-cell .cm-table-corner-menu': {
+    opacity: '1',
+    pointerEvents: 'auto'
+  },
+  '.cm-table-block--has-active-cell .cm-table-add-btn': {
+    opacity: '1',
+    pointerEvents: 'auto'
   },
   '.cm-table-handle--touch': {
     cursor: 'pointer'
@@ -289,42 +410,53 @@ export const editorTheme = EditorView.baseTheme({
   },
   '.cm-table-row-handle--header': {
     cursor: 'default',
-    opacity: '0.45'
+    opacity: '0'
+  },
+  '.cm-table-row-handle--header.cm-table-handle--active': {
+    opacity: '0.75'
   },
   '.cm-table-add-btn': {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     boxSizing: 'border-box',
-    borderRadius: '8px',
-    border: '1.5px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.22)))',
-    background: 'var(--bg-surface-normal, rgba(0, 0, 0, 0.02))',
-    color: 'var(--text-secondary)',
-    fontSize: '18px',
+    borderRadius: '6px',
+    border: '1px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.14)))',
+    background: 'transparent',
+    color: 'var(--text-tertiary, rgba(0, 0, 0, 0.35))',
+    fontSize: '16px',
     lineHeight: '1',
     padding: '0',
     cursor: 'pointer',
     flexShrink: '0',
-    touchAction: 'manipulation'
+    touchAction: 'manipulation',
+    position: 'relative',
+    zIndex: '6'
+  },
+  '.cm-table-add-btn-icon': {
+    fontWeight: '300',
+    lineHeight: '1',
+    userSelect: 'none',
+    pointerEvents: 'none'
   },
   '.cm-table-add-col': {
     gridColumn: '3',
     gridRow: '1',
     alignSelf: 'stretch',
-    width: '28px',
+    width: '24px',
     minHeight: '0'
   },
   '.cm-table-add-row': {
     gridColumn: '2',
     gridRow: '2',
     width: '100%',
-    height: '28px',
-    minHeight: '28px'
+    height: '24px',
+    minHeight: '24px'
   },
   '.cm-table-context-menu-layer': {
     position: 'fixed',
     inset: '0',
-    zIndex: '199',
+    zIndex: '10050',
     pointerEvents: 'auto'
   },
   '.cm-table-context-menu-backdrop': {
@@ -335,7 +467,7 @@ export const editorTheme = EditorView.baseTheme({
   },
   '.cm-table-context-menu': {
     position: 'fixed',
-    zIndex: '200',
+    zIndex: '10051',
     minWidth: '120px',
     padding: '4px',
     borderRadius: '8px',
@@ -361,6 +493,151 @@ export const editorTheme = EditorView.baseTheme({
   },
   '.cm-table-context-menu-item:not(:disabled):hover': {
     background: 'var(--bg-surface-normal, rgba(0, 0, 0, 0.05))'
+  },
+  '.cm-table-context-menu-item--destructive': {
+    color: 'var(--color-danger, #e5484d)'
+  },
+  '.cm-table-sheet-layer': {
+    position: 'fixed',
+    zIndex: '2147483000',
+    pointerEvents: 'auto'
+  },
+  '.cm-table-sheet-layer--open .cm-table-sheet-backdrop': {
+    opacity: '1'
+  },
+  '.cm-table-sheet-backdrop': {
+    position: 'absolute',
+    inset: '0',
+    background: 'rgba(0, 0, 0, 0.45)',
+    opacity: '0',
+    transition: 'opacity 0.22s ease-out',
+    WebkitBackdropFilter: 'blur(2px)',
+    backdropFilter: 'blur(2px)'
+  },
+  '.cm-table-sheet': {
+    position: 'absolute',
+    zIndex: '1',
+    left: '0',
+    right: '0',
+    borderRadius: '20px 20px 0 0',
+    background: 'var(--bg-surface, #fff)',
+    borderTop: '1px solid var(--border-subtle, rgba(0, 0, 0, 0.08))',
+    boxShadow: '0 -16px 48px rgba(0, 0, 0, 0.2)',
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+    maxHeight: '72vh',
+    fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+  },
+  '.cm-table-sheet-grabber': {
+    width: '36px',
+    height: '4px',
+    borderRadius: '999px',
+    background: 'var(--border-subtle, rgba(0, 0, 0, 0.2))',
+    margin: '8px auto 2px',
+    flexShrink: '0'
+  },
+  '.cm-table-sheet-title': {
+    textAlign: 'center',
+    fontSize: '13px',
+    fontWeight: '600',
+    letterSpacing: '0.01em',
+    color: 'var(--text-secondary)',
+    padding: '6px 20px 12px',
+    flexShrink: '0'
+  },
+  '.cm-table-sheet-body': {
+    padding: '0 12px calc(16px + env(safe-area-inset-bottom, 0px))',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+    overflowY: 'auto',
+    WebkitOverflowScrolling: 'touch'
+  },
+  '.cm-table-sheet-group': {
+    borderRadius: '12px',
+    overflow: 'hidden',
+    background: 'var(--bg-surface-normal, rgba(0, 0, 0, 0.04))',
+    border: 'none',
+    boxShadow: 'inset 0 0 0 1px var(--border-subtle, rgba(0, 0, 0, 0.06))'
+  },
+  '.cm-table-sheet-group--destructive': {
+    marginTop: '2px'
+  },
+  '.cm-table-sheet-item': {
+    display: 'flex',
+    alignItems: 'center',
+    width: '100%',
+    minHeight: '52px',
+    textAlign: 'left',
+    border: 'none',
+    borderBottom: '1px solid var(--border-subtle, rgba(0, 0, 0, 0.06))',
+    background: 'transparent',
+    color: 'var(--text-primary)',
+    fontSize: '16px',
+    fontWeight: '400',
+    lineHeight: '1.3',
+    padding: '14px 16px',
+    cursor: 'pointer',
+    touchAction: 'manipulation',
+    WebkitTapHighlightColor: 'transparent'
+  },
+  '.cm-table-sheet-item:active:not(:disabled)': {
+    background: 'var(--bg-surface-normal, rgba(0, 0, 0, 0.06))'
+  },
+  '.cm-table-sheet-item:last-child': {
+    borderBottom: 'none'
+  },
+  '.cm-table-sheet-item:disabled': {
+    opacity: '0.45'
+  },
+  '.cm-table-sheet-item--destructive': {
+    color: 'var(--color-danger, #e5484d)'
+  },
+  '.cm-table-grid-cell--col-selected': {
+    background: 'transparent',
+    position: 'relative'
+  },
+  '.cm-table-grid-cell--col-selected::after': {
+    content: '""',
+    position: 'absolute',
+    inset: '0',
+    pointerEvents: 'none',
+    borderLeft: '2px solid var(--color-primary, #5b9bd5)',
+    borderRight: '2px solid var(--color-primary, #5b9bd5)',
+    boxSizing: 'border-box'
+  },
+  '.cm-table-preview thead .cm-table-grid-cell--col-selected::after': {
+    borderTop: '2px solid var(--color-primary, #5b9bd5)'
+  },
+  '.cm-table-preview tbody tr:last-child .cm-table-grid-cell--col-selected::after': {
+    borderBottom: '2px solid var(--color-primary, #5b9bd5)'
+  },
+  '.cm-table-grid-cell--row-selected': {
+    background: 'transparent',
+    position: 'relative'
+  },
+  '.cm-table-grid-cell--row-selected::after': {
+    content: '""',
+    position: 'absolute',
+    inset: '0',
+    pointerEvents: 'none',
+    borderTop: '2px solid var(--color-primary, #5b9bd5)',
+    borderBottom: '2px solid var(--color-primary, #5b9bd5)',
+    boxSizing: 'border-box'
+  },
+  '.cm-table-preview .cm-table-grid-cell--row-selected:first-child::after': {
+    borderLeft: '2px solid var(--color-primary, #5b9bd5)'
+  },
+  '.cm-table-preview .cm-table-grid-cell--row-selected:last-child::after': {
+    borderRight: '2px solid var(--color-primary, #5b9bd5)'
+  },
+  '.cm-table-block--col-selected .cm-table-col-handle.cm-table-handle--active': {
+    background: 'var(--color-primary, #5b9bd5)',
+    borderRadius: '4px'
+  },
+  '.cm-table-block--col-selected .cm-table-col-handle.cm-table-handle--active .cm-table-grip-icon': {
+    fill: '#fff'
   },
 
   '.cm-code': {
