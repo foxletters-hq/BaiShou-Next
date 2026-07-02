@@ -1,0 +1,90 @@
+.root {
+  position: relative;
+}
+
+.iconBtn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: var(--bg-surface, rgba(255, 255, 255, 0.06));
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.iconBtn:hover {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.1));
+}
+
+.initial {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.popover {
+  position: absolute;
+  left: calc(100% + 8px);
+  bottom: 0;
+  min-width: 180px;
+  max-height: 280px;
+  overflow: auto;
+  padding: 6px;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated, var(--bg-surface));
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  z-index: 100;
+}
+
+.menuItem {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.menuItem:hover {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.06));
+}
+
+.menuItemActive {
+  background: var(--color-primary-soft, rgba(91, 168, 245, 0.15));
+}
+
+.menuInitial {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface);
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.menuName {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.placeholder {
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}

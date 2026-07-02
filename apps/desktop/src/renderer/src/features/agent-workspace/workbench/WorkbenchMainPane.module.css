@@ -1,0 +1,113 @@
+.pane {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-app);
+}
+
+.tabBar {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: 6px 8px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  overflow-x: auto;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  max-width: 200px;
+  border-radius: 8px 8px 0 0;
+  background: transparent;
+}
+
+.tabActive {
+  background: var(--bg-app);
+}
+
+.tabLabel {
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 8px 10px;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tabClose {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px 6px 4px 0;
+  display: flex;
+  align-items: center;
+}
+
+.tabClose:hover {
+  color: var(--text-primary);
+}
+
+.content {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.welcome,
+.status,
+.error {
+  padding: 24px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.error {
+  color: #cf222e;
+}
+
+.diffWrap {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.diffHeader {
+  padding: 10px 16px;
+  font-size: 12px;
+  font-family: var(--font-family-mono, ui-monospace, monospace);
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.diffBody {
+  flex: 1;
+  overflow: auto;
+}
+
+.textPreview {
+  height: 100%;
+  overflow: auto;
+  padding: 16px;
+}
+
+.previewHint {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.textPreview pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 13px;
+  line-height: 1.5;
+}
