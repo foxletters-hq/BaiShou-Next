@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react'
-import { View, Text, Pressable, StyleSheet, useWindowDimensions } from 'react-native'
+import { View, Text, Pressable, StyleSheet, useWindowDimensions, Platform } from 'react-native'
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
+import { useIsFocused } from '@react-navigation/native'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useNativeTheme } from '@baishou/ui/native'
@@ -18,6 +19,7 @@ export const SummaryTabBar: React.FC<SummaryTabBarProps> = ({ activeTab, onTabCh
   const { colors } = useNativeTheme()
   const { width: screenWidth } = useWindowDimensions()
   const slideAnim = useSharedValue(0)
+  const isFocused = useIsFocused()
 
   const tabsContainerWidth = screenWidth - 24
   const tabWidth = (tabsContainerWidth - TAB_PADDING * 2 - TAB_GAP) / 2
@@ -47,15 +49,23 @@ export const SummaryTabBar: React.FC<SummaryTabBarProps> = ({ activeTab, onTabCh
         <Animated.View
           style={[
             styles.indicator,
-            { width: tabWidth, backgroundColor: colors.bgSurface },
-            indicatorStyle,
             {
-              shadowColor: '#000',
-              shadowOpacity: 0.06,
-              shadowRadius: 4,
-              shadowOffset: { width: 0, height: 1 },
-              elevation: 2
-            }
+              width: tabWidth,
+              backgroundColor: colors.bgSurface,
+              borderColor: colors.borderMuted,
+              ...(isFocused
+                ? Platform.select({
+                    ios: {
+                      shadowColor: '#000',
+                      shadowOpacity: 0.06,
+                      shadowRadius: 4,
+                      shadowOffset: { width: 0, height: 1 }
+                    },
+                    default: {}
+                  })
+                : { shadowOpacity: 0, elevation: 0 })
+            },
+            indicatorStyle
           ]}
         />
         <Pressable style={styles.tab} onPress={() => onTabChange('panel')}>
@@ -105,14 +115,16 @@ const styles = StyleSheet.create({
     padding: TAB_PADDING,
     borderRadius: 12,
     alignSelf: 'stretch',
-    width: '100%'
+    width: '100%',
+    overflow: 'hidden'
   },
   indicator: {
     position: 'absolute',
     top: TAB_PADDING,
     bottom: TAB_PADDING,
     left: TAB_PADDING,
-    borderRadius: 8
+    borderRadius: 8,
+    borderWidth: StyleSheet.hairlineWidth
   },
   tab: {
     flex: 1,
