@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import type { EventArg } from '@react-navigation/native'
 import { useNativeToast } from '@baishou/ui/native'
 
-const EXIT_CONFIRM_MS = 2000
+const EXIT_CONFIRM_MS = 2500
 
 type BeforeRemoveEvent = EventArg<'beforeRemove', true, { action: Readonly<{ type: string }> }>
 
@@ -17,6 +17,10 @@ export function useDiaryRootExitGuard() {
   const pendingExitRef = useRef(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dedupeBackRef = useRef(false)
+  // toast 展示会改变 isToastVisible，进而让 useNativeToast() 返回新引用；
+  // 若放进 useFocusEffect 依赖，会在 toast 弹出时误触发 cleanup 并重置 pendingExit。
+  const toastRef = useRef(toast)
+  toastRef.current = toast
 
   useFocusEffect(
     useCallback(() => {
@@ -29,20 +33,23 @@ export function useDiaryRootExitGuard() {
       }
 
       const handleExitAttempt = (): boolean => {
-        if (dedupeBackRef.current) return true
-        dedupeBackRef.current = true
-        queueMicrotask(() => {
-          dedupeBackRef.current = false
-        })
-
         if (pendingExitRef.current) {
           clearPendingExit()
           BackHandler.exitApp()
           return true
         }
 
+        if (dedupeBackRef.current) return true
+        dedupeBackRef.current = true
+        queueMicrotask(() => {
+          dedupeBackRef.current = false
+        })
+
         pendingExitRef.current = true
-        toast.showInfo(t('nav.swipe_again_to_exit', '再次滑动退出'))
+        toastRef.current.showInfo(t('nav.swipe_again_to_exit', '再次滑动退出'), {
+          duration: EXIT_CONFIRM_MS,
+          onDismiss: clearPendingExit
+        })
         timerRef.current = setTimeout(clearPendingExit, EXIT_CONFIRM_MS)
         return true
       }
@@ -55,15 +62,12 @@ export function useDiaryRootExitGuard() {
       }
 
       const removeBeforeRemove = navigation.addListener('beforeRemove', onBeforeRemove)
-      const stackNav = navigation.getParent()?.getParent()
-      const removeStackBeforeRemove = stackNav?.addListener('beforeRemove', onBeforeRemove)
 
       return () => {
         backSub.remove()
         removeBeforeRemove()
-        removeStackBeforeRemove?.()
         clearPendingExit()
       }
-    }, [navigation, t, toast])
+    }, [navigation, t])
   )
 }
