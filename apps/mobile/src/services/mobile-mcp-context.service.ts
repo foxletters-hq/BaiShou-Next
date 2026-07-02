@@ -2,6 +2,7 @@ import type { AppDatabase } from '@baishou/database'
 import type { ToolContext, ToolDiarySearcher } from '@baishou/ai'
 import {
   AIProviderRegistry,
+  createDiaryReadGuard,
   DatabaseAdapter,
   EmbeddingAdapter,
   MemoryDeduplicationServiceImpl
@@ -46,7 +47,8 @@ export async function buildMobileMcpToolListContext(
   return {
     sessionId: 'mcp-external',
     vaultName,
-    userConfig
+    userConfig,
+    diaryReadGuard: createDiaryReadGuard()
   }
 }
 
@@ -74,7 +76,8 @@ export async function buildMobileMcpToolContext(
       userConfig,
       diarySearcher: deps.getDiarySearcher(),
       webSearchResultFetcher: deps.webSearchResultFetcher,
-      fetchSearchPage: deps.fetchSearchPage
+      fetchSearchPage: deps.fetchSearchPage,
+      diaryReadGuard: createDiaryReadGuard()
     }
   }
 
@@ -121,7 +124,8 @@ export async function buildMobileMcpToolContext(
       summaryReader: dbAdapter,
       deduplicationService: dedupService,
       webSearchResultFetcher: deps.webSearchResultFetcher,
-      fetchSearchPage: deps.fetchSearchPage
+      fetchSearchPage: deps.fetchSearchPage,
+      diaryReadGuard: createDiaryReadGuard()
     }
 
     mobileMcpToolContextCache = {
@@ -142,7 +146,8 @@ export async function buildMobileMcpToolContext(
       userConfig,
       diarySearcher: deps.getDiarySearcher(),
       webSearchResultFetcher: deps.webSearchResultFetcher,
-      fetchSearchPage: deps.fetchSearchPage
+      fetchSearchPage: deps.fetchSearchPage,
+      diaryReadGuard: createDiaryReadGuard()
     }
   }
 }
