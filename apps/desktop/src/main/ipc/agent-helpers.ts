@@ -57,6 +57,7 @@ import {
   DatabaseAdapter,
   EmbeddingAdapter,
   MemoryDeduplicationServiceImpl,
+  createDiaryReadGuard,
   type ToolContext
 } from '@baishou/ai'
 import { getDiaryManager } from './diary.ipc'
@@ -351,7 +352,9 @@ export async function buildAgentUserConfigFromSettings(options?: {
   const toolManagementConfig = normalizeToolManagementConfig(
     (await settingsManager.get<any>('tool_management_config')) ?? DEFAULT_TOOL_MANAGEMENT_CONFIG
   )
-  const behaviorConfig = await settingsManager.get<any>('agent_behavior_config')
+  const behaviorConfig =
+    (await settingsManager.get<any>('agent_behavior')) ??
+    (await settingsManager.get<any>('agent_behavior_config'))
   const webSearchConfig = await settingsManager.get<any>('web_search_config')
   const diaryTemplateConfig = (await settingsManager.get<any>('diary_template_config')) || {}
 
@@ -382,7 +385,12 @@ export async function buildAgentUserConfigFromSettings(options?: {
     web_search_enabled: options?.searchMode ?? false,
     ...webSearchConfigToUserConfig(webSearchConfig),
     userCard,
-    diaryAiWritingPrompt: buildDiaryWritingGuidelinesForSystemPrompt(diaryTemplateConfig)
+    diaryAiWritingPrompt: buildDiaryWritingGuidelinesForSystemPrompt(diaryTemplateConfig),
+    agentGuidelines:
+      typeof behaviorConfig?.agentGuidelines === 'string' &&
+      behaviorConfig.agentGuidelines.trim().length > 0
+        ? behaviorConfig.agentGuidelines.trim()
+        : undefined
   }
 }
 
@@ -519,7 +527,8 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
     summaryReader: dbAdapter,
     deduplicationService: dedupService,
     webSearchResultFetcher: createWebSearchResultFetcher(),
-    fetchSearchPage: createFetchSearchPage()
+    fetchSearchPage: createFetchSearchPage(),
+    diaryReadGuard: createDiaryReadGuard()
   }
 
   mcpToolContextCache = {

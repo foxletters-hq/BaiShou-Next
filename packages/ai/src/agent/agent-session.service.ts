@@ -16,7 +16,8 @@ import {
   logger,
   mergeDisabledToolIds,
   normalizeAssistantKind,
-  isAutoInjectCurrentTimeEnabled
+  isAutoInjectCurrentTimeEnabled,
+  type AssistantKind
 } from '@baishou/shared'
 import { resolveEffectiveProviderType } from '../providers/opencodego/opencodego.model-protocol'
 
@@ -46,6 +47,7 @@ import { persistResult } from './agent-session-persist'
 import { messageHasImageAttachments } from './attachment-content.builder'
 import { isAgentStreamSessionClaimActive } from './stream-session-guard'
 import { buildToolCallRepairHandler } from './tool-call-repair.util'
+import { createDiaryReadGuard } from '../tools/diary-read-guard.util'
 
 export type { StreamChatOptions, StreamChatCallbacks } from './agent-session.types'
 
@@ -95,13 +97,14 @@ export class AgentSessionService {
 
       let mergedUserConfig = userConfig || {}
       let effectiveSystemPrompt = systemPrompt
+      let assistantKind: AssistantKind = 'companion'
       if (sessionObj?.assistantId) {
         const astRepo = new AssistantRepository(
           (sessionRepo as any).db || (sessionRepo as any).database
         )
         const ast = await astRepo.findById(sessionObj.assistantId)
         if (ast) {
-          const assistantKind = normalizeAssistantKind(ast.assistantKind)
+          assistantKind = normalizeAssistantKind(ast.assistantKind)
           mergedUserConfig = {
             ...mergedUserConfig,
             disabledToolIds: mergeDisabledToolIds(
@@ -284,20 +287,26 @@ export class AgentSessionService {
         diarySearcher: options.diarySearcher,
         webSearchResultFetcher: webSearchResultFetcher,
         fetchSearchPage: options.fetchSearchPage,
-        contextCompressionRunner
+        contextCompressionRunner,
+        diaryReadGuard: createDiaryReadGuard()
       })
 
       const builtSystemPrompt = SystemPromptBuilder.build({
         vaultName: sessionObj?.vaultName || 'default',
         tools: enabledTools as any,
         customPersona: effectiveSystemPrompt,
+        assistantKind,
         userProfileBlock:
           typeof userConfig?.['userCard'] === 'string' ? userConfig['userCard'] : undefined,
         diaryAiWritingPrompt:
           typeof userConfig?.['diaryAiWritingPrompt'] === 'string'
             ? userConfig['diaryAiWritingPrompt']
             : undefined,
-        injectCurrentTime: injectMessageTime
+        injectCurrentTime: injectMessageTime,
+        customGuidelines:
+          typeof userConfig?.['agentGuidelines'] === 'string'
+            ? userConfig['agentGuidelines'].trim() || undefined
+            : undefined
       })
 
       // 4. 调用 Vercel streamText

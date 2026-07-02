@@ -234,7 +234,7 @@ export const DEFAULT_AGENT_BEHAVIOR: AgentBehaviorConfig = {
   companionCompressTokens: 8000,
   companionTruncateTokens: 4000,
   agentPersona: '你是 AI 伙伴，帮助用户回顾日记和生活记录。',
-  agentGuidelines: '请使用工具查阅日记内容，不要编造。引用时注明日期。',
+  agentGuidelines: '可在设置中补充其他行为准则；日记查阅与编辑规范已由系统内置。',
   pinnedAssistantIds: []
 }
 
