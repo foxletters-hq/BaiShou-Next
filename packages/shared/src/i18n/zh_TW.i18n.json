@@ -432,6 +432,9 @@
     "development_philosophy": "開發理念",
     "privacy_policy": "隱私權說明",
     "feedback": "回饋問題",
+    "feedback_github": "GitHub Issues",
+    "feedback_feishu": "飛書表格（免登入）",
+    "feedback_choose_hint": "請選擇你希望使用的回饋方式",
     "developer_options": "開發者選項",
     "debug_page": "除錯頁面",
     "reset_hint": "長按版本號開啟開發者模式",
@@ -1546,7 +1549,7 @@
         "summarize_content": "請總結以下內容背後的核心要義：\n\n"
       },
       "web_search_desc": "在網際網路上搜尋最新資訊、新聞和即時數據。當使用者詢問近期事件、當前事實或任何超出您訓練數據且需要最新資訊的內容時，可選用此工具。\n\n重要提示：此工具僅搜尋公開網際網路，請勿用於搜尋使用者的個人日記，搜尋個人日記請使用 diary_search。\n\n可提供 2-3 個不同角度或關鍵字的搜尋查詢以獲得更全面的結果。例如，如果使用者詢問「iPhone 16 對比三星 S25」，您可以搜尋 [\"iPhone 16 specs review\", \"Samsung S25 specs review\", \"iPhone 16 vs Samsung S25 comparison\"]。\n\n結果中會包含可點擊的 [標題](url) 引用，您可以使用 url_read 工具來詳細閱讀特定的頁面。",
-      "vector_search_desc": "在對話歷史和存儲的記憶中進行語意搜尋。當需要回憶當前上下文中未涵蓋的過往內容時，可選用此工具。返回語意相關的對話片段與評分。若滾動摘要或近期訊息已足夠回答，請直接基於上下文作答。",
+      "vector_search_desc": "在對話歷史和存儲的記憶中進行語意搜尋。當需要回憶當前上下文中未涵蓋的過往內容時，可選用此工具。可按需透過 start_date / end_date（YYYY-MM-DD）限定搜尋時間範圍。返回語意相關的對話片段與評分。若滾動摘要或近期訊息已足夠回答，請直接基於上下文作答。",
       "url_read_desc": "直接讀取特定網頁 URL 的文字內容。當您有想要分析或總結的特定連結時使用此工具，而不是搜尋整個網路。",
       "summary_read_desc": "讀取 AI 生成的總結（週報、月報、季報或年鑑）。返回特定時間段的總結內容。如果需要原始日記條目，請改用 diary_list 或 diary_search。",
       "message_search_desc": "透過關鍵字在所有會話中搜尋過去的對話訊息。返回匹配的訊息片段，包括會話標題和日期。當使用者引用以前討論過的內容，或者您需要召回以前的對話時非常有用。",
@@ -1932,6 +1935,7 @@
       "tab_memory": "向量知識",
       "search_hint": "檢索關鍵字",
       "no_results": "未在庫中匹配到任何歷史記憶碎片。",
+      "search_timeout": "語義搜尋逾時，請稍後重試",
       "selected": "已選擇",
       "inject": "提取至當前上下文對話"
     },
@@ -2229,7 +2233,10 @@
     "diary": "日記",
     "agent": "夥伴",
     "summary": "概覽",
-    "swipe_again_to_exit": "再次滑動退出"
+    "swipe_again_to_exit": "再次滑動退出",
+    "exit_app_confirm_title": "退出應用",
+    "exit_app_confirm_message": "確定要退出百守嗎？",
+    "exit_app": "退出"
   },
   "titlebar": {
     "minimize": "最小化",

@@ -437,6 +437,9 @@
     "development_philosophy": "Philosophy",
     "privacy_policy": "Privacy Policy",
     "feedback": "Feedback",
+    "feedback_github": "GitHub Issues",
+    "feedback_feishu": "Feishu Form (no login)",
+    "feedback_choose_hint": "Choose how you would like to send feedback",
     "developer_options": "Developer Options",
     "debug_page": "Debug Page",
     "reset_hint": "Long press version to enable developer mode",
@@ -1601,7 +1604,7 @@
         "summarize_content": "Please summarize the core meaning behind the following content:\n\n"
       },
       "web_search_desc": "Search the internet for current information, news, and real-time data. You may use this when the user asks about recent events, current facts, or anything that requires up-to-date information beyond your training data.\n\nIMPORTANT: This tool searches the PUBLIC INTERNET only. Do NOT use this to search the user's personal diary entries — use diary_search for that.\n\nYou may provide 2-3 search queries with different angles/keywords to get comprehensive results. For example, if the user asks about \"iPhone 16 vs Samsung S25\", you could search [\"iPhone 16 specs review\", \"Samsung S25 specs review\", \"iPhone 16 vs Samsung S25 comparison\"].\n\nResults include clickable [title](url) citations — use the url_read tool to read specific pages in detail.",
-      "vector_search_desc": "Semantic search over conversation history and stored memories. You may use this when recalling past content not already covered in the current context (including any rolling compression summary). Returns semantically relevant snippets with scores.",
+      "vector_search_desc": "Semantic search over conversation history and stored memories. You may use this when recalling past content not already covered in the current context (including any rolling compression summary). Optionally narrow results with start_date / end_date (YYYY-MM-DD). Returns semantically relevant snippets with scores.",
       "url_read_desc": "Read the text content of a specific webpage URL directly. Use this when you have a specific link you want to analyze or summarize, instead of searching the whole web.",
       "summary_read_desc": "Read AI-generated summaries (weekly, monthly, quarterly, or yearly). Returns the summary content for a specific time period. Use diary_list or diary_search for raw diary entries instead.",
       "message_search_desc": "Search past conversation messages across all sessions by keyword. Returns matching message snippets with session title and date. Useful when the user references something discussed before, or when you need to recall previous conversations.",
@@ -1996,6 +1999,7 @@
       "tab_memory": "Vector Knowledge",
       "search_hint": "Search keywords",
       "no_results": "No history match found in the vault.",
+      "search_timeout": "Semantic search timed out. Please try again later.",
       "selected": "Selected",
       "inject": "Extract to Dialogue Context"
     },
@@ -2219,7 +2223,10 @@
     "agent": "Partner",
     "summary": "Archive",
     "settings": "Settings",
-    "swipe_again_to_exit": "Swipe again to exit"
+    "swipe_again_to_exit": "Swipe again to exit",
+    "exit_app_confirm_title": "Exit app",
+    "exit_app_confirm_message": "Are you sure you want to exit BaiShou?",
+    "exit_app": "Exit"
   },
   "image_preview": {
     "zoom_in": "Zoom in",
