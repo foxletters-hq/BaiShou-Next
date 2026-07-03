@@ -33,9 +33,7 @@ export const RagMemoryDiaryEmbedHint: React.FC<RagMemoryDiaryEmbedHintProps> = (
       </button>
       {expanded ? (
         <div className={styles.embedHintBody}>
-          {failedMessage ? (
-            <p className={styles.embedHintError}>{failedMessage}</p>
-          ) : null}
+          {failedMessage ? <p className={styles.embedHintError}>{failedMessage}</p> : null}
           <p className={styles.embedHintDesc}>
             {t(
               'settings.rag_diary_embed_pending_detail',

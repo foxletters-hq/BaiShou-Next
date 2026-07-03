@@ -48,17 +48,8 @@ export const PageSizeSelector: React.FC<PageSizeSelectorProps> = ({
     const dropdownWidth = dropdown.offsetWidth || MIN_DROPDOWN_WIDTH
     const dropdownHeight = dropdown.offsetHeight || estimateDropdownHeight(options.length)
 
-    const nextPlacement = resolveDropdownPlacement(
-      triggerRect,
-      dropdownHeight,
-      window.innerHeight
-    )
-    const top = resolveDropdownTop(
-      triggerRect,
-      dropdownHeight,
-      nextPlacement,
-      window.innerHeight
-    )
+    const nextPlacement = resolveDropdownPlacement(triggerRect, dropdownHeight, window.innerHeight)
+    const top = resolveDropdownTop(triggerRect, dropdownHeight, nextPlacement, window.innerHeight)
     const left = resolveDropdownLeft(triggerRect, dropdownWidth, window.innerWidth)
 
     setPlacement(nextPlacement)

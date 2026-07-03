@@ -71,9 +71,7 @@ export function useCodeMirrorEditorView(
                   ? rawTarget.parentElement
                   : null
             if (
-              target?.closest(
-                '.cm-image-container, .cm-table-block, .cm-table-context-menu-layer'
-              )
+              target?.closest('.cm-image-container, .cm-table-block, .cm-table-context-menu-layer')
             ) {
               return false
             }

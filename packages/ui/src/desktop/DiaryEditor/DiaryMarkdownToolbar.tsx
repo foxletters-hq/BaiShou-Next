@@ -86,11 +86,7 @@ export function DiaryMarkdownToolbar({
         </button>
       ) : null}
 
-      <div
-        ref={viewportRef}
-        className={styles.viewport}
-        onScroll={updateScrollAffordance}
-      >
+      <div ref={viewportRef} className={styles.viewport} onScroll={updateScrollAffordance}>
         <div className={styles.scroll}>
           <button
             type="button"
@@ -99,7 +95,13 @@ export function DiaryMarkdownToolbar({
             title={t('diary.toolbar_undo', '撤销')}
             aria-label={t('diary.toolbar_undo', '撤销')}
           >
-            <svg className={styles.icon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              className={styles.icon}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <path d="M9 14 4 9l5-5" />
               <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
             </svg>
@@ -112,7 +114,13 @@ export function DiaryMarkdownToolbar({
             title={t('diary.toolbar_redo', '重做')}
             aria-label={t('diary.toolbar_redo', '重做')}
           >
-            <svg className={styles.icon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              className={styles.icon}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <path d="m15 14 5-5-5-5" />
               <path d="M4 20v-7a4 4 0 0 1 4-4h12" />
             </svg>
@@ -157,7 +165,13 @@ export function DiaryMarkdownToolbar({
             title={t('diary.toolbar_code', '行内代码')}
             aria-label={t('diary.toolbar_code', '行内代码')}
           >
-            <svg className={styles.icon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              className={styles.icon}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <polyline points="16 18 22 12 16 6" />
               <polyline points="8 6 2 12 8 18" />
             </svg>
@@ -184,7 +198,13 @@ export function DiaryMarkdownToolbar({
             title={t('diary.toolbar_list', '无序列表')}
             aria-label={t('diary.toolbar_list', '无序列表')}
           >
-            <svg className={styles.icon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              className={styles.icon}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <line x1="9" y1="6" x2="20" y2="6" />
               <line x1="9" y1="12" x2="20" y2="12" />
               <line x1="9" y1="18" x2="20" y2="18" />
@@ -234,7 +254,13 @@ export function DiaryMarkdownToolbar({
             title={t('diary.toolbar_insert_image', '插入图片')}
             aria-label={t('diary.toolbar_insert_image', '插入图片')}
           >
-            <svg className={styles.icon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              className={styles.icon}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <rect x="3" y="3" width="18" height="18" rx="2" />
               <circle cx="8.5" cy="8.5" r="1.5" />
               <path d="m21 15-5-5L5 21" />
