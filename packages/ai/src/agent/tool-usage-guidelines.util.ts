@@ -29,9 +29,7 @@ export function buildToolUsageGuidelines(availableToolIds: readonly string[]): s
     lines.push(`- **必须**先调用 ${lookupSteps.join(' 和/或 ')} 查阅，再回答。`)
 
     if (hasDiaryRead) {
-      lines.push(
-        '- 若搜索已定位到具体日记日期，须用 diary_read 读取完整正文后再引用或编辑。'
-      )
+      lines.push('- 若搜索已定位到具体日记日期，须用 diary_read 读取完整正文后再引用或编辑。')
     } else if (hasDiaryList) {
       lines.push('- 不知道日期时，可先用 diary_list 缩小范围。')
     }

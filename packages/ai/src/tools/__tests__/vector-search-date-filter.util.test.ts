@@ -29,6 +29,8 @@ describe('formatVectorSearchDateRangeLabel', () => {
   it('formats open-ended ranges', () => {
     expect(formatVectorSearchDateRangeLabel('2024-01-01', undefined)).toBe('2024-01-01 起')
     expect(formatVectorSearchDateRangeLabel(undefined, '2024-12-31')).toBe('至 2024-12-31')
-    expect(formatVectorSearchDateRangeLabel('2024-01-01', '2024-06-30')).toBe('2024-01-01 ~ 2024-06-30')
+    expect(formatVectorSearchDateRangeLabel('2024-01-01', '2024-06-30')).toBe(
+      '2024-01-01 ~ 2024-06-30'
+    )
   })
 })

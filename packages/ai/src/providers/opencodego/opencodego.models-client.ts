@@ -39,7 +39,5 @@ export async function fetchOpenCodeGoModelIds(
     throw new Error('Invalid OpenCode Go models response: expected data array')
   }
 
-  return payload.data
-    .map((entry) => entry.id?.trim())
-    .filter((id): id is string => Boolean(id))
+  return payload.data.map((entry) => entry.id?.trim()).filter((id): id is string => Boolean(id))
 }

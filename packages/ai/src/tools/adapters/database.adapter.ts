@@ -46,11 +46,7 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
     // 日记文件的向量索引由 ShadowIndexSyncService 的文件监听自动处理，此处为 no-op
   }
 
-  async searchFts(
-    query: string,
-    limit: number,
-    timeFilter?: { startMs?: number; endMs?: number }
-  ) {
+  async searchFts(query: string, limit: number, timeFilter?: { startMs?: number; endMs?: number }) {
     const rows = await this.hybridRepo.queryFTS(query, limit, {
       startMs: timeFilter?.startMs,
       endMs: timeFilter?.endMs
