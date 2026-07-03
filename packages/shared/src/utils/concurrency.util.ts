@@ -39,10 +39,7 @@ export async function withPromiseTimeout<T>(
     return await Promise.race([
       promise,
       new Promise<T>((_, reject) => {
-        timer = setTimeout(
-          () => reject(new Error(`${label} timed out after ${ms}ms`)),
-          ms
-        )
+        timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
       })
     ])
   } finally {

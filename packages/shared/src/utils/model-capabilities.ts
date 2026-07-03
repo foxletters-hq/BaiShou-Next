@@ -1,7 +1,4 @@
-import {
-  isProviderListedVisionModel,
-  normalizeModelBaseId
-} from './provider-vision-models'
+import { isProviderListedVisionModel, normalizeModelBaseId } from './provider-vision-models'
 import { isVisionModelInSnapshot } from './vision-models.snapshot'
 
 function getLowerBaseModelName(id: string): string {
