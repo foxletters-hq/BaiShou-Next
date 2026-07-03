@@ -74,6 +74,8 @@ export const DiaryEditorScreen: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
   const isDirtyRef = useRef(false)
+  const metadataDirtyRef = useRef(false)
+  const savedEditorSnapshotRef = useRef<{ body: string; tags: string }>({ body: '', tags: '' })
   const originalTagsRef = useRef<string[]>([])
   const [pickingImages, setPickingImages] = useState(false)
   const editorWebViewSource = useDiaryEditorWebViewSource()
@@ -124,8 +126,16 @@ export const DiaryEditorScreen: React.FC = () => {
     if (isAppendMode) {
       const safeExisting = isLikelyEditorBundleLeak(diary.content || '') ? '' : diary.content || ''
       const timeMark = resolveDiaryAppendBlock(templateConfig, now)
-      setContent(joinDiaryContentWithAppendBlock(safeExisting, timeMark))
+      const composed = joinDiaryContentWithAppendBlock(safeExisting, timeMark)
+      setContent(composed)
       setOriginalContent(safeExisting.trimEnd())
+      savedEditorSnapshotRef.current = {
+        body: parseDiaryEditorContent(composed).body,
+        tags: ''
+      }
+      metadataDirtyRef.current = false
+      setIsDirty(false)
+      isDirtyRef.current = false
       setTags([])
       previousTagsRef.current = []
       setTagColorRegistry({})
@@ -136,8 +146,16 @@ export const DiaryEditorScreen: React.FC = () => {
           t('diary.content_corrupted_hint', '日记正文异常，已阻止加载损坏内容，请从备份恢复')
         )
       }
-      setContent(composeDiaryEditorContent(safeContent, parsedTags))
+      const composed = composeDiaryEditorContent(safeContent, parsedTags)
+      setContent(composed)
       setOriginalContent(safeContent)
+      savedEditorSnapshotRef.current = {
+        body: parseDiaryEditorContent(composed).body,
+        tags: parsedTags.join(',')
+      }
+      metadataDirtyRef.current = false
+      setIsDirty(false)
+      isDirtyRef.current = false
       setTags(parsedTags)
     }
   }
@@ -166,13 +184,29 @@ export const DiaryEditorScreen: React.FC = () => {
           } else {
             originalTagsRef.current = []
             setTagColorRegistry({})
-            setContent(resolveDiaryNewEntryContent(templateConfig, now))
+            const newContent = resolveDiaryNewEntryContent(templateConfig, now)
+            setContent(newContent)
+            savedEditorSnapshotRef.current = {
+              body: parseDiaryEditorContent(newContent).body,
+              tags: ''
+            }
+            metadataDirtyRef.current = false
+            setIsDirty(false)
+            isDirtyRef.current = false
             setSelectedDate(new Date(date))
           }
         } else {
           originalTagsRef.current = []
           setTagColorRegistry({})
-          setContent(resolveDiaryNewEntryContent(templateConfig, now))
+          const newContent = resolveDiaryNewEntryContent(templateConfig, now)
+          setContent(newContent)
+          savedEditorSnapshotRef.current = {
+            body: parseDiaryEditorContent(newContent).body,
+            tags: ''
+          }
+          metadataDirtyRef.current = false
+          setIsDirty(false)
+          isDirtyRef.current = false
         }
       } catch (e) {
         console.error('Failed to load diary:', e)
@@ -213,6 +247,11 @@ export const DiaryEditorScreen: React.FC = () => {
       }
 
       await services.diaryService.save(existingId, input)
+      savedEditorSnapshotRef.current = {
+        body: parseDiaryEditorContent(content).body,
+        tags: parsedTags.join(',')
+      }
+      metadataDirtyRef.current = false
       setIsDirty(false)
       isDirtyRef.current = false
       router.back()
@@ -240,7 +279,7 @@ export const DiaryEditorScreen: React.FC = () => {
   }
 
   const handleContentChange = (text: string) => {
-    const { tags: parsedTags } = parseDiaryEditorContent(text)
+    const { tags: parsedTags, body } = parseDiaryEditorContent(text)
     setTagColorRegistry((prev) => {
       const next = syncDiaryTagColorRegistry(parsedTags, previousTagsRef.current, prev)
       previousTagsRef.current = parsedTags
@@ -248,30 +287,38 @@ export const DiaryEditorScreen: React.FC = () => {
     })
     setContent(text)
     setTags(parsedTags)
-    setIsDirty(true)
-    isDirtyRef.current = true
+    const saved = savedEditorSnapshotRef.current
+    const contentUnchanged =
+      saved.body === body && saved.tags === parsedTags.join(',')
+    const dirty = !contentUnchanged || metadataDirtyRef.current
+    setIsDirty(dirty)
+    isDirtyRef.current = dirty
   }
 
   const handleTagsChange = (newTags: string[]) => {
     setTags(newTags)
+    metadataDirtyRef.current = true
     setIsDirty(true)
     isDirtyRef.current = true
   }
 
   const handleMoodChange = (newMood: string) => {
     setMood(newMood || null)
+    metadataDirtyRef.current = true
     setIsDirty(true)
     isDirtyRef.current = true
   }
 
   const handleWeatherChange = (newWeather: string | null) => {
     setWeather(newWeather)
+    metadataDirtyRef.current = true
     setIsDirty(true)
     isDirtyRef.current = true
   }
 
   const handleFavoriteChange = (newIsFavorite: boolean) => {
     setIsFavorite(newIsFavorite)
+    metadataDirtyRef.current = true
     setIsDirty(true)
     isDirtyRef.current = true
   }
