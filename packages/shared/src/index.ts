@@ -64,6 +64,7 @@ export {
   INCREMENTAL_SYNC_BAISHOU_SETTINGS_PREFIX,
   isSqliteRuntimeSyncPath,
   isIncrementalSyncChatBackgroundPath,
+  isIncrementalSyncConflictBackupPath,
   shouldIncludeIncrementalSyncFile,
   shouldScanIncrementalSyncDirectory
 } from './utils/incremental-sync-scan.util'

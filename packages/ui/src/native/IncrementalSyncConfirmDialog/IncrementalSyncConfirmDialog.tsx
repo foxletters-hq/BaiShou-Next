@@ -151,9 +151,12 @@ type PlanScrollContentProps = {
   preview: IncrementalSyncPlanPreview
 }
 
+const PREVIEW_FILE_LIMIT = 6
+
 const PlanScrollContent = memo(function PlanScrollContent({ preview }: PlanScrollContentProps) {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const [expandedVaults, setExpandedVaults] = useState<Set<string>>(() => new Set())
 
   const registeredSet = useMemo(
     () => new Set(preview.registeredVaults ?? []),
@@ -255,8 +258,9 @@ const PlanScrollContent = memo(function PlanScrollContent({ preview }: PlanScrol
       ) : (
         preview.vaultSummaries.map((summary) => {
           const vaultItems = itemsByVault.get(summary.vaultName) ?? []
-          const displayItems = vaultItems.slice(0, 6)
-          const hiddenCount = vaultItems.length - displayItems.length
+          const isExpanded = expandedVaults.has(summary.vaultName)
+          const displayItems = isExpanded ? vaultItems : vaultItems.slice(0, PREVIEW_FILE_LIMIT)
+          const hiddenCount = isExpanded ? 0 : vaultItems.length - displayItems.length
           const isActive = summary.vaultName === preview.activeVaultName
           const isRegistered =
             summary.vaultName === '__root__' ||
@@ -313,9 +317,32 @@ const PlanScrollContent = memo(function PlanScrollContent({ preview }: PlanScrol
                 </View>
               ))}
               {hiddenCount > 0 && (
-                <Text style={[styles.moreHint, { color: colors.textTertiary }]}>
-                  {t('data_sync.plan_more_files', { count: hiddenCount })}
-                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() =>
+                    setExpandedVaults((prev) => new Set(prev).add(summary.vaultName))
+                  }
+                >
+                  <Text style={[styles.moreHint, { color: colors.primary }]}>
+                    {t('data_sync.plan_more_files', { count: hiddenCount })}
+                  </Text>
+                </Pressable>
+              )}
+              {isExpanded && vaultItems.length > PREVIEW_FILE_LIMIT && (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() =>
+                    setExpandedVaults((prev) => {
+                      const next = new Set(prev)
+                      next.delete(summary.vaultName)
+                      return next
+                    })
+                  }
+                >
+                  <Text style={[styles.moreHint, { color: colors.primary }]}>
+                    {t('data_sync.plan_show_less', '收起文件列表')}
+                  </Text>
+                </Pressable>
               )}
             </View>
           )

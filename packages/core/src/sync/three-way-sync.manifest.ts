@@ -19,7 +19,7 @@ import {
   reconcileSyncManifestRemovedWithRemoteFiles,
   isIncrementalSyncRemoteFileNotFoundError
 } from '@baishou/shared'
-import { isSqliteRuntimeSyncPath } from '@baishou/shared'
+import { isIncrementalSyncConflictBackupPath, isSqliteRuntimeSyncPath } from '@baishou/shared'
 import { ThreeWaySyncCore } from './three-way-sync.core'
 
 export type ManifestFileProgressCallback = (
@@ -368,18 +368,21 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
   protected async deleteLocalFile(relPath: string): Promise<void> {
     const fullPath = await this.resolveSyncFullPath(relPath)
     if (fs.existsSync(fullPath)) {
-      if (this.versionManager) {
-        try {
-          await this.versionManager.backup(fullPath)
-        } catch {}
-      } else {
-        try {
-          const ext = path.extname(fullPath)
-          const base = fullPath.slice(0, -ext.length || undefined)
-          const ts = Date.now()
-          const backupPath = `${base}.conflict-${ts}${ext}`
-          await fs.promises.copyFile(fullPath, backupPath)
-        } catch {}
+      const isConflictBackup = isIncrementalSyncConflictBackupPath(relPath)
+      if (!isConflictBackup) {
+        if (this.versionManager) {
+          try {
+            await this.versionManager.backup(fullPath)
+          } catch {}
+        } else {
+          try {
+            const ext = path.extname(fullPath)
+            const base = fullPath.slice(0, -ext.length || undefined)
+            const ts = Date.now()
+            const backupPath = `${base}.conflict-${ts}${ext}`
+            await fs.promises.copyFile(fullPath, backupPath)
+          } catch {}
+        }
       }
       fs.unlinkSync(fullPath)
     }

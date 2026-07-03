@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   isIncrementalSyncChatBackgroundPath,
   isSqliteRuntimeSyncPath,
+  isIncrementalSyncConflictBackupPath,
   shouldIncludeIncrementalSyncFile,
   shouldScanIncrementalSyncDirectory
 } from '../incremental-sync-scan.util'
@@ -64,6 +65,31 @@ describe('incremental-sync-scan.util', () => {
         'Personal/.baishou/external_paths.json'
       )
     ).toBe(false)
+  })
+
+  it('excludes incremental sync conflict backup files from scan', () => {
+    expect(
+      isIncrementalSyncConflictBackupPath(
+        'Personal/.baishou/settings/prompt_shortcuts.conflict-1782832223297.json'
+      )
+    ).toBe(true)
+    expect(
+      isIncrementalSyncConflictBackupPath(
+        'prompt_shortcuts.conflict-1782832223297.conflict-1782853188027.json'
+      )
+    ).toBe(true)
+    expect(
+      shouldIncludeIncrementalSyncFile(
+        'prompt_shortcuts.conflict-1782832223297.json',
+        'Personal/.baishou/settings/prompt_shortcuts.conflict-1782832223297.json'
+      )
+    ).toBe(false)
+    expect(
+      shouldIncludeIncrementalSyncFile(
+        'user_profile.json',
+        'Personal/.baishou/settings/user_profile.json'
+      )
+    ).toBe(true)
   })
 
   it('excludes root .baishou sync metadata and other dot directories', () => {

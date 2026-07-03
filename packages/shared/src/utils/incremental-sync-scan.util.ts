@@ -17,6 +17,12 @@ function basenameFromRel(relativePath: string): string {
   return rel.split('/').pop() ?? rel
 }
 
+/** 增量同步冲突备份（*.conflict-<timestamp>.*），仅作本地删除前快照，不参与扫描与上传 */
+export function isIncrementalSyncConflictBackupPath(relativePath: string): boolean {
+  const base = basenameFromRel(relativePath)
+  return /\.conflict-\d+/.test(base)
+}
+
 /** SQLite 运行时附属文件与主库文件，禁止参与增量同步（会被进程锁定，且不应跨设备复制） */
 export function isSqliteRuntimeSyncPath(relativePath: string): boolean {
   const base = basenameFromRel(relativePath).toLowerCase()
@@ -98,6 +104,9 @@ export function shouldIncludeIncrementalSyncFile(entryName: string, relativePath
     return false
   }
   if (isSqliteRuntimeSyncPath(rel) || isSqliteRuntimeSyncPath(entryName)) {
+    return false
+  }
+  if (isIncrementalSyncConflictBackupPath(rel) || isIncrementalSyncConflictBackupPath(entryName)) {
     return false
   }
   if (isBaishouSettingsTree(rel)) {

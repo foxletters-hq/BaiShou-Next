@@ -13,6 +13,7 @@ import {
   MessageSquare,
   Database,
   DatabaseZap,
+  Brain,
   Clock
 } from 'lucide-react'
 import type { AgentToolDef } from './agent-tools.types'
@@ -78,6 +79,13 @@ export function buildAgentTools(t: (key: string, fallback: string) => string): A
       name: t('agent.tools.message_search', '消息搜索'),
       icon: <MessageSquare size={20} />,
       tooltipKey: 'agent.tools.message_search_tooltip'
+    },
+    {
+      id: 'vector_search',
+      category: 'memory',
+      name: t('agent.tools.vector_search', '语义搜索'),
+      icon: <Brain size={20} />,
+      tooltipKey: 'agent.tools.vector_search_desc'
     },
     {
       id: 'memory_store',
