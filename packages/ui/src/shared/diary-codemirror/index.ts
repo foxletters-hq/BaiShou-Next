@@ -24,7 +24,7 @@ export {
 } from './extensions/effects'
 
 export { livePreviewSyntaxHighlighting } from './extensions/syntax'
-export { livePreviewPlugin } from './extensions/livePreviewPlugin'
+export { livePreviewField, livePreviewPlugin } from './extensions/livePreviewPlugin'
 export {
   tablePreviewField,
   buildTablePreviewDecorations,

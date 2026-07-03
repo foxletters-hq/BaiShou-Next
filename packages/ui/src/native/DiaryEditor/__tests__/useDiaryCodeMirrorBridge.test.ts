@@ -133,6 +133,22 @@ describe('useDiaryCodeMirrorBridge echo suppress', () => {
     expect(onChange).toHaveBeenCalledWith('user typed here')
   })
 
+  it('ignores WebView change echo after init mount', () => {
+    const onChange = vi.fn()
+    const { result } = renderHook(() =>
+      useDiaryCodeMirrorBridge({ content: '##### 07:00\n', theme, onChange })
+    )
+    attachMockWebView(result.current)
+    markReady(result.current)
+    onChange.mockClear()
+
+    sendFromWebView(result.current, {
+      type: 'change',
+      payload: { content: '##### 07:00\n' }
+    })
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
   it('does not push setContent while WebView leads during rapid delete', () => {
     const onChange = vi.fn()
     const { result, rerender } = renderHook(
