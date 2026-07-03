@@ -1,6 +1,6 @@
 # 移动端日记 CodeMirror WebView 胶水层攻克记
 
-> **背景**：按 Obsidian 路线，移动端日记编辑区使用 RN 壳 + WebView + CodeMirror 6 Live Preview，与桌面共用 `packages/ui/src/shared/diary-codemirror/`；工具栏仍保留 RN 侧 `MarkdownToolbar`。
+> **背景**：移动端日记编辑区使用 RN 壳 + WebView + CodeMirror 6 Live Preview，与桌面共用 `packages/ui/src/shared/diary-codemirror/`；工具栏仍保留 RN 侧 `MarkdownToolbar`。
 >
 > **结果**：编辑器可正常显示与输入。本文记录从「全白」到可用的排查链路与最终架构。
 
@@ -204,7 +204,7 @@ WebView → source={{ uri, baseUrl }} 加载 shell，外部 script 拉 bundle
 
 ### 4.4 权衡结论
 
-比纯 RN `TextInput` 重，但换来与桌面一致的 Markdown / 预览 / 图片 widget；比整页 WebView 轻（工具栏仍在 RN）。Obsidian 移动端同类方案也是 RN/Web 混合，属于可接受的工程权衡。
+比纯 RN `TextInput` 重，但换来与桌面一致的 Markdown / 预览 / 图片 widget；比整页 WebView 轻（工具栏仍在 RN），属于可接受的工程权衡。
 
 ---
 
