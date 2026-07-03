@@ -112,6 +112,27 @@ describe('tablePreviewField', () => {
     expect(editorView.state.doc.toString()).toContain('| 9 | 2 |')
   })
 
+  it('typing in active cell keeps table widget DOM until blur commits', async () => {
+    const content = '| A | B |\n| --- | --- |\n| 1 | 2 |\n'
+    const editorView = createTableView(content)
+    editorView.dispatch({
+      effects: setActiveTableCell.of({ tableFrom: 0, rowIndex: 0, colIndex: 0 })
+    })
+    await Promise.resolve()
+    const block = parent!.querySelector('.cm-table-block') as HTMLElement
+    const cell = block.querySelector(
+      'tbody td .cm-table-cell-source[data-row="0"][data-col="0"]'
+    ) as HTMLElement
+    cell.textContent = '12'
+    cell.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText' }))
+    await Promise.resolve()
+    expect(parent!.querySelector('.cm-table-block')).toBe(block)
+    expect(editorView.state.doc.toString()).toContain('| 1 | 2 |')
+    cell.dispatchEvent(new FocusEvent('blur', { bubbles: false }))
+    await Promise.resolve()
+    expect(editorView.state.doc.toString()).toContain('| 12 | 2 |')
+  })
+
   it('typing after table stays outside pipe rows', async () => {
     const content = '| A | B |\n| --- | --- |\n| 1 | 2 |\n\nBelow\n'
     const editorView = createTableView(content)

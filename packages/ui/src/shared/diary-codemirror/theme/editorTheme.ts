@@ -153,13 +153,13 @@ export const editorTheme = EditorView.baseTheme({
     borderTop: '1.5px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.22)))',
     borderTopLeftRadius: '8px',
     borderTopRightRadius: '8px',
-    marginTop: '12px'
+    marginTop: '8px'
   },
   '.cm-table-line-last': {
     borderBottom: '1.5px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.22)))',
     borderBottomLeftRadius: '8px',
     borderBottomRightRadius: '8px',
-    marginBottom: '12px'
+    marginBottom: '8px'
   },
   '.cm-table-line:not(.cm-table-line-last)': {
     borderBottom: '1px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.14)))'
@@ -180,7 +180,7 @@ export const editorTheme = EditorView.baseTheme({
     width: 'calc(100% / var(--cm-table-cols, 1))',
     maxWidth: 'calc(100% / var(--cm-table-cols, 1))',
     minWidth: '0',
-    padding: '6px 12px',
+    padding: '4px 10px',
     boxSizing: 'border-box',
     borderRight: '1.5px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.18)))',
     wordBreak: 'break-word',
@@ -196,7 +196,7 @@ export const editorTheme = EditorView.baseTheme({
 
   // Live Preview 表格块预览与操作控件
   '.cm-table-block': {
-    margin: '8px 0 4px',
+    margin: '4px 0 2px',
     width: '100%',
     maxWidth: '100%',
     position: 'relative',
@@ -318,13 +318,14 @@ export const editorTheme = EditorView.baseTheme({
     borderCollapse: 'collapse',
     tableLayout: 'fixed',
     fontSize: '14px',
+    lineHeight: '1.35',
     border: 'none',
     borderRadius: '0'
   },
   '.cm-table-preview th, .cm-table-preview td': {
     borderRight: '1px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.12)))',
     borderBottom: '1px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.1)))',
-    padding: '8px 10px',
+    padding: '5px 8px',
     verticalAlign: 'top',
     wordBreak: 'break-word',
     cursor: 'text'
@@ -336,7 +337,7 @@ export const editorTheme = EditorView.baseTheme({
   '.cm-table-cell-source': {
     display: 'block',
     width: '100%',
-    minHeight: '1.4em',
+    minHeight: '1.2em',
     margin: '0',
     padding: '0',
     border: 'none',

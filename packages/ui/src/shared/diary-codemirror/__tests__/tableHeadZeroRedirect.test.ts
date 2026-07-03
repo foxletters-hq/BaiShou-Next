@@ -1,8 +1,9 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { createDiaryCodeMirror } from '../createDiaryCodeMirror'
 import { findTableRangeAt } from '../table/tableBounds'
 import { ensureSyntaxTree } from '@codemirror/language'
 import { placeEditorCaretFromPointer } from '../table/tableEditorTouchCaret'
+import * as tableDom from '../table/tableDom'
 
 describe('table head=0 redirect', () => {
   let parent: HTMLElement | null = null
@@ -45,7 +46,8 @@ describe('table head=0 redirect', () => {
     view.destroy()
   })
 
-  it('keepSelectionOutsideTables redirects head=0 even when table cell is focused', async () => {
+  it('keepSelectionOutsideTables does not redirect when table cell is focused', async () => {
+    const focused = vi.spyOn(tableDom, 'isTableCellEditorFocused').mockReturnValue(true)
     parent = document.createElement('div')
     parent.style.width = '400px'
     parent.style.height = '600px'
@@ -54,14 +56,11 @@ describe('table head=0 redirect', () => {
       content,
       platform: { resolveAttachmentUrl: (u) => u, interactionMode: 'touch', scrollMode: 'viewport' }
     })
-    const cell = parent.querySelector('.cm-table-cell-source') as HTMLElement
-    expect(cell).toBeTruthy()
-    cell.focus()
-    const tableTo = view.state.doc.line(3).to
     view.dispatch({ selection: { anchor: 0, head: 0 } })
     await new Promise((r) => queueMicrotask(r))
     await new Promise((r) => queueMicrotask(r))
-    expect(view.state.selection.main.head).toBeGreaterThan(tableTo)
+    expect(view.state.selection.main.head).toBe(0)
+    focused.mockRestore()
     view.destroy()
   })
 

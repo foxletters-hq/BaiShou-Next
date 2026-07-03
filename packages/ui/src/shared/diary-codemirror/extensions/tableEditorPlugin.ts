@@ -1,5 +1,5 @@
 import { EditorView, ViewPlugin, type ViewUpdate, Decoration } from '@codemirror/view'
-import { EditorSelection, Prec } from '@codemirror/state'
+import { EditorSelection, Prec, Transaction } from '@codemirror/state'
 import { keymap } from '@codemirror/view'
 import { ensureSyntaxTree, syntaxTree } from '@codemirror/language'
 import type { SyntaxNode } from '@lezer/common'
@@ -24,6 +24,7 @@ import {
 } from '../table/tableEffects'
 import { findTableNodeBounds, findTableRangeAt, resolveTableSurfaceRange } from '../table/tableBounds'
 import { blurTableCellEditor, isTableCellEditorFocused } from '../table/tableDom'
+import { activeTableCellField, setActiveTableCell } from '../table/tableActiveCell'
 import {
   collectPostTableGapRepairsForState,
   isOnStructuralTableGapLine,
@@ -245,6 +246,18 @@ export const tableEditorPlugin = ViewPlugin.fromClass(
 
     update(update: ViewUpdate) {
       if (update.docChanged) {
+        const isUndoRedo = update.transactions.some((tr) => {
+          const ev = tr.annotation(Transaction.userEvent)
+          return ev === 'undo' || ev === 'redo'
+        })
+        if (isUndoRedo && update.startState.field(activeTableCellField, false) != null) {
+          blurTableCellEditor()
+          queueMicrotask(() => {
+            update.view.dispatch({
+              effects: [setActiveTableCell.of(null), forceTableRefresh.of(null)]
+            })
+          })
+        }
         const fromTableAction = update.transactions.some((tr) =>
           tr.annotation(allowTableStructureEdit)
         )
@@ -327,6 +340,9 @@ export const tableEditorPlugin = ViewPlugin.fromClass(
 
     /** 光标误入 Table 节点覆盖的源码区时，移到表后正文 */
     private keepSelectionOutsideTables(view: EditorView) {
+      // 单元格 contenteditable 编辑时 CM head 常仍在表格 markdown 区，勿 blur/重定向
+      if (isTableCellFocused()) return
+
       // setContent 全量替换后语法树可能尚未 parse，需同步确保至少扫到文档末尾
       ensureSyntaxTree(view.state, view.state.doc.length, 200)
 
@@ -356,11 +372,6 @@ export const tableEditorPlugin = ViewPlugin.fromClass(
 
       const range = findTableRangeAt(view.state, head)
       if (!range) return
-
-      // 主编辑器 head 在表格 markdown 区内时必须移出；单元格 contenteditable 有焦点时
-      // CM head 仍可能卡在 0，不能因 cell 焦点而跳过重定向
-      const headInsideTableMarkdown = head <= range.rowTo
-      if (!headInsideTableMarkdown && isTableCellFocused()) return
 
       if (head > range.rowTo && head < range.nodeTo) {
         logDiaryBridge('tableEditor', 'redirect:swallowed-in-node', {

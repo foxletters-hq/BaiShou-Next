@@ -52,16 +52,22 @@ export class TableBlockWidget extends WidgetType {
   }
 
   eq(other: TableBlockWidget): boolean {
-    return (
-      this.table.from === other.table.from &&
-      this.table.columnCount === other.table.columnCount &&
-      this.table.bodyRows.length === other.table.bodyRows.length &&
-      tableContentSignature(this.table) === tableContentSignature(other.table) &&
-      this.activeCell?.rowIndex === other.activeCell?.rowIndex &&
-      this.activeCell?.colIndex === other.activeCell?.colIndex &&
-      this.chromeSelection?.kind === other.chromeSelection?.kind &&
-      this.chromeSelection?.index === other.chromeSelection?.index
-    )
+    if (
+      this.table.from !== other.table.from ||
+      this.table.columnCount !== other.table.columnCount ||
+      this.table.bodyRows.length !== other.table.bodyRows.length ||
+      this.activeCell?.rowIndex !== other.activeCell?.rowIndex ||
+      this.activeCell?.colIndex !== other.activeCell?.colIndex ||
+      this.chromeSelection?.kind !== other.chromeSelection?.kind ||
+      this.chromeSelection?.index !== other.chromeSelection?.index
+    ) {
+      return false
+    }
+    // 单元格编辑中内容由 contenteditable 承载；doc 逐字同步时不重建整表 widget
+    if (this.activeCell && this.activeCell.tableFrom === this.table.from) {
+      return true
+    }
+    return tableContentSignature(this.table) === tableContentSignature(other.table)
   }
 
   get estimatedHeight(): number {
@@ -320,7 +326,7 @@ export class TableBlockWidget extends WidgetType {
     source.textContent = normalizeTableCellDisplay(raw) || ''
 
     let composing = false
-    const commit = () => {
+    const flushCommit = () => {
       if (!this.rootEl) return
       const view = this.editorView()
       if (!view) return
@@ -333,11 +339,10 @@ export class TableBlockWidget extends WidgetType {
     })
     source.addEventListener('compositionend', () => {
       composing = false
-      commit()
+      flushCommit()
     })
     source.addEventListener('input', (event) => {
       if (composing || (event as InputEvent).isComposing) return
-      commit()
     })
     source.addEventListener('focus', () => {
       this.syncActiveHandles(rowIndex, colIndex)
@@ -352,7 +357,7 @@ export class TableBlockWidget extends WidgetType {
       })
     })
     source.addEventListener('blur', () => {
-      source.dataset.raw = readCellSourceRaw(source)
+      flushCommit()
     })
     source.addEventListener('keydown', (event) => {
       const command = mapTableKeyCommand(event)
@@ -374,7 +379,7 @@ export class TableBlockWidget extends WidgetType {
       range.collapse(false)
       selection.removeAllRanges()
       selection.addRange(range)
-      commit()
+      flushCommit()
     })
 
     return source
