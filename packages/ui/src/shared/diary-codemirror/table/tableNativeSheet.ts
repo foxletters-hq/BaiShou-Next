@@ -41,6 +41,10 @@ export function requestNativeTableSheet(
   const rn = window.ReactNativeWebView
   if (!rn) return false
 
+  if (nativeSheetOpen) {
+    return true
+  }
+
   const requestId = `table-sheet-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   pendingSheets.set(requestId, { onPick, onClose })
   nativeSheetOpen = true

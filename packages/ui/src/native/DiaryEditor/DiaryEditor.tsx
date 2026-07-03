@@ -454,7 +454,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
             visible
             title={tableSheet.title}
             sections={tableSheet.sections}
-            bottomOffset={toolbarDockBottom + toolbarHeight}
+            bottomOffset={toolbarDockBottom}
             onPick={(itemId) => void handleTableSheetPick(itemId)}
             onDismiss={closeTableSheet}
           />

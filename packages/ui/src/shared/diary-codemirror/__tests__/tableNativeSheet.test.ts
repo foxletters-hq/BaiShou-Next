@@ -50,4 +50,29 @@ describe('tableNativeSheet', () => {
     closeNativeTableSheets()
     expect(onClose).toHaveBeenCalled()
   })
+
+  it('ignores duplicate open requests while native sheet is already open', () => {
+    const posted: string[] = []
+    window.ReactNativeWebView = {
+      postMessage: (message: string) => {
+        posted.push(message)
+      }
+    }
+
+    expect(
+      requestNativeTableSheet('第 5 行', [{ items: [{ id: 'up', label: '向上移动行' }] }], vi.fn())
+    ).toBe(true)
+    expect(
+      requestNativeTableSheet('第 5 行', [{ items: [{ id: 'up', label: '向上移动行' }] }], vi.fn())
+    ).toBe(true)
+
+    const sheetRequests = posted.filter((raw) => {
+      try {
+        return (JSON.parse(raw) as { type: string }).type === 'tableSheetRequest'
+      } catch {
+        return false
+      }
+    })
+    expect(sheetRequests).toHaveLength(1)
+  })
 })

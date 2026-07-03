@@ -1,5 +1,6 @@
 import type { EditorState } from '@codemirror/state'
 import { StateEffect, StateField } from '@codemirror/state'
+import type { EditorView } from '@codemirror/view'
 
 export type TableChromeSelection = {
   tableFrom: number
@@ -28,4 +29,9 @@ export function readTableChromeSelectionFor(
   const selected = state.field(tableChromeSelectionField, false)
   if (!selected || selected.tableFrom !== tableFrom) return null
   return selected
+}
+
+export function clearTableChromeSelection(view: EditorView): void {
+  if (!view.state.field(tableChromeSelectionField, false)) return
+  view.dispatch({ effects: setTableChromeSelection.of(null) })
 }

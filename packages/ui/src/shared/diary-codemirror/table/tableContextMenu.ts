@@ -2,12 +2,13 @@ import type { EditorView } from '@codemirror/view'
 import type { ParsedTable } from './table.model'
 import { setActiveTableCell } from './tableActiveCell'
 import { invokeTableAction } from './tableEffects'
-import { setTableChromeSelection } from './tableChromeSelection'
+import { setTableChromeSelection, clearTableChromeSelection } from './tableChromeSelection'
 import { logTableChrome } from './tableChromeDebug'
 import { confirmMessageForDestructiveItem, requestTableConfirm } from './tableConfirm'
 import { ensureTableSheetGlobalStyles } from './tableSheetGlobalStyles'
 import {
   dismissKeyboardForSheetInteraction,
+  isTableSheetOpen,
   markTableSheetClosed,
   markTableSheetOpen
 } from './tableSheetInteraction'
@@ -87,6 +88,10 @@ export function bindTouchChromeActivate(el: HTMLElement, action: () => void): vo
 }
 
 function shouldOpenChromeMenu(): boolean {
+  if (isTableSheetOpen()) {
+    logTableChrome('shouldOpenChromeMenu', { allow: false, reason: 'sheet-open' })
+    return false
+  }
   const now = Date.now()
   const hasOpenLayer = Boolean(document.querySelector(MENU_LAYER_SELECTOR))
   const debounceMs = hasOpenLayer ? CHROME_MENU_DEBOUNCE_MS : 60
@@ -165,6 +170,7 @@ export function runChromeMenuAction(
         tableTo,
         colIndex
       })
+      clearTableChromeSelection(view)
     } else if (actionId === 'left') {
       invokeTableAction(view, {
         type: 'moveColumn',
@@ -173,6 +179,11 @@ export function runChromeMenuAction(
         fromIndex: colIndex,
         toIndex: colIndex - 1
       })
+      if (colIndex > 0) {
+        view.dispatch({
+          effects: setTableChromeSelection.of({ tableFrom, kind: 'col', index: colIndex - 1 })
+        })
+      }
     } else if (actionId === 'right') {
       invokeTableAction(view, {
         type: 'moveColumn',
@@ -180,6 +191,9 @@ export function runChromeMenuAction(
         tableTo,
         fromIndex: colIndex,
         toIndex: colIndex + 1
+      })
+      view.dispatch({
+        effects: setTableChromeSelection.of({ tableFrom, kind: 'col', index: colIndex + 1 })
       })
     }
     return
@@ -193,6 +207,7 @@ export function runChromeMenuAction(
         tableTo,
         rowIndex
       })
+      clearTableChromeSelection(view)
     } else if (actionId === 'up') {
       invokeTableAction(view, {
         type: 'moveRow',
@@ -201,6 +216,11 @@ export function runChromeMenuAction(
         fromIndex: rowIndex,
         toIndex: rowIndex - 1
       })
+      if (rowIndex > 0) {
+        view.dispatch({
+          effects: setTableChromeSelection.of({ tableFrom, kind: 'row', index: rowIndex - 1 })
+        })
+      }
     } else if (actionId === 'down') {
       invokeTableAction(view, {
         type: 'moveRow',
@@ -208,6 +228,9 @@ export function runChromeMenuAction(
         tableTo,
         fromIndex: rowIndex,
         toIndex: rowIndex + 1
+      })
+      view.dispatch({
+        effects: setTableChromeSelection.of({ tableFrom, kind: 'row', index: rowIndex + 1 })
       })
     }
   }
@@ -557,19 +580,25 @@ function isTouchTableBlock(trigger: HTMLElement): boolean {
   return Boolean(trigger.closest('.cm-table-block--touch'))
 }
 
-function clearChromeSelection(view: EditorView): void {
-  view.dispatch({ effects: setTableChromeSelection.of(null) })
+function isRowOrColHandle(trigger: HTMLElement): boolean {
+  return (
+    trigger.classList.contains('cm-table-row-handle') ||
+    trigger.classList.contains('cm-table-col-handle')
+  )
 }
 
 function setChromeSelection(
   view: EditorView,
   tableFrom: number,
   kind: 'col' | 'row',
-  index: number
+  index: number,
+  options?: { clearActiveCell?: boolean }
 ): void {
-  view.dispatch({
-    effects: setTableChromeSelection.of({ tableFrom, kind, index })
-  })
+  const effects = [setTableChromeSelection.of({ tableFrom, kind, index })]
+  if (options?.clearActiveCell) {
+    effects.push(setActiveTableCell.of(null))
+  }
+  view.dispatch({ effects })
 }
 
 export function openChromeMenuForTrigger(
@@ -590,7 +619,7 @@ export function openChromeMenuForTrigger(
   }
 
   dismissEditorKeyboardForChrome(view)
-  if (touch) {
+  if (touch && !isRowOrColHandle(trigger)) {
     view.dispatch({ effects: setActiveTableCell.of(null) })
   }
 
@@ -618,7 +647,7 @@ export function openChromeMenuForTrigger(
       invokeTableAction(view, { type: 'deleteTable', tableFrom, tableTo })
     }
     if (touch) {
-      showTableBottomSheet('表格', sections, onPick, () => clearChromeSelection(view))
+      showTableBottomSheet('表格', sections, onPick)
     } else {
       showTableContextMenu(sections[0]!.items, x, y, onPick)
     }
@@ -628,18 +657,18 @@ export function openChromeMenuForTrigger(
   if (trigger.classList.contains('cm-table-col-handle')) {
     const colIndex = Number(trigger.dataset.colIndex)
     if (Number.isNaN(colIndex)) return
-    setChromeSelection(view, tableFrom, 'col', colIndex)
+    setChromeSelection(view, tableFrom, 'col', colIndex, { clearActiveCell: touch })
     const sections = buildColMenuSections(table, colIndex)
     const onPick = (id: string) => {
       runChromeMenuAction(view, tableFrom, tableTo, trigger, id)
-      clearChromeSelection(view)
     }
     if (touch) {
-      showTableBottomSheet(`第 ${colIndex + 1} 列`, sections, onPick, () =>
-        clearChromeSelection(view)
-      )
+      showTableBottomSheet(`第 ${colIndex + 1} 列`, sections, onPick)
     } else {
-      showTableContextMenu(buildColMenuItems(table, colIndex), x, y, onPick)
+      showTableContextMenu(buildColMenuItems(table, colIndex), x, y, (id) => {
+        runChromeMenuAction(view, tableFrom, tableTo, trigger, id)
+        clearTableChromeSelection(view)
+      })
     }
     return
   }
@@ -647,17 +676,19 @@ export function openChromeMenuForTrigger(
   if (trigger.classList.contains('cm-table-row-handle')) {
     const rowIndex = Number(trigger.dataset.rowIndex)
     if (Number.isNaN(rowIndex)) return
-    setChromeSelection(view, tableFrom, 'row', rowIndex)
+    setChromeSelection(view, tableFrom, 'row', rowIndex, { clearActiveCell: touch })
     const sections = buildRowMenuSections(table, rowIndex)
     const title = rowIndex < 0 ? '表头' : `第 ${rowIndex + 1} 行`
     const onPick = (id: string) => {
       runChromeMenuAction(view, tableFrom, tableTo, trigger, id)
-      clearChromeSelection(view)
     }
     if (touch) {
-      showTableBottomSheet(title, sections, onPick, () => clearChromeSelection(view))
+      showTableBottomSheet(title, sections, onPick)
     } else {
-      showTableContextMenu(buildRowMenuItems(table, rowIndex), x, y, onPick)
+      showTableContextMenu(buildRowMenuItems(table, rowIndex), x, y, (id) => {
+        runChromeMenuAction(view, tableFrom, tableTo, trigger, id)
+        clearTableChromeSelection(view)
+      })
     }
   }
 }

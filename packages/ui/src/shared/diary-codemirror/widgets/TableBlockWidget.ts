@@ -4,6 +4,7 @@ import { normalizeTableCellDisplay } from '../table/tableCellText'
 import { resolveTableKeyAction, type TableKeyCommand } from '../table/tableKeyResolver'
 import type { ActiveTableCell } from '../table/tableActiveCell'
 import { setActiveTableCell } from '../table/tableActiveCell'
+import { clearTableChromeSelection } from '../table/tableChromeSelection'
 import {
   blurTableCellEditor,
   dispatchTableModelFromBlock,
@@ -140,7 +141,7 @@ export class TableBlockWidget extends WidgetType {
       this.syncChromeLayout()
       this.observeChromeLayout()
       this.cacheWidgetHeight(root)
-      if (this.activeCell && this.rootEl) {
+      if (this.activeCell && this.rootEl && !this.chromeSelection) {
         requestAnimationFrame(() => {
           if (!this.rootEl || !this.activeCell) return
           focusTableCellSource(
@@ -348,6 +349,7 @@ export class TableBlockWidget extends WidgetType {
       this.syncActiveHandles(rowIndex, colIndex)
       const view = this.editorView()
       if (!view) return
+      clearTableChromeSelection(view)
       view.dispatch({
         effects: setActiveTableCell.of({
           tableFrom: this.table.from,

@@ -238,6 +238,21 @@ export const editorTheme = EditorView.baseTheme({
     opacity: '1',
     pointerEvents: 'auto'
   },
+  '.cm-table-block--touch.cm-table-block--row-selected .cm-table-handle, .cm-table-block--touch.cm-table-block--col-selected .cm-table-handle': {
+    opacity: '0.55',
+    pointerEvents: 'auto'
+  },
+  '.cm-table-block--touch.cm-table-block--row-selected .cm-table-handle--active, .cm-table-block--touch.cm-table-block--col-selected .cm-table-handle--active': {
+    opacity: '1'
+  },
+  '.cm-table-block--touch.cm-table-block--row-selected .cm-table-corner-menu, .cm-table-block--touch.cm-table-block--col-selected .cm-table-corner-menu': {
+    opacity: '1',
+    pointerEvents: 'auto'
+  },
+  '.cm-table-block--touch.cm-table-block--row-selected .cm-table-add-btn, .cm-table-block--touch.cm-table-block--col-selected .cm-table-add-btn': {
+    opacity: '1',
+    pointerEvents: 'auto'
+  },
   '.cm-table-cursor-after': {
     display: 'none'
   },

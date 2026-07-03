@@ -1,14 +1,12 @@
-import React, { useEffect, useRef } from 'react'
-import {
-  Animated,
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { Modal, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native'
+import Animated, {
   Easing,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type StyleProp,
-  type ViewStyle
-} from 'react-native'
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming
+} from 'react-native-reanimated'
 import { useNativeTheme } from '../theme'
 import { Button } from '../Button'
 import type { DiaryCmTableSheetSectionPayload } from '../../shared/diary-codemirror/types'
@@ -17,14 +15,17 @@ export interface TableChromeBottomSheetProps {
   visible: boolean
   title: string
   sections: DiaryCmTableSheetSectionPayload[]
-  /** 距屏幕底部的偏移（Markdown 工具栏 + 键盘） */
+  /** 距屏幕底部的偏移（仅键盘高度；表格菜单盖住 Markdown 工具栏） */
   bottomOffset: number
   onPick: (itemId: string) => void
   onDismiss: () => void
   style?: StyleProp<ViewStyle>
 }
 
+/** 与 WebView 内 .cm-table-sheet transition 0.34s cubic-bezier(0.32, 0.72, 0, 1) 对齐 */
 const SLIDE_MS = 340
+const SHEET_OFFSCREEN_Y = 420
+const SHEET_EASING = Easing.bezier(0.32, 0.72, 0, 1)
 
 export const TableChromeBottomSheet: React.FC<TableChromeBottomSheetProps> = ({
   visible,
@@ -36,50 +37,65 @@ export const TableChromeBottomSheet: React.FC<TableChromeBottomSheetProps> = ({
   style
 }) => {
   const { colors, tokens } = useNativeTheme()
-  const translateY = useRef(new Animated.Value(320)).current
-  const opacity = useRef(new Animated.Value(0)).current
+  const [mounted, setMounted] = useState(false)
+  const translateY = useSharedValue(SHEET_OFFSCREEN_Y)
+  const backdropOpacity = useSharedValue(0)
+  const closingRef = useRef(false)
+
+  const sheetStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }]
+  }))
+
+  const backdropStyle = useAnimatedStyle(() => ({
+    opacity: backdropOpacity.value
+  }))
+
+  const finishUnmount = useCallback(() => {
+    setMounted(false)
+  }, [])
+
+  const playEnter = useCallback(() => {
+    translateY.value = SHEET_OFFSCREEN_Y
+    backdropOpacity.value = 0
+    translateY.value = withTiming(0, { duration: SLIDE_MS, easing: SHEET_EASING })
+    backdropOpacity.value = withTiming(1, { duration: SLIDE_MS, easing: SHEET_EASING })
+  }, [backdropOpacity, translateY])
+
+  const playExit = useCallback(
+    (onDone: () => void) => {
+      translateY.value = withTiming(
+        SHEET_OFFSCREEN_Y,
+        { duration: SLIDE_MS, easing: SHEET_EASING },
+        (finished) => {
+          if (!finished) return
+          runOnJS(finishUnmount)()
+          runOnJS(onDone)()
+        }
+      )
+      backdropOpacity.value = withTiming(0, { duration: SLIDE_MS, easing: SHEET_EASING })
+    },
+    [backdropOpacity, finishUnmount, translateY]
+  )
 
   useEffect(() => {
-    if (!visible) {
-      translateY.setValue(320)
-      opacity.setValue(0)
-      return
-    }
+    if (!visible) return
+    closingRef.current = false
+    setMounted(true)
+  }, [visible])
 
-    translateY.setValue(320)
-    opacity.setValue(0)
-    Animated.parallel([
-      Animated.timing(translateY, {
-        toValue: 0,
-        duration: SLIDE_MS,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true
-      }),
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: SLIDE_MS,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true
-      })
-    ]).start()
-  }, [opacity, translateY, visible])
+  useEffect(() => {
+    if (!mounted || closingRef.current) return
+    playEnter()
+  }, [mounted, playEnter])
 
-  const animateOut = (done: () => void) => {
-    Animated.parallel([
-      Animated.timing(translateY, {
-        toValue: 320,
-        duration: SLIDE_MS,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true
-      }),
-      Animated.timing(opacity, {
-        toValue: 0,
-        duration: SLIDE_MS,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true
-      })
-    ]).start(() => done())
-  }
+  const animateOut = useCallback(
+    (done: () => void) => {
+      if (closingRef.current) return
+      closingRef.current = true
+      playExit(done)
+    },
+    [playExit]
+  )
 
   const handleDismiss = () => {
     animateOut(onDismiss)
@@ -89,81 +105,101 @@ export const TableChromeBottomSheet: React.FC<TableChromeBottomSheetProps> = ({
     animateOut(() => onPick(itemId))
   }
 
-  if (!visible) return null
+  if (!mounted) return null
 
   return (
-    <View style={[styles.host, style]} pointerEvents="box-none">
-      <Pressable
-        style={styles.dismiss}
-        onPress={handleDismiss}
-        accessibilityRole="button"
-        accessibilityLabel="关闭菜单"
-      />
-      <Animated.View
-        style={[
-          styles.sheet,
-          {
-            marginBottom: bottomOffset,
-            backgroundColor: colors.bgSurfaceNormal,
-            borderColor: colors.borderSubtle,
-            paddingHorizontal: tokens.spacing.md,
-            paddingTop: tokens.spacing.sm,
-            paddingBottom: tokens.spacing.md,
-            opacity,
-            transform: [{ translateY }]
-          }
-        ]}
-      >
-        <View style={[styles.grabber, { backgroundColor: colors.borderSubtle }]} />
-        {title ? (
-          <Text
+    <Modal
+      visible
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      hardwareAccelerated
+      onRequestClose={handleDismiss}
+    >
+      <View style={[styles.root, style]}>
+        <Animated.View style={[styles.backdrop, backdropStyle]}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={handleDismiss}
+            accessibilityRole="button"
+            accessibilityLabel="关闭菜单"
+          />
+        </Animated.View>
+        <View style={styles.sheetDock} pointerEvents="box-none">
+          <Animated.View
             style={[
-              styles.title,
-              { color: colors.textSecondary, marginBottom: tokens.spacing.sm }
+              styles.sheet,
+              sheetStyle,
+              {
+                marginBottom: bottomOffset,
+                backgroundColor: colors.bgSurfaceNormal,
+                borderColor: colors.borderSubtle,
+                paddingHorizontal: tokens.spacing.md,
+                paddingTop: tokens.spacing.sm,
+                paddingBottom: tokens.spacing.md
+              }
             ]}
-            numberOfLines={1}
           >
-            {title}
-          </Text>
-        ) : null}
-        <View style={[styles.body, { gap: tokens.spacing.sm }]}>
-          {sections.map((section, sectionIndex) => (
-            <View
-              key={`section-${sectionIndex}`}
-              style={sectionIndex > 0 ? { gap: tokens.spacing.sm, marginTop: tokens.spacing.sm } : { gap: tokens.spacing.sm }}
-            >
-              {section.items.map((item) => (
-                <Button
-                  key={item.id}
-                  variant="outline"
-                  destructive={Boolean(item.destructive)}
-                  disabled={Boolean(item.disabled)}
-                  onPress={() => handlePick(item.id)}
-                  style={{
-                    width: '100%',
-                    backgroundColor: colors.bgSurface,
-                    borderColor: colors.borderSubtle
-                  }}
+            <View style={[styles.grabber, { backgroundColor: colors.borderSubtle }]} />
+            {title ? (
+              <Text
+                style={[
+                  styles.title,
+                  { color: colors.textSecondary, marginBottom: tokens.spacing.sm }
+                ]}
+                numberOfLines={1}
+              >
+                {title}
+              </Text>
+            ) : null}
+            <View style={[styles.body, { gap: tokens.spacing.sm }]}>
+              {sections.map((section, sectionIndex) => (
+                <View
+                  key={`section-${sectionIndex}`}
+                  style={
+                    sectionIndex > 0
+                      ? { gap: tokens.spacing.sm, marginTop: tokens.spacing.sm }
+                      : { gap: tokens.spacing.sm }
+                  }
                 >
-                  {item.label}
-                </Button>
+                  {section.items.map((item) => (
+                    <Button
+                      key={item.id}
+                      variant="outline"
+                      destructive={Boolean(item.destructive)}
+                      disabled={Boolean(item.disabled)}
+                      onPress={() => handlePick(item.id)}
+                      style={{
+                        width: '100%',
+                        backgroundColor: colors.bgSurface,
+                        borderColor: colors.borderSubtle
+                      }}
+                    >
+                      {item.label}
+                    </Button>
+                  ))}
+                </View>
               ))}
             </View>
-          ))}
+          </Animated.View>
         </View>
-      </Animated.View>
-    </View>
+      </View>
+    </Modal>
   )
 }
 
 const styles = StyleSheet.create({
-  host: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 40,
-    elevation: 40
+  root: {
+    flex: 1,
+    justifyContent: 'flex-end'
   },
-  dismiss: {
-    flex: 1
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.32)'
+  },
+  sheetDock: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end'
   },
   sheet: {
     borderTopLeftRadius: 20,

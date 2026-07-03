@@ -1,5 +1,4 @@
 import { EditorView } from '@codemirror/view'
-import { setActiveTableCell } from './tableActiveCell'
 import {
   blurActiveTableCellInput,
   dismissEditorKeyboardForChrome,
@@ -23,11 +22,10 @@ export function resolveEditorViewFromDom(): EditorView | null {
   return EditorView.findFromDOM(el) ?? null
 }
 
-/** 收起输入法并退出表格单元格编辑态 */
+/** 收起输入法；保留 activeCell / chromeSelection，便于面板关闭后把手仍可见 */
 export function dismissKeyboardForSheetInteraction(): void {
   const view = resolveEditorViewFromDom()
   if (view) {
-    view.dispatch({ effects: setActiveTableCell.of(null) })
     dismissEditorKeyboardForChrome(view)
     return
   }

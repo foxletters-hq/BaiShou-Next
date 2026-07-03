@@ -4,6 +4,8 @@ import { isTableChromeTouchTarget } from '../table/tableContextMenu'
 import { isInteractableChromeElement } from '../table/tableChromeHitTest'
 import { logDiaryBridge } from '../diaryBridgeDebug'
 import { isTableSheetOpen } from '../table/tableSheetInteraction'
+import { clearTableChromeSelection } from '../table/tableChromeSelection'
+import { setActiveTableCell } from '../table/tableActiveCell'
 import {
   findTableBlockAbovePoint,
   placeEditorCaretFromPointer
@@ -75,6 +77,20 @@ function shouldPlaceCaretFromTouch(
   return findTableBlockAbovePoint(view, clientY) != null
 }
 
+function placeCaretAndClearTableChrome(
+  view: EditorView,
+  clientX: number,
+  clientY: number,
+  reason: string,
+  target?: Element | null
+): boolean {
+  const placed = placeEditorCaretFromPointer(view, clientX, clientY, reason, target)
+  if (!placed) return false
+  clearTableChromeSelection(view)
+  view.dispatch({ effects: setActiveTableCell.of(null) })
+  return true
+}
+
 /**
  * 触摸端：在表后正文区点击时，显式把 CM 选区落到坐标处。
  * 块级表格 widget 下方 Android WebView 往往无法自动更新选区，导致 head 卡在 0、无法输入。
@@ -110,7 +126,7 @@ export function tablePostTableTouchPlugin(platform?: DiaryCmPlatform): Extension
           if (!should) return false
 
           const state = getTouchCaretState(view)
-          state.placedOnTouchStart = placeEditorCaretFromPointer(
+          state.placedOnTouchStart = placeCaretAndClearTableChrome(
             view,
             touch.clientX,
             touch.clientY,
@@ -140,7 +156,7 @@ export function tablePostTableTouchPlugin(platform?: DiaryCmPlatform): Extension
             return false
           }
 
-          placeEditorCaretFromPointer(
+          placeCaretAndClearTableChrome(
             view,
             touch.clientX,
             touch.clientY,
@@ -163,7 +179,7 @@ export function tablePostTableTouchPlugin(platform?: DiaryCmPlatform): Extension
             return false
           }
 
-          placeEditorCaretFromPointer(
+          placeCaretAndClearTableChrome(
             view,
             event.clientX,
             event.clientY,

@@ -113,6 +113,8 @@ export function tableChromeTouchPlugin(platform?: DiaryCmPlatform): Extension {
       }
 
       private handleTouchStart(event: TouchEvent): void {
+        if (isTableSheetOpen()) return
+
         const trigger = resolveTouchTarget(this.view, event)
         if (!trigger) return
 
@@ -136,6 +138,7 @@ export function tableChromeTouchPlugin(platform?: DiaryCmPlatform): Extension {
 
         this.pressTimer = setTimeout(() => {
           this.pressTimer = null
+          if (isTableSheetOpen()) return
           const activeTrigger = this.pressTrigger
           const activeEvent = this.pressEvent
           this.pressTrigger = null
