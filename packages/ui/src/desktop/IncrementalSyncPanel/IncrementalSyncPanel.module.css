@@ -41,8 +41,12 @@
 }
 
 .syncIcon {
+  width: 14px;
+  height: 14px;
+  font-size: 14px;
   color: var(--text-secondary);
   transition: transform 0.2s ease;
+  flex-shrink: 0;
 }
 
 .spinning {
