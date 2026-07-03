@@ -11,10 +11,7 @@ import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const manifestPath = join(root, 'scripts/provider-modelsdev.manifest.json')
-const snapshotPath = join(
-  root,
-  'packages/shared/src/data/vision-models.snapshot.generated.ts'
-)
+const snapshotPath = join(root, 'packages/shared/src/data/vision-models.snapshot.generated.ts')
 const stampPath = join(root, 'packages/shared/src/data/.vision-models-sync-stamp.json')
 
 const MODELS_DEV_API = 'https://models.dev/api.json'

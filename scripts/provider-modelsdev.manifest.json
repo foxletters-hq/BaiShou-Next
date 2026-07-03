@@ -16,7 +16,10 @@
     { "id": "deepseek", "modelsDevIds": ["deepseek"] },
     { "id": "siliconflow", "modelsDevIds": ["siliconflow"] },
     { "id": "kimi", "modelsDevIds": ["moonshotai", "moonshotai-cn", "kimi-for-coding"] },
-    { "id": "xiaomimimo", "modelsDevIds": ["xiaomi", "xiaomi-token-plan-cn", "xiaomi-token-plan-sgp"] },
+    {
+      "id": "xiaomimimo",
+      "modelsDevIds": ["xiaomi", "xiaomi-token-plan-cn", "xiaomi-token-plan-sgp"]
+    },
     { "id": "minimax", "modelsDevIds": ["minimax"] },
     { "id": "zhipu", "modelsDevIds": ["zhipuai", "zhipuai-coding-plan"] },
     { "id": "dashscope", "modelsDevIds": ["alibaba-cn", "alibaba", "alibaba-coding-plan-cn"] },

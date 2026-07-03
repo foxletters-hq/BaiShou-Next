@@ -46,6 +46,7 @@ export function isVisionModelInSnapshot(
 }
 
 export function getVisionModelIdsForProvider(providerKey: string): string[] {
-  const ids = VISION_MODELS_SNAPSHOT.byProvider[providerKey as keyof typeof VISION_MODELS_SNAPSHOT.byProvider]
+  const ids =
+    VISION_MODELS_SNAPSHOT.byProvider[providerKey as keyof typeof VISION_MODELS_SNAPSHOT.byProvider]
   return ids ? [...ids] : []
 }
