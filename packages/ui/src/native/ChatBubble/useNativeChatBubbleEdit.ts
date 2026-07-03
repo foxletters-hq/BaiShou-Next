@@ -1,11 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import {
-  InteractionManager,
-  Keyboard,
-  LayoutAnimation,
-  Platform,
-  UIManager
-} from 'react-native'
+import { InteractionManager, Keyboard, LayoutAnimation, Platform, UIManager } from 'react-native'
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true)

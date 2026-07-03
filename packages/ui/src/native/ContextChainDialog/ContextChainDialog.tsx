@@ -336,7 +336,10 @@ export const ContextChainDialog: React.FC<NativeContextChainDialogProps> = ({
                             />
                           </>
                         ) : (
-                          <AgentMarkdownRenderer content={view.compressedContent} variant="ancillary" />
+                          <AgentMarkdownRenderer
+                            content={view.compressedContent}
+                            variant="ancillary"
+                          />
                         )}
                       </>
                     ) : view.activeTab === 'prompt' && view.systemPrompt ? (

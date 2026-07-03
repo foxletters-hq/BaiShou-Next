@@ -36,13 +36,7 @@ export function ThinkStatusIcon({
   )
 }
 
-export function ThinkChevron({
-  expanded,
-  color
-}: {
-  expanded: boolean
-  color: string
-}) {
+export function ThinkChevron({ expanded, color }: { expanded: boolean; color: string }) {
   return (
     <MaterialIcons
       name="chevron-right"
