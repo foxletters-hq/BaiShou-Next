@@ -14,9 +14,11 @@ import type { AssistantFormData } from './assistant-edit.types'
 interface UseAssistantEditPageOptions {
   assistant: AssistantFormData | null
   onSave: (data: AssistantFormData) => void
+  /** 编辑已有伙伴时，滑动条等字段松手后立即落库（不关闭页面） */
+  onPatchSave?: (id: string, patch: Partial<AssistantFormData>) => void | Promise<void>
 }
 
-export function useAssistantEditPage({ assistant, onSave }: UseAssistantEditPageOptions) {
+export function useAssistantEditPage({ assistant, onSave, onPatchSave }: UseAssistantEditPageOptions) {
   const { t } = useTranslation()
   const isEditing = assistant !== null
 
@@ -63,6 +65,34 @@ export function useAssistantEditPage({ assistant, onSave }: UseAssistantEditPage
 
   const handleKindChange = (kind: AssistantKind) => {
     setAssistantKind(kind)
+  }
+
+  const patchAssistantField = (patch: Partial<AssistantFormData>) => {
+    if (!isEditing || !assistant?.id || !onPatchSave) return
+    void onPatchSave(assistant.id, patch)
+  }
+
+  const commitContextWindow = (value: number) => {
+    setContextWindow(value)
+    patchAssistantField({ contextWindow: value < 0 ? -1 : Math.round(value) })
+  }
+
+  const commitCompressThreshold = (value: number) => {
+    setCompressThreshold(value)
+    patchAssistantField({
+      compressTokenThreshold: value <= 0 ? 0 : Math.round(value)
+    })
+  }
+
+  const commitCompressKeepTurns = (value: number) => {
+    setCompressKeepTurns(value)
+    patchAssistantField({ compressKeepTurns: Math.round(value) })
+  }
+
+  const handleToggleCompress = (enabled: boolean) => {
+    const next = enabled ? (compressThreshold > 0 ? compressThreshold : 60000) : 0
+    setCompressThreshold(next)
+    patchAssistantField({ compressTokenThreshold: enabled ? Math.round(next || 60000) : 0 })
   }
 
   useEffect(() => {
@@ -138,6 +168,10 @@ export function useAssistantEditPage({ assistant, onSave }: UseAssistantEditPage
     setProviderId,
     setModelId,
     assistantKind,
-    handleKindChange
+    handleKindChange,
+    commitContextWindow,
+    commitCompressThreshold,
+    commitCompressKeepTurns,
+    handleToggleCompress
   }
 }

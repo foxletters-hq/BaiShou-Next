@@ -24,6 +24,8 @@ export interface AssistantEditPageProps {
   assistant: AssistantFormData | null
   isLastAssistant?: boolean
   onSave: (data: AssistantFormData) => void
+  /** 编辑已有伙伴时，记忆类滑动条松手后立即保存 */
+  onPatchSave?: (id: string, patch: Partial<AssistantFormData>) => void | Promise<void>
   onDelete?: () => void
   onBack: () => void
   onPickEmoji?: () => Promise<string | null>

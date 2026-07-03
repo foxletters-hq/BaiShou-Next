@@ -1,18 +1,21 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Switch } from '../Switch/Switch'
+import { readRangeInputValue } from './assistant-edit.utils'
 import styles from './AssistantEditPage.module.css'
 
 interface AssistantEditContextSectionProps {
   contextWindow: number
   isUnlimitedContext: boolean
   onContextWindowChange: (value: number) => void
+  onContextWindowCommit?: (value: number) => void
 }
 
 export const AssistantEditContextSection: React.FC<AssistantEditContextSectionProps> = ({
   contextWindow,
   isUnlimitedContext,
-  onContextWindowChange
+  onContextWindowChange,
+  onContextWindowCommit
 }) => {
   const { t } = useTranslation()
 
@@ -33,7 +36,7 @@ export const AssistantEditContextSection: React.FC<AssistantEditContextSectionPr
         </span>
         <Switch
           checked={isUnlimitedContext}
-          onChange={(e) => onContextWindowChange(e.target.checked ? -1 : 20)}
+          onChange={(e) => onContextWindowCommit?.(e.target.checked ? -1 : 20)}
         />
       </div>
       {!isUnlimitedContext && (
@@ -46,6 +49,10 @@ export const AssistantEditContextSection: React.FC<AssistantEditContextSectionPr
             step={1}
             value={contextWindow}
             onChange={(e) => onContextWindowChange(Number(e.target.value))}
+            onPointerUp={(e) =>
+              onContextWindowCommit?.(readRangeInputValue(e.currentTarget))
+            }
+            onKeyUp={(e) => onContextWindowCommit?.(readRangeInputValue(e.currentTarget))}
             style={{
               backgroundSize: `${((contextWindow - 2) * 100) / 98}% 100%`
             }}

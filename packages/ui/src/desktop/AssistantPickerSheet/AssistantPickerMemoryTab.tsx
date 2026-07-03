@@ -107,8 +107,12 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
             step={1}
             value={editingContextWindow}
             onChange={(e) => setEditingContextWindow(Number(e.target.value))}
-            onMouseUp={() => saveConfig()}
-            onTouchEnd={() => saveConfig()}
+            onPointerUp={(e) =>
+              void saveConfig({ contextWindow: Number((e.currentTarget as HTMLInputElement).value) })
+            }
+            onKeyUp={(e) =>
+              void saveConfig({ contextWindow: Number((e.currentTarget as HTMLInputElement).value) })
+            }
           />
         )}
       </div>
@@ -196,8 +200,16 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
               step={10000}
               value={editingCompressThreshold}
               onChange={(e) => setEditingCompressThreshold(Number(e.target.value))}
-              onMouseUp={() => saveConfig()}
-              onTouchEnd={() => saveConfig()}
+              onPointerUp={(e) =>
+                void saveConfig({
+                  compressTokenThreshold: Number((e.currentTarget as HTMLInputElement).value)
+                })
+              }
+              onKeyUp={(e) =>
+                void saveConfig({
+                  compressTokenThreshold: Number((e.currentTarget as HTMLInputElement).value)
+                })
+              }
             />
             <div
               style={{
@@ -244,8 +256,16 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
               step={1}
               value={editingCompressKeepTurns}
               onChange={(e) => setEditingCompressKeepTurns(Number(e.target.value))}
-              onMouseUp={() => saveConfig()}
-              onTouchEnd={() => saveConfig()}
+              onPointerUp={(e) =>
+                void saveConfig({
+                  compressKeepTurns: Number((e.currentTarget as HTMLInputElement).value)
+                })
+              }
+              onKeyUp={(e) =>
+                void saveConfig({
+                  compressKeepTurns: Number((e.currentTarget as HTMLInputElement).value)
+                })
+              }
             />
             <div
               style={{

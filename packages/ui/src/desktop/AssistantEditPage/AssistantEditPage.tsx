@@ -21,11 +21,12 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
   assistant,
   isLastAssistant = false,
   onSave,
+  onPatchSave,
   onDelete,
   onBack
 }) => {
   const { t } = useTranslation()
-  const form = useAssistantEditPage({ assistant, onSave })
+  const form = useAssistantEditPage({ assistant, onSave, onPatchSave })
 
   return (
     <div className={styles.scaffold}>
@@ -108,6 +109,7 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
               contextWindow={form.contextWindow}
               isUnlimitedContext={form.isUnlimitedContext}
               onContextWindowChange={form.setContextWindow}
+              onContextWindowCommit={form.commitContextWindow}
             />
           </section>
 
@@ -117,8 +119,10 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
               compressKeepTurns={form.compressKeepTurns}
               isCompressDisabled={form.isCompressDisabled}
               onCompressThresholdChange={form.setCompressThreshold}
+              onCompressThresholdCommit={form.commitCompressThreshold}
               onCompressKeepTurnsChange={form.setCompressKeepTurns}
-              onToggleCompress={(enabled) => form.setCompressThreshold(enabled ? 60000 : 0)}
+              onCompressKeepTurnsCommit={form.commitCompressKeepTurns}
+              onToggleCompress={form.handleToggleCompress}
             />
           </section>
         </div>
