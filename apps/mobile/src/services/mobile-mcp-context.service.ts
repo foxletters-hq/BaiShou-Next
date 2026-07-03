@@ -5,7 +5,8 @@ import {
   createDiaryReadGuard,
   DatabaseAdapter,
   EmbeddingAdapter,
-  MemoryDeduplicationServiceImpl
+  MemoryDeduplicationServiceImpl,
+  syncMcpToolUserConfig
 } from '@baishou/ai'
 import {
   MessageRepository,
@@ -113,7 +114,7 @@ export async function buildMobileMcpToolContext(
       )
     }
 
-    const context: ToolContext = {
+    const context = syncMcpToolUserConfig({
       sessionId: 'mcp-external',
       vaultName,
       userConfig,
@@ -126,7 +127,7 @@ export async function buildMobileMcpToolContext(
       webSearchResultFetcher: deps.webSearchResultFetcher,
       fetchSearchPage: deps.fetchSearchPage,
       diaryReadGuard: createDiaryReadGuard()
-    }
+    })
 
     mobileMcpToolContextCache = {
       vaultName,
