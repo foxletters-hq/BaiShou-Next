@@ -187,6 +187,8 @@ export function useDiaryCodeMirrorBridge(
     )
     lastEditableRef.current = opts.editable ?? true
     webViewOwnsContentRef.current = false
+    // 抑制 mount 后 WebView 因 createDiaryCodeMirror 插入全文触发的 change 回传
+    echoSuppressContentRef.current = opts.content
     postToWebView({ type: 'init', payload })
     lastWebViewContentRef.current = opts.content
     editorMountedRef.current = true
