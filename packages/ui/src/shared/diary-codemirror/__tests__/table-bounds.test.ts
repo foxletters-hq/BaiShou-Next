@@ -5,10 +5,7 @@ import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { syntaxTree } from '@codemirror/language'
 import { parseTableFromDoc } from '../table/table.model'
 import { buildMarkerHidingDecorations } from '../extensions/build'
-import {
-  resolveTableSurfaceRange,
-  tableSyntaxTreeTablesChanged
-} from '../table/tableBounds'
+import { resolveTableSurfaceRange, tableSyntaxTreeTablesChanged } from '../table/tableBounds'
 import { buildTablePreviewDecorations, changeAffectsTables } from '../extensions/tablePreviewField'
 
 describe('table bounds', () => {

@@ -3,10 +3,7 @@ import { EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { createDiaryCodeMirror } from '../createDiaryCodeMirror'
-import {
-  buildTablePreviewDecorations,
-  changeAffectsTables
-} from '../extensions/tablePreviewField'
+import { buildTablePreviewDecorations, changeAffectsTables } from '../extensions/tablePreviewField'
 import { diarySyntaxTreeGrowthEffect } from '../extensions/diarySyntaxTreeGrowth'
 import { setActiveTableCell } from '../table/tableActiveCell'
 import { dispatchTableModelFromBlock } from '../table/tableDom'

@@ -14,9 +14,9 @@ describe('table touch chrome layout', () => {
   afterEach(() => {
     parent?.remove()
     parent = null
-    document.querySelectorAll('.cm-table-sheet-layer, .cm-table-context-menu-layer').forEach((el) =>
-      el.remove()
-    )
+    document
+      .querySelectorAll('.cm-table-sheet-layer, .cm-table-context-menu-layer')
+      .forEach((el) => el.remove())
     vi.useRealTimers()
   })
 

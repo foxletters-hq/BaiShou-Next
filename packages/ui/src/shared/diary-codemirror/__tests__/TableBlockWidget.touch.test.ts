@@ -2,11 +2,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { createDiaryCodeMirror } from '../createDiaryCodeMirror'
 import { setActiveTableCell } from '../table/tableActiveCell'
 import { forceTableRefresh } from '../table/tableEffects'
-import {
-  longPressChromeHandle,
-  touchPoint,
-  TABLE_CHROME_LONG_PRESS_MS
-} from './tableTouchHelpers'
+import { longPressChromeHandle, touchPoint, TABLE_CHROME_LONG_PRESS_MS } from './tableTouchHelpers'
 
 describe('TableBlockWidget touch', () => {
   let parent: HTMLElement | null = null
@@ -14,9 +10,9 @@ describe('TableBlockWidget touch', () => {
   afterEach(() => {
     parent?.remove()
     parent = null
-    document.querySelectorAll('.cm-table-sheet-layer, .cm-table-context-menu-layer').forEach((el) =>
-      el.remove()
-    )
+    document
+      .querySelectorAll('.cm-table-sheet-layer, .cm-table-context-menu-layer')
+      .forEach((el) => el.remove())
     vi.useRealTimers()
   })
 
@@ -79,7 +75,11 @@ describe('TableBlockWidget touch', () => {
     const dismiss = document.querySelector('.cm-table-sheet-dismiss') as HTMLElement | null
     vi.advanceTimersByTime(400)
     dismiss!.dispatchEvent(
-      new TouchEvent('touchstart', { bubbles: true, cancelable: true, touches: [touchPoint(dismiss!, 1, 1)] })
+      new TouchEvent('touchstart', {
+        bubbles: true,
+        cancelable: true,
+        touches: [touchPoint(dismiss!, 1, 1)]
+      })
     )
     vi.advanceTimersByTime(SHEET_ANIM_MS)
 

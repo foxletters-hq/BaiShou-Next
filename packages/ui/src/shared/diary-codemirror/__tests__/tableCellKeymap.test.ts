@@ -3,15 +3,18 @@ import { EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { findTableCellBoundsInLine } from '../extensions/tableCell.utils'
-import {
-  insertTableCellLineBreak,
-  tableCellExtension
-} from '../extensions/tableCellKeymap'
+import { insertTableCellLineBreak, tableCellExtension } from '../extensions/tableCellKeymap'
 
 describe('findTableCellBoundsInLine', () => {
   it('locates the cell containing the cursor', () => {
     const lineText = '| Name | Value |'
-    const line = { from: 0, to: lineText.length, text: lineText, number: 1, length: lineText.length }
+    const line = {
+      from: 0,
+      to: lineText.length,
+      text: lineText,
+      number: 1,
+      length: lineText.length
+    }
     const pos = lineText.indexOf('Value')
     const bounds = findTableCellBoundsInLine(line as any, pos)
     expect(bounds).toMatchObject({ from: 8, to: 15 })
