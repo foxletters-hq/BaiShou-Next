@@ -15,17 +15,17 @@ BaiShou is a privacy-focused AI memory companion. **Product direction, interacti
 
 To stay sustainable and **reduce maintainer overhead**, we currently take a tighter stance on external PRs. This is not about rejecting contributors—it is about avoiding wasted effort on both sides when there has been no prior alignment.
 
-| Type | Our stance |
-| ---- | ---------- |
-| **Bug-fix PRs** (reproducible, tested, CI green, clear motivation) | **Accepted selectively**; small, high-quality fixes are what we are most willing to review |
-| **Documentation fixes** (typos, unclear wording) | **Welcome** |
-| **Reproducible Bug Issues** (environment, steps, expected vs actual) | **Welcome** |
-| **New feature PRs** | **Not accepted for now**; if you have a feature design, open an Issue first |
-| **Purely AI-generated PRs the submitter does not understand** | **No review**; a waste of the submitter's compute and the maintainer's time |
-| **PRs that do not follow repo conventions** | **Not accepted** (see [1-AI-Code-Rule.md](../1-AI-Code/1-AI-Code-Rule.md)) |
-| **New UI libraries / dependencies / Schema changes** | **Issue first; maintainer approval required** |
+| Type                                                                 | Our stance                                                                                 |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| **Bug-fix PRs** (reproducible, tested, CI green, clear motivation)   | **Accepted selectively**; small, high-quality fixes are what we are most willing to review |
+| **Documentation fixes** (typos, unclear wording)                     | **Welcome**                                                                                |
+| **Reproducible Bug Issues** (environment, steps, expected vs actual) | **Welcome**                                                                                |
+| **New feature PRs**                                                  | **Not accepted for now**; if you have a feature design, open an Issue first                |
+| **Purely AI-generated PRs the submitter does not understand**        | **No review**; a waste of the submitter's compute and the maintainer's time                |
+| **PRs that do not follow repo conventions**                          | **Not accepted** (see [1-AI-Code-Rule.md](../1-AI-Code/1-AI-Code-Rule.md))                 |
+| **New UI libraries / dependencies / Schema changes**                 | **Issue first; maintainer approval required**                                              |
 
-> **In short**: Decide whether something *should* be done and whether you *truly understand the relevant code* before worrying about *how*.  
+> **In short**: Decide whether something _should_ be done and whether you _truly understand the relevant code_ before worrying about _how_.  
 > A clear Issue is more likely to succeed than a large surprise PR.
 
 ### 1.1 Maintainer capacity and review boundaries
@@ -90,36 +90,44 @@ You may use AI to draft the Issue, but **you must read and verify it before post
 ## Feature proposal
 
 ### 1. What problem does this solve?
+
 (User scenario, pain point; fit with BaiShou's "memory companion / local privacy" positioning)
 
 ### 2. Proposed solution (user-visible behavior)
+
 (Interaction sketch, entry point, overlap with existing features)
 
 ### 3. Technical outline
+
 - **Packages/paths to change** (see monorepo map below)
 - **Database Schema impact** (yes/no; migration plan if yes)
 - **Desktop / mobile / both**
 - **New dependencies** (name, size, why existing stack is insufficient)
 
 ### 4. UI and components
+
 - New UI? Reuse `packages/ui` or build new?
 - **If adding a third-party UI library**: name, version, license, how it fits [UI theme rules](../1-AI-Code/2-UI-Theme-Rule.md) (**hard-coded colors are forbidden**; use theme variables)
 - Light/dark mode and i18n (zh-CN / zh-TW / en / ja) considered?
 
 ### 5. Implementation steps (your plan)
+
 1. …
 2. …
 3. …
 
 ### 6. Testing and verification
+
 - Unit/integration tests to add
 - Manual verification paths
 
 ### 7. Risks and alternatives
+
 - Impact on user data, backups, sync
 - Lighter alternatives if we skip this feature
 
 ### 8. Will you implement after acceptance?
+
 (yes / no / ideas only)
 ```
 
@@ -128,16 +136,16 @@ Maintainers will reply: **accepted for discussion / needs changes / declined / d
 
 ### 3.3 Monorepo map (for "what would change")
 
-| Path | Role |
-| ---- | ---- |
-| `apps/desktop` | Electron desktop client (React + electron-vite) |
-| `apps/mobile` | Expo / React Native mobile client |
-| `packages/core` | Cross-platform business logic |
-| `packages/core-desktop` / `core-mobile` | Platform-specific core |
-| `packages/ai` | AI providers, Agent, tool calls |
-| `packages/database` / `database-desktop` | libSQL/SQLite + Drizzle |
-| `packages/ui` | Shared UI, theme, diary editor, etc. |
-| `packages/shared` / `store` | Utilities, state |
+| Path                                     | Role                                            |
+| ---------------------------------------- | ----------------------------------------------- |
+| `apps/desktop`                           | Electron desktop client (React + electron-vite) |
+| `apps/mobile`                            | Expo / React Native mobile client               |
+| `packages/core`                          | Cross-platform business logic                   |
+| `packages/core-desktop` / `core-mobile`  | Platform-specific core                          |
+| `packages/ai`                            | AI providers, Agent, tool calls                 |
+| `packages/database` / `database-desktop` | libSQL/SQLite + Drizzle                         |
+| `packages/ui`                            | Shared UI, theme, diary editor, etc.            |
+| `packages/shared` / `store`              | Utilities, state                                |
 
 Feature work often spans **UI + core + database + both apps**. Be honest about scope in the Issue.
 

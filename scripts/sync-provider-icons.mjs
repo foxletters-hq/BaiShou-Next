@@ -83,14 +83,10 @@ async function syncIcons() {
   mkdirSync(iconDir, { recursive: true })
   const providers = readManifest()
   const manifestHash = md5(readFileSync(manifestPath, 'utf8'))
-  const stamp = existsSync(stampPath)
-    ? JSON.parse(readFileSync(stampPath, 'utf8'))
-    : null
+  const stamp = existsSync(stampPath) ? JSON.parse(readFileSync(stampPath, 'utf8')) : null
 
   if (!force && stamp?.manifestMd5 === manifestHash && existsSync(registryPath)) {
-    const missing = providers.some(
-      (p) => !existsSync(join(iconDir, `${p.id}.svg`))
-    )
+    const missing = providers.some((p) => !existsSync(join(iconDir, `${p.id}.svg`)))
     if (!missing) {
       console.log('[sync-provider-icons] Up to date (manifest unchanged).')
       return

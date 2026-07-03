@@ -95,9 +95,7 @@ function runGenerate() {
     return false
   }
 
-  console.error(
-    '[sync-app-icon] 未找到 Python。请安装 Python 3（含 Pillow）后执行: pnpm sync'
-  )
+  console.error('[sync-app-icon] 未找到 Python。请安装 Python 3（含 Pillow）后执行: pnpm sync')
   process.exit(1)
 }
 
@@ -151,8 +149,7 @@ if (checkOnly) {
   }
   if (sharedStale) {
     console.error(
-      '[sync-app-icon] shared 与 mobile icon 不一致，请执行: pnpm sync\n' +
-        `  - ${sharedIcon}`
+      '[sync-app-icon] shared 与 mobile icon 不一致，请执行: pnpm sync\n' + `  - ${sharedIcon}`
     )
     process.exit(1)
   }

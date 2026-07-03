@@ -109,7 +109,7 @@ Thank you for wanting to help. Please understand our collaboration stance first:
 - **New feature PRs**: **not accepted for now**. If you have a feature design, **open a Feature Proposal Issue** and align with maintainers—**do not open a PR first**.
 - **No review**: purely AI-generated PRs, PRs you do not understand, or PRs that do not follow repo conventions.
 
-> **In short**: Decide whether something *should* be done and whether you *truly understand the relevant code* before worrying about *how*.  
+> **In short**: Decide whether something _should_ be done and whether you _truly understand the relevant code_ before worrying about _how_.  
 > A clear Issue is more likely to succeed than a large surprise PR.
 
 Full policy (multilingual): [Contributing policy](../2-Submit/2-Contributing-Guide.en.md) ([zh-CN](../2-Submit/2-Contributing-Guide.md) · [zh-TW](../2-Submit/2-Contributing-Guide.tw.md) · [ja](../2-Submit/2-Contributing-Guide.ja.md))
