@@ -25,10 +25,7 @@ function pushDecoration(
 }
 
 /** 光标落在围栏块任一行时，整块行均视为 active（对齐 inline live preview） */
-export function expandActiveLinesForFencedCode(
-  state: EditorState,
-  activeLines: Set<number>
-): void {
+export function expandActiveLinesForFencedCode(state: EditorState, activeLines: Set<number>): void {
   const doc = state.doc
   const head = state.selection.main.head
   const blockByCursor = findFencedCodeBlockContaining(doc, head)

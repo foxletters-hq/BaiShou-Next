@@ -4,11 +4,7 @@ import { syntaxTree } from '@codemirror/language'
 import { forceImageRefresh } from './effects'
 import { diarySyntaxTreeGrowthEffect } from './diarySyntaxTreeGrowth'
 import { buildMarkerHidingDecorations } from './build'
-import {
-  livePreviewFreezePlugin,
-  previewFrozenField,
-  setPreviewFrozen
-} from './livePreviewFreeze'
+import { livePreviewFreezePlugin, previewFrozenField, setPreviewFrozen } from './livePreviewFreeze'
 import { editorFocusEffect, editorFocusField } from './editorFocus'
 import type { DiaryCmPlatform } from '../types'
 
@@ -29,6 +25,10 @@ function normalizePlatform(
   return resolveUrlOrPlatform
 }
 
+function transactionHasSelectionChange(tr: Transaction): boolean {
+  return tr.selection !== undefined
+}
+
 function shouldRebuildLivePreview(tr: Transaction): boolean {
   if (tr.state.field(previewFrozenField)) {
     if (tr.effects.some((e) => e.is(setPreviewFrozen) && e.value === false)) {
@@ -36,19 +36,17 @@ function shouldRebuildLivePreview(tr: Transaction): boolean {
     }
     if (tr.docChanged) return true
     // 点击进围栏块时需立刻根据 selection/focus 显隐 ```，不能等 freeze 结束
-    if (tr.selectionSet) return true
+    if (transactionHasSelectionChange(tr)) return true
     if (tr.effects.some((e) => e.is(editorFocusEffect))) return true
     if (tr.effects.some((e) => e.is(livePreviewRefreshEffect))) return true
     return false
   }
   if (tr.docChanged) return true
-  if (tr.selectionSet) return true
+  if (transactionHasSelectionChange(tr)) return true
   if (syntaxTree(tr.state) !== syntaxTree(tr.startState)) return true
   if (tr.effects.some((e) => e.is(editorFocusEffect))) return true
   if (tr.effects.some((e) => e.is(livePreviewRefreshEffect))) return true
-  return tr.effects.some((e) =>
-    e.is(forceImageRefresh) || e.is(diarySyntaxTreeGrowthEffect)
-  )
+  return tr.effects.some((e) => e.is(forceImageRefresh) || e.is(diarySyntaxTreeGrowthEffect))
 }
 
 /**

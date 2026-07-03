@@ -4,6 +4,8 @@ declare global {
   interface Window {
     __diaryBridgeDebug?: boolean
   }
+  // eslint-disable-next-line no-var
+  var __DEV__: boolean | undefined
 }
 
 function isDebugEnabled(): boolean {
@@ -14,11 +16,7 @@ function isDebugEnabled(): boolean {
 }
 
 /** WebView → RN 调试日志（Metro 可见 [DiaryEditor Bridge] scope: tag） */
-export function logDiaryBridge(
-  scope: string,
-  tag: string,
-  detail?: DiaryBridgeDebugDetail
-): void {
+export function logDiaryBridge(scope: string, tag: string, detail?: DiaryBridgeDebugDetail): void {
   if (!isDebugEnabled()) return
 
   const payload = detail ?? {}

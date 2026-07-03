@@ -22,10 +22,17 @@ import { diaryTagLineKeymap, diaryTagLinePlugin } from './extensions/diaryTagLin
 import { listContinuationExtension } from './extensions/listContinuationKeymap'
 import { inlineMarkEnterExtension } from './extensions/inlineMarkEnterKeymap'
 import { tableCellExtension } from './extensions/tableCellKeymap'
-import { tableEditorPlugin, tableAtomicRanges, tableBoundaryBackspaceKeymap } from './extensions/tableEditorPlugin'
+import {
+  tableEditorPlugin,
+  tableAtomicRanges,
+  tableBoundaryBackspaceKeymap
+} from './extensions/tableEditorPlugin'
 import { tableChromeTouchPlugin } from './extensions/tableChromeTouchPlugin'
 import { tablePostTableTouchPlugin } from './extensions/tablePostTableTouchPlugin'
-import { diarySyntaxTreeGrowthPlugin, diarySyntaxTreeGrowthEffect } from './extensions/diarySyntaxTreeGrowth'
+import {
+  diarySyntaxTreeGrowthPlugin,
+  diarySyntaxTreeGrowthEffect
+} from './extensions/diarySyntaxTreeGrowth'
 import { activeTableCellField } from './table/tableActiveCell'
 import { tableChromeSelectionField } from './table/tableChromeSelection'
 import type { DiaryCmPlatform } from './types'
@@ -128,7 +135,7 @@ export function createDiaryCodeMirror(
     })
     // WebView 首帧：同步 + 多帧补刷装饰
     const refreshDecorations = () => {
-      if (view.isDestroyed) return
+      if (!view.dom.isConnected) return
       view.dispatch({ effects: diarySyntaxTreeGrowthEffect.of(null) })
     }
     refreshDecorations()

@@ -70,8 +70,7 @@ export function livePreviewFreezePlugin(): Extension {
         }
 
         const head = this.view.state.selection.main.head
-        const inFenced =
-          findFencedCodeBlockContaining(this.view.state.doc, head) != null
+        const inFenced = findFencedCodeBlockContaining(this.view.state.doc, head) != null
         if (inFenced) {
           release()
           return

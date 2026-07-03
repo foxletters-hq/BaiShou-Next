@@ -35,7 +35,12 @@ function hideDelimiterRuns(
     const openLen = full.indexOf(inner)
     const closeLen = full.length - openLen - inner.length
     if (openLen > 0) {
-      pushDecoration(marks, hideSyntaxReplace, lineFrom + match.index, lineFrom + match.index + openLen)
+      pushDecoration(
+        marks,
+        hideSyntaxReplace,
+        lineFrom + match.index,
+        lineFrom + match.index + openLen
+      )
     }
     if (closeLen > 0) {
       pushDecoration(

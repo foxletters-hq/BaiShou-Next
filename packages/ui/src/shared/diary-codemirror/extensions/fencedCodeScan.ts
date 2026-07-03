@@ -83,9 +83,7 @@ export function collectFencedCodeBlockRanges(doc: Text): FencedCodeBlockRange[] 
         to: line.to,
         content,
         focusAnchor:
-          bodyLines.length > 0 || openLine.inlineContent
-            ? openLine.contentFrom
-            : openLine.fenceTo,
+          bodyLines.length > 0 || openLine.inlineContent ? openLine.contentFrom : openLine.fenceTo,
         contentFrom: openLine.contentFrom,
         contentTo: Math.max(openLine.contentFrom, contentTo),
         openFenceFrom: openLine.fenceFrom,
@@ -109,13 +107,9 @@ export function collectFencedCodeBlockRanges(doc: Text): FencedCodeBlockRange[] 
   return blocks
 }
 
-export function findFencedCodeBlockContaining(
-  doc: Text,
-  pos: number
-): FencedCodeBlockRange | null {
+export function findFencedCodeBlockContaining(doc: Text, pos: number): FencedCodeBlockRange | null {
   return (
-    collectFencedCodeBlockRanges(doc).find((block) => pos >= block.from && pos <= block.to) ??
-    null
+    collectFencedCodeBlockRanges(doc).find((block) => pos >= block.from && pos <= block.to) ?? null
   )
 }
 
