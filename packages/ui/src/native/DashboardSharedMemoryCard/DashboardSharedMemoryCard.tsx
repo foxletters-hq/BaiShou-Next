@@ -138,10 +138,6 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
         </Text>
       </View>
 
-      <Text style={[styles.desc, { color: colors.textSecondary }]}>
-        {t('summary.shared_memory_desc')}
-      </Text>
-
       <LookbackMonthsField
         lookbackMonths={lookbackMonths}
         label={t('summary.lookback_label')}
@@ -210,11 +206,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontWeight: '800',
     fontSize: 16
-  },
-  desc: {
-    fontSize: 13,
-    lineHeight: 20.8,
-    marginBottom: 24
   },
   btn: {
     marginTop: 24,

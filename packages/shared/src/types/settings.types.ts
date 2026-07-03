@@ -112,6 +112,8 @@ import type { SummaryPromptLocale, SummaryTemplatesMap } from './summary-prompt.
 export interface SummaryConfig {
   /** 生成总结时使用的提示词语言 */
   promptLocale?: SummaryPromptLocale
+  /** 共同回忆复制时的回溯月数（回忆页 / 唤醒回忆共用） */
+  sharedMemoryLookbackMonths?: number
   instructionsByLocale?: Partial<Record<SummaryPromptLocale, SummaryTemplatesMap>>
   instructions?: SummaryTemplatesMap
 }
