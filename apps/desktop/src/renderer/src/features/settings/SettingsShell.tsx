@@ -29,7 +29,7 @@ import { resolveSettingsReturnPath } from './settings-navigation.util'
 import { pathnameToSettingsTabId, SETTINGS_TAB_SEGMENTS } from './settings-tabs.util'
 import { useRagRuntimeBridge } from './hooks/useRagRuntimeBridge'
 
-const NAV_ICON_SIZE = 20
+const NAV_ICON_SIZE = 18
 
 type SettingsTabItem =
   | { kind: 'divider' }

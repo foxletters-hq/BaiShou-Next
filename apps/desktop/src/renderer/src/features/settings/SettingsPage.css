@@ -155,11 +155,19 @@
 }
 
 .settings-nav-icon {
-  font-size: 20px;
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
   margin-right: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+}
+
+.settings-nav-icon svg {
+  width: 1em;
+  height: 1em;
 }
 
 .settings-nav-label {
