@@ -147,16 +147,19 @@ export const DiaryEditorScreen: React.FC = () => {
         )
       }
       const composed = composeDiaryEditorContent(safeContent, parsedTags)
+      const { tags: editorTags } = parseDiaryEditorContent(composed)
       setContent(composed)
       setOriginalContent(safeContent)
       savedEditorSnapshotRef.current = {
         body: parseDiaryEditorContent(composed).body,
-        tags: parsedTags.join(',')
+        tags: editorTags.join(',')
       }
       metadataDirtyRef.current = false
       setIsDirty(false)
       isDirtyRef.current = false
-      setTags(parsedTags)
+      setTags(editorTags)
+      previousTagsRef.current = editorTags
+      originalTagsRef.current = editorTags.length > 0 ? editorTags : parsedTags
     }
   }
 

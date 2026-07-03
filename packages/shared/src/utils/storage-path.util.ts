@@ -1,4 +1,4 @@
-const SKIP_DIR_NAMES = new Set(['snapshots', 'temp'])
+const SKIP_DIR_NAMES = new Set(['snapshots', 'temp', '.git', 'node_modules'])
 const SKIP_FILE_SUFFIXES = ['-wal', '-shm', '-journal']
 export const STORAGE_MIGRATION_STAGING_DIR = '.baishou_migrate_staging'
 

@@ -1,4 +1,4 @@
-import { CreateDiaryInput, Diary, formatLocalDate, parseDateStr } from '@baishou/shared'
+import { CreateDiaryInput, Diary, extractDiaryTagsFromContent, formatLocalDate, parseDateStr } from '@baishou/shared'
 import type { IFileSystem } from '../fs/file-system.types'
 import * as path from '../fs/path.util'
 import { IStoragePathService } from '../vault/storage-path.types'
@@ -66,7 +66,9 @@ export class FileSyncServiceImpl implements FileSyncService {
             .split(',')
             .map((t) => t.trim())
             .filter(Boolean)
-      if (tagArr.length > 0) lines.push(`tags: [${tagArr.join(', ')}]`)
+      const inlineTagSet = new Set(extractDiaryTagsFromContent(diary.content))
+      const fmOnlyTags = tagArr.filter((tag) => !inlineTagSet.has(tag))
+      if (fmOnlyTags.length > 0) lines.push(`tags: [${fmOnlyTags.join(', ')}]`)
     }
 
     if ('tagColors' in diary && diary.tagColors) {

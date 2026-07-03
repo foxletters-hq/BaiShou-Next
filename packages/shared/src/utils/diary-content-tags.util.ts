@@ -125,19 +125,20 @@ function appendMissingInlineTags(body: string, missing: string[]): string {
 }
 
 /**
- * 将 frontmatter 标签与正文合成为编辑器展示内容。
- * 内联标签优先；仅当 FM 中有标签但正文未出现时才插入（时间戳块之后或追加到已有标签行）。
+ * 将正文合成为编辑器展示内容。
+ * 正文已有内联 #标签 时不再从元数据 tags 重复注入；仅对无内联标签的旧数据做一次补全。
  */
 export function composeDiaryEditorContent(body: string, tags: unknown): string {
-  const normalizedTags = normalizeDiaryTags(tags)
   const cleanBody = stripLegacyTopTagLine(body)
+  const inlineTags = extractDiaryTagsFromContent(cleanBody)
+  if (inlineTags.length > 0) {
+    return cleanBody
+  }
+
+  const normalizedTags = normalizeDiaryTags(tags)
   if (!normalizedTags.length) return cleanBody
 
-  const existing = new Set(extractDiaryTagsFromContent(cleanBody))
-  const missing = normalizedTags.filter((t) => !existing.has(t))
-  if (!missing.length) return cleanBody
-
-  return appendMissingInlineTags(cleanBody, missing)
+  return appendMissingInlineTags(cleanBody, normalizedTags)
 }
 
 /** 保存前剥离旧版首行纯标签行（内联标签保留在正文中） */

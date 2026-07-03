@@ -45,11 +45,17 @@ describe('diary-content-tags.util', () => {
     )
   })
 
-  it('已有部分内联标签时只补缺失项', () => {
+  it('正文已有内联标签时不再从元数据重复注入', () => {
     expect(composeDiaryEditorContent('今天 #日记 很开心', ['日记', '生活'])).toBe(
-      '今天 #日记 很开心 #生活'
+      '今天 #日记 很开心'
     )
     expect(composeDiaryEditorContent('今天 #日记 很开心', ['日记'])).toBe('今天 #日记 很开心')
+  })
+
+  it('无内联标签时仍从元数据补全（旧数据迁移）', () => {
+    expect(composeDiaryEditorContent('今天很开心', ['日记', '生活'])).toBe(
+      '#日记 #生活\n\n今天很开心'
+    )
   })
 
   it('无标签时正文原样保留', () => {

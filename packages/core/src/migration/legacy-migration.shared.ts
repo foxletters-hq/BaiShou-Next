@@ -4,7 +4,8 @@ import {
   stripStoragePathScheme,
   LEGACY_UPGRADE_RAG_NOTICE_MAX,
   LEGACY_UPGRADE_RAG_PENDING_KEY,
-  LEGACY_UPGRADE_RAG_NOTICE_COUNT_KEY
+  LEGACY_UPGRADE_RAG_NOTICE_COUNT_KEY,
+  shouldSkipStorageMigrationEntry
 } from '@baishou/shared'
 import { isFilesystemRootPath } from '../storage/workspace-root.util'
 import { journalMarkdownExistsInTree } from '../journal/journal-files.util'
@@ -688,7 +689,7 @@ export async function mergeDirectories(
   await fileSystem.mkdir(dest, { recursive: true })
   const entries = await fileSystem.readdir(src)
   for (const entry of entries) {
-    if (skipEntries?.has(entry)) continue
+    if (skipEntries?.has(entry) || shouldSkipStorageMigrationEntry(entry)) continue
     const srcPath = path.join(src, entry)
     const destPath = path.join(dest, entry)
     let entryIsDirectory = false
@@ -735,6 +736,7 @@ export async function mergeDirectoriesSkipExisting(
   await fileSystem.mkdir(dest, { recursive: true })
   const entries = await fileSystem.readdir(src)
   for (const entry of entries) {
+    if (shouldSkipStorageMigrationEntry(entry)) continue
     const srcPath = path.join(src, entry)
     const destPath = path.join(dest, entry)
     let entryIsDirectory = false

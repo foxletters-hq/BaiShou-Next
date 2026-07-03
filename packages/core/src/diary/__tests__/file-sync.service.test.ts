@@ -59,6 +59,23 @@ describe('FileSyncService', () => {
     expect(content).toContain('My test file sync diary content.')
   })
 
+  it('should omit frontmatter tags when they already appear inline in content', async () => {
+    await service.writeJournal({
+      ...sampleDiary,
+      content: '今天 #test 很开心，#sync 也不错',
+      tags: 'test,sync'
+    })
+
+    const year = sampleDiary.date.getFullYear().toString()
+    const month = (sampleDiary.date.getMonth() + 1).toString().padStart(2, '0')
+    const day = formatLocalDate(sampleDiary.date)
+    const expectedPath = path.join(rootPath, year, month, `${day}.md`)
+    const content = fs.readFileSync(expectedPath, 'utf8')
+
+    expect(content).not.toContain('tags:')
+    expect(content).toContain('#test')
+  })
+
   it('should read a previously written diary successfully', async () => {
     await service.writeJournal(sampleDiary)
     const readBack = await service.readJournal(sampleDiary.date)
