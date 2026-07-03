@@ -488,9 +488,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           logger.warn(
             `[BaishouProvider] Agent DB startup integrity failed (${startupIntegrity.detail ?? 'unknown'}), rebuilding…`
           )
-          install = await rebuildMobileAgentDatabase(
-            fileSystem,
-            (options) => openAgentDatabase({ ...options, useNewConnection: true })
+          install = await rebuildMobileAgentDatabase(fileSystem, (options) =>
+            openAgentDatabase({ ...options, useNewConnection: true })
           )
           agentDbRebuiltAtStartup = true
         }

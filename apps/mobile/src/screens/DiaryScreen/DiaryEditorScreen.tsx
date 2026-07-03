@@ -288,8 +288,7 @@ export const DiaryEditorScreen: React.FC = () => {
     setContent(text)
     setTags(parsedTags)
     const saved = savedEditorSnapshotRef.current
-    const contentUnchanged =
-      saved.body === body && saved.tags === parsedTags.join(',')
+    const contentUnchanged = saved.body === body && saved.tags === parsedTags.join(',')
     const dirty = !contentUnchanged || metadataDirtyRef.current
     setIsDirty(dirty)
     isDirtyRef.current = dirty

@@ -13,7 +13,15 @@ import {
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
-import { WEATHER_IDS, weatherI18nKey, MOOD_IDS, moodI18nKey, getMoodLabelFallback, type WeatherId, type MoodId } from '@baishou/shared'
+import {
+  WEATHER_IDS,
+  weatherI18nKey,
+  MOOD_IDS,
+  moodI18nKey,
+  getMoodLabelFallback,
+  type WeatherId,
+  type MoodId
+} from '@baishou/shared'
 import { YearMonthPicker, useNativeTheme, WeatherEmoji, MoodEmoji } from '@baishou/ui/native'
 
 export interface DiaryAppBarProps {
@@ -56,8 +64,7 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
   const hasActiveFilters = filterWeathers.length > 0 || filterMoods.length > 0 || filterFavorite
 
   const getWeatherLabel = (id: WeatherId) => t(`diary.weather.${weatherI18nKey(id)}`, id)
-  const getMoodLabel = (id: MoodId) =>
-    t(`diary.mood.${moodI18nKey(id)}`, getMoodLabelFallback(id))
+  const getMoodLabel = (id: MoodId) => t(`diary.mood.${moodI18nKey(id)}`, getMoodLabelFallback(id))
 
   const clearFilters = () => {
     onFilterWeathersChange([])
@@ -288,9 +295,7 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
                       ]}
                       onPress={() =>
                         onFilterMoodsChange(
-                          active
-                            ? filterMoods.filter((m) => m !== mood)
-                            : [...filterMoods, mood]
+                          active ? filterMoods.filter((m) => m !== mood) : [...filterMoods, mood]
                         )
                       }
                       accessibilityLabel={label}

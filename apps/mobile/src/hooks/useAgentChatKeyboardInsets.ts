@@ -120,7 +120,13 @@ export function useAgentChatKeyboardInsets({
     if (isBubbleEditingSv.value === 0 && Keyboard.isVisible?.() !== true) {
       resetListSpacerForComposer(250)
     }
-  }, [clearComposerLift, syncKeyboardInset, keyboardVisibleSv, isBubbleEditingSv, resetListSpacerForComposer])
+  }, [
+    clearComposerLift,
+    syncKeyboardInset,
+    keyboardVisibleSv,
+    isBubbleEditingSv,
+    resetListSpacerForComposer
+  ])
 
   useEffect(() => {
     inputDockHeightSv.value = inputDockHeight
@@ -182,8 +188,7 @@ export function useAgentChatKeyboardInsets({
 
   useEffect(() => {
     if (isBubbleEditing) {
-      listSpacerHeight.value =
-        inputDockHeight + BUBBLE_EDIT_KEYBOARD_BUFFER + BUBBLE_EDIT_DOCK_GAP
+      listSpacerHeight.value = inputDockHeight + BUBBLE_EDIT_KEYBOARD_BUFFER + BUBBLE_EDIT_DOCK_GAP
       return
     }
     const keyboardVisible = Keyboard.isVisible?.() === true

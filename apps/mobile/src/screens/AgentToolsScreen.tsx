@@ -36,7 +36,10 @@ export const AgentToolsScreen: React.FC = () => {
     async (next: ToolManagementConfig) => {
       setConfig(next)
       if (!services || !dbReady) return
-      await services.settingsManager.set('tool_management_config', normalizeToolManagementConfig(next))
+      await services.settingsManager.set(
+        'tool_management_config',
+        normalizeToolManagementConfig(next)
+      )
     },
     [dbReady, services]
   )

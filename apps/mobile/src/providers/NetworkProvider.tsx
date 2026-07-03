@@ -32,8 +32,7 @@ const NetworkContext = createContext<NetworkStatus>(DEFAULT_STATUS)
 function resolveNetworkStatus(state: NetInfoState | null): NetworkStatus {
   const isConnected = state?.isConnected ?? true
   const isInternetReachable = state?.isInternetReachable ?? null
-  const isOnline =
-    isConnected && (isInternetReachable === null || isInternetReachable === true)
+  const isOnline = isConnected && (isInternetReachable === null || isInternetReachable === true)
   return { isConnected, isInternetReachable, isOnline }
 }
 

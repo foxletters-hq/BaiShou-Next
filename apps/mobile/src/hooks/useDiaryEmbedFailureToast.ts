@@ -31,8 +31,7 @@ export function useDiaryEmbedFailureToast(): void {
         if (now - lastShownAtRef.current < DIARY_EMBED_FAILURE_TOAST_DEBOUNCE_MS) return
         lastShownAtRef.current = now
 
-        const reason =
-          message?.trim() || ragConfig.lastDiaryEmbedFailureMessage?.trim() || ''
+        const reason = message?.trim() || ragConfig.lastDiaryEmbedFailureMessage?.trim() || ''
 
         toast.showWarning(
           reason

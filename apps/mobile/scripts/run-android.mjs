@@ -35,10 +35,14 @@ console.log(`
 
 // pnpm dev:clear 会先跑 predev:clear；直接 node 本脚本时在此补跑
 if (process.env.npm_lifecycle_event !== 'dev:clear') {
-  const rebuildResult = spawnSync(process.execPath, [path.join(__dirname, 'rebuild-dev-artifacts.mjs')], {
-    cwd: mobileRoot,
-    stdio: 'inherit'
-  })
+  const rebuildResult = spawnSync(
+    process.execPath,
+    [path.join(__dirname, 'rebuild-dev-artifacts.mjs')],
+    {
+      cwd: mobileRoot,
+      stdio: 'inherit'
+    }
+  )
   if (rebuildResult.status !== 0) {
     process.exit(rebuildResult.status ?? 1)
   }
