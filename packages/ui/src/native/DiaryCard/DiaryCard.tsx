@@ -1,10 +1,9 @@
 import { useTranslation } from 'react-i18next'
-import React, { memo } from 'react'
+import React, { memo, useMemo } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useNativeTheme } from '../../native/theme'
 import {
-  formatDiaryPreviewText,
   getDiaryTagColorIndex,
   limitDiaryPreviewTags,
   resolveDiaryTagColorIndex,
@@ -14,6 +13,7 @@ import {
 } from '@baishou/shared'
 import { WeatherEmoji } from '../WeatherIcon'
 import { MoodEmoji } from '../MoodIcon/MoodEmoji'
+import { MarkdownRenderer } from '../MarkdownRenderer'
 
 interface DiaryCardProps {
   id: number
@@ -73,7 +73,11 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
     return tagPalette[index] ?? tagPalette[getDiaryTagColorIndex(tag)]!
   }
 
-  const previewText = formatDiaryPreviewText(contentSnippet)
+  const previewMarkdown = useMemo(() => {
+    const text = contentSnippet.trim()
+    if (!text) return ''
+    return text.length > 500 ? `${text.slice(0, 500)}…` : text
+  }, [contentSnippet])
   const { visibleTags: previewTags, overflowCount: tagOverflowCount } = limitDiaryPreviewTags(tags)
 
   return (
@@ -140,10 +144,13 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
       </View>
 
       <View style={styles.contentContainer}>
-        <Text style={[styles.snippet, { color: colors.textPrimary }]} numberOfLines={5}>
-          {previewText}
-        </Text>
-        {/* RN LinearGradient mask typically requires react-native-linear-gradient, mock with simple overlap or fade */}
+        {previewMarkdown ? (
+          <MarkdownRenderer content={previewMarkdown} variant="preview" />
+        ) : (
+          <Text style={[styles.snippet, { color: colors.textSecondary }]} numberOfLines={3}>
+            —
+          </Text>
+        )}
       </View>
 
       {previewTags.length > 0 && (

@@ -14,7 +14,7 @@ import {
   moodMatchesFilter,
   resolveWeatherId,
   resolveMoodId,
-  formatDiaryPreviewText,
+  normalizeDiaryPreviewMarkdown,
   mergeDiaryTagColorRegistries,
   normalizeDiaryTagColorRegistry
 } from '@baishou/shared'
@@ -537,7 +537,7 @@ export class DiaryService {
     return {
       id: s.id,
       date: parseDateStr(s.date.split('T')[0]!),
-      preview: formatDiaryPreviewText(
+      preview: normalizeDiaryPreviewMarkdown(
         previewOverride || (rawContent ? rawContent.substring(0, 500) : '')
       ),
       tags: parsedTags,

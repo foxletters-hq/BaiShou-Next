@@ -14,7 +14,7 @@ import {
 } from './streamdown-markdown.util'
 import { useMarkdownLinkPress } from './useMarkdownLinkPress'
 
-export type MarkdownRendererVariant = 'default' | 'chat' | 'ancillary'
+export type MarkdownRendererVariant = 'default' | 'chat' | 'ancillary' | 'preview'
 
 const STATIC_MD4C_FLAGS = { latexMath: true, underline: false } as const
 const STATIC_STREAMING_CONFIG = { tableMode: 'progressive' as const }
@@ -82,11 +82,15 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = (props) => {
   const streamFlavor =
     variant === 'chat' || isStreaming || variant === 'ancillary' ? 'commonmark' : 'github'
   const markdownContainerStyle =
-    variant === 'chat' || variant === 'ancillary'
+    variant === 'preview'
+      ? [styles.containerPreview, style]
+      : variant === 'chat' || variant === 'ancillary'
       ? [styles.containerCompact, style]
       : [variant === 'default' ? styles.containerDefault : styles.containerCompact, style]
   const nativeContainerStyle =
-    variant === 'chat'
+    variant === 'preview'
+      ? styles.markdownPreviewNative
+      : variant === 'chat'
       ? styles.markdownChatNative
       : variant === 'ancillary'
         ? styles.markdownAncillaryNative
@@ -146,7 +150,16 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     width: '100%'
   },
+  containerPreview: {
+    alignSelf: 'stretch',
+    width: '100%',
+    overflow: 'hidden'
+  },
   markdownFill: {
+    alignSelf: 'stretch',
+    width: '100%'
+  },
+  markdownPreviewNative: {
     alignSelf: 'stretch',
     width: '100%'
   },

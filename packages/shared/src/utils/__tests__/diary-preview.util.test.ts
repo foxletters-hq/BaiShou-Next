@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { formatDiaryPreviewText, formatSemanticChunkSnippet } from '../diary-preview.util'
+import {
+  formatDiaryPreviewText,
+  formatSemanticChunkSnippet,
+  normalizeDiaryPreviewMarkdown
+} from '../diary-preview.util'
+
+describe('normalizeDiaryPreviewMarkdown', () => {
+  it('keeps markdown headings and emphasis', () => {
+    const raw = '##### 12:30:45\n\n**加粗** 与 _斜体_'
+    expect(normalizeDiaryPreviewMarkdown(raw)).toBe('##### 12:30:45\n\n**加粗** 与 _斜体_')
+  })
+})
 
 describe('formatDiaryPreviewText', () => {
   it('preserves line breaks after stripping markdown headings', () => {

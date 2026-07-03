@@ -5,7 +5,7 @@ import {
 } from '../DiaryEditor/diary-image-markdown.util'
 import type { useNativeTheme } from '../theme'
 
-export type StreamdownMarkdownVariant = 'default' | 'chat' | 'ancillary'
+export type StreamdownMarkdownVariant = 'default' | 'chat' | 'ancillary' | 'preview'
 
 const IMAGE_IN_MARKDOWN_RE = /!\[([^\]]*)\]\(([^ |)]+)(?:\s*\|\s*(\d+))?\)/g
 
@@ -23,14 +23,15 @@ export function buildStreamdownMarkdownStyle(
   colors: ReturnType<typeof useNativeTheme>['colors'],
   variant: StreamdownMarkdownVariant
 ): MarkdownStyle {
+  const isPreview = variant === 'preview'
   const isAncillary = variant === 'ancillary'
   const isChat = variant === 'chat' || isAncillary
-  const bodyFontSize = isAncillary ? 14 : 15
-  const bodyLineHeight = isAncillary ? 20 : 24
+  const bodyFontSize = isPreview ? 15 : isAncillary ? 14 : 15
+  const bodyLineHeight = isPreview ? 24 : isAncillary ? 20 : 24
   const bodyColor = isAncillary ? colors.textSecondary : colors.textPrimary
   /** 末行由 CHAT_MARKDOWN_BOTTOM_GUARD 托底，段落间距改由 lineHeight 自然分隔 */
-  const paragraphMargin = isAncillary ? 4 : isChat ? 0 : 8
-  const headingScale = isChat ? 0.85 : 1
+  const paragraphMargin = isPreview ? 2 : isAncillary ? 4 : isChat ? 0 : 8
+  const headingScale = isPreview ? 0.72 : isChat ? 0.85 : 1
   const codeFontSize = isAncillary ? 12 : 13
 
   return {
@@ -44,8 +45,8 @@ export function buildStreamdownMarkdownStyle(
       color: colors.textPrimary,
       fontSize: Math.round(24 * headingScale),
       fontWeight: 'bold',
-      marginTop: isChat ? 12 : 16,
-      marginBottom: isChat ? 6 : 8
+      marginTop: isPreview ? 0 : isChat ? 12 : 16,
+      marginBottom: isPreview ? 2 : isChat ? 6 : 8
     },
     h2: {
       color: colors.textPrimary,
