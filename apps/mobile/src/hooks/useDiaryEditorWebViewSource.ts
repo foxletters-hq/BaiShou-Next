@@ -26,7 +26,7 @@ export interface DiaryEditorWebViewSource {
   cacheKey: string
 }
 
-const FEATURE_MARKER = 'cm-table-cell-source'
+const FEATURE_MARKER = 'live-preview-widget-hide-v5'
 
 function logStaging(message: string, detail?: Record<string, unknown>): void {
   if (typeof __DEV__ === 'undefined' || !__DEV__) return

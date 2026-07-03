@@ -15,6 +15,7 @@ import { resolveTableConfirmResponse } from '@baishou/ui/shared/diary-codemirror
 import { resolveNativeTableSheetResponse } from '@baishou/ui/shared/diary-codemirror/table/tableNativeSheet'
 import { dismissKeyboardForSheetInteraction, isTableSheetOpen } from '@baishou/ui/shared/diary-codemirror/table/tableSheetInteraction'
 import { logDiaryBridge } from '@baishou/ui/shared/diary-codemirror/diaryBridgeDebug'
+import { diarySyntaxTreeGrowthEffect } from '@baishou/ui/shared/diary-codemirror/extensions/diarySyntaxTreeGrowth'
 import type { DiaryCmTheme } from '@baishou/ui/shared/diary-codemirror/types'
 
 import type { InitPayload, RnToWebViewMessage, WebViewToRnMessage } from './types'
@@ -22,7 +23,7 @@ import type { InitPayload, RnToWebViewMessage, WebViewToRnMessage } from './type
 declare const __DIARY_EDITOR_BUILD_ID__: string | undefined
 
 /** 表格/滚动大改时递增，用于 Metro 日志核对 bundle 版本 */
-const DIARY_CM_FEATURE_TAG = 'table-cell-source-v2'
+const DIARY_CM_FEATURE_TAG = 'live-preview-widget-hide-v5'
 
 let view: EditorView | null = null
 let suppressChangeEcho = false
@@ -599,6 +600,7 @@ function mountEditor(init: InitPayload): void {
     contentLength: init.content.length
   })
 
+  suppressChangeEcho = true
   view = createDiaryCodeMirror(container, {
     content: init.content,
     placeholder: init.placeholder,
@@ -760,17 +762,45 @@ function mountEditor(init: InitPayload): void {
 
   applyTagColorRegistry(init.tagColorRegistry)
   reportContentMetrics()
+  suppressChangeEcho = false
 
   requestAnimationFrame(() => {
-    const cellSources = view?.dom.querySelectorAll('.cm-table-cell-source').length ?? 0
-    const tableBlocks = view?.dom.querySelectorAll('.cm-table-block').length ?? 0
-    logEditor('mountEditor:dom', {
-      tableBlocks,
-      cellSources,
-      scrollerClientHeight: view?.scrollDOM.clientHeight ?? 0,
-      scrollerScrollHeight: view?.scrollDOM.scrollHeight ?? 0
-    })
+    probeLivePreviewDom(0)
   })
+}
+
+function probeLivePreviewDom(attempt: number): void {
+  const cellSources = view?.dom.querySelectorAll('.cm-table-cell-source').length ?? 0
+  const tableBlocks = view?.dom.querySelectorAll('.cm-table-block').length ?? 0
+  const headingMarks =
+    (view?.dom.querySelectorAll('.cm-rendered-h1').length ?? 0) +
+    (view?.dom.querySelectorAll('.cm-rendered-h2').length ?? 0) +
+    (view?.dom.querySelectorAll('.cm-rendered-h3').length ?? 0) +
+    (view?.dom.querySelectorAll('.cm-rendered-h4').length ?? 0) +
+    (view?.dom.querySelectorAll('.cm-rendered-h5').length ?? 0) +
+    (view?.dom.querySelectorAll('.cm-rendered-h6').length ?? 0)
+  const hiddenWidgets = view?.dom.querySelectorAll('.cm-syntax-hidden-widget').length ?? 0
+  const hiddenMarks = view?.dom.querySelectorAll('.cm-markdown-syntax-hidden').length ?? 0
+  const hiddenSyntaxCount = hiddenWidgets + hiddenMarks
+  const firstLineText = view?.dom.querySelector('.cm-line')?.textContent?.slice(0, 48) ?? ''
+  const docLen = view?.state.doc.length ?? 0
+  const needsRetry = docLen > 0 && headingMarks === 0 && hiddenSyntaxCount === 0 && attempt < 6
+  logEditor('mountEditor:dom', {
+    tableBlocks,
+    cellSources,
+    headingMarks,
+    hiddenWidgets,
+    hiddenMarks,
+    hiddenSyntaxCount,
+    firstLineText,
+    attempt,
+    scrollerClientHeight: view?.scrollDOM.clientHeight ?? 0,
+    scrollerScrollHeight: view?.scrollDOM.scrollHeight ?? 0
+  })
+  if (needsRetry) {
+    view?.dispatch({ effects: diarySyntaxTreeGrowthEffect.of(null) })
+    window.setTimeout(() => probeLivePreviewDom(attempt + 1), 50 * (attempt + 1))
+  }
 }
 
 function setEditable(editable: boolean): void {
@@ -794,9 +824,14 @@ function setContent(content: string): void {
   view.dispatch({
     changes: { from: 0, to: current.length, insert: content },
     selection: { anchor: mapPos(anchor), head: mapPos(head) },
+    effects: diarySyntaxTreeGrowthEffect.of(null),
     scrollIntoView: false
   })
   view.scrollDOM.scrollTop = scrollTop
+  requestAnimationFrame(() => {
+    if (!view) return
+    view.dispatch({ effects: diarySyntaxTreeGrowthEffect.of(null) })
+  })
   suppressChangeEcho = false
 }
 
