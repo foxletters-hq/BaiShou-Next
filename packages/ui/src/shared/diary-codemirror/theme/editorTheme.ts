@@ -204,9 +204,10 @@ export const editorTheme = EditorView.baseTheme({
     // 块级 widget 可能比源码行更高；默认可穿透，仅交互子元素接收触摸
     pointerEvents: 'none'
   },
-  '.cm-table-block .cm-table-cell-source, .cm-table-block .cm-table-handle, .cm-table-block .cm-table-corner-menu, .cm-table-block .cm-table-add-btn, .cm-table-block .cm-table-context-menu, .cm-table-block .cm-table-context-menu-layer, .cm-table-block .cm-table-sheet-layer': {
-    pointerEvents: 'auto'
-  },
+  '.cm-table-block .cm-table-cell-source, .cm-table-block .cm-table-handle, .cm-table-block .cm-table-corner-menu, .cm-table-block .cm-table-add-btn, .cm-table-block .cm-table-context-menu, .cm-table-block .cm-table-context-menu-layer, .cm-table-block .cm-table-sheet-layer':
+    {
+      pointerEvents: 'auto'
+    },
   '.cm-table-scroll-host': {
     overflowX: 'auto',
     maxWidth: '100%'
@@ -238,21 +239,25 @@ export const editorTheme = EditorView.baseTheme({
     opacity: '1',
     pointerEvents: 'auto'
   },
-  '.cm-table-block--touch.cm-table-block--row-selected .cm-table-handle, .cm-table-block--touch.cm-table-block--col-selected .cm-table-handle': {
-    opacity: '0.55',
-    pointerEvents: 'auto'
-  },
-  '.cm-table-block--touch.cm-table-block--row-selected .cm-table-handle--active, .cm-table-block--touch.cm-table-block--col-selected .cm-table-handle--active': {
-    opacity: '1'
-  },
-  '.cm-table-block--touch.cm-table-block--row-selected .cm-table-corner-menu, .cm-table-block--touch.cm-table-block--col-selected .cm-table-corner-menu': {
-    opacity: '1',
-    pointerEvents: 'auto'
-  },
-  '.cm-table-block--touch.cm-table-block--row-selected .cm-table-add-btn, .cm-table-block--touch.cm-table-block--col-selected .cm-table-add-btn': {
-    opacity: '1',
-    pointerEvents: 'auto'
-  },
+  '.cm-table-block--touch.cm-table-block--row-selected .cm-table-handle, .cm-table-block--touch.cm-table-block--col-selected .cm-table-handle':
+    {
+      opacity: '0.55',
+      pointerEvents: 'auto'
+    },
+  '.cm-table-block--touch.cm-table-block--row-selected .cm-table-handle--active, .cm-table-block--touch.cm-table-block--col-selected .cm-table-handle--active':
+    {
+      opacity: '1'
+    },
+  '.cm-table-block--touch.cm-table-block--row-selected .cm-table-corner-menu, .cm-table-block--touch.cm-table-block--col-selected .cm-table-corner-menu':
+    {
+      opacity: '1',
+      pointerEvents: 'auto'
+    },
+  '.cm-table-block--touch.cm-table-block--row-selected .cm-table-add-btn, .cm-table-block--touch.cm-table-block--col-selected .cm-table-add-btn':
+    {
+      opacity: '1',
+      pointerEvents: 'auto'
+    },
   '.cm-table-cursor-after': {
     display: 'none'
   },
@@ -676,9 +681,10 @@ export const editorTheme = EditorView.baseTheme({
     background: 'var(--color-primary, #5b9bd5)',
     borderRadius: '4px'
   },
-  '.cm-table-block--col-selected .cm-table-col-handle.cm-table-handle--active .cm-table-grip-icon': {
-    fill: '#fff'
-  },
+  '.cm-table-block--col-selected .cm-table-col-handle.cm-table-handle--active .cm-table-grip-icon':
+    {
+      fill: '#fff'
+    },
 
   '.cm-code': {
     fontFamily: "'Fira Code', 'Courier New', monospace",

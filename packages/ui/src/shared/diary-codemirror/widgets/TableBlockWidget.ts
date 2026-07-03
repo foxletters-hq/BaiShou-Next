@@ -144,11 +144,7 @@ export class TableBlockWidget extends WidgetType {
       if (this.activeCell && this.rootEl && !this.chromeSelection) {
         requestAnimationFrame(() => {
           if (!this.rootEl || !this.activeCell) return
-          focusTableCellSource(
-            this.rootEl,
-            this.activeCell.rowIndex,
-            this.activeCell.colIndex
-          )
+          focusTableCellSource(this.rootEl, this.activeCell.rowIndex, this.activeCell.colIndex)
         })
       }
     })
@@ -294,21 +290,20 @@ export class TableBlockWidget extends WidgetType {
     return btn
   }
 
-  private createCell(raw: string, rowIndex: number, colIndex: number, isHeader: boolean): HTMLElement {
+  private createCell(
+    raw: string,
+    rowIndex: number,
+    colIndex: number,
+    isHeader: boolean
+  ): HTMLElement {
     const el = document.createElement(isHeader ? 'th' : 'td')
     el.className = 'cm-table-grid-cell'
     el.dataset.row = String(rowIndex)
     el.dataset.col = String(colIndex)
-    if (
-      this.chromeSelection?.kind === 'col' &&
-      this.chromeSelection.index === colIndex
-    ) {
+    if (this.chromeSelection?.kind === 'col' && this.chromeSelection.index === colIndex) {
       el.classList.add('cm-table-grid-cell--col-selected')
     }
-    if (
-      this.chromeSelection?.kind === 'row' &&
-      this.chromeSelection.index === rowIndex
-    ) {
+    if (this.chromeSelection?.kind === 'row' && this.chromeSelection.index === rowIndex) {
       el.classList.add('cm-table-grid-cell--row-selected')
     }
 
@@ -563,15 +558,19 @@ export class TableBlockWidget extends WidgetType {
     btn.appendChild(createTableGripIcon())
     btn.dataset.colIndex = String(colIndex)
 
-    this.bindHandleMenu(btn, () => this.colMenuItems(colIndex), (from, to) => {
-      this.runAction({
-        type: 'moveColumn',
-        tableFrom: this.table.from,
-        tableTo: this.table.to,
-        fromIndex: from,
-        toIndex: to
-      })
-    })
+    this.bindHandleMenu(
+      btn,
+      () => this.colMenuItems(colIndex),
+      (from, to) => {
+        this.runAction({
+          type: 'moveColumn',
+          tableFrom: this.table.from,
+          tableTo: this.table.to,
+          fromIndex: from,
+          toIndex: to
+        })
+      }
+    )
     return btn
   }
 
@@ -590,15 +589,19 @@ export class TableBlockWidget extends WidgetType {
       btn.classList.add('cm-table-row-handle--header')
     }
 
-    this.bindHandleMenu(btn, () => this.rowMenuItems(rowIndex), (from, to) => {
-      this.runAction({
-        type: 'moveRow',
-        tableFrom: this.table.from,
-        tableTo: this.table.to,
-        fromIndex: from,
-        toIndex: to
-      })
-    })
+    this.bindHandleMenu(
+      btn,
+      () => this.rowMenuItems(rowIndex),
+      (from, to) => {
+        this.runAction({
+          type: 'moveRow',
+          tableFrom: this.table.from,
+          tableTo: this.table.to,
+          fromIndex: from,
+          toIndex: to
+        })
+      }
+    )
     return btn
   }
 
@@ -620,7 +623,11 @@ export class TableBlockWidget extends WidgetType {
       const sections = isCol
         ? buildColMenuSections(this.table, colIndex)
         : buildRowMenuSections(this.table, rowIndex)
-      const title = isCol ? `第 ${colIndex + 1} 列` : rowIndex < 0 ? '表头' : `第 ${rowIndex + 1} 行`
+      const title = isCol
+        ? `第 ${colIndex + 1} 列`
+        : rowIndex < 0
+          ? '表头'
+          : `第 ${rowIndex + 1} 行`
       this.showMenu(
         sections.flatMap((s) => s.items),
         clientX,

@@ -18,7 +18,7 @@ export function isTableSheetOpen(): boolean {
 
 export function resolveEditorViewFromDom(): EditorView | null {
   const el = document.querySelector('.cm-editor')
-  if (!el) return null
+  if (!(el instanceof HTMLElement)) return null
   return EditorView.findFromDOM(el) ?? null
 }
 

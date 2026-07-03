@@ -6,7 +6,11 @@ import { logDiaryBridge } from '../diaryBridgeDebug'
 import { resolvePostTableCursor, postTableSeparatorChange } from './tablePostGap'
 
 /** 结构变更写入时，若表后缺少换行则补一个 */
-export function ensureTableMarkdownTrailingNewline(doc: Text, tableTo: number, markdown: string): string {
+export function ensureTableMarkdownTrailingNewline(
+  doc: Text,
+  tableTo: number,
+  markdown: string
+): string {
   if (tableTo >= doc.length) {
     return markdown.endsWith('\n') ? markdown : `${markdown}\n`
   }

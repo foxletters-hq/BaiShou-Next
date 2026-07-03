@@ -149,11 +149,7 @@ function placeCaretAtPos(view: EditorView, pos: number, reason: string): boolean
   return true
 }
 
-function placeAfterTableBlock(
-  view: EditorView,
-  block: HTMLElement,
-  reason: string
-): boolean {
+function placeAfterTableBlock(view: EditorView, block: HTMLElement, reason: string): boolean {
   const tableFrom = Number(block.dataset.tableFrom)
   if (Number.isNaN(tableFrom)) return false
   const tableRowTo = findTableToByFrom(view.state, tableFrom)
@@ -200,7 +196,7 @@ export function placeEditorCaretFromPointer(
   target?: Element | null
 ): boolean {
   // precise 是第二参数，不能写在 coords 对象里
-  let coordsPos = view.posAtCoords({ x: clientX, y: clientY }, true)
+  let coordsPos = view.posAtCoords({ x: clientX, y: clientY }, true as false)
   if (coordsPos == null) {
     coordsPos = view.posAtCoords({ x: clientX, y: clientY }, false)
   }
@@ -235,8 +231,7 @@ export function placeEditorCaretFromPointer(
     head: view.state.selection.main.head,
     docLen: view.state.doc.length,
     tableBlocks: view.dom.querySelectorAll('.cm-table-block').length,
-    targetClass:
-      target instanceof Element ? target.className?.slice?.(0, 40) ?? '' : ''
+    targetClass: target instanceof Element ? (target.className?.slice?.(0, 40) ?? '') : ''
   })
   return false
 }

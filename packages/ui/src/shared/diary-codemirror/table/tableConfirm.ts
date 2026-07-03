@@ -13,10 +13,7 @@ export function resolveTableConfirmResponse(requestId: string, confirmed: boolea
   resolve(confirmed)
 }
 
-export function confirmMessageForDestructiveItem(item: {
-  id: string
-  label: string
-}): string {
+export function confirmMessageForDestructiveItem(item: { id: string; label: string }): string {
   if (item.id === 'delete-table') return '确定要删除这张表格吗？此操作不可撤销。'
   if (item.id === 'delete' && item.label.includes('列')) {
     return '确定要删除这一列吗？此操作不可撤销。'

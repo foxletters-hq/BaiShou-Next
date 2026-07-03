@@ -1,3 +1,4 @@
+import type { StateEffect } from '@codemirror/state'
 import type { EditorView } from '@codemirror/view'
 import type { ParsedTable } from './table.model'
 import { setActiveTableCell } from './tableActiveCell'
@@ -12,10 +13,7 @@ import {
   markTableSheetClosed,
   markTableSheetOpen
 } from './tableSheetInteraction'
-import {
-  blurActiveTableCellInput,
-  dismissEditorKeyboardForChrome
-} from './tableChromeKeyboard'
+import { blurActiveTableCellInput, dismissEditorKeyboardForChrome } from './tableChromeKeyboard'
 import { requestNativeTableSheet, closeNativeTableSheets } from './tableNativeSheet'
 
 declare global {
@@ -37,8 +35,7 @@ let lastChromeMenuOpenAt = 0
 const CHROME_MENU_DEBOUNCE_MS = 280
 let lastChromeTouchAt = 0
 
-const CHROME_TOUCH_SELECTOR =
-  '.cm-table-handle, .cm-table-corner-menu, .cm-table-add-btn'
+const CHROME_TOUCH_SELECTOR = '.cm-table-handle, .cm-table-corner-menu, .cm-table-add-btn'
 
 const MENU_LAYER_SELECTOR = '.cm-table-context-menu-layer, .cm-table-sheet-layer'
 
@@ -298,10 +295,7 @@ function getVisualViewportBox(): { top: number; left: number; width: number; hei
 }
 
 /** 菜单贴 WebView 视口最底（不预留 RN 工具栏高度；工具栏在 WebView 外） */
-function pinTableSheetToVisualViewport(
-  layer: HTMLElement,
-  sheet: HTMLElement
-): () => void {
+function pinTableSheetToVisualViewport(layer: HTMLElement, sheet: HTMLElement): () => void {
   const apply = () => {
     const box = getVisualViewportBox()
     const layerTop = box.top
@@ -594,7 +588,7 @@ function setChromeSelection(
   index: number,
   options?: { clearActiveCell?: boolean }
 ): void {
-  const effects = [setTableChromeSelection.of({ tableFrom, kind, index })]
+  const effects: StateEffect<unknown>[] = [setTableChromeSelection.of({ tableFrom, kind, index })]
   if (options?.clearActiveCell) {
     effects.push(setActiveTableCell.of(null))
   }

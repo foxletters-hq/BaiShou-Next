@@ -1,11 +1,6 @@
 import type { ParsedTable } from './table.model'
 
-export type TableKeyCommand =
-  | 'tab'
-  | 'shift-tab'
-  | 'enter'
-  | 'shift-enter'
-  | 'escape'
+export type TableKeyCommand = 'tab' | 'shift-tab' | 'enter' | 'shift-enter' | 'escape'
 
 export type TableKeyAction =
   | { kind: 'focus-cell'; rowIndex: number; colIndex: number }
