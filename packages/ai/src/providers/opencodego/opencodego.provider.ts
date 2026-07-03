@@ -1,9 +1,5 @@
 import { generateText, type EmbeddingModel, type LanguageModel } from 'ai'
-import {
-  type AiProviderModel,
-  isChatModelForConnectionTest,
-  ProviderType
-} from '@baishou/shared'
+import { type AiProviderModel, isChatModelForConnectionTest, ProviderType } from '@baishou/shared'
 import { IAIProvider } from '../provider.interface'
 import { assertAsciiApiKey } from '../fetch-header.util'
 import { getRotatedApiKey } from '../provider.utils'

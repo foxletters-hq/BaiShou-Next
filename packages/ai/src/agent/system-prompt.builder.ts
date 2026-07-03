@@ -150,7 +150,9 @@ export class SystemPromptBuilder {
     if (assistantKind === 'companion' && toolUsageGuidelines) {
       buffer.push('<assistant_capabilities>')
       buffer.push('Partner type: Companion (亲密伙伴).')
-      buffer.push('Diary and memory tools may be available—follow the tool usage guidelines strictly.')
+      buffer.push(
+        'Diary and memory tools may be available—follow the tool usage guidelines strictly.'
+      )
       buffer.push('</assistant_capabilities>')
       buffer.push('')
     }

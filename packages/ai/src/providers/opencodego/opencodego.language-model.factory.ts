@@ -2,10 +2,7 @@ import { createAnthropic } from '@ai-sdk/anthropic'
 import { createOpenAI } from '@ai-sdk/openai'
 import type { LanguageModel } from 'ai'
 import { type AiProviderModel, ProviderType, resolveProviderBaseUrl } from '@baishou/shared'
-import {
-  createSanitizedFetch,
-  sanitizeApiKeyForHttp
-} from '../fetch-header.util'
+import { createSanitizedFetch, sanitizeApiKeyForHttp } from '../fetch-header.util'
 import { getRotatedApiKey } from '../provider.utils'
 import { OPENCODE_GO_DEFAULT_BASE_URL } from './opencodego.constants'
 import { resolveOpenCodeGoWireProtocol } from './opencodego.model-protocol'

@@ -452,8 +452,7 @@ export class ContextCompressorService {
       sessionId
     })
     const wrapMessageTime = options?.wrapMessageTime !== false
-    const rawSystem =
-      compressionConfig.systemPrompt?.trim() || getDefaultCompressionSystemPrompt()
+    const rawSystem = compressionConfig.systemPrompt?.trim() || getDefaultCompressionSystemPrompt()
     const systemBase = adaptCompressionSystemPrompt(rawSystem, undefined, { wrapMessageTime })
 
     const userContent = buildCompressionUserMessageContent(toCompress, priorSummaryText, options)
