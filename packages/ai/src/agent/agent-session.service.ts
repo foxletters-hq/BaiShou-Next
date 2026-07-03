@@ -128,47 +128,64 @@ export class AgentSessionService {
 
       // 2. 若上下文 token 超过阈值或逼近模型窗口，先同步压缩再构建窗口
       const compressionConfig = await resolveSessionCompressionConfig(sessionId, sessionRepo)
+      const loadSessionMessages = async () =>
+        (await sessionRepo.getMessagesBySession(
+          sessionId,
+          COMPRESSION_MESSAGE_FETCH_LIMIT
+        )) as import('./message.adapter').MessageWithParts[]
+
+      let sessionMessages = await loadSessionMessages()
+      let snapshotForWindow = await snapshotRepo.getLatestSnapshot(sessionId)
+
       {
         if (abortSignal?.aborted) {
           throw new DOMException('The operation was aborted', 'AbortError')
         }
-        const rawForEstimate = (await sessionRepo.getMessagesBySession(
-          sessionId,
-          COMPRESSION_MESSAGE_FETCH_LIMIT
-        )) as import('./message.adapter').MessageWithParts[]
-        const latestSnap = await snapshotRepo.getLatestSnapshot(sessionId)
-        const afterSnap = getMessagesAfterSnapshot(rawForEstimate, latestSnap)
-        const contextTokens = estimateContextTokensForTrigger(rawForEstimate, afterSnap, latestSnap)
-        // 重发/编辑截断后仅重新判定阈值；截断流程已清除 marker/无效快照，不再 force 绕过阈值。
-        if (resolveCompressionTrigger(contextTokens, compressionConfig)) {
-          logger.info(
-            `[AgentSessionService] Context ~${contextTokens} tokens hit compression trigger (threshold=${compressionConfig.threshold}, window=${compressionConfig.modelContextWindow ?? 0}, force=${Boolean(compressionConfig.force)}), compressing before request.`
+
+        const usableWindow = usableContextTokens(
+          compressionConfig.modelContextWindow ?? 0,
+          compressionConfig.reservedTokens
+        )
+        const shouldEvaluateCompression =
+          compressionConfig.force || compressionConfig.threshold > 0 || usableWindow > 0
+
+        if (shouldEvaluateCompression) {
+          const afterSnap = getMessagesAfterSnapshot(sessionMessages, snapshotForWindow)
+          const contextTokens = estimateContextTokensForTrigger(
+            sessionMessages,
+            afterSnap,
+            snapshotForWindow
           )
-          const compressed = await ContextCompressorService.tryCompress(
-            provider,
-            modelId,
-            sessionRepo,
-            snapshotRepo,
-            sessionId,
-            compressionConfig,
-            resolveEffectiveProviderType(provider.config?.type ?? '', modelId),
-            {
-              ...(userMessageId ? { triggerUserMessageId: userMessageId } : {}),
-              abortSignal,
-              wrapMessageTime: injectMessageTime
-            }
-          )
-          if (abortSignal?.aborted) {
-            throw new DOMException('The operation was aborted', 'AbortError')
-          }
-          if (compressed) {
-            const allForPrune = (await sessionRepo.getMessagesBySession(
+          if (resolveCompressionTrigger(contextTokens, compressionConfig)) {
+            logger.info(
+              `[AgentSessionService] Context ~${contextTokens} tokens hit compression trigger (threshold=${compressionConfig.threshold}, window=${compressionConfig.modelContextWindow ?? 0}, force=${Boolean(compressionConfig.force)}), compressing before request.`
+            )
+            const compressed = await ContextCompressorService.tryCompress(
+              provider,
+              modelId,
+              sessionRepo,
+              snapshotRepo,
               sessionId,
-              COMPRESSION_MESSAGE_FETCH_LIMIT
-            )) as import('./message.adapter').MessageWithParts[]
-            await ContextCompressorService.runPrune(sessionRepo, sessionId, allForPrune, {
-              flushSessionToDisk
-            })
+              compressionConfig,
+              resolveEffectiveProviderType(provider.config?.type ?? '', modelId),
+              {
+                ...(userMessageId ? { triggerUserMessageId: userMessageId } : {}),
+                abortSignal,
+                wrapMessageTime: injectMessageTime,
+                prefetchedMessages: sessionMessages
+              }
+            )
+            if (abortSignal?.aborted) {
+              throw new DOMException('The operation was aborted', 'AbortError')
+            }
+            if (compressed) {
+              sessionMessages = await loadSessionMessages()
+              await ContextCompressorService.runPrune(sessionRepo, sessionId, sessionMessages, {
+                flushSessionToDisk
+              })
+              sessionMessages = await loadSessionMessages()
+              snapshotForWindow = await snapshotRepo.getLatestSnapshot(sessionId)
+            }
           }
         }
       }
@@ -177,9 +194,13 @@ export class AgentSessionService {
       const configRecentCount =
         typeof userConfig?.['recentCount'] === 'number' ? userConfig['recentCount'] : 30
 
-      const dbHistory = await ContextWindowBuilder.build(sessionId, sessionRepo, snapshotRepo, {
-        recentCount: configRecentCount
-      })
+      const dbHistory = await ContextWindowBuilder.buildFromMessages(
+        sessionId,
+        snapshotRepo,
+        sessionMessages,
+        { recentCount: configRecentCount },
+        snapshotForWindow
+      )
       const coreMessages = await MessageAdapter.toVercelMessages(
         dbHistory,
         modelId,

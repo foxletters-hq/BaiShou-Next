@@ -21,6 +21,7 @@ import { useRecallSearch } from './useRecallSearch'
 import { useAssistantResolver } from './useAssistantResolver'
 import { useTranslation } from 'react-i18next'
 import { useTts } from './useTts'
+import { usePersistedSharedMemoryLookback } from '../../../hooks/usePersistedSharedMemoryLookback'
 import {
   mapSavedAttachmentsForUi,
   isConfiguredDialogueModelId,
@@ -98,7 +99,8 @@ export function useAgentChatFlow() {
   const [showRecallSheet, setShowRecallSheet] = useState(false)
   const [showShortcutManager, setShowShortcutManager] = useState(false)
   const [showToolManager, setShowToolManager] = useState(false)
-  const [recallLookbackMonths, setRecallLookbackMonths] = useState(1)
+  const { lookbackMonths: recallLookbackMonths, setLookbackMonths: setRecallLookbackMonths } =
+    usePersistedSharedMemoryLookback()
   const [contextDialogState, setContextDialogState] = useState<{
     isOpen: boolean
     sessionId?: string
@@ -286,20 +288,27 @@ export function useAgentChatFlow() {
         throw new Error(saveResult.error)
       }
 
-      await chat.refreshLatestMessages(1, targetSessionId)
-
       const savedAttachments = mapSavedAttachmentsForUi(saveResult.attachments)
-      if (saveResult.userMessageId && savedAttachments?.length) {
-        chat.ensureMessageAttachments(saveResult.userMessageId, savedAttachments)
+      if (saveResult.userMessageId) {
+        chat.appendSentUserMessage({
+          id: saveResult.userMessageId,
+          content: text,
+          attachments: savedAttachments
+        })
+        if (savedAttachments?.length) {
+          chat.ensureMessageAttachments(saveResult.userMessageId, savedAttachments)
+        }
       }
 
       const wasNewSession = !sessionId
       chat.setStreamSessionId(targetSessionId)
       scroll.beginFollowIfAtBottom()
 
+      void chat.refreshLatestMessages(1, targetSessionId, { resetPagination: true })
+
       if (wasNewSession) {
         if (loadSessions) {
-          await loadSessions(true, currentAssistant?.id ? String(currentAssistant.id) : undefined)
+          void loadSessions(true, currentAssistant?.id ? String(currentAssistant.id) : undefined)
         }
         const astId = currentAssistant?.id ? String(currentAssistant.id) : ''
         navigate(`/chat/${targetSessionId}${astId ? `?assistantId=${astId}` : ''}`, {
@@ -307,8 +316,8 @@ export function useAgentChatFlow() {
         })
       }
 
-      try {
-        await stream.startChat(
+      void stream
+        .startChat(
           targetSessionId,
           text,
           model.currentProviderId,
@@ -317,14 +326,14 @@ export function useAgentChatFlow() {
           search,
           saveResult.userMessageId
         )
-      } catch (streamError: any) {
-        console.error('[AgentScreen] stream failed:', streamError)
-        toast.showError(
-          t('agent.error.send_failed', '发送消息失败: {{msg}}', {
-            msg: streamError?.message || '未知错误'
-          })
-        )
-      }
+        .catch((streamError: any) => {
+          console.error('[AgentScreen] stream failed:', streamError)
+          toast.showError(
+            t('agent.error.send_failed', '发送消息失败: {{msg}}', {
+              msg: streamError?.message || '未知错误'
+            })
+          )
+        })
 
       return true
     } catch (e: any) {

@@ -164,6 +164,87 @@ describe('useChatMessages', () => {
       rerender({ sid: undefined })
       expect(result.current.messages).toHaveLength(0)
     })
+
+    it('should reload pagination from server when switching sessions', async () => {
+      const s1Messages = Array.from({ length: 12 }, (_, i) => ({
+        id: `s1-${i}`,
+        role: i % 2 === 0 ? 'user' : 'assistant',
+        content: `m${i}`
+      }))
+      const s2Messages = [
+        { id: 's2-0', role: 'user', content: 'other' },
+        { id: 's2-1', role: 'assistant', content: 'reply' }
+      ]
+
+      mockRenderer.invoke.mockImplementation(async (_channel, sessionId: string) => {
+        if (sessionId === 's1') return s1Messages
+        if (sessionId === 's2') return s2Messages
+        return []
+      })
+
+      const { rerender } = renderHook(
+        ({ sid }) =>
+          useChatMessages({
+            sessionId: sid,
+            isStreaming: false,
+            streamingText: '',
+            streamingReasoning: ''
+          }),
+        { initialProps: { sid: 's1' as string | undefined } }
+      )
+
+      await act(async () => {
+        await Promise.resolve()
+      })
+
+      mockRenderer.invoke.mockClear()
+      rerender({ sid: 's2' })
+
+      await act(async () => {
+        await Promise.resolve()
+      })
+
+      expect(mockRenderer.invoke).toHaveBeenCalledWith('agent:get-messages', 's2', 60, 0, false)
+    })
+  })
+
+  describe('refreshLatestMessages pagination reset', () => {
+    it('should collapse expanded history when resetPagination is true', async () => {
+      const dbMessages = Array.from({ length: 12 }, (_, i) => ({
+        id: String(i),
+        role: i % 2 === 0 ? 'user' : 'assistant',
+        content: `m${i}`
+      }))
+      mockRenderer.invoke.mockResolvedValue(dbMessages)
+
+      const { result } = renderHook(() =>
+        useChatMessages({
+          sessionId: 's1',
+          isStreaming: false,
+          streamingText: '',
+          streamingReasoning: ''
+        })
+      )
+
+      await act(async () => {
+        await Promise.resolve()
+      })
+
+      expect(result.current.messages).toHaveLength(6)
+
+      await act(async () => {
+        await result.current.loadMore()
+      })
+
+      expect(result.current.messages.length).toBeGreaterThan(6)
+
+      mockRenderer.invoke.mockResolvedValue(dbMessages)
+      await act(async () => {
+        await result.current.refreshLatestMessages(1, 's1', { resetPagination: true })
+      })
+
+      expect(result.current.messages).toHaveLength(6)
+    })
   })
 
   describe('stream finish sync', () => {

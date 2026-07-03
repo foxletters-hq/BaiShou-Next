@@ -54,6 +54,8 @@ export type CompressionRunOptions = {
   abortSignal?: AbortSignal
   /** 是否在压缩 transcript 中包裹消息时间元数据，默认 true */
   wrapMessageTime?: boolean
+  /** 调用方已加载的会话消息，避免重复全量查询 */
+  prefetchedMessages?: MessageWithParts[]
 }
 
 export type RecompressResult = {
@@ -145,10 +147,12 @@ export class ContextCompressorService {
         return false
       }
 
-      const allMessages = (await sessionRepo.getMessagesBySession(
-        sessionId,
-        COMPRESSION_MESSAGE_FETCH_LIMIT
-      )) as MessageWithParts[]
+      const allMessages =
+        runOptions?.prefetchedMessages ??
+        ((await sessionRepo.getMessagesBySession(
+          sessionId,
+          COMPRESSION_MESSAGE_FETCH_LIMIT
+        )) as MessageWithParts[])
 
       if (allMessages.length < 4) {
         return false
