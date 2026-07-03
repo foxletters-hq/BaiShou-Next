@@ -30,6 +30,11 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
   const [transformTransition, setTransformTransition] = useState(true)
   const dragStart = useRef({ x: 0, y: 0 })
   const positionStart = useRef({ x: 0, y: 0 })
+  const positionRef = useRef(position)
+  const overlayRef = useRef<HTMLDivElement>(null)
+  const didDragRef = useRef(false)
+
+  positionRef.current = position
 
   const resetView = useCallback(() => {
     setScale(1)
@@ -55,12 +60,22 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
     }
   }, [isControlled, controlledClose])
 
+  const handleOverlayClick = useCallback(() => {
+    if (didDragRef.current) {
+      didDragRef.current = false
+      return
+    }
+    handleClosePreview()
+  }, [handleClosePreview])
+
   const handleZoomIn = useCallback(() => {
-    setScale((prev) => Math.min(prev + 0.25, 3))
+    setTransformTransition(false)
+    setScale((prev) => Math.min(prev + 0.25, 5))
   }, [])
 
   const handleZoomOut = useCallback(() => {
-    setScale((prev) => Math.max(prev - 0.25, 0.5))
+    setTransformTransition(false)
+    setScale((prev) => Math.max(prev - 0.25, 0.25))
   }, [])
 
   const handleRotate = useCallback(() => {
@@ -72,28 +87,16 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
     resetView()
   }, [resetView])
 
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.button !== 0) return
-      setIsDragging(true)
-      dragStart.current = { x: e.clientX, y: e.clientY }
-      positionStart.current = { ...position }
-    },
-    [position]
-  )
-
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (!isDragging) return
-      const dx = e.clientX - dragStart.current.x
-      const dy = e.clientY - dragStart.current.y
-      setPosition({
-        x: positionStart.current.x + dx,
-        y: positionStart.current.y + dy
-      })
-    },
-    [isDragging]
-  )
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLImageElement>) => {
+    if (e.button !== 0) return
+    e.preventDefault()
+    e.stopPropagation()
+    didDragRef.current = false
+    setIsDragging(true)
+    setTransformTransition(false)
+    dragStart.current = { x: e.clientX, y: e.clientY }
+    positionStart.current = { ...positionRef.current }
+  }, [])
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false)
@@ -101,9 +104,55 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault()
-    const delta = e.deltaY > 0 ? -0.1 : 0.1
-    setScale((prev) => Math.max(0.5, Math.min(3, prev + delta)))
+    e.stopPropagation()
+    const delta = e.deltaY > 0 ? -0.12 : 0.12
+    setTransformTransition(false)
+    setScale((prev) => Math.max(0.25, Math.min(5, prev + delta)))
   }, [])
+
+  useEffect(() => {
+    if (!isDragging) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const dx = e.clientX - dragStart.current.x
+      const dy = e.clientY - dragStart.current.y
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+        didDragRef.current = true
+      }
+      setPosition({
+        x: positionStart.current.x + dx,
+        y: positionStart.current.y + dy
+      })
+    }
+
+    const handleMouseUp = () => {
+      setIsDragging(false)
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isDragging])
+
+  useEffect(() => {
+    if (!isPreviewOpen) return
+
+    const overlay = overlayRef.current
+    if (!overlay) return
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const delta = e.deltaY > 0 ? -0.12 : 0.12
+      setTransformTransition(false)
+      setScale((prev) => Math.max(0.25, Math.min(5, prev + delta)))
+    }
+
+    overlay.addEventListener('wheel', onWheel, { passive: false })
+    return () => overlay.removeEventListener('wheel', onWheel)
+  }, [isPreviewOpen])
 
   useEffect(() => {
     if (isControlled && controlledOpen) {
@@ -140,27 +189,26 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
       )}
 
       {isPreviewOpen && (
-        <div className="image-preview-overlay" onClick={handleClosePreview}>
-          <div
-            className="image-preview-container"
+        <div
+          ref={overlayRef}
+          className="image-preview-overlay"
+          onClick={handleOverlayClick}
+          onMouseUp={handleMouseUp}
+        >
+          <img
+            src={src}
+            alt={alt}
+            className="image-preview-stage-img"
+            style={{
+              transform: `translate(${position.x}px, ${position.y}px) scale(${scale}) rotate(${rotation}deg)`,
+              cursor: isDragging ? 'grabbing' : 'grab',
+              transition: transformTransition ? 'transform 0.12s ease-out' : 'none'
+            }}
+            draggable={false}
             onClick={(e) => e.stopPropagation()}
             onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
             onWheel={handleWheel}
-          >
-            <img
-              src={src}
-              alt={alt}
-              style={{
-                transform: `translate(${position.x}px, ${position.y}px) scale(${scale}) rotate(${rotation}deg)`,
-                cursor: isDragging ? 'grabbing' : 'grab',
-                transition: transformTransition ? 'transform 0.12s ease-out' : 'none'
-              }}
-              draggable={false}
-            />
-          </div>
+          />
 
           <div className="image-preview-toolbar" onClick={(e) => e.stopPropagation()}>
             <div className="image-preview-controls">
