@@ -32,7 +32,5 @@ export function readActiveTableCellFor(
 
 /** 仅当确有激活单元格时才附带清除 effect，避免无意义触发整表 widget 重建 */
 export function clearActiveTableCellEffects(state: EditorState) {
-  return state.field(activeTableCellField, false) != null
-    ? [setActiveTableCell.of(null)]
-    : []
+  return state.field(activeTableCellField, false) != null ? [setActiveTableCell.of(null)] : []
 }

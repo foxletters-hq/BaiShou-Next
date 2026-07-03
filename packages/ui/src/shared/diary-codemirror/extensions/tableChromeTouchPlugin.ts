@@ -22,8 +22,7 @@ const CAPTURE_OPTS = { capture: true, passive: false } as const
 
 function isImmediateChromeAction(trigger: HTMLElement): boolean {
   return (
-    trigger.classList.contains('cm-table-add-row') ||
-    trigger.classList.contains('cm-table-add-col')
+    trigger.classList.contains('cm-table-add-row') || trigger.classList.contains('cm-table-add-col')
   )
 }
 
@@ -45,11 +44,7 @@ function resolveTableFromBlock(block: HTMLElement, view: EditorView) {
   return parseTableFromDoc(view.state.doc, tableFrom, tableTo)
 }
 
-function openChromeFromTrigger(
-  view: EditorView,
-  trigger: HTMLElement,
-  event: TouchEvent
-): void {
+function openChromeFromTrigger(view: EditorView, trigger: HTMLElement, event: TouchEvent): void {
   const block = trigger.closest('.cm-table-block') as HTMLElement | null
   if (!block || !view.dom.contains(block)) return
 

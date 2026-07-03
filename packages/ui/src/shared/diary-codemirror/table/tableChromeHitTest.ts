@@ -1,8 +1,7 @@
 import type { EditorView } from '@codemirror/view'
 import { isTableChromeTouchTarget } from './tableContextMenu'
 
-const CHROME_TOUCH_SELECTOR =
-  '.cm-table-handle, .cm-table-corner-menu, .cm-table-add-btn'
+const CHROME_TOUCH_SELECTOR = '.cm-table-handle, .cm-table-corner-menu, .cm-table-add-btn'
 
 /** 触摸端仅当 chrome 控件实际可点（非 pointer-events:none / 透明）时才拦截 */
 export function isInteractableChromeElement(el: HTMLElement | null): boolean {

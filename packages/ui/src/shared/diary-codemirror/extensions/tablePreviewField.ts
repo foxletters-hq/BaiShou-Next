@@ -3,30 +3,24 @@ import {
   StateField,
   type EditorState,
   type Extension,
-  type Transaction
-} from '@codemirror/state'
-import {
-  Decoration,
-  DecorationSet,
-  EditorView,
+  type Transaction,
   type Range
-} from '@codemirror/view'
+} from '@codemirror/state'
+import { Decoration, DecorationSet, EditorView } from '@codemirror/view'
 import { forceTableRefresh } from '../table/tableEffects'
-import { activeTableCellField, readActiveTableCellFor, setActiveTableCell } from '../table/tableActiveCell'
 import {
-  readTableChromeSelectionFor,
-  setTableChromeSelection
-} from '../table/tableChromeSelection'
-import {
-  resolveTableSurfaceRange,
-  tableSyntaxTreeTablesChanged
-} from '../table/tableBounds'
+  activeTableCellField,
+  readActiveTableCellFor,
+  setActiveTableCell
+} from '../table/tableActiveCell'
+import { readTableChromeSelectionFor, setTableChromeSelection } from '../table/tableChromeSelection'
+import { resolveTableSurfaceRange, tableSyntaxTreeTablesChanged } from '../table/tableBounds'
 import { TableBlockWidget } from '../widgets/TableBlockWidget'
 import { diarySyntaxTreeGrowthEffect } from './diarySyntaxTreeGrowth'
 import type { DiaryCmPlatform } from '../types'
 
 function tablePreviewEffects(tr: Transaction, platform?: DiaryCmPlatform): boolean {
-  if (platform?.interactionMode === 'touch' && tr.selectionSet) return true
+  if (platform?.interactionMode === 'touch' && tr.selection !== undefined) return true
   if (
     tr.effects.some(
       (e) =>
@@ -58,10 +52,7 @@ function needsFullSyntaxParse(tr: Transaction): boolean {
 }
 
 /** 文档变更是否与已有表装饰区间重叠 */
-export function changeOverlapsTableDecorations(
-  tr: Transaction,
-  existing: DecorationSet
-): boolean {
+export function changeOverlapsTableDecorations(tr: Transaction, existing: DecorationSet): boolean {
   let overlaps = false
   tr.changes.iterChanges((fromA, toA) => {
     if (overlaps) return

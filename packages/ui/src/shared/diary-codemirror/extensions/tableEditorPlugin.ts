@@ -1,5 +1,5 @@
 import { EditorView, ViewPlugin, type ViewUpdate, Decoration } from '@codemirror/view'
-import { EditorSelection, Prec, Transaction } from '@codemirror/state'
+import { EditorSelection, Prec, Transaction, type StateEffect } from '@codemirror/state'
 import { keymap } from '@codemirror/view'
 import { ensureSyntaxTree, syntaxTree } from '@codemirror/language'
 import type { SyntaxNode } from '@lezer/common'
@@ -22,9 +22,17 @@ import {
   type TableCellFocusTarget,
   type TableEditorAction
 } from '../table/tableEffects'
-import { findTableNodeBounds, findTableRangeAt, resolveTableSurfaceRange } from '../table/tableBounds'
+import {
+  findTableNodeBounds,
+  findTableRangeAt,
+  resolveTableSurfaceRange
+} from '../table/tableBounds'
 import { blurTableCellEditor, isTableCellEditorFocused } from '../table/tableDom'
-import { activeTableCellField, setActiveTableCell } from '../table/tableActiveCell'
+import {
+  activeTableCellField,
+  setActiveTableCell,
+  clearActiveTableCellEffects
+} from '../table/tableActiveCell'
 import {
   collectPostTableGapRepairsForState,
   isOnStructuralTableGapLine,
@@ -35,7 +43,6 @@ import {
   focusTableCellInEditor,
   placeCursorAfterTable
 } from '../table/tableFocus'
-import { setActiveTableCell, clearActiveTableCellEffects } from '../table/tableActiveCell'
 import { logDiaryBridge } from '../diaryBridgeDebug'
 import { shouldDeferTableCaretRedirect, findFencedCodeBlockContaining } from './fencedCodeScan'
 import { getCursorPositions, isCursorInRange } from './cursor'
@@ -60,10 +67,14 @@ function applyTableMarkdown(
   if (!nextMarkdown) return
   const range = resolveTableReplaceRange(view.state, tableFrom, tableTo)
   const markdown = ensureTableMarkdownTrailingNewline(view.state.doc, range.to, nextMarkdown)
-  const effects = [forceTableRefresh.of(null)]
+  const effects: StateEffect<unknown>[] = [forceTableRefresh.of(null)]
   if (focusAfter) {
     effects.push(
-      setActiveTableCell.of({ tableFrom, rowIndex: focusAfter.rowIndex, colIndex: focusAfter.colIndex }),
+      setActiveTableCell.of({
+        tableFrom,
+        rowIndex: focusAfter.rowIndex,
+        colIndex: focusAfter.colIndex
+      }),
       pendingTableCellFocus.of({
         tableFrom,
         rowIndex: focusAfter.rowIndex,
@@ -86,12 +97,7 @@ function handleTableAction(view: EditorView, action: TableEditorAction): void {
 
   switch (action.type) {
     case 'updateCell': {
-      const next = updateTableCellMarkdown(
-        table,
-        action.rowIndex,
-        action.colIndex,
-        action.value
-      )
+      const next = updateTableCellMarkdown(table, action.rowIndex, action.colIndex, action.value)
       const range = resolveTableReplaceRange(view.state, table.from, table.to)
       const unchanged = !next || next === view.state.doc.sliceString(range.from, range.to)
       if (unchanged) {

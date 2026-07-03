@@ -51,9 +51,7 @@ export function findTableRangeAt(state: EditorState, pos: number): TableRangeAt 
   return found
 }
 
-export function collectTableMarkdownRanges(
-  state: EditorState
-): { from: number; to: number }[] {
+export function collectTableMarkdownRanges(state: EditorState): { from: number; to: number }[] {
   const tree = syntaxTree(state)
   const ranges: { from: number; to: number }[] = []
   tree.iterate({
@@ -66,11 +64,7 @@ export function collectTableMarkdownRanges(
   return ranges
 }
 
-export function rangeOverlapsTableMarkdown(
-  state: EditorState,
-  from: number,
-  to: number
-): boolean {
+export function rangeOverlapsTableMarkdown(state: EditorState, from: number, to: number): boolean {
   const start = Math.min(from, to)
   const end = Math.max(from, to)
   return collectTableMarkdownRanges(state).some((r) => start <= r.to && end >= r.from)

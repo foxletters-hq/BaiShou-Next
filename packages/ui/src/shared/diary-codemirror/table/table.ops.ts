@@ -26,7 +26,11 @@ export function addTableColumnMarkdown(table: ParsedTable, atIndex?: number): st
 export function addTableRowMarkdown(table: ParsedTable, atIndex?: number): string {
   const { header, body } = cloneTableData(table)
   const index = atIndex ?? body.length
-  body.splice(index, 0, Array.from({ length: header.length }, () => ''))
+  body.splice(
+    index,
+    0,
+    Array.from({ length: header.length }, () => '')
+  )
   return serializeTable(header, body)
 }
 
