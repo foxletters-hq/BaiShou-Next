@@ -78,6 +78,9 @@
 }
 
 .diary-search-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
   color: var(--text-primary);
   margin-right: 8px;
   flex-shrink: 0;
@@ -133,6 +136,12 @@
   font-family: var(--font-family);
 }
 
+.diary-add-btn svg.lucide {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
 .diary-add-btn:hover {
   background-color: var(--color-primary-dark);
   box-shadow: var(--shadow-glow);
@@ -151,6 +160,12 @@
   color: var(--text-primary);
   transition: background-color 0.2s;
   margin-right: 4px;
+  font-size: 20px;
+}
+
+.diary-today-btn svg.lucide {
+  width: 20px;
+  height: 20px;
 }
 
 .diary-today-btn:hover {
@@ -699,6 +714,12 @@
   color: var(--text-primary);
   transition: all 0.2s;
   position: relative;
+  font-size: 18px;
+}
+
+.diary-filter-btn svg.lucide {
+  width: 18px;
+  height: 18px;
 }
 
 .diary-filter-btn:hover {

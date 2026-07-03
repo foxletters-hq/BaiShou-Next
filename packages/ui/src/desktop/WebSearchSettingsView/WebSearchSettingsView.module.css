@@ -212,10 +212,13 @@
 }
 
 .sliderIcon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
   color: var(--text-primary);
   margin-right: 12px;
-  font-size: 20px;
   opacity: 0.8;
+  flex-shrink: 0;
 }
 
 .sliderTextGroup {
@@ -294,9 +297,12 @@
 }
 
 .switchIcon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
   color: var(--text-primary);
   margin-right: 12px;
-  font-size: 20px;
+  flex-shrink: 0;
 }
 
 .switchTextGroup {

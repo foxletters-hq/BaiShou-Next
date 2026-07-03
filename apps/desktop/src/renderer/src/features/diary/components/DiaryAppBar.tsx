@@ -237,7 +237,7 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
               : t('settings.write_today_tooltip', '记录今天')
           }
         >
-          {todayEntry ? <Edit3 size={18} /> : <CalendarCheck size={18} />}
+          {todayEntry ? <Edit3 size={20} /> : <CalendarCheck size={20} />}
         </button>
 
         <button className="diary-add-btn" onClick={onAddNew}>
