@@ -1,5 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { Modal, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native'
+import {
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle
+} from 'react-native'
 import Animated, {
   Easing,
   runOnJS,

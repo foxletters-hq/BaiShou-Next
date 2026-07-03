@@ -38,13 +38,13 @@ export const AgentToolChainSection: React.FC<AgentToolChainSectionProps> = ({
 
   return (
     <View style={styles.root}>
-        {models.map((model) => (
-          <AgentToolThinkItem
-            key={model.key}
-            model={model}
-            autoExpand={defaultExpanded && model.hasContent}
-          />
-        ))}
+      {models.map((model) => (
+        <AgentToolThinkItem
+          key={model.key}
+          model={model}
+          autoExpand={defaultExpanded && model.hasContent}
+        />
+      ))}
     </View>
   )
 }

@@ -131,7 +131,8 @@ export const GradientColorSlider: React.FC<GradientColorSliderProps> = ({
     setTrackWidth(width)
   }
 
-  const thumbOffset = toProgress(displayValue, minValue, maxValue) * Math.max(0, trackWidth - THUMB_SIZE)
+  const thumbOffset =
+    toProgress(displayValue, minValue, maxValue) * Math.max(0, trackWidth - THUMB_SIZE)
 
   return (
     <View

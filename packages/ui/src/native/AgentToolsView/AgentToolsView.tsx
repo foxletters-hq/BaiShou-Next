@@ -328,7 +328,10 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
                   size={16}
                 />
                 <View style={[styles.toolIdTag, { backgroundColor: colors.bgSurfaceNormal }]}>
-                  <Text style={[styles.toolIdText, { color: colors.textSecondary }]} numberOfLines={1}>
+                  <Text
+                    style={[styles.toolIdText, { color: colors.textSecondary }]}
+                    numberOfLines={1}
+                  >
                     {tool.id}
                   </Text>
                 </View>

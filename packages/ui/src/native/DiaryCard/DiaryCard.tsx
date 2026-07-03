@@ -123,7 +123,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
                     { borderColor: colors.primary, backgroundColor: 'transparent' }
                   ]}
                 >
-                  <MoodEmoji mood={mood} size={14} />
+                  <MoodEmoji mood={mood ?? ''} size={14} />
                 </View>
               ) : null}
               {matchSimilarity != null && (
