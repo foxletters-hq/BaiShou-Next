@@ -166,4 +166,19 @@ export const PROVIDER_TYPES = [
   'xiaomimimo'
 ] as const
 
+export function resolveProviderTypeLabel(
+  typeId: string,
+  t: (key: string, defaultValue: string) => string
+): string {
+  if (typeId === 'openai') {
+    return t('provider.openai_spec', 'OpenAI 规范')
+  }
+  const meta = BASE_KNOWN_PROVIDERS_CONFIG.find((p) => p.id === typeId)
+  if (meta) {
+    const i18nKey = PROVIDER_NAME_I18N_MAP[typeId]
+    return i18nKey ? t(i18nKey, meta.name) : meta.name
+  }
+  return typeId.toUpperCase()
+}
+
 export type KnownProviderMeta = (typeof BASE_KNOWN_PROVIDERS_CONFIG)[number]

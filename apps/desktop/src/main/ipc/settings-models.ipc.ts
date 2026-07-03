@@ -5,7 +5,8 @@ import {
   fetchTtsProviderModels,
   isTtsProviderId,
   logger,
-  resolveProviderBaseUrl
+  resolveProviderBaseUrl,
+  resolveProviderDisplayName
 } from '@baishou/shared'
 import { AIProviderRegistry } from '@baishou/ai'
 import { settingsManager } from './settings.ipc'
@@ -187,7 +188,7 @@ export function registerSettingsModelsIPC() {
       } else {
         providers.push({
           id,
-          name: id.charAt(0).toUpperCase() + id.slice(1),
+          name: resolveProviderDisplayName(id),
           type: id as any,
           isSystem: true,
           isEnabled: false,
@@ -215,7 +216,7 @@ export function registerSettingsModelsIPC() {
         config = {
           id: providerId,
           type: providerId as any,
-          name: providerId.toUpperCase(),
+          name: resolveProviderDisplayName(providerId),
           apiKey: '',
           baseUrl: '',
           isSystem: true,
@@ -258,7 +259,7 @@ export function registerSettingsModelsIPC() {
         config = {
           id: providerId,
           type: providerId as any,
-          name: providerId.toUpperCase(),
+          name: resolveProviderDisplayName(providerId),
           apiKey: '',
           baseUrl: '',
           isSystem: true,

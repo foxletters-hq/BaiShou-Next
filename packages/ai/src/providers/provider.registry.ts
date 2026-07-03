@@ -1,4 +1,4 @@
-import { AiProviderModel, ProviderType, createAiProvider, AIProviderConfig } from '@baishou/shared'
+import { AiProviderModel, ProviderType, createAiProvider, AIProviderConfig, resolveProviderDisplayName } from '@baishou/shared'
 import { IAIProvider } from './provider.interface'
 import { ProviderFactory } from './provider.factory'
 
@@ -36,7 +36,7 @@ export class AIProviderRegistry {
 
       const config = createAiProvider({
         id: type,
-        name: type.charAt(0).toUpperCase() + type.slice(1) /* 临时命名规则，可按需补充细化 */,
+        name: resolveProviderDisplayName(type),
         type: type as ProviderType
       })
 
