@@ -16,6 +16,7 @@ import {
 } from './hybrid-search.repository.constants'
 
 type QueryFilter = Pick<VectorSearchQueryFilter, 'sourceType' | 'startMs' | 'endMs'>
+type SqlBindValue = string | number | null | Uint8Array | ArrayBuffer
 
 export class HybridSearchVectorQuery {
   constructor(
@@ -28,9 +29,12 @@ export class HybridSearchVectorQuery {
     return this.runtime.nativeVectorSupported === true
   }
 
-  private buildWhereClause(filter?: QueryFilter, columnPrefix = ''): { sql: string; args: unknown[] } {
+  private buildWhereClause(
+    filter?: QueryFilter,
+    columnPrefix = ''
+  ): { sql: string; args: SqlBindValue[] } {
     const conditions: string[] = []
-    const args: unknown[] = []
+    const args: SqlBindValue[] = []
 
     if (filter?.sourceType) {
       conditions.push(`${columnPrefix}source_type = ?`)
@@ -50,7 +54,10 @@ export class HybridSearchVectorQuery {
     return { sql: ` WHERE ${conditions.join(' AND ')}`, args }
   }
 
-  private buildJoinAndClause(filter?: QueryFilter, columnPrefix = 'ae.'): { sql: string; args: unknown[] } {
+  private buildJoinAndClause(
+    filter?: QueryFilter,
+    columnPrefix = 'ae.'
+  ): { sql: string; args: SqlBindValue[] } {
     const where = this.buildWhereClause(filter, columnPrefix)
     if (!where.sql) return { sql: '', args: [] }
     return { sql: where.sql.replace(' WHERE ', ' AND '), args: where.args }

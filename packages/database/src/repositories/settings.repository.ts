@@ -86,9 +86,7 @@ export class SettingsRepository {
   }
 
   /** 含 updatedAt，供设置磁盘重同步时与域文件 mtime 比较 */
-  async getAllEntriesMeta(): Promise<
-    Record<string, { value: unknown; updatedAt: Date }>
-  > {
+  async getAllEntriesMeta(): Promise<Record<string, { value: unknown; updatedAt: Date }>> {
     return withExpoAgentDatabaseLock(this.db, () => this.getAllEntriesMetaUnlocked())
   }
 

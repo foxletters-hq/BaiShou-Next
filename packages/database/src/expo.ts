@@ -129,7 +129,7 @@ export async function ensureExpoAgentDatabaseInstalled(
       } catch (firstError) {
         logger.warn(
           '[ExpoDB] Agent DB 首次初始化失败，尝试 useNewConnection 重试（常见于开发热重载）',
-          firstError
+          { error: firstError }
         )
         try {
           return await runExpoAgentDatabaseInstall((options) =>
