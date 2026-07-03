@@ -1,6 +1,10 @@
 import React, { useState, useCallback, useEffect, useRef, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import './ContextMenu.css'
+import {
+  getDefaultContextMenuBounds,
+  resolveContextMenuPosition
+} from './context-menu-placement.util'
 
 export interface ContextMenuItem {
   label: string
@@ -30,23 +34,19 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ items, children }) => 
   useLayoutEffect(() => {
     if (isOpen && menuRef.current) {
       const rect = menuRef.current.getBoundingClientRect()
-      const windowWidth = window.innerWidth
-      const windowHeight = window.innerHeight
+      const bounds = getDefaultContextMenuBounds()
+      const { x, y } = resolveContextMenuPosition(
+        position.x,
+        position.y,
+        rect.width,
+        rect.height,
+        bounds
+      )
 
-      let adjustedX = position.x
-      let adjustedY = position.y
-
-      if (position.x + rect.width > windowWidth) {
-        adjustedX = Math.max(10, windowWidth - rect.width - 10)
-      }
-      if (position.y + rect.height > windowHeight) {
-        adjustedY = Math.max(10, windowHeight - rect.height - 10)
-      }
-
-      menuRef.current.style.left = `${adjustedX}px`
-      menuRef.current.style.top = `${adjustedY}px`
+      menuRef.current.style.left = `${x}px`
+      menuRef.current.style.top = `${y}px`
     }
-  }, [isOpen, position])
+  }, [isOpen, position, items])
 
   const handleClose = useCallback(() => {
     setIsOpen(false)

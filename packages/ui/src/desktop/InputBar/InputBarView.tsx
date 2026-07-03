@@ -73,7 +73,7 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
   } = vm
 
   return (
-    <div className={styles.containerMask}>
+    <div className={styles.containerMask} data-desktop-input-bar>
       <input
         type="file"
         multiple
