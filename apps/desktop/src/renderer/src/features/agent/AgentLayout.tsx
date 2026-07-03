@@ -18,6 +18,7 @@ import {
   readAgentNavigationSnapshot,
   writeAgentNavigationSnapshot
 } from '../../lib/agent-navigation-persistence'
+import type { AgentOutletContext } from './agent-outlet-context'
 
 export const AgentLayout: React.FC = () => {
   const navigate = useNavigate()
@@ -405,14 +406,20 @@ export const AgentLayout: React.FC = () => {
         onRenameSession={(id) => handleRenameSession(id, sessions)}
         onBatchDelete={handleBatchDelete}
         isCollapsed={isSidebarCollapsed}
-        onCollapse={() => setIsSidebarCollapsed(true)}
-        onExpand={() => setIsSidebarCollapsed(false)}
         onShowPicker={() => setIsPickerOpen(true)}
       />
 
       <div className={styles.chatArea}>
         <Outlet
-          context={{ sessions, loadSessions, onAssistantSwitched: handleAssistantSwitched }}
+          context={
+            {
+              sessions,
+              loadSessions,
+              onAssistantSwitched: handleAssistantSwitched,
+              isSidebarCollapsed,
+              onToggleSidebar: () => setIsSidebarCollapsed((prev) => !prev)
+            } satisfies AgentOutletContext
+          }
         />
       </div>
 

@@ -11,33 +11,22 @@
 }
 
 .sidebar.collapsed {
-  width: 60px;
-}
-
-.sidebar.collapsed .brandRow {
-  padding: 24px 24px 12px 24px;
-  width: 100%;
-  position: relative;
-}
-
-.brandInfo {
-  display: flex;
-  align-items: center;
-  flex: 1;
-  transition:
-    opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1),
-    filter 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.sidebar.collapsed .brandInfo {
-  opacity: 0;
-  filter: blur(8px);
+  width: 0;
+  min-width: 0;
+  border-right: none;
+  overflow: hidden;
   pointer-events: none;
+}
+
+.sidebarTopAssistant {
+  padding: 16px 16px 8px !important;
+  flex-shrink: 0;
 }
 
 .sidebarContent {
   width: 280px;
-  height: calc(100% - 76px);
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -49,72 +38,16 @@
 .sidebar.collapsed .sidebarContent {
   opacity: 0;
   filter: blur(8px);
-  pointer-events: none;
 }
 
-/* ─── 品牌顶部区 — padding: fromLTRB(20,20,20,12) ─── */
-.brandRow {
-  display: flex;
-  align-items: center;
-  padding: 24px 24px 12px 24px;
+.sidebar.collapsed .sidebarTopAssistant {
+  display: none;
+}
+
+/* ─── 当前伙伴卡片区 — padding:sym(16,4) ─── */
+.currentAssistantWrapper {
+  padding: 4px 16px;
   flex-shrink: 0;
-  white-space: nowrap;
-  position: relative;
-}
-
-/* 40x40 圆角8 蓝色方块 */
-.brandIconBox {
-  width: 40px;
-  height: 40px;
-  background-color: var(--color-primary);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.brandIcon {
-  color: var(--text-on-primary);
-  font-size: 22px;
-}
-
-.brandText {
-  margin-left: 16px;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text-primary);
-  flex: 1;
-  white-space: nowrap;
-}
-
-.toggleBtn {
-  background: none;
-  border: none;
-  padding: 4px;
-  cursor: pointer;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  transition:
-    right 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    background-color 0.2s;
-  position: absolute;
-  right: 24px;
-  top: 30px;
-  width: 28px;
-  height: 28px;
-  z-index: 10;
-}
-
-.toggleBtn:hover {
-  background-color: rgba(148, 163, 184, 0.1);
-}
-
-.sidebar.collapsed .toggleBtn {
-  right: 16px;
 }
 
 .scroller {
@@ -132,12 +65,6 @@
 .scroller::-webkit-scrollbar-thumb {
   background-color: rgba(148, 163, 184, 0.3);
   border-radius: 4px;
-}
-
-/* ─── 当前伙伴卡片区 — padding:sym(16,4) ─── */
-.currentAssistantWrapper {
-  padding: 4px 16px;
-  flex-shrink: 0;
 }
 
 .currentAssistantCard {

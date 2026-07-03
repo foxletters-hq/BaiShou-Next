@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom'
 import { toast } from '@baishou/ui'
 import type { InputBarRef } from '@baishou/ui'
+import type { AgentOutletContext } from '../agent-outlet-context'
 import {
   useSettingsStore,
   useAssistantStore,
@@ -35,10 +36,7 @@ export function useAgentChatFlow() {
   const { t, i18n } = useTranslation()
   const { sessionId } = useParams()
   const navigate = useNavigate()
-  const { sessions, loadSessions } = useOutletContext<{
-    sessions: any[]
-    loadSessions?: (reset: boolean, assistantId?: string) => void
-  }>() || { sessions: [] }
+  const { sessions, loadSessions } = useOutletContext<AgentOutletContext>() || { sessions: [] }
 
   // ── 1. 各底层 Hook 实例化 ──
   const stream = useAgentStream(sessionId)

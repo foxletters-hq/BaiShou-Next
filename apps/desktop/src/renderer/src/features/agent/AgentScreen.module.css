@@ -29,7 +29,7 @@
   z-index: 1;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   padding: 16px 24px;
   gap: 12px;
   flex-shrink: 0;
@@ -37,6 +37,43 @@
   background: var(--bg-glass-surface);
   backdrop-filter: var(--blur-glass);
   -webkit-backdrop-filter: var(--blur-glass);
+}
+
+.appBarLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.appBarRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.sidebarToggleBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--app-bar-chip-height);
+  padding: 0;
+  border-radius: 12px;
+  cursor: pointer;
+  background-color: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  transition:
+    background-color 0.2s,
+    border-color 0.2s,
+    color 0.2s;
+}
+
+.sidebarToggleBtn:hover {
+  background-color: var(--bg-surface-high);
+  border-color: var(--border-muted);
+  color: var(--text-primary);
 }
 
 .appBarChip {
@@ -95,11 +132,6 @@
   color: var(--text-tertiary);
   line-height: 1;
   flex-shrink: 0;
-}
-
-.appBarRight {
-  display: flex;
-  align-items: center;
 }
 
 .messageList {

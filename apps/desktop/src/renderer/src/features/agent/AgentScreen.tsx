@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react'
+import { useOutletContext } from 'react-router-dom'
 import {
   TokenBadge,
   InputBar,
@@ -19,7 +20,8 @@ import { AgentMessageList } from './components/AgentMessageList'
 import { useAgentChatFlow } from './hooks/useAgentChatFlow'
 import { useDesktopComposerDraftKey } from './hooks/useDesktopComposerDraftKey'
 import styles from './AgentScreen.module.css'
-import { Cloud, Sparkles } from 'lucide-react'
+import { Cloud, PanelLeftClose, PanelLeftOpen, Sparkles } from 'lucide-react'
+import type { AgentOutletContext } from './agent-outlet-context'
 
 /**
  * Agent 大模型聊天屏幕主页面组件。
@@ -28,6 +30,7 @@ import { Cloud, Sparkles } from 'lucide-react'
 export const AgentScreen: React.FC = () => {
   const flow = useAgentChatFlow()
   const { isDark } = useTheme()
+  const { isSidebarCollapsed, onToggleSidebar } = useOutletContext<AgentOutletContext>()
 
   const providerIconUrl = useMemo(() => {
     const providerId = flow.model.currentProviderId
@@ -81,30 +84,51 @@ export const AgentScreen: React.FC = () => {
       ) : null}
       {/* 顶部状态与控制栏 */}
       <div className={styles.appBar}>
-        <button
-          type="button"
-          className={`${styles.modelSwitcherTrigger} ${styles.appBarChip}`}
-          onClick={() => flow.setShowModelSwitcher(true)}
-        >
-          <span className={styles.modelProviderIcon} aria-hidden>
-            {providerIconUrl ? (
-              <img src={providerIconUrl} alt="" />
-            ) : noModelSelected ? (
-              <Sparkles size={18} />
-            ) : (
-              <Cloud size={18} />
-            )}
-          </span>
-          <span className={styles.modelName}>{displayModelName}</span>
-          <span className={styles.chevron}>▼</span>
-        </button>
-        <TokenBadge
-          className={styles.appBarChip}
-          inputTokens={flow.tokens.totalInputTokens}
-          outputTokens={flow.tokens.totalOutputTokens}
-          costMicros={flow.tokens.estimatedCost * 1000000}
-          onClick={() => flow.setShowCostDialog(true)}
-        />
+        <div className={styles.appBarLeft}>
+          <button
+            type="button"
+            className={`${styles.sidebarToggleBtn} ${styles.appBarChip}`}
+            onClick={onToggleSidebar}
+            title={
+              isSidebarCollapsed
+                ? flow.t('agent.sidebar.expand', '展开侧边栏')
+                : flow.t('agent.sidebar.collapse', '折叠侧边栏')
+            }
+            aria-label={
+              isSidebarCollapsed
+                ? flow.t('agent.sidebar.expand', '展开侧边栏')
+                : flow.t('agent.sidebar.collapse', '折叠侧边栏')
+            }
+          >
+            {isSidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          </button>
+        </div>
+        <div className={styles.appBarRight}>
+          <button
+            type="button"
+            className={`${styles.modelSwitcherTrigger} ${styles.appBarChip}`}
+            onClick={() => flow.setShowModelSwitcher(true)}
+          >
+            <span className={styles.modelProviderIcon} aria-hidden>
+              {providerIconUrl ? (
+                <img src={providerIconUrl} alt="" />
+              ) : noModelSelected ? (
+                <Sparkles size={18} />
+              ) : (
+                <Cloud size={18} />
+              )}
+            </span>
+            <span className={styles.modelName}>{displayModelName}</span>
+            <span className={styles.chevron}>▼</span>
+          </button>
+          <TokenBadge
+            className={styles.appBarChip}
+            inputTokens={flow.tokens.totalInputTokens}
+            outputTokens={flow.tokens.totalOutputTokens}
+            costMicros={flow.tokens.estimatedCost * 1000000}
+            onClick={() => flow.setShowCostDialog(true)}
+          />
+        </div>
       </div>
       <AgentMessageList
         t={flow.t}

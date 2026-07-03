@@ -12,6 +12,7 @@ import {
 } from '@baishou/ui'
 import { isEmbeddingModel, isTtsModel } from '@baishou/shared'
 import { useSharedMemoryCopyPreview } from '../../../hooks/useSharedMemoryCopyPreview'
+import type { AgentOutletContext } from '../agent-outlet-context'
 
 interface AgentDialogsProps {
   t: any
@@ -66,16 +67,6 @@ interface AgentDialogsProps {
   currentAssistant: any
   providers: any[]
   inputBarRef: React.RefObject<any>
-}
-
-type AgentOutletContext = {
-  onAssistantSwitched?: (assistant: {
-    id: string
-    name: string
-    emoji?: string
-    description?: string
-    avatarPath?: string
-  }) => void | Promise<void>
 }
 
 /**

@@ -43,8 +43,57 @@ const AssistantAvatar: React.FC<AssistantAvatarProps> = ({ assistant, size }) =>
   )
 }
 
-interface AgentSidebarHeaderProps {
+export interface CurrentAssistantSlotProps {
   currentAssistant?: AgentAssistant
+  onShowPicker?: () => void
+  onAssistantSwitched: (assistant: AgentAssistant) => void
+  wrapperClassName?: string
+}
+
+/** 侧边栏顶部的当前伙伴选择槽位 */
+export const CurrentAssistantSlot: React.FC<CurrentAssistantSlotProps> = ({
+  currentAssistant,
+  onShowPicker,
+  onAssistantSwitched,
+  wrapperClassName
+}) => (
+  <div className={`${styles.currentAssistantWrapper} ${wrapperClassName ?? ''}`.trim()}>
+    <div
+      className={styles.currentAssistantCard}
+      onClick={() => {
+        if (onShowPicker) onShowPicker()
+        else if (currentAssistant) onAssistantSwitched(currentAssistant)
+      }}
+    >
+      {currentAssistant ? (
+        <>
+          <AssistantAvatar assistant={currentAssistant} size={36} />
+          <div className={styles.assistantInfo}>
+            <div className={styles.assistantNameRow}>
+              <div className={styles.assistantName}>{currentAssistant.name}</div>
+              <AssistantKindBadge kind={currentAssistant.assistantKind} compact />
+            </div>
+            {currentAssistant.description && (
+              <div className={styles.assistantDesc}>{currentAssistant.description}</div>
+            )}
+          </div>
+          <ChevronsUpDown className={styles.unfoldIcon} />
+        </>
+      ) : (
+        <>
+          <div className={styles.avatarSkeleton} />
+          <div className={styles.assistantInfo}>
+            <div className={styles.skeletonLine} style={{ width: 80 }} />
+            <div className={styles.skeletonLine} style={{ width: 60, marginTop: 4 }} />
+          </div>
+          <ChevronsUpDown className={styles.unfoldIcon} style={{ opacity: 0.3 }} />
+        </>
+      )}
+    </div>
+  </div>
+)
+
+interface AgentSidebarHeaderProps {
   pinnedAssistants: AgentAssistant[]
   searchQuery: string
   hasSessions: boolean
@@ -52,16 +101,14 @@ interface AgentSidebarHeaderProps {
   onSearchQueryChanged: (q: string) => void
   onNewSession: (assistantId?: string) => void
   onAssistantSwitched: (assistant: AgentAssistant) => void
-  onShowPicker?: () => void
   onToggleMultiSelect: () => void
+  currentAssistantId?: string
 }
 
 /**
- * 侧边栏顶部固定区域。
- * 包含：助手卡片、置顶助手行、新对话按钮、设置入口、历史标题、搜索框。
+ * 侧边栏固定交互区（伙伴选择已上移至侧边栏顶栏）。
  */
 export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
-  currentAssistant,
   pinnedAssistants,
   searchQuery,
   hasSessions,
@@ -69,8 +116,8 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
   onSearchQueryChanged,
   onNewSession,
   onAssistantSwitched,
-  onShowPicker,
-  onToggleMultiSelect
+  onToggleMultiSelect,
+  currentAssistantId
 }) => {
   const navigate = useNavigate()
   const location = useLocation()
@@ -78,44 +125,6 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
 
   return (
     <>
-      {/* ─── 当前助手槽位 ─── */}
-      <div className={styles.currentAssistantWrapper}>
-        <div
-          className={styles.currentAssistantCard}
-          onClick={() => {
-            if (onShowPicker) onShowPicker()
-            else if (currentAssistant) onAssistantSwitched(currentAssistant)
-          }}
-        >
-          {currentAssistant ? (
-            <>
-              <AssistantAvatar assistant={currentAssistant} size={36} />
-              <div className={styles.assistantInfo}>
-                <div className={styles.assistantNameRow}>
-                  <div className={styles.assistantName}>{currentAssistant.name}</div>
-                  <AssistantKindBadge kind={currentAssistant.assistantKind} compact />
-                </div>
-                {currentAssistant.description && (
-                  <div className={styles.assistantDesc}>{currentAssistant.description}</div>
-                )}
-              </div>
-              <ChevronsUpDown className={styles.unfoldIcon} />
-            </>
-          ) : (
-            /* Loading 骨架态 */
-            <>
-              <div className={styles.avatarSkeleton} />
-              <div className={styles.assistantInfo}>
-                <div className={styles.skeletonLine} style={{ width: 80 }} />
-                <div className={styles.skeletonLine} style={{ width: 60, marginTop: 4 }} />
-              </div>
-              <ChevronsUpDown className={styles.unfoldIcon} style={{ opacity: 0.3 }} />
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* ─── 置顶助手行 ─── */}
       <div className={styles.pinnedRow}>
         {pinnedAssistants.length === 0 && (
           <div
@@ -132,7 +141,7 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
           </div>
         )}
         {pinnedAssistants.map((assistant) => {
-          const isSelected = currentAssistant?.id === assistant.id
+          const isSelected = currentAssistantId === assistant.id
           return (
             <div
               key={assistant.id}
@@ -150,15 +159,13 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
 
       <div style={{ height: 4 }} />
 
-      {/* ─── 新对话按钮 ─── */}
       <div className={styles.newChatWrapper}>
-        <button className={styles.newChatBtn} onClick={() => onNewSession(currentAssistant?.id)}>
+        <button className={styles.newChatBtn} onClick={() => onNewSession(currentAssistantId)}>
           <Plus size={18} />
           <span>{t('agent.sessions.new_chat', '新对话')}</span>
         </button>
       </div>
 
-      {/* ─── 设置入口 ─── */}
       <div
         className={styles.menuItemRow}
         onClick={() => {
@@ -169,12 +176,11 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
         }}
       >
         <div className={styles.menuItemRowInner}>
-          <Settings size={20} className={styles.menuItemRowIcon} />
+          <Settings size={18} className={styles.menuItemRowIcon} />
           <span>{t('settings.title', '系统设置')}</span>
         </div>
       </div>
 
-      {/* ─── 历史对话区标题 ─── */}
       <div className={styles.historyHeader}>
         <span>{t('agent.sidebar.recent_chats', '最近对话')}</span>
         {hasSessions && (
@@ -193,7 +199,6 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
         )}
       </div>
 
-      {/* ─── 搜索框 ─── */}
       <div className={styles.searchWrapper}>
         <input
           className={styles.searchInput}
