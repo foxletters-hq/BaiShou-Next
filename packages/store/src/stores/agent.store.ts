@@ -13,9 +13,11 @@ export interface AgentMessagePart {
 export interface AgentMessage extends MessageId {
   role: 'user' | 'assistant' | 'system' | 'data'
   content: string
+  reasoning?: string
   timestamp: Date
   metadata?: Record<string, any>
   attachments?: unknown[]
+  toolInvocations?: unknown[]
   parts?: AgentMessagePart[]
 }
 

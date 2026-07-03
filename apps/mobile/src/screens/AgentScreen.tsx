@@ -106,6 +106,10 @@ const HOLD_LIVE_PRESENTATION_MS = 320
 export const AgentScreen = () => {
   const router = useRouter()
   const { t, i18n } = useTranslation()
+  const tr = useCallback(
+    (key: string, fallback?: string) => String(t(key, { defaultValue: fallback ?? key })),
+    [t]
+  )
   const { isLoading, searchMode, toggleSearchMode, clearSession } = useAgentStore()
   const { colors, isDark } = useNativeTheme()
   const tabBarHeight = useBottomTabBarHeight()
@@ -323,8 +327,8 @@ export const AgentScreen = () => {
   )
 
   const activeToolDisplayName = useMemo(
-    () => resolveActiveToolDisplayName(activeTool, t, webSearchEngine),
-    [activeTool, t, webSearchEngine]
+    () => resolveActiveToolDisplayName(activeTool, tr, webSearchEngine),
+    [activeTool, tr, webSearchEngine]
   )
 
   const [showLoadMoreBanner, setShowLoadMoreBanner] = useState(false)
@@ -940,8 +944,8 @@ export const AgentScreen = () => {
     if (lastMessage?.role !== 'assistant') return false
     return Boolean(
       lastMessage.content?.trim() ||
-        lastMessage.reasoning?.trim() ||
-        ((lastMessage.toolInvocations?.length ?? 0) > 0)
+      lastMessage.reasoning?.trim() ||
+      (lastMessage.toolInvocations?.length ?? 0) > 0
     )
   }, [lastMessage])
 
@@ -1026,17 +1030,13 @@ export const AgentScreen = () => {
 
   /** 与 bubbleTextStreaming 对齐：linger / hold 期间仍视为展示态，避免结束帧切组件 */
   const markdownPresentationActive =
-    isStreaming ||
-    isStreamBridgeActive ||
-    streamPresentationLinger ||
-    holdLivePresentation
+    isStreaming || isStreamBridgeActive || streamPresentationLinger || holdLivePresentation
 
   /** 思考正文走 Streamdown 渐显：纯思考阶段或整段流式未结束 */
   const streamingThinkActive = useMemo(
     () =>
       Boolean(
-        streamingReasoning.trim() &&
-          (streamingReasoningActive || markdownPresentationActive)
+        streamingReasoning.trim() && (streamingReasoningActive || markdownPresentationActive)
       ),
     [streamingReasoning, streamingReasoningActive, markdownPresentationActive]
   )
@@ -1056,10 +1056,7 @@ export const AgentScreen = () => {
   const liveAssistantActive =
     showStreamingFooter || streamPresentationLinger || holdLivePresentation
   const hasStreamingBody = Boolean(
-    streamingText.trim() ||
-      streamingReasoning.trim() ||
-      activeTool ||
-      completedTools.length > 0
+    streamingText.trim() || streamingReasoning.trim() || activeTool || completedTools.length > 0
   )
 
   const chatRows = useMemo(() => {
@@ -1079,8 +1076,7 @@ export const AgentScreen = () => {
       content: streamingText,
       reasoning: streamingReasoning,
       isTextStreaming: bubbleTextStreaming,
-      isThinkStreaming:
-        !assistantPersistedInList && streamingThinkActive && bubbleTextStreaming,
+      isThinkStreaming: !assistantPersistedInList && streamingThinkActive && bubbleTextStreaming,
       activeToolName: activeToolDisplayName,
       completedTools: streamingCompletedTools
     }),
@@ -1187,8 +1183,7 @@ export const AgentScreen = () => {
   }, [holdLivePresentation, finalizeContentHandoff])
 
   const listContentStyle = useMemo(() => {
-    const showEmptyState =
-      !isStreaming && !isStreamBridgeActive && messages.length === 0
+    const showEmptyState = !isStreaming && !isStreamBridgeActive && messages.length === 0
 
     if (showEmptyState && listViewportHeight > 0) {
       return [styles.listContent, styles.listContentEmpty, { minHeight: listViewportHeight }]
@@ -1378,8 +1373,7 @@ export const AgentScreen = () => {
                       }
                     : IDLE_LIVE_COMPRESSION
 
-                  const isLastAssistant =
-                    item.role === 'assistant' && item.id === lastMessage?.id
+                  const isLastAssistant = item.role === 'assistant' && item.id === lastMessage?.id
                   const isLiveAssistantRow =
                     isLastAssistant && (liveAssistantActive || keepLiveRowAfterHold)
                   const rowKey = isLastAssistant ? LIVE_ASSISTANT_STREAM_KEY : item.id
@@ -1399,8 +1393,7 @@ export const AgentScreen = () => {
                       }
                     : undefined
 
-                  const deferChromeForRow =
-                    isLiveAssistantRow && markdownPresentationActive
+                  const deferChromeForRow = isLiveAssistantRow && markdownPresentationActive
 
                   return (
                     <View

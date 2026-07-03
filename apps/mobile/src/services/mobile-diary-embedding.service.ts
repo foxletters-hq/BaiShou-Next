@@ -5,7 +5,8 @@ import {
   markRagDiaryEmbedFailure,
   clearRagDiaryEmbedFailure,
   hasRagDiaryEmbedFailure,
-  logger
+  logger,
+  type RagConfig
 } from '@baishou/shared'
 
 import { embedDiaryEntry, type MobileRagServiceDeps } from './mobile-rag.service'
@@ -55,24 +56,16 @@ const mobileDiaryEmbeddingCallback: IEmbeddingCallback = {
         updatedAt: params.updatedAt,
         vaultName
       })
-      const ragConfigAfter =
-        (await deps.settingsManager.get<{ ragEnabled?: boolean }>('rag_config')) || {}
+      const ragConfigAfter = await loadRagConfig(deps.settingsManager)
       if (hasRagDiaryEmbedFailure(ragConfigAfter)) {
-        await deps.settingsManager.set(
-          'rag_config',
-          clearRagDiaryEmbedFailure(ragConfigAfter)
-        )
+        await deps.settingsManager.set('rag_config', clearRagDiaryEmbedFailure(ragConfigAfter))
       }
     } catch (e) {
       logger.warn('[MobileDiaryEmbed] RAG 嵌入失败', e as Error)
-      const ragConfig =
-        (await deps.settingsManager.get<{ ragEnabled?: boolean }>('rag_config')) || {}
-      if (!isRagMemoryEnabled({ ragEnabled: ragConfig.ragEnabled ?? true })) return
+      const ragConfig = await loadRagConfig(deps.settingsManager)
+      if (!isRagMemoryEnabled(ragConfig)) return
       const message = formatAiApiCallError(e)
-      await deps.settingsManager.set(
-        'rag_config',
-        markRagDiaryEmbedFailure(ragConfig, message)
-      )
+      await deps.settingsManager.set('rag_config', markRagDiaryEmbedFailure(ragConfig, message))
       notifyDiaryEmbedFailure(message)
     }
   },
@@ -82,6 +75,19 @@ const mobileDiaryEmbeddingCallback: IEmbeddingCallback = {
     if (!deps) return
     await deps.hsRepo.deleteEmbeddingsBySource(sourceType, sourceId)
   }
+}
+
+const DEFAULT_RAG_CONFIG: RagConfig = {
+  ragEnabled: true,
+  ragTopK: 20,
+  ragSimilarityThreshold: 0.4
+}
+
+async function loadRagConfig(
+  settingsManager: NonNullable<MobileRagServiceDeps['settingsManager']>
+): Promise<RagConfig> {
+  const stored = await settingsManager.get<Partial<RagConfig>>('rag_config')
+  return { ...DEFAULT_RAG_CONFIG, ...stored }
 }
 
 export function getMobileDiaryEmbeddingCallback(): IEmbeddingCallback {

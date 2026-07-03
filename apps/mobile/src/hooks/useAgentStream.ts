@@ -48,6 +48,7 @@ interface ToolCallInfo {
   startTime: number
   endTime?: number
   result?: unknown
+  toolCallId?: string
 }
 
 export function useAgentStream(
@@ -723,23 +724,16 @@ export function useAgentStream(
 
           // 作废较早的 finish（如停止后又发起新流式输出）
           if (finishPass !== finishStreamPassRef.current) {
-            if (
-              releaseEpoch !== null &&
-              pendingRetryReleaseEpochRef.current === releaseEpoch
-            ) {
+            if (releaseEpoch !== null && pendingRetryReleaseEpochRef.current === releaseEpoch) {
               releaseRetryAction()
             }
-            return
-          }
-
-          beginStreamBridgeHandoff()
-          isStreamingRef.current = false
-          setIsStreaming(false)
-          if (
-            releaseEpoch !== null &&
-            pendingRetryReleaseEpochRef.current === releaseEpoch
-          ) {
-            releaseRetryAction()
+          } else {
+            beginStreamBridgeHandoff()
+            isStreamingRef.current = false
+            setIsStreaming(false)
+            if (releaseEpoch !== null && pendingRetryReleaseEpochRef.current === releaseEpoch) {
+              releaseRetryAction()
+            }
           }
         }
       }
