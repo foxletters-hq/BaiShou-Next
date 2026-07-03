@@ -86,9 +86,6 @@ export function collectTreeDecorations(
   })
 }
 
-export function getActiveLinesForDecorations(
-  state: EditorState,
-  hasFocus: boolean
-): Set<number> {
+export function getActiveLinesForDecorations(state: EditorState, hasFocus: boolean): Set<number> {
   return collectActiveLines(state, hasFocus)
 }

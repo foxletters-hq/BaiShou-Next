@@ -22,13 +22,13 @@
 
 ## 2. 核心不变量（必须守住）
 
-| 不变量 | 说明 |
-|--------|------|
-| **Markdown 即源码** | `state.doc` 始终是纯 Markdown 字符串 |
-| **装饰仅视图** | `Decoration.replace` / widget 不参与持久化 |
+| 不变量              | 说明                                                               |
+| ------------------- | ------------------------------------------------------------------ |
+| **Markdown 即源码** | `state.doc` 始终是纯 Markdown 字符串                               |
+| **装饰仅视图**      | `Decoration.replace` / widget 不参与持久化                         |
 | **写入走 dispatch** | 单元格、表结构、表后正文均通过 `view.dispatch({ changes })` 改 doc |
-| **保存即 toString** | RN / 桌面 `onChange` → `doc.toString()` 写库，格式不变 |
-| **无用户数据迁移** | 打开旧日记 = 同一段字符串进 doc；未编辑则不脏写 |
+| **保存即 toString** | RN / 桌面 `onChange` → `doc.toString()` 写库，格式不变             |
+| **无用户数据迁移**  | 打开旧日记 = 同一段字符串进 doc；未编辑则不脏写                    |
 
 ---
 
@@ -60,13 +60,13 @@ flowchart TB
 
 ### 与现状差异
 
-| 维度 | 现状 | 目标 |
-|------|------|------|
-| 表 widget 归属 | `build.ts` → `collectTableBlockWidgets` | `tablePreviewField` 专属 |
-| 重建触发 | 随 livePreview 大重建 | `changeAffectsTables` 窄域 + 专用 effect |
-| 建装饰前解析 | 无强制 | `ensureSyntaxTree(docLen, 200ms)` |
-| replace 范围 | `node.from .. node.to` | `startLine.from .. endLine.to` |
-| widget 化区间供其它模块 | `collectTableBlockWidgets` 副作用 | `collectTableBlockRanges(state)` 纯函数 |
+| 维度                    | 现状                                    | 目标                                     |
+| ----------------------- | --------------------------------------- | ---------------------------------------- |
+| 表 widget 归属          | `build.ts` → `collectTableBlockWidgets` | `tablePreviewField` 专属                 |
+| 重建触发                | 随 livePreview 大重建                   | `changeAffectsTables` 窄域 + 专用 effect |
+| 建装饰前解析            | 无强制                                  | `ensureSyntaxTree(docLen, 200ms)`        |
+| replace 范围            | `node.from .. node.to`                  | `startLine.from .. endLine.to`           |
+| widget 化区间供其它模块 | `collectTableBlockWidgets` 副作用       | `collectTableBlockRanges(state)` 纯函数  |
 
 ---
 
@@ -165,13 +165,13 @@ diarySyntaxTreeGrowthPlugin,
 
 **新增测试** `__tests__/tablePreviewField.test.ts`：
 
-| 用例 | 断言 |
-|------|------|
-| round-trip 未编辑 | 打开含表 MD → `doc` 不变 |
-| 改单元格 | dispatch 后管道符行更新 |
-| 表后打字 | 文字不在 `\|...\|` 行内 |
-| treeGrowth | 模拟 effect 后装饰含 TableBlockWidget |
-| changeAffectsTables | 改正文不重建表装饰（spy / 计数） |
+| 用例                | 断言                                  |
+| ------------------- | ------------------------------------- |
+| round-trip 未编辑   | 打开含表 MD → `doc` 不变              |
+| 改单元格            | dispatch 后管道符行更新               |
+| 表后打字            | 文字不在 `\|...\|` 行内               |
+| treeGrowth          | 模拟 effect 后装饰含 TableBlockWidget |
+| changeAffectsTables | 改正文不重建表装饰（spy / 计数）      |
 
 **更新** `mobile-diary-codemirror-webview.md`：补充 tablePreviewField 架构图一节（可选）。
 
@@ -179,16 +179,16 @@ diarySyntaxTreeGrowthPlugin,
 
 ## 5. 文件改动清单（预估）
 
-| 操作 | 路径 |
-|------|------|
-| 新增 | `extensions/tablePreviewField.ts` |
-| 新增 | `__tests__/tablePreviewField.test.ts` |
-| 修改 | `extensions/buildTableChrome.ts` |
-| 修改 | `extensions/build.ts` |
-| 修改 | `extensions/livePreviewPlugin.ts` |
-| 修改 | `createDiaryCodeMirror.ts` |
-| 修改 | `index.ts`（导出 `tablePreviewField`） |
-| 删除 | `collectTableBlockWidgets`（Phase A 末尾） |
+| 操作 | 路径                                          |
+| ---- | --------------------------------------------- |
+| 新增 | `extensions/tablePreviewField.ts`             |
+| 新增 | `__tests__/tablePreviewField.test.ts`         |
+| 修改 | `extensions/buildTableChrome.ts`              |
+| 修改 | `extensions/build.ts`                         |
+| 修改 | `extensions/livePreviewPlugin.ts`             |
+| 修改 | `createDiaryCodeMirror.ts`                    |
+| 修改 | `index.ts`（导出 `tablePreviewField`）        |
+| 删除 | `collectTableBlockWidgets`（Phase A 末尾）    |
 | 重建 | `apps/mobile` → `pnpm run build:diary-editor` |
 
 **不改动**：数据库、同步协议、`.md` 文件格式、`ParsedTable` 对外语义、RN 桥接消息类型。
@@ -220,13 +220,13 @@ diarySyntaxTreeGrowthPlugin,
 
 ## 7. 风险与缓解
 
-| 风险 | 缓解 |
-|------|------|
-| 双 StateField 装饰顺序冲突 | 均用 `Decoration.set(..., true)`；表为 block replace，与 mark 不重叠 |
-| activeCell 变更不重建表 widget | table field 显式监听 `setActiveTableCell` / `setTableChromeSelection` |
-| livePreview 与 table 区间不一致 | 共用 `collectTableBlockRanges(state)` 单一来源 |
-| WebView 旧 bundle | `build:diary-editor` + staging 指纹；Metro 日志 `hasFeatureMarker` |
-| 回归桌面编辑器 | 同一套 `createDiaryCodeMirror`，桌面先过测试再上真机 |
+| 风险                            | 缓解                                                                  |
+| ------------------------------- | --------------------------------------------------------------------- |
+| 双 StateField 装饰顺序冲突      | 均用 `Decoration.set(..., true)`；表为 block replace，与 mark 不重叠  |
+| activeCell 变更不重建表 widget  | table field 显式监听 `setActiveTableCell` / `setTableChromeSelection` |
+| livePreview 与 table 区间不一致 | 共用 `collectTableBlockRanges(state)` 单一来源                        |
+| WebView 旧 bundle               | `build:diary-editor` + staging 指纹；Metro 日志 `hasFeatureMarker`    |
+| 回归桌面编辑器                  | 同一套 `createDiaryCodeMirror`，桌面先过测试再上真机                  |
 
 **回滚**： revert `tablePreviewField` 注册，恢复 `collectTableBlockWidgets` 进 `build.ts`；无数据回滚。
 
@@ -247,23 +247,23 @@ diarySyntaxTreeGrowthPlugin,
 
 按同一模式可继续拆，**仍不需要块对象文档模型**：
 
-| 模块 | 优先级 | 说明 |
-|------|--------|------|
-| `imagePreviewField` | P2 | 图片 block widget 独立字段 |
-| `freezePointerPlugin` | P3 | 减少装饰切换时鼠标/触摸抖动 |
-| 单元格内 Markdown | 产品 | 非架构项 |
-| 块级拖拽排序 | 远期 | 需单独产品设计 |
+| 模块                  | 优先级 | 说明                        |
+| --------------------- | ------ | --------------------------- |
+| `imagePreviewField`   | P2     | 图片 block widget 独立字段  |
+| `freezePointerPlugin` | P3     | 减少装饰切换时鼠标/触摸抖动 |
+| 单元格内 Markdown     | 产品   | 非架构项                    |
+| 块级拖拽排序          | 远期   | 需单独产品设计              |
 
 ---
 
 ## 10. 建议排期
 
-| 阶段 | 工作量 | 依赖 |
-|------|--------|------|
-| Phase A | 4–6h | — |
-| Phase B | 2–3h | A |
-| Phase C | 2h（含真机） | A |
-| Phase D | 2–3h | A+B |
+| 阶段    | 工作量       | 依赖 |
+| ------- | ------------ | ---- |
+| Phase A | 4–6h         | —    |
+| Phase B | 2–3h         | A    |
+| Phase C | 2h（含真机） | A    |
+| Phase D | 2–3h         | A+B  |
 
 合计约 **1–1.5 个工作日**，可分 2–3 个中文 commit（字段拆分 / 窄域更新 / 测试与 bundle）。
 

@@ -24,10 +24,7 @@ function pushDecoration(
 export function isTableSeparatorLine(lineText: string): boolean {
   const trimmed = lineText.trim()
   if (!trimmed.includes('-')) return false
-  return (
-    /^\|(?:\s*:?-{3,}:?\s*\|)+\s*$/.test(trimmed) ||
-    /^\|(?:\s*:?-{3,}:?\s*)+\|$/.test(trimmed)
-  )
+  return /^\|(?:\s*:?-{3,}:?\s*\|)+\s*$/.test(trimmed) || /^\|(?:\s*:?-{3,}:?\s*)+\|$/.test(trimmed)
 }
 
 function isInsideTable(node: SyntaxNodeRef): boolean {
