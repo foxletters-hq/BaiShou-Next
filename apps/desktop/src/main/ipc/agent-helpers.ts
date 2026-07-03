@@ -318,8 +318,7 @@ async function resolveEmbeddingSystemModels(globalModels?: GlobalModelsConfig | 
   embeddingProvider?: ResolvedProvider
   embeddingModelId?: string
 }> {
-  const models =
-    globalModels ?? (await settingsManager.get<GlobalModelsConfig>('global_models'))
+  const models = globalModels ?? (await settingsManager.get<GlobalModelsConfig>('global_models'))
   const embeddingProviderId = models?.globalEmbeddingProviderId
   let embeddingModelId = models?.globalEmbeddingModelId
   let embeddingProvider: ResolvedProvider | undefined

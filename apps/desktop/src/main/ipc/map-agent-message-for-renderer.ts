@@ -1,4 +1,8 @@
-import { mapAttachmentsFromParts, normalizePartData, unwrapMessageMetadataForDisplay } from '@baishou/shared'
+import {
+  mapAttachmentsFromParts,
+  normalizePartData,
+  unwrapMessageMetadataForDisplay
+} from '@baishou/shared'
 import { parseCompactionMarkerData } from '@baishou/ai'
 import type { AgentMessage, AgentPart } from '@baishou/shared'
 

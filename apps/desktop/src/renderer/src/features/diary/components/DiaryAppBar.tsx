@@ -2,7 +2,17 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation } from 'react-router-dom'
 import { Search, Plus, Edit3, CalendarCheck, Filter, X, Heart } from 'lucide-react'
-import { WEATHER_IDS, getWeatherEmoji, weatherI18nKey, MOOD_IDS, getMoodEmoji, getMoodLabelFallback, moodI18nKey, type WeatherId, type MoodId } from '@baishou/shared'
+import {
+  WEATHER_IDS,
+  getWeatherEmoji,
+  weatherI18nKey,
+  MOOD_IDS,
+  getMoodEmoji,
+  getMoodLabelFallback,
+  moodI18nKey,
+  type WeatherId,
+  type MoodId
+} from '@baishou/shared'
 import { YearMonthPicker } from '@baishou/ui'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -63,8 +73,7 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
   const getWeatherLabel = (id: WeatherId) =>
     t(`diary.weather.${weatherI18nKey(id)}`, weatherLabelFallback[id])
 
-  const getMoodLabel = (id: MoodId) =>
-    t(`diary.mood.${moodI18nKey(id)}`, getMoodLabelFallback(id))
+  const getMoodLabel = (id: MoodId) => t(`diary.mood.${moodI18nKey(id)}`, getMoodLabelFallback(id))
 
   const clearFilters = () => {
     onFilterWeathersChange([])
@@ -179,9 +188,7 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
 
                 {/* 心情筛选 */}
                 <div className="diary-filter-section">
-                  <div className="diary-filter-section-label">
-                    {t('diary.filter_mood', '心情')}
-                  </div>
+                  <div className="diary-filter-section-label">{t('diary.filter_mood', '心情')}</div>
                   <div className="diary-filter-weather-grid">
                     {MOOD_IDS.map((mood) => (
                       <button

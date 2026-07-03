@@ -40,7 +40,9 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
   const [vaults, setVaults] = useState<any[]>([])
   const [activeVault, setActiveVault] = useState<any>(null)
   const [appVersion, setAppVersion] = useState(APP_VERSION)
-  const openFeedback = useOpenFeedbackChannel((url) => window.api.shell.openExternal(url))
+  const openFeedback = useOpenFeedbackChannel((url) => {
+    void window.api.shell.openExternal(url)
+  })
 
   const [storageStats, setStorageStats] = useState({
     storageRootPath: 'Loading...',

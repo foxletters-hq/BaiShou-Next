@@ -87,38 +87,32 @@ const compressionReasoningDisplayBuffers: Record<string, StreamingTextDisplayBuf
 
 function ensureStreamTextDisplayBuffer(sessionId: string): StreamingTextDisplayBuffer {
   if (!streamTextDisplayBuffers[sessionId]) {
-    streamTextDisplayBuffers[sessionId] = createStreamingTextDisplayBuffer(
-      (text) => {
-        updateSessionState(
-          sessionId,
-          (state) => {
-            state.text = text
-          },
-          { notify: false }
-        )
-        notifySessionListeners(sessionId)
-      },
-      DESKTOP_AGENT_STREAM_DISPLAY_OPTIONS
-    )
+    streamTextDisplayBuffers[sessionId] = createStreamingTextDisplayBuffer((text) => {
+      updateSessionState(
+        sessionId,
+        (state) => {
+          state.text = text
+        },
+        { notify: false }
+      )
+      notifySessionListeners(sessionId)
+    }, DESKTOP_AGENT_STREAM_DISPLAY_OPTIONS)
   }
   return streamTextDisplayBuffers[sessionId]
 }
 
 function ensureStreamReasoningDisplayBuffer(sessionId: string): StreamingTextDisplayBuffer {
   if (!streamReasoningDisplayBuffers[sessionId]) {
-    streamReasoningDisplayBuffers[sessionId] = createStreamingTextDisplayBuffer(
-      (text) => {
-        updateSessionState(
-          sessionId,
-          (state) => {
-            state.reasoning = text
-          },
-          { notify: false }
-        )
-        notifySessionListeners(sessionId)
-      },
-      DESKTOP_AGENT_STREAM_DISPLAY_OPTIONS
-    )
+    streamReasoningDisplayBuffers[sessionId] = createStreamingTextDisplayBuffer((text) => {
+      updateSessionState(
+        sessionId,
+        (state) => {
+          state.reasoning = text
+        },
+        { notify: false }
+      )
+      notifySessionListeners(sessionId)
+    }, DESKTOP_AGENT_STREAM_DISPLAY_OPTIONS)
   }
   return streamReasoningDisplayBuffers[sessionId]
 }
