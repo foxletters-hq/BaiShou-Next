@@ -28,7 +28,10 @@ describe('tableStructureProtectFilter', () => {
     return view
   }
 
-  function dispatchAndGetDoc(editorView: EditorView, changes: { from: number; to: number; insert?: string }) {
+  function dispatchAndGetDoc(
+    editorView: EditorView,
+    changes: { from: number; to: number; insert?: string }
+  ) {
     const before = editorView.state.doc.toString()
     editorView.dispatch({
       changes: { from: changes.from, to: changes.to, insert: changes.insert ?? '' }

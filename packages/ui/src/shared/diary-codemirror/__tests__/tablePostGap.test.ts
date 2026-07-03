@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { EditorState } from '@codemirror/state'
-import { hasTerminalBlankLine, resolvePostTableCursor, postTableSeparatorChange } from '../table/tablePostGap'
+import {
+  hasTerminalBlankLine,
+  resolvePostTableCursor,
+  postTableSeparatorChange
+} from '../table/tablePostGap'
 
 describe('tablePostGap', () => {
   it('detects terminal blank line', () => {

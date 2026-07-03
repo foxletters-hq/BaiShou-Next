@@ -6,9 +6,8 @@ import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 /** 与 apps/mobile/diary-editor-web/src/main.ts viewport 模式的 filter 保持同构 */
 const stripScrollIntoViewFilter = EditorState.transactionFilter.of((tr) => {
   if (!tr.selection || !tr.scrollIntoView) return tr
-  const annotations = (
-    tr as Transaction & { annotations?: readonly Annotation<unknown>[] }
-  ).annotations
+  const annotations = (tr as Transaction & { annotations?: readonly Annotation<unknown>[] })
+    .annotations
   return tr.startState.update({
     changes: tr.changes,
     selection: tr.selection,

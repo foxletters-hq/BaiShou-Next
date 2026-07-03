@@ -191,9 +191,7 @@ describe('TableBlockWidget mouse interactions', () => {
         forceTableRefresh.of(null)
       ]
     })
-    expect(
-      parent.querySelector('.cm-table-cell-source[data-row="0"][data-col="1"]')
-    ).toBeTruthy()
+    expect(parent.querySelector('.cm-table-cell-source[data-row="0"][data-col="1"]')).toBeTruthy()
 
     const colHandles = [...parent.querySelectorAll('.cm-table-col-handle')]
     const rowHandles = [...parent.querySelectorAll('.cm-table-row-handle')]
