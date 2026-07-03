@@ -26,7 +26,7 @@ export interface DiaryEditorWebViewSource {
   cacheKey: string
 }
 
-const FEATURE_MARKER = 'live-preview-widget-hide-v5'
+const FEATURE_MARKER = 'live-preview-inline-fenced-v19'
 
 function logStaging(message: string, detail?: Record<string, unknown>): void {
   if (typeof __DEV__ === 'undefined' || !__DEV__) return
@@ -114,18 +114,23 @@ async function readBundledAssetContent(
   return { shellHtml, bundleJs, fingerprint }
 }
 
-async function isStagedBundleCurrent(fingerprint: string): Promise<boolean> {
+async function isStagedBundleCurrent(fingerprint: string, assetBundleSize: number): Promise<boolean> {
   try {
     const [stagedHtmlInfo, stagedBundleInfo, savedFingerprint] = await Promise.all([
       getInfoAsync(STAGING_HTML),
       getInfoAsync(STAGING_BUNDLE),
       readAsStringAsync(FINGERPRINT_FILE).catch(() => null)
     ])
+    const stagedBundleSize =
+      stagedBundleInfo.exists && 'size' in stagedBundleInfo ? (stagedBundleInfo.size ?? 0) : 0
+    if (stagedBundleSize !== assetBundleSize) {
+      return false
+    }
     return (
       stagedHtmlInfo.exists &&
       stagedBundleInfo.exists &&
       savedFingerprint === fingerprint &&
-      ('size' in stagedBundleInfo ? (stagedBundleInfo.size ?? 0) : 0) >= MIN_BUNDLE_CHARS
+      stagedBundleSize >= MIN_BUNDLE_CHARS
     )
   } catch {
     return false
@@ -148,7 +153,10 @@ async function readDiaryEditorWebViewSource(): Promise<DiaryEditorWebViewSource 
     }
 
     const fingerprint = await buildFingerprint(htmlUri, bundleUri)
-    const stagedCurrent = await isStagedBundleCurrent(fingerprint)
+    const bundleInfo = await getInfoAsync(bundleUri)
+    const assetBundleSize =
+      bundleInfo.exists && 'size' in bundleInfo ? (bundleInfo.size ?? 0) : 0
+    const stagedCurrent = await isStagedBundleCurrent(fingerprint, assetBundleSize)
     if (stagedCurrent) {
       const [stagedBundleJs, stagedShellHtml] = await Promise.all([
         readAsStringAsync(STAGING_BUNDLE).catch(() => ''),

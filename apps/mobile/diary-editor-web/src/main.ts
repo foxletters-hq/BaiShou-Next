@@ -19,17 +19,19 @@ import { diarySyntaxTreeGrowthEffect } from '@baishou/ui/shared/diary-codemirror
 import type { DiaryCmTheme } from '@baishou/ui/shared/diary-codemirror/types'
 
 import type { InitPayload, RnToWebViewMessage, WebViewToRnMessage } from './types'
+import type { DiaryCmSetScrollInsetsPayload } from '@baishou/ui/shared/diary-codemirror/types'
 
 declare const __DIARY_EDITOR_BUILD_ID__: string | undefined
 
 /** 表格/滚动大改时递增，用于 Metro 日志核对 bundle 版本 */
-const DIARY_CM_FEATURE_TAG = 'live-preview-widget-hide-v5'
+const DIARY_CM_FEATURE_TAG = 'live-preview-inline-fenced-v19'
 
 let view: EditorView | null = null
 let suppressChangeEcho = false
 let contentHeightObserver: ResizeObserver | null = null
 let activeScrollMode: 'viewport' | 'document' = 'document'
 let bottomScrollInsetPx = 0
+let keyboardVisible = false
 let caretScrollFrameId: number | null = null
 let suppressCaretScrollOnce = false
 /** 用户手动滚动后，暂停自动把视图拽回光标 */
@@ -50,6 +52,8 @@ const TOUCH_PAN_THRESHOLD_PX = 10
 
 /** 光标与底部遮挡区之间的额外留白 */
 const CARET_SCROLL_BOTTOM_BUFFER_PX = 12
+/** 键盘弹出时额外预留，避免光标贴在 IME 边缘 */
+const CARET_SCROLL_KEYBOARD_EXTRA_PX = 28
 /** 光标与顶部可视区之间的留白，点击上方正文时平滑上滚 */
 const CARET_SCROLL_TOP_BUFFER_PX = 48
 
@@ -131,6 +135,14 @@ function buildPlatform(init: InitPayload): DiaryCmPlatform {
   }
 }
 
+function codeBlockSurface(theme: DiaryCmTheme): string {
+  return theme.isDark ? '#2a2e38' : '#eceef2'
+}
+
+function inlineCodeSurface(theme: DiaryCmTheme): string {
+  return theme.isDark ? '#32363f' : '#f0f2f5'
+}
+
 function applyTheme(theme: DiaryCmTheme): void {
   const root = document.documentElement
   root.dataset.theme = theme.isDark ? 'dark' : 'light'
@@ -139,7 +151,8 @@ function applyTheme(theme: DiaryCmTheme): void {
   root.style.setProperty('--text-tertiary', theme.textSecondary)
   root.style.setProperty('--bg-editor', theme.bgEditor)
   root.style.setProperty('--bg-surface', theme.bgEditor)
-  root.style.setProperty('--bg-surface-normal', theme.bgEditor)
+  root.style.setProperty('--bg-surface-normal', inlineCodeSurface(theme))
+  root.style.setProperty('--bg-code-block', codeBlockSurface(theme))
   root.style.setProperty('--border-subtle', theme.borderColor)
   root.style.setProperty('--color-danger', theme.isDark ? '#f87171' : '#e5484d')
   root.style.setProperty('--color-primary', theme.primary)
@@ -350,16 +363,17 @@ function shouldAutoScrollCaret(): boolean {
   return true
 }
 
-function caretScrollSkipReason(): string | null {
+function caretScrollSkipReason(force = false): string | null {
   if (!view) return 'no-view'
   if (activeScrollMode !== 'viewport') return `scrollMode=${activeScrollMode}`
-  if (isUserScrollLocked()) return 'user-scroll-locked'
+  if (!force && keyboardVisible) return 'keyboard-visible'
+  if (isUserScrollLocked() && !force) return 'user-scroll-locked'
   if (isTableCellEditorFocused()) return 'table-cell-focused'
   return null
 }
 
-function computeCaretScrollTarget(): number | null {
-  const skip = caretScrollSkipReason()
+function computeCaretScrollTarget(force = false): number | null {
+  const skip = caretScrollSkipReason(force)
   if (skip) {
     logEditor('caretScroll:skip', { reason: skip })
     return null
@@ -377,7 +391,10 @@ function computeCaretScrollTarget(): number | null {
   const caretTop = metrics.top
   const caretBottom = metrics.bottom
 
-  const chromeBottom = bottomScrollInsetPx + CARET_SCROLL_BOTTOM_BUFFER_PX
+  const chromeBottom =
+    bottomScrollInsetPx +
+    CARET_SCROLL_BOTTOM_BUFFER_PX +
+    (keyboardVisible ? CARET_SCROLL_KEYBOARD_EXTRA_PX : 0)
   const visibleTop = scrollDOM.scrollTop + CARET_SCROLL_TOP_BUFFER_PX
   const visibleBottom = scrollDOM.scrollTop + scrollDOM.clientHeight - chromeBottom
 
@@ -416,13 +433,20 @@ function scheduleSmoothCaretScroll(onDone?: () => void): void {
   })
 }
 
-function ensureCaretVisible(onDone?: () => void): void {
-  const targetScrollTop = computeCaretScrollTarget()
+function ensureCaretVisible(onDone?: () => void, force = false): void {
+  const targetScrollTop = computeCaretScrollTarget(force)
   if (targetScrollTop === null) {
     onDone?.()
     return
   }
   smoothApplyProgrammaticScrollTop(targetScrollTop, onDone)
+}
+
+function scheduleForcedCaretScroll(): void {
+  userScrollLockUntil = 0
+  ensureCaretVisible(undefined, true)
+  window.setTimeout(() => ensureCaretVisible(undefined, true), 100)
+  window.setTimeout(() => ensureCaretVisible(undefined, true), 280)
 }
 
 function scheduleEnsureCaretVisible(onDone?: () => void): void {
@@ -435,9 +459,16 @@ function applyBottomScrollInset(bottom: number): void {
   view.scrollDOM.style.setProperty('--diary-bottom-scroll-inset', `${bottomScrollInsetPx}px`)
 }
 
-function setScrollInsets(bottom: number): void {
-  logEditor('setScrollInsets', { bottom, prev: bottomScrollInsetPx })
-  applyBottomScrollInset(bottom)
+function setScrollInsets(payload: DiaryCmSetScrollInsetsPayload): void {
+  logEditor('setScrollInsets', {
+    bottom: payload.bottom,
+    keyboardVisible: payload.keyboardVisible,
+    prev: bottomScrollInsetPx
+  })
+  if (payload.keyboardVisible !== undefined) {
+    keyboardVisible = payload.keyboardVisible
+  }
+  applyBottomScrollInset(payload.bottom)
 }
 
 function reportContentMetrics(): void {
@@ -587,6 +618,7 @@ function mountEditor(init: InitPayload): void {
     }
   }
   applyBottomScrollInset(init.scrollInsets?.bottom ?? 0)
+  keyboardVisible = init.scrollInsets?.keyboardVisible ?? false
 
   const buildStamp =
     document.documentElement.innerHTML.match(/diary-editor-build:([^\s-]+)/)?.[1] ?? '(none)'
@@ -781,6 +813,7 @@ function probeLivePreviewDom(attempt: number): void {
     (view?.dom.querySelectorAll('.cm-rendered-h6').length ?? 0)
   const hiddenWidgets = view?.dom.querySelectorAll('.cm-syntax-hidden-widget').length ?? 0
   const hiddenMarks = view?.dom.querySelectorAll('.cm-markdown-syntax-hidden').length ?? 0
+  const fencedCodeLines = view?.dom.querySelectorAll('.cm-code-line').length ?? 0
   const hiddenSyntaxCount = hiddenWidgets + hiddenMarks
   const firstLineText = view?.dom.querySelector('.cm-line')?.textContent?.slice(0, 48) ?? ''
   const docLen = view?.state.doc.length ?? 0
@@ -792,6 +825,7 @@ function probeLivePreviewDom(attempt: number): void {
     hiddenWidgets,
     hiddenMarks,
     hiddenSyntaxCount,
+    fencedCodeLines,
     firstLineText,
     attempt,
     scrollerClientHeight: view?.scrollDOM.clientHeight ?? 0,
@@ -930,11 +964,10 @@ function handleRnMessage(raw: unknown): void {
       setEditable(message.payload.editable)
       break
     case 'setScrollInsets':
-      setScrollInsets(message.payload.bottom)
+      setScrollInsets(message.payload)
       break
     case 'scrollCaretIntoView':
-      userScrollLockUntil = 0
-      scheduleEnsureCaretVisible()
+      scheduleForcedCaretScroll()
       break
     case 'focus':
       view?.focus()
