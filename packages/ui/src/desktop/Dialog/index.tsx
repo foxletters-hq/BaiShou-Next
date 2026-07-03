@@ -159,19 +159,13 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     []
   )
 
-  const showTitle =
-    state.type !== 'prompt' && state.type !== 'confirm' ? state.title : undefined
+  const showTitle = state.type !== 'prompt' && state.type !== 'confirm' ? state.title : undefined
 
   return (
     <DialogContext.Provider value={{ alert, confirm, prompt, choose, closeAll }}>
       {children}
       {state.isOpen && (
-        <Modal
-          isOpen={state.isOpen}
-          onClose={dismissDialog}
-          title={showTitle}
-          zIndex={1100}
-        >
+        <Modal isOpen={state.isOpen} onClose={dismissDialog} title={showTitle} zIndex={1100}>
           <div className={styles.dialogContent}>
             {state.type !== 'choose' ? <div className={styles.message}>{state.message}</div> : null}
 
@@ -229,7 +223,9 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                       .join(' ')}
                     onClick={() => closeDialog(opt.value)}
                   >
-                    {opt.leading ? <span className={styles.chooseLeading}>{opt.leading}</span> : null}
+                    {opt.leading ? (
+                      <span className={styles.chooseLeading}>{opt.leading}</span>
+                    ) : null}
                     <span
                       className={styles.chooseLabel}
                       style={opt.destructive ? { color: 'var(--color-error)' } : undefined}

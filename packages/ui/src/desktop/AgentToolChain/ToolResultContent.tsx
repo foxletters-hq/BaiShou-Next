@@ -67,7 +67,9 @@ function StructuredToolResult({ data }: { data: unknown }) {
               Object.keys(item).map((k) => (
                 <div className={styles.structValueRow} key={k}>
                   <span className={styles.structKey}>{k}</span>
-                  <span className={styles.structVal}>{String((item as Record<string, unknown>)[k])}</span>
+                  <span className={styles.structVal}>
+                    {String((item as Record<string, unknown>)[k])}
+                  </span>
                 </div>
               ))}
           </div>

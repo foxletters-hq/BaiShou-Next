@@ -8,9 +8,9 @@ import {
 
 describe('page-size-selector placement', () => {
   it('prefers opening downward when trigger is near the top', () => {
-    expect(
-      resolveDropdownPlacement({ top: 72, bottom: 104 }, estimateDropdownHeight(5), 800)
-    ).toBe('bottom')
+    expect(resolveDropdownPlacement({ top: 72, bottom: 104 }, estimateDropdownHeight(5), 800)).toBe(
+      'bottom'
+    )
   })
 
   it('opens upward when there is not enough space below', () => {

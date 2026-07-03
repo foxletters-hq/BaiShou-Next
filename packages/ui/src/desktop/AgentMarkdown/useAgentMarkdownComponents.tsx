@@ -16,7 +16,11 @@ export function useAgentMarkdownComponents() {
   const { t } = useTranslation()
 
   return useMemo(() => {
-    const Link = ({ domNode: _domNode, streamStatus: _streamStatus, ...props }: XMarkdownComponentProps) => (
+    const Link = ({
+      domNode: _domNode,
+      streamStatus: _streamStatus,
+      ...props
+    }: XMarkdownComponentProps) => (
       <a {...props} className={markdownStyles.link} target="_blank" rel="noopener noreferrer" />
     )
 
@@ -36,7 +40,10 @@ export function useAgentMarkdownComponents() {
             <pre className={markdownStyles.codeWrapper}>
               <div className={markdownStyles.codeHeader}>
                 <span>{language}</span>
-                <button type="button" onClick={() => navigator.clipboard.writeText(String(children))}>
+                <button
+                  type="button"
+                  onClick={() => navigator.clipboard.writeText(String(children))}
+                >
                   {t('markdown.copy', '复制')}
                 </button>
               </div>
