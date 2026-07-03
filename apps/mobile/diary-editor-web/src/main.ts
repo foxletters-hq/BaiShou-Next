@@ -24,7 +24,7 @@ import type { DiaryCmSetScrollInsetsPayload } from '@baishou/ui/shared/diary-cod
 declare const __DIARY_EDITOR_BUILD_ID__: string | undefined
 
 /** 表格/滚动大改时递增，用于 Metro 日志核对 bundle 版本 */
-const DIARY_CM_FEATURE_TAG = 'live-preview-inline-fenced-v19'
+const DIARY_CM_FEATURE_TAG = 'live-preview-inline-fenced-v20'
 
 let view: EditorView | null = null
 let suppressChangeEcho = false
