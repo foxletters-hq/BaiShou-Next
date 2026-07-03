@@ -33,6 +33,8 @@ export function registerSettingsAppIPC() {
 
   ipcMain.handle('settings:set-rag-config', async (_, config: any) => {
     await settingsManager.set('rag_config', config)
+    const { invalidateMcpToolContextCache } = await import('./agent-helpers')
+    invalidateMcpToolContextCache()
     return true
   })
 
@@ -69,6 +71,8 @@ export function registerSettingsAppIPC() {
 
   ipcMain.handle('settings:set-tool-management-config', async (_, config: any) => {
     await settingsManager.set('tool_management_config', config)
+    const { invalidateMcpToolContextCache } = await import('./agent-helpers')
+    invalidateMcpToolContextCache()
     return true
   })
 
@@ -114,17 +118,12 @@ export function registerSettingsAppIPC() {
 
   ipcMain.handle('settings:get-mcp-tools', async () => {
     const { toolRegistry, buildMcpToolContext } = await import('./agent-helpers')
+    const { listBaishouMcpExposedTools } = await import('@baishou/ai')
     const { logger } = await import('@baishou/shared')
     if (!toolRegistry) return []
     try {
       const context = await buildMcpToolContext()
-      const tools = toolRegistry.getEnabledToolsRaw(context)
-      return tools.map((tool: any) => ({
-        name: `baishou_${tool.name}`,
-        displayName: tool.displayName,
-        description: tool.description,
-        category: tool.category
-      }))
+      return listBaishouMcpExposedTools(toolRegistry, context)
     } catch (e) {
       logger.warn('[settings:get-mcp-tools] Failed to list MCP tools:', e as Error)
       return []

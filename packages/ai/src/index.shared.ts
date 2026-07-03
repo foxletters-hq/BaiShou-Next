@@ -22,6 +22,7 @@ export * from './providers/opencodego/opencodego.provider'
 // Tools
 export * from './tools/agent.tool'
 export * from './tools/tool-registry'
+export * from './tools/tool-context.util'
 export * from './tools/mcp-tool.util'
 export * from './mcp/baishou-mcp-server'
 export * from './tools/current-time.tool'

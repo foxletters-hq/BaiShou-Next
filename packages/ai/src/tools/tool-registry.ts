@@ -14,6 +14,7 @@ import { MessageSearchTool } from './message-search.tool'
 import { VectorSearchTool } from './vector-search.tool'
 import { CurrentTimeTool } from './current-time.tool'
 import { ContextCompressUpstreamTool, ContextCompressDownstreamTool } from './context-compress.tool'
+import { hasEmbeddingCapability } from './tool-context.util'
 
 const INTERNAL_ONLY_TOOL_IDS = new Set(['compress_context_upstream', 'compress_context_downstream'])
 
@@ -25,7 +26,7 @@ function isToolEnabledForContext(name: string, tool: AgentTool, context: ToolCon
   )
 
   const ragEnabled = context.userConfig?.['ragEnabled'] !== false
-  const hasEmbedding = context.userConfig?.['hasEmbeddingModel'] === true
+  const hasEmbedding = hasEmbeddingCapability(context)
   const webSearchEnabled = context.userConfig?.['web_search_enabled'] === true
 
   if (INTERNAL_ONLY_TOOL_IDS.has(name)) return false

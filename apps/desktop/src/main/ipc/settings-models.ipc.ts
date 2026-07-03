@@ -141,6 +141,8 @@ export function registerSettingsModelsIPC() {
 
   ipcMain.handle('settings:set-global-models', async (_, config: GlobalModelsConfig) => {
     await settingsManager.set('global_models', config)
+    const { invalidateMcpToolContextCache } = await import('./agent-helpers')
+    invalidateMcpToolContextCache()
     return true
   })
 

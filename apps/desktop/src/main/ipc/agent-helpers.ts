@@ -58,6 +58,7 @@ import {
   EmbeddingAdapter,
   MemoryDeduplicationServiceImpl,
   createDiaryReadGuard,
+  syncMcpToolUserConfig,
   type ToolContext
 } from '@baishou/ai'
 import { getDiaryManager } from './diary.ipc'
@@ -515,7 +516,7 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
     )
   }
 
-  const context: ToolContext = {
+  const context = syncMcpToolUserConfig({
     sessionId: 'mcp-external',
     vaultName,
     userConfig,
@@ -528,7 +529,7 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
     webSearchResultFetcher: createWebSearchResultFetcher(),
     fetchSearchPage: createFetchSearchPage(),
     diaryReadGuard: createDiaryReadGuard()
-  }
+  })
 
   mcpToolContextCache = {
     vaultName,

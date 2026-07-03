@@ -70,6 +70,10 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
 
   readonly parameters = vectorSearchParams
 
+  get category(): string {
+    return 'memory'
+  }
+
   async execute(args: z.infer<typeof vectorSearchParams>, context: ToolContext): Promise<string> {
     if (args.query.trim().length === 0) {
       return '请提供搜索查询内容。'

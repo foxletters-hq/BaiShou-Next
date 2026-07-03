@@ -41,6 +41,62 @@ describe('baishou-mcp-server', () => {
     expect(buildBaishouMcpToolSchemas(undefined, context)).toEqual([])
   })
 
+  it('exposes vector_search when embedding model is configured', () => {
+    const registry = new ToolRegistry()
+    const context: ToolContext = {
+      sessionId: 'mcp-external',
+      vaultName: 'Personal',
+      userConfig: {
+        ragEnabled: true,
+        hasEmbeddingModel: true,
+        disabledToolIds: [],
+        web_search_enabled: false
+      }
+    }
+
+    const enabled = registry.getEnabledToolsRaw(context).map((tool) => tool.name)
+    const mcpTools = buildBaishouMcpToolSchemas(registry, context).map((tool) => tool.name)
+
+    expect(enabled).toContain('vector_search')
+    expect(mcpTools).toContain('baishou_vector_search')
+  })
+
+  it('exposes vector_search when runtime embedding services are wired', () => {
+    const registry = new ToolRegistry()
+    const context: ToolContext = {
+      sessionId: 'mcp-external',
+      vaultName: 'Personal',
+      userConfig: {
+        ragEnabled: true,
+        hasEmbeddingModel: false,
+        disabledToolIds: [],
+        web_search_enabled: false
+      },
+      embeddingService: { isConfigured: true, embedQuery: async () => [] },
+      vectorStore: { searchSimilar: async () => [], deleteBySource: async () => {} }
+    }
+
+    const mcpTools = buildBaishouMcpToolSchemas(registry, context).map((tool) => tool.name)
+    expect(mcpTools).toContain('baishou_vector_search')
+  })
+
+  it('hides vector_search when embedding model is unavailable', () => {
+    const registry = new ToolRegistry()
+    const context: ToolContext = {
+      ...baseContext,
+      userConfig: {
+        ...baseContext.userConfig,
+        hasEmbeddingModel: false
+      }
+    }
+
+    const enabled = registry.getEnabledToolsRaw(context).map((tool) => tool.name)
+    const mcpTools = buildBaishouMcpToolSchemas(registry, context).map((tool) => tool.name)
+
+    expect(enabled).not.toContain('vector_search')
+    expect(mcpTools).not.toContain('baishou_vector_search')
+  })
+
   it('exposes diary tools from the default registry for MCP UI and protocol', () => {
     const registry = new ToolRegistry()
     const uiTools = listBaishouMcpToolsForUi(registry, baseContext)

@@ -11,6 +11,7 @@ import { logger } from '@baishou/shared'
 import { z } from 'zod'
 import type { ToolContext } from '../tools/agent.tool'
 import type { ToolRegistry } from '../tools/tool-registry'
+import { syncMcpToolUserConfig } from '../tools/tool-context.util'
 import { buildMcpInstructions, formatMcpToolCallResult } from '../tools/mcp-tool.util'
 
 export type BaishouMcpToolListItem = {
@@ -50,12 +51,32 @@ export function listBaishouMcpToolsForUi(
   toolRegistry: ToolRegistry,
   context: ToolContext
 ): BaishouMcpToolListItem[] {
-  return toolRegistry.getEnabledToolsRaw(context).map((tool) => ({
-    name: `baishou_${tool.name}`,
-    displayName: tool.displayName,
-    description: tool.description,
-    category: tool.category
-  }))
+  return listBaishouMcpExposedTools(toolRegistry, context)
+}
+
+/** 与 MCP tools/list 协议一致：仅返回成功生成 schema 的工具 */
+export function listBaishouMcpExposedTools(
+  toolRegistry: ToolRegistry | undefined,
+  context: ToolContext
+): BaishouMcpToolListItem[] {
+  if (!toolRegistry) return []
+
+  const syncedContext = syncMcpToolUserConfig(context)
+  const schemas = buildBaishouMcpToolSchemas(toolRegistry, syncedContext)
+  const toolsByName = new Map(
+    toolRegistry.getEnabledToolsRaw(syncedContext).map((tool) => [tool.name, tool])
+  )
+
+  return schemas.map((schema) => {
+    const rawName = schema.name.replace(/^baishou_/, '')
+    const tool = toolsByName.get(rawName)
+    return {
+      name: schema.name,
+      displayName: tool?.displayName,
+      description: schema.description,
+      category: tool?.category
+    }
+  })
 }
 
 export function buildBaishouMcpToolSchemas(
@@ -64,9 +85,10 @@ export function buildBaishouMcpToolSchemas(
 ): BaishouMcpToolSchema[] {
   if (!toolRegistry) return []
 
+  const syncedContext = syncMcpToolUserConfig(context)
   const mcpTools: BaishouMcpToolSchema[] = []
 
-  for (const tool of toolRegistry.getEnabledToolsRaw(context)) {
+  for (const tool of toolRegistry.getEnabledToolsRaw(syncedContext)) {
     const name = `baishou_${tool.name}`
     const inputSchema = toBaishouMcpInputSchema(tool.parameters)
     try {
@@ -105,7 +127,7 @@ export async function executeBaishouMcpTool(
   const tool = toolRegistry.get(rawName)
   if (!tool) throw new Error(`Tool not found: ${rawName}`)
 
-  const context = await resolveToolContext()
+  const context = syncMcpToolUserConfig(await resolveToolContext())
   if (!toolRegistry.isToolEnabled(rawName, context)) {
     throw new Error(`Tool not available: ${rawName}`)
   }
@@ -136,7 +158,7 @@ export function createBaishouMcpServer(
   })
 
   server.setRequestHandler(ListToolsRequestSchema, async () => {
-    const context = await resolveToolContext()
+    const context = syncMcpToolUserConfig(await resolveToolContext())
     return {
       tools: buildBaishouMcpToolSchemas(toolRegistry, context)
     }
