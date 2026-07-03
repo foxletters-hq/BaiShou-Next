@@ -220,7 +220,10 @@ export const LegacyMarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 
   return (
     <View
-      style={[variant === 'default' ? legacyStyles.containerDefault : legacyStyles.containerCompact, style]}
+      style={[
+        variant === 'default' ? legacyStyles.containerDefault : legacyStyles.containerCompact,
+        style
+      ]}
     >
       <Markdown style={markdownStyles} rules={rules} markdownit={markdownit}>
         {displayContent}

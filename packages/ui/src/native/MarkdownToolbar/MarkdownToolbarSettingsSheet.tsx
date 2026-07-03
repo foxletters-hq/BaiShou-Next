@@ -1,12 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Modal,
-  useWindowDimensions
-} from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, Modal, useWindowDimensions } from 'react-native'
 import DraggableFlatList, {
   ScaleDecorator,
   type RenderItemParams
@@ -15,10 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
-import {
-  MARKDOWN_TOOLBAR_TOOL_META,
-  type MarkdownToolbarToolId
-} from './markdown-toolbar.types'
+import { MARKDOWN_TOOLBAR_TOOL_META, type MarkdownToolbarToolId } from './markdown-toolbar.types'
 
 interface MarkdownToolbarSettingsSheetProps {
   visible: boolean
@@ -43,10 +33,7 @@ export const MarkdownToolbarSettingsSheet: React.FC<MarkdownToolbarSettingsSheet
   const [draftOrder, setDraftOrder] = useState(toolOrder)
 
   const cardWidth = Math.min(screenWidth - 32, 480)
-  const listHeight = Math.min(
-    screenHeight * 0.52,
-    draftOrder.length * ROW_HEIGHT + 24
-  )
+  const listHeight = Math.min(screenHeight * 0.52, draftOrder.length * ROW_HEIGHT + 24)
   const cardHeight = HEADER_HEIGHT + listHeight + FOOTER_HEIGHT
 
   useEffect(() => {

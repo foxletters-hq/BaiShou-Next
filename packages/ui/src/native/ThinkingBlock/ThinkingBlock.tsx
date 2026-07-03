@@ -212,11 +212,7 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
       {showExpandedBody ? (
         <CollapsibleHeight expanded animation="ease" durationMs={300}>
           <View style={[styles.body, { borderTopColor: colors.borderSubtle }]}>
-            <AgentMarkdownRenderer
-              content={content}
-              isStreaming={isThinking}
-              variant="ancillary"
-            />
+            <AgentMarkdownRenderer content={content} isStreaming={isThinking} variant="ancillary" />
           </View>
         </CollapsibleHeight>
       ) : null}

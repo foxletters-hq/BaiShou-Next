@@ -21,7 +21,8 @@ describe('unwrapPlainToolResultText', () => {
 })
 
 describe('getToolDisplayName', () => {
-  const t = (key: string, fallback?: string) => (key === 'agent.tools.diary_search' ? '日记搜索' : fallback ?? key)
+  const t = (key: string, fallback?: string) =>
+    key === 'agent.tools.diary_search' ? '日记搜索' : (fallback ?? key)
 
   it('reads legacy name field when toolName is missing', () => {
     expect(

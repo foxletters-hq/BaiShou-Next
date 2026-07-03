@@ -243,7 +243,9 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
                               style={[
                                 styles.modelName,
                                 {
-                                  color: isSelected ? colors.onPrimaryContainer : colors.textPrimary,
+                                  color: isSelected
+                                    ? colors.onPrimaryContainer
+                                    : colors.textPrimary,
                                   fontWeight: isSelected ? '600' : '400'
                                 }
                               ]}
