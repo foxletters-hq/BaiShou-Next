@@ -1,4 +1,4 @@
-import { EditorState, Prec, type Extension } from '@codemirror/state'
+import { EditorState, Prec, Transaction, type Extension } from '@codemirror/state'
 import {
   EditorView,
   keymap,
@@ -8,7 +8,7 @@ import {
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { searchKeymap } from '@codemirror/search'
-import { livePreviewPlugin } from './extensions/livePreviewPlugin'
+import { livePreviewField } from './extensions/livePreviewPlugin'
 import { tablePreviewField } from './extensions/tablePreviewField'
 import { livePreviewSyntaxHighlighting } from './extensions/syntax'
 import { markdownKeymap } from './extensions/keymap'
@@ -20,11 +20,12 @@ import {
 import { attachmentUrlPlugin } from './extensions/attachmentUrlPlugin'
 import { diaryTagLineKeymap, diaryTagLinePlugin } from './extensions/diaryTagLinePlugin'
 import { listContinuationExtension } from './extensions/listContinuationKeymap'
+import { inlineMarkEnterExtension } from './extensions/inlineMarkEnterKeymap'
 import { tableCellExtension } from './extensions/tableCellKeymap'
 import { tableEditorPlugin, tableAtomicRanges, tableBoundaryBackspaceKeymap } from './extensions/tableEditorPlugin'
 import { tableChromeTouchPlugin } from './extensions/tableChromeTouchPlugin'
 import { tablePostTableTouchPlugin } from './extensions/tablePostTableTouchPlugin'
-import { diarySyntaxTreeGrowthPlugin } from './extensions/diarySyntaxTreeGrowth'
+import { diarySyntaxTreeGrowthPlugin, diarySyntaxTreeGrowthEffect } from './extensions/diarySyntaxTreeGrowth'
 import { activeTableCellField } from './table/tableActiveCell'
 import { tableChromeSelectionField } from './table/tableChromeSelection'
 import type { DiaryCmPlatform } from './types'
@@ -66,12 +67,13 @@ export function createDiaryCodeMirrorExtensions(
     tableChromeTouchPlugin(platform),
     tablePostTableTouchPlugin(platform),
     listContinuationExtension,
+    inlineMarkEnterExtension,
     markdownKeymap,
     keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
     markdown({ base: markdownLanguage }),
     cmPlaceholder(placeholder || ''),
     tablePreviewField(platform),
-    livePreviewPlugin(platform),
+    ...livePreviewField(platform),
     livePreviewSyntaxHighlighting(),
     attachmentUrlPlugin(resolveUrl),
     ...(onChange
@@ -108,9 +110,31 @@ export function createDiaryCodeMirror(
   parent: HTMLElement,
   options: CreateDiaryCodeMirrorOptions
 ): EditorView {
-  const state = EditorState.create({
-    doc: options.content,
-    extensions: createDiaryCodeMirrorExtensions(options)
+  const extensions = createDiaryCodeMirrorExtensions(options)
+  const view = new EditorView({
+    parent,
+    state: EditorState.create({ doc: '', extensions })
   })
-  return new EditorView({ state, parent })
+
+  const content = options.content
+  if (content.length > 0) {
+    // 直接 create({ doc: 全文 }) 时 Lezer 常在 livePreview create 前未追到文末，
+    // 导致 #/** 等隐藏装饰与标题样式无法进入 DOM（仅语法高亮仍可见）。
+    view.dispatch({
+      changes: { from: 0, insert: content },
+      selection: { anchor: content.length, head: content.length },
+      effects: diarySyntaxTreeGrowthEffect.of(null),
+      annotations: Transaction.addToHistory.of(false)
+    })
+    // WebView 首帧：同步 + 多帧补刷装饰
+    const refreshDecorations = () => {
+      if (view.isDestroyed) return
+      view.dispatch({ effects: diarySyntaxTreeGrowthEffect.of(null) })
+    }
+    refreshDecorations()
+    requestAnimationFrame(refreshDecorations)
+    requestAnimationFrame(() => requestAnimationFrame(refreshDecorations))
+  }
+
+  return view
 }

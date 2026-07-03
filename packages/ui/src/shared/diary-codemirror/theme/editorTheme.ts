@@ -41,7 +41,30 @@ export const editorTheme = EditorView.baseTheme({
     borderLeftColor: 'var(--text-primary)'
   },
 
-  // 渲染标题（禁止 inline-block，会触发 InlineCoordsScan 无限递归）
+  // 隐藏语法 widget（零宽，与列表圆点同 replace 机制）
+  '.cm-syntax-hidden-widget': {
+    display: 'inline-block',
+    width: '0',
+    overflow: 'hidden',
+    fontSize: '0',
+    lineHeight: '0',
+    verticalAlign: 'baseline',
+    pointerEvents: 'none'
+  },
+
+  // 兼容旧探测
+  '.cm-markdown-syntax-hidden': {
+    display: 'inline-block',
+    width: '0',
+    overflow: 'hidden',
+    opacity: '0',
+    fontSize: '0',
+    lineHeight: '0',
+    verticalAlign: 'baseline',
+    pointerEvents: 'none'
+  },
+
+  // 渲染标题（行级 class，避免 inline mark 触发坐标扫描问题）
   '.cm-rendered-h1': {
     fontSize: '1.8em',
     fontWeight: '700'
@@ -59,13 +82,29 @@ export const editorTheme = EditorView.baseTheme({
     fontWeight: '600'
   },
   '.cm-rendered-h5': {
-    fontSize: '1.05em',
+    fontSize: '1.15em',
     fontWeight: '600'
   },
   '.cm-rendered-h6': {
     fontSize: '1em',
     fontWeight: '600',
     color: 'var(--text-secondary)'
+  },
+
+  '.cm-rendered-blockquote-content': {
+    borderLeft: '3px solid var(--color-primary)',
+    paddingLeft: '0.75rem',
+    color: 'var(--text-secondary)'
+  },
+
+  '.cm-rendered-inline-code': {
+    fontFamily: "'Fira Code', 'Courier New', monospace",
+    fontSize: '0.88em',
+    color: 'var(--text-primary)',
+    backgroundColor: 'var(--bg-surface-normal)',
+    borderRadius: '0.35rem',
+    padding: '0.08em 0.35em',
+    wordBreak: 'break-word'
   },
 
   '.cm-rendered-link': {

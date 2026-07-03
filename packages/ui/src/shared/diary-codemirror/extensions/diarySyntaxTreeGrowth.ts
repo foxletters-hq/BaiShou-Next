@@ -67,7 +67,7 @@ export const diarySyntaxTreeGrowthPlugin = ViewPlugin.fromClass(
       const ensured = ensureSyntaxTree(state, docLen, TICK_BUDGET_MS)
       const newLen = (ensured ?? syntaxTree(state)).length
 
-      if (newLen >= this.lastTreeLen + GROWTH_THRESHOLD || newLen >= docLen) {
+      if (newLen > this.lastTreeLen && (newLen >= docLen || docLen <= GROWTH_THRESHOLD)) {
         const previous = this.lastTreeLen
         this.lastTreeLen = newLen
         try {
