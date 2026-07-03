@@ -63,7 +63,9 @@ export * from './summary/summary-manager.service'
 export * from './summary/missing-summary-detector.service'
 export {
   buildSharedContextText,
+  computeSharedMemoryCopyPreview,
   handleBuildSharedContext,
+  handleBuildSharedContextPreview,
   type SharedContextDiaryRow
 } from './summary/summary-context'
 

@@ -15,7 +15,9 @@ export const systemApi = {
       ipcRenderer.invoke('summary:readDetail', type, startDate, endDate),
     list: (options?: any) => ipcRenderer.invoke('summary:list', options),
     buildSharedContext: (lookbackMonths: number, locale?: string) =>
-      ipcRenderer.invoke('summary:buildSharedContext', lookbackMonths, locale)
+      ipcRenderer.invoke('summary:buildSharedContext', lookbackMonths, locale),
+    buildSharedContextPreview: (lookbackMonths: number) =>
+      ipcRenderer.invoke('summary:buildSharedContextPreview', lookbackMonths)
   },
 
   // Onboarding

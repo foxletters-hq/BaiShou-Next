@@ -39,3 +39,24 @@ export interface ContextResult {
   weekCount: number
   diaryCount: number
 }
+
+/** 共同回忆复制预览（级联折叠后的条目统计） */
+export interface SharedMemoryCopyPreview {
+  lookbackMonths: number
+  yearly: number
+  quarterly: number
+  monthly: number
+  weekly: number
+  diary: number
+  total: number
+}
+
+export const DEFAULT_SHARED_MEMORY_LOOKBACK_MONTHS = 1
+export const SHARED_MEMORY_LOOKBACK_MIN = 1
+export const SHARED_MEMORY_LOOKBACK_MAX = 120
+
+export function clampSharedMemoryLookbackMonths(value: unknown): number {
+  const n = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(n)) return DEFAULT_SHARED_MEMORY_LOOKBACK_MONTHS
+  return Math.min(SHARED_MEMORY_LOOKBACK_MAX, Math.max(SHARED_MEMORY_LOOKBACK_MIN, Math.round(n)))
+}

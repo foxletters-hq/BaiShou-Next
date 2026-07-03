@@ -1,5 +1,5 @@
 import { shadowConnectionManager, ShadowIndexRepository } from '@baishou/database'
-import { logger, parseDateStr } from '@baishou/shared'
+import { logger, parseDateStr, type SharedMemoryCopyPreview } from '@baishou/shared'
 
 /** 国际化字典类型 */
 interface LocaleDict {
@@ -88,19 +88,128 @@ function markMonthsCovered(s: any, coveredMonthKeys: Set<string>): void {
   }
 }
 
-/**
- * 构建共同回忆 Markdown 文本。
- * 实现级联过滤逻辑：被高级别总结覆盖的低级别条目会被省略。
- *
- * @param summaries - 所有摘要列表
- * @param lookbackMonths - 回溯月数
- * @param locale - 语言标识
- */
 export type SharedContextDiaryRow = {
   date: string
   rawContent?: string | null
 }
 
+type SharedContextSummaryRow = {
+  type: string
+  startDate: string | Date
+  endDate: string | Date
+  content?: string | null
+}
+
+type SharedMemoryItemKind = 'yearly' | 'quarterly' | 'monthly' | 'weekly' | 'diary'
+
+type ResolvedSharedMemoryItems = {
+  yList: SharedContextSummaryRow[]
+  qList: SharedContextSummaryRow[]
+  visibleMonths: SharedContextSummaryRow[]
+  visibleWeeks: SharedContextSummaryRow[]
+  visibleDiaries: SharedContextDiaryRow[]
+  allItems: { date: Date; data: any; kind: SharedMemoryItemKind }[]
+}
+
+function resolveSharedMemoryItems(
+  summaries: SharedContextSummaryRow[],
+  diaries: SharedContextDiaryRow[],
+  lookbackMonths: number
+): ResolvedSharedMemoryItems {
+  const now = new Date()
+  const cutoffDate = new Date()
+  cutoffDate.setMonth(cutoffDate.getMonth() - lookbackMonths)
+  cutoffDate.setDate(1)
+  cutoffDate.setHours(0, 0, 0, 0)
+
+  const relevantSummaries = (summaries || []).filter((s) => new Date(s.endDate) > cutoffDate)
+  const relevantDiaries = diaries.filter((d) => {
+    const dDate = parseDateStr(d.date)
+    return dDate >= cutoffDate && dDate <= now
+  })
+
+  const yList = relevantSummaries.filter((s) => s.type === 'yearly')
+  const qList = relevantSummaries.filter((s) => s.type === 'quarterly')
+  const mList = relevantSummaries.filter((s) => s.type === 'monthly')
+  const wList = relevantSummaries.filter((s) => s.type === 'weekly')
+
+  const coveredMonthKeys = new Set<string>()
+  for (const q of qList) markMonthsCovered(q, coveredMonthKeys)
+
+  const getMonthKey = (s: SharedContextSummaryRow) => {
+    const start = new Date(s.startDate)
+    return `${start.getFullYear()}${String(start.getMonth() + 1).padStart(2, '0')}`
+  }
+
+  const visibleMonths = mList.filter((m) => !coveredMonthKeys.has(getMonthKey(m)))
+  for (const m of visibleMonths) markMonthsCovered(m, coveredMonthKeys)
+
+  const visibleWeeks = wList.filter((w) => {
+    const wEnd = new Date(w.endDate)
+    const key = `${wEnd.getFullYear()}${String(wEnd.getMonth() + 1).padStart(2, '0')}`
+    return !coveredMonthKeys.has(key)
+  })
+
+  const diaryCutoffDate =
+    visibleWeeks.length > 0
+      ? new Date(Math.max(...visibleWeeks.map((w) => new Date(w.endDate).getTime())))
+      : null
+
+  const visibleDiaries = relevantDiaries.filter((d) => {
+    const dDate = parseDateStr(d.date)
+    const key = `${dDate.getFullYear()}${String(dDate.getMonth() + 1).padStart(2, '0')}`
+    if (coveredMonthKeys.has(key)) return false
+    if (diaryCutoffDate && dDate <= diaryCutoffDate) return false
+    return true
+  })
+
+  const allItems: ResolvedSharedMemoryItems['allItems'] = []
+  for (const i of yList) allItems.push({ date: new Date(i.startDate), data: i, kind: 'yearly' })
+  for (const i of qList) allItems.push({ date: new Date(i.startDate), data: i, kind: 'quarterly' })
+  for (const i of visibleMonths)
+    allItems.push({ date: new Date(i.startDate), data: i, kind: 'monthly' })
+  for (const i of visibleWeeks)
+    allItems.push({ date: new Date(i.startDate), data: i, kind: 'weekly' })
+  for (const d of visibleDiaries)
+    allItems.push({ date: parseDateStr(d.date), data: d, kind: 'diary' })
+
+  allItems.sort((a, b) => a.date.getTime() - b.date.getTime())
+
+  return { yList, qList, visibleMonths, visibleWeeks, visibleDiaries, allItems }
+}
+
+export function computeSharedMemoryCopyPreview(
+  summaries: SharedContextSummaryRow[],
+  diaries: SharedContextDiaryRow[],
+  lookbackMonths: number
+): SharedMemoryCopyPreview {
+  const { yList, qList, visibleMonths, visibleWeeks, visibleDiaries } = resolveSharedMemoryItems(
+    summaries,
+    diaries,
+    lookbackMonths
+  )
+
+  const yearly = yList.length
+  const quarterly = qList.length
+  const monthly = visibleMonths.length
+  const weekly = visibleWeeks.length
+  const diary = visibleDiaries.length
+
+  return {
+    lookbackMonths,
+    yearly,
+    quarterly,
+    monthly,
+    weekly,
+    diary,
+    total: yearly + quarterly + monthly + weekly + diary
+  }
+}
+
+/**
+ * 构建共同回忆 Markdown 文本。
+ * 实现级联过滤逻辑：被高级别总结覆盖的低级别条目会被省略。
+ */
 export async function buildSharedContextText(
   summaries: any[],
   lookbackMonths: number,
@@ -118,76 +227,25 @@ export async function buildSharedContextText(
     diaries = await shadowRepo.listAllWithFTS()
   }
 
-  const now = new Date()
-  const cutoffDate = new Date()
-  cutoffDate.setMonth(cutoffDate.getMonth() - lookbackMonths)
-  cutoffDate.setDate(1)
-  cutoffDate.setHours(0, 0, 0, 0)
-
-  const relevantSummaries = (summaries || []).filter((s: any) => new Date(s.endDate) > cutoffDate)
-  const relevantDiaries = diaries.filter((d: any) => {
-    const dDate = parseDateStr(d.date)
-    return dDate >= cutoffDate && dDate <= now
-  })
-
-  const yList = relevantSummaries.filter((s: any) => s.type === 'yearly')
-  const qList = relevantSummaries.filter((s: any) => s.type === 'quarterly')
-  const mList = relevantSummaries.filter((s: any) => s.type === 'monthly')
-  const wList = relevantSummaries.filter((s: any) => s.type === 'weekly')
-
-  // 级联过滤：被更高级别总结覆盖的月份集合
-  const coveredMonthKeys = new Set<string>()
-  for (const q of qList) markMonthsCovered(q, coveredMonthKeys)
-
-  const getMonthKey = (s: any) => {
-    const start = new Date(s.startDate)
-    return `${start.getFullYear()}${String(start.getMonth() + 1).padStart(2, '0')}`
-  }
-
-  const visibleMonths = mList.filter((m: any) => !coveredMonthKeys.has(getMonthKey(m)))
-  for (const m of visibleMonths) markMonthsCovered(m, coveredMonthKeys)
-
-  const visibleWeeks = wList.filter((w: any) => {
-    const wEnd = new Date(w.endDate)
-    const key = `${wEnd.getFullYear()}${String(wEnd.getMonth() + 1).padStart(2, '0')}`
-    return !coveredMonthKeys.has(key)
-  })
-
-  const diaryCutoffDate =
-    visibleWeeks.length > 0
-      ? new Date(Math.max(...visibleWeeks.map((w: any) => new Date(w.endDate).getTime())))
-      : null
-
-  const visibleDiaries = relevantDiaries.filter((d: any) => {
-    const dDate = parseDateStr(d.date)
-    const key = `${dDate.getFullYear()}${String(dDate.getMonth() + 1).padStart(2, '0')}`
-    if (coveredMonthKeys.has(key)) return false
-    if (diaryCutoffDate && dDate <= diaryCutoffDate) return false
-    return true
-  })
-
   const tDict = LOCALE_TRANSLATIONS[resolveLocaleKey(locale || 'zh')] ?? LOCALE_TRANSLATIONS['zh']!
+  const { allItems } = resolveSharedMemoryItems(summaries, diaries, lookbackMonths)
 
-  const allItems: { date: Date; data: any; prefix: string }[] = []
-  for (const i of yList)
-    allItems.push({ date: new Date(i.startDate), data: i, prefix: tDict.yearly })
-  for (const i of qList)
-    allItems.push({ date: new Date(i.startDate), data: i, prefix: tDict.quarterly })
-  for (const i of visibleMonths)
-    allItems.push({ date: new Date(i.startDate), data: i, prefix: tDict.monthly })
-  for (const i of visibleWeeks)
-    allItems.push({ date: new Date(i.startDate), data: i, prefix: tDict.weekly })
-  for (const d of visibleDiaries)
-    allItems.push({ date: parseDateStr(d.date), data: d, prefix: tDict.diary })
-
-  allItems.sort((a, b) => a.date.getTime() - b.date.getTime())
   if (allItems.length === 0) return ''
+
+  const prefixByKind: Record<SharedMemoryItemKind, string> = {
+    yearly: tDict.yearly,
+    quarterly: tDict.quarterly,
+    monthly: tDict.monthly,
+    weekly: tDict.weekly,
+    diary: tDict.diary
+  }
 
   const formattedParts = allItems.map((item) => {
     const dateStr = formatDate(item.date)
+    const prefix = prefixByKind[item.kind]
     const content =
-      item.prefix === tDict.diary ? item.data.rawContent || '' : item.data.content || ''
-    return `## ${item.prefix} ${dateStr}\n\n${content}`
+      item.kind === 'diary' ? item.data.rawContent || '' : item.data.content || ''
+    return `## ${prefix} ${dateStr}\n\n${content}`
   })
 
   const slang = tDict.slangs[Math.floor(Math.random() * tDict.slangs.length)]!
@@ -195,9 +253,6 @@ export async function buildSharedContextText(
   return `${header}\n${formattedParts.join('\n\n---\n\n')}`
 }
 
-/**
- * IPC Handler：构建共同回忆文本（带错误捕获）。
- */
 export async function handleBuildSharedContext(
   summaries: any[],
   lookbackMonths: number,
@@ -209,5 +264,41 @@ export async function handleBuildSharedContext(
   } catch (e) {
     logger.error('[SummaryIPC] buildSharedContext error:', e as any)
     return ''
+  }
+}
+
+export async function handleBuildSharedContextPreview(
+  summaries: any[],
+  lookbackMonths: number,
+  vaultName?: string
+): Promise<SharedMemoryCopyPreview> {
+  try {
+    const shadowDb = shadowConnectionManager.getDb()
+    if (!shadowDb || !vaultName) {
+      return {
+        lookbackMonths,
+        yearly: 0,
+        quarterly: 0,
+        monthly: 0,
+        weekly: 0,
+        diary: 0,
+        total: 0
+      }
+    }
+
+    const shadowRepo = new ShadowIndexRepository(shadowDb as any, vaultName)
+    const diaries = await shadowRepo.listAllWithFTS()
+    return computeSharedMemoryCopyPreview(summaries, diaries, lookbackMonths)
+  } catch (e) {
+    logger.error('[SummaryIPC] buildSharedContextPreview error:', e as any)
+    return {
+      lookbackMonths,
+      yearly: 0,
+      quarterly: 0,
+      monthly: 0,
+      weekly: 0,
+      diary: 0,
+      total: 0
+    }
   }
 }
