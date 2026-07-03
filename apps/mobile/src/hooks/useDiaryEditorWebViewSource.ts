@@ -114,7 +114,10 @@ async function readBundledAssetContent(
   return { shellHtml, bundleJs, fingerprint }
 }
 
-async function isStagedBundleCurrent(fingerprint: string, assetBundleSize: number): Promise<boolean> {
+async function isStagedBundleCurrent(
+  fingerprint: string,
+  assetBundleSize: number
+): Promise<boolean> {
   try {
     const [stagedHtmlInfo, stagedBundleInfo, savedFingerprint] = await Promise.all([
       getInfoAsync(STAGING_HTML),
@@ -154,8 +157,7 @@ async function readDiaryEditorWebViewSource(): Promise<DiaryEditorWebViewSource 
 
     const fingerprint = await buildFingerprint(htmlUri, bundleUri)
     const bundleInfo = await getInfoAsync(bundleUri)
-    const assetBundleSize =
-      bundleInfo.exists && 'size' in bundleInfo ? (bundleInfo.size ?? 0) : 0
+    const assetBundleSize = bundleInfo.exists && 'size' in bundleInfo ? (bundleInfo.size ?? 0) : 0
     const stagedCurrent = await isStagedBundleCurrent(fingerprint, assetBundleSize)
     if (stagedCurrent) {
       const [stagedBundleJs, stagedShellHtml] = await Promise.all([

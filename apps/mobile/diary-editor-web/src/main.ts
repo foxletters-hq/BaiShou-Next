@@ -13,7 +13,10 @@ import {
 } from '@baishou/ui/shared/diary-codemirror/extensions/diaryTagLinePlugin'
 import { resolveTableConfirmResponse } from '@baishou/ui/shared/diary-codemirror/table/tableConfirm'
 import { resolveNativeTableSheetResponse } from '@baishou/ui/shared/diary-codemirror/table/tableNativeSheet'
-import { dismissKeyboardForSheetInteraction, isTableSheetOpen } from '@baishou/ui/shared/diary-codemirror/table/tableSheetInteraction'
+import {
+  dismissKeyboardForSheetInteraction,
+  isTableSheetOpen
+} from '@baishou/ui/shared/diary-codemirror/table/tableSheetInteraction'
 import { logDiaryBridge } from '@baishou/ui/shared/diary-codemirror/diaryBridgeDebug'
 import { diarySyntaxTreeGrowthEffect } from '@baishou/ui/shared/diary-codemirror/extensions/diarySyntaxTreeGrowth'
 import type { DiaryCmTheme } from '@baishou/ui/shared/diary-codemirror/types'
@@ -198,8 +201,7 @@ function resolveLineBlockMetrics(
     const dom = editorView.domAtPos(pos)
     let node: Node | null = dom.node
     if (node.nodeType === Node.TEXT_NODE) node = node.parentElement
-    const line =
-      node instanceof Element ? (node.closest('.cm-line') as HTMLElement | null) : null
+    const line = node instanceof Element ? (node.closest('.cm-line') as HTMLElement | null) : null
     if (line) {
       const scrollTop = editorView.scrollDOM.scrollTop
       const scrollRect = editorView.scrollDOM.getBoundingClientRect()
@@ -624,7 +626,8 @@ function mountEditor(init: InitPayload): void {
     document.documentElement.innerHTML.match(/diary-editor-build:([^\s-]+)/)?.[1] ?? '(none)'
   logEditor('mountEditor', {
     featureTag: DIARY_CM_FEATURE_TAG,
-    buildId: typeof __DIARY_EDITOR_BUILD_ID__ !== 'undefined' ? __DIARY_EDITOR_BUILD_ID__ : '(none)',
+    buildId:
+      typeof __DIARY_EDITOR_BUILD_ID__ !== 'undefined' ? __DIARY_EDITOR_BUILD_ID__ : '(none)',
     buildStamp,
     interactionMode: init.interactionMode,
     scrollMode,
@@ -1029,7 +1032,8 @@ function bootstrap(): void {
   const sendReady = () => {
     logEditor('ready', {
       featureTag: DIARY_CM_FEATURE_TAG,
-      buildId: typeof __DIARY_EDITOR_BUILD_ID__ !== 'undefined' ? __DIARY_EDITOR_BUILD_ID__ : '(none)'
+      buildId:
+        typeof __DIARY_EDITOR_BUILD_ID__ !== 'undefined' ? __DIARY_EDITOR_BUILD_ID__ : '(none)'
     })
     postToNative({ type: 'ready' })
   }
