@@ -39,7 +39,7 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
       {
         id: 'ai-models',
         titleKey: 'settings.ai_global_models',
-        icon: 'star-outline',
+        icon: 'route',
         route: { type: 'section', section: 'ai-models' }
       },
       {

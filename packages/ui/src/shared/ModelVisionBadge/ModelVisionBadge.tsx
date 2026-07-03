@@ -1,7 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdVisibility } from 'react-icons/md'
 import { isVisionModel } from '@baishou/shared'
+import { Eye } from 'lucide-react'
 
 export interface ModelVisionBadgeProps {
   modelId: string
@@ -25,20 +25,21 @@ export function ModelVisionBadge({
     return null
   }
 
+  const label = t('models.vision_supported', '支持视觉多模态')
+
   return (
-    <MdVisibility
-      title={t('models.vision_supported', '支持视觉多模态')}
-      aria-label={t('models.vision_supported', '支持视觉多模态')}
-      className={className}
-      style={{
-        marginLeft: 6,
-        fontSize: size,
-        color: 'var(--text-secondary, #666)',
-        verticalAlign: 'middle',
-        opacity: 0.8,
-        flexShrink: 0,
-        ...style
-      }}
-    />
+    <span title={label} style={{ display: 'inline-flex', marginLeft: 6, flexShrink: 0 }}>
+      <Eye
+        aria-label={label}
+        size={size}
+        className={className}
+        style={{
+          color: 'var(--text-secondary, #666)',
+          verticalAlign: 'middle',
+          opacity: 0.8,
+          ...style
+        }}
+      />
+    </span>
   )
 }

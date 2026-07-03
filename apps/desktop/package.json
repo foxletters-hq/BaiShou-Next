@@ -52,7 +52,6 @@
     "minio": "^8.0.7",
     "mime-types": "^2.1.35",
     "multer": "^2.1.1",
-    "react-icons": "^5.6.0",
     "react-router-dom": "^7.14.0",
     "webdav": "^5.9.0",
     "zod-to-json-schema": "^3.25.2",
