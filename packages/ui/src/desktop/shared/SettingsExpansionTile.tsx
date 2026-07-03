@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
-import { MdExpandMore } from 'react-icons/md'
 import { isSettingsInlineHelpTarget, settingsInlineHelpHostProps } from './settingsInlineHelpBlock'
 import './SettingsListTile.css'
+import { ChevronDown } from 'lucide-react'
 
 export interface SettingsExpansionTileProps {
   icon?: React.ReactNode
@@ -59,7 +59,7 @@ export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
           </span>
           {subtitle && <span className="settings-list-tile-subtitle">{subtitle}</span>}
         </div>
-        <MdExpandMore className="settings-expansion-arrow" size={24} />
+        <ChevronDown className="settings-expansion-arrow" size={24} />
       </div>
 
       <div className={`settings-expansion-grid-wrapper ${open ? 'expanded' : ''}`}>

@@ -8,7 +8,6 @@ import {
   toast
 } from '@baishou/ui'
 import { createWebComposerDraftStorage } from '@baishou/ui/shared/composer-draft'
-import { MdAutoAwesome, MdCloud } from 'react-icons/md'
 import {
   normalizeChatBackgroundBlur,
   normalizeChatBackgroundOverlayOpacity,
@@ -20,6 +19,7 @@ import { AgentMessageList } from './components/AgentMessageList'
 import { useAgentChatFlow } from './hooks/useAgentChatFlow'
 import { useDesktopComposerDraftKey } from './hooks/useDesktopComposerDraftKey'
 import styles from './AgentScreen.module.css'
+import { Cloud, Sparkles } from 'lucide-react'
 
 /**
  * Agent 大模型聊天屏幕主页面组件。
@@ -90,9 +90,9 @@ export const AgentScreen: React.FC = () => {
             {providerIconUrl ? (
               <img src={providerIconUrl} alt="" />
             ) : noModelSelected ? (
-              <MdAutoAwesome size={18} />
+              <Sparkles size={18} />
             ) : (
-              <MdCloud size={18} />
+              <Cloud size={18} />
             )}
           </span>
           <span className={styles.modelName}>{displayModelName}</span>

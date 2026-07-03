@@ -1,7 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdClose, MdAdd } from 'react-icons/md'
 import styles from './IdentitySettingsCard.module.css'
+import { Plus, X } from 'lucide-react'
 
 interface IdentityPersonaChipsProps {
   allPersonas: Record<string, { id: string; facts: Record<string, string> }>
@@ -34,14 +34,14 @@ export const IdentityPersonaChips: React.FC<IdentityPersonaChipsProps> = ({
               <span>{pid}</span>
               {isActive && Object.keys(allPersonas).length > 1 && (
                 <button className={styles.chipCloseBtn} onClick={(e) => onDeletePersona(pid, e)}>
-                  <MdClose size={14} />
+                  <X size={14} />
                 </button>
               )}
             </div>
           )
         })}
         <div className={styles.actionChip} onClick={onAddPersona}>
-          <MdAdd size={16} />
+          <Plus size={16} />
           <span>{t('settings.new_identity', '新身份')}</span>
         </div>
       </div>

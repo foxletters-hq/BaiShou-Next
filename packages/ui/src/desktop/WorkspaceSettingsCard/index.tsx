@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdWorkspacesOutline, MdFolderSpecial, MdAdd, MdCheckCircle } from 'react-icons/md'
 import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
 import '../shared/SettingsListTile.css'
@@ -9,6 +8,7 @@ import { WorkspaceScopeHelpTooltip } from './WorkspaceScopeHelpTooltip'
 import { pickRecentVaults } from './workspace-settings.utils'
 import { validateWorkspaceName } from './workspace-name.validation'
 import styles from './WorkspaceSettingsCard.module.css'
+import { CheckCircle, FolderOpen, Layers, Plus } from 'lucide-react'
 
 export { WorkspaceScopeHelpTooltip } from './WorkspaceScopeHelpTooltip'
 export type { WorkspaceScopeHelpTooltipProps } from './WorkspaceScopeHelpTooltip'
@@ -187,7 +187,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
       <SettingsExpansionTile
         embedded
         isLast={isLast}
-        icon={<MdWorkspacesOutline size={24} />}
+        icon={<Layers size={24} />}
         title={t('workspace.title', '工作空间')}
         titleAddon={<WorkspaceScopeHelpTooltip />}
         subtitle={t('workspace.current', '当前空间: {{name}}', {
@@ -201,7 +201,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
 
   return (
     <SettingsExpansionTile
-      icon={<MdWorkspacesOutline size={24} />}
+      icon={<Layers size={24} />}
       title={t('workspace.title', '工作空间')}
       titleAddon={<WorkspaceScopeHelpTooltip />}
       subtitle={t('workspace.current', '当前空间: {{name}}', {
@@ -213,7 +213,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
         return (
           <div key={vault.name} className="settings-list-tile settings-list-tile-noclick">
             <div className="settings-list-tile-leading">
-              <MdFolderSpecial size={22} />
+              <FolderOpen size={22} />
             </div>
             <div className="settings-list-tile-content">
               <span className="settings-list-tile-title">{vault.name}</span>
@@ -224,7 +224,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
               </span>
             </div>
             {isActive ? (
-              <MdCheckCircle
+              <CheckCircle
                 size={22}
                 style={{
                   color: 'var(--color-primary, #5BA8F5)',
@@ -261,7 +261,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
 
       <button className="settings-list-tile" onClick={handleCreate}>
         <div className="settings-list-tile-leading">
-          <MdAdd size={22} />
+          <Plus size={22} />
         </div>
         <div className="settings-list-tile-content">
           <span className="settings-list-tile-title">

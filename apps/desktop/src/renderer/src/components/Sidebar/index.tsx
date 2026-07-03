@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, startTransition } fro
 import { motion } from 'framer-motion'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
-import { MdSettings, MdDragIndicator, MdTune } from 'react-icons/md'
+import { GripVertical, Settings, SlidersHorizontal } from 'lucide-react'
 import styles from './Sidebar.module.css'
 import { useTranslation } from 'react-i18next'
 import { useUserProfileStore } from '@baishou/store'
@@ -182,7 +182,7 @@ export const Sidebar: React.FC = () => {
                                 }}
                               >
                                 <div {...provided.dragHandleProps} className={styles.dragHandle}>
-                                  <MdDragIndicator />
+                                  <GripVertical size={18} />
                                 </div>
                                 <span className={styles.navIcon}>{item.icon}</span>
                                 <span className={styles.navLabel}>{item.label}</span>
@@ -210,7 +210,7 @@ export const Sidebar: React.FC = () => {
               title={t('sidebar.manage', '侧边栏管理')}
             >
               <span className={styles.navIcon}>
-                <MdTune />
+                <SlidersHorizontal size={20} />
               </span>
               <span className={styles.navLabel}>{t('sidebar.manage', '侧边栏管理')}</span>
             </div>
@@ -225,7 +225,7 @@ export const Sidebar: React.FC = () => {
               }}
             >
               <span className={styles.navIcon}>
-                <MdSettings />
+                <Settings size={20} />
               </span>
               <span className={styles.navLabel}>{t('settings.title', '系统设置')}</span>
             </div>

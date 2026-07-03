@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdInfoOutline, MdExpandMore, MdExpandLess } from 'react-icons/md'
 import styles from './RagMemoryView.module.css'
+import { ChevronDown, ChevronUp, Info } from 'lucide-react'
 
 interface RagMemoryDiaryEmbedHintProps {
   failedAt?: number
@@ -27,9 +27,9 @@ export const RagMemoryDiaryEmbedHint: React.FC<RagMemoryDiaryEmbedHintProps> = (
         onClick={() => setExpanded((prev) => !prev)}
         aria-expanded={expanded}
       >
-        <MdInfoOutline size={16} />
+        <Info size={16} />
         <span>{t('settings.rag_diary_embed_pending_chip', '有未完成的日记记忆嵌入')}</span>
-        {expanded ? <MdExpandLess size={18} /> : <MdExpandMore size={18} />}
+        {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
       </button>
       {expanded ? (
         <div className={styles.embedHintBody}>

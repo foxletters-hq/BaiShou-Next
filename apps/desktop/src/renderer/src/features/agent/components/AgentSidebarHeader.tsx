@@ -1,11 +1,11 @@
 import React, { startTransition } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { MdUnfoldMore, MdAdd, MdSettings, MdChecklist } from 'react-icons/md'
 import { resolveDesktopAssistantAvatarSrc, AssistantKindBadge } from '@baishou/ui'
 import type { AgentAssistant } from './AgentSidebar'
 import styles from './AgentSidebar.module.css'
 import { rememberSettingsReturnPath } from '../../settings/settings-navigation.util'
+import { ChevronsUpDown, ListChecks, Plus, Settings } from 'lucide-react'
 
 interface AssistantAvatarProps {
   assistant: AgentAssistant
@@ -99,7 +99,7 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
                   <div className={styles.assistantDesc}>{currentAssistant.description}</div>
                 )}
               </div>
-              <MdUnfoldMore className={styles.unfoldIcon} />
+              <ChevronsUpDown className={styles.unfoldIcon} />
             </>
           ) : (
             /* Loading 骨架态 */
@@ -109,7 +109,7 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
                 <div className={styles.skeletonLine} style={{ width: 80 }} />
                 <div className={styles.skeletonLine} style={{ width: 60, marginTop: 4 }} />
               </div>
-              <MdUnfoldMore className={styles.unfoldIcon} style={{ opacity: 0.3 }} />
+              <ChevronsUpDown className={styles.unfoldIcon} style={{ opacity: 0.3 }} />
             </>
           )}
         </div>
@@ -153,7 +153,7 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
       {/* ─── 新对话按钮 ─── */}
       <div className={styles.newChatWrapper}>
         <button className={styles.newChatBtn} onClick={() => onNewSession(currentAssistant?.id)}>
-          <MdAdd size={18} />
+          <Plus size={18} />
           <span>{t('agent.sessions.new_chat', '新对话')}</span>
         </button>
       </div>
@@ -169,7 +169,7 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
         }}
       >
         <div className={styles.menuItemRowInner}>
-          <MdSettings size={20} className={styles.menuItemRowIcon} />
+          <Settings size={20} className={styles.menuItemRowIcon} />
           <span>{t('settings.title', '系统设置')}</span>
         </div>
       </div>
@@ -183,7 +183,7 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
             onClick={onToggleMultiSelect}
             title={t('common.multi_select', '多选')}
           >
-            <MdChecklist
+            <ListChecks
               size={16}
               color={
                 isMultiSelect ? 'var(--color-error, #ef4444)' : 'var(--text-secondary, #94a3b8)'

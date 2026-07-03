@@ -9,11 +9,11 @@ import {
   Trash2,
   List,
   Search,
+  ScanSearch,
   FileText,
   MessageSquare,
   Database,
   DatabaseZap,
-  Brain,
   Clock
 } from 'lucide-react'
 import type { AgentToolDef } from './agent-tools.types'
@@ -84,7 +84,7 @@ export function buildAgentTools(t: (key: string, fallback: string) => string): A
       id: 'vector_search',
       category: 'memory',
       name: t('agent.tools.vector_search', '语义搜索'),
-      icon: <Brain size={20} />,
+      icon: <ScanSearch size={20} />,
       tooltipKey: 'agent.tools.vector_search_desc'
     },
     {

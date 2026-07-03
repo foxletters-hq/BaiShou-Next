@@ -1,6 +1,5 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdTune } from 'react-icons/md'
 import {
   BATCH_EMBED_CONCURRENCY_MAX,
   BATCH_EMBED_CONCURRENCY_MIN,
@@ -9,6 +8,7 @@ import {
 import { HelpTooltip } from '../HelpTooltip'
 import type { RagConfig } from './rag-memory.types'
 import styles from './RagMemoryView.module.css'
+import { SlidersHorizontal } from 'lucide-react'
 
 interface RagMemoryConfigBlockProps {
   config: RagConfig
@@ -33,7 +33,7 @@ export const RagMemoryConfigBlock: React.FC<RagMemoryConfigBlockProps> = ({ conf
     <div className={styles.configBlock}>
       <div className={styles.configBlockHeader}>
         <span className={styles.configBlockIcon}>
-          <MdTune size={18} />
+          <SlidersHorizontal size={18} />
         </span>
         <span className={styles.configBlockTitle}>
           {t('settings.rag_config_params', '检索参数调节')}

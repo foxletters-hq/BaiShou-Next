@@ -1,15 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import styles from './TitleBar.module.css'
-import {
-  MdAutoStories,
-  MdAutoAwesome,
-  MdMinimize,
-  MdCropSquare,
-  MdClose,
-  MdFolderShared,
-  MdArrowDropDown
-} from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import { isIncrementalSyncReady, buildAgentChatNavigationPath } from '@baishou/shared'
 import { IncrementalSyncPanel, WorkspaceScopeHelpTooltip } from '@baishou/ui'
@@ -19,6 +10,7 @@ import { useOrchestratedSync } from '../../hooks/useOrchestratedSync'
 import { readActiveVaultNavigationSnapshot } from '../../lib/agent-navigation-persistence'
 import { switchActiveVault, persistActiveVaultName } from '../../lib/vault-runtime.util'
 import { INCREMENTAL_SYNC_CONFIG_CHANGED_EVENT } from '../../lib/incremental-sync-config-events'
+import { ChevronDown, FolderSync, Library, Minus, Sparkles, Square, X } from 'lucide-react'
 
 export const TitleBar: React.FC = () => {
   const { t } = useTranslation()
@@ -189,7 +181,7 @@ export const TitleBar: React.FC = () => {
               className={`${styles.tab} ${!isAgent && !isSettings ? styles.activeTab : ''}`}
               onClick={() => navigate(resolveDiaryHomePath())}
             >
-              <MdAutoStories className={styles.tabIcon} />
+              <Library className={styles.tabIcon} />
               <span>{t('nav.diary', '日记')}</span>
             </div>
             <div
@@ -199,7 +191,7 @@ export const TitleBar: React.FC = () => {
                 navigate(saved ? buildAgentChatNavigationPath(saved) : '/chat')
               }}
             >
-              <MdAutoAwesome className={styles.tabIcon} />
+              <Sparkles className={styles.tabIcon} />
               <span>{t('nav.agent', '伙伴')}</span>
             </div>
           </div>
@@ -237,13 +229,13 @@ export const TitleBar: React.FC = () => {
                 aria-haspopup="menu"
                 style={{ opacity: isSwitchingVault ? 0.65 : 1 }}
               >
-                <MdFolderShared className={styles.actionIconSm} />
+                <FolderSync className={styles.actionIconSm} />
                 <span className={styles.vaultName}>
                   {isSwitchingVault
                     ? t('workspace.switching', 'Switching…')
                     : activeVault?.name || t('workspace.no_active', '未选择工作空间')}
                 </span>
-                <MdArrowDropDown className={styles.actionIconSm} />
+                <ChevronDown className={styles.actionIconSm} />
               </button>
               {showVaultMenu && (
                 <div className={styles.vaultMenu} role="menu">
@@ -281,21 +273,21 @@ export const TitleBar: React.FC = () => {
             onClick={() => (window as any).api?.window?.minimize()}
             title={t('titlebar.minimize', '最小化')}
           >
-            <MdMinimize />
+            <Minus />
           </button>
           <button
             className={styles.winBtn}
             onClick={() => (window as any).api?.window?.toggleMaximize()}
             title={t('titlebar.maximize', '最大化')}
           >
-            <MdCropSquare />
+            <Square />
           </button>
           <button
             className={`${styles.winBtn} ${styles.winCloseBtn}`}
             onClick={() => (window as any).api?.window?.close()}
             title={t('titlebar.close', '关闭')}
           >
-            <MdClose />
+            <X />
           </button>
         </div>
       </div>

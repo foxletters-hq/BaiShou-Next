@@ -1,20 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import {
-  MdOutlineInfo,
-  MdOutlinePrivacyTip,
-  MdOutlineFeedback,
-  MdChevronRight,
-  MdOpenInNew,
-  MdArrowBack
-} from 'react-icons/md'
 import '../shared/SettingsListTile.css'
 import './AboutSettingsCard.css'
 import { useToast } from '../Toast/useToast'
 import { DeveloperOptionsView } from '../DeveloperOptionsView'
 import { formatAppVersion } from '@baishou/shared'
 import { VersionManager } from '../VersionManager/index'
+import { ArrowLeft, ChevronRight, ExternalLink, Info, MessageSquare, ShieldCheck } from 'lucide-react'
 
 export interface AboutSettingsCardProps {
   version: string
@@ -116,7 +109,7 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
     <div className={`about-sub-page-overlay ${isClosing ? 'closing' : ''}`}>
       <div className="about-sub-page-appbar drag-region">
         <button className="about-sub-page-back no-drag" onClick={handleClosePage}>
-          <MdArrowBack size={24} />
+          <ArrowLeft size={24} />
         </button>
         <span className="about-sub-page-title">{t('settings.about_baishou', '关于白守')}</span>
       </div>
@@ -173,7 +166,7 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
                   Copyright (C) 2026 Anson, Kasumiame Sakura & Tenkou Akatsuki
                 </span>
               </div>
-              <MdOpenInNew size={18} className="about-flat-link-trailing" />
+              <ExternalLink size={18} className="about-flat-link-trailing" />
             </button>
           </div>
         </section>
@@ -191,7 +184,7 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
     <div className={`about-sub-page-overlay ${isClosing ? 'closing' : ''}`}>
       <div className="about-sub-page-appbar drag-region">
         <button className="about-sub-page-back no-drag" onClick={handleClosePage}>
-          <MdArrowBack size={24} />
+          <ArrowLeft size={24} />
         </button>
         <span className="about-sub-page-title">
           {t('settings.development_philosophy', '开发哲学与无痕承诺')}
@@ -237,7 +230,7 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
     <div className={`about-sub-page-overlay ${isClosing ? 'closing' : ''}`}>
       <div className="about-sub-page-appbar drag-region">
         <button className="about-sub-page-back no-drag" onClick={handleClosePage}>
-          <MdArrowBack size={24} />
+          <ArrowLeft size={24} />
         </button>
         <span className="about-sub-page-title">
           {t('settings.developer_options', '开发者选项')}
@@ -258,28 +251,28 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
       <div className="about-settings-wrapper">
         <button className="settings-list-tile" onClick={() => handleOpenPage('about')}>
           <div className="settings-list-tile-leading">
-            <MdOutlineInfo size={24} />
+            <Info size={24} />
           </div>
           <div className="settings-list-tile-content">
             <span className="settings-list-tile-title">
               {t('settings.about_baishou', '关于白守')}
             </span>
           </div>
-          <MdChevronRight size={22} className="settings-list-tile-trailing" />
+          <ChevronRight size={22} className="settings-list-tile-trailing" />
         </button>
 
         <div className="settings-list-divider" />
 
         <button className="settings-list-tile" onClick={() => handleOpenPage('privacy')}>
           <div className="settings-list-tile-leading">
-            <MdOutlinePrivacyTip size={24} />
+            <ShieldCheck size={24} />
           </div>
           <div className="settings-list-tile-content">
             <span className="settings-list-tile-title">
               {t('settings.development_philosophy', '开发哲学与无痕承诺')}
             </span>
           </div>
-          <MdChevronRight size={22} className="settings-list-tile-trailing" />
+          <ChevronRight size={22} className="settings-list-tile-trailing" />
         </button>
 
         <div className="settings-list-divider" />
@@ -292,14 +285,14 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
           }}
         >
           <div className="settings-list-tile-leading">
-            <MdOutlineFeedback size={24} />
+            <MessageSquare size={24} />
           </div>
           <div className="settings-list-tile-content">
             <span className="settings-list-tile-title">
               {t('settings.feedback', 'Report an issue')}
             </span>
           </div>
-          <MdOpenInNew
+          <ExternalLink
             size={20}
             className="settings-list-tile-trailing"
             style={{ color: 'var(--color-on-surface-variant)' }}

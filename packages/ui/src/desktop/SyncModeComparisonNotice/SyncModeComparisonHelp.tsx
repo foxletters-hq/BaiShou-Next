@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdHelpOutline } from 'react-icons/md'
 import { Modal } from '../Modal/Modal'
 import { mergeSettingsHelpButtonHandlers } from '../shared/settingsInlineHelpBlock'
 import styles from './SyncModeComparisonHelp.module.css'
+import { CircleHelp } from 'lucide-react'
 
 export type SyncModeComparisonHelpProps = {
   /** 高亮当前页面对应的同步方式 */
@@ -51,7 +51,7 @@ export const SyncModeComparisonHelp: React.FC<SyncModeComparisonHelpProps> = ({
         aria-label={t('data_sync.sync_mode_comparison_help_aria', '增量同步与全量备份的区别')}
         {...mergeSettingsHelpButtonHandlers(() => setOpen(true))}
       >
-        <MdHelpOutline size={size} className={styles.helpIcon} aria-hidden />
+        <CircleHelp size={size} className={styles.helpIcon} aria-hidden />
       </button>
       <Modal
         isOpen={open}

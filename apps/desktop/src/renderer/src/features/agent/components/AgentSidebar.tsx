@@ -1,11 +1,10 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdAutoAwesome } from 'react-icons/md'
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import type { SessionData } from '@baishou/ui'
 import { AgentSidebarHeader } from './AgentSidebarHeader'
 import { AgentSessionList } from './AgentSessionList'
 import styles from './AgentSidebar.module.css'
+import { PanelLeftClose, PanelLeftOpen, Sparkles } from 'lucide-react'
 
 export interface AgentAssistant {
   id: string
@@ -95,7 +94,7 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
       <div className={styles.brandRow}>
         <div className={styles.brandInfo}>
           <div className={styles.brandIconBox}>
-            <MdAutoAwesome className={styles.brandIcon} />
+            <Sparkles className={styles.brandIcon} />
           </div>
           <span className={styles.brandText}>{t('agent.partner_label', '伙伴')}</span>
         </div>

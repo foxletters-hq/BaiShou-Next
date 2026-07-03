@@ -1,7 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdSearch, MdClose } from 'react-icons/md'
 import styles from './RagMemoryView.module.css'
+import { Search, X } from 'lucide-react'
 
 interface RagMemorySearchBarProps {
   searchQuery: string
@@ -23,7 +23,7 @@ export const RagMemorySearchBar: React.FC<RagMemorySearchBarProps> = ({
   return (
     <div className={styles.searchBoxOuter}>
       <div className={styles.searchIconOuter}>
-        <MdSearch size={20} />
+        <Search size={20} />
       </div>
       <input
         type="text"
@@ -54,7 +54,7 @@ export const RagMemorySearchBar: React.FC<RagMemorySearchBarProps> = ({
       </div>
       {searchQuery && (
         <div className={styles.clearSearchOuter} onClick={onClearSearch}>
-          <MdClose size={18} />
+          <X size={18} />
         </div>
       )}
     </div>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
-import { MdEditLocationAlt, MdFolderOpen } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import styles from './OnboardingStorageSlide.module.css'
+import { FolderOpen, MapPin } from 'lucide-react'
 
 interface OnboardingStorageSlideProps {
   rootPath: string
@@ -28,7 +28,7 @@ export const OnboardingStorageSlide: React.FC<OnboardingStorageSlideProps> = ({
     <div className={styles.container}>
       <div className={styles.pathBlock}>
         <div className={styles.pathHeader}>
-          <MdFolderOpen size={16} color="#D4924A" />
+          <FolderOpen size={16} color="#D4924A" />
           <span className={styles.pathLabel}>{t('onboarding.current_storage')}</span>
         </div>
         <div className={styles.pathValueWrap}>
@@ -46,7 +46,7 @@ export const OnboardingStorageSlide: React.FC<OnboardingStorageSlideProps> = ({
           <span>{t('common.loading')}</span>
         ) : (
           <>
-            <MdEditLocationAlt size={18} color="#FFFFFF" />
+            <MapPin size={18} color="#FFFFFF" />
             <span>{t('onboarding.change_storage')}</span>
           </>
         )}

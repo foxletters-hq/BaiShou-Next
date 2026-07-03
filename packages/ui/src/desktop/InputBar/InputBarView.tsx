@@ -1,28 +1,10 @@
 import React from 'react'
 import styles from './InputBar.module.css'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  Paperclip,
-  Zap,
-  Globe,
-  BookOpen,
-  FileText,
-  Folder,
-  X,
-  ArrowUp,
-  LayoutGrid,
-  Menu,
-  Square,
-  Volume2,
-  Maximize2,
-  Minimize2,
-  ChevronLeft,
-  ChevronRight
-} from 'lucide-react'
-import { MdSend, MdStop, MdApps } from 'react-icons/md'
 import type { useInputBar } from './useInputBar'
 import { QuickActionChip } from './QuickActionChip'
 import { PromptShortcutSheet } from '../PromptShortcutSheet'
+import { ArrowUp, BookOpen, ChevronLeft, ChevronRight, FileText, Folder, Globe, LayoutGrid, Maximize2, Menu, Minimize2, Paperclip, Send, Square, Volume2, X, Zap } from 'lucide-react'
 
 type InputBarViewModel = ReturnType<typeof useInputBar>
 
@@ -215,7 +197,7 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
                     )}
                     {onOpenTools && (
                       <QuickActionChip
-                        icon={<MdApps size={14} />}
+                        icon={<LayoutGrid size={14} />}
                         label={t('settings.agent_tools_title', '工具管理')}
                         onClick={onOpenTools}
                       />
@@ -308,7 +290,7 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
                   type="button"
                   whileTap={{ scale: 0.92 }}
                 >
-                  <MdStop size={20} />
+                  <Square size={20} />
                 </motion.button>
               ) : (
                 <motion.button
@@ -318,7 +300,7 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
                   type="button"
                   whileTap={{ scale: 0.92 }}
                 >
-                  <MdSend size={18} />
+                  <Send size={18} />
                 </motion.button>
               )}
             </div>

@@ -8,10 +8,10 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { restrictToVerticalAxis, restrictToWindowEdges } from '@dnd-kit/modifiers'
-import { MdAdd } from 'react-icons/md'
 import styles from './AIModelServicesView.module.css'
 import type { AIModelServicesViewModel } from './useAIModelServicesView'
 import { ProviderSortableItem, ProviderStaticItem } from './ProviderListItems'
+import { Plus } from 'lucide-react'
 
 export interface AIModelServicesProviderPaneProps {
   vm: AIModelServicesViewModel
@@ -97,7 +97,7 @@ export const AIModelServicesProviderPane: React.FC<AIModelServicesProviderPanePr
       </DndContext>
       <div className={styles.listFooter}>
         <button className={styles.addButton} onClick={handleAddCustomProvider}>
-          <MdAdd size={18} />
+          <Plus size={18} />
           <span>{t('agent.provider.add_button', '添加')}</span>
         </button>
       </div>

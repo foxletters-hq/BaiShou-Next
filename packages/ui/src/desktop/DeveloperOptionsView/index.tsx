@@ -1,15 +1,8 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  MdScience,
-  MdDeleteForever,
-  MdStorage,
-  MdChevronRight,
-  MdChat,
-  MdViewCarousel
-} from 'react-icons/md'
 import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
+import { ChevronRight, Database, FlaskConical, GalleryHorizontalEnd, MessageCircle, Trash2 } from 'lucide-react'
 
 export interface DeveloperOptionsViewProps {
   /** 注入压缩测试会话后跳转到对应对话页（桌面端传入） */
@@ -160,9 +153,9 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
               cursor: 'pointer'
             }}
           >
-            <MdViewCarousel
+            <GalleryHorizontalEnd
+              size={24}
               style={{
-                fontSize: 24,
                 marginRight: 16,
                 color: 'var(--color-primary)'
               }}
@@ -175,7 +168,7 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
                 {t('developer.open_onboarding_desc', '跳转到首次启动引导页，用于预览和调试。')}
               </div>
             </div>
-            <MdChevronRight style={{ fontSize: 24, opacity: 0.5 }} />
+            <ChevronRight size={24} style={{ opacity: 0.5 }} />
           </div>
         </div>
       ) : null}
@@ -195,9 +188,9 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
             opacity: onOpenOnboarding ? 1 : 0.5
           }}
         >
-          <MdViewCarousel
+          <GalleryHorizontalEnd
+            size={24}
             style={{
-              fontSize: 24,
               marginRight: 16,
               color: 'var(--color-primary)'
             }}
@@ -213,7 +206,7 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
               )}
             </div>
           </div>
-          <MdChevronRight style={{ fontSize: 24, opacity: 0.5 }} />
+          <ChevronRight size={24} style={{ opacity: 0.5 }} />
         </div>
       </div>
 
@@ -231,9 +224,9 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
             cursor: isLoadingDemo ? 'default' : 'pointer'
           }}
         >
-          <MdScience
+          <FlaskConical
+            size={24}
             style={{
-              fontSize: 24,
               marginRight: 16,
               color: 'var(--color-on-surface)'
             }}
@@ -259,7 +252,7 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
               }}
             />
           ) : (
-            <MdChevronRight style={{ fontSize: 24, opacity: 0.5 }} />
+            <ChevronRight size={24} style={{ opacity: 0.5 }} />
           )}
         </div>
 
@@ -275,9 +268,9 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
             cursor: isInsertingCompressionTest ? 'default' : 'pointer'
           }}
         >
-          <MdChat
+          <MessageCircle
+            size={24}
             style={{
-              fontSize: 24,
               marginRight: 16,
               color: 'var(--color-primary)'
             }}
@@ -303,7 +296,7 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
               }}
             />
           ) : (
-            <MdChevronRight style={{ fontSize: 24, opacity: 0.5 }} />
+            <ChevronRight size={24} style={{ opacity: 0.5 }} />
           )}
         </div>
 
@@ -319,7 +312,7 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
             cursor: isClearing ? 'default' : 'pointer'
           }}
         >
-          <MdDeleteForever style={{ fontSize: 24, marginRight: 16, color: '#f44336' }} />
+          <Trash2 size={24} style={{ marginRight: 16, color: '#f44336' }} />
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 'bold', fontSize: 15, color: '#f44336' }}>
               {t('developer.clear_all_data', '清理所有数据 (核弹级)')}
@@ -337,7 +330,7 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
               style={{ width: 24, height: 24, borderTopColor: '#f44336' }}
             />
           ) : (
-            <MdChevronRight style={{ fontSize: 24, opacity: 0.5 }} />
+            <ChevronRight size={24} style={{ opacity: 0.5 }} />
           )}
         </div>
 
@@ -353,7 +346,7 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
             cursor: isClearingAgent ? 'default' : 'pointer'
           }}
         >
-          <MdStorage style={{ fontSize: 24, marginRight: 16, color: '#ff9800' }} />
+          <Database size={24} style={{ marginRight: 16, color: '#ff9800' }} />
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 'bold', fontSize: 15, color: '#ff9800' }}>
               {t('developer.clear_agent_db', '清理 Agent 数据库')}
@@ -371,7 +364,7 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
               style={{ width: 24, height: 24, borderTopColor: '#ff9800' }}
             />
           ) : (
-            <MdChevronRight style={{ fontSize: 24, opacity: 0.5 }} />
+            <ChevronRight size={24} style={{ opacity: 0.5 }} />
           )}
         </div>
       </div>

@@ -5,7 +5,13 @@ import { useDialog } from '../Dialog'
 import { ModelSwitcherPopup } from '../ModelSwitcherPopup'
 import { GlobalModelsConfig, GlobalModelsConfig as SharedGlobalModelsConfig } from '@baishou/shared'
 import { isEmbeddingModel, isTtsModel } from '@baishou/shared'
-import { MdChatBubbleOutline, MdCompress, MdEdit, MdHub, MdCloud } from 'react-icons/md'
+import {
+  BrainCircuit,
+  Cloud,
+  MessageCircle,
+  Pencil,
+  ScrollText
+} from 'lucide-react'
 import { HelpTooltip } from '../HelpTooltip'
 import { useTheme } from '../../hooks/useTheme'
 import { getProviderIcon } from '../../utils/provider-icons'
@@ -197,7 +203,7 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
           {isModelSet ? (
             <div className={styles.selectedValueInfo}>
               <span className={styles.selectedProviderIcon} aria-hidden>
-                {providerIconUrl ? <img src={providerIconUrl} alt="" /> : <MdCloud size={18} />}
+                {providerIconUrl ? <img src={providerIconUrl} alt="" /> : <Cloud size={18} />}
               </span>
               <span className={styles.selectedModelName}>{currentModel}</span>
             </div>
@@ -223,7 +229,7 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
           {renderSection(
             'summary',
             t('ai_config.summary_model_title', '长文推演总结'),
-            <MdCompress size={22} />,
+            <ScrollText size={22} />,
             config.globalSummaryProviderId,
             config.globalSummaryModelId
           )}
@@ -231,7 +237,7 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
           {renderSection(
             'dialogue',
             t('ai_config.dialogue_model_title', '默认闲聊接管'),
-            <MdChatBubbleOutline size={22} />,
+            <MessageCircle size={22} />,
             config.globalDialogueProviderId,
             config.globalDialogueModelId
           )}
@@ -239,7 +245,7 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
           {renderSection(
             'naming',
             t('ai_config.naming_model_title', '对话提炼与命名'),
-            <MdEdit size={22} />,
+            <Pencil size={22} />,
             config.globalNamingProviderId,
             config.globalNamingModelId
           )}
@@ -247,7 +253,7 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
           {renderSection(
             'embedding',
             t('ai_config.embedding_model_title', 'RAG 向量映射层 (Embeddings)'),
-            <MdHub size={22} />,
+            <BrainCircuit size={22} />,
             config.globalEmbeddingProviderId,
             config.globalEmbeddingModelId,
             true

@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdHelpOutline } from 'react-icons/md'
 import { Modal } from '../Modal/Modal'
 import { mergeSettingsHelpButtonHandlers } from '../shared/settingsInlineHelpBlock'
 import styles from './GitRemoteConfigHelp.module.css'
+import { CircleHelp } from 'lucide-react'
 
 export const GitRemoteConfigHelp: React.FC = () => {
   const { t } = useTranslation()
@@ -17,7 +17,7 @@ export const GitRemoteConfigHelp: React.FC = () => {
         aria-label={t('version_control.remote_config_help_aria', '远程仓库配置说明')}
         {...mergeSettingsHelpButtonHandlers(() => setOpen(true))}
       >
-        <MdHelpOutline size={14} className={styles.helpIcon} aria-hidden />
+        <CircleHelp size={14} className={styles.helpIcon} aria-hidden />
       </button>
       <Modal
         isOpen={open}

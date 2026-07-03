@@ -1,9 +1,8 @@
 import React, { useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { MdArrowDropDown, MdClose, MdCloud } from 'react-icons/md'
-import { Search, Sparkles, Cpu, CheckCircle2, Blocks } from 'lucide-react'
 import styles from './AIModelServicesView.module.css'
 import type { AIModelServicesViewModel } from './useAIModelServicesView'
+import { Blocks, CheckCircle2, ChevronDown, Cpu, Search, Sparkles, X } from 'lucide-react'
 
 export interface AIModelServicesModalsProps {
   vm: AIModelServicesViewModel
@@ -67,7 +66,7 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
                           ? t('provider.openai_spec', 'OpenAI 规范')
                           : addModalData.type.toUpperCase()}
                       </span>
-                      <MdArrowDropDown
+                      <ChevronDown
                         size={20}
                         className={`${styles.dropdownArrow} ${isTypeDropdownOpen ? styles.dropdownArrowOpen : ''}`}
                       />
@@ -150,7 +149,7 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
                     setSearchQuery('')
                   }}
                 >
-                  <MdClose size={20} />
+                  <X size={20} />
                 </button>
               </div>
 

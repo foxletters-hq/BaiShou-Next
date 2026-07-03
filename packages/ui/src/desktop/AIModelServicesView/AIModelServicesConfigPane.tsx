@@ -1,21 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import {
-  MdApi,
-  MdRestore,
-  MdLink,
-  MdVpnKey,
-  MdVisibility,
-  MdVisibilityOff,
-  MdViewList,
-  MdSync,
-  MdDeleteOutline,
-  MdSearch
-} from 'react-icons/md'
 import styles from './AIModelServicesView.module.css'
 import { Switch } from '../Switch/Switch'
 import { HelpTooltip } from '../HelpTooltip'
 import { ModelVisionBadge } from '../../shared/ModelVisionBadge'
 import type { AIModelServicesViewModel } from './useAIModelServicesView'
+import { Braces, Eye, EyeOff, Key, Link, List, RefreshCw, RotateCcw, Search, Trash2 } from 'lucide-react'
 
 export interface AIModelServicesConfigPaneProps {
   vm: AIModelServicesViewModel
@@ -85,7 +74,7 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
                   onClick={handleDeleteProvider}
                   title={t('agent.provider.delete_tooltip', '删除供应商')}
                 >
-                  <MdDeleteOutline size={22} />
+                  <Trash2 size={22} />
                 </button>
               )}
             </div>
@@ -96,7 +85,7 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
             <div className={styles.formHeaderRow}>
               <div className={styles.formHeaderTitle}>
                 <div className={styles.apiIconBox}>
-                  <MdApi className={styles.apiIcon} />
+                  <Braces className={styles.apiIcon} />
                 </div>
                 <span>{t('settings.api_config', 'API 配置')}</span>
                 <HelpTooltip
@@ -108,14 +97,14 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
                 />
               </div>
               <button className={styles.resetBtnInline} onClick={handleResetCurrentProvider}>
-                <MdRestore size={16} />
+                <RotateCcw size={16} />
                 <span>{t('settings.reset_default', '恢复默认')}</span>
               </button>
             </div>
 
             <div className={styles.inputGroup}>
               <div className={styles.inputContainer}>
-                <MdLink className={styles.inputPrefixIcon} />
+                <Link className={styles.inputPrefixIcon} />
                 <input
                   type="text"
                   value={localFormData.baseUrl}
@@ -134,7 +123,7 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
 
             <div className={styles.inputGroup}>
               <div className={styles.inputContainer}>
-                <MdVpnKey className={styles.inputPrefixIcon} />
+                <Key className={styles.inputPrefixIcon} />
                 <input
                   type={isObscure ? 'password' : 'text'}
                   value={localFormData.apiKey}
@@ -148,7 +137,7 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
                   className={styles.textFieldWithIcon}
                 />
                 <button className={styles.revealButton} onClick={() => setIsObscure(!isObscure)}>
-                  {isObscure ? <MdVisibilityOff size={18} /> : <MdVisibility size={18} />}
+                  {isObscure ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
@@ -171,7 +160,7 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
           <div className={styles.modelListSection}>
             <div className={styles.modelListHeader}>
               <div className={styles.modelListTitleBox}>
-                <MdViewList size={20} className={styles.modelListTitleIcon} />
+                <List size={20} className={styles.modelListTitleIcon} />
                 <span className={styles.modelListTitle}>
                   {t('settings.model_list_count', '模型列表 ($enabled / $total)')
                     .replace('$enabled', String(activeConfig.enabledModels?.length || 0))
@@ -186,7 +175,7 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
                 {isFetchingModels ? (
                   <span className={styles.loadingSpinnerSmall}></span>
                 ) : (
-                  <MdSync size={16} />
+                  <RefreshCw size={16} />
                 )}
                 {t('settings.fetch_models', '获取模型')}
               </button>
@@ -195,7 +184,7 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
             {activeConfig.models && activeConfig.models.length > 0 ? (
               <>
                 <div className={styles.modelSearchWrap}>
-                  <MdSearch className={styles.modelSearchIcon} size={20} aria-hidden />
+                  <Search className={styles.modelSearchIcon} size={20} aria-hidden />
                   <input
                     type="search"
                     value={modelSearchQuery}
@@ -242,14 +231,14 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
                   </div>
                 ) : (
                   <div className={styles.emptyModelsCard}>
-                    <MdSearch size={32} className={styles.emptyModelsIcon} />
+                    <Search size={32} className={styles.emptyModelsIcon} />
                     <span>{t('common.no_match_model', '没有匹配的可用模型')}</span>
                   </div>
                 )}
               </>
             ) : (
               <div className={styles.emptyModelsCard}>
-                <MdViewList size={32} className={styles.emptyModelsIcon} />
+                <List size={32} className={styles.emptyModelsIcon} />
                 <span>{t('settings.no_models_hint', '暂无模型，点击右上角按钮获取')}</span>
               </div>
             )}

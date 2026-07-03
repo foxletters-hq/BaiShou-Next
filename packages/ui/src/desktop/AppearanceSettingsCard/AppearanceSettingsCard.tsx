@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react'
 import { APP_UI_LANGUAGE_ORDER } from '@baishou/shared'
 import './AppearanceSettingsCard.css'
 import { useTranslation } from 'react-i18next'
-import { MdOutlinePalette, MdDevices, MdWbSunny, MdDarkMode } from 'react-icons/md'
 import { SettingsExpansionTile } from '../shared/SettingsExpansionTile'
 import { PRESET_THEME_COLORS, isPresetThemeColor } from '../../theme/preset-theme-colors'
+import { MonitorSmartphone, Moon, Palette, Sun } from 'lucide-react'
 
 export interface AppearanceSettingsProps {
   themeMode: 'system' | 'light' | 'dark'
@@ -72,7 +72,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
       <SettingsExpansionTile
         embedded={embedded}
         isLast={isLast}
-        icon={<MdOutlinePalette size={24} />}
+        icon={<Palette size={24} />}
         title={t('settings.appearance', '外观与主题')}
         subtitle={`${getThemeText()} · ${getLangText()}`}
       >
@@ -83,21 +83,21 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
               className={`theme-btn ${themeMode === 'system' ? 'active' : ''}`}
               onClick={() => onThemeModeChange('system')}
             >
-              <MdDevices size={16} style={{ marginRight: 6, verticalAlign: 'text-bottom' }} />
+              <MonitorSmartphone size={16} style={{ marginRight: 6, verticalAlign: 'text-bottom' }} />
               {t('settings.theme_system', '系统跟随')}
             </button>
             <button
               className={`theme-btn ${themeMode === 'light' ? 'active' : ''}`}
               onClick={() => onThemeModeChange('light')}
             >
-              <MdWbSunny size={16} style={{ marginRight: 6, verticalAlign: 'text-bottom' }} />
+              <Sun size={16} style={{ marginRight: 6, verticalAlign: 'text-bottom' }} />
               {t('settings.theme_light', '日间清晰')}
             </button>
             <button
               className={`theme-btn ${themeMode === 'dark' ? 'active' : ''}`}
               onClick={() => onThemeModeChange('dark')}
             >
-              <MdDarkMode size={16} style={{ marginRight: 6, verticalAlign: 'text-bottom' }} />
+              <Moon size={16} style={{ marginRight: 6, verticalAlign: 'text-bottom' }} />
               {t('settings.theme_dark', '夜宴暗影')}
             </button>
           </div>

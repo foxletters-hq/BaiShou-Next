@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react'
 import styles from './LanSyncCard.module.css'
 import { useTranslation } from 'react-i18next'
+import { Monitor, Radar, RefreshCw, Smartphone } from 'lucide-react'
 import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
-import { MdRadar, MdRefresh, MdComputer, MdSmartphone } from 'react-icons/md'
 import { HelpTooltip } from '../HelpTooltip'
 import { RestoreBlockingOverlay } from '../RestoreBlockingOverlay'
 import {
@@ -275,7 +275,7 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
             onClick={restartDualMode}
             title={t('common.refresh', '刷新')}
           >
-            <MdRefresh size={20} />
+            <RefreshCw size={20} />
           </button>
         </div>
 
@@ -290,7 +290,7 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
 
           <div className={`${styles.radarCore} ${isActive ? styles.corePulse : ''}`}>
             <span className={styles.coreIcon}>
-              <MdRadar size={32} />
+              <Radar size={32} />
             </span>
           </div>
 
@@ -320,9 +320,9 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
                 >
                   <div className={styles.bubbleIcon}>
                     {d.deviceType === 'mobile' ? (
-                      <MdSmartphone size={20} />
+                      <Smartphone size={20} />
                     ) : (
-                      <MdComputer size={20} />
+                      <Monitor size={20} />
                     )}
                   </div>
                   <div className={styles.bubbleInfo}>

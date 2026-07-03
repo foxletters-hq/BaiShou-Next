@@ -1,6 +1,6 @@
 import React from 'react'
-import { MdRefresh } from 'react-icons/md'
 import type { GitManagementViewModel } from './useGitManagementPage'
+import { RefreshCw } from 'lucide-react'
 
 export interface GitVersionCommitBarProps {
   vm: GitManagementViewModel
@@ -57,7 +57,7 @@ export const GitVersionCommitBar: React.FC<GitVersionCommitBarProps> = ({ vm }) 
           padding: '8px'
         }}
       >
-        <MdRefresh size={18} />
+        <RefreshCw size={18} />
       </button>
     </div>
   )

@@ -1,6 +1,5 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdOutlineHub, MdExpandMore, MdContentCopy, MdRefresh } from 'react-icons/md'
 import '../shared/SettingsListTile.css'
 import {
   isSettingsInlineHelpTarget,
@@ -10,6 +9,7 @@ import styles from './McpSettingsCard.module.css'
 import { McpHelpButton } from './McpHelpButton'
 import { buildMcpUrl } from './mcp-url'
 import { useToast } from '../Toast/useToast'
+import { Cable, ChevronDown, Copy, RefreshCw } from 'lucide-react'
 
 export interface McpServerConfig {
   mcpEnabled: boolean
@@ -162,7 +162,7 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
           aria-label={t('settings.mcp_copy_url', '复制 MCP 地址')}
           title={t('common.copy', '复制')}
         >
-          <MdContentCopy size={18} />
+          <Copy size={18} />
         </button>
       </div>
       {config.mcpAuthToken ? (
@@ -178,7 +178,7 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
                 aria-label={t('settings.mcp_refresh_token', '刷新访问令牌')}
                 title={t('settings.mcp_refresh_token', '刷新访问令牌')}
               >
-                <MdRefresh size={18} />
+                <RefreshCw size={18} />
               </button>
             ) : null}
             <button
@@ -188,7 +188,7 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
               aria-label={t('settings.mcp_copy_token', '复制访问令牌')}
               title={t('common.copy', '复制')}
             >
-              <MdContentCopy size={18} />
+              <Copy size={18} />
             </button>
           </div>
         </div>
@@ -228,7 +228,7 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
         style={{ cursor: 'pointer' }}
       >
         <div className="settings-list-tile-leading">
-          <MdOutlineHub size={24} />
+          <Cable size={24} />
         </div>
         <div className="settings-list-tile-content">
           <span className={`settings-list-tile-title ${styles.titleRow}`}>
@@ -251,7 +251,7 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
               : t('settings.mcp_desc', '允许外部 AI 通过 MCP 协议调用白守工具')}
           </span>
         </div>
-        <MdExpandMore
+        <ChevronDown
           size={24}
           style={{
             color: 'var(--color-on-surface-variant)',

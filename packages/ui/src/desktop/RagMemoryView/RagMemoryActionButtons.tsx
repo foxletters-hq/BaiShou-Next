@@ -1,8 +1,8 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdAutoStories, MdAddComment } from 'react-icons/md'
 import type { RagState } from './rag-memory.types'
 import styles from './RagMemoryView.module.css'
+import { Library, MessageSquarePlus } from 'lucide-react'
 
 interface RagMemoryActionButtonsProps {
   ragState: RagState
@@ -28,7 +28,7 @@ export const RagMemoryActionButtons: React.FC<RagMemoryActionButtonsProps> = ({
         onClick={() => void onBatchEmbed?.()}
         disabled={isBusy}
       >
-        <MdAutoStories size={16} />{' '}
+        <Library size={16} />{' '}
         {isBatchEmbedding
           ? `${t('common.processing', '处理中')} ${ragState.progress}/${ragState.total}`
           : t('settings.rag_batch_embed', '全量嵌入日记')}
@@ -38,7 +38,7 @@ export const RagMemoryActionButtons: React.FC<RagMemoryActionButtonsProps> = ({
         onClick={() => void onAddManualMemory?.()}
         disabled={isBusy}
       >
-        <MdAddComment size={16} /> {t('settings.rag_add_manual', '手动添加记忆')}
+        <MessageSquarePlus size={16} /> {t('settings.rag_add_manual', '手动添加记忆')}
       </button>
     </div>
   )

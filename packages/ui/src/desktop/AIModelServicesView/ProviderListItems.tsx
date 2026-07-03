@@ -1,8 +1,8 @@
 import React from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { MdCloud, MdDragIndicator } from 'react-icons/md'
 import styles from './AIModelServicesView.module.css'
+import { Cloud, GripVertical } from 'lucide-react'
 
 export const ProviderStaticItem: React.FC<{
   p: { id: string; name: string; iconUrl?: string; isSystem?: boolean }
@@ -15,7 +15,7 @@ export const ProviderStaticItem: React.FC<{
     className={`${styles.listItem} ${isActive ? styles.listItemSelected : ''} ${styles.providerItemDragging}`}
   >
     <div className={styles.dragHandle}>
-      <MdDragIndicator size={18} />
+      <GripVertical size={18} />
     </div>
     <div className={styles.listIconBox}>{renderIcon(p.iconUrl)}</div>
     <div className={styles.listNameCol}>
@@ -63,7 +63,7 @@ export const ProviderSortableItem: React.FC<{
         className={styles.dragHandle}
         style={{ cursor: 'grab', touchAction: 'none' }}
       >
-        <MdDragIndicator size={18} />
+        <GripVertical size={18} />
       </div>
       <div className={styles.listIconBox}>{renderIcon(p.iconUrl)}</div>
       <div className={styles.listNameCol}>

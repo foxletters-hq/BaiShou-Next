@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { MdArrowBackIosNew, MdArrowForwardIos } from 'react-icons/md'
 import { APP_UI_LANGUAGE_ORDER, type CompressionPromptLocale } from '@baishou/shared'
 import { useSettingsStore } from '@baishou/store'
 import icon from '../../../../../resources/icon.png?asset'
@@ -16,6 +15,7 @@ import { OnboardingGlowIcon } from './components/OnboardingGlowIcon'
 import { OnboardingStorageSlide } from './components/OnboardingStorageSlide'
 import { OnboardingLanguagePage } from './OnboardingLanguagePage'
 import styles from './OnboardingScreen.module.css'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 export const OnboardingScreen: React.FC = () => {
   const { t } = useTranslation()
@@ -340,7 +340,7 @@ export const OnboardingScreen: React.FC = () => {
           <div className={styles.navActions}>
             {currentPage > 0 && (
               <button type="button" className={styles.backButton} onClick={handlePrevious}>
-                <MdArrowBackIosNew size={12} color="#9CA3AF" />
+                <ChevronLeft size={12} color="#9CA3AF" />
                 <span>{t('common.back')}</span>
               </button>
             )}
@@ -361,7 +361,7 @@ export const OnboardingScreen: React.FC = () => {
                     ? t('onboarding.get_started')
                     : t('common.next')}
               </span>
-              {!isLast && !isFinishing && <MdArrowForwardIos size={14} color="#FFFFFF" />}
+              {!isLast && !isFinishing && <ChevronRight size={14} color="#FFFFFF" />}
             </button>
           </div>
         </div>
