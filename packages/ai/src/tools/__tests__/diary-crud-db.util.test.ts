@@ -1,9 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import {
-  runDiaryEditViaDb,
-  runDiaryReadViaDb,
-  ensureDiaryReadGuard
-} from '../diary-crud-db.util'
+import { runDiaryEditViaDb, runDiaryReadViaDb, ensureDiaryReadGuard } from '../diary-crud-db.util'
 import type { ToolContext } from '../agent.tool'
 import { createDiaryReadGuard } from '../diary-read-guard.util'
 
@@ -16,14 +12,23 @@ function createContext(overrides: Partial<ToolContext> = {}): ToolContext {
   }
 }
 
+function mockDiarySearcher(
+  overrides: Partial<ToolContext['diarySearcher']> = {}
+): NonNullable<ToolContext['diarySearcher']> {
+  return {
+    searchFTS: vi.fn().mockResolvedValue([]),
+    ...overrides
+  }
+}
+
 describe('diary read-before-edit guard', () => {
   it('marks dates as read after diary_read', async () => {
     const context = createContext({
-      diarySearcher: {
-        readByDates: vi.fn().mockResolvedValue([
-          { date: '2024-03-01', content: '# Diary\n\nHello' }
-        ])
-      }
+      diarySearcher: mockDiarySearcher({
+        readByDates: vi
+          .fn()
+          .mockResolvedValue([{ date: '2024-03-01', content: '# Diary\n\nHello' }])
+      })
     })
 
     await runDiaryReadViaDb({ dates: ['2024-03-01'] }, context)
@@ -33,13 +38,10 @@ describe('diary read-before-edit guard', () => {
   it('rejects diary_edit when target date was not read in this turn', async () => {
     const editEntry = vi.fn()
     const context = createContext({
-      diarySearcher: { editEntry }
+      diarySearcher: mockDiarySearcher({ editEntry })
     })
 
-    const result = await runDiaryEditViaDb(
-      { date: '2024-03-01', content: '追加内容' },
-      context
-    )
+    const result = await runDiaryEditViaDb({ date: '2024-03-01', content: '追加内容' }, context)
 
     expect(result).toContain('diary_read is required before diary_edit')
     expect(editEntry).not.toHaveBeenCalled()
@@ -48,19 +50,16 @@ describe('diary read-before-edit guard', () => {
   it('allows diary_edit after diary_read for the same date', async () => {
     const editEntry = vi.fn().mockResolvedValue({ ok: true as const })
     const context = createContext({
-      diarySearcher: {
-        readByDates: vi.fn().mockResolvedValue([
-          { date: '2024-03-01', content: '# Diary\n\nHello' }
-        ]),
+      diarySearcher: mockDiarySearcher({
+        readByDates: vi
+          .fn()
+          .mockResolvedValue([{ date: '2024-03-01', content: '# Diary\n\nHello' }]),
         editEntry
-      }
+      })
     })
 
     await runDiaryReadViaDb({ dates: ['2024-03-01'] }, context)
-    const result = await runDiaryEditViaDb(
-      { date: '2024-03-01', content: '追加内容' },
-      context
-    )
+    const result = await runDiaryEditViaDb({ date: '2024-03-01', content: '追加内容' }, context)
 
     expect(result).toContain('Successfully modified')
     expect(editEntry).toHaveBeenCalledOnce()

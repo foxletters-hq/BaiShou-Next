@@ -105,9 +105,11 @@ export function buildStreamingDisplayText(
 /** 将高频回调合并到每帧最多一次（移动端流式 UI 更新） */
 export function createRafBatchedCallback<T>(callback: (value: T) => void) {
   let pending: T | undefined
+  let scheduled = false
   let rafId: number | null = null
 
   const flush = () => {
+    scheduled = false
     if (rafId != null) {
       cancelAnimationFrame(rafId)
       rafId = null
@@ -121,8 +123,10 @@ export function createRafBatchedCallback<T>(callback: (value: T) => void) {
 
   const schedule = (value: T) => {
     pending = value
-    if (rafId != null) return
+    if (scheduled) return
+    scheduled = true
     rafId = requestAnimationFrame(() => {
+      scheduled = false
       rafId = null
       if (pending !== undefined) {
         const value = pending

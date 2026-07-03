@@ -1,13 +1,20 @@
 import { describe, expect, it } from 'vitest'
+import type { RagConfig } from '../../types/settings.types'
 import {
   clearRagDiaryEmbedFailure,
   markRagDiaryEmbedFailure,
   normalizeDiaryEmbedFailureMessage
 } from '../rag-embed-failure.util'
 
+const baseRagConfig: RagConfig = {
+  ragEnabled: true,
+  ragTopK: 20,
+  ragSimilarityThreshold: 0.4
+}
+
 describe('rag-embed-failure.util', () => {
   it('stores normalized failure message', () => {
-    const next = markRagDiaryEmbedFailure({ ragEnabled: true, ragTopK: 20, ragSimilarityThreshold: 0.4 }, '  API key invalid  ')
+    const next = markRagDiaryEmbedFailure(baseRagConfig, '  API key invalid  ')
     expect(next.lastDiaryEmbedFailureMessage).toBe('API key invalid')
     expect(next.lastDiaryEmbedFailureAt).toBeGreaterThan(0)
   })
@@ -21,9 +28,7 @@ describe('rag-embed-failure.util', () => {
 
   it('clears failure metadata', () => {
     const cleared = clearRagDiaryEmbedFailure({
-      ragEnabled: true,
-      ragTopK: 20,
-      ragSimilarityThreshold: 0.4,
+      ...baseRagConfig,
       lastDiaryEmbedFailureAt: Date.now(),
       lastDiaryEmbedFailureMessage: 'oops'
     })

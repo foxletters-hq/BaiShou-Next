@@ -53,9 +53,15 @@ describe('buildStreamingDisplayText', () => {
 describe('createStreamingTextDisplayBuffer', () => {
   beforeEach(() => {
     vi.useFakeTimers()
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      cb(0)
+      return 1
+    })
+    vi.stubGlobal('cancelAnimationFrame', vi.fn())
   })
 
   afterEach(() => {
+    vi.unstubAllGlobals()
     vi.useRealTimers()
   })
 

@@ -26,26 +26,34 @@ vi.mock('electron', () => ({
   dialog: { showOpenDialog: vi.fn() }
 }))
 
-vi.mock('@baishou/core-desktop', () => ({
-  copyStorageRootContents: vi.fn(),
-  targetDirectoryHasData: vi.fn(),
-  validateStorageDirectoryWritable: vi.fn()
-}))
-
-vi.mock('@baishou/shared', () => ({
-  isPathInsideStorageRoot: vi.fn(),
-  isSameStorageRoot: vi.fn(),
-  logger: {
-    info: vi.fn(),
-    warn: vi.fn()
+vi.mock('@baishou/core-desktop', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@baishou/core-desktop')>()
+  return {
+    ...actual,
+    copyStorageRootContents: vi.fn(),
+    targetDirectoryHasData: vi.fn(),
+    validateStorageDirectoryWritable: vi.fn()
   }
-}))
+})
+
+vi.mock('@baishou/shared', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@baishou/shared')>()
+  return {
+    ...actual,
+    isPathInsideStorageRoot: vi.fn(),
+    isSameStorageRoot: vi.fn(),
+    logger: {
+      info: vi.fn(),
+      warn: vi.fn()
+    }
+  }
+})
 
 vi.mock('@baishou/database-desktop', () => databaseMock)
 
 vi.mock('../../ipc/vault.ipc', () => ({
   pathService: pathServiceMock,
-  vaultService: { initRegistry: vi.fn() },
+  vaultService: { initRegistry: vi.fn(), getActiveVault: vi.fn(() => ({ name: 'Personal' })) },
   connectGlobalShadowDb: vi.fn()
 }))
 
@@ -111,6 +119,10 @@ vi.mock('../mcp-runtime', () => ({
 
 vi.mock('../desktop-legacy-bootstrap.service', () => ({
   resolvePickedStorageDirectory: vi.fn((p: string) => p)
+}))
+
+vi.mock('../../cache/desktop-main-cache-coordinator', () => ({
+  emitStorageRootChangedMutation: vi.fn()
 }))
 
 vi.mock('../../db', () => dbMock)
