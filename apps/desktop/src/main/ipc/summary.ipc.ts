@@ -10,7 +10,8 @@ import {
   SummaryFileService,
   MissingSummaryDetector,
   SummaryGeneratorService,
-  handleBuildSharedContext
+  handleBuildSharedContext,
+  handleBuildSharedContextPreview
 } from '@baishou/core-desktop'
 import { settingsManager } from './settings.ipc'
 import {
@@ -296,4 +297,13 @@ export function registerSummaryIPC() {
       )
     }
   )
+
+  ipcMain.handle('summary:buildSharedContextPreview', async (_, lookbackMonths: number) => {
+    const summaries = await ensureManager().list()
+    return handleBuildSharedContextPreview(
+      summaries,
+      lookbackMonths,
+      vaultService.getActiveVault()?.name
+    )
+  })
 }
