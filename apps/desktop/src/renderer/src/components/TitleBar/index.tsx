@@ -10,7 +10,7 @@ import { useOrchestratedSync } from '../../hooks/useOrchestratedSync'
 import { readActiveVaultNavigationSnapshot } from '../../lib/agent-navigation-persistence'
 import { switchActiveVault, persistActiveVaultName } from '../../lib/vault-runtime.util'
 import { INCREMENTAL_SYNC_CONFIG_CHANGED_EVENT } from '../../lib/incremental-sync-config-events'
-import { ChevronDown, FolderSync, Library, Minus, Sparkles, Square, X } from 'lucide-react'
+import { BookOpen, ChevronDown, FolderSync, Minus, Sparkles, Square, X } from 'lucide-react'
 
 export const TitleBar: React.FC = () => {
   const { t } = useTranslation()
@@ -181,7 +181,7 @@ export const TitleBar: React.FC = () => {
               className={`${styles.tab} ${!isAgent && !isSettings ? styles.activeTab : ''}`}
               onClick={() => navigate(resolveDiaryHomePath())}
             >
-              <Library className={styles.tabIcon} />
+              <BookOpen className={styles.tabIcon} />
               <span>{t('nav.diary', '日记')}</span>
             </div>
             <div

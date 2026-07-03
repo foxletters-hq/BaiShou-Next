@@ -9,7 +9,7 @@ import { IdentityFactsList } from './IdentityFactsList'
 import { IdentityFactEditModal } from './IdentityFactEditModal'
 import { SettingsExpansionTile } from '../shared/SettingsExpansionTile'
 import styles from './IdentitySettingsCard.module.css'
-import { Badge } from 'lucide-react'
+import { IdCard } from 'lucide-react'
 
 export type { UserProfileConfig, IdentitySettingsCardProps } from './identity-settings.types'
 
@@ -49,7 +49,7 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({
       <SettingsExpansionTile
         embedded
         isLast={isLast}
-        icon={<Badge size={24} />}
+        icon={<IdCard size={24} />}
         title={t('settings.identity_card')}
         subtitle={t('settings.identity_current_named', { name: card.activeId })}
       >

@@ -22,7 +22,7 @@ import {
 } from 'lucide-react'
 import { SETTINGS_HUB_PREFIX } from '../../features/settings/settings-route.util'
 
-export const SIDEBAR_NAV_ICON_SIZE = 20
+export const SIDEBAR_NAV_ICON_SIZE = 18
 
 export function sidebarNavIcon(icon: React.ReactElement<{ size?: number }>): React.ReactNode {
   return React.cloneElement(icon, { size: SIDEBAR_NAV_ICON_SIZE })

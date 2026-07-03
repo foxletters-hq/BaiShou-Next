@@ -6,7 +6,7 @@ import { ModelSwitcherPopup } from '../ModelSwitcherPopup'
 import { GlobalModelsConfig, GlobalModelsConfig as SharedGlobalModelsConfig } from '@baishou/shared'
 import { isEmbeddingModel, isTtsModel } from '@baishou/shared'
 import {
-  BrainCircuit,
+  Database,
   Cloud,
   MessageCircle,
   Pencil,
@@ -253,7 +253,7 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
           {renderSection(
             'embedding',
             t('ai_config.embedding_model_title', 'RAG 向量映射层 (Embeddings)'),
-            <BrainCircuit size={22} />,
+            <Database size={22} />,
             config.globalEmbeddingProviderId,
             config.globalEmbeddingModelId,
             true

@@ -182,7 +182,7 @@ export const Sidebar: React.FC = () => {
                                 }}
                               >
                                 <div {...provided.dragHandleProps} className={styles.dragHandle}>
-                                  <GripVertical size={18} />
+                                  <GripVertical size={16} />
                                 </div>
                                 <span className={styles.navIcon}>{item.icon}</span>
                                 <span className={styles.navLabel}>{item.label}</span>
@@ -210,7 +210,7 @@ export const Sidebar: React.FC = () => {
               title={t('sidebar.manage', '侧边栏管理')}
             >
               <span className={styles.navIcon}>
-                <SlidersHorizontal size={20} />
+                <SlidersHorizontal size={18} />
               </span>
               <span className={styles.navLabel}>{t('sidebar.manage', '侧边栏管理')}</span>
             </div>
@@ -225,7 +225,7 @@ export const Sidebar: React.FC = () => {
               }}
             >
               <span className={styles.navIcon}>
-                <Settings size={20} />
+                <Settings size={18} />
               </span>
               <span className={styles.navLabel}>{t('settings.title', '系统设置')}</span>
             </div>

@@ -1,7 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import styles from './IdentitySettingsCard.module.css'
-import { Badge, ChevronDown } from 'lucide-react'
+import { ChevronDown, IdCard } from 'lucide-react'
 
 interface IdentitySettingsHeaderProps {
   factCount: number
@@ -27,7 +27,7 @@ export const IdentitySettingsHeader: React.FC<IdentitySettingsHeaderProps> = ({
             flex: 1
           }}
         >
-          <Badge size={20} className={styles.primaryIcon} />
+          <IdCard size={20} className={styles.primaryIcon} />
           <span className={styles.headerText}>{t('settings.identity_card', '身份卡')}</span>
           <span className={styles.headerFactCount}>
             {factCount} {t('settings.identity_entry_count_suffix', '条')}
