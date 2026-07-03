@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef, useSyncExternalStore, useContext } from 'react'
 import { logger, normalizeDiaryTags } from '@baishou/shared'
 import type { DiaryListFilter } from '@baishou/shared'
 import { getDiaryListCacheVersion, subscribeDiaryListCache } from '@baishou/shared/cache'
@@ -6,6 +6,7 @@ import {
   getDesktopVaultScopeKey,
   subscribeDesktopVaultScope
 } from '../../../cache/desktop-vault-scope'
+import { MainPageCacheActiveContext } from '../../../layouts/main-page-cache.context'
 
 export interface DiaryPageQuery {
   selectedMonth: Date | null
@@ -86,6 +87,7 @@ function patchEntriesWithSaved(prev: any[], saved: any): any[] {
 }
 
 export function useDiaryData(query: DiaryPageQuery) {
+  const isListPageActive = useContext(MainPageCacheActiveContext)
   const [entries, setEntries] = useState<any[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -190,6 +192,8 @@ export function useDiaryData(query: DiaryPageQuery) {
 
     if (api?.diary?.onSyncEvent) {
       unsubscribe = api.diary.onSyncEvent((event: { type?: string; entry?: any }) => {
+        if (!isListPageActive) return
+
         const hasCachedRows = entriesRef.current.length > 0
         if (event?.type === 'saved' && event.entry) {
           logger.info('[useDiaryData] 收到 diary 保存事件，静默刷新列表')
@@ -209,7 +213,7 @@ export function useDiaryData(query: DiaryPageQuery) {
     return () => {
       if (unsubscribe) unsubscribe()
     }
-  }, [loadEntries])
+  }, [loadEntries, isListPageActive])
 
   return { entries, totalCount, loading, loadEntries }
 }

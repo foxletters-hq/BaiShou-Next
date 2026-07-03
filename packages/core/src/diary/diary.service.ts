@@ -247,7 +247,7 @@ export class DiaryService {
     const date = parseDateStr(dateStr)
 
     // HEALING: Lazily trigger sync to heal any out-of-sync local file editing
-    this.shadowSync.syncJournal(dateStr).catch((e) => console.warn('Lazy sync failed', e))
+    this.shadowSync.syncJournal(dateStr, true).catch((e) => console.warn('Lazy sync failed', e))
 
     const fromDisk = await this.fileSync.readJournal(date, shadow.filePath)
     if (fromDisk?.content?.trim()) {
@@ -341,6 +341,14 @@ export class DiaryService {
     const dateStr = formatLocalDate(date)
     const shadow = await this.shadowRepo.findByDate(dateStr)
 
+    // HEALING: Lazily trigger sync to heal any out-of-sync local file editing
+    this.shadowSync.syncJournal(dateStr, true).catch((e) => console.warn('Lazy sync failed', e))
+
+    // 打开编辑器时优先用影子索引正文，避免每次读盘阻塞 IPC
+    if (shadow?.rawContent?.trim()) {
+      return this.buildDiaryFromShadowRow(shadow, date)
+    }
+
     // 穿透底层：真相来自物理文件；优先使用影子索引记录的实际路径（外部存储 / Obsidian 布局）
     const diary = await this.fileSync.readJournal(date, shadow?.filePath)
 
@@ -348,9 +356,6 @@ export class DiaryService {
     if (diary && !diary.id && shadow) {
       diary.id = shadow.id
     }
-
-    // HEALING: Lazily trigger sync to heal any out-of-sync local file editing
-    this.shadowSync.syncJournal(dateStr).catch((e) => console.warn('Lazy sync failed', e))
 
     return diary
   }

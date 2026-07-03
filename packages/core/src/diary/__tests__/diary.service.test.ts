@@ -499,8 +499,38 @@ describe('DiaryService - Single Source of Truth architecture', () => {
 
       const result = await service.findByDate(date)
 
+      expect(mockShadowSync.syncJournal).toHaveBeenCalledWith('2025-08-03', true)
       expect(mockFileSync.readJournal).toHaveBeenCalledWith(date, 'Daily/2025-08-03.md')
       expect(result?.content).toBe('外部日记正文')
+    })
+
+    it('returns shadow rawContent without reading disk when index has body', async () => {
+      const date = parseDateStr('2025-08-04')
+      mockShadowRepo.findByDate.mockResolvedValue({
+        id: 13,
+        date: '2025-08-04',
+        filePath: 'Daily/2025-08-04.md',
+        contentHash: 'hash',
+        createdAt: '',
+        updatedAt: '',
+        isFavorite: true,
+        hasMedia: false,
+        weather: 'sunny',
+        mood: 'happy',
+        location: null,
+        locationDetail: null,
+        vaultName: 'TestVault',
+        rawContent: '影子索引正文',
+        tags: '工作,日记'
+      })
+      mockShadowSync.syncJournal.mockResolvedValue({ isChanged: false, meta: null })
+
+      const result = await service.findByDate(date)
+
+      expect(mockShadowSync.syncJournal).toHaveBeenCalledWith('2025-08-04', true)
+      expect(mockFileSync.readJournal).not.toHaveBeenCalled()
+      expect(result?.content).toBe('影子索引正文')
+      expect(result?.id).toBe(13)
     })
   })
 

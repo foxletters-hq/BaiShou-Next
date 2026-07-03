@@ -59,6 +59,7 @@ export function useDiaryEditorPage() {
   const originalTagsRef = useRef<string[]>([])
 
   const [isLoading, setIsLoading] = useState(true)
+  const [attachmentBasePath, setAttachmentBasePath] = useState('')
   const initialStateRef = useRef<DiaryEditorInitialState | null>(null)
   const stateSnapshotRef = useRef<DiaryEditorInitialState>({
     content: '',
@@ -92,20 +93,38 @@ export function useDiaryEditorPage() {
     return {}
   }, [])
 
+  const fetchAttachmentDir = useCallback(async (date: Date): Promise<string> => {
+    try {
+      const api = (window as any).api?.diary
+      if (!api?.getAttachmentDir) return ''
+      const result = await api.getAttachmentDir(formatLocalDate(date))
+      return result?.success && result.path ? result.path : ''
+    } catch (e) {
+      logger.warn('Failed to load diary attachment dir', { error: e })
+      return ''
+    }
+  }, [])
+
   useEffect(() => {
     let cancelled = false
 
     const initEditor = async () => {
-      const templateConfig = await loadTemplateConfig()
-      if (cancelled) return
-      const now = new Date()
+      const initialDate = parseInitialDate()
+      const api = typeof window !== 'undefined' ? (window as any).api?.diary : undefined
 
       if (!dateStr || dateStr === 'new') {
+        const [templateConfig, attPath] = await Promise.all([
+          loadTemplateConfig(),
+          fetchAttachmentDir(initialDate)
+        ])
+        if (cancelled) return
+        setAttachmentBasePath(attPath)
+        const now = new Date()
         const initialContent = resolveDiaryNewEntryContent(templateConfig, now)
         setContent(initialContent)
         initialStateRef.current = {
           content: initialContent,
-          selectedDate: parseInitialDate(),
+          selectedDate: initialDate,
           weather: '',
           mood: '',
           isFavorite: false,
@@ -115,11 +134,17 @@ export function useDiaryEditorPage() {
         return
       }
 
-      if (typeof window !== 'undefined' && (window as any).api?.diary) {
+      if (api) {
         try {
-          const diary = await (window as any).api.diary.findByDate(dateStr)
+          const [templateConfig, diary, attPath] = await Promise.all([
+            loadTemplateConfig(),
+            api.findByDate(dateStr),
+            fetchAttachmentDir(initialDate)
+          ])
           if (cancelled) return
+          setAttachmentBasePath(attPath)
 
+          const now = new Date()
           let initialContent = ''
           let initialWeather = ''
           let initialMood = ''
@@ -156,7 +181,7 @@ export function useDiaryEditorPage() {
           setContent(initialContent)
           initialStateRef.current = {
             content: initialContent,
-            selectedDate: parseInitialDate(),
+            selectedDate: initialDate,
             weather: initialWeather,
             mood: initialMood,
             isFavorite: initialFavorite,
@@ -164,11 +189,12 @@ export function useDiaryEditorPage() {
           }
         } catch (e: unknown) {
           logger.error('Failed to load diary', { error: e, dateStr })
-          const fallback = resolveDiaryNewEntryContent(templateConfig, now)
+          const fallbackConfig = await loadTemplateConfig()
+          const fallback = resolveDiaryNewEntryContent(fallbackConfig, new Date())
           setContent(fallback)
           initialStateRef.current = {
             content: fallback,
-            selectedDate: parseInitialDate(),
+            selectedDate: initialDate,
             weather: '',
             mood: '',
             isFavorite: false,
@@ -187,7 +213,7 @@ export function useDiaryEditorPage() {
     return () => {
       cancelled = true
     }
-  }, [dateStr, isAppendMode, parseInitialDate, loadTemplateConfig])
+  }, [dateStr, isAppendMode, parseInitialDate, loadTemplateConfig, fetchAttachmentDir])
 
   // 编辑器挂载并完成首轮同步后，以实际展示状态作为「未修改」基线
   useEffect(() => {
@@ -338,6 +364,7 @@ export function useDiaryEditorPage() {
   return {
     t,
     isLoading,
+    attachmentBasePath,
     content,
     selectedDate,
     weather,

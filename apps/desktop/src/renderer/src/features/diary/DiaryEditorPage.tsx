@@ -47,6 +47,7 @@ export const DiaryEditorPage: React.FC = () => {
       <DiaryEditor
         content={editor.content}
         selectedDate={editor.selectedDate}
+        attachmentBasePath={editor.attachmentBasePath}
         weather={editor.weather}
         mood={editor.mood}
         isFavorite={editor.isFavorite}

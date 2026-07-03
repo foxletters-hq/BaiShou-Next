@@ -7,6 +7,18 @@ import {
 } from '../../shared/diary-codemirror'
 import type { CodeMirrorEditorProps, TextContextMenuState } from './codeMirrorEditor.types'
 
+function scheduleEditorMount(callback: () => void): () => void {
+  if (typeof requestIdleCallback !== 'undefined') {
+    const idleId = requestIdleCallback(callback, { timeout: 120 })
+    return () => cancelIdleCallback(idleId)
+  }
+
+  const rafId = requestAnimationFrame(() => {
+    requestAnimationFrame(callback)
+  })
+  return () => cancelAnimationFrame(rafId)
+}
+
 export function useCodeMirrorEditorView(
   props: Pick<CodeMirrorEditorProps, 'content' | 'placeholder' | 'basePath' | 'onChange'>,
   setPreviewSrc: (src: string | null) => void,
@@ -45,62 +57,71 @@ export function useCodeMirrorEditorView(
     const container = containerRef.current
     if (!container) return
 
-    const platform: DiaryCmPlatform = {
-      resolveAttachmentUrl: resolveUrl,
-      interactionMode: 'mouse',
-      tagLineMode: true,
-      onExternalImagePreview: (src) => setPreviewSrc(src)
-    }
+    let cancelled = false
+    let view: EditorView | null = null
 
-    const view = createDiaryCodeMirror(container, {
-      content: props.content,
-      placeholder: props.placeholder,
-      platform,
-      onChange: (content) => {
-        if (suppressChangeEchoRef.current) return
-        onChangeRef.current(content)
-      },
-      extraExtensions: [
-        EditorView.domEventHandlers({
-          contextmenu: (event, view) => {
-            const rawTarget = event.target
-            const target =
-              rawTarget instanceof Element
-                ? rawTarget
-                : rawTarget instanceof Node
-                  ? rawTarget.parentElement
-                  : null
-            if (
-              target?.closest('.cm-image-container, .cm-table-block, .cm-table-context-menu-layer')
-            ) {
-              return false
+    const cancelScheduledMount = scheduleEditorMount(() => {
+      if (cancelled || !containerRef.current) return
+
+      const platform: DiaryCmPlatform = {
+        resolveAttachmentUrl: resolveUrl,
+        interactionMode: 'mouse',
+        tagLineMode: true,
+        onExternalImagePreview: (src) => setPreviewSrc(src)
+      }
+
+      view = createDiaryCodeMirror(containerRef.current, {
+        content: props.content,
+        placeholder: props.placeholder,
+        platform,
+        onChange: (content) => {
+          if (suppressChangeEchoRef.current) return
+          onChangeRef.current(content)
+        },
+        extraExtensions: [
+          EditorView.domEventHandlers({
+            contextmenu: (event, view) => {
+              const rawTarget = event.target
+              const target =
+                rawTarget instanceof Element
+                  ? rawTarget
+                  : rawTarget instanceof Node
+                    ? rawTarget.parentElement
+                    : null
+              if (
+                target?.closest('.cm-image-container, .cm-table-block, .cm-table-context-menu-layer')
+              ) {
+                return false
+              }
+
+              event.preventDefault()
+              event.stopPropagation()
+
+              const { from, to } = view.state.selection.main
+              setTextContextMenu({
+                x: event.clientX,
+                y: event.clientY,
+                hasSelection: from !== to
+              })
+              return true
             }
+          })
+        ]
+      })
 
-            event.preventDefault()
-            event.stopPropagation()
+      viewRef.current = view
 
-            const { from, to } = view.state.selection.main
-            setTextContextMenu({
-              x: event.clientX,
-              y: event.clientY,
-              hasSelection: from !== to
-            })
-            return true
-          }
-        })
-      ]
+      const docLength = view.state.doc.length
+      view.dispatch({
+        selection: { anchor: docLength, head: docLength }
+      })
+      view.focus()
     })
-
-    viewRef.current = view
-
-    const docLength = view.state.doc.length
-    view.dispatch({
-      selection: { anchor: docLength, head: docLength }
-    })
-    view.focus()
 
     return () => {
-      view.destroy()
+      cancelled = true
+      cancelScheduledMount()
+      view?.destroy()
       viewRef.current = null
     }
   }, [])

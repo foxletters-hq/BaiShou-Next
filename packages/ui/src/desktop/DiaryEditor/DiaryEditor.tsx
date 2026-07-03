@@ -39,6 +39,8 @@ interface DiaryEditorProps {
   onCancel?: () => void
   onReadAloud?: () => void
   isTtsPlaying?: boolean
+  /** 由页面层预取时传入，避免编辑器挂载后再二次刷新图片装饰 */
+  attachmentBasePath?: string
 }
 
 function fileToBase64(file: File): Promise<string> {
@@ -68,11 +70,13 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   onSave,
   onCancel,
   onReadAloud,
-  isTtsPlaying = false
+  isTtsPlaying = false,
+  attachmentBasePath: attachmentBasePathProp
 }) => {
   const { t } = useTranslation()
   const [attachments, setAttachments] = useState<DiaryAttachmentItem[]>([])
-  const [attachmentBasePath, setAttachmentBasePath] = useState('')
+  const [attachmentBasePathState, setAttachmentBasePathState] = useState('')
+  const attachmentBasePath = attachmentBasePathProp ?? attachmentBasePathState
   const editorRef = useRef<CodeMirrorEditorHandle>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const [pickingImages, setPickingImages] = useState(false)
@@ -83,6 +87,8 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   }, [mediaPaths])
 
   useEffect(() => {
+    if (attachmentBasePathProp != null) return
+
     const fetchAttachmentDir = async () => {
       try {
         if (typeof window !== 'undefined' && (window as any).api?.diary) {
@@ -93,7 +99,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
           ].join('-')
           const result = await (window as any).api.diary.getAttachmentDir(dateStr)
           if (result?.success && result.path) {
-            setAttachmentBasePath(result.path)
+            setAttachmentBasePathState(result.path)
           }
         }
       } catch (err) {
@@ -101,7 +107,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
       }
     }
     fetchAttachmentDir()
-  }, [selectedDate])
+  }, [selectedDate, attachmentBasePathProp])
 
   useEffect(() => {
     if (mediaPaths.length > 0) {
