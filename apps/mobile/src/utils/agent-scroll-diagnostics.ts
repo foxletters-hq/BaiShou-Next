@@ -33,10 +33,7 @@ export function getRecentAgentScrollEvents(): readonly string[] {
 /**
  * 开发态滚动诊断：同时写入 Metro 与诊断日志（设置 → 关于 → 复制诊断日志）。
  */
-export function logAgentScrollEvent(
-  tag: string,
-  payload: Record<string, unknown> = {}
-): void {
+export function logAgentScrollEvent(tag: string, payload: Record<string, unknown> = {}): void {
   logAgentDiagnostic('scroll', tag, payload)
 }
 

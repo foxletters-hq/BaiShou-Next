@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  isTransientNetworkError,
-  withTransientNetworkRetry
-} from '../transient-network-error.util'
+import { isTransientNetworkError, withTransientNetworkRetry } from '../transient-network-error.util'
 
 describe('isTransientNetworkError', () => {
   it('detects common mobile network failures', () => {

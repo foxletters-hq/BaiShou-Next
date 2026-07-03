@@ -44,9 +44,7 @@ export async function recompressSessionContext(
 
   const userConfig = await buildMobileStreamUserConfig(deps.settingsManager, false)
   const wrapMessageTime = isAutoInjectCurrentTimeEnabled(
-    Array.isArray(userConfig.disabledToolIds)
-      ? (userConfig.disabledToolIds as string[])
-      : undefined
+    Array.isArray(userConfig.disabledToolIds) ? (userConfig.disabledToolIds as string[]) : undefined
   )
 
   return ContextCompressorService.recompressCurrentSnapshot(

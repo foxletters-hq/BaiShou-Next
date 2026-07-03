@@ -20,9 +20,7 @@ export const AgentToolsSection: React.FC = () => {
       const saved =
         (await services.settingsManager.get<ToolManagementConfig>('tool_management_config')) ??
         DEFAULT_TOOL_MANAGEMENT_CONFIG
-      setConfig(
-        normalizeToolManagementConfig({ ...DEFAULT_TOOL_MANAGEMENT_CONFIG, ...saved })
-      )
+      setConfig(normalizeToolManagementConfig({ ...DEFAULT_TOOL_MANAGEMENT_CONFIG, ...saved }))
     })()
   }, [dbReady, services])
 

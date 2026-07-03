@@ -1,7 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme, useNativeToast, useDialog, Switch, Input, ModelVisionBadge } from '@baishou/ui/native'
+import {
+  useNativeTheme,
+  useNativeToast,
+  useDialog,
+  Switch,
+  Input,
+  ModelVisionBadge
+} from '@baishou/ui/native'
 import { AIProviderConfig } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { ProviderBrandIcon } from './ProviderBrandIcon'

@@ -1,5 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { WEATHER_IDS, normalizeWeatherId, MOOD_IDS, normalizeMoodIdForFilter, type WeatherId, type MoodId } from '@baishou/shared'
+import {
+  WEATHER_IDS,
+  normalizeWeatherId,
+  MOOD_IDS,
+  normalizeMoodIdForFilter,
+  type WeatherId,
+  type MoodId
+} from '@baishou/shared'
 
 export const DEFAULT_DIARY_PAGE_SIZE = 10
 export const DIARY_PAGE_SIZE_OPTIONS = [10, 20, 30, 50, 80, 100] as const
@@ -98,16 +105,23 @@ export function createDefaultDiaryFilterState(restored = false): DiaryFilterStat
 }
 
 export async function loadDiaryFilterState(): Promise<DiaryFilterState> {
-  const [savedQuery, savedMonth, savedWeathers, savedMoods, savedFavorite, savedPage, savedPageSize] =
-    await Promise.all([
-      AsyncStorage.getItem(DIARY_FILTER_STORAGE_KEYS.searchQuery),
-      AsyncStorage.getItem(DIARY_FILTER_STORAGE_KEYS.selectedMonth),
-      AsyncStorage.getItem(DIARY_FILTER_STORAGE_KEYS.filterWeathers),
-      AsyncStorage.getItem(DIARY_FILTER_STORAGE_KEYS.filterMoods),
-      AsyncStorage.getItem(DIARY_FILTER_STORAGE_KEYS.filterFavorite),
-      AsyncStorage.getItem(DIARY_FILTER_STORAGE_KEYS.currentPage),
-      AsyncStorage.getItem(DIARY_FILTER_STORAGE_KEYS.pageSize)
-    ])
+  const [
+    savedQuery,
+    savedMonth,
+    savedWeathers,
+    savedMoods,
+    savedFavorite,
+    savedPage,
+    savedPageSize
+  ] = await Promise.all([
+    AsyncStorage.getItem(DIARY_FILTER_STORAGE_KEYS.searchQuery),
+    AsyncStorage.getItem(DIARY_FILTER_STORAGE_KEYS.selectedMonth),
+    AsyncStorage.getItem(DIARY_FILTER_STORAGE_KEYS.filterWeathers),
+    AsyncStorage.getItem(DIARY_FILTER_STORAGE_KEYS.filterMoods),
+    AsyncStorage.getItem(DIARY_FILTER_STORAGE_KEYS.filterFavorite),
+    AsyncStorage.getItem(DIARY_FILTER_STORAGE_KEYS.currentPage),
+    AsyncStorage.getItem(DIARY_FILTER_STORAGE_KEYS.pageSize)
+  ])
 
   const state = createDefaultDiaryFilterState(true)
 
