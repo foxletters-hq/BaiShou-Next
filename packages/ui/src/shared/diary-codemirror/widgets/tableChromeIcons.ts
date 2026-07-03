@@ -8,7 +8,7 @@ function dot(cx: number, cy: number, r = 1.35): SVGCircleElement {
   return circle
 }
 
-/** 列/行把手：两列三行圆点（Obsidian 同款 ⋮⋮ 视觉） */
+/** 列/行把手：两列三行圆点（⋮⋮ 视觉） */
 export function createTableGripIcon(): SVGSVGElement {
   const svg = document.createElementNS(SVG_NS, 'svg')
   svg.setAttribute('viewBox', '0 0 10 16')

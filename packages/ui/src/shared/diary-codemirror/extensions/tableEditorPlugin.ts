@@ -37,6 +37,7 @@ import {
 } from '../table/tableFocus'
 import { setActiveTableCell, clearActiveTableCellEffects } from '../table/tableActiveCell'
 import { logDiaryBridge } from '../diaryBridgeDebug'
+import { shouldDeferTableCaretRedirect, findFencedCodeBlockContaining } from './fencedCodeScan'
 import { getCursorPositions, isCursorInRange } from './cursor'
 
 function resolveTableReplaceRange(
@@ -348,6 +349,8 @@ export const tableEditorPlugin = ViewPlugin.fromClass(
 
       const { head } = view.state.selection.main
       const doc = view.state.doc
+      if (shouldDeferTableCaretRedirect(doc, head)) return
+      if (findFencedCodeBlockContaining(doc, head)) return
       let redirected = false
 
       syntaxTree(view.state).iterate({
@@ -374,6 +377,7 @@ export const tableEditorPlugin = ViewPlugin.fromClass(
       if (!range) return
 
       if (head > range.rowTo && head < range.nodeTo) {
+        if (shouldDeferTableCaretRedirect(doc, head, range)) return
         logDiaryBridge('tableEditor', 'redirect:swallowed-in-node', {
           head,
           tableFrom: range.from,
@@ -389,6 +393,7 @@ export const tableEditorPlugin = ViewPlugin.fromClass(
 
       if (head > range.rowTo) return
       if (isOnPostTableInputLine(view, head, range.rowTo)) return
+      if (findFencedCodeBlockContaining(doc, head)) return
 
       logDiaryBridge('tableEditor', 'redirect:inside-table', {
         head,

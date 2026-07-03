@@ -8,6 +8,11 @@ import { collectLineSyntaxDecorations } from './buildLineSyntax'
 import { collectTableDecorations } from './buildTable'
 import { collectTableBlockRanges } from './buildTableChrome'
 import { collectTreeDecorations, getActiveLinesForDecorations } from './buildTree'
+import {
+  collectFencedCodeLineDecorations,
+  collectFencedCodeMarkDecorations,
+  expandActiveLinesForFencedCode
+} from './buildFencedCode'
 import type { DiaryCmPlatform } from '../types'
 
 export interface BuildMarkerHidingOptions {
@@ -25,12 +30,17 @@ export function buildMarkerHidingDecorations(
 
   const hasFocus = options?.hasFocus ?? true
   const activeLines = getActiveLinesForDecorations(state, hasFocus)
+  expandActiveLinesForFencedCode(state, activeLines)
   const marks: { from: number; to: number; value: Decoration }[] = []
   const imageRanges = collectImageDecorations(state, cursors, platform, marks)
   collectListLineDecorations(state, cursors, marks)
   collectLineSyntaxDecorations(state, activeLines, marks)
   const tableBlocks = collectTableBlockRanges(state)
-  collectTableDecorations(state, cursors, marks, tableBlocks)
-  collectTreeDecorations(state, activeLines, imageRanges, marks, tableBlocks, hasFocus)
+  if (platform?.interactionMode !== 'touch') {
+    collectTableDecorations(state, cursors, marks, tableBlocks)
+  }
+  collectFencedCodeLineDecorations(state, marks)
+  collectTreeDecorations(state, activeLines, imageRanges, marks, tableBlocks, hasFocus, platform)
+  collectFencedCodeMarkDecorations(state, marks, activeLines, hasFocus)
   return Decoration.set(marks, true)
 }

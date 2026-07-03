@@ -25,7 +25,8 @@ import { TableBlockWidget } from '../widgets/TableBlockWidget'
 import { diarySyntaxTreeGrowthEffect } from './diarySyntaxTreeGrowth'
 import type { DiaryCmPlatform } from '../types'
 
-function tablePreviewEffects(tr: Transaction): boolean {
+function tablePreviewEffects(tr: Transaction, platform?: DiaryCmPlatform): boolean {
+  if (platform?.interactionMode === 'touch' && tr.selectionSet) return true
   if (
     tr.effects.some(
       (e) =>
@@ -87,6 +88,7 @@ export function buildTablePreviewDecorations(
   options?: { ensureParse?: boolean }
 ): DecorationSet {
   const ranges: Range<Decoration>[] = []
+  const seenReplaceFrom = new Set<number>()
   const tree =
     options?.ensureParse === false
       ? syntaxTree(state)
@@ -98,6 +100,8 @@ export function buildTablePreviewDecorations(
 
       const surface = resolveTableSurfaceRange(state, node.from, node.to)
       if (!surface) return
+      if (seenReplaceFrom.has(surface.replaceFrom)) return
+      seenReplaceFrom.add(surface.replaceFrom)
 
       const activeCell = readActiveTableCellFor(state, surface.table.from)
       const chromeSelection = readTableChromeSelectionFor(state, surface.table.from)
@@ -122,7 +126,7 @@ export function tablePreviewField(platform?: DiaryCmPlatform): Extension {
       return buildTablePreviewDecorations(state, platform, { ensureParse: true })
     },
     update(deco, tr) {
-      if (tablePreviewEffects(tr)) {
+      if (tablePreviewEffects(tr, platform)) {
         return buildTablePreviewDecorations(tr.state, platform, {
           ensureParse: needsFullSyntaxParse(tr)
         })

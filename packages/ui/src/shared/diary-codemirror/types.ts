@@ -87,9 +87,10 @@ export interface DiaryCmSetTagColorRegistryPayload {
   registry: DiaryTagColorRegistry
 }
 
-/** WebView 内滚动时预留的底部遮挡高度（如 RN 浮动工具栏） */
+/** WebView 内滚动时预留的底部遮挡高度（如 RN 浮动工具栏）；keyboardVisible 表示软键盘已弹出 */
 export interface DiaryCmSetScrollInsetsPayload {
   bottom: number
+  keyboardVisible?: boolean
 }
 
 export type DiaryCmMarkdownMark = '**' | '*' | '`' | '~~'

@@ -58,4 +58,12 @@ describe('tablePostGap', () => {
     const change = postTableSeparatorChange(state.doc, rowEnd)
     expect(change).toEqual({ from: nextFrom, insert: '\n' })
   })
+
+  it('does not insert gap before fenced code block after table', () => {
+    const doc = '| A | B |\n| --- | --- |\n| 1 | 2 |\n```\ntube\n```'
+    const state = EditorState.create({ doc })
+    const rowEnd = state.doc.line(3).to
+    const change = postTableSeparatorChange(state.doc, rowEnd)
+    expect(change).toBeNull()
+  })
 })

@@ -71,7 +71,7 @@ export interface DiaryCodeMirrorBridgeApi {
   redo: () => void
   toggleMarkdownMark: (marker: DiaryCmMarkdownMark) => void
   isReady: () => boolean
-  setScrollInsets: (bottom: number) => void
+  setScrollInsets: (bottom: number, keyboardVisible?: boolean) => void
   scrollCaretIntoView: () => void
   deleteRange: (from: number, to: number) => void
 }
@@ -490,10 +490,13 @@ export function useDiaryCodeMirrorBridge(
   )
 
   const setScrollInsets = useCallback(
-    (bottom: number) => {
+    (bottom: number, keyboardVisible?: boolean) => {
       enqueueOrSend({
         type: 'setScrollInsets',
-        payload: { bottom: Math.max(0, bottom) }
+        payload: {
+          bottom: Math.max(0, bottom),
+          ...(keyboardVisible !== undefined ? { keyboardVisible } : {})
+        }
       })
     },
     [enqueueOrSend]

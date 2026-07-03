@@ -5,7 +5,7 @@ import { isInteractableChromeElement } from '../table/tableChromeHitTest'
 import { logDiaryBridge } from '../diaryBridgeDebug'
 import { isTableSheetOpen } from '../table/tableSheetInteraction'
 import { clearTableChromeSelection } from '../table/tableChromeSelection'
-import { setActiveTableCell } from '../table/tableActiveCell'
+import { activeTableCellField, setActiveTableCell } from '../table/tableActiveCell'
 import {
   findTableBlockAbovePoint,
   placeEditorCaretFromPointer
@@ -87,7 +87,10 @@ function placeCaretAndClearTableChrome(
   const placed = placeEditorCaretFromPointer(view, clientX, clientY, reason, target)
   if (!placed) return false
   clearTableChromeSelection(view)
-  view.dispatch({ effects: setActiveTableCell.of(null) })
+  const active = view.state.field(activeTableCellField, false)
+  if (active) {
+    view.dispatch({ effects: setActiveTableCell.of(null) })
+  }
   return true
 }
 

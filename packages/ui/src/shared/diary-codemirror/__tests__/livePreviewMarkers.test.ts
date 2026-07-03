@@ -1,6 +1,10 @@
 import { describe, it, expect, afterEach } from 'vitest'
+import { markdown } from '@codemirror/lang-markdown'
+import { EditorState } from '@codemirror/state'
 import { ensureSyntaxTree } from '@codemirror/language'
 import { createDiaryCodeMirror } from '../createDiaryCodeMirror'
+import { buildMarkerHidingDecorations } from '../extensions/build'
+import { editorFocusEffect } from '../extensions/livePreviewPlugin'
 import type { EditorView } from '@codemirror/view'
 
 describe('live preview marker hiding', () => {
@@ -29,6 +33,11 @@ describe('live preview marker hiding', () => {
     }
     ensureSyntaxTree(view.state, view.state.doc.length, 200)
     return view
+  }
+
+  function focusEditor(view: EditorView) {
+    view.dispatch({ effects: editorFocusEffect.of(true) })
+    view.focus()
   }
 
   it('hides ** markers and applies heading class for short doc', () => {
@@ -70,5 +79,87 @@ describe('live preview marker hiding', () => {
     mount('> quoted line\n')
     expect(parent.querySelector('.cm-rendered-blockquote-content')).not.toBeNull()
     expect(parent.querySelectorAll('.cm-syntax-hidden-widget').length).toBeGreaterThan(0)
+  })
+
+  it('renders fenced code with gray line background when cursor is outside', () => {
+    const content = '```\n你好\n```\n\nafter'
+    const v = mount(content, content.length)
+    focusEditor(v)
+    expect(parent.querySelectorAll('.cm-code-line').length).toBeGreaterThan(0)
+    expect(parent.textContent).toContain('你好')
+    expect(parent.textContent).not.toMatch(/```/)
+  })
+
+  it('shows fence markers when cursor is inside fenced block', () => {
+    const content = '```\n你好\n```\n'
+    const openFencePos = content.indexOf('```')
+    const v = mount(content, openFencePos + 1)
+    focusEditor(v)
+    expect(parent.querySelectorAll('.cm-code-line').length).toBeGreaterThan(0)
+    expect(v.state.doc.toString()).toContain('```')
+  })
+
+  it('hides fence markers outside active fenced block lines', () => {
+    const content = '```\n你好\n```\n'
+    const state = EditorState.create({
+      doc: content,
+      selection: { anchor: content.length, head: content.length },
+      extensions: [markdown()]
+    })
+    ensureSyntaxTree(state, state.doc.length, 200)
+    const deco = buildMarkerHidingDecorations(
+      state,
+      { resolveAttachmentUrl: (u) => u, interactionMode: 'touch' },
+      { hasFocus: true }
+    )
+    let hiddenFenceCount = 0
+    deco.between(0, state.doc.length, (_from, _to, value) => {
+      if (value.spec?.widget?.constructor.name === 'HiddenSyntaxWidget') hiddenFenceCount += 1
+    })
+    expect(hiddenFenceCount).toBeGreaterThan(0)
+  })
+
+  it('renders fenced code inline for block followed by body text', () => {
+    const content = 'sjsj\n```\ntube\nhhh\n```\nthg'
+    const v = mount(content, content.length)
+    focusEditor(v)
+    expect(parent.querySelectorAll('.cm-code-line').length).toBeGreaterThan(0)
+    expect(parent.textContent).toContain('tube')
+    expect(parent.textContent).toContain('thg')
+    expect(parent.textContent).not.toMatch(/```/)
+  })
+
+  it('moving caret into fenced block reveals fences without doc change', () => {
+    const content = '```\ntube\n```\nthg'
+    const v = mount(content, content.length)
+    const thgPos = content.indexOf('thg')
+    const closeFencePos = content.lastIndexOf('```')
+    v.dispatch({ selection: { anchor: closeFencePos, head: closeFencePos } })
+    focusEditor(v)
+    expect(v.state.doc.toString()).toBe(content)
+    v.dispatch({ selection: { anchor: thgPos, head: thgPos } })
+    expect(v.state.doc.toString()).toBe(content)
+    expect(v.state.doc.toString()).not.toContain('```thg')
+  })
+
+  it('touch mode does not stack cm-table-line decorations with table widget', () => {
+    const content = '| A | B |\n| --- | --- |\n| 1 | 2 |\n\nafter'
+    const v = mount(content, content.length)
+    focusEditor(v)
+    expect(parent.querySelectorAll('.cm-table-block').length).toBe(1)
+    expect(parent.querySelectorAll('.cm-table-line').length).toBe(0)
+  })
+
+  it('table plus fenced block does not insert extra gap on caret move', async () => {
+    const table = '| A | B |\n| --- | --- |\n| 1 | 2 |'
+    const content = `${table}\n\n\`\`\`\ntube\n\`\`\`\nthg`
+    const v = mount(content, content.length)
+    await new Promise((r) => queueMicrotask(r))
+    const before = v.state.doc.toString()
+    const thgPos = v.state.doc.toString().indexOf('thg')
+    v.dispatch({ selection: { anchor: thgPos, head: thgPos } })
+    await new Promise((r) => queueMicrotask(r))
+    await new Promise((r) => queueMicrotask(r))
+    expect(v.state.doc.toString()).toBe(before)
   })
 })

@@ -162,8 +162,8 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
   const prevKeyboardInsetRef = useRef(0)
 
   useEffect(() => {
-    bridge.setScrollInsets(bottomScrollInset)
-  }, [bottomScrollInset, bridge.setScrollInsets])
+    bridge.setScrollInsets(bottomScrollInset, keyboardInset > 0)
+  }, [bottomScrollInset, keyboardInset, bridge.setScrollInsets])
 
   useEffect(() => {
     const prev = prevKeyboardInsetRef.current
@@ -173,7 +173,12 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
     if (prev > 0) return
     const delayMs = Platform.OS === 'ios' ? 120 : 220
     const timer = setTimeout(() => bridge.scrollCaretIntoView(), delayMs)
-    return () => clearTimeout(timer)
+    // 键盘高度动画结束后补滚一次，确保光标在 IME 上方
+    const retryTimer = setTimeout(() => bridge.scrollCaretIntoView(), delayMs + 320)
+    return () => {
+      clearTimeout(timer)
+      clearTimeout(retryTimer)
+    }
   }, [keyboardInset, bridge.scrollCaretIntoView])
 
   useImperativeHandle(

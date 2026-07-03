@@ -2,17 +2,10 @@ import type { EditorState } from '@codemirror/state'
 import { Decoration } from '@codemirror/view'
 import { syntaxTree } from '@codemirror/language'
 import type { SyntaxNodeRef } from '@lezer/common'
-import {
-  codeBlockMark,
-  codeLineStyle,
-  codeLineStyleBottom,
-  codeLineStyleSingle,
-  codeLineStyleTop,
-  codeMarkStyle,
-  linkMark
-} from './styles'
+import { linkMark } from './styles'
 import type { ImageRange } from './buildImages'
 import { rangeOverlapsTableBlocks, type TableBlockRange } from './buildTableChrome'
+import type { DiaryCmPlatform } from '../types'
 
 type DecorationMark = { from: number; to: number; value: Decoration }
 
@@ -32,19 +25,20 @@ function collectActiveLines(state: EditorState, hasFocus: boolean): Set<number> 
   for (const range of state.selection.ranges) {
     const firstLine = doc.lineAt(range.from).number
     const lastLine = doc.lineAt(range.to).number
-    for (let n = firstLine; n <= lastLine; n++) activeLines.add(n)
+    for (let n = firstLine; n <= lastLine; n += 1) activeLines.add(n)
   }
   return activeLines
 }
 
-/** 语法树装饰：围栏代码、链接等（行级标题/引用/行内隐藏由 buildLineSyntax 处理） */
+/** 语法树装饰：链接等（围栏代码由 buildFencedCode 处理） */
 export function collectTreeDecorations(
   state: EditorState,
-  activeLines: Set<number>,
+  _activeLines: Set<number>,
   imageRanges: ImageRange[],
   marks: DecorationMark[],
   widgetizedTables: TableBlockRange[] = [],
-  hasFocus = true
+  hasFocus = true,
+  _platform?: DiaryCmPlatform
 ): void {
   const tree = syntaxTree(state)
   const doc = state.doc
@@ -64,33 +58,6 @@ export function collectTreeDecorations(
       const name = node.type.name
 
       if (name === 'FencedCode') {
-        const firstLineNum = doc.lineAt(node.from).number
-        const lastLineNum = doc.lineAt(node.to).number
-        let anyActive = false
-        for (let n = firstLineNum; n <= lastLineNum; n++) {
-          if (activeLines.has(n)) {
-            anyActive = true
-            break
-          }
-        }
-        if (anyActive) {
-          for (let n = firstLineNum; n <= lastLineNum; n++) activeLines.add(n)
-        }
-
-        pushDecoration(marks, codeBlockMark, node.from, node.to)
-
-        for (let l = firstLineNum; l <= lastLineNum; l++) {
-          const curLine = doc.line(l)
-          let style = codeLineStyle
-          if (firstLineNum === lastLineNum) {
-            style = codeLineStyleSingle
-          } else if (l === firstLineNum) {
-            style = codeLineStyleTop
-          } else if (l === lastLineNum) {
-            style = codeLineStyleBottom
-          }
-          marks.push(style.range(curLine.from))
-        }
         return false
       }
 
@@ -113,13 +80,6 @@ export function collectTreeDecorations(
           if (!activeLinkStarts.has(node.from)) {
             pushDecoration(marks, linkMark, openFrom + 1, closeFrom)
           }
-        }
-      }
-
-      if (name === 'CodeMark') {
-        const parent = node.node.parent
-        if (parent && parent.type.name === 'FencedCode') {
-          pushDecoration(marks, codeMarkStyle, node.from, node.to)
         }
       }
     }

@@ -699,7 +699,7 @@ export const editorTheme = EditorView.baseTheme({
     lineHeight: '1.6'
   },
 
-  // 围栏代码块（Decoration.mark 为行内 span，禁止 block 属性）
+  // 围栏代码块行级灰底（inline live preview）
   '.cm-rendered-codeBlock': {
     fontFamily: "'Fira Code', 'Courier New', monospace",
     backgroundColor: 'var(--bg-surface-normal)',
@@ -707,18 +707,22 @@ export const editorTheme = EditorView.baseTheme({
     lineHeight: '1.6'
   },
   '.cm-code-line': {
-    backgroundColor: 'var(--bg-surface-normal) !important'
+    backgroundColor: 'var(--bg-code-block, #eceef2) !important',
+    paddingLeft: '12px !important',
+    paddingRight: '12px !important'
   },
   '.cm-activeLine.cm-code-line': {
-    backgroundColor: 'var(--bg-surface-normal) !important'
+    backgroundColor: 'var(--bg-code-block, #eceef2) !important'
   },
   '.cm-code-line-top': {
-    paddingTop: '8px !important',
+    paddingTop: '12px !important',
+    marginTop: '8px',
     borderTopLeftRadius: '8px',
     borderTopRightRadius: '8px'
   },
   '.cm-code-line-bottom': {
-    paddingBottom: '8px !important',
+    paddingBottom: '12px !important',
+    marginBottom: '8px',
     borderBottomLeftRadius: '8px',
     borderBottomRightRadius: '8px'
   },

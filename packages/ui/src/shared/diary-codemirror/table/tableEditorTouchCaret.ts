@@ -7,6 +7,10 @@ import { clearActiveTableCellEffects } from './tableActiveCell'
 import { blurTableCellEditor } from './tableDom'
 import { placeCursorAfterTable } from './tableFocus'
 import { findTableRowToForGapPos } from './tablePostGap'
+import {
+  findFencedCodeBlockContaining,
+  shouldDeferTableCaretRedirect
+} from '../extensions/fencedCodeScan'
 
 const TABLE_BLOCK_ABOVE_TOLERANCE_PX = 72
 
@@ -61,6 +65,7 @@ function resolvePosFromLineTarget(
 }
 
 function redirectIfOnGapLine(view: EditorView, pos: number, reason: string): boolean {
+  if (shouldDeferTableCaretRedirect(view.state.doc, pos)) return false
   ensureSyntaxTree(view.state, view.state.doc.length, 200)
   const tableRowTo = findTableRowToForGapPos(view.state, pos)
   if (tableRowTo == null) return false
@@ -78,6 +83,8 @@ function redirectIfOnGapLine(view: EditorView, pos: number, reason: string): boo
 
 function redirectIfInsideTableNode(view: EditorView, pos: number): boolean {
   const doc = view.state.doc
+  if (findFencedCodeBlockContaining(doc, pos)) return false
+  if (shouldDeferTableCaretRedirect(doc, pos)) return false
   let redirected = false
 
   syntaxTree(view.state).iterate({
@@ -99,6 +106,7 @@ function redirectIfInsideTableNode(view: EditorView, pos: number): boolean {
   const range = findTableRangeAt(view.state, pos)
   if (!range) return false
   if (pos > range.rowTo && pos < range.nodeTo) {
+    if (shouldDeferTableCaretRedirect(doc, pos, range)) return false
     blurTableCellEditor()
     placeCursorAfterTable(view, range.rowTo)
     return true
@@ -158,6 +166,7 @@ function placeAfterTableBlock(
 /** head 落在表格 markdown 区内时，移到表后正文（WebView 常不经 CM selectionSet 把 head 重置为 0） */
 function redirectIfHeadStuckInTable(view: EditorView, reason: string): boolean {
   const head = view.state.selection.main.head
+  if (findFencedCodeBlockContaining(view.state.doc, head)) return false
   const range = findTableRangeAt(view.state, head)
   if (!range || head > range.rowTo) return false
 

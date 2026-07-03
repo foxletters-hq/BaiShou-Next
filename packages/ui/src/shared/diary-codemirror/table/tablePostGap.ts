@@ -2,6 +2,8 @@ import type { EditorState, Text } from '@codemirror/state'
 import { syntaxTree } from '@codemirror/language'
 import { parseTableFromDoc } from './table.model'
 
+const FENCE_OPEN_LINE_RE = /^\s*(`{3,}|~{3,})/
+
 /** 文档最后一行是否为空白行（参考 Live Preview 编辑器的尾部空行约定） */
 export function hasTerminalBlankLine(doc: Text): boolean {
   if (doc.lines === 0) return false
@@ -123,6 +125,10 @@ export function collectPostTableGapRepairs(
 
   const gapLine = doc.line(gapLineNum)
   if (gapLine.text.trim().length !== 0) {
+    // 表后紧跟围栏代码块时勿插入空行，否则会顶开 ``` 并破坏触摸端编辑态
+    if (FENCE_OPEN_LINE_RE.test(gapLine.text)) {
+      return repairs
+    }
     repairs.push({ from: gapLine.from, insert: '\n' })
   }
 

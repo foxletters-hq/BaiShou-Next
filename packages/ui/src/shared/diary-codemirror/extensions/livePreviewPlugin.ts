@@ -1,17 +1,19 @@
-import { syntaxTree } from '@codemirror/language'
-import {
-  StateEffect,
-  StateField,
-  type Extension,
-  type Transaction
-} from '@codemirror/state'
+import { StateEffect, StateField, type Extension, type Transaction } from '@codemirror/state'
 import { DecorationSet, EditorView } from '@codemirror/view'
+import { syntaxTree } from '@codemirror/language'
 import { forceImageRefresh } from './effects'
 import { diarySyntaxTreeGrowthEffect } from './diarySyntaxTreeGrowth'
 import { buildMarkerHidingDecorations } from './build'
+import {
+  livePreviewFreezePlugin,
+  previewFrozenField,
+  setPreviewFrozen
+} from './livePreviewFreeze'
 import type { DiaryCmPlatform } from '../types'
 
 const editorFocusEffect = StateEffect.define<boolean>()
+
+export { editorFocusEffect }
 
 const editorFocusField = StateField.define<boolean>({
   create: () => false,
@@ -37,6 +39,16 @@ function normalizePlatform(
 }
 
 function shouldRebuildLivePreview(tr: Transaction): boolean {
+  if (tr.state.field(previewFrozenField)) {
+    if (tr.effects.some((e) => e.is(setPreviewFrozen) && e.value === false)) {
+      return true
+    }
+    if (tr.docChanged) return true
+    // 点击进围栏块时需立刻根据 selection/focus 显隐 ```，不能等 freeze 结束
+    if (tr.selectionSet) return true
+    if (tr.effects.some((e) => e.is(editorFocusEffect))) return true
+    return false
+  }
   if (tr.docChanged) return true
   if (tr.selectionSet) return true
   if (syntaxTree(tr.state) !== syntaxTree(tr.startState)) return true
@@ -47,9 +59,7 @@ function shouldRebuildLivePreview(tr: Transaction): boolean {
 }
 
 /**
- * 行内/列表 live preview 装饰（表格 widget 由 tablePreviewField 独立提供）。
- * 使用 StateField：RN WebView 上 ViewPlugin 的 line/mark 装饰有时完全不进 DOM，
- * 而 StateField + EditorView.decorations（表格块 widget）正常。
+ * 行内 live preview 装饰（表格 widget 由 tablePreviewField 独立提供）。
  */
 export function livePreviewField(
   resolveUrlOrPlatform?: ((url: string) => string) | DiaryCmPlatform
@@ -73,6 +83,8 @@ export function livePreviewField(
 
   return [
     editorFocusField,
+    previewFrozenField,
+    livePreviewFreezePlugin(),
     EditorView.focusChangeEffect.of((_, focusing) => editorFocusEffect.of(focusing)),
     livePreviewDecorationsField
   ]

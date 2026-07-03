@@ -8,7 +8,7 @@ import {
   TABLE_CHROME_LONG_PRESS_MS
 } from './tableTouchHelpers'
 
-describe('table touch chrome (Obsidian layout)', () => {
+describe('table touch chrome layout', () => {
   let parent: HTMLElement | null = null
 
   afterEach(() => {
