@@ -1,12 +1,14 @@
 import type { EditorState } from '@codemirror/state'
 import { syntaxTree } from '@codemirror/language'
-import type { TextLine } from '@codemirror/state'
+import type { SyntaxNode } from '@lezer/common'
 import { isTableSeparatorLine } from './buildTable'
+
+type DocLine = ReturnType<EditorState['doc']['line']>
 
 export interface TableCellBounds {
   from: number
   to: number
-  line: TextLine
+  line: DocLine
 }
 
 export function isTableContentLine(lineText: string): boolean {
@@ -27,7 +29,7 @@ export function countTableColumns(lineText: string): number {
 }
 
 /** 按管道符切分，定位光标所在单元格内容区间（含行内编辑态） */
-export function findTableCellBoundsInLine(line: TextLine, pos: number): TableCellBounds | null {
+export function findTableCellBoundsInLine(line: DocLine, pos: number): TableCellBounds | null {
   const text = line.text
   if (!isTableContentLine(text)) return null
 
@@ -68,7 +70,7 @@ export function getTableCellBoundsFromSyntax(
   return findTableCellBoundsInLine(line, pos)
 }
 
-export function isLastTableCellInRow(node: { nextSibling: { type: { name: string } } | null }): boolean {
+export function isLastTableCellInRow(node: SyntaxNode): boolean {
   let sibling = node.nextSibling
   while (sibling) {
     if (sibling.type.name === 'TableCell') return false

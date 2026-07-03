@@ -1,9 +1,11 @@
-import { EditorState, type Transaction } from '@codemirror/state'
-import type { Text, TextLine } from '@codemirror/state'
+import { EditorState, type Transaction, type Range } from '@codemirror/state'
+import type { Text } from '@codemirror/state'
 import { allowTableStructureEdit } from '../table/tableEffects'
 import { rangeOverlapsTableMarkdown } from '../table/tableBounds'
 import { isTableSeparatorLine } from './buildTable'
 import { isTableContentLine } from './tableCell.utils'
+
+type DocLine = ReturnType<EditorState['doc']['line']>
 
 const TABLE_CELL_LINE_BREAK = '<br>'
 
@@ -11,7 +13,7 @@ function isTableStructureLine(lineText: string): boolean {
   return isTableContentLine(lineText) || isTableSeparatorLine(lineText)
 }
 
-function isDeletingEntireLine(line: TextLine, fromA: number, toA: number): boolean {
+function isDeletingEntireLine(line: DocLine, fromA: number, toA: number): boolean {
   return fromA <= line.from && toA >= line.to
 }
 
@@ -20,14 +22,14 @@ function isDeletingWholeTableRun(
   doc: Text,
   fromA: number,
   toA: number,
-  tableLines: TextLine[]
+  tableLines: DocLine[]
 ): boolean {
   if (tableLines.length === 0) return false
   return tableLines.every((line) => isDeletingEntireLine(line, fromA, toA))
 }
 
-function collectTableLinesInRange(doc: Text, fromA: number, toA: number): TextLine[] {
-  const lines: TextLine[] = []
+function collectTableLinesInRange(doc: Text, fromA: number, toA: number): DocLine[] {
+  const lines: DocLine[] = []
   const seen = new Set<number>()
   let pos = fromA
   while (pos < toA) {
@@ -43,10 +45,10 @@ function collectTableLinesInRange(doc: Text, fromA: number, toA: number): TextLi
 
 function rangeDeletesPipe(
   doc: Text,
-  line: TextLine,
+  line: DocLine,
   fromA: number,
   toA: number,
-  tableLinesInDelete: TextLine[]
+  tableLinesInDelete: DocLine[]
 ): boolean {
   const sliceFrom = Math.max(fromA, line.from)
   const sliceTo = Math.min(toA, line.to)
@@ -92,12 +94,7 @@ function rangeMergesTableLines(doc: Text, fromA: number, toA: number): boolean {
   return false
 }
 
-function insertionSplitsTableRow(
-  doc: Text,
-  fromA: number,
-  toA: number,
-  inserted: string
-): boolean {
+function insertionSplitsTableRow(doc: Text, fromA: number, toA: number, inserted: string): boolean {
   if (!inserted.includes('\n')) return false
 
   const startLine = doc.lineAt(fromA)

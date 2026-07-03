@@ -61,9 +61,7 @@ function shouldPlaceCaretFromTouch(
 ): boolean {
   if (target.closest('.cm-table-context-menu-layer, .cm-table-sheet-layer')) return false
   if (target.closest('.cm-table-cell-source')) return false
-  if (
-    target.closest('.cm-table-handle, .cm-table-corner-menu, .cm-table-add-btn')
-  ) {
+  if (target.closest('.cm-table-handle, .cm-table-corner-menu, .cm-table-add-btn')) {
     return false
   }
 
@@ -153,19 +151,11 @@ export function tablePostTableTouchPlugin(platform?: DiaryCmPlatform): Extension
           if (!touch) return false
           const target = event.target
           if (!(target instanceof Element)) return false
-          if (
-            !shouldPlaceCaretFromTouch(view, target, touch.clientX, touch.clientY)
-          ) {
+          if (!shouldPlaceCaretFromTouch(view, target, touch.clientX, touch.clientY)) {
             return false
           }
 
-          placeCaretAndClearTableChrome(
-            view,
-            touch.clientX,
-            touch.clientY,
-            'touchend',
-            target
-          )
+          placeCaretAndClearTableChrome(view, touch.clientX, touch.clientY, 'touchend', target)
           state.suppressClickUntil = Date.now() + CLICK_SUPPRESS_MS
           return false
         },
@@ -176,19 +166,11 @@ export function tablePostTableTouchPlugin(platform?: DiaryCmPlatform): Extension
           }
           const target = event.target
           if (!(target instanceof Element)) return false
-          if (
-            !shouldPlaceCaretFromTouch(view, target, event.clientX, event.clientY)
-          ) {
+          if (!shouldPlaceCaretFromTouch(view, target, event.clientX, event.clientY)) {
             return false
           }
 
-          placeCaretAndClearTableChrome(
-            view,
-            event.clientX,
-            event.clientY,
-            'click',
-            target
-          )
+          placeCaretAndClearTableChrome(view, event.clientX, event.clientY, 'click', target)
           return false
         }
       }
