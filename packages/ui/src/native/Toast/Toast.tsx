@@ -80,7 +80,13 @@ type BaishouHeroToastProps = ToastComponentProps & {
   onDismiss?: () => void
 }
 
-const BaishouHeroToast: React.FC<BaishouHeroToastProps> = ({ id, message, type, hide, onDismiss }) => {
+const BaishouHeroToast: React.FC<BaishouHeroToastProps> = ({
+  id,
+  message,
+  type,
+  hide,
+  onDismiss
+}) => {
   const { isDark, colors } = useNativeTheme()
   const { width } = useWindowDimensions()
 

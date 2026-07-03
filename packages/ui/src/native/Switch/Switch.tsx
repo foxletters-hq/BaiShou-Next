@@ -67,7 +67,10 @@ export const Switch: React.FC<NativeSwitchProps> = ({
           style={[
             styles.thumb,
             rThumbStyle,
-            { backgroundColor: '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.06)' }
+            {
+              backgroundColor: '#FFFFFF',
+              borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.06)'
+            }
           ]}
         />
       </Animated.View>

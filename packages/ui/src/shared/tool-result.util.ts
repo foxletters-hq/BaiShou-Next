@@ -66,7 +66,9 @@ function shouldUseStructuredPresentation(data: unknown): boolean {
   )
 }
 
-export function resolveToolResultPresentation(invocation: ToolInvocationLike): ToolResultPresentation {
+export function resolveToolResultPresentation(
+  invocation: ToolInvocationLike
+): ToolResultPresentation {
   const isError = isToolResultError(invocation)
   const plainText = unwrapPlainToolResultText(invocation.result)
   const sourceUrl = readToolSourceUrl(invocation)
@@ -119,9 +121,7 @@ export function resolveActiveToolDisplayName(
   if (!activeTool?.name) return null
   if (activeTool.name === 'web_search') {
     const engineKey = WEB_SEARCH_ENGINE_LABEL_KEYS[webSearchEngine]
-    const engineLabel = engineKey
-      ? t(engineKey, webSearchEngine)
-      : webSearchEngine
+    const engineLabel = engineKey ? t(engineKey, webSearchEngine) : webSearchEngine
     return `${t('agent.tools.web_search', '网络搜索')} (${engineLabel})`
   }
   return t(`agent.tools.${activeTool.name}`, activeTool.name)

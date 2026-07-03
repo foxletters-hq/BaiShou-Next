@@ -79,22 +79,22 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = (props) => {
     return useTrailingMargin ? preserveChatDisplayNewlines(prepared) : prepared
   }, [content, resolveImageUri, useTrailingMargin])
 
-  const streamFlavor =
+  const streamFlavor: 'github' | 'commonmark' =
     variant === 'chat' || isStreaming || variant === 'ancillary' ? 'commonmark' : 'github'
   const markdownContainerStyle =
     variant === 'preview'
       ? [styles.containerPreview, style]
       : variant === 'chat' || variant === 'ancillary'
-      ? [styles.containerCompact, style]
-      : [variant === 'default' ? styles.containerDefault : styles.containerCompact, style]
+        ? [styles.containerCompact, style]
+        : [variant === 'default' ? styles.containerDefault : styles.containerCompact, style]
   const nativeContainerStyle =
     variant === 'preview'
       ? styles.markdownPreviewNative
       : variant === 'chat'
-      ? styles.markdownChatNative
-      : variant === 'ancillary'
-        ? styles.markdownAncillaryNative
-        : styles.markdownFill
+        ? styles.markdownChatNative
+        : variant === 'ancillary'
+          ? styles.markdownAncillaryNative
+          : styles.markdownFill
 
   if (useLegacy) {
     return <LegacyMarkdownRenderer {...props} />
@@ -129,14 +129,9 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = (props) => {
   return (
     <View style={markdownContainerStyle}>
       {isStreaming ? (
-        <StreamdownText
-          {...streamdownCommonProps}
-          streamingConfig={{ tableMode: 'hidden' }}
-        />
+        <StreamdownText {...streamdownCommonProps} streamingConfig={{ tableMode: 'hidden' }} />
       ) : (
-        <StaticStreamdownText
-          {...streamdownCommonProps}
-        />
+        <StaticStreamdownText {...streamdownCommonProps} />
       )}
     </View>
   )
