@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import styles from './AIModelServicesView.module.css'
 import type { AIModelServicesViewModel } from './useAIModelServicesView'
+import { resolveProviderTypeLabel } from './ai-model-services.constants'
 import { Blocks, CheckCircle2, ChevronDown, Cpu, Search, Sparkles, X } from 'lucide-react'
 
 export interface AIModelServicesModalsProps {
@@ -62,9 +63,7 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
                     >
                       {renderTypeIcon(addModalData.type)}
                       <span style={{ flex: 1 }}>
-                        {addModalData.type === 'openai'
-                          ? t('provider.openai_spec', 'OpenAI 规范')
-                          : addModalData.type.toUpperCase()}
+                        {resolveProviderTypeLabel(addModalData.type, t)}
                       </span>
                       <ChevronDown
                         size={20}
@@ -83,11 +82,7 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
                             }}
                           >
                             {renderTypeIcon(type)}
-                            <span>
-                              {type === 'openai'
-                                ? t('provider.openai_spec', 'OpenAI 规范')
-                                : type.toUpperCase()}
-                            </span>
+                            <span>{resolveProviderTypeLabel(type, t)}</span>
                           </div>
                         ))}
                       </div>

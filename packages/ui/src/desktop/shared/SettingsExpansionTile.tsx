@@ -59,7 +59,7 @@ export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
           </span>
           {subtitle && <span className="settings-list-tile-subtitle">{subtitle}</span>}
         </div>
-        <ChevronDown className="settings-expansion-arrow" size={24} />
+        <ChevronDown className="settings-expansion-arrow" size={18} />
       </div>
 
       <div className={`settings-expansion-grid-wrapper ${open ? 'expanded' : ''}`}>

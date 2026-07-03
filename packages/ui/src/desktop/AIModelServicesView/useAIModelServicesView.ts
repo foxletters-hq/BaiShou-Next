@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useSensors, useSensor, PointerSensor } from '@dnd-kit/core'
+import { resolveProviderDisplayName } from '@baishou/shared'
 import { arrayMove } from '@dnd-kit/sortable'
 import { useTranslation } from 'react-i18next'
 import { useDialog } from '../Dialog'
@@ -43,7 +44,7 @@ export function useAIModelServicesView(props: AIModelServicesViewProps) {
     ...BASE_KNOWN_PROVIDERS,
     ...getCombinedProviders.map((id) => ({
       id,
-      name: providers[id]?.name || id.toUpperCase(),
+      name: providers[id]?.name || resolveProviderDisplayName(id),
       iconUrl: getProviderIcon(id, isDark),
       defaultBase: providers[id]?.apiBaseUrl || '',
       isSystem: false,
