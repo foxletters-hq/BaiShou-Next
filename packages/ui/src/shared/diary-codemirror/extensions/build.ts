@@ -2,7 +2,7 @@ import type { EditorState } from '@codemirror/state'
 import { ensureSyntaxTree } from '@codemirror/language'
 import { Decoration, DecorationSet } from '@codemirror/view'
 import { getCursorPositions } from './cursor'
-import { collectImageDecorations } from './buildImages'
+import { scanImageRanges } from './buildImages'
 import { collectListLineDecorations } from './buildList'
 import { collectLineSyntaxDecorations } from './buildLineSyntax'
 import { collectTableDecorations } from './buildTable'
@@ -32,7 +32,7 @@ export function buildMarkerHidingDecorations(
   const activeLines = getActiveLinesForDecorations(state, hasFocus)
   expandActiveLinesForFencedCode(state, activeLines)
   const marks: { from: number; to: number; value: Decoration }[] = []
-  const imageRanges = collectImageDecorations(state, cursors, platform, marks)
+  const imageRanges = scanImageRanges(state)
   collectListLineDecorations(state, cursors, marks)
   collectLineSyntaxDecorations(state, activeLines, marks)
   const tableBlocks = collectTableBlockRanges(state)

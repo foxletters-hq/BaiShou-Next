@@ -768,6 +768,16 @@ export const editorTheme = EditorView.baseTheme({
   '.cm-image-container.cm-image-container--unsized': {
     maxWidth: `min(100%, ${IMAGE_SIZE_CONFIG.defaultDisplayWidth}px)`
   },
+  '.cm-image-placeholder': {
+    display: 'block',
+    width: '100%',
+    minHeight: '96px',
+    margin: '8px 0',
+    borderRadius: '8px',
+    backgroundColor: 'var(--bg-surface-normal)',
+    border: '1px dashed var(--border-subtle)',
+    boxSizing: 'border-box'
+  },
   '.cm-image-resizable': {
     display: 'block',
     maxWidth: '100%',
