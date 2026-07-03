@@ -1,6 +1,7 @@
-import { logger } from '@baishou/shared'
+import { logger, normalizePartData } from '@baishou/shared'
 import { AgentChatCoreService } from '../agent-chat-core.service'
 import type { IStreamEmitter } from '../stream-emitter.interface'
+import type { AttachmentInput } from '../agent-session.types'
 
 export interface ActionDeps {
   emitter: IStreamEmitter
@@ -25,15 +26,70 @@ export interface StreamRunConfig {
 }
 
 export function extractTextFromUserMessage(userMessage: {
-  parts?: Array<{ type: string; data?: { text?: string } | string }>
+  parts?: Array<{ type: string; data?: { text?: string; content?: string } | string }>
 }): string {
   if (userMessage.parts && userMessage.parts.length > 0) {
     return userMessage.parts
       .filter((p) => p.type === 'text')
-      .map((p) => (typeof p.data === 'object' && p.data?.text ? p.data.text : p.data) || '')
+      .map((p) => {
+        if (typeof p.data === 'object' && p.data) {
+          if (typeof p.data.text === 'string') return p.data.text
+          if (typeof p.data.content === 'string') return p.data.content
+        }
+        return typeof p.data === 'string' ? p.data : ''
+      })
       .join('\n')
   }
   return ''
+}
+
+export function extractAttachmentsFromParts(
+  parts?: Array<{ type?: string; data?: unknown }>
+): AttachmentInput[] | undefined {
+  if (!parts?.length) return undefined
+
+  const attachments: AttachmentInput[] = []
+  for (const part of parts) {
+    const partType = String(part.type ?? '').toLowerCase()
+    if (partType !== 'attachment' && partType !== 'image') continue
+
+    const att = normalizePartData(part.data)
+    const fileName = String(att.name || att.fileName || 'Attachment')
+    const isImage =
+      partType === 'image' || att.type === 'image' || att.isImage === true
+    attachments.push({
+      type: isImage ? 'image' : 'file',
+      url: typeof att.url === 'string' ? att.url : undefined,
+      data: typeof att.data === 'string' ? att.data : undefined,
+      mimeType: typeof att.mimeType === 'string' ? att.mimeType : undefined,
+      name: fileName,
+      filePath: typeof att.filePath === 'string' ? att.filePath : undefined,
+      isImage,
+      isPdf: att.isPdf === true,
+      isText: att.isText === true,
+      textContent: typeof att.textContent === 'string' ? att.textContent : undefined
+    })
+  }
+
+  return attachments.length > 0 ? attachments : undefined
+}
+
+export function extractUserMessagePayload(userMessage: {
+  parts?: Array<{ type?: string; data?: unknown }>
+}): { userText: string; attachments?: AttachmentInput[] } {
+  return {
+    userText: extractTextFromUserMessage(
+      userMessage as Parameters<typeof extractTextFromUserMessage>[0]
+    ),
+    attachments: extractAttachmentsFromParts(userMessage.parts)
+  }
+}
+
+export function hasUserMessagePayload(payload: {
+  userText: string
+  attachments?: AttachmentInput[]
+}): boolean {
+  return Boolean(payload.userText.trim()) || Boolean(payload.attachments?.length)
 }
 
 export async function runStreamWithPersistence(

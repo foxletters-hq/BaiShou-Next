@@ -1,6 +1,11 @@
-import { type ActionDeps, type StreamRunConfig, runStreamWithPersistence } from './base.action'
+import {
+  type ActionDeps,
+  type StreamRunConfig,
+  extractUserMessagePayload,
+  hasUserMessagePayload,
+  runStreamWithPersistence
+} from './base.action'
 import type { SessionRepository, SnapshotRepository } from '@baishou/database'
-import { normalizePartData } from '@baishou/shared'
 import {
   truncateSessionAfterOrderIndex,
   truncateOptionsWithDiskFlush
@@ -27,18 +32,8 @@ export async function runResendAction(
     return false
   }
 
-  const textParts = targetWithParts.parts?.filter((p) => p.type === 'text') || []
-  const userText = textParts
-    .map((p) => {
-      const data = normalizePartData(p.data)
-      return typeof data.text === 'string'
-        ? data.text
-        : typeof data.content === 'string'
-          ? data.content
-          : ''
-    })
-    .join('\n')
-  if (!userText) {
+  const { userText, attachments } = extractUserMessagePayload(targetWithParts)
+  if (!hasUserMessagePayload({ userText, attachments })) {
     deps.emitter.sendFinish(deps.sessionId, { error: '消息内容为空' })
     return false
   }
@@ -54,6 +49,7 @@ export async function runResendAction(
   return runStreamWithPersistence(deps, {
     ...config,
     userText,
+    attachments,
     skipUserMessageRecording: true,
     forceRecompress: true,
     userMessageId: messageId

@@ -1,7 +1,8 @@
 import {
   type ActionDeps,
   type StreamRunConfig,
-  extractTextFromUserMessage,
+  extractUserMessagePayload,
+  hasUserMessagePayload,
   runStreamWithPersistence
 } from './base.action'
 import type { SessionRepository, SnapshotRepository } from '@baishou/database'
@@ -45,6 +46,11 @@ export async function runRegenerateAction(
 
   if (!userMessage) return false
 
+  const { userText, attachments } = extractUserMessagePayload(
+    userMessage as Parameters<typeof extractUserMessagePayload>[0]
+  )
+  if (!hasUserMessagePayload({ userText, attachments })) return false
+
   await truncateSessionAfterOrderIndex(
     sessionRepo,
     snapshotRepo,
@@ -55,9 +61,8 @@ export async function runRegenerateAction(
 
   return runStreamWithPersistence(deps, {
     ...config,
-    userText: extractTextFromUserMessage(
-      userMessage as Parameters<typeof extractTextFromUserMessage>[0]
-    ),
+    userText,
+    attachments,
     skipUserMessageRecording: true,
     forceRecompress: true,
     userMessageId: userMessage.id
