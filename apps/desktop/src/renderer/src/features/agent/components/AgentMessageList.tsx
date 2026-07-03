@@ -209,11 +209,7 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
 
   const activeToolDisplayName = useMemo(
     () =>
-      resolveActiveToolDisplayName(
-        stream.activeTool,
-        t,
-        settings.webSearchConfig?.webSearchEngine
-      ),
+      resolveActiveToolDisplayName(stream.activeTool, t, settings.webSearchConfig?.webSearchEngine),
     [stream.activeTool, settings.webSearchConfig, t]
   )
 

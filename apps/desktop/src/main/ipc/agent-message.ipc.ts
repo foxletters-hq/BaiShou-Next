@@ -5,7 +5,11 @@ import {
   reconcileCompressionStateAfterTruncate
 } from '@baishou/ai'
 import { isAutoInjectCurrentTimeEnabled } from '@baishou/shared'
-import { getAgentManagers, buildStreamConfig, buildAgentUserConfigFromSettings } from './agent-helpers'
+import {
+  getAgentManagers,
+  buildStreamConfig,
+  buildAgentUserConfigFromSettings
+} from './agent-helpers'
 import { AgentChatService } from './AgentChatService'
 import { settingsManager } from './settings.ipc'
 import { groupPartsByMessageId, mapAgentMessageForRenderer } from './map-agent-message-for-renderer'

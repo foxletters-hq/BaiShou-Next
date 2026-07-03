@@ -107,7 +107,8 @@ export function useDiaryData(query: DiaryPageQuery) {
   const searchTerm = query.searchQuery.trim()
   const browseMonthKey = query.selectedMonth?.getTime() ?? 0
   const searchFilterKey = useMemo(
-    () => `${query.filterFavorite ? 1 : 0}:${query.filterWeathers.join(',')}:${query.filterMoods.join(',')}`,
+    () =>
+      `${query.filterFavorite ? 1 : 0}:${query.filterWeathers.join(',')}:${query.filterMoods.join(',')}`,
     [query.filterFavorite, query.filterWeathers, query.filterMoods]
   )
   const browseFilterKey = useMemo(
