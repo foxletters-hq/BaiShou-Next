@@ -1,6 +1,9 @@
 import React, { useMemo, useState } from 'react'
 import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native'
-import { resolveToolResultPresentation, type ToolInvocationLike } from '../../shared/tool-result.util'
+import {
+  resolveToolResultPresentation,
+  type ToolInvocationLike
+} from '../../shared/tool-result.util'
 import { AgentMarkdownRenderer } from '../AgentMarkdown'
 import { useNativeTheme } from '../theme'
 
@@ -43,10 +46,13 @@ export const ToolResultContent = React.memo(function ToolResultContent({
           <StructuredToolResult data={presentation.data} colors={colors} />
         ) : (
           <>
-            {presentation.sourceUrl ? (
+            {presentation.mode === 'plain' && presentation.sourceUrl ? (
               <Text
                 style={[styles.sourceUrl, { color: colors.primary }]}
-                onPress={() => Linking.openURL(presentation.sourceUrl!).catch(() => {})}
+                onPress={() => {
+                  const url = presentation.sourceUrl
+                  if (url) void Linking.openURL(url).catch(() => {})
+                }}
               >
                 {presentation.sourceUrl}
               </Text>
@@ -81,7 +87,10 @@ function StructuredToolResult({
         {data.map((item, i) => (
           <View
             key={i}
-            style={[styles.structItem, { borderColor: colors.borderSubtle, backgroundColor: colors.bgSurface }]}
+            style={[
+              styles.structItem,
+              { borderColor: colors.borderSubtle, backgroundColor: colors.bgSurface }
+            ]}
           >
             {item?.title ? (
               <Text style={[styles.structTitle, { color: colors.textPrimary }]}>{item.title}</Text>
@@ -95,10 +104,14 @@ function StructuredToolResult({
               </Text>
             ) : null}
             {item?.snippet ? (
-              <Text style={[styles.structSnippet, { color: colors.textSecondary }]}>{item.snippet}</Text>
+              <Text style={[styles.structSnippet, { color: colors.textSecondary }]}>
+                {item.snippet}
+              </Text>
             ) : null}
             {item?.summary ? (
-              <Text style={[styles.structSnippet, { color: colors.textSecondary }]}>{item.summary}</Text>
+              <Text style={[styles.structSnippet, { color: colors.textSecondary }]}>
+                {item.summary}
+              </Text>
             ) : null}
           </View>
         ))}
@@ -111,16 +124,28 @@ function StructuredToolResult({
     return (
       <View style={styles.structGrid}>
         {obj.title ? (
-          <Text style={[styles.structTitle, { color: colors.textPrimary }]}>{String(obj.title)}</Text>
+          <Text style={[styles.structTitle, { color: colors.textPrimary }]}>
+            {String(obj.title)}
+          </Text>
         ) : null}
         {obj.snippet ? (
-          <Text style={[styles.structSnippet, { color: colors.textSecondary }]}>{String(obj.snippet)}</Text>
+          <Text style={[styles.structSnippet, { color: colors.textSecondary }]}>
+            {String(obj.snippet)}
+          </Text>
         ) : null}
-        <View style={[styles.structItem, { borderColor: colors.borderSubtle, backgroundColor: colors.bgSurface }]}>
+        <View
+          style={[
+            styles.structItem,
+            { borderColor: colors.borderSubtle, backgroundColor: colors.bgSurface }
+          ]}
+        >
           {Object.keys(obj)
             .filter((k) => k !== 'title' && k !== 'snippet')
             .map((k) => (
-              <View key={k} style={[styles.structValueRow, { borderBottomColor: colors.borderSubtle }]}>
+              <View
+                key={k}
+                style={[styles.structValueRow, { borderBottomColor: colors.borderSubtle }]}
+              >
                 <Text style={[styles.structKey, { color: colors.primary }]}>{k}</Text>
                 <Text style={[styles.structVal, { color: colors.textSecondary }]} numberOfLines={3}>
                   {String(obj[k])}

@@ -86,6 +86,9 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
     liveStream &&
     (streamingCompletedTools.length > 0 || Boolean(streamingActiveToolName))
   const showPersistedTools = isAssistant && !showStreamingTools && toolInvocations.length > 0
+  const useFullWidthAssistantBubble =
+    isAssistant &&
+    (edit.isEditing || showStreamingTools || Boolean(deferAssistantChrome && liveStream))
 
   return (
     <View style={[styles.container, isUser ? styles.containerUser : styles.containerAssistant]}>
@@ -103,7 +106,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
         style={[
           styles.bubbleWrapper,
           isUser ? styles.bubbleWrapperUser : styles.bubbleWrapperAssistant,
-          edit.isEditing ? styles.bubbleWrapperEditing : null
+          useFullWidthAssistantBubble ? styles.bubbleWrapperEditing : null
         ]}
       >
         <Text
@@ -161,7 +164,9 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
           ) : null}
 
           {showStreamingTools ? (
-            <View style={{ marginBottom: cleanContent ? 8 : 0 }}>
+            <View
+              style={{ marginBottom: cleanContent ? 8 : 0, alignSelf: 'stretch', width: '100%' }}
+            >
               <ToolResultGroupCard
                 completedTools={streamingCompletedTools}
                 activeToolName={streamingActiveToolName}
@@ -171,7 +176,9 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
           ) : null}
 
           {showPersistedTools ? (
-            <View style={{ marginBottom: cleanContent ? 8 : 0 }}>
+            <View
+              style={{ marginBottom: cleanContent ? 8 : 0, alignSelf: 'stretch', width: '100%' }}
+            >
               <ToolResultGroupCard invocations={toolInvocations} />
             </View>
           ) : null}

@@ -24,13 +24,15 @@
 }
 
 .titleRow {
-  display: inline-flex;
+  display: flex;
   align-items: baseline;
   gap: 6px;
   min-width: 0;
+  width: 100%;
 }
 
 .titleText {
+  flex: 1;
   min-width: 0;
 }
 

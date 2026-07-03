@@ -58,8 +58,7 @@ export const AgentToolChainSection: React.FC<AgentToolChainSectionProps> = ({
             key={model.key}
             model={model}
             autoExpand={
-              (isStreaming && model.status === 'loading') ||
-              (defaultExpanded && model.hasContent)
+              (isStreaming && model.status === 'loading') || (defaultExpanded && model.hasContent)
             }
           />
         ))}

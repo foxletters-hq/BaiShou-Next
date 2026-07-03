@@ -45,7 +45,9 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
 
   const displayTitle = useMemo(() => {
     if (invocation != null) {
-      return getToolDisplayName(invocation, (key, fallback) => t(key, fallback))
+      return getToolDisplayName(invocation, (key, fallback) =>
+        String(t(key, { defaultValue: fallback ?? key }))
+      )
     }
     return t(`agent.tools.${model.toolName}`, model.toolName)
   }, [invocation, model.toolName, t])
@@ -138,10 +140,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    alignSelf: 'flex-start',
-    maxWidth: '100%'
+    alignSelf: 'stretch',
+    width: '100%'
   },
   statusText: {
+    flex: 1,
     flexShrink: 1,
     fontSize: 14,
     lineHeight: 22,
