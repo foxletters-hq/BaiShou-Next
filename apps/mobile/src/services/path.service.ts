@@ -420,4 +420,11 @@ export class MobileStoragePathService implements IStoragePathService {
     await this.ensureDirHiddenFromGallery(dir)
     return dir
   }
+
+  public async getEmojisDirectory(): Promise<string> {
+    const att = await this.getAttachmentsBaseDirectory()
+    const dir = `${att}/emojis`
+    await this.ensureDirHiddenFromGallery(dir)
+    return dir
+  }
 }

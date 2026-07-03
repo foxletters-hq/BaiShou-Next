@@ -1,13 +1,34 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import type { ToolManagementConfig } from '@baishou/shared'
-import { normalizeToolManagementConfig, DEFAULT_TOOL_MANAGEMENT_CONFIG } from '@baishou/shared'
+import { normalizeToolManagementConfig } from '@baishou/shared'
 import { AgentToolsView, useNativeTheme } from '@baishou/ui/native'
+import type { EmojiImportResult } from '@baishou/core'
 import { useTranslation } from 'react-i18next'
 import { useBaishou } from '../providers/BaishouProvider'
 import { StackScreenLayout } from '../components/StackScreenLayout'
 import { getStackScreenChrome } from '../components/stackScreenChrome'
+import { MobileAttachmentManagerService } from '../services/mobile-attachment-manager.service'
 
-const DEFAULT_CONFIG: ToolManagementConfig = DEFAULT_TOOL_MANAGEMENT_CONFIG
+const DEFAULT_CONFIG: ToolManagementConfig = {
+  disabledToolIds: ['auto_inject_time'],
+  customConfigs: {},
+  emojiConfig: {
+    enabled: true,
+    emojis: []
+  }
+}
+
+function mergeToolManagementConfig(saved: ToolManagementConfig | null): ToolManagementConfig {
+  if (!saved) return DEFAULT_CONFIG
+  return normalizeToolManagementConfig({
+    ...DEFAULT_CONFIG,
+    ...saved,
+    emojiConfig: {
+      ...DEFAULT_CONFIG.emojiConfig!,
+      ...(saved.emojiConfig || {})
+    }
+  })
+}
 
 export const AgentToolsScreen: React.FC = () => {
   const { t } = useTranslation()
@@ -28,7 +49,7 @@ export const AgentToolsScreen: React.FC = () => {
           await services.settingsManager.set('tool_management_config', legacy)
         }
       }
-      setConfig(normalizeToolManagementConfig({ ...DEFAULT_CONFIG, ...saved }))
+      setConfig(mergeToolManagementConfig(saved))
     })()
   }, [dbReady, services])
 
@@ -41,12 +62,43 @@ export const AgentToolsScreen: React.FC = () => {
     [dbReady, services]
   )
 
+  const handlePickAndImportEmojis = useCallback(async (): Promise<EmojiImportResult[]> => {
+    if (!services) return []
+    return MobileAttachmentManagerService.pickAndImportEmojis(services.attachmentManager)
+  }, [services])
+
+  const handleResolveEmojiPath = useCallback(
+    async (relativePath: string): Promise<string> => {
+      if (!services) return ''
+      try {
+        return await services.attachmentManager.resolveEmojiPath(relativePath)
+      } catch {
+        return ''
+      }
+    },
+    [services]
+  )
+
+  const handleDeleteEmoji = useCallback(
+    async (relativePath: string): Promise<boolean> => {
+      if (!services) return false
+      return services.attachmentManager.deleteEmoji(relativePath)
+    },
+    [services]
+  )
+
   return (
     <StackScreenLayout
       title={t('settings.agent_tools_title', '工具管理')}
       {...getStackScreenChrome(colors)}
     >
-      <AgentToolsView config={config} onChange={persist} />
+      <AgentToolsView
+        config={config}
+        onChange={persist}
+        onPickAndImportEmojis={handlePickAndImportEmojis}
+        onResolveEmojiPath={handleResolveEmojiPath}
+        onDeleteEmoji={handleDeleteEmoji}
+      />
     </StackScreenLayout>
   )
 }

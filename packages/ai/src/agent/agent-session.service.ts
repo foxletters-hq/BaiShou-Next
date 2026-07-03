@@ -412,7 +412,8 @@ export class AgentSessionService {
         systemPrompt: builtSystemPrompt,
         namingModelConfigured: systemModels?.namingModelConfigured,
         namingProvider: systemModels?.namingProvider,
-        namingModelId: systemModels?.namingModelId
+        namingModelId: systemModels?.namingModelId,
+        userConfig: mergedUserConfig
       })
 
       if (!streamError && accumulator.toolCalls.length > 0) {

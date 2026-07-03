@@ -8,6 +8,7 @@ import {
   normalizeChatBackgroundOverlayOpacity
 } from '@baishou/shared'
 import { DEFAULT_WEB_SEARCH_CONFIG } from '@baishou/database'
+import type { PendingEmoji } from '../hooks/useAgentStream'
 import {
   View,
   StyleSheet,
@@ -21,6 +22,7 @@ import {
   Keyboard,
   ImageBackground,
   ScrollView,
+  Image,
   type NativeScrollEvent,
   type NativeSyntheticEvent
 } from 'react-native'
@@ -34,7 +36,9 @@ import {
   RecallDialog,
   ChatCostDialog,
   PromptShortcutSheet,
-  resolveActiveToolDisplayName
+  resolveActiveToolDisplayName,
+  resolveNativeAssistantAvatarSource,
+  shouldShowAssistantEmoji
 } from '@baishou/ui/native'
 import { useNativeTheme, useNativeToast } from '@baishou/ui/native'
 import { useAgentStore, useAgentNavigationStore, useContextCompressionStore } from '@baishou/store'
@@ -253,6 +257,7 @@ export const AgentScreen = () => {
     tokenUsage,
     activeTool,
     completedTools,
+    pendingEmojis,
     handleSend,
     handleStop,
     handleRegenerate,
@@ -278,6 +283,62 @@ export const AgentScreen = () => {
   )
 
   const [showLoadMoreBanner, setShowLoadMoreBanner] = useState(false)
+
+  // Emoji config for resolving pending emoji IDs during streaming
+  const [emojiConfig, setEmojiConfig] = useState<{
+    enabled: boolean
+    emojis: Array<{ id: string; name: string; relativePath: string }>
+  }>({ enabled: true, emojis: [] })
+
+  useEffect(() => {
+    if (!services) return
+    void (async () => {
+      try {
+        const toolConfig = await services.settingsManager.get<any>('tool_management_config')
+        if (toolConfig?.emojiConfig) {
+          setEmojiConfig(toolConfig.emojiConfig)
+        }
+      } catch {
+        // Ignore errors loading emoji config
+      }
+    })()
+  }, [services])
+
+  /**
+   * 模糊匹配 emoji：与 persist 层的 findEmojiById 逻辑保持一致
+   */
+  const resolvePendingEmoji = useCallback(
+    (query: string) => {
+      const emojis = emojiConfig.emojis
+      if (!emojis || emojis.length === 0) return undefined
+      const normalizedQuery = query.trim().toLowerCase()
+
+      const exactMatch = emojis.find((e) => e.id === normalizedQuery || e.id.toLowerCase() === normalizedQuery)
+      if (exactMatch) return exactMatch
+
+      const idNoExtMatch = emojis.find((e) => e.id.replace(/\.[^.]+$/, '').toLowerCase() === normalizedQuery)
+      if (idNoExtMatch) return idNoExtMatch
+
+      const normalizeName = (s: string) => s.toLowerCase().replace(/[_\s]+/g, ' ').trim()
+      const normalizedNameQuery = normalizeName(normalizedQuery)
+      const nameMatch = emojis.find((e) => normalizeName(e.name) === normalizedNameQuery)
+      if (nameMatch) return nameMatch
+
+      const idContainsMatch = emojis.find((e) =>
+        e.id.replace(/\.[^.]+$/, '').toLowerCase().includes(normalizedQuery)
+      )
+      if (idContainsMatch) return idContainsMatch
+
+      const nameContainsMatch = emojis.find((e) =>
+        normalizeName(e.name).includes(normalizedNameQuery)
+      )
+      if (nameContainsMatch) return nameContainsMatch
+
+      return undefined
+    },
+    [emojiConfig.emojis]
+  )
+
   const loadMoreLockRef = useRef(false)
 
   const {
@@ -1119,13 +1180,49 @@ export const AgentScreen = () => {
     [contentAnchorMinHeight]
   )
 
+  const pendingEmojiElements = useMemo(() => {
+    if (pendingEmojis.length === 0 || emojiConfig.emojis.length === 0) return null
+    return pendingEmojis.map((pending, idx) => {
+      const emoji = resolvePendingEmoji(pending.emojiId)
+      if (!emoji) return null
+      // 使用本地文件路径（mobile 需要解析到 file:// URI）
+      const emojiPath = emoji.relativePath
+      return (
+        <View key={`pending-emoji-${idx}`} style={styles.emojiOnlyRow}>
+          <View style={styles.emojiOnlyAvatar}>
+            {shouldShowAssistantEmoji(chatAiProfile.avatarPath, chatAiProfile.resolvedAvatarUri, chatAiProfile.emoji) ? (
+              <View style={styles.emojiOnlyAvatarFallback}>
+                <Text style={styles.emojiOnlyAvatarText}>
+                  {chatAiProfile.emoji || '🤖'}
+                </Text>
+              </View>
+            ) : (
+              <Image
+                source={resolveNativeAssistantAvatarSource(chatAiProfile.avatarPath, chatAiProfile.resolvedAvatarUri)}
+                style={styles.emojiOnlyAvatarImg}
+              />
+            )}
+          </View>
+          <View style={styles.emojiOnlyImages}>
+            <Image
+              source={{ uri: emojiPath.startsWith('/') ? `file://${emojiPath}` : emojiPath }}
+              style={styles.emojiOnlyImg}
+              resizeMode="contain"
+            />
+          </View>
+        </View>
+      )
+    })
+  }, [pendingEmojis, emojiConfig.emojis, resolvePendingEmoji, chatAiProfile])
+
   const listFooter = useMemo(
     () => (
       <View>
+        {pendingEmojiElements}
         <Animated.View style={listSpacerAnimatedStyle} />
       </View>
     ),
-    [listSpacerAnimatedStyle]
+    [pendingEmojiElements, listSpacerAnimatedStyle]
   )
 
   const renderEmptyState = () => (
@@ -1684,5 +1781,46 @@ const styles = StyleSheet.create({
     right: 0,
     overflow: 'visible',
     zIndex: 10
+  },
+  emojiOnlyRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    gap: 8
+  },
+  emojiOnlyAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    overflow: 'hidden',
+    flexShrink: 0
+  },
+  emojiOnlyAvatarImg: {
+    width: 28,
+    height: 28,
+    borderRadius: 14
+  },
+  emojiOnlyAvatarFallback: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.08)'
+  },
+  emojiOnlyAvatarText: {
+    fontSize: 14
+  },
+  emojiOnlyImages: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    flexShrink: 1
+  },
+  emojiOnlyImg: {
+    width: 120,
+    height: 120,
+    borderRadius: 8
   }
 })

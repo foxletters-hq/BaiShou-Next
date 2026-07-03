@@ -14,6 +14,7 @@ import { MessageSearchTool } from './message-search.tool'
 import { VectorSearchTool } from './vector-search.tool'
 import { CurrentTimeTool } from './current-time.tool'
 import { ContextCompressUpstreamTool, ContextCompressDownstreamTool } from './context-compress.tool'
+import { EmojiSendTool } from './emoji-send.tool'
 
 const INTERNAL_ONLY_TOOL_IDS = new Set(['compress_context_upstream', 'compress_context_downstream'])
 
@@ -27,6 +28,15 @@ function isToolEnabledForContext(name: string, tool: AgentTool, context: ToolCon
   const ragEnabled = context.userConfig?.['ragEnabled'] !== false
   const hasEmbedding = context.userConfig?.['hasEmbeddingModel'] === true
   const webSearchEnabled = context.userConfig?.['web_search_enabled'] === true
+
+  // Emoji tool: only enabled when emojiConfig.enabled is true and emojis exist
+  if (name === 'emoji_send') {
+    const emojiConfig = context.userConfig?.['emojiConfig'] as
+      | { enabled?: boolean; emojis?: unknown[] }
+      | undefined
+    if (!emojiConfig || emojiConfig.enabled === false) return false
+    if (!emojiConfig.emojis || emojiConfig.emojis.length === 0) return false
+  }
 
   if (INTERNAL_ONLY_TOOL_IDS.has(name)) return false
   if (tool.canBeDisabled && disabledIds.has(name)) return false
@@ -56,6 +66,7 @@ export class ToolRegistry {
       new MessageSearchTool(),
       new VectorSearchTool(),
       new CurrentTimeTool(),
+      new EmojiSendTool(),
       new ContextCompressUpstreamTool(),
       new ContextCompressDownstreamTool()
     ])

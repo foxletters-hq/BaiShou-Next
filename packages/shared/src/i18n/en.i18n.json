@@ -1615,6 +1615,8 @@
       "diary_edit_desc": "Modify an existing diary entry. Default mode is \"append\", which adds new content with an automatically inserted timestamp header (##### HH:mm). Use \"overwrite\" mode to replace the entire content. Tags are automatically merged with existing ones.",
       "diary_delete_desc": "Delete a specific diary entry. This is a destructive action and cannot be undone. Always double check before using.",
       "current_time_desc": "Get the current real-world time, date, and day of the week. Very useful for answering questions related to time calculations, age, absolute dates, etc.",
+      "emoji_send": "Sticker",
+      "emoji_send_desc": "Send a sticker/emoji image in the chat. Call this tool with one of the available sticker IDs or names when it naturally fits the conversation mood. Do NOT call this tool on every message — only when a sticker genuinely adds emotional expression. After calling this tool, continue your text response normally. The sticker will be displayed as a separate message automatically — do NOT mention or repeat the sticker result in your text.",
       "compress_context_upstream": "Upstream context compression",
       "compress_context_upstream_desc": "Merge earlier dialogue into a rolling summary before the next model request (upstream).",
       "compress_context_downstream": "Downstream context compression",

@@ -5,11 +5,46 @@ import {
   StreamingBubble,
   CompressionDivider,
   CompressionActivityBar,
-  resolveActiveToolDisplayName
+  resolveActiveToolDisplayName,
+  resolveDesktopAssistantAvatarSrc
 } from '@baishou/ui'
 import { useSettingsStore } from '@baishou/store'
 import { useMessageActions } from '../hooks/useMessageActions'
 import styles from '../AgentScreen.module.css'
+
+/**
+ * 模糊匹配 emoji：支持 ID（含/不含扩展名）、名称、子串匹配
+ * 与 persist 层的 findEmojiById 逻辑保持一致
+ */
+function resolvePendingEmoji(
+  query: string,
+  emojis: Array<{ id: string; name: string; relativePath: string }>
+): { id: string; name: string; relativePath: string } | undefined {
+  const normalizedQuery = query.trim().toLowerCase()
+
+  const exactMatch = emojis.find((e) => e.id === normalizedQuery || e.id.toLowerCase() === normalizedQuery)
+  if (exactMatch) return exactMatch
+
+  const idNoExtMatch = emojis.find((e) => e.id.replace(/\.[^.]+$/, '').toLowerCase() === normalizedQuery)
+  if (idNoExtMatch) return idNoExtMatch
+
+  const normalizeName = (s: string) => s.toLowerCase().replace(/[_\s]+/g, ' ').trim()
+  const normalizedNameQuery = normalizeName(normalizedQuery)
+  const nameMatch = emojis.find((e) => normalizeName(e.name) === normalizedNameQuery)
+  if (nameMatch) return nameMatch
+
+  const idContainsMatch = emojis.find((e) =>
+    e.id.replace(/\.[^.]+$/, '').toLowerCase().includes(normalizedQuery)
+  )
+  if (idContainsMatch) return idContainsMatch
+
+  const nameContainsMatch = emojis.find((e) =>
+    normalizeName(e.name).includes(normalizedNameQuery)
+  )
+  if (nameContainsMatch) return nameContainsMatch
+
+  return undefined
+}
 
 interface AgentMessageListProps {
   t: any
@@ -224,7 +259,8 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
     Boolean(
       lastMessage.content?.trim() ||
       lastMessage.reasoning?.trim() ||
-      (lastMessage.toolInvocations?.length ?? 0) > 0
+      (lastMessage.toolInvocations?.length ?? 0) > 0 ||
+      (lastMessage.attachments?.length ?? 0) > 0
     )
 
   return (
@@ -305,40 +341,73 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
               costMicros: msg.costMicros
             }
 
+            // 纯表情包消息：assistant 角色且只有图片附件、没有文本/推理/工具调用
+            const isEmojiOnlyMessage =
+              msg.role === 'assistant' &&
+              bubbleAttachments &&
+              bubbleAttachments.length > 0 &&
+              bubbleAttachments.every((att: any) => att.isImage) &&
+              !msg.content?.trim() &&
+              !msg.reasoning?.trim() &&
+              (!msg.toolInvocations || msg.toolInvocations.length === 0)
+
             return (
               <React.Fragment key={msg.id}>
-                <ChatBubble
-                  message={bubbleMessage}
-                  userProfile={{
-                    nickname: userProfile?.nickname || 'User',
-                    avatarPath: userProfile?.avatarPath
-                  }}
-                  aiProfile={{
-                    name: currentAssistant?.name || 'AI',
-                    avatarPath: currentAssistant?.avatarPath,
-                    emoji: currentAssistant?.emoji
-                  }}
-                  onShowContext={
-                    msg.role === 'user' || msg.role === 'assistant'
-                      ? (m) => handleShowContext(m, msg)
-                      : undefined
-                  }
-                  onReadAloud={
-                    msg.role === 'assistant'
-                      ? (content) => actions.handleReadAloud(content, msg.id)
-                      : undefined
-                  }
-                  isTtsPlaying={tts.ttsPlayingMsgId === msg.id}
-                  onRegenerate={
-                    msg.role === 'assistant' ? () => actions.handleRegenerate(msg) : undefined
-                  }
-                  onEdit={() => {}}
-                  onSaveEdit={(newContent) => actions.handleSaveEdit(msg, newContent)}
-                  onResendEdit={(newContent) => actions.handleResendEdit(msg, newContent)}
-                  onResend={msg.role === 'user' ? () => actions.handleResend(msg) : undefined}
-                  onDelete={() => actions.handleDelete(msg)}
-                  onBranch={msg.role === 'assistant' ? () => actions.handleBranch(msg) : undefined}
-                />
+                {isEmojiOnlyMessage ? (
+                  <div className={styles.emojiOnlyRow}>
+                    <div className={styles.emojiOnlyAvatar}>
+                      <img
+                        src={resolveDesktopAssistantAvatarSrc(currentAssistant?.avatarPath)}
+                        alt="avatar"
+                        className={styles.emojiOnlyAvatarImg}
+                      />
+                    </div>
+                    <div className={styles.emojiOnlyImages}>
+                      {bubbleAttachments.map((att: any) => (
+                        <img
+                          key={att.id || att.fileName}
+                          src={att.filePath}
+                          alt={att.fileName || 'emoji'}
+                          className={styles.emojiOnlyImg}
+                          draggable={false}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <ChatBubble
+                    message={bubbleMessage}
+                    userProfile={{
+                      nickname: userProfile?.nickname || 'User',
+                      avatarPath: userProfile?.avatarPath
+                    }}
+                    aiProfile={{
+                      name: currentAssistant?.name || 'AI',
+                      avatarPath: currentAssistant?.avatarPath,
+                      emoji: currentAssistant?.emoji
+                    }}
+                    onShowContext={
+                      msg.role === 'user' || msg.role === 'assistant'
+                        ? (m) => handleShowContext(m, msg)
+                        : undefined
+                    }
+                    onReadAloud={
+                      msg.role === 'assistant'
+                        ? (content) => actions.handleReadAloud(content, msg.id)
+                        : undefined
+                    }
+                    isTtsPlaying={tts.ttsPlayingMsgId === msg.id}
+                    onRegenerate={
+                      msg.role === 'assistant' ? () => actions.handleRegenerate(msg) : undefined
+                    }
+                    onEdit={() => {}}
+                    onSaveEdit={(newContent) => actions.handleSaveEdit(msg, newContent)}
+                    onResendEdit={(newContent) => actions.handleResendEdit(msg, newContent)}
+                    onResend={msg.role === 'user' ? () => actions.handleResend(msg) : undefined}
+                    onDelete={() => actions.handleDelete(msg)}
+                    onBranch={msg.role === 'assistant' ? () => actions.handleBranch(msg) : undefined}
+                  />
+                )}
                 {(showLiveCompressionActivity || showCompressionDivider) && (
                   <div className={styles.compressionAnchor}>
                     {showLiveCompressionActivity ? (
@@ -359,6 +428,39 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
               </React.Fragment>
             )
           })}
+
+          {(() => {
+            // 渲染流式期间的 pending emoji 图片（在 StreamingBubble 之前显示，不包裹气泡）
+            const emojiConfig = settings.toolManagementConfig?.emojiConfig
+            const emojis = emojiConfig?.emojis
+            const pendingEmojis = stream.pendingEmojis ?? []
+            if (pendingEmojis.length === 0 || !emojis || emojis.length === 0) return null
+
+            return pendingEmojis.map((pending, idx) => {
+              const emoji = resolvePendingEmoji(pending.emojiId, emojis)
+              if (!emoji) return null
+              const imgUrl = `local:///${emoji.relativePath.replace(/\\/g, '/')}`
+              return (
+                <div key={`pending-emoji-${idx}`} className={styles.emojiOnlyRow}>
+                  <div className={styles.emojiOnlyAvatar}>
+                    <img
+                      src={resolveDesktopAssistantAvatarSrc(currentAssistant?.avatarPath)}
+                      alt="avatar"
+                      className={styles.emojiOnlyAvatarImg}
+                    />
+                  </div>
+                  <div className={styles.emojiOnlyImages}>
+                    <img
+                      src={imgUrl}
+                      alt={emoji.name || 'emoji'}
+                      className={styles.emojiOnlyImg}
+                      draggable={false}
+                    />
+                  </div>
+                </div>
+              )
+            })
+          })()}
 
           {(() => {
             const showStreamingBubble =

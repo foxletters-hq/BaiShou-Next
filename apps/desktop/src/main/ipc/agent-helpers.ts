@@ -382,7 +382,8 @@ export async function buildAgentUserConfigFromSettings(options?: {
     web_search_enabled: options?.searchMode ?? false,
     ...webSearchConfigToUserConfig(webSearchConfig),
     userCard,
-    diaryAiWritingPrompt: buildDiaryWritingGuidelinesForSystemPrompt(diaryTemplateConfig)
+    diaryAiWritingPrompt: buildDiaryWritingGuidelinesForSystemPrompt(diaryTemplateConfig),
+    emojiConfig: toolManagementConfig?.emojiConfig || undefined
   }
 }
 

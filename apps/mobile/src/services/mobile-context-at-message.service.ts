@@ -110,7 +110,8 @@ export async function buildMobileStreamUserConfig(
       ...(webSearchConfig || {})
     }),
     diaryAiWritingPrompt: buildDiaryWritingGuidelinesForSystemPrompt(diaryTemplateConfig),
-    userCard: formatUserCardFromProfile(userProfile)
+    userCard: formatUserCardFromProfile(userProfile),
+    emojiConfig: toolManagementConfig?.emojiConfig || undefined
   }
 }
 

@@ -3,6 +3,7 @@
  */
 
 export * from './attachments/attachment-manager.service'
+export * from './attachments/attachment-manager.emoji'
 
 export * from './summary/summary-context'
 

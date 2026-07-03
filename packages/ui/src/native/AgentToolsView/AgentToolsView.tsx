@@ -14,16 +14,24 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { useNativeTheme } from '../theme'
 import { Switch } from '../Switch'
 import { HelpTooltip } from '../Tooltip/HelpTooltip'
+import { EmojiToolCard, type EmojiToolConfig, type EmojiItem } from './EmojiToolCard'
 
 export interface ToolManagementConfig {
   disabledToolIds: string[]
   customConfigs: Record<string, Record<string, unknown>>
+  emojiConfig?: EmojiToolConfig
 }
 
 export interface AgentToolsViewProps {
   config: ToolManagementConfig
   onChange: (config: ToolManagementConfig) => void
   disableScroll?: boolean
+  /** Mobile: pick and import emoji images via image picker */
+  onPickAndImportEmojis?: () => Promise<{ relativePath: string; originalName: string; error: string | null }[]>
+  /** Mobile: resolve a relativePath to a displayable URI */
+  onResolveEmojiPath?: (relativePath: string) => Promise<string>
+  /** Mobile: delete an emoji file */
+  onDeleteEmoji?: (relativePath: string) => Promise<boolean>
 }
 
 export interface ToolConfigParam {
@@ -159,7 +167,10 @@ const getCategoryMeta = (t: (key: string, fallback: string) => string) => ({
 export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
   config,
   onChange,
-  disableScroll
+  disableScroll,
+  onPickAndImportEmojis,
+  onResolveEmojiPath,
+  onDeleteEmoji
 }) => {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
@@ -453,25 +464,39 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
     </View>
   )
 
-  const renderCommunityTab = () => (
-    <View style={styles.communityBlank}>
-      <MaterialIcons
-        name="rocket"
-        size={56}
-        color={colors.textTertiary}
-        style={styles.communityIcon}
-      />
-      <Text style={[styles.communityTitle, { color: colors.textSecondary }]}>
-        {t('agent.tools.community_market_coming', '插件集市即将上线')}
-      </Text>
-      <Text style={[styles.communityDesc, { color: colors.textTertiary }]}>
-        {t(
-          'agent.tools.community_coming_soon',
-          '不久后，您将能够在这里挂载由其他用户开发的生态能力接口。'
-        )}
-      </Text>
-    </View>
-  )
+  const renderCommunityTab = () => {
+    const emojiConfig = config.emojiConfig || { enabled: true, emojis: [] }
+
+    return (
+      <View style={styles.list}>
+        <View style={styles.categoryGroup}>
+          <View style={styles.categoryHeader}>
+            <MaterialIcons name="emoji-emotions" size={18} color={colors.primary} />
+            <Text style={[styles.categoryLabel, { color: colors.primary }]}>
+              {t('settings.agent_tools_category_interaction', '互动工具')}
+            </Text>
+          </View>
+          <View
+            style={[
+              styles.categoryList,
+              {
+                borderColor: colors.borderStrong,
+                backgroundColor: colors.bgSurface
+              }
+            ]}
+          >
+            <EmojiToolCard
+              config={emojiConfig}
+              onChange={(newEmojiConfig) => onChange({ ...config, emojiConfig: newEmojiConfig })}
+              onPickAndImport={onPickAndImportEmojis || (async () => [])}
+              onResolvePath={onResolveEmojiPath || (async () => '')}
+              onDelete={onDeleteEmoji || (async () => false)}
+            />
+          </View>
+        </View>
+      </View>
+    )
+  }
 
   const Container = disableScroll ? View : ScrollView
   const containerProps = disableScroll

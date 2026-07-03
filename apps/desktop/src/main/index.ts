@@ -26,6 +26,7 @@ import { registerDiaryAttachmentIPC } from './ipc/diary-attachment.ipc'
 import { registerRagIPC } from './ipc/rag.ipc'
 import { registerOnboardingIPC } from './ipc/onboarding.ipc'
 import { registerDeveloperIPC } from './ipc/developer.ipc'
+import { registerEmojiIPC } from './ipc/emoji.ipc'
 import { registerCompressionEventBridge } from './services/compression-event.service'
 import { registerSearchIPC } from './ipc/search.ipc'
 import { registerUpdaterIPC } from './ipc/updater.ipc'
@@ -216,6 +217,21 @@ app.whenReady().then(async () => {
   protocol.handle('local', async (request) => {
     try {
       let targetUrl = request.url.replace(/^local:/i, 'file:')
+
+      // Resolve relative emoji paths: local:///emojis/xxx.png → absolute vault path
+      const emojiMatch = targetUrl.match(/^file:\/\/+emojis\/(.+)$/i)
+      if (emojiMatch) {
+        const { DesktopStoragePathService } = await import('./services/path.service')
+        const pathService = new DesktopStoragePathService()
+        const emojisDir = await pathService.getEmojisDirectory()
+        const absolutePath = require('path').join(emojisDir, emojiMatch[1])
+        const { existsSync } = require('node:fs')
+        if (!existsSync(absolutePath)) {
+          return new Response('Not found', { status: 404 })
+        }
+        return await net.fetch(`file:///${absolutePath.replace(/\\/g, '/')}`)
+      }
+
       // Ensure absolute file URL starts with file:/// on Windows/Unix
       if (targetUrl.startsWith('file://') && !targetUrl.startsWith('file:///')) {
         targetUrl = 'file:///' + targetUrl.slice(7)
@@ -310,6 +326,7 @@ app.whenReady().then(async () => {
   registerDiaryAttachmentIPC()
   registerRagIPC()
   registerDeveloperIPC()
+  registerEmojiIPC()
   registerSearchIPC()
   registerUpdaterIPC()
   registerShellIPC()

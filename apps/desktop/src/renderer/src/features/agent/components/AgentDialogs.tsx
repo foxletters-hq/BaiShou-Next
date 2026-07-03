@@ -11,6 +11,7 @@ import {
   toast
 } from '@baishou/ui'
 import { isEmbeddingModel, isTtsModel } from '@baishou/shared'
+import { useSettingsStore } from '@baishou/store'
 
 interface AgentDialogsProps {
   t: any
@@ -260,7 +261,7 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
         <AgentToolsView
           config={toolConfig}
           onChange={(cfg) => {
-            ;(window as any).api?.settings?.setToolManagementConfig(cfg)
+            useSettingsStore.getState().setToolManagementConfig(cfg)
           }}
         />
       </Modal>

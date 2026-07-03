@@ -13,6 +13,11 @@ export interface ToolExecution {
   durationMs: number
 }
 
+export interface PendingEmoji {
+  /** emoji_id，用于从 emojiConfig 中查找对应的表情包 */
+  emojiId: string
+}
+
 export interface UseAgentStreamResult {
   text: string
   reasoning: string
@@ -24,6 +29,8 @@ export interface UseAgentStreamResult {
   compressionTriggerMessageId: string | null
   activeTool: { name: string; args: any } | null
   completedTools: ToolExecution[]
+  /** 流式期间收到的 emoji_send 表情包，即时显示为图片 */
+  pendingEmojis: PendingEmoji[]
   error: string | null
   /** 流已结束、DB 消息尚未刷新时，继续展示 StreamingBubble 避免闪断或重复气泡 */
   isBridgeActive: boolean
@@ -72,6 +79,7 @@ interface SessionStreamState {
   compressionTriggerMessageId: string | null
   activeTool: { name: string; args: any } | null
   completedTools: ToolExecution[]
+  pendingEmojis: PendingEmoji[]
   error: string | null
   activeToolStartTime?: number
   isBridgeActive: boolean
@@ -189,6 +197,7 @@ function clearStreamBridgeState(state: SessionStreamState): void {
   state.completedTools = []
   state.activeTool = null
   state.activeToolStartTime = undefined
+  state.pendingEmojis = []
 }
 
 /** 消息列表已从 DB 刷新后清除桥接态，避免 StreamingBubble 与 ChatBubble 短暂并存 */
@@ -212,6 +221,7 @@ function getOrCreateSessionState(sessionId: string): SessionStreamState {
       compressionTriggerMessageId: null,
       activeTool: null,
       completedTools: [],
+      pendingEmojis: [],
       error: null,
       isBridgeActive: false
     }
@@ -282,6 +292,20 @@ function registerGlobalStreamIpcListeners(): () => void {
     if (!sId) return
     const name = typeof payload === 'object' ? payload?.name : payload?.name
     const args = typeof payload === 'object' ? payload?.args : payload?.args
+    // emoji_send 工具：即时将表情包加入 pendingEmojis（在流式文本之前显示）
+    if (name === 'emoji_send') {
+      const emojiId = typeof args === 'object' && args !== null
+        ? (args as Record<string, unknown>).emoji_id
+        : typeof args === 'string'
+          ? (() => { try { const p = JSON.parse(args); return p?.emoji_id } catch { return args } })()
+          : null
+      if (typeof emojiId === 'string' && emojiId.length > 0) {
+        updateSessionState(sId, (state) => {
+          state.pendingEmojis.push({ emojiId })
+        })
+      }
+      return
+    }
     updateSessionState(sId, (state) => {
       state.activeToolStartTime = Date.now()
       state.activeTool = { name, args }
@@ -292,6 +316,8 @@ function registerGlobalStreamIpcListeners(): () => void {
     const sId = typeof payload === 'object' ? payload?.sessionId : null
     if (!sId) return
     const name = typeof payload === 'object' ? payload?.name : payload?.name
+    // emoji_send 工具不在流式阶段显示工具卡片（表情包已作为 pendingEmojis 即时显示）
+    if (name === 'emoji_send') return
     updateSessionState(sId, (state) => {
       const start = state.activeToolStartTime || Date.now()
       const durationMs = Date.now() - start
@@ -508,6 +534,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
         state.error = null
         state.activeTool = null
         state.completedTools = []
+        state.pendingEmojis = []
         state.text = ''
         state.reasoning = ''
         state.activeToolStartTime = undefined
@@ -545,6 +572,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
         state.error = null
         state.activeTool = null
         state.completedTools = []
+        state.pendingEmojis = []
         state.text = ''
         state.reasoning = ''
         state.activeToolStartTime = undefined
@@ -581,6 +609,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
         state.error = null
         state.activeTool = null
         state.completedTools = []
+        state.pendingEmojis = []
         state.text = ''
         state.reasoning = ''
         state.activeToolStartTime = undefined
@@ -647,6 +676,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
         compressionTriggerMessageId: null,
         activeTool: null,
         completedTools: [],
+        pendingEmojis: [],
         error: null,
         isBridgeActive: false
       }
@@ -663,6 +693,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
     compressionTriggerMessageId: activeState.compressionTriggerMessageId,
     activeTool: activeState.activeTool,
     completedTools: activeState.completedTools,
+    pendingEmojis: activeState.pendingEmojis,
     error: activeState.error,
     saveUserMessage,
     startChat,

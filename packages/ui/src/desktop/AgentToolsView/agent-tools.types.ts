@@ -1,8 +1,20 @@
 import React from 'react'
 
+export interface EmojiItem {
+  id: string
+  name: string
+  relativePath: string
+}
+
+export interface EmojiToolConfig {
+  enabled: boolean
+  emojis: EmojiItem[]
+}
+
 export interface ToolManagementConfig {
   disabledToolIds: string[]
   customConfigs: Record<string, Record<string, unknown>>
+  emojiConfig?: EmojiToolConfig
 }
 
 export interface AgentToolsViewProps {

@@ -88,6 +88,11 @@ export interface IStoragePathService {
   getChatBackgroundsDirectory(): Promise<string>
 
   /**
+   * 表情包目录：Vaults/Personal/Attachments/emojis
+   */
+  getEmojisDirectory(): Promise<string>
+
+  /**
    * 获取日记附件目录
    * 路径结构: Vault/Journals/{year}/{month}/attachment/
    * @param date 日期对象，用于确定年月

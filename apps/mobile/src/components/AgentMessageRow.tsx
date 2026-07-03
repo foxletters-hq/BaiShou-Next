@@ -1,6 +1,13 @@
 import React from 'react'
-import { View, StyleSheet } from 'react-native'
-import { ChatBubble, CompressionActivityBar, CompressionDivider } from '@baishou/ui/native'
+import { View, Image, Text, StyleSheet } from 'react-native'
+import { MaterialIcons } from '@expo/vector-icons'
+import {
+  ChatBubble,
+  CompressionActivityBar,
+  CompressionDivider,
+  resolveNativeAssistantAvatarSource,
+  shouldShowAssistantEmoji
+} from '@baishou/ui/native'
 import type { CompactionMarkerData } from '@baishou/ai'
 
 type ChatMessage = {
@@ -9,7 +16,7 @@ type ChatMessage = {
   content: string
   reasoning?: string
   toolInvocations?: unknown[]
-  attachments?: unknown[]
+  attachments?: any[]
   inputTokens?: number
   outputTokens?: number
   cacheReadInputTokens?: number
@@ -68,6 +75,23 @@ export interface AgentMessageRowProps {
   deferAssistantChrome?: boolean
 }
 
+/**
+ * 判断一条消息是否为纯表情包消息：
+ * assistant 角色、有图片附件、没有文本/推理/工具调用
+ */
+function isEmojiOnlyMessage(item: ChatMessage): boolean {
+  if (item.role !== 'assistant') return false
+  const hasAttachments = item.attachments && item.attachments.length > 0
+  if (!hasAttachments) return false
+  const allImageAttachments = item.attachments!.every((att: any) => att.isImage)
+  if (!allImageAttachments) return false
+  const hasText = Boolean(item.content?.trim())
+  const hasReasoning = Boolean(item.reasoning?.trim())
+  const hasToolInvocations = item.toolInvocations && item.toolInvocations.length > 0
+  if (hasText || hasReasoning || hasToolInvocations) return false
+  return true
+}
+
 export const AgentMessageRow = React.memo(function AgentMessageRow({
   item,
   chatUserProfile,
@@ -117,40 +141,72 @@ export const AgentMessageRow = React.memo(function AgentMessageRow({
 
   const showDivider = showPersistedCompression && persistedCompaction?.status !== 'failed'
 
+  const emojiOnly = isEmojiOnlyMessage(item)
+
   return (
     <View style={styles.row}>
-      <ChatBubble
-        message={{
-          id: item.id,
-          role: item.role as 'user' | 'assistant',
-          content: item.content,
-          reasoning: item.reasoning,
-          toolInvocations: item.toolInvocations,
-          attachments: item.attachments,
-          inputTokens: item.inputTokens,
-          outputTokens: item.outputTokens,
-          cacheReadInputTokens: item.cacheReadInputTokens,
-          cacheWriteInputTokens: item.cacheWriteInputTokens,
-          costMicros: item.costMicros
-        }}
-        userProfile={chatUserProfile}
-        aiProfile={chatAiProfile}
-        onRegenerate={onRegenerate}
-        onResend={onResend}
-        onResendEdit={onResendEdit}
-        onSaveEdit={onSaveEdit}
-        onCopy={onCopy}
-        onDelete={onDelete}
-        onReadAloud={onReadAloud}
-        isTtsPlaying={isTtsPlaying}
-        onShowContext={onShowContext}
-        onBranch={onBranch}
-        onEditingChange={onBubbleEditingChange}
-        invertMetaOverBackground={invertMetaOverBackground}
-        retryDisabled={retryDisabled}
-        liveStream={liveStream}
-        deferAssistantChrome={deferAssistantChrome}
-      />
+      {emojiOnly ? (
+        // 纯表情包消息：头像 + 裸图片，不包裹 ChatBubble
+        <View style={styles.emojiOnlyRow}>
+          <View style={styles.emojiOnlyAvatar}>
+            {shouldShowAssistantEmoji(chatAiProfile.avatarPath, chatAiProfile.resolvedAvatarUri, chatAiProfile.emoji) ? (
+              <View style={styles.emojiOnlyAvatarFallback}>
+                <Text style={styles.emojiOnlyAvatarText}>
+                  {chatAiProfile.emoji || '🤖'}
+                </Text>
+              </View>
+            ) : (
+              <Image
+                source={resolveNativeAssistantAvatarSource(chatAiProfile.avatarPath, chatAiProfile.resolvedAvatarUri)}
+                style={styles.emojiOnlyAvatarImg}
+              />
+            )}
+          </View>
+          <View style={styles.emojiOnlyImages}>
+            {item.attachments!.map((att: any, idx: number) => (
+              <Image
+                key={`emoji-${item.id}-${idx}`}
+                source={{ uri: att.filePath || att.url }}
+                style={styles.emojiOnlyImg}
+                resizeMode="contain"
+              />
+            ))}
+          </View>
+        </View>
+      ) : (
+        <ChatBubble
+          message={{
+            id: item.id,
+            role: item.role as 'user' | 'assistant',
+            content: item.content,
+            reasoning: item.reasoning,
+            toolInvocations: item.toolInvocations,
+            attachments: item.attachments,
+            inputTokens: item.inputTokens,
+            outputTokens: item.outputTokens,
+            cacheReadInputTokens: item.cacheReadInputTokens,
+            cacheWriteInputTokens: item.cacheWriteInputTokens,
+            costMicros: item.costMicros
+          }}
+          userProfile={chatUserProfile}
+          aiProfile={chatAiProfile}
+          onRegenerate={onRegenerate}
+          onResend={onResend}
+          onResendEdit={onResendEdit}
+          onSaveEdit={onSaveEdit}
+          onCopy={onCopy}
+          onDelete={onDelete}
+          onReadAloud={onReadAloud}
+          isTtsPlaying={isTtsPlaying}
+          onShowContext={onShowContext}
+          onBranch={onBranch}
+          onEditingChange={onBubbleEditingChange}
+          invertMetaOverBackground={invertMetaOverBackground}
+          retryDisabled={retryDisabled}
+          liveStream={liveStream}
+          deferAssistantChrome={deferAssistantChrome}
+        />
+      )}
 
       {(showLiveCompression || showPersistedCompression) && (
         <View style={styles.compressionBlock}>
@@ -175,5 +231,46 @@ const styles = StyleSheet.create({
   },
   compressionBlock: {
     width: '100%'
+  },
+  emojiOnlyRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    gap: 8
+  },
+  emojiOnlyAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    overflow: 'hidden',
+    flexShrink: 0
+  },
+  emojiOnlyAvatarImg: {
+    width: 28,
+    height: 28,
+    borderRadius: 14
+  },
+  emojiOnlyAvatarFallback: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.08)'
+  },
+  emojiOnlyAvatarText: {
+    fontSize: 14
+  },
+  emojiOnlyImages: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    flexShrink: 1
+  },
+  emojiOnlyImg: {
+    width: 120,
+    height: 120,
+    borderRadius: 8
   }
 })
