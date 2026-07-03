@@ -11,6 +11,8 @@ import {
   findFencedCodeBlockContaining,
   shouldDeferTableCaretRedirect
 } from '../extensions/fencedCodeScan'
+import { editorFocusEffect } from '../extensions/editorFocus'
+import { livePreviewRefreshEffect } from '../extensions/livePreviewPlugin'
 
 const TABLE_BLOCK_ABOVE_TOLERANCE_PX = 72
 
@@ -127,8 +129,13 @@ function placeCaretAtPos(view: EditorView, pos: number, reason: string): boolean
   }
 
   blurTableCellEditor()
+  const enteringFenced = findFencedCodeBlockContaining(view.state.doc, pos) != null
+  const effects = [...clearActiveTableCellEffects(view.state), editorFocusEffect.of(true)]
+  if (enteringFenced) {
+    effects.push(livePreviewRefreshEffect.of(null))
+  }
   view.dispatch({
-    effects: clearActiveTableCellEffects(view.state),
+    effects,
     selection: { anchor: pos, head: pos },
     scrollIntoView: false
   })

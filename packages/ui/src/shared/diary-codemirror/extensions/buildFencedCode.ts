@@ -9,6 +9,7 @@ import {
   codeLineStyleTop,
   hideSyntaxReplace
 } from './styles'
+import { findFencedCodeBlockContaining } from './fencedCodeScan'
 
 type DecorationMark = { from: number; to: number; value: Decoration }
 
@@ -29,6 +30,14 @@ export function expandActiveLinesForFencedCode(
   activeLines: Set<number>
 ): void {
   const doc = state.doc
+  const head = state.selection.main.head
+  const blockByCursor = findFencedCodeBlockContaining(doc, head)
+  if (blockByCursor) {
+    const firstLine = doc.lineAt(blockByCursor.from).number
+    const lastLine = doc.lineAt(blockByCursor.to).number
+    for (let n = firstLine; n <= lastLine; n += 1) activeLines.add(n)
+  }
+
   ensureSyntaxTree(state, doc.length, 200)
   syntaxTree(state).iterate({
     enter(node) {

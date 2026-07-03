@@ -1,5 +1,7 @@
 import { StateEffect, StateField, type Extension } from '@codemirror/state'
 import { EditorView, ViewPlugin } from '@codemirror/view'
+import { editorFocusEffect } from './editorFocus'
+import { findFencedCodeBlockContaining } from './fencedCodeScan'
 
 const FREEZE_TAIL_MS = 100
 
@@ -37,6 +39,8 @@ export function livePreviewFreezePlugin(): Extension {
         if (event.button !== 0) return
         const target = event.target
         if (!(target instanceof Node) || !this.view.contentDOM.contains(target)) return
+        // 围栏块内点击需立刻显隐 ```，不冻结装饰重建
+        if (target instanceof Element && target.closest('.cm-code-line')) return
         this.down = true
         if (this.releaseTimer != null) {
           clearTimeout(this.releaseTimer)
@@ -51,11 +55,31 @@ export function livePreviewFreezePlugin(): Extension {
         if (!this.down) return
         this.down = false
         if (this.releaseTimer != null) clearTimeout(this.releaseTimer)
+
+        const release = (): void => {
+          const effects = []
+          if (this.view.state.field(previewFrozenField)) {
+            effects.push(setPreviewFrozen.of(false))
+          }
+          if (this.view.hasFocus) {
+            effects.push(editorFocusEffect.of(true))
+          }
+          if (effects.length > 0) {
+            this.view.dispatch({ effects })
+          }
+        }
+
+        const head = this.view.state.selection.main.head
+        const inFenced =
+          findFencedCodeBlockContaining(this.view.state.doc, head) != null
+        if (inFenced) {
+          release()
+          return
+        }
+
         this.releaseTimer = setTimeout(() => {
           this.releaseTimer = null
-          if (this.view.state.field(previewFrozenField)) {
-            this.view.dispatch({ effects: setPreviewFrozen.of(false) })
-          }
+          release()
         }, FREEZE_TAIL_MS)
       }
     }

@@ -4,7 +4,7 @@ import { EditorState } from '@codemirror/state'
 import { ensureSyntaxTree } from '@codemirror/language'
 import { createDiaryCodeMirror } from '../createDiaryCodeMirror'
 import { buildMarkerHidingDecorations } from '../extensions/build'
-import { editorFocusEffect } from '../extensions/livePreviewPlugin'
+import { editorFocusEffect } from '../extensions/editorFocus'
 import type { EditorView } from '@codemirror/view'
 
 describe('live preview marker hiding', () => {
@@ -140,6 +140,41 @@ describe('live preview marker hiding', () => {
     v.dispatch({ selection: { anchor: thgPos, head: thgPos } })
     expect(v.state.doc.toString()).toBe(content)
     expect(v.state.doc.toString()).not.toContain('```thg')
+  })
+
+  function isOpenFenceHidden(state: EditorState, doc: string) {
+    const openFence = doc.indexOf('```')
+    const deco = buildMarkerHidingDecorations(
+      state,
+      { resolveAttachmentUrl: (u) => u, interactionMode: 'touch' },
+      { hasFocus: true }
+    )
+    let hidden = false
+    deco.between(openFence, openFence + 3, (_f, _t, value) => {
+      if (value.spec?.widget?.constructor.name === 'HiddenSyntaxWidget') {
+        hidden = true
+      }
+    })
+    return hidden
+  }
+
+  it('re-entering fenced block shows fence markers again', () => {
+    const content = '```\ntube\n```\nthg'
+    const insidePos = content.indexOf('tube')
+    const outsidePos = content.indexOf('thg')
+    const v = mount(content, outsidePos)
+    focusEditor(v)
+
+    expect(isOpenFenceHidden(v.state, content)).toBe(true)
+
+    v.dispatch({ selection: { anchor: insidePos, head: insidePos } })
+    expect(isOpenFenceHidden(v.state, content)).toBe(false)
+
+    v.dispatch({ selection: { anchor: outsidePos, head: outsidePos } })
+    expect(isOpenFenceHidden(v.state, content)).toBe(true)
+
+    v.dispatch({ selection: { anchor: insidePos, head: insidePos } })
+    expect(isOpenFenceHidden(v.state, content)).toBe(false)
   })
 
   it('touch mode does not stack cm-table-line decorations with table widget', () => {

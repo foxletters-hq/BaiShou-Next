@@ -2,6 +2,8 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { ensureSyntaxTree } from '@codemirror/language'
 import { createDiaryCodeMirror } from '../createDiaryCodeMirror'
 import { collectFencedCodeBlockRanges } from '../extensions/fencedCodeScan'
+import { buildMarkerHidingDecorations } from '../extensions/build'
+import { editorFocusEffect } from '../extensions/editorFocus'
 import type { EditorView } from '@codemirror/view'
 
 describe('fenced code inline touch flow', () => {
@@ -69,5 +71,55 @@ describe('fenced code inline touch flow', () => {
     expect(v.state.doc.toString()).toBe(initialDoc)
     expect(collectFencedCodeBlockRanges(v.state.doc)).toHaveLength(1)
     expect(parent!.querySelectorAll('.cm-rendered-fenced-code')).toHaveLength(0)
+  })
+
+  it('touch re-entry into fenced block reveals open fence markers', async () => {
+    const content = '```\ntube\n```\nthg'
+    const v = await mountAndSettle(content)
+    v.dispatch({ effects: editorFocusEffect.of(true) })
+    const outsidePos = v.state.doc.toString().indexOf('thg')
+    const insidePos = v.state.doc.toString().indexOf('tube')
+    const openFence = content.indexOf('```')
+
+    const isOpenFenceHidden = () => {
+      let hidden = false
+      buildMarkerHidingDecorations(
+        v!.state,
+        { resolveAttachmentUrl: (u) => u, interactionMode: 'touch' },
+        { hasFocus: true }
+      ).between(openFence, openFence + 3, (_f, _t, value) => {
+        if (value.spec?.widget?.constructor.name === 'HiddenSyntaxWidget') {
+          hidden = true
+        }
+      })
+      return hidden
+    }
+
+    v.dispatch({ selection: { anchor: outsidePos, head: outsidePos } })
+    await flushMicrotasks()
+    expect(isOpenFenceHidden()).toBe(true)
+
+    const lineEl = v.contentDOM.querySelector('.cm-code-line') as HTMLElement | null
+    expect(lineEl).not.toBeNull()
+
+    const fireTap = () => {
+      lineEl!.dispatchEvent(
+        new PointerEvent('pointerdown', { bubbles: true, cancelable: true, button: 0 })
+      )
+      v.dispatch({ selection: { anchor: insidePos, head: insidePos } })
+      lineEl!.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, button: 0 }))
+    }
+
+    fireTap()
+    await flushMicrotasks()
+    expect(isOpenFenceHidden()).toBe(false)
+
+    v.dispatch({ selection: { anchor: outsidePos, head: outsidePos } })
+    await flushMicrotasks()
+    expect(isOpenFenceHidden()).toBe(true)
+
+    fireTap()
+    await flushMicrotasks()
+    expect(isOpenFenceHidden()).toBe(false)
   })
 })
