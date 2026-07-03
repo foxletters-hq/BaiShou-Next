@@ -1,6 +1,25 @@
 import { Diary, Summary, SummaryType, MissingSummary, getSummaryWeekNumber } from '@baishou/shared'
 import type { DiaryRepository, SummaryRepository } from '@baishou/database'
 
+/** 与 SummaryGeneratorService 构建上下文时的区间判断保持一致 */
+function summaryFullyWithinPeriod(
+  summary: Pick<Summary, 'startDate' | 'endDate'>,
+  periodStart: Date,
+  periodEnd: Date
+): boolean {
+  return (
+    summary.startDate.getTime() >= periodStart.getTime() &&
+    summary.endDate.getTime() <= periodEnd.getTime()
+  )
+}
+
+function monthBounds(year: number, month: number): { start: Date; end: Date } {
+  return {
+    start: new Date(year, month, 1),
+    end: new Date(year, month + 1, 0, 23, 59, 59)
+  }
+}
+
 export class MissingSummaryDetector {
   constructor(
     private readonly diaryRepo: DiaryRepository,
@@ -134,7 +153,12 @@ export class MissingSummaryDetector {
 
     const monthsSet = new Set<string>()
     for (const w of weeklies) {
-      monthsSet.add(`${w.startDate.getFullYear()}-${w.startDate.getMonth()}`)
+      if (w.type !== SummaryType.weekly) continue
+      const year = w.startDate.getFullYear()
+      const month = w.startDate.getMonth()
+      const { start: mStart, end: mEnd } = monthBounds(year, month)
+      if (!summaryFullyWithinPeriod(w, mStart, mEnd)) continue
+      monthsSet.add(`${year}-${month}`)
     }
 
     for (const key of monthsSet) {
@@ -142,10 +166,15 @@ export class MissingSummaryDetector {
       const year = parseInt(yearStr!, 10)
       const month = parseInt(monthStr!, 10)
 
-      const mStart = new Date(year, month, 1)
-      const mEnd = new Date(year, month + 1, 0, 23, 59, 59) // 最后一天最后时刻
+      const { start: mStart, end: mEnd } = monthBounds(year, month)
 
       if (mEnd.getTime() > now.getTime()) continue
+
+      const eligibleWeeklies = weeklies.filter(
+        (w) =>
+          w.type === SummaryType.weekly && summaryFullyWithinPeriod(w, mStart, mEnd)
+      )
+      if (eligibleWeeklies.length === 0) continue
 
       const hasMonthly = monthlies.some(
         (s) => s.startDate.getFullYear() === year && s.startDate.getMonth() === month
@@ -174,8 +203,13 @@ export class MissingSummaryDetector {
 
     const quartersSet = new Set<string>()
     for (const m of monthlies) {
-      const q = Math.ceil((m.startDate.getMonth() + 1) / 3)
-      quartersSet.add(`${m.startDate.getFullYear()}-${q}`)
+      if (m.type !== SummaryType.monthly) continue
+      const year = m.startDate.getFullYear()
+      const month = m.startDate.getMonth()
+      const { start: mStart, end: mEnd } = monthBounds(year, month)
+      if (!summaryFullyWithinPeriod(m, mStart, mEnd)) continue
+      const q = Math.ceil((month + 1) / 3)
+      quartersSet.add(`${year}-${q}`)
     }
 
     for (const qKey of quartersSet) {
@@ -188,6 +222,12 @@ export class MissingSummaryDetector {
       const qEnd = new Date(year, startMonth + 3, 0, 23, 59, 59)
 
       if (qEnd.getTime() > now.getTime()) continue
+
+      const eligibleMonthlies = monthlies.filter(
+        (m) =>
+          m.type === SummaryType.monthly && summaryFullyWithinPeriod(m, qStart, qEnd)
+      )
+      if (eligibleMonthlies.length === 0) continue
 
       const hasQuarterly = quarterlies.some(
         (s) =>
@@ -221,7 +261,12 @@ export class MissingSummaryDetector {
 
     const yearsSet = new Set<number>()
     for (const q of quarterlies) {
-      yearsSet.add(q.startDate.getFullYear())
+      if (q.type !== SummaryType.quarterly) continue
+      const year = q.startDate.getFullYear()
+      const yStart = new Date(year, 0, 1)
+      const yEnd = new Date(year, 11, 31, 23, 59, 59)
+      if (!summaryFullyWithinPeriod(q, yStart, yEnd)) continue
+      yearsSet.add(year)
     }
 
     for (const year of yearsSet) {
@@ -229,6 +274,12 @@ export class MissingSummaryDetector {
       const yEnd = new Date(year, 11, 31, 23, 59, 59)
 
       if (yEnd.getTime() > now.getTime()) continue
+
+      const eligibleQuarterlies = quarterlies.filter(
+        (q) =>
+          q.type === SummaryType.quarterly && summaryFullyWithinPeriod(q, yStart, yEnd)
+      )
+      if (eligibleQuarterlies.length === 0) continue
 
       const hasYearly = yearlies.some(
         (s) => s.type === SummaryType.yearly && s.startDate.getFullYear() === year

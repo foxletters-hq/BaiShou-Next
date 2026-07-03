@@ -173,6 +173,8 @@ export class SummaryQueueService {
         } else if (chunk.includes('STATUS:generation_failed_error')) {
           const cleanMsg = chunk.replace('STATUS:generation_failed_error:', '').trim()
           throw new Error(cleanMsg)
+        } else if (chunk.includes('STATUS:no_data_error')) {
+          throw new Error('没有足够的数据来生成总结，请先补全下级总结。')
         } else if (!chunk.startsWith('STATUS:')) {
           // 阶段 3: AI 总结正流式接收生成... 模拟流式打字机效果输出
           const textLength = chunk.length
