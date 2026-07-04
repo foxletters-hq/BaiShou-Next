@@ -16,6 +16,10 @@ export interface ContextWindowConfig {
    * 仅保留 orderIndex ≤ 此值的消息，用于还原历史某轮发送给 AI 的上下文。
    */
   upToOrderIndex?: number
+  /**
+   * 本次请求必须出现在窗口内的用户消息 id（如已落库但 recentCount 截断会误删时强制保留）。
+   */
+  requiredMessageId?: string
 }
 
 type CompressionSnapshot = Awaited<ReturnType<SnapshotRepository['getLatestSnapshot']>>
@@ -72,6 +76,13 @@ export class ContextWindowBuilder {
       if (retainStartIndex < 0) {
         const cutoffIndex = resolveSnapshotCutoffIndex(messages, snapshot)
         if (cutoffIndex >= 0) retainStartIndex = cutoffIndex + 1
+      }
+
+      if (config.requiredMessageId) {
+        const requiredIdx = messages.findIndex((m) => m.id === config.requiredMessageId)
+        if (requiredIdx >= 0 && (retainStartIndex < 0 || retainStartIndex > requiredIdx)) {
+          retainStartIndex = requiredIdx
+        }
       }
 
       if (retainStartIndex >= 1 && retainStartIndex <= messages.length - 1) {
@@ -138,10 +149,38 @@ export class ContextWindowBuilder {
 
     startIndex = Math.max(0, startIndex)
 
+    if (config.requiredMessageId) {
+      startIndex = expandStartIndexForRequiredMessage(
+        effectiveMessages,
+        startIndex,
+        config.requiredMessageId,
+        Boolean(snapshot)
+      )
+    }
+
     if (snapshot && startIndex > 0) {
       return [effectiveMessages[0]!, ...effectiveMessages.slice(startIndex)]
     }
 
     return effectiveMessages.slice(startIndex)
   }
+}
+
+/** 若 requiredMessageId 会被 recentCount 截掉，则向前扩展 startIndex 以保留该轮 */
+function expandStartIndexForRequiredMessage(
+  effectiveMessages: MessageWithParts[],
+  startIndex: number,
+  requiredMessageId: string,
+  hasSnapshotSummary: boolean
+): number {
+  const anchorIndex = effectiveMessages.findIndex((m) => m.id === requiredMessageId)
+  if (anchorIndex < 0) return startIndex
+
+  let turnStart = anchorIndex
+  while (turnStart > 0 && effectiveMessages[turnStart]!.role !== 'user') {
+    turnStart--
+  }
+
+  const minStart = hasSnapshotSummary ? 1 : 0
+  return Math.min(startIndex, Math.max(minStart, turnStart))
 }

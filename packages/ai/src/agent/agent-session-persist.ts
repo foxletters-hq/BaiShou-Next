@@ -42,6 +42,7 @@ export interface PersistResultParams {
   namingModelConfigured?: boolean
   namingProvider?: IAIProvider
   namingModelId?: string
+  flushSessionToDisk?: (sessionId: string) => Promise<void>
 }
 
 /**
@@ -67,7 +68,8 @@ export async function persistResult(params: PersistResultParams): Promise<{
     modelId,
     skipUserMessageRecording,
     userMessageId,
-    streamError
+    streamError,
+    flushSessionToDisk
   } = params
 
   const userOrderIndex = await resolveAssistantParentOrderIndex(sessionRepo, sessionId, {
@@ -249,6 +251,14 @@ export async function persistResult(params: PersistResultParams): Promise<{
     streamUsage.cacheReadInputTokens,
     streamUsage.cacheWriteInputTokens
   )
+
+  if (flushSessionToDisk) {
+    try {
+      await flushSessionToDisk(sessionId)
+    } catch (e: unknown) {
+      logger.warn('[Persist Result] flushSessionToDisk failed:', e as Error)
+    }
+  }
 
   // ==========================================
   // 触发闲置后台服务 (仅在无流错误时执行)

@@ -194,11 +194,21 @@ export class AgentSessionService {
       const configRecentCount =
         typeof userConfig?.['recentCount'] === 'number' ? userConfig['recentCount'] : 30
 
+      if (
+        userMessageId &&
+        !sessionMessages.some((message) => message.id === userMessageId)
+      ) {
+        sessionMessages = await loadSessionMessages()
+      }
+
       const dbHistory = await ContextWindowBuilder.buildFromMessages(
         sessionId,
         snapshotRepo,
         sessionMessages,
-        { recentCount: configRecentCount },
+        {
+          recentCount: configRecentCount,
+          ...(userMessageId ? { requiredMessageId: userMessageId } : {})
+        },
         snapshotForWindow
       )
       const coreMessages = await MessageAdapter.toVercelMessages(
@@ -442,7 +452,8 @@ export class AgentSessionService {
         systemPrompt: builtSystemPrompt,
         namingModelConfigured: systemModels?.namingModelConfigured,
         namingProvider: systemModels?.namingProvider,
-        namingModelId: systemModels?.namingModelId
+        namingModelId: systemModels?.namingModelId,
+        flushSessionToDisk
       })
 
       if (!streamError && accumulator.toolCalls.length > 0) {
