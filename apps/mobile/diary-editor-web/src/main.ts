@@ -37,6 +37,8 @@ let bottomScrollInsetPx = 0
 let keyboardVisible = false
 let caretScrollFrameId: number | null = null
 let suppressCaretScrollOnce = false
+/** 编辑器初次挂载期间禁止平滑滚向光标 */
+let suppressCaretScrollUntil = 0
 /** 用户手动滚动后，暂停自动把视图拽回光标 */
 let userScrollLockUntil = 0
 let programmaticScroll = false
@@ -344,6 +346,24 @@ function smoothApplyProgrammaticScrollTop(targetScrollTop: number, onDone?: () =
   caretScrollFrameId = requestAnimationFrame(step)
 }
 
+function scrollEditorToBottomInstant(): void {
+  if (!view) return
+  const scrollDOM = view.scrollDOM
+  const maxTop = Math.max(0, scrollDOM.scrollHeight - scrollDOM.clientHeight)
+  programmaticScroll = true
+  scrollDOM.scrollTop = maxTop
+  requestAnimationFrame(() => {
+    programmaticScroll = false
+  })
+}
+
+function finalizeInitialEditorScroll(): void {
+  scrollEditorToBottomInstant()
+  requestAnimationFrame(() => {
+    scrollEditorToBottomInstant()
+  })
+}
+
 function installUserScrollListener(editorView: EditorView): void {
   if (scrollListenerInstalled) return
   scrollListenerInstalled = true
@@ -368,6 +388,7 @@ function shouldAutoScrollCaret(): boolean {
 function caretScrollSkipReason(force = false): string | null {
   if (!view) return 'no-view'
   if (activeScrollMode !== 'viewport') return `scrollMode=${activeScrollMode}`
+  if (!force && Date.now() < suppressCaretScrollUntil) return 'initial-mount'
   if (!force && keyboardVisible) return 'keyboard-visible'
   if (isUserScrollLocked() && !force) return 'user-scroll-locked'
   if (isTableCellEditorFocused()) return 'table-cell-focused'
@@ -441,10 +462,24 @@ function ensureCaretVisible(onDone?: () => void, force = false): void {
     onDone?.()
     return
   }
+  if (!view) {
+    onDone?.()
+    return
+  }
+  const scrollDOM = view.scrollDOM
+  if (Date.now() < suppressCaretScrollUntil) {
+    applyProgrammaticScrollTop(targetScrollTop)
+    onDone?.()
+    return
+  }
   smoothApplyProgrammaticScrollTop(targetScrollTop, onDone)
 }
 
 function scheduleForcedCaretScroll(): void {
+  if (Date.now() < suppressCaretScrollUntil) {
+    scrollEditorToBottomInstant()
+    return
+  }
   userScrollLockUntil = 0
   ensureCaretVisible(undefined, true)
   window.setTimeout(() => ensureCaretVisible(undefined, true), 100)
@@ -452,6 +487,11 @@ function scheduleForcedCaretScroll(): void {
 }
 
 function scheduleEnsureCaretVisible(onDone?: () => void): void {
+  if (Date.now() < suppressCaretScrollUntil) {
+    scrollEditorToBottomInstant()
+    onDone?.()
+    return
+  }
   scheduleSmoothCaretScroll(onDone)
 }
 
@@ -592,6 +632,9 @@ function installTouchParentScrollRelay(): void {
 function setupContentHeightObserver(editorView: EditorView): void {
   contentHeightObserver?.disconnect()
   contentHeightObserver = new ResizeObserver(() => {
+    if (Date.now() < suppressCaretScrollUntil) {
+      scrollEditorToBottomInstant()
+    }
     reportContentMetrics()
   })
   contentHeightObserver.observe(editorView.contentDOM)
@@ -616,7 +659,8 @@ function mountEditor(init: InitPayload): void {
     window.__tableChromeDebug = true
     window.__diaryBridgeDebug = true
     window.__diaryCmPlaceCursorAfterTable = () => {
-      scheduleEnsureCaretVisible()
+      userScrollLockUntil = 0
+      ensureCaretVisible(undefined, true)
     }
   }
   applyBottomScrollInset(init.scrollInsets?.bottom ?? 0)
@@ -672,25 +716,44 @@ function mountEditor(init: InitPayload): void {
       EditorView.updateListener.of((update) => {
         if (update.selectionSet) {
           const { from, to } = update.state.selection.main
+          logEditor('selectionChange', {
+            from,
+            to,
+            docLen: update.state.doc.length,
+            docChanged: update.docChanged
+          })
           postToNative({ type: 'selectionChange', payload: { start: from, end: to } })
           if (init.interactionMode === 'touch') {
             window.requestAnimationFrame(() => {
               reportContentMetrics()
               if (scrollMode === 'viewport') {
                 if (Date.now() >= suppressCaretScrollFromClickUntil) {
-                  userScrollLockUntil = 0
-                  scheduleEnsureCaretVisible()
+                  if (suppressCaretScrollOnce) {
+                    suppressCaretScrollOnce = false
+                  } else if (Date.now() < suppressCaretScrollUntil) {
+                    // 初次挂载选区同步，不自动滚向光标
+                  } else {
+                    userScrollLockUntil = 0
+                    scheduleEnsureCaretVisible()
+                  }
                 }
               }
             })
           }
         }
         if (update.docChanged && init.interactionMode === 'touch') {
+          logEditor('docChanged', {
+            docLen: update.state.doc.length,
+            head: update.state.selection.main.head,
+            changeCount: update.changes.length
+          })
           window.requestAnimationFrame(() => {
             reportContentMetrics()
             if (scrollMode === 'viewport') {
               if (suppressCaretScrollOnce) {
                 suppressCaretScrollOnce = false
+              } else if (Date.now() < suppressCaretScrollUntil) {
+                // 初次挂载期间不自动滚向光标
               } else {
                 userScrollLockUntil = 0
                 scheduleEnsureCaretVisible()
@@ -752,6 +815,10 @@ function mountEditor(init: InitPayload): void {
             userScrollLockUntil = 0
             window.requestAnimationFrame(() => {
               if (!view) return
+              if (Date.now() < suppressCaretScrollUntil) {
+                scrollEditorToBottomInstant()
+                return
+              }
               const head = view.state.selection.main.head
               if (head <= 1 && view.state.doc.length > 1) {
                 logEditor('caretScroll:skip', { reason: 'stale-head-on-focus', head })
@@ -793,14 +860,23 @@ function mountEditor(init: InitPayload): void {
   }
 
   const docLength = view.state.doc.length
-  view.dispatch({ selection: { anchor: docLength, head: docLength } })
+  suppressCaretScrollOnce = true
+  suppressCaretScrollUntil = Date.now() + 2000
+  scrollEditorToBottomInstant()
+  view.dispatch({
+    selection: { anchor: docLength, head: docLength },
+    scrollIntoView: false
+  })
+  scrollEditorToBottomInstant()
 
   applyTagColorRegistry(init.tagColorRegistry)
   reportContentMetrics()
   suppressChangeEcho = false
 
   requestAnimationFrame(() => {
+    scrollEditorToBottomInstant()
     probeLivePreviewDom(0)
+    finalizeInitialEditorScroll()
   })
 }
 
@@ -836,7 +912,12 @@ function probeLivePreviewDom(attempt: number): void {
   })
   if (needsRetry) {
     view?.dispatch({ effects: diarySyntaxTreeGrowthEffect.of(null) })
+    if (Date.now() < suppressCaretScrollUntil) {
+      scrollEditorToBottomInstant()
+    }
     window.setTimeout(() => probeLivePreviewDom(attempt + 1), 50 * (attempt + 1))
+  } else if (Date.now() < suppressCaretScrollUntil) {
+    scrollEditorToBottomInstant()
   }
 }
 
@@ -901,7 +982,11 @@ function insertAtCursor(text: string): void {
 
 function setSelection(start: number, end: number): void {
   if (!view) return
-  view.dispatch({ selection: { anchor: start, head: end } })
+  view.dispatch({ selection: { anchor: start, head: end }, scrollIntoView: false })
+  if (Date.now() < suppressCaretScrollUntil) {
+    scrollEditorToBottomInstant()
+    return
+  }
   scheduleEnsureCaretVisible()
 }
 
@@ -975,7 +1060,11 @@ function handleRnMessage(raw: unknown): void {
     case 'focus':
       view?.focus()
       userScrollLockUntil = 0
-      scheduleEnsureCaretVisible()
+      if (Date.now() < suppressCaretScrollUntil) {
+        scrollEditorToBottomInstant()
+      } else {
+        scheduleEnsureCaretVisible()
+      }
       break
     case 'blur':
       view?.dom.blur()

@@ -92,7 +92,7 @@ function AppContent() {
         <Stack.Screen
           name="diary-editor"
           options={{
-            presentation: 'modal',
+            presentation: 'fullScreenModal',
             title: t('diary.editor_title', '编辑记忆'),
             headerShown: false,
             ...themedFadeStackOptions
