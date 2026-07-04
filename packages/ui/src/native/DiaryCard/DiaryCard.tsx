@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import React, { memo, useMemo } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
+import { View, Text, StyleSheet } from 'react-native'
+import { TouchableOpacity } from 'react-native-gesture-handler'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useNativeTheme } from '../../native/theme'
 import {
@@ -83,8 +84,9 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
   return (
     <TouchableOpacity
       style={[styles.card, { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }]}
-      onPress={onClick}
+      onPress={() => onClick?.()}
       activeOpacity={0.9}
+      disallowInterruption
     >
       <View style={styles.header}>
         <View style={styles.dateGroup}>
@@ -176,10 +178,10 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
       {/* On Mobile we always show the action buttons according to the original code "Builder isMobile" logic */}
       <View style={[styles.actionsDivider, { backgroundColor: colors.borderMuted }]} />
       <View style={styles.actionsBox}>
-        <TouchableOpacity onPress={onEdit} style={styles.actionBtn}>
+        <TouchableOpacity onPress={onEdit} style={styles.actionBtn} activeOpacity={0.7} disallowInterruption>
           <Text style={[styles.editText, { color: colors.textSecondary }]}>{t('common.edit')}</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={onDelete} style={styles.actionBtn}>
+        <TouchableOpacity onPress={onDelete} style={styles.actionBtn} activeOpacity={0.7} disallowInterruption>
           <Text style={[styles.deleteText, { color: colors.error }]}>{t('common.delete')}</Text>
         </TouchableOpacity>
       </View>

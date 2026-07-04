@@ -2,8 +2,9 @@ import { useCallback, useRef } from 'react'
 import { BackHandler } from 'react-native'
 import { useFocusEffect, useNavigation } from 'expo-router'
 import { useTranslation } from 'react-i18next'
-import type { EventArg } from '@react-navigation/native'
+import type { EventArg, NavigationProp, ParamListBase } from '@react-navigation/native'
 import { useNativeToast } from '@baishou/ui/native'
+import { isDiaryEditorRouteActive } from '../diary-editor-route.util'
 
 const EXIT_CONFIRM_MS = 2500
 
@@ -57,6 +58,10 @@ export function useDiaryRootExitGuard() {
       const backSub = BackHandler.addEventListener('hardwareBackPress', handleExitAttempt)
 
       const onBeforeRemove = (event: BeforeRemoveEvent) => {
+        const nav = navigation as NavigationProp<ParamListBase>
+        if (isDiaryEditorRouteActive(nav)) return
+        const actionType = event.data.action.type
+        if (actionType !== 'GO_BACK' && actionType !== 'POP') return
         event.preventDefault()
         handleExitAttempt()
       }

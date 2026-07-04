@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { View, StyleSheet, StatusBar, Modal, Text, TouchableOpacity } from 'react-native'
+import { View, StyleSheet, StatusBar, Modal, Text, TouchableOpacity, FlatList } from 'react-native'
 import { ScreenSafeArea } from '../../components/ScreenSafeArea'
-import { useRouter, useFocusEffect } from 'expo-router'
+import { useRouter, useFocusEffect, useNavigation } from 'expo-router'
+import { useIsFocused } from '@react-navigation/native'
 import { useTranslation } from 'react-i18next'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { logger } from '@baishou/shared'
@@ -16,6 +17,9 @@ import { useDiaryFilterState } from './hooks/useDiaryFilterState'
 import { useDiaryRootExitGuard } from './hooks/useDiaryRootExitGuard'
 import { useIncrementalSync } from '../../providers/IncrementalSyncProvider'
 import { DIARY_FILTER_STORAGE_KEYS } from './diary-filter-state.util'
+import { isDiaryEditorRouteActive } from './diary-editor-route.util'
+import { preloadDiaryEditorWebViewSource } from '../../hooks/useDiaryEditorWebViewSource'
+import { readDiaryListScrollY, saveDiaryListScrollY } from './diary-list-scroll.util'
 
 export const DiaryScreen: React.FC = () => {
   const { t } = useTranslation()
@@ -30,6 +34,9 @@ export const DiaryScreen: React.FC = () => {
     ecosystemResyncEpoch
   } = useBaishou()
   const router = useRouter()
+  const navigation = useNavigation()
+  const isListFocused = useIsFocused()
+  const editorBundlePreloadedRef = useRef(false)
   const {
     needsFullFileAccess,
     request: requestStorage,
@@ -61,7 +68,12 @@ export const DiaryScreen: React.FC = () => {
 
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [todayEntry, setTodayEntry] = useState<{ id: number } | null>(null)
-  const skipInitialFocusRefreshRef = useRef(true)
+  const pendingEditorNavRef = useRef(false)
+  const listRef = useRef<FlatList<DiaryListEntry> | null>(null)
+  const listScrollYRef = useRef(0)
+  const lastListScrollLogAtRef = useRef(0)
+  const isListFocusedRef = useRef(isListFocused)
+  isListFocusedRef.current = isListFocused
   const {
     isSyncing,
     isPlanning,
@@ -75,6 +87,10 @@ export const DiaryScreen: React.FC = () => {
   useFocusEffect(
     useCallback(() => {
       void refreshConfigured()
+      if (!editorBundlePreloadedRef.current) {
+        editorBundlePreloadedRef.current = true
+        void preloadDiaryEditorWebViewSource()
+      }
     }, [refreshConfigured])
   )
 
@@ -114,7 +130,8 @@ export const DiaryScreen: React.FC = () => {
     {
       ready: diaryListReady,
       vaultRevision,
-      ecosystemResyncEpoch
+      ecosystemResyncEpoch,
+      isScreenFocused: isListFocused
     }
   )
 
@@ -125,26 +142,81 @@ export const DiaryScreen: React.FC = () => {
     [setSearchQuery]
   )
 
+  const openDiaryEditor = useCallback(
+    (params: Record<string, string>) => {
+      pendingEditorNavRef.current = true
+      if (__DEV__) {
+        console.log('[DiaryScreen] openDiaryEditor', {
+          params,
+          listScrollY: listScrollYRef.current,
+          persistedScrollY: readDiaryListScrollY(),
+          isListFocused: isListFocusedRef.current,
+          entryCount: entries.length
+        })
+      }
+      router.push({ pathname: '/diary-editor', params })
+    },
+    [router, entries.length]
+  )
+
+  useEffect(() => {
+    if (!__DEV__) return
+    console.log('[DiaryScreen] isListFocused', {
+      isListFocused,
+      listScrollY: listScrollYRef.current,
+      pendingEditorNav: pendingEditorNavRef.current
+    })
+  }, [isListFocused])
+
+  const handleListScroll = useCallback((offsetY: number) => {
+    saveDiaryListScrollY(offsetY)
+    if (offsetY >= 0) {
+      listScrollYRef.current = offsetY
+    }
+    if (!__DEV__) return
+    const now = Date.now()
+    if (now - lastListScrollLogAtRef.current < 250) return
+    lastListScrollLogAtRef.current = now
+    console.log('[DiaryList] onScroll', {
+      offsetY,
+      isListFocused: isListFocusedRef.current,
+      pendingEditorNav: pendingEditorNavRef.current,
+      savedScrollY: listScrollYRef.current
+    })
+  }, [])
+
+  useEffect(() => {
+    const root = navigation.getParent()
+    if (!root) return
+
+    const onNavStateChange = () => {
+      const editorActive = isDiaryEditorRouteActive(navigation)
+      if (__DEV__) {
+        console.log('[DiaryScreen] navState', {
+          editorActive,
+          pendingEditorNav: pendingEditorNavRef.current,
+          listScrollY: listScrollYRef.current
+        })
+      }
+      if (editorActive) {
+        pendingEditorNavRef.current = false
+      }
+    }
+
+    onNavStateChange()
+    const unsubscribe = root.addListener('state', onNavStateChange)
+    return unsubscribe
+  }, [navigation])
+
   const handleGoToEditor = useCallback(
     (id: number) => {
-      router.push({ pathname: '/diary-editor', params: { id: String(id) } })
-    },
-    [router]
-  )
-
-  const diaryDataReady = Boolean(
-    dbReady && services?.diaryService && storageReady && !vaultSwitching
-  )
-
-  useFocusEffect(
-    useCallback(() => {
-      if (!diaryDataReady || isSyncing || !diaryListReady) return
-      if (skipInitialFocusRefreshRef.current) {
-        skipInitialFocusRefreshRef.current = false
-        return
+      const y = Math.max(listScrollYRef.current, readDiaryListScrollY())
+      if (y > 2) {
+        listRef.current?.scrollToOffset({ offset: y, animated: false })
       }
-      void loadEntries({ silent: true })
-    }, [diaryDataReady, diaryListReady, isSyncing, loadEntries])
+      openDiaryEditor({ id: String(id) })
+    },
+    [openDiaryEditor]
   )
 
   const handleRequestStoragePermission = useCallback(async () => {
@@ -222,22 +294,16 @@ export const DiaryScreen: React.FC = () => {
   const handleEditToday = () => {
     void ensureStorageThen(() => {
       if (todayEntry) {
-        router.push({
-          pathname: '/diary-editor',
-          params: { id: String(todayEntry.id), append: '1' }
-        })
+        openDiaryEditor({ id: String(todayEntry.id), append: '1' })
       } else {
-        router.push({
-          pathname: '/diary-editor',
-          params: { date: formatTodayDateStr() }
-        })
+        openDiaryEditor({ date: formatTodayDateStr() })
       }
     })
   }
 
   const handleAddNew = () => {
     void ensureStorageThen(() => {
-      router.push({ pathname: '/diary-editor', params: { new: '1' } })
+      openDiaryEditor({ new: '1' })
     })
   }
 
@@ -286,6 +352,8 @@ export const DiaryScreen: React.FC = () => {
           />
 
           <DiaryList
+            listRef={listRef}
+            onListScroll={handleListScroll}
             entries={displayEntries}
             totalCount={totalCount}
             currentPage={currentPage}

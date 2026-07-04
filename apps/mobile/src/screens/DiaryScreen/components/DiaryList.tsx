@@ -1,14 +1,14 @@
-import React, { useMemo, useCallback, memo } from 'react'
+import React, { useMemo, useCallback, memo, type RefObject } from 'react'
 import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   TouchableOpacity,
   ActivityIndicator,
   ScrollView,
   useWindowDimensions
 } from 'react-native'
+import { FlatList } from 'react-native-gesture-handler'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import {
@@ -66,6 +66,9 @@ export interface DiaryListProps {
   /** 无全文件权限时，在空列表中显示授权按钮（对齐原版 BaiShou） */
   showStoragePermission?: boolean
   onRequestStoragePermission?: () => void | Promise<void>
+  listRef?: RefObject<FlatList<DiaryListEntry> | null>
+  onListScroll?: (offsetY: number) => void
+  scrollEnabled?: boolean
 }
 
 type DiaryPaginationBarProps = {
@@ -189,7 +192,10 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
   onPageSizeChange,
   onViewAll,
   showStoragePermission,
-  onRequestStoragePermission
+  onRequestStoragePermission,
+  listRef,
+  onListScroll,
+  scrollEnabled = true
 }) {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -236,6 +242,13 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
   )
 
   const keyExtractor = useCallback((item: DiaryListEntry) => String(item.id), [])
+
+  const handleScroll = useCallback(
+    (event: { nativeEvent: { contentOffset: { y: number } } }) => {
+      onListScroll?.(event.nativeEvent.contentOffset.y)
+    },
+    [onListScroll]
+  )
 
   const listHeader = useMemo(
     () => (
@@ -385,6 +398,7 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
 
   return (
     <FlatList
+      ref={listRef}
       key={`diary-grid-${numColumns}`}
       data={entries}
       numColumns={numColumns}
@@ -396,12 +410,18 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
       columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : undefined}
       ListHeaderComponent={listHeader}
       ListFooterComponent={listFooter}
-      extraData={`${currentPage}-${selectedMonth?.getTime() ?? 'all'}-${totalCount}-${refreshing ? 1 : 0}`}
+      extraData={`${currentPage}-${selectedMonth?.getTime() ?? 'all'}-${totalCount}`}
       initialNumToRender={8}
       maxToRenderPerBatch={6}
       windowSize={7}
-      removeClippedSubviews
+      removeClippedSubviews={false}
+      overScrollMode="never"
       keyboardShouldPersistTaps="handled"
+      automaticallyAdjustKeyboardInsets={false}
+      scrollEnabled={scrollEnabled}
+      {...(onListScroll
+        ? { onScroll: handleScroll, scrollEventThrottle: 1 as const }
+        : {})}
     />
   )
 })

@@ -6,6 +6,7 @@ import type { DiaryService } from '@baishou/core-mobile'
 import { getDiaryListCacheVersion, subscribeDiaryListCache } from '@baishou/shared/cache'
 import { useNativeToast } from '@baishou/ui/native'
 import { shouldDiaryListLoadSilently } from '../diary-list-load.util'
+import { diaryListEntriesUnchanged } from '../diary-list-entries.util'
 
 export interface DiaryPageQuery {
   selectedMonth: Date | null
@@ -36,6 +37,8 @@ export interface UseDiaryDataOptions {
   ready?: boolean
   vaultRevision?: number
   ecosystemResyncEpoch?: number
+  /** 列表页失焦（如打开编辑器）时跳过后台刷新，避免 FlatList 跳动 */
+  isScreenFocused?: boolean
 }
 
 export interface LoadDiaryEntriesOptions {
@@ -120,7 +123,8 @@ export function useDiaryData(
 ) {
   const { t } = useTranslation()
   const toast = useNativeToast()
-  const { ready = true, vaultRevision = 0, ecosystemResyncEpoch = 0 } = options
+  const { ready = true, vaultRevision = 0, ecosystemResyncEpoch = 0, isScreenFocused = true } =
+    options
   const [entries, setEntries] = useState<DiaryListEntryData[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -195,6 +199,17 @@ export function useDiaryData(
       const hasCachedRows = entriesRef.current.length > 0
       const silent = shouldDiaryListLoadSilently(hasCachedRows, browseChanged, options.silent)
       const requestId = ++loadRequestIdRef.current
+      if (__DEV__) {
+        console.log('[useDiaryData] loadEntries:start', {
+          requestId,
+          silent,
+          browseChanged,
+          hasCachedRows,
+          cachedCount: entriesRef.current.length,
+          isScreenFocused,
+          browseIdentity
+        })
+      }
       if (!silent) {
         setLoading(true)
       }
@@ -219,22 +234,29 @@ export function useDiaryData(
           })
           if (requestId !== loadRequestIdRef.current || !readyRef.current) return
 
-          setEntries(
-            items.map((item) => ({
-              id: item.id,
-              date: item.date,
-              tags: item.tags ?? [],
-              preview: item.preview ?? '',
-              weather: item.weather,
-              mood: item.mood,
-              location: item.location,
-              isFavorite: item.isFavorite,
-              tagColors: item.tagColors,
-              createdAt: item.updatedAt,
-              updatedAt: item.updatedAt,
-              content: ''
-            }))
-          )
+          const mapped = items.map((item) => ({
+            id: item.id,
+            date: item.date,
+            tags: item.tags ?? [],
+            preview: item.preview ?? '',
+            weather: item.weather,
+            mood: item.mood,
+            location: item.location,
+            isFavorite: item.isFavorite,
+            tagColors: item.tagColors,
+            createdAt: item.updatedAt,
+            updatedAt: item.updatedAt,
+            content: ''
+          }))
+          if (!diaryListEntriesUnchanged(entriesRef.current, mapped)) {
+            setEntries(mapped)
+          } else if (__DEV__) {
+            console.log('[useDiaryData] loadEntries:skip-setEntries', {
+              requestId,
+              reason: 'search-unchanged',
+              count: mapped.length
+            })
+          }
           setTotalCount(hasMore ? pageOffset + pageLimit + 1 : pageOffset + items.length)
         } else {
           const [rawItems, total] = await Promise.all([
@@ -258,22 +280,29 @@ export function useDiaryData(
             }
           }
 
-          setEntries(
-            items.map((item) => ({
-              id: item.id,
-              date: item.date,
-              content: item.preview ?? '',
-              tags: item.tags ?? [],
-              preview: item.preview ?? '',
-              weather: item.weather,
-              mood: item.mood,
-              location: item.location,
-              isFavorite: item.isFavorite,
-              tagColors: item.tagColors,
-              createdAt: item.updatedAt,
-              updatedAt: item.updatedAt
-            }))
-          )
+          const mapped = items.map((item) => ({
+            id: item.id,
+            date: item.date,
+            content: item.preview ?? '',
+            tags: item.tags ?? [],
+            preview: item.preview ?? '',
+            weather: item.weather,
+            mood: item.mood,
+            location: item.location,
+            isFavorite: item.isFavorite,
+            tagColors: item.tagColors,
+            createdAt: item.updatedAt,
+            updatedAt: item.updatedAt
+          }))
+          if (!diaryListEntriesUnchanged(entriesRef.current, mapped)) {
+            setEntries(mapped)
+          } else if (__DEV__) {
+            console.log('[useDiaryData] loadEntries:skip-setEntries', {
+              requestId,
+              reason: 'list-unchanged',
+              count: mapped.length
+            })
+          }
           setTotalCount(typeof total === 'number' ? total : items.length)
         }
       } catch (err) {
@@ -287,19 +316,78 @@ export function useDiaryData(
       } finally {
         if (requestId === loadRequestIdRef.current) {
           setLoading(false)
+          if (__DEV__) {
+            console.log('[useDiaryData] loadEntries:done', {
+              requestId,
+              entryCount: entriesRef.current.length
+            })
+          }
         }
       }
     },
-    [diaryService, t, toast]
+    [diaryService, t, toast, isScreenFocused, browseIdentity]
   )
 
+  const prevScreenFocusedRef = useRef(isScreenFocused)
+  const vaultRevisionAtBlurRef = useRef(vaultRevision)
+  const syncEpochAtBlurRef = useRef(ecosystemResyncEpoch)
+  const listCacheVersionAtBlurRef = useRef(diaryListCacheVersion)
+
   useEffect(() => {
+    if (!isScreenFocused) {
+      vaultRevisionAtBlurRef.current = vaultRevision
+      syncEpochAtBlurRef.current = ecosystemResyncEpoch
+      listCacheVersionAtBlurRef.current = diaryListCacheVersion
+    }
+    const regainingFocus =
+      isScreenFocused && !prevScreenFocusedRef.current && entriesRef.current.length > 0
+    prevScreenFocusedRef.current = isScreenFocused
+
     if (!ready || !diaryService) {
+      if (__DEV__) {
+        console.log('[useDiaryData] effect:reset', { ready, hasService: !!diaryService })
+      }
       loadRequestIdRef.current += 1
       setEntries([])
       setTotalCount(0)
       setLoading(false)
       return
+    }
+    if (!isScreenFocused && entriesRef.current.length > 0) {
+      if (__DEV__) {
+        console.log('[useDiaryData] effect:skip-unfocused', {
+          isScreenFocused,
+          cachedCount: entriesRef.current.length,
+          vaultRevision,
+          ecosystemResyncEpoch,
+          diaryListCacheVersion
+        })
+      }
+      return
+    }
+    if (
+      regainingFocus &&
+      vaultRevision === vaultRevisionAtBlurRef.current &&
+      ecosystemResyncEpoch === syncEpochAtBlurRef.current &&
+      diaryListCacheVersion === listCacheVersionAtBlurRef.current
+    ) {
+      if (__DEV__) {
+        console.log('[useDiaryData] effect:skip-regain-focus', {
+          cachedCount: entriesRef.current.length,
+          vaultRevision
+        })
+      }
+      return
+    }
+    if (__DEV__) {
+      console.log('[useDiaryData] effect:load', {
+        isScreenFocused,
+        cachedCount: entriesRef.current.length,
+        vaultRevision,
+        ecosystemResyncEpoch,
+        diaryListCacheVersion,
+        browseIdentity
+      })
     }
     const browseChanged = browseChangedRef.current
     void loadEntries({
@@ -313,6 +401,7 @@ export function useDiaryData(
     vaultRevision,
     ecosystemResyncEpoch,
     diaryListCacheVersion,
+    isScreenFocused,
     debouncedSearchTerm ? 0 : listFilter,
     debouncedSearchTerm ? 0 : countFilter
   ])
