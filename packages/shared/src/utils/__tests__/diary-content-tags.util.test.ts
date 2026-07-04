@@ -5,6 +5,8 @@ import {
   extractTagsFromTagLine,
   isDiaryTagLine,
   parseDiaryEditorContent,
+  resolveDiaryTagsFromSources,
+  stripDedicatedTagLinesFromContent,
   stripDiaryTagLineFromContent
 } from '../diary-content-tags.util'
 
@@ -67,5 +69,17 @@ describe('diary-content-tags.util', () => {
   it('剥离旧版首行纯标签行', () => {
     expect(stripDiaryTagLineFromContent('#日记\n\n正文')).toBe('正文')
     expect(stripDiaryTagLineFromContent('正文 #日记')).toBe('正文 #日记')
+  })
+
+  it('合并 frontmatter 与正文内联标签', () => {
+    expect(resolveDiaryTagsFromSources(['日记'], '今天 #生活 很开心')).toEqual(['日记', '生活'])
+    expect(resolveDiaryTagsFromSources([], '#疲惫 #深夜\n\n正文')).toEqual(['疲惫', '深夜'])
+  })
+
+  it('预览时剥离独立标签行，保留正文内联标签', () => {
+    const full = '#疲惫 #深夜 #反思\n\n##### 12:00\n\n今天 #市集 很开心'
+    expect(stripDedicatedTagLinesFromContent(full)).toBe(
+      '##### 12:00\n\n今天 #市集 很开心'
+    )
   })
 })

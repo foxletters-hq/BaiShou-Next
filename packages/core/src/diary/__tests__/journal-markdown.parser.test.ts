@@ -84,4 +84,18 @@ tag_colors: {"日记":1,"生活":3}
     const parsed = parseJournalMarkdown(raw, '2025-02-20')
     expect(parsed?.tagColors).toEqual({ 日记: 1, 生活: 3 })
   })
+
+  it('应从正文内联标签补全 tags（无 frontmatter tags 时）', () => {
+    const raw = `---
+id: 6
+date: 2025-06-19
+---
+#疲惫 #深夜 #反思 #白守
+
+##### 23:40:00
+
+今天很累`
+    const parsed = parseJournalMarkdown(raw, '2025-06-19')
+    expect(parsed?.tags).toEqual(['疲惫', '深夜', '反思', '白守'])
+  })
 })
