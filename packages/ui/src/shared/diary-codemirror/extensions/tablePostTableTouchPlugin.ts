@@ -3,6 +3,7 @@ import { EditorView, ViewPlugin } from '@codemirror/view'
 import { isTableChromeTouchTarget } from '../table/tableContextMenu'
 import { isInteractableChromeElement } from '../table/tableChromeHitTest'
 import { logDiaryBridge } from '../diaryBridgeDebug'
+import { logTableDesktop } from '../table/tableDesktopDebug'
 import { isTableSheetOpen } from '../table/tableSheetInteraction'
 import { clearTableChromeSelection } from '../table/tableChromeSelection'
 import { activeTableCellField, setActiveTableCell } from '../table/tableActiveCell'
@@ -93,11 +94,13 @@ function placeCaretAndClearTableChrome(
 }
 
 /**
- * 触摸端：在表后正文区点击时，显式把 CM 选区落到坐标处。
- * 块级表格 widget 下方 Android WebView 往往无法自动更新选区，导致 head 卡在 0、无法输入。
+ * 触摸/桌面：在表后正文区或表格 widget 下半部点击时，显式把 CM 选区落到坐标处。
  */
 export function tablePostTableTouchPlugin(platform?: DiaryCmPlatform): Extension {
-  if (platform?.interactionMode !== 'touch') return []
+  const mode = platform?.interactionMode
+  if (mode !== 'touch' && mode !== 'mouse') return []
+
+  const isTouch = mode === 'touch'
 
   return ViewPlugin.fromClass(
     class {
@@ -160,8 +163,7 @@ export function tablePostTableTouchPlugin(platform?: DiaryCmPlatform): Extension
           return false
         },
         click(event, view) {
-          if (isTableSheetOpen()) return false
-          if (Date.now() < getTouchCaretState(view).suppressClickUntil) {
+          if (isTouch && Date.now() < getTouchCaretState(view).suppressClickUntil) {
             return false
           }
           const target = event.target
@@ -170,7 +172,31 @@ export function tablePostTableTouchPlugin(platform?: DiaryCmPlatform): Extension
             return false
           }
 
+          logTableDesktop('post-table:click', {
+            x: event.clientX,
+            y: event.clientY,
+            head: view.state.selection.main.head
+          })
           placeCaretAndClearTableChrome(view, event.clientX, event.clientY, 'click', target)
+          return false
+        },
+        pointerdown(event, view) {
+          if (isTouch || event.button !== 0) return false
+          if (isTableSheetOpen()) return false
+          const target = event.target
+          if (!(target instanceof Element)) return false
+          // 表格 widget 内点击全部由 TableBlockWidget 处理
+          if (target.closest('.cm-table-block')) return false
+          if (!shouldPlaceCaretFromTouch(view, target, event.clientX, event.clientY)) {
+            return false
+          }
+          logTableDesktop('post-table:pointerdown', {
+            x: event.clientX,
+            y: event.clientY,
+            className: target.className?.slice(0, 50) ?? '',
+            head: view.state.selection.main.head
+          })
+          placeCaretAndClearTableChrome(view, event.clientX, event.clientY, 'pointerdown', target)
           return false
         }
       }

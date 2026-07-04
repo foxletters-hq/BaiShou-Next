@@ -1,4 +1,5 @@
 import { EditorView } from '@codemirror/view'
+import { DIARY_EDITOR_OVERLAY_Z } from '../editorOverlayZIndex'
 import { IMAGE_SIZE_CONFIG } from '../utils/image-utils'
 
 export const editorTheme = EditorView.baseTheme({
@@ -6,7 +7,7 @@ export const editorTheme = EditorView.baseTheme({
     height: '100%',
     fontSize: '16px',
     lineHeight: '24px',
-    backgroundColor: 'var(--bg-editor)'
+    backgroundColor: 'var(--bg-surface, #ffffff)'
   },
   '.cm-editor.cm-focused': {
     outline: 'none !important'
@@ -18,9 +19,17 @@ export const editorTheme = EditorView.baseTheme({
   '.cm-content': {
     padding: '16px 24px',
     minHeight: '100%',
-    paddingBottom: '20vh',
+    paddingBottom: '0',
     color: 'var(--text-primary)',
     caretColor: 'var(--text-primary)'
+  },
+  '.cm-table-block--desktop .cm-table-cell-editor .cm-content': {
+    padding: '7px 9px',
+    minHeight: '1.5em',
+    paddingBottom: '0'
+  },
+  '.cm-table-block--desktop .cm-table-cell-editor .cm-line': {
+    padding: '0 1px'
   },
   '.cm-line': {
     padding: '0'
@@ -196,18 +205,34 @@ export const editorTheme = EditorView.baseTheme({
 
   // Live Preview 表格块预览与操作控件
   '.cm-table-block': {
-    margin: '4px 0 2px',
+    // 用 padding 而非 margin，让 CM heightmap 与 DOM 高度一致（atomic-editor 策略）
+    padding: '4px 0 2px',
     width: '100%',
     maxWidth: '100%',
     position: 'relative',
     userSelect: 'auto',
-    // 块级 widget 可能比源码行更高；默认可穿透，仅交互子元素接收触摸
-    pointerEvents: 'none'
+    pointerEvents: 'auto'
   },
-  '.cm-table-block .cm-table-cell-source, .cm-table-block .cm-table-handle, .cm-table-block .cm-table-corner-menu, .cm-table-block .cm-table-add-btn, .cm-table-block .cm-table-context-menu, .cm-table-block .cm-table-context-menu-layer, .cm-table-block .cm-table-sheet-layer':
-    {
-      pointerEvents: 'auto'
-    },
+  '.cm-table-block:not(.cm-table-block--touch):not(.cm-table-block--desktop):hover .cm-table-handle': {
+    opacity: '0.45',
+    pointerEvents: 'auto'
+  },
+  '.cm-table-block:not(.cm-table-block--touch):not(.cm-table-block--desktop) .cm-table-corner-menu': {
+    opacity: '0.55',
+    pointerEvents: 'auto'
+  },
+  '.cm-table-block:not(.cm-table-block--touch):not(.cm-table-block--desktop):hover .cm-table-corner-menu': {
+    opacity: '1',
+    pointerEvents: 'auto'
+  },
+  '.cm-table-block:not(.cm-table-block--touch):not(.cm-table-block--desktop) .cm-table-add-btn': {
+    opacity: '0.45',
+    pointerEvents: 'auto'
+  },
+  '.cm-table-block:not(.cm-table-block--touch):not(.cm-table-block--desktop):hover .cm-table-add-btn': {
+    opacity: '1',
+    pointerEvents: 'auto'
+  },
   '.cm-table-scroll-host': {
     overflowX: 'auto',
     maxWidth: '100%'
@@ -329,7 +354,7 @@ export const editorTheme = EditorView.baseTheme({
     gridRow: '1',
     minWidth: '0',
     border: '1px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.16)))',
-    borderRadius: '6px',
+    borderRadius: '0',
     overflow: 'hidden',
     backgroundColor: 'var(--bg-editor, transparent)'
   },
@@ -342,10 +367,10 @@ export const editorTheme = EditorView.baseTheme({
     border: 'none',
     borderRadius: '0'
   },
-  '.cm-table-preview th, .cm-table-preview td': {
+  '.cm-table-block:not(.cm-table-block--desktop) .cm-table-preview th, .cm-table-block:not(.cm-table-block--desktop) .cm-table-preview td': {
     borderRight: '1px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.12)))',
     borderBottom: '1px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.1)))',
-    padding: '5px 8px',
+    padding: '10px 12px',
     verticalAlign: 'top',
     wordBreak: 'break-word',
     cursor: 'text'
@@ -357,7 +382,7 @@ export const editorTheme = EditorView.baseTheme({
   '.cm-table-cell-source': {
     display: 'block',
     width: '100%',
-    minHeight: '1.2em',
+    minHeight: '2em',
     margin: '0',
     padding: '0',
     border: 'none',
@@ -365,24 +390,55 @@ export const editorTheme = EditorView.baseTheme({
     background: 'transparent',
     color: 'inherit',
     font: 'inherit',
-    lineHeight: 'inherit',
+    lineHeight: '1.5',
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     boxSizing: 'border-box',
     cursor: 'text'
   },
   '.cm-table-cell-source:focus': {
-    boxShadow: 'inset 0 0 0 2px color-mix(in srgb, var(--color-primary, #5ba8f5) 45%, transparent)',
-    borderRadius: '4px'
+    outline: 'none',
+    boxShadow: 'none'
   },
-  '.cm-table-preview th': {
+  '.cm-table-block:not(.cm-table-block--desktop) .cm-table-cell-inner': {
+    position: 'relative',
+    width: '100%',
+    minHeight: '2em'
+  },
+  '.cm-table-block:not(.cm-table-block--desktop) .cm-table-cell-view': {
+    display: 'block',
+    width: '100%',
+    minHeight: '2em',
+    padding: '0',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    cursor: 'default'
+  },
+  '.cm-table-cell-view--hidden': {
+    display: 'none'
+  },
+  '.cm-table-block:not(.cm-table-block--desktop) .cm-table-cell-editor': {
+    position: 'absolute',
+    inset: '0',
+    minHeight: '2em'
+  },
+  '.cm-table-block:not(.cm-table-block--desktop) .cm-table-cell-editor .cm-editor': {
+    height: '100%'
+  },
+  '.cm-table-block--range-dragging .cm-table-cell-view, .cm-table-block--range-dragging .cm-table-cell-editor':
+    {
+      userSelect: 'none',
+      WebkitUserSelect: 'none',
+      cursor: 'cell'
+    },
+  '.cm-table-block:not(.cm-table-block--desktop) .cm-table-preview th': {
     backgroundColor: 'var(--cm-table-header-bg, var(--bg-surface-normal, rgba(0, 0, 0, 0.04)))',
     fontWeight: '600'
   },
-  '.cm-table-preview tr:last-child td': {
+  '.cm-table-block:not(.cm-table-block--desktop) .cm-table-preview tr:last-child td': {
     borderBottom: 'none'
   },
-  '.cm-table-preview th:last-child, .cm-table-preview td:last-child': {
+  '.cm-table-block:not(.cm-table-block--desktop) .cm-table-preview th:last-child, .cm-table-block:not(.cm-table-block--desktop) .cm-table-preview td:last-child': {
     borderRight: 'none'
   },
   '.cm-table-handle': {
@@ -420,15 +476,15 @@ export const editorTheme = EditorView.baseTheme({
     opacity: '1',
     pointerEvents: 'auto'
   },
-  '.cm-table-block--has-active-cell .cm-table-handle': {
+  '.cm-table-block--has-active-cell:not(.cm-table-block--desktop) .cm-table-handle': {
     opacity: '0.45',
     pointerEvents: 'auto'
   },
-  '.cm-table-block--has-active-cell .cm-table-corner-menu': {
+  '.cm-table-block--has-active-cell:not(.cm-table-block--desktop) .cm-table-corner-menu': {
     opacity: '1',
     pointerEvents: 'auto'
   },
-  '.cm-table-block--has-active-cell .cm-table-add-btn': {
+  '.cm-table-block--has-active-cell:not(.cm-table-block--desktop) .cm-table-add-btn': {
     opacity: '1',
     pointerEvents: 'auto'
   },
@@ -501,7 +557,7 @@ export const editorTheme = EditorView.baseTheme({
   '.cm-table-context-menu-layer': {
     position: 'fixed',
     inset: '0',
-    zIndex: '10050',
+    zIndex: String(DIARY_EDITOR_OVERLAY_Z.menuBackdrop),
     pointerEvents: 'auto'
   },
   '.cm-table-context-menu-backdrop': {
@@ -512,7 +568,7 @@ export const editorTheme = EditorView.baseTheme({
   },
   '.cm-table-context-menu': {
     position: 'fixed',
-    zIndex: '10051',
+    zIndex: String(DIARY_EDITOR_OVERLAY_Z.menu),
     minWidth: '120px',
     padding: '4px',
     borderRadius: '8px',
@@ -677,6 +733,21 @@ export const editorTheme = EditorView.baseTheme({
   '.cm-table-preview .cm-table-grid-cell--row-selected:last-child::after': {
     borderRight: '2px solid var(--color-primary, #5b9bd5)'
   },
+  '.cm-table-grid-cell--range-selected': {
+    background: 'color-mix(in srgb, var(--color-primary, #5b9bd5) 14%, transparent)'
+  },
+  '.cm-table-block--range-dragging': {
+    userSelect: 'none',
+    WebkitUserSelect: 'none'
+  },
+  '.cm-table-block--range-dragging .cm-table-cell-source': {
+    userSelect: 'none',
+    WebkitUserSelect: 'none',
+    cursor: 'cell'
+  },
+  '.cm-table-block--range-selected': {
+    outline: 'none'
+  },
   '.cm-table-block--col-selected .cm-table-col-handle.cm-table-handle--active': {
     background: 'var(--color-primary, #5b9bd5)',
     borderRadius: '4px'
@@ -822,7 +893,24 @@ export const editorTheme = EditorView.baseTheme({
   },
   '& .cm-line:has(.cm-diary-tag-token)': {
     lineHeight: 'inherit'
-  }
+  },
+
+  /* codemirror-markdown-tables：行列菜单实底 + 略高于正文右键菜单 */
+  '.cm-tooltip.tbl-menu-tooltip': {
+    border: 'none',
+    padding: 0,
+    backgroundColor: 'transparent',
+    zIndex: String(DIARY_EDITOR_OVERLAY_Z.tableMenu),
+    boxSizing: 'border-box',
+    overflow: 'visible'
+  },
+  '.cm-tooltip.tbl-menu-tooltip .tbl-menu': {
+    backgroundColor: 'var(--bg-surface-raised, #ffffff)',
+    border: '1px solid var(--border-muted, rgba(0, 0, 0, 0.08))',
+    boxShadow: 'var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.12))',
+    borderRadius: 'var(--radius-sm, 8px)',
+    zIndex: String(DIARY_EDITOR_OVERLAY_Z.tableMenu)
+  },
 })
 
 /** 移动端 WebView：RN 外层 ScrollView 负责滚动，CM 随内容撑高 */

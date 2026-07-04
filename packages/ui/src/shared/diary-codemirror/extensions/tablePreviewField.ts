@@ -7,41 +7,50 @@ import {
   type Range
 } from '@codemirror/state'
 import { Decoration, DecorationSet, EditorView } from '@codemirror/view'
-import { forceTableRefresh } from '../table/tableEffects'
+import { forceTableRefresh, allowTableStructureEdit } from '../table/tableEffects'
 import {
   activeTableCellField,
   readActiveTableCellFor,
   setActiveTableCell
 } from '../table/tableActiveCell'
 import { readTableChromeSelectionFor, setTableChromeSelection } from '../table/tableChromeSelection'
+import {
+  readTableCellRangeSelectionFor,
+  setTableCellRangeSelection
+} from '../table/tableRangeSelection'
 import { resolveTableSurfaceRange, tableSyntaxTreeTablesChanged } from '../table/tableBounds'
 import { TableBlockWidget } from '../widgets/TableBlockWidget'
+import { TableDesktopWidget } from '../widgets/TableDesktopWidget'
+import { readTableAlignmentsFromDoc } from '../table/table.ops'
 import { diarySyntaxTreeGrowthEffect } from './diarySyntaxTreeGrowth'
+import { desktopTableInteractionField } from '../table/desktop/tableInteractionField'
 import type { DiaryCmPlatform } from '../types'
+import { logTableDesktop } from '../table/tableDesktopDebug'
+
+function isCellTextCommit(tr: Transaction): boolean {
+  return (
+    tr.docChanged &&
+    tr.annotation(allowTableStructureEdit) === true &&
+    !tr.effects.some((e) => e.is(forceTableRefresh))
+  )
+}
 
 function tablePreviewEffects(tr: Transaction, platform?: DiaryCmPlatform): boolean {
   if (platform?.interactionMode === 'touch' && tr.selection !== undefined) return true
-  if (
-    tr.effects.some(
-      (e) =>
-        e.is(forceTableRefresh) ||
-        e.is(setTableChromeSelection) ||
-        e.is(diarySyntaxTreeGrowthEffect)
-    )
-  ) {
-    return true
-  }
-  for (const effect of tr.effects) {
-    if (!effect.is(setActiveTableCell)) continue
-    const prev = tr.startState.field(activeTableCellField, false)
-    const next = effect.value
+  const hasForceRefresh = tr.effects.some((e) => e.is(forceTableRefresh))
+  const hasSyntaxGrowth = tr.effects.some((e) => e.is(diarySyntaxTreeGrowthEffect))
+  if (hasForceRefresh || hasSyntaxGrowth) {
+    // 单元格编辑中：语法树推进不应重建 widget，否则嵌套 CM 被销毁无法继续输入
     if (
-      prev?.tableFrom !== next?.tableFrom ||
-      prev?.rowIndex !== next?.rowIndex ||
-      prev?.colIndex !== next?.colIndex
+      platform?.interactionMode === 'mouse' &&
+      hasSyntaxGrowth &&
+      !hasForceRefresh &&
+      !tr.docChanged
     ) {
-      return true
+      const interaction = tr.state.field(desktopTableInteractionField, false)
+      if (interaction?.mode === 'cell') return false
     }
+    return true
   }
   return false
 }
@@ -96,10 +105,22 @@ export function buildTablePreviewDecorations(
 
       const activeCell = readActiveTableCellFor(state, surface.table.from)
       const chromeSelection = readTableChromeSelectionFor(state, surface.table.from)
+      const rangeSelection = readTableCellRangeSelectionFor(state, surface.table.from)
+      const alignments = readTableAlignmentsFromDoc(surface.table, state.doc)
+      const isDesktop = platform?.interactionMode === 'mouse'
+      const widget = isDesktop
+        ? new TableDesktopWidget(surface.table, platform, alignments)
+        : new TableBlockWidget(
+            surface.table,
+            activeCell,
+            platform,
+            chromeSelection,
+            rangeSelection
+          )
 
       ranges.push(
         Decoration.replace({
-          widget: new TableBlockWidget(surface.table, activeCell, platform, chromeSelection),
+          widget,
           block: true
         }).range(surface.replaceFrom, surface.replaceTo)
       )
@@ -118,14 +139,28 @@ export function tablePreviewField(platform?: DiaryCmPlatform): Extension {
     },
     update(deco, tr) {
       if (tablePreviewEffects(tr, platform)) {
+        logTableDesktop('preview:rebuild-effects', {
+          docChanged: tr.docChanged,
+          activeCell: tr.state.field(activeTableCellField, false)
+        })
         return buildTablePreviewDecorations(tr.state, platform, {
           ensureParse: needsFullSyntaxParse(tr)
         })
       }
       if (!tr.docChanged) return deco
+      // 单元格逐字编辑：DOM 为真源，仅平移装饰区间，禁止重建 widget（否则 contenteditable 失焦）
+      if (isCellTextCommit(tr)) {
+        logTableDesktop('preview:map-cell-commit', {
+          activeCell: tr.state.field(activeTableCellField, false)
+        })
+        return deco.map(tr.changes)
+      }
       if (!changeAffectsTables(tr, deco)) {
         return deco.map(tr.changes)
       }
+      logTableDesktop('preview:rebuild-doc', {
+        activeCell: tr.state.field(activeTableCellField, false)
+      })
       return buildTablePreviewDecorations(tr.state, platform, { ensureParse: true })
     },
     provide: (f) => EditorView.decorations.from(f)

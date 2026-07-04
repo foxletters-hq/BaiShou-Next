@@ -39,8 +39,7 @@ export function livePreviewFreezePlugin(): Extension {
         if (event.button !== 0) return
         const target = event.target
         if (!(target instanceof Node) || !this.view.contentDOM.contains(target)) return
-        // 围栏块内点击需立刻显隐 ```，不冻结装饰重建
-        if (target instanceof Element && target.closest('.cm-code-line')) return
+        if (target instanceof Element && target.closest('.cm-code-line, .cm-table-block')) return
         this.down = true
         if (this.releaseTimer != null) {
           clearTimeout(this.releaseTimer)
