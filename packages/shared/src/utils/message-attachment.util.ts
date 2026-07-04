@@ -108,6 +108,53 @@ export function mapAttachmentsFromParts(
   return attachments.length > 0 ? attachments : undefined
 }
 
+/** 落库/落盘前去掉内联 base64，仅保留路径与元数据 */
+export function stripAttachmentBinaryForStorage(
+  att: Record<string, unknown>
+): Record<string, unknown> {
+  const { data: _data, ...rest } = att
+  return rest
+}
+
+/** 写入会话 JSON 前清理附件 part 中的 base64，并收集需回写 SQLite 的 part */
+export function sanitizeSessionAggregateForDisk(aggregate: {
+  session?: unknown
+  messages?: Array<{
+    parts?: Array<{ id?: string; type?: string; data?: unknown }>
+  }>
+}): {
+  aggregate: typeof aggregate
+  partUpdates: Array<{ id: string; data: unknown }>
+} {
+  const partUpdates: Array<{ id: string; data: unknown }> = []
+
+  const messages = aggregate.messages?.map((message) => ({
+    ...message,
+    parts: message.parts?.map((part) => {
+      const partType = String(part.type ?? '').toLowerCase()
+      if (partType !== 'attachment' && partType !== 'image') {
+        return part
+      }
+
+      const att = normalizePartData(part.data)
+      if (typeof att.data !== 'string' || att.data.length === 0) {
+        return part
+      }
+
+      const cleaned = stripAttachmentBinaryForStorage(att)
+      if (part.id) {
+        partUpdates.push({ id: part.id, data: cleaned })
+      }
+      return { ...part, data: cleaned }
+    })
+  }))
+
+  return {
+    aggregate: { ...aggregate, messages },
+    partUpdates
+  }
+}
+
 /** 将 save-user-message 返回的附件对象映射为 UI 附件（发送后即时补齐气泡展示） */
 export function mapSavedAttachmentsForUi(
   attachments: readonly unknown[] | undefined

@@ -16,7 +16,8 @@ import {
   resolveMoodId,
   normalizeDiaryPreviewMarkdown,
   mergeDiaryTagColorRegistries,
-  normalizeDiaryTagColorRegistry
+  normalizeDiaryTagColorRegistry,
+  resolveDiaryTagsFromSources
 } from '@baishou/shared'
 import { DiaryNotFoundError, DiaryDateConflictError } from './diary.types'
 import { emitDomainMutation } from '../events'
@@ -301,11 +302,7 @@ export class DiaryService {
     shadow: NonNullable<Awaited<ReturnType<ShadowIndexRepository['findById']>>>,
     date: Date
   ): Diary {
-    const tagsSource = shadow.tags ?? ''
-    const parsedTags = tagsSource
-      .split(',')
-      .map((t) => t.trim())
-      .filter(Boolean)
+    const parsedTags = resolveDiaryTagsFromSources(shadow.tags ?? '', shadow.rawContent ?? '')
 
     return {
       id: shadow.id,
@@ -528,17 +525,9 @@ export class DiaryService {
     },
     previewOverride?: string
   ): DiaryMeta {
-    const tagsSource = s.tags ?? s.tagsStr ?? ''
-    let parsedTags: string[] = []
-    if (tagsSource) {
-      parsedTags = tagsSource
-        .split(',')
-        .map((t: string) => t.trim())
-        .filter(Boolean)
-    }
-
     const tagColors = normalizeDiaryTagColorRegistry(s.tagColors)
     const rawContent = s.rawContent ?? ''
+    const parsedTags = resolveDiaryTagsFromSources(s.tags ?? s.tagsStr ?? '', rawContent)
     return {
       id: s.id,
       date: parseDateStr(s.date.split('T')[0]!),

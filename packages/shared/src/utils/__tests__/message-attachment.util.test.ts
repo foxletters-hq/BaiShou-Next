@@ -3,7 +3,9 @@ import {
   mapAttachmentsFromParts,
   normalizePartData,
   resolveAttachmentAbsolutePath,
-  resolveAttachmentImageSrc
+  resolveAttachmentImageSrc,
+  sanitizeSessionAggregateForDisk,
+  stripAttachmentBinaryForStorage
 } from '../message-attachment.util'
 
 describe('normalizePartData', () => {
@@ -90,5 +92,47 @@ describe('mapAttachmentsFromParts', () => {
 
     expect(result?.[0]?.fileName).toBe('doc.md')
     expect(result?.[0]?.isText).toBe(true)
+  })
+})
+
+describe('stripAttachmentBinaryForStorage', () => {
+  it('removes inline base64 data while keeping file metadata', () => {
+    const cleaned = stripAttachmentBinaryForStorage({
+      fileName: 'shot.png',
+      filePath: 'D:\\vault\\shot.png',
+      data: 'data:image/png;base64,QUJD'
+    })
+
+    expect(cleaned).toEqual({
+      fileName: 'shot.png',
+      filePath: 'D:\\vault\\shot.png'
+    })
+  })
+})
+
+describe('sanitizeSessionAggregateForDisk', () => {
+  it('collects part updates when attachment parts still contain base64', () => {
+    const { aggregate, partUpdates } = sanitizeSessionAggregateForDisk({
+      session: { id: 's1' },
+      messages: [
+        {
+          parts: [
+            {
+              id: 'p1',
+              type: 'image',
+              data: { fileName: 'a.png', filePath: '/a.png', data: 'data:image/png;base64,AA==' }
+            }
+          ]
+        }
+      ]
+    })
+
+    expect(partUpdates).toEqual([
+      { id: 'p1', data: { fileName: 'a.png', filePath: '/a.png' } }
+    ])
+    expect(aggregate.messages?.[0]?.parts?.[0]?.data).toEqual({
+      fileName: 'a.png',
+      filePath: '/a.png'
+    })
   })
 })

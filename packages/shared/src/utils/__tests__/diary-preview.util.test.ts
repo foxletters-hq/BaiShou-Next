@@ -10,6 +10,11 @@ describe('normalizeDiaryPreviewMarkdown', () => {
     const raw = '##### 12:30:45\n\n**加粗** 与 _斜体_'
     expect(normalizeDiaryPreviewMarkdown(raw)).toBe('##### 12:30:45\n\n**加粗** 与 _斜体_')
   })
+
+  it('strips dedicated tag-only lines from card preview', () => {
+    const raw = '#疲惫 #深夜 #反思\n\n##### 12:30:45\n\n今天很累'
+    expect(normalizeDiaryPreviewMarkdown(raw)).toBe('##### 12:30:45\n\n今天很累')
+  })
 })
 
 describe('formatDiaryPreviewText', () => {

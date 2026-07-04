@@ -76,6 +76,17 @@ describe('FileSyncService', () => {
     expect(content).toContain('#test')
   })
 
+  it('should read inline tags from content when frontmatter omits tags', async () => {
+    await service.writeJournal({
+      ...sampleDiary,
+      content: '#疲惫 #深夜\n\n今天很累',
+      tags: '疲惫,深夜'
+    })
+
+    const readBack = await service.readJournal(sampleDiary.date)
+    expect(readBack?.tags).toBe('疲惫,深夜')
+  })
+
   it('should read a previously written diary successfully', async () => {
     await service.writeJournal(sampleDiary)
     const readBack = await service.readJournal(sampleDiary.date)

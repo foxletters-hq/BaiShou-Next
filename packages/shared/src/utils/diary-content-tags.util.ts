@@ -145,3 +145,29 @@ export function composeDiaryEditorContent(body: string, tags: unknown): string {
 export function stripDiaryTagLineFromContent(full: string): string {
   return stripLegacyTopTagLine(full)
 }
+
+/** 合并 frontmatter 标签与正文内联 #标签（去重，frontmatter 优先） */
+export function resolveDiaryTagsFromSources(
+  frontmatterTags: string[] | unknown,
+  content: string
+): string[] {
+  const merged: string[] = []
+  const seen = new Set<string>()
+  for (const tag of [...normalizeDiaryTags(frontmatterTags), ...extractDiaryTagsFromContent(content)]) {
+    if (seen.has(tag)) continue
+    seen.add(tag)
+    merged.push(tag)
+  }
+  return merged
+}
+
+/** 预览用：去掉仅含 #标签 的独立行，保留正文中的内联标签 */
+export function stripDedicatedTagLinesFromContent(full: string): string {
+  if (!full) return ''
+  const kept: string[] = []
+  for (const line of full.split('\n')) {
+    if (isLegacyDedicatedTagLine(line)) continue
+    kept.push(line)
+  }
+  return kept.join('\n').replace(/\n{3,}/g, '\n\n').trim()
+}

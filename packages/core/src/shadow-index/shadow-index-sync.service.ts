@@ -9,7 +9,8 @@ import {
   logger,
   buildDiaryEmbeddingSourceId,
   normalizeMoodId,
-  normalizeWeatherId
+  normalizeWeatherId,
+  normalizeDiaryPreviewMarkdown
 } from '@baishou/shared'
 
 import type { IFileSystem } from '../fs/file-system.types'
@@ -284,8 +285,9 @@ export class ShadowIndexSyncService {
           const meta: DiaryMeta = {
             id,
             date: parseDateStr(d.date),
-            preview:
-              (d.content?.length ?? 0) > 120 ? d.content!.substring(0, 120) : (d.content ?? ''),
+            preview: normalizeDiaryPreviewMarkdown(
+              (d.content?.length ?? 0) > 500 ? d.content!.substring(0, 500) : (d.content ?? '')
+            ),
             tags: d.tags ?? [],
             tagColors: d.tagColors ?? {},
             updatedAt: d.updatedAt,
