@@ -12,6 +12,10 @@ export const pendingTableCellFocus = StateEffect.define<{
   colIndex: number
   selectionStart?: number
   selectionEnd?: number
+  clientX?: number
+  clientY?: number
+  placeAtEnd?: boolean
+  initialInsertText?: string
 }>()
 
 export type TableCellFocusTarget = {
@@ -22,8 +26,8 @@ export type TableCellFocusTarget = {
 }
 
 export type TableEditorAction =
-  | { type: 'addColumn'; tableFrom: number; tableTo: number }
-  | { type: 'addRow'; tableFrom: number; tableTo: number }
+  | { type: 'addColumn'; tableFrom: number; tableTo: number; atIndex?: number; focusAfter?: TableCellFocusTarget }
+  | { type: 'addRow'; tableFrom: number; tableTo: number; atIndex?: number; templateRow?: string[]; focusAfter?: TableCellFocusTarget }
   | { type: 'deleteTable'; tableFrom: number; tableTo: number }
   | { type: 'deleteColumn'; tableFrom: number; tableTo: number; colIndex: number }
   | { type: 'deleteRow'; tableFrom: number; tableTo: number; rowIndex: number }

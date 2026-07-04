@@ -6,7 +6,7 @@ import { invokeTableAction } from './tableEffects'
 import { setTableChromeSelection, clearTableChromeSelection } from './tableChromeSelection'
 import { logTableChrome } from './tableChromeDebug'
 import { confirmMessageForDestructiveItem, requestTableConfirm } from './tableConfirm'
-import { ensureTableSheetGlobalStyles } from './tableSheetGlobalStyles'
+import { ensureTableSheetGlobalStyles, ensureTableContextMenuGlobalStyles } from './tableSheetGlobalStyles'
 import {
   dismissKeyboardForSheetInteraction,
   isTableSheetOpen,
@@ -15,6 +15,15 @@ import {
 } from './tableSheetInteraction'
 import { blurActiveTableCellInput, dismissEditorKeyboardForChrome } from './tableChromeKeyboard'
 import { requestNativeTableSheet, closeNativeTableSheets } from './tableNativeSheet'
+import { copyTableMarkdownFromBlock, findCurrentTableRange, readTableModelFromBlock, writeTextToClipboard, writeTextToClipboardSync } from './tableDom'
+import { findTableNodeBounds } from './tableBounds'
+import { parseTableFromDoc } from './table.model'
+import { setColumnAlignmentMarkdown, sortTableByColumnMarkdown } from './table.ops'
+import { readTableAlignmentsFromDoc } from './table.ops'
+import { serializeTable } from './table.model'
+import { allowTableStructureEdit, forceTableRefresh } from './tableEffects'
+import type { ColumnAlignment } from './tableGridModel'
+import { applyFixedContextMenuLayout } from '../../../desktop/ContextMenu/context-menu-placement.util'
 
 declare global {
   interface Window {
@@ -111,6 +120,32 @@ export function buildColMenuSections(table: ParsedTable, colIndex: number): Tabl
   return [
     {
       items: [
+        { id: 'sort-asc', label: '按列排序 (A-Z)' },
+        { id: 'sort-desc', label: '按列排序 (Z-A)' }
+      ]
+    },
+    {
+      items: [
+        { id: 'align-none', label: '取消对齐' },
+        { id: 'align-left', label: '左对齐' },
+        { id: 'align-center', label: '居中对齐' },
+        { id: 'align-right', label: '右对齐' }
+      ]
+    },
+    {
+      items: [
+        { id: 'duplicate-col', label: '复制列' },
+        { id: 'clear-col', label: '清空列' }
+      ]
+    },
+    {
+      items: [
+        { id: 'insert-col-left', label: '在左侧插入列' },
+        { id: 'insert-col-right', label: '在右侧插入列' }
+      ]
+    },
+    {
+      items: [
         { id: 'left', label: '向左移动列', disabled: colIndex <= 0 },
         { id: 'right', label: '向右移动列', disabled: colIndex >= colCount - 1 }
       ]
@@ -123,10 +158,16 @@ export function buildColMenuSections(table: ParsedTable, colIndex: number): Tabl
 
 export function buildRowMenuSections(table: ParsedTable, rowIndex: number): TableMenuSection[] {
   if (rowIndex < 0) {
-    return [{ items: [{ id: 'noop', label: '表头不可删除', disabled: true }] }]
+    return [{ items: [{ id: 'noop', label: '表头行', disabled: true }] }]
   }
   const rowCount = table.bodyRows.length
   return [
+    {
+      items: [
+        { id: 'insert-row-above', label: '在上方插入行' },
+        { id: 'insert-row-below', label: '在下方插入行' }
+      ]
+    },
     {
       items: [
         { id: 'up', label: '向上移动行', disabled: rowIndex <= 0 },
@@ -134,9 +175,26 @@ export function buildRowMenuSections(table: ParsedTable, rowIndex: number): Tabl
       ]
     },
     {
+      items: [
+        { id: 'duplicate-row', label: '复制行' },
+        { id: 'clear-row', label: '清空行' },
+        { id: 'copy-row', label: '复制行到剪贴板' }
+      ]
+    },
+    {
       items: [{ id: 'delete', label: '删除行', destructive: true }]
     }
   ]
+}
+
+export function buildCellContextMenuSections(
+  table: ParsedTable,
+  rowIndex: number,
+  colIndex: number
+): TableMenuSection[] {
+  return rowIndex < 0
+    ? buildColMenuSections(table, colIndex)
+    : buildRowMenuSections(table, rowIndex)
 }
 
 export function buildColMenuItems(table: ParsedTable, colIndex: number): TableMenuItem[] {
@@ -154,58 +212,213 @@ export function runChromeMenuAction(
   handle: HTMLElement,
   actionId: string
 ): void {
-  if (actionId === 'noop') return
-
   const colIndex = Number(handle.dataset.colIndex)
   const rowIndex = Number(handle.dataset.rowIndex)
+  if (handle.classList.contains('cm-table-col-handle')) {
+    runCellContextMenuAction(view, tableFrom, tableTo, -1, colIndex, actionId)
+    return
+  }
+  if (handle.classList.contains('cm-table-row-handle')) {
+    runCellContextMenuAction(view, tableFrom, tableTo, rowIndex, 0, actionId)
+  }
+}
 
-  if (!Number.isNaN(colIndex)) {
-    if (actionId === 'delete') {
-      invokeTableAction(view, {
-        type: 'deleteColumn',
-        tableFrom,
-        tableTo,
-        colIndex
-      })
-      clearTableChromeSelection(view)
-    } else if (actionId === 'left') {
-      invokeTableAction(view, {
-        type: 'moveColumn',
-        tableFrom,
-        tableTo,
-        fromIndex: colIndex,
-        toIndex: colIndex - 1
-      })
-      if (colIndex > 0) {
-        view.dispatch({
-          effects: setTableChromeSelection.of({ tableFrom, kind: 'col', index: colIndex - 1 })
-        })
+export function runCellContextMenuAction(
+  view: EditorView,
+  tableFrom: number,
+  tableTo: number,
+  rowIndex: number,
+  colIndex: number,
+  actionId: string
+): void {
+  if (actionId === 'noop') return
+
+  const applyMarkdown = (markdown: string | null) => {
+    if (!markdown) return
+    const bounds = findTableNodeBounds(view.state, tableFrom)
+    const from = bounds?.nodeFrom ?? tableFrom
+    const to = bounds?.nodeTo ?? tableTo
+    view.dispatch({
+      changes: { from, to, insert: markdown },
+      annotations: allowTableStructureEdit.of(true),
+      effects: forceTableRefresh.of(null)
+    })
+  }
+
+  if (rowIndex < 0) {
+    switch (actionId) {
+      case 'sort-asc':
+      case 'sort-desc': {
+        const table = parseTableFromDoc(view.state.doc, tableFrom, tableTo)
+        if (!table) return
+        applyMarkdown(
+          sortTableByColumnMarkdown(table, view.state.doc, colIndex, actionId === 'sort-asc')
+        )
+        return
       }
-    } else if (actionId === 'right') {
-      invokeTableAction(view, {
-        type: 'moveColumn',
-        tableFrom,
-        tableTo,
-        fromIndex: colIndex,
-        toIndex: colIndex + 1
-      })
-      view.dispatch({
-        effects: setTableChromeSelection.of({ tableFrom, kind: 'col', index: colIndex + 1 })
-      })
+      case 'align-none':
+      case 'align-left':
+      case 'align-center':
+      case 'align-right': {
+        const table = parseTableFromDoc(view.state.doc, tableFrom, tableTo)
+        if (!table) return
+        const alignment: ColumnAlignment =
+          actionId === 'align-left'
+            ? 'left'
+            : actionId === 'align-center'
+              ? 'center'
+              : actionId === 'align-right'
+                ? 'right'
+                : 'none'
+        applyMarkdown(setColumnAlignmentMarkdown(table, view.state.doc, colIndex, alignment))
+        return
+      }
+      case 'duplicate-col': {
+        const table = parseTableFromDoc(view.state.doc, tableFrom, tableTo)
+        if (!table) return
+        const header = [...table.header.cells]
+        const body = table.bodyRows.map((row) => [...row.cells])
+        const alignments = readTableAlignmentsFromDoc(table, view.state.doc)
+        header.splice(colIndex + 1, 0, header[colIndex] ?? '')
+        alignments.splice(colIndex + 1, 0, alignments[colIndex] ?? 'none')
+        body.forEach((row) => row.splice(colIndex + 1, 0, row[colIndex] ?? ''))
+        applyMarkdown(serializeTable(header, body, alignments, { prettify: true }))
+        return
+      }
+      case 'clear-col': {
+        const table = parseTableFromDoc(view.state.doc, tableFrom, tableTo)
+        if (!table) return
+        const header = [...table.header.cells]
+        const body = table.bodyRows.map((row) => [...row.cells])
+        const alignments = readTableAlignmentsFromDoc(table, view.state.doc)
+        header[colIndex] = ''
+        body.forEach((row) => {
+          row[colIndex] = ''
+        })
+        applyMarkdown(serializeTable(header, body, alignments, { prettify: true }))
+        return
+      }
+      case 'insert-col-left':
+        invokeTableAction(view, {
+          type: 'addColumn',
+          tableFrom,
+          tableTo,
+          atIndex: colIndex,
+          focusAfter: { rowIndex: -1, colIndex }
+        })
+        return
+      case 'insert-col-right':
+        invokeTableAction(view, {
+          type: 'addColumn',
+          tableFrom,
+          tableTo,
+          atIndex: colIndex + 1,
+          focusAfter: { rowIndex: -1, colIndex: colIndex + 1 }
+        })
+        return
+      case 'delete':
+        invokeTableAction(view, { type: 'deleteColumn', tableFrom, tableTo, colIndex })
+        clearTableChromeSelection(view)
+        return
+      case 'left':
+        invokeTableAction(view, {
+          type: 'moveColumn',
+          tableFrom,
+          tableTo,
+          fromIndex: colIndex,
+          toIndex: colIndex - 1
+        })
+        if (colIndex > 0) {
+          view.dispatch({
+            effects: setTableChromeSelection.of({ tableFrom, kind: 'col', index: colIndex - 1 })
+          })
+        }
+        return
+      case 'right':
+        invokeTableAction(view, {
+          type: 'moveColumn',
+          tableFrom,
+          tableTo,
+          fromIndex: colIndex,
+          toIndex: colIndex + 1
+        })
+        view.dispatch({
+          effects: setTableChromeSelection.of({ tableFrom, kind: 'col', index: colIndex + 1 })
+        })
+        return
     }
     return
   }
 
-  if (!Number.isNaN(rowIndex)) {
-    if (actionId === 'delete') {
+  switch (actionId) {
+    case 'insert-row-above':
       invokeTableAction(view, {
-        type: 'deleteRow',
+        type: 'addRow',
         tableFrom,
         tableTo,
-        rowIndex
+        atIndex: rowIndex,
+        focusAfter: { rowIndex, colIndex }
       })
+      return
+    case 'insert-row-below':
+      invokeTableAction(view, {
+        type: 'addRow',
+        tableFrom,
+        tableTo,
+        atIndex: rowIndex + 1,
+        focusAfter: { rowIndex: rowIndex + 1, colIndex }
+      })
+      return
+    case 'duplicate-row': {
+      const table = parseTableFromDoc(view.state.doc, tableFrom, tableTo)
+      if (!table || rowIndex < 0 || rowIndex >= table.bodyRows.length) return
+      const cells = [...table.bodyRows[rowIndex]!.cells]
+      invokeTableAction(view, {
+        type: 'addRow',
+        tableFrom,
+        tableTo,
+        atIndex: rowIndex + 1,
+        templateRow: cells,
+        focusAfter: { rowIndex: rowIndex + 1, colIndex }
+      })
+      return
+    }
+    case 'clear-row': {
+      const table = parseTableFromDoc(view.state.doc, tableFrom, tableTo)
+      if (!table || rowIndex < 0 || rowIndex >= table.bodyRows.length) return
+      const header = [...table.header.cells]
+      const body = table.bodyRows.map((row) => [...row.cells])
+      body[rowIndex] = Array.from({ length: header.length }, () => '')
+      const alignments = readTableAlignmentsFromDoc(table, view.state.doc)
+      applyMarkdown(serializeTable(header, body, alignments, { prettify: true }))
+      return
+    }
+    case 'copy-row': {
+      const block = view.dom.querySelector(
+        `.cm-table-block[data-table-from="${tableFrom}"]`
+      ) as HTMLElement | null
+      const model = block ? readTableModelFromBlock(block) : null
+      if (!model || rowIndex < 0 || rowIndex >= model.rows.length) return
+      const cells = [...model.rows[rowIndex]!]
+      writeTextToClipboardSync(`| ${cells.join(' | ')} |`)
+      invokeTableAction(view, {
+        type: 'addRow',
+        tableFrom,
+        tableTo,
+        atIndex: rowIndex + 1,
+        templateRow: cells,
+        focusAfter: { rowIndex: rowIndex + 1, colIndex }
+      })
+      view.dispatch({
+        effects: setTableChromeSelection.of({ tableFrom, kind: 'row', index: rowIndex + 1 })
+      })
+      return
+    }
+    case 'delete':
+      invokeTableAction(view, { type: 'deleteRow', tableFrom, tableTo, rowIndex })
       clearTableChromeSelection(view)
-    } else if (actionId === 'up') {
+      return
+    case 'up':
       invokeTableAction(view, {
         type: 'moveRow',
         tableFrom,
@@ -218,7 +431,8 @@ export function runChromeMenuAction(
           effects: setTableChromeSelection.of({ tableFrom, kind: 'row', index: rowIndex - 1 })
         })
       }
-    } else if (actionId === 'down') {
+      return
+    case 'down':
       invokeTableAction(view, {
         type: 'moveRow',
         tableFrom,
@@ -229,8 +443,47 @@ export function runChromeMenuAction(
       view.dispatch({
         effects: setTableChromeSelection.of({ tableFrom, kind: 'row', index: rowIndex + 1 })
       })
-    }
+      return
   }
+}
+
+export async function copyTableRowFromBlock(block: HTMLElement, rowIndex: number): Promise<boolean> {
+  const model = readTableModelFromBlock(block)
+  if (!model || rowIndex < 0 || rowIndex >= model.rows.length) return false
+  const line = `| ${model.rows[rowIndex]!.join(' | ')} |`
+  return writeTextToClipboard(line)
+}
+
+/** 桌面端：单元格右键菜单（Obsidian / atomic-editor 风格） */
+export function openTableCellContextMenu(
+  view: EditorView,
+  table: ParsedTable,
+  rowIndex: number,
+  colIndex: number,
+  clientX: number,
+  clientY: number
+): void {
+  if (!shouldOpenChromeMenu()) return
+  blurActiveTableCellInput()
+  const sections = buildCellContextMenuSections(table, rowIndex, colIndex)
+  const items = sections.flatMap((s) => s.items)
+  const title = rowIndex < 0 ? `第 ${colIndex + 1} 列` : `第 ${rowIndex + 1} 行`
+  logTableChrome('openTableCellContextMenu', { rowIndex, colIndex, title })
+
+  if (platformIsTouch(view)) {
+    showTableBottomSheet(title, sections, (id) => {
+      runCellContextMenuAction(view, table.from, table.to, rowIndex, colIndex, id)
+    })
+    return
+  }
+
+  showTableContextMenu(items, clientX, clientY, (id) => {
+    runCellContextMenuAction(view, table.from, table.to, rowIndex, colIndex, id)
+  })
+}
+
+function platformIsTouch(view: EditorView): boolean {
+  return view.dom.closest('.cm-table-block--touch') != null
 }
 
 function pickMenuItem(
@@ -493,6 +746,7 @@ function showTableMenuPopup(
   onPick: (id: string) => void
 ): void {
   closeAllTableMenus()
+  ensureTableContextMenuGlobalStyles()
 
   const layer = document.createElement('div')
   layer.className = 'cm-table-context-menu-layer'
@@ -555,18 +809,7 @@ function showTableMenuPopup(
   document.body.appendChild(layer)
 
   requestAnimationFrame(() => {
-    const rect = menu.getBoundingClientRect()
-    const pad = 8
-    let x = clientX
-    let y = clientY
-    if (x + rect.width > window.innerWidth - pad) {
-      x = Math.max(pad, window.innerWidth - rect.width - pad)
-    }
-    if (y + rect.height > window.innerHeight - pad) {
-      y = Math.max(pad, window.innerHeight - rect.height - pad)
-    }
-    menu.style.left = `${x}px`
-    menu.style.top = `${y}px`
+    applyFixedContextMenuLayout(menu, clientX, clientY)
   })
 }
 
@@ -633,12 +876,27 @@ export function openChromeMenuForTrigger(
   }
 
   if (trigger.classList.contains('cm-table-corner-menu')) {
+    const block = trigger.closest('.cm-table-block') as HTMLElement | null
     const sections: TableMenuSection[] = [
-      { items: [{ id: 'delete-table', label: '删除表格', destructive: true }] }
+      {
+        items: [
+          { id: 'copy-table', label: '复制表格' },
+          { id: 'delete-table', label: '删除表格', destructive: true }
+        ]
+      }
     ]
     const onPick = (id: string) => {
+      if (id === 'copy-table') {
+        if (block) void copyTableMarkdownFromBlock(view, block)
+        return
+      }
       if (id !== 'delete-table') return
-      invokeTableAction(view, { type: 'deleteTable', tableFrom, tableTo })
+      const range = block ? findCurrentTableRange(view, block) : null
+      invokeTableAction(view, {
+        type: 'deleteTable',
+        tableFrom: range?.from ?? tableFrom,
+        tableTo: range?.to ?? tableTo
+      })
     }
     if (touch) {
       showTableBottomSheet('表格', sections, onPick)

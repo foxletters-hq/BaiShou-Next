@@ -1,7 +1,11 @@
 import { EditorSelection, EditorState, type Text } from '@codemirror/state'
 import type { EditorView } from '@codemirror/view'
+import { clampPosToDoc } from '../editorContentSync'
 import { clearActiveTableCellEffects } from './tableActiveCell'
-import { blurTableCellEditor, focusTableCellSource } from './tableDom'
+import { blurTableCellEditor, focusTableCellSource, focusTableCellSourceAtPoint } from './tableDom'
+import { focusNestedTableCellEditor } from './tableWidgetSync'
+import { focusDesktopCellEditor } from './desktop/sync/desktopTableSync'
+import { parsedRowToDomRow } from './desktop/models/cellLocation'
 import { logDiaryBridge } from '../diaryBridgeDebug'
 import { resolvePostTableCursor, postTableSeparatorChange } from './tablePostGap'
 
@@ -30,46 +34,50 @@ declare global {
 export function placeCursorAfterTable(view: EditorView, tableRowTo: number): void {
   blurTableCellEditor()
 
-  const doc = view.state.doc
-  const separatorChange = postTableSeparatorChange(doc, tableRowTo)
-  let workingDoc = doc
-  let workingRowTo = tableRowTo
-  const separatorInsertLen = separatorChange?.insert.length ?? 0
+  const original = view.state.doc.toString()
+  let text = original
+  let rowTo = tableRowTo
+
+  const separatorChange = postTableSeparatorChange(view.state.doc, tableRowTo)
   if (separatorChange) {
-    const next =
-      doc.sliceString(0, separatorChange.from) +
+    text =
+      text.slice(0, separatorChange.from) +
       separatorChange.insert +
-      doc.sliceString(separatorChange.from)
-    workingDoc = EditorState.create({ doc: next }).doc
-    if (separatorChange.from <= tableRowTo) {
-      workingRowTo += separatorInsertLen
+      text.slice(separatorChange.from)
+    if (separatorChange.from <= rowTo) {
+      rowTo += separatorChange.insert.length
     }
   }
-  const mapPosToOriginal = (pos: number): number => {
-    if (separatorChange && pos > separatorChange.from) {
-      return pos - separatorInsertLen
-    }
-    return pos
+
+  const { cursor, change } = resolvePostTableCursor(EditorState.create({ doc: text }).doc, rowTo)
+  if (change) {
+    text = text.slice(0, change.from) + change.insert + text.slice(change.from)
   }
-  const { cursor, change } = resolvePostTableCursor(workingDoc, workingRowTo)
-  const changes = []
-  if (separatorChange) changes.push(separatorChange)
-  if (change) changes.push({ from: mapPosToOriginal(change.from), insert: change.insert })
+  const finalCursor = clampPosToDoc(cursor, text.length)
+  const effects = clearActiveTableCellEffects(view.state)
 
-  view.dispatch({
-    ...(changes.length ? { changes } : {}),
-    selection: EditorSelection.cursor(mapPosToOriginal(cursor)),
-    effects: clearActiveTableCellEffects(view.state),
-    scrollIntoView: false
-  })
+  const replacement = computeSingleTextReplacement(original, text)
+  if (!replacement) {
+    view.dispatch({
+      selection: EditorSelection.cursor(finalCursor),
+      effects,
+      scrollIntoView: false
+    })
+  } else {
+    view.dispatch({
+      changes: replacement,
+      selection: EditorSelection.cursor(finalCursor),
+      effects,
+      scrollIntoView: false
+    })
+  }
 
-  // 必须在用户手势内同步 focus，否则 iOS WebView 不弹键盘；滚动延后单独处理
   view.focus()
 
   logDiaryBridge('tableFocus', 'placeCursorAfterTable', {
     tableRowTo,
-    cursor: mapPosToOriginal(cursor),
-    docLength: doc.length,
+    cursor: finalCursor,
+    docLength: view.state.doc.length,
     hadSeparator: !!separatorChange,
     hadGapChange: !!change
   })
@@ -80,18 +88,68 @@ export function placeCursorAfterTable(view: EditorView, tableRowTo: number): voi
   }
 }
 
+function computeSingleTextReplacement(
+  original: string,
+  updated: string
+): { from: number; to: number; insert: string } | null {
+  if (original === updated) return null
+  let from = 0
+  while (from < original.length && from < updated.length && original[from] === updated[from]) {
+    from += 1
+  }
+  let origTo = original.length
+  let updTo = updated.length
+  while (origTo > from && updTo > from && original[origTo - 1] === updated[updTo - 1]) {
+    origTo -= 1
+    updTo -= 1
+  }
+  return { from, to: origTo, insert: updated.slice(from, updTo) }
+}
+
 export function focusTableCellInEditor(
   view: EditorView,
   tableFrom: number,
   rowIndex: number,
   colIndex: number,
-  _selection?: { start: number; end: number }
+  options?: { selectionStart?: number; selectionEnd?: number; clientX?: number; clientY?: number }
 ): boolean {
   const block = view.dom.querySelector(
     `.cm-table-block[data-table-from="${tableFrom}"]`
   ) as HTMLElement | null
   if (!block) return false
-  return focusTableCellSource(block, rowIndex, colIndex)
+  const isDesktop = block.dataset.interactionMode === 'mouse'
+  if (isDesktop) {
+    const domRow = parsedRowToDomRow(rowIndex)
+    if (
+      focusDesktopCellEditor(block, domRow, colIndex, {
+        clientX: options?.clientX,
+        clientY: options?.clientY,
+        placeAtEnd: options?.clientX == null && options?.clientY == null
+      })
+    ) {
+      return true
+    }
+    return false
+  }
+  if (
+    focusNestedTableCellEditor(block, rowIndex, colIndex, {
+      clientX: options?.clientX,
+      clientY: options?.clientY,
+      placeAtEnd: options?.clientX == null && options?.clientY == null
+    })
+  ) {
+    return true
+  }
+  if (options?.clientX != null && options?.clientY != null) {
+    return focusTableCellSourceAtPoint(
+      block,
+      rowIndex,
+      colIndex,
+      options.clientX,
+      options.clientY
+    )
+  }
+  return focusTableCellSource(block, rowIndex, colIndex, false)
 }
 
 export function blurTableCellInput(): void {

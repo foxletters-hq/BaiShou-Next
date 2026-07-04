@@ -33,6 +33,7 @@ import {
   setActiveTableCell,
   clearActiveTableCellEffects
 } from '../table/tableActiveCell'
+import { setTableCellEditing } from '../table/tableCellEditing'
 import {
   collectPostTableGapRepairsForState,
   isOnStructuralTableGapLine,
@@ -43,9 +44,63 @@ import {
   focusTableCellInEditor,
   placeCursorAfterTable
 } from '../table/tableFocus'
+import { desktopTableInteractionField, setDesktopTableInteraction } from '../table/desktop/tableInteractionField'
+import { DesktopTableSection } from '../table/desktop/models/desktopTableSection'
+import { parsedRowToDomRow } from '../table/desktop/models/cellLocation'
 import { logDiaryBridge } from '../diaryBridgeDebug'
+import { logTableDesktop } from '../table/tableDesktopDebug'
 import { shouldDeferTableCaretRedirect, findFencedCodeBlockContaining } from './fencedCodeScan'
 import { getCursorPositions, isCursorInRange } from './cursor'
+
+function isDesktopTableEditor(state: import('@codemirror/state').EditorState): boolean {
+  return state.field(desktopTableInteractionField, false) !== undefined
+}
+
+function buildTableCellFocusEffects(
+  state: import('@codemirror/state').EditorState,
+  tableFrom: number,
+  rowIndex: number,
+  colIndex: number,
+  extra?: {
+    selectionStart?: number
+    selectionEnd?: number
+    placeAtEnd?: boolean
+    initialInsertText?: string
+  }
+): StateEffect<unknown>[] {
+  const focus = pendingTableCellFocus.of({
+    tableFrom,
+    rowIndex,
+    colIndex,
+    ...extra
+  })
+  if (isDesktopTableEditor(state)) {
+    const domRow = parsedRowToDomRow(rowIndex)
+    const cell = { row: domRow, col: colIndex }
+    return [
+      setDesktopTableInteraction.of({
+        tableFrom,
+        activeCell: cell,
+        anchorCell: cell,
+        outlinedSection: DesktopTableSection.ofCell(cell),
+        mode: 'cell'
+      }),
+      focus
+    ]
+  }
+  return [
+    setActiveTableCell.of({ tableFrom, rowIndex, colIndex }),
+    setTableCellEditing.of({ tableFrom, rowIndex, colIndex }),
+    focus
+  ]
+}
+
+function clearTableInteractionEffects(state: import('@codemirror/state').EditorState): StateEffect<unknown>[] {
+  if (isDesktopTableEditor(state)) {
+    return [setDesktopTableInteraction.of(null)]
+  }
+  return clearActiveTableCellEffects(state)
+}
 
 function resolveTableReplaceRange(
   state: import('@codemirror/state').EditorState,
@@ -70,15 +125,7 @@ function applyTableMarkdown(
   const effects: StateEffect<unknown>[] = [forceTableRefresh.of(null)]
   if (focusAfter) {
     effects.push(
-      setActiveTableCell.of({
-        tableFrom,
-        rowIndex: focusAfter.rowIndex,
-        colIndex: focusAfter.colIndex
-      }),
-      pendingTableCellFocus.of({
-        tableFrom,
-        rowIndex: focusAfter.rowIndex,
-        colIndex: focusAfter.colIndex,
+      ...buildTableCellFocusEffects(view.state, tableFrom, focusAfter.rowIndex, focusAfter.colIndex, {
         selectionStart: focusAfter.selectionStart,
         selectionEnd: focusAfter.selectionEnd
       })
@@ -92,8 +139,9 @@ function applyTableMarkdown(
 }
 
 function handleTableAction(view: EditorView, action: TableEditorAction): void {
-  const table = parseTableFromDoc(view.state.doc, action.tableFrom, action.tableTo)
-  if (!table) return
+  const bounds = findTableNodeBounds(view.state, action.tableFrom)
+  if (!bounds) return
+  const table = bounds.table
 
   switch (action.type) {
     case 'updateCell': {
@@ -103,20 +151,16 @@ function handleTableAction(view: EditorView, action: TableEditorAction): void {
       if (unchanged) {
         if (action.focusAfter) {
           view.dispatch({
-            effects: [
-              setActiveTableCell.of({
-                tableFrom: table.from,
-                rowIndex: action.focusAfter.rowIndex,
-                colIndex: action.focusAfter.colIndex
-              }),
-              pendingTableCellFocus.of({
-                tableFrom: table.from,
-                rowIndex: action.focusAfter.rowIndex,
-                colIndex: action.focusAfter.colIndex,
+            effects: buildTableCellFocusEffects(
+              view.state,
+              table.from,
+              action.focusAfter.rowIndex,
+              action.focusAfter.colIndex,
+              {
                 selectionStart: action.focusAfter.selectionStart,
                 selectionEnd: action.focusAfter.selectionEnd
-              })
-            ]
+              }
+            )
           })
         }
         return
@@ -124,17 +168,35 @@ function handleTableAction(view: EditorView, action: TableEditorAction): void {
       applyTableMarkdown(view, table.from, table.to, next, action.focusAfter)
       return
     }
-    case 'addColumn':
-      applyTableMarkdown(view, table.from, table.to, addTableColumnMarkdown(table))
+    case 'addColumn': {
+      const atIndex = action.atIndex ?? table.columnCount
+      const focusAfter = action.focusAfter ?? { rowIndex: -1, colIndex: atIndex }
+      applyTableMarkdown(
+        view,
+        table.from,
+        table.to,
+        addTableColumnMarkdown(table, atIndex),
+        focusAfter
+      )
       return
-    case 'addRow':
-      applyTableMarkdown(view, table.from, table.to, addTableRowMarkdown(table))
+    }
+    case 'addRow': {
+      const atIndex = action.atIndex ?? table.bodyRows.length
+      const focusAfter = action.focusAfter ?? { rowIndex: atIndex, colIndex: 0 }
+      applyTableMarkdown(
+        view,
+        table.from,
+        table.to,
+        addTableRowMarkdown(table, atIndex, action.templateRow),
+        focusAfter
+      )
       return
+    }
     case 'deleteTable': {
       const range = resolveTableReplaceRange(view.state, table.from, table.to)
       view.dispatch({
         changes: { from: range.from, to: range.to, insert: '' },
-        effects: [forceTableRefresh.of(null), setActiveTableCell.of(null)],
+        effects: [forceTableRefresh.of(null), ...clearTableInteractionEffects(view.state)],
         selection: { anchor: range.from },
         annotations: allowTableStructureEdit.of(true)
       })
@@ -187,8 +249,8 @@ function isOnPostTableInputLine(view: EditorView, head: number, tableRowTo: numb
   }
 }
 
-/** 表边界 Backspace：先选中整张表，再次删除才移除（避免吞并表后段落） */
-function backspaceAtTableBoundary(view: EditorView): boolean {
+/** 表边界 Backspace/Delete：先选中整张表，再次删除才移除（Obsidian / atomic-editor 策略） */
+function selectTableBeforeCaret(view: EditorView): boolean {
   const { state } = view
   const sel = state.selection.main
   if (!sel.empty) return false
@@ -212,10 +274,19 @@ function backspaceAtTableBoundary(view: EditorView): boolean {
   if (!tableBefore) return false
 
   const range = tableBefore
+  logTableDesktop('boundary:select-table', { from: range.from, to: range.to, head: pos })
   view.dispatch({
     selection: EditorSelection.range(range.from, range.to)
   })
   return true
+}
+
+function backspaceAtTableBoundary(view: EditorView): boolean {
+  return selectTableBeforeCaret(view)
+}
+
+function deleteAtTableBoundary(view: EditorView): boolean {
+  return selectTableBeforeCaret(view)
 }
 
 /** 整表 replace 后，表格源码区为原子区间（与 widget 表面区间一致） */
@@ -257,11 +328,15 @@ export const tableEditorPlugin = ViewPlugin.fromClass(
           const ev = tr.annotation(Transaction.userEvent)
           return ev === 'undo' || ev === 'redo'
         })
-        if (isUndoRedo && update.startState.field(activeTableCellField, false) != null) {
+        if (
+          isUndoRedo &&
+          (update.startState.field(activeTableCellField, false) != null ||
+            update.startState.field(desktopTableInteractionField, false))
+        ) {
           blurTableCellEditor()
           queueMicrotask(() => {
             update.view.dispatch({
-              effects: [setActiveTableCell.of(null), forceTableRefresh.of(null)]
+              effects: [...clearTableInteractionEffects(update.view.state), forceTableRefresh.of(null)]
             })
           })
         }
@@ -300,22 +375,36 @@ export const tableEditorPlugin = ViewPlugin.fromClass(
         colIndex: number
         selectionStart?: number
         selectionEnd?: number
+        clientX?: number
+        clientY?: number
+        placeAtEnd?: boolean
+        initialInsertText?: string
       }
     ): void {
-      const selection =
-        target.selectionStart != null && target.selectionEnd != null
-          ? { start: target.selectionStart, end: target.selectionEnd }
-          : undefined
       const tryFocus = (attempt: number) => {
         if (
-          focusTableCellInEditor(
-            view,
-            target.tableFrom,
-            target.rowIndex,
-            target.colIndex,
-            selection
-          )
+          focusTableCellInEditor(view, target.tableFrom, target.rowIndex, target.colIndex, {
+            clientX: target.clientX,
+            clientY: target.clientY
+          })
         ) {
+          if (target.initialInsertText) {
+            const block = view.dom.querySelector(
+              `.cm-table-block[data-table-from="${target.tableFrom}"]`
+            ) as HTMLElement | null
+            const editorMount = block?.querySelector('.cm-table-cell-editor') as HTMLElement | null
+            const nestedView = editorMount ? EditorView.findFromDOM(editorMount) : null
+            if (nestedView) {
+              const end = nestedView.state.doc.length
+              nestedView.dispatch({
+                changes: { from: end, insert: target.initialInsertText },
+                selection: {
+                  anchor: end + target.initialInsertText.length,
+                  head: end + target.initialInsertText.length
+                }
+              })
+            }
+          }
           return
         }
         if (attempt < 4) {
@@ -348,9 +437,31 @@ export const tableEditorPlugin = ViewPlugin.fromClass(
     /** 光标误入 Table 节点覆盖的源码区时，移到表后正文 */
     private keepSelectionOutsideTables(view: EditorView) {
       // 单元格 contenteditable 编辑时 CM head 常仍在表格 markdown 区，勿 blur/重定向
-      if (isTableCellFocused()) return
+      if (isTableCellFocused()) {
+        logTableDesktop('redirect:skip-cell-focused')
+        return
+      }
 
-      // setContent 全量替换后语法树可能尚未 parse，需同步确保至少扫到文档末尾
+      const focusInTableWidget =
+        document.activeElement instanceof HTMLElement &&
+        document.activeElement.closest('.cm-table-block') != null
+      if (focusInTableWidget) {
+        logTableDesktop('redirect:skip-focus-in-widget')
+        return
+      }
+
+      const activeCell = view.state.field(activeTableCellField, false)
+      if (activeCell) {
+        logTableDesktop('redirect:skip-active-cell', { ...activeCell })
+        return
+      }
+
+      const desktopInteraction = view.state.field(desktopTableInteractionField, false)
+      if (desktopInteraction) {
+        logTableDesktop('redirect:skip-desktop-interaction', { tableFrom: desktopInteraction.tableFrom })
+        return
+      }
+
       ensureSyntaxTree(view.state, view.state.doc.length, 200)
 
       const { head } = view.state.selection.main
@@ -415,7 +526,10 @@ export const tableEditorPlugin = ViewPlugin.fromClass(
 )
 
 export const tableBoundaryBackspaceKeymap = Prec.high(
-  keymap.of([{ key: 'Backspace', run: backspaceAtTableBoundary }])
+  keymap.of([
+    { key: 'Backspace', run: backspaceAtTableBoundary },
+    { key: 'Delete', run: deleteAtTableBoundary }
+  ])
 )
 
 export function isCursorInsideTable(view: EditorView): boolean {

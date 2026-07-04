@@ -1,10 +1,13 @@
-/** 底部抽屉挂在 document.body，须用全局样式（CM baseTheme 仅作用于 .cm-editor 内） */
-const STYLE_ID = 'cm-table-sheet-global-styles'
+import { DIARY_EDITOR_OVERLAY_Z } from '../editorOverlayZIndex'
+
+/** 底部抽屉与右键菜单挂在 document.body，须用全局样式（CM baseTheme 仅作用于 .cm-editor 内） */
+const SHEET_STYLE_ID = 'cm-table-sheet-global-styles'
+const CONTEXT_MENU_STYLE_ID = 'cm-table-context-menu-global-styles'
 
 const SHEET_CSS = `
 .cm-table-sheet-layer {
   position: fixed;
-  z-index: 2147483000;
+  z-index: ${DIARY_EDITOR_OVERLAY_Z.tableSheet};
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -114,15 +117,76 @@ const SHEET_CSS = `
 }
 `
 
-export function ensureTableSheetGlobalStyles(): void {
+const CONTEXT_MENU_CSS = `
+.cm-table-context-menu-layer {
+  position: fixed;
+  inset: 0;
+  z-index: ${DIARY_EDITOR_OVERLAY_Z.menuBackdrop};
+  pointer-events: auto;
+}
+.cm-table-context-menu-backdrop {
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  pointer-events: auto;
+}
+.cm-table-context-menu {
+  position: fixed;
+  z-index: ${DIARY_EDITOR_OVERLAY_Z.menu};
+  min-width: 120px;
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+  background: var(--bg-surface, #fff);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: var(--text-primary, #111);
+  box-sizing: border-box;
+}
+.cm-table-context-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: var(--text-primary, #111);
+  font-size: 13px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  box-sizing: border-box;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.cm-table-context-menu-item:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.cm-table-context-menu-item:not(:disabled):hover {
+  background: var(--bg-surface-normal, rgba(0, 0, 0, 0.05));
+}
+.cm-table-context-menu-item--destructive {
+  color: var(--color-danger, #e5484d);
+}
+`
+
+function injectGlobalStyle(styleId: string, css: string): void {
   if (typeof document === 'undefined') return
-  const existing = document.getElementById(STYLE_ID)
+  const existing = document.getElementById(styleId)
   if (existing) {
-    existing.textContent = SHEET_CSS
+    existing.textContent = css
     return
   }
   const style = document.createElement('style')
-  style.id = STYLE_ID
-  style.textContent = SHEET_CSS
+  style.id = styleId
+  style.textContent = css
   document.head.appendChild(style)
+}
+
+export function ensureTableSheetGlobalStyles(): void {
+  injectGlobalStyle(SHEET_STYLE_ID, SHEET_CSS)
+}
+
+export function ensureTableContextMenuGlobalStyles(): void {
+  injectGlobalStyle(CONTEXT_MENU_STYLE_ID, CONTEXT_MENU_CSS)
 }

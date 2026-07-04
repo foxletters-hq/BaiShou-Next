@@ -21,3 +21,8 @@ export function encodeTableCellText(value: string): string {
 export function normalizeTableCellDisplay(raw: string): string {
   return decodeTableCellText(raw).replace(/\n/g, ' ')
 }
+
+/** 桌面表格单元格展示：保留换行，配合 pre-wrap */
+export function formatDesktopTableCellDisplay(raw: string): string {
+  return decodeTableCellText(raw)
+}

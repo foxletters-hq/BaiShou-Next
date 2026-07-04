@@ -1,5 +1,6 @@
 import type { Text } from '@codemirror/state'
 import { isTableSeparatorLine } from '../extensions/buildTable'
+import type { ColumnAlignment } from './tableGridModel'
 
 export interface ParsedTableRow {
   lineFrom: number
@@ -53,16 +54,73 @@ export function formatTableRow(cells: string[]): string {
   return `| ${cells.join(' | ')} |`
 }
 
-export function formatSeparatorRow(columnCount: number): string {
-  return `| ${Array.from({ length: columnCount }, () => '---').join(' | ')} |`
+export function formatSeparatorRow(columnCount: number, alignments?: ColumnAlignment[]): string {
+  const cells = Array.from({ length: columnCount }, (_, i) => {
+    const a = alignments?.[i] ?? 'none'
+    if (a === 'left') return ':---'
+    if (a === 'center') return ':---:'
+    if (a === 'right') return '---:'
+    return '---'
+  })
+  return `| ${cells.join(' | ')} |`
 }
 
-export function serializeTable(headerCells: string[], bodyRows: string[][]): string {
+export function parseSeparatorAlignments(lineText: string, columnCount: number): ColumnAlignment[] {
+  const cells = parseCellsFromLine(lineText)
+  return Array.from({ length: columnCount }, (_, i) => {
+    const cell = (cells[i] ?? '').trim()
+    if (cell.startsWith(':') && cell.endsWith(':')) return 'center'
+    if (cell.startsWith(':')) return 'left'
+    if (cell.endsWith(':')) return 'right'
+    return 'none'
+  })
+}
+
+function normalizeRowCells(cells: string[], columnCount: number): string[] {
+  const next = [...cells]
+  while (next.length < columnCount) next.push('')
+  return next.slice(0, columnCount)
+}
+
+/** 列宽对齐美化（ckant prettify） */
+export function prettifyTableCells(
+  header: string[],
+  body: string[][]
+): { header: string[]; body: string[][] } {
+  const colCount = header.length
+  const widths = Array.from({ length: colCount }, (_, col) => {
+    let max = header[col]?.length ?? 0
+    for (const row of body) {
+      max = Math.max(max, (row[col] ?? '').length)
+    }
+    return max
+  })
+  const pad = (cells: string[]) =>
+    cells.map((cell, col) => cell.padEnd(widths[col] ?? cell.length))
+  return {
+    header: pad(header),
+    body: body.map((row) => pad(normalizeRowCells(row, colCount)))
+  }
+}
+
+export function serializeTable(
+  headerCells: string[],
+  bodyRows: string[][],
+  alignments?: ColumnAlignment[],
+  options?: { prettify?: boolean }
+): string {
   const colCount = headerCells.length
+  let header = headerCells
+  let body = bodyRows
+  if (options?.prettify) {
+    const pretty = prettifyTableCells(header, body)
+    header = pretty.header
+    body = pretty.body
+  }
   const lines = [
-    formatTableRow(headerCells),
-    formatSeparatorRow(colCount),
-    ...bodyRows.map((row) => formatTableRow(normalizeRowCells(row, colCount)))
+    formatTableRow(header),
+    formatSeparatorRow(colCount, alignments),
+    ...body.map((row) => formatTableRow(normalizeRowCells(row, colCount)))
   ]
   return lines.join('\n')
 }
@@ -72,12 +130,6 @@ export function tableContentSignature(table: ParsedTable): string {
   const header = table.header.cells.join('\u001f')
   const rows = table.bodyRows.map((row) => row.cells.join('\u001f')).join('\u001e')
   return `${table.from}:${table.columnCount}:${header}\u001d${rows}`
-}
-
-function normalizeRowCells(cells: string[], columnCount: number): string[] {
-  const next = [...cells]
-  while (next.length < columnCount) next.push('')
-  return next.slice(0, columnCount)
 }
 
 export function parseTableFromDoc(doc: Text, from: number, to: number): ParsedTable | null {

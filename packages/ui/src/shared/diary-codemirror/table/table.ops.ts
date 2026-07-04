@@ -1,5 +1,10 @@
+import type { Text } from '@codemirror/state'
 import type { ParsedTable } from './table.model'
-import { serializeTable } from './table.model'
+import {
+  parseSeparatorAlignments,
+  serializeTable
+} from './table.model'
+import type { ColumnAlignment } from './tableGridModel'
 
 function cloneTableData(table: ParsedTable): { header: string[]; body: string[][] } {
   return {
@@ -8,9 +13,10 @@ function cloneTableData(table: ParsedTable): { header: string[]; body: string[][
   }
 }
 
-export function buildTableMarkdown(table: ParsedTable): string {
+export function buildTableMarkdown(table: ParsedTable, doc?: Text): string {
   const { header, body } = cloneTableData(table)
-  return serializeTable(header, body)
+  const alignments = doc ? readTableAlignmentsFromDoc(table, doc) : undefined
+  return serializeTable(header, body, alignments, { prettify: true })
 }
 
 export function addTableColumnMarkdown(table: ParsedTable, atIndex?: number): string {
@@ -23,14 +29,18 @@ export function addTableColumnMarkdown(table: ParsedTable, atIndex?: number): st
   return serializeTable(header, body)
 }
 
-export function addTableRowMarkdown(table: ParsedTable, atIndex?: number): string {
+export function addTableRowMarkdown(
+  table: ParsedTable,
+  atIndex?: number,
+  templateRow?: string[]
+): string {
   const { header, body } = cloneTableData(table)
   const index = atIndex ?? body.length
-  body.splice(
-    index,
-    0,
-    Array.from({ length: header.length }, () => '')
-  )
+  const newRow =
+    templateRow && templateRow.length === header.length
+      ? [...templateRow]
+      : Array.from({ length: header.length }, () => '')
+  body.splice(index, 0, newRow)
   return serializeTable(header, body)
 }
 
@@ -102,4 +112,40 @@ export function updateTableCellMarkdown(
     return null
   }
   return serializeTable(header, body)
+}
+
+export function readTableAlignmentsFromDoc(table: ParsedTable, doc: Text): ColumnAlignment[] {
+  const sep = doc.sliceString(table.separatorLineFrom, table.separatorLineTo)
+  return parseSeparatorAlignments(sep, table.columnCount)
+}
+
+export function setColumnAlignmentMarkdown(
+  table: ParsedTable,
+  doc: Text,
+  colIndex: number,
+  alignment: ColumnAlignment
+): string | null {
+  const { header, body } = cloneTableData(table)
+  if (colIndex < 0 || colIndex >= header.length) return null
+  const alignments = readTableAlignmentsFromDoc(table, doc)
+  alignments[colIndex] = alignment
+  return serializeTable(header, body, alignments)
+}
+
+export function sortTableByColumnMarkdown(
+  table: ParsedTable,
+  doc: Text,
+  colIndex: number,
+  ascending: boolean
+): string | null {
+  const { header, body } = cloneTableData(table)
+  if (colIndex < 0 || colIndex >= header.length) return null
+  const alignments = readTableAlignmentsFromDoc(table, doc)
+  body.sort((a, b) => {
+    const av = (a[colIndex] ?? '').toLowerCase()
+    const bv = (b[colIndex] ?? '').toLowerCase()
+    const cmp = av.localeCompare(bv, undefined, { numeric: true })
+    return ascending ? cmp : -cmp
+  })
+  return serializeTable(header, body, alignments)
 }
