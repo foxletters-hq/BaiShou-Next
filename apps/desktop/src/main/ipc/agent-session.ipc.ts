@@ -91,8 +91,8 @@ export function registerSessionIPC() {
   })
 
   ipcMain.handle('agent:update-session-title', async (_, sessionId: string, title: string) => {
-    const { realSessionRepo } = getAgentManagers()
-    await realSessionRepo.updateSessionTitle(sessionId, title)
+    const { sessionManager } = getAgentManagers()
+    await sessionManager.updateTitle(sessionId, title)
     return true
   })
 

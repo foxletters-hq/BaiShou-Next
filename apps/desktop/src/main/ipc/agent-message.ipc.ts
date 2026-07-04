@@ -127,9 +127,10 @@ export function registerMessageIPC() {
   // API: 删除消息
   // ==========================================
   ipcMain.handle('agent:delete-message', async (_, sessionId: string, messageId: string) => {
-    const { realSessionRepo, realSnapshotRepo } = getAgentManagers()
+    const { realSessionRepo, realSnapshotRepo, sessionManager } = getAgentManagers()
     await realSessionRepo.deleteMessageAndFollowing(sessionId, messageId)
     await reconcileCompressionStateAfterTruncate(realSessionRepo, realSnapshotRepo, sessionId)
+    await sessionManager.flushSessionToDisk(sessionId)
     return true
   })
 }

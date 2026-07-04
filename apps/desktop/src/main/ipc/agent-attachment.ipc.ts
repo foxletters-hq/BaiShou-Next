@@ -1,7 +1,7 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron'
 import * as fs from 'fs/promises'
 import * as path from 'path'
-import { logger, supportsNativePdf } from '@baishou/shared'
+import { logger, supportsNativePdf, stripAttachmentBinaryForStorage } from '@baishou/shared'
 import { pathService } from './vault.ipc'
 import { getAgentManagers, getActiveProvider } from './agent-helpers'
 
@@ -123,6 +123,7 @@ export function registerAttachmentIPC() {
                       att.type = 'file'
                       att.mimeType = 'application/pdf'
                     }
+                    delete att.data
                   } catch (e: any) {
                     logger.error('Failed to write base64 attachment', e)
                   }
@@ -212,7 +213,7 @@ export function registerAttachmentIPC() {
                     att.url = `file:///${att.filePath.replace(/\\/g, '/')}`
                   }
                 }
-                return att
+                return stripAttachmentBinaryForStorage(att)
               })
             )
           } catch (e: any) {
@@ -243,7 +244,7 @@ export function registerAttachmentIPC() {
               sessionId: args.sessionId,
               // 图片单独封装为 image part（多模态 user message）
               type: att.isImage ? 'image' : 'attachment',
-              data: att
+              data: stripAttachmentBinaryForStorage(att)
             })
           }
         }

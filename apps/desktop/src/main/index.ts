@@ -66,33 +66,24 @@ function createWindow(needsOnboarding: boolean): void {
     mainWindow!.show()
   })
 
-  mainWindow.webContents.on('context-menu', (_event, properties) => {
+  mainWindow.webContents.on('context-menu', (event, properties) => {
     const { isEditable, selectionText, editFlags } = properties
     const hasText = selectionText.trim().length > 0
 
-    if (isEditable || hasText) {
+    // contenteditable（表格单元格、CodeMirror 正文）由渲染进程自定义菜单处理
+    if (isEditable) {
+      event.preventDefault()
+      return
+    }
+
+    if (hasText) {
       const template: Electron.MenuItemConstructorOptions[] = [
         {
           id: 'copy',
           label: '复制',
           role: 'copy',
           enabled: editFlags.canCopy,
-          visible: isEditable || hasText
-        },
-        {
-          id: 'paste',
-          label: '粘贴',
-          role: 'paste',
-          enabled: editFlags.canPaste,
-          visible: isEditable
-        },
-        { id: 'cut', label: '剪切', role: 'cut', enabled: editFlags.canCut, visible: isEditable },
-        {
-          id: 'selectAll',
-          label: '全选',
-          role: 'selectAll',
-          enabled: editFlags.canSelectAll,
-          visible: isEditable
+          visible: true
         }
       ]
 
