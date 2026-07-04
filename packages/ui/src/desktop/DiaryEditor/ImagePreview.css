@@ -13,7 +13,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10050;
+  z-index: 450;
   background: rgba(100, 116, 139, 0.28);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
@@ -52,7 +52,7 @@
   left: 50%;
   bottom: 28px;
   transform: translateX(-50%);
-  z-index: 10051;
+  z-index: 451;
   max-width: calc(100vw - 32px);
   cursor: default;
 }

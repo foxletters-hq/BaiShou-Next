@@ -1,6 +1,7 @@
 import { useEffect, type RefObject } from 'react'
 import type { EditorView } from '@codemirror/view'
 import type { TFunction } from 'i18next'
+import { clampPosToDoc } from '../../shared/diary-codemirror/editorContentSync'
 import { setImageActionCallback, setUpdateImageWidthCallback } from './codeMirrorDecorations'
 import { parseImageMarkdown, buildImageMarkdown } from './image-utils'
 import type { useDialog } from '../Dialog'
@@ -70,8 +71,20 @@ export function useCodeMirrorImageCallbacks(
         try {
           const res = await (window as any).api?.diary?.deleteAttachment(normalizedPath)
           if (res?.success) {
+            const deletedLen = to - from
+            const mapPos = (pos: number) => {
+              if (pos <= from) return pos
+              if (pos >= to) return pos - deletedLen
+              return from
+            }
+            const nextLength = view.state.doc.length - deletedLen
+            const { anchor, head } = view.state.selection.main
             view.dispatch({
-              changes: { from, to, insert: '' }
+              changes: { from, to, insert: '' },
+              selection: {
+                anchor: clampPosToDoc(mapPos(anchor), nextLength),
+                head: clampPosToDoc(mapPos(head), nextLength)
+              }
             })
             toast.showSuccess(
               t('markdown.delete_attachment_success_editor', '图片附件及引用已清除')

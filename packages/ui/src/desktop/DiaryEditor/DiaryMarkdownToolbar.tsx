@@ -72,7 +72,7 @@ export function DiaryMarkdownToolbar({
   const showScrollControls = canScrollLeft || canScrollRight
 
   return (
-    <div className={styles.toolbar}>
+    <div className={styles.toolbar} data-diary-markdown-toolbar>
       {showScrollControls ? (
         <button
           type="button"

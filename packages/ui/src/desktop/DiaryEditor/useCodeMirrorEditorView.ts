@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { EditorView } from '@codemirror/view'
 import {
   createDiaryCodeMirror,
   forceImageRefresh,
   type DiaryCmPlatform
 } from '../../shared/diary-codemirror'
+import { replaceEditorDocumentContent } from '../../shared/diary-codemirror/editorContentSync'
 import type { CodeMirrorEditorProps, TextContextMenuState } from './codeMirrorEditor.types'
 
 function scheduleEditorMount(callback: () => void): () => void {
@@ -28,16 +30,27 @@ export function useCodeMirrorEditorView(
   const viewRef = useRef<EditorView | null>(null)
   const onChangeRef = useRef(props.onChange)
   const basePathRef = useRef(props.basePath)
+  const contentRef = useRef(props.content)
   /** 程序化写入正文时不向上层回传 change，避免误判为「用户已修改」 */
   const suppressChangeEchoRef = useRef(false)
+  const { t } = useTranslation()
+  const translateRef = useRef(t)
 
   useEffect(() => {
     onChangeRef.current = props.onChange
   }, [props.onChange])
 
   useEffect(() => {
+    translateRef.current = t
+  }, [t])
+
+  useEffect(() => {
     basePathRef.current = props.basePath
   }, [props.basePath])
+
+  useEffect(() => {
+    contentRef.current = props.content
+  }, [props.content])
 
   const resolveUrl = useCallback((fileName: string): string => {
     const currentBasePath = basePathRef.current
@@ -67,11 +80,13 @@ export function useCodeMirrorEditorView(
         resolveAttachmentUrl: resolveUrl,
         interactionMode: 'mouse',
         tagLineMode: true,
-        onExternalImagePreview: (src) => setPreviewSrc(src)
+        onExternalImagePreview: (src) => setPreviewSrc(src),
+        translate: (key, defaultValue) =>
+          translateRef.current(key, { defaultValue: defaultValue || key })
       }
 
       view = createDiaryCodeMirror(containerRef.current, {
-        content: props.content,
+        content: contentRef.current,
         placeholder: props.placeholder,
         platform,
         onChange: (content) => {
@@ -89,7 +104,9 @@ export function useCodeMirrorEditorView(
                     ? rawTarget.parentElement
                     : null
               if (
-                target?.closest('.cm-image-container, .cm-table-block, .cm-table-context-menu-layer')
+                target?.closest(
+                  '.cm-image-container, .cm-table-block, .cm-table-context-menu-layer, .tbl-menu, .cm-tooltip.tbl-menu-tooltip'
+                )
               ) {
                 return false
               }
@@ -110,12 +127,24 @@ export function useCodeMirrorEditorView(
       })
 
       viewRef.current = view
+      if (typeof window !== 'undefined') {
+        window.__diaryTableDesktopDebug = true
+      }
 
-      const docLength = view.state.doc.length
-      view.dispatch({
-        selection: { anchor: docLength, head: docLength }
+      const latestContent = contentRef.current
+      if (latestContent !== view.state.doc.toString()) {
+        suppressChangeEchoRef.current = true
+        try {
+          replaceEditorDocumentContent(view, latestContent)
+        } finally {
+          suppressChangeEchoRef.current = false
+        }
+      }
+
+      requestAnimationFrame(() => {
+        if (cancelled || viewRef.current !== view) return
+        view.focus()
       })
-      view.focus()
     })
 
     return () => {
@@ -132,13 +161,7 @@ export function useCodeMirrorEditorView(
     if (props.content !== view.state.doc.toString()) {
       suppressChangeEchoRef.current = true
       try {
-        view.dispatch({
-          changes: {
-            from: 0,
-            to: view.state.doc.length,
-            insert: props.content
-          }
-        })
+        replaceEditorDocumentContent(view, props.content)
       } finally {
         suppressChangeEchoRef.current = false
       }

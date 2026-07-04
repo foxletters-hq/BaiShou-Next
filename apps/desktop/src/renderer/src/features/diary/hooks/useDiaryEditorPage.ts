@@ -109,6 +109,7 @@ export function useDiaryEditorPage() {
     let cancelled = false
 
     const initEditor = async () => {
+      setIsLoading(true)
       const initialDate = parseInitialDate()
       const api = typeof window !== 'undefined' ? (window as any).api?.diary : undefined
 

@@ -555,7 +555,9 @@
   align-items: center;
   justify-content: center;
   gap: 16px;
+  padding: 24px 32px;
   color: var(--text-primary);
+  text-align: center;
 }
 
 .diary-empty-icon {
@@ -568,6 +570,7 @@
   font-size: 18px;
   font-weight: 600;
   color: var(--text-primary);
+  max-width: 520px;
 }
 
 .diary-indexing-spinner {
@@ -586,7 +589,9 @@
 
 .diary-empty-text {
   font-size: 16px;
+  line-height: 1.6;
   color: var(--text-tertiary);
+  max-width: 520px;
 }
 
 .diary-view-all-btn {
