@@ -15,6 +15,12 @@ export {
 } from './createDiaryCodeMirror'
 
 export {
+  clampPosToDoc,
+  replaceEditorDocumentContent,
+  type ReplaceEditorDocumentOptions
+} from './editorContentSync'
+
+export {
   forceImageRefresh,
   setImageActionCallback,
   setUpdateImageWidthCallback,

@@ -28,14 +28,27 @@ import {
   tableAtomicRanges,
   tableBoundaryBackspaceKeymap
 } from './extensions/tableEditorPlugin'
-import { tableChromeTouchPlugin } from './extensions/tableChromeTouchPlugin'
 import { tablePostTableTouchPlugin } from './extensions/tablePostTableTouchPlugin'
 import {
   diarySyntaxTreeGrowthPlugin,
   diarySyntaxTreeGrowthEffect
 } from './extensions/diarySyntaxTreeGrowth'
 import { activeTableCellField } from './table/tableActiveCell'
+import { tableCellEditingField } from './table/tableCellEditing'
 import { tableChromeSelectionField } from './table/tableChromeSelection'
+import { tableCellRangeSelectionField } from './table/tableRangeSelection'
+import { tableRangeKeymap } from './table/tableRangeKeymap'
+import { tableWidgetSyncPlugin } from './extensions/tableWidgetSyncPlugin'
+import { tableChromeTouchPlugin } from './extensions/tableChromeTouchPlugin'
+import {
+  diaryMarkdownTableAutocompletionExt,
+  diaryMarkdownTablesCkant,
+  insertEmptyMarkdownTable
+} from './table/desktop/markdownTablesCkant'
+import { tableMenuI18nPlugin } from './table/desktop/tableMenuI18nPlugin'
+import { insertEmptyMarkdownTableKeymap } from './table/markdownTableCommands'
+import { selectionBoundsTransactionFilter, installSafeEditorDispatch } from './extensions/selectionBoundsTransactionFilter'
+import { clampPosToDoc } from './editorContentSync'
 import type { DiaryCmPlatform } from './types'
 
 export interface CreateDiaryCodeMirrorOptions {
@@ -59,28 +72,42 @@ export function createDiaryCodeMirrorExtensions(
       : isTouch
         ? mobileTouchEditorLayoutTheme
         : null
+  const markdownSupport = markdown({ base: markdownLanguage })
 
   return [
+    Prec.highest(selectionBoundsTransactionFilter()),
     EditorView.lineWrapping,
     highlightActiveLine(),
     history(),
     ...(platform.tagLineMode ? [Prec.high(diaryTagLineKeymap), diaryTagLinePlugin] : []),
-    activeTableCellField,
-    tableChromeSelectionField,
-    tableAtomicRanges,
-    tableBoundaryBackspaceKeymap,
-    tableCellExtension,
-    tableEditorPlugin,
+    ...(isTouch
+      ? [
+          activeTableCellField,
+          tableCellEditingField,
+          tableChromeSelectionField,
+          tableCellRangeSelectionField,
+          tableWidgetSyncPlugin(platform),
+          tableRangeKeymap()
+        ]
+      : [...diaryMarkdownTablesCkant(), tableMenuI18nPlugin(platform)]),
+    keymap.of(
+      isTouch
+        ? insertEmptyMarkdownTableKeymap
+        : [{ key: 'Mod-Shift-t', run: insertEmptyMarkdownTable() }]
+    ),
+    ...(isTouch
+      ? [tableCellExtension, tableAtomicRanges, tableBoundaryBackspaceKeymap, tableEditorPlugin]
+      : []),
     diarySyntaxTreeGrowthPlugin,
-    tableChromeTouchPlugin(platform),
-    tablePostTableTouchPlugin(platform),
+    ...(isTouch ? [tableChromeTouchPlugin(platform), tablePostTableTouchPlugin(platform)] : []),
     listContinuationExtension,
     inlineMarkEnterExtension,
     markdownKeymap,
     keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
-    markdown({ base: markdownLanguage }),
+    markdownSupport,
+    ...(isTouch ? [] : diaryMarkdownTableAutocompletionExt(markdownSupport)),
     cmPlaceholder(placeholder || ''),
-    tablePreviewField(platform),
+    ...(isTouch ? [tablePreviewField(platform)] : []),
     ...livePreviewField(platform),
     imagePreviewPlugin(platform),
     livePreviewSyntaxHighlighting(),
@@ -124,14 +151,16 @@ export function createDiaryCodeMirror(
     parent,
     state: EditorState.create({ doc: '', extensions })
   })
+  installSafeEditorDispatch(view)
 
   const content = options.content
   if (content.length > 0) {
     // 直接 create({ doc: 全文 }) 时 Lezer 常在 livePreview create 前未追到文末，
     // 导致 #/** 等隐藏装饰与标题样式无法进入 DOM（仅语法高亮仍可见）。
+    const end = clampPosToDoc(content.length, content.length)
     view.dispatch({
       changes: { from: 0, insert: content },
-      selection: { anchor: content.length, head: content.length },
+      selection: { anchor: end, head: end },
       effects: diarySyntaxTreeGrowthEffect.of(null),
       annotations: Transaction.addToHistory.of(false)
     })

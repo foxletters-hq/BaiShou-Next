@@ -19,6 +19,8 @@ export interface DiaryCmPlatform {
   tagLineMode?: boolean
   /** mobile: viewport=WebView 内滚动; document=转发 RN 外层滚动 */
   scrollMode?: 'viewport' | 'document'
+  /** CM 内嵌 UI（如 ckant 表格菜单）文案；key 为 i18n 路径，defaultValue 为英文回退 */
+  translate?: (key: string, defaultValue: string) => string
 }
 
 export type DiaryCmInteractionMode = DiaryCmPlatform['interactionMode']
