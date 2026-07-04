@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -16,7 +17,6 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated'
 import { useNativeTheme } from '../theme'
-import { Button } from '../Button'
 import type { DiaryCmTableSheetSectionPayload } from '../../shared/diary-codemirror/types'
 
 export interface TableChromeBottomSheetProps {
@@ -44,7 +44,7 @@ export const TableChromeBottomSheet: React.FC<TableChromeBottomSheetProps> = ({
   onDismiss,
   style
 }) => {
-  const { colors, tokens } = useNativeTheme()
+  const { colors } = useNativeTheme()
   const [mounted, setMounted] = useState(false)
   const translateY = useSharedValue(SHEET_OFFSCREEN_Y)
   const backdropOpacity = useSharedValue(0)
@@ -110,7 +110,12 @@ export const TableChromeBottomSheet: React.FC<TableChromeBottomSheetProps> = ({
   }
 
   const handlePick = (itemId: string) => {
-    animateOut(() => onPick(itemId))
+    // 表格操作须立即回传 WebView；若等关闭动画结束，Android 上 RN→WebView 消息可能丢失且手势链已断
+    onPick(itemId)
+    if (!closingRef.current) {
+      closingRef.current = true
+      finishUnmount()
+    }
   }
 
   if (!mounted) return null
@@ -140,55 +145,73 @@ export const TableChromeBottomSheet: React.FC<TableChromeBottomSheetProps> = ({
               sheetStyle,
               {
                 marginBottom: bottomOffset,
-                backgroundColor: colors.bgSurfaceNormal,
-                borderColor: colors.borderSubtle,
-                paddingHorizontal: tokens.spacing.md,
-                paddingTop: tokens.spacing.sm,
-                paddingBottom: tokens.spacing.md
+                backgroundColor: colors.bgSurface,
+                borderColor: colors.borderSubtle
               }
             ]}
           >
             <View style={[styles.grabber, { backgroundColor: colors.borderSubtle }]} />
             {title ? (
-              <Text
-                style={[
-                  styles.title,
-                  { color: colors.textSecondary, marginBottom: tokens.spacing.sm }
-                ]}
-                numberOfLines={1}
-              >
+              <Text style={[styles.title, { color: colors.textSecondary }]} numberOfLines={1}>
                 {title}
               </Text>
             ) : null}
-            <View style={[styles.body, { gap: tokens.spacing.sm }]}>
-              {sections.map((section, sectionIndex) => (
-                <View
-                  key={`section-${sectionIndex}`}
-                  style={
-                    sectionIndex > 0
-                      ? { gap: tokens.spacing.sm, marginTop: tokens.spacing.sm }
-                      : { gap: tokens.spacing.sm }
-                  }
-                >
-                  {section.items.map((item) => (
-                    <Button
-                      key={item.id}
-                      variant="outline"
-                      destructive={Boolean(item.destructive)}
-                      disabled={Boolean(item.disabled)}
-                      onPress={() => handlePick(item.id)}
-                      style={{
-                        width: '100%',
-                        backgroundColor: colors.bgSurface,
+            <ScrollView
+              style={styles.bodyScroll}
+              contentContainerStyle={styles.bodyContent}
+              keyboardShouldPersistTaps="handled"
+              bounces={false}
+              showsVerticalScrollIndicator={false}
+            >
+              {sections.map((section, sectionIndex) => {
+                const destructiveGroup = section.items.every((item) => item.destructive)
+                return (
+                  <View
+                    key={`section-${sectionIndex}`}
+                    style={[
+                      styles.group,
+                      {
+                        backgroundColor: colors.bgSurfaceNormal,
                         borderColor: colors.borderSubtle
-                      }}
-                    >
-                      {item.label}
-                    </Button>
-                  ))}
-                </View>
-              ))}
-            </View>
+                      },
+                      sectionIndex > 0 ? styles.groupSpacing : null,
+                      destructiveGroup ? styles.groupDestructive : null
+                    ]}
+                  >
+                    {section.items.map((item, itemIndex) => {
+                      const isLast = itemIndex === section.items.length - 1
+                      return (
+                        <Pressable
+                          key={item.id}
+                          disabled={Boolean(item.disabled)}
+                          onPress={() => handlePick(item.id)}
+                          accessibilityRole="menuitem"
+                          style={({ pressed }) => [
+                            styles.item,
+                            !isLast && {
+                              borderBottomWidth: StyleSheet.hairlineWidth,
+                              borderBottomColor: colors.borderSubtle
+                            },
+                            pressed && !item.disabled ? { backgroundColor: colors.bgSurface } : null,
+                            item.disabled ? styles.itemDisabled : null
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.itemLabel,
+                              { color: item.destructive ? colors.error : colors.textPrimary },
+                              item.disabled ? styles.itemLabelDisabled : null
+                            ]}
+                          >
+                            {item.label}
+                          </Text>
+                        </Pressable>
+                      )
+                    })}
+                  </View>
+                )
+              })}
+            </ScrollView>
           </Animated.View>
         </View>
       </View>
@@ -213,10 +236,11 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     borderTopWidth: StyleSheet.hairlineWidth,
+    maxHeight: '72%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
     elevation: 16
   },
   grabber: {
@@ -224,13 +248,51 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 999,
     alignSelf: 'center',
-    marginBottom: 8
+    marginTop: 8,
+    marginBottom: 2
   },
   title: {
     textAlign: 'center',
     fontSize: 13,
     fontWeight: '600',
-    paddingHorizontal: 4
+    letterSpacing: 0.13,
+    paddingHorizontal: 20,
+    paddingTop: 6,
+    paddingBottom: 12
   },
-  body: {}
+  bodyScroll: {
+    flexGrow: 0
+  },
+  bodyContent: {
+    paddingHorizontal: 12,
+    paddingBottom: 16,
+    gap: 8
+  },
+  group: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth
+  },
+  groupSpacing: {
+    marginTop: 0
+  },
+  groupDestructive: {
+    marginTop: 2
+  },
+  item: {
+    minHeight: 52,
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14
+  },
+  itemDisabled: {
+    opacity: 0.45
+  },
+  itemLabel: {
+    fontSize: 16,
+    lineHeight: 21
+  },
+  itemLabelDisabled: {
+    opacity: 0.7
+  }
 })

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, type RefObject } from 'react'
+import { Platform } from 'react-native'
 import type { WebView } from 'react-native-webview'
 import {
   DIARY_CM_RESOLVE_URL_TIMEOUT_MS,
@@ -152,7 +153,17 @@ export function useDiaryCodeMirrorBridge(
 
   const postToWebView = useCallback((message: DiaryCmToWebViewMessage) => {
     const serialized = serializeDiaryCmToWebViewMessage(message)
-    // 仅 postMessage：与 injectJavaScript 双发会导致 WebView 执行两次（如工具栏插入重复）
+    const needsInjectDelivery =
+      Platform.OS === 'android' &&
+      (message.type === 'tableSheetResponse' || message.type === 'confirmResponse')
+    if (needsInjectDelivery) {
+      const encoded = JSON.stringify(serialized)
+      webViewRef.current?.injectJavaScript(
+        `;(function(){try{var h=window.__diaryCmOnNativeMessage;if(h)h(${encoded});}catch(e){}})();true;`
+      )
+      return
+    }
+    // 常规消息仅 postMessage：与 injectJavaScript 双发会导致 WebView 执行两次（如工具栏插入重复）
     webViewRef.current?.postMessage(serialized)
   }, [])
 
@@ -252,6 +263,11 @@ export function useDiaryCodeMirrorBridge(
         case 'ready':
           logBridge('received ready')
           isReadyRef.current = true
+          if (!initSentForLoadRef.current && editorMountedRef.current) {
+            logBridge('skip init — editor already mounted')
+            flushPendingOutbound()
+            return
+          }
           if (!initSentForLoadRef.current) {
             initSentForLoadRef.current = true
             logBridge('send init')
@@ -335,6 +351,9 @@ export function useDiaryCodeMirrorBridge(
           const handler = optionsRef.current.onTableSheetRequest
           if (handler) {
             handler(message.payload, (response) => {
+              if (typeof __DEV__ !== 'undefined' && __DEV__) {
+                logBridge(`tableSheetResponse ${response.action}${response.itemId ? ` item=${response.itemId}` : ''}`)
+              }
               enqueueOrSend({ type: 'tableSheetResponse', payload: response })
             })
           } else {

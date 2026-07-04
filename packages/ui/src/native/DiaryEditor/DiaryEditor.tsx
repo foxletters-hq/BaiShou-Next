@@ -108,6 +108,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null)
   const [toolbarHeight, setToolbarHeight] = useState(61)
   const [tableSheet, setTableSheet] = useState<ActiveTableSheet | null>(null)
+  const tableSheetRef = useRef<ActiveTableSheet | null>(null)
   const editorRef = useRef<NativeDiaryCodeMirrorEditorHandle>(null)
   const keyboardInsetLockedRef = useRef(false)
   const contentRef = useRef(content)
@@ -124,16 +125,22 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   })
 
   contentRef.current = content
+  tableSheetRef.current = tableSheet
 
   const syncSelection = useCallback((sel: { start: number; end: number }) => {
     selectionRef.current = sel
   }, [])
 
   const prevContentLenRef = useRef(0)
+  const contentHydratedRef = useRef(false)
   useEffect(() => {
     const grew = content.length > prevContentLenRef.current
     prevContentLenRef.current = content.length
     if (toolbarInsertingRef.current) return
+    if (!contentHydratedRef.current) {
+      if (content.length > 0) contentHydratedRef.current = true
+      return
+    }
     if (
       grew &&
       content.length > 0 &&
@@ -304,8 +311,9 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
 
   const handleTableSheetPick = useCallback(
     async (itemId: string) => {
-      if (!tableSheet) return
-      const item = tableSheet.sections
+      const sheet = tableSheetRef.current
+      if (!sheet) return
+      const item = sheet.sections
         .flatMap((section) => section.items)
         .find((i) => i.id === itemId)
       if (item?.destructive) {
@@ -317,12 +325,12 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
         })
         if (!confirmed) return
       }
-      const { requestId, respond } = tableSheet
+      const { requestId, respond } = sheet
       keyboardInsetLockedRef.current = false
       setTableSheet(null)
       respond({ requestId, action: 'pick', itemId })
     },
-    [dialog, t, tableSheet]
+    [dialog, t]
   )
   const editorPlaceholder = t('diary.tag_editor_hint', '首行输入 #标签 后按回车，再写正文…')
 

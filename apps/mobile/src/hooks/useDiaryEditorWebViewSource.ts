@@ -215,11 +215,10 @@ export function resetDiaryEditorWebViewSourceCache(): void {
 
 /** 懒加载 WebView HTML（首次进入编辑器时调用） */
 export function preloadDiaryEditorWebViewSource(): Promise<DiaryEditorWebViewSource | null> {
-  // 开发态每次进入编辑器都重新校验 bundle，避免 Metro / 内存缓存导致 WebView 仍用旧版
   if (cachedSource && (typeof __DEV__ === 'undefined' || !__DEV__)) {
     return Promise.resolve(cachedSource)
   }
-  if (!preloadPromise || (typeof __DEV__ !== 'undefined' && __DEV__)) {
+  if (!preloadPromise) {
     preloadPromise = readDiaryEditorWebViewSource().then((source) => {
       if (source) {
         cachedSource = source
@@ -238,7 +237,8 @@ export function useDiaryEditorWebViewSource(): DiaryEditorWebViewSource | null {
   useEffect(() => {
     let cancelled = false
     void preloadDiaryEditorWebViewSource().then((resolved) => {
-      if (!cancelled) setSource(resolved)
+      if (cancelled || !resolved) return
+      setSource((prev) => (prev?.cacheKey === resolved.cacheKey ? prev : resolved))
     })
     return () => {
       cancelled = true

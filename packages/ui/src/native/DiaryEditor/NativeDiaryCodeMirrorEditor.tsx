@@ -63,7 +63,7 @@ export interface NativeDiaryCodeMirrorEditorProps extends Pick<
 > {
   /** WebView 文档（同目录 index.html + bundle，由宿主 app 预加载后传入） */
   editorWebViewSource: DiaryEditorWebViewDocument
-  /** 页面聚焦时为 true；false 时卸载 WebView 释放内存（P-5） */
+  /** 页面聚焦时为 true；失焦时仅 blur，不卸载 WebView（避免模态动画期间反复 reload） */
   active?: boolean
   /** 键盘弹出高度，用于 WebView 容器底部 inset（I-13） */
   keyboardInset?: number
@@ -167,8 +167,17 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
   }, [active, bridge.blur])
 
   const prevKeyboardInsetRef = useRef(0)
+  const editorReadyAtRef = useRef(0)
+  const EDITOR_KEYBOARD_SCROLL_GRACE_MS = 2000
 
   useEffect(() => {
+    if (__DEV__) {
+      console.log('[DiaryEditor] setScrollInsets', {
+        bottomScrollInset,
+        keyboardInset,
+        keyboardVisible: keyboardInset > 0
+      })
+    }
     bridge.setScrollInsets(bottomScrollInset, keyboardInset > 0)
   }, [bottomScrollInset, keyboardInset, bridge.setScrollInsets])
 
@@ -176,12 +185,18 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
     const prev = prevKeyboardInsetRef.current
     prevKeyboardInsetRef.current = keyboardInset
     if (keyboardInset <= 0) return
-    // 仅在键盘刚弹出时滚一次，避免高度动画期间反复把视图拽回
     if (prev > 0) return
+    const readyAt = editorReadyAtRef.current
+    if (readyAt > 0 && Date.now() - readyAt < EDITOR_KEYBOARD_SCROLL_GRACE_MS) return
     const delayMs = Platform.OS === 'ios' ? 120 : 220
-    const timer = setTimeout(() => bridge.scrollCaretIntoView(), delayMs)
-    // 键盘高度动画结束后补滚一次，确保光标在 IME 上方
-    const retryTimer = setTimeout(() => bridge.scrollCaretIntoView(), delayMs + 320)
+    const timer = setTimeout(() => {
+      if (Date.now() - editorReadyAtRef.current < EDITOR_KEYBOARD_SCROLL_GRACE_MS) return
+      bridge.scrollCaretIntoView()
+    }, delayMs)
+    const retryTimer = setTimeout(() => {
+      if (Date.now() - editorReadyAtRef.current < EDITOR_KEYBOARD_SCROLL_GRACE_MS) return
+      bridge.scrollCaretIntoView()
+    }, delayMs + 320)
     return () => {
       clearTimeout(timer)
       clearTimeout(retryTimer)
@@ -276,6 +291,8 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
   const webViewCacheKey = `${editorWebViewSource.uri}:${editorWebViewSource.cacheKey}`
 
   const handleLoadStart = () => {
+    prevKeyboardInsetRef.current = 0
+    editorReadyAtRef.current = 0
     if (typeof __DEV__ !== 'undefined' && __DEV__) {
       console.log('[DiaryEditor WebView] loadStart', {
         uri: editorWebViewSource.uri,
@@ -286,6 +303,7 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
   }
 
   const handleLoadEnd = () => {
+    editorReadyAtRef.current = Date.now()
     if (typeof __DEV__ !== 'undefined' && __DEV__) {
       console.log('[DiaryEditor WebView] loadEnd')
     }
@@ -294,46 +312,44 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
 
   return (
     <View style={shellStyle} collapsable={false}>
-      {active ? (
-        <WebView
-          key={webViewCacheKey}
-          ref={bridge.webViewRef}
-          source={webViewSource}
-          originWhitelist={['*']}
-          allowFileAccess
-          allowFileAccessFromFileURLs
-          allowUniversalAccessFromFileURLs={Platform.OS === 'android'}
-          javaScriptEnabled
-          domStorageEnabled
-          cacheEnabled={false}
-          keyboardDisplayRequiresUserAction={false}
-          hideKeyboardAccessoryView={false}
-          scrollEnabled={fillViewport}
-          nestedScrollEnabled={fillViewport}
-          overScrollMode="never"
-          bounces={false}
-          showsVerticalScrollIndicator={false}
-          showsHorizontalScrollIndicator={false}
-          onMessage={bridge.onWebViewMessage}
-          onLoadStart={handleLoadStart}
-          onLoadEnd={handleLoadEnd}
-          onError={handleWebViewError}
-          onHttpError={handleWebViewError}
-          {...(Platform.OS === 'android'
-            ? ({ onConsoleMessage: handleConsoleMessage } as Record<string, unknown>)
-            : {})}
-          style={webViewStyle}
-          containerStyle={webViewContainerStyle}
-          mixedContentMode="always"
-          setSupportMultipleWindows={false}
-          {...(Platform.OS === 'ios'
-            ? {
-                allowingReadAccessToURL: editorWebViewSource.baseUrl,
-                dataDetectorTypes: 'none' as const
-              }
-            : {})}
-        />
-      ) : null}
+      <WebView
+        key={webViewCacheKey}
+        ref={bridge.webViewRef}
+        source={webViewSource}
+        originWhitelist={['*']}
+        allowFileAccess
+        allowFileAccessFromFileURLs
+        allowUniversalAccessFromFileURLs={Platform.OS === 'android'}
+        javaScriptEnabled
+        domStorageEnabled
+        cacheEnabled={false}
+        keyboardDisplayRequiresUserAction={false}
+        hideKeyboardAccessoryView={false}
+        scrollEnabled={false}
+        nestedScrollEnabled={false}
+        overScrollMode="never"
+        bounces={false}
+        showsVerticalScrollIndicator={false}
+        showsHorizontalScrollIndicator={false}
+        onMessage={bridge.onWebViewMessage}
+        onLoadStart={handleLoadStart}
+        onLoadEnd={handleLoadEnd}
+        onError={handleWebViewError}
+        onHttpError={handleWebViewError}
+        {...(Platform.OS === 'android'
+          ? ({ onConsoleMessage: handleConsoleMessage } as Record<string, unknown>)
+          : {})}
+        style={webViewStyle}
+        containerStyle={webViewContainerStyle}
+        mixedContentMode="always"
+        setSupportMultipleWindows={false}
+        {...(Platform.OS === 'ios'
+          ? {
+              allowingReadAccessToURL: editorWebViewSource.baseUrl,
+              dataDetectorTypes: 'none' as const
+            }
+          : {})}
+      />
     </View>
   )
 })

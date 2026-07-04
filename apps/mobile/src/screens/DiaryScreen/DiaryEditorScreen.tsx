@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { View, StyleSheet, ActivityIndicator } from 'react-native'
 import { ScreenSafeArea } from '../../components/ScreenSafeArea'
 import { useTranslation } from 'react-i18next'
-import { useIsFocused } from '@react-navigation/native'
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router'
 import {
   DiaryEditor,
@@ -79,7 +78,6 @@ export const DiaryEditorScreen: React.FC = () => {
   const originalTagsRef = useRef<string[]>([])
   const [pickingImages, setPickingImages] = useState(false)
   const editorWebViewSource = useDiaryEditorWebViewSource()
-  const isFocused = useIsFocused()
   const [tagColorRegistry, setTagColorRegistry] = useState<DiaryTagColorRegistry>({})
   const previousTagsRef = useRef<string[]>([])
 
@@ -434,45 +432,41 @@ export const DiaryEditorScreen: React.FC = () => {
     return unsub
   }, [navigation, dialog, t, router])
 
-  if (loading) {
-    return (
-      <ScreenSafeArea preset="screen" style={{ backgroundColor: colors.bgApp }}>
-        <View style={styles.loadingCenter}>
-          <ActivityIndicator size="large" color={colors.accentGreen} />
-        </View>
-      </ScreenSafeArea>
-    )
-  }
-
   return (
     <ScreenSafeArea preset="screen" style={{ backgroundColor: colors.bgSurface }}>
       <FullFileAccessGate granted={storageGranted} onRequest={() => void requestStorage()}>
-        <DiaryEditor
-          content={content}
-          tags={tags}
-          selectedDate={selectedDate}
-          weather={weather || ''}
-          mood={mood || ''}
-          isFavorite={isFavorite}
-          editorWebViewSource={editorWebViewSource}
-          webViewActive={isFocused}
-          onContentChange={handleContentChange}
-          onTagsChange={handleTagsChange}
-          tagColorRegistry={tagColorRegistry}
-          onDateChange={setSelectedDate}
-          onWeatherChange={handleWeatherChange}
-          onMoodChange={handleMoodChange}
-          onFavoriteChange={handleFavoriteChange}
-          onPickImages={handlePickImages}
-          pickingImages={pickingImages}
-          resolveAttachmentUrl={resolveAttachmentUrl}
-          markdownToolbarOrder={toolOrder}
-          onMarkdownToolbarOrderChange={saveToolOrder}
-          onReadAloud={handleReadAloud}
-          isTtsPlaying={ttsPlayingMsgId === DIARY_TTS_PLAYBACK_ID}
-          onSave={handleSave}
-          onCancel={handleBack}
-        />
+        {loading ? (
+          <View style={styles.loadingCenter}>
+            <ActivityIndicator size="large" color={colors.accentGreen} />
+          </View>
+        ) : (
+          <DiaryEditor
+            content={content}
+            tags={tags}
+            selectedDate={selectedDate}
+            weather={weather || ''}
+            mood={mood || ''}
+            isFavorite={isFavorite}
+            editorWebViewSource={editorWebViewSource}
+            webViewActive
+            onContentChange={handleContentChange}
+            onTagsChange={handleTagsChange}
+            tagColorRegistry={tagColorRegistry}
+            onDateChange={setSelectedDate}
+            onWeatherChange={handleWeatherChange}
+            onMoodChange={handleMoodChange}
+            onFavoriteChange={handleFavoriteChange}
+            onPickImages={handlePickImages}
+            pickingImages={pickingImages}
+            resolveAttachmentUrl={resolveAttachmentUrl}
+            markdownToolbarOrder={toolOrder}
+            onMarkdownToolbarOrderChange={saveToolOrder}
+            onReadAloud={handleReadAloud}
+            isTtsPlaying={ttsPlayingMsgId === DIARY_TTS_PLAYBACK_ID}
+            onSave={handleSave}
+            onCancel={handleBack}
+          />
+        )}
       </FullFileAccessGate>
     </ScreenSafeArea>
   )
