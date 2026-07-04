@@ -3,8 +3,11 @@ import {
   CONTEXT_MENU_GAP,
   CONTEXT_MENU_MARGIN,
   DESKTOP_INPUT_BAR_SELECTOR,
+  DIARY_MARKDOWN_TOOLBAR_SELECTOR,
   getComposerBottomInset,
   getDefaultContextMenuBounds,
+  getElementBottomInset,
+  getOverlayBottomInset,
   resolveContextMenuPosition
 } from '../context-menu-placement.util'
 
@@ -64,5 +67,48 @@ describe('context-menu-placement.util', () => {
 
     expect(position.x).toBe(bounds.right - 180)
     expect(position.y).toBe(120)
+  })
+
+  it('uses the tallest bottom obstruction between composer and diary toolbar', () => {
+    const composer = document.createElement('div')
+    composer.setAttribute('data-desktop-input-bar', 'true')
+    document.body.appendChild(composer)
+    composer.getBoundingClientRect = () =>
+      ({
+        top: 700,
+        bottom: 800,
+        left: 0,
+        right: 400,
+        width: 400,
+        height: 100,
+        x: 0,
+        y: 700,
+        toJSON: () => ({})
+      }) as DOMRect
+
+    const toolbar = document.createElement('div')
+    toolbar.setAttribute('data-diary-markdown-toolbar', 'true')
+    document.body.appendChild(toolbar)
+    toolbar.getBoundingClientRect = () =>
+      ({
+        top: 560,
+        bottom: 612,
+        left: 0,
+        right: 400,
+        width: 400,
+        height: 52,
+        x: 0,
+        y: 560,
+        toJSON: () => ({})
+      }) as DOMRect
+
+    const inset = getOverlayBottomInset(
+      [DESKTOP_INPUT_BAR_SELECTOR, DIARY_MARKDOWN_TOOLBAR_SELECTOR],
+      800
+    )
+    expect(inset).toBe(800 - 560 + CONTEXT_MENU_GAP)
+    expect(getElementBottomInset(DIARY_MARKDOWN_TOOLBAR_SELECTOR, 800)).toBe(
+      800 - 560 + CONTEXT_MENU_GAP
+    )
   })
 })

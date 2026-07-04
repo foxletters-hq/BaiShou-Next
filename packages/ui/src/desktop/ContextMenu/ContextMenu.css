@@ -1,6 +1,6 @@
 .context-menu {
   position: fixed;
-  z-index: 10000;
+  z-index: 401;
   min-width: 160px;
   max-width: 240px;
   background: var(--bg-glass-surface);

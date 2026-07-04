@@ -2,8 +2,7 @@ import React, { useRef, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import {
-  getDefaultContextMenuBounds,
-  resolveContextMenuPosition
+  applyFixedContextMenuLayout
 } from '../ContextMenu/context-menu-placement.util'
 import styles from './ChatBubble.module.css'
 
@@ -33,19 +32,7 @@ export const ChatBubbleContextMenu: React.FC<ChatBubbleContextMenuProps> = ({
 
   useLayoutEffect(() => {
     if (!contextMenu || !chatMenuRef.current) return
-
-    const rect = chatMenuRef.current.getBoundingClientRect()
-    const bounds = getDefaultContextMenuBounds()
-    const { x, y } = resolveContextMenuPosition(
-      contextMenu.x,
-      contextMenu.y,
-      rect.width,
-      rect.height,
-      bounds
-    )
-
-    chatMenuRef.current.style.left = `${x}px`
-    chatMenuRef.current.style.top = `${y}px`
+    applyFixedContextMenuLayout(chatMenuRef.current, contextMenu.x, contextMenu.y)
   }, [contextMenu, isUser, onDelete, onRegenerate, onResend])
 
   if (!contextMenu || typeof document === 'undefined') return null
