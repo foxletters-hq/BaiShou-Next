@@ -41,6 +41,7 @@ export { parseJournalMarkdown } from './diary/journal-markdown.parser'
 export * from './session/session-file.service'
 export * from './session/session-sync.service'
 export * from './session/session-manager.service'
+export * from './session/session-disk-persistence.service'
 
 export * from './assistant/assistant-file.service'
 export * from './assistant/assistant-manager.service'
