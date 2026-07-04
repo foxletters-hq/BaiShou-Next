@@ -7,6 +7,7 @@ import {
   deleteTableRowMarkdown,
   moveTableColumnMarkdown,
   moveTableRowMarkdown,
+  setColumnAlignmentMarkdown,
   updateTableCellMarkdown
 } from '../table/table.ops'
 import { parseTableFromDoc } from '../table/table.model'
@@ -58,6 +59,17 @@ describe('table.ops', () => {
     expect(updateTableCellMarkdown(table, 0, 1, '9')).toBe('| A | B |\n| --- | --- |\n| 1 | 9 |')
     expect(updateTableCellMarkdown(table, -1, 0, 'Header')).toBe(
       '| Header | B |\n| --- | --- |\n| 1 | 2 |'
+    )
+  })
+
+  it('sets column alignment on separator row', () => {
+    const state = EditorState.create({ doc: SAMPLE })
+    const table = parseSample()
+    expect(setColumnAlignmentMarkdown(table, state.doc, 1, 'center')).toBe(
+      '| A | B |\n| --- | :---: |\n| 1 | 2 |'
+    )
+    expect(setColumnAlignmentMarkdown(table, state.doc, 0, 'right')).toBe(
+      '| A | B |\n| ---: | --- |\n| 1 | 2 |'
     )
   })
 })

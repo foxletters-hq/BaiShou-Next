@@ -1,5 +1,9 @@
 import type { DiaryCmTableSheetRequestPayload, DiaryCmTableSheetResponsePayload } from '../types'
-import { dismissKeyboardForSheetInteraction } from './tableSheetInteraction'
+import {
+  dismissKeyboardForSheetInteraction,
+  markTableSheetClosed,
+  markTableSheetOpen
+} from './tableSheetInteraction'
 
 type NativeSheetSection = {
   items: {
@@ -42,13 +46,19 @@ export function requestNativeTableSheet(
   if (!rn) return false
 
   if (nativeSheetOpen) {
-    return true
+    // RN 侧已关闭但 WebView 未收到 dismiss 时，避免静默吞掉新菜单请求
+    for (const [staleId, stale] of pendingSheets.entries()) {
+      stale.onClose?.()
+      pendingSheets.delete(staleId)
+    }
+    nativeSheetOpen = false
+    markTableSheetClosed()
   }
 
   const requestId = `table-sheet-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   pendingSheets.set(requestId, { onPick, onClose })
   nativeSheetOpen = true
-  dismissKeyboardForSheetInteraction()
+  markTableSheetOpen()
 
   const payload: DiaryCmTableSheetRequestPayload = {
     requestId,
@@ -69,7 +79,15 @@ export function requestNativeTableSheet(
   } catch {
     pendingSheets.delete(requestId)
     nativeSheetOpen = false
+    markTableSheetClosed()
     return false
+  }
+}
+
+function finishNativeTableSheetSession(): void {
+  if (pendingSheets.size === 0) {
+    nativeSheetOpen = false
+    markTableSheetClosed()
   }
 }
 
@@ -77,30 +95,31 @@ export function resolveNativeTableSheetResponse(payload: DiaryCmTableSheetRespon
   const pending = pendingSheets.get(payload.requestId)
   if (!pending) return
   pendingSheets.delete(payload.requestId)
-  if (pendingSheets.size === 0) {
-    nativeSheetOpen = false
-  }
 
   if (payload.action === 'dismiss') {
-    dismissKeyboardForSheetInteraction()
     pending.onClose?.()
+    finishNativeTableSheetSession()
     return
   }
 
   if (payload.itemId) {
     pending.onPick(payload.itemId)
+    finishNativeTableSheetSession()
   }
 }
 
 export function resetNativeTableSheetsForTest(): void {
   pendingSheets.clear()
   nativeSheetOpen = false
+  markTableSheetClosed()
 }
 
 export function closeNativeTableSheets(): void {
+  if (pendingSheets.size === 0) return
   for (const [requestId, pending] of pendingSheets.entries()) {
     pending.onClose?.()
     pendingSheets.delete(requestId)
   }
   nativeSheetOpen = false
+  markTableSheetClosed()
 }

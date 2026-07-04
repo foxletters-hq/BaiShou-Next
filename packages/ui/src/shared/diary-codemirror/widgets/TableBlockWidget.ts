@@ -70,6 +70,7 @@ import { readTableCellRangeSelectionFor } from '../table/tableRangeSelection'
 import { readActiveTableCellFor } from '../table/tableActiveCell'
 import { createTableGripIcon, createTableGridIcon } from './tableChromeIcons'
 import { logTableDesktop } from '../table/tableDesktopDebug'
+import type { ColumnAlignment } from '../table/tableGridModel'
 
 const TABLE_CHROME_INTERACTIVE_SELECTOR =
   '.cm-table-handle, .cm-table-corner-menu, .cm-table-add-btn, .cm-table-context-menu-layer, .cm-table-context-menu'
@@ -81,22 +82,26 @@ type MenuItem = TableMenuItem
 export class TableBlockWidget extends WidgetType {
   private rootEl: HTMLElement | null = null
   private readonly heightCacheKey: string
+  private readonly alignSignature: string
 
   constructor(
     private readonly table: ParsedTable,
     private readonly activeCell: ActiveTableCell | null,
     private readonly platform?: DiaryCmPlatform,
     private readonly chromeSelection: TableChromeSelection | null = null,
-    private readonly rangeSelection: TableCellRangeSelection | null = null
+    private readonly rangeSelection: TableCellRangeSelection | null = null,
+    private readonly columnAlignments: ColumnAlignment[] = []
   ) {
     super()
     this.heightCacheKey = `${table.from}:${table.to}:${table.columnCount}:${table.bodyRows.length}`
+    this.alignSignature = columnAlignments.join(',')
   }
 
   eq(other: TableBlockWidget): boolean {
     if (this.table.from !== other.table.from) return false
     if (this.table.columnCount !== other.table.columnCount) return false
     if (this.table.bodyRows.length !== other.table.bodyRows.length) return false
+    if (this.alignSignature !== other.alignSignature) return false
     return tableContentSignature(this.table) === tableContentSignature(other.table)
   }
 
@@ -790,6 +795,12 @@ export class TableBlockWidget extends WidgetType {
       if (isCellInTableRange(rowIndex, colIndex, bounds)) {
         el.classList.add('cm-table-grid-cell--range-selected')
       }
+    }
+
+    const align = this.columnAlignments[colIndex]
+    if (align && align !== 'none') {
+      el.setAttribute('align', align)
+      el.style.textAlign = align
     }
 
     el.appendChild(

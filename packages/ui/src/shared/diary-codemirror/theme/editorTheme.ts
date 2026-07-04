@@ -379,6 +379,18 @@ export const editorTheme = EditorView.baseTheme({
     padding: '0',
     position: 'relative'
   },
+  '.cm-table-grid-cell[align="left"] .cm-table-cell-view, .cm-table-grid-cell[align="left"] .cm-table-cell-source':
+    {
+      textAlign: 'left'
+    },
+  '.cm-table-grid-cell[align="center"] .cm-table-cell-view, .cm-table-grid-cell[align="center"] .cm-table-cell-source':
+    {
+      textAlign: 'center'
+    },
+  '.cm-table-grid-cell[align="right"] .cm-table-cell-view, .cm-table-grid-cell[align="right"] .cm-table-cell-source':
+    {
+      textAlign: 'right'
+    },
   '.cm-table-cell-source': {
     display: 'block',
     width: '100%',

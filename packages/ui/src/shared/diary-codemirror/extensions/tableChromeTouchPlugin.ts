@@ -10,7 +10,7 @@ import {
   hitTestInteractableChromeAtPoint,
   isInteractableChromeElement
 } from '../table/tableChromeHitTest'
-import { isTableSheetOpen } from '../table/tableSheetInteraction'
+import { shouldBlockEditorTouchForTableSheet } from '../table/tableSheetInteraction'
 import {
   TABLE_CHROME_LONG_PRESS_MS,
   TABLE_CHROME_LONG_PRESS_MOVE_TOLERANCE_PX
@@ -108,7 +108,7 @@ export function tableChromeTouchPlugin(platform?: DiaryCmPlatform): Extension {
       }
 
       private handleTouchStart(event: TouchEvent): void {
-        if (isTableSheetOpen()) return
+        if (shouldBlockEditorTouchForTableSheet()) return
 
         const trigger = resolveTouchTarget(this.view, event)
         if (!trigger) return
@@ -133,7 +133,7 @@ export function tableChromeTouchPlugin(platform?: DiaryCmPlatform): Extension {
 
         this.pressTimer = setTimeout(() => {
           this.pressTimer = null
-          if (isTableSheetOpen()) return
+          if (shouldBlockEditorTouchForTableSheet()) return
           const activeTrigger = this.pressTrigger
           const activeEvent = this.pressEvent
           this.pressTrigger = null
@@ -159,7 +159,7 @@ export function tableChromeTouchPlugin(platform?: DiaryCmPlatform): Extension {
           return
         }
 
-        if (isTableSheetOpen()) return
+        if (shouldBlockEditorTouchForTableSheet()) return
 
         if (event.target instanceof Element) {
           const fromTarget = isTableChromeTouchTarget(event.target)

@@ -57,7 +57,12 @@ function installTableSheetTouchShield(): void {
     dismissKeyboardForSheetInteraction()
   }
 
+  document.addEventListener('touchstart', absorb, { capture: true, passive: false })
   document.addEventListener('touchend', absorb, { capture: true, passive: false })
+}
+
+export function shouldBlockEditorTouchForTableSheet(): boolean {
+  return shouldShieldTableTouch()
 }
 
 export function markTableSheetOpen(): void {

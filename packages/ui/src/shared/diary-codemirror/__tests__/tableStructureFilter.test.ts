@@ -142,4 +142,15 @@ describe('tableStructureProtectFilter', () => {
     })
     expect(isTableStructureChangeAllowed(tr)).toBe(false)
   })
+
+  it('allows newline insertion immediately after table markdown end', () => {
+    const doc = '| a | b |\n| --- | --- |\n| 1 | 2 |'
+    const editorView = createView(doc, doc.length)
+    const { before, after } = dispatchAndGetDoc(editorView, {
+      from: doc.length,
+      to: doc.length,
+      insert: '\n\n'
+    })
+    expect(after).toBe(`${before}\n\n`)
+  })
 })

@@ -76,4 +76,26 @@ describe('createDiaryCodeMirror with table', () => {
 
     view.destroy()
   })
+
+  it('does not emit onChange when auto-normalizing post-table gap on mount', async () => {
+    parent = document.createElement('div')
+    document.body.appendChild(parent)
+    const doc = '| A | B |\n| --- | --- |\n| 1 | 2 |'
+    const onChange = vi.fn()
+
+    const view = createDiaryCodeMirror(parent, {
+      content: doc,
+      platform: { resolveAttachmentUrl: (u) => u, interactionMode: 'touch' },
+      onChange
+    })
+
+    await vi.waitFor(() => {
+      expect(view.state.doc.length).toBeGreaterThan(doc.length)
+    })
+    const normalized = view.state.doc.toString()
+    expect(normalized.length).toBeGreaterThan(doc.length)
+    expect(onChange).not.toHaveBeenCalledWith(normalized)
+
+    view.destroy()
+  })
 })

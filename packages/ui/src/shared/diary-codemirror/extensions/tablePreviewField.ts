@@ -115,7 +115,8 @@ export function buildTablePreviewDecorations(
             activeCell,
             platform,
             chromeSelection,
-            rangeSelection
+            rangeSelection,
+            alignments
           )
 
       ranges.push(

@@ -51,7 +51,7 @@ describe('tableNativeSheet', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
-  it('ignores duplicate open requests while native sheet is already open', () => {
+  it('reopens native sheet when a new menu is requested while the prior session is stale', () => {
     const posted: string[] = []
     window.ReactNativeWebView = {
       postMessage: (message: string) => {
@@ -63,7 +63,7 @@ describe('tableNativeSheet', () => {
       requestNativeTableSheet('第 5 行', [{ items: [{ id: 'up', label: '向上移动行' }] }], vi.fn())
     ).toBe(true)
     expect(
-      requestNativeTableSheet('第 5 行', [{ items: [{ id: 'up', label: '向上移动行' }] }], vi.fn())
+      requestNativeTableSheet('第 5 行', [{ items: [{ id: 'clear-row', label: '清空行' }] }], vi.fn())
     ).toBe(true)
 
     const sheetRequests = posted.filter((raw) => {
@@ -73,6 +73,6 @@ describe('tableNativeSheet', () => {
         return false
       }
     })
-    expect(sheetRequests).toHaveLength(1)
+    expect(sheetRequests).toHaveLength(2)
   })
 })

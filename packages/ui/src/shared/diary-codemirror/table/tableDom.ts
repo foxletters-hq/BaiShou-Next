@@ -109,15 +109,18 @@ export function dispatchTableModelFromBlock(view: EditorView, block: HTMLElement
   const table = parseTableFromDoc(view.state.doc, range.from, range.to)
   if (!table) return false
 
-  const nextMarkdown = buildTableMarkdown({
-    ...table,
-    header: { ...table.header, cells: model.header },
-    bodyRows: model.rows.map((cells, index) => ({
-      lineFrom: table.bodyRows[index]?.lineFrom ?? range.to,
-      lineTo: table.bodyRows[index]?.lineTo ?? range.to,
-      cells
-    }))
-  })
+  const nextMarkdown = buildTableMarkdown(
+    {
+      ...table,
+      header: { ...table.header, cells: model.header },
+      bodyRows: model.rows.map((cells, index) => ({
+        lineFrom: table.bodyRows[index]?.lineFrom ?? range.to,
+        lineTo: table.bodyRows[index]?.lineTo ?? range.to,
+        cells
+      }))
+    },
+    view.state.doc
+  )
 
   const current = view.state.doc.sliceString(range.from, range.to)
   if (nextMarkdown === current) {
