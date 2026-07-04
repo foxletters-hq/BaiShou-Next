@@ -1,5 +1,11 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { createDiaryCodeMirror } from '../createDiaryCodeMirror'
+
+async function waitForCkantTable(parent: HTMLElement): Promise<void> {
+  await vi.waitFor(() => {
+    expect(parent.querySelector('.tbl-table')).toBeTruthy()
+  })
+}
 
 describe('createDiaryCodeMirror with table', () => {
   let parent: HTMLElement | null = null
@@ -27,7 +33,7 @@ describe('createDiaryCodeMirror with table', () => {
     view!.destroy()
   })
 
-  it('renders table block widget in DOM when document is only a table', () => {
+  it('renders table block widget in DOM when document is only a table', async () => {
     parent = document.createElement('div')
     parent.style.width = '400px'
     parent.style.height = '300px'
@@ -41,15 +47,16 @@ describe('createDiaryCodeMirror with table', () => {
 
     // 模拟打开日记后光标移到文末（表格外）
     expect(() => {
-      view.dispatch({ selection: { anchor: doc.length, head: doc.length } })
+      const end = view.state.doc.length
+      view.dispatch({ selection: { anchor: end, head: end } })
     }).not.toThrow()
 
-    expect(parent.querySelector('.cm-table-block')).toBeTruthy()
-    expect(parent.textContent).toContain('A')
+    await waitForCkantTable(parent!)
+    expect(parent!.textContent).toContain('A')
     view.destroy()
   })
 
-  it('moves cursor outside table when selection enters table source', async () => {
+  it('ckant handles table widget without tableEditorPlugin redirect', async () => {
     parent = document.createElement('div')
     parent.style.width = '400px'
     document.body.appendChild(parent)
@@ -63,9 +70,9 @@ describe('createDiaryCodeMirror with table', () => {
     view.dispatch({ selection: { anchor: 2, head: 2 } })
     await new Promise((resolve) => queueMicrotask(resolve))
 
-    const gapFrom = view.state.doc.line(4).from
-    expect(view.state.selection.main.head).toBeGreaterThanOrEqual(gapFrom - 1)
-    expect(view.state.doc.toString()).toBe(content)
+    expect(view.state.doc.toString()).toContain('| A | B |')
+    expect(view.state.doc.toString()).toContain('| 1 | 2 |')
+    await waitForCkantTable(parent!)
 
     view.destroy()
   })

@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
@@ -57,13 +57,15 @@ describe('tablePreviewField', () => {
     expect(replaceTo).toBe(editorView.state.doc.line(3).to)
   })
 
-  it('rebuilds on setActiveTableCell effect', () => {
+  it('syncs active cell chrome on setActiveTableCell effect', async () => {
     const content = '| A | B |\n| --- | --- |\n| 1 | 2 |\n'
     const editorView = createTableView(content)
     editorView.dispatch({
       effects: setActiveTableCell.of({ tableFrom: 0, rowIndex: 0, colIndex: 1 })
     })
-    expect(parent!.querySelector('.cm-table-block--has-active-cell')).toBeTruthy()
+    await vi.waitFor(() => {
+      expect(parent!.querySelector('.cm-table-block--has-active-cell')).toBeTruthy()
+    })
   })
 
   it('rebuilds on diarySyntaxTreeGrowthEffect', () => {
@@ -128,6 +130,25 @@ describe('tablePreviewField', () => {
     cell.dispatchEvent(new FocusEvent('blur', { bubbles: false }))
     await Promise.resolve()
     expect(editorView.state.doc.toString()).toContain('| 12 | 2 |')
+  })
+
+  it('cell commit maps decorations without rebuilding widget', async () => {
+    const content = '| A | B |\n| --- | --- |\n| 1 | 2 |\n'
+    const editorView = createTableView(content)
+    editorView.dispatch({
+      effects: setActiveTableCell.of({ tableFrom: 0, rowIndex: 0, colIndex: 0 })
+    })
+    await Promise.resolve()
+    const block = parent!.querySelector('.cm-table-block') as HTMLElement
+    const cell = block.querySelector(
+      'tbody td .cm-table-cell-source[data-row="0"][data-col="0"]'
+    ) as HTMLElement
+    cell.textContent = '9'
+    cell.dataset.raw = '9'
+    dispatchTableModelFromBlock(editorView, block)
+    await Promise.resolve()
+    expect(parent!.querySelector('.cm-table-block')).toBe(block)
+    expect(editorView.state.doc.toString()).toContain('| 9 | 2 |')
   })
 
   it('typing after table stays outside pipe rows', async () => {

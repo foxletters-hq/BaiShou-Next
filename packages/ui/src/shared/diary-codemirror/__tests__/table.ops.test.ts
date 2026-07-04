@@ -30,6 +30,13 @@ describe('table.ops', () => {
     expect(addTableRowMarkdown(table)).toBe('| A | B |\n| --- | --- |\n| 1 | 2 |\n|  |  |')
   })
 
+  it('duplicates a row from template', () => {
+    const table = parseSample()
+    expect(addTableRowMarkdown(table, 1, ['1', '2'])).toBe(
+      '| A | B |\n| --- | --- |\n| 1 | 2 |\n| 1 | 2 |'
+    )
+  })
+
   it('deletes a column', () => {
     const table = parseSample()
     expect(deleteTableColumnMarkdown(table, 1)).toBe('| A |\n| --- |\n| 1 |')

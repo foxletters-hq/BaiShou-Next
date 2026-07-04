@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   decodeTableCellText,
   encodeTableCellText,
+  formatDesktopTableCellDisplay,
   normalizeTableCellDisplay
 } from '../table/tableCellText'
 
@@ -18,5 +19,9 @@ describe('tableCellText', () => {
 
   it('normalizes display text to a single line', () => {
     expect(normalizeTableCellDisplay('a<br />b')).toBe('a b')
+  })
+
+  it('preserves line breaks for desktop cell display', () => {
+    expect(formatDesktopTableCellDisplay('a<br />b')).toBe('a\nb')
   })
 })

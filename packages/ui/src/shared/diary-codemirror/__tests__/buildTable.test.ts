@@ -61,18 +61,19 @@ describe('buildMarkerHidingDecorations table preview', () => {
     const editorView = createView(doc, doc.length)
     const deco = buildTablePreviewDecorations(editorView.state)
 
-    let hasTableBlockWidget = false
+    let hasTableWidget = false
     const iter = deco.iter()
     while (iter.value) {
       const spec = iter.value.spec as { widget?: { constructor?: { name?: string } } }
-      if (spec.widget?.constructor?.name === 'TableBlockWidget') {
-        hasTableBlockWidget = true
+      const name = spec.widget?.constructor?.name
+      if (name === 'TableBlockWidget' || name === 'TableDesktopWidget') {
+        hasTableWidget = true
         break
       }
       iter.next()
     }
 
-    expect(hasTableBlockWidget).toBe(true)
+    expect(hasTableWidget).toBe(true)
   })
 
   it('always shows table block widget even when cursor is inside table source', () => {
@@ -81,18 +82,19 @@ describe('buildMarkerHidingDecorations table preview', () => {
     const editorView = createView(doc, cursorPos)
     const deco = buildTablePreviewDecorations(editorView.state)
 
-    let hasTableBlockWidget = false
+    let hasTableWidget = false
     const iter = deco.iter()
     while (iter.value) {
       const spec = iter.value.spec as { widget?: { constructor?: { name?: string } } }
-      if (spec.widget?.constructor?.name === 'TableBlockWidget') {
-        hasTableBlockWidget = true
+      const name = spec.widget?.constructor?.name
+      if (name === 'TableBlockWidget' || name === 'TableDesktopWidget') {
+        hasTableWidget = true
         break
       }
       iter.next()
     }
 
-    expect(hasTableBlockWidget).toBe(true)
+    expect(hasTableWidget).toBe(true)
   })
 
   it('shows raw table syntax on the active line', () => {

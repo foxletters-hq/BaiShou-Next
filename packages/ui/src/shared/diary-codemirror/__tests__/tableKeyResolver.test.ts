@@ -27,6 +27,14 @@ describe('resolveTableKeyAction', () => {
     })
   })
 
+  it('inserts a row when enter leaves the last cell in a row', () => {
+    const table = parseSampleTable()
+    expect(resolveTableKeyAction(table, 0, 1, 'enter')).toEqual({
+      kind: 'insert-row-below',
+      afterRowIndex: 0
+    })
+  })
+
   it('exits the table on escape', () => {
     const table = parseSampleTable()
     expect(resolveTableKeyAction(table, 0, 0, 'escape')).toEqual({ kind: 'exit-after' })
