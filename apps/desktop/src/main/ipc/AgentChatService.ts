@@ -121,6 +121,11 @@ export class AgentChatService {
       return true
     } catch (error: any) {
       if (error.name === 'AbortError') {
+        try {
+          await sessionManager.flushSessionToDisk(args.sessionId)
+        } catch (e: any) {
+          logger.error('Agent IPC persistence SSOT Error after abort', e)
+        }
         event.sender.send('agent:stream-finish', { sessionId: args.sessionId, success: true })
         return true
       }

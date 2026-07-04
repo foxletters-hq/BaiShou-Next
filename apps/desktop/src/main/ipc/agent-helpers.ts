@@ -76,7 +76,21 @@ export function getAgentManagers() {
   const sessionManager = new SessionManagerService(
     realSessionRepo,
     sessionFileService,
-    sessionSyncService
+    sessionSyncService,
+    {
+      onBeforeWrite: (sessionId) => {
+        void (async () => {
+          try {
+            const { sessionWatcher } = await import('../services/session-watcher.service')
+            const vaultPath = await pathService.getActiveVaultPath()
+            const { join } = await import('path')
+            sessionWatcher.suppressPath(join(vaultPath, 'Sessions', `${sessionId}.json`))
+          } catch {
+            // watcher 未启动时忽略
+          }
+        })()
+      }
+    }
   )
 
   const realAssistantRepo = new AssistantRepository(db)

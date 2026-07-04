@@ -20,7 +20,8 @@ import {
   type IncrementalSyncPlanReuseBaseline,
   type IncrementalSyncRunOptions,
   type SyncProgressEvent,
-  type S3SyncConfig
+  type S3SyncConfig,
+  logger
 } from '@baishou/shared'
 import { IncrementalS3Client } from '../services/incremental-s3.client'
 import { IncrementalWebDavClient } from '../services/incremental-webdav.client'
@@ -208,6 +209,15 @@ async function ensureVaultsForIncrementalSync(
   return unique
 }
 
+async function flushPendingAgentSessionsBeforeSync(): Promise<void> {
+  try {
+    const { getAgentManagers } = await import('./agent-helpers')
+    await getAgentManagers().sessionManager.flushPendingDiskWrites()
+  } catch (e) {
+    logger.warn('[IncrementalSync] session flushPending before sync failed:', e as Error)
+  }
+}
+
 export function registerIncrementalSyncIPC() {
   ipcMain.handle('incrementalSync:getConfig', async () => {
     await ensureSyncServicesInitialized()
@@ -267,6 +277,7 @@ export function registerIncrementalSyncIPC() {
   })
 
   ipcMain.handle('incrementalSync:sync', async (event, runOptions) => {
+    await flushPendingAgentSessionsBeforeSync()
     const result = await (
       await getOrchestrator()
     ).sync((progress) => {
@@ -376,6 +387,7 @@ export function registerIncrementalSyncIPC() {
         total: 1,
         statusText: 'data_sync.progress_registering_vaults'
       })
+      await flushPendingAgentSessionsBeforeSync()
       const autoRegisteredVaults = await ensureVaultsForIncrementalSync(runOptions)
       ;(await getSyncService()).clearPreparedManifestCache()
       const result = await (

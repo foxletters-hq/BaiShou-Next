@@ -97,6 +97,13 @@ export async function quiesceStorageForFileCopy(): Promise<void> {
     logger.warn('[StorageDirectory] flushToDisk failed before quiesce:', e as Error)
   }
 
+  try {
+    const { getAgentManagers } = await import('../ipc/agent-helpers')
+    await getAgentManagers().sessionManager.flushPendingDiskWrites()
+  } catch (e) {
+    logger.warn('[StorageDirectory] session flushPending failed before quiesce:', e as Error)
+  }
+
   mcpWasRunningBeforeQuiesce = Boolean(getMcpService()?.running)
   if (mcpWasRunningBeforeQuiesce) {
     try {
