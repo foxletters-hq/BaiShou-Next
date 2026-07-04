@@ -1,15 +1,12 @@
 import { ShadowIndexRepository } from '@baishou/database'
 import type { AppDatabase } from '@baishou/database'
-import { normalizeDiaryPreviewMarkdown, parseDateStr, type DiaryMeta } from '@baishou/shared'
+import { normalizeDiaryPreviewMarkdown, parseDateStr, resolveDiaryTagsFromSources, type DiaryMeta } from '@baishou/shared'
 
 type ShadowListRow = Awaited<ReturnType<ShadowIndexRepository['listAllWithFTS']>>[number]
 type ShadowDetailRow = Awaited<ReturnType<ShadowIndexRepository['findByIds']>>[number]
 
 function mapShadowRowToMeta(s: ShadowListRow): DiaryMeta {
-  const parsedTags = s.tagsStr
-    .split(',')
-    .map((t: string) => t.trim())
-    .filter(Boolean)
+  const parsedTags = resolveDiaryTagsFromSources(s.tagsStr, s.rawContent ?? '')
   const rawContent = s.rawContent ?? ''
 
   return {

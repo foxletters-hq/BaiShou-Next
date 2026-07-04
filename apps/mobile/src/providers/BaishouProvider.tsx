@@ -922,7 +922,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               vaultRevision: prev.vaultRevision + 1
             }))
           },
-          assistantManager
+          assistantManager,
+          sessionManager
         )
 
         const updaterService = new MobileUpdaterService(settingsManager)
@@ -1317,7 +1318,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                 vaultRevision: prev.vaultRevision + 1
               }))
             },
-            newRuntime.assistantManager
+            newRuntime.assistantManager,
+            newRuntime.sessionManager
           )
 
           if (isMounted) {
