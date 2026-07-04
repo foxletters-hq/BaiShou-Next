@@ -2,6 +2,12 @@ export const CONTEXT_MENU_MARGIN = 8
 export const CONTEXT_MENU_GAP = 8
 
 export const DESKTOP_INPUT_BAR_SELECTOR = '[data-desktop-input-bar]'
+export const DIARY_MARKDOWN_TOOLBAR_SELECTOR = '[data-diary-markdown-toolbar]'
+
+export const DEFAULT_BOTTOM_OBSTRUCTION_SELECTORS = [
+  DESKTOP_INPUT_BAR_SELECTOR,
+  DIARY_MARKDOWN_TOOLBAR_SELECTOR
+] as const
 
 export type ContextMenuBounds = {
   top: number
@@ -10,8 +16,8 @@ export type ContextMenuBounds = {
   bottom: number
 }
 
-export function getComposerBottomInset(
-  selector: string = DESKTOP_INPUT_BAR_SELECTOR,
+export function getElementBottomInset(
+  selector: string,
   viewportHeight: number = typeof window !== 'undefined' ? window.innerHeight : 0
 ): number {
   if (typeof document === 'undefined' || viewportHeight <= 0) return 0
@@ -26,10 +32,29 @@ export function getComposerBottomInset(
   return Math.max(0, Math.min(distanceFromBottom, viewportHeight))
 }
 
+/** @deprecated 使用 getElementBottomInset */
+export function getComposerBottomInset(
+  selector: string = DESKTOP_INPUT_BAR_SELECTOR,
+  viewportHeight: number = typeof window !== 'undefined' ? window.innerHeight : 0
+): number {
+  return getElementBottomInset(selector, viewportHeight)
+}
+
+export function getOverlayBottomInset(
+  selectors: readonly string[] = DEFAULT_BOTTOM_OBSTRUCTION_SELECTORS,
+  viewportHeight: number = typeof window !== 'undefined' ? window.innerHeight : 0
+): number {
+  let maxInset = 0
+  for (const selector of selectors) {
+    maxInset = Math.max(maxInset, getElementBottomInset(selector, viewportHeight))
+  }
+  return maxInset
+}
+
 export function getDefaultContextMenuBounds(
   viewportWidth: number = typeof window !== 'undefined' ? window.innerWidth : 0,
   viewportHeight: number = typeof window !== 'undefined' ? window.innerHeight : 0,
-  bottomInset: number = getComposerBottomInset(DESKTOP_INPUT_BAR_SELECTOR, viewportHeight)
+  bottomInset: number = getOverlayBottomInset(DEFAULT_BOTTOM_OBSTRUCTION_SELECTORS, viewportHeight)
 ): ContextMenuBounds {
   const margin = CONTEXT_MENU_MARGIN
   const safeBottom = Math.max(margin, viewportHeight - bottomInset - margin)
@@ -68,4 +93,23 @@ export function resolveContextMenuPosition(
   y = Math.min(maxY, Math.max(minY, y))
 
   return { x, y }
+}
+
+export function applyFixedContextMenuLayout(
+  menuEl: HTMLElement,
+  anchorX: number,
+  anchorY: number,
+  bounds: ContextMenuBounds = getDefaultContextMenuBounds()
+): void {
+  const rect = menuEl.getBoundingClientRect()
+  const { x, y } = resolveContextMenuPosition(
+    anchorX,
+    anchorY,
+    rect.width,
+    rect.height,
+    bounds
+  )
+
+  menuEl.style.left = `${x}px`
+  menuEl.style.top = `${y}px`
 }

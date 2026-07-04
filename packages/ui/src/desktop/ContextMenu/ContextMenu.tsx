@@ -2,9 +2,9 @@ import React, { useState, useCallback, useEffect, useRef, useLayoutEffect } from
 import { createPortal } from 'react-dom'
 import './ContextMenu.css'
 import {
-  getDefaultContextMenuBounds,
-  resolveContextMenuPosition
+  applyFixedContextMenuLayout
 } from './context-menu-placement.util'
+import { DIARY_EDITOR_OVERLAY_Z } from '../../shared/diary-codemirror/editorOverlayZIndex'
 
 export interface ContextMenuItem {
   label: string
@@ -33,18 +33,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ items, children }) => 
 
   useLayoutEffect(() => {
     if (isOpen && menuRef.current) {
-      const rect = menuRef.current.getBoundingClientRect()
-      const bounds = getDefaultContextMenuBounds()
-      const { x, y } = resolveContextMenuPosition(
-        position.x,
-        position.y,
-        rect.width,
-        rect.height,
-        bounds
-      )
-
-      menuRef.current.style.left = `${x}px`
-      menuRef.current.style.top = `${y}px`
+      applyFixedContextMenuLayout(menuRef.current, position.x, position.y)
     }
   }, [isOpen, position, items])
 
@@ -89,7 +78,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ items, children }) => 
                 left: 0,
                 right: 0,
                 bottom: 0,
-                zIndex: 9999,
+                zIndex: DIARY_EDITOR_OVERLAY_Z.menuBackdrop,
                 background: 'transparent'
               }}
               onMouseDown={handleClose}
@@ -99,7 +88,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ items, children }) => 
               className="context-menu"
               style={{
                 position: 'fixed',
-                zIndex: 10000,
+                zIndex: DIARY_EDITOR_OVERLAY_Z.menu,
                 left: position.x,
                 top: position.y
               }}
