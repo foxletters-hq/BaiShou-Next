@@ -4,7 +4,7 @@ import { isTableChromeTouchTarget } from '../table/tableContextMenu'
 import { isInteractableChromeElement } from '../table/tableChromeHitTest'
 import { logDiaryBridge } from '../diaryBridgeDebug'
 import { logTableDesktop } from '../table/tableDesktopDebug'
-import { isTableSheetOpen } from '../table/tableSheetInteraction'
+import { shouldBlockEditorTouchForTableSheet } from '../table/tableSheetInteraction'
 import { clearTableChromeSelection } from '../table/tableChromeSelection'
 import { activeTableCellField, setActiveTableCell } from '../table/tableActiveCell'
 import {
@@ -114,7 +114,7 @@ export function tablePostTableTouchPlugin(platform?: DiaryCmPlatform): Extension
       eventHandlers: {
         touchstart(event, view) {
           noteTouchStart(view, event)
-          if (isTableSheetOpen()) return false
+          if (shouldBlockEditorTouchForTableSheet()) return false
 
           const touch = event.touches[0]
           if (!touch) return false
@@ -137,10 +137,17 @@ export function tablePostTableTouchPlugin(platform?: DiaryCmPlatform): Extension
             'touchstart',
             target
           )
+          logDiaryBridge('tableTouch', 'touchstart:after-place', {
+            placed: state.placedOnTouchStart,
+            head: view.state.selection.main.head,
+            docLen: view.state.doc.length,
+            clientX: touch.clientX,
+            clientY: touch.clientY
+          })
           return false
         },
         touchend(event, view) {
-          if (isTableSheetOpen()) return false
+          if (shouldBlockEditorTouchForTableSheet()) return false
           if (touchMoved(view, event)) return false
 
           const state = getTouchCaretState(view)
@@ -182,7 +189,7 @@ export function tablePostTableTouchPlugin(platform?: DiaryCmPlatform): Extension
         },
         pointerdown(event, view) {
           if (isTouch || event.button !== 0) return false
-          if (isTableSheetOpen()) return false
+          if (shouldBlockEditorTouchForTableSheet()) return false
           const target = event.target
           if (!(target instanceof Element)) return false
           // 表格 widget 内点击全部由 TableBlockWidget 处理

@@ -4,6 +4,9 @@ import { Annotation, StateEffect } from '@codemirror/state'
 /** 表格 widget / 菜单触发的结构变更；未经此标记的 CM 编辑不得改动表格 Markdown 源码 */
 export const allowTableStructureEdit = Annotation.define<boolean>()
 
+/** 表后 gap 自动补齐（挂载/解析后规范化），不应触发 onChange / 脏标记 */
+export const diaryPostTableGapNormalize = Annotation.define<boolean>()
+
 export const forceTableRefresh = StateEffect.define()
 
 export const pendingTableCellFocus = StateEffect.define<{

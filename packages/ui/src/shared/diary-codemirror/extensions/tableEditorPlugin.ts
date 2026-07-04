@@ -15,6 +15,7 @@ import {
 } from '../table/table.ops'
 import {
   allowTableStructureEdit,
+  diaryPostTableGapNormalize,
   forceTableRefresh,
   pendingTableCellFocus,
   setPlaceCursorAfterTableCallback,
@@ -421,7 +422,14 @@ export const tableEditorPlugin = ViewPlugin.fromClass(
         this.pendingGapRepair = false
         const pending = collectPostTableGapRepairsForState(view.state)
         if (!pending.length) return
-        view.dispatch({ changes: pending, scrollIntoView: false })
+        view.dispatch({
+          changes: pending,
+          scrollIntoView: false,
+          annotations: [
+            allowTableStructureEdit.of(true),
+            diaryPostTableGapNormalize.of(true)
+          ]
+        })
       })
     }
 
@@ -515,7 +523,9 @@ export const tableEditorPlugin = ViewPlugin.fromClass(
       logDiaryBridge('tableEditor', 'redirect:inside-table', {
         head,
         tableFrom: range.from,
-        tableTo: range.rowTo
+        tableTo: range.rowTo,
+        nodeTo: range.nodeTo,
+        docLen: doc.length
       })
       blurTableCellEditor()
       const effects = clearActiveTableCellEffects(view.state)

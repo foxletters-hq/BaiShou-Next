@@ -3,7 +3,8 @@ import {
   EditorView,
   keymap,
   placeholder as cmPlaceholder,
-  highlightActiveLine
+  highlightActiveLine,
+  type ViewUpdate
 } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
@@ -49,7 +50,14 @@ import { tableMenuI18nPlugin } from './table/desktop/tableMenuI18nPlugin'
 import { insertEmptyMarkdownTableKeymap } from './table/markdownTableCommands'
 import { selectionBoundsTransactionFilter, installSafeEditorDispatch } from './extensions/selectionBoundsTransactionFilter'
 import { clampPosToDoc } from './editorContentSync'
+import { diaryPostTableGapNormalize } from './table/tableEffects'
 import type { DiaryCmPlatform } from './types'
+
+function isPostTableGapNormalizeUpdate(update: ViewUpdate): boolean {
+  return update.transactions.every(
+    (tr) => !tr.docChanged || tr.annotation(diaryPostTableGapNormalize) === true
+  )
+}
 
 export interface CreateDiaryCodeMirrorOptions {
   content: string
@@ -115,9 +123,8 @@ export function createDiaryCodeMirrorExtensions(
     ...(onChange
       ? [
           EditorView.updateListener.of((update) => {
-            if (update.docChanged) {
-              onChange(update.state.doc.toString())
-            }
+            if (!update.docChanged || isPostTableGapNormalizeUpdate(update)) return
+            onChange(update.state.doc.toString())
           })
         ]
       : []),
@@ -162,12 +169,16 @@ export function createDiaryCodeMirror(
       changes: { from: 0, insert: content },
       selection: { anchor: end, head: end },
       effects: diarySyntaxTreeGrowthEffect.of(null),
-      annotations: Transaction.addToHistory.of(false)
+      annotations: Transaction.addToHistory.of(false),
+      scrollIntoView: false
     })
     // WebView 首帧：同步 + 多帧补刷装饰
     const refreshDecorations = () => {
       if (!view.dom.isConnected) return
-      view.dispatch({ effects: diarySyntaxTreeGrowthEffect.of(null) })
+      view.dispatch({
+        effects: diarySyntaxTreeGrowthEffect.of(null),
+        scrollIntoView: false
+      })
     }
     refreshDecorations()
     requestAnimationFrame(refreshDecorations)

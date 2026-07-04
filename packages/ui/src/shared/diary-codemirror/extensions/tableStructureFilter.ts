@@ -1,7 +1,7 @@
 import { EditorState, type Transaction, type Range } from '@codemirror/state'
 import type { Text } from '@codemirror/state'
 import { allowTableStructureEdit } from '../table/tableEffects'
-import { rangeOverlapsTableMarkdown } from '../table/tableBounds'
+import { collectTableMarkdownRanges, rangeOverlapsTableMarkdown } from '../table/tableBounds'
 import { isTableSeparatorLine } from './buildTable'
 import { isTableContentLine } from './tableCell.utils'
 
@@ -130,6 +130,18 @@ function changeTouchesTableMarkdown(
   return false
 }
 
+/** 仅在 table.to 处追加换行（表后 gap），不属于破坏表格 markdown 结构 */
+function isPostTableGapOnlyInsertion(
+  state: EditorState,
+  fromA: number,
+  toA: number,
+  inserted: string
+): boolean {
+  if (fromA !== toA) return false
+  if (!/^\n+$/.test(inserted)) return false
+  return collectTableMarkdownRanges(state).some((range) => fromA === range.to)
+}
+
 /** 是否允许该事务修改文档（保护表格管道符与行结构） */
 export function isTableStructureChangeAllowed(tr: Transaction): boolean {
   if (!tr.docChanged) return true
@@ -144,8 +156,10 @@ export function isTableStructureChangeAllowed(tr: Transaction): boolean {
 
     const insertedText = inserted.toString()
     if (changeTouchesTableMarkdown(state, fromA, toA, insertedText)) {
-      allowed = false
-      return
+      if (!isPostTableGapOnlyInsertion(state, fromA, toA, insertedText)) {
+        allowed = false
+        return
+      }
     }
 
     const tableLinesInDelete = collectTableLinesInRange(oldDoc, fromA, toA)

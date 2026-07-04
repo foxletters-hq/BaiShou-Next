@@ -8,6 +8,7 @@ import { focusDesktopCellEditor } from './desktop/sync/desktopTableSync'
 import { parsedRowToDomRow } from './desktop/models/cellLocation'
 import { logDiaryBridge } from '../diaryBridgeDebug'
 import { resolvePostTableCursor, postTableSeparatorChange } from './tablePostGap'
+import { allowTableStructureEdit } from './tableEffects'
 
 /** 结构变更写入时，若表后缺少换行则补一个 */
 export function ensureTableMarkdownTrailingNewline(
@@ -31,9 +32,17 @@ declare global {
   }
 }
 
+function docTailSnippet(doc: Text | string, max = 48): string {
+  const text = typeof doc === 'string' ? doc : doc.toString()
+  if (text.length <= max) return JSON.stringify(text)
+  return JSON.stringify(`…${text.slice(-max)}`)
+}
+
 export function placeCursorAfterTable(view: EditorView, tableRowTo: number): void {
   blurTableCellEditor()
 
+  const preDocLen = view.state.doc.length
+  const preHead = view.state.selection.main.head
   const original = view.state.doc.toString()
   let text = original
   let rowTo = tableRowTo
@@ -49,37 +58,74 @@ export function placeCursorAfterTable(view: EditorView, tableRowTo: number): voi
     }
   }
 
-  const { cursor, change } = resolvePostTableCursor(EditorState.create({ doc: text }).doc, rowTo)
+  const { cursor: resolvedCursor, change } = resolvePostTableCursor(
+    EditorState.create({ doc: text }).doc,
+    rowTo
+  )
   if (change) {
     text = text.slice(0, change.from) + change.insert + text.slice(change.from)
   }
-  const finalCursor = clampPosToDoc(cursor, text.length)
+  const finalCursor = clampPosToDoc(resolvedCursor, text.length)
   const effects = clearActiveTableCellEffects(view.state)
 
   const replacement = computeSingleTextReplacement(original, text)
+  logDiaryBridge('tableFocus', 'placeCursorAfterTable:pre', {
+    tableRowTo,
+    rowToAfterSeparator: rowTo,
+    preDocLen,
+    preHead,
+    computedTextLen: text.length,
+    resolvedCursor,
+    finalCursor,
+    hadSeparator: !!separatorChange,
+    separatorFrom: separatorChange?.from ?? null,
+    separatorInsertLen: separatorChange?.insert.length ?? 0,
+    hadGapChange: !!change,
+    gapFrom: change?.from ?? null,
+    gapInsertLen: change?.insert.length ?? 0,
+    textChanged: original !== text,
+    willApplyReplacement: !!replacement,
+    tailBefore: docTailSnippet(original),
+    tailAfter: docTailSnippet(text)
+  })
+
+  const dispatchSpec = {
+    selection: EditorSelection.cursor(finalCursor),
+    effects,
+    scrollIntoView: false as const,
+    annotations: allowTableStructureEdit.of(true)
+  }
+
   if (!replacement) {
-    view.dispatch({
-      selection: EditorSelection.cursor(finalCursor),
-      effects,
-      scrollIntoView: false
-    })
+    view.dispatch(dispatchSpec)
   } else {
     view.dispatch({
-      changes: replacement,
-      selection: EditorSelection.cursor(finalCursor),
-      effects,
-      scrollIntoView: false
+      ...dispatchSpec,
+      changes: replacement
     })
   }
 
   view.focus()
 
+  const postDocLen = view.state.doc.length
+  const postHead = view.state.selection.main.head
   logDiaryBridge('tableFocus', 'placeCursorAfterTable', {
     tableRowTo,
     cursor: finalCursor,
-    docLength: view.state.doc.length,
+    preDocLen,
+    postDocLen,
+    preHead,
+    postHead,
+    docLength: postDocLen,
+    docDelta: postDocLen - preDocLen,
     hadSeparator: !!separatorChange,
-    hadGapChange: !!change
+    hadGapChange: !!change,
+    appliedReplacement: !!replacement,
+    replacementFrom: replacement?.from ?? null,
+    replacementTo: replacement?.to ?? null,
+    replacementInsertLen: replacement?.insert.length ?? 0,
+    selectionOnly: !replacement,
+    tailAfterDispatch: docTailSnippet(view.state.doc)
   })
 
   const afterPlace = window.__diaryCmPlaceCursorAfterTable

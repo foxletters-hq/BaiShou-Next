@@ -149,11 +149,30 @@ function placeCaretAtPos(view: EditorView, pos: number, reason: string): boolean
   return true
 }
 
-function placeAfterTableBlock(view: EditorView, block: HTMLElement, reason: string): boolean {
+function placeAfterTableBlock(
+  view: EditorView,
+  block: HTMLElement,
+  reason: string,
+  pointer?: { clientX: number; clientY: number }
+): boolean {
   const tableFrom = Number(block.dataset.tableFrom)
   if (Number.isNaN(tableFrom)) return false
   const tableRowTo = findTableToByFrom(view.state, tableFrom)
   if (tableRowTo == null) return false
+
+  const rect = block.getBoundingClientRect()
+  logDiaryBridge('tableTouch', 'place-after-block:pre', {
+    reason,
+    tableFrom,
+    tableRowTo,
+    head: view.state.selection.main.head,
+    docLen: view.state.doc.length,
+    blockTop: rect.top,
+    blockBottom: rect.bottom,
+    clientY: pointer?.clientY ?? null,
+    belowBlock:
+      pointer != null ? pointer.clientY >= rect.bottom - TABLE_BLOCK_ABOVE_TOLERANCE_PX : null
+  })
 
   blurTableCellEditor()
   placeCursorAfterTable(view, tableRowTo)
@@ -161,7 +180,8 @@ function placeAfterTableBlock(view: EditorView, block: HTMLElement, reason: stri
     reason,
     tableFrom,
     tableRowTo,
-    head: view.state.selection.main.head
+    head: view.state.selection.main.head,
+    docLen: view.state.doc.length
   })
   return true
 }
@@ -195,6 +215,24 @@ export function placeEditorCaretFromPointer(
   reason: string,
   target?: Element | null
 ): boolean {
+  const block = findTableBlockAbovePoint(view, clientY)
+  if (block) {
+    const rect = block.getBoundingClientRect()
+    logDiaryBridge('tableTouch', 'block-above-hit', {
+      reason,
+      clientX,
+      clientY,
+      blockBottom: rect.bottom,
+      tolerance: TABLE_BLOCK_ABOVE_TOLERANCE_PX,
+      belowThreshold: clientY >= rect.bottom - TABLE_BLOCK_ABOVE_TOLERANCE_PX
+    })
+    if (clientY >= rect.bottom - TABLE_BLOCK_ABOVE_TOLERANCE_PX) {
+      if (placeAfterTableBlock(view, block, reason, { clientX, clientY })) {
+        return true
+      }
+    }
+  }
+
   // precise 是第二参数，不能写在 coords 对象里
   let coordsPos = view.posAtCoords({ x: clientX, y: clientY }, true as false)
   if (coordsPos == null) {
@@ -215,8 +253,7 @@ export function placeEditorCaretFromPointer(
     return placeCaretAtPos(view, linePos, reason)
   }
 
-  const block = findTableBlockAbovePoint(view, clientY)
-  if (block && placeAfterTableBlock(view, block, reason)) {
+  if (block && placeAfterTableBlock(view, block, reason, { clientX, clientY })) {
     return true
   }
 
