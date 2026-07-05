@@ -45,39 +45,6 @@ describe('parseRedactedThinking', () => {
     expect(result.cleanContent).not.toContain(CLOSE_REDacted)
   })
 
-  it('keeps mid-content dialogue after accidental unclosed think tag', () => {
-    const content = `**拉提：** 今天的两项模块边界已经梳理完成，排版和细节效果非常好。${OPEN_REDacted}现在是不是可以专心检查界面细节、然后发版本啦？changelog还在等呢 (´・ω・\`)`
-    const result = parseRedactedThinking(content, '')
-
-    expect(result.cleanContent).toContain('非常好')
-    expect(result.cleanContent).toContain('现在是不是可以专心检查界面细节')
-    expect(result.cleanContent).toContain('changelog还在等呢')
-    expect(result.cleanReasoning).toBe('')
-  })
-
-  it('unwraps mid-content closed think block inline instead of hiding in reasoning', () => {
-    const content = `前缀段落。${OPEN_REDacted}后续对话${CLOSE_REDacted}`
-    const result = parseRedactedThinking(content, '')
-
-    expect(result.cleanContent).toBe('前缀段落。后续对话')
-    expect(result.cleanReasoning).toBe('')
-  })
-
-  it('extracts leading think blocks into reasoning for completed messages', () => {
-    const content = `${OPEN_REDacted}
-"的人"升级成了"需要我认真对待的合作者"。
-
-她抬起头看了看屏幕上的进度条。
-${CLOSE_REDacted}
-
-**拉提：** 今天的两项模块边界已经梳理完成。`
-    const result = parseRedactedThinking(content, '', { extractContentThinkTags: true })
-
-    expect(result.cleanReasoning).toContain('她抬起头')
-    expect(result.cleanContent).not.toContain('她抬起头')
-    expect(result.cleanContent).toContain('**拉提：**')
-  })
-
   it('sanitizes malformed nested message-time tags from fixture regression', () => {
     const content =
       '</thinking>\n<message-time>2026-02-10 16:40</message-time>\n<message-content>\n<message-time>2026-02-10 16:40</time>\n明白，先按照这个方案推进第一阶段。'

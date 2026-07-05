@@ -9,7 +9,6 @@ import { AgentThinkSection } from '../AgentThinkSection'
 import { NativeImagePreviewModal } from '../DiaryEditor/NativeImagePreviewModal'
 import { ToolResultGroupCard } from '../ToolResultGroupCard/ToolResultGroupCard'
 import type { MockChatAttachment } from '@baishou/shared'
-import { chatNeedsRichMarkdown } from '../../shared/chat-bubble/chat-plain-text.util'
 import type { ChatBubbleProps } from './chat-bubble.types'
 import { chatBubbleStyles as styles } from './chat-bubble.styles'
 import { NativeChatBubbleAttachments } from './NativeChatBubbleAttachments'
@@ -20,6 +19,7 @@ import {
 } from './NativeChatBubbleActionsRow'
 import { ChatBubbleAvatar } from './ChatBubbleAvatar'
 import { ChatPlainTextBody } from './ChatPlainTextBody'
+import { chatNeedsRichMarkdown } from '../../shared/chat-bubble/chat-plain-text.util'
 import { chatOverBackgroundMetaTextStyle } from '../../shared/chat-over-background-meta.style'
 
 export const ChatBubble: React.FC<ChatBubbleProps> = ({
@@ -52,23 +52,19 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   const sourceContent = liveStream?.content ?? message.content ?? ''
   const sourceReasoning = liveStream?.reasoning ?? message.reasoning ?? ''
 
-  const hasPersistedAssistantBody = isAssistant && Boolean(message.content?.trim())
-  const resolvedContent = hasPersistedAssistantBody
-    ? (message.content ?? '')
-    : sourceContent
-  const resolvedReasoning = hasPersistedAssistantBody
-    ? (message.reasoning ?? '')
-    : sourceReasoning
-
-  const markdownStreaming = Boolean(liveStream?.isTextStreaming && !hasPersistedAssistantBody)
-  const thinkStreaming = Boolean(liveStream?.isThinkStreaming && !hasPersistedAssistantBody)
   const { cleanContent, cleanReasoning } = useMemo(
-    () => parseRedactedThinking(resolvedContent, resolvedReasoning),
-    [resolvedContent, resolvedReasoning]
+    () => parseRedactedThinking(sourceContent, sourceReasoning),
+    [sourceContent, sourceReasoning]
   )
 
+  const markdownStreaming = Boolean(liveStream?.isTextStreaming)
+  const thinkStreaming = Boolean(liveStream?.isThinkStreaming)
+
+  const editableContent = isAssistant
+    ? cleanContent || message.content || ''
+    : message.content || ''
   const edit = useNativeChatBubbleEdit(
-    message.content || '',
+    editableContent,
     message.id,
     onSaveEdit,
     onResendEdit,
