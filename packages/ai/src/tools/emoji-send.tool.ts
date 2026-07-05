@@ -23,6 +23,7 @@ export class EmojiSendTool extends AgentTool<typeof emojiSendParams> {
     'Send a sticker/emoji image in the chat. ' +
     'Call this tool with one of the available sticker IDs or names when it naturally fits the conversation mood (humor, empathy, celebration, etc.). ' +
     'The emoji_id parameter is flexible — you can pass the sticker ID (with or without file extension) or the display name. ' +
+    'Only one sticker per reply — call emoji_send at most once per turn. ' +
     'Do NOT call this tool on every message — only when a sticker genuinely adds emotional expression. ' +
     'After calling this tool, continue your text response normally. The sticker will be displayed as a separate message automatically — do NOT mention or repeat the sticker result in your text.'
 
@@ -60,7 +61,8 @@ export class EmojiSendTool extends AgentTool<typeof emojiSendParams> {
       this.description +
       '\n\nAvailable sticker IDs and names:\n' +
       listLines +
-      '\n\nTo send a sticker, call this tool with the emoji_id parameter set to one of the IDs above. The emoji_id is flexible — you can pass the ID with or without the file extension, or use the display name.'
+      '\n\nTo send a sticker, call this tool with the emoji_id parameter set to one of the IDs above. The emoji_id is flexible — you can pass the ID with or without the file extension, or use the display name. ' +
+      'Send at most one sticker per reply.'
 
     return tool({
       description: dynamicDescription,

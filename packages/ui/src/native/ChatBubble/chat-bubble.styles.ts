@@ -57,6 +57,24 @@ export const chatBubbleStyles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 4
   },
+  bubbleNameLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 6,
+    alignSelf: 'stretch'
+  },
+  timeLabel: {
+    fontSize: 10,
+    marginBottom: 6
+  },
+  timeLabelUser: {
+    alignSelf: 'flex-end',
+    textAlign: 'right'
+  },
+  timeLabelAssistant: {
+    alignSelf: 'flex-start',
+    textAlign: 'left'
+  },
   nameLabelUser: {
     textAlign: 'right'
   },

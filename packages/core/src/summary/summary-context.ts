@@ -1,5 +1,5 @@
 import { shadowConnectionManager, ShadowIndexRepository } from '@baishou/database'
-import { logger, parseDateStr, type SharedMemoryCopyPreview } from '@baishou/shared'
+import { logger, parseDateStr, estimateTextTokensApprox, type SharedMemoryCopyPreview } from '@baishou/shared'
 import { quarterlySummariesForMonthCascade } from './summary-cascade.util'
 
 /** 国际化字典类型 */
@@ -179,60 +179,18 @@ function resolveSharedMemoryItems(
   return { yList, qList, visibleMonths, visibleWeeks, visibleDiaries, allItems }
 }
 
-export function computeSharedMemoryCopyPreview(
-  summaries: SharedContextSummaryRow[],
-  diaries: SharedContextDiaryRow[],
-  lookbackMonths: number
-): SharedMemoryCopyPreview {
-  const { yList, qList, visibleMonths, visibleWeeks, visibleDiaries } = resolveSharedMemoryItems(
-    summaries,
-    diaries,
-    lookbackMonths
-  )
-
-  const yearly = yList.length
-  const quarterly = qList.length
-  const monthly = visibleMonths.length
-  const weekly = visibleWeeks.length
-  const diary = visibleDiaries.length
-
-  return {
-    lookbackMonths,
-    yearly,
-    quarterly,
-    monthly,
-    weekly,
-    diary,
-    total: yearly + quarterly + monthly + weekly + diary
-  }
+export type SharedMemoryBuildOptions = {
+  locale?: string
+  userCopyPrefix?: string
 }
 
-/**
- * 构建共同回忆 Markdown 文本。
- * 实现级联过滤逻辑：被高级别总结覆盖的低级别条目会被省略。
- */
-export async function buildSharedContextText(
-  summaries: any[],
+function buildSharedContextBody(
+  allItems: ResolvedSharedMemoryItems['allItems'],
   lookbackMonths: number,
   locale?: string,
-  options?: { diaries?: SharedContextDiaryRow[]; vaultName?: string }
-): Promise<string> {
-  let diaries: SharedContextDiaryRow[]
-  if (options?.diaries) {
-    diaries = options.diaries
-  } else {
-    const shadowDb = shadowConnectionManager.getDb()
-    if (!shadowDb || !options?.vaultName) return ''
-
-    const shadowRepo = new ShadowIndexRepository(shadowDb as any, options.vaultName)
-    diaries = await shadowRepo.listAllWithFTS()
-  }
-
-
+  options?: { deterministicHeader?: boolean }
+): string {
   const tDict = LOCALE_TRANSLATIONS[resolveLocaleKey(locale || 'zh')] ?? LOCALE_TRANSLATIONS['zh']!
-  const { allItems } = resolveSharedMemoryItems(summaries, diaries, lookbackMonths)
-
-  if (allItems.length === 0) return ''
 
   const prefixByKind: Record<SharedMemoryItemKind, string> = {
     yearly: tDict.yearly,
@@ -250,19 +208,112 @@ export async function buildSharedContextText(
     return `## ${prefix} ${dateStr}\n\n${content}`
   })
 
-  const slang = tDict.slangs[Math.floor(Math.random() * tDict.slangs.length)]!
+  const slang = options?.deterministicHeader
+    ? tDict.slangs[0]!
+    : tDict.slangs[Math.floor(Math.random() * tDict.slangs.length)]!
   const header = `${slang}\n${tDict.subTitle(lookbackMonths)}\n`
+  if (formattedParts.length === 0) return ''
   return `${header}\n${formattedParts.join('\n\n---\n\n')}`
+}
+
+function applyUserCopyPrefix(text: string, userCopyPrefix?: string): string {
+  const prefix = userCopyPrefix?.trim()
+  if (!prefix || !text) return text
+  return `${prefix}\n\n${text}`
+}
+
+function emptySharedMemoryCopyPreview(lookbackMonths: number): SharedMemoryCopyPreview {
+  return {
+    lookbackMonths,
+    yearly: 0,
+    quarterly: 0,
+    monthly: 0,
+    weekly: 0,
+    diary: 0,
+    total: 0,
+    estimatedChars: 0,
+    estimatedTokens: 0
+  }
+}
+
+export function computeSharedMemoryCopyPreview(
+  summaries: SharedContextSummaryRow[],
+  diaries: SharedContextDiaryRow[],
+  lookbackMonths: number,
+  options?: SharedMemoryBuildOptions
+): SharedMemoryCopyPreview {
+  const { yList, qList, visibleMonths, visibleWeeks, visibleDiaries, allItems } =
+    resolveSharedMemoryItems(summaries, diaries, lookbackMonths)
+
+  const yearly = yList.length
+  const quarterly = qList.length
+  const monthly = visibleMonths.length
+  const weekly = visibleWeeks.length
+  const diary = visibleDiaries.length
+  const total = yearly + quarterly + monthly + weekly + diary
+
+  const body = buildSharedContextBody(allItems, lookbackMonths, options?.locale, {
+    deterministicHeader: true
+  })
+  const fullText = applyUserCopyPrefix(body, options?.userCopyPrefix)
+  const estimatedChars = fullText.length
+  const estimatedTokens = estimateTextTokensApprox(fullText)
+
+  return {
+    lookbackMonths,
+    yearly,
+    quarterly,
+    monthly,
+    weekly,
+    diary,
+    total,
+    estimatedChars,
+    estimatedTokens
+  }
+}
+
+/**
+ * 构建共同回忆 Markdown 文本。
+ * 实现级联过滤逻辑：被高级别总结覆盖的低级别条目会被省略。
+ */
+export async function buildSharedContextText(
+  summaries: any[],
+  lookbackMonths: number,
+  locale?: string,
+  options?: { diaries?: SharedContextDiaryRow[]; vaultName?: string; userCopyPrefix?: string }
+): Promise<string> {
+  let diaries: SharedContextDiaryRow[]
+  if (options?.diaries) {
+    diaries = options.diaries
+  } else {
+    const shadowDb = shadowConnectionManager.getDb()
+    if (!shadowDb || !options?.vaultName) return ''
+
+    const shadowRepo = new ShadowIndexRepository(shadowDb as any, options.vaultName)
+    diaries = await shadowRepo.listAllWithFTS()
+  }
+
+
+  const { allItems } = resolveSharedMemoryItems(summaries, diaries, lookbackMonths)
+
+  if (allItems.length === 0) return ''
+
+  const body = buildSharedContextBody(allItems, lookbackMonths, locale)
+  return applyUserCopyPrefix(body, options?.userCopyPrefix)
 }
 
 export async function handleBuildSharedContext(
   summaries: any[],
   lookbackMonths: number,
   locale?: string,
-  vaultName?: string
+  vaultName?: string,
+  userCopyPrefix?: string
 ): Promise<string> {
   try {
-    return await buildSharedContextText(summaries, lookbackMonths, locale, { vaultName })
+    return await buildSharedContextText(summaries, lookbackMonths, locale, {
+      vaultName,
+      userCopyPrefix
+    })
   } catch (e) {
     logger.error('[SummaryIPC] buildSharedContext error:', e as any)
     return ''
@@ -272,35 +323,20 @@ export async function handleBuildSharedContext(
 export async function handleBuildSharedContextPreview(
   summaries: any[],
   lookbackMonths: number,
-  vaultName?: string
+  vaultName?: string,
+  options?: SharedMemoryBuildOptions
 ): Promise<SharedMemoryCopyPreview> {
   try {
     const shadowDb = shadowConnectionManager.getDb()
     if (!shadowDb || !vaultName) {
-      return {
-        lookbackMonths,
-        yearly: 0,
-        quarterly: 0,
-        monthly: 0,
-        weekly: 0,
-        diary: 0,
-        total: 0
-      }
+      return emptySharedMemoryCopyPreview(lookbackMonths)
     }
 
     const shadowRepo = new ShadowIndexRepository(shadowDb as any, vaultName)
     const diaries = await shadowRepo.listAllWithFTS()
-    return computeSharedMemoryCopyPreview(summaries, diaries, lookbackMonths)
+    return computeSharedMemoryCopyPreview(summaries, diaries, lookbackMonths, options)
   } catch (e) {
     logger.error('[SummaryIPC] buildSharedContextPreview error:', e as any)
-    return {
-      lookbackMonths,
-      yearly: 0,
-      quarterly: 0,
-      monthly: 0,
-      weekly: 0,
-      diary: 0,
-      total: 0
-    }
+    return emptySharedMemoryCopyPreview(lookbackMonths)
   }
 }

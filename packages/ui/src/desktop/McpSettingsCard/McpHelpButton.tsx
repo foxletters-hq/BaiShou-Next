@@ -12,17 +12,20 @@ export interface McpHelpButtonProps {
   className?: string
   mcpPort?: number
   mcpAuthToken?: string
+  lanHost?: string | null
 }
 
 export const McpHelpButton: React.FC<McpHelpButtonProps> = ({
   size = 16,
   className = '',
   mcpPort = 31004,
-  mcpAuthToken
+  mcpAuthToken,
+  lanHost = null
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const mcpUrl = buildMcpUrl(mcpPort)
+  const endpointHost = lanHost?.trim() || '127.0.0.1'
+  const mcpUrl = buildMcpUrl(mcpPort, endpointHost)
   const mcpJsonExample = buildMcpClientJsonExample(mcpUrl, mcpAuthToken)
 
   return (
@@ -83,7 +86,9 @@ export const McpHelpButton: React.FC<McpHelpButtonProps> = ({
           <p className={styles.note}>
             {t(
               'settings.mcp_help_note',
-              '请使用上方 /mcp 地址（不要用 /sse）。启用后需保持白守桌面端运行。'
+              lanHost
+                ? '请使用上方 /mcp 地址（不要用 /sse）。启用后需保持白守桌面端运行，并确保客户端与电脑在同一局域网。'
+                : '请使用上方 /mcp 地址（不要用 /sse）。启用后需保持白守桌面端运行。'
             )}
           </p>
         </div>

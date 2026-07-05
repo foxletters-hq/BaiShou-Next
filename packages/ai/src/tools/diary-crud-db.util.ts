@@ -1,36 +1,9 @@
 import type { ToolContext } from './agent.tool'
 import { mergeDiaryTags, resolveDiaryEditMode } from '@baishou/shared'
-import { createDiaryReadGuard } from './diary-read-guard.util'
 
 export { mergeDiaryTags }
 
-export function ensureDiaryReadGuard(context: ToolContext) {
-  if (!context.diaryReadGuard) {
-    context.diaryReadGuard = createDiaryReadGuard()
-  }
-  return context.diaryReadGuard
-}
-
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
-
-/** 为无 DiaryService 的宿主（纯文件写入）构建标准 frontmatter 包裹的正文 */
-export function buildJournalMarkdownForTool(date: string, content: string, tags?: string): string {
-  const trimmed = content.replace(/^\uFEFF/, '').trimStart()
-  if (trimmed.startsWith('---')) {
-    return content
-  }
-
-  const lines = ['---', `date: ${date}`]
-  const tagArr = (tags || '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
-  if (tagArr.length > 0) {
-    lines.push(`tags: [${tagArr.join(', ')}]`)
-  }
-  lines.push('---', '', content)
-  return lines.join('\n')
-}
 
 export async function runDiaryReadViaDb(
   args: { dates: string[] },
@@ -53,11 +26,6 @@ export async function runDiaryReadViaDb(
       continue
     }
     results.push(`## ${row.date}\n\n${row.content}\n`)
-  }
-
-  const validDates = args.dates.filter((date) => DATE_RE.test(date)).slice(0, 20)
-  if (validDates.length > 0) {
-    ensureDiaryReadGuard(context).markRead(validDates)
   }
 
   return results.join('\n---\n\n')
@@ -94,13 +62,6 @@ export async function runDiaryEditViaDb(
   }
   if (!DATE_RE.test(args.date)) {
     return `Error: Invalid date format "${args.date}". Expected YYYY-MM-DD.`
-  }
-
-  if (context.diaryReadGuard && !context.diaryReadGuard.hasRead(args.date)) {
-    return (
-      `Error: diary_read is required before diary_edit. ` +
-      `Call diary_read with date "${args.date}" first in this turn, then retry diary_edit.`
-    )
   }
 
   const editMode = resolveDiaryEditMode(args.mode)

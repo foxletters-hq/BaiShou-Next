@@ -3,6 +3,16 @@ import * as path from '../fs/path.util'
 import { IStoragePathService } from '../vault/storage-path.types'
 import { stableAssistantDiskJson } from './assistant-persist.util'
 
+function tryParseAssistantDiskJson(content: string): Record<string, unknown> | null {
+  const trimmed = content.trim()
+  if (!trimmed) return null
+  try {
+    return JSON.parse(trimmed) as Record<string, unknown>
+  } catch {
+    return null
+  }
+}
+
 export class AssistantFileService {
   constructor(
     private readonly pathProvider: IStoragePathService,
@@ -21,11 +31,12 @@ export class AssistantFileService {
     const nextContent = stableAssistantDiskJson(data as Record<string, unknown>)
     try {
       const existing = await this.fileSystem.readFile(fullPath, 'utf8')
-      const existingContent = stableAssistantDiskJson(
-        JSON.parse(existing) as Record<string, unknown>
-      )
-      if (existingContent === nextContent) {
-        return fullPath
+      const parsed = tryParseAssistantDiskJson(existing)
+      if (parsed) {
+        const existingContent = stableAssistantDiskJson(parsed)
+        if (existingContent === nextContent) {
+          return fullPath
+        }
       }
     } catch (e: any) {
       if (e.code !== 'ENOENT') throw e
@@ -39,7 +50,7 @@ export class AssistantFileService {
     const fullPath = path.join(dir, `${id}.json`)
     try {
       const content = await this.fileSystem.readFile(fullPath, 'utf8')
-      return JSON.parse(content)
+      return tryParseAssistantDiskJson(content)
     } catch (e: any) {
       if (e.code === 'ENOENT') return null
       throw e

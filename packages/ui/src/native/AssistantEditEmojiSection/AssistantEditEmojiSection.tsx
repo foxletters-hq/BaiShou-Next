@@ -1,6 +1,7 @@
 import React, { useCallback } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native'
-import { Check } from 'lucide-react-native'
+import { Check, Smile } from 'lucide-react-native'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { useTranslation } from 'react-i18next'
 import type { EmojiGroup } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
@@ -65,9 +66,19 @@ export const AssistantEditEmojiSection: React.FC<AssistantEditEmojiSectionProps>
       {emojiEnabled ? (
         <>
           <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
-          <Text style={[settingsCardStyles.label, { color: colors.textPrimary, marginBottom: 8 }]}>
-            {t('agent.assistant.emoji_groups_pick_label', '可用的表情包组')}
-          </Text>
+          <View style={styles.pickLabelRow}>
+            <View style={[styles.pickSectionIconWrap, { backgroundColor: colors.primaryContainer }]}>
+              <Smile
+                size={16}
+                color={colors.primary}
+                strokeWidth={DEFAULT_STROKE_WIDTH}
+              />
+            </View>
+            <Text style={[settingsCardStyles.label, { color: colors.textPrimary, flex: 1 }]}>
+              {t('agent.assistant.emoji_groups_pick_label', '可用的表情包组')}
+            </Text>
+          </View>
+          <View style={{ height: 8 }} />
           {emojiGroups.length === 0 ? (
             <Text style={[settingsCardStyles.hint, { color: colors.textSecondary }]}>
               {t('agent.tools.emoji_no_groups', '请先在表情包设置中创建表情包组')}
@@ -106,6 +117,13 @@ export const AssistantEditEmojiSection: React.FC<AssistantEditEmojiSectionProps>
                       onPress={() => onToggleGroup(group.id)}
                       activeOpacity={0.75}
                     >
+                      <View style={[styles.groupIconWrap, { backgroundColor: colors.primaryContainer }]}>
+                        <Smile
+                          size={18}
+                          color={colors.primary}
+                          strokeWidth={DEFAULT_STROKE_WIDTH}
+                        />
+                      </View>
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.groupName, { color: colors.textPrimary }]}>
                           {group.name}
@@ -141,11 +159,30 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     marginVertical: 14
   },
+  pickLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  pickSectionIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 7,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
   groupListContent: {
     paddingBottom: 0
   },
   groupList: {
     flexGrow: 0
+  },
+  groupIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   groupRow: {
     flexDirection: 'row',

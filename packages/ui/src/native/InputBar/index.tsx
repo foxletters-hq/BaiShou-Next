@@ -106,7 +106,7 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
       onTriggerShortcut,
       onManageShortcuts,
       onOpenTools,
-      searchMode = false,
+      searchMode = true,
       onToggleSearchMode,
       ttsMode = 'manual',
       onToggleTtsMode,
@@ -330,8 +330,8 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
           style={[
             styles.chip,
             {
-              backgroundColor: active ? colors.primary : colors.bgSurfaceHigh,
-              borderColor: colors.borderMuted
+              backgroundColor: active ? colors.primary : colors.bgSurface,
+              borderColor: active ? colors.primary : colors.colorOutlineVariant
             }
           ]}
           onPress={onPress}
@@ -427,6 +427,9 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
               {renderToolbarChip(t('input.shortcut_command', '快捷指令'), handleShortcutPress, {
                 icon: Zap
               })}
+              {renderToolbarChip(t('settings.recall_memories', '唤醒回忆'), onRecall, {
+                icon: BookOpen
+              })}
               {renderToolbarChip(
                 searchMode
                   ? t('settings.web_search_mode_tool', '外部工具搜索')
@@ -434,9 +437,6 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
                 onToggleSearchMode,
                 { active: searchMode, icon: Globe }
               )}
-              {renderToolbarChip(t('settings.recall_memories', '唤醒回忆'), onRecall, {
-                icon: BookOpen
-              })}
               {renderToolbarChip(
                 ttsMode === 'always'
                   ? t('agent.chat.tts_always', '始终朗读')

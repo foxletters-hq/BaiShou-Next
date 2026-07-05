@@ -2,18 +2,25 @@ import { useEffect, useState } from 'react'
 import type { SharedMemoryCopyPreview } from '@baishou/shared'
 
 async function fetchSharedMemoryCopyPreview(
-  lookbackMonths: number
+  lookbackMonths: number,
+  options?: { userCopyPrefix?: string; locale?: string }
 ): Promise<SharedMemoryCopyPreview | null> {
   const api = (window as any).api
   const preview =
-    (await api?.summary?.buildSharedContextPreview?.(lookbackMonths)) ??
-    (await api?.rag?.buildSharedContextPreview?.(lookbackMonths))
+    (await api?.summary?.buildSharedContextPreview?.(lookbackMonths, options)) ??
+    (await api?.rag?.buildSharedContextPreview?.(lookbackMonths, options))
   return preview ?? null
 }
 
-export function useSharedMemoryCopyPreview(lookbackMonths: number, enabled = true) {
+export function useSharedMemoryCopyPreview(
+  lookbackMonths: number,
+  enabled = true,
+  options?: { userCopyPrefix?: string; locale?: string }
+) {
   const [preview, setPreview] = useState<SharedMemoryCopyPreview | null>(null)
   const [loading, setLoading] = useState(false)
+  const userCopyPrefix = options?.userCopyPrefix ?? ''
+  const locale = options?.locale
 
   useEffect(() => {
     if (!enabled) {
@@ -26,7 +33,7 @@ export function useSharedMemoryCopyPreview(lookbackMonths: number, enabled = tru
     setLoading(true)
 
     const timer = window.setTimeout(() => {
-      void fetchSharedMemoryCopyPreview(lookbackMonths)
+      void fetchSharedMemoryCopyPreview(lookbackMonths, { userCopyPrefix, locale })
         .then((next) => {
           if (!cancelled) setPreview(next)
         })
@@ -42,7 +49,7 @@ export function useSharedMemoryCopyPreview(lookbackMonths: number, enabled = tru
       cancelled = true
       window.clearTimeout(timer)
     }
-  }, [lookbackMonths, enabled])
+  }, [lookbackMonths, enabled, userCopyPrefix, locale])
 
   return { preview, loading }
 }

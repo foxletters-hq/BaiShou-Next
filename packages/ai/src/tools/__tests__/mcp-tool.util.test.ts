@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import {
+  MCP_EXTERNAL_SESSION_ID,
   buildMcpInstructions,
   formatMcpToolCallResult,
   isMcpToolErrorResult
 } from '../mcp-tool.util'
 
 describe('mcp-tool.util', () => {
+  it('defines the MCP external session id', () => {
+    expect(MCP_EXTERNAL_SESSION_ID).toBe('mcp-external')
+  })
+
   it('buildMcpInstructions includes workspace name', () => {
     expect(buildMcpInstructions('雪日记')).toContain('Current workspace: 雪日记')
   })

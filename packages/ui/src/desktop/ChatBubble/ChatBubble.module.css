@@ -70,6 +70,13 @@
   max-width: min(800px, calc(100% - 60px));
 }
 
+.timeRow {
+  display: flex;
+  align-items: baseline;
+  padding-bottom: 6px;
+  gap: 8px;
+}
+
 .nameTimeRow {
   display: flex;
   align-items: baseline;
@@ -81,10 +88,12 @@
   justify-content: flex-end;
 }
 
+.userRow .timeRow,
 .userRow .nameTimeRow {
   padding-right: 4px;
 }
 
+.aiRow .timeRow,
 .aiRow .nameTimeRow {
   padding-left: 4px;
 }
@@ -95,6 +104,23 @@
   color: var(--text-secondary);
 }
 
+.bubbleNameLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  line-height: 1.2;
+  margin-bottom: 6px;
+  align-self: stretch;
+}
+
+.userBubbleCard .bubbleNameLabel {
+  text-align: right;
+}
+
+.aiBubbleCard .bubbleNameLabel {
+  text-align: left;
+}
+
 .timeLabel {
   font-size: 10px;
   color: var(--text-tertiary);
@@ -102,6 +128,7 @@
 
 /* 自定义聊天背景：名称 / 时间叠在背景图上时自动反色，保证可读性 */
 :global(.chat-over-background) .nameLabel,
+:global(.chat-over-background) .bubbleNameLabel,
 :global(.chat-over-background) .timeLabel {
   color: #fff;
   mix-blend-mode: difference;

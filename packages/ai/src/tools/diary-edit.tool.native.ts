@@ -30,7 +30,7 @@ export class DiaryEditTool extends AgentTool<typeof diaryEditParams> {
 
   readonly description =
     'Modify an existing diary entry. ' +
-    'REQUIRED: call diary_read for the same date in this turn before editing. ' +
+    'Call diary_read for the same date before editing to confirm existing content and structure. ' +
     'Never delete or drop paragraphs the user did not ask to change—keep all other sections intact. ' +
     'Default mode is "append", which adds new content with an automatically inserted timestamp header. ' +
     'Use "overwrite" only when necessary; content must then include the FULL diary with all preserved paragraphs, not just the edited part. ' +

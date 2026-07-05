@@ -68,8 +68,6 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
       <div
         className={`${styles.messageCol} ${useWideBubble ? styles.messageColWide : ''}`}
       >
-        <div className={styles.nameLabel}>{aiName}</div>
-
         {error ? (
           <div className={styles.errorBox}>
             <span className={styles.errorText}>⚠ {error}</span>
@@ -85,6 +83,7 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
               <div
                 className={`${styles.bubbleCard} ${useWideBubble ? styles.bubbleCardWide : ''}`}
               >
+                <div className={styles.bubbleNameLabel}>{aiName}</div>
                 {hasAttachments ? <ChatBubbleAttachments attachments={attachments} /> : null}
                 {/* Reasoning 块 - 移到 bubbleCard 内部 */}
                 {hasReasoning && (

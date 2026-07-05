@@ -47,11 +47,10 @@ export function buildToolUsageGuidelines(availableToolIds: readonly string[]): s
 
   if (hasDiaryEdit && hasDiaryRead) {
     if (lines.length > 0) lines.push('')
-    lines.push('## 编辑日记前先读取（强制）')
+    lines.push('## 编辑日记前先读取')
     lines.push(
       '- 调用 diary_edit 修改某篇日记之前，**必须**在同一轮任务中先对该日期调用 diary_read，确认现有内容与结构后再编辑。'
     )
-    lines.push('- 未先读取就执行的 diary_edit 会被系统拒绝。')
     lines.push('## 编辑时保留已有段落（强制）')
     lines.push(
       '- 日记往往有多条时间段落。**不得删除、省略或覆盖用户未要求修改的段落**；未改动的内容必须原样保留。'

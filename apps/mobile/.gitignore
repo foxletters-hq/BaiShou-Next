@@ -41,3 +41,7 @@ app-example
 # generated native folders
 /ios
 /android
+
+# diary-editor WebView bundle（pnpm run build:diary-editor 生成；CI / predev 会自动构建）
+assets/diary-editor/diary-editor.bundle
+assets/diary-editor/index.html

@@ -8,7 +8,7 @@ describe('useAgentStore (Zustand IPC Flow)', () => {
       messages: [],
       isLoading: false,
       toolCalls: {},
-      searchMode: false,
+      searchMode: true,
       currentSessionId: null
     })
     vi.useFakeTimers()

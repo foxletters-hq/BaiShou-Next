@@ -2,7 +2,7 @@ import { CreateDiaryInput, Diary, extractDiaryTagsFromContent, formatLocalDate, 
 import type { IFileSystem } from '../fs/file-system.types'
 import * as path from '../fs/path.util'
 import { IStoragePathService } from '../vault/storage-path.types'
-import { parseJournalMarkdown } from './journal-markdown.parser'
+import { parseJournalMarkdown, normalizeJournalBody } from './journal-markdown.parser'
 import {
   resolveJournalFilePath,
   resolveShadowJournalAbsolutePath
@@ -125,7 +125,7 @@ export class FileSyncServiceImpl implements FileSyncService {
   private _parseMarkdown(raw: string, fallbackDate: Date): Diary | null {
     const parsed = parseJournalMarkdown(raw, formatLocalDate(fallbackDate))
     if (!parsed) {
-      return { date: fallbackDate, content: raw.trim() } as Diary
+      return { date: fallbackDate, content: normalizeJournalBody(raw) } as Diary
     }
 
     return {

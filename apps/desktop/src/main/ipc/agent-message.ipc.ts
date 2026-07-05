@@ -4,7 +4,7 @@ import {
   ContextCompressorService,
   reconcileCompressionStateAfterTruncate
 } from '@baishou/ai'
-import { isAutoInjectCurrentTimeEnabled } from '@baishou/shared'
+import { isAutoInjectCurrentTimeEnabled, resolveWebSearchEnabled } from '@baishou/shared'
 import {
   getAgentManagers,
   buildStreamConfig,
@@ -48,10 +48,8 @@ export function registerMessageIPC() {
     async (_, sessionId: string, messageId: string, searchMode?: boolean) => {
       const { realSessionRepo, realSnapshotRepo } = getAgentManagers()
       const prefs = await AgentChatService.getAssistantSessionPrefs(sessionId)
-      const webSearchEnabled =
-        searchMode === true ||
-        (searchMode !== false &&
-          (await settingsManager.get<boolean>('search_mode_enabled')) === true)
+      const storedSearchMode = await settingsManager.get<boolean>('search_mode_enabled')
+      const webSearchEnabled = resolveWebSearchEnabled(searchMode, storedSearchMode)
 
       const { userConfig } = await buildStreamConfig(
         undefined,

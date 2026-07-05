@@ -214,7 +214,7 @@
 .listArea {
   flex: 1;
   overflow-y: auto;
-  padding: 0 24px 40px;
+  padding: 16px 24px 40px;
   display: grid;
   grid-template-columns: 1fr;
   gap: 12px;

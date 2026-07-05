@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { InputBar } from '@baishou/ui'
 import { usePromptShortcutStore } from '@baishou/store'
+import { usePersistedSearchMode } from './hooks/usePersistedSearchMode'
 import styles from './AgentHome.module.css'
 import { Sparkles } from 'lucide-react'
 
@@ -17,6 +18,7 @@ export const AgentHomePage: React.FC = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { shortcuts, loadShortcuts } = usePromptShortcutStore()
+  const { searchMode, toggleSearchMode } = usePersistedSearchMode()
 
   useEffect(() => {
     void loadShortcuts()
@@ -46,6 +48,8 @@ export const AgentHomePage: React.FC = () => {
           onSend={handleSend}
           shortcuts={shortcuts}
           onManageShortcuts={() => navigate('/chat/new-session?focus=manage-shortcuts')}
+          searchMode={searchMode}
+          onToggleSearchMode={toggleSearchMode}
         />
       </div>
     </div>

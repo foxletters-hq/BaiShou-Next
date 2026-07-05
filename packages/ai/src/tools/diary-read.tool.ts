@@ -18,7 +18,7 @@ export class DiaryReadTool extends AgentTool<typeof diaryReadParams> {
     'Read the full content of one or more diary entries by their exact dates. ' +
     'Supports reading up to 20 entries at once. ' +
     'Use diary_list or diary_search first if you do not know the exact date. ' +
-    'REQUIRED: call this for the target date in the same turn before diary_edit.'
+    'Call this for the target date before diary_edit to see the full existing content.'
 
   readonly parameters = diaryReadParams
 

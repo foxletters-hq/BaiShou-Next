@@ -287,23 +287,37 @@ export function registerSummaryIPC() {
 
   ipcMain.handle(
     'summary:buildSharedContext',
-    async (_, lookbackMonths: number, locale?: string) => {
+    async (_, lookbackMonths: number, locale?: string, userCopyPrefix?: string) => {
       const summaries = await ensureManager().list()
+      const prefix =
+        userCopyPrefix ??
+        (await settingsManager.get<any>('summary_config'))?.sharedMemoryCopyPrefix
       return handleBuildSharedContext(
         summaries,
         lookbackMonths,
         locale,
-        vaultService.getActiveVault()?.name
+        vaultService.getActiveVault()?.name,
+        prefix
       )
     }
   )
 
-  ipcMain.handle('summary:buildSharedContextPreview', async (_, lookbackMonths: number) => {
-    const summaries = await ensureManager().list()
-    return handleBuildSharedContextPreview(
-      summaries,
-      lookbackMonths,
-      vaultService.getActiveVault()?.name
-    )
-  })
+  ipcMain.handle(
+    'summary:buildSharedContextPreview',
+    async (
+      _,
+      lookbackMonths: number,
+      options?: { userCopyPrefix?: string; locale?: string }
+    ) => {
+      const summaries = await ensureManager().list()
+      const summaryConfig = await settingsManager.get<any>('summary_config')
+      const userCopyPrefix = options?.userCopyPrefix ?? summaryConfig?.sharedMemoryCopyPrefix
+      return handleBuildSharedContextPreview(
+        summaries,
+        lookbackMonths,
+        vaultService.getActiveVault()?.name,
+        { userCopyPrefix, locale: options?.locale }
+      )
+    }
+  )
 }

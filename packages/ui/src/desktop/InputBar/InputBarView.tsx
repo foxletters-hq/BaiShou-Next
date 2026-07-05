@@ -158,6 +158,13 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
                       label={t('input.shortcut_command', '快捷指令')}
                       onClick={handlePromptShortcut}
                     />
+                    {onRecall && (
+                      <QuickActionChip
+                        icon={<BookOpen size={14} />}
+                        label={t('settings.recall_memories')}
+                        onClick={onRecall}
+                      />
+                    )}
                     <QuickActionChip
                       icon={
                         searchMode ? (
@@ -176,13 +183,6 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
                       isActive={searchMode}
                       onClick={toggleSearchMode}
                     />
-                    {onRecall && (
-                      <QuickActionChip
-                        icon={<BookOpen size={14} />}
-                        label={t('settings.recall_memories')}
-                        onClick={onRecall}
-                      />
-                    )}
                     {onToggleTtsMode && (
                       <QuickActionChip
                         icon={<Volume2 size={14} />}

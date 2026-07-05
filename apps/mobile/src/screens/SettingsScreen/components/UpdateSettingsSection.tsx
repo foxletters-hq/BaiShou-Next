@@ -55,7 +55,7 @@ export const UpdateSettingsSection: React.FC<UpdateSettingsSectionProps> = ({
       if (result.status === 'available' && (result.downloadUrl || result.releaseUrl)) {
         const viewRelease = await dialog.confirm(formatAppVersion(result.latestVersion), {
           title: t('updater.available', { version: result.latestVersion }),
-          confirmText: t('updater.view_release')
+          confirmText: t('updater.download', '下载更新')
         })
         if (viewRelease) {
           const url = result.downloadUrl || result.releaseUrl!

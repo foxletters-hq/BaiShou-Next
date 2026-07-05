@@ -1346,6 +1346,7 @@
     "copy_preview_weekly": "周总结",
     "copy_preview_unit": "篇",
     "copy_preview_total": "共 {{count}} 项",
+    "copy_preview_estimated_size": "约 {{chars}} 字 · 约 {{tokens}} tokens",
     "copy_preview_empty": "当前回溯范围内暂无可复制内容",
     "algorithm_desc": "基于白守级联折叠算法，自动过滤冗余数据，构建我们共同的记忆脉络。",
     "stats_yearly": "年度",
@@ -2056,6 +2057,7 @@
       "emoji_group_desc": "选择该伙伴在对话中可使用的表情包组",
       "emoji_enabled_label": "表情组",
       "emoji_enabled_desc": "开启后，该伙伴可在对话中使用下方选中的表情包组",
+      "emoji_groups_pick_label": "可用的表情包组",
       "select_model_title": "选择模型",
       "compress_label": "自动压缩",
       "compress_disabled_desc": "对话不会自动压缩，所有消息将完整保留",
@@ -2118,10 +2120,18 @@
       "tab_diary": "日记档案",
       "tab_memory": "向量记忆",
       "search_hint": "检索关键字",
+      "search_semantic": "语义搜索",
+      "search_text": "文本搜索",
+      "search_semantic_hint": "语义搜索记忆内容...",
+      "search_text_hint": "关键词搜索记忆内容...",
       "no_results": "未在库中匹配到任何历史记忆碎片。",
       "search_timeout": "语义搜索超时，请稍后重试",
       "selected": "已选择",
-      "inject": "提取至当前上下文对话"
+      "inject": "提取至当前上下文对话",
+      "match_score": "匹配度 {{score}}%",
+      "copy_success": "已复制记忆到剪贴板！",
+      "similarity": "相似度",
+      "memory": "记忆"
     },
     "error": {
       "api_key": "API Key 已过期或无效，请转至模型设置中更新您的密钥。",
@@ -2279,9 +2289,16 @@
     "tab_diary": "日记档案",
     "tab_memory": "向量记忆",
     "search_hint": "搜索记忆...",
+    "search_semantic": "语义搜索",
+    "search_text": "文本搜索",
+    "search_semantic_hint": "语义搜索记忆内容...",
+    "search_text_hint": "关键词搜索记忆内容...",
     "no_results": "未在库中匹配到任何历史记忆碎片。",
     "selected": "已选择",
-    "inject": "提取至当前上下文对话"
+    "inject": "提取至当前上下文对话",
+    "match_score": "匹配度 {{score}}%",
+    "copy_success": "已复制记忆到剪贴板！",
+    "similarity": "相似度"
   },
   "sidebar": {
     "tagline": "AI 终端伴侣",

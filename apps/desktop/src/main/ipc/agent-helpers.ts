@@ -36,7 +36,8 @@ import {
   normalizeEmojiToolConfig,
   resolveAssistantEmojiConfig,
   type AssistantEmojiPrefs,
-  DEFAULT_TOOL_MANAGEMENT_CONFIG
+  DEFAULT_TOOL_MANAGEMENT_CONFIG,
+  resolveWebSearchEnabled
 } from '@baishou/shared'
 
 function previewDiaryRow(raw: string | null | undefined): string {
@@ -61,7 +62,7 @@ import {
   DatabaseAdapter,
   EmbeddingAdapter,
   MemoryDeduplicationServiceImpl,
-  createDiaryReadGuard,
+  MCP_EXTERNAL_SESSION_ID,
   syncMcpToolUserConfig,
   type ToolContext
 } from '@baishou/ai'
@@ -394,6 +395,8 @@ export async function buildAgentUserConfigFromSettings(options?: {
     logger.warn('[buildAgentUserConfigFromSettings] Failed to load user profile:', e.message || e)
   }
 
+  const storedSearchMode = await settingsManager.get<boolean>('search_mode_enabled')
+
   return {
     ragEnabled: ragConfig?.ragEnabled ?? true,
     hasEmbeddingModel,
@@ -404,7 +407,7 @@ export async function buildAgentUserConfigFromSettings(options?: {
           ? 0
           : options.assistantContextWindow
         : (behaviorConfig?.agentContextWindowSize ?? 30),
-    web_search_enabled: options?.searchMode ?? false,
+    web_search_enabled: resolveWebSearchEnabled(options?.searchMode, storedSearchMode),
     ...webSearchConfigToUserConfig(webSearchConfig),
     userCard,
     diaryAiWritingPrompt: buildDiaryWritingGuidelinesForSystemPrompt(diaryTemplateConfig),
@@ -545,7 +548,7 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
   }
 
   const context = syncMcpToolUserConfig({
-    sessionId: 'mcp-external',
+    sessionId: MCP_EXTERNAL_SESSION_ID,
     vaultName,
     userConfig,
     diarySearcher: createDiarySearcher(),
@@ -555,8 +558,7 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
     summaryReader: dbAdapter,
     deduplicationService: dedupService,
     webSearchResultFetcher: createWebSearchResultFetcher(),
-    fetchSearchPage: createFetchSearchPage(),
-    diaryReadGuard: createDiaryReadGuard()
+    fetchSearchPage: createFetchSearchPage()
   })
 
   mcpToolContextCache = {

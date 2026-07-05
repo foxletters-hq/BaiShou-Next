@@ -24,6 +24,7 @@ import { resolveSummaryConfig } from '../../services/mobile-summary-config.util'
 import { peekSummaryDashboardCache } from '../../lib/summary-dashboard-cache'
 import { emitSyncMutation } from '../../cache/mobile-cache-coordinator'
 import { usePersistedSharedMemoryLookback } from '../../hooks/usePersistedSharedMemoryLookback'
+import { usePersistedSharedMemoryCopyPrefix } from '../../hooks/usePersistedSharedMemoryCopyPrefix'
 import { useSharedMemoryCopyPreview } from '../../hooks/useSharedMemoryCopyPreview'
 
 export const SummaryScreen: React.FC = () => {
@@ -47,8 +48,12 @@ export const SummaryScreen: React.FC = () => {
     [width]
   )
   const { lookbackMonths, setLookbackMonths } = usePersistedSharedMemoryLookback()
-  const { preview: copyPreview, loading: copyPreviewLoading } =
-    useSharedMemoryCopyPreview(lookbackMonths)
+  const { copyPrefix, setCopyPrefix } = usePersistedSharedMemoryCopyPrefix()
+  const { preview: copyPreview, loading: copyPreviewLoading } = useSharedMemoryCopyPreview(
+    lookbackMonths,
+    true,
+    { userCopyPrefix: copyPrefix, locale: i18n.language }
+  )
   const [isBatchGenerating, setIsBatchGenerating] = useState(false)
   const [concurrencyLimit, setConcurrencyLimit] = useState(3)
   const [isRescanning, setIsRescanning] = useState(false)
@@ -152,7 +157,11 @@ export const SummaryScreen: React.FC = () => {
         toast.showError(t('common.copy_failed'))
         return
       }
-      const contextText = await services.buildSharedContext(lookbackMonths, i18n.language)
+      const contextText = await services.buildSharedContext(
+        lookbackMonths,
+        i18n.language,
+        copyPrefix
+      )
       if (contextText) {
         await Clipboard.setStringAsync(contextText)
         toast.showSuccess(t('summary.toast_copied'))
@@ -243,6 +252,8 @@ export const SummaryScreen: React.FC = () => {
                         onCopyContext={handleCopyContext}
                         copyPreview={copyPreview}
                         copyPreviewLoading={copyPreviewLoading}
+                        copyPrefix={copyPrefix}
+                        onCopyPrefixChange={setCopyPrefix}
                       />
                     </View>
                     <View style={styles.flex1}>

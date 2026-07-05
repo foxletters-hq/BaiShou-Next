@@ -9,9 +9,10 @@ import {
 } from '../baishou-mcp-server'
 import { DEFAULT_NEGOTIATED_PROTOCOL_VERSION } from '@modelcontextprotocol/sdk/types.js'
 import type { ToolContext } from '../../tools/agent.tool'
+import { MCP_EXTERNAL_SESSION_ID } from '../../tools/mcp-tool.util'
 
 const baseContext: ToolContext = {
-  sessionId: 'mcp-external',
+  sessionId: MCP_EXTERNAL_SESSION_ID,
   vaultName: 'Personal',
   userConfig: {
     ragEnabled: true,
@@ -34,7 +35,7 @@ describe('baishou-mcp-server', () => {
 
   it('returns empty tool schemas when registry is missing', () => {
     const context: ToolContext = {
-      sessionId: 'mcp-external',
+      sessionId: MCP_EXTERNAL_SESSION_ID,
       vaultName: 'Personal',
       userConfig: {}
     }
@@ -44,7 +45,7 @@ describe('baishou-mcp-server', () => {
   it('exposes vector_search when embedding model is configured', () => {
     const registry = new ToolRegistry()
     const context: ToolContext = {
-      sessionId: 'mcp-external',
+      sessionId: MCP_EXTERNAL_SESSION_ID,
       vaultName: 'Personal',
       userConfig: {
         ragEnabled: true,
@@ -64,7 +65,7 @@ describe('baishou-mcp-server', () => {
   it('exposes vector_search when runtime embedding services are wired', () => {
     const registry = new ToolRegistry()
     const context: ToolContext = {
-      sessionId: 'mcp-external',
+      sessionId: MCP_EXTERNAL_SESSION_ID,
       vaultName: 'Personal',
       userConfig: {
         ragEnabled: true,
@@ -108,10 +109,10 @@ describe('baishou-mcp-server', () => {
     expect(mcpTools.some((tool) => tool.name === 'baishou_diary_list')).toBe(true)
   })
 
-  it('only exposes built-in agent tools via MCP', () => {
+  it('exposes diary, memory, web, and utility tools via MCP', () => {
     const registry = new ToolRegistry()
     const context: ToolContext = {
-      sessionId: 'mcp-external',
+      sessionId: MCP_EXTERNAL_SESSION_ID,
       vaultName: 'Personal',
       userConfig: {
         ragEnabled: true,
@@ -134,10 +135,10 @@ describe('baishou-mcp-server', () => {
     expect(enabled).toContain('current_time')
 
     expect(mcpTools).not.toContain('baishou_emoji_send')
-    expect(mcpTools).not.toContain('baishou_web_search')
-    expect(mcpTools).not.toContain('baishou_url_read')
-    expect(mcpTools).not.toContain('baishou_diary_write')
-    expect(mcpTools).not.toContain('baishou_current_time')
+    expect(mcpTools).toContain('baishou_diary_write')
+    expect(mcpTools).toContain('baishou_web_search')
+    expect(mcpTools).toContain('baishou_url_read')
+    expect(mcpTools).toContain('baishou_current_time')
     expect(mcpTools).toContain('baishou_diary_list')
     expect(mcpTools).toContain('baishou_vector_search')
   })
@@ -198,7 +199,7 @@ describe('baishou-mcp-server', () => {
     } as unknown as ToolRegistry
 
     const tools = buildBaishouMcpToolSchemas(registry, {
-      sessionId: 'mcp-external',
+      sessionId: MCP_EXTERNAL_SESSION_ID,
       vaultName: 'Personal',
       userConfig: {}
     })
@@ -214,7 +215,7 @@ describe('baishou-mcp-server', () => {
       executeBaishouMcpTool(
         undefined,
         async () => ({
-          sessionId: 'mcp-external',
+          sessionId: MCP_EXTERNAL_SESSION_ID,
           vaultName: 'Personal',
           userConfig: {}
         }),
@@ -238,7 +239,7 @@ describe('baishou-mcp-server', () => {
     const result = await executeBaishouMcpTool(
       registry,
       async () => ({
-        sessionId: 'mcp-external',
+        sessionId: MCP_EXTERNAL_SESSION_ID,
         vaultName: 'Personal',
         userConfig: {}
       }),

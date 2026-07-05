@@ -49,6 +49,10 @@ export interface SharedMemoryCopyPreview {
   weekly: number
   diary: number
   total: number
+  /** 复制全文（含标题与前缀）的字符数 */
+  estimatedChars: number
+  /** 粗估 token 数（约 3 字符/token） */
+  estimatedTokens: number
 }
 
 export const DEFAULT_SHARED_MEMORY_LOOKBACK_MONTHS = 1

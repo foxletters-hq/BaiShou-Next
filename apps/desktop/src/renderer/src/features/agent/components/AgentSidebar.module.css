@@ -18,30 +18,33 @@
   pointer-events: none;
 }
 
+.sidebarInner {
+  width: 280px;
+  min-width: 280px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  transition:
+    opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    filter 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar.collapsed .sidebarInner {
+  opacity: 0;
+  filter: blur(8px);
+}
+
 .sidebarTopAssistant {
   padding: 16px 16px 8px !important;
   flex-shrink: 0;
 }
 
 .sidebarContent {
-  width: 280px;
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  flex-shrink: 0;
-  transition:
-    opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1),
-    filter 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.sidebar.collapsed .sidebarContent {
-  opacity: 0;
-  filter: blur(8px);
-}
-
-.sidebar.collapsed .sidebarTopAssistant {
-  display: none;
 }
 
 /* ─── 当前伙伴卡片区 — padding:sym(16,4) ─── */
@@ -283,12 +286,6 @@
   width: 100%;
   padding: 11px 14px;
   border-radius: 10px;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.menuItemRow:hover .menuItemRowInner {
-  background-color: var(--bg-surface);
-  box-shadow: var(--shadow-sm);
 }
 
 .menuItemRowIcon {

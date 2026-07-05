@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react'
 import { toast } from '@baishou/ui'
 import { useTranslation } from 'react-i18next'
+import { isAgentStreamAbortError } from '@baishou/shared'
 
 /**
  * 流式错误处理 Hook
@@ -83,6 +84,10 @@ export function useStreamError(error: string | null, isStreaming: boolean): void
 
   useEffect(() => {
     if (error && !isStreaming) {
+      if (isAgentStreamAbortError(error)) {
+        lastToastedErrorRef.current = null
+        return
+      }
       if (lastToastedErrorRef.current !== error) {
         lastToastedErrorRef.current = error
         const title = t('agent.generation_failed', '回复生成失败')
@@ -92,5 +97,5 @@ export function useStreamError(error: string | null, isStreaming: boolean): void
     } else if (!error) {
       lastToastedErrorRef.current = null
     }
-  }, [error, isStreaming])
+  }, [error, isStreaming, t])
 }
