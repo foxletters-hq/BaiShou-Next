@@ -70,7 +70,7 @@ A locally run, privacy-focused diary and life-logging app with AI-assisted analy
 ##### 1. Clone
 
 ```bash
-git clone https://github.com/Anson-Trio/BaiShou-Next.git
+git clone https://github.com/foxletters-hq/BaiShou-Next.git
 cd BaiShou-Next
 ```
 

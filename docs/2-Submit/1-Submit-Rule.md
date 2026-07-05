@@ -21,6 +21,7 @@
 - [ ] 单次 PR / commit 主题清晰；超大改动已拆成多个可读 commit
 - [ ] Commit 说明符合 **§2 Commit Message**（类型、scope、一句话说清「为什么」）
 - [ ] 若仅改文档或格式化，未混入无关功能代码
+- [ ] 若含代码变更，已在 PR 中通过 [CLA Assistant](https://cla-assistant.io/) 链接完成签署（纯文档 PR 除外）
 
 ---
 
@@ -110,6 +111,6 @@ docs: 规范目录与文件改为单层序号命名
 
 **贡献者**：CI 红了也可以提交 PR，但请主动跟进修复，不要假设「能开 PR 就能合并」。
 
-**维护者 / Reviewer**：合入前确认 [Actions](https://github.com/Anson-Trio/BaiShou-Next/actions) 中与本 PR 相关的 workflow 已全部成功；未通过时留言说明，暂不合入。
+**维护者 / Reviewer**：合入前确认 [Actions](https://github.com/foxletters-hq/BaiShou-Next/actions) 中与本 PR 相关的 workflow 已全部成功；未通过时留言说明，暂不合入。
 
 本地检查通过可减少 PR 上等待 CI 失败的时间；是否合并由维护者根据 CI 与代码审查决定。

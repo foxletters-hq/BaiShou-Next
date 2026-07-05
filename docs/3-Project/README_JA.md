@@ -70,7 +70,7 @@ Latte のキャラクター設定：[简体中文](../../Latte/角色设定.md) 
 ##### 1. クローン
 
 ```bash
-git clone https://github.com/Anson-Trio/BaiShou-Next.git
+git clone https://github.com/foxletters-hq/BaiShou-Next.git
 cd BaiShou-Next
 ```
 

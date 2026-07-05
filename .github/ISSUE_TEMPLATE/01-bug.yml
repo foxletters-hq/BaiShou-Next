@@ -11,9 +11,9 @@ body:
 
         **Bug 报告与 Bug 修复 PR** 是我们最愿意处理与合并的类别。
 
-        提交前建议先 [搜索已有 Issue](https://github.com/Anson-Trio/BaiShou-Next/issues)，避免重复反馈。
+        提交前建议先 [搜索已有 Issue](https://github.com/foxletters-hq/BaiShou-Next/issues)，避免重复反馈。
 
-        贡献政策：[贡献指南](https://github.com/Anson-Trio/BaiShou-Next/blob/main/docs/2-Submit/2-Contributing-Guide.md)
+        贡献政策：[贡献指南](https://github.com/foxletters-hq/BaiShou-Next/blob/main/docs/2-Submit/2-Contributing-Guide.md)
 
   - type: textarea
     id: description

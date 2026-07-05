@@ -70,7 +70,7 @@
 ##### 1. 克隆倉庫
 
 ```bash
-git clone https://github.com/Anson-Trio/BaiShou-Next.git
+git clone https://github.com/foxletters-hq/BaiShou-Next.git
 cd BaiShou-Next
 ```
 

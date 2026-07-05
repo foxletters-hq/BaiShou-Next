@@ -11,3 +11,4 @@
 - **新功能 PR**：**暂不接收**；若有功能设计，请先开 Issue 梳理清楚
 - **不审核**：纯 AI 生成、提交者未充分理解或未遵循规范的 PR
 - **PR 目标分支**：提交到 **`Baishou-dev`**；以 `main` 为目标的 PR 视为无效
+- **代码 PR 须签署组织级 CLA**：见 [CLA-organization.md](./legal/CLA-organization.md)（foxletters-hq 多仓通用）

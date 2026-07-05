@@ -1,0 +1,57 @@
+BaiShou-Next（白守 Next）
+Copyright (C) 2024-2026 Anson-Trio / foxletters-hq and contributors.
+
+本仓库源代码（不含下文「第三方组件」）在 GNU Affero General Public License
+v3.0 或更高版本（AGPL-3.0-or-later）下发布。完整许可条文见仓库根目录 LICENSE。
+
+项目托管方（Project Steward）：Anson-Trio / foxletters-hq（白守项目当前托管组织）
+仓库地址：https://github.com/foxletters-hq/BaiShou-Next
+
+---
+
+## 源代码文件头（推荐格式）
+
+新增或大幅改写的源文件，建议在文件顶部添加如下注释（按文件类型调整注释语法）：
+
+```
+Copyright (C) 2024-2026 Anson-Trio / foxletters-hq and contributors.
+
+SPDX-License-Identifier: AGPL-3.0-or-later
+```
+
+TypeScript / JavaScript 示例：
+
+```typescript
+/**
+ * Copyright (C) 2024-2026 Anson-Trio / foxletters-hq and contributors.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+```
+
+---
+
+## 第三方组件
+
+以下路径包含独立许可的第三方资源，其版权与许可不受本项目 AGPL 约束：
+
+| 路径 | 许可 |
+|------|------|
+| `packages/ui/src/assets/mood/` | MIT（Microsoft Corporation） |
+| `packages/ui/src/assets/weather/` | 见该目录 LICENSE |
+
+引入新的第三方资源时，请在本表中补充条目，并保留原始 LICENSE 文件。
+
+---
+
+## 商标
+
+「白守」「BaiShou」及相关图形标识为项目方的商标或待注册商标。
+AGPL 许可仅授予源代码使用权，不授予商标使用权。详见 legal/TRADEMARK.md。
+
+---
+
+## 商业授权
+
+若您希望在 AGPL 义务范围之外使用本软件（例如闭源集成、专有 SaaS 部署等），
+请联系项目托管方洽谈商业许可。详见 legal/LICENSE-STRATEGY.md。
