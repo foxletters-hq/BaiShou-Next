@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   prepareNativeStreamdownMarkdown,
   markdownNeedsLegacyImageRenderer,
-  preserveChatDisplayNewlines
+  preserveChatDisplayNewlines,
+  estimateChatMarkdownMinHeight
 } from '../streamdown-markdown.util'
 
 describe('preserveChatDisplayNewlines', () => {
@@ -26,6 +27,17 @@ describe('preserveChatDisplayNewlines', () => {
   })
 })
 
+describe('estimateChatMarkdownMinHeight', () => {
+  it('grows with line count for long chat prose', () => {
+    const short = estimateChatMarkdownMinHeight('你好')
+    const long = estimateChatMarkdownMinHeight(
+      '**拉提：** 今天的两项模块边界已经梳理完成——桌面插件的扩展机制已经顺利落地，社区贡献的二次开发规范也全部整理清楚了。这套架构设计确实非常清晰，现在是不是可以继续检查界面细节、然后准备发版本啦？'
+    )
+    expect(long).toBeGreaterThan(short)
+    expect(long).toBeGreaterThanOrEqual(24 * 4)
+  })
+})
+
 describe('prepareNativeStreamdownMarkdown', () => {
   it('strips zero-width chars and image width syntax', () => {
     expect(prepareNativeStreamdownMarkdown('hello\u200B\n\n![a](x.png | 120)')).toBe(
@@ -38,6 +50,13 @@ describe('prepareNativeStreamdownMarkdown', () => {
       src === 'attachment/a.png' ? 'file:///data/a.png' : null
     )
     expect(out).toBe('![img](file:///data/a.png)')
+  })
+
+  it('softens decorative backticks in chat mode', () => {
+    const raw = 'changelog还在等呢 (´・ω・`)'
+    expect(prepareNativeStreamdownMarkdown(raw, undefined, { chat: true })).toBe(
+      "changelog还在等呢 (´・ω・')"
+    )
   })
 })
 

@@ -171,12 +171,35 @@ export function preserveChatTrailingNewlines(content: string): string {
   return preserveChatDisplayNewlines(content)
 }
 
+/** 估算聊天气泡 Markdown 最小高度，避免 EnrichedMarkdownText 少报高度被父级裁剪 */
+export function estimateChatMarkdownMinHeight(content: string, lineHeight = 24): number {
+  if (!content.trim()) return 0
+  const charsPerLine = 26
+  const lines = content.split('\n').reduce((total, line) => {
+    const trimmed = line.trim()
+    if (!trimmed) return total + 1
+    return total + Math.max(1, Math.ceil(trimmed.length / charsPerLine))
+  }, 0)
+  return Math.max(lineHeight * 2, lines * lineHeight + lineHeight)
+}
+
+/** 聊天正文里的装饰性反引号（如颜文字）会破坏 md4c 行内代码解析 */
+export function softenDecorativeBackticksForChat(content: string): string {
+  return content
+    .replace(/\(´・ω・`\)/g, "(´・ω・')")
+    .replace(/(\([^\n)]*?)`([^\n)]*?\))/g, (_match, before, after) => `${before}'${after}`)
+}
+
 /** 剥离零宽字符与日记宽度语法，并将可同步解析的 attachment 图片写回可加载 URI */
 export function prepareNativeStreamdownMarkdown(
   content: string,
-  resolveImageUri?: (src: string) => string | null | undefined
+  resolveImageUri?: (src: string) => string | null | undefined,
+  options?: { chat?: boolean }
 ): string {
   let text = stripImageWidthInMarkdown(content.replace(/\u200B/g, ''))
+  if (options?.chat) {
+    text = softenDecorativeBackticksForChat(text)
+  }
   if (!resolveImageUri) return text
 
   text = text.replace(IMAGE_IN_MARKDOWN_RE, (match, alt: string, rawSrc: string) => {

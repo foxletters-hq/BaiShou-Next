@@ -5,6 +5,7 @@ import { EnrichedMarkdownText } from 'react-native-enriched-markdown'
 import { useNativeTheme } from '../theme'
 import { LegacyMarkdownRenderer } from './LegacyMarkdownRenderer'
 import { StableStreamdownText } from './StableStreamdownText'
+import { ChatMarkdownHeightGuard } from './ChatMarkdownHeightGuard'
 import { useStableStreamdownMarkdown } from './useStableStreamdownMarkdown'
 import {
   buildStreamdownMarkdownStyle,
@@ -75,9 +76,12 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = (props) => {
   const useTrailingMargin = variant === 'chat' || variant === 'ancillary'
 
   const displayContent = useMemo(() => {
-    const prepared = prepareNativeStreamdownMarkdown(content, resolveImageUri)
+    const isChatLike = variant === 'chat' || variant === 'ancillary'
+    const prepared = prepareNativeStreamdownMarkdown(content, resolveImageUri, {
+      chat: isChatLike
+    })
     return useTrailingMargin ? preserveChatDisplayNewlines(prepared) : prepared
-  }, [content, resolveImageUri, useTrailingMargin])
+  }, [content, resolveImageUri, useTrailingMargin, variant])
 
   const streamFlavor: 'github' | 'commonmark' =
     variant === 'chat' || isStreaming || variant === 'ancillary' ? 'commonmark' : 'github'
@@ -97,10 +101,17 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = (props) => {
           : styles.markdownFill
 
   if (useLegacy) {
-    return <LegacyMarkdownRenderer {...props} />
+    return <LegacyMarkdownRenderer {...props} content={displayContent} />
   }
 
   if (!displayContent) return null
+
+  const useLegacyChatLayout =
+    (variant === 'chat' || variant === 'ancillary') && !isStreaming
+
+  if (useLegacyChatLayout) {
+    return <LegacyMarkdownRenderer {...props} content={displayContent} />
+  }
 
   const streamdownCommonProps = {
     allowTrailingMargin: useTrailingMargin,
@@ -113,15 +124,18 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = (props) => {
     containerStyle: nativeContainerStyle
   }
 
-  // chat / ancillary：始终同一渲染器，避免流结束瞬间 StreamdownText ↔ Static 互换闪烁
+  // chat / ancillary 流式：EnrichedMarkdownText + 高度兜底
   if (variant === 'chat' || variant === 'ancillary') {
     return (
       <View style={markdownContainerStyle}>
-        <StableStreamdownText
-          {...streamdownCommonProps}
-          hideTablesWhileStreaming={isStreaming}
-          streamingAnimation={isStreaming}
-        />
+        <ChatMarkdownHeightGuard markdown={displayContent}>
+          <StableStreamdownText
+            {...streamdownCommonProps}
+            hideTablesWhileStreaming={isStreaming}
+            streamingAnimation={isStreaming}
+            remendConfig={{ inlineCode: false }}
+          />
+        </ChatMarkdownHeightGuard>
       </View>
     )
   }

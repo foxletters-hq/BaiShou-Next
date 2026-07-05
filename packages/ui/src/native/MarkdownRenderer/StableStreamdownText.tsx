@@ -20,10 +20,15 @@ export function StableStreamdownText({
   hideTablesWhileStreaming?: boolean
   streamingAnimation?: boolean
 }) {
-  const processedMarkdown = useStableStreamdownMarkdown(markdown, remendConfig)
+  const processedMarkdown = useStableStreamdownMarkdown(markdown, remendConfig, {
+    preferSyncRemend: !streamingAnimation
+  })
+
+  if (!processedMarkdown) return null
 
   return (
     <EnrichedMarkdownText
+      key={streamingAnimation ? `stream-${processedMarkdown.length}` : processedMarkdown}
       markdown={processedMarkdown}
       {...(streamingAnimation ? { streamingAnimation: true } : {})}
       selectable={selectable}
