@@ -34,3 +34,13 @@ export function formatDiaryPreviewText(text: string | null | undefined): string 
     .replace(/<\/?[^>]+>/g, '')
     .replace(/^#{1,6}\s*/gm, '')
 }
+
+/**
+ * 日记卡片 Markdown 预览：保留粗体等行内语法，但去掉 ATX 标题标记。
+ * 搜索分片常以 ###### 开头；标题换行后 Markdown 会把后续正文误解析为同级标题样式。
+ */
+export function prepareDiaryCardPreviewMarkdown(text: string | null | undefined): string {
+  const normalized = normalizeDiaryPreviewMarkdown(text)
+  if (!normalized) return ''
+  return normalized.replace(/^#{1,6}\s+/gm, '')
+}

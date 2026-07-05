@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   formatDiaryPreviewText,
   formatSemanticChunkSnippet,
-  normalizeDiaryPreviewMarkdown
+  normalizeDiaryPreviewMarkdown,
+  prepareDiaryCardPreviewMarkdown
 } from '../diary-preview.util'
 
 describe('normalizeDiaryPreviewMarkdown', () => {
@@ -32,5 +33,12 @@ describe('formatSemanticChunkSnippet', () => {
   it('strips diary embed prefix from semantic chunk text', () => {
     const raw = '[标签: 旅行] [2024-06-15 日记:]\n今天去爬山了'
     expect(formatSemanticChunkSnippet(raw)).toBe('今天去爬山了')
+  })
+})
+
+describe('prepareDiaryCardPreviewMarkdown', () => {
+  it('strips ATX heading markers but keeps inline emphasis', () => {
+    const raw = '###### 长标题换行\n正文 **加粗**'
+    expect(prepareDiaryCardPreviewMarkdown(raw)).toBe('长标题换行\n正文 **加粗**')
   })
 })

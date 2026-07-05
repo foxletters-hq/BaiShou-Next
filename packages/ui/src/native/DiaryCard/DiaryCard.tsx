@@ -8,6 +8,7 @@ import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import {
   getDiaryTagColorIndex,
   limitDiaryPreviewTags,
+  prepareDiaryCardPreviewMarkdown,
   resolveDiaryTagColorIndex,
   resolveWeatherId,
   resolveMoodId,
@@ -76,7 +77,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
   }
 
   const previewMarkdown = useMemo(() => {
-    const text = contentSnippet.trim()
+    const text = prepareDiaryCardPreviewMarkdown(contentSnippet)
     if (!text) return ''
     return text.length > 500 ? `${text.slice(0, 500)}…` : text
   }, [contentSnippet])

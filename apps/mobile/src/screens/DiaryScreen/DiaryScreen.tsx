@@ -67,6 +67,7 @@ export const DiaryScreen: React.FC = () => {
   } = useDiaryFilterState(dbReady)
 
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [todayEntry, setTodayEntry] = useState<{ id: number } | null>(null)
   const pendingEditorNavRef = useRef(false)
   const listRef = useRef<FlatList<DiaryListEntry> | null>(null)
@@ -84,7 +85,20 @@ export const DiaryScreen: React.FC = () => {
     runIncrementalSync
   } = useIncrementalSync()
 
-  useDiaryRootExitGuard()
+  const clearDiarySearch = useCallback(() => {
+    setSearchQuery('')
+    setIsSearchOpen(false)
+  }, [setSearchQuery])
+
+  const handleDiaryBackPress = useCallback(() => {
+    if (isSearchOpen || searchQuery.trim().length > 0) {
+      clearDiarySearch()
+      return true
+    }
+    return false
+  }, [clearDiarySearch, isSearchOpen, searchQuery])
+
+  useDiaryRootExitGuard({ onBackPress: handleDiaryBackPress })
 
   useFocusEffect(
     useCallback(() => {
@@ -93,7 +107,10 @@ export const DiaryScreen: React.FC = () => {
         editorBundlePreloadedRef.current = true
         void preloadDiaryEditorWebViewSource()
       }
-    }, [refreshConfigured])
+      return () => {
+        clearDiarySearch()
+      }
+    }, [clearDiarySearch, refreshConfigured])
   )
 
   useEffect(() => {
@@ -359,6 +376,8 @@ export const DiaryScreen: React.FC = () => {
           <DiaryAppBar
             searchQuery={searchQuery}
             onSearch={handleDiarySearch}
+            isSearchOpen={isSearchOpen}
+            onSearchOpenChange={setIsSearchOpen}
             selectedMonth={selectedMonth}
             onMonthChange={setSelectedMonth}
             filterWeathers={filterWeathers}

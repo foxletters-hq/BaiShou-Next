@@ -125,11 +125,15 @@ export async function loadDiaryFilterState(): Promise<DiaryFilterState> {
 
   const state = createDefaultDiaryFilterState(true)
 
-  if (savedQuery != null) state.searchQuery = savedQuery
   if (savedMonth != null) state.selectedMonth = parseSavedMonth(savedMonth)
   state.filterWeathers = parseFilterWeathers(savedWeathers)
   state.filterMoods = parseFilterMoods(savedMoods)
   if (savedFavorite === 'true') state.filterFavorite = true
+
+  // 搜索词仅会话内有效，不恢复历史持久化（兼容清理旧数据）
+  if (savedQuery) {
+    void AsyncStorage.removeItem(DIARY_FILTER_STORAGE_KEYS.searchQuery).catch(() => {})
+  }
 
   if (state.selectedMonth == null && savedPage) {
     const page = Number(savedPage)

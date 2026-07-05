@@ -46,6 +46,8 @@ export interface DiaryAppBarProps {
   isSyncing?: boolean
   /** 搜索 debounce 进行中 */
   isSearchPending?: boolean
+  isSearchOpen: boolean
+  onSearchOpenChange: (open: boolean) => void
 }
 
 export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
@@ -61,11 +63,12 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
   onFilterFavoriteChange,
   onSyncPress,
   isSyncing = false,
-  isSearchPending = false
+  isSearchPending = false,
+  isSearchOpen,
+  onSearchOpenChange
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
-  const [isSearching, setIsSearching] = useState(false)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
 
   const hasActiveFilters = filterWeathers.length > 0 || filterMoods.length > 0 || filterFavorite
@@ -80,8 +83,12 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
   }
 
   const closeSearch = () => {
-    setIsSearching(false)
+    onSearchOpenChange(false)
     onSearch('')
+  }
+
+  const openSearch = () => {
+    onSearchOpenChange(true)
   }
 
   return (
@@ -94,7 +101,7 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
         }
       ]}
     >
-      {isSearching ? (
+      {isSearchOpen ? (
         <View style={styles.searchRow}>
           <View
             style={[
@@ -185,7 +192,7 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
               </TouchableOpacity>
             ) : null}
             <TouchableOpacity
-              onPress={() => setIsSearching(true)}
+              onPress={openSearch}
               style={styles.iconBtn}
               accessibilityRole="button"
               accessibilityLabel={t('common.search_hint')}

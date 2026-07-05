@@ -10,14 +10,21 @@ const EXIT_CONFIRM_MS = 2500
 
 type BeforeRemoveEvent = EventArg<'beforeRemove', true, { action: Readonly<{ type: string }> }>
 
+export interface DiaryRootExitGuardOptions {
+  /** 返回 true 表示已消费此次返回（例如先关闭搜索栏） */
+  onBackPress?: () => boolean
+}
+
 /** 日记 Tab 根页：首次返回/滑动仅 toast，再次退出应用，避免闪到启动 Redirect 页 */
-export function useDiaryRootExitGuard() {
+export function useDiaryRootExitGuard(options: DiaryRootExitGuardOptions = {}) {
   const { t } = useTranslation()
   const toast = useNativeToast()
   const navigation = useNavigation()
   const pendingExitRef = useRef(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dedupeBackRef = useRef(false)
+  const onBackPressRef = useRef(options.onBackPress)
+  onBackPressRef.current = options.onBackPress
   // toast 展示会改变 isToastVisible，进而让 useNativeToast() 返回新引用；
   // 若放进 useFocusEffect 依赖，会在 toast 弹出时误触发 cleanup 并重置 pendingExit。
   const toastRef = useRef(toast)
@@ -34,6 +41,10 @@ export function useDiaryRootExitGuard() {
       }
 
       const handleExitAttempt = (): boolean => {
+        if (onBackPressRef.current?.()) {
+          return true
+        }
+
         if (pendingExitRef.current) {
           clearPendingExit()
           BackHandler.exitApp()

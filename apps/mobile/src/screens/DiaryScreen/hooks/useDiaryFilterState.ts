@@ -127,13 +127,6 @@ export function useDiaryFilterState(_dbReady: boolean) {
 
   useEffect(() => {
     if (!state.restored) return
-    AsyncStorage.setItem(DIARY_FILTER_STORAGE_KEYS.searchQuery, state.searchQuery).catch((e) =>
-      logger.error('保存搜索查询失败', e)
-    )
-  }, [state.searchQuery, state.restored])
-
-  useEffect(() => {
-    if (!state.restored) return
     AsyncStorage.setItem(
       DIARY_FILTER_STORAGE_KEYS.selectedMonth,
       formatSavedMonth(state.selectedMonth)
