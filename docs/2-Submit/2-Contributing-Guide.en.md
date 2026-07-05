@@ -44,13 +44,25 @@ If you intend to open a PR, set the **base branch** to upstream **`Baishou-dev`*
 
 **PRs targeting `main` are invalid.** Maintainers will not review or respond to them and will close them directly.
 
+### 1.3 Contributor License Agreement (CLA)
+
+Before opening a **code** Pull Request, sign the [Organization CLA](../../legal/CLA-organization.md) (valid across foxletters-hq repos):
+
+1. Find the **cla-assistant** comment on your PR
+2. Click **Sign in with GitHub to agree**, then **I agree**
+3. The CLA status check turns green when done
+
+**Documentation-only PRs are usually exempt.** Corporate contributors must also sign the [Corporate CLA](../../legal/CLA-corporate.md).
+
+Maintainers: one-time setup at [CLA-GITHUB-SETUP.md](../../legal/CLA-GITHUB-SETUP.md).
+
 ---
 
 ## 2. What we welcome most: bug fixes
 
 ### 2.1 Filing a Bug Issue
 
-Use the [Bug report](https://github.com/Anson-Trio/BaiShou-Next/issues/new?template=01-bug.yml) template. Include when possible:
+Use the [Bug report](https://github.com/foxletters-hq/BaiShou-Next/issues/new?template=01-bug.yml) template. Include when possible:
 
 - BaiShou version / branch, desktop or mobile, OS
 - **Steps to reproduce** (from a clean state)
@@ -80,7 +92,7 @@ Small, focused, well-tested bug PRs are what we are most willing to review. **No
 
 ### 3.2 If you still want to propose a feature
 
-**Open an Issue only** (use the [Feature proposal](https://github.com/Anson-Trio/BaiShou-Next/issues/new?template=02-enhancement.yml) template). **Do not open a feature PR.**
+**Open an Issue only** (use the [Feature proposal](https://github.com/foxletters-hq/BaiShou-Next/issues/new?template=02-enhancement.yml) template). **Do not open a feature PR.**
 
 You may use AI to draft the Issue, but **you must read and verify it before posting**. We need your judgment, not unchecked AI output.
 
@@ -164,8 +176,9 @@ Feature work often spans **UI + core + database + both apps**. Be honest about s
 ## 4. Other contributions
 
 - **Documentation**: corrections and developer notes — PRs welcome.
-- **Ideas and discussion**: Issues welcome (e.g. [Ideas](https://github.com/Anson-Trio/BaiShou-Next/issues/new?template=03-interesting.yml) template), but that does not imply roadmap commitment.
+- **Ideas and discussion**: Issues welcome (e.g. [Ideas](https://github.com/foxletters-hq/BaiShou-Next/issues/new?template=03-interesting.yml) template), but that does not imply roadmap commitment.
 - **Fork for personal use**: allowed under AGPLv3; network deployments of modified versions must comply with the license.
+- **Code PRs**: require signing the [Organization CLA](../../legal/CLA-organization.md) (docs-only PRs exempt).
 
 ---
 
@@ -189,4 +202,7 @@ Feature work often spans **UI + core + database + both apps**. Be honest about s
 - [Submission guidelines](./1-Submit-Rule.md) (Chinese)
 - [AI coding rules](../1-AI-Code/1-AI-Code-Rule.md) (Chinese)
 - [UI theme rules](../1-AI-Code/2-UI-Theme-Rule.md) (Chinese)
+- [LICENSE-STRATEGY.md](../../legal/LICENSE-STRATEGY.md)
+- [CLA-GITHUB-SETUP.md](../../legal/CLA-GITHUB-SETUP.md)
+- [CLA-organization.md](../../legal/CLA-organization.md)
 - [Documentation index](../0-README.md) (Chinese)

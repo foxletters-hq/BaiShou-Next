@@ -15,7 +15,7 @@ body:
         - 若你已想清楚具体功能、技术方案与改动范围，请改用 **「功能提议」** 模板
         - **请勿** 在未获同意前直接提交功能 PR
 
-        贡献政策：[贡献指南](https://github.com/Anson-Trio/BaiShou-Next/blob/main/docs/2-Submit/2-Contributing-Guide.md)
+        贡献政策：[贡献指南](https://github.com/foxletters-hq/BaiShou-Next/blob/main/docs/2-Submit/2-Contributing-Guide.md)
 
   - type: textarea
     id: description

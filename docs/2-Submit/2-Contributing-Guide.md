@@ -44,13 +44,25 @@
 
 **以 `main` 为目标的 PR 视为无效**，维护者不予审核、不予回复，会直接关闭。
 
+### 1.3 贡献者许可协议（CLA）
+
+向本项目提交**包含代码变更**的 Pull Request 前，须签署 [组织级 CLA](../../legal/CLA-organization.md)（foxletters-hq 下多仓通用）：
+
+1. 打开 PR 后，在评论区找到 **cla-assistant** 的提示
+2. 点击 **Sign in with GitHub to agree**，阅读协议后点 **I agree**
+3. PR 的 CLA 状态检查变为 ✅ 即完成
+
+**纯文档 PR 通常无需签署。** 企业员工代表公司贡献时，另须签署 [企业 CLA](../../legal/CLA-corporate.md)。
+
+维护者首次配置见 [CLA-GITHUB-SETUP.md](../../legal/CLA-GITHUB-SETUP.md)。许可背景见 [LICENSE-STRATEGY.md](../../legal/LICENSE-STRATEGY.md)。
+
 ---
 
 ## 2. 我们最欢迎的贡献：修 Bug
 
 ### 2.1 提 Bug Issue
 
-请使用 [Bug 反馈](https://github.com/Anson-Trio/BaiShou-Next/issues/new?template=01-bug.yml) 模板，尽量包含：
+请使用 [Bug 反馈](https://github.com/foxletters-hq/BaiShou-Next/issues/new?template=01-bug.yml) 模板，尽量包含：
 
 - 白守版本 / 分支、桌面端或移动端、操作系统
 - **复现步骤**（从干净状态开始）
@@ -80,7 +92,7 @@
 
 ### 3.2 若你仍希望提议新功能
 
-请 **只开 Issue**（使用 [功能提议](https://github.com/Anson-Trio/BaiShou-Next/issues/new?template=02-enhancement.yml) 模板），**不要提交功能 PR**。
+请 **只开 Issue**（使用 [功能提议](https://github.com/foxletters-hq/BaiShou-Next/issues/new?template=02-enhancement.yml) 模板），**不要提交功能 PR**。
 
 你可以用 AI 辅助起草 Issue，但 **发布前你必须亲自读过**，确保技术描述准确、范围合理。维护者需要的是你的判断，不是未经核对的 AI 流水账。
 
@@ -164,8 +176,9 @@
 ## 4. 其他贡献
 
 - **文档**：修正错误、补充开发说明 — 欢迎 PR。
-- **想法与讨论**：可在 Issue 中讨论（如 [创意想法](https://github.com/Anson-Trio/BaiShou-Next/issues/new?template=03-interesting.yml) 模板），但不等于会纳入路线图。
+- **想法与讨论**：可在 Issue 中讨论（如 [创意想法](https://github.com/foxletters-hq/BaiShou-Next/issues/new?template=03-interesting.yml) 模板），但不等于会纳入路线图。
 - **Fork 自用**：AGPLv3 允许；若修改后对外提供服务，请遵守协议开源修改版。
+- **提交代码 PR**：须签署 [组织级 CLA](../../legal/CLA-organization.md)（纯文档 PR 除外）。
 
 ---
 
@@ -189,4 +202,7 @@
 - [提交规范](./1-Submit-Rule.md)
 - [AI 编码规范](../1-AI-Code/1-AI-Code-Rule.md)
 - [UI 主题规范](../1-AI-Code/2-UI-Theme-Rule.md)
+- [LICENSE-STRATEGY.md](../../legal/LICENSE-STRATEGY.md)
+- [CLA-GITHUB-SETUP.md](../../legal/CLA-GITHUB-SETUP.md)
+- [CLA-organization.md](../../legal/CLA-organization.md)
 - [文档索引](../0-README.md)

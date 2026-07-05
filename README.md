@@ -70,7 +70,7 @@
 ##### 1. 克隆仓库
 
 ```bash
-git clone https://github.com/Anson-Trio/BaiShou-Next.git
+git clone https://github.com/foxletters-hq/BaiShou-Next.git
 cd BaiShou-Next
 ```
 
@@ -161,5 +161,7 @@ pnpm ci:check
 
 - 客户端代码完全开源，鼓励社区参与改进。
 - 请遵守 AGPLv3 协议：若您修改了本项目的代码并在网络上提供服务，您的修改版本也必须开源。
+- 向本项目提交**代码 PR** 须签署 [组织级 CLA](./legal/CLA-organization.md)（CLA Assistant，多仓通用）。
+- 版权与商业化策略详见 [legal/LICENSE-STRATEGY.md](./legal/LICENSE-STRATEGY.md)。
 
 完整条文见 [LICENSE](./LICENSE)。
