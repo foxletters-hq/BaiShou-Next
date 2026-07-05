@@ -39,6 +39,7 @@ export const settingsApi = {
       ipcRenderer.invoke('settings:set-search-mode-enabled', enabled),
 
     getMcpServerConfig: () => ipcRenderer.invoke('settings:get-mcp-server-config'),
+    getMcpLanIp: (): Promise<string | null> => ipcRenderer.invoke('settings:get-mcp-lan-ip'),
     setMcpServerConfig: (config: any) =>
       ipcRenderer.invoke('settings:set-mcp-server-config', config),
     refreshMcpAuthToken: () => ipcRenderer.invoke('settings:refresh-mcp-auth-token'),

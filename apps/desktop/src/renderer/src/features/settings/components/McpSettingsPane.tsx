@@ -9,6 +9,13 @@ interface McpSettingsPaneProps {
 
 export const McpSettingsPane: React.FC<McpSettingsPaneProps> = ({ settings }) => {
   const { t } = useTranslation()
+  const [lanHost, setLanHost] = React.useState<string | null>(null)
+
+  React.useEffect(() => {
+    void (window as any).api?.settings?.getMcpLanIp?.().then((ip: string | null) => {
+      if (ip) setLanHost(ip)
+    })
+  }, [])
 
   return (
     <div
@@ -23,6 +30,7 @@ export const McpSettingsPane: React.FC<McpSettingsPaneProps> = ({ settings }) =>
           <div className={styles.cardBody}>
             <McpSettingsCard
               standalone
+              lanHost={lanHost}
               config={settings.mcpServerConfig || { mcpEnabled: false, mcpPort: 31004 }}
               onChange={settings.setMcpServerConfig}
               onRefreshToken={settings.refreshMcpAuthToken}

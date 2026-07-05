@@ -116,6 +116,11 @@ export function registerSettingsAppIPC() {
     return nextConfig
   })
 
+  ipcMain.handle('settings:get-mcp-lan-ip', async () => {
+    const { getDesktopLanIpv4 } = await import('../services/desktop-lan-ip.util')
+    return getDesktopLanIpv4()
+  })
+
   ipcMain.handle('settings:get-mcp-tools', async () => {
     const { toolRegistry, buildMcpToolContext } = await import('./agent-helpers')
     const { listBaishouMcpExposedTools } = await import('@baishou/ai')

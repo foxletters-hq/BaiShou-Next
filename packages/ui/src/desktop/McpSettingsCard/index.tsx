@@ -23,6 +23,8 @@ interface McpSettingsCardProps {
   onRefreshToken?: () => void | Promise<void>
   /** 独立设置页：平铺展示，无折叠头 */
   standalone?: boolean
+  /** 本机局域网 IPv4，用于展示对外连接地址 */
+  lanHost?: string | null
 }
 
 export { buildMcpUrl, buildMcpSseUrl } from './mcp-url'
@@ -33,14 +35,17 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
   config,
   onChange,
   onRefreshToken,
-  standalone = false
+  standalone = false,
+  lanHost = null
 }) => {
   const { t } = useTranslation()
   const [collapsed, setCollapsed] = React.useState(true)
   const [showRefreshConfirm, setShowRefreshConfirm] = React.useState(false)
   const toast = useToast()
 
-  const mcpUrl = buildMcpUrl(config.mcpPort)
+  const endpointHost = lanHost?.trim() || '127.0.0.1'
+  const mcpUrl = buildMcpUrl(config.mcpPort, endpointHost)
+  const localhostUrl = lanHost ? buildMcpUrl(config.mcpPort, '127.0.0.1') : null
 
   const handleCopyEndpoint = async (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -60,7 +65,12 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
         <span className={`settings-list-tile-title ${styles.titleRow}`}>
           {t('settings.mcp_enable', '启用 MCP 服务')}
           <span {...settingsInlineHelpHostProps}>
-            <McpHelpButton size={16} mcpPort={config.mcpPort} mcpAuthToken={config.mcpAuthToken} />
+            <McpHelpButton
+              size={16}
+              mcpPort={config.mcpPort}
+              mcpAuthToken={config.mcpAuthToken}
+              lanHost={lanHost}
+            />
           </span>
           {config.mcpEnabled ? <span className={styles.statusIndicator} aria-hidden /> : null}
         </span>
@@ -165,6 +175,16 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
           <Copy size={18} />
         </button>
       </div>
+      {localhostUrl ? (
+        <div className={styles.endpointRow}>
+          <span className={styles.endpointLabel}>
+            {t('settings.mcp_localhost_url_label', '本机访问')}
+          </span>
+          <span className={`${styles.endpointUrl} ${styles.endpointUrlSecondary}`}>
+            {localhostUrl}
+          </span>
+        </div>
+      ) : null}
       {config.mcpAuthToken ? (
         <div className={styles.endpointRow}>
           <span className={styles.endpointLabel}>{t('settings.mcp_auth_token', '访问令牌')}</span>
@@ -238,6 +258,7 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
                 size={16}
                 mcpPort={config.mcpPort}
                 mcpAuthToken={config.mcpAuthToken}
+                lanHost={lanHost}
               />
             </span>
             {config.mcpEnabled && <span className={styles.statusIndicator} aria-hidden />}

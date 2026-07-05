@@ -139,6 +139,10 @@
   color: var(--color-primary, #5ba8f5);
 }
 
+.endpointUrlSecondary {
+  color: var(--text-secondary, var(--color-on-surface-variant));
+}
+
 .copyBtn {
   flex-shrink: 0;
   display: flex;

@@ -230,9 +230,9 @@ export class McpService {
 
     return new Promise((resolve, reject) => {
       try {
-        this.httpServer = this.app.listen(port, '127.0.0.1', () => {
+        this.httpServer = this.app.listen(port, '0.0.0.0', () => {
           this.isRunning = true
-          logger.info(`[McpService] Server started on http://127.0.0.1:${port}/mcp`)
+          logger.info(`[McpService] Server started on http://0.0.0.0:${port}/mcp`)
           resolve()
         })
       } catch (e) {
