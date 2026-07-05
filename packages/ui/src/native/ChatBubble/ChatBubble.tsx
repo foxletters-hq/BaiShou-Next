@@ -52,13 +52,20 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   const sourceContent = liveStream?.content ?? message.content ?? ''
   const sourceReasoning = liveStream?.reasoning ?? message.reasoning ?? ''
 
+  /** 已落库助手消息：正文或 reasoning 任一存在即视为完成，关闭流式动画 */
+  const hasPersistedAssistant = isAssistant && Boolean(
+    message.content?.trim() || message.reasoning?.trim()
+  )
+  const parseContent = hasPersistedAssistant ? (message.content ?? '') : sourceContent
+  const parseReasoning = hasPersistedAssistant ? (message.reasoning ?? '') : sourceReasoning
+
   const { cleanContent, cleanReasoning } = useMemo(
-    () => parseRedactedThinking(sourceContent, sourceReasoning),
-    [sourceContent, sourceReasoning]
+    () => parseRedactedThinking(parseContent, parseReasoning),
+    [parseContent, parseReasoning]
   )
 
-  const markdownStreaming = Boolean(liveStream?.isTextStreaming)
-  const thinkStreaming = Boolean(liveStream?.isThinkStreaming)
+  const markdownStreaming = Boolean(liveStream?.isTextStreaming && !hasPersistedAssistant)
+  const thinkStreaming = Boolean(liveStream?.isThinkStreaming && !hasPersistedAssistant)
 
   const editableContent = isAssistant
     ? cleanContent || message.content || ''

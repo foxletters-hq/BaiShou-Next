@@ -78,8 +78,8 @@ export function mapSessionMessageFromDb(
   const parts = msg.parts || []
 
   const textParts = parts.filter((p) => p.type === 'text')
-  const reasoningParts = textParts.filter((p) => normalizePartData(p.data).isReasoning === true)
-  const normalTextParts = textParts.filter((p) => normalizePartData(p.data).isReasoning !== true)
+  const reasoningParts = textParts.filter((p) => Boolean(normalizePartData(p.data).isReasoning))
+  const normalTextParts = textParts.filter((p) => !normalizePartData(p.data).isReasoning)
 
   const textFromPart = (p: (typeof parts)[number]) => textFromPartData(p.data)
 
