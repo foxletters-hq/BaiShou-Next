@@ -70,19 +70,80 @@ function mergeContentParts(...parts: Array<string | undefined>): string {
     .join('\n')
 }
 
+export interface ParseRedactedThinkingOptions {
+  /**
+   * 是否把正文里的 think 标签拆到 reasoning。
+   * 流式阶段为 true；已落库消息为 false，避免角色扮演正文被藏进折叠「思考过程」。
+   */
+  extractContentThinkTags?: boolean
+}
+
+function unwrapClosedThinkTagsInline(content: string): string {
+  let cleanContent = content || ''
+  for (const thinkRegex of CLOSED_THINK_PATTERNS) {
+    thinkRegex.lastIndex = 0
+    const matches: Array<{ full: string; inner: string; index: number }> = []
+    let match: RegExpExecArray | null
+    while ((match = thinkRegex.exec(cleanContent)) !== null) {
+      matches.push({
+        full: match[0],
+        inner: (match[1] ?? '').trim(),
+        index: match.index
+      })
+    }
+    for (let i = matches.length - 1; i >= 0; i--) {
+      const { full, inner, index } = matches[i]
+      cleanContent =
+        cleanContent.slice(0, index) + (inner || '') + cleanContent.slice(index + full.length)
+    }
+  }
+  return cleanContent
+}
+
+function stripUnclosedThinkOpenTagsInline(content: string): string {
+  let cleanContent = content
+  for (const openTag of UNCLOSED_THINK_OPEN_TAGS) {
+    cleanContent = cleanContent.split(openTag).join('')
+  }
+  for (const closeTag of CLOSE_THINK_TAGS) {
+    cleanContent = cleanContent.split(closeTag).join('')
+  }
+  return cleanContent
+}
+
+function isThinkBlockAtContentStart(content: string, tagIndex: number): boolean {
+  return tagIndex === 0 || content.slice(0, tagIndex).trim() === ''
+}
+
 function extractClosedThinkingBlocks(content: string, reasoning: string) {
   let cleanContent = content || ''
   let cleanReasoning = reasoning || ''
 
   for (const thinkRegex of CLOSED_THINK_PATTERNS) {
     thinkRegex.lastIndex = 0
-    let match
-    while ((match = thinkRegex.exec(content || '')) !== null) {
-      if (match[1]) {
-        cleanReasoning += (cleanReasoning ? '\n' : '') + match[1].trim()
-      }
+    const matches: Array<{ full: string; inner: string; index: number }> = []
+    let match: RegExpExecArray | null
+    while ((match = thinkRegex.exec(cleanContent)) !== null) {
+      matches.push({
+        full: match[0],
+        inner: (match[1] ?? '').trim(),
+        index: match.index
+      })
     }
-    cleanContent = cleanContent.replace(thinkRegex, '')
+
+    for (let i = matches.length - 1; i >= 0; i--) {
+      const { full, inner, index } = matches[i]
+      const atStart = isThinkBlockAtContentStart(cleanContent, index)
+      if (atStart && inner) {
+        cleanReasoning = cleanReasoning ? `${cleanReasoning}\n${inner}` : inner
+        cleanContent = cleanContent.slice(0, index) + cleanContent.slice(index + full.length)
+        continue
+      }
+
+      const replacement = inner || ''
+      cleanContent =
+        cleanContent.slice(0, index) + replacement + cleanContent.slice(index + full.length)
+    }
   }
 
   return { cleanContent, cleanReasoning }
@@ -93,23 +154,49 @@ function extractUnclosedThinkingBlocks(content: string, reasoning: string) {
   let cleanReasoning = reasoning
 
   for (const openTag of UNCLOSED_THINK_OPEN_TAGS) {
-    if (!cleanContent.includes(openTag)) continue
-    const parts = cleanContent.split(openTag)
-    cleanContent = parts[0] || ''
-    const unclosed = parts.slice(1).join(openTag)
-    if (unclosed) {
-      cleanReasoning += (cleanReasoning ? '\n' : '') + unclosed.trim()
+    const tagIndex = cleanContent.indexOf(openTag)
+    if (tagIndex === -1) continue
+
+    const before = cleanContent.slice(0, tagIndex)
+    const after = cleanContent.slice(tagIndex + openTag.length)
+    const atStart = isThinkBlockAtContentStart(cleanContent, tagIndex)
+
+    if (atStart) {
+      cleanContent = before.trimEnd()
+      const unclosed = after.trim()
+      if (unclosed) {
+        cleanReasoning = cleanReasoning ? `${cleanReasoning}\n${unclosed}` : unclosed
+      }
+      continue
     }
+
+    // 正文中间的泄漏 open 标签：去掉标签，保留前后对话在同一段展示
+    cleanContent = `${before}${after}`
   }
 
   return { cleanContent, cleanReasoning }
 }
 
 /** 从 AI 正文中剥离 think 标签并脱壳元数据，与 desktop/native ChatBubble 共用 */
-export function parseRedactedThinking(content: string, reasoning = '') {
+export function parseRedactedThinking(
+  content: string,
+  reasoning = '',
+  options: ParseRedactedThinkingOptions = {}
+) {
+  const extractContentThinkTags = options.extractContentThinkTags !== false
   const partitioned = partitionReasoningAtCloseTag(reasoning)
   const contentWithoutLeadingClose = stripLeadingCloseTagsFromContent(content)
   const mergedContent = mergeContentParts(partitioned.leakedContent, contentWithoutLeadingClose)
+
+  if (!extractContentThinkTags) {
+    const unwrapped = stripUnclosedThinkOpenTagsInline(
+      unwrapClosedThinkTagsInline(mergedContent)
+    )
+    return {
+      cleanContent: sanitizeAssistantGeneratedText(unwrapped),
+      cleanReasoning: partitioned.reasoning.trim()
+    }
+  }
 
   const closed = extractClosedThinkingBlocks(mergedContent, partitioned.reasoning)
   const unclosed = extractUnclosedThinkingBlocks(closed.cleanContent, closed.cleanReasoning)
