@@ -125,12 +125,10 @@ jobs:
             exit 1
           fi
 
-      - uses: pnpm/action-setup@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
+          # prepare 仅做版本校验，不 install；启用 pnpm cache 会在 post 阶段因路径不存在而失败
 
       - name: Verify version manifest matches tag
         shell: bash
