@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next'
 import {
   BATCH_EMBED_CONCURRENCY_MAX,
   BATCH_EMBED_CONCURRENCY_MIN,
-  DEFAULT_BATCH_EMBED_CONCURRENCY
+  DEFAULT_BATCH_EMBED_CONCURRENCY,
+  RAG_TOP_K_MAX
 } from '@baishou/shared'
 import { HelpTooltip } from '../HelpTooltip'
 import type { RagConfig } from './rag-memory.types'
@@ -56,7 +57,7 @@ export const RagMemoryConfigBlock: React.FC<RagMemoryConfigBlockProps> = ({ conf
             type="range"
             className={styles.rangeInput}
             min="1"
-            max="50"
+            max={String(RAG_TOP_K_MAX)}
             step="1"
             value={ragTopK}
             onChange={(e) => onChange({ ...config, ragTopK: parseInt(e.target.value) })}

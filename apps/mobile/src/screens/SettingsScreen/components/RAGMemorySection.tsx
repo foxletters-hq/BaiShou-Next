@@ -139,6 +139,80 @@ export const RAGMemorySection: React.FC = () => {
     similarity: typeof raw.similarity === 'number' ? raw.similarity : undefined
   })
 
+  const refreshEntriesOnly = useCallback(
+    async (
+      q: string = stateRef.current.searchQuery,
+      mode: 'semantic' | 'text' = stateRef.current.searchMode,
+      page: number = stateRef.current.currentPage,
+      size: number = stateRef.current.pageSize
+    ) => {
+      if (!services?.ragService || !dbReady) return
+      if (storageIndexing) return
+
+      try {
+        const globalModels =
+          (await services.settingsManager.get<{
+            globalEmbeddingProviderId?: string
+            globalEmbeddingModelId?: string
+          }>('global_models')) || {}
+        const fallbackModel = globalModels.globalEmbeddingModelId
+
+        const limit = size
+        const offset = (page - 1) * size
+        const params: {
+          keyword?: string
+          limit: number
+          offset: number
+          mode: 'semantic' | 'text'
+          withTotal: boolean
+        } = {
+          limit,
+          offset,
+          mode,
+          withTotal: true
+        }
+
+        if (q.trim()) {
+          params.keyword = q.trim()
+          if (mode === 'semantic') {
+            params.limit = 50
+            params.offset = 0
+          }
+        }
+
+        const res = await services.ragService.queryEntries(params)
+
+        if (q.trim() && mode === 'semantic') {
+          const sliced = res.entries.slice((page - 1) * size, page * size)
+          setEntries(sliced.map((e) => mapEntry(e as Record<string, unknown>, fallbackModel)))
+          setTotalCount(res.total)
+          return
+        }
+
+        if (res.total > 0 && offset >= res.total) {
+          const maxPage = Math.max(1, Math.ceil(res.total / size))
+          setCurrentPage(maxPage)
+          await refreshEntriesOnly(q, mode, maxPage, size)
+          return
+        }
+
+        setEntries(
+          res.entries.map((e) => {
+            const entry = mapEntry(e as Record<string, unknown>, fallbackModel)
+            if (mode === 'text') {
+              return { ...entry, similarity: undefined }
+            }
+            return entry
+          })
+        )
+        setTotalCount(res.total)
+      } catch (e: unknown) {
+        toast.showError(e instanceof Error ? e.message : t('settings.rag_operation_failed'))
+      }
+    },
+    [services, dbReady, storageIndexing, toast, t]
+  )
+
   const loadRagData = useCallback(
     async (
       q: string = stateRef.current.searchQuery,
@@ -213,7 +287,7 @@ export const RAGMemorySection: React.FC = () => {
           if (res.total > 0 && offset >= res.total) {
             const maxPage = Math.max(1, Math.ceil(res.total / size))
             setCurrentPage(maxPage)
-            await loadRagData(q, mode, maxPage, size)
+            await refreshEntriesOnly(q, mode, maxPage, size)
             return
           }
           setEntries(
@@ -245,7 +319,7 @@ export const RAGMemorySection: React.FC = () => {
         console.warn('[RAGMemorySection] checkModelMismatch failed', e)
       }
     },
-    [services, dbReady, storageIndexing, checkModelMismatch, toast, t]
+    [services, dbReady, storageIndexing, checkModelMismatch, toast, t, refreshEntriesOnly]
   )
 
   useEffect(() => {
@@ -410,7 +484,7 @@ export const RAGMemorySection: React.FC = () => {
   const handlePageChange = (page: number, size: number) => {
     setCurrentPage(page)
     setPageSize(size)
-    void loadRagData(searchQuery, searchMode, page, size)
+    void refreshEntriesOnly(searchQuery, searchMode, page, size)
   }
 
   const handleDetectDimension = async () => {
@@ -566,9 +640,34 @@ export const RAGMemorySection: React.FC = () => {
       destructive: true
     })
     if (!confirmed) return
-    await services.ragService.deleteEntry(id)
-    await loadRagData()
-    toast.showSuccess(t('common.delete_success'))
+
+    const snapshotEntries = entries
+    const snapshotTotal = totalCount
+    const snapshotStatsTotal = stats.totalCount
+    const remainingOnPage = entries.filter((entry) => entry.embeddingId !== id)
+
+    setEntries(remainingOnPage)
+    setTotalCount((prev) => Math.max(0, prev - 1))
+    setStats((prev) => ({
+      ...prev,
+      totalCount: Math.max(0, prev.totalCount - 1)
+    }))
+
+    try {
+      await services.ragService.deleteEntry(id)
+      toast.showSuccess(t('common.delete_success'))
+
+      if (remainingOnPage.length === 0 && currentPage > 1) {
+        const prevPage = currentPage - 1
+        setCurrentPage(prevPage)
+        void refreshEntriesOnly(searchQuery, searchMode, prevPage, pageSize)
+      }
+    } catch (e: unknown) {
+      setEntries(snapshotEntries)
+      setTotalCount(snapshotTotal)
+      setStats((prev) => ({ ...prev, totalCount: snapshotStatsTotal }))
+      toast.showError(e instanceof Error ? e.message : t('settings.rag_operation_failed'))
+    }
   }
 
   const onPromptConfirm = async (value: string) => {

@@ -34,6 +34,9 @@ export interface RagEntry {
   similarity?: number
 }
 
+export const RAG_DEFAULT_PAGE_SIZE = 10
+export const RAG_PAGE_SIZE_OPTIONS = [10, 20, 30, 50] as const
+
 export interface RagMemoryViewProps {
   config: RagConfig
   stats: RagStats

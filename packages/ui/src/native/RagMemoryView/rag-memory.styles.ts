@@ -178,16 +178,27 @@ export const ragMemoryStyles = StyleSheet.create({
   },
   paginationRow: {
     paddingTop: 12,
-    gap: 10
+    gap: 10,
+    borderTopWidth: StyleSheet.hairlineWidth
+  },
+  paginationMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8
   },
   paginationInfo: {
+    flex: 1,
     fontSize: 13
   },
-  pageSizeRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 8
+  paginationNavScroll: {
+    alignSelf: 'stretch'
+  },
+  paginationNavContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 2
   },
   bottomSpacer: { height: 16 }
 })

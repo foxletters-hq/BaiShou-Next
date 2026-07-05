@@ -7,6 +7,8 @@ import { settingsCardStyles } from '../settings/settings-card.styles'
 import {
   BATCH_EMBED_CONCURRENCY_MIN,
   MOBILE_BATCH_EMBED_CONCURRENCY_CAP,
+  RAG_SIMILARITY_SLIDER_SCALE,
+  RAG_TOP_K_MAX,
   resolveMobileBatchEmbedConcurrency
 } from '@baishou/shared'
 import type { RagConfig } from './rag-memory.types'
@@ -31,6 +33,9 @@ export const RagMemoryRetrievalSection: React.FC<RagMemoryRetrievalSectionProps>
 
   const ragTopK = coerceNumber(config.ragTopK, 20)
   const ragSimilarityThreshold = coerceNumber(config.ragSimilarityThreshold, 0.4)
+  const similaritySliderValue = Math.round(
+    ragSimilarityThreshold * RAG_SIMILARITY_SLIDER_SCALE
+  )
 
   return (
     <View>
@@ -42,22 +47,22 @@ export const RagMemoryRetrievalSection: React.FC<RagMemoryRetrievalSectionProps>
         title={t('settings.rag_top_k')}
         value={ragTopK}
         min={1}
-        max={20}
+        max={RAG_TOP_K_MAX}
         step={1}
         onChange={(v) => onChange({ ...config, ragTopK: v })}
       />
 
       <SettingsSliderRow
         title={t('settings.rag_similarity_threshold')}
-        value={ragSimilarityThreshold}
+        value={similaritySliderValue}
         min={0}
-        max={1}
-        step={0.01}
-        formatValue={(v) => coerceNumber(v, 0).toFixed(2)}
+        max={RAG_SIMILARITY_SLIDER_SCALE}
+        step={1}
+        formatValue={(v) => (coerceNumber(v, 0) / RAG_SIMILARITY_SLIDER_SCALE).toFixed(2)}
         onChange={(v) =>
           onChange({
             ...config,
-            ragSimilarityThreshold: Math.round(v * 100) / 100
+            ragSimilarityThreshold: Math.round(v) / RAG_SIMILARITY_SLIDER_SCALE
           })
         }
       />

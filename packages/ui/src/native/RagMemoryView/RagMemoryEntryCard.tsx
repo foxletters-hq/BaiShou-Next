@@ -5,14 +5,16 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Pressable,
-  ScrollView
+  ScrollView,
+  useWindowDimensions
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { formatRagEntryTimestamp } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 import { Pagination as RagPagination } from '../Pagination'
-import { settingsCardStyles } from '../settings/settings-card.styles'
+import { PageSizeSelector } from '../PageSizeSelector'
 import type { RagEntry } from './rag-memory.types'
+import { RAG_PAGE_SIZE_OPTIONS } from './rag-memory.types'
 import { ragMemoryStyles as styles } from './rag-memory.styles'
 
 interface RagMemoryEntryCardProps {
@@ -125,8 +127,6 @@ export const RagMemoryEntryCard: React.FC<RagMemoryEntryCardProps> = ({
   )
 }
 
-const PAGE_SIZES = [10, 20, 30, 50, 100]
-
 interface RagMemoryEntriesSectionProps {
   entries: RagEntry[]
   searchQuery?: string
@@ -152,12 +152,15 @@ export const RagMemoryEntriesSection: React.FC<RagMemoryEntriesSectionProps> = (
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const { width } = useWindowDimensions()
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null)
 
   const effectiveTotal = totalCount > 0 ? totalCount : entries.length
   const totalPages = Math.max(1, Math.ceil(effectiveTotal / pageSize))
-  const showPagination = effectiveTotal > 10
+  const safeCurrentPage = Math.min(Math.max(currentPage, 1), totalPages)
+  const showPagination = effectiveTotal > pageSize
   const showSimilarity = searchMode === 'semantic' && searchQuery.trim().length > 0
+  const paginationInfo = t('settings.rag_pagination_info').replace('$total', String(effectiveTotal))
 
   return (
     <View>
@@ -184,47 +187,36 @@ export const RagMemoryEntriesSection: React.FC<RagMemoryEntriesSectionProps> = (
         ))
       )}
 
-      {showPagination && onPageChange && (
-        <View style={styles.paginationRow}>
-          <Text style={[styles.paginationInfo, { color: colors.textSecondary }]}>
-            {t('settings.rag_pagination_info').replace('$total', String(effectiveTotal))}
-          </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pageSizeRow}>
-            {PAGE_SIZES.map((size) => {
-              const selected = pageSize === size
-              return (
-                <TouchableOpacity
-                  key={size}
-                  style={[
-                    settingsCardStyles.chip,
-                    {
-                      borderColor: selected ? colors.primary : colors.borderMuted,
-                      backgroundColor: selected ? colors.primaryLight : 'transparent'
-                    }
-                  ]}
-                  onPress={() => onPageChange(1, size)}
-                >
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      color: selected ? colors.primary : colors.textSecondary,
-                      fontWeight: selected ? '600' : '400'
-                    }}
-                  >
-                    {size} {t('settings.rag_per_page')}
-                  </Text>
-                </TouchableOpacity>
-              )
-            })}
+      {showPagination && onPageChange ? (
+        <View style={[styles.paginationRow, { borderTopColor: colors.borderSubtle }]}>
+          <View style={styles.paginationMetaRow}>
+            <Text style={[styles.paginationInfo, { color: colors.textTertiary }]} numberOfLines={1}>
+              {paginationInfo}
+            </Text>
+            <PageSizeSelector
+              value={pageSize}
+              options={[...RAG_PAGE_SIZE_OPTIONS]}
+              label={t('settings.rag_per_page', '条/页')}
+              onChange={(size) => onPageChange(1, size)}
+            />
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            bounces={false}
+            style={styles.paginationNavScroll}
+            contentContainerStyle={styles.paginationNavContent}
+          >
+            <RagPagination
+              current={safeCurrentPage}
+              total={totalPages}
+              onChange={(page) => onPageChange(page, pageSize)}
+              siblingCount={width >= 400 ? 1 : 0}
+              showJumper
+            />
           </ScrollView>
-          <RagPagination
-            current={currentPage}
-            total={totalPages}
-            onChange={(page) => onPageChange(page, pageSize)}
-            showJumper
-          />
         </View>
-      )}
+      ) : null}
     </View>
   )
 }
