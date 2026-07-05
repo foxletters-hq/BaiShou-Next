@@ -23,7 +23,6 @@ import { useTranslation } from 'react-i18next'
 import { useTts } from './useTts'
 import { usePersistedSharedMemoryLookback } from '../../../hooks/usePersistedSharedMemoryLookback'
 import { usePersistedSearchMode } from './usePersistedSearchMode'
-import { usePersistedSearchMode } from './usePersistedSearchMode'
 import {
   mapSavedAttachmentsForUi,
   isConfiguredDialogueModelId,
