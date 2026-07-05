@@ -1,10 +1,18 @@
 import React from 'react'
 import { View, Text, TouchableOpacity } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import {
+  CheckSquare,
+  ChevronDown,
+  Folder,
+  Share2,
+  Trash2,
+  ZoomIn
+} from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import type { AttachmentManagementViewModel } from './useAttachmentManagementView'
 import { attachmentManagementStyles as styles } from './attachment-management.styles'
-import { formatSize, getFileIconName, isImageFile } from './attachment-management.utils'
+import { formatSize, getFileIcon, isImageFile } from './attachment-management.utils'
 import { AttachmentImageThumb } from './AttachmentImageThumb'
 
 type Vm = Pick<
@@ -49,11 +57,11 @@ export const SessionAttachmentGroupList: React.FC<{ vm: Vm }> = ({ vm }) => {
   if (displayList.length === 0) {
     return (
       <View style={styles.emptyState}>
-        <MaterialIcons
-          name={activeTab === 'orphans' ? 'check-circle' : 'folder-off'}
-          size={40}
-          color={colors.textTertiary}
-        />
+        {activeTab === 'orphans' ? (
+          <CheckSquare size={40} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+        ) : (
+          <Folder size={40} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+        )}
         <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
           {activeTab === 'orphans'
             ? t('settings.attachment_no_orphans', '没有发现已删除会话的残留附件')
@@ -106,10 +114,10 @@ export const SessionAttachmentGroupList: React.FC<{ vm: Vm }> = ({ vm }) => {
                   }
                 ]}
               >
-                <MaterialIcons
-                  name={group.isOrphan ? 'folder-off' : 'folder'}
+                <Folder
                   size={20}
                   color={group.isOrphan ? colors.error : colors.primary}
+                  strokeWidth={DEFAULT_STROKE_WIDTH}
                 />
               </View>
 
@@ -149,14 +157,23 @@ export const SessionAttachmentGroupList: React.FC<{ vm: Vm }> = ({ vm }) => {
                   disabled={isDeleting}
                   hitSlop={8}
                 >
-                  <MaterialIcons name="delete" size={18} color={colors.error} />
+                  <Trash2 size={18} color={colors.error} strokeWidth={DEFAULT_STROKE_WIDTH} />
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.iconBtn} hitSlop={8}>
-                  <MaterialIcons
-                    name={isExpanded ? 'expand-less' : 'expand-more'}
-                    size={22}
-                    color={colors.textSecondary}
-                  />
+                  {isExpanded ? (
+                    <ChevronDown
+                      size={22}
+                      color={colors.textSecondary}
+                      strokeWidth={DEFAULT_STROKE_WIDTH}
+                    />
+                  ) : (
+                    <ChevronDown
+                      size={22}
+                      color={colors.textSecondary}
+                      strokeWidth={DEFAULT_STROKE_WIDTH}
+                      style={{ transform: [{ rotate: '-90deg' }] }}
+                    />
+                  )}
                 </TouchableOpacity>
               </View>
             </TouchableOpacity>
@@ -195,11 +212,7 @@ export const SessionAttachmentGroupList: React.FC<{ vm: Vm }> = ({ vm }) => {
                             { borderColor: colors.borderSubtle, backgroundColor: colors.bgApp }
                           ]}
                         >
-                          <MaterialIcons
-                            name={getFileIconName(file.name)}
-                            size={24}
-                            color={colors.textSecondary}
-                          />
+                          {getFileIcon(file.name, 24, colors.textSecondary)}
                         </View>
                       )}
 
@@ -224,7 +237,11 @@ export const SessionAttachmentGroupList: React.FC<{ vm: Vm }> = ({ vm }) => {
                             onPress={() => handleOpenImagePreview(file.path, file.name)}
                             hitSlop={8}
                           >
-                            <MaterialIcons name="zoom-in" size={18} color={colors.textSecondary} />
+                            <ZoomIn
+                              size={18}
+                              color={colors.textSecondary}
+                              strokeWidth={DEFAULT_STROKE_WIDTH}
+                            />
                           </TouchableOpacity>
                         )}
                         {onOpenFileLocation && (
@@ -233,7 +250,11 @@ export const SessionAttachmentGroupList: React.FC<{ vm: Vm }> = ({ vm }) => {
                             onPress={() => void onOpenFileLocation(file.path)}
                             hitSlop={8}
                           >
-                            <MaterialIcons name="share" size={16} color={colors.textSecondary} />
+                            <Share2
+                              size={16}
+                              color={colors.textSecondary}
+                              strokeWidth={DEFAULT_STROKE_WIDTH}
+                            />
                           </TouchableOpacity>
                         )}
                         <TouchableOpacity
@@ -242,7 +263,7 @@ export const SessionAttachmentGroupList: React.FC<{ vm: Vm }> = ({ vm }) => {
                           disabled={isDeleting}
                           hitSlop={8}
                         >
-                          <MaterialIcons name="delete-outline" size={16} color={colors.error} />
+                          <Trash2 size={16} color={colors.error} strokeWidth={DEFAULT_STROKE_WIDTH} />
                         </TouchableOpacity>
                       </View>
                     </View>

@@ -33,6 +33,7 @@ import {
   MissingSummaryDetector,
   SummaryGeneratorService,
   buildSharedContextText,
+  computeSharedMemoryCopyPreview,
   type ImportResult,
   type SyncConfig
 } from '@baishou/core-mobile'
@@ -43,7 +44,8 @@ import {
   isConfiguredDialogueModelId,
   filterDiaryScopedSearchResults,
   isAgentStreamAbortError,
-  type SummaryPromptLocale
+  type SummaryPromptLocale,
+  type SharedMemoryCopyPreview
 } from '@baishou/shared'
 import { getTtsPlaybackSettings } from '../services/mobile-tts-settings.service'
 import { shouldRefreshVaultAfterArchiveImport } from '../services/archive-guards.util'
@@ -252,6 +254,8 @@ interface BaishouContextValue {
     profileRepo: UserProfileRepository
     /** 与桌面 summary:buildSharedContext 一致（总结 + 级联折叠后的日记） */
     buildSharedContext: (lookbackMonths: number, locale?: string) => Promise<string>
+    /** 与桌面 summary:buildSharedContextPreview 一致（复制前级联统计预览） */
+    buildSharedContextPreview: (lookbackMonths: number) => Promise<SharedMemoryCopyPreview>
     /** 与桌面 agent:get-context-at-message 一致 */
     getContextAtMessage: (
       sessionId: string,
@@ -667,6 +671,23 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           const allSummaries = await summaryManager.list()
           const diaries = await stack.shadowRepo.listAllWithFTS({ limit: 10000 })
           return buildSharedContextText(allSummaries, lookbackMonths, locale, { diaries })
+        }
+
+        const buildSharedContextPreview = async (lookbackMonths: number) => {
+          const stack = diaryStackRef.current
+          const empty: SharedMemoryCopyPreview = {
+            lookbackMonths,
+            yearly: 0,
+            quarterly: 0,
+            monthly: 0,
+            weekly: 0,
+            diary: 0,
+            total: 0
+          }
+          if (!stack) return empty
+          const allSummaries = await summaryManager.list()
+          const diaries = await stack.shadowRepo.listAllWithFTS({ limit: 10000 })
+          return computeSharedMemoryCopyPreview(allSummaries, diaries, lookbackMonths)
         }
 
         const agentService = new AgentSessionService()
@@ -1948,6 +1969,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               settingsRepo: agentDbRuntimeRef.current?.settingsRepo ?? settingsRepo,
               profileRepo: agentDbRuntimeRef.current?.profileRepo ?? profileRepo,
               buildSharedContext,
+              buildSharedContextPreview,
               getContextAtMessage
             },
             startAgentChat

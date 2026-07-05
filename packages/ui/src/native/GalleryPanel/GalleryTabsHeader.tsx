@@ -1,8 +1,9 @@
 import React from 'react'
 import { View, Text, Pressable, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { MaterialIcons } from '@expo/vector-icons'
+import { ChevronDown, ChevronUp } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { SUMMARY_TABS, type SummaryTab } from './gallery-panel.utils'
 
 interface GalleryTabsHeaderProps {
@@ -87,11 +88,11 @@ export const GalleryTabsHeader: React.FC<GalleryTabsHeaderProps> = ({
                 ? t('gallery.filter_all_years')
                 : `${selectedYear}${t('common.year_suffix')}`}
             </Text>
-            <MaterialIcons
-              name={isYearPickerOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
-              size={18}
-              color={colors.textSecondary}
-            />
+            {isYearPickerOpen ? (
+              <ChevronUp size={18} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+            ) : (
+              <ChevronDown size={18} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+            )}
           </Pressable>
         ) : null}
       </View>
@@ -130,11 +131,11 @@ export const GalleryTabsHeader: React.FC<GalleryTabsHeaderProps> = ({
               ? t('gallery.filter_all_years')
               : `${selectedYear}${t('common.year_suffix')}`}
           </Text>
-          <MaterialIcons
-            name={isYearPickerOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
-            size={16}
-            color={colors.textSecondary}
-          />
+          {isYearPickerOpen ? (
+            <ChevronUp size={16} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+          ) : (
+            <ChevronDown size={16} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+          )}
         </Pressable>
       )}
     </View>

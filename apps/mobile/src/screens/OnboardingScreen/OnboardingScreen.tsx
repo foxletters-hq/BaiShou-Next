@@ -9,7 +9,7 @@ import {
   Animated,
   BackHandler
 } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { ChevronLeft, ChevronRight } from 'lucide-react-native'
 import { Image } from 'react-native'
 import { useRouter, useNavigation, useLocalSearchParams } from 'expo-router'
 import { useTranslation } from 'react-i18next'
@@ -442,7 +442,7 @@ export const OnboardingScreen: React.FC = () => {
           <View style={styles.navActions}>
             {currentPage > ONBOARDING_PAGE.LANGUAGE && (
               <TouchableOpacity onPress={handlePrevious} style={styles.backButton}>
-                <MaterialIcons name="arrow-back-ios" size={12} color="#9CA3AF" />
+                <ChevronLeft size={12} color="#9CA3AF" strokeWidth={2} />
                 <Text style={styles.backText}>{t('common.back')}</Text>
               </TouchableOpacity>
             )}
@@ -472,7 +472,7 @@ export const OnboardingScreen: React.FC = () => {
                     : t('common.next')}
               </Text>
               {!isLast && !isMountingStorage && (
-                <MaterialIcons name="arrow-forward-ios" size={14} color="#FFFFFF" />
+                <ChevronRight size={14} color="#FFFFFF" strokeWidth={2} />
               )}
             </TouchableOpacity>
           </View>

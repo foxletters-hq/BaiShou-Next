@@ -9,9 +9,10 @@ import {
   Modal,
   StyleSheet
 } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { Check, Pencil, X } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { settingsSelectorStyles } from '../SettingsSelector/settings-selector.styles'
 
 interface TtsModelComboboxProps {
@@ -120,7 +121,7 @@ export const TtsModelCombobox: React.FC<TtsModelComboboxProps> = ({
                 {t('tts.settings.model_id_label', '模型 ID')}
               </Text>
               <TouchableOpacity onPress={close} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <MaterialIcons name="close" size={22} color={colors.textSecondary} />
+                <X size={22} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
               </TouchableOpacity>
             </View>
 
@@ -153,7 +154,7 @@ export const TtsModelCombobox: React.FC<TtsModelComboboxProps> = ({
                   style={[comboboxStyles.optionItem, { backgroundColor: colors.primaryLight }]}
                   onPress={applyCustom}
                 >
-                  <MaterialIcons name="edit" size={18} color={colors.primary} />
+                  <Pencil size={18} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                   <Text
                     style={[comboboxStyles.optionText, { color: colors.primary }]}
                     numberOfLines={1}
@@ -187,7 +188,7 @@ export const TtsModelCombobox: React.FC<TtsModelComboboxProps> = ({
                     >
                       {opt}
                     </Text>
-                    {selected && <MaterialIcons name="check" size={18} color={colors.primary} />}
+                    {selected && <Check size={18} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />}
                   </TouchableOpacity>
                 )
               })}

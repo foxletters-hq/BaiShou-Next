@@ -1,7 +1,7 @@
 import React from 'react'
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native'
 import { useRouter } from 'expo-router'
-import { useNativeTheme, scrollIndicatorStyle } from '@baishou/ui/native'
+import { useNativeTheme, scrollIndicatorStyle, SettingsNavIcon } from '@baishou/ui/native'
 import { useTranslation } from 'react-i18next'
 import { CompactTabHeader } from '../../components/CompactTabHeader'
 import {
@@ -49,6 +49,14 @@ export const SettingsScreen: React.FC = () => {
       onPress={() => navigate(item.route)}
       activeOpacity={0.65}
     >
+      <View
+        style={[
+          styles.listItemIcon,
+          { backgroundColor: colors.bgSurfaceNormal }
+        ]}
+      >
+        <SettingsNavIcon id={item.icon} size={18} color={colors.textSecondary} />
+      </View>
       <Text style={[styles.listItemTitle, { color: colors.textPrimary }]} numberOfLines={1}>
         {t(item.titleKey)}
       </Text>
@@ -132,6 +140,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 13,
     gap: 12
+  },
+  listItemIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   listItemTitle: {
     flex: 1,

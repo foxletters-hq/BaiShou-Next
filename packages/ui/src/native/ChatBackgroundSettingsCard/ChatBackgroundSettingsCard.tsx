@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { MaterialIcons } from '@expo/vector-icons'
+import { Image as ImageIcon } from 'lucide-react-native'
 import {
   CHAT_BACKGROUND_BLUR_MAX,
   CHAT_BACKGROUND_BLUR_MIN,
@@ -14,6 +14,7 @@ import {
   chatBackgroundOverlayAlpha
 } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { SettingsExpansionTile } from '../settings/SettingsExpansionTile'
 import { SettingsSliderRow } from '../settings/SettingsSliderRow'
 
@@ -115,7 +116,7 @@ export const ChatBackgroundSettingsCard: React.FC<ChatBackgroundSettingsProps> =
               { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }
             ]}
           >
-            <MaterialIcons name="wallpaper" size={32} color={colors.textSecondary} />
+            <ImageIcon size={32} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
             <Text style={[styles.previewPlaceholderText, { color: colors.textSecondary }]}>
               {t('settings.chat_background_pick_hint', '点击选择背景')}
             </Text>

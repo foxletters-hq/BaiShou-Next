@@ -1,9 +1,10 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import { View, Text, Pressable, TextInput } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { getNativeElevationStyle, useNativeTheme } from '../theme'
 import { paginationStyles as styles } from './pagination.styles'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 
 export interface NativePaginationProps {
   /** 当前页码（从 1 开始） */
@@ -174,7 +175,7 @@ export const Pagination: React.FC<NativePaginationProps> = ({
           style={navBtnStyle(disabled || current <= 1)}
           accessibilityLabel={t('common.pagination_first_page', 'First page')}
         >
-          <MaterialIcons name="keyboard-double-arrow-left" size={16} color={colors.textPrimary} />
+          <ChevronsLeft size={14} color={colors.textPrimary} strokeWidth={DEFAULT_STROKE_WIDTH} />
         </Pressable>
       )}
 
@@ -184,7 +185,7 @@ export const Pagination: React.FC<NativePaginationProps> = ({
         style={navBtnStyle(disabled || current <= 1)}
         accessibilityLabel={t('common.pagination_previous_page', 'Previous page')}
       >
-        <MaterialIcons name="chevron-left" size={18} color={colors.textPrimary} />
+        <ChevronLeft size={14} color={colors.textPrimary} strokeWidth={DEFAULT_STROKE_WIDTH} />
       </Pressable>
 
       {pageRange.map((page, index) => renderPageButton(page, index))}
@@ -195,7 +196,7 @@ export const Pagination: React.FC<NativePaginationProps> = ({
         style={navBtnStyle(disabled || current >= total)}
         accessibilityLabel={t('common.pagination_next_page', 'Next page')}
       >
-        <MaterialIcons name="chevron-right" size={18} color={colors.textPrimary} />
+        <ChevronRight size={14} color={colors.textPrimary} strokeWidth={DEFAULT_STROKE_WIDTH} />
       </Pressable>
 
       {showFirstLast && (
@@ -205,7 +206,7 @@ export const Pagination: React.FC<NativePaginationProps> = ({
           style={navBtnStyle(disabled || current >= total)}
           accessibilityLabel={t('common.pagination_last_page', 'Last page')}
         >
-          <MaterialIcons name="keyboard-double-arrow-right" size={16} color={colors.textPrimary} />
+          <ChevronsRight size={14} color={colors.textPrimary} strokeWidth={DEFAULT_STROKE_WIDTH} />
         </Pressable>
       )}
 

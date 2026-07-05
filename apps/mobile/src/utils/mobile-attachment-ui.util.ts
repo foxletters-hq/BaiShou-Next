@@ -1,4 +1,6 @@
 import {
+  emojiVaultKeyToAttachmentsRelativePath,
+  isEmojiVaultRelativePath,
   mapSavedAttachmentsForUi,
   resolveAttachmentAbsolutePath,
   type MockChatAttachment
@@ -28,6 +30,11 @@ export function resolveMobileAttachmentFilePath(
 
   const root = storageRoot.replace(/\\/g, '/').replace(/\/+$/, '')
   const abs = resolveAttachmentAbsolutePath(trimmed).replace(/\\/g, '/')
+
+  if (isEmojiVaultRelativePath(trimmed)) {
+    const attachmentsRel = emojiVaultKeyToAttachmentsRelativePath(trimmed)
+    return toFileUri(`${root}/${attachmentsRel}`)
+  }
 
   if (abs.startsWith(`${root}/`) || abs === root) {
     return toFileUri(abs)

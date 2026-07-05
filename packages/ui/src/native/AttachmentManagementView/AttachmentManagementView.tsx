@@ -7,8 +7,9 @@ import {
   RefreshControl,
   ScrollView
 } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { NotebookText, Folder } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { NativeImagePreviewModal } from '../DiaryEditor/NativeImagePreviewModal'
 import type { AttachmentManagementViewProps } from './attachment-management.types'
 import { useAttachmentManagementView } from './useAttachmentManagementView'
@@ -50,10 +51,10 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
             ]}
             onPress={() => vm.setActivePane('diary')}
           >
-            <MaterialIcons
-              name="event-note"
+            <NotebookText
               size={16}
               color={vm.activePane === 'diary' ? colors.textOnPrimary : colors.textSecondary}
+              strokeWidth={DEFAULT_STROKE_WIDTH}
             />
             <Text
               style={[
@@ -73,10 +74,10 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
             ]}
             onPress={() => vm.setActivePane('session')}
           >
-            <MaterialIcons
-              name="folder"
+            <Folder
               size={16}
               color={vm.activePane === 'session' ? colors.textOnPrimary : colors.textSecondary}
+              strokeWidth={DEFAULT_STROKE_WIDTH}
             />
             <Text
               style={[

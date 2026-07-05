@@ -3,7 +3,7 @@ import { View, Text, Pressable, StyleSheet, useWindowDimensions, Platform } from
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import { useIsFocused } from '@react-navigation/native'
 import { useTranslation } from 'react-i18next'
-import { MaterialIcons } from '@expo/vector-icons'
+import { LayoutDashboard, Layers } from 'lucide-react-native'
 import { useNativeTheme } from '@baishou/ui/native'
 
 interface SummaryTabBarProps {
@@ -69,10 +69,10 @@ export const SummaryTabBar: React.FC<SummaryTabBarProps> = ({ activeTab, onTabCh
           ]}
         />
         <Pressable style={styles.tab} onPress={() => onTabChange('panel')}>
-          <MaterialIcons
-            name="dashboard"
+          <LayoutDashboard
             size={18}
             color={activeTab === 'panel' ? colors.primary : colors.textSecondary}
+            strokeWidth={2}
           />
           <Text
             style={[
@@ -84,10 +84,10 @@ export const SummaryTabBar: React.FC<SummaryTabBarProps> = ({ activeTab, onTabCh
           </Text>
         </Pressable>
         <Pressable style={styles.tab} onPress={() => onTabChange('gallery')}>
-          <MaterialIcons
-            name="layers"
+          <Layers
             size={18}
             color={activeTab === 'gallery' ? colors.primary : colors.textSecondary}
+            strokeWidth={2}
           />
           <Text
             style={[

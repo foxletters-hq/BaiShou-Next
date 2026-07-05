@@ -1,7 +1,8 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { MaterialIcons } from '@expo/vector-icons'
+import { Eye } from 'lucide-react-native'
 import { isVisionModel } from '@baishou/shared'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import type { ModelVisionBadgeProps } from './ModelVisionBadge'
 
 export function ModelVisionBadge({
@@ -17,9 +18,9 @@ export function ModelVisionBadge({
   }
 
   return (
-    <MaterialIcons
-      name="visibility"
+    <Eye
       size={size}
+      strokeWidth={DEFAULT_STROKE_WIDTH}
       accessibilityLabel={t('models.vision_supported', '支持视觉多模态')}
       style={[{ marginLeft: 4, opacity: 0.75 }, style]}
     />

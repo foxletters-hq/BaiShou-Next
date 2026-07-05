@@ -109,7 +109,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = (props) => {
     markdownStyle,
     md4cFlags: STATIC_MD4C_FLAGS,
     onLinkPress: handleLinkPress,
-    selectable: true as const,
+    selectable: variant !== 'preview',
     containerStyle: nativeContainerStyle
   }
 

@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
-import { MaterialCommunityIcons } from '@expo/vector-icons'
+import type { LucideIcon } from 'lucide-react-native'
+import { Database, MessageCircle, Pencil, ScrollText } from 'lucide-react-native'
 import {
   useNativeTheme,
   useNativeToast,
@@ -24,31 +25,31 @@ type ModelSelectorKey = 'globalDialogue' | 'globalNaming' | 'globalSummary' | 'g
 const MODEL_FIELD_META: Array<{
   key: ModelSelectorKey
   labelKey: string
-  icon: keyof typeof MaterialCommunityIcons.glyphMap
+  icon: LucideIcon
   forEmbedding: boolean
 }> = [
   {
     key: 'globalSummary',
     labelKey: 'ai_config.summary_model_title',
-    icon: 'file-document-outline',
+    icon: ScrollText,
     forEmbedding: false
   },
   {
     key: 'globalDialogue',
     labelKey: 'ai_config.dialogue_model_title',
-    icon: 'chat-outline',
+    icon: MessageCircle,
     forEmbedding: false
   },
   {
     key: 'globalNaming',
     labelKey: 'ai_config.naming_model_title',
-    icon: 'pencil-outline',
+    icon: Pencil,
     forEmbedding: false
   },
   {
     key: 'globalEmbedding',
     labelKey: 'ai_config.embedding_model_title',
-    icon: 'hub',
+    icon: Database,
     forEmbedding: true
   }
 ]
@@ -179,6 +180,7 @@ export const AIModelsSection: React.FC = () => {
       </Text>
 
       {MODEL_FIELD_META.map((field) => {
+        const RouteIcon = field.icon
         const providerKey = `${field.key}ProviderId` as keyof GlobalModelsConfig
         const modelKey = `${field.key}ModelId` as keyof GlobalModelsConfig
         const isSet = Boolean(globalModels[providerKey] && globalModels[modelKey])
@@ -204,10 +206,10 @@ export const AIModelsSection: React.FC = () => {
                   }
                 ]}
               >
-                <MaterialCommunityIcons
-                  name={field.icon}
+                <RouteIcon
                   size={20}
                   color={field.forEmbedding ? colors.error : colors.primary}
+                  strokeWidth={2}
                 />
               </View>
               <Text style={[styles.routeName, { color: colors.textPrimary }]}>

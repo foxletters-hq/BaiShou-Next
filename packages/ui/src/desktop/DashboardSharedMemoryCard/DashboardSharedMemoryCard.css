@@ -114,8 +114,13 @@
   transition: opacity 0.2s;
 }
 
-.sm-btn:hover {
+.sm-btn:hover:not(:disabled) {
   opacity: 0.9;
+}
+
+.sm-btn:disabled {
+  opacity: 0.85;
+  cursor: not-allowed;
 }
 
 .sm-help-icon-wrapper {

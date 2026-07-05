@@ -28,6 +28,7 @@ import {
   prepareDiaryWriteContent,
   logger,
   parseDateStr,
+  resolveDiaryEditMode,
   formatUserCardFromProfile,
   isConfiguredProviderId,
   isConfiguredDialogueModelId,
@@ -192,7 +193,8 @@ export function createDiarySearcher() {
           }
 
           let finalContent = content
-          if (mode === 'append') {
+          const editMode = resolveDiaryEditMode(mode)
+          if (editMode === 'append') {
             const templateConfig = (await settingsManager.get<any>('diary_template_config')) || {}
             finalContent = prepareDiaryAppendContent(
               existing.content,

@@ -1,6 +1,16 @@
 import React, { useState, useCallback } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
+import { View, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import {
+  Check,
+  Copy,
+  Edit3,
+  GitBranch,
+  ListTree,
+  RefreshCcw,
+  Trash2,
+  Volume2
+} from 'lucide-react-native'
 import { NativeIconButton } from '../icons/NativeIconButton'
 import { useNativeTheme } from '../theme'
 import {
@@ -45,8 +55,6 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
   const [copied, setCopied] = useState(false)
   const iconSize = comfortableTouch ? 16 : 14
   const iconButtonStyle = comfortableTouch ? styles.comfortableIconButton : undefined
-  const contextBtnStyle = comfortableTouch ? styles.comfortableContextBtn : styles.contextBtn
-  const contextIconStyle = comfortableTouch ? styles.comfortableContextIcon : styles.contextIcon
 
   const invertIconProps = (skipInvert = false) =>
     invertOverBackground && !skipInvert
@@ -73,7 +81,7 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
       ]}
     >
       <NativeIconButton
-        name={copied ? 'check' : 'content-copy'}
+        icon={copied ? Check : Copy}
         onPress={handleCopy}
         size={iconSize}
         style={iconButtonStyle}
@@ -84,7 +92,7 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
 
       {isAI && onReadAloud && (
         <NativeIconButton
-          name="volume-up"
+          icon={Volume2}
           onPress={onReadAloud}
           size={iconSize}
           style={iconButtonStyle}
@@ -97,7 +105,7 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
 
       {onEdit && (
         <NativeIconButton
-          name="edit"
+          icon={Edit3}
           onPress={onEdit}
           size={iconSize}
           style={iconButtonStyle}
@@ -111,7 +119,7 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
 
       {onRetry && (
         <NativeIconButton
-          name="refresh"
+          icon={RefreshCcw}
           onPress={handleRetry}
           size={iconSize}
           style={iconButtonStyle}
@@ -123,7 +131,7 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
 
       {isAI && onBranch && (
         <NativeIconButton
-          name="call-split"
+          icon={GitBranch}
           onPress={onBranch}
           size={iconSize}
           style={iconButtonStyle}
@@ -133,20 +141,19 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
       )}
 
       {onShowContext && (
-        <TouchableOpacity
+        <NativeIconButton
+          icon={ListTree}
           onPress={onShowContext}
-          style={contextBtnStyle}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          accessibilityRole="button"
+          size={iconSize}
+          style={iconButtonStyle}
           accessibilityLabel={t('chat.viewContextTree', '查看发送给 AI 的上下文')}
-        >
-          <Text style={contextIconStyle}>🌿</Text>
-        </TouchableOpacity>
+          {...invertIconProps()}
+        />
       )}
 
       {onDelete && (
         <NativeIconButton
-          name="delete-outline"
+          icon={Trash2}
           onPress={onDelete}
           size={iconSize}
           style={iconButtonStyle}
@@ -179,25 +186,5 @@ const styles = StyleSheet.create({
   },
   alignRight: {
     justifyContent: 'flex-end'
-  },
-  contextBtn: {
-    width: 26,
-    height: 26,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  comfortableContextBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 7,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  contextIcon: {
-    fontSize: 14
-  },
-  comfortableContextIcon: {
-    fontSize: 16
   }
 })

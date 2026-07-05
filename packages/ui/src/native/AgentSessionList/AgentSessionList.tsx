@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { View, Text, Pressable, FlatList, ActivityIndicator } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { Search } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { Input } from '../Input/Input'
 import type { AgentSession, AgentSessionListProps } from './agent-session-list.types'
 export type { AgentSession, AgentSessionListProps } from './agent-session-list.types'
@@ -92,7 +93,7 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
           onChangeText={setSearchQuery}
           className="rounded-full min-h-10"
           style={styles.searchInput}
-          leftSlot={<MaterialIcons name="search" size={18} color={colors.textTertiary} />}
+          leftSlot={<Search size={18} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />}
           rightSlot={
             searchQuery.length > 0 ? (
               <Pressable onPress={() => setSearchQuery('')} hitSlop={8}>

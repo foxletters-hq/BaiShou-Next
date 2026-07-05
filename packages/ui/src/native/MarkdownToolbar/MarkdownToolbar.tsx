@@ -9,9 +9,18 @@ import {
   type NativeSyntheticEvent,
   type NativeScrollEvent
 } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import {
+  Code,
+  Image,
+  List,
+  Quote,
+  Redo2,
+  SlidersHorizontal,
+  Undo2
+} from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../../native/theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import type { DiaryCmMarkdownMark } from '../../shared/diary-codemirror/types'
 import { MarkdownToolbarSettingsSheet } from './MarkdownToolbarSettingsSheet'
 import {
@@ -130,7 +139,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
               disabled={!onUndo}
               accessibilityLabel={t('diary.toolbar_undo', '撤销')}
             >
-              <MaterialIcons name="undo" size={22} color={onUndo ? iconColor : disabledIcon} />
+              <Undo2 size={22} color={onUndo ? iconColor : disabledIcon} strokeWidth={DEFAULT_STROKE_WIDTH} />
             </ToolbarButton>
           )
         case 'redo':
@@ -142,7 +151,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
               disabled={!onRedo}
               accessibilityLabel={t('diary.toolbar_redo', '重做')}
             >
-              <MaterialIcons name="redo" size={22} color={onRedo ? iconColor : disabledIcon} />
+              <Redo2 size={22} color={onRedo ? iconColor : disabledIcon} strokeWidth={DEFAULT_STROKE_WIDTH} />
             </ToolbarButton>
           )
         case 'bold':
@@ -213,11 +222,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
               disabled={!onToggleMark}
               accessibilityLabel={t('diary.toolbar_code', '行内代码')}
             >
-              <MaterialIcons
-                name="code"
-                size={22}
-                color={onToggleMark ? iconColor : disabledIcon}
-              />
+              <Code size={22} color={onToggleMark ? iconColor : disabledIcon} strokeWidth={DEFAULT_STROKE_WIDTH} />
             </ToolbarButton>
           )
         case 'quote':
@@ -228,7 +233,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
               onPress={guardPress(() => onInsertText('> '))}
               accessibilityLabel={t('diary.toolbar_quote', '引用')}
             >
-              <MaterialIcons name="format-quote" size={22} color={iconColor} />
+              <Quote size={22} color={iconColor} strokeWidth={DEFAULT_STROKE_WIDTH} />
             </ToolbarButton>
           )
         case 'list':
@@ -239,7 +244,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
               onPress={guardPress(() => onInsertText('- '))}
               accessibilityLabel={t('diary.toolbar_list', '无序列表')}
             >
-              <MaterialIcons name="format-list-bulleted" size={22} color={iconColor} />
+              <List size={22} color={iconColor} strokeWidth={DEFAULT_STROKE_WIDTH} />
             </ToolbarButton>
           )
         case 'hash':
@@ -287,11 +292,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
               {pickingImages ? (
                 <ActivityIndicator size="small" color={colors.primary} />
               ) : (
-                <MaterialIcons
-                  name="image"
-                  size={22}
-                  color={onPickImages ? iconColor : disabledIcon}
-                />
+                <Image size={22} color={onPickImages ? iconColor : disabledIcon} strokeWidth={DEFAULT_STROKE_WIDTH} />
               )}
             </ToolbarButton>
           )
@@ -325,7 +326,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
           onPress={guardPress(() => setSettingsVisible(true))}
           accessibilityLabel={t('diary.toolbar_settings', '工具栏设置')}
         >
-          <MaterialIcons name="tune" size={22} color={iconColor} />
+          <SlidersHorizontal size={22} color={iconColor} strokeWidth={DEFAULT_STROKE_WIDTH} />
         </ToolbarButton>
       )
     }

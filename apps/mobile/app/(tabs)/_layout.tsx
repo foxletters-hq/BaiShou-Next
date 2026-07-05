@@ -1,10 +1,9 @@
 import { Tabs } from 'expo-router'
 import React, { useMemo } from 'react'
 import { Platform, StyleSheet } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useNativeTheme } from '@baishou/ui/native'
+import { useNativeTheme, AppTabIcon } from '@baishou/ui/native'
 import { HapticTab } from '../../components/haptic-tab'
 import { fadeTabAnimation } from '@/src/navigation/fadeStackAnimation'
 
@@ -55,7 +54,7 @@ export default function TabLayout() {
             ...sharedTabBarStyle,
             backgroundColor: colors.bgSurface
           },
-          tabBarIcon: ({ color }) => <MaterialIcons name="timeline" size={24} color={color} />
+          tabBarIcon: ({ color }) => <AppTabIcon id="diary" color={color} />
         }}
       />
       <Tabs.Screen
@@ -63,21 +62,21 @@ export default function TabLayout() {
         options={{
           title: t('nav.agent'),
           tabBarHideOnKeyboard: false,
-          tabBarIcon: ({ color }) => <MaterialIcons name="auto-awesome" size={24} color={color} />
+          tabBarIcon: ({ color }) => <AppTabIcon id="agent" color={color} />
         }}
       />
       <Tabs.Screen
         name="summary"
         options={{
           title: t('summary.dashboard_title'),
-          tabBarIcon: ({ color }) => <MaterialIcons name="menu-book" size={24} color={color} />
+          tabBarIcon: ({ color }) => <AppTabIcon id="summary" color={color} />
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: t('nav.settings'),
-          tabBarIcon: ({ color }) => <MaterialIcons name="settings" size={24} color={color} />
+          tabBarIcon: ({ color }) => <AppTabIcon id="settings" color={color} />
         }}
       />
     </Tabs>

@@ -28,6 +28,7 @@ import {
   prepareDiaryAppendContent,
   prepareDiaryWriteContent,
   isUsingExternalVaultDirectory,
+  resolveDiaryEditMode,
   type DiaryTemplateConfig
 } from '@baishou/shared'
 import { mergeDiaryTags, type ToolDiaryMutationResult } from '@baishou/ai'
@@ -284,7 +285,8 @@ export function createVaultBoundDiaryStack(deps: {
         }
 
         let finalContent = content
-        if (mode === 'append') {
+        const editMode = resolveDiaryEditMode(mode)
+        if (editMode === 'append') {
           const templateConfig: DiaryTemplateConfig = deps.settingsManager
             ? (await deps.settingsManager.get<DiaryTemplateConfig>('diary_template_config')) || {}
             : {}
