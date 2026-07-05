@@ -1,19 +1,7 @@
-import React, {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-  useRef
-} from 'react'
-import { Keyboard, Platform, StyleSheet, View, type ViewStyle } from 'react-native'
+import React, { forwardRef, useEffect, useImperativeHandle, useMemo } from 'react'
+import { Platform, StyleSheet, View, type ViewStyle } from 'react-native'
 import { WebView } from 'react-native-webview'
-import type {
-  DiaryCmConfirmRequestPayload,
-  DiaryCmTheme,
-  DiaryCmMarkdownMark
-} from '../../shared/diary-codemirror/types'
-import { useDialog } from '../Dialog/Dialog'
+import type { DiaryCmTheme } from '../../shared/diary-codemirror/types'
 import { useNativeTheme } from '../theme'
 import { buildDiaryCmThemeFromNative } from './diary-cm-theme.util'
 import {
@@ -26,8 +14,6 @@ const EDITOR_MIN_HEIGHT = 320
 export interface DiaryEditorWebViewDocument {
   uri: string
   baseUrl: string
-  /** bundle 版本戳；变化时强制 WebView remount */
-  cacheKey: string
 }
 
 export interface NativeDiaryCodeMirrorEditorHandle {
@@ -35,35 +21,29 @@ export interface NativeDiaryCodeMirrorEditorHandle {
   blur: () => void
   insertAtCursor: (text: string) => void
   insertAtRange: (start: number, end: number, text: string) => void
-  undo: () => void
-  redo: () => void
-  toggleMarkdownMark: (marker: DiaryCmMarkdownMark) => void
-  deleteRange: (from: number, to: number) => void
 }
 
-export interface NativeDiaryCodeMirrorEditorProps extends Pick<
-  UseDiaryCodeMirrorBridgeOptions,
-  | 'content'
-  | 'placeholder'
-  | 'editable'
-  | 'onChange'
-  | 'onSelectionChange'
-  | 'onFocus'
-  | 'onBlur'
-  | 'onContentHeight'
-  | 'onCaretViewport'
-  | 'onPanScroll'
-  | 'tagColorRegistry'
-  | 'onImageAction'
-  | 'onImagePreview'
-  | 'resolveAttachmentUrl'
-  | 'onDismissKeyboard'
-  | 'onConfirmRequest'
-  | 'onTableSheetRequest'
-> {
+export interface NativeDiaryCodeMirrorEditorProps
+  extends Pick<
+    UseDiaryCodeMirrorBridgeOptions,
+    | 'content'
+    | 'placeholder'
+    | 'editable'
+    | 'onChange'
+    | 'onSelectionChange'
+    | 'onFocus'
+    | 'onBlur'
+    | 'onContentHeight'
+    | 'onCaretViewport'
+    | 'onPanScroll'
+    | 'tagColorRegistry'
+    | 'onImageAction'
+    | 'onImagePreview'
+    | 'resolveAttachmentUrl'
+  > {
   /** WebView 文档（同目录 index.html + bundle，由宿主 app 预加载后传入） */
   editorWebViewSource: DiaryEditorWebViewDocument
-  /** 页面聚焦时为 true；失焦时仅 blur，不卸载 WebView（避免模态动画期间反复 reload） */
+  /** 页面聚焦时为 true；false 时卸载 WebView 释放内存（P-5） */
   active?: boolean
   /** 键盘弹出高度，用于 WebView 容器底部 inset（I-13） */
   keyboardInset?: number
@@ -75,7 +55,6 @@ export interface NativeDiaryCodeMirrorEditorProps extends Pick<
   minHeight?: number
   /** 填满父级剩余空间，在固定顶栏布局下启用 */
   fillViewport?: boolean
-  style?: ViewStyle
 }
 
 export const NativeDiaryCodeMirrorEditor = forwardRef<
@@ -102,9 +81,6 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
     onImageAction,
     onImagePreview,
     resolveAttachmentUrl,
-    onDismissKeyboard,
-    onConfirmRequest,
-    onTableSheetRequest,
     style,
     minHeight = EDITOR_MIN_HEIGHT,
     fillViewport = false
@@ -116,29 +92,6 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
     () => themeOverride ?? buildDiaryCmThemeFromNative(isDark, colors),
     [colors, isDark, themeOverride]
   )
-
-  const dialog = useDialog()
-
-  const defaultDismissKeyboard = useCallback(() => {
-    Keyboard.dismiss()
-  }, [])
-
-  const defaultConfirmRequest = useCallback(
-    (payload: DiaryCmConfirmRequestPayload, respond: (confirmed: boolean) => void) => {
-      void dialog
-        .confirm(payload.message, {
-          title: payload.title ?? '确认删除',
-          confirmText: payload.confirmText ?? '删除',
-          cancelText: payload.cancelText ?? '取消',
-          destructive: payload.destructive ?? true
-        })
-        .then(respond)
-    },
-    [dialog]
-  )
-
-  const handleDismissKeyboard = onDismissKeyboard ?? defaultDismissKeyboard
-  const handleConfirmRequest = onConfirmRequest ?? defaultConfirmRequest
 
   const bridge = useDiaryCodeMirrorBridge({
     content,
@@ -156,52 +109,26 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
     onImageAction,
     onImagePreview,
     resolveAttachmentUrl,
-    bottomScrollInset,
-    onDismissKeyboard: handleDismissKeyboard,
-    onConfirmRequest: handleConfirmRequest,
-    onTableSheetRequest
+    bottomScrollInset
   })
 
   useEffect(() => {
     if (!active) bridge.blur()
   }, [active, bridge.blur])
 
-  const prevKeyboardInsetRef = useRef(0)
-  const editorReadyAtRef = useRef(0)
-  const EDITOR_KEYBOARD_SCROLL_GRACE_MS = 2000
-
   useEffect(() => {
-    if (__DEV__) {
-      console.log('[DiaryEditor] setScrollInsets', {
-        bottomScrollInset,
-        keyboardInset,
-        keyboardVisible: keyboardInset > 0
-      })
+    bridge.setScrollInsets(bottomScrollInset)
+    if (bottomScrollInset > 0) {
+      requestAnimationFrame(() => bridge.scrollCaretIntoView())
     }
-    bridge.setScrollInsets(bottomScrollInset, keyboardInset > 0)
-  }, [bottomScrollInset, keyboardInset, bridge.setScrollInsets])
+  }, [bottomScrollInset, bridge.setScrollInsets, bridge.scrollCaretIntoView])
 
   useEffect(() => {
-    const prev = prevKeyboardInsetRef.current
-    prevKeyboardInsetRef.current = keyboardInset
     if (keyboardInset <= 0) return
-    if (prev > 0) return
-    const readyAt = editorReadyAtRef.current
-    if (readyAt > 0 && Date.now() - readyAt < EDITOR_KEYBOARD_SCROLL_GRACE_MS) return
     const delayMs = Platform.OS === 'ios' ? 120 : 220
-    const timer = setTimeout(() => {
-      if (Date.now() - editorReadyAtRef.current < EDITOR_KEYBOARD_SCROLL_GRACE_MS) return
-      bridge.scrollCaretIntoView()
-    }, delayMs)
-    const retryTimer = setTimeout(() => {
-      if (Date.now() - editorReadyAtRef.current < EDITOR_KEYBOARD_SCROLL_GRACE_MS) return
-      bridge.scrollCaretIntoView()
-    }, delayMs + 320)
-    return () => {
-      clearTimeout(timer)
-      clearTimeout(retryTimer)
-    }
-  }, [keyboardInset, bridge.scrollCaretIntoView])
+    const timer = setTimeout(() => bridge.scrollCaretIntoView(), delayMs)
+    return () => clearTimeout(timer)
+  }, [keyboardInset, bottomScrollInset, bridge.scrollCaretIntoView])
 
   useImperativeHandle(
     ref,
@@ -209,22 +136,9 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
       focusAtOffset: bridge.focusAtOffset,
       blur: bridge.blur,
       insertAtCursor: bridge.insertAtCursor,
-      insertAtRange: bridge.insertAtRange,
-      undo: bridge.undo,
-      redo: bridge.redo,
-      toggleMarkdownMark: bridge.toggleMarkdownMark,
-      deleteRange: bridge.deleteRange
+      insertAtRange: bridge.insertAtRange
     }),
-    [
-      bridge.blur,
-      bridge.focusAtOffset,
-      bridge.insertAtCursor,
-      bridge.insertAtRange,
-      bridge.redo,
-      bridge.toggleMarkdownMark,
-      bridge.undo,
-      bridge.deleteRange
-    ]
+    [bridge.blur, bridge.focusAtOffset, bridge.insertAtCursor, bridge.insertAtRange]
   )
 
   const webViewSource = useMemo(
@@ -244,15 +158,15 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
       styles.shell,
       fillViewport
         ? {
-            flex: 1,
-            marginBottom: keyboardInset > 0 ? keyboardInset : 0,
-            backgroundColor: editorBackground
-          }
+          flex: 1,
+          marginBottom: keyboardInset > 0 ? keyboardInset : 0,
+          backgroundColor: editorBackground
+        }
         : {
-            minHeight: editorBlockHeight,
-            marginBottom: keyboardInset > 0 ? keyboardInset : 0,
-            backgroundColor: editorBackground
-          },
+          minHeight: editorBlockHeight,
+          marginBottom: keyboardInset > 0 ? keyboardInset : 0,
+          backgroundColor: editorBackground
+        },
       style
     ],
     [editorBackground, editorBlockHeight, fillViewport, keyboardInset, style]
@@ -288,22 +202,14 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
     }
   }
 
-  const webViewCacheKey = `${editorWebViewSource.uri}:${editorWebViewSource.cacheKey}`
-
   const handleLoadStart = () => {
-    prevKeyboardInsetRef.current = 0
-    editorReadyAtRef.current = 0
     if (typeof __DEV__ !== 'undefined' && __DEV__) {
-      console.log('[DiaryEditor WebView] loadStart', {
-        uri: editorWebViewSource.uri,
-        cacheKey: editorWebViewSource.cacheKey
-      })
+      console.log('[DiaryEditor WebView] loadStart', editorWebViewSource.uri)
     }
     bridge.onWebViewLoadStart()
   }
 
   const handleLoadEnd = () => {
-    editorReadyAtRef.current = Date.now()
     if (typeof __DEV__ !== 'undefined' && __DEV__) {
       console.log('[DiaryEditor WebView] loadEnd')
     }
@@ -312,44 +218,45 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
 
   return (
     <View style={shellStyle} collapsable={false}>
-      <WebView
-        key={webViewCacheKey}
-        ref={bridge.webViewRef}
-        source={webViewSource}
-        originWhitelist={['*']}
-        allowFileAccess
-        allowFileAccessFromFileURLs
-        allowUniversalAccessFromFileURLs={Platform.OS === 'android'}
-        javaScriptEnabled
-        domStorageEnabled
-        cacheEnabled={false}
-        keyboardDisplayRequiresUserAction={false}
-        hideKeyboardAccessoryView={false}
-        scrollEnabled={false}
-        nestedScrollEnabled={false}
-        overScrollMode="never"
-        bounces={false}
-        showsVerticalScrollIndicator={false}
-        showsHorizontalScrollIndicator={false}
-        onMessage={bridge.onWebViewMessage}
-        onLoadStart={handleLoadStart}
-        onLoadEnd={handleLoadEnd}
-        onError={handleWebViewError}
-        onHttpError={handleWebViewError}
-        {...(Platform.OS === 'android'
-          ? ({ onConsoleMessage: handleConsoleMessage } as Record<string, unknown>)
-          : {})}
-        style={webViewStyle}
-        containerStyle={webViewContainerStyle}
-        mixedContentMode="always"
-        setSupportMultipleWindows={false}
-        {...(Platform.OS === 'ios'
-          ? {
+      {active ? (
+        <WebView
+          key={editorWebViewSource.uri}
+          ref={bridge.webViewRef}
+          source={webViewSource}
+          originWhitelist={['*']}
+          allowFileAccess
+          allowFileAccessFromFileURLs
+          allowUniversalAccessFromFileURLs={Platform.OS === 'android'}
+          javaScriptEnabled
+          domStorageEnabled
+          cacheEnabled={false}
+          keyboardDisplayRequiresUserAction={false}
+          hideKeyboardAccessoryView={false}
+          scrollEnabled={fillViewport}
+          nestedScrollEnabled={fillViewport}
+          overScrollMode="never"
+          bounces={false}
+          showsVerticalScrollIndicator={false}
+          showsHorizontalScrollIndicator={false}
+          onMessage={bridge.onWebViewMessage}
+          onLoadStart={handleLoadStart}
+          onLoadEnd={handleLoadEnd}
+          onError={handleWebViewError}
+          onHttpError={handleWebViewError}
+          onConsoleMessage={handleConsoleMessage}
+          style={webViewStyle}
+          containerStyle={webViewContainerStyle}
+          mixedContentMode="always"
+          setSupportMultipleWindows={false}
+          androidLayerType="hardware"
+          {...(Platform.OS === 'ios'
+            ? {
               allowingReadAccessToURL: editorWebViewSource.baseUrl,
               dataDetectorTypes: 'none' as const
             }
-          : {})}
-      />
+            : {})}
+        />
+      ) : null}
     </View>
   )
 })
@@ -358,7 +265,7 @@ const styles = StyleSheet.create({
   shell: {
     alignSelf: 'stretch',
     width: '100%',
-    overflow: 'hidden'
+    overflow: 'visible'
   },
   webViewContainer: {
     width: '100%'
