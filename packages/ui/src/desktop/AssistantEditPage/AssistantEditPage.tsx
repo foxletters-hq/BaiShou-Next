@@ -9,6 +9,7 @@ import { AssistantEditAvatarSection } from './AssistantEditAvatarSection'
 import { AssistantEditModelBinding } from './AssistantEditModelBinding'
 import { AssistantEditContextSection } from './AssistantEditContextSection'
 import { AssistantEditCompressionSection } from './AssistantEditCompressionSection'
+import { AssistantEditEmojiGroupSection } from './AssistantEditEmojiGroupSection'
 import { AssistantDeleteConfirmDialog } from './AssistantDeleteConfirmDialog'
 import { AssistantModelPicker } from './AssistantModelPicker'
 import { AssistantKindTabBar } from '../AssistantKindTabBar'
@@ -103,6 +104,18 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
               onClearBinding={form.clearModelBinding}
             />
           </section>
+
+          {form.globalEmojiEnabled ? (
+            <section className={styles.sectionCard}>
+              <AssistantEditEmojiGroupSection
+                emojiGroups={form.emojiGroups}
+                emojiEnabled={form.emojiEnabled}
+                selectedGroupIds={form.selectedEmojiGroupIds}
+                onEmojiEnabledChange={form.setEmojiEnabled}
+                onToggleGroup={form.toggleEmojiGroup}
+              />
+            </section>
+          ) : null}
 
           <section className={styles.sectionCard}>
             <AssistantEditContextSection

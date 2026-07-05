@@ -634,6 +634,49 @@ input:checked + .sliderRound:before {
   background-color: rgba(0, 0, 0, 0.03);
 }
 
+.emojiGroupPickList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.emojiGroupPickItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--bg-surface);
+  cursor: pointer;
+  text-align: left;
+}
+
+.emojiGroupPickItemActive {
+  border-color: var(--color-primary, #5ba8f5);
+  background: color-mix(in srgb, var(--color-primary, #5ba8f5) 12%, var(--bg-surface));
+}
+
+.emojiGroupPickText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.emojiGroupPickName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.emojiGroupPickMeta {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;

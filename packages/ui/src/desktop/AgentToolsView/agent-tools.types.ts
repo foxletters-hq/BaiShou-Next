@@ -1,21 +1,8 @@
 import React from 'react'
 
-export interface EmojiItem {
-  id: string
-  name: string
-  relativePath: string
-}
+import type { EmojiToolConfig, ToolManagementConfig } from '@baishou/shared'
 
-export interface EmojiToolConfig {
-  enabled: boolean
-  emojis: EmojiItem[]
-}
-
-export interface ToolManagementConfig {
-  disabledToolIds: string[]
-  customConfigs: Record<string, Record<string, unknown>>
-  emojiConfig?: EmojiToolConfig
-}
+export type { EmojiToolConfig, ToolManagementConfig }
 
 export interface AgentToolsViewProps {
   config: ToolManagementConfig

@@ -1,4 +1,5 @@
 export { AgentToolsView } from './AgentToolsView'
-export type { ToolManagementConfig, AgentToolsViewProps, EmojiToolConfig, EmojiItem } from './agent-tools.types'
+export type { ToolManagementConfig, AgentToolsViewProps, EmojiToolConfig } from './agent-tools.types'
+export type { EmojiItem, EmojiGroup } from '@baishou/shared'
 export { EmojiToolCard } from './EmojiToolCard'
 export { AgentToolsCommunityTab } from './AgentToolsCommunityTab'

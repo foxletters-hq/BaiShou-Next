@@ -17,6 +17,7 @@ interface AgentToolsBuiltInListProps {
   getToolParam: (toolId: string, param: ToolConfigParam) => unknown
   setToolParam: (toolId: string, key: string, value: unknown) => void
   onConfigChange: (config: ToolManagementConfig) => void
+  onOpenEmojiSettings: () => void
 }
 
 export const AgentToolsBuiltInList: React.FC<AgentToolsBuiltInListProps> = ({
@@ -29,7 +30,8 @@ export const AgentToolsBuiltInList: React.FC<AgentToolsBuiltInListProps> = ({
   onToggleTool,
   getToolParam,
   setToolParam,
-  onConfigChange
+  onConfigChange,
+  onOpenEmojiSettings
 }) => {
   const { t } = useTranslation()
 
@@ -85,7 +87,10 @@ export const AgentToolsBuiltInList: React.FC<AgentToolsBuiltInListProps> = ({
             })}
           </div>
         ) : (
-          <AgentToolsCommunityTab config={config} onChange={onConfigChange} />
+          <AgentToolsCommunityTab
+            config={config}
+            onOpenEmojiSettings={onOpenEmojiSettings}
+          />
         )}
       </div>
     </>

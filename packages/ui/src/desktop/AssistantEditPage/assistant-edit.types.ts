@@ -18,6 +18,10 @@ export interface AssistantFormData {
   maxTokens?: number
   ragSpaceId?: string
   assistantKind?: AssistantKind
+  emojiEnabled?: boolean
+  /** UI 多选；落库时为 JSON 字符串 */
+  emojiGroupIds?: string[] | string | null
+  emojiGroupId?: string | null
 }
 
 export interface AssistantEditPageProps {

@@ -680,3 +680,278 @@ input:checked + .slider:before {
   gap: 20px;
   min-width: 360px;
 }
+
+/* ── Emoji Settings Pages ── */
+
+.emojiBackBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  color: var(--theme-primary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 8px;
+  padding: 0;
+}
+
+.emojiSettingsPage {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.emojiEnableCard {
+  border: 1px solid var(--theme-outline-variant);
+  border-radius: 12px;
+  padding: 16px;
+  background: var(--theme-surface-container-low);
+}
+
+.emojiEnableRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.emojiEnableIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--theme-primary-container);
+  color: var(--theme-primary);
+}
+
+.emojiEnableText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.emojiEnableTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.emojiEnableTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--theme-on-surface);
+}
+
+.emojiEnableSubtitle {
+  font-size: 13px;
+  color: var(--theme-on-surface-variant);
+  line-height: 1.4;
+}
+
+.emojiSectionHeader,
+.emojiGridHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px;
+}
+
+.emojiSectionTitle {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--theme-on-surface-variant);
+}
+
+.emojiAddGroupBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  color: var(--theme-primary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 6px;
+}
+
+.emojiGroupList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.emojiGroupCard {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--theme-outline-variant);
+  border-radius: 12px;
+  background: var(--theme-surface-container-low);
+  overflow: hidden;
+}
+
+.emojiGroupMain {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.emojiGroupName {
+  flex: 1;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--theme-on-surface);
+}
+
+.emojiGroupMeta {
+  font-size: 13px;
+  color: var(--theme-on-surface-variant);
+}
+
+.emojiGroupDeleteBtn {
+  border: none;
+  background: transparent;
+  color: var(--theme-error);
+  cursor: pointer;
+  padding: 14px;
+}
+
+.emojiEntryRow {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: none;
+  border-bottom: 1px solid var(--theme-outline-variant);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.emojiEntryIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--theme-primary-container);
+  color: var(--theme-primary);
+}
+
+.emojiEntryInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.emojiEntryTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--theme-on-surface);
+}
+
+.emojiEntryMeta {
+  font-size: 13px;
+  color: var(--theme-on-surface-variant);
+}
+
+.emojiEntryChevron {
+  color: var(--theme-on-surface-variant);
+}
+
+.emojiNameCard {
+  border: 1px solid var(--theme-outline-variant);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--theme-surface-container-low);
+}
+
+.emojiFieldLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--theme-on-surface-variant);
+}
+
+.emojiNameInput {
+  border: 1px solid var(--theme-outline-variant);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 16px;
+  background: var(--theme-surface);
+  color: var(--theme-on-surface);
+}
+
+.emojiStickerGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.emojiStickerCard {
+  border: 1px solid var(--theme-outline-variant);
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--theme-surface-container-low);
+}
+
+.emojiStickerPreview {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--theme-surface-container-highest);
+}
+
+.emojiStickerPreview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.emojiStickerNameInput {
+  border: 1px solid var(--theme-outline-variant);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 13px;
+  background: var(--theme-surface);
+  color: var(--theme-on-surface);
+}
+
+.emojiStickerDeleteBtn {
+  align-self: flex-end;
+  border: none;
+  background: transparent;
+  color: var(--theme-error);
+  cursor: pointer;
+}
+
+.emojiSettingsEmpty {
+  padding: 24px;
+  text-align: center;
+  color: var(--theme-on-surface-variant);
+  font-size: 14px;
+}
