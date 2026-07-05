@@ -25,6 +25,64 @@ function resolveAssistantTextForStorage(accumulator: StreamAccumulator): string 
   return sanitizeAssistantGeneratedText(accumulator.text)
 }
 
+/**
+ * 模糊匹配 emoji：支持 ID（含/不含扩展名）、名称、子串匹配
+ */
+function findEmojiById(
+  query: string,
+  emojis: Array<{ id: string; name: string; relativePath: string }>
+): { id: string; name: string; relativePath: string } | undefined {
+  const normalizedQuery = query.trim().toLowerCase()
+
+  // 1. Exact id match
+  const exactMatch = emojis.find((e) => e.id === normalizedQuery || e.id.toLowerCase() === normalizedQuery)
+  if (exactMatch) return exactMatch
+
+  // 2. Id without extension match
+  const idNoExtMatch = emojis.find((e) => e.id.replace(/\.[^.]+$/, '').toLowerCase() === normalizedQuery)
+  if (idNoExtMatch) return idNoExtMatch
+
+  // 3. Name match (case-insensitive, underscore/space normalized)
+  const normalizeName = (s: string) => s.toLowerCase().replace(/[_\s]+/g, ' ').trim()
+  const normalizedNameQuery = normalizeName(normalizedQuery)
+  const nameMatch = emojis.find((e) => normalizeName(e.name) === normalizedNameQuery)
+  if (nameMatch) return nameMatch
+
+  // 4. Id without extension contains query
+  const idContainsMatch = emojis.find((e) =>
+    e.id.replace(/\.[^.]+$/, '').toLowerCase().includes(normalizedQuery)
+  )
+  if (idContainsMatch) return idContainsMatch
+
+  // 5. Name contains query
+  const nameContainsMatch = emojis.find((e) =>
+    normalizeName(e.name).includes(normalizedNameQuery)
+  )
+  if (nameContainsMatch) return nameContainsMatch
+
+  return undefined
+}
+
+/**
+ * 从 emoji_send 工具调用参数中解析出 emoji_id。
+ * 支持各种参数格式：JSON string、JSON object 等。
+ */
+function parseEmojiIdFromArgs(args: unknown): string | null {
+  if (typeof args === 'string') {
+    try {
+      const parsed = JSON.parse(args)
+      if (parsed?.emoji_id && typeof parsed.emoji_id === 'string') return parsed.emoji_id
+    } catch {
+      // 可能是裸字符串
+      if (args.length > 0) return args
+    }
+  } else if (args && typeof args === 'object') {
+    const obj = args as Record<string, unknown>
+    if (obj.emoji_id && typeof obj.emoji_id === 'string') return obj.emoji_id
+  }
+  return null
+}
+
 export interface PersistResultParams {
   sessionId: string
   rawUserText: string
@@ -43,6 +101,8 @@ export interface PersistResultParams {
   namingProvider?: IAIProvider
   namingModelId?: string
   flushSessionToDisk?: (sessionId: string) => Promise<void>
+  /** 用户配置，用于查找 emoji_send 工具对应的表情包文件 */
+  userConfig?: Record<string, any>
 }
 
 /**
@@ -81,6 +141,14 @@ export async function persistResult(params: PersistResultParams): Promise<{
   const assistantMsgId = generateUUID()
   const partsToInsert: any[] = []
 
+  // 收集需要独立消息的 emoji 图片附件（每个 emoji 一条独立消息）
+  const emojiExtraMessages: Array<{
+    messageId: string
+    orderIndex: number
+    parts: any[]
+  }> = []
+  let emojiMessageIndex = 0
+
   // 推送文本 Part
   const assistantText = resolveAssistantTextForStorage(accumulator)
   if (assistantText) {
@@ -112,6 +180,53 @@ export async function persistResult(params: PersistResultParams): Promise<{
       continue
     }
     const resultObj = accumulator.toolResults.find((tr) => tr.callId === tc.callId)
+
+    // 对 emoji_send 工具调用：为每个表情包创建一条独立的 assistant 消息（只包含图片）
+    if (tc.name === 'emoji_send') {
+      const emojiId = parseEmojiIdFromArgs(tc.arguments)
+      if (emojiId) {
+        const emojiConfig = (params as any).userConfig?.['emojiConfig'] as
+          | { emojis?: Array<{ id: string; name: string; relativePath: string }> }
+          | undefined
+        const emojis = emojiConfig?.emojis
+        if (emojis && emojis.length > 0) {
+          const emoji = findEmojiById(emojiId, emojis)
+          if (emoji) {
+            const fileName = emoji.relativePath.split('/').pop() || 'emoji'
+            const emojiMsgId = generateUUID()
+            logger.info(`[Persist Result] Creating standalone emoji message: ${emoji.relativePath} (${emoji.name})`)
+            emojiExtraMessages.push({
+              messageId: emojiMsgId,
+              // emoji 消息排在文本消息之前，这样表情包先显示，文字回复后显示
+              orderIndex: userOrderIndex + 1 + emojiMessageIndex,
+              parts: [{
+                id: generateUUID(),
+                messageId: emojiMsgId,
+                sessionId,
+                type: 'image',
+                data: {
+                  type: 'image',
+                  filePath: emoji.relativePath,
+                  url: `local:///${emoji.relativePath.replace(/\\/g, '/')}`,
+                  isImage: true,
+                  fileName,
+                  name: emoji.name || fileName
+                }
+              }]
+            })
+            emojiMessageIndex++
+          } else {
+            logger.warn(`[Persist Result] Emoji not found for id: ${emojiId}`)
+          }
+        }
+      }
+    }
+
+    // emoji_send 工具调用不存入数据库（表情包已作为独立图片消息）
+    if (tc.name === 'emoji_send') {
+      continue
+    }
+
     const toolData = sanitizeToolPayloadForStorage({
       callId: tc.callId,
       name: tc.name,
@@ -224,13 +339,36 @@ export async function persistResult(params: PersistResultParams): Promise<{
   }
 
   // 开始事务存放! — 即使流式出错，也将已累积的回复内容落盘，防止消息丢失
+
+  // 1. 先插入 emoji 独立消息（表情包图片先于文字回复显示）
+  for (const emojiMsg of emojiExtraMessages) {
+    await sessionRepo.insertMessageWithParts(
+      {
+        id: emojiMsg.messageId,
+        sessionId,
+        role: 'assistant',
+        orderIndex: emojiMsg.orderIndex,
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheReadInputTokens: 0,
+        cacheWriteInputTokens: 0,
+        costMicros: 0,
+        providerId: provider.config.id,
+        modelId: modelId
+      },
+      emojiMsg.parts
+    )
+  }
+
+  // 2. 插入主文本消息（orderIndex 在所有 emoji 消息之后）
+  const mainOrderIndex = userOrderIndex + 1 + emojiExtraMessages.length
   if (partsToInsert.length > 0) {
     await sessionRepo.insertMessageWithParts(
       {
         id: assistantMsgId,
         sessionId,
         role: 'assistant',
-        orderIndex: userOrderIndex + 1,
+        orderIndex: mainOrderIndex,
         inputTokens: finalUsage.inputTokens,
         outputTokens: finalUsage.outputTokens,
         cacheReadInputTokens: streamUsage.cacheReadInputTokens,

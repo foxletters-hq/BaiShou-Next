@@ -96,6 +96,15 @@ export const settingsApi = {
     pickAndSaveBackground: () => ipcRenderer.invoke('profile:pick-background')
   },
 
+  emoji: {
+    pickAndImport: () => ipcRenderer.invoke('emoji:pick-and-import'),
+    list: () => ipcRenderer.invoke('emoji:list'),
+    resolvePath: (relativePath: string) => ipcRenderer.invoke('emoji:resolve-path', relativePath),
+    resolvePaths: (relativePaths: string[]) =>
+      ipcRenderer.invoke('emoji:resolve-paths', relativePaths),
+    delete: (relativePath: string) => ipcRenderer.invoke('emoji:delete', relativePath)
+  },
+
   storage: {
     getStats: () => ipcRenderer.invoke('storage:getStats'),
     pickDirectory: () => ipcRenderer.invoke('storage:pickDirectory'),

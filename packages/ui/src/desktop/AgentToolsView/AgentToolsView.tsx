@@ -32,6 +32,7 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({ config, onChange
           onToggleTool={view.toggleTool}
           getToolParam={view.getToolParam}
           setToolParam={view.setToolParam}
+          onConfigChange={onChange}
         />
       </div>
     </div>

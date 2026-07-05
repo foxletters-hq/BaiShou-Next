@@ -13,6 +13,7 @@ import {
 import { isEmbeddingModel, isTtsModel } from '@baishou/shared'
 import { useSharedMemoryCopyPreview } from '../../../hooks/useSharedMemoryCopyPreview'
 import type { AgentOutletContext } from '../agent-outlet-context'
+import { useSettingsStore } from '@baishou/store'
 
 interface AgentDialogsProps {
   t: any
@@ -260,7 +261,7 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
         <AgentToolsView
           config={toolConfig}
           onChange={(cfg) => {
-            ;(window as any).api?.settings?.setToolManagementConfig(cfg)
+            useSettingsStore.getState().setToolManagementConfig(cfg)
           }}
         />
       </Modal>
