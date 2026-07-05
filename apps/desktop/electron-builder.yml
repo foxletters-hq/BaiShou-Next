@@ -10,6 +10,11 @@ files:
   - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
   - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  # 避免把历史打包目录递归打进 app.asar（曾导致安装包膨胀到 600MB+）
+  - '!dist/**'
+  - '!dist-*/**'
+  - '!.turbo/**'
+  - '!{detect-debug.log,eslint-report.json,setup.iss}'
 asarUnpack:
   - resources/**
   - '**/*.node'
