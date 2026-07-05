@@ -1,7 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { View, Text, StyleSheet, Switch, ActivityIndicator } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { getDefaultCompressionSystemPrompt } from '@baishou/shared'
+import {
+  DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD,
+  DEFAULT_ASSISTANT_CONTEXT_WINDOW,
+  getDefaultCompressionSystemPrompt
+} from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 import { HelpTooltip } from '../Tooltip/HelpTooltip'
 import { SettingsSliderRow } from '../settings/SettingsSliderRow'
@@ -32,14 +36,18 @@ export function AssistantPickerMemoryPanel({
   const { colors } = useNativeTheme()
 
   const [contextWindow, setContextWindow] = useState(20)
-  const [compressTokenThreshold, setCompressTokenThreshold] = useState(60000)
+  const [compressTokenThreshold, setCompressTokenThreshold] = useState(
+    DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD
+  )
   const [compressKeepTurns, setCompressKeepTurns] = useState(3)
 
   useEffect(() => {
     if (!assistant) return
-    setContextWindow(assistant.contextWindow ?? -1)
+    setContextWindow(assistant.contextWindow ?? DEFAULT_ASSISTANT_CONTEXT_WINDOW)
     setCompressTokenThreshold(
-      (assistant.compressTokenThreshold ?? 0) > 0 ? assistant.compressTokenThreshold! : 60000
+      (assistant.compressTokenThreshold ?? 0) > 0
+        ? assistant.compressTokenThreshold!
+        : DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD
     )
     setCompressKeepTurns(assistant.compressKeepTurns ?? 3)
   }, [assistant])
@@ -134,7 +142,7 @@ export function AssistantPickerMemoryPanel({
           <Switch
             value={!isCompressDisabled}
             onValueChange={(enabled) => {
-              const next = enabled ? 60000 : 0
+              const next = enabled ? DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD : 0
               setCompressTokenThreshold(next)
               void persist({
                 compressTokenThreshold: next,

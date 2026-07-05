@@ -7,7 +7,7 @@ import {
   SUPPORTED_PROTOCOL_VERSIONS,
   ToolSchema
 } from '@modelcontextprotocol/sdk/types.js'
-import { logger } from '@baishou/shared'
+import { logger, isAgentBuiltinToolId } from '@baishou/shared'
 import { z } from 'zod'
 import type { ToolContext } from '../tools/agent.tool'
 import type { ToolRegistry } from '../tools/tool-registry'
@@ -25,6 +25,10 @@ export type BaishouMcpToolSchema = {
   name: string
   description: string
   inputSchema: { type: 'object'; properties: Record<string, unknown>; required: string[] }
+}
+
+function isMcpExposableTool(toolName: string): boolean {
+  return isAgentBuiltinToolId(toolName)
 }
 
 export function negotiateMcpProtocolVersion(clientVersion: unknown): string {
@@ -89,6 +93,8 @@ export function buildBaishouMcpToolSchemas(
   const mcpTools: BaishouMcpToolSchema[] = []
 
   for (const tool of toolRegistry.getEnabledToolsRaw(syncedContext)) {
+    if (!isMcpExposableTool(tool.name)) continue
+
     const name = `baishou_${tool.name}`
     const inputSchema = toBaishouMcpInputSchema(tool.parameters)
     try {
@@ -122,6 +128,10 @@ export async function executeBaishouMcpTool(
   const rawName = (params.name || '').replace(/^baishou_/, '')
   if (!rawName) {
     throw new Error('Missing tool name')
+  }
+
+  if (!isMcpExposableTool(rawName)) {
+    throw new Error(`Tool not available: ${rawName}`)
   }
 
   const tool = toolRegistry.get(rawName)

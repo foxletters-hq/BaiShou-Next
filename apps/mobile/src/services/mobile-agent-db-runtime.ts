@@ -32,6 +32,7 @@ import {
   RecoveryAwareSessionSyncService,
   RecoveryAwareSummarySyncService
 } from './recovery-aware-sync.services'
+import { createMobileSessionDiskPersistenceHooks } from './session-file-watcher.service'
 import {
   mobileAgentDbRecovery,
   type MobileAgentDbRecoveryCoordinator
@@ -179,7 +180,8 @@ export async function createAgentDbRuntime(
   const sessionManager = new SessionManagerService(
     sessionRepo,
     sessionFileService,
-    sessionSyncService
+    sessionSyncService,
+    createMobileSessionDiskPersistenceHooks()
   )
 
   const assistantFileService = new AssistantFileService(pathService, fileSystem)

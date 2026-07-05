@@ -16,7 +16,7 @@ import Animated, {
   useSharedValue,
   withTiming
 } from 'react-native-reanimated'
-import { ChevronsUpDown, Plus, Settings } from 'lucide-react-native'
+import { Plus, Settings } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
@@ -265,7 +265,6 @@ function AgentDrawerComponent({
                       </Text>
                     ) : null}
                   </View>
-                  <ChevronsUpDown size={20} color={colors.textSecondary} strokeWidth={2} />
                 </>
               ) : (
                 <>
@@ -284,7 +283,6 @@ function AgentDrawerComponent({
                       ]}
                     />
                   </View>
-                  <ChevronsUpDown size={20} color={colors.textTertiary} strokeWidth={2} />
                 </>
               )}
             </TouchableOpacity>

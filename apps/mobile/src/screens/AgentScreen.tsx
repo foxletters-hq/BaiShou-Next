@@ -4,9 +4,12 @@ import {
   type PromptShortcut,
   type WebSearchConfig,
   type AIProviderConfig,
+  type ToolManagementConfig,
   LATTE_ASSISTANT_NAME,
   normalizeChatBackgroundBlur,
-  normalizeChatBackgroundOverlayOpacity
+  normalizeChatBackgroundOverlayOpacity,
+  normalizeEmojiToolConfig,
+  resolveAssistantEmojiConfig
 } from '@baishou/shared'
 import { DEFAULT_WEB_SEARCH_CONFIG } from '@baishou/database'
 import type { PendingEmoji } from '../hooks/useAgentStream'
@@ -367,19 +370,20 @@ export const AgentScreen = () => {
   const [showLoadMoreBanner, setShowLoadMoreBanner] = useState(false)
 
   // Emoji config for resolving pending emoji IDs during streaming
-  const [emojiConfig, setEmojiConfig] = useState<{
-    enabled: boolean
-    emojis: Array<{ id: string; name: string; relativePath: string }>
-  }>({ enabled: true, emojis: [] })
+  const [emojiToolConfig, setEmojiToolConfig] = useState(
+    normalizeEmojiToolConfig({ enabled: false, groups: [] })
+  )
   const [pendingEmojiUris, setPendingEmojiUris] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (!services) return
     void (async () => {
       try {
-        const toolConfig = await services.settingsManager.get<any>('tool_management_config')
+        const toolConfig = await services.settingsManager.get<ToolManagementConfig>(
+          'tool_management_config'
+        )
         if (toolConfig?.emojiConfig) {
-          setEmojiConfig(toolConfig.emojiConfig)
+          setEmojiToolConfig(normalizeEmojiToolConfig(toolConfig.emojiConfig))
         }
       } catch {
         // Ignore errors loading emoji config
@@ -387,12 +391,23 @@ export const AgentScreen = () => {
     })()
   }, [services])
 
+  const resolvedEmojiConfig = useMemo(
+    () =>
+      resolveAssistantEmojiConfig(emojiToolConfig, {
+        emojiEnabled: currentAssistant?.emojiEnabled,
+        emojiGroupIds: currentAssistant?.emojiGroupIds
+      }),
+    [emojiToolConfig, currentAssistant?.emojiEnabled, currentAssistant?.emojiGroupIds]
+  )
+
+  const assistantEmojis = resolvedEmojiConfig.emojis
+
   /**
    * 模糊匹配 emoji：与 persist 层的 findEmojiById 逻辑保持一致
    */
   const resolvePendingEmoji = useCallback(
     (query: string) => {
-      const emojis = emojiConfig.emojis
+      const emojis = assistantEmojis
       if (!emojis || emojis.length === 0) return undefined
       const normalizedQuery = query.trim().toLowerCase()
 
@@ -419,7 +434,7 @@ export const AgentScreen = () => {
 
       return undefined
     },
-    [emojiConfig.emojis]
+    [assistantEmojis]
   )
 
   useEffect(() => {
@@ -451,7 +466,7 @@ export const AgentScreen = () => {
   }, [pendingEmojis, services, resolvePendingEmoji])
 
   const pendingEmojiAttachments = useMemo(() => {
-    if (pendingEmojis.length === 0 || emojiConfig.emojis.length === 0) return []
+    if (pendingEmojis.length === 0 || assistantEmojis.length === 0) return []
     return pendingEmojis
       .map((pending) => {
         const emoji = resolvePendingEmoji(pending.emojiId)
@@ -465,7 +480,7 @@ export const AgentScreen = () => {
         }
       })
       .filter((item): item is NonNullable<typeof item> => item != null)
-  }, [pendingEmojis, emojiConfig.emojis, resolvePendingEmoji, pendingEmojiUris])
+  }, [pendingEmojis, assistantEmojis, resolvePendingEmoji, pendingEmojiUris])
 
   const loadMoreLockRef = useRef(false)
 

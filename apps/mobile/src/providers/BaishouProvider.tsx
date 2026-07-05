@@ -76,6 +76,8 @@ import { MobileStoragePathService } from '../services/path.service'
 import {
   loadContextAtMessage,
   buildMobileStreamUserConfig,
+  resolveAssistantContextWindow,
+  resolveAssistantEmojiPrefs,
   type MobileContextAtMessagePayload
 } from '../services/mobile-context-at-message.service'
 import { createMobileFileSystem } from '../services/create-mobile-file-system'
@@ -130,7 +132,7 @@ import {
   emitSyncMutation,
   emitVaultSwitchMutation
 } from '../cache/mobile-cache-coordinator'
-import { sessionFileWatcher } from '../services/session-file-watcher.service'
+import { sessionFileWatcher, createMobileSessionDiskPersistenceHooks } from '../services/session-file-watcher.service'
 import { summaryFileWatcher } from '../services/summary-file-watcher.service'
 import {
   activateVaultRuntime,
@@ -583,7 +585,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         const sessionManager = new SessionManagerService(
           sessionRepo,
           sessionFileService,
-          sessionSyncService
+          sessionSyncService,
+          createMobileSessionDiskPersistenceHooks()
         )
 
         const assistantFileService = new AssistantFileService(pathService, fileSystem)
@@ -1113,9 +1116,22 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             const provider = registry.getOrUpdateProvider(config)
 
             const searchMode = overrides?.searchMode ?? false
+            const [assistantContextWindow, assistantEmojiPrefs] = await Promise.all([
+              resolveAssistantContextWindow(
+                sessionId,
+                runtime.sessionRepo,
+                runtime.assistantManager
+              ),
+              resolveAssistantEmojiPrefs(
+                sessionId,
+                runtime.sessionRepo,
+                runtime.assistantManager
+              )
+            ])
             const userConfig = await buildMobileStreamUserConfig(
               runtime.settingsManager,
-              searchMode
+              searchMode,
+              { assistantContextWindow, assistantEmojiPrefs }
             )
 
             const embeddingProviderId = globalModels?.globalEmbeddingProviderId

@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
-import { PanelLeftOpen, ChevronsUpDown } from 'lucide-react-native'
+import { PanelLeftOpen } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { ProviderBrandIcon, useNativeTheme } from '@baishou/ui/native'
 import { isConfiguredProviderId } from '@baishou/shared'
@@ -66,7 +66,6 @@ export const AgentChatAppBar: React.FC<AgentChatAppBarProps> = ({
             {displayModel}
           </Text>
         </View>
-        <ChevronsUpDown size={18} color={colors.textSecondary} strokeWidth={2} />
       </TouchableOpacity>
 
       <View style={[styles.side, styles.sideRight]}>

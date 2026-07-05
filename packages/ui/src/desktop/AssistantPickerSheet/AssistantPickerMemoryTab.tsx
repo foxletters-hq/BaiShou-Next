@@ -1,7 +1,7 @@
 import React from 'react'
 import { History, Minimize2 } from 'lucide-react'
 import { HelpTooltip } from '../HelpTooltip'
-import { getDefaultCompressionSystemPrompt } from '@baishou/shared'
+import { DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD, getDefaultCompressionSystemPrompt } from '@baishou/shared'
 import styles from './AssistantPickerSheet.module.css'
 import type { AssistantPickerSheetViewModel } from './useAssistantPickerSheet'
 
@@ -178,8 +178,8 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
                 const val = e.target.checked
                 setEditingCompressEnabled(val)
                 if (val && editingCompressThreshold <= 0) {
-                  setEditingCompressThreshold(60000)
-                  saveConfig({ compressTokenThreshold: 60000 })
+                  setEditingCompressThreshold(DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD)
+                  saveConfig({ compressTokenThreshold: DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD })
                 } else {
                   saveConfig({
                     compressTokenThreshold: val ? editingCompressThreshold : 0

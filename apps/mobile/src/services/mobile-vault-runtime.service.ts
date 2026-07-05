@@ -899,7 +899,6 @@ export async function restartVaultWatchers(
   void startSessionFileWatcherWhenStorageQuiet(sessionsDir, {
     sessionFileService: watcherDeps.sessionFileService,
     sessionSyncService: watcherDeps.sessionSyncService,
-    sessionManager: watcherDeps.sessionManager,
     fileSystem: watcherDeps.fileSystem
   })
 
@@ -921,7 +920,6 @@ async function startSessionFileWatcherWhenStorageQuiet(
   deps: {
     sessionFileService: SessionFileService
     sessionSyncService: SessionSyncService
-    sessionManager: SessionManagerService
     fileSystem: IFileSystem
   }
 ): Promise<void> {

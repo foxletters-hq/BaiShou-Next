@@ -11,7 +11,11 @@ import {
   formatUserCardFromProfile,
   getUserProfileFromSettings,
   isAutoInjectCurrentTimeEnabled,
+  normalizeEmojiToolConfig,
   normalizeToolManagementConfig,
+  resolveAssistantEmojiConfig,
+  assistantRowToEmojiPrefs,
+  type AssistantEmojiPrefs,
   DEFAULT_TOOL_MANAGEMENT_CONFIG,
   type DiaryTemplateConfig
 } from '@baishou/shared'
@@ -69,11 +73,34 @@ export async function resolveAssistantContextWindow(
   return undefined
 }
 
+export async function resolveAssistantEmojiPrefs(
+  sessionId: string,
+  sessionRepo: SessionRepository,
+  assistantManager: AssistantManagerService
+): Promise<AssistantEmojiPrefs | undefined> {
+  try {
+    const session = await sessionRepo.getSessionById(sessionId)
+    if (!session?.assistantId) return undefined
+    const assistant = await assistantManager.findById(session.assistantId)
+    if (!assistant) return undefined
+    return assistantRowToEmojiPrefs(assistant)
+  } catch {
+    return undefined
+  }
+}
+
+export interface BuildMobileStreamUserConfigOptions {
+  assistantContextWindow?: number
+  assistantEmojiPrefs?: AssistantEmojiPrefs
+}
+
 export async function buildMobileStreamUserConfig(
   settingsManager: SettingsManagerService,
   searchMode: boolean,
-  assistantContextWindow?: number
+  options?: BuildMobileStreamUserConfigOptions
 ): Promise<Record<string, unknown>> {
+  const assistantContextWindow = options?.assistantContextWindow
+  const assistantEmojiPrefs = options?.assistantEmojiPrefs
   const ragConfig = await settingsManager.get<any>('rag_config')
   const toolManagementConfig = normalizeToolManagementConfig(
     (await settingsManager.get<any>('tool_management_config')) ?? DEFAULT_TOOL_MANAGEMENT_CONFIG
@@ -118,7 +145,10 @@ export async function buildMobileStreamUserConfig(
       behaviorConfig.agentGuidelines.trim().length > 0
         ? behaviorConfig.agentGuidelines.trim()
         : undefined,
-    emojiConfig: toolManagementConfig?.emojiConfig || undefined
+    emojiConfig: resolveAssistantEmojiConfig(
+      normalizeEmojiToolConfig(toolManagementConfig.emojiConfig),
+      assistantEmojiPrefs
+    )
   }
 }
 
@@ -174,11 +204,15 @@ export async function loadContextAtMessage(
     deps.sessionRepo,
     deps.assistantManager
   )
-  const userConfig = await buildMobileStreamUserConfig(
-    deps.settingsManager,
-    searchMode,
-    assistantContextWindow
+  const emojiPrefs = await resolveAssistantEmojiPrefs(
+    sessionId,
+    deps.sessionRepo,
+    deps.assistantManager
   )
+  const userConfig = await buildMobileStreamUserConfig(deps.settingsManager, searchMode, {
+    assistantContextWindow,
+    assistantEmojiPrefs: emojiPrefs
+  })
 
   const session = await deps.sessionRepo.getSessionById(sessionId)
   const providers = (await deps.settingsManager.get<any[]>('ai_providers')) || []

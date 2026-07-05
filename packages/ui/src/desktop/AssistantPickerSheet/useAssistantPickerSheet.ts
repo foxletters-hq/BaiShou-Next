@@ -1,6 +1,11 @@
 import React, { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getDefaultCompressionSystemPrompt } from '@baishou/shared'
+import {
+  DEFAULT_ASSISTANT_COMPRESS_KEEP_TURNS,
+  DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD,
+  DEFAULT_ASSISTANT_CONTEXT_WINDOW,
+  getDefaultCompressionSystemPrompt
+} from '@baishou/shared'
 import { useDialog } from '../Dialog'
 import type { AssistantInfo, AssistantPickerSheetProps } from './assistant-picker-sheet.types'
 
@@ -26,10 +31,14 @@ export function useAssistantPickerSheet({
   const [activeTab, setActiveTab] = useState<'prompt' | 'memory'>('prompt')
   const [editingPrompt, setEditingPrompt] = useState('')
   const [editingDescription, setEditingDescription] = useState('')
-  const [editingContextWindow, setEditingContextWindow] = useState(-1)
+  const [editingContextWindow, setEditingContextWindow] = useState(DEFAULT_ASSISTANT_CONTEXT_WINDOW)
   const [editingCompressEnabled, setEditingCompressEnabled] = useState(true)
-  const [editingCompressThreshold, setEditingCompressThreshold] = useState(60000)
-  const [editingCompressKeepTurns, setEditingCompressKeepTurns] = useState(3)
+  const [editingCompressThreshold, setEditingCompressThreshold] = useState(
+    DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD
+  )
+  const [editingCompressKeepTurns, setEditingCompressKeepTurns] = useState(
+    DEFAULT_ASSISTANT_COMPRESS_KEEP_TURNS
+  )
   const [editingCompressSystemPrompt, setEditingCompressSystemPrompt] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [showModelSwitcher, setShowModelSwitcher] = useState(false)
@@ -98,7 +107,9 @@ export function useAssistantPickerSheet({
     setEditingContextWindow(activeAssistant.contextWindow ?? -1)
     setEditingCompressEnabled(activeAssistant.compressTokenThreshold > 0)
     setEditingCompressThreshold(
-      activeAssistant.compressTokenThreshold > 0 ? activeAssistant.compressTokenThreshold : 60000
+      activeAssistant.compressTokenThreshold > 0
+        ? activeAssistant.compressTokenThreshold
+        : DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD
     )
     setEditingCompressKeepTurns(activeAssistant.compressKeepTurns ?? 3)
     const customPrompt = activeAssistant.compressSystemPrompt

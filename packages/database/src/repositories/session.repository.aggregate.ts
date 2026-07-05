@@ -1,4 +1,5 @@
 import { eq } from 'drizzle-orm'
+import { runWithSqliteBusyRetry } from '../sqlite-busy.util'
 import type { AppDatabase } from '../types'
 import { agentSessionsTable } from '../schema/agent-sessions'
 import { agentMessagesTable as messagesTbl } from '../schema/agent-messages'
@@ -145,23 +146,37 @@ export class SessionAggregateSync {
     }
 
     if (rawClient && typeof rawClient.batch === 'function') {
-      await rawClient.batch(stmts)
+      await runWithSqliteBusyRetry(() => rawClient.batch(stmts))
     } else if (rawClient && typeof rawClient.transaction === 'function') {
-      const runTx = rawClient.transaction((statements: typeof stmts) => {
-        for (const stmt of statements) {
-          rawClient.prepare(stmt.sql).run(...(stmt.args || []))
+      await runWithSqliteBusyRetry(async () => {
+        const runTx = rawClient.transaction((statements: typeof stmts) => {
+          for (const stmt of statements) {
+            rawClient.prepare(stmt.sql).run(...(stmt.args || []))
+          }
+        })
+        runTx(stmts)
+      })
+    } else if (rawClient && typeof rawClient.withTransactionAsync === 'function') {
+      await runWithSqliteBusyRetry(() =>
+        rawClient.withTransactionAsync(async () => {
+          for (const stmt of stmts) {
+            await rawClient.runAsync(stmt.sql, stmt.args ?? [])
+          }
+        })
+      )
+    } else if (rawClient && typeof rawClient.runAsync === 'function') {
+      // expo-sqlite：在全局 DB 锁内串行执行；优先事务减少锁持有次数
+      await runWithSqliteBusyRetry(async () => {
+        for (const stmt of stmts) {
+          await rawClient.runAsync(stmt.sql, stmt.args ?? [])
         }
       })
-      runTx(stmts)
-    } else if (rawClient && typeof rawClient.runAsync === 'function') {
-      // expo-sqlite：勿用 withTransactionAsync，会与 Drizzle prepareSync 争用同一连接导致原生崩溃
-      for (const stmt of stmts) {
-        await rawClient.runAsync(stmt.sql, stmt.args ?? [])
-      }
     } else if (rawClient && typeof rawClient.execAsync === 'function') {
-      for (const stmt of stmts) {
-        await rawClient.execAsync(stmt.sql, stmt.args ?? [])
-      }
+      await runWithSqliteBusyRetry(async () => {
+        for (const stmt of stmts) {
+          await rawClient.execAsync(stmt.sql, stmt.args ?? [])
+        }
+      })
     }
   }
 }
