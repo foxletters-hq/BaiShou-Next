@@ -1,10 +1,10 @@
 import { StyleSheet } from 'react-native'
 
 /**
- * EnrichedMarkdownText 末行常少报一行左右高度，文字会画在布局框外；
- * chat 变体已启用 allowTrailingMargin，此处仅保留少量缓冲。
+ * EnrichedMarkdownText 末行常少报高度；Legacy 渲染器走 RN Text 布局无此问题。
+ * 流式 EnrichedMarkdown 仍保留一行缓冲。
  */
-export const CHAT_MARKDOWN_BOTTOM_GUARD = 4
+export const CHAT_MARKDOWN_BOTTOM_GUARD = 24
 
 export const chatBubbleStyles = StyleSheet.create({
   container: {
@@ -79,6 +79,10 @@ export const chatBubbleStyles = StyleSheet.create({
     alignSelf: 'stretch',
     width: '100%',
     paddingBottom: CHAT_MARKDOWN_BOTTOM_GUARD
+  },
+  plainTextSlot: {
+    alignSelf: 'stretch',
+    width: '100%'
   },
   bubbleUser: {
     alignSelf: 'flex-end',

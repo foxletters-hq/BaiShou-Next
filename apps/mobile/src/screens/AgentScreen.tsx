@@ -1542,21 +1542,16 @@ export const AgentScreen = () => {
                     isLastAssistant && (liveAssistantActive || keepLiveRowAfterHold)
                   const rowKey = isLastAssistant ? LIVE_ASSISTANT_STREAM_KEY : item.id
 
-                  const rowLiveStream = isLiveAssistantRow
-                    ? {
-                        content: assistantPersistedInList
-                          ? item.content
-                          : streamingText.trim() || item.content,
-                        reasoning: assistantPersistedInList
-                          ? item.reasoning || ''
-                          : streamingReasoning.trim() || item.reasoning || '',
-                        isTextStreaming: bubbleTextStreaming,
-                        isThinkStreaming: assistantPersistedInList
-                          ? bubbleTextStreaming && Boolean((item.reasoning || '').trim())
-                          : liveStreamProps.isThinkStreaming,
-                        attachments: liveStreamProps.attachments
-                      }
-                    : undefined
+                  const rowLiveStream =
+                    isLiveAssistantRow && !assistantPersistedInList
+                      ? {
+                          content: streamingText.trim() || item.content,
+                          reasoning: streamingReasoning.trim() || item.reasoning || '',
+                          isTextStreaming: bubbleTextStreaming,
+                          isThinkStreaming: streamingThinkActive && bubbleTextStreaming,
+                          attachments: liveStreamProps.attachments
+                        }
+                      : undefined
 
                   const deferChromeForRow = isLiveAssistantRow && markdownPresentationActive
 

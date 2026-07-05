@@ -12,6 +12,8 @@ import { chatOverBackgroundMetaTextStyle } from '../../shared/chat-over-backgrou
 import { ToolResultGroupCard } from '../ToolResultGroupCard/ToolResultGroupCard'
 import { StreamingBubbleBouncingDots } from './StreamingBubbleBouncingDots'
 import { AgentMarkdownRenderer } from '../AgentMarkdown'
+import { chatNeedsRichMarkdown } from '../../shared/chat-bubble/chat-plain-text.util'
+import { ChatPlainTextBody } from '../ChatBubble/ChatPlainTextBody'
 import { NativeChatBubbleAttachments } from '../ChatBubble/NativeChatBubbleAttachments'
 
 export type { ToolExecution, NativeStreamingBubbleProps } from './streaming-bubble.types'
@@ -144,12 +146,22 @@ export const StreamingBubble = React.memo(function StreamingBubble({
             ) : null}
 
             {hasText && (
-              <View style={chatBubbleStyles.markdownSlot}>
-                <AgentMarkdownRenderer
-                  content={cleanText}
-                  isStreaming={isTextStreaming}
-                  variant="chat"
-                />
+              <View
+                style={
+                  chatNeedsRichMarkdown(cleanText)
+                    ? chatBubbleStyles.markdownSlot
+                    : chatBubbleStyles.plainTextSlot
+                }
+              >
+                {chatNeedsRichMarkdown(cleanText) ? (
+                  <AgentMarkdownRenderer
+                    content={cleanText}
+                    isStreaming={isTextStreaming}
+                    variant="chat"
+                  />
+                ) : (
+                  <ChatPlainTextBody content={cleanText} color={colors.textPrimary} />
+                )}
               </View>
             )}
             {reserveActionBarSpace ? <View style={auxStyles.actionBarSpacer} /> : null}
