@@ -31,6 +31,8 @@ export interface RecallDialogProps {
   onCopyContext?: () => void
   copyPreview?: SharedMemoryCopyPreview | null
   copyPreviewLoading?: boolean
+  copyPrefix?: string
+  onCopyPrefixChange?: (prefix: string) => void
 }
 
 export const RecallDialog: React.FC<RecallDialogProps> = ({
@@ -46,7 +48,9 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
   onMonthsChanged,
   onCopyContext,
   copyPreview,
-  copyPreviewLoading
+  copyPreviewLoading,
+  copyPrefix,
+  onCopyPrefixChange
 }) => {
   const { t } = useTranslation()
   const [searchQuery, setSearchQuery] = useState('')
@@ -184,6 +188,8 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
                     onCopyContext={onCopyContext}
                     copyPreview={copyPreview}
                     copyPreviewLoading={copyPreviewLoading}
+                    copyPrefix={copyPrefix}
+                    onCopyPrefixChange={onCopyPrefixChange}
                   />
                 )}
                 {/* 日记档案搜索结果 */}

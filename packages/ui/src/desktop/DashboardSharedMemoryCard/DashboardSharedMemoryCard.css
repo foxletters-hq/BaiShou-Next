@@ -11,7 +11,16 @@
 .sm-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   margin-bottom: 12px;
+}
+
+.sm-header-main {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
 }
 
 .sm-header-icon {
@@ -127,10 +136,32 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-left: 6px;
+  margin-left: 8px;
   color: var(--text-secondary, #64748b);
   cursor: pointer;
   transition: color 0.2s ease;
+}
+
+.sm-prefix-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary, #64748b);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease;
+}
+
+.sm-prefix-btn:hover {
+  color: var(--color-primary, #5ba8f5);
+  background: rgba(var(--color-primary-rgb, 91, 168, 245), 0.1);
 }
 
 .sm-help-icon-wrapper:hover {
@@ -197,6 +228,12 @@
 
 .sm-previewTotal {
   margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--text-tertiary, #94a3b8);
+}
+
+.sm-previewSize {
+  margin: 4px 0 0;
   font-size: 11px;
   color: var(--text-tertiary, #94a3b8);
 }

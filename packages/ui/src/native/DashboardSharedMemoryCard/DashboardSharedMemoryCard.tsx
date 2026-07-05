@@ -1,12 +1,25 @@
 import { useTranslation } from 'react-i18next'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native'
-import { Copy, Quote } from 'lucide-react-native'
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  TextInput,
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  KeyboardAvoidingView,
+  Platform
+} from 'react-native'
+import { Copy, Quote, TextQuote } from 'lucide-react-native'
 import type { SharedMemoryCopyPreview } from '@baishou/shared'
 import { DesktopStyleSlider } from './DesktopStyleSlider'
 import { useNativeTheme } from '../../native/theme'
 import { HelpTooltip } from '../Tooltip/HelpTooltip'
+import { Input } from '../Input/Input'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
+import { formatCompactTokenCount } from '../../shared/token-usage-display'
 
 const SLIDER_MIN = 1
 const SLIDER_BASE_MAX = 60
@@ -17,6 +30,80 @@ interface DashboardSharedMemoryCardProps {
   onCopyContext: () => void | Promise<void>
   copyPreview?: SharedMemoryCopyPreview | null
   copyPreviewLoading?: boolean
+  copyPrefix?: string
+  onCopyPrefixChange?: (prefix: string) => void
+}
+
+function CopyPrefixModal({
+  visible,
+  initialValue,
+  onCancel,
+  onConfirm
+}: {
+  visible: boolean
+  initialValue: string
+  onCancel: () => void
+  onConfirm: (value: string) => void
+}) {
+  const { t } = useTranslation()
+  const { colors, tokens } = useNativeTheme()
+  const [value, setValue] = useState(initialValue)
+
+  useEffect(() => {
+    if (visible) setValue(initialValue)
+  }, [visible, initialValue])
+
+  if (!visible) return null
+
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onCancel}>
+      <KeyboardAvoidingView
+        style={[prefixModalStyles.overlay, { backgroundColor: colors.overlay }]}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <Pressable style={StyleSheet.absoluteFill} onPress={onCancel} />
+        <View
+          style={[
+            prefixModalStyles.card,
+            {
+              backgroundColor: colors.bgSurface,
+              borderRadius: tokens.radius.xl,
+              padding: tokens.spacing.lg
+            }
+          ]}
+        >
+          <Text style={[prefixModalStyles.title, { color: colors.textPrimary }]}>
+            {t('summary.copy_prefix_label', '拷贝前缀')}
+          </Text>
+          <Text style={[prefixModalStyles.message, { color: colors.textSecondary }]}>
+            {t(
+              'summary.copy_prefix_hint',
+              '会自动附加在拷贝内容的最前方（例如：Hi，这是我的回忆...）'
+            )}
+          </Text>
+          <Input
+            value={value}
+            onChangeText={setValue}
+            multiline
+            textarea
+            autoFocus
+            containerStyle={{ marginBottom: 16 }}
+            style={{ minHeight: 100 }}
+          />
+          <View style={prefixModalStyles.actions}>
+            <Pressable onPress={onCancel} style={prefixModalStyles.actionBtn}>
+              <Text style={{ color: colors.textSecondary }}>{t('common.cancel', '取消')}</Text>
+            </Pressable>
+            <Pressable onPress={() => onConfirm(value)} style={prefixModalStyles.actionBtn}>
+              <Text style={{ color: colors.primary, fontWeight: '600' }}>
+                {t('common.confirm', '确定')}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  )
 }
 
 function SharedMemoryCopyPreviewPanel({
@@ -94,6 +181,12 @@ function SharedMemoryCopyPreviewPanel({
           </View>
           <Text style={[previewStyles.total, { color: colors.textTertiary }]}>
             {t('summary.copy_preview_total', '共 {{count}} 项', { count: preview.total })}
+          </Text>
+          <Text style={[previewStyles.size, { color: colors.textTertiary }]}>
+            {t('summary.copy_preview_estimated_size', '约 {{chars}} 字 · 约 {{tokens}} tokens', {
+              chars: preview.estimatedChars.toLocaleString(),
+              tokens: formatCompactTokenCount(preview.estimatedTokens)
+            })}
           </Text>
         </>
       )}
@@ -207,12 +300,15 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
   onMonthsChanged,
   onCopyContext,
   copyPreview,
-  copyPreviewLoading
+  copyPreviewLoading,
+  copyPrefix = '',
+  onCopyPrefixChange
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const cardBorder = colors.borderMuted
   const [copying, setCopying] = useState(false)
+  const [prefixModalVisible, setPrefixModalVisible] = useState(false)
 
   const handleCopyPress = useCallback(async () => {
     if (copying) return
@@ -227,22 +323,40 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
   return (
     <View style={[styles.card, { backgroundColor: colors.bgSurface, borderColor: cardBorder }]}>
       <View style={styles.header}>
-        <Quote
-          size={20}
-          color={colors.primary}
-          strokeWidth={DEFAULT_STROKE_WIDTH}
-          style={styles.headerIcon}
-        />
-        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
-          {t('summary.shared_memory')}
-        </Text>
-        <HelpTooltip
-          content={t(
-            'summary.shared_memory_tooltip',
-            '共同回忆统计展示您在设定时间周期内的核心足迹与情感波动数据。系统通过级联折叠算法在后台自动整合历史快照数据，去除重复啰嗦内容，将海量原始流水账压缩为符合 LLM 极窄上下文容量的高浓度叙事，方便 AI 快速理解您的近期现状。'
-          )}
-          size={16}
-        />
+        <View style={styles.headerMain}>
+          <Quote
+            size={20}
+            color={colors.primary}
+            strokeWidth={DEFAULT_STROKE_WIDTH}
+            style={styles.headerIcon}
+          />
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
+            {t('summary.shared_memory')}
+          </Text>
+          <View style={styles.helpWrap}>
+            <HelpTooltip
+              content={t(
+                'summary.shared_memory_tooltip',
+                '共同回忆统计展示您在设定时间周期内的核心足迹与情感波动数据。系统通过级联折叠算法在后台自动整合历史快照数据，去除重复啰嗦内容，将海量原始流水账压缩为符合 LLM 极窄上下文容量的高浓度叙事，方便 AI 快速理解您的近期现状。'
+              )}
+              size={16}
+            />
+          </View>
+        </View>
+        {onCopyPrefixChange ? (
+          <TouchableOpacity
+            activeOpacity={0.75}
+            style={[styles.prefixBtn, { backgroundColor: colors.bgSurfaceLowest }]}
+            onPress={() => setPrefixModalVisible(true)}
+            accessibilityLabel={t('summary.copy_prefix_label', '拷贝前缀')}
+          >
+            <TextQuote
+              size={16}
+              color={colors.textSecondary}
+              strokeWidth={DEFAULT_STROKE_WIDTH}
+            />
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       <LookbackMonthsField
@@ -266,9 +380,53 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
         )}
         <Text style={styles.btnText}>{t('summary.copy_memories')}</Text>
       </TouchableOpacity>
+
+      {onCopyPrefixChange ? (
+        <CopyPrefixModal
+          visible={prefixModalVisible}
+          initialValue={copyPrefix}
+          onCancel={() => setPrefixModalVisible(false)}
+          onConfirm={(value) => {
+            onCopyPrefixChange(value)
+            setPrefixModalVisible(false)
+          }}
+        />
+      ) : null}
     </View>
   )
 }
+
+const prefixModalStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 24
+  },
+  card: {
+    width: '100%',
+    maxWidth: 400,
+    alignSelf: 'center'
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8
+  },
+  message: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 12
+  },
+  actions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 20
+  },
+  actionBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 4
+  }
+})
 
 const fieldStyles = StyleSheet.create({
   controls: {
@@ -312,7 +470,15 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
     marginBottom: 12
+  },
+  headerMain: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    minWidth: 0
   },
   headerIcon: {
     marginRight: 8
@@ -320,6 +486,17 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontWeight: '800',
     fontSize: 16
+  },
+  helpWrap: {
+    marginLeft: 8
+  },
+  prefixBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0
   },
   btn: {
     marginTop: 16,
@@ -380,6 +557,9 @@ const previewStyles = StyleSheet.create({
     fontWeight: '600'
   },
   total: {
+    fontSize: 11
+  },
+  size: {
     fontSize: 11
   },
   emptyText: {

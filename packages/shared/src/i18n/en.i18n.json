@@ -1302,6 +1302,7 @@
     "copy_preview_weekly": "Weekly summaries",
     "copy_preview_unit": "",
     "copy_preview_total": "{{count}} item(s) in total",
+    "copy_preview_estimated_size": "~{{chars}} chars · ~{{tokens}} tokens",
     "copy_preview_empty": "Nothing to copy in the current lookback range",
     "algorithm_desc": "Based on the BaiShou cascade folding algorithm, redundent data is automatically filtered to build our collective memory context.",
     "stats_yearly": "Yearly",

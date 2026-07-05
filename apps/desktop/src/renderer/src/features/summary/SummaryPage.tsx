@@ -16,6 +16,7 @@ import { SummaryGalleryView } from './components/SummaryGalleryView'
 import { resolveDesktopSummaryConfig } from './utils/summary-config.util'
 import { peekSummaryDashboardCache } from '../../lib/summary-dashboard-cache'
 import { usePersistedSharedMemoryLookback } from '../../hooks/usePersistedSharedMemoryLookback'
+import { usePersistedSharedMemoryCopyPrefix } from '../../hooks/usePersistedSharedMemoryCopyPrefix'
 import { useSharedMemoryCopyPreview } from '../../hooks/useSharedMemoryCopyPreview'
 import './SummaryPage.css'
 
@@ -27,8 +28,12 @@ export const SummaryPage: React.FC = () => {
   /** 布局模式滞后于 activeTab，避免面板退出动画期间被画廊宽度撑开 */
   const [layoutTab, setLayoutTab] = useState<'panel' | 'gallery'>('panel')
   const { lookbackMonths, setLookbackMonths } = usePersistedSharedMemoryLookback()
-  const { preview: copyPreview, loading: copyPreviewLoading } =
-    useSharedMemoryCopyPreview(lookbackMonths)
+  const { copyPrefix, setCopyPrefix } = usePersistedSharedMemoryCopyPrefix()
+  const { preview: copyPreview, loading: copyPreviewLoading } = useSharedMemoryCopyPreview(
+    lookbackMonths,
+    true,
+    { userCopyPrefix: copyPrefix, locale: i18n.language }
+  )
   const [isBatchGenerating, setIsBatchGenerating] = useState(false)
   const [concurrencyLimit, setConcurrencyLimitState] = useState(3)
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
@@ -134,7 +139,11 @@ export const SummaryPage: React.FC = () => {
         toast.showError(t('common.copy_failed', '复制失败'))
         return
       }
-      const contextText = await api.summary.buildSharedContext(lookbackMonths, i18n.language)
+      const contextText = await api.summary.buildSharedContext(
+        lookbackMonths,
+        i18n.language,
+        copyPrefix
+      )
       if (contextText) {
         await navigator.clipboard.writeText(contextText)
         toast.showSuccess(t('summary.toast_copied', '共同回忆已复制'))
@@ -206,6 +215,8 @@ export const SummaryPage: React.FC = () => {
                   onCopyContext={handleCopyContext}
                   copyPreview={copyPreview}
                   copyPreviewLoading={copyPreviewLoading}
+                  copyPrefix={copyPrefix}
+                  onCopyPrefixChange={setCopyPrefix}
                 />
                 <DashboardStatsCard {...stats} />
               </div>

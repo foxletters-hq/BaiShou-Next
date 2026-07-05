@@ -23,6 +23,8 @@ export * from './i18n/i18n.types'
 
 export * from './utils/pricing.util'
 export * from './utils/date.utils'
+export * from './utils/text-token-estimate.util'
+export * from './utils/search-mode.util'
 export * from './message-metadata'
 export { logger } from './utils/logger'
 export { traceCall, SHORTCUT_TRACE_CHAIN } from './utils/call-trace'

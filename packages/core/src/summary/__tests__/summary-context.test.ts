@@ -26,6 +26,8 @@ describe('computeSharedMemoryCopyPreview', () => {
     expect(preview.quarterly).toBe(1)
     expect(preview.monthly).toBe(1)
     expect(preview.total).toBe(2)
+    expect(preview.estimatedChars).toBeGreaterThan(0)
+    expect(preview.estimatedTokens).toBeGreaterThan(0)
   })
 
   it('hides monthly summaries covered by older quarterly summaries', () => {
@@ -60,5 +62,43 @@ describe('computeSharedMemoryCopyPreview', () => {
     expect(preview.quarterly).toBe(2)
     expect(preview.monthly).toBe(0)
     expect(preview.total).toBe(2)
+    expect(preview.estimatedChars).toBeGreaterThan(0)
+    expect(preview.estimatedTokens).toBeGreaterThan(0)
+  })
+
+  it('includes user copy prefix in size estimate', () => {
+    const now = new Date()
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+
+    const withoutPrefix = computeSharedMemoryCopyPreview(
+      [
+        {
+          type: 'monthly',
+          startDate: monthStart,
+          endDate: now,
+          content: 'hello memory'
+        }
+      ],
+      [],
+      6,
+      { locale: 'zh' }
+    )
+
+    const withPrefix = computeSharedMemoryCopyPreview(
+      [
+        {
+          type: 'monthly',
+          startDate: monthStart,
+          endDate: now,
+          content: 'hello memory'
+        }
+      ],
+      [],
+      6,
+      { locale: 'zh', userCopyPrefix: 'Hi, AI!' }
+    )
+
+    expect(withPrefix.estimatedChars).toBeGreaterThan(withoutPrefix.estimatedChars)
+    expect(withPrefix.estimatedTokens).toBeGreaterThan(withoutPrefix.estimatedTokens)
   })
 })

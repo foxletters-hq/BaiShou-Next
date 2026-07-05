@@ -114,6 +114,8 @@ export interface SummaryConfig {
   promptLocale?: SummaryPromptLocale
   /** 共同回忆复制时的回溯月数（回忆页 / 唤醒回忆共用） */
   sharedMemoryLookbackMonths?: number
+  /** 复制共同回忆时附加在全文最前方的自定义前缀 */
+  sharedMemoryCopyPrefix?: string
   instructionsByLocale?: Partial<Record<SummaryPromptLocale, SummaryTemplatesMap>>
   instructions?: SummaryTemplatesMap
 }

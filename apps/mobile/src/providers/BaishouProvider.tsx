@@ -45,7 +45,8 @@ import {
   filterDiaryScopedSearchResults,
   isAgentStreamAbortError,
   type SummaryPromptLocale,
-  type SharedMemoryCopyPreview
+  type SharedMemoryCopyPreview,
+  type SummaryConfig
 } from '@baishou/shared'
 import { getTtsPlaybackSettings } from '../services/mobile-tts-settings.service'
 import { shouldRefreshVaultAfterArchiveImport } from '../services/archive-guards.util'
@@ -255,9 +256,16 @@ interface BaishouContextValue {
     settingsRepo: SettingsRepository
     profileRepo: UserProfileRepository
     /** 与桌面 summary:buildSharedContext 一致（总结 + 级联折叠后的日记） */
-    buildSharedContext: (lookbackMonths: number, locale?: string) => Promise<string>
+    buildSharedContext: (
+      lookbackMonths: number,
+      locale?: string,
+      userCopyPrefix?: string
+    ) => Promise<string>
     /** 与桌面 summary:buildSharedContextPreview 一致（复制前级联统计预览） */
-    buildSharedContextPreview: (lookbackMonths: number) => Promise<SharedMemoryCopyPreview>
+    buildSharedContextPreview: (
+      lookbackMonths: number,
+      options?: { userCopyPrefix?: string; locale?: string }
+    ) => Promise<SharedMemoryCopyPreview>
     /** 与桌面 agent:get-context-at-message 一致 */
     getContextAtMessage: (
       sessionId: string,
@@ -668,15 +676,28 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           summarySyncService
         )
 
-        const buildSharedContext = async (lookbackMonths: number, locale?: string) => {
+        const buildSharedContext = async (
+          lookbackMonths: number,
+          locale?: string,
+          userCopyPrefix?: string
+        ) => {
           const stack = diaryStackRef.current
           if (!stack) return ''
           const allSummaries = await summaryManager.list()
           const diaries = await stack.shadowRepo.listAllWithFTS({ limit: 10000 })
-          return buildSharedContextText(allSummaries, lookbackMonths, locale, { diaries })
+          const prefix =
+            userCopyPrefix ??
+            (await settingsManager.get<SummaryConfig>('summary_config'))?.sharedMemoryCopyPrefix
+          return buildSharedContextText(allSummaries, lookbackMonths, locale, {
+            diaries,
+            userCopyPrefix: prefix
+          })
         }
 
-        const buildSharedContextPreview = async (lookbackMonths: number) => {
+        const buildSharedContextPreview = async (
+          lookbackMonths: number,
+          options?: { userCopyPrefix?: string; locale?: string }
+        ) => {
           const stack = diaryStackRef.current
           const empty: SharedMemoryCopyPreview = {
             lookbackMonths,
@@ -685,12 +706,19 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             monthly: 0,
             weekly: 0,
             diary: 0,
-            total: 0
+            total: 0,
+            estimatedChars: 0,
+            estimatedTokens: 0
           }
           if (!stack) return empty
           const allSummaries = await summaryManager.list()
           const diaries = await stack.shadowRepo.listAllWithFTS({ limit: 10000 })
-          return computeSharedMemoryCopyPreview(allSummaries, diaries, lookbackMonths)
+          const summaryConfig = (await settingsManager.get<SummaryConfig>('summary_config')) || {}
+          const userCopyPrefix = options?.userCopyPrefix ?? summaryConfig.sharedMemoryCopyPrefix
+          return computeSharedMemoryCopyPreview(allSummaries, diaries, lookbackMonths, {
+            userCopyPrefix,
+            locale: options?.locale
+          })
         }
 
         const agentService = new AgentSessionService()
