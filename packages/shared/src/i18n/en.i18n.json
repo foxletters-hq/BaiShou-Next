@@ -2006,6 +2006,7 @@
       "emoji_group_desc": "Choose which sticker group this companion can use in chat",
       "emoji_enabled_label": "Sticker groups",
       "emoji_enabled_desc": "When enabled, this companion can use the selected sticker groups in chat",
+      "emoji_groups_pick_label": "Available sticker groups",
       "select_model_title": "Select Model",
       "compress_label": "Auto Compress",
       "compress_disabled_desc": "Conversations will not be auto-compressed, all messages are retained",
@@ -2066,12 +2067,20 @@
     "recall": {
       "title": "Context Recovery",
       "tab_diary": "Diaries",
-      "tab_memory": "Vector Knowledge",
+      "tab_memory": "Vector Memory",
       "search_hint": "Search keywords",
+      "search_semantic": "Semantic",
+      "search_text": "Keyword",
+      "search_semantic_hint": "Semantic search for memories...",
+      "search_text_hint": "Keyword search for memories...",
       "no_results": "No history match found in the vault.",
       "search_timeout": "Semantic search timed out. Please try again later.",
       "selected": "Selected",
-      "inject": "Extract to Dialogue Context"
+      "inject": "Extract to Dialogue Context",
+      "match_score": "Match {{score}}%",
+      "copy_success": "Memory copied to clipboard!",
+      "similarity": "Similarity",
+      "memory": "Memory"
     },
     "error": {
       "api_key": "API Key expired or invalid. Please update your key in model settings.",
@@ -2226,13 +2235,20 @@
     "avatar_file_missing": "Avatar file not found, restored to default avatar"
   },
   "recall": {
-    "title": "上下文补充与唤醒",
-    "tab_diary": "日记档案",
-    "tab_memory": "向量知识",
-    "search_hint": "Search...",
-    "no_results": "未在库中匹配到任何历史记忆碎片。",
-    "selected": "已选择",
-    "inject": "提取至当前上下文对话"
+    "title": "Recall Memories",
+    "tab_diary": "Diary Archive",
+    "tab_memory": "Vector Memory",
+    "search_hint": "Search memories...",
+    "search_semantic": "Semantic",
+    "search_text": "Keyword",
+    "search_semantic_hint": "Semantic search for memories...",
+    "search_text_hint": "Keyword search for memories...",
+    "no_results": "No matching memory fragments found in the vault.",
+    "selected": "Selected",
+    "inject": "Inject into current context",
+    "match_score": "Match {{score}}%",
+    "copy_success": "Memory copied to clipboard!",
+    "similarity": "Similarity"
   },
   "sidebar": {
     "tagline": "AI Terminal Companion",
