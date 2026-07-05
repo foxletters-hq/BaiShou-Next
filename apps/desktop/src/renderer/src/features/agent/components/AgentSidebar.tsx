@@ -85,14 +85,15 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
 
   return (
     <div className={`${styles.sidebar} ${isCollapsed ? styles.collapsed : ''}`}>
-      <CurrentAssistantSlot
-        currentAssistant={currentAssistant}
-        onShowPicker={onShowPicker}
-        onAssistantSwitched={onAssistantSwitched}
-        wrapperClassName={styles.sidebarTopAssistant}
-      />
+      <div className={styles.sidebarInner}>
+        <CurrentAssistantSlot
+          currentAssistant={currentAssistant}
+          onShowPicker={onShowPicker}
+          onAssistantSwitched={onAssistantSwitched}
+          wrapperClassName={styles.sidebarTopAssistant}
+        />
 
-      <div className={styles.sidebarContent}>
+        <div className={styles.sidebarContent}>
         <div className={styles.fixedHeaderArea}>
           <AgentSidebarHeader
             pinnedAssistants={pinnedAssistants}
@@ -154,6 +155,7 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   )
