@@ -11,8 +11,11 @@
   position: fixed;
   inset: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  padding: 32px 24px 196px;
+  box-sizing: border-box;
   z-index: 450;
   background: rgba(100, 116, 139, 0.28);
   backdrop-filter: blur(10px);
@@ -36,8 +39,8 @@
 }
 
 .image-preview-stage-img {
-  max-width: min(86vw, 720px);
-  max-height: min(82vh, 720px);
+  max-width: min(76vw, 600px);
+  max-height: min(calc(100vh - 260px), 520px);
   width: auto;
   height: auto;
   object-fit: contain;

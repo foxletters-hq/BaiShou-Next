@@ -1,4 +1,5 @@
 import type { EditorView } from '@codemirror/view'
+import { StateEffect } from '@codemirror/state'
 import { readActiveTableCellFor, setActiveTableCell } from './tableActiveCell'
 import { readTableCellEditingFor, setTableCellEditing } from './tableCellEditing'
 import { readTableChromeSelectionFor, setTableChromeSelection } from './tableChromeSelection'
@@ -239,7 +240,7 @@ function mountCellEditor(
       dispatchTableModelFromBlock(view, block)
     },
     onFocus: () => {
-      const effects = [
+      const effects: StateEffect<unknown>[] = [
         setActiveTableCell.of({ tableFrom, rowIndex, colIndex }),
         setTableCellRangeSelection.of(null)
       ]

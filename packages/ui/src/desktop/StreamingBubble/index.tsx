@@ -48,6 +48,7 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
   const { t } = useTranslation()
   const hasTools = completedTools.length > 0 || !!activeToolName
   const hasAttachments = attachments.length > 0
+  const useWideBubble = hasTools
   const aiName = aiProfile.name || t('agent.chat.ai_label')
 
   // 零副作用过滤提取 think 标签，并脱壳误泄漏的 message 元数据
@@ -64,7 +65,9 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
       <div className={styles.avatarWrap}>
         <AssistantAvatar avatarPath={aiProfile.avatarPath} size={36} borderRadius="50%" />
       </div>
-      <div className={styles.messageCol}>
+      <div
+        className={`${styles.messageCol} ${useWideBubble ? styles.messageColWide : ''}`}
+      >
         <div className={styles.nameLabel}>{aiName}</div>
 
         {error ? (
@@ -79,7 +82,9 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
         ) : (
           <>
             {hasText || hasTools || hasReasoning || hasAttachments ? (
-              <div className={styles.bubbleCard}>
+              <div
+                className={`${styles.bubbleCard} ${useWideBubble ? styles.bubbleCardWide : ''}`}
+              >
                 {hasAttachments ? <ChatBubbleAttachments attachments={attachments} /> : null}
                 {/* Reasoning 块 - 移到 bubbleCard 内部 */}
                 {hasReasoning && (

@@ -248,7 +248,9 @@
   align-items: center;
   justify-content: flex-start;
   flex-wrap: nowrap;
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
+  align-self: flex-start;
   margin-top: 4px;
   gap: 8px;
 }

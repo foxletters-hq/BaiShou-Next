@@ -36,9 +36,13 @@
 .messageCol {
   display: flex;
   flex-direction: column;
-  width: min(800px, calc(100% - 60px));
+  width: fit-content;
   max-width: min(800px, calc(100% - 60px));
   align-items: flex-start;
+}
+
+.messageColWide {
+  width: min(800px, calc(100% - 60px));
 }
 
 .nameLabel {
@@ -60,9 +64,13 @@
   border: 1px solid var(--border-subtle);
   border-radius: 4px 20px 20px 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  width: 100%;
+  width: fit-content;
   max-width: 100%;
   box-sizing: border-box;
+}
+
+.bubbleCardWide {
+  width: 100%;
 }
 
 .dotsWrap {

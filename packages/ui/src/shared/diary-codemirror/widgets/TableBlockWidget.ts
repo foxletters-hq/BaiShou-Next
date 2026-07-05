@@ -1,4 +1,5 @@
 import { WidgetType, EditorView } from '@codemirror/view'
+import { StateEffect } from '@codemirror/state'
 import { type ParsedTable, tableContentSignature } from '../table/table.model'
 import { normalizeTableCellDisplay } from '../table/tableCellText'
 import { resolveTableKeyAction, type TableKeyCommand } from '../table/tableKeyResolver'
@@ -371,7 +372,7 @@ export class TableBlockWidget extends WidgetType {
     }
 
     if (view) {
-      const effects = [
+      const effects: StateEffect<unknown>[] = [
         setActiveTableCell.of({
           tableFrom: this.table.from,
           rowIndex,
@@ -905,7 +906,7 @@ export class TableBlockWidget extends WidgetType {
       this.syncActiveHandles(rowIndex, colIndex)
       const view = this.editorView()
       if (!view) return
-      const effects = [
+      const effects: StateEffect<unknown>[] = [
         setActiveTableCell.of({
           tableFrom: this.table.from,
           rowIndex,
