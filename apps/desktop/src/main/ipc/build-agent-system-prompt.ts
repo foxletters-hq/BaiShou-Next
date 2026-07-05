@@ -8,12 +8,12 @@ import {
   buildStreamConfig
 } from './agent-helpers'
 import { AgentChatService } from './AgentChatService'
+import { resolveWebSearchEnabled } from '@baishou/shared'
 import { settingsManager } from './settings.ipc'
 
 async function resolveSearchModeEnabled(explicit?: boolean): Promise<boolean> {
-  if (explicit === true) return true
-  if (explicit === false) return false
-  return (await settingsManager.get<boolean>('search_mode_enabled')) === true
+  const stored = await settingsManager.get<boolean>('search_mode_enabled')
+  return resolveWebSearchEnabled(explicit, stored)
 }
 
 export async function buildAgentSystemPrompt(

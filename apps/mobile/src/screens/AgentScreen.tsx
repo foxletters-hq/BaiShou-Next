@@ -92,6 +92,7 @@ import { useAgentComposerDraftKey } from '../hooks/useAgentComposerDraftKey'
 import { mobileComposerDraftStorage } from '../lib/mobile-composer-draft.storage'
 import { useThrottledFocusRefresh } from '../hooks/useThrottledFocusRefresh'
 import { usePersistedSharedMemoryLookback } from '../hooks/usePersistedSharedMemoryLookback'
+import { usePersistedSharedMemoryCopyPrefix } from '../hooks/usePersistedSharedMemoryCopyPrefix'
 import { useSharedMemoryCopyPreview } from '../hooks/useSharedMemoryCopyPreview'
 
 /** 底部输入栏 + 工具条的大致高度，用于「回到底部」悬浮按钮定位 */
@@ -126,6 +127,7 @@ export const AgentScreen = () => {
   const [isBubbleEditing, setIsBubbleEditing] = useState(false)
   const { lookbackMonths: recallLookbackMonths, setLookbackMonths: setRecallLookbackMonths } =
     usePersistedSharedMemoryLookback()
+  const { copyPrefix, setCopyPrefix } = usePersistedSharedMemoryCopyPrefix()
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   const [inputDockHeight, setInputDockHeight] = useState(INPUT_DOCK_HEIGHT)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -500,7 +502,10 @@ export const AgentScreen = () => {
   } = useAgentUI()
 
   const { preview: recallCopyPreview, loading: recallCopyPreviewLoading } =
-    useSharedMemoryCopyPreview(recallLookbackMonths, showRecallSheet)
+    useSharedMemoryCopyPreview(recallLookbackMonths, showRecallSheet, {
+      userCopyPrefix: copyPrefix,
+      locale: i18n.language
+    })
 
   const {
     showScrollButton,
@@ -884,8 +889,8 @@ export const AgentScreen = () => {
   useEffect(() => {
     AsyncStorage.getItem('baishou_search_mode')
       .then((v) => {
-        if (v === 'true' && !searchMode) {
-          useAgentStore.getState().toggleSearchMode?.()
+        if (v != null) {
+          useAgentStore.getState().setSearchMode(v === 'true')
         }
         searchModeLoadedRef.current = true
       })
@@ -1783,7 +1788,8 @@ export const AgentScreen = () => {
           try {
             const contextText = await services?.buildSharedContext?.(
               recallLookbackMonths,
-              i18n.language
+              i18n.language,
+              copyPrefix
             )
             if (contextText) {
               await Clipboard.setStringAsync(contextText)
@@ -1804,6 +1810,8 @@ export const AgentScreen = () => {
         }}
         copyPreview={recallCopyPreview}
         copyPreviewLoading={recallCopyPreviewLoading}
+        copyPrefix={copyPrefix}
+        onCopyPrefixChange={setCopyPrefix}
       />
 
       <ContextChainDialog

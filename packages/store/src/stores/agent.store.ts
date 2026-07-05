@@ -51,7 +51,7 @@ export const useAgentStore = createStore<AgentState & AgentActions>(
     messages: [],
     isLoading: false,
     toolCalls: {},
-    searchMode: false,
+    searchMode: true,
     currentSessionId: null,
 
     addMessage: (message) =>

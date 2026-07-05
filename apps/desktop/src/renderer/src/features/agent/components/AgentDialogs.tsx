@@ -11,6 +11,7 @@ import {
 } from '@baishou/ui'
 import { isEmbeddingModel, isTtsModel } from '@baishou/shared'
 import { useSharedMemoryCopyPreview } from '../../../hooks/useSharedMemoryCopyPreview'
+import { usePersistedSharedMemoryCopyPrefix } from '../../../hooks/usePersistedSharedMemoryCopyPrefix'
 import type { AgentOutletContext } from '../agent-outlet-context'
 import { useSettingsStore } from '@baishou/store'
 
@@ -106,8 +107,12 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
   inputBarRef
 }) => {
   const { onAssistantSwitched } = useOutletContext<AgentOutletContext>()
+  const { copyPrefix, setCopyPrefix } = usePersistedSharedMemoryCopyPrefix()
   const { preview: recallCopyPreview, loading: recallCopyPreviewLoading } =
-    useSharedMemoryCopyPreview(recallLookbackMonths, showRecallSheet)
+    useSharedMemoryCopyPreview(recallLookbackMonths, showRecallSheet, {
+      userCopyPrefix: copyPrefix,
+      locale: i18n.language
+    })
 
   return (
     <>
@@ -192,11 +197,14 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
         onMonthsChanged={setRecallLookbackMonths}
         copyPreview={recallCopyPreview}
         copyPreviewLoading={recallCopyPreviewLoading}
+        copyPrefix={copyPrefix}
+        onCopyPrefixChange={setCopyPrefix}
         onCopyContext={async () => {
           try {
-            const contextText = await (window as any).api?.rag?.buildSharedContext?.(
+            const contextText = await (window as any).api?.summary?.buildSharedContext?.(
               recallLookbackMonths,
-              i18n.language
+              i18n.language,
+              copyPrefix
             )
             if (contextText) {
               await navigator.clipboard.writeText(contextText)

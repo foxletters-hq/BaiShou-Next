@@ -8,7 +8,6 @@ import {
   useAssistantStore,
   usePromptShortcutStore,
   useUserProfileStore,
-  useAgentStore,
   useContextCompressionStore
 } from '@baishou/store'
 import { useAgentStream, clearStreamBridgeForSession } from './useAgentStream'
@@ -23,6 +22,8 @@ import { useAssistantResolver } from './useAssistantResolver'
 import { useTranslation } from 'react-i18next'
 import { useTts } from './useTts'
 import { usePersistedSharedMemoryLookback } from '../../../hooks/usePersistedSharedMemoryLookback'
+import { usePersistedSearchMode } from './usePersistedSearchMode'
+import { usePersistedSearchMode } from './usePersistedSearchMode'
 import {
   mapSavedAttachmentsForUi,
   isConfiguredDialogueModelId,
@@ -87,9 +88,7 @@ export function useAgentChatFlow() {
   const { shortcuts, loadShortcuts, addShortcut, updateShortcut, removeShortcut } =
     usePromptShortcutStore()
   const { profile: userProfile } = useUserProfileStore()
-  const searchMode = useAgentStore((s) => s.searchMode)
-  const setSearchMode = useAgentStore((s) => s.setSearchMode)
-  const toggleSearchMode = useAgentStore((s) => s.toggleSearchMode)
+  const { searchMode, setSearchMode, toggleSearchMode } = usePersistedSearchMode()
 
   // ── 3. 各种 UI 弹窗与控制状态 ──
   const [showModelSwitcher, setShowModelSwitcher] = useState(false)
@@ -190,32 +189,7 @@ export function useAgentChatFlow() {
     loadShortcuts()
   }, [fetchAssistants, loadShortcuts])
 
-  // ── 7. 搜索模式持久化 ──
-  const searchModeLoadedRef = useRef(false)
-  useEffect(() => {
-    const api = (window as any).api
-    if (api?.settings?.getSearchModeEnabled) {
-      api.settings
-        .getSearchModeEnabled()
-        .then((enabled: boolean) => {
-          setSearchMode(!!enabled)
-          searchModeLoadedRef.current = true
-        })
-        .catch(() => {
-          searchModeLoadedRef.current = true
-        })
-    } else {
-      searchModeLoadedRef.current = true
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!searchModeLoadedRef.current) return
-    const api = (window as any).api
-    if (api?.settings?.setSearchModeEnabled) {
-      api.settings.setSearchModeEnabled(searchMode)
-    }
-  }, [searchMode])
+  // ── 7. 搜索模式持久化见 usePersistedSearchMode ──
 
   // ── 8. 流式结束后的会话刷新与始终朗读（对齐移动端）──
   const prevIsStreamingRef = useRef(stream.isStreaming)
@@ -264,7 +238,9 @@ export function useAgentChatFlow() {
     search?: boolean
   ): Promise<boolean> => {
     let targetSessionId = sessionId
-    setSearchMode(search ?? false)
+    if (search !== undefined) {
+      setSearchMode(search)
+    }
 
     if (
       !isConfiguredProviderId(model.currentProviderId) ||

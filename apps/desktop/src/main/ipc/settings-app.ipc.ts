@@ -3,6 +3,7 @@ import {
   LEGACY_UPGRADE_RAG_NOTICE_COUNT_KEY,
   LEGACY_UPGRADE_RAG_PENDING_KEY
 } from '@baishou/core/shared'
+import { resolveWebSearchEnabled } from '@baishou/shared'
 import { settingsManager } from './settings.ipc'
 
 /**
@@ -77,7 +78,8 @@ export function registerSettingsAppIPC() {
   })
 
   ipcMain.handle('settings:get-search-mode-enabled', async () => {
-    return (await settingsManager.get<boolean>('search_mode_enabled')) || false
+    const stored = await settingsManager.get<boolean>('search_mode_enabled')
+    return resolveWebSearchEnabled(undefined, stored)
   })
 
   ipcMain.handle('settings:set-search-mode-enabled', async (_, enabled: boolean) => {

@@ -27,7 +27,7 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
     onTriggerShortcut,
     onManageShortcuts,
     onOpenTools,
-    searchMode = false,
+    searchMode = true,
     onToggleSearchMode,
     ttsMode = 'manual',
     onToggleTtsMode
