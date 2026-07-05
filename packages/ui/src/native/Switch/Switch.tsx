@@ -7,6 +7,11 @@ import Animated, {
   interpolateColor
 } from 'react-native-reanimated'
 import { useNativeTheme } from '../theme'
+import { toReanimatedColor } from '../../shared/colors/reanimated-color.util'
+
+const TRACK_OFF_LIGHT = '#E2E8F0'
+const TRACK_OFF_DARK = '#2D3748'
+const TRACK_ON_FALLBACK = '#5BA8F5'
 
 export interface NativeSwitchProps {
   value?: boolean
@@ -33,8 +38,8 @@ export const Switch: React.FC<NativeSwitchProps> = ({
     })
   }, [value, progress])
 
-  const trackColorOff = isDark ? '#2D3748' : '#E2E8F0'
-  const trackColorOn = colors.primary
+  const trackColorOff = isDark ? TRACK_OFF_DARK : TRACK_OFF_LIGHT
+  const trackColorOn = toReanimatedColor(colors.primary, TRACK_ON_FALLBACK)
 
   const rTrackStyle = useAnimatedStyle(() => {
     const backgroundColor = interpolateColor(progress.value, [0, 1], [trackColorOff, trackColorOn])
