@@ -26,6 +26,11 @@ function stripBom(raw: string): string {
   return raw.replace(/^\uFEFF/, '')
 }
 
+/** 正文：仅去掉首部空白，保留末尾换行（用户刻意留的空行） */
+export function normalizeJournalBody(body: string): string {
+  return stripBom(body).trimStart()
+}
+
 /**
  * 将 Markdown 文件拆分为 frontmatter 元数据块与正文。
  * 兼容旧版移动端写入的多种边界格式（无正文、闭合 --- 后无换行等）。
@@ -42,13 +47,13 @@ export function splitJournalFrontmatter(raw: string): { metaBlock: string; body:
   // 标准：闭合 --- 独占一行，正文在下一行或为空
   const lineClose = rest.match(/^([\s\S]*?)\r?\n---[ \t]*(?:\r?\n([\s\S]*)|\s*$)/)
   if (lineClose) {
-    return { metaBlock: lineClose[1] ?? '', body: (lineClose[2] ?? '').trim() }
+    return { metaBlock: lineClose[1] ?? '', body: normalizeJournalBody(lineClose[2] ?? '') }
   }
 
   // 旧版：闭合 --- 后紧跟正文（无换行）
   const inlineClose = rest.match(/^([\s\S]*?)\r?\n---[ \t]*(.+)$/s)
   if (inlineClose) {
-    return { metaBlock: inlineClose[1] ?? '', body: (inlineClose[2] ?? '').trim() }
+    return { metaBlock: inlineClose[1] ?? '', body: normalizeJournalBody(inlineClose[2] ?? '') }
   }
 
   return null
@@ -133,7 +138,7 @@ function parseTags(meta: Record<string, string>, metaBlock: string): string[] {
  */
 export function parseJournalMarkdown(raw: string, fallbackDate: string): ParsedJournal | null {
   const split = splitJournalFrontmatter(raw)
-  const content = split ? split.body : stripBom(raw).trim()
+  const content = split ? split.body : normalizeJournalBody(stripBom(raw))
 
   const meta = split ? parseFrontmatterMeta(split.metaBlock) : {}
   const frontmatterTags = split ? parseTags(meta, split.metaBlock) : []

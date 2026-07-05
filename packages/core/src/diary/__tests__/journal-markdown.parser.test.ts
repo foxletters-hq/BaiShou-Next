@@ -98,4 +98,27 @@ date: 2025-06-19
     const parsed = parseJournalMarkdown(raw, '2025-06-19')
     expect(parsed?.tags).toEqual(['疲惫', '深夜', '反思', '白守'])
   })
+
+  it('应保留正文末尾换行', () => {
+    const raw = `---
+id: 7
+date: 2025-07-05
+---
+最后一行
+
+
+`
+    const parsed = parseJournalMarkdown(raw, '2025-07-05')
+    expect(parsed?.content).toBe('最后一行\n\n\n')
+  })
+
+  it('正文仅含末尾换行时应完整保留', () => {
+    const raw = `---
+date: 2025-07-05
+---
+已有文字
+
+`
+    expect(splitJournalFrontmatter(raw)?.body).toBe('已有文字\n\n')
+  })
 })
