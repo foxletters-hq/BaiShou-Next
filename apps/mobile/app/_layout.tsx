@@ -24,6 +24,7 @@ import {
   buildAppNavigationTheme,
   buildThemedFadeStackOptions
 } from '@/src/navigation/themedNavigation'
+import { useDevLanTransferDeepLinkReplayGuard } from '@/src/navigation/useDevLanTransferDeepLinkReplayGuard'
 import { NativeAppThemeBridge } from '@/src/providers/NativeAppThemeBridge'
 import { HeroUIThemeBridge } from '@/src/providers/HeroUIThemeBridge'
 import '@/src/screens/DiaryScreen/diary-filter-state.util'
@@ -48,6 +49,7 @@ function AppContent() {
   const { dbReady, services } = useBaishou()
   useDiaryEmbedFailureToast()
   useLegacyUpgradeRagToast()
+  useDevLanTransferDeepLinkReplayGuard()
 
   useEffect(() => {
     if (!dbReady || !services) return
@@ -100,7 +102,6 @@ function AppContent() {
         />
         <Stack.Screen name="assistants" />
         <Stack.Screen name="assistant-edit" />
-        <Stack.Screen name="lan-transfer" />
         <Stack.Screen name="data-sync" />
         <Stack.Screen name="summary-detail" />
         <Stack.Screen name="storage" />

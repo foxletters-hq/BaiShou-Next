@@ -171,14 +171,19 @@ export const LanTransferScreen: React.FC = () => {
     setTimeout(() => void startDualMode(), 400)
   }, [startDualMode, stopDualMode])
 
+  const startDualModeRef = useRef(startDualMode)
+  const stopDualModeRef = useRef(stopDualMode)
+  startDualModeRef.current = startDualMode
+  stopDualModeRef.current = stopDualMode
+
   useEffect(() => {
     if (!dbReady || !lanSyncService) return
-    const timer = setTimeout(() => void startDualMode(), 400)
+    const timer = setTimeout(() => void startDualModeRef.current(), 400)
     return () => {
       clearTimeout(timer)
-      void stopDualMode()
+      void stopDualModeRef.current()
     }
-  }, [dbReady, lanSyncService, startDualMode, stopDualMode])
+  }, [dbReady, lanSyncService])
 
   useEffect(() => {
     if (!isDiscovering) return

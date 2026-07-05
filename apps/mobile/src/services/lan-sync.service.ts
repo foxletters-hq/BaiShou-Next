@@ -18,10 +18,16 @@ import * as BaishouServer from 'expo-baishou-server'
 import { ensureLanDiscoveryPermissions } from './lan-discovery-permission.service'
 import { stripFileScheme } from './android-external-fs'
 
-const ANDROID_MDNS_IMPL = ImplType.DNSSD
+/** 发布走 DNSSD，满足 Android 15+ 16KB 页面对齐要求 */
+const ANDROID_PUBLISH_MDNS_IMPL = ImplType.DNSSD
+/** 发现走 NSD，避免与 DNSSD 发布共用同一嵌入式 mDNS 实例导致 native 崩溃 */
+const ANDROID_DISCOVERY_MDNS_IMPL = ImplType.NSD
+const ANDROID_MDNS_SETTLE_MS = 150
 
 export class MobileLanSyncService implements ILanSyncService {
   private zeroconf: Zeroconf
+  private discoveryActive = false
+  private mdnsChain: Promise<void> = Promise.resolve()
   private isBroadcasting = false
   private currentPort = 0
   private currentIp = ''
@@ -97,12 +103,32 @@ export class MobileLanSyncService implements ILanSyncService {
     })
   }
 
-  private getAndroidMdnsImpl() {
-    return Platform.OS === 'android' ? ANDROID_MDNS_IMPL : undefined
+  private getAndroidPublishImpl() {
+    return Platform.OS === 'android' ? ANDROID_PUBLISH_MDNS_IMPL : undefined
+  }
+
+  private getAndroidDiscoveryImpl() {
+    return Platform.OS === 'android' ? ANDROID_DISCOVERY_MDNS_IMPL : undefined
+  }
+
+  private mdnsSettle(): Promise<void> {
+    if (Platform.OS !== 'android') return Promise.resolve()
+    return new Promise((resolve) => setTimeout(resolve, ANDROID_MDNS_SETTLE_MS))
+  }
+
+  private enqueueMdns(work: () => void | Promise<void>): Promise<void> {
+    this.mdnsChain = this.mdnsChain
+      .then(async () => {
+        await work()
+      })
+      .catch((e) => {
+        console.warn('[MobileLanSyncService] mDNS queue error', e)
+      })
+    return this.mdnsChain
   }
 
   private scanLanServices() {
-    const impl = this.getAndroidMdnsImpl()
+    const impl = this.getAndroidDiscoveryImpl()
     if (impl) {
       this.zeroconf.scan('baishou', 'tcp', 'local.', impl)
     } else {
@@ -192,35 +218,38 @@ export class MobileLanSyncService implements ILanSyncService {
 
     const safeNickname = 'BaishouMob'
     const serviceName = buildLanServiceName(safeNickname, this.lanDeviceId)
-    const impl = this.getAndroidMdnsImpl()
-    if (this.publishedServiceName && this.publishedServiceName !== serviceName) {
-      if (impl) {
-        this.zeroconf.unpublishService(this.publishedServiceName, impl)
-      } else {
-        this.zeroconf.unpublishService(this.publishedServiceName)
+    const impl = this.getAndroidPublishImpl()
+    await this.enqueueMdns(async () => {
+      if (this.publishedServiceName && this.publishedServiceName !== serviceName) {
+        if (impl) {
+          this.zeroconf.unpublishService(this.publishedServiceName, impl)
+        } else {
+          this.zeroconf.unpublishService(this.publishedServiceName)
+        }
+        await this.mdnsSettle()
       }
-    }
-    this.publishedServiceName = serviceName
+      this.publishedServiceName = serviceName
 
-    const txt = {
-      nickname: safeNickname,
-      ip,
-      device_type: 'mobile',
-      device_id: this.lanDeviceId
-    }
-    if (impl) {
-      this.zeroconf.publishService(
-        'baishou',
-        'tcp',
-        'local.',
-        serviceName,
-        this.currentPort,
-        txt,
-        impl
-      )
-    } else {
-      this.zeroconf.publishService('baishou', 'tcp', 'local.', serviceName, this.currentPort, txt)
-    }
+      const txt = {
+        nickname: safeNickname,
+        ip,
+        device_type: 'mobile',
+        device_id: this.lanDeviceId
+      }
+      if (impl) {
+        this.zeroconf.publishService(
+          'baishou',
+          'tcp',
+          'local.',
+          serviceName,
+          this.currentPort,
+          txt,
+          impl
+        )
+      } else {
+        this.zeroconf.publishService('baishou', 'tcp', 'local.', serviceName, this.currentPort, txt)
+      }
+    })
 
     this.isBroadcasting = true
     return { ip, port: this.currentPort, serviceId: serviceName, deviceId: this.lanDeviceId }
@@ -228,15 +257,18 @@ export class MobileLanSyncService implements ILanSyncService {
 
   public async stopBroadcasting(): Promise<void> {
     if (!this.isBroadcasting) return
-    if (this.publishedServiceName) {
-      const impl = this.getAndroidMdnsImpl()
-      if (impl) {
-        this.zeroconf.unpublishService(this.publishedServiceName, impl)
-      } else {
-        this.zeroconf.unpublishService(this.publishedServiceName)
+    await this.enqueueMdns(async () => {
+      if (this.publishedServiceName) {
+        const impl = this.getAndroidPublishImpl()
+        if (impl) {
+          this.zeroconf.unpublishService(this.publishedServiceName, impl)
+        } else {
+          this.zeroconf.unpublishService(this.publishedServiceName)
+        }
+        await this.mdnsSettle()
       }
-    }
-    this.publishedServiceName = null
+      this.publishedServiceName = null
+    })
     BaishouServer.stopServer()
     if (this.serverEventSub) {
       this.serverEventSub.remove()
@@ -253,6 +285,31 @@ export class MobileLanSyncService implements ILanSyncService {
     this.isBroadcasting = false
   }
 
+  private async stopDiscoveryInternal(): Promise<void> {
+    if (this.rescanTimer) {
+      clearInterval(this.rescanTimer)
+      this.rescanTimer = null
+    }
+
+    const wasActive = this.discoveryActive
+    this.discoveryActive = false
+
+    if (wasActive) {
+      const impl = this.getAndroidDiscoveryImpl()
+      if (impl) {
+        this.zeroconf.stop(impl)
+      } else {
+        this.zeroconf.stop()
+      }
+      await this.mdnsSettle()
+    }
+
+    this.activeDevices.clear()
+    this.serviceNameToDedupKey.clear()
+    this.deviceFoundCb = undefined
+    this.deviceLostCb = undefined
+  }
+
   public async startDiscovery(
     onDeviceFound: (device: DiscoveredDevice) => void,
     onDeviceLost: (deviceId: string) => void
@@ -262,34 +319,29 @@ export class MobileLanSyncService implements ILanSyncService {
       throw new Error('需要授予附近设备或定位权限才能扫描局域网设备')
     }
 
-    await this.stopDiscovery()
-    this.deviceFoundCb = onDeviceFound
-    this.deviceLostCb = onDeviceLost
-    this.activeDevices.clear()
-    this.serviceNameToDedupKey.clear()
-
-    this.scanLanServices()
-    if (this.rescanTimer) clearInterval(this.rescanTimer)
-    this.rescanTimer = setInterval(() => {
+    await this.enqueueMdns(async () => {
+      await this.stopDiscoveryInternal()
+      this.deviceFoundCb = onDeviceFound
+      this.deviceLostCb = onDeviceLost
+      this.activeDevices.clear()
+      this.serviceNameToDedupKey.clear()
+      this.discoveryActive = true
       this.scanLanServices()
-    }, LAN_DISCOVERY_RESCAN_MS)
+
+      if (this.rescanTimer) clearInterval(this.rescanTimer)
+      this.rescanTimer = setInterval(() => {
+        void this.enqueueMdns(() => {
+          if (!this.discoveryActive) return
+          this.scanLanServices()
+        })
+      }, LAN_DISCOVERY_RESCAN_MS)
+    })
   }
 
   public async stopDiscovery(): Promise<void> {
-    if (this.rescanTimer) {
-      clearInterval(this.rescanTimer)
-      this.rescanTimer = null
-    }
-    const impl = this.getAndroidMdnsImpl()
-    if (impl) {
-      this.zeroconf.stop(impl)
-    } else {
-      this.zeroconf.stop()
-    }
-    this.activeDevices.clear()
-    this.serviceNameToDedupKey.clear()
-    this.deviceFoundCb = undefined
-    this.deviceLostCb = undefined
+    await this.enqueueMdns(async () => {
+      await this.stopDiscoveryInternal()
+    })
   }
 
   private async findReachableIp(hostStr: string, port: number): Promise<string | null> {
