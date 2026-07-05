@@ -68,19 +68,3 @@ describe('stableAssistantDiskJson', () => {
     expect(a).toBe(b)
   })
 })
-
-describe('stableAssistantDiskJson', () => {
-  it('treats equivalent records with different updatedAt shapes as equal', () => {
-    const a = stableAssistantDiskJson({
-      id: 'default',
-      name: 'Latte',
-      updatedAt: '2026-06-16T12:00:00.000Z'
-    })
-    const b = stableAssistantDiskJson({
-      id: 'default',
-      name: 'Latte',
-      updatedAt: new Date('2026-06-16T12:00:00.000Z')
-    })
-    expect(a).toBe(b)
-  })
-})

@@ -71,65 +71,6 @@ export async function resolveVersionMigrationFlutterPrefs(
   }
 }
 
-export interface VersionMigrationFlutterPrefs {
-  config: Record<string, unknown> | null
-  sp: Record<string, unknown> | null
-  supplementedFromMachine: boolean
-}
-
-function deriveConfigFromSp(sp: Record<string, unknown> | null): Record<string, unknown> | null {
-  if (!sp) return null
-  const assembled = assembleDevicePreferencesFromFlutterSp(sp)
-  return hasMeaningfulFlutterPreferences(assembled) ? assembled : null
-}
-
-function hasMeaningfulSpValue(value: unknown): boolean {
-  if (value == null) return false
-  if (typeof value === 'string') return value.trim().length > 0
-  if (Array.isArray(value)) return value.length > 0
-  if (typeof value === 'object') return Object.keys(value as object).length > 0
-  return true
-}
-
-function mergeFlutterSharedPreferences(
-  machineSp: Record<string, unknown>,
-  sourceSp: Record<string, unknown>
-): Record<string, unknown> {
-  const merged = { ...machineSp }
-  for (const [key, value] of Object.entries(sourceSp)) {
-    if (hasMeaningfulSpValue(value)) {
-      merged[key] = value
-    }
-  }
-  return merged
-}
-
-/**
- * 版本迁移扫描/导入：合并目录与本机 SP，并在仅有 SP 时推导 config（对齐移动端）。
- */
-export async function resolveVersionMigrationFlutterPrefs(
-  sourceDir: string
-): Promise<VersionMigrationFlutterPrefs> {
-  const prefs = await resolveLegacyPreferencesForMigration(sourceDir)
-  let sp = prefs.sp
-  let config = prefs.config ?? deriveConfigFromSp(sp)
-
-  if (!config && !sp) {
-    const machineSp = await readFlutterSharedPreferencesRaw()
-    if (machineSp) {
-      sp = machineSp
-      config = deriveConfigFromSp(machineSp)
-    }
-  }
-
-  return {
-    sp,
-    config,
-    supplementedFromMachine:
-      prefs.supplementedFromMachine || Boolean(prefs.sp == null && sp != null)
-  }
-}
-
 export function resolveFlutterSharedPreferencesCandidates(): string[] {
   const candidates: string[] = []
   if (process.platform === 'linux') {

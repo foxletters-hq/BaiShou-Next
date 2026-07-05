@@ -364,14 +364,7 @@ export class VaultService implements IVaultService {
     return result.name
   }
 
-<<<<<<< HEAD
-  private async addNewVault(
-    vaultName: string,
-    options?: { touchAccess?: boolean }
-  ): Promise<void> {
-=======
   private async addNewVault(vaultName: string, options?: { touchAccess?: boolean }): Promise<void> {
->>>>>>> origin/Baishou-dev
     const newPath = await this.pathService.getVaultDirectory(vaultName)
     await this.fileSystem.mkdir(newPath, { recursive: true })
     await this.fileSystem.mkdir(await this.pathService.getVaultSystemDirectory(vaultName), {

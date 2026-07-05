@@ -135,17 +135,7 @@ export class SessionCrudOps {
 
     const normalizedAssistantId = assistantId?.trim()
     if (normalizedAssistantId) {
-<<<<<<< HEAD
-      conditions.push(
-        or(
-          eq(agentSessionsTable.assistantId, normalizedAssistantId),
-          isNull(agentSessionsTable.assistantId),
-          eq(agentSessionsTable.assistantId, '')
-        )
-      )
-=======
       conditions.push(eq(agentSessionsTable.assistantId, normalizedAssistantId))
->>>>>>> origin/Baishou-dev
     }
 
     if (searchQuery && searchQuery.trim()) {
