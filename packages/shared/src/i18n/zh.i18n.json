@@ -1346,6 +1346,7 @@
     "copy_preview_weekly": "周总结",
     "copy_preview_unit": "篇",
     "copy_preview_total": "共 {{count}} 项",
+    "copy_preview_estimated_size": "约 {{chars}} 字 · 约 {{tokens}} tokens",
     "copy_preview_empty": "当前回溯范围内暂无可复制内容",
     "algorithm_desc": "基于白守级联折叠算法，自动过滤冗余数据，构建我们共同的记忆脉络。",
     "stats_yearly": "年度",

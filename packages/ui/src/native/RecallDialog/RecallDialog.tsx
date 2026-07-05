@@ -39,7 +39,9 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
   onCopyContext,
   onCopyDiarySnippet,
   copyPreview,
-  copyPreviewLoading
+  copyPreviewLoading,
+  copyPrefix,
+  onCopyPrefixChange
 }) => {
   const { t } = useTranslation()
   const { colors, tokens, maxModalWidth } = useNativeTheme()
@@ -220,6 +222,8 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
                       onCopyContext={onCopyContext}
                       copyPreview={copyPreview}
                       copyPreviewLoading={copyPreviewLoading}
+                      copyPrefix={copyPrefix}
+                      onCopyPrefixChange={onCopyPrefixChange}
                     />
                   )}
                   {isSearching ? (

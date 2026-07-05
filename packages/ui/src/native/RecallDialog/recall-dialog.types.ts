@@ -24,6 +24,8 @@ export interface NativeRecallDialogProps {
   onCopyDiarySnippet?: (snippet: string) => void
   copyPreview?: SharedMemoryCopyPreview | null
   copyPreviewLoading?: boolean
+  copyPrefix?: string
+  onCopyPrefixChange?: (prefix: string) => void
 }
 
 export type RecallTab = 'diary' | 'memory'

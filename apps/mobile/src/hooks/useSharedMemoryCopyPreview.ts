@@ -2,10 +2,16 @@ import { useEffect, useState } from 'react'
 import type { SharedMemoryCopyPreview } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
 
-export function useSharedMemoryCopyPreview(lookbackMonths: number, enabled = true) {
+export function useSharedMemoryCopyPreview(
+  lookbackMonths: number,
+  enabled = true,
+  options?: { userCopyPrefix?: string; locale?: string }
+) {
   const { services } = useBaishou()
   const [preview, setPreview] = useState<SharedMemoryCopyPreview | null>(null)
   const [loading, setLoading] = useState(false)
+  const userCopyPrefix = options?.userCopyPrefix ?? ''
+  const locale = options?.locale
 
   useEffect(() => {
     if (!enabled || !services?.buildSharedContextPreview) {
@@ -19,7 +25,7 @@ export function useSharedMemoryCopyPreview(lookbackMonths: number, enabled = tru
 
     const timer = setTimeout(() => {
       void services
-        .buildSharedContextPreview(lookbackMonths)
+        .buildSharedContextPreview(lookbackMonths, { userCopyPrefix, locale })
         .then((next) => {
           if (!cancelled) setPreview(next)
         })
@@ -35,7 +41,7 @@ export function useSharedMemoryCopyPreview(lookbackMonths: number, enabled = tru
       cancelled = true
       clearTimeout(timer)
     }
-  }, [lookbackMonths, enabled, services])
+  }, [lookbackMonths, enabled, services, userCopyPrefix, locale])
 
   return { preview, loading }
 }
