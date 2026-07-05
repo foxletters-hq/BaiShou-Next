@@ -139,6 +139,7 @@ export const AssistantEditScreen: React.FC = () => {
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
   const [showModelSwitcher, setShowModelSwitcher] = useState(false)
+  const [outerScrollEnabled, setOuterScrollEnabled] = useState(true)
   const [emojiGroups, setEmojiGroups] = useState<EmojiGroup[]>([])
   const [globalEmojiEnabled, setGlobalEmojiEnabled] = useState(false)
   const [emojiEnabled, setEmojiEnabled] = useState(false)
@@ -460,6 +461,8 @@ export const AssistantEditScreen: React.FC = () => {
           contentContainerStyle={styles.contentContainer}
           indicatorStyle={scrollIndicatorStyle(isDark)}
           keyboardShouldPersistTaps="handled"
+          nestedScrollEnabled
+          scrollEnabled={outerScrollEnabled}
         >
           <SettingsGroupCard style={styles.avatarCard}>
             <AssistantAvatarPicker
@@ -574,6 +577,7 @@ export const AssistantEditScreen: React.FC = () => {
               selectedGroupIds={selectedEmojiGroupIds}
               onEmojiEnabledChange={handleEmojiEnabledChange}
               onToggleGroup={handleToggleEmojiGroup}
+              onLockOuterScroll={(locked) => setOuterScrollEnabled(!locked)}
             />
           ) : null}
 
