@@ -1,4 +1,4 @@
-import { logger } from '@baishou/shared'
+import { logger, assistantRowToEmojiPrefs, type AssistantEmojiPrefs } from '@baishou/shared'
 import { AgentChatCoreService } from '@baishou/ai'
 import { ElectronStreamEmitter } from './electron-stream-emitter'
 import {
@@ -114,8 +114,8 @@ export class AgentChatService {
       userMsgId?: string
     }
   ) {
+    const { sessionManager } = getAgentManagers()
     try {
-      const { sessionManager } = getAgentManagers()
       const { provider, globalModels, systemModels, userConfig } =
         await this.buildStreamConfigForSession(
           args.sessionId,

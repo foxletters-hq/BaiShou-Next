@@ -1,6 +1,10 @@
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { isPathUnderAllowedRoots } from '../attachment-path-cache'
+import {
+  isPathUnderAllowedRoots,
+  resolveAttachmentInputPath
+} from '../attachment-path-cache'
+import type { DesktopStoragePathService } from '../../services/path.service'
 
 describe('isPathUnderAllowedRoots', () => {
   const roots = {
@@ -26,5 +30,32 @@ describe('isPathUnderAllowedRoots', () => {
   it('rejects sibling directories that share a prefix', () => {
     const file = path.join('D:', 'Vaults', 'PersonalBackup', 'Attachments', 'photo.png')
     expect(isPathUnderAllowedRoots(file, roots)).toBe(false)
+  })
+})
+
+describe('resolveAttachmentInputPath', () => {
+  const vaultPath = path.join('D:', 'Vaults', 'Personal')
+  const attachmentsBase = path.join(vaultPath, 'Attachments')
+  const emojisDir = path.join(attachmentsBase, 'emojis')
+
+  const pathService = {
+    getActiveVaultPath: async () => vaultPath,
+    getEmojisDirectory: async () => emojisDir
+  } as unknown as DesktopStoragePathService
+
+  it('resolves emoji vault relative keys under Attachments/emojis', async () => {
+    const resolved = await resolveAttachmentInputPath('emojis/cat.png', pathService)
+    expect(resolved).toBe(path.join(emojisDir, 'cat.png'))
+  })
+
+  it('resolves local protocol emoji urls', async () => {
+    const resolved = await resolveAttachmentInputPath('local:///emojis/cat.png', pathService)
+    expect(resolved).toBe(path.join(emojisDir, 'cat.png'))
+  })
+
+  it('keeps absolute filesystem paths unchanged', async () => {
+    const absolute = path.join(emojisDir, 'cat.png')
+    const resolved = await resolveAttachmentInputPath(absolute, pathService)
+    expect(resolved).toBe(path.resolve(absolute))
   })
 })

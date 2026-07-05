@@ -35,7 +35,6 @@ import {
   normalizeToolManagementConfig,
   normalizeEmojiToolConfig,
   resolveAssistantEmojiConfig,
-  assistantRowToEmojiPrefs,
   type AssistantEmojiPrefs,
   DEFAULT_TOOL_MANAGEMENT_CONFIG
 } from '@baishou/shared'
@@ -88,6 +87,7 @@ export function getAgentManagers() {
           try {
             const { sessionWatcher } = await import('../services/session-watcher.service')
             const vaultPath = await pathService.getActiveVaultPath()
+            if (!vaultPath) return
             const { join } = await import('path')
             sessionWatcher.suppressPath(join(vaultPath, 'Sessions', `${sessionId}.json`))
           } catch {
@@ -196,7 +196,6 @@ export function createDiarySearcher() {
             }
           }
 
-          const resolvedMode = mode ?? 'append'
           let finalContent = content
           const editMode = resolveDiaryEditMode(mode)
           if (editMode === 'append') {
