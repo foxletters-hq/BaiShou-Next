@@ -8,9 +8,10 @@ import {
   StyleSheet,
   TouchableOpacity
 } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { CheckCircle2, Plus, Settings, Sparkles } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { AssistantAvatar } from '../AssistantAvatar'
 import { AssistantKindBadge } from '../AssistantKindBadge'
 
@@ -27,6 +28,8 @@ export interface MockAgentAssistant {
   modelId?: string
   contextWindow?: number
   compressTokenThreshold?: number
+  compressKeepTurns?: number
+  compressSystemPrompt?: string | null
   assistantKind?: 'companion' | 'work'
 }
 
@@ -90,7 +93,9 @@ const AssistantPickerRow = memo(function AssistantPickerRow({
           </Text>
         ) : null}
       </View>
-      {isSelected ? <MaterialIcons name="check-circle" size={22} color={colors.primary} /> : null}
+      {isSelected ? (
+        <CheckCircle2 size={22} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+      ) : null}
     </TouchableOpacity>
   )
 })
@@ -134,7 +139,7 @@ export const AssistantPicker: React.FC<NativeAssistantPickerProps> = ({
           ]}
         >
           <View style={styles.header}>
-            <MaterialIcons name="auto-awesome" size={20} color={colors.primary} />
+            <Sparkles size={20} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
             <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
               {t('agent.assistant.select_title', '选择伙伴')}
             </Text>
@@ -148,7 +153,7 @@ export const AssistantPicker: React.FC<NativeAssistantPickerProps> = ({
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 accessibilityLabel={t('agent.assistant.settings_entry', '伙伴管理')}
               >
-                <MaterialIcons name="settings" size={22} color={colors.textSecondary} />
+                <Settings size={22} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
               </TouchableOpacity>
             ) : null}
           </View>
@@ -167,7 +172,7 @@ export const AssistantPicker: React.FC<NativeAssistantPickerProps> = ({
                       onCreatePress()
                     }}
                   >
-                    <MaterialIcons name="add" size={18} color={colors.textOnPrimary} />
+                    <Plus size={18} color={colors.textOnPrimary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                     <Text style={[styles.createBtnText, { color: colors.textOnPrimary }]}>
                       {t('agent.assistant.create_first', '创建第一个伙伴')}
                     </Text>

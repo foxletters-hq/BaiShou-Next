@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Copy, HelpCircle, Loader2 } from 'lucide-react'
 import type { SharedMemoryCopyPreview } from '@baishou/shared'
@@ -9,7 +9,7 @@ import './DashboardSharedMemoryCard.css'
 interface DashboardSharedMemoryCardProps {
   lookbackMonths: number
   onMonthsChanged: (val: number) => void
-  onCopyContext: () => void
+  onCopyContext: () => void | Promise<void>
   copyPreview?: SharedMemoryCopyPreview | null
   copyPreviewLoading?: boolean
 }
@@ -100,6 +100,17 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
 }) => {
   const { t } = useTranslation()
   const dialog = useDialog()
+  const [copying, setCopying] = useState(false)
+
+  const handleCopyPress = useCallback(async () => {
+    if (copying) return
+    setCopying(true)
+    try {
+      await onCopyContext()
+    } finally {
+      setCopying(false)
+    }
+  }, [copying, onCopyContext])
 
   return (
     <div className="dashboard-shared-memory-card">
@@ -156,8 +167,18 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
 
       <SharedMemoryCopyPreviewPanel preview={copyPreview} loading={copyPreviewLoading} />
 
-      <button className="sm-btn" onClick={onCopyContext}>
-        <Copy size={16} style={{ marginRight: 6 }} /> {t('summary.copy_memories', '复制共同回忆')}
+      <button
+        type="button"
+        className="sm-btn"
+        onClick={() => void handleCopyPress()}
+        disabled={copying}
+      >
+        {copying ? (
+          <Loader2 size={16} className="sm-previewSpinner" style={{ marginRight: 6 }} />
+        ) : (
+          <Copy size={16} style={{ marginRight: 6 }} />
+        )}
+        {t('summary.copy_memories', '复制共同回忆')}
       </button>
     </div>
   )

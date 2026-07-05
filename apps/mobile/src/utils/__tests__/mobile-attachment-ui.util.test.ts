@@ -15,4 +15,13 @@ describe('resolveMobileAttachmentFilePath', () => {
     const local = '/storage/emulated/0/BaiShou_Root/Personal/Attachments/session-1/photo.png'
     expect(resolveMobileAttachmentFilePath(local, root)).toBe(`file://${local}`)
   })
+
+  it('maps emoji vault keys to Attachments/emojis under storage root', () => {
+    expect(resolveMobileAttachmentFilePath('emojis/cat.png', root)).toBe(
+      'file:///storage/emulated/0/BaiShou_Root/Attachments/emojis/cat.png'
+    )
+    expect(resolveMobileAttachmentFilePath('local:///emojis/cat.png', root)).toBe(
+      'file:///storage/emulated/0/BaiShou_Root/Attachments/emojis/cat.png'
+    )
+  })
 })

@@ -28,7 +28,7 @@ import {
 } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as Clipboard from 'expo-clipboard'
-import { MaterialIcons } from '@expo/vector-icons'
+import { ChevronDown, Sparkles } from 'lucide-react-native'
 import {
   InputBar,
   type InputBarRef,
@@ -87,6 +87,8 @@ import { waitForVaultEcosystemResync } from '../services/mobile-vault-resync.ser
 import { useAgentComposerDraftKey } from '../hooks/useAgentComposerDraftKey'
 import { mobileComposerDraftStorage } from '../lib/mobile-composer-draft.storage'
 import { useThrottledFocusRefresh } from '../hooks/useThrottledFocusRefresh'
+import { usePersistedSharedMemoryLookback } from '../hooks/usePersistedSharedMemoryLookback'
+import { useSharedMemoryCopyPreview } from '../hooks/useSharedMemoryCopyPreview'
 
 /** 底部输入栏 + 工具条的大致高度，用于「回到底部」悬浮按钮定位 */
 const INPUT_DOCK_HEIGHT = 136
@@ -118,7 +120,8 @@ export const AgentScreen = () => {
   const { colors, isDark } = useNativeTheme()
   const tabBarHeight = useBottomTabBarHeight()
   const [isBubbleEditing, setIsBubbleEditing] = useState(false)
-  const [recallLookbackMonths, setRecallLookbackMonths] = useState(1)
+  const { lookbackMonths: recallLookbackMonths, setLookbackMonths: setRecallLookbackMonths } =
+    usePersistedSharedMemoryLookback()
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   const [inputDockHeight, setInputDockHeight] = useState(INPUT_DOCK_HEIGHT)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -410,6 +413,9 @@ export const AgentScreen = () => {
     toggleRecallSearchMode
   } = useAgentUI()
 
+  const { preview: recallCopyPreview, loading: recallCopyPreviewLoading } =
+    useSharedMemoryCopyPreview(recallLookbackMonths, showRecallSheet)
+
   const {
     showScrollButton,
     handleListScroll: handleChatListScroll,
@@ -691,7 +697,11 @@ export const AgentScreen = () => {
         systemPrompt: a.systemPrompt,
         providerId: a.providerId,
         modelId: a.modelId,
-        assistantKind: a.assistantKind
+        assistantKind: a.assistantKind,
+        contextWindow: a.contextWindow,
+        compressTokenThreshold: a.compressTokenThreshold,
+        compressKeepTurns: a.compressKeepTurns,
+        compressSystemPrompt: a.compressSystemPrompt
       })),
     [assistants]
   )
@@ -1309,12 +1319,7 @@ export const AgentScreen = () => {
   const renderEmptyState = () => (
     <View style={styles.empty}>
       <View style={[styles.emptyIconCircle, { backgroundColor: colors.primary + '26' }]}>
-        <MaterialIcons
-          name="auto-awesome"
-          size={38}
-          color={colors.primary}
-          style={{ opacity: 0.7 }}
-        />
+        <Sparkles size={38} color={colors.primary} strokeWidth={2} style={{ opacity: 0.7 }} />
       </View>
       <Text style={[styles.emptyText, { color: colors.textPrimary }]}>
         {t('agent.chat.start_chat', '开始和伙伴对话')}
@@ -1557,11 +1562,7 @@ export const AgentScreen = () => {
                   onPress={() => scrollToBottom(flatListRef, true)}
                   accessibilityLabel={t('agent.chat.scroll_to_bottom', '回到最新消息')}
                 >
-                  <MaterialIcons
-                    name="keyboard-arrow-down"
-                    size={22}
-                    color={colors.textSecondary}
-                  />
+                  <ChevronDown size={22} color={colors.textSecondary} strokeWidth={2} />
                 </TouchableOpacity>
               </Animated.View>
             ) : null}
@@ -1657,6 +1658,7 @@ export const AgentScreen = () => {
         onSelect={(a) => void handleSelectAssistantWithTracking(a)}
         selectedAssistantId={currentAssistant?.id}
         assistants={pickerAssistants}
+        onAssistantsChanged={() => void loadAssistants()}
       />
 
       <ModelSwitcher
@@ -1728,6 +1730,8 @@ export const AgentScreen = () => {
             toast.showError(t('common.copy_failed', '复制失败'))
           }
         }}
+        copyPreview={recallCopyPreview}
+        copyPreviewLoading={recallCopyPreviewLoading}
       />
 
       <ContextChainDialog

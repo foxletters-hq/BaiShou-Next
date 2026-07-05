@@ -2,8 +2,17 @@ import React, { useEffect, useRef } from 'react'
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
 import { KeyboardAwareScrollView } from '../KeyboardAwareScrollView'
 import { useTranslation } from 'react-i18next'
-import { MaterialIcons } from '@expo/vector-icons'
+import {
+  Calendar,
+  Pencil,
+  Save,
+  SquarePen,
+  Tag,
+  Trash2,
+  X
+} from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { Input } from '../Input/Input'
 import { MarkdownRenderer } from '../MarkdownRenderer'
 import type { SummaryItem } from './gallery-panel.types'
@@ -47,7 +56,7 @@ export const GallerySummaryDetail: React.FC<GallerySummaryDetailProps> = ({
   if (!summary) {
     return (
       <View style={[styles.detail, styles.emptyDetail, { backgroundColor: colors.bgSurface }]}>
-        <MaterialIcons name="edit" size={48} color={colors.textTertiary} />
+        <SquarePen size={48} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
         <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
           {t('gallery.select_summary', '选择一个总结查看详情')}
         </Text>
@@ -65,13 +74,13 @@ export const GallerySummaryDetail: React.FC<GallerySummaryDetailProps> = ({
       <View style={styles.detailHeader}>
         <View style={styles.metaRow}>
           <View style={[styles.typeBadge, { backgroundColor: colors.primaryLight }]}>
-            <MaterialIcons name="label" size={12} color={colors.primary} />
+            <Tag size={12} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
             <Text style={[styles.typeText, { color: colors.primary }]}>
               {t(TYPE_I18N_MAP[summary.type] || summary.type)}
             </Text>
           </View>
           <View style={styles.dateRow}>
-            <MaterialIcons name="event" size={12} color={colors.textTertiary} />
+            <Calendar size={12} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
             <Text style={[styles.dateText, { color: colors.textTertiary }]}>
               {formatDateRange(summary)}
             </Text>
@@ -84,11 +93,11 @@ export const GallerySummaryDetail: React.FC<GallerySummaryDetailProps> = ({
                 {isSaving ? (
                   <ActivityIndicator size="small" color={colors.primary} />
                 ) : (
-                  <MaterialIcons name="save" size={18} color={colors.primary} />
+                  <Save size={18} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                 )}
               </Pressable>
               <Pressable style={styles.iconBtn} onPress={onCancel} disabled={isSaving}>
-                <MaterialIcons name="close" size={18} color={colors.textSecondary} />
+                <X size={18} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
               </Pressable>
             </>
           ) : (
@@ -100,10 +109,10 @@ export const GallerySummaryDetail: React.FC<GallerySummaryDetailProps> = ({
                   else onEdit?.(String(summary.id))
                 }}
               >
-                <MaterialIcons name="edit" size={18} color={colors.textSecondary} />
+                <Pencil size={18} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
               </Pressable>
               <Pressable style={styles.iconBtn} onPress={() => onDelete?.(String(summary.id))}>
-                <MaterialIcons name="delete" size={18} color={colors.error} />
+                <Trash2 size={18} color={colors.error} strokeWidth={DEFAULT_STROKE_WIDTH} />
               </Pressable>
             </>
           )}

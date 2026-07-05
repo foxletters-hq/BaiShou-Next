@@ -1,5 +1,5 @@
 import type { ToolContext } from './agent.tool'
-import { mergeDiaryTags } from '@baishou/shared'
+import { mergeDiaryTags, resolveDiaryEditMode } from '@baishou/shared'
 import { createDiaryReadGuard } from './diary-read-guard.util'
 
 export { mergeDiaryTags }
@@ -103,15 +103,17 @@ export async function runDiaryEditViaDb(
     )
   }
 
+  const editMode = resolveDiaryEditMode(args.mode)
+
   const result = await context.diarySearcher.editEntry({
     date: args.date,
     content: args.content,
-    mode: args.mode ?? 'append',
+    mode: editMode,
     tags: args.tags
   })
 
   if (result.ok === false) return result.message
-  return `Successfully modified the diary entry for ${args.date} (${args.mode || 'append'} mode).`
+  return `Successfully modified the diary entry for ${args.date} (${editMode} mode).`
 }
 
 export async function runDiaryDeleteViaDb(

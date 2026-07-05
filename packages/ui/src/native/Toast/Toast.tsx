@@ -1,11 +1,13 @@
 import React, { createContext, useCallback, useContext, useMemo } from 'react'
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { CircleAlert, CircleCheck, Info, TriangleAlert } from 'lucide-react-native'
+import type { LucideProps } from 'lucide-react-native'
 import { useToast } from 'heroui-native'
 import type { ToastComponentProps } from 'heroui-native'
 import Animated, { Easing, Keyframe } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 
 export type ToastType = 'info' | 'success' | 'error' | 'warning'
 
@@ -28,11 +30,11 @@ const STATUS_TOAST_ID = 'baishou-status-toast'
 /** 与 toastExit Keyframe 时长一致；hide 后须等退场结束再 show，避免 Android Reanimated 视图竞态 */
 const TOAST_EXIT_MS = 220
 
-const ICON_BY_TYPE: Record<ToastType, keyof typeof MaterialIcons.glyphMap> = {
-  success: 'check-circle-outline',
-  error: 'error-outline',
-  info: 'info-outline',
-  warning: 'warning-amber'
+const ICON_BY_TYPE: Record<ToastType, React.ComponentType<LucideProps>> = {
+  success: CircleCheck,
+  error: CircleAlert,
+  info: Info,
+  warning: TriangleAlert
 }
 
 const COLOR_BY_TYPE: Record<ToastType, string> = {
@@ -122,7 +124,12 @@ const BaishouHeroToast: React.FC<BaishouHeroToastProps> = ({
             }
           ]}
         >
-          <MaterialIcons name={ICON_BY_TYPE[type]} size={18} color={COLOR_BY_TYPE[type]} />
+          {(() => {
+            const Icon = ICON_BY_TYPE[type]
+            return (
+              <Icon size={18} color={COLOR_BY_TYPE[type]} strokeWidth={DEFAULT_STROKE_WIDTH} />
+            )
+          })()}
           <Text style={[styles.message, { color: isDark ? colors.textPrimary : '#1A1C23' }]}>
             {message}
           </Text>

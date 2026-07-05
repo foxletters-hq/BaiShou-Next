@@ -12,12 +12,14 @@ import {
   Platform,
   useWindowDimensions
 } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { ArrowUpCircle, Search, X } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { DashboardSharedMemoryCard } from '../DashboardSharedMemoryCard'
+import { Pagination } from '../Pagination'
 import type { NativeRecallDialogProps } from './recall-dialog.types'
-import { useRecallDialog } from './useRecallDialog'
+import { useRecallDialog, RECALL_MEMORY_PAGE_SIZE } from './useRecallDialog'
 import { RecallDialogItem } from './RecallDialogItem'
 import { RecallDialogDiaryItem } from './RecallDialogDiaryItem'
 
@@ -35,7 +37,9 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
   lookbackMonths,
   onMonthsChanged,
   onCopyContext,
-  onCopyDiarySnippet
+  onCopyDiarySnippet,
+  copyPreview,
+  copyPreviewLoading
 }) => {
   const { t } = useTranslation()
   const { colors, tokens, maxModalWidth } = useNativeTheme()
@@ -44,6 +48,16 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
   const dialog = useRecallDialog(isOpen, items, onSearch, onInject, onClose, searchMode)
   const showSharedMemoryCard =
     dialog.activeTab === 'diary' && onCopyContext && onMonthsChanged && lookbackMonths != null
+
+  const memoryPageCount = Math.max(1, Math.ceil(items.length / RECALL_MEMORY_PAGE_SIZE))
+  const safeMemoryPage = Math.min(dialog.memoryPage, memoryPageCount)
+  const pagedMemoryItems =
+    dialog.activeTab === 'memory'
+      ? items.slice(
+          (safeMemoryPage - 1) * RECALL_MEMORY_PAGE_SIZE,
+          safeMemoryPage * RECALL_MEMORY_PAGE_SIZE
+        )
+      : items
 
   if (!isOpen) return null
 
@@ -113,7 +127,7 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
                 style={[styles.closeBtn, { backgroundColor: colors.bgSurfaceNormal }]}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <MaterialIcons name="close" size={16} color={colors.textSecondary} />
+                <X size={16} color={colors.textSecondary} strokeWidth={3} />
               </Pressable>
             </View>
 
@@ -130,7 +144,7 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
                 >
                   <View style={styles.searchInputInner}>
                     <View pointerEvents="none" style={styles.searchIconInside}>
-                      <MaterialIcons name="search" size={18} color={colors.textSecondary} />
+                      <Search size={18} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                     </View>
                     <TextInput
                       style={[styles.searchInput, { color: colors.textPrimary }]}
@@ -149,7 +163,7 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
                         activeOpacity={0.7}
                         style={styles.searchClearBtn}
                       >
-                        <MaterialIcons name="close" size={16} color={colors.textTertiary} />
+                        <X size={16} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                       </TouchableOpacity>
                     ) : null}
                   </View>
@@ -204,6 +218,8 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
                       lookbackMonths={lookbackMonths}
                       onMonthsChanged={onMonthsChanged}
                       onCopyContext={onCopyContext}
+                      copyPreview={copyPreview}
+                      copyPreviewLoading={copyPreviewLoading}
                     />
                   )}
                   {isSearching ? (
@@ -237,7 +253,7 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
                   </Text>
                 </View>
               ) : (
-                items.map((item) => (
+                pagedMemoryItems.map((item) => (
                   <RecallDialogItem
                     key={item.id}
                     item={item}
@@ -247,6 +263,20 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
                 ))
               )}
             </ScrollView>
+
+            {dialog.activeTab === 'memory' && items.length > RECALL_MEMORY_PAGE_SIZE ? (
+              <View
+                style={[styles.paginationArea, { borderTopColor: colors.borderSubtle }]}
+              >
+                <Pagination
+                  current={safeMemoryPage}
+                  total={memoryPageCount}
+                  onChange={dialog.setMemoryPage}
+                  showJumper={false}
+                  siblingCount={0}
+                />
+              </View>
+            ) : null}
 
             {dialog.activeTab === 'memory' && (
               <View
@@ -279,10 +309,10 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
                     opacity: pressed ? 0.85 : dialog.selectedIds.size === 0 ? 0.6 : 1
                   })}
                 >
-                  <MaterialIcons
-                    name="arrow-circle-up"
+                  <ArrowUpCircle
                     size={16}
                     color={dialog.selectedIds.size > 0 ? colors.onPrimary : colors.textSecondary}
+                    strokeWidth={DEFAULT_STROKE_WIDTH}
                   />
                   <Text
                     style={{
@@ -445,5 +475,11 @@ const styles = StyleSheet.create({
   selectionCount: {
     fontSize: 14,
     fontWeight: '700'
+  },
+  paginationArea: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
+    borderTopWidth: StyleSheet.hairlineWidth
   }
 })

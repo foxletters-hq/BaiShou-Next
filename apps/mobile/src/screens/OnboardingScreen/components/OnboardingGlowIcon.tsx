@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react'
 import { Animated, StyleSheet, View } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
 import type { SlideTheme } from '../onboarding-theme'
 
 interface OnboardingGlowIconProps {
@@ -10,6 +9,7 @@ interface OnboardingGlowIconProps {
 
 export const OnboardingGlowIcon: React.FC<OnboardingGlowIconProps> = ({ theme, size = 72 }) => {
   const floatAnim = useRef(new Animated.Value(0)).current
+  const Icon = theme.icon
 
   useEffect(() => {
     const animation = Animated.loop(
@@ -57,7 +57,7 @@ export const OnboardingGlowIcon: React.FC<OnboardingGlowIconProps> = ({ theme, s
           }
         ]}
       >
-        <MaterialIcons name={theme.icon} size={size * 0.55} color={theme.iconColor} />
+        <Icon size={size * 0.55} color={theme.iconColor} strokeWidth={2} />
       </View>
     </Animated.View>
   )

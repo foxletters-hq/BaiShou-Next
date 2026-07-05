@@ -8,9 +8,10 @@ import {
   StyleSheet,
   Pressable
 } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { Check, X } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 
 export type AttachmentFilterMode = 'year' | 'month' | 'orphan'
 
@@ -140,7 +141,7 @@ export const AttachmentFilterSheet: React.FC<AttachmentFilterSheetProps> = ({
           <View style={[sheetStyles.header, { borderBottomColor: colors.borderSubtle }]}>
             <Text style={[sheetStyles.title, { color: colors.textPrimary }]}>{title}</Text>
             <TouchableOpacity onPress={onClose} hitSlop={12}>
-              <MaterialIcons name="close" size={22} color={colors.textSecondary} />
+              <X size={22} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
             </TouchableOpacity>
           </View>
           <ScrollView style={sheetStyles.list}>{renderOptions()}</ScrollView>
@@ -169,7 +170,7 @@ const FilterOption: React.FC<{
     >
       {label}
     </Text>
-    {active && <MaterialIcons name="check" size={18} color={colors.primary} />}
+    {active && <Check size={18} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />}
   </TouchableOpacity>
 )
 

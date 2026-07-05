@@ -1,9 +1,18 @@
 import { useTranslation } from 'react-i18next'
 import React from 'react'
 import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
-import type { ComponentProps } from 'react'
+import type { LucideProps } from 'lucide-react-native'
+import {
+  BarChart3,
+  BookOpen,
+  Calendar,
+  CalendarRange,
+  Columns3,
+  LayoutGrid,
+  RefreshCw
+} from 'lucide-react-native'
 import { useNativeTheme } from '../../native/theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 
 interface DashboardStatsCardProps {
   totalDiaryCount: number
@@ -15,46 +24,43 @@ interface DashboardStatsCardProps {
   rescanning?: boolean
 }
 
-type IconName = ComponentProps<typeof MaterialIcons>['name']
-
-/** 与桌面 DashboardStatsCard 图标与色板一致（Material 矢量，无 emoji） */
 const STAT_TILES: Array<{
-  icon: IconName
+  icon: React.ComponentType<LucideProps>
   iconColor: string
   bgClass: keyof typeof TILE_BACKGROUNDS
   countColor: string
   labelKey: string
 }> = [
   {
-    icon: 'menu-book',
+    icon: BookOpen,
     iconColor: '#4CAF50',
     bgClass: 'green',
     countColor: '#4caf50',
     labelKey: 'summary.stats_daily'
   },
   {
-    icon: 'view-week',
+    icon: Columns3,
     iconColor: '#3F51B5',
     bgClass: 'indigo',
     countColor: '#3f51b5',
     labelKey: 'summary.stats_weekly'
   },
   {
-    icon: 'grid-view',
+    icon: LayoutGrid,
     iconColor: '#2196F3',
     bgClass: 'blue',
     countColor: '#2196f3',
     labelKey: 'summary.stats_monthly'
   },
   {
-    icon: 'date-range',
+    icon: CalendarRange,
     iconColor: '#FBC02D',
     bgClass: 'amber',
     countColor: '#fbc02d',
     labelKey: 'summary.stats_quarterly'
   },
   {
-    icon: 'today',
+    icon: Calendar,
     iconColor: '#FF9800',
     bgClass: 'orange',
     countColor: '#ff9800',
@@ -93,6 +99,7 @@ export const DashboardStatsCard: React.FC<DashboardStatsCardProps> = ({
   const renderStatTile = (tileIndex: number, fullWidth = false) => {
     const tile = STAT_TILES[tileIndex]!
     const count = counts[tileIndex]!
+    const Icon = tile.icon
     return (
       <View
         style={[
@@ -102,7 +109,7 @@ export const DashboardStatsCard: React.FC<DashboardStatsCardProps> = ({
         ]}
       >
         <View style={styles.tileIcon}>
-          <MaterialIcons name={tile.icon} size={22} color={tile.iconColor} />
+          <Icon size={22} color={tile.iconColor} strokeWidth={DEFAULT_STROKE_WIDTH} />
         </View>
         <View style={styles.info}>
           <Text style={[styles.count, { color: tile.countColor }]}>{count}</Text>
@@ -116,7 +123,12 @@ export const DashboardStatsCard: React.FC<DashboardStatsCardProps> = ({
     <View style={[styles.card, { backgroundColor: colors.bgSurface, borderColor: cardBorder }]}>
       <View style={styles.header}>
         <View style={styles.headerTitleRow}>
-          <MaterialIcons name="analytics" size={20} color="#43A047" style={styles.headerIcon} />
+          <BarChart3
+            size={20}
+            color="#43A047"
+            strokeWidth={DEFAULT_STROKE_WIDTH}
+            style={styles.headerIcon}
+          />
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
             {t('common.app_title')} · {t('summary.stats_panel')}
           </Text>
@@ -138,7 +150,7 @@ export const DashboardStatsCard: React.FC<DashboardStatsCardProps> = ({
             {rescanning ? (
               <ActivityIndicator size="small" color={colors.primary} />
             ) : (
-              <MaterialIcons name="sync" size={18} color={colors.textSecondary} />
+              <RefreshCw size={18} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
             )}
           </Pressable>
         ) : null}

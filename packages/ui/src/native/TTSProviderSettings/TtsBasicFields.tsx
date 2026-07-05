@@ -1,8 +1,9 @@
 import React from 'react'
 import { View, Text, TouchableOpacity } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { MaterialIcons } from '@expo/vector-icons'
+import { Eye, EyeOff } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { NativeSlider } from '../Slider'
 import { Input } from '../Input/Input'
 import { Select } from '../Select/Select'
@@ -162,11 +163,11 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
                 style={styles.visibilityToggle}
                 accessibilityLabel={showApiKey ? t('common.hide') : t('common.show')}
               >
-                <MaterialIcons
-                  name={showApiKey ? 'visibility-off' : 'visibility'}
-                  size={22}
-                  color={colors.textSecondary}
-                />
+                {showApiKey ? (
+                  <EyeOff size={22} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                ) : (
+                  <Eye size={22} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                )}
               </TouchableOpacity>
             }
           />

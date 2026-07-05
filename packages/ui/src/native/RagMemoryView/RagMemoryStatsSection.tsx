@@ -1,8 +1,9 @@
 import React from 'react'
-import { View, Text, TouchableOpacity, Platform } from 'react-native'
-import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons'
+import { View, Text, TouchableOpacity } from 'react-native'
+import { Database, RefreshCw, Sparkles } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import type { RagStats } from './rag-memory.types'
 import { ragMemoryStyles as styles } from './rag-memory.styles'
 
@@ -25,23 +26,6 @@ export const RagMemoryStatsSection: React.FC<RagMemoryStatsSectionProps> = ({
   const { colors } = useNativeTheme()
 
   const dimensionText = stats.currentDimension > 0 ? String(stats.currentDimension) : '—'
-  const useMaterialIcons = Platform.OS === 'android'
-  const StatIcon = useMaterialIcons ? MaterialIcons : MaterialCommunityIcons
-  type MaterialIconName = React.ComponentProps<typeof MaterialIcons>['name']
-  type CommunityIconName = React.ComponentProps<typeof MaterialCommunityIcons>['name']
-  const statIcons = useMaterialIcons
-    ? ({
-        count: 'sd-storage',
-        model: 'hub',
-        dimension: 'call-merge',
-        refresh: 'refresh'
-      } satisfies Record<string, MaterialIconName>)
-    : ({
-        count: 'database-outline',
-        model: 'hub',
-        dimension: 'vector-combine',
-        refresh: 'refresh'
-      } satisfies Record<string, CommunityIconName>)
 
   return (
     <View style={styles.statsRow}>
@@ -54,7 +38,7 @@ export const RagMemoryStatsSection: React.FC<RagMemoryStatsSectionProps> = ({
           }
         ]}
       >
-        <StatIcon name={statIcons.count as never} size={14} color={colors.primary} />
+        <Database size={14} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
         <Text style={[styles.statValue, { color: colors.primary }]}>
           {stats.diaryCountForVault != null ? stats.diaryCountForVault : stats.totalCount}
         </Text>
@@ -80,7 +64,7 @@ export const RagMemoryStatsSection: React.FC<RagMemoryStatsSectionProps> = ({
         disabled={!onConfigureModel}
         activeOpacity={0.7}
       >
-        <StatIcon name={statIcons.model as never} size={14} color={colors.success} />
+        <Sparkles size={14} color={colors.success} strokeWidth={DEFAULT_STROKE_WIDTH} />
         <Text
           style={[styles.statValue, { color: colors.success }]}
           numberOfLines={1}
@@ -102,7 +86,7 @@ export const RagMemoryStatsSection: React.FC<RagMemoryStatsSectionProps> = ({
           }
         ]}
       >
-        <StatIcon name={statIcons.dimension as never} size={14} color={colors.textSecondary} />
+        <Database size={14} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
         <Text style={[styles.statValue, { color: colors.textPrimary }]}>{dimensionText}</Text>
         <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
           {t('settings.rag_dimension')}
@@ -122,7 +106,7 @@ export const RagMemoryStatsSection: React.FC<RagMemoryStatsSectionProps> = ({
         disabled={isBusy || !onDetectDimension}
         activeOpacity={0.7}
       >
-        <StatIcon name={statIcons.refresh as never} size={14} color={colors.primary} />
+        <RefreshCw size={14} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
         <Text style={[styles.statValue, { color: colors.primary, fontSize: 12 }]} numberOfLines={2}>
           {t('settings.rag_detect_dimension')}
         </Text>

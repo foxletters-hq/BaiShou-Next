@@ -9,7 +9,7 @@ import {
   ScrollView
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { MaterialIcons } from '@expo/vector-icons'
+import { Check } from 'lucide-react-native'
 import {
   MOOD_IDS,
   getMoodLabelFallback,
@@ -18,6 +18,7 @@ import {
   type MoodId
 } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { MoodEmoji } from '../MoodIcon/MoodEmoji'
 
 export interface NativeMoodPickerProps {
@@ -136,7 +137,7 @@ export const MoodPicker: React.FC<NativeMoodPickerProps> = ({ value, onChange })
                       {label}
                     </Text>
                     {active ? (
-                      <MaterialIcons name="check" size={18} color={colors.primary} />
+                      <Check size={18} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                     ) : (
                       <View style={styles.checkPlaceholder} />
                     )}

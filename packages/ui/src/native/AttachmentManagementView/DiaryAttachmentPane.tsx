@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import { View, Text, TouchableOpacity } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { Calendar, CheckSquare, ChevronDown, Folder, Tag, Trash2 } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import type { AttachmentManagementViewModel } from './useAttachmentManagementView'
 import type { AttachmentFilterMode } from './AttachmentFilterSheet'
 import { attachmentManagementStyles as styles } from './attachment-management.styles'
@@ -61,13 +62,13 @@ export const DiaryAttachmentPane: React.FC<{ vm: AttachmentManagementViewModel }
               style={[styles.filterChip, { borderColor: colors.borderSubtle }]}
               onPress={() => setFilterSheet('year')}
             >
-              <MaterialIcons name="calendar-today" size={14} color={colors.textSecondary} />
+              <Calendar size={14} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
               <Text style={[styles.filterChipText, { color: colors.textPrimary }]}>
                 {diaryYear === 'all'
                   ? t('gallery.filter_all_years', '全部年份')
                   : `${diaryYear}${t('common.year_suffix', '年')}`}
               </Text>
-              <MaterialIcons name="expand-more" size={14} color={colors.textSecondary} />
+              <ChevronDown size={14} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
             </TouchableOpacity>
           )}
 
@@ -75,26 +76,26 @@ export const DiaryAttachmentPane: React.FC<{ vm: AttachmentManagementViewModel }
             style={[styles.filterChip, { borderColor: colors.borderSubtle }]}
             onPress={() => setFilterSheet('month')}
           >
-            <MaterialIcons name="folder" size={14} color={colors.textSecondary} />
+            <Folder size={14} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
             <Text style={[styles.filterChipText, { color: colors.textPrimary }]}>
               {diaryMonth === 'all'
                 ? t('settings.all_months', '全部月份')
                 : `${diaryMonth}${t('common.month_suffix', '月')}`}
             </Text>
-            <MaterialIcons name="expand-more" size={14} color={colors.textSecondary} />
+            <ChevronDown size={14} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.filterChip, { borderColor: colors.borderSubtle }]}
             onPress={() => setFilterSheet('orphan')}
           >
-            <MaterialIcons name="label" size={14} color={colors.textSecondary} />
+            <Tag size={14} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
             <Text style={[styles.filterChipText, { color: colors.textPrimary }]}>
               {diaryOrphanOnly
                 ? t('settings.tag_orphan', '孤立附件')
                 : t('settings.all_filters', '全部筛选')}
             </Text>
-            <MaterialIcons name="expand-more" size={14} color={colors.textSecondary} />
+            <ChevronDown size={14} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
           </TouchableOpacity>
         </View>
 
@@ -108,7 +109,7 @@ export const DiaryAttachmentPane: React.FC<{ vm: AttachmentManagementViewModel }
               onPress={() => void handleDeleteDiarySelected()}
               disabled={isDeleting}
             >
-              <MaterialIcons name="delete" size={16} color={colors.textOnPrimary} />
+              <Trash2 size={16} color={colors.textOnPrimary} strokeWidth={DEFAULT_STROKE_WIDTH} />
               <Text style={[styles.actionBtnText, { color: colors.textOnPrimary }]}>
                 {t('settings.attachment_delete_selected', '删除已选 ($count)').replace(
                   '$count',
@@ -122,7 +123,7 @@ export const DiaryAttachmentPane: React.FC<{ vm: AttachmentManagementViewModel }
               style={[styles.actionBtn, { borderColor: colors.borderSubtle }]}
               onPress={toggleSelectAllDiary}
             >
-              <MaterialIcons name="check-box" size={16} color={colors.textSecondary} />
+              <CheckSquare size={16} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
               <Text style={[styles.actionBtnText, { color: colors.textPrimary }]}>
                 {selectedDiaryPaths.size === pagedDiaryAttachments.length
                   ? t('settings.attachment_deselect_all', '取消全选')

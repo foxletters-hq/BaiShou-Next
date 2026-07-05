@@ -10,7 +10,7 @@ import {
   useWindowDimensions
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { MaterialIcons } from '@expo/vector-icons'
+import { FolderOpen, FolderX, Edit3 } from 'lucide-react-native'
 import {
   DiaryCard,
   PageSizeSelector,
@@ -285,12 +285,11 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
   if ((storageSlow || storageMountFailed) && entries.length === 0) {
     return (
       <View style={styles.centered}>
-        <MaterialIcons
-          name={storageMountFailed ? 'folder-off' : 'folder-open'}
-          size={56}
-          color={colors.primary}
-          style={{ opacity: 0.65 }}
-        />
+        {storageMountFailed ? (
+          <FolderX size={56} color={colors.primary} strokeWidth={2} style={{ opacity: 0.65 }} />
+        ) : (
+          <FolderOpen size={56} color={colors.primary} strokeWidth={2} style={{ opacity: 0.65 }} />
+        )}
         <Text style={[styles.storageTitle, { color: colors.textPrimary }]}>
           {storageMountFailed
             ? t(
@@ -368,7 +367,7 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
   if (totalCount === 0) {
     return (
       <View style={styles.centered}>
-        <MaterialIcons name="edit-note" size={64} color={colors.primary} style={{ opacity: 0.5 }} />
+        <Edit3 size={64} color={colors.primary} strokeWidth={2} style={{ opacity: 0.5 }} />
         <Text style={[styles.emptyText, { color: colors.textTertiary, marginTop: 16 }]}>
           {selectedMonth ? t('diary.no_diaries_month') : t('diary.no_diaries')}
         </Text>

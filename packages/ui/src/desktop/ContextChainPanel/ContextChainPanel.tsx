@@ -1,5 +1,7 @@
 import React from 'react'
+import { ListTree } from 'lucide-react'
 import type { MockChatMessage } from '@baishou/shared'
+import { CONTEXT_CHAIN_HEADER_ICON_SIZE } from '../../shared/icons/icon-sizes'
 import { AgentMarkdownRenderer } from '../AgentMarkdown'
 import { ContextChainCompressionHelpButton } from './ContextChainCompressionHelpButton'
 import {
@@ -242,7 +244,11 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
 
         <div className={panelStyles.header}>
           <div className={panelStyles.titleRow}>
-            <span className={panelStyles.icon}>🌿</span>
+            <ListTree
+              size={CONTEXT_CHAIN_HEADER_ICON_SIZE}
+              className={panelStyles.icon}
+              aria-hidden
+            />
             <span className={panelStyles.title}>
               {view.t('agent.chat.full_call_chain', '完整调用链')}
             </span>

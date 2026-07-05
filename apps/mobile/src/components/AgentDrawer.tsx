@@ -16,7 +16,7 @@ import Animated, {
   useSharedValue,
   withTiming
 } from 'react-native-reanimated'
-import { MaterialIcons } from '@expo/vector-icons'
+import { ChevronsUpDown, Plus, Settings } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
@@ -265,7 +265,7 @@ function AgentDrawerComponent({
                       </Text>
                     ) : null}
                   </View>
-                  <MaterialIcons name="unfold-more" size={20} color={colors.textSecondary} />
+                  <ChevronsUpDown size={20} color={colors.textSecondary} strokeWidth={2} />
                 </>
               ) : (
                 <>
@@ -284,7 +284,7 @@ function AgentDrawerComponent({
                       ]}
                     />
                   </View>
-                  <MaterialIcons name="unfold-more" size={20} color={colors.textTertiary} />
+                  <ChevronsUpDown size={20} color={colors.textTertiary} strokeWidth={2} />
                 </>
               )}
             </TouchableOpacity>
@@ -326,7 +326,7 @@ function AgentDrawerComponent({
               style={[styles.newChatBtn, { backgroundColor: colors.primary }]}
               onPress={handleCreate}
             >
-              <MaterialIcons name="add" size={20} color={colors.textOnPrimary} />
+              <Plus size={20} color={colors.textOnPrimary} strokeWidth={2} />
               <Text style={[styles.newChatText, { color: colors.textOnPrimary }]}>
                 {t('agent.sessions.new_chat', '新对话')}
               </Text>
@@ -339,7 +339,7 @@ function AgentDrawerComponent({
                 router.push('/(tabs)/settings')
               }}
             >
-              <MaterialIcons name="settings" size={20} color={colors.textSecondary} />
+              <Settings size={20} color={colors.textSecondary} strokeWidth={2} />
               <Text style={[styles.settingsText, { color: colors.textPrimary }]}>
                 {t('settings.title', '系统设置')}
               </Text>

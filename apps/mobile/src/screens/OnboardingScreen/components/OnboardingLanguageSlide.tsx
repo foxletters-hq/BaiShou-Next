@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { Languages, Check } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import {
   ONBOARDING_LANGUAGE_OPTIONS,
@@ -22,7 +22,7 @@ export const OnboardingLanguageSlide: React.FC<OnboardingLanguageSlideProps> = (
   return (
     <View style={styles.slideInner}>
       <View style={styles.iconWrap}>
-        <MaterialIcons name="language" size={56} color={BRAND_BLUE_DARK} />
+        <Languages size={56} color={BRAND_BLUE_DARK} strokeWidth={2} />
       </View>
       <Text style={styles.title}>{t('onboarding.language_title')}</Text>
       <Text style={styles.body}>{t('onboarding.language_desc')}</Text>
@@ -39,7 +39,7 @@ export const OnboardingLanguageSlide: React.FC<OnboardingLanguageSlideProps> = (
               <Text style={[styles.langChipText, active && styles.langChipTextActive]}>
                 {option.label}
               </Text>
-              {active ? <MaterialIcons name="check" size={18} color={BRAND_BLUE_DARK} /> : null}
+              {active ? <Check size={18} color={BRAND_BLUE_DARK} strokeWidth={2} /> : null}
             </TouchableOpacity>
           )
         })}

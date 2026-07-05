@@ -1,8 +1,9 @@
 import React from 'react'
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { MaterialIcons } from '@expo/vector-icons'
+import { ChevronRight, SquarePen } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import type { SummaryItem } from './gallery-panel.types'
 import { formatDateRange, formatSummarySpan, getTitle, getPreview } from './gallery-panel.utils'
 
@@ -43,7 +44,7 @@ export const GallerySummaryList: React.FC<GallerySummaryListProps> = ({
     >
       {items.length === 0 ? (
         <View style={styles.empty}>
-          <MaterialIcons name="edit-note" size={48} color={colors.textTertiary} />
+          <SquarePen size={48} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
           <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
             {t('diary.no_content')}
           </Text>
@@ -116,7 +117,7 @@ export const GallerySummaryList: React.FC<GallerySummaryListProps> = ({
                 ) : null}
               </View>
               {compact ? (
-                <MaterialIcons name="chevron-right" size={22} color={colors.textTertiary} />
+                <ChevronRight size={22} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
               ) : null}
             </Pressable>
           )

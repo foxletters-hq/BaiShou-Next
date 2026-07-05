@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { View, StyleSheet } from 'react-native'
+import { View, Text, StyleSheet } from 'react-native'
 import Markdown, { MarkdownIt } from 'react-native-markdown-display'
 import { useNativeTheme } from '../theme'
 import {
@@ -191,8 +191,58 @@ export const LegacyMarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     [content]
   )
   const rules = useMemo(() => {
-    if (!resolveImageUri && !loadImageUri && !onImagePress) return undefined
+    const previewTextRules =
+      variant === 'preview'
+        ? {
+            text: (
+              node: { key: string; content: string },
+              _children: unknown,
+              _parent: unknown,
+              styles: { text?: object },
+              inheritedStyles: object = {}
+            ) => (
+              <Text key={node.key} style={[inheritedStyles, styles.text]} selectable={false}>
+                {node.content}
+              </Text>
+            ),
+            textgroup: (
+              node: { key: string },
+              children: React.ReactNode,
+              _parent: unknown,
+              styles: { textgroup?: object }
+            ) => (
+              <Text key={node.key} style={styles.textgroup} selectable={false}>
+                {children}
+              </Text>
+            ),
+            hardbreak: (
+              node: { key: string },
+              _children: unknown,
+              _parent: unknown,
+              styles: { hardbreak?: object }
+            ) => (
+              <Text key={node.key} style={styles.hardbreak} selectable={false}>
+                {'\n'}
+              </Text>
+            ),
+            softbreak: (
+              node: { key: string },
+              _children: unknown,
+              _parent: unknown,
+              styles: { softbreak?: object }
+            ) => (
+              <Text key={node.key} style={styles.softbreak} selectable={false}>
+                {'\n'}
+              </Text>
+            )
+          }
+        : {}
+
+    if (!resolveImageUri && !loadImageUri && !onImagePress) {
+      return Object.keys(previewTextRules).length > 0 ? previewTextRules : undefined
+    }
     return {
+      ...previewTextRules,
       image: (
         node: { key: string; attributes: { src?: string; alt?: string } },
         _children: unknown,
@@ -216,7 +266,7 @@ export const LegacyMarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         )
       }
     }
-  }, [resolveImageUri, loadImageUri, onImagePress])
+  }, [variant, resolveImageUri, loadImageUri, onImagePress])
 
   return (
     <View

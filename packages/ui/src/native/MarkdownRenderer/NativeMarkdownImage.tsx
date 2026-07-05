@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { Image, Pressable, View, ActivityIndicator, StyleSheet, Text } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { ImageOff } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 
 function isDisplayableUri(uri: string): boolean {
   return (
@@ -103,7 +104,7 @@ export const NativeMarkdownImage: React.FC<NativeMarkdownImageProps> = ({
           { backgroundColor: colors.bgSurfaceHighest, borderColor: colors.borderSubtle }
         ]}
       >
-        <MaterialIcons name="broken-image" size={28} color={colors.textTertiary} />
+        <ImageOff size={28} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
         <Text style={[styles.failedText, { color: colors.textTertiary }]} numberOfLines={1}>
           {alt || rawSrc}
         </Text>
