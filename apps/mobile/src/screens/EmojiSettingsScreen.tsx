@@ -51,6 +51,20 @@ export const EmojiSettingsScreen: React.FC = () => {
               t('agent.tools.emoji_group_name_conflict', '已存在名为「{{name}}」的组', { name })
             )
           }
+          onConfirmDeleteGroup={(name) =>
+            dialog.confirm(
+              t(
+                'agent.tools.emoji_group_delete_confirm',
+                '确定删除表情包组「{{name}}」吗？此操作不可撤销。',
+                { name }
+              ),
+              {
+                title: t('agent.tools.emoji_group_delete_title', '删除表情包组'),
+                confirmText: t('common.delete', '删除'),
+                destructive: true
+              }
+            )
+          }
         />
       </KeyboardAwareScrollView>
     </StackScreenLayout>

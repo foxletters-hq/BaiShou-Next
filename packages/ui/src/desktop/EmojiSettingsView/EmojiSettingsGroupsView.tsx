@@ -11,6 +11,7 @@ import {
 } from '@baishou/shared'
 import { Switch } from '../Switch/Switch'
 import { HelpTooltip } from '../HelpTooltip'
+import { useDialog } from '../Dialog'
 import { toast } from '../Toast/useToast'
 import styles from '../AgentToolsView/AgentToolsView.module.css'
 
@@ -26,6 +27,7 @@ export const EmojiSettingsGroupsView: React.FC<EmojiSettingsGroupsViewProps> = (
   onOpenGroup
 }) => {
   const { t } = useTranslation()
+  const dialog = useDialog()
   const normalized = normalizeEmojiToolConfig(config)
   const isEnabled = normalized.enabled === true
 
@@ -51,6 +53,19 @@ export const EmojiSettingsGroupsView: React.FC<EmojiSettingsGroupsViewProps> = (
       return
     }
     onChange(upsertEmojiGroup(normalized, createEmojiGroup(trimmed)))
+  }
+
+  const handleDeleteGroup = async (groupId: string, groupName: string) => {
+    const confirmed = await dialog.confirm(
+      t(
+        'agent.tools.emoji_group_delete_confirm',
+        '确定删除表情包组「{{name}}」吗？此操作不可撤销。',
+        { name: groupName }
+      ),
+      t('agent.tools.emoji_group_delete_title', '删除表情包组')
+    )
+    if (!confirmed) return
+    onChange(removeEmojiGroup(normalized, groupId))
   }
 
   return (
@@ -117,7 +132,7 @@ export const EmojiSettingsGroupsView: React.FC<EmojiSettingsGroupsViewProps> = (
                     <button
                       type="button"
                       className={styles.emojiGroupDeleteBtn}
-                      onClick={() => onChange(removeEmojiGroup(normalized, group.id))}
+                      onClick={() => void handleDeleteGroup(group.id, group.name)}
                       aria-label={t('common.delete')}
                     >
                       <Trash2 size={16} />

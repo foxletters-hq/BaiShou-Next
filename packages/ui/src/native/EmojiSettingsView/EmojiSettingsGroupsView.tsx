@@ -23,6 +23,8 @@ export interface EmojiSettingsGroupsViewProps {
   onPromptGroupName?: (defaultName: string) => Promise<string | null>
   /** 组名重复时提示 */
   onGroupNameConflict?: (name: string) => void
+  /** 删除组前确认；返回 false 则取消 */
+  onConfirmDeleteGroup?: (groupName: string) => Promise<boolean>
 }
 
 export const EmojiSettingsGroupsView: React.FC<EmojiSettingsGroupsViewProps> = ({
@@ -30,7 +32,8 @@ export const EmojiSettingsGroupsView: React.FC<EmojiSettingsGroupsViewProps> = (
   onChange,
   onOpenGroup,
   onPromptGroupName,
-  onGroupNameConflict
+  onGroupNameConflict,
+  onConfirmDeleteGroup
 }) => {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
@@ -58,7 +61,11 @@ export const EmojiSettingsGroupsView: React.FC<EmojiSettingsGroupsViewProps> = (
     onChange(upsertEmojiGroup(normalized, group))
   }
 
-  const handleDeleteGroup = (groupId: string) => {
+  const handleDeleteGroup = async (groupId: string, groupName: string) => {
+    if (onConfirmDeleteGroup) {
+      const confirmed = await onConfirmDeleteGroup(groupName)
+      if (!confirmed) return
+    }
     onChange(removeEmojiGroup(normalized, groupId))
   }
 
@@ -151,7 +158,7 @@ export const EmojiSettingsGroupsView: React.FC<EmojiSettingsGroupsViewProps> = (
                   {normalized.groups.length > 1 ? (
                     <TouchableOpacity
                       style={styles.deleteGroupBtn}
-                      onPress={() => handleDeleteGroup(group.id)}
+                      onPress={() => void handleDeleteGroup(group.id, group.name)}
                       accessibilityLabel={t('common.delete')}
                     >
                       <Trash2 size={16} color={colors.error} strokeWidth={DEFAULT_STROKE_WIDTH} />
