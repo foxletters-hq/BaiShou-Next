@@ -1,7 +1,7 @@
 import React from 'react'
 import { View, Text, Pressable, StyleSheet, ActivityIndicator, Alert } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { MaterialIcons } from '@expo/vector-icons'
+import { Copy, RefreshCw } from 'lucide-react-native'
 import type { McpServerConfig } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 import { Input } from '../Input/Input'
@@ -9,6 +9,7 @@ import { Switch } from '../Switch'
 import { settingsHubListStyles as hubStyles } from '../settings/settings-hub.styles'
 import { HelpTooltip } from '../Tooltip/HelpTooltip'
 import { buildMcpClientJsonExample } from '../../shared/mcp-client-config.util'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 
 export interface NativeMcpSettingsCardProps {
   config: McpServerConfig
@@ -159,7 +160,7 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
                   ]}
                   accessibilityLabel={t('settings.mcp_refresh_token', '刷新访问令牌')}
                 >
-                  <MaterialIcons name="refresh" size={20} color={colors.textSecondary} />
+                  <RefreshCw size={20} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                 </Pressable>
               ) : null}
               {onCopyToken ? (
@@ -171,7 +172,7 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
                   ]}
                   accessibilityLabel={t('settings.mcp_copy_token', '复制访问令牌')}
                 >
-                  <MaterialIcons name="content-copy" size={18} color={colors.textSecondary} />
+                  <Copy size={18} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                 </Pressable>
               ) : null}
             </View>

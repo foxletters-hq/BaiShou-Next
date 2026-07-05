@@ -1,8 +1,9 @@
 import React from 'react'
 import { View, Text, Pressable } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { Copy } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import type { RecallItem } from './recall-dialog.types'
 
 interface RecallDialogDiaryItemProps {
@@ -60,7 +61,7 @@ export const RecallDialogDiaryItem: React.FC<RecallDialogDiaryItemProps> = ({ it
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             accessibilityLabel={t('common.copy', '复制')}
           >
-            <MaterialIcons name="content-copy" size={14} color={colors.textSecondary} />
+            <Copy size={14} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
           </Pressable>
         </View>
       </View>

@@ -1,7 +1,13 @@
 import React from 'react'
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { MaterialIcons } from '@expo/vector-icons'
+import {
+  Sparkles,
+  RefreshCw,
+  XCircle,
+  Clock,
+  CheckCircle2
+} from 'lucide-react-native'
 import { useNativeTheme } from '@baishou/ui/native'
 import { ConcurrencyDropdown } from './ConcurrencyDropdown'
 
@@ -87,7 +93,7 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
     <View style={styles.wrap}>
       {(missingSummaries.length > 0 || stats.totalDiaryCount > 0) && (
         <View style={styles.titleRow}>
-          <MaterialIcons name="auto-awesome" size={18} color={colors.warning ?? colors.primary} />
+          <Sparkles size={18} color={colors.warning ?? colors.primary} strokeWidth={2} />
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
             {t('summary.ai_suggestions')}
           </Text>
@@ -114,7 +120,7 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
             {isDetectingMissing ? (
               <ActivityIndicator size="small" color={colors.primary} />
             ) : (
-              <MaterialIcons name="refresh" size={14} color={colors.textSecondary} />
+              <RefreshCw size={14} color={colors.textSecondary} strokeWidth={2} />
             )}
             <Text style={[styles.detectBtnText, { color: colors.textSecondary }]}>
               {isDetectingMissing ? t('summary.detecting_missing') : t('summary.detect_missing')}
@@ -156,7 +162,7 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
                   ]}
                   onPress={onStopGeneration}
                 >
-                  <MaterialIcons name="cancel" size={14} color={colors.error} />
+                  <XCircle size={14} color={colors.error} strokeWidth={2} />
                   <Text style={[styles.actionBtnText, { color: colors.error }]}>
                     {t('summary.stop')}
                   </Text>
@@ -167,7 +173,7 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
                   onPress={onBatchGenerate}
                   disabled={isBatchGenerating}
                 >
-                  <MaterialIcons name="auto-awesome" size={14} color={colors.primary} />
+                  <Sparkles size={14} color={colors.primary} strokeWidth={2} />
                   <Text style={[styles.actionBtnText, { color: colors.primary }]}>
                     {isBatchGenerating ? t('summary.generating') : t('summary.generate_all')}
                   </Text>
@@ -190,7 +196,7 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
             onPress={onBatchGenerate}
             disabled={isBatchGenerating}
           >
-            <MaterialIcons name="auto-awesome" size={14} color={colors.primary} />
+            <Sparkles size={14} color={colors.primary} strokeWidth={2} />
             <Text style={[styles.actionBtnText, { color: colors.primary }]}>
               {t('summary.generate_all')}
             </Text>
@@ -279,11 +285,11 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
                   {isRunning && progress < 100 ? (
                     <ActivityIndicator size="small" color={colors.primary} />
                   ) : isPending ? (
-                    <MaterialIcons name="schedule" size={20} color={colors.textTertiary} />
+                    <Clock size={20} color={colors.textTertiary} strokeWidth={2} />
                   ) : isCompleted || progress >= 100 ? (
-                    <MaterialIcons name="check-circle" size={22} color={colors.success} />
+                    <CheckCircle2 size={22} color={colors.success} strokeWidth={2} />
                   ) : (
-                    <MaterialIcons name="auto-awesome" size={18} color={colors.primary} />
+                    <Sparkles size={18} color={colors.primary} strokeWidth={2} />
                   )}
                 </Pressable>
               </View>

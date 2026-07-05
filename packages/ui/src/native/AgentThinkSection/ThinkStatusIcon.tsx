@@ -1,7 +1,8 @@
 import React from 'react'
 import { ActivityIndicator, StyleSheet, View } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { ChevronRight, CircleX, Wrench } from 'lucide-react-native'
 import Svg, { Path } from 'react-native-svg'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 
 /** 对齐 @ant-design/x Think 默认图标（完成态） */
 function ThinkGlyph({ color, size }: { color: string; size: number }) {
@@ -38,10 +39,10 @@ export function ThinkStatusIcon({
 
 export function ThinkChevron({ expanded, color }: { expanded: boolean; color: string }) {
   return (
-    <MaterialIcons
-      name="chevron-right"
+    <ChevronRight
       size={12}
       color={color}
+      strokeWidth={DEFAULT_STROKE_WIDTH}
       style={{ transform: [{ rotate: expanded ? '90deg' : '0deg' }] }}
     />
   )
@@ -70,14 +71,14 @@ export function ToolStatusIcon({
   if (status === 'error') {
     return (
       <View style={styles.iconBox}>
-        <MaterialIcons name="cancel" size={16} color={errorColor} />
+        <CircleX size={16} color={errorColor} strokeWidth={DEFAULT_STROKE_WIDTH} />
       </View>
     )
   }
 
   return (
     <View style={styles.iconBox}>
-      <MaterialIcons name="build" size={15} color={color} />
+      <Wrench size={15} color={color} strokeWidth={DEFAULT_STROKE_WIDTH} />
     </View>
   )
 }

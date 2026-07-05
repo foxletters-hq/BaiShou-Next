@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, {
+  cancelAnimation,
   Easing,
   useAnimatedStyle,
   useSharedValue,
@@ -53,8 +54,11 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
   }, [invocation, model.toolName, t])
 
   const blinkOpacity = useSharedValue(1)
+  const isLoadingSv = useSharedValue(isLoading ? 1 : 0)
   useEffect(() => {
+    isLoadingSv.value = isLoading ? 1 : 0
     if (!isLoading) {
+      cancelAnimation(blinkOpacity)
       blinkOpacity.value = 1
       return
     }
@@ -66,10 +70,10 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
       -1,
       false
     )
-  }, [blinkOpacity, isLoading])
+  }, [blinkOpacity, isLoading, isLoadingSv])
 
   const titleBlinkStyle = useAnimatedStyle(() => ({
-    opacity: isLoading ? blinkOpacity.value : 1
+    opacity: isLoadingSv.value === 1 ? blinkOpacity.value : 1
   }))
 
   const handleToggle = useCallback(() => {

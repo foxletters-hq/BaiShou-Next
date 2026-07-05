@@ -16,6 +16,7 @@ import {
   removeDiscoveredLanDevice,
   upsertDiscoveredLanDevice
 } from '@baishou/shared'
+import { RefreshCw } from 'lucide-react-native'
 import { LanTransferRadarView } from '../components/LanTransferRadarView'
 import { StackScreenLayout } from '../components/StackScreenLayout'
 import { getStackScreenChrome } from '../components/stackScreenChrome'
@@ -263,7 +264,7 @@ export const LanTransferScreen: React.FC = () => {
         title={t('lan_transfer.title')}
         {...getStackScreenChrome(colors)}
         headerRight={{
-          icon: 'refresh',
+          icon: RefreshCw,
           onPress: () => void restartDualMode(),
           accessibilityLabel: t('common.refresh')
         }}

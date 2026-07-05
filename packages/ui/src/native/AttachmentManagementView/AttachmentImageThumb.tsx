@@ -8,9 +8,8 @@ import {
   type StyleProp,
   type ViewStyle
 } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
 import { useNativeTheme } from '../theme'
-import { getFileIconName } from './attachment-management.utils'
+import { getFileIcon } from './attachment-management.utils'
 
 interface AttachmentImageThumbProps {
   filePath: string
@@ -94,7 +93,7 @@ export const AttachmentImageThumb: React.FC<AttachmentImageThumbProps> = ({
           }}
         />
       ) : (
-        <MaterialIcons name={getFileIconName(fileName)} size={24} color={colors.textSecondary} />
+        getFileIcon(fileName, 24, colors.textSecondary)
       )}
     </View>
   )

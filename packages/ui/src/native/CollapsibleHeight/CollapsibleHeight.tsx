@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { LayoutChangeEvent, StyleSheet, View } from 'react-native'
 import Animated, {
+  cancelAnimation,
   Easing,
   useAnimatedStyle,
   useSharedValue,
@@ -56,6 +57,7 @@ export const CollapsibleHeight: React.FC<CollapsibleHeightProps> = ({
   useEffect(() => {
     if (instantMode) return
     const target = expanded ? measuredHeight : 0
+    cancelAnimation(animatedHeight)
     if (animation === 'ease') {
       animatedHeight.value = withTiming(target, {
         duration: durationMs,
@@ -70,6 +72,12 @@ export const CollapsibleHeight: React.FC<CollapsibleHeightProps> = ({
       overshootClamping: true
     })
   }, [animatedHeight, instantMode, expanded, measuredHeight, animation, durationMs])
+
+  useEffect(() => {
+    return () => {
+      cancelAnimation(animatedHeight)
+    }
+  }, [animatedHeight])
 
   const clipStyle = useAnimatedStyle(() => ({
     height: animatedHeight.value

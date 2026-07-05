@@ -5,7 +5,7 @@ import { IAIProvider } from '../providers/provider.interface'
 import { ModelPricingService } from '../pricing/model-pricing.service'
 import { mergeStreamUsageFromSdk, normalizeTokenUsageForBilling } from './token-usage.util'
 import { StreamAccumulator } from './stream-accumulator'
-import { resolveAssistantParentOrderIndex } from './agent-session-persist.utils'
+import { resolveAssistantParentOrderIndex, buildEmojiImagePartsFromToolCalls } from './agent-session-persist.utils'
 import { sanitizeToolPayloadForStorage } from './session-tool-payload-sanitizer'
 // @ts-ignore
 import { SnapshotRepository } from '@baishou/database'
@@ -42,6 +42,8 @@ export interface PersistResultParams {
   namingModelConfigured?: boolean
   namingProvider?: IAIProvider
   namingModelId?: string
+  /** 用户配置，用于查找 emoji_send 工具对应的表情包文件 */
+  userConfig?: Record<string, any>
 }
 
 /**
@@ -77,7 +79,12 @@ export async function persistResult(params: PersistResultParams): Promise<{
 
   // ======== 构建 assistant 消息 Parts ========
   const assistantMsgId = generateUUID()
-  const partsToInsert: any[] = []
+  const partsToInsert: any[] = buildEmojiImagePartsFromToolCalls(
+    accumulator.toolCalls,
+    assistantMsgId,
+    sessionId,
+    params.userConfig
+  )
 
   // 推送文本 Part
   const assistantText = resolveAssistantTextForStorage(accumulator)
@@ -109,6 +116,11 @@ export async function persistResult(params: PersistResultParams): Promise<{
       continue
     }
     const resultObj = accumulator.toolResults.find((tr) => tr.callId === tc.callId)
+
+    if (tc.name === 'emoji_send') {
+      continue
+    }
+
     const toolData = sanitizeToolPayloadForStorage({
       callId: tc.callId,
       name: tc.name,
@@ -221,6 +233,7 @@ export async function persistResult(params: PersistResultParams): Promise<{
   }
 
   // 开始事务存放! — 即使流式出错，也将已累积的回复内容落盘，防止消息丢失
+
   if (partsToInsert.length > 0) {
     await sessionRepo.insertMessageWithParts(
       {

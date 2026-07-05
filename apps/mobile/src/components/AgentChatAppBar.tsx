@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { PanelLeftOpen, ChevronsUpDown } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '@baishou/ui/native'
 interface AgentChatAppBarProps {
@@ -41,7 +41,7 @@ export const AgentChatAppBar: React.FC<AgentChatAppBarProps> = ({
           onPress={onMenuPress}
           accessibilityLabel={t('agent.sidebar.expand', '展开侧边栏')}
         >
-          <MaterialIcons name="menu" size={24} color={colors.textPrimary} />
+          <PanelLeftOpen size={24} color={colors.textPrimary} strokeWidth={2} />
         </TouchableOpacity>
       </View>
 
@@ -49,7 +49,7 @@ export const AgentChatAppBar: React.FC<AgentChatAppBarProps> = ({
         <Text style={[styles.modelName, { color: colors.textPrimary }]} numberOfLines={1}>
           {displayModel}
         </Text>
-        <MaterialIcons name="unfold-more" size={18} color={colors.textSecondary} />
+        <ChevronsUpDown size={18} color={colors.textSecondary} strokeWidth={2} />
       </TouchableOpacity>
 
       <View style={[styles.side, styles.sideRight]}>

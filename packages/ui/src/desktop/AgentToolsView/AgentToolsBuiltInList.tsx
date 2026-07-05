@@ -16,6 +16,7 @@ interface AgentToolsBuiltInListProps {
   onToggleTool: (toolId: string) => void
   getToolParam: (toolId: string, param: ToolConfigParam) => unknown
   setToolParam: (toolId: string, key: string, value: unknown) => void
+  onConfigChange: (config: ToolManagementConfig) => void
 }
 
 export const AgentToolsBuiltInList: React.FC<AgentToolsBuiltInListProps> = ({
@@ -27,7 +28,8 @@ export const AgentToolsBuiltInList: React.FC<AgentToolsBuiltInListProps> = ({
   onShowCommunityChange,
   onToggleTool,
   getToolParam,
-  setToolParam
+  setToolParam,
+  onConfigChange
 }) => {
   const { t } = useTranslation()
 
@@ -83,7 +85,7 @@ export const AgentToolsBuiltInList: React.FC<AgentToolsBuiltInListProps> = ({
             })}
           </div>
         ) : (
-          <AgentToolsCommunityTab />
+          <AgentToolsCommunityTab config={config} onChange={onConfigChange} />
         )}
       </div>
     </>

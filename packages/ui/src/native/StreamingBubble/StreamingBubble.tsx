@@ -12,6 +12,7 @@ import { chatOverBackgroundMetaTextStyle } from '../../shared/chat-over-backgrou
 import { ToolResultGroupCard } from '../ToolResultGroupCard/ToolResultGroupCard'
 import { StreamingBubbleBouncingDots } from './StreamingBubbleBouncingDots'
 import { AgentMarkdownRenderer } from '../AgentMarkdown'
+import { NativeChatBubbleAttachments } from '../ChatBubble/NativeChatBubbleAttachments'
 
 export type { ToolExecution, NativeStreamingBubbleProps } from './streaming-bubble.types'
 
@@ -27,7 +28,8 @@ export const StreamingBubble = React.memo(function StreamingBubble({
   error = null,
   onRetry,
   invertMetaOverBackground = false,
-  reserveActionBarSpace = false
+  reserveActionBarSpace = false,
+  attachments = []
 }: NativeStreamingBubbleProps) {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
@@ -43,6 +45,7 @@ export const StreamingBubble = React.memo(function StreamingBubble({
   const hasReasoning = cleanReasoning.length > 0 || isReasoning
   const hasText = cleanText.length > 0
   const hasTools = completedTools.length > 0 || !!activeToolName
+  const hasAttachments = attachments.length > 0
 
   return (
     <View style={[chatBubbleStyles.container, chatBubbleStyles.containerAssistant]}>
@@ -93,7 +96,7 @@ export const StreamingBubble = React.memo(function StreamingBubble({
               </Pressable>
             )}
           </View>
-        ) : hasText || hasReasoning || hasTools ? (
+        ) : hasText || hasReasoning || hasTools || hasAttachments ? (
           <View
             collapsable={false}
             style={[
@@ -105,6 +108,9 @@ export const StreamingBubble = React.memo(function StreamingBubble({
               }
             ]}
           >
+            {hasAttachments ? (
+              <NativeChatBubbleAttachments attachments={attachments} isUserBubble={false} />
+            ) : null}
             {hasReasoning && (
               <View
                 style={{

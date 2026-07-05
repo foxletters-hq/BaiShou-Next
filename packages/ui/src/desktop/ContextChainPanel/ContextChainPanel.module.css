@@ -95,9 +95,8 @@
 }
 
 .icon {
-  font-size: 18px;
-  color: var(--color-primary);
   flex-shrink: 0;
+  color: var(--color-primary);
 }
 
 .title {

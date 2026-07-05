@@ -68,8 +68,12 @@ function toLocalAttachmentPath(rawPath: string): string {
   if (rawPath.startsWith('file://')) {
     return rawPath.replace(/^file:/i, 'local:')
   }
+  const normalized = rawPath.replace(/\\/g, '/')
+  if (normalized.startsWith('emojis/')) {
+    return `local:///${normalized}`
+  }
   if (/^[a-zA-Z]:[\\/]/.test(rawPath) || rawPath.startsWith('/')) {
-    return `local:///${rawPath.replace(/\\/g, '/')}`
+    return `local:///${normalized}`
   }
   return rawPath
 }

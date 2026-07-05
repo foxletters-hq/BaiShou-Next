@@ -8,7 +8,8 @@ import {
   Easing,
   type LayoutRectangle
 } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import type { LucideIcon } from 'lucide-react-native'
+import { Monitor, Radar, Smartphone, TabletSmartphone } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import type { DiscoveredDevice } from '@baishou/core-mobile'
 import { getLanDeviceDedupKey } from '@baishou/shared'
@@ -38,17 +39,17 @@ export interface LanTransferRadarViewProps {
   onDevicePress: (device: DiscoveredDevice) => void
 }
 
-function deviceIconName(device: DiscoveredDevice): keyof typeof MaterialIcons.glyphMap {
-  if (device.deviceType === 'mobile') return 'smartphone'
-  if (device.deviceType === 'desktop') return 'computer'
+function deviceIcon(device: DiscoveredDevice): LucideIcon {
+  if (device.deviceType === 'mobile') return Smartphone
+  if (device.deviceType === 'desktop') return Monitor
   const name = device.nickname.toLowerCase()
   if (name.includes('iphone') || name.includes('phone') || name.includes('android')) {
-    return 'smartphone'
+    return Smartphone
   }
   if (name.includes('macbook') || name.includes('desktop') || name.includes('pc')) {
-    return 'computer'
+    return Monitor
   }
-  return 'devices'
+  return TabletSmartphone
 }
 
 const FloatingBubble: React.FC<{
@@ -62,6 +63,7 @@ const FloatingBubble: React.FC<{
 }> = ({ device, index, zone, colors, isSending, sendProgress, onPress }) => {
   const float = useRef(new Animated.Value(0)).current
   const delayMs = index * 500
+  const DeviceIcon = deviceIcon(device)
 
   useEffect(() => {
     const loop = Animated.loop(
@@ -122,7 +124,7 @@ const FloatingBubble: React.FC<{
         ]}
       >
         <View style={[styles.bubbleIcon, { backgroundColor: colors.primaryLight }]}>
-          <MaterialIcons name={deviceIconName(device)} size={20} color={colors.primary} />
+          <DeviceIcon size={20} color={colors.primary} strokeWidth={2} />
         </View>
         <View style={styles.bubbleInfo}>
           <Text style={[styles.bubbleName, { color: colors.textPrimary }]} numberOfLines={1}>
@@ -176,7 +178,7 @@ const PulseCore: React.FC<{ colors: ThemeColors }> = ({ colors }) => {
       ]}
     >
       <View style={[styles.pulseInner, { backgroundColor: colors.primary }]}>
-        <MaterialIcons name="cell-tower" size={22} color={colors.textOnPrimary} />
+        <Radar size={22} color={colors.textOnPrimary} strokeWidth={2} />
       </View>
     </Animated.View>
   )

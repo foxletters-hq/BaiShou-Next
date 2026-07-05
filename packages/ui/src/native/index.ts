@@ -161,3 +161,6 @@ export {
 } from './KeyboardAwareScrollView'
 
 export { resolveActiveToolDisplayName } from '../shared/tool-result.util'
+
+export * from './icons'
+export type { SettingsNavIconId } from '../shared/icons/settings-nav-icon-ids'

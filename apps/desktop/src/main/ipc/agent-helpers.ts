@@ -28,6 +28,7 @@ import {
   prepareDiaryWriteContent,
   logger,
   parseDateStr,
+  resolveDiaryEditMode,
   formatUserCardFromProfile,
   isConfiguredProviderId,
   isConfiguredDialogueModelId,
@@ -192,7 +193,8 @@ export function createDiarySearcher() {
           }
 
           let finalContent = content
-          if (mode === 'append') {
+          const editMode = resolveDiaryEditMode(mode)
+          if (editMode === 'append') {
             const templateConfig = (await settingsManager.get<any>('diary_template_config')) || {}
             finalContent = prepareDiaryAppendContent(
               existing.content,
@@ -404,7 +406,8 @@ export async function buildAgentUserConfigFromSettings(options?: {
       typeof behaviorConfig?.agentGuidelines === 'string' &&
       behaviorConfig.agentGuidelines.trim().length > 0
         ? behaviorConfig.agentGuidelines.trim()
-        : undefined
+        : undefined,
+    emojiConfig: toolManagementConfig?.emojiConfig || undefined
   }
 }
 

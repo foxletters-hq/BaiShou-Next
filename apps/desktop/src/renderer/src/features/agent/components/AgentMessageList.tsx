@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback, useEffect, useRef, useState } from 'react'
-import { mapAttachmentsFromParts } from '@baishou/shared'
+import { mapAttachmentsFromParts, resolveAttachmentImageSrc } from '@baishou/shared'
 import {
   ChatBubble,
   StreamingBubble,
@@ -10,6 +10,40 @@ import {
 import { useSettingsStore } from '@baishou/store'
 import { useMessageActions } from '../hooks/useMessageActions'
 import styles from '../AgentScreen.module.css'
+
+/**
+ * 模糊匹配 emoji：支持 ID（含/不含扩展名）、名称、子串匹配
+ * 与 persist 层的 findEmojiById 逻辑保持一致
+ */
+function resolvePendingEmoji(
+  query: string,
+  emojis: Array<{ id: string; name: string; relativePath: string }>
+): { id: string; name: string; relativePath: string } | undefined {
+  const normalizedQuery = query.trim().toLowerCase()
+
+  const exactMatch = emojis.find((e) => e.id === normalizedQuery || e.id.toLowerCase() === normalizedQuery)
+  if (exactMatch) return exactMatch
+
+  const idNoExtMatch = emojis.find((e) => e.id.replace(/\.[^.]+$/, '').toLowerCase() === normalizedQuery)
+  if (idNoExtMatch) return idNoExtMatch
+
+  const normalizeName = (s: string) => s.toLowerCase().replace(/[_\s]+/g, ' ').trim()
+  const normalizedNameQuery = normalizeName(normalizedQuery)
+  const nameMatch = emojis.find((e) => normalizeName(e.name) === normalizedNameQuery)
+  if (nameMatch) return nameMatch
+
+  const idContainsMatch = emojis.find((e) =>
+    e.id.replace(/\.[^.]+$/, '').toLowerCase().includes(normalizedQuery)
+  )
+  if (idContainsMatch) return idContainsMatch
+
+  const nameContainsMatch = emojis.find((e) =>
+    normalizeName(e.name).includes(normalizedNameQuery)
+  )
+  if (nameContainsMatch) return nameContainsMatch
+
+  return undefined
+}
 
 interface AgentMessageListProps {
   t: any
@@ -213,6 +247,28 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
     [stream.activeTool, settings.webSearchConfig, t]
   )
 
+  const pendingEmojiAttachments = useMemo(() => {
+    const emojiConfig = settings.toolManagementConfig?.emojiConfig
+    const emojis = emojiConfig?.emojis
+    const pending = stream.pendingEmojis ?? []
+    if (!emojis?.length || !pending.length) return []
+
+    return pending
+      .map((pendingEmoji) => {
+        const emoji = resolvePendingEmoji(pendingEmoji.emojiId, emojis)
+        if (!emoji) return null
+        return {
+          id: emoji.id,
+          fileName: emoji.name || emoji.id,
+          filePath: resolveAttachmentImageSrc(
+            `local:///${emoji.relativePath.replace(/\\/g, '/')}`
+          ),
+          isImage: true
+        }
+      })
+      .filter((item): item is NonNullable<typeof item> => item != null)
+  }, [stream.pendingEmojis, settings.toolManagementConfig?.emojiConfig])
+
   const lastMessage = chat.messages[chat.messages.length - 1]
   const assistantPersistedDuringBridge =
     stream.isBridgeActive &&
@@ -220,7 +276,8 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
     Boolean(
       lastMessage.content?.trim() ||
       lastMessage.reasoning?.trim() ||
-      (lastMessage.toolInvocations?.length ?? 0) > 0
+      (lastMessage.toolInvocations?.length ?? 0) > 0 ||
+      (lastMessage.attachments?.length ?? 0) > 0
     )
 
   return (
@@ -364,7 +421,8 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
                 Boolean(stream.text?.trim()) ||
                 Boolean(stream.reasoning?.trim()) ||
                 stream.activeTool ||
-                stream.completedTools.length > 0)
+                stream.completedTools.length > 0 ||
+                pendingEmojiAttachments.length > 0)
 
             return showStreamingBubble ? (
               <StreamingBubble
@@ -374,6 +432,7 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
                 isTextStreaming={stream.isStreaming}
                 activeToolName={activeToolDisplayName}
                 completedTools={stream.completedTools}
+                attachments={pendingEmojiAttachments}
                 aiProfile={{
                   name: currentAssistant?.name || 'AI',
                   avatarPath: currentAssistant?.avatarPath,

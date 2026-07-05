@@ -1,4 +1,4 @@
-import type { MaterialIcons } from '@expo/vector-icons'
+import type { SettingsNavIconId } from '@baishou/ui/native'
 
 export type SettingsStackPathname =
   | '/settings/assistants'
@@ -16,7 +16,7 @@ export type SettingsHubRoute =
 export interface SettingsHubItem {
   id: string
   titleKey: string
-  icon: keyof typeof MaterialIcons.glyphMap
+  icon: SettingsNavIconId
   route: SettingsHubRoute
 }
 
@@ -33,49 +33,49 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
       {
         id: 'ai-services',
         titleKey: 'settings.ai_services',
-        icon: 'cloud-queue',
+        icon: 'ai-services',
         route: { type: 'section', section: 'ai-services' }
       },
       {
         id: 'ai-models',
         titleKey: 'settings.ai_global_models',
-        icon: 'route',
+        icon: 'ai-models',
         route: { type: 'section', section: 'ai-models' }
       },
       {
         id: 'assistants',
         titleKey: 'agent.assistant.settings_entry',
-        icon: 'school',
+        icon: 'assistants',
         route: { type: 'stack', pathname: '/settings/assistants' }
       },
       {
         id: 'rag',
         titleKey: 'agent.rag.title',
-        icon: 'psychology',
+        icon: 'rag',
         route: { type: 'section', section: 'rag' }
       },
       {
         id: 'web-search',
         titleKey: 'agent.tools.web_search',
-        icon: 'travel-explore',
+        icon: 'web-search',
         route: { type: 'section', section: 'web-search' }
       },
       {
         id: 'mcp',
         titleKey: 'settings.mcp_title',
-        icon: 'hub',
+        icon: 'mcp',
         route: { type: 'section', section: 'mcp' }
       },
       {
         id: 'agent-tools',
         titleKey: 'settings.agent_tools_title',
-        icon: 'extension',
+        icon: 'agent-tools',
         route: { type: 'section', section: 'agent-tools' }
       },
       {
         id: 'tts',
         titleKey: 'settings.tts_settings',
-        icon: 'volume-up',
+        icon: 'tts',
         route: { type: 'stack', pathname: '/settings/tts' }
       }
     ]
@@ -86,13 +86,13 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
       {
         id: 'diary-template',
         titleKey: 'settings.diary_template_title',
-        icon: 'edit-note',
+        icon: 'diary-template',
         route: { type: 'section', section: 'diary-template' }
       },
       {
         id: 'summary',
         titleKey: 'settings.summary_settings_title',
-        icon: 'auto-awesome',
+        icon: 'summary-settings',
         route: { type: 'section', section: 'summary' }
       }
     ]
@@ -103,37 +103,37 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
       {
         id: 'incremental-sync',
         titleKey: 'data_sync.incremental_sync',
-        icon: 'sync',
+        icon: 'incremental-sync',
         route: { type: 'stack', pathname: '/incremental-sync' }
       },
       {
         id: 'data-sync',
         titleKey: 'data_sync.title',
-        icon: 'backup',
+        icon: 'data-sync',
         route: { type: 'stack', pathname: '/settings/data-sync' }
       },
       {
         id: 'attachments',
         titleKey: 'settings.attachment_management',
-        icon: 'folder-delete',
+        icon: 'attachments',
         route: { type: 'section', section: 'attachments' }
       },
       {
         id: 'lan-transfer',
         titleKey: 'settings.lan_transfer',
-        icon: 'wifi-tethering',
+        icon: 'lan-transfer',
         route: { type: 'stack', pathname: '/settings/lan-transfer' }
       },
       {
         id: 'storage',
         titleKey: 'storage.title',
-        icon: 'folder',
+        icon: 'storage',
         route: { type: 'inline', id: 'storage' }
       },
       {
         id: 'version-migration',
         titleKey: 'version_migration.title',
-        icon: 'system-update-alt',
+        icon: 'version-migration',
         route: { type: 'stack', pathname: '/settings/version-migration' }
       }
     ]
@@ -169,5 +169,17 @@ export function getHubItemTitleKey(section: string): string | undefined {
       }
     }
   }
+  return undefined
+}
+
+export function getHubItemIconId(section: string): SettingsNavIconId | undefined {
+  for (const group of SETTINGS_HUB_GROUPS) {
+    for (const item of group.items) {
+      if (item.route.type === 'section' && item.route.section === section) {
+        return item.icon
+      }
+    }
+  }
+  if (section === 'developer') return 'general'
   return undefined
 }

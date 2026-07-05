@@ -1,6 +1,14 @@
 import React from 'react'
 import { View, Text, StyleSheet, Modal, TouchableOpacity, SafeAreaView } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import type { LucideIcon } from 'lucide-react-native'
+import {
+  ArrowLeft,
+  Cloud,
+  Eye,
+  EyeOff,
+  Folder,
+  Globe
+} from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import type { SyncConfig } from '@baishou/core-mobile'
 import { Input, KeyboardAwareScrollView } from '@baishou/ui/native'
@@ -58,11 +66,11 @@ export const DataSyncConfigSheet: React.FC<DataSyncConfigSheetProps> = ({
           style={styles.eyeBtn}
           accessibilityRole="button"
         >
-          <MaterialIcons
-            name={showPassword ? 'visibility' : 'visibility-off'}
-            size={22}
-            color={colors.textSecondary}
-          />
+          {showPassword ? (
+            <Eye size={22} color={colors.textSecondary} strokeWidth={2} />
+          ) : (
+            <EyeOff size={22} color={colors.textSecondary} strokeWidth={2} />
+          )}
         </TouchableOpacity>
       </View>
     </>
@@ -70,11 +78,12 @@ export const DataSyncConfigSheet: React.FC<DataSyncConfigSheetProps> = ({
 
   const renderTargetCard = (
     target: SyncConfig['target'],
-    icon: keyof typeof MaterialIcons.glyphMap,
+    icon: LucideIcon,
     title: string,
     desc: string
   ) => {
     const selected = config.target === target
+    const Icon = icon
     return (
       <TouchableOpacity
         key={target}
@@ -89,10 +98,10 @@ export const DataSyncConfigSheet: React.FC<DataSyncConfigSheetProps> = ({
         activeOpacity={0.8}
       >
         <View style={[styles.targetIcon, { backgroundColor: colors.bgSurface }]}>
-          <MaterialIcons
-            name={icon}
+          <Icon
             size={24}
             color={selected ? colors.primary : colors.textSecondary}
+            strokeWidth={2}
           />
         </View>
         <View style={{ flex: 1 }}>
@@ -123,7 +132,7 @@ export const DataSyncConfigSheet: React.FC<DataSyncConfigSheetProps> = ({
       <SafeAreaView style={[styles.safe, { backgroundColor: colors.bgApp }]}>
         <View style={[styles.appBar, { borderBottomColor: colors.borderSubtle }]}>
           <TouchableOpacity onPress={onClose} style={styles.backBtn} hitSlop={12}>
-            <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
+            <ArrowLeft size={24} color={colors.textPrimary} strokeWidth={2} />
           </TouchableOpacity>
           <Text style={[styles.appTitle, { color: colors.textPrimary }]}>
             {t('data_sync.config_title', '数据备份配置')}
@@ -142,19 +151,19 @@ export const DataSyncConfigSheet: React.FC<DataSyncConfigSheetProps> = ({
 
           {renderTargetCard(
             'local',
-            'folder',
+            Folder,
             t('data_sync.target_local', '本地存储'),
             t('data_sync.local_storage_desc', '直接将备份转储保存在应用所运行设备的本地磁盘中。')
           )}
           {renderTargetCard(
             's3',
-            'cloud',
+            Cloud,
             t('data_sync.target_s3', 'S3 兼容存储'),
             t('data_sync.s3_storage_desc', '兼容 S3 协议的对象存储服务')
           )}
           {renderTargetCard(
             'webdav',
-            'language',
+            Globe,
             t('data_sync.target_webdav', 'WebDAV'),
             t('data_sync.webdav_storage_desc', '通用网络文件存储协议')
           )}

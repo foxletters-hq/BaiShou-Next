@@ -2,8 +2,9 @@ import { useTranslation } from 'react-i18next'
 import React, { memo, useMemo } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { TouchableOpacity } from 'react-native-gesture-handler'
-import { MaterialIcons } from '@expo/vector-icons'
+import { Heart } from 'lucide-react-native'
 import { useNativeTheme } from '../../native/theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import {
   getDiaryTagColorIndex,
   limitDiaryPreviewTags,
@@ -90,9 +91,13 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
     >
       <View style={styles.header}>
         <View style={styles.dateGroup}>
-          <Text style={[styles.day, { color: colors.textPrimary }]}>{day}</Text>
+          <Text style={[styles.day, { color: colors.textPrimary }]} selectable={false}>
+            {day}
+          </Text>
           <View style={styles.dateMeta}>
-            <Text style={[styles.weekday, { color: colors.textSecondary }]}>{weekday}</Text>
+            <Text style={[styles.weekday, { color: colors.textSecondary }]} selectable={false}>
+              {weekday}
+            </Text>
             <View style={styles.badgeRow}>
               <View
                 style={[
@@ -103,7 +108,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
                   }
                 ]}
               >
-                <Text style={[styles.badgeText, { color: colors.primary }]}>
+                <Text style={[styles.badgeText, { color: colors.primary }]} selectable={false}>
                   {year} · {month}
                   {t('diary.month_suffix')}
                 </Text>
@@ -130,7 +135,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
               ) : null}
               {matchSimilarity != null && (
                 <View style={[styles.similarityBadge, { backgroundColor: colors.primaryLight }]}>
-                  <Text style={[styles.similarityText, { color: colors.primary }]}>
+                  <Text style={[styles.similarityText, { color: colors.primary }]} selectable={false}>
                     {(matchSimilarity * 100).toFixed(0)}%
                   </Text>
                 </View>
@@ -139,17 +144,21 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
           </View>
         </View>
         {isFavorite ? (
-          <MaterialIcons name="favorite" size={22} color={colors.warning} />
+          <Heart size={22} color={colors.warning} strokeWidth={DEFAULT_STROKE_WIDTH} fill={colors.warning} />
         ) : (
           <View style={styles.headerSpacer} />
         )}
       </View>
 
-      <View style={styles.contentContainer}>
+      <View style={styles.contentContainer} pointerEvents="box-none">
         {previewMarkdown ? (
           <MarkdownRenderer content={previewMarkdown} variant="preview" />
         ) : (
-          <Text style={[styles.snippet, { color: colors.textSecondary }]} numberOfLines={3}>
+          <Text
+            style={[styles.snippet, { color: colors.textSecondary }]}
+            numberOfLines={3}
+            selectable={false}
+          >
             —
           </Text>
         )}
@@ -161,13 +170,15 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
             const { bg, fg } = getTagColor(tag)
             return (
               <View key={tag} style={[styles.tag, { backgroundColor: bg }]}>
-                <Text style={[styles.tagText, { color: fg }]}>#{tag}</Text>
+                <Text style={[styles.tagText, { color: fg }]} selectable={false}>
+                  #{tag}
+                </Text>
               </View>
             )
           })}
           {tagOverflowCount > 0 ? (
             <View style={[styles.tag, { backgroundColor: colors.bgSurfaceHighest }]}>
-              <Text style={[styles.tagText, { color: colors.textSecondary }]}>
+              <Text style={[styles.tagText, { color: colors.textSecondary }]} selectable={false}>
                 +{tagOverflowCount}
               </Text>
             </View>
@@ -179,10 +190,14 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
       <View style={[styles.actionsDivider, { backgroundColor: colors.borderMuted }]} />
       <View style={styles.actionsBox}>
         <TouchableOpacity onPress={onEdit} style={styles.actionBtn} activeOpacity={0.7} disallowInterruption>
-          <Text style={[styles.editText, { color: colors.textSecondary }]}>{t('common.edit')}</Text>
+          <Text style={[styles.editText, { color: colors.textSecondary }]} selectable={false}>
+            {t('common.edit')}
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={onDelete} style={styles.actionBtn} activeOpacity={0.7} disallowInterruption>
-          <Text style={[styles.deleteText, { color: colors.error }]}>{t('common.delete')}</Text>
+          <Text style={[styles.deleteText, { color: colors.error }]} selectable={false}>
+            {t('common.delete')}
+          </Text>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>

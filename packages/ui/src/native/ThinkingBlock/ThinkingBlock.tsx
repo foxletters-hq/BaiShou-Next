@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { ChevronDown } from 'lucide-react-native'
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -9,6 +9,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { AgentMarkdownRenderer } from '../AgentMarkdown'
 import { CollapsibleHeight } from '../CollapsibleHeight'
 
@@ -181,7 +182,7 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
           {statusText}
         </Text>
         <Animated.View style={chevronStyle}>
-          <MaterialIcons name="expand-more" size={18} color={colors.textTertiary} />
+          <ChevronDown size={18} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
         </Animated.View>
       </TouchableOpacity>
 

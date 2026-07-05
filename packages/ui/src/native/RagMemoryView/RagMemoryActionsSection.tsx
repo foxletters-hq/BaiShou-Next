@@ -1,8 +1,9 @@
 import React from 'react'
 import { View, Text, TouchableOpacity } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { Library, MessageSquarePlus } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import type { RagState } from './rag-memory.types'
 import { ragMemoryStyles as styles } from './rag-memory.styles'
 
@@ -67,7 +68,7 @@ export const RagMemoryActionsSection: React.FC<RagMemoryActionsSectionProps> = (
             disabled={ragState.isRunning}
             activeOpacity={0.7}
           >
-            <MaterialIcons name="auto-stories" size={16} color={colors.primary} />
+            <Library size={16} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
             <Text style={[styles.actionBtnText, { color: colors.primary }]}>
               {isBatchEmbedding
                 ? `${t('common.processing')} ${ragState.progress}/${ragState.total}`
@@ -90,7 +91,7 @@ export const RagMemoryActionsSection: React.FC<RagMemoryActionsSectionProps> = (
             disabled={ragState.isRunning}
             activeOpacity={0.7}
           >
-            <MaterialIcons name="add-comment" size={16} color={colors.success} />
+            <MessageSquarePlus size={16} color={colors.success} strokeWidth={DEFAULT_STROKE_WIDTH} />
             <Text style={[styles.actionBtnText, { color: colors.success }]}>
               {t('settings.rag_add_manual')}
             </Text>

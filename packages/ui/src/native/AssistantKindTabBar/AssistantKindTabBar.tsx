@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react'
 import { View, Text, Pressable, StyleSheet } from 'react-native'
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import { useTranslation } from 'react-i18next'
-import { MaterialIcons } from '@expo/vector-icons'
+import { Briefcase, Heart } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { getAssistantKindHintKey, type AssistantKind } from '@baishou/shared'
 
 export interface AssistantKindTabBarProps {
@@ -58,10 +59,11 @@ export const AssistantKindTabBar: React.FC<AssistantKindTabBarProps> = ({
           />
         ) : null}
         <Pressable style={styles.tab} onPress={() => onKindChange('companion')}>
-          <MaterialIcons
-            name="favorite"
+          <Heart
             size={18}
             color={activeKind === 'companion' ? colors.primary : colors.textSecondary}
+            strokeWidth={DEFAULT_STROKE_WIDTH}
+            fill={activeKind === 'companion' ? colors.primary : 'transparent'}
           />
           <Text
             style={[
@@ -73,10 +75,10 @@ export const AssistantKindTabBar: React.FC<AssistantKindTabBarProps> = ({
           </Text>
         </Pressable>
         <Pressable style={styles.tab} onPress={() => onKindChange('work')}>
-          <MaterialIcons
-            name="work"
+          <Briefcase
             size={18}
             color={activeKind === 'work' ? colors.primary : colors.textSecondary}
+            strokeWidth={DEFAULT_STROKE_WIDTH}
           />
           <Text
             style={[

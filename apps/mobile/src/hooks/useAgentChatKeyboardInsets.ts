@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AppState, Keyboard, Platform, type KeyboardEvent } from 'react-native'
 import {
+  cancelAnimation,
   useAnimatedKeyboard,
   useAnimatedReaction,
   useAnimatedStyle,
@@ -60,6 +61,7 @@ export function useAgentChatKeyboardInsets({
     (rawHeight: number, durationMs = 250) => {
       const inset = computeComposerInset(rawHeight, tabBarHeight)
       const target = inputDockHeightSv.value + inset + COMPOSER_LIST_GAP
+      cancelAnimation(listSpacerHeight)
       listSpacerHeight.value =
         durationMs > 0
           ? withTiming(target, { duration: durationMs, easing: Easing.out(Easing.cubic) })
@@ -71,6 +73,7 @@ export function useAgentChatKeyboardInsets({
   const resetListSpacerForComposer = useCallback(
     (durationMs = 250) => {
       const target = inputDockHeightSv.value + COMPOSER_LIST_GAP
+      cancelAnimation(listSpacerHeight)
       listSpacerHeight.value =
         durationMs > 0
           ? withTiming(target, { duration: durationMs, easing: Easing.out(Easing.cubic) })
@@ -83,6 +86,7 @@ export function useAgentChatKeyboardInsets({
     (rawHeight: number, durationMs = 250) => {
       const inset = computeComposerInset(rawHeight, tabBarHeight)
       const target = inset + BUBBLE_EDIT_KEYBOARD_BUFFER + 16
+      cancelAnimation(listSpacerHeight)
       listSpacerHeight.value =
         durationMs > 0
           ? withTiming(target, { duration: durationMs, easing: Easing.out(Easing.cubic) })
@@ -94,6 +98,7 @@ export function useAgentChatKeyboardInsets({
   const resetListSpacerForBubbleEdit = useCallback(
     (durationMs = 250) => {
       const target = inputDockHeightSv.value + BUBBLE_EDIT_KEYBOARD_BUFFER + BUBBLE_EDIT_DOCK_GAP
+      cancelAnimation(listSpacerHeight)
       listSpacerHeight.value =
         durationMs > 0
           ? withTiming(target, { duration: durationMs, easing: Easing.out(Easing.cubic) })
@@ -104,12 +109,14 @@ export function useAgentChatKeyboardInsets({
 
   const applyComposerLift = useCallback(
     (rawHeight: number) => {
+      cancelAnimation(composerBottom)
       composerBottom.value = computeComposerInset(rawHeight, tabBarHeight)
     },
     [composerBottom, tabBarHeight]
   )
 
   const clearComposerLift = useCallback(() => {
+    cancelAnimation(composerBottom)
     composerBottom.value = 0
   }, [composerBottom])
 
@@ -318,6 +325,13 @@ export function useAgentChatKeyboardInsets({
     applyListSpacerForComposer,
     keyboardVisibleSv
   ])
+
+  useEffect(() => {
+    return () => {
+      cancelAnimation(listSpacerHeight)
+      cancelAnimation(composerBottom)
+    }
+  }, [listSpacerHeight, composerBottom])
 
   return {
     keyboardInset,

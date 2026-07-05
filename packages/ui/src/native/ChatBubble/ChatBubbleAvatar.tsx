@@ -1,6 +1,5 @@
 import React from 'react'
 import { View, Text, Image, StyleSheet } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
 import { useNativeTheme } from '../theme'
 import { isCustomUserAvatar, resolveNativeUserAvatarSource } from '../user-avatar.util'
 import {

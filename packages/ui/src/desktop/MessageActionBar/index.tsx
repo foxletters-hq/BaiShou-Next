@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import styles from './MessageActionBar.module.css'
-import { Copy, RefreshCcw, Edit3, Trash2, Volume2, Check, GitBranch, Loader2 } from 'lucide-react'
+import { Copy, Edit3, GitBranch, ListTree, RefreshCcw, Trash2, Volume2, Check, Loader2 } from 'lucide-react'
+import { CONTEXT_CHAIN_ACTION_ICON_SIZE } from '../../shared/icons/icon-sizes'
 import { useTranslation } from 'react-i18next'
 
 export interface MessageActionBarProps {
@@ -101,9 +102,7 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
           title={t('chat.viewContextTree', '查看发送给 AI 的上下文')}
           aria-label={t('chat.viewContextTree', '查看发送给 AI 的上下文')}
         >
-          <span className={styles.contextChainIcon} aria-hidden>
-            🌿
-          </span>
+          <ListTree size={CONTEXT_CHAIN_ACTION_ICON_SIZE} aria-hidden />
         </button>
       )}
 

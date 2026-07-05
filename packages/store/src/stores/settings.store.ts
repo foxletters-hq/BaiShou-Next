@@ -219,7 +219,11 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
 
               const defaultToolManagementConfig: ToolManagementConfig = {
                 disabledToolIds: [AUTO_INJECT_TIME_TOOL_ID],
-                customConfigs: {}
+                customConfigs: {},
+                emojiConfig: {
+                  enabled: true,
+                  emojis: []
+                }
               }
 
               const defaultMcpServerConfig: McpServerConfig = {
@@ -240,7 +244,14 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
                 ragConfig: ragConfig || defaultRagConfig,
                 webSearchConfig: { ...defaultWebSearchConfig, ...(webSearchConfig || {}) },
                 summaryConfig: summaryConfig || defaultSummaryConfig,
-                toolManagementConfig: toolManagementConfig || defaultToolManagementConfig,
+                toolManagementConfig: {
+                  ...defaultToolManagementConfig,
+                  ...toolManagementConfig,
+                  emojiConfig: {
+                    ...defaultToolManagementConfig.emojiConfig,
+                    ...(toolManagementConfig?.emojiConfig || {})
+                  }
+                },
                 mcpServerConfig: mcpServerConfig || defaultMcpServerConfig,
                 hotkeyConfig: hotkeyConfig || defaultHotkeyConfig,
                 cloudSyncConfig: cloudSyncConfig || null,

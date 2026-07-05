@@ -8,6 +8,7 @@ import type {
   IFileSystem,
   IStoragePathService
 } from '@baishou/core-mobile'
+import type { EmojiImportResult } from '@baishou/core'
 import { isUserAvatarRelativePath, normalizePersistedAvatarPath } from '@baishou/shared'
 import { joinPath, basename } from '@baishou/core-mobile'
 import {
@@ -16,6 +17,8 @@ import {
 } from '../utils/mobile-attachment-image-resolver'
 import { importUriToPath, inferImageExtension } from './mobile-uri-import'
 import { toFileUri } from './android-external-fs'
+
+const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'])
 
 /**
  * 移动端附件管理，所有 vault 读写经 IFileSystem。
@@ -348,5 +351,147 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
     })
     if (result.canceled || !result.assets[0]?.uri) return null
     return manager.importBackground(result.assets[0].uri)
+  }
+
+  // ===== Emoji operations =====
+
+  async importEmoji(absoluteSourcePath: string): Promise<EmojiImportResult> {
+    if (!absoluteSourcePath || absoluteSourcePath.trim() === '') {
+      return { relativePath: '', originalName: '', error: '源路径为空' }
+    }
+    if (absoluteSourcePath.startsWith('emojis/')) {
+      return { relativePath: absoluteSourcePath, originalName: '', error: null }
+    }
+
+    try {
+      const emojisDir = await this.pathService.getEmojisDirectory()
+
+      // Handle data URLs
+      if (absoluteSourcePath.startsWith('data:image/')) {
+        const matches = absoluteSourcePath.match(/^data:image\/([^;]+);base64,(.+)$/)
+        if (matches && matches.length === 3) {
+          const extension =
+            matches[1] === 'jpeg' ? '.jpg' : `.${matches[1]!.replace(/[^a-zA-Z0-9]/g, '')}`
+          const generatedName = `emoji_${Date.now()}${extension}`
+          const dest = joinPath(emojisDir, generatedName)
+          await importUriToPath(absoluteSourcePath, dest, this.fileSystem)
+          return {
+            relativePath: `emojis/${generatedName}`,
+            originalName: generatedName.replace(/\.[^.]+$/, ''),
+            error: null
+          }
+        }
+      }
+
+      // Handle URI-style sources (file://, content://, etc.)
+      const sourceUri = absoluteSourcePath.startsWith('file://') || absoluteSourcePath.startsWith('content://')
+        ? absoluteSourcePath
+        : toFileUri(absoluteSourcePath)
+
+      // Extract original filename from URI
+      const uriPath = absoluteSourcePath.startsWith('file://')
+        ? absoluteSourcePath.replace(/^file:\/\/\//, '/').replace(/^file:\/\//, '')
+        : absoluteSourcePath
+      const originalBasename = basename(absoluteSourcePath.split('?')[0])
+      const originalNameWithoutExt = originalBasename.replace(/\.[^.]+$/, '')
+      const targetFileName = originalBasename
+      const targetPath = joinPath(emojisDir, targetFileName)
+
+      // Check name conflict
+      if (await this.fileSystem.exists(targetPath)) {
+        // File already exists — skip import
+        return {
+          relativePath: `emojis/${targetFileName}`,
+          originalName: originalNameWithoutExt,
+          error: null
+        }
+      }
+
+      await importUriToPath(sourceUri, targetPath, this.fileSystem)
+      return {
+        relativePath: `emojis/${targetFileName}`,
+        originalName: originalNameWithoutExt,
+        error: null
+      }
+    } catch (e: any) {
+      console.error('[MobileAttachmentManager] Failed to import emoji:', e)
+      return {
+        relativePath: '',
+        originalName: '',
+        error: `导入失败: ${e?.message || String(e)}`
+      }
+    }
+  }
+
+  async resolveEmojiPath(relativePath: string): Promise<string> {
+    if (!relativePath || !relativePath.startsWith('emojis/')) {
+      return relativePath
+    }
+    const filename = basename(relativePath)
+    const emojisDir = await this.pathService.getEmojisDirectory()
+    const absPath = joinPath(emojisDir, filename)
+
+    if (!(await this.fileSystem.exists(absPath))) {
+      console.warn(`[MobileAttachmentManager] Emoji file not found: ${relativePath}`)
+      throw new Error('EMOJI_FILE_NOT_FOUND')
+    }
+    return toFileUri(absPath)
+  }
+
+  async listEmojis(): Promise<string[]> {
+    const emojisDir = await this.pathService.getEmojisDirectory()
+    try {
+      if (!(await this.fileSystem.exists(emojisDir))) return []
+      const entries = await this.fileSystem.readdir(emojisDir)
+      return entries
+        .filter((name) => {
+          const ext = name.substring(name.lastIndexOf('.')).toLowerCase()
+          return IMAGE_EXTENSIONS.has(ext)
+        })
+        .map((name) => `emojis/${name}`)
+    } catch {
+      return []
+    }
+  }
+
+  async deleteEmoji(relativePath: string): Promise<boolean> {
+    if (!relativePath || !relativePath.startsWith('emojis/')) {
+      return false
+    }
+    const filename = basename(relativePath)
+    const emojisDir = await this.pathService.getEmojisDirectory()
+    const absPath = joinPath(emojisDir, filename)
+
+    try {
+      if (await this.fileSystem.exists(absPath)) {
+        await this.fileSystem.unlink(absPath)
+        return true
+      }
+      return false
+    } catch {
+      return false
+    }
+  }
+
+  /** 从相册选取表情包图片并导入（支持多选） */
+  static async pickAndImportEmojis(
+    manager: MobileAttachmentManagerService
+  ): Promise<EmojiImportResult[]> {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!perm.granted) return []
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsMultipleSelection: true,
+      quality: 1
+    })
+    if (result.canceled || !result.assets || result.assets.length === 0) return []
+
+    const results: EmojiImportResult[] = []
+    for (const asset of result.assets) {
+      const importResult = await manager.importEmoji(asset.uri)
+      results.push(importResult)
+    }
+    return results
   }
 }

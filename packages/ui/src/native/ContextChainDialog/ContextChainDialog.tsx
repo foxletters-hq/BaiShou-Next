@@ -12,6 +12,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { HelpTooltip } from '../Tooltip/HelpTooltip'
+import { ContextChainIcon } from '../icons/ContextChainIcon'
 import { AgentMarkdownRenderer } from '../AgentMarkdown'
 import type { NativeContextChainDialogProps, ContextChainTab } from './context-chain-dialog.types'
 import { buildContextChainTabs } from './context-chain-dialog.utils'
@@ -253,7 +254,7 @@ export const ContextChainDialog: React.FC<NativeContextChainDialogProps> = ({
                       flex: 1
                     }}
                   >
-                    <Text style={{ fontSize: 20 }}>🌿</Text>
+                    <ContextChainIcon />
                     <Text
                       style={{
                         fontSize: 18,
