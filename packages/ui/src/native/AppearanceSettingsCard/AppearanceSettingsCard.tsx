@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Palette } from 'lucide-react-native'
 import { APP_UI_LANGUAGE_ORDER } from '@baishou/shared'
 import { Text, TouchableOpacity, View } from 'react-native'
 import { useNativeTheme } from '../theme'
@@ -9,6 +10,7 @@ import { appearanceSettingsStyles as styles } from './appearance-settings.styles
 import { AppearanceSettingsColorModal } from './AppearanceSettingsColorModal'
 import { CustomThemeColorDot } from './CustomThemeColorDot'
 import { SettingsExpansionTile } from '../settings/SettingsExpansionTile'
+import { DEFAULT_STROKE_WIDTH, NAV_ICON_SIZE } from '../../shared/icons/icon-sizes'
 
 export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
   themeMode,
@@ -166,6 +168,9 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
     <SettingsExpansionTile
       embedded={embedded}
       isLast={isLast}
+      icon={
+        <Palette size={NAV_ICON_SIZE} strokeWidth={DEFAULT_STROKE_WIDTH} color={colors.textSecondary} />
+      }
       title={t('settings.appearance', '外观与多语言')}
       subtitle={embedded ? undefined : `${themeMode} · ${language}`}
     >

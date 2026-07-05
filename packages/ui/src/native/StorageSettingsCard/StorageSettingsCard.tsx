@@ -1,11 +1,13 @@
 import React from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { FolderSync } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
 import { settingsHubListStyles as hubStyles } from '../settings/settings-hub.styles'
 import { SettingsExpansionTile } from '../settings/SettingsExpansionTile'
 import { StoragePermissionPrompt } from '../StoragePermissionPrompt/StoragePermissionPrompt'
 import { Button } from '../Button'
+import { DEFAULT_STROKE_WIDTH, NAV_ICON_SIZE } from '../../shared/icons/icon-sizes'
 
 export interface NativeStorageSettingsCardProps {
   storageRootPath?: string
@@ -72,6 +74,13 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
     <SettingsExpansionTile
       embedded={embedded}
       isLast={isLast}
+      icon={
+        <FolderSync
+          size={NAV_ICON_SIZE}
+          strokeWidth={DEFAULT_STROKE_WIDTH}
+          color={colors.textSecondary}
+        />
+      }
       title={t('settings.storage_manager', '存储管理')}
       subtitle={t('settings.storage_root_desc', '白守所有 Vault 数据的物理存放位置')}
     >

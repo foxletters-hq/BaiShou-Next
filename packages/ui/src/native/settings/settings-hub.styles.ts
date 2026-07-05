@@ -10,9 +10,9 @@ export const settingsHubListStyles = StyleSheet.create({
     gap: 12
   },
   iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center'
   },

@@ -14,7 +14,7 @@ import {
   chatBackgroundOverlayAlpha
 } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
-import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
+import { DEFAULT_STROKE_WIDTH, NAV_ICON_SIZE } from '../../shared/icons/icon-sizes'
 import { SettingsExpansionTile } from '../settings/SettingsExpansionTile'
 import { SettingsSliderRow } from '../settings/SettingsSliderRow'
 
@@ -77,6 +77,13 @@ export const ChatBackgroundSettingsCard: React.FC<ChatBackgroundSettingsProps> =
     <SettingsExpansionTile
       embedded={embedded}
       isLast={isLast}
+      icon={
+        <ImageIcon
+          size={NAV_ICON_SIZE}
+          strokeWidth={DEFAULT_STROKE_WIDTH}
+          color={colors.textSecondary}
+        />
+      }
       title={t('settings.chat_background', '聊天背景')}
       subtitle={subtitle}
     >

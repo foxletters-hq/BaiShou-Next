@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import { View, ActivityIndicator, StyleSheet } from 'react-native'
+import { useFocusEffect } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import * as Clipboard from 'expo-clipboard'
 import {
@@ -16,6 +17,14 @@ export const McpSettingsSection: React.FC = () => {
   const { colors } = useNativeTheme()
   const toast = useNativeToast()
   const mcp = useMobileMcpConfig()
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!mcp.loading) {
+        void mcp.reloadTools()
+      }
+    }, [mcp.loading, mcp.reloadTools])
+  )
 
   const handleCopyEndpoint = async () => {
     try {

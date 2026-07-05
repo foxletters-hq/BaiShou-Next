@@ -1,8 +1,16 @@
 import React, { useEffect, useState } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { Download } from 'lucide-react-native'
 import { formatAppVersion } from '@baishou/shared'
-import { useNativeTheme, useNativeToast, useDialog, Switch, Button } from '@baishou/ui/native'
+import {
+  useNativeTheme,
+  useNativeToast,
+  useDialog,
+  Switch,
+  Button,
+  SettingsExpansionTile
+} from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import type { MobileUpdateCheckResult } from '../../../services/mobile-updater.service'
 import { SettingsGroupCard } from './SettingsGroupCard'
@@ -111,7 +119,17 @@ export const UpdateSettingsSection: React.FC<UpdateSettingsSectionProps> = ({
   )
 
   if (embedded) {
-    return <View style={styles.embedded}>{content}</View>
+    return (
+      <SettingsExpansionTile
+        embedded
+        isLast
+        icon={<Download size={18} strokeWidth={2} color={colors.textSecondary} />}
+        title={t('updater.section_title')}
+        subtitle={currentVersion}
+      >
+        {content}
+      </SettingsExpansionTile>
+    )
   }
 
   return (
@@ -124,10 +142,6 @@ export const UpdateSettingsSection: React.FC<UpdateSettingsSectionProps> = ({
 const styles = StyleSheet.create({
   section: {
     marginBottom: 24
-  },
-  embedded: {
-    paddingHorizontal: 14,
-    paddingBottom: 14
   },
   sectionTitle: {
     fontSize: 14,
