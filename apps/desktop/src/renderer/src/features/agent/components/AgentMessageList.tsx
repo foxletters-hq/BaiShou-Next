@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback, useEffect, useRef, useState } from 'react'
-import { mapAttachmentsFromParts, resolveAttachmentImageSrc } from '@baishou/shared'
+import { mapAttachmentsFromParts, resolveAttachmentImageSrc, normalizeEmojiToolConfig, resolveAssistantEmojiConfig, assistantRowToEmojiPrefs } from '@baishou/shared'
 import {
   ChatBubble,
   StreamingBubble,
@@ -248,8 +248,12 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
   )
 
   const pendingEmojiAttachments = useMemo(() => {
-    const emojiConfig = settings.toolManagementConfig?.emojiConfig
-    const emojis = emojiConfig?.emojis
+    const emojiToolConfig = normalizeEmojiToolConfig(settings.toolManagementConfig?.emojiConfig)
+    const resolved = resolveAssistantEmojiConfig(
+      emojiToolConfig,
+      currentAssistant ? assistantRowToEmojiPrefs(currentAssistant) : undefined
+    )
+    const emojis = resolved.emojis
     const pending = stream.pendingEmojis ?? []
     if (!emojis?.length || !pending.length) return []
 
@@ -267,7 +271,13 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
         }
       })
       .filter((item): item is NonNullable<typeof item> => item != null)
-  }, [stream.pendingEmojis, settings.toolManagementConfig?.emojiConfig])
+  }, [
+    stream.pendingEmojis,
+    settings.toolManagementConfig?.emojiConfig,
+    currentAssistant?.emojiEnabled,
+    currentAssistant?.emojiGroupIds,
+    currentAssistant?.emojiGroupId
+  ])
 
   const lastMessage = chat.messages[chat.messages.length - 1]
   const assistantPersistedDuringBridge =

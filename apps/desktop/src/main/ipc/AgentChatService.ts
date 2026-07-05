@@ -23,20 +23,45 @@ export class AgentChatService {
     AgentChatCoreService.resetAbortController()
   }
 
-  public static async getAssistantContextWindow(sessionId: string): Promise<number | undefined> {
+  public static async getAssistantSessionPrefs(sessionId: string): Promise<{
+    assistantContextWindow?: number
+    assistantEmojiPrefs?: AssistantEmojiPrefs
+  }> {
     try {
       const { realSessionRepo, realAssistantRepo } = getAgentManagers()
       const session = await realSessionRepo.getSessionById(sessionId)
-      if (session?.assistantId) {
-        const assistant = await realAssistantRepo.findById(session.assistantId)
-        if (assistant?.contextWindow !== undefined) {
-          return assistant.contextWindow
-        }
+      if (!session?.assistantId) return {}
+      const assistant = await realAssistantRepo.findById(session.assistantId)
+      if (!assistant) return {}
+      return {
+        assistantContextWindow: assistant.contextWindow ?? undefined,
+        assistantEmojiPrefs: assistantRowToEmojiPrefs(assistant)
       }
     } catch (e: any) {
-      logger.warn('Failed to load assistant context window:', e)
+      logger.warn('Failed to load assistant session prefs:', e)
+      return {}
     }
-    return undefined
+  }
+
+  public static async getAssistantContextWindow(sessionId: string): Promise<number | undefined> {
+    const prefs = await this.getAssistantSessionPrefs(sessionId)
+    return prefs.assistantContextWindow
+  }
+
+  public static async buildStreamConfigForSession(
+    sessionId: string,
+    requestedProviderId?: string,
+    requestedModelId?: string,
+    searchMode?: boolean
+  ) {
+    const prefs = await this.getAssistantSessionPrefs(sessionId)
+    return buildStreamConfig(
+      requestedProviderId,
+      requestedModelId,
+      searchMode,
+      prefs.assistantContextWindow,
+      prefs.assistantEmojiPrefs
+    )
   }
 
   public static async runStreamChat(params: {
@@ -91,14 +116,13 @@ export class AgentChatService {
   ) {
     try {
       const { sessionManager } = getAgentManagers()
-      const assistantContextWindow = await this.getAssistantContextWindow(args.sessionId)
-
-      const { provider, globalModels, systemModels, userConfig } = await buildStreamConfig(
-        args.providerId,
-        args.modelId,
-        args.searchMode,
-        assistantContextWindow
-      )
+      const { provider, globalModels, systemModels, userConfig } =
+        await this.buildStreamConfigForSession(
+          args.sessionId,
+          args.providerId,
+          args.modelId,
+          args.searchMode
+        )
 
       await this.runStreamChat({
         event,

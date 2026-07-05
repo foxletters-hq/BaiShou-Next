@@ -33,6 +33,10 @@ import {
   isConfiguredProviderId,
   isConfiguredDialogueModelId,
   normalizeToolManagementConfig,
+  normalizeEmojiToolConfig,
+  resolveAssistantEmojiConfig,
+  assistantRowToEmojiPrefs,
+  type AssistantEmojiPrefs,
   DEFAULT_TOOL_MANAGEMENT_CONFIG
 } from '@baishou/shared'
 
@@ -364,6 +368,8 @@ export async function buildAgentUserConfigFromSettings(options?: {
   searchMode?: boolean
   globalModels?: GlobalModelsConfig | null
   hasEmbeddingModel?: boolean
+  emojiGroupId?: string | null
+  assistantEmojiPrefs?: AssistantEmojiPrefs
 }): Promise<Record<string, unknown>> {
   const ragConfig = await settingsManager.get<any>('rag_config')
   const toolManagementConfig = normalizeToolManagementConfig(
@@ -408,7 +414,10 @@ export async function buildAgentUserConfigFromSettings(options?: {
       behaviorConfig.agentGuidelines.trim().length > 0
         ? behaviorConfig.agentGuidelines.trim()
         : undefined,
-    emojiConfig: toolManagementConfig?.emojiConfig || undefined
+    emojiConfig: resolveAssistantEmojiConfig(
+      normalizeEmojiToolConfig(toolManagementConfig.emojiConfig),
+      options?.assistantEmojiPrefs ?? { emojiGroupId: options?.emojiGroupId }
+    )
   }
 }
 
@@ -420,7 +429,8 @@ export async function buildStreamConfig(
   requestedProviderId?: string,
   requestedModelId?: string,
   searchMode?: boolean,
-  assistantContextWindow?: number
+  assistantContextWindow?: number,
+  assistantEmojiPrefs?: AssistantEmojiPrefs
 ) {
   const provider = await getActiveProvider(requestedProviderId)
   const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
@@ -462,7 +472,8 @@ export async function buildStreamConfig(
     assistantContextWindow,
     searchMode,
     globalModels,
-    hasEmbeddingModel
+    hasEmbeddingModel,
+    assistantEmojiPrefs
   })
 
   const namingModelConfigured =

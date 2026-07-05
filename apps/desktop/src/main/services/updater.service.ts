@@ -59,7 +59,7 @@ export class UpdaterService {
 
   /** 构建 Release URL */
   private buildReleaseUrl(version: string): string {
-    return `https://github.com/Anson-Trio/BaiShou-Next/releases/tag/v${version}`
+    return `https://github.com/foxletters-hq/BaiShou-Next/releases/tag/v${version}`
   }
 
   /** 通知状态变更 */

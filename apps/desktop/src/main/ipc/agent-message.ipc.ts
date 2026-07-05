@@ -47,7 +47,7 @@ export function registerMessageIPC() {
     'agent:get-context-at-message',
     async (_, sessionId: string, messageId: string, searchMode?: boolean) => {
       const { realSessionRepo, realSnapshotRepo } = getAgentManagers()
-      const assistantContextWindow = await AgentChatService.getAssistantContextWindow(sessionId)
+      const prefs = await AgentChatService.getAssistantSessionPrefs(sessionId)
       const webSearchEnabled =
         searchMode === true ||
         (searchMode !== false &&
@@ -57,7 +57,8 @@ export function registerMessageIPC() {
         undefined,
         undefined,
         webSearchEnabled,
-        assistantContextWindow
+        prefs.assistantContextWindow,
+        prefs.assistantEmojiPrefs
       )
 
       const recentCount =

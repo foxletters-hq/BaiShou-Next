@@ -6,8 +6,7 @@ import {
   toolRegistry,
   createDiarySearcher,
   createWebSearchResultFetcher,
-  createFetchSearchPage,
-  buildStreamConfig
+  createFetchSearchPage
 } from './agent-helpers'
 import { AgentChatService } from './AgentChatService'
 
@@ -35,13 +34,13 @@ export class AgentChatActionRunner {
     requestedProviderId?: string,
     requestedModelId?: string
   ) {
-    const assistantContextWindow = await AgentChatService.getAssistantContextWindow(sessionId)
-    const { provider, globalModels, systemModels, userConfig } = await buildStreamConfig(
-      requestedProviderId,
-      requestedModelId,
-      searchMode,
-      assistantContextWindow
-    )
+    const { provider, globalModels, systemModels, userConfig } =
+      await AgentChatService.buildStreamConfigForSession(
+        sessionId,
+        requestedProviderId,
+        requestedModelId,
+        searchMode
+      )
 
     return AgentChatActionCoreRunner.regenerate(
       buildActionDeps(event, sessionId),
@@ -65,13 +64,13 @@ export class AgentChatActionRunner {
     attachments?: unknown[],
     searchMode?: boolean
   ) {
-    const assistantContextWindow = await AgentChatService.getAssistantContextWindow(sessionId)
-    const { provider, globalModels, systemModels, userConfig } = await buildStreamConfig(
-      requestedProviderId,
-      requestedModelId,
-      searchMode,
-      assistantContextWindow
-    )
+    const { provider, globalModels, systemModels, userConfig } =
+      await AgentChatService.buildStreamConfigForSession(
+        sessionId,
+        requestedProviderId,
+        requestedModelId,
+        searchMode
+      )
 
     return AgentChatActionCoreRunner.editMessage(
       buildActionDeps(event, sessionId),
@@ -95,13 +94,13 @@ export class AgentChatActionRunner {
     requestedProviderId?: string,
     requestedModelId?: string
   ) {
-    const assistantContextWindow = await AgentChatService.getAssistantContextWindow(sessionId)
-    const { provider, globalModels, systemModels, userConfig } = await buildStreamConfig(
-      requestedProviderId,
-      requestedModelId,
-      searchMode,
-      assistantContextWindow
-    )
+    const { provider, globalModels, systemModels, userConfig } =
+      await AgentChatService.buildStreamConfigForSession(
+        sessionId,
+        requestedProviderId,
+        requestedModelId,
+        searchMode
+      )
 
     return AgentChatActionCoreRunner.resend(
       buildActionDeps(event, sessionId),
