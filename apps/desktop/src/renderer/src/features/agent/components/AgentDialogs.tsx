@@ -6,8 +6,7 @@ import {
   ShortcutManagerDialog,
   RecallDialog,
   ModelSwitcherPopup,
-  Modal,
-  AgentToolsView,
+  AgentToolsDialog,
   toast
 } from '@baishou/ui'
 import { isEmbeddingModel, isTtsModel } from '@baishou/shared'
@@ -253,18 +252,14 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
       )}
 
       {/* 工具箱管理弹窗 */}
-      <Modal
+      <AgentToolsDialog
         isOpen={showToolManager}
         onClose={() => setShowToolManager(false)}
-        closeOnOverlayClick={true}
-      >
-        <AgentToolsView
-          config={toolConfig}
-          onChange={(cfg) => {
-            useSettingsStore.getState().setToolManagementConfig(cfg)
-          }}
-        />
-      </Modal>
+        config={toolConfig}
+        onChange={(cfg) => {
+          useSettingsStore.getState().setToolManagementConfig(cfg)
+        }}
+      />
     </>
   )
 }

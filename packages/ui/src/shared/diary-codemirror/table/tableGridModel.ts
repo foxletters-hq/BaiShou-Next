@@ -291,7 +291,10 @@ function queryCellDisplays(container: Element, row: number): HTMLElement[] {
     container.querySelectorAll(`.cm-table-cell-source[data-row="${row}"]:not([hidden])`)
   )
     .filter((el) => !(el as HTMLElement).hidden)
-    .sort((a, b) => Number(a.dataset.col) - Number(b.dataset.col)) as HTMLElement[]
+    .sort(
+      (a, b) =>
+        Number((a as HTMLElement).dataset.col) - Number((b as HTMLElement).dataset.col)
+    ) as HTMLElement[]
 }
 
 export function readTableGridFromBlock(block: HTMLElement): TableGridModel | null {

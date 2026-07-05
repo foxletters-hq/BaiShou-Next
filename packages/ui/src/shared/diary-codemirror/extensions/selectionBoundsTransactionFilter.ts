@@ -24,7 +24,8 @@ function clampSelectionToLength(
 ): EditorSelection {
   if (typeof selection === 'function') {
     if (!state) throw new Error('selection function requires start state')
-    return clampSelectionToLength(selection(state), docLength, state)
+    const resolved = (selection as (s: EditorState) => EditorSelection)(state)
+    return clampSelectionToLength(resolved, docLength, state)
   }
   if (selection instanceof EditorSelection) {
     const ranges = selection.ranges.map((range) =>
@@ -105,7 +106,21 @@ export function selectionBoundsTransactionFilter(): Extension {
 /** 在 dispatch 入口钳制选区（filter 之前 CM 就会校验 spec，必须包一层） */
 export function installSafeEditorDispatch(view: EditorView): void {
   const rawDispatch = view.dispatch.bind(view)
-  view.dispatch = (spec: TransactionSpec = {}) => {
-    rawDispatch(clampTransactionSelection(view.state, spec))
+  const wrapped: EditorView['dispatch'] = (...args) => {
+    if (args.length === 1) {
+      const first = args[0]
+      if (first && typeof first === 'object' && 'startState' in first) {
+        rawDispatch(first as Transaction)
+        return
+      }
+      if (Array.isArray(first)) {
+        rawDispatch(first as readonly Transaction[])
+        return
+      }
+      rawDispatch(clampTransactionSelection(view.state, first as TransactionSpec))
+      return
+    }
+    rawDispatch(...(args as TransactionSpec[]))
   }
+  view.dispatch = wrapped
 }
