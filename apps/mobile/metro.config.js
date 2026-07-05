@@ -99,6 +99,32 @@ config.resolver.blockList = [
 
 const databaseNativeEntry = path.resolve(workspaceRoot, 'packages/database/src/index.native.ts')
 
+const workspacePackageEntries = {
+  '@baishou/ui/native': path.resolve(workspaceRoot, 'packages/ui/src/native/index.ts'),
+  '@baishou/ui': path.resolve(workspaceRoot, 'packages/ui/src/index.ts'),
+  '@baishou/shared': path.resolve(workspaceRoot, 'packages/shared/src/index.ts'),
+  '@baishou/ai': path.resolve(workspaceRoot, 'packages/ai/src/index.ts'),
+  '@baishou/core-mobile': path.resolve(workspaceRoot, 'packages/core-mobile/src/index.ts'),
+  '@baishou/database': databaseNativeEntry,
+  '@baishou/store': path.resolve(workspaceRoot, 'packages/store/src/index.ts')
+}
+
+function resolveWorkspaceSubpath(baseDir, subpath) {
+  const normalized = subpath.replace(/^\.\//, '')
+  const candidates = [
+    path.join(baseDir, `${normalized}.ts`),
+    path.join(baseDir, `${normalized}.tsx`),
+    path.join(baseDir, normalized, 'index.ts'),
+    path.join(baseDir, normalized, 'index.tsx')
+  ]
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      return candidate
+    }
+  }
+  return null
+}
+
 const preBundleResolveRequest = config.resolver.resolveRequest
 
 config = getBundleModeMetroConfig(config)
@@ -124,6 +150,25 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     return {
       filePath: databaseNativeEntry,
       type: 'sourceFile'
+    }
+  }
+
+  if (moduleName in workspacePackageEntries) {
+    return {
+      filePath: workspacePackageEntries[moduleName],
+      type: 'sourceFile'
+    }
+  }
+
+  for (const [pkgName, entryPath] of Object.entries(workspacePackageEntries)) {
+    const prefix = `${pkgName}/`
+    if (moduleName.startsWith(prefix)) {
+      const subpath = moduleName.slice(prefix.length)
+      const baseDir = path.dirname(entryPath)
+      const resolved = resolveWorkspaceSubpath(baseDir, subpath)
+      if (resolved) {
+        return { filePath: resolved, type: 'sourceFile' }
+      }
     }
   }
 

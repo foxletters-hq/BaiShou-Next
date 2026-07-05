@@ -1,30 +1,21 @@
-import React, { createContext, useCallback, useContext, useMemo } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import { CircleAlert, CircleCheck, Info, TriangleAlert } from 'lucide-react-native'
 import type { LucideProps } from 'lucide-react-native'
 import { useToast } from 'heroui-native'
 import type { ToastComponentProps } from 'heroui-native'
 import Animated, { Easing, Keyframe } from 'react-native-reanimated'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNativeTheme } from '../theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
+import {
+  ToastContext,
+  type ToastContextType,
+  type ToastShowOptions,
+  type ToastType
+} from './toast-context'
 
-export type ToastType = 'info' | 'success' | 'error' | 'warning'
-
-export interface ToastShowOptions {
-  duration?: number
-  onDismiss?: () => void
-}
-
-interface ToastContextType {
-  showToast: (message: string, type?: ToastType, options?: ToastShowOptions) => void
-  showSuccess: (message: string, options?: ToastShowOptions) => void
-  showError: (message: string, options?: ToastShowOptions) => void
-  showInfo: (message: string, options?: ToastShowOptions) => void
-  showWarning: (message: string, options?: ToastShowOptions) => void
-}
-
-const ToastContext = createContext<ToastContextType | null>(null)
+export type { ToastShowOptions, ToastType } from './toast-context'
+export { useNativeToast } from './toast-context'
 
 const STATUS_TOAST_ID = 'baishou-status-toast'
 /** 与 toastExit Keyframe 时长一致；hide 后须等退场结束再 show，避免 Android Reanimated 视图竞态 */
@@ -215,9 +206,3 @@ const styles = StyleSheet.create({
     fontWeight: '500'
   }
 })
-
-export const useNativeToast = () => {
-  const ctx = useContext(ToastContext)
-  if (!ctx) throw new Error('useNativeToast must be used within ToastProvider')
-  return ctx
-}

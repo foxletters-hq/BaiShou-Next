@@ -12,7 +12,7 @@ import i18n from 'i18next'
 import { readOnboardingUiLanguage } from '@/src/lib/onboarding-language.util'
 import { getSystemLanguage, resolveAppUiLanguage } from '@/src/lib/device-locale'
 
-import { useNativeTheme, DialogProvider } from '@baishou/ui/native'
+import { useNativeTheme, DialogProvider, ToastProvider } from '@baishou/ui/native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { BaishouProvider, useBaishou } from '@/src/providers/BaishouProvider'
 import { NetworkProvider } from '@/src/providers/NetworkProvider'
@@ -124,12 +124,14 @@ export default function RootLayout() {
           <NetworkProvider>
             <NativeAppThemeBridge>
               <HeroUIThemeBridge>
-                <DialogProvider>
-                  <IncrementalSyncProvider>
-                    <LegacyMigrationPrompt />
-                    <AppContent />
-                  </IncrementalSyncProvider>
-                </DialogProvider>
+                <ToastProvider>
+                  <DialogProvider>
+                    <IncrementalSyncProvider>
+                      <LegacyMigrationPrompt />
+                      <AppContent />
+                    </IncrementalSyncProvider>
+                  </DialogProvider>
+                </ToastProvider>
               </HeroUIThemeBridge>
             </NativeAppThemeBridge>
           </NetworkProvider>
