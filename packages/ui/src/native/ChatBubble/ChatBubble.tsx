@@ -20,6 +20,7 @@ import {
 import { ChatBubbleAvatar } from './ChatBubbleAvatar'
 import { ChatPlainTextBody } from './ChatPlainTextBody'
 import { chatNeedsRichMarkdown } from '../../shared/chat-bubble/chat-plain-text.util'
+import { formatRelativeTime } from '../../shared/chat-bubble/format-relative-time.util'
 import { chatOverBackgroundMetaTextStyle } from '../../shared/chat-over-background-meta.style'
 
 export const ChatBubble: React.FC<ChatBubbleProps> = ({
@@ -108,6 +109,13 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
     isAssistant &&
     (edit.isEditing || showStreamingTools || Boolean(deferAssistantChrome && liveStream))
 
+  const timeLabelStyle = [
+    styles.timeLabel,
+    { color: colors.textTertiary },
+    isUser ? styles.timeLabelUser : styles.timeLabelAssistant,
+    invertMetaOverBackground ? chatOverBackgroundMetaTextStyle : null
+  ]
+
   return (
     <View style={[styles.container, isUser ? styles.containerUser : styles.containerAssistant]}>
       {isAssistant && aiProfile ? (
@@ -127,16 +135,9 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
           useFullWidthAssistantBubble ? styles.bubbleWrapperEditing : null
         ]}
       >
-        <Text
-          style={[
-            styles.nameLabel,
-            { color: colors.textSecondary },
-            isUser ? styles.nameLabelUser : styles.nameLabelAssistant,
-            invertMetaOverBackground ? chatOverBackgroundMetaTextStyle : null
-          ]}
-        >
-          {displayName}
-        </Text>
+        {message.timestamp ? (
+          <Text style={timeLabelStyle}>{formatRelativeTime(message.timestamp, t)}</Text>
+        ) : null}
 
         <View
           collapsable={false}
@@ -165,6 +166,17 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                   }
           ]}
         >
+          <Text
+            style={[
+              styles.bubbleNameLabel,
+              { color: colors.textSecondary },
+              isUser ? styles.nameLabelUser : styles.nameLabelAssistant,
+              invertMetaOverBackground ? chatOverBackgroundMetaTextStyle : null
+            ]}
+          >
+            {displayName}
+          </Text>
+
           {showThinkSection ? (
             <View
               style={{

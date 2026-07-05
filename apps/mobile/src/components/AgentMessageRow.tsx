@@ -13,6 +13,7 @@ type ChatMessage = {
   role: string
   content: string
   reasoning?: string
+  timestamp?: Date
   toolInvocations?: unknown[]
   attachments?: any[]
   inputTokens?: number
@@ -132,6 +133,7 @@ export const AgentMessageRow = React.memo(function AgentMessageRow({
             role: item.role as 'user' | 'assistant',
             content: item.content,
             reasoning: item.reasoning,
+            timestamp: item.timestamp,
             toolInvocations: item.toolInvocations,
             attachments: item.attachments,
             inputTokens: item.inputTokens,

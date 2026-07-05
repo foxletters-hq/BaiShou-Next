@@ -48,8 +48,7 @@ export const ChatBubbleUserRow: React.FC<ChatBubbleUserRowProps> = ({
 }) => (
   <div className={`${styles.bubbleRow} ${styles.userRow}`}>
     <div className={styles.messageCol}>
-      <div className={`${styles.nameTimeRow} ${styles.justifyEnd}`}>
-        <span className={styles.nameLabel}>{userProfile.nickname}</span>
+      <div className={`${styles.timeRow} ${styles.justifyEnd}`}>
         <span className={styles.timeLabel} title={message.timestamp.toLocaleString()}>
           {formatRelativeTime(message.timestamp, t)}
         </span>
@@ -57,6 +56,7 @@ export const ChatBubbleUserRow: React.FC<ChatBubbleUserRowProps> = ({
 
       {isEditing ? (
         <div className={`${styles.userBubbleCard} ${styles.editingBubbleCard}`}>
+          <span className={styles.bubbleNameLabel}>{userProfile.nickname}</span>
           <ChatBubbleInlineEditor
             isUser
             editedContent={editedContent}
@@ -71,6 +71,7 @@ export const ChatBubbleUserRow: React.FC<ChatBubbleUserRowProps> = ({
       ) : (
         <>
           <div className={styles.userBubbleCard}>
+            <span className={styles.bubbleNameLabel}>{userProfile.nickname}</span>
             {message.attachments && message.attachments.length > 0 && (
               <ChatBubbleAttachments attachments={message.attachments} />
             )}

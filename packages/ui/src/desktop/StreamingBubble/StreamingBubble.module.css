@@ -45,15 +45,15 @@
   width: min(800px, calc(100% - 60px));
 }
 
-.nameLabel {
+.bubbleNameLabel {
   font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
-  padding-left: 4px;
+  line-height: 1.2;
   margin-bottom: 6px;
 }
 
-:global(.chat-over-background) .nameLabel {
+:global(.chat-over-background) .bubbleNameLabel {
   color: #fff;
   mix-blend-mode: difference;
 }

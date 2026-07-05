@@ -66,17 +66,6 @@ export const StreamingBubble = React.memo(function StreamingBubble({
           chatBubbleStyles.bubbleWrapperEditing
         ]}
       >
-        <Text
-          style={[
-            chatBubbleStyles.nameLabel,
-            chatBubbleStyles.nameLabelAssistant,
-            { color: colors.textSecondary },
-            invertMetaOverBackground ? chatOverBackgroundMetaTextStyle : null
-          ]}
-        >
-          {aiName}
-        </Text>
-
         {error ? (
           <View style={auxStyles.errorBox}>
             <Text style={auxStyles.errorText}>⚠ {error}</Text>
@@ -110,6 +99,16 @@ export const StreamingBubble = React.memo(function StreamingBubble({
               }
             ]}
           >
+            <Text
+              style={[
+                chatBubbleStyles.bubbleNameLabel,
+                chatBubbleStyles.nameLabelAssistant,
+                { color: colors.textSecondary },
+                invertMetaOverBackground ? chatOverBackgroundMetaTextStyle : null
+              ]}
+            >
+              {aiName}
+            </Text>
             {hasAttachments ? (
               <NativeChatBubbleAttachments attachments={attachments} isUserBubble={false} />
             ) : null}
