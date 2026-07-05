@@ -152,7 +152,7 @@ export class UpdaterService {
       updateInfo = {
         version: latestVersion,
         releaseNotes: '',
-        releaseDate: manifest.updatedAt,
+        releaseDate: manifest.updatedAt ?? '',
         releaseUrl: downloadUrl || releaseUrl
       }
       this.notifyStatusChange(UpdateStatus.AVAILABLE, updateInfo)
