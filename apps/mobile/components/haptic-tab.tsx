@@ -21,7 +21,9 @@ export function HapticTab(props: BottomTabBarButtonProps) {
 
 const styles = StyleSheet.create({
   tabButton: {
+    flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
     paddingTop: 0,
     paddingBottom: 0
   }

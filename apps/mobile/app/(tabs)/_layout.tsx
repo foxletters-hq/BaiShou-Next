@@ -25,11 +25,32 @@ export default function TabLayout() {
         borderTopColor: colors.borderMuted,
         elevation: 0,
         shadowOpacity: 0,
-        // 总高度 = 内容区 + 底部安全区；paddingBottom 由 React Navigation 默认注入，此处只覆盖 Android 最小底边距
         height: TAB_BAR_CONTENT_HEIGHT + tabBarBottomInset,
+        paddingTop: 0,
         paddingBottom: tabBarBottomInset
       }) as const,
     [colors.bgSurface, colors.borderMuted, tabBarBottomInset]
+  )
+
+  const sharedTabBarItemStyle = useMemo(
+    () =>
+      ({
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingTop: 0,
+        paddingBottom: 0
+      }) as const,
+    []
+  )
+
+  const sharedTabBarLabelStyle = useMemo(
+    () =>
+      Platform.select({
+        ios: { fontSize: 11, marginTop: 2, marginBottom: 0 },
+        android: { fontSize: 11, marginTop: 2, marginBottom: 0, includeFontPadding: false },
+        default: { fontSize: 11, marginTop: 2, marginBottom: 0 }
+      }),
+    []
   )
 
   return (
@@ -40,6 +61,9 @@ export default function TabLayout() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: sharedTabBarStyle,
+        tabBarItemStyle: sharedTabBarItemStyle,
+        tabBarLabelStyle: sharedTabBarLabelStyle,
+        tabBarIconStyle: { marginBottom: 0 },
         tabBarButton: (props) => <HapticTab {...props} />,
         tabBarHideOnKeyboard: false,
         headerShown: false,
