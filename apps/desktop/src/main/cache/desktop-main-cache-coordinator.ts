@@ -28,6 +28,10 @@ export function emitVaultSwitchMutation(vaultKey?: string, reason = 'vault-switc
   emitDomainMutation({ domain: 'vault', action: 'switch', vaultKey, reason })
 }
 
+export function emitStorageRootChangedMutation(vaultKey?: string): void {
+  emitVaultSwitchMutation(vaultKey, 'storage-root-changed')
+}
+
 export function emitSyncMutation(
   action: Extract<MutationAction, 'complete' | 'resync-complete'>,
   reason: string

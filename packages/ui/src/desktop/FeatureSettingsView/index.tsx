@@ -20,10 +20,16 @@ export interface FeatureSettingsViewProps {
   onChange: (config: FeatureSettingsConfig) => void
 }
 
+function coerceNumber(value: unknown, fallback: number): number {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
 // ─── Component ──────────────────────────────────────────────
 
 export const FeatureSettingsView: React.FC<FeatureSettingsViewProps> = ({ config, onChange }) => {
   const { t } = useTranslation()
+  const ragSimilarityThreshold = coerceNumber(config.ragSimilarityThreshold, 0.4)
   const handleToggle = (key: keyof FeatureSettingsConfig) => {
     onChange({ ...config, [key]: !config[key] })
   }
@@ -67,14 +73,14 @@ export const FeatureSettingsView: React.FC<FeatureSettingsViewProps> = ({ config
             </div>
           </div>
           <div className={styles.controlGroup}>
-            <span className={styles.valueDisplay}>{config.ragSimilarityThreshold.toFixed(2)}</span>
+            <span className={styles.valueDisplay}>{ragSimilarityThreshold.toFixed(2)}</span>
             <input
               type="range"
               className={styles.rangeInput}
               min="0.50"
               max="0.95"
               step="0.01"
-              value={config.ragSimilarityThreshold}
+              value={ragSimilarityThreshold}
               onChange={(e) => handleChange('ragSimilarityThreshold', parseFloat(e.target.value))}
             />
           </div>

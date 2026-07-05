@@ -4,7 +4,11 @@ import { DesktopStoragePathService } from '../services/path.service'
 import { SessionRepository, connectionManager } from '@baishou/database-desktop'
 import path from 'node:path'
 import { existsSync } from 'node:fs'
-import { getAttachmentAllowedRoots, isPathUnderAllowedRoots } from './attachment-path-cache'
+import {
+  getAttachmentAllowedRoots,
+  isPathUnderAllowedRoots,
+  resolveAttachmentInputPath
+} from './attachment-path-cache'
 
 export function registerAttachmentIPC() {
   const pathService = new DesktopStoragePathService()
@@ -111,7 +115,7 @@ export function registerAttachmentIPC() {
 
   ipcMain.handle('attachment:getThumbnail', async (_, filePath: string, maxSize: number = 200) => {
     try {
-      const resolvedPath = path.resolve(filePath)
+      const resolvedPath = await resolveAttachmentInputPath(filePath, pathService)
       const roots = await getAttachmentAllowedRoots(pathService)
       if (!isPathUnderAllowedRoots(resolvedPath, roots)) {
         throw new Error('Access denied: target path is outside allowed directories.')
@@ -150,7 +154,7 @@ export function registerAttachmentIPC() {
 
   ipcMain.handle('attachment:getFullImage', async (_, filePath: string) => {
     try {
-      const resolvedPath = path.resolve(filePath)
+      const resolvedPath = await resolveAttachmentInputPath(filePath, pathService)
       const roots = await getAttachmentAllowedRoots(pathService)
       if (!isPathUnderAllowedRoots(resolvedPath, roots)) {
         throw new Error('Access denied: target path is outside allowed directories.')

@@ -1,6 +1,15 @@
-import { type ActionDeps, type StreamRunConfig, runStreamWithPersistence } from './base.action'
+import {
+  type ActionDeps,
+  type StreamRunConfig,
+  extractUserMessagePayload,
+  hasUserMessagePayload,
+  runStreamWithPersistence
+} from './base.action'
 import type { SessionRepository, SnapshotRepository } from '@baishou/database'
-import { truncateSessionAfterOrderIndex } from '../session-truncate.utils'
+import {
+  truncateSessionAfterOrderIndex,
+  truncateOptionsWithDiskFlush
+} from '../session-truncate.utils'
 
 export async function runResendAction(
   deps: ActionDeps,
@@ -23,9 +32,8 @@ export async function runResendAction(
     return false
   }
 
-  const textParts = targetWithParts.parts?.filter((p) => p.type === 'text') || []
-  const userText = textParts.map((p) => (p.data as any)?.text || '').join('\n')
-  if (!userText) {
+  const { userText, attachments } = extractUserMessagePayload(targetWithParts)
+  if (!hasUserMessagePayload({ userText, attachments })) {
     deps.emitter.sendFinish(deps.sessionId, { error: '消息内容为空' })
     return false
   }
@@ -34,12 +42,14 @@ export async function runResendAction(
     sessionRepo,
     snapshotRepo,
     deps.sessionId,
-    targetMsg.orderIndex
+    targetMsg.orderIndex,
+    truncateOptionsWithDiskFlush(deps.sessionManager)
   )
 
   return runStreamWithPersistence(deps, {
     ...config,
     userText,
+    attachments,
     skipUserMessageRecording: true,
     forceRecompress: true,
     userMessageId: messageId

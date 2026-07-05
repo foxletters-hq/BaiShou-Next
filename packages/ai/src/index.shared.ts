@@ -16,10 +16,13 @@ export * from './rag/memory-deduplication.service'
 
 // Providers
 export * from './providers/openai.provider'
+export * from './providers/opencodego/opencodego.model-protocol'
+export * from './providers/opencodego/opencodego.provider'
 
 // Tools
 export * from './tools/agent.tool'
 export * from './tools/tool-registry'
+export * from './tools/tool-context.util'
 export * from './tools/mcp-tool.util'
 export * from './mcp/baishou-mcp-server'
 export * from './tools/current-time.tool'
@@ -29,6 +32,7 @@ export * from './tools/diary-edit.tool'
 export * from './tools/diary-delete.tool'
 export * from './tools/diary-search.tool'
 export * from './tools/diary-crud-db.util'
+export * from './tools/diary-read-guard.util'
 export * from './tools/memory-store.tool'
 export * from './tools/memory-delete.tool'
 export * from './tools/vector-search.tool'

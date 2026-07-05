@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { deleteMarkdownRange, isLikelyEditorBundleLeak } from '../diary-cm-content.util'
+import {
+  deleteMarkdownRange,
+  isLikelyEditorBundleLeak,
+  looksLikeExternalContentReplace,
+  commonPrefixLength
+} from '../diary-cm-content.util'
 
 describe('deleteMarkdownRange', () => {
   it('removes image markdown range', () => {
@@ -24,5 +29,20 @@ describe('isLikelyEditorBundleLeak', () => {
 
   it('ignores normal diary markdown', () => {
     expect(isLikelyEditorBundleLeak('# 标题\n\n今天天气不错 ![img](attachment/a.png)')).toBe(false)
+  })
+})
+
+describe('looksLikeExternalContentReplace', () => {
+  it('treats incremental edits as in-session typing', () => {
+    expect(looksLikeExternalContentReplace('hello world', 'hello worl')).toBe(false)
+    expect(looksLikeExternalContentReplace('hello world', 'hello world!')).toBe(false)
+  })
+
+  it('treats wholly different bodies as external replace', () => {
+    expect(looksLikeExternalContentReplace('hello world', '完全不同的日记正文')).toBe(true)
+  })
+
+  it('counts shared prefix length', () => {
+    expect(commonPrefixLength('abcdef', 'abcxyz')).toBe(3)
   })
 })

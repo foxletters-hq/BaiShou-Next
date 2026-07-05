@@ -3,6 +3,7 @@ import type { IAIProvider } from './provider.interface'
 import { OpenAIAdaptedProvider } from './openai.provider'
 import { GeminiAdaptedProvider } from './gemini.provider'
 import { AnthropicAdaptedProvider } from './anthropic.provider'
+import { OpenCodeGoAdaptedProvider } from './opencodego/opencodego.provider'
 
 export type ProviderCreator = (config: AiProviderModel) => IAIProvider
 
@@ -11,7 +12,8 @@ const OPENAI_COMPAT_TYPES = new Set(['openai', 'lmstudio', 'ollama', 'custom'])
 
 const specializedCreators = new Map<string, ProviderCreator>([
   ['gemini', (config) => new GeminiAdaptedProvider(config)],
-  ['anthropic', (config) => new AnthropicAdaptedProvider(config)]
+  ['anthropic', (config) => new AnthropicAdaptedProvider(config)],
+  ['opencodego', (config) => new OpenCodeGoAdaptedProvider(config)]
 ])
 
 /**

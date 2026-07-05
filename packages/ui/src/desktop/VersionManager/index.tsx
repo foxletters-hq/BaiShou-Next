@@ -1,19 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  MdOutlineSystemUpdate,
-  MdOpenInNew,
-  MdDownload,
-  MdCheckCircle,
-  MdError,
-  MdHourglassEmpty,
-  MdUpdate
-} from 'react-icons/md'
 import { useUpdaterStore, UpdateStatus } from '@baishou/store'
 import { formatAppVersion } from '@baishou/shared'
 import { useToast } from '../Toast/useToast'
 import '../AboutSettingsCard/AboutSettingsCard.css'
 import './VersionManager.css'
+import { CheckCircle, CircleX, Download, ExternalLink, Hourglass, RefreshCw } from 'lucide-react'
 
 export interface VersionManagerProps {
   version: string
@@ -105,7 +97,7 @@ export const VersionManager: React.FC<VersionManagerProps> = ({
     if (status === UpdateStatus.AVAILABLE) {
       return (
         <button type="button" className="version-primary-btn" onClick={() => downloadUpdate()}>
-          <MdDownload size={18} />
+          <Download size={18} />
           {t('updater.download', 'Download update')}
         </button>
       )
@@ -113,7 +105,7 @@ export const VersionManager: React.FC<VersionManagerProps> = ({
     if (status === UpdateStatus.DOWNLOADED) {
       return (
         <button type="button" className="version-primary-btn" onClick={() => quitAndInstall()}>
-          <MdCheckCircle size={18} />
+          <CheckCircle size={18} />
           {t('updater.install', 'Install now')}
         </button>
       )
@@ -126,9 +118,9 @@ export const VersionManager: React.FC<VersionManagerProps> = ({
         disabled={isChecking || status === UpdateStatus.CHECKING}
       >
         {isChecking || status === UpdateStatus.CHECKING ? (
-          <MdHourglassEmpty size={18} className="version-spin" />
+          <Hourglass size={18} className="version-spin" />
         ) : (
-          <MdUpdate size={18} />
+          <RefreshCw size={18} />
         )}
         {isChecking || status === UpdateStatus.CHECKING
           ? t('updater.checking_short', 'Checking…')
@@ -189,13 +181,13 @@ export const VersionManager: React.FC<VersionManagerProps> = ({
         <div className="version-status-block">
           <div className="version-status-line">
             {status === UpdateStatus.ERROR ? (
-              <MdError size={18} className="version-status-icon error" />
+              <CircleX size={18} className="version-status-icon error" />
             ) : status === UpdateStatus.NOT_AVAILABLE ? (
-              <MdCheckCircle size={18} className="version-status-icon ok" />
+              <CheckCircle size={18} className="version-status-icon ok" />
             ) : status === UpdateStatus.CHECKING || isChecking ? (
-              <MdHourglassEmpty size={18} className="version-status-icon version-spin" />
+              <Hourglass size={18} className="version-status-icon version-spin" />
             ) : (
-              <MdOutlineSystemUpdate size={18} className="version-status-icon" />
+              <Download size={18} className="version-status-icon" />
             )}
             <p className="version-status-message">{statusMessage()}</p>
           </div>
@@ -235,7 +227,7 @@ export const VersionManager: React.FC<VersionManagerProps> = ({
 
       {onOpenGithubRepo && (
         <button type="button" className="about-github-btn" onClick={openGithub}>
-          <MdOpenInNew size={18} />
+          <ExternalLink size={18} />
           {t('updater.view_github', 'View GitHub repository')}
         </button>
       )}

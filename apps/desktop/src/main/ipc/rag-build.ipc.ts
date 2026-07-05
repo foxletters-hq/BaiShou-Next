@@ -1,16 +1,19 @@
-import { ipcMain, type IpcMainInvokeEvent } from 'electron'
+import { ipcMain, BrowserWindow, type IpcMainInvokeEvent } from 'electron'
 import { memoryEmbeddingsTable } from '@baishou/database-desktop'
 import type { EmbeddingMigrationRollbackConfig } from '@baishou/shared'
-import { getAppDb } from '../db'
+import { getAppDb, setAppDbResetBlocker } from '../db'
 import { sql } from 'drizzle-orm'
 import { getEmbeddingService, getEmbeddingConfig } from './rag.ipc'
 import { DesktopEmbeddingStorage } from './rag.storage'
 import { settingsManager } from './settings.ipc'
+import { vaultService } from './vault.ipc'
+import { countDiaryEmbeddingsForVault } from '../services/diary-embedding.util'
 import { getEmbeddingMigrationStateService } from '../services/embedding-migration-state.service'
 import { runControlledDiaryBatchEmbed } from '../services/controlled-diary-batch-embed.service'
 import {
   buildMigrationStreamResult,
   logger,
+  RAG_MIGRATION_STATUS,
   toSerializableAiError,
   type RagMigrationStatusKey,
   type RagMigrationStreamResult
@@ -103,6 +106,7 @@ export function registerRagBuildIPC() {
   const migrationStateService = getEmbeddingMigrationStateService()
 
   migrationStateService.setMigrationActiveChecker(() => embeddingService.isMigrationRunning())
+  setAppDbResetBlocker(() => embeddingService.isMigrationRunning())
 
   embeddingService.setMigrationLifecycle({
     markInProgress: (rollbackConfig) => migrationStateService.markInProgress(rollbackConfig),
@@ -116,9 +120,13 @@ export function registerRagBuildIPC() {
     const db = getAppDb()
     const countRes = await db.select({ count: sql<number>`count(*)` }).from(memoryEmbeddingsTable)
     const count = countRes[0]?.count || 0
+    const activeVaultName = vaultService.getActiveVault()?.name ?? 'Personal'
+    const diaryCountForVault = await countDiaryEmbeddingsForVault(activeVaultName)
 
     return {
       totalCount: count,
+      diaryCountForVault,
+      activeVaultName,
       currentDimension: config.getGlobalEmbeddingDimension(),
       totalSizeText: `${(count * 2.5).toFixed(1)} KB` // Mock size calc for UI
     }
@@ -263,6 +271,15 @@ export function registerRagBuildIPC() {
 
   ipcMain.handle('rag:cancel-migration', async () => {
     embeddingService.requestMigrationAbort()
+
+    for (const win of BrowserWindow.getAllWindows()) {
+      win.webContents.send('agent:rag-progress', {
+        isRunning: true,
+        type: 'migration',
+        statusKey: RAG_MIGRATION_STATUS.aborting
+      })
+    }
+
     return true
   })
 

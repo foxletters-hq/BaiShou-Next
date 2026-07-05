@@ -3,7 +3,15 @@ import {
   UpsertShadowIndexPayload,
   normalizeShadowFilePath
 } from '@baishou/database'
-import { parseDateStr, DiaryMeta, logger } from '@baishou/shared'
+import {
+  parseDateStr,
+  DiaryMeta,
+  logger,
+  buildDiaryEmbeddingSourceId,
+  normalizeMoodId,
+  normalizeWeatherId,
+  normalizeDiaryPreviewMarkdown
+} from '@baishou/shared'
 
 import type { IFileSystem } from '../fs/file-system.types'
 import { md5Hex } from '../fs/md5'
@@ -20,7 +28,8 @@ import { parseJournalMarkdown } from './shadow-index-sync.utils'
 import {
   buildCanonicalJournalFilePath,
   resolveJournalFilePath,
-  countJournalMarkdownInTree
+  collectJournalPathsByDateInTree,
+  isJournalPathUnderSkippedDir
 } from '../journal/journal-files.util'
 
 export type { IEmbeddingCallback }
@@ -54,6 +63,7 @@ export class ShadowIndexSyncService {
   private _isScanning = false
   private _isSyncDisabled = false
   private _scanPromise: Promise<void> | null = null
+  private _scanStateListeners: Array<(isScanning: boolean) => void> = []
 
   /** 同步事件监听者回调池 */
   private _listeners: Array<(event: JournalSyncEvent) => void> = []
@@ -110,8 +120,28 @@ export class ShadowIndexSyncService {
     }
   }
 
+  /** 全量扫描开始/结束（供移动端在扫描期间阻塞日记列表读取） */
+  onScanStateChange(listener: (isScanning: boolean) => void): () => void {
+    this._scanStateListeners.push(listener)
+    listener(this._isScanning)
+    return () => {
+      const idx = this._scanStateListeners.indexOf(listener)
+      if (idx !== -1) this._scanStateListeners.splice(idx, 1)
+    }
+  }
+
   get isScanning(): boolean {
     return this._isScanning
+  }
+
+  private _setScanning(next: boolean): void {
+    if (this._isScanning === next) return
+    this._isScanning = next
+    for (const listener of this._scanStateListeners) {
+      try {
+        listener(next)
+      } catch {}
+    }
   }
 
   private _emitScanProgress(progress: ShadowScanProgress): void {
@@ -209,8 +239,8 @@ export class ShadowIndexSyncService {
             createdAt: diary.createdAt.toISOString(),
             updatedAt: diary.updatedAt.toISOString(),
             contentHash: currentHash,
-            weather: diary.weather ?? null,
-            mood: diary.mood ?? null,
+            weather: diary.weather ? normalizeWeatherId(diary.weather) || null : null,
+            mood: diary.mood ? normalizeMoodId(diary.mood) || null : null,
             location: diary.location ?? null,
             locationDetail: diary.locationDetail ?? null,
             isFavorite: diary.isFavorite,
@@ -218,9 +248,7 @@ export class ShadowIndexSyncService {
             rawContent: diary.content ?? '',
             tags: (diary.tags ?? []).join(','),
             tagColors:
-              Object.keys(diary.tagColors ?? {}).length > 0
-                ? JSON.stringify(diary.tagColors)
-                : null
+              Object.keys(diary.tagColors ?? {}).length > 0 ? JSON.stringify(diary.tagColors) : null
           })
           parsedDiaries.push(diary)
         })
@@ -232,14 +260,17 @@ export class ShadowIndexSyncService {
         logger.info(`[ShadowSync] 已批量清理孤立索引 ID=${req.id} (日期: ${req.dateStr})`)
         if (this.embeddingCallback) {
           try {
-            await this.embeddingCallback.deleteEmbeddingsBySource('diary', req.id.toString())
+            await this.embeddingCallback.deleteEmbeddingsBySource(
+              'diary',
+              buildDiaryEmbeddingSourceId(this.shadowRepo.vaultName, req.id)
+            )
           } catch (e: any) {}
         }
       }
 
-      // ── 5. 提交超重型批量事务 ──
+      // ── 5. 批量写入影子索引 ──
       if (payloads.length > 0) {
-        logger.info(`[ShadowSync] 正在开启巨型批量事务，并入 ${payloads.length} 篇日志...`)
+        logger.info(`[ShadowSync] 批量写入影子索引：${payloads.length} 篇日记`)
         const rowIds = await this.shadowRepo.batchUpsert(payloads)
 
         for (let j = 0; j < payloads.length; j++) {
@@ -254,8 +285,9 @@ export class ShadowIndexSyncService {
           const meta: DiaryMeta = {
             id,
             date: parseDateStr(d.date),
-            preview:
-              (d.content?.length ?? 0) > 120 ? d.content!.substring(0, 120) : (d.content ?? ''),
+            preview: normalizeDiaryPreviewMarkdown(
+              (d.content?.length ?? 0) > 500 ? d.content!.substring(0, 500) : (d.content ?? '')
+            ),
             tags: d.tags ?? [],
             tagColors: d.tagColors ?? {},
             updatedAt: d.updatedAt,
@@ -301,7 +333,7 @@ export class ShadowIndexSyncService {
       return
     }
 
-    this._isScanning = true
+    this._setScanning(true)
 
     let resolvePromise: () => void
     this._scanPromise = new Promise<void>((resolve) => {
@@ -313,29 +345,11 @@ export class ShadowIndexSyncService {
       if (!activeVault) return
 
       const journalsDir = await this.pathService.getJournalsBaseDirectory()
-
-      // 1. 收集所有符合 yyyy-MM-dd.md 格式的物理文件日期
-      const dateFileRegex = /^(\d{4}-\d{2}-\d{2})\.md$/
-      const pathsByDate = new Map<string, string>()
-
       const journalsDirExists = await this.fileSystem.exists(journalsDir)
+      const { pathsByDate } = journalsDirExists
+        ? await collectJournalPathsByDateInTree(this.fileSystem, journalsDir)
+        : { pathsByDate: new Map<string, string>() }
 
-      if (journalsDirExists) {
-        await this._walkDir(journalsDir, (filePath) => {
-          const fileName = path.basename(filePath)
-          const match = dateFileRegex.exec(fileName)
-          if (!match?.[1]) return
-
-          const dateStr = match[1]
-          const canonicalPath = buildCanonicalJournalFilePath(journalsDir, dateStr)
-          const existing = pathsByDate.get(dateStr)
-          if (!existing || path.resolve(filePath) === path.resolve(canonicalPath)) {
-            pathsByDate.set(dateStr, filePath)
-          }
-        })
-      }
-
-      // 2. 将整个文件池放进内存并发分块事务系统中处理
       const uniqueDates = [...pathsByDate.keys()]
       if (uniqueDates.length > 0) {
         logger.info(`[ShadowSync] 全量扫描提取到 ${uniqueDates.length} 份文件，进入并行流水线...`)
@@ -350,45 +364,45 @@ export class ShadowIndexSyncService {
         }
       }
 
-      // 3. 【关键】清理孤立索引：仅当 Journals 可读且枚举数量与磁盘统计一致
+      // 3. 清理孤立索引：按有效文件路径对齐（跳过 Archives 等总结目录）
       if (!journalsDirExists) {
         logger.info('[ShadowSync] Journals 目录不可用，跳过孤立清理')
       } else {
-        const diskCount = await countJournalMarkdownInTree(this.fileSystem, journalsDir)
-        const scanEnumerationComplete = uniqueDates.length === diskCount
-        if (!scanEnumerationComplete) {
-          logger.warn(
-            `[ShadowSync] 跳过孤立清理：扫描枚举 ${uniqueDates.length} 篇，磁盘统计 ${diskCount} 篇`
+        const validRelativePaths = new Set(
+          [...pathsByDate.values()].map((absPath) =>
+            normalizeShadowFilePath(path.relative(path.dirname(journalsDir), absPath))
           )
-        } else {
-          const allRecords = await this.shadowRepo.getAllRecords()
-          const existingDatesSet = new Set(uniqueDates)
+        )
+        const allRecords = await this.shadowRepo.getAllRecords()
 
-          for (const record of allRecords) {
-            const dateStr = record.date.split('T')[0] // 提取 yyyy-MM-dd
-            if (!dateStr) continue
+        for (const record of allRecords) {
+          const normalizedRecordPath = normalizeShadowFilePath(record.filePath)
+          const underSkippedDir = isJournalPathUnderSkippedDir(record.filePath)
+          const pathStillValid = validRelativePaths.has(normalizedRecordPath)
 
-            if (!existingDatesSet.has(dateStr)) {
-              await this.shadowRepo.deleteById(record.id)
+          if (!underSkippedDir && pathStillValid) continue
 
-              if (this.embeddingCallback) {
-                try {
-                  await this.embeddingCallback.deleteEmbeddingsBySource(
-                    'diary',
-                    record.id.toString()
-                  )
-                } catch (e: any) {
-                  logger.warn(`[ShadowSync] 清理孤立 RAG 向量失败 (ID=${record.id}):`, e.message)
-                }
-              }
+          await this.shadowRepo.deleteById(record.id)
 
-              logger.info(`[ShadowSync] 已清理孤立索引: date=${dateStr}, ID=${record.id}`)
+          if (this.embeddingCallback) {
+            try {
+              await this.embeddingCallback.deleteEmbeddingsBySource(
+                'diary',
+                buildDiaryEmbeddingSourceId(this.shadowRepo.vaultName, record.id)
+              )
+            } catch (e: any) {
+              logger.warn(`[ShadowSync] 清理孤立 RAG 向量失败 (ID=${record.id}):`, e.message)
             }
           }
+
+          const reason = underSkippedDir ? 'summary-path' : 'orphan-path'
+          logger.info(
+            `[ShadowSync] 已清理索引 (${reason}): path=${record.filePath}, ID=${record.id}`
+          )
         }
       }
     } finally {
-      this._isScanning = false
+      this._setScanning(false)
       resolvePromise!()
       this._scanPromise = null
     }
@@ -430,31 +444,5 @@ export class ShadowIndexSyncService {
         logger.warn(`[ShadowSync] RAG 嵌入失败:`, e.message)
       }
     })()
-  }
-
-  /**
-   * 递归遍历目录树
-   */
-  private async _walkDir(dir: string, callback: (filePath: string) => void): Promise<void> {
-    let entries: string[] = []
-    try {
-      entries = await this.fileSystem.readdir(dir)
-    } catch (e: any) {
-      if (e.code === 'ENOENT') return
-      throw e
-    }
-    for (const name of entries) {
-      const fullPath = path.join(dir, name)
-      try {
-        const stat = await this.fileSystem.stat(fullPath)
-        if (stat.isDirectory) {
-          await this._walkDir(fullPath, callback)
-        } else if (stat.isFile) {
-          callback(fullPath)
-        }
-      } catch {
-        // 跳过不可读条目，避免单个异常路径导致整次全量扫描失败
-      }
-    }
   }
 }

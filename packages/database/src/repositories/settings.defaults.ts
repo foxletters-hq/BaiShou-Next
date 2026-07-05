@@ -125,6 +125,20 @@ export const DEFAULT_AI_PROVIDERS: AIProviderConfig[] = [
     apiKey: ''
   },
   {
+    id: 'opencodego',
+    name: 'OpenCode Go',
+    type: 'opencodego' as any,
+    baseUrl: 'https://opencode.ai/zen/go/v1',
+    models: [],
+    enabledModels: [],
+    isEnabled: false,
+    defaultDialogueModel: '',
+    defaultNamingModel: '',
+    isSystem: true,
+    sortOrder: 8,
+    apiKey: ''
+  },
+  {
     id: 'dashscope',
     name: '通义千问 (百炼)',
     type: 'dashscope' as any,
@@ -135,7 +149,7 @@ export const DEFAULT_AI_PROVIDERS: AIProviderConfig[] = [
     defaultDialogueModel: '',
     defaultNamingModel: '',
     isSystem: true,
-    sortOrder: 8,
+    sortOrder: 9,
     apiKey: ''
   },
   {
@@ -220,7 +234,7 @@ export const DEFAULT_AGENT_BEHAVIOR: AgentBehaviorConfig = {
   companionCompressTokens: 8000,
   companionTruncateTokens: 4000,
   agentPersona: '你是 AI 伙伴，帮助用户回顾日记和生活记录。',
-  agentGuidelines: '请使用工具查阅日记内容，不要编造。引用时注明日期。',
+  agentGuidelines: '可在设置中补充其他行为准则；日记查阅与编辑规范已由系统内置。',
   pinnedAssistantIds: []
 }
 
@@ -250,8 +264,12 @@ export const DEFAULT_SUMMARY_CONFIG: SummaryConfig = {
 export const DEFAULT_DIARY_TEMPLATE_CONFIG: DiaryTemplateConfig = {}
 
 export const DEFAULT_TOOL_MANAGEMENT_CONFIG: ToolManagementConfig = {
-  disabledToolIds: [],
-  customConfigs: {}
+  disabledToolIds: ['auto_inject_time'],
+  customConfigs: {},
+  emojiConfig: {
+    enabled: false,
+    groups: []
+  }
 }
 
 export const DEFAULT_MCP_SERVER_CONFIG: McpServerConfig = {
@@ -262,5 +280,5 @@ export const DEFAULT_MCP_SERVER_CONFIG: McpServerConfig = {
 export const DEFAULT_HOTKEY_CONFIG: HotkeyConfig = {
   hotkeyEnabled: false,
   hotkeyModifier: 'Alt',
-  hotkeyKey: 'S'
+  hotkeyKey: 'Space'
 }

@@ -35,6 +35,16 @@ describe('session-truncate.utils', () => {
     expect(snapshotRepo.deleteSnapshots).not.toHaveBeenCalled()
   })
 
+  it('truncateSessionAfterOrderIndex flushes session JSON when requested', async () => {
+    const flushSessionToDisk = vi.fn().mockResolvedValue(undefined)
+
+    await truncateSessionAfterOrderIndex(sessionRepo as any, snapshotRepo as any, 'sess-1', 3, {
+      flushSessionToDisk
+    })
+
+    expect(flushSessionToDisk).toHaveBeenCalledWith('sess-1')
+  })
+
   it('should delete snapshot when covered message is truncated', async () => {
     sessionRepo.getMessagesBySession.mockResolvedValue([
       { id: 'u1', orderIndex: 0 },

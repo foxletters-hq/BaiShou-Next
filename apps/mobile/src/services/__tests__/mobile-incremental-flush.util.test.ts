@@ -27,20 +27,32 @@ describe('IncrementalSyncCheckpointCoordinator', () => {
     const localWrites: number[] = []
     const remoteWrites: number[] = []
     const ensureLocalFlushed = async () => {
-      await coordinator.flushLocalIfNeeded(true, async () => {
-        localWrites.push(1)
-      }, async () => {})
+      await coordinator.flushLocalIfNeeded(
+        true,
+        async () => {
+          localWrites.push(1)
+        },
+        async () => {}
+      )
     }
 
     for (let i = 0; i < 3; i++) {
       coordinator.noteManifest(manifest)
       coordinator.noteRemoteCheckpoint()
-      await coordinator.flushLocalIfNeeded(false, async () => {
-        localWrites.push(i)
-      }, async () => {})
-      await coordinator.flushRemoteIfNeeded(false, async () => {
-        remoteWrites.push(i)
-      }, ensureLocalFlushed)
+      await coordinator.flushLocalIfNeeded(
+        false,
+        async () => {
+          localWrites.push(i)
+        },
+        async () => {}
+      )
+      await coordinator.flushRemoteIfNeeded(
+        false,
+        async () => {
+          remoteWrites.push(i)
+        },
+        ensureLocalFlushed
+      )
     }
 
     expect(localWrites.length).toBe(0)

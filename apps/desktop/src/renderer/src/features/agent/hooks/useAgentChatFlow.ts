@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom'
 import { toast } from '@baishou/ui'
 import type { InputBarRef } from '@baishou/ui'
+import type { AgentOutletContext } from '../agent-outlet-context'
 import {
   useSettingsStore,
   useAssistantStore,
@@ -10,7 +11,7 @@ import {
   useAgentStore,
   useContextCompressionStore
 } from '@baishou/store'
-import { useAgentStream } from './useAgentStream'
+import { useAgentStream, clearStreamBridgeForSession } from './useAgentStream'
 import { useChatMessages } from './useChatMessages'
 import { useSessionManager } from './useSessionManager'
 import { useModelSelection } from './useModelSelection'
@@ -21,7 +22,12 @@ import { useRecallSearch } from './useRecallSearch'
 import { useAssistantResolver } from './useAssistantResolver'
 import { useTranslation } from 'react-i18next'
 import { useTts } from './useTts'
-import { mapSavedAttachmentsForUi } from '@baishou/shared'
+import { usePersistedSharedMemoryLookback } from '../../../hooks/usePersistedSharedMemoryLookback'
+import {
+  mapSavedAttachmentsForUi,
+  isConfiguredDialogueModelId,
+  isConfiguredProviderId
+} from '@baishou/shared'
 
 /**
  * 封装 Agent 聊天页面的全部业务状态流转、时序哨兵以及大模型对话控制逻辑的自定义控制器 Hook。
@@ -30,10 +36,7 @@ export function useAgentChatFlow() {
   const { t, i18n } = useTranslation()
   const { sessionId } = useParams()
   const navigate = useNavigate()
-  const { sessions, loadSessions } = useOutletContext<{
-    sessions: any[]
-    loadSessions?: (reset: boolean, assistantId?: string) => void
-  }>() || { sessions: [] }
+  const { sessions, loadSessions } = useOutletContext<AgentOutletContext>() || { sessions: [] }
 
   // ── 1. 各底层 Hook 实例化 ──
   const stream = useAgentStream(sessionId)
@@ -61,9 +64,23 @@ export function useAgentChatFlow() {
   useStreamError(stream.error, stream.isStreaming)
   const recall = useRecallSearch()
 
+  // 助手消息已落库展示后，清除流式桥接态（避免 StreamingBubble 与 ChatBubble 并存）
+  useEffect(() => {
+    if (!sessionId || !stream.isBridgeActive) return
+    const lastMessage = chat.messages[chat.messages.length - 1]
+    if (
+      lastMessage?.role === 'assistant' &&
+      (Boolean(lastMessage.content?.trim()) ||
+        Boolean(lastMessage.reasoning?.trim()) ||
+        (lastMessage.toolInvocations?.length ?? 0) > 0)
+    ) {
+      clearStreamBridgeForSession(sessionId)
+    }
+  }, [sessionId, stream.isBridgeActive, chat.messages])
+
   // ── 2. Store 状态订阅 ──
   const settings = useSettingsStore()
-  const toolConfig = settings.toolManagementConfig || { disabledToolIds: [], customConfigs: {} }
+  const toolConfig = settings.toolManagementConfig || { disabledToolIds: [], customConfigs: {}, emojiConfig: { enabled: false, groups: [] } }
   const providers = settings?.providers || []
   const { assistants, fetchAssistants } = useAssistantStore()
   const { shortcuts, loadShortcuts, addShortcut, updateShortcut, removeShortcut } =
@@ -80,7 +97,8 @@ export function useAgentChatFlow() {
   const [showRecallSheet, setShowRecallSheet] = useState(false)
   const [showShortcutManager, setShowShortcutManager] = useState(false)
   const [showToolManager, setShowToolManager] = useState(false)
-  const [recallLookbackMonths, setRecallLookbackMonths] = useState(1)
+  const { lookbackMonths: recallLookbackMonths, setLookbackMonths: setRecallLookbackMonths } =
+    usePersistedSharedMemoryLookback()
   const [contextDialogState, setContextDialogState] = useState<{
     isOpen: boolean
     sessionId?: string
@@ -239,9 +257,21 @@ export function useAgentChatFlow() {
   }, [chat.messages, stream.isStreaming, tts.ttsMode, tts.handleTtsReadAloud, sessionId])
 
   // ── 9. 发送与停止消息 ──
-  const handleSend = async (text: string, attachments?: any[], search?: boolean) => {
+  const handleSend = async (
+    text: string,
+    attachments?: any[],
+    search?: boolean
+  ): Promise<boolean> => {
     let targetSessionId = sessionId
     setSearchMode(search ?? false)
+
+    if (
+      !isConfiguredProviderId(model.currentProviderId) ||
+      !isConfiguredDialogueModelId(model.currentModelId)
+    ) {
+      toast.showInfo(t('agent.error.no_model', '请先在顶部选择一个模型'))
+      return false
+    }
 
     try {
       if (!targetSessionId) {
@@ -256,16 +286,27 @@ export function useAgentChatFlow() {
         throw new Error(saveResult.error)
       }
 
-      await chat.refreshLatestMessages(1, targetSessionId)
-
       const savedAttachments = mapSavedAttachmentsForUi(saveResult.attachments)
-      if (saveResult.userMessageId && savedAttachments?.length) {
-        chat.ensureMessageAttachments(saveResult.userMessageId, savedAttachments)
+      if (saveResult.userMessageId) {
+        chat.appendSentUserMessage({
+          id: saveResult.userMessageId,
+          content: text,
+          attachments: savedAttachments
+        })
+        if (savedAttachments?.length) {
+          chat.ensureMessageAttachments(saveResult.userMessageId, savedAttachments)
+        }
       }
 
-      if (!sessionId) {
+      const wasNewSession = !sessionId
+      chat.setStreamSessionId(targetSessionId)
+      scroll.beginFollowIfAtBottom()
+
+      void chat.refreshLatestMessages(1, targetSessionId, { resetPagination: true })
+
+      if (wasNewSession) {
         if (loadSessions) {
-          await loadSessions(true, currentAssistant?.id ? String(currentAssistant.id) : undefined)
+          void loadSessions(true, currentAssistant?.id ? String(currentAssistant.id) : undefined)
         }
         const astId = currentAssistant?.id ? String(currentAssistant.id) : ''
         navigate(`/chat/${targetSessionId}${astId ? `?assistantId=${astId}` : ''}`, {
@@ -273,22 +314,32 @@ export function useAgentChatFlow() {
         })
       }
 
-      chat.setStreamSessionId(targetSessionId)
-      scroll.beginFollowIfAtBottom()
-      await stream.startChat(
-        targetSessionId,
-        text,
-        model.currentProviderId,
-        model.currentModelId,
-        saveResult.attachments,
-        search,
-        saveResult.userMessageId
-      )
+      void stream
+        .startChat(
+          targetSessionId,
+          text,
+          model.currentProviderId,
+          model.currentModelId,
+          saveResult.attachments,
+          search,
+          saveResult.userMessageId
+        )
+        .catch((streamError: any) => {
+          console.error('[AgentScreen] stream failed:', streamError)
+          toast.showError(
+            t('agent.error.send_failed', '发送消息失败: {{msg}}', {
+              msg: streamError?.message || '未知错误'
+            })
+          )
+        })
+
+      return true
     } catch (e: any) {
       console.error('[AgentScreen] send failed:', e)
       toast.showError(
         t('agent.error.send_failed', '发送消息失败: {{msg}}', { msg: e?.message || '未知错误' })
       )
+      return false
     }
   }
 

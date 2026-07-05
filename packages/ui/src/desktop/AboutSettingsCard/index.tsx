@@ -1,20 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import {
-  MdOutlineInfo,
-  MdOutlinePrivacyTip,
-  MdOutlineFeedback,
-  MdChevronRight,
-  MdOpenInNew,
-  MdArrowBack
-} from 'react-icons/md'
 import '../shared/SettingsListTile.css'
 import './AboutSettingsCard.css'
 import { useToast } from '../Toast/useToast'
 import { DeveloperOptionsView } from '../DeveloperOptionsView'
-import { formatAppVersion } from '@baishou/shared'
+import { formatAppVersion, GITHUB_CONTRIBUTORS_URL } from '@baishou/shared'
 import { VersionManager } from '../VersionManager/index'
+import { ArrowLeft, ChevronRight, ExternalLink, Info, MessageSquare, ShieldCheck } from 'lucide-react'
 
 export interface AboutSettingsCardProps {
   version: string
@@ -23,6 +16,7 @@ export interface AboutSettingsCardProps {
   onOpenFeedback?: () => void
   onOpenCompressionTestSession?: (sessionId: string) => void
   onOpenOnboarding?: () => void
+  onDemoVaultCreated?: (vaultName: string) => Promise<void>
 }
 
 export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
@@ -31,7 +25,8 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
   onOpenGithubRepo,
   onOpenFeedback,
   onOpenCompressionTestSession,
-  onOpenOnboarding
+  onOpenOnboarding,
+  onDemoVaultCreated
 }) => {
   const { t } = useTranslation()
   const toast = useToast()
@@ -114,7 +109,7 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
     <div className={`about-sub-page-overlay ${isClosing ? 'closing' : ''}`}>
       <div className="about-sub-page-appbar drag-region">
         <button className="about-sub-page-back no-drag" onClick={handleClosePage}>
-          <MdArrowBack size={24} />
+          <ArrowLeft size={24} />
         </button>
         <span className="about-sub-page-title">{t('settings.about_baishou', '关于白守')}</span>
       </div>
@@ -140,38 +135,65 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
 
         <section className="about-surface-card">
           <div className="about-flat-section about-flat-section-only">
-            <div className="about-flat-label">{t('about.developer_label', '开发者')}</div>
-            <div className="about-flat-developer">
-              <div
-                className="about-flat-developer-tap"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleDevTap()
-                }}
-              />
-              <span className="about-license-title">
-                Anson & Kasumiame Sakura & Tenkou Akatsuki
-              </span>
-              <span className="about-license-subtitle">The Trio</span>
+            <div className="about-flat-inner-card">
+              <div className="about-flat-label about-flat-label-inner">
+                {t('about.core_developer_label', '核心开发者')}
+              </div>
+              <div className="about-flat-developer">
+                <div
+                  className="about-flat-developer-tap"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleDevTap()
+                  }}
+                />
+                <span className="about-license-title">
+                  Anson & Kasumiame Sakura & Tenkou Akatsuki
+                </span>
+                <span className="about-license-subtitle">The Trio</span>
+              </div>
             </div>
           </div>
         </section>
 
         <section className="about-surface-card">
           <div className="about-flat-section about-flat-section-only">
-            <div className="about-flat-label">{t('about.oss_license_label', '开源协议')}</div>
+            <div className="about-flat-inner-card">
+              <div className="about-flat-label about-flat-label-inner">
+                {t('about.oss_license_label', '开源协议')}
+              </div>
+              <button
+                type="button"
+                className="about-flat-link-row"
+                onClick={() => window.open('https://www.gnu.org/licenses/agpl-3.0.html', '_blank')}
+              >
+                <div className="about-license-content">
+                  <span className="about-license-title">AGPL v3.0</span>
+                  <span className="about-license-subtitle">
+                    Copyright (C) 2026 Anson, Kasumiame Sakura & Tenkou Akatsuki
+                  </span>
+                </div>
+                <ExternalLink size={18} className="about-flat-link-trailing" />
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section className="about-surface-card">
+          <div className="about-flat-section about-flat-section-only about-contributors-section">
+            <p className="about-contributors-hint">
+              {t(
+                'about.contributors_hint',
+                '白守受到社群小伙伴的支持，\n你可以直接点击这里查看代码贡献者！'
+              )}
+            </p>
             <button
               type="button"
-              className="about-flat-link-row"
-              onClick={() => window.open('https://www.gnu.org/licenses/agpl-3.0.html', '_blank')}
+              className="about-contributors-btn"
+              onClick={() => window.open(GITHUB_CONTRIBUTORS_URL, '_blank')}
             >
-              <div className="about-license-content">
-                <span className="about-license-title">AGPL v3.0</span>
-                <span className="about-license-subtitle">
-                  Copyright (C) 2026 Anson, Kasumiame Sakura & Tenkou Akatsuki
-                </span>
-              </div>
-              <MdOpenInNew size={18} className="about-flat-link-trailing" />
+              <ExternalLink size={18} />
+              {t('about.view_contributors', '查看项目贡献者')}
             </button>
           </div>
         </section>
@@ -189,7 +211,7 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
     <div className={`about-sub-page-overlay ${isClosing ? 'closing' : ''}`}>
       <div className="about-sub-page-appbar drag-region">
         <button className="about-sub-page-back no-drag" onClick={handleClosePage}>
-          <MdArrowBack size={24} />
+          <ArrowLeft size={24} />
         </button>
         <span className="about-sub-page-title">
           {t('settings.development_philosophy', '开发哲学与无痕承诺')}
@@ -235,7 +257,7 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
     <div className={`about-sub-page-overlay ${isClosing ? 'closing' : ''}`}>
       <div className="about-sub-page-appbar drag-region">
         <button className="about-sub-page-back no-drag" onClick={handleClosePage}>
-          <MdArrowBack size={24} />
+          <ArrowLeft size={24} />
         </button>
         <span className="about-sub-page-title">
           {t('settings.developer_options', '开发者选项')}
@@ -245,6 +267,7 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
         <DeveloperOptionsView
           onOpenCompressionTestSession={onOpenCompressionTestSession}
           onOpenOnboarding={onOpenOnboarding}
+          onDemoVaultCreated={onDemoVaultCreated}
         />
       </div>
     </div>
@@ -255,28 +278,28 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
       <div className="about-settings-wrapper">
         <button className="settings-list-tile" onClick={() => handleOpenPage('about')}>
           <div className="settings-list-tile-leading">
-            <MdOutlineInfo size={24} />
+            <Info size={24} />
           </div>
           <div className="settings-list-tile-content">
             <span className="settings-list-tile-title">
               {t('settings.about_baishou', '关于白守')}
             </span>
           </div>
-          <MdChevronRight size={22} className="settings-list-tile-trailing" />
+          <ChevronRight size={22} className="settings-list-tile-trailing" />
         </button>
 
         <div className="settings-list-divider" />
 
         <button className="settings-list-tile" onClick={() => handleOpenPage('privacy')}>
           <div className="settings-list-tile-leading">
-            <MdOutlinePrivacyTip size={24} />
+            <ShieldCheck size={24} />
           </div>
           <div className="settings-list-tile-content">
             <span className="settings-list-tile-title">
               {t('settings.development_philosophy', '开发哲学与无痕承诺')}
             </span>
           </div>
-          <MdChevronRight size={22} className="settings-list-tile-trailing" />
+          <ChevronRight size={22} className="settings-list-tile-trailing" />
         </button>
 
         <div className="settings-list-divider" />
@@ -289,14 +312,14 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
           }}
         >
           <div className="settings-list-tile-leading">
-            <MdOutlineFeedback size={24} />
+            <MessageSquare size={24} />
           </div>
           <div className="settings-list-tile-content">
             <span className="settings-list-tile-title">
               {t('settings.feedback', 'Report an issue')}
             </span>
           </div>
-          <MdOpenInNew
+          <ExternalLink
             size={20}
             className="settings-list-tile-trailing"
             style={{ color: 'var(--color-on-surface-variant)' }}

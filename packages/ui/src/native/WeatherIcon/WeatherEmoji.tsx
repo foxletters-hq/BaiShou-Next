@@ -7,7 +7,7 @@ import {
   type TextStyle,
   type ImageStyle
 } from 'react-native'
-import { getWeatherEmoji, normalizeWeatherId, type WeatherId, WEATHER_IDS } from '@baishou/shared'
+import { getWeatherEmoji, resolveWeatherId, type WeatherId } from '@baishou/shared'
 import { getWeatherFluentImageSource } from './weather-assets'
 
 export interface WeatherEmojiProps {
@@ -24,7 +24,9 @@ export const WeatherEmoji: React.FC<WeatherEmojiProps> = ({
   style,
   textStyle
 }) => {
-  const id = normalizeWeatherId(weather)
+  const id = resolveWeatherId(weather)
+  if (!id) return null
+
   const source = getWeatherFluentImageSource(id)
   const fallback = getWeatherEmoji(id)
 
@@ -33,7 +35,7 @@ export const WeatherEmoji: React.FC<WeatherEmojiProps> = ({
       <Text
         style={[
           styles.fallback,
-          { fontSize: size * 0.9, lineHeight: size },
+          { fontSize: size * 0.85, lineHeight: size, width: size, height: size },
           textStyle,
           style as TextStyle
         ]}
@@ -54,12 +56,13 @@ export const WeatherEmoji: React.FC<WeatherEmojiProps> = ({
 }
 
 export function isKnownWeatherId(weather: string): weather is WeatherId {
-  const id = normalizeWeatherId(weather)
-  return (WEATHER_IDS as readonly string[]).includes(id)
+  return resolveWeatherId(weather) != null
 }
 
 const styles = StyleSheet.create({
   fallback: {
-    textAlign: 'center'
+    textAlign: 'center',
+    includeFontPadding: false,
+    textAlignVertical: 'center'
   }
 })

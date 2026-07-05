@@ -2,13 +2,13 @@
 
 [简体中文](README.md) | [繁體中文](docs/3-Project/README_TW.md) | [English](docs/3-Project/README_EN.md) | [日本語](docs/3-Project/README_JA.md)
 
-[语录收藏](./docs/3-Project/quotes-collection/quotes-collection.md) · [优质二创](./docs/3-Project/fan-creations/fan-creations.md) · [技术分享](./docs/4-技术分享/0-README.md)
+[贡献指南](#贡献指南) · [语录收藏](./docs/3-Project/quotes-collection/quotes-collection.md) · [优质二创](./docs/3-Project/fan-creations/fan-creations.md) · [技术分享](./docs/4-技术分享/0-README.md)
 
 > 以纯白誓约，守护彼此一生。
 
 **白守**是一款开源的、注重隐私的 **AI 记忆陪伴**软件：在本地记录你的生活与日记，让 AI 伙伴真正「记得」你，并陪你对抗遗忘。
 
-我们非常欢迎你的参与——无论是 Issue、PR、文档还是想法。白守能走到今天，离不开每一位朋友的帮助与鞭策；也正因为有你们，它才会越来越好。若你愿意一起把这份约定延续下去，请先阅读下方的 [贡献指南](#贡献指南)。
+我们感谢每一位愿意帮助白守的朋友。白守能走到今天，离不开你们的帮助与鞭策。若你愿意参与，请先阅读下方的 [贡献指南](#贡献指南)：**我们最欢迎 Bug 报告与文档改进**；Bug 修复 PR 视情况接受；**新功能 PR 暂不接收**，请先开 Issue 讨论设计。
 
 > **请注意**：此前基于 Flutter 的客户端（[Anson-Trio/BaiShou](https://github.com/Anson-Trio/BaiShou)）**已不再维护**；后续所有功能更新与版本发布均在本仓库 **BaiShou-Next** 进行（桌面 Electron + 移动 Expo 的 monorepo）。请 Star / Watch 本仓库以获取最新动态。
 
@@ -70,7 +70,7 @@
 ##### 1. 克隆仓库
 
 ```bash
-git clone https://github.com/Anson-Trio/BaiShou-Next.git
+git clone https://github.com/foxletters-hq/BaiShou-Next.git
 cd BaiShou-Next
 ```
 
@@ -89,7 +89,7 @@ pnpm install
 pnpm dev:desktop
 
 # 移动端（须先装开发版，不能用 Expo Go）
-pnpm dev:mobile:clear   # 首次 / 升级 Expo / 加原生模块后
+pnpm dev:mobile:clear   # 首次 / 升级 Expo / 改 diary-editor / 加原生模块后（含 sync + WebView bundle 重打）
 pnpm dev:mobile             # 启动 Metro，手机同 Wi‑Fi 打开 App
 ```
 
@@ -107,11 +107,24 @@ pnpm ci:check
 
 #### 贡献指南
 
-1. 在 GitHub **Fork** 本仓库，在功能分支上开发（勿直接向上游 `main` 推送）。
-2. 编码与目录规范见 [AI 编码规范](./docs/1-AI-Code/1-AI-Code-Rule.md)。
-3. 开 PR 前运行 **`pnpm ci:check`**，并遵循 [提交规范](./docs/2-Submit/1-Submit-Rule.md) 中的 Commit Message 约定。
+我们感谢每一位愿意帮助白守的人，但请先了解本项目的协作立场：
 
-我们非常欢迎 Issue 与 PR。若有想法或疑问，欢迎在 Issues 中讨论。
+- **我们最欢迎**：可复现的 Bug 报告、文档纠错。
+- **视情况接受**：针对已确认问题、小范围且高质量的 **Bug 修复 PR**（含测试与 `pnpm ci:check`）。
+- **新功能 PR**：**当前暂不接收**。若有功能设计想法，请 **在 Issues 中开「功能提议」** 与维护者梳理清楚，**不要直接开 PR**。
+- **不审核**：纯 AI 生成、你对相关代码并不理解、或未遵循仓库规范的 PR。
+
+> **一句话**：请先确认「这件事该不该做、你是否真正理解相关代码」，再考虑「怎么做」。  
+> 能用 Issue 把动机和方案说清楚，比直接丢一个大 PR 更有可能被接受。
+
+完整说明（多语言）：[贡献政策](./docs/2-Submit/2-Contributing-Guide.md)（[繁中](./docs/2-Submit/2-Contributing-Guide.tw.md) · [English](./docs/2-Submit/2-Contributing-Guide.en.md) · [日本語](./docs/2-Submit/2-Contributing-Guide.ja.md)）
+
+技术流程：
+
+1. 在 GitHub **Fork** 本仓库，在功能分支上开发（勿直接向上游 `main` 推送）。
+2. 向上游开 PR 时，**目标分支（base）选择 `Baishou-dev`**；以 `main` 为目标的 PR 视为无效，不予审核与回复。
+3. 编码与目录规范见 [AI 编码规范](./docs/1-AI-Code/1-AI-Code-Rule.md)。
+4. 开 PR 前运行 **`pnpm ci:check`**，并遵循 [提交规范](./docs/2-Submit/1-Submit-Rule.md) 中的 Commit Message 约定。
 
 ---
 
@@ -148,5 +161,7 @@ pnpm ci:check
 
 - 客户端代码完全开源，鼓励社区参与改进。
 - 请遵守 AGPLv3 协议：若您修改了本项目的代码并在网络上提供服务，您的修改版本也必须开源。
+- 向本项目提交**代码 PR** 须签署 [组织级 CLA](./legal/CLA-organization.md)（CLA Assistant，多仓通用）。
+- 版权与商业化策略详见 [legal/LICENSE-STRATEGY.md](./legal/LICENSE-STRATEGY.md)。
 
 完整条文见 [LICENSE](./LICENSE)。

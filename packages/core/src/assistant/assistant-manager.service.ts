@@ -15,7 +15,7 @@ import {
   toPersistedAssistantAvatarPath,
   normalizeDiskAssistantRecord
 } from './assistant-persist.util'
-import type { DiskResyncOptions } from '../sync/disk-resync.types'
+import type { DiskResyncOptions } from '../vault/disk-resync.types'
 
 /**
  * AI 角色身份卡存储漫游总代理。

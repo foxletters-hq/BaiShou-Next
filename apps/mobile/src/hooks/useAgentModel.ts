@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, type MutableRefObject } from 'react'
 import { useFocusEffect } from '@react-navigation/native'
 import {
   formatDialogueModelLabel,
@@ -15,11 +15,12 @@ import { waitForVaultEcosystemResync } from '../services/mobile-vault-resync.ser
 type Assistant = MobileAssistantUi
 
 export interface UseAgentModelOptions {
-  /** @deprecated 请改用 syncWithSession */
-  currentSessionId?: string | null
+  /** 当前会话 ID（ref），用于按会话绑定并持久化模型选择 */
+  currentSessionIdRef?: MutableRefObject<string | null>
 }
 
-export function useAgentModel(_options: UseAgentModelOptions = {}) {
+export function useAgentModel(options: UseAgentModelOptions = {}) {
+  const { currentSessionIdRef } = options
   const { services, dbReady, storageReady, vaultRevision, storageIndexing, ecosystemResyncEpoch } =
     useBaishou()
 
@@ -31,8 +32,10 @@ export function useAgentModel(_options: UseAgentModelOptions = {}) {
   const [currentProviderId, setCurrentProviderId] = useState<string | null>(null)
   const [currentModelId, setCurrentModelId] = useState<string | null>(null)
 
+  /** 用户手动选模或已从会话恢复模型时，跳过伙伴/全局默认覆盖 */
   const userManuallySetModelRef = useRef(false)
-  const prevSessionIdRef = useRef<string | null | undefined>(null)
+  const prevSessionIdRef = useRef<string | null | undefined>(undefined)
+  const lastSyncedDbReadyRef = useRef(false)
 
   const applyResolvedModel = useCallback(
     (assistant: Assistant | null, models: GlobalModelsConfig | null) => {
@@ -51,14 +54,82 @@ export function useAgentModel(_options: UseAgentModelOptions = {}) {
     []
   )
 
+  const loadSessionDialogueModel = useCallback(
+    async (sessionId: string): Promise<{ providerId: string; modelId: string } | null> => {
+      if (!services || !dbReady) return null
+      try {
+        const session = await services.sessionRepo.getSessionById(sessionId)
+        if (
+          session &&
+          isConfiguredProviderId(session.providerId) &&
+          isConfiguredDialogueModelId(session.modelId)
+        ) {
+          return {
+            providerId: session.providerId.trim(),
+            modelId: session.modelId.trim()
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load session model', e)
+      }
+      return null
+    },
+    [services, dbReady]
+  )
+
+  const applySessionDialogueModel = useCallback((providerId: string, modelId: string) => {
+    userManuallySetModelRef.current = true
+    setCurrentProviderId(providerId)
+    setCurrentModelId(modelId)
+  }, [])
+
   const syncWithSession = useCallback(
-    (sessionId: string | null | undefined) => {
-      if (prevSessionIdRef.current === sessionId) return
-      prevSessionIdRef.current = sessionId ?? null
+    async (sessionId: string | null | undefined) => {
+      const normalizedSessionId = sessionId ?? null
+      const sessionChanged = prevSessionIdRef.current !== normalizedSessionId
+      const dbBecameReady = dbReady && !lastSyncedDbReadyRef.current
+      lastSyncedDbReadyRef.current = dbReady
+
+      if (!sessionChanged && !dbBecameReady) return
+
+      const prevSessionId = prevSessionIdRef.current
+      prevSessionIdRef.current = normalizedSessionId
+
+      // 首条消息内联创建会话：保留当前已选模型，避免被伙伴/全局默认覆盖为「未选择」
+      if (
+        !prevSessionId &&
+        normalizedSessionId &&
+        isConfiguredProviderId(currentProviderId) &&
+        isConfiguredDialogueModelId(currentModelId)
+      ) {
+        return
+      }
+
+      if (!normalizedSessionId) {
+        userManuallySetModelRef.current = false
+        applyResolvedModel(currentAssistant, globalModels)
+        return
+      }
+
+      const sessionModel = await loadSessionDialogueModel(normalizedSessionId)
+      if (sessionModel) {
+        applySessionDialogueModel(sessionModel.providerId, sessionModel.modelId)
+        return
+      }
+
       userManuallySetModelRef.current = false
       applyResolvedModel(currentAssistant, globalModels)
     },
-    [applyResolvedModel, currentAssistant, globalModels]
+    [
+      applyResolvedModel,
+      applySessionDialogueModel,
+      currentAssistant,
+      globalModels,
+      currentProviderId,
+      currentModelId,
+      loadSessionDialogueModel,
+      dbReady
+    ]
   )
 
   useEffect(() => {
@@ -149,12 +220,30 @@ export function useAgentModel(_options: UseAgentModelOptions = {}) {
     [applyResolvedModel, globalModels]
   )
 
-  const handleSelectModel = useCallback((providerId: string, modelId: string) => {
-    userManuallySetModelRef.current = true
-    setCurrentProviderId(providerId)
-    setCurrentModelId(modelId)
-    setShowModelSwitcher(false)
-  }, [])
+  const handleSelectModel = useCallback(
+    async (providerId: string, modelId: string) => {
+      applySessionDialogueModel(providerId, modelId)
+      setShowModelSwitcher(false)
+
+      const sessionId = currentSessionIdRef?.current ?? null
+      if (
+        !sessionId ||
+        !services ||
+        !dbReady ||
+        !isConfiguredProviderId(providerId) ||
+        !isConfiguredDialogueModelId(modelId)
+      ) {
+        return
+      }
+
+      try {
+        await services.sessionManager.updateSessionDialogueModel(sessionId, providerId, modelId)
+      } catch (e) {
+        console.warn('Failed to persist session model', e)
+      }
+    },
+    [applySessionDialogueModel, currentSessionIdRef, services, dbReady]
+  )
 
   const displayModelName = formatDialogueModelLabel(currentModelId)
   const hasConfiguredDialogueModel =

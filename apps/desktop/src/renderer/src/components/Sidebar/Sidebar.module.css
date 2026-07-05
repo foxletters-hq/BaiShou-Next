@@ -142,18 +142,19 @@
 }
 
 .navIcon {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   margin-right: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  font-size: 18px;
 }
 
 .navIcon svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
 }
 
 .navLabel {
@@ -218,11 +219,18 @@
 }
 
 .checkboxIcon {
+  width: 20px;
+  height: 20px;
   font-size: 20px;
   margin-right: 12px;
   display: flex;
   align-items: center;
   color: var(--text-secondary);
+}
+
+.checkboxIcon svg {
+  width: 1em;
+  height: 1em;
 }
 
 .checked {
@@ -272,10 +280,15 @@
   border-radius: 6px;
   background-color: rgba(var(--text-primary-rgb), 0.06);
   color: var(--text-secondary);
-  font-size: 18px;
+  font-size: 16px;
   transition:
     transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
     color 0.2s ease;
+}
+
+.hiddenSectionExpandBtn svg {
+  width: 1em;
+  height: 1em;
 }
 
 .hiddenSectionToggleOpen .hiddenSectionExpandBtn {

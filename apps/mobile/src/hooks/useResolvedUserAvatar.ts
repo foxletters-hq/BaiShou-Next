@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useBaishou } from '../providers/BaishouProvider'
+import { isCustomUserAvatar } from '@baishou/shared'
 import {
   peekUserAvatarDisplayCache,
   resolveUserAvatarForMobileUi
@@ -28,7 +29,7 @@ export function useResolvedUserAvatar(avatarPath?: string | null): string | null
       return
     }
 
-    if (pathChanged) {
+    if (pathChanged && !isCustomUserAvatar(avatarPath)) {
       setUri(null)
     }
 

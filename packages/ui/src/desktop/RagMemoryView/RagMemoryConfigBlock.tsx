@@ -1,28 +1,40 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdTune } from 'react-icons/md'
 import {
   BATCH_EMBED_CONCURRENCY_MAX,
   BATCH_EMBED_CONCURRENCY_MIN,
-  DEFAULT_BATCH_EMBED_CONCURRENCY
+  DEFAULT_BATCH_EMBED_CONCURRENCY,
+  RAG_TOP_K_MAX
 } from '@baishou/shared'
 import { HelpTooltip } from '../HelpTooltip'
 import type { RagConfig } from './rag-memory.types'
 import styles from './RagMemoryView.module.css'
+import { SlidersHorizontal } from 'lucide-react'
 
 interface RagMemoryConfigBlockProps {
   config: RagConfig
   onChange: (config: RagConfig) => void
 }
 
+function coerceNumber(value: unknown, fallback: number): number {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
 export const RagMemoryConfigBlock: React.FC<RagMemoryConfigBlockProps> = ({ config, onChange }) => {
   const { t } = useTranslation()
+  const ragTopK = coerceNumber(config.ragTopK, 30)
+  const ragSimilarityThreshold = coerceNumber(config.ragSimilarityThreshold, 0.4)
+  const batchEmbedConcurrency = coerceNumber(
+    config.batchEmbedConcurrency,
+    DEFAULT_BATCH_EMBED_CONCURRENCY
+  )
 
   return (
     <div className={styles.configBlock}>
       <div className={styles.configBlockHeader}>
         <span className={styles.configBlockIcon}>
-          <MdTune size={18} />
+          <SlidersHorizontal size={18} />
         </span>
         <span className={styles.configBlockTitle}>
           {t('settings.rag_config_params', '检索参数调节')}
@@ -45,12 +57,12 @@ export const RagMemoryConfigBlock: React.FC<RagMemoryConfigBlockProps> = ({ conf
             type="range"
             className={styles.rangeInput}
             min="1"
-            max="50"
+            max={String(RAG_TOP_K_MAX)}
             step="1"
-            value={config.ragTopK || 30}
+            value={ragTopK}
             onChange={(e) => onChange({ ...config, ragTopK: parseInt(e.target.value) })}
           />
-          <span className={styles.paramValueBlue}>{config.ragTopK || 30}</span>
+          <span className={styles.paramValueBlue}>{ragTopK}</span>
         </div>
         <div className={styles.paramSliderRow}>
           <div className={styles.paramLabelGroup}>
@@ -70,7 +82,7 @@ export const RagMemoryConfigBlock: React.FC<RagMemoryConfigBlockProps> = ({ conf
             min="0"
             max="1"
             step="0.05"
-            value={config.ragSimilarityThreshold ?? 0.4}
+            value={ragSimilarityThreshold}
             onChange={(e) =>
               onChange({
                 ...config,
@@ -78,9 +90,7 @@ export const RagMemoryConfigBlock: React.FC<RagMemoryConfigBlockProps> = ({ conf
               })
             }
           />
-          <span className={styles.paramValueBlue}>
-            {(config.ragSimilarityThreshold ?? 0.4).toFixed(2)}
-          </span>
+          <span className={styles.paramValueBlue}>{ragSimilarityThreshold.toFixed(2)}</span>
         </div>
         <div className={styles.paramSliderRow}>
           <div className={styles.paramLabelGroup}>
@@ -90,7 +100,7 @@ export const RagMemoryConfigBlock: React.FC<RagMemoryConfigBlockProps> = ({ conf
             <HelpTooltip
               content={t(
                 'settings.rag_batch_embed_concurrency_hint',
-                '同时嵌入的日记篇数。数值越大越快，但更容易触发 API 限流；建议 2–3。'
+                '同时嵌入的日记篇数。数值越大越快，但更容易触发 API 限流；默认 20，遇限流可调低。'
               )}
             />
           </div>
@@ -100,7 +110,7 @@ export const RagMemoryConfigBlock: React.FC<RagMemoryConfigBlockProps> = ({ conf
             min={BATCH_EMBED_CONCURRENCY_MIN}
             max={BATCH_EMBED_CONCURRENCY_MAX}
             step="1"
-            value={config.batchEmbedConcurrency ?? DEFAULT_BATCH_EMBED_CONCURRENCY}
+            value={batchEmbedConcurrency}
             onChange={(e) =>
               onChange({
                 ...config,
@@ -108,9 +118,7 @@ export const RagMemoryConfigBlock: React.FC<RagMemoryConfigBlockProps> = ({ conf
               })
             }
           />
-          <span className={styles.paramValueBlue}>
-            {config.batchEmbedConcurrency ?? DEFAULT_BATCH_EMBED_CONCURRENCY}
-          </span>
+          <span className={styles.paramValueBlue}>{batchEmbedConcurrency}</span>
         </div>
       </div>
     </div>

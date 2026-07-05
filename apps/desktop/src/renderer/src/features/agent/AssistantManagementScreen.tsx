@@ -72,6 +72,16 @@ export const AssistantManagementScreen: React.FC = () => {
                 return (
                   <AssistantEditPage
                     assistant={target}
+                    onPatchSave={async (assistantId, patch) => {
+                      if (typeof window !== 'undefined' && window.electron) {
+                        await window.electron.ipcRenderer.invoke(
+                          'agent:update-assistant',
+                          assistantId,
+                          patch
+                        )
+                        await loadAssistants()
+                      }
+                    }}
                     onSave={async (data) => {
                       if (typeof window !== 'undefined' && window.electron) {
                         await window.electron.ipcRenderer.invoke(

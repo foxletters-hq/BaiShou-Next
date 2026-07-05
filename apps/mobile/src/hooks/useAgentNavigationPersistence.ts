@@ -33,6 +33,7 @@ type UseAgentNavigationPersistenceOptions = {
   handleSelectSession: (sessionId: string) => Promise<void>
   loadSessions: (resetOffset?: boolean, overrideAssistantId?: string) => Promise<void>
   clearSession: () => void
+  invalidateCurrentSession: () => void
 }
 
 const RECONCILE_THROTTLE_MS = 2000
@@ -57,7 +58,8 @@ export function useAgentNavigationPersistence({
   handleSelectAssistant,
   handleSelectSession,
   loadSessions,
-  clearSession
+  clearSession,
+  invalidateCurrentSession
 }: UseAgentNavigationPersistenceOptions) {
   const hydratedRef = useRef(false)
   const initialRestoreDoneRef = useRef(false)
@@ -67,7 +69,12 @@ export function useAgentNavigationPersistence({
   const prevAssistantIdRef = useRef<string | null>(null)
   const lastReconcileAtRef = useRef(0)
   const lastReconcileKeyRef = useRef('')
+  const currentSessionIdRef = useRef<string | null>(currentSessionId)
+  const currentAssistantIdRef = useRef<string | null>(currentAssistant?.id ?? null)
   const [navigationHydrationEpoch, setNavigationHydrationEpoch] = useState(0)
+
+  currentSessionIdRef.current = currentSessionId
+  currentAssistantIdRef.current = currentAssistant?.id ?? null
 
   const persistSnapshot = useCallback(
     async (snapshot: { assistantId: string | null; sessionId: string | null }) => {
@@ -144,7 +151,7 @@ export function useAgentNavigationPersistence({
           const session = await lookupSession(services.sessionManager, saved.sessionId)
           if (cancelled) return
           if (!session) {
-            clearSession()
+            invalidateCurrentSession()
             return
           }
 
@@ -180,6 +187,7 @@ export function useAgentNavigationPersistence({
   }, [
     assistants,
     clearSession,
+    invalidateCurrentSession,
     currentAssistant,
     currentSessionId,
     dbReady,
@@ -205,6 +213,7 @@ export function useAgentNavigationPersistence({
     prevSessionIdRef.current = currentSessionId
 
     const assistantChanged = currentAssistant?.id !== prevAssistantIdRef.current
+    const sessionChanged = prevSessionId !== currentSessionId
     if (assistantChanged) {
       prevAssistantIdRef.current = currentAssistant?.id ?? null
     }
@@ -212,7 +221,8 @@ export function useAgentNavigationPersistence({
     if (
       shouldPersistNavigationImmediately({
         assistantChanged,
-        sessionCleared: Boolean(prevSessionId && !currentSessionId)
+        sessionCleared: Boolean(prevSessionId && !currentSessionId),
+        sessionChanged
       })
     ) {
       void persistSnapshot(snapshot)
@@ -318,7 +328,7 @@ export function useAgentNavigationPersistence({
 
       const session = await lookupSession(services.sessionManager, saved.sessionId)
       if (!session) {
-        clearSession()
+        invalidateCurrentSession()
         return
       }
       await handleSelectSession(saved.sessionId)
@@ -328,7 +338,7 @@ export function useAgentNavigationPersistence({
 
     const session = await lookupSession(services.sessionManager, currentSessionId)
     if (!session) {
-      clearSession()
+      invalidateCurrentSession()
       return
     }
 
@@ -348,7 +358,7 @@ export function useAgentNavigationPersistence({
     }
   }, [
     assistants,
-    clearSession,
+    invalidateCurrentSession,
     currentAssistant,
     currentSessionId,
     dbReady,
@@ -364,6 +374,16 @@ export function useAgentNavigationPersistence({
     useCallback(() => {
       if (restoringRef.current) return
       void reconcileSessionAssistant()
-    }, [reconcileSessionAssistant])
+
+      return () => {
+        if (!hydratedRef.current || !services) return
+        void (async () => {
+          await persistSnapshot({
+            assistantId: currentAssistantIdRef.current,
+            sessionId: currentSessionIdRef.current
+          })
+        })()
+      }
+    }, [reconcileSessionAssistant, persistSnapshot, services])
   )
 }

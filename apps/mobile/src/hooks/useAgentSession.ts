@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef, type MutableRefObject } from 'react'
+import { useFocusEffect } from '@react-navigation/native'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast } from '@baishou/ui/native'
 import { useAgentStore, type AgentMessagePart } from '@baishou/store'
@@ -15,6 +16,7 @@ import {
   dedupeMessagesById
 } from '../utils/chat-round-pagination'
 import { messageHasUsageStats } from '../utils/message-usage.util'
+import { logAgentScrollEvent } from '../utils/agent-scroll-diagnostics'
 
 interface SessionMessage {
   id: string
@@ -64,6 +66,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
     ecosystemResyncEpoch
   } = useBaishou()
   const storageRootRef = useRef<string | null>(null)
+  const attachmentsBasePathRef = useRef<string | null>(null)
 
   const [hasMore, setHasMore] = useState(false)
 
@@ -80,6 +83,8 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
   }
   const lastVaultRevisionRef = useRef(vaultRevision)
   const lastEcosystemResyncEpochRef = useRef(ecosystemResyncEpoch)
+  /** 递增后使进行中的 DB 刷新放弃写回 UI，避免截断前发起的 reload 覆盖乐观截断 */
+  const reloadEpochRef = useRef(0)
 
   const resetSessionState = useCallback(() => {
     setCurrentSessionId(null)
@@ -90,27 +95,53 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
 
   useEffect(() => {
     storageRootRef.current = null
+    attachmentsBasePathRef.current = null
     if (!services) return
     let cancelled = false
-    void services.pathService.getRootDirectory().then((root) => {
-      if (!cancelled) storageRootRef.current = root
-    })
+    void (async () => {
+      const [root, attachmentsBase] = await Promise.all([
+        services.pathService.getRootDirectory(),
+        services.pathService.getAttachmentsBaseDirectory()
+      ])
+      if (!cancelled) {
+        storageRootRef.current = root
+        attachmentsBasePathRef.current = attachmentsBase
+      }
+    })()
     return () => {
       cancelled = true
     }
   }, [services, vaultRevision])
 
-  const resolveStorageRoot = useCallback(async (): Promise<string | undefined> => {
-    if (storageRootRef.current) return storageRootRef.current
-    if (!services) return undefined
-    const root = await services.pathService.getRootDirectory()
-    storageRootRef.current = root
-    return root
+  const resolveStorageContext = useCallback(async (): Promise<{
+    storageRoot?: string
+    attachmentsBasePath?: string
+  }> => {
+    if (storageRootRef.current && attachmentsBasePathRef.current) {
+      return {
+        storageRoot: storageRootRef.current,
+        attachmentsBasePath: attachmentsBasePathRef.current
+      }
+    }
+    if (!services) return {}
+    const [storageRoot, attachmentsBasePath] = await Promise.all([
+      services.pathService.getRootDirectory(),
+      services.pathService.getAttachmentsBaseDirectory()
+    ])
+    storageRootRef.current = storageRoot
+    attachmentsBasePathRef.current = attachmentsBasePath
+    return { storageRoot, attachmentsBasePath }
   }, [services])
 
-  const mapDbMessageToUI = useCallback((msg: any, storageRoot?: string): SessionMessage => {
-    return mapSessionMessageFromDb(msg, { storageRoot }) as SessionMessage
-  }, [])
+  const mapDbMessageToUI = useCallback(
+    (
+      msg: any,
+      context?: { storageRoot?: string; attachmentsBasePath?: string }
+    ): SessionMessage => {
+      return mapSessionMessageFromDb(msg, context) as SessionMessage
+    },
+    []
+  )
 
   const syncFromCache = useCallback(
     (roundWindowStart: number) => {
@@ -127,6 +158,10 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
     [setMessages]
   )
 
+  const bumpReloadEpoch = useCallback(() => {
+    reloadEpochRef.current += 1
+  }, [])
+
   const ingestFetchedTail = useCallback(
     (fetched: SessionMessage[], preserveWindow: boolean) => {
       messageCacheRef.current = dedupeMessagesById(fetched)
@@ -142,7 +177,14 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
         start = Math.min(start, computeInitialRoundWindowStart(rounds.length))
       }
 
-      return syncFromCache(start)
+      const result = syncFromCache(start)
+      logAgentScrollEvent('messages_reload', {
+        fetchedCount: fetched.length,
+        displayCount: result.display.length,
+        roundWindowStart: result.roundWindowStart,
+        preserveWindow
+      })
+      return result
     },
     [syncFromCache]
   )
@@ -162,15 +204,18 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
       const retryCount = options?.retryCount ?? 1
       const waitForLatestUsage = options?.waitForLatestUsage ?? false
       const commitToUi = options?.commitToUi ?? true
+      const commitEpoch = reloadEpochRef.current
 
       let mapped: SessionMessage[] | null = null
 
       for (let attempt = 0; attempt < retryCount; attempt++) {
         try {
-          const storageRoot = await resolveStorageRoot()
+          const { storageRoot, attachmentsBasePath } = await resolveStorageContext()
           const fetchLimit = Math.max(loadedFromEndRef.current, CHAT_MESSAGE_FETCH_LIMIT)
           const rows = await services.sessionManager.getMessagesBySession(sessionId, fetchLimit, 0)
-          mapped = (rows ?? []).map((msg: any) => mapDbMessageToUI(msg, storageRoot))
+          mapped = (rows ?? []).map((msg: any) =>
+            mapDbMessageToUI(msg, { storageRoot, attachmentsBasePath })
+          )
 
           const latestAssistant = [...mapped].reverse().find((m) => m.role === 'assistant')
           if (
@@ -201,13 +246,13 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
         return false
       }
 
-      if (commitToUi) {
+      if (commitToUi && commitEpoch === reloadEpochRef.current) {
         ingestFetchedTail(mapped, options?.preserveWindow ?? false)
       }
 
       return true
     },
-    [dbReady, services, mapDbMessageToUI, ingestFetchedTail, resolveStorageRoot]
+    [dbReady, services, mapDbMessageToUI, ingestFetchedTail, resolveStorageContext]
   )
 
   const loadMessages = useCallback(
@@ -236,7 +281,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
         return
       }
 
-      const storageRoot = await resolveStorageRoot()
+      const { storageRoot, attachmentsBasePath } = await resolveStorageContext()
       const fetched = await services.sessionManager.getMessagesBySession(
         currentSessionId,
         CHAT_MESSAGE_FETCH_LIMIT,
@@ -252,7 +297,9 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
       fetchHasMoreRef.current = fetched.length >= CHAT_MESSAGE_FETCH_LIMIT
       loadedFromEndRef.current += fetched.length
 
-      const mapped = fetched.map((msg: any) => mapDbMessageToUI(msg, storageRoot))
+      const mapped = fetched.map((msg: any) =>
+        mapDbMessageToUI(msg, { storageRoot, attachmentsBasePath })
+      )
       const oldStart = roundWindowStartRef.current
       const prependedRoundCount = groupMessagesIntoRounds(mapped).length
       messageCacheRef.current = dedupeMessagesById([...mapped, ...messageCacheRef.current])
@@ -267,13 +314,28 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
     } finally {
       loadMoreLockRef.current = false
     }
-  }, [dbReady, currentSessionId, services, mapDbMessageToUI, syncFromCache, resolveStorageRoot])
+  }, [dbReady, currentSessionId, services, mapDbMessageToUI, syncFromCache, resolveStorageContext])
 
   const handleSelectSession = useCallback(
     async (sessionId: string) => {
+      if (sessionId === useAgentStore.getState().currentSessionId) {
+        if (!dbReady || !services || vaultSwitching) return
+        await loadMessages(sessionId)
+        return
+      }
       setCurrentSessionId(sessionId)
     },
-    [setCurrentSessionId]
+    [setCurrentSessionId, dbReady, services, vaultSwitching, loadMessages]
+  )
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!currentSessionId || !dbReady || !services || vaultSwitching) return
+      const { messages, isLoading } = useAgentStore.getState()
+      if (messages.length === 0 && !isLoading) {
+        void loadMessages(currentSessionId)
+      }
+    }, [currentSessionId, dbReady, services, vaultSwitching, loadMessages])
   )
 
   useEffect(() => {
@@ -407,12 +469,14 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
     messages,
     loadMessages,
     refreshSessionMessages,
+    bumpReloadEpoch,
     handleLoadMore,
     handleSelectSession,
     handleAssistantSwitched,
     handleCreateSession,
     handleDeleteSession,
     handlePinSession,
-    handleRenameSession
+    handleRenameSession,
+    invalidateCurrentSession: resetSessionState
   }
 }

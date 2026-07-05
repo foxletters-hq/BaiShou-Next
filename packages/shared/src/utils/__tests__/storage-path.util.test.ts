@@ -25,10 +25,17 @@ describe('storage-path.util', () => {
     expect(isPathInsideStorageRoot('/other', '/root')).toBe(false)
   })
 
-  it('skips sqlite sidecar and staging dir', () => {
+  it('detects child inside root case-insensitively on Windows paths', () => {
+    expect(isPathInsideStorageRoot('D:\\Vaults\\backup.zip', 'd:\\vaults')).toBe(true)
+    expect(isPathInsideStorageRoot('D:\\Desktop\\backup.zip', 'D:\\Vaults')).toBe(false)
+  })
+
+  it('skips sqlite sidecar, staging dir, and git metadata', () => {
     expect(shouldSkipStorageMigrationEntry('baishou.db-wal')).toBe(true)
     expect(shouldSkipStorageMigrationEntry('temp')).toBe(true)
     expect(shouldSkipStorageMigrationEntry(STORAGE_MIGRATION_STAGING_DIR)).toBe(true)
+    expect(shouldSkipStorageMigrationEntry('.git')).toBe(true)
+    expect(shouldSkipStorageMigrationEntry('node_modules')).toBe(true)
     expect(shouldSkipStorageMigrationEntry('Personal')).toBe(false)
   })
 })

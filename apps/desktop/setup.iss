@@ -15,8 +15,8 @@
 AppId={{B4A8E2F1-6C3D-4A9B-8E7F-1D2C3B4A5968}
 AppName=白守
 AppVersion={#AppVersion}
-AppPublisher=Anson-Trio
-AppPublisherURL=https://github.com/Anson-Trio/BaiShou-Next
+AppPublisher=Anson-Trio / foxletters-hq
+AppPublisherURL=https://github.com/foxletters-hq/BaiShou-Next
 DefaultDirName={autopf}\BaiShou
 DefaultGroupName=白守
 DisableDirPage=no

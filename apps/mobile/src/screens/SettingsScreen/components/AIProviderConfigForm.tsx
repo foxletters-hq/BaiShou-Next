@@ -1,7 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme, useNativeToast, useDialog, Switch, Input } from '@baishou/ui/native'
+import {
+  useNativeTheme,
+  useNativeToast,
+  useDialog,
+  Switch,
+  Input,
+  ModelVisionBadge
+} from '@baishou/ui/native'
 import { AIProviderConfig } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { ProviderBrandIcon } from './ProviderBrandIcon'
@@ -362,15 +369,18 @@ export const AIProviderConfigForm: React.FC<AIProviderConfigFormProps> = ({
                     <View style={styles.modelRowLeading}>
                       <ProviderBrandIcon providerId={providerId} size={18} />
                     </View>
-                    <Text
-                      style={[
-                        styles.modelRowText,
-                        { color: on ? colors.primary : colors.textPrimary }
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {modelId}
-                    </Text>
+                    <View style={styles.modelRowTitle}>
+                      <Text
+                        style={[
+                          styles.modelRowText,
+                          { color: on ? colors.primary : colors.textPrimary }
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {modelId}
+                      </Text>
+                      <ModelVisionBadge modelId={modelId} providerKey={providerId} size={14} />
+                    </View>
                     <Switch
                       value={on}
                       onValueChange={(next) => toggleModelEnabled(modelId, next)}
@@ -470,8 +480,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
-  modelRowText: {
+  modelRowTitle: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    minWidth: 0
+  },
+  modelRowText: {
+    flexShrink: 1,
     fontSize: 13
   },
   loadMoreModelsBtn: {

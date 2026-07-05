@@ -15,3 +15,39 @@ export function normalizeDiaryTags(tags: unknown): string[] {
   }
   return []
 }
+
+/** 合并日记标签字符串，去重并保持顺序（先 existing 后 incoming） */
+export function mergeDiaryTags(existing: string | null | undefined, incoming: string): string {
+  const existingArr = (existing || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  const incomingArr = incoming
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  return Array.from(new Set([...existingArr, ...incomingArr])).join(', ')
+}
+
+/** 预览卡片默认最多展示的标签数，避免标签挤占正文区域 */
+export const DIARY_PREVIEW_TAG_LIMIT = 4
+
+export type LimitedDiaryPreviewTags = {
+  visibleTags: string[]
+  overflowCount: number
+}
+
+/** 预览卡片标签截断：保留前 N 个，其余计入 overflowCount */
+export function limitDiaryPreviewTags(
+  tags: string[] | null | undefined,
+  maxVisible = DIARY_PREVIEW_TAG_LIMIT
+): LimitedDiaryPreviewTags {
+  const normalized = normalizeDiaryTags(tags)
+  if (normalized.length <= maxVisible) {
+    return { visibleTags: normalized, overflowCount: 0 }
+  }
+  return {
+    visibleTags: normalized.slice(0, maxVisible),
+    overflowCount: normalized.length - maxVisible
+  }
+}

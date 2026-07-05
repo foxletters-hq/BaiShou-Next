@@ -1,6 +1,7 @@
 import React from 'react'
 import { View, Text, Pressable, Image, ImageSourcePropType, Linking } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { GITHUB_CONTRIBUTORS_URL, GITHUB_REPO_URL } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 import { Button } from '../Button'
 
@@ -23,6 +24,14 @@ export const AboutSettingsAboutContent: React.FC<AboutSettingsAboutContentProps>
   const { colors, tokens } = useNativeTheme()
 
   const heroSource = typeof heroImageSrc === 'string' ? { uri: heroImageSrc } : heroImageSrc
+  const innerCardStyle = {
+    backgroundColor: colors.bgSurface,
+    borderRadius: tokens.radius.md,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    padding: tokens.spacing.md,
+    gap: tokens.spacing.xs
+  } as const
 
   return (
     <View
@@ -56,98 +65,50 @@ export const AboutSettingsAboutContent: React.FC<AboutSettingsAboutContentProps>
       </Pressable>
 
       <View style={{ alignItems: 'center', gap: tokens.spacing.xs }}>
-        <Text
-          style={{
-            fontSize: 24,
-            fontWeight: '700',
-            color: colors.textPrimary
-          }}
-        >
+        <Text style={{ fontSize: 24, fontWeight: '700', color: colors.textPrimary }}>
           {t('about.app_name', '白守')}
         </Text>
-        <Text
-          style={{
-            fontSize: 16,
-            color: colors.textSecondary
-          }}
-        >
-          {version}
-        </Text>
+        <Text style={{ fontSize: 16, color: colors.textSecondary }}>{version}</Text>
       </View>
 
       <Pressable onPress={onDevTap}>
-        <View
-          style={{
-            backgroundColor: colors.bgSurfaceNormal,
-            borderRadius: tokens.radius.md,
-            padding: tokens.spacing.md,
-            gap: tokens.spacing.xs
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 14,
-              fontWeight: '600',
-              color: colors.textPrimary
-            }}
-          >
-            {t('about.developer_label', '开发者')}
+        <View style={innerCardStyle}>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>
+            {t('about.core_developer_label', '核心开发者')}
           </Text>
-          <Text
-            style={{
-              fontSize: 16,
-              color: colors.textPrimary
-            }}
-          >
+          <Text style={{ fontSize: 16, color: colors.textPrimary }}>
             Anson & Kasumiame Sakura & Tenkou Akatsuki
           </Text>
-          <Text
-            style={{
-              fontSize: 14,
-              color: colors.textSecondary
-            }}
-          >
-            The Trio
-          </Text>
+          <Text style={{ fontSize: 14, color: colors.textSecondary }}>The Trio</Text>
         </View>
       </Pressable>
 
       <Pressable onPress={() => Linking.openURL('https://www.gnu.org/licenses/agpl-3.0.html')}>
-        <View
-          style={{
-            backgroundColor: colors.bgSurfaceNormal,
-            borderRadius: tokens.radius.md,
-            padding: tokens.spacing.md,
-            gap: tokens.spacing.xs
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 14,
-              fontWeight: '600',
-              color: colors.textPrimary
-            }}
-          >
+        <View style={innerCardStyle}>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>
             {t('about.oss_license_label', '开源协议')}
           </Text>
-          <Text
-            style={{
-              fontSize: 16,
-              color: colors.textPrimary
-            }}
-          >
-            AGPL v3.0
-          </Text>
-          <Text
-            style={{
-              fontSize: 14,
-              color: colors.textSecondary
-            }}
-          >
+          <Text style={{ fontSize: 16, color: colors.textPrimary }}>AGPL v3.0</Text>
+          <Text style={{ fontSize: 14, color: colors.textSecondary }}>
             Copyright (C) 2026 Anson, Kasumiame Sakura & Tenkou Akatsuki
           </Text>
         </View>
       </Pressable>
+
+      <Text style={{ fontSize: 13, lineHeight: 19, color: colors.textSecondary, textAlign: 'center' }}>
+        {t(
+          'about.contributors_hint',
+          '白守受到社群小伙伴的支持，\n你可以直接点击这里查看代码贡献者！'
+        )}
+      </Text>
+
+      <Button
+        variant="secondary"
+        onPress={() => void Linking.openURL(GITHUB_CONTRIBUTORS_URL)}
+        className="w-full"
+      >
+        {t('about.view_contributors', '查看项目贡献者')}
+      </Button>
 
       <Button variant="primary" onPress={onOpenGithubHost} className="w-full">
         {t('about.visit_github', '访问 GitHub 仓库')}

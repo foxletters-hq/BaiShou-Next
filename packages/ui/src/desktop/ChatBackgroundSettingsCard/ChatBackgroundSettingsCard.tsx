@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { MdWallpaper, MdDelete } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import {
   CHAT_BACKGROUND_BLUR_MAX,
@@ -15,6 +14,7 @@ import {
 } from '@baishou/shared'
 import { SettingsExpansionTile } from '../shared/SettingsExpansionTile'
 import './ChatBackgroundSettingsCard.css'
+import { Image, Trash2 } from 'lucide-react'
 
 export interface ChatBackgroundSettingsProps {
   backgroundPath?: string | null
@@ -87,7 +87,7 @@ export const ChatBackgroundSettingsCard: React.FC<ChatBackgroundSettingsProps> =
       <SettingsExpansionTile
         embedded={embedded}
         isLast={isLast}
-        icon={<MdWallpaper size={24} />}
+        icon={<Image size={24} />}
         title={t('settings.chat_background', '聊天背景')}
         subtitle={subtitle}
       >
@@ -112,7 +112,7 @@ export const ChatBackgroundSettingsCard: React.FC<ChatBackgroundSettingsProps> =
             </>
           ) : (
             <div className="chat-bg-preview-placeholder">
-              <MdWallpaper size={32} />
+              <Image size={32} />
               <span>{t('settings.chat_background_pick_hint', '点击选择背景')}</span>
             </div>
           )}
@@ -170,7 +170,7 @@ export const ChatBackgroundSettingsCard: React.FC<ChatBackgroundSettingsProps> =
             </div>
 
             <button type="button" className="chat-bg-reset-btn" onClick={onClearBackground}>
-              <MdDelete size={16} />
+              <Trash2 size={16} />
               <span>{t('settings.chat_background_reset', '清除背景')}</span>
             </button>
           </>

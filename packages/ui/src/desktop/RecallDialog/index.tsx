@@ -6,6 +6,8 @@ import { DashboardSharedMemoryCard } from '../DashboardSharedMemoryCard/Dashboar
 import { toast } from '../Toast/useToast'
 import { Pagination } from '../Pagination/index'
 
+import type { SharedMemoryCopyPreview } from '@baishou/shared'
+
 export interface RecallItem {
   id: string
   type: 'diary' | 'memory'
@@ -27,6 +29,8 @@ export interface RecallDialogProps {
   lookbackMonths?: number
   onMonthsChanged?: (val: number) => void
   onCopyContext?: () => void
+  copyPreview?: SharedMemoryCopyPreview | null
+  copyPreviewLoading?: boolean
 }
 
 export const RecallDialog: React.FC<RecallDialogProps> = ({
@@ -40,7 +44,9 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
   onToggleSearchMode,
   lookbackMonths = 1,
   onMonthsChanged,
-  onCopyContext
+  onCopyContext,
+  copyPreview,
+  copyPreviewLoading
 }) => {
   const { t } = useTranslation()
   const [searchQuery, setSearchQuery] = useState('')
@@ -176,6 +182,8 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
                     lookbackMonths={lookbackMonths}
                     onMonthsChanged={onMonthsChanged}
                     onCopyContext={onCopyContext}
+                    copyPreview={copyPreview}
+                    copyPreviewLoading={copyPreviewLoading}
                   />
                 )}
                 {/* 日记档案搜索结果 */}

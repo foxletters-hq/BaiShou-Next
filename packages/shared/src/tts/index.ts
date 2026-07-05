@@ -3,6 +3,7 @@ export {
   parseCloneTtsVoiceList,
   fetchGptSovitsModelIds,
   fetchMimoTtsModelIds,
+  fetchMinimaxTtsModelIds,
   fetchTtsProviderModels,
   TtsFetchModelsError
 } from './fetch-tts-models'
@@ -41,10 +42,17 @@ export type {
 export { uint8ArrayToBase64, base64ToUint8Array } from './bytes-base64'
 export {
   stripFencedCodeBlocks,
+  stripMarkdownForTts,
   normalizeTtsWhitespace,
   splitTtsTextIntoChunks,
   prepareTtsSpeechChunks
 } from './tts-text-preprocess'
+export {
+  getTtsPlaybackGeneration,
+  registerTtsPlaybackStopHandler,
+  stopAllTtsPlayback
+} from './tts-playback-coordinator'
+export type { TtsPlaybackStopHandler } from './tts-playback-coordinator'
 export {
   TtsSynthesisCache,
   buildTtsSynthesisCacheKey,
@@ -127,6 +135,25 @@ export {
 } from './mimo-tts-stream.util'
 export { CloneTtsProvider } from './clone-tts.provider'
 export { GptSovitsProvider } from './gpt-sovits.provider'
+export {
+  MINIMAX_TTS_DEFAULT_MODELS,
+  MINIMAX_TTS_DEFAULT_VOICE,
+  MINIMAX_TTS_SUPPORTED_FORMATS,
+  isMinimaxTtsModel,
+  resolveMinimaxTtsAudioFormat,
+  clampMinimaxTtsSpeed
+} from './minimax-tts.util'
+export type { MinimaxTtsAudioFormat } from './minimax-tts.util'
+export { MinimaxTtsProvider } from './minimax-tts.provider'
+export { collectMinimaxTtsStreamAudio } from './minimax-tts-stream.util'
+export { hexToUint8Array } from './bytes-hex'
+export {
+  TTS_STREAM_CAPABLE_PROVIDER_IDS,
+  supportsTtsProviderStreaming,
+  resolveTtsStreamingEnabled,
+  shouldUseTtsSynthesisCache
+} from './tts-stream.util'
+export type { TtsStreamCapableProviderId } from './tts-stream.util'
 export {
   TtsNotConfiguredError,
   TtsProviderNotFoundError,

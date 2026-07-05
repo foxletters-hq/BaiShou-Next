@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom'
 import { undo } from '@codemirror/commands'
 import type { EditorView } from '@codemirror/view'
 import { useTranslation } from 'react-i18next'
+import { applyFixedContextMenuLayout } from '../ContextMenu/context-menu-placement.util'
+import { DIARY_EDITOR_OVERLAY_Z } from '../../shared/diary-codemirror/editorOverlayZIndex'
 import type { TextContextMenuState } from './codeMirrorEditor.types'
 
 interface CodeMirrorEditorContextMenuProps {
@@ -21,22 +23,7 @@ export function CodeMirrorEditorContextMenu({
 
   useLayoutEffect(() => {
     if (menu && cmMenuRef.current) {
-      const rect = cmMenuRef.current.getBoundingClientRect()
-      const windowWidth = window.innerWidth
-      const windowHeight = window.innerHeight
-
-      let adjustedX = menu.x
-      let adjustedY = menu.y
-
-      if (menu.x + rect.width > windowWidth) {
-        adjustedX = Math.max(10, windowWidth - rect.width - 10)
-      }
-      if (menu.y + rect.height > windowHeight) {
-        adjustedY = Math.max(10, windowHeight - rect.height - 10)
-      }
-
-      cmMenuRef.current.style.left = `${adjustedX}px`
-      cmMenuRef.current.style.top = `${adjustedY}px`
+      applyFixedContextMenuLayout(cmMenuRef.current, menu.x, menu.y)
     }
   }, [menu])
 
@@ -61,7 +48,7 @@ export function CodeMirrorEditorContextMenu({
           left: 0,
           right: 0,
           bottom: 0,
-          zIndex: 9999,
+          zIndex: DIARY_EDITOR_OVERLAY_Z.menuBackdrop,
           background: 'transparent'
         }}
         onMouseDown={onClose}
@@ -71,7 +58,7 @@ export function CodeMirrorEditorContextMenu({
         className="cm-context-menu"
         style={{
           position: 'fixed',
-          zIndex: 10000,
+          zIndex: DIARY_EDITOR_OVERLAY_Z.menu,
           left: menu.x,
           top: menu.y
         }}

@@ -16,6 +16,8 @@ const mockStorage: IEmbeddingStorage = {
   deleteEmbeddingsBySource: vi.fn(),
   clearEmbeddings: vi.fn(),
   hasPendingMigration: vi.fn(),
+  hasMigrationBackupTable: vi.fn().mockResolvedValue(true),
+  hasMigrationRollbackTable: vi.fn().mockResolvedValue(false),
   countHeterogeneousEmbeddings: vi.fn(),
   createMigrationBackup: vi.fn(),
   dropMigrationBackup: vi.fn(),

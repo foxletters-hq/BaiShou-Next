@@ -143,7 +143,9 @@ describe('HybridSearchService RRF Engine', () => {
       topK: 10
     })
 
-    expect(mockStorage.queryNativeVector).toHaveBeenCalledWith([0.1, 0.2, 0.3], 10, undefined)
+    expect(mockStorage.queryNativeVector).toHaveBeenCalledWith([0.1, 0.2, 0.3], 10, {
+      threshold: undefined
+    })
     expect(mockStorage.fetchAllEmbeddingsForDecoupledSearch).not.toHaveBeenCalled()
     expect(results.length).toBe(1)
     expect(results[0]?.messageId).toBe('d-1')

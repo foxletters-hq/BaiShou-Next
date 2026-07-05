@@ -22,6 +22,24 @@ export interface DiaryEditorWebViewSource {
   uri: string
   /** WebView baseUrl，须与 bundle 同目录 */
   baseUrl: string
+  /** bundle 版本戳，用于强制 WebView 在热更新后重新挂载 */
+  cacheKey: string
+}
+
+const FEATURE_MARKER = 'live-preview-inline-fenced-v20'
+
+function logStaging(message: string, detail?: Record<string, unknown>): void {
+  if (typeof __DEV__ === 'undefined' || !__DEV__) return
+  const extra = detail ? ` ${JSON.stringify(detail)}` : ''
+  console.log(`[DiaryEditor] ${message}${extra}`)
+}
+
+function makeSource(fingerprint: string): DiaryEditorWebViewSource {
+  return {
+    uri: STAGING_HTML,
+    baseUrl: STAGING_DIR,
+    cacheKey: fingerprint
+  }
 }
 
 let cachedSource: DiaryEditorWebViewSource | null = null
@@ -42,12 +60,20 @@ async function readAssetUri(moduleId: number): Promise<string | null> {
   return asset.localUri ?? asset.uri ?? null
 }
 
+const BUILD_STAMP_RE = /diary-editor-build:([^\s-]+)/
+
 async function buildFingerprint(htmlUri: string, bundleUri: string): Promise<string> {
-  const [htmlInfo, bundleInfo] = await Promise.all([
-    getInfoAsync(htmlUri, { size: true }),
-    getInfoAsync(bundleUri, { size: true })
+  const [htmlInfo, bundleInfo, shellHtml] = await Promise.all([
+    getInfoAsync(htmlUri),
+    getInfoAsync(bundleUri),
+    readAsStringAsync(htmlUri).catch(() => '')
   ])
-  return `${htmlInfo.size ?? 0}:${bundleInfo.size ?? 0}:${bundleInfo.modificationTime ?? 0}`
+  const htmlSize = htmlInfo.exists && 'size' in htmlInfo ? (htmlInfo.size ?? 0) : 0
+  const bundleSize = bundleInfo.exists && 'size' in bundleInfo ? (bundleInfo.size ?? 0) : 0
+  const bundleMtime =
+    bundleInfo.exists && 'modificationTime' in bundleInfo ? (bundleInfo.modificationTime ?? 0) : 0
+  const buildStamp = shellHtml.match(BUILD_STAMP_RE)?.[1] ?? ''
+  return `${buildStamp}:${htmlSize}:${bundleSize}:${bundleMtime}`
 }
 
 async function stageDiaryEditorBundle(
@@ -61,10 +87,66 @@ async function stageDiaryEditorBundle(
   await writeAsStringAsync(FINGERPRINT_FILE, fingerprint)
 }
 
+async function readBundledAssetContent(
+  htmlUri: string,
+  bundleUri: string
+): Promise<{ shellHtml: string; bundleJs: string; fingerprint: string } | null> {
+  const [shellHtml, bundleJs] = await Promise.all([
+    readAsStringAsync(htmlUri),
+    readAsStringAsync(bundleUri)
+  ])
+
+  if (!isValidShellHtml(shellHtml)) {
+    console.error(
+      `[DiaryEditor] index.html 无效（${shellHtml.length} chars）。请执行: cd apps/mobile && pnpm run build:diary-editor 后重启 Metro`
+    )
+    return null
+  }
+
+  if (bundleJs.length < MIN_BUNDLE_CHARS || !bundleJs.includes('__diaryCmOnNativeMessage')) {
+    console.error(
+      `[DiaryEditor] diary-editor.bundle 无效（${bundleJs.length} chars）。请重新 build:diary-editor`
+    )
+    return null
+  }
+
+  const fingerprint = await buildFingerprint(htmlUri, bundleUri)
+  return { shellHtml, bundleJs, fingerprint }
+}
+
+async function isStagedBundleCurrent(
+  fingerprint: string,
+  assetBundleSize: number
+): Promise<boolean> {
+  try {
+    const [stagedHtmlInfo, stagedBundleInfo, savedFingerprint] = await Promise.all([
+      getInfoAsync(STAGING_HTML),
+      getInfoAsync(STAGING_BUNDLE),
+      readAsStringAsync(FINGERPRINT_FILE).catch(() => null)
+    ])
+    const stagedBundleSize =
+      stagedBundleInfo.exists && 'size' in stagedBundleInfo ? (stagedBundleInfo.size ?? 0) : 0
+    if (stagedBundleSize !== assetBundleSize) {
+      return false
+    }
+    return (
+      stagedHtmlInfo.exists &&
+      stagedBundleInfo.exists &&
+      savedFingerprint === fingerprint &&
+      stagedBundleSize >= MIN_BUNDLE_CHARS
+    )
+  } catch {
+    return false
+  }
+}
+
 async function readDiaryEditorWebViewSource(): Promise<DiaryEditorWebViewSource | null> {
   try {
     const [htmlUri, bundleUri] = await Promise.all([
+      // RN/Metro 静态资源只能通过 require 加载（无法用 ESM import）
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       readAssetUri(require('../../assets/diary-editor/index.html')),
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       readAssetUri(require('../../assets/diary-editor/diary-editor.bundle'))
     ])
 
@@ -73,62 +155,52 @@ async function readDiaryEditorWebViewSource(): Promise<DiaryEditorWebViewSource 
       return null
     }
 
-    const [shellHtml, bundleJs] = await Promise.all([
-      readAsStringAsync(htmlUri),
-      readAsStringAsync(bundleUri)
-    ])
-
-    if (!isValidShellHtml(shellHtml)) {
-      console.error(
-        `[DiaryEditor] index.html 无效（${shellHtml.length} chars）。请执行: cd apps/mobile && pnpm run build:diary-editor 后重启 Metro`
-      )
-      return null
-    }
-
-    if (
-      bundleJs.length < MIN_BUNDLE_CHARS ||
-      !bundleJs.includes('__diaryCmOnNativeMessage')
-    ) {
-      console.error(
-        `[DiaryEditor] diary-editor.bundle 无效（${bundleJs.length} chars）。请重新 build:diary-editor`
-      )
-      return null
-    }
-
     const fingerprint = await buildFingerprint(htmlUri, bundleUri)
-    let needsStage = true
-
-    try {
-      const [stagedHtmlInfo, stagedBundleInfo, savedFingerprint] = await Promise.all([
-        getInfoAsync(STAGING_HTML),
-        getInfoAsync(STAGING_BUNDLE),
-        readAsStringAsync(FINGERPRINT_FILE).catch(() => null)
+    const bundleInfo = await getInfoAsync(bundleUri)
+    const assetBundleSize = bundleInfo.exists && 'size' in bundleInfo ? (bundleInfo.size ?? 0) : 0
+    const stagedCurrent = await isStagedBundleCurrent(fingerprint, assetBundleSize)
+    if (stagedCurrent) {
+      const [stagedBundleJs, stagedShellHtml] = await Promise.all([
+        readAsStringAsync(STAGING_BUNDLE).catch(() => ''),
+        readAsStringAsync(STAGING_HTML).catch(() => '')
       ])
-      needsStage =
-        !stagedHtmlInfo.exists ||
-        !stagedBundleInfo.exists ||
-        savedFingerprint !== fingerprint
-    } catch {
-      needsStage = true
-    }
-
-    if (needsStage) {
-      await stageDiaryEditorBundle(htmlUri, bundleUri, fingerprint)
-      if (typeof __DEV__ !== 'undefined' && __DEV__) {
-        console.log('[DiaryEditor] 已复制 WebView bundle 到同目录:', STAGING_DIR)
+      const hasFeatureMarker = stagedBundleJs.includes(FEATURE_MARKER)
+      logStaging('WebView bundle 已缓存（磁盘 staging 与 asset 指纹一致）', {
+        fingerprint,
+        stagedBundleBytes: stagedBundleJs.length,
+        hasFeatureMarker,
+        buildStamp: stagedShellHtml.match(BUILD_STAMP_RE)?.[1] ?? '(none)'
+      })
+      if (!hasFeatureMarker) {
+        console.warn(
+          `[DiaryEditor] staging bundle 缺少 ${FEATURE_MARKER}，将强制重新复制。请确认已执行 build:diary-editor`
+        )
+      } else {
+        return makeSource(fingerprint)
       }
     }
 
-    if (typeof __DEV__ !== 'undefined' && __DEV__) {
-      console.log(
-        `[DiaryEditor] WebView bundle 就绪: shell=${shellHtml.length} chars, js=${bundleJs.length}, uri=${STAGING_HTML}`
+    const bundled = await readBundledAssetContent(htmlUri, bundleUri)
+    if (!bundled) return null
+
+    const hasFeatureMarker = bundled.bundleJs.includes(FEATURE_MARKER)
+    if (!hasFeatureMarker) {
+      console.error(
+        `[DiaryEditor] asset bundle 缺少 ${FEATURE_MARKER}，表格改动未打进包。请执行: cd apps/mobile && pnpm run build:diary-editor`
       )
     }
 
-    return {
-      uri: STAGING_HTML,
-      baseUrl: STAGING_DIR
-    }
+    await stageDiaryEditorBundle(htmlUri, bundleUri, bundled.fingerprint)
+    logStaging('已复制 WebView bundle 到 staging', {
+      fingerprint: bundled.fingerprint,
+      shellChars: bundled.shellHtml.length,
+      bundleChars: bundled.bundleJs.length,
+      hasFeatureMarker,
+      buildStamp: bundled.shellHtml.match(BUILD_STAMP_RE)?.[1] ?? '(none)',
+      uri: STAGING_HTML
+    })
+
+    return makeSource(bundled.fingerprint)
   } catch (error) {
     console.error('[DiaryEditor] Failed to stage diary-editor WebView bundle:', error)
     return null
@@ -141,9 +213,11 @@ export function resetDiaryEditorWebViewSourceCache(): void {
   preloadPromise = null
 }
 
-/** 全局预加载 WebView HTML（P-4） */
+/** 懒加载 WebView HTML（首次进入编辑器时调用） */
 export function preloadDiaryEditorWebViewSource(): Promise<DiaryEditorWebViewSource | null> {
-  if (cachedSource) return Promise.resolve(cachedSource)
+  if (cachedSource && (typeof __DEV__ === 'undefined' || !__DEV__)) {
+    return Promise.resolve(cachedSource)
+  }
   if (!preloadPromise) {
     preloadPromise = readDiaryEditorWebViewSource().then((source) => {
       if (source) {
@@ -163,7 +237,8 @@ export function useDiaryEditorWebViewSource(): DiaryEditorWebViewSource | null {
   useEffect(() => {
     let cancelled = false
     void preloadDiaryEditorWebViewSource().then((resolved) => {
-      if (!cancelled) setSource(resolved)
+      if (cancelled || !resolved) return
+      setSource((prev) => (prev?.cacheKey === resolved.cacheKey ? prev : resolved))
     })
     return () => {
       cancelled = true

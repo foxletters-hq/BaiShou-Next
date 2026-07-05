@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useFocusEffect } from 'expo-router'
-import { View, StyleSheet, ScrollView, useWindowDimensions, StatusBar } from 'react-native'
+import { View, StyleSheet, ScrollView, useWindowDimensions, StatusBar, Text } from 'react-native'
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import * as Clipboard from 'expo-clipboard'
 import {
@@ -23,6 +23,8 @@ import { SummaryGalleryView } from './components/SummaryGalleryView'
 import { resolveSummaryConfig } from '../../services/mobile-summary-config.util'
 import { peekSummaryDashboardCache } from '../../lib/summary-dashboard-cache'
 import { emitSyncMutation } from '../../cache/mobile-cache-coordinator'
+import { usePersistedSharedMemoryLookback } from '../../hooks/usePersistedSharedMemoryLookback'
+import { useSharedMemoryCopyPreview } from '../../hooks/useSharedMemoryCopyPreview'
 
 export const SummaryScreen: React.FC = () => {
   const { t, i18n } = useTranslation()
@@ -44,7 +46,9 @@ export const SummaryScreen: React.FC = () => {
     }),
     [width]
   )
-  const [lookbackMonths, setLookbackMonths] = useState(1)
+  const { lookbackMonths, setLookbackMonths } = usePersistedSharedMemoryLookback()
+  const { preview: copyPreview, loading: copyPreviewLoading } =
+    useSharedMemoryCopyPreview(lookbackMonths)
   const [isBatchGenerating, setIsBatchGenerating] = useState(false)
   const [concurrencyLimit, setConcurrencyLimit] = useState(3)
   const [isRescanning, setIsRescanning] = useState(false)
@@ -237,6 +241,8 @@ export const SummaryScreen: React.FC = () => {
                         lookbackMonths={lookbackMonths}
                         onMonthsChanged={setLookbackMonths}
                         onCopyContext={handleCopyContext}
+                        copyPreview={copyPreview}
+                        copyPreviewLoading={copyPreviewLoading}
                       />
                     </View>
                     <View style={styles.flex1}>

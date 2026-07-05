@@ -12,7 +12,7 @@ const sections = [
       ['pnpm dev:mobile', '★ 日常开发：启动 Metro（只改 JS/TS；手机须已装开发版 APK）'],
       [
         'pnpm dev:mobile:clear',
-        '★ 全量重装：清 Metro/.expo/Gradle 缓存 + 重编安装 APK（升级 Expo、加原生模块、闪退时用；完成后 dev:mobile）'
+        '★ 全量重装：sync + 重打 diary-editor bundle，清 Metro/.expo/Gradle 缓存 + 重编安装 APK（升级 Expo、改 CM/WebView、加原生模块、闪退时用；完成后 dev:mobile）'
       ],
       ['pnpm mobile:connect', 'adb reverse + 打开 App（Metro 需已在 dev:mobile 跑着）'],
       ['pnpm mobile:install', '安装已编好的 debug APK（clear 编完但手机没点安装时用）']
@@ -64,6 +64,15 @@ const sections = [
       ['pnpm lint', '全仓 ESLint'],
       ['pnpm format', 'Prettier 格式化'],
       ['pnpm format:check', 'Prettier 检查（CI 用）']
+    ]
+  },
+  {
+    id: 'sync',
+    title: '同步生成物',
+    commands: [
+      ['pnpm sync', '★ 同步图标、版本号、供应商图标、视觉模型快照（manifest 未变时快速跳过）'],
+      ['pnpm sync:check', 'CI 校验生成物是否最新'],
+      ['pnpm sync --only=providers', '仅同步单项（icons / version / providers / vision）']
     ]
   },
   {

@@ -50,9 +50,7 @@ describe('useDiaryCodeMirrorBridge ready queue', () => {
   })
 
   it('queues outbound commands until WebView ready, then flushes after init', () => {
-    const { result } = renderHook(() =>
-      useDiaryCodeMirrorBridge({ content: 'seed', theme })
-    )
+    const { result } = renderHook(() => useDiaryCodeMirrorBridge({ content: 'seed', theme }))
     const postMessage = attachMockWebView(result.current)
 
     act(() => {
@@ -78,9 +76,7 @@ describe('useDiaryCodeMirrorBridge ready queue', () => {
   })
 
   it('sends commands immediately once ready', () => {
-    const { result } = renderHook(() =>
-      useDiaryCodeMirrorBridge({ content: 'live', theme })
-    )
+    const { result } = renderHook(() => useDiaryCodeMirrorBridge({ content: 'live', theme }))
     const postMessage = attachMockWebView(result.current)
     markReady(result.current)
     postMessage.mockClear()
@@ -94,9 +90,7 @@ describe('useDiaryCodeMirrorBridge ready queue', () => {
   })
 
   it('does not inject JavaScript when posting toolbar commands', () => {
-    const { result } = renderHook(() =>
-      useDiaryCodeMirrorBridge({ content: 'live', theme })
-    )
+    const { result } = renderHook(() => useDiaryCodeMirrorBridge({ content: 'live', theme }))
     const postMessage = attachMockWebView(result.current)
     markReady(result.current)
     const inject = result.current.webViewRef.current?.injectJavaScript as ReturnType<typeof vi.fn>
@@ -139,6 +133,43 @@ describe('useDiaryCodeMirrorBridge echo suppress', () => {
     expect(onChange).toHaveBeenCalledWith('user typed here')
   })
 
+  it('ignores WebView change echo after init mount', () => {
+    const onChange = vi.fn()
+    const { result } = renderHook(() =>
+      useDiaryCodeMirrorBridge({ content: '##### 07:00\n', theme, onChange })
+    )
+    attachMockWebView(result.current)
+    markReady(result.current)
+    onChange.mockClear()
+
+    sendFromWebView(result.current, {
+      type: 'change',
+      payload: { content: '##### 07:00\n' }
+    })
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('does not push setContent while WebView leads during rapid delete', () => {
+    const onChange = vi.fn()
+    const { result, rerender } = renderHook(
+      ({ content }) => useDiaryCodeMirrorBridge({ content, theme, onChange }),
+      { initialProps: { content: 'hello world' } }
+    )
+    const postMessage = attachMockWebView(result.current)
+    markReady(result.current)
+    onChange.mockClear()
+    postMessage.mockClear()
+
+    sendFromWebView(result.current, {
+      type: 'change',
+      payload: { content: 'hello worl' }
+    })
+    expect(onChange).toHaveBeenCalledWith('hello worl')
+
+    rerender({ content: 'hello world' })
+    expect(postedMessages(postMessage).some((m) => m.type === 'setContent')).toBe(false)
+  })
+
   it('does not suppress unrelated change after echo was consumed', () => {
     const onChange = vi.fn()
     const { result, rerender } = renderHook(
@@ -161,9 +192,7 @@ describe('useDiaryCodeMirrorBridge echo suppress', () => {
 describe('useDiaryCodeMirrorBridge onWebViewMessage', () => {
   it('ignores malformed WebView payloads', () => {
     const onChange = vi.fn()
-    const { result } = renderHook(() =>
-      useDiaryCodeMirrorBridge({ content: 'x', theme, onChange })
-    )
+    const { result } = renderHook(() => useDiaryCodeMirrorBridge({ content: 'x', theme, onChange }))
     attachMockWebView(result.current)
 
     act(() => {
@@ -179,9 +208,7 @@ describe('useDiaryCodeMirrorBridge onWebViewMessage', () => {
 
   it('requests ready again when load ends before handshake', () => {
     vi.useFakeTimers()
-    const { result } = renderHook(() =>
-      useDiaryCodeMirrorBridge({ content: 'seed', theme })
-    )
+    const { result } = renderHook(() => useDiaryCodeMirrorBridge({ content: 'seed', theme }))
     const postMessage = attachMockWebView(result.current)
 
     act(() => {
@@ -222,5 +249,48 @@ describe('useDiaryCodeMirrorBridge onWebViewMessage', () => {
     })
 
     expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('forwards dismissKeyboard to onDismissKeyboard', () => {
+    const onDismissKeyboard = vi.fn()
+    const { result } = renderHook(() =>
+      useDiaryCodeMirrorBridge({ content: 'x', theme, onDismissKeyboard })
+    )
+    attachMockWebView(result.current)
+
+    act(() => {
+      result.current.onWebViewMessage({
+        nativeEvent: { data: JSON.stringify({ type: 'dismissKeyboard' }) }
+      })
+    })
+
+    expect(onDismissKeyboard).toHaveBeenCalledOnce()
+  })
+
+  it('forwards confirmRequest to onConfirmRequest and can respond', () => {
+    const onConfirmRequest = vi.fn(
+      (_payload: { requestId: string }, respond: (confirmed: boolean) => void) => {
+        respond(true)
+      }
+    )
+    const { result } = renderHook(() =>
+      useDiaryCodeMirrorBridge({ content: 'x', theme, onConfirmRequest })
+    )
+    const postMessage = attachMockWebView(result.current)
+    markReady(result.current)
+
+    act(() => {
+      result.current.onWebViewMessage({
+        nativeEvent: {
+          data: JSON.stringify({
+            type: 'confirmRequest',
+            payload: { requestId: 'c1', message: '确定删除？' }
+          })
+        }
+      })
+    })
+
+    expect(onConfirmRequest).toHaveBeenCalledOnce()
+    expect(postedMessages(postMessage).some((m) => m.type === 'confirmResponse')).toBe(true)
   })
 })

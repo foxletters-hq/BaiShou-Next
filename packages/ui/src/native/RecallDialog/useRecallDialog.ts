@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import type { RecallItem, RecallTab } from './recall-dialog.types'
 
+export const RECALL_MEMORY_PAGE_SIZE = 6
+
 export function useRecallDialog(
   isOpen: boolean,
   items: RecallItem[],
@@ -12,6 +14,11 @@ export function useRecallDialog(
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState<RecallTab>('diary')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [memoryPage, setMemoryPage] = useState(1)
+
+  useEffect(() => {
+    setMemoryPage(1)
+  }, [searchQuery, activeTab, searchMode])
 
   useEffect(() => {
     if (!isOpen || activeTab !== 'diary') return
@@ -44,6 +51,7 @@ export function useRecallDialog(
     setActiveTab(tab)
     setSelectedIds(new Set())
     setSearchQuery('')
+    setMemoryPage(1)
   }
 
   const handleInject = () => {
@@ -60,6 +68,8 @@ export function useRecallDialog(
     switchTab,
     selectedIds,
     toggleSelect,
-    handleInject
+    handleInject,
+    memoryPage,
+    setMemoryPage
   }
 }

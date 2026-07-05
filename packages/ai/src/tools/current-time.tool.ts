@@ -13,6 +13,10 @@ export class CurrentTimeTool extends AgentTool<typeof currentTimeParams> {
 
   readonly parameters = currentTimeParams
 
+  override get canBeDisabled(): boolean {
+    return false
+  }
+
   async execute(_args: z.infer<typeof currentTimeParams>, _context: ToolContext): Promise<string> {
     const now = new Date()
 

@@ -110,6 +110,11 @@ export const syncApi = {
       ipcRenderer.on('archive:import-state', handler)
       return () => ipcRenderer.off('archive:import-state', handler)
     },
+    onArchiveImportProgress: (callback: (progress: { detail?: string }) => void) => {
+      const handler = (_: unknown, progress: { detail?: string }) => callback(progress)
+      ipcRenderer.on('archive:import-progress', handler)
+      return () => ipcRenderer.off('archive:import-progress', handler)
+    },
     pickZip: (locale?: string) => ipcRenderer.invoke('archive:pick-zip', locale),
     listSnapshots: () => ipcRenderer.invoke('archive:list-snapshots'),
     deleteSnapshot: (filename: string) => ipcRenderer.invoke('archive:delete-snapshot', filename),

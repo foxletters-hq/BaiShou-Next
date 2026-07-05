@@ -8,6 +8,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { useNativeTheme } from '../theme'
 import { settingsHubListStyles as hubStyles } from './settings-hub.styles'
+import { SettingsListLeadingIcon } from './SettingsListLeadingIcon'
 import { CollapsibleHeight } from './CollapsibleHeight'
 
 const SLIDE_MS = 280
@@ -15,6 +16,7 @@ const SLIDE_MS = 280
 export type SettingsExpansionFrame = 'primary' | 'subtle' | 'none'
 
 export interface SettingsExpansionTileProps {
+  icon?: React.ReactNode
   title: string
   titleAddon?: React.ReactNode
   subtitle?: string
@@ -31,6 +33,7 @@ export interface SettingsExpansionTileProps {
 }
 
 export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
+  icon,
   title,
   titleAddon,
   subtitle,
@@ -88,6 +91,7 @@ export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
         }
       ]}
     >
+      {icon ? <SettingsListLeadingIcon>{icon}</SettingsListLeadingIcon> : null}
       <View style={{ flex: 1 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Text style={[hubStyles.rowTitle, { color: colors.textPrimary }]}>{title}</Text>

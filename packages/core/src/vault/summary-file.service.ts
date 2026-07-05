@@ -2,6 +2,12 @@ import type { IFileSystem } from '../fs'
 import * as path from '../fs/path.util'
 import { IStoragePathService } from './storage-path.types'
 import { SummaryType, formatLocalDate } from '@baishou/shared'
+import {
+  findExistingSummaryFileInTypeDir,
+  listMarkdownInSummaryTypeDir,
+  resolveSummaryFileInTypeDir,
+  summaryTypeSupportsYearSubdir
+} from '../summary/summary-files.util'
 
 export class SummaryFileService {
   constructor(
@@ -66,22 +72,37 @@ export class SummaryFileService {
   async writeSummary(type: SummaryType, startDate: Date, content: string): Promise<string> {
     const dir = await this.getCategoryDir(type)
     const fileName = this.buildFileName(type, startDate)
-    const fullPath = path.join(dir, fileName)
+    const fullPath = await resolveSummaryFileInTypeDir(this.fileSystem, dir, fileName, {
+      type,
+      preferYearSubdir: summaryTypeSupportsYearSubdir(type)
+    })
+
+    const parentDir = path.dirname(fullPath)
+    if (!(await this.fileSystem.exists(parentDir))) {
+      await this.fileSystem.mkdir(parentDir, { recursive: true })
+    }
 
     await this.fileSystem.writeFile(fullPath, content.trim(), 'utf8')
     return fullPath
   }
 
-  async readSummary(type: SummaryType, startDate: Date): Promise<string | null> {
+  private async readSummaryFileAt(typeDir: string, fileName: string): Promise<string | null> {
+    const fullPath = await findExistingSummaryFileInTypeDir(this.fileSystem, typeDir, fileName)
+    if (!fullPath) return null
+    try {
+      const content = await this.fileSystem.readFile(fullPath, 'utf8')
+      return this.cleanMarkdownContent(content)
+    } catch (e: any) {
+      if (e.code === 'ENOENT') return null
+      throw e
+    }
+  }
+
+  private async collectSummarySearchDirectories(): Promise<string[]> {
     const base = await this.pathProvider.getSummariesBaseDirectory()
     const legacyBase = await this.pathProvider.getLegacyArchivesDirectory()
     const activeDir = await this.pathProvider.getActiveVaultPath()
 
-    const typeDirName = type.charAt(0).toUpperCase() + type.slice(1)
-    const standardFileName = this.buildFileName(type, startDate)
-    const transitionFileName = this.buildTransitionFileName(type, startDate)
-
-    // 收集所有要搜索的目录，去重且保持顺序
     const searchDirs = new Set<string>()
     searchDirs.add(base)
     if (activeDir) {
@@ -90,28 +111,29 @@ export class SummaryFileService {
     if (legacyBase) {
       searchDirs.add(legacyBase)
     }
+    return [...searchDirs]
+  }
+
+  async readSummary(type: SummaryType, startDate: Date): Promise<string | null> {
+    const typeDirName = type.charAt(0).toUpperCase() + type.slice(1)
+    const standardFileName = this.buildFileName(type, startDate)
+    const transitionFileName = this.buildTransitionFileName(type, startDate)
+
+    const searchDirs = await this.collectSummarySearchDirectories()
 
     // 优先尝试读取标准格式文件名
     for (const baseDir of searchDirs) {
-      const fullPath = path.join(baseDir, typeDirName, standardFileName)
-      try {
-        const content = await this.fileSystem.readFile(fullPath, 'utf8')
-        return this.cleanMarkdownContent(content)
-      } catch (e: any) {
-        if (e.code !== 'ENOENT') throw e
-      }
+      const typeDir = path.join(baseDir, typeDirName)
+      const content = await this.readSummaryFileAt(typeDir, standardFileName)
+      if (content != null) return content
     }
 
     // 如果标准格式没有找到，再尝试读取过渡期文件名（若不同）
     if (standardFileName !== transitionFileName) {
       for (const baseDir of searchDirs) {
-        const fullPath = path.join(baseDir, typeDirName, transitionFileName)
-        try {
-          const content = await this.fileSystem.readFile(fullPath, 'utf8')
-          return this.cleanMarkdownContent(content)
-        } catch (e: any) {
-          if (e.code !== 'ENOENT') throw e
-        }
+        const typeDir = path.join(baseDir, typeDirName)
+        const content = await this.readSummaryFileAt(typeDir, transitionFileName)
+        if (content != null) return content
       }
     }
 
@@ -129,35 +151,19 @@ export class SummaryFileService {
   }
 
   async deleteSummary(type: SummaryType, startDate: Date): Promise<void> {
-    const base = await this.pathProvider.getSummariesBaseDirectory()
-    const legacyBase = await this.pathProvider.getLegacyArchivesDirectory()
-    const activeDir = await this.pathProvider.getActiveVaultPath()
-
     const typeDirName = type.charAt(0).toUpperCase() + type.slice(1)
     const standardFileName = this.buildFileName(type, startDate)
     const transitionFileName = this.buildTransitionFileName(type, startDate)
 
-    // 收集所有要清理的目录，去重且保持顺序
-    const searchDirs = new Set<string>()
-    searchDirs.add(base)
-    if (activeDir) {
-      searchDirs.add(path.join(activeDir, 'Summaries'))
-    }
-    if (legacyBase) {
-      searchDirs.add(legacyBase)
-    }
+    const searchDirs = await this.collectSummarySearchDirectories()
 
     for (const baseDir of searchDirs) {
-      // 删标准格式
-      try {
-        await this.fileSystem.unlink(path.join(baseDir, typeDirName, standardFileName))
-      } catch (e: any) {
-        if (e.code !== 'ENOENT') throw e
-      }
-      // 删过渡期格式（若不同）
-      if (standardFileName !== transitionFileName) {
+      const typeDir = path.join(baseDir, typeDirName)
+      for (const fileName of [standardFileName, transitionFileName]) {
+        const existing = await findExistingSummaryFileInTypeDir(this.fileSystem, typeDir, fileName)
+        if (!existing) continue
         try {
-          await this.fileSystem.unlink(path.join(baseDir, typeDirName, transitionFileName))
+          await this.fileSystem.unlink(existing)
         } catch (e: any) {
           if (e.code !== 'ENOENT') throw e
         }
@@ -174,19 +180,7 @@ export class SummaryFileService {
       endDate: Date
       fullPath: string
     }[] = []
-    const base = await this.pathProvider.getSummariesBaseDirectory()
-    const legacyBase = await this.pathProvider.getLegacyArchivesDirectory()
-    const activeDir = await this.pathProvider.getActiveVaultPath()
-
-    // 收集所有要扫描的目录
-    const searchDirs = new Set<string>()
-    searchDirs.add(base)
-    if (activeDir) {
-      searchDirs.add(path.join(activeDir, 'Summaries'))
-    }
-    if (legacyBase) {
-      searchDirs.add(legacyBase)
-    }
+    const searchDirs = await this.collectSummarySearchDirectories()
 
     for (const baseDir of searchDirs) {
       await this.scanSummaryDir(baseDir, results)
@@ -207,15 +201,14 @@ export class SummaryFileService {
     for (const type of Object.values(SummaryType)) {
       const typeDirName = type.charAt(0).toUpperCase() + type.slice(1)
       const typeDir = path.join(baseDir, typeDirName)
-      let files: string[] = []
+      let files: { fileName: string; fullPath: string }[] = []
       try {
-        files = await this.fileSystem.readdir(typeDir)
+        files = await listMarkdownInSummaryTypeDir(this.fileSystem, typeDir)
       } catch (e: any) {
         if (e.code !== 'ENOENT') throw e
         continue
       }
-      for (const file of files) {
-        if (!file.endsWith('.md')) continue
+      for (const { fileName: file, fullPath } of files) {
         const dates = this.parseFileNameToDateRange(type as SummaryType, file)
         if (dates) {
           // 同一 startDate 的文件去重逻辑
@@ -227,7 +220,7 @@ export class SummaryFileService {
               type: type as SummaryType,
               startDate: dates.startDate,
               endDate: dates.endDate,
-              fullPath: path.join(typeDir, file)
+              fullPath
             })
           } else {
             const existingItem = results[existingIndex]
@@ -242,7 +235,7 @@ export class SummaryFileService {
                   type: type as SummaryType,
                   startDate: dates.startDate,
                   endDate: dates.endDate,
-                  fullPath: path.join(typeDir, file)
+                  fullPath
                 }
               }
             }

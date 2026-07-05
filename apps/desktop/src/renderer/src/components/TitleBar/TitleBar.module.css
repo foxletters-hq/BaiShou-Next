@@ -63,8 +63,11 @@
 }
 
 .tabIcon {
+  width: 16px;
+  height: 16px;
   font-size: 16px;
   margin-right: 6px;
+  flex-shrink: 0;
 }
 
 .actions {
@@ -108,8 +111,11 @@
 }
 
 .actionIconSm {
+  width: 16px;
+  height: 16px;
   font-size: 16px;
   color: var(--text-secondary);
+  flex-shrink: 0;
 }
 
 .vaultName {
@@ -221,6 +227,12 @@
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.1s;
+  font-size: 12px;
+}
+
+.winBtn svg {
+  width: 12px;
+  height: 12px;
 }
 
 .winBtn:hover {

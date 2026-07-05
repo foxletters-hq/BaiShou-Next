@@ -158,15 +158,15 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
       styles.shell,
       fillViewport
         ? {
-            flex: 1,
-            marginBottom: keyboardInset > 0 ? keyboardInset : 0,
-            backgroundColor: editorBackground
-          }
+          flex: 1,
+          marginBottom: keyboardInset > 0 ? keyboardInset : 0,
+          backgroundColor: editorBackground
+        }
         : {
-            minHeight: editorBlockHeight,
-            marginBottom: keyboardInset > 0 ? keyboardInset : 0,
-            backgroundColor: editorBackground
-          },
+          minHeight: editorBlockHeight,
+          marginBottom: keyboardInset > 0 ? keyboardInset : 0,
+          backgroundColor: editorBackground
+        },
       style
     ],
     [editorBackground, editorBlockHeight, fillViewport, keyboardInset, style]
@@ -251,9 +251,9 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
           androidLayerType="hardware"
           {...(Platform.OS === 'ios'
             ? {
-                allowingReadAccessToURL: editorWebViewSource.baseUrl,
-                dataDetectorTypes: 'none' as const
-              }
+              allowingReadAccessToURL: editorWebViewSource.baseUrl,
+              dataDetectorTypes: 'none' as const
+            }
             : {})}
         />
       ) : null}

@@ -28,7 +28,7 @@ if [ "$(node -p "process.versions.node.split('.')[0]")" != "$ci_node_major" ]; t
 fi
 
 pnpm install
-pnpm sync:icons:check
+pnpm sync:check
 pnpm typecheck
 pnpm audit:cache-invalidation
 pnpm turbo run test --continue

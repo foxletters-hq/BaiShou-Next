@@ -15,6 +15,8 @@ export interface FloatingModalProps {
   children: React.ReactNode
   maxWidth?: number
   cardStyle?: ViewStyle
+  /** 点击遮罩是否关闭，默认 true */
+  closeOnBackdropPress?: boolean
 }
 
 /** 半透明遮罩 + 居中浮层，不占用整页 */
@@ -23,7 +25,8 @@ export const FloatingModal: React.FC<FloatingModalProps> = ({
   onClose,
   children,
   maxWidth = 400,
-  cardStyle
+  cardStyle,
+  closeOnBackdropPress = true
 }) => {
   const { colors } = useNativeTheme()
   const { width: screenWidth, height: screenHeight } = useWindowDimensions()
@@ -34,7 +37,7 @@ export const FloatingModal: React.FC<FloatingModalProps> = ({
       <View style={styles.overlay}>
         <Pressable
           style={[StyleSheet.absoluteFill, { backgroundColor: colors.bgOverlay }]}
-          onPress={onClose}
+          onPress={closeOnBackdropPress ? onClose : undefined}
         />
         <View
           style={[

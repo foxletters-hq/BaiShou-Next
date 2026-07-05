@@ -166,4 +166,111 @@ describe('persistResult token estimation', () => {
 
     expect(sessionRepo.updateTokenUsage).toHaveBeenCalledWith('s1', 1200, 80, 42, 960, 0)
   })
+
+  it('anchors assistant orderIndex to user message on resend even if stale assistant remains', async () => {
+    vi.spyOn(ModelPricingService.getInstance(), 'calculateCostMicros').mockResolvedValue(0)
+
+    const sessionRepo = {
+      getMessagesBySession: vi.fn().mockResolvedValue([{ orderIndex: 4 }]),
+      getMessageById: vi.fn().mockResolvedValue({ id: 'user-1', orderIndex: 2 }),
+      insertMessageWithParts: vi.fn().mockResolvedValue(undefined),
+      updateTokenUsage: vi.fn().mockResolvedValue(undefined)
+    }
+
+    const snapshotRepo = {
+      getLatestSnapshot: vi.fn().mockResolvedValue(null)
+    }
+
+    const provider = {
+      config: {
+        id: 'mock-provider',
+        type: 'openai'
+      }
+    }
+
+    const accumulator = {
+      text: 'new reply',
+      reasoning: '',
+      toolCalls: [],
+      toolResults: [],
+      usage: {
+        inputTokens: 10,
+        outputTokens: 5
+      }
+    }
+
+    const streamResult = {
+      usage: Promise.resolve({ inputTokens: 10, outputTokens: 5 })
+    }
+
+    await persistResult({
+      sessionId: 's1',
+      rawUserText: 'hello again',
+      streamResult: streamResult as any,
+      accumulator: accumulator as any,
+      sessionRepo: sessionRepo as any,
+      snapshotRepo: snapshotRepo as any,
+      provider: provider as any,
+      modelId: 'gpt-4',
+      skipUserMessageRecording: true,
+      userMessageId: 'user-1',
+      streamError: null
+    })
+
+    expect(sessionRepo.getMessageById).toHaveBeenCalledWith('user-1')
+    const insertedMessage = sessionRepo.insertMessageWithParts.mock.calls[0]![0]
+    expect(insertedMessage.orderIndex).toBe(3)
+  })
+
+  it('does not crash when streamResult.usage rejects with undefined', async () => {
+    vi.spyOn(ModelPricingService.getInstance(), 'calculateCostMicros').mockResolvedValue(0)
+
+    const sessionRepo = {
+      getMessagesBySession: vi.fn().mockResolvedValue([{ orderIndex: 1 }]),
+      insertMessageWithParts: vi.fn().mockResolvedValue(undefined),
+      updateTokenUsage: vi.fn().mockResolvedValue(undefined)
+    }
+
+    const snapshotRepo = {
+      getLatestSnapshot: vi.fn().mockResolvedValue(null)
+    }
+
+    const provider = {
+      config: {
+        id: 'mock-provider',
+        type: 'openai'
+      }
+    }
+
+    const accumulator = {
+      text: 'search summary',
+      reasoning: '',
+      toolCalls: [{ callId: 'call_1', name: 'web_search', arguments: '{"q":"news"}' }],
+      toolResults: [{ callId: 'call_1', result: 'ok' }],
+      usage: {
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheReadInputTokens: 0,
+        cacheWriteInputTokens: 0
+      }
+    }
+
+    const streamResult = {
+      usage: Promise.reject(undefined)
+    }
+
+    await persistResult({
+      sessionId: 's1',
+      rawUserText: 'search news',
+      streamResult: streamResult as any,
+      accumulator: accumulator as any,
+      sessionRepo: sessionRepo as any,
+      snapshotRepo: snapshotRepo as any,
+      provider: provider as any,
+      modelId: 'gpt-4',
+      streamError: null
+    })
+
+    expect(sessionRepo.insertMessageWithParts).toHaveBeenCalled()
+  })
 })

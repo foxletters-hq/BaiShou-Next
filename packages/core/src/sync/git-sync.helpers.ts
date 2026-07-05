@@ -1,6 +1,7 @@
 import type { FileChange, FileDiff } from '@baishou/shared'
 import {
   isBinaryDiffPath,
+  isIncrementalSyncConflictBackupPath,
   isTextDiffablePath,
   normalizeGitPath as sharedNormalizeGitPath
 } from '@baishou/shared'
@@ -108,13 +109,18 @@ export function isVaultLegacyGitPath(filePath: string): boolean {
   )
 }
 
-export function isIncrementalSyncConflictBackupPath(filePath: string): boolean {
+export { isIncrementalSyncConflictBackupPath }
+
+export function isStorageWriteProbePath(filePath: string): boolean {
   const base = normalizeGitPath(filePath).split('/').pop() ?? filePath
-  return /\.conflict-\d+/.test(base)
+  return base === '.write_test' || base === '.baishou_write_test' || base.startsWith('.write_test_')
 }
 
 export function isExcludedFromVersionControl(filePath: string): boolean {
   const normalized = normalizeGitPath(filePath)
+  if (isStorageWriteProbePath(normalized)) {
+    return true
+  }
   if (isBaishouManagedPath(normalized)) {
     return true
   }

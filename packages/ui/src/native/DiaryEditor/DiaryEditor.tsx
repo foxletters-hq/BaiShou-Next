@@ -12,11 +12,14 @@ import {
   ActivityIndicator,
   Alert
 } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { ArrowLeft, Heart, Volume2 } from 'lucide-react-native'
 import { MarkdownToolbar } from '../MarkdownToolbar/MarkdownToolbar'
+import type { MarkdownToolbarToolId } from '../MarkdownToolbar/markdown-toolbar.types'
 import { DiaryEditorAppBarTitle } from '../DiaryEditorAppBarTitle/DiaryEditorAppBarTitle'
 import { WeatherPicker } from '../WeatherPicker/WeatherPicker'
+import { MoodPicker } from '../MoodPicker/MoodPicker'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { useKeyboardHeight } from '../hooks/useKeyboardHeight'
 import {
   NativeDiaryCodeMirrorEditor,
@@ -24,8 +27,15 @@ import {
   type DiaryEditorWebViewDocument
 } from './NativeDiaryCodeMirrorEditor'
 import { NativeImagePreviewModal } from './NativeImagePreviewModal'
-import type { DiaryTagColorRegistry } from '../../shared/diary-codemirror/types'
-import { deleteMarkdownRange } from './diary-cm-content.util'
+import type {
+  DiaryTagColorRegistry,
+  DiaryCmImageActionPayload,
+  DiaryCmTableSheetRequestPayload,
+  DiaryCmTableSheetResponsePayload
+} from '../../shared/diary-codemirror/types'
+import { confirmMessageForDestructiveItem } from '../../shared/diary-codemirror/table/tableConfirm'
+import { useDialog } from '../Dialog/Dialog'
+import { TableChromeBottomSheet } from './TableChromeBottomSheet'
 
 interface DiaryEditorProps {
   content: string
@@ -33,12 +43,14 @@ interface DiaryEditorProps {
   selectedDate: Date
   isSummaryMode?: boolean
   weather?: string
+  mood?: string
   isFavorite?: boolean
   onContentChange: (content: string) => void
   onTagsChange: (tags: string[]) => void
   tagColorRegistry?: DiaryTagColorRegistry
   onDateChange: (date: Date) => void
   onWeatherChange?: (weather: string) => void
+  onMoodChange?: (mood: string) => void
   onFavoriteChange?: (isFavorite: boolean) => void
   onSave?: (content: string, tags: string[], date: Date) => void
   onCancel?: () => void
@@ -51,10 +63,18 @@ interface DiaryEditorProps {
   webViewActive?: boolean
   /** attachment/xxx → data: 或 file: URI（异步桥接） */
   resolveAttachmentUrl?: (src: string) => Promise<string | null>
+  markdownToolbarOrder?: MarkdownToolbarToolId[]
+  onMarkdownToolbarOrderChange?: (order: MarkdownToolbarToolId[]) => void
+  onReadAloud?: () => void
+  isTtsPlaying?: boolean
 }
 
 /** 工具栏遮挡 + 额外留白，供 WebView 内计算安全滚动区域 */
 const EDITOR_BOTTOM_SCROLL_INSET_BUFFER = 20
+
+type ActiveTableSheet = DiaryCmTableSheetRequestPayload & {
+  respond: (response: DiaryCmTableSheetResponsePayload) => void
+}
 
 export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   content,
@@ -62,12 +82,14 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   selectedDate,
   isSummaryMode = false,
   weather = '',
+  mood = '',
   isFavorite = false,
   onContentChange,
   onTagsChange: _onTagsChange,
   tagColorRegistry,
   onDateChange,
   onWeatherChange,
+  onMoodChange,
   onFavoriteChange,
   onSave,
   onCancel,
@@ -75,12 +97,19 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   pickingImages = false,
   editorWebViewSource,
   webViewActive = true,
-  resolveAttachmentUrl
+  resolveAttachmentUrl,
+  markdownToolbarOrder,
+  onMarkdownToolbarOrderChange,
+  onReadAloud,
+  isTtsPlaying = false
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const dialog = useDialog()
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null)
   const [toolbarHeight, setToolbarHeight] = useState(61)
+  const [tableSheet, setTableSheet] = useState<ActiveTableSheet | null>(null)
+  const tableSheetRef = useRef<ActiveTableSheet | null>(null)
   const editorRef = useRef<NativeDiaryCodeMirrorEditorHandle>(null)
   const keyboardInsetLockedRef = useRef(false)
   const contentRef = useRef(content)
@@ -96,17 +125,30 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
     }
   })
 
+  useEffect(() => {
+    resetKeyboard()
+    return () => resetKeyboard()
+  }, [resetKeyboard])
+
   contentRef.current = content
+  tableSheetRef.current = tableSheet
 
   const syncSelection = useCallback((sel: { start: number; end: number }) => {
     selectionRef.current = sel
   }, [])
 
   const prevContentLenRef = useRef(0)
+  const contentHydratedRef = useRef(false)
   useEffect(() => {
     const grew = content.length > prevContentLenRef.current
     prevContentLenRef.current = content.length
     if (toolbarInsertingRef.current) return
+    if (!contentHydratedRef.current) {
+      if (content.length > 0) {
+        contentHydratedRef.current = true
+      }
+      return
+    }
     if (
       grew &&
       content.length > 0 &&
@@ -157,6 +199,29 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
       insertAtPosition(start, end, prefix + selectedText + suffix)
     },
     [insertAtPosition]
+  )
+
+  const runEditorCommand = useCallback((command: () => void) => {
+    toolbarInsertingRef.current = true
+    command()
+    requestAnimationFrame(() => {
+      toolbarInsertingRef.current = false
+    })
+  }, [])
+
+  const handleUndo = useCallback(() => {
+    runEditorCommand(() => editorRef.current?.undo())
+  }, [runEditorCommand])
+
+  const handleRedo = useCallback(() => {
+    runEditorCommand(() => editorRef.current?.redo())
+  }, [runEditorCommand])
+
+  const handleToggleMark = useCallback(
+    (marker: '**' | '*' | '`' | '~~') => {
+      runEditorCommand(() => editorRef.current?.toggleMarkdownMark(marker))
+    },
+    [runEditorCommand]
   )
 
   const handlePickImages = async () => {
@@ -210,22 +275,72 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
             text: t('common.delete', '删除'),
             style: 'destructive',
             onPress: () => {
-              onContentChange(
-                deleteMarkdownRange(contentRef.current, payload.from, payload.to)
-              )
+              editorRef.current?.deleteRange(payload.from, payload.to)
             }
           }
         ]
       )
     },
-    [onContentChange, t]
+    [t]
   )
 
   const toolbarDockBottom = keyboardHeight
-  const editorPlaceholder = t(
-    'diary.tag_editor_hint',
-    '首行输入 #标签 后按回车，再写正文…'
+
+  const handleDismissEditorKeyboard = useCallback(() => {
+    Keyboard.dismiss()
+  }, [])
+
+  const handleTableSheetRequest = useCallback(
+    (
+      payload: DiaryCmTableSheetRequestPayload,
+      respond: (response: DiaryCmTableSheetResponsePayload) => void
+    ) => {
+      Keyboard.dismiss()
+      keyboardInsetLockedRef.current = true
+      setTableSheet((prev) => {
+        if (prev) {
+          prev.respond({ requestId: prev.requestId, action: 'dismiss' })
+        }
+        return { ...payload, respond }
+      })
+    },
+    []
   )
+
+  const closeTableSheet = useCallback(() => {
+    setTableSheet((current) => {
+      if (current) {
+        current.respond({ requestId: current.requestId, action: 'dismiss' })
+      }
+      keyboardInsetLockedRef.current = false
+      return null
+    })
+  }, [])
+
+  const handleTableSheetPick = useCallback(
+    async (itemId: string) => {
+      const sheet = tableSheetRef.current
+      if (!sheet) return
+      const item = sheet.sections
+        .flatMap((section) => section.items)
+        .find((i) => i.id === itemId)
+      if (item?.destructive) {
+        const confirmed = await dialog.confirm(confirmMessageForDestructiveItem(item), {
+          title: t('common.confirm_delete', '确认删除'),
+          confirmText: t('common.delete', '删除'),
+          cancelText: t('common.cancel', '取消'),
+          destructive: true
+        })
+        if (!confirmed) return
+      }
+      const { requestId, respond } = sheet
+      keyboardInsetLockedRef.current = false
+      setTableSheet(null)
+      respond({ requestId, action: 'pick', itemId })
+    },
+    [dialog, t]
+  )
+  const editorPlaceholder = t('diary.tag_editor_hint', '首行输入 #标签 后按回车，再写正文…')
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bgSurface }]}>
@@ -237,7 +352,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
             onCancel?.()
           }}
         >
-          <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
+          <ArrowLeft size={24} color={colors.textPrimary} strokeWidth={DEFAULT_STROKE_WIDTH} />
         </TouchableOpacity>
 
         <View style={styles.appBarCenter}>
@@ -261,9 +376,37 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
         </TouchableOpacity>
       </View>
 
-      {!isSummaryMode && onWeatherChange && (
+      {!isSummaryMode && (onWeatherChange || onMoodChange || onReadAloud) && (
         <View style={[styles.metaBar, { borderBottomColor: colors.borderSubtle }]}>
-          <WeatherPicker value={weather} onChange={onWeatherChange} />
+          <View style={styles.metaPickers}>
+            {onWeatherChange ? <WeatherPicker value={weather} onChange={onWeatherChange} /> : null}
+            {onMoodChange ? <MoodPicker value={mood} onChange={onMoodChange} /> : null}
+            {onReadAloud ? (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.ttsBtn,
+                  {
+                    opacity: pressed ? 0.85 : 1,
+                    backgroundColor: isTtsPlaying ? colors.primaryLight : colors.bgSurface,
+                    borderColor: isTtsPlaying ? colors.primary : colors.borderSubtle
+                  }
+                ]}
+                onPress={onReadAloud}
+                disabled={!content.trim() && !isTtsPlaying}
+                accessibilityLabel={t('agent.chat.readAloud', '语音朗读')}
+              >
+                {isTtsPlaying ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Volume2
+                    size={20}
+                    color={content.trim() ? colors.textSecondary : colors.textTertiary}
+                    strokeWidth={DEFAULT_STROKE_WIDTH}
+                  />
+                )}
+              </Pressable>
+            ) : null}
+          </View>
           <Pressable
             style={({ pressed }) => [
               styles.favBtn,
@@ -276,10 +419,11 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
             onPress={() => onFavoriteChange?.(!isFavorite)}
             accessibilityLabel={isFavorite ? t('diary.unfavorite') : t('diary.favorite')}
           >
-            <MaterialIcons
-              name={isFavorite ? 'favorite' : 'favorite-border'}
+            <Heart
               size={20}
               color={isFavorite ? colors.warning : colors.textTertiary}
+              strokeWidth={DEFAULT_STROKE_WIDTH}
+              fill={isFavorite ? colors.warning : 'transparent'}
             />
           </Pressable>
         </View>
@@ -311,6 +455,8 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
               bottomScrollInset={toolbarHeight + EDITOR_BOTTOM_SCROLL_INSET_BUFFER}
               fillViewport
               style={styles.editorFill}
+              onDismissKeyboard={handleDismissEditorKeyboard}
+              onTableSheetRequest={handleTableSheetRequest}
             />
           ) : (
             <View style={styles.editorLoadFallback}>
@@ -322,6 +468,17 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
           )}
         </View>
 
+        {tableSheet ? (
+          <TableChromeBottomSheet
+            visible
+            title={tableSheet.title}
+            sections={tableSheet.sections}
+            bottomOffset={toolbarDockBottom}
+            onPick={(itemId) => void handleTableSheetPick(itemId)}
+            onDismiss={closeTableSheet}
+          />
+        ) : null}
+
         <View
           style={[styles.toolbarDock, { bottom: toolbarDockBottom }]}
           onLayout={(e) => {
@@ -331,8 +488,13 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
         >
           <MarkdownToolbar
             onInsertText={handleInsertText}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+            onToggleMark={handleToggleMark}
             onPickImages={onPickImages ? handlePickImages : undefined}
             pickingImages={pickingImages}
+            toolOrder={markdownToolbarOrder}
+            onToolOrderChange={onMarkdownToolbarOrderChange}
           />
         </View>
       </View>
@@ -365,7 +527,23 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderBottomWidth: 1
   },
+  metaPickers: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+    flexWrap: 'wrap'
+  },
   favBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0
+  },
+  ttsBtn: {
     width: 40,
     height: 40,
     borderRadius: 8,
@@ -376,7 +554,8 @@ const styles = StyleSheet.create({
   },
   editorBody: {
     flex: 1,
-    position: 'relative'
+    position: 'relative',
+    overflow: 'hidden'
   },
   editorPane: {
     flex: 1,
@@ -390,7 +569,9 @@ const styles = StyleSheet.create({
   toolbarDock: {
     position: 'absolute',
     left: 0,
-    right: 0
+    right: 0,
+    zIndex: 10,
+    elevation: 10
   },
   editorLoadFallback: {
     flex: 1,

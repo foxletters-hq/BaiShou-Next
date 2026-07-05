@@ -244,7 +244,15 @@ export function useSummaryData(selectedYear: number) {
     } finally {
       setLoading(false)
     }
-  }, [bootstrapper, dbReady, refreshDashboard, storageIndexing, summaryManager, vaultRevision, vaultSwitching])
+  }, [
+    bootstrapper,
+    dbReady,
+    refreshDashboard,
+    storageIndexing,
+    summaryManager,
+    vaultRevision,
+    vaultSwitching
+  ])
 
   useEffect(() => {
     hydrateDashboardFromCache()

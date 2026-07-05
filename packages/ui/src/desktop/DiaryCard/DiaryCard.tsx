@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import React, { useState } from 'react'
+import { limitDiaryPreviewTags } from '@baishou/shared'
 import './DiaryCard.css'
 
 interface DiaryCardProps {
@@ -82,6 +83,8 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
     return colors[sum % colors.length]
   }
 
+  const { visibleTags: previewTags, overflowCount: tagOverflowCount } = limitDiaryPreviewTags(tags)
+
   return (
     <div
       className="diary-card-v2"
@@ -108,9 +111,9 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
         </div>
       </div>
 
-      {tags.length > 0 && (
+      {previewTags.length > 0 && (
         <div className="diary-card-v2-tags">
-          {tags.map((tag) => {
+          {previewTags.map((tag) => {
             const { bg, fg } = getTagColor(tag)
             return (
               <span
@@ -122,6 +125,11 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
               </span>
             )
           })}
+          {tagOverflowCount > 0 ? (
+            <span className="diary-card-v2-tag diary-card-v2-tag-overflow">
+              +{tagOverflowCount}
+            </span>
+          ) : null}
         </div>
       )}
 

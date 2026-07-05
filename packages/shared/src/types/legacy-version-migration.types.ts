@@ -80,6 +80,8 @@ export interface LegacyVersionMigrationScanPayload {
   sourceKind: LegacyVersionMigrationSourceKind | null
   customSourceRoot: string | null
   importedSections: LegacyVersionMigrationSectionId[]
+  /** 旧版目录与当前工作区根目录相同，在原位做结构转换 */
+  inPlace: boolean
 }
 
 export function isWorkspaceMigrationSectionId(

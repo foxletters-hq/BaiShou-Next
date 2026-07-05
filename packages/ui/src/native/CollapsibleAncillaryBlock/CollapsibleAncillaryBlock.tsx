@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { ChevronDown } from 'lucide-react-native'
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -8,6 +8,7 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { CollapsibleHeight } from '../CollapsibleHeight'
 
 const CHEVRON_MS = 250
@@ -83,7 +84,7 @@ export const CollapsibleAncillaryBlock: React.FC<CollapsibleAncillaryBlockProps>
           {title}
         </Text>
         <Animated.View style={chevronStyle}>
-          <MaterialIcons name="expand-more" size={18} color={colors.textTertiary} />
+          <ChevronDown size={18} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
         </Animated.View>
       </TouchableOpacity>
 

@@ -6,11 +6,13 @@ import {
   ShortcutManagerDialog,
   RecallDialog,
   ModelSwitcherPopup,
-  Modal,
-  AgentToolsView,
+  AgentToolsDialog,
   toast
 } from '@baishou/ui'
 import { isEmbeddingModel, isTtsModel } from '@baishou/shared'
+import { useSharedMemoryCopyPreview } from '../../../hooks/useSharedMemoryCopyPreview'
+import type { AgentOutletContext } from '../agent-outlet-context'
+import { useSettingsStore } from '@baishou/store'
 
 interface AgentDialogsProps {
   t: any
@@ -67,16 +69,6 @@ interface AgentDialogsProps {
   inputBarRef: React.RefObject<any>
 }
 
-type AgentOutletContext = {
-  onAssistantSwitched?: (assistant: {
-    id: string
-    name: string
-    emoji?: string
-    description?: string
-    avatarPath?: string
-  }) => void | Promise<void>
-}
-
 /**
  * 集中管理和渲染 Agent 聊天界面的所有 Dialog/Sheet 弹出面板组件。
  */
@@ -114,6 +106,8 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
   inputBarRef
 }) => {
   const { onAssistantSwitched } = useOutletContext<AgentOutletContext>()
+  const { preview: recallCopyPreview, loading: recallCopyPreviewLoading } =
+    useSharedMemoryCopyPreview(recallLookbackMonths, showRecallSheet)
 
   return (
     <>
@@ -196,6 +190,8 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
         onToggleSearchMode={recall.toggleRecallSearchMode}
         lookbackMonths={recallLookbackMonths}
         onMonthsChanged={setRecallLookbackMonths}
+        copyPreview={recallCopyPreview}
+        copyPreviewLoading={recallCopyPreviewLoading}
         onCopyContext={async () => {
           try {
             const contextText = await (window as any).api?.rag?.buildSharedContext?.(
@@ -205,6 +201,10 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
             if (contextText) {
               await navigator.clipboard.writeText(contextText)
               toast.showSuccess(t('summary.toast_copied', '共同回忆已复制'))
+            } else {
+              toast.showError(
+                t('summary.no_data_to_copy', '当前回溯范围内无已生成的总结回忆')
+              )
             }
           } catch (e: any) {
             console.error('[AgentScreen] Copy failed:', e)
@@ -252,18 +252,14 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
       )}
 
       {/* 工具箱管理弹窗 */}
-      <Modal
+      <AgentToolsDialog
         isOpen={showToolManager}
         onClose={() => setShowToolManager(false)}
-        closeOnOverlayClick={true}
-      >
-        <AgentToolsView
-          config={toolConfig}
-          onChange={(cfg) => {
-            ;(window as any).api?.settings?.setToolManagementConfig(cfg)
-          }}
-        />
-      </Modal>
+        config={toolConfig}
+        onChange={(cfg) => {
+          useSettingsStore.getState().setToolManagementConfig(cfg)
+        }}
+      />
     </>
   )
 }

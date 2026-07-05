@@ -10,6 +10,7 @@ export type CacheKey =
   | 'chat.attachment'
   | 'mcp.toolContext'
   | 'tts.synthesis'
+  | 'settings.aiProviders'
 
 export const ALL_CACHE_KEYS: readonly CacheKey[] = [
   'summary.dashboard',
@@ -21,5 +22,6 @@ export const ALL_CACHE_KEYS: readonly CacheKey[] = [
   'attachment.preview',
   'chat.attachment',
   'mcp.toolContext',
-  'tts.synthesis'
+  'tts.synthesis',
+  'settings.aiProviders'
 ] as const

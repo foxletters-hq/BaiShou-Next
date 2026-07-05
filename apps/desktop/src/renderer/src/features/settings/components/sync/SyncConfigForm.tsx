@@ -9,6 +9,7 @@ import {
 import { Switch, useDialog, Select } from '@baishou/ui'
 import { S3SyncForm } from './S3SyncForm'
 import { WebDavSyncForm } from './WebDavSyncForm'
+import { notifyIncrementalSyncConfigChanged } from '../../../../lib/incremental-sync-config-events'
 
 type SyncTarget = 's3' | 'webdav'
 
@@ -185,6 +186,7 @@ export const SyncConfigForm: React.FC = () => {
 
     try {
       await (window as any).api?.incrementalSync?.updateConfig(buildConfigPayload(next))
+      notifyIncrementalSyncConfigChanged()
       setMessage(t('data_sync.config_saved', 'Configuration saved'))
       setStatus('success')
       setTimeout(() => {
@@ -201,6 +203,7 @@ export const SyncConfigForm: React.FC = () => {
   const handleSaveConfig = async () => {
     try {
       await (window as any).api?.incrementalSync?.updateConfig(buildConfigPayload(config))
+      notifyIncrementalSyncConfigChanged()
       setMessage(t('data_sync.config_saved', 'Configuration saved'))
       setStatus('success')
       setTimeout(() => {

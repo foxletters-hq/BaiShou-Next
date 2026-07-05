@@ -2,6 +2,22 @@ import { describe, it, expect, vi } from 'vitest'
 import { formatLocalDate, formatRecallTimestamp, parseDateStr } from '@baishou/shared'
 import { DatabaseAdapter } from '../tools/adapters/database.adapter'
 
+vi.mock('drizzle-orm', () => ({
+  eq: vi.fn((a, b) => ({ type: 'eq', a, b })),
+  and: vi.fn((...args) => ({ type: 'and', args })),
+  desc: vi.fn((a) => ({ type: 'desc', a }))
+}))
+
+vi.mock('@baishou/database', () => ({
+  summariesTable: {
+    type: 'type',
+    startDate: 'startDate',
+    endDate: 'endDate',
+    content: 'content',
+    generatedAt: 'generatedAt'
+  }
+}))
+
 describe('DatabaseAdapter.readSummary', () => {
   it('queries by local calendar date when startDateIso is YYYY-MM-DD', async () => {
     const targetDate = parseDateStr('2025-06-21')

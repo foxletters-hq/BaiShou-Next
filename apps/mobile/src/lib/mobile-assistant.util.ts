@@ -1,11 +1,16 @@
 import type { AssistantManagerService, IAttachmentManager, IFileSystem } from '@baishou/core-mobile'
 import type { InsertAssistantInput, UpdateAssistantInput } from '@baishou/database'
 import {
+  DEFAULT_ASSISTANT_COMPRESS_KEEP_TURNS,
+  DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD,
+  DEFAULT_ASSISTANT_CONTEXT_WINDOW,
   DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH,
   DEFAULT_ASSISTANT_KIND,
   normalizeAssistantAvatarPath,
   normalizePersistedAvatarPath,
   normalizeAssistantKind,
+  parseAssistantEmojiGroupIds,
+  serializeAssistantEmojiGroupIds,
   type AssistantKind
 } from '@baishou/shared'
 import {
@@ -30,6 +35,9 @@ export type MobileAssistantUi = {
   compressKeepTurns?: number
   compressSystemPrompt?: string | null
   assistantKind?: AssistantKind
+  emojiEnabled?: boolean
+  emojiGroupIds?: string[]
+  emojiGroupId?: string | null
   sortOrder?: number
   createdAt?: number
   lastUsedAt?: number
@@ -61,6 +69,9 @@ function mapAssistantRowToUi(a: AssistantRow, displayAvatarUri?: string): Mobile
     compressKeepTurns: a.compressKeepTurns ?? undefined,
     compressSystemPrompt: a.compressSystemPrompt,
     assistantKind: normalizeAssistantKind(a.assistantKind),
+    emojiEnabled: a.emojiEnabled === true,
+    emojiGroupIds: parseAssistantEmojiGroupIds(a.emojiGroupIds, a.emojiGroupId),
+    emojiGroupId: a.emojiGroupId ?? undefined,
     sortOrder: a.sortOrder ?? 0,
     createdAt: a.createdAt ? new Date(a.createdAt).getTime() : undefined,
     displayAvatarUri
@@ -135,6 +146,9 @@ export function buildAssistantRepoInput(input: {
   compressKeepTurns?: number
   compressSystemPrompt?: string | null
   assistantKind?: AssistantKind
+  emojiEnabled?: boolean
+  emojiGroupIds?: string[] | null
+  emojiGroupId?: string | null
 }): Omit<InsertAssistantInput, 'id'> {
   return {
     name: input.name,
@@ -147,13 +161,17 @@ export function buildAssistantRepoInput(input: {
     systemPrompt: input.systemPrompt,
     isDefault: input.isDefault ?? false,
     isPinned: input.isPinned ?? false,
-    contextWindow: input.contextWindow ?? -1,
+    contextWindow: input.contextWindow ?? DEFAULT_ASSISTANT_CONTEXT_WINDOW,
     providerId: input.providerId ?? null,
     modelId: input.modelId ?? null,
-    compressTokenThreshold: input.compressTokenThreshold ?? 60000,
-    compressKeepTurns: input.compressKeepTurns ?? 3,
+    compressTokenThreshold:
+      input.compressTokenThreshold ?? DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD,
+    compressKeepTurns: input.compressKeepTurns ?? DEFAULT_ASSISTANT_COMPRESS_KEEP_TURNS,
     compressSystemPrompt: input.compressSystemPrompt?.trim() || null,
-    assistantKind: normalizeAssistantKind(input.assistantKind ?? DEFAULT_ASSISTANT_KIND)
+    assistantKind: normalizeAssistantKind(input.assistantKind ?? DEFAULT_ASSISTANT_KIND),
+    emojiEnabled: input.emojiEnabled ?? false,
+    emojiGroupIds: serializeAssistantEmojiGroupIds(input.emojiGroupIds ?? undefined),
+    emojiGroupId: input.emojiGroupIds?.[0] ?? input.emojiGroupId ?? null
   }
 }
 

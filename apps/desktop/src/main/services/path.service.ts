@@ -1,10 +1,33 @@
 import { app } from 'electron'
 import * as path from 'path'
+import { constants as fsConstants } from 'node:fs'
 import * as fs from 'fs/promises'
-import { sanitizeVaultDirectoryName } from '@baishou/core-desktop'
+import { sanitizeVaultDirectoryName, cleanupStorageWriteProbeFiles } from '@baishou/core-desktop'
 import { IStoragePathService } from '@baishou/core-desktop'
+import {
+  readVaultExternalPaths,
+  resolveJournalsBaseDirectory,
+  resolveSummariesBaseDirectory,
+  patchVaultExternalPaths
+} from '@baishou/core/shared'
+import { logger } from '@baishou/shared'
+import { fileSystem } from './node-file-system'
 
 export class DesktopStoragePathService implements IStoragePathService {
+  private readonly vaultFileSystem = fileSystem
+  private legacyWriteProbeCleanupDone = false
+
+  private scheduleLegacyWriteProbeCleanup(rootDir: string): void {
+    if (this.legacyWriteProbeCleanupDone) return
+    this.legacyWriteProbeCleanupDone = true
+    void cleanupStorageWriteProbeFiles(rootDir, 1)
+      .then((removed) => {
+        if (removed > 0) {
+          logger.info(`[PathService] 已清理 ${removed} 个历史存储探测临时文件`)
+        }
+      })
+      .catch(() => {})
+  }
   private getSettingsFile(): string {
     return path.join(app.getPath('userData'), 'baishou_settings.json')
   }
@@ -35,18 +58,8 @@ export class DesktopStoragePathService implements IStoragePathService {
     if (customPath && customPath.trim() !== '') {
       try {
         await fs.mkdir(customPath, { recursive: true })
-
-        // 可写性测试 (Writeability test)
-        const testFile = path.join(
-          customPath,
-          `.write_test_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
-        )
-        await fs.writeFile(testFile, 'test', 'utf-8')
-        try {
-          await fs.unlink(testFile)
-        } catch (e) {
-          // Ignore delete failure (e.g. windows locking)
-        }
+        await fs.access(customPath, fsConstants.R_OK | fsConstants.W_OK)
+        this.scheduleLegacyWriteProbeCleanup(customPath)
         return customPath
       } catch (e) {
         console.warn(
@@ -59,6 +72,7 @@ export class DesktopStoragePathService implements IStoragePathService {
     // Default Fallback
     const rootDir = path.join(app.getPath('userData'), 'Vaults')
     await fs.mkdir(rootDir, { recursive: true })
+    this.scheduleLegacyWriteProbeCleanup(rootDir)
     return rootDir
   }
 
@@ -128,26 +142,111 @@ export class DesktopStoragePathService implements IStoragePathService {
     return dir
   }
 
+  public async getExternalJournalsDirectory(vaultName?: string): Promise<string | null> {
+    const name = vaultName ?? (await this.getActiveVaultName())
+    const sysDir = await this.getVaultSystemDirectory(name)
+    const external = await readVaultExternalPaths(this.vaultFileSystem, sysDir)
+    return external.journalsDirectory?.trim() || null
+  }
+
+  public async setExternalJournalsDirectory(
+    journalsDirectory: string | null,
+    vaultName?: string
+  ): Promise<void> {
+    const name = vaultName ?? (await this.getActiveVaultName())
+    const sysDir = await this.getVaultSystemDirectory(name)
+    await patchVaultExternalPaths(this.vaultFileSystem, sysDir, {
+      journalsDirectory: journalsDirectory?.trim() || null
+    })
+  }
+
+  public async getExternalSummariesDirectory(vaultName?: string): Promise<string | null> {
+    const name = vaultName ?? (await this.getActiveVaultName())
+    const sysDir = await this.getVaultSystemDirectory(name)
+    const external = await readVaultExternalPaths(this.vaultFileSystem, sysDir)
+    return external.summariesDirectory?.trim() || null
+  }
+
+  public async setExternalSummariesDirectory(
+    summariesDirectory: string | null,
+    vaultName?: string
+  ): Promise<void> {
+    const name = vaultName ?? (await this.getActiveVaultName())
+    const sysDir = await this.getVaultSystemDirectory(name)
+    await patchVaultExternalPaths(this.vaultFileSystem, sysDir, {
+      summariesDirectory: summariesDirectory?.trim() || null
+    })
+  }
+
+  private async resolveActiveJournalsBaseDirectory(): Promise<string> {
+    const vaultName = await this.getActiveVaultName()
+    const vaultDir = await this.getVaultDirectory(vaultName)
+    const sysDir = await this.getVaultSystemDirectory(vaultName)
+    const external = await readVaultExternalPaths(this.vaultFileSystem, sysDir)
+    return resolveJournalsBaseDirectory(vaultDir, external)
+  }
+
   public async getJournalsBaseDirectory(): Promise<string> {
-    const activeDir = await this.getActiveVaultDirectory()
-    const dir = path.join(activeDir, 'Journals')
+    const vaultName = await this.getActiveVaultName()
+    const vaultDir = await this.getVaultDirectory(vaultName)
+    const dir = await this.resolveActiveJournalsBaseDirectory()
+    const external = await this.getExternalJournalsDirectory()
+    if (external) {
+      const stat = await fs.stat(dir).catch(() => null)
+      if (stat?.isDirectory()) {
+        return dir
+      }
+      logger.warn(`[PathService] 外部日记目录不可用，回退至工作区内 Journals: ${dir}`)
+      const internal = path.join(vaultDir, 'Journals')
+      await fs.mkdir(internal, { recursive: true })
+      return internal
+    }
     await fs.mkdir(dir, { recursive: true })
     return dir
   }
 
+  private async resolveActiveSummariesBaseDirectory(): Promise<string> {
+    const vaultName = await this.getActiveVaultName()
+    const vaultDir = await this.getVaultDirectory(vaultName)
+    const sysDir = await this.getVaultSystemDirectory(vaultName)
+    const external = await readVaultExternalPaths(this.vaultFileSystem, sysDir)
+    return resolveSummariesBaseDirectory(vaultDir, external)
+  }
+
   public async getSummariesBaseDirectory(): Promise<string> {
-    const activeDir = await this.getActiveVaultDirectory()
-    const dir = path.join(activeDir, 'Archives')
+    const vaultName = await this.getActiveVaultName()
+    const vaultDir = await this.getVaultDirectory(vaultName)
+    const dir = await this.resolveActiveSummariesBaseDirectory()
+    const external = await this.getExternalSummariesDirectory()
+    if (external) {
+      const stat = await fs.stat(dir).catch(() => null)
+      if (stat?.isDirectory()) {
+        return dir
+      }
+      logger.warn(`[PathService] 外部总结目录不可用，回退至工作区内 Archives: ${dir}`)
+      const internal = path.join(vaultDir, 'Archives')
+      await fs.mkdir(internal, { recursive: true })
+      return internal
+    }
     await fs.mkdir(dir, { recursive: true })
     return dir
   }
 
   public async getLegacyArchivesDirectory(): Promise<string | null> {
     const activeDir = await this.getActiveVaultDirectory()
-    const dir = path.join(activeDir, 'Archives')
+    const internalArchives = path.join(activeDir, 'Archives')
+    const external = await this.getExternalSummariesDirectory()
+    if (external && path.normalize(external) !== path.normalize(internalArchives)) {
+      try {
+        await fs.access(internalArchives)
+        return internalArchives
+      } catch {
+        return null
+      }
+    }
     try {
-      await fs.access(dir)
-      return dir
+      await fs.access(internalArchives)
+      return internalArchives
     } catch {
       return null
     }
@@ -282,6 +381,14 @@ export class DesktopStoragePathService implements IStoragePathService {
   public async getChatBackgroundsDirectory(): Promise<string> {
     const attDir = await this.getAttachmentsBaseDirectory()
     const dir = path.join(attDir, 'backgrounds')
+    await fs.mkdir(dir, { recursive: true })
+    return dir
+  }
+
+  /** 表情包目录：`{activeVault}/Attachments/emojis` */
+  public async getEmojisDirectory(): Promise<string> {
+    const attDir = await this.getAttachmentsBaseDirectory()
+    const dir = path.join(attDir, 'emojis')
     await fs.mkdir(dir, { recursive: true })
     return dir
   }

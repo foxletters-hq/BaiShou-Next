@@ -1,15 +1,49 @@
-import React, { useMemo, useCallback, useEffect, useRef } from 'react'
-import { mapAttachmentsFromParts } from '@baishou/shared'
+import React, { useMemo, useCallback, useEffect, useRef, useState } from 'react'
+import { mapAttachmentsFromParts, resolveAttachmentImageSrc, normalizeEmojiToolConfig, resolveAssistantEmojiConfig, assistantRowToEmojiPrefs } from '@baishou/shared'
 import {
   ChatBubble,
   StreamingBubble,
   CompressionDivider,
-  CompressionActivityBar
+  CompressionActivityBar,
+  resolveActiveToolDisplayName
 } from '@baishou/ui'
 import { useSettingsStore } from '@baishou/store'
 import { useMessageActions } from '../hooks/useMessageActions'
-import { buildRoundIndexByMessageId, isRoundPageStart } from '../utils/chat-round-pagination'
 import styles from '../AgentScreen.module.css'
+
+/**
+ * 模糊匹配 emoji：支持 ID（含/不含扩展名）、名称、子串匹配
+ * 与 persist 层的 findEmojiById 逻辑保持一致
+ */
+function resolvePendingEmoji(
+  query: string,
+  emojis: Array<{ id: string; name: string; relativePath: string }>
+): { id: string; name: string; relativePath: string } | undefined {
+  const normalizedQuery = query.trim().toLowerCase()
+
+  const exactMatch = emojis.find((e) => e.id === normalizedQuery || e.id.toLowerCase() === normalizedQuery)
+  if (exactMatch) return exactMatch
+
+  const idNoExtMatch = emojis.find((e) => e.id.replace(/\.[^.]+$/, '').toLowerCase() === normalizedQuery)
+  if (idNoExtMatch) return idNoExtMatch
+
+  const normalizeName = (s: string) => s.toLowerCase().replace(/[_\s]+/g, ' ').trim()
+  const normalizedNameQuery = normalizeName(normalizedQuery)
+  const nameMatch = emojis.find((e) => normalizeName(e.name) === normalizedNameQuery)
+  if (nameMatch) return nameMatch
+
+  const idContainsMatch = emojis.find((e) =>
+    e.id.replace(/\.[^.]+$/, '').toLowerCase().includes(normalizedQuery)
+  )
+  if (idContainsMatch) return idContainsMatch
+
+  const nameContainsMatch = emojis.find((e) =>
+    normalizeName(e.name).includes(normalizedNameQuery)
+  )
+  if (nameContainsMatch) return nameContainsMatch
+
+  return undefined
+}
 
 interface AgentMessageListProps {
   t: any
@@ -141,6 +175,8 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
   )
 
   const loadMoreLockRef = useRef(false)
+  const [showLoadMoreButton, setShowLoadMoreButton] = useState(false)
+  const LOAD_MORE_TOP_THRESHOLD_PX = 120
 
   const triggerLoadMore = useCallback(() => {
     if (!chat.hasMore || loadMoreLockRef.current) return
@@ -163,18 +199,14 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
     if (!el) return
 
     const onScroll = () => {
-      if (el.scrollTop > 100 || !chat.hasMore || loadMoreLockRef.current) return
-      triggerLoadMore()
+      const nearTop = el.scrollTop < LOAD_MORE_TOP_THRESHOLD_PX
+      setShowLoadMoreButton(nearTop && chat.hasMore)
     }
 
+    onScroll()
     el.addEventListener('scroll', onScroll, { passive: true })
     return () => el.removeEventListener('scroll', onScroll)
-  }, [chat.hasMore, triggerLoadMore, scroll.scrollRef])
-
-  const roundIndexByMessageId = useMemo(
-    () => buildRoundIndexByMessageId(chat.messages),
-    [chat.messages]
-  )
+  }, [chat.hasMore, scroll.scrollRef])
 
   const compactionAnchor = chat.compactionAnchor as
     | { messageId: string; record: Record<string, unknown> }
@@ -209,21 +241,54 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
     </>
   )
 
-  const activeToolDisplayName = useMemo(() => {
-    if (!stream.activeTool) return null
-    if (stream.activeTool.name === 'web_search') {
-      const engine = settings.webSearchConfig?.webSearchEngine || 'exa-mcp'
-      const engineNames: Record<string, string> = {
-        'local-google': t('settings.web_search_engine_local_google', 'Google 本地搜索'),
-        'local-bing': t('settings.web_search_engine_local_bing', 'Bing 本地搜索'),
-        duckduckgo: t('settings.web_search_engine_duckduckgo', 'DuckDuckGo'),
-        tavily: t('settings.web_search_engine_tavily', 'Tavily API'),
-        'exa-mcp': t('settings.web_search_engine_exa_mcp', 'Exa MCP')
-      }
-      return `${t('agent.tools.web_search', '网络搜索')} (${engineNames[engine] || engine})`
-    }
-    return t(`agent.tools.${stream.activeTool.name}`, stream.activeTool.name)
-  }, [stream.activeTool, settings.webSearchConfig, t])
+  const activeToolDisplayName = useMemo(
+    () =>
+      resolveActiveToolDisplayName(stream.activeTool, t, settings.webSearchConfig?.webSearchEngine),
+    [stream.activeTool, settings.webSearchConfig, t]
+  )
+
+  const pendingEmojiAttachments = useMemo(() => {
+    const emojiToolConfig = normalizeEmojiToolConfig(settings.toolManagementConfig?.emojiConfig)
+    const resolved = resolveAssistantEmojiConfig(
+      emojiToolConfig,
+      currentAssistant ? assistantRowToEmojiPrefs(currentAssistant) : undefined
+    )
+    const emojis = resolved.emojis
+    const pending = stream.pendingEmojis ?? []
+    if (!emojis?.length || !pending.length) return []
+
+    return pending
+      .map((pendingEmoji) => {
+        const emoji = resolvePendingEmoji(pendingEmoji.emojiId, emojis)
+        if (!emoji) return null
+        return {
+          id: emoji.id,
+          fileName: emoji.name || emoji.id,
+          filePath: resolveAttachmentImageSrc(
+            `local:///${emoji.relativePath.replace(/\\/g, '/')}`
+          ),
+          isImage: true
+        }
+      })
+      .filter((item): item is NonNullable<typeof item> => item != null)
+  }, [
+    stream.pendingEmojis,
+    settings.toolManagementConfig?.emojiConfig,
+    currentAssistant?.emojiEnabled,
+    currentAssistant?.emojiGroupIds,
+    currentAssistant?.emojiGroupId
+  ])
+
+  const lastMessage = chat.messages[chat.messages.length - 1]
+  const assistantPersistedDuringBridge =
+    stream.isBridgeActive &&
+    lastMessage?.role === 'assistant' &&
+    Boolean(
+      lastMessage.content?.trim() ||
+      lastMessage.reasoning?.trim() ||
+      (lastMessage.toolInvocations?.length ?? 0) > 0 ||
+      (lastMessage.attachments?.length ?? 0) > 0
+    )
 
   return (
     <>
@@ -232,9 +297,13 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
         ref={scroll.scrollRef}
       >
         <div className={styles.messageContent}>
-          {chat.hasMore && (
-            <button type="button" className={styles.loadMoreBanner} onClick={triggerLoadMore}>
-              {t('agent.chat.scroll_up_load_more', '点击或上滑加载更早对话')}
+          {showLoadMoreButton && (
+            <button
+              type="button"
+              className={`${styles.loadMoreBanner} ${styles.loadMoreBannerSticky}`}
+              onClick={triggerLoadMore}
+            >
+              {t('agent.chat.load_earlier_messages', '加载更早对话')}
             </button>
           )}
 
@@ -248,10 +317,7 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
             const isLiveCompressionAnchor =
               (stream.compressionPhase === 'auto' || stream.compressionPhase === 'manual') &&
               stream.compressionTriggerMessageId === msg.id &&
-              (stream.isCompressing ||
-                ((Boolean(stream.compressionText?.trim()) ||
-                  Boolean(stream.compressionReasoning?.trim())) &&
-                  !msg.compactionRecord))
+              stream.isCompressing
 
             const persistedCompaction =
               msg.role === 'user' && msg.compactionRecord
@@ -302,12 +368,8 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
               costMicros: msg.costMicros
             }
 
-            const roundIndex = roundIndexByMessageId.get(msg.id) ?? 0
-            const showPageSnap = isRoundPageStart(roundIndex)
-
             return (
               <React.Fragment key={msg.id}>
-                {showPageSnap && <div className={styles.pageSnapAnchor} aria-hidden />}
                 <ChatBubble
                   message={bubbleMessage}
                   userProfile={{
@@ -361,44 +423,36 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
             )
           })}
 
-          {stream.isStreaming && !stream.isCompressing && (
-            <StreamingBubble
-              text={stream.text}
-              reasoning={stream.reasoning}
-              isReasoning={Boolean(stream.reasoning && !stream.text)}
-              activeToolName={activeToolDisplayName}
-              completedTools={stream.completedTools}
-              aiProfile={{
-                name: currentAssistant?.name || 'AI',
-                avatarPath: currentAssistant?.avatarPath,
-                emoji: currentAssistant?.emoji
-              }}
-            />
-          )}
+          {(() => {
+            const showStreamingBubble =
+              (stream.isStreaming || stream.isBridgeActive) &&
+              !assistantPersistedDuringBridge &&
+              (!stream.isCompressing ||
+                Boolean(stream.text?.trim()) ||
+                Boolean(stream.reasoning?.trim()) ||
+                stream.activeTool ||
+                stream.completedTools.length > 0 ||
+                pendingEmojiAttachments.length > 0)
 
-          {chat.pendingAssistantMsg && (
-            <ChatBubble
-              key={chat.pendingAssistantMsg.id}
-              message={{
-                id: chat.pendingAssistantMsg.id,
-                sessionId: sessionId || 'default-session',
-                role: 'assistant',
-                content: chat.pendingAssistantMsg.content,
-                reasoning: chat.pendingAssistantMsg.reasoning,
-                timestamp: new Date(),
-                isReasoning: Boolean(
-                  chat.pendingAssistantMsg.reasoning && !chat.pendingAssistantMsg.content
-                )
-              }}
-              aiProfile={{
-                name: currentAssistant?.name || 'AI',
-                avatarPath: currentAssistant?.avatarPath,
-                emoji: currentAssistant?.emoji
-              }}
-            />
-          )}
+            return showStreamingBubble ? (
+              <StreamingBubble
+                text={stream.text}
+                reasoning={stream.reasoning}
+                isReasoning={Boolean(stream.reasoning && !stream.text)}
+                isTextStreaming={stream.isStreaming}
+                activeToolName={activeToolDisplayName}
+                completedTools={stream.completedTools}
+                attachments={pendingEmojiAttachments}
+                aiProfile={{
+                  name: currentAssistant?.name || 'AI',
+                  avatarPath: currentAssistant?.avatarPath,
+                  emoji: currentAssistant?.emoji
+                }}
+              />
+            ) : null
+          })()}
 
-          {chat.messages.length === 0 && !stream.isStreaming && !chat.pendingAssistantMsg && (
+          {chat.messages.length === 0 && !stream.isStreaming && !stream.isBridgeActive && (
             <div style={{ flex: 1 }} />
           )}
         </div>

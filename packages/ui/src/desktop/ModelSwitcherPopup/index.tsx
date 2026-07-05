@@ -4,8 +4,8 @@ import styles from './ModelSwitcherPopup.module.css'
 import { useTranslation } from 'react-i18next'
 import { getProviderIcon } from '../../utils/provider-icons'
 import { useTheme } from '../../hooks'
-import { MdCloud, MdCheck, MdSearch, MdSettings, MdVisibility } from 'react-icons/md'
-import { isVisionModel } from '@baishou/shared'
+import { ModelVisionBadge } from '../../shared/ModelVisionBadge'
+import { Check, Cloud, Search, Settings } from 'lucide-react'
 
 export interface AiProviderModel {
   id: string
@@ -62,9 +62,10 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
       )
     }
     return (
-      <MdCloud
+      <Cloud
+        size={18}
         className={styles.providerIconPlaceholder}
-        style={{ width: 18, height: 18, color: 'var(--text-tertiary, #999)' }}
+        style={{ color: 'var(--text-tertiary, #999)' }}
       />
     )
   }
@@ -86,7 +87,7 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
         {/* Search Bar */}
         <div className={styles.searchWrap}>
           <span className={styles.searchIcon}>
-            <MdSearch />
+            <Search />
           </span>
           <input
             type="text"
@@ -125,22 +126,11 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
                         <ProviderIcon id={provider.id} type={provider.type} />
                         <span className={styles.modelIdText}>
                           {modelId}
-                          {isVisionModel(modelId) && (
-                            <MdVisibility
-                              title={t('models.vision_supported', 'Supports vision / multimodal')}
-                              style={{
-                                marginLeft: 6,
-                                fontSize: 13,
-                                color: 'var(--text-secondary, #666)',
-                                verticalAlign: 'middle',
-                                opacity: 0.8
-                              }}
-                            />
-                          )}
+                          <ModelVisionBadge modelId={modelId} providerKey={provider.id} />
                         </span>
                         {isSelected && (
                           <span className={styles.checkIcon}>
-                            <MdCheck />
+                            <Check />
                           </span>
                         )}
                       </div>
@@ -162,7 +152,7 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
               }}
               type="button"
             >
-              <MdSettings size={14} />
+              <Settings size={14} />
               <span>{t('settings.ai_services', '供应商管理')}</span>
             </button>
           </div>

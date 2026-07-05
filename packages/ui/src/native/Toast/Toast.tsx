@@ -1,33 +1,31 @@
-import React, { createContext, useCallback, useContext, useMemo } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { CircleAlert, CircleCheck, Info, TriangleAlert } from 'lucide-react-native'
+import type { LucideProps } from 'lucide-react-native'
 import { useToast } from 'heroui-native'
 import type { ToastComponentProps } from 'heroui-native'
 import Animated, { Easing, Keyframe } from 'react-native-reanimated'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
+import {
+  ToastContext,
+  type ToastContextType,
+  type ToastShowOptions,
+  type ToastType
+} from './toast-context'
 
-export type ToastType = 'info' | 'success' | 'error' | 'warning'
-
-interface ToastContextType {
-  showToast: (message: string, type?: ToastType) => void
-  showSuccess: (message: string) => void
-  showError: (message: string) => void
-  showInfo: (message: string) => void
-  showWarning: (message: string) => void
-}
-
-const ToastContext = createContext<ToastContextType | null>(null)
+export type { ToastShowOptions, ToastType } from './toast-context'
+export { useNativeToast } from './toast-context'
 
 const STATUS_TOAST_ID = 'baishou-status-toast'
 /** 与 toastExit Keyframe 时长一致；hide 后须等退场结束再 show，避免 Android Reanimated 视图竞态 */
 const TOAST_EXIT_MS = 220
 
-const ICON_BY_TYPE: Record<ToastType, keyof typeof MaterialIcons.glyphMap> = {
-  success: 'check-circle-outline',
-  error: 'error-outline',
-  info: 'info-outline',
-  warning: 'warning-amber'
+const ICON_BY_TYPE: Record<ToastType, React.ComponentType<LucideProps>> = {
+  success: CircleCheck,
+  error: CircleAlert,
+  info: Info,
+  warning: TriangleAlert
 }
 
 const COLOR_BY_TYPE: Record<ToastType, string> = {
@@ -72,9 +70,16 @@ const toastExit = new Keyframe({
 type BaishouHeroToastProps = ToastComponentProps & {
   message: string
   type: ToastType
+  onDismiss?: () => void
 }
 
-const BaishouHeroToast: React.FC<BaishouHeroToastProps> = ({ id, message, type, hide }) => {
+const BaishouHeroToast: React.FC<BaishouHeroToastProps> = ({
+  id,
+  message,
+  type,
+  hide,
+  onDismiss
+}) => {
   const { isDark, colors } = useNativeTheme()
   const { width } = useWindowDimensions()
 
@@ -98,7 +103,10 @@ const BaishouHeroToast: React.FC<BaishouHeroToastProps> = ({ id, message, type, 
         style={{ maxWidth: toastMaxWidth }} // 仅设置最大宽度约束，实现自适应宽度
       >
         <Pressable
-          onPress={() => hide(id)}
+          onPress={() => {
+            onDismiss?.()
+            hide(id)
+          }}
           style={[
             styles.toast,
             {
@@ -107,7 +115,12 @@ const BaishouHeroToast: React.FC<BaishouHeroToastProps> = ({ id, message, type, 
             }
           ]}
         >
-          <MaterialIcons name={ICON_BY_TYPE[type]} size={18} color={COLOR_BY_TYPE[type]} />
+          {(() => {
+            const Icon = ICON_BY_TYPE[type]
+            return (
+              <Icon size={18} color={COLOR_BY_TYPE[type]} strokeWidth={DEFAULT_STROKE_WIDTH} />
+            )
+          })()}
           <Text style={[styles.message, { color: isDark ? colors.textPrimary : '#1A1C23' }]}>
             {message}
           </Text>
@@ -124,12 +137,17 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const { toast, isToastVisible } = useToast()
 
   const presentToast = useCallback(
-    (message: string, type: ToastType = 'info') => {
+    (message: string, type: ToastType = 'info', options?: ToastShowOptions) => {
+      const duration = options?.duration ?? durationForType(type)
+      const onDismiss = options?.onDismiss
+
       const showNext = () => {
         toast.show({
           id: STATUS_TOAST_ID,
-          duration: durationForType(type),
-          component: (props) => <BaishouHeroToast {...props} message={message} type={type} />
+          duration,
+          component: (props) => (
+            <BaishouHeroToast {...props} message={message} type={type} onDismiss={onDismiss} />
+          )
         })
       }
 
@@ -147,10 +165,10 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const ctx = useMemo<ToastContextType>(
     () => ({
       showToast: presentToast,
-      showSuccess: (message) => presentToast(message, 'success'),
-      showError: (message) => presentToast(message, 'error'),
-      showInfo: (message) => presentToast(message, 'info'),
-      showWarning: (message) => presentToast(message, 'warning')
+      showSuccess: (message, options) => presentToast(message, 'success', options),
+      showError: (message, options) => presentToast(message, 'error', options),
+      showInfo: (message, options) => presentToast(message, 'info', options),
+      showWarning: (message, options) => presentToast(message, 'warning', options)
     }),
     [presentToast]
   )
@@ -188,9 +206,3 @@ const styles = StyleSheet.create({
     fontWeight: '500'
   }
 })
-
-export const useNativeToast = () => {
-  const ctx = useContext(ToastContext)
-  if (!ctx) throw new Error('useNativeToast must be used within ToastProvider')
-  return ctx
-}

@@ -136,6 +136,8 @@ export const agentApi = {
       return () => ipcRenderer.off('agent:rag-progress', handler)
     },
     buildSharedContext: (lookbackMonths: number, locale?: string) =>
-      ipcRenderer.invoke('summary:buildSharedContext', lookbackMonths, locale)
+      ipcRenderer.invoke('summary:buildSharedContext', lookbackMonths, locale),
+    buildSharedContextPreview: (lookbackMonths: number) =>
+      ipcRenderer.invoke('summary:buildSharedContextPreview', lookbackMonths)
   }
 }

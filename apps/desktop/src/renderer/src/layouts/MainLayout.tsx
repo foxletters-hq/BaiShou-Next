@@ -9,10 +9,12 @@ import {
   getDesktopVaultScopeRevision,
   subscribeDesktopVaultScope
 } from '../cache/desktop-vault-scope'
+import { useDesktopSettingsOverlay } from './desktop-settings-overlay.context'
 
 export const MainLayout: React.FC = () => {
   const location = useLocation()
   const navigate = useNavigate()
+  const settingsOverlayOpen = useDesktopSettingsOverlay()
   const vaultScopeRevision = useSyncExternalStore(
     subscribeDesktopVaultScope,
     getDesktopVaultScopeRevision
@@ -55,7 +57,7 @@ export const MainLayout: React.FC = () => {
           <MainPageCache
             activeKey={activeCacheKey}
             vaultScopeRevision={vaultScopeRevision}
-            hideActiveWhenOverlay={hideCacheForSubRoute}
+            hideActiveWhenOverlay={hideCacheForSubRoute || settingsOverlayOpen}
           />
 
           <AnimatePresence mode="wait">

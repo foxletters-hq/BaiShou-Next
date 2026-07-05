@@ -177,6 +177,7 @@ object StorageTreeAccess {
     fun readBytes(context: Context, absolutePath: String): ByteArray {
         val doc = documentForPath(context, absolutePath)?.takeIf { it.isFile }
             ?: throw java.io.FileNotFoundException(absolutePath)
+        MobileExternalReadLimits.assertReadableTextBytes(doc.length(), absolutePath)
         return context.contentResolver.openInputStream(doc.uri)?.use { stream ->
             stream.readBytes()
         } ?: throw java.io.FileNotFoundException(absolutePath)

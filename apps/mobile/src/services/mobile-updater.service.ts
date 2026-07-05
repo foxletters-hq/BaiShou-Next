@@ -1,10 +1,14 @@
 import { Linking } from 'react-native'
 import * as Application from 'expo-application'
 import type { SettingsManagerService } from '@baishou/core-mobile'
-import { logger, normalizeAppVersionNumber } from '@baishou/shared'
+import {
+  fetchReleaseChannelManifest,
+  isAppVersionNewer,
+  logger,
+  releaseTagToPageUrl
+} from '@baishou/shared'
 import { APP_VERSION_NUMBER } from '../app-version'
 
-const GITHUB_LATEST_URL = 'https://api.github.com/repos/Anson-Trio/BaiShou-Next/releases/latest'
 const SETTINGS_KEY_AUTO_CHECK = 'updater_auto_check'
 
 export type MobileUpdateStatus = 'idle' | 'checking' | 'available' | 'not_available' | 'error'
@@ -13,29 +17,14 @@ export interface MobileUpdateCheckResult {
   status: MobileUpdateStatus
   currentVersion: string
   latestVersion?: string
+  /** 安装包直链（优先于 releaseUrl） */
+  downloadUrl?: string
   releaseUrl?: string
   error?: string
 }
 
-function parseVersionParts(raw: string): number[] {
-  return normalizeAppVersionNumber(raw)
-    .split('.')
-    .map((part) => {
-      const n = parseInt(part.replace(/[^0-9].*$/, ''), 10)
-      return Number.isFinite(n) ? n : 0
-    })
-}
-
-export function isVersionNewer(latest: string, current: string): boolean {
-  const a = parseVersionParts(latest)
-  const b = parseVersionParts(current)
-  const len = Math.max(a.length, b.length)
-  for (let i = 0; i < len; i++) {
-    const diff = (a[i] ?? 0) - (b[i] ?? 0)
-    if (diff !== 0) return diff > 0
-  }
-  return false
-}
+/** @deprecated 使用 @baishou/shared 的 isAppVersionNewer */
+export const isVersionNewer = isAppVersionNewer
 
 export class MobileUpdaterService {
   constructor(private settingsManager: SettingsManagerService) {}
@@ -57,37 +46,30 @@ export class MobileUpdaterService {
     const currentVersion = this.getCurrentVersion()
 
     try {
-      const response = await fetch(GITHUB_LATEST_URL, {
-        headers: { Accept: 'application/vnd.github+json' }
-      })
-
-      if (!response.ok) {
-        throw new Error(`GitHub API HTTP ${response.status}`)
+      const manifest = await fetchReleaseChannelManifest()
+      const android = manifest.android
+      if (!android?.version) {
+        throw new Error('Release channel 缺少 android 条目')
       }
 
-      const data = (await response.json()) as {
-        tag_name?: string
-        html_url?: string
-      }
-
-      const latestVersion = (data.tag_name || '').replace(/^v/i, '')
-      const releaseUrl =
-        data.html_url || `https://github.com/Anson-Trio/BaiShou-Next/releases/tag/v${latestVersion}`
-
-      const hasUpdate = latestVersion ? isVersionNewer(latestVersion, currentVersion) : false
+      const latestVersion = android.version
+      const downloadUrl = android.downloadUrl
+      const releaseUrl = android.tag ? releaseTagToPageUrl(android.tag) : downloadUrl
+      const hasUpdate = isAppVersionNewer(latestVersion, currentVersion)
 
       return {
         status: hasUpdate ? 'available' : 'not_available',
         currentVersion,
         latestVersion,
+        downloadUrl,
         releaseUrl
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       logger.warn('[MobileUpdater] check failed:', e as Error)
       return {
         status: 'error',
         currentVersion,
-        error: e?.message || String(e)
+        error: e instanceof Error ? e.message : String(e)
       }
     }
   }
@@ -95,7 +77,7 @@ export class MobileUpdaterService {
   async openReleaseUrl(url: string): Promise<void> {
     const canOpen = await Linking.canOpenURL(url)
     if (!canOpen) {
-      throw new Error('无法打开发布页链接')
+      throw new Error('无法打开下载或发布页链接')
     }
     await Linking.openURL(url)
   }

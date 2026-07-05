@@ -3,6 +3,7 @@ import * as fsp from 'fs/promises'
 import { app } from 'electron'
 
 import { SyncConfig, ICloudSyncClient, SyncRecord } from '@baishou/core-desktop'
+import { isRemoteCloudSyncConfigured } from '@baishou/shared'
 import { WebDavSyncClient } from './webdav-sync.client'
 import { S3SyncClient } from './s3-sync.client'
 import { DesktopArchiveService } from './archive.service'
@@ -78,6 +79,7 @@ export class DesktopCloudSyncService {
    */
   async listRecords(config: SyncConfig): Promise<SyncRecord[]> {
     if (config.target === 'local') return []
+    if (!isRemoteCloudSyncConfigured(config)) return []
     const client = this.createClient(config)
     return await client.listFiles()
   }

@@ -14,6 +14,11 @@ export function ensureMcpAuthToken(config: McpServerConfig): McpServerConfig {
   return { ...config, mcpAuthToken: createMcpAuthToken() }
 }
 
+/** 手动刷新访问令牌（需由用户显式触发） */
+export function refreshMcpAuthToken(config: McpServerConfig): McpServerConfig {
+  return { ...config, mcpAuthToken: createMcpAuthToken() }
+}
+
 export function isMcpRequestAuthorized(
   config: McpServerConfig,
   authorizationHeader: string | undefined

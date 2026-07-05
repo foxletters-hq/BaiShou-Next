@@ -1,10 +1,9 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight } from 'lucide-react'
-import { MdAutoAwesome } from 'react-icons/md'
 import { getProviderIcon } from '../../utils/provider-icons'
 import { useTheme } from '../../hooks'
 import styles from './AssistantEditPage.module.css'
+import { ChevronRight, Sparkles } from 'lucide-react'
 
 interface AssistantEditModelBindingProps {
   providerId?: string
@@ -40,7 +39,7 @@ export const AssistantEditModelBinding: React.FC<AssistantEditModelBindingProps>
               style={{ width: 24, height: 24, objectFit: 'contain' }}
             />
           ) : (
-            <MdAutoAwesome size={24} color="var(--color-primary)" />
+            <Sparkles size={24} color="var(--color-primary)" />
           )}
         </div>
         <div className={styles.modelInfo}>

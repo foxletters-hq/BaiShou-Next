@@ -1,5 +1,6 @@
 import { isTtsProviderId, resolveTtsProviderBaseUrl } from './tts-defaults'
 import { MIMO_TTS_DEFAULT_MODELS } from './mimo-tts.util'
+import { MINIMAX_TTS_DEFAULT_MODELS } from './minimax-tts.util'
 import { buildMimoTtsAuthHeaders } from './tts-http'
 
 const CLONE_TTS_VOICE_ARRAY_KEYS = ['voices', 'data', 'items', 'list'] as const
@@ -235,6 +236,10 @@ export async function fetchMimoTtsModelIds(baseUrl: string, apiKey?: string): Pr
   return [...MIMO_TTS_DEFAULT_MODELS]
 }
 
+export function fetchMinimaxTtsModelIds(): string[] {
+  return [...MINIMAX_TTS_DEFAULT_MODELS]
+}
+
 async function fetchCloneTtsVoiceIds(baseUrl: string): Promise<string[]> {
   const trimmedUrl = baseUrl.trim().replace(/\/$/, '')
   if (!trimmedUrl) {
@@ -293,6 +298,10 @@ export async function fetchTtsProviderModels(
 
   if (providerId === 'mimo-tts') {
     return fetchMimoTtsModelIds(baseUrl, trimmedKey)
+  }
+
+  if (providerId === 'minimax-tts') {
+    return fetchMinimaxTtsModelIds()
   }
 
   if (providerId === 'gpt-sovits') {

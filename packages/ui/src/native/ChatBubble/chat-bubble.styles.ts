@@ -1,5 +1,11 @@
 import { StyleSheet } from 'react-native'
 
+/**
+ * EnrichedMarkdownText 末行常少报高度；Legacy 渲染器走 RN Text 布局无此问题。
+ * 流式 EnrichedMarkdown 仍保留一行缓冲。
+ */
+export const CHAT_MARKDOWN_BOTTOM_GUARD = 24
+
 export const chatBubbleStyles = StyleSheet.create({
   container: {
     marginVertical: 8,
@@ -22,11 +28,17 @@ export const chatBubbleStyles = StyleSheet.create({
   },
   bubbleWrapperUser: {
     alignItems: 'flex-end',
-    marginLeft: 24
+    alignSelf: 'flex-end',
+    marginLeft: 24,
+    maxWidth: '88%'
   },
   bubbleWrapperAssistant: {
+    flexShrink: 1,
     alignItems: 'flex-start',
-    marginRight: 24
+    alignSelf: 'flex-start',
+    marginRight: 24,
+    maxWidth: '88%',
+    minWidth: 0
   },
   bubbleWrapperEditing: {
     width: '88%',
@@ -54,7 +66,28 @@ export const chatBubbleStyles = StyleSheet.create({
   bubble: {
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 16
+    borderRadius: 16,
+    alignSelf: 'stretch',
+    width: '100%',
+    overflow: 'visible'
+  },
+  bubblePressable: {
+    alignSelf: 'stretch',
+    width: '100%'
+  },
+  markdownSlot: {
+    alignSelf: 'stretch',
+    width: '100%',
+    paddingBottom: CHAT_MARKDOWN_BOTTOM_GUARD
+  },
+  plainTextSlot: {
+    alignSelf: 'stretch',
+    width: '100%'
+  },
+  bubbleUser: {
+    alignSelf: 'flex-end',
+    width: undefined,
+    maxWidth: '100%'
   },
   text: {
     fontSize: 15,
@@ -79,7 +112,7 @@ export const chatBubbleStyles = StyleSheet.create({
     width: '100%',
     fontSize: 15,
     lineHeight: 22,
-    minHeight: 100,
+    minHeight: 72,
     maxHeight: 260,
     padding: 0
   },
@@ -100,6 +133,14 @@ export const chatBubbleStyles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600'
   },
+  comfortableEditBtn: {
+    minHeight: 32,
+    paddingHorizontal: 14,
+    paddingVertical: 7
+  },
+  comfortableEditBtnText: {
+    fontSize: 13
+  },
   actionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -109,6 +150,12 @@ export const chatBubbleStyles = StyleSheet.create({
     marginTop: 6,
     width: '100%'
   },
+  actionsRowUser: {
+    alignSelf: 'flex-end',
+    width: undefined,
+    maxWidth: '100%',
+    justifyContent: 'flex-end'
+  },
   actionChip: {
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -117,6 +164,11 @@ export const chatBubbleStyles = StyleSheet.create({
   actionChipText: {
     fontSize: 12,
     fontWeight: '500'
+  },
+  /** 流式期间占位，高度对齐操作栏 + token 行，避免显示 chrome 时突增 */
+  deferredChromeSpacer: {
+    height: 36,
+    width: '100%'
   },
   tokenRow: {
     flexDirection: 'row',

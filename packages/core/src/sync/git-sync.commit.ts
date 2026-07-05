@@ -1,6 +1,6 @@
 import { logger } from '@baishou/shared'
 import type { GitCommit, GitSyncConfig } from '@baishou/shared'
-import { GitCommitError } from './sync.errors'
+import { GitCommitError, GitConfigError } from './sync.errors'
 import { GitSyncWorkspaceMixin } from './git-sync.workspace'
 
 export abstract class GitSyncCommitMixin extends GitSyncWorkspaceMixin {
@@ -101,6 +101,7 @@ export abstract class GitSyncCommitMixin extends GitSyncWorkspaceMixin {
 
       logger.info(`[GitSync] 提交 ${stagedPaths.length} 个已暂存文件`)
       try {
+        await this.ensureAuthorIdentity(git)
         const result = await git.commit(message)
         const files = await this.getCommittedFileNames(git, result.commit)
         return {
@@ -110,6 +111,7 @@ export abstract class GitSyncCommitMixin extends GitSyncWorkspaceMixin {
           files
         }
       } catch (error) {
+        if (error instanceof GitConfigError) throw error
         throw new GitCommitError(error instanceof Error ? error : undefined)
       }
     })
@@ -131,6 +133,7 @@ export abstract class GitSyncCommitMixin extends GitSyncWorkspaceMixin {
       }
 
       logger.info(`[GitSync] 提交 ${stagedPaths.length} 个文件`)
+      await this.ensureAuthorIdentity(git)
       const result = await git.commit(message)
       const files = await this.getCommittedFileNames(git, result.commit)
 
@@ -141,6 +144,7 @@ export abstract class GitSyncCommitMixin extends GitSyncWorkspaceMixin {
         files
       }
     } catch (error) {
+      if (error instanceof GitConfigError) throw error
       throw new GitCommitError(error instanceof Error ? error : undefined)
     }
   }
@@ -150,6 +154,7 @@ export abstract class GitSyncCommitMixin extends GitSyncWorkspaceMixin {
       try {
         const git = await this.ensureGit()
         await git.add(files)
+        await this.ensureAuthorIdentity(git)
         const result = await git.commit(message)
 
         return {
@@ -159,6 +164,7 @@ export abstract class GitSyncCommitMixin extends GitSyncWorkspaceMixin {
           files
         }
       } catch (error) {
+        if (error instanceof GitConfigError) throw error
         throw new GitCommitError(error instanceof Error ? error : undefined)
       }
     })

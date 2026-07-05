@@ -79,6 +79,7 @@ describe('serializeDiaryCmToWebViewMessage', () => {
   it('serializes command messages used after ready', () => {
     const messages: DiaryCmToWebViewMessage[] = [
       { type: 'setContent', payload: { content: 'next' } },
+      { type: 'deleteRange', payload: { from: 0, to: 5 } },
       { type: 'insertAtCursor', payload: { text: '![a](b.png | 200)' } },
       { type: 'setSelection', payload: { start: 3, end: 7 } },
       { type: 'focus' },

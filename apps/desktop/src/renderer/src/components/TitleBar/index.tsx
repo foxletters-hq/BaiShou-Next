@@ -1,15 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import styles from './TitleBar.module.css'
-import {
-  MdAutoStories,
-  MdAutoAwesome,
-  MdMinimize,
-  MdCropSquare,
-  MdClose,
-  MdFolderShared,
-  MdArrowDropDown
-} from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import { isIncrementalSyncReady, buildAgentChatNavigationPath } from '@baishou/shared'
 import { IncrementalSyncPanel, WorkspaceScopeHelpTooltip } from '@baishou/ui'
@@ -18,6 +9,8 @@ import { resolveDiaryHomePath } from '../Sidebar/sidebar-preferences'
 import { useOrchestratedSync } from '../../hooks/useOrchestratedSync'
 import { readActiveVaultNavigationSnapshot } from '../../lib/agent-navigation-persistence'
 import { switchActiveVault, persistActiveVaultName } from '../../lib/vault-runtime.util'
+import { INCREMENTAL_SYNC_CONFIG_CHANGED_EVENT } from '../../lib/incremental-sync-config-events'
+import { BookOpen, ChevronDown, FolderSync, Minus, Sparkles, Square, X } from 'lucide-react'
 
 export const TitleBar: React.FC = () => {
   const { t } = useTranslation()
@@ -80,14 +73,13 @@ export const TitleBar: React.FC = () => {
     const unsubRegistry = (window as any).api?.vault?.onRegistryUpdated?.(() => {
       void fetchVaults()
     })
-    const unsubMutation = (window as any).api?.cache?.onDomainMutation?.((event: {
-      domain?: string
-      action?: string
-    }) => {
-      if (event.domain === 'vault' && event.action === 'switch') {
-        void fetchVaults()
+    const unsubMutation = (window as any).api?.cache?.onDomainMutation?.(
+      (event: { domain?: string; action?: string }) => {
+        if (event.domain === 'vault' && event.action === 'switch') {
+          void fetchVaults()
+        }
       }
-    })
+    )
     return () => {
       unsubRegistry?.()
       unsubMutation?.()
@@ -117,23 +109,29 @@ export const TitleBar: React.FC = () => {
     let cancelled = false
     let retryTimer: ReturnType<typeof setTimeout> | undefined
     let retries = 0
-    const fetchConfig = async () => {
+
+    const fetchSyncConfig = async () => {
       try {
         const cfg = await (window as any).api?.incrementalSync?.getConfig?.()
         if (!cancelled) setS3Configured(isIncrementalSyncReady(cfg))
+        retries = 0
       } catch {
         if (!cancelled && retries < 5) {
           retries++
-          retryTimer = setTimeout(fetchConfig, 1000)
+          retryTimer = setTimeout(fetchSyncConfig, 1000)
         }
       }
     }
-    fetchConfig()
+
+    void fetchSyncConfig()
+    window.addEventListener(INCREMENTAL_SYNC_CONFIG_CHANGED_EVENT, fetchSyncConfig)
+
     return () => {
       cancelled = true
       if (retryTimer) clearTimeout(retryTimer)
+      window.removeEventListener(INCREMENTAL_SYNC_CONFIG_CHANGED_EVENT, fetchSyncConfig)
     }
-  }, [])
+  }, [location.pathname])
 
   const preloadVault = (vaultName: string) => {
     if (!vaultName || vaultName === activeVault?.name) return
@@ -183,7 +181,7 @@ export const TitleBar: React.FC = () => {
               className={`${styles.tab} ${!isAgent && !isSettings ? styles.activeTab : ''}`}
               onClick={() => navigate(resolveDiaryHomePath())}
             >
-              <MdAutoStories className={styles.tabIcon} />
+              <BookOpen className={styles.tabIcon} />
               <span>{t('nav.diary', '日记')}</span>
             </div>
             <div
@@ -193,7 +191,7 @@ export const TitleBar: React.FC = () => {
                 navigate(saved ? buildAgentChatNavigationPath(saved) : '/chat')
               }}
             >
-              <MdAutoAwesome className={styles.tabIcon} />
+              <Sparkles className={styles.tabIcon} />
               <span>{t('nav.agent', '伙伴')}</span>
             </div>
           </div>
@@ -231,13 +229,13 @@ export const TitleBar: React.FC = () => {
                 aria-haspopup="menu"
                 style={{ opacity: isSwitchingVault ? 0.65 : 1 }}
               >
-                <MdFolderShared className={styles.actionIconSm} />
+                <FolderSync className={styles.actionIconSm} />
                 <span className={styles.vaultName}>
                   {isSwitchingVault
                     ? t('workspace.switching', 'Switching…')
                     : activeVault?.name || t('workspace.no_active', '未选择工作空间')}
                 </span>
-                <MdArrowDropDown className={styles.actionIconSm} />
+                <ChevronDown className={styles.actionIconSm} />
               </button>
               {showVaultMenu && (
                 <div className={styles.vaultMenu} role="menu">
@@ -275,21 +273,21 @@ export const TitleBar: React.FC = () => {
             onClick={() => (window as any).api?.window?.minimize()}
             title={t('titlebar.minimize', '最小化')}
           >
-            <MdMinimize />
+            <Minus />
           </button>
           <button
             className={styles.winBtn}
             onClick={() => (window as any).api?.window?.toggleMaximize()}
             title={t('titlebar.maximize', '最大化')}
           >
-            <MdCropSquare />
+            <Square />
           </button>
           <button
             className={`${styles.winBtn} ${styles.winCloseBtn}`}
             onClick={() => (window as any).api?.window?.close()}
             title={t('titlebar.close', '关闭')}
           >
-            <MdClose />
+            <X />
           </button>
         </div>
       </div>

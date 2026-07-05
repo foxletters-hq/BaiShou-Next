@@ -1,10 +1,9 @@
 import React from 'react'
 import type { MockChatMessage } from '@baishou/shared'
 import { MessageActionBar } from '../MessageActionBar'
-import { MarkdownRenderer } from '../MarkdownRenderer'
+import { AgentMarkdownRenderer, AgentThinkSection } from '../AgentMarkdown'
 import { ToolResultGroup } from '../ToolResultGroupCard'
 import { resolveDesktopAssistantAvatarSrc } from '../assistant-avatar.util'
-import { ThinkingBlock } from '../ThinkingBlock'
 import { ChatBubbleAttachments } from './ChatBubbleAttachments'
 import { ChatBubbleInlineEditor } from './ChatBubbleInlineEditor'
 import { ChatBubbleTokenRow } from './ChatBubbleTokenRow'
@@ -94,18 +93,11 @@ export const ChatBubbleAiRow: React.FC<ChatBubbleAiRowProps> = ({
             {message.attachments && message.attachments.length > 0 && (
               <ChatBubbleAttachments attachments={message.attachments} />
             )}
-            {cleanReasoning && (
-              <ThinkingBlock
-                content={cleanReasoning}
-                isThinking={false}
-                defaultOpen={false}
-                autoCollapse
-              />
-            )}
+            {cleanReasoning && <AgentThinkSection content={cleanReasoning} />}
             {message.toolInvocations && message.toolInvocations.length > 0 && (
               <ToolResultGroup invocations={message.toolInvocations} />
             )}
-            {cleanContent && <MarkdownRenderer content={cleanContent} />}
+            {cleanContent && <AgentMarkdownRenderer content={cleanContent} />}
           </div>
 
           <div className={styles.aiFooterRow}>

@@ -1,9 +1,14 @@
 import { ipcMain } from 'electron'
 import { memoryEmbeddingsTable, SqliteHybridSearchRepository } from '@baishou/database-desktop'
 import { getAppDb } from '../db'
-import { eq, desc, like, sql } from 'drizzle-orm'
-import { EMBEDDING_SOURCE_SORT_MILLIS_SQL, timestampToMillis } from '@baishou/shared'
+import { eq, desc, like, sql, or, and, ne } from 'drizzle-orm'
+import {
+  buildDiaryEmbeddingGroupId,
+  EMBEDDING_SOURCE_SORT_MILLIS_SQL,
+  timestampToMillis
+} from '@baishou/shared'
 import { getEmbeddingService, getEmbeddingConfig } from './rag.ipc'
+import { vaultService } from './vault.ipc'
 
 /** 分页列表：优先 source_created_at（日记 date），兼容秒/毫秒混用 */
 const embeddingSortMillis = sql.raw(EMBEDDING_SOURCE_SORT_MILLIS_SQL)
@@ -26,6 +31,13 @@ export function registerRagQueryIPC() {
     ) => {
       await config.load()
       const db = getAppDb()
+      const activeVaultName = vaultService.getActiveVault()?.name ?? 'Personal'
+      const vaultDiaryGroupId = buildDiaryEmbeddingGroupId(activeVaultName)
+
+      const vaultScopeFilter = or(
+        ne(memoryEmbeddingsTable.sourceType, 'diary'),
+        eq(memoryEmbeddingsTable.groupId, vaultDiaryGroupId)
+      )
 
       // ── 语义检索分支（Semantic Search Mode） ──
       if (params.mode === 'semantic' && params.keyword && params.keyword.trim() !== '') {
@@ -71,8 +83,11 @@ export function registerRagQueryIPC() {
                 const hybridRepo = new SqliteHybridSearchRepository(mockClient as any)
                 const limit = params.limit || 30
                 const vectorResults = await hybridRepo.queryNativeVector(queryVector, limit)
+                const scopedResults = vectorResults.filter(
+                  (r) => r.sourceType !== 'diary' || r.sessionId === vaultDiaryGroupId
+                )
 
-                const entries = vectorResults.map((r) => ({
+                const entries = scopedResults.map((r) => ({
                   embeddingId: r.messageId, // ISearchResult では messageId に embeddingId が入っている
                   text: r.chunkText,
                   modelId: config.getGlobalEmbeddingModelId() || 'unknown',
@@ -99,7 +114,12 @@ export function registerRagQueryIPC() {
       }
 
       // ── 传统文本检索分支（Keyword/Text Search Mode, or fallback） ──
-      let query = db
+      const listFilter =
+        params.keyword && params.keyword.trim() !== ''
+          ? and(vaultScopeFilter, like(memoryEmbeddingsTable.chunkText, `%${params.keyword}%`))
+          : vaultScopeFilter
+
+      const query = db
         .select({
           embeddingId: memoryEmbeddingsTable.embeddingId,
           text: memoryEmbeddingsTable.chunkText,
@@ -108,12 +128,7 @@ export function registerRagQueryIPC() {
           sortMillis: embeddingSortMillis
         })
         .from(memoryEmbeddingsTable)
-
-      if (params.keyword && params.keyword.trim() !== '') {
-        query = query.where(
-          like(memoryEmbeddingsTable.chunkText, `%${params.keyword}%`)
-        ) as typeof query
-      }
+        .where(listFilter)
 
       const results = await query
         .orderBy(
@@ -137,12 +152,15 @@ export function registerRagQueryIPC() {
           const countRes = await db
             .select({ count: sql<number>`count(*)` })
             .from(memoryEmbeddingsTable)
-            .where(like(memoryEmbeddingsTable.chunkText, `%${params.keyword}%`))
+            .where(
+              and(vaultScopeFilter, like(memoryEmbeddingsTable.chunkText, `%${params.keyword}%`))
+            )
           total = countRes[0]?.count || 0
         } else {
           const countRes = await db
             .select({ count: sql<number>`count(*)` })
             .from(memoryEmbeddingsTable)
+            .where(vaultScopeFilter)
           total = countRes[0]?.count || 0
         }
         return {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { isRemoteCloudSyncConfigured } from '@baishou/shared'
 import { useToast } from '../Toast/useToast'
 import type { CloudSyncPanelProps, SyncConfig, SyncRecord, DataSyncTab } from './cloud-sync.types'
 import { DEFAULT_SYNC_CONFIG } from './cloud-sync.constants'
@@ -60,6 +61,11 @@ export function useCloudSyncFetch(
       setRecords([])
       return
     }
+    if (!isRemoteCloudSyncConfigured(config)) {
+      setRecords([])
+      resetSelection()
+      return
+    }
     setIsLoading(true)
     try {
       const r = await onListRecords(config)
@@ -86,7 +92,7 @@ export function useCloudSyncFetch(
     }
 
     if (activeTab === 'cloud') {
-      if (next.target !== 'local') {
+      if (next.target !== 'local' && isRemoteCloudSyncConfigured(next)) {
         setIsLoading(true)
         onListRecords(next)
           .then((r) => setRecords(r))
@@ -102,6 +108,7 @@ export function useCloudSyncFetch(
           })
       } else {
         setRecords([])
+        resetSelection()
       }
     } else if (onListSnapshots) {
       setIsLoading(true)

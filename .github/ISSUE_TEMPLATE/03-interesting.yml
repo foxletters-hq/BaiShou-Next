@@ -1,19 +1,21 @@
 name: 创意想法
-description: 开放性想法与探索方向 — 优先级相对较低，会酌情安排
-title: "创意:"
+description: 开放性想法与探索方向 — 不等于会纳入路线图，请勿直接提交功能 PR
+title: '创意:'
 labels:
   - interesting
 body:
   - type: markdown
     attributes:
       value: |
-        ## 优先级：酌情安排
+        ## 关于创意想法
 
-        **创意想法会排在 Bug 与需求建议之后**。我们非常欢迎脑洞，但会根据产品方向、成本与收益酌情实现，不一定纳入近期版本。
+        我们欢迎脑洞与方向性讨论，但请注意：
 
-        适合：方向性设想、体验灵感、尚不成熟的探索。
+        - **创意想法不等于会实现**，维护者会根据产品方向酌情考虑
+        - 若你已想清楚具体功能、技术方案与改动范围，请改用 **「功能提议」** 模板
+        - **请勿** 在未获同意前直接提交功能 PR
 
-        若是明确希望尽快落地的功能，请改用 **「需求建议」** 模板。
+        贡献政策：[贡献指南](https://github.com/foxletters-hq/BaiShou-Next/blob/main/docs/2-Submit/2-Contributing-Guide.md)
 
   - type: textarea
     id: description

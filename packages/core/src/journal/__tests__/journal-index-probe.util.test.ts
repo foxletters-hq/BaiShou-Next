@@ -66,4 +66,17 @@ describe('probeJournalShadowResyncNeeded', () => {
     expect(probe.needsResync).toBe(true)
     expect(probe.reason).toBe('journals-dir-unavailable')
   })
+
+  it('does not request resync when duplicate files share the same calendar day', async () => {
+    const journalsRoot = path.join(tempDir, 'Journals')
+    const canonicalDir = path.join(journalsRoot, '2024', '06')
+    await fs.mkdir(canonicalDir, { recursive: true })
+    await fs.writeFile(path.join(journalsRoot, '2024-06-01.md'), '# flat')
+    await fs.writeFile(path.join(canonicalDir, '2024-06-01.md'), '# canonical')
+
+    const probe = await probeJournalShadowResyncNeeded(fileSystem, journalsRoot, 1)
+
+    expect(probe.needsResync).toBe(false)
+    expect(probe.diskCount).toBe(1)
+  })
 })

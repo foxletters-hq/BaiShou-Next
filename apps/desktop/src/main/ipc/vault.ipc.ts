@@ -49,7 +49,7 @@ export async function preloadVaultShadowDb(_vaultName: string): Promise<void> {
   }
 }
 
-async function switchVaultFast(vaultName: string) {
+export async function switchVaultFast(vaultName: string) {
   const active = vaultService.getActiveVault()
   if (active?.name === vaultName) {
     return active
@@ -100,7 +100,6 @@ export function registerVaultIPC() {
     const { pickStorageDirectory, changeStorageRootDirectory } =
       await import('../services/desktop-storage-directory.service')
     const window = BrowserWindow.fromWebContents(event.sender)
-    if (!window) return null
 
     const newPath = await pickStorageDirectory(window)
     if (!newPath) return null

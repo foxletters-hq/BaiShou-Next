@@ -8,6 +8,8 @@ export interface ArchiveRestoreRebootstrapOptions {
 export interface MobileArchiveDbBridge {
   /** 导出前刷盘设置并对 SQLite 执行 WAL checkpoint */
   flushBeforeExport(): Promise<void>
+  /** 导出期间暂停 watcher / Shadow 索引，避免刷盘与文件复制竞态 */
+  runArchiveExportQuiesced<T>(fn: () => Promise<T>): Promise<T>
   /** 读取快照保留上限（-1 表示不限制） */
   getMaxSnapshotCount(): Promise<number>
   exportDevicePreferences(): Promise<Record<string, unknown>>

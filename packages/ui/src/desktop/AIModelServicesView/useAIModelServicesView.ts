@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { useSensors, useSensor, PointerSensor } from '@dnd-kit/core'
+import { resolveProviderDisplayName } from '@baishou/shared'
 import { arrayMove } from '@dnd-kit/sortable'
 import { useTranslation } from 'react-i18next'
 import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
 import { getProviderIcon } from '../../utils/provider-icons'
 import { useTheme } from '../../hooks'
-import { MdCloud } from 'react-icons/md'
 import styles from './AIModelServicesView.module.css'
 import type { AIModelServicesViewProps } from './ai-model-services.types'
 import { useAIModelProviderActions } from './useAIModelProviderActions'
@@ -44,7 +44,7 @@ export function useAIModelServicesView(props: AIModelServicesViewProps) {
     ...BASE_KNOWN_PROVIDERS,
     ...getCombinedProviders.map((id) => ({
       id,
-      name: providers[id]?.name || id.toUpperCase(),
+      name: providers[id]?.name || resolveProviderDisplayName(id),
       iconUrl: getProviderIcon(id, isDark),
       defaultBase: providers[id]?.apiBaseUrl || '',
       isSystem: false,

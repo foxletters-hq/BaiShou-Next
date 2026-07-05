@@ -40,6 +40,6 @@ export interface TtsSettings {
   promptText?: string
   promptLang?: string
   textLang?: string
-  /** MiMo：true 启用流式（预置音色真流式；复刻/设计为官方兼容模式） */
+  /** 流式合成：true 时走供应商流式 API（MiMo / MiniMax 等） */
   stream?: boolean
 }

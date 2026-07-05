@@ -1,3 +1,5 @@
+import './app-identity'
+import { DESKTOP_APP_ID, DESKTOP_DEV_APP_ID, isDesktopDevBuild } from './app-identity'
 import { app, shell, BrowserWindow, ipcMain, Menu, protocol, net } from 'electron'
 import { join } from 'path'
 import { fileURLToPath } from 'url'
@@ -24,6 +26,7 @@ import { registerDiaryAttachmentIPC } from './ipc/diary-attachment.ipc'
 import { registerRagIPC } from './ipc/rag.ipc'
 import { registerOnboardingIPC } from './ipc/onboarding.ipc'
 import { registerDeveloperIPC } from './ipc/developer.ipc'
+import { registerEmojiIPC } from './ipc/emoji.ipc'
 import { registerCompressionEventBridge } from './services/compression-event.service'
 import { registerSearchIPC } from './ipc/search.ipc'
 import { registerUpdaterIPC } from './ipc/updater.ipc'
@@ -64,33 +67,24 @@ function createWindow(needsOnboarding: boolean): void {
     mainWindow!.show()
   })
 
-  mainWindow.webContents.on('context-menu', (_event, properties) => {
+  mainWindow.webContents.on('context-menu', (event, properties) => {
     const { isEditable, selectionText, editFlags } = properties
     const hasText = selectionText.trim().length > 0
 
-    if (isEditable || hasText) {
+    // contenteditable（表格单元格、CodeMirror 正文）由渲染进程自定义菜单处理
+    if (isEditable) {
+      event.preventDefault()
+      return
+    }
+
+    if (hasText) {
       const template: Electron.MenuItemConstructorOptions[] = [
         {
           id: 'copy',
           label: '复制',
           role: 'copy',
           enabled: editFlags.canCopy,
-          visible: isEditable || hasText
-        },
-        {
-          id: 'paste',
-          label: '粘贴',
-          role: 'paste',
-          enabled: editFlags.canPaste,
-          visible: isEditable
-        },
-        { id: 'cut', label: '剪切', role: 'cut', enabled: editFlags.canCut, visible: isEditable },
-        {
-          id: 'selectAll',
-          label: '全选',
-          role: 'selectAll',
-          enabled: editFlags.canSelectAll,
-          visible: isEditable
+          visible: true
         }
       ]
 
@@ -171,7 +165,17 @@ async function completeFullBootstrap() {
     // 3. 这里的逻辑在引导完成后或者已有配置时执行
     if (mainWindow) {
       const settingsRepo = new SettingsRepository(getAppDb())
-      const hotkeyService = new HotkeyService(settingsRepo, mainWindow)
+      const { settingsManager } = await import('./ipc/settings.ipc')
+      const { purgeDeviceLocalSettingsFromAgentDb } =
+        await import('./services/desktop-device-settings.util')
+      await purgeDeviceLocalSettingsFromAgentDb(settingsRepo, () => settingsManager.flushToDisk())
+
+      const { migrateDesktopHotkeyConfigFromSharedSettings, desktopHotkeyConfigStore } =
+        await import('./services/desktop-hotkey-config.store')
+      await migrateDesktopHotkeyConfigFromSharedSettings(settingsRepo, () =>
+        settingsManager.flushToDisk()
+      )
+      const hotkeyService = new HotkeyService(desktopHotkeyConfigStore, mainWindow)
       hotkeyService.start()
       setHotkeyService(hotkeyService)
 
@@ -197,14 +201,28 @@ app.whenReady().then(async () => {
   // like model-pricing.service that may be proxy-sensitive
   ;(global as any).customNetFetch = net.fetch
 
-  // Set app user model id for windows
-  electronApp.setAppUserModelId('com.electron.app')
-  app.setName('白守')
+  // Windows 任务栏分组：开发端与稳定端使用不同 AppUserModelId，避免混为一组
+  electronApp.setAppUserModelId(isDesktopDevBuild() ? DESKTOP_DEV_APP_ID : DESKTOP_APP_ID)
 
   // Register local protocol for secure local asset rendering
   protocol.handle('local', async (request) => {
     try {
       let targetUrl = request.url.replace(/^local:/i, 'file:')
+
+      // Resolve relative emoji paths: local:///emojis/xxx.png → absolute vault path
+      const emojiMatch = targetUrl.match(/^file:\/\/+emojis\/(.+)$/i)
+      if (emojiMatch) {
+        const { DesktopStoragePathService } = await import('./services/path.service')
+        const pathService = new DesktopStoragePathService()
+        const emojisDir = await pathService.getEmojisDirectory()
+        const absolutePath = require('path').join(emojisDir, emojiMatch[1])
+        const { existsSync } = require('node:fs')
+        if (!existsSync(absolutePath)) {
+          return new Response('Not found', { status: 404 })
+        }
+        return await net.fetch(`file:///${absolutePath.replace(/\\/g, '/')}`)
+      }
+
       // Ensure absolute file URL starts with file:/// on Windows/Unix
       if (targetUrl.startsWith('file://') && !targetUrl.startsWith('file:///')) {
         targetUrl = 'file:///' + targetUrl.slice(7)
@@ -249,7 +267,7 @@ app.whenReady().then(async () => {
     win?.close()
   })
 
-  // 引导检查 + Flutter 旧版自动迁移
+  // 引导检查 + Flutter 旧版数据探测（迁移需用户确认）
   const settingsPath = join(app.getPath('userData'), 'baishou_settings.json')
   const { resolveDesktopStorageBootstrap } =
     await import('./services/desktop-legacy-bootstrap.service')
@@ -257,8 +275,10 @@ app.whenReady().then(async () => {
   const needsOnboarding = bootstrap.needsOnboarding
   const customStorageRoot = bootstrap.storageRoot
 
-  if (bootstrap.migrated) {
-    logger.info('[Bootstrapper] Local Auto-Migration Completed! Skipped Onboarding.')
+  if (bootstrap.pendingFlutterLegacyMigration) {
+    logger.info(
+      '[Bootstrapper] Pending Flutter legacy migration detected; waiting for user confirmation.'
+    )
   }
 
   // ── 核心变更：在确定存储路径后，再初始化全局 Agent DB ──
@@ -297,6 +317,7 @@ app.whenReady().then(async () => {
   registerDiaryAttachmentIPC()
   registerRagIPC()
   registerDeveloperIPC()
+  registerEmojiIPC()
   registerSearchIPC()
   registerUpdaterIPC()
   registerShellIPC()

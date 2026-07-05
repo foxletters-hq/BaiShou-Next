@@ -97,7 +97,8 @@ const resources = {
       minimax: 'MiniMax',
       vertexai: 'Google Vertex AI',
       vercel: 'Vercel AI Gateway',
-      xiaomimimo: '小米 MiMo'
+      xiaomimimo: '小米 MiMo',
+      opencodego: 'OpenCode Go'
     },
     common: {
       copied: '已复制到剪贴板'

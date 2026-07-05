@@ -1,5 +1,9 @@
 import { DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH } from './builtin-assistant-avatars.constants'
 import {
+  DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD,
+  DEFAULT_ASSISTANT_CONTEXT_WINDOW
+} from './assistant-memory-defaults.constants'
+import {
   getDefaultLatteAssistantDescription,
   getDefaultLatteAssistantSystemPrompt
 } from './latte-assistant-prompt.defaults'
@@ -34,6 +38,7 @@ export type DefaultLatteAssistantSeed = {
   isDefault: true
   isPinned: false
   contextWindow: number
+  compressTokenThreshold: number
   assistantKind: 'companion'
 }
 
@@ -45,7 +50,8 @@ export function getDefaultLatteAssistantSeed(locale?: string): DefaultLatteAssis
     systemPrompt: getDefaultLatteAssistantSystemPrompt(locale),
     isDefault: true,
     isPinned: false,
-    contextWindow: 20,
+    contextWindow: DEFAULT_ASSISTANT_CONTEXT_WINDOW,
+    compressTokenThreshold: DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD,
     assistantKind: 'companion'
   }
 }

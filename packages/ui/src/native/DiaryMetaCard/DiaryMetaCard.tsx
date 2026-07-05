@@ -2,6 +2,8 @@ import React from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { WeatherEmoji } from '../WeatherIcon'
+import { MoodEmoji } from '../MoodIcon/MoodEmoji'
 
 export interface DiaryMetaCardProps {
   weather?: string
@@ -10,27 +12,6 @@ export interface DiaryMetaCardProps {
   createdAt: string
   updatedAt: string
   wordCount: number
-}
-
-const weatherEmojiMap: Record<string, string> = {
-  sunny: '☀️',
-  cloudy: '☁️',
-  rainy: '🌧️',
-  snowy: '❄️',
-  windy: '💨',
-  foggy: '🌫️',
-  stormy: '⛈️'
-}
-
-const moodEmojiMap: Record<string, string> = {
-  happy: '😊',
-  sad: '😢',
-  excited: '🤩',
-  calm: '😌',
-  anxious: '😰',
-  angry: '😠',
-  grateful: '🙏',
-  tired: '😴'
 }
 
 export const DiaryMetaCard: React.FC<DiaryMetaCardProps> = ({
@@ -43,9 +24,6 @@ export const DiaryMetaCard: React.FC<DiaryMetaCardProps> = ({
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
-
-  const weatherEmoji = weather ? weatherEmojiMap[weather] || '🌤️' : null
-  const moodEmoji = mood ? moodEmojiMap[mood] || '😶' : null
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
@@ -69,8 +47,8 @@ export const DiaryMetaCard: React.FC<DiaryMetaCardProps> = ({
       <View style={styles.row}>
         {/* Weather & Mood */}
         <View style={styles.emojiGroup}>
-          {weatherEmoji && <Text style={styles.emoji}>{weatherEmoji}</Text>}
-          {moodEmoji && <Text style={styles.emoji}>{moodEmoji}</Text>}
+          {weather ? <WeatherEmoji weather={weather} size={16} /> : null}
+          {mood ? <MoodEmoji mood={mood} size={16} /> : null}
         </View>
 
         <View style={styles.dividerDot}>

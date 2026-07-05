@@ -85,26 +85,42 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 16px 24px 32px 24px;
+  padding: 16px 24px 0 24px;
   overflow: hidden;
   background: var(--bg-surface-low);
-}
-
-.de-tags-section {
-  margin-bottom: 16px;
-  flex-shrink: 0;
 }
 
 /* 元数据栏 */
 .de-meta-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 8px;
+  margin-bottom: 12px;
   flex-shrink: 0;
 }
 
+.de-meta-pickers {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.de-meta-pickers .wp-container {
+  flex: 0 0 auto;
+  min-width: 0;
+  width: auto;
+}
+
+.de-meta-pickers .wp-trigger {
+  width: auto;
+  min-width: 108px;
+  max-width: 148px;
+}
+
 .de-meta-fav-btn {
+  margin-left: auto;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
@@ -134,6 +150,49 @@
   background: var(--color-warning-light, rgba(245, 158, 11, 0.08));
 }
 
+.de-meta-tts-btn {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  transition:
+    color 0.2s,
+    border-color 0.2s,
+    background 0.2s;
+}
+
+.de-meta-tts-btn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light, rgba(99, 102, 241, 0.08));
+  color: var(--text-primary);
+}
+
+.de-meta-tts-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.de-meta-tts-btn.active {
+  color: var(--color-primary);
+  border-color: color-mix(in srgb, var(--color-primary) 35%, var(--border-subtle));
+}
+
+.de-meta-tts-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.de-meta-tts-spinner {
+  animation: de-spin 0.8s linear infinite;
+}
+
 .de-content-section {
   flex: 1;
   display: flex;
@@ -143,6 +202,17 @@
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   overflow: hidden;
+  --tag-0-fg: #3b82f6;
+  --tag-1-fg: #10b981;
+  --tag-2-fg: #f59e0b;
+  --tag-3-fg: #8b5cf6;
+}
+
+[data-theme='dark'] .de-content-section {
+  --tag-0-fg: #60a5fa;
+  --tag-1-fg: #34d399;
+  --tag-2-fg: #fbbf24;
+  --tag-3-fg: #a78bfa;
 }
 
 /* CodeMirror Editor Wrapper */
@@ -259,7 +329,7 @@
 
 .cm-context-menu {
   position: fixed;
-  z-index: 10000;
+  z-index: 401;
   min-width: 150px;
   background: var(--bg-glass-surface);
   backdrop-filter: var(--blur-glass);

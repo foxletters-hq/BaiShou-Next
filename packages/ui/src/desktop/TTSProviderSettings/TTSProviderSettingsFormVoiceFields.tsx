@@ -1,6 +1,7 @@
 import React from 'react'
 import { Input } from '../Input/Input'
 import { Select } from '../Select/Select'
+import { Switch } from '../Switch/Switch'
 import styles from './TTSProviderSettings.module.css'
 import type { TTSProviderSettingsViewModel } from './useTTSProviderSettings'
 import {
@@ -8,7 +9,8 @@ import {
   isMimoVoiceCloneModel,
   isMimoVoiceDesignModel,
   normalizeRefAudioPath,
-  parseRefAudioPick
+  parseRefAudioPick,
+  supportsTtsProviderStreaming
 } from '@baishou/shared'
 import { FolderOpen } from 'lucide-react'
 
@@ -34,6 +36,9 @@ export function TTSProviderSettingsFormVoiceFields({ vm }: { vm: TTSProviderSett
     (isMimoPresetModel(mimoModelId) || isMimoVoiceCloneModel(mimoModelId) || !mimoModelId.trim())
   const showPresetVoice =
     providerType !== 'mimo-tts' || !mimoModelId.trim() || isMimoPresetModel(mimoModelId)
+  const showStreamToggle =
+    supportsTtsProviderStreaming(providerType) &&
+    !(providerType === 'mimo-tts' && isMimoVoiceCloneModel(mimoModelId))
 
   const handlePickRefAudio = async () => {
     if (!onPickRefAudio) return
@@ -83,7 +88,9 @@ export function TTSProviderSettingsFormVoiceFields({ vm }: { vm: TTSProviderSett
                 ? 'default'
                 : providerType === 'mimo-tts'
                   ? defaultMimoVoice
-                  : 'alloy'
+                  : providerType === 'minimax-tts'
+                    ? 'male-qn-qingse'
+                    : 'alloy'
             }
             value={currentConfig.voice}
             onChange={(e) => updateCurrentConfig({ voice: e.target.value })}
@@ -203,6 +210,31 @@ export function TTSProviderSettingsFormVoiceFields({ vm }: { vm: TTSProviderSett
               className={styles.rangeInput}
             />
           </div>
+        </div>
+      )}
+
+      {showStreamToggle && (
+        <div className={styles.section}>
+          <div className={styles.streamSwitchRow}>
+            <label className={styles.label} style={{ marginBottom: 0 }}>
+              {t('tts.settings.stream_label', '启用流式合成')}
+            </label>
+            <Switch
+              checked={currentConfig.stream !== false}
+              onChange={(e) => updateCurrentConfig({ stream: e.target.checked })}
+            />
+          </div>
+          <span className={styles.hint}>
+            {providerType === 'minimax-tts'
+              ? t(
+                  'tts.settings.stream_hint_minimax',
+                  '推荐长文本（>3000 字）开启；朗读时将整段文本一次提交给流式接口'
+                )
+              : t(
+                  'tts.settings.stream_hint_mimo',
+                  '预置音色支持真流式；音色复刻/设计为官方兼容模式'
+                )}
+          </span>
         </div>
       )}
 

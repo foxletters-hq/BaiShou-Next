@@ -10,7 +10,7 @@ import {
   CardLinkAction,
   Select
 } from '@baishou/ui/native'
-import { PROVIDER_TYPES } from '../../../constants/known-ai-providers'
+import { PROVIDER_TYPES, resolveProviderTypeLabel } from '../../../constants/known-ai-providers'
 import { AIProviderConfig, ProviderType } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { ProviderSortableList } from './ProviderSortableList'
@@ -173,11 +173,11 @@ export const AIServicesSection: React.FC = () => {
   const typeOptions = useMemo(
     () =>
       PROVIDER_TYPES.map((type) => ({
-        label: type,
+        label: resolveProviderTypeLabel(type, t),
         value: type,
         leading: <ProviderBrandIcon providerId={type} size={18} />
       })),
-    []
+    [t]
   )
 
   if (listItems === null) {

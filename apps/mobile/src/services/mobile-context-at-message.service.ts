@@ -10,6 +10,13 @@ import {
   buildDiaryWritingGuidelinesForSystemPrompt,
   formatUserCardFromProfile,
   getUserProfileFromSettings,
+  isAutoInjectCurrentTimeEnabled,
+  normalizeEmojiToolConfig,
+  normalizeToolManagementConfig,
+  resolveAssistantEmojiConfig,
+  assistantRowToEmojiPrefs,
+  type AssistantEmojiPrefs,
+  DEFAULT_TOOL_MANAGEMENT_CONFIG,
   type DiaryTemplateConfig
 } from '@baishou/shared'
 import {
@@ -66,14 +73,41 @@ export async function resolveAssistantContextWindow(
   return undefined
 }
 
+export async function resolveAssistantEmojiPrefs(
+  sessionId: string,
+  sessionRepo: SessionRepository,
+  assistantManager: AssistantManagerService
+): Promise<AssistantEmojiPrefs | undefined> {
+  try {
+    const session = await sessionRepo.getSessionById(sessionId)
+    if (!session?.assistantId) return undefined
+    const assistant = await assistantManager.findById(session.assistantId)
+    if (!assistant) return undefined
+    return assistantRowToEmojiPrefs(assistant)
+  } catch {
+    return undefined
+  }
+}
+
+export interface BuildMobileStreamUserConfigOptions {
+  assistantContextWindow?: number
+  assistantEmojiPrefs?: AssistantEmojiPrefs
+}
+
 export async function buildMobileStreamUserConfig(
   settingsManager: SettingsManagerService,
   searchMode: boolean,
-  assistantContextWindow?: number
+  options?: BuildMobileStreamUserConfigOptions
 ): Promise<Record<string, unknown>> {
+  const assistantContextWindow = options?.assistantContextWindow
+  const assistantEmojiPrefs = options?.assistantEmojiPrefs
   const ragConfig = await settingsManager.get<any>('rag_config')
-  const toolManagementConfig = await settingsManager.get<any>('tool_management_config')
-  const behaviorConfig = await settingsManager.get<any>('agent_behavior_config')
+  const toolManagementConfig = normalizeToolManagementConfig(
+    (await settingsManager.get<any>('tool_management_config')) ?? DEFAULT_TOOL_MANAGEMENT_CONFIG
+  )
+  const behaviorConfig =
+    (await settingsManager.get<any>('agent_behavior')) ??
+    (await settingsManager.get<any>('agent_behavior_config'))
   const webSearchConfig = await settingsManager.get<any>('web_search_config')
   const globalModels = await settingsManager.get<any>('global_models')
   const diaryTemplateConfig =
@@ -92,7 +126,7 @@ export async function buildMobileStreamUserConfig(
   return {
     ragEnabled: ragConfig?.ragEnabled ?? true,
     hasEmbeddingModel,
-    disabledToolIds: toolManagementConfig?.disabledToolIds || [],
+    disabledToolIds: toolManagementConfig.disabledToolIds,
     recentCount:
       assistantContextWindow !== undefined
         ? assistantContextWindow < 0
@@ -105,7 +139,16 @@ export async function buildMobileStreamUserConfig(
       ...(webSearchConfig || {})
     }),
     diaryAiWritingPrompt: buildDiaryWritingGuidelinesForSystemPrompt(diaryTemplateConfig),
-    userCard: formatUserCardFromProfile(userProfile)
+    userCard: formatUserCardFromProfile(userProfile),
+    agentGuidelines:
+      typeof behaviorConfig?.agentGuidelines === 'string' &&
+      behaviorConfig.agentGuidelines.trim().length > 0
+        ? behaviorConfig.agentGuidelines.trim()
+        : undefined,
+    emojiConfig: resolveAssistantEmojiConfig(
+      normalizeEmojiToolConfig(toolManagementConfig.emojiConfig),
+      assistantEmojiPrefs
+    )
   }
 }
 
@@ -161,11 +204,15 @@ export async function loadContextAtMessage(
     deps.sessionRepo,
     deps.assistantManager
   )
-  const userConfig = await buildMobileStreamUserConfig(
-    deps.settingsManager,
-    searchMode,
-    assistantContextWindow
+  const emojiPrefs = await resolveAssistantEmojiPrefs(
+    sessionId,
+    deps.sessionRepo,
+    deps.assistantManager
   )
+  const userConfig = await buildMobileStreamUserConfig(deps.settingsManager, searchMode, {
+    assistantContextWindow,
+    assistantEmojiPrefs: emojiPrefs
+  })
 
   const session = await deps.sessionRepo.getSessionById(sessionId)
   const providers = (await deps.settingsManager.get<any[]>('ai_providers')) || []
@@ -209,7 +256,12 @@ export async function loadContextAtMessage(
       recentCount,
       modelId,
       providerType: provider?.config?.type,
-      systemPrompt
+      systemPrompt,
+      wrapMessageTime: isAutoInjectCurrentTimeEnabled(
+        Array.isArray(userConfig.disabledToolIds)
+          ? (userConfig.disabledToolIds as string[])
+          : undefined
+      )
     }
   )
 

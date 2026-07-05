@@ -52,6 +52,11 @@ export function useAgentSessions(
       const targetAst = overrideAssistantId || assistantIdRef.current
       if (!targetAst) return
 
+      if (overrideAssistantId) {
+        assistantIdRef.current = overrideAssistantId
+        lastActiveAssistantId.current = overrideAssistantId
+      }
+
       if (!resetOffset) {
         setIsLoadingMoreSessions(true)
       }

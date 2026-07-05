@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
+import { normalizeToolManagementConfig, type EmojiToolConfig } from '@baishou/shared'
 import {
   View,
   Text,
@@ -7,22 +8,39 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Platform
+  Platform,
+  Pressable
 } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
+import { BadgeCheck, ListOrdered, Minus, Plus, Smile, Store } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
 import { Switch } from '../Switch'
 import { HelpTooltip } from '../Tooltip/HelpTooltip'
+import { EmojiSettingsEntryRow } from '../EmojiSettingsView'
+import { AgentToolCategoryIcon, AgentToolIcon } from '../icons/agent-tools-icons'
+import { AGENT_TOOL_ICON_SIZE, DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
+
+const TOOL_TAB_PADDING = 6
+const TOOL_TAB_GAP = 8
 
 export interface ToolManagementConfig {
   disabledToolIds: string[]
   customConfigs: Record<string, Record<string, unknown>>
+  emojiConfig?: EmojiToolConfig
 }
 
 export interface AgentToolsViewProps {
   config: ToolManagementConfig
   onChange: (config: ToolManagementConfig) => void
   disableScroll?: boolean
+  /** Mobile: pick and import emoji images via image picker */
+  onPickAndImportEmojis?: () => Promise<{ relativePath: string; originalName: string; error: string | null }[]>
+  /** Mobile: resolve a relativePath to a displayable URI */
+  onResolveEmojiPath?: (relativePath: string) => Promise<string>
+  /** Mobile: delete an emoji file */
+  onDeleteEmoji?: (relativePath: string) => Promise<boolean>
+  /** 打开独立表情包设置页 */
+  onOpenEmojiSettings?: () => void
 }
 
 export interface ToolConfigParam {
@@ -41,28 +59,6 @@ export interface AgentToolDef {
   name: string
   tooltipKey: string
   configurableParams?: ToolConfigParam[]
-}
-
-// Mapping tool IDs to MaterialIcons glyphs
-const TOOL_ICONS: Record<string, keyof typeof MaterialIcons.glyphMap> = {
-  diary_read: 'menu-book',
-  diary_edit: 'edit',
-  diary_delete: 'delete',
-  diary_list: 'list',
-  diary_search: 'search',
-  summary_read: 'description',
-  message_search: 'message',
-  memory_store: 'storage',
-  memory_delete: 'delete-forever'
-}
-
-// Mapping category IDs to MaterialIcons glyphs
-const CATEGORY_ICONS: Record<string, keyof typeof MaterialIcons.glyphMap> = {
-  diary: 'book',
-  summary: 'description',
-  memory: 'psychology',
-  search: 'public',
-  general: 'extension'
 }
 
 const getAgentTools = (t: (key: string, fallback: string) => string): AgentToolDef[] => [
@@ -120,6 +116,12 @@ const getAgentTools = (t: (key: string, fallback: string) => string): AgentToolD
     tooltipKey: 'agent.tools.message_search_tooltip'
   },
   {
+    id: 'vector_search',
+    category: 'memory',
+    name: t('agent.tools.vector_search', '语义搜索'),
+    tooltipKey: 'agent.tools.vector_search_desc'
+  },
+  {
     id: 'memory_store',
     category: 'memory',
     name: t('agent.tools.memory_store', '记忆存储'),
@@ -130,6 +132,12 @@ const getAgentTools = (t: (key: string, fallback: string) => string): AgentToolD
     category: 'memory',
     name: t('agent.tools.memory_delete', '记忆删除'),
     tooltipKey: 'agent.tools.memory_delete_tooltip'
+  },
+  {
+    id: 'auto_inject_time',
+    category: 'general',
+    name: t('agent.tools.auto_inject_time', '当前时间'),
+    tooltipKey: 'agent.tools.auto_inject_time_tooltip'
   }
 ]
 
@@ -142,24 +150,50 @@ const getCategoryMeta = (t: (key: string, fallback: string) => string) => ({
   },
   memory: {
     label: t('settings.agent_tools_category_memory', '记忆工具')
+  },
+  general: {
+    label: t('settings.agent_tools_category_general', '通用工具')
   }
 })
 
 export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
   config,
   onChange,
-  disableScroll
+  disableScroll,
+  onPickAndImportEmojis,
+  onResolveEmojiPath,
+  onDeleteEmoji,
+  onOpenEmojiSettings
 }) => {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
 
   const [showCommunity, setShowCommunity] = useState(false)
+  const [toolTabsWidth, setToolTabsWidth] = useState(0)
+  const toolTabSlide = useSharedValue(0)
 
+  const toolTabWidth =
+    toolTabsWidth > 0 ? (toolTabsWidth - TOOL_TAB_PADDING * 2 - TOOL_TAB_GAP) / 2 : 0
+
+  useEffect(() => {
+    toolTabSlide.value = withTiming(showCommunity ? 1 : 0, { duration: 280 })
+  }, [showCommunity, toolTabSlide])
+
+  const toolTabIndicatorStyle = useAnimatedStyle(
+    () => ({
+      transform: [{ translateX: toolTabSlide.value * (toolTabWidth + TOOL_TAB_GAP) }]
+    }),
+    [toolTabWidth]
+  )
+
+  const normalizedConfig = useMemo(() => normalizeToolManagementConfig(config), [config])
   const allTools = useMemo(() => getAgentTools(t), [t])
   const categoryMeta = useMemo(() => getCategoryMeta(t), [t])
 
   const toggleTool = (toolId: string) => {
-    const disabledList = Array.isArray(config.disabledToolIds) ? [...config.disabledToolIds] : []
+    const disabledList = Array.isArray(normalizedConfig.disabledToolIds)
+      ? [...normalizedConfig.disabledToolIds]
+      : []
     const isCurrentlyEnabled = !disabledList.includes(toolId)
 
     if (isCurrentlyEnabled) {
@@ -168,20 +202,20 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
       const idx = disabledList.indexOf(toolId)
       if (idx > -1) disabledList.splice(idx, 1)
     }
-    onChange({ ...config, disabledToolIds: disabledList })
+    onChange({ ...normalizedConfig, disabledToolIds: disabledList })
   }
 
   const setToolParam = (toolId: string, key: string, value: unknown) => {
-    const customConfigs = { ...(config.customConfigs || {}) }
+    const customConfigs = { ...(normalizedConfig.customConfigs || {}) }
     if (!customConfigs[toolId]) {
       customConfigs[toolId] = {}
     }
     customConfigs[toolId] = { ...customConfigs[toolId], [key]: value }
-    onChange({ ...config, customConfigs })
+    onChange({ ...normalizedConfig, customConfigs })
   }
 
   const getToolParam = (toolId: string, param: ToolConfigParam) => {
-    const customConfigs = config.customConfigs || {}
+    const customConfigs = normalizedConfig.customConfigs || {}
     if (customConfigs[toolId] && customConfigs[toolId][param.key] !== undefined) {
       return customConfigs[toolId][param.key]
     }
@@ -201,23 +235,42 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
 
   const renderTabSwitcher = () => (
     <View style={styles.tabSwitcherWrapper}>
-      <View style={[styles.tabSwitcher, { backgroundColor: colors.bgSurfaceNormal }]}>
-        <TouchableOpacity
-          style={[
-            styles.tabBtn,
-            !showCommunity && [styles.tabActive, { backgroundColor: colors.primary }]
-          ]}
-          onPress={() => setShowCommunity(false)}
-        >
-          <MaterialIcons
-            name="verified"
+      <View
+        style={[styles.tabSwitcher, { backgroundColor: colors.bgSurfaceNormal }]}
+        onLayout={(event) => setToolTabsWidth(event.nativeEvent.layout.width)}
+      >
+        {toolTabWidth > 0 ? (
+          <Animated.View
+            style={[
+              styles.tabIndicator,
+              {
+                width: toolTabWidth,
+                backgroundColor: colors.bgSurface,
+                borderColor: colors.borderMuted,
+                ...Platform.select({
+                  ios: {
+                    shadowColor: '#000',
+                    shadowOpacity: 0.06,
+                    shadowRadius: 4,
+                    shadowOffset: { width: 0, height: 1 }
+                  },
+                  default: { elevation: 1 }
+                })
+              },
+              toolTabIndicatorStyle
+            ]}
+          />
+        ) : null}
+        <Pressable style={styles.tabBtn} onPress={() => setShowCommunity(false)}>
+          <BadgeCheck
             size={16}
-            color={!showCommunity ? colors.textOnPrimary : colors.textSecondary}
+            color={!showCommunity ? colors.primary : colors.textSecondary}
+            strokeWidth={DEFAULT_STROKE_WIDTH}
           />
           <Text
             style={[
               styles.tabText,
-              { color: !showCommunity ? colors.textOnPrimary : colors.textSecondary }
+              { color: !showCommunity ? colors.primary : colors.textSecondary }
             ]}
           >
             {t('agent.tools.built_in', '内置工具')}
@@ -226,96 +279,100 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
             style={[
               styles.tabBadge,
               {
-                backgroundColor: !showCommunity ? 'rgba(255,255,255,0.2)' : colors.bgSurfaceHigh
+                backgroundColor: !showCommunity ? colors.primaryLight : colors.bgSurfaceHigh
               }
             ]}
           >
             <Text
               style={[
                 styles.tabBadgeText,
-                { color: !showCommunity ? colors.textOnPrimary : colors.textSecondary }
+                { color: !showCommunity ? colors.primary : colors.textSecondary }
               ]}
             >
               {allTools.length}
             </Text>
           </View>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.tabBtn,
-            showCommunity && [styles.tabActive, { backgroundColor: colors.primary }]
-          ]}
-          onPress={() => setShowCommunity(true)}
-        >
-          <MaterialIcons
-            name="storefront"
+        </Pressable>
+        <Pressable style={styles.tabBtn} onPress={() => setShowCommunity(true)}>
+          <Store
             size={16}
-            color={showCommunity ? colors.textOnPrimary : colors.textSecondary}
+            color={showCommunity ? colors.primary : colors.textSecondary}
+            strokeWidth={DEFAULT_STROKE_WIDTH}
           />
           <Text
             style={[
               styles.tabText,
-              { color: showCommunity ? colors.textOnPrimary : colors.textSecondary }
+              { color: showCommunity ? colors.primary : colors.textSecondary }
             ]}
           >
-            {t('agent.tools.community', '社区工具')}
+            {t('agent.tools.community', '趣味工具')}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </View>
   )
 
   const renderToolCard = (tool: AgentToolDef, isLastInGroup: boolean) => {
-    const isEnabled = !(config.disabledToolIds || []).includes(tool.id)
+    const isEnabled = !(normalizedConfig.disabledToolIds || []).includes(tool.id)
     const hasParams = tool.configurableParams && tool.configurableParams.length > 0
-    const toolIcon = TOOL_ICONS[tool.id] || 'extension'
 
     return (
       <View
         key={tool.id}
-        style={[
-          !isLastInGroup && {
-            borderBottomWidth: 1,
-            borderBottomColor: colors.borderStrong
-          },
-          { opacity: isEnabled ? 1 : 0.75 }
-        ]}
+        style={
+          !isLastInGroup
+            ? {
+                borderBottomWidth: 1,
+                borderBottomColor: colors.borderStrong
+              }
+            : undefined
+        }
       >
         <View style={styles.cardMain}>
-          <View
-            style={[
-              styles.toolIconWrapper,
-              {
-                backgroundColor: isEnabled ? colors.primaryLight : colors.bgSurfaceNormal
-              }
-            ]}
-          >
-            <MaterialIcons
-              name={toolIcon}
-              size={20}
-              color={isEnabled ? colors.primary : colors.textSecondary}
-            />
-          </View>
-          <View style={styles.toolInfo}>
-            <View style={styles.toolNameRow}>
-              <Text
-                style={[
-                  styles.toolName,
-                  { color: isEnabled ? colors.textPrimary : colors.textSecondary }
-                ]}
-              >
-                {tool.name}
-              </Text>
-              <HelpTooltip
-                content={t(tool.tooltipKey, t(`agent.tools.${tool.id}_desc`, ''))}
-                size={16}
+          <View style={[styles.cardMainLeading, !isEnabled && styles.cardMainDisabled]}>
+            <View
+              style={[
+                styles.toolIconWrapper,
+                {
+                  backgroundColor: isEnabled ? colors.primaryLight : colors.bgSurfaceNormal
+                }
+              ]}
+            >
+              <AgentToolIcon
+                toolId={tool.id}
+                size={AGENT_TOOL_ICON_SIZE}
+                color={isEnabled ? colors.primary : colors.textSecondary}
               />
-              <View style={[styles.toolIdTag, { backgroundColor: colors.bgSurfaceNormal }]}>
-                <Text style={[styles.toolIdText, { color: colors.textSecondary }]}>{tool.id}</Text>
+            </View>
+            <View style={styles.toolInfo}>
+              <View style={styles.toolNameRow}>
+                <Text
+                  style={[
+                    styles.toolName,
+                    { color: isEnabled ? colors.textPrimary : colors.textSecondary }
+                  ]}
+                  numberOfLines={1}
+                >
+                  {tool.name}
+                </Text>
+                <HelpTooltip
+                  content={t(tool.tooltipKey, t(`agent.tools.${tool.id}_desc`, ''))}
+                  size={16}
+                />
+                <View style={[styles.toolIdTag, { backgroundColor: colors.bgSurfaceNormal }]}>
+                  <Text
+                    style={[styles.toolIdText, { color: colors.textSecondary }]}
+                    numberOfLines={1}
+                  >
+                    {tool.id}
+                  </Text>
+                </View>
               </View>
             </View>
           </View>
-          <Switch value={isEnabled} onValueChange={() => toggleTool(tool.id)} />
+          <View style={styles.switchSlot}>
+            <Switch value={isEnabled} onValueChange={() => toggleTool(tool.id)} />
+          </View>
         </View>
 
         {hasParams && isEnabled && (
@@ -328,11 +385,13 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
                   <View
                     style={[styles.toolIconWrapper, { backgroundColor: colors.bgSurfaceNormal }]}
                   >
-                    <MaterialIcons
-                      name={param.icon === 'ListOrdered' ? 'format-list-numbered' : 'tune'}
-                      size={18}
-                      color={colors.textSecondary}
-                    />
+                    {param.icon === 'ListOrdered' ? (
+                      <ListOrdered
+                        size={18}
+                        color={colors.textSecondary}
+                        strokeWidth={DEFAULT_STROKE_WIDTH}
+                      />
+                    ) : null}
                   </View>
                   <View style={[styles.toolInfo, styles.paramInfoRow]}>
                     <Text style={[styles.paramLabel, { color: colors.textPrimary }]}>
@@ -355,7 +414,7 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
                       disabled={val <= (param.min ?? 1)}
                       onPress={() => setToolParam(tool.id, param.key, val - 1)}
                     >
-                      <MaterialIcons name="remove" size={16} color={colors.textSecondary} />
+                      <Minus size={16} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                     </TouchableOpacity>
                     <TextInput
                       style={[
@@ -388,7 +447,7 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
                       disabled={val >= (param.max ?? 50)}
                       onPress={() => setToolParam(tool.id, param.key, val + 1)}
                     >
-                      <MaterialIcons name="add" size={16} color={colors.textSecondary} />
+                      <Plus size={16} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -406,12 +465,11 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
         const list = groupedTools[catKey]
         if (!list || list.length === 0) return null
         const meta = (categoryMeta as any)[catKey]
-        const catIcon = CATEGORY_ICONS[catKey] || 'extension'
 
         return (
           <View key={catKey} style={styles.categoryGroup}>
             <View style={styles.categoryHeader}>
-              <MaterialIcons name={catIcon} size={18} color={colors.primary} />
+              <AgentToolCategoryIcon categoryId={catKey} color={colors.primary} />
               <Text style={[styles.categoryLabel, { color: colors.primary }]}>{meta.label}</Text>
             </View>
             <View
@@ -431,25 +489,36 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
     </View>
   )
 
-  const renderCommunityTab = () => (
-    <View style={styles.communityBlank}>
-      <MaterialIcons
-        name="rocket"
-        size={56}
-        color={colors.textTertiary}
-        style={styles.communityIcon}
-      />
-      <Text style={[styles.communityTitle, { color: colors.textSecondary }]}>
-        {t('agent.tools.community_market_coming', '插件集市即将上线')}
-      </Text>
-      <Text style={[styles.communityDesc, { color: colors.textTertiary }]}>
-        {t(
-          'agent.tools.community_coming_soon',
-          '不久后，您将能够在这里挂载由其他用户开发的生态能力接口。'
-        )}
-      </Text>
-    </View>
-  )
+  const renderCommunityTab = () => {
+    const emojiConfig = config.emojiConfig || { enabled: false, groups: [] }
+
+    return (
+      <View style={styles.list}>
+        <View style={styles.categoryGroup}>
+          <View style={styles.categoryHeader}>
+            <Smile size={18} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+            <Text style={[styles.categoryLabel, { color: colors.primary }]}>
+              {t('settings.agent_tools_category_interaction', '互动工具')}
+            </Text>
+          </View>
+          <View
+            style={[
+              styles.categoryList,
+              {
+                borderColor: colors.borderStrong,
+                backgroundColor: colors.bgSurface
+              }
+            ]}
+          >
+            <EmojiSettingsEntryRow
+              config={emojiConfig}
+              onPress={() => onOpenEmojiSettings?.()}
+            />
+          </View>
+        </View>
+      </View>
+    )
+  }
 
   const Container = disableScroll ? View : ScrollView
   const containerProps = disableScroll
@@ -499,8 +568,19 @@ const styles = StyleSheet.create({
   },
   tabSwitcher: {
     flexDirection: 'row',
+    gap: TOOL_TAB_GAP,
     borderRadius: 12,
-    padding: 4
+    padding: TOOL_TAB_PADDING,
+    overflow: 'hidden',
+    position: 'relative'
+  },
+  tabIndicator: {
+    position: 'absolute',
+    top: TOOL_TAB_PADDING,
+    bottom: TOOL_TAB_PADDING,
+    left: TOOL_TAB_PADDING,
+    borderRadius: 8,
+    borderWidth: StyleSheet.hairlineWidth
   },
   tabBtn: {
     flex: 1,
@@ -508,13 +588,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 8,
-    borderRadius: 10,
-    gap: 6
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    gap: 6,
+    zIndex: 1
   },
-  tabActive: {},
   tabText: {
-    fontSize: 13,
-    fontWeight: '600'
+    fontSize: 14,
+    fontWeight: '700'
   },
   tabBadge: {
     borderRadius: 10,
@@ -562,6 +643,19 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     gap: 12
   },
+  cardMainLeading: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minWidth: 0
+  },
+  cardMainDisabled: {
+    opacity: 0.75
+  },
+  switchSlot: {
+    flexShrink: 0
+  },
   toolIconWrapper: {
     padding: 6,
     borderRadius: 8,
@@ -572,21 +666,26 @@ const styles = StyleSheet.create({
   },
   toolInfo: {
     flex: 1,
+    minWidth: 0,
     justifyContent: 'center'
   },
   toolNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8
+    gap: 8,
+    minWidth: 0
   },
   toolName: {
     fontSize: 15,
-    fontWeight: '600'
+    fontWeight: '600',
+    flexShrink: 1
   },
   toolIdTag: {
     paddingHorizontal: 6,
     paddingVertical: 1,
-    borderRadius: 4
+    borderRadius: 4,
+    flexShrink: 0,
+    maxWidth: 120
   },
   toolIdText: {
     fontSize: 10,

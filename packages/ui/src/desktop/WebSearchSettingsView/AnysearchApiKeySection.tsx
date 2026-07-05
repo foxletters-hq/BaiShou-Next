@@ -1,8 +1,8 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdSave, MdKey, MdVisibility, MdVisibilityOff } from 'react-icons/md'
 import { HelpTooltip } from '../HelpTooltip'
 import styles from './WebSearchSettingsView.module.css'
+import { Eye, EyeOff, Key, Save } from 'lucide-react'
 
 interface AnysearchApiKeySectionProps {
   localApiKey: string
@@ -37,7 +37,7 @@ export const AnysearchApiKeySection: React.FC<AnysearchApiKeySectionProps> = ({
         </div>
 
         <div className={styles.textFieldWrapper}>
-          <MdKey size={20} className={styles.textFieldIcon} />
+          <Key size={20} className={styles.textFieldIcon} />
           <input
             type={apiKeyVisible ? 'text' : 'password'}
             placeholder="as-xxxxxx"
@@ -47,10 +47,10 @@ export const AnysearchApiKeySection: React.FC<AnysearchApiKeySectionProps> = ({
             onKeyDown={(e) => e.key === 'Enter' && onSave()}
           />
           <button className={styles.iconIconButton} onClick={onToggleVisibility}>
-            {apiKeyVisible ? <MdVisibility size={20} /> : <MdVisibilityOff size={20} />}
+            {apiKeyVisible ? <Eye size={20} /> : <EyeOff size={20} />}
           </button>
           <button className={styles.iconIconButton} onClick={onSave}>
-            <MdSave size={20} />
+            <Save size={20} />
           </button>
         </div>
       </div>

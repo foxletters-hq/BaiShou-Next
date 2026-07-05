@@ -9,7 +9,23 @@ import {
   ActivityIndicator
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { MaterialIcons } from '@expo/vector-icons'
+import type { LucideIcon } from 'lucide-react-native'
+import {
+  Archive,
+  CheckSquare,
+  Cloud,
+  CloudOff,
+  CloudUpload,
+  Database,
+  FileText,
+  Folder,
+  Globe,
+  HelpCircle,
+  History,
+  RefreshCw,
+  Settings,
+  Trash2
+} from 'lucide-react-native'
 import {
   useNativeTheme,
   useNativeToast,
@@ -105,14 +121,14 @@ export const DataSyncScreen: React.FC = () => {
     return `${(total / (1024 * 1024)).toFixed(2)} MB`
   }, [cloudRecords])
 
-  const getTargetIconName = (type: string): keyof typeof MaterialIcons.glyphMap => {
+  const getTargetIcon = (type: string): LucideIcon => {
     switch (type) {
       case 'webdav':
-        return 'language'
+        return Globe
       case 's3':
-        return 'cloud'
+        return Cloud
       default:
-        return 'folder'
+        return Folder
     }
   }
 
@@ -514,7 +530,7 @@ export const DataSyncScreen: React.FC = () => {
                   onPress={handleBatchDeleteRecords}
                   disabled={selectedRecords.size === 0}
                 >
-                  <MaterialIcons name="delete" size={14} color={colors.textOnPrimary} />
+                  <Trash2 size={14} color={colors.textOnPrimary} strokeWidth={2} />
                   <Text style={{ color: colors.textOnPrimary, fontSize: 12, fontWeight: '600' }}>
                     {' '}
                     {t('common.delete')} ({selectedRecords.size})
@@ -530,11 +546,7 @@ export const DataSyncScreen: React.FC = () => {
                 }}
                 disabled={cloudRecords.length === 0 || recordsLoading}
               >
-                <MaterialIcons
-                  name="check-box-outline-blank"
-                  size={14}
-                  color={colors.textSecondary}
-                />
+                <CheckSquare size={14} color={colors.textSecondary} strokeWidth={2} />
                 <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>
                   {' '}
                   {t('data_sync.batch_manage', '批量管理')}
@@ -545,7 +557,7 @@ export const DataSyncScreen: React.FC = () => {
               style={[styles.headerActionBtn, { borderColor: colors.borderSubtle }]}
               onPress={openSettings}
             >
-              <MaterialIcons name="settings" size={14} color={colors.textSecondary} />
+              <Settings size={14} color={colors.textSecondary} strokeWidth={2} />
               <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>
                 {' '}
                 {t('data_sync.sync_settings_button', '备份设置')}
@@ -558,7 +570,7 @@ export const DataSyncScreen: React.FC = () => {
           style={[styles.headerActionBtn, { borderColor: colors.borderSubtle }]}
           onPress={openCountModal}
         >
-          <MaterialIcons name="inventory-2" size={14} color={colors.textSecondary} />
+          <Archive size={14} color={colors.textSecondary} strokeWidth={2} />
           <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>
             {' '}
             {maxCountLabel}
@@ -577,7 +589,7 @@ export const DataSyncScreen: React.FC = () => {
             {isSyncing ? (
               <ActivityIndicator size="small" color={colors.textOnPrimary} />
             ) : (
-              <MaterialIcons name="cloud-upload" size={14} color={colors.textOnPrimary} />
+              <CloudUpload size={14} color={colors.textOnPrimary} strokeWidth={2} />
             )}
             <Text style={{ color: colors.textOnPrimary, fontSize: 12, fontWeight: '700' }}>
               {' '}
@@ -666,11 +678,16 @@ export const DataSyncScreen: React.FC = () => {
                     { backgroundColor: getTargetColor(syncConfig.target) + '15' }
                   ]}
                 >
-                  <MaterialIcons
-                    name={getTargetIconName(syncConfig.target)}
-                    size={20}
-                    color={getTargetColor(syncConfig.target)}
-                  />
+                  {(() => {
+                    const TargetIcon = getTargetIcon(syncConfig.target)
+                    return (
+                      <TargetIcon
+                        size={20}
+                        color={getTargetColor(syncConfig.target)}
+                        strokeWidth={2}
+                      />
+                    )
+                  })()}
                 </View>
                 <View style={styles.statInfo}>
                   <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
@@ -683,7 +700,7 @@ export const DataSyncScreen: React.FC = () => {
               </View>
               <View style={styles.statCard}>
                 <View style={[styles.statIconWrapper, { backgroundColor: 'rgba(16,185,129,0.1)' }]}>
-                  <MaterialIcons name="storage" size={20} color="#10b981" />
+                  <Database size={20} color="#10b981" strokeWidth={2} />
                 </View>
                 <View style={styles.statInfo}>
                   <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
@@ -696,7 +713,7 @@ export const DataSyncScreen: React.FC = () => {
               </View>
               <View style={styles.statCard}>
                 <View style={[styles.statIconWrapper, { backgroundColor: 'rgba(168,85,247,0.1)' }]}>
-                  <MaterialIcons name="history" size={20} color="#a855f7" />
+                  <History size={20} color="#a855f7" strokeWidth={2} />
                 </View>
                 <View style={styles.statInfo}>
                   <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
@@ -779,7 +796,7 @@ export const DataSyncScreen: React.FC = () => {
                       : t('data_sync.sync_records', '云端备份')}
                 </Text>
                 <TouchableOpacity onPress={showHelp} hitSlop={8}>
-                  <MaterialIcons name="help-outline" size={18} color={colors.textSecondary} />
+                  <HelpCircle size={18} color={colors.textSecondary} strokeWidth={2} />
                 </TouchableOpacity>
                 {backupTab === 'cloud' && (
                   <View style={[styles.targetBadge, { borderColor: colors.primary }]}>
@@ -794,7 +811,7 @@ export const DataSyncScreen: React.FC = () => {
                     disabled={recordsLoading}
                     hitSlop={8}
                   >
-                    <MaterialIcons name="refresh" size={20} color={colors.textSecondary} />
+                    <RefreshCw size={20} color={colors.textSecondary} strokeWidth={2} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -828,12 +845,7 @@ export const DataSyncScreen: React.FC = () => {
                 </View>
               ) : recordsFetchError ? (
                 <View style={styles.emptyContainer}>
-                  <MaterialIcons
-                    name="cloud-off"
-                    size={48}
-                    color={colors.error}
-                    style={{ opacity: 0.7 }}
-                  />
+                  <CloudOff size={48} color={colors.error} strokeWidth={2} style={{ opacity: 0.7 }} />
                   <Text style={[styles.emptyText, { color: colors.textPrimary }]}>
                     {recordsFetchError}
                   </Text>
@@ -848,13 +860,13 @@ export const DataSyncScreen: React.FC = () => {
                     onPress={() => void fetchCloudRecords({ force: true })}
                     disabled={recordsLoading}
                   >
-                    <MaterialIcons name="refresh" size={16} color={colors.primary} />
+                    <RefreshCw size={16} color={colors.primary} strokeWidth={2} />
                     <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '600' }}>
                       {t('common.retry', '重试')}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={openSettings} style={styles.settingsLinkBtn}>
-                    <MaterialIcons name="settings" size={16} color={colors.textSecondary} />
+                    <Settings size={16} color={colors.textSecondary} strokeWidth={2} />
                     <Text style={{ color: colors.textSecondary, fontSize: 14, fontWeight: '600' }}>
                       {t('data_sync.sync_settings_button', '备份设置')}
                     </Text>
@@ -862,10 +874,10 @@ export const DataSyncScreen: React.FC = () => {
                 </View>
               ) : cloudRecords.length === 0 ? (
                 <View style={styles.emptyContainer}>
-                  <MaterialIcons
-                    name="inventory-2"
+                  <Archive
                     size={48}
                     color={colors.textTertiary}
+                    strokeWidth={2}
                     style={{ opacity: 0.5 }}
                   />
                   {syncConfig.target === 'local' ? (
@@ -976,10 +988,10 @@ export const DataSyncScreen: React.FC = () => {
                           </View>
                         ) : (
                           <>
-                            <MaterialIcons
-                              name="description"
+                            <FileText
                               size={22}
                               color={colors.primary}
+                              strokeWidth={2}
                               style={{ marginRight: 10, opacity: 0.85 }}
                             />
                             <View style={styles.recordInfo}>

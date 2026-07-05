@@ -28,6 +28,8 @@ export { logger } from './utils/logger'
 export { traceCall, SHORTCUT_TRACE_CHAIN } from './utils/call-trace'
 export * from './utils/prompt-shortcut.util'
 export * from './utils/model-capabilities'
+export * from './utils/provider-vision-models'
+export * from './utils/vision-models.snapshot'
 
 // Mock 数据与类型（供开发阶段跨包使用）
 export * from './mock/agent.mock'
@@ -36,6 +38,7 @@ export * from './utils/embedding.utils'
 export * from './utils/vector-bytes.util'
 export * from './utils/ai-provider-filter.util'
 export * from './utils/storage-path.util'
+export * from './utils/disk-space-error.util'
 export * from './utils/ai-api-error.util'
 export * from './utils/concurrency.util'
 export * from './utils/rag-diary.util'
@@ -61,9 +64,29 @@ export {
   INCREMENTAL_SYNC_BAISHOU_SETTINGS_PREFIX,
   isSqliteRuntimeSyncPath,
   isIncrementalSyncChatBackgroundPath,
+  isIncrementalSyncConflictBackupPath,
   shouldIncludeIncrementalSyncFile,
   shouldScanIncrementalSyncDirectory
 } from './utils/incremental-sync-scan.util'
+export {
+  VAULT_EXTERNAL_PATHS_SYNC_FILENAME,
+  buildVaultArchivesSyncPrefix,
+  buildVaultJournalsSyncPrefix,
+  externalAbsPathToSyncRelPath,
+  isAbsPathUnderExternalSyncMount,
+  isInternalDefaultJournalsOrArchivesRelPath,
+  isUsingExternalVaultDirectory,
+  normalizeIncrementalSyncAbsPathForCompare,
+  shouldExcludeIncrementalSyncRootScanEntry,
+  isVaultExternalPathsConfigRelPath,
+  normalizeIncrementalSyncAbsPath,
+  normalizeIncrementalSyncRelPath,
+  resolveIncrementalSyncRelPath,
+  shouldIncludeIncrementalSyncFileWithExternalConfig,
+  shouldScanIncrementalSyncDirectoryWithExternalMounts,
+  type VaultExternalSyncKind,
+  type VaultExternalSyncMount
+} from './utils/incremental-sync-external-paths.util'
 export {
   WEBDAV_SHALLOW_LIST_CONCURRENCY,
   parseWebDavPropfindEntries,
@@ -184,9 +207,7 @@ export {
   type IncrementalSyncConfirmReplanResult
 } from './sync/incremental-sync-confirm-replan.util'
 export { isIncrementalSyncRemoteFileNotFoundError } from './sync/sync-download-errors.util'
-export {
-  SYNC_MANIFEST_REMOVED_MAX_ENTRIES,
-} from './constants/incremental-sync.constants'
+export { SYNC_MANIFEST_REMOVED_MAX_ENTRIES } from './constants/incremental-sync.constants'
 export {
   applySyncDecisionRemovedSideEffects,
   clearSyncManifestRemoved,
@@ -207,6 +228,7 @@ export * from './tts'
 export type { TtsSettings } from './types/settings.types'
 export * from './types/tts.types'
 export * from './constants/provider-base-urls'
+export * from './constants/provider-display-names'
 export * from './constants/app-locale.constants'
 export * from './constants/user-profile.constants'
 export * from './constants/chat-background.constants'
@@ -214,11 +236,16 @@ export * from './constants/summary-templates'
 export * from './constants/summary-templates/index'
 export * from './constants/diary-templates'
 export * from './utils/diary-template.util'
+export * from './utils/diary-edit-policy.util'
 export * from './types/summary-prompt.types'
 export * from './utils/summary-template.util'
 export * from './constants/weather.constants'
+export * from './constants/mood.constants'
 export * from './constants/github.constants'
+export * from './constants/release-channel.constants'
+export * from './constants/feedback.constants'
 export * from './constants/rag-migration.constants'
+export * from './constants/rag-config.constants'
 export * from './constants/legacy-migration.constants'
 export * from './constants/compression-prompt.defaults'
 export * from './constants/compression-errors'
@@ -228,11 +255,16 @@ export * from './utils/rag-migration-result.util'
 export * from './utils/main-i18n.util'
 export * from './utils/migration-backup.util'
 export * from './utils/version.utils'
+export * from './utils/release-channel.util'
 export * from './utils/diary-preview.util'
 export * from './utils/diary-tags.util'
 export * from './utils/diary-content-tags.util'
+export * from './utils/journal-tree-skip.util'
 export * from './utils/diary-tag-color.util'
+export * from './utils/diary-edit-policy.util'
 export * from './utils/compression-text-normalizer'
+export * from './utils/streaming-display-buffer.util'
+export * from './utils/agent-stream-abort.util'
 export * from './utils/summary-config.util'
 export * from './utils/user-avatar.util'
 export * from './utils/user-card.util'
@@ -244,6 +276,10 @@ export * from './constants/builtin-assistant-avatars.constants'
 export * from './constants/avatar-import.constants'
 export * from './constants/latte-default-assistant.constants'
 export * from './constants/assistant-kind.constants'
+export * from './constants/assistant-memory-defaults.constants'
+export * from './constants/tool-management.constants'
+export * from './constants/agent-builtin-tool-ids.constants'
+export * from './utils/emoji-config.util'
 export * from './constants/latte-assistant-prompt.defaults'
 export * from './types/agent-navigation.types'
 export * from './constants/agent-navigation.constants'
@@ -251,6 +287,7 @@ export * from './utils/agent-navigation.util'
 export * from './utils/assistant-avatar.util'
 export * from './utils/app-ui-locale.util'
 export * from './utils/message-attachment.util'
+export * from './utils/emoji-vault-path.util'
 export * from './utils/attachment-reference.util'
 export * from './utils/version-control-path.util'
 
@@ -276,3 +313,5 @@ export type {
 } from './sync/incremental-sync-plan.util'
 
 export * from './cache'
+
+export * from './demo-data'

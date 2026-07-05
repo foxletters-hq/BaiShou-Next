@@ -4,15 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useDialog } from '../Dialog'
 import { resolveDesktopAssistantAvatarSrc } from '../assistant-avatar.util'
 import { AssistantKindBadge } from '../AssistantKindBadge'
-import {
-  MdAdd,
-  MdDragIndicator,
-  MdPushPin,
-  MdOutlinePushPin,
-  MdDeleteOutline,
-  MdAutoAwesome
-} from 'react-icons/md'
-
+import { GripVertical, Pin, Plus, Sparkles, Trash2 } from 'lucide-react'
 export interface AgentAssistant {
   id: string
   name: string
@@ -52,14 +44,14 @@ export const AssistantManagementView: React.FC<AssistantManagementViewProps> = (
       <div className={styles.header}>
         <h2 className={styles.title}>{t('agent.assistant.management_title', '伙伴管理')}</h2>
         <button className={styles.createBtn} onClick={onCreate}>
-          <MdAdd size={20} />
+          <Plus size={20} />
           {t('agent.assistant.create', '新建伙伴')}
         </button>
       </div>
 
       {assistants.length === 0 ? (
         <div className={styles.emptyState}>
-          <MdAutoAwesome className={styles.emptyIcon} />
+          <Sparkles className={styles.emptyIcon} />
           <div className={styles.emptyText}>
             {t('agent.assistant.empty_hint', '您还没有创建任何专属伙伴')}
           </div>
@@ -80,7 +72,7 @@ export const AssistantManagementView: React.FC<AssistantManagementViewProps> = (
                     e.stopPropagation() /* drag logic */
                   }}
                 >
-                  <MdDragIndicator size={20} />
+                  <GripVertical size={20} />
                 </div>
 
                 <div className={styles.avatar}>
@@ -109,7 +101,7 @@ export const AssistantManagementView: React.FC<AssistantManagementViewProps> = (
                     {assistant.modelId && (
                       <>
                         <span style={{ margin: '0 8px' }}>•</span>
-                        <MdAutoAwesome size={12} style={{ marginRight: 4 }} />
+                        <Sparkles size={12} style={{ marginRight: 4 }} />
                         <span>{assistant.modelId}</span>
                       </>
                     )}
@@ -129,7 +121,7 @@ export const AssistantManagementView: React.FC<AssistantManagementViewProps> = (
                         : t('agent.assistant.pin_to_sidebar', '固定到侧栏')
                     }
                   >
-                    {isPinned ? <MdPushPin size={20} /> : <MdOutlinePushPin size={20} />}
+                    {isPinned ? <Pin size={20} /> : <Pin size={20} />}
                   </button>
                   <button
                     className={styles.actionBtn}
@@ -149,7 +141,7 @@ export const AssistantManagementView: React.FC<AssistantManagementViewProps> = (
                     title={t('common.delete', '删除')}
                     style={{ color: '#ef4444' }}
                   >
-                    <MdDeleteOutline size={20} />
+                    <Trash2 size={20} />
                   </button>
                 </div>
               </div>

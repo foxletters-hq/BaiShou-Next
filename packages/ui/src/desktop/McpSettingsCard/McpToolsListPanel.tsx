@@ -26,7 +26,7 @@ export const McpToolsListPanel: React.FC = () => {
         if (cancelled) return
         setTools(Array.isArray(result) ? result : [])
       } catch (e) {
-        console.error(e)
+        console.warn('[McpToolsListPanel] Failed to load MCP tools', e)
         if (!cancelled) {
           setFailed(true)
           setTools([])

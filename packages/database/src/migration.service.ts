@@ -1,7 +1,6 @@
 import { AppDatabase } from './types'
 import * as fs from 'fs'
 import * as path from 'path'
-import { migrationsTable } from './schema/migration-table'
 import { logger } from '@baishou/shared'
 import { executeRawSql } from './raw-sql.executor'
 import { FTS_SYNC_TRIGGER_STATEMENTS } from './schema/fts'
@@ -404,7 +403,10 @@ export class MigrationService {
 
   private async getAppliedMigrations(): Promise<{ version: number }[]> {
     try {
-      return await this.db.select({ version: migrationsTable.version }).from(migrationsTable)
+      const result = await this._executeSql(`SELECT version FROM __drizzle_migrations`)
+      return result.rows.map((row: { version?: number | string }) => ({
+        version: Number(row.version)
+      }))
     } catch (error: any) {
       logger.error('[MigrationService] 读取已执行迁移记录失败！', error)
       throw error
@@ -476,12 +478,11 @@ export class MigrationService {
         throw txError
       }
 
-      // 事务提交成功后，记录本次迁移执行情况
-      await this.db.insert(migrationsTable).values({
-        version: migration.idx,
-        tag: migration.tag,
-        executedAt: Date.now()
-      })
+      // 事务提交成功后，记录本次迁移执行情况（raw SQL，避免与 runAsync 混用 prepareSync）
+      await this._executeSql(
+        `INSERT INTO __drizzle_migrations (version, tag, executed_at) VALUES (?, ?, ?)`,
+        [migration.idx, migration.tag, Date.now()]
+      )
 
       logger.info(
         `[MigrationService] <- 迁移 ${migration.tag} 成功，耗时 ${Date.now() - startTime}ms`

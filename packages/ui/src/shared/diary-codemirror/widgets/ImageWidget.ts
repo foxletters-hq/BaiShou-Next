@@ -8,6 +8,8 @@ export class ImageWidget extends WidgetType {
   private resizeHandle: HTMLElement | null = null
   private linkBar: HTMLElement | null = null
   private linkInput: HTMLInputElement | null = null
+  private outsideClickHandler: ((e: MouseEvent) => void) | null = null
+  private lazyLoadObserver: IntersectionObserver | null = null
 
   constructor(
     private src: string,
@@ -56,10 +58,12 @@ export class ImageWidget extends WidgetType {
     this.container.appendChild(this.linkBar)
 
     const img = document.createElement('img')
-    img.src = this.src
     img.alt = this.alt
     img.className = 'cm-image-resizable'
     img.draggable = false
+    img.loading = 'lazy'
+    img.decoding = 'async'
+    this.attachLazyImageSource(img)
     this.container.appendChild(img)
 
     this.resizeHandle = document.createElement('div')
@@ -73,6 +77,45 @@ export class ImageWidget extends WidgetType {
     this.bindEvents(img)
 
     return this.container
+  }
+
+  private attachLazyImageSource(img: HTMLImageElement) {
+    const src = this.src
+    if (!src) return
+
+    const startLoad = () => {
+      if (img.src !== src) {
+        img.src = src
+      }
+    }
+
+    if (typeof IntersectionObserver === 'undefined') {
+      startLoad()
+      return
+    }
+
+    this.lazyLoadObserver = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue
+          startLoad()
+          this.lazyLoadObserver?.disconnect()
+          this.lazyLoadObserver = null
+          break
+        }
+      },
+      { rootMargin: '240px' }
+    )
+    this.lazyLoadObserver.observe(img)
+  }
+
+  destroy(_dom: HTMLElement): void {
+    this.lazyLoadObserver?.disconnect()
+    this.lazyLoadObserver = null
+    if (this.outsideClickHandler) {
+      document.removeEventListener('click', this.outsideClickHandler)
+      this.outsideClickHandler = null
+    }
   }
 
   private bindEvents(img: HTMLElement) {
@@ -194,12 +237,13 @@ export class ImageWidget extends WidgetType {
       img.addEventListener('touchcancel', clearLongPress)
     }
 
-    document.addEventListener('click', (e) => {
+    this.outsideClickHandler = (e: MouseEvent) => {
       if (!this.container!.contains(e.target as Node)) {
         this.linkBar!.style.display = 'none'
         this.container!.classList.remove('cm-image-active')
       }
-    })
+    }
+    document.addEventListener('click', this.outsideClickHandler)
 
     if (interactionMode === 'mouse') {
       this.bindMouseResize()

@@ -1,11 +1,18 @@
-import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
-import { useRouter, type Href } from 'expo-router'
+import React, { useRef, useEffect, useLayoutEffect, useState, useCallback, useMemo } from 'react'
+import { useRouter, type Href, useFocusEffect } from 'expo-router'
 import {
   type PromptShortcut,
+  type WebSearchConfig,
+  type AIProviderConfig,
+  type ToolManagementConfig,
   LATTE_ASSISTANT_NAME,
   normalizeChatBackgroundBlur,
-  normalizeChatBackgroundOverlayOpacity
+  normalizeChatBackgroundOverlayOpacity,
+  normalizeEmojiToolConfig,
+  resolveAssistantEmojiConfig
 } from '@baishou/shared'
+import { DEFAULT_WEB_SEARCH_CONFIG } from '@baishou/database'
+import type { PendingEmoji } from '../hooks/useAgentStream'
 import {
   View,
   StyleSheet,
@@ -18,23 +25,27 @@ import {
   Dimensions,
   Keyboard,
   ImageBackground,
+  ScrollView,
+  Image,
   type NativeScrollEvent,
   type NativeSyntheticEvent
 } from 'react-native'
-import { FlatList } from 'react-native-gesture-handler'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as Clipboard from 'expo-clipboard'
-import { MaterialIcons } from '@expo/vector-icons'
+import { ChevronDown, Sparkles } from 'lucide-react-native'
 import {
   InputBar,
   type InputBarRef,
   StreamingBubble,
   RecallDialog,
   ChatCostDialog,
-  PromptShortcutSheet
+  PromptShortcutSheet,
+  resolveActiveToolDisplayName,
+  resolveNativeAssistantAvatarSource,
+  shouldShowAssistantEmoji
 } from '@baishou/ui/native'
 import { useNativeTheme, useNativeToast } from '@baishou/ui/native'
-import { useAgentStore, useAgentNavigationStore } from '@baishou/store'
+import { useAgentStore, useAgentNavigationStore, useContextCompressionStore } from '@baishou/store'
 import { useTranslation } from 'react-i18next'
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
 import Animated from 'react-native-reanimated'
@@ -62,6 +73,12 @@ import { useResolvedUserAvatar } from '../hooks/useResolvedUserAvatar'
 import { useResolvedChatBackground } from '../hooks/useResolvedChatBackground'
 import { useAgentUserProfile } from '../hooks/useAgentUserProfile'
 import { useAgentChatKeyboardInsets } from '../hooks/useAgentChatKeyboardInsets'
+import { useAgentChatScroll } from '../hooks/useAgentChatScroll'
+import {
+  logAgentScrollEvent,
+  logAgentUiEvent,
+  setAgentScrollDebugContext
+} from '../utils/agent-scroll-diagnostics'
 import { useAgentNavigationPersistence } from '../hooks/useAgentNavigationPersistence'
 import {
   hydrateAssistantsForUi,
@@ -71,7 +88,11 @@ import {
 import { writeAgentNavigationSnapshot } from '../lib/agent-navigation-persistence'
 import { consumeAssistantsNeedRefresh } from '../lib/assistant-ui-refresh-signal'
 import { waitForVaultEcosystemResync } from '../services/mobile-vault-resync.service'
+import { useAgentComposerDraftKey } from '../hooks/useAgentComposerDraftKey'
+import { mobileComposerDraftStorage } from '../lib/mobile-composer-draft.storage'
 import { useThrottledFocusRefresh } from '../hooks/useThrottledFocusRefresh'
+import { usePersistedSharedMemoryLookback } from '../hooks/usePersistedSharedMemoryLookback'
+import { useSharedMemoryCopyPreview } from '../hooks/useSharedMemoryCopyPreview'
 
 /** 底部输入栏 + 工具条的大致高度，用于「回到底部」悬浮按钮定位 */
 const INPUT_DOCK_HEIGHT = 136
@@ -80,21 +101,90 @@ const BUBBLE_EDIT_KEYBOARD_BUFFER = 72
 /** 编辑态且键盘收起时：保存/token 与底部工具栏之间的额外间距 */
 const BUBBLE_EDIT_DOCK_GAP = 16
 
+const IDLE_LIVE_COMPRESSION = {
+  phase: 'auto' as const,
+  summary: '',
+  reasoning: '',
+  isActive: false
+}
+
+/** 列表内流式助手气泡的稳定 key，落库前后保持同一挂载点 */
+const LIVE_ASSISTANT_STREAM_KEY = 'live-assistant-stream'
+/** linger 结束后再保留 live 展示，等布局稳定后再释放 minHeight */
+const HOLD_LIVE_PRESENTATION_MS = 320
+
 export const AgentScreen = () => {
   const router = useRouter()
   const { t, i18n } = useTranslation()
+  const tr = useCallback(
+    (key: string, fallback?: string) => String(t(key, { defaultValue: fallback ?? key })),
+    [t]
+  )
   const { isLoading, searchMode, toggleSearchMode, clearSession } = useAgentStore()
   const { colors, isDark } = useNativeTheme()
   const tabBarHeight = useBottomTabBarHeight()
   const [isBubbleEditing, setIsBubbleEditing] = useState(false)
-  const [recallLookbackMonths, setRecallLookbackMonths] = useState(1)
+  const { lookbackMonths: recallLookbackMonths, setLookbackMonths: setRecallLookbackMonths } =
+    usePersistedSharedMemoryLookback()
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   const [inputDockHeight, setInputDockHeight] = useState(INPUT_DOCK_HEIGHT)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [holdLivePresentation, setHoldLivePresentation] = useState(false)
+  const [keepLiveRowAfterHold, setKeepLiveRowAfterHold] = useState(false)
+  const [webSearchEngine, setWebSearchEngine] = useState<WebSearchConfig['webSearchEngine']>(
+    DEFAULT_WEB_SEARCH_CONFIG.webSearchEngine
+  )
 
   const handleBubbleEditingChange = useCallback((editing: boolean, messageId?: string) => {
+    if (editing) {
+      if (bubbleEditRestoreTimerRef.current) {
+        clearTimeout(bubbleEditRestoreTimerRef.current)
+        bubbleEditRestoreTimerRef.current = null
+      }
+      preBubbleEditScrollOffsetRef.current = scrollOffsetRef.current
+    }
     setIsBubbleEditing(editing)
     setEditingMessageId(editing && messageId ? messageId : null)
+  }, [])
+
+  const restorePreBubbleEditScroll = useCallback(() => {
+    const saved = preBubbleEditScrollOffsetRef.current
+    if (saved == null) return
+
+    const finishRestore = () => {
+      const target = preBubbleEditScrollOffsetRef.current
+      if (target == null) return
+      preBubbleEditScrollOffsetRef.current = null
+      flatListRef.current?.scrollTo({ y: target, animated: true })
+      scrollOffsetRef.current = target
+    }
+
+    if (bubbleEditRestoreTimerRef.current) {
+      clearTimeout(bubbleEditRestoreTimerRef.current)
+      bubbleEditRestoreTimerRef.current = null
+    }
+
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
+    if (Keyboard.isVisible?.()) {
+      const sub = Keyboard.addListener(hideEvent, () => {
+        sub.remove()
+        if (bubbleEditRestoreTimerRef.current) {
+          clearTimeout(bubbleEditRestoreTimerRef.current)
+          bubbleEditRestoreTimerRef.current = null
+        }
+        requestAnimationFrame(finishRestore)
+      })
+      bubbleEditRestoreTimerRef.current = setTimeout(() => {
+        bubbleEditRestoreTimerRef.current = null
+        sub.remove()
+        finishRestore()
+      }, 400)
+      return
+    }
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(finishRestore)
+    })
   }, [])
 
   const toast = useNativeToast()
@@ -106,16 +196,46 @@ export const AgentScreen = () => {
     storageIndexing,
     ecosystemResyncEpoch
   } = useBaishou()
-  const flatListRef = useRef<FlatList>(null)
+  const flatListRef = useRef<ScrollView>(null)
   const inputBarRef = useRef<InputBarRef>(null)
   const editingRowRef = useRef<View>(null)
   const scrollOffsetRef = useRef(0)
-  const prevMsgLenRef = useRef(0)
+  const preBubbleEditScrollOffsetRef = useRef<number | null>(null)
   const layoutReadyRef = useRef(false)
   const bubbleEditScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const bubbleEditRestoreTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const currentSessionIdRef = useRef<string | null>(null)
+  const [listViewportHeight, setListViewportHeight] = useState(0)
 
   const [assistants, setAssistants] = useState<MobileAssistantUi[]>([])
+  const [aiProviders, setAiProviders] = useState<AIProviderConfig[]>([])
   const userProfile = useAgentUserProfile()
+
+  useEffect(() => {
+    if (!dbReady || !services) return
+    let cancelled = false
+    void services.settingsManager
+      .get<AIProviderConfig[]>('ai_providers')
+      .then((list) => {
+        if (!cancelled) setAiProviders(list ?? [])
+      })
+      .catch(() => {
+        if (!cancelled) setAiProviders([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [dbReady, services, vaultRevision])
+
+  useEffect(() => {
+    if (!dbReady || !services) return
+    void (async () => {
+      const saved =
+        (await services.settingsManager.get<WebSearchConfig>('web_search_config')) ??
+        DEFAULT_WEB_SEARCH_CONFIG
+      setWebSearchEngine(saved.webSearchEngine ?? DEFAULT_WEB_SEARCH_CONFIG.webSearchEngine)
+    })()
+  }, [dbReady, services])
 
   const {
     currentAssistant,
@@ -129,8 +249,14 @@ export const AgentScreen = () => {
     handleSelectAssistant,
     handleSelectModel,
     setCurrentAssistant,
-    syncWithSession
-  } = useAgentModel()
+    syncWithSession,
+    hasConfiguredDialogueModel
+  } = useAgentModel({ currentSessionIdRef })
+
+  const currentProviderType = useMemo(
+    () => aiProviders.find((provider) => provider.id === currentProviderId)?.type,
+    [aiProviders, currentProviderId]
+  )
 
   const { sessions, hasMoreSessions, isLoadingMoreSessions, sessionListScrollKey, loadSessions } =
     useAgentSessions(currentAssistant?.id)
@@ -150,21 +276,27 @@ export const AgentScreen = () => {
     hasMore,
     messages,
     refreshSessionMessages,
+    bumpReloadEpoch,
     handleLoadMore,
     handleSelectSession,
     handleAssistantSwitched,
     handleCreateSession,
     handleDeleteSession,
     handlePinSession,
-    handleRenameSession
+    handleRenameSession,
+    invalidateCurrentSession
   } = useAgentSession({
     assistantId: currentAssistant?.id,
     providerId: currentProviderId ?? undefined,
     modelId: currentModelId ?? undefined
   })
 
+  currentSessionIdRef.current = currentSessionId
+
+  const composerDraftKey = useAgentComposerDraftKey(currentSessionId)
+
   useEffect(() => {
-    syncWithSession(currentSessionId)
+    void syncWithSession(currentSessionId)
   }, [currentSessionId, syncWithSession])
 
   const refreshSessionList = useCallback(() => {
@@ -173,7 +305,10 @@ export const AgentScreen = () => {
 
   useEffect(() => {
     if (!drawerOpen || !dbReady || !currentAssistant?.id) return
-    void loadSessions(true, currentAssistant.id)
+    const timer = setTimeout(() => {
+      void loadSessions(true, currentAssistant.id)
+    }, 280)
+    return () => clearTimeout(timer)
   }, [drawerOpen, dbReady, currentAssistant?.id, loadSessions])
 
   useAgentNavigationPersistence({
@@ -187,11 +322,15 @@ export const AgentScreen = () => {
     handleSelectAssistant,
     handleSelectSession,
     loadSessions,
-    clearSession
+    clearSession,
+    invalidateCurrentSession
   })
 
   const {
     isStreaming,
+    isStreamBridgeActive,
+    streamPresentationLinger,
+    isRetryActionBusy,
     isCompressing,
     compressionPhase,
     compressionText,
@@ -203,6 +342,7 @@ export const AgentScreen = () => {
     tokenUsage,
     activeTool,
     completedTools,
+    pendingEmojis,
     handleSend,
     handleStop,
     handleRegenerate,
@@ -218,15 +358,134 @@ export const AgentScreen = () => {
     setCurrentSessionId,
     refreshSessionList,
     searchMode,
-    refreshSessionMessages
+    refreshSessionMessages,
+    bumpReloadEpoch
+  )
+
+  const activeToolDisplayName = useMemo(
+    () => resolveActiveToolDisplayName(activeTool, tr, webSearchEngine),
+    [activeTool, tr, webSearchEngine]
   )
 
   const [showLoadMoreBanner, setShowLoadMoreBanner] = useState(false)
+
+  // Emoji config for resolving pending emoji IDs during streaming
+  const [emojiToolConfig, setEmojiToolConfig] = useState(
+    normalizeEmojiToolConfig({ enabled: false, groups: [] })
+  )
+  const [pendingEmojiUris, setPendingEmojiUris] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    if (!services) return
+    void (async () => {
+      try {
+        const toolConfig = await services.settingsManager.get<ToolManagementConfig>(
+          'tool_management_config'
+        )
+        if (toolConfig?.emojiConfig) {
+          setEmojiToolConfig(normalizeEmojiToolConfig(toolConfig.emojiConfig))
+        }
+      } catch {
+        // Ignore errors loading emoji config
+      }
+    })()
+  }, [services])
+
+  const resolvedEmojiConfig = useMemo(
+    () =>
+      resolveAssistantEmojiConfig(emojiToolConfig, {
+        emojiEnabled: currentAssistant?.emojiEnabled,
+        emojiGroupIds: currentAssistant?.emojiGroupIds
+      }),
+    [emojiToolConfig, currentAssistant?.emojiEnabled, currentAssistant?.emojiGroupIds]
+  )
+
+  const assistantEmojis = resolvedEmojiConfig.emojis
+
+  /**
+   * 模糊匹配 emoji：与 persist 层的 findEmojiById 逻辑保持一致
+   */
+  const resolvePendingEmoji = useCallback(
+    (query: string) => {
+      const emojis = assistantEmojis
+      if (!emojis || emojis.length === 0) return undefined
+      const normalizedQuery = query.trim().toLowerCase()
+
+      const exactMatch = emojis.find((e) => e.id === normalizedQuery || e.id.toLowerCase() === normalizedQuery)
+      if (exactMatch) return exactMatch
+
+      const idNoExtMatch = emojis.find((e) => e.id.replace(/\.[^.]+$/, '').toLowerCase() === normalizedQuery)
+      if (idNoExtMatch) return idNoExtMatch
+
+      const normalizeName = (s: string) => s.toLowerCase().replace(/[_\s]+/g, ' ').trim()
+      const normalizedNameQuery = normalizeName(normalizedQuery)
+      const nameMatch = emojis.find((e) => normalizeName(e.name) === normalizedNameQuery)
+      if (nameMatch) return nameMatch
+
+      const idContainsMatch = emojis.find((e) =>
+        e.id.replace(/\.[^.]+$/, '').toLowerCase().includes(normalizedQuery)
+      )
+      if (idContainsMatch) return idContainsMatch
+
+      const nameContainsMatch = emojis.find((e) =>
+        normalizeName(e.name).includes(normalizedNameQuery)
+      )
+      if (nameContainsMatch) return nameContainsMatch
+
+      return undefined
+    },
+    [assistantEmojis]
+  )
+
+  useEffect(() => {
+    if (!services || pendingEmojis.length === 0) {
+      setPendingEmojiUris({})
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const next: Record<string, string> = {}
+      for (const pending of pendingEmojis) {
+        const emoji = resolvePendingEmoji(pending.emojiId)
+        if (!emoji) continue
+        try {
+          next[pending.emojiId] = await services.attachmentManager.resolveEmojiPath(
+            emoji.relativePath
+          )
+        } catch (e) {
+          console.warn('[AgentScreen] Failed to resolve pending emoji path:', emoji.relativePath, e)
+        }
+      }
+      if (!cancelled) {
+        setPendingEmojiUris(next)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [pendingEmojis, services, resolvePendingEmoji])
+
+  const pendingEmojiAttachments = useMemo(() => {
+    if (pendingEmojis.length === 0 || assistantEmojis.length === 0) return []
+    return pendingEmojis
+      .map((pending) => {
+        const emoji = resolvePendingEmoji(pending.emojiId)
+        const uri = pendingEmojiUris[pending.emojiId]
+        if (!emoji || !uri) return null
+        return {
+          id: emoji.id,
+          fileName: emoji.name || emoji.id,
+          filePath: uri,
+          isImage: true
+        }
+      })
+      .filter((item): item is NonNullable<typeof item> => item != null)
+  }, [pendingEmojis, assistantEmojis, resolvePendingEmoji, pendingEmojiUris])
+
   const loadMoreLockRef = useRef(false)
 
   const {
     showCostDialog,
-    showScrollButton,
     showShortcutSheet,
     showRecallSheet,
     recallItems,
@@ -234,13 +493,48 @@ export const AgentScreen = () => {
     setShowCostDialog,
     setShowShortcutSheet,
     setShowRecallSheet,
-    handleScroll,
-    scrollToBottom,
     handleRecallSearch,
     handleInjectRecall,
     recallSearchMode,
     toggleRecallSearchMode
   } = useAgentUI()
+
+  const { preview: recallCopyPreview, loading: recallCopyPreviewLoading } =
+    useSharedMemoryCopyPreview(recallLookbackMonths, showRecallSheet)
+
+  const {
+    showScrollButton,
+    handleListScroll: handleChatListScroll,
+    handleScrollBeginDrag,
+    handleScrollEndDrag,
+    handleMomentumScrollBegin,
+    handleMomentumScrollEnd,
+    scrollToBottom,
+    scrollToBottomOnFocus,
+    beginFollowIfAtBottom,
+    handleContentSizeChange,
+    contentAnchorMinHeight,
+    beginContentHandoff,
+    releaseContentHandoff,
+    finalizeContentHandoff,
+    bindFlatList
+  } = useAgentChatScroll({
+    sessionId: currentSessionId,
+    messages,
+    isStreaming,
+    isStreamBridgeActive,
+    activeTool
+  })
+
+  useEffect(() => {
+    bindFlatList(flatListRef)
+  }, [bindFlatList])
+
+  useFocusEffect(
+    useCallback(() => {
+      scrollToBottomOnFocus()
+    }, [scrollToBottomOnFocus])
+  )
 
   const composerKeyboardLiftEnabled = !drawerOpen && !showShortcutSheet && !showRecallSheet
   const drawerSwipeEnabled =
@@ -249,7 +543,7 @@ export const AgentScreen = () => {
     keyboardInset,
     inputDockAnimatedStyle,
     scrollButtonAnimatedStyle,
-    listBottomPadding,
+    listSpacerAnimatedStyle,
     handleComposerFocus,
     resetKeyboardInset
   } = useAgentChatKeyboardInsets({
@@ -284,8 +578,8 @@ export const AgentScreen = () => {
       const rowBottom = y + height
       if (rowBottom <= safeBottom + 4) return
 
-      flatListRef.current?.scrollToOffset({
-        offset: scrollOffsetRef.current + (rowBottom - safeBottom),
+      flatListRef.current?.scrollTo({
+        y: scrollOffsetRef.current + (rowBottom - safeBottom),
         animated: true
       })
     })
@@ -320,48 +614,75 @@ export const AgentScreen = () => {
   useEffect(() => {
     if (!isBubbleEditing || !editingMessageId) return
     scheduleBubbleEditScroll()
-  }, [isBubbleEditing, editingMessageId, listBottomPadding, scheduleBubbleEditScroll])
+  }, [isBubbleEditing, editingMessageId, scheduleBubbleEditScroll])
+
+  const wasBubbleEditingRef = useRef(false)
+  useEffect(() => {
+    if (wasBubbleEditingRef.current && !isBubbleEditing) {
+      if (Keyboard.isVisible?.() !== true) {
+        resetKeyboardInset()
+      }
+      restorePreBubbleEditScroll()
+    }
+    wasBubbleEditingRef.current = isBubbleEditing
+  }, [isBubbleEditing, resetKeyboardInset, restorePreBubbleEditScroll])
+
+  useEffect(() => {
+    return () => {
+      if (bubbleEditRestoreTimerRef.current) {
+        clearTimeout(bubbleEditRestoreTimerRef.current)
+      }
+    }
+  }, [])
 
   const handleInputBarFocus = useCallback(() => {
     handleComposerFocus()
-    requestAnimationFrame(() => scrollToBottom(flatListRef, true))
+    requestAnimationFrame(() => scrollToBottom(flatListRef, false))
   }, [handleComposerFocus, scrollToBottom])
+
+  const handleSendWithScroll = useCallback(
+    async (text: string, attachments?: unknown[], sendSearchMode?: boolean) => {
+      beginFollowIfAtBottom(flatListRef)
+      return handleSend(text, attachments, sendSearchMode)
+    },
+    [beginFollowIfAtBottom, handleSend]
+  )
 
   useEffect(() => {
     const overlaysOpen = drawerOpen || showShortcutSheet || showRecallSheet
-    if (overlaysOpen) {
-      resetKeyboardInset()
-      inputBarRef.current?.blur()
+    if (!overlaysOpen) return
+    resetKeyboardInset()
+    inputBarRef.current?.blur()
+    const frame = requestAnimationFrame(() => {
       Keyboard.dismiss()
-    }
+    })
+    return () => cancelAnimationFrame(frame)
   }, [drawerOpen, showShortcutSheet, showRecallSheet, resetKeyboardInset])
 
   const { shortcuts, addShortcut, updateShortcut, deleteShortcut, reorderShortcuts } =
     useMobilePromptShortcuts()
 
+  const handleListContentSizeChange = useCallback(
+    (_width: number, height: number) => {
+      handleContentSizeChange(flatListRef, height)
+    },
+    [handleContentSizeChange]
+  )
+
   const handleListScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent
-      scrollOffsetRef.current = contentOffset.y
-      handleScroll(event)
+      scrollOffsetRef.current = event.nativeEvent.contentOffset.y
+      handleChatListScroll(event)
 
-      const canScroll = contentSize.height > layoutMeasurement.height + 50
-      const nearTop = contentOffset.y < 100
-      setShowLoadMoreBanner(hasMore && (nearTop || !canScroll))
-
-      if (layoutReadyRef.current && canScroll && nearTop && hasMore && !loadMoreLockRef.current) {
-        loadMoreLockRef.current = true
-        void handleLoadMore().finally(() => {
-          loadMoreLockRef.current = false
-        })
-      }
+      const nearTop = event.nativeEvent.contentOffset.y < 100
+      const nextShowLoadMore = hasMore && nearTop
+      setShowLoadMoreBanner((prev) => (prev === nextShowLoadMore ? prev : nextShowLoadMore))
     },
-    [handleScroll, hasMore, handleLoadMore]
+    [handleChatListScroll, hasMore]
   )
 
   useEffect(() => {
     layoutReadyRef.current = false
-    prevMsgLenRef.current = 0
   }, [currentSessionId])
 
   useEffect(() => {
@@ -462,7 +783,11 @@ export const AgentScreen = () => {
         systemPrompt: a.systemPrompt,
         providerId: a.providerId,
         modelId: a.modelId,
-        assistantKind: a.assistantKind
+        assistantKind: a.assistantKind,
+        contextWindow: a.contextWindow,
+        compressTokenThreshold: a.compressTokenThreshold,
+        compressKeepTurns: a.compressKeepTurns,
+        compressSystemPrompt: a.compressSystemPrompt
       })),
     [assistants]
   )
@@ -592,6 +917,7 @@ export const AgentScreen = () => {
 
   const [contextDialogState, setContextDialogState] = useState<{
     visible: boolean
+    sessionId?: string
     message: any
     flatEntries: any[]
     meta?: any
@@ -602,6 +928,56 @@ export const AgentScreen = () => {
     message: {},
     flatEntries: []
   })
+
+  const activeContextSessionId = contextDialogState.sessionId ?? currentSessionId ?? undefined
+  const contextRecompressJob = useContextCompressionStore((s) =>
+    activeContextSessionId ? s.jobs[activeContextSessionId] : undefined
+  )
+  const storeRunRecompress = useContextCompressionStore((s) => s.runRecompress)
+  const storeClearRecompressError = useContextCompressionStore((s) => s.clearError)
+
+  const runContextRecompress = useCallback(
+    async (targetSessionId: string) => {
+      if (!targetSessionId) return
+      const result = await storeRunRecompress(targetSessionId)
+      if (result?.ok && result.summaryText) {
+        setContextDialogState((prev) => ({
+          ...prev,
+          compressedContent: result.summaryText,
+          flatEntries: prev.flatEntries?.map((entry: { kind?: string; summaryText?: string }) =>
+            entry.kind === 'compression-summary'
+              ? { ...entry, summaryText: result.summaryText }
+              : entry
+          )
+        }))
+      }
+    },
+    [storeRunRecompress]
+  )
+
+  const dismissContextRecompressError = useCallback(() => {
+    if (activeContextSessionId) storeClearRecompressError(activeContextSessionId)
+  }, [activeContextSessionId, storeClearRecompressError])
+
+  useEffect(() => {
+    if (!contextDialogState.visible || !isCompressing || compressionPhase !== 'manual') return
+    if (!compressionText.trim() && !compressionReasoning.trim()) return
+    setContextDialogState((prev) => ({
+      ...prev,
+      compressedContent: compressionText || prev.compressedContent,
+      flatEntries: prev.flatEntries?.map((entry: { kind?: string; summaryText?: string }) =>
+        entry.kind === 'compression-summary' && compressionText
+          ? { ...entry, summaryText: compressionText }
+          : entry
+      )
+    }))
+  }, [
+    contextDialogState.visible,
+    isCompressing,
+    compressionPhase,
+    compressionText,
+    compressionReasoning
+  ])
 
   const handleBranch = useCallback(
     async (messageId: string) => {
@@ -634,6 +1010,7 @@ export const AgentScreen = () => {
         const vm = result.viewModel
         setContextDialogState({
           visible: true,
+          sessionId: currentSessionId ?? undefined,
           message: {
             ...message,
             inputTokens: message.inputTokens,
@@ -658,20 +1035,6 @@ export const AgentScreen = () => {
     },
     [currentSessionId, services, searchMode, toast, t]
   )
-
-  useEffect(() => {
-    if (messages.length > 0 && messages.length > prevMsgLenRef.current) {
-      prevMsgLenRef.current = messages.length
-      requestAnimationFrame(() => flatListRef.current?.scrollToEnd({ animated: true }))
-    }
-  }, [messages])
-
-  const handleContentSizeChange = useCallback(() => {
-    if (messages.length > prevMsgLenRef.current) {
-      prevMsgLenRef.current = messages.length
-      requestAnimationFrame(() => flatListRef.current?.scrollToEnd({ animated: true }))
-    }
-  }, [messages.length])
 
   const totalInputTokens = tokenUsage?.inputTokens || 0
   const totalOutputTokens = tokenUsage?.outputTokens || 0
@@ -730,21 +1093,301 @@ export const AgentScreen = () => {
     [userProfile, t, resolvedUserAvatarUri]
   )
 
-  const showStreamingFooter = useMemo(() => {
-    if (!isStreaming || isCompressing) return false
-    const lastMessage = messages[messages.length - 1]
-    return lastMessage?.role !== 'assistant'
-  }, [isStreaming, isCompressing, messages])
+  const showStreamingFooter = isStreaming || isStreamBridgeActive
+
+  const lastMessage = messages[messages.length - 1]
+  /** 对齐桌面 AgentMessageList：助手已落库后改由列表 ChatBubble 展示，不再挂 Footer StreamingBubble */
+  const assistantPersistedInList = useMemo(() => {
+    if (lastMessage?.role !== 'assistant') return false
+    return Boolean(
+      lastMessage.content?.trim() ||
+      lastMessage.reasoning?.trim() ||
+      (lastMessage.toolInvocations?.length ?? 0) > 0 ||
+      (lastMessage.attachments?.length ?? 0) > 0
+    )
+  }, [lastMessage])
+
+  const showStreamingBubble = useMemo(() => {
+    if (!showStreamingFooter) return false
+    if (assistantPersistedInList) return false
+    // 对齐桌面：流式/桥接期间占位（含重发后尚无 token 的空白阶段）
+    if (
+      isCompressing &&
+      !streamingText.trim() &&
+      !streamingReasoning.trim() &&
+      !activeTool &&
+      completedTools.length === 0
+    ) {
+      return false
+    }
+    return true
+  }, [
+    showStreamingFooter,
+    assistantPersistedInList,
+    isCompressing,
+    streamingText,
+    streamingReasoning,
+    activeTool,
+    completedTools.length
+  ])
+
+  useEffect(() => {
+    setAgentScrollDebugContext({
+      sessionId: currentSessionId,
+      messagesCount: messages.length,
+      isStreaming,
+      isStreamBridgeActive,
+      showStreamingFooter,
+      showStreamingBubble,
+      assistantPersistedInList
+    })
+  }, [
+    currentSessionId,
+    messages.length,
+    isStreaming,
+    isStreamBridgeActive,
+    showStreamingFooter,
+    showStreamingBubble,
+    assistantPersistedInList
+  ])
+
+  const prevShowStreamingBubbleRef = useRef(showStreamingBubble)
+  useEffect(() => {
+    if (prevShowStreamingBubbleRef.current === showStreamingBubble) return
+    logAgentScrollEvent('streaming_bubble_visibility', {
+      showStreamingBubble,
+      assistantPersistedInList,
+      messagesCount: messages.length,
+      offsetY: Math.round(scrollOffsetRef.current)
+    })
+    prevShowStreamingBubbleRef.current = showStreamingBubble
+  }, [showStreamingBubble, assistantPersistedInList, messages.length])
+
+  const prevShowStreamingFooterRef = useRef(showStreamingFooter)
+  useEffect(() => {
+    if (prevShowStreamingFooterRef.current === showStreamingFooter) return
+    logAgentScrollEvent('footer_visibility', {
+      showStreamingFooter,
+      messagesCount: messages.length,
+      offsetY: Math.round(scrollOffsetRef.current)
+    })
+    prevShowStreamingFooterRef.current = showStreamingFooter
+  }, [showStreamingFooter, messages.length])
+
+  useEffect(() => {
+    setAgentScrollDebugContext({
+      visibleMessagesCount: messages.length
+    })
+  }, [messages.length])
+
+  /** 与 bubbleTextStreaming 对齐：linger / hold 期间仍视为展示态，避免结束帧切组件 */
+  const markdownPresentationActive =
+    isStreaming || isStreamBridgeActive || streamPresentationLinger || holdLivePresentation
+
+  /** 思考区左侧转圈：流式进行中且（纯思考阶段或尚无 token） */
+  const streamingThinkLoading = useMemo(() => {
+    if (!markdownPresentationActive) return false
+    if (streamingReasoning.trim() && !streamingText.trim()) return true
+    if (
+      !streamingText.trim() &&
+      !streamingReasoning.trim() &&
+      !activeTool &&
+      completedTools.length === 0
+    ) {
+      return true
+    }
+    return false
+  }, [
+    streamingReasoning,
+    streamingText,
+    markdownPresentationActive,
+    activeTool,
+    completedTools.length
+  ])
+
+  const streamingCompletedTools = useMemo(
+    () =>
+      completedTools.map((tool, idx) => ({
+        name: tool.name,
+        durationMs: tool.endTime && tool.startTime ? tool.endTime - tool.startTime : 0,
+        result: tool.result,
+        toolCallId: tool.toolCallId ?? `streaming-${tool.name}-${idx}`
+      })),
+    [completedTools]
+  )
+
+  const showStreamingTail = showStreamingBubble
+  const liveAssistantActive =
+    showStreamingFooter || streamPresentationLinger || holdLivePresentation
+  const hasStreamingBody = Boolean(
+    streamingText.trim() ||
+      streamingReasoning.trim() ||
+      activeTool ||
+      completedTools.length > 0 ||
+      pendingEmojiAttachments.length > 0
+  )
+
+  const chatRows = useMemo(() => {
+    const rows: Array<
+      { kind: 'message'; item: (typeof messages)[number] } | { kind: 'stream-tail' }
+    > = messages.map((item) => ({ kind: 'message', item }))
+    if (showStreamingTail) {
+      rows.push({ kind: 'stream-tail' })
+    }
+    return rows
+  }, [messages, showStreamingTail])
+
+  const bubbleTextStreaming = markdownPresentationActive
+
+  const liveStreamProps = useMemo(
+    () => ({
+      content: streamingText,
+      reasoning: streamingReasoning,
+      isTextStreaming: bubbleTextStreaming,
+      isThinkLoading: streamingThinkLoading,
+      isThinkStreaming: false,
+      activeToolName: activeToolDisplayName,
+      completedTools: streamingCompletedTools,
+      attachments:
+        pendingEmojiAttachments.length > 0 ? pendingEmojiAttachments : undefined
+    }),
+    [
+      streamingText,
+      streamingReasoning,
+      bubbleTextStreaming,
+      streamingThinkLoading,
+      assistantPersistedInList,
+      activeToolDisplayName,
+      streamingCompletedTools,
+      pendingEmojiAttachments
+    ]
+  )
+
+  /** 尚无正文时仅用 StreamingBubble 显示等待点；有内容后统一走 ChatBubble */
+  const renderStreamingDots = useCallback(
+    () => (
+      <View key={LIVE_ASSISTANT_STREAM_KEY} style={styles.bubble}>
+        <StreamingBubble
+          text=""
+          reasoning=""
+          isReasoning={streamingThinkLoading}
+          isThinkStreaming={false}
+          isTextStreaming={bubbleTextStreaming}
+          activeToolName={activeToolDisplayName}
+          completedTools={streamingCompletedTools}
+          attachments={pendingEmojiAttachments}
+          aiProfile={chatAiProfile}
+          invertMetaOverBackground={hasChatBackground}
+        />
+      </View>
+    ),
+    [
+      bubbleTextStreaming,
+      streamingThinkLoading,
+      activeToolDisplayName,
+      streamingCompletedTools,
+      pendingEmojiAttachments,
+      chatAiProfile,
+      hasChatBackground
+    ]
+  )
+
+  useEffect(() => {
+    logAgentUiEvent('linger_change', { streamPresentationLinger })
+  }, [streamPresentationLinger])
+
+  useEffect(() => {
+    logAgentUiEvent('live_assistant_active', { liveAssistantActive, hasStreamingBody })
+  }, [liveAssistantActive, hasStreamingBody])
+
+  useEffect(() => {
+    if (isStreaming || isStreamBridgeActive) {
+      setHoldLivePresentation(true)
+      setKeepLiveRowAfterHold(false)
+    }
+  }, [isStreaming, isStreamBridgeActive])
+
+  useEffect(() => {
+    if (streamPresentationLinger) {
+      setHoldLivePresentation(true)
+      return
+    }
+    if (!holdLivePresentation) return
+    const timer = setTimeout(() => setHoldLivePresentation(false), HOLD_LIVE_PRESENTATION_MS)
+    return () => clearTimeout(timer)
+  }, [streamPresentationLinger, holdLivePresentation])
+
+  const prevAssistantPersistedRef = useRef(assistantPersistedInList)
+  const prevLingerRef = useRef(streamPresentationLinger)
+  useLayoutEffect(() => {
+    if (
+      !prevAssistantPersistedRef.current &&
+      assistantPersistedInList &&
+      (isStreaming || isStreamBridgeActive || streamPresentationLinger)
+    ) {
+      beginContentHandoff()
+      logAgentUiEvent('assistant_persisted', { messageId: lastMessage?.id })
+    }
+    prevAssistantPersistedRef.current = assistantPersistedInList
+  }, [
+    assistantPersistedInList,
+    beginContentHandoff,
+    isStreaming,
+    isStreamBridgeActive,
+    streamPresentationLinger,
+    lastMessage?.id
+  ])
+
+  useLayoutEffect(() => {
+    if (prevLingerRef.current && !streamPresentationLinger) {
+      logAgentUiEvent('linger_end_chrome_show', { messageId: lastMessage?.id })
+    }
+    prevLingerRef.current = streamPresentationLinger
+  }, [streamPresentationLinger, lastMessage?.id])
+
+  const prevHoldLiveRef = useRef(holdLivePresentation)
+  useLayoutEffect(() => {
+    if (prevHoldLiveRef.current && !holdLivePresentation) {
+      setKeepLiveRowAfterHold(true)
+      finalizeContentHandoff()
+      requestAnimationFrame(() => {
+        setKeepLiveRowAfterHold(false)
+      })
+    }
+    prevHoldLiveRef.current = holdLivePresentation
+  }, [holdLivePresentation, finalizeContentHandoff])
+
+  const listContentStyle = useMemo(() => {
+    const showEmptyState = !isStreaming && !isStreamBridgeActive && messages.length === 0
+
+    if (showEmptyState && listViewportHeight > 0) {
+      return [styles.listContent, styles.listContentEmpty, { minHeight: listViewportHeight }]
+    }
+    if (contentAnchorMinHeight != null) {
+      return [styles.listContent, { minHeight: contentAnchorMinHeight }]
+    }
+    return styles.listContent
+  }, [
+    contentAnchorMinHeight,
+    isStreamBridgeActive,
+    isStreaming,
+    listViewportHeight,
+    messages.length
+  ])
+
+  const listFooter = useMemo(
+    () => (
+      <View>
+        <Animated.View style={listSpacerAnimatedStyle} />
+      </View>
+    ),
+    [listSpacerAnimatedStyle]
+  )
 
   const renderEmptyState = () => (
     <View style={styles.empty}>
       <View style={[styles.emptyIconCircle, { backgroundColor: colors.primary + '26' }]}>
-        <MaterialIcons
-          name="auto-awesome"
-          size={38}
-          color={colors.primary}
-          style={{ opacity: 0.7 }}
-        />
+        <Sparkles size={38} color={colors.primary} strokeWidth={2} style={{ opacity: 0.7 }} />
       </View>
       <Text style={[styles.emptyText, { color: colors.textPrimary }]}>
         {t('agent.chat.start_chat', '开始和伙伴对话')}
@@ -755,7 +1398,7 @@ export const AgentScreen = () => {
     </View>
   )
 
-  const ChatBackgroundWrapper = resolvedChatBackgroundUri ? ImageBackground : View
+  const ChatBackgroundWrapper = (resolvedChatBackgroundUri ? ImageBackground : View) as typeof View
   const chatBackgroundWrapperProps = resolvedChatBackgroundUri
     ? {
         source: { uri: resolvedChatBackgroundUri },
@@ -789,6 +1432,8 @@ export const AgentScreen = () => {
           <View style={styles.container}>
             <AgentChatAppBar
               modelName={displayModelName || ''}
+              providerId={currentProviderId}
+              providerType={currentProviderType}
               costMicros={totalCostMicros}
               onMenuPress={() => setDrawerOpen(true)}
               onModelPress={() => setShowModelSwitcher(true)}
@@ -796,39 +1441,137 @@ export const AgentScreen = () => {
             />
 
             <AgentDrawerSwipeZone enabled={drawerSwipeEnabled} onOpen={() => setDrawerOpen(true)}>
-              <FlatList
+              <ScrollView
                 ref={flatListRef}
                 style={styles.list}
-                contentContainerStyle={[styles.listContent, { paddingBottom: listBottomPadding }]}
-                data={messages}
-                extraData={{ chatAiProfile, chatUserProfile }}
-                keyExtractor={(item) => item.id}
+                contentContainerStyle={listContentStyle}
                 nestedScrollEnabled
                 keyboardShouldPersistTaps="always"
                 keyboardDismissMode="interactive"
-                ListHeaderComponent={
-                  hasMore && showLoadMoreBanner ? (
-                    <TouchableOpacity style={styles.loadMore} onPress={() => void handleLoadMore()}>
-                      <Text style={[styles.loadMoreText, { color: colors.textSecondary }]}>
-                        {t('agent.chat.scroll_up_load_more', '点击或上滑加载更早对话')}
-                      </Text>
-                    </TouchableOpacity>
-                  ) : null
-                }
-                renderItem={({ item }) => {
+                showsVerticalScrollIndicator={false}
+                onLayout={(event) => {
+                  const height = Math.ceil(event.nativeEvent.layout.height)
+                  if (height > 0) {
+                    setListViewportHeight((prev) => (prev === height ? prev : height))
+                  }
+                  if (!layoutReadyRef.current) {
+                    layoutReadyRef.current = true
+                    if (messages.length > 0) {
+                      requestAnimationFrame(() =>
+                        flatListRef.current?.scrollToEnd({ animated: false })
+                      )
+                    }
+                  }
+                }}
+                onScroll={handleListScroll}
+                onScrollBeginDrag={handleScrollBeginDrag}
+                onScrollEndDrag={handleScrollEndDrag}
+                onMomentumScrollBegin={handleMomentumScrollBegin}
+                onMomentumScrollEnd={handleMomentumScrollEnd}
+                onContentSizeChange={handleListContentSizeChange}
+                scrollEventThrottle={16}
+              >
+                {hasMore && showLoadMoreBanner ? (
+                  <TouchableOpacity
+                    style={[
+                      styles.loadMore,
+                      {
+                        borderColor: colors.borderSubtle,
+                        backgroundColor: colors.bgGlassSurface ?? colors.bgSurface
+                      }
+                    ]}
+                    onPress={() => void handleLoadMore()}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={[styles.loadMoreText, { color: colors.primary }]}>
+                      {t('agent.chat.load_earlier_messages', '加载更早对话')}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+
+                {!isStreaming && !isStreamBridgeActive && messages.length === 0
+                  ? renderEmptyState()
+                  : null}
+
+                {chatRows.map((row) => {
+                  if (row.kind === 'stream-tail') {
+                    if (!hasStreamingBody) {
+                      return renderStreamingDots()
+                    }
+                  }
+
+                  const item = row.kind === 'message' ? row.item : null
+                  if (!item) {
+                    const tailItem = {
+                      id: LIVE_ASSISTANT_STREAM_KEY,
+                      role: 'assistant' as const,
+                      content: streamingText,
+                      reasoning: streamingReasoning
+                    }
+                    return (
+                      <View key={LIVE_ASSISTANT_STREAM_KEY} style={styles.bubble}>
+                        <AgentMessageRow
+                          item={tailItem as any}
+                          chatUserProfile={chatUserProfile}
+                          chatAiProfile={chatAiProfile}
+                          isLiveCompressionAnchor={false}
+                          liveCompression={IDLE_LIVE_COMPRESSION}
+                          liveStream={liveStreamProps}
+                          deferAssistantChrome
+                          onRegenerate={() => {}}
+                          onCopy={() => {}}
+                          onDelete={() => {}}
+                          invertMetaOverBackground={hasChatBackground}
+                          retryDisabled
+                        />
+                      </View>
+                    )
+                  }
+
                   const msgWithCompaction = item as typeof item & {
                     compactionRecord?: { streamTranscript?: string } | null
                   }
                   const isLiveCompressionAnchor =
                     (compressionPhase === 'auto' || compressionPhase === 'manual') &&
                     compressionTriggerMessageId === item.id &&
-                    (isCompressing ||
-                      ((Boolean(compressionText?.trim()) ||
-                        Boolean(compressionReasoning?.trim())) &&
-                        !msgWithCompaction.compactionRecord))
+                    isCompressing
+
+                  const liveCompression = isLiveCompressionAnchor
+                    ? {
+                        phase: compressionPhase,
+                        summary: compressionText,
+                        reasoning: compressionReasoning,
+                        isActive: isCompressing
+                      }
+                    : IDLE_LIVE_COMPRESSION
+
+                  const isLastAssistant = item.role === 'assistant' && item.id === lastMessage?.id
+                  const isLiveAssistantRow =
+                    isLastAssistant && (liveAssistantActive || keepLiveRowAfterHold)
+                  const rowKey = isLastAssistant ? LIVE_ASSISTANT_STREAM_KEY : item.id
+
+                  const rowLiveStream = isLiveAssistantRow
+                    ? {
+                        content: markdownPresentationActive
+                          ? streamingText.trim() || item.content
+                          : item.content,
+                        reasoning: markdownPresentationActive
+                          ? streamingReasoning.trim() || item.reasoning || ''
+                          : item.reasoning || '',
+                        isTextStreaming: markdownPresentationActive && bubbleTextStreaming,
+                        isThinkLoading: markdownPresentationActive && streamingThinkLoading,
+                        isThinkStreaming: false,
+                        activeToolName: markdownPresentationActive ? activeToolDisplayName : null,
+                        completedTools: markdownPresentationActive ? streamingCompletedTools : [],
+                        attachments: liveStreamProps.attachments
+                      }
+                    : undefined
+
+                  const deferChromeForRow = isLiveAssistantRow && markdownPresentationActive
 
                   return (
                     <View
+                      key={rowKey}
                       ref={item.id === editingMessageId ? editingRowRef : undefined}
                       collapsable={false}
                       style={styles.bubble}
@@ -838,12 +1581,9 @@ export const AgentScreen = () => {
                         chatUserProfile={chatUserProfile}
                         chatAiProfile={chatAiProfile}
                         isLiveCompressionAnchor={isLiveCompressionAnchor}
-                        liveCompression={{
-                          phase: compressionPhase,
-                          summary: compressionText,
-                          reasoning: compressionReasoning,
-                          isActive: isCompressing
-                        }}
+                        liveCompression={liveCompression}
+                        liveStream={rowLiveStream}
+                        deferAssistantChrome={deferChromeForRow}
                         onRegenerate={() => handleRegenerate(item.id)}
                         onResend={
                           item.role === 'user' ? () => void handleResend(item.id) : undefined
@@ -874,45 +1614,14 @@ export const AgentScreen = () => {
                         }
                         onBubbleEditingChange={handleBubbleEditingChange}
                         invertMetaOverBackground={hasChatBackground}
+                        retryDisabled={isRetryActionBusy || isStreaming || isCompressing}
                       />
                     </View>
                   )
-                }}
-                ListFooterComponent={
-                  showStreamingFooter ? (
-                    <View>
-                      <StreamingBubble
-                        text={streamingText}
-                        reasoning={streamingReasoning}
-                        isReasoning={isStreaming && !streamingText && !!streamingReasoning}
-                        activeToolName={activeTool?.name ?? null}
-                        completedTools={completedTools.map((tool, idx) => ({
-                          name: tool.name,
-                          durationMs:
-                            tool.endTime && tool.startTime ? tool.endTime - tool.startTime : 0,
-                          result: tool.result,
-                          toolCallId: `streaming-${tool.name}-${idx}`
-                        }))}
-                        aiProfile={chatAiProfile}
-                        invertMetaOverBackground={hasChatBackground}
-                      />
-                    </View>
-                  ) : null
-                }
-                showsVerticalScrollIndicator={false}
-                onContentSizeChange={handleContentSizeChange}
-                onLayout={() => {
-                  if (!layoutReadyRef.current) {
-                    layoutReadyRef.current = true
-                    requestAnimationFrame(() =>
-                      flatListRef.current?.scrollToEnd({ animated: false })
-                    )
-                  }
-                }}
-                onScroll={handleListScroll}
-                scrollEventThrottle={16}
-                ListEmptyComponent={!isStreaming ? renderEmptyState() : null}
-              />
+                })}
+
+                {listFooter}
+              </ScrollView>
             </AgentDrawerSwipeZone>
 
             {showScrollButton && !isBubbleEditing ? (
@@ -925,11 +1634,7 @@ export const AgentScreen = () => {
                   onPress={() => scrollToBottom(flatListRef, true)}
                   accessibilityLabel={t('agent.chat.scroll_to_bottom', '回到最新消息')}
                 >
-                  <MaterialIcons
-                    name="keyboard-arrow-down"
-                    size={22}
-                    color={colors.textSecondary}
-                  />
+                  <ChevronDown size={22} color={colors.textSecondary} strokeWidth={2} />
                 </TouchableOpacity>
               </Animated.View>
             ) : null}
@@ -943,17 +1648,22 @@ export const AgentScreen = () => {
                 styles.inputDock,
                 inputDockAnimatedStyle,
                 {
-                  backgroundColor: colors.bgSurface,
-                  opacity: isBubbleEditing ? 0.92 : 1
+                  backgroundColor: colors.bgSurface
                 }
               ]}
               pointerEvents={isBubbleEditing ? 'none' : 'auto'}
             >
               <InputBar
                 ref={inputBarRef}
-                onSend={handleSend}
+                onSend={handleSendWithScroll}
                 isLoading={isLoading || isStreaming}
                 onStop={handleStop}
+                composerBlocked={!hasConfiguredDialogueModel}
+                onComposerBlocked={() =>
+                  toast.showInfo(t('agent.error.no_model', '请先在顶部选择一个模型'))
+                }
+                composerDraftKey={composerDraftKey}
+                composerDraftStorage={mobileComposerDraftStorage}
                 composerEnabled={!isBubbleEditing}
                 onInputFocus={handleInputBarFocus}
                 shortcuts={shortcuts}
@@ -1020,6 +1730,7 @@ export const AgentScreen = () => {
         onSelect={(a) => void handleSelectAssistantWithTracking(a)}
         selectedAssistantId={currentAssistant?.id}
         assistants={pickerAssistants}
+        onAssistantsChanged={() => void loadAssistants()}
       />
 
       <ModelSwitcher
@@ -1091,6 +1802,8 @@ export const AgentScreen = () => {
             toast.showError(t('common.copy_failed', '复制失败'))
           }
         }}
+        copyPreview={recallCopyPreview}
+        copyPreviewLoading={recallCopyPreviewLoading}
       />
 
       <ContextChainDialog
@@ -1101,6 +1814,23 @@ export const AgentScreen = () => {
         meta={contextDialogState.meta}
         compressedContent={contextDialogState.compressedContent}
         systemPrompt={contextDialogState.systemPrompt}
+        sessionId={activeContextSessionId}
+        recompressBusy={contextRecompressJob?.status === 'running'}
+        recompressStartedAt={
+          contextRecompressJob?.status === 'running' ? contextRecompressJob.startedAt : undefined
+        }
+        recompressStreamText={isCompressing && compressionPhase === 'manual' ? compressionText : ''}
+        recompressStreamReasoning={
+          isCompressing && compressionPhase === 'manual' ? compressionReasoning : ''
+        }
+        recompressError={
+          contextRecompressJob?.status === 'error' ? contextRecompressJob.error : null
+        }
+        onRecompress={() => {
+          const sid = contextDialogState.sessionId ?? currentSessionId
+          if (sid) void runContextRecompress(sid)
+        }}
+        onRecompressDismissError={dismissContextRecompressError}
       />
     </>
   )
@@ -1115,15 +1845,25 @@ const styles = StyleSheet.create({
     height: '100%',
     resizeMode: 'cover'
   },
-  loadMore: { paddingVertical: 12, alignItems: 'center' },
+  loadMore: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderRadius: 10
+  },
   loadMoreText: {
     fontSize: 13,
-    fontWeight: '600',
-    textDecorationLine: 'underline'
+    fontWeight: '600'
   },
   list: { flex: 1 },
-  listContent: { paddingVertical: 24, paddingHorizontal: 0, flexGrow: 1 },
-  bubble: { marginBottom: 20 },
+  /** 有消息时不用 flexGrow，避免流式 Footer 移除后 offset 被钳到 0 */
+  listContent: { paddingTop: 24, paddingBottom: 0, paddingHorizontal: 0 },
+  listContentEmpty: { flexGrow: 1 },
+  bubble: { marginBottom: 6 },
   toolStatusContainer: {
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -1156,7 +1896,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: '24%',
     paddingHorizontal: 24
   },
   emptyIconCircle: {
@@ -1199,6 +1938,49 @@ const styles = StyleSheet.create({
   inputDock: {
     position: 'absolute',
     left: 0,
-    right: 0
+    right: 0,
+    overflow: 'visible',
+    zIndex: 10
+  },
+  emojiOnlyRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    gap: 8
+  },
+  emojiOnlyAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    overflow: 'hidden',
+    flexShrink: 0
+  },
+  emojiOnlyAvatarImg: {
+    width: 28,
+    height: 28,
+    borderRadius: 14
+  },
+  emojiOnlyAvatarFallback: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.08)'
+  },
+  emojiOnlyAvatarText: {
+    fontSize: 14
+  },
+  emojiOnlyImages: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    flexShrink: 1
+  },
+  emojiOnlyImg: {
+    width: 120,
+    height: 120,
+    borderRadius: 8
   }
 })

@@ -1,5 +1,5 @@
-import React, { useCallback } from 'react'
-import { View, LayoutAnimation } from 'react-native'
+import React, { useCallback, useEffect, useState } from 'react'
+import { View, LayoutAnimation, Platform, InteractionManager } from 'react-native'
 import type { RagConfig, RagMemoryViewProps } from './rag-memory.types'
 import { ragMemoryStyles as styles } from './rag-memory.styles'
 import { SettingsGroupCard } from '../settings/SettingsGroupCard'
@@ -47,13 +47,24 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
   onConfigureModel,
   onDetectDimension,
   onTriggerMigration,
+  onCancelMigration,
+  migrationCancelBusy,
   onPageChange
 }) => {
   const ragOn = config.ragEnabled
+  const [showRetrievalSection, setShowRetrievalSection] = useState(Platform.OS !== 'android')
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return
+    const task = InteractionManager.runAfterInteractions(() => {
+      setShowRetrievalSection(true)
+    })
+    return () => task.cancel()
+  }, [])
 
   const handleConfigChange = useCallback(
     (next: RagConfig) => {
-      if (next.ragEnabled !== config.ragEnabled) {
+      if (next.ragEnabled !== config.ragEnabled && Platform.OS !== 'android') {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
       }
       onChange(next)
@@ -91,11 +102,16 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
             ragState={ragState}
             hasMismatchModel={hasMismatchModel}
             onTriggerMigration={onTriggerMigration}
+            onCancelMigration={onCancelMigration}
+            migrationCancelBusy={migrationCancelBusy}
           />
 
-          <SettingsCardDivider />
-
-          <RagMemoryRetrievalSection config={config} onChange={handleConfigChange} />
+          {showRetrievalSection ? (
+            <>
+              <SettingsCardDivider />
+              <RagMemoryRetrievalSection config={config} onChange={handleConfigChange} />
+            </>
+          ) : null}
 
           <SettingsCardDivider />
 

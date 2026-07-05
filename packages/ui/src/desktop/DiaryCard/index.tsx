@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { limitDiaryPreviewTags } from '@baishou/shared'
 import styles from './DiaryCard.module.css'
 import { MarkdownRenderer } from '../MarkdownRenderer'
 
@@ -59,6 +60,10 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({ diary, onClick, onEdit, on
     return styles[`tagColor${colorIndex}`]
   }
 
+  const { visibleTags: previewTags, overflowCount: tagOverflowCount } = limitDiaryPreviewTags(
+    diary.tags
+  )
+
   return (
     <div
       className={`${styles.card} ${isHovered ? styles.hovered : ''}`}
@@ -87,15 +92,16 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({ diary, onClick, onEdit, on
         </div>
       </div>
 
-      {diary.tags && diary.tags.length > 0 && (
+      {previewTags.length > 0 && (
         <div className={styles.tagsArea}>
-          {diary.tags
-            .filter((t) => t.trim())
-            .map((tag) => (
-              <span key={tag} className={`${styles.tag} ${getTagColorClass(tag)}`}>
-                #{tag}
-              </span>
-            ))}
+          {previewTags.map((tag) => (
+            <span key={tag} className={`${styles.tag} ${getTagColorClass(tag)}`}>
+              #{tag}
+            </span>
+          ))}
+          {tagOverflowCount > 0 ? (
+            <span className={`${styles.tag} ${styles.tagOverflow}`}>+{tagOverflowCount}</span>
+          ) : null}
         </div>
       )}
 

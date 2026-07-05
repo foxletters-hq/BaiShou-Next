@@ -9,7 +9,7 @@ import {
   Keyboard
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { MaterialIcons } from '@expo/vector-icons'
+import { ChevronRight, Plus } from 'lucide-react-native'
 import {
   useNativeTheme,
   useNativeToast,
@@ -23,10 +23,14 @@ import {
   settingsCardStyles,
   ProviderBrandIcon,
   AssistantAvatarPicker,
-  AssistantKindTabBar
+  AssistantKindTabBar,
+  AssistantEditEmojiSection
 } from '@baishou/ui/native'
 import {
   AIProviderConfig,
+  DEFAULT_ASSISTANT_COMPRESS_KEEP_TURNS,
+  DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD,
+  DEFAULT_ASSISTANT_CONTEXT_WINDOW,
   DEFAULT_ASSISTANT_KIND,
   DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH,
   isDefaultAssistantAvatarPath,
@@ -37,8 +41,12 @@ import {
   isAssistantAvatarDirectUri,
   isAssistantAvatarRelativePath,
   filterProvidersForModelSwitcher,
+  normalizeEmojiToolConfig,
+  serializeAssistantEmojiGroupIds,
   type AssistantKind,
-  type ModelSwitcherProvider
+  type EmojiGroup,
+  type ModelSwitcherProvider,
+  type ToolManagementConfig
 } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
 import { useRouter, useLocalSearchParams } from 'expo-router'
@@ -74,6 +82,7 @@ interface Assistant {
   compressKeepTurns?: number
   compressSystemPrompt?: string | null
   assistantKind?: AssistantKind
+  emojiGroupId?: string | null
   createdAt?: number
   lastUsedAt?: number
   useCount?: number
@@ -117,9 +126,11 @@ export const AssistantEditScreen: React.FC = () => {
   )
   const [previewAvatarUri, setPreviewAvatarUri] = useState<string | null>(null)
   const [pendingImportUri, setPendingImportUri] = useState<string | null>(null)
-  const [contextWindow, setContextWindow] = useState(-1)
-  const [compressTokenThreshold, setCompressTokenThreshold] = useState(60000)
-  const [compressKeepTurns, setCompressKeepTurns] = useState(3)
+  const [contextWindow, setContextWindow] = useState(DEFAULT_ASSISTANT_CONTEXT_WINDOW)
+  const [compressTokenThreshold, setCompressTokenThreshold] = useState(
+    DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD
+  )
+  const [compressKeepTurns, setCompressKeepTurns] = useState(DEFAULT_ASSISTANT_COMPRESS_KEEP_TURNS)
   const [compressSystemPrompt, setCompressSystemPrompt] = useState(() =>
     getDefaultCompressionSystemPrompt()
   )
@@ -128,6 +139,11 @@ export const AssistantEditScreen: React.FC = () => {
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
   const [showModelSwitcher, setShowModelSwitcher] = useState(false)
+  const [outerScrollEnabled, setOuterScrollEnabled] = useState(true)
+  const [emojiGroups, setEmojiGroups] = useState<EmojiGroup[]>([])
+  const [globalEmojiEnabled, setGlobalEmojiEnabled] = useState(false)
+  const [emojiEnabled, setEmojiEnabled] = useState(false)
+  const [selectedEmojiGroupIds, setSelectedEmojiGroupIds] = useState<string[]>([])
 
   const isUnlimitedContext = contextWindow < 0
   const isCompressDisabled = compressTokenThreshold <= 0
@@ -178,6 +194,18 @@ export const AssistantEditScreen: React.FC = () => {
   }, [dbReady, services])
 
   useEffect(() => {
+    if (!dbReady || !services) return
+    void services.settingsManager
+      .get<ToolManagementConfig>('tool_management_config')
+      .then((config) => {
+        const normalized = normalizeEmojiToolConfig(config?.emojiConfig)
+        setGlobalEmojiEnabled(normalized.enabled === true)
+        setEmojiGroups(normalized.groups)
+      })
+      .catch(() => setEmojiGroups([]))
+  }, [dbReady, services])
+
+  useEffect(() => {
     if (isNew || !dbReady || !services) return
 
     const loadAssistant = async () => {
@@ -206,14 +234,18 @@ export const AssistantEditScreen: React.FC = () => {
           } else {
             await resolveAvatarPreview(assistant.avatarPath ?? undefined)
           }
-          setContextWindow(assistant.contextWindow ?? -1)
-          setCompressTokenThreshold(assistant.compressTokenThreshold ?? 60000)
-          setCompressKeepTurns(assistant.compressKeepTurns ?? 3)
+          setContextWindow(assistant.contextWindow ?? DEFAULT_ASSISTANT_CONTEXT_WINDOW)
+          setCompressTokenThreshold(
+            assistant.compressTokenThreshold ?? DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD
+          )
+          setCompressKeepTurns(assistant.compressKeepTurns ?? DEFAULT_ASSISTANT_COMPRESS_KEEP_TURNS)
           setCompressSystemPrompt(
             assistant.compressSystemPrompt?.trim() ||
               getDefaultCompressionSystemPrompt(i18n.language)
           )
           setAssistantKind(normalizeAssistantKind(assistant.assistantKind))
+          setEmojiEnabled(assistant.emojiEnabled === true)
+          setSelectedEmojiGroupIds(assistant.emojiGroupIds ?? [])
         } else {
           toast.showError(t('agent.assistant.not_found'))
           router.back()
@@ -266,6 +298,55 @@ export const AssistantEditScreen: React.FC = () => {
     setShowModelSwitcher(true)
   }, [chatProviders.length, t, toast])
 
+  const persistMemoryConfig = useCallback(
+    async (updates: {
+      contextWindow?: number
+      compressTokenThreshold?: number
+      compressKeepTurns?: number
+      compressSystemPrompt?: string | null
+      emojiEnabled?: boolean
+      emojiGroupIds?: string[]
+    }) => {
+      if (isNew || !services || !id) return
+      try {
+        const patch: Record<string, unknown> = { ...updates }
+        if (updates.emojiGroupIds !== undefined) {
+          patch.emojiGroupIds = serializeAssistantEmojiGroupIds(updates.emojiGroupIds)
+        }
+        await services.assistantManager.update(id as string, patch)
+        markAssistantsNeedRefresh()
+      } catch (e) {
+        console.error('Failed to persist assistant memory config', e)
+      }
+    },
+    [id, isNew, services]
+  )
+
+  const handleToggleEmojiGroup = useCallback(
+    (groupId: string) => {
+      setSelectedEmojiGroupIds((prev) => {
+        const next = prev.includes(groupId)
+          ? prev.filter((item) => item !== groupId)
+          : [...prev, groupId]
+        if (!isNew) {
+          void persistMemoryConfig({ emojiGroupIds: next })
+        }
+        return next
+      })
+    },
+    [isNew, persistMemoryConfig]
+  )
+
+  const handleEmojiEnabledChange = useCallback(
+    (enabled: boolean) => {
+      setEmojiEnabled(enabled)
+      if (!isNew) {
+        void persistMemoryConfig({ emojiEnabled: enabled })
+      }
+    },
+    [isNew, persistMemoryConfig]
+  )
+
   const handleSave = async () => {
     if (!name.trim()) {
       toast.showError(t('agent.assistant.name_required', '请输入伙伴名称'))
@@ -305,7 +386,9 @@ export const AssistantEditScreen: React.FC = () => {
         compressTokenThreshold: isCompressDisabled ? 0 : Math.round(compressTokenThreshold),
         compressKeepTurns: Math.round(compressKeepTurns),
         compressSystemPrompt: isCompressDisabled ? null : compressSystemPrompt.trim() || null,
-        assistantKind
+        assistantKind,
+        emojiEnabled,
+        emojiGroupIds: selectedEmojiGroupIds
       })
 
       if (isNew) {
@@ -378,6 +461,8 @@ export const AssistantEditScreen: React.FC = () => {
           contentContainerStyle={styles.contentContainer}
           indicatorStyle={scrollIndicatorStyle(isDark)}
           keyboardShouldPersistTaps="handled"
+          nestedScrollEnabled
+          scrollEnabled={outerScrollEnabled}
         >
           <SettingsGroupCard style={styles.avatarCard}>
             <AssistantAvatarPicker
@@ -450,7 +535,7 @@ export const AssistantEditScreen: React.FC = () => {
                 style={[styles.outlinedBtn, { borderColor: colors.borderSubtle }]}
                 onPress={() => void openModelSwitcher()}
               >
-                <MaterialIcons name="add" size={18} color={colors.textPrimary} />
+                <Plus size={18} color={colors.textPrimary} strokeWidth={2} />
                 <Text style={[styles.outlinedBtnText, { color: colors.textPrimary }]}>
                   {t('agent.assistant.select_model_label', '选择模型（使用全局默认）')}
                 </Text>
@@ -473,7 +558,7 @@ export const AssistantEditScreen: React.FC = () => {
                     {modelId}
                   </Text>
                 </View>
-                <MaterialIcons name="chevron-right" size={22} color={colors.textSecondary} />
+                <ChevronRight size={22} color={colors.textSecondary} strokeWidth={2} />
               </TouchableOpacity>
             )}
 
@@ -484,6 +569,17 @@ export const AssistantEditScreen: React.FC = () => {
               )}
             </Text>
           </SettingsGroupCard>
+
+          {globalEmojiEnabled ? (
+            <AssistantEditEmojiSection
+              emojiGroups={emojiGroups}
+              emojiEnabled={emojiEnabled}
+              selectedGroupIds={selectedEmojiGroupIds}
+              onEmojiEnabledChange={handleEmojiEnabledChange}
+              onToggleGroup={handleToggleEmojiGroup}
+              onLockOuterScroll={(locked) => setOuterScrollEnabled(!locked)}
+            />
+          ) : null}
 
           <SettingsGroupCard>
             <Text style={[settingsCardStyles.cardTitle, { color: colors.textPrimary }]}>
@@ -509,7 +605,11 @@ export const AssistantEditScreen: React.FC = () => {
               </Text>
               <Switch
                 value={isUnlimitedContext}
-                onValueChange={(unlimited) => setContextWindow(unlimited ? -1 : 20)}
+                onValueChange={(unlimited) => {
+                  const next = unlimited ? -1 : 20
+                  setContextWindow(next)
+                  void persistMemoryConfig({ contextWindow: next })
+                }}
               />
             </View>
 
@@ -520,7 +620,10 @@ export const AssistantEditScreen: React.FC = () => {
                 min={2}
                 max={100}
                 step={1}
-                onChange={setContextWindow}
+                onChange={(next) => {
+                  setContextWindow(next)
+                  void persistMemoryConfig({ contextWindow: Math.round(next) })
+                }}
                 formatValue={(v) => String(Math.round(v))}
               />
             ) : null}
@@ -551,7 +654,17 @@ export const AssistantEditScreen: React.FC = () => {
               ) : null}
               <Switch
                 value={!isCompressDisabled}
-                onValueChange={(enabled) => setCompressTokenThreshold(enabled ? 60000 : 0)}
+                onValueChange={(enabled) => {
+                  const next = enabled ? DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD : 0
+                  setCompressTokenThreshold(next)
+                  void persistMemoryConfig({
+                    compressTokenThreshold: next,
+                    compressSystemPrompt: enabled
+                      ? compressSystemPrompt.trim() ||
+                        getDefaultCompressionSystemPrompt(i18n.language)
+                      : null
+                  })
+                }}
               />
             </View>
 
@@ -575,7 +688,11 @@ export const AssistantEditScreen: React.FC = () => {
                   min={10000}
                   max={1000000}
                   step={10000}
-                  onChange={setCompressTokenThreshold}
+                  onChange={(next) => {
+                    const rounded = Math.round(next)
+                    setCompressTokenThreshold(rounded)
+                    void persistMemoryConfig({ compressTokenThreshold: rounded })
+                  }}
                   formatValue={(v) => formatTokens(Math.round(v))}
                 />
                 <SettingsSliderRow
@@ -588,7 +705,11 @@ export const AssistantEditScreen: React.FC = () => {
                   min={1}
                   max={10}
                   step={1}
-                  onChange={setCompressKeepTurns}
+                  onChange={(next) => {
+                    const rounded = Math.round(next)
+                    setCompressKeepTurns(rounded)
+                    void persistMemoryConfig({ compressKeepTurns: rounded })
+                  }}
                   formatValue={(v) => formatKeepTurns(t, v)}
                 />
 

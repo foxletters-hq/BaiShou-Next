@@ -103,16 +103,28 @@ export class HybridSearchMigrationStore {
   constructor(private readonly db: ISqlExecutor) {}
 
   async hasPendingMigration(): Promise<boolean> {
-    const checkTable = await this.db.execute({
-      sql: `SELECT name FROM sqlite_master WHERE type='table' AND name=?`,
-      args: [HYBRID_SEARCH_BACKUP_TABLE]
-    })
-    if (checkTable.rows.length === 0) return false
+    if (!(await this.hasMigrationBackupTable())) return false
 
     const countRow = await this.db.execute(
       `SELECT count(*) as c FROM ${HYBRID_SEARCH_BACKUP_TABLE} WHERE is_migrated = 0`
     )
     return Number(countRow.rows[0]?.c ?? 0) > 0
+  }
+
+  async hasMigrationBackupTable(): Promise<boolean> {
+    const checkTable = await this.db.execute({
+      sql: `SELECT name FROM sqlite_master WHERE type='table' AND name=?`,
+      args: [HYBRID_SEARCH_BACKUP_TABLE]
+    })
+    return checkTable.rows.length > 0
+  }
+
+  async hasMigrationRollbackTable(): Promise<boolean> {
+    const checkTable = await this.db.execute({
+      sql: `SELECT name FROM sqlite_master WHERE type='table' AND name=?`,
+      args: [HYBRID_SEARCH_ROLLBACK_TABLE]
+    })
+    return checkTable.rows.length > 0
   }
 
   async countHeterogeneousEmbeddings(currentModelId: string): Promise<number> {

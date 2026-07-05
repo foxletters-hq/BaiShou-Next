@@ -26,7 +26,11 @@ export const AgentBehaviorSettingsCard: React.FC<AgentBehaviorSettingsCardProps>
     setExpanded(!expanded)
   }
 
-  const tempDisplay = config.defaultTemperature.toFixed(1)
+  const tempValue =
+    typeof config.defaultTemperature === 'number'
+      ? config.defaultTemperature
+      : Number(config.defaultTemperature)
+  const tempDisplay = (Number.isFinite(tempValue) ? tempValue : 0).toFixed(1)
 
   return (
     <View

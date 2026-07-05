@@ -5,7 +5,8 @@ import {
   fetchTtsProviderModels,
   isTtsProviderId,
   logger,
-  resolveProviderBaseUrl
+  resolveProviderBaseUrl,
+  resolveProviderDisplayName
 } from '@baishou/shared'
 import { AIProviderRegistry } from '@baishou/ai'
 import { settingsManager } from './settings.ipc'
@@ -23,6 +24,7 @@ const knownSystemIds = [
   'ollama',
   'siliconflow',
   'openrouter',
+  'opencodego',
   'dashscope',
   'doubao',
   'grok',
@@ -140,6 +142,8 @@ export function registerSettingsModelsIPC() {
 
   ipcMain.handle('settings:set-global-models', async (_, config: GlobalModelsConfig) => {
     await settingsManager.set('global_models', config)
+    const { invalidateMcpToolContextCache } = await import('./agent-helpers')
+    invalidateMcpToolContextCache()
     return true
   })
 
@@ -184,7 +188,7 @@ export function registerSettingsModelsIPC() {
       } else {
         providers.push({
           id,
-          name: id.charAt(0).toUpperCase() + id.slice(1),
+          name: resolveProviderDisplayName(id),
           type: id as any,
           isSystem: true,
           isEnabled: false,
@@ -212,7 +216,7 @@ export function registerSettingsModelsIPC() {
         config = {
           id: providerId,
           type: providerId as any,
-          name: providerId.toUpperCase(),
+          name: resolveProviderDisplayName(providerId),
           apiKey: '',
           baseUrl: '',
           isSystem: true,
@@ -255,7 +259,7 @@ export function registerSettingsModelsIPC() {
         config = {
           id: providerId,
           type: providerId as any,
-          name: providerId.toUpperCase(),
+          name: resolveProviderDisplayName(providerId),
           apiKey: '',
           baseUrl: '',
           isSystem: true,

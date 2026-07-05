@@ -21,9 +21,7 @@ describe('diary-tag-color.util', () => {
 
   it('解析与合并注册表', () => {
     expect(normalizeDiaryTagColorRegistry('{"日记":1}')).toEqual({ 日记: 1 })
-    expect(
-      mergeDiaryTagColorRegistries({ 日记: 1 }, { 生活: 2 })
-    ).toEqual({ 日记: 1, 生活: 2 })
+    expect(mergeDiaryTagColorRegistries({ 日记: 1 }, { 生活: 2 })).toEqual({ 日记: 1, 生活: 2 })
   })
 
   it('优先使用持久化配色', () => {

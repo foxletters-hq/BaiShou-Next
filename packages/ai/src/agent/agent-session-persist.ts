@@ -5,6 +5,8 @@ import { IAIProvider } from '../providers/provider.interface'
 import { ModelPricingService } from '../pricing/model-pricing.service'
 import { mergeStreamUsageFromSdk, normalizeTokenUsageForBilling } from './token-usage.util'
 import { StreamAccumulator } from './stream-accumulator'
+import { resolveAssistantParentOrderIndex, buildEmojiImagePartsFromToolCalls } from './agent-session-persist.utils'
+import { sanitizeToolPayloadForStorage } from './session-tool-payload-sanitizer'
 // @ts-ignore
 import { SnapshotRepository } from '@baishou/database'
 
@@ -14,6 +16,13 @@ function generateUUID(): string {
     const v = c === 'x' ? r : (r & 0x3) | 0x8
     return v.toString(16)
   })
+}
+
+function resolveAssistantTextForStorage(accumulator: StreamAccumulator): string {
+  if (typeof accumulator.sanitizedText === 'string') {
+    return accumulator.sanitizedText
+  }
+  return sanitizeAssistantGeneratedText(accumulator.text)
 }
 
 export interface PersistResultParams {
@@ -33,6 +42,9 @@ export interface PersistResultParams {
   namingModelConfigured?: boolean
   namingProvider?: IAIProvider
   namingModelId?: string
+  flushSessionToDisk?: (sessionId: string) => Promise<void>
+  /** 用户配置，用于查找 emoji_send 工具对应的表情包文件 */
+  userConfig?: Record<string, any>
 }
 
 /**
@@ -57,32 +69,34 @@ export async function persistResult(params: PersistResultParams): Promise<{
     provider,
     modelId,
     skipUserMessageRecording,
-    userMessageId: _userMessageId,
-    streamError
+    userMessageId,
+    streamError,
+    flushSessionToDisk
   } = params
 
-  // 用户消息已经在 streamChat 开始时保存，这里只需要获取当前的 orderIndex
-  const history = await sessionRepo.getMessagesBySession(sessionId, 1)
-  const lastOrder = history.length > 0 && history[0] ? history[0].orderIndex : 0
-  let userOrderIndex = lastOrder
-
-  // 如果是重发/编辑模式，需要计算正确的 orderIndex
-  if (skipUserMessageRecording) {
-    userOrderIndex = lastOrder
-  }
+  const userOrderIndex = await resolveAssistantParentOrderIndex(sessionRepo, sessionId, {
+    skipUserMessageRecording,
+    userMessageId
+  })
 
   // ======== 构建 assistant 消息 Parts ========
   const assistantMsgId = generateUUID()
-  const partsToInsert: any[] = []
+  const partsToInsert: any[] = buildEmojiImagePartsFromToolCalls(
+    accumulator.toolCalls,
+    assistantMsgId,
+    sessionId,
+    params.userConfig
+  )
 
   // 推送文本 Part
-  if (accumulator.text) {
+  const assistantText = resolveAssistantTextForStorage(accumulator)
+  if (assistantText) {
     partsToInsert.push({
       id: generateUUID(),
       messageId: assistantMsgId,
       sessionId,
       type: 'text',
-      data: { text: sanitizeAssistantGeneratedText(accumulator.text) }
+      data: { text: assistantText }
     })
   }
 
@@ -100,19 +114,30 @@ export async function persistResult(params: PersistResultParams): Promise<{
 
   // 推送工具 Call & Result Part
   for (const tc of accumulator.toolCalls) {
+    if (!tc?.callId || !tc?.name) {
+      logger.warn('[Persist Result] Skip malformed tool-call snapshot:', JSON.stringify(tc))
+      continue
+    }
     const resultObj = accumulator.toolResults.find((tr) => tr.callId === tc.callId)
+
+    // emoji_send 已转为 image parts，不单独落 tool part
+    if (tc.name === 'emoji_send') {
+      continue
+    }
+
+    const toolData = sanitizeToolPayloadForStorage({
+      callId: tc.callId,
+      name: tc.name,
+      arguments: tc.arguments,
+      result: resultObj ? resultObj.result : undefined,
+      status: resultObj ? 'completed' : 'failed'
+    })
     partsToInsert.push({
       id: generateUUID(),
       messageId: assistantMsgId,
       sessionId,
       type: 'tool',
-      data: {
-        callId: tc.callId,
-        name: tc.name,
-        arguments: tc.arguments,
-        result: resultObj ? resultObj.result : undefined,
-        status: resultObj ? 'completed' : 'failed'
-      }
+      data: toolData
     })
   }
 
@@ -135,9 +160,12 @@ export async function persistResult(params: PersistResultParams): Promise<{
           outputTokens: streamUsage.outputTokens
         }
       }
-    } catch (e: any) {
-      const isNoOutputError = e?.[Symbol.for('vercel.ai.error.AI_NoOutputGeneratedError')] === true
-      if (e.name === 'AbortError') {
+    } catch (e: unknown) {
+      const isNoOutputError =
+        (e as { [key: symbol]: unknown } | null)?.[
+          Symbol.for('vercel.ai.error.AI_NoOutputGeneratedError')
+        ] === true
+      if (e instanceof Error && e.name === 'AbortError') {
         logger.info(
           '[AgentSessionService Debug] streamResult.usage read gracefully skipped (stream aborted by user).'
         )
@@ -146,7 +174,7 @@ export async function persistResult(params: PersistResultParams): Promise<{
           '[AgentSessionService Debug] streamResult.usage skipped (no model output generated).'
         )
       } else {
-        logger.warn('[AgentSessionService Debug] Failed to read streamResult.usage:', e)
+        logger.warn('[AgentSessionService Debug] Failed to read streamResult.usage:', e as Error)
       }
     }
 
@@ -182,14 +210,15 @@ export async function persistResult(params: PersistResultParams): Promise<{
     }
 
     // 累加计算 tokens 及账单微美分成本
+    const providerId = provider?.config?.id ?? 'unknown'
     costMicros = await ModelPricingService.getInstance().calculateCostMicros(
-      provider.config.id,
+      providerId,
       modelId,
       normalizeTokenUsageForBilling(streamUsage)
     )
 
     logger.info('\n================== 计费日志 ==================')
-    logger.info(`模型: ${modelId} (${provider.config.id})`)
+    logger.info(`模型: ${modelId} (${providerId})`)
     logger.info(
       `Tokens消耗: 输入 ${finalUsage.inputTokens} | 输出 ${finalUsage.outputTokens} | 缓存读 ${streamUsage.cacheReadInputTokens} | 缓存写 ${streamUsage.cacheWriteInputTokens}`
     )
@@ -208,6 +237,7 @@ export async function persistResult(params: PersistResultParams): Promise<{
   }
 
   // 开始事务存放! — 即使流式出错，也将已累积的回复内容落盘，防止消息丢失
+
   if (partsToInsert.length > 0) {
     await sessionRepo.insertMessageWithParts(
       {
@@ -220,7 +250,7 @@ export async function persistResult(params: PersistResultParams): Promise<{
         cacheReadInputTokens: streamUsage.cacheReadInputTokens,
         cacheWriteInputTokens: streamUsage.cacheWriteInputTokens,
         costMicros: costMicros,
-        providerId: provider.config.id,
+        providerId: provider?.config?.id ?? 'unknown',
         modelId: modelId
       },
       partsToInsert
@@ -235,6 +265,14 @@ export async function persistResult(params: PersistResultParams): Promise<{
     streamUsage.cacheReadInputTokens,
     streamUsage.cacheWriteInputTokens
   )
+
+  if (flushSessionToDisk) {
+    try {
+      await flushSessionToDisk(sessionId)
+    } catch (e: unknown) {
+      logger.warn('[Persist Result] flushSessionToDisk failed:', e as Error)
+    }
+  }
 
   // ==========================================
   // 触发闲置后台服务 (仅在无流错误时执行)

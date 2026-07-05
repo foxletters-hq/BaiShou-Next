@@ -1,8 +1,9 @@
 import React, { useCallback } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, Platform, TextInput } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { Search, X } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { Input } from '../Input/Input'
 
 interface RagMemorySearchSectionProps {
@@ -83,6 +84,30 @@ export const RagMemorySearchSection: React.FC<RagMemorySearchSectionProps> = ({
             autoCorrect={false}
             autoCapitalize="none"
           />
+        ) : Platform.OS === 'android' ? (
+          <View style={[styles.searchInputWrap, styles.androidSearchRow]}>
+            <Search size={18} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+            <TextInput
+              style={[styles.searchInput, styles.searchInputCompact, { color: colors.textPrimary }]}
+              value={searchQuery}
+              onChangeText={handleQueryChange}
+              placeholder={placeholder}
+              placeholderTextColor={colors.textTertiary}
+              autoFocus={autoFocus}
+              returnKeyType="search"
+              autoCorrect={false}
+              autoCapitalize="none"
+            />
+            {searchQuery.length > 0 ? (
+              <TouchableOpacity
+                onPress={handleClear}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                activeOpacity={0.7}
+              >
+                <X size={16} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+              </TouchableOpacity>
+            ) : null}
+          </View>
         ) : (
           <Input
             className="min-h-0 flex-1 border-0 bg-transparent px-0"
@@ -94,7 +119,7 @@ export const RagMemorySearchSection: React.FC<RagMemorySearchSectionProps> = ({
             placeholder={placeholder}
             autoFocus={autoFocus}
             returnKeyType="search"
-            leftSlot={<MaterialIcons name="search" size={18} color={colors.textSecondary} />}
+            leftSlot={<Search size={18} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />}
             rightSlot={
               searchQuery.length > 0 ? (
                 <TouchableOpacity
@@ -102,7 +127,7 @@ export const RagMemorySearchSection: React.FC<RagMemorySearchSectionProps> = ({
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   activeOpacity={0.7}
                 >
-                  <MaterialIcons name="close" size={16} color={colors.textTertiary} />
+                  <X size={16} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                 </TouchableOpacity>
               ) : undefined
             }
@@ -186,6 +211,11 @@ const styles = StyleSheet.create({
     borderWidth: 0,
     padding: 0,
     margin: 0
+  },
+  androidSearchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6
   },
   searchInput: {
     fontSize: 14,

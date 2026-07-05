@@ -4,7 +4,7 @@ import DraggableFlatList, {
   ScaleDecorator,
   type RenderItemParams
 } from 'react-native-draggable-flatlist'
-import { MaterialIcons } from '@expo/vector-icons'
+import { GripVertical, Pin, Plus, Sparkles, Trash2 } from 'lucide-react-native'
 import {
   useNativeTheme,
   useNativeToast,
@@ -231,7 +231,7 @@ export const AssistantManagementScreen: React.FC = () => {
               style={[styles.dragHandle, { borderColor: colors.borderSubtle }]}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <MaterialIcons name="drag-indicator" size={20} color={colors.textSecondary} />
+              <GripVertical size={20} color={colors.textSecondary} strokeWidth={2} />
             </TouchableOpacity>
           ) : null}
           <AssistantAvatar
@@ -247,7 +247,7 @@ export const AssistantManagementScreen: React.FC = () => {
               </Text>
               <AssistantKindBadge kind={item.assistantKind} compact />
               {item.isPinned ? (
-                <MaterialIcons name="push-pin" size={14} color={colors.primary} />
+                <Pin size={14} color={colors.primary} strokeWidth={2} />
               ) : null}
             </View>
           </View>
@@ -264,10 +264,10 @@ export const AssistantManagementScreen: React.FC = () => {
             style={[styles.chipBtn, { borderColor: colors.borderSubtle }]}
             onPress={() => void handleTogglePin(item)}
           >
-            <MaterialIcons
-              name="push-pin"
+            <Pin
               size={16}
               color={item.isPinned ? colors.primary : colors.textSecondary}
+              strokeWidth={2}
             />
           </TouchableOpacity>
           {!item.isDefault ? (
@@ -275,7 +275,7 @@ export const AssistantManagementScreen: React.FC = () => {
               style={[styles.chipBtn, { borderColor: colors.error + '55' }]}
               onPress={() => handleDeleteAssistant(item)}
             >
-              <MaterialIcons name="delete-outline" size={16} color={colors.error} />
+              <Trash2 size={16} color={colors.error} strokeWidth={2} />
             </TouchableOpacity>
           ) : null}
         </View>
@@ -304,7 +304,7 @@ export const AssistantManagementScreen: React.FC = () => {
       title={t('agent.assistant.title', '伙伴管理')}
       {...getStackScreenChrome(colors)}
       headerRight={{
-        icon: 'add',
+        icon: Plus,
         onPress: handleCreateAssistant,
         accessibilityLabel: t('agent.assistant.create_new', '新增伙伴')
       }}
@@ -316,12 +316,7 @@ export const AssistantManagementScreen: React.FC = () => {
         </View>
       ) : assistants.length === 0 ? (
         <View style={styles.centered}>
-          <MaterialIcons
-            name="auto-awesome"
-            size={56}
-            color={colors.primary}
-            style={{ opacity: 0.65 }}
-          />
+          <Sparkles size={56} color={colors.primary} strokeWidth={2} style={{ opacity: 0.65 }} />
           <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
             {t('agent.assistant.empty_hint', '全列阵空爆：您的矩阵里还没有服役的心智')}
           </Text>
@@ -329,7 +324,7 @@ export const AssistantManagementScreen: React.FC = () => {
             style={[styles.createFirstButton, { borderColor: colors.primary }]}
             onPress={handleCreateAssistant}
           >
-            <MaterialIcons name="add" size={18} color={colors.primary} />
+            <Plus size={18} color={colors.primary} strokeWidth={2} />
             <Text style={[styles.createFirstText, { color: colors.primary }]}>
               {t('agent.assistant.create_first', '执行首建协议')}
             </Text>

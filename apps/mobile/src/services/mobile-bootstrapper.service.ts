@@ -8,6 +8,7 @@ import type {
 import { ensureDefaultLatteAssistant } from '@baishou/core-mobile'
 import { logger, DEFAULT_USER_PROFILE, USER_PROFILE_SETTINGS_KEY } from '@baishou/shared'
 import { resolveMobileBootstrapUiLocale } from '../lib/onboarding-language.util'
+import { MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES } from './mobile-file-read-limits'
 
 export type MobileBootstrapperStatus = 'idle' | 'running'
 
@@ -98,7 +99,12 @@ export class MobileDataBootstrapper {
     const activeVaultName = deps.getActiveVaultName
       ? await deps.getActiveVaultName().catch(() => undefined)
       : undefined
-    const resyncOptions = activeVaultName ? { activeVaultName } : undefined
+    const resyncOptions = activeVaultName
+      ? {
+          activeVaultName,
+          maxSessionJsonReadBytes: MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES
+        }
+      : { maxSessionJsonReadBytes: MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES }
 
     try {
       const shadowScan = deps.shadowIndexSyncService.fullScanVault(true).catch((e) => {

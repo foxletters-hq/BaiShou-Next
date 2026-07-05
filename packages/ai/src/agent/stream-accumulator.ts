@@ -73,6 +73,10 @@ export class StreamAccumulator {
   private _toolResults: Map<string, ToolResultSnapshot> = new Map()
 
   get text(): string {
+    return this._textBuffer
+  }
+
+  get sanitizedText(): string {
     return sanitizeAssistantGeneratedText(this._textBuffer)
   }
 
@@ -119,7 +123,8 @@ export class StreamAccumulator {
       }
 
       case 'tool-call': {
-        if (p.toolCallId) {
+        const toolName = String(p.toolName ?? p.name ?? '').trim()
+        if (p.toolCallId && toolName) {
           const legacyArgs =
             p.args ?? (p.providerMetadata as Record<string, unknown> | undefined)?.raw
           const rawInput = (legacyArgs as { input?: unknown } | undefined)?.input
@@ -128,7 +133,7 @@ export class StreamAccumulator {
 
           this._toolCalls.set(String(p.toolCallId), {
             callId: String(p.toolCallId),
-            name: String(p.toolName || ''),
+            name: toolName,
             arguments: inputArgs
           })
         }
@@ -136,7 +141,7 @@ export class StreamAccumulator {
       }
 
       case 'tool-result': {
-        if (p.toolCallId) {
+        if (p.toolCallId && this._toolCalls.has(String(p.toolCallId))) {
           const raw = (p.providerMetadata as Record<string, unknown> | undefined)?.raw
           const res = p.output ?? p.result ?? raw
           this._toolResults.set(String(p.toolCallId), {

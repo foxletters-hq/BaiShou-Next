@@ -200,4 +200,38 @@ describe('legacy-version-migration.scan', () => {
     expect(personal.archiveCount).toBeGreaterThanOrEqual(1)
     expect(personal.available).toBe(true)
   })
+
+  it('falls back to global agent.sqlite when vault agent.sqlite is an empty shell', async () => {
+    const vaultAgentPath = path.join(tempDir, 'Personal', '.baishou', 'agent.sqlite')
+    await fs.mkdir(path.dirname(vaultAgentPath), { recursive: true })
+    await fs.writeFile(vaultAgentPath, 'x'.repeat(128))
+
+    const globalAgentPath = path.join(tempDir, '.baishou', 'agent.sqlite')
+    const globalDb = new Database(globalAgentPath)
+    globalDb.exec(`
+      CREATE TABLE agent_assistants (id TEXT PRIMARY KEY, name TEXT, updated_at TEXT);
+      CREATE TABLE agent_sessions (id TEXT PRIMARY KEY, title TEXT, vault_name TEXT, assistant_id TEXT);
+      CREATE TABLE agent_messages (id TEXT PRIMARY KEY, session_id TEXT);
+      INSERT INTO agent_assistants VALUES ('global-a1', 'Global Partner', '2024-01-01');
+      INSERT INTO agent_sessions VALUES ('global-s1', 'Global Chat', 'Personal', 'global-a1');
+      INSERT INTO agent_messages VALUES ('global-m1', 'global-s1');
+    `)
+    globalDb.close()
+
+    const result = await scanLegacyVersionMigration({
+      fileSystem,
+      sourceRoot: tempDir,
+      sourceDisplayPath: tempDir,
+      flutterPrefsConfig: null,
+      flutterRawSp: null,
+      flutterDocumentsAvatarsDir: null,
+      sqliteClient: db,
+      executeRawSql
+    })
+
+    const personal = result.workspaces[0]!
+    expect(personal.assistantCount).toBe(1)
+    expect(personal.sessionCount).toBe(1)
+    expect(personal.previewItems?.some((item) => item.label === 'Global Partner')).toBe(true)
+  })
 })

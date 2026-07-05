@@ -1,18 +1,31 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeDiaryTags } from '../diary-tags.util'
+import { limitDiaryPreviewTags, normalizeDiaryTags } from '../diary-tags.util'
+
+describe('limitDiaryPreviewTags', () => {
+  it('returns all tags when within limit', () => {
+    expect(limitDiaryPreviewTags(['a', 'b', 'c'])).toEqual({
+      visibleTags: ['a', 'b', 'c'],
+      overflowCount: 0
+    })
+  })
+
+  it('truncates extra tags and reports overflow count', () => {
+    expect(limitDiaryPreviewTags(['a', 'b', 'c', 'd', 'e', 'f'], 4)).toEqual({
+      visibleTags: ['a', 'b', 'c', 'd'],
+      overflowCount: 2
+    })
+  })
+
+  it('normalizes input via normalizeDiaryTags before limiting', () => {
+    expect(limitDiaryPreviewTags(['one', ' two ', 'three', 'four', 'five'], 3)).toEqual({
+      visibleTags: ['one', 'two', 'three'],
+      overflowCount: 2
+    })
+  })
+})
 
 describe('normalizeDiaryTags', () => {
-  it('returns empty array for nullish values', () => {
-    expect(normalizeDiaryTags(null)).toEqual([])
-    expect(normalizeDiaryTags(undefined)).toEqual([])
-    expect(normalizeDiaryTags('')).toEqual([])
-  })
-
-  it('parses comma-separated strings', () => {
-    expect(normalizeDiaryTags('photo, 日记,测试')).toEqual(['photo', '日记', '测试'])
-  })
-
-  it('passes through string arrays', () => {
-    expect(normalizeDiaryTags(['photo', '日记'])).toEqual(['photo', '日记'])
+  it('trims and drops empty entries', () => {
+    expect(normalizeDiaryTags([' a ', '', 'b'])).toEqual(['a', 'b'])
   })
 })

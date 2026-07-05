@@ -3,7 +3,7 @@ import { SummaryGeneratorService } from './summary-generator.service'
 import { SummaryRepository } from '@baishou/database'
 import { MissingSummary, SummaryType } from '@baishou/shared'
 import { SummaryFileService } from '../vault/summary-file.service'
-import type { DiskResyncOptions } from '../sync/disk-resync.types'
+import type { DiskResyncOptions } from '../vault/disk-resync.types'
 
 export interface SummarySyncCallbacks {
   onProgress?: (missing: MissingSummary, status: string) => void

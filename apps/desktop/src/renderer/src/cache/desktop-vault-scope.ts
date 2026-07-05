@@ -50,6 +50,14 @@ export function setDesktopVaultScopeKey(key: string): void {
   notify()
 }
 
+/** 存储根目录变更后强制刷新 scope（vault 名称可能不变，但仍需失效页面缓存） */
+export async function refreshDesktopVaultScopeAfterStorageRootChange(): Promise<void> {
+  scopeKey = await resolveActiveVaultName()
+  scopeRevision += 1
+  scopeReady = true
+  notify()
+}
+
 export function getDesktopVaultScopeKey(): string {
   return scopeKey ?? readPersistedVaultName() ?? 'Personal'
 }

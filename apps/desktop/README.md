@@ -4,11 +4,11 @@
 
 ## 平台支持
 
-| 平台 | 说明 |
-| ---- | ---- |
-| **Windows** | 官方发版，`pnpm release:desktop:win` |
-| **Linux** | 可自行编译 AppImage（`pnpm release:desktop:linux`），不保证兼容，不在官方支持范围 |
-| **macOS** | 暂无计划 |
+| 平台        | 说明                                                                              |
+| ----------- | --------------------------------------------------------------------------------- |
+| **Windows** | 官方发版，`pnpm release:desktop:win`                                              |
+| **Linux**   | 可自行编译 AppImage（`pnpm release:desktop:linux`），不保证兼容，不在官方支持范围 |
+| **macOS**   | 暂无计划                                                                          |
 
 在仓库根目录执行 **`pnpm commands`** 或 **`pnpm commands:desktop`** 可查看命令说明。打包与发版流程见 [docs/打包须知.md](../../docs/打包须知.md)。
 

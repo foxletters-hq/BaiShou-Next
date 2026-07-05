@@ -1,5 +1,7 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
+import { useFocusEffect } from '@react-navigation/native'
 import { useTranslation } from 'react-i18next'
+import { registerTtsPlaybackStopHandler, stopAllTtsPlayback } from '@baishou/shared'
 import { useNativeToast } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import { synthesizeAllTtsSpeechFromSavedSettings } from '../services/mobile-tts-synthesize'
@@ -24,16 +26,26 @@ export function useTTS() {
     setTtsPlayingMsgId(null)
   }, [])
 
+  useEffect(() => registerTtsPlaybackStopHandler(() => stopTTS()), [stopTTS])
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        void stopTTS()
+      }
+    }, [stopTTS])
+  )
+
   const handleTtsReadAloud = useCallback(
     async (content: string, messageId?: string) => {
       if (!content.trim()) return
 
       if (ttsPlayingMsgId === messageId) {
-        await stopTTS()
+        await stopAllTtsPlayback()
         return
       }
 
-      await stopTTS()
+      await stopAllTtsPlayback()
 
       const requestId = ++ttsRequestRef.current
       if (messageId) setTtsPlayingMsgId(messageId)
@@ -93,7 +105,7 @@ export function useTTS() {
         clearTtsBusyState(requestId)
       }
     },
-    [ttsPlayingMsgId, services, t, stopTTS, toast, clearTtsBusyState]
+    [ttsPlayingMsgId, services, t, toast, clearTtsBusyState]
   )
 
   return {

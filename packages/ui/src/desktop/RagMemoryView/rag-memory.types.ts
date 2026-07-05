@@ -6,12 +6,16 @@ export interface RagConfig {
   ragEnabled: boolean
   batchEmbedConcurrency?: number
   lastDiaryEmbedFailureAt?: number
+  lastDiaryEmbedFailureMessage?: string
 }
 
 export interface RagStats {
   totalCount: number
   currentDimension: number
   totalSizeText: string
+  /** 当前工作空间下的日记向量块数 */
+  diaryCountForVault?: number
+  activeVaultName?: string
 }
 
 export interface RagState {
@@ -20,6 +24,7 @@ export interface RagState {
   progress: number
   total: number
   statusText: string
+  statusKey?: string
   error?: string
   aborted?: boolean
   rollbackApplied?: boolean
@@ -53,6 +58,7 @@ export interface RagMemoryViewProps {
   onRestoreMigration?: () => Promise<void>
   onResumeMigration?: () => Promise<void>
   migrationState?: EmbeddingMigrationStateView | null
+  migrationCancelBusy?: boolean
   onClearAll?: () => Promise<void>
   onSearch?: (query: string, mode: 'semantic' | 'text') => void
   onDeleteEntry?: (id: string) => Promise<void>

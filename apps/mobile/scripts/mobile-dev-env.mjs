@@ -518,3 +518,38 @@ export function printDevConnectionHelp(lanHost = getLanIp(), port = METRO_PORT) 
   }
   if (!wsl) console.log('')
 }
+
+/**
+ * Gradle 编译耗时较长时无线 adb 的 reverse 可能丢失；定时重建避免首屏 FileNotFoundException。
+ * @returns {() => void} 调用以停止保活
+ */
+export function startReverseKeeper(port = METRO_PORT, intervalMs = 20_000) {
+  let missStreak = 0
+  let rebuildLogged = false
+
+  const timer = setInterval(() => {
+    if (!hasAdbDevice()) {
+      missStreak = 0
+      rebuildLogged = false
+      return
+    }
+    if (hasAdbReverse(port)) {
+      missStreak = 0
+      rebuildLogged = false
+      return
+    }
+    missStreak++
+    if (missStreak < 2) return
+
+    if (!rebuildLogged) {
+      console.warn(
+        `\n🔁 adb reverse 已丢失（无线 adb / 长时编译后常见），正在重新建立…`,
+        '仍频繁出现可改 USB 或执行 pnpm mobile:connect\n'
+      )
+      rebuildLogged = true
+    }
+    setupAdbReverse(port)
+  }, intervalMs)
+
+  return () => clearInterval(timer)
+}

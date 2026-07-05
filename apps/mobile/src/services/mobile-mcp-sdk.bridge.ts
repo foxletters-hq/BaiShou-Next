@@ -57,9 +57,15 @@ export class MobileMcpSdkBridge {
   }
 
   async getToolsList(): Promise<ReturnType<typeof listBaishouMcpToolsForUi>> {
-    const resolve = this.resolveToolListContext ?? this.resolveToolContext
-    const context = await resolve()
-    return listBaishouMcpToolsForUi(this.toolRegistry, context)
+    try {
+      const context = await this.resolveToolContext()
+      return listBaishouMcpToolsForUi(this.toolRegistry, context)
+    } catch (e) {
+      if (!this.resolveToolListContext) throw e
+      logger.warn('[MobileMcpSdkBridge] Full MCP context unavailable, using settings-only list', e as Error)
+      const context = await this.resolveToolListContext()
+      return listBaishouMcpToolsForUi(this.toolRegistry, context)
+    }
   }
 
   async handleHttpRequest(

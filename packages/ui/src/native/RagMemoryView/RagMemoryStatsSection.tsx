@@ -1,8 +1,9 @@
 import React from 'react'
 import { View, Text, TouchableOpacity } from 'react-native'
-import { MaterialCommunityIcons } from '@expo/vector-icons'
+import { Database, RefreshCw, Sparkles } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import type { RagStats } from './rag-memory.types'
 import { ragMemoryStyles as styles } from './rag-memory.styles'
 
@@ -37,10 +38,17 @@ export const RagMemoryStatsSection: React.FC<RagMemoryStatsSectionProps> = ({
           }
         ]}
       >
-        <MaterialCommunityIcons name="database-outline" size={14} color={colors.primary} />
-        <Text style={[styles.statValue, { color: colors.primary }]}>{stats.totalCount}</Text>
+        <Database size={14} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+        <Text style={[styles.statValue, { color: colors.primary }]}>
+          {stats.diaryCountForVault != null ? stats.diaryCountForVault : stats.totalCount}
+        </Text>
         <Text style={[styles.statLabel, { color: colors.primary }]}>
-          {t('settings.rag_total_count')}
+          {stats.diaryCountForVault != null && stats.activeVaultName
+            ? t('settings.rag_vault_diary_count', {
+                vault: stats.activeVaultName,
+                defaultValue: '{{vault}} 日记向量'
+              })
+            : t('settings.rag_total_count')}
         </Text>
       </View>
 
@@ -56,7 +64,7 @@ export const RagMemoryStatsSection: React.FC<RagMemoryStatsSectionProps> = ({
         disabled={!onConfigureModel}
         activeOpacity={0.7}
       >
-        <MaterialCommunityIcons name="hub" size={14} color={colors.success} />
+        <Sparkles size={14} color={colors.success} strokeWidth={DEFAULT_STROKE_WIDTH} />
         <Text
           style={[styles.statValue, { color: colors.success }]}
           numberOfLines={1}
@@ -78,7 +86,7 @@ export const RagMemoryStatsSection: React.FC<RagMemoryStatsSectionProps> = ({
           }
         ]}
       >
-        <MaterialCommunityIcons name="vector-combine" size={14} color={colors.textSecondary} />
+        <Database size={14} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
         <Text style={[styles.statValue, { color: colors.textPrimary }]}>{dimensionText}</Text>
         <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
           {t('settings.rag_dimension')}
@@ -98,7 +106,7 @@ export const RagMemoryStatsSection: React.FC<RagMemoryStatsSectionProps> = ({
         disabled={isBusy || !onDetectDimension}
         activeOpacity={0.7}
       >
-        <MaterialCommunityIcons name="refresh" size={14} color={colors.primary} />
+        <RefreshCw size={14} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
         <Text style={[styles.statValue, { color: colors.primary, fontSize: 12 }]} numberOfLines={2}>
           {t('settings.rag_detect_dimension')}
         </Text>

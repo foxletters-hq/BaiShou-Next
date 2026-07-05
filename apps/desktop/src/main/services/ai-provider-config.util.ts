@@ -3,7 +3,8 @@ import {
   AiProviderModel,
   ProviderType,
   getDefaultWebSearchMode,
-  resolveProviderBaseUrl
+  resolveProviderBaseUrl,
+  resolveProviderDisplayName
 } from '@baishou/shared'
 
 const OPENAI_COMPAT_ENV_KEYS = ['OPENAI_API_KEY', 'OPENAI_API_TOKEN', 'OPENAI_KEY'] as const
@@ -113,7 +114,7 @@ export function patchProviderConfigInStore(
     const type = (updates.type || providerId).toLowerCase() as ProviderType
     providers.push({
       id: providerId,
-      name: updates.name || providerId.toUpperCase(),
+      name: updates.name || resolveProviderDisplayName(providerId),
       type,
       apiKey: '',
       baseUrl: updates.apiBaseUrl || updates.baseUrl || '',

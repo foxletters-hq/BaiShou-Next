@@ -1,4 +1,9 @@
 import { z } from 'zod'
+import {
+  DEFAULT_ASSISTANT_COMPRESS_KEEP_TURNS,
+  DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD,
+  DEFAULT_ASSISTANT_CONTEXT_WINDOW
+} from '../constants/assistant-memory-defaults.constants'
 
 export const AgentSessionSchema = z.object({
   id: z.string(),
@@ -71,11 +76,21 @@ export const AgentAssistantSchema = z.object({
   avatarPath: z.string().optional().nullable(),
   systemPrompt: z.string().optional().nullable(),
   isDefault: z.boolean().default(false),
-  contextWindow: z.number().int().positive().default(10),
+  contextWindow: z
+    .number()
+    .int()
+    .refine((value) => value < 0 || value > 0, {
+      message: 'contextWindow must be -1 (unlimited) or a positive integer'
+    })
+    .default(DEFAULT_ASSISTANT_CONTEXT_WINDOW),
   providerId: z.string(),
   modelId: z.string(),
-  compressTokenThreshold: z.number().int().positive().default(60000),
-  compressKeepTurns: z.number().int().nonnegative().default(3),
+  compressTokenThreshold: z
+    .number()
+    .int()
+    .nonnegative()
+    .default(DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD),
+  compressKeepTurns: z.number().int().nonnegative().default(DEFAULT_ASSISTANT_COMPRESS_KEEP_TURNS),
   compressSystemPrompt: z.string().optional().nullable(),
   assistantKind: z.enum(['companion', 'work']).default('companion'),
   sortOrder: z.number().int().default(0),

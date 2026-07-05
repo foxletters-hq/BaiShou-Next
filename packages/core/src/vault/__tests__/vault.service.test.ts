@@ -108,7 +108,12 @@ describe('VaultService Integration', () => {
 
     await service.initRegistry()
 
-    expect(service.getAllVaults().map((v) => v.name).sort()).toEqual(['Personal', 'Side'])
+    expect(
+      service
+        .getAllVaults()
+        .map((v) => v.name)
+        .sort()
+    ).toEqual(['Personal', 'Side'])
   })
 
   it('syncRegistryWithDisk registers discovered vault folders not in registry', async () => {
@@ -132,7 +137,12 @@ describe('VaultService Integration', () => {
 
     await service.initRegistry()
 
-    expect(service.getAllVaults().map((v) => v.name).sort()).toEqual(['Personal', 'Work'])
+    expect(
+      service
+        .getAllVaults()
+        .map((v) => v.name)
+        .sort()
+    ).toEqual(['Personal', 'Work'])
   })
 
   it('ensureVaultsRegistered adds remote-only vault names', async () => {
@@ -140,9 +150,7 @@ describe('VaultService Integration', () => {
     const added = await service.ensureVaultsRegistered(['RemoteVault'])
     expect(added).toEqual(['RemoteVault'])
     expect(service.vaultExists('RemoteVault')).toBe(true)
-    expect(
-      await fs.stat(path.join(tempDir, 'RemoteVault', '.baishou'))
-    ).toBeDefined()
+    expect(await fs.stat(path.join(tempDir, 'RemoteVault', '.baishou'))).toBeDefined()
   })
 
   it('ensureVaultsRegistered does not steal active vault', async () => {

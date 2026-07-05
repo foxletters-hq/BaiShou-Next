@@ -29,6 +29,13 @@
   }
 }
 
+/* 思考块占满气泡宽度，避免思考结束后缩成窄条 */
+.thinkingShell {
+  width: 100%;
+  max-width: 100%;
+  align-self: stretch;
+}
+
 /* Content */
 .content {
   padding: 12px 14px;
@@ -38,6 +45,13 @@
   border-top: 1px solid var(--border-muted);
   word-break: break-word;
   overflow-wrap: break-word;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.content :global(.x-markdown) {
+  width: 100% !important;
+  max-width: 100%;
 }
 
 .content p:first-child {
@@ -48,24 +62,36 @@
   margin-bottom: 0;
 }
 
+/* 折叠态流式预览区（独立于 contentWrap，避免 grid 0fr 裁切） */
+.previewBody {
+  padding: 4px 14px 8px;
+  border-top: 1px solid var(--border-muted);
+  width: 100%;
+  box-sizing: border-box;
+}
+
 /* Streaming preview */
 .previewContainer {
   overflow: hidden;
   position: relative;
   transition: height 0.2s ease;
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
 }
 
-/* 顶部渐隐遮罩效果 */
-.previewContainer::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 60%;
-  background: linear-gradient(to bottom, var(--bg-surface) 0%, transparent 100%);
-  pointer-events: none;
-  z-index: 1;
+.previewTail {
+  display: block;
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--text-tertiary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  width: 100%;
+  max-width: 100%;
 }
 
 .previewScroll {
@@ -76,18 +102,26 @@
   padding-bottom: 4px;
 }
 
-/* 每行预览文本 - 单行截断 */
+/* legacy: 保留占位等待态 */
 .previewLine {
   width: 100%;
   line-height: 14px;
   font-size: 11px;
   color: var(--text-tertiary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-/* Cursor blink for streaming */
+/* 顶部渐隐：内容超出固定高度时提示上方还有思考 */
+.previewFade {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 10px;
+  background: linear-gradient(to bottom, var(--bg-surface) 0%, transparent 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
 .cursor {
   display: inline-block;
   width: 2px;

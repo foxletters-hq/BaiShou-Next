@@ -100,6 +100,10 @@ export class VaultScopedStoragePathService implements IStoragePathService {
     return this.base.getChatBackgroundsDirectory()
   }
 
+  getEmojisDirectory(): Promise<string> {
+    return this.base.getEmojisDirectory()
+  }
+
   async getDiaryAttachmentDirectory(date: Date): Promise<string> {
     const journalsDir = await this.getJournalsBaseDirectory()
     const year = String(date.getFullYear())

@@ -1,6 +1,8 @@
 import React from 'react'
+import { ListTree } from 'lucide-react'
 import styles from './ContextChainDialog.module.css'
 import { MockChatMessage } from '@baishou/shared'
+import { CONTEXT_CHAIN_HEADER_ICON_SIZE } from '../../shared/icons/icon-sizes'
 import { useTranslation } from 'react-i18next'
 
 export interface ContextChainDialogProps {
@@ -102,7 +104,11 @@ export const ContextChainDialog: React.FC<ContextChainDialogProps> = ({
       <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
           <div className={styles.titleRow}>
-            <span className={styles.icon}>🌿</span>
+            <ListTree
+              size={CONTEXT_CHAIN_HEADER_ICON_SIZE}
+              className={styles.icon}
+              aria-hidden
+            />
             <span className={styles.title}>{t('agent.chat.full_call_chain', '完整调用链')}</span>
             <span className={styles.badge}>{contextMessages.length}</span>
           </div>

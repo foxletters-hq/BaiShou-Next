@@ -4,6 +4,9 @@ import './WeatherPicker.css'
 export interface WeatherOption {
   value: string
   label: string
+  icon?: string
+  /** Fluent Emoji 等 PNG 资源 URL（桌面端） */
+  iconSrc?: string
 }
 
 interface WeatherPickerProps {
@@ -26,6 +29,8 @@ export const WeatherPicker: React.FC<WeatherPickerProps> = ({
 
   const selected = options.find((o) => o.value === value)
   const displayLabel = selected?.label || placeholder
+  const displayIcon = selected?.icon
+  const displayIconSrc = selected?.iconSrc
 
   const closeDropdown = useCallback(() => {
     setClosing(true)
@@ -94,7 +99,14 @@ export const WeatherPicker: React.FC<WeatherPickerProps> = ({
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span className="wp-trigger-label">{displayLabel}</span>
+        <span className="wp-trigger-content">
+          {displayIconSrc ? (
+            <img className="wp-icon-img" src={displayIconSrc} alt="" draggable={false} />
+          ) : displayIcon ? (
+            <span className="wp-icon">{displayIcon}</span>
+          ) : null}
+          <span className="wp-trigger-label">{displayLabel}</span>
+        </span>
         <span className={`wp-chevron${open ? ' wp-chevron-open' : ''}`}>
           <svg
             width="12"
@@ -126,7 +138,14 @@ export const WeatherPicker: React.FC<WeatherPickerProps> = ({
                   role="option"
                   aria-selected={isSelected}
                 >
-                  <span className="wp-option-label">{option.label}</span>
+                  <span className="wp-option-content">
+                    {option.iconSrc ? (
+                      <img className="wp-icon-img" src={option.iconSrc} alt="" draggable={false} />
+                    ) : option.icon ? (
+                      <span className="wp-icon">{option.icon}</span>
+                    ) : null}
+                    <span className="wp-option-label">{option.label}</span>
+                  </span>
                   {isSelected && (
                     <span className="wp-check">
                       <svg

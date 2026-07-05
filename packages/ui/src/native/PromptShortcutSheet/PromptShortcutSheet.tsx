@@ -19,10 +19,20 @@ import {
   getDefaultShortcutLabelsFromT,
   localizePromptShortcut
 } from '@baishou/shared'
-import { MaterialIcons } from '@expo/vector-icons'
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  Pencil,
+  Search,
+  Trash2,
+  X
+} from 'lucide-react-native'
 import type { PromptShortcut } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { useNativeToast } from '../Toast'
 import { Input } from '../Input/Input'
 import { useDialog } from '../Dialog/Dialog'
@@ -256,7 +266,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                   hitSlop={6}
                   accessibilityLabel={t('shortcut.move_up', '上移')}
                 >
-                  <MaterialIcons name="keyboard-arrow-up" size={22} color={colors.textTertiary} />
+                  <ChevronUp size={22} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                 </Pressable>
                 <Pressable
                   style={[
@@ -268,7 +278,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                   hitSlop={6}
                   accessibilityLabel={t('shortcut.move_down', '下移')}
                 >
-                  <MaterialIcons name="keyboard-arrow-down" size={22} color={colors.textTertiary} />
+                  <ChevronDown size={22} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                 </Pressable>
               </View>
             ) : (
@@ -306,7 +316,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                   onPress={() => handleEdit(item)}
                   accessibilityLabel={t('shortcut.edit', '编辑')}
                 >
-                  <MaterialIcons name="edit" size={20} color={colors.textTertiary} />
+                  <Pencil size={20} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                 </Pressable>
                 <Pressable
                   style={styles.actionBtn}
@@ -314,7 +324,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                   onPress={() => void handleDeletePress(item.id)}
                   accessibilityLabel={t('common.delete', '删除')}
                 >
-                  <MaterialIcons name="delete-outline" size={22} color={colors.error} />
+                  <Trash2 size={22} color={colors.error} strokeWidth={DEFAULT_STROKE_WIDTH} />
                 </Pressable>
               </>
             ) : null}
@@ -480,7 +490,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                       }
                     ]}
                   >
-                    <MaterialIcons name="search" size={20} color={colors.textTertiary} />
+                    <Search size={20} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                     <TextInput
                       value={searchQuery}
                       onChangeText={setSearchQuery}
@@ -492,7 +502,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                     />
                     {searchQuery.length > 0 ? (
                       <Pressable onPress={() => setSearchQuery('')} hitSlop={8}>
-                        <MaterialIcons name="close" size={18} color={colors.textTertiary} />
+                        <X size={18} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                       </Pressable>
                     ) : null}
                   </View>
@@ -555,7 +565,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                           disabled={currentPage <= 1}
                           onPress={() => setCurrentPage(currentPage - 1)}
                         >
-                          <MaterialIcons name="chevron-left" size={22} color={colors.textPrimary} />
+                          <ChevronLeft size={22} color={colors.textPrimary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                         </Pressable>
                         <Pressable
                           style={[
@@ -568,11 +578,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                           disabled={currentPage >= totalPages}
                           onPress={() => setCurrentPage(currentPage + 1)}
                         >
-                          <MaterialIcons
-                            name="chevron-right"
-                            size={22}
-                            color={colors.textPrimary}
-                          />
+                          <ChevronRight size={22} color={colors.textPrimary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                         </Pressable>
                       </View>
                     </View>

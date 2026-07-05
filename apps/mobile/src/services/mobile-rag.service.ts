@@ -3,25 +3,188 @@ import {
   diaryDateToSourceCreatedSeconds,
   EMBEDDING_SOURCE_SORT_MILLIS_SQL,
   EMBEDDING_SOURCE_SORT_ORDER_SQL,
+  buildDiaryEmbeddingGroupId,
+  buildDiaryEmbeddingSourceId,
+  clearRagDiaryEmbedFailure,
   filterUnindexedDiaries,
   formatLocalDate,
+  filterDiaryScopedSearchResults,
+  hasRagDiaryEmbedFailure,
   isRagMemoryEnabled,
   limitExecute,
-  resolveBatchEmbedConcurrency,
+  markRagDiaryEmbedFailure,
+  resolveMobileBatchEmbedConcurrency,
   sortDiariesByDateAsc,
   timestampToMillis,
-  logger
+  logger,
+  SEMANTIC_SEARCH_TIMEOUT_MS,
+  withPromiseTimeout,
+  type RagConfig
 } from '@baishou/shared'
 import { SqliteHybridSearchRepository } from '@baishou/database'
 import type { SettingsManagerService, DiaryService } from '@baishou/core-mobile'
+import {
+  MobileRagAbortError,
+  abortableMobileRagDelay,
+  mobileRagOperationControl
+} from './mobile-rag-operation-control'
+import {
+  countDiaryEmbeddingsForVault,
+  deleteDiaryEmbeddingAliases,
+  purgeAllLegacyDiaryEmbeddings,
+  purgeLegacyDiaryEmbeddingsForVault
+} from './mobile-diary-embedding.util'
+import type { MobileRagVaultScope } from './mobile-rag-vault-scope'
+import { listVaultDiaryMetas, loadVaultDiariesForEmbedding } from './mobile-rag-vault-diary'
+import {
+  patchCachedMobileRagState,
+  resetCachedMobileRagActiveState
+} from './mobile-rag-runtime-cache'
+import type { DiaryMeta } from '@baishou/shared'
+
+export { MobileRagAbortError } from './mobile-rag-operation-control'
 
 const HYBRID_SEARCH_TABLE = 'memory_embeddings'
+const PREPARE_DIMENSION_MAX_ATTEMPTS = 3
+
+let batchEmbedInFlight: Promise<ControlledDiaryBatchEmbedResult> | null = null
+let batchEmbedRerunRequested = false
+let reembedInFlight = false
+let deferredPostSyncEmbed = false
+
+function isMobileRagBatchBusy(): boolean {
+  return batchEmbedInFlight != null || reembedInFlight
+}
+
+export function isMobileRagReembedInFlight(): boolean {
+  return reembedInFlight
+}
+
+export function requestDeferredPostSyncEmbed(): void {
+  deferredPostSyncEmbed = true
+}
+
+export function isDeferredPostSyncEmbedPending(): boolean {
+  return deferredPostSyncEmbed
+}
+
+async function flushDeferredPostSyncEmbed(): Promise<void> {
+  if (!deferredPostSyncEmbed) return
+  deferredPostSyncEmbed = false
+  const { schedulePostSyncDiaryBatchEmbed } = await import('./mobile-post-sync-diary-embed.service')
+  schedulePostSyncDiaryBatchEmbed()
+}
+
+/** @internal 仅供单元测试重置模块级并发状态 */
+export function resetMobileRagBatchStateForTests(): void {
+  batchEmbedInFlight = null
+  batchEmbedRerunRequested = false
+  reembedInFlight = false
+  deferredPostSyncEmbed = false
+  mobileRagOperationControl.reset()
+}
+
+type StoredRagConfig = RagConfig & { totalEmbeddings?: number }
+
+async function countEmbeddingsInDb(deps: MobileRagServiceDeps): Promise<number> {
+  const client = deps.rawSqlClient as {
+    execute?: (q: { sql: string; args: unknown[] }) => Promise<{ rows: unknown[] }>
+  }
+  if (!client?.execute) return 0
+
+  const result = await client.execute({
+    sql: `SELECT COUNT(*) as count FROM ${HYBRID_SEARCH_TABLE}`,
+    args: []
+  })
+  const row = result.rows?.[0] as Record<string, number> | number[] | undefined
+  return Number((row && typeof row === 'object' && !Array.isArray(row) ? row.count : row?.[0]) ?? 0)
+}
+
+/** 批量嵌入结束后一次性更新 rag_config（向量总数 + 失败标记），避免多次写入竞态。 */
+async function finalizeBatchEmbedRagConfig(
+  deps: MobileRagServiceDeps,
+  batchFailed: boolean
+): Promise<number> {
+  const totalCount = await countEmbeddingsInDb(deps)
+  const ragConfig = (await deps.settingsManager.get<StoredRagConfig>('rag_config')) || {
+    ragEnabled: true,
+    ragTopK: 20,
+    ragSimilarityThreshold: 0.4
+  }
+
+  let nextConfig: StoredRagConfig = { ...ragConfig, totalEmbeddings: totalCount }
+  if (batchFailed) {
+    nextConfig = markRagDiaryEmbedFailure(nextConfig)
+  } else if (hasRagDiaryEmbedFailure(nextConfig)) {
+    nextConfig = clearRagDiaryEmbedFailure(nextConfig)
+  }
+
+  await deps.settingsManager.set('rag_config', nextConfig)
+  return totalCount
+}
+
+async function prepareMobileEmbeddingIndex(
+  deps: MobileRagServiceDeps,
+  adapter: EmbeddingAdapter
+): Promise<number> {
+  const globalModels =
+    (await deps.settingsManager.get<{ globalEmbeddingDimension?: number }>('global_models')) || {}
+  let dimension = Number(globalModels.globalEmbeddingDimension || 0)
+
+  if (dimension <= 0) {
+    let vector: number[] | null = null
+    for (let attempt = 1; attempt <= PREPARE_DIMENSION_MAX_ATTEMPTS; attempt++) {
+      vector = await adapter.embedQuery('hi')
+      if (vector?.length) break
+      if (attempt < PREPARE_DIMENSION_MAX_ATTEMPTS) {
+        await abortableMobileRagDelay(attempt * 1000, mobileRagOperationControl)
+      }
+    }
+    if (!vector?.length) {
+      throw new Error('嵌入 API 未返回有效向量')
+    }
+    dimension = vector.length
+    globalModels.globalEmbeddingDimension = dimension
+    await deps.settingsManager.set('global_models', globalModels)
+  }
+
+  await deps.hsRepo.initVectorIndex(dimension)
+  return dimension
+}
 
 export type RagProgressCallback = (progress: {
   current: number
   total: number
   status: string
 }) => void
+
+type RagProgressOperationType = 'batchEmbed' | 'reembed' | 'migration'
+
+function broadcastRagProgress(
+  type: RagProgressOperationType,
+  progress: { current: number; total: number; status?: string }
+): void {
+  patchCachedMobileRagState({
+    isRunning: true,
+    type,
+    progress: progress.current,
+    total: progress.total,
+    statusText: progress.status ?? ''
+  })
+}
+
+function chainRagProgressCallback(
+  type: RagProgressOperationType,
+  onProgress?: RagProgressCallback
+): RagProgressCallback | undefined {
+  if (!onProgress) {
+    return (progress) => broadcastRagProgress(type, progress)
+  }
+  return (progress) => {
+    onProgress(progress)
+    broadcastRagProgress(type, progress)
+  }
+}
 
 export interface MobileRagServiceDeps {
   settingsManager: SettingsManagerService
@@ -30,6 +193,29 @@ export interface MobileRagServiceDeps {
   hybridSearchService: HybridSearchService
   registry: AIProviderRegistry
   rawSqlClient: unknown
+  vaultScope?: MobileRagVaultScope
+}
+
+type RawSqlClient = {
+  execute?: (q: { sql: string; args: unknown[] }) => Promise<{ rows: unknown[] }>
+}
+
+function defaultVaultScope(): MobileRagVaultScope {
+  return {
+    resolveActiveVaultName: async () => 'Personal',
+    listVaultNames: async () => ['Personal']
+  }
+}
+
+async function resolveVaultScope(deps: MobileRagServiceDeps): Promise<MobileRagVaultScope> {
+  return deps.vaultScope ?? defaultVaultScope()
+}
+
+function diaryVaultListFilterSql(vaultGroupId: string): { clause: string; args: string[] } {
+  return {
+    clause: `(source_type != 'diary' OR group_id = ?)`,
+    args: [vaultGroupId]
+  }
 }
 
 async function resolveEmbeddingAdapter(
@@ -55,10 +241,21 @@ export type EmbedDiaryEntryParams = {
   tags: string[]
   date: Date | string
   updatedAt: Date
-  groupId: string
+  /** @deprecated 请改用 vaultName；保留兼容旧调用 */
+  groupId?: string
+  vaultName?: string
 }
 
-async function loadEmbeddedDiaryIndex(deps: MobileRagServiceDeps): Promise<{
+export type EmbedDiaryEntryOptions = {
+  adapter?: EmbeddingAdapter
+  skipIndexPrep?: boolean
+  skipRagEnabledCheck?: boolean
+}
+
+async function loadEmbeddedDiaryIndex(
+  deps: MobileRagServiceDeps,
+  vaultName: string
+): Promise<{
   embeddedIds: Set<string>
   embeddedUpdatedAtMap: Map<string, number>
 }> {
@@ -71,9 +268,10 @@ async function loadEmbeddedDiaryIndex(deps: MobileRagServiceDeps): Promise<{
     return { embeddedIds, embeddedUpdatedAtMap }
   }
 
+  const groupId = buildDiaryEmbeddingGroupId(vaultName)
   const result = await client.execute({
-    sql: `SELECT source_id as sourceId, metadata_json as metadataJson FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = 'diary'`,
-    args: []
+    sql: `SELECT source_id as sourceId, metadata_json as metadataJson FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = 'diary' AND group_id = ?`,
+    args: [groupId]
   })
 
   for (const row of (result.rows || []) as Array<{
@@ -102,22 +300,26 @@ async function loadEmbeddedDiaryIndex(deps: MobileRagServiceDeps): Promise<{
 
 export async function embedDiaryEntry(
   deps: MobileRagServiceDeps,
-  params: EmbedDiaryEntryParams
+  params: EmbedDiaryEntryParams,
+  options?: EmbedDiaryEntryOptions
 ): Promise<void> {
-  const ragConfig = (await deps.settingsManager.get<{ ragEnabled?: boolean }>('rag_config')) || {}
-  if (!isRagMemoryEnabled({ ragEnabled: ragConfig.ragEnabled ?? true })) return
-
-  const adapter = await resolveEmbeddingAdapter(deps)
-  if (!adapter) return
-
-  const globalModels =
-    (await deps.settingsManager.get<{ globalEmbeddingDimension?: number }>('global_models')) || {}
-  const dimension = globalModels.globalEmbeddingDimension
-  if (dimension && dimension > 0) {
-    await deps.hsRepo.initVectorIndex(dimension)
+  if (!options?.skipRagEnabledCheck) {
+    const ragConfig = (await deps.settingsManager.get<{ ragEnabled?: boolean }>('rag_config')) || {}
+    if (!isRagMemoryEnabled({ ragEnabled: ragConfig.ragEnabled ?? true })) return
   }
 
-  await deps.hsRepo.deleteEmbeddingsBySource('diary', String(params.diaryId))
+  const adapter = options?.adapter ?? (await resolveEmbeddingAdapter(deps))
+  if (!adapter) return
+
+  if (!options?.skipIndexPrep) {
+    await prepareMobileEmbeddingIndex(deps, adapter)
+  }
+
+  const scope = await resolveVaultScope(deps)
+  const resolvedVault = params.vaultName?.trim() || (await scope.resolveActiveVaultName())
+  const sourceId = buildDiaryEmbeddingSourceId(resolvedVault, params.diaryId)
+  const groupId = buildDiaryEmbeddingGroupId(resolvedVault)
+  await deleteDiaryEmbeddingAliases(deps.hsRepo, resolvedVault, params.diaryId)
 
   const d = params.date instanceof Date ? params.date : new Date(params.date)
   const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -127,124 +329,375 @@ export async function embedDiaryEntry(
   const embedArgs = {
     text: prefixedText,
     sourceType: 'diary',
-    sourceId: String(params.diaryId),
-    groupId: params.groupId,
+    sourceId,
+    groupId,
     sourceCreatedAt: diaryDateToSourceCreatedSeconds(d) * 1000,
     metadataJson,
     requireSuccess: true as const
   }
 
-  const maxAttempts = 3
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      await adapter.embedText(embedArgs)
-      return
-    } catch (error) {
-      if (attempt < maxAttempts) {
-        await new Promise((resolve) => setTimeout(resolve, attempt * 1000))
-      } else {
-        throw error
-      }
-    }
+  try {
+    await adapter.embedText(embedArgs)
+  } catch (error) {
+    await deps.hsRepo.deleteEmbeddingsBySource('diary', sourceId)
+    throw error
   }
 }
 
 export type ControlledDiaryBatchEmbedResult = {
   embedded: number
+  failed: number
+  /** 无正文而跳过的日记篇数 */
+  loadSkipped?: number
   total: number
   skipped: boolean
   skipReason?: string
+}
+
+function resolveControlledDiaryBatchEmbedCount(result: ControlledDiaryBatchEmbedResult): number {
+  if (result.skipped && result.skipReason === 'migration-running') {
+    throw new Error('嵌入任务正在进行中，请稍后再试')
+  }
+  if (result.skipped && result.skipReason === 'embedding-not-configured') {
+    throw new Error('嵌入模型未配置')
+  }
+  if (result.skipped && result.skipReason === 'prepare-failed') {
+    throw new Error('嵌入 API 未返回有效向量，请检查模型配置与网络')
+  }
+  if (result.failed > 0) {
+    throw new Error(
+      `成功嵌入 ${result.embedded} 篇，${result.failed} 篇失败（共 ${result.total} 篇待处理）`
+    )
+  }
+  return result.embedded
+}
+
+async function runControlledDiaryBatchEmbedCore(
+  deps: MobileRagServiceDeps,
+  options?: {
+    onProgress?: RagProgressCallback
+    progressType?: RagProgressOperationType
+    /** @deprecated 请改用 vaultName */
+    groupId?: string
+    vaultName?: string
+  }
+): Promise<ControlledDiaryBatchEmbedResult> {
+  mobileRagOperationControl.reset()
+  const progressType = options?.progressType ?? 'batchEmbed'
+  const onProgress = chainRagProgressCallback(progressType, options?.onProgress)
+  try {
+    const ragConfig = (await deps.settingsManager.get<{ ragEnabled?: boolean }>('rag_config')) || {}
+    if (!isRagMemoryEnabled({ ragEnabled: ragConfig.ragEnabled ?? true })) {
+      return { embedded: 0, failed: 0, total: 0, skipped: true, skipReason: 'rag-disabled' }
+    }
+
+    const adapter = await resolveEmbeddingAdapter(deps)
+    if (!adapter) {
+      return {
+        embedded: 0,
+        failed: 0,
+        total: 0,
+        skipped: true,
+        skipReason: 'embedding-not-configured'
+      }
+    }
+
+    try {
+      await prepareMobileEmbeddingIndex(deps, adapter)
+    } catch (error) {
+      if (error instanceof MobileRagAbortError) {
+        throw error
+      }
+      logger.error('[MobileRag] prepare embedding index failed', { error })
+      await finalizeBatchEmbedRagConfig(deps, true)
+      return { embedded: 0, failed: 0, total: 0, skipped: true, skipReason: 'prepare-failed' }
+    }
+
+    const purgedLegacy = await purgeAllLegacyDiaryEmbeddings(
+      deps.rawSqlClient as RawSqlClient | undefined
+    )
+    if (purgedLegacy > 0) {
+      logger.info('[MobileRag] purged legacy diary vectors', { count: purgedLegacy })
+    }
+
+    const vaultScope = await resolveVaultScope(deps)
+    const shadowDb = vaultScope.getShadowDb?.() ?? null
+    const vaultNames = options?.vaultName?.trim()
+      ? [options.vaultName.trim()]
+      : await vaultScope.listVaultNames()
+    const activeVaultName = await vaultScope.resolveActiveVaultName()
+
+    type VaultEmbedPlan = {
+      vaultName: string
+      diariesToEmbed: DiaryMeta[]
+      allDiaryIds: number[]
+    }
+
+    const vaultPlans: VaultEmbedPlan[] = []
+    let globalTotal = 0
+
+    for (const vaultName of vaultNames) {
+      if (!shadowDb && vaultName !== activeVaultName) {
+        logger.warn('[MobileRag] skipping non-active vault batch embed without shadow index', {
+          vaultName,
+          activeVaultName
+        })
+      }
+      const allDiaries = sortDiariesByDateAsc(
+        shadowDb
+          ? await listVaultDiaryMetas(shadowDb, vaultName)
+          : vaultName === activeVaultName
+            ? await deps.diaryService.listAll({ limit: 10000 })
+            : []
+      )
+      const { embeddedIds, embeddedUpdatedAtMap } = await loadEmbeddedDiaryIndex(deps, vaultName)
+      const resolveSourceId = (meta: { id: unknown }) =>
+        buildDiaryEmbeddingSourceId(vaultName, meta.id as number)
+      const diariesToEmbed = filterUnindexedDiaries(allDiaries, embeddedIds, embeddedUpdatedAtMap, {
+        resolveSourceId
+      })
+      if (diariesToEmbed.length === 0) continue
+      vaultPlans.push({
+        vaultName,
+        diariesToEmbed,
+        allDiaryIds: allDiaries.map((d) => d.id)
+      })
+      globalTotal += diariesToEmbed.length
+    }
+
+    if (globalTotal === 0) {
+      await finalizeBatchEmbedRagConfig(deps, false)
+      return { embedded: 0, failed: 0, total: 0, skipped: true, skipReason: 'nothing-to-embed' }
+    }
+
+    onProgress?.({
+      current: 0,
+      total: globalTotal,
+      status: ''
+    })
+
+    const ragSettings =
+      (await deps.settingsManager.get<{ batchEmbedConcurrency?: number }>('rag_config')) || {}
+    const batchConcurrency = resolveMobileBatchEmbedConcurrency(ragSettings.batchEmbedConcurrency)
+
+    const progress = { embedded: 0, failed: 0, loadSkipped: 0, completed: 0 }
+
+    const reportProgress = (status: string) => {
+      onProgress?.({
+        current: progress.completed,
+        total: globalTotal,
+        status
+      })
+    }
+
+    for (const plan of vaultPlans) {
+      const { vaultName, diariesToEmbed, allDiaryIds } = plan
+      await purgeLegacyDiaryEmbeddingsForVault(
+        deps.rawSqlClient as RawSqlClient | undefined,
+        vaultName,
+        allDiaryIds
+      )
+
+      const diaryById = shadowDb
+        ? await loadVaultDiariesForEmbedding(
+            shadowDb,
+            vaultName,
+            diariesToEmbed.map((meta) => meta.id)
+          )
+        : await deps.diaryService.findByIdsForEmbedding(diariesToEmbed.map((meta) => meta.id))
+
+      await limitExecute(diariesToEmbed, batchConcurrency, async (meta) => {
+        if (mobileRagOperationControl.isAborted) {
+          return
+        }
+
+        const dateLabel = meta.date
+          ? formatLocalDate(meta.date instanceof Date ? meta.date : new Date(meta.date))
+          : ''
+
+        try {
+          reportProgress(
+            `[${vaultName}] 处理日记: ${dateLabel}（${progress.completed}/${globalTotal}）`
+          )
+
+          if (mobileRagOperationControl.isAborted) {
+            return
+          }
+
+          const diary = diaryById.get(meta.id)
+          const content = diary && 'content' in diary ? diary.content : undefined
+          if (!diary || !content?.trim()) {
+            progress.loadSkipped++
+            return
+          }
+
+          const d =
+            diary.date instanceof Date ? diary.date : new Date(String(diary.date ?? meta.date))
+          await embedDiaryEntry(
+            deps,
+            {
+              diaryId: meta.id,
+              content,
+              tags: meta.tags ?? [],
+              date: d,
+              updatedAt:
+                ('updatedAt' in diary && diary.updatedAt instanceof Date
+                  ? diary.updatedAt
+                  : meta.updatedAt) ?? new Date(),
+              vaultName
+            },
+            { adapter, skipIndexPrep: true, skipRagEnabledCheck: true }
+          )
+
+          progress.embedded++
+        } catch (error) {
+          if (mobileRagOperationControl.isAborted) {
+            return
+          }
+          progress.failed++
+          logger.warn('[MobileRag] diary embed failed', {
+            vaultName,
+            diaryId: meta.id,
+            date: dateLabel,
+            error
+          })
+        } finally {
+          progress.completed++
+          reportProgress(
+            `[${vaultName}] 已嵌入 ${progress.embedded}/${globalTotal}${progress.failed > 0 ? `（失败 ${progress.failed}）` : ''}${progress.loadSkipped > 0 ? `（跳过 ${progress.loadSkipped}）` : ''}（${dateLabel}）`
+          )
+        }
+      })
+    }
+
+    await finalizeBatchEmbedRagConfig(deps, progress.failed > 0)
+
+    if (mobileRagOperationControl.isAborted) {
+      logger.info('[MobileRag] controlled batch embed aborted', {
+        embedded: progress.embedded,
+        failed: progress.failed,
+        total: globalTotal
+      })
+      throw new MobileRagAbortError(progress.embedded)
+    }
+
+    logger.info('[MobileRag] controlled batch embed finished', {
+      embedded: progress.embedded,
+      failed: progress.failed,
+      loadSkipped: progress.loadSkipped,
+      total: globalTotal,
+      vaultCount: vaultPlans.length
+    })
+    return {
+      embedded: progress.embedded,
+      failed: progress.failed,
+      loadSkipped: progress.loadSkipped,
+      total: globalTotal,
+      skipped: false
+    }
+  } finally {
+    resetCachedMobileRagActiveState()
+  }
 }
 
 export async function runControlledDiaryBatchEmbed(
   deps: MobileRagServiceDeps,
   options?: {
     onProgress?: RagProgressCallback
+    /** @deprecated 请改用 vaultName */
     groupId?: string
+    vaultName?: string
+    /** 同步后调度：合并重复请求，等待当前任务结束后必要时再跑一轮 */
+    coalesceRerun?: boolean
   }
 ): Promise<ControlledDiaryBatchEmbedResult> {
-  const ragConfig = (await deps.settingsManager.get<{ ragEnabled?: boolean }>('rag_config')) || {}
-  if (!isRagMemoryEnabled({ ragEnabled: ragConfig.ragEnabled ?? true })) {
-    return { embedded: 0, total: 0, skipped: true, skipReason: 'rag-disabled' }
-  }
-
-  const adapter = await resolveEmbeddingAdapter(deps)
-  if (!adapter) {
-    return { embedded: 0, total: 0, skipped: true, skipReason: 'embedding-not-configured' }
-  }
-
-  const globalModels = await deps.settingsManager.get<any>('global_models')
-  const dimension = globalModels?.globalEmbeddingDimension
-  if (dimension > 0) {
-    await deps.hsRepo.initVectorIndex(dimension)
-  }
-
-  const allDiaries = sortDiariesByDateAsc(await deps.diaryService.listAll({ limit: 10000 }))
-  const { embeddedIds, embeddedUpdatedAtMap } = await loadEmbeddedDiaryIndex(deps)
-  const diaries = filterUnindexedDiaries(allDiaries, embeddedIds, embeddedUpdatedAtMap)
-  const total = diaries.length
-  const groupId = options?.groupId ?? 'diary_batch'
-
-  if (total === 0) {
-    return { embedded: 0, total: 0, skipped: true, skipReason: 'nothing-to-embed' }
-  }
-
-  const ragSettings =
-    (await deps.settingsManager.get<{ batchEmbedConcurrency?: number }>('rag_config')) || {}
-  const batchConcurrency = resolveBatchEmbedConcurrency(ragSettings.batchEmbedConcurrency)
-  let embedded = 0
-  let completed = 0
-
-  await limitExecute(diaries, batchConcurrency, async (meta) => {
-    const dateLabel = meta.date
-      ? formatLocalDate(meta.date instanceof Date ? meta.date : new Date(meta.date))
-      : ''
-    options?.onProgress?.({
-      current: completed,
-      total,
-      status: `处理日记: ${dateLabel}`
-    })
-
-    const diary = await deps.diaryService.findById(meta.id)
-    if (!diary?.id || !diary.content?.trim()) {
-      completed++
-      return
+  if (batchEmbedInFlight) {
+    if (options?.coalesceRerun) {
+      batchEmbedRerunRequested = true
+      return batchEmbedInFlight
     }
+    return { embedded: 0, failed: 0, total: 0, skipped: true, skipReason: 'migration-running' }
+  }
+  if (reembedInFlight) {
+    if (options?.coalesceRerun) {
+      requestDeferredPostSyncEmbed()
+    }
+    return { embedded: 0, failed: 0, total: 0, skipped: true, skipReason: 'migration-running' }
+  }
 
-    const d = diary.date instanceof Date ? diary.date : new Date(diary.date)
-    await embedDiaryEntry(deps, {
-      diaryId: diary.id,
-      content: diary.content,
-      tags: meta.tags ?? [],
-      date: d,
-      updatedAt: diary.updatedAt ?? new Date(),
-      groupId
-    })
+  const runLoop = async (): Promise<ControlledDiaryBatchEmbedResult> => {
+    let lastResult: ControlledDiaryBatchEmbedResult = {
+      embedded: 0,
+      failed: 0,
+      total: 0,
+      skipped: true,
+      skipReason: 'not-started'
+    }
+    do {
+      batchEmbedRerunRequested = false
+      lastResult = await runControlledDiaryBatchEmbedCore(deps, options)
+    } while (batchEmbedRerunRequested && !mobileRagOperationControl.isAborted)
+    return lastResult
+  }
 
-    embedded++
-    completed++
-    options?.onProgress?.({
-      current: completed,
-      total,
-      status: `处理日记: ${dateLabel}`
-    })
+  batchEmbedInFlight = runLoop().finally(() => {
+    batchEmbedInFlight = null
   })
-
-  logger.info('[MobileRag] controlled batch embed finished', { embedded, total, groupId })
-  return { embedded, total, skipped: false }
+  return batchEmbedInFlight
 }
 
 export function createMobileRagService(deps: MobileRagServiceDeps) {
+  const reembedAllInternal = async (onProgress?: RagProgressCallback): Promise<number> => {
+    mobileRagOperationControl.reset()
+    const reportReembedProgress = chainRagProgressCallback('reembed', onProgress)
+    await deps.hsRepo.clearEmbeddings()
+
+    if (mobileRagOperationControl.isAborted) {
+      throw new MobileRagAbortError(0)
+    }
+
+    const globalModels = (await deps.settingsManager.get<any>('global_models')) || {}
+    globalModels.globalEmbeddingDimension = 0
+    await deps.settingsManager.set('global_models', globalModels)
+
+    const ragConfig = (await deps.settingsManager.get<any>('rag_config')) || {}
+    ragConfig.totalEmbeddings = 0
+    await deps.settingsManager.set('rag_config', ragConfig)
+
+    reportReembedProgress?.({ current: 0, total: 1, status: 'detect-dimension' })
+    if (mobileRagOperationControl.isAborted) {
+      throw new MobileRagAbortError(0)
+    }
+
+    await service.detectDimension()
+
+    if (mobileRagOperationControl.isAborted) {
+      throw new MobileRagAbortError(0)
+    }
+
+    const result = await runControlledDiaryBatchEmbedCore(deps, {
+      onProgress,
+      progressType: 'reembed',
+      groupId: 'diary_batch'
+    })
+    return resolveControlledDiaryBatchEmbedCount(result)
+  }
+
   const service = {
-    async getStats(): Promise<{ totalCount: number; currentDimension: number }> {
+    async getStats(): Promise<{
+      totalCount: number
+      currentDimension: number
+      diaryCountForVault: number
+      activeVaultName: string
+    }> {
+      const vaultScope = await resolveVaultScope(deps)
+      const activeVaultName = await vaultScope.resolveActiveVaultName()
       const globalModels = (await deps.settingsManager.get<any>('global_models')) || {}
+      const rawClient = deps.rawSqlClient as RawSqlClient | undefined
       let totalCount = 0
       try {
-        const client = deps.rawSqlClient as {
-          execute?: (q: { sql: string; args: unknown[] }) => Promise<{ rows: unknown[] }>
-        }
-        if (client?.execute) {
-          const result = await client.execute({
+        if (rawClient?.execute) {
+          const result = await rawClient.execute({
             sql: `SELECT COUNT(*) as count FROM ${HYBRID_SEARCH_TABLE}`,
             args: []
           })
@@ -259,6 +712,8 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         totalCount = ragConfig.totalEmbeddings || 0
       }
 
+      const diaryCountForVault = await countDiaryEmbeddingsForVault(rawClient, activeVaultName)
+
       let currentDimension = globalModels.globalEmbeddingDimension || 0
       try {
         const meta = await deps.hsRepo.getCurrentEmbeddingMeta()
@@ -269,7 +724,7 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         logger.warn('[MobileRag] getCurrentEmbeddingMeta failed', e as Error)
       }
 
-      return { totalCount, currentDimension }
+      return { totalCount, currentDimension, diaryCountForVault, activeVaultName }
     },
 
     async hasModelMismatch(): Promise<boolean> {
@@ -298,20 +753,20 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
     },
 
     async reembedAll(onProgress?: RagProgressCallback): Promise<number> {
-      await deps.hsRepo.clearEmbeddings()
+      if (isMobileRagBatchBusy()) {
+        throw new Error('嵌入任务正在进行中，请稍后再试')
+      }
+      reembedInFlight = true
+      try {
+        return await reembedAllInternal(onProgress)
+      } finally {
+        reembedInFlight = false
+        await flushDeferredPostSyncEmbed()
+      }
+    },
 
-      const globalModels = (await deps.settingsManager.get<any>('global_models')) || {}
-      globalModels.globalEmbeddingDimension = 0
-      await deps.settingsManager.set('global_models', globalModels)
-
-      const ragConfig = (await deps.settingsManager.get<any>('rag_config')) || {}
-      ragConfig.totalEmbeddings = 0
-      await deps.settingsManager.set('rag_config', ragConfig)
-
-      onProgress?.({ current: 0, total: 1, status: 'detect-dimension' })
-      await service.detectDimension()
-
-      return service.batchEmbed(onProgress)
+    requestOperationAbort(): void {
+      mobileRagOperationControl.requestAbort()
     },
 
     async detectDimension(): Promise<number> {
@@ -344,15 +799,7 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         onProgress,
         groupId: 'diary_batch'
       })
-      if (result.skipped && result.skipReason === 'embedding-not-configured') {
-        throw new Error('嵌入模型未配置')
-      }
-
-      const ragConfig = (await deps.settingsManager.get<any>('rag_config')) || {}
-      ragConfig.totalEmbeddings = result.embedded
-      await deps.settingsManager.set('rag_config', ragConfig)
-
-      return result.embedded
+      return resolveControlledDiaryBatchEmbedCount(result)
     },
 
     async queryEntries(params: {
@@ -366,39 +813,58 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
     }): Promise<{ entries: Array<Record<string, unknown>>; total: number }> {
       const limit = params.limit ?? 10
       const offset = params.offset ?? 0
+      const vaultScope = await resolveVaultScope(deps)
+      const activeVaultName = await vaultScope.resolveActiveVaultName()
+      const vaultGroupId = buildDiaryEmbeddingGroupId(activeVaultName)
+      const scopeFilter = diaryVaultListFilterSql(vaultGroupId)
 
       if (params.mode === 'semantic' && params.keyword?.trim()) {
-        const adapter = await resolveEmbeddingAdapter(deps)
-        if (adapter) {
-          const vector = await adapter.embedQuery(params.keyword)
-          if (vector?.length) {
-            const baseLimit = Math.max(limit, 50)
-            const fetchLimit =
-              params.minSimilarity != null ? Math.min(baseLimit * 4, 500) : baseLimit
-            const results = await deps.hsRepo.queryNativeVector(
-              vector,
-              fetchLimit,
-              params.minSimilarity,
-              params.sourceType
-            )
-            const entries = results.map((r) => ({
-              embeddingId: r.messageId,
-              text: r.chunkText,
-              createdAt: timestampToMillis(r.createdAt) ?? Date.now(),
-              sourceType: r.sourceType,
-              sourceId: r.sourceId,
-              similarity: r.score
-            }))
-            const sliced = entries.slice(offset, offset + limit)
-            return { entries: sliced, total: entries.length }
-          }
+        const keyword = params.keyword.trim()
+        try {
+          return await withPromiseTimeout(
+            (async () => {
+              const adapter = await resolveEmbeddingAdapter(deps)
+              if (!adapter) return { entries: [], total: 0 }
+
+              const vector = await adapter.embedQuery(keyword)
+              if (!vector?.length) return { entries: [], total: 0 }
+
+              const baseLimit = Math.max(limit, 50)
+              const fetchLimit =
+                params.minSimilarity != null ? Math.min(baseLimit * 4, 500) : baseLimit
+              const results = filterDiaryScopedSearchResults(
+                await deps.hsRepo.queryNativeVector(vector, fetchLimit, {
+                  threshold: params.minSimilarity,
+                  sourceType: params.sourceType
+                }),
+                activeVaultName
+              )
+              const entries = results.map((r) => ({
+                embeddingId: r.messageId,
+                text: r.chunkText,
+                createdAt: timestampToMillis(r.createdAt) ?? Date.now(),
+                sourceType: r.sourceType,
+                sourceId: r.sourceId,
+                similarity: r.score
+              }))
+              const sliced = entries.slice(offset, offset + limit)
+              return { entries: sliced, total: entries.length }
+            })(),
+            SEMANTIC_SEARCH_TIMEOUT_MS,
+            'semantic search'
+          )
+        } catch (error) {
+          logger.warn('[mobile-rag] semantic search failed', { error })
+          throw error
         }
-        return { entries: [], total: 0 }
       }
 
       const keyword = params.keyword?.trim()
       if (keyword) {
-        const fts = await deps.hsRepo.queryFTS(keyword, limit + offset)
+        const fts = filterDiaryScopedSearchResults(
+          await deps.hsRepo.queryFTS(keyword, limit + offset),
+          activeVaultName
+        )
         const page = fts.slice(offset, offset + limit).map((r) => ({
           embeddingId: r.messageId,
           text: r.chunkText,
@@ -409,14 +875,12 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         return { entries: page, total: fts.length }
       }
 
-      const client = deps.rawSqlClient as {
-        execute?: (q: { sql: string; args: unknown[] }) => Promise<{ rows: unknown[] }>
-      }
+      const client = deps.rawSqlClient as RawSqlClient | undefined
       if (!client?.execute) return { entries: [], total: 0 }
 
       const countRes = await client.execute({
-        sql: `SELECT COUNT(*) as count FROM ${HYBRID_SEARCH_TABLE}`,
-        args: []
+        sql: `SELECT COUNT(*) as count FROM ${HYBRID_SEARCH_TABLE} WHERE ${scopeFilter.clause}`,
+        args: [...scopeFilter.args]
       })
       const countRow = countRes.rows?.[0] as Record<string, number> | undefined
       const total = Number(countRow?.count ?? 0)
@@ -425,9 +889,10 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         sql: `SELECT embedding_id as embeddingId, chunk_text as text, source_type as sourceType,
               ${EMBEDDING_SOURCE_SORT_MILLIS_SQL} as createdAt
               FROM ${HYBRID_SEARCH_TABLE}
+              WHERE ${scopeFilter.clause}
               ORDER BY ${EMBEDDING_SOURCE_SORT_ORDER_SQL}
               LIMIT ? OFFSET ?`,
-        args: [limit, offset]
+        args: [...scopeFilter.args, limit, offset]
       })
       const entries = ((listRes.rows || []) as Array<Record<string, unknown>>).map((row) => ({
         ...row,

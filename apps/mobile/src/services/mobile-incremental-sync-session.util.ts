@@ -66,9 +66,6 @@ export function isInterruptedSyncSessionResumable(
   session: IncrementalSyncSessionState | null
 ): session is IncrementalSyncSessionState {
   return Boolean(
-    session &&
-      session.total > 0 &&
-      session.completed > 0 &&
-      session.completed < session.total
+    session && session.total > 0 && session.completed > 0 && session.completed < session.total
   )
 }

@@ -25,6 +25,7 @@ export const McpSettingsPane: React.FC<McpSettingsPaneProps> = ({ settings }) =>
               standalone
               config={settings.mcpServerConfig || { mcpEnabled: false, mcpPort: 31004 }}
               onChange={settings.setMcpServerConfig}
+              onRefreshToken={settings.refreshMcpAuthToken}
             />
           </div>
         </section>

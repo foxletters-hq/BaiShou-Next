@@ -16,6 +16,7 @@ import {
   removeDiscoveredLanDevice,
   upsertDiscoveredLanDevice
 } from '@baishou/shared'
+import { RefreshCw } from 'lucide-react-native'
 import { LanTransferRadarView } from '../components/LanTransferRadarView'
 import { StackScreenLayout } from '../components/StackScreenLayout'
 import { getStackScreenChrome } from '../components/stackScreenChrome'
@@ -170,14 +171,19 @@ export const LanTransferScreen: React.FC = () => {
     setTimeout(() => void startDualMode(), 400)
   }, [startDualMode, stopDualMode])
 
+  const startDualModeRef = useRef(startDualMode)
+  const stopDualModeRef = useRef(stopDualMode)
+  startDualModeRef.current = startDualMode
+  stopDualModeRef.current = stopDualMode
+
   useEffect(() => {
     if (!dbReady || !lanSyncService) return
-    const timer = setTimeout(() => void startDualMode(), 400)
+    const timer = setTimeout(() => void startDualModeRef.current(), 400)
     return () => {
       clearTimeout(timer)
-      void stopDualMode()
+      void stopDualModeRef.current()
     }
-  }, [dbReady, lanSyncService, startDualMode, stopDualMode])
+  }, [dbReady, lanSyncService])
 
   useEffect(() => {
     if (!isDiscovering) return
@@ -263,7 +269,7 @@ export const LanTransferScreen: React.FC = () => {
         title={t('lan_transfer.title')}
         {...getStackScreenChrome(colors)}
         headerRight={{
-          icon: 'refresh',
+          icon: RefreshCw,
           onPress: () => void restartDualMode(),
           accessibilityLabel: t('common.refresh')
         }}

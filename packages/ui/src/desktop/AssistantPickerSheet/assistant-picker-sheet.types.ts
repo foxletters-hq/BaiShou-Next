@@ -14,6 +14,9 @@ export interface AssistantInfo {
   ragSpaceId?: string
   assistantKind?: 'companion' | 'work'
   sortOrder?: number
+  emojiEnabled?: boolean
+  emojiGroupIds?: string[] | string | null
+  emojiGroupId?: string | null
 }
 
 export interface AssistantPickerSheetProps {

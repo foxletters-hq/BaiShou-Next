@@ -54,32 +54,29 @@ function rethrowUnlessTransientNativeUploadError(error: unknown, signal?: AbortS
   if (!isTransientNetworkError(error)) throw error
 }
 
-function isTransientNetworkError(error: unknown): boolean {
-  const message =
-    error instanceof Error ? error.message : typeof error === 'string' ? error : String(error)
-  return /network request failed|failed to fetch|timed out|timeout|econnreset|enetunreach/i.test(
-    message
-  )
-}
+import {
+  isTransientNetworkError,
+  withTransientNetworkRetry as withSharedTransientNetworkRetry
+} from '../utils/transient-network-error.util'
 
 async function withTransientNetworkRetry<T>(
   run: () => Promise<T>,
   retries = 4,
   signal?: AbortSignal
 ): Promise<T> {
-  let lastError: unknown
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    throwIfIncrementalSyncAborted(signal)
-    try {
-      return await run()
-    } catch (error) {
-      if (isIncrementalSyncAbortedError(error)) throw error
-      lastError = error
-      if (attempt >= retries || !isTransientNetworkError(error)) throw error
-      await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** attempt))
+  return withSharedTransientNetworkRetry(
+    async () => {
+      throwIfIncrementalSyncAborted(signal)
+      return run()
+    },
+    {
+      retries,
+      shouldRetry: (error) => {
+        if (isIncrementalSyncAbortedError(error)) return false
+        return isTransientNetworkError(error)
+      }
     }
-  }
-  throw lastError
+  )
 }
 
 export type IncrementalSyncRecord = {
@@ -205,8 +202,8 @@ export class MobileIncrementalCloudClient {
     return `${getAppCacheDirectory()}sync_${prefix}_${Date.now()}_${name}`
   }
 
-  async uploadFile(localFilePath: string): Promise<void> {
-    const rel = this.relFromLocal(localFilePath)
+  async uploadFile(localFilePath: string, remoteRelPath?: string): Promise<void> {
+    const rel = remoteRelPath?.replace(/\\/g, '/') ?? this.relFromLocal(localFilePath)
     await withTransientNetworkRetry(
       async () => {
         if (this.config.target === 'webdav') {
@@ -220,7 +217,11 @@ export class MobileIncrementalCloudClient {
     )
   }
 
-  async downloadFile(remoteFilename: string, localDestPath: string, knownSize?: number): Promise<void> {
+  async downloadFile(
+    remoteFilename: string,
+    localDestPath: string,
+    knownSize?: number
+  ): Promise<void> {
     this.transferProgressDestPath = localDestPath
     try {
       await withTransientNetworkRetry(
@@ -642,7 +643,10 @@ export class MobileIncrementalCloudClient {
           secretKey,
           null
         )
-        await this.fetchWithAbort(abortUrl, { method: 'DELETE', headers: s3FetchHeaders(abortSigned) })
+        await this.fetchWithAbort(abortUrl, {
+          method: 'DELETE',
+          headers: s3FetchHeaders(abortSigned)
+        })
       } catch {}
       throw err
     }
@@ -655,8 +659,7 @@ export class MobileIncrementalCloudClient {
     knownSize?: number
   ) {
     this.reportActivity('preparing', progressDestPath)
-    let fileSize =
-      knownSize != null && knownSize > 0 ? knownSize : await this.getS3RemoteSize(rel)
+    let fileSize = knownSize != null && knownSize > 0 ? knownSize : await this.getS3RemoteSize(rel)
     this.reportActivity('downloading', progressDestPath)
     this.reportTransfer(0, fileSize, progressDestPath)
     if (fileSize <= 0) {
@@ -757,7 +760,9 @@ export class MobileIncrementalCloudClient {
         null,
         rangeHeader
       )
-      const res = await this.fetchWithAbort(url, { headers: { ...s3FetchHeaders(signed), ...rangeHeader } })
+      const res = await this.fetchWithAbort(url, {
+        headers: { ...s3FetchHeaders(signed), ...rangeHeader }
+      })
       if (res.status !== 206) {
         throw new Error(`S3 range download requires 206, got ${res.status}`)
       }
@@ -875,7 +880,7 @@ export class MobileIncrementalCloudClient {
     } catch (error) {
       if (!isTransientNetworkError(error)) throw error
     }
-    await this.uploadWebDavSingleWithFetch(rel, localFilePath, fileSize)
+    await this.uploadWebDavSingleWithFetch(rel, localFilePath)
   }
 
   private async tryNativeWebDavUpload(
@@ -967,7 +972,7 @@ export class MobileIncrementalCloudClient {
     if (!firstRes.ok) {
       throw new Error(`WebDAV upload failed: ${firstRes.status}`)
     }
-    let uploadedBytes = firstSize
+    const uploadedBytes = firstSize
     this.reportTransfer(uploadedBytes, fileSize, localFilePath)
 
     const totalParts = Math.ceil(fileSize / INCREMENTAL_SYNC_CHUNK_SIZE)

@@ -89,7 +89,9 @@ export async function assertDevicesMatchCanonical(
     }
 
     const snapshot = (
-      await Promise.all(expected.map(async ([path]) => [path, await device.readFile(path)] as const))
+      await Promise.all(
+        expected.map(async ([path]) => [path, await device.readFile(path)] as const)
+      )
     )
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([path, content]) => `${path}:${content}`)

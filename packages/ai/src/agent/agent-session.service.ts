@@ -15,8 +15,11 @@ import {
   isVisionModel,
   logger,
   mergeDisabledToolIds,
-  normalizeAssistantKind
+  normalizeAssistantKind,
+  isAutoInjectCurrentTimeEnabled,
+  type AssistantKind
 } from '@baishou/shared'
+import { resolveEffectiveProviderType } from '../providers/opencodego/opencodego.model-protocol'
 
 // --- 新挂载的智慧引擎组件 ---
 import { ContextWindowBuilder } from './context-window.builder'
@@ -43,6 +46,8 @@ import { StreamChatOptions, StreamChatCallbacks } from './agent-session.types'
 import { persistResult } from './agent-session-persist'
 import { messageHasImageAttachments } from './attachment-content.builder'
 import { isAgentStreamSessionClaimActive } from './stream-session-guard'
+import { buildToolCallRepairHandler } from './tool-call-repair.util'
+import { createDiaryReadGuard } from '../tools/diary-read-guard.util'
 
 export type { StreamChatOptions, StreamChatCallbacks } from './agent-session.types'
 
@@ -70,56 +75,117 @@ export class AgentSessionService {
       streamClaimGeneration,
       userMessageId,
       skipUserMessageRecording,
-      forceRecompress
+      flushSessionToDisk
     } = options
 
     try {
       // 1. 获取基础模型，然后用 Vercel 原生 middleware 包装
       const baseModel = provider.getLanguageModel(modelId)
+      const effectiveProviderType = resolveEffectiveProviderType(
+        provider.config?.type || 'openai',
+        modelId
+      )
       const model = wrapLanguageModelWithMiddlewares(baseModel, {
-        providerType: provider.config?.type || 'openai',
+        providerType: effectiveProviderType,
         providerId: provider.config?.id,
         modelId,
         sessionId,
         baseUrl: provider.config?.baseUrl
       })
 
+      const sessionObj = await sessionRepo.getSessionById?.(sessionId)
+
+      let mergedUserConfig = userConfig || {}
+      let effectiveSystemPrompt = systemPrompt
+      let assistantKind: AssistantKind = 'companion'
+      if (sessionObj?.assistantId) {
+        const astRepo = new AssistantRepository(
+          (sessionRepo as any).db || (sessionRepo as any).database
+        )
+        const ast = await astRepo.findById(sessionObj.assistantId)
+        if (ast) {
+          assistantKind = normalizeAssistantKind(ast.assistantKind)
+          mergedUserConfig = {
+            ...mergedUserConfig,
+            disabledToolIds: mergeDisabledToolIds(
+              Array.isArray(mergedUserConfig['disabledToolIds'])
+                ? (mergedUserConfig['disabledToolIds'] as string[])
+                : [],
+              assistantKind
+            )
+          }
+          if (ast.systemPrompt) {
+            effectiveSystemPrompt = ast.systemPrompt
+          }
+        }
+      }
+
+      const injectMessageTime = isAutoInjectCurrentTimeEnabled(
+        Array.isArray(mergedUserConfig['disabledToolIds'])
+          ? (mergedUserConfig['disabledToolIds'] as string[])
+          : undefined
+      )
+
       // 2. 若上下文 token 超过阈值或逼近模型窗口，先同步压缩再构建窗口
       const compressionConfig = await resolveSessionCompressionConfig(sessionId, sessionRepo)
-      {
-        const rawForEstimate = (await sessionRepo.getMessagesBySession(
+      const loadSessionMessages = async () =>
+        (await sessionRepo.getMessagesBySession(
           sessionId,
           COMPRESSION_MESSAGE_FETCH_LIMIT
         )) as import('./message.adapter').MessageWithParts[]
-        // 重发/编辑截断后 token 可能低于阈值，但仍需强制重压缩（内容可能已变）。
-        // 普通发送也会提前落库用户消息，因此不能用 skipUserMessageRecording 判断。
-        const canForceRecompress = forceRecompress === true && rawForEstimate.length >= 4
-        const compressionConfigForRun = canForceRecompress
-          ? { ...compressionConfig, force: true }
-          : compressionConfig
-        const latestSnap = await snapshotRepo.getLatestSnapshot(sessionId)
-        const afterSnap = getMessagesAfterSnapshot(rawForEstimate, latestSnap)
-        const contextTokens = estimateContextTokensForTrigger(rawForEstimate, afterSnap, latestSnap)
-        if (resolveCompressionTrigger(contextTokens, compressionConfigForRun)) {
-          logger.info(
-            `[AgentSessionService] Context ~${contextTokens} tokens hit compression trigger (threshold=${compressionConfigForRun.threshold}, window=${compressionConfigForRun.modelContextWindow ?? 0}, force=${Boolean(compressionConfigForRun.force)}), compressing before request.`
+
+      let sessionMessages = await loadSessionMessages()
+      let snapshotForWindow = await snapshotRepo.getLatestSnapshot(sessionId)
+
+      {
+        if (abortSignal?.aborted) {
+          throw new DOMException('The operation was aborted', 'AbortError')
+        }
+
+        const usableWindow = usableContextTokens(
+          compressionConfig.modelContextWindow ?? 0,
+          compressionConfig.reservedTokens
+        )
+        const shouldEvaluateCompression =
+          compressionConfig.force || compressionConfig.threshold > 0 || usableWindow > 0
+
+        if (shouldEvaluateCompression) {
+          const afterSnap = getMessagesAfterSnapshot(sessionMessages, snapshotForWindow)
+          const contextTokens = estimateContextTokensForTrigger(
+            sessionMessages,
+            afterSnap,
+            snapshotForWindow
           )
-          const compressed = await ContextCompressorService.tryCompress(
-            provider,
-            modelId,
-            sessionRepo,
-            snapshotRepo,
-            sessionId,
-            compressionConfigForRun,
-            provider.config?.type ?? '',
-            userMessageId ? { triggerUserMessageId: userMessageId } : undefined
-          )
-          if (compressed) {
-            const allForPrune = (await sessionRepo.getMessagesBySession(
+          if (resolveCompressionTrigger(contextTokens, compressionConfig)) {
+            logger.info(
+              `[AgentSessionService] Context ~${contextTokens} tokens hit compression trigger (threshold=${compressionConfig.threshold}, window=${compressionConfig.modelContextWindow ?? 0}, force=${Boolean(compressionConfig.force)}), compressing before request.`
+            )
+            const compressed = await ContextCompressorService.tryCompress(
+              provider,
+              modelId,
+              sessionRepo,
+              snapshotRepo,
               sessionId,
-              COMPRESSION_MESSAGE_FETCH_LIMIT
-            )) as import('./message.adapter').MessageWithParts[]
-            ContextCompressorService.schedulePrune(sessionRepo, sessionId, allForPrune)
+              compressionConfig,
+              resolveEffectiveProviderType(provider.config?.type ?? '', modelId),
+              {
+                ...(userMessageId ? { triggerUserMessageId: userMessageId } : {}),
+                abortSignal,
+                wrapMessageTime: injectMessageTime,
+                prefetchedMessages: sessionMessages
+              }
+            )
+            if (abortSignal?.aborted) {
+              throw new DOMException('The operation was aborted', 'AbortError')
+            }
+            if (compressed) {
+              sessionMessages = await loadSessionMessages()
+              await ContextCompressorService.runPrune(sessionRepo, sessionId, sessionMessages, {
+                flushSessionToDisk
+              })
+              sessionMessages = await loadSessionMessages()
+              snapshotForWindow = await snapshotRepo.getLatestSnapshot(sessionId)
+            }
           }
         }
       }
@@ -128,20 +194,35 @@ export class AgentSessionService {
       const configRecentCount =
         typeof userConfig?.['recentCount'] === 'number' ? userConfig['recentCount'] : 30
 
-      const dbHistory = await ContextWindowBuilder.build(sessionId, sessionRepo, snapshotRepo, {
-        recentCount: configRecentCount
-      })
+      if (
+        userMessageId &&
+        !sessionMessages.some((message) => message.id === userMessageId)
+      ) {
+        sessionMessages = await loadSessionMessages()
+      }
+
+      const dbHistory = await ContextWindowBuilder.buildFromMessages(
+        sessionId,
+        snapshotRepo,
+        sessionMessages,
+        {
+          recentCount: configRecentCount,
+          ...(userMessageId ? { requiredMessageId: userMessageId } : {})
+        },
+        snapshotForWindow
+      )
       const coreMessages = await MessageAdapter.toVercelMessages(
         dbHistory,
         modelId,
-        provider.config?.type
+        effectiveProviderType,
+        { wrapMessageTime: injectMessageTime }
       )
 
       if (userMessageId && !dbHistory.some((message) => message.id === userMessageId)) {
         throw new Error('无法发送：用户消息未加载到上下文，请重试')
       }
 
-      const providerType = (provider.config?.type || 'openai') as ProviderType
+      const providerType = effectiveProviderType as ProviderType
       const messageMiddlewareChain = buildMiddlewareChain(providerType)
       const messagesForModel = messageMiddlewareChain.isEmpty
         ? coreMessages
@@ -182,8 +263,6 @@ export class AgentSessionService {
         )
       }
 
-      const sessionObj = await sessionRepo.getSessionById?.(sessionId)
-
       const contextCompressionRunner = {
         run: async (phase: 'upstream' | 'downstream', opts?: { force?: boolean }) => {
           const config = await resolveSessionCompressionConfig(sessionId, sessionRepo)
@@ -202,15 +281,20 @@ export class AgentSessionService {
             snapshotRepo,
             sessionId,
             merged,
-            provider.config?.type ?? '',
-            userMessageId ? { triggerUserMessageId: userMessageId } : undefined
+            resolveEffectiveProviderType(provider.config?.type ?? '', modelId),
+            {
+              ...(userMessageId ? { triggerUserMessageId: userMessageId } : {}),
+              wrapMessageTime: injectMessageTime
+            }
           )
           if (ok) {
             const allForPrune = (await sessionRepo.getMessagesBySession(
               sessionId,
               COMPRESSION_MESSAGE_FETCH_LIMIT
             )) as import('./message.adapter').MessageWithParts[]
-            ContextCompressorService.schedulePrune(sessionRepo, sessionId, allForPrune)
+            await ContextCompressorService.runPrune(sessionRepo, sessionId, allForPrune, {
+              flushSessionToDisk
+            })
           }
           const phaseLabel =
             phase === 'upstream'
@@ -219,30 +303,6 @@ export class AgentSessionService {
           return ok
             ? `Context compression (${phaseLabel}) completed. Rolling summary updated.`
             : `No compression (${phaseLabel}): below threshold (use force=true) or not enough history.`
-        }
-      }
-
-      let mergedUserConfig = userConfig || {}
-      let effectiveSystemPrompt = systemPrompt
-      if (sessionObj?.assistantId) {
-        const astRepo = new AssistantRepository(
-          (sessionRepo as any).db || (sessionRepo as any).database
-        )
-        const ast = await astRepo.findById(sessionObj.assistantId)
-        if (ast) {
-          const assistantKind = normalizeAssistantKind(ast.assistantKind)
-          mergedUserConfig = {
-            ...mergedUserConfig,
-            disabledToolIds: mergeDisabledToolIds(
-              Array.isArray(mergedUserConfig['disabledToolIds'])
-                ? (mergedUserConfig['disabledToolIds'] as string[])
-                : [],
-              assistantKind
-            )
-          }
-          if (ast.systemPrompt) {
-            effectiveSystemPrompt = ast.systemPrompt
-          }
         }
       }
 
@@ -258,18 +318,25 @@ export class AgentSessionService {
         diarySearcher: options.diarySearcher,
         webSearchResultFetcher: webSearchResultFetcher,
         fetchSearchPage: options.fetchSearchPage,
-        contextCompressionRunner
+        contextCompressionRunner,
+        diaryReadGuard: createDiaryReadGuard()
       })
 
       const builtSystemPrompt = SystemPromptBuilder.build({
         vaultName: sessionObj?.vaultName || 'default',
         tools: enabledTools as any,
         customPersona: effectiveSystemPrompt,
+        assistantKind,
         userProfileBlock:
           typeof userConfig?.['userCard'] === 'string' ? userConfig['userCard'] : undefined,
         diaryAiWritingPrompt:
           typeof userConfig?.['diaryAiWritingPrompt'] === 'string'
             ? userConfig['diaryAiWritingPrompt']
+            : undefined,
+        injectCurrentTime: injectMessageTime,
+        customGuidelines:
+          typeof userConfig?.['agentGuidelines'] === 'string'
+            ? userConfig['agentGuidelines'].trim() || undefined
             : undefined
       })
 
@@ -285,7 +352,7 @@ export class AgentSessionService {
       if (
         attachments?.length &&
         messageHasImageAttachments(attachments) &&
-        !isVisionModel(modelId)
+        !isVisionModel(modelId, provider.config?.id ?? provider.config?.type)
       ) {
         throw new Error('VISION_NOT_SUPPORTED')
       }
@@ -311,7 +378,7 @@ export class AgentSessionService {
       }
 
       const cachingCtx = {
-        providerType: provider.config?.type || 'openai',
+        providerType: effectiveProviderType,
         providerId: provider.config?.id,
         modelId,
         sessionId,
@@ -325,6 +392,7 @@ export class AgentSessionService {
         tools: enabledTools,
         stopWhen: stepCountIs(10),
         abortSignal,
+        experimental_repairToolCall: buildToolCallRepairHandler(),
         ...(hasSegmenter && cjkSegmenter
           ? { experimental_transform: smoothStream({ chunking: cjkSegmenter }) }
           : {})
@@ -345,7 +413,7 @@ export class AgentSessionService {
       )
 
       const hasModelOutput =
-        Boolean(accumulator.text.trim()) ||
+        Boolean(accumulator.sanitizedText.trim()) ||
         Boolean(accumulator.reasoning.trim()) ||
         accumulator.toolCalls.length > 0
 
@@ -384,8 +452,16 @@ export class AgentSessionService {
         systemPrompt: builtSystemPrompt,
         namingModelConfigured: systemModels?.namingModelConfigured,
         namingProvider: systemModels?.namingProvider,
-        namingModelId: systemModels?.namingModelId
+        namingModelId: systemModels?.namingModelId,
+        flushSessionToDisk,
+        userConfig: mergedUserConfig
       })
+
+      if (!streamError && accumulator.toolCalls.length > 0) {
+        await ContextCompressorService.runPrune(sessionRepo, sessionId, undefined, {
+          flushSessionToDisk
+        })
+      }
 
       // 7. 向外抛出完成/错误回调（仅一次，避免覆盖真实 API 错误）
       if (streamError) {
@@ -402,11 +478,14 @@ export class AgentSessionService {
       }
     } catch (e: unknown) {
       const err = e instanceof Error ? e : new Error(String(e))
-      logger.error('[AgentSessionService] Error in streamChat:', err.message)
-      if (err.stack) {
-        logger.error('[AgentSessionService] Stack:', err.stack)
+      const aborted = err.name === 'AbortError'
+      if (!aborted) {
+        logger.error('[AgentSessionService] Error in streamChat:', err.message)
+        if (err.stack) {
+          logger.error('[AgentSessionService] Stack:', err.stack)
+        }
       }
-      if ((e as { cause?: unknown })?.cause) {
+      if (!aborted && (e as { cause?: unknown })?.cause) {
         logger.error('[AgentSessionService] Cause:', {
           cause: String((e as { cause?: unknown }).cause)
         })
@@ -420,13 +499,15 @@ export class AgentSessionService {
           (e as { statusCode?: number }).statusCode
         )
       }
-      if ((e as { responseHeaders?: unknown })?.responseHeaders) {
+      if (!aborted && (e as { responseHeaders?: unknown })?.responseHeaders) {
         logger.error(
           '[AgentSessionService] Response headers:',
           JSON.stringify((e as { responseHeaders?: unknown }).responseHeaders)
         )
       }
-      callbacks?.onError?.(err)
+      if (!aborted) {
+        callbacks?.onError?.(err)
+      }
       throw err
     }
   }

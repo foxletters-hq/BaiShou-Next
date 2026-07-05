@@ -606,6 +606,10 @@
   margin-top: 0;
 }
 
+.emojiGroupSection {
+  margin-top: 4px;
+}
+
 .sectionTitle {
   font-size: 13px;
   font-weight: 800;

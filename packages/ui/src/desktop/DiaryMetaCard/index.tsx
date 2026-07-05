@@ -1,7 +1,9 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import type { DiaryMeta } from '@baishou/shared'
-import { getWeatherEmoji } from '@baishou/shared'
+import { limitDiaryPreviewTags, resolveWeatherId, resolveMoodId } from '@baishou/shared'
+import { MoodEmoji } from '../MoodIcon'
+import { WeatherEmoji } from '../WeatherIcon'
 // @ts-ignore
 import styles from './DiaryMetaCard.module.css'
 
@@ -58,7 +60,7 @@ export const DiaryMetaCard: React.FC<DiaryMetaCardProps> = ({ meta, onDelete, on
   const weekday = WEEKDAY_NAMES[d.getDay()]
   const yearMonth = `${d.getFullYear()} · ${MONTH_NAMES[d.getMonth()]}`
   const time = formatTime(d)
-  const visibleTags = (meta.tags || []).filter((t) => t.trim().length > 0)
+  const { visibleTags, overflowCount: tagOverflowCount } = limitDiaryPreviewTags(meta.tags)
 
   return (
     <div className={styles.card} onClick={onClick} data-testid="diary-meta-card">
@@ -70,6 +72,16 @@ export const DiaryMetaCard: React.FC<DiaryMetaCardProps> = ({ meta, onDelete, on
             <div className={styles.weekdayRow}>
               <span className={styles.weekday}>{weekday}</span>
               <span className={styles.yearMonth}>{yearMonth}</span>
+              {resolveWeatherId(meta.weather) && (
+                <span className={styles.iconOutlineBadge}>
+                  <WeatherEmoji weather={meta.weather} size={14} />
+                </span>
+              )}
+              {resolveMoodId(meta.mood) && (
+                <span className={styles.iconOutlineBadge} title={meta.mood}>
+                  <MoodEmoji mood={meta.mood} size={14} />
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -82,19 +94,6 @@ export const DiaryMetaCard: React.FC<DiaryMetaCardProps> = ({ meta, onDelete, on
       {/* Time */}
       <div className={styles.time}>{time}</div>
 
-      {/* 元数据：天气、心情、位置 */}
-      {(meta.weather || meta.mood || meta.location) && (
-        <div className={styles.metaRow}>
-          {meta.weather && (
-            <span className={styles.metaBadge}>
-              {getWeatherEmoji(meta.weather)} {meta.weather}
-            </span>
-          )}
-          {meta.mood && <span className={styles.metaBadge}>{meta.mood}</span>}
-          {meta.location && <span className={styles.metaBadge}>📍 {meta.location}</span>}
-        </div>
-      )}
-
       {/* Content Preview */}
       <div className={styles.preview}>{meta.preview}</div>
 
@@ -106,6 +105,9 @@ export const DiaryMetaCard: React.FC<DiaryMetaCardProps> = ({ meta, onDelete, on
               #{t}
             </span>
           ))}
+          {tagOverflowCount > 0 ? (
+            <span className={`${styles.tag} ${styles.tagOverflow}`}>+{tagOverflowCount}</span>
+          ) : null}
         </div>
       )}
 

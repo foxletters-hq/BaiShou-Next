@@ -49,6 +49,7 @@ export interface FlutterLegacyMigrationPending {
   targetRoot: string
   sourceDisplayPath: string
   targetDisplayPath: string
+  inPlace: boolean
 }
 
 function displayMigrationPath(uri: string): string {
@@ -202,24 +203,26 @@ export async function detectFlutterLegacyMigrationPending(
   }
 
   const legacyRoots = await collectLegacyCandidateRoots(fileSystem)
-  if (legacyRoots.length === 0) {
+  let sourceRoot: string | null = null
+
+  if (legacyRoots.length > 0) {
+    sourceRoot = pickPrimaryFlutterLegacySource(legacyRoots, targetRoot)
+  } else if (await isLegacyAppRoot(fileSystem, targetRoot)) {
+    sourceRoot = targetRoot
+  }
+
+  if (!sourceRoot || !(await isLegacyAppRoot(fileSystem, sourceRoot))) {
     return null
   }
 
-  const sourceRoot = pickPrimaryFlutterLegacySource(legacyRoots, targetRoot)
-  if (rootsEqual(sourceRoot, targetRoot)) {
-    return null
-  }
-
-  if (!(await isLegacyAppRoot(fileSystem, sourceRoot))) {
-    return null
-  }
+  const inPlace = rootsEqual(sourceRoot, targetRoot)
 
   return {
     sourceRoot,
     targetRoot,
     sourceDisplayPath: displayMigrationPath(sourceRoot),
-    targetDisplayPath: displayMigrationPath(targetRoot)
+    targetDisplayPath: displayMigrationPath(targetRoot),
+    inPlace
   }
 }
 

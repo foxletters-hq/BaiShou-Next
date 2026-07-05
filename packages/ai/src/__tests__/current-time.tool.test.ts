@@ -10,6 +10,10 @@ describe('CurrentTimeTool', () => {
     expect(tool.description.toLowerCase()).toContain('time')
   })
 
+  it('cannot be disabled from tool management', () => {
+    expect(tool.canBeDisabled).toBe(false)
+  })
+
   it('should return formatted date and timezone info', async () => {
     const result = await tool.execute({}, { sessionId: 's1', vaultName: '/tmp' })
 

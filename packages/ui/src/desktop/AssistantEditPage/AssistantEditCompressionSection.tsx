@@ -2,7 +2,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Switch } from '../Switch/Switch'
 import { HelpTooltip } from '../HelpTooltip'
-import { formatTokens } from './assistant-edit.utils'
+import { formatTokens, readRangeInputValue } from './assistant-edit.utils'
 import styles from './AssistantEditPage.module.css'
 
 interface AssistantEditCompressionSectionProps {
@@ -10,8 +10,18 @@ interface AssistantEditCompressionSectionProps {
   compressKeepTurns: number
   isCompressDisabled: boolean
   onCompressThresholdChange: (value: number) => void
+  onCompressThresholdCommit?: (value: number) => void
   onCompressKeepTurnsChange: (value: number) => void
+  onCompressKeepTurnsCommit?: (value: number) => void
   onToggleCompress: (enabled: boolean) => void
+}
+
+function commitRangeValue(
+  target: EventTarget,
+  commit?: (value: number) => void
+): void {
+  if (!commit) return
+  commit(readRangeInputValue(target))
 }
 
 export const AssistantEditCompressionSection: React.FC<AssistantEditCompressionSectionProps> = ({
@@ -19,7 +29,9 @@ export const AssistantEditCompressionSection: React.FC<AssistantEditCompressionS
   compressKeepTurns,
   isCompressDisabled,
   onCompressThresholdChange,
+  onCompressThresholdCommit,
   onCompressKeepTurnsChange,
+  onCompressKeepTurnsCommit,
   onToggleCompress
 }) => {
   const { t } = useTranslation()
@@ -65,6 +77,8 @@ export const AssistantEditCompressionSection: React.FC<AssistantEditCompressionS
               step={10000}
               value={compressThreshold}
               onChange={(e) => onCompressThresholdChange(Number(e.target.value))}
+              onPointerUp={(e) => commitRangeValue(e.currentTarget, onCompressThresholdCommit)}
+              onKeyUp={(e) => commitRangeValue(e.currentTarget, onCompressThresholdCommit)}
               style={{
                 backgroundSize: `${((compressThreshold - 10000) * 100) / 990000}% 100%`
               }}
@@ -97,6 +111,8 @@ export const AssistantEditCompressionSection: React.FC<AssistantEditCompressionS
               step={1}
               value={compressKeepTurns}
               onChange={(e) => onCompressKeepTurnsChange(Number(e.target.value))}
+              onPointerUp={(e) => commitRangeValue(e.currentTarget, onCompressKeepTurnsCommit)}
+              onKeyUp={(e) => commitRangeValue(e.currentTarget, onCompressKeepTurnsCommit)}
               style={{
                 backgroundSize: `${((compressKeepTurns - 1) * 100) / 9}% 100%`
               }}

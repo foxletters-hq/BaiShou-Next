@@ -2,6 +2,8 @@
 
 **读者**：本仓库的所有 AI 助手（Cursor Agent 等）与人类贡献者。提交或提 PR 前请通读本文。
 
+**贡献政策**：什么值得做、新功能是否应先开 Issue，见 [2-Contributing-Guide.md](./2-Contributing-Guide.md)（[繁中](./2-Contributing-Guide.tw.md) · [EN](./2-Contributing-Guide.en.md) · [JA](./2-Contributing-Guide.ja.md)）。
+
 **协作方式**：不要直接向上游 `main` 推送。请先 **Fork** 仓库，在自己的 Fork 上开发，完成后向上游 **发起 Pull Request**。
 
 编码结构见 [1-AI-Code-Rule.md](../1-AI-Code/1-AI-Code-Rule.md)。Git 命令速查见 [git-commands.md](../git-commands.md)。
@@ -13,11 +15,13 @@
 在 `git commit` 之后、**打开 PR 之前**，逐项确认（AI 助手与人类均适用）：
 
 - [ ] 已在 **Fork 仓库** 的功能分支上工作，而非误改上游 `main`
+- [ ] 开 PR 时目标分支为上游 **`Baishou-dev`**（**非 `main`**；以 `main` 为目标的 PR 视为无效）
 - [ ] 已运行 **`pnpm ci:check`** 且全部通过
 - [ ] `git status` 无 `.env`、密钥、本地数据库、临时脚本（如 `count-code-lines.mjs`、`split-*.ps1`）
 - [ ] 单次 PR / commit 主题清晰；超大改动已拆成多个可读 commit
 - [ ] Commit 说明符合 **§2 Commit Message**（类型、scope、一句话说清「为什么」）
 - [ ] 若仅改文档或格式化，未混入无关功能代码
+- [ ] 若含代码变更，已在 PR 中通过 [CLA Assistant](https://cla-assistant.io/) 链接完成签署（纯文档 PR 除外）
 
 ---
 
@@ -93,7 +97,7 @@ docs: 规范目录与文件改为单层序号命名
 2. 克隆 **你的 Fork**，创建功能分支，按 [1-AI-Code-Rule](../1-AI-Code/1-AI-Code-Rule.md) 开发。
 3. 完成 **§0** 清单并运行 **`pnpm ci:check`**。
 4. 推送到 **你的 Fork**（例如 `git push origin feature/xxx`）。
-5. 在 GitHub 向上游 **创建 Pull Request**，说明改动与本地检查结果（建议注明已本地跑过 `pnpm ci:check`）。
+5. 在 GitHub 向上游 **创建 Pull Request**，**目标分支（base）选择 `Baishou-dev`**（勿选 `main`；以 `main` 为目标的 PR 视为无效，不予审核与回复），说明改动与本地检查结果（建议注明已本地跑过 `pnpm ci:check`）。
 
 ### 3.1 GitHub CI 与合并（宽松提交、严格合并）
 
@@ -107,6 +111,6 @@ docs: 规范目录与文件改为单层序号命名
 
 **贡献者**：CI 红了也可以提交 PR，但请主动跟进修复，不要假设「能开 PR 就能合并」。
 
-**维护者 / Reviewer**：合入前确认 [Actions](https://github.com/Anson-Trio/BaiShou-Next/actions) 中与本 PR 相关的 workflow 已全部成功；未通过时留言说明，暂不合入。
+**维护者 / Reviewer**：合入前确认 [Actions](https://github.com/foxletters-hq/BaiShou-Next/actions) 中与本 PR 相关的 workflow 已全部成功；未通过时留言说明，暂不合入。
 
 本地检查通过可减少 PR 上等待 CI 失败的时间；是否合并由维护者根据 CI 与代码审查决定。

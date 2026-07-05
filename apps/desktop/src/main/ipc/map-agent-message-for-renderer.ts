@@ -1,4 +1,8 @@
-import { mapAttachmentsFromParts } from '@baishou/shared'
+import {
+  mapAttachmentsFromParts,
+  normalizePartData,
+  unwrapMessageMetadataForDisplay
+} from '@baishou/shared'
 import { parseCompactionMarkerData } from '@baishou/ai'
 import type { AgentMessage, AgentPart } from '@baishou/shared'
 
@@ -16,6 +20,17 @@ export type RendererAgentMessage = AgentMessage & {
   hasCompactionMarker: boolean
   compactionRecord: ReturnType<typeof parseCompactionMarkerData>
   parts?: AgentPart[]
+}
+
+function textFromPartData(data: unknown): string {
+  const normalized = normalizePartData(data)
+  if (typeof normalized.text === 'string') {
+    return unwrapMessageMetadataForDisplay(normalized.text)
+  }
+  if (typeof normalized.content === 'string') {
+    return unwrapMessageMetadataForDisplay(normalized.content)
+  }
+  return ''
 }
 
 export function groupPartsByMessageId(parts: AgentPart[]): Map<string, AgentPart[]> {
@@ -37,21 +52,26 @@ export function mapAgentMessageForRenderer(
   includeParts: boolean
 ): RendererAgentMessage {
   const textParts = parts.filter((p) => p.type === 'text')
-  const reasoningParts = textParts.filter((p) => p.data?.isReasoning)
-  const normalTextParts = textParts.filter((p) => !p.data?.isReasoning)
+  const reasoningParts = textParts.filter((p) => normalizePartData(p.data).isReasoning)
+  const normalTextParts = textParts.filter((p) => !normalizePartData(p.data).isReasoning)
 
-  const contentText = normalTextParts.map((p) => p.data?.text || p.data || '').join('\n')
-  const reasoningText = reasoningParts.map((p) => p.data?.text || '').join('\n')
+  const contentText = normalTextParts.map((p) => textFromPartData(p.data)).join('\n')
+  const reasoningText = reasoningParts.map((p) => textFromPartData(p.data)).join('\n')
 
   const toolInvocations = parts
     .filter((p) => p.type === 'tool')
-    .map((p) => ({
-      state: p.data?.status === 'completed' || p.data?.status === 'failed' ? 'result' : 'call',
-      toolCallId: p.data?.callId || '',
-      toolName: p.data?.name || '',
-      args: p.data?.arguments || {},
-      result: p.data?.result
-    }))
+    .map((p) => {
+      const data = normalizePartData(p.data)
+      return {
+        state: data.status === 'completed' || data.status === 'failed' ? 'result' : 'call',
+        toolCallId: String(data.callId ?? ''),
+        toolName: String(data.name ?? data.toolName ?? ''),
+        args: (data.arguments ?? data.input ?? {}) as Record<string, unknown>,
+        result: data.result ?? data.output
+      }
+    })
+    // 过滤掉 emoji_send 工具调用（表情包已作为图片附件显示，不需要在工具结果中重复展示）
+    .filter((inv) => inv.toolName !== 'emoji_send')
 
   const attachments = mapAttachmentsFromParts(parts)
   const compactionPart = parts.find((p) => p.type === 'compaction')

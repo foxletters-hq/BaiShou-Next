@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import {
   formatMigrationMegabytes,
   normalizeImportedSectionIds,
+  normalizeLegacyPartData,
   normalizeLegacyPartType,
   parseLegacyPersonasFromSp,
   resolveLegacyIdentityPersonas,
@@ -69,6 +70,26 @@ describe('legacy-version-migration.util', () => {
   it('normalizeLegacyPartType maps legacy camelCase types', () => {
     expect(normalizeLegacyPartType('contextSnapshot')).toBe('context_snapshot')
     expect(normalizeLegacyPartType('text')).toBe('text')
+  })
+
+  it('normalizeLegacyPartData maps v3 text/tool/attachment payloads', () => {
+    expect(normalizeLegacyPartData('{"text":"你好"}', 'text')).toEqual({ text: '你好' })
+    expect(normalizeLegacyPartData('plain text', 'text')).toEqual({ text: 'plain text' })
+    expect(
+      normalizeLegacyPartData(
+        { toolName: 'search', callId: 'c1', input: { q: 'x' }, output: 'ok', status: 'completed' },
+        'tool'
+      )
+    ).toEqual({
+      callId: 'c1',
+      name: 'search',
+      status: 'completed',
+      arguments: { q: 'x' },
+      result: 'ok'
+    })
+    expect(
+      normalizeLegacyPartData({ attachment: { name: 'a.png', path: '/tmp/a.png' } }, 'attachment')
+    ).toMatchObject({ name: 'a.png', filePath: '/tmp/a.png' })
   })
 
   it('resolveLegacyVaultTargetName appends suffix when vault name already exists', () => {

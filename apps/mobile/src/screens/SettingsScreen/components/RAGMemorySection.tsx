@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ActivityIndicator, InteractionManager, Platform, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import {
@@ -9,24 +10,45 @@ import {
   type MockAiProviderModel,
   type RagConfig,
   type RagEntry,
-  type RagState
+  type RagStats
 } from '@baishou/ui/native'
 import {
   AIProviderConfig,
-  DEFAULT_BATCH_EMBED_CONCURRENCY,
   GlobalModelsConfig,
+  MOBILE_DEFAULT_BATCH_EMBED_CONCURRENCY,
+  resolveMobileBatchEmbedConcurrency,
   filterProvidersForModelSwitcher,
   type RagConfig as SharedRagConfig
 } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { useMobileRagSystem } from '../../../hooks/useMobileRagSystem'
+import { MobileRagAbortError } from '../../../services/mobile-rag.service'
+import { appendDiagnosticBreadcrumb } from '../../../services/mobile-diagnostic-log.service'
 import { TextPromptModal } from './TextPromptModal'
 
 const DEFAULT_RAG_CONFIG: RagConfig = {
   ragEnabled: true,
   ragTopK: 20,
   ragSimilarityThreshold: 0.4,
-  batchEmbedConcurrency: DEFAULT_BATCH_EMBED_CONCURRENCY
+  batchEmbedConcurrency: MOBILE_DEFAULT_BATCH_EMBED_CONCURRENCY
+}
+
+/** 持久化/迁移可能把数值存成字符串，统一兜底，避免下游 toFixed 等数值方法崩溃 */
+function coerceNumber(value: unknown, fallback: number): number {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function clampMobileRagConfig(config: RagConfig): RagConfig {
+  return {
+    ...config,
+    ragTopK: coerceNumber(config.ragTopK, DEFAULT_RAG_CONFIG.ragTopK),
+    ragSimilarityThreshold: coerceNumber(
+      config.ragSimilarityThreshold,
+      DEFAULT_RAG_CONFIG.ragSimilarityThreshold
+    ),
+    batchEmbedConcurrency: resolveMobileBatchEmbedConcurrency(config.batchEmbedConcurrency)
+  }
 }
 
 type PromptMode = 'manual' | 'edit' | 'clear' | null
@@ -38,12 +60,12 @@ function buildEmbeddingProviders(providers: AIProviderConfig[]): MockAiProviderM
 export const RAGMemorySection: React.FC = () => {
   const { t } = useTranslation()
   const router = useRouter()
-  const { services, dbReady } = useBaishou()
+  const { services, dbReady, storageIndexing, ecosystemResyncEpoch } = useBaishou()
   const toast = useNativeToast()
   const dialog = useDialog()
 
   const [config, setConfig] = useState<RagConfig>(DEFAULT_RAG_CONFIG)
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<RagStats>({
     totalCount: 0,
     currentDimension: 0,
     totalSizeText: '0 KB'
@@ -68,7 +90,40 @@ export const RAGMemorySection: React.FC = () => {
 
   const [promptMode, setPromptMode] = useState<PromptMode>(null)
   const [promptDefault, setPromptDefault] = useState('')
+  const [ragCancelBusy, setRagCancelBusy] = useState(false)
   const editEntryRef = useRef<RagEntry | null>(null)
+  const [androidRenderStage, setAndroidRenderStage] = useState(Platform.OS === 'android' ? 0 : 2)
+
+  useEffect(() => {
+    appendDiagnosticBreadcrumb('RAGMemorySection mount')
+    if (Platform.OS !== 'android') {
+      return () => {
+        appendDiagnosticBreadcrumb('RAGMemorySection unmount')
+      }
+    }
+
+    appendDiagnosticBreadcrumb('RAG android render stage 0 (shell)')
+    let interactionTask: { cancel: () => void } | undefined
+    const frame = requestAnimationFrame(() => {
+      appendDiagnosticBreadcrumb('RAG android render stage 1 (view)')
+      setAndroidRenderStage(1)
+      interactionTask = InteractionManager.runAfterInteractions(() => {
+        appendDiagnosticBreadcrumb('RAG android render stage 2 (full)')
+        setAndroidRenderStage(2)
+      })
+    })
+
+    return () => {
+      cancelAnimationFrame(frame)
+      interactionTask?.cancel()
+      appendDiagnosticBreadcrumb('RAGMemorySection unmount')
+    }
+  }, [])
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return
+    appendDiagnosticBreadcrumb(`RAG android render stage active: ${androidRenderStage}`)
+  }, [androidRenderStage])
 
   const stateRef = useRef({ searchQuery, searchMode, currentPage, pageSize })
   useEffect(() => {
@@ -84,7 +139,7 @@ export const RAGMemorySection: React.FC = () => {
     similarity: typeof raw.similarity === 'number' ? raw.similarity : undefined
   })
 
-  const loadRagData = useCallback(
+  const refreshEntriesOnly = useCallback(
     async (
       q: string = stateRef.current.searchQuery,
       mode: 'semantic' | 'text' = stateRef.current.searchMode,
@@ -92,21 +147,15 @@ export const RAGMemorySection: React.FC = () => {
       size: number = stateRef.current.pageSize
     ) => {
       if (!services?.ragService || !dbReady) return
+      if (storageIndexing) return
 
       try {
-        const ragStats = await services.ragService.getStats()
         const globalModels =
           (await services.settingsManager.get<{
             globalEmbeddingProviderId?: string
             globalEmbeddingModelId?: string
           }>('global_models')) || {}
-        setEmbeddingProviderId(globalModels.globalEmbeddingProviderId)
-        setEmbeddingModelId(globalModels.globalEmbeddingModelId)
-        setStats({
-          totalCount: ragStats.totalCount,
-          currentDimension: ragStats.currentDimension,
-          totalSizeText: `${(ragStats.totalCount * 2.5).toFixed(1)} KB`
-        })
+        const fallbackModel = globalModels.globalEmbeddingModelId
 
         const limit = size
         const offset = (page - 1) * size
@@ -132,6 +181,102 @@ export const RAGMemorySection: React.FC = () => {
         }
 
         const res = await services.ragService.queryEntries(params)
+
+        if (q.trim() && mode === 'semantic') {
+          const sliced = res.entries.slice((page - 1) * size, page * size)
+          setEntries(sliced.map((e) => mapEntry(e as Record<string, unknown>, fallbackModel)))
+          setTotalCount(res.total)
+          return
+        }
+
+        if (res.total > 0 && offset >= res.total) {
+          const maxPage = Math.max(1, Math.ceil(res.total / size))
+          setCurrentPage(maxPage)
+          await refreshEntriesOnly(q, mode, maxPage, size)
+          return
+        }
+
+        setEntries(
+          res.entries.map((e) => {
+            const entry = mapEntry(e as Record<string, unknown>, fallbackModel)
+            if (mode === 'text') {
+              return { ...entry, similarity: undefined }
+            }
+            return entry
+          })
+        )
+        setTotalCount(res.total)
+      } catch (e: unknown) {
+        toast.showError(e instanceof Error ? e.message : t('settings.rag_operation_failed'))
+      }
+    },
+    [services, dbReady, storageIndexing, toast, t]
+  )
+
+  const loadRagData = useCallback(
+    async (
+      q: string = stateRef.current.searchQuery,
+      mode: 'semantic' | 'text' = stateRef.current.searchMode,
+      page: number = stateRef.current.currentPage,
+      size: number = stateRef.current.pageSize
+    ) => {
+      if (!services?.ragService || !dbReady) return
+      if (storageIndexing) {
+        appendDiagnosticBreadcrumb('RAG loadRagData skipped: storage indexing')
+        return
+      }
+
+      appendDiagnosticBreadcrumb(`RAG loadRagData start mode=${mode} page=${page}`)
+
+      try {
+        appendDiagnosticBreadcrumb('RAG getStats start')
+        const ragStats = await services.ragService.getStats()
+        appendDiagnosticBreadcrumb('RAG getStats done')
+        appendDiagnosticBreadcrumb('RAG global models load start')
+        const globalModels =
+          (await services.settingsManager.get<{
+            globalEmbeddingProviderId?: string
+            globalEmbeddingModelId?: string
+          }>('global_models')) || {}
+        appendDiagnosticBreadcrumb('RAG global models load done')
+        setEmbeddingProviderId(globalModels.globalEmbeddingProviderId)
+        setEmbeddingModelId(globalModels.globalEmbeddingModelId)
+        setStats({
+          totalCount: ragStats.totalCount,
+          currentDimension: ragStats.currentDimension,
+          totalSizeText: `${(ragStats.totalCount * 2.5).toFixed(1)} KB`,
+          diaryCountForVault: ragStats.diaryCountForVault,
+          activeVaultName: ragStats.activeVaultName
+        })
+
+        const limit = size
+        const offset = (page - 1) * size
+        const params: {
+          keyword?: string
+          limit: number
+          offset: number
+          mode: 'semantic' | 'text'
+          withTotal: boolean
+        } = {
+          limit,
+          offset,
+          mode,
+          withTotal: true
+        }
+
+        if (q.trim()) {
+          params.keyword = q.trim()
+          if (mode === 'semantic') {
+            params.limit = 50
+            params.offset = 0
+          }
+        }
+
+        appendDiagnosticBreadcrumb(
+          `RAG queryEntries start mode=${params.mode} limit=${params.limit}`
+        )
+        const res = await services.ragService.queryEntries(params)
+        appendDiagnosticBreadcrumb(`RAG queryEntries done total=${res.total}`)
         const fallbackModel = globalModels.globalEmbeddingModelId
 
         if (q.trim() && mode === 'semantic') {
@@ -142,7 +287,7 @@ export const RAGMemorySection: React.FC = () => {
           if (res.total > 0 && offset >= res.total) {
             const maxPage = Math.max(1, Math.ceil(res.total / size))
             setCurrentPage(maxPage)
-            await loadRagData(q, mode, maxPage, size)
+            await refreshEntriesOnly(q, mode, maxPage, size)
             return
           }
           setEntries(
@@ -156,33 +301,84 @@ export const RAGMemorySection: React.FC = () => {
           )
           setTotalCount(res.total)
         }
-
-        await checkModelMismatch()
       } catch (e: unknown) {
+        appendDiagnosticBreadcrumb(
+          `RAG loadRagData failed: ${e instanceof Error ? e.message : String(e)}`
+        )
         toast.showError(e instanceof Error ? e.message : t('settings.rag_operation_failed'))
       }
+
+      try {
+        appendDiagnosticBreadcrumb('RAG checkModelMismatch start')
+        await checkModelMismatch()
+        appendDiagnosticBreadcrumb('RAG checkModelMismatch done')
+      } catch (e: unknown) {
+        appendDiagnosticBreadcrumb(
+          `RAG checkModelMismatch failed: ${e instanceof Error ? e.message : String(e)}`
+        )
+        console.warn('[RAGMemorySection] checkModelMismatch failed', e)
+      }
     },
-    [services, dbReady, checkModelMismatch, toast, t]
+    [services, dbReady, storageIndexing, checkModelMismatch, toast, t, refreshEntriesOnly]
   )
 
   useEffect(() => {
     if (!dbReady || !services) return
-    const init = async () => {
-      const providerList =
-        (await services.settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
-      setProviders(providerList)
-      const saved = (await services.settingsManager.get<SharedRagConfig>('rag_config')) ?? null
-      setConfig({
-        ragEnabled: saved?.ragEnabled ?? DEFAULT_RAG_CONFIG.ragEnabled,
-        ragTopK: saved?.ragTopK ?? DEFAULT_RAG_CONFIG.ragTopK,
-        ragSimilarityThreshold:
-          saved?.ragSimilarityThreshold ?? DEFAULT_RAG_CONFIG.ragSimilarityThreshold,
-        batchEmbedConcurrency: saved?.batchEmbedConcurrency ?? DEFAULT_BATCH_EMBED_CONCURRENCY
-      })
-      await loadRagData('', 'text', 1, 10)
+    if (storageIndexing) {
+      appendDiagnosticBreadcrumb('RAG init deferred: storage indexing')
+      return
     }
-    void init()
-  }, [dbReady, services, loadRagData])
+    let cancelled = false
+
+    const runInit = async () => {
+      try {
+        const providerList =
+          (await services.settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
+        if (cancelled) return
+        setProviders(providerList)
+        const saved = (await services.settingsManager.get<SharedRagConfig>('rag_config')) ?? null
+        const loaded = clampMobileRagConfig({
+          ragEnabled: saved?.ragEnabled ?? DEFAULT_RAG_CONFIG.ragEnabled,
+          ragTopK: saved?.ragTopK ?? DEFAULT_RAG_CONFIG.ragTopK,
+          ragSimilarityThreshold:
+            saved?.ragSimilarityThreshold ?? DEFAULT_RAG_CONFIG.ragSimilarityThreshold,
+          batchEmbedConcurrency:
+            saved?.batchEmbedConcurrency ?? MOBILE_DEFAULT_BATCH_EMBED_CONCURRENCY
+        })
+        if (cancelled) return
+        setConfig(loaded)
+        if (
+          saved?.batchEmbedConcurrency != null &&
+          loaded.batchEmbedConcurrency !== saved.batchEmbedConcurrency
+        ) {
+          await services.settingsManager.set('rag_config', loaded)
+        }
+        if (cancelled) return
+        appendDiagnosticBreadcrumb('RAG init config loaded')
+        await loadRagData('', 'text', 1, 10)
+        appendDiagnosticBreadcrumb('RAG init loadRagData finished')
+      } catch (e: unknown) {
+        if (!cancelled) {
+          toast.showError(e instanceof Error ? e.message : t('settings.rag_operation_failed'))
+        }
+      }
+    }
+
+    if (Platform.OS === 'android') {
+      const task = InteractionManager.runAfterInteractions(() => {
+        void runInit()
+      })
+      return () => {
+        cancelled = true
+        task.cancel()
+      }
+    }
+
+    void runInit()
+    return () => {
+      cancelled = true
+    }
+  }, [dbReady, services, storageIndexing, ecosystemResyncEpoch, loadRagData, toast, t])
 
   const embeddingProviders = useMemo(() => buildEmbeddingProviders(providers), [providers])
 
@@ -246,8 +442,9 @@ export const RAGMemorySection: React.FC = () => {
 
   const saveConfig = async (next: RagConfig) => {
     if (!services || !dbReady) return
-    await services.settingsManager.set('rag_config', next)
-    setConfig(next)
+    const clamped = clampMobileRagConfig(next)
+    await services.settingsManager.set('rag_config', clamped)
+    setConfig(clamped)
   }
 
   const handleSemanticUnavailable = useCallback(async () => {
@@ -265,6 +462,12 @@ export const RAGMemorySection: React.FC = () => {
     await openModelSwitcher()
   }, [config, dialog, openModelSwitcher, t, services, dbReady])
 
+  useEffect(() => {
+    if (!ragState.isRunning) {
+      setRagCancelBusy(false)
+    }
+  }, [ragState.isRunning])
+
   const handleSearch = (query: string, mode: 'semantic' | 'text') => {
     setSearchQuery(query)
     setSearchMode(mode)
@@ -281,7 +484,7 @@ export const RAGMemorySection: React.FC = () => {
   const handlePageChange = (page: number, size: number) => {
     setCurrentPage(page)
     setPageSize(size)
-    void loadRagData(searchQuery, searchMode, page, size)
+    void refreshEntriesOnly(searchQuery, searchMode, page, size)
   }
 
   const handleDetectDimension = async () => {
@@ -348,8 +551,19 @@ export const RAGMemorySection: React.FC = () => {
       toast.showSuccess(t('settings.rag_batch_embed_done', { count: String(count) }))
       await loadRagData()
     } catch (e: unknown) {
+      if (e instanceof MobileRagAbortError) {
+        toast.showWarning(
+          t('settings.rag_batch_embed_aborted', {
+            count: String(e.embeddedCount),
+            defaultValue: `已取消，已完成 ${e.embeddedCount} 篇嵌入`
+          })
+        )
+        await loadRagData()
+        return
+      }
       toast.showError(e instanceof Error ? e.message : t('settings.rag_batch_embed_failed'))
     } finally {
+      setRagCancelBusy(false)
       setRagState({
         isRunning: false,
         type: 'idle',
@@ -359,6 +573,31 @@ export const RAGMemorySection: React.FC = () => {
       })
     }
   }
+
+  const handleCancelRagOperation = useCallback(async () => {
+    if (!services?.ragService) return
+    const confirmed = await dialog.confirm(
+      t(
+        'settings.rag_migration_cancel_confirm',
+        '确定要取消当前嵌入任务吗？进行中的请求会在完成后停止，不会继续处理下一篇。'
+      ),
+      {
+        title: t('common.warning', '警告'),
+        confirmText: t('settings.rag_migration_cancel', '取消'),
+        cancelText: t('common.back', '返回')
+      }
+    )
+    if (!confirmed) return
+
+    setRagCancelBusy(true)
+    setRagState((prev) => ({
+      ...prev,
+      isRunning: true,
+      statusKey: 'settings.rag_migration_aborting',
+      statusText: t('settings.rag_migration_aborting', '正在取消并停止嵌入…')
+    }))
+    services.ragService.requestOperationAbort()
+  }, [dialog, services?.ragService, t])
 
   const handleClearAll = async () => {
     setPromptMode('clear')
@@ -401,9 +640,34 @@ export const RAGMemorySection: React.FC = () => {
       destructive: true
     })
     if (!confirmed) return
-    await services.ragService.deleteEntry(id)
-    await loadRagData()
-    toast.showSuccess(t('common.delete_success'))
+
+    const snapshotEntries = entries
+    const snapshotTotal = totalCount
+    const snapshotStatsTotal = stats.totalCount
+    const remainingOnPage = entries.filter((entry) => entry.embeddingId !== id)
+
+    setEntries(remainingOnPage)
+    setTotalCount((prev) => Math.max(0, prev - 1))
+    setStats((prev) => ({
+      ...prev,
+      totalCount: Math.max(0, prev.totalCount - 1)
+    }))
+
+    try {
+      await services.ragService.deleteEntry(id)
+      toast.showSuccess(t('common.delete_success'))
+
+      if (remainingOnPage.length === 0 && currentPage > 1) {
+        const prevPage = currentPage - 1
+        setCurrentPage(prevPage)
+        void refreshEntriesOnly(searchQuery, searchMode, prevPage, pageSize)
+      }
+    } catch (e: unknown) {
+      setEntries(snapshotEntries)
+      setTotalCount(snapshotTotal)
+      setStats((prev) => ({ ...prev, totalCount: snapshotStatsTotal }))
+      toast.showError(e instanceof Error ? e.message : t('settings.rag_operation_failed'))
+    }
   }
 
   const onPromptConfirm = async (value: string) => {
@@ -449,36 +713,45 @@ export const RAGMemorySection: React.FC = () => {
       setCurrentPage(1)
       await loadRagData('', 'text', 1, pageSize)
     }
+    setRagCancelBusy(false)
   }, [handleReembedAfterModelChange, loadRagData, pageSize])
 
   return (
     <>
-      <RagMemoryView
-        config={config}
-        stats={stats}
-        ragState={ragState}
-        hasMismatchModel={hasMismatchModel}
-        embeddingModelId={embeddingModelId}
-        entries={entries}
-        totalCount={totalCount}
-        currentPage={currentPage}
-        pageSize={pageSize}
-        searchQuery={searchQuery}
-        searchMode={searchMode}
-        semanticAvailable={semanticAvailable}
-        onSemanticUnavailable={() => void handleSemanticUnavailable()}
-        onChange={saveConfig}
-        onDetectDimension={handleDetectDimension}
-        onBatchEmbed={handleBatchEmbed}
-        onTriggerMigration={handleTriggerMigration}
-        onAddManualMemory={handleAddManualMemory}
-        onClearAll={handleClearAll}
-        onSearch={handleSearch}
-        onDeleteEntry={handleDeleteEntry}
-        onEditEntry={handleEditEntry}
-        onConfigureModel={openModelSwitcher}
-        onPageChange={handlePageChange}
-      />
+      {Platform.OS === 'android' && (androidRenderStage < 1 || storageIndexing) ? (
+        <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+          <ActivityIndicator size="small" />
+        </View>
+      ) : (
+        <RagMemoryView
+          config={config}
+          stats={stats}
+          ragState={ragState}
+          hasMismatchModel={hasMismatchModel}
+          embeddingModelId={embeddingModelId}
+          entries={entries}
+          totalCount={totalCount}
+          currentPage={currentPage}
+          pageSize={pageSize}
+          searchQuery={searchQuery}
+          searchMode={searchMode}
+          semanticAvailable={semanticAvailable}
+          onSemanticUnavailable={() => void handleSemanticUnavailable()}
+          onChange={saveConfig}
+          onDetectDimension={handleDetectDimension}
+          onBatchEmbed={handleBatchEmbed}
+          onTriggerMigration={handleTriggerMigration}
+          onCancelMigration={handleCancelRagOperation}
+          migrationCancelBusy={ragCancelBusy}
+          onAddManualMemory={handleAddManualMemory}
+          onClearAll={handleClearAll}
+          onSearch={androidRenderStage >= 2 ? handleSearch : undefined}
+          onDeleteEntry={handleDeleteEntry}
+          onEditEntry={handleEditEntry}
+          onConfigureModel={openModelSwitcher}
+          onPageChange={handlePageChange}
+        />
+      )}
 
       <ModelSwitcher
         isOpen={showModelSwitcher}

@@ -52,6 +52,9 @@ export * from './StatisticCard'
 
 // 聊天增强组件
 export * from './ThinkingBlock'
+export * from './AgentThinkSection'
+export * from './AgentToolChain'
+export * from './AgentMarkdown'
 export * from './CompressionActivityBar'
 export * from './CompressionDivider'
 export * from './ToolResultGroupCard'
@@ -72,19 +75,25 @@ export * from './AppearanceSettingsCard'
 export * from './SettingsItem'
 export * from './SettingsSection'
 export * from './settings/SettingsExpansionTile'
+export * from './settings/SettingsListLeadingIcon'
 export * from './ProfileSettingsCard'
 export * from './AboutSettingsCard'
+export * from './feedback/useOpenFeedbackChannel'
 export * from './IdentitySettingsCard'
 export * from './WorkspaceSettingsCard'
 export * from './StorageSettingsCard'
 export * from './StoragePermissionPrompt'
 export * from './WeatherPicker'
+export * from './MoodIcon'
+export * from './MoodPicker/MoodPicker'
 export * from './WeatherIcon'
 export * from './TTSProviderSettings'
 export * from './AgentBehaviorSettingsCard'
 export * from './ChatBackgroundSettingsCard'
 export * from './RagMemoryView'
 export * from './AgentToolsView'
+export * from './EmojiSettingsView'
+export * from './AssistantEditEmojiSection'
 export * from './SummarySettingsView'
 
 // Markdown渲染组件
@@ -92,6 +101,7 @@ export * from './MarkdownRenderer'
 
 // 工具组件
 export * from './ModelSwitcherPopup'
+export * from '../shared/ModelVisionBadge'
 export * from './PromptShortcutSheet'
 export * from './AssistantPickerSheet'
 export * from './ChatCostDialog'
@@ -139,7 +149,7 @@ export {
   type ThemeModePreference
 } from './theme'
 
-export { NATIVE_APP_BRAND_ICON, resolveNativeUserAvatarSource } from './user-avatar.util'
+export { NATIVE_APP_BRAND_ICON, resolveNativeUserAvatarSource, isCustomUserAvatar } from './user-avatar.util'
 
 export { useKeyboardHeight, type UseKeyboardHeightOptions } from './hooks/useKeyboardHeight'
 export {
@@ -152,3 +162,8 @@ export {
   type KeyboardAwareScrollViewProps,
   type KeyboardAwareScrollContextValue
 } from './KeyboardAwareScrollView'
+
+export { resolveActiveToolDisplayName } from '../shared/tool-result.util'
+
+export * from './icons'
+export type { SettingsNavIconId } from '../shared/icons/settings-nav-icon-ids'

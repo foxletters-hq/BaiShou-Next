@@ -1,15 +1,18 @@
-import { mergeDisabledToolIds, normalizeAssistantKind } from '@baishou/shared'
+import { isAutoInjectCurrentTimeEnabled } from '@baishou/shared'
 import {
   MessageRepository,
   SqliteHybridSearchRepository,
   createSqlExecutorFromDrizzleDb
 } from '@baishou/database'
 import type { IAIProvider } from '../providers/provider.interface'
+import type { ToolContext } from '../tools/agent.tool'
 import type { ToolRegistry } from '../tools/tool-registry'
 import { DatabaseAdapter } from '../tools/adapters/database.adapter'
 import { EmbeddingAdapter } from '../tools/adapters/embedding.adapter'
 import { MemoryDeduplicationServiceImpl } from '../rag/memory-deduplication.service'
+import { createDiaryReadGuard } from '../tools/diary-read-guard.util'
 import { SystemPromptBuilder } from './system-prompt.builder'
+import { resolveSessionAssistantContext } from './session-assistant-context.util'
 
 export interface AgentToolsContextParams {
   sessionId: string
@@ -36,14 +39,16 @@ export interface AgentToolsContextParams {
   fetchSearchPage?: unknown
 }
 
-export async function resolveEnabledToolsForSession(
-  params: AgentToolsContextParams
-): Promise<Record<string, unknown>> {
+async function buildToolExecutionContext(
+  params: AgentToolsContextParams,
+  mergedUserConfig: Record<string, unknown>
+): Promise<ToolContext> {
   const drizzleDb = (params.sessionRepo as any).db || (params.sessionRepo as any).database
   if (!drizzleDb) {
     throw new Error('Agent database connection is unavailable')
   }
 
+  const sessionObj = await params.sessionRepo.getSessionById?.(params.sessionId)
   const clientExecutor = createSqlExecutorFromDrizzleDb(drizzleDb)
   const hsRepo = new SqliteHybridSearchRepository(clientExecutor)
   const msgRepo = new MessageRepository(drizzleDb)
@@ -74,24 +79,7 @@ export async function resolveEnabledToolsForSession(
     )
   }
 
-  const sessionObj = await params.sessionRepo.getSessionById?.(params.sessionId)
-
-  let mergedUserConfig = params.userConfig
-  if (sessionObj?.assistantId && params.assistantRepo) {
-    const ast = await params.assistantRepo.findById(sessionObj.assistantId)
-    const assistantKind = normalizeAssistantKind(ast?.assistantKind)
-    mergedUserConfig = {
-      ...params.userConfig,
-      disabledToolIds: mergeDisabledToolIds(
-        Array.isArray(params.userConfig?.disabledToolIds)
-          ? (params.userConfig.disabledToolIds as string[])
-          : [],
-        assistantKind
-      )
-    }
-  }
-
-  return params.toolRegistry.getEnabledToolsAsVercel({
+  return {
     userConfig: mergedUserConfig,
     sessionId: params.sessionId,
     vaultName: sessionObj?.vaultName || 'default',
@@ -102,8 +90,17 @@ export async function resolveEnabledToolsForSession(
     deduplicationService: dedupService,
     diarySearcher: params.diarySearcher as any,
     webSearchResultFetcher: params.webSearchResultFetcher as any,
-    fetchSearchPage: params.fetchSearchPage as any
-  })
+    fetchSearchPage: params.fetchSearchPage as any,
+    diaryReadGuard: createDiaryReadGuard()
+  }
+}
+
+export async function resolveEnabledToolsForSession(
+  params: AgentToolsContextParams
+): Promise<Record<string, unknown>> {
+  const { mergedUserConfig } = await resolveSessionAssistantContext(params)
+  const toolContext = await buildToolExecutionContext(params, mergedUserConfig)
+  return params.toolRegistry.getEnabledToolsAsVercel(toolContext)
 }
 
 export async function buildSystemPromptForSession(
@@ -111,24 +108,30 @@ export async function buildSystemPromptForSession(
 ): Promise<string> {
   const enabledTools = await resolveEnabledToolsForSession(params)
   const sessionObj = await params.sessionRepo.getSessionById?.(params.sessionId)
+  const { effectiveSystemPrompt, assistantKind, mergedUserConfig } =
+    await resolveSessionAssistantContext(params)
 
-  let effectiveSystemPrompt: string | undefined
-  if (sessionObj?.assistantId && params.assistantRepo) {
-    const ast = await params.assistantRepo.findById(sessionObj.assistantId)
-    if (ast?.systemPrompt) {
-      effectiveSystemPrompt = ast.systemPrompt
-    }
-  }
+  const customGuidelines =
+    typeof params.userConfig?.agentGuidelines === 'string'
+      ? params.userConfig.agentGuidelines.trim() || undefined
+      : undefined
 
   return SystemPromptBuilder.build({
     vaultName: sessionObj?.vaultName || 'default',
     tools: enabledTools as any,
     customPersona: effectiveSystemPrompt,
+    assistantKind,
     userProfileBlock:
       typeof params.userConfig?.userCard === 'string' ? params.userConfig.userCard : undefined,
     diaryAiWritingPrompt:
       typeof params.userConfig?.diaryAiWritingPrompt === 'string'
         ? params.userConfig.diaryAiWritingPrompt
+        : undefined,
+    injectCurrentTime: isAutoInjectCurrentTimeEnabled(
+      Array.isArray(mergedUserConfig['disabledToolIds'])
+        ? (mergedUserConfig['disabledToolIds'] as string[])
         : undefined
+    ),
+    customGuidelines
   })
 }

@@ -139,19 +139,23 @@ export class StreamChunkAdapter {
       }
 
       case 'tool-call': {
+        const toolName = String(part.toolName ?? '').trim()
+        if (!toolName) return null
         return {
           type: ChunkType.TOOL_CALL,
           toolCallId: part.toolCallId,
-          toolName: part.toolName,
+          toolName,
           input: part.input ?? part.args ?? {}
         }
       }
 
       case 'tool-result': {
+        const toolName = String(part.toolName ?? '').trim()
+        if (!toolName) return null
         return {
           type: ChunkType.TOOL_RESULT,
           toolCallId: part.toolCallId,
-          toolName: part.toolName,
+          toolName,
           output: part.output ?? part.result
         }
       }

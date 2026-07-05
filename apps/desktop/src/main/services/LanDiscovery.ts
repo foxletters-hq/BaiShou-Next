@@ -4,7 +4,6 @@ import {
   getLanDeviceDedupKey,
   lanDevicesEquivalent,
   LAN_DISCOVERY_REQUERY_MS,
-  parseLanTxtIpv4,
   pickBestLanIpv4,
   resolveDiscoveredLanIpv4
 } from '@baishou/shared'
@@ -132,7 +131,7 @@ export class LanDiscovery {
       }
 
       const device = this.parseDevice(service)
-      if (!parseLanTxtIpv4(service.txt as Record<string, unknown>) && device.ip === 'Unknown') {
+      if (!device.port || device.port <= 0 || device.ip === 'Unknown') {
         return
       }
       this.emitDevice(device, callbacks.onDeviceFound, callbacks.onDeviceLost)

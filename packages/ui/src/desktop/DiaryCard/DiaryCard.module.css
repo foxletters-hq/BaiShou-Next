@@ -94,13 +94,22 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  max-height: 52px;
+  overflow: hidden;
+  flex-shrink: 0;
 }
 
 .tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 20px;
   padding: 4px 10px;
   border-radius: 8px;
   font-size: 12px;
   font-weight: 600;
+  line-height: 1;
 }
 
 /* 4 distinct tag color sets based on modulo hashing */
@@ -119,6 +128,11 @@
 .tagColor3 {
   background: rgba(139, 92, 246, 0.15);
   color: #8b5cf6;
+}
+
+.tagOverflow {
+  background: rgba(148, 163, 184, 0.18);
+  color: var(--color-text-secondary);
 }
 
 [data-theme='dark'] .tagColor0 {

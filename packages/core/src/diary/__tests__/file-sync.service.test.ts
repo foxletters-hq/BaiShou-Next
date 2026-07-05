@@ -3,29 +3,31 @@ import { FileSyncServiceImpl } from '../file-sync.service'
 import { Diary, formatLocalDate } from '@baishou/shared'
 import { createNodeFileSystem } from '../../fs/create-node-file-system'
 import * as fs from 'node:fs'
+import * as os from 'node:os'
 import * as path from 'node:path'
 
 describe('FileSyncService', () => {
-  const rootPath = path.join(__dirname, '.test_diaries')
+  // 使用系统临时目录作为根，避免测试把 nested/ 兄弟目录写入受版本控制的源码目录造成污染
+  let baseDir: string
+  let rootPath: string
   let service: FileSyncServiceImpl
   const fileSystem = createNodeFileSystem()
 
   beforeEach(() => {
+    baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'baishou-file-sync-'))
+    rootPath = path.join(baseDir, '.test_diaries')
+    fs.mkdirSync(rootPath, { recursive: true })
     service = new FileSyncServiceImpl(
       {
         getJournalsBaseDirectory: async () => rootPath
       } as any,
       fileSystem
     )
-    if (fs.existsSync(rootPath)) {
-      fs.rmSync(rootPath, { recursive: true, force: true })
-    }
-    fs.mkdirSync(rootPath, { recursive: true })
   })
 
   afterEach(() => {
-    if (fs.existsSync(rootPath)) {
-      fs.rmSync(rootPath, { recursive: true, force: true })
+    if (fs.existsSync(baseDir)) {
+      fs.rmSync(baseDir, { recursive: true, force: true })
     }
   })
 
@@ -55,6 +57,34 @@ describe('FileSyncService', () => {
     expect(content).toContain('date: 2026-03-24')
     expect(content).toContain('tags: [test, sync]')
     expect(content).toContain('My test file sync diary content.')
+  })
+
+  it('should omit frontmatter tags when they already appear inline in content', async () => {
+    await service.writeJournal({
+      ...sampleDiary,
+      content: '今天 #test 很开心，#sync 也不错',
+      tags: 'test,sync'
+    })
+
+    const year = sampleDiary.date.getFullYear().toString()
+    const month = (sampleDiary.date.getMonth() + 1).toString().padStart(2, '0')
+    const day = formatLocalDate(sampleDiary.date)
+    const expectedPath = path.join(rootPath, year, month, `${day}.md`)
+    const content = fs.readFileSync(expectedPath, 'utf8')
+
+    expect(content).not.toContain('tags:')
+    expect(content).toContain('#test')
+  })
+
+  it('should read inline tags from content when frontmatter omits tags', async () => {
+    await service.writeJournal({
+      ...sampleDiary,
+      content: '#疲惫 #深夜\n\n今天很累',
+      tags: '疲惫,深夜'
+    })
+
+    const readBack = await service.readJournal(sampleDiary.date)
+    expect(readBack?.tags).toBe('疲惫,深夜')
   })
 
   it('should read a previously written diary successfully', async () => {
@@ -99,5 +129,61 @@ describe('FileSyncService', () => {
 
     await service.deleteJournalFile(new Date(2025, 5, 11))
     expect(fs.existsSync(flatPath)).toBe(false)
+  })
+
+  it('should update an existing flat layout journal in place', async () => {
+    const flatPath = path.join(rootPath, '2025-06-12.md')
+    fs.mkdirSync(rootPath, { recursive: true })
+    fs.writeFileSync(flatPath, '---\ndate: 2025-06-12\n---\n\n旧内容', 'utf8')
+
+    await service.writeJournal({
+      ...sampleDiary,
+      id: 99,
+      date: new Date(2025, 5, 12),
+      content: '新内容'
+    })
+
+    expect(fs.existsSync(flatPath)).toBe(true)
+    expect(fs.existsSync(path.join(rootPath, '2025', '06', '2025-06-12.md'))).toBe(false)
+    const content = fs.readFileSync(flatPath, 'utf8')
+    expect(content).toContain('新内容')
+  })
+
+  it('should read journal via shadow file path hint for non-canonical nested layout', async () => {
+    const nestedDir = path.join(path.dirname(rootPath), 'nested', 'folder')
+    fs.mkdirSync(nestedDir, { recursive: true })
+    const nestedFile = path.join(nestedDir, '2025-07-20.md')
+    const md = `---\ndate: 2025-07-20\nid: 77\n---\n\n嵌套目录正文`
+    fs.writeFileSync(nestedFile, md, 'utf8')
+
+    const shadowPath = path.relative(path.dirname(rootPath), nestedFile).replace(/\\/g, '/')
+
+    const readBack = await service.readJournal(new Date(2025, 6, 20), shadowPath)
+    expect(readBack?.id).toBe(77)
+    expect(readBack?.content).toBe('嵌套目录正文')
+  })
+
+  it('should update an existing nested layout journal in place via shadow file path hint', async () => {
+    const nestedDir = path.join(path.dirname(rootPath), 'nested', 'folder')
+    fs.mkdirSync(nestedDir, { recursive: true })
+    const nestedFile = path.join(nestedDir, '2025-07-21.md')
+    fs.writeFileSync(nestedFile, '---\ndate: 2025-07-21\nid: 88\n---\n\n旧正文', 'utf8')
+
+    const shadowPath = path.relative(path.dirname(rootPath), nestedFile).replace(/\\/g, '/')
+
+    await service.writeJournal(
+      {
+        ...sampleDiary,
+        id: 88,
+        date: new Date(2025, 6, 21),
+        content: '新正文'
+      },
+      shadowPath
+    )
+
+    expect(fs.existsSync(nestedFile)).toBe(true)
+    expect(fs.existsSync(path.join(rootPath, '2025', '07', '2025-07-21.md'))).toBe(false)
+    const content = fs.readFileSync(nestedFile, 'utf8')
+    expect(content).toContain('新正文')
   })
 })

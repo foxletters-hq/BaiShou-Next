@@ -1,13 +1,6 @@
 import { Stack, Redirect } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View
-} from 'react-native'
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
@@ -37,10 +30,6 @@ const SAMPLE_MARKDOWN = `# CodeMirror POC
 `
 
 export default function DiaryCmPocScreen() {
-  if (!__DEV__) {
-    return <Redirect href="/(tabs)" />
-  }
-
   const insets = useSafeAreaInsets()
   const { colors } = useNativeTheme()
   const { services } = useBaishou()
@@ -115,6 +104,11 @@ export default function DiaryCmPocScreen() {
     return srcs.length ? srcs.join(', ') : '（无 attachment）'
   }, [content])
 
+  // 仅 DEV 构建可用；hooks 必须先于早返回调用，故放在所有 hooks 之后
+  if (!__DEV__) {
+    return <Redirect href="/(tabs)" />
+  }
+
   return (
     <>
       <Stack.Screen
@@ -141,13 +135,19 @@ export default function DiaryCmPocScreen() {
               <Text style={styles.btnText}>插入文本</Text>
             </Pressable>
             <Pressable
-              style={[styles.btn, { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }]}
+              style={[
+                styles.btn,
+                { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }
+              ]}
               onPress={() => editorRef.current?.focusAtOffset(content.length)}
             >
               <Text style={[styles.btnText, { color: colors.textPrimary }]}>聚焦末尾</Text>
             </Pressable>
             <Pressable
-              style={[styles.btn, { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }]}
+              style={[
+                styles.btn,
+                { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }
+              ]}
               onPress={() => editorRef.current?.blur()}
             >
               <Text style={[styles.btnText, { color: colors.textPrimary }]}>失焦</Text>
@@ -175,8 +175,15 @@ export default function DiaryCmPocScreen() {
             />
           )}
 
-          <Text style={[styles.previewLabel, { color: colors.textSecondary }]}>RN 侧 content 快照</Text>
-          <Text style={[styles.snapshot, { color: colors.textPrimary, backgroundColor: colors.bgSurface }]}>
+          <Text style={[styles.previewLabel, { color: colors.textSecondary }]}>
+            RN 侧 content 快照
+          </Text>
+          <Text
+            style={[
+              styles.snapshot,
+              { color: colors.textPrimary, backgroundColor: colors.bgSurface }
+            ]}
+          >
             {content}
           </Text>
         </ScrollView>

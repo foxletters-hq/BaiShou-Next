@@ -1,13 +1,20 @@
 import type { TtsSettings } from '../types/settings.types'
 import { isMimoVoiceCloneModel, resolveMimoTtsSynthesisModelId } from './mimo-tts.util'
 
-export const TTS_PROVIDER_IDS = ['openai-tts', 'mimo-tts', 'clone-tts', 'gpt-sovits'] as const
+export const TTS_PROVIDER_IDS = [
+  'openai-tts',
+  'mimo-tts',
+  'minimax-tts',
+  'clone-tts',
+  'gpt-sovits'
+] as const
 
 export type TtsProviderId = (typeof TTS_PROVIDER_IDS)[number]
 
 export const TTS_DEFAULT_BASE_URLS: Record<TtsProviderId, string> = {
   'openai-tts': 'https://api.openai.com/v1',
   'mimo-tts': 'https://api.xiaomimimo.com/v1',
+  'minimax-tts': 'https://api.minimaxi.com/v1',
   'clone-tts': 'http://127.0.0.1:8080',
   'gpt-sovits': 'http://127.0.0.1:9872'
 }
@@ -15,6 +22,7 @@ export const TTS_DEFAULT_BASE_URLS: Record<TtsProviderId, string> = {
 export const TTS_DEFAULT_MODEL_IDS: Record<TtsProviderId, string> = {
   'openai-tts': 'tts-1',
   'mimo-tts': 'mimo-v2.5-tts',
+  'minimax-tts': 'speech-2.8-hd',
   'clone-tts': 'default',
   'gpt-sovits': 'default'
 }
@@ -22,6 +30,7 @@ export const TTS_DEFAULT_MODEL_IDS: Record<TtsProviderId, string> = {
 export const TTS_DEFAULT_VOICES: Record<TtsProviderId, string> = {
   'openai-tts': 'alloy',
   'mimo-tts': '冰糖',
+  'minimax-tts': 'male-qn-qingse',
   'clone-tts': 'default',
   'gpt-sovits': 'default'
 }
@@ -98,7 +107,18 @@ export function getTtsInitialConfigs(): Record<TtsProviderId, TtsProviderLocalSt
       voice: TTS_DEFAULT_VOICES['mimo-tts'],
       speed: 1.0,
       responseFormat: 'wav',
-      availableModels: []
+      availableModels: [],
+      stream: true
+    },
+    'minimax-tts': {
+      baseUrl: TTS_DEFAULT_BASE_URLS['minimax-tts'],
+      apiKey: '',
+      modelId: TTS_DEFAULT_MODEL_IDS['minimax-tts'],
+      voice: TTS_DEFAULT_VOICES['minimax-tts'],
+      speed: 1.0,
+      responseFormat: 'mp3',
+      availableModels: [],
+      stream: true
     },
     'clone-tts': {
       baseUrl: TTS_DEFAULT_BASE_URLS['clone-tts'],
@@ -165,6 +185,7 @@ export function mergeTtsPersistedConfigs(
   return {
     'openai-tts': mergeTtsProviderEntry(defaults['openai-tts'], persisted?.['openai-tts']),
     'mimo-tts': mergeTtsProviderEntry(defaults['mimo-tts'], persisted?.['mimo-tts']),
+    'minimax-tts': mergeTtsProviderEntry(defaults['minimax-tts'], persisted?.['minimax-tts']),
     'clone-tts': mergeTtsProviderEntry(defaults['clone-tts'], persisted?.['clone-tts']),
     'gpt-sovits': mergeTtsProviderEntry(defaults['gpt-sovits'], persisted?.['gpt-sovits'])
   }

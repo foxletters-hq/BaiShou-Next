@@ -30,6 +30,11 @@ export interface ProviderListGroups {
 let providerSettingsCache: AIProviderConfig[] | null = null
 let providerListItemsCache: ProviderListItem[] | null = null
 
+export function clearProviderSettingsCache(): void {
+  providerSettingsCache = null
+  providerListItemsCache = null
+}
+
 export function peekProviderSettingsCache(): AIProviderConfig[] | null {
   return providerSettingsCache
 }

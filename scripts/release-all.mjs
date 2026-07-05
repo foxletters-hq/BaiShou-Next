@@ -39,8 +39,7 @@ console.log(`
 `)
 
 const steps = [
-  ['同步应用图标', process.execPath, [join(root, 'scripts/sync-app-icon.mjs')]],
-  ['同步版本号', process.execPath, [join(root, 'scripts/sync-app-version.mjs')]],
+  ['同步生成物', process.execPath, [join(root, 'scripts/sync-all.mjs')]],
   ['Android 签名配置', process.execPath, [join(root, 'scripts/setup-android-signing.mjs')]],
   ['Android Release APK', 'pnpm', ['--filter', '@baishou/mobile', 'build:release']],
   ['Windows 安装包', 'pnpm', ['--filter', '@baishou/desktop', 'build:win']]
@@ -84,7 +83,9 @@ if (skipped.length > 0) {
   console.log(`\n⏭️  已跳过: ${skipped.join('、')}`)
 }
 
-console.log('\nℹ️  官方不提供 Linux / iOS / macOS 安装包。Linux 自行编译：pnpm release:desktop:linux')
+console.log(
+  '\nℹ️  官方不提供 Linux / iOS / macOS 安装包。Linux 自行编译：pnpm release:desktop:linux'
+)
 
 if (failed.length > 0) {
   console.error(`\n❌ 以下步骤失败: ${failed.join('、')}`)

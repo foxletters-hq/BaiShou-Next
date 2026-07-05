@@ -1,137 +1,221 @@
-import React from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   View,
   Text,
   Pressable,
-  FlatList,
   Modal,
-  SafeAreaView,
   StyleSheet,
-  Image
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator
 } from 'react-native'
+import { Plus, Settings, Sparkles, X } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
+import { AssistantAvatar } from '../AssistantAvatar'
+import { AssistantKindBadge } from '../AssistantKindBadge'
+import { AssistantPickerMemoryPanel } from './AssistantPickerMemoryPanel'
+import type {
+  AssistantPickerSheetAssistant,
+  AssistantPickerSheetProps
+} from './assistant-picker-sheet.types'
 
-export interface AssistantPickerSheetProps {
-  visible: boolean
-  onClose: () => void
-  assistants: Array<{ id: string; name: string; avatar?: string; providerId: string }>
-  selectedId: string
-  onSelect: (id: string) => void
-}
+export type {
+  AssistantPickerSheetAssistant,
+  AssistantPickerSheetProps,
+  AssistantMemoryConfigPatch
+} from './assistant-picker-sheet.types'
 
 export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
-  visible,
+  isOpen,
   onClose,
   assistants,
-  selectedId,
-  onSelect
+  currentAssistantId,
+  onSelect,
+  onSaveMemoryConfig,
+  onSettingsPress,
+  onCreatePress
 }) => {
   const { t } = useTranslation()
   const { colors, tokens, maxModalWidth } = useNativeTheme()
+  const [selectedId, setSelectedId] = useState<string | null>(currentAssistantId ?? null)
+  const [isSavingMemory, setIsSavingMemory] = useState(false)
 
-  if (!visible) return null
+  useEffect(() => {
+    if (!isOpen) return
+    setSelectedId(currentAssistantId ?? assistants[0]?.id ?? null)
+  }, [isOpen, currentAssistantId, assistants])
 
-  const renderItem = ({
-    item
-  }: {
-    item: { id: string; name: string; avatar?: string; providerId: string }
-  }) => {
-    const isSelected = item.id === selectedId
-    return (
-      <Pressable
-        style={({ pressed }) => [
-          styles.item,
-          {
-            backgroundColor: isSelected
-              ? colors.primaryContainer
-              : pressed
-                ? colors.bgSurfaceNormal
-                : 'transparent',
-            borderRadius: tokens.radius.md
-          }
-        ]}
-        onPress={() => {
-          onSelect(item.id)
-          onClose()
-        }}
-      >
-        <View style={[styles.avatar, { backgroundColor: colors.bgSurfaceNormal }]}>
-          {item.avatar ? (
-            <Image source={{ uri: item.avatar }} style={styles.avatarImage} />
-          ) : (
-            <Text style={styles.avatarPlaceholder}>🤖</Text>
-          )}
-        </View>
-        <View style={styles.itemText}>
-          <Text
-            style={[
-              styles.itemName,
-              { color: isSelected ? colors.onPrimaryContainer : colors.textPrimary }
-            ]}
-          >
-            {item.name}
-          </Text>
-          <Text style={[styles.itemProvider, { color: colors.textTertiary }]}>
-            {item.providerId}
-          </Text>
-        </View>
-        {isSelected && <Text style={{ color: colors.primary, fontSize: 18 }}>✓</Text>}
-      </Pressable>
-    )
-  }
+  const selectedAssistant = useMemo(
+    () => assistants.find((a) => a.id === selectedId) ?? null,
+    [assistants, selectedId]
+  )
+
+  const handleSaveMemoryConfig = useCallback(
+    async (assistantId: string, updates: Parameters<NonNullable<typeof onSaveMemoryConfig>>[1]) => {
+      if (!onSaveMemoryConfig) return
+      setIsSavingMemory(true)
+      try {
+        await onSaveMemoryConfig(assistantId, updates)
+      } finally {
+        setIsSavingMemory(false)
+      }
+    },
+    [onSaveMemoryConfig]
+  )
+
+  const handleConfirmSelect = useCallback(() => {
+    if (!selectedAssistant) return
+    onSelect(selectedAssistant)
+    onClose()
+  }, [onClose, onSelect, selectedAssistant])
+
+  if (!isOpen) return null
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={[styles.overlay, { backgroundColor: colors.overlay }]} onPress={onClose}>
-        <SafeAreaView style={styles.safeArea}>
-          <Pressable
-            style={[
-              styles.modalContent,
-              {
-                width: '90%',
-                maxWidth: maxModalWidth,
-                maxHeight: '75%',
-                backgroundColor: colors.bgSurface,
-                borderRadius: tokens.radius.xl,
-                padding: tokens.spacing.lg
-              }
-            ]}
-            onPress={(e) => e.stopPropagation()}
+    <Modal visible={isOpen} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={[styles.overlay, { backgroundColor: colors.overlay }]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+
+        <View
+          style={[
+            styles.sheet,
+            {
+              backgroundColor: colors.bgSurface,
+              maxWidth: maxModalWidth
+            }
+          ]}
+        >
+          <View style={styles.handle}>
+            <View style={[styles.handleBar, { backgroundColor: colors.borderSubtle }]} />
+          </View>
+
+          <View style={styles.header}>
+            <Sparkles size={20} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+            <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
+              {t('agent.assistant.select_title', '选择伙伴')}
+            </Text>
+            <View style={styles.headerSpacer} />
+            {onSettingsPress ? (
+              <TouchableOpacity onPress={onSettingsPress} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Settings size={22} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+              </TouchableOpacity>
+            ) : null}
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <X size={22} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView
+            style={styles.body}
+            contentContainerStyle={styles.bodyContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            <View style={styles.handle}>
-              <View style={[styles.handleBar, { backgroundColor: colors.borderSubtle }]} />
-            </View>
-
-            <View style={styles.header}>
-              <View style={[styles.headerTitleRow, { gap: tokens.spacing.sm }]}>
-                <Text style={styles.headerIcon}>🤖</Text>
-                <Text style={[styles.headerText, { color: colors.textPrimary }]}>
-                  {t('agent.assistant.select_title')}
+            {assistants.length === 0 ? (
+              <View style={styles.emptyWrap}>
+                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                  {t('agent.assistant.empty_hint', '还没有伙伴，创建一个吧')}
                 </Text>
+                {onCreatePress ? (
+                  <TouchableOpacity
+                    style={[styles.createBtn, { backgroundColor: colors.primary }]}
+                    onPress={() => {
+                      onClose()
+                      onCreatePress()
+                    }}
+                  >
+                    <Plus size={18} color={colors.textOnPrimary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                    <Text style={[styles.createBtnText, { color: colors.textOnPrimary }]}>
+                      {t('agent.assistant.create_first', '创建第一个伙伴')}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
               </View>
-              <Pressable onPress={onClose}>
-                <Text style={[styles.closeIcon, { color: colors.textSecondary }]}>×</Text>
-              </Pressable>
-            </View>
+            ) : (
+              <>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.assistantRow}
+                >
+                  {assistants.map((assistant) => {
+                    const active = assistant.id === selectedId
+                    return (
+                      <TouchableOpacity
+                        key={assistant.id}
+                        style={[
+                          styles.assistantChip,
+                          {
+                            backgroundColor: active ? colors.primaryContainer : colors.bgSurfaceNormal,
+                            borderColor: active ? colors.primary : colors.borderSubtle
+                          }
+                        ]}
+                        onPress={() => setSelectedId(assistant.id)}
+                        activeOpacity={0.85}
+                      >
+                        <AssistantAvatar
+                          emoji={assistant.emoji}
+                          avatarPath={assistant.avatarPath}
+                          resolvedAvatarUri={assistant.displayAvatarUri}
+                          size={32}
+                        />
+                        <View style={styles.chipTextWrap}>
+                          <Text
+                            style={[
+                              styles.chipTitle,
+                              { color: active ? colors.onPrimaryContainer : colors.textPrimary }
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {assistant.name}
+                          </Text>
+                          <AssistantKindBadge kind={assistant.assistantKind} compact />
+                        </View>
+                      </TouchableOpacity>
+                    )
+                  })}
+                </ScrollView>
 
-            <FlatList
-              data={assistants}
-              keyExtractor={(item) => item.id}
-              renderItem={renderItem}
-              style={styles.list}
-              showsVerticalScrollIndicator={false}
-              ListEmptyComponent={
-                <View style={[styles.emptyContainer, { padding: tokens.spacing.lg }]}>
-                  <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                    {t('agent.assistant.no_assistant')}
-                  </Text>
-                </View>
-              }
-            />
-          </Pressable>
-        </SafeAreaView>
-      </Pressable>
+                {onSaveMemoryConfig ? (
+                  <AssistantPickerMemoryPanel
+                    assistant={selectedAssistant}
+                    isSaving={isSavingMemory}
+                    onSaveMemoryConfig={handleSaveMemoryConfig}
+                  />
+                ) : null}
+              </>
+            )}
+          </ScrollView>
+
+          {assistants.length > 0 ? (
+            <View style={[styles.footer, { borderTopColor: colors.borderSubtle }]}>
+              <TouchableOpacity
+                style={[
+                  styles.confirmBtn,
+                  {
+                    backgroundColor: selectedAssistant ? colors.primary : colors.bgSurfaceNormal,
+                    opacity: selectedAssistant ? 1 : 0.6
+                  }
+                ]}
+                disabled={!selectedAssistant}
+                onPress={handleConfirmSelect}
+                activeOpacity={0.9}
+              >
+                <Text
+                  style={[
+                    styles.confirmBtnText,
+                    { color: selectedAssistant ? colors.textOnPrimary : colors.textSecondary }
+                  ]}
+                >
+                  {t('agent.assistant.use_selected', '使用此伙伴')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+        </View>
+      </View>
     </Modal>
   )
 }
@@ -139,18 +223,18 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    justifyContent: 'flex-end',
-    alignItems: 'center'
+    justifyContent: 'flex-end'
   },
-  safeArea: {
+  sheet: {
     width: '100%',
-    alignItems: 'center',
-    marginBottom: 16
+    maxHeight: '88%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden'
   },
-  modalContent: {},
   handle: {
     alignItems: 'center',
-    marginBottom: 12
+    paddingTop: 10
   },
   handleBar: {
     width: 40,
@@ -159,65 +243,83 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 12
   },
-  headerTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center'
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '700'
   },
-  headerIcon: {
-    fontSize: 20
-  },
-  headerText: {
-    fontSize: 18,
-    fontWeight: '600'
-  },
-  closeIcon: {
-    fontSize: 24
-  },
-  list: {
-    maxHeight: 350
-  },
-  item: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    marginBottom: 4
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12
-  },
-  avatarImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20
-  },
-  avatarPlaceholder: {
-    fontSize: 20
-  },
-  itemText: {
+  headerSpacer: {
     flex: 1
   },
-  itemName: {
-    fontSize: 16,
-    fontWeight: '600'
+  body: {
+    flexGrow: 0,
+    flexShrink: 1
   },
-  itemProvider: {
-    fontSize: 12,
-    marginTop: 2
+  bodyContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 16
   },
-  emptyContainer: {
-    alignItems: 'center'
+  assistantRow: {
+    gap: 10,
+    paddingBottom: 4
+  },
+  assistantChip: {
+    width: 148,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 10,
+    borderRadius: 14,
+    borderWidth: 1
+  },
+  chipTextWrap: {
+    flex: 1,
+    gap: 2
+  },
+  chipTitle: {
+    fontSize: 13,
+    fontWeight: '700'
+  },
+  emptyWrap: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    gap: 16
   },
   emptyText: {
-    fontSize: 16
+    fontSize: 15,
+    textAlign: 'center'
+  },
+  createBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10
+  },
+  createBtnText: {
+    fontSize: 15,
+    fontWeight: '600'
+  },
+  footer: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 16,
+    borderTopWidth: StyleSheet.hairlineWidth
+  },
+  confirmBtn: {
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center'
+  },
+  confirmBtnText: {
+    fontSize: 15,
+    fontWeight: '700'
   }
 })

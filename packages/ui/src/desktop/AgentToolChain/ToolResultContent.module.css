@@ -1,0 +1,110 @@
+.resultViewport {
+  max-height: min(320px, 42vh);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+}
+
+.sourceUrl {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-primary);
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.sourceUrl:hover {
+  text-decoration: underline;
+}
+
+.markdownBody:global(.x-markdown) {
+  width: 100% !important;
+  font-size: 13px !important;
+  line-height: 1.55 !important;
+}
+
+.markdownBody :global(.x-markdown p) {
+  margin: 0 0 0.5em;
+}
+
+.markdownBody :global(.x-markdown p:last-child) {
+  margin-bottom: 0;
+}
+
+.resultTextLog {
+  margin: 0;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.5;
+}
+
+.errorText {
+  color: var(--color-error);
+}
+
+.structDataGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.structItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.structTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.structLink {
+  font-size: 12px;
+  color: var(--color-primary);
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.structLink:hover {
+  text-decoration: underline;
+}
+
+.structSnippet {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.structValueRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  padding: 2px 0;
+  border-bottom: 1px dashed var(--border-subtle);
+}
+
+.structValueRow:last-child {
+  border-bottom: none;
+}
+
+.structKey {
+  font-weight: 600;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.structVal {
+  color: var(--text-secondary);
+  font-family: var(--font-mono, monospace);
+  text-align: right;
+  word-break: break-all;
+}

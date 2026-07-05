@@ -1,11 +1,25 @@
-import React from 'react'
+import React, { useCallback, useEffect } from 'react'
 import { DiaryEditor } from '@baishou/ui'
 import './DiaryEditorPage.css'
 import { useDiaryEditorPage } from './hooks/useDiaryEditorPage'
+import { useTts } from '../agent/hooks/useTts'
 import { motion } from 'framer-motion'
+
+const DIARY_TTS_PLAYBACK_ID = 'diary-editor'
 
 export const DiaryEditorPage: React.FC = () => {
   const editor = useDiaryEditorPage()
+  const tts = useTts(editor.t)
+
+  useEffect(() => {
+    return () => {
+      tts.stopTts()
+    }
+  }, [tts.stopTts])
+
+  const handleReadAloud = useCallback(() => {
+    void tts.handleTtsReadAloud(editor.content, DIARY_TTS_PLAYBACK_ID)
+  }, [editor.content, tts.handleTtsReadAloud])
 
   if (editor.isLoading) {
     return (
@@ -32,20 +46,23 @@ export const DiaryEditorPage: React.FC = () => {
     >
       <DiaryEditor
         content={editor.content}
-        tags={editor.tags}
         selectedDate={editor.selectedDate}
+        attachmentBasePath={editor.attachmentBasePath}
         weather={editor.weather}
+        mood={editor.mood}
         isFavorite={editor.isFavorite}
         mediaPaths={editor.mediaPaths}
         isSaving={editor.isSaving}
         onContentChange={editor.handleContentChange}
-        onTagsChange={editor.setTags}
         onDateChange={editor.setSelectedDate}
         onWeatherChange={editor.setWeather}
+        onMoodChange={editor.setMood}
         onFavoriteChange={editor.setIsFavorite}
         onMediaPathsChange={editor.setMediaPaths}
         onSave={editor.handleSave}
         onCancel={editor.handleBack}
+        onReadAloud={handleReadAloud}
+        isTtsPlaying={tts.ttsPlayingMsgId === DIARY_TTS_PLAYBACK_ID}
       />
 
       {editor.showExitConfirm && (

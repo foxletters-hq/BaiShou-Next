@@ -67,12 +67,52 @@ export class SettingsFileService {
   }
 
   async readAllSettings(): Promise<Record<string, any>> {
+    const snapshot = await this.readAllSettingsForResync()
+    return snapshot.settings
+  }
+
+  /** 读取磁盘设置快照，并附带各域 JSON 文件的 mtime（用于 SQLite 与磁盘双向合并） */
+  async readAllSettingsForResync(): Promise<{
+    settings: Record<string, any>
+    domainFileMtimeMs: Record<string, number>
+  }> {
     const settingsDir = await this.getSettingsDirectory()
     const merged = await this.readMergedFromSettingsDir(settingsDir)
     if (Object.keys(merged).length > 0) {
-      return merged
+      return {
+        settings: merged,
+        domainFileMtimeMs: await this.readDomainFileMtimes(settingsDir)
+      }
     }
-    return this.migrateLegacySettingsIfPresent(settingsDir)
+    const legacy = await this.migrateLegacySettingsIfPresent(settingsDir)
+    return {
+      settings: legacy,
+      domainFileMtimeMs: await this.readDomainFileMtimes(settingsDir)
+    }
+  }
+
+  private async readDomainFileMtimes(settingsDir: string): Promise<Record<string, number>> {
+    const mtimes: Record<string, number> = {}
+    try {
+      const entries = await this.fileSystem.readdir(settingsDir)
+      const jsonFiles = entries.filter(
+        (name) =>
+          name.endsWith('.json') &&
+          !name.endsWith('.tmp') &&
+          !name.endsWith(LEGACY_SETTINGS_MIGRATED_SUFFIX)
+      )
+      for (const fileName of jsonFiles) {
+        try {
+          const stat = await this.fileSystem.stat(path.join(settingsDir, fileName))
+          mtimes[fileName] = stat.mtimeMs ?? 0
+        } catch {
+          // ignore unreadable stat
+        }
+      }
+    } catch (e: any) {
+      if (e.code !== 'ENOENT') throw e
+    }
+    return mtimes
   }
 
   private async readMergedFromSettingsDir(settingsDir: string): Promise<Record<string, any>> {

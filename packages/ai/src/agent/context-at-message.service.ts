@@ -22,6 +22,7 @@ export interface ContextAtMessageOptions {
   modelId?: string
   providerType?: string
   systemPrompt?: string
+  wrapMessageTime?: boolean
 }
 
 export interface ContextAtMessageResult {
@@ -73,7 +74,8 @@ export class ContextAtMessageService {
     const modelMessages = await MessageAdapter.toVercelMessages(
       dbHistory,
       options.modelId,
-      options.providerType
+      options.providerType,
+      { wrapMessageTime: options.wrapMessageTime }
     )
 
     const { chain, compressedContent, systemPrompt } = ContextCallChainBuilder.build({

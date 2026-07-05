@@ -50,6 +50,6 @@ npmRebuild: true
 # 供 electron-updater 识别更新源；构建时由 scripts/electron-builder.mjs 默认 --publish never，不在此发 Release。
 publish:
   provider: github
-  owner: Anson-Trio
+  owner: foxletters-hq
   repo: BaiShou-Next
   releaseType: release

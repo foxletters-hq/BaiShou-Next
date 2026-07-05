@@ -1,0 +1,28 @@
+{
+  "$schema": "./provider-icon-lobe.manifest.schema.json",
+  "comment": "白守供应商 id → LobeHub static-svg id。运行 pnpm sync 下载到 packages/ui/src/assets/ai_provider_icon/",
+  "providers": [
+    { "id": "openai", "lobeId": "openai" },
+    { "id": "gemini", "lobeId": "gemini" },
+    { "id": "anthropic", "lobeId": "anthropic", "monoOnly": true },
+    { "id": "grok", "lobeId": "xai" },
+    { "id": "deepseek", "lobeId": "deepseek" },
+    { "id": "siliconflow", "lobeId": "siliconcloud" },
+    { "id": "kimi", "lobeId": "moonshot" },
+    { "id": "xiaomimimo", "lobeId": "xiaomimimo" },
+    { "id": "minimax", "lobeId": "minimax" },
+    { "id": "zhipu", "lobeId": "zhipu" },
+    { "id": "dashscope", "lobeId": "bailian" },
+    { "id": "doubao", "lobeId": "doubao" },
+    { "id": "volcengine", "lobeId": "volcengine" },
+    { "id": "lmstudio", "lobeId": "lmstudio" },
+    { "id": "ollama", "lobeId": "ollama" },
+    { "id": "openrouter", "lobeId": "openrouter", "monoOnly": true },
+    { "id": "opencodego", "lobeId": "opencode", "monoOnly": true },
+    { "id": "mistral", "lobeId": "mistral" },
+    { "id": "stepfun", "lobeId": "stepfun" },
+    { "id": "hunyuan", "lobeId": "hunyuan" },
+    { "id": "vertexai", "lobeId": "vertexai" },
+    { "id": "vercel", "lobeId": "vercel" }
+  ]
+}

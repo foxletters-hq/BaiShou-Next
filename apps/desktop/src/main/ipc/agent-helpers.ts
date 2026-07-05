@@ -24,12 +24,19 @@ import {
   GlobalModelsConfig,
   formatDiaryPreviewText,
   buildDiaryWritingGuidelinesForSystemPrompt,
-  resolveDiaryAppendBlock,
+  prepareDiaryAppendContent,
+  prepareDiaryWriteContent,
   logger,
   parseDateStr,
+  resolveDiaryEditMode,
   formatUserCardFromProfile,
   isConfiguredProviderId,
-  isConfiguredDialogueModelId
+  isConfiguredDialogueModelId,
+  normalizeToolManagementConfig,
+  normalizeEmojiToolConfig,
+  resolveAssistantEmojiConfig,
+  type AssistantEmojiPrefs,
+  DEFAULT_TOOL_MANAGEMENT_CONFIG
 } from '@baishou/shared'
 
 function previewDiaryRow(raw: string | null | undefined): string {
@@ -54,6 +61,8 @@ import {
   DatabaseAdapter,
   EmbeddingAdapter,
   MemoryDeduplicationServiceImpl,
+  createDiaryReadGuard,
+  syncMcpToolUserConfig,
   type ToolContext
 } from '@baishou/ai'
 import { getDiaryManager } from './diary.ipc'
@@ -71,7 +80,22 @@ export function getAgentManagers() {
   const sessionManager = new SessionManagerService(
     realSessionRepo,
     sessionFileService,
-    sessionSyncService
+    sessionSyncService,
+    {
+      onBeforeWrite: (sessionId) => {
+        void (async () => {
+          try {
+            const { sessionWatcher } = await import('../services/session-watcher.service')
+            const vaultPath = await pathService.getActiveVaultPath()
+            if (!vaultPath) return
+            const { join } = await import('path')
+            sessionWatcher.suppressPath(join(vaultPath, 'Sessions', `${sessionId}.json`))
+          } catch {
+            // watcher 未启动时忽略
+          }
+        })()
+      }
+    }
   )
 
   const realAssistantRepo = new AssistantRepository(db)
@@ -136,6 +160,7 @@ export function createDiarySearcher() {
       async writeEntry(date: string, content: string, tags?: string) {
         try {
           const diaryService = getDiaryManager()
+          const templateConfig = (await settingsManager.get<any>('diary_template_config')) || {}
           const tagsStr = tags
             ?.split(',')
             .map((s) => s.trim())
@@ -143,7 +168,7 @@ export function createDiarySearcher() {
             .join(',')
           await diaryService.create({
             date: parseDateStr(date),
-            content,
+            content: prepareDiaryWriteContent(content, templateConfig, new Date()),
             ...(tagsStr ? { tags: tagsStr } : {})
           })
           return { ok: true as const }
@@ -172,10 +197,15 @@ export function createDiarySearcher() {
           }
 
           let finalContent = content
-          if (mode === 'append') {
+          const editMode = resolveDiaryEditMode(mode)
+          if (editMode === 'append') {
             const templateConfig = (await settingsManager.get<any>('diary_template_config')) || {}
-            const block = resolveDiaryAppendBlock(templateConfig, new Date()).replace(/\u200B$/, '')
-            finalContent = existing.content.trimEnd() + block + content
+            finalContent = prepareDiaryAppendContent(
+              existing.content,
+              content,
+              templateConfig,
+              new Date()
+            )
           }
 
           await diaryService.update(existing.id, {
@@ -210,7 +240,11 @@ export function createDiarySearcher() {
         }
       }
     }
-  } catch {
+  } catch (e) {
+    logger.warn(
+      '[Agent] createDiarySearcher failed; diary CRUD tools will be unavailable:',
+      e instanceof Error ? e.message : String(e)
+    )
     return undefined
   }
 }
@@ -298,6 +332,94 @@ export async function getActiveProvider(requestedProviderId?: string) {
   return provider
 }
 
+type ResolvedProvider = Awaited<ReturnType<typeof getActiveProvider>>
+
+async function resolveEmbeddingSystemModels(globalModels?: GlobalModelsConfig | null): Promise<{
+  hasEmbeddingModel: boolean
+  embeddingProvider?: ResolvedProvider
+  embeddingModelId?: string
+}> {
+  const models = globalModels ?? (await settingsManager.get<GlobalModelsConfig>('global_models'))
+  const embeddingProviderId = models?.globalEmbeddingProviderId
+  let embeddingModelId = models?.globalEmbeddingModelId
+  let embeddingProvider: ResolvedProvider | undefined
+
+  if (embeddingProviderId && embeddingModelId && embeddingModelId !== 'off') {
+    try {
+      embeddingProvider = await getActiveProvider(embeddingProviderId)
+    } catch {
+      embeddingModelId = undefined
+    }
+  } else {
+    embeddingModelId = undefined
+  }
+
+  return {
+    hasEmbeddingModel: Boolean(embeddingProvider && embeddingModelId),
+    embeddingProvider,
+    embeddingModelId
+  }
+}
+
+/** 从设置构建 Agent/MCP 工具上下文用的 userConfig，不依赖对话模型 Provider */
+export async function buildAgentUserConfigFromSettings(options?: {
+  assistantContextWindow?: number
+  searchMode?: boolean
+  globalModels?: GlobalModelsConfig | null
+  hasEmbeddingModel?: boolean
+  emojiGroupId?: string | null
+  assistantEmojiPrefs?: AssistantEmojiPrefs
+}): Promise<Record<string, unknown>> {
+  const ragConfig = await settingsManager.get<any>('rag_config')
+  const toolManagementConfig = normalizeToolManagementConfig(
+    (await settingsManager.get<any>('tool_management_config')) ?? DEFAULT_TOOL_MANAGEMENT_CONFIG
+  )
+  const behaviorConfig =
+    (await settingsManager.get<any>('agent_behavior')) ??
+    (await settingsManager.get<any>('agent_behavior_config'))
+  const webSearchConfig = await settingsManager.get<any>('web_search_config')
+  const diaryTemplateConfig = (await settingsManager.get<any>('diary_template_config')) || {}
+
+  const hasEmbeddingModel =
+    options?.hasEmbeddingModel ??
+    (await resolveEmbeddingSystemModels(options?.globalModels)).hasEmbeddingModel
+
+  let userCard: string | undefined
+  try {
+    const db = connectionManager.getDb()
+    const profileRepo = new UserProfileRepository(db)
+    const profile = await profileRepo.getProfile()
+    userCard = formatUserCardFromProfile(profile)
+  } catch (e: any) {
+    logger.warn('[buildAgentUserConfigFromSettings] Failed to load user profile:', e.message || e)
+  }
+
+  return {
+    ragEnabled: ragConfig?.ragEnabled ?? true,
+    hasEmbeddingModel,
+    disabledToolIds: toolManagementConfig.disabledToolIds,
+    recentCount:
+      options?.assistantContextWindow !== undefined
+        ? options.assistantContextWindow < 0
+          ? 0
+          : options.assistantContextWindow
+        : (behaviorConfig?.agentContextWindowSize ?? 30),
+    web_search_enabled: options?.searchMode ?? false,
+    ...webSearchConfigToUserConfig(webSearchConfig),
+    userCard,
+    diaryAiWritingPrompt: buildDiaryWritingGuidelinesForSystemPrompt(diaryTemplateConfig),
+    agentGuidelines:
+      typeof behaviorConfig?.agentGuidelines === 'string' &&
+      behaviorConfig.agentGuidelines.trim().length > 0
+        ? behaviorConfig.agentGuidelines.trim()
+        : undefined,
+    emojiConfig: resolveAssistantEmojiConfig(
+      normalizeEmojiToolConfig(toolManagementConfig.emojiConfig),
+      options?.assistantEmojiPrefs ?? { emojiGroupId: options?.emojiGroupId }
+    )
+  }
+}
+
 /**
  * 构建 Agent 流式调用所需的通用配置
  * @param assistantContextWindow 助手的上下文轮数配置，优先于全局配置
@@ -306,21 +428,11 @@ export async function buildStreamConfig(
   requestedProviderId?: string,
   requestedModelId?: string,
   searchMode?: boolean,
-  assistantContextWindow?: number
+  assistantContextWindow?: number,
+  assistantEmojiPrefs?: AssistantEmojiPrefs
 ) {
   const provider = await getActiveProvider(requestedProviderId)
   const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
-
-  // 获取用户身份卡信息
-  let userCard: string | undefined
-  try {
-    const db = connectionManager.getDb()
-    const profileRepo = new UserProfileRepository(db)
-    const profile = await profileRepo.getProfile()
-    userCard = formatUserCardFromProfile(profile)
-  } catch (e: any) {
-    logger.warn('[buildStreamConfig] Failed to load user profile:', e.message || e)
-  }
 
   const namingProviderId = globalModels?.globalNamingProviderId || provider.config.id
   let namingModelId =
@@ -352,44 +464,16 @@ export async function buildStreamConfig(
     }
   }
 
-  const ragConfig = await settingsManager.get<any>('rag_config')
-  const toolManagementConfig = await settingsManager.get<any>('tool_management_config')
-  const behaviorConfig = await settingsManager.get<any>('agent_behavior_config')
-  const webSearchConfig = await settingsManager.get<any>('web_search_config')
+  const { hasEmbeddingModel, embeddingProvider, embeddingModelId } =
+    await resolveEmbeddingSystemModels(globalModels)
 
-  const embeddingProviderId = globalModels?.globalEmbeddingProviderId
-  let embeddingModelId = globalModels?.globalEmbeddingModelId
-  let embeddingProvider: any = undefined
-
-  if (embeddingProviderId && embeddingModelId && embeddingModelId !== 'off') {
-    try {
-      embeddingProvider = await getActiveProvider(embeddingProviderId)
-    } catch (e) {
-      embeddingModelId = undefined
-    }
-  } else {
-    embeddingModelId = undefined
-  }
-
-  const hasEmbeddingModel = !!embeddingProvider && !!embeddingModelId
-
-  const diaryTemplateConfig = (await settingsManager.get<any>('diary_template_config')) || {}
-
-  const userConfig = {
-    ragEnabled: ragConfig?.ragEnabled ?? true,
+  const userConfig = await buildAgentUserConfigFromSettings({
+    assistantContextWindow,
+    searchMode,
+    globalModels,
     hasEmbeddingModel,
-    disabledToolIds: toolManagementConfig?.disabledToolIds || [],
-    recentCount:
-      assistantContextWindow !== undefined
-        ? assistantContextWindow < 0
-          ? 0
-          : assistantContextWindow
-        : (behaviorConfig?.agentContextWindowSize ?? 30),
-    web_search_enabled: searchMode ?? false,
-    ...webSearchConfigToUserConfig(webSearchConfig),
-    userCard,
-    diaryAiWritingPrompt: buildDiaryWritingGuidelinesForSystemPrompt(diaryTemplateConfig)
-  }
+    assistantEmojiPrefs
+  })
 
   const namingModelConfigured =
     isConfiguredProviderId(globalModels?.globalNamingProviderId) &&
@@ -436,7 +520,8 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
     return mcpToolContextCache.context
   }
 
-  const { userConfig, systemModels } = await buildStreamConfig()
+  const userConfig = await buildAgentUserConfigFromSettings()
+  const { embeddingProvider, embeddingModelId } = await resolveEmbeddingSystemModels()
 
   const drizzleDb = connectionManager.getDb()
   const clientExecutor = createSqlExecutorFromDrizzleDb(drizzleDb)
@@ -445,25 +530,21 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
   const dbAdapter = new DatabaseAdapter(hsRepo, msgRepo, drizzleDb)
 
   let embAdapter: EmbeddingAdapter | undefined
-  if (systemModels?.embeddingProvider && systemModels?.embeddingModelId) {
-    embAdapter = new EmbeddingAdapter(
-      systemModels.embeddingProvider,
-      systemModels.embeddingModelId,
-      hsRepo
-    )
+  if (embeddingProvider && embeddingModelId) {
+    embAdapter = new EmbeddingAdapter(embeddingProvider, embeddingModelId, hsRepo)
   }
 
   let dedupService: MemoryDeduplicationServiceImpl | undefined
-  if (embAdapter && systemModels?.embeddingProvider && systemModels?.embeddingModelId) {
+  if (embAdapter && embeddingProvider && embeddingModelId) {
     dedupService = new MemoryDeduplicationServiceImpl(
       embAdapter,
       dbAdapter,
-      systemModels.embeddingProvider,
-      systemModels.embeddingModelId
+      embeddingProvider,
+      embeddingModelId
     )
   }
 
-  const context: ToolContext = {
+  const context = syncMcpToolUserConfig({
     sessionId: 'mcp-external',
     vaultName,
     userConfig,
@@ -474,8 +555,9 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
     summaryReader: dbAdapter,
     deduplicationService: dedupService,
     webSearchResultFetcher: createWebSearchResultFetcher(),
-    fetchSearchPage: createFetchSearchPage()
-  }
+    fetchSearchPage: createFetchSearchPage(),
+    diaryReadGuard: createDiaryReadGuard()
+  })
 
   mcpToolContextCache = {
     vaultName,

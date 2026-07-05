@@ -5,6 +5,8 @@ import {
   extractTagsFromTagLine,
   isDiaryTagLine,
   parseDiaryEditorContent,
+  resolveDiaryTagsFromSources,
+  stripDedicatedTagLinesFromContent,
   stripDiaryTagLineFromContent
 } from '../diary-content-tags.util'
 
@@ -45,11 +47,17 @@ describe('diary-content-tags.util', () => {
     )
   })
 
-  it('已有部分内联标签时只补缺失项', () => {
+  it('正文已有内联标签时不再从元数据重复注入', () => {
     expect(composeDiaryEditorContent('今天 #日记 很开心', ['日记', '生活'])).toBe(
-      '今天 #日记 很开心 #生活'
+      '今天 #日记 很开心'
     )
     expect(composeDiaryEditorContent('今天 #日记 很开心', ['日记'])).toBe('今天 #日记 很开心')
+  })
+
+  it('无内联标签时仍从元数据补全（旧数据迁移）', () => {
+    expect(composeDiaryEditorContent('今天很开心', ['日记', '生活'])).toBe(
+      '#日记 #生活\n\n今天很开心'
+    )
   })
 
   it('无标签时正文原样保留', () => {
@@ -61,5 +69,17 @@ describe('diary-content-tags.util', () => {
   it('剥离旧版首行纯标签行', () => {
     expect(stripDiaryTagLineFromContent('#日记\n\n正文')).toBe('正文')
     expect(stripDiaryTagLineFromContent('正文 #日记')).toBe('正文 #日记')
+  })
+
+  it('合并 frontmatter 与正文内联标签', () => {
+    expect(resolveDiaryTagsFromSources(['日记'], '今天 #生活 很开心')).toEqual(['日记', '生活'])
+    expect(resolveDiaryTagsFromSources([], '#疲惫 #深夜\n\n正文')).toEqual(['疲惫', '深夜'])
+  })
+
+  it('预览时剥离独立标签行，保留正文内联标签', () => {
+    const full = '#疲惫 #深夜 #反思\n\n##### 12:00\n\n今天 #市集 很开心'
+    expect(stripDedicatedTagLinesFromContent(full)).toBe(
+      '##### 12:00\n\n今天 #市集 很开心'
+    )
   })
 })

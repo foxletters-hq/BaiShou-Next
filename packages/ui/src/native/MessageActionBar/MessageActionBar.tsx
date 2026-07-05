@@ -1,6 +1,16 @@
 import React, { useState, useCallback } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
+import { View, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import {
+  Check,
+  Copy,
+  Edit3,
+  GitBranch,
+  ListTree,
+  RefreshCcw,
+  Trash2,
+  Volume2
+} from 'lucide-react-native'
 import { NativeIconButton } from '../icons/NativeIconButton'
 import { useNativeTheme } from '../theme'
 import {
@@ -20,6 +30,10 @@ export interface MessageActionBarProps {
   isTtsPlaying?: boolean
   /** 自定义聊天背景上为操作图标启用反色混合 */
   invertOverBackground?: boolean
+  /** 聊天气泡操作栏使用更大触控区域 */
+  comfortableTouch?: boolean
+  /** 重试/重新发送处理中或流式生成未完成时禁用 */
+  retryDisabled?: boolean
 }
 
 export const MessageActionBar: React.FC<MessageActionBarProps> = ({
@@ -32,11 +46,15 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
   onShowContext,
   isAI = false,
   isTtsPlaying = false,
-  invertOverBackground = false
+  invertOverBackground = false,
+  comfortableTouch = false,
+  retryDisabled = false
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const [copied, setCopied] = useState(false)
+  const iconSize = comfortableTouch ? 16 : 14
+  const iconButtonStyle = comfortableTouch ? styles.comfortableIconButton : undefined
 
   const invertIconProps = (skipInvert = false) =>
     invertOverBackground && !skipInvert
@@ -49,11 +67,24 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
     setTimeout(() => setCopied(false), 2000)
   }, [onCopy])
 
+  const handleRetry = useCallback(() => {
+    if (!onRetry || retryDisabled) return
+    onRetry()
+  }, [onRetry, retryDisabled])
+
   return (
-    <View style={[styles.container, isAI ? styles.alignLeft : styles.alignRight]}>
+    <View
+      style={[
+        styles.container,
+        comfortableTouch && styles.comfortableContainer,
+        isAI ? styles.alignLeft : styles.alignRight
+      ]}
+    >
       <NativeIconButton
-        name={copied ? 'check' : 'content-copy'}
+        icon={copied ? Check : Copy}
         onPress={handleCopy}
+        size={iconSize}
+        style={iconButtonStyle}
         color={copied ? colors.success : undefined}
         accessibilityLabel={t('agent.chat.copy', '复制内容')}
         {...invertIconProps(copied)}
@@ -61,8 +92,10 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
 
       {isAI && onReadAloud && (
         <NativeIconButton
-          name="volume-up"
+          icon={Volume2}
           onPress={onReadAloud}
+          size={iconSize}
+          style={iconButtonStyle}
           active={isTtsPlaying}
           loading={isTtsPlaying}
           accessibilityLabel={t('agent.chat.readAloud', '语音朗读')}
@@ -72,8 +105,10 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
 
       {onEdit && (
         <NativeIconButton
-          name="edit"
+          icon={Edit3}
           onPress={onEdit}
+          size={iconSize}
+          style={iconButtonStyle}
           accessibilityLabel={t(
             isAI ? 'agent.chat.edit_ai' : 'agent.chat.edit',
             isAI ? '编辑AI回复' : '编辑我的消息'
@@ -84,8 +119,11 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
 
       {onRetry && (
         <NativeIconButton
-          name="refresh"
-          onPress={onRetry}
+          icon={RefreshCcw}
+          onPress={handleRetry}
+          size={iconSize}
+          style={iconButtonStyle}
+          disabled={retryDisabled}
           accessibilityLabel={t('agent.chat.retry', '重新发送/生成')}
           {...invertIconProps()}
         />
@@ -93,28 +131,32 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
 
       {isAI && onBranch && (
         <NativeIconButton
-          name="call-split"
+          icon={GitBranch}
           onPress={onBranch}
+          size={iconSize}
+          style={iconButtonStyle}
           accessibilityLabel={t('agent.chat.branch', '从此处创建分支')}
           {...invertIconProps()}
         />
       )}
 
       {onShowContext && (
-        <TouchableOpacity
+        <NativeIconButton
+          icon={ListTree}
           onPress={onShowContext}
-          style={styles.contextBtn}
-          accessibilityRole="button"
+          size={iconSize}
+          style={iconButtonStyle}
           accessibilityLabel={t('chat.viewContextTree', '查看发送给 AI 的上下文')}
-        >
-          <Text style={styles.contextIcon}>🌿</Text>
-        </TouchableOpacity>
+          {...invertIconProps()}
+        />
       )}
 
       {onDelete && (
         <NativeIconButton
-          name="delete-outline"
+          icon={Trash2}
           onPress={onDelete}
+          size={iconSize}
+          style={iconButtonStyle}
           danger
           accessibilityLabel={t('common.delete', '删除此条气泡')}
         />
@@ -130,20 +172,19 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingTop: 4
   },
+  comfortableContainer: {
+    gap: 6,
+    paddingTop: 5
+  },
+  comfortableIconButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 7
+  },
   alignLeft: {
     justifyContent: 'flex-start'
   },
   alignRight: {
     justifyContent: 'flex-end'
-  },
-  contextBtn: {
-    width: 26,
-    height: 26,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  contextIcon: {
-    fontSize: 14
   }
 })

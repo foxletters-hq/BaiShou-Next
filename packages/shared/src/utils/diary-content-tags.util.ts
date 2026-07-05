@@ -7,9 +7,9 @@ export function isMarkdownHeadingLine(line: string): boolean {
   return /^#{1,6}\s/.test(line.trim())
 }
 
-/** 日记时间戳行（##### HH:mm:ss） */
+/** 日记时间戳行（Markdown 标题 + HH:mm，支持 1–6 级；兼容旧版 HH:mm:ss） */
 export function isDiaryTimestampLine(line: string): boolean {
-  return /^#####\s*\d{2}:\d{2}:\d{2}/.test(line.trim())
+  return /^#{1,6}\s*\d{2}:\d{2}(:\d{2})?\s*$/.test(line.trim())
 }
 
 /** 该行不参与标签解析 / 不着色（标题、时间戳） */
@@ -125,22 +125,49 @@ function appendMissingInlineTags(body: string, missing: string[]): string {
 }
 
 /**
- * 将 frontmatter 标签与正文合成为编辑器展示内容。
- * 内联标签优先；仅当 FM 中有标签但正文未出现时才插入（时间戳块之后或追加到已有标签行）。
+ * 将正文合成为编辑器展示内容。
+ * 正文已有内联 #标签 时不再从元数据 tags 重复注入；仅对无内联标签的旧数据做一次补全。
  */
 export function composeDiaryEditorContent(body: string, tags: unknown): string {
-  const normalizedTags = normalizeDiaryTags(tags)
   const cleanBody = stripLegacyTopTagLine(body)
+  const inlineTags = extractDiaryTagsFromContent(cleanBody)
+  if (inlineTags.length > 0) {
+    return cleanBody
+  }
+
+  const normalizedTags = normalizeDiaryTags(tags)
   if (!normalizedTags.length) return cleanBody
 
-  const existing = new Set(extractDiaryTagsFromContent(cleanBody))
-  const missing = normalizedTags.filter((t) => !existing.has(t))
-  if (!missing.length) return cleanBody
-
-  return appendMissingInlineTags(cleanBody, missing)
+  return appendMissingInlineTags(cleanBody, normalizedTags)
 }
 
 /** 保存前剥离旧版首行纯标签行（内联标签保留在正文中） */
 export function stripDiaryTagLineFromContent(full: string): string {
   return stripLegacyTopTagLine(full)
+}
+
+/** 合并 frontmatter 标签与正文内联 #标签（去重，frontmatter 优先） */
+export function resolveDiaryTagsFromSources(
+  frontmatterTags: string[] | unknown,
+  content: string
+): string[] {
+  const merged: string[] = []
+  const seen = new Set<string>()
+  for (const tag of [...normalizeDiaryTags(frontmatterTags), ...extractDiaryTagsFromContent(content)]) {
+    if (seen.has(tag)) continue
+    seen.add(tag)
+    merged.push(tag)
+  }
+  return merged
+}
+
+/** 预览用：去掉仅含 #标签 的独立行，保留正文中的内联标签 */
+export function stripDedicatedTagLinesFromContent(full: string): string {
+  if (!full) return ''
+  const kept: string[] = []
+  for (const line of full.split('\n')) {
+    if (isLegacyDedicatedTagLine(line)) continue
+    kept.push(line)
+  }
+  return kept.join('\n').replace(/\n{3,}/g, '\n\n').trim()
 }

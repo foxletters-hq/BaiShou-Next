@@ -94,11 +94,12 @@ export class IncrementalS3Client implements ICloudSyncClient {
     }
   }
 
-  async uploadFile(localFilePath: string): Promise<void> {
-    // 从本地绝对路径计算出相对于 vault 根目录的路径，保留完整目录结构
-    const relativePath = this.vaultPath
-      ? path.relative(this.vaultPath, localFilePath).replace(/\\/g, '/')
-      : path.basename(localFilePath)
+  async uploadFile(localFilePath: string, remoteRelPath?: string): Promise<void> {
+    const relativePath =
+      remoteRelPath?.replace(/\\/g, '/') ??
+      (this.vaultPath
+        ? path.relative(this.vaultPath, localFilePath).replace(/\\/g, '/')
+        : path.basename(localFilePath))
     const objectName = this.basePath + relativePath
 
     const stat = await fs.promises.stat(localFilePath)

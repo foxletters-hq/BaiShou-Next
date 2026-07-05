@@ -1,10 +1,11 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdHelpOutline } from 'react-icons/md'
 import { Modal } from '../Modal/Modal'
 import { mergeSettingsHelpButtonHandlers } from '../shared/settingsInlineHelpBlock'
 import styles from './McpHelpButton.module.css'
+import { buildMcpClientJsonExample } from '../../shared/mcp-client-config.util'
 import { buildMcpUrl } from './mcp-url'
+import { CircleHelp } from 'lucide-react'
 
 export interface McpHelpButtonProps {
   size?: number
@@ -22,12 +23,7 @@ export const McpHelpButton: React.FC<McpHelpButtonProps> = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const mcpUrl = buildMcpUrl(mcpPort)
-  const authHeadersJson = mcpAuthToken?.trim()
-    ? `,
-      "headers": {
-        "Authorization": "Bearer ${mcpAuthToken.trim()}"
-      }`
-    : ''
+  const mcpJsonExample = buildMcpClientJsonExample(mcpUrl, mcpAuthToken)
 
   return (
     <>
@@ -37,7 +33,7 @@ export const McpHelpButton: React.FC<McpHelpButtonProps> = ({
         aria-label={t('settings.mcp_help_aria', 'MCP 连接说明')}
         {...mergeSettingsHelpButtonHandlers(() => setOpen(true))}
       >
-        <MdHelpOutline size={size} className={styles.helpIcon} aria-hidden />
+        <CircleHelp size={size} className={styles.helpIcon} aria-hidden />
       </button>
       <Modal
         isOpen={open}
@@ -58,58 +54,32 @@ export const McpHelpButton: React.FC<McpHelpButtonProps> = ({
             <span className={styles.urlLabel}>{t('settings.mcp_url_label', '连接地址')}</span>
             <code className={styles.urlCode}>{mcpUrl}</code>
           </div>
-          {mcpAuthToken?.trim() ? (
-            <p className={styles.note}>
-              {t(
-                'settings.mcp_help_auth_note',
-                '连接需在请求头携带 Authorization: Bearer <访问令牌>，令牌见设置页「访问令牌」。'
-              )}
-            </p>
-          ) : null}
           <section className={styles.section}>
             <h3 className={styles.sectionTitle}>{t('settings.mcp_help_cursor_title', 'Cursor')}</h3>
             <ol className={styles.steps}>
               <li>
                 {t(
                   'settings.mcp_help_cursor_1',
-                  '打开 Cursor 设置 → Features → MCP（或编辑项目/全局 mcp.json）。'
+                  '打开或创建 Cursor 全局配置文件（Windows：%USERPROFILE%\\.cursor\\mcp.json，macOS/Linux：~/.cursor/mcp.json）。'
                 )}
               </li>
               <li>
                 {t(
                   'settings.mcp_help_cursor_2',
-                  '添加服务器，将 url 设为上方连接地址，保存后重启 Cursor 或刷新 MCP 列表。'
+                  '将下方配置粘贴到 mcpServers 中（url 与 Authorization 请使用上方连接地址与访问令牌），保存后重启 Cursor 或刷新 MCP 列表。'
                 )}
               </li>
             </ol>
+            <pre className={styles.jsonExample}>{mcpJsonExample}</pre>
           </section>
-          <section className={styles.section}>
-            <h3 className={styles.sectionTitle}>
-              {t('settings.mcp_help_json_title', 'JSON 配置客户端')}
-            </h3>
-            <ol className={styles.steps}>
-              <li>
-                {t(
-                  'settings.mcp_help_json_1',
-                  '在客户端的 MCP 设置中打开 JSON 配置，于 mcpServers 中新增服务器。'
-                )}
-              </li>
-              <li>
-                {t(
-                  'settings.mcp_help_json_2',
-                  '将 type 设为 streamableHttp，baseUrl 设为上方连接地址（必须以 /mcp 结尾）。'
-                )}
-              </li>
-            </ol>
-            <pre className={styles.jsonExample}>{`{
-  "mcpServers": {
-    "baishou": {
-      "type": "streamableHttp",
-      "baseUrl": "${mcpUrl}"${authHeadersJson}
-    }
-  }
-}`}</pre>
-          </section>
+          {mcpAuthToken?.trim() ? (
+            <p className={styles.note}>
+              {t(
+                'settings.mcp_help_auth_note',
+                '若已生成访问令牌，请在 headers.Authorization 中填写 Bearer <令牌>，否则无法获取工具列表。'
+              )}
+            </p>
+          ) : null}
           <p className={styles.note}>
             {t(
               'settings.mcp_help_note',

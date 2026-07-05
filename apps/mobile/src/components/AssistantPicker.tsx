@@ -1,7 +1,7 @@
 import React from 'react'
 import { useRouter } from 'expo-router'
 import {
-  AssistantPicker as SharedAssistantPicker,
+  AssistantPicker as NativeAssistantPicker,
   type MockAgentAssistant
 } from '@baishou/ui/native'
 
@@ -11,6 +11,7 @@ interface AssistantPickerProps {
   onSelect: (assistant: MockAgentAssistant) => void
   selectedAssistantId?: string
   assistants: MockAgentAssistant[]
+  onAssistantsChanged?: () => void
 }
 
 export const AssistantPicker: React.FC<AssistantPickerProps> = ({
@@ -18,23 +19,25 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = ({
   onClose,
   onSelect,
   selectedAssistantId,
-  assistants
+  assistants,
+  onAssistantsChanged
 }) => {
   const router = useRouter()
 
   const openAssistants = () => {
+    onClose()
     router.push('/settings/assistants')
   }
 
   return (
-    <SharedAssistantPicker
+    <NativeAssistantPicker
       isOpen={isVisible}
       onClose={onClose}
       assistants={assistants}
       currentAssistantId={selectedAssistantId || null}
-      onSelect={(selected) => {
-        const full = assistants.find((a) => a.id === selected.id)
-        onSelect(full || selected)
+      onSelect={(assistant) => {
+        onSelect(assistant)
+        onAssistantsChanged?.()
       }}
       onSettingsPress={openAssistants}
       onCreatePress={openAssistants}

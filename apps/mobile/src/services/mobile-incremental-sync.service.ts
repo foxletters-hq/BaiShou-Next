@@ -15,7 +15,8 @@ import type {
   IFileSystem,
   IArchiveService,
   SettingsManagerService,
-  AssistantManagerService
+  AssistantManagerService,
+  SessionManagerService
 } from '@baishou/core-mobile'
 import type { IStoragePathService } from '@baishou/core-mobile'
 import { InteractionManager } from 'react-native'
@@ -211,7 +212,8 @@ export class MobileIncrementalSyncService {
     private readonly bootstrapper?: MobileDataBootstrapper,
     deviceId: string = `mobile-${Date.now()}`,
     onAfterSyncComplete?: () => void,
-    private readonly assistantManager?: AssistantManagerService
+    private readonly assistantManager?: AssistantManagerService,
+    private readonly sessionManager?: SessionManagerService
   ) {
     this.engine = new MobileIncrementalEngine(pathService, fileSystem, deviceId)
     this.onAfterSyncComplete = onAfterSyncComplete
@@ -244,9 +246,8 @@ export class MobileIncrementalSyncService {
                 this.fileSystem
               )
             }
-            const { schedulePostSyncDiaryBatchEmbed } = await import(
-              './mobile-post-sync-diary-embed.service'
-            )
+            const { schedulePostSyncDiaryBatchEmbed } =
+              await import('./mobile-post-sync-diary-embed.service')
             schedulePostSyncDiaryBatchEmbed()
           } catch (e: unknown) {
             console.warn('[MobileIncrementalSync] afterSyncComplete failed:', e)
@@ -386,6 +387,12 @@ export class MobileIncrementalSyncService {
     const config = await this.getConfig()
     if (!isConfigReady(config)) {
       throw new Error('增量同步未配置或已禁用')
+    }
+
+    try {
+      await this.sessionManager?.flushPendingDiskWrites()
+    } catch (e: unknown) {
+      console.warn('[MobileIncrementalSync] session flushPending before sync failed:', e)
     }
 
     const result = await this.engine.syncThreeWay(

@@ -123,9 +123,7 @@ export function buildIncrementalSyncBoundaryHints(
 function toPlanItem(decision: MergeDecision): IncrementalSyncPlanItem | null {
   if (decision.type === 'skip') return null
   const action =
-    decision.type === 'conflict-resolved'
-      ? ('conflict-resolved' as const)
-      : decision.type
+    decision.type === 'conflict-resolved' ? ('conflict-resolved' as const) : decision.type
   return {
     filePath: decision.filePath,
     action,

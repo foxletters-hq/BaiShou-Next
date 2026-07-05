@@ -1,29 +1,66 @@
-import { Compartment } from '@codemirror/state'
+import { Compartment, EditorState, type Annotation, type Transaction } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
+import { redo, undo } from '@codemirror/commands'
 import {
   createDiaryCodeMirror,
   forceImageRefresh,
+  toggleMarkdownMark,
   type DiaryCmPlatform
 } from '@baishou/ui/shared/diary-codemirror'
 import {
   refreshDiaryTagColorRegistryEffect,
   setActiveDiaryTagColorRegistry
 } from '@baishou/ui/shared/diary-codemirror/extensions/diaryTagLinePlugin'
+import { resolveTableConfirmResponse } from '@baishou/ui/shared/diary-codemirror/table/tableConfirm'
+import { resolveNativeTableSheetResponse } from '@baishou/ui/shared/diary-codemirror/table/tableNativeSheet'
+import {
+  dismissKeyboardForSheetInteraction,
+  isTableSheetOpen
+} from '@baishou/ui/shared/diary-codemirror/table/tableSheetInteraction'
+import { logDiaryBridge } from '@baishou/ui/shared/diary-codemirror/diaryBridgeDebug'
+import { diarySyntaxTreeGrowthEffect } from '@baishou/ui/shared/diary-codemirror/extensions/diarySyntaxTreeGrowth'
 import type { DiaryCmTheme } from '@baishou/ui/shared/diary-codemirror/types'
 
 import type { InitPayload, RnToWebViewMessage, WebViewToRnMessage } from './types'
+import type { DiaryCmSetScrollInsetsPayload } from '@baishou/ui/shared/diary-codemirror/types'
+
+declare const __DIARY_EDITOR_BUILD_ID__: string | undefined
+
+/** 表格/滚动大改时递增，用于 Metro 日志核对 bundle 版本 */
+const DIARY_CM_FEATURE_TAG = 'live-preview-inline-fenced-v20'
 
 let view: EditorView | null = null
 let suppressChangeEcho = false
 let contentHeightObserver: ResizeObserver | null = null
 let activeScrollMode: 'viewport' | 'document' = 'document'
 let bottomScrollInsetPx = 0
+let keyboardVisible = false
 let caretScrollFrameId: number | null = null
+let suppressCaretScrollOnce = false
+/** 编辑器初次挂载后短暂抑制自动滚向光标，避免进入页面时视图跳动 */
+let suppressCaretScrollUntil = 0
+/** 用户手动滚动后，暂停自动把视图拽回光标 */
+let userScrollLockUntil = 0
+let programmaticScroll = false
+let scrollListenerInstalled = false
+/** 当前触摸是否已识别为滑动手势 */
+let touchInteractionDidPan = false
+let touchInteractionStartX: number | null = null
+let touchInteractionStartY: number | null = null
+/** touchend 后短时间内抑制 click 触发的二次滚回 */
+let suppressCaretScrollFromClickUntil = 0
+
+/** 用户手动滚动后，暂停自动拽回光标的时长 */
+const USER_SCROLL_LOCK_MS = 3000
+/** 判定为滑动手势的最小位移（px） */
+const TOUCH_PAN_THRESHOLD_PX = 10
 
 /** 光标与底部遮挡区之间的额外留白 */
 const CARET_SCROLL_BOTTOM_BUFFER_PX = 12
-const CARET_SCROLL_TOP_BUFFER_PX = 16
-const CARET_SCROLL_DURATION_MS = 320
+/** 键盘弹出时额外预留，避免光标贴在 IME 边缘 */
+const CARET_SCROLL_KEYBOARD_EXTRA_PX = 28
+/** 光标与顶部可视区之间的留白，点击上方正文时平滑上滚 */
+const CARET_SCROLL_TOP_BUFFER_PX = 48
 
 const editableCompartment = new Compartment()
 
@@ -45,6 +82,10 @@ const DEFAULT_THEME: DiaryCmTheme = {
 
 function postToNative(message: WebViewToRnMessage): void {
   window.ReactNativeWebView?.postMessage(JSON.stringify(message))
+}
+
+function logEditor(tag: string, detail?: Record<string, unknown>): void {
+  logDiaryBridge('diaryCm', tag, detail)
 }
 
 function requestAttachmentUrl(srcRaw: string): string {
@@ -99,6 +140,14 @@ function buildPlatform(init: InitPayload): DiaryCmPlatform {
   }
 }
 
+function codeBlockSurface(theme: DiaryCmTheme): string {
+  return theme.isDark ? '#2a2e38' : '#eceef2'
+}
+
+function inlineCodeSurface(theme: DiaryCmTheme): string {
+  return theme.isDark ? '#32363f' : '#f0f2f5'
+}
+
 function applyTheme(theme: DiaryCmTheme): void {
   const root = document.documentElement
   root.dataset.theme = theme.isDark ? 'dark' : 'light'
@@ -106,8 +155,11 @@ function applyTheme(theme: DiaryCmTheme): void {
   root.style.setProperty('--text-secondary', theme.textSecondary)
   root.style.setProperty('--text-tertiary', theme.textSecondary)
   root.style.setProperty('--bg-editor', theme.bgEditor)
-  root.style.setProperty('--bg-surface-normal', theme.bgEditor)
+  root.style.setProperty('--bg-surface', theme.bgEditor)
+  root.style.setProperty('--bg-surface-normal', inlineCodeSurface(theme))
+  root.style.setProperty('--bg-code-block', codeBlockSurface(theme))
   root.style.setProperty('--border-subtle', theme.borderColor)
+  root.style.setProperty('--color-danger', theme.isDark ? '#f87171' : '#e5484d')
   root.style.setProperty('--color-primary', theme.primary)
   root.style.setProperty(
     '--color-primary-light',
@@ -120,96 +172,377 @@ function applyTheme(theme: DiaryCmTheme): void {
   document.body.style.color = theme.textPrimary
 }
 
-function smoothScrollElementTo(element: HTMLElement, targetTop: number, duration = CARET_SCROLL_DURATION_MS): void {
-  if (caretScrollFrameId !== null) {
-    cancelAnimationFrame(caretScrollFrameId)
-    caretScrollFrameId = null
-  }
-
-  const maxTop = Math.max(0, element.scrollHeight - element.clientHeight)
-  const clampedTarget = Math.max(0, Math.min(targetTop, maxTop))
-  const start = element.scrollTop
-  const change = clampedTarget - start
-  if (Math.abs(change) < 1) return
-
-  const startTime = performance.now()
-  const tick = (now: number) => {
-    const progress = Math.min((now - startTime) / duration, 1)
-    const ease = 1 - Math.pow(1 - progress, 4)
-    element.scrollTop = start + change * ease
-    if (progress < 1) {
-      caretScrollFrameId = requestAnimationFrame(tick)
-    } else {
-      caretScrollFrameId = null
-    }
-  }
-  caretScrollFrameId = requestAnimationFrame(tick)
+function cancelCaretScrollAnimation(): void {
+  if (caretScrollFrameId === null) return
+  cancelAnimationFrame(caretScrollFrameId)
+  caretScrollFrameId = null
 }
 
-function computeCaretScrollTarget(): number | null {
-  if (!view || activeScrollMode !== 'viewport') return null
+import { isTableCellEditorFocused } from '@baishou/ui/shared/diary-codemirror/table/tableDom'
 
-  const pos = view.state.selection.main.head
-  const coords = view.coordsAtPos(pos)
-  if (!coords) return null
+function resolveLineBlockMetrics(
+  editorView: EditorView,
+  pos: number
+): { top: number; bottom: number } | null {
+  try {
+    const lineBlock = editorView.lineBlockAtPos(pos)
+    return {
+      top: lineBlock.top,
+      bottom: lineBlock.top + lineBlock.height
+    }
+  } catch {
+    const coords = editorView.coordsAtPos(pos, 1)
+    if (coords) {
+      const scrollTop = editorView.scrollDOM.scrollTop
+      const scrollRect = editorView.scrollDOM.getBoundingClientRect()
+      const top = coords.top - scrollRect.top + scrollTop
+      const height = Math.max(coords.bottom - coords.top, 18)
+      return { top, bottom: top + height }
+    }
 
-  const { scrollDOM } = view
-  const scrollRect = scrollDOM.getBoundingClientRect()
-  const chromeBottom = bottomScrollInsetPx + CARET_SCROLL_BOTTOM_BUFFER_PX
-  const safeBottom = scrollRect.top + scrollDOM.clientHeight - chromeBottom
-  const safeTop = scrollRect.top + CARET_SCROLL_TOP_BUFFER_PX
-  let targetScrollTop = scrollDOM.scrollTop
+    const dom = editorView.domAtPos(pos)
+    let node: Node | null = dom.node
+    if (node.nodeType === Node.TEXT_NODE) node = node.parentElement
+    const line = node instanceof Element ? (node.closest('.cm-line') as HTMLElement | null) : null
+    if (line) {
+      const scrollTop = editorView.scrollDOM.scrollTop
+      const scrollRect = editorView.scrollDOM.getBoundingClientRect()
+      const rect = line.getBoundingClientRect()
+      const top = rect.top - scrollRect.top + scrollTop
+      return { top, bottom: top + Math.max(rect.height, 18) }
+    }
+    return null
+  }
+}
 
-  if (coords.bottom > safeBottom) {
-    targetScrollTop += coords.bottom - safeBottom
-  } else if (coords.top < safeTop) {
-    targetScrollTop -= safeTop - coords.top
-  } else {
+function resolveCaretContentMetrics(
+  editorView: EditorView,
+  pos: number
+): { top: number; bottom: number } | null {
+  if (isTableCellEditorFocused()) {
+    const input = document.activeElement as HTMLElement
+    const contentTop = editorView.contentDOM.getBoundingClientRect().top
+    const inputRect = input.getBoundingClientRect()
+    return {
+      top: Math.max(0, inputRect.top - contentTop),
+      bottom: Math.max(0, inputRect.bottom - contentTop)
+    }
+  }
+
+  return resolveLineBlockMetrics(editorView, pos)
+}
+
+function clearUserScrollLockForContentEdit(target: EventTarget | null): void {
+  if (!(target instanceof Element)) return
+  if (
+    target.closest(
+      '.cm-table-handle, .cm-table-add-btn, .cm-table-corner-menu, .cm-table-context-menu, .cm-table-context-menu-layer, .cm-table-sheet-layer'
+    )
+  ) {
+    return
+  }
+  userScrollLockUntil = 0
+}
+
+function resetTouchInteractionState(): void {
+  touchInteractionDidPan = false
+  touchInteractionStartX = null
+  touchInteractionStartY = null
+}
+
+function noteTouchInteractionStart(event: TouchEvent): void {
+  const touch = event.touches[0]
+  if (!touch) return
+  touchInteractionDidPan = false
+  touchInteractionStartX = touch.clientX
+  touchInteractionStartY = touch.clientY
+}
+
+function noteTouchInteractionMove(event: TouchEvent): void {
+  if (touchInteractionDidPan) return
+  if (touchInteractionStartX === null || touchInteractionStartY === null) return
+  const touch = event.touches[0]
+  if (!touch) return
+  const dx = touch.clientX - touchInteractionStartX
+  const dy = touch.clientY - touchInteractionStartY
+  if (Math.hypot(dx, dy) >= TOUCH_PAN_THRESHOLD_PX) {
+    touchInteractionDidPan = true
+  }
+}
+
+function shouldScheduleCaretScrollAfterPointer(target: EventTarget | null): boolean {
+  if (touchInteractionDidPan) return false
+  if (Date.now() < suppressCaretScrollFromClickUntil) return false
+  if (target instanceof Element) {
+    if (
+      target.closest(
+        '.cm-table-handle, .cm-table-add-btn, .cm-table-corner-menu, .cm-table-context-menu, .cm-table-context-menu-layer, .cm-table-sheet-layer'
+      )
+    ) {
+      return false
+    }
+  }
+  return true
+}
+
+function handleTouchPointerEnd(target: EventTarget | null): void {
+  const didPan = touchInteractionDidPan
+  if (didPan) {
+    suppressCaretScrollFromClickUntil = Date.now() + 350
+  }
+  resetTouchInteractionState()
+  if (didPan) return
+  if (!shouldScheduleCaretScrollAfterPointer(target)) return
+  clearUserScrollLockForContentEdit(target)
+}
+
+function isUserScrollLocked(): boolean {
+  return Date.now() < userScrollLockUntil
+}
+
+function lockUserScroll(): void {
+  userScrollLockUntil = Date.now() + USER_SCROLL_LOCK_MS
+}
+
+function applyProgrammaticScrollTop(targetScrollTop: number): void {
+  if (!view) return
+  programmaticScroll = true
+  view.scrollDOM.scrollTop = targetScrollTop
+  requestAnimationFrame(() => {
+    programmaticScroll = false
+  })
+}
+
+function smoothApplyProgrammaticScrollTop(targetScrollTop: number, onDone?: () => void): void {
+  if (!view) {
+    onDone?.()
+    return
+  }
+  const scrollDOM = view.scrollDOM
+  const start = scrollDOM.scrollTop
+  const change = targetScrollTop - start
+  if (Math.abs(change) < 2) {
+    onDone?.()
+    return
+  }
+
+  cancelCaretScrollAnimation()
+  const duration = Math.min(520, Math.max(260, Math.abs(change) * 0.55))
+  const startTime = performance.now()
+  programmaticScroll = true
+
+  const step = (now: number) => {
+    const progress = Math.min((now - startTime) / duration, 1)
+    const ease = 1 - Math.pow(1 - progress, 4)
+    scrollDOM.scrollTop = start + change * ease
+    if (progress < 1) {
+      caretScrollFrameId = requestAnimationFrame(step)
+    } else {
+      caretScrollFrameId = null
+      programmaticScroll = false
+      onDone?.()
+    }
+  }
+  caretScrollFrameId = requestAnimationFrame(step)
+}
+
+function scrollEditorToBottomInstant(): void {
+  if (!view) return
+  const scrollDOM = view.scrollDOM
+  const maxTop = Math.max(0, scrollDOM.scrollHeight - scrollDOM.clientHeight)
+  programmaticScroll = true
+  scrollDOM.scrollTop = maxTop
+  requestAnimationFrame(() => {
+    programmaticScroll = false
+  })
+}
+
+function finalizeInitialEditorScroll(): void {
+  scrollEditorToBottomInstant()
+  requestAnimationFrame(() => {
+    scrollEditorToBottomInstant()
+  })
+}
+
+function installUserScrollListener(editorView: EditorView): void {
+  if (scrollListenerInstalled) return
+  scrollListenerInstalled = true
+
+  editorView.scrollDOM.addEventListener(
+    'scroll',
+    () => {
+      if (programmaticScroll) return
+      lockUserScroll()
+    },
+    { passive: true }
+  )
+}
+
+function shouldAutoScrollCaret(): boolean {
+  if (!view || activeScrollMode !== 'viewport') return false
+  if (isUserScrollLocked()) return false
+  if (isTableCellEditorFocused()) return false
+  return true
+}
+
+function caretScrollSkipReason(force = false): string | null {
+  if (!view) return 'no-view'
+  if (activeScrollMode !== 'viewport') return `scrollMode=${activeScrollMode}`
+  if (!force && Date.now() < suppressCaretScrollUntil) return 'initial-mount'
+  if (!force && keyboardVisible) return 'keyboard-visible'
+  if (isUserScrollLocked() && !force) return 'user-scroll-locked'
+  if (isTableCellEditorFocused()) return 'table-cell-focused'
+  return null
+}
+
+function computeCaretScrollTarget(force = false): number | null {
+  const skip = caretScrollSkipReason(force)
+  if (skip) {
+    logEditor('caretScroll:skip', { reason: skip })
+    return null
+  }
+
+  const editorView = view!
+  const pos = editorView.state.selection.main.head
+  const scrollDOM = editorView.scrollDOM
+
+  const metrics = resolveLineBlockMetrics(editorView, pos)
+  if (!metrics) {
+    logEditor('caretScroll:skip', { reason: 'lineBlockAtPos-failed', pos })
+    return null
+  }
+  const caretTop = metrics.top
+  const caretBottom = metrics.bottom
+
+  const chromeBottom =
+    bottomScrollInsetPx +
+    CARET_SCROLL_BOTTOM_BUFFER_PX +
+    (keyboardVisible ? CARET_SCROLL_KEYBOARD_EXTRA_PX : 0)
+  const visibleTop = scrollDOM.scrollTop + CARET_SCROLL_TOP_BUFFER_PX
+  const visibleBottom = scrollDOM.scrollTop + scrollDOM.clientHeight - chromeBottom
+
+  let targetScrollTop: number | null = null
+  if (caretBottom > visibleBottom) {
+    targetScrollTop = caretBottom - (scrollDOM.clientHeight - chromeBottom)
+  } else if (caretTop < visibleTop) {
+    // 光标仍在文档开头 (pos≈0) 时不要强行滚回顶部，避免点击表后时页面上跳
+    if (pos <= 1 && scrollDOM.scrollTop > CARET_SCROLL_TOP_BUFFER_PX * 2) {
+      logEditor('caretScroll:skip', { reason: 'avoid-scroll-to-top-at-doc-start', pos })
+      return null
+    }
+    targetScrollTop = caretTop - CARET_SCROLL_TOP_BUFFER_PX
+  }
+
+  if (targetScrollTop === null) {
     return null
   }
 
   const maxTop = Math.max(0, scrollDOM.scrollHeight - scrollDOM.clientHeight)
-  return Math.max(0, Math.min(targetScrollTop, maxTop))
+  const clamped = Math.max(0, Math.min(targetScrollTop, maxTop))
+  logEditor('caretScroll:target', {
+    pos,
+    from: scrollDOM.scrollTop,
+    to: clamped,
+    caretTop,
+    caretBottom,
+    chromeBottom
+  })
+  return clamped
 }
 
-function ensureCaretVisible(): void {
-  if (!view || activeScrollMode !== 'viewport') return
-  const targetScrollTop = computeCaretScrollTarget()
-  if (targetScrollTop === null) return
-  smoothScrollElementTo(view.scrollDOM, targetScrollTop)
+function scheduleSmoothCaretScroll(onDone?: () => void): void {
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => ensureCaretVisible(onDone))
+  })
 }
 
-function scheduleEnsureCaretVisible(): void {
-  window.requestAnimationFrame(() => ensureCaretVisible())
+function ensureCaretVisible(onDone?: () => void, force = false): void {
+  const targetScrollTop = computeCaretScrollTarget(force)
+  if (targetScrollTop === null) {
+    onDone?.()
+    return
+  }
+  if (!view) {
+    onDone?.()
+    return
+  }
+  const scrollDOM = view.scrollDOM
+  if (Date.now() < suppressCaretScrollUntil) {
+    applyProgrammaticScrollTop(targetScrollTop)
+    onDone?.()
+    return
+  }
+  smoothApplyProgrammaticScrollTop(targetScrollTop, onDone)
+}
+
+function scheduleForcedCaretScroll(): void {
+  if (Date.now() < suppressCaretScrollUntil) {
+    scrollEditorToBottomInstant()
+    return
+  }
+  userScrollLockUntil = 0
+  ensureCaretVisible(undefined, true)
+  window.setTimeout(() => ensureCaretVisible(undefined, true), 100)
+  window.setTimeout(() => ensureCaretVisible(undefined, true), 280)
+}
+
+function scheduleEnsureCaretVisible(onDone?: () => void): void {
+  if (Date.now() < suppressCaretScrollUntil) {
+    scrollEditorToBottomInstant()
+    onDone?.()
+    return
+  }
+  scheduleSmoothCaretScroll(onDone)
 }
 
 function applyBottomScrollInset(bottom: number): void {
   bottomScrollInsetPx = Math.max(0, bottom)
   if (!view) return
-  view.scrollDOM.style.setProperty(
-    '--diary-bottom-scroll-inset',
-    `${bottomScrollInsetPx}px`
-  )
+  view.scrollDOM.style.setProperty('--diary-bottom-scroll-inset', `${bottomScrollInsetPx}px`)
 }
 
-function setScrollInsets(bottom: number): void {
-  applyBottomScrollInset(bottom)
-  scheduleEnsureCaretVisible()
+function setScrollInsets(payload: DiaryCmSetScrollInsetsPayload): void {
+  logEditor('setScrollInsets', {
+    bottom: payload.bottom,
+    keyboardVisible: payload.keyboardVisible,
+    prev: bottomScrollInsetPx
+  })
+  if (payload.keyboardVisible !== undefined) {
+    keyboardVisible = payload.keyboardVisible
+  }
+  applyBottomScrollInset(payload.bottom)
 }
 
 function reportContentMetrics(): void {
   if (!view) return
 
   const contentRect = view.contentDOM.getBoundingClientRect()
-  const pos = view.state.selection.main.head
-  const coords = view.coordsAtPos(pos)
   const contentTop = contentRect.top
+
+  if (isTableCellEditorFocused()) {
+    const input = document.activeElement as HTMLElement
+    const inputRect = input.getBoundingClientRect()
+    const caretTop = Math.max(0, inputRect.top - contentTop)
+    const caretBottom = Math.max(0, inputRect.bottom - contentTop)
+    postToNative({
+      type: 'caretViewport',
+      payload: { top: caretTop, bottom: caretBottom }
+    })
+    const neededHeight = Math.ceil(
+      Math.max(contentRect.height, caretBottom + CARET_BOTTOM_BUFFER_PX, 120)
+    )
+    postToNative({ type: 'contentHeight', payload: { height: neededHeight } })
+    return
+  }
+
+  const pos = view.state.selection.main.head
+  const caretMetrics = resolveCaretContentMetrics(view, pos)
 
   let caretTop = contentRect.height
   let caretBottom = contentRect.height
-  if (coords) {
-    caretTop = coords.top - contentTop
-    caretBottom = coords.bottom - contentTop
+  if (caretMetrics) {
+    caretTop = caretMetrics.top
+    caretBottom = caretMetrics.bottom
     postToNative({
       type: 'caretViewport',
       payload: { top: Math.max(0, caretTop), bottom: Math.max(0, caretBottom) }
@@ -248,6 +581,14 @@ function applyTouchNoInternalScroll(editorView: EditorView): void {
 
 let touchPanLastY: number | null = null
 let touchPanRelayInstalled = false
+let touchPanDisabled = false
+
+function shouldDisableTouchPanRelay(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false
+  return !!target.closest(
+    '.cm-table-handle, .cm-table-add-btn, .cm-table-corner-menu, .cm-table-context-menu, .cm-table-context-menu-layer, .cm-table-sheet-layer'
+  )
+}
 
 function installTouchParentScrollRelay(): void {
   if (touchPanRelayInstalled) return
@@ -256,7 +597,8 @@ function installTouchParentScrollRelay(): void {
   document.addEventListener(
     'touchstart',
     (e) => {
-      if (e.touches.length !== 1) {
+      touchPanDisabled = shouldDisableTouchPanRelay(e.target)
+      if (touchPanDisabled || e.touches.length !== 1) {
         touchPanLastY = null
         return
       }
@@ -268,7 +610,7 @@ function installTouchParentScrollRelay(): void {
   document.addEventListener(
     'touchmove',
     (e) => {
-      if (touchPanLastY === null || e.touches.length !== 1) return
+      if (touchPanDisabled || touchPanLastY === null || e.touches.length !== 1) return
       const y = e.touches[0]?.clientY ?? touchPanLastY
       const deltaY = touchPanLastY - y
       touchPanLastY = y
@@ -281,6 +623,7 @@ function installTouchParentScrollRelay(): void {
 
   const endTouchPan = () => {
     touchPanLastY = null
+    touchPanDisabled = false
   }
   document.addEventListener('touchend', endTouchPan, { passive: true, capture: true })
   document.addEventListener('touchcancel', endTouchPan, { passive: true, capture: true })
@@ -289,6 +632,9 @@ function installTouchParentScrollRelay(): void {
 function setupContentHeightObserver(editorView: EditorView): void {
   contentHeightObserver?.disconnect()
   contentHeightObserver = new ResizeObserver(() => {
+    if (Date.now() < suppressCaretScrollUntil) {
+      scrollEditorToBottomInstant()
+    }
     reportContentMetrics()
   })
   contentHeightObserver.observe(editorView.contentDOM)
@@ -301,14 +647,39 @@ function mountEditor(init: InitPayload): void {
   const theme = init.theme ?? DEFAULT_THEME
   applyTheme(theme)
   view?.destroy()
+  delete window.__diaryCmPlaceCursorAfterTable
+  scrollListenerInstalled = false
   contentHeightObserver?.disconnect()
 
   const editable = init.editable ?? true
   const isTouch = init.interactionMode === 'touch'
   const scrollMode = init.scrollMode ?? 'document'
   activeScrollMode = scrollMode
+  if (isTouch) {
+    window.__tableChromeDebug = true
+    window.__diaryBridgeDebug = true
+    window.__diaryCmPlaceCursorAfterTable = () => {
+      userScrollLockUntil = 0
+      ensureCaretVisible(undefined, true)
+    }
+  }
   applyBottomScrollInset(init.scrollInsets?.bottom ?? 0)
+  keyboardVisible = init.scrollInsets?.keyboardVisible ?? false
 
+  const buildStamp =
+    document.documentElement.innerHTML.match(/diary-editor-build:([^\s-]+)/)?.[1] ?? '(none)'
+  logEditor('mountEditor', {
+    featureTag: DIARY_CM_FEATURE_TAG,
+    buildId:
+      typeof __DIARY_EDITOR_BUILD_ID__ !== 'undefined' ? __DIARY_EDITOR_BUILD_ID__ : '(none)',
+    buildStamp,
+    interactionMode: init.interactionMode,
+    scrollMode,
+    bottomScrollInset: bottomScrollInsetPx,
+    contentLength: init.content.length
+  })
+
+  suppressChangeEcho = true
   view = createDiaryCodeMirror(container, {
     content: init.content,
     placeholder: init.placeholder,
@@ -320,35 +691,151 @@ function mountEditor(init: InitPayload): void {
     },
     extraExtensions: [
       editableCompartment.of(EditorView.editable.of(editable)),
+      ...(isTouch && scrollMode === 'viewport'
+        ? [
+            EditorState.transactionFilter.of((tr) => {
+              if (!tr.selection || !tr.scrollIntoView) return tr
+              // 合并 spec 的 scrollIntoView 是 OR 语义，附加 spec 关不掉；
+              // 须重建事务，并用 filter:false 防止再次进入本 filter（否则栈溢出）。
+              // Transaction.annotations 为运行时字段（类型未导出），需保留
+              // allowTableStructureEdit 等注解供 tableEditorPlugin 判断
+              const annotations = (
+                tr as Transaction & { annotations?: readonly Annotation<unknown>[] }
+              ).annotations
+              return tr.startState.update({
+                changes: tr.changes,
+                selection: tr.selection,
+                effects: tr.effects,
+                annotations,
+                scrollIntoView: false,
+                filter: false
+              })
+            })
+          ]
+        : []),
       EditorView.updateListener.of((update) => {
         if (update.selectionSet) {
           const { from, to } = update.state.selection.main
+          logEditor('selectionChange', {
+            from,
+            to,
+            docLen: update.state.doc.length,
+            docChanged: update.docChanged
+          })
           postToNative({ type: 'selectionChange', payload: { start: from, end: to } })
           if (init.interactionMode === 'touch') {
             window.requestAnimationFrame(() => {
               reportContentMetrics()
-              if (scrollMode === 'viewport') scheduleEnsureCaretVisible()
+              if (scrollMode === 'viewport') {
+                if (Date.now() >= suppressCaretScrollFromClickUntil) {
+                  if (suppressCaretScrollOnce) {
+                    suppressCaretScrollOnce = false
+                  } else if (Date.now() < suppressCaretScrollUntil) {
+                    // 初次挂载选区同步，不自动滚向光标
+                  } else {
+                    userScrollLockUntil = 0
+                    scheduleEnsureCaretVisible()
+                  }
+                }
+              }
             })
           }
         }
         if (update.docChanged && init.interactionMode === 'touch') {
+          logEditor('docChanged', {
+            docLen: update.state.doc.length,
+            head: update.state.selection.main.head,
+            changeCount: update.changes.length
+          })
           window.requestAnimationFrame(() => {
             reportContentMetrics()
-            if (scrollMode === 'viewport') scheduleEnsureCaretVisible()
+            if (scrollMode === 'viewport') {
+              if (suppressCaretScrollOnce) {
+                suppressCaretScrollOnce = false
+              } else if (Date.now() < suppressCaretScrollUntil) {
+                // 初次挂载期间不自动滚向光标
+              } else {
+                userScrollLockUntil = 0
+                scheduleEnsureCaretVisible()
+              }
+            }
           })
         }
       }),
       EditorView.domEventHandlers({
-        click: () => {
+        touchstart: (event) => {
+          cancelCaretScrollAnimation()
+          noteTouchInteractionStart(event)
+          const target = event.target
+          if (
+            target instanceof Element &&
+            target.closest(
+              '.cm-table-handle, .cm-table-corner-menu, .cm-table-add-btn, .cm-table-context-menu-layer, .cm-table-sheet-layer'
+            )
+          ) {
+            return false
+          }
+          return false
+        },
+        touchmove: (event) => {
+          noteTouchInteractionMove(event)
+          return false
+        },
+        touchend: (event) => {
+          if (isTableSheetOpen()) {
+            dismissKeyboardForSheetInteraction()
+            resetTouchInteractionState()
+            return false
+          }
           if (init.interactionMode === 'touch' && scrollMode === 'viewport') {
-            scheduleEnsureCaretVisible()
+            handleTouchPointerEnd(event.target)
+          } else {
+            resetTouchInteractionState()
+          }
+          return false
+        },
+        touchcancel: () => {
+          resetTouchInteractionState()
+          return false
+        },
+        click: (event) => {
+          if (isTableSheetOpen()) {
+            dismissKeyboardForSheetInteraction()
+            return false
           }
           return false
         },
         focus: () => {
+          if (isTableSheetOpen()) {
+            dismissKeyboardForSheetInteraction()
+            return false
+          }
           postToNative({ type: 'focus' })
           if (init.interactionMode === 'touch' && scrollMode === 'viewport') {
-            scheduleEnsureCaretVisible()
+            userScrollLockUntil = 0
+            window.requestAnimationFrame(() => {
+              if (!view) return
+              if (Date.now() < suppressCaretScrollUntil) {
+                scrollEditorToBottomInstant()
+                return
+              }
+              const head = view.state.selection.main.head
+              if (head <= 1 && view.state.doc.length > 1) {
+                logEditor('caretScroll:skip', { reason: 'stale-head-on-focus', head })
+                return
+              }
+              scheduleEnsureCaretVisible()
+            })
+          }
+          return false
+        },
+        focusin: (event) => {
+          if (isTableSheetOpen()) {
+            dismissKeyboardForSheetInteraction()
+            return false
+          }
+          if ((event.target as Element).closest('.cm-table-cell-source')) {
+            window.requestAnimationFrame(() => reportContentMetrics())
           }
           return false
         },
@@ -365,6 +852,7 @@ function mountEditor(init: InitPayload): void {
   if (isTouch) {
     if (scrollMode === 'viewport') {
       applyTouchViewportLayout(view)
+      installUserScrollListener(view)
     } else {
       applyTouchNoInternalScroll(view)
       installTouchParentScrollRelay()
@@ -372,10 +860,65 @@ function mountEditor(init: InitPayload): void {
   }
 
   const docLength = view.state.doc.length
-  view.dispatch({ selection: { anchor: docLength, head: docLength } })
+  suppressCaretScrollOnce = true
+  suppressCaretScrollUntil = Date.now() + 2000
+  scrollEditorToBottomInstant()
+  view.dispatch({
+    selection: { anchor: docLength, head: docLength },
+    scrollIntoView: false
+  })
+  scrollEditorToBottomInstant()
 
   applyTagColorRegistry(init.tagColorRegistry)
   reportContentMetrics()
+  suppressChangeEcho = false
+
+  requestAnimationFrame(() => {
+    scrollEditorToBottomInstant()
+    probeLivePreviewDom(0)
+    finalizeInitialEditorScroll()
+  })
+}
+
+function probeLivePreviewDom(attempt: number): void {
+  const cellSources = view?.dom.querySelectorAll('.cm-table-cell-source').length ?? 0
+  const tableBlocks = view?.dom.querySelectorAll('.cm-table-block').length ?? 0
+  const headingMarks =
+    (view?.dom.querySelectorAll('.cm-rendered-h1').length ?? 0) +
+    (view?.dom.querySelectorAll('.cm-rendered-h2').length ?? 0) +
+    (view?.dom.querySelectorAll('.cm-rendered-h3').length ?? 0) +
+    (view?.dom.querySelectorAll('.cm-rendered-h4').length ?? 0) +
+    (view?.dom.querySelectorAll('.cm-rendered-h5').length ?? 0) +
+    (view?.dom.querySelectorAll('.cm-rendered-h6').length ?? 0)
+  const hiddenWidgets = view?.dom.querySelectorAll('.cm-syntax-hidden-widget').length ?? 0
+  const hiddenMarks = view?.dom.querySelectorAll('.cm-markdown-syntax-hidden').length ?? 0
+  const fencedCodeLines = view?.dom.querySelectorAll('.cm-code-line').length ?? 0
+  const hiddenSyntaxCount = hiddenWidgets + hiddenMarks
+  const firstLineText = view?.dom.querySelector('.cm-line')?.textContent?.slice(0, 48) ?? ''
+  const docLen = view?.state.doc.length ?? 0
+  const needsRetry = docLen > 0 && headingMarks === 0 && hiddenSyntaxCount === 0 && attempt < 6
+  logEditor('mountEditor:dom', {
+    tableBlocks,
+    cellSources,
+    headingMarks,
+    hiddenWidgets,
+    hiddenMarks,
+    hiddenSyntaxCount,
+    fencedCodeLines,
+    firstLineText,
+    attempt,
+    scrollerClientHeight: view?.scrollDOM.clientHeight ?? 0,
+    scrollerScrollHeight: view?.scrollDOM.scrollHeight ?? 0
+  })
+  if (needsRetry) {
+    view?.dispatch({ effects: diarySyntaxTreeGrowthEffect.of(null) })
+    if (Date.now() < suppressCaretScrollUntil) {
+      scrollEditorToBottomInstant()
+    }
+    window.setTimeout(() => probeLivePreviewDom(attempt + 1), 50 * (attempt + 1))
+  } else if (Date.now() < suppressCaretScrollUntil) {
+    scrollEditorToBottomInstant()
+  }
 }
 
 function setEditable(editable: boolean): void {
@@ -387,13 +930,44 @@ function setEditable(editable: boolean): void {
 
 function setContent(content: string): void {
   if (!view) return
-  if (content === view.state.doc.toString()) return
+  const current = view.state.doc.toString()
+  if (content === current) return
+
+  const { anchor, head } = view.state.selection.main
+  const scrollTop = view.scrollDOM.scrollTop
+  const mapPos = (pos: number) => Math.max(0, Math.min(pos, content.length))
 
   suppressChangeEcho = true
+  suppressCaretScrollOnce = true
   view.dispatch({
-    changes: { from: 0, to: view.state.doc.length, insert: content }
+    changes: { from: 0, to: current.length, insert: content },
+    selection: { anchor: mapPos(anchor), head: mapPos(head) },
+    effects: diarySyntaxTreeGrowthEffect.of(null),
+    scrollIntoView: false
+  })
+  view.scrollDOM.scrollTop = scrollTop
+  requestAnimationFrame(() => {
+    if (!view) return
+    view.dispatch({ effects: diarySyntaxTreeGrowthEffect.of(null) })
   })
   suppressChangeEcho = false
+}
+
+function deleteRange(from: number, to: number): void {
+  if (!view) return
+  const doc = view.state.doc
+  const safeFrom = Math.max(0, Math.min(from, doc.length))
+  const safeTo = Math.max(safeFrom, Math.min(to, doc.length))
+  if (safeFrom === safeTo) return
+
+  const savedScrollTop = view.scrollDOM.scrollTop
+  suppressCaretScrollOnce = true
+  view.dispatch({
+    changes: { from: safeFrom, to: safeTo, insert: '' },
+    selection: { anchor: safeFrom, head: safeFrom },
+    scrollIntoView: false
+  })
+  view.scrollDOM.scrollTop = savedScrollTop
 }
 
 function insertAtCursor(text: string): void {
@@ -408,7 +982,11 @@ function insertAtCursor(text: string): void {
 
 function setSelection(start: number, end: number): void {
   if (!view) return
-  view.dispatch({ selection: { anchor: start, head: end } })
+  view.dispatch({ selection: { anchor: start, head: end }, scrollIntoView: false })
+  if (Date.now() < suppressCaretScrollUntil) {
+    scrollEditorToBottomInstant()
+    return
+  }
   scheduleEnsureCaretVisible()
 }
 
@@ -449,11 +1027,23 @@ function handleRnMessage(raw: unknown): void {
     case 'setContent':
       setContent(message.payload.content)
       break
+    case 'deleteRange':
+      deleteRange(message.payload.from, message.payload.to)
+      break
     case 'setTagColorRegistry':
       applyTagColorRegistry(message.payload.registry)
       break
     case 'insertAtCursor':
       insertAtCursor(message.payload.text)
+      break
+    case 'toggleMarkdownMark':
+      if (view) toggleMarkdownMark(view, message.payload.marker)
+      break
+    case 'undo':
+      if (view) undo(view)
+      break
+    case 'redo':
+      if (view) redo(view)
       break
     case 'setSelection':
       setSelection(message.payload.start, message.payload.end)
@@ -462,20 +1052,31 @@ function handleRnMessage(raw: unknown): void {
       setEditable(message.payload.editable)
       break
     case 'setScrollInsets':
-      setScrollInsets(message.payload.bottom)
+      setScrollInsets(message.payload)
       break
     case 'scrollCaretIntoView':
-      scheduleEnsureCaretVisible()
+      scheduleForcedCaretScroll()
       break
     case 'focus':
       view?.focus()
-      scheduleEnsureCaretVisible()
+      userScrollLockUntil = 0
+      if (Date.now() < suppressCaretScrollUntil) {
+        scrollEditorToBottomInstant()
+      } else {
+        scheduleEnsureCaretVisible()
+      }
       break
     case 'blur':
       view?.dom.blur()
       break
     case 'resolveUrlResponse':
       handleResolveUrlResponse(message.payload.requestId, message.payload.url)
+      break
+    case 'confirmResponse':
+      resolveTableConfirmResponse(message.payload.requestId, message.payload.confirmed)
+      break
+    case 'tableSheetResponse':
+      resolveNativeTableSheetResponse(message.payload)
       break
     case 'requestReady':
       postToNative({ type: 'ready' })
@@ -496,8 +1097,9 @@ function listenForNativeMessages(): void {
 }
 
 function exposeNativeMessageBridge(): void {
-  ;(window as unknown as { __diaryCmOnNativeMessage?: (raw: unknown) => void }).__diaryCmOnNativeMessage =
-    handleRnMessage
+  ;(
+    window as unknown as { __diaryCmOnNativeMessage?: (raw: unknown) => void }
+  ).__diaryCmOnNativeMessage = handleRnMessage
 }
 
 function bootstrap(): void {
@@ -516,7 +1118,14 @@ function bootstrap(): void {
     return
   }
 
-  const sendReady = () => postToNative({ type: 'ready' })
+  const sendReady = () => {
+    logEditor('ready', {
+      featureTag: DIARY_CM_FEATURE_TAG,
+      buildId:
+        typeof __DIARY_EDITOR_BUILD_ID__ !== 'undefined' ? __DIARY_EDITOR_BUILD_ID__ : '(none)'
+    })
+    postToNative({ type: 'ready' })
+  }
 
   // 协议：WebView 就绪后通知 RN，RN 再发 init
   sendReady()

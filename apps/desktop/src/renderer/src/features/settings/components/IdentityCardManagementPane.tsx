@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useUserProfileStore } from '@baishou/store'
 import { useTranslation } from 'react-i18next'
-import { MdAdd, MdArrowBack } from 'react-icons/md'
 import {
   Input,
   Pagination,
@@ -14,6 +13,7 @@ import {
 } from '@baishou/ui'
 import './ManagementPane.css'
 import { useSettingsScopeNavigation } from '../hooks/useSettingsScopeNavigation'
+import { ArrowLeft, Plus } from 'lucide-react'
 
 const PAGE_SIZE = 10
 
@@ -202,7 +202,7 @@ export const IdentityCardManagementPane: React.FC = () => {
           onClick={() => settingsNav.goGeneral()}
           title={t('common.back', '返回')}
         >
-          <MdArrowBack size={22} />
+          <ArrowLeft size={22} />
         </button>
         <h2 className="settings-management-title">{t('settings.manage_identity_cards')}</h2>
         <button
@@ -210,7 +210,7 @@ export const IdentityCardManagementPane: React.FC = () => {
           className="settings-management-header-action"
           onClick={() => void handleCreate()}
         >
-          <MdAdd size={18} />
+          <Plus size={18} />
           <span>{t('settings.create_new_identity')}</span>
         </button>
       </div>

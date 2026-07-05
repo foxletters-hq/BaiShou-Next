@@ -2,13 +2,15 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
-import { MaterialCommunityIcons } from '@expo/vector-icons'
+import type { LucideIcon } from 'lucide-react-native'
+import { Database, MessageCircle, Pencil, ScrollText } from 'lucide-react-native'
 import {
   useNativeTheme,
   useNativeToast,
   useDialog,
   ModelSwitcher,
-  CardLinkAction
+  CardLinkAction,
+  HelpTooltip
 } from '@baishou/ui/native'
 import {
   AIProviderConfig,
@@ -24,31 +26,36 @@ type ModelSelectorKey = 'globalDialogue' | 'globalNaming' | 'globalSummary' | 'g
 const MODEL_FIELD_META: Array<{
   key: ModelSelectorKey
   labelKey: string
-  icon: keyof typeof MaterialCommunityIcons.glyphMap
+  tooltipKey: string
+  icon: LucideIcon
   forEmbedding: boolean
 }> = [
   {
     key: 'globalSummary',
     labelKey: 'ai_config.summary_model_title',
-    icon: 'file-document-outline',
+    tooltipKey: 'settings.tooltip_summary_model',
+    icon: ScrollText,
     forEmbedding: false
   },
   {
     key: 'globalDialogue',
     labelKey: 'ai_config.dialogue_model_title',
-    icon: 'chat-outline',
+    tooltipKey: 'settings.tooltip_chat_model',
+    icon: MessageCircle,
     forEmbedding: false
   },
   {
     key: 'globalNaming',
     labelKey: 'ai_config.naming_model_title',
-    icon: 'pencil-outline',
+    tooltipKey: 'settings.tooltip_naming_model',
+    icon: Pencil,
     forEmbedding: false
   },
   {
     key: 'globalEmbedding',
     labelKey: 'ai_config.embedding_model_title',
-    icon: 'hub',
+    tooltipKey: 'settings.tooltip_embedding_model',
+    icon: Database,
     forEmbedding: true
   }
 ]
@@ -149,17 +156,9 @@ export const AIModelsSection: React.FC = () => {
     setActiveSelector(null)
   }
 
-  const getModelDisplay = (
-    providerKey: keyof GlobalModelsConfig,
-    modelKey: keyof GlobalModelsConfig
-  ) => {
-    const pid = globalModels[providerKey] as string | undefined
+  const getModelDisplay = (modelKey: keyof GlobalModelsConfig) => {
     const mid = globalModels[modelKey] as string | undefined
-    if (pid && mid) {
-      const prov = providers.find((p) => p.id === pid)
-      return prov ? `${prov.name} / ${mid}` : mid
-    }
-    return t('settings.not_set')
+    return mid || t('settings.not_set')
   }
 
   const cardStyle = useMemo(
@@ -174,11 +173,8 @@ export const AIModelsSection: React.FC = () => {
 
   return (
     <View style={styles.section}>
-      <Text style={[styles.pageHint, { color: colors.textSecondary }]}>
-        {t('ai_config.global_models_title')}
-      </Text>
-
       {MODEL_FIELD_META.map((field) => {
+        const RouteIcon = field.icon
         const providerKey = `${field.key}ProviderId` as keyof GlobalModelsConfig
         const modelKey = `${field.key}ModelId` as keyof GlobalModelsConfig
         const isSet = Boolean(globalModels[providerKey] && globalModels[modelKey])
@@ -187,12 +183,7 @@ export const AIModelsSection: React.FC = () => {
           : undefined
 
         return (
-          <TouchableOpacity
-            key={field.key}
-            style={[styles.routingCard, cardStyle]}
-            activeOpacity={0.7}
-            onPress={() => openSelector(field.key, field.forEmbedding)}
-          >
+          <View key={field.key} style={[styles.routingCard, cardStyle]}>
             <View style={styles.routeHeader}>
               <View
                 style={[
@@ -204,18 +195,21 @@ export const AIModelsSection: React.FC = () => {
                   }
                 ]}
               >
-                <MaterialCommunityIcons
-                  name={field.icon}
+                <RouteIcon
                   size={20}
                   color={field.forEmbedding ? colors.error : colors.primary}
+                  strokeWidth={2}
                 />
               </View>
-              <Text style={[styles.routeName, { color: colors.textPrimary }]}>
-                {t(field.labelKey)}
-              </Text>
+              <View style={styles.titleRow}>
+                <Text style={[styles.routeName, { color: colors.textPrimary }]}>
+                  {t(field.labelKey)}
+                </Text>
+                <HelpTooltip content={t(field.tooltipKey)} size={16} />
+              </View>
             </View>
 
-            <View
+            <TouchableOpacity
               style={[
                 styles.selectorBtn,
                 {
@@ -223,6 +217,8 @@ export const AIModelsSection: React.FC = () => {
                   borderColor: isSet ? colors.borderMuted : colors.borderSubtle
                 }
               ]}
+              activeOpacity={0.7}
+              onPress={() => openSelector(field.key, field.forEmbedding)}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
                 {isSet && (
@@ -240,13 +236,13 @@ export const AIModelsSection: React.FC = () => {
                   numberOfLines={2}
                 >
                   {isSet
-                    ? getModelDisplay(providerKey, modelKey)
+                    ? getModelDisplay(modelKey)
                     : t('models.click_to_assign', '点击分配默认处理模型')}
                 </Text>
               </View>
               <Text style={[styles.chevron, { color: colors.textTertiary }]}>›</Text>
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          </View>
         )
       })}
 
@@ -283,11 +279,6 @@ const styles = StyleSheet.create({
   section: {
     gap: 12
   },
-  pageHint: {
-    fontSize: 14,
-    marginBottom: 4,
-    lineHeight: 20
-  },
   routingCard: {
     padding: 16
   },
@@ -304,10 +295,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
+  titleRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6
+  },
   routeName: {
     fontSize: 16,
-    fontWeight: '600',
-    flex: 1
+    fontWeight: '600'
   },
   selectorBtn: {
     flexDirection: 'row',

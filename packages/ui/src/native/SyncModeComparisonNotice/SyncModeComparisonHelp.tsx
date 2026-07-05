@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { CircleHelp } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { Modal } from '../Modal/Modal'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 
 export type SyncModeComparisonHelpProps = {
   context?: 'incremental' | 'fullBackup'
@@ -73,7 +74,7 @@ export const SyncModeComparisonHelp: React.FC<SyncModeComparisonHelpProps> = ({
         )}
         style={styles.helpBtn}
       >
-        <MaterialIcons name="help-outline" size={size} color={colors.textTertiary} />
+        <CircleHelp size={size} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
       </Pressable>
       <Modal
         visible={open}

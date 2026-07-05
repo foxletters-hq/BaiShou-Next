@@ -1,5 +1,7 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useContext } from 'react'
+import { registerTtsPlaybackStopHandler, stopAllTtsPlayback } from '@baishou/shared'
 import { toast } from '@baishou/ui'
+import { MainPageCacheActiveContext } from '../../../layouts/main-page-cache.context'
 
 type TtsSynthesizeSpeechResult =
   | { success: true; segmentCount: number }
@@ -9,6 +11,7 @@ type TtsSynthesizeSpeechResult =
  * 封装 Text-to-Speech (TTS) 音频播放、模式控制、生命周期清理状态的自定义 Hook。
  */
 export function useTts(t: any) {
+  const isPageActive = useContext(MainPageCacheActiveContext)
   const [ttsMode, setTtsMode] = useState<'always' | 'manual'>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('baishou_tts_mode')
@@ -60,6 +63,14 @@ export function useTts(t: any) {
     setTtsPlayingMsgId(null)
   }, [])
 
+  useEffect(() => registerTtsPlaybackStopHandler(stopTts), [stopTts])
+
+  useEffect(() => {
+    if (!isPageActive) {
+      void stopAllTtsPlayback()
+    }
+  }, [isPageActive])
+
   const playAudioChunk = useCallback(
     async (audioBase64: string, format: string, requestId: number): Promise<void> => {
       if (requestId !== ttsRequestRef.current) return
@@ -96,7 +107,7 @@ export function useTts(t: any) {
       if (!content.trim()) return
 
       if (ttsPlayingMsgId === messageId) {
-        stopTts()
+        await stopAllTtsPlayback()
         return
       }
 
@@ -119,7 +130,7 @@ export function useTts(t: any) {
           return
         }
 
-        stopTts()
+        await stopAllTtsPlayback()
         requestId = ++ttsRequestRef.current
         if (messageId) setTtsPlayingMsgId(messageId)
 
@@ -177,17 +188,14 @@ export function useTts(t: any) {
         )
       }
     },
-    [t, ttsPlayingMsgId, stopTts, clearTtsBusyState, playAudioChunk]
+    [t, ttsPlayingMsgId, clearTtsBusyState, playAudioChunk]
   )
 
   useEffect(() => {
     return () => {
-      if (ttsAudioRef.current) {
-        ttsAudioRef.current.pause()
-        ttsAudioRef.current = null
-      }
+      stopTts()
     }
-  }, [])
+  }, [stopTts])
 
   return {
     ttsMode,

@@ -139,6 +139,7 @@ export const LegacyMigrationPane: React.FC = () => {
     importProgress,
     customSourceRoot,
     legacySourceKindKey,
+    inPlace,
     refreshScan,
     handlePickSource,
     handleClearCustomSource,
@@ -226,6 +227,14 @@ export const LegacyMigrationPane: React.FC = () => {
 
         {scanResult ? (
           <>
+            {inPlace ? (
+              <p className="legacy-migration-source-kind">
+                {t(
+                  'version_migration.in_place_notice',
+                  '旧版数据与当前工作区目录相同，将在此目录原位转换数据结构（不会复制到新文件夹）。'
+                )}
+              </p>
+            ) : null}
             {legacySourceKindKey ? (
               <p className="legacy-migration-source-kind">{t(legacySourceKindKey)}</p>
             ) : null}

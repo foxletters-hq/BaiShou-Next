@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import { View, ActivityIndicator, StyleSheet } from 'react-native'
+import { useFocusEffect } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import * as Clipboard from 'expo-clipboard'
 import {
@@ -17,6 +18,14 @@ export const McpSettingsSection: React.FC = () => {
   const toast = useNativeToast()
   const mcp = useMobileMcpConfig()
 
+  useFocusEffect(
+    useCallback(() => {
+      if (!mcp.loading) {
+        void mcp.reloadTools()
+      }
+    }, [mcp.loading, mcp.reloadTools])
+  )
+
   const handleCopyEndpoint = async () => {
     try {
       await Clipboard.setStringAsync(mcp.mcpEndpointUrl)
@@ -24,6 +33,20 @@ export const McpSettingsSection: React.FC = () => {
     } catch {
       toast.showError(t('common.copy_failed'))
     }
+  }
+
+  const handleCopyToken = async () => {
+    if (!mcp.config.mcpAuthToken) return
+    try {
+      await Clipboard.setStringAsync(mcp.config.mcpAuthToken)
+      toast.showSuccess(t('common.copied'))
+    } catch {
+      toast.showError(t('common.copy_failed'))
+    }
+  }
+
+  const handleRefreshToken = () => {
+    void mcp.refreshAuthToken()
   }
 
   if (mcp.loading) {
@@ -44,6 +67,8 @@ export const McpSettingsSection: React.FC = () => {
         activePort={mcp.activePort}
         onChange={(next) => void mcp.persistConfig(next)}
         onCopyEndpoint={() => void handleCopyEndpoint()}
+        onCopyToken={() => void handleCopyToken()}
+        onRefreshToken={handleRefreshToken}
       />
       <McpToolsListPanel tools={mcp.tools} loading={mcp.toolsLoading} failed={mcp.toolsFailed} />
     </View>

@@ -1,4 +1,11 @@
-import { keymap, ViewPlugin, Decoration, type DecorationSet, type EditorView, type ViewUpdate } from '@codemirror/view'
+import {
+  keymap,
+  ViewPlugin,
+  Decoration,
+  type DecorationSet,
+  type EditorView,
+  type ViewUpdate
+} from '@codemirror/view'
 import { StateEffect } from '@codemirror/state'
 import { shouldSkipDiaryTagExtractionLine } from '@baishou/shared'
 import {
@@ -9,8 +16,7 @@ import {
 
 export { setActiveDiaryTagColorRegistry, getActiveDiaryTagColorRegistry }
 
-export const refreshDiaryTagColorRegistryEffect =
-  StateEffect.define<Record<string, number>>()
+export const refreshDiaryTagColorRegistryEffect = StateEffect.define<Record<string, number>>()
 
 const TAG_TOKEN_RE = /#([^\s#]+)/g
 
@@ -76,6 +82,10 @@ function runDiaryTagEnter(view: EditorView): boolean {
   const { state } = view
   const head = state.selection.main.head
   const line = state.doc.lineAt(head)
+
+  // 列表行交给 listContinuation 处理
+  if (/^\s*[-*+]\s/.test(line.text)) return false
+
   if (shouldSkipDiaryTagExtractionLine(line.text)) return false
 
   const lineText = line.text
@@ -106,10 +116,9 @@ function runDiaryTagEnter(view: EditorView): boolean {
   }
 
   if (afterCursor.trim() === '') {
-    const insert = lineText.trim() === '' ? '\n' : '\n\n'
     view.dispatch({
-      changes: { from: line.to, insert },
-      selection: { anchor: line.to + insert.length }
+      changes: { from: line.to, insert: '\n' },
+      selection: { anchor: line.to + 1 }
     })
     return true
   }

@@ -1,7 +1,9 @@
 import { BrowserWindow } from 'electron'
 import { memoryEmbeddingsTable } from '@baishou/database-desktop'
-import { eq } from 'drizzle-orm'
+import { eq, sql, and } from 'drizzle-orm'
 import {
+  buildDiaryEmbeddingGroupId,
+  buildDiaryEmbeddingSourceId,
   clearRagDiaryEmbedFailure,
   diaryDateToSourceCreatedSeconds,
   filterUnindexedDiaries,
@@ -15,9 +17,15 @@ import {
 } from '@baishou/shared'
 
 import { getAppDb } from '../db'
-import { getDiaryManager } from '../ipc/diary.ipc'
 import { getEmbeddingService, getEmbeddingConfig } from '../ipc/rag.ipc'
 import { settingsManager } from '../ipc/settings.ipc'
+import { vaultService } from '../ipc/vault.ipc'
+import { getDiaryManagerForVault } from './diary-vault.factory'
+import {
+  deleteDiaryEmbeddingAliases,
+  purgeAllLegacyDiaryEmbeddings,
+  purgeLegacyDiaryEmbeddingsForVault
+} from './diary-embedding.util'
 
 export type ControlledDiaryBatchEmbedProgress = {
   completed: number
@@ -27,6 +35,10 @@ export type ControlledDiaryBatchEmbedProgress = {
 
 export type ControlledDiaryBatchEmbedResult = {
   embedded: number
+  /** 无正文、无法读取而跳过的日记篇数 */
+  loadSkipped: number
+  /** 嵌入 API/写入失败而跳过的日记篇数 */
+  failed: number
   total: number
   skipped: boolean
   skipReason?: string
@@ -41,34 +53,29 @@ type RunControlledDiaryBatchEmbedOptions = {
 let inFlight: Promise<ControlledDiaryBatchEmbedResult> | null = null
 let rerunRequested = false
 
-async function loadEmbeddedDiaryIndex(): Promise<{
+async function loadEmbeddedDiaryIndex(vaultName: string): Promise<{
   embeddedIds: Set<string>
   embeddedUpdatedAtMap: Map<string, number>
 }> {
   const db = getAppDb()
+  const groupId = buildDiaryEmbeddingGroupId(vaultName)
   const existingRows = await db
     .select({
       sourceId: memoryEmbeddingsTable.sourceId,
-      metadataJson: memoryEmbeddingsTable.metadataJson
+      maxUpdatedAt: sql<number>`MAX(CAST(json_extract(${memoryEmbeddingsTable.metadataJson}, '$.updated_at') AS INTEGER))`
     })
     .from(memoryEmbeddingsTable)
-    .where(eq(memoryEmbeddingsTable.sourceType, 'diary'))
+    .where(
+      and(eq(memoryEmbeddingsTable.sourceType, 'diary'), eq(memoryEmbeddingsTable.groupId, groupId))
+    )
+    .groupBy(memoryEmbeddingsTable.sourceId)
 
   const embeddedIds = new Set(existingRows.map((row) => row.sourceId))
   const embeddedUpdatedAtMap = new Map<string, number>()
 
   for (const row of existingRows) {
-    if (!row.metadataJson) continue
-    try {
-      const meta = JSON.parse(row.metadataJson) as { updated_at?: number }
-      if (typeof meta.updated_at === 'number') {
-        const currentMax = embeddedUpdatedAtMap.get(row.sourceId) ?? 0
-        if (meta.updated_at > currentMax) {
-          embeddedUpdatedAtMap.set(row.sourceId, meta.updated_at)
-        }
-      }
-    } catch {
-      /* ignore malformed metadata */
+    if (typeof row.maxUpdatedAt === 'number' && row.maxUpdatedAt > 0) {
+      embeddedUpdatedAtMap.set(row.sourceId, row.maxUpdatedAt)
     }
   }
 
@@ -105,34 +112,37 @@ export async function runControlledDiaryBatchEmbed(
 
   const ragConfig = (await settingsManager.get<RagConfig>('rag_config')) || ({} as RagConfig)
   if (!isRagMemoryEnabled(ragConfig)) {
-    return { embedded: 0, total: 0, skipped: true, skipReason: 'rag-disabled' }
+    return {
+      embedded: 0,
+      loadSkipped: 0,
+      failed: 0,
+      total: 0,
+      skipped: true,
+      skipReason: 'rag-disabled'
+    }
   }
 
   const embeddingService = getEmbeddingService()
   if (!embeddingService.isConfigured) {
-    return { embedded: 0, total: 0, skipped: true, skipReason: 'embedding-not-configured' }
+    return {
+      embedded: 0,
+      loadSkipped: 0,
+      failed: 0,
+      total: 0,
+      skipped: true,
+      skipReason: 'embedding-not-configured'
+    }
   }
 
   if (embeddingService.isMigrationRunning()) {
-    return { embedded: 0, total: 0, skipped: true, skipReason: 'migration-running' }
-  }
-
-  const diaries = await getDiaryManager().listAll({ limit: 10000 })
-  const { embeddedIds, embeddedUpdatedAtMap } = await loadEmbeddedDiaryIndex()
-  const diariesToEmbed = sortDiariesByDateAsc(
-    filterUnindexedDiaries(diaries, embeddedIds, embeddedUpdatedAtMap)
-  )
-  const total = diariesToEmbed.length
-  const groupId = options?.groupId ?? 'diary_batch'
-
-  if (total === 0) {
-    if (hasRagDiaryEmbedFailure(ragConfig)) {
-      await settingsManager.set('rag_config', clearRagDiaryEmbedFailure(ragConfig))
-      for (const win of BrowserWindow.getAllWindows()) {
-        win.webContents.send('diary:sync-event', { type: 'embed-failure-cleared' })
-      }
+    return {
+      embedded: 0,
+      loadSkipped: 0,
+      failed: 0,
+      total: 0,
+      skipped: true,
+      skipReason: 'migration-running'
     }
-    return { embedded: 0, total: 0, skipped: true, skipReason: 'nothing-to-embed' }
   }
 
   const batchRagConfig =
@@ -141,51 +151,92 @@ export async function runControlledDiaryBatchEmbed(
 
   await embeddingService.prepareEmbeddingIndex()
 
-  let completed = 0
-  let embedded = 0
-
-  await limitExecute(diariesToEmbed, batchConcurrency, async (meta) => {
-    const dateLabel = new Date(meta.date).toLocaleDateString()
-    reportProgress(options, { completed, total, statusText: `处理日记: ${dateLabel}` }, total)
-
-    const diary = await getDiaryManager().findById(meta.id)
-    if (!diary?.id || !diary.content?.trim()) {
-      completed++
-      return
-    }
-
-    const d = diary.date
-    const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    const tagPrefix = meta.tags.length > 0 ? `[标签: ${meta.tags.join(', ')}] ` : ''
-    const sourceCreatedAt = diaryDateToSourceCreatedSeconds(d) * 1000
-
-    await embeddingService.reEmbedText({
-      text: diary.content,
-      sourceType: 'diary',
-      sourceId: diary.id.toString(),
-      groupId,
-      chunkPrefix: `${tagPrefix}[${label} 日记:]\n`,
-      metadataJson: JSON.stringify({ updated_at: diary.updatedAt?.getTime() ?? Date.now() }),
-      sourceCreatedAt,
-      skipIndexPrep: true
+  const purgedLegacy = await purgeAllLegacyDiaryEmbeddings()
+  if (purgedLegacy > 0) {
+    logger.info('[ControlledDiaryBatchEmbed] purged global legacy diary vectors', {
+      count: purgedLegacy
     })
+  }
 
-    embedded++
-    completed++
-    reportProgress(options, { completed, total, statusText: `处理日记: ${dateLabel}` }, total)
-  })
+  const vaults = vaultService.getAllVaults()
+  type DiaryMetaList = Awaited<
+    ReturnType<Awaited<ReturnType<typeof getDiaryManagerForVault>>['listAll']>
+  >
+  const vaultPlans: Array<{
+    vaultName: string
+    diariesToEmbed: DiaryMetaList
+    allDiaryIds: Array<number | string>
+  }> = []
+  let globalTotal = 0
+
+  for (const vault of vaults) {
+    const diaryManager = await getDiaryManagerForVault(vault.name)
+    const diaries = await diaryManager.listAll({ limit: 10000 })
+    const { embeddedIds, embeddedUpdatedAtMap } = await loadEmbeddedDiaryIndex(vault.name)
+    const resolveSourceId = (meta: { id: unknown }) =>
+      buildDiaryEmbeddingSourceId(vault.name, meta.id as number | string)
+    const diariesToEmbed = sortDiariesByDateAsc(
+      filterUnindexedDiaries(diaries, embeddedIds, embeddedUpdatedAtMap, { resolveSourceId })
+    )
+    if (diariesToEmbed.length === 0) continue
+    vaultPlans.push({
+      vaultName: vault.name,
+      diariesToEmbed,
+      allDiaryIds: diaries.map((d) => d.id)
+    })
+    globalTotal += diariesToEmbed.length
+  }
+
+  if (globalTotal === 0) {
+    if (hasRagDiaryEmbedFailure(ragConfig)) {
+      await settingsManager.set('rag_config', clearRagDiaryEmbedFailure(ragConfig))
+      for (const win of BrowserWindow.getAllWindows()) {
+        win.webContents.send('diary:sync-event', { type: 'embed-failure-cleared' })
+      }
+    }
+    return {
+      embedded: 0,
+      loadSkipped: 0,
+      failed: 0,
+      total: 0,
+      skipped: true,
+      skipReason: 'nothing-to-embed'
+    }
+  }
+
+  let globalCompleted = 0
+  let embedded = 0
+  let loadSkipped = 0
+  let failed = 0
+
+  for (const plan of vaultPlans) {
+    const vaultResult = await embedVaultDiaries(plan, {
+      embeddingService,
+      batchConcurrency,
+      globalTotal,
+      getGlobalCompleted: () => globalCompleted,
+      setGlobalCompleted: (n) => {
+        globalCompleted = n
+      },
+      getGlobalEmbedded: () => embedded,
+      getGlobalFailed: () => failed,
+      options
+    })
+    embedded += vaultResult.embedded
+    loadSkipped += vaultResult.loadSkipped
+    failed += vaultResult.failed
+  }
 
   if (options?.broadcastProgress) {
     broadcastRagProgress({
       isRunning: false,
-      progress: total,
-      total,
+      progress: globalTotal,
+      total: globalTotal,
       type: 'idle'
     })
   }
 
-  const latestRagConfig =
-    (await settingsManager.get<RagConfig>('rag_config')) || ({} as RagConfig)
+  const latestRagConfig = (await settingsManager.get<RagConfig>('rag_config')) || ({} as RagConfig)
   if (hasRagDiaryEmbedFailure(latestRagConfig)) {
     await settingsManager.set('rag_config', clearRagDiaryEmbedFailure(latestRagConfig))
     for (const win of BrowserWindow.getAllWindows()) {
@@ -193,13 +244,129 @@ export async function runControlledDiaryBatchEmbed(
     }
   }
 
-  logger.info('[ControlledDiaryBatchEmbed] finished', { embedded, total, groupId })
-  return { embedded, total, skipped: false }
+  logger.info('[ControlledDiaryBatchEmbed] finished', {
+    embedded,
+    loadSkipped,
+    failed,
+    total: globalTotal,
+    vaultCount: vaultPlans.length
+  })
+  return { embedded, loadSkipped, failed, total: globalTotal, skipped: false }
+}
+
+type VaultEmbedPlan = {
+  vaultName: string
+  diariesToEmbed: Awaited<
+    ReturnType<Awaited<ReturnType<typeof getDiaryManagerForVault>>['listAll']>
+  >
+  allDiaryIds: Array<number | string>
+}
+
+type EmbedVaultDiariesContext = {
+  embeddingService: ReturnType<typeof getEmbeddingService>
+  batchConcurrency: number
+  globalTotal: number
+  getGlobalCompleted: () => number
+  setGlobalCompleted: (value: number) => void
+  getGlobalEmbedded: () => number
+  getGlobalFailed: () => number
+  options?: RunControlledDiaryBatchEmbedOptions
+}
+
+async function embedVaultDiaries(
+  plan: VaultEmbedPlan,
+  ctx: EmbedVaultDiariesContext
+): Promise<{
+  embedded: number
+  loadSkipped: number
+  failed: number
+}> {
+  const { vaultName, diariesToEmbed } = plan
+  const diaryManager = await getDiaryManagerForVault(vaultName)
+
+  await purgeLegacyDiaryEmbeddingsForVault(vaultName, plan.allDiaryIds)
+
+  const groupId = buildDiaryEmbeddingGroupId(vaultName)
+  let embedded = 0
+  let loadSkipped = 0
+  let failed = 0
+
+  await limitExecute(diariesToEmbed, ctx.batchConcurrency, async (meta) => {
+    const dateLabel = new Date(meta.date).toLocaleDateString()
+    const completed = ctx.getGlobalCompleted()
+    ctx.options &&
+      reportProgress(
+        ctx.options,
+        {
+          completed,
+          total: ctx.globalTotal,
+          statusText: `[${vaultName}] 已嵌入 ${ctx.getGlobalEmbedded() + embedded}/${ctx.globalTotal}${ctx.getGlobalFailed() + failed > 0 ? `（失败 ${ctx.getGlobalFailed() + failed}）` : ''}（${dateLabel}）`
+        },
+        ctx.globalTotal
+      )
+
+    const diary = (await diaryManager.findByIdsForEmbedding([meta.id])).get(meta.id)
+    if (!diary?.id || !diary.content?.trim()) {
+      loadSkipped++
+      ctx.setGlobalCompleted(ctx.getGlobalCompleted() + 1)
+      logger.warn('[ControlledDiaryBatchEmbed] 跳过无正文日记', {
+        vaultName,
+        diaryId: meta.id,
+        date: dateLabel
+      })
+      return
+    }
+
+    const d = diary.date
+    const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const tagPrefix = meta.tags.length > 0 ? `[标签: ${meta.tags.join(', ')}] ` : ''
+    const sourceCreatedAt = diaryDateToSourceCreatedSeconds(d) * 1000
+    const sourceId = buildDiaryEmbeddingSourceId(vaultName, diary.id)
+
+    try {
+      await deleteDiaryEmbeddingAliases(vaultName, diary.id)
+      await ctx.embeddingService.reEmbedText({
+        text: diary.content,
+        sourceType: 'diary',
+        sourceId,
+        groupId,
+        chunkPrefix: `${tagPrefix}[${label} 日记:]\n`,
+        metadataJson: JSON.stringify({ updated_at: diary.updatedAt?.getTime() ?? Date.now() }),
+        sourceCreatedAt,
+        skipIndexPrep: true
+      })
+      embedded++
+    } catch (error) {
+      failed++
+      logger.warn('[ControlledDiaryBatchEmbed] 单篇嵌入失败', {
+        vaultName,
+        diaryId: meta.id,
+        date: dateLabel,
+        error
+      })
+    } finally {
+      ctx.setGlobalCompleted(ctx.getGlobalCompleted() + 1)
+      ctx.options &&
+        reportProgress(
+          ctx.options,
+          {
+            completed: ctx.getGlobalCompleted(),
+            total: ctx.globalTotal,
+            statusText: `[${vaultName}] 已嵌入 ${ctx.getGlobalEmbedded() + embedded}/${ctx.globalTotal}${ctx.getGlobalFailed() + failed > 0 ? `（失败 ${ctx.getGlobalFailed() + failed}）` : ''}（${dateLabel}）`
+          },
+          ctx.globalTotal
+        )
+    }
+  })
+
+  return { embedded, loadSkipped, failed }
 }
 
 async function runPostSyncDiaryBatchEmbedLoop(): Promise<ControlledDiaryBatchEmbedResult> {
   let lastResult: ControlledDiaryBatchEmbedResult = {
     embedded: 0,
+    loadSkipped: 0,
+    failed: 0,
     total: 0,
     skipped: true,
     skipReason: 'not-started'
@@ -235,6 +402,8 @@ export function schedulePostSyncDiaryBatchEmbed(): void {
       })
       return {
         embedded: 0,
+        loadSkipped: 0,
+        failed: 0,
         total: 0,
         skipped: true,
         skipReason: 'failed'

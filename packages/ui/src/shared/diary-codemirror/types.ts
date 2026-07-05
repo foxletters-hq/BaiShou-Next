@@ -19,6 +19,8 @@ export interface DiaryCmPlatform {
   tagLineMode?: boolean
   /** mobile: viewport=WebView 内滚动; document=转发 RN 外层滚动 */
   scrollMode?: 'viewport' | 'document'
+  /** CM 内嵌 UI（如 ckant 表格菜单）文案；key 为 i18n 路径，defaultValue 为英文回退 */
+  translate?: (key: string, defaultValue: string) => string
 }
 
 export type DiaryCmInteractionMode = DiaryCmPlatform['interactionMode']
@@ -74,6 +76,11 @@ export interface DiaryCmResolveUrlResponsePayload {
   url: string | null
 }
 
+export interface DiaryCmConfirmResponsePayload {
+  requestId: string
+  confirmed: boolean
+}
+
 export interface DiaryCmSetEditablePayload {
   editable: boolean
 }
@@ -82,23 +89,41 @@ export interface DiaryCmSetTagColorRegistryPayload {
   registry: DiaryTagColorRegistry
 }
 
-/** WebView 内滚动时预留的底部遮挡高度（如 RN 浮动工具栏） */
+/** WebView 内滚动时预留的底部遮挡高度（如 RN 浮动工具栏）；keyboardVisible 表示软键盘已弹出 */
 export interface DiaryCmSetScrollInsetsPayload {
   bottom: number
+  keyboardVisible?: boolean
+}
+
+export type DiaryCmMarkdownMark = '**' | '*' | '`' | '~~'
+
+export interface DiaryCmToggleMarkdownMarkPayload {
+  marker: DiaryCmMarkdownMark
+}
+
+export interface DiaryCmDeleteRangePayload {
+  from: number
+  to: number
 }
 
 export type DiaryCmToWebViewMessage =
   | { type: 'init'; payload: DiaryCmInitPayload }
   | { type: 'setContent'; payload: DiaryCmSetContentPayload }
+  | { type: 'deleteRange'; payload: DiaryCmDeleteRangePayload }
   | { type: 'setTagColorRegistry'; payload: DiaryCmSetTagColorRegistryPayload }
   | { type: 'insertAtCursor'; payload: DiaryCmInsertAtCursorPayload }
   | { type: 'setSelection'; payload: DiaryCmSetSelectionPayload }
   | { type: 'setEditable'; payload: DiaryCmSetEditablePayload }
   | { type: 'setScrollInsets'; payload: DiaryCmSetScrollInsetsPayload }
+  | { type: 'toggleMarkdownMark'; payload: DiaryCmToggleMarkdownMarkPayload }
+  | { type: 'undo' }
+  | { type: 'redo' }
   | { type: 'scrollCaretIntoView' }
   | { type: 'focus' }
   | { type: 'blur' }
   | { type: 'resolveUrlResponse'; payload: DiaryCmResolveUrlResponsePayload }
+  | { type: 'confirmResponse'; payload: DiaryCmConfirmResponsePayload }
+  | { type: 'tableSheetResponse'; payload: DiaryCmTableSheetResponsePayload }
   /** RN 未收到 ready 时请求 WebView 重新发送 ready */
   | { type: 'requestReady' }
 
@@ -149,6 +174,44 @@ export interface DiaryCmPanScrollPayload {
   deltaY: number
 }
 
+export interface DiaryCmDebugPayload {
+  scope?: string
+  tag: string
+  detail?: Record<string, unknown> | null
+}
+
+export interface DiaryCmConfirmRequestPayload {
+  requestId: string
+  title?: string
+  message: string
+  confirmText?: string
+  cancelText?: string
+  destructive?: boolean
+}
+
+export interface DiaryCmTableSheetMenuItemPayload {
+  id: string
+  label: string
+  disabled?: boolean
+  destructive?: boolean
+}
+
+export interface DiaryCmTableSheetSectionPayload {
+  items: DiaryCmTableSheetMenuItemPayload[]
+}
+
+export interface DiaryCmTableSheetRequestPayload {
+  requestId: string
+  title: string
+  sections: DiaryCmTableSheetSectionPayload[]
+}
+
+export interface DiaryCmTableSheetResponsePayload {
+  requestId: string
+  action: 'pick' | 'dismiss'
+  itemId?: string
+}
+
 export type DiaryCmFromWebViewMessage =
   | { type: 'ready' }
   | { type: 'change'; payload: DiaryCmChangePayload }
@@ -159,6 +222,10 @@ export type DiaryCmFromWebViewMessage =
   | { type: 'contentHeight'; payload: DiaryCmContentHeightPayload }
   | { type: 'caretViewport'; payload: DiaryCmCaretViewportPayload }
   | { type: 'panScroll'; payload: DiaryCmPanScrollPayload }
+  | { type: 'debug'; payload: DiaryCmDebugPayload }
+  | { type: 'dismissKeyboard' }
+  | { type: 'confirmRequest'; payload: DiaryCmConfirmRequestPayload }
+  | { type: 'tableSheetRequest'; payload: DiaryCmTableSheetRequestPayload }
   | { type: 'focus' }
   | { type: 'blur' }
 
@@ -200,6 +267,10 @@ export function isDiaryCmFromWebViewMessage(value: unknown): value is DiaryCmFro
     type === 'contentHeight' ||
     type === 'caretViewport' ||
     type === 'panScroll' ||
+    type === 'debug' ||
+    type === 'dismissKeyboard' ||
+    type === 'confirmRequest' ||
+    type === 'tableSheetRequest' ||
     type === 'focus' ||
     type === 'blur'
   )

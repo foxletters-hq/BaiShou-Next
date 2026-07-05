@@ -11,10 +11,10 @@ import {
   IdentitySettingsCard,
   AboutSettingsCard,
   RestoreBlockingOverlay,
-  ChatBackgroundSettingsCard
+  ChatBackgroundSettingsCard,
+  useOpenFeedbackChannel
 } from '@baishou/ui'
 import {
-  GITHUB_ISSUES_URL,
   GITHUB_REPO_URL,
   normalizeChatBackgroundBlur,
   normalizeChatBackgroundOverlayOpacity
@@ -30,11 +30,19 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
   const navigate = useNavigate()
   const settingsNav = useSettingsScopeNavigation()
   const { t } = useTranslation()
-  const { profile, loadProfile, pickAndSaveBackground, clearBackground, updateChatBackgroundStyle } =
-    useUserProfileStore() as any
+  const {
+    profile,
+    loadProfile,
+    pickAndSaveBackground,
+    clearBackground,
+    updateChatBackgroundStyle
+  } = useUserProfileStore() as any
   const [vaults, setVaults] = useState<any[]>([])
   const [activeVault, setActiveVault] = useState<any>(null)
   const [appVersion, setAppVersion] = useState(APP_VERSION)
+  const openFeedback = useOpenFeedbackChannel((url) => {
+    void window.api.shell.openExternal(url)
+  })
 
   const [storageStats, setStorageStats] = useState({
     storageRootPath: 'Loading...',
@@ -86,6 +94,14 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
     void refreshStorageStats()
     fetchVersion()
   }, [loadProfile, loadVaults])
+
+  useEffect(() => {
+    const unsub = (window as any).api?.storage?.onRootChanged?.(() => {
+      void loadVaults()
+      void refreshStorageStats()
+    })
+    return unsub
+  }, [loadVaults])
 
   const identityProfile = profile || {
     nickname: '',
@@ -208,11 +224,32 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
                 embedded
                 isLast
                 storageRootPath={storageSettings.storageRootPath || storageStats.storageRootPath}
+                externalJournalsPath={storageSettings.externalJournalsPath}
+                externalJournalsDefaultPath={storageSettings.externalJournalsDefaultPath}
+                externalJournalsFileCount={storageSettings.externalJournalsFileCount}
+                externalJournalsPathAvailable={storageSettings.externalJournalsPathAvailable}
+                externalSummariesPath={storageSettings.externalSummariesPath}
+                externalSummariesDefaultPath={storageSettings.externalSummariesDefaultPath}
+                externalSummariesFileCount={storageSettings.externalSummariesFileCount}
+                externalSummariesFileCounts={storageSettings.externalSummariesFileCounts}
+                externalSummariesPathAvailable={storageSettings.externalSummariesPathAvailable}
                 sqliteSizeStats={storageStats.sqliteSizeStats}
                 vectorDbStats={storageStats.vectorDbStats}
                 mediaCacheStats={storageStats.mediaCacheStats}
                 onChangeDirectory={storageSettings.handleChangeDirectory}
                 onMigrateDirectory={storageSettings.handleMigrateDirectory}
+                onChangeExternalJournalsDirectory={
+                  storageSettings.handleChangeExternalJournalsDirectory
+                }
+                onClearExternalJournalsDirectory={
+                  storageSettings.handleClearExternalJournalsDirectory
+                }
+                onChangeExternalSummariesDirectory={
+                  storageSettings.handleChangeExternalSummariesDirectory
+                }
+                onClearExternalSummariesDirectory={
+                  storageSettings.handleClearExternalSummariesDirectory
+                }
                 onClearCache={async () => {
                   await (window as any).api?.storage?.clearCache()
                   if ((window as any).api?.storage) {
@@ -240,9 +277,12 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
                 version={appVersion}
                 heroImageSrc={baishouHeroImg}
                 onOpenGithubRepo={() => window.api.shell.openExternal(GITHUB_REPO_URL)}
-                onOpenFeedback={() => window.api.shell.openExternal(GITHUB_ISSUES_URL)}
+                onOpenFeedback={() => void openFeedback()}
                 onOpenCompressionTestSession={(sessionId) => navigate(`/chat/${sessionId}`)}
                 onOpenOnboarding={() => navigate('/welcome?preview=1')}
+                onDemoVaultCreated={async (vaultName) => {
+                  await switchActiveVault(vaultName)
+                }}
               />
             </div>
           </section>

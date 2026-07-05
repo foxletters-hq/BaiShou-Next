@@ -14,8 +14,9 @@ export const StoragePage: React.FC = () => {
       <DataManagementCard
         onExportZip={async () => {
           if (typeof window !== 'undefined' && window.electron) {
-            await window.electron.ipcRenderer.invoke('archive:export', i18n.language)
+            return window.electron.ipcRenderer.invoke('archive:export', i18n.language)
           }
+          return null
         }}
         onPickFile={async () => {
           if (typeof window !== 'undefined' && window.electron) {
@@ -28,6 +29,13 @@ export const StoragePage: React.FC = () => {
             await window.electron.ipcRenderer.invoke('archive:import', zipPath, true)
           }
         }}
+        onImportProgress={(callback) =>
+          (window as any).api?.archive?.onArchiveImportProgress?.(
+            (progress: { detail?: string }) => {
+              if (progress.detail) callback(progress.detail)
+            }
+          ) ?? (() => {})
+        }
       />
       <StorageSettingsCard
         onRefreshStats={async () => {

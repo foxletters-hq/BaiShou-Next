@@ -59,9 +59,9 @@ function normalizeLegacyRootUri(path: string): string {
 }
 
 export type LegacySourceResolution =
-  | { kind: 'manual'; sourceRoot: string; sourceDisplayPath: string }
-  | { kind: 'flutter'; sourceRoot: string; sourceDisplayPath: string }
-  | { kind: 'migrated'; sourceRoot: string; sourceDisplayPath: string }
+  | { kind: 'manual'; sourceRoot: string; sourceDisplayPath: string; inPlace: boolean }
+  | { kind: 'flutter'; sourceRoot: string; sourceDisplayPath: string; inPlace: boolean }
+  | { kind: 'migrated'; sourceRoot: string; sourceDisplayPath: string; inPlace: boolean }
 
 /** 解析版本迁移用的旧版根目录：手动选择 > Flutter 原版 > 整包迁移记录 */
 export async function resolveVersionMigrationLegacySource(
@@ -76,35 +76,39 @@ export async function resolveVersionMigrationLegacySource(
       return {
         kind: 'manual',
         sourceRoot: normalized,
-        sourceDisplayPath: displayPath(normalized)
+        sourceDisplayPath: displayPath(normalized),
+        inPlace: rootsEqual(normalized, targetRoot)
       }
     }
   }
 
   const candidates = await collectLegacyCandidateRoots(fileSystem)
   const flutterPrimary = pickPrimaryFlutterLegacySource(candidates, targetRoot)
-  if (
-    flutterPrimary &&
-    !rootsEqual(flutterPrimary, targetRoot) &&
-    (await isLegacyAppRoot(fileSystem, flutterPrimary))
-  ) {
+  if (flutterPrimary && (await isLegacyAppRoot(fileSystem, flutterPrimary))) {
     return {
       kind: 'flutter',
       sourceRoot: flutterPrimary,
-      sourceDisplayPath: displayPath(flutterPrimary)
+      sourceDisplayPath: displayPath(flutterPrimary),
+      inPlace: rootsEqual(flutterPrimary, targetRoot)
+    }
+  }
+
+  if (await isLegacyAppRoot(fileSystem, targetRoot)) {
+    return {
+      kind: 'flutter',
+      sourceRoot: targetRoot,
+      sourceDisplayPath: displayPath(targetRoot),
+      inPlace: true
     }
   }
 
   const migratedSource = await AsyncStorage.getItem(FLUTTER_LEGACY_MIGRATED_SOURCE_KEY)
-  if (
-    migratedSource &&
-    !rootsEqual(migratedSource, targetRoot) &&
-    (await isLegacyAppRoot(fileSystem, migratedSource))
-  ) {
+  if (migratedSource && (await isLegacyAppRoot(fileSystem, migratedSource))) {
     return {
       kind: 'migrated',
       sourceRoot: migratedSource,
-      sourceDisplayPath: displayPath(migratedSource)
+      sourceDisplayPath: displayPath(migratedSource),
+      inPlace: rootsEqual(migratedSource, targetRoot)
     }
   }
 
@@ -343,6 +347,8 @@ function buildImporterDeps(
     prepareMobileSqliteAttachPath(runtime.fileSystem, dbPath)
   deps.getJournalsBaseDirectory = async (targetVaultName: string) =>
     `${await runtime.pathService.getVaultDirectory(targetVaultName)}/Journals`
+  deps.getSessionsBaseDirectory = async (targetVaultName: string) =>
+    `${await runtime.pathService.getVaultDirectory(targetVaultName)}/Sessions`
   deps.assistantRecordExists = async (assistantId: string) => {
     const dir = await runtime.pathService.getAssistantsBaseDirectory()
     return runtime.fileSystem.exists(`${dir}/${assistantId}.json`)
@@ -354,7 +360,12 @@ function buildImporterDeps(
 export async function importMobileVersionMigrationSection(
   runtime: MobileVersionMigrationRuntime,
   sectionId: LegacyVersionMigrationSectionId,
-  options?: { onProgress?: (message: string) => void; legacySourceRoot?: string | null }
+  options?: {
+    onProgress?: (message: string) => void
+    legacySourceRoot?: string | null
+    /** 工作区导入后会提示重启，跳过耗时的磁盘全量 resync */
+    skipPostImportDiskResync?: boolean
+  }
 ): Promise<LegacyVersionMigrationImportResult> {
   const targetRoot = await runtime.getTargetRoot()
   const source = await resolveVersionMigrationLegacySource(
@@ -414,9 +425,11 @@ export async function importMobileVersionMigrationSection(
     if (activeVault !== targetVault) {
       await runtime.vaultService.switchVault(targetVault)
     }
-    const resyncOptions = { activeVaultName: targetVault }
-    await runtime.assistantManager.fullResyncFromDisks(resyncOptions)
-    await runtime.sessionManager.fullResyncFromDisks(resyncOptions)
+    if (!options?.skipPostImportDiskResync) {
+      const resyncOptions = { activeVaultName: targetVault }
+      await runtime.assistantManager.fullResyncFromDisks(resyncOptions)
+      await runtime.sessionManager.fullResyncFromDisks(resyncOptions)
+    }
     await removeEmptyLegacyVaultPlaceholder(runtime, legacyVaultName, targetVault)
   }
 
@@ -441,7 +454,11 @@ export async function importMobileVersionMigrationSection(
 export async function importMobileVersionMigrationAllWorkspaces(
   runtime: MobileVersionMigrationRuntime,
   workspaceSectionIds: LegacyVersionMigrationSectionId[],
-  options?: { onProgress?: (message: string) => void; legacySourceRoot?: string | null }
+  options?: {
+    onProgress?: (message: string) => void
+    legacySourceRoot?: string | null
+    skipPostImportDiskResync?: boolean
+  }
 ): Promise<LegacyVersionMigrationBatchImportResult> {
   let totalImported = 0
   let totalSkipped = 0
@@ -455,7 +472,8 @@ export async function importMobileVersionMigrationAllWorkspaces(
   for (const sectionId of workspaceSectionIds) {
     const result = await importMobileVersionMigrationSection(runtime, sectionId, {
       ...options,
-      onProgress: options?.onProgress
+      onProgress: options?.onProgress,
+      skipPostImportDiskResync: options?.skipPostImportDiskResync ?? true
     })
     sectionResults.push(result)
     totalImported += result.imported

@@ -5,6 +5,7 @@ import { invalidateUserAvatarDisplayCache } from '../lib/user-avatar-display.uti
 import { registerSummaryDashboardCacheStore } from '../lib/summary-dashboard-cache'
 import { clearAllAttachmentImageCaches } from '../utils/mobile-attachment-image-cache'
 import { invalidateMobileMcpToolContextCache } from '../services/mobile-mcp-context.service'
+import { clearProviderSettingsCache } from '../screens/SettingsScreen/utils/provider-settings'
 
 let mobileStoresRegistered = false
 
@@ -50,5 +51,10 @@ export function registerMobileCacheStores(): void {
       clearGlobalTtsSynthesisCache()
       clearMimoRefAudioHydrationCache()
     }
+  })
+
+  globalCacheRegistry.register('settings.aiProviders', {
+    invalidate: () => clearProviderSettingsCache(),
+    clear: () => clearProviderSettingsCache()
   })
 }

@@ -7,6 +7,7 @@ import {
   OperationLogService,
   listDiskVaultFolderNames,
   createNodeFileSystem,
+  S3NotConfiguredError,
   type IIncrementalSyncService
 } from '@baishou/core-desktop'
 import {
@@ -19,7 +20,8 @@ import {
   type IncrementalSyncPlanReuseBaseline,
   type IncrementalSyncRunOptions,
   type SyncProgressEvent,
-  type S3SyncConfig
+  type S3SyncConfig,
+  logger
 } from '@baishou/shared'
 import { IncrementalS3Client } from '../services/incremental-s3.client'
 import { IncrementalWebDavClient } from '../services/incremental-webdav.client'
@@ -172,9 +174,8 @@ async function afterIncrementalSync(
   const { globalBootstrapper } = await import('../services/bootstrapper.service')
   await globalBootstrapper.fullyResyncAllEcosystems()
 
-  const { schedulePostSyncDiaryBatchEmbed } = await import(
-    '../services/controlled-diary-batch-embed.service'
-  )
+  const { schedulePostSyncDiaryBatchEmbed } =
+    await import('../services/controlled-diary-batch-embed.service')
   schedulePostSyncDiaryBatchEmbed()
 }
 
@@ -208,6 +209,15 @@ async function ensureVaultsForIncrementalSync(
   return unique
 }
 
+async function flushPendingAgentSessionsBeforeSync(): Promise<void> {
+  try {
+    const { getAgentManagers } = await import('./agent-helpers')
+    await getAgentManagers().sessionManager.flushPendingDiskWrites()
+  } catch (e) {
+    logger.warn('[IncrementalSync] session flushPending before sync failed:', e as Error)
+  }
+}
+
 export function registerIncrementalSyncIPC() {
   ipcMain.handle('incrementalSync:getConfig', async () => {
     await ensureSyncServicesInitialized()
@@ -220,7 +230,6 @@ export function registerIncrementalSyncIPC() {
   ipcMain.handle('incrementalSync:updateConfig', async (_, config: Partial<S3SyncConfig>) => {
     const merged = {
       ...getDefaultSyncConfig(),
-      enabled: true,
       ...config
     }
     await createSyncService(merged)
@@ -234,7 +243,6 @@ export function registerIncrementalSyncIPC() {
     if (config) {
       const merged = {
         ...getDefaultSyncConfig(),
-        enabled: true,
         ...config
       }
       if (merged.target === 'webdav' && merged.webdavUrl) {
@@ -269,6 +277,7 @@ export function registerIncrementalSyncIPC() {
   })
 
   ipcMain.handle('incrementalSync:sync', async (event, runOptions) => {
+    await flushPendingAgentSessionsBeforeSync()
     const result = await (
       await getOrchestrator()
     ).sync((progress) => {
@@ -296,6 +305,11 @@ export function registerIncrementalSyncIPC() {
 
   ipcMain.handle('incrementalSync:planSync', async (_, runOptions) => {
     const service = await getSyncService()
+    const config = await service.getConfig()
+    if (!config.enabled) {
+      throw new S3NotConfiguredError()
+    }
+
     service.clearPlanManifestCache()
     await vaultService.syncRegistryWithDisk()
     let context = await resolveSyncPlanContext()
@@ -361,26 +375,30 @@ export function registerIncrementalSyncIPC() {
     }
   )
 
-  ipcMain.handle('incrementalSync:orchestratedSync', async (event, runOptions?: IncrementalSyncRunOptions) => {
-    const publishProgress = (progress: SyncProgressEvent) => {
-      event.sender.send('incrementalSync:progress', progress)
+  ipcMain.handle(
+    'incrementalSync:orchestratedSync',
+    async (event, runOptions?: IncrementalSyncRunOptions) => {
+      const publishProgress = (progress: SyncProgressEvent) => {
+        event.sender.send('incrementalSync:progress', progress)
+      }
+      publishProgress({
+        phase: 'comparing',
+        current: 0,
+        total: 1,
+        statusText: 'data_sync.progress_registering_vaults'
+      })
+      await flushPendingAgentSessionsBeforeSync()
+      const autoRegisteredVaults = await ensureVaultsForIncrementalSync(runOptions)
+      ;(await getSyncService()).clearPreparedManifestCache()
+      const result = await (
+        await getOrchestrator()
+      ).sync((progress) => {
+        publishProgress(progress)
+      }, runOptions)
+      await afterIncrementalSync(result, { force: true })
+      return { ...result, autoRegisteredVaults }
     }
-    publishProgress({
-      phase: 'comparing',
-      current: 0,
-      total: 1,
-      statusText: 'data_sync.progress_registering_vaults'
-    })
-    const autoRegisteredVaults = await ensureVaultsForIncrementalSync(runOptions)
-    ;(await getSyncService()).clearPreparedManifestCache()
-    const result = await (
-      await getOrchestrator()
-    ).sync((progress) => {
-      publishProgress(progress)
-    }, runOptions)
-    await afterIncrementalSync(result, { force: true })
-    return { ...result, autoRegisteredVaults }
-  })
+  )
 
   ipcMain.handle('incrementalSync:getSyncHistory', async (_, limit?: number) => {
     return (await getOrchestrator()).getSyncHistory(limit)

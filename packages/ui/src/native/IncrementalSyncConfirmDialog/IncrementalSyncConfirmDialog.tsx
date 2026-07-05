@@ -7,7 +7,8 @@ import {
   Pressable,
   ScrollView,
   useWindowDimensions,
-  type ViewStyle
+  type ViewStyle,
+  type TextStyle
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type {
@@ -37,7 +38,7 @@ export interface IncrementalSyncConfirmDialogProps {
   onCancel: () => void
 }
 
-function actionStyle(action: IncrementalSyncPlanItem['action']): ViewStyle {
+function actionTagStyle(action: IncrementalSyncPlanItem['action']): TextStyle {
   switch (action) {
     case 'upload':
       return { backgroundColor: 'rgba(59, 130, 246, 0.14)' }
@@ -74,9 +75,14 @@ function formatVaultStats(
   return parts.join(' · ')
 }
 
-function formatVaultLabel(vaultName: string, t: (key: string, fallback?: string) => string): string {
-  if (vaultName === '__root__') return t('data_sync.plan_vault_root', '根目录文件')
-  if (vaultName === '__unknown__') return t('data_sync.plan_vault_unknown', '未知工作区')
+function formatVaultLabel(
+  vaultName: string,
+  t: (key: string, options?: { defaultValue?: string }) => string
+): string {
+  if (vaultName === '__root__')
+    return t('data_sync.plan_vault_root', { defaultValue: '根目录文件' })
+  if (vaultName === '__unknown__')
+    return t('data_sync.plan_vault_unknown', { defaultValue: '未知工作区' })
   return vaultName
 }
 
@@ -145,9 +151,12 @@ type PlanScrollContentProps = {
   preview: IncrementalSyncPlanPreview
 }
 
+const PREVIEW_FILE_LIMIT = 6
+
 const PlanScrollContent = memo(function PlanScrollContent({ preview }: PlanScrollContentProps) {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const [expandedVaults, setExpandedVaults] = useState<Set<string>>(() => new Set())
 
   const registeredSet = useMemo(
     () => new Set(preview.registeredVaults ?? []),
@@ -249,8 +258,9 @@ const PlanScrollContent = memo(function PlanScrollContent({ preview }: PlanScrol
       ) : (
         preview.vaultSummaries.map((summary) => {
           const vaultItems = itemsByVault.get(summary.vaultName) ?? []
-          const displayItems = vaultItems.slice(0, 6)
-          const hiddenCount = vaultItems.length - displayItems.length
+          const isExpanded = expandedVaults.has(summary.vaultName)
+          const displayItems = isExpanded ? vaultItems : vaultItems.slice(0, PREVIEW_FILE_LIMIT)
+          const hiddenCount = isExpanded ? 0 : vaultItems.length - displayItems.length
           const isActive = summary.vaultName === preview.activeVaultName
           const isRegistered =
             summary.vaultName === '__root__' ||
@@ -292,7 +302,7 @@ const PlanScrollContent = memo(function PlanScrollContent({ preview }: PlanScrol
                   <Text
                     style={[
                       styles.actionTag,
-                      actionStyle(item.action),
+                      actionTagStyle(item.action),
                       { color: colors.textPrimary }
                     ]}
                   >
@@ -307,9 +317,32 @@ const PlanScrollContent = memo(function PlanScrollContent({ preview }: PlanScrol
                 </View>
               ))}
               {hiddenCount > 0 && (
-                <Text style={[styles.moreHint, { color: colors.textTertiary }]}>
-                  {t('data_sync.plan_more_files', { count: hiddenCount })}
-                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() =>
+                    setExpandedVaults((prev) => new Set(prev).add(summary.vaultName))
+                  }
+                >
+                  <Text style={[styles.moreHint, { color: colors.primary }]}>
+                    {t('data_sync.plan_more_files', { count: hiddenCount })}
+                  </Text>
+                </Pressable>
+              )}
+              {isExpanded && vaultItems.length > PREVIEW_FILE_LIMIT && (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() =>
+                    setExpandedVaults((prev) => {
+                      const next = new Set(prev)
+                      next.delete(summary.vaultName)
+                      return next
+                    })
+                  }
+                >
+                  <Text style={[styles.moreHint, { color: colors.primary }]}>
+                    {t('data_sync.plan_show_less', '收起文件列表')}
+                  </Text>
+                </Pressable>
               )}
             </View>
           )
@@ -342,6 +375,15 @@ const PlanConfirmFooter = memo(function PlanConfirmFooter({
     needsSyncConfirm,
     confirmEligibleAtMs
   )
+  const [activeDeleteChoice, setActiveDeleteChoice] = useState<SyncDeletePropagationChoice | null>(
+    null
+  )
+
+  useEffect(() => {
+    if (!isConfirming) {
+      setActiveDeleteChoice(null)
+    }
+  }, [isConfirming])
 
   const primaryButtonLabel = useMemo(() => {
     if (isConfirming) return t('data_sync.plan_confirming', '正在确认…')
@@ -355,7 +397,14 @@ const PlanConfirmFooter = memo(function PlanConfirmFooter({
     return t('data_sync.plan_confirm_sync', '确认同步')
   }, [confirmReady, isConfirming, needsSyncConfirm, secondsLeft, t])
 
-  const choiceDisabled = (needsSyncConfirm && !confirmReady) || isConfirming
+  const choiceDisabled =
+    (needsSyncConfirm && !confirmReady) || isConfirming || activeDeleteChoice != null
+
+  const handleDeleteChoiceConfirm = (choice: SyncDeletePropagationChoice) => {
+    if (choiceDisabled) return
+    setActiveDeleteChoice(choice)
+    onConfirm(choice)
+  }
 
   if (needsDeleteChoice) {
     return (
@@ -363,30 +412,37 @@ const PlanConfirmFooter = memo(function PlanConfirmFooter({
         <Button
           variant="primary"
           destructive
-          onPress={() => onConfirm('follow-remote')}
+          onPress={() => handleDeleteChoiceConfirm('follow-remote')}
           disabled={choiceDisabled}
-          isLoading={isConfirming}
+          isLoading={activeDeleteChoice === 'follow-remote'}
           style={styles.fullWidthButton}
         >
           {t('data_sync.plan_delete_choice_follow_remote')}
         </Button>
         <Button
           variant="primary"
-          onPress={() => onConfirm('push-local')}
+          onPress={() => handleDeleteChoiceConfirm('push-local')}
           disabled={choiceDisabled}
+          isLoading={activeDeleteChoice === 'push-local'}
           style={styles.fullWidthButton}
         >
           {t('data_sync.plan_delete_choice_push_local')}
         </Button>
         <Button
           variant="outline"
-          onPress={() => onConfirm('skip-deletes')}
+          onPress={() => handleDeleteChoiceConfirm('skip-deletes')}
           disabled={choiceDisabled}
+          isLoading={activeDeleteChoice === 'skip-deletes'}
           style={styles.fullWidthButton}
         >
           {t('data_sync.plan_delete_choice_skip_deletes')}
         </Button>
-        <Button variant="outline" onPress={onCancel} style={styles.fullWidthButton}>
+        <Button
+          variant="outline"
+          onPress={onCancel}
+          disabled={choiceDisabled}
+          style={styles.fullWidthButton}
+        >
           {t('common.cancel', '取消')}
         </Button>
       </View>

@@ -12,7 +12,8 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { HelpTooltip } from '../Tooltip/HelpTooltip'
-import { MarkdownRenderer } from '../MarkdownRenderer'
+import { ContextChainIcon } from '../icons/ContextChainIcon'
+import { AgentMarkdownRenderer } from '../AgentMarkdown'
 import type { NativeContextChainDialogProps, ContextChainTab } from './context-chain-dialog.types'
 import { buildContextChainTabs } from './context-chain-dialog.utils'
 import { ContextChainStatsBar } from './ContextChainStatsBar'
@@ -23,6 +24,9 @@ import { ContextChainMessageDetail } from './ContextChainMessageDetail'
 import { ContextChainDetailPage } from './ContextChainDetailPage'
 import { ContextChainFooter } from './ContextChainFooter'
 import { useContextChainView } from './useContextChainView'
+import { ContextChainRecompressBar } from './ContextChainRecompressBar'
+import { ContextChainRecompressProgress } from './ContextChainRecompressProgress'
+import { CompressionActivityBar } from '../CompressionActivityBar'
 
 const chainScrollProps = {
   showsVerticalScrollIndicator: false,
@@ -44,7 +48,15 @@ export const ContextChainDialog: React.FC<NativeContextChainDialogProps> = ({
   meta,
   compressedContent,
   originalContent,
-  systemPrompt
+  systemPrompt,
+  sessionId,
+  recompressBusy = false,
+  recompressStartedAt,
+  recompressStreamText = '',
+  recompressStreamReasoning = '',
+  recompressError = null,
+  onRecompress,
+  onRecompressDismissError
 }) => {
   const { t } = useTranslation()
   const { colors, tokens, maxModalWidth } = useNativeTheme()
@@ -214,6 +226,14 @@ export const ContextChainDialog: React.FC<NativeContextChainDialogProps> = ({
                   detailKey={detailKey}
                   onBack={() => setDetailKey(null)}
                   onClose={onClose}
+                  sessionId={sessionId}
+                  recompressBusy={recompressBusy}
+                  recompressStartedAt={recompressStartedAt}
+                  recompressStreamText={recompressStreamText}
+                  recompressStreamReasoning={recompressStreamReasoning}
+                  recompressError={recompressError}
+                  onRecompress={onRecompress}
+                  onRecompressDismissError={onRecompressDismissError}
                 />
               </View>
             ) : (
@@ -234,7 +254,7 @@ export const ContextChainDialog: React.FC<NativeContextChainDialogProps> = ({
                       flex: 1
                     }}
                   >
-                    <Text style={{ fontSize: 20 }}>🌿</Text>
+                    <ContextChainIcon />
                     <Text
                       style={{
                         fontSize: 18,
@@ -297,9 +317,34 @@ export const ContextChainDialog: React.FC<NativeContextChainDialogProps> = ({
                     view.activeTab === 'context' ? (
                       <ContextChainFlatList view={view} onOpenDetail={setDetailKey} />
                     ) : view.activeTab === 'compressed' && view.compressedContent ? (
-                      <MarkdownRenderer content={view.compressedContent} variant="ancillary" />
+                      <>
+                        {sessionId && onRecompress ? (
+                          <ContextChainRecompressBar
+                            busy={recompressBusy}
+                            error={recompressError}
+                            onRecompress={onRecompress}
+                            onDismissError={onRecompressDismissError}
+                          />
+                        ) : null}
+                        {recompressBusy ? (
+                          <>
+                            <ContextChainRecompressProgress startedAt={recompressStartedAt} />
+                            <CompressionActivityBar
+                              phase="manual"
+                              summary={recompressStreamText}
+                              reasoning={recompressStreamReasoning}
+                              isActive
+                            />
+                          </>
+                        ) : (
+                          <AgentMarkdownRenderer
+                            content={view.compressedContent}
+                            variant="ancillary"
+                          />
+                        )}
+                      </>
                     ) : view.activeTab === 'prompt' && view.systemPrompt ? (
-                      <MarkdownRenderer content={view.systemPrompt} variant="ancillary" />
+                      <AgentMarkdownRenderer content={view.systemPrompt} plainText />
                     ) : null
                   ) : (
                     renderLegacyContent()

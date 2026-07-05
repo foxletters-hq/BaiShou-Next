@@ -1,17 +1,19 @@
 name: Bug 反馈
-description: 程序出错、功能异常、与预期不符 — 最优先处理
-title: "Bug: "
+description: 程序出错、功能异常、与预期不符 — 我们最欢迎此类 Issue 与修复 PR
+title: 'Bug: '
 labels:
   - bug
 body:
   - type: markdown
     attributes:
       value: |
-        ## 优先级：最高
+        ## 我们最欢迎的贡献类型
 
-        **Bug 为最优先处理类别**，我们会尽快排查与修复。
+        **Bug 报告与 Bug 修复 PR** 是我们最愿意处理与合并的类别。
 
-        提交前建议先 [搜索已有 Issue](https://github.com/Anson-Trio/BaiShou-Next/issues)，避免重复反馈。
+        提交前建议先 [搜索已有 Issue](https://github.com/foxletters-hq/BaiShou-Next/issues)，避免重复反馈。
+
+        贡献政策：[贡献指南](https://github.com/foxletters-hq/BaiShou-Next/blob/main/docs/2-Submit/2-Contributing-Guide.md)
 
   - type: textarea
     id: description
@@ -38,7 +40,7 @@ body:
     id: version
     attributes:
       label: 版本与设备
-      description: 如 Next 1.0.16、Redmi Turbo 3、HarmonyOS 6.x
-      placeholder: Next 1.0.x，设备或系统版本
+      description: 如 Next 1.0.16、Windows 11、Redmi Turbo 3、HarmonyOS 6.x
+      placeholder: Next 1.0.x，桌面端/移动端，设备或系统版本
     validations:
       required: false

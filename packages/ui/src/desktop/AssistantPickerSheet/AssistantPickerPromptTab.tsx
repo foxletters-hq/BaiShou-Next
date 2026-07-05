@@ -1,15 +1,15 @@
 import React from 'react'
-import { AlignLeft, Command } from 'lucide-react'
-import { MdAutoAwesome } from 'react-icons/md'
 import { normalizeAssistantKind } from '@baishou/shared'
 import { HelpTooltip } from '../HelpTooltip'
 import { AssistantKindTabBar } from '../AssistantKindTabBar'
 import { ResizableMarkdownEditor } from '../ResizableMarkdownEditor'
+import { AssistantEditEmojiGroupSection } from '../AssistantEditPage/AssistantEditEmojiGroupSection'
 import { getProviderIcon } from '../../utils/provider-icons'
 import { useTheme } from '../../hooks'
 import styles from './AssistantPickerSheet.module.css'
 import type { AssistantInfo } from './assistant-picker-sheet.types'
 import type { AssistantPickerSheetViewModel } from './useAssistantPickerSheet'
+import { AlignLeft, Command, Sparkles } from 'lucide-react'
 
 function SectionHeader({
   icon,
@@ -46,7 +46,13 @@ export function AssistantPickerPromptTab({
     saveConfig,
     updateAssistantAPI,
     setShowModelSwitcher,
-    providers
+    providers,
+    globalEmojiEnabled,
+    emojiGroups,
+    editingEmojiEnabled,
+    editingSelectedEmojiGroupIds,
+    handleEmojiEnabledChange,
+    handleToggleEmojiGroup
   } = vm
   const { isDark } = useTheme()
 
@@ -108,8 +114,20 @@ export function AssistantPickerPromptTab({
         maxHeight={520}
       />
 
+      {globalEmojiEnabled ? (
+        <div className={styles.emojiGroupSection}>
+          <AssistantEditEmojiGroupSection
+            emojiGroups={emojiGroups}
+            emojiEnabled={editingEmojiEnabled}
+            selectedGroupIds={editingSelectedEmojiGroupIds}
+            onEmojiEnabledChange={handleEmojiEnabledChange}
+            onToggleGroup={handleToggleEmojiGroup}
+          />
+        </div>
+      ) : null}
+
       <SectionHeader
-        icon={<MdAutoAwesome size={18} color="var(--color-primary)" />}
+        icon={<Sparkles size={18} color="var(--color-primary)" />}
         title={t('agent.assistant.bind_model_label', '绑定模型')}
         hint={t(
           'agent.assistant.bind_model_desc',
@@ -121,7 +139,7 @@ export function AssistantPickerPromptTab({
           {providerIconSrc ? (
             <img src={providerIconSrc} alt={providerId || ''} />
           ) : (
-            <MdAutoAwesome size={22} color="var(--color-primary)" />
+            <Sparkles size={22} color="var(--color-primary)" />
           )}
         </div>
         <div className={styles.modelSelectorInfo}>

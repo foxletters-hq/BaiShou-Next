@@ -15,6 +15,8 @@ import { SummaryMissingSection } from './components/SummaryMissingSection'
 import { SummaryGalleryView } from './components/SummaryGalleryView'
 import { resolveDesktopSummaryConfig } from './utils/summary-config.util'
 import { peekSummaryDashboardCache } from '../../lib/summary-dashboard-cache'
+import { usePersistedSharedMemoryLookback } from '../../hooks/usePersistedSharedMemoryLookback'
+import { useSharedMemoryCopyPreview } from '../../hooks/useSharedMemoryCopyPreview'
 import './SummaryPage.css'
 
 export const SummaryPage: React.FC = () => {
@@ -24,7 +26,9 @@ export const SummaryPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'panel' | 'gallery'>('panel')
   /** 布局模式滞后于 activeTab，避免面板退出动画期间被画廊宽度撑开 */
   const [layoutTab, setLayoutTab] = useState<'panel' | 'gallery'>('panel')
-  const [lookbackMonths, setLookbackMonths] = useState(1)
+  const { lookbackMonths, setLookbackMonths } = usePersistedSharedMemoryLookback()
+  const { preview: copyPreview, loading: copyPreviewLoading } =
+    useSharedMemoryCopyPreview(lookbackMonths)
   const [isBatchGenerating, setIsBatchGenerating] = useState(false)
   const [concurrencyLimit, setConcurrencyLimitState] = useState(3)
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
@@ -200,6 +204,8 @@ export const SummaryPage: React.FC = () => {
                   lookbackMonths={lookbackMonths}
                   onMonthsChanged={setLookbackMonths}
                   onCopyContext={handleCopyContext}
+                  copyPreview={copyPreview}
+                  copyPreviewLoading={copyPreviewLoading}
                 />
                 <DashboardStatsCard {...stats} />
               </div>

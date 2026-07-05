@@ -11,6 +11,8 @@ export interface RagStats {
   totalCount: number
   currentDimension: number
   totalSizeText: string
+  diaryCountForVault?: number
+  activeVaultName?: string
 }
 
 export interface RagState {
@@ -19,6 +21,7 @@ export interface RagState {
   progress: number
   total: number
   statusText: string
+  statusKey?: string
   error?: string
 }
 
@@ -30,6 +33,9 @@ export interface RagEntry {
   sourceType?: string
   similarity?: number
 }
+
+export const RAG_DEFAULT_PAGE_SIZE = 10
+export const RAG_PAGE_SIZE_OPTIONS = [10, 20, 30, 50] as const
 
 export interface RagMemoryViewProps {
   config: RagConfig
@@ -63,4 +69,5 @@ export interface RagMemoryViewProps {
   onConfigureModel?: () => void
   onDetectDimension?: () => Promise<void>
   onPageChange?: (page: number, pageSize: number) => void
+  migrationCancelBusy?: boolean
 }

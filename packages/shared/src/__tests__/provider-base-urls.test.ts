@@ -15,6 +15,9 @@ describe('resolveProviderBaseUrl', () => {
     expect(resolveProviderBaseUrl('siliconflow', 'siliconflow', '   ')).toBe(
       'https://api.siliconflow.cn/v1'
     )
+    expect(resolveProviderBaseUrl('opencodego', 'opencodego', '')).toBe(
+      'https://opencode.ai/zen/go/v1'
+    )
   })
 
   it('does not default to OpenAI for non-openai providers', () => {

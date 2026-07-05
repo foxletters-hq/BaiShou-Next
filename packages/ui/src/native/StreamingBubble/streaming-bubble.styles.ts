@@ -26,7 +26,11 @@ export function createStreamingBubbleStyles(
   return StyleSheet.create({
     dotsWrap,
     errorBox,
-    errorText
+    errorText,
+    actionBarSpacer: {
+      height: 38,
+      marginTop: 6
+    }
   })
 }
 

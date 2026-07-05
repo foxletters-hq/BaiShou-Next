@@ -1,8 +1,9 @@
 import React from 'react'
 import { View, Text, Pressable } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { Plus, SquarePen, Tag, Trash2, UserPlus } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 
 export interface IdentitySettingsFactsSectionProps {
   currentFacts: Record<string, string>
@@ -57,7 +58,7 @@ export const IdentitySettingsFactsSection: React.FC<IdentitySettingsFactsSection
             opacity: pressed ? 0.7 : 1
           })}
         >
-          <MaterialIcons name="add" size={16} color={colors.primary} />
+          <Plus size={16} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
           <Text style={{ fontSize: 14, color: colors.primary }}>
             {t('settings.add_identity_entry', '添加条目')}
           </Text>
@@ -72,7 +73,7 @@ export const IdentitySettingsFactsSection: React.FC<IdentitySettingsFactsSection
             gap: tokens.spacing.sm
           }}
         >
-          <MaterialIcons name="person-add-alt" size={32} color={colors.textTertiary} />
+          <UserPlus size={32} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
           <Text
             style={{
               fontSize: 14,
@@ -96,7 +97,7 @@ export const IdentitySettingsFactsSection: React.FC<IdentitySettingsFactsSection
               gap: tokens.spacing.sm
             }}
           >
-            <MaterialIcons name="label" size={18} color={colors.primary} />
+            <Tag size={18} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
             <View style={{ flex: 1 }}>
               <Text
                 style={{
@@ -117,10 +118,10 @@ export const IdentitySettingsFactsSection: React.FC<IdentitySettingsFactsSection
               </Text>
             </View>
             <Pressable onPress={() => onStartEdit(k, v)} style={{ padding: 4 }}>
-              <MaterialIcons name="edit" size={18} color={colors.textSecondary} />
+              <SquarePen size={18} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
             </Pressable>
             <Pressable onPress={() => onDeleteFact(k)} style={{ padding: 4 }}>
-              <MaterialIcons name="delete-outline" size={18} color={colors.error} />
+              <Trash2 size={18} color={colors.error} strokeWidth={DEFAULT_STROKE_WIDTH} />
             </Pressable>
           </View>
         ))

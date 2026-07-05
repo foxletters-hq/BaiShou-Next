@@ -8,12 +8,13 @@ import {
   getDevServerHost,
   getLanIp,
   hasAdbDevice,
-  hasAdbReverse,
   openDevClientOnDevice,
   printDevConnectionHelp,
   setupAdbReverse,
+  startReverseKeeper,
   waitForMetro
 } from './mobile-dev-env.mjs'
+import { resetWorkletsCache, rmMetroTmpCaches } from './clear-cache.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const mobileRoot = path.resolve(__dirname, '..')
@@ -27,6 +28,12 @@ if (hasAdbDevice()) {
 
 const devHost = getDevServerHost(lanHost)
 const env = devClientEnv()
+
+if (clearCache) {
+  console.log('\n🧹 清理 Metro / worklets 缓存（避免 .worklets ENOENT）…\n')
+  resetWorkletsCache()
+  rmMetroTmpCaches()
+}
 
 console.log(`\n🌐 Metro 局域网地址: http://${lanHost}:${METRO_PORT}`)
 if (devHost !== lanHost) {
@@ -89,35 +96,9 @@ const tryOpenDeviceWithRetry = async () => {
 
 void tryOpenDeviceWithRetry()
 
-/** 无线 adb 时 reverse 可能真丢；连续两次确认后再静默重建，减少误报 */
-let reverseMissStreak = 0
-let reverseRebuildLogged = false
-
-const reverseKeeper = setInterval(() => {
-  if (!hasAdbDevice()) {
-    reverseMissStreak = 0
-    reverseRebuildLogged = false
-    return
-  }
-  if (hasAdbReverse(METRO_PORT)) {
-    reverseMissStreak = 0
-    reverseRebuildLogged = false
-    return
-  }
-  reverseMissStreak++
-  if (reverseMissStreak < 2) return
-
-  if (!reverseRebuildLogged) {
-    console.warn(
-      '\n🔁 adb reverse 已丢失（无线 adb / WSL adb 偶发断开），正在重新建立…',
-      '仍频繁出现可改 USB 或执行 pnpm mobile:connect\n'
-    )
-    reverseRebuildLogged = true
-  }
-  setupAdbReverse(METRO_PORT)
-}, 20_000)
+const stopReverseKeeper = startReverseKeeper(METRO_PORT)
 
 child.on('exit', (code) => {
-  clearInterval(reverseKeeper)
+  stopReverseKeeper()
   process.exit(code ?? 0)
 })

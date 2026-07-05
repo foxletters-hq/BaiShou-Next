@@ -5,3 +5,7 @@ export const formatTokens = (tokens: number): string => {
   }
   return String(tokens)
 }
+
+export function readRangeInputValue(target: EventTarget): number {
+  return Number((target as HTMLInputElement).value)
+}

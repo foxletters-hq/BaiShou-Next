@@ -35,7 +35,19 @@ interface ContextCompressionActions {
   getJob: (sessionId: string) => RecompressJob | undefined
 }
 
+type RecompressInvoker = (sessionId: string) => Promise<RecompressResult>
+
+let recompressInvoker: RecompressInvoker | null = null
+
+/** 移动端等非 Electron 环境注入重压缩实现；未注入时回退桌面 IPC。 */
+export function setContextRecompressInvoker(invoker: RecompressInvoker | null): void {
+  recompressInvoker = invoker
+}
+
 function invokeRecompress(sessionId: string): Promise<RecompressResult> {
+  if (recompressInvoker) {
+    return recompressInvoker(sessionId)
+  }
   const ipc = (globalThis as any)?.window?.electron?.ipcRenderer
   if (!ipc?.invoke) {
     return Promise.resolve({ ok: false, error: 'IPC unavailable' })

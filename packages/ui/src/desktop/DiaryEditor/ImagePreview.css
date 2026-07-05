@@ -14,11 +14,15 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  z-index: 10050;
+  padding: 32px 24px 196px;
+  box-sizing: border-box;
+  z-index: 450;
   background: rgba(100, 116, 139, 0.28);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   animation: image-preview-fade-in 0.2s ease;
+  cursor: zoom-out;
+  overflow: hidden;
 }
 
 :global(body[data-theme='dark']) .image-preview-overlay {
@@ -34,26 +38,16 @@
   }
 }
 
-.image-preview-container {
-  flex: 1;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  padding: 56px 24px 96px;
-  box-sizing: border-box;
-}
-
-.image-preview-container img {
-  max-width: min(86vw, 720px);
-  max-height: min(70vh, 600px);
+.image-preview-stage-img {
+  max-width: min(76vw, 600px);
+  max-height: min(calc(100vh - 260px), 520px);
   width: auto;
   height: auto;
   object-fit: contain;
   user-select: none;
   -webkit-user-drag: none;
   filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.18));
+  touch-action: none;
 }
 
 .image-preview-toolbar {
@@ -61,8 +55,9 @@
   left: 50%;
   bottom: 28px;
   transform: translateX(-50%);
-  z-index: 10051;
+  z-index: 451;
   max-width: calc(100vw - 32px);
+  cursor: default;
 }
 
 .image-preview-controls {

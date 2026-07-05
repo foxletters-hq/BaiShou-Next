@@ -154,9 +154,12 @@ export class DesktopLanSyncService implements ILanSyncService {
     const serviceName = buildLanServiceName(safeNickname, deviceId)
     this.publishedServiceName = serviceName
 
+    const bestIp = this.pickBestIp(ips) || ips[0]
+    const orderedIps = bestIp ? [bestIp, ...ips.filter((ip) => ip !== bestIp)] : ips
+
     this.discovery.publish(serviceName, port, {
       nickname: safeNickname,
-      ip: ips.slice(0, 4).join(','),
+      ip: orderedIps.slice(0, 4).join(','),
       device_type: 'desktop',
       device_id: deviceId
     })

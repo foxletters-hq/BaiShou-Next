@@ -1,14 +1,14 @@
 import React from 'react'
-import { MdCloud } from 'react-icons/md'
 import styles from './AIModelServicesView.module.css'
 import { BASE_KNOWN_PROVIDERS_CONFIG } from './ai-model-services.constants'
 import { getProviderIcon } from '../../utils/provider-icons'
+import { Cloud } from 'lucide-react'
 
 export function renderProviderIcon(iconUrl?: string) {
   return iconUrl ? (
     <img src={iconUrl} alt="icon" className={styles.providerIconImage} />
   ) : (
-    <MdCloud className={styles.providerIconFallback} />
+    <Cloud className={styles.providerIconFallback} />
   )
 }
 
@@ -18,6 +18,6 @@ export function renderProviderTypeIcon(typeId: string, isDark = false) {
   return iconUrl ? (
     <img src={iconUrl} className={styles.modalTypeIcon} alt="" />
   ) : (
-    <MdCloud className={styles.modalTypeFallback} />
+    <Cloud className={styles.modalTypeFallback} />
   )
 }

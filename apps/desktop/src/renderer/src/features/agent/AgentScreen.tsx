@@ -1,14 +1,27 @@
 import React, { useMemo } from 'react'
-import { TokenBadge, InputBar, ContextChainPanel, useTheme, getProviderIcon } from '@baishou/ui'
-import { MdCloud } from 'react-icons/md'
+import { useOutletContext } from 'react-router-dom'
+import {
+  TokenBadge,
+  InputBar,
+  ContextChainPanel,
+  useTheme,
+  getProviderIcon,
+  toast
+} from '@baishou/ui'
+import { createWebComposerDraftStorage } from '@baishou/ui/shared/composer-draft'
 import {
   normalizeChatBackgroundBlur,
-  normalizeChatBackgroundOverlayOpacity
+  normalizeChatBackgroundOverlayOpacity,
+  isConfiguredDialogueModelId,
+  isConfiguredProviderId
 } from '@baishou/shared'
 import { AgentDialogs } from './components/AgentDialogs'
 import { AgentMessageList } from './components/AgentMessageList'
 import { useAgentChatFlow } from './hooks/useAgentChatFlow'
+import { useDesktopComposerDraftKey } from './hooks/useDesktopComposerDraftKey'
 import styles from './AgentScreen.module.css'
+import { Cloud, PanelLeftClose, PanelLeftOpen, Sparkles } from 'lucide-react'
+import type { AgentOutletContext } from './agent-outlet-context'
 
 /**
  * Agent 大模型聊天屏幕主页面组件。
@@ -17,6 +30,7 @@ import styles from './AgentScreen.module.css'
 export const AgentScreen: React.FC = () => {
   const flow = useAgentChatFlow()
   const { isDark } = useTheme()
+  const { isSidebarCollapsed, onToggleSidebar } = useOutletContext<AgentOutletContext>()
 
   const providerIconUrl = useMemo(() => {
     const providerId = flow.model.currentProviderId
@@ -28,10 +42,17 @@ export const AgentScreen: React.FC = () => {
     )
   }, [flow.model.currentProviderId, flow.providers, isDark])
 
-  const displayModelName =
-    flow.model.currentModelId === 'unknown'
-      ? flow.t('agent.no_model_selected', '暂未选择模型')
-      : flow.model.currentModelId
+  const noModelSelected = !isConfiguredDialogueModelId(flow.model.currentModelId)
+
+  const displayModelName = noModelSelected
+    ? flow.t('agent.no_model_selected', '暂未选择模型')
+    : flow.model.currentModelId
+
+  const composerDraftStorage = useMemo(() => createWebComposerDraftStorage(), [])
+  const composerDraftKey = useDesktopComposerDraftKey(flow.sessionId)
+  const composerBlocked =
+    !isConfiguredProviderId(flow.model.currentProviderId) ||
+    !isConfiguredDialogueModelId(flow.model.currentModelId)
 
   const chatBackgroundUrl = flow.userProfile?.chatBackgroundPath
   const chatBackgroundBlur = normalizeChatBackgroundBlur(flow.userProfile?.chatBackgroundBlur)
@@ -63,24 +84,51 @@ export const AgentScreen: React.FC = () => {
       ) : null}
       {/* 顶部状态与控制栏 */}
       <div className={styles.appBar}>
-        <button
-          type="button"
-          className={`${styles.modelSwitcherTrigger} ${styles.appBarChip}`}
-          onClick={() => flow.setShowModelSwitcher(true)}
-        >
-          <span className={styles.modelProviderIcon} aria-hidden>
-            {providerIconUrl ? <img src={providerIconUrl} alt="" /> : <MdCloud size={18} />}
-          </span>
-          <span className={styles.modelName}>{displayModelName}</span>
-          <span className={styles.chevron}>▼</span>
-        </button>
-        <TokenBadge
-          className={styles.appBarChip}
-          inputTokens={flow.tokens.totalInputTokens}
-          outputTokens={flow.tokens.totalOutputTokens}
-          costMicros={flow.tokens.estimatedCost * 1000000}
-          onClick={() => flow.setShowCostDialog(true)}
-        />
+        <div className={styles.appBarLeft}>
+          <button
+            type="button"
+            className={`${styles.sidebarToggleBtn} ${styles.appBarChip}`}
+            onClick={onToggleSidebar}
+            title={
+              isSidebarCollapsed
+                ? flow.t('agent.sidebar.expand', '展开侧边栏')
+                : flow.t('agent.sidebar.collapse', '折叠侧边栏')
+            }
+            aria-label={
+              isSidebarCollapsed
+                ? flow.t('agent.sidebar.expand', '展开侧边栏')
+                : flow.t('agent.sidebar.collapse', '折叠侧边栏')
+            }
+          >
+            {isSidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          </button>
+        </div>
+        <div className={styles.appBarRight}>
+          <button
+            type="button"
+            className={`${styles.modelSwitcherTrigger} ${styles.appBarChip}`}
+            onClick={() => flow.setShowModelSwitcher(true)}
+          >
+            <span className={styles.modelProviderIcon} aria-hidden>
+              {providerIconUrl ? (
+                <img src={providerIconUrl} alt="" />
+              ) : noModelSelected ? (
+                <Sparkles size={18} />
+              ) : (
+                <Cloud size={18} />
+              )}
+            </span>
+            <span className={styles.modelName}>{displayModelName}</span>
+            <span className={styles.chevron}>▼</span>
+          </button>
+          <TokenBadge
+            className={styles.appBarChip}
+            inputTokens={flow.tokens.totalInputTokens}
+            outputTokens={flow.tokens.totalOutputTokens}
+            costMicros={flow.tokens.estimatedCost * 1000000}
+            onClick={() => flow.setShowCostDialog(true)}
+          />
+        </div>
       </div>
       <AgentMessageList
         t={flow.t}
@@ -222,9 +270,15 @@ export const AgentScreen: React.FC = () => {
           )}
           <InputBar
             ref={flow.inputBarRef}
-            isLoading={flow.stream.isStreaming}
+            isLoading={flow.stream.isStreaming || flow.stream.isCompressing}
             onSend={flow.handleSend}
             onStop={flow.handleStop}
+            composerBlocked={composerBlocked}
+            onComposerBlocked={() =>
+              toast.showInfo(flow.t('agent.error.no_model', '请先在顶部选择一个模型'))
+            }
+            composerDraftKey={composerDraftKey}
+            composerDraftStorage={composerDraftStorage}
             shortcuts={flow.shortcuts}
             assistantName={flow.currentAssistant?.name || 'BaiShou'}
             onAssistantTap={() => flow.setShowAssistantPicker(true)}

@@ -27,9 +27,9 @@ describe('normalizeSyncFilePath', () => {
   })
 
   it('normalizes external storage paths on android', () => {
-    expect(
-      normalizeSyncFilePath('file:///storage/emulated/0/BaiShou_Root/Journals/a.md')
-    ).toBe('/storage/emulated/0/BaiShou_Root/Journals/a.md')
+    expect(normalizeSyncFilePath('file:///storage/emulated/0/BaiShou_Root/Journals/a.md')).toBe(
+      '/storage/emulated/0/BaiShou_Root/Journals/a.md'
+    )
   })
 })
 

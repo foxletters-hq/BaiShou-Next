@@ -134,4 +134,64 @@ describe('MissingSummaryDetector', () => {
 
     vi.useRealTimers()
   })
+
+  it('should not suggest monthly when weekly spans into next month (no eligible weeklies in month)', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2025-05-15T12:00:00Z'))
+
+    // 周总结起始于 4 月但跨到 5 月，生成月总结时不会被计入 4 月
+    const crossMonthWeekly = makeSummary(
+      SummaryType.weekly,
+      '2025-04-28T00:00:00Z',
+      '2025-05-04T23:59:59Z'
+    )
+
+    const detector = new MissingSummaryDetector({} as any, {} as any)
+    const missing = (detector as any).detectMissing([], [crossMonthWeekly], 'zh')
+
+    const monthlies = missing.filter((m: any) => m.type === SummaryType.monthly)
+    expect(monthlies).toHaveLength(0)
+
+    vi.useRealTimers()
+  })
+
+  it('should suggest monthly when at least one weekly is fully inside the month', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2025-05-15T12:00:00Z'))
+
+    const aprilWeekly = makeSummary(
+      SummaryType.weekly,
+      '2025-04-07T00:00:00Z',
+      '2025-04-13T23:59:59Z'
+    )
+
+    const detector = new MissingSummaryDetector({} as any, {} as any)
+    const missing = (detector as any).detectMissing([], [aprilWeekly], 'zh')
+
+    const monthlies = missing.filter((m: any) => m.type === SummaryType.monthly)
+    expect(monthlies).toHaveLength(1)
+    expect(monthlies[0].startDate.getMonth()).toBe(3)
+
+    vi.useRealTimers()
+  })
+
+  it('should treat weekly summary with non-Monday startDate as covering that calendar week', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-01-20T12:00:00Z'))
+
+    const diaries = [makeDiary('2026-01-13T12:00:00Z')]
+    const existingWeekly = makeSummary(
+      SummaryType.weekly,
+      '2026-01-13T00:00:00',
+      '2026-01-19T23:59:59'
+    )
+
+    const detector = new MissingSummaryDetector({} as any, {} as any)
+    const missing = (detector as any).detectMissing(diaries, [existingWeekly], 'zh')
+    const weeklies = missing.filter((m: any) => m.type === SummaryType.weekly)
+
+    expect(weeklies).toHaveLength(0)
+
+    vi.useRealTimers()
+  })
 })

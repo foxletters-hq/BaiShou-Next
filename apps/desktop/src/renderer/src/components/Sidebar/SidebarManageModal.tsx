@@ -1,7 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Modal } from '@baishou/ui'
-import { MdCheckBox, MdCheckBoxOutlineBlank } from 'react-icons/md'
+import { CheckSquare, Square } from 'lucide-react'
 import {
   SIDEBAR_NAV_GROUPS,
   SIDEBAR_NAV_ICON_SIZE,
@@ -62,9 +62,9 @@ export const SidebarManageModal: React.FC<SidebarManageModalProps> = ({
                       >
                         <span className={styles.checkbox} aria-hidden="true">
                           {visible ? (
-                            <MdCheckBox size={SIDEBAR_NAV_ICON_SIZE} />
+                            <CheckSquare size={SIDEBAR_NAV_ICON_SIZE} />
                           ) : (
-                            <MdCheckBoxOutlineBlank size={SIDEBAR_NAV_ICON_SIZE} />
+                            <Square size={SIDEBAR_NAV_ICON_SIZE} />
                           )}
                         </span>
                         <span className={styles.optionIcon}>{item.icon}</span>

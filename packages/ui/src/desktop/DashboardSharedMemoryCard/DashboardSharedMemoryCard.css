@@ -24,13 +24,6 @@
   color: var(--text-primary, #0f172a);
 }
 
-.sm-desc {
-  font-size: 13px;
-  color: var(--text-secondary, #64748b);
-  line-height: 1.6;
-  margin-bottom: 24px;
-}
-
 .sm-controls {
   display: flex;
   flex-direction: column;
@@ -121,8 +114,13 @@
   transition: opacity 0.2s;
 }
 
-.sm-btn:hover {
+.sm-btn:hover:not(:disabled) {
   opacity: 0.9;
+}
+
+.sm-btn:disabled {
+  opacity: 0.85;
+  cursor: not-allowed;
 }
 
 .sm-help-icon-wrapper {
@@ -137,4 +135,75 @@
 
 .sm-help-icon-wrapper:hover {
   color: var(--color-primary, #5ba8f5);
+}
+
+.sm-preview {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--bg-surface-lowest, #f8fafc);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.sm-previewLoading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary, #64748b);
+}
+
+.sm-previewTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+  margin-bottom: 8px;
+}
+
+.sm-previewSpinner,
+.sm-previewSpinnerInline {
+  animation: sm-spin 0.9s linear infinite;
+}
+
+.sm-previewSpinnerInline {
+  color: var(--text-tertiary, #94a3b8);
+}
+
+@keyframes sm-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sm-previewChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sm-previewChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-primary, #5ba8f5);
+  background: rgba(var(--color-primary-rgb, 91, 168, 245), 0.12);
+}
+
+.sm-previewTotal {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--text-tertiary, #94a3b8);
+}
+
+.sm-previewEmpty {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary, #64748b);
 }

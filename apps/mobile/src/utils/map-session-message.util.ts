@@ -1,12 +1,32 @@
-import { mapAttachmentsFromParts, resolveAttachmentAbsolutePath } from '@baishou/shared'
+import {
+  mapAttachmentsFromParts,
+  normalizePartData,
+  resolveAttachmentAbsolutePath,
+  unwrapMessageMetadataForDisplay
+} from '@baishou/shared'
 import type { AgentMessagePart } from '@baishou/store'
 import { parseCompactionMarkerData, type CompactionMarkerData } from '@baishou/ai'
 import { resolveMobileAttachmentFilePath } from './mobile-attachment-ui.util'
 
+function textFromPartData(data: unknown): string {
+  const normalized = normalizePartData(data)
+  if (typeof normalized.text === 'string') {
+    return unwrapMessageMetadataForDisplay(normalized.text)
+  }
+  if (typeof normalized.content === 'string') {
+    return unwrapMessageMetadataForDisplay(normalized.content)
+  }
+  return ''
+}
+
 /** local://（桌面）或裸路径 → React Native Image 可用的 file:// */
-function toMobileAttachmentFilePath(filePath?: string, storageRoot?: string): string {
+function toMobileAttachmentFilePath(
+  filePath?: string,
+  storageRoot?: string,
+  attachmentsBasePath?: string
+): string {
   if (storageRoot) {
-    return resolveMobileAttachmentFilePath(filePath, storageRoot)
+    return resolveMobileAttachmentFilePath(filePath, storageRoot, attachmentsBasePath)
   }
   if (!filePath) return ''
   if (
@@ -53,25 +73,15 @@ export function mapSessionMessageFromDb(
     cacheWriteInputTokens?: number
     costMicros?: number
   },
-  options?: { storageRoot?: string }
+  options?: { storageRoot?: string; attachmentsBasePath?: string }
 ) {
   const parts = msg.parts || []
 
   const textParts = parts.filter((p) => p.type === 'text')
-  const reasoningParts = textParts.filter(
-    (p) => typeof p.data === 'object' && p.data && (p.data as { isReasoning?: boolean }).isReasoning
-  )
-  const normalTextParts = textParts.filter(
-    (p) =>
-      !(typeof p.data === 'object' && p.data && (p.data as { isReasoning?: boolean }).isReasoning)
-  )
+  const reasoningParts = textParts.filter((p) => Boolean(normalizePartData(p.data).isReasoning))
+  const normalTextParts = textParts.filter((p) => !normalizePartData(p.data).isReasoning)
 
-  const textFromPart = (p: (typeof parts)[number]) => {
-    if (typeof p.data === 'object' && p.data && 'text' in p.data) {
-      return String((p.data as { text?: string }).text ?? '')
-    }
-    return typeof p.data === 'string' ? p.data : ''
-  }
+  const textFromPart = (p: (typeof parts)[number]) => textFromPartData(p.data)
 
   const content = normalTextParts.map(textFromPart).join('\n')
   const reasoning = reasoningParts.map(textFromPart).join('\n') || undefined
@@ -79,19 +89,25 @@ export function mapSessionMessageFromDb(
   const toolInvocations = parts
     .filter((p) => p.type === 'tool')
     .map((p) => {
-      const data = typeof p.data === 'object' && p.data ? (p.data as Record<string, unknown>) : {}
+      const data = normalizePartData(p.data)
       return {
         state: data.status === 'completed' || data.status === 'failed' ? 'result' : 'call',
         toolCallId: String(data.callId ?? ''),
-        toolName: String(data.name ?? ''),
-        args: data.arguments ?? {},
-        result: data.result
+        toolName: String(data.name ?? data.toolName ?? ''),
+        args: (data.arguments ?? data.input ?? {}) as Record<string, unknown>,
+        result: data.result ?? data.output
       }
     })
+    // 过滤掉 emoji_send 工具调用（表情包作为独立图片消息显示，不显示工具卡片）
+    .filter((inv) => inv.toolName !== 'emoji_send')
 
   const attachments = mapAttachmentsFromParts(parts)?.map((att) => ({
     ...att,
-    filePath: toMobileAttachmentFilePath(att.filePath, options?.storageRoot)
+    filePath: toMobileAttachmentFilePath(
+      att.filePath,
+      options?.storageRoot,
+      options?.attachmentsBasePath
+    )
   }))
 
   const compactionPart = parts.find((p) => p.type === 'compaction')

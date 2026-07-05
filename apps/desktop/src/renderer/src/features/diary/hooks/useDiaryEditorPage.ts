@@ -4,20 +4,25 @@ import { useTranslation } from 'react-i18next'
 import {
   formatLocalDate,
   normalizeWeatherId,
+  normalizeMoodId,
   normalizeDiaryTags,
   safeParseDate,
   logger,
+  joinDiaryContentWithAppendBlock,
   resolveDiaryAppendBlock,
   resolveDiaryNewEntryContent,
+  composeDiaryEditorContent,
+  parseDiaryEditorContent,
+  mergeDiaryTags,
   type DiaryTemplateConfig
 } from '@baishou/shared'
 import { useToast } from '@baishou/ui'
 
 type DiaryEditorInitialState = {
   content: string
-  tags: string[]
   selectedDate: Date
   weather: string
+  mood: string
   isFavorite: boolean
   mediaPaths: string[]
 }
@@ -44,26 +49,23 @@ export function useDiaryEditorPage() {
   }, [dateStr, searchParams])
 
   const [content, setContent] = useState('')
-  const [tags, setTags] = useState<string[]>([])
   const [selectedDate, setSelectedDate] = useState<Date>(() => parseInitialDate())
   const [weather, setWeather] = useState('')
+  const [mood, setMood] = useState('')
   const [isFavorite, setIsFavorite] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
   const [diaryId, setDiaryId] = useState<number | null>(null)
   const [mediaPaths, setMediaPaths] = useState<string[]>([])
-  const tagsRef = useRef<string[]>(tags)
-
-  useEffect(() => {
-    tagsRef.current = tags
-  }, [tags])
+  const originalTagsRef = useRef<string[]>([])
 
   const [isLoading, setIsLoading] = useState(true)
+  const [attachmentBasePath, setAttachmentBasePath] = useState('')
   const initialStateRef = useRef<DiaryEditorInitialState | null>(null)
   const stateSnapshotRef = useRef<DiaryEditorInitialState>({
     content: '',
-    tags: [],
     selectedDate: parseInitialDate(),
     weather: '',
+    mood: '',
     isFavorite: false,
     mediaPaths: []
   })
@@ -71,13 +73,13 @@ export function useDiaryEditorPage() {
   useEffect(() => {
     stateSnapshotRef.current = {
       content,
-      tags,
       selectedDate,
       weather,
+      mood,
       isFavorite,
       mediaPaths
     }
-  }, [content, tags, selectedDate, weather, isFavorite, mediaPaths])
+  }, [content, selectedDate, weather, mood, isFavorite, mediaPaths])
 
   const loadTemplateConfig = useCallback(async (): Promise<DiaryTemplateConfig> => {
     try {
@@ -91,22 +93,41 @@ export function useDiaryEditorPage() {
     return {}
   }, [])
 
+  const fetchAttachmentDir = useCallback(async (date: Date): Promise<string> => {
+    try {
+      const api = (window as any).api?.diary
+      if (!api?.getAttachmentDir) return ''
+      const result = await api.getAttachmentDir(formatLocalDate(date))
+      return result?.success && result.path ? result.path : ''
+    } catch (e) {
+      logger.warn('Failed to load diary attachment dir', { error: e })
+      return ''
+    }
+  }, [])
+
   useEffect(() => {
     let cancelled = false
 
     const initEditor = async () => {
-      const templateConfig = await loadTemplateConfig()
-      if (cancelled) return
-      const now = new Date()
+      setIsLoading(true)
+      const initialDate = parseInitialDate()
+      const api = typeof window !== 'undefined' ? (window as any).api?.diary : undefined
 
       if (!dateStr || dateStr === 'new') {
+        const [templateConfig, attPath] = await Promise.all([
+          loadTemplateConfig(),
+          fetchAttachmentDir(initialDate)
+        ])
+        if (cancelled) return
+        setAttachmentBasePath(attPath)
+        const now = new Date()
         const initialContent = resolveDiaryNewEntryContent(templateConfig, now)
         setContent(initialContent)
         initialStateRef.current = {
           content: initialContent,
-          tags: [],
-          selectedDate: parseInitialDate(),
+          selectedDate: initialDate,
           weather: '',
+          mood: '',
           isFavorite: false,
           mediaPaths: []
         }
@@ -114,14 +135,20 @@ export function useDiaryEditorPage() {
         return
       }
 
-      if (typeof window !== 'undefined' && (window as any).api?.diary) {
+      if (api) {
         try {
-          const diary = await (window as any).api.diary.findByDate(dateStr)
+          const [templateConfig, diary, attPath] = await Promise.all([
+            loadTemplateConfig(),
+            api.findByDate(dateStr),
+            fetchAttachmentDir(initialDate)
+          ])
           if (cancelled) return
+          setAttachmentBasePath(attPath)
 
+          const now = new Date()
           let initialContent = ''
-          let initialTags: string[] = []
           let initialWeather = ''
+          let initialMood = ''
           let initialFavorite = false
           let initialMedia: string[] = []
 
@@ -129,45 +156,48 @@ export function useDiaryEditorPage() {
             setDiaryId(diary.id || null)
             const parsedTags = normalizeDiaryTags(diary.tags)
             const parsedWeather = normalizeWeatherId(diary.weather || '') || ''
-            setTags(parsedTags)
+            const parsedMood = normalizeMoodId(diary.mood || '') || ''
             setWeather(parsedWeather)
+            setMood(parsedMood)
             setIsFavorite(diary.isFavorite || false)
             setMediaPaths(diary.mediaPaths || [])
 
-            initialTags = parsedTags
+            originalTagsRef.current = parsedTags
             initialWeather = parsedWeather
+            initialMood = parsedMood
             initialFavorite = diary.isFavorite || false
             initialMedia = diary.mediaPaths || []
 
             if (isAppendMode) {
-              const existing = (diary.content || '').trimEnd()
               const timeMark = resolveDiaryAppendBlock(templateConfig, now)
-              initialContent = existing ? existing + timeMark : timeMark.trimStart()
+              initialContent = joinDiaryContentWithAppendBlock(diary.content || '', timeMark)
             } else {
-              initialContent = diary.content || ''
+              initialContent = composeDiaryEditorContent(diary.content || '', parsedTags)
             }
           } else {
             initialContent = resolveDiaryNewEntryContent(templateConfig, now)
+            originalTagsRef.current = []
           }
 
           setContent(initialContent)
           initialStateRef.current = {
             content: initialContent,
-            tags: initialTags,
-            selectedDate: parseInitialDate(),
+            selectedDate: initialDate,
             weather: initialWeather,
+            mood: initialMood,
             isFavorite: initialFavorite,
             mediaPaths: initialMedia
           }
         } catch (e: unknown) {
           logger.error('Failed to load diary', { error: e, dateStr })
-          const fallback = resolveDiaryNewEntryContent(templateConfig, now)
+          const fallbackConfig = await loadTemplateConfig()
+          const fallback = resolveDiaryNewEntryContent(fallbackConfig, new Date())
           setContent(fallback)
           initialStateRef.current = {
             content: fallback,
-            tags: [],
-            selectedDate: parseInitialDate(),
+            selectedDate: initialDate,
             weather: '',
+            mood: '',
             isFavorite: false,
             mediaPaths: []
           }
@@ -184,7 +214,7 @@ export function useDiaryEditorPage() {
     return () => {
       cancelled = true
     }
-  }, [dateStr, isAppendMode, parseInitialDate, loadTemplateConfig])
+  }, [dateStr, isAppendMode, parseInitialDate, loadTemplateConfig, fetchAttachmentDir])
 
   // 编辑器挂载并完成首轮同步后，以实际展示状态作为「未修改」基线
   useEffect(() => {
@@ -198,9 +228,9 @@ export function useDiaryEditorPage() {
       const snap = stateSnapshotRef.current
       initialStateRef.current = {
         content: snap.content,
-        tags: [...snap.tags],
         selectedDate: snap.selectedDate,
         weather: snap.weather,
+        mood: snap.mood,
         isFavorite: snap.isFavorite,
         mediaPaths: [...snap.mediaPaths]
       }
@@ -223,16 +253,21 @@ export function useDiaryEditorPage() {
       try {
         if (typeof window !== 'undefined' && (window as any).api?.diary) {
           const selectedDateStr = formatLocalDate(selectedDate)
+          const { tags: parsedTags, body } = parseDiaryEditorContent(newContent)
+          const mergedTags = isAppendMode
+            ? mergeDiaryTags(originalTagsRef.current.join(', '), parsedTags.join(','))
+            : parsedTags.join(',')
 
           const payload = {
             date: selectedDateStr,
-            content: newContent,
-            title: newContent
+            content: body,
+            title: body
               .replace(/^#{1,6}\s*/gm, '')
               .split('\n')[0]
               .substring(0, 50),
-            tags: tagsRef.current,
+            tags: mergedTags,
             weather,
+            mood,
             isFavorite,
             mediaPaths
           }
@@ -246,9 +281,9 @@ export function useDiaryEditorPage() {
         setIsDirty(false)
         initialStateRef.current = {
           content: newContent,
-          tags: tagsRef.current,
           selectedDate,
           weather,
+          mood,
           isFavorite,
           mediaPaths
         }
@@ -257,7 +292,7 @@ export function useDiaryEditorPage() {
         throw e
       }
     },
-    [selectedDate, weather, isFavorite, diaryId, mediaPaths]
+    [selectedDate, weather, mood, isFavorite, diaryId, mediaPaths, isAppendMode]
   )
 
   const handleContentChange = (newContent: string) => {
@@ -282,12 +317,9 @@ export function useDiaryEditorPage() {
       return true
     }
     if (weather !== init.weather) return true
+    if (mood !== init.mood) return true
     if (isFavorite !== init.isFavorite) return true
     if (formatLocalDate(selectedDate) !== formatLocalDate(init.selectedDate)) return true
-
-    const currentTagsSorted = [...tags].sort().join(',')
-    const initTagsSorted = [...init.tags].sort().join(',')
-    if (currentTagsSorted !== initTagsSorted) return true
 
     const currentMediaSorted = [...mediaPaths].sort().join(',')
     const initMediaSorted = [...init.mediaPaths].sort().join(',')
@@ -333,10 +365,11 @@ export function useDiaryEditorPage() {
   return {
     t,
     isLoading,
+    attachmentBasePath,
     content,
-    tags,
     selectedDate,
     weather,
+    mood,
     isFavorite,
     mediaPaths,
     isDirty,
@@ -347,9 +380,9 @@ export function useDiaryEditorPage() {
     handleBack,
     handleSave,
     goBackToSidebar,
-    setTags,
     setSelectedDate,
     setWeather,
+    setMood,
     setIsFavorite,
     setMediaPaths,
     setIsDirty

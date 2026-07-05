@@ -1,9 +1,10 @@
 import React from 'react'
 import { View, Text } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { FolderOpen } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { normalizeRefAudioPath, parseRefAudioPick } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { Input } from '../Input/Input'
 import { Select } from '../Select/Select'
 import { Button } from '../Button'
@@ -71,7 +72,7 @@ export const TtsGptSovitsFields: React.FC<TtsGptSovitsFieldsProps> = ({
           <>
             <Button variant="outline" onPress={() => void handlePickRefAudio()}>
               <View style={styles.refAudioPickButtonContent}>
-                <MaterialIcons name="folder-open" size={18} color={colors.textSecondary} />
+                <FolderOpen size={18} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                 <Text style={[styles.refAudioPickButtonText, { color: colors.textPrimary }]}>
                   {refAudioPath
                     ? t('tts.settings.pick_ref_audio_again_button', '重新选择参考音频')
@@ -179,23 +180,28 @@ export const TtsTestSection: React.FC<TtsTestSectionProps> = ({
           {t('tts.settings.test_label')}
         </Text>
         <View style={styles.testRow}>
-          <Input
-            style={[styles.input, styles.testInput]}
-            value={testText}
-            onChangeText={onTestTextChange}
-            placeholder={t('tts.settings.test_placeholder')}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          <Button
-            variant="outline"
-            onPress={onTest}
-            isLoading={testing}
-            isDisabled={!canTest || testing}
-            className="min-w-[72px] px-3.5"
-          >
-            {testing ? t('tts.settings.testing') : t('tts.settings.test_button')}
-          </Button>
+          <View style={styles.testInputWrap}>
+            <Input
+              style={styles.input}
+              className="min-w-0 w-full"
+              value={testText}
+              onChangeText={onTestTextChange}
+              placeholder={t('tts.settings.test_placeholder')}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+          <View style={styles.testButtonWrap}>
+            <Button
+              variant="outline"
+              onPress={onTest}
+              isLoading={testing}
+              isDisabled={!canTest || testing}
+              className="min-w-[72px] px-3.5"
+            >
+              {testing ? t('tts.settings.testing') : t('tts.settings.test_button')}
+            </Button>
+          </View>
         </View>
       </View>
     </View>

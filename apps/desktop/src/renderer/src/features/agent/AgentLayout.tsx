@@ -18,6 +18,7 @@ import {
   readAgentNavigationSnapshot,
   writeAgentNavigationSnapshot
 } from '../../lib/agent-navigation-persistence'
+import type { AgentOutletContext } from './agent-outlet-context'
 
 export const AgentLayout: React.FC = () => {
   const navigate = useNavigate()
@@ -35,6 +36,15 @@ export const AgentLayout: React.FC = () => {
   const [standaloneSessionDoc, setStandaloneSessionDoc] = useState<any>(null)
   const resolvedAssistantIdRef = useRef<string | undefined>(undefined)
   const restoredNavigationRef = useRef(false)
+  const navigationIntentRef = useRef(0)
+
+  const bumpNavigationIntent = () => {
+    navigationIntentRef.current += 1
+    return navigationIntentRef.current
+  }
+
+  const shouldAbortNavigationRestore = (intentAtStart: number) =>
+    navigationIntentRef.current !== intentAtStart
 
   const sanitizeAssistantId = (raw: unknown): string | undefined => {
     if (typeof raw === 'string' && raw.length > 0) return raw
@@ -119,9 +129,12 @@ export const AgentLayout: React.FC = () => {
     restoredNavigationRef.current = true
 
     void (async () => {
+      const restoreIntentAtStart = navigationIntentRef.current
+
       if (saved.sessionId && typeof window !== 'undefined' && window.electron) {
         try {
           const doc = await window.electron.ipcRenderer.invoke('agent:get-session', saved.sessionId)
+          if (shouldAbortNavigationRestore(restoreIntentAtStart)) return
           if (!doc) {
             navigate(
               saved.assistantId
@@ -132,6 +145,7 @@ export const AgentLayout: React.FC = () => {
             return
           }
         } catch (error) {
+          if (shouldAbortNavigationRestore(restoreIntentAtStart)) return
           console.warn('[AgentLayout] Failed to restore saved session:', error)
           navigate(
             saved.assistantId
@@ -142,6 +156,7 @@ export const AgentLayout: React.FC = () => {
           return
         }
       }
+      if (shouldAbortNavigationRestore(restoreIntentAtStart)) return
       navigate(buildAgentChatNavigationPath(saved), { replace: true })
     })()
   }, [sessionId, urlAssistantId, navigate])
@@ -277,6 +292,9 @@ export const AgentLayout: React.FC = () => {
       astId = defaultAst?.id || 'default'
     }
 
+    bumpNavigationIntent()
+    setStandaloneSessionDoc(null)
+
     const vaultKey =
       (typeof window !== 'undefined' && window.localStorage.getItem('baishou_active_vault')) ||
       'default'
@@ -289,8 +307,10 @@ export const AgentLayout: React.FC = () => {
 
   const handleAssistantSwitched = async (assistant: AgentAssistant) => {
     const astId = String(assistant.id)
+    const switchIntentAtStart = bumpNavigationIntent()
     resolvedAssistantIdRef.current = astId
     restoredNavigationRef.current = true
+    setStandaloneSessionDoc(null)
 
     const vaultKey =
       (typeof window !== 'undefined' && window.localStorage.getItem('baishou_active_vault')) ||
@@ -299,26 +319,29 @@ export const AgentLayout: React.FC = () => {
     useAgentNavigationStore.getState().setContext(vaultKey, snapshot)
     writeAgentNavigationSnapshot(vaultKey, snapshot)
 
+    // 立即离开旧会话，避免切换过程中仍渲染上一页消息
+    navigate(buildAgentChatNavigationPath(snapshot), { replace: true })
     void loadSessions(true, astId)
 
     if (typeof window !== 'undefined' && window.electron) {
       try {
         const sessionsList = await window.electron.ipcRenderer.invoke(
           'agent:list-sessions-by-assistant',
-          assistant.id
+          astId
         )
+        if (shouldAbortNavigationRestore(switchIntentAtStart)) return
         if (sessionsList && sessionsList.length > 0) {
           const sorted = sessionsList.sort(
             (a: any, b: any) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
           )
-          navigate(`/chat/${sorted[0].id}?assistantId=${assistant.id}`)
-          return
+          navigate(buildAgentChatNavigationPath({ assistantId: astId, sessionId: sorted[0].id }), {
+            replace: true
+          })
         }
       } catch (e) {
         console.error('[AgentLayout] Failed to switch to existing session', e)
       }
     }
-    handleNewChat(assistant.id)
   }
 
   const handleDelete = async (id: string) => {
@@ -364,11 +387,12 @@ export const AgentLayout: React.FC = () => {
         searchQuery={searchQuery}
         pinnedAssistants={pinnedAssistants}
         onSearchQueryChanged={setSearchQuery}
-        onSessionSelected={(id) =>
+        onSessionSelected={(id) => {
+          bumpNavigationIntent()
           navigate(
             currentAssistant?.id ? `/chat/${id}?assistantId=${currentAssistant.id}` : `/chat/${id}`
           )
-        }
+        }}
         onNewSession={handleNewChat}
         onAssistantSwitched={handleAssistantSwitched}
         onPinSession={async (id) => {
@@ -382,14 +406,20 @@ export const AgentLayout: React.FC = () => {
         onRenameSession={(id) => handleRenameSession(id, sessions)}
         onBatchDelete={handleBatchDelete}
         isCollapsed={isSidebarCollapsed}
-        onCollapse={() => setIsSidebarCollapsed(true)}
-        onExpand={() => setIsSidebarCollapsed(false)}
         onShowPicker={() => setIsPickerOpen(true)}
       />
 
       <div className={styles.chatArea}>
         <Outlet
-          context={{ sessions, loadSessions, onAssistantSwitched: handleAssistantSwitched }}
+          context={
+            {
+              sessions,
+              loadSessions,
+              onAssistantSwitched: handleAssistantSwitched,
+              isSidebarCollapsed,
+              onToggleSidebar: () => setIsSidebarCollapsed((prev) => !prev)
+            } satisfies AgentOutletContext
+          }
         />
       </div>
 

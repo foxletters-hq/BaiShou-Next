@@ -1,14 +1,5 @@
-import type { IconType } from 'react-icons'
-import {
-  MdPets,
-  MdAutoStories,
-  MdLayers,
-  MdFolderOpen,
-  MdCloud,
-  MdLock,
-  MdLanguage
-} from 'react-icons/md'
-
+import type { LucideIcon } from 'lucide-react'
+import { Cloud, FolderOpen, Languages, Layers, Library, Lock, PawPrint } from 'lucide-react'
 export const BRAND_BLUE = '#9AD4EA'
 export const BRAND_BLUE_DARK = '#5BA8CD'
 
@@ -29,43 +20,43 @@ export const ONBOARDING_BG_GRADIENT: [string, string] = ['#FFFBF5', '#D9EEF8']
 export interface SlideTheme {
   iconColor: string
   glowColor: string
-  icon: IconType
+  icon: LucideIcon
 }
 
 export const SLIDE_THEMES: SlideTheme[] = [
   {
     iconColor: BRAND_BLUE_DARK,
     glowColor: 'rgba(91, 168, 205, 0.2)',
-    icon: MdLanguage
+    icon: Languages
   },
   {
     iconColor: BRAND_BLUE,
     glowColor: 'rgba(154, 212, 234, 0.22)',
-    icon: MdPets
+    icon: PawPrint
   },
   {
     iconColor: '#9B8DC4',
     glowColor: 'rgba(155, 141, 196, 0.2)',
-    icon: MdAutoStories
+    icon: Library
   },
   {
     iconColor: '#3D8FD9',
     glowColor: 'rgba(61, 143, 217, 0.2)',
-    icon: MdLayers
+    icon: Layers
   },
   {
     iconColor: '#FFB74D',
     glowColor: 'rgba(255, 183, 77, 0.15)',
-    icon: MdFolderOpen
+    icon: FolderOpen
   },
   {
     iconColor: '#90CAF9',
     glowColor: 'rgba(144, 202, 249, 0.15)',
-    icon: MdCloud
+    icon: Cloud
   },
   {
     iconColor: '#81C784',
     glowColor: 'rgba(129, 199, 132, 0.15)',
-    icon: MdLock
+    icon: Lock
   }
 ]

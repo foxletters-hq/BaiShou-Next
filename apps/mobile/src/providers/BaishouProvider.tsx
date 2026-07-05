@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode, useRef } from 'react'
-import { Platform } from 'react-native'
+import { AppState, InteractionManager, Platform } from 'react-native'
 import * as SQLite from 'expo-sqlite'
 import {
   ensureExpoAgentDatabaseInstalled,
@@ -7,6 +7,7 @@ import {
   backfillExpoAgentMessagesFts,
   enterAgentMigrationArchiveImport,
   exitAgentMigrationArchiveImport,
+  verifyExpoAgentDatabaseIntegrity,
   type ExpoSqliteDatabase
 } from '@baishou/database/expo'
 import {
@@ -15,6 +16,7 @@ import {
   rebindSummaryPipelineForVault,
   type AgentDbRuntime
 } from '../services/mobile-agent-db-runtime'
+import { agentDbRuntimeRef } from '../services/mobile-agent-db-runtime-ref'
 import {
   SessionManagerService,
   DiaryService,
@@ -31,6 +33,7 @@ import {
   MissingSummaryDetector,
   SummaryGeneratorService,
   buildSharedContextText,
+  computeSharedMemoryCopyPreview,
   type ImportResult,
   type SyncConfig
 } from '@baishou/core-mobile'
@@ -39,7 +42,10 @@ import {
   resolveSyncDeviceId,
   isConfiguredProviderId,
   isConfiguredDialogueModelId,
-  type SummaryPromptLocale
+  filterDiaryScopedSearchResults,
+  isAgentStreamAbortError,
+  type SummaryPromptLocale,
+  type SharedMemoryCopyPreview
 } from '@baishou/shared'
 import { getTtsPlaybackSettings } from '../services/mobile-tts-settings.service'
 import { shouldRefreshVaultAfterArchiveImport } from '../services/archive-guards.util'
@@ -70,17 +76,34 @@ import { MobileStoragePathService } from '../services/path.service'
 import {
   loadContextAtMessage,
   buildMobileStreamUserConfig,
+  resolveAssistantContextWindow,
+  resolveAssistantEmojiPrefs,
   type MobileContextAtMessagePayload
 } from '../services/mobile-context-at-message.service'
 import { createMobileFileSystem } from '../services/create-mobile-file-system'
 import { setupMobileLocalFileReader } from '../services/mobile-local-file-reader.service'
+import { setupMobileImageCompressor } from '../services/mobile-image-compressor.service'
 import { setupMobileTtsRefAudioReader } from '../services/mobile-tts-ref-audio.service'
 import { MobileArchiveService } from '../services/archive.service'
 import type { MobileArchiveDbBridge } from '../services/mobile-archive-db.bridge'
+import { checkpointAgentDatabaseForExport } from '../services/mobile-agent-db-checkpoint.util'
+import {
+  mobileAgentDbRecovery,
+  MOBILE_AGENT_DB_NAME,
+  quarantineMobileAgentDatabase,
+  rebuildMobileAgentDatabase
+} from '../services/mobile-agent-db-recovery.service'
+import { resyncAgentDbCachesFromDisk } from '../services/mobile-agent-db-resync.util'
+import {
+  RecoveryAwareSessionSyncService,
+  RecoveryAwareSummarySyncService
+} from '../services/recovery-aware-sync.services'
+import { MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES } from '../services/mobile-file-read-limits'
 import { getAppDocumentDirectory } from '../services/mobile-app-paths'
 import { MobileLanSyncService } from '../services/lan-sync.service'
 import { MobileCloudSyncService } from '../services/cloud-sync.service'
 import { createMobileRagService, type MobileRagService } from '../services/mobile-rag.service'
+import { attachMobileRagVaultScope } from '../services/mobile-rag-vault-scope'
 import { setMobileDiaryEmbeddingDeps } from '../services/mobile-diary-embedding.service'
 import { MobileIncrementalSyncService } from '../services/mobile-incremental-sync.service'
 import { MobileMcpService } from '../services/mobile-mcp.service'
@@ -96,17 +119,20 @@ import { mobilePricingService, type MobilePricingService } from '../services/mob
 import type { VaultFileWatcherService } from '../services/vault-file-watcher.service'
 import type { MobileDataBootstrapper } from '../services/mobile-bootstrapper.service'
 import { ensureMobileCompressionBridge } from '../services/mobile-compression-event.service'
+import { recompressSessionContext } from '../services/mobile-context-recompress.service'
+import { setContextRecompressInvoker } from '@baishou/store'
 import type { IFileSystem } from '@baishou/core-mobile'
 import { buildMobileSummaryAiClient } from '../services/mobile-summary-ai-client'
 import { MobileAttachmentManagerService } from '../services/mobile-attachment-manager.service'
 import { warmAgentScreenCaches } from '../lib/agent-user-profile.util'
 import { reconcileAssistantAvatarsAfterStorageChange } from '../lib/assistant-avatar-reconcile.util'
+import { reconcileUserAvatarProfileAfterStorageChange } from '../lib/user-avatar-reconcile.util'
 import {
   initMobileCacheCoordinator,
   emitSyncMutation,
   emitVaultSwitchMutation
 } from '../cache/mobile-cache-coordinator'
-import { sessionFileWatcher } from '../services/session-file-watcher.service'
+import { sessionFileWatcher, createMobileSessionDiskPersistenceHooks } from '../services/session-file-watcher.service'
 import { summaryFileWatcher } from '../services/summary-file-watcher.service'
 import {
   activateVaultRuntime,
@@ -118,6 +144,7 @@ import {
   quiesceStorageForFileCopy,
   rebootstrapAfterStorageRootChange,
   registerVaultBootstrapDeps,
+  restartVaultWatchers,
   resumeStorageAfterFileCopy,
   resyncEcosystemAfterFileMutation,
   switchVaultRuntime,
@@ -125,6 +152,12 @@ import {
   type VaultBoundDiaryStack
 } from '../services/mobile-vault-runtime.service'
 import { consumeAppUpgradeShadowResync } from '../services/mobile-app-upgrade-shadow.util'
+import {
+  bindShadowVaultScanState,
+  getShadowVaultScanning,
+  subscribeShadowVaultScanning,
+  unbindShadowVaultScanState
+} from '../services/mobile-shadow-scan-state.service'
 import { logger } from '@baishou/shared'
 import type {
   SessionRepository as SessionRepositoryType,
@@ -209,6 +242,7 @@ interface BaishouContextValue {
     vaultFileWatcher: VaultFileWatcherService
     switchVault: (vaultName: string) => Promise<void>
     deleteVault: (vaultName: string) => Promise<void>
+    createDemoVault: () => Promise<{ vaultName: string; diaryCount: number; summaryCount: number }>
     memorySearch: (
       query: string,
       options?: { topK?: number; minScore?: number }
@@ -222,6 +256,8 @@ interface BaishouContextValue {
     profileRepo: UserProfileRepository
     /** 与桌面 summary:buildSharedContext 一致（总结 + 级联折叠后的日记） */
     buildSharedContext: (lookbackMonths: number, locale?: string) => Promise<string>
+    /** 与桌面 summary:buildSharedContextPreview 一致（复制前级联统计预览） */
+    buildSharedContextPreview: (lookbackMonths: number) => Promise<SharedMemoryCopyPreview>
     /** 与桌面 agent:get-context-at-message 一致 */
     getContextAtMessage: (
       sessionId: string,
@@ -333,7 +369,6 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
   const notifyArchiveRestoreCompleteRef = useRef<(result: ImportResult) => void>(() => {})
   const notifyVersionMigrationCompleteRef = useRef<() => void>(() => {})
   const resyncAfterMigrationRef = useRef<() => Promise<void>>(async () => {})
-  const agentDbRuntimeRef = useRef<AgentDbRuntime | null>(null)
   const reloadAgentDatabaseRef = useRef<() => Promise<void>>(async () => {})
   const archiveFullRestoreDoneRef = useRef(false)
   const vaultBootstrapCtxRef = useRef<{
@@ -393,13 +428,28 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
     return unsubscribeCacheCoordinator
   }, [])
 
+  /** 进后台前刷盘，避免 ecosystem resync 用陈旧磁盘 JSON 覆盖 SQLite 中的供应商等设置 */
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (nextState !== 'background' && nextState !== 'inactive') return
+      const runtime = agentDbRuntimeRef.current
+      if (!runtime) return
+      void runtime.settingsManager.flushToDisk().catch((e) => {
+        logger.warn('[BaishouProvider] settings flush on background failed:', e as Error)
+      })
+    })
+    return () => sub.remove()
+  }, [])
+
   useEffect(() => {
     let isMounted = true
     let mobileMcpService: MobileMcpService | null = null
-    let wasStorageIndexing = mobileDataBootstrapper.getStatus() === 'running'
-    const unsubscribeBootstrapper = mobileDataBootstrapper.subscribe((status) => {
+    let wasStorageIndexing =
+      mobileDataBootstrapper.getStatus() === 'running' || getShadowVaultScanning()
+
+    const publishStorageIndexing = () => {
       if (!isMounted) return
-      const indexing = status === 'running'
+      const indexing = mobileDataBootstrapper.getStatus() === 'running' || getShadowVaultScanning()
       if (wasStorageIndexing && !indexing) {
         emitSyncMutation('resync-complete', 'storage-indexing-complete')
       }
@@ -412,15 +462,45 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             : prev.ecosystemResyncEpoch
       }))
       wasStorageIndexing = indexing
+    }
+
+    const unsubscribeBootstrapper = mobileDataBootstrapper.subscribe(() => {
+      publishStorageIndexing()
+    })
+    const unsubscribeShadowScan = subscribeShadowVaultScanning(() => {
+      publishStorageIndexing()
     })
 
     async function init() {
       try {
+        const openAgentDatabase = (options?: { useNewConnection?: boolean }) =>
+          SQLite.openDatabaseAsync(
+            MOBILE_AGENT_DB_NAME,
+            options?.useNewConnection ? { useNewConnection: true } : undefined
+          ) as Promise<ExpoSqliteDatabase>
+
         // 1. 初始化 SQLite 环境（单例，避免并发 open + 迁移）
-        const { drizzleDb, expoDb, sqliteVecLoaded, sqliteVecLoadReason } =
-          await ensureExpoAgentDatabaseInstalled(
-            () => SQLite.openDatabaseAsync('baishou_next_mobile.db') as Promise<ExpoSqliteDatabase>
+        let install = await ensureExpoAgentDatabaseInstalled(openAgentDatabase)
+
+        const fileSystem = createMobileFileSystem()
+        setupMobileLocalFileReader(fileSystem)
+        setupMobileImageCompressor()
+        setupMobileTtsRefAudioReader(fileSystem)
+        const pathService = new MobileStoragePathService(fileSystem) as any
+
+        const startupIntegrity = await verifyExpoAgentDatabaseIntegrity(install.expoDb)
+        let agentDbRebuiltAtStartup = false
+        if (!startupIntegrity.ok) {
+          logger.warn(
+            `[BaishouProvider] Agent DB startup integrity failed (${startupIntegrity.detail ?? 'unknown'}), rebuilding…`
           )
+          install = await rebuildMobileAgentDatabase(fileSystem, (options) =>
+            openAgentDatabase({ ...options, useNewConnection: true })
+          )
+          agentDbRebuiltAtStartup = true
+        }
+
+        const { drizzleDb, expoDb, sqliteVecLoaded, sqliteVecLoadReason } = install
 
         if (sqliteVecLoaded) {
           logger.info('[BaishouProvider] Native sqlite-vec extension active on agent database.')
@@ -430,11 +510,6 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             sqliteVecLoadReason
           )
         }
-
-        const fileSystem = createMobileFileSystem()
-        setupMobileLocalFileReader(fileSystem)
-        setupMobileTtsRefAudioReader(fileSystem)
-        const pathService = new MobileStoragePathService(fileSystem) as any
 
         // 3. 构建 Repositories
         const sessionRepo = new SessionRepository(drizzleDb)
@@ -502,11 +577,16 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
         // 4. 构建 Core Services并进行依赖注入
         const sessionFileService = new SessionFileService(pathService, fileSystem)
-        const sessionSyncService = new SessionSyncService(sessionRepo, sessionFileService)
+        const sessionSyncService = new RecoveryAwareSessionSyncService(
+          sessionRepo,
+          sessionFileService,
+          mobileAgentDbRecovery
+        )
         const sessionManager = new SessionManagerService(
           sessionRepo,
           sessionFileService,
-          sessionSyncService
+          sessionSyncService,
+          createMobileSessionDiskPersistenceHooks()
         )
 
         const assistantFileService = new AssistantFileService(pathService, fileSystem)
@@ -575,11 +655,12 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           customTemplates as Record<string, string>,
           promptLocale
         )
-        const summarySyncService = new SummarySyncService(
+        const summarySyncService = new RecoveryAwareSummarySyncService(
           missingSummaryDetector,
           summaryGenerator,
           summaryRepo,
-          summaryFileService
+          summaryFileService,
+          mobileAgentDbRecovery
         )
         const summaryManager = new SummaryManagerService(
           summaryRepo,
@@ -595,14 +676,24 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           return buildSharedContextText(allSummaries, lookbackMonths, locale, { diaries })
         }
 
-        const agentService = new AgentSessionService()
+        const buildSharedContextPreview = async (lookbackMonths: number) => {
+          const stack = diaryStackRef.current
+          const empty: SharedMemoryCopyPreview = {
+            lookbackMonths,
+            yearly: 0,
+            quarterly: 0,
+            monthly: 0,
+            weekly: 0,
+            diary: 0,
+            total: 0
+          }
+          if (!stack) return empty
+          const allSummaries = await summaryManager.list()
+          const diaries = await stack.shadowRepo.listAllWithFTS({ limit: 10000 })
+          return computeSharedMemoryCopyPreview(allSummaries, diaries, lookbackMonths)
+        }
 
-        const MOBILE_DB_NAME = 'baishou_next_mobile.db'
-        const openAgentDatabase = (options?: { newConnection?: boolean }) => () =>
-          SQLite.openDatabaseAsync(
-            MOBILE_DB_NAME,
-            options?.newConnection ? { useNewConnection: true } : undefined
-          ) as Promise<ExpoSqliteDatabase>
+        const agentService = new AgentSessionService()
 
         const sqlExecutor = createSqlExecutorFromDrizzleDb(drizzleDb)
         const hsRepo = new SqliteHybridSearchRepository(sqlExecutor)
@@ -618,6 +709,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           profileRepo,
           snapshotRepo,
           sessionManager,
+          sessionSyncService,
           assistantManager,
           settingsManager,
           summaryManager,
@@ -635,7 +727,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             if (!runtime) return
             await runtime.settingsManager.flushToDisk()
             try {
-              await runtime.expoDb.execAsync('PRAGMA wal_checkpoint(FULL)')
+              await checkpointAgentDatabaseForExport((sql) => runtime.expoDb.execAsync(sql))
             } catch (checkpointError) {
               logger.error(
                 '[MobileArchive] WAL checkpoint before export failed:',
@@ -644,6 +736,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               throw new Error('数据库刷盘失败，已取消导出以保护备份完整性')
             }
           },
+          runArchiveExportQuiesced: async (fn) => runWithStorageQuiescedRef.current(fn),
           getMaxSnapshotCount: async () => {
             const runtime = agentDbRuntimeRef.current
             if (!runtime) return 5
@@ -680,11 +773,12 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               cloud_sync_config: await runtime.settingsRepo.get('cloud_sync_config' as never)
             }
           },
-          getAgentDatabaseUri: async () => `${getAppDocumentDirectory()}SQLite/${MOBILE_DB_NAME}`,
+          getAgentDatabaseUri: async () =>
+            `${getAppDocumentDirectory()}SQLite/${MOBILE_AGENT_DB_NAME}`,
           replaceAgentDatabaseFrom: async (sourceUri) => {
             await releaseExpoAgentDatabaseInstall()
             const sqliteDir = `${getAppDocumentDirectory()}SQLite/`
-            const destBase = `${sqliteDir}${MOBILE_DB_NAME}`
+            const destBase = `${sqliteDir}${MOBILE_AGENT_DB_NAME}`
             for (const suffix of ['', '-wal', '-shm']) {
               const candidate = `${destBase}${suffix}`
               if (await fileSystem.exists(candidate)) {
@@ -774,14 +868,18 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               logger.warn('[BaishouProvider] Agent FTS backfill after archive import failed:', e)
             })
 
-            const nextRagDeps = {
-              settingsManager: runtime.settingsManager,
-              diaryService: stack.diaryService,
-              hsRepo: runtime.hsRepo,
-              hybridSearchService: runtime.hybridSearchService,
-              registry: ctx.registry,
-              rawSqlClient: runtime.sqlExecutor
-            }
+            const nextRagDeps = attachMobileRagVaultScope(
+              {
+                settingsManager: runtime.settingsManager,
+                diaryService: stack.diaryService,
+                hsRepo: runtime.hsRepo,
+                hybridSearchService: runtime.hybridSearchService,
+                registry: ctx.registry,
+                rawSqlClient: runtime.sqlExecutor
+              },
+              pathService,
+              vaultService
+            )
             setMobileDiaryEmbeddingDeps(nextRagDeps)
             ctx.ragServiceRef.current = createMobileRagService(nextRagDeps)
             if (isMounted) {
@@ -848,16 +946,14 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               vaultRevision: prev.vaultRevision + 1
             }))
           },
-          assistantManager
+          assistantManager,
+          sessionManager
         )
 
         const updaterService = new MobileUpdaterService(settingsManager)
         const pricingService = mobilePricingService
 
         void pricingService.ensureLoaded()
-        void updaterService.checkOnBootIfEnabled().catch((e) => {
-          logger.warn('[MobileUpdater] boot check failed:', e)
-        })
 
         const toolRegistry = new ToolRegistry()
         const registry = AIProviderRegistry.getInstance()
@@ -887,14 +983,18 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             })
         )
 
-        const ragServiceDeps = {
-          settingsManager,
-          diaryService: diaryServiceProxy,
-          hsRepo,
-          hybridSearchService,
-          registry,
-          rawSqlClient: sqlExecutor
-        }
+        const ragServiceDeps = attachMobileRagVaultScope(
+          {
+            settingsManager,
+            diaryService: diaryServiceProxy,
+            hsRepo,
+            hybridSearchService,
+            registry,
+            rawSqlClient: sqlExecutor
+          },
+          pathService,
+          vaultService
+        )
         setMobileDiaryEmbeddingDeps(ragServiceDeps)
         const ragServiceRef = {
           current: createMobileRagService(ragServiceDeps)
@@ -911,6 +1011,24 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           if (!query.trim()) return []
           const runtime = agentDbRuntimeRef.current
           if (!runtime) return []
+          const activeVault = await pathService
+            .getActiveVaultNameForContext()
+            .catch(() => 'Personal')
+          const mapScopedResults = (
+            rows: Array<{
+              chunkText: string
+              score: number
+              createdAt?: number
+              sourceType?: string
+              sessionId?: string
+              groupId?: string
+            }>
+          ) =>
+            filterDiaryScopedSearchResults(rows, activeVault).map((r) => ({
+              chunkText: r.chunkText,
+              score: r.score,
+              createdAt: r.createdAt
+            }))
           try {
             const providers = (await runtime.settingsManager.get<any[]>('ai_providers')) || []
             const globalModels = await runtime.settingsManager.get<any>('global_models')
@@ -922,22 +1040,14 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             if (!embeddingProviderId || !embeddingModelId) {
               logger.warn('[MemorySearch] 嵌入模型未配置，降级为 FTS 搜索')
               const ftsResults = await runtime.hsRepo.queryFTS(query, options?.topK ?? 20)
-              return ftsResults.map((r) => ({
-                chunkText: r.chunkText,
-                score: r.score,
-                createdAt: r.createdAt
-              }))
+              return mapScopedResults(ftsResults)
             }
 
             const embeddingProviderConfig = providers.find((p: any) => p.id === embeddingProviderId)
             if (!embeddingProviderConfig) {
               logger.warn('[MemorySearch] 嵌入供应商配置未找到，降级为 FTS 搜索')
               const ftsResults = await runtime.hsRepo.queryFTS(query, options?.topK ?? 20)
-              return ftsResults.map((r) => ({
-                chunkText: r.chunkText,
-                score: r.score,
-                createdAt: r.createdAt
-              }))
+              return mapScopedResults(ftsResults)
             }
 
             const embeddingProvider = registry.getOrUpdateProvider(embeddingProviderConfig)
@@ -952,11 +1062,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             if (!queryVector) {
               logger.warn('[MemorySearch] 查询向量生成失败，降级为 FTS 搜索')
               const ftsResults = await runtime.hsRepo.queryFTS(query, options?.topK ?? 20)
-              return ftsResults.map((r) => ({
-                chunkText: r.chunkText,
-                score: r.score,
-                createdAt: r.createdAt
-              }))
+              return mapScopedResults(ftsResults)
             }
 
             // 执行混合搜索（FTS + 向量 RRF 融合）
@@ -970,19 +1076,11 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               similarityThreshold: minScore
             })
 
-            return results.map((r) => ({
-              chunkText: r.chunkText,
-              score: r.score,
-              createdAt: r.createdAt
-            }))
+            return mapScopedResults(results)
           } catch (e) {
             logger.error('[MemorySearch] RAG 搜索失败，降级为 FTS:', e as Error)
             const ftsResults = await runtime.hsRepo.queryFTS(query, options?.topK ?? 20)
-            return ftsResults.map((r) => ({
-              chunkText: r.chunkText,
-              score: r.score,
-              createdAt: r.createdAt
-            }))
+            return mapScopedResults(ftsResults)
           }
         }
 
@@ -1018,9 +1116,22 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             const provider = registry.getOrUpdateProvider(config)
 
             const searchMode = overrides?.searchMode ?? false
+            const [assistantContextWindow, assistantEmojiPrefs] = await Promise.all([
+              resolveAssistantContextWindow(
+                sessionId,
+                runtime.sessionRepo,
+                runtime.assistantManager
+              ),
+              resolveAssistantEmojiPrefs(
+                sessionId,
+                runtime.sessionRepo,
+                runtime.assistantManager
+              )
+            ])
             const userConfig = await buildMobileStreamUserConfig(
               runtime.settingsManager,
-              searchMode
+              searchMode,
+              { assistantContextWindow, assistantEmojiPrefs }
             )
 
             const embeddingProviderId = globalModels?.globalEmbeddingProviderId
@@ -1081,12 +1192,15 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                 skipUserMessageRecording: overrides?.skipUserMessageRecording,
                 forceRecompress: overrides?.forceRecompress,
                 streamClaimGeneration: overrides?.streamClaimGeneration,
-                attachments: overrides?.attachments as any
+                attachments: overrides?.attachments as any,
+                flushSessionToDisk: (id) => runtime.sessionManager.flushSessionToDisk(id)
               },
               callbacks
             )
           } catch (e) {
-            logger.error('Mobile Agent Chat Failed:', e as Error)
+            if (!isAgentStreamAbortError(e)) {
+              logger.error('Mobile Agent Chat Failed:', e as Error)
+            }
             throw e
           }
         }
@@ -1104,7 +1218,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           sessionManager,
           assistantManager,
           settingsManager,
-          summarySyncService,
+          summarySyncService: summarySyncService as SummarySyncService,
           getActiveVaultName: () => pathService.getActiveVaultNameForContext()
         }
 
@@ -1112,9 +1226,9 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           pathService,
           fileSystem,
           sessionFileService,
-          sessionSyncService,
+          sessionSyncService: sessionSyncService as SessionSyncService,
           sessionManager,
-          summarySyncService
+          summarySyncService: summarySyncService as SummarySyncService
         }
 
         vaultBootstrapCtxRef.current = {
@@ -1141,8 +1255,13 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             await priorMcp.stop()
           }
 
+          await releaseExpoAgentDatabaseInstall()
+          await quarantineMobileAgentDatabase(ctx.fileSystem)
+
           const { drizzleDb: newDrizzleDb, expoDb: newExpoDb } =
-            await ensureExpoAgentDatabaseInstalled(openAgentDatabase({ newConnection: true }))
+            await ensureExpoAgentDatabaseInstalled((options) =>
+              openAgentDatabase({ ...options, useNewConnection: true })
+            )
 
           const diaryRepoAdapter =
             diaryStackRef.current?.diaryRepoAdapter ?? EMPTY_DIARY_REPO_ADAPTER
@@ -1171,17 +1290,26 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           ctx.bootstrapDeps.settingsManager = newRuntime.settingsManager
           ctx.bootstrapDeps.summarySyncService = newRuntime.summarySyncService
           ctx.watcherDeps.sessionManager = newRuntime.sessionManager
+          ctx.watcherDeps.sessionSyncService = newRuntime.sessionSyncService
           ctx.watcherDeps.summarySyncService = newRuntime.summarySyncService
 
           const stack = diaryStackRef.current
-          const nextRagDeps = {
-            settingsManager: newRuntime.settingsManager,
-            diaryService: stack?.diaryService ?? diaryServiceProxy,
-            hsRepo: newRuntime.hsRepo,
-            hybridSearchService: newRuntime.hybridSearchService,
-            registry: ctx.registry,
-            rawSqlClient: newRuntime.sqlExecutor
+          if (stack) {
+            registerVaultBootstrapDeps(stack, ctx.bootstrapDeps)
+            await restartVaultWatchers(stack, vaultService, ctx.watcherDeps)
           }
+          const nextRagDeps = attachMobileRagVaultScope(
+            {
+              settingsManager: newRuntime.settingsManager,
+              diaryService: stack?.diaryService ?? diaryServiceProxy,
+              hsRepo: newRuntime.hsRepo,
+              hybridSearchService: newRuntime.hybridSearchService,
+              registry: ctx.registry,
+              rawSqlClient: newRuntime.sqlExecutor
+            },
+            pathService,
+            vaultService
+          )
           setMobileDiaryEmbeddingDeps(nextRagDeps)
           ctx.ragServiceRef.current = createMobileRagService(nextRagDeps)
           emitSyncMutation('resync-complete', 'agent-db-reload')
@@ -1227,7 +1355,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                 vaultRevision: prev.vaultRevision + 1
               }))
             },
-            newRuntime.assistantManager
+            newRuntime.assistantManager,
+            newRuntime.sessionManager
           )
 
           if (isMounted) {
@@ -1252,6 +1381,89 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                 : prev.services
             }))
           }
+        }
+
+        mobileAgentDbRecovery.registerReload(async () => {
+          await reloadAgentDatabaseRef.current()
+        })
+        mobileAgentDbRecovery.registerAfterReload(async () => {
+          const ctx = vaultBootstrapCtxRef.current
+          const runtime = agentDbRuntimeRef.current
+          if (!ctx || !runtime) {
+            throw new Error('Agent DB 运行时未就绪，无法从磁盘重同步')
+          }
+          const activeVaultName = ctx.vaultService.getActiveVault()?.name
+          await mobileAgentDbRecovery.runBare(async () => {
+            await resyncAgentDbCachesFromDisk({
+              runtime,
+              activeVaultName,
+              maxSessionJsonReadBytes: MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES
+            })
+          })
+        })
+
+        const runDeferredVaultStartup = async () => {
+          if (!isMounted) return
+
+          if (
+            agentDbRebuiltAtStartup &&
+            agentDbRuntimeRef.current &&
+            vaultService.getActiveVault()?.name
+          ) {
+            try {
+              await mobileAgentDbRecovery.runBare(async () => {
+                await resyncAgentDbCachesFromDisk({
+                  runtime: agentDbRuntimeRef.current!,
+                  activeVaultName: vaultService.getActiveVault()?.name,
+                  maxSessionJsonReadBytes: MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES
+                })
+              })
+            } catch (e) {
+              logger.warn('[BaishouProvider] post-startup-rebuild agent resync failed:', e as Error)
+            }
+          }
+
+          if (diaryStackRef.current) {
+            try {
+              await runStorageBootstrap()
+            } catch (e) {
+              if (Platform.OS === 'android' && isExternalStorageRequiredError(e)) {
+                logger.info(
+                  '[BaishouProvider] Vault bootstrap deferred until external storage is granted'
+                )
+                if (isMounted) {
+                  setValue((prev) => ({ ...prev, storageReady: false }))
+                }
+              } else {
+                logger.error('[BaishouProvider] Vault bootstrap failed:', e as Error)
+                if (isMounted) {
+                  setValue((prev) => ({ ...prev, storageReady: false }))
+                }
+              }
+            }
+          }
+
+          if (Platform.OS === 'android') {
+            const needsStorageMount = !diaryStackRef.current
+            if (needsStorageMount && (await hasStoragePermission())) {
+              const mounted = await retryStorageSetupRef.current()
+              if (mounted && isMounted) {
+                setValue((prev) => ({ ...prev, storageReady: true }))
+              }
+            }
+          }
+
+          if (isMounted) {
+            void warmAgentScreenCaches(settingsManager, attachmentManager, fileSystem)
+          }
+
+          void mobileMcpService?.start().catch((mcpErr) => {
+            logger.warn('[BaishouProvider] MCP server failed to start:', mcpErr as Error)
+          })
+
+          void updaterService.checkOnBootIfEnabled().catch((e) => {
+            logger.warn('[MobileUpdater] boot check failed:', e)
+          })
         }
 
         const runStorageBootstrap = async (options?: {
@@ -1319,14 +1531,18 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                 },
                 onStackReady: (readyStack) => {
                   diaryStackRef.current = readyStack
-                  const nextRagDeps = {
-                    settingsManager,
-                    diaryService: readyStack.diaryService,
-                    hsRepo,
-                    hybridSearchService,
-                    registry,
-                    rawSqlClient: sqlExecutor
-                  }
+                  const nextRagDeps = attachMobileRagVaultScope(
+                    {
+                      settingsManager,
+                      diaryService: readyStack.diaryService,
+                      hsRepo,
+                      hybridSearchService,
+                      registry,
+                      rawSqlClient: sqlExecutor
+                    },
+                    pathService,
+                    vaultService
+                  )
                   setMobileDiaryEmbeddingDeps(nextRagDeps)
                   ragServiceRef.current = createMobileRagService(nextRagDeps)
                 },
@@ -1399,23 +1615,30 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           }
         }
 
+        const createDemoVault = async () => {
+          const result = await mobileDeveloperService.createDemoVault({
+            vaultService,
+            switchVault,
+            getDiaryService: () => {
+              const stack = diaryStackRef.current
+              if (!stack) {
+                throw new Error('Diary stack unavailable')
+              }
+              return stack.diaryService
+            },
+            getSummaryManager: () => agentDbRuntimeRef.current?.summaryManager
+          })
+          if (isMounted) {
+            setValue((prev) => ({
+              ...prev,
+              vaultRevision: prev.vaultRevision + 1
+            }))
+          }
+          return result
+        }
+
         if (diaryStack) {
           storageReady = true
-          void runStorageBootstrap().catch((e) => {
-            if (Platform.OS === 'android' && isExternalStorageRequiredError(e)) {
-              logger.info(
-                '[BaishouProvider] Vault bootstrap deferred until external storage is granted'
-              )
-              if (isMounted) {
-                setValue((prev) => ({ ...prev, storageReady: false }))
-              }
-              return
-            }
-            logger.error('[BaishouProvider] Vault bootstrap failed:', e as Error)
-            if (isMounted) {
-              setValue((prev) => ({ ...prev, storageReady: false }))
-            }
-          })
         }
 
         retryStorageSetupRef.current = async (options?: { forceDeferResync?: boolean }) => {
@@ -1443,22 +1666,20 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                 })
             diaryStackRef.current = stack
 
-            ragServiceRef.current = createMobileRagService({
-              settingsManager,
-              diaryService: stack.diaryService,
-              hsRepo,
-              hybridSearchService,
-              registry,
-              rawSqlClient: sqlExecutor
-            })
-            setMobileDiaryEmbeddingDeps({
-              settingsManager,
-              diaryService: stack.diaryService,
-              hsRepo,
-              hybridSearchService,
-              registry,
-              rawSqlClient: sqlExecutor
-            })
+            const ragDeps = attachMobileRagVaultScope(
+              {
+                settingsManager,
+                diaryService: stack.diaryService,
+                hsRepo,
+                hybridSearchService,
+                registry,
+                rawSqlClient: sqlExecutor
+              },
+              pathService,
+              vaultService
+            )
+            ragServiceRef.current = createMobileRagService(ragDeps)
+            setMobileDiaryEmbeddingDeps(ragDeps)
             if (isMounted) {
               setValue((prev) => ({
                 ...prev,
@@ -1543,14 +1764,18 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               if (archiveFullRestoreDoneRef.current) {
                 const stack = diaryStackRef.current
                 if (stack && ctx && runtime) {
-                  const resumedRagDeps = {
-                    settingsManager: runtime.settingsManager,
-                    diaryService: stack.diaryService,
-                    hsRepo: runtime.hsRepo,
-                    hybridSearchService: runtime.hybridSearchService,
-                    registry: ctx.registry,
-                    rawSqlClient: runtime.sqlExecutor
-                  }
+                  const resumedRagDeps = attachMobileRagVaultScope(
+                    {
+                      settingsManager: runtime.settingsManager,
+                      diaryService: stack.diaryService,
+                      hsRepo: runtime.hsRepo,
+                      hybridSearchService: runtime.hybridSearchService,
+                      registry: ctx.registry,
+                      rawSqlClient: runtime.sqlExecutor
+                    },
+                    ctx.pathService,
+                    ctx.vaultService
+                  )
                   setMobileDiaryEmbeddingDeps(resumedRagDeps)
                   ctx.ragServiceRef.current = createMobileRagService(resumedRagDeps)
                 }
@@ -1567,14 +1792,18 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                       watcherDeps: ctx.watcherDeps
                     })
                     diaryStackRef.current = resumedStack
-                    const resumedRagDeps = {
-                      settingsManager: runtime.settingsManager,
-                      diaryService: resumedStack.diaryService,
-                      hsRepo: runtime.hsRepo,
-                      hybridSearchService: runtime.hybridSearchService,
-                      registry: ctx.registry,
-                      rawSqlClient: runtime.sqlExecutor
-                    }
+                    const resumedRagDeps = attachMobileRagVaultScope(
+                      {
+                        settingsManager: runtime.settingsManager,
+                        diaryService: resumedStack.diaryService,
+                        hsRepo: runtime.hsRepo,
+                        hybridSearchService: runtime.hybridSearchService,
+                        registry: ctx.registry,
+                        rawSqlClient: runtime.sqlExecutor
+                      },
+                      ctx.pathService,
+                      ctx.vaultService
+                    )
                     setMobileDiaryEmbeddingDeps(resumedRagDeps)
                     ctx.ragServiceRef.current = createMobileRagService(resumedRagDeps)
                   } catch (caughtResumeError) {
@@ -1647,11 +1876,6 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         }
 
         void getTtsPlaybackSettings(settingsManager).catch(() => {})
-
-        if (Platform.OS === 'android' && !storageReady && (await hasStoragePermission())) {
-          const mounted = await retryStorageSetupRef.current()
-          if (mounted) storageReady = true
-        }
 
         if (isMounted) {
           notifyArchiveRestoreCompleteRef.current = (result: ImportResult) => {
@@ -1751,6 +1975,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               vaultFileWatcher,
               switchVault,
               deleteVault,
+              createDemoVault,
               memorySearch,
               mobileMcpService,
               ragService: ragServiceRef.current,
@@ -1760,16 +1985,15 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               settingsRepo: agentDbRuntimeRef.current?.settingsRepo ?? settingsRepo,
               profileRepo: agentDbRuntimeRef.current?.profileRepo ?? profileRepo,
               buildSharedContext,
+              buildSharedContextPreview,
               getContextAtMessage
             },
             startAgentChat
           })
-          void warmAgentScreenCaches(settingsManager, attachmentManager)
+          InteractionManager.runAfterInteractions(() => {
+            void runDeferredVaultStartup()
+          })
         }
-
-        void mobileMcpService?.start().catch((mcpErr) => {
-          logger.warn('[BaishouProvider] MCP server failed to start:', mcpErr as Error)
-        })
       } catch (e) {
         if (isExternalStorageRequiredError(e)) {
           logger.info(
@@ -1786,11 +2010,33 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
     return () => {
       isMounted = false
       unsubscribeBootstrapper()
+      unsubscribeShadowScan()
+      unbindShadowVaultScanState()
       vaultFileWatcher.stop()
       sessionFileWatcher.stop()
       summaryFileWatcher.stop()
       void mobileMcpService?.stop()
     }
+  }, [])
+
+  useEffect(() => {
+    setContextRecompressInvoker(async (sessionId) => {
+      const runtime = agentDbRuntimeRef.current
+      const ctx = vaultBootstrapCtxRef.current
+      if (!runtime || !ctx) {
+        return { ok: false, error: 'Database not ready' }
+      }
+      return recompressSessionContext(
+        {
+          sessionRepo: runtime.sessionRepo,
+          snapshotRepo: runtime.snapshotRepo,
+          settingsManager: runtime.settingsManager,
+          registry: ctx.registry
+        },
+        sessionId
+      )
+    })
+    return () => setContextRecompressInvoker(null)
   }, [])
 
   return <BaishouContext.Provider value={value}>{children}</BaishouContext.Provider>

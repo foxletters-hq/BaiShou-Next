@@ -21,10 +21,11 @@ export function shouldThrottleNavigationReconcile(input: {
   )
 }
 
-/** 伙伴切换或清空会话时应立即持久化导航快照 */
+/** 伙伴切换、会话变更或清空会话时应立即持久化导航快照（避免 Tab 切走时被防抖取消） */
 export function shouldPersistNavigationImmediately(input: {
   assistantChanged: boolean
   sessionCleared: boolean
+  sessionChanged: boolean
 }): boolean {
-  return input.assistantChanged || input.sessionCleared
+  return input.assistantChanged || input.sessionCleared || input.sessionChanged
 }

@@ -21,13 +21,14 @@ export async function buildAgentSystemPrompt(
   searchMode?: boolean
 ): Promise<string> {
   const { realSessionRepo, realAssistantRepo } = getAgentManagers()
-  const assistantContextWindow = await AgentChatService.getAssistantContextWindow(sessionId)
+  const prefs = await AgentChatService.getAssistantSessionPrefs(sessionId)
   const webSearchEnabled = await resolveSearchModeEnabled(searchMode)
   const { provider, systemModels, userConfig } = await buildStreamConfig(
     undefined,
     undefined,
     webSearchEnabled,
-    assistantContextWindow
+    prefs.assistantContextWindow,
+    prefs.assistantEmojiPrefs
   )
 
   const session = await realSessionRepo.getSessionById(sessionId)

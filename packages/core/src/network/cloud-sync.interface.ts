@@ -31,8 +31,11 @@ export interface SyncConfig {
 }
 
 export interface ICloudSyncClient {
-  /** 将本地 ZIP 文件上传到云端 */
-  uploadFile(localFilePath: string): Promise<void>
+  /**
+   * 上传本地文件到云端。
+   * @param remoteRelPath 增量同步时显式指定 manifest 相对路径（虚拟路径）；省略时由客户端从 localFilePath 推导。
+   */
+  uploadFile(localFilePath: string, remoteRelPath?: string): Promise<void>
 
   /** 从云端下载指定文件到本地指定路径 */
   downloadFile(remoteFilename: string, localDestPath: string): Promise<void>

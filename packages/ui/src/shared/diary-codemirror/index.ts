@@ -15,6 +15,12 @@ export {
 } from './createDiaryCodeMirror'
 
 export {
+  clampPosToDoc,
+  replaceEditorDocumentContent,
+  type ReplaceEditorDocumentOptions
+} from './editorContentSync'
+
+export {
   forceImageRefresh,
   setImageActionCallback,
   setUpdateImageWidthCallback,
@@ -24,9 +30,15 @@ export {
 } from './extensions/effects'
 
 export { livePreviewSyntaxHighlighting } from './extensions/syntax'
-export { livePreviewPlugin } from './extensions/livePreviewPlugin'
+export { livePreviewField, livePreviewPlugin } from './extensions/livePreviewPlugin'
+export {
+  tablePreviewField,
+  buildTablePreviewDecorations,
+  changeAffectsTables,
+  changeOverlapsTableDecorations
+} from './extensions/tablePreviewField'
 export { attachmentUrlPlugin } from './extensions/attachmentUrlPlugin'
-export { markdownKeymap } from './extensions/keymap'
+export { markdownKeymap, toggleMarkdownMark } from './extensions/keymap'
 export { buildMarkerHidingDecorations } from './extensions/build'
 
 export { ImageWidget } from './widgets/ImageWidget'

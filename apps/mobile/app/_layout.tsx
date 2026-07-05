@@ -12,20 +12,23 @@ import i18n from 'i18next'
 import { readOnboardingUiLanguage } from '@/src/lib/onboarding-language.util'
 import { getSystemLanguage, resolveAppUiLanguage } from '@/src/lib/device-locale'
 
-import { useNativeTheme, DialogProvider } from '@baishou/ui/native'
+import { useNativeTheme, DialogProvider, ToastProvider } from '@baishou/ui/native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { BaishouProvider, useBaishou } from '@/src/providers/BaishouProvider'
+import { NetworkProvider } from '@/src/providers/NetworkProvider'
 import { IncrementalSyncProvider } from '@/src/providers/IncrementalSyncProvider'
 import { useDiaryEmbedFailureToast } from '@/src/hooks/useDiaryEmbedFailureToast'
 import { useLegacyUpgradeRagToast } from '@/src/hooks/useLegacyUpgradeRagToast'
 import { LegacyMigrationPrompt } from '@/src/components/LegacyMigrationPrompt'
-import { preloadDiaryEditorWebViewSource, resetDiaryEditorWebViewSourceCache } from '@/src/hooks/useDiaryEditorWebViewSource'
 import {
   buildAppNavigationTheme,
   buildThemedFadeStackOptions
 } from '@/src/navigation/themedNavigation'
+import { useDevLanTransferDeepLinkReplayGuard } from '@/src/navigation/useDevLanTransferDeepLinkReplayGuard'
 import { NativeAppThemeBridge } from '@/src/providers/NativeAppThemeBridge'
 import { HeroUIThemeBridge } from '@/src/providers/HeroUIThemeBridge'
+import '@/src/screens/DiaryScreen/diary-filter-state.util'
+import { installMobileDiagnosticLog } from '@/src/services/install-mobile-diagnostic-log'
 
 export const unstable_settings = {
   // 深链进入子页面时，栈底保留 tabs 而非引导页
@@ -46,13 +49,7 @@ function AppContent() {
   const { dbReady, services } = useBaishou()
   useDiaryEmbedFailureToast()
   useLegacyUpgradeRagToast()
-
-  useEffect(() => {
-    if (__DEV__) {
-      resetDiaryEditorWebViewSourceCache()
-    }
-    void preloadDiaryEditorWebViewSource()
-  }, [])
+  useDevLanTransferDeepLinkReplayGuard()
 
   useEffect(() => {
     if (!dbReady || !services) return
@@ -97,7 +94,7 @@ function AppContent() {
         <Stack.Screen
           name="diary-editor"
           options={{
-            presentation: 'modal',
+            presentation: 'fullScreenModal',
             title: t('diary.editor_title', '编辑记忆'),
             headerShown: false,
             ...themedFadeStackOptions
@@ -105,7 +102,6 @@ function AppContent() {
         />
         <Stack.Screen name="assistants" />
         <Stack.Screen name="assistant-edit" />
-        <Stack.Screen name="lan-transfer" />
         <Stack.Screen name="data-sync" />
         <Stack.Screen name="summary-detail" />
         <Stack.Screen name="storage" />
@@ -117,20 +113,28 @@ function AppContent() {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    installMobileDiagnosticLog()
+  }, [])
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <BaishouProvider>
-          <NativeAppThemeBridge>
-            <HeroUIThemeBridge>
-              <DialogProvider>
-                <IncrementalSyncProvider>
-                  <LegacyMigrationPrompt />
-                  <AppContent />
-                </IncrementalSyncProvider>
-              </DialogProvider>
-            </HeroUIThemeBridge>
-          </NativeAppThemeBridge>
+          <NetworkProvider>
+            <NativeAppThemeBridge>
+              <HeroUIThemeBridge>
+                <ToastProvider>
+                  <DialogProvider>
+                    <IncrementalSyncProvider>
+                      <LegacyMigrationPrompt />
+                      <AppContent />
+                    </IncrementalSyncProvider>
+                  </DialogProvider>
+                </ToastProvider>
+              </HeroUIThemeBridge>
+            </NativeAppThemeBridge>
+          </NetworkProvider>
         </BaishouProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

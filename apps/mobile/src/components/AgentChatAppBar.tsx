@@ -1,20 +1,27 @@
 import React from 'react'
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { PanelLeftOpen } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme } from '@baishou/ui/native'
+import { ProviderBrandIcon, useNativeTheme } from '@baishou/ui/native'
+import { isConfiguredProviderId } from '@baishou/shared'
+
 interface AgentChatAppBarProps {
   modelName: string
+  providerId?: string | null
+  providerType?: string
   costMicros: number
   onMenuPress: () => void
   onModelPress: () => void
   onCostPress: () => void
 }
 
-const SIDE_WIDTH = 88
+const LEFT_SIDE_WIDTH = 48
+const RIGHT_SIDE_WIDTH = 76
 
 export const AgentChatAppBar: React.FC<AgentChatAppBarProps> = ({
   modelName,
+  providerId,
+  providerType,
   costMicros,
   onMenuPress,
   onModelPress,
@@ -24,6 +31,7 @@ export const AgentChatAppBar: React.FC<AgentChatAppBarProps> = ({
   const { colors } = useNativeTheme()
   const costLabel = `$${(costMicros / 1_000_000).toFixed(4)}`
   const displayModel = modelName || t('agent.no_model_selected', '暂未选择模型')
+  const showProviderIcon = isConfiguredProviderId(providerId)
 
   return (
     <View
@@ -41,15 +49,23 @@ export const AgentChatAppBar: React.FC<AgentChatAppBarProps> = ({
           onPress={onMenuPress}
           accessibilityLabel={t('agent.sidebar.expand', '展开侧边栏')}
         >
-          <MaterialIcons name="menu" size={24} color={colors.textPrimary} />
+          <PanelLeftOpen size={24} color={colors.textPrimary} strokeWidth={2} />
         </TouchableOpacity>
       </View>
 
       <TouchableOpacity style={styles.titleWrap} onPress={onModelPress} activeOpacity={0.7}>
-        <Text style={[styles.modelName, { color: colors.textPrimary }]} numberOfLines={1}>
-          {displayModel}
-        </Text>
-        <MaterialIcons name="unfold-more" size={18} color={colors.textSecondary} />
+        <View style={styles.modelCluster}>
+          {showProviderIcon ? (
+            <ProviderBrandIcon
+              providerId={providerId!}
+              providerType={providerType}
+              size={18}
+            />
+          ) : null}
+          <Text style={[styles.modelName, { color: colors.textPrimary }]} numberOfLines={1}>
+            {displayModel}
+          </Text>
+        </View>
       </TouchableOpacity>
 
       <View style={[styles.side, styles.sideRight]}>
@@ -83,15 +99,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1
   },
   side: {
-    width: SIDE_WIDTH,
     justifyContent: 'center'
   },
   sideLeft: {
+    width: LEFT_SIDE_WIDTH,
     alignItems: 'flex-start'
   },
   sideRight: {
+    width: RIGHT_SIDE_WIDTH,
     alignItems: 'flex-end',
-    paddingRight: 8
+    paddingRight: 4
   },
   menuBtn: {
     width: 44,
@@ -104,20 +121,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    paddingHorizontal: 4
+    paddingHorizontal: 2,
+    minWidth: 0
+  },
+  modelCluster: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 1,
+    maxWidth: '100%'
   },
   modelName: {
     fontSize: 16,
     fontWeight: '700',
     flexShrink: 1,
-    maxWidth: '92%',
-    textAlign: 'center'
+    textAlign: 'left'
   },
   costBadge: {
     flexShrink: 1,
-    maxWidth: SIDE_WIDTH - 4,
-    minWidth: 64,
+    maxWidth: RIGHT_SIDE_WIDTH - 4,
+    minWidth: 60,
     paddingHorizontal: 8,
     paddingVertical: 6,
     borderRadius: 12,

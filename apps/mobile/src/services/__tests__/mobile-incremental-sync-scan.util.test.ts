@@ -12,14 +12,14 @@ const localScanIncrementalSyncFiles = vi.fn()
 vi.mock('expo-baishou-server', () => ({
   externalScanIncrementalSyncFiles: (...args: unknown[]) =>
     externalScanIncrementalSyncFiles(...args),
-  localScanIncrementalSyncFiles: (...args: unknown[]) =>
-    localScanIncrementalSyncFiles(...args),
+  localScanIncrementalSyncFiles: (...args: unknown[]) => localScanIncrementalSyncFiles(...args),
   isLocalFsNativeAvailable: () => true
 }))
 
 vi.mock('../android-external-fs', () => ({
   isExternalStoragePath: (path: string) => path.startsWith('/storage/'),
-  isAndroidAppSandboxPath: (path: string) => path.startsWith('/data/user/')
+  isAndroidAppSandboxPath: (path: string) => path.startsWith('/data/user/'),
+  normalizeExternalStoragePath: (path: string) => path
 }))
 
 describe('scanIncrementalSyncFilesForManifest', () => {
@@ -40,7 +40,9 @@ describe('scanIncrementalSyncFilesForManifest', () => {
 
     expect(files).toHaveLength(1)
     expect(files[0]?.relPath).toBe('a.md')
-    expect(externalScanIncrementalSyncFiles).toHaveBeenCalledWith('/storage/emulated/0/BaiShou_Root')
+    expect(externalScanIncrementalSyncFiles).toHaveBeenCalledWith(
+      '/storage/emulated/0/BaiShou_Root'
+    )
   })
 
   it('沙盒路径优先本地原生扫描', async () => {
@@ -75,6 +77,8 @@ describe('scanIncrementalSyncFilesForManifest', () => {
       writeFile: async () => {},
       mkdir: async () => {},
       unlink: async () => {},
+      rm: async () => {},
+      appendFile: async () => {},
       copyFile: async () => {},
       rename: async () => {}
     }
@@ -106,6 +110,8 @@ describe('scanIncrementalSyncFilesForManifest', () => {
       writeFile: async () => {},
       mkdir: async () => {},
       unlink: async () => {},
+      rm: async () => {},
+      appendFile: async () => {},
       copyFile: async () => {},
       rename: async () => {}
     }

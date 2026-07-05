@@ -1,5 +1,4 @@
-import { supportsNativePdf } from '@baishou/shared'
-import { logger } from '@baishou/shared'
+import { supportsNativePdf, logger, stripAttachmentBinaryForStorage } from '@baishou/shared'
 import type { IFileSystem, IStoragePathService } from '@baishou/core-mobile'
 import { extractPdfText } from '../utils/mobile-pdf.util'
 import { importUriToPath } from './mobile-uri-import'
@@ -18,11 +17,7 @@ export type AttachmentInput = {
   textContent?: string
 }
 
-/** 落库前去掉二进制 data，仅保留路径与元数据（对齐桌面 agent-attachment.ipc） */
-export function stripAttachmentBinaryForStorage(att: AttachmentInput): AttachmentInput {
-  const { data: _data, ...rest } = att
-  return rest
-}
+export { stripAttachmentBinaryForStorage } from '@baishou/shared'
 
 /**
  * 将聊天附件复制到 vault 会话目录（对齐桌面 agent-attachment.ipc）。

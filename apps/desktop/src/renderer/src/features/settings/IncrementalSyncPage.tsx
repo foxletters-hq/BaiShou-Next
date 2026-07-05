@@ -1,13 +1,37 @@
 import { RefreshCw, FileText, Cloud, HelpCircle } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { isIncrementalSyncReady } from '@baishou/shared'
 import { Tooltip, formatSyncProgressStatus, IncrementalSyncScopeList } from '@baishou/ui'
 import { SyncConfigForm } from './components/sync/SyncConfigForm'
 import { useOrchestratedSync } from '../../hooks/useOrchestratedSync'
+import { INCREMENTAL_SYNC_CONFIG_CHANGED_EVENT } from '../../lib/incremental-sync-config-events'
 import styles from './IncrementalSyncPage.module.css'
 
 export const IncrementalSyncPage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const { t } = useTranslation()
   const { isSyncing, isPlanning, syncResult, progress, startSync } = useOrchestratedSync()
+  const [syncReady, setSyncReady] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+
+    const refreshSyncReady = async () => {
+      try {
+        const cfg = await window.api.incrementalSync.getConfig()
+        if (!cancelled) setSyncReady(isIncrementalSyncReady(cfg))
+      } catch {
+        if (!cancelled) setSyncReady(false)
+      }
+    }
+
+    void refreshSyncReady()
+    window.addEventListener(INCREMENTAL_SYNC_CONFIG_CHANGED_EVENT, refreshSyncReady)
+    return () => {
+      cancelled = true
+      window.removeEventListener(INCREMENTAL_SYNC_CONFIG_CHANGED_EVENT, refreshSyncReady)
+    }
+  }, [])
 
   const formatDuration = (ms: number) => (ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`)
 
@@ -44,14 +68,21 @@ export const IncrementalSyncPage: React.FC<{ embedded?: boolean }> = ({ embedded
         <button
           className={styles.syncButton}
           onClick={() => void startSync()}
-          disabled={isSyncing || isPlanning}
+          disabled={isSyncing || isPlanning || !syncReady}
+          title={
+            syncReady
+              ? t('data_sync.sync_now', 'Sync')
+              : t('data_sync.error_sync_disabled', '请先在上方开启「文件同步」开关后再同步')
+          }
           style={
             isSyncing || isPlanning
               ? {
                   background: 'var(--bg-surface)',
                   color: 'var(--text-primary)'
                 }
-              : undefined
+              : !syncReady
+                ? { opacity: 0.55, cursor: 'not-allowed' }
+                : undefined
           }
         >
           <RefreshCw size={16} className={isSyncing || isPlanning ? styles.spinning : undefined} />

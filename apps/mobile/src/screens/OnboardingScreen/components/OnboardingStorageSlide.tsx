@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Platform, ActivityIndicator } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { FolderOpen, MapPin } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { StoragePermissionPrompt, useNativeToast } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
@@ -120,7 +120,7 @@ export const OnboardingStorageSlide: React.FC<OnboardingStorageSlideProps> = ({
 
       <View style={styles.pathBlock}>
         <View style={styles.pathHeader}>
-          <MaterialIcons name="folder-open" size={16} color="#D4924A" />
+          <FolderOpen size={16} color="#D4924A" strokeWidth={2} />
           <Text style={styles.pathLabel}>{t('onboarding.current_storage')}</Text>
         </View>
         {!showPath ? (
@@ -145,7 +145,7 @@ export const OnboardingStorageSlide: React.FC<OnboardingStorageSlideProps> = ({
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
             <>
-              <MaterialIcons name="edit-location-alt" size={18} color="#FFFFFF" />
+              <MapPin size={18} color="#FFFFFF" strokeWidth={2} />
               <Text style={styles.changeButtonText}>{t('onboarding.change_storage')}</Text>
             </>
           )}

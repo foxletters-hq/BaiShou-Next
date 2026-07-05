@@ -3,6 +3,7 @@ import type { TtsProviderConfig } from './tts-provider-settings.types'
 export const TTS_PROVIDERS = [
   { id: 'openai-tts', label: 'OpenAI TTS' },
   { id: 'mimo-tts', label: 'MiMo TTS' },
+  { id: 'minimax-tts', label: 'MiniMax TTS' },
   { id: 'clone-tts', label: 'Clone TTS' },
   { id: 'gpt-sovits', label: 'GPT-SoVITS' }
 ] as const

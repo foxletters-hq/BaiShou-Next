@@ -1,4 +1,7 @@
 import { StyleSheet } from 'react-native'
+import { NATIVE_SLIDER_HEIGHT } from '../Slider/native-slider.utils'
+
+const GRADIENT_BAR_HEIGHT = 20
 
 export const appearanceSettingsStyles = StyleSheet.create({
   card: {
@@ -91,6 +94,25 @@ export const appearanceSettingsStyles = StyleSheet.create({
     width: 40,
     fontSize: 14,
     fontWeight: 'bold'
+  },
+  sliderTrackWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: NATIVE_SLIDER_HEIGHT,
+    height: NATIVE_SLIDER_HEIGHT
+  },
+  gradientBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: (NATIVE_SLIDER_HEIGHT - GRADIENT_BAR_HEIGHT) / 2,
+    height: GRADIENT_BAR_HEIGHT,
+    flexDirection: 'row',
+    borderRadius: 10,
+    overflow: 'hidden'
+  },
+  hueSegment: {
+    flex: 1
   },
   modalActions: {
     flexDirection: 'row',

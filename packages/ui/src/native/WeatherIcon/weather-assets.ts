@@ -1,5 +1,5 @@
 import type { ImageSourcePropType } from 'react-native'
-import { normalizeWeatherId, WEATHER_IDS, type WeatherId } from '@baishou/shared'
+import { resolveWeatherId, type WeatherId } from '@baishou/shared'
 
 /** Microsoft Fluent Emoji 3D (MIT) — bundled for offline use */
 const FLUENT_WEATHER_ASSETS: Record<WeatherId, ImageSourcePropType> = {
@@ -14,8 +14,7 @@ const FLUENT_WEATHER_ASSETS: Record<WeatherId, ImageSourcePropType> = {
 }
 
 export function getWeatherFluentImageSource(weather?: string | null): ImageSourcePropType | null {
-  if (!weather) return null
-  const id = normalizeWeatherId(weather)
-  if (!(WEATHER_IDS as readonly string[]).includes(id)) return null
-  return FLUENT_WEATHER_ASSETS[id as WeatherId]
+  const id = resolveWeatherId(weather)
+  if (!id) return null
+  return FLUENT_WEATHER_ASSETS[id]
 }

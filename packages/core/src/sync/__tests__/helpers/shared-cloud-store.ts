@@ -58,8 +58,8 @@ export class InMemoryIncrementalCloudClient implements ICloudSyncClient {
     return path.relative(this.syncRoot, localFilePath).replace(/\\/g, '/')
   }
 
-  async uploadFile(localFilePath: string): Promise<void> {
-    const rel = this.toRelativePath(localFilePath)
+  async uploadFile(localFilePath: string, remoteRelPath?: string): Promise<void> {
+    const rel = remoteRelPath?.replace(/\\/g, '/') ?? this.toRelativePath(localFilePath)
     const content = await fs.promises.readFile(localFilePath)
     const stat = await fs.promises.stat(localFilePath)
     this.store.put(rel, content, stat.mtime)

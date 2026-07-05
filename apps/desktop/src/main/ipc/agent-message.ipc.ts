@@ -4,7 +4,12 @@ import {
   ContextCompressorService,
   reconcileCompressionStateAfterTruncate
 } from '@baishou/ai'
-import { getAgentManagers, buildStreamConfig } from './agent-helpers'
+import { isAutoInjectCurrentTimeEnabled } from '@baishou/shared'
+import {
+  getAgentManagers,
+  buildStreamConfig,
+  buildAgentUserConfigFromSettings
+} from './agent-helpers'
 import { AgentChatService } from './AgentChatService'
 import { settingsManager } from './settings.ipc'
 import { groupPartsByMessageId, mapAgentMessageForRenderer } from './map-agent-message-for-renderer'
@@ -42,7 +47,7 @@ export function registerMessageIPC() {
     'agent:get-context-at-message',
     async (_, sessionId: string, messageId: string, searchMode?: boolean) => {
       const { realSessionRepo, realSnapshotRepo } = getAgentManagers()
-      const assistantContextWindow = await AgentChatService.getAssistantContextWindow(sessionId)
+      const prefs = await AgentChatService.getAssistantSessionPrefs(sessionId)
       const webSearchEnabled =
         searchMode === true ||
         (searchMode !== false &&
@@ -52,7 +57,8 @@ export function registerMessageIPC() {
         undefined,
         undefined,
         webSearchEnabled,
-        assistantContextWindow
+        prefs.assistantContextWindow,
+        prefs.assistantEmojiPrefs
       )
 
       const recentCount =
@@ -71,7 +77,12 @@ export function registerMessageIPC() {
           recentCount,
           modelId: session?.modelId,
           providerType: session?.providerId,
-          systemPrompt
+          systemPrompt,
+          wrapMessageTime: isAutoInjectCurrentTimeEnabled(
+            Array.isArray(userConfig?.disabledToolIds)
+              ? (userConfig.disabledToolIds as string[])
+              : undefined
+          )
         }
       )
     }
@@ -94,12 +105,22 @@ export function registerMessageIPC() {
       return { ok: false, error: 'No model configured for this session' }
     }
 
+    const userConfig = await buildAgentUserConfigFromSettings()
+    const wrapMessageTime = isAutoInjectCurrentTimeEnabled(
+      Array.isArray(userConfig?.disabledToolIds)
+        ? (userConfig.disabledToolIds as string[])
+        : undefined
+    )
+
     return ContextCompressorService.recompressCurrentSnapshot(
       provider,
       resolvedModelId,
       realSessionRepo,
       realSnapshotRepo,
-      sessionId
+      sessionId,
+      undefined,
+      provider.config?.type ?? '',
+      { wrapMessageTime }
     )
   })
 
@@ -107,9 +128,10 @@ export function registerMessageIPC() {
   // API: 删除消息
   // ==========================================
   ipcMain.handle('agent:delete-message', async (_, sessionId: string, messageId: string) => {
-    const { realSessionRepo, realSnapshotRepo } = getAgentManagers()
+    const { realSessionRepo, realSnapshotRepo, sessionManager } = getAgentManagers()
     await realSessionRepo.deleteMessageAndFollowing(sessionId, messageId)
     await reconcileCompressionStateAfterTruncate(realSessionRepo, realSnapshotRepo, sessionId)
+    await sessionManager.flushSessionToDisk(sessionId)
     return true
   })
 }

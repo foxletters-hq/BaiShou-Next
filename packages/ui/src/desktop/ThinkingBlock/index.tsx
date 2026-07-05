@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown } from 'lucide-react'
-import { MarkdownRenderer } from '../MarkdownRenderer'
+import { AgentMarkdownRenderer } from '../AgentMarkdown'
 import shared from '../shared/CollapsibleAncillaryBlock.module.css'
 import styles from './ThinkingBlock.module.css'
 
@@ -41,8 +41,8 @@ export function normalizeCJKSpacing(text: string): string {
 
 /** 预览区域每行高度 */
 const LINE_HEIGHT = 14
-/** 预览区域最多显示行数 */
-const MAX_PREVIEW_LINES = 5
+/** 预览区域默认最多显示行数 */
+const DEFAULT_MAX_PREVIEW_LINES = 3
 
 export interface ThinkingBlockProps {
   /** 思考内容 */
@@ -65,6 +65,8 @@ export interface ThinkingBlockProps {
   completedStatusLabel?: string
   /** 流式进行中、尚无正文时的占位提示 */
   streamingPlaceholder?: string
+  /** 折叠预览最多显示行数（流式思考建议 2） */
+  maxPreviewLines?: number
 }
 
 export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
@@ -77,7 +79,8 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
   forceVisible = false,
   activeStatusLabel,
   completedStatusLabel,
-  streamingPlaceholder
+  streamingPlaceholder,
+  maxPreviewLines = DEFAULT_MAX_PREVIEW_LINES
 }) => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(defaultOpen)
@@ -158,22 +161,15 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
     return t('agent.chat.thought_process', '思考过程')
   }, [isThinking, displayTime, timeText, t, activeStatusLabel, completedStatusLabel])
 
-  // 获取预览行
-  const previewLines = useMemo(() => {
-    if (!content) return []
+  const previewText = useMemo(() => {
+    if (!content) return ''
     const normalized = normalizeCJKSpacing(content)
-    const allLines = normalized.split('\n')
-    // 思考中时去掉最后一行（可能正在输入，不完整）
-    const lines = isThinking ? allLines.slice(0, -1) : allLines
-    // 过滤空行
-    return lines.filter((line) => line.trim() !== '')
-  }, [content, isThinking])
+    // 折叠预览：合并源换行，连续排版；仅容器宽度不足时自然折行
+    return normalized.replace(/\s*\n+\s*/g, ' ').trim()
+  }, [content])
 
-  // 动态计算预览容器高度
-  const previewHeight = useMemo(() => {
-    if (previewLines.length < 1) return 38
-    return Math.min(120, Math.max(previewLines.length + 1, 2) * LINE_HEIGHT + 20)
-  }, [previewLines.length])
+  const previewHeight = maxPreviewLines * LINE_HEIGHT
+  const showTopFade = previewText.length > maxPreviewLines * 20
 
   // 规范化后的完整内容
   const normalizedContent = useMemo(() => normalizeCJKSpacing(content), [content])
@@ -182,12 +178,13 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
 
   const handleToggle = () => setIsOpen((prev) => !prev)
 
-  // 判断是否显示预览（折叠态 + 思考中）
-  const showCollapsedPreview = isThinking && !isOpen
+  const hasBody = Boolean(content) || (forceVisible && isThinking)
+  const showCollapsedPreview =
+    isThinking && !isOpen && (previewText.length > 0 || Boolean(streamingPlaceholder))
 
   return (
     <div
-      className={`${shared.shell} ${isThinking ? styles.isThinking : ''} ${isOpen ? shared.open : ''}`}
+      className={`${shared.shell} ${styles.thinkingShell} ${isThinking ? styles.isThinking : ''} ${isOpen ? shared.open : ''}`}
     >
       <div className={shared.header} onClick={handleToggle}>
         <div className={shared.headerIcon}>
@@ -201,38 +198,36 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
         </div>
       </div>
 
-      {(content || isOpen || (forceVisible && isThinking)) && (
+      {showCollapsedPreview ? (
+        <div className={styles.previewBody}>
+          {!content && streamingPlaceholder ? (
+            <div className={styles.previewContainer} style={{ height: 38 }}>
+              <div className={`${styles.previewScroll} ${styles.previewWaiting}`}>
+                {streamingPlaceholder}
+              </div>
+            </div>
+          ) : (
+            <div className={styles.previewContainer} style={{ height: previewHeight }}>
+              <div className={styles.previewTail}>{previewText}</div>
+              {showTopFade ? <div className={styles.previewFade} aria-hidden /> : null}
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {hasBody ? (
         <div className={shared.contentWrap}>
           <div className={shared.contentInner}>
             <div className={styles.content}>
-              {!content && isThinking && streamingPlaceholder ? (
-                <div className={styles.previewContainer} style={{ height: 38 }}>
-                  <div className={`${styles.previewScroll} ${styles.previewWaiting}`}>
-                    {streamingPlaceholder}
-                  </div>
-                </div>
-              ) : showCollapsedPreview ? (
-                // 折叠态：显示预览行
-                <div className={styles.previewContainer} style={{ height: previewHeight }}>
-                  <div className={styles.previewScroll}>
-                    {previewLines.map((line, index) => {
-                      if (index < previewLines.length - MAX_PREVIEW_LINES) return null
-                      return (
-                        <div key={index} className={styles.previewLine}>
-                          {line}
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              ) : (
-                // 展开态/思考完成：支持完整 Markdown 渲染，保证排版美观且支持代码、公式与列表
-                <MarkdownRenderer content={normalizedContent} isStreaming={isThinking} />
-              )}
+              <AgentMarkdownRenderer
+                content={normalizedContent}
+                isStreaming={isThinking}
+                variant="ancillary"
+              />
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   )
 }

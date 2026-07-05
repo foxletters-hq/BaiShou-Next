@@ -156,10 +156,12 @@ describe('DiaryService - Single Source of Truth architecture', () => {
 
     await service.update(99, { content: 'New' })
 
+    expect(mockFileSync.readJournal).toHaveBeenCalledWith(expect.any(Date), '2026/03/2026-03-30.md')
     expect(mockFileSync.writeJournal).toHaveBeenCalledWith(
       expect.objectContaining({
         content: 'New'
-      })
+      }),
+      '2026/03/2026-03-30.md'
     )
     expect(mockShadowSync.syncJournal).toHaveBeenCalledWith('2026-03-30')
     expect(mockVaultIndex.upsert).toHaveBeenCalled()
@@ -307,8 +309,53 @@ describe('DiaryService - Single Source of Truth architecture', () => {
         expect.objectContaining({
           content: 'Original text\n\nAdditional text',
           tags: 'tag1,tag2'
-        })
+        }),
+        ''
       )
+    })
+
+    it('should resolve shadow id when existing file has no id frontmatter', async () => {
+      const inputDate = parseDateStr('2026-06-24')
+      const input = { date: inputDate, content: '追加内容', isFavorite: false }
+
+      mockFileSync.readJournal.mockResolvedValue({
+        date: inputDate,
+        content: 'Obsidian 正文',
+        isFavorite: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        mediaPaths: []
+      } as Diary)
+      mockShadowRepo.findById.mockResolvedValue(null)
+      mockShadowRepo.findByDate.mockResolvedValue({
+        id: 55,
+        date: '2026-06-24',
+        filePath: '2026-06-24.md',
+        contentHash: '',
+        createdAt: '',
+        updatedAt: '',
+        isFavorite: false,
+        hasMedia: false,
+        weather: null,
+        mood: null,
+        location: null,
+        locationDetail: null,
+        vaultName: 'TestVault'
+      })
+      mockShadowSync.syncJournal.mockResolvedValue({
+        isChanged: false,
+        meta: {
+          id: 55,
+          date: inputDate,
+          preview: 'Obsidian 正文\n\n追加内容',
+          tags: [],
+          updatedAt: new Date()
+        }
+      })
+
+      const result = await service.save(null, input)
+      expect(result.id).toBe(55)
+      expect(mockShadowRepo.findByDate).toHaveBeenCalledWith('2026-06-24')
     })
 
     it('should delegate to update() when id is provided', async () => {
@@ -355,7 +402,8 @@ describe('DiaryService - Single Source of Truth architecture', () => {
       expect(mockFileSync.writeJournal).toHaveBeenCalledWith(
         expect.objectContaining({
           content: 'Updated content'
-        })
+        }),
+        ''
       )
     })
   })
@@ -417,6 +465,138 @@ describe('DiaryService - Single Source of Truth architecture', () => {
       expect(items[0]!.id).toBe(2)
       expect(hasMore).toBe(true)
       expect(mockShadowRepo.searchFTS).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  describe('findByDate', () => {
+    it('passes shadow file path when reading by date from disk', async () => {
+      const date = parseDateStr('2025-08-03')
+      mockShadowRepo.findByDate.mockResolvedValue({
+        id: 12,
+        date: '2025-08-03',
+        filePath: 'Daily/2025-08-03.md',
+        contentHash: '',
+        createdAt: '',
+        updatedAt: '',
+        isFavorite: false,
+        hasMedia: false,
+        weather: null,
+        mood: null,
+        location: null,
+        locationDetail: null,
+        vaultName: 'TestVault'
+      })
+      mockShadowSync.syncJournal.mockResolvedValue({ isChanged: false, meta: null })
+      mockFileSync.readJournal.mockResolvedValue({
+        id: 12,
+        date,
+        content: '外部日记正文',
+        isFavorite: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        mediaPaths: []
+      })
+
+      const result = await service.findByDate(date)
+
+      expect(mockShadowSync.syncJournal).toHaveBeenCalledWith('2025-08-03', true)
+      expect(mockFileSync.readJournal).toHaveBeenCalledWith(date, 'Daily/2025-08-03.md')
+      expect(result?.content).toBe('外部日记正文')
+    })
+
+    it('returns shadow rawContent without reading disk when index has body', async () => {
+      const date = parseDateStr('2025-08-04')
+      mockShadowRepo.findByDate.mockResolvedValue({
+        id: 13,
+        date: '2025-08-04',
+        filePath: 'Daily/2025-08-04.md',
+        contentHash: 'hash',
+        createdAt: '',
+        updatedAt: '',
+        isFavorite: true,
+        hasMedia: false,
+        weather: 'sunny',
+        mood: 'happy',
+        location: null,
+        locationDetail: null,
+        vaultName: 'TestVault',
+        rawContent: '影子索引正文',
+        tags: '工作,日记'
+      })
+      mockShadowSync.syncJournal.mockResolvedValue({ isChanged: false, meta: null })
+
+      const result = await service.findByDate(date)
+
+      expect(mockShadowSync.syncJournal).toHaveBeenCalledWith('2025-08-04', true)
+      expect(mockFileSync.readJournal).not.toHaveBeenCalled()
+      expect(result?.content).toBe('影子索引正文')
+      expect(result?.id).toBe(13)
+    })
+  })
+
+  describe('findById', () => {
+    it('passes shadow file path when reading from disk', async () => {
+      const date = parseDateStr('2025-08-01')
+      mockShadowSync.syncJournal.mockResolvedValue({ isChanged: false, meta: null })
+      mockShadowRepo.findById.mockResolvedValue({
+        id: 10,
+        date: '2025-08-01',
+        filePath: '2.日记/2025/08/2025-08-01.md',
+        contentHash: '',
+        createdAt: '',
+        updatedAt: '',
+        isFavorite: false,
+        hasMedia: false,
+        weather: null,
+        mood: null,
+        location: null,
+        locationDetail: null,
+        vaultName: 'TestVault',
+        rawContent: '影子正文'
+      })
+      mockFileSync.readJournal.mockResolvedValue({
+        id: 10,
+        date,
+        content: '磁盘正文',
+        isFavorite: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        mediaPaths: []
+      })
+
+      const result = await service.findById(10)
+
+      expect(mockFileSync.readJournal).toHaveBeenCalledWith(date, '2.日记/2025/08/2025-08-01.md')
+      expect(result?.content).toBe('磁盘正文')
+    })
+
+    it('falls back to shadow raw content when disk read is empty', async () => {
+      mockShadowSync.syncJournal.mockResolvedValue({ isChanged: false, meta: null })
+      mockShadowRepo.findById.mockResolvedValue({
+        id: 11,
+        date: '2025-08-02',
+        filePath: 'missing/2025-08-02.md',
+        contentHash: '',
+        createdAt: '',
+        updatedAt: '2025-08-02T10:00:00.000Z',
+        isFavorite: true,
+        hasMedia: false,
+        weather: null,
+        mood: null,
+        location: null,
+        locationDetail: null,
+        vaultName: 'TestVault',
+        rawContent: '仅影子索引中的正文',
+        tags: 'a,b'
+      })
+      mockFileSync.readJournal.mockResolvedValue(null)
+
+      const result = await service.findById(11)
+
+      expect(result?.id).toBe(11)
+      expect(result?.content).toBe('仅影子索引中的正文')
+      expect(result?.tags).toBe('a,b')
+      expect(result?.isFavorite).toBe(true)
     })
   })
 })

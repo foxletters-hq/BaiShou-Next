@@ -40,6 +40,7 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
   onRestoreMigration,
   onResumeMigration,
   migrationState,
+  migrationCancelBusy,
   onSearch,
   onDeleteEntry,
   onEditEntry,
@@ -78,6 +79,7 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
           ragState={ragState}
           hasMismatchModel={hasMismatchModel}
           migrationState={migrationState}
+          migrationCancelBusy={migrationCancelBusy}
           onTriggerMigration={onTriggerMigration}
           onCancelMigration={onCancelMigration}
           onRestoreMigration={onRestoreMigration}
@@ -86,6 +88,7 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
 
         <RagMemoryDiaryEmbedHint
           failedAt={config.lastDiaryEmbedFailureAt}
+          failedMessage={config.lastDiaryEmbedFailureMessage}
           onBatchEmbed={onBatchEmbed}
         />
 
