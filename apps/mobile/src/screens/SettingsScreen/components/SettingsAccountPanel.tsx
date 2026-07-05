@@ -32,7 +32,8 @@ import {
   invalidateChatBackgroundDisplayCache,
   resolveChatBackgroundForMobileUi
 } from '../../../lib/chat-background-display.util'
-import { invalidateAgentUserProfileCache } from '../../../lib/agent-user-profile.util'
+import { invalidateAgentUserProfileCache, peekAgentUserProfileCache } from '../../../lib/agent-user-profile.util'
+import { resolveUserAvatarForMobileUi } from '../../../lib/user-avatar-display.util'
 import { ensureDefaultLatteAssistant, syncDefaultLatteAssistantLocale } from '@baishou/core-mobile'
 import { resolveAppUiLanguage } from '../../../lib/device-locale'
 import { SettingsProfileHeader, type SettingsProfileSavePayload } from './SettingsProfileHeader'
@@ -61,7 +62,14 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
   const [themeMode, setThemeMode] = useState<'system' | 'light' | 'dark'>('system')
   const [seedColor, setSeedColor] = useState('#5BA8F5')
   const [language, setLanguage] = useState('system')
-  const [profile, setProfile] = useState<any>({ nickname: '', avatarPath: '' })
+  const [profile, setProfile] = useState<{ nickname: string; avatarPath?: string | null }>(() => {
+    const cached = peekAgentUserProfileCache()
+    if (!cached) return { nickname: '', avatarPath: '' }
+    return {
+      nickname: cached.nickname || '',
+      avatarPath: cached.avatarPath ?? ''
+    }
+  })
   const [chatBackgroundPath, setChatBackgroundPath] = useState<string | null>(null)
   const [chatBackgroundBlur, setChatBackgroundBlur] = useState(CHAT_BACKGROUND_BLUR_DEFAULT)
   const [chatBackgroundOverlayOpacity, setChatBackgroundOverlayOpacity] = useState(
@@ -142,6 +150,13 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
       if (settings.language) setLanguage(settings.language)
 
       const userProfile = await getUserProfileFromSettings(services.settingsManager)
+      if (userProfile.avatarPath) {
+        await resolveUserAvatarForMobileUi(
+          userProfile.avatarPath,
+          services.attachmentManager,
+          services.fileSystem
+        )
+      }
       setProfile({
         nickname: userProfile.nickname || '',
         avatarPath: userProfile.avatarPath

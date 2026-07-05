@@ -1454,7 +1454,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           }
 
           if (isMounted) {
-            void warmAgentScreenCaches(settingsManager, attachmentManager)
+            void warmAgentScreenCaches(settingsManager, attachmentManager, fileSystem)
           }
 
           void mobileMcpService?.start().catch((mcpErr) => {
