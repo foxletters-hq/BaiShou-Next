@@ -47,7 +47,6 @@ import { persistResult } from './agent-session-persist'
 import { messageHasImageAttachments } from './attachment-content.builder'
 import { isAgentStreamSessionClaimActive } from './stream-session-guard'
 import { buildToolCallRepairHandler } from './tool-call-repair.util'
-import { createDiaryReadGuard } from '../tools/diary-read-guard.util'
 
 export type { StreamChatOptions, StreamChatCallbacks } from './agent-session.types'
 
@@ -318,8 +317,7 @@ export class AgentSessionService {
         diarySearcher: options.diarySearcher,
         webSearchResultFetcher: webSearchResultFetcher,
         fetchSearchPage: options.fetchSearchPage,
-        contextCompressionRunner,
-        diaryReadGuard: createDiaryReadGuard()
+        contextCompressionRunner
       })
 
       const builtSystemPrompt = SystemPromptBuilder.build({

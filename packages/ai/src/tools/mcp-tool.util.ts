@@ -1,3 +1,6 @@
+/** MCP 外部工具调用使用的 sessionId，与应用内 Agent 会话区分 */
+export const MCP_EXTERNAL_SESSION_ID = 'mcp-external'
+
 /** MCP initialize 说明：告知外部客户端当前工作空间 */
 export function buildMcpInstructions(vaultName: string): string {
   return (

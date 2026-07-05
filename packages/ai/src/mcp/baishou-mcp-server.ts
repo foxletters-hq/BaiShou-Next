@@ -7,7 +7,7 @@ import {
   SUPPORTED_PROTOCOL_VERSIONS,
   ToolSchema
 } from '@modelcontextprotocol/sdk/types.js'
-import { logger, isAgentBuiltinToolId } from '@baishou/shared'
+import { logger, isMcpExposableToolId } from '@baishou/shared'
 import { z } from 'zod'
 import type { ToolContext } from '../tools/agent.tool'
 import type { ToolRegistry } from '../tools/tool-registry'
@@ -28,7 +28,7 @@ export type BaishouMcpToolSchema = {
 }
 
 function isMcpExposableTool(toolName: string): boolean {
-  return isAgentBuiltinToolId(toolName)
+  return isMcpExposableToolId(toolName)
 }
 
 export function negotiateMcpProtocolVersion(clientVersion: unknown): string {

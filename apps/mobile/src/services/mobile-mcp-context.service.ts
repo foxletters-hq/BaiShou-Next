@@ -2,9 +2,9 @@ import type { AppDatabase } from '@baishou/database'
 import type { ToolContext, ToolDiarySearcher } from '@baishou/ai'
 import {
   AIProviderRegistry,
-  createDiaryReadGuard,
   DatabaseAdapter,
   EmbeddingAdapter,
+  MCP_EXTERNAL_SESSION_ID,
   MemoryDeduplicationServiceImpl,
   syncMcpToolUserConfig
 } from '@baishou/ai'
@@ -46,10 +46,9 @@ export async function buildMobileMcpToolListContext(
   const vaultName = await deps.pathService.getActiveVaultNameForContext().catch(() => 'Personal')
   const userConfig = await buildMobileStreamUserConfig(deps.settingsManager, false)
   return {
-    sessionId: 'mcp-external',
+    sessionId: MCP_EXTERNAL_SESSION_ID,
     vaultName,
-    userConfig,
-    diaryReadGuard: createDiaryReadGuard()
+    userConfig
   }
 }
 
@@ -72,13 +71,12 @@ export async function buildMobileMcpToolContext(
   const drizzleDb = deps.drizzleDb as AppDatabase | undefined
   if (!drizzleDb) {
     return {
-      sessionId: 'mcp-external',
+      sessionId: MCP_EXTERNAL_SESSION_ID,
       vaultName,
       userConfig,
       diarySearcher: deps.getDiarySearcher(),
       webSearchResultFetcher: deps.webSearchResultFetcher,
-      fetchSearchPage: deps.fetchSearchPage,
-      diaryReadGuard: createDiaryReadGuard()
+      fetchSearchPage: deps.fetchSearchPage
     }
   }
 
@@ -115,7 +113,7 @@ export async function buildMobileMcpToolContext(
     }
 
     const context = syncMcpToolUserConfig({
-      sessionId: 'mcp-external',
+      sessionId: MCP_EXTERNAL_SESSION_ID,
       vaultName,
       userConfig,
       diarySearcher: deps.getDiarySearcher(),
@@ -125,8 +123,7 @@ export async function buildMobileMcpToolContext(
       summaryReader: dbAdapter,
       deduplicationService: dedupService,
       webSearchResultFetcher: deps.webSearchResultFetcher,
-      fetchSearchPage: deps.fetchSearchPage,
-      diaryReadGuard: createDiaryReadGuard()
+      fetchSearchPage: deps.fetchSearchPage
     })
 
     mobileMcpToolContextCache = {
@@ -142,13 +139,12 @@ export async function buildMobileMcpToolContext(
       e as Error
     )
     return {
-      sessionId: 'mcp-external',
+      sessionId: MCP_EXTERNAL_SESSION_ID,
       vaultName,
       userConfig,
       diarySearcher: deps.getDiarySearcher(),
       webSearchResultFetcher: deps.webSearchResultFetcher,
-      fetchSearchPage: deps.fetchSearchPage,
-      diaryReadGuard: createDiaryReadGuard()
+      fetchSearchPage: deps.fetchSearchPage
     }
   }
 }

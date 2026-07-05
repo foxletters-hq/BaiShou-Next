@@ -10,7 +10,6 @@ import type { ToolRegistry } from '../tools/tool-registry'
 import { DatabaseAdapter } from '../tools/adapters/database.adapter'
 import { EmbeddingAdapter } from '../tools/adapters/embedding.adapter'
 import { MemoryDeduplicationServiceImpl } from '../rag/memory-deduplication.service'
-import { createDiaryReadGuard } from '../tools/diary-read-guard.util'
 import { SystemPromptBuilder } from './system-prompt.builder'
 import { resolveSessionAssistantContext } from './session-assistant-context.util'
 
@@ -90,8 +89,7 @@ async function buildToolExecutionContext(
     deduplicationService: dedupService,
     diarySearcher: params.diarySearcher as any,
     webSearchResultFetcher: params.webSearchResultFetcher as any,
-    fetchSearchPage: params.fetchSearchPage as any,
-    diaryReadGuard: createDiaryReadGuard()
+    fetchSearchPage: params.fetchSearchPage as any
   }
 }
 

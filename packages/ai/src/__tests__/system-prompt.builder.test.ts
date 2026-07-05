@@ -57,7 +57,8 @@ describe('SystemPromptBuilder', () => {
 
     expect(prompt).toContain('<tool_usage_guidelines>')
     expect(prompt).toContain('查事实，禁止装懂')
-    expect(prompt).toContain('编辑日记前先读取（强制）')
+    expect(prompt).toContain('编辑日记前先读取')
+    expect(prompt).not.toContain('会被系统拒绝')
     expect(prompt).not.toContain('All tools are optional')
   })
 
