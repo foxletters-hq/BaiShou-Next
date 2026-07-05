@@ -7,7 +7,16 @@ const electronAppMock = vi.hoisted(() => ({
   isPackaged: false
 }))
 
-// Mock electron-updater
+const channelMock = vi.hoisted(() => ({
+  fetchReleaseChannelManifest: vi.fn(),
+  isAppVersionNewer: vi.fn((latest: string, current: string) => latest > current),
+  releaseTagToPageUrl: vi.fn((tag: string) => `https://github.com/example/releases/tag/${tag}`)
+}))
+
+const shellMock = vi.hoisted(() => ({
+  openExternal: vi.fn().mockResolvedValue(undefined)
+}))
+
 vi.mock('electron-updater', () => ({
   autoUpdater: {
     checkForUpdates: vi.fn(),
@@ -24,10 +33,21 @@ vi.mock('electron-updater', () => ({
 
 vi.mock('electron', () => ({
   app: electronAppMock,
+  shell: shellMock,
   BrowserWindow: {
     getAllWindows: vi.fn(() => [])
   }
 }))
+
+vi.mock('@baishou/shared', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@baishou/shared')>()
+  return {
+    ...actual,
+    fetchReleaseChannelManifest: channelMock.fetchReleaseChannelManifest,
+    isAppVersionNewer: channelMock.isAppVersionNewer,
+    releaseTagToPageUrl: channelMock.releaseTagToPageUrl
+  }
+})
 
 vi.mock('../../../app-version', () => ({
   APP_VERSION: 'Next-1.0.4',
@@ -40,10 +60,12 @@ describe('UpdaterService', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks()
+    channelMock.isAppVersionNewer.mockImplementation(
+      (latest: string, current: string) => latest > current
+    )
     const { autoUpdater } = await import('electron-updater')
     mockAutoUpdater = autoUpdater
 
-    // 动态导入服务
     const { UpdaterService } = await import('../updater.service')
     updaterService = new UpdaterService()
   })
@@ -64,35 +86,35 @@ describe('UpdaterService', () => {
       electronAppMock.isPackaged = true
     })
 
-    it('should return hasUpdate true when update is available', async () => {
-      const mockUpdateInfo = {
-        version: '2.0.0',
-        releaseNotes: 'New features',
-        releaseDate: '2026-05-13'
-      }
-
-      mockAutoUpdater.checkForUpdates.mockResolvedValue({
-        isUpdateAvailable: true,
-        updateInfo: mockUpdateInfo
+    it('should return hasUpdate true when channel has newer windows build', async () => {
+      channelMock.fetchReleaseChannelManifest.mockResolvedValue({
+        windows: {
+          version: '2.0.0',
+          tag: 'desktop/v2.0.0',
+          downloadUrl: 'https://example.com/setup.exe',
+          artifact: 'BaiShou-Windows-Setup.exe'
+        }
       })
+      channelMock.isAppVersionNewer.mockReturnValue(true)
 
       const result = await updaterService.checkForUpdates()
 
       expect(result.hasUpdate).toBe(true)
-      expect(result.currentVersion).toBe('Next-1.0.4')
-      expect(result.updateInfo).toEqual({
-        version: '2.0.0',
-        releaseNotes: 'New features',
-        releaseDate: '2026-05-13',
-        releaseUrl: expect.any(String)
-      })
+      expect(result.updateInfo?.version).toBe('2.0.0')
+      expect(result.updateInfo?.releaseUrl).toBe('https://example.com/setup.exe')
+      expect(mockAutoUpdater.checkForUpdates).not.toHaveBeenCalled()
     })
 
-    it('should return hasUpdate false when no update available', async () => {
-      mockAutoUpdater.checkForUpdates.mockResolvedValue({
-        isUpdateAvailable: false,
-        updateInfo: null
+    it('should return hasUpdate false when channel windows is up to date', async () => {
+      channelMock.fetchReleaseChannelManifest.mockResolvedValue({
+        windows: {
+          version: '1.0.4',
+          tag: 'desktop/v1.0.4',
+          downloadUrl: 'https://example.com/setup.exe',
+          artifact: 'BaiShou-Windows-Setup.exe'
+        }
       })
+      channelMock.isAppVersionNewer.mockReturnValue(false)
 
       const result = await updaterService.checkForUpdates()
 
@@ -100,15 +122,34 @@ describe('UpdaterService', () => {
       expect(result.updateInfo).toBeNull()
     })
 
+    it('falls back to electron-updater when channel fetch fails', async () => {
+      channelMock.fetchReleaseChannelManifest.mockRejectedValue(new Error('Network error'))
+
+      mockAutoUpdater.checkForUpdates.mockResolvedValue({
+        isUpdateAvailable: true,
+        updateInfo: {
+          version: '2.0.0',
+          releaseNotes: 'New features',
+          releaseDate: '2026-05-13'
+        }
+      })
+
+      const result = await updaterService.checkForUpdates()
+
+      expect(result.hasUpdate).toBe(true)
+      expect(mockAutoUpdater.checkForUpdates).toHaveBeenCalled()
+    })
+
     it('should throw UpdateTimeoutError when check times out', async () => {
-      mockAutoUpdater.checkForUpdates.mockImplementation(
+      channelMock.fetchReleaseChannelManifest.mockImplementation(
         () => new Promise((resolve) => setTimeout(resolve, 15000))
       )
 
       await expect(updaterService.checkForUpdates()).rejects.toThrow(UpdateTimeoutError)
     }, 15000)
 
-    it('should throw UpdateCheckError when check fails', async () => {
+    it('should throw UpdateCheckError when electron fallback fails', async () => {
+      channelMock.fetchReleaseChannelManifest.mockRejectedValue(new Error('Network error'))
       mockAutoUpdater.checkForUpdates.mockRejectedValue(new Error('Network error'))
 
       await expect(updaterService.checkForUpdates()).rejects.toThrow(UpdateCheckError)
@@ -116,7 +157,26 @@ describe('UpdaterService', () => {
   })
 
   describe('downloadUpdate', () => {
-    it('should call autoUpdater.downloadUpdate', async () => {
+    it('opens channel download url in browser when available', async () => {
+      electronAppMock.isPackaged = true
+      channelMock.fetchReleaseChannelManifest.mockResolvedValue({
+        windows: {
+          version: '2.0.0',
+          tag: 'desktop/v2.0.0',
+          downloadUrl: 'https://example.com/setup.exe',
+          artifact: 'BaiShou-Windows-Setup.exe'
+        }
+      })
+      channelMock.isAppVersionNewer.mockReturnValue(true)
+
+      await updaterService.checkForUpdates()
+      await updaterService.downloadUpdate()
+
+      expect(shellMock.openExternal).toHaveBeenCalledWith('https://example.com/setup.exe')
+      expect(mockAutoUpdater.downloadUpdate).not.toHaveBeenCalled()
+    })
+
+    it('should call autoUpdater.downloadUpdate when no channel url', async () => {
       mockAutoUpdater.downloadUpdate.mockResolvedValue(undefined)
 
       await updaterService.downloadUpdate()
@@ -162,7 +222,6 @@ describe('UpdaterService', () => {
       const statusChangeHandler = vi.fn()
       updaterService.onStatusChange(statusChangeHandler)
 
-      // 模拟 update-available 事件
       const updateAvailableCallback = mockAutoUpdater.on.mock.calls.find(
         (call: any[]) => call[0] === 'update-available'
       )?.[1]
@@ -187,7 +246,6 @@ describe('UpdaterService', () => {
       const progressHandler = vi.fn()
       updaterService.onDownloadProgress(progressHandler)
 
-      // 模拟 download-progress 事件
       const downloadProgressCallback = mockAutoUpdater.on.mock.calls.find(
         (call: any[]) => call[0] === 'download-progress'
       )?.[1]

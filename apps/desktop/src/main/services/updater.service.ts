@@ -1,6 +1,11 @@
-import { app } from 'electron'
+import { app, shell } from 'electron'
 import { autoUpdater } from 'electron-updater'
-import { APP_VERSION } from '../../app-version'
+import {
+  fetchReleaseChannelManifest,
+  isAppVersionNewer,
+  releaseTagToPageUrl
+} from '@baishou/shared'
+import { APP_VERSION, APP_VERSION_NUMBER } from '../../app-version'
 import { UpdateStatus, type UpdateCheckResult, type UpdateInfo } from './updater.types'
 import { UpdateTimeoutError, UpdateCheckError } from './updater.errors'
 
@@ -18,12 +23,14 @@ export class UpdaterService {
   private autoCheck = true
   private statusChangeCallbacks: StatusChangeCallback[] = []
   private progressCallbacks: ProgressCallback[] = []
+  /** channel.json 检查到的新版安装包直链 */
+  private pendingChannelDownloadUrl: string | null = null
 
   constructor() {
     this.initEventListeners()
   }
 
-  /** 初始化事件监听 */
+  /** 初始化事件监听（electron-updater 备用） */
   private initEventListeners(): void {
     autoUpdater.on('update-available', (info) => {
       this.notifyStatusChange(UpdateStatus.AVAILABLE, {
@@ -57,7 +64,7 @@ export class UpdaterService {
     })
   }
 
-  /** 构建 Release URL */
+  /** 构建 Release URL（electron-updater 备用） */
   private buildReleaseUrl(version: string): string {
     return `https://github.com/foxletters-hq/BaiShou-Next/releases/tag/v${version}`
   }
@@ -91,7 +98,7 @@ export class UpdaterService {
     return APP_VERSION
   }
 
-  /** 检查更新 */
+  /** 优先读 releases/channel.json，失败时回退 electron-updater */
   async checkForUpdates(): Promise<UpdateCheckResult> {
     const currentVersion = this.getCurrentVersion()
 
@@ -107,6 +114,61 @@ export class UpdaterService {
     }
 
     this.notifyStatusChange(UpdateStatus.CHECKING)
+    this.pendingChannelDownloadUrl = null
+
+    try {
+      const channelResult = await Promise.race([
+        this.checkViaReleaseChannel(),
+        this.createTimeoutPromise()
+      ])
+      if (channelResult) {
+        return channelResult
+      }
+    } catch (error) {
+      if (error instanceof UpdateTimeoutError) {
+        throw error
+      }
+      console.warn('[UpdaterService] channel.json 检查失败，尝试 electron-updater:', error)
+    }
+
+    return this.checkViaElectronUpdater()
+  }
+
+  private async checkViaReleaseChannel(): Promise<UpdateCheckResult | null> {
+    const manifest = await fetchReleaseChannelManifest()
+    const windows = manifest.windows
+    if (!windows?.version) {
+      return null
+    }
+
+    const latestVersion = windows.version
+    const hasUpdate = isAppVersionNewer(latestVersion, APP_VERSION_NUMBER)
+    const downloadUrl = windows.downloadUrl
+    const releaseUrl = windows.tag ? releaseTagToPageUrl(windows.tag) : downloadUrl
+
+    let updateInfo: UpdateInfo | null = null
+    if (hasUpdate) {
+      this.pendingChannelDownloadUrl = downloadUrl
+      updateInfo = {
+        version: latestVersion,
+        releaseNotes: '',
+        releaseDate: manifest.updatedAt,
+        releaseUrl: downloadUrl || releaseUrl
+      }
+      this.notifyStatusChange(UpdateStatus.AVAILABLE, updateInfo)
+    } else {
+      this.notifyStatusChange(UpdateStatus.NOT_AVAILABLE)
+    }
+
+    return {
+      hasUpdate,
+      currentVersion: this.getCurrentVersion(),
+      updateInfo
+    }
+  }
+
+  private async checkViaElectronUpdater(): Promise<UpdateCheckResult> {
+    const currentVersion = this.getCurrentVersion()
 
     try {
       const result = await Promise.race([
@@ -174,8 +236,13 @@ export class UpdaterService {
     })
   }
 
-  /** 下载更新 */
+  /** 下载更新：channel 直链用浏览器打开，否则走 electron-updater */
   async downloadUpdate(): Promise<void> {
+    if (this.pendingChannelDownloadUrl) {
+      await shell.openExternal(this.pendingChannelDownloadUrl)
+      return
+    }
+
     this.notifyStatusChange(UpdateStatus.DOWNLOADING)
 
     try {
@@ -185,7 +252,7 @@ export class UpdaterService {
     }
   }
 
-  /** 安装更新并退出 */
+  /** 安装更新并退出（仅 electron-updater 下载完成后可用） */
   quitAndInstall(): void {
     autoUpdater.quitAndInstall(true, true)
   }
