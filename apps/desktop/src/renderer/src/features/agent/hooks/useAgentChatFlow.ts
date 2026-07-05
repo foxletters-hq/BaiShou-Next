@@ -26,7 +26,8 @@ import { usePersistedSharedMemoryLookback } from '../../../hooks/usePersistedSha
 import {
   mapSavedAttachmentsForUi,
   isConfiguredDialogueModelId,
-  isConfiguredProviderId
+  isConfiguredProviderId,
+  isAgentStreamAbortError
 } from '@baishou/shared'
 
 /**
@@ -325,6 +326,7 @@ export function useAgentChatFlow() {
           saveResult.userMessageId
         )
         .catch((streamError: any) => {
+          if (isAgentStreamAbortError(streamError)) return
           console.error('[AgentScreen] stream failed:', streamError)
           toast.showError(
             t('agent.error.send_failed', '发送消息失败: {{msg}}', {
@@ -335,6 +337,7 @@ export function useAgentChatFlow() {
 
       return true
     } catch (e: any) {
+      if (isAgentStreamAbortError(e)) return false
       console.error('[AgentScreen] send failed:', e)
       toast.showError(
         t('agent.error.send_failed', '发送消息失败: {{msg}}', { msg: e?.message || '未知错误' })
@@ -345,6 +348,7 @@ export function useAgentChatFlow() {
 
   const handleStop = () => {
     stream.stopChat()
+    toast.showSuccess(t('agent.stream_cancelled', '取消成功'))
   }
 
   const runContextRecompress = useCallback(

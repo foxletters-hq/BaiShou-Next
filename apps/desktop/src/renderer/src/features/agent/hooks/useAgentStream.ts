@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef, useContext } from 'react'
-import { createStreamingTextDisplayBuffer, type StreamingTextDisplayBuffer } from '@baishou/shared'
+import { createStreamingTextDisplayBuffer, isAgentStreamAbortError, type StreamingTextDisplayBuffer } from '@baishou/shared'
 import { MainPageCacheActiveContext } from '../../../layouts/main-page-cache.context'
 
 /** 桌面 Agent + XMarkdown：每个 chunk 立即透传全文，流式 Markdown 由 XMarkdown 负责 */
@@ -329,8 +329,10 @@ function registerGlobalStreamIpcListeners(): () => void {
     updateSessionState(sId, (state) => {
       state.isStreaming = false
       state.isBridgeActive = Boolean(fullText.trim() || fullReasoning.trim())
-      if (payload?.error) {
+      if (payload?.error && !isAgentStreamAbortError(payload.error)) {
         state.error = payload.error
+      } else {
+        state.error = null
       }
       state.activeTool = null
     })
@@ -631,6 +633,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
         state.isStreaming = false
         state.isBridgeActive = false
         state.isCompressing = false
+        state.error = null
         state.activeTool = null
         clearCompressionStreamState(state)
         clearStreamBridgeState(state)

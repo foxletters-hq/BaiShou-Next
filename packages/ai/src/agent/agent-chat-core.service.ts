@@ -1,5 +1,6 @@
 import { AgentSessionService } from './agent-session.service'
 import type { IStreamEmitter } from './stream-emitter.interface'
+import { isAgentStreamAbortError } from '@baishou/shared'
 import {
   abortAllAgentStreamSessions,
   abortAgentStreamSession,
@@ -77,7 +78,13 @@ export class AgentChatCoreService {
             params.emitter.sendToolStart(params.sessionId, name, argsObj),
           onToolCallResult: (name, result) =>
             params.emitter.sendToolResult(params.sessionId, name, result),
-          onError: (err) => params.emitter.sendFinish(params.sessionId, { error: err.message }),
+          onError: (err) => {
+            if (isAgentStreamAbortError(err)) {
+              params.emitter.sendFinish(params.sessionId, { success: true })
+              return
+            }
+            params.emitter.sendFinish(params.sessionId, { error: err.message })
+          },
           onFinish: (result) =>
             params.emitter.sendFinish(params.sessionId, { success: true, ...result })
         }

@@ -283,12 +283,6 @@
   width: 100%;
   padding: 11px 14px;
   border-radius: 10px;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.menuItemRow:hover .menuItemRowInner {
-  background-color: var(--bg-surface);
-  box-shadow: var(--shadow-sm);
 }
 
 .menuItemRowIcon {
