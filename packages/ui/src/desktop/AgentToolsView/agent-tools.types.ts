@@ -7,6 +7,10 @@ export type { EmojiToolConfig, ToolManagementConfig }
 export interface AgentToolsViewProps {
   config: ToolManagementConfig
   onChange: (config: ToolManagementConfig) => void
+  /** 全页设置区（默认）或桌面弹窗 */
+  presentation?: 'page' | 'dialog'
+  /** 弹窗模式下右上角关闭 */
+  onClose?: () => void
 }
 
 export interface ToolConfigParam {

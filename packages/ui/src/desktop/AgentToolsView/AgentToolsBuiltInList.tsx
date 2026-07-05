@@ -92,6 +92,7 @@ export const AgentToolsBuiltInList: React.FC<AgentToolsBuiltInListProps> = ({
         ) : (
           <AgentToolsCommunityTab
             config={config}
+            onConfigChange={onConfigChange}
             onOpenEmojiSettings={onOpenEmojiSettings}
           />
         )}

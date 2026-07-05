@@ -85,6 +85,151 @@
   margin: 0 0 16px 0;
 }
 
+/* ── Dialog presentation (desktop modal) ── */
+
+.toolManagerOverlay {
+  align-items: flex-start;
+  justify-content: center;
+  padding: 80px 24px 40px;
+  box-sizing: border-box;
+}
+
+.toolManagerModal {
+  padding: 0 !important;
+  width: min(720px, 88vw) !important;
+  min-width: min(520px, 88vw) !important;
+  max-height: calc(100vh - 120px) !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  border-radius: 14px !important;
+}
+
+.toolManagerModalBody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.containerDialog {
+  height: min(600px, calc(100vh - 120px));
+  min-height: 440px;
+  flex: 1;
+  background-color: var(--bg-surface);
+  border-radius: 14px;
+}
+
+.headerDialog {
+  position: relative;
+  flex-shrink: 0;
+  padding: 28px 20px 14px;
+  animation: none;
+}
+
+.headerMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.titleRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.titleIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--theme-primary-container-50);
+  color: var(--theme-primary);
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.headerSubtitle {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--theme-on-surface-variant);
+  font-weight: 400;
+}
+
+.dialogCloseBtn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--theme-on-surface-variant);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.dialogCloseBtn:hover {
+  background: var(--bg-surface-normal, var(--theme-surface-container-low-40));
+  color: var(--theme-on-surface);
+}
+
+.scrollAreaDialog {
+  padding: 8px 20px 20px;
+}
+
+.containerDialog .tabSwitcherWrapper {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin-bottom: 16px;
+  padding-top: 2px;
+  background: linear-gradient(to bottom, var(--bg-surface) 75%, transparent);
+}
+
+.containerDialog .categoryList {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.containerDialog .toolCard {
+  border-radius: 10px;
+}
+
+.containerDialog .cardMain {
+  align-items: center;
+  padding: 12px 12px 12px 14px;
+}
+
+.containerDialog .title {
+  font-size: 18px;
+}
+
+.containerDialog .categoryHeader {
+  padding: 2px 0 8px 4px;
+  margin-bottom: 2px;
+}
+
+@media (max-width: 560px) {
+  .containerDialog .categoryList {
+    grid-template-columns: 1fr;
+  }
+}
+
 .tabSwitcherWrapper {
   margin-bottom: 16px;
 }
@@ -271,6 +416,7 @@
 
 .toolInfo {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -280,11 +426,15 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: nowrap;
+  min-width: 0;
 }
 
 .toolName {
   font-size: 15px;
   font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .enabled .toolName {
@@ -302,6 +452,15 @@
   font-size: 10px;
   color: var(--theme-on-surface-variant);
   font-family: monospace;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.toolMeta {
+  font-size: 12px;
+  color: var(--theme-on-surface-variant);
+  line-height: 1.4;
+  margin-top: 2px;
 }
 
 /* Parameters section */
@@ -588,19 +747,26 @@ input:checked + .slider:before {
   padding: 4px 6px;
   border-top: 1px solid var(--theme-outline-variant-50);
   flex-shrink: 0;
+  height: 26px;
+  min-height: 26px;
+  box-sizing: border-box;
 }
 
-.emojiNameInput {
+.emojiCardNameInput {
   flex: 1;
   border: none;
   background: transparent;
-  font-size: 10px;
+  font-size: 11px;
+  line-height: 1.2;
   color: var(--theme-on-surface);
   outline: none;
   min-width: 0;
+  height: 100%;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-.emojiNameInput::placeholder {
+.emojiCardNameInput::placeholder {
   color: var(--theme-outline);
 }
 
@@ -727,8 +893,17 @@ input:checked + .slider:before {
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  margin-bottom: 8px;
   padding: 0;
+}
+
+.emojiSubHeader {
+  justify-content: flex-start;
+}
+
+.emojiSectionToolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 4px;
 }
 
 .emojiSettingsPage {
@@ -813,6 +988,7 @@ input:checked + .slider:before {
   font-weight: 600;
   cursor: pointer;
   padding: 4px 6px;
+  margin-left: auto;
 }
 
 .emojiGroupList {
@@ -859,7 +1035,15 @@ input:checked + .slider:before {
   background: transparent;
   color: var(--theme-error);
   cursor: pointer;
-  padding: 14px;
+  padding: 8px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.emojiGroupDeleteBtn:hover {
+  background: rgba(220, 38, 38, 0.08);
 }
 
 .emojiEntryRow {
@@ -924,13 +1108,20 @@ input:checked + .slider:before {
   color: var(--theme-on-surface-variant);
 }
 
-.emojiNameInput {
+.emojiGroupNameInput {
+  width: 100%;
   border: 1px solid var(--theme-outline-variant);
   border-radius: 10px;
   padding: 10px 12px;
   font-size: 16px;
   background: var(--theme-surface);
   color: var(--theme-on-surface);
+  box-sizing: border-box;
+  outline: none;
+}
+
+.emojiGroupNameInput:focus {
+  border-color: var(--theme-primary);
 }
 
 .emojiStickerGrid {
@@ -981,6 +1172,18 @@ input:checked + .slider:before {
   background: transparent;
   color: var(--theme-error);
   cursor: pointer;
+}
+
+.emojiStickerAreaEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 140px;
+  padding: 24px;
+  text-align: center;
+  color: var(--theme-on-surface-variant);
+  font-size: 14px;
+  white-space: nowrap;
 }
 
 .emojiSettingsEmpty {

@@ -8,6 +8,7 @@ import styles from './AgentToolsView.module.css'
 
 interface AgentToolsCommunityTabProps {
   config: ToolManagementConfig
+  onConfigChange: (config: ToolManagementConfig) => void
   onOpenEmojiSettings: () => void
 }
 
@@ -17,6 +18,7 @@ const COMMUNITY_CATEGORIES = [
 
 export const AgentToolsCommunityTab: React.FC<AgentToolsCommunityTabProps> = ({
   config,
+  onConfigChange,
   onOpenEmojiSettings
 }) => {
   const { t } = useTranslation()
@@ -33,7 +35,13 @@ export const AgentToolsCommunityTab: React.FC<AgentToolsCommunityTabProps> = ({
               <span className={styles.categoryLabel}>{meta.label}</span>
             </div>
             <div className={styles.categoryList}>
-              <EmojiSettingsEntryRow config={emojiConfig} onPress={onOpenEmojiSettings} />
+              <EmojiSettingsEntryRow
+                config={emojiConfig}
+                onChange={(nextEmojiConfig) =>
+                  onConfigChange({ ...config, emojiConfig: nextEmojiConfig })
+                }
+                onPress={onOpenEmojiSettings}
+              />
             </div>
           </div>
         )

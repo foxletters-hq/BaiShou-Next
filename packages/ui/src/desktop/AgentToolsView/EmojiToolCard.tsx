@@ -227,7 +227,7 @@ export const EmojiToolCard: React.FC<EmojiToolCardProps> = ({ config, onChange }
                   </div>
                   <div className={styles.emojiCardFooter}>
                     <input
-                      className={styles.emojiNameInput}
+                      className={styles.emojiCardNameInput}
                       value={emoji.name}
                       onChange={(e) => handleRenameEmoji(emoji.id, e.target.value)}
                       placeholder={t('agent.tools.emoji_name_placeholder', '名称')}
