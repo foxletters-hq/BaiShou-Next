@@ -1,38 +1,169 @@
 name: Build & Release
 
-# 发版以本地 pnpm release:* 为主；此 workflow 仅作备用，在 Actions 页手动触发。
+# 分端发版：main 合并后 push tag 触发
+#   mobile/v1.2.4  → 仅 Android
+#   desktop/v1.2.1 → 仅 Windows
+# 手动发版：Actions → Run workflow → 选择 mobile / desktop / both
 on:
+  push:
+    tags:
+      - 'mobile/v*'
+      - 'desktop/v*'
   workflow_dispatch:
     inputs:
-      tag:
-        description: Release 标签名（如 v1.0.0，用于产物文件名与 Release 标题）
+      platform:
+        description: 发版平台
         required: true
-        type: string
+        type: choice
+        options:
+          - mobile
+          - desktop
+          - both
       ref:
         description: 构建使用的分支或 commit（默认 main）
         required: false
         default: main
         type: string
       create_release:
-        description: 构建完成后创建 GitHub Release 并上传附件
+        description: 构建完成后创建 GitHub Release
         required: false
         default: true
         type: boolean
 
 concurrency:
-  group: release-${{ github.workflow }}-${{ inputs.tag }}
+  group: release-${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && format('{0}-{1}', inputs.platform, inputs.ref) || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # ── Android APK ──────────────────────────────────────────
+  prepare:
+    name: Prepare release
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+      semver: ${{ steps.resolve.outputs.semver }}
+      scope: ${{ steps.resolve.outputs.scope }}
+      ref: ${{ steps.resolve.outputs.ref }}
+      should_release: ${{ steps.resolve.outputs.should_release }}
+      build_mobile: ${{ steps.resolve.outputs.build_mobile }}
+      build_desktop: ${{ steps.resolve.outputs.build_desktop }}
+      mobile_tag: ${{ steps.resolve.outputs.mobile_tag }}
+      desktop_tag: ${{ steps.resolve.outputs.desktop_tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.ref }}
+          fetch-depth: 0
+
+      - id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+          REF="${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.ref_name }}"
+          SHOULD_RELEASE="${{ github.event_name == 'workflow_dispatch' && inputs.create_release || 'true' }}"
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            SCOPE="${{ inputs.platform }}"
+            MOBILE=$(node -p "require('./apps/mobile/src/version.json').version")
+            DESKTOP=$(node -p "require('./apps/desktop/src/version.json').version")
+            case "$SCOPE" in
+              mobile)  TAG="mobile/v${MOBILE}"; SEMVER="$MOBILE" ;;
+              desktop) TAG="desktop/v${DESKTOP}"; SEMVER="$DESKTOP" ;;
+              both)
+                if [ "$MOBILE" != "$DESKTOP" ]; then
+                  echo "::error::both 发版要求两端 version.json 相同（mobile=${MOBILE}, desktop=${DESKTOP}）"
+                  exit 1
+                fi
+                TAG="mobile/v${MOBILE}"
+                SEMVER="$MOBILE"
+                ;;
+              *) echo "::error::未知 platform: $SCOPE"; exit 1 ;;
+            esac
+          elif [[ "${{ github.ref_name }}" =~ ^mobile/v(.+)$ ]]; then
+            SCOPE="mobile"
+            TAG="${{ github.ref_name }}"
+            SEMVER="${BASH_REMATCH[1]}"
+          elif [[ "${{ github.ref_name }}" =~ ^desktop/v(.+)$ ]]; then
+            SCOPE="desktop"
+            TAG="${{ github.ref_name }}"
+            SEMVER="${BASH_REMATCH[1]}"
+          else
+            echo "::error::不支持的 tag: ${{ github.ref_name }}"
+            exit 1
+          fi
+
+          BUILD_MOBILE="false"
+          BUILD_DESKTOP="false"
+          MOBILE_TAG=""
+          DESKTOP_TAG=""
+          if [ "$SCOPE" = "mobile" ] || [ "$SCOPE" = "both" ]; then
+            BUILD_MOBILE="true"
+            MOBILE_TAG="mobile/v${SEMVER}"
+          fi
+          if [ "$SCOPE" = "desktop" ] || [ "$SCOPE" = "both" ]; then
+            BUILD_DESKTOP="true"
+            DESKTOP_TAG="desktop/v${SEMVER}"
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "semver=$SEMVER" >> "$GITHUB_OUTPUT"
+          echo "scope=$SCOPE" >> "$GITHUB_OUTPUT"
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+          echo "should_release=$SHOULD_RELEASE" >> "$GITHUB_OUTPUT"
+          echo "build_mobile=$BUILD_MOBILE" >> "$GITHUB_OUTPUT"
+          echo "build_desktop=$BUILD_DESKTOP" >> "$GITHUB_OUTPUT"
+          echo "mobile_tag=$MOBILE_TAG" >> "$GITHUB_OUTPUT"
+          echo "desktop_tag=$DESKTOP_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Verify tag commit is on main
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --depth=1
+          if ! git merge-base --is-ancestor "${{ github.sha }}" origin/main; then
+            echo "::error::Release tag 必须指向 main 上的 commit（先合并 PR 到 main，再在 main 上打 tag）"
+            exit 1
+          fi
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Verify version manifest matches tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          SEMVER="${{ steps.resolve.outputs.semver }}"
+          SCOPE="${{ steps.resolve.outputs.scope }}"
+          MOBILE=$(node -p "require('./apps/mobile/src/version.json').version")
+          DESKTOP=$(node -p "require('./apps/desktop/src/version.json').version")
+          if [ "$SCOPE" = "mobile" ] || [ "$SCOPE" = "both" ]; then
+            if [ "$MOBILE" != "$SEMVER" ]; then
+              echo "::error::${{ steps.resolve.outputs.mobile_tag }} 与 mobile version.json (${MOBILE}) 不一致"
+              exit 1
+            fi
+          fi
+          if [ "$SCOPE" = "desktop" ] || [ "$SCOPE" = "both" ]; then
+            if [ "$DESKTOP" != "$SEMVER" ]; then
+              echo "::error::${{ steps.resolve.outputs.desktop_tag }} 与 desktop version.json (${DESKTOP}) 不一致"
+              exit 1
+            fi
+          fi
+          node scripts/sync-app-version.mjs --check
+
   build-android:
     name: Build Android APK
+    needs: prepare
+    if: needs.prepare.outputs.build_mobile == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ needs.prepare.outputs.ref }}
 
       - uses: pnpm/action-setup@v4
 
@@ -75,15 +206,16 @@ jobs:
           name: android-apk
           path: release/BaiShou-*-Android.apk
 
-  # ── Windows (Inno Setup) ───────────────────────────────────
   build-windows:
     name: Build Windows Installer
+    needs: prepare
+    if: needs.prepare.outputs.build_desktop == 'true'
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ needs.prepare.outputs.ref }}
 
       - uses: pnpm/action-setup@v4
 
@@ -110,71 +242,154 @@ jobs:
           name: windows-installer
           path: apps/desktop/dist/BaiShou-v*-Windows-Setup.exe
 
-  # ── GitHub Release ────────────────────────────────────────
-  release:
-    name: Create GitHub Release
-    if: ${{ inputs.create_release }}
-    needs: [build-android, build-windows]
+  release-mobile:
+    name: Release Android
+    if: |
+      needs.prepare.outputs.should_release == 'true' &&
+      needs.prepare.outputs.build_mobile == 'true' &&
+      needs.build-android.result == 'success'
+    needs: [prepare, build-android]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: Download Android APK
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           name: android-apk
           path: artifacts/
 
-      - name: Download Windows installer
-        uses: actions/download-artifact@v4
+      - name: Normalize Android artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          SEMVER="${{ needs.prepare.outputs.semver }}"
+          TARGET="artifacts/BaiShou-v${SEMVER}-Android.apk"
+          for apk in artifacts/BaiShou-*-Android.apk; do
+            [ -e "$apk" ] || continue
+            if [ "$apk" != "$TARGET" ]; then mv "$apk" "$TARGET"; fi
+            break
+          done
+          cp "$TARGET" artifacts/BaiShou-Android.apk
+          ls -la artifacts/
+
+      - name: Create GitHub Release (Android)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.mobile_tag }}
+          name: 白守 Android ${{ needs.prepare.outputs.semver }}
+          body: |
+            ## 白守 Android v${{ needs.prepare.outputs.semver }}
+
+            | 文件 | 说明 |
+            |------|------|
+            | `BaiShou-v${{ needs.prepare.outputs.semver }}-Android.apk` | 带版本号归档 |
+            | `BaiShou-Android.apk` | 固定文件名 |
+
+            各端最新下载见 [`releases/channel.json`](https://github.com/${{ github.repository }}/blob/main/releases/channel.json)。
+          files: |
+            artifacts/BaiShou-v${{ needs.prepare.outputs.semver }}-Android.apk
+            artifacts/BaiShou-Android.apk
+          draft: false
+          prerelease: false
+
+  release-desktop:
+    name: Release Windows
+    if: |
+      needs.prepare.outputs.should_release == 'true' &&
+      needs.prepare.outputs.build_desktop == 'true' &&
+      needs.build-windows.result == 'success'
+    needs: [prepare, build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
         with:
           name: windows-installer
           path: artifacts/
 
-      - name: Normalize artifact filenames
+      - name: Normalize Windows artifacts
+        shell: bash
         run: |
           set -euo pipefail
-          TAG="${{ inputs.tag }}"
-          TARGET_APK="artifacts/BaiShou-${TAG}-Android.apk"
-          for apk in artifacts/BaiShou-*-Android.apk; do
-            [ -e "$apk" ] || continue
-            if [ "$apk" != "$TARGET_APK" ]; then
-              mv "$apk" "$TARGET_APK"
-            fi
+          SEMVER="${{ needs.prepare.outputs.semver }}"
+          TARGET="artifacts/BaiShou-v${SEMVER}-Windows-Setup.exe"
+          for exe in artifacts/BaiShou-*-Windows-Setup.exe; do
+            [ -e "$exe" ] || continue
+            if [ "$exe" != "$TARGET" ]; then mv "$exe" "$TARGET"; fi
             break
           done
+          cp "$TARGET" artifacts/BaiShou-Windows-Setup.exe
+          ls -la artifacts/
 
-          TARGET_WIN="artifacts/BaiShou-${TAG}-Windows-Setup.exe"
-          for installer in artifacts/BaiShou-*-Windows-Setup.exe; do
-            [ -e "$installer" ] || continue
-            if [ "$installer" != "$TARGET_WIN" ]; then
-              mv "$installer" "$TARGET_WIN"
-            fi
-            break
-          done
-
-      - name: Create Release
+      - name: Create GitHub Release (Windows)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.tag }}
-          name: 白守 ${{ inputs.tag }}
+          tag_name: ${{ needs.prepare.outputs.desktop_tag }}
+          name: 白守 Windows ${{ needs.prepare.outputs.semver }}
           body: |
-            ## 白守 ${{ inputs.tag }}
+            ## 白守 Windows v${{ needs.prepare.outputs.semver }}
 
-            以纯白誓约，守护彼此一生。
+            | 文件 | 说明 |
+            |------|------|
+            | `BaiShou-v${{ needs.prepare.outputs.semver }}-Windows-Setup.exe` | 带版本号归档 |
+            | `BaiShou-Windows-Setup.exe` | 固定文件名 |
 
-            ### 下载
-            | 平台 | 文件 | 说明 |
-            |------|------|------|
-            | Android | `-Android.apk` | 允许安装未知来源后安装，可覆盖旧 Flutter 版 |
-            | Windows | `-Windows-Setup.exe` | Inno Setup 安装向导，默认 `Program Files\BaiShou` |
-
-            **平台说明**：官方仅维护 Android 与 Windows。Linux 可自行编译；iOS / macOS 暂无计划。
-
-            ### 更新内容
-            请查看 [提交记录](https://github.com/${{ github.repository }}/commits/${{ inputs.tag }})
+            各端最新下载见 [`releases/channel.json`](https://github.com/${{ github.repository }}/blob/main/releases/channel.json)。
           files: |
-            artifacts/BaiShou-${{ inputs.tag }}-Android.apk
-            artifacts/BaiShou-${{ inputs.tag }}-Windows-Setup.exe
+            artifacts/BaiShou-v${{ needs.prepare.outputs.semver }}-Windows-Setup.exe
+            artifacts/BaiShou-Windows-Setup.exe
           draft: false
           prerelease: false
+
+  update-channel:
+    name: Update release channel manifest
+    needs: [prepare, release-mobile, release-desktop]
+    if: |
+      always() &&
+      needs.prepare.result == 'success' &&
+      (needs.release-mobile.result == 'success' || needs.release-desktop.result == 'success')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Patch channel.json (Android)
+        if: needs.release-mobile.result == 'success'
+        run: |
+          node scripts/update-release-channel.mjs \
+            --platform android \
+            --version "${{ needs.prepare.outputs.semver }}" \
+            --tag "${{ needs.prepare.outputs.mobile_tag }}" \
+            --version-code "$(node -p "require('./apps/mobile/src/version.json').versionCode")" \
+            --repo "${{ github.repository }}"
+
+      - name: Patch channel.json (Windows)
+        if: needs.release-desktop.result == 'success'
+        run: |
+          DESKTOP_VER=$(node -p "require('./apps/desktop/src/version.json').version")
+          node scripts/update-release-channel.mjs \
+            --platform windows \
+            --version "$DESKTOP_VER" \
+            --tag "${{ needs.prepare.outputs.desktop_tag }}" \
+            --repo "${{ github.repository }}"
+
+      - name: Commit channel manifest
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add releases/channel.json
+          if git diff --staged --quiet; then
+            echo "channel.json 无变更"
+            exit 0
+          fi
+          git commit -m "chore(release): 更新 releases/channel.json [skip ci]"
+          git push origin main

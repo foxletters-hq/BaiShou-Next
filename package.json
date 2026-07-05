@@ -22,6 +22,7 @@
     "release:desktop:linux": "node scripts/run-with-hint.mjs \"自行编译 Linux AppImage（非官方发版，输出 apps/desktop/dist）。\" pnpm sync && pnpm --filter @baishou/desktop build:linux",
     "release:desktop:win": "node scripts/run-with-hint.mjs \"构建 Windows Inno Setup 安装包（输出 apps/desktop/dist）。\" pnpm sync && pnpm --filter @baishou/desktop build:win",
     "release:all": "node scripts/run-with-hint.mjs \"官方正式打包 Android + Windows（产物见 release/ 与 apps/desktop/dist）。\" node scripts/release-all.mjs",
+    "release:tag": "node scripts/run-with-hint.mjs \"分端打 tag 触发 CI：mobile | desktop | all；加 --push 自动推送。\" node scripts/release-tag.mjs",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "lint": "turbo run lint",
