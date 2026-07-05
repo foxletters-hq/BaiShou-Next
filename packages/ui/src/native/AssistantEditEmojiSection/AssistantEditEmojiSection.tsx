@@ -1,5 +1,5 @@
-import React from 'react'
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
+import React, { useCallback } from 'react'
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native'
 import { Check } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import type { EmojiGroup } from '@baishou/shared'
@@ -14,17 +14,36 @@ export interface AssistantEditEmojiSectionProps {
   selectedGroupIds: string[]
   onEmojiEnabledChange: (enabled: boolean) => void
   onToggleGroup: (groupId: string) => void
+  /** 内层列表滚动时锁定外层页面滚动，避免嵌套 ScrollView 联动 */
+  onLockOuterScroll?: (locked: boolean) => void
 }
+
+const EMOJI_GROUP_ROW_HEIGHT = 62
+const EMOJI_GROUP_ROW_GAP = 8
+const EMOJI_GROUP_VISIBLE_MAX = 3
+const emojiGroupListMaxHeight =
+  EMOJI_GROUP_VISIBLE_MAX * EMOJI_GROUP_ROW_HEIGHT +
+  (EMOJI_GROUP_VISIBLE_MAX - 1) * EMOJI_GROUP_ROW_GAP
 
 export const AssistantEditEmojiSection: React.FC<AssistantEditEmojiSectionProps> = ({
   emojiGroups,
   emojiEnabled,
   selectedGroupIds,
   onEmojiEnabledChange,
-  onToggleGroup
+  onToggleGroup,
+  onLockOuterScroll
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const canScrollList = emojiGroups.length > EMOJI_GROUP_VISIBLE_MAX
+
+  const handleListScrollBegin = useCallback(() => {
+    if (canScrollList) onLockOuterScroll?.(true)
+  }, [canScrollList, onLockOuterScroll])
+
+  const handleListScrollEnd = useCallback(() => {
+    onLockOuterScroll?.(false)
+  }, [onLockOuterScroll])
 
   return (
     <SettingsGroupCard>
@@ -54,37 +73,57 @@ export const AssistantEditEmojiSection: React.FC<AssistantEditEmojiSectionProps>
               {t('agent.tools.emoji_no_groups', '请先在表情包设置中创建表情包组')}
             </Text>
           ) : (
-            emojiGroups.map((group) => {
-              const selected = selectedGroupIds.includes(group.id)
-              return (
-                <TouchableOpacity
-                  key={group.id}
-                  style={[
-                    styles.groupRow,
-                    {
-                      borderColor: colors.borderSubtle,
-                      backgroundColor: selected ? colors.primaryContainer : colors.bgSurface
-                    }
-                  ]}
-                  onPress={() => onToggleGroup(group.id)}
-                  activeOpacity={0.75}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.groupName, { color: colors.textPrimary }]}>
-                      {group.name}
-                    </Text>
-                    <Text style={[styles.groupMeta, { color: colors.textSecondary }]}>
-                      {t('agent.tools.emoji_group_count', '{{count}} 个表情', {
-                        count: group.emojis?.length ?? 0
-                      })}
-                    </Text>
+            <ScrollView
+              style={[
+                styles.groupList,
+                canScrollList ? { height: emojiGroupListMaxHeight } : null
+              ]}
+              contentContainerStyle={styles.groupListContent}
+              nestedScrollEnabled
+              scrollEnabled={canScrollList}
+              bounces={canScrollList}
+              overScrollMode={canScrollList ? 'always' : 'never'}
+              showsVerticalScrollIndicator={canScrollList}
+              keyboardShouldPersistTaps="handled"
+              onScrollBeginDrag={handleListScrollBegin}
+              onScrollEndDrag={handleListScrollEnd}
+              onMomentumScrollEnd={handleListScrollEnd}
+            >
+              {emojiGroups.map((group, index) => {
+                const selected = selectedGroupIds.includes(group.id)
+                return (
+                  <View key={group.id}>
+                    {index > 0 ? <View style={{ height: EMOJI_GROUP_ROW_GAP }} /> : null}
+                    <TouchableOpacity
+                      style={[
+                        styles.groupRow,
+                        {
+                          borderColor: selected ? colors.primary : colors.borderMuted,
+                          borderWidth: selected ? 2 : 1.5,
+                          backgroundColor: selected ? colors.primaryContainer : colors.bgSurface
+                        }
+                      ]}
+                      onPress={() => onToggleGroup(group.id)}
+                      activeOpacity={0.75}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.groupName, { color: colors.textPrimary }]}>
+                          {group.name}
+                        </Text>
+                        <Text style={[styles.groupMeta, { color: colors.textSecondary }]}>
+                          {t('agent.tools.emoji_group_count', '{{count}} 个表情', {
+                            count: group.emojis?.length ?? 0
+                          })}
+                        </Text>
+                      </View>
+                      {selected ? (
+                        <Check size={20} color={colors.primary} strokeWidth={2.5} />
+                      ) : null}
+                    </TouchableOpacity>
                   </View>
-                  {selected ? (
-                    <Check size={20} color={colors.primary} strokeWidth={2.5} />
-                  ) : null}
-                </TouchableOpacity>
-              )
-            })
+                )
+              })}
+            </ScrollView>
           )}
         </>
       ) : null}
@@ -102,15 +141,20 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     marginVertical: 14
   },
+  groupListContent: {
+    paddingBottom: 0
+  },
+  groupList: {
+    flexGrow: 0
+  },
   groupRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    minHeight: EMOJI_GROUP_ROW_HEIGHT,
     paddingHorizontal: 12,
     paddingVertical: 12,
-    borderRadius: 10,
-    borderWidth: StyleSheet.hairlineWidth,
-    marginBottom: 8
+    borderRadius: 10
   },
   groupName: { fontSize: 15, fontWeight: '600' },
   groupMeta: { fontSize: 13, marginTop: 2 }
