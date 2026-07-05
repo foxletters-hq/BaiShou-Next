@@ -20,9 +20,13 @@ function textFromPartData(data: unknown): string {
 }
 
 /** local://（桌面）或裸路径 → React Native Image 可用的 file:// */
-function toMobileAttachmentFilePath(filePath?: string, storageRoot?: string): string {
+function toMobileAttachmentFilePath(
+  filePath?: string,
+  storageRoot?: string,
+  attachmentsBasePath?: string
+): string {
   if (storageRoot) {
-    return resolveMobileAttachmentFilePath(filePath, storageRoot)
+    return resolveMobileAttachmentFilePath(filePath, storageRoot, attachmentsBasePath)
   }
   if (!filePath) return ''
   if (
@@ -69,7 +73,7 @@ export function mapSessionMessageFromDb(
     cacheWriteInputTokens?: number
     costMicros?: number
   },
-  options?: { storageRoot?: string }
+  options?: { storageRoot?: string; attachmentsBasePath?: string }
 ) {
   const parts = msg.parts || []
 
@@ -99,7 +103,11 @@ export function mapSessionMessageFromDb(
 
   const attachments = mapAttachmentsFromParts(parts)?.map((att) => ({
     ...att,
-    filePath: toMobileAttachmentFilePath(att.filePath, options?.storageRoot)
+    filePath: toMobileAttachmentFilePath(
+      att.filePath,
+      options?.storageRoot,
+      options?.attachmentsBasePath
+    )
   }))
 
   const compactionPart = parts.find((p) => p.type === 'compaction')

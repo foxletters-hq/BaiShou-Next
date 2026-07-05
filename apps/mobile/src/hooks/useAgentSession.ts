@@ -65,6 +65,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
     ecosystemResyncEpoch
   } = useBaishou()
   const storageRootRef = useRef<string | null>(null)
+  const attachmentsBasePathRef = useRef<string | null>(null)
 
   const [hasMore, setHasMore] = useState(false)
 
@@ -93,27 +94,53 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
 
   useEffect(() => {
     storageRootRef.current = null
+    attachmentsBasePathRef.current = null
     if (!services) return
     let cancelled = false
-    void services.pathService.getRootDirectory().then((root) => {
-      if (!cancelled) storageRootRef.current = root
-    })
+    void (async () => {
+      const [root, attachmentsBase] = await Promise.all([
+        services.pathService.getRootDirectory(),
+        services.pathService.getAttachmentsBaseDirectory()
+      ])
+      if (!cancelled) {
+        storageRootRef.current = root
+        attachmentsBasePathRef.current = attachmentsBase
+      }
+    })()
     return () => {
       cancelled = true
     }
   }, [services, vaultRevision])
 
-  const resolveStorageRoot = useCallback(async (): Promise<string | undefined> => {
-    if (storageRootRef.current) return storageRootRef.current
-    if (!services) return undefined
-    const root = await services.pathService.getRootDirectory()
-    storageRootRef.current = root
-    return root
+  const resolveStorageContext = useCallback(async (): Promise<{
+    storageRoot?: string
+    attachmentsBasePath?: string
+  }> => {
+    if (storageRootRef.current && attachmentsBasePathRef.current) {
+      return {
+        storageRoot: storageRootRef.current,
+        attachmentsBasePath: attachmentsBasePathRef.current
+      }
+    }
+    if (!services) return {}
+    const [storageRoot, attachmentsBasePath] = await Promise.all([
+      services.pathService.getRootDirectory(),
+      services.pathService.getAttachmentsBaseDirectory()
+    ])
+    storageRootRef.current = storageRoot
+    attachmentsBasePathRef.current = attachmentsBasePath
+    return { storageRoot, attachmentsBasePath }
   }, [services])
 
-  const mapDbMessageToUI = useCallback((msg: any, storageRoot?: string): SessionMessage => {
-    return mapSessionMessageFromDb(msg, { storageRoot }) as SessionMessage
-  }, [])
+  const mapDbMessageToUI = useCallback(
+    (
+      msg: any,
+      context?: { storageRoot?: string; attachmentsBasePath?: string }
+    ): SessionMessage => {
+      return mapSessionMessageFromDb(msg, context) as SessionMessage
+    },
+    []
+  )
 
   const syncFromCache = useCallback(
     (roundWindowStart: number) => {
@@ -182,10 +209,12 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
 
       for (let attempt = 0; attempt < retryCount; attempt++) {
         try {
-          const storageRoot = await resolveStorageRoot()
+          const { storageRoot, attachmentsBasePath } = await resolveStorageContext()
           const fetchLimit = Math.max(loadedFromEndRef.current, CHAT_MESSAGE_FETCH_LIMIT)
           const rows = await services.sessionManager.getMessagesBySession(sessionId, fetchLimit, 0)
-          mapped = (rows ?? []).map((msg: any) => mapDbMessageToUI(msg, storageRoot))
+          mapped = (rows ?? []).map((msg: any) =>
+            mapDbMessageToUI(msg, { storageRoot, attachmentsBasePath })
+          )
 
           const latestAssistant = [...mapped].reverse().find((m) => m.role === 'assistant')
           if (
@@ -222,7 +251,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
 
       return true
     },
-    [dbReady, services, mapDbMessageToUI, ingestFetchedTail, resolveStorageRoot]
+    [dbReady, services, mapDbMessageToUI, ingestFetchedTail, resolveStorageContext]
   )
 
   const loadMessages = useCallback(
@@ -251,7 +280,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
         return
       }
 
-      const storageRoot = await resolveStorageRoot()
+      const { storageRoot, attachmentsBasePath } = await resolveStorageContext()
       const fetched = await services.sessionManager.getMessagesBySession(
         currentSessionId,
         CHAT_MESSAGE_FETCH_LIMIT,
@@ -267,7 +296,9 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
       fetchHasMoreRef.current = fetched.length >= CHAT_MESSAGE_FETCH_LIMIT
       loadedFromEndRef.current += fetched.length
 
-      const mapped = fetched.map((msg: any) => mapDbMessageToUI(msg, storageRoot))
+      const mapped = fetched.map((msg: any) =>
+        mapDbMessageToUI(msg, { storageRoot, attachmentsBasePath })
+      )
       const oldStart = roundWindowStartRef.current
       const prependedRoundCount = groupMessagesIntoRounds(mapped).length
       messageCacheRef.current = dedupeMessagesById([...mapped, ...messageCacheRef.current])
@@ -282,7 +313,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
     } finally {
       loadMoreLockRef.current = false
     }
-  }, [dbReady, currentSessionId, services, mapDbMessageToUI, syncFromCache, resolveStorageRoot])
+  }, [dbReady, currentSessionId, services, mapDbMessageToUI, syncFromCache, resolveStorageContext])
 
   const handleSelectSession = useCallback(
     async (sessionId: string) => {

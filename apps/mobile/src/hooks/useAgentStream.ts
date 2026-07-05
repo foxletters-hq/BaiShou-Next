@@ -301,14 +301,19 @@ export function useAgentStream(
           const ok = await refreshSessionMessages(sessionId, { ...options, commitToUi })
           if (!ok) return false
         } else if (services && commitToUi) {
-          const storageRoot = await services.pathService.getRootDirectory()
+          const [storageRoot, attachmentsBasePath] = await Promise.all([
+            services.pathService.getRootDirectory(),
+            services.pathService.getAttachmentsBaseDirectory()
+          ])
           const rows = await services.sessionManager.getMessagesBySession(sessionId, 100)
           clearSession()
           const seen = new Set<string>()
           for (const row of rows) {
             if (seen.has(row.id)) continue
             seen.add(row.id)
-            addMessage(mapSessionMessageFromDb(row as any, { storageRoot }))
+            addMessage(
+              mapSessionMessageFromDb(row as any, { storageRoot, attachmentsBasePath })
+            )
           }
         }
 
@@ -972,7 +977,8 @@ export function useAgentStream(
         timestamp: new Date(),
         attachments: mapSavedAttachmentsForMobileUi(
           saveResult.attachments,
-          await services.pathService.getRootDirectory()
+          await services.pathService.getRootDirectory(),
+          await services.pathService.getAttachmentsBaseDirectory()
         ) as any
       })
 

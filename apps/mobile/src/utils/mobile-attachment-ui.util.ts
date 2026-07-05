@@ -9,7 +9,8 @@ import {
 /** 将附件路径解析为移动端可加载的 file:// URI（兼容桌面同步过来的绝对路径） */
 export function resolveMobileAttachmentFilePath(
   rawPath: string | undefined,
-  storageRoot: string
+  storageRoot: string,
+  attachmentsBasePath?: string
 ): string {
   if (!rawPath) return ''
   const trimmed = rawPath.trim()
@@ -33,6 +34,11 @@ export function resolveMobileAttachmentFilePath(
 
   if (isEmojiVaultRelativePath(trimmed)) {
     const attachmentsRel = emojiVaultKeyToAttachmentsRelativePath(trimmed)
+    const emojiFile = attachmentsRel.replace(/^Attachments\/emojis\//i, '')
+    if (attachmentsBasePath?.trim()) {
+      const base = attachmentsBasePath.replace(/\\/g, '/').replace(/\/+$/, '')
+      return toFileUri(`${base}/emojis/${emojiFile}`)
+    }
     return toFileUri(`${root}/${attachmentsRel}`)
   }
 
@@ -64,9 +70,13 @@ export function resolveMobileAttachmentFilePath(
   return toFileUri(abs)
 }
 
-function toMobileAttachmentFilePath(filePath?: string, storageRoot?: string): string {
+function toMobileAttachmentFilePath(
+  filePath?: string,
+  storageRoot?: string,
+  attachmentsBasePath?: string
+): string {
   if (storageRoot) {
-    return resolveMobileAttachmentFilePath(filePath, storageRoot)
+    return resolveMobileAttachmentFilePath(filePath, storageRoot, attachmentsBasePath)
   }
   if (!filePath) return ''
   if (
@@ -83,12 +93,13 @@ function toMobileAttachmentFilePath(filePath?: string, storageRoot?: string): st
 
 export function mapSavedAttachmentsForMobileUi(
   attachments: readonly unknown[] | undefined,
-  storageRoot?: string
+  storageRoot?: string,
+  attachmentsBasePath?: string
 ): MockChatAttachment[] | undefined {
   const mapped = mapSavedAttachmentsForUi(attachments)
   if (!mapped) return undefined
   return mapped.map((att) => ({
     ...att,
-    filePath: toMobileAttachmentFilePath(att.filePath, storageRoot)
+    filePath: toMobileAttachmentFilePath(att.filePath, storageRoot, attachmentsBasePath)
   }))
 }
