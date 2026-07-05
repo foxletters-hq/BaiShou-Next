@@ -18,12 +18,17 @@ export type ResolvedAssistantEmojiConfig = {
   groupName?: string
 }
 
+/** normalizeEmojiToolConfig 的返回值，groups 始终存在 */
+export type NormalizedEmojiToolConfig = EmojiToolConfig & { groups: EmojiGroup[] }
+
 function createEmojiGroupId(): string {
   return `emoji_group_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 }
 
 /** 将旧版扁平 emojis 迁移为分组结构 */
-export function normalizeEmojiToolConfig(config?: EmojiToolConfig | null): EmojiToolConfig {
+export function normalizeEmojiToolConfig(
+  config?: EmojiToolConfig | null
+): NormalizedEmojiToolConfig {
   const enabled = config?.enabled === true
 
   if (config?.groups && config.groups.length > 0) {

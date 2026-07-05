@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ImagePlus, Trash2 } from 'lucide-react'
+import { ImagePlus, Sticker, Trash2 } from 'lucide-react'
 import type { EmojiGroup, EmojiItem, EmojiToolConfig } from '@baishou/shared'
 import { findEmojiGroup, normalizeEmojiToolConfig, upsertEmojiGroup } from '@baishou/shared'
 import { toast } from '../Toast/useToast'
@@ -100,7 +100,7 @@ export const EmojiGroupDetailView: React.FC<EmojiGroupDetailViewProps> = ({
         void loadEmojiPreviews()
       }
       if (errors.length > 0) {
-        toast.error(errors.join('\n'))
+        toast.showError(errors.join('\n'))
       }
     } catch (e) {
       console.error('[EmojiGroupDetailView] Import failed:', e)
@@ -136,21 +136,36 @@ export const EmojiGroupDetailView: React.FC<EmojiGroupDetailViewProps> = ({
 
   return (
     <div className={styles.emojiSettingsPage}>
-      <div className={styles.emojiNameCard}>
-        <label className={styles.emojiFieldLabel}>
-          {t('agent.tools.emoji_group_name', '组名称')}
-        </label>
-        <input
-          className={styles.emojiNameInput}
-          value={group.name}
-          onChange={(e) => updateGroup({ ...group, name: e.target.value })}
-          placeholder={t('agent.tools.emoji_group_name_placeholder', '例如：日常、工作')}
-          maxLength={24}
-        />
+      <div className={`${styles.toolCard} ${styles.enabled}`}>
+        <div className={styles.cardMain}>
+          <div className={styles.toolIconWrapper}>
+            <Sticker size={20} />
+          </div>
+          <div className={styles.toolInfo}>
+            <div className={styles.toolNameRow}>
+              <span className={styles.toolName}>{t('agent.tools.emoji_group_name', '组名称')}</span>
+            </div>
+          </div>
+        </div>
+        <div className={styles.paramsWrapper}>
+          <div className={styles.paramsDivider} />
+          <div className={styles.paramsConfigArea}>
+            <input
+              className={styles.emojiGroupNameInput}
+              value={group.name}
+              onChange={(e) => updateGroup({ ...group, name: e.target.value })}
+              placeholder={t('agent.tools.emoji_group_name_placeholder', '例如：日常、工作')}
+              maxLength={24}
+            />
+          </div>
+        </div>
       </div>
 
-      <div className={styles.emojiGridHeader}>
-        <span className={styles.emojiSectionTitle}>
+      <div className={styles.categoryHeader}>
+        <span className={styles.categoryIcon}>
+          <ImagePlus size={18} />
+        </span>
+        <span className={styles.categoryLabel}>
           {t('agent.tools.emoji_stickers_title', '表情贴图')}
         </span>
         <button
@@ -164,38 +179,45 @@ export const EmojiGroupDetailView: React.FC<EmojiGroupDetailViewProps> = ({
         </button>
       </div>
 
-      <div className={styles.emojiStickerGrid}>
-        {group.emojis?.map((emoji) => (
-          <div key={emoji.id} className={styles.emojiStickerCard}>
-            <div className={styles.emojiStickerPreview}>
-              {emojiPreviews[emoji.id] ? (
-                <img src={emojiPreviews[emoji.id]} alt={emoji.name} />
-              ) : (
-                <span>{emoji.name || emoji.id}</span>
-              )}
+      {group.emojis && group.emojis.length > 0 ? (
+        <div className={styles.emojiPopupGrid}>
+          {group.emojis.map((emoji) => (
+            <div key={emoji.id} className={styles.emojiCard}>
+              <div className={styles.emojiCardImage}>
+                {emojiPreviews[emoji.id] ? (
+                  <img src={emojiPreviews[emoji.id]} alt={emoji.name} className={styles.emojiImg} />
+                ) : (
+                  <div className={styles.emojiPlaceholder}>
+                    <ImagePlus size={24} />
+                  </div>
+                )}
+              </div>
+              <div className={styles.emojiCardFooter}>
+                <input
+                  className={styles.emojiCardNameInput}
+                  value={emoji.name}
+                  onChange={(e) => handleRenameEmoji(emoji.id, e.target.value)}
+                  placeholder={t('agent.tools.emoji_name_placeholder', '名称')}
+                />
+                <button
+                  type="button"
+                  className={styles.emojiDeleteBtn}
+                  onClick={() => void handleDeleteEmoji(emoji.id)}
+                  title={t('common.delete')}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
             </div>
-            <input
-              className={styles.emojiStickerNameInput}
-              value={emoji.name}
-              onChange={(e) => handleRenameEmoji(emoji.id, e.target.value)}
-              placeholder={t('agent.tools.emoji_name_placeholder', '名称')}
-            />
-            <button
-              type="button"
-              className={styles.emojiStickerDeleteBtn}
-              onClick={() => void handleDeleteEmoji(emoji.id)}
-              aria-label={t('common.delete')}
-            >
-              <Trash2 size={14} />
-            </button>
-          </div>
-        ))}
-        {(!group.emojis || group.emojis.length === 0) && (
-          <div className={styles.emojiSettingsEmpty}>
-            {t('agent.tools.emoji_empty_hint', '点击上传添加表情贴图')}
-          </div>
-        )}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className={styles.emojiStickerAreaEmpty}>
+          {isLoading
+            ? t('agent.tools.emoji_importing', '导入中...')
+            : t('agent.tools.emoji_stickers_empty', '暂无表情贴图')}
+        </div>
+      )}
     </div>
   )
 }

@@ -13,9 +13,10 @@ import {
   parseAssistantEmojiGroupIds,
   serializeAssistantEmojiGroupIds,
   type AssistantKind,
-  type EmojiGroup
+  type EmojiGroup,
+  type EmojiToolConfig,
+  logger
 } from '@baishou/shared'
-import { logger } from '@baishou/shared'
 import type { AssistantFormData } from './assistant-edit.types'
 
 function resolveFormEmojiGroupIds(assistant: AssistantFormData | null): string[] {
@@ -104,16 +105,22 @@ export function useAssistantEditPage({ assistant, onSave, onPatchSave }: UseAssi
   }, [assistant])
 
   useEffect(() => {
-    const api = (window as any).api
-    if (!api?.settings?.getToolManagementConfig) return
-    void api.settings
-      .getToolManagementConfig()
-      .then((config: { emojiConfig?: unknown }) => {
-        const normalized = normalizeEmojiToolConfig(config?.emojiConfig)
-        setGlobalEmojiEnabled(normalized.enabled === true)
-        setEmojiGroups(normalized.groups)
-      })
-      .catch(() => setEmojiGroups([]))
+    const loadEmojiConfig = () => {
+      const api = (window as any).api
+      if (!api?.settings?.getToolManagementConfig) return
+      void api.settings
+        .getToolManagementConfig()
+        .then((config: { emojiConfig?: EmojiToolConfig | null }) => {
+          const normalized = normalizeEmojiToolConfig(config?.emojiConfig)
+          setGlobalEmojiEnabled(normalized.enabled === true)
+          setEmojiGroups(normalized.groups)
+        })
+        .catch(() => setEmojiGroups([]))
+    }
+
+    loadEmojiConfig()
+    window.addEventListener('focus', loadEmojiConfig)
+    return () => window.removeEventListener('focus', loadEmojiConfig)
   }, [])
 
   const handleKindChange = (kind: AssistantKind) => {

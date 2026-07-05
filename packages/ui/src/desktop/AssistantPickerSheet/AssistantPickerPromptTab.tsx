@@ -3,6 +3,7 @@ import { normalizeAssistantKind } from '@baishou/shared'
 import { HelpTooltip } from '../HelpTooltip'
 import { AssistantKindTabBar } from '../AssistantKindTabBar'
 import { ResizableMarkdownEditor } from '../ResizableMarkdownEditor'
+import { AssistantEditEmojiGroupSection } from '../AssistantEditPage/AssistantEditEmojiGroupSection'
 import { getProviderIcon } from '../../utils/provider-icons'
 import { useTheme } from '../../hooks'
 import styles from './AssistantPickerSheet.module.css'
@@ -45,7 +46,13 @@ export function AssistantPickerPromptTab({
     saveConfig,
     updateAssistantAPI,
     setShowModelSwitcher,
-    providers
+    providers,
+    globalEmojiEnabled,
+    emojiGroups,
+    editingEmojiEnabled,
+    editingSelectedEmojiGroupIds,
+    handleEmojiEnabledChange,
+    handleToggleEmojiGroup
   } = vm
   const { isDark } = useTheme()
 
@@ -106,6 +113,18 @@ export function AssistantPickerPromptTab({
         minHeight={120}
         maxHeight={520}
       />
+
+      {globalEmojiEnabled ? (
+        <div className={styles.emojiGroupSection}>
+          <AssistantEditEmojiGroupSection
+            emojiGroups={emojiGroups}
+            emojiEnabled={editingEmojiEnabled}
+            selectedGroupIds={editingSelectedEmojiGroupIds}
+            onEmojiEnabledChange={handleEmojiEnabledChange}
+            onToggleGroup={handleToggleEmojiGroup}
+          />
+        </div>
+      ) : null}
 
       <SectionHeader
         icon={<Sparkles size={18} color="var(--color-primary)" />}

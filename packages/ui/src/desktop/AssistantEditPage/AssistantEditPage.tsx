@@ -94,6 +94,21 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
               minHeight={140}
               maxHeight={520}
             />
+
+            {form.globalEmojiEnabled ? (
+              <>
+                <div className={styles.spacer16} />
+                <div className={styles.sectionDivider} />
+                <div className={styles.spacer16} />
+                <AssistantEditEmojiGroupSection
+                  emojiGroups={form.emojiGroups}
+                  emojiEnabled={form.emojiEnabled}
+                  selectedGroupIds={form.selectedEmojiGroupIds}
+                  onEmojiEnabledChange={form.setEmojiEnabled}
+                  onToggleGroup={form.toggleEmojiGroup}
+                />
+              </>
+            ) : null}
           </section>
 
           <section className={styles.sectionCard}>
@@ -104,18 +119,6 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
               onClearBinding={form.clearModelBinding}
             />
           </section>
-
-          {form.globalEmojiEnabled ? (
-            <section className={styles.sectionCard}>
-              <AssistantEditEmojiGroupSection
-                emojiGroups={form.emojiGroups}
-                emojiEnabled={form.emojiEnabled}
-                selectedGroupIds={form.selectedEmojiGroupIds}
-                onEmojiEnabledChange={form.setEmojiEnabled}
-                onToggleGroup={form.toggleEmojiGroup}
-              />
-            </section>
-          ) : null}
 
           <section className={styles.sectionCard}>
             <AssistantEditContextSection

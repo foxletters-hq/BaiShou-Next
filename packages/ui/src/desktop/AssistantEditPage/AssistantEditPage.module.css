@@ -84,6 +84,10 @@
 .spacer16 {
   height: 16px;
 }
+.sectionDivider {
+  height: 1px;
+  background: var(--border-subtle);
+}
 .spacer24 {
   height: 24px;
 }
