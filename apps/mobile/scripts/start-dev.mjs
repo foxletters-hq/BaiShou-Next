@@ -14,6 +14,7 @@ import {
   startReverseKeeper,
   waitForMetro
 } from './mobile-dev-env.mjs'
+import { resetWorkletsCache, rmMetroTmpCaches } from './clear-cache.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const mobileRoot = path.resolve(__dirname, '..')
@@ -27,6 +28,12 @@ if (hasAdbDevice()) {
 
 const devHost = getDevServerHost(lanHost)
 const env = devClientEnv()
+
+if (clearCache) {
+  console.log('\n🧹 清理 Metro / worklets 缓存（避免 .worklets ENOENT）…\n')
+  resetWorkletsCache()
+  rmMetroTmpCaches()
+}
 
 console.log(`\n🌐 Metro 局域网地址: http://${lanHost}:${METRO_PORT}`)
 if (devHost !== lanHost) {

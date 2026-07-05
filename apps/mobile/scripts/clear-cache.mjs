@@ -54,10 +54,19 @@ function rmMetroTmpCaches() {
   }
 }
 
-console.log('\n🧹 清理移动端构建缓存…\n')
-for (const target of targets) {
-  rm(target)
+function clearAllMobileCaches() {
+  console.log('\n🧹 清理移动端构建缓存…\n')
+  for (const target of targets) {
+    rm(target)
+  }
+  resetWorkletsCache()
+  rmMetroTmpCaches()
+  console.log('\n完成。\n')
 }
-resetWorkletsCache()
-rmMetroTmpCaches()
-console.log('\n完成。\n')
+
+export { resetWorkletsCache, rmMetroTmpCaches, rm, clearAllMobileCaches }
+
+const isMain = path.resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url)
+if (isMain) {
+  clearAllMobileCaches()
+}
