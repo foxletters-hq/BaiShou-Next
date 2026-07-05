@@ -90,10 +90,31 @@
 }
 
 .tabSwitcher {
+  position: relative;
   display: flex;
-  background: var(--theme-surface-container-low);
+  gap: 8px;
+  background: var(--bg-surface-normal, var(--theme-surface-container-low));
   border-radius: 12px;
-  padding: 4px;
+  padding: 6px;
+  overflow: hidden;
+}
+
+.tabIndicator {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 6px;
+  width: calc((100% - 12px - 8px) / 2);
+  border-radius: 8px;
+  background: var(--bg-surface, var(--theme-surface));
+  border: 1px solid var(--border-muted, var(--border-subtle));
+  box-shadow: var(--shadow-sm, 0 1px 4px rgba(0, 0, 0, 0.06));
+  transition: transform 0.28s ease;
+  pointer-events: none;
+}
+
+.tabIndicatorCommunity {
+  transform: translateX(calc(100% + 8px));
 }
 
 .tabBtn {
@@ -102,31 +123,44 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 10px 0;
-  border-radius: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s ease;
-  color: var(--theme-on-surface-variant);
+  color: var(--text-secondary, var(--theme-on-surface-variant));
+  position: relative;
+  z-index: 1;
+  transition: color 0.2s ease;
+}
+
+.tabBtn:hover {
+  color: var(--text-primary, var(--theme-on-surface));
+}
+
+.tabBtnActive {
+  color: var(--color-primary, var(--theme-primary));
 }
 
 .tabActive {
-  background: var(--theme-primary);
-  color: var(--theme-on-primary);
+  /* legacy alias — prefer tabBtnActive */
 }
 
 .tabText {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .tabBadge {
   font-size: 11px;
-  color: var(--theme-on-primary);
-  opacity: 0.7;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: var(--bg-surface-high, rgba(0, 0, 0, 0.06));
+  color: var(--text-secondary, var(--theme-outline));
 }
 
-.tabBtn:not(.tabActive) .tabBadge {
-  color: var(--theme-outline);
+.tabBtnActive .tabBadge {
+  background: color-mix(in srgb, var(--color-primary, var(--theme-primary)) 14%, transparent);
+  color: var(--color-primary, var(--theme-primary));
   opacity: 1;
 }
 

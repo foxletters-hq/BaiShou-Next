@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { normalizeToolManagementConfig, type EmojiToolConfig } from '@baishou/shared'
 import {
   View,
@@ -8,8 +8,10 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Platform
+  Platform,
+  Pressable
 } from 'react-native'
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import { BadgeCheck, ListOrdered, Minus, Plus, Smile, Store } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
 import { Switch } from '../Switch'
@@ -17,6 +19,9 @@ import { HelpTooltip } from '../Tooltip/HelpTooltip'
 import { EmojiSettingsEntryRow } from '../EmojiSettingsView'
 import { AgentToolCategoryIcon, AgentToolIcon } from '../icons/agent-tools-icons'
 import { AGENT_TOOL_ICON_SIZE, DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
+
+const TOOL_TAB_PADDING = 6
+const TOOL_TAB_GAP = 8
 
 export interface ToolManagementConfig {
   disabledToolIds: string[]
@@ -164,6 +169,22 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
   const { colors, tokens } = useNativeTheme()
 
   const [showCommunity, setShowCommunity] = useState(false)
+  const [toolTabsWidth, setToolTabsWidth] = useState(0)
+  const toolTabSlide = useSharedValue(0)
+
+  const toolTabWidth =
+    toolTabsWidth > 0 ? (toolTabsWidth - TOOL_TAB_PADDING * 2 - TOOL_TAB_GAP) / 2 : 0
+
+  useEffect(() => {
+    toolTabSlide.value = withTiming(showCommunity ? 1 : 0, { duration: 280 })
+  }, [showCommunity, toolTabSlide])
+
+  const toolTabIndicatorStyle = useAnimatedStyle(
+    () => ({
+      transform: [{ translateX: toolTabSlide.value * (toolTabWidth + TOOL_TAB_GAP) }]
+    }),
+    [toolTabWidth]
+  )
 
   const normalizedConfig = useMemo(() => normalizeToolManagementConfig(config), [config])
   const allTools = useMemo(() => getAgentTools(t), [t])
@@ -214,23 +235,42 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
 
   const renderTabSwitcher = () => (
     <View style={styles.tabSwitcherWrapper}>
-      <View style={[styles.tabSwitcher, { backgroundColor: colors.bgSurfaceNormal }]}>
-        <TouchableOpacity
-          style={[
-            styles.tabBtn,
-            !showCommunity && [styles.tabActive, { backgroundColor: colors.primary }]
-          ]}
-          onPress={() => setShowCommunity(false)}
-        >
+      <View
+        style={[styles.tabSwitcher, { backgroundColor: colors.bgSurfaceNormal }]}
+        onLayout={(event) => setToolTabsWidth(event.nativeEvent.layout.width)}
+      >
+        {toolTabWidth > 0 ? (
+          <Animated.View
+            style={[
+              styles.tabIndicator,
+              {
+                width: toolTabWidth,
+                backgroundColor: colors.bgSurface,
+                borderColor: colors.borderMuted,
+                ...Platform.select({
+                  ios: {
+                    shadowColor: '#000',
+                    shadowOpacity: 0.06,
+                    shadowRadius: 4,
+                    shadowOffset: { width: 0, height: 1 }
+                  },
+                  default: { elevation: 1 }
+                })
+              },
+              toolTabIndicatorStyle
+            ]}
+          />
+        ) : null}
+        <Pressable style={styles.tabBtn} onPress={() => setShowCommunity(false)}>
           <BadgeCheck
             size={16}
-            color={!showCommunity ? colors.textOnPrimary : colors.textSecondary}
+            color={!showCommunity ? colors.primary : colors.textSecondary}
             strokeWidth={DEFAULT_STROKE_WIDTH}
           />
           <Text
             style={[
               styles.tabText,
-              { color: !showCommunity ? colors.textOnPrimary : colors.textSecondary }
+              { color: !showCommunity ? colors.primary : colors.textSecondary }
             ]}
           >
             {t('agent.tools.built_in', '内置工具')}
@@ -239,41 +279,35 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
             style={[
               styles.tabBadge,
               {
-                backgroundColor: !showCommunity ? 'rgba(255,255,255,0.2)' : colors.bgSurfaceHigh
+                backgroundColor: !showCommunity ? colors.primaryLight : colors.bgSurfaceHigh
               }
             ]}
           >
             <Text
               style={[
                 styles.tabBadgeText,
-                { color: !showCommunity ? colors.textOnPrimary : colors.textSecondary }
+                { color: !showCommunity ? colors.primary : colors.textSecondary }
               ]}
             >
               {allTools.length}
             </Text>
           </View>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.tabBtn,
-            showCommunity && [styles.tabActive, { backgroundColor: colors.primary }]
-          ]}
-          onPress={() => setShowCommunity(true)}
-        >
+        </Pressable>
+        <Pressable style={styles.tabBtn} onPress={() => setShowCommunity(true)}>
           <Store
             size={16}
-            color={showCommunity ? colors.textOnPrimary : colors.textSecondary}
+            color={showCommunity ? colors.primary : colors.textSecondary}
             strokeWidth={DEFAULT_STROKE_WIDTH}
           />
           <Text
             style={[
               styles.tabText,
-              { color: showCommunity ? colors.textOnPrimary : colors.textSecondary }
+              { color: showCommunity ? colors.primary : colors.textSecondary }
             ]}
           >
-            {t('agent.tools.community', '社区工具')}
+            {t('agent.tools.community', '趣味工具')}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </View>
   )
@@ -534,8 +568,19 @@ const styles = StyleSheet.create({
   },
   tabSwitcher: {
     flexDirection: 'row',
+    gap: TOOL_TAB_GAP,
     borderRadius: 12,
-    padding: 4
+    padding: TOOL_TAB_PADDING,
+    overflow: 'hidden',
+    position: 'relative'
+  },
+  tabIndicator: {
+    position: 'absolute',
+    top: TOOL_TAB_PADDING,
+    bottom: TOOL_TAB_PADDING,
+    left: TOOL_TAB_PADDING,
+    borderRadius: 8,
+    borderWidth: StyleSheet.hairlineWidth
   },
   tabBtn: {
     flex: 1,
@@ -543,13 +588,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 8,
-    borderRadius: 10,
-    gap: 6
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    gap: 6,
+    zIndex: 1
   },
-  tabActive: {},
   tabText: {
-    fontSize: 13,
-    fontWeight: '600'
+    fontSize: 14,
+    fontWeight: '700'
   },
   tabBadge: {
     borderRadius: 10,

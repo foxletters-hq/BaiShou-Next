@@ -40,7 +40,10 @@ export const AgentToolsBuiltInList: React.FC<AgentToolsBuiltInListProps> = ({
       <div className={styles.tabSwitcherWrapper}>
         <div className={styles.tabSwitcher}>
           <div
-            className={`${styles.tabBtn} ${!showCommunity ? styles.tabActive : ''}`}
+            className={`${styles.tabIndicator} ${showCommunity ? styles.tabIndicatorCommunity : ''}`}
+          />
+          <div
+            className={`${styles.tabBtn} ${!showCommunity ? styles.tabBtnActive : ''}`}
             onClick={() => onShowCommunityChange(false)}
           >
             <BadgeCheck size={16} />
@@ -48,11 +51,11 @@ export const AgentToolsBuiltInList: React.FC<AgentToolsBuiltInListProps> = ({
             <span className={styles.tabBadge}>{allTools.length}</span>
           </div>
           <div
-            className={`${styles.tabBtn} ${showCommunity ? styles.tabActive : ''}`}
+            className={`${styles.tabBtn} ${showCommunity ? styles.tabBtnActive : ''}`}
             onClick={() => onShowCommunityChange(true)}
           >
             <Store size={16} />
-            <span className={styles.tabText}>{t('agent.tools.community', '社区工具')}</span>
+            <span className={styles.tabText}>{t('agent.tools.community', '趣味工具')}</span>
           </div>
         </div>
       </div>
