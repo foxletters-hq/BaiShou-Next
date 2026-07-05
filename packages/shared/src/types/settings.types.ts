@@ -149,7 +149,16 @@ export interface ToolManagementConfig {
  */
 export interface EmojiToolConfig {
   enabled: boolean // 是否启用表情包回复
-  emojis: EmojiItem[] // 用户上传的表情包列表
+  /** 表情包组列表（读取后应经 normalizeEmojiToolConfig 归一化） */
+  groups?: EmojiGroup[]
+  /** @deprecated 旧版扁平列表，读取时自动迁移到默认组 */
+  emojis?: EmojiItem[]
+}
+
+export interface EmojiGroup {
+  id: string
+  name: string
+  emojis: EmojiItem[]
 }
 
 export interface EmojiItem {

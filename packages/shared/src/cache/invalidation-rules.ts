@@ -64,7 +64,12 @@ export function resolveInvalidatedCacheKeys(event: DomainMutationEvent): CacheKe
     if (settingsKey === 'tts_settings' || settingsKey === 'tts_config') {
       return ['tts.synthesis']
     }
-    if (settingsKey === 'ai_providers' || settingsKey === 'global_models') {
+    if (
+      settingsKey === 'ai_providers' ||
+      settingsKey === 'global_models' ||
+      settingsKey === 'rag_config' ||
+      settingsKey === 'tool_management_config'
+    ) {
       return ['settings.aiProviders', 'mcp.toolContext']
     }
   }

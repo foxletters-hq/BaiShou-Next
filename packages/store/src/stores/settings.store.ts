@@ -4,7 +4,8 @@ import {
   i18n,
   resolveSummaryPromptLocale,
   resolveAppUiLanguageFromSystemLocale,
-  AUTO_INJECT_TIME_TOOL_ID
+  AUTO_INJECT_TIME_TOOL_ID,
+  normalizeEmojiToolConfig
 } from '@baishou/shared'
 import { useAssistantStore } from './assistant.store'
 import type {
@@ -221,8 +222,8 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
                 disabledToolIds: [AUTO_INJECT_TIME_TOOL_ID],
                 customConfigs: {},
                 emojiConfig: {
-                  enabled: true,
-                  emojis: []
+                  enabled: false,
+                  groups: []
                 }
               }
 
@@ -247,10 +248,10 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
                 toolManagementConfig: {
                   ...defaultToolManagementConfig,
                   ...toolManagementConfig,
-                  emojiConfig: {
+                  emojiConfig: normalizeEmojiToolConfig({
                     ...defaultToolManagementConfig.emojiConfig,
                     ...(toolManagementConfig?.emojiConfig || {})
-                  }
+                  })
                 },
                 mcpServerConfig: mcpServerConfig || defaultMcpServerConfig,
                 hotkeyConfig: hotkeyConfig || defaultHotkeyConfig,

@@ -82,6 +82,21 @@ export const AGENT_DB_COLUMN_PATCHES: AgentSchemaColumnPatch[] = [
     column: 'assistant_kind',
     ddl: `ALTER TABLE agent_assistants ADD COLUMN assistant_kind TEXT NOT NULL DEFAULT 'companion'`
   },
+  {
+    table: 'agent_assistants',
+    column: 'emoji_group_id',
+    ddl: `ALTER TABLE agent_assistants ADD COLUMN emoji_group_id TEXT`
+  },
+  {
+    table: 'agent_assistants',
+    column: 'emoji_enabled',
+    ddl: `ALTER TABLE agent_assistants ADD COLUMN emoji_enabled INTEGER NOT NULL DEFAULT 0`
+  },
+  {
+    table: 'agent_assistants',
+    column: 'emoji_group_ids',
+    ddl: `ALTER TABLE agent_assistants ADD COLUMN emoji_group_ids TEXT`
+  },
   // ── agent_sessions（原 0002_cache_token_usage）──
   {
     table: 'agent_sessions',

@@ -1,4 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import {
+  DEFAULT_ASSISTANT_COMPRESS_KEEP_TURNS,
+  DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD,
+  DEFAULT_ASSISTANT_CONTEXT_WINDOW
+} from '@baishou/shared'
 import { Database } from 'better-sqlite3'
 import { AssistantRepository, InsertAssistantInput } from '../assistant.repository'
 import { AppDatabase } from '../../types'
@@ -26,11 +31,11 @@ describe('AssistantRepository', () => {
         system_prompt TEXT,
         is_default INTEGER NOT NULL DEFAULT 0,
         is_pinned INTEGER NOT NULL DEFAULT 0,
-        context_window INTEGER NOT NULL DEFAULT 10,
+        context_window INTEGER NOT NULL DEFAULT ${DEFAULT_ASSISTANT_CONTEXT_WINDOW},
         provider_id TEXT NOT NULL,
         model_id TEXT NOT NULL,
-        compress_token_threshold INTEGER NOT NULL DEFAULT 60000,
-        compress_keep_turns INTEGER NOT NULL DEFAULT 3,
+        compress_token_threshold INTEGER NOT NULL DEFAULT ${DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD},
+        compress_keep_turns INTEGER NOT NULL DEFAULT ${DEFAULT_ASSISTANT_COMPRESS_KEEP_TURNS},
         sort_order INTEGER NOT NULL DEFAULT 0,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
@@ -63,6 +68,20 @@ describe('AssistantRepository', () => {
       expect(found?.providerId).toBe('openai')
       expect(found?.contextWindow).toBe(12)
       expect(found?.isDefault).toBe(false)
+    })
+
+    it('applies memory defaults when optional fields are omitted', async () => {
+      await repo.create({
+        id: 'ast-defaults',
+        name: 'Defaults',
+        providerId: 'openai',
+        modelId: 'gpt-4o'
+      })
+
+      const found = await repo.findById('ast-defaults')
+      expect(found?.contextWindow).toBe(DEFAULT_ASSISTANT_CONTEXT_WINDOW)
+      expect(found?.compressTokenThreshold).toBe(DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD)
+      expect(found?.compressKeepTurns).toBe(DEFAULT_ASSISTANT_COMPRESS_KEEP_TURNS)
     })
   })
 

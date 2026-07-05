@@ -43,4 +43,16 @@ describe('resolveInvalidatedCacheKeys', () => {
     expect(keys).toContain('avatar.user')
     expect(keys).toContain('mcp.toolContext')
   })
+
+  it('invalidates mcp tool context when rag or tool management settings change', () => {
+    const ragKeys = resolveInvalidatedCacheKeys(
+      event({ domain: 'settings', action: 'update', meta: { key: 'rag_config' } })
+    )
+    expect(ragKeys).toContain('mcp.toolContext')
+
+    const toolKeys = resolveInvalidatedCacheKeys(
+      event({ domain: 'settings', action: 'update', meta: { key: 'tool_management_config' } })
+    )
+    expect(toolKeys).toContain('mcp.toolContext')
+  })
 })

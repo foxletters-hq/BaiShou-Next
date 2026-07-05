@@ -267,8 +267,8 @@ export const DEFAULT_TOOL_MANAGEMENT_CONFIG: ToolManagementConfig = {
   disabledToolIds: ['auto_inject_time'],
   customConfigs: {},
   emojiConfig: {
-    enabled: true,
-    emojis: []
+    enabled: false,
+    groups: []
   }
 }
 
