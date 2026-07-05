@@ -1070,9 +1070,26 @@ export function useAgentStream(
     t
   ])
 
+  const confirmMessageRetry = useCallback(async () => {
+    return dialog.confirm(
+      t(
+        'agent.chat.retry_confirm',
+        '重新发送将删除此消息之后的对话记录，此操作不可撤销。确定继续吗？'
+      ),
+      {
+        title: t('agent.chat.retry', '重新发送/生成'),
+        confirmText: t('common.confirm', '确定'),
+        destructive: true
+      }
+    )
+  }, [dialog, t])
+
   const handleRegenerate = useCallback(
     async (messageId: string) => {
       if (!currentSessionId || !services) return
+
+      const confirmed = await confirmMessageRetry()
+      if (!confirmed) return
 
       if (
         !isConfiguredProviderId(currentProviderId) ||
@@ -1145,6 +1162,7 @@ export function useAgentStream(
       currentModelId,
       toast,
       t,
+      confirmMessageRetry,
       acquireRetryAction,
       releaseRetryActionIfSetupFailed,
       streamFromExistingUserMessage,
@@ -1158,6 +1176,9 @@ export function useAgentStream(
       if (!currentSessionId || !services?.snapshotRepo) return
       const storeMsg = messages.find((m) => m.id === messageId)
       if (!storeMsg || storeMsg.role !== 'user') return
+
+      const confirmed = await confirmMessageRetry()
+      if (!confirmed) return
 
       const epoch = acquireRetryAction()
       if (epoch === null) return
@@ -1202,11 +1223,10 @@ export function useAgentStream(
       streamFromExistingUserMessage,
       truncateSessionAndSyncUi,
       toast,
-      t
+      t,
+      confirmMessageRetry
     ]
   )
-
-  /** 用户消息：编辑后截断并重发（对齐 desktop handleResendEdit / agent:edit-message） */
   const handleEditMessage = useCallback(
     async (messageId: string, newContent: string) => {
       if (!currentSessionId || !services?.snapshotRepo || !newContent.trim()) return

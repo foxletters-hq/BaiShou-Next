@@ -37,9 +37,21 @@ export function useMessageActions({
 
   const bumpRetryEpoch = () => ++retryEpochRef.current
 
+  const confirmMessageRetry = async () => {
+    return dialog.confirm(
+      t(
+        'agent.chat.retry_confirm',
+        '重新发送将删除此消息之后的对话记录，此操作不可撤销。确定继续吗？'
+      ),
+      t('agent.chat.retry', '重新发送/生成')
+    )
+  }
+
   /** 重新生成：找到 AI 消息对应的上一条用户消息并重发 */
-  const handleRegenerate = (msg: any) => {
+  const handleRegenerate = async (msg: any) => {
     if (msg.role !== 'assistant' || !sessionId) return
+    const confirmed = await confirmMessageRetry()
+    if (!confirmed) return
     const msgIndex = chat.messages.findIndex((m: any) => m.id === msg.id)
     let userMsgId: string | null = null
     for (let i = msgIndex - 1; i >= 0; i--) {
@@ -102,8 +114,10 @@ export function useMessageActions({
   }
 
   /** 重发用户消息（不修改内容） */
-  const handleResend = (msg: any) => {
+  const handleResend = async (msg: any) => {
     if (msg.role !== 'user' || !sessionId) return
+    const confirmed = await confirmMessageRetry()
+    if (!confirmed) return
     const epoch = bumpRetryEpoch()
     chat.truncateMessages(msg.id)
     chat.setStreamSessionId(sessionId)
