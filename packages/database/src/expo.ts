@@ -38,6 +38,7 @@ import { withExpoAgentDatabaseLock, waitForExpoAgentDatabaseIdle } from './expo-
 import { logger } from '@baishou/shared'
 export * from './migration-context'
 export * from './sqlite-corruption.util'
+export * from './expo-agent-db.lock'
 export * from './expo-agent-db.recovery'
 
 export type ExpoDatabaseInstallResult = {
@@ -87,6 +88,12 @@ export async function installExpoDatabaseSchema(expoDb: ExpoSqliteDatabase): Pro
     EMBEDDED_AGENT_MIGRATIONS
   )
   await migrationService.runMigrations()
+  try {
+    await expoDb.execAsync('PRAGMA journal_mode=WAL')
+    await expoDb.execAsync('PRAGMA busy_timeout=15000')
+  } catch (e) {
+    logger.warn('[ExpoSchema] Agent DB PRAGMA 初始化失败，继续使用默认配置:', e as Error)
+  }
   const { drizzleDb, driver } = initExpoDatabase(expoDb)
   await withExpoAgentDatabaseLock(drizzleDb, () => dropLegacyAgentShadowTables(expoDb))
   return { drizzleDb, driver }
