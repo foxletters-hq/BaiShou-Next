@@ -10,7 +10,7 @@ import {
   TextInput,
   Platform
 } from 'react-native'
-import { BadgeCheck, ListOrdered, Minus, Plus, Rocket, Smile, Store } from 'lucide-react-native'
+import { BadgeCheck, ListOrdered, Minus, Plus, Smile, Store } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
 import { Switch } from '../Switch'
 import { HelpTooltip } from '../Tooltip/HelpTooltip'

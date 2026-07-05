@@ -346,6 +346,7 @@ export const AgentScreen = () => {
     enabled: boolean
     emojis: Array<{ id: string; name: string; relativePath: string }>
   }>({ enabled: true, emojis: [] })
+  const [pendingEmojiUris, setPendingEmojiUris] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (!services) return
@@ -395,6 +396,51 @@ export const AgentScreen = () => {
     },
     [emojiConfig.emojis]
   )
+
+  useEffect(() => {
+    if (!services || pendingEmojis.length === 0) {
+      setPendingEmojiUris({})
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const next: Record<string, string> = {}
+      for (const pending of pendingEmojis) {
+        const emoji = resolvePendingEmoji(pending.emojiId)
+        if (!emoji) continue
+        try {
+          next[pending.emojiId] = await services.attachmentManager.resolveEmojiPath(
+            emoji.relativePath
+          )
+        } catch (e) {
+          console.warn('[AgentScreen] Failed to resolve pending emoji path:', emoji.relativePath, e)
+        }
+      }
+      if (!cancelled) {
+        setPendingEmojiUris(next)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [pendingEmojis, services, resolvePendingEmoji])
+
+  const pendingEmojiAttachments = useMemo(() => {
+    if (pendingEmojis.length === 0 || emojiConfig.emojis.length === 0) return []
+    return pendingEmojis
+      .map((pending) => {
+        const emoji = resolvePendingEmoji(pending.emojiId)
+        const uri = pendingEmojiUris[pending.emojiId]
+        if (!emoji || !uri) return null
+        return {
+          id: emoji.id,
+          fileName: emoji.name || emoji.id,
+          filePath: uri,
+          isImage: true
+        }
+      })
+      .filter((item): item is NonNullable<typeof item> => item != null)
+  }, [pendingEmojis, emojiConfig.emojis, resolvePendingEmoji, pendingEmojiUris])
 
   const loadMoreLockRef = useRef(false)
 
@@ -1016,7 +1062,8 @@ export const AgentScreen = () => {
     return Boolean(
       lastMessage.content?.trim() ||
       lastMessage.reasoning?.trim() ||
-      (lastMessage.toolInvocations?.length ?? 0) > 0
+      (lastMessage.toolInvocations?.length ?? 0) > 0 ||
+      (lastMessage.attachments?.length ?? 0) > 0
     )
   }, [lastMessage])
 
@@ -1127,7 +1174,11 @@ export const AgentScreen = () => {
   const liveAssistantActive =
     showStreamingFooter || streamPresentationLinger || holdLivePresentation
   const hasStreamingBody = Boolean(
-    streamingText.trim() || streamingReasoning.trim() || activeTool || completedTools.length > 0
+    streamingText.trim() ||
+      streamingReasoning.trim() ||
+      activeTool ||
+      completedTools.length > 0 ||
+      pendingEmojiAttachments.length > 0
   )
 
   const chatRows = useMemo(() => {
@@ -1149,7 +1200,9 @@ export const AgentScreen = () => {
       isTextStreaming: bubbleTextStreaming,
       isThinkStreaming: !assistantPersistedInList && streamingThinkActive && bubbleTextStreaming,
       activeToolName: activeToolDisplayName,
-      completedTools: streamingCompletedTools
+      completedTools: streamingCompletedTools,
+      attachments:
+        pendingEmojiAttachments.length > 0 ? pendingEmojiAttachments : undefined
     }),
     [
       streamingText,
@@ -1158,7 +1211,8 @@ export const AgentScreen = () => {
       streamingThinkActive,
       assistantPersistedInList,
       activeToolDisplayName,
-      streamingCompletedTools
+      streamingCompletedTools,
+      pendingEmojiAttachments
     ]
   )
 
@@ -1174,6 +1228,7 @@ export const AgentScreen = () => {
           isTextStreaming={bubbleTextStreaming}
           activeToolName={activeToolDisplayName}
           completedTools={streamingCompletedTools}
+          attachments={pendingEmojiAttachments}
           aiProfile={chatAiProfile}
           invertMetaOverBackground={hasChatBackground}
         />
@@ -1183,6 +1238,7 @@ export const AgentScreen = () => {
       bubbleTextStreaming,
       activeToolDisplayName,
       streamingCompletedTools,
+      pendingEmojiAttachments,
       chatAiProfile,
       hasChatBackground
     ]
@@ -1271,49 +1327,13 @@ export const AgentScreen = () => {
     messages.length
   ])
 
-  const pendingEmojiElements = useMemo(() => {
-    if (pendingEmojis.length === 0 || emojiConfig.emojis.length === 0) return null
-    return pendingEmojis.map((pending, idx) => {
-      const emoji = resolvePendingEmoji(pending.emojiId)
-      if (!emoji) return null
-      // 使用本地文件路径（mobile 需要解析到 file:// URI）
-      const emojiPath = emoji.relativePath
-      return (
-        <View key={`pending-emoji-${idx}`} style={styles.emojiOnlyRow}>
-          <View style={styles.emojiOnlyAvatar}>
-            {shouldShowAssistantEmoji(chatAiProfile.avatarPath, chatAiProfile.resolvedAvatarUri, chatAiProfile.emoji) ? (
-              <View style={styles.emojiOnlyAvatarFallback}>
-                <Text style={styles.emojiOnlyAvatarText}>
-                  {chatAiProfile.emoji || '🤖'}
-                </Text>
-              </View>
-            ) : (
-              <Image
-                source={resolveNativeAssistantAvatarSource(chatAiProfile.avatarPath, chatAiProfile.resolvedAvatarUri)}
-                style={styles.emojiOnlyAvatarImg}
-              />
-            )}
-          </View>
-          <View style={styles.emojiOnlyImages}>
-            <Image
-              source={{ uri: emojiPath.startsWith('/') ? `file://${emojiPath}` : emojiPath }}
-              style={styles.emojiOnlyImg}
-              resizeMode="contain"
-            />
-          </View>
-        </View>
-      )
-    })
-  }, [pendingEmojis, emojiConfig.emojis, resolvePendingEmoji, chatAiProfile])
-
   const listFooter = useMemo(
     () => (
       <View>
-        {pendingEmojiElements}
         <Animated.View style={listSpacerAnimatedStyle} />
       </View>
     ),
-    [pendingEmojiElements, listSpacerAnimatedStyle]
+    [listSpacerAnimatedStyle]
   )
 
   const renderEmptyState = () => (
@@ -1491,7 +1511,8 @@ export const AgentScreen = () => {
                         isTextStreaming: bubbleTextStreaming,
                         isThinkStreaming: assistantPersistedInList
                           ? bubbleTextStreaming && Boolean((item.reasoning || '').trim())
-                          : liveStreamProps.isThinkStreaming
+                          : liveStreamProps.isThinkStreaming,
+                        attachments: liveStreamProps.attachments
                       }
                     : undefined
 

@@ -1,3 +1,5 @@
+import type { MockChatAttachment } from '@baishou/shared'
+
 export interface ChatBubbleMessage {
   id?: string
   role: 'user' | 'assistant' | 'system' | 'tool'
@@ -57,6 +59,8 @@ export interface ChatBubbleProps {
       result?: unknown
       args?: unknown
     }>
+    /** 流式阶段尚未落库的表情包附件 */
+    attachments?: MockChatAttachment[]
   }
   /** 流式/桥接期间隐藏操作栏与 token 行，避免结束时布局突增 */
   deferAssistantChrome?: boolean

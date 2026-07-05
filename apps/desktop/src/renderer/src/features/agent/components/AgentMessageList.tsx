@@ -1,12 +1,11 @@
 import React, { useMemo, useCallback, useEffect, useRef, useState } from 'react'
-import { mapAttachmentsFromParts } from '@baishou/shared'
+import { mapAttachmentsFromParts, resolveAttachmentImageSrc } from '@baishou/shared'
 import {
   ChatBubble,
   StreamingBubble,
   CompressionDivider,
   CompressionActivityBar,
-  resolveActiveToolDisplayName,
-  resolveDesktopAssistantAvatarSrc
+  resolveActiveToolDisplayName
 } from '@baishou/ui'
 import { useSettingsStore } from '@baishou/store'
 import { useMessageActions } from '../hooks/useMessageActions'
@@ -248,6 +247,28 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
     [stream.activeTool, settings.webSearchConfig, t]
   )
 
+  const pendingEmojiAttachments = useMemo(() => {
+    const emojiConfig = settings.toolManagementConfig?.emojiConfig
+    const emojis = emojiConfig?.emojis
+    const pending = stream.pendingEmojis ?? []
+    if (!emojis?.length || !pending.length) return []
+
+    return pending
+      .map((pendingEmoji) => {
+        const emoji = resolvePendingEmoji(pendingEmoji.emojiId, emojis)
+        if (!emoji) return null
+        return {
+          id: emoji.id,
+          fileName: emoji.name || emoji.id,
+          filePath: resolveAttachmentImageSrc(
+            `local:///${emoji.relativePath.replace(/\\/g, '/')}`
+          ),
+          isImage: true
+        }
+      })
+      .filter((item): item is NonNullable<typeof item> => item != null)
+  }, [stream.pendingEmojis, settings.toolManagementConfig?.emojiConfig])
+
   const lastMessage = chat.messages[chat.messages.length - 1]
   const assistantPersistedDuringBridge =
     stream.isBridgeActive &&
@@ -337,73 +358,40 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
               costMicros: msg.costMicros
             }
 
-            // 纯表情包消息：assistant 角色且只有图片附件、没有文本/推理/工具调用
-            const isEmojiOnlyMessage =
-              msg.role === 'assistant' &&
-              bubbleAttachments &&
-              bubbleAttachments.length > 0 &&
-              bubbleAttachments.every((att: any) => att.isImage) &&
-              !msg.content?.trim() &&
-              !msg.reasoning?.trim() &&
-              (!msg.toolInvocations || msg.toolInvocations.length === 0)
-
             return (
               <React.Fragment key={msg.id}>
-                {isEmojiOnlyMessage ? (
-                  <div className={styles.emojiOnlyRow}>
-                    <div className={styles.emojiOnlyAvatar}>
-                      <img
-                        src={resolveDesktopAssistantAvatarSrc(currentAssistant?.avatarPath)}
-                        alt="avatar"
-                        className={styles.emojiOnlyAvatarImg}
-                      />
-                    </div>
-                    <div className={styles.emojiOnlyImages}>
-                      {bubbleAttachments.map((att: any) => (
-                        <img
-                          key={att.id || att.fileName}
-                          src={att.filePath}
-                          alt={att.fileName || 'emoji'}
-                          className={styles.emojiOnlyImg}
-                          draggable={false}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <ChatBubble
-                    message={bubbleMessage}
-                    userProfile={{
-                      nickname: userProfile?.nickname || 'User',
-                      avatarPath: userProfile?.avatarPath
-                    }}
-                    aiProfile={{
-                      name: currentAssistant?.name || 'AI',
-                      avatarPath: currentAssistant?.avatarPath,
-                      emoji: currentAssistant?.emoji
-                    }}
-                    onShowContext={
-                      msg.role === 'user' || msg.role === 'assistant'
-                        ? (m) => handleShowContext(m, msg)
-                        : undefined
-                    }
-                    onReadAloud={
-                      msg.role === 'assistant'
-                        ? (content) => actions.handleReadAloud(content, msg.id)
-                        : undefined
-                    }
-                    isTtsPlaying={tts.ttsPlayingMsgId === msg.id}
-                    onRegenerate={
-                      msg.role === 'assistant' ? () => actions.handleRegenerate(msg) : undefined
-                    }
-                    onEdit={() => {}}
-                    onSaveEdit={(newContent) => actions.handleSaveEdit(msg, newContent)}
-                    onResendEdit={(newContent) => actions.handleResendEdit(msg, newContent)}
-                    onResend={msg.role === 'user' ? () => actions.handleResend(msg) : undefined}
-                    onDelete={() => actions.handleDelete(msg)}
-                    onBranch={msg.role === 'assistant' ? () => actions.handleBranch(msg) : undefined}
-                  />
-                )}
+                <ChatBubble
+                  message={bubbleMessage}
+                  userProfile={{
+                    nickname: userProfile?.nickname || 'User',
+                    avatarPath: userProfile?.avatarPath
+                  }}
+                  aiProfile={{
+                    name: currentAssistant?.name || 'AI',
+                    avatarPath: currentAssistant?.avatarPath,
+                    emoji: currentAssistant?.emoji
+                  }}
+                  onShowContext={
+                    msg.role === 'user' || msg.role === 'assistant'
+                      ? (m) => handleShowContext(m, msg)
+                      : undefined
+                  }
+                  onReadAloud={
+                    msg.role === 'assistant'
+                      ? (content) => actions.handleReadAloud(content, msg.id)
+                      : undefined
+                  }
+                  isTtsPlaying={tts.ttsPlayingMsgId === msg.id}
+                  onRegenerate={
+                    msg.role === 'assistant' ? () => actions.handleRegenerate(msg) : undefined
+                  }
+                  onEdit={() => {}}
+                  onSaveEdit={(newContent) => actions.handleSaveEdit(msg, newContent)}
+                  onResendEdit={(newContent) => actions.handleResendEdit(msg, newContent)}
+                  onResend={msg.role === 'user' ? () => actions.handleResend(msg) : undefined}
+                  onDelete={() => actions.handleDelete(msg)}
+                  onBranch={msg.role === 'assistant' ? () => actions.handleBranch(msg) : undefined}
+                />
                 {(showLiveCompressionActivity || showCompressionDivider) && (
                   <div className={styles.compressionAnchor}>
                     {showLiveCompressionActivity ? (
@@ -426,39 +414,6 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
           })}
 
           {(() => {
-            // 渲染流式期间的 pending emoji 图片（在 StreamingBubble 之前显示，不包裹气泡）
-            const emojiConfig = settings.toolManagementConfig?.emojiConfig
-            const emojis = emojiConfig?.emojis
-            const pendingEmojis = stream.pendingEmojis ?? []
-            if (pendingEmojis.length === 0 || !emojis || emojis.length === 0) return null
-
-            return pendingEmojis.map((pending, idx) => {
-              const emoji = resolvePendingEmoji(pending.emojiId, emojis)
-              if (!emoji) return null
-              const imgUrl = `local:///${emoji.relativePath.replace(/\\/g, '/')}`
-              return (
-                <div key={`pending-emoji-${idx}`} className={styles.emojiOnlyRow}>
-                  <div className={styles.emojiOnlyAvatar}>
-                    <img
-                      src={resolveDesktopAssistantAvatarSrc(currentAssistant?.avatarPath)}
-                      alt="avatar"
-                      className={styles.emojiOnlyAvatarImg}
-                    />
-                  </div>
-                  <div className={styles.emojiOnlyImages}>
-                    <img
-                      src={imgUrl}
-                      alt={emoji.name || 'emoji'}
-                      className={styles.emojiOnlyImg}
-                      draggable={false}
-                    />
-                  </div>
-                </div>
-              )
-            })
-          })()}
-
-          {(() => {
             const showStreamingBubble =
               (stream.isStreaming || stream.isBridgeActive) &&
               !assistantPersistedDuringBridge &&
@@ -466,7 +421,8 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
                 Boolean(stream.text?.trim()) ||
                 Boolean(stream.reasoning?.trim()) ||
                 stream.activeTool ||
-                stream.completedTools.length > 0)
+                stream.completedTools.length > 0 ||
+                pendingEmojiAttachments.length > 0)
 
             return showStreamingBubble ? (
               <StreamingBubble
@@ -476,6 +432,7 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
                 isTextStreaming={stream.isStreaming}
                 activeToolName={activeToolDisplayName}
                 completedTools={stream.completedTools}
+                attachments={pendingEmojiAttachments}
                 aiProfile={{
                   name: currentAssistant?.name || 'AI',
                   avatarPath: currentAssistant?.avatarPath,
