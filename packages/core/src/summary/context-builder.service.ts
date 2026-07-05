@@ -1,5 +1,6 @@
 import { Diary, Summary, SummaryType, ContextResult, formatLocalDate } from '@baishou/shared'
 import { DiaryRepository, SummaryRepository } from '@baishou/database'
+import { quarterlySummariesForMonthCascade } from './summary-cascade.util'
 
 export class ContextBuilderService {
   constructor(
@@ -48,7 +49,7 @@ export class ContextBuilderService {
       }
     }
 
-    for (const q of qList) markMonthsCovered(q)
+    for (const q of quarterlySummariesForMonthCascade(qList)) markMonthsCovered(q)
 
     const visibleMonths = mList.filter((m) => !coveredMonthKeys.has(formatMonthKey(m.startDate)))
 

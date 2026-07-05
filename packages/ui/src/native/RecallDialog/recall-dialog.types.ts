@@ -1,3 +1,5 @@
+import type { SharedMemoryCopyPreview } from '@baishou/shared'
+
 export interface RecallItem {
   id: string
   type: 'diary' | 'memory'
@@ -20,6 +22,8 @@ export interface NativeRecallDialogProps {
   onMonthsChanged?: (val: number) => void
   onCopyContext?: () => void
   onCopyDiarySnippet?: (snippet: string) => void
+  copyPreview?: SharedMemoryCopyPreview | null
+  copyPreviewLoading?: boolean
 }
 
 export type RecallTab = 'diary' | 'memory'

@@ -1,7 +1,8 @@
 import React from 'react'
 import { View, Text, TouchableOpacity } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { CheckSquare, Trash2 } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import type { AttachmentManagementViewModel } from './useAttachmentManagementView'
 import { attachmentManagementStyles as styles } from './attachment-management.styles'
 import { OverviewCard } from './OverviewCard'
@@ -115,7 +116,7 @@ export const SessionAttachmentPane: React.FC<{ vm: AttachmentManagementViewModel
               onPress={() => void handleDeleteGroups()}
               disabled={isDeleting}
             >
-              <MaterialIcons name="delete" size={16} color={colors.textOnPrimary} />
+              <Trash2 size={16} color={colors.textOnPrimary} strokeWidth={DEFAULT_STROKE_WIDTH} />
               <Text style={[styles.actionBtnText, { color: colors.textOnPrimary }]}>
                 {t('settings.attachment_delete_selected', '删除已选 ($count)').replace(
                   '$count',
@@ -129,7 +130,7 @@ export const SessionAttachmentPane: React.FC<{ vm: AttachmentManagementViewModel
               style={[styles.actionBtn, { borderColor: colors.borderSubtle }]}
               onPress={handleSelectAll}
             >
-              <MaterialIcons name="check-box" size={16} color={colors.textSecondary} />
+              <CheckSquare size={16} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
               <Text style={[styles.actionBtnText, { color: colors.textPrimary }]}>
                 {selectedIds.size === pagedSessionList.length
                   ? t('settings.attachment_deselect_all', '取消全选')

@@ -9,9 +9,10 @@ import {
   ScrollView
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { MaterialIcons } from '@expo/vector-icons'
+import { Check } from 'lucide-react-native'
 import { WEATHER_IDS, weatherI18nKey, normalizeWeatherId, type WeatherId } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { WeatherEmoji } from '../WeatherIcon'
 
 export interface NativeWeatherPickerProps {
@@ -142,7 +143,7 @@ export const WeatherPicker: React.FC<NativeWeatherPickerProps> = ({ value, onCha
                       {label}
                     </Text>
                     {active ? (
-                      <MaterialIcons name="check" size={18} color={colors.primary} />
+                      <Check size={18} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                     ) : (
                       <View style={styles.checkPlaceholder} />
                     )}

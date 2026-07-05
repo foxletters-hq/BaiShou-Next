@@ -117,7 +117,8 @@ export async function buildMobileStreamUserConfig(
       typeof behaviorConfig?.agentGuidelines === 'string' &&
       behaviorConfig.agentGuidelines.trim().length > 0
         ? behaviorConfig.agentGuidelines.trim()
-        : undefined
+        : undefined,
+    emojiConfig: toolManagementConfig?.emojiConfig || undefined
   }
 }
 

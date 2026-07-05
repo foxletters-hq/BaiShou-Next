@@ -8,6 +8,7 @@ import {
   normalizeChatBackgroundOverlayOpacity
 } from '@baishou/shared'
 import { DEFAULT_WEB_SEARCH_CONFIG } from '@baishou/database'
+import type { PendingEmoji } from '../hooks/useAgentStream'
 import {
   View,
   StyleSheet,
@@ -21,12 +22,13 @@ import {
   Keyboard,
   ImageBackground,
   ScrollView,
+  Image,
   type NativeScrollEvent,
   type NativeSyntheticEvent
 } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as Clipboard from 'expo-clipboard'
-import { MaterialIcons } from '@expo/vector-icons'
+import { ChevronDown, Sparkles } from 'lucide-react-native'
 import {
   InputBar,
   type InputBarRef,
@@ -34,7 +36,9 @@ import {
   RecallDialog,
   ChatCostDialog,
   PromptShortcutSheet,
-  resolveActiveToolDisplayName
+  resolveActiveToolDisplayName,
+  resolveNativeAssistantAvatarSource,
+  shouldShowAssistantEmoji
 } from '@baishou/ui/native'
 import { useNativeTheme, useNativeToast } from '@baishou/ui/native'
 import { useAgentStore, useAgentNavigationStore, useContextCompressionStore } from '@baishou/store'
@@ -83,6 +87,8 @@ import { waitForVaultEcosystemResync } from '../services/mobile-vault-resync.ser
 import { useAgentComposerDraftKey } from '../hooks/useAgentComposerDraftKey'
 import { mobileComposerDraftStorage } from '../lib/mobile-composer-draft.storage'
 import { useThrottledFocusRefresh } from '../hooks/useThrottledFocusRefresh'
+import { usePersistedSharedMemoryLookback } from '../hooks/usePersistedSharedMemoryLookback'
+import { useSharedMemoryCopyPreview } from '../hooks/useSharedMemoryCopyPreview'
 
 /** 底部输入栏 + 工具条的大致高度，用于「回到底部」悬浮按钮定位 */
 const INPUT_DOCK_HEIGHT = 136
@@ -114,7 +120,8 @@ export const AgentScreen = () => {
   const { colors, isDark } = useNativeTheme()
   const tabBarHeight = useBottomTabBarHeight()
   const [isBubbleEditing, setIsBubbleEditing] = useState(false)
-  const [recallLookbackMonths, setRecallLookbackMonths] = useState(1)
+  const { lookbackMonths: recallLookbackMonths, setLookbackMonths: setRecallLookbackMonths } =
+    usePersistedSharedMemoryLookback()
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   const [inputDockHeight, setInputDockHeight] = useState(INPUT_DOCK_HEIGHT)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -307,6 +314,7 @@ export const AgentScreen = () => {
     tokenUsage,
     activeTool,
     completedTools,
+    pendingEmojis,
     handleSend,
     handleStop,
     handleRegenerate,
@@ -332,6 +340,108 @@ export const AgentScreen = () => {
   )
 
   const [showLoadMoreBanner, setShowLoadMoreBanner] = useState(false)
+
+  // Emoji config for resolving pending emoji IDs during streaming
+  const [emojiConfig, setEmojiConfig] = useState<{
+    enabled: boolean
+    emojis: Array<{ id: string; name: string; relativePath: string }>
+  }>({ enabled: true, emojis: [] })
+  const [pendingEmojiUris, setPendingEmojiUris] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    if (!services) return
+    void (async () => {
+      try {
+        const toolConfig = await services.settingsManager.get<any>('tool_management_config')
+        if (toolConfig?.emojiConfig) {
+          setEmojiConfig(toolConfig.emojiConfig)
+        }
+      } catch {
+        // Ignore errors loading emoji config
+      }
+    })()
+  }, [services])
+
+  /**
+   * 模糊匹配 emoji：与 persist 层的 findEmojiById 逻辑保持一致
+   */
+  const resolvePendingEmoji = useCallback(
+    (query: string) => {
+      const emojis = emojiConfig.emojis
+      if (!emojis || emojis.length === 0) return undefined
+      const normalizedQuery = query.trim().toLowerCase()
+
+      const exactMatch = emojis.find((e) => e.id === normalizedQuery || e.id.toLowerCase() === normalizedQuery)
+      if (exactMatch) return exactMatch
+
+      const idNoExtMatch = emojis.find((e) => e.id.replace(/\.[^.]+$/, '').toLowerCase() === normalizedQuery)
+      if (idNoExtMatch) return idNoExtMatch
+
+      const normalizeName = (s: string) => s.toLowerCase().replace(/[_\s]+/g, ' ').trim()
+      const normalizedNameQuery = normalizeName(normalizedQuery)
+      const nameMatch = emojis.find((e) => normalizeName(e.name) === normalizedNameQuery)
+      if (nameMatch) return nameMatch
+
+      const idContainsMatch = emojis.find((e) =>
+        e.id.replace(/\.[^.]+$/, '').toLowerCase().includes(normalizedQuery)
+      )
+      if (idContainsMatch) return idContainsMatch
+
+      const nameContainsMatch = emojis.find((e) =>
+        normalizeName(e.name).includes(normalizedNameQuery)
+      )
+      if (nameContainsMatch) return nameContainsMatch
+
+      return undefined
+    },
+    [emojiConfig.emojis]
+  )
+
+  useEffect(() => {
+    if (!services || pendingEmojis.length === 0) {
+      setPendingEmojiUris({})
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const next: Record<string, string> = {}
+      for (const pending of pendingEmojis) {
+        const emoji = resolvePendingEmoji(pending.emojiId)
+        if (!emoji) continue
+        try {
+          next[pending.emojiId] = await services.attachmentManager.resolveEmojiPath(
+            emoji.relativePath
+          )
+        } catch (e) {
+          console.warn('[AgentScreen] Failed to resolve pending emoji path:', emoji.relativePath, e)
+        }
+      }
+      if (!cancelled) {
+        setPendingEmojiUris(next)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [pendingEmojis, services, resolvePendingEmoji])
+
+  const pendingEmojiAttachments = useMemo(() => {
+    if (pendingEmojis.length === 0 || emojiConfig.emojis.length === 0) return []
+    return pendingEmojis
+      .map((pending) => {
+        const emoji = resolvePendingEmoji(pending.emojiId)
+        const uri = pendingEmojiUris[pending.emojiId]
+        if (!emoji || !uri) return null
+        return {
+          id: emoji.id,
+          fileName: emoji.name || emoji.id,
+          filePath: uri,
+          isImage: true
+        }
+      })
+      .filter((item): item is NonNullable<typeof item> => item != null)
+  }, [pendingEmojis, emojiConfig.emojis, resolvePendingEmoji, pendingEmojiUris])
+
   const loadMoreLockRef = useRef(false)
 
   const {
@@ -348,6 +458,9 @@ export const AgentScreen = () => {
     recallSearchMode,
     toggleRecallSearchMode
   } = useAgentUI()
+
+  const { preview: recallCopyPreview, loading: recallCopyPreviewLoading } =
+    useSharedMemoryCopyPreview(recallLookbackMonths, showRecallSheet)
 
   const {
     showScrollButton,
@@ -630,7 +743,11 @@ export const AgentScreen = () => {
         systemPrompt: a.systemPrompt,
         providerId: a.providerId,
         modelId: a.modelId,
-        assistantKind: a.assistantKind
+        assistantKind: a.assistantKind,
+        contextWindow: a.contextWindow,
+        compressTokenThreshold: a.compressTokenThreshold,
+        compressKeepTurns: a.compressKeepTurns,
+        compressSystemPrompt: a.compressSystemPrompt
       })),
     [assistants]
   )
@@ -945,7 +1062,8 @@ export const AgentScreen = () => {
     return Boolean(
       lastMessage.content?.trim() ||
       lastMessage.reasoning?.trim() ||
-      (lastMessage.toolInvocations?.length ?? 0) > 0
+      (lastMessage.toolInvocations?.length ?? 0) > 0 ||
+      (lastMessage.attachments?.length ?? 0) > 0
     )
   }, [lastMessage])
 
@@ -1056,7 +1174,11 @@ export const AgentScreen = () => {
   const liveAssistantActive =
     showStreamingFooter || streamPresentationLinger || holdLivePresentation
   const hasStreamingBody = Boolean(
-    streamingText.trim() || streamingReasoning.trim() || activeTool || completedTools.length > 0
+    streamingText.trim() ||
+      streamingReasoning.trim() ||
+      activeTool ||
+      completedTools.length > 0 ||
+      pendingEmojiAttachments.length > 0
   )
 
   const chatRows = useMemo(() => {
@@ -1078,7 +1200,9 @@ export const AgentScreen = () => {
       isTextStreaming: bubbleTextStreaming,
       isThinkStreaming: !assistantPersistedInList && streamingThinkActive && bubbleTextStreaming,
       activeToolName: activeToolDisplayName,
-      completedTools: streamingCompletedTools
+      completedTools: streamingCompletedTools,
+      attachments:
+        pendingEmojiAttachments.length > 0 ? pendingEmojiAttachments : undefined
     }),
     [
       streamingText,
@@ -1087,7 +1211,8 @@ export const AgentScreen = () => {
       streamingThinkActive,
       assistantPersistedInList,
       activeToolDisplayName,
-      streamingCompletedTools
+      streamingCompletedTools,
+      pendingEmojiAttachments
     ]
   )
 
@@ -1103,6 +1228,7 @@ export const AgentScreen = () => {
           isTextStreaming={bubbleTextStreaming}
           activeToolName={activeToolDisplayName}
           completedTools={streamingCompletedTools}
+          attachments={pendingEmojiAttachments}
           aiProfile={chatAiProfile}
           invertMetaOverBackground={hasChatBackground}
         />
@@ -1112,6 +1238,7 @@ export const AgentScreen = () => {
       bubbleTextStreaming,
       activeToolDisplayName,
       streamingCompletedTools,
+      pendingEmojiAttachments,
       chatAiProfile,
       hasChatBackground
     ]
@@ -1212,12 +1339,7 @@ export const AgentScreen = () => {
   const renderEmptyState = () => (
     <View style={styles.empty}>
       <View style={[styles.emptyIconCircle, { backgroundColor: colors.primary + '26' }]}>
-        <MaterialIcons
-          name="auto-awesome"
-          size={38}
-          color={colors.primary}
-          style={{ opacity: 0.7 }}
-        />
+        <Sparkles size={38} color={colors.primary} strokeWidth={2} style={{ opacity: 0.7 }} />
       </View>
       <Text style={[styles.emptyText, { color: colors.textPrimary }]}>
         {t('agent.chat.start_chat', '开始和伙伴对话')}
@@ -1389,7 +1511,8 @@ export const AgentScreen = () => {
                         isTextStreaming: bubbleTextStreaming,
                         isThinkStreaming: assistantPersistedInList
                           ? bubbleTextStreaming && Boolean((item.reasoning || '').trim())
-                          : liveStreamProps.isThinkStreaming
+                          : liveStreamProps.isThinkStreaming,
+                        attachments: liveStreamProps.attachments
                       }
                     : undefined
 
@@ -1460,11 +1583,7 @@ export const AgentScreen = () => {
                   onPress={() => scrollToBottom(flatListRef, true)}
                   accessibilityLabel={t('agent.chat.scroll_to_bottom', '回到最新消息')}
                 >
-                  <MaterialIcons
-                    name="keyboard-arrow-down"
-                    size={22}
-                    color={colors.textSecondary}
-                  />
+                  <ChevronDown size={22} color={colors.textSecondary} strokeWidth={2} />
                 </TouchableOpacity>
               </Animated.View>
             ) : null}
@@ -1560,6 +1679,7 @@ export const AgentScreen = () => {
         onSelect={(a) => void handleSelectAssistantWithTracking(a)}
         selectedAssistantId={currentAssistant?.id}
         assistants={pickerAssistants}
+        onAssistantsChanged={() => void loadAssistants()}
       />
 
       <ModelSwitcher
@@ -1631,6 +1751,8 @@ export const AgentScreen = () => {
             toast.showError(t('common.copy_failed', '复制失败'))
           }
         }}
+        copyPreview={recallCopyPreview}
+        copyPreviewLoading={recallCopyPreviewLoading}
       />
 
       <ContextChainDialog
@@ -1768,5 +1890,46 @@ const styles = StyleSheet.create({
     right: 0,
     overflow: 'visible',
     zIndex: 10
+  },
+  emojiOnlyRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    gap: 8
+  },
+  emojiOnlyAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    overflow: 'hidden',
+    flexShrink: 0
+  },
+  emojiOnlyAvatarImg: {
+    width: 28,
+    height: 28,
+    borderRadius: 14
+  },
+  emojiOnlyAvatarFallback: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.08)'
+  },
+  emojiOnlyAvatarText: {
+    fontSize: 14
+  },
+  emojiOnlyImages: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    flexShrink: 1
+  },
+  emojiOnlyImg: {
+    width: 120,
+    height: 120,
+    borderRadius: 8
   }
 })

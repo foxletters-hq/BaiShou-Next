@@ -23,6 +23,14 @@ function rm(target) {
   console.log(`  ✓ 已删除 ${path.relative(workspaceRoot, target)}`)
 }
 
+/** worklets 编译缓存与 Metro 不同步时会 ENOENT；清空后需保留空目录供 Metro 重建 */
+function resetWorkletsCache() {
+  const workletsDir = path.join(workspaceRoot, 'node_modules', 'react-native-worklets', '.worklets')
+  rm(workletsDir)
+  fs.mkdirSync(workletsDir, { recursive: true })
+  console.log(`  ✓ 已重置 ${path.relative(workspaceRoot, workletsDir)}`)
+}
+
 /** Metro file-map 磁盘缓存在 /tmp；Node 升级或中断构建后可能无法反序列化 */
 function rmMetroTmpCaches() {
   const tmpDir = os.tmpdir()
@@ -50,5 +58,6 @@ console.log('\n🧹 清理移动端构建缓存…\n')
 for (const target of targets) {
   rm(target)
 }
+resetWorkletsCache()
 rmMetroTmpCaches()
 console.log('\n完成。\n')

@@ -1,5 +1,6 @@
 import { shadowConnectionManager, ShadowIndexRepository } from '@baishou/database'
 import { logger, parseDateStr, type SharedMemoryCopyPreview } from '@baishou/shared'
+import { quarterlySummariesForMonthCascade } from './summary-cascade.util'
 
 /** 国际化字典类型 */
 interface LocaleDict {
@@ -134,7 +135,7 @@ function resolveSharedMemoryItems(
   const wList = relevantSummaries.filter((s) => s.type === 'weekly')
 
   const coveredMonthKeys = new Set<string>()
-  for (const q of qList) markMonthsCovered(q, coveredMonthKeys)
+  for (const q of quarterlySummariesForMonthCascade(qList)) markMonthsCovered(q, coveredMonthKeys)
 
   const getMonthKey = (s: SharedContextSummaryRow) => {
     const start = new Date(s.startDate)

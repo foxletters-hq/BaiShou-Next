@@ -86,6 +86,10 @@ export class MigrationTargetStoragePathService implements IStoragePathService {
     return path.join(await this.getAttachmentsBaseDirectory(), 'backgrounds')
   }
 
+  async getEmojisDirectory(): Promise<string> {
+    return path.join(await this.getAttachmentsBaseDirectory(), 'emojis')
+  }
+
   async getDiaryAttachmentDirectory(date: Date): Promise<string> {
     const ym = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
     return this.getDiaryAttachmentDirectoryByYearMonth(ym)

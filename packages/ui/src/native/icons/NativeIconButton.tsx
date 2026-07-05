@@ -1,12 +1,11 @@
 import React from 'react'
 import { TouchableOpacity, StyleSheet, ActivityIndicator, type ViewStyle } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import type { LucideProps } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
-
-export type NativeIconName = keyof typeof MaterialIcons.glyphMap
+import { LucideIcon } from './LucideIcon'
 
 interface NativeIconButtonProps {
-  name: NativeIconName
+  icon: React.ComponentType<LucideProps>
   onPress?: () => void
   size?: number
   color?: string
@@ -16,10 +15,11 @@ interface NativeIconButtonProps {
   disabled?: boolean
   accessibilityLabel?: string
   style?: ViewStyle
+  strokeWidth?: number
 }
 
 export const NativeIconButton: React.FC<NativeIconButtonProps> = ({
-  name,
+  icon,
   onPress,
   size = 14,
   color,
@@ -28,7 +28,8 @@ export const NativeIconButton: React.FC<NativeIconButtonProps> = ({
   danger = false,
   disabled = false,
   accessibilityLabel,
-  style
+  style,
+  strokeWidth
 }) => {
   const { colors } = useNativeTheme()
   const iconColor =
@@ -54,7 +55,7 @@ export const NativeIconButton: React.FC<NativeIconButtonProps> = ({
       {loading ? (
         <ActivityIndicator size="small" color={iconColor} />
       ) : (
-        <MaterialIcons name={name} size={size} color={iconColor} />
+        <LucideIcon icon={icon} size={size} color={iconColor} strokeWidth={strokeWidth} />
       )}
     </TouchableOpacity>
   )

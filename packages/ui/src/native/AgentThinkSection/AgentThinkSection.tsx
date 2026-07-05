@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, {
+  cancelAnimation,
   Easing,
   useAnimatedStyle,
   useSharedValue,
@@ -37,12 +38,15 @@ export function AgentThinkSection({
   const body = content.trim()
   const { title, loading, expanded, setExpanded } = useAgentThinkPresentation(isStreaming)
   const blinkOpacity = useSharedValue(1)
+  const isStreamingSv = useSharedValue(isStreaming ? 1 : 0)
 
   const markdownStreaming = isMarkdownStreaming ?? isStreaming
   const thinkExpanded = expanded
 
   useEffect(() => {
+    isStreamingSv.value = isStreaming ? 1 : 0
     if (!isStreaming) {
+      cancelAnimation(blinkOpacity)
       blinkOpacity.value = 1
       return
     }
@@ -55,10 +59,10 @@ export function AgentThinkSection({
       -1,
       false
     )
-  }, [blinkOpacity, isStreaming])
+  }, [blinkOpacity, isStreaming, isStreamingSv])
 
   const titleBlinkStyle = useAnimatedStyle(() => ({
-    opacity: isStreaming ? blinkOpacity.value : 1
+    opacity: isStreamingSv.value === 1 ? blinkOpacity.value : 1
   }))
 
   if (!thinkExpanded && !body && !isStreaming) return null

@@ -77,7 +77,11 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
     toolName: string
     result: unknown
   }>
-  const attachments = (message.attachments || []) as MockChatAttachment[]
+  const attachments = useMemo(() => {
+    const persisted = (message.attachments || []) as MockChatAttachment[]
+    if (persisted.length > 0) return persisted
+    return (liveStream?.attachments || []) as MockChatAttachment[]
+  }, [message.attachments, liveStream?.attachments])
 
   const streamingCompletedTools = liveStream?.completedTools ?? []
   const streamingActiveToolName = liveStream?.activeToolName ?? null

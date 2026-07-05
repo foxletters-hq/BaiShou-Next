@@ -453,7 +453,8 @@ export class AgentSessionService {
         namingModelConfigured: systemModels?.namingModelConfigured,
         namingProvider: systemModels?.namingProvider,
         namingModelId: systemModels?.namingModelId,
-        flushSessionToDisk
+        flushSessionToDisk,
+        userConfig: mergedUserConfig
       })
 
       if (!streamError && accumulator.toolCalls.length > 0) {

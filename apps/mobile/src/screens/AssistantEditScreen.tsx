@@ -9,7 +9,7 @@ import {
   Keyboard
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { MaterialIcons } from '@expo/vector-icons'
+import { ChevronRight, Plus } from 'lucide-react-native'
 import {
   useNativeTheme,
   useNativeToast,
@@ -266,6 +266,24 @@ export const AssistantEditScreen: React.FC = () => {
     setShowModelSwitcher(true)
   }, [chatProviders.length, t, toast])
 
+  const persistMemoryConfig = useCallback(
+    async (updates: {
+      contextWindow?: number
+      compressTokenThreshold?: number
+      compressKeepTurns?: number
+      compressSystemPrompt?: string | null
+    }) => {
+      if (isNew || !services || !id) return
+      try {
+        await services.assistantManager.update(id as string, updates)
+        markAssistantsNeedRefresh()
+      } catch (e) {
+        console.error('Failed to persist assistant memory config', e)
+      }
+    },
+    [id, isNew, services]
+  )
+
   const handleSave = async () => {
     if (!name.trim()) {
       toast.showError(t('agent.assistant.name_required', '请输入伙伴名称'))
@@ -450,7 +468,7 @@ export const AssistantEditScreen: React.FC = () => {
                 style={[styles.outlinedBtn, { borderColor: colors.borderSubtle }]}
                 onPress={() => void openModelSwitcher()}
               >
-                <MaterialIcons name="add" size={18} color={colors.textPrimary} />
+                <Plus size={18} color={colors.textPrimary} strokeWidth={2} />
                 <Text style={[styles.outlinedBtnText, { color: colors.textPrimary }]}>
                   {t('agent.assistant.select_model_label', '选择模型（使用全局默认）')}
                 </Text>
@@ -473,7 +491,7 @@ export const AssistantEditScreen: React.FC = () => {
                     {modelId}
                   </Text>
                 </View>
-                <MaterialIcons name="chevron-right" size={22} color={colors.textSecondary} />
+                <ChevronRight size={22} color={colors.textSecondary} strokeWidth={2} />
               </TouchableOpacity>
             )}
 
@@ -509,7 +527,11 @@ export const AssistantEditScreen: React.FC = () => {
               </Text>
               <Switch
                 value={isUnlimitedContext}
-                onValueChange={(unlimited) => setContextWindow(unlimited ? -1 : 20)}
+                onValueChange={(unlimited) => {
+                  const next = unlimited ? -1 : 20
+                  setContextWindow(next)
+                  void persistMemoryConfig({ contextWindow: next })
+                }}
               />
             </View>
 
@@ -520,7 +542,10 @@ export const AssistantEditScreen: React.FC = () => {
                 min={2}
                 max={100}
                 step={1}
-                onChange={setContextWindow}
+                onChange={(next) => {
+                  setContextWindow(next)
+                  void persistMemoryConfig({ contextWindow: Math.round(next) })
+                }}
                 formatValue={(v) => String(Math.round(v))}
               />
             ) : null}
@@ -551,7 +576,17 @@ export const AssistantEditScreen: React.FC = () => {
               ) : null}
               <Switch
                 value={!isCompressDisabled}
-                onValueChange={(enabled) => setCompressTokenThreshold(enabled ? 60000 : 0)}
+                onValueChange={(enabled) => {
+                  const next = enabled ? 60000 : 0
+                  setCompressTokenThreshold(next)
+                  void persistMemoryConfig({
+                    compressTokenThreshold: next,
+                    compressSystemPrompt: enabled
+                      ? compressSystemPrompt.trim() ||
+                        getDefaultCompressionSystemPrompt(i18n.language)
+                      : null
+                  })
+                }}
               />
             </View>
 
@@ -575,7 +610,11 @@ export const AssistantEditScreen: React.FC = () => {
                   min={10000}
                   max={1000000}
                   step={10000}
-                  onChange={setCompressTokenThreshold}
+                  onChange={(next) => {
+                    const rounded = Math.round(next)
+                    setCompressTokenThreshold(rounded)
+                    void persistMemoryConfig({ compressTokenThreshold: rounded })
+                  }}
                   formatValue={(v) => formatTokens(Math.round(v))}
                 />
                 <SettingsSliderRow
@@ -588,7 +627,11 @@ export const AssistantEditScreen: React.FC = () => {
                   min={1}
                   max={10}
                   step={1}
-                  onChange={setCompressKeepTurns}
+                  onChange={(next) => {
+                    const rounded = Math.round(next)
+                    setCompressKeepTurns(rounded)
+                    void persistMemoryConfig({ compressKeepTurns: rounded })
+                  }}
                   formatValue={(v) => formatKeepTurns(t, v)}
                 />
 

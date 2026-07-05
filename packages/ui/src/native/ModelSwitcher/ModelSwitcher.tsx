@@ -9,9 +9,10 @@ import {
   StyleSheet,
   TouchableOpacity
 } from 'react-native'
-import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons'
+import { Check, Search, Store, X } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { Input } from '../Input/Input'
 import { Button } from '../Button'
 import { ProviderBrandIcon } from '../ProviderBrandIcon'
@@ -142,7 +143,7 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
               {t('models.switch_model', '切换模型')}
             </Text>
             <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <MaterialIcons name="close" size={22} color={colors.textSecondary} />
+              <X size={22} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
             </TouchableOpacity>
           </View>
 
@@ -156,13 +157,13 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
               autoCapitalize="none"
               leftSlot={
                 <View style={styles.searchIconWrap}>
-                  <MaterialIcons name="search" size={18} color={colors.textTertiary} />
+                  <Search size={18} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                 </View>
               }
               rightSlot={
                 searchQuery.length > 0 ? (
                   <TouchableOpacity onPress={() => setSearchQuery('')}>
-                    <MaterialIcons name="close" size={16} color={colors.textTertiary} />
+                    <X size={16} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                   </TouchableOpacity>
                 ) : undefined
               }
@@ -187,7 +188,7 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
                       onClose()
                     }}
                   >
-                    <MaterialCommunityIcons name="store-outline" size={16} color={colors.primary} />
+                    <Store size={16} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                     <Button.Label>{t('settings.manage_providers', '管理供应商')}</Button.Label>
                   </Button>
                 )}
@@ -260,7 +261,7 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
                             />
                           </View>
                           {isSelected && (
-                            <MaterialIcons name="check" size={18} color={colors.primary} />
+                            <Check size={18} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                           )}
                         </Pressable>
                       )
@@ -281,7 +282,7 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
                 onClose()
               }}
             >
-              <MaterialCommunityIcons name="store-outline" size={18} color={colors.primary} />
+              <Store size={18} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
               <Button.Label>{t('settings.manage_providers', '管理供应商')}</Button.Label>
             </Button>
           )}

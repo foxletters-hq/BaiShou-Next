@@ -1,6 +1,7 @@
 import React from 'react'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import type { LucideIcon } from 'lucide-react-native'
+import { Cloud, Eye, EyeOff, Globe } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import type { S3SyncConfig } from '@baishou/shared'
 import { SYNC_DIVERGENCE_THRESHOLD_OPTIONS } from '@baishou/shared'
@@ -62,11 +63,11 @@ export const IncrementalSyncConfigSheet: React.FC<IncrementalSyncConfigSheetProp
           />
         </View>
         <TouchableOpacity onPress={onToggle} style={styles.eyeBtn} accessibilityRole="button">
-          <MaterialIcons
-            name={visible ? 'visibility' : 'visibility-off'}
-            size={22}
-            color={colors.textSecondary}
-          />
+          {visible ? (
+            <Eye size={22} color={colors.textSecondary} strokeWidth={2} />
+          ) : (
+            <EyeOff size={22} color={colors.textSecondary} strokeWidth={2} />
+          )}
         </TouchableOpacity>
       </View>
     </>
@@ -74,10 +75,11 @@ export const IncrementalSyncConfigSheet: React.FC<IncrementalSyncConfigSheetProp
 
   const renderTargetCard = (
     value: 's3' | 'webdav',
-    icon: keyof typeof MaterialIcons.glyphMap,
+    icon: LucideIcon,
     title: string
   ) => {
     const selected = target === value
+    const Icon = icon
     return (
       <TouchableOpacity
         key={value}
@@ -92,10 +94,10 @@ export const IncrementalSyncConfigSheet: React.FC<IncrementalSyncConfigSheetProp
         activeOpacity={0.8}
       >
         <View style={[styles.targetIcon, { backgroundColor: colors.bgSurface }]}>
-          <MaterialIcons
-            name={icon}
+          <Icon
             size={24}
             color={selected ? colors.primary : colors.textSecondary}
+            strokeWidth={2}
           />
         </View>
         <Text style={[styles.targetTitle, { color: colors.textPrimary }]}>{title}</Text>
@@ -134,8 +136,8 @@ export const IncrementalSyncConfigSheet: React.FC<IncrementalSyncConfigSheetProp
         {t('data_sync.select_target_title')}
       </Text>
 
-      {renderTargetCard('s3', 'cloud', t('data_sync.target_s3'))}
-      {renderTargetCard('webdav', 'language', t('data_sync.target_webdav'))}
+      {renderTargetCard('s3', Cloud, t('data_sync.target_s3'))}
+      {renderTargetCard('webdav', Globe, t('data_sync.target_webdav'))}
 
       <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
 

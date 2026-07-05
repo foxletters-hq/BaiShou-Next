@@ -12,13 +12,14 @@ import {
   ActivityIndicator,
   Alert
 } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { ArrowLeft, Heart, Volume2 } from 'lucide-react-native'
 import { MarkdownToolbar } from '../MarkdownToolbar/MarkdownToolbar'
 import type { MarkdownToolbarToolId } from '../MarkdownToolbar/markdown-toolbar.types'
 import { DiaryEditorAppBarTitle } from '../DiaryEditorAppBarTitle/DiaryEditorAppBarTitle'
 import { WeatherPicker } from '../WeatherPicker/WeatherPicker'
 import { MoodPicker } from '../MoodPicker/MoodPicker'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { useKeyboardHeight } from '../hooks/useKeyboardHeight'
 import {
   NativeDiaryCodeMirrorEditor,
@@ -344,7 +345,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
             onCancel?.()
           }}
         >
-          <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
+          <ArrowLeft size={24} color={colors.textPrimary} strokeWidth={DEFAULT_STROKE_WIDTH} />
         </TouchableOpacity>
 
         <View style={styles.appBarCenter}>
@@ -390,10 +391,10 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
                 {isTtsPlaying ? (
                   <ActivityIndicator size="small" color={colors.primary} />
                 ) : (
-                  <MaterialIcons
-                    name="volume-up"
+                  <Volume2
                     size={20}
                     color={content.trim() ? colors.textSecondary : colors.textTertiary}
+                    strokeWidth={DEFAULT_STROKE_WIDTH}
                   />
                 )}
               </Pressable>
@@ -411,10 +412,11 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
             onPress={() => onFavoriteChange?.(!isFavorite)}
             accessibilityLabel={isFavorite ? t('diary.unfavorite') : t('diary.favorite')}
           >
-            <MaterialIcons
-              name={isFavorite ? 'favorite' : 'favorite-border'}
+            <Heart
               size={20}
               color={isFavorite ? colors.warning : colors.textTertiary}
+              strokeWidth={DEFAULT_STROKE_WIDTH}
+              fill={isFavorite ? colors.warning : 'transparent'}
             />
           </Pressable>
         </View>

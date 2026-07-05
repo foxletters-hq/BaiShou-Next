@@ -20,9 +20,13 @@ function textFromPartData(data: unknown): string {
 }
 
 /** local://（桌面）或裸路径 → React Native Image 可用的 file:// */
-function toMobileAttachmentFilePath(filePath?: string, storageRoot?: string): string {
+function toMobileAttachmentFilePath(
+  filePath?: string,
+  storageRoot?: string,
+  attachmentsBasePath?: string
+): string {
   if (storageRoot) {
-    return resolveMobileAttachmentFilePath(filePath, storageRoot)
+    return resolveMobileAttachmentFilePath(filePath, storageRoot, attachmentsBasePath)
   }
   if (!filePath) return ''
   if (
@@ -69,7 +73,7 @@ export function mapSessionMessageFromDb(
     cacheWriteInputTokens?: number
     costMicros?: number
   },
-  options?: { storageRoot?: string }
+  options?: { storageRoot?: string; attachmentsBasePath?: string }
 ) {
   const parts = msg.parts || []
 
@@ -94,10 +98,16 @@ export function mapSessionMessageFromDb(
         result: data.result ?? data.output
       }
     })
+    // 过滤掉 emoji_send 工具调用（表情包作为独立图片消息显示，不显示工具卡片）
+    .filter((inv) => inv.toolName !== 'emoji_send')
 
   const attachments = mapAttachmentsFromParts(parts)?.map((att) => ({
     ...att,
-    filePath: toMobileAttachmentFilePath(att.filePath, options?.storageRoot)
+    filePath: toMobileAttachmentFilePath(
+      att.filePath,
+      options?.storageRoot,
+      options?.attachmentsBasePath
+    )
   }))
 
   const compactionPart = parts.find((p) => p.type === 'compaction')

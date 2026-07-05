@@ -1,7 +1,12 @@
 import React from 'react'
 import { View, StyleSheet } from 'react-native'
-import { ChatBubble, CompressionActivityBar, CompressionDivider } from '@baishou/ui/native'
+import {
+  ChatBubble,
+  CompressionActivityBar,
+  CompressionDivider
+} from '@baishou/ui/native'
 import type { CompactionMarkerData } from '@baishou/ai'
+import type { MockChatAttachment } from '@baishou/shared'
 
 type ChatMessage = {
   id: string
@@ -9,7 +14,7 @@ type ChatMessage = {
   content: string
   reasoning?: string
   toolInvocations?: unknown[]
-  attachments?: unknown[]
+  attachments?: any[]
   inputTokens?: number
   outputTokens?: number
   cacheReadInputTokens?: number
@@ -64,6 +69,7 @@ export interface AgentMessageRowProps {
       result?: unknown
       args?: unknown
     }>
+    attachments?: MockChatAttachment[]
   }
   deferAssistantChrome?: boolean
 }
@@ -120,35 +126,35 @@ export const AgentMessageRow = React.memo(function AgentMessageRow({
   return (
     <View style={styles.row}>
       <ChatBubble
-        message={{
-          id: item.id,
-          role: item.role as 'user' | 'assistant',
-          content: item.content,
-          reasoning: item.reasoning,
-          toolInvocations: item.toolInvocations,
-          attachments: item.attachments,
-          inputTokens: item.inputTokens,
-          outputTokens: item.outputTokens,
-          cacheReadInputTokens: item.cacheReadInputTokens,
-          cacheWriteInputTokens: item.cacheWriteInputTokens,
-          costMicros: item.costMicros
-        }}
-        userProfile={chatUserProfile}
-        aiProfile={chatAiProfile}
-        onRegenerate={onRegenerate}
-        onResend={onResend}
-        onResendEdit={onResendEdit}
-        onSaveEdit={onSaveEdit}
-        onCopy={onCopy}
-        onDelete={onDelete}
-        onReadAloud={onReadAloud}
-        isTtsPlaying={isTtsPlaying}
-        onShowContext={onShowContext}
-        onBranch={onBranch}
-        onEditingChange={onBubbleEditingChange}
-        invertMetaOverBackground={invertMetaOverBackground}
-        retryDisabled={retryDisabled}
-        liveStream={liveStream}
+          message={{
+            id: item.id,
+            role: item.role as 'user' | 'assistant',
+            content: item.content,
+            reasoning: item.reasoning,
+            toolInvocations: item.toolInvocations,
+            attachments: item.attachments,
+            inputTokens: item.inputTokens,
+            outputTokens: item.outputTokens,
+            cacheReadInputTokens: item.cacheReadInputTokens,
+            cacheWriteInputTokens: item.cacheWriteInputTokens,
+            costMicros: item.costMicros
+          }}
+          userProfile={chatUserProfile}
+          aiProfile={chatAiProfile}
+          onRegenerate={onRegenerate}
+          onResend={onResend}
+          onResendEdit={onResendEdit}
+          onSaveEdit={onSaveEdit}
+          onCopy={onCopy}
+          onDelete={onDelete}
+          onReadAloud={onReadAloud}
+          isTtsPlaying={isTtsPlaying}
+          onShowContext={onShowContext}
+          onBranch={onBranch}
+          onEditingChange={onBubbleEditingChange}
+          invertMetaOverBackground={invertMetaOverBackground}
+          retryDisabled={retryDisabled}
+          liveStream={liveStream}
         deferAssistantChrome={deferAssistantChrome}
       />
 

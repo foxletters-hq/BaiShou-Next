@@ -12,7 +12,14 @@ import {
   Platform
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { MaterialIcons } from '@expo/vector-icons'
+import {
+  Search,
+  Filter,
+  RefreshCw,
+  X,
+  Heart,
+  Check
+} from 'lucide-react-native'
 import {
   WEATHER_IDS,
   weatherI18nKey,
@@ -125,7 +132,7 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
             accessibilityRole="button"
             accessibilityLabel={t('common.close')}
           >
-            <MaterialIcons name="close" size={20} color={colors.textPrimary} />
+            <X size={20} color={colors.textPrimary} strokeWidth={2} />
           </TouchableOpacity>
         </View>
       ) : (
@@ -149,10 +156,10 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
               accessibilityRole="button"
               accessibilityLabel={t('diary.filter')}
             >
-              <MaterialIcons
-                name="filter-list"
+              <Filter
                 size={20}
                 color={hasActiveFilters ? colors.primary : colors.textPrimary}
+                strokeWidth={2}
               />
               {hasActiveFilters && (
                 <View style={[styles.filterBadge, { backgroundColor: colors.primary }]} />
@@ -173,7 +180,7 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
                 {isSyncing ? (
                   <ActivityIndicator size="small" color={colors.primary} />
                 ) : (
-                  <MaterialIcons name="sync" size={22} color={colors.textPrimary} />
+                  <RefreshCw size={22} color={colors.textPrimary} strokeWidth={2} />
                 )}
               </TouchableOpacity>
             ) : null}
@@ -186,7 +193,7 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
               {isSearchPending ? (
                 <ActivityIndicator size="small" color={colors.primary} />
               ) : (
-                <MaterialIcons name="search" size={22} color={colors.textPrimary} />
+                <Search size={22} color={colors.textPrimary} strokeWidth={2} />
               )}
             </TouchableOpacity>
           </View>
@@ -210,7 +217,7 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
               </Text>
               {hasActiveFilters && (
                 <TouchableOpacity onPress={clearFilters} style={styles.clearBtn}>
-                  <MaterialIcons name="close" size={14} color={colors.textTertiary} />
+                  <X size={14} color={colors.textTertiary} strokeWidth={2} />
                   <Text style={[styles.clearText, { color: colors.textTertiary }]}>
                     {t('diary.clear_filter')}
                   </Text>
@@ -226,10 +233,11 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
                 ]}
                 onPress={() => onFilterFavoriteChange(!filterFavorite)}
               >
-                <MaterialIcons
-                  name={filterFavorite ? 'favorite' : 'favorite-border'}
+                <Heart
                   size={18}
                   color={filterFavorite ? colors.warning : colors.textPrimary}
+                  fill={filterFavorite ? colors.warning : 'transparent'}
+                  strokeWidth={2}
                 />
                 <Text style={[styles.filterOptionText, { color: colors.textPrimary }]}>
                   {t('diary.filter_favorite')}
@@ -270,7 +278,7 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
                         {label}
                       </Text>
                       {active ? (
-                        <MaterialIcons name="check" size={18} color={colors.primary} />
+                        <Check size={18} color={colors.primary} strokeWidth={2} />
                       ) : (
                         <View style={styles.weatherCheckPlaceholder} />
                       )}
@@ -311,7 +319,7 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
                         {label}
                       </Text>
                       {active ? (
-                        <MaterialIcons name="check" size={18} color={colors.primary} />
+                        <Check size={18} color={colors.primary} strokeWidth={2} />
                       ) : (
                         <View style={styles.weatherCheckPlaceholder} />
                       )}

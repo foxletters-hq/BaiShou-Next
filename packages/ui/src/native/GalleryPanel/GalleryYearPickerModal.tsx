@@ -1,8 +1,9 @@
 import React from 'react'
 import { View, Text, Pressable, Modal, ScrollView, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { MaterialIcons } from '@expo/vector-icons'
+import { X } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 
 interface GalleryYearPickerModalProps {
   isOpen: boolean
@@ -34,7 +35,7 @@ export const GalleryYearPickerModal: React.FC<GalleryYearPickerModalProps> = ({
               {t('gallery.select_year')}
             </Text>
             <Pressable onPress={onClose} hitSlop={8}>
-              <MaterialIcons name="close" size={20} color={colors.textSecondary} />
+              <X size={20} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
             </Pressable>
           </View>
           <ScrollView contentContainerStyle={styles.body}>

@@ -5,6 +5,8 @@ import { parseRedactedThinking } from '../../shared/chat-bubble/redacted-thinkin
 import { AgentMarkdownRenderer, AgentThinkSection } from '../AgentMarkdown'
 import { AgentToolChainSection } from '../AgentToolChain'
 import { AssistantAvatar } from '../AssistantAvatar'
+import { ChatBubbleAttachments } from '../ChatBubble/ChatBubbleAttachments'
+import type { MockChatAttachment } from '@baishou/shared'
 
 export interface ToolExecution {
   name: string
@@ -24,6 +26,7 @@ export interface StreamingBubbleProps {
     avatarPath?: string | null
     emoji?: string | null
   }
+  attachments?: MockChatAttachment[]
   error?: string | null
   onRetry?: () => void
   onStop?: () => void
@@ -37,12 +40,14 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
   activeToolName = null,
   completedTools = [],
   aiProfile = { name: 'AI' },
+  attachments = [],
   error = null,
   onRetry,
   onStop
 }) => {
   const { t } = useTranslation()
   const hasTools = completedTools.length > 0 || !!activeToolName
+  const hasAttachments = attachments.length > 0
   const aiName = aiProfile.name || t('agent.chat.ai_label')
 
   // 零副作用过滤提取 think 标签，并脱壳误泄漏的 message 元数据
@@ -73,8 +78,9 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
           </div>
         ) : (
           <>
-            {hasText || hasTools || hasReasoning ? (
+            {hasText || hasTools || hasReasoning || hasAttachments ? (
               <div className={styles.bubbleCard}>
+                {hasAttachments ? <ChatBubbleAttachments attachments={attachments} /> : null}
                 {/* Reasoning 块 - 移到 bubbleCard 内部 */}
                 {hasReasoning && (
                   <AgentThinkSection content={cleanReasoning} isStreaming={isReasoning} />

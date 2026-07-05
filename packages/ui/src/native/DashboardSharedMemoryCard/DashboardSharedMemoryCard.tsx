@@ -1,9 +1,12 @@
 import { useTranslation } from 'react-i18next'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native'
+import { Copy, Quote } from 'lucide-react-native'
+import type { SharedMemoryCopyPreview } from '@baishou/shared'
 import { DesktopStyleSlider } from './DesktopStyleSlider'
 import { useNativeTheme } from '../../native/theme'
+import { HelpTooltip } from '../Tooltip/HelpTooltip'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 
 const SLIDER_MIN = 1
 const SLIDER_BASE_MAX = 60
@@ -11,7 +14,91 @@ const SLIDER_BASE_MAX = 60
 interface DashboardSharedMemoryCardProps {
   lookbackMonths: number
   onMonthsChanged: (val: number) => void
-  onCopyContext: () => void
+  onCopyContext: () => void | Promise<void>
+  copyPreview?: SharedMemoryCopyPreview | null
+  copyPreviewLoading?: boolean
+}
+
+function SharedMemoryCopyPreviewPanel({
+  preview,
+  loading
+}: {
+  preview?: SharedMemoryCopyPreview | null
+  loading?: boolean
+}) {
+  const { t } = useTranslation()
+  const { colors } = useNativeTheme()
+
+  if (loading && !preview) {
+    return (
+      <View
+        style={[
+          previewStyles.panel,
+          previewStyles.panelLoading,
+          { backgroundColor: colors.bgSurfaceLowest, borderColor: colors.borderMuted }
+        ]}
+      >
+        <ActivityIndicator size="small" color={colors.primary} />
+        <Text style={[previewStyles.loadingText, { color: colors.textSecondary }]}>
+          {t('summary.copy_preview_loading', '正在统计可复制内容…')}
+        </Text>
+      </View>
+    )
+  }
+
+  if (!preview) return null
+
+  const chips: { key: string; label: string; count: number }[] = [
+    { key: 'diary', label: t('summary.copy_preview_diary', '日记'), count: preview.diary },
+    { key: 'yearly', label: t('summary.copy_preview_yearly', '年总结'), count: preview.yearly },
+    {
+      key: 'quarterly',
+      label: t('summary.copy_preview_quarterly', '季度总结'),
+      count: preview.quarterly
+    },
+    { key: 'monthly', label: t('summary.copy_preview_monthly', '月总结'), count: preview.monthly },
+    { key: 'weekly', label: t('summary.copy_preview_weekly', '周总结'), count: preview.weekly }
+  ].filter((item) => item.count > 0)
+
+  return (
+    <View
+      style={[
+        previewStyles.panel,
+        { backgroundColor: colors.bgSurfaceLowest, borderColor: colors.borderMuted }
+      ]}
+    >
+      <View style={previewStyles.titleRow}>
+        <Text style={[previewStyles.title, { color: colors.textPrimary }]}>
+          {t('summary.copy_preview_title', '复制将包含')}
+        </Text>
+        {loading ? <ActivityIndicator size={12} color={colors.textTertiary} /> : null}
+      </View>
+      {preview.total === 0 ? (
+        <Text style={[previewStyles.emptyText, { color: colors.textSecondary }]}>
+          {t('summary.copy_preview_empty', '当前回溯范围内暂无可复制内容')}
+        </Text>
+      ) : (
+        <>
+          <View style={previewStyles.chips}>
+            {chips.map((item) => (
+              <View
+                key={item.key}
+                style={[previewStyles.chip, { backgroundColor: colors.primaryLight }]}
+              >
+                <Text style={[previewStyles.chipText, { color: colors.primary }]}>
+                  {item.label} {item.count}
+                  {t('summary.copy_preview_unit', '篇')}
+                </Text>
+              </View>
+            ))}
+          </View>
+          <Text style={[previewStyles.total, { color: colors.textTertiary }]}>
+            {t('summary.copy_preview_total', '共 {{count}} 项', { count: preview.total })}
+          </Text>
+        </>
+      )}
+    </View>
+  )
 }
 
 /** 滑块 + 数字输入：拖动预览仅在本组件内更新，避免牵动整张卡片重渲染 */
@@ -118,24 +205,44 @@ function LookbackMonthsField({
 export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps> = ({
   lookbackMonths,
   onMonthsChanged,
-  onCopyContext
+  onCopyContext,
+  copyPreview,
+  copyPreviewLoading
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const cardBorder = colors.borderMuted
+  const [copying, setCopying] = useState(false)
+
+  const handleCopyPress = useCallback(async () => {
+    if (copying) return
+    setCopying(true)
+    try {
+      await onCopyContext()
+    } finally {
+      setCopying(false)
+    }
+  }, [copying, onCopyContext])
 
   return (
     <View style={[styles.card, { backgroundColor: colors.bgSurface, borderColor: cardBorder }]}>
       <View style={styles.header}>
-        <MaterialIcons
-          name="format-quote"
+        <Quote
           size={20}
           color={colors.primary}
+          strokeWidth={DEFAULT_STROKE_WIDTH}
           style={styles.headerIcon}
         />
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
           {t('summary.shared_memory')}
         </Text>
+        <HelpTooltip
+          content={t(
+            'summary.shared_memory_tooltip',
+            '共同回忆统计展示您在设定时间周期内的核心足迹与情感波动数据。系统通过级联折叠算法在后台自动整合历史快照数据，去除重复啰嗦内容，将海量原始流水账压缩为符合 LLM 极窄上下文容量的高浓度叙事，方便 AI 快速理解您的近期现状。'
+          )}
+          size={16}
+        />
       </View>
 
       <LookbackMonthsField
@@ -144,12 +251,19 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
         onMonthsChanged={onMonthsChanged}
       />
 
+      <SharedMemoryCopyPreviewPanel preview={copyPreview} loading={copyPreviewLoading} />
+
       <TouchableOpacity
         activeOpacity={0.9}
-        style={[styles.btn, { backgroundColor: colors.primary }]}
-        onPress={onCopyContext}
+        style={[styles.btn, { backgroundColor: colors.primary, opacity: copying ? 0.85 : 1 }]}
+        onPress={() => void handleCopyPress()}
+        disabled={copying}
       >
-        <MaterialIcons name="content-copy" size={16} color="#ffffff" style={styles.btnIcon} />
+        {copying ? (
+          <ActivityIndicator size="small" color="#ffffff" style={styles.btnIcon} />
+        ) : (
+          <Copy size={16} color="#ffffff" strokeWidth={DEFAULT_STROKE_WIDTH} style={styles.btnIcon} />
+        )}
         <Text style={styles.btnText}>{t('summary.copy_memories')}</Text>
       </TouchableOpacity>
     </View>
@@ -208,7 +322,7 @@ const styles = StyleSheet.create({
     fontSize: 16
   },
   btn: {
-    marginTop: 24,
+    marginTop: 16,
     borderRadius: 12,
     paddingVertical: 14,
     flexDirection: 'row',
@@ -222,5 +336,54 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
     color: '#ffffff'
+  }
+})
+
+const previewStyles = StyleSheet.create({
+  panel: {
+    marginTop: 16,
+    marginBottom: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8
+  },
+  panelLoading: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6
+  },
+  title: {
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  loadingText: {
+    fontSize: 12
+  },
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  chip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999
+  },
+  chipText: {
+    fontSize: 12,
+    fontWeight: '600'
+  },
+  total: {
+    fontSize: 11
+  },
+  emptyText: {
+    fontSize: 12,
+    lineHeight: 18
   }
 })

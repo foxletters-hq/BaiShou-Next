@@ -256,3 +256,42 @@
   transform: translateY(-1px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
 }
+
+/* 纯表情包消息行：头像 + 图片，不包裹气泡卡片 */
+.emojiOnlyRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 4px 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.emojiOnlyAvatar {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+}
+
+.emojiOnlyAvatarImg {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  background-color: var(--bg-surface-normal);
+}
+
+.emojiOnlyImages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.emojiOnlyImg {
+  width: 120px;
+  height: 120px;
+  border-radius: 12px;
+  object-fit: contain;
+  background-color: var(--bg-surface-normal);
+}

@@ -141,6 +141,21 @@ export interface DiaryTemplateConfig {
 export interface ToolManagementConfig {
   disabledToolIds: string[] // 被禁用的工具 ID 列表
   customConfigs: Record<string, Record<string, any>> // 各工具的独立 key-value 用户配置
+  emojiConfig?: EmojiToolConfig // 表情包工具配置
+}
+
+/**
+ * 表情包工具配置
+ */
+export interface EmojiToolConfig {
+  enabled: boolean // 是否启用表情包回复
+  emojis: EmojiItem[] // 用户上传的表情包列表
+}
+
+export interface EmojiItem {
+  id: string // 唯一标识，格式: emoji_{timestamp}
+  name: string // 表情包名称/标签
+  relativePath: string // 相对路径，格式: emojis/emoji_{timestamp}.{ext}
 }
 
 /**

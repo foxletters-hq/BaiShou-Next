@@ -1,3 +1,8 @@
+import React from 'react'
+import type { LucideProps } from 'lucide-react-native'
+import { File, FileAudio, FileCode, FileImage, FileText, FileVideo } from 'lucide-react-native'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
+
 export function formatSize(mb: number | undefined | null): string {
   if (mb === undefined || mb === null || isNaN(mb)) return '0 B'
   if (mb <= 0) return '0 B'
@@ -42,26 +47,22 @@ export function guessImageMimeType(fileName: string): string {
   }
 }
 
-export type FileIconName =
-  | 'image'
-  | 'videocam'
-  | 'picture-as-pdf'
-  | 'description'
-  | 'folder-zip'
-  | 'audiotrack'
-  | 'insert-drive-file'
-
-export function getFileIconName(name: string): FileIconName {
+function resolveFileIconComponent(name: string): React.ComponentType<LucideProps> {
   const ext = name.split('.').pop()?.toLowerCase() || ''
-  if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'heic'].includes(ext)) return 'image'
-  if (['mp4', 'mkv', 'avi', 'mov', 'webm'].includes(ext)) return 'videocam'
-  if (ext === 'pdf') return 'picture-as-pdf'
+  if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'heic'].includes(ext)) return FileImage
+  if (['mp4', 'mkv', 'avi', 'mov', 'webm'].includes(ext)) return FileVideo
+  if (ext === 'pdf') return FileText
   if (['txt', 'md', 'json', 'js', 'ts', 'tsx', 'html', 'css', 'yaml', 'yml'].includes(ext)) {
-    return 'description'
+    return FileCode
   }
-  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return 'folder-zip'
-  if (['mp3', 'wav', 'ogg', 'm4a', 'flac'].includes(ext)) return 'audiotrack'
-  return 'insert-drive-file'
+  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return File
+  if (['mp3', 'wav', 'ogg', 'm4a', 'flac'].includes(ext)) return FileAudio
+  return File
+}
+
+export function getFileIcon(name: string, size = 18, color?: string) {
+  const Icon = resolveFileIconComponent(name)
+  return <Icon size={size} color={color} strokeWidth={DEFAULT_STROKE_WIDTH} />
 }
 
 export function defaultToDisplayUri(filePath: string): string {

@@ -5,9 +5,10 @@ import DraggableFlatList, {
   type RenderItemParams
 } from 'react-native-draggable-flatlist'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
-import { MaterialIcons } from '@expo/vector-icons'
+import { GripVertical } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { MARKDOWN_TOOLBAR_TOOL_META, type MarkdownToolbarToolId } from './markdown-toolbar.types'
 
 interface MarkdownToolbarSettingsSheetProps {
@@ -65,7 +66,7 @@ export const MarkdownToolbarSettingsSheet: React.FC<MarkdownToolbarSettingsSheet
               }
             ]}
           >
-            <MaterialIcons name="drag-handle" size={22} color={colors.textTertiary} />
+            <GripVertical size={22} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
             <Text style={[styles.rowLabel, { color: colors.textPrimary }]}>{label}</Text>
           </TouchableOpacity>
         </ScaleDecorator>

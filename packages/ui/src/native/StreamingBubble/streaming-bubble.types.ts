@@ -1,3 +1,5 @@
+import type { MockChatAttachment } from '@baishou/shared'
+
 export interface ToolExecution {
   name: string
   durationMs?: number
@@ -29,4 +31,6 @@ export interface NativeStreamingBubbleProps {
   invertMetaOverBackground?: boolean
   /** 流结束交接期：预留与 ChatBubble 操作栏等高的空间，避免列表跳动 */
   reserveActionBarSpace?: boolean
+  /** 流式阶段尚未落库的表情包附件 */
+  attachments?: MockChatAttachment[]
 }

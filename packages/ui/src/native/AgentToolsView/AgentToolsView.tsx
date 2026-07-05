@@ -10,20 +10,30 @@ import {
   TextInput,
   Platform
 } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { BadgeCheck, ListOrdered, Minus, Plus, Smile, Store } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
 import { Switch } from '../Switch'
 import { HelpTooltip } from '../Tooltip/HelpTooltip'
+import { EmojiToolCard, type EmojiToolConfig, type EmojiItem } from './EmojiToolCard'
+import { AgentToolCategoryIcon, AgentToolIcon } from '../icons/agent-tools-icons'
+import { AGENT_TOOL_ICON_SIZE, DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 
 export interface ToolManagementConfig {
   disabledToolIds: string[]
   customConfigs: Record<string, Record<string, unknown>>
+  emojiConfig?: EmojiToolConfig
 }
 
 export interface AgentToolsViewProps {
   config: ToolManagementConfig
   onChange: (config: ToolManagementConfig) => void
   disableScroll?: boolean
+  /** Mobile: pick and import emoji images via image picker */
+  onPickAndImportEmojis?: () => Promise<{ relativePath: string; originalName: string; error: string | null }[]>
+  /** Mobile: resolve a relativePath to a displayable URI */
+  onResolveEmojiPath?: (relativePath: string) => Promise<string>
+  /** Mobile: delete an emoji file */
+  onDeleteEmoji?: (relativePath: string) => Promise<boolean>
 }
 
 export interface ToolConfigParam {
@@ -42,29 +52,6 @@ export interface AgentToolDef {
   name: string
   tooltipKey: string
   configurableParams?: ToolConfigParam[]
-}
-
-// Mapping tool IDs to MaterialIcons glyphs
-const TOOL_ICONS: Record<string, keyof typeof MaterialIcons.glyphMap> = {
-  diary_read: 'menu-book',
-  diary_edit: 'edit',
-  diary_delete: 'delete',
-  diary_list: 'list',
-  diary_search: 'search',
-  summary_read: 'description',
-  message_search: 'message',
-  memory_store: 'storage',
-  memory_delete: 'delete-forever',
-  auto_inject_time: 'schedule'
-}
-
-// Mapping category IDs to MaterialIcons glyphs
-const CATEGORY_ICONS: Record<string, keyof typeof MaterialIcons.glyphMap> = {
-  diary: 'book',
-  summary: 'description',
-  memory: 'psychology',
-  search: 'public',
-  general: 'extension'
 }
 
 const getAgentTools = (t: (key: string, fallback: string) => string): AgentToolDef[] => [
@@ -159,7 +146,10 @@ const getCategoryMeta = (t: (key: string, fallback: string) => string) => ({
 export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
   config,
   onChange,
-  disableScroll
+  disableScroll,
+  onPickAndImportEmojis,
+  onResolveEmojiPath,
+  onDeleteEmoji
 }) => {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
@@ -223,10 +213,10 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
           ]}
           onPress={() => setShowCommunity(false)}
         >
-          <MaterialIcons
-            name="verified"
+          <BadgeCheck
             size={16}
             color={!showCommunity ? colors.textOnPrimary : colors.textSecondary}
+            strokeWidth={DEFAULT_STROKE_WIDTH}
           />
           <Text
             style={[
@@ -261,10 +251,10 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
           ]}
           onPress={() => setShowCommunity(true)}
         >
-          <MaterialIcons
-            name="storefront"
+          <Store
             size={16}
             color={showCommunity ? colors.textOnPrimary : colors.textSecondary}
+            strokeWidth={DEFAULT_STROKE_WIDTH}
           />
           <Text
             style={[
@@ -282,7 +272,6 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
   const renderToolCard = (tool: AgentToolDef, isLastInGroup: boolean) => {
     const isEnabled = !(normalizedConfig.disabledToolIds || []).includes(tool.id)
     const hasParams = tool.configurableParams && tool.configurableParams.length > 0
-    const toolIcon = TOOL_ICONS[tool.id] || 'extension'
 
     return (
       <View
@@ -306,9 +295,9 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
                 }
               ]}
             >
-              <MaterialIcons
-                name={toolIcon}
-                size={20}
+              <AgentToolIcon
+                toolId={tool.id}
+                size={AGENT_TOOL_ICON_SIZE}
                 color={isEnabled ? colors.primary : colors.textSecondary}
               />
             </View>
@@ -353,11 +342,13 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
                   <View
                     style={[styles.toolIconWrapper, { backgroundColor: colors.bgSurfaceNormal }]}
                   >
-                    <MaterialIcons
-                      name={param.icon === 'ListOrdered' ? 'format-list-numbered' : 'tune'}
-                      size={18}
-                      color={colors.textSecondary}
-                    />
+                    {param.icon === 'ListOrdered' ? (
+                      <ListOrdered
+                        size={18}
+                        color={colors.textSecondary}
+                        strokeWidth={DEFAULT_STROKE_WIDTH}
+                      />
+                    ) : null}
                   </View>
                   <View style={[styles.toolInfo, styles.paramInfoRow]}>
                     <Text style={[styles.paramLabel, { color: colors.textPrimary }]}>
@@ -380,7 +371,7 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
                       disabled={val <= (param.min ?? 1)}
                       onPress={() => setToolParam(tool.id, param.key, val - 1)}
                     >
-                      <MaterialIcons name="remove" size={16} color={colors.textSecondary} />
+                      <Minus size={16} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                     </TouchableOpacity>
                     <TextInput
                       style={[
@@ -413,7 +404,7 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
                       disabled={val >= (param.max ?? 50)}
                       onPress={() => setToolParam(tool.id, param.key, val + 1)}
                     >
-                      <MaterialIcons name="add" size={16} color={colors.textSecondary} />
+                      <Plus size={16} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -431,12 +422,11 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
         const list = groupedTools[catKey]
         if (!list || list.length === 0) return null
         const meta = (categoryMeta as any)[catKey]
-        const catIcon = CATEGORY_ICONS[catKey] || 'extension'
 
         return (
           <View key={catKey} style={styles.categoryGroup}>
             <View style={styles.categoryHeader}>
-              <MaterialIcons name={catIcon} size={18} color={colors.primary} />
+              <AgentToolCategoryIcon categoryId={catKey} color={colors.primary} />
               <Text style={[styles.categoryLabel, { color: colors.primary }]}>{meta.label}</Text>
             </View>
             <View
@@ -456,25 +446,39 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
     </View>
   )
 
-  const renderCommunityTab = () => (
-    <View style={styles.communityBlank}>
-      <MaterialIcons
-        name="rocket"
-        size={56}
-        color={colors.textTertiary}
-        style={styles.communityIcon}
-      />
-      <Text style={[styles.communityTitle, { color: colors.textSecondary }]}>
-        {t('agent.tools.community_market_coming', '插件集市即将上线')}
-      </Text>
-      <Text style={[styles.communityDesc, { color: colors.textTertiary }]}>
-        {t(
-          'agent.tools.community_coming_soon',
-          '不久后，您将能够在这里挂载由其他用户开发的生态能力接口。'
-        )}
-      </Text>
-    </View>
-  )
+  const renderCommunityTab = () => {
+    const emojiConfig = config.emojiConfig || { enabled: true, emojis: [] }
+
+    return (
+      <View style={styles.list}>
+        <View style={styles.categoryGroup}>
+          <View style={styles.categoryHeader}>
+            <Smile size={18} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+            <Text style={[styles.categoryLabel, { color: colors.primary }]}>
+              {t('settings.agent_tools_category_interaction', '互动工具')}
+            </Text>
+          </View>
+          <View
+            style={[
+              styles.categoryList,
+              {
+                borderColor: colors.borderStrong,
+                backgroundColor: colors.bgSurface
+              }
+            ]}
+          >
+            <EmojiToolCard
+              config={emojiConfig}
+              onChange={(newEmojiConfig) => onChange({ ...config, emojiConfig: newEmojiConfig })}
+              onPickAndImport={onPickAndImportEmojis || (async () => [])}
+              onResolvePath={onResolveEmojiPath || (async () => '')}
+              onDelete={onDeleteEmoji || (async () => false)}
+            />
+          </View>
+        </View>
+      </View>
+    )
+  }
 
   const Container = disableScroll ? View : ScrollView
   const containerProps = disableScroll

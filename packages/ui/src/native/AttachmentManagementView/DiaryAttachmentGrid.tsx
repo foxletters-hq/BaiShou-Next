@@ -1,10 +1,11 @@
 import React from 'react'
 import { View, Text, TouchableOpacity } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { FolderMinus, Share2, Trash2, ZoomIn } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import type { AttachmentManagementViewModel } from './useAttachmentManagementView'
 import { attachmentManagementStyles as styles } from './attachment-management.styles'
-import { formatSize, isImageFile, getFileIconName } from './attachment-management.utils'
+import { formatSize, getFileIcon, isImageFile } from './attachment-management.utils'
 import { AttachmentPaginationBar } from './AttachmentPaginationBar'
 import { AttachmentImageThumb } from './AttachmentImageThumb'
 
@@ -33,7 +34,7 @@ export const DiaryAttachmentGrid: React.FC<{ vm: AttachmentManagementViewModel }
   if (filteredDiaryAttachments.length === 0) {
     return (
       <View style={styles.emptyState}>
-        <MaterialIcons name="folder-off" size={40} color={colors.textTertiary} />
+        <FolderMinus size={40} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
         <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
           {t('settings.diary_no_attachments_found', '没有匹配到符合筛选条件的日记附件')}
         </Text>
@@ -81,11 +82,7 @@ export const DiaryAttachmentGrid: React.FC<{ vm: AttachmentManagementViewModel }
                     style={styles.diaryPreviewImage}
                   />
                 ) : (
-                  <MaterialIcons
-                    name={getFileIconName(item.name)}
-                    size={36}
-                    color={colors.textSecondary}
-                  />
+                  getFileIcon(item.name, 36, colors.textSecondary)
                 )}
 
                 {item.isOrphan && (
@@ -103,7 +100,7 @@ export const DiaryAttachmentGrid: React.FC<{ vm: AttachmentManagementViewModel }
                       onPress={() => handleOpenImagePreview(item.path, item.name)}
                       hitSlop={8}
                     >
-                      <MaterialIcons name="zoom-in" size={14} color={colors.textPrimary} />
+                      <ZoomIn size={14} color={colors.textPrimary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                     </TouchableOpacity>
                   )}
                   {onOpenFileLocation && (
@@ -112,7 +109,7 @@ export const DiaryAttachmentGrid: React.FC<{ vm: AttachmentManagementViewModel }
                       onPress={() => void onOpenFileLocation(item.path)}
                       hitSlop={8}
                     >
-                      <MaterialIcons name="share" size={14} color={colors.textPrimary} />
+                      <Share2 size={14} color={colors.textPrimary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                     </TouchableOpacity>
                   )}
                   {onDeleteDiaryAttachment && (
@@ -122,7 +119,7 @@ export const DiaryAttachmentGrid: React.FC<{ vm: AttachmentManagementViewModel }
                       disabled={isDeleting}
                       hitSlop={8}
                     >
-                      <MaterialIcons name="delete" size={14} color={colors.textOnPrimary} />
+                      <Trash2 size={14} color={colors.textOnPrimary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -145,31 +142,19 @@ export const DiaryAttachmentGrid: React.FC<{ vm: AttachmentManagementViewModel }
                 </View>
               </View>
 
-              <View style={styles.diaryCardInfo}>
-                <Text
-                  style={[styles.diaryCardTitle, { color: colors.textPrimary }]}
-                  numberOfLines={1}
-                >
-                  {item.name}
-                </Text>
-                <Text style={[styles.diaryCardMeta, { color: colors.textSecondary }]}>
-                  {item.yearMonth} • {formatSize(item.sizeMB)}
-                </Text>
-              </View>
+              <Text
+                style={[styles.diaryCardTitle, { color: colors.textPrimary }]}
+                numberOfLines={2}
+              >
+                {item.name}
+              </Text>
+              <Text style={[styles.diaryCardMeta, { color: colors.textSecondary }]}>
+                {formatSize(item.sizeMB)}
+              </Text>
             </TouchableOpacity>
           )
         })}
       </View>
-
-      {filteredDiaryAttachments.length > 10 && (
-        <AttachmentPaginationBar
-          current={currentDiaryPage}
-          total={totalDiaryPages}
-          pageSize={diaryPageSize}
-          onPageChange={setCurrentDiaryPage}
-          onPageSizeChange={setDiaryPageSize}
-        />
-      )}
     </>
   )
 }
