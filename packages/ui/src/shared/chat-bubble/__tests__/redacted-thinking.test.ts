@@ -63,7 +63,7 @@ describe('parseRedactedThinking', () => {
     expect(result.cleanReasoning).toBe('')
   })
 
-  it('unwraps leading think blocks for completed messages instead of hiding in reasoning', () => {
+  it('extracts leading think blocks into reasoning for completed messages', () => {
     const content = `${OPEN_REDacted}
 "的人"升级成了"需要我认真对待的合作者"。
 
@@ -71,14 +71,11 @@ describe('parseRedactedThinking', () => {
 ${CLOSE_REDacted}
 
 **拉提：** 今天的两项模块边界已经梳理完成。`
-    const streaming = parseRedactedThinking(content, '')
-    const completed = parseRedactedThinking(content, '', { extractContentThinkTags: false })
+    const result = parseRedactedThinking(content, '', { extractContentThinkTags: true })
 
-    expect(streaming.cleanReasoning).toContain('她抬起头')
-    expect(streaming.cleanContent).not.toContain('她抬起头')
-    expect(completed.cleanReasoning).toBe('')
-    expect(completed.cleanContent).toContain('她抬起头')
-    expect(completed.cleanContent).toContain('**拉提：**')
+    expect(result.cleanReasoning).toContain('她抬起头')
+    expect(result.cleanContent).not.toContain('她抬起头')
+    expect(result.cleanContent).toContain('**拉提：**')
   })
 
   it('sanitizes malformed nested message-time tags from fixture regression', () => {

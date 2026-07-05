@@ -8,7 +8,7 @@ import { AgentMarkdownRenderer } from '../AgentMarkdown'
 import { AgentThinkSection } from '../AgentThinkSection'
 import { NativeImagePreviewModal } from '../DiaryEditor/NativeImagePreviewModal'
 import { ToolResultGroupCard } from '../ToolResultGroupCard/ToolResultGroupCard'
-import { unwrapMessageMetadataForDisplay, type MockChatAttachment } from '@baishou/shared'
+import type { MockChatAttachment } from '@baishou/shared'
 import { chatNeedsRichMarkdown } from '../../shared/chat-bubble/chat-plain-text.util'
 import type { ChatBubbleProps } from './chat-bubble.types'
 import { chatBubbleStyles as styles } from './chat-bubble.styles'
@@ -62,7 +62,8 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
 
   const markdownStreaming = Boolean(liveStream?.isTextStreaming && !hasPersistedAssistantBody)
   const thinkStreaming = Boolean(liveStream?.isThinkStreaming && !hasPersistedAssistantBody)
-  const extractContentThinkTags = markdownStreaming || thinkStreaming
+  const extractContentThinkTags =
+    hasPersistedAssistantBody || markdownStreaming || thinkStreaming
 
   const { cleanContent, cleanReasoning } = useMemo(
     () =>
@@ -74,9 +75,6 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
 
   const displayAssistantBody = useMemo(() => {
     if (!isAssistant) return cleanContent
-    if (hasPersistedAssistantBody) {
-      return unwrapMessageMetadataForDisplay(message.content ?? '').trim()
-    }
     const body = cleanContent.trim()
     const reasoning = cleanReasoning.trim()
     if (!reasoning) return body
@@ -85,16 +83,14 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
       return body
     }
     return `${reasoning}\n\n${body}`
-  }, [isAssistant, hasPersistedAssistantBody, message.content, cleanContent, cleanReasoning])
+  }, [isAssistant, cleanContent, cleanReasoning])
 
   const thinkSectionContent = useMemo(() => {
-    const reasoning = hasPersistedAssistantBody
-      ? (message.reasoning ?? '').trim()
-      : cleanReasoning.trim()
+    const reasoning = cleanReasoning.trim()
     if (!reasoning) return ''
     if (displayAssistantBody.includes(reasoning)) return ''
     return reasoning
-  }, [hasPersistedAssistantBody, message.reasoning, cleanReasoning, displayAssistantBody])
+  }, [cleanReasoning, displayAssistantBody])
 
   const editableContent = isAssistant
     ? displayAssistantBody || message.content || ''
