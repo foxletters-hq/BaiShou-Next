@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import React, { useMemo, useState } from 'react'
-import { normalizeToolManagementConfig } from '@baishou/shared'
+import { normalizeToolManagementConfig, type EmojiToolConfig } from '@baishou/shared'
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import { BadgeCheck, ListOrdered, Minus, Plus, Smile, Store } from 'lucide-react
 import { useNativeTheme } from '../theme'
 import { Switch } from '../Switch'
 import { HelpTooltip } from '../Tooltip/HelpTooltip'
-import { EmojiToolCard, type EmojiToolConfig, type EmojiItem } from './EmojiToolCard'
+import { EmojiSettingsEntryRow } from '../EmojiSettingsView'
 import { AgentToolCategoryIcon, AgentToolIcon } from '../icons/agent-tools-icons'
 import { AGENT_TOOL_ICON_SIZE, DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 
@@ -34,6 +34,8 @@ export interface AgentToolsViewProps {
   onResolveEmojiPath?: (relativePath: string) => Promise<string>
   /** Mobile: delete an emoji file */
   onDeleteEmoji?: (relativePath: string) => Promise<boolean>
+  /** 打开独立表情包设置页 */
+  onOpenEmojiSettings?: () => void
 }
 
 export interface ToolConfigParam {
@@ -109,6 +111,12 @@ const getAgentTools = (t: (key: string, fallback: string) => string): AgentToolD
     tooltipKey: 'agent.tools.message_search_tooltip'
   },
   {
+    id: 'vector_search',
+    category: 'memory',
+    name: t('agent.tools.vector_search', '语义搜索'),
+    tooltipKey: 'agent.tools.vector_search_desc'
+  },
+  {
     id: 'memory_store',
     category: 'memory',
     name: t('agent.tools.memory_store', '记忆存储'),
@@ -149,7 +157,8 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
   disableScroll,
   onPickAndImportEmojis,
   onResolveEmojiPath,
-  onDeleteEmoji
+  onDeleteEmoji,
+  onOpenEmojiSettings
 }) => {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
@@ -447,7 +456,7 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
   )
 
   const renderCommunityTab = () => {
-    const emojiConfig = config.emojiConfig || { enabled: true, emojis: [] }
+    const emojiConfig = config.emojiConfig || { enabled: false, groups: [] }
 
     return (
       <View style={styles.list}>
@@ -467,12 +476,9 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
               }
             ]}
           >
-            <EmojiToolCard
+            <EmojiSettingsEntryRow
               config={emojiConfig}
-              onChange={(newEmojiConfig) => onChange({ ...config, emojiConfig: newEmojiConfig })}
-              onPickAndImport={onPickAndImportEmojis || (async () => [])}
-              onResolvePath={onResolveEmojiPath || (async () => '')}
-              onDelete={onDeleteEmoji || (async () => false)}
+              onPress={() => onOpenEmojiSettings?.()}
             />
           </View>
         </View>

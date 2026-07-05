@@ -1,54 +1,16 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback } from 'react'
 import { View } from 'react-native'
-import type { ToolManagementConfig } from '@baishou/shared'
-import { AUTO_INJECT_TIME_TOOL_ID, normalizeToolManagementConfig } from '@baishou/shared'
+import { useRouter } from 'expo-router'
 import { AgentToolsView } from '@baishou/ui/native'
 import type { EmojiImportResult } from '@baishou/core'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { MobileAttachmentManagerService } from '../../../services/mobile-attachment-manager.service'
-
-const DEFAULT_TOOL_MANAGEMENT_CONFIG: ToolManagementConfig = {
-  disabledToolIds: [AUTO_INJECT_TIME_TOOL_ID],
-  customConfigs: {},
-  emojiConfig: {
-    enabled: true,
-    emojis: []
-  }
-}
-
-function mergeToolManagementConfig(saved: ToolManagementConfig): ToolManagementConfig {
-  return normalizeToolManagementConfig({
-    ...DEFAULT_TOOL_MANAGEMENT_CONFIG,
-    ...saved,
-    emojiConfig: {
-      ...DEFAULT_TOOL_MANAGEMENT_CONFIG.emojiConfig!,
-      ...(saved.emojiConfig || {})
-    }
-  })
-}
+import { useToolManagementConfig } from '../../../hooks/useToolManagementConfig'
 
 export const AgentToolsSection: React.FC = () => {
-  const { dbReady, services } = useBaishou()
-  const [config, setConfig] = useState<ToolManagementConfig>(DEFAULT_TOOL_MANAGEMENT_CONFIG)
-
-  useEffect(() => {
-    if (!dbReady || !services) return
-    void (async () => {
-      const saved =
-        (await services.settingsManager.get<ToolManagementConfig>('tool_management_config')) ??
-        DEFAULT_TOOL_MANAGEMENT_CONFIG
-      setConfig(mergeToolManagementConfig(saved))
-    })()
-  }, [dbReady, services])
-
-  const persist = async (next: ToolManagementConfig) => {
-    if (!services || !dbReady) return
-    await services.settingsManager.set(
-      'tool_management_config',
-      normalizeToolManagementConfig(next)
-    )
-    setConfig(next)
-  }
+  const router = useRouter()
+  const { services } = useBaishou()
+  const { config, persist } = useToolManagementConfig()
 
   const handlePickAndImportEmojis = useCallback(async (): Promise<EmojiImportResult[]> => {
     if (!services) return []
@@ -84,6 +46,7 @@ export const AgentToolsSection: React.FC = () => {
         onPickAndImportEmojis={handlePickAndImportEmojis}
         onResolveEmojiPath={handleResolveEmojiPath}
         onDeleteEmoji={handleDeleteEmoji}
+        onOpenEmojiSettings={() => router.push('/settings/emoji')}
       />
     </View>
   )

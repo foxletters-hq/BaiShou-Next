@@ -1,6 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react'
-import type { ToolManagementConfig } from '@baishou/shared'
-import { normalizeToolManagementConfig } from '@baishou/shared'
+import React, { useCallback } from 'react'
+import { useRouter } from 'expo-router'
 import { AgentToolsView, useNativeTheme } from '@baishou/ui/native'
 import type { EmojiImportResult } from '@baishou/core'
 import { useTranslation } from 'react-i18next'
@@ -8,62 +7,14 @@ import { useBaishou } from '../providers/BaishouProvider'
 import { StackScreenLayout } from '../components/StackScreenLayout'
 import { getStackScreenChrome } from '../components/stackScreenChrome'
 import { MobileAttachmentManagerService } from '../services/mobile-attachment-manager.service'
-
-const DEFAULT_CONFIG: ToolManagementConfig = {
-  disabledToolIds: ['auto_inject_time'],
-  customConfigs: {},
-  emojiConfig: {
-    enabled: true,
-    emojis: []
-  }
-}
-
-function mergeToolManagementConfig(saved: ToolManagementConfig | null): ToolManagementConfig {
-  if (!saved) return DEFAULT_CONFIG
-  return normalizeToolManagementConfig({
-    ...DEFAULT_CONFIG,
-    ...saved,
-    emojiConfig: {
-      ...DEFAULT_CONFIG.emojiConfig!,
-      ...(saved.emojiConfig || {})
-    }
-  })
-}
+import { useToolManagementConfig } from '../hooks/useToolManagementConfig'
 
 export const AgentToolsScreen: React.FC = () => {
+  const router = useRouter()
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
-  const { dbReady, services } = useBaishou()
-  const [config, setConfig] = useState<ToolManagementConfig>(DEFAULT_CONFIG)
-
-  useEffect(() => {
-    if (!dbReady || !services) return
-    void (async () => {
-      let saved =
-        (await services.settingsManager.get<ToolManagementConfig>('tool_management_config')) ?? null
-      if (!saved) {
-        const legacy =
-          (await services.settingsManager.get<ToolManagementConfig>('tool_config')) ?? null
-        if (legacy) {
-          saved = legacy
-          await services.settingsManager.set('tool_management_config', legacy)
-        }
-      }
-      setConfig(mergeToolManagementConfig(saved))
-    })()
-  }, [dbReady, services])
-
-  const persist = useCallback(
-    async (next: ToolManagementConfig) => {
-      setConfig(next)
-      if (!services || !dbReady) return
-      await services.settingsManager.set(
-        'tool_management_config',
-        normalizeToolManagementConfig(next)
-      )
-    },
-    [dbReady, services]
-  )
+  const { services } = useBaishou()
+  const { config, persist } = useToolManagementConfig()
 
   const handlePickAndImportEmojis = useCallback(async (): Promise<EmojiImportResult[]> => {
     if (!services) return []
@@ -101,6 +52,7 @@ export const AgentToolsScreen: React.FC = () => {
         onPickAndImportEmojis={handlePickAndImportEmojis}
         onResolveEmojiPath={handleResolveEmojiPath}
         onDeleteEmoji={handleDeleteEmoji}
+        onOpenEmojiSettings={() => router.push('/settings/emoji')}
       />
     </StackScreenLayout>
   )

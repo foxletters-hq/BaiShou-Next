@@ -44,7 +44,7 @@ export interface EmojiToolCardProps {
 }
 
 const DEFAULT_EMOJI_CONFIG: EmojiToolConfig = {
-  enabled: true,
+  enabled: false,
   emojis: []
 }
 
@@ -58,7 +58,7 @@ export const EmojiToolCard: React.FC<EmojiToolCardProps> = ({
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
   const emojiConfig = config || DEFAULT_EMOJI_CONFIG
-  const isEnabled = emojiConfig.enabled !== false
+  const isEnabled = emojiConfig.enabled === true
   const [showSettingsPopup, setShowSettingsPopup] = useState(false)
   const [emojiPreviews, setEmojiPreviews] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(false)
