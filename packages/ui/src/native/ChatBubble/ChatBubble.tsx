@@ -62,41 +62,13 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
 
   const markdownStreaming = Boolean(liveStream?.isTextStreaming && !hasPersistedAssistantBody)
   const thinkStreaming = Boolean(liveStream?.isThinkStreaming && !hasPersistedAssistantBody)
-  const extractContentThinkTags =
-    hasPersistedAssistantBody || markdownStreaming || thinkStreaming
-
   const { cleanContent, cleanReasoning } = useMemo(
-    () =>
-      parseRedactedThinking(resolvedContent, resolvedReasoning, {
-        extractContentThinkTags
-      }),
-    [resolvedContent, resolvedReasoning, extractContentThinkTags]
+    () => parseRedactedThinking(resolvedContent, resolvedReasoning),
+    [resolvedContent, resolvedReasoning]
   )
 
-  const displayAssistantBody = useMemo(() => {
-    if (!isAssistant) return cleanContent
-    const body = cleanContent.trim()
-    const reasoning = cleanReasoning.trim()
-    if (!reasoning) return body
-    if (!body) return reasoning
-    if (body.includes(reasoning) || reasoning.includes(body.slice(0, Math.min(body.length, 48)))) {
-      return body
-    }
-    return `${reasoning}\n\n${body}`
-  }, [isAssistant, cleanContent, cleanReasoning])
-
-  const thinkSectionContent = useMemo(() => {
-    const reasoning = cleanReasoning.trim()
-    if (!reasoning) return ''
-    if (displayAssistantBody.includes(reasoning)) return ''
-    return reasoning
-  }, [cleanReasoning, displayAssistantBody])
-
-  const editableContent = isAssistant
-    ? displayAssistantBody || message.content || ''
-    : message.content || ''
   const edit = useNativeChatBubbleEdit(
-    editableContent,
+    message.content || '',
     message.id,
     onSaveEdit,
     onResendEdit,
@@ -185,16 +157,16 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                   }
           ]}
         >
-          {isAssistant && showReasoning && thinkSectionContent ? (
+          {isAssistant && showReasoning && cleanReasoning ? (
             <View
               style={{
-                marginBottom: displayAssistantBody || showStreamingTools || showPersistedTools ? 8 : 0,
+                marginBottom: cleanContent || showStreamingTools || showPersistedTools ? 8 : 0,
                 alignSelf: 'stretch',
                 width: '100%'
               }}
             >
               <AgentThinkSection
-                content={thinkSectionContent}
+                content={cleanReasoning}
                 isStreaming={thinkStreaming}
                 isMarkdownStreaming={thinkStreaming}
               />
@@ -234,26 +206,23 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
               {attachments.length > 0 ? (
                 <NativeChatBubbleAttachments attachments={attachments} isUserBubble={isUser} />
               ) : null}
-              {isAssistant && displayAssistantBody ? (
+              {isAssistant && cleanContent ? (
                 <View
                   style={
-                    chatNeedsRichMarkdown(displayAssistantBody)
+                    chatNeedsRichMarkdown(cleanContent)
                       ? styles.markdownSlot
                       : styles.plainTextSlot
                   }
                 >
-                  {chatNeedsRichMarkdown(displayAssistantBody) ? (
+                  {chatNeedsRichMarkdown(cleanContent) ? (
                     <AgentMarkdownRenderer
-                      content={displayAssistantBody}
+                      content={cleanContent}
                       variant="chat"
                       isStreaming={markdownStreaming}
                       onImagePress={(_src, resolvedUri) => setPreviewImageUri(resolvedUri)}
                     />
                   ) : (
-                    <ChatPlainTextBody
-                      content={displayAssistantBody}
-                      color={colors.textPrimary}
-                    />
+                    <ChatPlainTextBody content={cleanContent} color={colors.textPrimary} />
                   )}
                 </View>
               ) : !isAssistant && message.content ? (
