@@ -1180,24 +1180,30 @@ export const AgentScreen = () => {
     })
   }, [messages.length])
 
-  /** 对齐桌面 AgentMessageList：有 reasoning 且尚无正文时视为思考中 */
-  const streamingReasoningActive = useMemo(
-    () => Boolean(streamingReasoning.trim() && !streamingText.trim()),
-    [streamingReasoning, streamingText]
-  )
-
   /** 与 bubbleTextStreaming 对齐：linger / hold 期间仍视为展示态，避免结束帧切组件 */
   const markdownPresentationActive =
     isStreaming || isStreamBridgeActive || streamPresentationLinger || holdLivePresentation
 
-  /** 思考正文走 Streamdown 渐显：纯思考阶段或整段流式未结束 */
-  const streamingThinkActive = useMemo(
-    () =>
-      Boolean(
-        streamingReasoning.trim() && (streamingReasoningActive || markdownPresentationActive)
-      ),
-    [streamingReasoning, streamingReasoningActive, markdownPresentationActive]
-  )
+  /** 思考区左侧转圈：流式进行中且（纯思考阶段或尚无 token） */
+  const streamingThinkLoading = useMemo(() => {
+    if (!markdownPresentationActive) return false
+    if (streamingReasoning.trim() && !streamingText.trim()) return true
+    if (
+      !streamingText.trim() &&
+      !streamingReasoning.trim() &&
+      !activeTool &&
+      completedTools.length === 0
+    ) {
+      return true
+    }
+    return false
+  }, [
+    streamingReasoning,
+    streamingText,
+    markdownPresentationActive,
+    activeTool,
+    completedTools.length
+  ])
 
   const streamingCompletedTools = useMemo(
     () =>
@@ -1238,7 +1244,8 @@ export const AgentScreen = () => {
       content: streamingText,
       reasoning: streamingReasoning,
       isTextStreaming: bubbleTextStreaming,
-      isThinkStreaming: !assistantPersistedInList && streamingThinkActive && bubbleTextStreaming,
+      isThinkLoading: streamingThinkLoading,
+      isThinkStreaming: false,
       activeToolName: activeToolDisplayName,
       completedTools: streamingCompletedTools,
       attachments:
@@ -1248,7 +1255,7 @@ export const AgentScreen = () => {
       streamingText,
       streamingReasoning,
       bubbleTextStreaming,
-      streamingThinkActive,
+      streamingThinkLoading,
       assistantPersistedInList,
       activeToolDisplayName,
       streamingCompletedTools,
@@ -1263,7 +1270,7 @@ export const AgentScreen = () => {
         <StreamingBubble
           text=""
           reasoning=""
-          isReasoning={false}
+          isReasoning={streamingThinkLoading}
           isThinkStreaming={false}
           isTextStreaming={bubbleTextStreaming}
           activeToolName={activeToolDisplayName}
@@ -1276,6 +1283,7 @@ export const AgentScreen = () => {
     ),
     [
       bubbleTextStreaming,
+      streamingThinkLoading,
       activeToolDisplayName,
       streamingCompletedTools,
       pendingEmojiAttachments,
@@ -1544,16 +1552,17 @@ export const AgentScreen = () => {
 
                   const rowLiveStream = isLiveAssistantRow
                     ? {
-                        content: assistantPersistedInList
-                          ? item.content
-                          : streamingText.trim() || item.content,
-                        reasoning: assistantPersistedInList
-                          ? item.reasoning || ''
-                          : streamingReasoning.trim() || item.reasoning || '',
-                        isTextStreaming: assistantPersistedInList ? false : bubbleTextStreaming,
-                        isThinkStreaming: assistantPersistedInList
-                          ? false
-                          : streamingThinkActive && bubbleTextStreaming,
+                        content: markdownPresentationActive
+                          ? streamingText.trim() || item.content
+                          : item.content,
+                        reasoning: markdownPresentationActive
+                          ? streamingReasoning.trim() || item.reasoning || ''
+                          : item.reasoning || '',
+                        isTextStreaming: markdownPresentationActive && bubbleTextStreaming,
+                        isThinkLoading: markdownPresentationActive && streamingThinkLoading,
+                        isThinkStreaming: false,
+                        activeToolName: markdownPresentationActive ? activeToolDisplayName : null,
+                        completedTools: markdownPresentationActive ? streamingCompletedTools : [],
                         attachments: liveStreamProps.attachments
                       }
                     : undefined

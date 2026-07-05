@@ -52,20 +52,25 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   const sourceContent = liveStream?.content ?? message.content ?? ''
   const sourceReasoning = liveStream?.reasoning ?? message.reasoning ?? ''
 
-  /** 已落库助手消息：正文或 reasoning 任一存在即视为完成，关闭流式动画 */
-  const hasPersistedAssistant = isAssistant && Boolean(
-    message.content?.trim() || message.reasoning?.trim()
+  /** live 行流式覆盖：重生成时消息已落库，仍须走 stream 态（转圈 / 工具 / 正文） */
+  const liveStreamOverlay = Boolean(
+    liveStream &&
+      (liveStream.isThinkLoading ||
+        liveStream.isTextStreaming ||
+        liveStream.activeToolName ||
+        (liveStream.completedTools?.length ?? 0) > 0)
   )
-  const parseContent = hasPersistedAssistant ? (message.content ?? '') : sourceContent
-  const parseReasoning = hasPersistedAssistant ? (message.reasoning ?? '') : sourceReasoning
+  const parseContent = liveStreamOverlay ? sourceContent : (message.content ?? '')
+  const parseReasoning = liveStreamOverlay ? sourceReasoning : (message.reasoning ?? '')
 
   const { cleanContent, cleanReasoning } = useMemo(
     () => parseRedactedThinking(parseContent, parseReasoning),
     [parseContent, parseReasoning]
   )
 
-  const markdownStreaming = Boolean(liveStream?.isTextStreaming && !hasPersistedAssistant)
-  const thinkStreaming = Boolean(liveStream?.isThinkStreaming && !hasPersistedAssistant)
+  const markdownStreaming = Boolean(liveStream?.isTextStreaming)
+  const thinkLoading = Boolean(liveStream?.isThinkLoading)
+  const showThinkSection = isAssistant && showReasoning && (cleanReasoning || thinkLoading)
 
   const editableContent = isAssistant
     ? cleanContent || message.content || ''
@@ -160,7 +165,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                   }
           ]}
         >
-          {isAssistant && showReasoning && cleanReasoning ? (
+          {showThinkSection ? (
             <View
               style={{
                 marginBottom: cleanContent || showStreamingTools || showPersistedTools ? 8 : 0,
@@ -170,8 +175,8 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
             >
               <AgentThinkSection
                 content={cleanReasoning}
-                isStreaming={thinkStreaming}
-                isMarkdownStreaming={thinkStreaming}
+                isLoading={thinkLoading}
+                isMarkdownStreaming={false}
               />
             </View>
           ) : null}

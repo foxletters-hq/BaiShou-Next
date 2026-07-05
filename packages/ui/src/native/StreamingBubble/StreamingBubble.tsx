@@ -44,7 +44,7 @@ export const StreamingBubble = React.memo(function StreamingBubble({
     [text, reasoning]
   )
 
-  const hasReasoning = cleanReasoning.length > 0 || isReasoning
+  const hasReasoning = cleanReasoning.length > 0 || isReasoning || isThinkStreaming
   const hasText = cleanText.length > 0
   const hasTools = completedTools.length > 0 || !!activeToolName
   const hasAttachments = attachments.length > 0
@@ -123,8 +123,8 @@ export const StreamingBubble = React.memo(function StreamingBubble({
               >
                 <AgentThinkSection
                   content={cleanReasoning}
-                  isStreaming={isReasoning}
-                  isMarkdownStreaming={isThinkStreaming}
+                  isLoading={isReasoning || isThinkStreaming}
+                  isMarkdownStreaming={false}
                 />
               </View>
             )}

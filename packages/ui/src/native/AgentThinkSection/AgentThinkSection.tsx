@@ -1,14 +1,5 @@
-import React, { useEffect } from 'react'
+import React from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import Animated, {
-  cancelAnimation,
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withSequence,
-  withTiming
-} from 'react-native-reanimated'
 import { useAgentThinkPresentation } from '../../shared/agent-think'
 import { useNativeTheme } from '../theme'
 import { AgentMarkdownRenderer } from '../AgentMarkdown'
@@ -17,13 +8,13 @@ import { ThinkChevron, ThinkStatusIcon } from './ThinkStatusIcon'
 
 export interface AgentThinkSectionProps {
   content: string
-  /** 状态行：标题闪烁、流式期间自动展开 */
+  /** 标题左侧转圈；与 Markdown 渐显分离，避免落库后标题闪烁 */
+  isLoading?: boolean
+  /** @deprecated 请用 isLoading；保留兼容旧调用 */
   isStreaming?: boolean
-  /** reasoning 正文是否走 Streamdown 渐显（可与正文流式重叠） */
+  /** reasoning 正文是否走 Streamdown 渐显（默认 false，避免展开后闪烁） */
   isMarkdownStreaming?: boolean
 }
-
-const AnimatedText = Animated.createAnimatedComponent(Text)
 
 /**
  * 对齐桌面 @ant-design/x Think：状态行 + 左侧竖线内容区。
@@ -31,44 +22,20 @@ const AnimatedText = Animated.createAnimatedComponent(Text)
  */
 export function AgentThinkSection({
   content,
+  isLoading,
   isStreaming = false,
-  isMarkdownStreaming
+  isMarkdownStreaming = false
 }: AgentThinkSectionProps) {
   const { colors } = useNativeTheme()
   const body = content.trim()
-  const { title, loading, expanded, setExpanded } = useAgentThinkPresentation(isStreaming)
-  const blinkOpacity = useSharedValue(1)
-  const isStreamingSv = useSharedValue(isStreaming ? 1 : 0)
-
-  const markdownStreaming = isMarkdownStreaming ?? isStreaming
+  const loading = isLoading ?? isStreaming
+  const { title, loading: showSpinner, expanded, setExpanded } = useAgentThinkPresentation(loading)
   const thinkExpanded = expanded
 
-  useEffect(() => {
-    isStreamingSv.value = isStreaming ? 1 : 0
-    if (!isStreaming) {
-      cancelAnimation(blinkOpacity)
-      blinkOpacity.value = 1
-      return
-    }
-
-    blinkOpacity.value = withRepeat(
-      withSequence(
-        withTiming(0.45, { duration: 600, easing: Easing.inOut(Easing.ease) }),
-        withTiming(1, { duration: 600, easing: Easing.inOut(Easing.ease) })
-      ),
-      -1,
-      false
-    )
-  }, [blinkOpacity, isStreaming, isStreamingSv])
-
-  const titleBlinkStyle = useAnimatedStyle(() => ({
-    opacity: isStreamingSv.value === 1 ? blinkOpacity.value : 1
-  }))
-
-  if (!thinkExpanded && !body && !isStreaming) return null
+  if (!thinkExpanded && !body && !loading) return null
 
   const thinkBody = body ? (
-    <AgentMarkdownRenderer content={body} variant="ancillary" isStreaming={markdownStreaming} />
+    <AgentMarkdownRenderer content={body} variant="ancillary" isStreaming={isMarkdownStreaming} />
   ) : null
   const visibleThinkBody = thinkExpanded ? thinkBody : null
 
@@ -80,21 +47,17 @@ export function AgentThinkSection({
         accessibilityRole="button"
         accessibilityState={{ expanded: thinkExpanded }}
       >
-        <ThinkStatusIcon loading={loading} color={colors.textSecondary} />
-        <AnimatedText
-          style={[
-            styles.statusText,
-            { color: colors.textSecondary },
-            isStreaming ? titleBlinkStyle : null
-          ]}
+        <ThinkStatusIcon loading={showSpinner} color={colors.textSecondary} />
+        <Text
+          style={[styles.statusText, { color: colors.textSecondary }]}
           numberOfLines={1}
         >
           {title}
-        </AnimatedText>
+        </Text>
         <ThinkChevron expanded={thinkExpanded} color={colors.textTertiary} />
       </Pressable>
 
-      {markdownStreaming && thinkExpanded ? (
+      {isMarkdownStreaming && thinkExpanded ? (
         <View
           style={[
             styles.content,

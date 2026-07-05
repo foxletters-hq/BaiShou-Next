@@ -1,14 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import Animated, {
-  cancelAnimation,
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withSequence,
-  withTiming
-} from 'react-native-reanimated'
 import { useTranslation } from 'react-i18next'
 import { formatToolDurationMs, type AgentToolChainItemModel } from '../../shared/agent-tool-chain'
 import { getToolDisplayName, type ToolInvocationLike } from '../../shared/tool-result.util'
@@ -16,8 +7,6 @@ import { ThinkChevron, ToolStatusIcon } from '../AgentThinkSection/ThinkStatusIc
 import { CollapsibleHeight } from '../CollapsibleHeight'
 import { useNativeTheme } from '../theme'
 import { ToolResultContent } from './ToolResultContent'
-
-const AnimatedText = Animated.createAnimatedComponent(Text)
 
 export interface AgentToolThinkItemProps {
   model: AgentToolChainItemModel
@@ -53,29 +42,6 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
     return t(`agent.tools.${model.toolName}`, model.toolName)
   }, [invocation, model.toolName, t])
 
-  const blinkOpacity = useSharedValue(1)
-  const isLoadingSv = useSharedValue(isLoading ? 1 : 0)
-  useEffect(() => {
-    isLoadingSv.value = isLoading ? 1 : 0
-    if (!isLoading) {
-      cancelAnimation(blinkOpacity)
-      blinkOpacity.value = 1
-      return
-    }
-    blinkOpacity.value = withRepeat(
-      withSequence(
-        withTiming(0.45, { duration: 600, easing: Easing.inOut(Easing.ease) }),
-        withTiming(1, { duration: 600, easing: Easing.inOut(Easing.ease) })
-      ),
-      -1,
-      false
-    )
-  }, [blinkOpacity, isLoading, isLoadingSv])
-
-  const titleBlinkStyle = useAnimatedStyle(() => ({
-    opacity: isLoadingSv.value === 1 ? blinkOpacity.value : 1
-  }))
-
   const handleToggle = useCallback(() => {
     setExpanded((prev) => {
       const next = !prev
@@ -99,16 +65,9 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
           color={colors.textSecondary}
           errorColor={colors.error}
         />
-        <AnimatedText
-          style={[
-            styles.statusText,
-            { color: colors.textSecondary },
-            isLoading ? titleBlinkStyle : null
-          ]}
-          numberOfLines={2}
-        >
+        <Text style={[styles.statusText, { color: colors.textSecondary }]} numberOfLines={2}>
           {displayTitle}
-        </AnimatedText>
+        </Text>
         {model.durationMs != null ? (
           <Text style={[styles.duration, { color: colors.textTertiary }]}>
             {formatToolDurationMs(model.durationMs)}

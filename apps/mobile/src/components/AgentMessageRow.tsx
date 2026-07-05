@@ -60,6 +60,7 @@ export interface AgentMessageRowProps {
     content?: string
     reasoning?: string
     isTextStreaming?: boolean
+    isThinkLoading?: boolean
     isThinkStreaming?: boolean
     activeToolName?: string | null
     completedTools?: Array<{
