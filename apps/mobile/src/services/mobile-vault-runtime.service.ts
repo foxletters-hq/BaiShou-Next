@@ -89,7 +89,7 @@ export type VaultDiarySearcher = {
   editEntry: (args: {
     date: string
     content: string
-    mode: 'append' | 'overwrite'
+    mode?: 'append' | 'overwrite'
     tags?: string
   }) => Promise<ToolDiaryMutationResult>
   deleteEntry: (date: string) => Promise<ToolDiaryMutationResult>
@@ -284,6 +284,7 @@ export function createVaultBoundDiaryStack(deps: {
           }
         }
 
+        const resolvedMode = mode ?? 'append'
         let finalContent = content
         const editMode = resolveDiaryEditMode(mode)
         if (editMode === 'append') {

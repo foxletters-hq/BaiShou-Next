@@ -1,5 +1,6 @@
 import { shadowConnectionManager, ShadowIndexRepository } from '@baishou/database-desktop'
 import { logger, parseDateStr } from '@baishou/shared'
+import { quarterlySummariesForMonthCascade } from '@baishou/core-desktop'
 import { vaultService } from './vault.ipc'
 
 /** 国际化字典类型 */
@@ -126,9 +127,9 @@ export async function buildSharedContextText(
   const mList = relevantSummaries.filter((s: any) => s.type === 'monthly')
   const wList = relevantSummaries.filter((s: any) => s.type === 'weekly')
 
-  // 级联过滤：被更高级别总结覆盖的月份集合
+  // 级联过滤：较早季报覆盖其月份内的月报；最近一份季报不参与覆盖
   const coveredMonthKeys = new Set<string>()
-  for (const q of qList) markMonthsCovered(q, coveredMonthKeys)
+  for (const q of quarterlySummariesForMonthCascade(qList)) markMonthsCovered(q, coveredMonthKeys)
 
   const getMonthKey = (s: any) => {
     const start = new Date(s.startDate)

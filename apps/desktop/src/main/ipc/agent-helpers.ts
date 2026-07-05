@@ -192,6 +192,7 @@ export function createDiarySearcher() {
             }
           }
 
+          const resolvedMode = mode ?? 'append'
           let finalContent = content
           const editMode = resolveDiaryEditMode(mode)
           if (editMode === 'append') {

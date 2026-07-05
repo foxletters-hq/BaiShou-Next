@@ -3,6 +3,7 @@ import { useRouter, type Href, useFocusEffect } from 'expo-router'
 import {
   type PromptShortcut,
   type WebSearchConfig,
+  type AIProviderConfig,
   LATTE_ASSISTANT_NAME,
   normalizeChatBackgroundBlur,
   normalizeChatBackgroundOverlayOpacity
@@ -204,7 +205,24 @@ export const AgentScreen = () => {
   const [listViewportHeight, setListViewportHeight] = useState(0)
 
   const [assistants, setAssistants] = useState<MobileAssistantUi[]>([])
+  const [aiProviders, setAiProviders] = useState<AIProviderConfig[]>([])
   const userProfile = useAgentUserProfile()
+
+  useEffect(() => {
+    if (!dbReady || !services) return
+    let cancelled = false
+    void services.settingsManager
+      .get<AIProviderConfig[]>('ai_providers')
+      .then((list) => {
+        if (!cancelled) setAiProviders(list ?? [])
+      })
+      .catch(() => {
+        if (!cancelled) setAiProviders([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [dbReady, services, vaultRevision])
 
   useEffect(() => {
     if (!dbReady || !services) return
@@ -232,6 +250,11 @@ export const AgentScreen = () => {
     hasConfiguredDialogueModel
   } = useAgentModel({ currentSessionIdRef })
 
+  const currentProviderType = useMemo(
+    () => aiProviders.find((provider) => provider.id === currentProviderId)?.type,
+    [aiProviders, currentProviderId]
+  )
+
   const { sessions, hasMoreSessions, isLoadingMoreSessions, sessionListScrollKey, loadSessions } =
     useAgentSessions(currentAssistant?.id)
 
@@ -257,7 +280,8 @@ export const AgentScreen = () => {
     handleCreateSession,
     handleDeleteSession,
     handlePinSession,
-    handleRenameSession
+    handleRenameSession,
+    invalidateCurrentSession
   } = useAgentSession({
     assistantId: currentAssistant?.id,
     providerId: currentProviderId ?? undefined,
@@ -295,7 +319,8 @@ export const AgentScreen = () => {
     handleSelectAssistant,
     handleSelectSession,
     loadSessions,
-    clearSession
+    clearSession,
+    invalidateCurrentSession
   })
 
   const {
@@ -1384,6 +1409,8 @@ export const AgentScreen = () => {
           <View style={styles.container}>
             <AgentChatAppBar
               modelName={displayModelName || ''}
+              providerId={currentProviderId}
+              providerType={currentProviderType}
               costMicros={totalCostMicros}
               onMenuPress={() => setDrawerOpen(true)}
               onModelPress={() => setShowModelSwitcher(true)}

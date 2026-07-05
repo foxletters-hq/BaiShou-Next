@@ -32,6 +32,7 @@ describe('buildToolUsageGuidelines', () => {
     expect(guidelines).toContain('编辑日记前先读取（强制）')
     expect(guidelines).toContain('diary_read')
     expect(guidelines).toContain('diary_edit')
+    expect(guidelines).toContain('保留已有段落')
   })
 
   it('returns null for work-partner style tool sets without diary tools', () => {

@@ -125,6 +125,11 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
     }
   })
 
+  useEffect(() => {
+    resetKeyboard()
+    return () => resetKeyboard()
+  }, [resetKeyboard])
+
   contentRef.current = content
   tableSheetRef.current = tableSheet
 
@@ -139,7 +144,9 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
     prevContentLenRef.current = content.length
     if (toolbarInsertingRef.current) return
     if (!contentHydratedRef.current) {
-      if (content.length > 0) contentHydratedRef.current = true
+      if (content.length > 0) {
+        contentHydratedRef.current = true
+      }
       return
     }
     if (

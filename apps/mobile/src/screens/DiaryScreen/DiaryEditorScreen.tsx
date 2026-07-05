@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { View, StyleSheet, ActivityIndicator } from 'react-native'
+import { View, StyleSheet, ActivityIndicator, Keyboard } from 'react-native'
 import { ScreenSafeArea } from '../../components/ScreenSafeArea'
 import { useTranslation } from 'react-i18next'
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router'
+import { useIsFocused, useFocusEffect } from '@react-navigation/native'
 import {
   DiaryEditor,
   isLikelyEditorBundleLeak,
@@ -80,6 +81,18 @@ export const DiaryEditorScreen: React.FC = () => {
   const editorWebViewSource = useDiaryEditorWebViewSource()
   const [tagColorRegistry, setTagColorRegistry] = useState<DiaryTagColorRegistry>({})
   const previousTagsRef = useRef<string[]>([])
+
+  const dismissEditorKeyboard = useCallback(() => {
+    Keyboard.dismiss()
+  }, [])
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        dismissEditorKeyboard()
+      }
+    }, [dismissEditorKeyboard])
+  )
 
   const handleReadAloud = useCallback(() => {
     void handleTtsReadAloud(content, DIARY_TTS_PLAYBACK_ID)
@@ -255,6 +268,7 @@ export const DiaryEditorScreen: React.FC = () => {
       metadataDirtyRef.current = false
       setIsDirty(false)
       isDirtyRef.current = false
+      dismissEditorKeyboard()
       router.back()
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
@@ -405,15 +419,18 @@ export const DiaryEditorScreen: React.FC = () => {
       if (confirmed) {
         setIsDirty(false)
         isDirtyRef.current = false
+        dismissEditorKeyboard()
         router.back()
       }
     } else {
+      dismissEditorKeyboard()
       router.back()
     }
   }
 
   useEffect(() => {
     const unsub = navigation.addListener('beforeRemove', (e) => {
+      dismissEditorKeyboard()
       if (!isDirtyRef.current) return
 
       e.preventDefault()
@@ -425,12 +442,13 @@ export const DiaryEditorScreen: React.FC = () => {
         if (confirmed) {
           setIsDirty(false)
           isDirtyRef.current = false
+          dismissEditorKeyboard()
           router.back()
         }
       })()
     })
     return unsub
-  }, [navigation, dialog, t, router])
+  }, [navigation, dialog, t, router, dismissEditorKeyboard])
 
   return (
     <ScreenSafeArea preset="screen" style={{ backgroundColor: colors.bgSurface }}>

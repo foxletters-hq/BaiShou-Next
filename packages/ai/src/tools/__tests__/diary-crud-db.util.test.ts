@@ -61,8 +61,31 @@ describe('diary read-before-edit guard', () => {
     await runDiaryReadViaDb({ dates: ['2024-03-01'] }, context)
     const result = await runDiaryEditViaDb({ date: '2024-03-01', content: '追加内容' }, context)
 
-    expect(result).toContain('Successfully modified')
+    expect(result).toContain('Successfully appended')
     expect(editEntry).toHaveBeenCalledOnce()
+  })
+
+  it('allows diary_edit overwrite after diary_read', async () => {
+    const editEntry = vi.fn().mockResolvedValue({ ok: true as const })
+    const context = createContext({
+      diarySearcher: mockDiarySearcher({
+        readByDates: vi
+          .fn()
+          .mockResolvedValue([{ date: '2024-03-01', content: '# Diary\n\nHello' }]),
+        editEntry
+      })
+    })
+
+    await runDiaryReadViaDb({ dates: ['2024-03-01'] }, context)
+    const result = await runDiaryEditViaDb(
+      { date: '2024-03-01', content: '全新内容', mode: 'overwrite' },
+      context
+    )
+
+    expect(result).toContain('Successfully replaced')
+    expect(editEntry).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: 'overwrite', content: '全新内容' })
+    )
   })
 
   it('ensureDiaryReadGuard lazily attaches a guard', () => {

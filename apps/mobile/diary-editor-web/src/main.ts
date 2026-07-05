@@ -37,7 +37,7 @@ let bottomScrollInsetPx = 0
 let keyboardVisible = false
 let caretScrollFrameId: number | null = null
 let suppressCaretScrollOnce = false
-/** 编辑器初次挂载期间禁止平滑滚向光标 */
+/** 编辑器初次挂载后短暂抑制自动滚向光标，避免进入页面时视图跳动 */
 let suppressCaretScrollUntil = 0
 /** 用户手动滚动后，暂停自动把视图拽回光标 */
 let userScrollLockUntil = 0

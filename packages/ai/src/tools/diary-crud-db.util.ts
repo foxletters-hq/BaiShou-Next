@@ -113,7 +113,10 @@ export async function runDiaryEditViaDb(
   })
 
   if (result.ok === false) return result.message
-  return `Successfully modified the diary entry for ${args.date} (${editMode} mode).`
+  if (editMode === 'overwrite') {
+    return `Successfully replaced the diary entry for ${args.date} (overwrite mode).`
+  }
+  return `Successfully appended content to the diary entry for ${args.date}.`
 }
 
 export async function runDiaryDeleteViaDb(
