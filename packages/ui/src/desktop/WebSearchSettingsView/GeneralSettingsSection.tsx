@@ -1,16 +1,10 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { WEB_SEARCH_MAX_RESULTS_LIMIT } from '@baishou/shared'
-import {
-  MdFormatListNumbered,
-  MdAutoAwesome,
-  MdCompress,
-  MdLibraryBooks,
-  MdShortText
-} from 'react-icons/md'
 import { Switch } from '../Switch/Switch'
 import type { WebSearchConfig } from './web-search-settings.types'
 import styles from './WebSearchSettingsView.module.css'
+import { AlignLeft, Library, ListOrdered, Minimize2, Sparkles } from 'lucide-react'
 
 interface GeneralSettingsSectionProps {
   searchConfig: WebSearchConfig
@@ -31,7 +25,7 @@ export const GeneralSettingsSection: React.FC<GeneralSettingsSectionProps> = ({
       <div className={styles.cardBody}>
         <div className={styles.sliderRow}>
           <div className={styles.sliderRowHeader}>
-            <MdFormatListNumbered className={styles.sliderIcon} />
+            <ListOrdered className={styles.sliderIcon} />
             <div className={styles.sliderTextGroup}>
               <span className={styles.sliderTitle}>
                 {t('agent.tools.param_max_results', '搜索结果上限')}
@@ -57,7 +51,7 @@ export const GeneralSettingsSection: React.FC<GeneralSettingsSectionProps> = ({
         <div className={styles.divider} />
 
         <div className={styles.switchTile}>
-          <MdAutoAwesome className={styles.switchIcon} />
+          <Sparkles className={styles.switchIcon} />
           <div className={styles.switchTextGroup}>
             <span className={styles.sliderTitle}>
               {t('agent.tools.param_rag_enabled', '网页智能抽取 (Web-RAG)')}
@@ -77,7 +71,7 @@ export const GeneralSettingsSection: React.FC<GeneralSettingsSectionProps> = ({
             <div className={styles.divider} />
             <div className={styles.sliderRow}>
               <div className={styles.sliderRowHeader}>
-                <MdCompress className={styles.sliderIcon} />
+                <Minimize2 className={styles.sliderIcon} />
                 <div className={styles.sliderTextGroup}>
                   <span className={styles.sliderTitle}>
                     {t('agent.tools.param_rag_max_chunks', '总片段上限')}
@@ -104,7 +98,7 @@ export const GeneralSettingsSection: React.FC<GeneralSettingsSectionProps> = ({
 
             <div className={styles.sliderRow}>
               <div className={styles.sliderRowHeader}>
-                <MdLibraryBooks className={styles.sliderIcon} />
+                <Library className={styles.sliderIcon} />
                 <div className={styles.sliderTextGroup}>
                   <span className={styles.sliderTitle}>
                     {t('agent.tools.param_rag_chunks_per_source', '单站抽取块数')}
@@ -136,7 +130,7 @@ export const GeneralSettingsSection: React.FC<GeneralSettingsSectionProps> = ({
             <div className={styles.divider} />
             <div className={styles.sliderRow}>
               <div className={styles.sliderRowHeader}>
-                <MdShortText className={styles.sliderIcon} />
+                <AlignLeft className={styles.sliderIcon} />
                 <div className={styles.sliderTextGroup}>
                   <span className={styles.sliderTitle}>
                     {t('agent.tools.param_plain_snippet_length', '简单摘要截取长度')}

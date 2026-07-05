@@ -1,9 +1,12 @@
 import React, { useState } from 'react'
 import { View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { Database, Download, Upload } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
 import { settingsHubListStyles as hubStyles } from '../settings/settings-hub.styles'
 import { SettingsExpansionTile } from '../settings/SettingsExpansionTile'
+import { SettingsListLeadingIcon } from '../settings/SettingsListLeadingIcon'
+import { DEFAULT_STROKE_WIDTH, NAV_ICON_SIZE } from '../../shared/icons/icon-sizes'
 
 export interface NativeDataManagementCardProps {
   onExport: () => Promise<void>
@@ -50,14 +53,16 @@ export const DataManagementCard: React.FC<NativeDataManagementCardProps> = ({
       title: t('settings.export_data', '导出数据至本地'),
       subtitle: t('settings.export_desc', '生成一份包含所有内容的 ZIP 备份文件'),
       onPress: handleExport,
-      loading: isExporting
+      loading: isExporting,
+      Icon: Download
     },
     {
       key: 'import',
       title: t('settings.import_data', '从外部 ZIP 导入'),
       subtitle: t('settings.import_desc', '选择本地 ZIP 文件覆盖恢复数据'),
       onPress: handleImport,
-      loading: isImporting
+      loading: isImporting,
+      Icon: Upload
     }
   ]
 
@@ -75,6 +80,13 @@ export const DataManagementCard: React.FC<NativeDataManagementCardProps> = ({
         { opacity: pressed ? 0.7 : 1 }
       ]}
     >
+      <SettingsListLeadingIcon>
+        <row.Icon
+          size={NAV_ICON_SIZE}
+          strokeWidth={DEFAULT_STROKE_WIDTH}
+          color={colors.textSecondary}
+        />
+      </SettingsListLeadingIcon>
       <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
         <Text style={[hubStyles.rowTitle, { color: colors.textPrimary }]}>{row.title}</Text>
         <Text style={[styles.sub, { color: colors.textSecondary }]}>{row.subtitle}</Text>
@@ -95,6 +107,13 @@ export const DataManagementCard: React.FC<NativeDataManagementCardProps> = ({
     <SettingsExpansionTile
       embedded={embedded}
       isLast={isLast}
+      icon={
+        <Database
+          size={NAV_ICON_SIZE}
+          strokeWidth={DEFAULT_STROKE_WIDTH}
+          color={colors.textSecondary}
+        />
+      }
       title={t('settings.data_management', '数据管理')}
       subtitle={t('settings.data_management_desc', '导出、导入数据或局域网快传')}
     >

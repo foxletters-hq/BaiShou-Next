@@ -3,7 +3,9 @@ import { persist, devtools } from 'zustand/middleware'
 import {
   i18n,
   resolveSummaryPromptLocale,
-  resolveAppUiLanguageFromSystemLocale
+  resolveAppUiLanguageFromSystemLocale,
+  AUTO_INJECT_TIME_TOOL_ID,
+  normalizeEmojiToolConfig
 } from '@baishou/shared'
 import { useAssistantStore } from './assistant.store'
 import type {
@@ -66,6 +68,7 @@ export interface SettingsActions {
   setSummaryConfig: (config: SummaryConfig) => Promise<void>
   setToolManagementConfig: (config: ToolManagementConfig) => Promise<void>
   setMcpServerConfig: (config: McpServerConfig) => Promise<void>
+  refreshMcpAuthToken: () => Promise<McpServerConfig | void>
   setHotkeyConfig: (config: HotkeyConfig) => Promise<void>
   setCloudSyncConfig: (config: any) => Promise<void>
 }
@@ -216,8 +219,12 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
               }
 
               const defaultToolManagementConfig: ToolManagementConfig = {
-                disabledToolIds: [],
-                customConfigs: {}
+                disabledToolIds: [AUTO_INJECT_TIME_TOOL_ID],
+                customConfigs: {},
+                emojiConfig: {
+                  enabled: false,
+                  groups: []
+                }
               }
 
               const defaultMcpServerConfig: McpServerConfig = {
@@ -238,7 +245,14 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
                 ragConfig: ragConfig || defaultRagConfig,
                 webSearchConfig: { ...defaultWebSearchConfig, ...(webSearchConfig || {}) },
                 summaryConfig: summaryConfig || defaultSummaryConfig,
-                toolManagementConfig: toolManagementConfig || defaultToolManagementConfig,
+                toolManagementConfig: {
+                  ...defaultToolManagementConfig,
+                  ...toolManagementConfig,
+                  emojiConfig: normalizeEmojiToolConfig({
+                    ...defaultToolManagementConfig.emojiConfig,
+                    ...(toolManagementConfig?.emojiConfig || {})
+                  })
+                },
                 mcpServerConfig: mcpServerConfig || defaultMcpServerConfig,
                 hotkeyConfig: hotkeyConfig || defaultHotkeyConfig,
                 cloudSyncConfig: cloudSyncConfig || null,
@@ -354,10 +368,22 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
           }
         },
 
+        refreshMcpAuthToken: async () => {
+          if (typeof window !== 'undefined' && (window as any).api?.settings?.refreshMcpAuthToken) {
+            const saved = await (window as any).api.settings.refreshMcpAuthToken()
+            if (saved) set({ mcpServerConfig: saved })
+          }
+        },
+
         setHotkeyConfig: async (config) => {
           set({ hotkeyConfig: config })
           if (typeof window !== 'undefined' && (window as any).api?.settings) {
-            await (window as any).api.settings.setHotkeyConfig(config)
+            const result = await (window as any).api.settings.setHotkeyConfig(config)
+            if (config.hotkeyEnabled && result?.registered === false) {
+              console.warn(
+                '[SettingsStore] Global hotkey registration failed; combo may be reserved or used by another app.'
+              )
+            }
           }
         },
 

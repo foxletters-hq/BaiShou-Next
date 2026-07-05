@@ -66,6 +66,8 @@
 
 .aiRow .messageCol {
   align-items: flex-start;
+  width: fit-content;
+  max-width: min(800px, calc(100% - 60px));
 }
 
 .nameTimeRow {
@@ -107,9 +109,7 @@
 
 .userBubbleCard {
   padding: 12px 16px;
-  background: var(--bg-glass-surface);
-  backdrop-filter: var(--blur-glass);
-  -webkit-backdrop-filter: var(--blur-glass);
+  background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   color: var(--text-primary);
   border-radius: 20px 4px 20px 20px;
@@ -131,9 +131,7 @@
 }
 
 .editingBubbleCard {
-  background: var(--bg-glass-surface);
-  backdrop-filter: var(--blur-glass);
-  -webkit-backdrop-filter: var(--blur-glass);
+  background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   width: 800px !important;
@@ -148,16 +146,12 @@
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
-  align-self: flex-end;
-  text-align: right;
   max-width: 100%;
 }
 
 .aiBubbleCard {
   padding: 12px 16px;
-  background: var(--bg-glass-surface);
-  backdrop-filter: var(--blur-glass);
-  -webkit-backdrop-filter: var(--blur-glass);
+  background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   color: var(--text-primary);
   border-radius: 4px 20px 20px 20px;
@@ -165,7 +159,9 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .attachmentsWrap {
@@ -252,7 +248,9 @@
   align-items: center;
   justify-content: flex-start;
   flex-wrap: nowrap;
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
+  align-self: flex-start;
   margin-top: 4px;
   gap: 8px;
 }
@@ -318,10 +316,10 @@
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 1000;
+  z-index: 10000;
 }
 .contextMenu {
-  position: absolute;
+  position: fixed;
   background: var(--bg-glass-surface);
   backdrop-filter: var(--blur-overlay);
   border: 1px solid var(--border-subtle);
@@ -332,7 +330,7 @@
   flex-direction: column;
   min-width: 120px;
   gap: 2px;
-  z-index: 1001;
+  z-index: 10001;
 }
 .contextMenu button {
   background: none;
@@ -472,7 +470,7 @@
 
 .editorTextarea {
   width: 100%;
-  min-height: 150px;
+  min-height: 280px;
   max-height: 60vh;
   padding: 10px 12px;
   font-size: 14px;

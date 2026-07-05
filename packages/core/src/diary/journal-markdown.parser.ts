@@ -1,4 +1,9 @@
-import { parseDateStr, normalizeDiaryTagColorRegistry } from '@baishou/shared'
+import {
+  parseDateStr,
+  normalizeDiaryTagColorRegistry,
+  resolveMoodId,
+  resolveDiaryTagsFromSources
+} from '@baishou/shared'
 import type { ParsedJournal } from '../shadow-index/shadow-index-sync.types'
 
 function safeParseDateTime(value: string | undefined, fallback: Date): Date {
@@ -131,7 +136,8 @@ export function parseJournalMarkdown(raw: string, fallbackDate: string): ParsedJ
   const content = split ? split.body : stripBom(raw).trim()
 
   const meta = split ? parseFrontmatterMeta(split.metaBlock) : {}
-  const tags = split ? parseTags(meta, split.metaBlock) : []
+  const frontmatterTags = split ? parseTags(meta, split.metaBlock) : []
+  const tags = resolveDiaryTagsFromSources(frontmatterTags, content)
   const tagColors = split ? parseTagColors(meta) : {}
 
   const dateStr = meta['date']
@@ -160,7 +166,7 @@ export function parseJournalMarkdown(raw: string, fallbackDate: string): ParsedJ
     ),
     updatedAt: safeParseDateTime(meta['updated_at'] || meta['updatedAt'], now),
     weather: meta['weather'] || undefined,
-    mood: meta['mood'] || undefined,
+    mood: resolveMoodId(meta['mood']) ?? undefined,
     location: meta['location'] || undefined,
     locationDetail: meta['location_detail'] || meta['locationDetail'] || undefined,
     isFavorite: meta['is_favorite'] === 'true' || meta['isFavorite'] === 'true',

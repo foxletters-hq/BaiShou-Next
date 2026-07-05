@@ -203,6 +203,23 @@
   color: var(--text-tertiary);
 }
 
+.moreHintButton {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0 12px 8px;
+  border: none;
+  background: transparent;
+  font-size: 11px;
+  text-align: left;
+  color: var(--color-primary, #3b82f6);
+  cursor: pointer;
+}
+
+.moreHintButton:hover {
+  text-decoration: underline;
+}
+
 .actions {
   display: flex;
   justify-content: flex-end;

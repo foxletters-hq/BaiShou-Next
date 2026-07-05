@@ -5,7 +5,7 @@ import {
   FileSyncServiceImpl,
   VaultIndexServiceImpl
 } from '@baishou/core-desktop'
-import { parseDateStr, normalizeDiaryTags, formatDiaryPreviewText } from '@baishou/shared'
+import { parseDateStr, normalizeDiaryTags, normalizeDiaryPreviewMarkdown } from '@baishou/shared'
 import * as fs from 'fs/promises'
 
 import { fileSystem, pathService, getActiveVaultShadowRepo } from './vault.ipc'
@@ -74,7 +74,7 @@ export function registerDiaryIPC() {
           entry: {
             id: saved.id,
             date: saved.date,
-            preview: formatDiaryPreviewText(saved.content?.substring(0, 500) ?? ''),
+            preview: normalizeDiaryPreviewMarkdown(saved.content?.substring(0, 500) ?? ''),
             tags: normalizeDiaryTags(saved.tags),
             weather: saved.weather ?? undefined,
             mood: saved.mood ?? undefined,

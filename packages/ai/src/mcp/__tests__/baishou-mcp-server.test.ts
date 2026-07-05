@@ -41,6 +41,62 @@ describe('baishou-mcp-server', () => {
     expect(buildBaishouMcpToolSchemas(undefined, context)).toEqual([])
   })
 
+  it('exposes vector_search when embedding model is configured', () => {
+    const registry = new ToolRegistry()
+    const context: ToolContext = {
+      sessionId: 'mcp-external',
+      vaultName: 'Personal',
+      userConfig: {
+        ragEnabled: true,
+        hasEmbeddingModel: true,
+        disabledToolIds: [],
+        web_search_enabled: false
+      }
+    }
+
+    const enabled = registry.getEnabledToolsRaw(context).map((tool) => tool.name)
+    const mcpTools = buildBaishouMcpToolSchemas(registry, context).map((tool) => tool.name)
+
+    expect(enabled).toContain('vector_search')
+    expect(mcpTools).toContain('baishou_vector_search')
+  })
+
+  it('exposes vector_search when runtime embedding services are wired', () => {
+    const registry = new ToolRegistry()
+    const context: ToolContext = {
+      sessionId: 'mcp-external',
+      vaultName: 'Personal',
+      userConfig: {
+        ragEnabled: true,
+        hasEmbeddingModel: false,
+        disabledToolIds: [],
+        web_search_enabled: false
+      },
+      embeddingService: { isConfigured: true, embedQuery: async () => [] },
+      vectorStore: { searchSimilar: async () => [], deleteBySource: async () => {} }
+    }
+
+    const mcpTools = buildBaishouMcpToolSchemas(registry, context).map((tool) => tool.name)
+    expect(mcpTools).toContain('baishou_vector_search')
+  })
+
+  it('hides vector_search when embedding model is unavailable', () => {
+    const registry = new ToolRegistry()
+    const context: ToolContext = {
+      ...baseContext,
+      userConfig: {
+        ...baseContext.userConfig,
+        hasEmbeddingModel: false
+      }
+    }
+
+    const enabled = registry.getEnabledToolsRaw(context).map((tool) => tool.name)
+    const mcpTools = buildBaishouMcpToolSchemas(registry, context).map((tool) => tool.name)
+
+    expect(enabled).not.toContain('vector_search')
+    expect(mcpTools).not.toContain('baishou_vector_search')
+  })
+
   it('exposes diary tools from the default registry for MCP UI and protocol', () => {
     const registry = new ToolRegistry()
     const uiTools = listBaishouMcpToolsForUi(registry, baseContext)
@@ -52,12 +108,89 @@ describe('baishou-mcp-server', () => {
     expect(mcpTools.some((tool) => tool.name === 'baishou_diary_list')).toBe(true)
   })
 
+  it('only exposes built-in agent tools via MCP', () => {
+    const registry = new ToolRegistry()
+    const context: ToolContext = {
+      sessionId: 'mcp-external',
+      vaultName: 'Personal',
+      userConfig: {
+        ragEnabled: true,
+        hasEmbeddingModel: true,
+        disabledToolIds: [],
+        web_search_enabled: true,
+        emojiConfig: {
+          enabled: true,
+          emojis: [{ id: 'cat.png', name: 'cat', relativePath: 'emojis/cat.png' }]
+        }
+      }
+    }
+
+    const enabled = registry.getEnabledToolsRaw(context).map((tool) => tool.name)
+    const mcpTools = buildBaishouMcpToolSchemas(registry, context).map((tool) => tool.name)
+
+    expect(enabled).toContain('emoji_send')
+    expect(enabled).toContain('web_search')
+    expect(enabled).toContain('diary_write')
+    expect(enabled).toContain('current_time')
+
+    expect(mcpTools).not.toContain('baishou_emoji_send')
+    expect(mcpTools).not.toContain('baishou_web_search')
+    expect(mcpTools).not.toContain('baishou_url_read')
+    expect(mcpTools).not.toContain('baishou_diary_write')
+    expect(mcpTools).not.toContain('baishou_current_time')
+    expect(mcpTools).toContain('baishou_diary_list')
+    expect(mcpTools).toContain('baishou_vector_search')
+  })
+
+  it('does not expose emoji_send via MCP even when emoji config is enabled', () => {
+    const registry = new ToolRegistry()
+    const context: ToolContext = {
+      ...baseContext,
+      userConfig: {
+        ...baseContext.userConfig,
+        emojiConfig: {
+          enabled: true,
+          emojis: [{ id: 'cat.png', name: 'cat', relativePath: 'emojis/cat.png' }]
+        }
+      }
+    }
+
+    const enabled = registry.getEnabledToolsRaw(context).map((tool) => tool.name)
+    const mcpTools = buildBaishouMcpToolSchemas(registry, context).map((tool) => tool.name)
+    const uiTools = listBaishouMcpToolsForUi(registry, context).map((tool) => tool.name)
+
+    expect(enabled).toContain('emoji_send')
+    expect(mcpTools).not.toContain('baishou_emoji_send')
+    expect(uiTools).not.toContain('baishou_emoji_send')
+  })
+
+  it('rejects emoji_send when invoked through MCP', async () => {
+    const registry = new ToolRegistry()
+    const context: ToolContext = {
+      ...baseContext,
+      userConfig: {
+        ...baseContext.userConfig,
+        emojiConfig: {
+          enabled: true,
+          emojis: [{ id: 'cat.png', name: 'cat', relativePath: 'emojis/cat.png' }]
+        }
+      }
+    }
+
+    await expect(
+      executeBaishouMcpTool(registry, async () => context, {
+        name: 'baishou_emoji_send',
+        arguments: { emoji_id: 'cat.png' }
+      })
+    ).rejects.toThrow('Tool not available: emoji_send')
+  })
+
   it('builds MCP tool schemas from registry', () => {
     const registry = {
       getEnabledToolsRaw: () => [
         {
-          name: 'current_time',
-          description: 'Current time',
+          name: 'diary_list',
+          description: 'List diaries',
           parameters: z.object({}),
           execute: async () => 'ok'
         }
@@ -72,7 +205,7 @@ describe('baishou-mcp-server', () => {
 
     expect(tools).toHaveLength(1)
     const tool = tools[0]!
-    expect(tool.name).toBe('baishou_current_time')
+    expect(tool.name).toBe('baishou_diary_list')
     expect(tool.inputSchema.type).toBe('object')
   })
 
@@ -93,9 +226,9 @@ describe('baishou-mcp-server', () => {
   it('executeBaishouMcpTool runs enabled tools', async () => {
     const registry = {
       get: (name: string) =>
-        name === 'current_time'
+        name === 'diary_list'
           ? {
-              name: 'current_time',
+              name: 'diary_list',
               execute: vi.fn().mockResolvedValue('done')
             }
           : undefined,
@@ -109,7 +242,7 @@ describe('baishou-mcp-server', () => {
         vaultName: 'Personal',
         userConfig: {}
       }),
-      { name: 'baishou_current_time' }
+      { name: 'baishou_diary_list' }
     )
 
     expect(result.isError).toBe(false)

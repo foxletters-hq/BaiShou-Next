@@ -6,6 +6,7 @@ import {
   VaultService,
   journalMarkdownExistsInTree,
   countJournalMarkdownInTree,
+  countSummaryMarkdownInArchivesTree,
   probeJournalShadowResyncNeeded,
   path,
   type IFileSystem,
@@ -24,7 +25,10 @@ import {
   formatDiaryPreviewText,
   logger,
   parseDateStr,
-  resolveDiaryAppendBlock,
+  prepareDiaryAppendContent,
+  prepareDiaryWriteContent,
+  isUsingExternalVaultDirectory,
+  resolveDiaryEditMode,
   type DiaryTemplateConfig
 } from '@baishou/shared'
 import { mergeDiaryTags, type ToolDiaryMutationResult } from '@baishou/ai'
@@ -40,10 +44,16 @@ function diaryPreviewFromRaw(raw: string | null | undefined): string {
 }
 import { mobileDataBootstrapper, type MobileBootstrapperDeps } from './mobile-bootstrapper.service'
 import {
+  bindShadowVaultScanState,
+  getShadowVaultScanning,
+  unbindShadowVaultScanState
+} from './mobile-shadow-scan-state.service'
+import {
   scheduleVaultEcosystemResync,
   waitForVaultEcosystemResync
 } from './mobile-vault-resync.service'
 import { vaultFileWatcher } from './vault-file-watcher.service'
+import type { MobileExternalPathService } from './mobile-external-vault-paths.service'
 import { sessionFileWatcher } from './session-file-watcher.service'
 import { summaryFileWatcher } from './summary-file-watcher.service'
 import { createShadowDiaryRepoAdapter } from './shadow-diary-adapter'
@@ -79,7 +89,7 @@ export type VaultDiarySearcher = {
   editEntry: (args: {
     date: string
     content: string
-    mode: 'append' | 'overwrite'
+    mode?: 'append' | 'overwrite'
     tags?: string
   }) => Promise<ToolDiaryMutationResult>
   deleteEntry: (date: string) => Promise<ToolDiaryMutationResult>
@@ -237,6 +247,9 @@ export function createVaultBoundDiaryStack(deps: {
     },
     async writeEntry(date: string, content: string, tags?: string) {
       try {
+        const templateConfig: DiaryTemplateConfig = deps.settingsManager
+          ? (await deps.settingsManager.get<DiaryTemplateConfig>('diary_template_config')) || {}
+          : {}
         const tagsStr = tags
           ?.split(',')
           .map((s) => s.trim())
@@ -244,7 +257,7 @@ export function createVaultBoundDiaryStack(deps: {
           .join(',')
         await diaryService.create({
           date: parseDateStr(date),
-          content,
+          content: prepareDiaryWriteContent(content, templateConfig, new Date()),
           ...(tagsStr ? { tags: tagsStr } : {})
         })
         return { ok: true as const }
@@ -271,13 +284,19 @@ export function createVaultBoundDiaryStack(deps: {
           }
         }
 
+        const resolvedMode = mode ?? 'append'
         let finalContent = content
-        if (mode === 'append') {
+        const editMode = resolveDiaryEditMode(mode)
+        if (editMode === 'append') {
           const templateConfig: DiaryTemplateConfig = deps.settingsManager
             ? (await deps.settingsManager.get<DiaryTemplateConfig>('diary_template_config')) || {}
             : {}
-          const block = resolveDiaryAppendBlock(templateConfig, new Date()).replace(/\u200B$/, '')
-          finalContent = existing.content.trimEnd() + block + content
+          finalContent = prepareDiaryAppendContent(
+            existing.content,
+            content,
+            templateConfig,
+            new Date()
+          )
         }
 
         await diaryService.update(existing.id, {
@@ -378,6 +397,7 @@ export async function prepareVaultSwitch(currentStack?: VaultBoundDiaryStack): P
   if (currentStack) {
     currentStack.shadowIndexSyncService.setSyncEnabled(false)
   }
+  unbindShadowVaultScanState()
   await stopVaultWatchers()
   if (currentStack) {
     await currentStack.shadowIndexSyncService.waitForScan()
@@ -511,7 +531,11 @@ export async function rebootstrapAfterStorageRootChange(
     await prepareVaultSwitch(deps.diaryStack)
     await deps.vaultService.initRegistry()
     if (blockingResync) {
-      await preferActiveVaultWithJournalsOnDisk(deps)
+      await preferActiveVaultWithJournalsOnDisk({
+        vaultService: deps.vaultService,
+        fileSystem: deps.fileSystem,
+        pathService: deps.pathService as unknown as MobileExternalPathService
+      })
     }
     await connectGlobalShadowDb(deps)
     if (blockingResync) {
@@ -612,6 +636,7 @@ async function shouldDeferVaultResync(
     diaryStack: VaultBoundDiaryStack
     vaultService: VaultService
     fileSystem: IFileSystem
+    pathService: IStoragePathService
   },
   requested?: boolean,
   forceDefer?: boolean,
@@ -629,7 +654,7 @@ async function shouldDeferVaultResync(
     const active = deps.vaultService.getActiveVault()
     if (!active?.path) return true
 
-    const journalsDir = path.join(active.path, 'Journals')
+    const journalsDir = await deps.pathService.getJournalsBaseDirectory()
     const hasOnDisk = await journalMarkdownExistsInTree(deps.fileSystem, journalsDir)
     if (hasOnDisk) {
       if (resyncReason === 'archive-full-restore') {
@@ -672,15 +697,25 @@ async function countArchiveMarkdownInTree(
 async function preferActiveVaultWithJournalsOnDisk(deps: {
   vaultService: VaultService
   fileSystem: IFileSystem
+  pathService: MobileExternalPathService
 }): Promise<void> {
   const vaults = deps.vaultService.getAllVaults()
   if (vaults.length === 0) return
 
   const scored: Array<{ name: string; score: number; journals: number; archives: number }> = []
   for (const vault of vaults) {
-    const journalsDir = path.join(vault.path, 'Journals')
+    const externalJournals = await deps.pathService.getExternalJournalsDirectory(vault.name)
+    const externalSummaries = await deps.pathService.getExternalSummariesDirectory(vault.name)
+    const journalsDir = externalJournals ?? path.join(vault.path, 'Journals')
     const journalCount = await countJournalMarkdownInTree(deps.fileSystem, journalsDir)
-    const archiveCount = await countArchiveMarkdownInTree(deps.fileSystem, vault.path)
+
+    let archiveCount = 0
+    if (externalSummaries) {
+      archiveCount = await countSummaryMarkdownInArchivesTree(deps.fileSystem, externalSummaries)
+    } else {
+      archiveCount = await countArchiveMarkdownInTree(deps.fileSystem, vault.path)
+    }
+
     scored.push({
       name: vault.name,
       score: journalCount + archiveCount,
@@ -818,7 +853,7 @@ async function runVaultBootstrap(
   options?.onResyncComplete?.()
 }
 
-async function restartVaultWatchers(
+export async function restartVaultWatchers(
   diaryStack: VaultBoundDiaryStack,
   vaultService: VaultService,
   watcherDeps: VaultRuntimeWatcherDeps,
@@ -832,10 +867,27 @@ async function restartVaultWatchers(
     return
   }
 
-  vaultFileWatcher.start(activeVault.path, {
-    shadowIndexSyncService: diaryStack.shadowIndexSyncService,
-    fileSystem: watcherDeps.fileSystem
-  })
+  const journalsDir = await watcherDeps.pathService.getJournalsBaseDirectory()
+  const vaultDir = await watcherDeps.pathService.getVaultDirectory(activeVault.name)
+  const externalJournals = await (
+    watcherDeps.pathService as unknown as MobileExternalPathService
+  ).getExternalJournalsDirectory(activeVault.name)
+  const defaultJournalsDir = path.join(vaultDir, 'Journals')
+  const isExternalJournals = isUsingExternalVaultDirectory(
+    externalJournals,
+    journalsDir,
+    defaultJournalsDir
+  )
+
+  vaultFileWatcher.start(
+    journalsDir,
+    {
+      shadowIndexSyncService: diaryStack.shadowIndexSyncService,
+      fileSystem: watcherDeps.fileSystem
+    },
+    { createIfMissing: !isExternalJournals }
+  )
+  bindShadowVaultScanState(diaryStack.shadowIndexSyncService)
 
   if (options?.skipSessionSummary) {
     sessionFileWatcher.stop()
@@ -844,14 +896,38 @@ async function restartVaultWatchers(
   }
 
   const sessionsDir = await watcherDeps.pathService.getSessionsBaseDirectory()
-  sessionFileWatcher.start(sessionsDir, {
+  void startSessionFileWatcherWhenStorageQuiet(sessionsDir, {
     sessionFileService: watcherDeps.sessionFileService,
     sessionSyncService: watcherDeps.sessionSyncService,
-    sessionManager: watcherDeps.sessionManager,
     fileSystem: watcherDeps.fileSystem
   })
 
-  summaryFileWatcher.start(watcherDeps.summarySyncService)
+  void startSummaryFileWatcherWhenStorageQuiet(watcherDeps.summarySyncService)
+}
+
+async function startSummaryFileWatcherWhenStorageQuiet(
+  summarySync: SummarySyncService
+): Promise<void> {
+  await mobileDataBootstrapper.waitUntilIdle()
+  while (getShadowVaultScanning()) {
+    await new Promise((resolve) => setTimeout(resolve, 200))
+  }
+  summaryFileWatcher.start(summarySync)
+}
+
+async function startSessionFileWatcherWhenStorageQuiet(
+  sessionsDir: string,
+  deps: {
+    sessionFileService: SessionFileService
+    sessionSyncService: SessionSyncService
+    fileSystem: IFileSystem
+  }
+): Promise<void> {
+  await mobileDataBootstrapper.waitUntilIdle()
+  while (getShadowVaultScanning()) {
+    await new Promise((resolve) => setTimeout(resolve, 200))
+  }
+  sessionFileWatcher.start(sessionsDir, deps)
 }
 
 export type ActivateVaultRuntimeOptions = {

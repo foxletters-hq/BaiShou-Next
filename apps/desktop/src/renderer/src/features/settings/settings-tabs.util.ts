@@ -11,7 +11,6 @@ export const SETTINGS_TAB_SEGMENTS: Record<number, string> = {
   5: 'web-search',
   6: 'agent-tools',
   15: 'diary-template',
-  16: 'diary-ai-writing',
   7: 'summary',
   11: 'tts',
   14: 'incremental-sync',
@@ -30,6 +29,9 @@ const SEGMENT_TO_TAB: Record<string, number> = {
 for (const [tabId, segment] of Object.entries(SETTINGS_TAB_SEGMENTS)) {
   SEGMENT_TO_TAB[segment] = Number(tabId)
 }
+
+/** 旧路由兼容：原「伙伴书写规范」已合并进日记格式页 */
+SEGMENT_TO_TAB['diary-ai-writing'] = 15
 
 export function pathnameToSettingsTabId(pathname: string): number {
   const segment = getSettingsRouteSegment(pathname)

@@ -1,8 +1,9 @@
 import React, { useCallback, useState } from 'react'
 import { Modal, View, Image, StyleSheet, TouchableOpacity, Pressable, Platform } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { RotateCcw, RotateCw, X, ZoomIn, ZoomOut } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 
 interface NativeImagePreviewModalProps {
   uri: string | null
@@ -56,28 +57,28 @@ export const NativeImagePreviewModal: React.FC<NativeImagePreviewModalProps> = (
               onPress={() => setScale((s) => Math.min(s + 0.25, 3))}
               accessibilityLabel={t('image_preview.zoom_in', 'Zoom in')}
             >
-              <MaterialIcons name="zoom-in" size={22} color={colors.textSecondary} />
+              <ZoomIn size={22} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.toolBtn}
               onPress={() => setScale((s) => Math.max(s - 0.25, 0.5))}
               accessibilityLabel={t('image_preview.zoom_out', 'Zoom out')}
             >
-              <MaterialIcons name="zoom-out" size={22} color={colors.textSecondary} />
+              <ZoomOut size={22} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.toolBtn}
               onPress={() => setRotation((r) => r + 90)}
               accessibilityLabel={t('image_preview.rotate', 'Rotate')}
             >
-              <MaterialIcons name="rotate-right" size={22} color={colors.textSecondary} />
+              <RotateCw size={22} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.toolBtn}
               onPress={resetView}
               accessibilityLabel={t('image_preview.reset', 'Reset')}
             >
-              <MaterialIcons name="refresh" size={22} color={colors.textSecondary} />
+              <RotateCcw size={22} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
             </TouchableOpacity>
             <View style={[styles.divider, { backgroundColor: colors.borderMuted }]} />
             <TouchableOpacity
@@ -85,7 +86,7 @@ export const NativeImagePreviewModal: React.FC<NativeImagePreviewModalProps> = (
               onPress={handleClose}
               accessibilityLabel={t('common.close')}
             >
-              <MaterialIcons name="close" size={22} color={colors.textSecondary} />
+              <X size={22} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
             </TouchableOpacity>
           </View>
         </View>

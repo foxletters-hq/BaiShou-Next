@@ -16,7 +16,7 @@ export const NativeChatBubbleInlineEditor: React.FC<NativeChatBubbleInlineEditor
   value,
   onChangeText,
   inputRef,
-  autoFocus = true,
+  autoFocus = false,
   style
 }) => {
   const { colors } = useNativeTheme()

@@ -76,7 +76,9 @@
 }
 
 .providerIconFallback {
-  font-size: 24px;
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
   color: var(--text-primary);
 }
 
@@ -282,7 +284,9 @@
 }
 
 .apiIcon {
-  font-size: 20px;
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
   color: var(--color-primary);
 }
 
@@ -317,8 +321,11 @@
 .inputPrefixIcon {
   position: absolute;
   left: 12px;
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
   color: var(--text-primary);
-  font-size: 20px;
+  pointer-events: none;
 }
 
 .textFieldWithIcon {
@@ -499,6 +506,9 @@
 }
 
 .modelNameText {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
   font-size: 14px;
   color: var(--text-primary);
   font-weight: 500;
@@ -892,7 +902,9 @@ input:checked + .slider:before {
   object-fit: contain;
 }
 .modalTypeFallback {
-  font-size: 20px;
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
   color: var(--text-primary);
 }
 

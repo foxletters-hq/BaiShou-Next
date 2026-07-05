@@ -1,18 +1,17 @@
 import type { ToolContext } from './agent.tool'
+import { mergeDiaryTags, resolveDiaryEditMode } from '@baishou/shared'
+import { createDiaryReadGuard } from './diary-read-guard.util'
+
+export { mergeDiaryTags }
+
+export function ensureDiaryReadGuard(context: ToolContext) {
+  if (!context.diaryReadGuard) {
+    context.diaryReadGuard = createDiaryReadGuard()
+  }
+  return context.diaryReadGuard
+}
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
-
-export function mergeDiaryTags(existing: string | null | undefined, incoming: string): string {
-  const existingArr = (existing || '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
-  const incomingArr = incoming
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
-  return Array.from(new Set([...existingArr, ...incomingArr])).join(', ')
-}
 
 /** 为无 DiaryService 的宿主（纯文件写入）构建标准 frontmatter 包裹的正文 */
 export function buildJournalMarkdownForTool(date: string, content: string, tags?: string): string {
@@ -56,6 +55,11 @@ export async function runDiaryReadViaDb(
     results.push(`## ${row.date}\n\n${row.content}\n`)
   }
 
+  const validDates = args.dates.filter((date) => DATE_RE.test(date)).slice(0, 20)
+  if (validDates.length > 0) {
+    ensureDiaryReadGuard(context).markRead(validDates)
+  }
+
   return results.join('\n---\n\n')
 }
 
@@ -92,15 +96,27 @@ export async function runDiaryEditViaDb(
     return `Error: Invalid date format "${args.date}". Expected YYYY-MM-DD.`
   }
 
+  if (context.diaryReadGuard && !context.diaryReadGuard.hasRead(args.date)) {
+    return (
+      `Error: diary_read is required before diary_edit. ` +
+      `Call diary_read with date "${args.date}" first in this turn, then retry diary_edit.`
+    )
+  }
+
+  const editMode = resolveDiaryEditMode(args.mode)
+
   const result = await context.diarySearcher.editEntry({
     date: args.date,
     content: args.content,
-    mode: args.mode ?? 'append',
+    mode: editMode,
     tags: args.tags
   })
 
   if (result.ok === false) return result.message
-  return `Successfully modified the diary entry for ${args.date} (${args.mode || 'append'} mode).`
+  if (editMode === 'overwrite') {
+    return `Successfully replaced the diary entry for ${args.date} (overwrite mode).`
+  }
+  return `Successfully appended content to the diary entry for ${args.date}.`
 }
 
 export async function runDiaryDeleteViaDb(

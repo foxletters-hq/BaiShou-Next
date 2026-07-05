@@ -5,6 +5,18 @@ export interface AttachmentFileItem {
   birthtime: string
 }
 
+/**
+ * 单个表情包导入的结果
+ */
+export interface EmojiImportResult {
+  /** 导入成功时的相对路径，如 'emojis/猫猫头.png'；失败时为空字符串 */
+  relativePath: string
+  /** 保留原始文件名（不含扩展名），如 '猫猫头' */
+  originalName: string
+  /** 错误信息；成功时为 null */
+  error: string | null
+}
+
 export interface SessionAttachmentGroup {
   sessionId: string
   sessionTitle?: string
@@ -106,4 +118,33 @@ export interface IAttachmentManager {
    * @returns Absolute path safely resolvable by the viewer
    */
   resolveBackgroundPath(relativePath: string): Promise<string>
+
+  /**
+   * Imports an emoji image into the Vault emojis pool.
+   * Preserves the original file name so AI can understand the emoji's meaning.
+   * If a file with the same name already exists, returns an error instead of overwriting.
+   * @param absoluteSourcePath The physical path picked by the user, or a data URL.
+   * @returns EmojiImportResult with relativePath, originalName, and error fields.
+   */
+  importEmoji(absoluteSourcePath: string): Promise<EmojiImportResult>
+
+  /**
+   * Converts a Vault-relative emoji path back into an absolute URI for rendering.
+   * @param relativePath The path saved in config (e.g. 'emojis/emoji_123.jpg')
+   * @returns Absolute path safely resolvable by the viewer
+   */
+  resolveEmojiPath(relativePath: string): Promise<string>
+
+  /**
+   * Lists all emoji files in the Vault emojis directory.
+   * @returns Array of relative paths like 'emojis/emoji_123.jpg'
+   */
+  listEmojis(): Promise<string[]>
+
+  /**
+   * Deletes an emoji file by its relative path.
+   * @param relativePath The relative path (e.g. 'emojis/emoji_123.jpg')
+   * @returns true if deleted, false if not found or error
+   */
+  deleteEmoji(relativePath: string): Promise<boolean>
 }

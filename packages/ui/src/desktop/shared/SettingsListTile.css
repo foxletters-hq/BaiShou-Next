@@ -111,6 +111,9 @@
 
 /* 展开箭头 */
 .settings-expansion-arrow {
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
   color: var(--color-on-surface-variant);
   transition: transform 0.25s;
   flex-shrink: 0;
@@ -182,7 +185,7 @@
   background-color: transparent;
 }
 
-/* Leading 图标区 */
+/* Leading 图标区 — Material 24dp */
 .settings-list-tile-leading {
   width: 40px;
   display: flex;
@@ -190,6 +193,12 @@
   justify-content: flex-start;
   color: var(--color-on-surface-variant);
   flex-shrink: 0;
+  font-size: 24px;
+}
+
+.settings-list-tile-leading svg.lucide {
+  width: 24px;
+  height: 24px;
 }
 
 /* 文本内容区 */
@@ -232,6 +241,19 @@
 /* Trailing 图标 */
 .settings-list-tile-trailing {
   color: var(--color-on-surface-variant);
+  flex-shrink: 0;
+  font-size: 22px;
+}
+
+.settings-list-tile-trailing svg.lucide {
+  width: 22px;
+  height: 22px;
+}
+
+/* 列表行内直接放置的 Lucide 图标（如快捷键折叠箭头） */
+.settings-list-tile > svg.lucide {
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
 }
 

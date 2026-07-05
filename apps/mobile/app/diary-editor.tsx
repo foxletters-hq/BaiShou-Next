@@ -7,7 +7,7 @@ export default function DiaryEditorRoute() {
     <>
       <Stack.Screen
         options={{
-          presentation: 'modal',
+          presentation: 'fullScreenModal',
           title: '编辑记忆',
           headerShown: false,
           ...fadeStackAnimation

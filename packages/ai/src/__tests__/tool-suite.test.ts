@@ -82,6 +82,20 @@ describe('ToolRegistry — Full Tool Suite', () => {
     expect(Object.keys(vercelTools)).toHaveLength(10)
   })
 
+  it('keeps current_time enabled even when listed in disabledToolIds', () => {
+    const registry = new ToolRegistry()
+    const vercelTools = registry.getEnabledToolsAsVercel({
+      sessionId: 'test',
+      vaultName: '/tmp',
+      userConfig: {
+        disabledToolIds: ['current_time', 'web_search']
+      }
+    })
+
+    expect(vercelTools['current_time']).toBeDefined()
+    expect(vercelTools['web_search']).toBeUndefined()
+  })
+
   it('should disable RAG tools when ragEnabled is false', () => {
     const registry = new ToolRegistry()
 

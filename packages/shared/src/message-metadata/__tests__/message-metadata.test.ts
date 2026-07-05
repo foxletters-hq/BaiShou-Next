@@ -23,8 +23,8 @@ describe('injectModelMetadata', () => {
     expect(injectModelMetadata('你好', 'user', at)).toBe(wrapMessageBodyForModel('你好', at))
   })
 
-  it('does not wrap unknown roles', () => {
-    expect(injectModelMetadata('hello', 'unknown', at)).toBe('hello')
+  it('does not wrap when wrapMessageTime is false', () => {
+    expect(injectModelMetadata('你好', 'user', at, { wrapMessageTime: false })).toBe('你好')
   })
 })
 

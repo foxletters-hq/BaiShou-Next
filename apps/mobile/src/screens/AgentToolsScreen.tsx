@@ -1,46 +1,44 @@
-import React, { useCallback, useEffect, useState } from 'react'
-import type { ToolManagementConfig } from '@baishou/shared'
+import React, { useCallback } from 'react'
+import { useRouter } from 'expo-router'
 import { AgentToolsView, useNativeTheme } from '@baishou/ui/native'
+import type { EmojiImportResult } from '@baishou/core'
 import { useTranslation } from 'react-i18next'
 import { useBaishou } from '../providers/BaishouProvider'
 import { StackScreenLayout } from '../components/StackScreenLayout'
 import { getStackScreenChrome } from '../components/stackScreenChrome'
-
-const DEFAULT_CONFIG: ToolManagementConfig = {
-  disabledToolIds: [],
-  customConfigs: {}
-}
+import { MobileAttachmentManagerService } from '../services/mobile-attachment-manager.service'
+import { useToolManagementConfig } from '../hooks/useToolManagementConfig'
 
 export const AgentToolsScreen: React.FC = () => {
+  const router = useRouter()
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
-  const { dbReady, services } = useBaishou()
-  const [config, setConfig] = useState<ToolManagementConfig>(DEFAULT_CONFIG)
+  const { services } = useBaishou()
+  const { config, persist } = useToolManagementConfig()
 
-  useEffect(() => {
-    if (!dbReady || !services) return
-    void (async () => {
-      let saved =
-        (await services.settingsManager.get<ToolManagementConfig>('tool_management_config')) ?? null
-      if (!saved) {
-        const legacy =
-          (await services.settingsManager.get<ToolManagementConfig>('tool_config')) ?? null
-        if (legacy) {
-          saved = legacy
-          await services.settingsManager.set('tool_management_config', legacy)
-        }
+  const handlePickAndImportEmojis = useCallback(async (): Promise<EmojiImportResult[]> => {
+    if (!services) return []
+    return MobileAttachmentManagerService.pickAndImportEmojis(services.attachmentManager)
+  }, [services])
+
+  const handleResolveEmojiPath = useCallback(
+    async (relativePath: string): Promise<string> => {
+      if (!services) return ''
+      try {
+        return await services.attachmentManager.resolveEmojiPath(relativePath)
+      } catch {
+        return ''
       }
-      setConfig({ ...DEFAULT_CONFIG, ...saved })
-    })()
-  }, [dbReady, services])
-
-  const persist = useCallback(
-    async (next: ToolManagementConfig) => {
-      setConfig(next)
-      if (!services || !dbReady) return
-      await services.settingsManager.set('tool_management_config', next)
     },
-    [dbReady, services]
+    [services]
+  )
+
+  const handleDeleteEmoji = useCallback(
+    async (relativePath: string): Promise<boolean> => {
+      if (!services) return false
+      return services.attachmentManager.deleteEmoji(relativePath)
+    },
+    [services]
   )
 
   return (
@@ -48,7 +46,14 @@ export const AgentToolsScreen: React.FC = () => {
       title={t('settings.agent_tools_title', '工具管理')}
       {...getStackScreenChrome(colors)}
     >
-      <AgentToolsView config={config} onChange={persist} />
+      <AgentToolsView
+        config={config}
+        onChange={persist}
+        onPickAndImportEmojis={handlePickAndImportEmojis}
+        onResolveEmojiPath={handleResolveEmojiPath}
+        onDeleteEmoji={handleDeleteEmoji}
+        onOpenEmojiSettings={() => router.push('/settings/emoji')}
+      />
     </StackScreenLayout>
   )
 }

@@ -1,8 +1,8 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdAutoStories, MdMoreVert } from 'react-icons/md'
 import { RagEntry } from './index'
 import styles from './RagMemoryView.module.css'
+import { EllipsisVertical, Library } from 'lucide-react'
 
 interface RagEmbeddedFilesTableProps {
   entries: RagEntry[]
@@ -32,7 +32,7 @@ export const RagEmbeddedFilesTable: React.FC<RagEmbeddedFilesTableProps> = ({
     return (
       <div className={styles.emptyStateContainer}>
         <div className={styles.emptyIconBig}>
-          <MdAutoStories size={64} />
+          <Library size={64} />
         </div>
         <div className={styles.emptyTitleLarge}>
           {searchQuery
@@ -77,7 +77,7 @@ export const RagEmbeddedFilesTable: React.FC<RagEmbeddedFilesTableProps> = ({
               className={styles.memoryMoreBtn}
               onClick={() => setActiveMenuId(activeMenuId === e.embeddingId ? null : e.embeddingId)}
             >
-              <MdMoreVert size={20} />
+              <EllipsisVertical size={20} />
             </button>
             {activeMenuId === e.embeddingId && (
               <>

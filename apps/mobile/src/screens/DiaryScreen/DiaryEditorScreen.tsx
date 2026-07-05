@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { View, StyleSheet, ActivityIndicator } from 'react-native'
+import { View, StyleSheet, ActivityIndicator, Keyboard } from 'react-native'
 import { ScreenSafeArea } from '../../components/ScreenSafeArea'
 import { useTranslation } from 'react-i18next'
-import { useIsFocused } from '@react-navigation/native'
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router'
+import { useIsFocused, useFocusEffect } from '@react-navigation/native'
 import {
   DiaryEditor,
   isLikelyEditorBundleLeak,
@@ -13,6 +13,7 @@ import {
 } from '@baishou/ui/native'
 import { mergeDiaryTags } from '@baishou/ai'
 import {
+  joinDiaryContentWithAppendBlock,
   resolveDiaryAppendBlock,
   resolveDiaryNewEntryContent,
   composeDiaryEditorContent,
@@ -32,6 +33,8 @@ import {
 import { useStoragePermission } from '../../hooks/useStoragePermission'
 import { useAttachmentImageLoader } from '../../hooks/useAttachmentImageLoader'
 import { useDiaryEditorWebViewSource } from '../../hooks/useDiaryEditorWebViewSource'
+import { useMarkdownToolbarOrder } from '../../hooks/useMarkdownToolbarOrder'
+import { useTTS } from '../../hooks/useTTS'
 import { resolveDiaryAttachmentUrlForWebView } from '../../services/diary-cm-attachment-url.service'
 import { extractDiaryAttachmentRefs } from '../../utils/diary-attachment-prefetch.util'
 import { clearDiaryAttachmentAbsPathCache } from '../../utils/mobile-diary-attachment-resolver'
@@ -40,6 +43,8 @@ import {
   assertExternalStorageReady,
   isExternalStorageRequiredError
 } from '../../services/storage-permission.service'
+
+const DIARY_TTS_PLAYBACK_ID = 'diary-editor'
 
 export const DiaryEditorScreen: React.FC = () => {
   const { t } = useTranslation()
@@ -55,23 +60,43 @@ export const DiaryEditorScreen: React.FC = () => {
   const navigation = useNavigation()
   const { services, dbReady } = useBaishou()
   const { granted: storageGranted, request: requestStorage } = useStoragePermission()
+  const { toolOrder, saveToolOrder } = useMarkdownToolbarOrder()
+  const { ttsPlayingMsgId, handleTtsReadAloud } = useTTS()
 
   const [content, setContent] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [weather, setWeather] = useState<string | null>(null)
+  const [mood, setMood] = useState<string | null>(null)
   const [isFavorite, setIsFavorite] = useState(false)
   const [existingId, setExistingId] = useState<number | null>(null)
   const [originalContent, setOriginalContent] = useState('')
   const [loading, setLoading] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
   const isDirtyRef = useRef(false)
+  const metadataDirtyRef = useRef(false)
+  const savedEditorSnapshotRef = useRef<{ body: string; tags: string }>({ body: '', tags: '' })
   const originalTagsRef = useRef<string[]>([])
   const [pickingImages, setPickingImages] = useState(false)
   const editorWebViewSource = useDiaryEditorWebViewSource()
-  const isFocused = useIsFocused()
   const [tagColorRegistry, setTagColorRegistry] = useState<DiaryTagColorRegistry>({})
   const previousTagsRef = useRef<string[]>([])
+
+  const dismissEditorKeyboard = useCallback(() => {
+    Keyboard.dismiss()
+  }, [])
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        dismissEditorKeyboard()
+      }
+    }, [dismissEditorKeyboard])
+  )
+
+  const handleReadAloud = useCallback(() => {
+    void handleTtsReadAloud(content, DIARY_TTS_PLAYBACK_ID)
+  }, [content, handleTtsReadAloud])
 
   const isAppendMode = append === '1'
 
@@ -92,6 +117,7 @@ export const DiaryEditorScreen: React.FC = () => {
       tagColors?: string | Record<string, number> | null
       date: Date
       weather?: string | null
+      mood?: string | null
       isFavorite?: boolean
     },
     templateConfig: DiaryTemplateConfig,
@@ -105,25 +131,46 @@ export const DiaryEditorScreen: React.FC = () => {
     setExistingId(diary.id ?? null)
     setSelectedDate(diary.date)
     setWeather(diary.weather || null)
+    setMood(diary.mood || null)
     setIsFavorite(diary.isFavorite || false)
 
     if (isAppendMode) {
-      const existing = (diary.content || '').trimEnd()
+      const safeExisting = isLikelyEditorBundleLeak(diary.content || '') ? '' : diary.content || ''
       const timeMark = resolveDiaryAppendBlock(templateConfig, now)
-      const safeExisting = isLikelyEditorBundleLeak(existing) ? '' : existing
-      setContent(safeExisting ? safeExisting + timeMark : timeMark.trimStart())
-      setOriginalContent(safeExisting)
+      const composed = joinDiaryContentWithAppendBlock(safeExisting, timeMark)
+      setContent(composed)
+      setOriginalContent(safeExisting.trimEnd())
+      savedEditorSnapshotRef.current = {
+        body: parseDiaryEditorContent(composed).body,
+        tags: ''
+      }
+      metadataDirtyRef.current = false
+      setIsDirty(false)
+      isDirtyRef.current = false
       setTags([])
       previousTagsRef.current = []
       setTagColorRegistry({})
     } else {
       const safeContent = isLikelyEditorBundleLeak(diary.content) ? '' : diary.content
       if (safeContent !== diary.content) {
-        toast.showError(t('diary.content_corrupted_hint', '日记正文异常，已阻止加载损坏内容，请从备份恢复'))
+        toast.showError(
+          t('diary.content_corrupted_hint', '日记正文异常，已阻止加载损坏内容，请从备份恢复')
+        )
       }
-      setContent(composeDiaryEditorContent(safeContent, parsedTags))
+      const composed = composeDiaryEditorContent(safeContent, parsedTags)
+      const { tags: editorTags } = parseDiaryEditorContent(composed)
+      setContent(composed)
       setOriginalContent(safeContent)
-      setTags(parsedTags)
+      savedEditorSnapshotRef.current = {
+        body: parseDiaryEditorContent(composed).body,
+        tags: editorTags.join(',')
+      }
+      metadataDirtyRef.current = false
+      setIsDirty(false)
+      isDirtyRef.current = false
+      setTags(editorTags)
+      previousTagsRef.current = editorTags
+      originalTagsRef.current = editorTags.length > 0 ? editorTags : parsedTags
     }
   }
 
@@ -151,13 +198,29 @@ export const DiaryEditorScreen: React.FC = () => {
           } else {
             originalTagsRef.current = []
             setTagColorRegistry({})
-            setContent(resolveDiaryNewEntryContent(templateConfig, now))
+            const newContent = resolveDiaryNewEntryContent(templateConfig, now)
+            setContent(newContent)
+            savedEditorSnapshotRef.current = {
+              body: parseDiaryEditorContent(newContent).body,
+              tags: ''
+            }
+            metadataDirtyRef.current = false
+            setIsDirty(false)
+            isDirtyRef.current = false
             setSelectedDate(new Date(date))
           }
         } else {
           originalTagsRef.current = []
           setTagColorRegistry({})
-          setContent(resolveDiaryNewEntryContent(templateConfig, now))
+          const newContent = resolveDiaryNewEntryContent(templateConfig, now)
+          setContent(newContent)
+          savedEditorSnapshotRef.current = {
+            body: parseDiaryEditorContent(newContent).body,
+            tags: ''
+          }
+          metadataDirtyRef.current = false
+          setIsDirty(false)
+          isDirtyRef.current = false
         }
       } catch (e) {
         console.error('Failed to load diary:', e)
@@ -190,16 +253,22 @@ export const DiaryEditorScreen: React.FC = () => {
       const input = {
         content: body,
         tags: mergedTags,
-        tagColors:
-          Object.keys(entryTagColors).length > 0 ? JSON.stringify(entryTagColors) : undefined,
+        tagColors: Object.keys(entryTagColors).length > 0 ? entryTagColors : undefined,
         date: selectedDate,
         weather: weather || undefined,
+        mood: mood || undefined,
         isFavorite
       }
 
       await services.diaryService.save(existingId, input)
+      savedEditorSnapshotRef.current = {
+        body: parseDiaryEditorContent(content).body,
+        tags: parsedTags.join(',')
+      }
+      metadataDirtyRef.current = false
       setIsDirty(false)
       isDirtyRef.current = false
+      dismissEditorKeyboard()
       router.back()
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
@@ -225,7 +294,7 @@ export const DiaryEditorScreen: React.FC = () => {
   }
 
   const handleContentChange = (text: string) => {
-    const { tags: parsedTags } = parseDiaryEditorContent(text)
+    const { tags: parsedTags, body } = parseDiaryEditorContent(text)
     setTagColorRegistry((prev) => {
       const next = syncDiaryTagColorRegistry(parsedTags, previousTagsRef.current, prev)
       previousTagsRef.current = parsedTags
@@ -233,24 +302,37 @@ export const DiaryEditorScreen: React.FC = () => {
     })
     setContent(text)
     setTags(parsedTags)
-    setIsDirty(true)
-    isDirtyRef.current = true
+    const saved = savedEditorSnapshotRef.current
+    const contentUnchanged = saved.body === body && saved.tags === parsedTags.join(',')
+    const dirty = !contentUnchanged || metadataDirtyRef.current
+    setIsDirty(dirty)
+    isDirtyRef.current = dirty
   }
 
   const handleTagsChange = (newTags: string[]) => {
     setTags(newTags)
+    metadataDirtyRef.current = true
+    setIsDirty(true)
+    isDirtyRef.current = true
+  }
+
+  const handleMoodChange = (newMood: string) => {
+    setMood(newMood || null)
+    metadataDirtyRef.current = true
     setIsDirty(true)
     isDirtyRef.current = true
   }
 
   const handleWeatherChange = (newWeather: string | null) => {
     setWeather(newWeather)
+    metadataDirtyRef.current = true
     setIsDirty(true)
     isDirtyRef.current = true
   }
 
   const handleFavoriteChange = (newIsFavorite: boolean) => {
     setIsFavorite(newIsFavorite)
+    metadataDirtyRef.current = true
     setIsDirty(true)
     isDirtyRef.current = true
   }
@@ -337,15 +419,18 @@ export const DiaryEditorScreen: React.FC = () => {
       if (confirmed) {
         setIsDirty(false)
         isDirtyRef.current = false
+        dismissEditorKeyboard()
         router.back()
       }
     } else {
+      dismissEditorKeyboard()
       router.back()
     }
   }
 
   useEffect(() => {
     const unsub = navigation.addListener('beforeRemove', (e) => {
+      dismissEditorKeyboard()
       if (!isDirtyRef.current) return
 
       e.preventDefault()
@@ -357,46 +442,49 @@ export const DiaryEditorScreen: React.FC = () => {
         if (confirmed) {
           setIsDirty(false)
           isDirtyRef.current = false
+          dismissEditorKeyboard()
           router.back()
         }
       })()
     })
     return unsub
-  }, [navigation, dialog, t, router])
-
-  if (loading) {
-    return (
-      <ScreenSafeArea preset="screen" style={{ backgroundColor: colors.bgApp }}>
-        <View style={styles.loadingCenter}>
-          <ActivityIndicator size="large" color={colors.accentGreen} />
-        </View>
-      </ScreenSafeArea>
-    )
-  }
+  }, [navigation, dialog, t, router, dismissEditorKeyboard])
 
   return (
     <ScreenSafeArea preset="screen" style={{ backgroundColor: colors.bgSurface }}>
       <FullFileAccessGate granted={storageGranted} onRequest={() => void requestStorage()}>
-        <DiaryEditor
-          content={content}
-          tags={tags}
-          selectedDate={selectedDate}
-          weather={weather || ''}
-          isFavorite={isFavorite}
-          editorWebViewSource={editorWebViewSource}
-          webViewActive={isFocused}
-          onContentChange={handleContentChange}
-          onTagsChange={handleTagsChange}
-          tagColorRegistry={tagColorRegistry}
-          onDateChange={setSelectedDate}
-          onWeatherChange={handleWeatherChange}
-          onFavoriteChange={handleFavoriteChange}
-          onPickImages={handlePickImages}
-          pickingImages={pickingImages}
-          resolveAttachmentUrl={resolveAttachmentUrl}
-          onSave={handleSave}
-          onCancel={handleBack}
-        />
+        {loading ? (
+          <View style={styles.loadingCenter}>
+            <ActivityIndicator size="large" color={colors.accentGreen} />
+          </View>
+        ) : (
+          <DiaryEditor
+            content={content}
+            tags={tags}
+            selectedDate={selectedDate}
+            weather={weather || ''}
+            mood={mood || ''}
+            isFavorite={isFavorite}
+            editorWebViewSource={editorWebViewSource}
+            webViewActive
+            onContentChange={handleContentChange}
+            onTagsChange={handleTagsChange}
+            tagColorRegistry={tagColorRegistry}
+            onDateChange={setSelectedDate}
+            onWeatherChange={handleWeatherChange}
+            onMoodChange={handleMoodChange}
+            onFavoriteChange={handleFavoriteChange}
+            onPickImages={handlePickImages}
+            pickingImages={pickingImages}
+            resolveAttachmentUrl={resolveAttachmentUrl}
+            markdownToolbarOrder={toolOrder}
+            onMarkdownToolbarOrderChange={saveToolOrder}
+            onReadAloud={handleReadAloud}
+            isTtsPlaying={ttsPlayingMsgId === DIARY_TTS_PLAYBACK_ID}
+            onSave={handleSave}
+            onCancel={handleBack}
+          />
+        )}
       </FullFileAccessGate>
     </ScreenSafeArea>
   )

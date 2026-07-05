@@ -1,6 +1,8 @@
 import React from 'react'
+import { ListTree } from 'lucide-react'
 import type { MockChatMessage } from '@baishou/shared'
-import { MarkdownRenderer } from '../MarkdownRenderer'
+import { CONTEXT_CHAIN_HEADER_ICON_SIZE } from '../../shared/icons/icon-sizes'
+import { AgentMarkdownRenderer } from '../AgentMarkdown'
 import { ContextChainCompressionHelpButton } from './ContextChainCompressionHelpButton'
 import {
   useContextChainView,
@@ -242,7 +244,11 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
 
         <div className={panelStyles.header}>
           <div className={panelStyles.titleRow}>
-            <span className={panelStyles.icon}>🌿</span>
+            <ListTree
+              size={CONTEXT_CHAIN_HEADER_ICON_SIZE}
+              className={panelStyles.icon}
+              aria-hidden
+            />
             <span className={panelStyles.title}>
               {view.t('agent.chat.full_call_chain', '完整调用链')}
             </span>
@@ -437,7 +443,7 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
                         <ContextChainAttachments attachments={view.selected.attachments} />
                       )}
                       {view.selected.content ? (
-                        <MarkdownRenderer
+                        <AgentMarkdownRenderer
                           content={view.selected.content}
                           plainText={view.selected.label === '系统提示词'}
                         />
@@ -460,13 +466,13 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
 
           {view.activeTab === 'compressed' && view.compressedContent && (
             <div className={panelStyles.contentArea}>
-              <MarkdownRenderer content={view.compressedContent} />
+              <AgentMarkdownRenderer content={view.compressedContent} />
             </div>
           )}
 
           {view.activeTab === 'prompt' && view.systemPrompt && (
             <div className={panelStyles.contentArea}>
-              <MarkdownRenderer content={view.systemPrompt} plainText />
+              <AgentMarkdownRenderer content={view.systemPrompt} plainText />
             </div>
           )}
         </div>

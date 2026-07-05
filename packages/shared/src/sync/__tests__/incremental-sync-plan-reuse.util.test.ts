@@ -86,11 +86,6 @@ describe('evaluateIncrementalSyncPlanDrift', () => {
 })
 
 describe('shouldReplanIncrementalSyncOnConfirm', () => {
-  const preview = {
-    deletePropagationBlocked: false,
-    requiresHighDivergenceConfirm: false
-  }
-
   it('已选删除传播时强制重规划', () => {
     expect(
       shouldReplanIncrementalSyncOnConfirm(
@@ -115,8 +110,6 @@ describe('buildSyncManifestRemovedFingerprint', () => {
         'a.md': { hash: '1', size: 1, removedAt: 1, deviceId: 'd' }
       }
     }
-    expect(buildSyncManifestRemovedFingerprint(manifest)).toBe(
-      'a.md\t1\t1\nb.md\t2\t2'
-    )
+    expect(buildSyncManifestRemovedFingerprint(manifest)).toBe('a.md\t1\t1\nb.md\t2\t2')
   })
 })

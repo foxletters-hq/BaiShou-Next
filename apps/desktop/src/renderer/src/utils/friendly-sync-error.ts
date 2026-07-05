@@ -1,10 +1,17 @@
 import type { TFunction } from 'i18next'
+import { isDiskFullError } from '@baishou/shared'
 
 export function friendlySyncError(msg: string, t: TFunction): string {
   if (!msg) return t('data_sync.sync_failed_generic', 'Sync failed')
   let cleanMsg = msg.replace(/^Error:\s*/i, '')
   cleanMsg = cleanMsg.replace(/^Error invoking remote method '.*?':\s*/i, '')
 
+  if (cleanMsg.includes('SyncIpcTimeoutError') || cleanMsg.includes('SyncIpcStallError')) {
+    return t('data_sync.sync_timeout_failed', {
+      max: 3,
+      defaultValue: '同步请求超时，已重试 3 次仍未响应，请检查网络连接后重试'
+    })
+  }
   if (cleanMsg.includes('SyncInProgressError') || cleanMsg.includes('already in progress')) {
     return t('data_sync.error_in_progress', 'Sync is already in progress. Please wait.')
   }
@@ -54,6 +61,12 @@ export function friendlySyncError(msg: string, t: TFunction): string {
     return t(
       'data_sync.error_conn_refused',
       'Connection refused. Please check the endpoint and service status.'
+    )
+  }
+  if (isDiskFullError(cleanMsg)) {
+    return t(
+      'data_sync.error_disk_full',
+      '磁盘空间不足，请清理空间后重试。Git 同步与数据导出都需要足够的可用磁盘空间。'
     )
   }
   if (cleanMsg.includes('SyncDivergenceExceededError')) {

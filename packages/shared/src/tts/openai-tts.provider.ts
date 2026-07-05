@@ -13,7 +13,10 @@ export class OpenAiTtsProvider implements TtsProvider {
   readonly name = 'OpenAI 兼容 TTS'
 
   supportsModel(modelId: string): boolean {
-    return !modelId.toLowerCase().includes('mimo-v2.5-tts')
+    const lower = modelId.toLowerCase()
+    if (lower.includes('mimo-v2.5-tts')) return false
+    if (lower.startsWith('speech-')) return false
+    return true
   }
 
   async synthesize(

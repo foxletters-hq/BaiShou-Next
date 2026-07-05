@@ -8,9 +8,10 @@ import {
   StyleSheet,
   type ViewProps
 } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { Rows3 } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { pageSizeSelectorStyles as styles } from './page-size-selector.styles'
 
 export interface PageSizeSelectorProps extends ViewProps {
@@ -56,10 +57,10 @@ export const PageSizeSelector: React.FC<PageSizeSelectorProps> = ({
       >
         <Text style={[styles.pageSizeValue, { color: colors.primary }]}>{value}</Text>
         <Text style={[styles.pageSizeUnit, { color: colors.textTertiary }]}>{resolvedLabel}</Text>
-        <MaterialIcons
-          name="view-list"
+        <Rows3
           size={14}
           color={colors.textTertiary}
+          strokeWidth={DEFAULT_STROKE_WIDTH}
           style={{ opacity: 0.7 }}
         />
       </TouchableOpacity>

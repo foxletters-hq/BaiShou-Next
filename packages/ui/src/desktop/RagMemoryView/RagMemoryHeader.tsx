@@ -1,10 +1,10 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdDeleteSweep } from 'react-icons/md'
 import { Switch } from '../Switch/Switch'
 import { HelpTooltip } from '../HelpTooltip'
 import type { RagConfig, RagStats } from './rag-memory.types'
 import styles from './RagMemoryView.module.css'
+import { Eraser } from 'lucide-react'
 
 interface RagMemoryHeaderProps {
   config: RagConfig
@@ -41,7 +41,7 @@ export const RagMemoryHeader: React.FC<RagMemoryHeaderProps> = ({
 
       {stats.totalCount > 0 && (
         <button className={styles.headerClearAllBtn} onClick={onClearAll}>
-          <MdDeleteSweep size={18} />
+          <Eraser size={18} />
           <span>{t('settings.rag_clear_all', '清空现有记忆')}</span>
         </button>
       )}

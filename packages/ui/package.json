@@ -9,6 +9,7 @@
     "./chat-attachment-thumbnail": "./src/chat-attachment-thumbnail.ts",
     "./shared/diary-codemirror": "./src/shared/diary-codemirror/index.ts",
     "./shared/diary-codemirror/*": "./src/shared/diary-codemirror/*",
+    "./shared/composer-draft": "./src/shared/composer-draft/index.ts",
     "./desktop/*": "./src/desktop/*",
     "./native/*": "./src/native/*",
     "./theme/*": "./src/theme/*",
@@ -36,8 +37,9 @@
     "vitest": "^4.1.2"
   },
   "dependencies": {
+    "@ant-design/x": "^2.8.0",
+    "@ant-design/x-markdown": "^2.8.0",
     "@baishou/shared": "workspace:*",
-    "@expo/vector-icons": "^15.1.1",
     "@codemirror/commands": "^6.8.0",
     "@codemirror/lang-markdown": "^6.5.0",
     "@codemirror/language": "^6.11.0",
@@ -48,8 +50,11 @@
     "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@expo/vector-icons": "^15.1.1",
     "@lezer/common": "^1.3.0",
     "@lezer/highlight": "^1.2.3",
+    "antd": "^6.1.1",
+    "codemirror-markdown-tables": "^1.0.0",
     "colord": "^2.9.3",
     "country-flag-emoji-polyfill": "^0.1.8",
     "date-fns": "^4.1.0",
@@ -58,6 +63,7 @@
     "expo-document-picker": "^55.0.11",
     "expo-image-picker": "~55.0.20",
     "framer-motion": "^12.38.0",
+    "heroui-native": "^1.0.0-beta.10",
     "highlight.js": "^11.11.1",
     "i18next": "^26.0.3",
     "katex": "^0.16.44",
@@ -66,22 +72,26 @@
     "react-easy-crop": "^5.5.7",
     "react-i18next": "^17.0.2",
     "react-markdown": "^10.1.0",
-    "react-native-markdown-display": "^7.0.0-alpha.2",
     "rehype-highlight": "^7.0.2",
     "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.1",
-    "remark-math": "^6.0.0",
-    "heroui-native": "^1.0.0-beta.10"
+    "remark-math": "^6.0.0"
   },
   "peerDependencies": {
     "@react-native-community/slider": ">=5",
     "expo-asset": ">=11",
+    "lucide-react-native": ">=0.511.0",
     "react": ">=19",
     "react-native": ">=0.83",
     "react-native-draggable-flatlist": ">=4",
+    "react-native-enriched-markdown": "0.6.0",
     "react-native-gesture-handler": ">=2",
+    "react-native-markdown-display": "^7.0.0-alpha.2",
     "react-native-reanimated": ">=4",
+    "react-native-streamdown": "0.2.0",
     "react-native-svg": ">=15",
-    "react-native-webview": ">=13"
+    "react-native-webview": ">=13",
+    "react-native-worklets": ">=0.8.0",
+    "remend": "1.3.0"
   }
 }

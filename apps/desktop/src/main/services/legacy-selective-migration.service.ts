@@ -19,6 +19,7 @@ import {
   LEGACY_MIGRATION_SECTION_LABELS,
   mapBaishouDbToVaultName,
   mergeDirectoriesSkipExisting,
+  normalizeLegacyPartData,
   personaManifestKey,
   resolveLegacyAvatarCandidates,
   resolveLegacyIdentityPersonas,
@@ -1007,7 +1008,7 @@ export class LegacySelectiveMigrationService {
             messageId: newMsgId,
             sessionId: newSessionId,
             type: this.normalizePartType(part.type),
-            data: this.parsePartData(part.data, part.type)
+            data: normalizeLegacyPartData(part.data, part.type)
           }))
           await sessionManager.insertMessageWithParts(
             {
@@ -1081,19 +1082,6 @@ export class LegacySelectiveMigrationService {
       }
     }
     return parts
-  }
-
-  private parsePartData(raw: string, type: string): Record<string, unknown> {
-    try {
-      const parsed = JSON.parse(raw)
-      if (parsed && typeof parsed === 'object') {
-        return parsed as Record<string, unknown>
-      }
-    } catch {
-      // fall through
-    }
-    if (type === 'text' || !type) return { text: raw }
-    return { text: raw, raw }
   }
 
   private async importWorkspaces(

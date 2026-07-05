@@ -70,6 +70,12 @@
   cursor: not-allowed;
 }
 
+.preview {
+  opacity: 0.85;
+  cursor: default;
+  resize: none;
+}
+
 .loadingRow {
   min-height: 120px;
   display: flex;

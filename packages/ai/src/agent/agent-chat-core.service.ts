@@ -2,15 +2,22 @@ import { AgentSessionService } from './agent-session.service'
 import type { IStreamEmitter } from './stream-emitter.interface'
 import {
   abortAllAgentStreamSessions,
+  abortAgentStreamSession,
   claimAgentStreamSession,
   releaseAgentStreamSession
 } from './stream-session-guard'
+import { clearCompressionSessionLock } from './compression-session-lock'
 
 const agentService = new AgentSessionService()
 
 export class AgentChatCoreService {
-  public static stopStream() {
-    abortAllAgentStreamSessions()
+  public static stopStream(sessionId?: string) {
+    if (sessionId) {
+      abortAgentStreamSession(sessionId)
+      clearCompressionSessionLock(sessionId)
+    } else {
+      abortAllAgentStreamSessions()
+    }
     return true
   }
 
@@ -36,6 +43,7 @@ export class AgentChatCoreService {
     diarySearcher: unknown
     webSearchResultFetcher: unknown
     fetchSearchPage: unknown
+    flushSessionToDisk?: (sessionId: string) => Promise<void>
   }) {
     const claim = claimAgentStreamSession(params.sessionId)
 
@@ -59,7 +67,8 @@ export class AgentChatCoreService {
           webSearchResultFetcher: params.webSearchResultFetcher,
           fetchSearchPage: params.fetchSearchPage,
           abortSignal: claim.signal,
-          streamClaimGeneration: claim.generation
+          streamClaimGeneration: claim.generation,
+          flushSessionToDisk: params.flushSessionToDisk
         } as Parameters<typeof agentService.streamChat>[0],
         {
           onTextDelta: (chunk) => params.emitter.sendChunk(params.sessionId, chunk),

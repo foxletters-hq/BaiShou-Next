@@ -40,12 +40,17 @@ export const CloudSyncPage: React.FC = () => {
         onDeleteSnapshot={cloudSyncArchiveApi.deleteSnapshot}
         onBatchDeleteSnapshots={cloudSyncArchiveApi.batchDeleteSnapshots}
         onRenameSnapshot={cloudSyncArchiveApi.renameSnapshot}
-        onExportZip={async () => {
-          await (window as any).api?.archive?.exportZip(archiveLocale)
-        }}
+        onExportZip={async () => (window as any).api?.archive?.exportZip(archiveLocale)}
         onImportZip={async (filePath: string) => {
           await (window as any).api?.archive?.importZip(filePath)
         }}
+        onImportProgress={(callback) =>
+          (window as any).api?.archive?.onArchiveImportProgress?.(
+            (progress: { detail?: string }) => {
+              if (progress.detail) callback(progress.detail)
+            }
+          ) ?? (() => {})
+        }
         onPickArchiveFile={async () => {
           return await (window as any).api?.archive?.pickZip(archiveLocale)
         }}

@@ -10,7 +10,7 @@ import {
   StatusBar
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { MaterialIcons } from '@expo/vector-icons'
+import { ArrowUp, ChevronRight, Folder } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme, Button } from '@baishou/ui/native'
 import type { IFileSystem } from '@baishou/core-mobile'
@@ -137,7 +137,7 @@ export const DirectoryPickerModal: React.FC<DirectoryPickerModalProps> = ({
             disabled={normalizeDir(currentPath) === ANDROID_ROOT}
             style={{ opacity: normalizeDir(currentPath) === ANDROID_ROOT ? 0.35 : 1 }}
           >
-            <MaterialIcons name="arrow-upward" size={20} color={colors.textSecondary} />
+            <ArrowUp size={20} color={colors.textSecondary} strokeWidth={2} />
           </TouchableOpacity>
           <Text
             style={[styles.pathText, { color: colors.textSecondary }]}
@@ -162,11 +162,11 @@ export const DirectoryPickerModal: React.FC<DirectoryPickerModalProps> = ({
                 style={[styles.row, { borderBottomColor: colors.borderSubtle }]}
                 onPress={() => void loadDirectory(item.path)}
               >
-                <MaterialIcons name="folder" size={22} color={colors.primary} />
+                <Folder size={22} color={colors.primary} strokeWidth={2} />
                 <Text style={[styles.rowTitle, { color: colors.textPrimary }]} numberOfLines={1}>
                   {item.name}
                 </Text>
-                <MaterialIcons name="chevron-right" size={22} color={colors.textTertiary} />
+                <ChevronRight size={22} color={colors.textTertiary} strokeWidth={2} />
               </TouchableOpacity>
             )}
             ListEmptyComponent={

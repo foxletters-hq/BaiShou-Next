@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { HotkeyService } from '../hotkey.service'
+import { HotkeyService, type HotkeyConfigReader } from '../hotkey.service'
 import { globalShortcut } from 'electron'
 
 // 顶层拦截 Electron 环境以进行离线测试
@@ -12,14 +12,14 @@ vi.mock('electron', () => ({
 }))
 
 describe('HotkeyService', () => {
-  let mockRepo: any
+  let mockConfigStore: HotkeyConfigReader
   let mockWindow: any
   let service: HotkeyService
 
   beforeEach(() => {
     vi.clearAllMocks()
 
-    mockRepo = {
+    mockConfigStore = {
       getHotkeyConfig: vi.fn().mockResolvedValue({
         hotkeyEnabled: true,
         hotkeyModifier: 'Alt',
@@ -41,40 +41,50 @@ describe('HotkeyService', () => {
       setVisibleOnAllWorkspaces: vi.fn()
     }
 
-    service = new HotkeyService(mockRepo, mockWindow)
+    service = new HotkeyService(mockConfigStore, mockWindow)
   })
 
   it('should register hotkey if enabled in config on start', async () => {
     await service.start()
-    expect(mockRepo.getHotkeyConfig).toHaveBeenCalled()
+    expect(mockConfigStore.getHotkeyConfig).toHaveBeenCalled()
     expect(globalShortcut.register).toHaveBeenCalledWith('Alt+S', expect.any(Function))
     expect((service as any).isEnabled).toBe(true)
   })
 
   it('should ignore missing keys during parsing', async () => {
-    mockRepo.getHotkeyConfig.mockResolvedValueOnce({
+    mockConfigStore.getHotkeyConfig = vi.fn().mockResolvedValueOnce({
       hotkeyEnabled: true,
       hotkeyModifier: 'CommandOrControl',
       hotkeyKey: 'key' // 解析出空或者非法情况
     })
-    const tempService = new HotkeyService(mockRepo, mockWindow)
+    const tempService = new HotkeyService(mockConfigStore, mockWindow)
     await tempService.start()
     // 由于只有 "KEY"，去掉 key 后为空字符
     expect(globalShortcut.register).not.toHaveBeenCalled()
   })
 
   it('should update and re-register hotkey', () => {
-    service.update({
+    const registered = service.update({
       hotkeyEnabled: true,
       hotkeyModifier: 'Ctrl',
       hotkeyKey: 'Space'
     })
     expect(globalShortcut.unregisterAll).toHaveBeenCalled()
-    // Ctrl 被映射为 CommandOrControl, Space 照样保留
     expect(globalShortcut.register).toHaveBeenCalledWith(
-      'CommandOrControl+SPACE',
+      'CommandOrControl+Space',
       expect.any(Function)
     )
+    expect(registered).toBe(true)
+  })
+
+  it('should map CommandOrControl modifier from settings UI', () => {
+    const registered = service.update({
+      hotkeyEnabled: true,
+      hotkeyModifier: 'CommandOrControl',
+      hotkeyKey: 'Q'
+    })
+    expect(globalShortcut.register).toHaveBeenCalledWith('CommandOrControl+Q', expect.any(Function))
+    expect(registered).toBe(true)
   })
 
   it('should unregister all on stop', () => {

@@ -1,11 +1,40 @@
 import React, { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getDefaultCompressionSystemPrompt } from '@baishou/shared'
+import {
+  DEFAULT_ASSISTANT_COMPRESS_KEEP_TURNS,
+  DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD,
+  DEFAULT_ASSISTANT_CONTEXT_WINDOW,
+  getDefaultCompressionSystemPrompt,
+  normalizeEmojiToolConfig,
+  parseAssistantEmojiGroupIds,
+  serializeAssistantEmojiGroupIds,
+  type EmojiGroup,
+  type EmojiToolConfig
+} from '@baishou/shared'
 import { useDialog } from '../Dialog'
 import type { AssistantInfo, AssistantPickerSheetProps } from './assistant-picker-sheet.types'
 
 const normalizeAssistantId = (id: unknown): string | null =>
   id == null || id === '' ? null : String(id)
+
+function resolvePickerEmojiGroupIds(assistant: AssistantInfo): string[] {
+  if (Array.isArray(assistant.emojiGroupIds)) {
+    return assistant.emojiGroupIds
+  }
+  const raw = assistant.emojiGroupIds
+  if (typeof raw === 'string' || raw == null) {
+    return parseAssistantEmojiGroupIds(raw ?? null, assistant.emojiGroupId)
+  }
+  return parseAssistantEmojiGroupIds(null, assistant.emojiGroupId)
+}
+
+function buildEmojiPersistFields(ids: string[], enabled: boolean) {
+  return {
+    emojiEnabled: enabled,
+    emojiGroupIds: serializeAssistantEmojiGroupIds(ids),
+    emojiGroupId: ids[0] ?? null
+  }
+}
 
 export function useAssistantPickerSheet({
   isOpen,
@@ -26,15 +55,23 @@ export function useAssistantPickerSheet({
   const [activeTab, setActiveTab] = useState<'prompt' | 'memory'>('prompt')
   const [editingPrompt, setEditingPrompt] = useState('')
   const [editingDescription, setEditingDescription] = useState('')
-  const [editingContextWindow, setEditingContextWindow] = useState(-1)
+  const [editingContextWindow, setEditingContextWindow] = useState(DEFAULT_ASSISTANT_CONTEXT_WINDOW)
   const [editingCompressEnabled, setEditingCompressEnabled] = useState(true)
-  const [editingCompressThreshold, setEditingCompressThreshold] = useState(60000)
-  const [editingCompressKeepTurns, setEditingCompressKeepTurns] = useState(3)
+  const [editingCompressThreshold, setEditingCompressThreshold] = useState(
+    DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD
+  )
+  const [editingCompressKeepTurns, setEditingCompressKeepTurns] = useState(
+    DEFAULT_ASSISTANT_COMPRESS_KEEP_TURNS
+  )
   const [editingCompressSystemPrompt, setEditingCompressSystemPrompt] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [showModelSwitcher, setShowModelSwitcher] = useState(false)
   const [providers, setProviders] = useState<any[]>([])
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
+  const [emojiGroups, setEmojiGroups] = useState<EmojiGroup[]>([])
+  const [globalEmojiEnabled, setGlobalEmojiEnabled] = useState(false)
+  const [editingEmojiEnabled, setEditingEmojiEnabled] = useState(false)
+  const [editingSelectedEmojiGroupIds, setEditingSelectedEmojiGroupIds] = useState<string[]>([])
   const hydratedAssistantIdRef = React.useRef<string | null>(null)
 
   React.useEffect(() => {
@@ -52,6 +89,25 @@ export function useAssistantPickerSheet({
         if (res) setProviders(res)
       })
     }
+  }, [])
+
+  React.useEffect(() => {
+    const loadEmojiConfig = () => {
+      const api = (window as any).api
+      if (!api?.settings?.getToolManagementConfig) return
+      void api.settings
+        .getToolManagementConfig()
+        .then((config: { emojiConfig?: EmojiToolConfig | null }) => {
+          const normalized = normalizeEmojiToolConfig(config?.emojiConfig)
+          setGlobalEmojiEnabled(normalized.enabled === true)
+          setEmojiGroups(normalized.groups)
+        })
+        .catch(() => setEmojiGroups([]))
+    }
+
+    loadEmojiConfig()
+    window.addEventListener('focus', loadEmojiConfig)
+    return () => window.removeEventListener('focus', loadEmojiConfig)
   }, [])
 
   const filteredAssistants = useMemo(() => {
@@ -98,13 +154,17 @@ export function useAssistantPickerSheet({
     setEditingContextWindow(activeAssistant.contextWindow ?? -1)
     setEditingCompressEnabled(activeAssistant.compressTokenThreshold > 0)
     setEditingCompressThreshold(
-      activeAssistant.compressTokenThreshold > 0 ? activeAssistant.compressTokenThreshold : 60000
+      activeAssistant.compressTokenThreshold > 0
+        ? activeAssistant.compressTokenThreshold
+        : DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD
     )
     setEditingCompressKeepTurns(activeAssistant.compressKeepTurns ?? 3)
     const customPrompt = activeAssistant.compressSystemPrompt
     setEditingCompressSystemPrompt(
       customPrompt?.trim() ? customPrompt : getDefaultCompressionSystemPrompt(i18n.language)
     )
+    setEditingEmojiEnabled(activeAssistant.emojiEnabled === true)
+    setEditingSelectedEmojiGroupIds(resolvePickerEmojiGroupIds(activeAssistant))
   }, [activeAssistant, i18n.language])
 
   React.useEffect(() => {
@@ -186,6 +246,29 @@ export function useAssistantPickerSheet({
     await updateAssistantAPI(activeAssistant.id, { description: trimmed })
   }
 
+  const handleEmojiEnabledChange = (enabled: boolean) => {
+    if (!activeAssistant) return
+    setEditingEmojiEnabled(enabled)
+    void updateAssistantAPI(
+      activeAssistant.id,
+      buildEmojiPersistFields(editingSelectedEmojiGroupIds, enabled)
+    )
+  }
+
+  const handleToggleEmojiGroup = (groupId: string) => {
+    if (!activeAssistant) return
+    setEditingSelectedEmojiGroupIds((prev) => {
+      const next = prev.includes(groupId)
+        ? prev.filter((id) => id !== groupId)
+        : [...prev, groupId]
+      void updateAssistantAPI(
+        activeAssistant.id,
+        buildEmojiPersistFields(next, editingEmojiEnabled)
+      )
+      return next
+    })
+  }
+
   const confirmDelete = async () => {
     if (deleteTargetId === null) return
     if (typeof window !== 'undefined' && (window as any).electron) {
@@ -234,7 +317,13 @@ export function useAssistantPickerSheet({
     pinnedIds,
     onTogglePin,
     assistants,
-    i18n
+    i18n,
+    emojiGroups,
+    globalEmojiEnabled,
+    editingEmojiEnabled,
+    editingSelectedEmojiGroupIds,
+    handleEmojiEnabledChange,
+    handleToggleEmojiGroup
   }
 }
 

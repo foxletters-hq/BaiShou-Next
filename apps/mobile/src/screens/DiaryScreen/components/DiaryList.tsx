@@ -1,16 +1,16 @@
-import React, { useMemo, useCallback, memo } from 'react'
+import React, { useMemo, useCallback, memo, type RefObject } from 'react'
 import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   TouchableOpacity,
   ActivityIndicator,
   ScrollView,
   useWindowDimensions
 } from 'react-native'
+import { FlatList } from 'react-native-gesture-handler'
 import { useTranslation } from 'react-i18next'
-import { MaterialIcons } from '@expo/vector-icons'
+import { FolderOpen, FolderX, Edit3 } from 'lucide-react-native'
 import {
   DiaryCard,
   PageSizeSelector,
@@ -19,6 +19,9 @@ import {
   useNativeTheme
 } from '@baishou/ui/native'
 import type { DiaryTagColorRegistry } from '@baishou/shared'
+import { DEFAULT_DIARY_PAGE_SIZE, DIARY_PAGE_SIZE_OPTIONS } from '../diary-filter-state.util'
+
+export { DEFAULT_DIARY_PAGE_SIZE, DIARY_PAGE_SIZE_OPTIONS }
 
 export interface DiaryListEntry {
   id: number
@@ -35,9 +38,6 @@ export interface DiaryListEntry {
   matchSimilarity?: number
 }
 
-export const DEFAULT_DIARY_PAGE_SIZE = 10
-export const DIARY_PAGE_SIZE_OPTIONS = [10, 20, 30, 50, 80, 100] as const
-
 export interface DiaryListProps {
   entries: DiaryListEntry[]
   totalCount: number
@@ -45,6 +45,8 @@ export interface DiaryListProps {
   pageSize: number
   selectedMonth: Date | null
   loading: boolean
+  /** 有列表缓存时的后台刷新（不替换整页为 spinner） */
+  refreshing?: boolean
   /** 已授权但外部存储尚未挂载完成 */
   storagePending?: boolean
   /** 外部存储挂载耗时较长，后台仍在继续 */
@@ -64,6 +66,9 @@ export interface DiaryListProps {
   /** 无全文件权限时，在空列表中显示授权按钮（对齐原版 BaiShou） */
   showStoragePermission?: boolean
   onRequestStoragePermission?: () => void | Promise<void>
+  listRef?: RefObject<FlatList<DiaryListEntry> | null>
+  onListScroll?: (offsetY: number) => void
+  scrollEnabled?: boolean
 }
 
 type DiaryPaginationBarProps = {
@@ -157,7 +162,6 @@ const DiaryListRow = memo(function DiaryListRow({
         createdAt={item.date}
         weather={item.weather}
         mood={item.mood}
-        location={item.location}
         isFavorite={item.isFavorite}
         matchSimilarity={item.matchSimilarity}
         onClick={handleOpen}
@@ -175,6 +179,7 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
   pageSize,
   selectedMonth,
   loading,
+  refreshing = false,
   storagePending = false,
   storageSlow = false,
   storageMountFailed = false,
@@ -187,7 +192,10 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
   onPageSizeChange,
   onViewAll,
   showStoragePermission,
-  onRequestStoragePermission
+  onRequestStoragePermission,
+  listRef,
+  onListScroll,
+  scrollEnabled = true
 }) {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -226,7 +234,6 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
       <DiaryListRow
         item={item}
         noContentLabel={noContentLabel}
-        tagColorRegistry={item.tagColors}
         onGoToEditor={onGoToEditor}
         onDeleteEntry={onDeleteEntry}
       />
@@ -236,9 +243,25 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
 
   const keyExtractor = useCallback((item: DiaryListEntry) => String(item.id), [])
 
+  const handleScroll = useCallback(
+    (event: { nativeEvent: { contentOffset: { y: number } } }) => {
+      onListScroll?.(event.nativeEvent.contentOffset.y)
+    },
+    [onListScroll]
+  )
+
   const listHeader = useMemo(
-    () => (showPagination ? <DiaryPaginationBar placement="top" {...paginationBarProps} /> : null),
-    [paginationBarProps, showPagination]
+    () => (
+      <>
+        {refreshing ? (
+          <View style={styles.refreshBar}>
+            <ActivityIndicator size="small" color={colors.primary} />
+          </View>
+        ) : null}
+        {showPagination ? <DiaryPaginationBar placement="top" {...paginationBarProps} /> : null}
+      </>
+    ),
+    [colors.primary, paginationBarProps, refreshing, showPagination]
   )
 
   const listFooter = useMemo(
@@ -275,12 +298,11 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
   if ((storageSlow || storageMountFailed) && entries.length === 0) {
     return (
       <View style={styles.centered}>
-        <MaterialIcons
-          name={storageMountFailed ? 'folder-off' : 'folder-open'}
-          size={56}
-          color={colors.primary}
-          style={{ opacity: 0.65 }}
-        />
+        {storageMountFailed ? (
+          <FolderX size={56} color={colors.primary} strokeWidth={2} style={{ opacity: 0.65 }} />
+        ) : (
+          <FolderOpen size={56} color={colors.primary} strokeWidth={2} style={{ opacity: 0.65 }} />
+        )}
         <Text style={[styles.storageTitle, { color: colors.textPrimary }]}>
           {storageMountFailed
             ? t(
@@ -327,7 +349,7 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
     )
   }
 
-  if (storageIndexing && entries.length === 0 && totalCount === 0) {
+  if (storageIndexing && entries.length === 0 && totalCount === 0 && loading) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -358,7 +380,7 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
   if (totalCount === 0) {
     return (
       <View style={styles.centered}>
-        <MaterialIcons name="edit-note" size={64} color={colors.primary} style={{ opacity: 0.5 }} />
+        <Edit3 size={64} color={colors.primary} strokeWidth={2} style={{ opacity: 0.5 }} />
         <Text style={[styles.emptyText, { color: colors.textTertiary, marginTop: 16 }]}>
           {selectedMonth ? t('diary.no_diaries_month') : t('diary.no_diaries')}
         </Text>
@@ -375,6 +397,7 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
 
   return (
     <FlatList
+      ref={listRef}
       key={`diary-grid-${numColumns}`}
       data={entries}
       numColumns={numColumns}
@@ -386,11 +409,18 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
       columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : undefined}
       ListHeaderComponent={listHeader}
       ListFooterComponent={listFooter}
+      extraData={`${currentPage}-${selectedMonth?.getTime() ?? 'all'}-${totalCount}`}
       initialNumToRender={8}
       maxToRenderPerBatch={6}
       windowSize={7}
-      removeClippedSubviews
+      removeClippedSubviews={false}
+      overScrollMode="never"
       keyboardShouldPersistTaps="handled"
+      automaticallyAdjustKeyboardInsets={false}
+      scrollEnabled={scrollEnabled}
+      {...(onListScroll
+        ? { onScroll: handleScroll, scrollEventThrottle: 1 as const }
+        : {})}
     />
   )
 })
@@ -439,6 +469,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 120
+  },
+  refreshBar: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8
   },
   columnWrapper: {
     gap: 12

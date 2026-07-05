@@ -1,5 +1,22 @@
 import { describe, expect, it } from 'vitest'
-import { formatDiaryPreviewText, formatSemanticChunkSnippet } from '../diary-preview.util'
+import {
+  formatDiaryPreviewText,
+  formatSemanticChunkSnippet,
+  normalizeDiaryPreviewMarkdown,
+  prepareDiaryCardPreviewMarkdown
+} from '../diary-preview.util'
+
+describe('normalizeDiaryPreviewMarkdown', () => {
+  it('keeps markdown headings and emphasis', () => {
+    const raw = '##### 12:30:45\n\n**加粗** 与 _斜体_'
+    expect(normalizeDiaryPreviewMarkdown(raw)).toBe('##### 12:30:45\n\n**加粗** 与 _斜体_')
+  })
+
+  it('strips dedicated tag-only lines from card preview', () => {
+    const raw = '#疲惫 #深夜 #反思\n\n##### 12:30:45\n\n今天很累'
+    expect(normalizeDiaryPreviewMarkdown(raw)).toBe('##### 12:30:45\n\n今天很累')
+  })
+})
 
 describe('formatDiaryPreviewText', () => {
   it('preserves line breaks after stripping markdown headings', () => {
@@ -16,5 +33,12 @@ describe('formatSemanticChunkSnippet', () => {
   it('strips diary embed prefix from semantic chunk text', () => {
     const raw = '[标签: 旅行] [2024-06-15 日记:]\n今天去爬山了'
     expect(formatSemanticChunkSnippet(raw)).toBe('今天去爬山了')
+  })
+})
+
+describe('prepareDiaryCardPreviewMarkdown', () => {
+  it('strips ATX heading markers but keeps inline emphasis', () => {
+    const raw = '###### 长标题换行\n正文 **加粗**'
+    expect(prepareDiaryCardPreviewMarkdown(raw)).toBe('长标题换行\n正文 **加粗**')
   })
 })

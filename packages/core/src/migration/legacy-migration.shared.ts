@@ -4,8 +4,10 @@ import {
   stripStoragePathScheme,
   LEGACY_UPGRADE_RAG_NOTICE_MAX,
   LEGACY_UPGRADE_RAG_PENDING_KEY,
-  LEGACY_UPGRADE_RAG_NOTICE_COUNT_KEY
+  LEGACY_UPGRADE_RAG_NOTICE_COUNT_KEY,
+  shouldSkipStorageMigrationEntry
 } from '@baishou/shared'
+import { isFilesystemRootPath } from '../storage/workspace-root.util'
 import { journalMarkdownExistsInTree } from '../journal/journal-files.util'
 import { sanitizeVaultDirectoryName } from '../vault/vault-name.util'
 import type { VaultInfo } from '../vault/vault.types'
@@ -20,6 +22,19 @@ export const LEGACY_MIGRATION_STATUS_FILE = '.baishou_next_migration.json'
 export const LEGACY_REGISTRY_RELATIVE = '.baishou/vault_registry.json'
 export const NEXT_REGISTRY_FILENAME = 'vault_registry.json'
 
+/** 归档根目录下不属于工作区的文件夹（与移动端 ARCHIVE_SKIP_TOP_LEVEL 对齐） */
+export const LEGACY_ARCHIVE_SKIP_TOP_LEVEL = new Set([
+  'config',
+  'assistant_avatars',
+  'database',
+  'manifest.json',
+  'user-data',
+  'node_modules',
+  'snapshots',
+  'temp',
+  '.snapshots'
+])
+
 export const LEGACY_AGENT_MERGE_TABLES = [
   'agent_assistants',
   'agent_sessions',
@@ -29,6 +44,9 @@ export const LEGACY_AGENT_MERGE_TABLES = [
 ] as const
 
 export const LEGACY_BAISHOUL_MERGE_TABLES = ['diaries', 'summaries'] as const
+
+/** 低于此体积的 agent.sqlite 视为空壳工作区 */
+export const MIN_AGENT_SQLITE_BYTES_FOR_IMPORT = 49_152
 
 export type LegacyMigrationSource = 'flutter_desktop' | 'flutter_mobile' | 'flutter_zip'
 
@@ -184,6 +202,11 @@ export async function isLegacyAppRoot(
     return true
   }
 
+  // 盘符根目录仅接受强特征；避免把 D:\ 下任意含 Journals 的文件夹误判为白守根目录。
+  if (isFilesystemRootPath(sourceDir)) {
+    return false
+  }
+
   try {
     const entries = await fileSystem.readdir(sourceDir)
     for (const name of entries) {
@@ -245,6 +268,111 @@ export async function scanLegacyDatabases(
   return { agentDbs, baishouDbs }
 }
 
+export function isVaultSpecificLegacyAgentDb(dbPath: string, legacyVaultName: string): boolean {
+  const normalized = dbPath.replace(/\\/g, '/')
+  return normalized.includes(`/${legacyVaultName}/.baishou/agent.sqlite`)
+}
+
+async function legacyAgentSqliteByteSize(fileSystem: IFileSystem, dbPath: string): Promise<number> {
+  try {
+    const stat = await fileSystem.stat(dbPath)
+    return stat.isFile ? (stat.size ?? 0) : 0
+  } catch {
+    return 0
+  }
+}
+
+/**
+ * 解析某工作区版本迁移应 ATTACH 的 legacy agent.sqlite 路径。
+ * 同时包含工作区库与全局 `.baishou/agent.sqlite`（Flutter 早期数据可能仅在全局）。
+ * 工作区库若为空壳（体积过小）而全局库有数据，仍会返回全局库。
+ */
+export async function resolveLegacyAgentDbPathsForVault(
+  fileSystem: IFileSystem,
+  sourceRoot: string,
+  legacyVaultName: string
+): Promise<string[]> {
+  const candidates: string[] = []
+  const seen = new Set<string>()
+  const push = (dbPath: string) => {
+    const key = normalizeSqliteAttachPath(dbPath)
+    if (seen.has(key)) return
+    seen.add(key)
+    candidates.push(dbPath)
+  }
+
+  push(path.join(sourceRoot, legacyVaultName, '.baishou', 'agent.sqlite'))
+  push(path.join(sourceRoot, '.baishou', 'agent.sqlite'))
+
+  const { agentDbs } = await scanLegacyDatabases(fileSystem, sourceRoot)
+  for (const dbPath of agentDbs) {
+    if (isVaultSpecificLegacyAgentDb(dbPath, legacyVaultName)) {
+      push(dbPath)
+    }
+  }
+
+  const existing: string[] = []
+  for (const dbPath of candidates) {
+    if (await fileSystem.exists(dbPath)) {
+      existing.push(dbPath)
+    }
+  }
+  if (existing.length === 0) return []
+
+  const sized = await Promise.all(
+    existing.map(async (dbPath) => ({
+      dbPath,
+      size: await legacyAgentSqliteByteSize(fileSystem, dbPath),
+      vaultSpecific: isVaultSpecificLegacyAgentDb(dbPath, legacyVaultName)
+    }))
+  )
+
+  const meaningful = sized.filter((entry) => entry.size >= MIN_AGENT_SQLITE_BYTES_FOR_IMPORT)
+  if (meaningful.length === 0) {
+    const largest = [...sized].sort((a, b) => b.size - a.size)[0]
+    return largest ? [largest.dbPath] : existing
+  }
+
+  const vaultMeaningful = meaningful.filter((entry) => entry.vaultSpecific)
+  const globalMeaningful = meaningful.filter((entry) => !entry.vaultSpecific)
+
+  if (vaultMeaningful.length > 0) {
+    return [...vaultMeaningful, ...globalMeaningful].map((entry) => entry.dbPath)
+  }
+
+  return globalMeaningful.map((entry) => entry.dbPath)
+}
+
+/** 仅扫描指定工作区与全局 `.baishou` 下的 legacy SQLite，避免全树递归扫到无关目录 */
+export async function scanLegacyDatabasesForVaults(
+  fileSystem: IFileSystem,
+  sourceDir: string,
+  vaultNames: string[]
+): Promise<{ agentDbs: string[]; baishouDbs: string[] }> {
+  const agentDbs: string[] = []
+  const baishouDbs: string[] = []
+
+  async function collectFromDir(dir: string): Promise<void> {
+    const sub = await scanLegacyDatabases(fileSystem, dir)
+    agentDbs.push(...sub.agentDbs)
+    baishouDbs.push(...sub.baishouDbs)
+  }
+
+  const globalBaishouDir = path.join(sourceDir, '.baishou')
+  if (await fileSystem.exists(globalBaishouDir)) {
+    await collectFromDir(globalBaishouDir)
+  }
+
+  for (const vaultName of vaultNames) {
+    const vaultBaishouDir = path.join(sourceDir, vaultName, '.baishou')
+    if (await fileSystem.exists(vaultBaishouDir)) {
+      await collectFromDir(vaultBaishouDir)
+    }
+  }
+
+  return { agentDbs, baishouDbs }
+}
+
 export async function readLegacyVaultRegistry(
   fileSystem: IFileSystem,
   sourceDir: string
@@ -280,6 +408,44 @@ export async function vaultDirectoryHasUserContent(
   )
 }
 
+/** 归档导入时是否值得迁移该工作区（跳过 registry 残留的空壳目录） */
+export async function vaultHasImportableLegacyArchiveContent(
+  fileSystem: IFileSystem,
+  sourceDir: string,
+  vaultName: string
+): Promise<boolean> {
+  const vaultDir = path.join(sourceDir, vaultName)
+  if (await journalMarkdownExistsInTree(fileSystem, path.join(vaultDir, 'Journals'))) {
+    return true
+  }
+
+  const archivesDir = path.join(vaultDir, 'Archives')
+  if (await fileSystem.exists(archivesDir)) {
+    if ((await countMigrationTreeFiles(fileSystem, archivesDir)) > 0) {
+      return true
+    }
+  }
+
+  const baishouPath = path.join(vaultDir, '.baishou', 'baishou.sqlite')
+  if (await fileSystem.exists(baishouPath)) {
+    return true
+  }
+
+  const agentPath = path.join(vaultDir, '.baishou', 'agent.sqlite')
+  if (await fileSystem.exists(agentPath)) {
+    try {
+      const stat = await fileSystem.stat(agentPath)
+      if ((stat.size ?? 0) >= MIN_AGENT_SQLITE_BYTES_FOR_IMPORT) {
+        return true
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return false
+}
+
 export async function discoverVaultNames(
   fileSystem: IFileSystem,
   sourceDir: string
@@ -312,6 +478,35 @@ export async function discoverVaultNames(
   }
 
   return discovered.length > 0 ? discovered : ['Personal']
+}
+
+/**
+ * 解析 Flutter 归档导入时应迁移的工作区列表。
+ * 优先使用 legacy registry，但仅保留源目录中真实存在的 vault 文件夹。
+ */
+export async function resolveLegacyImportVaultNames(
+  fileSystem: IFileSystem,
+  sourceDir: string
+): Promise<string[]> {
+  const candidateNames = await discoverVaultNames(fileSystem, sourceDir)
+  const present: string[] = []
+
+  for (const name of candidateNames) {
+    if (!name || LEGACY_ARCHIVE_SKIP_TOP_LEVEL.has(name)) continue
+    const vaultDir = path.join(sourceDir, name)
+    try {
+      const stat = await fileSystem.stat(vaultDir)
+      if (!stat.isDirectory) continue
+    } catch {
+      continue
+    }
+    if (!(await vaultHasImportableLegacyArchiveContent(fileSystem, sourceDir, name))) {
+      continue
+    }
+    present.push(name)
+  }
+
+  return present.length > 0 ? present : ['Personal']
 }
 
 export async function writeNextVaultRegistry(
@@ -494,7 +689,7 @@ export async function mergeDirectories(
   await fileSystem.mkdir(dest, { recursive: true })
   const entries = await fileSystem.readdir(src)
   for (const entry of entries) {
-    if (skipEntries?.has(entry)) continue
+    if (skipEntries?.has(entry) || shouldSkipStorageMigrationEntry(entry)) continue
     const srcPath = path.join(src, entry)
     const destPath = path.join(dest, entry)
     let entryIsDirectory = false
@@ -541,6 +736,7 @@ export async function mergeDirectoriesSkipExisting(
   await fileSystem.mkdir(dest, { recursive: true })
   const entries = await fileSystem.readdir(src)
   for (const entry of entries) {
+    if (shouldSkipStorageMigrationEntry(entry)) continue
     const srcPath = path.join(src, entry)
     const destPath = path.join(dest, entry)
     let entryIsDirectory = false
@@ -568,11 +764,14 @@ export async function mergeDirectoriesSkipExisting(
 
 export async function cleanupLegacyVaultArtifacts(
   fileSystem: IFileSystem,
-  vaultDir: string
+  vaultDir: string,
+  options?: { preserveAgentSqlite?: boolean }
 ): Promise<void> {
   await purgeShadowIndexFilesInDirectory(fileSystem, path.join(vaultDir, '.baishou'))
 
-  const filesToRemove = ['agent.sqlite', 'baishou.sqlite']
+  const filesToRemove = options?.preserveAgentSqlite
+    ? ['baishou.sqlite']
+    : ['agent.sqlite', 'baishou.sqlite']
   for (const fileName of filesToRemove) {
     try {
       await fileSystem.unlink(path.join(vaultDir, '.baishou', fileName))

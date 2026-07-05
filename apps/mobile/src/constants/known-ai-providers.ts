@@ -91,6 +91,12 @@ export const BASE_KNOWN_PROVIDERS_CONFIG = [
     isSystem: true
   },
   {
+    id: 'opencodego',
+    name: 'OpenCode Go',
+    defaultBase: 'https://opencode.ai/zen/go/v1',
+    isSystem: true
+  },
+  {
     id: 'mistral',
     name: 'Mistral',
     defaultBase: 'https://api.mistral.ai/v1',
@@ -132,7 +138,8 @@ export const PROVIDER_NAME_I18N_MAP: Record<string, string> = {
   minimax: 'aiProviders.minimax',
   vertexai: 'aiProviders.vertexai',
   vercel: 'aiProviders.vercel',
-  xiaomimimo: 'aiProviders.xiaomimimo'
+  xiaomimimo: 'aiProviders.xiaomimimo',
+  opencodego: 'aiProviders.opencodego'
 }
 
 export const PROVIDER_TYPES = [
@@ -144,6 +151,7 @@ export const PROVIDER_TYPES = [
   'ollama',
   'siliconflow',
   'openrouter',
+  'opencodego',
   'dashscope',
   'doubao',
   'grok',
@@ -157,5 +165,20 @@ export const PROVIDER_TYPES = [
   'vercel',
   'xiaomimimo'
 ] as const
+
+export function resolveProviderTypeLabel(
+  typeId: string,
+  t: (key: string, defaultValue: string) => string
+): string {
+  if (typeId === 'openai') {
+    return t('provider.openai_spec', 'OpenAI 规范')
+  }
+  const meta = BASE_KNOWN_PROVIDERS_CONFIG.find((p) => p.id === typeId)
+  if (meta) {
+    const i18nKey = PROVIDER_NAME_I18N_MAP[typeId]
+    return i18nKey ? t(i18nKey, meta.name) : meta.name
+  }
+  return typeId.toUpperCase()
+}
 
 export type KnownProviderMeta = (typeof BASE_KNOWN_PROVIDERS_CONFIG)[number]

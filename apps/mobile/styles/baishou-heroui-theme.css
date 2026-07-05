@@ -1,20 +1,84 @@
 /**
  * 白守语义色 → HeroUI Native / Uniwind
- * 与 packages/ui/src/theme/light.ts、dark.ts 及 Flutter AppToast 对齐
+ * 与 packages/ui/src/theme/light.ts、dark.ts 对齐
+ *
+ * Reanimated 4.3+ 的动画颜色仅支持 hex / rgb / rgba / hsl / 命名色，
+ * 不可使用 oklch()、color-mix() 或 var() 链未解析的值。
  */
 @theme {
-  /* Uniwind accent-* 须在 @theme 静态注册；HeroUI Input 默认 selectionColorClassName="accent-accent" */
   --color-primary: #5ba8f5;
   --color-accent: #5ba8f5;
+
+  /* 覆盖 HeroUI theme.css 中的 color-mix / oklab 计算色 */
+  --color-accent-hover: #3a88d5;
+  --color-default-hover: #dfe1e4;
+  --color-danger-hover: #dc2626;
+  --color-warning-hover: #d97706;
+  --color-success-hover: #059669;
+  --color-accent-soft: rgba(91, 168, 245, 0.15);
+  --color-accent-soft-foreground: #3a88d5;
+  --color-accent-soft-hover: rgba(91, 168, 245, 0.2);
+  --color-default-soft: rgba(234, 236, 239, 0.72);
+  --color-default-soft-foreground: #1a1c23;
+  --color-default-soft-hover: rgba(234, 236, 239, 0.82);
+  --color-danger-soft: rgba(239, 68, 68, 0.14);
+  --color-danger-soft-foreground: #dc2626;
+  --color-danger-soft-hover: rgba(239, 68, 68, 0.2);
+  --color-warning-soft: rgba(245, 158, 11, 0.14);
+  --color-warning-soft-foreground: #b45309;
+  --color-warning-soft-hover: rgba(245, 158, 11, 0.2);
+  --color-success-soft: rgba(16, 185, 129, 0.14);
+  --color-success-soft-foreground: #047857;
+  --color-success-soft-hover: rgba(16, 185, 129, 0.2);
+  --color-background-secondary: #f0f2f5;
+  --color-background-tertiary: #eaecef;
+  --color-border-secondary: rgba(0, 0, 0, 0.12);
+  --color-border-tertiary: rgba(0, 0, 0, 0.16);
+  --color-separator-secondary: rgba(0, 0, 0, 0.1);
+  --color-separator-tertiary: rgba(0, 0, 0, 0.14);
+  --color-field-hover: #f8f9fa;
+  --color-field-focus: #ffffff;
+  --color-field-border-hover: rgba(0, 0, 0, 0.16);
+  --color-field-border-focus: rgba(91, 168, 245, 0.45);
+  --color-surface-hover: #f8f9fa;
 }
 
 @layer theme {
   :root {
     @variant light {
-      --color-primary: #5ba8f5;
-      --color-primary-hover: #3a88d5;
+      --background: #f4f5f7;
+      --foreground: #1a1c23;
+      --surface: #ffffff;
+      --surface-foreground: #1a1c23;
+      --surface-secondary: #f0f2f5;
+      --surface-secondary-foreground: #1a1c23;
+      --surface-tertiary: #eaecef;
+      --surface-tertiary-foreground: #1a1c23;
+      --overlay: #ffffff;
+      --overlay-foreground: #1a1c23;
+      --backdrop: rgba(0, 0, 0, 0.35);
+      --muted: #a0aec0;
+      --default: #eaecef;
+      --default-foreground: #1a1c23;
       --accent: #5ba8f5;
       --accent-foreground: #ffffff;
+      --segment: #ffffff;
+      --segment-foreground: #1a1c23;
+      --border: rgba(0, 0, 0, 0.08);
+      --separator: rgba(0, 0, 0, 0.12);
+      --focus: #5ba8f5;
+      --link: #1a1c23;
+      --success: #10b981;
+      --success-foreground: #ffffff;
+      --warning: #f59e0b;
+      --warning-foreground: #ffffff;
+      --danger: #ef4444;
+      --danger-foreground: #ffffff;
+
+      --color-primary: #5ba8f5;
+      --color-primary-hover: #3a88d5;
+      --color-accent: #5ba8f5;
+      --color-accent-foreground: #ffffff;
       --color-background: #f4f5f7;
       --color-background-subtle: #f0f2f5;
       --color-foreground: #1a1c23;
@@ -31,18 +95,80 @@
       --color-success-base: #10b981;
       --color-warning-base: #f59e0b;
 
-      /* Form Field（heroui-native Input 走 bg-field border-field-border） */
       --field-background: #ffffff;
+      --field-foreground: #1a1c23;
+      --field-placeholder: #a0aec0;
       --field-border: rgba(0, 0, 0, 0.12);
       --field-border-width: 1.5px;
       --baishou-input-border: rgba(0, 0, 0, 0.12);
+
+      --color-accent-hover: #3a88d5;
+      --color-default-hover: #dfe1e4;
+      --color-danger-hover: #dc2626;
+      --color-warning-hover: #d97706;
+      --color-success-hover: #059669;
+      --color-accent-soft: rgba(91, 168, 245, 0.15);
+      --color-accent-soft-foreground: #3a88d5;
+      --color-accent-soft-hover: rgba(91, 168, 245, 0.2);
+      --color-default-soft: rgba(234, 236, 239, 0.72);
+      --color-default-soft-foreground: #1a1c23;
+      --color-default-soft-hover: rgba(234, 236, 239, 0.82);
+      --color-danger-soft: rgba(239, 68, 68, 0.14);
+      --color-danger-soft-foreground: #dc2626;
+      --color-danger-soft-hover: rgba(239, 68, 68, 0.2);
+      --color-warning-soft: rgba(245, 158, 11, 0.14);
+      --color-warning-soft-foreground: #b45309;
+      --color-warning-soft-hover: rgba(245, 158, 11, 0.2);
+      --color-success-soft: rgba(16, 185, 129, 0.14);
+      --color-success-soft-foreground: #047857;
+      --color-success-soft-hover: rgba(16, 185, 129, 0.2);
+      --color-background-secondary: #f0f2f5;
+      --color-background-tertiary: #eaecef;
+      --color-border-secondary: rgba(0, 0, 0, 0.12);
+      --color-border-tertiary: rgba(0, 0, 0, 0.16);
+      --color-separator-secondary: rgba(0, 0, 0, 0.1);
+      --color-separator-tertiary: rgba(0, 0, 0, 0.14);
+      --color-field-hover: #f8f9fa;
+      --color-field-focus: #ffffff;
+      --color-field-border-hover: rgba(0, 0, 0, 0.16);
+      --color-field-border-focus: rgba(91, 168, 245, 0.45);
+      --color-surface-hover: #f8f9fa;
     }
 
     @variant dark {
-      --color-primary: #5ba8f5;
-      --color-primary-hover: #3a88d5;
+      --background: #1a1a1e;
+      --foreground: #f8fafc;
+      --surface: #262629;
+      --surface-foreground: #f8fafc;
+      --surface-secondary: #323236;
+      --surface-secondary-foreground: #f8fafc;
+      --surface-tertiary: #2d2d31;
+      --surface-tertiary-foreground: #f8fafc;
+      --overlay: #262629;
+      --overlay-foreground: #f8fafc;
+      --backdrop: rgba(0, 0, 0, 0.55);
+      --muted: #71717a;
+      --default: #323236;
+      --default-foreground: #f8fafc;
       --accent: #5ba8f5;
       --accent-foreground: #ffffff;
+      --segment: #262629;
+      --segment-foreground: #f8fafc;
+      --border: rgba(255, 255, 255, 0.1);
+      --separator: rgba(255, 255, 255, 0.14);
+      --focus: #5ba8f5;
+      --link: #f8fafc;
+      --success: #10b981;
+      --success-foreground: #ffffff;
+      --warning: #f59e0b;
+      --warning-foreground: #ffffff;
+      --danger: #ef4444;
+      --danger-foreground: #ffffff;
+
+      --color-primary: #5ba8f5;
+      --color-primary-hover: #3a88d5;
+      --color-accent: #5ba8f5;
+      --color-accent-foreground: #ffffff;
       --color-background: #1a1a1e;
       --color-background-subtle: #151518;
       --color-foreground: #f8fafc;
@@ -60,9 +186,43 @@
       --color-warning-base: #f59e0b;
 
       --field-background: #2d2d31;
+      --field-foreground: #f8fafc;
+      --field-placeholder: #71717a;
       --field-border: rgba(255, 255, 255, 0.16);
       --field-border-width: 1.5px;
       --baishou-input-border: rgba(255, 255, 255, 0.16);
+
+      --color-accent-hover: #3a88d5;
+      --color-default-hover: #38383d;
+      --color-danger-hover: #f87171;
+      --color-warning-hover: #fbbf24;
+      --color-success-hover: #34d399;
+      --color-accent-soft: rgba(91, 168, 245, 0.2);
+      --color-accent-soft-foreground: #93c5fd;
+      --color-accent-soft-hover: rgba(91, 168, 245, 0.28);
+      --color-default-soft: rgba(50, 50, 54, 0.72);
+      --color-default-soft-foreground: #f8fafc;
+      --color-default-soft-hover: rgba(50, 50, 54, 0.82);
+      --color-danger-soft: rgba(239, 68, 68, 0.18);
+      --color-danger-soft-foreground: #fca5a5;
+      --color-danger-soft-hover: rgba(239, 68, 68, 0.24);
+      --color-warning-soft: rgba(245, 158, 11, 0.18);
+      --color-warning-soft-foreground: #fcd34d;
+      --color-warning-soft-hover: rgba(245, 158, 11, 0.24);
+      --color-success-soft: rgba(16, 185, 129, 0.18);
+      --color-success-soft-foreground: #6ee7b7;
+      --color-success-soft-hover: rgba(16, 185, 129, 0.24);
+      --color-background-secondary: #151518;
+      --color-background-tertiary: #1e1e22;
+      --color-border-secondary: rgba(255, 255, 255, 0.14);
+      --color-border-tertiary: rgba(255, 255, 255, 0.2);
+      --color-separator-secondary: rgba(255, 255, 255, 0.12);
+      --color-separator-tertiary: rgba(255, 255, 255, 0.16);
+      --color-field-hover: #323236;
+      --color-field-focus: #2d2d31;
+      --color-field-border-hover: rgba(255, 255, 255, 0.22);
+      --color-field-border-focus: rgba(91, 168, 245, 0.55);
+      --color-surface-hover: #2d2d31;
     }
   }
 }

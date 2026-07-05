@@ -1,5 +1,8 @@
 import { useImperativeHandle, useState } from 'react'
+import { undo, redo } from '@codemirror/commands'
 import { useTranslation } from 'react-i18next'
+import { toggleMarkdownMark } from '../../shared/diary-codemirror/extensions/keymap'
+import type { DiaryCmMarkdownMark } from '../../shared/diary-codemirror/types'
 import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
 import type { CodeMirrorEditorHandle, CodeMirrorEditorProps } from './codeMirrorEditor.types'
@@ -48,6 +51,38 @@ export function useCodeMirrorEditor(
           selection: { anchor: from + text.length }
         })
         view.focus()
+      },
+      insertWrappedText: (prefix: string, suffix = '') => {
+        const view = viewRef.current
+        if (!view) return
+        const { from, to } = view.state.selection.main
+        const selected = view.state.sliceDoc(from, to)
+        view.dispatch({
+          changes: { from, to, insert: prefix + selected + suffix },
+          selection: { anchor: from + prefix.length, head: to + prefix.length }
+        })
+        view.focus()
+      },
+      undo: () => {
+        const view = viewRef.current
+        if (!view) return
+        undo(view)
+        view.focus()
+      },
+      redo: () => {
+        const view = viewRef.current
+        if (!view) return
+        redo(view)
+        view.focus()
+      },
+      toggleMarkdownMark: (marker: DiaryCmMarkdownMark) => {
+        const view = viewRef.current
+        if (!view) return
+        toggleMarkdownMark(view, marker)
+        view.focus()
+      },
+      focus: () => {
+        viewRef.current?.focus()
       }
     }),
     [viewRef]

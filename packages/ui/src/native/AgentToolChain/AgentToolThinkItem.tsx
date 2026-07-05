@@ -1,0 +1,125 @@
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
+import { formatToolDurationMs, type AgentToolChainItemModel } from '../../shared/agent-tool-chain'
+import { getToolDisplayName, type ToolInvocationLike } from '../../shared/tool-result.util'
+import { ThinkChevron, ToolStatusIcon } from '../AgentThinkSection/ThinkStatusIcon'
+import { CollapsibleHeight } from '../CollapsibleHeight'
+import { useNativeTheme } from '../theme'
+import { ToolResultContent } from './ToolResultContent'
+
+export interface AgentToolThinkItemProps {
+  model: AgentToolChainItemModel
+  autoExpand?: boolean
+}
+
+export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
+  model,
+  autoExpand = false
+}: AgentToolThinkItemProps) {
+  const { t } = useTranslation()
+  const { colors } = useNativeTheme()
+  const [expanded, setExpanded] = useState(false)
+  const [contentMounted, setContentMounted] = useState(false)
+
+  const isLoading = model.status === 'loading'
+  const invocation = model.invocation as ToolInvocationLike | undefined
+  const hasContent = model.hasContent
+
+  useEffect(() => {
+    if (autoExpand) {
+      setContentMounted(true)
+      setExpanded(true)
+    }
+  }, [autoExpand])
+
+  const displayTitle = useMemo(() => {
+    if (invocation != null) {
+      return getToolDisplayName(invocation, (key, fallback) =>
+        String(t(key, { defaultValue: fallback ?? key }))
+      )
+    }
+    return t(`agent.tools.${model.toolName}`, model.toolName)
+  }, [invocation, model.toolName, t])
+
+  const handleToggle = useCallback(() => {
+    setExpanded((prev) => {
+      const next = !prev
+      if (next) setContentMounted(true)
+      return next
+    })
+  }, [])
+
+  return (
+    <View style={styles.root}>
+      <Pressable
+        style={styles.statusRow}
+        onPress={hasContent ? handleToggle : undefined}
+        disabled={!hasContent}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: hasContent ? expanded : undefined }}
+      >
+        <ToolStatusIcon
+          loading={isLoading}
+          status={model.status}
+          color={colors.textSecondary}
+          errorColor={colors.error}
+        />
+        <Text style={[styles.statusText, { color: colors.textSecondary }]} numberOfLines={2}>
+          {displayTitle}
+        </Text>
+        {model.durationMs != null ? (
+          <Text style={[styles.duration, { color: colors.textTertiary }]}>
+            {formatToolDurationMs(model.durationMs)}
+          </Text>
+        ) : null}
+        {hasContent ? <ThinkChevron expanded={expanded} color={colors.textTertiary} /> : null}
+      </Pressable>
+
+      {hasContent && invocation && contentMounted ? (
+        <CollapsibleHeight expanded={expanded} animation="ease" durationMs={250}>
+          <View
+            style={[
+              styles.content,
+              {
+                borderLeftColor: colors.borderMuted,
+                paddingTop: 8
+              }
+            ]}
+          >
+            <ToolResultContent invocation={invocation} />
+          </View>
+        </CollapsibleHeight>
+      ) : null}
+    </View>
+  )
+})
+
+const styles = StyleSheet.create({
+  root: {
+    width: '100%'
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    alignSelf: 'stretch',
+    width: '100%'
+  },
+  statusText: {
+    flex: 1,
+    flexShrink: 1,
+    fontSize: 14,
+    lineHeight: 22,
+    fontWeight: '400'
+  },
+  duration: {
+    fontSize: 11,
+    fontVariant: ['tabular-nums']
+  },
+  content: {
+    width: '100%',
+    paddingLeft: 12,
+    borderLeftWidth: 2
+  }
+})

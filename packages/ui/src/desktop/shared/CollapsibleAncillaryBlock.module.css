@@ -1,14 +1,15 @@
 /* 聊天气泡内「思考过程 / 工具调用」等可折叠附属块 — 统一外壳与标题栏 */
 .shell {
-  width: 100%;
-  min-width: 100%;
+  width: fit-content;
+  max-width: 100%;
+  min-width: min(100%, max-content);
   margin-bottom: 12px;
   border-radius: 12px;
   overflow: hidden;
   border: 1.5px solid var(--border-card);
   background: var(--bg-surface);
   box-sizing: border-box;
-  align-self: stretch;
+  align-self: flex-start;
   transition: border-color 0.2s ease;
 }
 
@@ -70,7 +71,7 @@
 .contentWrap {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows 0.3s ease;
+  transition: grid-template-rows 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .open .contentWrap {
@@ -79,4 +80,5 @@
 
 .contentInner {
   overflow: hidden;
+  min-height: 0;
 }

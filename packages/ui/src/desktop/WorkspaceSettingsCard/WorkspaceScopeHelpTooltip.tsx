@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdHelpOutline } from 'react-icons/md'
 import { Modal } from '../Modal/Modal'
 import { mergeSettingsHelpButtonHandlers } from '../shared/settingsInlineHelpBlock'
 import styles from './WorkspaceScopeHelpTooltip.module.css'
+import { CircleHelp } from 'lucide-react'
 
 export interface WorkspaceScopeHelpTooltipProps {
   size?: number
@@ -63,7 +63,7 @@ export const WorkspaceScopeHelpTooltip: React.FC<WorkspaceScopeHelpTooltipProps>
         aria-label={t('workspace.help_aria', '工作空间作用范围说明')}
         {...mergeSettingsHelpButtonHandlers(() => setOpen(true))}
       >
-        <MdHelpOutline size={size} className={styles.helpIcon} aria-hidden />
+        <CircleHelp size={size} className={styles.helpIcon} aria-hidden />
       </button>
       <Modal
         isOpen={open}

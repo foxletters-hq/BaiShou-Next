@@ -54,10 +54,10 @@ export class SimulatedSyncDevice {
       : new InMemoryIncrementalCloudClient(options.cloudStore)
     this.cloud.setSyncRoot(this.rootDir)
 
-    const pathService: IStoragePathService = {
+    const pathService = {
       getRootDirectory: async () => this.rootDir,
       getActiveVaultPath: async () => this.vaultDir
-    }
+    } as IStoragePathService
 
     this.service = new ThreeWaySyncService(pathService, this.cloud, options.deviceId)
   }

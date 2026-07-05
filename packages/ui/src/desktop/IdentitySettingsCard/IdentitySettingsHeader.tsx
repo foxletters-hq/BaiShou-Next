@@ -1,7 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdOutlineBadge, MdExpandMore } from 'react-icons/md'
 import styles from './IdentitySettingsCard.module.css'
+import { ChevronDown, IdCard } from 'lucide-react'
 
 interface IdentitySettingsHeaderProps {
   factCount: number
@@ -27,7 +27,7 @@ export const IdentitySettingsHeader: React.FC<IdentitySettingsHeaderProps> = ({
             flex: 1
           }}
         >
-          <MdOutlineBadge size={20} className={styles.primaryIcon} />
+          <IdCard size={20} className={styles.primaryIcon} />
           <span className={styles.headerText}>{t('settings.identity_card', '身份卡')}</span>
           <span className={styles.headerFactCount}>
             {factCount} {t('settings.identity_entry_count_suffix', '条')}
@@ -35,7 +35,7 @@ export const IdentitySettingsHeader: React.FC<IdentitySettingsHeaderProps> = ({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          <MdExpandMore
+          <ChevronDown
             size={24}
             style={{
               color: 'var(--color-on-surface-variant)',

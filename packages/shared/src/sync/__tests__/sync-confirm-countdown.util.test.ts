@@ -57,28 +57,19 @@ describe('sync-confirm-countdown.util', () => {
   it('resolvePlanConfirmEligibleAt skips delay when sync cannot execute', () => {
     const startedAt = 1000
     expect(
-      resolvePlanConfirmEligibleAt(
-        { changeCount: 0, deletePropagationBlocked: false },
-        startedAt
-      )
+      resolvePlanConfirmEligibleAt({ changeCount: 0, deletePropagationBlocked: false }, startedAt)
     ).toBe(startedAt)
     expect(
-      resolvePlanConfirmEligibleAt(
-        { changeCount: 3, deletePropagationBlocked: true },
-        startedAt
-      )
+      resolvePlanConfirmEligibleAt({ changeCount: 3, deletePropagationBlocked: true }, startedAt)
     ).toBe(startedAt + SYNC_CONFIRM_DELAY_MS)
     expect(
-      resolvePlanConfirmEligibleAt(
-        { changeCount: 3, deletePropagationBlocked: false },
-        startedAt
-      )
+      resolvePlanConfirmEligibleAt({ changeCount: 3, deletePropagationBlocked: false }, startedAt)
     ).toBe(startedAt + SYNC_CONFIRM_DELAY_MS)
   })
 
   it('assertSyncConfirmAllowed fails closed when eligibleAt is null', () => {
-    expect(() =>
-      assertSyncConfirmAllowed({ canExecuteSync: true, eligibleAtMs: null })
-    ).toThrow(SyncConfirmNotReadyError)
+    expect(() => assertSyncConfirmAllowed({ canExecuteSync: true, eligibleAtMs: null })).toThrow(
+      SyncConfirmNotReadyError
+    )
   })
 })

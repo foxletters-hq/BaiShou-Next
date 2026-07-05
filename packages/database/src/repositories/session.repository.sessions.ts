@@ -1,4 +1,4 @@
-import { eq, desc, or, isNull, sql, and, inArray } from 'drizzle-orm'
+import { eq, desc, or, sql, and, inArray } from 'drizzle-orm'
 import type { AppDatabase } from '../types'
 import { agentSessionsTable } from '../schema/agent-sessions'
 import { agentMessagesTable as messagesTbl } from '../schema/agent-messages'
@@ -135,6 +135,7 @@ export class SessionCrudOps {
 
     const normalizedAssistantId = assistantId?.trim()
     if (normalizedAssistantId) {
+<<<<<<< HEAD
       conditions.push(
         or(
           eq(agentSessionsTable.assistantId, normalizedAssistantId),
@@ -142,6 +143,9 @@ export class SessionCrudOps {
           eq(agentSessionsTable.assistantId, '')
         )
       )
+=======
+      conditions.push(eq(agentSessionsTable.assistantId, normalizedAssistantId))
+>>>>>>> origin/Baishou-dev
     }
 
     if (searchQuery && searchQuery.trim()) {
@@ -200,6 +204,17 @@ export class SessionCrudOps {
       .where(eq(agentSessionsTable.id, sessionId))
   }
 
+  async updateSessionDialogueModel(
+    sessionId: string,
+    providerId: string,
+    modelId: string
+  ): Promise<void> {
+    await this.db
+      .update(agentSessionsTable)
+      .set({ providerId, modelId, updatedAt: new Date() })
+      .where(eq(agentSessionsTable.id, sessionId))
+  }
+
   async deleteSessions(ids: string[]): Promise<void> {
     if (ids.length === 0) return
     const { inArray } = await import('drizzle-orm')
@@ -238,5 +253,25 @@ export class SessionCrudOps {
     if (partIds.length === 0) return
     const { inArray } = await import('drizzle-orm')
     await this.db.update(partsTbl).set({ data: fallbackData }).where(inArray(partsTbl.id, partIds))
+  }
+
+  async updatePartsDataById(updates: Array<{ id: string; data: unknown }>): Promise<void> {
+    if (updates.length === 0) return
+    const { eq } = await import('drizzle-orm')
+
+    if (usesSyncTransaction(this.db)) {
+      await (this.db as any).transaction((tx: any) => {
+        for (const update of updates) {
+          tx.update(partsTbl).set({ data: update.data }).where(eq(partsTbl.id, update.id)).run()
+        }
+      })
+      return
+    }
+
+    await this.db.transaction(async (tx) => {
+      for (const update of updates) {
+        await tx.update(partsTbl).set({ data: update.data }).where(eq(partsTbl.id, update.id))
+      }
+    })
   }
 }

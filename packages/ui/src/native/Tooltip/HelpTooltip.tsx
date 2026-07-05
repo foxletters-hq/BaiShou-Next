@@ -1,7 +1,8 @@
 import React from 'react'
-import { MaterialIcons } from '@expo/vector-icons'
+import { CircleHelp } from 'lucide-react-native'
 import { Tooltip } from './Tooltip'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 
 export interface HelpTooltipProps {
   content: React.ReactNode
@@ -20,10 +21,10 @@ export const HelpTooltip: React.FC<HelpTooltipProps> = ({
 
   return (
     <Tooltip content={content} position={position}>
-      <MaterialIcons
-        name="help-outline"
+      <CircleHelp
         size={size}
         color={colors.textTertiary}
+        strokeWidth={DEFAULT_STROKE_WIDTH}
         style={{ opacity: 0.8 }}
       />
     </Tooltip>

@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { MdAdd, MdArrowBack } from 'react-icons/md'
 import {
   Input,
   Pagination,
@@ -13,6 +12,7 @@ import {
 import './ManagementPane.css'
 import { useSettingsScopeNavigation } from '../hooks/useSettingsScopeNavigation'
 import { switchActiveVault } from '../../../lib/vault-runtime.util'
+import { ArrowLeft, Plus } from 'lucide-react'
 
 const PAGE_SIZE = 10
 
@@ -151,7 +151,7 @@ export const WorkspaceManagementPane: React.FC = () => {
           onClick={() => settingsNav.goGeneral()}
           title={t('common.back', '返回')}
         >
-          <MdArrowBack size={22} />
+          <ArrowLeft size={22} />
         </button>
         <h2 className="settings-management-title">{t('workspace.manage', '管理工作空间')}</h2>
         <button
@@ -159,7 +159,7 @@ export const WorkspaceManagementPane: React.FC = () => {
           className="settings-management-header-action"
           onClick={() => void handleCreate()}
         >
-          <MdAdd size={18} />
+          <Plus size={18} />
           <span>{t('workspace.create_new', '创建新空间')}</span>
         </button>
       </div>

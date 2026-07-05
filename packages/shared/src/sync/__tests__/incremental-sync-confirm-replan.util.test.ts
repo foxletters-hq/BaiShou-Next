@@ -10,9 +10,7 @@ import {
   INCREMENTAL_SYNC_PLAN_REUSE_TTL_MS
 } from '../incremental-sync-plan-reuse.util'
 
-function preview(
-  overrides: Partial<IncrementalSyncPlanPreview> = {}
-): IncrementalSyncPlanPreview {
+function preview(overrides: Partial<IncrementalSyncPlanPreview> = {}): IncrementalSyncPlanPreview {
   return {
     activeVaultName: 'Personal',
     registeredVaults: ['Personal'],

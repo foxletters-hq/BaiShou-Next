@@ -80,9 +80,11 @@ vi.mock('@baishou/database-desktop', () => {
   }
 })
 
-// Mock appDb
-vi.mock('../db', () => ({
-  appDb: {}
+// Mock appDb（SnapshotManager/archive.service 从 src/main/db 导入，路径为 ../../db；使用 getAppDb() 函数形态）
+vi.mock('../../db', () => ({
+  appDb: {},
+  getAppDb: vi.fn(() => ({})),
+  resetAppDb: vi.fn()
 }))
 
 import { DesktopArchiveService } from '../archive.service'

@@ -1,14 +1,15 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdWarning } from 'react-icons/md'
 import type { EmbeddingMigrationStateView } from '@baishou/shared'
 import type { RagState } from './rag-memory.types'
 import styles from './RagMemoryView.module.css'
+import { TriangleAlert } from 'lucide-react'
 
 interface RagMemoryAlertsProps {
   ragState: RagState
   hasMismatchModel: boolean
   migrationState?: EmbeddingMigrationStateView | null
+  migrationCancelBusy?: boolean
   onTriggerMigration?: () => Promise<void>
   onCancelMigration?: () => Promise<void>
   onRestoreMigration?: () => Promise<void>
@@ -19,6 +20,7 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
   ragState,
   hasMismatchModel,
   migrationState,
+  migrationCancelBusy = false,
   onTriggerMigration,
   onCancelMigration,
   onRestoreMigration,
@@ -26,6 +28,7 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
 }) => {
   const { t } = useTranslation()
   const isMigrating = ragState.isRunning && ragState.type === 'migration'
+  const isAborting = ragState.statusKey === 'settings.rag_migration_aborting' || migrationCancelBusy
   const showEmbedError = !isMigrating && !!ragState.error
   const showInterrupted =
     !isMigrating &&
@@ -41,15 +44,20 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
           <div className={styles.migrationRow}>
             <div className={styles.spinner}></div>
             <span className={styles.migTitle}>
-              {t('settings.rag_migrating', '知识库正在迁移中...')}
+              {isAborting
+                ? t('settings.rag_migration_aborting', '正在取消迁移并恢复数据...')
+                : t('settings.rag_migrating', '知识库正在迁移中...')}
             </span>
             {onCancelMigration && (
               <button
                 type="button"
                 className={styles.migrationCancelBtn}
+                disabled={isAborting}
                 onClick={() => void onCancelMigration()}
               >
-                {t('settings.rag_migration_cancel', '取消迁移')}
+                {isAborting
+                  ? t('settings.rag_migration_cancelling', '取消中...')
+                  : t('settings.rag_migration_cancel', '取消迁移')}
               </button>
             )}
           </div>
@@ -68,7 +76,7 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
       {showEmbedError && (
         <div className={styles.dangerAlert}>
           <div className={styles.dangerRow}>
-            <MdWarning size={18} color="#ef4444" />
+            <TriangleAlert size={18} color="#ef4444" />
             <span className={styles.dangerTitle}>
               {t('settings.rag_operation_failed', '向量嵌入操作失败')}
             </span>
@@ -80,7 +88,7 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
       {showInterrupted && (
         <div className={styles.dangerAlert}>
           <div className={styles.dangerRow}>
-            <MdWarning size={18} color="#ef4444" />
+            <TriangleAlert size={18} color="#ef4444" />
             <span className={styles.dangerTitle}>
               {t('settings.rag_migration_interrupted_title', '检测到未完成的嵌入迁移')}
             </span>
@@ -122,7 +130,7 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
       {!isMigrating && !showInterrupted && hasMismatchModel && (
         <div className={styles.dangerAlert}>
           <div className={styles.dangerRow}>
-            <MdWarning size={18} color="#ef4444" />
+            <TriangleAlert size={18} color="#ef4444" />
             <span className={styles.dangerTitle}>
               {t('settings.rag_model_mismatch', '模型版本不匹配')}
             </span>

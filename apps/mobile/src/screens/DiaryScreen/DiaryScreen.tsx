@@ -1,56 +1,25 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { View, StyleSheet, StatusBar, Modal, Text, TouchableOpacity } from 'react-native'
+import { View, StyleSheet, StatusBar, Modal, Text, TouchableOpacity, FlatList, Keyboard } from 'react-native'
 import { ScreenSafeArea } from '../../components/ScreenSafeArea'
-import { useRouter, useFocusEffect } from 'expo-router'
+import { useRouter, useFocusEffect, useNavigation } from 'expo-router'
+import { useIsFocused } from '@react-navigation/native'
 import { useTranslation } from 'react-i18next'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { WEATHER_IDS, normalizeWeatherId, type WeatherId } from '@baishou/shared'
 import { logger } from '@baishou/shared'
 import { useNativeTheme } from '@baishou/ui/native'
 import { useStoragePermission } from '../../hooks/useStoragePermission'
 import { useBaishou } from '../../providers/BaishouProvider'
 import { DiaryAppBar } from './components/DiaryAppBar'
 import { DiaryFab } from './components/DiaryFab'
-import {
-  DiaryList,
-  type DiaryListEntry,
-  DEFAULT_DIARY_PAGE_SIZE,
-  DIARY_PAGE_SIZE_OPTIONS
-} from './components/DiaryList'
+import { DiaryList, type DiaryListEntry } from './components/DiaryList'
 import { useDiaryData, type DiaryPageQuery } from './hooks/useDiaryData'
+import { useDiaryFilterState } from './hooks/useDiaryFilterState'
+import { useDiaryRootExitGuard } from './hooks/useDiaryRootExitGuard'
 import { useIncrementalSync } from '../../providers/IncrementalSyncProvider'
-
-const STORAGE_KEYS = {
-  searchQuery: 'diary_searchQuery',
-  selectedMonth: 'diary_selectedMonth',
-  filterWeathers: 'diary_filterWeathers',
-  filterFavorite: 'diary_filterFavorite',
-  currentPage: 'diary_currentPage',
-  pageSize: 'diary_pageSize'
-} as const
-
-function parseSavedMonth(saved: string | null): Date | null {
-  if (!saved || saved === 'all') return null
-  try {
-    const d = new Date(saved)
-    return !isNaN(d.getTime()) ? d : null
-  } catch {
-    return null
-  }
-}
-
-function parseFilterWeathers(saved: string | null): string[] {
-  if (!saved) return []
-  try {
-    const parsed = JSON.parse(saved) as unknown
-    if (!Array.isArray(parsed)) return []
-    return parsed
-      .map((w) => normalizeWeatherId(String(w)))
-      .filter((w): w is WeatherId => (WEATHER_IDS as readonly string[]).includes(w))
-  } catch {
-    return []
-  }
-}
+import { DIARY_FILTER_STORAGE_KEYS } from './diary-filter-state.util'
+import { isDiaryEditorRouteActive } from './diary-editor-route.util'
+import { preloadDiaryEditorWebViewSource } from '../../hooks/useDiaryEditorWebViewSource'
+import { readDiaryListScrollY, saveDiaryListScrollY } from './diary-list-scroll.util'
 
 export const DiaryScreen: React.FC = () => {
   const { t } = useTranslation()
@@ -65,27 +34,49 @@ export const DiaryScreen: React.FC = () => {
     ecosystemResyncEpoch
   } = useBaishou()
   const router = useRouter()
+  const navigation = useNavigation()
+  const isListFocused = useIsFocused()
+  const editorBundlePreloadedRef = useRef(false)
   const {
     needsFullFileAccess,
     request: requestStorage,
     storageReady,
-    permissionChecked,
     isStoragePending,
     mountSlow,
     mountFailed,
     retryMount
   } = useStoragePermission()
 
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedMonth, setSelectedMonth] = useState<Date | null>(null)
-  const [filterWeathers, setFilterWeathers] = useState<string[]>([])
-  const [filterFavorite, setFilterFavorite] = useState(false)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize, setPageSize] = useState(DEFAULT_DIARY_PAGE_SIZE)
+  const {
+    restored: isFilterRestored,
+    searchQuery,
+    selectedMonth,
+    filterWeathers,
+    filterMoods,
+    filterFavorite,
+    currentPage,
+    pageSize,
+    setSearchQuery,
+    setSelectedMonth,
+    setFilterWeathers,
+    setFilterMoods,
+    setFilterFavorite,
+    setCurrentPage,
+    setPageSize,
+    resetFilters
+  } = useDiaryFilterState(dbReady)
+
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [todayEntry, setTodayEntry] = useState<{ id: number } | null>(null)
-  const [isStateRestored, setIsStateRestored] = useState(false)
+  const pendingEditorNavRef = useRef(false)
+  const listRef = useRef<FlatList<DiaryListEntry> | null>(null)
+  const listScrollYRef = useRef(0)
+  const lastListScrollLogAtRef = useRef(0)
+  const isListFocusedRef = useRef(isListFocused)
+  isListFocusedRef.current = isListFocused
   const skipInitialFocusRefreshRef = useRef(true)
+  const skipNextFocusRefreshRef = useRef(false)
   const {
     isSyncing,
     isPlanning,
@@ -94,151 +85,159 @@ export const DiaryScreen: React.FC = () => {
     runIncrementalSync
   } = useIncrementalSync()
 
+  const clearDiarySearch = useCallback(() => {
+    setSearchQuery('')
+    setIsSearchOpen(false)
+  }, [setSearchQuery])
+
+  const handleDiaryBackPress = useCallback(() => {
+    if (isSearchOpen || searchQuery.trim().length > 0) {
+      clearDiarySearch()
+      return true
+    }
+    return false
+  }, [clearDiarySearch, isSearchOpen, searchQuery])
+
+  useDiaryRootExitGuard({ onBackPress: handleDiaryBackPress })
+
   useFocusEffect(
     useCallback(() => {
       void refreshConfigured()
-    }, [refreshConfigured])
+      if (!editorBundlePreloadedRef.current) {
+        editorBundlePreloadedRef.current = true
+        void preloadDiaryEditorWebViewSource()
+      }
+      return () => {
+        clearDiarySearch()
+      }
+    }, [clearDiarySearch, refreshConfigured])
   )
 
   useEffect(() => {
     if (!dbReady || archiveRestoreEpoch === 0) return
-    setSelectedMonth(null)
-    setSearchQuery('')
-    setFilterWeathers([])
-    setFilterFavorite(false)
-    setCurrentPage(1)
+    resetFilters()
     void AsyncStorage.multiSet([
-      [STORAGE_KEYS.selectedMonth, 'all'],
-      [STORAGE_KEYS.searchQuery, ''],
-      [STORAGE_KEYS.filterWeathers, '[]'],
-      [STORAGE_KEYS.filterFavorite, 'false'],
-      [STORAGE_KEYS.currentPage, '1']
+      [DIARY_FILTER_STORAGE_KEYS.selectedMonth, 'all'],
+      [DIARY_FILTER_STORAGE_KEYS.searchQuery, ''],
+      [DIARY_FILTER_STORAGE_KEYS.filterWeathers, '[]'],
+      [DIARY_FILTER_STORAGE_KEYS.filterMoods, '[]'],
+      [DIARY_FILTER_STORAGE_KEYS.filterFavorite, 'false'],
+      [DIARY_FILTER_STORAGE_KEYS.currentPage, '1']
     ]).catch((e) => logger.error('归档恢复后重置日记筛选失败', e instanceof Error ? e : String(e)))
-  }, [archiveRestoreEpoch, dbReady])
-
-  useEffect(() => {
-    if (!dbReady) return
-    const restoreState = async () => {
-      try {
-        const [savedQuery, savedMonth, savedWeathers, savedFavorite, savedPage, savedPageSize] =
-          await Promise.all([
-            AsyncStorage.getItem(STORAGE_KEYS.searchQuery),
-            AsyncStorage.getItem(STORAGE_KEYS.selectedMonth),
-            AsyncStorage.getItem(STORAGE_KEYS.filterWeathers),
-            AsyncStorage.getItem(STORAGE_KEYS.filterFavorite),
-            AsyncStorage.getItem(STORAGE_KEYS.currentPage),
-            AsyncStorage.getItem(STORAGE_KEYS.pageSize)
-          ])
-
-        if (savedQuery != null) setSearchQuery(savedQuery)
-
-        const month = parseSavedMonth(savedMonth)
-        if (savedMonth != null) setSelectedMonth(month)
-
-        setFilterWeathers(parseFilterWeathers(savedWeathers))
-        if (savedFavorite === 'true') setFilterFavorite(true)
-
-        if (savedPage) {
-          const page = Number(savedPage)
-          if (!isNaN(page) && page >= 1) setCurrentPage(page)
-        }
-
-        if (savedPageSize) {
-          const size = Number(savedPageSize)
-          if (!isNaN(size) && (DIARY_PAGE_SIZE_OPTIONS as readonly number[]).includes(size)) {
-            setPageSize(size)
-          }
-        }
-      } catch (e) {
-        logger.error('恢复日记筛选状态失败', e instanceof Error ? e : String(e))
-      } finally {
-        setIsStateRestored(true)
-      }
-    }
-
-    void restoreState()
-  }, [dbReady])
-
-  useEffect(() => {
-    if (!isStateRestored) return
-    AsyncStorage.setItem(STORAGE_KEYS.searchQuery, searchQuery).catch((e) =>
-      logger.error('保存搜索查询失败', e)
-    )
-  }, [searchQuery, isStateRestored])
-
-  useEffect(() => {
-    if (!isStateRestored) return
-    AsyncStorage.setItem(
-      STORAGE_KEYS.selectedMonth,
-      selectedMonth ? selectedMonth.toISOString() : 'all'
-    ).catch((e) => logger.error('保存选中月份失败', e))
-  }, [selectedMonth, isStateRestored])
-
-  useEffect(() => {
-    if (!isStateRestored) return
-    AsyncStorage.setItem(STORAGE_KEYS.filterWeathers, JSON.stringify(filterWeathers)).catch((e) =>
-      logger.error('保存天气筛选失败', e)
-    )
-  }, [filterWeathers, isStateRestored])
-
-  useEffect(() => {
-    if (!isStateRestored) return
-    AsyncStorage.setItem(STORAGE_KEYS.filterFavorite, String(filterFavorite)).catch((e) =>
-      logger.error('保存收藏筛选失败', e)
-    )
-  }, [filterFavorite, isStateRestored])
-
-  useEffect(() => {
-    if (!isStateRestored) return
-    AsyncStorage.setItem(STORAGE_KEYS.currentPage, String(currentPage)).catch((e) =>
-      logger.error('保存页码失败', e)
-    )
-  }, [currentPage, isStateRestored])
-
-  useEffect(() => {
-    if (!isStateRestored) return
-    AsyncStorage.setItem(STORAGE_KEYS.pageSize, String(pageSize)).catch((e) =>
-      logger.error('保存分页大小失败', e)
-    )
-  }, [pageSize, isStateRestored])
-
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [selectedMonth, searchQuery, filterWeathers, filterFavorite])
+  }, [archiveRestoreEpoch, dbReady, resetFilters])
 
   const diaryQuery: DiaryPageQuery = useMemo(
     () => ({
       selectedMonth,
       searchQuery,
       filterWeathers,
+      filterMoods,
       filterFavorite,
       page: currentPage,
       pageSize
     }),
-    [selectedMonth, searchQuery, filterWeathers, filterFavorite, currentPage, pageSize]
+    [selectedMonth, searchQuery, filterWeathers, filterMoods, filterFavorite, currentPage, pageSize]
   )
 
-  const { entries, totalCount, loading, loadEntries } = useDiaryData(
+  const diaryListReady = Boolean(
+    isFilterRestored && dbReady && services?.diaryService && storageReady && !vaultSwitching
+  )
+
+  const { entries, totalCount, loading, searchPending, loadEntries } = useDiaryData(
     dbReady && !vaultSwitching ? services?.diaryService : undefined,
     diaryQuery,
     {
-      ready: Boolean(
-        dbReady && services?.diaryService && storageReady && !vaultSwitching && !storageIndexing
-      ),
+      ready: diaryListReady,
       vaultRevision,
-      ecosystemResyncEpoch
+      ecosystemResyncEpoch,
+      isScreenFocused: isListFocused
     }
   )
 
-  const handleDiarySearch = useCallback((query: string) => {
-    setSearchQuery(query)
+  const handleDiarySearch = useCallback(
+    (query: string) => {
+      setSearchQuery(query)
+    },
+    [setSearchQuery]
+  )
+
+  const openDiaryEditor = useCallback(
+    (params: Record<string, string>) => {
+      skipNextFocusRefreshRef.current = true
+      pendingEditorNavRef.current = true
+      if (__DEV__) {
+        console.log('[DiaryScreen] openDiaryEditor', {
+          params,
+          listScrollY: listScrollYRef.current,
+          persistedScrollY: readDiaryListScrollY(),
+          isListFocused: isListFocusedRef.current,
+          entryCount: entries.length
+        })
+      }
+      router.push({ pathname: '/diary-editor', params })
+      requestAnimationFrame(() => Keyboard.dismiss())
+    },
+    [router, entries.length]
+  )
+
+  useEffect(() => {
+    if (!__DEV__) return
+    console.log('[DiaryScreen] isListFocused', {
+      isListFocused,
+      listScrollY: listScrollYRef.current,
+      pendingEditorNav: pendingEditorNavRef.current
+    })
+  }, [isListFocused])
+
+  const handleListScroll = useCallback((offsetY: number) => {
+    saveDiaryListScrollY(offsetY)
+    if (offsetY >= 0) {
+      listScrollYRef.current = offsetY
+    }
+    if (!__DEV__) return
+    const now = Date.now()
+    if (now - lastListScrollLogAtRef.current < 250) return
+    lastListScrollLogAtRef.current = now
+    console.log('[DiaryList] onScroll', {
+      offsetY,
+      isListFocused: isListFocusedRef.current,
+      pendingEditorNav: pendingEditorNavRef.current,
+      savedScrollY: listScrollYRef.current
+    })
   }, [])
+
+  useEffect(() => {
+    const root = navigation.getParent()
+    if (!root) return
+
+    const onNavStateChange = () => {
+      const editorActive = isDiaryEditorRouteActive(navigation)
+      if (__DEV__) {
+        console.log('[DiaryScreen] navState', {
+          editorActive,
+          pendingEditorNav: pendingEditorNavRef.current,
+          listScrollY: listScrollYRef.current
+        })
+      }
+      if (editorActive) {
+        pendingEditorNavRef.current = false
+      }
+    }
+
+    onNavStateChange()
+    const unsubscribe = root.addListener('state', onNavStateChange)
+    return unsubscribe
+  }, [navigation])
 
   const handleGoToEditor = useCallback(
     (id: number) => {
-      router.push({ pathname: '/diary-editor', params: { id: String(id) } })
+      const y = Math.max(listScrollYRef.current, readDiaryListScrollY())
+      if (y > 2) {
+        listRef.current?.scrollToOffset({ offset: y, animated: false })
+      }
+      openDiaryEditor({ id: String(id) })
     },
-    [router]
+    [openDiaryEditor]
   )
 
   const diaryDataReady = Boolean(
@@ -247,13 +246,17 @@ export const DiaryScreen: React.FC = () => {
 
   useFocusEffect(
     useCallback(() => {
-      if (!diaryDataReady || isSyncing) return
+      if (!diaryDataReady || isSyncing || !diaryListReady) return
       if (skipInitialFocusRefreshRef.current) {
         skipInitialFocusRefreshRef.current = false
         return
       }
-      void loadEntries()
-    }, [diaryDataReady, isSyncing, loadEntries])
+      if (skipNextFocusRefreshRef.current) {
+        skipNextFocusRefreshRef.current = false
+        return
+      }
+      void loadEntries({ silent: true })
+    }, [diaryDataReady, diaryListReady, isSyncing, loadEntries])
   )
 
   const handleRequestStoragePermission = useCallback(async () => {
@@ -273,7 +276,7 @@ export const DiaryScreen: React.FC = () => {
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   useEffect(() => {
     if (currentPage > totalPages && totalPages > 0) setCurrentPage(totalPages)
-  }, [currentPage, totalPages])
+  }, [currentPage, totalPages, setCurrentPage])
 
   useEffect(() => {
     if (!dbReady || !services || !storageReady) return
@@ -331,22 +334,16 @@ export const DiaryScreen: React.FC = () => {
   const handleEditToday = () => {
     void ensureStorageThen(() => {
       if (todayEntry) {
-        router.push({
-          pathname: '/diary-editor',
-          params: { id: String(todayEntry.id), append: '1' }
-        })
+        openDiaryEditor({ id: String(todayEntry.id), append: '1' })
       } else {
-        router.push({
-          pathname: '/diary-editor',
-          params: { date: formatTodayDateStr() }
-        })
+        openDiaryEditor({ date: formatTodayDateStr() })
       }
     })
   }
 
   const handleAddNew = () => {
     void ensureStorageThen(() => {
-      router.push({ pathname: '/diary-editor', params: { new: '1' } })
+      openDiaryEditor({ new: '1' })
     })
   }
 
@@ -354,7 +351,7 @@ export const DiaryScreen: React.FC = () => {
     if (deletingId === null || !services) return
     try {
       await services.diaryService.delete(deletingId)
-      await loadEntries()
+      await loadEntries({ silent: false })
       setDeletingId(null)
     } catch (e) {
       logger.error('删除日记失败', e instanceof Error ? e : String(e))
@@ -364,6 +361,9 @@ export const DiaryScreen: React.FC = () => {
   const handleIncrementalSync = useCallback(async () => {
     await runIncrementalSync().catch(() => {})
   }, [runIncrementalSync])
+
+  const listLoading = vaultSwitching || !isFilterRestored || (loading && entries.length === 0)
+  const listRefreshing = loading && entries.length > 0
 
   return (
     <>
@@ -376,25 +376,33 @@ export const DiaryScreen: React.FC = () => {
           <DiaryAppBar
             searchQuery={searchQuery}
             onSearch={handleDiarySearch}
+            isSearchOpen={isSearchOpen}
+            onSearchOpenChange={setIsSearchOpen}
             selectedMonth={selectedMonth}
             onMonthChange={setSelectedMonth}
             filterWeathers={filterWeathers}
             onFilterWeathersChange={setFilterWeathers}
+            filterMoods={filterMoods}
+            onFilterMoodsChange={setFilterMoods}
             filterFavorite={filterFavorite}
             onFilterFavoriteChange={setFilterFavorite}
             onSyncPress={
               incrementalSyncEnabled === true ? () => void handleIncrementalSync() : undefined
             }
             isSyncing={isSyncing || isPlanning}
+            isSearchPending={searchPending}
           />
 
           <DiaryList
+            listRef={listRef}
+            onListScroll={handleListScroll}
             entries={displayEntries}
             totalCount={totalCount}
             currentPage={currentPage}
             pageSize={pageSize}
             selectedMonth={selectedMonth}
-            loading={vaultSwitching || loading}
+            loading={listLoading}
+            refreshing={listRefreshing}
             storagePending={isStoragePending}
             storageSlow={mountSlow}
             storageMountFailed={mountFailed}

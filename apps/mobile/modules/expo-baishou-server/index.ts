@@ -465,9 +465,7 @@ export function externalReadDirectory(path: string): string[] {
   return callNativeExternal('externalReadDirectory', (mod) => mod.externalReadDirectory(path))
 }
 
-export function externalScanIncrementalSyncFiles(
-  path: string
-): ExternalIncrementalSyncScanEntry[] {
+export function externalScanIncrementalSyncFiles(path: string): ExternalIncrementalSyncScanEntry[] {
   return callNativeExternal('externalScanIncrementalSyncFiles', (mod) =>
     mod.externalScanIncrementalSyncFiles(path)
   ) as ExternalIncrementalSyncScanEntry[]
@@ -481,9 +479,7 @@ export function localReadDirectory(path: string): string[] {
   return callNativeExternal('localReadDirectory', (mod) => mod.localReadDirectory(path))
 }
 
-export function localScanIncrementalSyncFiles(
-  path: string
-): ExternalIncrementalSyncScanEntry[] {
+export function localScanIncrementalSyncFiles(path: string): ExternalIncrementalSyncScanEntry[] {
   const mod = requireNative()
   if (typeof mod.localScanIncrementalSyncFiles !== 'function') {
     throw new Error(`${NATIVE_REBUILD_HINT}（缺少 localScanIncrementalSyncFiles）`)

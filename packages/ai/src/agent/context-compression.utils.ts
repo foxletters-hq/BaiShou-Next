@@ -1,6 +1,7 @@
 import type { ModelMessage } from 'ai'
 import type { SessionRepository } from '@baishou/database'
 import { AssistantRepository } from '@baishou/database'
+import { DEFAULT_LATTE_ASSISTANT_ID } from '@baishou/shared'
 import {
   buildCompressionPreviousSummaryBlock,
   shouldWrapRoleForModel,
@@ -84,34 +85,31 @@ export function getModelContextWindow(
 }
 
 /**
- * 触发压缩时的上下文 token 估算：优先用最近一条 assistant 的 usage，否则文本估算 + 摘要。
+ * 触发压缩时的上下文 token 估算：仅按「摘要 + 快照后保留消息」文本估算。
+ * 不使用 API usage（与伙伴阈值比较的应是实际上下文，而非上一轮计费体量）。
  */
 export function estimateContextTokensForTrigger(
-  allMessages: MessageWithParts[],
+  _allMessages: MessageWithParts[],
   messagesAfterSnapshot: MessageWithParts[],
   latestSnapshot: { summaryText?: string | null } | null
 ): number {
-  for (let i = allMessages.length - 1; i >= 0; i--) {
-    const m = allMessages[i]!
-    if (m.role !== 'assistant') continue
-    const input = m.inputTokens ?? 0
-    const output = m.outputTokens ?? 0
-    if (input + output > 0) {
-      const msgsAfter = allMessages.slice(i + 1)
-      let tokens = input + output
-      if (msgsAfter.length > 0) {
-        tokens += estimateMessagesTokens(msgsAfter, true)
-      }
-      return tokens
-    }
-  }
-
   let tokens = estimateMessagesTokens(messagesAfterSnapshot, true)
   const summary = latestSnapshot?.summaryText?.trim()
   if (summary) {
     tokens += estimateTextTokens(summary)
   }
   return tokens
+}
+
+/** 从伙伴记录读取压缩阈值；无效值视为 0（关闭） */
+export function readCompressTokenThreshold(
+  assistant: { compressTokenThreshold?: number | null } | null | undefined
+): number {
+  const raw = assistant?.compressTokenThreshold
+  if (raw == null) return 0
+  const n = typeof raw === 'number' ? raw : Number(raw)
+  if (!Number.isFinite(n) || n < 0) return 0
+  return Math.floor(n)
 }
 
 /** 为压缩调用预留的 token（输出 + 系统提示 + 工具）：窗口的 20%，夹在 8k–40k */
@@ -125,11 +123,6 @@ export function usableContextTokens(window: number, reserved?: number): number {
   if (window <= 0) return 0
   const r = reserved ?? reservedTokensFor(window)
   return Math.max(0, window - r)
-}
-
-export function shouldCompressContext(currentContextTokens: number, threshold: number): boolean {
-  if (threshold <= 0) return false
-  return currentContextTokens > threshold
 }
 
 /**
@@ -169,7 +162,8 @@ export function extractMessageText(msg: MessageWithParts): string {
         result?: unknown
         arguments?: unknown
         name?: string
-      }
+      } | null
+      if (!data) continue
       if (data.result !== undefined) {
         chunks.push(typeof data.result === 'string' ? data.result : JSON.stringify(data.result))
       } else if (data.arguments !== undefined) {
@@ -184,11 +178,14 @@ export function extractMessageText(msg: MessageWithParts): string {
         }
       }
     } else if (p.type === 'image') {
-      const att = p.data as { name?: string; fileName?: string }
-      chunks.push(`[图片附件 ${att.name || att.fileName || ''}]`)
+      const att = p.data as { name?: string; fileName?: string } | null | undefined
+      chunks.push(`[图片附件 ${att?.name || att?.fileName || ''}]`)
     } else if (p.type === 'attachment') {
-      const att = p.data as { textContent?: string; name?: string; fileName?: string }
-      if (att.textContent) {
+      const att = p.data as
+        | { textContent?: string; name?: string; fileName?: string }
+        | null
+        | undefined
+      if (att?.textContent) {
         chunks.push(`[附件 ${att.name || att.fileName || ''}]\n${att.textContent}`)
       }
     }
@@ -211,7 +208,8 @@ export function extractMessageTextForCompression(msg: MessageWithParts): string 
       const text = typeof data === 'string' ? data : data?.text
       if (text) chunks.push(text)
     } else if (p.type === 'tool') {
-      const data = p.data as { result?: unknown; arguments?: unknown }
+      const data = p.data as { result?: unknown; arguments?: unknown } | null
+      if (!data) continue
       if (data.result !== undefined) {
         const raw = typeof data.result === 'string' ? data.result : JSON.stringify(data.result)
         chunks.push(truncateForCompression(raw, TOOL_OUTPUT_MAX_CHARS))
@@ -227,11 +225,14 @@ export function extractMessageTextForCompression(msg: MessageWithParts): string 
         }
       }
     } else if (p.type === 'image') {
-      const att = p.data as { name?: string; fileName?: string }
-      chunks.push(`[图片附件 ${att.name || att.fileName || ''}]`)
+      const att = p.data as { name?: string; fileName?: string } | null | undefined
+      chunks.push(`[图片附件 ${att?.name || att?.fileName || ''}]`)
     } else if (p.type === 'attachment') {
-      const att = p.data as { textContent?: string; name?: string; fileName?: string }
-      if (att.textContent) {
+      const att = p.data as
+        | { textContent?: string; name?: string; fileName?: string }
+        | null
+        | undefined
+      if (att?.textContent) {
         chunks.push(`[附件 ${att.name || att.fileName || ''}]\n${att.textContent}`)
       }
     }
@@ -505,15 +506,20 @@ const COMPRESSION_ROLE_LABELS: Record<string, string> = {
 }
 
 /** 将待压缩消息格式化为带角色标记的原文，避免模型只看见助手尾句 */
-export function formatMessagesAsCompressionTranscript(messages: MessageWithParts[]): string {
+export function formatMessagesAsCompressionTranscript(
+  messages: MessageWithParts[],
+  options?: { wrapMessageTime?: boolean }
+): string {
+  const wrapMessageTime = options?.wrapMessageTime !== false
   const blocks: string[] = []
   for (const msg of messages) {
     const text = extractMessageText(msg).trim()
     if (!text) continue
     const label = COMPRESSION_ROLE_LABELS[msg.role] ?? msg.role
-    const bodyBlock = shouldWrapRoleForModel(msg.role)
-      ? wrapMessageBodyForModel(text, msg.createdAt)
-      : text
+    const bodyBlock =
+      wrapMessageTime && shouldWrapRoleForModel(msg.role)
+        ? wrapMessageBodyForModel(text, msg.createdAt)
+        : text
     blocks.push(`【${label}】\n${bodyBlock}`)
   }
   return blocks.join('\n\n---\n\n')
@@ -524,10 +530,12 @@ export function formatMessagesAsCompressionTranscript(messages: MessageWithParts
  */
 export function buildCompressionUserMessageContent(
   messages: MessageWithParts[],
-  priorSummaryText?: string | null
+  priorSummaryText?: string | null,
+  options?: { wrapMessageTime?: boolean }
 ): string | null {
   const transcript = formatMessagesAsCompressionTranscript(
-    cloneMessagesForCompressionModel(messages)
+    cloneMessagesForCompressionModel(messages),
+    options
   ).trim()
   if (!transcript) return null
 
@@ -654,7 +662,12 @@ export async function resolveSessionCompressionConfig(
   try {
     const session = await sessionRepo.getSessionById?.(sessionId)
     const astRepo = new AssistantRepository(sessionRepo.db)
-    const ast = session?.assistantId ? await astRepo.findById(session.assistantId) : null
+
+    const linkedAssistantId = session?.assistantId?.trim()
+    let ast = linkedAssistantId ? await astRepo.findById(linkedAssistantId) : null
+    if (!ast) {
+      ast = await astRepo.findById(DEFAULT_LATTE_ASSISTANT_ID)
+    }
 
     const modelContextWindow = getModelContextWindow(
       session?.modelId,
@@ -667,7 +680,7 @@ export async function resolveSessionCompressionConfig(
         : undefined
 
     return {
-      threshold: ast?.compressTokenThreshold ?? 0,
+      threshold: readCompressTokenThreshold(ast),
       keepTurns: ast?.compressKeepTurns ?? 3,
       systemPrompt: ast?.compressSystemPrompt?.trim() || undefined,
       modelContextWindow,

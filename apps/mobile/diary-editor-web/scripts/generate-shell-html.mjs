@@ -45,13 +45,17 @@ if (!template.includes('diary-editor.bundle')) {
   process.exit(1)
 }
 
-fs.writeFileSync(outPath, template)
+const buildStamp = `${Date.now()}:${bundleSize}`
+const shellHtml = template.replace(
+  '</head>',
+  `  <!-- diary-editor-build:${buildStamp} -->\n</head>`
+)
+
+fs.writeFileSync(outPath, shellHtml)
 
 const shellSize = fs.statSync(outPath).size
 if (shellSize > MAX_SHELL_HTML_BYTES) {
-  console.error(
-    `generate-shell-html: shell 过大 (${shellSize} bytes)，不应内联 bundle`
-  )
+  console.error(`generate-shell-html: shell 过大 (${shellSize} bytes)，不应内联 bundle`)
   process.exit(1)
 }
 

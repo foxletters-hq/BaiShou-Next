@@ -3,6 +3,7 @@ import { logger } from '@baishou/shared'
 import { GitSyncServiceImpl } from '@baishou/core-desktop'
 import { GitPullError, GitRemoteNotConfiguredError } from '@baishou/core-desktop'
 import { pathService } from './vault.ipc'
+import { resyncAfterGitWorkingTreeMutation } from '../services/git-working-tree-resync.service'
 
 let gitService: GitSyncServiceImpl | null = null
 
@@ -61,11 +62,16 @@ export function registerGitSyncIPC() {
 
   ipcMain.handle('git:discardFile', async (_, filePath: string) => {
     await getGitService().discardFile(filePath)
+    await resyncAfterGitWorkingTreeMutation('git:discard-file', {
+      filePath,
+      scope: 'targeted'
+    })
     return { success: true }
   })
 
   ipcMain.handle('git:discardAllChanges', async () => {
     await getGitService().discardAllChanges()
+    await resyncAfterGitWorkingTreeMutation('git:discard-all', { scope: 'full' })
     return { success: true }
   })
 
@@ -120,6 +126,10 @@ export function registerGitSyncIPC() {
   ipcMain.handle('git:rollbackFile', async (_, filePath: string, commitHash: string) => {
     try {
       await getGitService().rollbackFile(filePath, commitHash)
+      await resyncAfterGitWorkingTreeMutation('git:rollback-file', {
+        filePath,
+        scope: 'targeted'
+      })
       return { success: true }
     } catch (e: any) {
       logger.error(`[GitIPC] 回滚文件失败: ${e?.message}`)
@@ -130,6 +140,7 @@ export function registerGitSyncIPC() {
   ipcMain.handle('git:rollbackAll', async (_, commitHash: string) => {
     try {
       await getGitService().rollbackAll(commitHash)
+      await resyncAfterGitWorkingTreeMutation('git:rollback-all', { scope: 'full' })
       return { success: true }
     } catch (e: any) {
       logger.error(`[GitIPC] 回滚仓库失败: ${e?.message}`)
@@ -157,6 +168,7 @@ export function registerGitSyncIPC() {
   ipcMain.handle('git:pull', async () => {
     try {
       await getGitService().pull()
+      await resyncAfterGitWorkingTreeMutation('git:pull', { scope: 'full' })
       return { success: true }
     } catch (e: any) {
       if (e instanceof GitRemoteNotConfiguredError) {
@@ -182,6 +194,10 @@ export function registerGitSyncIPC() {
     'git:resolveConflict',
     async (_, filePath: string, resolution: 'ours' | 'theirs') => {
       await getGitService().resolveConflict(filePath, resolution)
+      await resyncAfterGitWorkingTreeMutation('git:resolve-conflict', {
+        filePath,
+        scope: 'targeted'
+      })
       return { success: true }
     }
   )

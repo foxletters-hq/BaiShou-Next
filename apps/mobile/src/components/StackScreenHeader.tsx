@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, type ViewStyle } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { ChevronLeft } from 'lucide-react-native'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { getNativeElevationStyle, useNativeTheme } from '@baishou/ui/native'
@@ -68,10 +68,10 @@ export const StackScreenHeader: React.FC<StackScreenHeaderProps> = ({
             accessibilityRole="button"
             accessibilityLabel={t('common.back')}
           >
-            <MaterialIcons
-              name="chevron-left"
+            <ChevronLeft
               size={22}
               color={colors.textPrimary}
+              strokeWidth={2}
               style={styles.backArrow}
             />
             <Text style={[styles.backLabel, { color: colors.textSecondary }]}>

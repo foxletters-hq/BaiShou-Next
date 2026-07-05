@@ -2,7 +2,7 @@
 /**
  * 从品牌源图生成各端图标，并校验 mobile 与 shared 一致。
  *
- * 换 icon：更新 packages/shared/assets/images/app-brand-icon-source.png → pnpm sync:icons
+ * 换 icon：更新 packages/shared/assets/images/app-brand-icon-source.png → pnpm sync
  * 桌面端 icon 为圆角透明 PNG；移动端 / shared 为方角全图。
  *
  * predev 会调用本脚本；仅当源图 MD5 与 stamp 不一致时才重新生成，避免每次 dev 改写 PNG 造成 git 噪声。
@@ -95,9 +95,7 @@ function runGenerate() {
     return false
   }
 
-  console.error(
-    '[sync-app-icon] 未找到 Python。请安装 Python 3（含 Pillow）后执行: pnpm sync:icons'
-  )
+  console.error('[sync-app-icon] 未找到 Python。请安装 Python 3（含 Pillow）后执行: pnpm sync')
   process.exit(1)
 }
 
@@ -143,7 +141,7 @@ const stampStale = !stamp || stamp.sourceMd5 !== sourceHash
 if (checkOnly) {
   if (stampStale) {
     console.error(
-      '[sync-app-icon] 图标产物与源图 stamp 不一致，请执行: pnpm sync:icons\n' +
+      '[sync-app-icon] 图标产物与源图 stamp 不一致，请执行: pnpm sync\n' +
         `  - stamp: ${stampPath}\n` +
         `  - source: ${sourceIcon}`
     )
@@ -151,8 +149,7 @@ if (checkOnly) {
   }
   if (sharedStale) {
     console.error(
-      '[sync-app-icon] shared 与 mobile icon 不一致，请执行: pnpm sync:icons\n' +
-        `  - ${sharedIcon}`
+      '[sync-app-icon] shared 与 mobile icon 不一致，请执行: pnpm sync\n' + `  - ${sharedIcon}`
     )
     process.exit(1)
   }

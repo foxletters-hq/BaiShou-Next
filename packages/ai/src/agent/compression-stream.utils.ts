@@ -9,64 +9,127 @@ export type CompressionStreamConsumeResult = {
   summaryDurationMs: number
 }
 
+const COMPRESSION_EMIT_INTERVAL_MS = 80
+
+function createCompressionEmitBatcher(sessionId: string) {
+  let pendingReasoning = ''
+  let pendingDelta = ''
+  let timer: ReturnType<typeof setTimeout> | undefined
+
+  const flush = () => {
+    timer = undefined
+    if (pendingReasoning) {
+      const chunk = pendingReasoning
+      pendingReasoning = ''
+      emitCompressionLifecycle({ type: 'reasoning-delta', sessionId, chunk })
+    }
+    if (pendingDelta) {
+      const chunk = pendingDelta
+      pendingDelta = ''
+      emitCompressionLifecycle({ type: 'delta', sessionId, chunk })
+    }
+  }
+
+  return {
+    pushReasoning(chunk: string) {
+      pendingReasoning += chunk
+      if (!timer) {
+        timer = setTimeout(flush, COMPRESSION_EMIT_INTERVAL_MS)
+      }
+    },
+    pushDelta(chunk: string) {
+      pendingDelta += chunk
+      if (!timer) {
+        timer = setTimeout(flush, COMPRESSION_EMIT_INTERVAL_MS)
+      }
+    },
+    flush,
+    cancel() {
+      if (timer) {
+        clearTimeout(timer)
+        timer = undefined
+      }
+      pendingReasoning = ''
+      pendingDelta = ''
+    }
+  }
+}
+
+function throwIfAborted(abortSignal?: AbortSignal): void {
+  if (abortSignal?.aborted) {
+    throw new DOMException('The operation was aborted', 'AbortError')
+  }
+}
+
 /**
  * 消费 Vercel AI SDK fullStream 原生 reasoning-delta / text-delta 事件。
  */
 export async function consumeCompressionModelStream(
   streamResult: StreamTextResult<any, any>,
-  sessionId: string
+  sessionId: string,
+  abortSignal?: AbortSignal
 ): Promise<CompressionStreamConsumeResult> {
   let summaryText = ''
   let reasoningText = ''
+  const batcher = createCompressionEmitBatcher(sessionId)
 
   const startTime = Date.now()
   let hasReasoning = false
   let firstTextDeltaTime: number | null = null
 
-  if (streamResult.fullStream) {
-    const reader = streamResult.fullStream.getReader()
-    try {
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
+  try {
+    if (streamResult.fullStream) {
+      const reader = streamResult.fullStream.getReader()
+      try {
+        while (true) {
+          throwIfAborted(abortSignal)
+          const { done, value } = await reader.read()
+          if (done) break
 
-        const part = value as { type: string; textDelta?: string; text?: string }
-        switch (part.type) {
-          case 'reasoning-delta': {
-            const chunk = part.textDelta ?? part.text ?? ''
-            if (!chunk) break
-            hasReasoning = true
-            reasoningText += chunk
-            emitCompressionLifecycle({ type: 'reasoning-delta', sessionId, chunk })
-            break
-          }
-          case 'text-delta': {
-            const chunk = part.textDelta ?? part.text ?? ''
-            if (!chunk) break
-            if (firstTextDeltaTime === null) {
-              firstTextDeltaTime = Date.now()
+          const part = value as { type: string; textDelta?: string; text?: string }
+          switch (part.type) {
+            case 'reasoning-delta': {
+              const chunk = part.textDelta ?? part.text ?? ''
+              if (!chunk) break
+              hasReasoning = true
+              reasoningText += chunk
+              batcher.pushReasoning(chunk)
+              break
             }
-            summaryText += chunk
-            emitCompressionLifecycle({ type: 'delta', sessionId, chunk })
-            break
+            case 'text-delta': {
+              const chunk = part.textDelta ?? part.text ?? ''
+              if (!chunk) break
+              if (firstTextDeltaTime === null) {
+                firstTextDeltaTime = Date.now()
+              }
+              summaryText += chunk
+              batcher.pushDelta(chunk)
+              break
+            }
+            default:
+              break
           }
-          default:
-            break
         }
+      } finally {
+        reader.releaseLock()
       }
-    } finally {
-      reader.releaseLock()
-    }
-  } else {
-    for await (const chunk of streamResult.textStream) {
-      if (!chunk) continue
-      if (firstTextDeltaTime === null) {
-        firstTextDeltaTime = Date.now()
+    } else {
+      for await (const chunk of streamResult.textStream) {
+        throwIfAborted(abortSignal)
+        if (!chunk) continue
+        if (firstTextDeltaTime === null) {
+          firstTextDeltaTime = Date.now()
+        }
+        summaryText += chunk
+        batcher.pushDelta(chunk)
       }
-      summaryText += chunk
-      emitCompressionLifecycle({ type: 'delta', sessionId, chunk })
     }
+  } catch (e) {
+    batcher.cancel()
+    throw e
   }
+
+  batcher.flush()
 
   const endTime = Date.now()
 

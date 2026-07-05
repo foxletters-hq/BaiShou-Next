@@ -1,7 +1,14 @@
 import { USER_PROFILE_SETTINGS_KEY } from '@baishou/shared'
 
-/** 不同步到 vault 设置目录的键（仅保留在设备侧 SQLite） */
-export const SETTINGS_SYNC_EXCLUDED_KEYS = new Set(['cloud_sync_config', 'incremental_sync_config'])
+/** 不同步到 vault 设置目录的键（仅保留在设备侧 SQLite / 本机私有目录） */
+export const SETTINGS_SYNC_EXCLUDED_KEYS = new Set([
+  'cloud_sync_config',
+  'incremental_sync_config',
+  /** 桌面全局快捷键：按安装实例保存在 userData，不随工作区共享 */
+  'hotkey_config',
+  /** 桌面 MCP 服务（端口/令牌）：按安装实例保存，避免 dev/稳定版互相覆盖 */
+  'mcp_server_config'
+])
 
 const DOMAIN_FILE_BY_KEY: Record<string, string> = {
   ai_providers: 'ai_providers.json',
@@ -46,4 +53,16 @@ export function mergeDomainFileContents(
     Object.assign(merged, content)
   }
   return merged
+}
+
+/** 磁盘域文件 mtime 不新于 SQLite 写入时，跳过 fullResyncFromDisk 覆盖 */
+export function shouldApplyDiskSettingsKey(
+  diskFileMtimeMs: number | null | undefined,
+  sqliteUpdatedAt: Date | null | undefined
+): boolean {
+  if (sqliteUpdatedAt == null) return true
+  const dbMs = sqliteUpdatedAt.getTime()
+  if (!Number.isFinite(dbMs)) return true
+  if (diskFileMtimeMs == null || diskFileMtimeMs <= 0) return true
+  return diskFileMtimeMs >= dbMs
 }

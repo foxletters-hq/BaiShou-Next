@@ -50,12 +50,12 @@ function imagePlaceholderText(att: AttachmentLike): string {
 export async function appendImagePartToContentParts(
   contentParts: unknown[],
   att: AttachmentLike,
-  opts: { modelId?: string } = {}
+  opts: { modelId?: string; providerKey?: string } = {}
 ): Promise<void> {
   const modelId = opts.modelId || ''
   const displayName = att.name || att.fileName || '图片'
 
-  if (!isVisionModel(modelId)) {
+  if (!isVisionModel(modelId, opts.providerKey)) {
     contentParts.push({
       type: 'text',
       text: `${imagePlaceholderText(att)}\n（当前模型「${modelId}」不支持识图，请更换视觉模型后再发送图片）`
@@ -90,13 +90,16 @@ export async function appendImagePartToContentParts(
 export async function appendFileAttachmentToContentParts(
   contentParts: unknown[],
   att: AttachmentLike,
-  opts: { modelId?: string; providerType?: string }
+  opts: { modelId?: string; providerType?: string; providerKey?: string }
 ): Promise<void> {
   const flags = inferAttachmentFlags(att)
   const displayName = att.name || att.fileName || 'Attachment'
 
   if (flags.isImage) {
-    await appendImagePartToContentParts(contentParts, att, { modelId: opts.modelId })
+    await appendImagePartToContentParts(contentParts, att, {
+      modelId: opts.modelId,
+      providerKey: opts.providerKey ?? opts.providerType
+    })
     return
   }
 

@@ -1,18 +1,47 @@
 import React, { useMemo } from 'react'
 import { View, StyleSheet } from 'react-native'
-import Markdown, { MarkdownIt } from 'react-native-markdown-display'
+import { StreamdownText } from 'react-native-streamdown'
+import { EnrichedMarkdownText } from 'react-native-enriched-markdown'
 import { useNativeTheme } from '../theme'
+import { LegacyMarkdownRenderer } from './LegacyMarkdownRenderer'
+import { StableStreamdownText } from './StableStreamdownText'
+import { ChatMarkdownHeightGuard } from './ChatMarkdownHeightGuard'
+import { useStableStreamdownMarkdown } from './useStableStreamdownMarkdown'
 import {
-  parseImageSrcWithoutWidth,
-  stripImageWidthInMarkdown
-} from '../DiaryEditor/diary-image-markdown.util'
-import { NativeMarkdownImage } from './NativeMarkdownImage'
+  buildStreamdownMarkdownStyle,
+  markdownNeedsLegacyImageRenderer,
+  prepareNativeStreamdownMarkdown,
+  preserveChatDisplayNewlines
+} from './streamdown-markdown.util'
+import { useMarkdownLinkPress } from './useMarkdownLinkPress'
 
-export type MarkdownRendererVariant = 'default' | 'chat' | 'ancillary'
+export type MarkdownRendererVariant = 'default' | 'chat' | 'ancillary' | 'preview'
+
+const STATIC_MD4C_FLAGS = { latexMath: true, underline: false } as const
+const STATIC_STREAMING_CONFIG = { tableMode: 'progressive' as const }
+
+function StaticStreamdownText({
+  markdown,
+  containerStyle,
+  ...props
+}: React.ComponentProps<typeof EnrichedMarkdownText>) {
+  const processedMarkdown = useStableStreamdownMarkdown(markdown)
+  return (
+    <EnrichedMarkdownText
+      markdown={processedMarkdown}
+      md4cFlags={STATIC_MD4C_FLAGS}
+      streamingConfig={STATIC_STREAMING_CONFIG}
+      containerStyle={containerStyle}
+      {...props}
+    />
+  )
+}
 
 export interface MarkdownRendererProps {
   content: string
   style?: object
+  /** 流式进行中：commonmark + 稳定 selectable，减轻块级重排闪烁 */
+  isStreaming?: boolean
   /** chat：气泡正文；ancillary：思考块等附属内容 */
   variant?: MarkdownRendererVariant
   /** 将 attachment/xxx 转为可加载的 file:// URI */
@@ -22,225 +51,102 @@ export interface MarkdownRendererProps {
   onImagePress?: (src: string, resolvedUri: string) => void
 }
 
-function buildMarkdownStyles(
-  colors: ReturnType<typeof useNativeTheme>['colors'],
-  variant: MarkdownRendererVariant
-) {
-  const isAncillary = variant === 'ancillary'
-  const isChat = variant === 'chat' || isAncillary
-  const bodyFontSize = isAncillary ? 14 : 15
-  const bodyLineHeight = isAncillary ? 20 : 24
-  const bodyColor = isAncillary ? colors.textSecondary : colors.textPrimary
-  const paragraphMargin = isAncillary ? 4 : isChat ? 6 : 8
-  const listMargin = isChat ? 6 : 8
-  const headingScale = isChat ? 0.85 : 1
-
-  return StyleSheet.create({
-    body: {
-      color: bodyColor,
-      fontSize: bodyFontSize,
-      lineHeight: bodyLineHeight
-    },
-    heading1: {
-      color: colors.textPrimary,
-      fontSize: Math.round(24 * headingScale),
-      fontWeight: 'bold',
-      marginTop: isChat ? 12 : 16,
-      marginBottom: isChat ? 6 : 8
-    },
-    heading2: {
-      color: colors.textPrimary,
-      fontSize: Math.round(20 * headingScale),
-      fontWeight: 'bold',
-      marginTop: isChat ? 10 : 14,
-      marginBottom: isChat ? 4 : 6
-    },
-    heading3: {
-      color: colors.textPrimary,
-      fontSize: Math.round(18 * headingScale),
-      fontWeight: 'bold',
-      marginTop: isChat ? 8 : 12,
-      marginBottom: 4
-    },
-    heading4: {
-      color: colors.textPrimary,
-      fontSize: Math.round(17 * headingScale),
-      fontWeight: '600',
-      marginTop: isChat ? 8 : 10,
-      marginBottom: 4
-    },
-    heading5: {
-      color: colors.textPrimary,
-      fontSize: Math.round(16 * headingScale),
-      fontWeight: '600',
-      marginTop: isChat ? 6 : 8,
-      marginBottom: 4
-    },
-    heading6: {
-      color: colors.textSecondary,
-      fontSize: Math.round(15 * headingScale),
-      fontWeight: '600',
-      marginTop: isChat ? 4 : 6,
-      marginBottom: 4
-    },
-    paragraph: {
-      color: bodyColor,
-      marginTop: 0,
-      marginBottom: paragraphMargin
-    },
-    link: {
-      color: colors.primary,
-      textDecorationLine: 'none'
-    },
-    blockquote: {
-      backgroundColor: colors.bgSurfaceHighest,
-      borderLeftWidth: 4,
-      borderLeftColor: colors.primary,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      marginBottom: paragraphMargin
-    },
-    code_inline: {
-      backgroundColor: colors.bgSurfaceHighest,
-      color: colors.textPrimary,
-      paddingHorizontal: 4,
-      paddingVertical: 1,
-      borderRadius: 4,
-      fontFamily: 'monospace',
-      fontSize: isAncillary ? 12 : 13
-    },
-    code_block: {
-      backgroundColor: colors.bgSurfaceHighest,
-      color: colors.textPrimary,
-      padding: 10,
-      borderRadius: 8,
-      fontFamily: 'monospace',
-      marginBottom: paragraphMargin,
-      fontSize: isAncillary ? 12 : 13
-    },
-    fence: {
-      backgroundColor: colors.bgSurfaceHighest,
-      color: colors.textPrimary,
-      padding: 10,
-      borderRadius: 8,
-      fontFamily: 'monospace',
-      marginBottom: paragraphMargin,
-      fontSize: isAncillary ? 12 : 13
-    },
-    list_item: {
-      color: bodyColor,
-      marginBottom: isChat ? 2 : 4
-    },
-    bullet_list: {
-      marginTop: 0,
-      marginBottom: listMargin
-    },
-    ordered_list: {
-      marginTop: 0,
-      marginBottom: listMargin
-    },
-    hr: {
-      backgroundColor: colors.borderSubtle,
-      height: 1,
-      marginVertical: isChat ? 10 : 16
-    },
-    table: {
-      borderWidth: 1,
-      borderColor: colors.borderSubtle,
-      marginBottom: paragraphMargin
-    },
-    thead: {
-      backgroundColor: colors.bgSurfaceHighest
-    },
-    tbody: {
-      backgroundColor: colors.bgSurface
-    },
-    th: {
-      padding: 6,
-      borderWidth: 1,
-      borderColor: colors.borderSubtle,
-      color: colors.textPrimary,
-      fontWeight: 'bold'
-    },
-    td: {
-      padding: 6,
-      borderWidth: 1,
-      borderColor: colors.borderSubtle,
-      color: colors.textPrimary
-    },
-    tr: {
-      borderBottomWidth: 1,
-      borderColor: colors.borderSubtle
-    },
-    image: {
-      marginVertical: 6,
-      borderRadius: 8,
-      overflow: 'hidden'
-    }
-  })
-}
-
-export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
-  content,
-  style,
-  variant = 'default',
-  resolveImageUri,
-  loadImageUri,
-  onImagePress
-}) => {
+export const MarkdownRenderer: React.FC<MarkdownRendererProps> = (props) => {
+  const {
+    content,
+    style,
+    variant = 'default',
+    isStreaming = false,
+    resolveImageUri,
+    loadImageUri
+  } = props
   const { colors } = useNativeTheme()
+  const { handleLinkPress } = useMarkdownLinkPress()
 
-  const markdownStyles = useMemo(() => buildMarkdownStyles(colors, variant), [colors, variant])
-
-  const markdownit = useMemo(
-    () =>
-      MarkdownIt({
-        typographer: true,
-        breaks: true
-      }),
-    []
+  const useLegacy = useMemo(
+    () => markdownNeedsLegacyImageRenderer(content, resolveImageUri, loadImageUri),
+    [content, resolveImageUri, loadImageUri]
   )
 
-  const displayContent = useMemo(
-    () => stripImageWidthInMarkdown(content.replace(/\u200B/g, '')),
-    [content]
+  const markdownStyle = useMemo(
+    () => buildStreamdownMarkdownStyle(colors, variant),
+    [colors, variant]
   )
 
-  const rules = useMemo(() => {
-    if (!resolveImageUri && !loadImageUri && !onImagePress) return undefined
-    return {
-      image: (
-        node: { key: string; attributes: { src?: string; alt?: string } },
-        _children: unknown,
-        _parent: unknown,
-        _styles: { image?: object }
-      ) => {
-        const rawSrc = parseImageSrcWithoutWidth(node.attributes.src ?? '')
-        const syncUri = resolveImageUri?.(rawSrc) ?? null
-        const imageStyle = [_styles.image, styles.image, styles.imageBlock]
+  const useTrailingMargin = variant === 'chat' || variant === 'ancillary'
 
-        return (
-          <NativeMarkdownImage
-            key={node.key}
-            rawSrc={rawSrc}
-            alt={node.attributes.alt}
-            imageStyle={imageStyle}
-            syncUri={syncUri}
-            loadImageUri={loadImageUri}
-            onPress={onImagePress}
+  const displayContent = useMemo(() => {
+    const isChatLike = variant === 'chat' || variant === 'ancillary'
+    const prepared = prepareNativeStreamdownMarkdown(content, resolveImageUri, {
+      chat: isChatLike
+    })
+    return useTrailingMargin ? preserveChatDisplayNewlines(prepared) : prepared
+  }, [content, resolveImageUri, useTrailingMargin, variant])
+
+  const streamFlavor: 'github' | 'commonmark' =
+    variant === 'chat' || isStreaming || variant === 'ancillary' ? 'commonmark' : 'github'
+  const markdownContainerStyle =
+    variant === 'preview'
+      ? [styles.containerPreview, style]
+      : variant === 'chat' || variant === 'ancillary'
+        ? [styles.containerCompact, style]
+        : [variant === 'default' ? styles.containerDefault : styles.containerCompact, style]
+  const nativeContainerStyle =
+    variant === 'preview'
+      ? styles.markdownPreviewNative
+      : variant === 'chat'
+        ? styles.markdownChatNative
+        : variant === 'ancillary'
+          ? styles.markdownAncillaryNative
+          : styles.markdownFill
+
+  if (useLegacy) {
+    return <LegacyMarkdownRenderer {...props} content={displayContent} />
+  }
+
+  if (!displayContent) return null
+
+  const useLegacyChatLayout =
+    (variant === 'chat' || variant === 'ancillary') && !isStreaming
+
+  if (useLegacyChatLayout) {
+    return <LegacyMarkdownRenderer {...props} content={displayContent} />
+  }
+
+  const streamdownCommonProps = {
+    allowTrailingMargin: useTrailingMargin,
+    flavor: streamFlavor,
+    markdown: displayContent,
+    markdownStyle,
+    md4cFlags: STATIC_MD4C_FLAGS,
+    onLinkPress: handleLinkPress,
+    selectable: variant !== 'preview',
+    containerStyle: nativeContainerStyle
+  }
+
+  // chat / ancillary 流式：EnrichedMarkdownText + 高度兜底
+  if (variant === 'chat' || variant === 'ancillary') {
+    return (
+      <View style={markdownContainerStyle}>
+        <ChatMarkdownHeightGuard markdown={displayContent}>
+          <StableStreamdownText
+            {...streamdownCommonProps}
+            hideTablesWhileStreaming={isStreaming}
+            streamingAnimation={isStreaming}
+            remendConfig={{ inlineCode: false }}
           />
-        )
-      }
-    }
-  }, [resolveImageUri, loadImageUri, onImagePress])
+        </ChatMarkdownHeightGuard>
+      </View>
+    )
+  }
 
   return (
-    <View
-      style={[variant === 'default' ? styles.containerDefault : styles.containerCompact, style]}
-    >
-      <Markdown style={markdownStyles} rules={rules} markdownit={markdownit}>
-        {displayContent}
-      </Markdown>
+    <View style={markdownContainerStyle}>
+      {isStreaming ? (
+        <StreamdownText {...streamdownCommonProps} streamingConfig={{ tableMode: 'hidden' }} />
+      ) : (
+        <StaticStreamdownText {...streamdownCommonProps} />
+      )}
     </View>
   )
 }
@@ -250,14 +156,29 @@ const styles = StyleSheet.create({
     flex: 1
   },
   containerCompact: {
-    alignSelf: 'stretch'
+    alignSelf: 'stretch',
+    width: '100%'
   },
-  image: {
+  containerPreview: {
+    alignSelf: 'stretch',
     width: '100%',
-    minHeight: 120,
-    maxHeight: 360
+    overflow: 'hidden'
   },
-  imageBlock: {
-    backgroundColor: 'transparent'
+  markdownFill: {
+    alignSelf: 'stretch',
+    width: '100%'
+  },
+  markdownPreviewNative: {
+    alignSelf: 'stretch',
+    width: '100%'
+  },
+  /** 聊天气泡：allowTrailingMargin + 槽位 guard 双保险 */
+  markdownChatNative: {
+    alignSelf: 'stretch',
+    width: '100%'
+  },
+  markdownAncillaryNative: {
+    alignSelf: 'stretch',
+    width: '100%'
   }
 })

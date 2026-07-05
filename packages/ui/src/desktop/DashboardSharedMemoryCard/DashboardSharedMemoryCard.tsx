@@ -1,6 +1,7 @@
+import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import React from 'react'
-import { Copy, HelpCircle } from 'lucide-react'
+import { Copy, HelpCircle, Loader2 } from 'lucide-react'
+import type { SharedMemoryCopyPreview } from '@baishou/shared'
 import { Tooltip } from '../Tooltip/Tooltip'
 import { useDialog } from '../Dialog'
 import './DashboardSharedMemoryCard.css'
@@ -8,16 +9,108 @@ import './DashboardSharedMemoryCard.css'
 interface DashboardSharedMemoryCardProps {
   lookbackMonths: number
   onMonthsChanged: (val: number) => void
-  onCopyContext: () => void
+  onCopyContext: () => void | Promise<void>
+  copyPreview?: SharedMemoryCopyPreview | null
+  copyPreviewLoading?: boolean
+}
+
+function SharedMemoryCopyPreviewPanel({
+  preview,
+  loading
+}: {
+  preview?: SharedMemoryCopyPreview | null
+  loading?: boolean
+}) {
+  const { t } = useTranslation()
+
+  if (loading && !preview) {
+    return (
+      <div className="sm-preview sm-previewLoading">
+        <Loader2 size={14} className="sm-previewSpinner" />
+        <span>{t('summary.copy_preview_loading', '正在统计可复制内容…')}</span>
+      </div>
+    )
+  }
+
+  if (!preview) return null
+
+  const chips: { key: string; label: string; count: number }[] = [
+    {
+      key: 'diary',
+      label: t('summary.copy_preview_diary', '日记'),
+      count: preview.diary
+    },
+    {
+      key: 'yearly',
+      label: t('summary.copy_preview_yearly', '年总结'),
+      count: preview.yearly
+    },
+    {
+      key: 'quarterly',
+      label: t('summary.copy_preview_quarterly', '季度总结'),
+      count: preview.quarterly
+    },
+    {
+      key: 'monthly',
+      label: t('summary.copy_preview_monthly', '月总结'),
+      count: preview.monthly
+    },
+    {
+      key: 'weekly',
+      label: t('summary.copy_preview_weekly', '周总结'),
+      count: preview.weekly
+    }
+  ].filter((item) => item.count > 0)
+
+  return (
+    <div className="sm-preview">
+      <div className="sm-previewTitle">
+        {t('summary.copy_preview_title', '复制将包含')}
+        {loading ? <Loader2 size={12} className="sm-previewSpinnerInline" /> : null}
+      </div>
+      {preview.total === 0 ? (
+        <p className="sm-previewEmpty">
+          {t('summary.copy_preview_empty', '当前回溯范围内暂无可复制内容')}
+        </p>
+      ) : (
+        <>
+          <div className="sm-previewChips">
+            {chips.map((item) => (
+              <span key={item.key} className="sm-previewChip">
+                {item.label} {item.count}
+                {t('summary.copy_preview_unit', '篇')}
+              </span>
+            ))}
+          </div>
+          <p className="sm-previewTotal">
+            {t('summary.copy_preview_total', '共 {{count}} 项', { count: preview.total })}
+          </p>
+        </>
+      )}
+    </div>
+  )
 }
 
 export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps> = ({
   lookbackMonths,
   onMonthsChanged,
-  onCopyContext
+  onCopyContext,
+  copyPreview,
+  copyPreviewLoading
 }) => {
   const { t } = useTranslation()
   const dialog = useDialog()
+  const [copying, setCopying] = useState(false)
+
+  const handleCopyPress = useCallback(async () => {
+    if (copying) return
+    setCopying(true)
+    try {
+      await onCopyContext()
+    } finally {
+      setCopying(false)
+    }
+  }, [copying, onCopyContext])
 
   return (
     <div className="dashboard-shared-memory-card">
@@ -44,13 +137,6 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
           </span>
         </Tooltip>
       </div>
-
-      <p className="sm-desc">
-        {t(
-          'summary.shared_memory_desc',
-          'Adjust the lookback months to export recent summary context for RAG or LLMs.'
-        )}
-      </p>
 
       <div className="sm-controls">
         <div className="sm-label-row">
@@ -79,8 +165,20 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
         </div>
       </div>
 
-      <button className="sm-btn" onClick={onCopyContext}>
-        <Copy size={16} style={{ marginRight: 6 }} /> {t('summary.copy_memories', '复制共同回忆')}
+      <SharedMemoryCopyPreviewPanel preview={copyPreview} loading={copyPreviewLoading} />
+
+      <button
+        type="button"
+        className="sm-btn"
+        onClick={() => void handleCopyPress()}
+        disabled={copying}
+      >
+        {copying ? (
+          <Loader2 size={16} className="sm-previewSpinner" style={{ marginRight: 6 }} />
+        ) : (
+          <Copy size={16} style={{ marginRight: 6 }} />
+        )}
+        {t('summary.copy_memories', '复制共同回忆')}
       </button>
     </div>
   )

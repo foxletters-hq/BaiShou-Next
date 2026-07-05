@@ -56,4 +56,29 @@ describe('stripLeakedMessageTimeFromAssistantText', () => {
       '<message-time>2026-01-15 10:00</message-time>\n<message-content>\n回复正文\n</message-content>'
     expect(stripLeakedMessageTimeFromAssistantText(raw)).toBe('回复正文')
   })
+
+  it('unwraps message-content after stray thinking close tag', () => {
+    const raw =
+      '</thinking>\n<message-time>2026-02-10 14:20</message-time>\n<message-content>好的，这个问题我们已经定位到了。</message-content>'
+    expect(stripLeakedMessageTimeFromAssistantText(raw)).toBe('好的，这个问题我们已经定位到了。')
+  })
+
+  it('unwraps nested metadata with malformed message-time close tag', () => {
+    const raw =
+      '</thinking>\n<message-time>2026-02-10 16:40</message-time>\n<message-content>\n<message-time>2026-02-10 16:40</time>\n明白，先按照这个方案推进第一阶段。'
+    expect(stripLeakedMessageTimeFromAssistantText(raw)).toBe(
+      '明白，先按照这个方案推进第一阶段。'
+    )
+  })
+
+  it('returns empty string when only leaked metadata remains', () => {
+    const raw =
+      '</thinking>\n<message-time>2026-02-10 16:40</message-time>\n<message-content>\n<message-time>2026-02-10 16:40</time>'
+    expect(stripLeakedMessageTimeFromAssistantText(raw)).toBe('')
+  })
+
+  it('unwraps unclosed message-content block (partial model leak)', () => {
+    const raw = '<message-time>2026-07-01 12:00</message-time>\n<message-content>\n你好，今天怎么样'
+    expect(stripLeakedMessageTimeFromAssistantText(raw)).toBe('你好，今天怎么样')
+  })
 })

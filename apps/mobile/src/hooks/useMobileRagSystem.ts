@@ -1,9 +1,15 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState, type SetStateAction } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast, useDialog } from '@baishou/ui/native'
 import type { TFunction } from 'i18next'
 import { classifyAiApiCallError, formatAiApiCallError } from '@baishou/shared'
 import type { MobileRagService, RagProgressCallback } from '../services/mobile-rag.service'
+import { MobileRagAbortError } from '../services/mobile-rag.service'
+import {
+  getCachedMobileRagState,
+  setCachedMobileRagState,
+  subscribeMobileRagRuntime
+} from '../services/mobile-rag-runtime-cache'
 import type { RagState } from '@baishou/ui/native'
 
 function localizeRagEmbedError(raw: string, t: TFunction): string {
@@ -42,7 +48,21 @@ export function useMobileRagSystem(ragService: MobileRagService | undefined) {
   const toast = useNativeToast()
   const dialog = useDialog()
   const [hasMismatchModel, setHasMismatchModel] = useState(false)
-  const [ragState, setRagState] = useState<RagState>(idleRagState())
+  const [ragState, setRagStateInner] = useState<RagState>(() => getCachedMobileRagState())
+
+  useEffect(() => {
+    return subscribeMobileRagRuntime(() => {
+      setRagStateInner(getCachedMobileRagState())
+    })
+  }, [])
+
+  const setRagState = useCallback((update: SetStateAction<RagState>) => {
+    setRagStateInner((prev) => {
+      const next = typeof update === 'function' ? update(prev) : update
+      setCachedMobileRagState(next)
+      return next
+    })
+  }, [])
 
   const checkModelMismatch = useCallback(async () => {
     if (!ragService) return false
@@ -88,6 +108,18 @@ export function useMobileRagSystem(ragService: MobileRagService | undefined) {
       )
       return true
     } catch (e: unknown) {
+      if (e instanceof MobileRagAbortError) {
+        setRagState(idleRagState())
+        toast.showWarning(
+          e.embeddedCount > 0
+            ? t('settings.rag_batch_embed_aborted', {
+                count: String(e.embeddedCount),
+                defaultValue: `已取消，已完成 ${e.embeddedCount} 篇嵌入`
+              })
+            : t('settings.rag_migration_cancelled', '迁移已取消。')
+        )
+        return false
+      }
       const detail = localizeRagEmbedError(extractErrorMessage(e), t)
       setRagState({
         ...idleRagState(),

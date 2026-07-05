@@ -4,18 +4,21 @@ import { AttachmentAvatarOps } from './attachment-manager.avatar'
 import { AttachmentDiaryOps } from './attachment-manager.diary'
 import { AttachmentSessionOps } from './attachment-manager.session'
 import { AttachmentBackgroundOps } from './attachment-manager.background'
+import { AttachmentEmojiOps } from './attachment-manager.emoji'
 
 export class AttachmentManagerService implements IAttachmentManager {
   private readonly avatarOps: AttachmentAvatarOps
   private readonly sessionOps: AttachmentSessionOps
   private readonly diaryOps: AttachmentDiaryOps
   private readonly backgroundOps: AttachmentBackgroundOps
+  private readonly emojiOps: AttachmentEmojiOps
 
   constructor(pathProvider: IStoragePathService) {
     this.avatarOps = new AttachmentAvatarOps(pathProvider)
     this.sessionOps = new AttachmentSessionOps(pathProvider)
     this.diaryOps = new AttachmentDiaryOps(pathProvider)
     this.backgroundOps = new AttachmentBackgroundOps(pathProvider)
+    this.emojiOps = new AttachmentEmojiOps(pathProvider)
   }
 
   importAvatar(...args: Parameters<AttachmentAvatarOps['importAvatar']>) {
@@ -56,5 +59,21 @@ export class AttachmentManagerService implements IAttachmentManager {
 
   resolveBackgroundPath(...args: Parameters<AttachmentBackgroundOps['resolveBackgroundPath']>) {
     return this.backgroundOps.resolveBackgroundPath(...args)
+  }
+
+  importEmoji(...args: Parameters<AttachmentEmojiOps['importEmoji']>) {
+    return this.emojiOps.importEmoji(...args)
+  }
+
+  resolveEmojiPath(...args: Parameters<AttachmentEmojiOps['resolveEmojiPath']>) {
+    return this.emojiOps.resolveEmojiPath(...args)
+  }
+
+  listEmojis(...args: Parameters<AttachmentEmojiOps['listEmojis']>) {
+    return this.emojiOps.listEmojis(...args)
+  }
+
+  deleteEmoji(...args: Parameters<AttachmentEmojiOps['deleteEmoji']>) {
+    return this.emojiOps.deleteEmoji(...args)
   }
 }

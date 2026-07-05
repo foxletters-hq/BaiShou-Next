@@ -1,7 +1,10 @@
 import { globalShortcut, BrowserWindow } from 'electron'
-import type { SettingsRepository } from '@baishou/database-desktop'
 import type { HotkeyConfig } from '@baishou/shared'
 import { logger } from '@baishou/shared'
+
+export interface HotkeyConfigReader {
+  getHotkeyConfig(): Promise<HotkeyConfig>
+}
 
 /**
  * 全局快捷键服务 (桌面端系统级)
@@ -11,14 +14,14 @@ export class HotkeyService {
   private isEnabled = false
 
   constructor(
-    private readonly settingsRepo: SettingsRepository,
+    private readonly configStore: HotkeyConfigReader,
     private readonly mainWindow: BrowserWindow
   ) {}
 
   async start(): Promise<void> {
     logger.info('[HotkeyService] 🚀 Starting HotkeyService initialization...')
     try {
-      const config = await this.settingsRepo.getHotkeyConfig()
+      const config = await this.configStore.getHotkeyConfig()
       logger.info('[HotkeyService] 📦 Loaded config from DB:', JSON.stringify(config))
 
       this.isEnabled = config?.hotkeyEnabled ?? false
@@ -36,15 +39,15 @@ export class HotkeyService {
     }
   }
 
-  update(config: HotkeyConfig): void {
+  update(config: HotkeyConfig): boolean {
     logger.info('[HotkeyService] ✏️ Hotkey configuration updated:', { config })
     this.unregisterAll()
     this.isEnabled = config.hotkeyEnabled
     if (this.isEnabled) {
-      this.register(config)
-    } else {
-      logger.info('[HotkeyService] ⏸️ Global shortcut disabled via settings update.')
+      return this.register(config)
     }
+    logger.info('[HotkeyService] ⏸️ Global shortcut disabled via settings update.')
+    return true
   }
 
   stop(): void {
@@ -53,12 +56,12 @@ export class HotkeyService {
     this.isEnabled = false
   }
 
-  private register(config: HotkeyConfig): void {
+  private register(config: HotkeyConfig): boolean {
     if (!config.hotkeyKey || !config.hotkeyModifier) {
       logger.info('[HotkeyService] ⚠️ Invalid shortcut configuration. Skipping registration.', {
         config
       })
-      return
+      return false
     }
 
     const accelerator = this.parseAccelerator(config.hotkeyModifier, config.hotkeyKey)
@@ -66,13 +69,12 @@ export class HotkeyService {
       logger.info(
         `[HotkeyService] ⚠️ Could not parse accelerator for ${config.hotkeyModifier} + ${config.hotkeyKey}`
       )
-      return
+      return false
     }
 
     logger.info(`[HotkeyService] 🔄 Attempting to register global shortcut: ${accelerator}`)
 
     try {
-      // 注册全局热键拦截
       const success = globalShortcut.register(accelerator, () => {
         logger.info(
           `[HotkeyService] 🎯 Global shortcut [${accelerator}] triggered! Toggling window...`
@@ -87,11 +89,13 @@ export class HotkeyService {
       } else {
         logger.info(`[HotkeyService] ✅ Successfully registered global shortcut: ${accelerator}`)
       }
+      return success
     } catch (e: any) {
       logger.error(
         `[HotkeyService] 💀 Exception thrown while registering global shortcut ${accelerator}:`,
         e
       )
+      return false
     }
   }
 
@@ -149,7 +153,6 @@ export class HotkeyService {
    * 参考: https://www.electronjs.org/docs/latest/api/accelerator
    */
   private parseAccelerator(modifier: string, key: string): string | null {
-    // 解析修饰键
     let modStr = 'Alt'
     switch (modifier.toLowerCase()) {
       case 'alt':
@@ -157,6 +160,7 @@ export class HotkeyService {
         break
       case 'ctrl':
       case 'control':
+      case 'commandorcontrol':
         modStr = 'CommandOrControl'
         break
       case 'shift':
@@ -166,7 +170,7 @@ export class HotkeyService {
       case 'win':
       case 'cmd':
         modStr = 'Super'
-        break // Electron 里 Windows 徽标键/Mac Cmd键统一可用 Super 表示，或者用 CmdOrCtrl/Command
+        break
       case 'cmdorctrl':
         modStr = 'CommandOrControl'
         break
@@ -174,30 +178,35 @@ export class HotkeyService {
         modStr = 'Alt'
     }
 
-    // 解析主键。原版形式 "keyS" -> "S", "f1" -> "F1"
-    let keyStr = key.replace(/^key/i, '').toUpperCase()
+    const trimmedKey = key.trim()
+    if (!trimmedKey) return null
 
-    // 如果是数字或者特殊功能键
-    if (!keyStr) return null
-
-    // 特殊键位转换映射 (兼容前端直接传递 e.key 及可能的变形)
-    const specialMap: Record<string, string> = {
-      ' ': 'SPACE',
-      ARROWUP: 'UP',
-      ARROWDOWN: 'DOWN',
-      ARROWLEFT: 'LEFT',
-      ARROWRIGHT: 'RIGHT',
-      ESCAPE: 'ESC',
-      ENTER: 'RETURN'
+    const canonicalKeyMap: Record<string, string> = {
+      space: 'Space',
+      return: 'Return',
+      enter: 'Return',
+      esc: 'Esc',
+      escape: 'Esc',
+      up: 'Up',
+      down: 'Down',
+      left: 'Left',
+      right: 'Right',
+      backslash: '\\',
+      tab: 'Tab'
     }
 
-    if (specialMap[keyStr]) {
-      keyStr = specialMap[keyStr]
-    } else if (keyStr.startsWith('DIGIT')) {
-      // "DIGIT1" -> "1"
-      keyStr = keyStr.replace('DIGIT', '')
+    const normalizedKey = trimmedKey.replace(/^key/i, '')
+    const mapped =
+      canonicalKeyMap[normalizedKey.toLowerCase()] ??
+      canonicalKeyMap[trimmedKey.toLowerCase()] ??
+      normalizedKey
+
+    if (!mapped) return null
+
+    if (mapped.length === 1) {
+      return `${modStr}+${mapped.toUpperCase()}`
     }
 
-    return `${modStr}+${keyStr}`
+    return `${modStr}+${mapped}`
   }
 }

@@ -4,8 +4,10 @@ import {
   normalizeChatBackgroundOverlayOpacity,
   type UserProfile
 } from '@baishou/shared'
-import type { SettingsManagerService, IAttachmentManager } from '@baishou/core-mobile'
+import type { SettingsManagerService, IAttachmentManager, IFileSystem } from '@baishou/core-mobile'
+import { isCustomUserAvatar } from '@baishou/shared'
 import { resolveChatBackgroundForMobileUi } from './chat-background-display.util'
+import { resolveUserAvatarForMobileUi } from './user-avatar-display.util'
 
 export type AgentUserProfileState = {
   nickname: string
@@ -54,16 +56,20 @@ export async function loadAgentUserProfileFromSettings(
   return next
 }
 
-/** 应用启动后预热用户资料与聊天背景 URI，减少首次进入伙伴页等待 */
+/** 应用启动后预热用户资料与聊天背景 URI，减少首次进入伙伴页/设置页等待 */
 export async function warmAgentScreenCaches(
   settingsManager: SettingsManagerService,
   attachmentManager: IAttachmentManager,
+  fileSystem: IFileSystem,
   fallbackNickname = '白守用户'
 ): Promise<void> {
   try {
     const profile = await loadAgentUserProfileFromSettings(settingsManager, fallbackNickname)
     if (profile.chatBackgroundPath) {
       await resolveChatBackgroundForMobileUi(profile.chatBackgroundPath, attachmentManager)
+    }
+    if (isCustomUserAvatar(profile.avatarPath)) {
+      await resolveUserAvatarForMobileUi(profile.avatarPath, attachmentManager, fileSystem)
     }
   } catch (e) {
     console.warn('[AgentUserProfile] warm caches failed:', e)

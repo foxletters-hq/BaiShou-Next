@@ -38,6 +38,7 @@ export function useDesktopVersionMigration() {
   const [scanResult, setScanResult] = useState<LegacyVersionMigrationScanResult | null>(null)
   const [sourceKind, setSourceKind] = useState<LegacyVersionMigrationSourceKind | null>(null)
   const [customSourceRoot, setCustomSourceRoot] = useState<string | null>(null)
+  const [inPlace, setInPlace] = useState(false)
   const [scanning, setScanning] = useState(false)
   const [importingSection, setImportingSection] = useState<LegacyVersionMigrationSectionId | null>(
     null
@@ -59,6 +60,7 @@ export function useDesktopVersionMigration() {
       setScanResult(payload.scanResult)
       setSourceKind(payload.sourceKind)
       setCustomSourceRoot(payload.customSourceRoot)
+      setInPlace(payload.inPlace)
       const next: Partial<
         Record<LegacyVersionMigrationSectionId, LegacyVersionMigrationImportStatus>
       > = {}
@@ -306,6 +308,7 @@ export function useDesktopVersionMigration() {
     importProgress,
     customSourceRoot,
     legacySourceKindKey,
+    inPlace,
     refreshScan,
     handlePickSource,
     handleClearCustomSource,

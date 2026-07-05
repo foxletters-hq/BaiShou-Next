@@ -74,8 +74,8 @@ function smoothScrollToBottom(
  * - following：流式/新消息时自动贴底
  * - idle：用户滚动后停止跟随，显示回到底部按钮
  *
- * 进入 following：发送时已在底部、切换会话、点击回到底部
- * 退出 following：用户任意滚动交互
+ * 进入 following：发送时已在底部、切换会话、点击回到底部、在底部向下滚轮
+ * 退出 following：向上滚轮一次、滚动离开底部区域
  */
 export function useChatScroll(params: UseChatScrollParams): UseChatScrollResult {
   const { sessionId, messages, streamingText, streamingReasoning, isStreaming, activeTool } = params
@@ -136,36 +136,44 @@ export function useChatScroll(params: UseChatScrollParams): UseChatScrollResult 
     const el = scrollRef.current
     if (!el) return
 
-    const syncFollowModeFromPosition = () => {
-      if (isNearBottom(el)) {
-        enterFollowing()
-      } else {
-        exitFollowing()
-      }
-    }
-
-    const handleUserInterrupt = () => {
-      if (isSmoothScrollingRef.current) return
-      syncFollowModeFromPosition()
-    }
-
     const handleScroll = () => {
       if (isSmoothScrollingRef.current) return
       if (suppressInterruptRef.current > 0) {
         suppressInterruptRef.current -= 1
         return
       }
-      syncFollowModeFromPosition()
+      // 仅根据位置退出跟随；不自动重新进入，避免在底部附近反复被拉回
+      if (!isNearBottom(el)) {
+        exitFollowing()
+      }
+    }
+
+    const handleWheel = (e: WheelEvent) => {
+      if (isSmoothScrollingRef.current) return
+      if (e.deltaY < 0) {
+        exitFollowing()
+        return
+      }
+      if (e.deltaY > 0 && isNearBottom(el)) {
+        enterFollowing()
+      }
+    }
+
+    const handleTouchMove = () => {
+      if (isSmoothScrollingRef.current) return
+      if (!isNearBottom(el)) {
+        exitFollowing()
+      }
     }
 
     el.addEventListener('scroll', handleScroll, { passive: true })
-    el.addEventListener('wheel', handleUserInterrupt, { passive: true })
-    el.addEventListener('touchmove', handleUserInterrupt, { passive: true })
+    el.addEventListener('wheel', handleWheel, { passive: true })
+    el.addEventListener('touchmove', handleTouchMove, { passive: true })
 
     return () => {
       el.removeEventListener('scroll', handleScroll)
-      el.removeEventListener('wheel', handleUserInterrupt)
-      el.removeEventListener('touchmove', handleUserInterrupt)
+      el.removeEventListener('wheel', handleWheel)
+      el.removeEventListener('touchmove', handleTouchMove)
     }
   }, [sessionId, enterFollowing, exitFollowing])
 
@@ -203,12 +211,35 @@ export function useChatScroll(params: UseChatScrollParams): UseChatScrollResult 
 
     const newestMsg = messages[messages.length - 1]
     const isNewMessageAdded = newestMsg?.id && newestMsg.id !== prevNewestIdRef.current
+    const isNewUserMessage = isNewMessageAdded && newestMsg?.role === 'user'
 
-    if (isNewMessageAdded || isStreaming || streamingText || activeTool) {
+    // 新用户消息落库或工具执行时贴底；助手消息 DB 回写不重复贴底。
+    if (isNewUserMessage || activeTool) {
       followScrollToBottom()
     }
     prevNewestIdRef.current = newestMsg?.id || null
-  }, [messages, streamingText, streamingReasoning, isStreaming, activeTool, followScrollToBottom])
+  }, [messages, activeTool, followScrollToBottom])
+
+  const streamFollowRafRef = useRef<number | null>(null)
+  useLayoutEffect(() => {
+    if (!isStreaming || followModeRef.current !== 'following') return
+
+    if (streamFollowRafRef.current != null) return
+
+    streamFollowRafRef.current = requestAnimationFrame(() => {
+      streamFollowRafRef.current = null
+      jumpToBottomInstant()
+    })
+  }, [isStreaming, streamingText, streamingReasoning, jumpToBottomInstant])
+
+  useEffect(() => {
+    return () => {
+      if (streamFollowRafRef.current != null) {
+        cancelAnimationFrame(streamFollowRafRef.current)
+        streamFollowRafRef.current = null
+      }
+    }
+  }, [isStreaming])
 
   return {
     scrollRef,

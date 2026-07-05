@@ -36,8 +36,13 @@
 .messageCol {
   display: flex;
   flex-direction: column;
-  max-width: 800px;
+  width: fit-content;
+  max-width: min(800px, calc(100% - 60px));
   align-items: flex-start;
+}
+
+.messageColWide {
+  width: min(800px, calc(100% - 60px));
 }
 
 .nameLabel {
@@ -55,12 +60,16 @@
 
 .bubbleCard {
   padding: 12px 16px;
-  background: var(--bg-glass-surface);
-  backdrop-filter: var(--blur-glass);
-  -webkit-backdrop-filter: var(--blur-glass);
+  background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: 4px 20px 20px 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.bubbleCardWide {
   width: 100%;
 }
 

@@ -4,6 +4,14 @@ import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Rows3 } from 'lucide-react'
 import styles from './PageSizeSelector.module.css'
+import {
+  estimateDropdownHeight,
+  MIN_DROPDOWN_WIDTH,
+  resolveDropdownLeft,
+  resolveDropdownPlacement,
+  resolveDropdownTop,
+  type DropdownPlacement
+} from './page-size-selector-placement.util'
 
 export interface PageSizeSelectorProps {
   value: number
@@ -11,8 +19,6 @@ export interface PageSizeSelectorProps {
   onChange: (size: number) => void
   label?: string
 }
-
-type DropdownPlacement = 'top' | 'bottom'
 
 export const PageSizeSelector: React.FC<PageSizeSelectorProps> = ({
   value,
@@ -25,7 +31,7 @@ export const PageSizeSelector: React.FC<PageSizeSelectorProps> = ({
   const [isOpen, setIsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({})
-  const [placement, setPlacement] = useState<DropdownPlacement>('top')
+  const [placement, setPlacement] = useState<DropdownPlacement>('bottom')
   const triggerRef = useRef<HTMLButtonElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -39,22 +45,12 @@ export const PageSizeSelector: React.FC<PageSizeSelectorProps> = ({
     if (!trigger || !dropdown) return
 
     const triggerRect = trigger.getBoundingClientRect()
-    const dropdownWidth = dropdown.offsetWidth
-    const dropdownHeight = dropdown.offsetHeight
-    const gap = 6
+    const dropdownWidth = dropdown.offsetWidth || MIN_DROPDOWN_WIDTH
+    const dropdownHeight = dropdown.offsetHeight || estimateDropdownHeight(options.length)
 
-    let nextPlacement: DropdownPlacement = 'top'
-    let top = triggerRect.top - dropdownHeight - gap
-
-    if (top < 8) {
-      nextPlacement = 'bottom'
-      top = triggerRect.bottom + gap
-    }
-
-    let left = triggerRect.left + triggerRect.width / 2 - dropdownWidth / 2
-    const minLeft = 8
-    const maxLeft = window.innerWidth - dropdownWidth - 8
-    left = Math.min(maxLeft, Math.max(minLeft, left))
+    const nextPlacement = resolveDropdownPlacement(triggerRect, dropdownHeight, window.innerHeight)
+    const top = resolveDropdownTop(triggerRect, dropdownHeight, nextPlacement, window.innerHeight)
+    const left = resolveDropdownLeft(triggerRect, dropdownWidth, window.innerWidth)
 
     setPlacement(nextPlacement)
     setDropdownStyle({
@@ -62,19 +58,29 @@ export const PageSizeSelector: React.FC<PageSizeSelectorProps> = ({
       top: `${top}px`,
       left: `${left}px`
     })
-  }, [])
+  }, [options.length])
 
   useLayoutEffect(() => {
     if (!isOpen) return
     updatePosition()
-  }, [isOpen, updatePosition])
+    const frame = requestAnimationFrame(updatePosition)
+    return () => cancelAnimationFrame(frame)
+  }, [isOpen, updatePosition, options.length])
 
   useEffect(() => {
     if (!isOpen) return undefined
 
+    const dropdown = dropdownRef.current
+    const observer =
+      dropdown && typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => updatePosition())
+        : null
+    observer?.observe(dropdown)
+
     window.addEventListener('resize', updatePosition)
     window.addEventListener('scroll', updatePosition, true)
     return () => {
+      observer?.disconnect()
       window.removeEventListener('resize', updatePosition)
       window.removeEventListener('scroll', updatePosition, true)
     }

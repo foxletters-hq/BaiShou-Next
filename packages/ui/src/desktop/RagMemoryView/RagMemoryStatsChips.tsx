@@ -1,9 +1,8 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Sparkles } from 'lucide-react'
-import { MdStorage, MdCheckCircleOutline, MdRefresh } from 'react-icons/md'
 import type { RagStats } from './rag-memory.types'
 import styles from './RagMemoryView.module.css'
+import { CheckCircle, Database, RefreshCw, Sparkles } from 'lucide-react'
 
 interface RagMemoryStatsChipsProps {
   stats: RagStats
@@ -26,10 +25,19 @@ export const RagMemoryStatsChips: React.FC<RagMemoryStatsChipsProps> = ({
     <div className={styles.statsChipsRow}>
       <div className={`${styles.statChip} ${styles.chipBlue}`}>
         <span className={styles.chipIcon}>
-          <MdStorage size={14} />
+          <Database size={14} />
         </span>
-        <span className={styles.chipLabel}>{t('settings.rag_total_count', '总条目:')}</span>
-        <span className={styles.chipStrong}>{stats.totalCount}</span>
+        <span className={styles.chipLabel}>
+          {stats.diaryCountForVault != null && stats.activeVaultName
+            ? t('settings.rag_vault_diary_count', {
+                vault: stats.activeVaultName,
+                defaultValue: '{{vault}} 日记向量:'
+              })
+            : t('settings.rag_total_count', '总条目:')}
+        </span>
+        <span className={styles.chipStrong}>
+          {stats.diaryCountForVault != null ? stats.diaryCountForVault : stats.totalCount}
+        </span>
       </div>
       <div className={`${styles.statChip} ${styles.chipGreen}`}>
         <span className={styles.chipIcon}>
@@ -54,7 +62,7 @@ export const RagMemoryStatsChips: React.FC<RagMemoryStatsChipsProps> = ({
       </div>
       <div className={`${styles.statChip} ${styles.chipGrey}`}>
         <span className={styles.chipIcon}>
-          <MdStorage size={14} />
+          <Database size={14} />
         </span>
         <span className={styles.chipLabel}>{t('settings.rag_dimension', '维度:')}</span>
         <span className={styles.chipStrong}>
@@ -71,11 +79,11 @@ export const RagMemoryStatsChips: React.FC<RagMemoryStatsChipsProps> = ({
         onClick={isBusy ? undefined : onDetectDimension}
       >
         <span className={styles.chipIcon}>
-          <MdCheckCircleOutline size={14} />
+          <CheckCircle size={14} />
         </span>
         <span className={styles.chipStrong}>{t('settings.rag_detect_dimension', '检测维度')}</span>
         <span className={styles.chipActionIcon}>
-          <MdRefresh size={14} />
+          <RefreshCw size={14} />
         </span>
       </div>
     </div>

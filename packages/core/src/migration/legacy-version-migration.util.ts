@@ -120,6 +120,75 @@ export function normalizeLegacyPartType(type: unknown): string {
   return ALLOWED_LEGACY_PART_TYPES.has(mapped) ? mapped : 'text'
 }
 
+function normalizeLegacyToolStatus(status: unknown): string {
+  const raw = String(status ?? 'completed')
+  if (raw === 'error') return 'failed'
+  if (raw === 'pending' || raw === 'running') return 'call'
+  return raw
+}
+
+/**
+ * 将 v3 agent_parts.data 规范为 Next 可读结构。
+ * - text：保证存在 data.text（兼容纯字符串或非 JSON 落盘）
+ * - tool：v3 使用 toolName/input/output，Next 使用 name/arguments/result
+ * - attachment：v3 嵌套 { attachment: {...} }，Next 扁平化附件字段
+ */
+export function normalizeLegacyPartData(
+  rawData: unknown,
+  partType: unknown
+): Record<string, unknown> {
+  const type = normalizeLegacyPartType(partType)
+  let data: unknown = rawData
+
+  if (typeof data === 'string') {
+    try {
+      data = JSON.parse(data)
+    } catch {
+      return type === 'text' ? { text: data } : { text: data, raw: true }
+    }
+  }
+
+  if (data == null) {
+    return type === 'text' ? { text: '' } : {}
+  }
+
+  if (typeof data !== 'object' || Array.isArray(data)) {
+    return type === 'text' ? { text: String(data) } : {}
+  }
+
+  const obj = data as Record<string, unknown>
+
+  if (type === 'text') {
+    if (typeof obj.text === 'string') return obj
+    if (typeof obj.content === 'string') return { ...obj, text: obj.content }
+    return obj
+  }
+
+  if (type === 'tool') {
+    return {
+      callId: obj.callId ?? obj.toolCallId ?? '',
+      name: obj.name ?? obj.toolName ?? '',
+      status: normalizeLegacyToolStatus(obj.status),
+      arguments: obj.arguments ?? obj.input ?? {},
+      result: obj.result ?? obj.output
+    }
+  }
+
+  if (type === 'attachment') {
+    const nested =
+      obj.attachment && typeof obj.attachment === 'object' && !Array.isArray(obj.attachment)
+        ? (obj.attachment as Record<string, unknown>)
+        : obj
+    return {
+      ...nested,
+      name: nested.name ?? nested.fileName,
+      filePath: nested.filePath ?? nested.path ?? nested.url
+    }
+  }
+
+  return obj
+}
+
 /** 将字节格式化为兆（MB）展示文案 */
 export function formatMigrationMegabytes(bytes: number): string {
   if (bytes <= 0) return '0 MB'

@@ -41,6 +41,7 @@ export const settingsApi = {
     getMcpServerConfig: () => ipcRenderer.invoke('settings:get-mcp-server-config'),
     setMcpServerConfig: (config: any) =>
       ipcRenderer.invoke('settings:set-mcp-server-config', config),
+    refreshMcpAuthToken: () => ipcRenderer.invoke('settings:refresh-mcp-auth-token'),
     getMcpTools: () => ipcRenderer.invoke('settings:get-mcp-tools'),
 
     getHotkeyConfig: () => ipcRenderer.invoke('settings:get-hotkey-config'),
@@ -95,6 +96,15 @@ export const settingsApi = {
     pickAndSaveBackground: () => ipcRenderer.invoke('profile:pick-background')
   },
 
+  emoji: {
+    pickAndImport: () => ipcRenderer.invoke('emoji:pick-and-import'),
+    list: () => ipcRenderer.invoke('emoji:list'),
+    resolvePath: (relativePath: string) => ipcRenderer.invoke('emoji:resolve-path', relativePath),
+    resolvePaths: (relativePaths: string[]) =>
+      ipcRenderer.invoke('emoji:resolve-paths', relativePaths),
+    delete: (relativePath: string) => ipcRenderer.invoke('emoji:delete', relativePath)
+  },
+
   storage: {
     getStats: () => ipcRenderer.invoke('storage:getStats'),
     pickDirectory: () => ipcRenderer.invoke('storage:pickDirectory'),
@@ -115,6 +125,30 @@ export const settingsApi = {
       const listener = () => callback()
       ipcRenderer.on('storage:root-changed', listener)
       return () => ipcRenderer.removeListener('storage:root-changed', listener)
+    },
+    getExternalJournalsInfo: () => ipcRenderer.invoke('storage:getExternalJournalsInfo'),
+    pickExternalJournalsDirectory: () =>
+      ipcRenderer.invoke('storage:pickExternalJournalsDirectory'),
+    setExternalJournalsDirectory: (targetPath: string) =>
+      ipcRenderer.invoke('storage:setExternalJournalsDirectory', targetPath),
+    clearExternalJournalsDirectory: () =>
+      ipcRenderer.invoke('storage:clearExternalJournalsDirectory'),
+    onJournalsPathChanged: (callback: () => void) => {
+      const listener = () => callback()
+      ipcRenderer.on('storage:journals-path-changed', listener)
+      return () => ipcRenderer.removeListener('storage:journals-path-changed', listener)
+    },
+    getExternalSummariesInfo: () => ipcRenderer.invoke('storage:getExternalSummariesInfo'),
+    pickExternalSummariesDirectory: () =>
+      ipcRenderer.invoke('storage:pickExternalSummariesDirectory'),
+    setExternalSummariesDirectory: (targetPath: string) =>
+      ipcRenderer.invoke('storage:setExternalSummariesDirectory', targetPath),
+    clearExternalSummariesDirectory: () =>
+      ipcRenderer.invoke('storage:clearExternalSummariesDirectory'),
+    onSummariesPathChanged: (callback: () => void) => {
+      const listener = () => callback()
+      ipcRenderer.on('storage:summaries-path-changed', listener)
+      return () => ipcRenderer.removeListener('storage:summaries-path-changed', listener)
     }
   }
 }

@@ -10,7 +10,8 @@ import {
   SummaryFileService,
   MissingSummaryDetector,
   SummaryGeneratorService,
-  handleBuildSharedContext
+  handleBuildSharedContext,
+  handleBuildSharedContextPreview
 } from '@baishou/core-desktop'
 import { settingsManager } from './settings.ipc'
 import {
@@ -230,9 +231,9 @@ export function registerSummaryIPC() {
       const diaryRepoAdapter = {
         async list() {
           const records = await shadowRepo.listAll()
-          logger.info('[DEBUG-IPC] shadowRepo.listAll count:', records.length)
+          logger.debug('[DEBUG-IPC] shadowRepo.listAll count:', records.length)
           if (records.length > 0) {
-            logger.info('[DEBUG-IPC] Sample record date field:', {
+            logger.debug('[DEBUG-IPC] Sample record date field:', {
               date: records[0].date,
               type: typeof records[0].date
             })
@@ -296,4 +297,13 @@ export function registerSummaryIPC() {
       )
     }
   )
+
+  ipcMain.handle('summary:buildSharedContextPreview', async (_, lookbackMonths: number) => {
+    const summaries = await ensureManager().list()
+    return handleBuildSharedContextPreview(
+      summaries,
+      lookbackMonths,
+      vaultService.getActiveVault()?.name
+    )
+  })
 }

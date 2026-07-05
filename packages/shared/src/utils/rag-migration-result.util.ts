@@ -20,7 +20,8 @@ export interface RagMigrationStreamResult {
 const INTERRUPTED_STATUS_KEYS = new Set<RagMigrationStatusKey>([
   RAG_MIGRATION_STATUS.verifyPartial,
   RAG_MIGRATION_STATUS.verifyStale,
-  RAG_MIGRATION_STATUS.verifyBoth
+  RAG_MIGRATION_STATUS.verifyBoth,
+  RAG_MIGRATION_STATUS.backupLost
 ])
 
 const FAILURE_STATUS_KEYS = new Set<RagMigrationStatusKey>([

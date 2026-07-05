@@ -4,8 +4,14 @@ import { IncrementalSyncConfirmDialog } from './IncrementalSyncConfirmDialog'
 import { useOrchestratedSync } from '../../hooks/useOrchestratedSync'
 
 export const IncrementalSyncConfirmHost: React.FC = () => {
-  const { planDialogOpen, planPreview, planConfirmEligibleAt, isConfirmingPlan, confirmSyncPlan, cancelSyncPlan } =
-    useOrchestratedSync()
+  const {
+    planDialogOpen,
+    planPreview,
+    planConfirmEligibleAt,
+    isConfirmingPlan,
+    confirmSyncPlan,
+    cancelSyncPlan
+  } = useOrchestratedSync()
 
   return (
     <IncrementalSyncConfirmDialog

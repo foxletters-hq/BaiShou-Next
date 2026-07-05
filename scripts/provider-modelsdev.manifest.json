@@ -1,0 +1,33 @@
+{
+  "comment": "白守供应商 id → models.dev provider id（可多个候选）。运行 pnpm sync 生成视觉模型快照。",
+  "excludeModelIdPatterns": [
+    "flash-image",
+    "image-generation",
+    "image-edit",
+    "^gpt-image",
+    "-image-preview",
+    "imagen"
+  ],
+  "providers": [
+    { "id": "openai", "modelsDevIds": ["openai"] },
+    { "id": "gemini", "modelsDevIds": ["google"] },
+    { "id": "anthropic", "modelsDevIds": ["anthropic"] },
+    { "id": "grok", "modelsDevIds": ["xai"] },
+    { "id": "deepseek", "modelsDevIds": ["deepseek"] },
+    { "id": "siliconflow", "modelsDevIds": ["siliconflow"] },
+    { "id": "kimi", "modelsDevIds": ["moonshotai", "moonshotai-cn", "kimi-for-coding"] },
+    {
+      "id": "xiaomimimo",
+      "modelsDevIds": ["xiaomi", "xiaomi-token-plan-cn", "xiaomi-token-plan-sgp"]
+    },
+    { "id": "minimax", "modelsDevIds": ["minimax"] },
+    { "id": "zhipu", "modelsDevIds": ["zhipuai", "zhipuai-coding-plan"] },
+    { "id": "dashscope", "modelsDevIds": ["alibaba-cn", "alibaba", "alibaba-coding-plan-cn"] },
+    { "id": "openrouter", "modelsDevIds": ["openrouter"] },
+    { "id": "opencodego", "modelsDevIds": ["opencode-go"] },
+    { "id": "mistral", "modelsDevIds": ["mistral"] },
+    { "id": "stepfun", "modelsDevIds": ["stepfun"] },
+    { "id": "vertexai", "modelsDevIds": ["google-vertex", "google-vertex-anthropic"] },
+    { "id": "vercel", "modelsDevIds": ["vercel"] }
+  ]
+}

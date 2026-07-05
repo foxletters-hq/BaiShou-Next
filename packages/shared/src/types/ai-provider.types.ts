@@ -19,6 +19,7 @@ export enum ProviderType {
   VertexAI = 'vertexai',
   Vercel = 'vercel',
   XiaomiMiMo = 'xiaomimimo',
+  OpenCodeGo = 'opencodego',
   Custom = 'custom'
 }
 

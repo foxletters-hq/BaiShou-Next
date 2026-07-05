@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as Network from 'expo-network'
 import type { McpServerConfig } from '@baishou/shared'
+import { ensureMcpAuthToken, refreshMcpAuthToken } from '@baishou/shared'
 import type { McpToolListItem } from '@baishou/ui/native'
 import { useNativeToast } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
@@ -11,12 +12,13 @@ const DEFAULT_MCP_CONFIG: McpServerConfig = {
   mcpPort: 31004
 }
 
-/** 移动端与桌面一致：不生成/保存访问令牌，外部客户端仅需 URL */
-function toMobileMcpConfig(config: McpServerConfig): McpServerConfig {
-  return {
-    mcpEnabled: config.mcpEnabled,
-    mcpPort: config.mcpPort
-  }
+async function persistMcpConfig(
+  services: NonNullable<ReturnType<typeof useBaishou>['services']>,
+  config: McpServerConfig
+): Promise<McpServerConfig> {
+  const saved = ensureMcpAuthToken(config)
+  await services.settingsManager.set('mcp_server_config', saved)
+  return saved
 }
 
 export function useMobileMcpConfig() {
@@ -38,16 +40,13 @@ export function useMobileMcpConfig() {
         const raw =
           (await services.settingsManager.get<McpServerConfig>('mcp_server_config')) ||
           DEFAULT_MCP_CONFIG
-        const saved = toMobileMcpConfig(raw)
-        if (raw.mcpAuthToken) {
-          await services.settingsManager.set('mcp_server_config', saved)
-          if (saved.mcpEnabled) {
-            await services.mobileMcpService.applyConfig(saved).catch((e) => {
-              console.warn('MCP restart after token removal failed', e)
-            })
-          }
-        }
+        const saved = await persistMcpConfig(services, raw)
         setConfig(saved)
+        if (saved.mcpEnabled) {
+          await services.mobileMcpService.applyConfig(saved).catch((e) => {
+            console.warn('MCP restart after config load failed', e)
+          })
+        }
         const ip = await Network.getIpAddressAsync()
         if (ip && ip !== '0.0.0.0') setDeviceIp(ip)
       } catch (e) {
@@ -99,10 +98,8 @@ export function useMobileMcpConfig() {
       if (!services || !dbReady) return
       setApplying(true)
       try {
-        const saved = toMobileMcpConfig(next)
-        await services.settingsManager.set('mcp_server_config', saved)
+        const saved = await persistMcpConfig(services, next)
         setConfig(saved)
-        // 延迟 300ms 待展开/收起动画执行完毕后，再在后台启动或停止 MCP 原生服务
         setTimeout(async () => {
           try {
             await services.mobileMcpService.applyConfig(saved)
@@ -123,6 +120,23 @@ export function useMobileMcpConfig() {
     [dbReady, services, t, toast]
   )
 
+  const refreshAuthToken = useCallback(async () => {
+    if (!services || !dbReady) return
+    setApplying(true)
+    try {
+      const next = refreshMcpAuthToken(config)
+      const saved = await persistMcpConfig(services, next)
+      setConfig(saved)
+      await services.mobileMcpService.applyConfig(saved)
+      toast.showSuccess(t('settings.mcp_token_refreshed'))
+    } catch (e) {
+      console.error(e)
+      toast.showError(t('common.errors.save_failed'))
+    } finally {
+      setApplying(false)
+    }
+  }, [config, dbReady, services, t, toast])
+
   return {
     config,
     deviceIp,
@@ -130,6 +144,7 @@ export function useMobileMcpConfig() {
     applying,
     mcpEndpointUrl,
     persistConfig,
+    refreshAuthToken,
     tools,
     toolsLoading,
     toolsFailed,

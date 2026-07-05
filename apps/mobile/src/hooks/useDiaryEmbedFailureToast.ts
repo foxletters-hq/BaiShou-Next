@@ -15,23 +15,35 @@ export function useDiaryEmbedFailureToast(): void {
   const lastShownAtRef = useRef(0)
 
   useEffect(() => {
-    return subscribeDiaryEmbedFailure(() => {
+    return subscribeDiaryEmbedFailure((message) => {
       void (async () => {
         const settingsManager = services?.settingsManager
         if (!settingsManager) return
 
-        const ragConfig = (await settingsManager.get<{ ragEnabled?: boolean }>('rag_config')) || {}
+        const ragConfig =
+          (await settingsManager.get<{
+            ragEnabled?: boolean
+            lastDiaryEmbedFailureMessage?: string
+          }>('rag_config')) || {}
         if (!isRagMemoryEnabled({ ragEnabled: ragConfig.ragEnabled ?? true })) return
 
         const now = Date.now()
         if (now - lastShownAtRef.current < DIARY_EMBED_FAILURE_TOAST_DEBOUNCE_MS) return
         lastShownAtRef.current = now
 
+        const reason = message?.trim() || ragConfig.lastDiaryEmbedFailureMessage?.trim() || ''
+
         toast.showWarning(
-          t(
-            'settings.rag_diary_auto_embed_failed',
-            '日记已保存，但记忆嵌入未成功。请前往 设置 → RAG 记忆，点击「全量扫描未索引日记」补全嵌入。'
-          )
+          reason
+            ? t(
+                'settings.rag_diary_auto_embed_failed_with_reason',
+                '日记已保存，但记忆嵌入未成功：{{message}}。请前往 设置 → RAG 记忆，点击「全量扫描未索引日记」补全嵌入。',
+                { message: reason }
+              )
+            : t(
+                'settings.rag_diary_auto_embed_failed',
+                '日记已保存，但记忆嵌入未成功。请前往 设置 → RAG 记忆，点击「全量扫描未索引日记」补全嵌入。'
+              )
         )
       })()
     })

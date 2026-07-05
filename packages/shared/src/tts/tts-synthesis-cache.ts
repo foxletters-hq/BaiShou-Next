@@ -7,6 +7,7 @@ export interface TtsSynthesisCacheKeyInput {
   speed: number
   responseFormat: string
   baseUrl: string
+  stream?: boolean
   refAudioPath?: string
   refAudioToken?: string
   promptText?: string
@@ -30,6 +31,7 @@ export function buildTtsSynthesisCacheKey(input: TtsSynthesisCacheKeyInput): str
     s: input.speed,
     f: input.responseFormat,
     u: input.baseUrl,
+    st: input.stream === true,
     r: input.refAudioToken || input.refAudioPath || '',
     pt: input.promptText || '',
     pl: input.promptLang || '',

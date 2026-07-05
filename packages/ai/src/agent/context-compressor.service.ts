@@ -7,7 +7,8 @@ import { SnapshotRepository } from '@baishou/database'
 import {
   CompressionErrorCode,
   compressionError,
-  getDefaultCompressionSystemPrompt
+  getDefaultCompressionSystemPrompt,
+  adaptCompressionSystemPrompt
 } from '@baishou/shared'
 import { logger } from '@baishou/shared'
 import { MessageWithParts } from './message.adapter'
@@ -50,6 +51,11 @@ export type { SessionCompressionConfig } from './context-compression.utils'
 export type CompressionRunOptions = {
   /** 方案 A：触发发送前压缩的用户消息 ID */
   triggerUserMessageId?: string
+  abortSignal?: AbortSignal
+  /** 是否在压缩 transcript 中包裹消息时间元数据，默认 true */
+  wrapMessageTime?: boolean
+  /** 调用方已加载的会话消息，避免重复全量查询 */
+  prefetchedMessages?: MessageWithParts[]
 }
 
 export type RecompressResult = {
@@ -88,9 +94,28 @@ export class ContextCompressorService {
   static schedulePrune(
     sessionRepo: SessionRepository,
     sessionId: string,
-    allMessages?: MessageWithParts[]
+    allMessages?: MessageWithParts[],
+    options?: { flushSessionToDisk?: (sessionId: string) => Promise<void> }
   ): void {
-    void CompressionPruneService.pruneSession(sessionRepo, sessionId, allMessages)
+    void ContextCompressorService.runPrune(sessionRepo, sessionId, allMessages, options)
+  }
+
+  static async runPrune(
+    sessionRepo: SessionRepository,
+    sessionId: string,
+    allMessages?: MessageWithParts[],
+    options?: { flushSessionToDisk?: (sessionId: string) => Promise<void> }
+  ): Promise<number> {
+    const count = await CompressionPruneService.pruneSession(sessionRepo, sessionId, allMessages)
+    if (count > 0 && options?.flushSessionToDisk) {
+      try {
+        await options.flushSessionToDisk(sessionId)
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e)
+        logger.warn('[ContextCompressor] flushSessionToDisk after prune failed:', message)
+      }
+    }
+    return count
   }
 
   static async compress(
@@ -110,6 +135,10 @@ export class ContextCompressorService {
       const compressionConfig =
         config ?? (await resolveSessionCompressionConfig(sessionId, sessionRepo))
 
+      if (runOptions?.abortSignal?.aborted) {
+        throw new DOMException('The operation was aborted', 'AbortError')
+      }
+
       const usableWindow = usableContextTokens(
         compressionConfig.modelContextWindow ?? 0,
         compressionConfig.reservedTokens
@@ -118,10 +147,12 @@ export class ContextCompressorService {
         return false
       }
 
-      const allMessages = (await sessionRepo.getMessagesBySession(
-        sessionId,
-        COMPRESSION_MESSAGE_FETCH_LIMIT
-      )) as MessageWithParts[]
+      const allMessages =
+        runOptions?.prefetchedMessages ??
+        ((await sessionRepo.getMessagesBySession(
+          sessionId,
+          COMPRESSION_MESSAGE_FETCH_LIMIT
+        )) as MessageWithParts[])
 
       if (allMessages.length < 4) {
         return false
@@ -136,6 +167,9 @@ export class ContextCompressorService {
         latestSnapshot
       )
       if (!resolveCompressionTrigger(contextTokens, compressionConfig)) {
+        logger.info(
+          `[ContextCompressor] Session(${sessionId}) skip: ~${contextTokens} tokens below threshold ${compressionConfig.threshold}.`
+        )
         return false
       }
 
@@ -189,7 +223,9 @@ export class ContextCompressorService {
         toCompress,
         compressionConfig,
         latestSnapshot?.summaryText ?? null,
-        providerType
+        providerType,
+        runOptions?.abortSignal,
+        { wrapMessageTime: runOptions?.wrapMessageTime }
       )
       if (!generated) {
         emitCompressionLifecycle({ type: 'finish', sessionId, phase: 'auto', ok: false })
@@ -243,9 +279,15 @@ export class ContextCompressorService {
       return true
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
-      logger.error('[ContextCompressor] Compression failed:', message)
+      const aborted = e instanceof DOMException && e.name === 'AbortError'
+      if (!aborted) {
+        logger.error('[ContextCompressor] Compression failed:', message)
+      }
       if (compressionStarted) {
         emitCompressionLifecycle({ type: 'finish', sessionId, phase: 'auto', ok: false })
+      }
+      if (aborted) {
+        throw e
       }
       return false
     }
@@ -258,7 +300,8 @@ export class ContextCompressorService {
     snapshotRepo: SnapshotRepository,
     sessionId: string,
     config?: SessionCompressionConfig,
-    providerType = ''
+    providerType = '',
+    options?: { wrapMessageTime?: boolean }
   ): Promise<RecompressResult> {
     emitCompressionLifecycle({ type: 'start', sessionId, phase: 'manual' })
     const locked = await runRecompressWithSessionLock(sessionId, async () => {
@@ -309,7 +352,9 @@ export class ContextCompressorService {
           toCompress,
           compressionConfig,
           previousSnapshot?.summaryText ?? null,
-          providerType
+          providerType,
+          undefined,
+          { wrapMessageTime: options?.wrapMessageTime }
         )
 
         if (!generated?.text.trim()) {
@@ -394,7 +439,9 @@ export class ContextCompressorService {
     toCompress: MessageWithParts[],
     compressionConfig: SessionCompressionConfig,
     priorSummaryText: string | null,
-    providerType: string
+    providerType: string,
+    abortSignal?: AbortSignal,
+    options?: { wrapMessageTime?: boolean }
   ): Promise<{
     text: string
     reasoning?: string
@@ -408,9 +455,11 @@ export class ContextCompressorService {
       modelId,
       sessionId
     })
-    const systemBase = compressionConfig.systemPrompt?.trim() || getDefaultCompressionSystemPrompt()
+    const wrapMessageTime = options?.wrapMessageTime !== false
+    const rawSystem = compressionConfig.systemPrompt?.trim() || getDefaultCompressionSystemPrompt()
+    const systemBase = adaptCompressionSystemPrompt(rawSystem, undefined, { wrapMessageTime })
 
-    const userContent = buildCompressionUserMessageContent(toCompress, priorSummaryText)
+    const userContent = buildCompressionUserMessageContent(toCompress, priorSummaryText, options)
     if (!userContent) return null
 
     const messages: ModelMessage[] = [{ role: 'user', content: userContent }]
@@ -423,15 +472,19 @@ export class ContextCompressorService {
         sessionId
       }),
       messages,
-      temperature: 0.1
+      temperature: 0.1,
+      abortSignal
     })
 
     let streamed: Awaited<ReturnType<typeof consumeCompressionModelStream>>
     try {
-      streamed = await consumeCompressionModelStream(streamResult, sessionId)
+      streamed = await consumeCompressionModelStream(streamResult, sessionId, abortSignal)
     } catch (streamErr: unknown) {
-      const detail = streamErr instanceof Error ? streamErr.message : String(streamErr)
-      logger.error(`[ContextCompressor] Session(${sessionId}) model stream failed: ${detail}`)
+      const aborted = streamErr instanceof DOMException && streamErr.name === 'AbortError'
+      if (!aborted) {
+        const detail = streamErr instanceof Error ? streamErr.message : String(streamErr)
+        logger.error(`[ContextCompressor] Session(${sessionId}) model stream failed: ${detail}`)
+      }
       throw streamErr
     }
 

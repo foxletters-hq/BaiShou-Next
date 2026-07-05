@@ -162,6 +162,18 @@ export class VaultService implements IVaultService {
           }
         }
 
+        const diskWithContent = await discoverLegacyVaultNamesOnDisk(this.fileSystem, rootDir)
+        if (diskWithContent.length > this._vaults.length) {
+          const legacyEntries = await readLegacyVaultRegistry(this.fileSystem, rootDir)
+          this._vaults = await writeNextVaultRegistry(
+            this.fileSystem,
+            rootDir,
+            diskWithContent,
+            legacyEntries
+          )
+          shouldSave = false
+        }
+
         const active = this.getActiveVault()
         if (
           active &&
@@ -352,10 +364,14 @@ export class VaultService implements IVaultService {
     return result.name
   }
 
+<<<<<<< HEAD
   private async addNewVault(
     vaultName: string,
     options?: { touchAccess?: boolean }
   ): Promise<void> {
+=======
+  private async addNewVault(vaultName: string, options?: { touchAccess?: boolean }): Promise<void> {
+>>>>>>> origin/Baishou-dev
     const newPath = await this.pathService.getVaultDirectory(vaultName)
     await this.fileSystem.mkdir(newPath, { recursive: true })
     await this.fileSystem.mkdir(await this.pathService.getVaultSystemDirectory(vaultName), {

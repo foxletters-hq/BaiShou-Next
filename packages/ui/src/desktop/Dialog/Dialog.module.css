@@ -22,3 +22,46 @@
   gap: 12px;
   margin-top: 4px;
 }
+
+.chooseList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.chooseItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 10px;
+  border: none;
+  border-bottom: 1px solid var(--color-outline-variant, rgba(0, 0, 0, 0.08));
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  border-radius: 8px;
+}
+
+.chooseItem:hover {
+  background: var(--color-surface-variant, rgba(0, 0, 0, 0.04));
+}
+
+.chooseItemCentered {
+  justify-content: center;
+}
+
+.chooseLeading {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.chooseLabel {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-primary, #1a1a1a);
+}

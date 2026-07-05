@@ -3,8 +3,7 @@ import { View, Text, Pressable } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { parseRedactedThinking } from '../../shared/chat-bubble/redacted-thinking'
 import { useNativeTheme } from '../theme'
-import { MarkdownRenderer } from '../MarkdownRenderer/MarkdownRenderer'
-import { ThinkingBlock } from '../ThinkingBlock/ThinkingBlock'
+import { AgentThinkSection } from '../AgentThinkSection'
 import type { NativeStreamingBubbleProps } from './streaming-bubble.types'
 import { createStreamingBubbleStyles } from './streaming-bubble.styles'
 import { ChatBubbleAvatar } from '../ChatBubble/ChatBubbleAvatar'
@@ -12,22 +11,30 @@ import { chatBubbleStyles } from '../ChatBubble/chat-bubble.styles'
 import { chatOverBackgroundMetaTextStyle } from '../../shared/chat-over-background-meta.style'
 import { ToolResultGroupCard } from '../ToolResultGroupCard/ToolResultGroupCard'
 import { StreamingBubbleBouncingDots } from './StreamingBubbleBouncingDots'
+import { AgentMarkdownRenderer } from '../AgentMarkdown'
+import { chatNeedsRichMarkdown } from '../../shared/chat-bubble/chat-plain-text.util'
+import { ChatPlainTextBody } from '../ChatBubble/ChatPlainTextBody'
+import { NativeChatBubbleAttachments } from '../ChatBubble/NativeChatBubbleAttachments'
 
 export type { ToolExecution, NativeStreamingBubbleProps } from './streaming-bubble.types'
 
-export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
+export const StreamingBubble = React.memo(function StreamingBubble({
   text,
   reasoning = '',
   isReasoning = false,
+  isThinkStreaming = false,
+  isTextStreaming = true,
   activeToolName = null,
   completedTools = [],
   aiProfile = { name: 'AI' },
   error = null,
   onRetry,
-  invertMetaOverBackground = false
-}) => {
+  invertMetaOverBackground = false,
+  reserveActionBarSpace = false,
+  attachments = []
+}: NativeStreamingBubbleProps) {
   const { t } = useTranslation()
-  const { colors, isDark, tokens } = useNativeTheme()
+  const { colors, tokens } = useNativeTheme()
   const auxStyles = useMemo(() => createStreamingBubbleStyles(colors, tokens), [colors, tokens])
 
   const aiName = aiProfile.name || t('agent.chat.ai_label', 'AI')
@@ -37,9 +44,10 @@ export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
     [text, reasoning]
   )
 
-  const hasReasoning = cleanReasoning.length > 0
+  const hasReasoning = cleanReasoning.length > 0 || isReasoning || isThinkStreaming
   const hasText = cleanText.length > 0
   const hasTools = completedTools.length > 0 || !!activeToolName
+  const hasAttachments = attachments.length > 0
 
   return (
     <View style={[chatBubbleStyles.container, chatBubbleStyles.containerAssistant]}>
@@ -90,17 +98,21 @@ export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
               </Pressable>
             )}
           </View>
-        ) : hasText || hasReasoning || hasTools ? (
+        ) : hasText || hasReasoning || hasTools || hasAttachments ? (
           <View
+            collapsable={false}
             style={[
               chatBubbleStyles.bubble,
               chatBubbleStyles.bubbleEditing,
               {
-                backgroundColor: isDark ? 'rgba(30, 30, 34, 0.4)' : 'rgba(255, 255, 255, 0.48)',
+                backgroundColor: colors.bgSurface,
                 borderBottomLeftRadius: 4
               }
             ]}
           >
+            {hasAttachments ? (
+              <NativeChatBubbleAttachments attachments={attachments} isUserBubble={false} />
+            ) : null}
             {hasReasoning && (
               <View
                 style={{
@@ -109,11 +121,10 @@ export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
                   width: '100%'
                 }}
               >
-                <ThinkingBlock
+                <AgentThinkSection
                   content={cleanReasoning}
-                  isThinking={isReasoning && !hasText}
-                  defaultOpen={!hasText}
-                  autoCollapse={hasText}
+                  isLoading={isReasoning || isThinkStreaming}
+                  isMarkdownStreaming={false}
                 />
               </View>
             )}
@@ -121,18 +132,39 @@ export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
             {hasTools ? (
               <View style={{ marginBottom: hasText ? 8 : 0, alignSelf: 'stretch', width: '100%' }}>
                 <ToolResultGroupCard
-                  invocations={completedTools.map((tool, idx) => ({
+                  completedTools={completedTools.map((tool, idx) => ({
+                    name: tool.name,
+                    durationMs: tool.durationMs ?? 0,
                     toolCallId: tool.toolCallId ?? `streaming-${tool.name}-${idx}`,
-                    toolName: tool.name,
-                    result: tool.result ?? null
+                    startTime: tool.toolCallId ?? idx,
+                    result: tool.result,
+                    args: tool.args
                   }))}
                   activeToolName={activeToolName}
-                  defaultExpanded
                 />
               </View>
             ) : null}
 
-            {hasText && <MarkdownRenderer content={cleanText} variant="chat" />}
+            {hasText && (
+              <View
+                style={
+                  chatNeedsRichMarkdown(cleanText)
+                    ? chatBubbleStyles.markdownSlot
+                    : chatBubbleStyles.plainTextSlot
+                }
+              >
+                {chatNeedsRichMarkdown(cleanText) ? (
+                  <AgentMarkdownRenderer
+                    content={cleanText}
+                    isStreaming={isTextStreaming}
+                    variant="chat"
+                  />
+                ) : (
+                  <ChatPlainTextBody content={cleanText} color={colors.textPrimary} />
+                )}
+              </View>
+            )}
+            {reserveActionBarSpace ? <View style={auxStyles.actionBarSpacer} /> : null}
           </View>
         ) : (
           <View style={auxStyles.dotsWrap}>
@@ -142,4 +174,4 @@ export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
       </View>
     </View>
   )
-}
+})

@@ -7,6 +7,12 @@ import {
 } from './legacy-migration.shared'
 import { countArchiveMarkdownUnderArchivesDir } from '../vault/archive-files.util'
 
+const LEGACY_SUMMARY_PAGE_SIZE = 50
+
+function quoteSqlString(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`
+}
+
 interface LegacySummaryRow {
   id: number
   type: string
@@ -105,17 +111,17 @@ function parseLegacySummaryRow(row: Record<string, unknown>): LegacySummaryRow |
   }
 }
 
-export async function queryLegacySummaryRows(
+async function forEachLegacySummaryRow(
   fileSystem: IFileSystem,
   sourceRoot: string,
   legacyVaultName: string,
   sqliteClient: unknown,
   executeRawSql: RawSqlExecutor,
-  prepareSqliteAttachPath?: (dbPath: string) => Promise<string>
-): Promise<{ rows: LegacySummaryRow[]; errors: string[] }> {
+  prepareSqliteAttachPath: ((dbPath: string) => Promise<string>) | undefined,
+  onRow: (row: LegacySummaryRow) => Promise<void> | void
+): Promise<{ errors: string[] }> {
   const dbPaths = await resolveLegacyBaishouDbPathsForVault(fileSystem, sourceRoot, legacyVaultName)
   const uniquePaths = [...new Set(dbPaths.map((p) => normalizeSqliteAttachPath(p)))]
-  const rows: LegacySummaryRow[] = []
   const errors: string[] = []
   const seen = new Set<string>()
 
@@ -131,7 +137,7 @@ export async function queryLegacySummaryRows(
         rawAttachPath,
         attachPath
       })
-      await executeRawSql(sqliteClient, `ATTACH DATABASE '${attachPath}' AS ${alias}`)
+      await executeRawSql(sqliteClient, `ATTACH DATABASE ${quoteSqlString(attachPath)} AS ${alias}`)
       const tableInfo = await executeRawSql(sqliteClient, `PRAGMA ${alias}.table_info('summaries')`)
       if (!tableInfo.rows.length) {
         console.info('[VersionMigration][summary-db] no summaries table', {
@@ -142,20 +148,31 @@ export async function queryLegacySummaryRows(
         continue
       }
 
-      const result = await executeRawSql(sqliteClient, `SELECT * FROM ${alias}.summaries`)
+      let offset = 0
+      let totalRows = 0
+      while (true) {
+        const result = await executeRawSql(
+          sqliteClient,
+          `SELECT * FROM ${alias}.summaries ORDER BY id LIMIT ? OFFSET ?`,
+          [LEGACY_SUMMARY_PAGE_SIZE, offset]
+        )
+        totalRows += result.rows.length
+        for (const raw of result.rows) {
+          const parsed = parseLegacySummaryRow(raw)
+          if (!parsed) continue
+          const key = `${parsed.type}_${parsed.startDate.toISOString()}_${parsed.endDate.toISOString()}`
+          if (seen.has(key)) continue
+          seen.add(key)
+          await onRow(parsed)
+        }
+        if (result.rows.length < LEGACY_SUMMARY_PAGE_SIZE) break
+        offset += LEGACY_SUMMARY_PAGE_SIZE
+      }
       console.info('[VersionMigration][summary-db] rows', {
         legacyVaultName,
         rawAttachPath,
-        rows: result.rows.length
+        rows: totalRows
       })
-      for (const raw of result.rows) {
-        const parsed = parseLegacySummaryRow(raw)
-        if (!parsed) continue
-        const key = `${parsed.type}_${parsed.startDate.toISOString()}_${parsed.endDate.toISOString()}`
-        if (seen.has(key)) continue
-        seen.add(key)
-        rows.push(parsed)
-      }
       await executeRawSql(sqliteClient, `DETACH DATABASE ${alias}`)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
@@ -174,6 +191,30 @@ export async function queryLegacySummaryRows(
     }
   }
 
+  return { errors }
+}
+
+export async function queryLegacySummaryRows(
+  fileSystem: IFileSystem,
+  sourceRoot: string,
+  legacyVaultName: string,
+  sqliteClient: unknown,
+  executeRawSql: RawSqlExecutor,
+  prepareSqliteAttachPath?: (dbPath: string) => Promise<string>
+): Promise<{ rows: LegacySummaryRow[]; errors: string[] }> {
+  const rows: LegacySummaryRow[] = []
+  const { errors } = await forEachLegacySummaryRow(
+    fileSystem,
+    sourceRoot,
+    legacyVaultName,
+    sqliteClient,
+    executeRawSql,
+    prepareSqliteAttachPath,
+    (row) => {
+      rows.push(row)
+    }
+  )
+
   return { rows, errors }
 }
 
@@ -188,24 +229,6 @@ export async function importLegacySqlSummariesForVault(deps: {
   prepareSqliteAttachPath?: (dbPath: string) => Promise<string>
   onProgress?: (message: string) => void
 }): Promise<{ imported: number; skipped: number; failed: number; failureSamples?: string[] }> {
-  const { rows, errors } = await queryLegacySummaryRows(
-    deps.fileSystem,
-    deps.sourceRoot,
-    deps.legacyVaultName,
-    deps.sqliteClient,
-    deps.executeRawSql,
-    deps.prepareSqliteAttachPath
-  )
-
-  if (rows.length === 0) {
-    return {
-      imported: 0,
-      skipped: 0,
-      failed: errors.length > 0 ? 1 : 0,
-      failureSamples: errors.length > 0 ? errors.slice(0, 8) : undefined
-    }
-  }
-
   const targetVault = await deps.resolveTargetVaultName(deps.legacyVaultName)
   const targetArchives = path.join(deps.targetRoot, targetVault, 'Archives')
   let imported = 0
@@ -213,30 +236,45 @@ export async function importLegacySqlSummariesForVault(deps: {
   let failed = 0
   const failureSamples: string[] = []
 
-  for (const row of rows) {
-    const typeDir = path.join(targetArchives, summaryTypeFolder(row.type))
-    const filePath = path.join(typeDir, formatSummaryFileName(row.startDate))
-    deps.onProgress?.(filePath)
+  const { errors } = await forEachLegacySummaryRow(
+    deps.fileSystem,
+    deps.sourceRoot,
+    deps.legacyVaultName,
+    deps.sqliteClient,
+    deps.executeRawSql,
+    deps.prepareSqliteAttachPath,
+    async (row) => {
+      const typeDir = path.join(targetArchives, summaryTypeFolder(row.type))
+      const filePath = path.join(typeDir, formatSummaryFileName(row.startDate))
+      deps.onProgress?.(filePath)
 
-    try {
-      await deps.fileSystem.mkdir(typeDir, { recursive: true })
-      if (await deps.fileSystem.exists(filePath)) {
-        const existing = await deps.fileSystem.readFile(filePath, 'utf8')
-        const expected = buildFlutterLegacySummaryMarkdown(row)
-        if (existing.trim() === expected.trim()) {
-          skipped += 1
-          continue
+      try {
+        await deps.fileSystem.mkdir(typeDir, { recursive: true })
+        if (await deps.fileSystem.exists(filePath)) {
+          const existing = await deps.fileSystem.readFile(filePath, 'utf8')
+          const expected = buildFlutterLegacySummaryMarkdown(row)
+          if (existing.trim() === expected.trim()) {
+            skipped += 1
+            return
+          }
+        }
+        await deps.fileSystem.writeFile(filePath, buildFlutterLegacySummaryMarkdown(row), 'utf8')
+        imported += 1
+      } catch (error) {
+        failed += 1
+        if (failureSamples.length < 12) {
+          const message = error instanceof Error ? error.message : String(error)
+          failureSamples.push(
+            `总结 ${row.type} ${formatSummaryFileName(row.startDate)}: ${message}`
+          )
         }
       }
-      await deps.fileSystem.writeFile(filePath, buildFlutterLegacySummaryMarkdown(row), 'utf8')
-      imported += 1
-    } catch (error) {
-      failed += 1
-      if (failureSamples.length < 12) {
-        const message = error instanceof Error ? error.message : String(error)
-        failureSamples.push(`总结 ${row.type} ${formatSummaryFileName(row.startDate)}: ${message}`)
-      }
     }
+  )
+
+  if (imported === 0 && skipped === 0 && failed === 0 && errors.length > 0) {
+    failed = 1
+    failureSamples.push(...errors.slice(0, 8))
   }
 
   return {
@@ -255,15 +293,40 @@ export async function countLegacySummariesForVault(
   executeRawSql: RawSqlExecutor,
   prepareSqliteAttachPath?: (dbPath: string) => Promise<string>
 ): Promise<number> {
-  const { rows } = await queryLegacySummaryRows(
-    fileSystem,
-    sourceRoot,
-    legacyVaultName,
-    sqliteClient,
-    executeRawSql,
-    prepareSqliteAttachPath
-  )
-  return rows.length
+  const dbPaths = await resolveLegacyBaishouDbPathsForVault(fileSystem, sourceRoot, legacyVaultName)
+  const uniquePaths = [...new Set(dbPaths.map((p) => normalizeSqliteAttachPath(p)))]
+  let count = 0
+
+  for (let i = 0; i < uniquePaths.length; i++) {
+    const alias = `legacy_baishou_count_${i}`
+    const rawAttachPath = uniquePaths[i]!
+    try {
+      const attachPath = prepareSqliteAttachPath
+        ? await prepareSqliteAttachPath(rawAttachPath)
+        : rawAttachPath
+      await executeRawSql(sqliteClient, `ATTACH DATABASE ${quoteSqlString(attachPath)} AS ${alias}`)
+      const tableInfo = await executeRawSql(sqliteClient, `PRAGMA ${alias}.table_info('summaries')`)
+      if (!tableInfo.rows.length) {
+        await executeRawSql(sqliteClient, `DETACH DATABASE ${alias}`)
+        continue
+      }
+      const result = await executeRawSql(
+        sqliteClient,
+        `SELECT COUNT(*) AS c FROM ${alias}.summaries
+         WHERE content IS NOT NULL AND TRIM(content) != ''`
+      )
+      count += Number(result.rows[0]?.c ?? 0)
+      await executeRawSql(sqliteClient, `DETACH DATABASE ${alias}`)
+    } catch {
+      try {
+        await executeRawSql(sqliteClient, `DETACH DATABASE ${alias}`)
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  return count
 }
 
 export async function countLegacyArchiveSourcesForVault(

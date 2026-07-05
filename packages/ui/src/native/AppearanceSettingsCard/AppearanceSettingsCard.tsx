@@ -1,15 +1,16 @@
 import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Palette } from 'lucide-react-native'
 import { APP_UI_LANGUAGE_ORDER } from '@baishou/shared'
 import { Text, TouchableOpacity, View } from 'react-native'
 import { useNativeTheme } from '../theme'
 import type { AppearanceSettingsProps } from './appearance-settings.types'
 import { PRESET_THEME_COLORS, isPresetThemeColor } from '../../theme/preset-theme-colors'
-import { hslToHex } from './appearance-color.utils'
 import { appearanceSettingsStyles as styles } from './appearance-settings.styles'
 import { AppearanceSettingsColorModal } from './AppearanceSettingsColorModal'
 import { CustomThemeColorDot } from './CustomThemeColorDot'
 import { SettingsExpansionTile } from '../settings/SettingsExpansionTile'
+import { DEFAULT_STROKE_WIDTH, NAV_ICON_SIZE } from '../../shared/icons/icon-sizes'
 
 export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
   themeMode,
@@ -24,11 +25,6 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const [showColorModal, setShowColorModal] = useState(false)
-  const [hue, setHue] = useState(0)
-  const [sat, setSat] = useState(100)
-  const [lit, setLit] = useState(50)
-
-  const previewColor = hslToHex(hue, sat, lit)
 
   const languageOptions = useMemo(
     () => [
@@ -51,15 +47,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
   const isCustomColor = !isPresetThemeColor(seedColor)
 
   const openColorPicker = () => {
-    setHue(190)
-    setSat(60)
-    setLit(75)
     setShowColorModal(true)
-  }
-
-  const saveColor = () => {
-    onSeedColorChange(previewColor)
-    setShowColorModal(false)
   }
 
   const content = (
@@ -166,15 +154,12 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
 
       <AppearanceSettingsColorModal
         visible={showColorModal}
-        previewColor={previewColor}
-        hue={hue}
-        sat={sat}
-        lit={lit}
-        onHueChange={setHue}
-        onSatChange={setSat}
-        onLitChange={setLit}
+        initialColor={seedColor}
         onClose={() => setShowColorModal(false)}
-        onSave={saveColor}
+        onSave={(color) => {
+          onSeedColorChange(color)
+          setShowColorModal(false)
+        }}
       />
     </>
   )
@@ -183,6 +168,9 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
     <SettingsExpansionTile
       embedded={embedded}
       isLast={isLast}
+      icon={
+        <Palette size={NAV_ICON_SIZE} strokeWidth={DEFAULT_STROKE_WIDTH} color={colors.textSecondary} />
+      }
       title={t('settings.appearance', '外观与多语言')}
       subtitle={embedded ? undefined : `${themeMode} · ${language}`}
     >

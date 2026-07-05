@@ -1,12 +1,11 @@
 import React, { forwardRef } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Pin, Trash2 } from 'lucide-react'
-import { MdDragIndicator } from 'react-icons/md'
 import { resolveDesktopAssistantAvatarSrc } from '../assistant-avatar.util'
 import { AssistantKindBadge } from '../AssistantKindBadge'
 import styles from './AssistantManagementPage.module.css'
 import type { AssistantInfo } from './index'
+import { GripVertical, Pin, Trash2 } from 'lucide-react'
 
 type AssistantListRowProps = {
   assistant: AssistantInfo
@@ -32,7 +31,7 @@ export const AssistantListRow = forwardRef<HTMLDivElement, AssistantListRowProps
           onClick={(e) => e.stopPropagation()}
           {...dragHandleProps}
         >
-          <MdDragIndicator size={20} />
+          <GripVertical size={20} />
         </button>
 
         <div className={styles.cardAvatar}>

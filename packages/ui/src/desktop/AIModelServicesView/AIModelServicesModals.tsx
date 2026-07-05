@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { MdArrowDropDown, MdClose, MdCloud } from 'react-icons/md'
-import { Search, Sparkles, Cpu, CheckCircle2, Blocks } from 'lucide-react'
 import styles from './AIModelServicesView.module.css'
 import type { AIModelServicesViewModel } from './useAIModelServicesView'
+import { resolveProviderTypeLabel } from './ai-model-services.constants'
+import { Blocks, CheckCircle2, ChevronDown, Cpu, Search, Sparkles, X } from 'lucide-react'
 
 export interface AIModelServicesModalsProps {
   vm: AIModelServicesViewModel
@@ -63,11 +63,9 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
                     >
                       {renderTypeIcon(addModalData.type)}
                       <span style={{ flex: 1 }}>
-                        {addModalData.type === 'openai'
-                          ? t('provider.openai_spec', 'OpenAI 规范')
-                          : addModalData.type.toUpperCase()}
+                        {resolveProviderTypeLabel(addModalData.type, t)}
                       </span>
-                      <MdArrowDropDown
+                      <ChevronDown
                         size={20}
                         className={`${styles.dropdownArrow} ${isTypeDropdownOpen ? styles.dropdownArrowOpen : ''}`}
                       />
@@ -84,11 +82,7 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
                             }}
                           >
                             {renderTypeIcon(type)}
-                            <span>
-                              {type === 'openai'
-                                ? t('provider.openai_spec', 'OpenAI 规范')
-                                : type.toUpperCase()}
-                            </span>
+                            <span>{resolveProviderTypeLabel(type, t)}</span>
                           </div>
                         ))}
                       </div>
@@ -150,7 +144,7 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
                     setSearchQuery('')
                   }}
                 >
-                  <MdClose size={20} />
+                  <X size={20} />
                 </button>
               </div>
 

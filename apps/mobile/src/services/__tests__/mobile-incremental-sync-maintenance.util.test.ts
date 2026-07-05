@@ -37,10 +37,13 @@ describe('awaitPostSyncMaintenance generation guard', () => {
     const startMaintenance = () => {
       const gen = ++generation
       currentPromise = new Promise<void>((resolve) => {
-        setTimeout(() => {
-          generations.push(gen)
-          resolve()
-        }, gen === 1 ? 30 : 5)
+        setTimeout(
+          () => {
+            generations.push(gen)
+            resolve()
+          },
+          gen === 1 ? 30 : 5
+        )
       })
       return currentPromise
     }

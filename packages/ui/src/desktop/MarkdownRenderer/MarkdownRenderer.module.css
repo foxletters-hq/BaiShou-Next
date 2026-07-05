@@ -11,9 +11,7 @@
   color: var(--text-primary) !important;
 }
 
-.streaming {
-  /* optional subtle animation for when stream is active */
-}
+/* 流式逐段显现由 streaming-display-buffer 负责；此处不再对 last-of-type 做 CSS 动画，避免每 90ms 重绘时反复触发 translateY 导致抖动 */
 
 .list {
   padding-left: 20px;

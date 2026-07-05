@@ -11,6 +11,7 @@ import {
   subscribeUserProfileRefresh
 } from '../lib/user-profile-refresh-signal'
 import { resolveChatBackgroundForMobileUi } from '../lib/chat-background-display.util'
+import { resolveUserAvatarForMobileUi } from '../lib/user-avatar-display.util'
 import { useThrottledFocusRefresh } from './useThrottledFocusRefresh'
 
 const EMPTY_PROFILE: AgentUserProfileState = { nickname: '' }
@@ -32,6 +33,13 @@ export function useAgentUserProfile(): AgentUserProfileState {
       setUserProfile(next)
       if (next.chatBackgroundPath) {
         void resolveChatBackgroundForMobileUi(next.chatBackgroundPath, services.attachmentManager)
+      }
+      if (next.avatarPath) {
+        void resolveUserAvatarForMobileUi(
+          next.avatarPath,
+          services.attachmentManager,
+          services.fileSystem
+        )
       }
     } catch {
       setUserProfile({ nickname: t('agent.chat.you_label', '你') })

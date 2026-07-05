@@ -16,7 +16,13 @@ export interface ContextWindowConfig {
    * 仅保留 orderIndex ≤ 此值的消息，用于还原历史某轮发送给 AI 的上下文。
    */
   upToOrderIndex?: number
+  /**
+   * 本次请求必须出现在窗口内的用户消息 id（如已落库但 recentCount 截断会误删时强制保留）。
+   */
+  requiredMessageId?: string
 }
+
+type CompressionSnapshot = Awaited<ReturnType<SnapshotRepository['getLatestSnapshot']>>
 
 export class ContextWindowBuilder {
   /**
@@ -32,35 +38,54 @@ export class ContextWindowBuilder {
     snapshotRepo: SnapshotRepository,
     config: ContextWindowConfig = { recentCount: 30 }
   ): Promise<MessageWithParts[]> {
-    // 拿大范围或者拿全部。因历史库非常长可能卡顿我们用极值限制一下
-    // 注意 getMessagesBySession 内部倒序取并 reverse 原样返还，所以它是从旧到新的
-    let rawMessages = (await sessionRepo.getMessagesBySession(
+    const rawMessages = (await sessionRepo.getMessagesBySession(
       sessionId,
       COMPRESSION_MESSAGE_FETCH_LIMIT
     )) as MessageWithParts[]
+    return this.buildFromMessages(sessionId, snapshotRepo, rawMessages, config)
+  }
+
+  /** 复用已加载的会话消息，避免 streamChat 内重复全量查询 */
+  static async buildFromMessages(
+    sessionId: string,
+    snapshotRepo: SnapshotRepository,
+    rawMessages: MessageWithParts[],
+    config: ContextWindowConfig = { recentCount: 30 },
+    snapshotOverride?: CompressionSnapshot | null
+  ): Promise<MessageWithParts[]> {
     if (rawMessages.length === 0) return []
 
+    let messages = rawMessages
     if (config.upToOrderIndex !== undefined) {
-      rawMessages = rawMessages.filter((m) => m.orderIndex <= config.upToOrderIndex!)
+      messages = messages.filter((m) => m.orderIndex <= config.upToOrderIndex!)
     }
-    if (rawMessages.length === 0) return []
+    if (messages.length === 0) return []
 
     let effectiveMessages: MessageWithParts[] = []
 
-    // 1. 挂接记忆 Snapshot 快照
-    const snapshot = await snapshotRepo.getLatestSnapshot(sessionId)
+    const snapshot =
+      snapshotOverride === undefined
+        ? await snapshotRepo.getLatestSnapshot(sessionId)
+        : snapshotOverride
+
     if (snapshot) {
-      // 优先使用显式保留区起点（tail_start_message_id）；缺失时回退到 coveredUpTo+1
       let retainStartIndex = -1
       if (snapshot.tailStartMessageId) {
-        retainStartIndex = rawMessages.findIndex((m) => m.id === snapshot.tailStartMessageId)
+        retainStartIndex = messages.findIndex((m) => m.id === snapshot.tailStartMessageId)
       }
       if (retainStartIndex < 0) {
-        const cutoffIndex = resolveSnapshotCutoffIndex(rawMessages, snapshot)
+        const cutoffIndex = resolveSnapshotCutoffIndex(messages, snapshot)
         if (cutoffIndex >= 0) retainStartIndex = cutoffIndex + 1
       }
 
-      if (retainStartIndex >= 1 && retainStartIndex <= rawMessages.length - 1) {
+      if (config.requiredMessageId) {
+        const requiredIdx = messages.findIndex((m) => m.id === config.requiredMessageId)
+        if (requiredIdx >= 0 && (retainStartIndex < 0 || retainStartIndex > requiredIdx)) {
+          retainStartIndex = requiredIdx
+        }
+      }
+
+      if (retainStartIndex >= 1 && retainStartIndex <= messages.length - 1) {
         const cleanSummary = normalizeCompressionOutput(snapshot.summaryText, '').summaryText
         const summaryMsg: MessageWithParts = {
           id: 'snapshot_' + snapshot.id,
@@ -79,16 +104,14 @@ export class ContextWindowBuilder {
             }
           ]
         }
-        effectiveMessages = [summaryMsg, ...rawMessages.slice(retainStartIndex)]
+        effectiveMessages = [summaryMsg, ...messages.slice(retainStartIndex)]
       } else {
-        effectiveMessages = [...rawMessages]
+        effectiveMessages = [...messages]
       }
     } else {
-      effectiveMessages = [...rawMessages]
+      effectiveMessages = [...messages]
     }
 
-    // 2. 滑动窗口：按“对话轮数”截断（一轮 = 用户消息 + 该轮 AI 回复与工具调用）
-    // recentCount <= 0 表示不截断（除 Snapshot 外）
     if (config.recentCount <= 0) {
       return effectiveMessages
     }
@@ -101,39 +124,39 @@ export class ContextWindowBuilder {
       const nextMsgInTimeline = i < effectiveMessages.length - 1 ? effectiveMessages[i + 1] : null
       const isUser = msg.role === 'user'
 
-      // 视一个或连续多个 user 消息为同一轮对话的起点
       if (isUser && (!nextMsgInTimeline || nextMsgInTimeline.role !== 'user')) {
         rounds++
       }
 
       if (rounds === config.recentCount && isUser) {
-        // 所属目标轮的 user 消息，将其纳入起点
         startIndex = i
       } else if (rounds > config.recentCount) {
-        // 超出目标轮数，结束搜索
         break
       }
     }
 
-    // 假设首条已被刚才注入了 Summary System，死保它！
     if (snapshot && startIndex > 0) {
-      startIndex = Math.max(1, startIndex) // 保证不能切到底 0 (0是summary)
+      startIndex = Math.max(1, startIndex)
     }
 
-    // 3. 安全退行逻辑：保证如果 startIndex 指向了一条悬空的 tool result 或没结束的 tool call 给退到正常的起点
-    // Vercel AI SDK 极其严格，如果你给它发一个 { role: 'tool', ... } 但是前面并没有它对应的主脑 { role: 'assistant', call }，一定报错。
     while (
       startIndex > 0 &&
       startIndex < effectiveMessages.length &&
-      // 如果头是 tool result 必须要带上属于它的 assistant call (它的上一条或者上面若干条)
       effectiveMessages[startIndex]!.role === 'tool'
     ) {
       startIndex--
     }
-    // 进一步安全：如果 startIndex 现在是 assistant，我们要确保它本身不是只有 call（通常如果是正常的结束它就是发 tool call，下一句马上接 tool result。我们应该把从它产生的连续请求都框进来）
-    // 但倒退回去时，如果是 assistant 发起的工具，倒退它自身没问题！
 
     startIndex = Math.max(0, startIndex)
+
+    if (config.requiredMessageId) {
+      startIndex = expandStartIndexForRequiredMessage(
+        effectiveMessages,
+        startIndex,
+        config.requiredMessageId,
+        Boolean(snapshot)
+      )
+    }
 
     if (snapshot && startIndex > 0) {
       return [effectiveMessages[0]!, ...effectiveMessages.slice(startIndex)]
@@ -141,4 +164,23 @@ export class ContextWindowBuilder {
 
     return effectiveMessages.slice(startIndex)
   }
+}
+
+/** 若 requiredMessageId 会被 recentCount 截掉，则向前扩展 startIndex 以保留该轮 */
+function expandStartIndexForRequiredMessage(
+  effectiveMessages: MessageWithParts[],
+  startIndex: number,
+  requiredMessageId: string,
+  hasSnapshotSummary: boolean
+): number {
+  const anchorIndex = effectiveMessages.findIndex((m) => m.id === requiredMessageId)
+  if (anchorIndex < 0) return startIndex
+
+  let turnStart = anchorIndex
+  while (turnStart > 0 && effectiveMessages[turnStart]!.role !== 'user') {
+    turnStart--
+  }
+
+  const minStart = hasSnapshotSummary ? 1 : 0
+  return Math.min(startIndex, Math.max(minStart, turnStart))
 }

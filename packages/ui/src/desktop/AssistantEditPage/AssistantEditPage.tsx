@@ -9,6 +9,7 @@ import { AssistantEditAvatarSection } from './AssistantEditAvatarSection'
 import { AssistantEditModelBinding } from './AssistantEditModelBinding'
 import { AssistantEditContextSection } from './AssistantEditContextSection'
 import { AssistantEditCompressionSection } from './AssistantEditCompressionSection'
+import { AssistantEditEmojiGroupSection } from './AssistantEditEmojiGroupSection'
 import { AssistantDeleteConfirmDialog } from './AssistantDeleteConfirmDialog'
 import { AssistantModelPicker } from './AssistantModelPicker'
 import { AssistantKindTabBar } from '../AssistantKindTabBar'
@@ -21,11 +22,12 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
   assistant,
   isLastAssistant = false,
   onSave,
+  onPatchSave,
   onDelete,
   onBack
 }) => {
   const { t } = useTranslation()
-  const form = useAssistantEditPage({ assistant, onSave })
+  const form = useAssistantEditPage({ assistant, onSave, onPatchSave })
 
   return (
     <div className={styles.scaffold}>
@@ -81,7 +83,9 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
 
             <div className={styles.spacer16} />
 
-            <label className={styles.fieldLabel}>{t('agent.assistant.prompt_label', '提示词')}</label>
+            <label className={styles.fieldLabel}>
+              {t('agent.assistant.prompt_label', '提示词')}
+            </label>
             <ResizableMarkdownEditor
               content={form.systemPrompt}
               onChange={(value) => form.setSystemPrompt(value || '')}
@@ -90,6 +94,21 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
               minHeight={140}
               maxHeight={520}
             />
+
+            {form.globalEmojiEnabled ? (
+              <>
+                <div className={styles.spacer16} />
+                <div className={styles.sectionDivider} />
+                <div className={styles.spacer16} />
+                <AssistantEditEmojiGroupSection
+                  emojiGroups={form.emojiGroups}
+                  emojiEnabled={form.emojiEnabled}
+                  selectedGroupIds={form.selectedEmojiGroupIds}
+                  onEmojiEnabledChange={form.setEmojiEnabled}
+                  onToggleGroup={form.toggleEmojiGroup}
+                />
+              </>
+            ) : null}
           </section>
 
           <section className={styles.sectionCard}>
@@ -106,6 +125,7 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
               contextWindow={form.contextWindow}
               isUnlimitedContext={form.isUnlimitedContext}
               onContextWindowChange={form.setContextWindow}
+              onContextWindowCommit={form.commitContextWindow}
             />
           </section>
 
@@ -115,8 +135,10 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
               compressKeepTurns={form.compressKeepTurns}
               isCompressDisabled={form.isCompressDisabled}
               onCompressThresholdChange={form.setCompressThreshold}
+              onCompressThresholdCommit={form.commitCompressThreshold}
               onCompressKeepTurnsChange={form.setCompressKeepTurns}
-              onToggleCompress={(enabled) => form.setCompressThreshold(enabled ? 60000 : 0)}
+              onCompressKeepTurnsCommit={form.commitCompressKeepTurns}
+              onToggleCompress={form.handleToggleCompress}
             />
           </section>
         </div>

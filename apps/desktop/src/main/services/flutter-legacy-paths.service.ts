@@ -7,9 +7,69 @@ import {
   assembleDevicePreferencesFromFlutterSp,
   extractFlutterCustomStorageRoot,
   hasMeaningfulFlutterPreferences,
-  parseFlutterSharedPreferencesJson
+  parseFlutterSharedPreferencesJson,
+  type LegacyRootCandidate
 } from '@baishou/core/shared'
-import { createNodeFileSystem, isLegacyAppRoot } from '@baishou/core-desktop'
+import { createNodeFileSystem } from '@baishou/core-desktop'
+
+export interface VersionMigrationFlutterPrefs {
+  config: Record<string, unknown> | null
+  sp: Record<string, unknown> | null
+  supplementedFromMachine: boolean
+}
+
+function deriveConfigFromSp(sp: Record<string, unknown> | null): Record<string, unknown> | null {
+  if (!sp) return null
+  const assembled = assembleDevicePreferencesFromFlutterSp(sp)
+  return hasMeaningfulFlutterPreferences(assembled) ? assembled : null
+}
+
+function hasMeaningfulSpValue(value: unknown): boolean {
+  if (value == null) return false
+  if (typeof value === 'string') return value.trim().length > 0
+  if (Array.isArray(value)) return value.length > 0
+  if (typeof value === 'object') return Object.keys(value as object).length > 0
+  return true
+}
+
+function mergeFlutterSharedPreferences(
+  machineSp: Record<string, unknown>,
+  sourceSp: Record<string, unknown>
+): Record<string, unknown> {
+  const merged = { ...machineSp }
+  for (const [key, value] of Object.entries(sourceSp)) {
+    if (hasMeaningfulSpValue(value)) {
+      merged[key] = value
+    }
+  }
+  return merged
+}
+
+/**
+ * 版本迁移扫描/导入：合并目录与本机 SP，并在仅有 SP 时推导 config（对齐移动端）。
+ */
+export async function resolveVersionMigrationFlutterPrefs(
+  sourceDir: string
+): Promise<VersionMigrationFlutterPrefs> {
+  const prefs = await resolveLegacyPreferencesForMigration(sourceDir)
+  let sp = prefs.sp
+  let config = prefs.config ?? deriveConfigFromSp(sp)
+
+  if (!config && !sp) {
+    const machineSp = await readFlutterSharedPreferencesRaw()
+    if (machineSp) {
+      sp = machineSp
+      config = deriveConfigFromSp(machineSp)
+    }
+  }
+
+  return {
+    sp,
+    config,
+    supplementedFromMachine:
+      prefs.supplementedFromMachine || Boolean(prefs.sp == null && sp != null)
+  }
+}
 
 export interface VersionMigrationFlutterPrefs {
   config: Record<string, unknown> | null
@@ -276,33 +336,56 @@ export function resolveFlutterDocumentsAvatarsDir(): string {
   return join(app.getPath('documents'), 'avatars')
 }
 
-/**
- * 探测旧版 Flutter 工作区根目录候选（自定义路径优先，其次默认 Documents）。
- */
-export async function resolveLegacyRootCandidates(): Promise<string[]> {
-  const candidates: string[] = []
+async function hasNextWorkspaceMarkers(sourceDir: string): Promise<boolean> {
+  return (
+    existsSync(join(sourceDir, 'vault_registry.json')) ||
+    existsSync(join(sourceDir, 'baishou_agent.db'))
+  )
+}
+
+export interface LegacyRootCandidateInput {
+  path: string
+  fromFlutterSp: boolean
+}
+
+export async function buildLegacyRootCandidateInputs(): Promise<LegacyRootCandidateInput[]> {
+  const inputs: LegacyRootCandidateInput[] = []
   const sp = await readFlutterSharedPreferencesRaw()
   if (sp) {
     const customRoot = extractFlutterCustomStorageRoot(sp)
-    if (customRoot) candidates.push(customRoot)
+    if (customRoot) {
+      inputs.push({ path: customRoot, fromFlutterSp: true })
+    }
   }
 
-  candidates.push(join(app.getPath('documents'), 'BaiShou_Root'))
+  inputs.push({ path: join(app.getPath('documents'), 'BaiShou_Root'), fromFlutterSp: false })
+  return inputs
+}
 
+/**
+ * 探测旧版 Flutter 工作区根目录候选（自定义路径优先，其次默认 Documents）。
+ */
+export async function resolveScoredLegacyRootCandidates(): Promise<LegacyRootCandidate[]> {
+  const { collectScoredLegacyRootCandidates } = await import('@baishou/core/shared')
   const fileSystem = createNodeFileSystem()
-  const unique: string[] = []
-  const seen = new Set<string>()
-  for (const candidate of candidates) {
-    const normalized = candidate.replace(/\\/g, '/').replace(/\/$/, '')
-    if (seen.has(normalized)) continue
-    seen.add(normalized)
+  const inputs = await buildLegacyRootCandidateInputs()
+  const filtered: LegacyRootCandidateInput[] = []
+
+  for (const candidate of inputs) {
     try {
-      if (await isLegacyAppRoot(fileSystem, candidate)) {
-        unique.push(candidate)
+      if (await hasNextWorkspaceMarkers(candidate.path)) {
+        continue
       }
+      filtered.push(candidate)
     } catch {
       // ignore unreadable
     }
   }
-  return unique
+
+  return collectScoredLegacyRootCandidates(fileSystem, filtered)
+}
+
+export async function resolveLegacyRootCandidates(): Promise<string[]> {
+  const scored = await resolveScoredLegacyRootCandidates()
+  return scored.map((candidate) => candidate.path)
 }

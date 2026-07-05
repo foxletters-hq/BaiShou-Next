@@ -41,7 +41,7 @@ describe('consumeCompressionModelStream', () => {
       expect.objectContaining({ type: 'reasoning-delta', chunk: 'think ' })
     )
     expect(lifecycle.emitCompressionLifecycle).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'delta', chunk: 'summary ' })
+      expect.objectContaining({ type: 'delta', chunk: 'summary done' })
     )
   })
 })

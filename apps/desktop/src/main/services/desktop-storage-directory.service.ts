@@ -5,7 +5,11 @@ import {
   validateStorageDirectoryWritable
 } from '@baishou/core-desktop'
 import { isPathInsideStorageRoot, isSameStorageRoot, logger } from '@baishou/shared'
-import { shadowConnectionManager } from '@baishou/database-desktop'
+import {
+  connectionManager,
+  installDatabaseSchema,
+  shadowConnectionManager
+} from '@baishou/database-desktop'
 import { pathService, vaultService, connectGlobalShadowDb } from '../ipc/vault.ipc'
 import { fileSystem } from './node-file-system'
 import { settingsManager } from '../ipc/settings.ipc'
@@ -15,6 +19,9 @@ import { sessionWatcher } from './session-watcher.service'
 import { resetSyncService } from '../ipc/incremental-sync.ipc'
 import { resetGitService } from '../ipc/git-sync.ipc'
 import { getMcpService, bootstrapMcpServer } from './mcp-runtime'
+import { invalidateMcpToolContextCache } from '../ipc/agent-helpers'
+import { resolvePickedStorageDirectory } from './desktop-legacy-bootstrap.service'
+import { getAppDb, resetAppDb } from '../db'
 
 export type StorageTargetValidationCode =
   | 'SAME_PATH'
@@ -29,15 +36,27 @@ export type StorageTargetValidation =
 let quiesceDepth = 0
 let mcpWasRunningBeforeQuiesce = false
 
-export async function pickStorageDirectory(window: BrowserWindow): Promise<string | null> {
-  const result = await dialog.showOpenDialog(window, {
+export async function reconnectAgentDbForCurrentStorageRoot(): Promise<void> {
+  const storageRoot = await pathService.getRootDirectory()
+  resetAppDb()
+  const db = getAppDb(storageRoot)
+  connectionManager.setDb(db)
+  await installDatabaseSchema(db)
+  logger.info('[StorageDirectory] Agent DB reconnected for storage root:', storageRoot)
+}
+
+export async function pickStorageDirectory(window?: BrowserWindow | null): Promise<string | null> {
+  const dialogOptions = {
     title: 'Select Data Root Directory',
-    properties: ['openDirectory', 'createDirectory']
-  })
+    properties: ['openDirectory', 'createDirectory'] as ('openDirectory' | 'createDirectory')[]
+  }
+  const result = window
+    ? await dialog.showOpenDialog(window, dialogOptions)
+    : await dialog.showOpenDialog(dialogOptions)
   if (result.canceled || result.filePaths.length === 0) {
     return null
   }
-  return result.filePaths[0]!
+  return resolvePickedStorageDirectory(result.filePaths[0]!)
 }
 
 export async function validateStorageTarget(targetPath: string): Promise<StorageTargetValidation> {
@@ -78,6 +97,13 @@ export async function quiesceStorageForFileCopy(): Promise<void> {
     logger.warn('[StorageDirectory] flushToDisk failed before quiesce:', e as Error)
   }
 
+  try {
+    const { getAgentManagers } = await import('../ipc/agent-helpers')
+    await getAgentManagers().sessionManager.flushPendingDiskWrites()
+  } catch (e) {
+    logger.warn('[StorageDirectory] session flushPending failed before quiesce:', e as Error)
+  }
+
   mcpWasRunningBeforeQuiesce = Boolean(getMcpService()?.running)
   if (mcpWasRunningBeforeQuiesce) {
     try {
@@ -101,6 +127,7 @@ export async function resumeStorageAfterFileCopy(): Promise<void> {
   quiesceDepth -= 1
   if (quiesceDepth > 0) return
 
+  await reconnectAgentDbForCurrentStorageRoot()
   await vaultService.initRegistry()
   await connectGlobalShadowDb()
 
@@ -117,6 +144,19 @@ export async function resumeStorageAfterFileCopy(): Promise<void> {
 
   const { scheduleVaultEcosystemResync } = await import('./vault-resync.service')
   scheduleVaultEcosystemResync('storage-root-changed')
+
+  const { emitStorageRootChangedMutation } = await import('../cache/desktop-main-cache-coordinator')
+  emitStorageRootChangedMutation(vaultService.getActiveVault()?.name)
+
+  try {
+    await settingsManager.fullResyncFromDisk()
+    invalidateMcpToolContextCache()
+  } catch (e) {
+    logger.warn(
+      '[StorageDirectory] settings fullResyncFromDisk failed after root change:',
+      e as Error
+    )
+  }
 
   if (mcpWasRunningBeforeQuiesce) {
     try {

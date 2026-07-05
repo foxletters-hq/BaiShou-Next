@@ -1,11 +1,13 @@
 import React, { useMemo } from 'react'
 import { View, Text, Pressable, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { Layers } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
 import { settingsHubListStyles as hubStyles } from '../settings/settings-hub.styles'
 import { SettingsExpansionTile } from '../settings/SettingsExpansionTile'
 import { CardLinkAction } from '../Button'
 import { HelpTooltip } from '../Tooltip/HelpTooltip'
+import { DEFAULT_STROKE_WIDTH, NAV_ICON_SIZE } from '../../shared/icons/icon-sizes'
 
 export interface VaultInfo {
   name: string
@@ -103,6 +105,9 @@ export const WorkspaceSettingsCard: React.FC<NativeWorkspaceSettingsCardProps> =
     <SettingsExpansionTile
       embedded={embedded}
       isLast={isLast}
+      icon={
+        <Layers size={NAV_ICON_SIZE} strokeWidth={DEFAULT_STROKE_WIDTH} color={colors.textSecondary} />
+      }
       title={t('workspace.title', '工作空间')}
       titleAddon={<HelpTooltip content={workspaceHelpContent} />}
       subtitle={t('workspace.current', '当前空间: {{name}}', {

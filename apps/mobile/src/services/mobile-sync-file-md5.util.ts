@@ -48,6 +48,9 @@ export async function md5HexForSyncFile(
 
   const b64 = await fileSystem.readFile(filePath, 'base64')
   const bytes = base64ToBytes(b64)
-  const digest = await Crypto.digest(Crypto.CryptoDigestAlgorithm.MD5, bytes)
+  const digest = await Crypto.digest(
+    Crypto.CryptoDigestAlgorithm.MD5,
+    bytes as unknown as ArrayBuffer
+  )
   return bytesToHex(new Uint8Array(digest))
 }

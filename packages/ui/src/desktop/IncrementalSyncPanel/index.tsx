@@ -129,7 +129,8 @@ export const IncrementalSyncPanel: React.FC<IncrementalSyncPanelProps> = ({
           }
         >
           <RefreshCw
-            size={16}
+            size={14}
+            strokeWidth={2}
             className={`${styles.syncIcon} ${isSyncing ? styles.spinning : ''}`}
           />
           <span className={styles.syncLabel}>

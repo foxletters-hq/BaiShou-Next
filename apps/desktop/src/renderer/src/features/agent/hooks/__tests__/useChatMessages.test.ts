@@ -164,48 +164,151 @@ describe('useChatMessages', () => {
       rerender({ sid: undefined })
       expect(result.current.messages).toHaveLength(0)
     })
+
+    it('should reload pagination from server when switching sessions', async () => {
+      const s1Messages = Array.from({ length: 12 }, (_, i) => ({
+        id: `s1-${i}`,
+        role: i % 2 === 0 ? 'user' : 'assistant',
+        content: `m${i}`
+      }))
+      const s2Messages = [
+        { id: 's2-0', role: 'user', content: 'other' },
+        { id: 's2-1', role: 'assistant', content: 'reply' }
+      ]
+
+      mockRenderer.invoke.mockImplementation(async (_channel, sessionId: string) => {
+        if (sessionId === 's1') return s1Messages
+        if (sessionId === 's2') return s2Messages
+        return []
+      })
+
+      const { rerender } = renderHook(
+        ({ sid }) =>
+          useChatMessages({
+            sessionId: sid,
+            isStreaming: false,
+            streamingText: '',
+            streamingReasoning: ''
+          }),
+        { initialProps: { sid: 's1' as string | undefined } }
+      )
+
+      await act(async () => {
+        await Promise.resolve()
+      })
+
+      mockRenderer.invoke.mockClear()
+      rerender({ sid: 's2' })
+
+      await act(async () => {
+        await Promise.resolve()
+      })
+
+      expect(mockRenderer.invoke).toHaveBeenCalledWith('agent:get-messages', 's2', 60, 0, false)
+    })
   })
 
-  describe('pendingAssistantMsg', () => {
-    it('should show pending assistant when stream finishes on matching session', () => {
+  describe('refreshLatestMessages pagination reset', () => {
+    it('should collapse expanded history when resetPagination is true', async () => {
+      const dbMessages = Array.from({ length: 12 }, (_, i) => ({
+        id: String(i),
+        role: i % 2 === 0 ? 'user' : 'assistant',
+        content: `m${i}`
+      }))
+      mockRenderer.invoke.mockResolvedValue(dbMessages)
+
+      const { result } = renderHook(() =>
+        useChatMessages({
+          sessionId: 's1',
+          isStreaming: false,
+          streamingText: '',
+          streamingReasoning: ''
+        })
+      )
+
+      await act(async () => {
+        await Promise.resolve()
+      })
+
+      expect(result.current.messages).toHaveLength(6)
+
+      await act(async () => {
+        await result.current.loadMore()
+      })
+
+      expect(result.current.messages.length).toBeGreaterThan(6)
+
+      mockRenderer.invoke.mockResolvedValue(dbMessages)
+      await act(async () => {
+        await result.current.refreshLatestMessages(1, 's1', { resetPagination: true })
+      })
+
+      expect(result.current.messages).toHaveLength(6)
+    })
+  })
+
+  describe('stream finish sync', () => {
+    it('should refresh messages and clear stream bridge when stream finishes on matching session', async () => {
+      const fetchSpy = vi.fn().mockResolvedValue([
+        { id: 'u1', role: 'user', content: 'hi', orderIndex: 0 },
+        { id: 'a1', role: 'assistant', content: 'AI 回复内容', orderIndex: 1 }
+      ])
+      mockRenderer.invoke.mockImplementation(fetchSpy)
+
       const { result, rerender } = renderHook(
-        ({ isStreaming, text }) =>
+        ({ isStreaming }) =>
           useChatMessages({
             sessionId: 's1',
             isStreaming,
-            streamingText: text,
+            streamingText: '',
             streamingReasoning: ''
           }),
-        { initialProps: { isStreaming: true, text: '' } }
+        { initialProps: { isStreaming: true } }
       )
 
       act(() => {
         result.current.setStreamSessionId('s1')
       })
-      rerender({ isStreaming: false, text: 'AI 回复内容' })
+      rerender({ isStreaming: false })
 
-      expect(result.current.pendingAssistantMsg).toBeTruthy()
-      expect(result.current.pendingAssistantMsg?.content).toBe('AI 回复内容')
+      await act(async () => {
+        await Promise.resolve()
+      })
+
+      expect(fetchSpy).toHaveBeenCalled()
     })
 
-    it('should NOT show pending assistant for stream from different session', () => {
+    it('should NOT refresh when stream finishes for a different session', async () => {
+      const fetchSpy = vi.fn().mockResolvedValue([])
+      mockRenderer.invoke.mockImplementation(fetchSpy)
+
       const { result, rerender } = renderHook(
-        ({ isStreaming, text }) =>
+        ({ isStreaming }) =>
           useChatMessages({
             sessionId: 's1',
             isStreaming,
-            streamingText: text,
+            streamingText: '',
             streamingReasoning: ''
           }),
-        { initialProps: { isStreaming: true, text: '' } }
+        { initialProps: { isStreaming: true } }
       )
+
+      await act(async () => {
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+      fetchSpy.mockClear()
 
       act(() => {
         result.current.setStreamSessionId('s2')
       })
-      rerender({ isStreaming: false, text: '其他会话的内容' })
+      rerender({ isStreaming: false })
 
-      expect(result.current.pendingAssistantMsg).toBeNull()
+      await act(async () => {
+        await Promise.resolve()
+      })
+
+      expect(fetchSpy).not.toHaveBeenCalled()
     })
   })
 })

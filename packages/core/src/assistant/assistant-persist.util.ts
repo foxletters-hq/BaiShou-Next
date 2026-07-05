@@ -94,6 +94,36 @@ export function normalizeDiskAssistantRecord(
   }
   delete data.sort_order
 
+  if (data.compress_token_threshold != null && data.compressTokenThreshold == null) {
+    const parsed = Number(data.compress_token_threshold)
+    if (Number.isFinite(parsed)) data.compressTokenThreshold = parsed
+  }
+  delete data.compress_token_threshold
+
+  if (data.compress_keep_turns != null && data.compressKeepTurns == null) {
+    const parsed = Number(data.compress_keep_turns)
+    if (Number.isFinite(parsed)) data.compressKeepTurns = parsed
+  }
+  delete data.compress_keep_turns
+
+  if (data.compress_model_context_window != null && data.compressModelContextWindow == null) {
+    const parsed = Number(data.compress_model_context_window)
+    if (Number.isFinite(parsed)) data.compressModelContextWindow = parsed
+  }
+  delete data.compress_model_context_window
+
+  if (data.compress_preserve_recent_tokens != null && data.compressPreserveRecentTokens == null) {
+    const parsed = Number(data.compress_preserve_recent_tokens)
+    if (Number.isFinite(parsed)) data.compressPreserveRecentTokens = parsed
+  }
+  delete data.compress_preserve_recent_tokens
+
+  if (data.compress_system_prompt != null && data.compressSystemPrompt == null) {
+    data.compressSystemPrompt =
+      typeof data.compress_system_prompt === 'string' ? data.compress_system_prompt : null
+  }
+  delete data.compress_system_prompt
+
   if (data.assistantKind != null) {
     data.assistantKind = normalizeAssistantKind(String(data.assistantKind)) as AssistantKind
   }

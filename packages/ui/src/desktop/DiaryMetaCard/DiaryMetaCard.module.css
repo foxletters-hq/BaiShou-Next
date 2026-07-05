@@ -103,6 +103,16 @@
   color: var(--color-primary);
 }
 
+.iconOutlineBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 4px;
+  background: transparent;
+  border: 0.5px solid var(--color-primary);
+  border-radius: 4px;
+}
+
 .time {
   font-size: 13px;
   font-weight: 500;
@@ -137,13 +147,23 @@
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 12px;
+  /* 两行标签：20px × 2 + 8px 行距，留少量余量避免 +N 被裁切 */
+  max-height: 52px;
+  overflow: hidden;
+  flex-shrink: 0;
 }
 
 .tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 20px;
   padding: 4px 10px;
   border-radius: 8px;
   font-size: 12px;
   font-weight: 600;
+  line-height: 1;
 }
 
 .tagBlue {
@@ -164,6 +184,11 @@
 .tagPurple {
   background-color: #faf5ff;
   color: #7e22ce;
+}
+
+.tagOverflow {
+  background-color: rgba(148, 163, 184, 0.18);
+  color: var(--color-on-surface-variant);
 }
 
 .deleteBtn {

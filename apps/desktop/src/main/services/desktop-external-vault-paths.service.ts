@@ -1,0 +1,203 @@
+import * as fs from 'fs/promises'
+import { constants as fsConstants } from 'node:fs'
+import * as path from 'path'
+import {
+  countJournalMarkdownInTree,
+  countSummaryMarkdownInArchivesTreeByType,
+  type SummaryArchivesMarkdownCounts
+} from '@baishou/core/shared'
+import { fileSystem } from './node-file-system'
+import { pathService, vaultService } from '../ipc/vault.ipc'
+import { diaryWatcher } from './diary-watcher.service'
+import { summaryWatcher } from './summary-watcher.service'
+import { globalBootstrapper } from './bootstrapper.service'
+
+const vaultFileSystem = fileSystem
+
+export type ExternalDirectoryValidation =
+  | { valid: true; path: string }
+  | { valid: false; code: 'NOT_DIRECTORY' | 'NOT_ACCESSIBLE' | 'NOT_WRITABLE' }
+
+async function validateExternalDirectory(targetPath: string): Promise<ExternalDirectoryValidation> {
+  const normalized = targetPath.trim()
+  if (!normalized) {
+    return { valid: false, code: 'NOT_DIRECTORY' }
+  }
+
+  try {
+    const stat = await fs.stat(normalized)
+    if (!stat.isDirectory()) {
+      return { valid: false, code: 'NOT_DIRECTORY' }
+    }
+  } catch {
+    return { valid: false, code: 'NOT_ACCESSIBLE' }
+  }
+
+  try {
+    await fs.access(normalized, fsConstants.R_OK | fsConstants.W_OK)
+  } catch {
+    return { valid: false, code: 'NOT_WRITABLE' }
+  }
+
+  return { valid: true, path: normalized }
+}
+
+export type ExternalJournalsValidation =
+  | ({ valid: true; path: string } & { journalFileCount: number })
+  | { valid: false; code: 'NOT_DIRECTORY' | 'NOT_ACCESSIBLE' | 'NOT_WRITABLE' }
+
+export type ExternalSummariesValidation =
+  | ({ valid: true; path: string } & {
+      summaryFileCount: number
+      summaryFileCounts: SummaryArchivesMarkdownCounts
+    })
+  | { valid: false; code: 'NOT_DIRECTORY' | 'NOT_ACCESSIBLE' | 'NOT_WRITABLE' }
+
+export async function validateExternalJournalsDirectory(
+  targetPath: string
+): Promise<ExternalJournalsValidation> {
+  const base = await validateExternalDirectory(targetPath)
+  if (!base.valid) return base
+  const journalFileCount = await countJournalMarkdownInTree(vaultFileSystem, base.path)
+  return { valid: true, path: base.path, journalFileCount }
+}
+
+export async function validateExternalSummariesDirectory(
+  targetPath: string
+): Promise<ExternalSummariesValidation> {
+  const base = await validateExternalDirectory(targetPath)
+  if (!base.valid) return base
+  const summaryFileCounts = await countSummaryMarkdownInArchivesTreeByType(
+    vaultFileSystem,
+    base.path
+  )
+  return {
+    valid: true,
+    path: base.path,
+    summaryFileCount: summaryFileCounts.total,
+    summaryFileCounts
+  }
+}
+
+async function refreshVaultFileWatchersAndResync(reason: string): Promise<void> {
+  diaryWatcher.stop()
+  summaryWatcher.stop()
+  const { resetAttachmentAllowedRootsCache } = await import('../ipc/attachment-path-cache')
+  resetAttachmentAllowedRootsCache()
+  const { resetSharedShadowSync } = await import('./shadow-sync.registry')
+  resetSharedShadowSync()
+
+  await globalBootstrapper.activateVaultRuntime()
+  const { scheduleVaultEcosystemResync } = await import('./vault-resync.service')
+  scheduleVaultEcosystemResync(reason)
+}
+
+export async function applyExternalJournalsDirectory(targetPath: string | null): Promise<void> {
+  const active = vaultService.getActiveVault()
+  if (!active) {
+    throw new Error('无活动工作区，无法设置外部日记目录')
+  }
+
+  if (targetPath?.trim()) {
+    const validation = await validateExternalJournalsDirectory(targetPath)
+    if (!validation.valid) {
+      throw new Error(validation.code)
+    }
+    await pathService.setExternalJournalsDirectory(validation.path, active.name)
+  } else {
+    await pathService.setExternalJournalsDirectory(null, active.name)
+  }
+
+  await refreshVaultFileWatchersAndResync(
+    targetPath ? 'external-journals-path-set' : 'external-journals-path-cleared'
+  )
+}
+
+export async function applyExternalSummariesDirectory(targetPath: string | null): Promise<void> {
+  const active = vaultService.getActiveVault()
+  if (!active) {
+    throw new Error('无活动工作区，无法设置外部总结目录')
+  }
+
+  if (targetPath?.trim()) {
+    const validation = await validateExternalSummariesDirectory(targetPath)
+    if (!validation.valid) {
+      throw new Error(validation.code)
+    }
+    await pathService.setExternalSummariesDirectory(validation.path, active.name)
+  } else {
+    await pathService.setExternalSummariesDirectory(null, active.name)
+  }
+
+  await refreshVaultFileWatchersAndResync(
+    targetPath ? 'external-summaries-path-set' : 'external-summaries-path-cleared'
+  )
+}
+
+async function isExternalPathAvailableOnDevice(externalPath: string | null): Promise<boolean> {
+  if (!externalPath?.trim()) return true
+  try {
+    await fs.access(externalPath)
+    return true
+  } catch {
+    return false
+  }
+}
+
+export async function getExternalJournalsDirectoryInfo(): Promise<{
+  path: string | null
+  defaultPath: string
+  journalFileCount: number
+  pathAvailableOnDevice: boolean
+}> {
+  const active = vaultService.getActiveVault()
+  const vaultDir = active
+    ? await pathService.getVaultDirectory(active.name)
+    : await pathService.getActiveVaultPath()
+  const defaultPath = vaultDir ? path.join(vaultDir, 'Journals') : ''
+  const external = await pathService.getExternalJournalsDirectory(active?.name)
+  const scanDir = external ?? defaultPath
+  const journalFileCount = scanDir
+    ? await countJournalMarkdownInTree(vaultFileSystem, scanDir).catch(() => 0)
+    : 0
+  const pathAvailableOnDevice = await isExternalPathAvailableOnDevice(external)
+  return {
+    path: external,
+    defaultPath,
+    journalFileCount,
+    pathAvailableOnDevice
+  }
+}
+
+export async function getExternalSummariesDirectoryInfo(): Promise<{
+  path: string | null
+  defaultPath: string
+  summaryFileCount: number
+  summaryFileCounts: SummaryArchivesMarkdownCounts
+  pathAvailableOnDevice: boolean
+}> {
+  const active = vaultService.getActiveVault()
+  const vaultDir = active
+    ? await pathService.getVaultDirectory(active.name)
+    : await pathService.getActiveVaultPath()
+  const defaultPath = vaultDir ? path.join(vaultDir, 'Archives') : ''
+  const external = await pathService.getExternalSummariesDirectory(active?.name)
+  const scanDir = external ?? defaultPath
+  const summaryFileCounts = scanDir
+    ? await countSummaryMarkdownInArchivesTreeByType(vaultFileSystem, scanDir).catch(() => ({
+        total: 0,
+        weekly: 0,
+        monthly: 0,
+        quarterly: 0,
+        yearly: 0
+      }))
+    : { total: 0, weekly: 0, monthly: 0, quarterly: 0, yearly: 0 }
+  const pathAvailableOnDevice = await isExternalPathAvailableOnDevice(external)
+  return {
+    path: external,
+    defaultPath,
+    summaryFileCount: summaryFileCounts.total,
+    summaryFileCounts,
+    pathAvailableOnDevice
+  }
+}

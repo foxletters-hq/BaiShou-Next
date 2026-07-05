@@ -77,6 +77,18 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
     return this.migrationStore.hasPendingMigration(...args)
   }
 
+  hasMigrationBackupTable(
+    ...args: Parameters<HybridSearchMigrationStore['hasMigrationBackupTable']>
+  ) {
+    return this.migrationStore.hasMigrationBackupTable(...args)
+  }
+
+  hasMigrationRollbackTable(
+    ...args: Parameters<HybridSearchMigrationStore['hasMigrationRollbackTable']>
+  ) {
+    return this.migrationStore.hasMigrationRollbackTable(...args)
+  }
+
   countHeterogeneousEmbeddings(
     ...args: Parameters<HybridSearchMigrationStore['countHeterogeneousEmbeddings']>
   ) {

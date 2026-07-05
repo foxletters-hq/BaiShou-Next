@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { InputBar } from '@baishou/ui'
 import { usePromptShortcutStore } from '@baishou/store'
-import { MdAutoAwesome } from 'react-icons/md'
 import styles from './AgentHome.module.css'
+import { Sparkles } from 'lucide-react'
 
 /**
  * /agent 路由的右侧空态落地页。
@@ -25,13 +25,14 @@ export const AgentHomePage: React.FC = () => {
   const handleSend = (text: string) => {
     const newId = `new-${Date.now()}`
     navigate(`/chat/${newId}?init=${encodeURIComponent(text)}`)
+    return true
   }
 
   return (
     <div className={styles.emptyPanel}>
       <div className={styles.emptyContent}>
         <div className={styles.iconCircle}>
-          <MdAutoAwesome className={styles.awesomeIcon} />
+          <Sparkles className={styles.awesomeIcon} />
         </div>
         <h2 className={styles.emptyTitle}>{t('agent.home.start_new_chat', '开始新的对话')}</h2>
         <p className={styles.emptySubtitle}>

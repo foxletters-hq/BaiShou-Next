@@ -11,9 +11,13 @@ import {
   formatLocalDate,
   parseDateStr,
   weatherMatchesFilter,
-  formatDiaryPreviewText,
+  moodMatchesFilter,
+  resolveWeatherId,
+  resolveMoodId,
+  normalizeDiaryPreviewMarkdown,
   mergeDiaryTagColorRegistries,
-  normalizeDiaryTagColorRegistry
+  normalizeDiaryTagColorRegistry,
+  resolveDiaryTagsFromSources
 } from '@baishou/shared'
 import { DiaryNotFoundError, DiaryDateConflictError } from './diary.types'
 import { emitDomainMutation } from '../events'
@@ -82,8 +86,23 @@ export class DiaryService {
   // formatDateString 已移除，全链路统一使用 @baishou/shared 的 formatLocalDate
 
   async update(id: number, input: UpdateDiaryInput): Promise<Diary> {
-    // 使用影子索引查询要修改的文件的历史日历
-    const existingShadow = await this.shadowRepo.findById(id)
+    let resolvedId = id
+    let existingShadow = await this.shadowRepo.findById(resolvedId)
+
+    const inputDate = input.date
+      ? input.date instanceof Date
+        ? input.date
+        : parseDateStr(String(input.date).split('T')[0]!)
+      : undefined
+
+    if (!existingShadow && inputDate) {
+      const healedShadow = await this.resolveDiaryShadowForDate(inputDate, resolvedId)
+      if (healedShadow) {
+        resolvedId = healedShadow.id
+        existingShadow = healedShadow
+      }
+    }
+
     if (!existingShadow) {
       throw new DiaryNotFoundError(id)
     }
@@ -92,19 +111,14 @@ export class DiaryService {
     const existingDateStr = sdStr.split('T')[0]!
     const existingDate = parseDateStr(existingDateStr)
 
-    // 尝试拉出物理正本文件
-    const existingDiary = await this.fileSync.readJournal(existingDate)
+    // 尝试拉出物理正本文件（沿用影子索引中的实际路径，兼容外部 Obsidian 非标准布局）
+    const existingDiary = await this.fileSync.readJournal(existingDate, existingShadow.filePath)
     if (!existingDiary) {
       // 如果由于各种奇怪原因，文件被人删了但索引还存留
-      throw new DiaryNotFoundError(id)
+      throw new DiaryNotFoundError(resolvedId)
     }
 
     // 确保 input.date 是 Date 对象（前端 IPC 传递可能会变成 string）
-    const inputDate = input.date
-      ? input.date instanceof Date
-        ? input.date
-        : parseDateStr(String(input.date).split('T')[0]!)
-      : undefined
 
     // 比对日期字符串（对齐原版 oldDateStr != fmt.format(date)）
     const oldDateStr = formatLocalDate(existingDate)
@@ -128,7 +142,7 @@ export class DiaryService {
     }
 
     // 模拟数据落盘（此时文件指纹一定会变动）
-    const finalId = conflictId || id
+    const finalId = conflictId || resolvedId
     const mergedDiaryToSave: Diary = {
       ...existingDiary,
       ...input,
@@ -136,7 +150,7 @@ export class DiaryService {
       updatedAt: new Date()
     }
     if (inputDate) mergedDiaryToSave.date = inputDate
-    await this.fileSync.writeJournal(mergedDiaryToSave)
+    await this.fileSync.writeJournal(mergedDiaryToSave, existingShadow.filePath)
 
     // 呼唤影子同步引擎进行更新重算和提取
     // 如果修改了日期，那么目标文件名也变了，要对新的日期发出同步令，对旧日期由于删除了它会自动触发孤立清除
@@ -144,23 +158,23 @@ export class DiaryService {
 
     if (inputDate && isDateJumped) {
       await this.shadowSync.syncJournal(existingDateStr) // 这会触发删除旧索引的孤立清理
-      this.vaultIndex.remove(id) // 安全清理防鬼影
+      this.vaultIndex.remove(resolvedId) // 安全清理防鬼影
     }
 
     const syncResult = await this.shadowSync.syncJournal(formatLocalDate(targetDate))
 
     if (syncResult.meta) {
       this.vaultIndex.upsert(syncResult.meta)
-      const resolvedId = syncResult.meta.id
-      if (mergedDiaryToSave.id !== resolvedId) {
-        mergedDiaryToSave.id = resolvedId
-        await this.fileSync.writeJournal(mergedDiaryToSave)
+      const syncedId = syncResult.meta.id
+      if (mergedDiaryToSave.id !== syncedId) {
+        mergedDiaryToSave.id = syncedId
+        await this.fileSync.writeJournal(mergedDiaryToSave, existingShadow.filePath)
       } else {
-        mergedDiaryToSave.id = resolvedId
+        mergedDiaryToSave.id = syncedId
       }
     } else {
       // 预防性清理防止鬼影
-      this.vaultIndex.remove(id)
+      this.vaultIndex.remove(resolvedId)
     }
 
     emitDomainMutation({ domain: 'diary', action: 'update', entityId: mergedDiaryToSave.id })
@@ -194,8 +208,11 @@ export class DiaryService {
     if (existingDiary) {
       // 若已存在，则合并内容并做更新
       this._mergeDiaries(input, existingDiary)
-      const finalId = existingDiary.id ?? Date.now()
-      return this.update(finalId, {
+      const resolvedId = await this.resolveDiaryIdForDate(inputDate, existingDiary.id)
+      if (!resolvedId) {
+        throw new DiaryNotFoundError(existingDiary.id ?? 0)
+      }
+      return this.update(resolvedId, {
         ...input,
         date: inputDate
       })
@@ -231,9 +248,79 @@ export class DiaryService {
     const date = parseDateStr(dateStr)
 
     // HEALING: Lazily trigger sync to heal any out-of-sync local file editing
-    this.shadowSync.syncJournal(dateStr).catch((e) => console.warn('Lazy sync failed', e))
+    this.shadowSync.syncJournal(dateStr, true).catch((e) => console.warn('Lazy sync failed', e))
 
-    return this.fileSync.readJournal(date)
+    const fromDisk = await this.fileSync.readJournal(date, shadow.filePath)
+    if (fromDisk?.content?.trim()) {
+      if (!fromDisk.id) fromDisk.id = shadow.id
+      return fromDisk
+    }
+
+    if (shadow.rawContent?.trim()) {
+      return this.buildDiaryFromShadowRow(shadow, date)
+    }
+
+    if (fromDisk) {
+      if (!fromDisk.id) fromDisk.id = shadow.id
+      return fromDisk
+    }
+
+    return null
+  }
+
+  /**
+   * 批量加载日记正文供 RAG 嵌入：优先使用影子索引中的 rawContent，避免逐篇读磁盘。
+   */
+  async findByIdsForEmbedding(ids: number[]): Promise<Map<number, Diary>> {
+    const result = new Map<number, Diary>()
+    if (ids.length === 0) return result
+
+    const rows = await this.shadowRepo.findByIds(ids)
+    const diskFallbackIds: number[] = []
+
+    for (const shadow of rows) {
+      const dateStr = String(shadow.date).split('T')[0]!
+      const date = parseDateStr(dateStr)
+      if (shadow.rawContent?.trim()) {
+        result.set(shadow.id, this.buildDiaryFromShadowRow(shadow, date))
+      } else {
+        diskFallbackIds.push(shadow.id)
+      }
+    }
+
+    for (const id of diskFallbackIds) {
+      const diary = await this.findById(id)
+      if (diary?.id) {
+        result.set(id, diary)
+      }
+    }
+
+    return result
+  }
+
+  private buildDiaryFromShadowRow(
+    shadow: NonNullable<Awaited<ReturnType<ShadowIndexRepository['findById']>>>,
+    date: Date
+  ): Diary {
+    const parsedTags = resolveDiaryTagsFromSources(shadow.tags ?? '', shadow.rawContent ?? '')
+
+    return {
+      id: shadow.id,
+      date,
+      content: shadow.rawContent ?? '',
+      tags: parsedTags.length > 0 ? parsedTags.join(',') : undefined,
+      tagColors:
+        Object.keys(normalizeDiaryTagColorRegistry(shadow.tagColors)).length > 0
+          ? normalizeDiaryTagColorRegistry(shadow.tagColors)
+          : undefined,
+      updatedAt: shadow.updatedAt ? new Date(shadow.updatedAt) : undefined,
+      weather: shadow.weather ?? undefined,
+      mood: shadow.mood ?? undefined,
+      location: shadow.location ?? undefined,
+      locationDetail: shadow.locationDetail ?? undefined,
+      isFavorite: shadow.isFavorite,
+      mediaPaths: []
+    }
   }
 
   /** 批量读取影子索引元数据（不读磁盘日记正文，供搜索列表等场景） */
@@ -248,19 +335,24 @@ export class DiaryService {
   }
 
   async findByDate(date: Date): Promise<Diary | null> {
-    // 穿透底层：真相直接来在物理文件
-    const diary = await this.fileSync.readJournal(date)
-
-    // 补救机制：如果物理文件遗漏了头部属性的 ID
-    if (diary && !diary.id) {
-      const shadow = await this.shadowRepo.findByDate(formatLocalDate(date))
-      if (shadow) diary.id = shadow.id
-    }
+    const dateStr = formatLocalDate(date)
+    const shadow = await this.shadowRepo.findByDate(dateStr)
 
     // HEALING: Lazily trigger sync to heal any out-of-sync local file editing
-    this.shadowSync
-      .syncJournal(formatLocalDate(date))
-      .catch((e) => console.warn('Lazy sync failed', e))
+    this.shadowSync.syncJournal(dateStr, true).catch((e) => console.warn('Lazy sync failed', e))
+
+    // 打开编辑器时优先用影子索引正文，避免每次读盘阻塞 IPC
+    if (shadow?.rawContent?.trim()) {
+      return this.buildDiaryFromShadowRow(shadow, date)
+    }
+
+    // 穿透底层：真相来自物理文件；优先使用影子索引记录的实际路径（外部存储 / Obsidian 布局）
+    const diary = await this.fileSync.readJournal(date, shadow?.filePath)
+
+    // 补救机制：如果物理文件遗漏了头部属性的 ID
+    if (diary && !diary.id && shadow) {
+      diary.id = shadow.id
+    }
 
     return diary
   }
@@ -334,6 +426,7 @@ export class DiaryService {
     return Boolean(
       filter.favorite ||
       (filter.weathers && filter.weathers.length > 0) ||
+      (filter.moods && filter.moods.length > 0) ||
       (filter.year != null && filter.month != null)
     )
   }
@@ -369,6 +462,7 @@ export class DiaryService {
     const hasExtraFilter =
       options?.favorite ||
       (options?.weathers && options.weathers.length > 0) ||
+      (options?.moods && options.moods.length > 0) ||
       (options?.year != null && options?.month != null)
 
     if (!hasExtraFilter) {
@@ -408,6 +502,9 @@ export class DiaryService {
     if (filter.weathers && filter.weathers.length > 0) {
       if (!weatherMatchesFilter(meta.weather, filter.weathers)) return false
     }
+    if (filter.moods && filter.moods.length > 0) {
+      if (!moodMatchesFilter(meta.mood, filter.moods)) return false
+    }
     return true
   }
 
@@ -428,28 +525,20 @@ export class DiaryService {
     },
     previewOverride?: string
   ): DiaryMeta {
-    const tagsSource = s.tags ?? s.tagsStr ?? ''
-    let parsedTags: string[] = []
-    if (tagsSource) {
-      parsedTags = tagsSource
-        .split(',')
-        .map((t: string) => t.trim())
-        .filter(Boolean)
-    }
-
     const tagColors = normalizeDiaryTagColorRegistry(s.tagColors)
     const rawContent = s.rawContent ?? ''
+    const parsedTags = resolveDiaryTagsFromSources(s.tags ?? s.tagsStr ?? '', rawContent)
     return {
       id: s.id,
       date: parseDateStr(s.date.split('T')[0]!),
-      preview: formatDiaryPreviewText(
+      preview: normalizeDiaryPreviewMarkdown(
         previewOverride || (rawContent ? rawContent.substring(0, 500) : '')
       ),
       tags: parsedTags,
       tagColors: Object.keys(tagColors).length > 0 ? tagColors : undefined,
       updatedAt: s.updatedAt ? new Date(s.updatedAt) : undefined,
-      weather: s.weather || undefined,
-      mood: s.mood || undefined,
+      weather: resolveWeatherId(s.weather) ?? undefined,
+      mood: resolveMoodId(s.mood) ?? undefined,
       location: s.location || undefined,
       isFavorite: s.isFavorite || false,
       hasMedia: s.hasMedia || false
@@ -462,6 +551,36 @@ export class DiaryService {
 
   async getActivityData(year?: number): Promise<Array<{ date: string; count: number }>> {
     return this.shadowRepo.getActivityData(year)
+  }
+
+  private async resolveDiaryShadowForDate(
+    date: Date,
+    preferredId?: number | null
+  ): Promise<Awaited<ReturnType<ShadowIndexRepository['findByDate']>> | null> {
+    if (preferredId) {
+      const byId = await this.shadowRepo.findById(preferredId)
+      if (byId) return byId
+    }
+
+    const dateStr = formatLocalDate(date)
+    const byDate = await this.shadowRepo.findByDate(dateStr)
+    if (byDate) return byDate
+
+    const syncResult = await this.shadowSync.syncJournal(dateStr)
+    if (!syncResult.meta) return null
+
+    return (
+      (await this.shadowRepo.findById(syncResult.meta.id)) ??
+      (await this.shadowRepo.findByDate(dateStr))
+    )
+  }
+
+  private async resolveDiaryIdForDate(
+    date: Date,
+    preferredId?: number | null
+  ): Promise<number | null> {
+    const shadow = await this.resolveDiaryShadowForDate(date, preferredId)
+    return shadow?.id ?? null
   }
 
   /**
@@ -497,8 +616,7 @@ export class DiaryService {
       normalizeDiaryTagColorRegistry(target.tagColors),
       normalizeDiaryTagColorRegistry(source.tagColors)
     )
-    source.tagColors =
-      Object.keys(mergedTagColors).length > 0 ? mergedTagColors : undefined
+    source.tagColors = Object.keys(mergedTagColors).length > 0 ? mergedTagColors : undefined
 
     // 其他必要元数据如果有丢失则补充
     source.weather = source.weather ?? target.weather

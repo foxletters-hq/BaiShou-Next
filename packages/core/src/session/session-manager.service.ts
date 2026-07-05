@@ -6,21 +6,35 @@ import {
 } from '@baishou/database'
 import { SessionSyncService } from './session-sync.service'
 import { SessionFileService } from './session-file.service'
+import {
+  SessionDiskPersistenceService,
+  type SessionDiskFlushUrgency,
+  type SessionDiskPersistenceHooks
+} from './session-disk-persistence.service'
 
 /**
  * AI 会话总管
- * 拦截对 SQLite 的原子操作，并在每次修改后抽取 Aggregate 快照转存 JSON 从而获得跨端漫游能力。
+ * 拦截对 SQLite 的原子操作，并通过 SessionDiskPersistenceService 调度 JSON 落盘。
  */
 export class SessionManagerService {
+  private readonly persistence: SessionDiskPersistenceService
+
   constructor(
     private readonly sessionRepo: SessionRepository,
     private readonly fileService: SessionFileService,
-    private readonly syncService: SessionSyncService
-  ) {}
+    private readonly syncService: SessionSyncService,
+    persistenceHooks?: SessionDiskPersistenceHooks
+  ) {
+    this.persistence = new SessionDiskPersistenceService(
+      sessionRepo,
+      fileService,
+      persistenceHooks
+    )
+  }
 
   async upsertSession(input: InsertSessionInput): Promise<void> {
     await this.sessionRepo.upsertSession(input)
-    await this.flushSessionToDisk(input.id)
+    await this.persistence.flushNow(input.id)
   }
 
   async insertMessageWithParts(
@@ -28,7 +42,8 @@ export class SessionManagerService {
     parts: InsertPartInput[]
   ): Promise<void> {
     await this.sessionRepo.insertMessageWithParts(message, parts)
-    await this.flushSessionToDisk(message.sessionId)
+    // 用户消息高频写入：SQLite 即时落库，JSON 防抖落盘（避免每条消息全量序列化阻塞发送）
+    this.persistence.notifySessionMutated(message.sessionId, 'debounced')
   }
 
   async updateTokenUsage(
@@ -47,25 +62,28 @@ export class SessionManagerService {
       cacheReadInputTokens,
       cacheWriteInputTokens
     )
-    await this.flushSessionToDisk(id)
+    await this.persistence.flushNow(id)
   }
 
   async togglePin(id: string, isPinned: boolean): Promise<void> {
     await this.sessionRepo.togglePin(id, isPinned)
-    await this.flushSessionToDisk(id)
+    await this.persistence.flushNow(id)
   }
 
-  /**
-   * 更新会话标题
-   */
   async updateTitle(sessionId: string, title: string): Promise<void> {
     await this.sessionRepo.updateSessionTitle(sessionId, title)
-    await this.flushSessionToDisk(sessionId)
+    await this.persistence.flushNow(sessionId)
   }
 
-  /**
-   * 获取所有会话列表（findAllSessions 的便捷别名）
-   */
+  async updateSessionDialogueModel(
+    sessionId: string,
+    providerId: string,
+    modelId: string
+  ): Promise<void> {
+    await this.sessionRepo.updateSessionDialogueModel(sessionId, providerId, modelId)
+    await this.persistence.flushNow(sessionId)
+  }
+
   async list(limit: number = 20, offset: number = 0, assistantId?: string, searchQuery?: string) {
     return this.findAllSessions(limit, offset, assistantId, searchQuery)
   }
@@ -76,8 +94,6 @@ export class SessionManagerService {
       await this.fileService.deleteSession(id)
     }
   }
-
-  // ========== Query Readthrough ==========
 
   async getMessagesBySession(sessionId: string, limit: number = 50, offset: number = 0) {
     return this.sessionRepo.getMessagesBySession(sessionId, limit, offset)
@@ -96,24 +112,25 @@ export class SessionManagerService {
     return this.sessionRepo.getSessionById(sessionId)
   }
 
-  // ========== Internal Engine ==========
-
   /**
-   * 核心漫游同步器：将 SQLite 这个纯状态机的热结果快照抽出，静默回写成为 SSOT 的 JSON 文件！
-   * 外部的流式回答或业务组装方也可以手动调用它来归档会话。
+   * 外部直接改 SQLite 后登记落盘（统一入口，避免散落 flush 调用）
    */
-  public async flushSessionToDisk(sessionId: string): Promise<void> {
-    const aggregate = await this.sessionRepo.getSessionAggregate(sessionId)
-    if (aggregate) {
-      await this.fileService.writeSession(sessionId, aggregate)
-    }
+  notifySessionMutated(sessionId: string, urgency: SessionDiskFlushUrgency = 'immediate'): void {
+    this.persistence.notifySessionMutated(sessionId, urgency)
   }
 
-  /**
-   * 对外暴露，当需要触发从云盘恢复数据时调用
-   */
+  /** 立即将会话 aggregate 写入 JSON */
+  public flushSessionToDisk(sessionId: string): Promise<void> {
+    return this.persistence.flushNow(sessionId)
+  }
+
+  /** 仅 flush 脏会话（增量同步 / 存储静默前） */
+  async flushPendingDiskWrites(): Promise<void> {
+    await this.persistence.flushPending()
+  }
+
   async fullResyncFromDisks(
-    options?: import('../sync/disk-resync.types').DiskResyncOptions
+    options?: import('../vault/disk-resync.types').DiskResyncOptions
   ): Promise<void> {
     await this.syncService.fullScanArchives(options)
   }

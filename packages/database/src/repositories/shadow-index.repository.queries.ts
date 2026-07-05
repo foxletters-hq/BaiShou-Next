@@ -1,4 +1,8 @@
-import { expandWeatherFilterValues } from '@baishou/shared'
+import {
+  expandMoodFilterValues,
+  expandWeatherFilterValues,
+  buildJournalTreeSkipSqlLikeClauses
+} from '@baishou/shared'
 import { eq, sql, like, and, inArray, desc, asc, gte, lte } from 'drizzle-orm'
 import { shadowJournalIndexTable } from '../schema/shadow-index'
 import type { AppDatabase } from '../types'
@@ -27,6 +31,12 @@ export class ShadowIndexQueryOps {
   private withVault(...conditions: Parameters<typeof and>) {
     const extra = conditions.filter(Boolean)
     return extra.length > 0 ? and(this.vaultFilter(), ...extra) : this.vaultFilter()
+  }
+
+  /** 排除 Archives 等总结子目录中误入影子索引的记录 */
+  private journalPathNotUnderSkippedDirs() {
+    const clauses = buildJournalTreeSkipSqlLikeClauses('file_path').map((clause) => sql.raw(clause))
+    return and(...clauses)
   }
 
   async findByDatePrefix(dayStr: string): Promise<ShadowJournalRecord[]> {
@@ -340,17 +350,46 @@ export class ShadowIndexQueryOps {
       conditions.push(inArray(shadowJournalIndexTable.weather, expanded))
     }
 
+    if (options.moods && options.moods.length > 0) {
+      const expanded = expandMoodFilterValues(options.moods)
+      conditions.push(inArray(shadowJournalIndexTable.mood, expanded))
+    }
+
     return and(...conditions)
   }
 
   async listFiltered(options: DiaryListFilterOptions = {}): Promise<ShadowJournalRow[]> {
+    /** 列表 preview 专用：raw_content 仅取前 500 字，不可用于需要全文的场景 */
     const where = this.buildListFilterWhere(options)
     const orderFn =
       options.orderBy === 'asc'
         ? asc(shadowJournalIndexTable.date)
         : desc(shadowJournalIndexTable.date)
 
-    let query = this.database.select().from(shadowJournalIndexTable).where(where).orderBy(orderFn)
+    let query = this.database
+      .select({
+        id: shadowJournalIndexTable.id,
+        vaultName: shadowJournalIndexTable.vaultName,
+        filePath: shadowJournalIndexTable.filePath,
+        date: shadowJournalIndexTable.date,
+        createdAt: shadowJournalIndexTable.createdAt,
+        updatedAt: shadowJournalIndexTable.updatedAt,
+        contentHash: shadowJournalIndexTable.contentHash,
+        weather: shadowJournalIndexTable.weather,
+        mood: shadowJournalIndexTable.mood,
+        location: shadowJournalIndexTable.location,
+        locationDetail: shadowJournalIndexTable.locationDetail,
+        isFavorite: shadowJournalIndexTable.isFavorite,
+        hasMedia: shadowJournalIndexTable.hasMedia,
+        tags: shadowJournalIndexTable.tags,
+        tagColors: shadowJournalIndexTable.tagColors,
+        rawContent: sql<string | null>`substr(${shadowJournalIndexTable.rawContent}, 1, 500)`.as(
+          'raw_content'
+        )
+      })
+      .from(shadowJournalIndexTable)
+      .where(where)
+      .orderBy(orderFn)
     if (options.limit != null && options.limit > 0) {
       query = query.limit(options.limit) as typeof query
     }
@@ -486,20 +525,28 @@ export class ShadowIndexQueryOps {
     const result = await this.database
       .select({ count: sql<number>`count(*)` })
       .from(shadowJournalIndexTable)
-      .where(this.vaultFilter())
+      .where(this.withVault(this.journalPathNotUnderSkippedDirs()))
     return result[0]?.count || 0
   }
 
   async getActivityData(year?: number): Promise<{ date: string; count: number }[]> {
     try {
-      const rows =
-        year != null
-          ? ((await this.database.all(
-              sql`SELECT date, 1 as count FROM journals_index WHERE vault_name = ${this.vaultName} AND date >= ${`${year}-01-01`} AND date <= ${`${year}-12-31`} ORDER BY date ASC`
-            )) as { date: string; count: number }[])
-          : ((await this.database.all(
-              sql`SELECT date, 1 as count FROM journals_index WHERE vault_name = ${this.vaultName} ORDER BY date ASC`
-            )) as { date: string; count: number }[])
+      const rows = await this.database
+        .select({
+          date: shadowJournalIndexTable.date,
+          count: sql<number>`1`
+        })
+        .from(shadowJournalIndexTable)
+        .where(
+          year != null
+            ? this.withVault(
+                this.journalPathNotUnderSkippedDirs(),
+                gte(shadowJournalIndexTable.date, `${year}-01-01`),
+                lte(shadowJournalIndexTable.date, `${year}-12-31`)
+              )
+            : this.withVault(this.journalPathNotUnderSkippedDirs())
+        )
+        .orderBy(sql`${shadowJournalIndexTable.date} ASC`)
       return rows.map((row) => ({
         date: row.date,
         count: Number(row.count) || 1

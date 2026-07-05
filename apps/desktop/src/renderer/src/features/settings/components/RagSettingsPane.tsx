@@ -80,6 +80,9 @@ export const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
         onEditEntry={handleEditEntry}
         onExportEmbeddings={handleExportEmbeddings}
         onManageBackups={handleManageBackups}
+        migrationCancelBusy={
+          isProcessing && activeRagState.isRunning && activeRagState.type === 'migration'
+        }
       />
     </div>
   )

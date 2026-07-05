@@ -33,11 +33,6 @@ const DiaryTemplateSettingsPane = lazy(() =>
     default: m.DiaryTemplateSettingsPane
   }))
 )
-const DiaryAiWritingSettingsPane = lazy(() =>
-  import('./components/DiaryAiWritingSettingsPane').then((m) => ({
-    default: m.DiaryAiWritingSettingsPane
-  }))
-)
 const SummarySettingsPane = lazy(() =>
   import('./components/SummarySettingsPane').then((m) => ({ default: m.SummarySettingsPane }))
 )
@@ -177,9 +172,8 @@ export const SettingsContentView: React.FC<SettingsContentViewProps> = ({
       case 'agent-tools':
         return <AgentToolsPane settings={settings} />
       case 'diary-template':
-        return <DiaryTemplateSettingsPane />
       case 'diary-ai-writing':
-        return <DiaryAiWritingSettingsPane />
+        return <DiaryTemplateSettingsPane />
       case 'summary':
         return <SummarySettingsPane settings={settings} />
       case 'tts':

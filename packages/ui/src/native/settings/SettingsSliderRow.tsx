@@ -3,6 +3,12 @@ import { View, Text, StyleSheet } from 'react-native'
 import { NativeSlider } from '../Slider'
 import { useNativeTheme } from '../theme'
 
+/** 持久化/迁移可能把数值存成字符串，统一兜底，避免 toFixed 等数值方法在 render 阶段崩溃 */
+function coerceNumber(value: unknown, fallback: number): number {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
 export interface SettingsSliderRowProps {
   title: string
   description?: string
@@ -31,35 +37,41 @@ export const SettingsSliderRow: React.FC<SettingsSliderRowProps> = ({
   commitOnChangeEnd = true
 }) => {
   const { colors } = useNativeTheme()
-  const [draftValue, setDraftValue] = useState(value)
+  const safeValue = coerceNumber(value, coerceNumber(min, 0))
+  const [draftValue, setDraftValue] = useState(safeValue)
 
   useEffect(() => {
-    setDraftValue((prev) => (prev === value ? prev : value))
-  }, [value])
+    setDraftValue((prev) => (prev === safeValue ? prev : safeValue))
+  }, [safeValue])
 
-  const normalize = (raw: number) => (step >= 1 ? Math.round(raw) : raw)
-
-  const display = formatValue(commitOnChangeEnd ? draftValue : value)
+  const renderValue = commitOnChangeEnd ? draftValue : safeValue
+  let display: string
+  try {
+    display = formatValue(renderValue)
+  } catch {
+    display = String(renderValue)
+  }
+  const sliderValue = commitOnChangeEnd ? safeValue : draftValue
 
   const handlePreview = useCallback(
     (next: number) => {
       setDraftValue((prev) => (prev === next ? prev : next))
       onPreviewChange?.(next)
-      if (!commitOnChangeEnd && next !== value) {
+      if (!commitOnChangeEnd && next !== safeValue) {
         onChange(next)
       }
     },
-    [commitOnChangeEnd, onChange, onPreviewChange, value]
+    [commitOnChangeEnd, onChange, onPreviewChange, safeValue]
   )
 
   const handleCommit = useCallback(
     (next: number) => {
       setDraftValue((prev) => (prev === next ? prev : next))
-      if (next !== value) {
+      if (next !== safeValue) {
         onChange(next)
       }
     },
-    [onChange, value]
+    [onChange, safeValue]
   )
 
   return (
@@ -75,7 +87,7 @@ export const SettingsSliderRow: React.FC<SettingsSliderRowProps> = ({
       <View style={styles.controlRow}>
         <View style={styles.sliderWrap}>
           <NativeSlider
-            value={value}
+            value={sliderValue}
             minValue={min}
             maxValue={max}
             step={step}

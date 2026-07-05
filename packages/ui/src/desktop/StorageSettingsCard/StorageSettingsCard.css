@@ -40,3 +40,7 @@
 .storage-settings-action-btn-secondary:hover {
   border-color: var(--border-strong, rgba(0, 0, 0, 0.16));
 }
+
+.storage-settings-warning {
+  color: var(--color-warning, #d97706);
+}

@@ -20,10 +20,7 @@ export function normalizeChatBackgroundBlur(value: unknown): number {
 export function normalizeChatBackgroundOverlayOpacity(value: unknown): number {
   const n = typeof value === 'number' ? value : Number(value)
   if (!Number.isFinite(n)) return CHAT_BACKGROUND_OVERLAY_DEFAULT
-  return Math.min(
-    CHAT_BACKGROUND_OVERLAY_MAX,
-    Math.max(CHAT_BACKGROUND_OVERLAY_MIN, Math.round(n))
-  )
+  return Math.min(CHAT_BACKGROUND_OVERLAY_MAX, Math.max(CHAT_BACKGROUND_OVERLAY_MIN, Math.round(n)))
 }
 
 /** UI 滑条：遮罩透明度（20% = 最重遮罩，100% = 完全透明） */
@@ -48,12 +45,9 @@ export function chatBackgroundOverlayOpacityFromTransparency(transparency: unkno
 
 export function chatBackgroundOverlayTransparencyProgress(transparency: unknown): number {
   const normalizedTransparency = normalizeChatBackgroundOverlayTransparency(transparency)
-  const span =
-    CHAT_BACKGROUND_OVERLAY_TRANSPARENCY_MAX - CHAT_BACKGROUND_OVERLAY_TRANSPARENCY_MIN
+  const span = CHAT_BACKGROUND_OVERLAY_TRANSPARENCY_MAX - CHAT_BACKGROUND_OVERLAY_TRANSPARENCY_MIN
   if (span <= 0) return 0
-  return (
-    (normalizedTransparency - CHAT_BACKGROUND_OVERLAY_TRANSPARENCY_MIN) / span
-  )
+  return (normalizedTransparency - CHAT_BACKGROUND_OVERLAY_TRANSPARENCY_MIN) / span
 }
 
 export function chatBackgroundOverlayAlpha(opacity: unknown): number {

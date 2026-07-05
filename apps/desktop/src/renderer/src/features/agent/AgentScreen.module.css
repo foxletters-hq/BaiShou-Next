@@ -29,7 +29,7 @@
   z-index: 1;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   padding: 16px 24px;
   gap: 12px;
   flex-shrink: 0;
@@ -37,6 +37,43 @@
   background: var(--bg-glass-surface);
   backdrop-filter: var(--blur-glass);
   -webkit-backdrop-filter: var(--blur-glass);
+}
+
+.appBarLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.appBarRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.sidebarToggleBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--app-bar-chip-height);
+  padding: 0;
+  border-radius: 12px;
+  cursor: pointer;
+  background-color: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  transition:
+    background-color 0.2s,
+    border-color 0.2s,
+    color 0.2s;
+}
+
+.sidebarToggleBtn:hover {
+  background-color: var(--bg-surface-high);
+  border-color: var(--border-muted);
+  color: var(--text-primary);
 }
 
 .appBarChip {
@@ -97,28 +134,14 @@
   flex-shrink: 0;
 }
 
-.appBarRight {
-  display: flex;
-  align-items: center;
-}
-
 .messageList {
   position: relative;
   z-index: 1;
   flex: 1;
   overflow-y: auto;
   scroll-behavior: auto;
-  scroll-snap-type: y proximity;
   display: flex;
   flex-direction: column;
-}
-
-.pageSnapAnchor {
-  flex-shrink: 0;
-  height: 1px;
-  scroll-snap-align: start;
-  scroll-snap-stop: normal;
-  pointer-events: none;
 }
 
 .messageContent {
@@ -164,6 +187,17 @@
 .loadMoreBanner:hover {
   border-color: rgba(var(--color-primary-rgb), 0.4);
   background: rgba(var(--color-primary-rgb), 0.06);
+}
+
+.loadMoreBanner:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.loadMoreBannerSticky {
+  position: sticky;
+  top: 8px;
+  z-index: 2;
 }
 
 .messageList::-webkit-scrollbar {
@@ -221,4 +255,43 @@
 .scrollToBottomBtn:hover {
   transform: translateY(-1px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+/* 纯表情包消息行：头像 + 图片，不包裹气泡卡片 */
+.emojiOnlyRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 4px 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.emojiOnlyAvatar {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+}
+
+.emojiOnlyAvatarImg {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  background-color: var(--bg-surface-normal);
+}
+
+.emojiOnlyImages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.emojiOnlyImg {
+  width: 120px;
+  height: 120px;
+  border-radius: 12px;
+  object-fit: contain;
+  background-color: var(--bg-surface-normal);
 }

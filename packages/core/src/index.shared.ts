@@ -4,7 +4,9 @@
 
 export * from './fs'
 export * from './storage/storage-root-migration'
+export * from './storage/workspace-root.util'
 export * from './migration/legacy-migration.shared'
+export * from './migration/legacy-root-detection.shared'
 export * from './migration/flutter-shared-prefs.util'
 export * from './migration/legacy-avatar-migration.shared'
 export * from './migration/legacy-archive-migration.shared'
@@ -27,16 +29,19 @@ export * from './vault/storage-path.types'
 export * from './vault/vault.errors'
 export * from './vault/vault-name.util'
 export * from './vault/vault-disk.util'
+export * from './vault/vault-external-paths.service'
 export * from './vault/vault.service'
 export * from './attachments/attachment-manager.types'
 export * from './diary/diary.types'
 export * from './journal/journal-files.util'
+export * from './summary/summary-files.util'
 export * from './journal/journal-index-probe.util'
 export { parseJournalMarkdown } from './diary/journal-markdown.parser'
 
 export * from './session/session-file.service'
 export * from './session/session-sync.service'
 export * from './session/session-manager.service'
+export * from './session/session-disk-persistence.service'
 
 export * from './assistant/assistant-file.service'
 export * from './assistant/assistant-manager.service'
@@ -46,7 +51,6 @@ export * from './settings/settings-file.service'
 export * from './settings/settings-manager.service'
 
 export * from './session/compression-prompt'
-export * from './session/compression.service'
 export * from './session/system-prompt-builder'
 export * from './session/model-pricing.service'
 export * from './session/memory-deduplication.service'
@@ -60,7 +64,9 @@ export * from './summary/summary-manager.service'
 export * from './summary/missing-summary-detector.service'
 export {
   buildSharedContextText,
+  computeSharedMemoryCopyPreview,
   handleBuildSharedContext,
+  handleBuildSharedContextPreview,
   type SharedContextDiaryRow
 } from './summary/summary-context'
 
@@ -73,4 +79,5 @@ export * from './network/lan-sync.interface'
 export * from './network/cloud-sync.interface'
 
 export * from './shadow-index/shadow-index-sync.service'
+export * from './sync/incremental-sync-external-mounts'
 export * from './events'

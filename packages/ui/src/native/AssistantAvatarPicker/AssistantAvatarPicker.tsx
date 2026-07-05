@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react'
 import { View, Text, Image, Pressable, StyleSheet, ScrollView } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { ImagePlus, LayoutGrid } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import {
   BUILTIN_ASSISTANT_AVATAR_IDS,
@@ -10,6 +10,7 @@ import {
   toBuiltinAssistantAvatarPath
 } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { useDialog } from '../Dialog'
 import { Modal } from '../Modal'
 import { NATIVE_BUILTIN_ASSISTANT_AVATAR_SOURCES } from '../builtin-assistant-avatar.sources'
@@ -55,12 +56,12 @@ export const AssistantAvatarPicker: React.FC<AssistantAvatarPickerProps> = ({
       {
         label: t('agent.assistant.select_builtin_avatar', '选择内置头像'),
         value: 'builtin',
-        leading: <MaterialIcons name="grid-view" size={20} color={colors.primary} />
+        leading: <LayoutGrid size={20} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
       },
       {
         label: t('agent.assistant.upload_avatar', '从本地上传'),
         value: 'upload',
-        leading: <MaterialIcons name="add-photo-alternate" size={20} color={colors.primary} />
+        leading: <ImagePlus size={20} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
       }
     ])
 

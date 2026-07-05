@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react'
 import styles from './LanSyncCard.module.css'
 import { useTranslation } from 'react-i18next'
+import { Monitor, Radar, RefreshCw, Smartphone } from 'lucide-react'
 import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
-import { MdRadar, MdRefresh, MdComputer, MdSmartphone } from 'react-icons/md'
 import { HelpTooltip } from '../HelpTooltip'
 import { RestoreBlockingOverlay } from '../RestoreBlockingOverlay'
 import {
@@ -101,39 +101,53 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
     deviceSeenAtRef.current.clear()
     setDevices([])
 
-    const connInfo = await onStartBroadcasting()
+    try {
+      const connInfo = await onStartBroadcasting()
 
-    const cleanupParts: Array<(() => void) | void> = []
-    if (onDiscoveryResetListener) {
-      cleanupParts.push(
-        onDiscoveryResetListener(() => {
-          deviceSeenAtRef.current.clear()
-          setDevices([])
-        })
-      )
-    }
-
-    const cleanup = await onStartDiscovery(
-      (dev) => {
-        if (isSelfDevice(dev, connInfo)) return
-        markDeviceSeen(dev)
-        setDevices((prev) => upsertDiscoveredLanDevice(prev, dev))
-      },
-      (id) => {
-        setDevices((prev) => removeDiscoveredLanDevice(prev, id))
+      const cleanupParts: Array<(() => void) | void> = []
+      if (onDiscoveryResetListener) {
+        cleanupParts.push(
+          onDiscoveryResetListener(() => {
+            deviceSeenAtRef.current.clear()
+            setDevices([])
+          })
+        )
       }
-    )
-    if (typeof cleanup === 'function') {
-      cleanupParts.push(cleanup)
-    }
-    if (cleanupParts.length > 0) {
-      discoveryCleanupRef.current = () => {
-        for (const part of cleanupParts) {
-          if (typeof part === 'function') {
-            part()
+
+      const cleanup = await onStartDiscovery(
+        (dev) => {
+          if (isSelfDevice(dev, connInfo)) return
+          markDeviceSeen(dev)
+          setDevices((prev) => upsertDiscoveredLanDevice(prev, dev))
+        },
+        (id) => {
+          setDevices((prev) => removeDiscoveredLanDevice(prev, id))
+        }
+      )
+      if (typeof cleanup === 'function') {
+        cleanupParts.push(cleanup)
+      }
+      if (cleanupParts.length > 0) {
+        discoveryCleanupRef.current = () => {
+          for (const part of cleanupParts) {
+            if (typeof part === 'function') {
+              part()
+            }
           }
         }
       }
+    } catch (error) {
+      console.error('[LanSyncCard] failed to start LAN transfer', error)
+      setIsActive(false)
+      setDevices([])
+      deviceSeenAtRef.current.clear()
+      discoveryCleanupRef.current?.()
+      discoveryCleanupRef.current = null
+      await onStopDiscovery().catch(() => {})
+      await onStopBroadcasting().catch(() => {})
+      toast.showError(
+        t('lan_transfer.scan_failed', error instanceof Error ? error.message : '局域网扫描启动失败')
+      )
     }
   }
 
@@ -261,7 +275,7 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
             onClick={restartDualMode}
             title={t('common.refresh', '刷新')}
           >
-            <MdRefresh size={20} />
+            <RefreshCw size={20} />
           </button>
         </div>
 
@@ -276,7 +290,7 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
 
           <div className={`${styles.radarCore} ${isActive ? styles.corePulse : ''}`}>
             <span className={styles.coreIcon}>
-              <MdRadar size={32} />
+              <Radar size={32} />
             </span>
           </div>
 
@@ -306,9 +320,9 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
                 >
                   <div className={styles.bubbleIcon}>
                     {d.deviceType === 'mobile' ? (
-                      <MdSmartphone size={20} />
+                      <Smartphone size={20} />
                     ) : (
-                      <MdComputer size={20} />
+                      <Monitor size={20} />
                     )}
                   </div>
                   <div className={styles.bubbleInfo}>

@@ -16,6 +16,7 @@ import {
   prepareMimoTtsFormSynthesis,
   resolveMimoTtsSynthesisModelId
 } from './mimo-tts.util'
+import { resolveTtsStreamingEnabled, shouldUseTtsSynthesisCache } from './tts-stream.util'
 import { refAudioCacheToken } from './ref-audio-pick.util'
 import type { TtsProviderRegistry } from './tts.registry'
 import {
@@ -170,10 +171,14 @@ export async function synthesizeTtsFromSettings(
     const voice = synthesisSettings.voice || ''
     const speed = synthesisSettings.speed ?? 1.0
     const responseFormat = synthesisSettings.responseFormat || ''
-    const mimoStream =
-      ttsProviderId === 'mimo-tts' ? (synthesisSettings.stream as boolean | undefined) : undefined
+    const streamEnabled = resolveTtsStreamingEnabled(
+      ttsProviderId || '',
+      synthesisSettings.stream as boolean | undefined,
+      ttsModelId
+    )
 
-    const useCache = options?.useCache !== false && ttsProviderId !== 'mimo-tts'
+    const useCache =
+      options?.useCache !== false && shouldUseTtsSynthesisCache(ttsProviderId || '', streamEnabled)
     const cache = options?.cache ?? getGlobalTtsSynthesisCache()
     const cacheKey = buildTtsSynthesisCacheKey({
       providerId: ttsProviderId,
@@ -182,6 +187,7 @@ export async function synthesizeTtsFromSettings(
       speed,
       responseFormat,
       baseUrl,
+      stream: streamEnabled,
       refAudioPath: optionalString(synthesisSettings.refAudioPath),
       refAudioToken: refAudioCacheToken(
         optionalString(synthesisSettings.refAudioPath),
@@ -226,7 +232,7 @@ export async function synthesizeTtsFromSettings(
           promptText: optionalString(synthesisSettings.promptText),
           promptLang: optionalString(synthesisSettings.promptLang),
           textLang: optionalString(synthesisSettings.textLang),
-          stream: optionalBoolean(mimoStream)
+          stream: optionalBoolean(streamEnabled ? true : synthesisSettings.stream)
         }
       },
       {
@@ -305,7 +311,8 @@ export async function synthesizeTtsFromFormConfig(
               refAudioBase64: config.refAudioBase64,
               promptText: config.promptText,
               promptLang: config.promptLang,
-              textLang: config.textLang
+              textLang: config.textLang,
+              stream: config.stream
             }
           }
 
@@ -317,7 +324,14 @@ export async function synthesizeTtsFromFormConfig(
     const speed = synthesisSettings.speed ?? 1.0
     const responseFormat = synthesisSettings.responseFormat || ''
 
-    const useCache = config.id === 'mimo-tts' ? false : options?.useCache !== false
+    const streamEnabled = resolveTtsStreamingEnabled(
+      config.id,
+      synthesisSettings.stream as boolean | undefined,
+      effectiveModelId
+    )
+
+    const useCache =
+      options?.useCache !== false && shouldUseTtsSynthesisCache(config.id, streamEnabled)
     const cache = options?.cache ?? getGlobalTtsSynthesisCache()
     const cacheKey = buildTtsSynthesisCacheKey({
       providerId: config.id,
@@ -326,6 +340,7 @@ export async function synthesizeTtsFromFormConfig(
       speed,
       responseFormat,
       baseUrl,
+      stream: streamEnabled,
       refAudioPath: optionalString(synthesisSettings.refAudioPath),
       refAudioToken: refAudioCacheToken(
         optionalString(synthesisSettings.refAudioPath),
@@ -370,7 +385,7 @@ export async function synthesizeTtsFromFormConfig(
           promptText: optionalString(synthesisSettings.promptText),
           promptLang: optionalString(synthesisSettings.promptLang),
           textLang: optionalString(synthesisSettings.textLang),
-          stream: optionalBoolean(synthesisSettings.stream)
+          stream: optionalBoolean(streamEnabled ? true : synthesisSettings.stream)
         }
       },
       {

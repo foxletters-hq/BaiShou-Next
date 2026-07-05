@@ -1,31 +1,42 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  MdOutlineStorage,
-  MdOutlineDownload,
-  MdOutlineUploadFile,
-  MdChevronRight
-} from 'react-icons/md'
 import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
 import '../shared/SettingsListTile.css'
 import { SettingsExpansionTile } from '../shared/SettingsExpansionTile'
 import { RestoreBlockingOverlay } from '../RestoreBlockingOverlay'
+import { formatExportErrorMessage } from '../archive-export.util'
+import { ChevronRight, Database, Download, Upload } from 'lucide-react'
 
 export interface DataManagementCardProps {
-  onExportZip?: () => Promise<void>
+  onExportZip?: () => Promise<string | null | undefined>
   onImportZip?: (filePath: string) => Promise<void>
   onExport?: () => void
   onImport?: () => Promise<void>
   onPickFile?: () => Promise<string | null>
+  onImportProgress?: (callback: (detail: string) => void) => () => void
   /** 平铺展示导入/导出，不包在可折叠区块内 */
   flat?: boolean
+}
+
+function formatImportProgressDetail(detail: string): string {
+  const vaultMatch = /^vault:(\d+)\/(\d+):(.+)$/.exec(detail)
+  if (vaultMatch) {
+    return `正在迁移工作区 ${vaultMatch[1]}/${vaultMatch[2]}：${vaultMatch[3]}`
+  }
+
+  const parts = detail.replace(/\\/g, '/').split('/').filter(Boolean)
+  if (parts.length > 0) {
+    return `正在复制：${parts.slice(-3).join('/')}`
+  }
+  return detail
 }
 
 export const DataManagementCard: React.FC<DataManagementCardProps> = ({
   onExportZip,
   onImportZip,
   onPickFile,
+  onImportProgress,
   flat = false
 }) => {
   const { t } = useTranslation()
@@ -33,11 +44,27 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
   const toast = useToast()
   const [isExporting, setIsExporting] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
+  const [importProgressDetail, setImportProgressDetail] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!onImportProgress) return
+    return onImportProgress((detail) => setImportProgressDetail(formatImportProgressDetail(detail)))
+  }, [onImportProgress])
 
   const handleExport = async () => {
     setIsExporting(true)
     try {
-      await onExportZip()
+      const filePath = await onExportZip?.()
+      if (filePath) {
+        toast.showSuccess(
+          t('settings.export_success_desc', {
+            defaultValue: '备份 ZIP 文件已保存在:\n{{path}}',
+            path: filePath
+          })
+        )
+      }
+    } catch (e: unknown) {
+      toast.showError(t('settings.export_failed', { error: formatExportErrorMessage(e, t) }))
     } finally {
       setIsExporting(false)
     }
@@ -54,6 +81,7 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
     if (!confirmed) return
 
     setIsImporting(true)
+    setImportProgressDetail(null)
     let willReload = false
     try {
       await onImportZip!(filePath)
@@ -63,13 +91,23 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
     } catch (e: any) {
       toast.showError(t('settings.restore_failed', { error: e.message }))
     } finally {
+      if (!willReload) setImportProgressDetail(null)
       if (!willReload) setIsImporting(false)
     }
   }
 
   return (
     <>
-      <RestoreBlockingOverlay visible={isImporting} />
+      <RestoreBlockingOverlay
+        visible={isImporting || isExporting}
+        hint={
+          isExporting
+            ? t('settings.exporting_data', '正在导出数据...')
+            : (importProgressDetail ??
+              t('settings.restoring_data_hint', '请勿关闭应用或进行其他操作，恢复完成后将自动刷新'))
+        }
+        message={isExporting ? t('settings.exporting_data', '正在导出数据...') : undefined}
+      />
       {flat ? (
         <div className="about-settings-wrapper">
           <button
@@ -78,7 +116,7 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
             disabled={isExporting || isImporting}
           >
             <div className="settings-list-tile-leading">
-              <MdOutlineDownload size={22} />
+              <Download size={22} />
             </div>
             <div className="settings-list-tile-content">
               <span className="settings-list-tile-title">
@@ -88,7 +126,7 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
                 {t('settings.export_desc', '将所有数据导出为 ZIP 压缩包')}
               </span>
             </div>
-            <MdChevronRight size={22} className="settings-list-tile-trailing" />
+            <ChevronRight size={22} className="settings-list-tile-trailing" />
           </button>
 
           <div className="settings-list-divider" />
@@ -99,7 +137,7 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
             disabled={isExporting || isImporting || !onPickFile}
           >
             <div className="settings-list-tile-leading">
-              <MdOutlineUploadFile size={22} />
+              <Upload size={22} />
             </div>
             <div className="settings-list-tile-content">
               <span className="settings-list-tile-title">
@@ -109,12 +147,12 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
                 {t('settings.import_desc', '从 ZIP 备份文件恢复数据（将覆盖当前数据）')}
               </span>
             </div>
-            <MdChevronRight size={22} className="settings-list-tile-trailing" />
+            <ChevronRight size={22} className="settings-list-tile-trailing" />
           </button>
         </div>
       ) : (
         <SettingsExpansionTile
-          icon={<MdOutlineStorage size={24} />}
+          icon={<Database size={24} />}
           title={t('settings.data_management', '数据管理')}
           subtitle={t('settings.data_management_desc', '导出、导入和恢复数据')}
         >
@@ -125,7 +163,7 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
             disabled={isExporting || isImporting}
           >
             <div className="settings-list-tile-leading">
-              <MdOutlineDownload size={22} />
+              <Download size={22} />
             </div>
             <div className="settings-list-tile-content">
               <span className="settings-list-tile-title">
@@ -135,7 +173,7 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
                 {t('settings.export_desc', '将所有数据导出为 ZIP 压缩包')}
               </span>
             </div>
-            <MdChevronRight size={22} className="settings-list-tile-trailing" />
+            <ChevronRight size={22} className="settings-list-tile-trailing" />
           </button>
 
           <div className="settings-list-divider indent" />
@@ -147,7 +185,7 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
             disabled={isExporting || isImporting || !onPickFile}
           >
             <div className="settings-list-tile-leading">
-              <MdOutlineUploadFile size={22} />
+              <Upload size={22} />
             </div>
             <div className="settings-list-tile-content">
               <span className="settings-list-tile-title">
@@ -157,7 +195,7 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
                 {t('settings.import_desc', '从 ZIP 备份文件恢复数据（将覆盖当前数据）')}
               </span>
             </div>
-            <MdChevronRight size={22} className="settings-list-tile-trailing" />
+            <ChevronRight size={22} className="settings-list-tile-trailing" />
           </button>
         </SettingsExpansionTile>
       )}

@@ -65,8 +65,8 @@ export interface GlobalModelsConfig {
  */
 export interface AgentBehaviorConfig {
   agentContextWindowSize: number // Agent 上下文窗口大小（默认 20）
-  companionCompressTokens: number // 深度陪伴模式触发压缩的 Token 数（默认 8000）
-  companionTruncateTokens: number // 深度陪伴模式压缩时截断多少 token 以前的对话（默认 4000）
+  companionCompressTokens?: number // 深度陪伴模式触发压缩的 Token 数（默认 8000）
+  companionTruncateTokens?: number // 深度陪伴模式压缩时截断多少 token 以前的对话（默认 4000）
   agentPersona: string // Agent 角色人设描述
   agentGuidelines: string // Agent 行为准则
   pinnedAssistantIds: string[] // 侧边栏置顶助手列表 (最多 3 个)
@@ -79,10 +79,12 @@ export interface RagConfig {
   ragEnabled: boolean // 是否启用全局记忆（RAG检索，默认 true）
   ragTopK: number // 检索返回的前 K 个最相似结果（默认 20）
   ragSimilarityThreshold: number // 相似度阈值过滤（默认 0.4）
-  /** 批量嵌入日记时的并行篇数（1–5，默认 3） */
+  /** 批量嵌入日记时的并行篇数（1–20，默认 20） */
   batchEmbedConcurrency?: number
   /** 最近一次日记自动嵌入失败的时间戳（毫秒），用于 RAG 页非阻塞提示 */
   lastDiaryEmbedFailureAt?: number
+  /** 最近一次日记自动嵌入失败的原因（用户可读） */
+  lastDiaryEmbedFailureMessage?: string
 }
 
 /**
@@ -110,6 +112,8 @@ import type { SummaryPromptLocale, SummaryTemplatesMap } from './summary-prompt.
 export interface SummaryConfig {
   /** 生成总结时使用的提示词语言 */
   promptLocale?: SummaryPromptLocale
+  /** 共同回忆复制时的回溯月数（回忆页 / 唤醒回忆共用） */
+  sharedMemoryLookbackMonths?: number
   instructionsByLocale?: Partial<Record<SummaryPromptLocale, SummaryTemplatesMap>>
   instructions?: SummaryTemplatesMap
 }
@@ -122,7 +126,12 @@ export interface DiaryTemplateConfig {
   newEntryTemplate?: string
   /** 追加记录时插入的时间块，支持 {time} {date} {datetime} */
   appendBlockTemplate?: string
-  /** 伙伴调用写日记 / 编辑日记工具时的书写提示词 */
+  /**
+   * 伙伴写日记时的可选补充说明（风格/内容要求，不含时间标题格式）。
+   * 时间标题格式由 newEntryTemplate / appendBlockTemplate 统一决定。
+   */
+  writingStyleSupplement?: string
+  /** @deprecated 旧字段；读取时会迁移到 writingStyleSupplement，新写入请用 writingStyleSupplement */
   aiWritingPrompt?: string
 }
 
@@ -132,6 +141,30 @@ export interface DiaryTemplateConfig {
 export interface ToolManagementConfig {
   disabledToolIds: string[] // 被禁用的工具 ID 列表
   customConfigs: Record<string, Record<string, any>> // 各工具的独立 key-value 用户配置
+  emojiConfig?: EmojiToolConfig // 表情包工具配置
+}
+
+/**
+ * 表情包工具配置
+ */
+export interface EmojiToolConfig {
+  enabled: boolean // 是否启用表情包回复
+  /** 表情包组列表（读取后应经 normalizeEmojiToolConfig 归一化） */
+  groups?: EmojiGroup[]
+  /** @deprecated 旧版扁平列表，读取时自动迁移到默认组 */
+  emojis?: EmojiItem[]
+}
+
+export interface EmojiGroup {
+  id: string
+  name: string
+  emojis: EmojiItem[]
+}
+
+export interface EmojiItem {
+  id: string // 唯一标识，格式: emoji_{timestamp}
+  name: string // 表情包名称/标签
+  relativePath: string // 相对路径，格式: emojis/emoji_{timestamp}.{ext}
 }
 
 /**

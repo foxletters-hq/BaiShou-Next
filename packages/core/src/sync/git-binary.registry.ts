@@ -31,8 +31,9 @@ export function getBundledGitBinary(): string {
   return provider.getBinary()
 }
 
-export function getBundledGitSpawnEnv(
-  extra: GitSpawnEnv = {}
-): { env: GitSpawnEnv; gitBinary: string } {
+export function getBundledGitSpawnEnv(extra: GitSpawnEnv = {}): {
+  env: GitSpawnEnv
+  gitBinary: string
+} {
   return provider.getSpawnEnv(extra)
 }

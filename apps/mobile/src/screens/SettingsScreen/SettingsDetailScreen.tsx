@@ -1,10 +1,11 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { scrollIndicatorStyle, KeyboardAwareScrollView, useNativeTheme } from '@baishou/ui/native'
 import { StackScreenLayout } from '../../components/StackScreenLayout'
 import { getStackScreenChrome } from '../../components/stackScreenChrome'
 import { getHubItemTitleKey } from './settingsHubItems'
+import { appendDiagnosticBreadcrumb } from '../../services/mobile-diagnostic-log.service'
 import { AIServicesSection } from './components/AIServicesSection'
 import { AIModelsSection } from './components/AIModelsSection'
 import { RAGMemorySection } from './components/RAGMemorySection'
@@ -12,7 +13,6 @@ import { WebSearchSection } from './components/WebSearchSection'
 import { AgentToolsSection } from './components/AgentToolsSection'
 import { SummarySettingsSection } from './components/SummarySettingsSection'
 import { DiaryTemplateSettingsSection } from './components/DiaryTemplateSettingsSection'
-import { DiaryAiWritingSettingsSection } from './components/DiaryAiWritingSettingsSection'
 import { AttachmentManagementSection } from './components/AttachmentManagementSection'
 import { DeveloperSettingsSection } from './components/DeveloperSettingsSection'
 import { McpSettingsSection } from './components/McpSettingsSection'
@@ -27,6 +27,10 @@ export const SettingsDetailScreen: React.FC<SettingsDetailScreenProps> = ({ sect
 
   const titleKey = getHubItemTitleKey(section)
   const title = titleKey ? t(titleKey) : t('settings.title')
+
+  useEffect(() => {
+    appendDiagnosticBreadcrumb(`settings detail open: ${section}`)
+  }, [section])
 
   const renderContent = () => {
     switch (section) {
@@ -43,9 +47,8 @@ export const SettingsDetailScreen: React.FC<SettingsDetailScreenProps> = ({ sect
       case 'agent-tools':
         return <AgentToolsSection />
       case 'diary-template':
-        return <DiaryTemplateSettingsSection />
       case 'diary-ai-writing':
-        return <DiaryAiWritingSettingsSection />
+        return <DiaryTemplateSettingsSection />
       case 'summary':
         return <SummarySettingsSection />
       case 'attachments':

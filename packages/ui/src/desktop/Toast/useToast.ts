@@ -61,6 +61,13 @@ export const toast = {
       ...options
     })
   },
+  showInfo: (message: ReactNode, options?: Partial<ToastMessage>) => {
+    toast.show(message, {
+      type: 'info',
+      duration: 3000,
+      ...options
+    })
+  },
   dismiss: (id: string) => {
     toasts = toasts.filter((t) => t.id !== id)
     listeners.forEach((l) => l([...toasts]))

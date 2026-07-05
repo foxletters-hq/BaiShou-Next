@@ -40,7 +40,7 @@ export const AgentChatCachedPage: React.FC = () => {
   return (
     <Routes location={routesLocation}>
       <Route path="/chat" element={<AgentLayout />}>
-        <Route index element={<AgentScreen />} />
+        <Route index element={<AgentScreen key="__new-chat__" />} />
         <Route path=":sessionId" element={<AgentScreen />} />
       </Route>
     </Routes>

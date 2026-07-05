@@ -78,6 +78,9 @@
 }
 
 .diary-search-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
   color: var(--text-primary);
   margin-right: 8px;
   flex-shrink: 0;
@@ -133,6 +136,12 @@
   font-family: var(--font-family);
 }
 
+.diary-add-btn svg.lucide {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
 .diary-add-btn:hover {
   background-color: var(--color-primary-dark);
   box-shadow: var(--shadow-glow);
@@ -151,6 +160,12 @@
   color: var(--text-primary);
   transition: background-color 0.2s;
   margin-right: 4px;
+  font-size: 20px;
+}
+
+.diary-today-btn svg.lucide {
+  width: 20px;
+  height: 20px;
 }
 
 .diary-today-btn:hover {
@@ -310,6 +325,16 @@
   letter-spacing: 0.5px;
 }
 
+.diary-card-icon-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 4px;
+  background: transparent;
+  border: 0.5px solid var(--color-primary);
+  border-radius: var(--radius-xs);
+}
+
 .diary-card-menu-icon {
   color: var(--text-tertiary);
   font-size: 20px;
@@ -325,8 +350,8 @@
 
 /* 内容预览 */
 .diary-card-content {
-  flex: 1;
-  min-height: 0;
+  flex: 1 1 auto;
+  min-height: 72px;
   overflow: hidden;
   position: relative;
   margin-bottom: 8px;
@@ -402,13 +427,27 @@
   gap: 8px;
   margin-top: 12px;
   padding-right: 0;
+  flex-shrink: 0;
+  max-height: 52px;
+  overflow: hidden;
+}
+
+.diary-card-tag-overflow {
+  background-color: var(--bg-surface-highest, rgba(148, 163, 184, 0.18));
+  color: var(--text-secondary);
 }
 
 .diary-card-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 20px;
   padding: 4px 10px;
   border-radius: var(--radius-sm);
   font-size: 12px;
   font-weight: 600;
+  line-height: 1;
 }
 
 /* 标签颜色变体 — 使用语义化强调色 */
@@ -516,7 +555,9 @@
   align-items: center;
   justify-content: center;
   gap: 16px;
+  padding: 24px 32px;
   color: var(--text-primary);
+  text-align: center;
 }
 
 .diary-empty-icon {
@@ -529,6 +570,7 @@
   font-size: 18px;
   font-weight: 600;
   color: var(--text-primary);
+  max-width: 520px;
 }
 
 .diary-indexing-spinner {
@@ -547,7 +589,9 @@
 
 .diary-empty-text {
   font-size: 16px;
+  line-height: 1.6;
   color: var(--text-tertiary);
+  max-width: 520px;
 }
 
 .diary-view-all-btn {
@@ -675,6 +719,12 @@
   color: var(--text-primary);
   transition: all 0.2s;
   position: relative;
+  font-size: 18px;
+}
+
+.diary-filter-btn svg.lucide {
+  width: 18px;
+  height: 18px;
 }
 
 .diary-filter-btn:hover {

@@ -25,6 +25,19 @@ function segmentAckKey(sessionId: string, index: number): string {
   return `${sessionId}:${index}`
 }
 
+function cancelOtherSpeechSessions(exceptSessionId: string): void {
+  for (const [id, session] of speechSessions) {
+    if (id === exceptSessionId) continue
+    session.cancelled = true
+    for (const key of segmentAckResolvers.keys()) {
+      if (key.startsWith(`${id}:`)) {
+        segmentAckResolvers.get(key)?.()
+        segmentAckResolvers.delete(key)
+      }
+    }
+  }
+}
+
 function logSynthesisFailure(
   result: { errorCode?: string; error?: string },
   providerId?: string,
@@ -138,6 +151,8 @@ export function registerTtsIPC() {
     'agent:tts-synthesize-speech',
     async (event, sessionId: string, content: string, providerId?: string, modelId?: string) => {
       const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
+
+      cancelOtherSpeechSessions(sessionId)
 
       speechSessions.set(sessionId, {
         cancelled: false,

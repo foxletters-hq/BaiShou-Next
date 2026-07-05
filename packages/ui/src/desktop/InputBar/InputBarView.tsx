@@ -1,28 +1,10 @@
 import React from 'react'
 import styles from './InputBar.module.css'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  Paperclip,
-  Zap,
-  Globe,
-  BookOpen,
-  FileText,
-  Folder,
-  X,
-  ArrowUp,
-  LayoutGrid,
-  Menu,
-  Square,
-  Volume2,
-  Maximize2,
-  Minimize2,
-  ChevronLeft,
-  ChevronRight
-} from 'lucide-react'
-import { MdSend, MdStop, MdApps } from 'react-icons/md'
 import type { useInputBar } from './useInputBar'
 import { QuickActionChip } from './QuickActionChip'
 import { PromptShortcutSheet } from '../PromptShortcutSheet'
+import { ArrowUp, BookOpen, ChevronLeft, ChevronRight, FileText, Folder, Globe, LayoutGrid, Maximize2, Menu, Minimize2, Paperclip, Send, Square, Volume2, X, Zap } from 'lucide-react'
 
 type InputBarViewModel = ReturnType<typeof useInputBar>
 
@@ -59,6 +41,7 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
     toggleSearchMode,
     handlePromptShortcut,
     isLoading,
+    isSending,
     onStop,
     assistantName,
     onAssistantTap,
@@ -72,7 +55,7 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
   } = vm
 
   return (
-    <div className={styles.containerMask}>
+    <div className={styles.containerMask} data-desktop-input-bar>
       <input
         type="file"
         multiple
@@ -212,6 +195,13 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
                         onClick={onToggleTtsMode}
                       />
                     )}
+                    {onOpenTools && (
+                      <QuickActionChip
+                        icon={<LayoutGrid size={14} />}
+                        label={t('settings.agent_tools_title', '工具管理')}
+                        onClick={onOpenTools}
+                      />
+                    )}
                   </div>
                 </div>
                 {toolbarOverflow && (
@@ -300,17 +290,17 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
                   type="button"
                   whileTap={{ scale: 0.92 }}
                 >
-                  <MdStop size={20} />
+                  <Square size={20} />
                 </motion.button>
               ) : (
                 <motion.button
                   className={`${styles.actionBtn} ${styles.sendBtn} ${!text.trim() && attachments.length === 0 ? styles.sendBtnDisabled : ''}`}
                   onClick={handleSend}
-                  disabled={!text.trim() && attachments.length === 0}
+                  disabled={isSending || (!text.trim() && attachments.length === 0)}
                   type="button"
                   whileTap={{ scale: 0.92 }}
                 >
-                  <MdSend size={18} />
+                  <Send size={18} />
                 </motion.button>
               )}
             </div>

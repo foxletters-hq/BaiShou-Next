@@ -7,6 +7,11 @@ import Animated, {
   interpolateColor
 } from 'react-native-reanimated'
 import { useNativeTheme } from '../theme'
+import { toReanimatedColor } from '../../shared/colors/reanimated-color.util'
+
+const TRACK_OFF_LIGHT = '#E2E8F0'
+const TRACK_OFF_DARK = '#2D3748'
+const TRACK_ON_FALLBACK = '#5BA8F5'
 
 export interface NativeSwitchProps {
   value?: boolean
@@ -33,8 +38,8 @@ export const Switch: React.FC<NativeSwitchProps> = ({
     })
   }, [value, progress])
 
-  const trackColorOff = isDark ? '#2D3748' : '#E2E8F0'
-  const trackColorOn = colors.primary
+  const trackColorOff = isDark ? TRACK_OFF_DARK : TRACK_OFF_LIGHT
+  const trackColorOn = toReanimatedColor(colors.primary, TRACK_ON_FALLBACK)
 
   const rTrackStyle = useAnimatedStyle(() => {
     const backgroundColor = interpolateColor(progress.value, [0, 1], [trackColorOff, trackColorOn])
@@ -43,8 +48,11 @@ export const Switch: React.FC<NativeSwitchProps> = ({
 
   const rThumbStyle = useAnimatedStyle(() => {
     const translateX = progress.value * 20
+    const isOn = progress.value > 0.5
     return {
-      transform: [{ translateX }]
+      transform: [{ translateX }],
+      shadowOpacity: isOn ? 0.15 : 0,
+      elevation: isOn ? 3 : 0
     }
   })
 
@@ -60,7 +68,16 @@ export const Switch: React.FC<NativeSwitchProps> = ({
       style={[styles.trackBase, disabled && { opacity: 0.5 }]}
     >
       <Animated.View style={[styles.track, rTrackStyle]}>
-        <Animated.View style={[styles.thumb, rThumbStyle, { backgroundColor: '#FFFFFF' }]} />
+        <Animated.View
+          style={[
+            styles.thumb,
+            rThumbStyle,
+            {
+              backgroundColor: '#FFFFFF',
+              borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.06)'
+            }
+          ]}
+        />
       </Animated.View>
     </Pressable>
   )
@@ -77,16 +94,16 @@ const styles = StyleSheet.create({
     borderRadius: 13,
     padding: 2,
     flexDirection: 'row',
-    alignItems: 'center'
+    alignItems: 'center',
+    overflow: 'hidden'
   },
   thumb: {
     width: 22,
     height: 22,
     borderRadius: 11,
+    borderWidth: StyleSheet.hairlineWidth,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 2.5,
-    elevation: 3
+    shadowRadius: 2.5
   }
 })

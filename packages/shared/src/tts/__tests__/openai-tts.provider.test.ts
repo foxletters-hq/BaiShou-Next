@@ -33,6 +33,11 @@ describe('OpenAiTtsProvider', () => {
       expect(provider.supportsModel('mimo-v2.5-tts')).toBe(false)
       expect(provider.supportsModel('some-mimo-v2.5-tts-pro')).toBe(false)
     })
+
+    it('should return false for minimax speech models', () => {
+      expect(provider.supportsModel('speech-2.8-hd')).toBe(false)
+      expect(provider.supportsModel('speech-01-turbo')).toBe(false)
+    })
   })
 
   describe('synthesize', () => {

@@ -9,10 +9,12 @@ import {
   Trash2,
   List,
   Search,
+  ScanSearch,
   FileText,
   MessageSquare,
   Database,
-  DatabaseZap
+  DatabaseZap,
+  Clock
 } from 'lucide-react'
 import type { AgentToolDef } from './agent-tools.types'
 
@@ -79,6 +81,13 @@ export function buildAgentTools(t: (key: string, fallback: string) => string): A
       tooltipKey: 'agent.tools.message_search_tooltip'
     },
     {
+      id: 'vector_search',
+      category: 'memory',
+      name: t('agent.tools.vector_search', '语义搜索'),
+      icon: <ScanSearch size={20} />,
+      tooltipKey: 'agent.tools.vector_search_desc'
+    },
+    {
       id: 'memory_store',
       category: 'memory',
       name: t('agent.tools.memory_store', '记忆存储'),
@@ -91,6 +100,13 @@ export function buildAgentTools(t: (key: string, fallback: string) => string): A
       name: t('agent.tools.memory_delete', '记忆删除'),
       icon: <DatabaseZap size={20} />,
       tooltipKey: 'agent.tools.memory_delete_tooltip'
+    },
+    {
+      id: 'auto_inject_time',
+      category: 'general',
+      name: t('agent.tools.auto_inject_time', '当前时间'),
+      icon: <Clock size={20} />,
+      tooltipKey: 'agent.tools.auto_inject_time_tooltip'
     }
   ]
 }

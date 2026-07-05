@@ -26,6 +26,9 @@ export default defineConfig({
     pool: 'threads',
     maxWorkers: process.platform === 'win32' ? 2 : undefined,
     fileParallelism: process.platform !== 'win32',
+    // ci:check 下 turbo 并行跑所有包测试，冷启动动态 import 在高负载时可能超过默认 5s
+    testTimeout: 30000,
+    hookTimeout: 30000,
     environment: 'jsdom',
     environmentMatchGlobs: [['src/main/**', 'node']],
     globals: true,

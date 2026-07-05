@@ -2,7 +2,17 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation } from 'react-router-dom'
 import { Search, Plus, Edit3, CalendarCheck, Filter, X, Heart } from 'lucide-react'
-import { WEATHER_IDS, getWeatherEmoji, weatherI18nKey, type WeatherId } from '@baishou/shared'
+import {
+  WEATHER_IDS,
+  getWeatherEmoji,
+  weatherI18nKey,
+  MOOD_IDS,
+  getMoodEmoji,
+  getMoodLabelFallback,
+  moodI18nKey,
+  type WeatherId,
+  type MoodId
+} from '@baishou/shared'
 import { YearMonthPicker } from '@baishou/ui'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -13,6 +23,8 @@ interface DiaryAppBarProps {
   onMonthChange: (m: Date | null) => void
   filterWeathers: string[]
   onFilterWeathersChange: (weathers: string[]) => void
+  filterMoods: string[]
+  onFilterMoodsChange: (moods: string[]) => void
   filterFavorite: boolean
   onFilterFavoriteChange: (v: boolean) => void
   todayEntry: { id: number } | null
@@ -28,6 +40,8 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
   onMonthChange,
   filterWeathers,
   onFilterWeathersChange,
+  filterMoods,
+  onFilterMoodsChange,
   filterFavorite,
   onFilterFavoriteChange,
   todayEntry,
@@ -43,7 +57,7 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
     setIsFilterOpen(false)
   }, [location.pathname])
 
-  const hasActiveFilters = filterWeathers.length > 0 || filterFavorite
+  const hasActiveFilters = filterWeathers.length > 0 || filterMoods.length > 0 || filterFavorite
 
   const weatherLabelFallback: Record<WeatherId, string> = {
     sunny: '晴',
@@ -59,8 +73,11 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
   const getWeatherLabel = (id: WeatherId) =>
     t(`diary.weather.${weatherI18nKey(id)}`, weatherLabelFallback[id])
 
+  const getMoodLabel = (id: MoodId) => t(`diary.mood.${moodI18nKey(id)}`, getMoodLabelFallback(id))
+
   const clearFilters = () => {
     onFilterWeathersChange([])
+    onFilterMoodsChange([])
     onFilterFavoriteChange(false)
   }
 
@@ -168,6 +185,31 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
                     ))}
                   </div>
                 </div>
+
+                {/* 心情筛选 */}
+                <div className="diary-filter-section">
+                  <div className="diary-filter-section-label">{t('diary.filter_mood', '心情')}</div>
+                  <div className="diary-filter-weather-grid">
+                    {MOOD_IDS.map((mood) => (
+                      <button
+                        key={mood}
+                        className={`diary-filter-weather-btn ${filterMoods.includes(mood) ? 'active' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onFilterMoodsChange(
+                            filterMoods.includes(mood)
+                              ? filterMoods.filter((m) => m !== mood)
+                              : [...filterMoods, mood]
+                          )
+                        }}
+                        title={getMoodLabel(mood)}
+                        aria-label={getMoodLabel(mood)}
+                      >
+                        <span className="diary-filter-weather-emoji">{getMoodEmoji(mood)}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -195,7 +237,7 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
               : t('settings.write_today_tooltip', '记录今天')
           }
         >
-          {todayEntry ? <Edit3 size={18} /> : <CalendarCheck size={18} />}
+          {todayEntry ? <Edit3 size={20} /> : <CalendarCheck size={20} />}
         </button>
 
         <button className="diary-add-btn" onClick={onAddNew}>

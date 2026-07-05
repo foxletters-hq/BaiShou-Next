@@ -1,10 +1,10 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdHelpOutline } from 'react-icons/md'
 import { Modal } from '../Modal/Modal'
 import { mergeSettingsHelpButtonHandlers } from '../shared/settingsInlineHelpBlock'
 import { ContextChainCompressionHelpContent } from './ContextChainCompressionHelp'
 import styles from './ContextChainCompressionHelpButton.module.css'
+import { CircleHelp } from 'lucide-react'
 
 export interface ContextChainCompressionHelpButtonProps {
   size?: number
@@ -26,7 +26,7 @@ export const ContextChainCompressionHelpButton: React.FC<
         aria-label={t('agent.chat.compression_help_aria', '查看对话压缩规则说明')}
         {...mergeSettingsHelpButtonHandlers(() => setOpen(true))}
       >
-        <MdHelpOutline size={size} className={styles.helpIcon} aria-hidden />
+        <CircleHelp size={size} className={styles.helpIcon} aria-hidden />
       </button>
       <Modal
         isOpen={open}

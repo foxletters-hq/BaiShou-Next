@@ -1,7 +1,7 @@
 import React from 'react'
 import { View, TouchableOpacity, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { MaterialIcons } from '@expo/vector-icons'
+import { Edit3, CalendarCheck, Plus } from 'lucide-react-native'
 import { getNativeElevationStyle, useNativeTheme } from '@baishou/ui/native'
 
 const FAB_MARGIN_END = 28
@@ -36,11 +36,19 @@ export const DiaryFab: React.FC<DiaryFabProps> = ({ todayEntry, onEditToday, onA
           todayEntry ? t('settings.edit_today_tooltip') : t('settings.write_today_tooltip')
         }
       >
-        <MaterialIcons
-          name={todayEntry ? 'edit-note' : 'today'}
-          size={22}
-          color={isDark ? colors.textSecondary : colors.onSecondaryContainer}
-        />
+        {todayEntry ? (
+          <Edit3
+            size={22}
+            color={isDark ? colors.textSecondary : colors.onSecondaryContainer}
+            strokeWidth={2}
+          />
+        ) : (
+          <CalendarCheck
+            size={22}
+            color={isDark ? colors.textSecondary : colors.onSecondaryContainer}
+            strokeWidth={2}
+          />
+        )}
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -49,7 +57,7 @@ export const DiaryFab: React.FC<DiaryFabProps> = ({ todayEntry, onEditToday, onA
         accessibilityRole="button"
         accessibilityLabel={t('settings.write_diary_button')}
       >
-        <MaterialIcons name="add" size={28} color={colors.textOnPrimary} />
+        <Plus size={28} color={colors.textOnPrimary} strokeWidth={2} />
       </TouchableOpacity>
     </View>
   )

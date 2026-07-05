@@ -17,7 +17,7 @@ import {
   resolveAgentDbPath,
   resolveArchivePayloadRoot,
   mergeArchivePrefsPreservingCloudSync,
-  discoverVaultNames,
+  resolveLegacyImportVaultNames,
   type IFileSystem,
   type IStoragePathService
 } from '@baishou/core-mobile'
@@ -61,47 +61,52 @@ export class MobileArchiveService implements IArchiveService {
   ) {}
 
   public async exportToTempFile(): Promise<string | null> {
-    if (this.dbBridge) {
-      await this.dbBridge.flushBeforeExport()
-    }
+    const runQuiesced =
+      this.dbBridge?.runArchiveExportQuiesced ?? ((fn: () => Promise<string | null>) => fn())
 
-    const rootDir = normalizeStoragePath(await this.pathService.getRootDirectory())
-    const stagingDir = this.getArchiveExportStagingDir(rootDir)
-    await this.fileSystem.mkdir(stagingDir, { recursive: true })
-
-    const supplementDir = joinStoragePath(stagingDir, `supplement_${Date.now()}`)
-    await this.fileSystem.mkdir(supplementDir, { recursive: true })
-
-    try {
-      await this.buildArchiveSupplement(supplementDir)
-
-      const targetZip = joinStoragePath(stagingDir, `BaiShou_Backup_${Date.now()}.zip`)
-
-      if (Platform.OS === 'android') {
-        if (!isNativeArchiveExportAvailable()) {
-          throw new Error(
-            '全量备份需要新版原生导出模块。请执行 pnpm dev:mobile:clear 重新安装开发版（不可用 Expo Go）。'
-          )
-        }
-
-        const result = await nativeZipArchiveExport(rootDir, supplementDir, targetZip)
-        await this.fileSystem.rm(supplementDir, { recursive: true, force: true }).catch(() => {})
-
-        if (result.entryCount <= 0) {
-          await this.fileSystem.unlink(targetZip).catch(() => {})
-          throw new Error('打包备份失败：未找到可导出的数据文件')
-        }
-
-        return targetZip
+    return runQuiesced(async () => {
+      if (this.dbBridge) {
+        await this.dbBridge.flushBeforeExport()
       }
 
-      await this.exportToTempFileDirectZip(rootDir, supplementDir, targetZip)
-      await this.fileSystem.rm(supplementDir, { recursive: true, force: true }).catch(() => {})
-      return targetZip
-    } catch (err) {
-      await this.fileSystem.rm(supplementDir, { recursive: true, force: true }).catch(() => {})
-      throw err
-    }
+      const rootDir = normalizeStoragePath(await this.pathService.getRootDirectory())
+      const stagingDir = this.getArchiveExportStagingDir(rootDir)
+      await this.fileSystem.mkdir(stagingDir, { recursive: true })
+
+      const supplementDir = joinStoragePath(stagingDir, `supplement_${Date.now()}`)
+      await this.fileSystem.mkdir(supplementDir, { recursive: true })
+
+      try {
+        await this.buildArchiveSupplement(supplementDir)
+
+        const targetZip = joinStoragePath(stagingDir, `BaiShou_Backup_${Date.now()}.zip`)
+
+        if (Platform.OS === 'android') {
+          if (!isNativeArchiveExportAvailable()) {
+            throw new Error(
+              '全量备份需要新版原生导出模块。请执行 pnpm dev:mobile:clear 重新安装开发版（不可用 Expo Go）。'
+            )
+          }
+
+          const result = await nativeZipArchiveExport(rootDir, supplementDir, targetZip)
+          await this.fileSystem.rm(supplementDir, { recursive: true, force: true }).catch(() => {})
+
+          if (result.entryCount <= 0) {
+            await this.fileSystem.unlink(targetZip).catch(() => {})
+            throw new Error('打包备份失败：未找到可导出的数据文件')
+          }
+
+          return targetZip
+        }
+
+        await this.exportToTempFileDirectZip(rootDir, supplementDir, targetZip)
+        await this.fileSystem.rm(supplementDir, { recursive: true, force: true }).catch(() => {})
+        return targetZip
+      } catch (err) {
+        await this.fileSystem.rm(supplementDir, { recursive: true, force: true }).catch(() => {})
+        throw err
+      }
+    })
   }
 
   private getArchiveExportStagingDir(rootDir: string): string {
@@ -315,7 +320,7 @@ export class MobileArchiveService implements IArchiveService {
         }
 
         try {
-          const vaultNames = await discoverVaultNames(this.fileSystem, payloadDir)
+          const vaultNames = await resolveLegacyImportVaultNames(this.fileSystem, payloadDir)
           const copyTotal = await estimateLegacyFlutterZipCopyFiles(
             this.fileSystem,
             payloadDir,

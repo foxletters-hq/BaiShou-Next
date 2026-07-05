@@ -1,7 +1,29 @@
+import { JOURNAL_TREE_SKIP_DIR_NAMES, isJournalPathUnderSkippedDir } from '@baishou/shared'
 import type { IFileSystem } from '../fs/file-system.types'
 import * as path from '../fs/path.util'
 
+export { JOURNAL_TREE_SKIP_DIR_NAMES, isJournalPathUnderSkippedDir }
+
 const JOURNAL_DATE_FILE = /^(\d{4}-\d{2}-\d{2})\.md$/i
+
+function isAbsolutePath(p: string): boolean {
+  return p.startsWith('/') || p.startsWith('\\') || /^[A-Za-z]:/.test(p)
+}
+
+/**
+ * 将影子索引中的 file_path 还原为磁盘绝对路径。
+ * 入库时使用 path.relative(path.dirname(journalBase), absolutePath)，此处逆运算。
+ */
+export function resolveShadowJournalAbsolutePath(
+  journalsBase: string,
+  shadowFilePath: string
+): string {
+  if (isAbsolutePath(shadowFilePath)) {
+    return shadowFilePath
+  }
+  const normalized = shadowFilePath.replace(/\\/g, '/')
+  return path.join(path.dirname(journalsBase), normalized)
+}
 
 /** 标准日记路径：Journals/YYYY/MM/YYYY-MM-DD.md */
 export function buildCanonicalJournalFilePath(journalsBase: string, dateStr: string): string {
@@ -37,6 +59,70 @@ export async function resolveJournalFilePath(
   return null
 }
 
+export type CollectJournalPathsResult = {
+  /** 每个日历日保留一条路径（优先标准 yyyy/MM/ 布局） */
+  pathsByDate: Map<string, string>
+  /** 磁盘上匹配的 .md 文件总数（同一日期多份文件时大于 pathsByDate.size） */
+  fileCount: number
+}
+
+/** 将 Journals 目录树中的日记文件按日期收集为路径映射（与 count 统计共用遍历规则） */
+export async function collectJournalPathsByDateInTree(
+  fileSystem: IFileSystem,
+  journalsDir: string
+): Promise<CollectJournalPathsResult> {
+  const pathsByDate = new Map<string, string>()
+  let fileCount = 0
+
+  if (!(await fileSystem.exists(journalsDir))) {
+    return { pathsByDate, fileCount }
+  }
+
+  async function walk(dir: string): Promise<void> {
+    let entries: string[] = []
+    try {
+      entries = await fileSystem.readdir(dir)
+    } catch {
+      return
+    }
+
+    for (const name of entries) {
+      const fullPath = path.join(dir, name)
+      const dateMatch = JOURNAL_DATE_FILE.exec(name)
+      if (dateMatch?.[1]) {
+        try {
+          const stat = await fileSystem.stat(fullPath)
+          if (!stat.isFile) continue
+        } catch {
+          continue
+        }
+
+        const dateStr = dateMatch[1]
+        fileCount += 1
+        const canonicalPath = buildCanonicalJournalFilePath(journalsDir, dateStr)
+        const existing = pathsByDate.get(dateStr)
+        if (!existing || path.resolve(fullPath) === path.resolve(canonicalPath)) {
+          pathsByDate.set(dateStr, fullPath)
+        }
+        continue
+      }
+
+      try {
+        const stat = await fileSystem.stat(fullPath)
+        if (stat.isDirectory) {
+          if (JOURNAL_TREE_SKIP_DIR_NAMES.has(name)) continue
+          await walk(fullPath)
+        }
+      } catch {
+        // skip unreadable entries (e.g. Unicode paths on some Android FS layers)
+      }
+    }
+  }
+
+  await walk(journalsDir)
+  return { pathsByDate, fileCount }
+}
+
 async function walkJournalsDir(
   fileSystem: IFileSystem,
   dir: string,
@@ -60,6 +146,7 @@ async function walkJournalsDir(
     try {
       const stat = await fileSystem.stat(fullPath)
       if (stat.isDirectory) {
+        if (JOURNAL_TREE_SKIP_DIR_NAMES.has(name)) continue
         count += await walkJournalsDir(fileSystem, fullPath, onMatch)
       }
     } catch {

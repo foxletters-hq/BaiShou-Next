@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react'
 import type { MockChatAttachment } from '@baishou/shared'
 import {
   CHAT_MESSAGE_FETCH_LIMIT,
@@ -9,17 +9,11 @@ import {
   flattenRoundSlice,
   groupMessagesIntoRounds
 } from '../utils/chat-round-pagination'
+import { clearStreamBridgeForSession } from './useAgentStream'
 import {
   chatSessionMessageCache,
   type SessionMessageCacheEntry
 } from '../utils/chat-session-message-cache'
-
-export interface PendingAssistantMsg {
-  id: string
-  content: string
-  reasoning?: string
-  toolInvocations?: any[]
-}
 
 export type CompactionAnchor = {
   messageId: string
@@ -61,14 +55,24 @@ export interface UseChatMessagesResult {
   messages: any[]
   setMessages: React.Dispatch<React.SetStateAction<any[]>>
   hasMore: boolean
-  pendingAssistantMsg: PendingAssistantMsg | null
   compactionAnchor: CompactionAnchor | null
   loadMore: () => Promise<void>
   refreshMessages: (retryCount?: number, overrideSessionId?: string) => Promise<boolean>
-  refreshLatestMessages: (retryCount?: number, overrideSessionId?: string) => Promise<boolean>
+  refreshLatestMessages: (
+    retryCount?: number,
+    overrideSessionId?: string,
+    options?: { resetPagination?: boolean }
+  ) => Promise<boolean>
+  /** 用户消息落库后立刻插入列表，避免等待 IPC 刷新才显示 */
+  appendSentUserMessage: (payload: {
+    id: string
+    content: string
+    attachments?: MockChatAttachment[]
+    createdAt?: Date
+  }) => void
   optimisticRemove: (optimisticId: string) => void
   setStreamSessionId: (id: string | null) => void
-  truncateMessages: (messageId: string) => void
+  truncateMessages: (messageId: string, options?: { content?: string }) => void
   ensureMessageAttachments: (messageId: string, attachments: MockChatAttachment[]) => void
 }
 
@@ -136,6 +140,22 @@ function applyPendingUsageToMessages(
   })
 }
 
+function isViewingLatestRounds(cache: readonly any[], roundWindowStart: number): boolean {
+  const totalRounds = groupMessagesIntoRounds(cache).length
+  return roundWindowStart >= Math.max(0, totalRounds - CHAT_ROUNDS_PER_PAGE)
+}
+
+function resolveRoundWindowStart(
+  cache: readonly any[],
+  currentStart: number,
+  preserveWindow: boolean
+): number {
+  const totalRounds = groupMessagesIntoRounds(cache).length
+  const initialStart = computeInitialRoundWindowStart(totalRounds)
+  if (!preserveWindow) return initialStart
+  return Math.min(currentStart, initialStart)
+}
+
 function applyCacheToWindow(
   cache: any[],
   roundWindowStart: number,
@@ -192,7 +212,6 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
 
   const [messages, setMessages] = useState<any[]>([])
   const [hasMore, setHasMore] = useState(false)
-  const [pendingAssistantMsg, setPendingAssistantMsg] = useState<PendingAssistantMsg | null>(null)
   const [compactionAnchor, setCompactionAnchor] = useState<CompactionAnchor | null>(null)
   const currentSessionIdRef = useRef<string | null>(null)
   const streamSessionIdRef = useRef<string | null>(null)
@@ -253,14 +272,11 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
       fetchHasMoreRef.current = fetched.length >= CHAT_MESSAGE_FETCH_LIMIT
       setCompactionAnchor(resolveLatestCompactionAnchor(fetched))
 
-      const rounds = groupMessagesIntoRounds(fetched)
-      let start = roundWindowStartRef.current
-
-      if (!preserveWindow || start >= Math.max(0, rounds.length - CHAT_ROUNDS_PER_PAGE)) {
-        start = computeInitialRoundWindowStart(rounds.length)
-      } else {
-        start = Math.min(start, computeInitialRoundWindowStart(rounds.length))
-      }
+      const start = resolveRoundWindowStart(
+        messageCacheRef.current,
+        roundWindowStartRef.current,
+        preserveWindow
+      )
 
       return syncFromCache(start)
     },
@@ -287,40 +303,23 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
 
       setCompactionAnchor(resolveLatestCompactionAnchor(messageCacheRef.current))
 
-      const rounds = groupMessagesIntoRounds(messageCacheRef.current)
-      let start = roundWindowStartRef.current
-      if (!preserveWindow || start >= Math.max(0, rounds.length - CHAT_ROUNDS_PER_PAGE)) {
-        start = computeInitialRoundWindowStart(rounds.length)
-      } else {
-        start = Math.min(start, computeInitialRoundWindowStart(rounds.length))
-      }
+      const start = resolveRoundWindowStart(
+        messageCacheRef.current,
+        roundWindowStartRef.current,
+        preserveWindow
+      )
 
       return syncFromCache(start)
     },
     [syncFromCache]
   )
 
-  const restoreSessionCache = useCallback(
-    (targetSessionId: string): boolean => {
-      const cached = chatSessionMessageCache.get(targetSessionId)
-      if (!cached) return false
-
-      messageCacheRef.current = applyPendingUsageToMessages(
-        [...cached.messages],
-        pendingUsageByMessageIdRef.current
-      )
-      loadedFromEndRef.current = cached.loadedFromEnd
-      roundWindowStartRef.current = cached.roundWindowStart
-      fetchHasMoreRef.current = cached.fetchHasMore
-      setCompactionAnchor(cached.compactionAnchor)
-      syncFromCache(cached.roundWindowStart)
-      return true
-    },
-    [syncFromCache]
-  )
-
   const refreshLatestMessages = useCallback(
-    async (retryCount = 3, overrideSessionId?: string): Promise<boolean> => {
+    async (
+      retryCount = 3,
+      overrideSessionId?: string,
+      options?: { resetPagination?: boolean }
+    ): Promise<boolean> => {
       const targetId = overrideSessionId || sessionId
       if (!targetId) return false
 
@@ -332,13 +331,10 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
             continue
           }
 
-          const atBottom =
-            roundWindowStartRef.current >=
-            Math.max(
-              0,
-              groupMessagesIntoRounds(messageCacheRef.current).length - CHAT_ROUNDS_PER_PAGE
-            )
-          ingestTailMessages(fetched, !atBottom)
+          const preserveWindow =
+            !options?.resetPagination &&
+            !isViewingLatestRounds(messageCacheRef.current, roundWindowStartRef.current)
+          ingestTailMessages(fetched, preserveWindow)
 
           const latestAssistant = [...fetched].reverse().find((m) => m.role === 'assistant')
           if (
@@ -375,13 +371,11 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
           const fetched = await fetchMessagesFromIpc(targetId, fetchLimit, 0)
 
           if (fetched) {
-            const atBottom =
-              roundWindowStartRef.current >=
-              Math.max(
-                0,
-                groupMessagesIntoRounds(messageCacheRef.current).length - CHAT_ROUNDS_PER_PAGE
-              )
-            ingestFetchedTail(fetched, !atBottom)
+            const preserveWindow = !isViewingLatestRounds(
+              messageCacheRef.current,
+              roundWindowStartRef.current
+            )
+            ingestFetchedTail(fetched, preserveWindow)
 
             const latestAssistant = [...fetched].reverse().find((m) => m.role === 'assistant')
             if (
@@ -407,7 +401,7 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
     [sessionId, ingestFetchedTail]
   )
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!sessionId) {
       if (currentSessionIdRef.current) {
         persistSessionCache(currentSessionIdRef.current)
@@ -421,7 +415,6 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
       pendingUsageByMessageIdRef.current.clear()
       setCompactionAnchor(null)
       currentSessionIdRef.current = null
-      setPendingAssistantMsg(null)
       return
     }
 
@@ -433,26 +426,26 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
 
       currentSessionIdRef.current = sessionId
       pendingUsageByMessageIdRef.current.clear()
-      setPendingAssistantMsg(null)
+      chatSessionMessageCache.delete(sessionId)
 
-      const restored = restoreSessionCache(sessionId)
-      if (restored) {
-        void refreshLatestMessages(1)
-        return
-      }
-
+      setMessages([])
+      setHasMore(false)
       loadedFromEndRef.current = 0
       messageCacheRef.current = []
       roundWindowStartRef.current = 0
       fetchHasMoreRef.current = false
+      setCompactionAnchor(null)
 
       const loadMessages = async () => {
+        if (currentSessionIdRef.current !== sessionId) return
         try {
           const fetched = await fetchMessagesFromIpc(sessionId, CHAT_MESSAGE_FETCH_LIMIT, 0)
+          if (currentSessionIdRef.current !== sessionId) return
           if (fetched) {
             ingestFetchedTail(fetched, false)
           }
         } catch (e) {
+          if (currentSessionIdRef.current !== sessionId) return
           console.error('[useChatMessages] DB fetch error:', e)
           setMessages([])
           setHasMore(false)
@@ -464,13 +457,7 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
       }
       void loadMessages()
     }
-  }, [
-    sessionId,
-    ingestFetchedTail,
-    persistSessionCache,
-    restoreSessionCache,
-    refreshLatestMessages
-  ])
+  }, [sessionId, ingestFetchedTail, persistSessionCache])
 
   useEffect(() => {
     if (!sessionId) return
@@ -569,33 +556,22 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
   const prevStreamingRef = useRef(isStreaming)
   useEffect(() => {
     if (prevStreamingRef.current && !isStreaming && sessionId) {
-      if (streamSessionIdRef.current === sessionId && (streamingText || streamingReasoning)) {
-        setPendingAssistantMsg({
-          id: `pending-${Date.now()}`,
-          content: streamingText,
-          reasoning: streamingReasoning || undefined
-        })
+      if (streamSessionIdRef.current !== sessionId) {
+        prevStreamingRef.current = isStreaming
+        return
       }
 
       const sync = async () => {
-        await new Promise((r) => setTimeout(r, 100))
         const success = await refreshLatestMessages(3)
-        setPendingAssistantMsg(null)
         if (success && sessionId) {
           persistSessionCache(sessionId)
+          clearStreamBridgeForSession(sessionId)
         }
       }
       void sync()
     }
     prevStreamingRef.current = isStreaming
-  }, [
-    isStreaming,
-    sessionId,
-    streamingText,
-    streamingReasoning,
-    refreshLatestMessages,
-    persistSessionCache
-  ])
+  }, [isStreaming, sessionId, refreshLatestMessages, persistSessionCache])
 
   const loadMore = useCallback(async () => {
     if (!sessionId) return
@@ -673,18 +649,20 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
   )
 
   const truncateMessages = useCallback(
-    (messageId: string) => {
+    (messageId: string, options?: { content?: string }) => {
       const idx = messageCacheRef.current.findIndex((m) => m.id === messageId)
       if (idx === -1) return
 
-      const truncated = messageCacheRef.current.slice(0, idx + 1)
-      if (truncated[idx]) {
-        truncated[idx] = {
-          ...truncated[idx],
+      const truncated = messageCacheRef.current.slice(0, idx + 1).map((m, i) => {
+        if (i < idx) return m
+        const trimmedContent = options?.content?.trim()
+        return {
+          ...m,
+          ...(trimmedContent ? { content: trimmedContent } : {}),
           compactionRecord: undefined,
           hasCompactionMarker: false
         }
-      }
+      })
       messageCacheRef.current = truncated
       loadedFromEndRef.current = truncated.length
 
@@ -699,15 +677,52 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
     [sessionId, syncFromCache]
   )
 
+  const appendSentUserMessage = useCallback(
+    (payload: {
+      id: string
+      content: string
+      attachments?: MockChatAttachment[]
+      createdAt?: Date
+    }) => {
+      if (messageCacheRef.current.some((m) => m.id === payload.id)) return
+
+      const maxOrder = messageCacheRef.current.reduce(
+        (max, m) => Math.max(max, typeof m.orderIndex === 'number' ? m.orderIndex : 0),
+        0
+      )
+      const createdAt = payload.createdAt ?? new Date()
+      const msg = {
+        id: payload.id,
+        role: 'user',
+        content: payload.content,
+        attachments: payload.attachments,
+        orderIndex: maxOrder + 1,
+        createdAt,
+        parts: payload.content
+          ? [
+              {
+                id: `${payload.id}-text`,
+                messageId: payload.id,
+                type: 'text',
+                data: { text: payload.content }
+              }
+            ]
+          : []
+      }
+      ingestTailMessages([msg], false)
+    },
+    [ingestTailMessages]
+  )
+
   return {
     messages,
     setMessages,
     hasMore,
-    pendingAssistantMsg,
     compactionAnchor,
     loadMore,
     refreshMessages,
     refreshLatestMessages,
+    appendSentUserMessage,
     optimisticRemove,
     setStreamSessionId,
     truncateMessages,

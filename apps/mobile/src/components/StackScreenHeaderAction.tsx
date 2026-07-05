@@ -1,6 +1,5 @@
 import React from 'react'
 import { TouchableOpacity, Text, StyleSheet } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
 import { useNativeTheme } from '@baishou/ui/native'
 import type { StackScreenHeaderActionConfig } from './stack-screen-header.types'
 
@@ -10,7 +9,7 @@ interface StackScreenHeaderActionProps {
 
 export const StackScreenHeaderAction: React.FC<StackScreenHeaderActionProps> = ({ action }) => {
   const { colors } = useNativeTheme()
-  const { icon, label, onPress, accessibilityLabel, disabled } = action
+  const { icon: Icon, label, onPress, accessibilityLabel, disabled } = action
 
   return (
     <TouchableOpacity
@@ -21,11 +20,11 @@ export const StackScreenHeaderAction: React.FC<StackScreenHeaderActionProps> = (
       accessibilityLabel={accessibilityLabel ?? label}
       hitSlop={8}
     >
-      {icon ? (
-        <MaterialIcons
-          name={icon}
+      {Icon ? (
+        <Icon
           size={22}
           color={disabled ? colors.textTertiary : colors.textPrimary}
+          strokeWidth={2}
         />
       ) : (
         <Text

@@ -1,29 +1,28 @@
 import React from 'react'
 import type { TFunction } from 'i18next'
 import {
-  MdTimeline,
-  MdAutoStories,
-  MdOutlineSettings,
-  MdOutlineCloudQueue,
-  MdOutlineStarBorder,
-  MdSchool,
-  MdColorLens,
-  MdTravelExplore,
-  MdOutlineExtension,
-  MdOutlineAutoAwesome,
-  MdWifi,
-  MdOutlineStorage,
-  MdOutlineCollections,
-  MdVolumeUp,
-  MdHistory,
-  MdOutlineHub,
-  MdSync,
-  MdEditNote,
-  MdTextSnippet
-} from 'react-icons/md'
+  Archive,
+  BookOpen,
+  Cable,
+  Cloud,
+  Database,
+  Globe,
+  GraduationCap,
+  History,
+  Library,
+  NotebookPen,
+  Paperclip,
+  Puzzle,
+  RefreshCw,
+  Settings,
+  SlidersHorizontal,
+  Sparkles,
+  Volume2,
+  Wifi
+} from 'lucide-react'
 import { SETTINGS_HUB_PREFIX } from '../../features/settings/settings-route.util'
 
-export const SIDEBAR_NAV_ICON_SIZE = 20
+export const SIDEBAR_NAV_ICON_SIZE = 18
 
 export function sidebarNavIcon(icon: React.ReactElement<{ size?: number }>): React.ReactNode {
   return React.cloneElement(icon, { size: SIDEBAR_NAV_ICON_SIZE })
@@ -36,7 +35,6 @@ export const ALL_SIDEBAR_NAV_IDS = [
   'diary',
   'summary',
   'diary-template',
-  'diary-ai-writing',
   'general',
   'mcp',
   'ai-services',
@@ -89,7 +87,7 @@ export const SIDEBAR_NAV_GROUPS: SidebarNavGroupDef[] = [
     key: 'diary',
     labelKey: 'sidebar.group_diary',
     defaultLabel: '日记与回忆',
-    itemIds: ['diary', 'summary', 'diary-template', 'diary-ai-writing', 'summary-settings']
+    itemIds: ['diary', 'summary', 'diary-template', 'summary-settings']
   },
   {
     key: 'settings-general',
@@ -121,7 +119,6 @@ export const SIDEBAR_NAV_PATHS: Record<SidebarNavId, string> = {
   diary: '/diary',
   summary: '/summary',
   'diary-template': `${SETTINGS_HUB_PREFIX}/diary-template`,
-  'diary-ai-writing': `${SETTINGS_HUB_PREFIX}/diary-ai-writing`,
   general: `${SETTINGS_HUB_PREFIX}/general`,
   mcp: `${SETTINGS_HUB_PREFIX}/mcp`,
   'ai-services': `${SETTINGS_HUB_PREFIX}/ai-services`,
@@ -148,94 +145,89 @@ export interface SidebarNavItemView {
 export function buildSidebarNavItems(t: TFunction): Record<SidebarNavId, SidebarNavItemView> {
   const icon = sidebarNavIcon
   return {
-    diary: { icon: icon(<MdTimeline />), label: t('diary.title', '日记'), path: '/diary' },
+    diary: { icon: icon(<BookOpen />), label: t('diary.title', '日记'), path: '/diary' },
     summary: {
-      icon: icon(<MdAutoStories />),
+      icon: icon(<Library />),
       label: t('summary.dashboard_title', '回忆'),
       path: '/summary'
     },
     'diary-template': {
-      icon: icon(<MdEditNote />),
-      label: t('settings.diary_template_title', '日记模板'),
+      icon: icon(<NotebookPen />),
+      label: t('settings.diary_template_title', '日记格式'),
       path: `${SETTINGS_HUB_PREFIX}/diary-template`
     },
-    'diary-ai-writing': {
-      icon: icon(<MdTextSnippet />),
-      label: t('settings.diary_partner_writing_title', '伙伴书写规范'),
-      path: `${SETTINGS_HUB_PREFIX}/diary-ai-writing`
-    },
     general: {
-      icon: icon(<MdOutlineSettings />),
+      icon: icon(<Settings />),
       label: t('settings.general', '常规设置'),
       path: `${SETTINGS_HUB_PREFIX}/general`
     },
     mcp: {
-      icon: icon(<MdOutlineHub />),
+      icon: icon(<Cable />),
       label: t('settings.mcp_title', 'MCP 服务'),
       path: `${SETTINGS_HUB_PREFIX}/mcp`
     },
     'ai-services': {
-      icon: icon(<MdOutlineCloudQueue />),
+      icon: icon(<Cloud />),
       label: t('settings.ai_services', '供应商管理'),
       path: `${SETTINGS_HUB_PREFIX}/ai-services`
     },
     'ai-models': {
-      icon: icon(<MdOutlineStarBorder />),
+      icon: icon(<SlidersHorizontal />),
       label: t('settings.ai_global_models', '全局默认模型'),
       path: `${SETTINGS_HUB_PREFIX}/ai-models`
     },
     assistants: {
-      icon: icon(<MdSchool />),
+      icon: icon(<GraduationCap />),
       label: t('agent.assistant.settings_entry', '伙伴管理'),
       path: `${SETTINGS_HUB_PREFIX}/assistants`
     },
     rag: {
-      icon: icon(<MdColorLens />),
+      icon: icon(<Database />),
       label: t('agent.rag.title', 'RAG 记忆管理'),
       path: `${SETTINGS_HUB_PREFIX}/rag`
     },
     'web-search': {
-      icon: icon(<MdTravelExplore />),
+      icon: icon(<Globe />),
       label: t('agent.tools.web_search', '网络搜索'),
       path: `${SETTINGS_HUB_PREFIX}/web-search`
     },
     'agent-tools': {
-      icon: icon(<MdOutlineExtension />),
+      icon: icon(<Puzzle />),
       label: t('settings.agent_tools_title', '工具管理'),
       path: `${SETTINGS_HUB_PREFIX}/agent-tools`
     },
     'summary-settings': {
-      icon: icon(<MdOutlineAutoAwesome />),
+      icon: icon(<Sparkles />),
       label: t('settings.summary_settings_title', '回忆生成设置'),
       path: `${SETTINGS_HUB_PREFIX}/summary`
     },
     tts: {
-      icon: icon(<MdVolumeUp />),
+      icon: icon(<Volume2 />),
       label: t('settings.tts_settings', 'TTS 语音合成'),
       path: `${SETTINGS_HUB_PREFIX}/tts`
     },
     lan: {
-      icon: icon(<MdWifi />),
+      icon: icon(<Wifi />),
       label: t('settings.lan_transfer', '局域网传输'),
       path: `${SETTINGS_HUB_PREFIX}/lan-transfer`
     },
     sync: {
-      icon: icon(<MdOutlineStorage />),
+      icon: icon(<Archive />),
       label: t('data_sync.title', '数据备份'),
       path: `${SETTINGS_HUB_PREFIX}/data-sync`
     },
     'incremental-sync': {
-      icon: icon(<MdSync />),
+      icon: icon(<RefreshCw />),
       label: t('data_sync.incremental_sync', '增量同步'),
       path: `${SETTINGS_HUB_PREFIX}/incremental-sync`
     },
     attachments: {
-      icon: icon(<MdOutlineCollections />),
+      icon: icon(<Paperclip />),
       label: t('settings.attachment_management', '附件管理'),
       path: `${SETTINGS_HUB_PREFIX}/attachments`
     },
     git: {
-      icon: icon(<MdHistory />),
+      icon: icon(<History />),
       label: t('version_control.title', '版本控制'),
       path: `${SETTINGS_HUB_PREFIX}/git`
     }

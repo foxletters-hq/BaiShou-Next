@@ -302,6 +302,18 @@ describe('GitSyncService', () => {
           'Personal/Attachments/x/file.conflict-1.conflict-2.conflict-3.pdf'
         )
       ).toBe(true)
+      expect(isExcludedFromVersionControl('.write_test_1782499969450_zzldj')).toBe(true)
+      expect(isExcludedFromVersionControl('.baishou_write_test')).toBe(true)
+    })
+  })
+
+  describe('isStorageWriteProbePath', () => {
+    it('detects storage write probe filenames', async () => {
+      const { isStorageWriteProbePath } = await import('../git-sync.helpers')
+      expect(isStorageWriteProbePath('.write_test')).toBe(true)
+      expect(isStorageWriteProbePath('.write_test_1782499969450_zzldj')).toBe(true)
+      expect(isStorageWriteProbePath('Personal/.baishou_write_test')).toBe(true)
+      expect(isStorageWriteProbePath('Personal/Journals/a.md')).toBe(false)
     })
   })
 
@@ -485,7 +497,7 @@ describe('GitSyncService', () => {
 
       await impl.unstageAll()
 
-      expect(mockGit.reset).toHaveBeenCalledWith('mixed')
+      expect(mockGit.reset).toHaveBeenCalledWith(['--mixed'])
     })
   })
 
@@ -557,10 +569,7 @@ describe('GitSyncService', () => {
       const impl = new GitSyncServiceImpl(mockPathService)
       const paths = ['a.md', 'b.md']
       const mockGit = {
-        add: vi
-          .fn()
-          .mockRejectedValueOnce(new Error('chunk failed'))
-          .mockResolvedValue(undefined)
+        add: vi.fn().mockRejectedValueOnce(new Error('chunk failed')).mockResolvedValue(undefined)
       } as any
 
       const staged = await (impl as any).addPathsToIndex(mockGit, paths)

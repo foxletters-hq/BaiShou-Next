@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { View, Text, Pressable, StyleSheet, Modal } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { MaterialIcons } from '@expo/vector-icons'
+import { Gauge } from 'lucide-react-native'
 import { useNativeTheme } from '@baishou/ui/native'
 
 interface ConcurrencyDropdownProps {
@@ -29,7 +29,7 @@ export const ConcurrencyDropdown: React.FC<ConcurrencyDropdownProps> = ({
         disabled={disabled}
         onPress={() => setOpen(true)}
       >
-        <MaterialIcons name="speed" size={14} color={colors.primary} />
+        <Gauge size={14} color={colors.primary} strokeWidth={2} />
         <Text style={[styles.triggerText, { color: colors.primary }]}>
           {t('summary.concurrency')}: {value}
         </Text>

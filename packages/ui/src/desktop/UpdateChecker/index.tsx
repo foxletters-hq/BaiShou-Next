@@ -1,16 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  MdOutlineSystemUpdate,
-  MdOpenInNew,
-  MdDownload,
-  MdCheckCircle,
-  MdError,
-  MdHourglassEmpty
-} from 'react-icons/md'
 import { useUpdaterStore, UpdateStatus } from '@baishou/store'
 import '../shared/SettingsListTile.css'
 import './UpdateChecker.css'
+import { CheckCircle, CircleX, Download, ExternalLink, Hourglass } from 'lucide-react'
 
 export interface UpdateCheckerProps {
   /** 自定义版本号显示 */
@@ -67,17 +60,17 @@ export const UpdateChecker: React.FC<UpdateCheckerProps> = ({ version }) => {
   const getStatusIcon = () => {
     switch (status) {
       case UpdateStatus.CHECKING:
-        return <MdHourglassEmpty size={20} className="update-status-icon spinning" />
+        return <Hourglass size={20} className="update-status-icon spinning" />
       case UpdateStatus.AVAILABLE:
-        return <MdOutlineSystemUpdate size={20} className="update-status-icon available" />
+        return <Download size={20} className="update-status-icon available" />
       case UpdateStatus.DOWNLOADING:
-        return <MdDownload size={20} className="update-status-icon downloading" />
+        return <Download size={20} className="update-status-icon downloading" />
       case UpdateStatus.DOWNLOADED:
-        return <MdCheckCircle size={20} className="update-status-icon downloaded" />
+        return <CheckCircle size={20} className="update-status-icon downloaded" />
       case UpdateStatus.ERROR:
-        return <MdError size={20} className="update-status-icon error" />
+        return <CircleX size={20} className="update-status-icon error" />
       default:
-        return <MdOutlineSystemUpdate size={20} className="update-status-icon" />
+        return <Download size={20} className="update-status-icon" />
     }
   }
 
@@ -116,11 +109,11 @@ export const UpdateChecker: React.FC<UpdateCheckerProps> = ({ version }) => {
         return (
           <div className="update-action-group">
             <button className="update-action-btn secondary" onClick={handleOpenReleasePage}>
-              <MdOpenInNew size={16} />
+              <ExternalLink size={16} />
               {t('updater.view_release', '查看发布页')}
             </button>
             <button className="update-action-btn primary" onClick={handleDownload}>
-              <MdDownload size={16} />
+              <Download size={16} />
               {t('updater.download', '下载更新')}
             </button>
           </div>
@@ -135,7 +128,7 @@ export const UpdateChecker: React.FC<UpdateCheckerProps> = ({ version }) => {
       case UpdateStatus.DOWNLOADED:
         return (
           <button className="update-action-btn primary" onClick={handleInstall}>
-            <MdCheckCircle size={16} />
+            <CheckCircle size={16} />
             {t('updater.install', '立即安装')}
           </button>
         )
@@ -184,7 +177,7 @@ export const UpdateChecker: React.FC<UpdateCheckerProps> = ({ version }) => {
 
       <div className="settings-list-tile">
         <div className="settings-list-tile-leading">
-          <MdOutlineSystemUpdate size={24} />
+          <Download size={24} />
         </div>
         <div className="settings-list-tile-content">
           <span className="settings-list-tile-title">

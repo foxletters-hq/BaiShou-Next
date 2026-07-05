@@ -1,5 +1,9 @@
 import React, { useRef, useLayoutEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
+import {
+  applyFixedContextMenuLayout
+} from '../ContextMenu/context-menu-placement.util'
 import styles from './ChatBubble.module.css'
 
 interface ChatBubbleContextMenuProps {
@@ -27,24 +31,13 @@ export const ChatBubbleContextMenu: React.FC<ChatBubbleContextMenuProps> = ({
   const chatMenuRef = useRef<HTMLDivElement>(null)
 
   useLayoutEffect(() => {
-    if (contextMenu && chatMenuRef.current) {
-      const rect = chatMenuRef.current.getBoundingClientRect()
-      let adjustedX = contextMenu.x
-      let adjustedY = contextMenu.y
-      if (contextMenu.x + rect.width > window.innerWidth) {
-        adjustedX = Math.max(10, window.innerWidth - rect.width - 10)
-      }
-      if (contextMenu.y + rect.height > window.innerHeight) {
-        adjustedY = Math.max(10, window.innerHeight - rect.height - 10)
-      }
-      chatMenuRef.current.style.left = `${adjustedX}px`
-      chatMenuRef.current.style.top = `${adjustedY}px`
-    }
-  }, [contextMenu])
+    if (!contextMenu || !chatMenuRef.current) return
+    applyFixedContextMenuLayout(chatMenuRef.current, contextMenu.x, contextMenu.y)
+  }, [contextMenu, isUser, onDelete, onRegenerate, onResend])
 
-  if (!contextMenu) return null
+  if (!contextMenu || typeof document === 'undefined') return null
 
-  return (
+  return createPortal(
     <div
       className={styles.contextMenuOverlay}
       onMouseDown={(e) => {
@@ -129,6 +122,7 @@ export const ChatBubbleContextMenu: React.FC<ChatBubbleContextMenuProps> = ({
           </button>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

@@ -20,11 +20,9 @@ export class HybridSearchService {
       ? this.storage.queryFTS(opts.queryText, topK)
       : Promise.resolve([])
 
-    const vectorPromise = this.storage.queryNativeVector(
-      opts.queryVector,
-      topK,
-      opts.similarityThreshold
-    )
+    const vectorPromise = this.storage.queryNativeVector(opts.queryVector, topK, {
+      threshold: opts.similarityThreshold
+    })
 
     const [ftsResults, vectorResults] = await Promise.all([ftsPromise, vectorPromise])
 

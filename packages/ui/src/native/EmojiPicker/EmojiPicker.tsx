@@ -9,9 +9,10 @@ import {
   StyleSheet,
   TouchableOpacity
 } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { Search, X } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { Input } from '../Input/Input'
 import emojiData from 'emoji-picker-element-data/en/cldr/data.json'
 
@@ -143,7 +144,7 @@ export const EmojiPicker: React.FC<EmojiPickerProps> = ({
                 onPress={onClose}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <MaterialIcons name="close" size={22} color={colors.textSecondary} />
+                <X size={22} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
               </TouchableOpacity>
             </View>
 
@@ -154,11 +155,11 @@ export const EmojiPicker: React.FC<EmojiPickerProps> = ({
                 onChangeText={setSearchQuery}
                 autoCorrect={false}
                 autoCapitalize="none"
-                leftSlot={<MaterialIcons name="search" size={18} color={colors.textTertiary} />}
+                leftSlot={<Search size={18} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />}
                 rightSlot={
                   searchQuery.length > 0 ? (
                     <TouchableOpacity onPress={() => setSearchQuery('')}>
-                      <MaterialIcons name="close" size={16} color={colors.textTertiary} />
+                      <X size={16} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                     </TouchableOpacity>
                   ) : undefined
                 }

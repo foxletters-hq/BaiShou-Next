@@ -16,7 +16,7 @@ import Animated, {
   useSharedValue,
   withSpring
 } from 'react-native-reanimated'
-import { MaterialIcons } from '@expo/vector-icons'
+import { ChevronRight } from 'lucide-react-native'
 import * as Haptics from 'expo-haptics'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme, ProviderBrandIcon } from '@baishou/ui/native'
@@ -202,7 +202,7 @@ const DraggableProviderRow = React.memo(function DraggableProviderRow({
             <Text style={{ fontSize: 9, color: colors.textTertiary }}>自定义</Text>
           </View>
         )}
-        <MaterialIcons name="chevron-right" size={22} color={colors.textTertiary} />
+        <ChevronRight size={22} color={colors.textTertiary} strokeWidth={2} />
       </Pressable>
     </Animated.View>
   )

@@ -17,7 +17,7 @@ export class SessionFileService {
   async writeSession(sessionId: string, sessionData: any): Promise<string> {
     const dir = await this.getDirectory()
     const fullPath = path.join(dir, `${sessionId}.json`)
-    await this.fileSystem.writeFile(fullPath, JSON.stringify(sessionData, null, 2), 'utf8')
+    await this.fileSystem.writeFile(fullPath, JSON.stringify(sessionData), 'utf8')
     return fullPath
   }
 
@@ -30,6 +30,18 @@ export class SessionFileService {
     } catch (e: any) {
       if (e.code === 'ENOENT') return null
       throw e
+    }
+  }
+
+  async getSessionFileByteSize(sessionId: string): Promise<number | undefined> {
+    const dir = await this.getDirectory()
+    const fullPath = path.join(dir, `${sessionId}.json`)
+    try {
+      const stat = await this.fileSystem.stat(fullPath)
+      if (!stat.isFile) return undefined
+      return stat.size
+    } catch {
+      return undefined
     }
   }
 

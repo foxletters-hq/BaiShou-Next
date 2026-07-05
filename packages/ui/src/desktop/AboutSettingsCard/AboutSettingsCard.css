@@ -211,6 +211,58 @@
   border-bottom: 1px solid var(--border-card);
 }
 
+.about-flat-label-inner {
+  border-bottom: none;
+  margin-bottom: 8px;
+  padding-bottom: 0;
+}
+
+.about-flat-inner-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.about-contributors-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.about-contributors-hint {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  text-align: center;
+  white-space: pre-line;
+}
+
+.about-contributors-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 24px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
+}
+
+.about-contributors-btn:hover {
+  background: var(--bg-surface-normal, rgba(0, 0, 0, 0.02));
+  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.25);
+}
+
 .about-flat-developer {
   position: relative;
   display: flex;

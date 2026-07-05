@@ -19,7 +19,20 @@ import {
   type TextInputKeyPressEventData
 } from 'react-native'
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
-import { MaterialIcons } from '@expo/vector-icons'
+import type { LucideProps } from 'lucide-react-native'
+import {
+  BookOpen,
+  Camera,
+  FolderOpen,
+  Globe,
+  Image as ImageIcon,
+  LayoutGrid,
+  Menu,
+  Paperclip,
+  Send,
+  Volume2,
+  Zap
+} from 'lucide-react-native'
 import type { MockChatAttachment, PromptShortcut } from '@baishou/shared'
 import { getDefaultShortcutLabelsFromT, localizePromptShortcuts } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
@@ -35,13 +48,27 @@ import {
   pickAttachmentsFromPhotoLibrary,
   type PickAttachmentsResult
 } from './attachment-picker.util'
+import {
+  useComposerDraft,
+  type ComposerDraftStorage,
+  type ComposerOnSend
+} from '../../shared/composer-draft'
+import { DEFAULT_STROKE_WIDTH, INPUT_BAR_ICON_SIZE } from '../../shared/icons/icon-sizes'
+import { LucideIcon } from '../icons/LucideIcon'
 
 const TOOLBAR_ANIM_MS = 200
 
 export interface InputBarProps {
   isLoading: boolean
-  onSend: (text: string, attachments?: MockChatAttachment[]) => void
+  /** 返回 false 时保留输入内容与草稿 */
+  onSend: ComposerOnSend
   onStop?: () => void
+  /** 为 true 时不发送并触发 onComposerBlocked */
+  composerBlocked?: boolean
+  onComposerBlocked?: () => void
+  /** 传入后自动持久化/恢复未发送草稿（按会话隔离） */
+  composerDraftKey?: string
+  composerDraftStorage?: ComposerDraftStorage
   assistantName?: string
   onAssistantTap?: () => void
   onRecall?: () => void
@@ -84,7 +111,11 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
       ttsMode = 'manual',
       onToggleTtsMode,
       onInputFocus,
-      composerEnabled = true
+      composerEnabled = true,
+      composerBlocked = false,
+      onComposerBlocked,
+      composerDraftKey,
+      composerDraftStorage
     },
     ref
   ) => {
@@ -95,6 +126,14 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
     const inputRef = useRef<any>(null)
     const [text, setText] = useState('')
     const [attachments, setAttachments] = useState<MockChatAttachment[]>([])
+    const [isSending, setIsSending] = useState(false)
+    const { clearDraft } = useComposerDraft({
+      draftKey: composerDraftKey,
+      draftStorage: composerDraftStorage,
+      text,
+      setText,
+      draftSyncSuspended: isSending
+    })
     const [showToolbar, setShowToolbar] = useState(true)
     const toolbarProgress = useSharedValue(1)
     const localizedShortcuts = useMemo(() => {
@@ -154,19 +193,25 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
             label: t('input.attachment_camera', '拍照'),
             value: 'camera',
             centered: true,
-            leading: <MaterialIcons name="photo-camera" size={22} color={iconColor} />
+            leading: (
+              <Camera size={22} color={iconColor} strokeWidth={DEFAULT_STROKE_WIDTH} />
+            )
           },
           {
             label: t('input.attachment_photo_library', '相册'),
             value: 'album',
             centered: true,
-            leading: <MaterialIcons name="photo-library" size={22} color={iconColor} />
+            leading: (
+              <ImageIcon size={22} color={iconColor} strokeWidth={DEFAULT_STROKE_WIDTH} />
+            )
           },
           {
             label: t('input.attachment_file_manager', '文件管理'),
             value: 'files',
             centered: true,
-            leading: <MaterialIcons name="folder-open" size={22} color={iconColor} />
+            leading: (
+              <FolderOpen size={22} color={iconColor} strokeWidth={DEFAULT_STROKE_WIDTH} />
+            )
           }
         ],
         t('input.attachment_source_title', '选择附件来源')
@@ -205,14 +250,47 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
       }
     }))
 
-    const handleSend = () => {
+    const handleSend = useCallback(async () => {
       if (shortcutHandlers.shortcutModeActive && text.startsWith('/')) return
-      if ((text.trim() || attachments.length > 0) && !isLoading) {
-        onSend(text.trim(), attachments.length > 0 ? [...attachments] : undefined)
-        setText('')
-        setAttachments([])
+      if (!text.trim() && attachments.length === 0) return
+      if (isLoading || isSending) return
+
+      if (composerBlocked) {
+        onComposerBlocked?.()
+        return
       }
-    }
+
+      const pendingText = text
+      const pendingAttachments = attachments.length > 0 ? [...attachments] : []
+
+      setText('')
+      setAttachments([])
+
+      setIsSending(true)
+      try {
+        const accepted = await Promise.resolve(
+          onSend(pendingText.trim(), pendingAttachments.length > 0 ? pendingAttachments : undefined)
+        )
+        if (accepted === false) {
+          setText(pendingText)
+          setAttachments(pendingAttachments)
+        } else {
+          await clearDraft()
+        }
+      } finally {
+        setIsSending(false)
+      }
+    }, [
+      attachments,
+      clearDraft,
+      composerBlocked,
+      isLoading,
+      isSending,
+      onComposerBlocked,
+      onSend,
+      shortcutHandlers.shortcutModeActive,
+      text
+    ])
 
     const handleShortcutPress = () => {
       onManageShortcuts?.()
@@ -242,7 +320,7 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
     const renderToolbarChip = (
       label: string,
       onPress?: () => void,
-      options?: { active?: boolean; icon?: keyof typeof MaterialIcons.glyphMap }
+      options?: { active?: boolean; icon?: React.ComponentType<LucideProps> }
     ) => {
       if (!onPress) return null
       const active = options?.active ?? false
@@ -259,9 +337,9 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
           onPress={onPress}
         >
           {options?.icon ? (
-            <MaterialIcons
-              name={options.icon}
-              size={14}
+            <LucideIcon
+              icon={options.icon}
+              size={INPUT_BAR_ICON_SIZE}
               color={active ? colors.textOnPrimary : colors.textSecondary}
             />
           ) : null}
@@ -344,30 +422,30 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
               contentContainerStyle={styles.toolbarContent}
             >
               {renderToolbarChip(t('input.upload_attachment', '上传附件'), handleUploadAttachment, {
-                icon: 'attach-file'
+                icon: Paperclip
               })}
               {renderToolbarChip(t('input.shortcut_command', '快捷指令'), handleShortcutPress, {
-                icon: 'bolt'
+                icon: Zap
               })}
               {renderToolbarChip(
                 searchMode
                   ? t('settings.web_search_mode_tool', '外部工具搜索')
                   : t('settings.web_search_mode_off', '关闭搜索'),
                 onToggleSearchMode,
-                { active: searchMode, icon: 'public' }
+                { active: searchMode, icon: Globe }
               )}
               {renderToolbarChip(t('settings.recall_memories', '唤醒回忆'), onRecall, {
-                icon: 'menu-book'
+                icon: BookOpen
               })}
               {renderToolbarChip(
                 ttsMode === 'always'
                   ? t('agent.chat.tts_always', '始终朗读')
                   : t('agent.chat.tts_manual', '手动朗读'),
                 onToggleTtsMode,
-                { active: ttsMode === 'always', icon: 'volume-up' }
+                { active: ttsMode === 'always', icon: Volume2 }
               )}
               {renderToolbarChip(t('settings.agent_tools_title', '工具管理'), onOpenTools, {
-                icon: 'build'
+                icon: LayoutGrid
               })}
             </ScrollView>
           </Animated.View>
@@ -398,8 +476,8 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
                   onPress={toggleToolbar}
                   hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
                 >
-                  <MaterialIcons
-                    name={showToolbar ? 'expand-less' : 'add'}
+                  <LucideIcon
+                    icon={showToolbar ? LayoutGrid : Menu}
                     size={20}
                     color={colors.textTertiary}
                   />
@@ -419,16 +497,16 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
                     style={[
                       styles.sendBtn,
                       { backgroundColor: colors.primary },
-                      !text.trim() &&
-                        attachments.length === 0 && {
-                          backgroundColor: colors.textTertiary
-                        }
+                      (isSending || (!text.trim() && attachments.length === 0)) && {
+                        backgroundColor: colors.textTertiary,
+                        opacity: isSending ? 0.72 : 1
+                      }
                     ]}
                     onPress={handleSend}
-                    disabled={!text.trim() && attachments.length === 0}
+                    disabled={isSending || (!text.trim() && attachments.length === 0)}
                     accessibilityLabel={t('common.send', '发送')}
                   >
-                    <MaterialIcons name="arrow-upward" size={18} color={colors.textOnPrimary} />
+                    <LucideIcon icon={Send} size={18} color={colors.textOnPrimary} />
                   </TouchableOpacity>
                 )
               }
@@ -450,7 +528,9 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth
   },
   composerBlock: {
-    position: 'relative'
+    position: 'relative',
+    overflow: 'visible',
+    zIndex: 20
   },
   toolbarContent: {
     gap: 8,

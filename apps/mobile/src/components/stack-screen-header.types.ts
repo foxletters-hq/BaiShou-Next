@@ -1,8 +1,8 @@
-import type { MaterialIcons } from '@expo/vector-icons'
+import type { LucideIcon } from 'lucide-react-native'
 
 /** 顶栏右侧操作：图标或文字二选一 */
 export interface StackScreenHeaderActionConfig {
-  icon?: keyof typeof MaterialIcons.glyphMap
+  icon?: LucideIcon
   label?: string
   onPress: () => void
   accessibilityLabel?: string

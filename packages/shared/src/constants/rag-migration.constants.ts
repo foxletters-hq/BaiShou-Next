@@ -17,7 +17,8 @@ export const RAG_MIGRATION_STATUS = {
   finished: 'settings.rag_migration_finished',
   aborting: 'settings.rag_migration_aborting',
   abortedConsecutiveFailures: 'settings.rag_migration_aborted_consecutive',
-  cancelled: 'settings.rag_migration_cancelled'
+  cancelled: 'settings.rag_migration_cancelled',
+  backupLost: 'settings.rag_migration_backup_lost'
 } as const
 
 export type RagMigrationStatusKey = (typeof RAG_MIGRATION_STATUS)[keyof typeof RAG_MIGRATION_STATUS]

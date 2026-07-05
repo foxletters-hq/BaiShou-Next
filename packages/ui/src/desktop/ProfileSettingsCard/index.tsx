@@ -1,10 +1,10 @@
 import React, { useState, useRef } from 'react'
-import { MdPhotoCamera, MdEdit } from 'react-icons/md'
 import styles from './ProfileSettingsCard.module.css'
 import { useTranslation } from 'react-i18next'
 import { useDialog } from '../Dialog'
 import { AvatarCropModal } from '../AvatarCropModal'
 import { resolveDesktopUserAvatarSrc } from '../user-avatar.util'
+import { Camera, Pencil } from 'lucide-react'
 
 export interface ProfileData {
   nickname: string
@@ -73,7 +73,7 @@ export const ProfileSettingsCard: React.FC<ProfileSettingsCardProps> = ({ profil
             alt="avatar"
           />
           <div className={styles.avatarHover} aria-hidden>
-            <MdPhotoCamera size={22} />
+            <Camera size={22} />
           </div>
           <input
             type="file"
@@ -95,7 +95,7 @@ export const ProfileSettingsCard: React.FC<ProfileSettingsCardProps> = ({ profil
               title={t('profile.edit_nickname', '修改昵称')}
               aria-label={t('profile.edit_nickname', '修改昵称')}
             >
-              <MdEdit size={16} />
+              <Pencil size={16} />
             </button>
           </div>
         </div>

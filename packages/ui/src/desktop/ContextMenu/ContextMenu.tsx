@@ -1,6 +1,10 @@
 import React, { useState, useCallback, useEffect, useRef, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import './ContextMenu.css'
+import {
+  applyFixedContextMenuLayout
+} from './context-menu-placement.util'
+import { DIARY_EDITOR_OVERLAY_Z } from '../../shared/diary-codemirror/editorOverlayZIndex'
 
 export interface ContextMenuItem {
   label: string
@@ -29,24 +33,9 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ items, children }) => 
 
   useLayoutEffect(() => {
     if (isOpen && menuRef.current) {
-      const rect = menuRef.current.getBoundingClientRect()
-      const windowWidth = window.innerWidth
-      const windowHeight = window.innerHeight
-
-      let adjustedX = position.x
-      let adjustedY = position.y
-
-      if (position.x + rect.width > windowWidth) {
-        adjustedX = Math.max(10, windowWidth - rect.width - 10)
-      }
-      if (position.y + rect.height > windowHeight) {
-        adjustedY = Math.max(10, windowHeight - rect.height - 10)
-      }
-
-      menuRef.current.style.left = `${adjustedX}px`
-      menuRef.current.style.top = `${adjustedY}px`
+      applyFixedContextMenuLayout(menuRef.current, position.x, position.y)
     }
-  }, [isOpen, position])
+  }, [isOpen, position, items])
 
   const handleClose = useCallback(() => {
     setIsOpen(false)
@@ -89,7 +78,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ items, children }) => 
                 left: 0,
                 right: 0,
                 bottom: 0,
-                zIndex: 9999,
+                zIndex: DIARY_EDITOR_OVERLAY_Z.menuBackdrop,
                 background: 'transparent'
               }}
               onMouseDown={handleClose}
@@ -99,7 +88,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ items, children }) => 
               className="context-menu"
               style={{
                 position: 'fixed',
-                zIndex: 10000,
+                zIndex: DIARY_EDITOR_OVERLAY_Z.menu,
                 left: position.x,
                 top: position.y
               }}

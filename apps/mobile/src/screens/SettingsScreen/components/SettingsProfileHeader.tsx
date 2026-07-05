@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { View, Text, Pressable, Image, StyleSheet, ActivityIndicator } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { MaterialIcons } from '@expo/vector-icons'
+import { Camera, Images } from 'lucide-react-native'
 import {
   useNativeTheme,
   useDialog,
@@ -11,6 +11,8 @@ import {
   requestAvatarLibraryPermission,
   runAfterOverlayDismiss
 } from '@baishou/ui/native'
+import { isCustomUserAvatar } from '@baishou/shared'
+import { useBaishou } from '../../../providers/BaishouProvider'
 import { useResolvedUserAvatar } from '../../../hooks/useResolvedUserAvatar'
 
 export interface SettingsProfileSavePayload {
@@ -37,6 +39,7 @@ export const SettingsProfileHeader: React.FC<SettingsProfileHeaderProps> = ({
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const { dbReady } = useBaishou()
   const dialog = useDialog()
   const toast = useNativeToast()
   const resolvedAvatarUri = useResolvedUserAvatar(profile.avatarPath)
@@ -51,10 +54,14 @@ export const SettingsProfileHeader: React.FC<SettingsProfileHeaderProps> = ({
   }, [pendingPreviewUri, resolvedAvatarUri, profile.avatarPath])
 
   const displayName = profile.nickname?.trim() || t('profile.default_nickname', '白守用户')
-  const avatarSource = resolveNativeUserAvatarSource(
-    profile.avatarPath,
-    pendingPreviewUri ?? resolvedAvatarUri
-  )
+  const displayUri = pendingPreviewUri ?? resolvedAvatarUri
+  const awaitingCustomAvatar =
+    isCustomUserAvatar(profile.avatarPath) && !displayUri && (dbReady || !!profile.avatarPath)
+  const avatarSource = displayUri
+    ? ({ uri: displayUri } as const)
+    : awaitingCustomAvatar
+      ? null
+      : resolveNativeUserAvatarSource(profile.avatarPath, displayUri)
 
   const pickAvatarFromLibrary = async () => {
     if (disabled || savingAvatar) return
@@ -93,7 +100,7 @@ export const SettingsProfileHeader: React.FC<SettingsProfileHeaderProps> = ({
         {
           label: t('profile.pick_from_library', '从相册选择'),
           value: 'library',
-          leading: <MaterialIcons name="photo-library" size={20} color={colors.primary} />
+          leading: <Images size={20} color={colors.primary} strokeWidth={2} />
         }
       ])
       .then((choice) => {
@@ -130,7 +137,11 @@ export const SettingsProfileHeader: React.FC<SettingsProfileHeaderProps> = ({
         accessibilityLabel={t('profile.change_avatar', '更换头像')}
       >
         <View style={[styles.avatar, { backgroundColor: colors.primaryContainer }]}>
-          <Image source={avatarSource} style={styles.avatarImage} />
+          {avatarSource ? (
+            <Image source={avatarSource} style={styles.avatarImage} />
+          ) : (
+            <ActivityIndicator size="small" color={colors.primary} />
+          )}
           {savingAvatar ? (
             <View style={[styles.avatarSavingOverlay, { backgroundColor: colors.bgOverlay }]}>
               <ActivityIndicator size="small" color={colors.primary} />
@@ -138,7 +149,7 @@ export const SettingsProfileHeader: React.FC<SettingsProfileHeaderProps> = ({
           ) : null}
         </View>
         <View style={[styles.cameraBadge, { backgroundColor: colors.primary }]}>
-          <MaterialIcons name="photo-camera" size={12} color={colors.textOnPrimary} />
+          <Camera size={12} color={colors.textOnPrimary} strokeWidth={2} />
         </View>
       </Pressable>
 

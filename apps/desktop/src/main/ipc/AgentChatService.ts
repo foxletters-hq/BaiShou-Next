@@ -1,4 +1,4 @@
-import { logger } from '@baishou/shared'
+import { logger, assistantRowToEmojiPrefs, type AssistantEmojiPrefs } from '@baishou/shared'
 import { AgentChatCoreService } from '@baishou/ai'
 import { ElectronStreamEmitter } from './electron-stream-emitter'
 import {
@@ -12,8 +12,8 @@ import {
 import { searchService } from '../services/search.service'
 
 export class AgentChatService {
-  public static stopStream() {
-    const stopped = AgentChatCoreService.stopStream()
+  public static stopStream(sessionId?: string) {
+    const stopped = AgentChatCoreService.stopStream(sessionId)
     searchService.requestAbort()
     void searchService.closeAllSearchWindows()
     return stopped
@@ -23,20 +23,45 @@ export class AgentChatService {
     AgentChatCoreService.resetAbortController()
   }
 
-  public static async getAssistantContextWindow(sessionId: string): Promise<number | undefined> {
+  public static async getAssistantSessionPrefs(sessionId: string): Promise<{
+    assistantContextWindow?: number
+    assistantEmojiPrefs?: AssistantEmojiPrefs
+  }> {
     try {
       const { realSessionRepo, realAssistantRepo } = getAgentManagers()
       const session = await realSessionRepo.getSessionById(sessionId)
-      if (session?.assistantId) {
-        const assistant = await realAssistantRepo.findById(session.assistantId)
-        if (assistant?.contextWindow !== undefined) {
-          return assistant.contextWindow
-        }
+      if (!session?.assistantId) return {}
+      const assistant = await realAssistantRepo.findById(session.assistantId)
+      if (!assistant) return {}
+      return {
+        assistantContextWindow: assistant.contextWindow ?? undefined,
+        assistantEmojiPrefs: assistantRowToEmojiPrefs(assistant)
       }
     } catch (e: any) {
-      logger.warn('Failed to load assistant context window:', e)
+      logger.warn('Failed to load assistant session prefs:', e)
+      return {}
     }
-    return undefined
+  }
+
+  public static async getAssistantContextWindow(sessionId: string): Promise<number | undefined> {
+    const prefs = await this.getAssistantSessionPrefs(sessionId)
+    return prefs.assistantContextWindow
+  }
+
+  public static async buildStreamConfigForSession(
+    sessionId: string,
+    requestedProviderId?: string,
+    requestedModelId?: string,
+    searchMode?: boolean
+  ) {
+    const prefs = await this.getAssistantSessionPrefs(sessionId)
+    return buildStreamConfig(
+      requestedProviderId,
+      requestedModelId,
+      searchMode,
+      prefs.assistantContextWindow,
+      prefs.assistantEmojiPrefs
+    )
   }
 
   public static async runStreamChat(params: {
@@ -52,7 +77,7 @@ export class AgentChatService {
     skipUserMessageRecording?: boolean
     forceRecompress?: boolean
   }) {
-    const { realSessionRepo, realSnapshotRepo } = getAgentManagers()
+    const { realSessionRepo, realSnapshotRepo, sessionManager } = getAgentManagers()
     const emitter = new ElectronStreamEmitter(params.event)
 
     await AgentChatCoreService.runStreamChat({
@@ -72,7 +97,8 @@ export class AgentChatService {
       toolRegistry,
       diarySearcher: createDiarySearcher(),
       webSearchResultFetcher: createWebSearchResultFetcher(),
-      fetchSearchPage: createFetchSearchPage()
+      fetchSearchPage: createFetchSearchPage(),
+      flushSessionToDisk: (sessionId) => sessionManager.flushSessionToDisk(sessionId)
     })
   }
 
@@ -88,16 +114,15 @@ export class AgentChatService {
       userMsgId?: string
     }
   ) {
+    const { sessionManager } = getAgentManagers()
     try {
-      const { sessionManager } = getAgentManagers()
-      const assistantContextWindow = await this.getAssistantContextWindow(args.sessionId)
-
-      const { provider, globalModels, systemModels, userConfig } = await buildStreamConfig(
-        args.providerId,
-        args.modelId,
-        args.searchMode,
-        assistantContextWindow
-      )
+      const { provider, globalModels, systemModels, userConfig } =
+        await this.buildStreamConfigForSession(
+          args.sessionId,
+          args.providerId,
+          args.modelId,
+          args.searchMode
+        )
 
       await this.runStreamChat({
         event,
@@ -120,11 +145,19 @@ export class AgentChatService {
       return true
     } catch (error: any) {
       if (error.name === 'AbortError') {
-        event.sender.send('agent:stream-finish', { success: true })
+        try {
+          await sessionManager.flushSessionToDisk(args.sessionId)
+        } catch (e: any) {
+          logger.error('Agent IPC persistence SSOT Error after abort', e)
+        }
+        event.sender.send('agent:stream-finish', { sessionId: args.sessionId, success: true })
         return true
       }
       logger.error('Agent IPC stream error:', error)
-      event.sender.send('agent:stream-finish', { error: error.message || 'Stream Error' })
+      event.sender.send('agent:stream-finish', {
+        sessionId: args.sessionId,
+        error: error.message || 'Stream Error'
+      })
       return false
     } finally {
       AgentChatCoreService.resetAbortController()

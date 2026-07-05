@@ -12,6 +12,11 @@ export default defineConfig({
       modules: {
         classNameStrategy: 'non-scoped'
       }
+    },
+    server: {
+      deps: {
+        inline: ['codemirror-markdown-tables', '@mobily/ts-belt', '@floating-ui/dom']
+      }
     }
   }
 })

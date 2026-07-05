@@ -13,6 +13,8 @@ import {
   normalizeSqliteAttachPath,
   mergeDirectories,
   scanLegacyDatabases,
+  isVaultSpecificLegacyAgentDb,
+  resolveLegacyAgentDbPathsForVault,
   type RawSqlExecutor
 } from './legacy-migration.shared'
 import { restoreLegacyDevicePreferences } from '../import/legacy-config-restore.shared'
@@ -36,6 +38,7 @@ import {
   generateRemappedId,
   isWorkspaceSectionId,
   legacySessionBelongsToVault,
+  normalizeLegacyPartData,
   normalizeLegacyPartType,
   parseLegacyIdentityFacts,
   parseLegacyPersonasFromSp,
@@ -51,6 +54,21 @@ import {
 } from './legacy-version-migration.util'
 
 const JOURNAL_DATE_FILE = /^(\d{4}-\d{2}-\d{2})\.md$/i
+const LEGACY_IMPORT_SESSION_PAGE_SIZE = 50
+const LEGACY_IMPORT_MESSAGE_PAGE_SIZE = 40
+const LEGACY_IMPORT_PART_PAGE_SIZE = 40
+
+function quoteSqlString(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`
+}
+
+function hashString(value: string): number {
+  let hash = 0
+  for (let i = 0; i < value.length; i++) {
+    hash = (hash * 31 + value.charCodeAt(i)) | 0
+  }
+  return hash >>> 0
+}
 
 export interface LegacyVersionMigrationImporterDeps {
   fileSystem: IFileSystem
@@ -86,6 +104,8 @@ export interface LegacyVersionMigrationImporterDeps {
   assistantRecordExists?: (assistantId: string) => Promise<boolean>
   /** 移动端迁移：按映射后的目标工作区解析 Journals 根目录（仅写文件、不建影子索引） */
   getJournalsBaseDirectory?: (targetVaultName: string) => Promise<string>
+  /** 移动端迁移：按映射后的目标工作区解析 Sessions 根目录，用于流式写大会话 JSON */
+  getSessionsBaseDirectory?: (targetVaultName: string) => Promise<string>
   /** 将旧版 db 路径转为当前平台可 ATTACH 的路径 */
   prepareSqliteAttachPath?: (dbPath: string) => Promise<string>
 }
@@ -96,6 +116,12 @@ interface LegacyAgentRows {
   messages: Record<string, unknown>[]
   parts: Record<string, unknown>[]
   errors: string[]
+  sessionSources?: Map<string, LegacyAgentSessionSource>
+}
+
+interface LegacyAgentSessionSource {
+  rawAttachPath: string
+  attachPath: string
 }
 
 async function walkJournalFiles(
@@ -151,28 +177,6 @@ function diaryInputFromParsed(
   }
 }
 
-async function resolveLegacyAgentDbPathsForVault(
-  fileSystem: IFileSystem,
-  sourceRoot: string,
-  legacyVaultName: string
-): Promise<string[]> {
-  const vaultDb = path.join(sourceRoot, legacyVaultName, '.baishou', 'agent.sqlite')
-  if (await fileSystem.exists(vaultDb)) {
-    return [vaultDb]
-  }
-  const rootDb = path.join(sourceRoot, '.baishou', 'agent.sqlite')
-  if (await fileSystem.exists(rootDb)) {
-    return [rootDb]
-  }
-  const { agentDbs } = await scanLegacyDatabases(fileSystem, sourceRoot)
-  return agentDbs
-}
-
-function isVaultSpecificAgentDb(dbPath: string, legacyVaultName: string): boolean {
-  const normalized = dbPath.replace(/\\/g, '/')
-  return normalized.includes(`/${legacyVaultName}/.baishou/agent.sqlite`)
-}
-
 async function queryLegacyAgentRows(
   deps: LegacyVersionMigrationImporterDeps,
   options?: { legacyVaultName?: string }
@@ -195,14 +199,13 @@ async function queryLegacyAgentRows(
   const errors: string[] = []
   const seenAssistantIds = new Set<string>()
   const seenSessionIds = new Set<string>()
-  const seenMessageIds = new Set<string>()
-  const seenPartIds = new Set<string>()
+  const sessionSources = new Map<string, LegacyAgentSessionSource>()
 
   for (let i = 0; i < uniquePaths.length; i++) {
     const alias = `legacy_import_${i}`
     const rawAttachPath = uniquePaths[i]!
     const vaultSpecific = legacyVaultName
-      ? isVaultSpecificAgentDb(rawAttachPath, legacyVaultName)
+      ? isVaultSpecificLegacyAgentDb(rawAttachPath, legacyVaultName)
       : false
     try {
       const attachPath = deps.prepareSqliteAttachPath
@@ -214,14 +217,26 @@ async function queryLegacyAgentRows(
         attachPath,
         vaultSpecific
       })
-      await executeRawSql(sqliteClient, `ATTACH DATABASE '${attachPath}' AS ${alias}`)
+      await executeRawSql(sqliteClient, `ATTACH DATABASE ${quoteSqlString(attachPath)} AS ${alias}`)
 
       const assistantRows = (
         await executeRawSql(sqliteClient, `SELECT * FROM ${alias}.agent_assistants`)
       ).rows
-      const sessionRows = (
-        await executeRawSql(sqliteClient, `SELECT * FROM ${alias}.agent_sessions`)
-      ).rows
+      const sessionRows: Record<string, unknown>[] = []
+      let sessionOffset = 0
+      while (true) {
+        const page = (
+          await executeRawSql(
+            sqliteClient,
+            `SELECT * FROM ${alias}.agent_sessions ORDER BY id LIMIT ? OFFSET ?`,
+            [LEGACY_IMPORT_SESSION_PAGE_SIZE, sessionOffset]
+          )
+        ).rows as Record<string, unknown>[]
+        if (page.length === 0) break
+        sessionRows.push(...page)
+        if (page.length < LEGACY_IMPORT_SESSION_PAGE_SIZE) break
+        sessionOffset += LEGACY_IMPORT_SESSION_PAGE_SIZE
+      }
 
       const filteredSessions =
         legacyVaultName && !vaultSpecific
@@ -242,6 +257,7 @@ async function queryLegacyAgentRows(
         const sid = String(row.id ?? '')
         if (!sid || seenSessionIds.has(sid)) continue
         seenSessionIds.add(sid)
+        sessionSources.set(sid, { rawAttachPath, attachPath })
         sessions.push(row)
         if (row.assistant_id != null) {
           sessionAssistantIds.add(String(row.assistant_id))
@@ -263,32 +279,6 @@ async function queryLegacyAgentRows(
         assistants.push(row)
       }
 
-      if (sessions.length > 0) {
-        const idList = [...seenSessionIds].map((id) => `'${id.replace(/'/g, "''")}'`).join(',')
-        for (const row of (
-          await executeRawSql(
-            sqliteClient,
-            `SELECT * FROM ${alias}.agent_messages WHERE session_id IN (${idList})`
-          )
-        ).rows) {
-          const mid = String(row.id ?? '')
-          if (!mid || seenMessageIds.has(mid)) continue
-          seenMessageIds.add(mid)
-          messages.push(row)
-        }
-        for (const row of (
-          await executeRawSql(
-            sqliteClient,
-            `SELECT * FROM ${alias}.agent_parts WHERE message_id IN (SELECT id FROM ${alias}.agent_messages WHERE session_id IN (${idList}))`
-          )
-        ).rows) {
-          const pid = String(row.id ?? '')
-          if (!pid || seenPartIds.has(pid)) continue
-          seenPartIds.add(pid)
-          parts.push(row)
-        }
-      }
-
       await executeRawSql(sqliteClient, `DETACH DATABASE ${alias}`)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
@@ -307,7 +297,7 @@ async function queryLegacyAgentRows(
     }
   }
 
-  return { assistants, sessions, messages, parts, errors }
+  return { assistants, sessions, messages, parts, errors, sessionSources }
 }
 
 async function ensureTargetVaultExists(
@@ -759,6 +749,366 @@ function toDate(value: unknown): Date {
   return new Date()
 }
 
+function toUnixSec(value: unknown): number {
+  return Math.floor(toDate(value).getTime() / 1000)
+}
+
+async function resolveLegacyOrderBy(
+  deps: LegacyVersionMigrationImporterDeps,
+  alias: string,
+  tableName: 'agent_messages' | 'agent_parts'
+): Promise<string> {
+  try {
+    const info = await deps.executeRawSql(
+      deps.sqliteClient,
+      `PRAGMA ${alias}.table_info('${tableName}')`
+    )
+    const columns = new Set(info.rows.map((row) => String(row.name)).filter(Boolean))
+    if (columns.has('order_index')) return 'order_index ASC, rowid ASC'
+    if (columns.has('created_at')) return 'created_at ASC, rowid ASC'
+  } catch {
+    // Older/corrupt legacy DBs still get a stable best-effort order below.
+  }
+  return 'rowid ASC'
+}
+
+async function loadLegacyPartsForMessage(
+  deps: LegacyVersionMigrationImporterDeps,
+  alias: string,
+  messageId: string,
+  orderBy: string
+): Promise<Record<string, unknown>[]> {
+  const parts: Record<string, unknown>[] = []
+  let offset = 0
+  while (true) {
+    const page = (
+      await deps.executeRawSql(
+        deps.sqliteClient,
+        `SELECT * FROM ${alias}.agent_parts
+         WHERE message_id = ?
+         ORDER BY ${orderBy}
+         LIMIT ? OFFSET ?`,
+        [messageId, LEGACY_IMPORT_PART_PAGE_SIZE, offset]
+      )
+    ).rows as Record<string, unknown>[]
+    if (page.length === 0) break
+    parts.push(...page)
+    if (page.length < LEGACY_IMPORT_PART_PAGE_SIZE) break
+    offset += LEGACY_IMPORT_PART_PAGE_SIZE
+  }
+  return parts
+}
+
+function buildLegacyMessageAggregate(
+  messageRow: Record<string, unknown>,
+  partRows: Record<string, unknown>[],
+  newSessionId: string,
+  index: number
+) {
+  const oldMessageId = String(messageRow.id ?? generateRemappedId('legacy_msg'))
+  const newMessageId = oldMessageId
+  return {
+    id: newMessageId,
+    sessionId: newSessionId,
+    role: String(messageRow.role ?? 'user'),
+    isSummary: Number(messageRow.is_summary) === 1,
+    orderIndex: messageRow.order_index != null ? Number(messageRow.order_index) : index,
+    inputTokens: messageRow.input_tokens != null ? Number(messageRow.input_tokens) : undefined,
+    outputTokens: messageRow.output_tokens != null ? Number(messageRow.output_tokens) : undefined,
+    costMicros: messageRow.cost_micros != null ? Number(messageRow.cost_micros) : undefined,
+    providerId: messageRow.provider_id != null ? String(messageRow.provider_id) : undefined,
+    modelId: messageRow.model_id != null ? String(messageRow.model_id) : undefined,
+    createdAt: toDate(messageRow.created_at),
+    parts: partRows.map((partRow) => {
+      const partType = normalizeLegacyPartType(partRow.type)
+      return {
+        id: String(partRow.id ?? generateRemappedId('legacy_part')),
+        messageId: newMessageId,
+        sessionId: newSessionId,
+        type: partType,
+        data: normalizeLegacyPartData(partRow.data, partType),
+        createdAt: toDate(partRow.created_at)
+      }
+    })
+  }
+}
+
+async function loadLegacyMessagesForSession(
+  deps: LegacyVersionMigrationImporterDeps,
+  alias: string,
+  oldSessionId: string,
+  newSessionId: string
+) {
+  const messages: ReturnType<typeof buildLegacyMessageAggregate>[] = []
+  const messageOrderBy = await resolveLegacyOrderBy(deps, alias, 'agent_messages')
+  const partOrderBy = await resolveLegacyOrderBy(deps, alias, 'agent_parts')
+  let offset = 0
+  let index = 0
+
+  while (true) {
+    const messageRows = (
+      await deps.executeRawSql(
+        deps.sqliteClient,
+        `SELECT * FROM ${alias}.agent_messages
+         WHERE session_id = ?
+         ORDER BY ${messageOrderBy}
+         LIMIT ? OFFSET ?`,
+        [oldSessionId, LEGACY_IMPORT_MESSAGE_PAGE_SIZE, offset]
+      )
+    ).rows as Record<string, unknown>[]
+
+    if (messageRows.length === 0) break
+
+    for (const messageRow of messageRows) {
+      const oldMessageId = String(messageRow.id ?? '')
+      const parts = oldMessageId
+        ? await loadLegacyPartsForMessage(deps, alias, oldMessageId, partOrderBy)
+        : []
+      messages.push(buildLegacyMessageAggregate(messageRow, parts, newSessionId, index))
+      index += 1
+    }
+
+    if (messageRows.length < LEGACY_IMPORT_MESSAGE_PAGE_SIZE) break
+    offset += LEGACY_IMPORT_MESSAGE_PAGE_SIZE
+  }
+
+  return messages
+}
+
+function buildLegacySessionAggregate(
+  sessionRow: Record<string, unknown>,
+  newSessionId: string,
+  mappedAssistantId: string,
+  targetVaultName: string
+) {
+  return {
+    id: newSessionId,
+    title: sessionRow.title != null ? String(sessionRow.title) : null,
+    vaultName: targetVaultName,
+    assistantId: mappedAssistantId,
+    isPinned: Number(sessionRow.is_pinned) === 1,
+    systemPrompt: sessionRow.system_prompt != null ? String(sessionRow.system_prompt) : undefined,
+    providerId: sessionRow.provider_id != null ? String(sessionRow.provider_id) : '',
+    modelId: sessionRow.model_id != null ? String(sessionRow.model_id) : '',
+    totalInputTokens:
+      sessionRow.total_input_tokens != null ? Number(sessionRow.total_input_tokens) : 0,
+    totalOutputTokens:
+      sessionRow.total_output_tokens != null ? Number(sessionRow.total_output_tokens) : 0,
+    totalCacheReadInputTokens:
+      sessionRow.total_cache_read_input_tokens != null
+        ? Number(sessionRow.total_cache_read_input_tokens)
+        : 0,
+    totalCacheWriteInputTokens:
+      sessionRow.total_cache_write_input_tokens != null
+        ? Number(sessionRow.total_cache_write_input_tokens)
+        : 0,
+    totalCostMicros:
+      sessionRow.total_cost_micros != null ? Number(sessionRow.total_cost_micros) : 0,
+    createdAt: toDate(sessionRow.created_at),
+    updatedAt: toDate(sessionRow.updated_at)
+  }
+}
+
+async function replaceTargetSessionRows(
+  deps: LegacyVersionMigrationImporterDeps,
+  session: ReturnType<typeof buildLegacySessionAggregate>
+): Promise<void> {
+  await deps.executeRawSql(deps.sqliteClient, 'DELETE FROM agent_parts WHERE session_id = ?', [
+    session.id
+  ])
+  await deps.executeRawSql(deps.sqliteClient, 'DELETE FROM agent_messages WHERE session_id = ?', [
+    session.id
+  ])
+  await deps.executeRawSql(deps.sqliteClient, 'DELETE FROM agent_sessions WHERE id = ?', [
+    session.id
+  ])
+  await deps.executeRawSql(
+    deps.sqliteClient,
+    `INSERT INTO agent_sessions
+      (id, title, vault_name, assistant_id, is_pinned, system_prompt,
+       provider_id, model_id, total_input_tokens, total_output_tokens,
+       total_cache_read_input_tokens, total_cache_write_input_tokens,
+       total_cost_micros, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    [
+      session.id,
+      session.title ?? null,
+      session.vaultName,
+      session.assistantId,
+      session.isPinned ? 1 : 0,
+      session.systemPrompt ?? null,
+      session.providerId,
+      session.modelId,
+      session.totalInputTokens,
+      session.totalOutputTokens,
+      session.totalCacheReadInputTokens,
+      session.totalCacheWriteInputTokens,
+      session.totalCostMicros,
+      toUnixSec(session.createdAt),
+      toUnixSec(session.updatedAt)
+    ]
+  )
+}
+
+async function insertTargetMessage(
+  deps: LegacyVersionMigrationImporterDeps,
+  message: ReturnType<typeof buildLegacyMessageAggregate>
+): Promise<void> {
+  await deps.executeRawSql(
+    deps.sqliteClient,
+    `INSERT OR IGNORE INTO agent_messages
+      (id, session_id, role, is_summary, order_index, input_tokens, output_tokens,
+       cache_read_input_tokens, cache_write_input_tokens, cost_micros, provider_id, model_id,
+       created_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    [
+      message.id,
+      message.sessionId,
+      message.role,
+      message.isSummary ? 1 : 0,
+      message.orderIndex,
+      message.inputTokens ?? null,
+      message.outputTokens ?? null,
+      null,
+      null,
+      message.costMicros ?? null,
+      message.providerId ?? null,
+      message.modelId ?? null,
+      toUnixSec(message.createdAt)
+    ]
+  )
+}
+
+async function insertTargetPart(
+  deps: LegacyVersionMigrationImporterDeps,
+  part: ReturnType<typeof buildLegacyMessageAggregate>['parts'][number]
+): Promise<void> {
+  const dataStr = typeof part.data === 'string' ? part.data : JSON.stringify(part.data ?? null)
+  await deps.executeRawSql(
+    deps.sqliteClient,
+    `INSERT OR IGNORE INTO agent_parts
+      (id, message_id, session_id, type, data, created_at)
+     VALUES (?,?,?,?,?,?)`,
+    [part.id, part.messageId, part.sessionId, part.type, dataStr, toUnixSec(part.createdAt)]
+  )
+}
+
+async function streamLegacySessionFromSource(options: {
+  deps: LegacyVersionMigrationImporterDeps
+  alias: string
+  oldSessionId: string
+  newSessionId: string
+  sessionRow: Record<string, unknown>
+  mappedAssistantId: string
+  legacyVaultName: string
+}): Promise<void> {
+  const {
+    deps,
+    alias,
+    oldSessionId,
+    newSessionId,
+    sessionRow,
+    mappedAssistantId,
+    legacyVaultName
+  } = options
+  if (!deps.getSessionsBaseDirectory) {
+    const enrichedMessages = await loadLegacyMessagesForSession(
+      deps,
+      alias,
+      oldSessionId,
+      newSessionId
+    )
+    const targetVaultName = await deps.resolveTargetVaultName(legacyVaultName)
+    await deps.upsertSessionAggregate({
+      session: buildLegacySessionAggregate(
+        sessionRow,
+        newSessionId,
+        mappedAssistantId,
+        targetVaultName
+      ),
+      messages: enrichedMessages
+    })
+    await deps.sessionManager.flushSessionToDisk(newSessionId)
+    return
+  }
+
+  const targetVaultName = await deps.resolveTargetVaultName(legacyVaultName)
+  const session = buildLegacySessionAggregate(
+    sessionRow,
+    newSessionId,
+    mappedAssistantId,
+    targetVaultName
+  )
+  await replaceTargetSessionRows(deps, session)
+
+  const sessionsDir = await deps.getSessionsBaseDirectory(targetVaultName)
+  await deps.fileSystem.mkdir(sessionsDir, { recursive: true })
+  const sessionPath = path.join(sessionsDir, `${newSessionId}.json`)
+  const tempPath = `${sessionPath}.tmp`
+  const messageOrderBy = await resolveLegacyOrderBy(deps, alias, 'agent_messages')
+  const partOrderBy = await resolveLegacyOrderBy(deps, alias, 'agent_parts')
+
+  try {
+    await deps.fileSystem.writeFile(
+      tempPath,
+      `{"session":${JSON.stringify(session)},"messages":[`,
+      'utf8'
+    )
+    let wroteMessage = false
+    let offset = 0
+    let index = 0
+
+    while (true) {
+      const messageRows = (
+        await deps.executeRawSql(
+          deps.sqliteClient,
+          `SELECT * FROM ${alias}.agent_messages
+           WHERE session_id = ?
+           ORDER BY ${messageOrderBy}
+           LIMIT ? OFFSET ?`,
+          [oldSessionId, LEGACY_IMPORT_MESSAGE_PAGE_SIZE, offset]
+        )
+      ).rows as Record<string, unknown>[]
+
+      if (messageRows.length === 0) break
+
+      for (const messageRow of messageRows) {
+        const oldMessageId = String(messageRow.id ?? '')
+        const parts = oldMessageId
+          ? await loadLegacyPartsForMessage(deps, alias, oldMessageId, partOrderBy)
+          : []
+        const message = buildLegacyMessageAggregate(messageRow, parts, newSessionId, index)
+        await insertTargetMessage(deps, message)
+        for (const part of message.parts) {
+          await insertTargetPart(deps, part)
+        }
+        const prefix = wroteMessage ? ',' : ''
+        await deps.fileSystem.appendFile(tempPath, `${prefix}${JSON.stringify(message)}`, 'utf8')
+        wroteMessage = true
+        index += 1
+      }
+
+      if (messageRows.length < LEGACY_IMPORT_MESSAGE_PAGE_SIZE) break
+      offset += LEGACY_IMPORT_MESSAGE_PAGE_SIZE
+    }
+
+    await deps.fileSystem.appendFile(tempPath, ']}', 'utf8')
+    if (await deps.fileSystem.exists(sessionPath)) {
+      await deps.fileSystem.unlink(sessionPath)
+    }
+    await deps.fileSystem.rename(tempPath, sessionPath)
+  } catch (error) {
+    try {
+      if (await deps.fileSystem.exists(tempPath)) {
+        await deps.fileSystem.unlink(tempPath)
+      }
+    } catch {
+      // ignore cleanup errors
+    }
+    throw error
+  }
+}
+
 export async function importLegacyChatsFromRows(
   deps: LegacyVersionMigrationImporterDeps,
   rows: Pick<LegacyAgentRows, 'sessions' | 'messages' | 'parts' | 'errors'>,
@@ -819,43 +1169,14 @@ export async function importLegacyChatsFromRows(
 
     const enrichedMessages = (messagesBySession.get(oldSessionId) ?? [])
       .sort((a, b) => Number(a.order_index ?? 0) - Number(b.order_index ?? 0))
-      .map((messageRow, index) => {
-        const oldMessageId = String(messageRow.id ?? generateRemappedId('legacy_msg'))
-        const newMessageId = generateRemappedId('legacy_msg')
-        return {
-          id: newMessageId,
-          sessionId: newSessionId,
-          role: String(messageRow.role ?? 'user'),
-          isSummary: Number(messageRow.is_summary) === 1,
-          orderIndex: messageRow.order_index != null ? Number(messageRow.order_index) : index,
-          inputTokens:
-            messageRow.input_tokens != null ? Number(messageRow.input_tokens) : undefined,
-          outputTokens:
-            messageRow.output_tokens != null ? Number(messageRow.output_tokens) : undefined,
-          costMicros: messageRow.cost_micros != null ? Number(messageRow.cost_micros) : undefined,
-          providerId: messageRow.provider_id != null ? String(messageRow.provider_id) : undefined,
-          modelId: messageRow.model_id != null ? String(messageRow.model_id) : undefined,
-          createdAt: toDate(messageRow.created_at),
-          parts: (partsByMessage.get(oldMessageId) ?? []).map((partRow) => {
-            let data: unknown = partRow.data
-            if (typeof data === 'string') {
-              try {
-                data = JSON.parse(data)
-              } catch {
-                // keep raw
-              }
-            }
-            return {
-              id: generateRemappedId('legacy_part'),
-              messageId: newMessageId,
-              sessionId: newSessionId,
-              type: normalizeLegacyPartType(partRow.type),
-              data,
-              createdAt: toDate(partRow.created_at)
-            }
-          })
-        }
-      })
+      .map((messageRow, index) =>
+        buildLegacyMessageAggregate(
+          messageRow,
+          partsByMessage.get(String(messageRow.id ?? '')) ?? [],
+          newSessionId,
+          index
+        )
+      )
 
     try {
       const targetVaultName = await deps.resolveTargetVaultName(legacyVaultName)
@@ -908,6 +1229,139 @@ export async function importLegacyChatsFromRows(
   }
 }
 
+type LegacyChatImportCandidate = {
+  sessionRow: Record<string, unknown>
+  oldSessionId: string
+  newSessionId: string
+  mappedAssistantId: string
+  attachPath: string
+}
+
+async function importLegacyChatsFromSources(
+  deps: LegacyVersionMigrationImporterDeps,
+  rows: Pick<LegacyAgentRows, 'sessions' | 'errors' | 'sessionSources'>,
+  assistantIdMap: Record<string, string>,
+  legacyVaultName: string
+): Promise<LegacyVersionMigrationImportResult> {
+  const { onProgress } = deps
+  const existingSessionIds = await deps.existingSessionIds()
+  const { sessions, errors } = rows
+
+  let imported = 0
+  let skipped = 0
+  let failed = 0
+  const warnings: string[] = []
+  const failureSamples: string[] = []
+  const fallbackAssistantId = Object.values(assistantIdMap)[0]
+  const sessionsByAttachPath = new Map<string, LegacyChatImportCandidate[]>()
+  let attachGroupIndex = 0
+
+  for (const sessionRow of sessions) {
+    const oldSessionId = String(sessionRow.id ?? '')
+    if (!oldSessionId) continue
+
+    const rawAssistantId =
+      sessionRow.assistant_id != null && String(sessionRow.assistant_id).trim() !== ''
+        ? String(sessionRow.assistant_id)
+        : null
+    const mappedAssistantId = rawAssistantId ? assistantIdMap[rawAssistantId] : fallbackAssistantId
+    if (!mappedAssistantId) {
+      skipped += 1
+      if (!warnings.includes('version_migration.import_chat_missing_assistant')) {
+        warnings.push('version_migration.import_chat_missing_assistant')
+      }
+      continue
+    }
+
+    const newSessionId = existingSessionIds.has(oldSessionId)
+      ? generateRemappedId('legacy_sess')
+      : oldSessionId
+    const source = rows.sessionSources?.get(oldSessionId)
+    if (!source) {
+      skipped += 1
+      if (!warnings.includes('version_migration.warning_agent_db_read_partial')) {
+        warnings.push('version_migration.warning_agent_db_read_partial')
+      }
+      continue
+    }
+
+    const group = sessionsByAttachPath.get(source.attachPath) ?? []
+    group.push({
+      sessionRow,
+      oldSessionId,
+      newSessionId,
+      mappedAssistantId,
+      attachPath: source.attachPath
+    })
+    sessionsByAttachPath.set(source.attachPath, group)
+  }
+
+  for (const [attachPath, candidates] of sessionsByAttachPath) {
+    attachGroupIndex += 1
+    const alias = `legacy_chat_${attachGroupIndex}_${hashString(attachPath)}`
+    let attached = false
+    try {
+      await deps.executeRawSql(
+        deps.sqliteClient,
+        `ATTACH DATABASE ${quoteSqlString(attachPath)} AS ${alias}`
+      )
+      attached = true
+
+      for (const candidate of candidates) {
+        const { sessionRow, oldSessionId, newSessionId, mappedAssistantId } = candidate
+        onProgress?.(String(sessionRow.title ?? oldSessionId))
+        try {
+          await streamLegacySessionFromSource({
+            deps,
+            alias,
+            oldSessionId,
+            newSessionId,
+            sessionRow,
+            mappedAssistantId,
+            legacyVaultName
+          })
+          imported += 1
+        } catch (error) {
+          failed += 1
+          if (failureSamples.length < 12) {
+            const title = String(sessionRow.title ?? oldSessionId)
+            const message = error instanceof Error ? error.message : String(error)
+            failureSamples.push(`会话 ${title}: ${message}`)
+          }
+        }
+      }
+    } catch (error) {
+      failed += 1
+      const message = error instanceof Error ? error.message : String(error)
+      if (failureSamples.length < 12) {
+        failureSamples.push(
+          `无法连接旧版会话数据库（影响 ${candidates.length} 个会话）: ${message}`
+        )
+      }
+    } finally {
+      if (attached) {
+        await deps
+          .executeRawSql(deps.sqliteClient, `DETACH DATABASE ${alias}`)
+          .catch(() => undefined)
+      }
+    }
+  }
+
+  if (errors.length > 0) {
+    warnings.push('version_migration.warning_agent_db_read_partial')
+  }
+
+  return {
+    sectionId: workspaceSectionId(legacyVaultName),
+    imported,
+    skipped,
+    failed,
+    warnings,
+    errors: errors.length > 0 ? errors : undefined,
+    failureSamples: failureSamples.length > 0 ? failureSamples : undefined
+  }
+}
+
 /** 按工作空间导入：日记 + 伙伴 + 会话（一体） */
 export async function importLegacyWorkspaceSection(
   deps: LegacyVersionMigrationImporterDeps,
@@ -921,6 +1375,8 @@ export async function importLegacyWorkspaceSection(
   let imported = 0
   let skipped = 0
   let failed = 0
+
+  deps.onProgress?.(legacyVaultName)
 
   const targetName = await ensureTargetVaultExists(deps, legacyVaultName)
   const vaultNameMap = { [legacyVaultName]: targetName }
@@ -1044,12 +1500,20 @@ export async function importLegacyWorkspaceSection(
       ...(assistantResult.assistantIdMap ?? {})
     }
 
-    const chatResult = await importLegacyChatsFromRows(
-      scopedDeps,
-      agentRows,
-      assistantIdMapLocal,
-      legacyVaultName
-    )
+    const chatResult =
+      agentRows.sessionSources && agentRows.sessionSources.size > 0
+        ? await importLegacyChatsFromSources(
+            scopedDeps,
+            agentRows,
+            assistantIdMapLocal,
+            legacyVaultName
+          )
+        : await importLegacyChatsFromRows(
+            scopedDeps,
+            agentRows,
+            assistantIdMapLocal,
+            legacyVaultName
+          )
     agentResultImported += chatResult.imported
     agentResultSkipped += chatResult.skipped
     agentResultFailed += chatResult.failed

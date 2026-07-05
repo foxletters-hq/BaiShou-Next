@@ -5,6 +5,11 @@ export type ModelMetadataTextPart = { type: string; text?: string; [key: string]
 
 export type ModelMetadataContent = string | ModelMetadataTextPart[]
 
+export interface ModelMetadataOptions {
+  /** 是否在消息正文外包裹 <message-time> / <message-content>，默认 true */
+  wrapMessageTime?: boolean
+}
+
 export interface ToolResultTextOutput {
   type: 'tool-result'
   toolCallId: string
@@ -13,8 +18,13 @@ export interface ToolResultTextOutput {
   [key: string]: unknown
 }
 
-function wrapIfRole(body: string, role: string, createdAt?: Date | number | null): string {
-  if (!shouldWrapRoleForModel(role)) return body
+function wrapIfRole(
+  body: string,
+  role: string,
+  createdAt?: Date | number | null,
+  wrapMessageTime = true
+): string {
+  if (!wrapMessageTime || !shouldWrapRoleForModel(role)) return body
   return wrapMessageBodyForModel(body, createdAt)
 }
 
@@ -22,9 +32,11 @@ function wrapIfRole(body: string, role: string, createdAt?: Date | number | null
 export function injectModelMetadata(
   content: ModelMetadataContent,
   role: ModelMetadataRole | string,
-  createdAt?: Date | number | null
+  createdAt?: Date | number | null,
+  options?: ModelMetadataOptions
 ): ModelMetadataContent {
-  if (!shouldWrapRoleForModel(role)) {
+  const wrapMessageTime = options?.wrapMessageTime !== false
+  if (!wrapMessageTime || !shouldWrapRoleForModel(role)) {
     return content
   }
 
@@ -55,15 +67,19 @@ export function injectModelMetadata(
  */
 export function injectModelMetadataIntoAssistantParts(
   parts: ModelMetadataTextPart[],
-  createdAt?: Date | number | null
+  createdAt?: Date | number | null,
+  options?: ModelMetadataOptions
 ): ModelMetadataTextPart[] {
+  const wrapMessageTime = options?.wrapMessageTime !== false
+  if (!wrapMessageTime) return parts.map((p) => ({ ...p }))
+
   const copy = parts.map((p) => ({ ...p }))
   const firstVisibleTextIdx = copy.findIndex((p) => p.type === 'text' && typeof p.text === 'string')
   if (firstVisibleTextIdx >= 0) {
     const part = copy[firstVisibleTextIdx]!
     copy[firstVisibleTextIdx] = {
       ...part,
-      text: wrapIfRole(part.text ?? '', 'assistant', createdAt)
+      text: wrapIfRole(part.text ?? '', 'assistant', createdAt, wrapMessageTime)
     }
     return copy
   }
@@ -76,9 +92,11 @@ export function injectModelMetadataIntoAssistantParts(
 /** tool-result 的首个 text output 注入元数据 */
 export function injectModelMetadataIntoToolResults<T extends ToolResultTextOutput>(
   parts: T[],
-  createdAt?: Date | number | null
+  createdAt?: Date | number | null,
+  options?: ModelMetadataOptions
 ): T[] {
-  if (!shouldWrapRoleForModel('tool') || parts.length === 0) return parts
+  const wrapMessageTime = options?.wrapMessageTime !== false
+  if (!wrapMessageTime || !shouldWrapRoleForModel('tool') || parts.length === 0) return parts
 
   let stamped = false
   return parts.map((part) => {

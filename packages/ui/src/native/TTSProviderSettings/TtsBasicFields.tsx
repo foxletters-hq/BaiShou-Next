@@ -1,8 +1,9 @@
 import React from 'react'
 import { View, Text, TouchableOpacity } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { MaterialIcons } from '@expo/vector-icons'
+import { Eye, EyeOff } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { NativeSlider } from '../Slider'
 import { Input } from '../Input/Input'
 import { Select } from '../Select/Select'
@@ -10,6 +11,8 @@ import { Button } from '../Button'
 import { HelpTooltip } from '../Tooltip/HelpTooltip'
 import type { TtsProviderConfig } from './tts-provider-settings.types'
 import { TtsModelCombobox } from './TtsModelCombobox'
+import { Switch } from '../Switch/Switch'
+import { isMimoVoiceCloneModel, supportsTtsProviderStreaming } from '@baishou/shared'
 import { ttsProviderSettingsStyles as styles } from './tts-provider-settings.styles'
 
 interface TtsBasicFieldsProps {
@@ -92,7 +95,13 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
         ? 'http://127.0.0.1:9872'
         : config.id === 'mimo-tts'
           ? t('tts.settings.mimo_base_url_placeholder')
-          : 'https://api.openai.com/v1'
+          : config.id === 'minimax-tts'
+            ? t('tts.settings.minimax_base_url_placeholder')
+            : 'https://api.openai.com/v1'
+
+  const showStreamToggle =
+    supportsTtsProviderStreaming(config.id) &&
+    !(config.id === 'mimo-tts' && isMimoVoiceCloneModel(config.modelId || ''))
 
   return (
     <>
@@ -154,11 +163,11 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
                 style={styles.visibilityToggle}
                 accessibilityLabel={showApiKey ? t('common.hide') : t('common.show')}
               >
-                <MaterialIcons
-                  name={showApiKey ? 'visibility-off' : 'visibility'}
-                  size={22}
-                  color={colors.textSecondary}
-                />
+                {showApiKey ? (
+                  <EyeOff size={22} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                ) : (
+                  <Eye size={22} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                )}
               </TouchableOpacity>
             }
           />
@@ -220,7 +229,11 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
               {t('tts.settings.speed_label')}
             </Text>
             <Text style={[styles.sliderValue, { color: colors.primary }]}>
-              {config.speed.toFixed(1)}x
+              {(typeof config.speed === 'number' && Number.isFinite(config.speed)
+                ? config.speed
+                : Number(config.speed) || 1
+              ).toFixed(1)}
+              x
             </Text>
           </View>
           <NativeSlider
@@ -234,6 +247,31 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
             <Text style={[styles.rangeLabel, { color: colors.textTertiary }]}>0.5x</Text>
             <Text style={[styles.rangeLabel, { color: colors.textTertiary }]}>2.0x</Text>
           </View>
+        </Section>
+      )}
+
+      {showStreamToggle && (
+        <Section>
+          <View style={styles.switchRow}>
+            <Text style={[styles.label, styles.labelInline, { color: colors.textPrimary }]}>
+              {t('tts.settings.stream_label', '启用流式合成')}
+            </Text>
+            <Switch
+              value={config.stream !== false}
+              onValueChange={(v) => onUpdate({ stream: v })}
+            />
+          </View>
+          <Text style={[styles.helperText, { color: colors.textTertiary }]}>
+            {config.id === 'minimax-tts'
+              ? t(
+                  'tts.settings.stream_hint_minimax',
+                  '推荐长文本（>3000 字）开启；朗读时将整段文本一次提交给流式接口'
+                )
+              : t(
+                  'tts.settings.stream_hint_mimo',
+                  '预置音色支持真流式；音色复刻/设计为官方兼容模式'
+                )}
+          </Text>
         </Section>
       )}
 

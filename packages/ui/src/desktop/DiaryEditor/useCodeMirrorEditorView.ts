@@ -1,11 +1,25 @@
 import { useCallback, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { EditorView } from '@codemirror/view'
 import {
   createDiaryCodeMirror,
   forceImageRefresh,
   type DiaryCmPlatform
 } from '../../shared/diary-codemirror'
+import { replaceEditorDocumentContent } from '../../shared/diary-codemirror/editorContentSync'
 import type { CodeMirrorEditorProps, TextContextMenuState } from './codeMirrorEditor.types'
+
+function scheduleEditorMount(callback: () => void): () => void {
+  if (typeof requestIdleCallback !== 'undefined') {
+    const idleId = requestIdleCallback(callback, { timeout: 120 })
+    return () => cancelIdleCallback(idleId)
+  }
+
+  const rafId = requestAnimationFrame(() => {
+    requestAnimationFrame(callback)
+  })
+  return () => cancelAnimationFrame(rafId)
+}
 
 export function useCodeMirrorEditorView(
   props: Pick<CodeMirrorEditorProps, 'content' | 'placeholder' | 'basePath' | 'onChange'>,
@@ -16,16 +30,27 @@ export function useCodeMirrorEditorView(
   const viewRef = useRef<EditorView | null>(null)
   const onChangeRef = useRef(props.onChange)
   const basePathRef = useRef(props.basePath)
+  const contentRef = useRef(props.content)
   /** 程序化写入正文时不向上层回传 change，避免误判为「用户已修改」 */
   const suppressChangeEchoRef = useRef(false)
+  const { t } = useTranslation()
+  const translateRef = useRef(t)
 
   useEffect(() => {
     onChangeRef.current = props.onChange
   }, [props.onChange])
 
   useEffect(() => {
+    translateRef.current = t
+  }, [t])
+
+  useEffect(() => {
     basePathRef.current = props.basePath
   }, [props.basePath])
+
+  useEffect(() => {
+    contentRef.current = props.content
+  }, [props.content])
 
   const resolveUrl = useCallback((fileName: string): string => {
     const currentBasePath = basePathRef.current
@@ -45,53 +70,87 @@ export function useCodeMirrorEditorView(
     const container = containerRef.current
     if (!container) return
 
-    const platform: DiaryCmPlatform = {
-      resolveAttachmentUrl: resolveUrl,
-      interactionMode: 'mouse',
-      onExternalImagePreview: (src) => setPreviewSrc(src)
-    }
+    let cancelled = false
+    let view: EditorView | null = null
 
-    const view = createDiaryCodeMirror(container, {
-      content: props.content,
-      placeholder: props.placeholder,
-      platform,
-      onChange: (content) => {
-        if (suppressChangeEchoRef.current) return
-        onChangeRef.current(content)
-      },
-      extraExtensions: [
-        EditorView.domEventHandlers({
-          contextmenu: (event, view) => {
-            const target = event.target as HTMLElement
-            if (target.closest('.cm-image-container')) {
-              return false
+    const cancelScheduledMount = scheduleEditorMount(() => {
+      if (cancelled || !containerRef.current) return
+
+      const platform: DiaryCmPlatform = {
+        resolveAttachmentUrl: resolveUrl,
+        interactionMode: 'mouse',
+        tagLineMode: true,
+        onExternalImagePreview: (src) => setPreviewSrc(src),
+        translate: (key, defaultValue) =>
+          translateRef.current(key, { defaultValue: defaultValue || key })
+      }
+
+      view = createDiaryCodeMirror(containerRef.current, {
+        content: contentRef.current,
+        placeholder: props.placeholder,
+        platform,
+        onChange: (content) => {
+          if (suppressChangeEchoRef.current) return
+          onChangeRef.current(content)
+        },
+        extraExtensions: [
+          EditorView.domEventHandlers({
+            contextmenu: (event, view) => {
+              const rawTarget = event.target
+              const target =
+                rawTarget instanceof Element
+                  ? rawTarget
+                  : rawTarget instanceof Node
+                    ? rawTarget.parentElement
+                    : null
+              if (
+                target?.closest(
+                  '.cm-image-container, .cm-table-block, .cm-table-context-menu-layer, .tbl-menu, .cm-tooltip.tbl-menu-tooltip'
+                )
+              ) {
+                return false
+              }
+
+              event.preventDefault()
+              event.stopPropagation()
+
+              const { from, to } = view.state.selection.main
+              setTextContextMenu({
+                x: event.clientX,
+                y: event.clientY,
+                hasSelection: from !== to
+              })
+              return true
             }
+          })
+        ]
+      })
 
-            event.preventDefault()
-            event.stopPropagation()
+      viewRef.current = view
+      if (typeof window !== 'undefined') {
+        window.__diaryTableDesktopDebug = true
+      }
 
-            const { from, to } = view.state.selection.main
-            setTextContextMenu({
-              x: event.clientX,
-              y: event.clientY,
-              hasSelection: from !== to
-            })
-            return true
-          }
-        })
-      ]
+      const latestContent = contentRef.current
+      if (latestContent !== view.state.doc.toString()) {
+        suppressChangeEchoRef.current = true
+        try {
+          replaceEditorDocumentContent(view, latestContent)
+        } finally {
+          suppressChangeEchoRef.current = false
+        }
+      }
+
+      requestAnimationFrame(() => {
+        if (cancelled || viewRef.current !== view) return
+        view.focus()
+      })
     })
-
-    viewRef.current = view
-
-    const docLength = view.state.doc.length
-    view.dispatch({
-      selection: { anchor: docLength, head: docLength }
-    })
-    view.focus()
 
     return () => {
-      view.destroy()
+      cancelled = true
+      cancelScheduledMount()
+      view?.destroy()
       viewRef.current = null
     }
   }, [])
@@ -102,13 +161,7 @@ export function useCodeMirrorEditorView(
     if (props.content !== view.state.doc.toString()) {
       suppressChangeEchoRef.current = true
       try {
-        view.dispatch({
-          changes: {
-            from: 0,
-            to: view.state.doc.length,
-            insert: props.content
-          }
-        })
+        replaceEditorDocumentContent(view, props.content)
       } finally {
         suppressChangeEchoRef.current = false
       }

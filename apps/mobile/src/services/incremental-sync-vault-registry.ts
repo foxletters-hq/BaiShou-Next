@@ -1,4 +1,4 @@
-import type { VaultService } from '@baishou/core'
+import type { VaultService } from '@baishou/core-mobile'
 import type { IFileSystem, IStoragePathService } from '@baishou/core-mobile'
 import type { IncrementalSyncPlanPreview, IncrementalSyncRunOptions } from '@baishou/shared'
 import { resolveMobileSyncPlanContext } from './incremental-sync-plan-context'
@@ -51,10 +51,7 @@ export async function planIncrementalSyncWithVaultRegistry(
     )
 
     const scopes = await deps.incrementalSyncService.collectManifestVaultScopes()
-    const pruned = await deps.vaultService.pruneOrphanRegistryVaults(
-      scopes,
-      context.diskVaultNames
-    )
+    const pruned = await deps.vaultService.pruneOrphanRegistryVaults(scopes, context.diskVaultNames)
     if (pruned.length > 0) {
       context = await resolveMobileSyncPlanContext(
         deps.pathService,

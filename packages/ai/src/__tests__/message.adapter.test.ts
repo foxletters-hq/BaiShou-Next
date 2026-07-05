@@ -250,4 +250,19 @@ describe('MessageAdapter.toVercelMessages', () => {
       expect(toolMsg?.role).toBe('tool')
     })
   })
+
+  describe('wrapMessageTime option', () => {
+    it('skips message-time metadata when wrapMessageTime is false', async () => {
+      const at = new Date(2026, 5, 15, 10, 0)
+      const dbMessages: MessageWithParts[] = [makeUserMsg('你好', { createdAt: at })]
+
+      const wrapped = await MessageAdapter.toVercelMessages(dbMessages)
+      expect(wrapped[0]?.content).toBe(wrapMessageBodyForModel('你好', at))
+
+      const plain = await MessageAdapter.toVercelMessages(dbMessages, undefined, undefined, {
+        wrapMessageTime: false
+      })
+      expect(plain[0]?.content).toBe('你好')
+    })
+  })
 })

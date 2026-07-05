@@ -4,6 +4,11 @@ import type { NativeStackNavigationOptions } from '@react-navigation/native-stac
 
 const FADE_DURATION_MS = Platform.OS === 'ios' ? 250 : 200
 
+/** Native Stack 无转场：避免模态打开时底层列表因布局重算而跳动 */
+export const instantStackAnimation: NativeStackNavigationOptions = {
+  animation: 'none'
+}
+
 /** Native Stack 淡入淡出转场，与 React Navigation `animation: 'fade'` 一致 */
 export const fadeStackAnimation: NativeStackNavigationOptions = {
   animation: 'fade',

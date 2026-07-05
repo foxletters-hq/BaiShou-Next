@@ -9,9 +9,10 @@ import {
   ScrollView
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { MaterialIcons } from '@expo/vector-icons'
-import { WEATHER_IDS, weatherI18nKey, type WeatherId } from '@baishou/shared'
+import { Check } from 'lucide-react-native'
+import { WEATHER_IDS, weatherI18nKey, normalizeWeatherId, type WeatherId } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { WeatherEmoji } from '../WeatherIcon'
 
 export interface NativeWeatherPickerProps {
@@ -30,14 +31,19 @@ const weatherLabelFallback: Record<WeatherId, string> = {
   windy: '风'
 }
 
+const TRIGGER_HEIGHT = 38
+const ICON_SIZE = 18
+
 export const WeatherPicker: React.FC<NativeWeatherPickerProps> = ({ value, onChange }) => {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
   const { width: screenWidth } = useWindowDimensions()
   const [open, setOpen] = useState(false)
 
-  const selectedId = value && (WEATHER_IDS as readonly string[]).includes(value) ? value : ''
-  const displayLabel = selectedId
+  const selectedId = normalizeWeatherId(value)
+  const isKnownWeather =
+    selectedId !== '' && (WEATHER_IDS as readonly string[]).includes(selectedId)
+  const displayLabel = isKnownWeather
     ? t(
         `diary.weather.${weatherI18nKey(selectedId as WeatherId)}`,
         weatherLabelFallback[selectedId as WeatherId]
@@ -77,11 +83,11 @@ export const WeatherPicker: React.FC<NativeWeatherPickerProps> = ({ value, onCha
         ]}
       >
         <View style={styles.triggerContent}>
-          {selectedId ? <WeatherEmoji weather={selectedId} size={18} /> : null}
+          {isKnownWeather ? <WeatherEmoji weather={selectedId} size={ICON_SIZE} /> : null}
           <Text
             style={[
               styles.triggerLabel,
-              { color: selectedId ? colors.textPrimary : colors.textSecondary }
+              { color: isKnownWeather ? colors.textPrimary : colors.textSecondary }
             ]}
             numberOfLines={1}
           >
@@ -126,7 +132,7 @@ export const WeatherPicker: React.FC<NativeWeatherPickerProps> = ({ value, onCha
                     accessibilityLabel={label}
                     accessibilityState={{ selected: active }}
                   >
-                    <WeatherEmoji weather={id} size={22} />
+                    <WeatherEmoji weather={id} size={ICON_SIZE} />
                     <Text
                       style={[
                         styles.optionLabel,
@@ -137,7 +143,7 @@ export const WeatherPicker: React.FC<NativeWeatherPickerProps> = ({ value, onCha
                       {label}
                     </Text>
                     {active ? (
-                      <MaterialIcons name="check" size={18} color={colors.primary} />
+                      <Check size={18} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                     ) : (
                       <View style={styles.checkPlaceholder} />
                     )}
@@ -167,11 +173,11 @@ const styles = StyleSheet.create({
   trigger: {
     alignSelf: 'flex-start',
     maxWidth: 176,
+    height: TRIGGER_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 12,
-    paddingVertical: 8,
     borderRadius: 12,
     gap: 6
   },
@@ -184,10 +190,12 @@ const styles = StyleSheet.create({
   triggerLabel: {
     fontSize: 13,
     fontWeight: '500',
-    flexShrink: 1
+    flexShrink: 1,
+    lineHeight: 16
   },
   chevron: {
-    fontSize: 10
+    fontSize: 10,
+    lineHeight: 12
   },
   overlay: {
     flex: 1,
@@ -205,13 +213,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12
+    minHeight: TRIGGER_HEIGHT,
+    paddingHorizontal: 14
   },
   optionLabel: {
     flex: 1,
     fontSize: 14,
-    fontWeight: '500'
+    fontWeight: '500',
+    lineHeight: 18
   },
   checkPlaceholder: {
     width: 18

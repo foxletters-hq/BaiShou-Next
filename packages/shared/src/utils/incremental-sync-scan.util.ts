@@ -17,6 +17,12 @@ function basenameFromRel(relativePath: string): string {
   return rel.split('/').pop() ?? rel
 }
 
+/** 增量同步冲突备份（*.conflict-<timestamp>.*），仅作本地删除前快照，不参与扫描与上传 */
+export function isIncrementalSyncConflictBackupPath(relativePath: string): boolean {
+  const base = basenameFromRel(relativePath)
+  return /\.conflict-\d+/.test(base)
+}
+
 /** SQLite 运行时附属文件与主库文件，禁止参与增量同步（会被进程锁定，且不应跨设备复制） */
 export function isSqliteRuntimeSyncPath(relativePath: string): boolean {
   const base = basenameFromRel(relativePath).toLowerCase()
@@ -100,12 +106,16 @@ export function shouldIncludeIncrementalSyncFile(entryName: string, relativePath
   if (isSqliteRuntimeSyncPath(rel) || isSqliteRuntimeSyncPath(entryName)) {
     return false
   }
+  if (isIncrementalSyncConflictBackupPath(rel) || isIncrementalSyncConflictBackupPath(entryName)) {
+    return false
+  }
   if (isBaishouSettingsTree(rel)) {
     return rel.includes('/.baishou/settings/') ||
       rel.startsWith(INCREMENTAL_SYNC_BAISHOU_SETTINGS_PREFIX)
       ? rel.endsWith('.json') && !entryName.endsWith('.tmp')
       : false
   }
+  // external_paths.json 为设备本地配置（日记/总结绝对路径），不参与跨设备增量同步
   if (rel.includes('/.baishou/') || rel.startsWith('.baishou/')) return false
   if (entryName.startsWith('.')) return false
   return true

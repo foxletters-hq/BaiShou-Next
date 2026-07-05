@@ -91,4 +91,39 @@ describe('ContextWindowBuilder', () => {
 
     expect(result).toHaveLength(4)
   })
+
+  it('keeps requiredMessageId when recentCount would drop an earlier pending user turn', async () => {
+    const messages: MessageWithParts[] = [
+      makeMsg('user', 0),
+      makeMsg('assistant', 1),
+      makeMsg('user', 2),
+      makeMsg('assistant', 3),
+      makeMsg('user', 4)
+    ]
+    messages[2]!.id = 'user-msg-1'
+    messages[4]!.id = 'user-msg-2'
+
+    const sessionRepo = {
+      getMessagesBySession: vi.fn().mockResolvedValue(messages)
+    }
+    const snapshotRepo = {
+      getLatestSnapshot: vi.fn().mockResolvedValue(null)
+    }
+
+    const withoutAnchor = await ContextWindowBuilder.build(
+      'session_1',
+      sessionRepo as any,
+      snapshotRepo as any,
+      { recentCount: 1 }
+    )
+    expect(withoutAnchor.map((m) => m.id)).toEqual(['user-msg-2'])
+
+    const withAnchor = await ContextWindowBuilder.build(
+      'session_1',
+      sessionRepo as any,
+      snapshotRepo as any,
+      { recentCount: 1, requiredMessageId: 'user-msg-1' }
+    )
+    expect(withAnchor.map((m) => m.id)).toEqual(['user-msg-1', 'm3', 'user-msg-2'])
+  })
 })

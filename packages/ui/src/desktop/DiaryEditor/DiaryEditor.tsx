@@ -1,22 +1,27 @@
 import { useTranslation } from 'react-i18next'
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import { Loader2, Volume2 } from 'lucide-react'
 import {
   WEATHER_IDS,
-  getWeatherEmoji,
   weatherI18nKey,
   normalizeWeatherId,
+  MOOD_IDS,
+  getMoodLabelFallback,
+  moodI18nKey,
+  normalizeMoodId,
   type WeatherId
 } from '@baishou/shared'
+import { MOOD_FLUENT_ICON_SRC } from '../../shared/mood-fluent-assets'
+import { WEATHER_FLUENT_ICON_SRC } from '../../shared/weather-fluent-assets'
 import { CodeMirrorEditor, CodeMirrorEditorHandle } from './CodeMirrorEditor'
 import { DiaryEditorAppBarTitle } from '../DiaryEditorAppBarTitle/DiaryEditorAppBarTitle'
-import { TagInput } from '../TagInput'
+import { DiaryMarkdownToolbar } from './DiaryMarkdownToolbar'
 import { WeatherPicker } from './WeatherPicker'
 import { DiaryAttachmentItem, getInsertMarkdown } from './AttachmentUploader'
 import './DiaryEditor.css'
 
 interface DiaryEditorProps {
   content: string
-  tags: string[]
   selectedDate: Date
   isSummaryMode?: boolean
   weather?: string
@@ -25,14 +30,17 @@ interface DiaryEditorProps {
   mediaPaths?: string[]
   isSaving?: boolean
   onContentChange: (content: string) => void
-  onTagsChange: (tags: string[]) => void
   onDateChange: (date: Date) => void
   onWeatherChange?: (weather: string) => void
   onMoodChange?: (mood: string) => void
   onFavoriteChange?: (isFavorite: boolean) => void
   onMediaPathsChange?: (mediaPaths: string[]) => void
-  onSave?: (content: string, tags: string[], date: Date) => void
+  onSave?: (content: string, date: Date) => void
   onCancel?: () => void
+  onReadAloud?: () => void
+  isTtsPlaying?: boolean
+  /** 由页面层预取时传入，避免编辑器挂载后再二次刷新图片装饰 */
+  attachmentBasePath?: string
 }
 
 function fileToBase64(file: File): Promise<string> {
@@ -46,7 +54,6 @@ function fileToBase64(file: File): Promise<string> {
 
 export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   content,
-  tags,
   selectedDate,
   isSummaryMode = false,
   weather = '',
@@ -55,19 +62,24 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   mediaPaths = [],
   isSaving = false,
   onContentChange,
-  onTagsChange,
   onDateChange,
   onWeatherChange,
   onMoodChange,
   onFavoriteChange,
   onMediaPathsChange,
   onSave,
-  onCancel
+  onCancel,
+  onReadAloud,
+  isTtsPlaying = false,
+  attachmentBasePath: attachmentBasePathProp
 }) => {
   const { t } = useTranslation()
   const [attachments, setAttachments] = useState<DiaryAttachmentItem[]>([])
-  const [attachmentBasePath, setAttachmentBasePath] = useState('')
+  const [attachmentBasePathState, setAttachmentBasePathState] = useState('')
+  const attachmentBasePath = attachmentBasePathProp ?? attachmentBasePathState
   const editorRef = useRef<CodeMirrorEditorHandle>(null)
+  const imageInputRef = useRef<HTMLInputElement>(null)
+  const [pickingImages, setPickingImages] = useState(false)
   const mediaPathsRef = useRef(mediaPaths)
 
   useEffect(() => {
@@ -75,6 +87,8 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   }, [mediaPaths])
 
   useEffect(() => {
+    if (attachmentBasePathProp != null) return
+
     const fetchAttachmentDir = async () => {
       try {
         if (typeof window !== 'undefined' && (window as any).api?.diary) {
@@ -85,7 +99,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
           ].join('-')
           const result = await (window as any).api.diary.getAttachmentDir(dateStr)
           if (result?.success && result.path) {
-            setAttachmentBasePath(result.path)
+            setAttachmentBasePathState(result.path)
           }
         }
       } catch (err) {
@@ -93,7 +107,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
       }
     }
     fetchAttachmentDir()
-  }, [selectedDate])
+  }, [selectedDate, attachmentBasePathProp])
 
   useEffect(() => {
     if (mediaPaths.length > 0) {
@@ -177,7 +191,8 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
       { value: '', label: t('diary.weather.default', '天气') },
       ...WEATHER_IDS.map((id) => ({
         value: id,
-        label: `${getWeatherEmoji(id)} ${t(`diary.weather.${weatherI18nKey(id)}`, weatherLabelFallback[id])}`
+        iconSrc: WEATHER_FLUENT_ICON_SRC[id],
+        label: t(`diary.weather.${weatherI18nKey(id)}`, weatherLabelFallback[id])
       }))
     ],
     [t]
@@ -191,18 +206,64 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
     }
   }, [normalizedWeather, weather, onWeatherChange])
 
-  const MOOD_OPTIONS = [
-    { value: '', label: t('diary.mood.default', '心情') },
-    { value: 'Happy', label: `😊 ${t('diary.mood.happy', '开心')}` },
-    { value: 'Content', label: `😌 ${t('diary.mood.content', '满足')}` },
-    { value: 'Peaceful', label: `🕊️ ${t('diary.mood.peaceful', '平静')}` },
-    { value: 'Excited', label: `🤩 ${t('diary.mood.excited', '兴奋')}` },
-    { value: 'Grateful', label: `🙏 ${t('diary.mood.grateful', '感恩')}` },
-    { value: 'Reflective', label: `🤔 ${t('diary.mood.reflective', '沉思')}` },
-    { value: 'Melancholy', label: `😢 ${t('diary.mood.melancholy', '忧伤')}` },
-    { value: 'Anxious', label: `😰 ${t('diary.mood.anxious', '焦虑')}` },
-    { value: 'Glorious', label: `🌟 ${t('diary.mood.glorious', '灿烂')}` }
-  ]
+  const MOOD_OPTIONS = useMemo(
+    () => [
+      { value: '', label: t('diary.mood.default', '心情') },
+      ...MOOD_IDS.map((id) => ({
+        value: id,
+        iconSrc: MOOD_FLUENT_ICON_SRC[id],
+        label: t(`diary.mood.${moodI18nKey(id)}`, getMoodLabelFallback(id))
+      }))
+    ],
+    [t]
+  )
+
+  const normalizedMood = normalizeMoodId(mood)
+
+  useEffect(() => {
+    if (normalizedMood && normalizedMood !== mood) {
+      onMoodChange?.(normalizedMood)
+    }
+  }, [normalizedMood, mood, onMoodChange])
+
+  const handleInsertText = useCallback((prefix: string, suffix = '') => {
+    editorRef.current?.insertWrappedText(prefix, suffix)
+  }, [])
+
+  const handleUndo = useCallback(() => {
+    editorRef.current?.undo()
+  }, [])
+
+  const handleRedo = useCallback(() => {
+    editorRef.current?.redo()
+  }, [])
+
+  const handleToggleMark = useCallback((marker: '**' | '*' | '`' | '~~') => {
+    editorRef.current?.toggleMarkdownMark(marker)
+  }, [])
+
+  const handlePickImages = useCallback(() => {
+    imageInputRef.current?.click()
+  }, [])
+
+  const handleImageInputChange = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(event.target.files ?? [])
+      event.target.value = ''
+      if (!files.length) return
+
+      setPickingImages(true)
+      try {
+        const markdowns = await handlePasteFiles(files)
+        if (!markdowns.length) return
+        const block = `${markdowns.length > 1 ? '\n\n' : ''}${markdowns.join('\n\n')}\n`
+        editorRef.current?.insertAtCursor(block)
+      } finally {
+        setPickingImages(false)
+      }
+    },
+    [handlePasteFiles]
+  )
 
   return (
     <div className="diary-editor-scaffold">
@@ -231,7 +292,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
         <div className="de-app-bar-actions">
           <button
             className="de-save-btn"
-            onClick={() => onSave?.(content, tags, selectedDate)}
+            onClick={() => onSave?.(content, selectedDate)}
             disabled={isSaving}
           >
             {isSaving ? (
@@ -248,20 +309,43 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
 
       <div className="de-body-column">
         <div className="de-expanded-list">
-          {!isSummaryMode && (
-            <div className="de-tags-section">
-              <TagInput tags={tags} onChange={onTagsChange} />
-            </div>
-          )}
-
-          {!isSummaryMode && (
+          {!isSummaryMode && (onWeatherChange || onMoodChange || onReadAloud) && (
             <div className="de-meta-bar">
-              <WeatherPicker
-                value={normalizedWeather}
-                options={WEATHER_OPTIONS}
-                onChange={(v) => onWeatherChange?.(v)}
-                placeholder={t('diary.weather.default', '天气')}
-              />
+              <div className="de-meta-pickers">
+                {onWeatherChange && (
+                  <WeatherPicker
+                    value={normalizedWeather}
+                    options={WEATHER_OPTIONS}
+                    onChange={(v) => onWeatherChange(v)}
+                    placeholder={t('diary.weather.default', '天气')}
+                  />
+                )}
+                {onMoodChange && (
+                  <WeatherPicker
+                    value={normalizedMood}
+                    options={MOOD_OPTIONS}
+                    onChange={(v) => onMoodChange(v)}
+                    placeholder={t('diary.mood.default', '心情')}
+                  />
+                )}
+                {onReadAloud && (
+                  <button
+                    type="button"
+                    className={`de-meta-tts-btn${isTtsPlaying ? ' active' : ''}`}
+                    onClick={onReadAloud}
+                    disabled={!content.trim() && !isTtsPlaying}
+                    title={t('agent.chat.readAloud', '语音朗读')}
+                    aria-label={t('agent.chat.readAloud', '语音朗读')}
+                    aria-busy={isTtsPlaying}
+                  >
+                    {isTtsPlaying ? (
+                      <Loader2 className="de-meta-tts-icon de-meta-tts-spinner" />
+                    ) : (
+                      <Volume2 className="de-meta-tts-icon" />
+                    )}
+                  </button>
+                )}
+              </div>
               <button
                 className={`de-meta-fav-btn${isFavorite ? ' active' : ''}`}
                 onClick={() => onFavoriteChange?.(!isFavorite)}
@@ -288,11 +372,31 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
               ref={editorRef}
               content={content}
               onChange={(val) => onContentChange(val || '')}
-              placeholder={t('diary.editor_hint', '记录下这一刻...')}
+              placeholder={t('diary.tag_editor_hint', '首行输入 #标签 后按回车，再写正文…')}
               basePath={attachmentBasePath}
               onPasteFiles={handlePasteFiles}
               onDropFiles={handlePasteFiles}
             />
+            {!isSummaryMode && (
+              <>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  hidden
+                  onChange={(event) => void handleImageInputChange(event)}
+                />
+                <DiaryMarkdownToolbar
+                  onInsertText={handleInsertText}
+                  onUndo={handleUndo}
+                  onRedo={handleRedo}
+                  onToggleMark={handleToggleMark}
+                  onPickImages={handlePickImages}
+                  pickingImages={pickingImages}
+                />
+              </>
+            )}
           </div>
         </div>
       </div>

@@ -9,7 +9,7 @@ import {
   ScrollView
 } from 'react-native'
 import { NativeSlider } from '@baishou/ui/native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { Archive } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { Input } from '@baishou/ui/native'
 import type { useNativeTheme } from '@baishou/ui/native'
@@ -82,7 +82,7 @@ export const DataSyncCountModal: React.FC<DataSyncCountModalProps> = ({
           onPress={(e) => e.stopPropagation()}
         >
           <View style={styles.header}>
-            <MaterialIcons name="inventory-2" size={22} color={colors.primary} />
+            <Archive size={22} color={colors.primary} strokeWidth={2} />
             <Text style={[styles.title, { color: colors.textPrimary }]}>
               {isSnapshot
                 ? t('data_sync.max_snapshot_title', '快照上限设置')

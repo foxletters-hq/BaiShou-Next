@@ -33,6 +33,8 @@ export function registerSettingsAppIPC() {
 
   ipcMain.handle('settings:set-rag-config', async (_, config: any) => {
     await settingsManager.set('rag_config', config)
+    const { invalidateMcpToolContextCache } = await import('./agent-helpers')
+    invalidateMcpToolContextCache()
     return true
   })
 
@@ -69,6 +71,8 @@ export function registerSettingsAppIPC() {
 
   ipcMain.handle('settings:set-tool-management-config', async (_, config: any) => {
     await settingsManager.set('tool_management_config', config)
+    const { invalidateMcpToolContextCache } = await import('./agent-helpers')
+    invalidateMcpToolContextCache()
     return true
   })
 
@@ -82,13 +86,31 @@ export function registerSettingsAppIPC() {
   })
 
   ipcMain.handle('settings:get-mcp-server-config', async () => {
-    return (await settingsManager.get<any>('mcp_server_config')) || null
+    const { getDesktopMcpServerConfig } = await import('../services/desktop-mcp-config.store')
+    return getDesktopMcpServerConfig()
   })
 
   ipcMain.handle('settings:set-mcp-server-config', async (_, config: any) => {
     const { ensureMcpAuthToken } = await import('@baishou/shared')
     const nextConfig = ensureMcpAuthToken(config)
-    await settingsManager.set('mcp_server_config', nextConfig)
+    const { SettingsRepository } = await import('@baishou/database-desktop')
+    const { getAppDb } = await import('../db')
+    const { setDesktopMcpServerConfig } = await import('../services/desktop-mcp-config.store')
+    const settingsRepo = new SettingsRepository(getAppDb())
+    await setDesktopMcpServerConfig(nextConfig, settingsRepo, () => settingsManager.flushToDisk())
+    const { applyMcpServerConfig } = await import('../services/mcp-runtime')
+    await applyMcpServerConfig(nextConfig)
+    return nextConfig
+  })
+
+  ipcMain.handle('settings:refresh-mcp-auth-token', async () => {
+    const { refreshDesktopMcpAuthToken, setDesktopMcpServerConfig } =
+      await import('../services/desktop-mcp-config.store')
+    const { SettingsRepository } = await import('@baishou/database-desktop')
+    const { getAppDb } = await import('../db')
+    const nextConfig = await refreshDesktopMcpAuthToken()
+    const settingsRepo = new SettingsRepository(getAppDb())
+    await setDesktopMcpServerConfig(nextConfig, settingsRepo, () => settingsManager.flushToDisk())
     const { applyMcpServerConfig } = await import('../services/mcp-runtime')
     await applyMcpServerConfig(nextConfig)
     return nextConfig
@@ -96,29 +118,33 @@ export function registerSettingsAppIPC() {
 
   ipcMain.handle('settings:get-mcp-tools', async () => {
     const { toolRegistry, buildMcpToolContext } = await import('./agent-helpers')
+    const { listBaishouMcpExposedTools } = await import('@baishou/ai')
+    const { logger } = await import('@baishou/shared')
     if (!toolRegistry) return []
-    const context = await buildMcpToolContext()
-    const tools = toolRegistry.getEnabledToolsRaw(context)
-    return tools.map((tool: any) => ({
-      name: `baishou_${tool.name}`,
-      displayName: tool.displayName,
-      description: tool.description,
-      category: tool.category
-    }))
+    try {
+      const context = await buildMcpToolContext()
+      return listBaishouMcpExposedTools(toolRegistry, context)
+    } catch (e) {
+      logger.warn('[settings:get-mcp-tools] Failed to list MCP tools:', e as Error)
+      return []
+    }
   })
 
   ipcMain.handle('settings:get-hotkey-config', async () => {
-    return (await settingsManager.get<any>('hotkey_config')) || null
+    const { getDesktopHotkeyConfig } = await import('../services/desktop-hotkey-config.store')
+    return getDesktopHotkeyConfig()
   })
 
   ipcMain.handle('settings:set-hotkey-config', async (_, config: any) => {
-    await settingsManager.set('hotkey_config', config)
+    const { SettingsRepository } = await import('@baishou/database-desktop')
+    const { getAppDb } = await import('../db')
+    const { setDesktopHotkeyConfig } = await import('../services/desktop-hotkey-config.store')
+    const settingsRepo = new SettingsRepository(getAppDb())
+    await setDesktopHotkeyConfig(config, settingsRepo, () => settingsManager.flushToDisk())
     const { getHotkeyService } = await import('./settings.ipc')
     const service = getHotkeyService()
-    if (service) {
-      service.update(config)
-    }
-    return true
+    const registered = service ? service.update(config) : null
+    return { ok: registered !== false, registered }
   })
 
   ipcMain.handle('settings:get-cloud-sync-config', async () => {

@@ -1,12 +1,41 @@
 const { getDefaultConfig } = require('expo/metro-config')
+const fs = require('fs')
 const path = require('path')
+const { getBundleModeMetroConfig } = require('react-native-worklets/bundleMode')
 
 const projectRoot = __dirname
 const workspaceRoot = path.resolve(projectRoot, '../..')
 
-const config = getDefaultConfig(projectRoot)
+function resolveWorkletsWatchDir() {
+  const candidates = [
+    path.resolve(projectRoot, 'node_modules/react-native-worklets/.worklets'),
+    path.resolve(workspaceRoot, 'node_modules/react-native-worklets/.worklets')
+  ]
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      return candidate
+    }
+  }
+  try {
+    const pkgRoot = path.dirname(
+      require.resolve('react-native-worklets/package.json', {
+        paths: [projectRoot, workspaceRoot]
+      })
+    )
+    return path.join(pkgRoot, '.worklets')
+  } catch {
+    return candidates[1]
+  }
+}
+
+let config = getDefaultConfig(projectRoot)
 
 config.watchFolders = [...(config.watchFolders || []), workspaceRoot]
+
+const workletsDir = resolveWorkletsWatchDir()
+if (!config.watchFolders.includes(workletsDir)) {
+  config.watchFolders.push(workletsDir)
+}
 
 config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, 'node_modules'),
@@ -49,7 +78,7 @@ config.resolver.blockList = [
     `${path.resolve(workspaceRoot, 'packages/core/src/fs/create-node-file-system.ts').replace(/[/\\]/g, '[/\\\\]')}`
   ),
   new RegExp(
-    `${path.resolve(workspaceRoot, 'packages/core/src/sync').replace(/[/\\]/g, '[/\\\\]')}.*`
+    `${path.resolve(workspaceRoot, 'packages/core/src/sync').replace(/[/\\]/g, '[/\\\\]')}[/\\\\](?!incremental-sync-external-mounts\\.ts$).+`
   ),
   new RegExp(
     `${path.resolve(workspaceRoot, 'packages/core/src/import/legacy-import.service.ts').replace(/[/\\]/g, '[/\\\\]')}`
@@ -68,9 +97,45 @@ config.resolver.blockList = [
   )
 ]
 
-const defaultResolveRequest = config.resolver.resolveRequest
+const databaseNativeEntry = path.resolve(workspaceRoot, 'packages/database/src/index.native.ts')
+
+const workspacePackageEntries = {
+  '@baishou/ui/native': path.resolve(workspaceRoot, 'packages/ui/src/native/index.ts'),
+  '@baishou/ui': path.resolve(workspaceRoot, 'packages/ui/src/index.ts'),
+  '@baishou/shared': path.resolve(workspaceRoot, 'packages/shared/src/index.ts'),
+  '@baishou/ai': path.resolve(workspaceRoot, 'packages/ai/src/index.ts'),
+  '@baishou/core-mobile': path.resolve(workspaceRoot, 'packages/core-mobile/src/index.ts'),
+  '@baishou/database': databaseNativeEntry,
+  '@baishou/store': path.resolve(workspaceRoot, 'packages/store/src/index.ts')
+}
+
+function resolveWorkspaceSubpath(baseDir, subpath) {
+  const normalized = subpath.replace(/^\.\//, '')
+  const candidates = [
+    path.join(baseDir, `${normalized}.ts`),
+    path.join(baseDir, `${normalized}.tsx`),
+    path.join(baseDir, normalized, 'index.ts'),
+    path.join(baseDir, normalized, 'index.tsx')
+  ]
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      return candidate
+    }
+  }
+  return null
+}
+
+const preBundleResolveRequest = config.resolver.resolveRequest
+
+config = getBundleModeMetroConfig(config)
+
+const bundleModeResolveRequest = config.resolver.resolveRequest
 
 config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName.startsWith('react-native-worklets/.worklets/')) {
+    return bundleModeResolveRequest(context, moduleName, platform)
+  }
+
   if (
     moduleName.startsWith('node:') ||
     nodeBuiltinPrefixes.some((p) => moduleName === p || moduleName.startsWith(p + '/'))
@@ -81,9 +146,34 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     }
   }
 
-  // Expo SDK 55 默认 resolveRequest 为 null，必须回退到 context.resolveRequest（Metro 内置解析器）
-  if (typeof defaultResolveRequest === 'function') {
-    return defaultResolveRequest(context, moduleName, platform)
+  if (moduleName === '@baishou/database') {
+    return {
+      filePath: databaseNativeEntry,
+      type: 'sourceFile'
+    }
+  }
+
+  if (moduleName in workspacePackageEntries) {
+    return {
+      filePath: workspacePackageEntries[moduleName],
+      type: 'sourceFile'
+    }
+  }
+
+  for (const [pkgName, entryPath] of Object.entries(workspacePackageEntries)) {
+    const prefix = `${pkgName}/`
+    if (moduleName.startsWith(prefix)) {
+      const subpath = moduleName.slice(prefix.length)
+      const baseDir = path.dirname(entryPath)
+      const resolved = resolveWorkspaceSubpath(baseDir, subpath)
+      if (resolved) {
+        return { filePath: resolved, type: 'sourceFile' }
+      }
+    }
+  }
+
+  if (typeof preBundleResolveRequest === 'function') {
+    return preBundleResolveRequest(context, moduleName, platform)
   }
   return context.resolveRequest(context, moduleName, platform)
 }

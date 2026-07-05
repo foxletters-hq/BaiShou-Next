@@ -47,6 +47,22 @@ export const AssistantEditScreen: React.FC = () => {
   return (
     <AssistantEditPage
       assistant={assistant}
+      onPatchSave={
+        id && id !== 'new'
+          ? async (assistantId, patch) => {
+              if (typeof window !== 'undefined' && window.electron) {
+                await window.electron.ipcRenderer.invoke(
+                  'agent:update-assistant',
+                  assistantId,
+                  patch
+                )
+                setAssistant((prev: typeof assistant) =>
+                  prev && prev.id === assistantId ? { ...prev, ...patch } : prev
+                )
+              }
+            }
+          : undefined
+      }
       onSave={async (data) => {
         if (typeof window !== 'undefined' && window.electron) {
           if (id === 'new') {

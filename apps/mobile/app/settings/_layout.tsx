@@ -16,6 +16,8 @@ export default function SettingsStackLayout() {
       <Stack.Screen name="assistants" />
       <Stack.Screen name="assistant-edit" />
       <Stack.Screen name="lan-transfer" />
+      <Stack.Screen name="emoji/index" />
+      <Stack.Screen name="emoji/[groupId]" />
       <Stack.Screen name="data-sync" />
       <Stack.Screen name="tts/index" />
       <Stack.Screen name="tts/[provider]" />

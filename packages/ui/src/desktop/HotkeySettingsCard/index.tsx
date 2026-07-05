@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdOutlineKeyboard, MdOutlineEdit, MdExpandMore } from 'react-icons/md'
 import '../shared/SettingsListTile.css'
+import { ChevronDown, Keyboard, Pencil } from 'lucide-react'
 
 export interface HotkeyConfig {
   hotkeyEnabled: boolean
@@ -186,7 +186,7 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
         style={{ cursor: config.hotkeyEnabled ? 'pointer' : 'default' }}
       >
         <div className="settings-list-tile-leading">
-          <MdOutlineKeyboard size={24} />
+          <Keyboard size={24} />
         </div>
         <div className="settings-list-tile-content">
           <span className="settings-list-tile-title">
@@ -217,7 +217,7 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
         </label>
 
         {config.hotkeyEnabled && (
-          <MdExpandMore
+          <ChevronDown
             size={24}
             style={{
               color: 'var(--color-on-surface-variant)',
@@ -238,7 +238,7 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
           <div className="settings-list-divider indent" />
           <div className="settings-list-tile settings-list-tile-noclick">
             <div className="settings-list-tile-leading">
-              <MdOutlineEdit size={22} />
+              <Pencil size={22} />
             </div>
             <div className="settings-list-tile-content">
               <span className="settings-list-tile-title">
@@ -264,7 +264,7 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
               }}
               onClick={() => setIsRecording(!isRecording)}
             >
-              <MdOutlineEdit size={16} />
+              <Pencil size={16} />
               {isRecording ? t('hotkey.listening', '正在监听...') : displayString}
             </button>
           </div>

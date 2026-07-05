@@ -1,19 +1,22 @@
 import { useTranslation } from 'react-i18next'
-import React, { memo } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import React, { memo, useMemo } from 'react'
+import { View, Text, StyleSheet } from 'react-native'
+import { TouchableOpacity } from 'react-native-gesture-handler'
+import { Heart } from 'lucide-react-native'
 import { useNativeTheme } from '../../native/theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import {
-  normalizeWeatherId,
-  weatherI18nKey,
-  WEATHER_IDS,
-  formatDiaryPreviewText,
   getDiaryTagColorIndex,
+  limitDiaryPreviewTags,
+  prepareDiaryCardPreviewMarkdown,
   resolveDiaryTagColorIndex,
+  resolveWeatherId,
+  resolveMoodId,
   type DiaryTagColorRegistry
 } from '@baishou/shared'
-import type { WeatherId } from '@baishou/shared'
 import { WeatherEmoji } from '../WeatherIcon'
+import { MoodEmoji } from '../MoodIcon/MoodEmoji'
+import { MarkdownRenderer } from '../MarkdownRenderer'
 
 interface DiaryCardProps {
   id: number
@@ -22,7 +25,6 @@ interface DiaryCardProps {
   createdAt: Date
   weather?: string
   mood?: string
-  location?: string
   isFavorite?: boolean
   /** 语义搜索相似度 0–1 */
   matchSimilarity?: number
@@ -39,7 +41,6 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
   createdAt,
   weather,
   mood,
-  location,
   isFavorite,
   matchSimilarity,
   tagColorRegistry,
@@ -63,15 +64,6 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
   ] as const
   const weekday = t(weekdayKeys[createdAt.getDay()])
 
-  const weatherLabel = (() => {
-    if (!weather) return ''
-    const id = normalizeWeatherId(weather)
-    if ((WEATHER_IDS as readonly string[]).includes(id)) {
-      return t(`diary.weather.${weatherI18nKey(id as WeatherId)}`)
-    }
-    return weather
-  })()
-
   const tagPalette = [
     { bg: colors.accentBlue + '15', fg: colors.accentBlue },
     { bg: colors.accentGreen + '15', fg: colors.accentGreen },
@@ -84,19 +76,29 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
     return tagPalette[index] ?? tagPalette[getDiaryTagColorIndex(tag)]!
   }
 
-  const previewText = formatDiaryPreviewText(contentSnippet)
+  const previewMarkdown = useMemo(() => {
+    const text = prepareDiaryCardPreviewMarkdown(contentSnippet)
+    if (!text) return ''
+    return text.length > 500 ? `${text.slice(0, 500)}…` : text
+  }, [contentSnippet])
+  const { visibleTags: previewTags, overflowCount: tagOverflowCount } = limitDiaryPreviewTags(tags)
 
   return (
     <TouchableOpacity
       style={[styles.card, { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }]}
-      onPress={onClick}
+      onPress={() => onClick?.()}
       activeOpacity={0.9}
+      disallowInterruption
     >
       <View style={styles.header}>
         <View style={styles.dateGroup}>
-          <Text style={[styles.day, { color: colors.textPrimary }]}>{day}</Text>
+          <Text style={[styles.day, { color: colors.textPrimary }]} selectable={false}>
+            {day}
+          </Text>
           <View style={styles.dateMeta}>
-            <Text style={[styles.weekday, { color: colors.textSecondary }]}>{weekday}</Text>
+            <Text style={[styles.weekday, { color: colors.textSecondary }]} selectable={false}>
+              {weekday}
+            </Text>
             <View style={styles.badgeRow}>
               <View
                 style={[
@@ -107,22 +109,34 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
                   }
                 ]}
               >
-                <Text style={[styles.badgeText, { color: colors.primary }]}>
+                <Text style={[styles.badgeText, { color: colors.primary }]} selectable={false}>
                   {year} · {month}
                   {t('diary.month_suffix')}
                 </Text>
               </View>
-              {weather ? (
-                <View style={styles.weatherInline}>
+              {weather && resolveWeatherId(weather) ? (
+                <View
+                  style={[
+                    styles.iconOutlineBadge,
+                    { borderColor: colors.primary, backgroundColor: 'transparent' }
+                  ]}
+                >
                   <WeatherEmoji weather={weather} size={14} />
-                  <Text style={[styles.weatherInlineText, { color: colors.textSecondary }]}>
-                    {weatherLabel}
-                  </Text>
+                </View>
+              ) : null}
+              {resolveMoodId(mood) ? (
+                <View
+                  style={[
+                    styles.iconOutlineBadge,
+                    { borderColor: colors.primary, backgroundColor: 'transparent' }
+                  ]}
+                >
+                  <MoodEmoji mood={mood ?? ''} size={14} />
                 </View>
               ) : null}
               {matchSimilarity != null && (
                 <View style={[styles.similarityBadge, { backgroundColor: colors.primaryLight }]}>
-                  <Text style={[styles.similarityText, { color: colors.primary }]}>
+                  <Text style={[styles.similarityText, { color: colors.primary }]} selectable={false}>
                     {(matchSimilarity * 100).toFixed(0)}%
                   </Text>
                 </View>
@@ -131,56 +145,60 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
           </View>
         </View>
         {isFavorite ? (
-          <MaterialIcons name="favorite" size={22} color={colors.warning} />
+          <Heart size={22} color={colors.warning} strokeWidth={DEFAULT_STROKE_WIDTH} fill={colors.warning} />
         ) : (
           <View style={styles.headerSpacer} />
         )}
       </View>
 
-      {/* 元数据行：心情、位置 */}
-      {(mood || location) && (
-        <View style={styles.metaRow}>
-          {mood && (
-            <View style={[styles.metaBadge, { backgroundColor: colors.bgSurfaceHighest }]}>
-              <Text style={[styles.metaText, { color: colors.textSecondary }]}>😊 {mood}</Text>
-            </View>
-          )}
-          {location && (
-            <View style={[styles.metaBadge, { backgroundColor: colors.bgSurfaceHighest }]}>
-              <Text style={[styles.metaText, { color: colors.textSecondary }]}>📍 {location}</Text>
-            </View>
-          )}
-        </View>
-      )}
-
-      <View style={styles.contentContainer}>
-        <Text style={[styles.snippet, { color: colors.textPrimary }]} numberOfLines={5}>
-          {previewText}
-        </Text>
-        {/* RN LinearGradient mask typically requires react-native-linear-gradient, mock with simple overlap or fade */}
+      <View style={styles.contentContainer} pointerEvents="box-none">
+        {previewMarkdown ? (
+          <MarkdownRenderer content={previewMarkdown} variant="preview" />
+        ) : (
+          <Text
+            style={[styles.snippet, { color: colors.textSecondary }]}
+            numberOfLines={3}
+            selectable={false}
+          >
+            —
+          </Text>
+        )}
       </View>
 
-      {tags.length > 0 && (
+      {previewTags.length > 0 && (
         <View style={styles.tagsContainer}>
-          {tags.map((tag) => {
+          {previewTags.map((tag) => {
             const { bg, fg } = getTagColor(tag)
             return (
               <View key={tag} style={[styles.tag, { backgroundColor: bg }]}>
-                <Text style={[styles.tagText, { color: fg }]}>#{tag}</Text>
+                <Text style={[styles.tagText, { color: fg }]} selectable={false}>
+                  #{tag}
+                </Text>
               </View>
             )
           })}
+          {tagOverflowCount > 0 ? (
+            <View style={[styles.tag, { backgroundColor: colors.bgSurfaceHighest }]}>
+              <Text style={[styles.tagText, { color: colors.textSecondary }]} selectable={false}>
+                +{tagOverflowCount}
+              </Text>
+            </View>
+          ) : null}
         </View>
       )}
 
       {/* On Mobile we always show the action buttons according to the original code "Builder isMobile" logic */}
       <View style={[styles.actionsDivider, { backgroundColor: colors.borderMuted }]} />
       <View style={styles.actionsBox}>
-        <TouchableOpacity onPress={onEdit} style={styles.actionBtn}>
-          <Text style={[styles.editText, { color: colors.textSecondary }]}>{t('common.edit')}</Text>
+        <TouchableOpacity onPress={onEdit} style={styles.actionBtn} activeOpacity={0.7} disallowInterruption>
+          <Text style={[styles.editText, { color: colors.textSecondary }]} selectable={false}>
+            {t('common.edit')}
+          </Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={onDelete} style={styles.actionBtn}>
-          <Text style={[styles.deleteText, { color: colors.error }]}>{t('common.delete')}</Text>
+        <TouchableOpacity onPress={onDelete} style={styles.actionBtn} activeOpacity={0.7} disallowInterruption>
+          <Text style={[styles.deleteText, { color: colors.error }]} selectable={false}>
+            {t('common.delete')}
+          </Text>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -218,14 +236,13 @@ const styles = StyleSheet.create({
     borderWidth: 0.5
   },
   badgeText: { fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
-  weatherInline: {
-    flexDirection: 'row',
+  iconOutlineBadge: {
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 0.5,
     alignItems: 'center',
-    gap: 4
-  },
-  weatherInlineText: {
-    fontSize: 11,
-    fontWeight: '600'
+    justifyContent: 'center'
   },
   similarityBadge: {
     paddingHorizontal: 6,
@@ -237,28 +254,26 @@ const styles = StyleSheet.create({
     fontWeight: '800'
   },
   headerSpacer: { width: 22 },
-  metaRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 12,
-    gap: 8
-  },
-  metaBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6
-  },
-  metaText: { fontSize: 12 },
   contentContainer: { maxHeight: 120, overflow: 'hidden' },
   snippet: { fontSize: 15, lineHeight: 24, opacity: 0.9 },
   tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginTop: 20,
-    gap: 8
+    gap: 8,
+    maxHeight: 52,
+    overflow: 'hidden'
   },
-  tag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  tagText: { fontSize: 12, fontWeight: '600' },
+  tag: {
+    flexDirection: 'row',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    minHeight: 20,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  tagText: { fontSize: 12, fontWeight: '600', lineHeight: 12 },
   actionsDivider: { height: 1, marginTop: 20, marginBottom: 12 },
   actionsBox: { flexDirection: 'row', justifyContent: 'flex-end', gap: 16 },
   actionBtn: { flexDirection: 'row', alignItems: 'center', padding: 8 },

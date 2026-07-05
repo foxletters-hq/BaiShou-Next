@@ -9,9 +9,11 @@ import { SettingsHubPage } from '../features/settings/SettingsHubPage'
 import { AgentChatCachedPage } from '../features/agent/AgentChatCachedPage'
 import { isSettingsHubPath } from '../features/settings/settings-route.util'
 import styles from './MainLayout.module.css'
+import { MainPageCacheActiveContext } from './main-page-cache.context'
+
+export { MainPageCacheActiveContext } from './main-page-cache.context'
 
 /** 侧边栏主页面：切换时保持挂载，避免重复加载数据 */
-export const MainPageCacheActiveContext = createContext(true)
 
 export const MAIN_PAGE_CACHE: Record<string, React.ComponentType> = {
   '/diary': DiaryPage,

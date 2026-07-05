@@ -1,37 +1,53 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback } from 'react'
 import { View } from 'react-native'
-import type { ToolManagementConfig } from '@baishou/shared'
+import { useRouter } from 'expo-router'
 import { AgentToolsView } from '@baishou/ui/native'
+import type { EmojiImportResult } from '@baishou/core'
 import { useBaishou } from '../../../providers/BaishouProvider'
-
-const DEFAULT_TOOL_MANAGEMENT_CONFIG: ToolManagementConfig = {
-  disabledToolIds: [],
-  customConfigs: {}
-}
+import { MobileAttachmentManagerService } from '../../../services/mobile-attachment-manager.service'
+import { useToolManagementConfig } from '../../../hooks/useToolManagementConfig'
 
 export const AgentToolsSection: React.FC = () => {
-  const { dbReady, services } = useBaishou()
-  const [config, setConfig] = useState<ToolManagementConfig>(DEFAULT_TOOL_MANAGEMENT_CONFIG)
+  const router = useRouter()
+  const { services } = useBaishou()
+  const { config, persist } = useToolManagementConfig()
 
-  useEffect(() => {
-    if (!dbReady || !services) return
-    void (async () => {
-      const saved =
-        (await services.settingsManager.get<ToolManagementConfig>('tool_management_config')) ??
-        DEFAULT_TOOL_MANAGEMENT_CONFIG
-      setConfig({ ...DEFAULT_TOOL_MANAGEMENT_CONFIG, ...saved })
-    })()
-  }, [dbReady, services])
+  const handlePickAndImportEmojis = useCallback(async (): Promise<EmojiImportResult[]> => {
+    if (!services) return []
+    return MobileAttachmentManagerService.pickAndImportEmojis(services.attachmentManager)
+  }, [services])
 
-  const persist = async (next: ToolManagementConfig) => {
-    if (!services || !dbReady) return
-    await services.settingsManager.set('tool_management_config', next)
-    setConfig(next)
-  }
+  const handleResolveEmojiPath = useCallback(
+    async (relativePath: string): Promise<string> => {
+      if (!services) return ''
+      try {
+        return await services.attachmentManager.resolveEmojiPath(relativePath)
+      } catch {
+        return ''
+      }
+    },
+    [services]
+  )
+
+  const handleDeleteEmoji = useCallback(
+    async (relativePath: string): Promise<boolean> => {
+      if (!services) return false
+      return services.attachmentManager.deleteEmoji(relativePath)
+    },
+    [services]
+  )
 
   return (
     <View style={{ flex: 1 }}>
-      <AgentToolsView config={config} onChange={persist} disableScroll />
+      <AgentToolsView
+        config={config}
+        onChange={persist}
+        disableScroll
+        onPickAndImportEmojis={handlePickAndImportEmojis}
+        onResolveEmojiPath={handleResolveEmojiPath}
+        onDeleteEmoji={handleDeleteEmoji}
+        onOpenEmojiSettings={() => router.push('/settings/emoji')}
+      />
     </View>
   )
 }
