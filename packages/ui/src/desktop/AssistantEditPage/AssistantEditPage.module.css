@@ -638,6 +638,24 @@ input:checked + .sliderRound:before {
   background-color: rgba(0, 0, 0, 0.03);
 }
 
+.emojiGroupPickSectionLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.emojiGroupPickSectionIcon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background-color: color-mix(in srgb, var(--color-primary, #5ba8f5) 12%, var(--bg-surface));
+  color: var(--color-primary, #5ba8f5);
+}
+
 .emojiGroupPickList {
   display: flex;
   flex-direction: column;
@@ -675,6 +693,27 @@ input:checked + .sliderRound:before {
   border-width: 2px;
   border-color: var(--color-primary, #5ba8f5);
   background: color-mix(in srgb, var(--color-primary, #5ba8f5) 12%, var(--bg-surface));
+}
+
+.emojiGroupPickLeading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.emojiGroupPickIcon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 8px;
+  border-radius: 8px;
+  background-color: color-mix(in srgb, var(--color-primary, #5ba8f5) 12%, var(--bg-surface));
+  color: var(--color-primary, #5ba8f5);
 }
 
 .emojiGroupPickText {

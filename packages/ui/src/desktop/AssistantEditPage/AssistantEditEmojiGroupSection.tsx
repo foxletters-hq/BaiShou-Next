@@ -1,6 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check } from 'lucide-react'
+import { Check, Smile } from 'lucide-react'
 import type { EmojiGroup } from '@baishou/shared'
 import { Switch } from '../Switch/Switch'
 import styles from './AssistantEditPage.module.css'
@@ -42,9 +42,14 @@ export const AssistantEditEmojiGroupSection: React.FC<AssistantEditEmojiGroupSec
       {emojiEnabled ? (
         <>
           <div className={styles.spacer16} />
-          <label className={styles.fieldLabel}>
-            {t('agent.assistant.emoji_groups_pick_label', '可用的表情包组')}
-          </label>
+          <div className={styles.emojiGroupPickSectionLabel}>
+            <span className={styles.emojiGroupPickSectionIcon} aria-hidden>
+              <Smile size={16} />
+            </span>
+            <label className={styles.fieldLabel} style={{ marginBottom: 0 }}>
+              {t('agent.assistant.emoji_groups_pick_label', '可用的表情包组')}
+            </label>
+          </div>
           <div className={styles.spacer8} />
           {emojiGroups.length === 0 ? (
             <p className={styles.descText}>
@@ -61,12 +66,17 @@ export const AssistantEditEmojiGroupSection: React.FC<AssistantEditEmojiGroupSec
                     className={`${styles.emojiGroupPickItem} ${selected ? styles.emojiGroupPickItemActive : ''}`}
                     onClick={() => onToggleGroup(group.id)}
                   >
-                    <span className={styles.emojiGroupPickText}>
-                      <span className={styles.emojiGroupPickName}>{group.name}</span>
-                      <span className={styles.emojiGroupPickMeta}>
-                        {t('agent.tools.emoji_group_count', '{{count}} 个表情', {
-                          count: group.emojis?.length ?? 0
-                        })}
+                    <span className={styles.emojiGroupPickLeading}>
+                      <span className={styles.emojiGroupPickIcon} aria-hidden>
+                        <Smile size={18} />
+                      </span>
+                      <span className={styles.emojiGroupPickText}>
+                        <span className={styles.emojiGroupPickName}>{group.name}</span>
+                        <span className={styles.emojiGroupPickMeta}>
+                          {t('agent.tools.emoji_group_count', '{{count}} 个表情', {
+                            count: group.emojis?.length ?? 0
+                          })}
+                        </span>
                       </span>
                     </span>
                     {selected ? <Check size={18} /> : null}
