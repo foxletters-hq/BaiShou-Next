@@ -228,6 +228,7 @@ export async function buildSharedContextText(
     diaries = await shadowRepo.listAllWithFTS()
   }
 
+
   const tDict = LOCALE_TRANSLATIONS[resolveLocaleKey(locale || 'zh')] ?? LOCALE_TRANSLATIONS['zh']!
   const { allItems } = resolveSharedMemoryItems(summaries, diaries, lookbackMonths)
 

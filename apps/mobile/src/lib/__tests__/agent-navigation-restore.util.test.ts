@@ -65,7 +65,8 @@ describe('shouldPersistNavigationImmediately', () => {
     expect(
       shouldPersistNavigationImmediately({
         assistantChanged: true,
-        sessionCleared: false
+        sessionCleared: false,
+        sessionChanged: false
       })
     ).toBe(true)
   })
@@ -74,7 +75,18 @@ describe('shouldPersistNavigationImmediately', () => {
     expect(
       shouldPersistNavigationImmediately({
         assistantChanged: false,
-        sessionCleared: true
+        sessionCleared: true,
+        sessionChanged: false
+      })
+    ).toBe(true)
+  })
+
+  it('persists immediately when session is selected or changed', () => {
+    expect(
+      shouldPersistNavigationImmediately({
+        assistantChanged: false,
+        sessionCleared: false,
+        sessionChanged: true
       })
     ).toBe(true)
   })

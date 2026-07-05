@@ -141,7 +141,7 @@ export interface ToolDiarySearcher {
   editEntry?(args: {
     date: string
     content: string
-    mode: 'append' | 'overwrite'
+    mode?: 'append' | 'overwrite'
     tags?: string
   }): Promise<ToolDiaryMutationResult>
   deleteEntry?(date: string): Promise<ToolDiaryMutationResult>

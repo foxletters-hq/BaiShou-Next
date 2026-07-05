@@ -6,6 +6,7 @@ export * from './attachments/attachment-manager.service'
 export * from './attachments/attachment-manager.emoji'
 
 export * from './summary/summary-context'
+export * from './summary/summary-cascade.util'
 
 export * from './import/legacy-import.service'
 

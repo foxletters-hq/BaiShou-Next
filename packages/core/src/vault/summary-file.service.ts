@@ -98,16 +98,11 @@ export class SummaryFileService {
     }
   }
 
-  async readSummary(type: SummaryType, startDate: Date): Promise<string | null> {
+  private async collectSummarySearchDirectories(): Promise<string[]> {
     const base = await this.pathProvider.getSummariesBaseDirectory()
     const legacyBase = await this.pathProvider.getLegacyArchivesDirectory()
     const activeDir = await this.pathProvider.getActiveVaultPath()
 
-    const typeDirName = type.charAt(0).toUpperCase() + type.slice(1)
-    const standardFileName = this.buildFileName(type, startDate)
-    const transitionFileName = this.buildTransitionFileName(type, startDate)
-
-    // 收集所有要搜索的目录，去重且保持顺序
     const searchDirs = new Set<string>()
     searchDirs.add(base)
     if (activeDir) {
@@ -116,6 +111,15 @@ export class SummaryFileService {
     if (legacyBase) {
       searchDirs.add(legacyBase)
     }
+    return [...searchDirs]
+  }
+
+  async readSummary(type: SummaryType, startDate: Date): Promise<string | null> {
+    const typeDirName = type.charAt(0).toUpperCase() + type.slice(1)
+    const standardFileName = this.buildFileName(type, startDate)
+    const transitionFileName = this.buildTransitionFileName(type, startDate)
+
+    const searchDirs = await this.collectSummarySearchDirectories()
 
     // 优先尝试读取标准格式文件名
     for (const baseDir of searchDirs) {
@@ -147,23 +151,11 @@ export class SummaryFileService {
   }
 
   async deleteSummary(type: SummaryType, startDate: Date): Promise<void> {
-    const base = await this.pathProvider.getSummariesBaseDirectory()
-    const legacyBase = await this.pathProvider.getLegacyArchivesDirectory()
-    const activeDir = await this.pathProvider.getActiveVaultPath()
-
     const typeDirName = type.charAt(0).toUpperCase() + type.slice(1)
     const standardFileName = this.buildFileName(type, startDate)
     const transitionFileName = this.buildTransitionFileName(type, startDate)
 
-    // 收集所有要清理的目录，去重且保持顺序
-    const searchDirs = new Set<string>()
-    searchDirs.add(base)
-    if (activeDir) {
-      searchDirs.add(path.join(activeDir, 'Summaries'))
-    }
-    if (legacyBase) {
-      searchDirs.add(legacyBase)
-    }
+    const searchDirs = await this.collectSummarySearchDirectories()
 
     for (const baseDir of searchDirs) {
       const typeDir = path.join(baseDir, typeDirName)
@@ -188,19 +180,7 @@ export class SummaryFileService {
       endDate: Date
       fullPath: string
     }[] = []
-    const base = await this.pathProvider.getSummariesBaseDirectory()
-    const legacyBase = await this.pathProvider.getLegacyArchivesDirectory()
-    const activeDir = await this.pathProvider.getActiveVaultPath()
-
-    // 收集所有要扫描的目录
-    const searchDirs = new Set<string>()
-    searchDirs.add(base)
-    if (activeDir) {
-      searchDirs.add(path.join(activeDir, 'Summaries'))
-    }
-    if (legacyBase) {
-      searchDirs.add(legacyBase)
-    }
+    const searchDirs = await this.collectSummarySearchDirectories()
 
     for (const baseDir of searchDirs) {
       await this.scanSummaryDir(baseDir, results)

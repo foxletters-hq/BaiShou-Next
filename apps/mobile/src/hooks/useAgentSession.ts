@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef, type MutableRefObject } from 'react'
+import { useFocusEffect } from '@react-navigation/native'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast } from '@baishou/ui/native'
 import { useAgentStore, type AgentMessagePart } from '@baishou/store'
@@ -317,9 +318,24 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
 
   const handleSelectSession = useCallback(
     async (sessionId: string) => {
+      if (sessionId === useAgentStore.getState().currentSessionId) {
+        if (!dbReady || !services || vaultSwitching) return
+        await loadMessages(sessionId)
+        return
+      }
       setCurrentSessionId(sessionId)
     },
-    [setCurrentSessionId]
+    [setCurrentSessionId, dbReady, services, vaultSwitching, loadMessages]
+  )
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!currentSessionId || !dbReady || !services || vaultSwitching) return
+      const { messages, isLoading } = useAgentStore.getState()
+      if (messages.length === 0 && !isLoading) {
+        void loadMessages(currentSessionId)
+      }
+    }, [currentSessionId, dbReady, services, vaultSwitching, loadMessages])
   )
 
   useEffect(() => {
@@ -460,6 +476,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
     handleCreateSession,
     handleDeleteSession,
     handlePinSession,
-    handleRenameSession
+    handleRenameSession,
+    invalidateCurrentSession: resetSessionState
   }
 }

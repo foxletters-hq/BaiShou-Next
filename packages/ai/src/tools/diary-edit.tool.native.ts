@@ -5,13 +5,19 @@ import { runDiaryEditViaDb } from './diary-crud-db.util'
 
 const diaryEditParams = z.object({
   date: z.string().describe('The exact date of the diary to edit. Format: YYYY-MM-DD.'),
-  content: z.string().describe('The markdown content for the diary.'),
+  content: z
+    .string()
+    .describe(
+      'Markdown content. In append mode (default): only the new section to add—existing paragraphs are kept automatically. ' +
+        'In overwrite mode: the FULL entry body including ALL paragraphs to keep; never pass only the edited snippet or other paragraphs will be deleted.'
+    ),
   mode: z
     .enum(['append', 'overwrite'])
     .optional()
     .default('append')
     .describe(
-      'Edit mode. "append" adds content with a timestamp header (default). "overwrite" replaces the entire file.'
+      'Edit mode. "append" adds content with a timestamp header (default, preferred). ' +
+        '"overwrite" replaces the entire entry—use only when the user explicitly asked for a full rewrite.'
     ),
   tags: z
     .string()
@@ -25,8 +31,9 @@ export class DiaryEditTool extends AgentTool<typeof diaryEditParams> {
   readonly description =
     'Modify an existing diary entry. ' +
     'REQUIRED: call diary_read for the same date in this turn before editing. ' +
+    'Never delete or drop paragraphs the user did not ask to change—keep all other sections intact. ' +
     'Default mode is "append", which adds new content with an automatically inserted timestamp header. ' +
-    'Use "overwrite" mode to replace the entire content. ' +
+    'Use "overwrite" only when necessary; content must then include the FULL diary with all preserved paragraphs, not just the edited part. ' +
     'Tags are automatically merged with existing ones.'
 
   readonly parameters = diaryEditParams
