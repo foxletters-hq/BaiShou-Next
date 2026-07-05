@@ -52,13 +52,14 @@ export const UpdateSettingsSection: React.FC<UpdateSettingsSectionProps> = ({
       const result = await services.updaterService.checkForUpdates()
       setLastResult(result)
 
-      if (result.status === 'available' && result.releaseUrl) {
+      if (result.status === 'available' && (result.downloadUrl || result.releaseUrl)) {
         const viewRelease = await dialog.confirm(formatAppVersion(result.latestVersion), {
           title: t('updater.available'),
           confirmText: t('updater.view_release')
         })
         if (viewRelease) {
-          services.updaterService.openReleaseUrl(result.releaseUrl).catch((e) => {
+          const url = result.downloadUrl || result.releaseUrl!
+          services.updaterService.openReleaseUrl(url).catch((e) => {
             toast.showError(e?.message || String(e))
           })
         }
