@@ -1,8 +1,11 @@
 import React from 'react'
 import { View, Text, Pressable, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { Info, MessageSquare, ShieldCheck } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
 import { settingsHubListStyles as hubStyles } from '../settings/settings-hub.styles'
+import { SettingsListLeadingIcon } from '../settings/SettingsListLeadingIcon'
+import { DEFAULT_STROKE_WIDTH, NAV_ICON_SIZE } from '../../shared/icons/icon-sizes'
 import type { NativeAboutSettingsCardProps } from './about-settings.types'
 
 export const AboutSettingsCard: React.FC<NativeAboutSettingsCardProps> = ({
@@ -19,19 +22,22 @@ export const AboutSettingsCard: React.FC<NativeAboutSettingsCardProps> = ({
       key: 'about',
       title: t('settings.about_baishou', '关于白守'),
       onPress: onNavigateAbout,
-      trailing: '›'
+      trailing: '›',
+      Icon: Info
     },
     {
       key: 'privacy',
       title: t('settings.development_philosophy', '开发哲学与无痕承诺'),
       onPress: onNavigatePrivacy,
-      trailing: '›'
+      trailing: '›',
+      Icon: ShieldCheck
     },
     {
       key: 'feedback',
       title: t('settings.feedback', '问题反馈'),
       onPress: onOpenFeedback,
-      trailing: '↗'
+      trailing: '↗',
+      Icon: MessageSquare
     }
   ]
 
@@ -48,6 +54,13 @@ export const AboutSettingsCard: React.FC<NativeAboutSettingsCardProps> = ({
         { opacity: pressed ? 0.7 : 1 }
       ]}
     >
+      <SettingsListLeadingIcon>
+        <row.Icon
+          size={NAV_ICON_SIZE}
+          strokeWidth={DEFAULT_STROKE_WIDTH}
+          color={colors.textSecondary}
+        />
+      </SettingsListLeadingIcon>
       <Text style={[hubStyles.title, { color: colors.textPrimary, flex: 1 }]}>{row.title}</Text>
       <Text style={[styles.chevron, { color: colors.textTertiary }]}>{row.trailing}</Text>
     </Pressable>

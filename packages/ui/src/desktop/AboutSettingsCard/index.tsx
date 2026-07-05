@@ -5,7 +5,7 @@ import '../shared/SettingsListTile.css'
 import './AboutSettingsCard.css'
 import { useToast } from '../Toast/useToast'
 import { DeveloperOptionsView } from '../DeveloperOptionsView'
-import { formatAppVersion } from '@baishou/shared'
+import { formatAppVersion, GITHUB_CONTRIBUTORS_URL } from '@baishou/shared'
 import { VersionManager } from '../VersionManager/index'
 import { ArrowLeft, ChevronRight, ExternalLink, Info, MessageSquare, ShieldCheck } from 'lucide-react'
 
@@ -135,38 +135,65 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
 
         <section className="about-surface-card">
           <div className="about-flat-section about-flat-section-only">
-            <div className="about-flat-label">{t('about.developer_label', '开发者')}</div>
-            <div className="about-flat-developer">
-              <div
-                className="about-flat-developer-tap"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleDevTap()
-                }}
-              />
-              <span className="about-license-title">
-                Anson & Kasumiame Sakura & Tenkou Akatsuki
-              </span>
-              <span className="about-license-subtitle">The Trio</span>
+            <div className="about-flat-inner-card">
+              <div className="about-flat-label about-flat-label-inner">
+                {t('about.core_developer_label', '核心开发者')}
+              </div>
+              <div className="about-flat-developer">
+                <div
+                  className="about-flat-developer-tap"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleDevTap()
+                  }}
+                />
+                <span className="about-license-title">
+                  Anson & Kasumiame Sakura & Tenkou Akatsuki
+                </span>
+                <span className="about-license-subtitle">The Trio</span>
+              </div>
             </div>
           </div>
         </section>
 
         <section className="about-surface-card">
           <div className="about-flat-section about-flat-section-only">
-            <div className="about-flat-label">{t('about.oss_license_label', '开源协议')}</div>
+            <div className="about-flat-inner-card">
+              <div className="about-flat-label about-flat-label-inner">
+                {t('about.oss_license_label', '开源协议')}
+              </div>
+              <button
+                type="button"
+                className="about-flat-link-row"
+                onClick={() => window.open('https://www.gnu.org/licenses/agpl-3.0.html', '_blank')}
+              >
+                <div className="about-license-content">
+                  <span className="about-license-title">AGPL v3.0</span>
+                  <span className="about-license-subtitle">
+                    Copyright (C) 2026 Anson, Kasumiame Sakura & Tenkou Akatsuki
+                  </span>
+                </div>
+                <ExternalLink size={18} className="about-flat-link-trailing" />
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section className="about-surface-card">
+          <div className="about-flat-section about-flat-section-only about-contributors-section">
+            <p className="about-contributors-hint">
+              {t(
+                'about.contributors_hint',
+                '白守受到社群小伙伴的支持，\n你可以直接点击这里查看代码贡献者！'
+              )}
+            </p>
             <button
               type="button"
-              className="about-flat-link-row"
-              onClick={() => window.open('https://www.gnu.org/licenses/agpl-3.0.html', '_blank')}
+              className="about-contributors-btn"
+              onClick={() => window.open(GITHUB_CONTRIBUTORS_URL, '_blank')}
             >
-              <div className="about-license-content">
-                <span className="about-license-title">AGPL v3.0</span>
-                <span className="about-license-subtitle">
-                  Copyright (C) 2026 Anson, Kasumiame Sakura & Tenkou Akatsuki
-                </span>
-              </div>
-              <ExternalLink size={18} className="about-flat-link-trailing" />
+              <ExternalLink size={18} />
+              {t('about.view_contributors', '查看项目贡献者')}
             </button>
           </div>
         </section>
