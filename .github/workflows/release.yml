@@ -174,6 +174,18 @@ jobs:
         with:
           distribution: zulu
           java-version: 17
+          cache: gradle
+
+      - name: Cache Gradle wrappers and project metadata
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            apps/mobile/android/.gradle
+          key: ${{ runner.os }}-gradle-${{ hashFiles('pnpm-lock.yaml', 'apps/mobile/package.json', 'apps/mobile/app.json', 'apps/mobile/app.config.js', 'apps/mobile/plugins/**') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -197,6 +209,7 @@ jobs:
         run: pnpm --filter @baishou/mobile build:release
         env:
           BAISHOU_RELEASE_BUILD: '1'
+          SKIP_SYNC: '1'
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4

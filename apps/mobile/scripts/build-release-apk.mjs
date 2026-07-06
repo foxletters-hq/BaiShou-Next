@@ -2,6 +2,11 @@
 /**
  * 构建 Android Release APK（正式签名，可覆盖旧 Flutter 版）。
  * 前置：apps/mobile/android/key.properties 已配置（pnpm release:setup-signing）
+ *
+ * 环境变量：
+ * - CI=true（GitHub Actions 自动设置）：跳过全量清缓存、启用 Gradle 构建缓存
+ * - SKIP_SYNC=1：跳过 sync（workflow 已执行时）
+ * - BAISHOU_RELEASE_FULL_CLEAN=1：强制全量清缓存 + --no-build-cache（排查陈旧产物时用）
  */
 import { spawnSync } from 'node:child_process'
 import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
@@ -16,6 +21,10 @@ const repoRoot = path.resolve(mobileRoot, '../..')
 const keyProperties = path.join(mobileRoot, 'android/key.properties')
 const androidDir = path.join(mobileRoot, 'android')
 const gradlew = path.join(androidDir, process.platform === 'win32' ? 'gradlew.bat' : 'gradlew')
+
+const isCi = process.env.CI === 'true'
+const forceFullClean = process.env.BAISHOU_RELEASE_FULL_CLEAN === '1'
+const skipSync = process.env.SKIP_SYNC === '1'
 
 function run(cmd, args, cwd, extraEnv = {}) {
   const result = spawnSync(cmd, args, {
@@ -35,11 +44,19 @@ if (!existsSync(keyProperties)) {
   process.exit(1)
 }
 
-console.log('🎨 同步生成物…')
-run(process.execPath, [path.join(repoRoot, 'scripts/sync-all.mjs')], repoRoot)
+if (!skipSync) {
+  console.log('🎨 同步生成物…')
+  run(process.execPath, [path.join(repoRoot, 'scripts/sync-all.mjs')], repoRoot)
+} else {
+  console.log('🎨 跳过 sync（已由上层步骤执行）')
+}
 
-console.log('\n🧹 清理 Metro / Gradle 缓存（避免 Release 包沿用旧 JS bundle）…')
-clearAllMobileCaches()
+if (forceFullClean || !isCi) {
+  console.log('\n🧹 清理移动端构建缓存（避免 Release 包沿用旧 JS bundle）…')
+  clearAllMobileCaches()
+} else {
+  console.log('\n🧹 CI：跳过全量清缓存（干净 checkout，保留 Gradle 缓存加速）')
+}
 
 console.log('\n🔧 Expo prebuild（注入 release 签名配置）…')
 run('npx', ['expo', 'prebuild', '--platform', 'android', '--no-install'], mobileRoot, {
@@ -54,8 +71,16 @@ if (!existsSync(gradlew)) {
 console.log('\n🎨 应用纯色启动屏补丁…')
 applyAndroidPlainSplashPatch(androidDir)
 
-console.log('\n🔨 assembleRelease（无构建缓存）…')
-run(gradlew, [':app:assembleRelease', '--no-build-cache'], androidDir)
+const gradleArgs = [':app:assembleRelease']
+if (forceFullClean) {
+  gradleArgs.push('--no-build-cache')
+  console.log('\n🔨 assembleRelease（强制全量，无构建缓存）…')
+} else if (isCi) {
+  console.log('\n🔨 assembleRelease（CI：启用 Gradle 构建缓存）…')
+} else {
+  console.log('\n🔨 assembleRelease…')
+}
+run(gradlew, gradleArgs, androidDir)
 
 const apkSrc = path.join(androidDir, 'app/build/outputs/apk/release/app-release.apk')
 if (!existsSync(apkSrc)) {
