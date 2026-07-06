@@ -1,4 +1,4 @@
-import { Diary, DiaryMeta } from '@baishou/shared'
+import { Diary, DiaryMeta, normalizeDiaryPreviewMarkdown } from '@baishou/shared'
 
 /**
  * 负责维护运行时所有日志的摘要记忆索引，
@@ -29,10 +29,16 @@ export class VaultIndexServiceImpl implements VaultIndexService {
             .filter(Boolean)
             .map((t) => t.trim())
         : []
+    const previewSource =
+      'preview' in d && typeof (d as DiaryMeta).preview === 'string'
+        ? (d as DiaryMeta).preview
+        : content
     return {
       id: d.id!,
       date: d.date,
-      preview: content.length > 120 ? content.substring(0, 120) : content,
+      preview: normalizeDiaryPreviewMarkdown(
+        previewSource.length > 500 ? previewSource.substring(0, 500) : previewSource
+      ),
       tags: tagsArray,
       updatedAt: d.updatedAt,
       weather: d.weather || undefined,

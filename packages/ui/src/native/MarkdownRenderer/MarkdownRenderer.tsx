@@ -23,9 +23,12 @@ const STATIC_STREAMING_CONFIG = { tableMode: 'progressive' as const }
 function StaticStreamdownText({
   markdown,
   containerStyle,
+  preferSyncRemend = false,
   ...props
-}: React.ComponentProps<typeof EnrichedMarkdownText>) {
-  const processedMarkdown = useStableStreamdownMarkdown(markdown)
+}: React.ComponentProps<typeof EnrichedMarkdownText> & {
+  preferSyncRemend?: boolean
+}) {
+  const processedMarkdown = useStableStreamdownMarkdown(markdown, undefined, { preferSyncRemend })
   return (
     <EnrichedMarkdownText
       markdown={processedMarkdown}
@@ -145,7 +148,10 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = (props) => {
       {isStreaming ? (
         <StreamdownText {...streamdownCommonProps} streamingConfig={{ tableMode: 'hidden' }} />
       ) : (
-        <StaticStreamdownText {...streamdownCommonProps} />
+        <StaticStreamdownText
+          {...streamdownCommonProps}
+          preferSyncRemend={variant === 'preview'}
+        />
       )}
     </View>
   )

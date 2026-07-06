@@ -3,7 +3,8 @@ import {
   formatDiaryPreviewText,
   formatSemanticChunkSnippet,
   normalizeDiaryPreviewMarkdown,
-  prepareDiaryCardPreviewMarkdown
+  prepareDiaryCardPreviewMarkdown,
+  convertFtsHighlightTagsToMarkdownBold
 } from '../diary-preview.util'
 
 describe('normalizeDiaryPreviewMarkdown', () => {
@@ -15,6 +16,17 @@ describe('normalizeDiaryPreviewMarkdown', () => {
   it('strips dedicated tag-only lines from card preview', () => {
     const raw = '#疲惫 #深夜 #反思\n\n##### 12:30:45\n\n今天很累'
     expect(normalizeDiaryPreviewMarkdown(raw)).toBe('##### 12:30:45\n\n今天很累')
+  })
+
+  it('converts FTS <b> highlights to markdown bold instead of stripping', () => {
+    const raw = '> 引用一句\n匹配<b>关键词</b>继续'
+    expect(normalizeDiaryPreviewMarkdown(raw)).toBe('> 引用一句\n匹配**关键词**继续')
+  })
+})
+
+describe('convertFtsHighlightTagsToMarkdownBold', () => {
+  it('converts b and mark tags', () => {
+    expect(convertFtsHighlightTagsToMarkdownBold('a<b>x</b>b<mark>y</mark>')).toBe('a**x**b**y**')
   })
 })
 
@@ -40,5 +52,10 @@ describe('prepareDiaryCardPreviewMarkdown', () => {
   it('strips ATX heading markers but keeps inline emphasis', () => {
     const raw = '###### 长标题换行\n正文 **加粗**'
     expect(prepareDiaryCardPreviewMarkdown(raw)).toBe('长标题换行\n正文 **加粗**')
+  })
+
+  it('keeps diary timestamp lines as markdown headings', () => {
+    const raw = '##### 12:30\n\n正文 **加粗**'
+    expect(prepareDiaryCardPreviewMarkdown(raw)).toBe('##### 12:30\n\n正文 **加粗**')
   })
 })

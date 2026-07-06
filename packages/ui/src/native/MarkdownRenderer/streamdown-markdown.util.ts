@@ -83,12 +83,21 @@ export function buildStreamdownMarkdownStyle(
       marginTop: isChat ? 4 : 6,
       marginBottom: 4
     },
-    blockquote: {
-      color: bodyColor,
-      borderColor: colors.primary,
-      backgroundColor: colors.bgSurfaceHighest,
-      marginBottom: paragraphMargin
-    },
+    blockquote: isPreview
+      ? {
+          color: colors.textSecondary,
+          borderColor: colors.primary,
+          backgroundColor: colors.bgSurface,
+          marginBottom: paragraphMargin,
+          paddingLeft: 12,
+          borderWidth: 3
+        }
+      : {
+          color: bodyColor,
+          borderColor: colors.primary,
+          backgroundColor: colors.bgSurfaceHighest,
+          marginBottom: paragraphMargin
+        },
     list: {
       color: bodyColor,
       bulletColor: bodyColor,

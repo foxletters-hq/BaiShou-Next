@@ -13,6 +13,7 @@ function buildMarkdownStyles(
   colors: ReturnType<typeof useNativeTheme>['colors'],
   variant: NonNullable<MarkdownRendererProps['variant']>
 ) {
+  const isPreview = variant === 'preview'
   const isAncillary = variant === 'ancillary'
   const isChat = variant === 'chat' || isAncillary
   const bodyFontSize = isAncillary ? 14 : 15
@@ -80,12 +81,13 @@ function buildMarkdownStyles(
       textDecorationLine: 'none'
     },
     blockquote: {
-      backgroundColor: colors.bgSurfaceHighest,
-      borderLeftWidth: 4,
+      backgroundColor: isPreview ? colors.bgSurface : colors.bgSurfaceHighest,
+      borderLeftWidth: isPreview ? 3 : 4,
       borderLeftColor: colors.primary,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      marginBottom: paragraphMargin
+      paddingHorizontal: isPreview ? 12 : 10,
+      paddingVertical: isPreview ? 2 : 6,
+      marginBottom: paragraphMargin,
+      color: isPreview ? colors.textSecondary : bodyColor
     },
     code_inline: {
       backgroundColor: colors.bgSurfaceHighest,

@@ -1,7 +1,7 @@
 import React from 'react'
 import { Edit3, Trash2, Heart } from 'lucide-react'
 import { MarkdownRenderer, MoodEmoji, WeatherEmoji } from '@baishou/ui'
-import { limitDiaryPreviewTags, resolveWeatherId, resolveMoodId } from '@baishou/shared'
+import { limitDiaryPreviewTags, prepareDiaryCardPreviewMarkdown, resolveWeatherId, resolveMoodId } from '@baishou/shared'
 
 /** 星期几名称 */
 const WEEKDAY_NAMES_KEYS = [
@@ -78,21 +78,6 @@ interface DiaryCardProps {
   basePath?: string
 }
 
-const renderHighlight = (text: string | null | undefined): React.ReactNode => {
-  if (!text) return ''
-  const parts = text.split(/(<b>.*?<\/b>)/g)
-  return (
-    <>
-      {parts.map((part, index) => {
-        if (part.startsWith('<b>') && part.endsWith('</b>')) {
-          return <b key={index}>{part.substring(3, part.length - 4)}</b>
-        }
-        return part
-      })}
-    </>
-  )
-}
-
 /** 日记卡片组件 */
 export const DiaryCard: React.FC<DiaryCardProps> = ({
   entry,
@@ -131,6 +116,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
   const visibleTags = entry.tags.filter((t) => t.trim().length > 0)
   const { visibleTags: previewTags, overflowCount: tagOverflowCount } =
     limitDiaryPreviewTags(visibleTags)
+  const previewMarkdown = prepareDiaryCardPreviewMarkdown(entry.preview)
 
   return (
     <div className="diary-card" onClick={onClick}>
@@ -163,11 +149,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
       {/* 内容预览 */}
       <div className="diary-card-content">
         <div className="diary-card-content-text">
-          {entry.preview.includes('<b>') && entry.preview.includes('</b>') ? (
-            <p>{renderHighlight(entry.preview)}</p>
-          ) : (
-            <MarkdownRenderer content={entry.preview} basePath={basePath} />
-          )}
+          <MarkdownRenderer content={previewMarkdown} basePath={basePath} />
         </div>
 
         {/* 媒体指示器 */}
