@@ -298,7 +298,11 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
           onLoadEnd={handleLoadEnd}
           onError={handleWebViewError}
           onHttpError={handleWebViewError}
-          onConsoleMessage={handleConsoleMessage}
+          {...(__DEV__
+            ? ({
+                onConsoleMessage: handleConsoleMessage
+              } as Record<string, unknown>)
+            : {})}
           style={webViewStyle}
           containerStyle={webViewContainerStyle}
           mixedContentMode="always"

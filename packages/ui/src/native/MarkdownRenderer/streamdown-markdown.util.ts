@@ -103,9 +103,7 @@ export function buildStreamdownMarkdownStyle(
           color: colors.textSecondary,
           borderColor: colors.primary,
           backgroundColor: colors.bgSurface,
-          marginBottom: paragraphMargin,
-          paddingLeft: 12,
-          borderWidth: 3
+          marginBottom: paragraphMargin
         }
       : {
           color: bodyColor,

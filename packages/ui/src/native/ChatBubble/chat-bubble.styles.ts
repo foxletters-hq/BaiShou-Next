@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native'
+import { StyleSheet, type DimensionValue } from 'react-native'
 
 /**
  * EnrichedMarkdownText 末行常少报高度；Legacy 渲染器走 RN Text 布局无此问题。
@@ -7,7 +7,7 @@ import { StyleSheet } from 'react-native'
 export const CHAT_MARKDOWN_BOTTOM_GUARD = 24
 
 /** 同行头像列（32 头像 + 8 间距）及对侧留白，避免长气泡顶到对方头像 */
-const CHAT_BUBBLE_MAX_WIDTH = 'calc(100% - 60px)' as const
+const CHAT_BUBBLE_MAX_WIDTH = 'calc(100% - 60px)' as DimensionValue
 const CHAT_BUBBLE_OPPOSITE_GAP = 36
 
 const chatBubbleLayoutStyles = StyleSheet.create({
@@ -259,7 +259,17 @@ const chatBubbleTextStyles = StyleSheet.create({
   }
 })
 
+type ChatBubbleStyles = {
+  [K in
+    | keyof typeof chatBubbleLayoutStyles
+    | keyof typeof chatBubbleTextStyles]: K extends keyof typeof chatBubbleLayoutStyles
+    ? (typeof chatBubbleLayoutStyles)[K]
+    : K extends keyof typeof chatBubbleTextStyles
+      ? (typeof chatBubbleTextStyles)[K]
+      : never
+}
+
 export const chatBubbleStyles = {
   ...chatBubbleLayoutStyles,
   ...chatBubbleTextStyles
-} as typeof chatBubbleLayoutStyles & typeof chatBubbleTextStyles
+} as ChatBubbleStyles
