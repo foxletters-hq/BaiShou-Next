@@ -6,6 +6,7 @@ import {
   DIARY_MARKDOWN_TOOLBAR_SELECTOR,
   getComposerBottomInset,
   getDefaultContextMenuBounds,
+  getContextMenuBoundsForAnchor,
   getElementBottomInset,
   getOverlayBottomInset,
   resolveContextMenuPosition
@@ -67,6 +68,33 @@ describe('context-menu-placement.util', () => {
 
     expect(position.x).toBe(bounds.right - 180)
     expect(position.y).toBe(120)
+  })
+
+  it('does not reserve composer space when anchor is inside the input bar', () => {
+    const dock = document.createElement('div')
+    dock.setAttribute('data-desktop-input-bar', 'true')
+    const textarea = document.createElement('textarea')
+    dock.appendChild(textarea)
+    document.body.appendChild(dock)
+    dock.getBoundingClientRect = () =>
+      ({
+        top: 680,
+        bottom: 800,
+        left: 0,
+        right: 1000,
+        width: 1000,
+        height: 120,
+        x: 0,
+        y: 680,
+        toJSON: () => ({})
+      }) as DOMRect
+
+    const bounds = getContextMenuBoundsForAnchor(textarea, 1000, 800)
+    expect(bounds.bottom).toBe(800 - CONTEXT_MENU_MARGIN)
+    expect(bounds.bottom).toBeGreaterThan(800 - 140 - CONTEXT_MENU_MARGIN)
+
+    const position = resolveContextMenuPosition(420, 600, 140, 160, bounds)
+    expect(position.y).toBe(600)
   })
 
   it('uses the tallest bottom obstruction between composer and diary toolbar', () => {

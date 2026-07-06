@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import { applyFixedContextMenuLayout } from './context-menu-placement.util'
+import { applyFixedContextMenuLayout, getContextMenuBoundsForAnchor } from './context-menu-placement.util'
 import { DIARY_EDITOR_OVERLAY_Z } from '../../shared/diary-codemirror/editorOverlayZIndex'
 import './ContextMenu.css'
 
@@ -56,7 +56,12 @@ export const GlobalInputContextMenu: React.FC = () => {
 
   useLayoutEffect(() => {
     if (targetEl && menuRef.current) {
-      applyFixedContextMenuLayout(menuRef.current, position.x, position.y)
+      applyFixedContextMenuLayout(
+        menuRef.current,
+        position.x,
+        position.y,
+        getContextMenuBoundsForAnchor(targetEl)
+      )
     }
   }, [targetEl, position])
 

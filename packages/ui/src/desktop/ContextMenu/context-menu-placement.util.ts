@@ -67,6 +67,20 @@ export function getDefaultContextMenuBounds(
   }
 }
 
+/** 锚点落在输入框内时，不再把输入框当作底部遮挡（避免菜单被顶到很靠上） */
+export function getContextMenuBoundsForAnchor(
+  anchorEl?: Element | null,
+  viewportWidth: number = typeof window !== 'undefined' ? window.innerWidth : 0,
+  viewportHeight: number = typeof window !== 'undefined' ? window.innerHeight : 0
+): ContextMenuBounds {
+  const obstructSelectors =
+    anchorEl?.closest(DESKTOP_INPUT_BAR_SELECTOR) != null
+      ? DEFAULT_BOTTOM_OBSTRUCTION_SELECTORS.filter((s) => s !== DESKTOP_INPUT_BAR_SELECTOR)
+      : DEFAULT_BOTTOM_OBSTRUCTION_SELECTORS
+  const bottomInset = getOverlayBottomInset(obstructSelectors, viewportHeight)
+  return getDefaultContextMenuBounds(viewportWidth, viewportHeight, bottomInset)
+}
+
 export function resolveContextMenuPosition(
   anchorX: number,
   anchorY: number,
