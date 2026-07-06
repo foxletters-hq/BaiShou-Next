@@ -2,6 +2,7 @@ import type { SettingsNavIconId } from '@baishou/ui/native'
 
 export type SettingsStackPathname =
   | '/settings/assistants'
+  | '/settings/agent-tools'
   | '/settings/lan-transfer'
   | '/settings/data-sync'
   | '/settings/version-migration'
@@ -70,7 +71,7 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
         id: 'agent-tools',
         titleKey: 'settings.agent_tools_title',
         icon: 'agent-tools',
-        route: { type: 'section', section: 'agent-tools' }
+        route: { type: 'stack', pathname: '/settings/agent-tools' }
       },
       {
         id: 'tts',

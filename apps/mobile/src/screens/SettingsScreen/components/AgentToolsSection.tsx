@@ -1,5 +1,4 @@
 import React, { useCallback } from 'react'
-import { View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { AgentToolsView } from '@baishou/ui/native'
 import type { EmojiImportResult } from '@baishou/core'
@@ -38,16 +37,14 @@ export const AgentToolsSection: React.FC = () => {
   )
 
   return (
-    <View style={{ flex: 1 }}>
-      <AgentToolsView
-        config={config}
-        onChange={persist}
-        disableScroll
-        onPickAndImportEmojis={handlePickAndImportEmojis}
-        onResolveEmojiPath={handleResolveEmojiPath}
-        onDeleteEmoji={handleDeleteEmoji}
-        onOpenEmojiSettings={() => router.push('/settings/emoji')}
-      />
-    </View>
+    <AgentToolsView
+      config={config}
+      onChange={persist}
+      disableScroll
+      onPickAndImportEmojis={handlePickAndImportEmojis}
+      onResolveEmojiPath={handleResolveEmojiPath}
+      onDeleteEmoji={handleDeleteEmoji}
+      onOpenEmojiSettings={() => router.push('/settings/emoji')}
+    />
   )
 }

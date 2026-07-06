@@ -13,7 +13,6 @@ export default function AgentTabLayout() {
       }}
     >
       <Stack.Screen name="index" />
-      <Stack.Screen name="tools" />
     </Stack>
   )
 }

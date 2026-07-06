@@ -12,7 +12,7 @@ export const instantStackAnimation: NativeStackNavigationOptions = {
 /** Native Stack 淡入淡出转场，与 React Navigation `animation: 'fade'` 一致 */
 export const fadeStackAnimation: NativeStackNavigationOptions = {
   animation: 'fade',
-  ...(Platform.OS === 'ios' ? { animationDuration: FADE_DURATION_MS } : {})
+  animationDuration: FADE_DURATION_MS
 }
 
 /** Bottom Tabs 切换时的淡入淡出转场 */

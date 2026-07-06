@@ -13,6 +13,7 @@ export default function SettingsStackLayout() {
       }}
     >
       <Stack.Screen name="[section]" />
+      <Stack.Screen name="agent-tools" />
       <Stack.Screen name="assistants" />
       <Stack.Screen name="assistant-edit" />
       <Stack.Screen name="lan-transfer" />
