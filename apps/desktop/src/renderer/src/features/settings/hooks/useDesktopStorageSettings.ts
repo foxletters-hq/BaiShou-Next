@@ -176,7 +176,7 @@ export function useDesktopStorageSettings() {
       void refreshStorageInfo({ includeFileCounts: false })
     }
 
-    let heavyTimer: ReturnType<typeof window.setTimeout> | undefined
+    let heavyTimer: number | undefined
     const scheduleHeavy = () => {
       heavyTimer = window.setTimeout(() => {
         void refreshStorageInfo({ includeFileCounts: true })
