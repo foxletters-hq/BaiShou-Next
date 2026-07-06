@@ -1,10 +1,13 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { RagMemoryView, useDialog, useToast } from '@baishou/ui'
+import { getDefaultRagConfig } from '@baishou/store'
 import { useRagSettings } from '../hooks/useRagSettings'
+import { useRagStatsPrefetch } from '../hooks/useRagStatsPrefetch'
 import { useSettingsScopeNavigation } from '../hooks/useSettingsScopeNavigation'
 
 export const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
+  useRagStatsPrefetch()
   const settingsNav = useSettingsScopeNavigation()
   const { t } = useTranslation()
   const { confirm, prompt, alert } = useDialog()
@@ -41,11 +44,11 @@ export const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
     migrationState
   } = useRagSettings({ settings, t, toast, confirm, prompt, alert })
 
-  if (!settings.ragConfig) return <div />
+  const ragConfig = settings.ragConfig ?? getDefaultRagConfig()
   return (
     <div className="settings-pane settings-pane-full">
       <RagMemoryView
-        config={settings.ragConfig}
+        config={ragConfig}
         stats={ragStats}
         ragState={
           activeRagState.isRunning

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useUserProfileStore } from '@baishou/store'
+import { useUserProfileStore, useSettingsStore } from '@baishou/store'
 import { useTranslation } from 'react-i18next'
 import {
   AppearanceSettingsCard,
@@ -44,25 +44,22 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
     void window.api.shell.openExternal(url)
   })
 
-  const [storageStats, setStorageStats] = useState({
-    storageRootPath: 'Loading...',
-    sqliteSizeStats: '0 MB',
-    vectorDbStats: '0 MB',
-    mediaCacheStats: '0 MB'
-  })
+  const storageSettings = useDesktopStorageSettings()
+  const ensureConfigKeys = useSettingsStore((s) => s.ensureConfigKeys)
 
-  const refreshStorageStats = async () => {
-    try {
-      if ((window as any).api?.storage) {
-        const stats = await (window as any).api.storage.getStats()
-        if (stats) setStorageStats(stats)
-      }
-    } catch (e) {
-      console.warn('Load storage stats failed', e)
+  useEffect(() => {
+    const run = () => {
+      void ensureConfigKeys(['hotkeyConfig'], { trackGlobalLoading: false })
     }
-  }
 
-  const storageSettings = useDesktopStorageSettings(refreshStorageStats)
+    if (typeof requestIdleCallback === 'function') {
+      const idleId = requestIdleCallback(run, { timeout: 2000 })
+      return () => cancelIdleCallback(idleId)
+    }
+
+    const timer = window.setTimeout(run, 300)
+    return () => window.clearTimeout(timer)
+  }, [ensureConfigKeys])
 
   const loadVaults = useCallback(async () => {
     try {
@@ -91,14 +88,12 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
       }
     }
 
-    void refreshStorageStats()
     fetchVersion()
   }, [loadProfile, loadVaults])
 
   useEffect(() => {
     const unsub = (window as any).api?.storage?.onRootChanged?.(() => {
       void loadVaults()
-      void refreshStorageStats()
     })
     return unsub
   }, [loadVaults])
@@ -223,7 +218,7 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
               <StorageSettingsCard
                 embedded
                 isLast
-                storageRootPath={storageSettings.storageRootPath || storageStats.storageRootPath}
+                storageRootPath={storageSettings.storageRootPath}
                 externalJournalsPath={storageSettings.externalJournalsPath}
                 externalJournalsDefaultPath={storageSettings.externalJournalsDefaultPath}
                 externalJournalsFileCount={storageSettings.externalJournalsFileCount}
@@ -233,9 +228,9 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
                 externalSummariesFileCount={storageSettings.externalSummariesFileCount}
                 externalSummariesFileCounts={storageSettings.externalSummariesFileCounts}
                 externalSummariesPathAvailable={storageSettings.externalSummariesPathAvailable}
-                sqliteSizeStats={storageStats.sqliteSizeStats}
-                vectorDbStats={storageStats.vectorDbStats}
-                mediaCacheStats={storageStats.mediaCacheStats}
+                sqliteSizeStats={storageSettings.sqliteSizeStats}
+                vectorDbStats={storageSettings.vectorDbStats}
+                mediaCacheStats={storageSettings.mediaCacheStats}
                 onChangeDirectory={storageSettings.handleChangeDirectory}
                 onMigrateDirectory={storageSettings.handleMigrateDirectory}
                 onChangeExternalJournalsDirectory={
@@ -252,17 +247,11 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
                 }
                 onClearCache={async () => {
                   await (window as any).api?.storage?.clearCache()
-                  if ((window as any).api?.storage) {
-                    const s = await (window as any).api.storage.getStats()
-                    if (s) setStorageStats(s)
-                  }
+                  await storageSettings.refreshStorageInfo({ includeFileCounts: true })
                 }}
                 onVacuumDb={async () => {
                   await (window as any).api?.storage?.vacuumDb()
-                  if ((window as any).api?.storage) {
-                    const s = await (window as any).api.storage.getStats()
-                    if (s) setStorageStats(s)
-                  }
+                  await storageSettings.refreshStorageInfo({ includeFileCounts: true })
                 }}
               />
             </div>

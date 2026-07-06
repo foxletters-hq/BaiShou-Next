@@ -38,11 +38,24 @@ type RagRuntimeSnapshot = {
 let cachedStats: RagRuntimeStats = { ...DEFAULT_STATS }
 let cachedActiveState: RagRuntimeActiveState = { ...DEFAULT_ACTIVE_STATE }
 const listeners = new Set<() => void>()
+let emitRafId: number | null = null
 
 function emit() {
   for (const listener of listeners) {
     listener()
   }
+}
+
+function scheduleEmit(): void {
+  if (typeof window === 'undefined') {
+    emit()
+    return
+  }
+  if (emitRafId != null) return
+  emitRafId = window.requestAnimationFrame(() => {
+    emitRafId = null
+    emit()
+  })
 }
 
 export function getRagRuntimeSnapshot(): RagRuntimeSnapshot {
@@ -64,7 +77,7 @@ export function setCachedRagStats(stats: RagRuntimeStats): void {
 
 export function patchCachedRagStats(patch: Partial<RagRuntimeStats>): void {
   cachedStats = { ...cachedStats, ...patch }
-  emit()
+  scheduleEmit()
 }
 
 export function setCachedRagActiveState(state: RagRuntimeActiveState): void {
@@ -74,7 +87,7 @@ export function setCachedRagActiveState(state: RagRuntimeActiveState): void {
 
 export function patchCachedRagActiveState(patch: Partial<RagRuntimeActiveState>): void {
   cachedActiveState = { ...cachedActiveState, ...patch }
-  emit()
+  scheduleEmit()
 }
 
 export function subscribeRagRuntime(listener: () => void): () => void {

@@ -23,14 +23,21 @@ function waitMs(ms: number): Promise<void> {
 function getStorageApi() {
   return (window as any).api?.storage as
     | {
-        getStats?: () => Promise<{ storageRootPath?: string }>
+        getStats?: () => Promise<{
+          storageRootPath?: string
+          sqliteSizeStats?: string
+          vectorDbStats?: string
+          mediaCacheStats?: string
+        }>
         pickDirectory?: () => Promise<string | null>
         validateTargetDirectory?: (targetPath: string) => Promise<StorageTargetValidation>
         changeDirectory?: (targetPath: string) => Promise<{ ok: boolean }>
         migrateDirectory?: (targetPath: string) => Promise<{ ok: boolean }>
         onMigrationProgress?: (cb: (payload: { name: string }) => void) => () => void
         onRootChanged?: (cb: () => void) => () => void
-        getExternalJournalsInfo?: () => Promise<{
+        getExternalJournalsInfo?: (options?: {
+          includeFileCounts?: boolean
+        }) => Promise<{
           path: string | null
           defaultPath: string
           journalFileCount: number
@@ -43,7 +50,9 @@ function getStorageApi() {
         }>
         clearExternalJournalsDirectory?: () => Promise<{ ok: boolean }>
         onJournalsPathChanged?: (cb: () => void) => () => void
-        getExternalSummariesInfo?: () => Promise<{
+        getExternalSummariesInfo?: (options?: {
+          includeFileCounts?: boolean
+        }) => Promise<{
           path: string | null
           defaultPath: string
           summaryFileCount: number
@@ -85,11 +94,14 @@ function mapValidationError(t: TFunction, code: string): string {
   }
 }
 
-export function useDesktopStorageSettings(onStatsRefresh?: () => Promise<void>) {
+export function useDesktopStorageSettings() {
   const { t } = useTranslation()
   const dialog = useDialog()
   const toast = useToast()
   const [storageRootPath, setStorageRootPath] = useState('...')
+  const [sqliteSizeStats, setSqliteSizeStats] = useState('0 MB')
+  const [vectorDbStats, setVectorDbStats] = useState('0 MB')
+  const [mediaCacheStats, setMediaCacheStats] = useState('0 MB')
   const [externalJournalsPath, setExternalJournalsPath] = useState<string | null>(null)
   const [externalJournalsDefaultPath, setExternalJournalsDefaultPath] = useState('')
   const [externalJournalsFileCount, setExternalJournalsFileCount] = useState<number | undefined>(
@@ -115,37 +127,81 @@ export function useDesktopStorageSettings(onStatsRefresh?: () => Promise<void>) 
   const [migrationProgress, setMigrationProgress] = useState('')
   const suppressExternalPathRefreshRef = useRef(false)
 
-  const refreshStorageInfo = useCallback(async () => {
+  const refreshStorageInfo = useCallback(async (options?: { includeFileCounts?: boolean }) => {
+    const includeFileCounts = options?.includeFileCounts === true
     try {
       const stats = await getStorageApi()?.getStats?.()
       if (stats?.storageRootPath) {
         setStorageRootPath(stats.storageRootPath)
       }
-      const journalsInfo = await getStorageApi()?.getExternalJournalsInfo?.()
+      if (stats?.sqliteSizeStats) {
+        setSqliteSizeStats(stats.sqliteSizeStats)
+      }
+      if (stats?.vectorDbStats) {
+        setVectorDbStats(stats.vectorDbStats)
+      }
+      if (stats?.mediaCacheStats) {
+        setMediaCacheStats(stats.mediaCacheStats)
+      }
+      const journalsInfo = await getStorageApi()?.getExternalJournalsInfo?.({
+        includeFileCounts
+      })
       if (journalsInfo) {
         setExternalJournalsPath(journalsInfo.path)
         setExternalJournalsDefaultPath(journalsInfo.defaultPath)
-        setExternalJournalsFileCount(journalsInfo.journalFileCount)
+        if (includeFileCounts) {
+          setExternalJournalsFileCount(journalsInfo.journalFileCount)
+        }
         setExternalJournalsPathAvailable(journalsInfo.pathAvailableOnDevice ?? true)
       }
-      const summariesInfo = await getStorageApi()?.getExternalSummariesInfo?.()
+      const summariesInfo = await getStorageApi()?.getExternalSummariesInfo?.({
+        includeFileCounts
+      })
       if (summariesInfo) {
         setExternalSummariesPath(summariesInfo.path)
         setExternalSummariesDefaultPath(summariesInfo.defaultPath)
-        setExternalSummariesFileCount(summariesInfo.summaryFileCount)
-        setExternalSummariesFileCounts(summariesInfo.summaryFileCounts)
+        if (includeFileCounts) {
+          setExternalSummariesFileCount(summariesInfo.summaryFileCount)
+          setExternalSummariesFileCounts(summariesInfo.summaryFileCounts)
+        }
         setExternalSummariesPathAvailable(summariesInfo.pathAvailableOnDevice ?? true)
-      }
-      if (onStatsRefresh) {
-        await onStatsRefresh()
       }
     } catch (e) {
       console.warn('Load storage root failed', e)
     }
-  }, [onStatsRefresh])
+  }, [])
 
   useEffect(() => {
-    void refreshStorageInfo()
+    const runLight = () => {
+      void refreshStorageInfo({ includeFileCounts: false })
+    }
+
+    let heavyTimer: ReturnType<typeof setTimeout> | undefined
+    const scheduleHeavy = () => {
+      heavyTimer = window.setTimeout(() => {
+        void refreshStorageInfo({ includeFileCounts: true })
+      }, 800)
+    }
+
+    if (typeof requestIdleCallback === 'function') {
+      const idleId = requestIdleCallback(() => {
+        runLight()
+        scheduleHeavy()
+      }, { timeout: 2500 })
+      return () => {
+        cancelIdleCallback(idleId)
+        if (heavyTimer) window.clearTimeout(heavyTimer)
+      }
+    }
+
+    const lightTimer = window.setTimeout(() => {
+      runLight()
+      scheduleHeavy()
+    }, 400)
+    return () => {
+      window.clearTimeout(lightTimer)
+      if (heavyTimer) window.clearTimeout(heavyTimer)
+    }
   }, [refreshStorageInfo])
 
   useEffect(() => {
@@ -161,7 +217,7 @@ export function useDesktopStorageSettings(onStatsRefresh?: () => Promise<void>) 
     if (api?.onRootChanged) {
       unsubs.push(
         api.onRootChanged(() => {
-          void refreshStorageInfo()
+          void refreshStorageInfo({ includeFileCounts: true })
         })
       )
     }
@@ -169,7 +225,7 @@ export function useDesktopStorageSettings(onStatsRefresh?: () => Promise<void>) 
       unsubs.push(
         api.onJournalsPathChanged(() => {
           if (suppressExternalPathRefreshRef.current) return
-          void refreshStorageInfo()
+          void refreshStorageInfo({ includeFileCounts: true })
         })
       )
     }
@@ -177,7 +233,7 @@ export function useDesktopStorageSettings(onStatsRefresh?: () => Promise<void>) 
       unsubs.push(
         api.onSummariesPathChanged(() => {
           if (suppressExternalPathRefreshRef.current) return
-          void refreshStorageInfo()
+          void refreshStorageInfo({ includeFileCounts: true })
         })
       )
     }
@@ -204,7 +260,7 @@ export function useDesktopStorageSettings(onStatsRefresh?: () => Promise<void>) 
       try {
         await getStorageApi()?.changeDirectory?.(targetPath)
         await (window as any).api?.vault?.waitForResync?.()
-        await refreshStorageInfo()
+        await refreshStorageInfo({ includeFileCounts: true })
         return true
       } catch (e: unknown) {
         const message = e instanceof Error ? e.message : String(e)
@@ -392,7 +448,7 @@ export function useDesktopStorageSettings(onStatsRefresh?: () => Promise<void>) 
       if (typeof result?.journalFileCount === 'number') {
         setExternalJournalsFileCount(result.journalFileCount)
       }
-      await refreshStorageInfo()
+      await refreshStorageInfo({ includeFileCounts: true })
       const count = result?.journalFileCount
       toast.showSuccess(
         t('storage.external_journals_applied', {
@@ -435,7 +491,7 @@ export function useDesktopStorageSettings(onStatsRefresh?: () => Promise<void>) 
       if (result?.summaryFileCounts) {
         setExternalSummariesFileCounts(result.summaryFileCounts)
       }
-      await refreshStorageInfo()
+      await refreshStorageInfo({ includeFileCounts: true })
       const count = result?.summaryFileCount
       toast.showSuccess(
         t('storage.external_summaries_applied', {
@@ -468,7 +524,7 @@ export function useDesktopStorageSettings(onStatsRefresh?: () => Promise<void>) 
       await getStorageApi()?.clearExternalSummariesDirectory?.()
       setExternalSummariesPath(null)
       setExternalSummariesPathAvailable(true)
-      await refreshStorageInfo()
+      await refreshStorageInfo({ includeFileCounts: true })
       toast.showSuccess(t('storage.external_summaries_cleared', '已恢复默认总结目录'))
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
@@ -500,7 +556,7 @@ export function useDesktopStorageSettings(onStatsRefresh?: () => Promise<void>) 
       await getStorageApi()?.clearExternalJournalsDirectory?.()
       setExternalJournalsPath(null)
       setExternalJournalsPathAvailable(true)
-      await refreshStorageInfo()
+      await refreshStorageInfo({ includeFileCounts: true })
       toast.showSuccess(t('storage.external_journals_cleared', '已恢复默认日记目录'))
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
@@ -539,6 +595,9 @@ export function useDesktopStorageSettings(onStatsRefresh?: () => Promise<void>) 
 
   return {
     storageRootPath,
+    sqliteSizeStats,
+    vectorDbStats,
+    mediaCacheStats,
     externalJournalsPath,
     externalJournalsDefaultPath,
     externalJournalsFileCount,

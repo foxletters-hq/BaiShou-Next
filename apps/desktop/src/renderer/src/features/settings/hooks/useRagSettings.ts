@@ -43,11 +43,20 @@ export function useRagSettings({
   const [pageSize, setPageSize] = useState(10)
 
   const stateRef = useRef({ searchQuery, searchMode, currentPage, pageSize })
+  const dataGenerationRef = useRef(0)
   useEffect(() => {
     stateRef.current = { searchQuery, searchMode, currentPage, pageSize }
   }, [searchQuery, searchMode, currentPage, pageSize])
 
-  const loadRagData = async (q: string, mode: 'semantic' | 'text', page: number, size: number) => {
+  const isDataRequestStale = (generation: number) => generation !== dataGenerationRef.current
+
+  const loadRagData = async (
+    q: string,
+    mode: 'semantic' | 'text',
+    page: number,
+    size: number,
+    generation = dataGenerationRef.current
+  ) => {
     try {
       const limit = size
       const offset = (page - 1) * limit
@@ -66,6 +75,8 @@ export function useRagSettings({
         (window as any).api?.rag?.queryEntries(params)
       ])
 
+      if (isDataRequestStale(generation)) return
+
       if (statsResult) {
         setCachedRagStats(statsResult)
       }
@@ -79,27 +90,32 @@ export function useRagSettings({
           if (total > 0 && (page - 1) * size >= total) {
             const maxPage = Math.max(1, Math.ceil(total / size))
             setCurrentPage(maxPage)
-            loadRagData(q, mode, maxPage, size)
+            loadRagData(q, mode, maxPage, size, generation)
             return
           }
           if (q && q.trim() !== '' && mode === 'semantic') {
             const allEntries = res.entries
             const semanticTotal = res.total
             const sliced = allEntries.slice((page - 1) * size, page * size)
+            if (isDataRequestStale(generation)) return
             setRagEntries(sliced)
             setRagTotalCount(semanticTotal)
           } else {
+            if (isDataRequestStale(generation)) return
             setRagEntries(res.entries)
             setRagTotalCount(res.total)
           }
         } else {
+          if (isDataRequestStale(generation)) return
           setRagEntries(res)
           setRagTotalCount(s ? s.totalCount || 0 : 0)
         }
       } else if (s) {
+        if (isDataRequestStale(generation)) return
         setRagTotalCount(s.totalCount || 0)
       }
 
+      if (isDataRequestStale(generation)) return
       await checkMigrationStatus()
     } catch (err) {
       console.error('[SettingsPage] loadRagData failed:', err)
@@ -149,8 +165,11 @@ export function useRagSettings({
   }, [ragStats.totalCount, searchQuery])
 
   useEffect(() => {
-    loadRagData(searchQuery, searchMode, currentPage, pageSize)
-    void checkMigrationStatus()
+    const generation = ++dataGenerationRef.current
+    void loadRagData(searchQuery, searchMode, currentPage, pageSize, generation)
+    return () => {
+      dataGenerationRef.current += 1
+    }
   }, [])
 
   useEffect(() => {

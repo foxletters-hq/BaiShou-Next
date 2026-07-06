@@ -61,6 +61,17 @@ export function useRagSystem(
     resolve: () => void
     reject: (error: Error) => void
   } | null>(null)
+  const migrationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (migrationTimeoutRef.current) {
+        clearTimeout(migrationTimeoutRef.current)
+        migrationTimeoutRef.current = null
+      }
+      migrationWaitRef.current = null
+    }
+  }, [])
 
   const refreshMigrationState = useCallback(async () => {
     try {
@@ -265,7 +276,11 @@ export function useRagSystem(
   const waitForMigrationIdle = () =>
     new Promise<void>((resolve, reject) => {
       migrationWaitRef.current = { resolve, reject }
-      setTimeout(() => {
+      if (migrationTimeoutRef.current) {
+        clearTimeout(migrationTimeoutRef.current)
+      }
+      migrationTimeoutRef.current = setTimeout(() => {
+        migrationTimeoutRef.current = null
         if (migrationWaitRef.current) {
           migrationWaitRef.current = null
           reject(new Error('Migration cancel timed out'))

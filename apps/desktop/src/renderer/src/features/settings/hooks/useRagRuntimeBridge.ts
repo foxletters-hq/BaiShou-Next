@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { classifyAiApiCallError, resolveMigrationStatusText } from '@baishou/shared'
 import {
-  getCachedRagStats,
   getCachedRagActiveState,
   patchCachedRagStats,
   setCachedRagActiveState
@@ -49,13 +48,18 @@ async function refreshRagStats(): Promise<void> {
 }
 
 /**
- * 在 SettingsShell 层常驻监听 RAG 进度，避免切换设置 Tab 后状态丢失或总数闪回 0。
+ * 在设置页可见时监听 RAG 进度，避免切换 Tab 后状态丢失。
+ * `active=false` 时不注册 IPC，防止 overlay 隐藏后仍占用内存。
  */
-export function useRagRuntimeBridge(): void {
+export function useRagRuntimeBridge(active: boolean): void {
   const { t } = useTranslation()
+  const tRef = useRef(t)
+  tRef.current = t
   const statsRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
+    if (!active) return
+
     const api = (window as any).api
     if (!api?.rag?.onRagProgress) return
 
@@ -70,12 +74,13 @@ export function useRagRuntimeBridge(): void {
     }
 
     const cleanup = api.rag.onRagProgress((state: any) => {
+      const translate = (key: string, fallback: string) => tRef.current(key, fallback)
       const statusText = state.statusKey
-        ? resolveMigrationStatusText(t, state.statusKey, state.statusParams)
+        ? resolveMigrationStatusText(translate, state.statusKey, state.statusParams)
         : state.statusText || ''
       const errorText =
         typeof state.error === 'string' && state.error.trim()
-          ? localizeRagEmbedError(extractIpcErrorMessage({ message: state.error.trim() }), t)
+          ? localizeRagEmbedError(extractIpcErrorMessage({ message: state.error.trim() }), translate)
           : undefined
 
       setCachedRagActiveState({
@@ -105,10 +110,5 @@ export function useRagRuntimeBridge(): void {
         statsRefreshTimerRef.current = null
       }
     }
-  }, [t])
-
-  useEffect(() => {
-    if (getCachedRagStats().totalCount > 0) return
-    void refreshRagStats()
-  }, [])
+  }, [active])
 }
