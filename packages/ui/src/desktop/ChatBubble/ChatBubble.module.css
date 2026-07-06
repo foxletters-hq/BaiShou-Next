@@ -12,6 +12,7 @@
 
 .userRow {
   justify-content: flex-end;
+  align-items: flex-start;
 }
 
 .aiRow {
@@ -82,10 +83,16 @@
   align-items: baseline;
   padding-bottom: 6px;
   gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .justifyEnd {
   justify-content: flex-end;
+}
+
+.justifyStart {
+  justify-content: flex-start;
 }
 
 .userRow .timeRow,
@@ -102,6 +109,7 @@
   font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
+  flex-shrink: 0;
 }
 
 .bubbleNameLabel {
@@ -143,7 +151,7 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: flex-end;
   width: fit-content;
   max-width: 100%;
 }
@@ -174,6 +182,7 @@
   white-space: pre-wrap;
   word-break: break-word;
   max-width: 100%;
+  text-align: right;
 }
 
 .aiBubbleCard {
@@ -275,11 +284,12 @@
   align-items: center;
   justify-content: flex-start;
   flex-wrap: nowrap;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
-  align-self: flex-start;
+  align-self: stretch;
   margin-top: 4px;
   gap: 8px;
+  min-height: 26px;
 }
 
 .tokenRow {
@@ -302,7 +312,8 @@
 .tokenStat {
   font-size: 11px;
   color: var(--text-tertiary, rgba(148, 163, 184, 0.85));
-  line-height: 1.2;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .userFooterRow {
@@ -312,6 +323,7 @@
   gap: 8px;
   align-self: flex-end;
   margin-top: 4px;
+  min-height: 26px;
 }
 
 .footerRight {

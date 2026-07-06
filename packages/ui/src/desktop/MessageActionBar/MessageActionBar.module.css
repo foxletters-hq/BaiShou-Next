@@ -3,7 +3,7 @@
   flex-direction: row;
   align-items: center;
   gap: 4px;
-  padding-top: 4px;
+  flex-shrink: 0;
   /* hide by default, shown by parent hover */
   opacity: 0;
   transition: all 0.2s ease;

@@ -68,7 +68,8 @@ export const ChatBubbleAiRow: React.FC<ChatBubbleAiRowProps> = ({
     </div>
 
     <div className={styles.messageCol}>
-      <div className={`${styles.timeRow} ${styles.justifyStart}`}>
+      <div className={`${styles.nameTimeRow} ${styles.justifyStart}`}>
+        <span className={styles.nameLabel}>{aiName}</span>
         <span className={styles.timeLabel} title={message.timestamp.toLocaleString()}>
           {formatRelativeTime(message.timestamp, t)}
         </span>
@@ -76,7 +77,6 @@ export const ChatBubbleAiRow: React.FC<ChatBubbleAiRowProps> = ({
 
       {isEditing ? (
         <div className={`${styles.aiBubbleCard} ${styles.editingBubbleCard}`}>
-          <span className={styles.bubbleNameLabel}>{aiName}</span>
           <ChatBubbleInlineEditor
             isUser={false}
             editedContent={editedContent}
@@ -90,7 +90,6 @@ export const ChatBubbleAiRow: React.FC<ChatBubbleAiRowProps> = ({
       ) : (
         <>
           <div className={styles.aiBubbleCard}>
-            <span className={styles.bubbleNameLabel}>{aiName}</span>
             {message.attachments && message.attachments.length > 0 && (
               <ChatBubbleAttachments attachments={message.attachments} />
             )}

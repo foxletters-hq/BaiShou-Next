@@ -45,15 +45,24 @@
   width: min(800px, calc(100% - 60px));
 }
 
-.bubbleNameLabel {
+.nameTimeRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-start;
+  padding-bottom: 6px;
+  gap: 8px;
+  padding-left: 4px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.nameLabel {
   font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
-  line-height: 1.2;
-  margin-bottom: 6px;
 }
 
-:global(.chat-over-background) .bubbleNameLabel {
+:global(.chat-over-background) .nameLabel {
   color: #fff;
   mix-blend-mode: difference;
 }

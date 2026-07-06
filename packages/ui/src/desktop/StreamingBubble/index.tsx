@@ -80,29 +80,33 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
         ) : (
           <>
             {hasText || hasTools || hasReasoning || hasAttachments ? (
-              <div
-                className={`${styles.bubbleCard} ${useWideBubble ? styles.bubbleCardWide : ''}`}
-              >
-                <div className={styles.bubbleNameLabel}>{aiName}</div>
-                {hasAttachments ? <ChatBubbleAttachments attachments={attachments} /> : null}
-                {/* Reasoning 块 - 移到 bubbleCard 内部 */}
-                {hasReasoning && (
-                  <AgentThinkSection content={cleanReasoning} isStreaming={isReasoning} />
-                )}
+              <>
+                <div className={styles.nameTimeRow}>
+                  <span className={styles.nameLabel}>{aiName}</span>
+                </div>
+                <div
+                  className={`${styles.bubbleCard} ${useWideBubble ? styles.bubbleCardWide : ''}`}
+                >
+                  {hasAttachments ? <ChatBubbleAttachments attachments={attachments} /> : null}
+                  {/* Reasoning 块 - 移到 bubbleCard 内部 */}
+                  {hasReasoning && (
+                    <AgentThinkSection content={cleanReasoning} isStreaming={isReasoning} />
+                  )}
 
-                {/* 工具调用 */}
-                {hasTools && (
-                  <AgentToolChainSection
-                    completedTools={completedTools}
-                    activeToolName={activeToolName}
-                    isStreaming
-                  />
-                )}
+                  {/* 工具调用 */}
+                  {hasTools && (
+                    <AgentToolChainSection
+                      completedTools={completedTools}
+                      activeToolName={activeToolName}
+                      isStreaming
+                    />
+                  )}
 
-                {hasText && (
-                  <AgentMarkdownRenderer content={cleanText} isStreaming={isTextStreaming} />
-                )}
-              </div>
+                  {hasText && (
+                    <AgentMarkdownRenderer content={cleanText} isStreaming={isTextStreaming} />
+                  )}
+                </div>
+              </>
             ) : (
               <div className={styles.dotsWrap}>
                 <BouncingDotsIndicator />
