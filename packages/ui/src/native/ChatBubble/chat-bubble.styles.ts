@@ -6,6 +6,10 @@ import { StyleSheet } from 'react-native'
  */
 export const CHAT_MARKDOWN_BOTTOM_GUARD = 24
 
+/** 同行头像列（32 头像 + 8 间距）及对侧留白，避免长气泡顶到对方头像 */
+const CHAT_BUBBLE_MAX_WIDTH = 'calc(100% - 60px)' as const
+const CHAT_BUBBLE_OPPOSITE_GAP = 36
+
 export const chatBubbleStyles = StyleSheet.create({
   container: {
     marginVertical: 8,
@@ -23,26 +27,28 @@ export const chatBubbleStyles = StyleSheet.create({
   },
   bubbleWrapper: {
     flexShrink: 1,
-    maxWidth: '88%',
+    maxWidth: CHAT_BUBBLE_MAX_WIDTH,
     minWidth: 0
   },
   bubbleWrapperUser: {
     alignItems: 'flex-end',
     alignSelf: 'flex-end',
-    marginLeft: 24,
-    maxWidth: '88%'
+    marginLeft: CHAT_BUBBLE_OPPOSITE_GAP,
+    maxWidth: CHAT_BUBBLE_MAX_WIDTH,
+    minWidth: 0,
+    flexShrink: 1
   },
   bubbleWrapperAssistant: {
     flexShrink: 1,
     alignItems: 'flex-start',
     alignSelf: 'flex-start',
-    marginRight: 24,
-    maxWidth: '88%',
+    marginRight: CHAT_BUBBLE_OPPOSITE_GAP,
+    maxWidth: CHAT_BUBBLE_MAX_WIDTH,
     minWidth: 0
   },
   bubbleWrapperEditing: {
-    width: '88%',
-    maxWidth: '88%'
+    width: CHAT_BUBBLE_MAX_WIDTH,
+    maxWidth: CHAT_BUBBLE_MAX_WIDTH
   },
   bubbleEditing: {
     width: '100%',
@@ -111,12 +117,14 @@ export const chatBubbleStyles = StyleSheet.create({
   bubbleUser: {
     alignSelf: 'flex-end',
     width: undefined,
-    maxWidth: '100%'
+    maxWidth: '100%',
+    minWidth: 0
   },
   text: {
     fontSize: 15,
     lineHeight: 24,
-    textAlign: 'right'
+    textAlign: 'left',
+    flexShrink: 1
   },
   reasoningBlock: {
     marginBottom: 8,
