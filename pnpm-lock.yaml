@@ -4,6 +4,27 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  '@codemirror/autocomplete': 6.20.1
+  '@codemirror/commands': 6.10.3
+  '@codemirror/lang-css': 6.3.1
+  '@codemirror/lang-html': 6.4.11
+  '@codemirror/lang-javascript': 6.2.5
+  '@codemirror/lang-markdown': 6.5.0
+  '@codemirror/language': 6.12.3
+  '@codemirror/lint': 6.9.5
+  '@codemirror/search': 6.6.0
+  '@codemirror/state': 6.6.0
+  '@codemirror/view': 6.39.9
+  '@lezer/common': 1.5.1
+  '@lezer/css': 1.3.3
+  '@lezer/highlight': 1.2.3
+  '@lezer/html': 1.3.13
+  '@lezer/javascript': 1.5.4
+  '@lezer/lr': 1.4.8
+  '@lezer/markdown': 1.6.3
+  codemirror-markdown-tables: 1.0.0
+
 patchedDependencies:
   '@ai-sdk/openai@3.0.50':
     hash: 64ee5c9f21e7bb683cba396c5bab92cf6f96b8ddcf6d0f781534efa8e1622a74
@@ -422,23 +443,23 @@ importers:
         version: 3.25.2(zod@4.3.6)
     devDependencies:
       '@codemirror/commands':
-        specifier: ^6.8.0
+        specifier: 6.10.3
         version: 6.10.3
       '@codemirror/lang-markdown':
-        specifier: ^6.5.0
+        specifier: 6.5.0
         version: 6.5.0
       '@codemirror/language':
-        specifier: ^6.11.0
+        specifier: 6.12.3
         version: 6.12.3
       '@codemirror/search':
-        specifier: ^6.5.10
+        specifier: 6.6.0
         version: 6.6.0
       '@codemirror/state':
-        specifier: ^6.5.2
+        specifier: 6.6.0
         version: 6.6.0
       '@codemirror/view':
-        specifier: ^6.36.0
-        version: 6.41.0
+        specifier: 6.39.9
+        version: 6.39.9
       '@electron-toolkit/eslint-config-prettier':
         specifier: ^3.0.0
         version: 3.0.0(eslint@10.2.0(jiti@2.6.1))(prettier@3.8.1)
@@ -446,10 +467,10 @@ importers:
         specifier: ^3.1.0
         version: 3.1.0(eslint@10.2.0(jiti@2.6.1))(typescript@5.9.3)
       '@lezer/common':
-        specifier: ^1.3.0
+        specifier: 1.5.1
         version: 1.5.1
       '@lezer/highlight':
-        specifier: ^1.2.3
+        specifier: 1.2.3
         version: 1.2.3
       '@types/react':
         specifier: ~19.2.14
@@ -685,23 +706,23 @@ importers:
         specifier: workspace:*
         version: link:../shared
       '@codemirror/commands':
-        specifier: ^6.8.0
+        specifier: 6.10.3
         version: 6.10.3
       '@codemirror/lang-markdown':
-        specifier: ^6.5.0
+        specifier: 6.5.0
         version: 6.5.0
       '@codemirror/language':
-        specifier: ^6.11.0
+        specifier: 6.12.3
         version: 6.12.3
       '@codemirror/search':
-        specifier: ^6.5.10
+        specifier: 6.6.0
         version: 6.6.0
       '@codemirror/state':
-        specifier: ^6.5.2
+        specifier: 6.6.0
         version: 6.6.0
       '@codemirror/view':
-        specifier: ^6.36.0
-        version: 6.41.0
+        specifier: 6.39.9
+        version: 6.39.9
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -718,10 +739,10 @@ importers:
         specifier: ^15.1.1
         version: 15.1.1(expo-font@55.0.8)(react-native@0.83.6(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.4))(react@19.2.4)
       '@lezer/common':
-        specifier: ^1.3.0
+        specifier: 1.5.1
         version: 1.5.1
       '@lezer/highlight':
-        specifier: ^1.2.3
+        specifier: 1.2.3
         version: 1.2.3
       '@react-native-community/slider':
         specifier: '>=5'
@@ -730,8 +751,8 @@ importers:
         specifier: ^6.1.1
         version: 6.5.0(date-fns@4.1.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       codemirror-markdown-tables:
-        specifier: ^1.0.0
-        version: 1.0.0(@codemirror/autocomplete@6.20.1)(@codemirror/commands@6.10.3)(@codemirror/lang-markdown@6.5.0)(@codemirror/language@6.12.3)(@codemirror/state@6.6.0)(@codemirror/view@6.41.0)(@lezer/common@1.5.1)(@lezer/highlight@1.2.3)(@lezer/markdown@1.6.3)
+        specifier: 1.0.0
+        version: 1.0.0(@codemirror/autocomplete@6.20.1)(@codemirror/commands@6.10.3)(@codemirror/lang-markdown@6.5.0)(@codemirror/language@6.12.3)(@codemirror/state@6.6.0)(@codemirror/view@6.39.9)(@lezer/common@1.5.1)(@lezer/highlight@1.2.3)(@lezer/markdown@1.6.3)
       colord:
         specifier: ^2.9.3
         version: 2.9.3
@@ -1558,8 +1579,8 @@ packages:
   '@codemirror/state@6.6.0':
     resolution: {integrity: sha512-4nbvra5R5EtiCzr9BTHiTLc+MLXK2QGiAVYMyi8PkQd3SR+6ixar/Q/01Fa21TBIDOZXgeWV4WppsQolSreAPQ==}
 
-  '@codemirror/view@6.41.0':
-    resolution: {integrity: sha512-6H/qadXsVuDY219Yljhohglve8xf4B8xJkVOEWfA5uiYKiTFppjqsvsfR5iPA0RbvRBoOyTZpbLIxe9+0UR8xA==}
+  '@codemirror/view@6.39.9':
+    resolution: {integrity: sha512-miGSIfBOKC1s2oHoa80dp+BjtsL8sXsrgGlQnQuOcfvaedcQUtqddTmKbJSDkLl4mkgPvZyXuKic2HDNYcJLYA==}
 
   '@csstools/color-helpers@6.0.2':
     resolution: {integrity: sha512-LMGQLS9EuADloEFkcTBR3BwV/CGHV7zyDxVRtVDTwdI2Ca4it0CCVTT9wCkxSgokjE5Ho41hEPgb8OEUwoXr6Q==}
@@ -5337,15 +5358,15 @@ packages:
   codemirror-markdown-tables@1.0.0:
     resolution: {integrity: sha512-G4AbevRxeVRCOXQ3aNbSNpTuh1+5e9DoBCQ4WGhwYQwlVrUp/BkPDSjCgbUir1I7XQ0v6iJsEC4DTPQD+qXXDw==}
     peerDependencies:
-      '@codemirror/autocomplete': ^6.18.0
-      '@codemirror/commands': ^6.7.1
-      '@codemirror/lang-markdown': ^6.3.1
-      '@codemirror/language': ^6.10.4
-      '@codemirror/state': ^6.4.1
-      '@codemirror/view': ^6.35.0
-      '@lezer/common': ^1.2.3
-      '@lezer/highlight': ^1.2.1
-      '@lezer/markdown': ^1.3.2
+      '@codemirror/autocomplete': 6.20.1
+      '@codemirror/commands': 6.10.3
+      '@codemirror/lang-markdown': 6.5.0
+      '@codemirror/language': 6.12.3
+      '@codemirror/state': 6.6.0
+      '@codemirror/view': 6.39.9
+      '@lezer/common': 1.5.1
+      '@lezer/highlight': 1.2.3
+      '@lezer/markdown': 1.6.3
 
   collapse-white-space@2.1.0:
     resolution: {integrity: sha512-loKTxY1zCOuG4j9f6EPnuyyYkf58RnhhWTvRoZEokgB+WbdXehfjFviyOVYkqzEWz1Q5kRiZdBYS5SwxbQYwzw==}
@@ -11860,14 +11881,14 @@ snapshots:
     dependencies:
       '@codemirror/language': 6.12.3
       '@codemirror/state': 6.6.0
-      '@codemirror/view': 6.41.0
+      '@codemirror/view': 6.39.9
       '@lezer/common': 1.5.1
 
   '@codemirror/commands@6.10.3':
     dependencies:
       '@codemirror/language': 6.12.3
       '@codemirror/state': 6.6.0
-      '@codemirror/view': 6.41.0
+      '@codemirror/view': 6.39.9
       '@lezer/common': 1.5.1
 
   '@codemirror/lang-css@6.3.1':
@@ -11885,7 +11906,7 @@ snapshots:
       '@codemirror/lang-javascript': 6.2.5
       '@codemirror/language': 6.12.3
       '@codemirror/state': 6.6.0
-      '@codemirror/view': 6.41.0
+      '@codemirror/view': 6.39.9
       '@lezer/common': 1.5.1
       '@lezer/css': 1.3.3
       '@lezer/html': 1.3.13
@@ -11896,7 +11917,7 @@ snapshots:
       '@codemirror/language': 6.12.3
       '@codemirror/lint': 6.9.5
       '@codemirror/state': 6.6.0
-      '@codemirror/view': 6.41.0
+      '@codemirror/view': 6.39.9
       '@lezer/common': 1.5.1
       '@lezer/javascript': 1.5.4
 
@@ -11906,14 +11927,14 @@ snapshots:
       '@codemirror/lang-html': 6.4.11
       '@codemirror/language': 6.12.3
       '@codemirror/state': 6.6.0
-      '@codemirror/view': 6.41.0
+      '@codemirror/view': 6.39.9
       '@lezer/common': 1.5.1
       '@lezer/markdown': 1.6.3
 
   '@codemirror/language@6.12.3':
     dependencies:
       '@codemirror/state': 6.6.0
-      '@codemirror/view': 6.41.0
+      '@codemirror/view': 6.39.9
       '@lezer/common': 1.5.1
       '@lezer/highlight': 1.2.3
       '@lezer/lr': 1.4.8
@@ -11922,20 +11943,20 @@ snapshots:
   '@codemirror/lint@6.9.5':
     dependencies:
       '@codemirror/state': 6.6.0
-      '@codemirror/view': 6.41.0
+      '@codemirror/view': 6.39.9
       crelt: 1.0.6
 
   '@codemirror/search@6.6.0':
     dependencies:
       '@codemirror/state': 6.6.0
-      '@codemirror/view': 6.41.0
+      '@codemirror/view': 6.39.9
       crelt: 1.0.6
 
   '@codemirror/state@6.6.0':
     dependencies:
       '@marijn/find-cluster-break': 1.0.2
 
-  '@codemirror/view@6.41.0':
+  '@codemirror/view@6.39.9':
     dependencies:
       '@codemirror/state': 6.6.0
       crelt: 1.0.6
@@ -17141,14 +17162,14 @@ snapshots:
 
   clsx@2.1.1: {}
 
-  codemirror-markdown-tables@1.0.0(@codemirror/autocomplete@6.20.1)(@codemirror/commands@6.10.3)(@codemirror/lang-markdown@6.5.0)(@codemirror/language@6.12.3)(@codemirror/state@6.6.0)(@codemirror/view@6.41.0)(@lezer/common@1.5.1)(@lezer/highlight@1.2.3)(@lezer/markdown@1.6.3):
+  codemirror-markdown-tables@1.0.0(@codemirror/autocomplete@6.20.1)(@codemirror/commands@6.10.3)(@codemirror/lang-markdown@6.5.0)(@codemirror/language@6.12.3)(@codemirror/state@6.6.0)(@codemirror/view@6.39.9)(@lezer/common@1.5.1)(@lezer/highlight@1.2.3)(@lezer/markdown@1.6.3):
     dependencies:
       '@codemirror/autocomplete': 6.20.1
       '@codemirror/commands': 6.10.3
       '@codemirror/lang-markdown': 6.5.0
       '@codemirror/language': 6.12.3
       '@codemirror/state': 6.6.0
-      '@codemirror/view': 6.41.0
+      '@codemirror/view': 6.39.9
       '@floating-ui/dom': 1.7.6
       '@lezer/common': 1.5.1
       '@lezer/highlight': 1.2.3
