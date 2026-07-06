@@ -15,7 +15,7 @@
 在 `git commit` 之后、**打开 PR 之前**，逐项确认（AI 助手与人类均适用）：
 
 - [ ] 已在 **Fork 仓库** 的功能分支上工作，而非误改上游 `main`
-- [ ] 开 PR 时目标分支为上游 **`Baishou-dev`**（**非 `main`**；以 `main` 为目标的 PR 视为无效）
+- [ ] 开 PR 时目标分支为上游 **`main`**（在 Fork 的功能分支上开发，勿直接 push 上游 `main`）
 - [ ] 已运行 **`pnpm ci:check`** 且全部通过
 - [ ] `git status` 无 `.env`、密钥、本地数据库、临时脚本（如 `count-code-lines.mjs`、`split-*.ps1`）
 - [ ] 单次 PR / commit 主题清晰；超大改动已拆成多个可读 commit
@@ -97,7 +97,7 @@ docs: 规范目录与文件改为单层序号命名
 2. 克隆 **你的 Fork**，创建功能分支，按 [1-AI-Code-Rule](../1-AI-Code/1-AI-Code-Rule.md) 开发。
 3. 完成 **§0** 清单并运行 **`pnpm ci:check`**。
 4. 推送到 **你的 Fork**（例如 `git push origin feature/xxx`）。
-5. 在 GitHub 向上游 **创建 Pull Request**，**目标分支（base）选择 `Baishou-dev`**（勿选 `main`；以 `main` 为目标的 PR 视为无效，不予审核与回复），说明改动与本地检查结果（建议注明已本地跑过 `pnpm ci:check`）。
+5. 在 GitHub 向上游 **创建 Pull Request**，**目标分支（base）选择 `main`**，说明改动与本地检查结果（建议注明已本地跑过 `pnpm ci:check`）。
 
 ### 3.1 GitHub CI 与合并（宽松提交、严格合并）
 

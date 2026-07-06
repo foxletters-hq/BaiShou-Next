@@ -40,9 +40,9 @@ If you are unsure whether a change fits, **discuss in an Issue first**—do not 
 
 ### 1.2 PR target branch
 
-If you intend to open a PR, set the **base branch** to upstream **`Baishou-dev`**.
+If you intend to open a PR, work on a **feature branch in your Fork** and set the **base branch** to upstream **`main`**.
 
-**PRs targeting `main` are invalid.** Maintainers will not review or respond to them and will close them directly.
+Do not push directly to upstream `main`; merge via Pull Request.
 
 ### 1.3 Contributor License Agreement (CLA)
 
@@ -187,7 +187,6 @@ Feature work often spans **UI + core + database + both apps**. Be honest about s
 - **New feature PRs submitted during the current stage** (open an Issue to discuss design first)
 - **Purely AI-generated PRs the submitter cannot explain** (motivation, impact)
 - **PRs showing lack of code understanding or failure to follow repo conventions**
-- **PRs targeting `main`** (submit to `Baishou-dev` instead)
 - No prior accepted Feature Issue (when maintainers have said PRs are welcome)
 - `pnpm ci:check` not run or failing
 - Missing tests (non-trivial fix)
