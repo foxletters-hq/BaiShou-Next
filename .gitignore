@@ -12,6 +12,7 @@ package-lock.json
 
 # ─── 构建产物 ──────────────────────────────────────────────
 dist/
+dist-*/
 out/
 build/
 .next/
