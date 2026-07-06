@@ -257,6 +257,18 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
     return result
   }, [])
 
+  const hydrateFromSessionCache = useCallback(
+    (cached: SessionMessageCacheEntry) => {
+      messageCacheRef.current = [...cached.messages]
+      loadedFromEndRef.current = cached.loadedFromEnd
+      roundWindowStartRef.current = cached.roundWindowStart
+      fetchHasMoreRef.current = cached.fetchHasMore
+      setCompactionAnchor(cached.compactionAnchor)
+      syncFromCache(cached.roundWindowStart)
+    },
+    [syncFromCache]
+  )
+
   const ingestFetchedTail = useCallback(
     (fetched: any[], preserveWindow: boolean) => {
       messageCacheRef.current = applyPendingUsageToMessages(
@@ -426,7 +438,12 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
 
       currentSessionIdRef.current = sessionId
       pendingUsageByMessageIdRef.current.clear()
-      chatSessionMessageCache.delete(sessionId)
+
+      const cached = chatSessionMessageCache.get(sessionId)
+      if (cached?.messages?.length) {
+        hydrateFromSessionCache(cached)
+        return
+      }
 
       setMessages([])
       setHasMore(false)
@@ -457,7 +474,7 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
       }
       void loadMessages()
     }
-  }, [sessionId, ingestFetchedTail, persistSessionCache])
+  }, [sessionId, ingestFetchedTail, persistSessionCache, hydrateFromSessionCache])
 
   useEffect(() => {
     if (!sessionId) return

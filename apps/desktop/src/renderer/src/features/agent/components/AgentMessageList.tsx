@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useEffect, useRef, useState } from 'react'
+import React, { useMemo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { mapAttachmentsFromParts, resolveAttachmentImageSrc, normalizeEmojiToolConfig, resolveAssistantEmojiConfig, assistantRowToEmojiPrefs } from '@baishou/shared'
 import {
   ChatBubble,
@@ -178,6 +178,15 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
   const [showLoadMoreButton, setShowLoadMoreButton] = useState(false)
   const LOAD_MORE_TOP_THRESHOLD_PX = 120
 
+  const syncLoadMoreVisibility = useCallback(() => {
+    const el = scroll.scrollRef.current
+    if (!el || !chat.hasMore) {
+      setShowLoadMoreButton(false)
+      return
+    }
+    setShowLoadMoreButton(el.scrollTop < LOAD_MORE_TOP_THRESHOLD_PX)
+  }, [chat.hasMore, scroll.scrollRef])
+
   const triggerLoadMore = useCallback(() => {
     if (!chat.hasMore || loadMoreLockRef.current) return
     const el = scroll.scrollRef.current
@@ -190,23 +199,23 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
           pane.scrollTop = pane.scrollHeight - prevHeight
         }
         loadMoreLockRef.current = false
+        syncLoadMoreVisibility()
       })
     })
-  }, [chat.hasMore, chat.loadMore, scroll.scrollRef])
+  }, [chat.hasMore, chat.loadMore, scroll.scrollRef, syncLoadMoreVisibility])
 
   useEffect(() => {
     const el = scroll.scrollRef.current
     if (!el) return
 
-    const onScroll = () => {
-      const nearTop = el.scrollTop < LOAD_MORE_TOP_THRESHOLD_PX
-      setShowLoadMoreButton(nearTop && chat.hasMore)
-    }
+    syncLoadMoreVisibility()
+    el.addEventListener('scroll', syncLoadMoreVisibility, { passive: true })
+    return () => el.removeEventListener('scroll', syncLoadMoreVisibility)
+  }, [syncLoadMoreVisibility, chat.messages.length, sessionId])
 
-    onScroll()
-    el.addEventListener('scroll', onScroll, { passive: true })
-    return () => el.removeEventListener('scroll', onScroll)
-  }, [chat.hasMore, scroll.scrollRef])
+  useLayoutEffect(() => {
+    syncLoadMoreVisibility()
+  }, [syncLoadMoreVisibility, chat.messages.length, stream.isStreaming, stream.isBridgeActive])
 
   const compactionAnchor = chat.compactionAnchor as
     | { messageId: string; record: Record<string, unknown> }
@@ -300,7 +309,7 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
           {showLoadMoreButton && (
             <button
               type="button"
-              className={`${styles.loadMoreBanner} ${styles.loadMoreBannerSticky}`}
+              className={styles.loadMoreBanner}
               onClick={triggerLoadMore}
             >
               {t('agent.chat.load_earlier_messages', '加载更早对话')}

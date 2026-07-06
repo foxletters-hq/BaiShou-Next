@@ -194,12 +194,6 @@
   cursor: wait;
 }
 
-.loadMoreBannerSticky {
-  position: sticky;
-  top: 8px;
-  z-index: 2;
-}
-
 .messageList::-webkit-scrollbar {
   width: 6px;
 }

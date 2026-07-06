@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useChatMessages } from '../useChatMessages'
+import { chatSessionMessageCache } from '../../utils/chat-session-message-cache'
 
 function setupWindowMock() {
   const mockRenderer = {
@@ -29,6 +30,7 @@ describe('useChatMessages', () => {
     const setup = setupWindowMock()
     mockRenderer = setup.mockRenderer
     mockRenderer.invoke.mockResolvedValue([])
+    chatSessionMessageCache.clear()
   })
 
   afterEach(() => {
@@ -205,6 +207,65 @@ describe('useChatMessages', () => {
       })
 
       expect(mockRenderer.invoke).toHaveBeenCalledWith('agent:get-messages', 's2', 60, 0, false)
+    })
+
+    it('should restore cached messages with token usage when switching back', async () => {
+      const s1Messages = [
+        { id: 'u1', role: 'user', content: 'hi' },
+        {
+          id: 'a1',
+          role: 'assistant',
+          content: 'reply',
+          inputTokens: 47300,
+          outputTokens: 601,
+          costMicros: 1200,
+          cacheReadInputTokens: 46100
+        }
+      ]
+
+      mockRenderer.invoke.mockImplementation(async (_channel, sessionId: string) => {
+        if (sessionId === 's1') return s1Messages
+        if (sessionId === 's2') return [{ id: 'b1', role: 'user', content: 'other' }]
+        return []
+      })
+
+      const { result, rerender } = renderHook(
+        ({ sid }) =>
+          useChatMessages({
+            sessionId: sid,
+            isStreaming: false,
+            streamingText: '',
+            streamingReasoning: ''
+          }),
+        { initialProps: { sid: 's1' as string | undefined } }
+      )
+
+      await act(async () => {
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(result.current.messages.find((m) => m.id === 'a1')?.inputTokens).toBe(47300)
+
+      mockRenderer.invoke.mockClear()
+      rerender({ sid: 's2' })
+
+      await act(async () => {
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      mockRenderer.invoke.mockClear()
+      rerender({ sid: 's1' })
+
+      await act(async () => {
+        await Promise.resolve()
+      })
+
+      expect(mockRenderer.invoke).not.toHaveBeenCalled()
+      const restored = result.current.messages.find((m) => m.id === 'a1')
+      expect(restored?.inputTokens).toBe(47300)
+      expect(restored?.cacheReadInputTokens).toBe(46100)
     })
   })
 
