@@ -238,36 +238,18 @@ describe.sequential('McpService', () => {
   }, 15000)
 
   it('should expose agent tools via real tool registry if provided', async () => {
+    const currentTimeTool = {
+      name: 'current_time',
+      description: 'Current time',
+      parameters: z.object({}),
+      execute: async () => 'Test execution result'
+    }
     // Inject a dummy tool registry
     const dummyRegistry = {
-      getAllRaw: () => [
-        {
-          name: 'test_tool',
-          description: 'A test tool',
-          parameters: z.object({}),
-          execute: async () => 'Test execution result'
-        }
-      ],
-      getEnabledToolsRaw: () => [
-        {
-          name: 'test_tool',
-          description: 'A test tool',
-          parameters: z.object({}),
-          execute: async () => 'Test execution result'
-        }
-      ],
+      getAllRaw: () => [currentTimeTool],
+      getEnabledToolsRaw: () => [currentTimeTool],
       isToolEnabled: () => true,
-      get: (name: string) => {
-        if (name === 'test_tool') {
-          return {
-            name: 'test_tool',
-            description: 'A test tool',
-            parameters: z.object({}),
-            execute: async () => 'Test execution result'
-          }
-        }
-        return undefined
-      }
+      get: (name: string) => (name === 'current_time' ? currentTimeTool : undefined)
     } as any
 
     const context = {
@@ -278,13 +260,13 @@ describe.sequential('McpService', () => {
     const mcpTools = buildBaishouMcpToolSchemas(dummyRegistry as ToolRegistry, context)
 
     expect(mcpTools).toHaveLength(1)
-    expect(mcpTools[0].name).toBe('baishou_test_tool')
+    expect(mcpTools[0].name).toBe('baishou_current_time')
     expect(mcpTools[0].inputSchema.type).toBe('object')
 
     const executeResult = await executeBaishouMcpTool(
       dummyRegistry as ToolRegistry,
       async () => context,
-      { name: 'baishou_test_tool' }
+      { name: 'baishou_current_time' }
     )
     expect(executeResult.isError).toBe(false)
     expect(executeResult.content[0].text).toContain('Test execution result')
