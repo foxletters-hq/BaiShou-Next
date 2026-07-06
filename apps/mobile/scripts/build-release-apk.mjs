@@ -8,6 +8,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { applyAndroidPlainSplashPatch } from './plain-splash-patch.mjs'
+import { clearAllMobileCaches } from './clear-cache.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const mobileRoot = path.resolve(__dirname, '..')
@@ -37,6 +38,9 @@ if (!existsSync(keyProperties)) {
 console.log('🎨 同步生成物…')
 run(process.execPath, [path.join(repoRoot, 'scripts/sync-all.mjs')], repoRoot)
 
+console.log('\n🧹 清理 Metro / Gradle 缓存（避免 Release 包沿用旧 JS bundle）…')
+clearAllMobileCaches()
+
 console.log('\n🔧 Expo prebuild（注入 release 签名配置）…')
 run('npx', ['expo', 'prebuild', '--platform', 'android', '--no-install'], mobileRoot, {
   BAISHOU_RELEASE_BUILD: '1'
@@ -50,8 +54,8 @@ if (!existsSync(gradlew)) {
 console.log('\n🎨 应用纯色启动屏补丁…')
 applyAndroidPlainSplashPatch(androidDir)
 
-console.log('\n🔨 assembleRelease…')
-run(gradlew, [':app:assembleRelease'], androidDir)
+console.log('\n🔨 assembleRelease（clean + 无构建缓存）…')
+run(gradlew, [':app:clean', ':app:assembleRelease', '--no-build-cache'], androidDir)
 
 const apkSrc = path.join(androidDir, 'app/build/outputs/apk/release/app-release.apk')
 if (!existsSync(apkSrc)) {
