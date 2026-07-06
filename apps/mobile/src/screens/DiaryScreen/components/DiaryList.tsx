@@ -34,6 +34,7 @@ export interface DiaryListEntry {
   location?: string
   isFavorite?: boolean
   tagColors?: DiaryTagColorRegistry
+  updatedAt?: Date | string
   /** 语义搜索相似度 0–1，仅语义模式展示 */
   matchSimilarity?: number
 }

@@ -31,8 +31,15 @@ describe('diary filter month persistence', () => {
   })
 
   it('normalizes legacy ISO strings to local month start', () => {
-    const parsed = parseSavedMonth('2026-05-31T16:00:00.000Z')
-    expect(parsed).toEqual(new Date(2026, 5, 1))
+    const prevTz = process.env.TZ
+    process.env.TZ = 'Asia/Shanghai'
+    try {
+      const parsed = parseSavedMonth('2026-05-31T16:00:00.000Z')
+      expect(parsed).toEqual(new Date(2026, 5, 1))
+    } finally {
+      if (prevTz === undefined) delete process.env.TZ
+      else process.env.TZ = prevTz
+    }
   })
 
   it('restores month filter at page 1 even when saved page is higher', async () => {

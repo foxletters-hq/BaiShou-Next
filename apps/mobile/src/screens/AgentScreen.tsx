@@ -478,7 +478,8 @@ export const AgentScreen = () => {
           id: emoji.id,
           fileName: emoji.name || emoji.id,
           filePath: uri,
-          isImage: true
+          isImage: true,
+          isPdf: false
         }
       })
       .filter((item): item is NonNullable<typeof item> => item != null)

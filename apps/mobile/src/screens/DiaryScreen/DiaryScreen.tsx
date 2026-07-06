@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { View, StyleSheet, StatusBar, Modal, Text, TouchableOpacity, FlatList, Keyboard } from 'react-native'
+import { View, StyleSheet, StatusBar, Modal, Text, TouchableOpacity, Keyboard } from 'react-native'
+import { FlatList } from 'react-native-gesture-handler'
 import { ScreenSafeArea } from '../../components/ScreenSafeArea'
 import { useRouter, useFocusEffect, useNavigation } from 'expo-router'
 import { useIsFocused } from '@react-navigation/native'
