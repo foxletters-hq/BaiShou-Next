@@ -1,8 +1,14 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
+import path from 'node:path'
 
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      'react-native': path.resolve(__dirname, 'src/test-utils/react-native-vitest-mock.ts')
+    }
+  },
   test: {
     environment: 'jsdom',
     globals: true,

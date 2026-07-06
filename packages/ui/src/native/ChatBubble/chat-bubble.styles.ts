@@ -10,7 +10,7 @@ export const CHAT_MARKDOWN_BOTTOM_GUARD = 24
 const CHAT_BUBBLE_MAX_WIDTH = 'calc(100% - 60px)' as const
 const CHAT_BUBBLE_OPPOSITE_GAP = 36
 
-export const chatBubbleStyles = StyleSheet.create({
+const chatBubbleLayoutStyles = StyleSheet.create({
   container: {
     marginVertical: 8,
     flexDirection: 'row',
@@ -58,11 +58,6 @@ export const chatBubbleStyles = StyleSheet.create({
     width: '100%',
     alignSelf: 'stretch'
   },
-  nameLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    flexShrink: 0
-  },
   nameTimeRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
@@ -77,21 +72,6 @@ export const chatBubbleStyles = StyleSheet.create({
   nameTimeRowAssistant: {
     justifyContent: 'flex-start',
     paddingLeft: 4
-  },
-  bubbleNameLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 6,
-    alignSelf: 'stretch'
-  },
-  timeLabel: {
-    fontSize: 10
-  },
-  nameLabelUser: {
-    textAlign: 'right'
-  },
-  nameLabelAssistant: {
-    textAlign: 'left'
   },
   bubble: {
     paddingHorizontal: 14,
@@ -120,34 +100,10 @@ export const chatBubbleStyles = StyleSheet.create({
     maxWidth: '100%',
     minWidth: 0
   },
-  text: {
-    fontSize: 15,
-    lineHeight: 24,
-    textAlign: 'left',
-    flexShrink: 1
-  },
   reasoningBlock: {
     marginBottom: 8,
     paddingBottom: 8,
     borderBottomWidth: 1
-  },
-  reasoningLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 4
-  },
-  reasoningText: {
-    fontSize: 13,
-    lineHeight: 18,
-    fontStyle: 'italic'
-  },
-  editInput: {
-    width: '100%',
-    fontSize: 15,
-    lineHeight: 22,
-    minHeight: 72,
-    maxHeight: 260,
-    padding: 0
   },
   editActions: {
     flexDirection: 'row',
@@ -162,17 +118,10 @@ export const chatBubbleStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'transparent'
   },
-  editBtnText: {
-    fontSize: 13,
-    fontWeight: '600'
-  },
   comfortableEditBtn: {
     minHeight: 32,
     paddingHorizontal: 14,
     paddingVertical: 7
-  },
-  comfortableEditBtnText: {
-    fontSize: 13
   },
   actionsRow: {
     flexDirection: 'row',
@@ -197,11 +146,6 @@ export const chatBubbleStyles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12
   },
-  actionChipText: {
-    fontSize: 12,
-    fontWeight: '500'
-  },
-  /** 流式期间占位，高度对齐操作栏 + token 行，避免显示 chrome 时突增 */
   deferredChromeSpacer: {
     height: 36,
     width: '100%'
@@ -215,10 +159,6 @@ export const chatBubbleStyles = StyleSheet.create({
     width: '100%',
     flexBasis: '100%'
   },
-  tokenText: {
-    fontSize: 11,
-    fontWeight: '500'
-  },
   actionOverlay: {
     flex: 1,
     backgroundColor: 'transparent',
@@ -231,6 +171,78 @@ export const chatBubbleStyles = StyleSheet.create({
     paddingBottom: 32,
     maxHeight: '60%'
   },
+  actionItem: {
+    paddingHorizontal: 24,
+    paddingVertical: 14
+  },
+  actionCancel: {
+    marginTop: 8,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    alignItems: 'center'
+  }
+})
+
+const chatBubbleTextStyles = StyleSheet.create({
+  nameLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    flexShrink: 0
+  },
+  timeLabel: {
+    fontSize: 10
+  },
+  nameLabelUser: {
+    textAlign: 'right'
+  },
+  nameLabelAssistant: {
+    textAlign: 'left'
+  },
+  bubbleNameLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 6,
+    alignSelf: 'stretch'
+  },
+  text: {
+    fontSize: 15,
+    lineHeight: 24,
+    textAlign: 'left',
+    flexShrink: 1
+  },
+  reasoningLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 4
+  },
+  reasoningText: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontStyle: 'italic'
+  },
+  editInput: {
+    width: '100%',
+    fontSize: 15,
+    lineHeight: 22,
+    minHeight: 72,
+    maxHeight: 260,
+    padding: 0
+  },
+  editBtnText: {
+    fontSize: 13,
+    fontWeight: '600'
+  },
+  comfortableEditBtnText: {
+    fontSize: 13
+  },
+  actionChipText: {
+    fontSize: 12,
+    fontWeight: '500'
+  },
+  tokenText: {
+    fontSize: 11,
+    fontWeight: '500'
+  },
   actionSheetTitle: {
     fontSize: 16,
     fontWeight: '700',
@@ -238,21 +250,16 @@ export const chatBubbleStyles = StyleSheet.create({
     marginBottom: 12,
     paddingHorizontal: 16
   },
-  actionItem: {
-    paddingHorizontal: 24,
-    paddingVertical: 14
-  },
   actionItemText: {
     fontSize: 16
-  },
-  actionCancel: {
-    marginTop: 8,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    alignItems: 'center'
   },
   actionCancelText: {
     fontSize: 16,
     fontWeight: '600'
   }
 })
+
+export const chatBubbleStyles = {
+  ...chatBubbleLayoutStyles,
+  ...chatBubbleTextStyles
+} as typeof chatBubbleLayoutStyles & typeof chatBubbleTextStyles

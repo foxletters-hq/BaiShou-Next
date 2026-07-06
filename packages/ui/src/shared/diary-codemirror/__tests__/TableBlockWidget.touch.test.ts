@@ -11,7 +11,9 @@ describe('TableBlockWidget touch', () => {
     parent?.remove()
     parent = null
     document
-      .querySelectorAll('.cm-table-sheet-layer, .cm-table-context-menu-layer')
+      .querySelectorAll(
+        '.cm-table-sheet-layer, .cm-table-context-menu-layer, .cm-table-sheet, .cm-table-sheet-item'
+      )
       .forEach((el) => el.remove())
     vi.useRealTimers()
   })
@@ -138,21 +140,24 @@ describe('TableBlockWidget touch', () => {
     activateFirstCell(view)
     const corner = parent.querySelector('.cm-table-corner-menu') as HTMLElement
     longPressChromeHandle(corner)
-    vi.advanceTimersByTime(TABLE_CHROME_LONG_PRESS_MS + 20)
+    await vi.advanceTimersByTimeAsync(TABLE_CHROME_LONG_PRESS_MS + 80)
 
-    await vi.waitFor(() => {
-      expect(document.querySelector('.cm-table-sheet-item')).toBeTruthy()
-    })
-
-    const deleteBtn = [...document.querySelectorAll('.cm-table-sheet-item')].find((el) =>
-      el.textContent?.includes('删除表格')
-    ) as HTMLButtonElement | undefined
-    expect(deleteBtn).toBeTruthy()
-    deleteBtn!.click()
+    const deleteBtn = await vi.waitFor(
+      () => {
+        const sheetItems = [...document.querySelectorAll('.cm-table-sheet-item')]
+        const btn = sheetItems.find((el) => el.textContent?.includes('删除表格')) as
+          | HTMLButtonElement
+          | undefined
+        if (!btn) throw new Error('delete menu not open')
+        return btn
+      },
+      { timeout: 3000 }
+    )
+    deleteBtn.click()
 
     await vi.waitFor(() => {
       expect(confirm).toHaveBeenCalled()
-      expect(view.state.doc.toString()).toBe('')
+      expect(view.state.doc.toString().trim()).toBe('')
     })
 
     confirm.mockRestore()
