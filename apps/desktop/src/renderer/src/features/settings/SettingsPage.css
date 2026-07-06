@@ -1,31 +1,27 @@
 /* =========================================================
-   SETTINGS PAGE - 1:1 FLUTTER CLONE + POPUP ANIMATION
+   SETTINGS PAGE
    ========================================================= */
 
-@keyframes settingsPopup {
-  0% {
+@keyframes settingsFadeIn {
+  from {
     opacity: 0;
-    transform: scale(0.97);
   }
-  100% {
+  to {
     opacity: 1;
-    transform: scale(1);
   }
 }
 
-@keyframes settingsClose {
-  0% {
+@keyframes settingsFadeOut {
+  from {
     opacity: 1;
-    transform: scale(1);
   }
-  100% {
+  to {
     opacity: 0;
-    transform: scale(0.97);
   }
 }
 
 .settings-page-wrapper {
-  position: absolute; /* Take over the whole screen area as a route */
+  position: absolute;
   top: 0;
   left: 0;
   width: 100%;
@@ -34,11 +30,15 @@
   display: flex;
   flex-direction: column;
   background-color: var(--bg-surface);
-  animation: settingsPopup 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  opacity: 1;
+}
+
+.settings-page-wrapper.is-entering {
+  animation: settingsFadeIn 0.2s ease-out forwards;
 }
 
 .settings-page-wrapper.settings-closing {
-  animation: settingsClose 0.15s cubic-bezier(0.8, 0, 0.8, 1) forwards;
+  animation: settingsFadeOut 0.15s ease-out forwards;
   pointer-events: none;
 }
 
@@ -96,6 +96,20 @@
 
 .settings-back-btn:hover {
   background-color: rgba(0, 0, 0, 0.08);
+}
+
+.settings-retry-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.settings-retry-btn:hover {
+  background-color: var(--bg-surface-normal);
 }
 
 .settings-title {
@@ -212,11 +226,9 @@
 @keyframes paneFadeIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
@@ -260,6 +272,98 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+}
+
+.settings-content-enter {
+  animation: paneFadeIn 0.2s ease-out;
+}
+
+.settings-config-loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  pointer-events: none;
+  animation: settingsFadeIn 0.2s ease-out;
+}
+
+.settings-config-loading-overlay--leaving {
+  animation: settingsFadeOut 0.2s ease-out forwards;
+}
+
+.settings-pane-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  transition: opacity 0.2s ease-out;
+  pointer-events: none;
+}
+
+.settings-pane-body--visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.settings-config-failed-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
+  pointer-events: auto;
+  animation: settingsFadeIn 0.2s ease-out;
+}
+
+.settings-config-loading-spinner {
+  color: var(--color-primary);
+  animation: settings-config-spin 0.85s linear infinite;
+}
+
+.settings-config-loading-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.settings-config-failed-text {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-on-surface-variant);
+}
+
+@keyframes settings-config-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.settings-retry-btn {
+  padding: 6px 14px;
+  font-size: 13px;
+  border-radius: 6px;
+  border: 1px solid var(--color-outline-variant);
+  background: var(--bg-surface);
+  color: var(--color-on-surface);
+  cursor: pointer;
+}
+
+.settings-retry-btn:hover {
+  background: var(--color-surface-container-high);
 }
 
 /* Glass panel equivalent to Flutter cards (Card with elevation 0 or 1) */
