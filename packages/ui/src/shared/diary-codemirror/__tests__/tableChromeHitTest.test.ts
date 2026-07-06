@@ -37,4 +37,17 @@ describe('tableChromeHitTest', () => {
 
     expect(isInteractableChromeElement(btn)).toBe(true)
   })
+
+  it('treats col-selected touch chrome as interactable', () => {
+    const block = document.createElement('div')
+    block.className = 'cm-table-block cm-table-block--touch cm-table-block--col-selected'
+    const btn = document.createElement('div')
+    btn.className = 'cm-table-handle cm-table-col-handle'
+    btn.style.width = '24px'
+    btn.style.height = '24px'
+    block.appendChild(btn)
+    parent.appendChild(block)
+
+    expect(isInteractableChromeElement(btn)).toBe(true)
+  })
 })

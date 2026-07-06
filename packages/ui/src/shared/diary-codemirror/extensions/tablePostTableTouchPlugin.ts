@@ -3,21 +3,29 @@ import { EditorView, ViewPlugin } from '@codemirror/view'
 import { isTableChromeTouchTarget } from '../table/tableContextMenu'
 import { isInteractableChromeElement } from '../table/tableChromeHitTest'
 import { logDiaryBridge } from '../diaryBridgeDebug'
+import { logTouchSelectionProbe } from './touchSelectionDebug'
 import { logTableDesktop } from '../table/tableDesktopDebug'
 import { shouldBlockEditorTouchForTableSheet } from '../table/tableSheetInteraction'
 import { clearTableChromeSelection } from '../table/tableChromeSelection'
 import { activeTableCellField, setActiveTableCell } from '../table/tableActiveCell'
 import {
-  findTableBlockAbovePoint,
   placeEditorCaretFromPointer
 } from '../table/tableEditorTouchCaret'
+import {
+  hasEditorDomTextSelection,
+  isChromeTouchBlocked as isChromeTouchBlockedPolicy,
+  shouldExplicitCaretPlacement,
+  shouldPlaceCaretOnTapEnd
+} from './tablePostTableTouchPolicy'
 import type { DiaryCmPlatform } from '../types'
 
 const TAP_MOVE_THRESHOLD_PX = 10
 const CLICK_SUPPRESS_MS = 400
+/** 超过此时长的触摸视为长按选词，不在 touchend 强行落光标 */
+const LONG_PRESS_GUARD_MS = 480
 
 interface TouchCaretState {
-  touchStart: { x: number; y: number } | null
+  touchStart: { x: number; y: number; at: number } | null
   suppressClickUntil: number
   placedOnTouchStart: boolean
 }
@@ -41,7 +49,41 @@ function noteTouchStart(view: EditorView, event: TouchEvent): void {
     state.touchStart = null
     return
   }
-  state.touchStart = { x: touch.clientX, y: touch.clientY }
+  state.touchStart = { x: touch.clientX, y: touch.clientY, at: Date.now() }
+}
+
+function touchDurationMs(view: EditorView): number {
+  const startedAt = getTouchCaretState(view).touchStart?.at
+  if (startedAt == null) return 0
+  return Date.now() - startedAt
+}
+
+function isLongPressGesture(view: EditorView): boolean {
+  return touchDurationMs(view) >= LONG_PRESS_GUARD_MS
+}
+
+function isChromeTouchBlocked(target: Element): boolean {
+  return isChromeTouchBlockedPolicy(
+    target,
+    isTableChromeTouchTarget,
+    isInteractableChromeElement
+  )
+}
+
+function shouldSkipTapCaretPlacement(view: EditorView): boolean {
+  if (!view.state.selection.main.empty) return true
+  if (hasEditorDomTextSelection(view)) return true
+  return false
+}
+
+function shouldPlaceCaretOnTouchStart(
+  view: EditorView,
+  target: Element,
+  _clientX: number,
+  clientY: number
+): boolean {
+  if (isChromeTouchBlocked(target)) return false
+  return shouldExplicitCaretPlacement(view, target, clientY)
 }
 
 function touchMoved(view: EditorView, event: TouchEvent): boolean {
@@ -52,28 +94,6 @@ function touchMoved(view: EditorView, event: TouchEvent): boolean {
     Math.hypot(end.clientX - state.touchStart.x, end.clientY - state.touchStart.y) >=
     TAP_MOVE_THRESHOLD_PX
   )
-}
-
-function shouldPlaceCaretFromTouch(
-  view: EditorView,
-  target: Element,
-  clientX: number,
-  clientY: number
-): boolean {
-  if (target.closest('.cm-table-context-menu-layer, .cm-table-sheet-layer')) return false
-  if (target.closest('.cm-table-cell-source')) return false
-  if (target.closest('.cm-table-handle, .cm-table-corner-menu, .cm-table-add-btn')) {
-    return false
-  }
-
-  const chrome = isTableChromeTouchTarget(target)
-  if (chrome && isInteractableChromeElement(chrome)) return false
-
-  if (target.closest('.cm-content')) return true
-  if (target.closest('.cm-table-block')) {
-    return findTableBlockAbovePoint(view, clientY) != null
-  }
-  return findTableBlockAbovePoint(view, clientY) != null
 }
 
 function placeCaretAndClearTableChrome(
@@ -120,7 +140,7 @@ export function tablePostTableTouchPlugin(platform?: DiaryCmPlatform): Extension
           if (!touch) return false
           const target = event.target
           if (!(target instanceof Element)) return false
-          const should = shouldPlaceCaretFromTouch(view, target, touch.clientX, touch.clientY)
+          const should = shouldPlaceCaretOnTouchStart(view, target, touch.clientX, touch.clientY)
           logDiaryBridge('tableTouch', 'touchstart', {
             shouldPlace: should,
             targetClass: target.className?.slice?.(0, 40) ?? '',
@@ -147,24 +167,63 @@ export function tablePostTableTouchPlugin(platform?: DiaryCmPlatform): Extension
           return false
         },
         touchend(event, view) {
+          const touch = event.changedTouches[0]
+          const touchMeta = touch
+            ? {
+                clientX: touch.clientX,
+                clientY: touch.clientY,
+                durationMs: touchDurationMs(view)
+              }
+            : undefined
+
           if (shouldBlockEditorTouchForTableSheet()) return false
-          if (touchMoved(view, event)) return false
+          if (touchMoved(view, event)) {
+            if (touchMeta) {
+              logTouchSelectionProbe(view, 'touchend-skip:moved', touchMeta)
+            }
+            return false
+          }
 
           const state = getTouchCaretState(view)
           if (state.placedOnTouchStart) {
             state.placedOnTouchStart = false
             state.suppressClickUntil = Date.now() + CLICK_SUPPRESS_MS
+            if (touchMeta) {
+              logTouchSelectionProbe(view, 'touchend-skip:placed-on-touchstart', touchMeta)
+            }
             return false
           }
 
-          const touch = event.changedTouches[0]
+          if (isLongPressGesture(view)) {
+            if (touchMeta) {
+              logTouchSelectionProbe(view, 'touchend-skip:long-press', touchMeta)
+            }
+            return false
+          }
+
+          if (shouldSkipTapCaretPlacement(view)) {
+            if (touchMeta) {
+              logTouchSelectionProbe(view, 'touchend-skip:has-selection', touchMeta)
+            }
+            return false
+          }
+
           if (!touch) return false
           const target = event.target
           if (!(target instanceof Element)) return false
-          if (!shouldPlaceCaretFromTouch(view, target, touch.clientX, touch.clientY)) {
+          if (
+            !shouldPlaceCaretOnTapEnd(view, target, touch.clientY, isTouch) ||
+            isChromeTouchBlocked(target)
+          ) {
+            if (touchMeta) {
+              logTouchSelectionProbe(view, 'touchend-skip:not-tap-target', touchMeta)
+            }
             return false
           }
 
+          if (touchMeta) {
+            logTouchSelectionProbe(view, 'touchend-will-place-caret', touchMeta)
+          }
           placeCaretAndClearTableChrome(view, touch.clientX, touch.clientY, 'touchend', target)
           state.suppressClickUntil = Date.now() + CLICK_SUPPRESS_MS
           return false
@@ -173,9 +232,15 @@ export function tablePostTableTouchPlugin(platform?: DiaryCmPlatform): Extension
           if (isTouch && Date.now() < getTouchCaretState(view).suppressClickUntil) {
             return false
           }
+          if (shouldSkipTapCaretPlacement(view)) {
+            return false
+          }
           const target = event.target
           if (!(target instanceof Element)) return false
-          if (!shouldPlaceCaretFromTouch(view, target, event.clientX, event.clientY)) {
+          if (
+            !shouldPlaceCaretOnTapEnd(view, target, event.clientY, isTouch) ||
+            isChromeTouchBlocked(target)
+          ) {
             return false
           }
 
@@ -194,7 +259,10 @@ export function tablePostTableTouchPlugin(platform?: DiaryCmPlatform): Extension
           if (!(target instanceof Element)) return false
           // 表格 widget 内点击全部由 TableBlockWidget 处理
           if (target.closest('.cm-table-block')) return false
-          if (!shouldPlaceCaretFromTouch(view, target, event.clientX, event.clientY)) {
+          if (
+            !shouldPlaceCaretOnTapEnd(view, target, event.clientY, false) ||
+            isChromeTouchBlocked(target)
+          ) {
             return false
           }
           logTableDesktop('post-table:pointerdown', {

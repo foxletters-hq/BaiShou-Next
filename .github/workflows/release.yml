@@ -196,6 +196,9 @@ jobs:
       - name: Sync generated assets
         run: pnpm sync
 
+      - name: Build diary-editor WebView bundle
+        run: pnpm --filter @baishou/mobile run build:diary-editor
+
       - name: Prepare Android signing
         run: |
           mkdir -p apps/mobile/android/app

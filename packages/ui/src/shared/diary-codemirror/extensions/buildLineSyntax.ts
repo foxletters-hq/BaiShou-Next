@@ -20,12 +20,24 @@ function pushDecoration(
   if (from < to) marks.push(value.range(from, to))
 }
 
+function selectionIntersectsRange(
+  state: EditorState,
+  from: number,
+  to: number
+): boolean {
+  for (const range of state.selection.ranges) {
+    if (range.from < to && range.to > from) return true
+  }
+  return false
+}
+
 function hideDelimiterRuns(
   marks: DecorationMark[],
   lineFrom: number,
   text: string,
   re: RegExp,
-  delimiterGroup: number
+  delimiterGroup: number,
+  state: EditorState
 ): void {
   re.lastIndex = 0
   let match = re.exec(text)
@@ -34,21 +46,26 @@ function hideDelimiterRuns(
     const inner = match[delimiterGroup] ?? ''
     const openLen = full.indexOf(inner)
     const closeLen = full.length - openLen - inner.length
-    if (openLen > 0) {
-      pushDecoration(
-        marks,
-        hideSyntaxReplace,
-        lineFrom + match.index,
-        lineFrom + match.index + openLen
-      )
-    }
-    if (closeLen > 0) {
-      pushDecoration(
-        marks,
-        hideSyntaxReplace,
-        lineFrom + match.index + openLen + inner.length,
-        lineFrom + match.index + full.length
-      )
+    const runFrom = lineFrom + match.index
+    const runTo = lineFrom + match.index + full.length
+
+    if (!selectionIntersectsRange(state, runFrom, runTo)) {
+      if (openLen > 0) {
+        pushDecoration(
+          marks,
+          hideSyntaxReplace,
+          lineFrom + match.index,
+          lineFrom + match.index + openLen
+        )
+      }
+      if (closeLen > 0) {
+        pushDecoration(
+          marks,
+          hideSyntaxReplace,
+          lineFrom + match.index + openLen + inner.length,
+          lineFrom + match.index + full.length
+        )
+      }
     }
     match = re.exec(text)
   }
@@ -66,25 +83,26 @@ export function collectLineSyntaxDecorations(
   const doc = state.doc
 
   for (let lineNum = 1; lineNum <= doc.lines; lineNum += 1) {
-    if (activeLines.has(lineNum)) continue
-
     const line = doc.line(lineNum)
     const text = line.text
+    const isActiveLine = activeLines.has(lineNum)
 
     const heading = text.match(ATX_HEADING_PREFIX_RE)
     if (heading) {
-      pushDecoration(marks, hideSyntaxReplace, line.from, line.from + heading[0].length)
+      if (!isActiveLine) {
+        pushDecoration(marks, hideSyntaxReplace, line.from, line.from + heading[0].length)
+      }
       continue
     }
 
     const quote = text.match(BLOCKQUOTE_PREFIX_RE)
-    if (quote) {
+    if (quote && !isActiveLine) {
       pushDecoration(marks, hideSyntaxReplace, line.from, line.from + quote[0].length)
     }
 
-    hideDelimiterRuns(marks, line.from, text, STRONG_WRAPPER_RE, 1)
-    hideDelimiterRuns(marks, line.from, text, STRIKETHROUGH_WRAPPER_RE, 1)
-    hideDelimiterRuns(marks, line.from, text, INLINE_CODE_WRAPPER_RE, 1)
-    hideDelimiterRuns(marks, line.from, text, EMPHASIS_WRAPPER_RE, 1)
+    hideDelimiterRuns(marks, line.from, text, STRONG_WRAPPER_RE, 1, state)
+    hideDelimiterRuns(marks, line.from, text, STRIKETHROUGH_WRAPPER_RE, 1, state)
+    hideDelimiterRuns(marks, line.from, text, INLINE_CODE_WRAPPER_RE, 1, state)
+    hideDelimiterRuns(marks, line.from, text, EMPHASIS_WRAPPER_RE, 1, state)
   }
 }

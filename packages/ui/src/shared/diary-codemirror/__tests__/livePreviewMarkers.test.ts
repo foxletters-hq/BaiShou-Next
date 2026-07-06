@@ -81,6 +81,23 @@ describe('live preview marker hiding', () => {
     expect(parent.querySelectorAll('.cm-syntax-hidden-widget').length).toBeGreaterThan(0)
   })
 
+  it('hides ** on same line when cursor is outside emphasis', () => {
+    const content = '明天**继续**前进'
+    const cursor = content.indexOf('前')
+    const v = mount(content, cursor)
+    focusEditor(v)
+    expect(parent.querySelectorAll('.cm-syntax-hidden-widget').length).toBeGreaterThanOrEqual(2)
+    expect(parent.textContent).not.toMatch(/\*\*继续\*\*/)
+  })
+
+  it('shows ** when cursor is inside emphasis', () => {
+    const content = '明天**继续**前进'
+    const cursor = content.indexOf('继')
+    const v = mount(content, cursor)
+    focusEditor(v)
+    expect(v.state.doc.toString()).toContain('**继续**')
+  })
+
   it('renders fenced code with gray line background when cursor is outside', () => {
     const content = '```\n你好\n```\n\nafter'
     const v = mount(content, content.length)

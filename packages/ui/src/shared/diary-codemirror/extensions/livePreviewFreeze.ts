@@ -4,6 +4,8 @@ import { editorFocusEffect } from './editorFocus'
 import { findFencedCodeBlockContaining } from './fencedCodeScan'
 
 const FREEZE_TAIL_MS = 100
+/** 选区未折叠时延长冻结，避免 touchend 后立刻重建装饰导致高亮跳变 */
+const SELECTION_FREEZE_TAIL_MS = 320
 
 export const setPreviewFrozen = StateEffect.define<boolean>()
 
@@ -26,17 +28,23 @@ export function livePreviewFreezePlugin(): Extension {
 
       constructor(private readonly view: EditorView) {
         this.view.contentDOM.addEventListener('pointerdown', this.onDown, true)
+        this.view.contentDOM.addEventListener('touchstart', this.onDown, { capture: true, passive: true })
         window.addEventListener('pointerup', this.onUp)
+        window.addEventListener('touchend', this.onUp, { passive: true })
+        window.addEventListener('touchcancel', this.onUp, { passive: true })
       }
 
       destroy(): void {
         this.view.contentDOM.removeEventListener('pointerdown', this.onDown, true)
+        this.view.contentDOM.removeEventListener('touchstart', this.onDown, true)
         window.removeEventListener('pointerup', this.onUp)
+        window.removeEventListener('touchend', this.onUp)
+        window.removeEventListener('touchcancel', this.onUp)
         if (this.releaseTimer != null) clearTimeout(this.releaseTimer)
       }
 
-      private readonly onDown = (event: PointerEvent): void => {
-        if (event.button !== 0) return
+      private readonly onDown = (event: PointerEvent | TouchEvent): void => {
+        if (event instanceof PointerEvent && event.button !== 0) return
         const target = event.target
         if (!(target instanceof Node) || !this.view.contentDOM.contains(target)) return
         if (target instanceof Element && target.closest('.cm-code-line, .cm-table-block')) return
@@ -70,6 +78,10 @@ export function livePreviewFreezePlugin(): Extension {
 
         const head = this.view.state.selection.main.head
         const inFenced = findFencedCodeBlockContaining(this.view.state.doc, head) != null
+        const tailMs =
+          !this.view.state.selection.main.empty && !inFenced
+            ? SELECTION_FREEZE_TAIL_MS
+            : FREEZE_TAIL_MS
         if (inFenced) {
           release()
           return
@@ -78,7 +90,7 @@ export function livePreviewFreezePlugin(): Extension {
         this.releaseTimer = setTimeout(() => {
           this.releaseTimer = null
           release()
-        }, FREEZE_TAIL_MS)
+        }, tailMs)
       }
     }
   )
