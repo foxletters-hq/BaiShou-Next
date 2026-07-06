@@ -1,8 +1,9 @@
 import React, { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { useSettingsStore } from '@baishou/store'
 import { SettingsContentView } from './SettingsContentView'
 import { getSettingsRouteSegment, SETTINGS_HUB_PREFIX } from './settings-route.util'
+import { useRagRuntimeBridge } from './hooks/useRagRuntimeBridge'
+import { useSettingsRouteActive } from './hooks/useSettingsRouteActive'
 import './SettingsPage.css'
 import styles from './SettingsHubPage.module.css'
 
@@ -10,16 +11,11 @@ import styles from './SettingsHubPage.module.css'
 export const SettingsHubPage: React.FC = () => {
   const location = useLocation()
   const navigate = useNavigate()
-  const settings = useSettingsStore()
-  const loadConfig = useSettingsStore((s) => s.loadConfig)
   const contentKey = getSettingsRouteSegment(location.pathname)
 
-  useEffect(() => {
-    const frameId = requestAnimationFrame(() => {
-      void loadConfig()
-    })
-    return () => cancelAnimationFrame(frameId)
-  }, [loadConfig])
+  const settingsRouteActive = useSettingsRouteActive()
+
+  useRagRuntimeBridge(settingsRouteActive)
 
   useEffect(() => {
     if (location.pathname === SETTINGS_HUB_PREFIX) {
@@ -30,12 +26,7 @@ export const SettingsHubPage: React.FC = () => {
   return (
     <div className={styles.hubPage}>
       <div className={styles.hubContent}>
-        <SettingsContentView
-          key={contentKey}
-          pathname={location.pathname}
-          settings={settings}
-          motionKey={contentKey}
-        />
+        <SettingsContentView pathname={location.pathname} motionKey={contentKey} />
       </div>
     </div>
   )

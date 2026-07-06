@@ -24,6 +24,7 @@ import {
 } from './sidebar-nav-catalog'
 import { SidebarManageModal } from './SidebarManageModal'
 import { rememberSettingsReturnPath } from '../../features/settings/settings-navigation.util'
+import { prefetchSettingsEntry } from '../../lib/prefetch-settings-entry'
 import { isSettingsOverlayPath } from '../../features/settings/settings-route.util'
 
 export const Sidebar: React.FC = () => {
@@ -216,6 +217,8 @@ export const Sidebar: React.FC = () => {
             </div>
             <div
               className={`${styles.navItem} ${isInSettings ? styles.selected : ''}`}
+              onMouseEnter={prefetchSettingsEntry}
+              onFocus={prefetchSettingsEntry}
               onClick={() => {
                 setManageModalOpen(false)
                 rememberSettingsReturnPath(location.pathname)

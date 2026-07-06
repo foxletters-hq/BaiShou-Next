@@ -13,7 +13,10 @@ import { MainPageCacheActiveContext } from './main-page-cache.context'
 
 export { MainPageCacheActiveContext } from './main-page-cache.context'
 
-/** 侧边栏主页面：切换时保持挂载，避免重复加载数据 */
+/** 离开路由后仍保持挂载，便于日记 ↔ 伙伴快速切换 */
+const PERSISTENT_MAIN_PAGE_KEYS = new Set(['/diary', '/chat'])
+
+/** 侧边栏主页面：日记/伙伴保活；设置、总结等离开即卸载 */
 
 export const MAIN_PAGE_CACHE: Record<string, React.ComponentType> = {
   '/diary': DiaryPage,
@@ -93,8 +96,12 @@ export const MainPageCache: React.FC<{
   useEffect(() => {
     if (!activeKey) return
     setMountedKeys((prev) => {
-      if (prev.has(activeKey)) return prev
-      const next = new Set(prev)
+      const next = new Set<string>()
+      for (const key of prev) {
+        if (PERSISTENT_MAIN_PAGE_KEYS.has(key)) {
+          next.add(key)
+        }
+      }
       next.add(activeKey)
       return next
     })

@@ -17,6 +17,7 @@ function parseFrozenChatLocation(pathWithSearch: string): Pick<Location, 'pathna
 
 /**
  * 伙伴聊天页保活壳：离开 /chat 时冻结路由位置，避免卸载 AgentLayout 及其子状态。
+ * （/chat 在 MainPageCache 中与日记同为持久保活页）
  */
 export const AgentChatCachedPage: React.FC = () => {
   const location = useLocation()

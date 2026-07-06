@@ -1,5 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import { useSettingsStore } from '@baishou/store'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   Archive,
@@ -28,6 +27,7 @@ import { getSettingsRouteSegment, settingsPathForScope } from './settings-route.
 import { resolveSettingsReturnPath } from './settings-navigation.util'
 import { pathnameToSettingsTabId, SETTINGS_TAB_SEGMENTS } from './settings-tabs.util'
 import { useRagRuntimeBridge } from './hooks/useRagRuntimeBridge'
+import { useSettingsRouteActive } from './hooks/useSettingsRouteActive'
 
 const NAV_ICON_SIZE = 18
 
@@ -35,16 +35,39 @@ type SettingsTabItem =
   | { kind: 'divider' }
   | { kind: 'item'; id: number; label: string; icon: React.ReactNode }
 
+const SETTINGS_FADE_IN_MS = 200
+const SETTINGS_FADE_OUT_MS = 150
+
 /** 全屏 overlay 设置（伙伴区等入口）：自带设置侧栏 + 内容区 */
 export const SettingsShell: React.FC = () => {
   const { t } = useTranslation()
-  const settings = useSettingsStore()
-  const loadConfig = useSettingsStore((s) => s.loadConfig)
   const navigate = useNavigate()
   const location = useLocation()
   const [isClosing, setIsClosing] = useState(false)
+  const [isEntering, setIsEntering] = useState(false)
+  const settingsRouteActive = useSettingsRouteActive()
+  const prevSettingsRouteActiveRef = useRef(settingsRouteActive)
   const activeTab = pathnameToSettingsTabId(location.pathname)
-  useRagRuntimeBridge()
+  const contentKey = getSettingsRouteSegment(location.pathname)
+
+  useRagRuntimeBridge(settingsRouteActive)
+
+  useEffect(() => {
+    const opened = settingsRouteActive && !prevSettingsRouteActiveRef.current
+    prevSettingsRouteActiveRef.current = settingsRouteActive
+
+    if (!settingsRouteActive) {
+      setIsClosing(false)
+      setIsEntering(false)
+      return
+    }
+
+    if (!opened) return
+
+    setIsEntering(true)
+    const timer = window.setTimeout(() => setIsEntering(false), SETTINGS_FADE_IN_MS)
+    return () => window.clearTimeout(timer)
+  }, [settingsRouteActive])
 
   const TABS = useMemo<SettingsTabItem[]>(
     () => [
@@ -159,13 +182,6 @@ export const SettingsShell: React.FC = () => {
   )
 
   useEffect(() => {
-    const frameId = requestAnimationFrame(() => {
-      void loadConfig()
-    })
-    return () => cancelAnimationFrame(frameId)
-  }, [loadConfig])
-
-  useEffect(() => {
     if (location.pathname === '/settings') {
       navigate('/settings/general', { replace: true })
     }
@@ -184,14 +200,15 @@ export const SettingsShell: React.FC = () => {
     const returnTo = resolveSettingsReturnPath()
     setIsClosing(true)
     window.setTimeout(() => {
+      setIsClosing(false)
       navigate(returnTo, { replace: true })
-    }, 150)
+    }, SETTINGS_FADE_OUT_MS)
   }
 
-  const contentKey = getSettingsRouteSegment(location.pathname)
-
   return (
-    <div className={`settings-page-wrapper ${isClosing ? 'settings-closing' : ''}`}>
+    <div
+      className={`settings-page-wrapper ${isEntering ? 'is-entering' : ''} ${isClosing ? 'settings-closing' : ''}`}
+    >
       <div className="settings-layout-body">
         <div className="settings-sidebar">
           <div className="settings-header">
@@ -228,12 +245,7 @@ export const SettingsShell: React.FC = () => {
         </div>
 
         <div className="settings-content-area" style={{ position: 'relative', overflow: 'hidden' }}>
-          <SettingsContentView
-            key={contentKey}
-            pathname={location.pathname}
-            settings={settings}
-            motionKey={contentKey}
-          />
+          <SettingsContentView pathname={location.pathname} motionKey={contentKey} />
         </div>
       </div>
     </div>

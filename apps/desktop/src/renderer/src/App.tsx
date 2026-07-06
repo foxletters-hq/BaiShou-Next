@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { HashRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import { MainLayout } from './layouts/MainLayout'
 import { CachedRoutePlaceholder } from './layouts/MainPageCache'
@@ -29,7 +29,9 @@ import {
 import {
   initDesktopVaultScope,
   refreshDesktopVaultScopeAfterStorageRootChange,
-  setDesktopVaultScopeKey
+  setDesktopVaultScopeKey,
+  getDesktopVaultScopeRevision,
+  subscribeDesktopVaultScope
 } from './cache/desktop-vault-scope'
 import type { DomainMutationEvent } from '@baishou/shared/cache'
 import { i18n, isRagMemoryEnabled } from '@baishou/shared'
@@ -40,10 +42,6 @@ import { useZoom } from './hooks/useZoom'
 import { useLegacyUpgradeRagToast } from './hooks/useLegacyUpgradeRagToast'
 import { DesktopLegacyMigrationPrompt } from './components/DesktopLegacyMigrationPrompt'
 import shellStyles from './AppShell.module.css'
-
-const SettingsPage = lazy(() =>
-  import('./features/settings/SettingsPage').then((m) => ({ default: m.SettingsPage }))
-)
 
 const GlobalErrorHandler = () => {
   const toast = useToast()
@@ -127,6 +125,7 @@ const DiaryEmbedFailureNotifier = () => {
 
 import { ErrorBoundary } from './ErrorBoundary'
 import { DesktopSettingsOverlayContext } from './layouts/desktop-settings-overlay.context'
+import { SettingsOverlayHost } from './layouts/SettingsOverlayHost'
 
 const AppRoutes = () => {
   const location = useLocation()
@@ -138,6 +137,28 @@ const AppRoutes = () => {
     return location
   })
   const isSettings = location.pathname.startsWith('/settings')
+  const [settingsLocation, setSettingsLocation] = useState(location)
+  const [settingsOverlayEpoch, setSettingsOverlayEpoch] = useState(0)
+  const vaultScopeRevision = useSyncExternalStore(
+    subscribeDesktopVaultScope,
+    getDesktopVaultScopeRevision
+  )
+  const prevVaultScopeRevisionRef = useRef(vaultScopeRevision)
+
+  useEffect(() => {
+    if (prevVaultScopeRevisionRef.current === vaultScopeRevision) return
+    prevVaultScopeRevisionRef.current = vaultScopeRevision
+    if (vaultScopeRevision === 0) return
+
+    useSettingsStore.getState().resetSettingsConfigCache()
+    setSettingsOverlayEpoch((epoch) => epoch + 1)
+  }, [vaultScopeRevision])
+
+  useEffect(() => {
+    if (isSettings) {
+      setSettingsLocation(location)
+    }
+  }, [isSettings, location])
 
   // 路由变化时关闭所有弹窗
   useEffect(() => {
@@ -153,6 +174,7 @@ const AppRoutes = () => {
   }, [location])
 
   const mainRoutesLocation = isSettings ? backgroundLocation : location
+  const mountSettingsHost = !location.pathname.startsWith('/welcome')
 
   return (
     <DesktopSettingsOverlayContext.Provider value={isSettings}>
@@ -185,19 +207,13 @@ const AppRoutes = () => {
         </Route>
       </Routes>
 
-      {/* Settings Rendered as an Overlay to avoid unmounting MainLayout */}
-      {isSettings && (
-        <Routes>
-          <Route
-            path="/settings/*"
-            element={
-              <Suspense fallback={null}>
-                <SettingsPage />
-              </Suspense>
-            }
-          />
-        </Routes>
-      )}
+      {mountSettingsHost ? (
+        <SettingsOverlayHost
+          visible={isSettings}
+          settingsLocation={settingsLocation}
+          remountKey={settingsOverlayEpoch}
+        />
+      ) : null}
     </DesktopSettingsOverlayContext.Provider>
   )
 }
@@ -220,6 +236,23 @@ export function App() {
   useZoom()
   const locale = useSettingsStore((s) => s.locale)
   const [archiveImporting, setArchiveImporting] = useState(false)
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    void import('./dev/memory-leak-probe').then((m) => m.installMemoryLeakProbe())
+  }, [])
+
+  useEffect(() => {
+    const warmSettings = () => {
+      void import('./features/settings/SettingsPage')
+    }
+    if (typeof requestIdleCallback === 'function') {
+      const idleId = requestIdleCallback(warmSettings, { timeout: 4000 })
+      return () => cancelIdleCallback(idleId)
+    }
+    const timer = window.setTimeout(warmSettings, 1500)
+    return () => window.clearTimeout(timer)
+  }, [])
 
   useEffect(() => {
     initDesktopRendererCacheCoordinator()
