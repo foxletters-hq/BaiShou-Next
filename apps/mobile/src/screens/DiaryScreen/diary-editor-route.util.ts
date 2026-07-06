@@ -1,6 +1,6 @@
 import type { NavigationProp, ParamListBase } from '@react-navigation/native'
 
-type AnyNavigation = NavigationProp<ParamListBase> | Omit<NavigationProp<ParamListBase>, 'getState'>
+type AnyNavigation = Pick<NavigationProp<ParamListBase>, 'getState' | 'getParent'>
 
 /** 导航栈中是否仍挂着 diary-editor 模态 */
 export function isDiaryEditorRouteActive(navigation: AnyNavigation): boolean {

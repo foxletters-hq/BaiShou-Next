@@ -1,5 +1,5 @@
 import type { DiaryListSavedPatch } from '@baishou/shared/cache'
-import type { DiaryListEntryData } from '../hooks/useDiaryData'
+import type { DiaryListEntryData } from './hooks/useDiaryData'
 
 export function applyDiaryListSavedPatch(
   entries: DiaryListEntryData[],
