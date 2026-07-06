@@ -1,5 +1,7 @@
 export * from './stores/agent-navigation.store'
 export * from './stores/settings.store'
+export * from './hooks/use-settings-pane-api'
+export * from './settings-config.loader'
 export * from './stores/agent.store'
 export * from './stores/assistant.store'
 export * from './stores/session.store'

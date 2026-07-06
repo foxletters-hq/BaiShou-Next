@@ -4,21 +4,216 @@ import {
   i18n,
   resolveSummaryPromptLocale,
   resolveAppUiLanguageFromSystemLocale,
-  AUTO_INJECT_TIME_TOOL_ID,
-  normalizeEmojiToolConfig
+  type AIProviderConfig,
+  type GlobalModelsConfig,
+  type AgentBehaviorConfig,
+  type RagConfig,
+  type WebSearchConfig,
+  type SummaryConfig,
+  type ToolManagementConfig,
+  type McpServerConfig,
+  type HotkeyConfig
 } from '@baishou/shared'
 import { useAssistantStore } from './assistant.store'
-import type {
-  AIProviderConfig,
-  GlobalModelsConfig,
-  AgentBehaviorConfig,
-  RagConfig,
-  WebSearchConfig,
-  SummaryConfig,
-  ToolManagementConfig,
-  McpServerConfig,
-  HotkeyConfig
-} from '@baishou/shared'
+import {
+  ALL_SETTINGS_CONFIG_KEYS,
+  fetchSettingsConfigKey,
+  getConfigKeysForSegment,
+  normalizeSettingsConfigKey,
+  segmentNeedsConfigLoading,
+  segmentHasConfigFailure,
+  type SettingsConfigKey,
+  type SettingsConfigSnapshot
+} from '../settings-config.loader'
+
+type SettingsStore = SettingsState & SettingsActions
+
+const configLoadPromises = new Map<string, Promise<void>>()
+
+let deferredWarmupGeneration = 0
+let deferredWarmupTimer: ReturnType<typeof setTimeout> | null = null
+
+const DEFERRED_WARMUP_DELAY_MS = 2500
+
+function dedupeConfigLoad(batchKey: string, run: () => Promise<void>): Promise<void> {
+  const existing = configLoadPromises.get(batchKey)
+  if (existing) return existing
+  const promise = run().finally(() => {
+    configLoadPromises.delete(batchKey)
+  })
+  configLoadPromises.set(batchKey, promise)
+  return promise
+}
+
+async function loadSingleConfigKey(
+  key: SettingsConfigKey,
+  get: () => SettingsStore,
+  set: (
+    partial:
+      | Partial<SettingsStore>
+      | ((state: SettingsStore) => Partial<SettingsStore>)
+  ) => void,
+  options?: { trackGlobalLoading?: boolean }
+): Promise<void> {
+  return dedupeConfigLoad(key, async () => {
+    const settingsApi = getSettingsApi()
+    if (!settingsApi) return
+    if (get().loadedConfigKeys.includes(key)) return
+
+    const shouldTrackGlobalLoading =
+      options?.trackGlobalLoading === true && !get().configHydrated
+
+    set((state) => ({
+      loadingConfigKeys: state.loadingConfigKeys.includes(key)
+        ? state.loadingConfigKeys
+        : [...state.loadingConfigKeys, key],
+      ...(shouldTrackGlobalLoading ? { isLoading: true } : {})
+    }))
+
+    try {
+      const patch = await fetchSettingsConfigKey(key, settingsApi)
+      set((state) => {
+        const mergedLoaded = [...new Set([...state.loadedConfigKeys, key])]
+        const allLoaded = ALL_SETTINGS_CONFIG_KEYS.every((configKey) =>
+          mergedLoaded.includes(configKey)
+        )
+        return {
+          ...patch,
+          loadedConfigKeys: mergedLoaded,
+          loadingConfigKeys: state.loadingConfigKeys.filter((loadingKey) => loadingKey !== key),
+          failedConfigKeys: state.failedConfigKeys.filter((failedKey) => failedKey !== key),
+          configHydrated: allLoaded || state.configHydrated,
+          ...(shouldTrackGlobalLoading && allLoaded ? { isLoading: false } : {})
+        }
+      })
+    } catch (e) {
+      console.error('[SettingsStore] Failed to load config from IPC', e)
+      set((state) => ({
+        loadingConfigKeys: state.loadingConfigKeys.filter((loadingKey) => loadingKey !== key),
+        failedConfigKeys: [...new Set([...state.failedConfigKeys, key])],
+        ...(shouldTrackGlobalLoading ? { isLoading: false } : {})
+      }))
+    }
+  })
+}
+
+async function hydrateConfigSnapshot(
+  keys: SettingsConfigKey[],
+  get: () => SettingsStore,
+  set: (
+    partial:
+      | Partial<SettingsStore>
+      | ((state: SettingsStore) => Partial<SettingsStore>)
+  ) => void
+): Promise<void> {
+  const settingsApi = getSettingsApi()
+  if (!settingsApi) return
+
+  const missing = [...new Set(keys)].filter((key) => !get().loadedConfigKeys.includes(key))
+  if (missing.length === 0) return
+
+  return dedupeConfigLoad(`snapshot:${missing.join(',')}`, async () => {
+    set((state) => ({
+      loadingConfigKeys: [...new Set([...state.loadingConfigKeys, ...missing])]
+    }))
+
+    try {
+      if (typeof settingsApi.getConfigSnapshot === 'function') {
+        const snapshot: SettingsConfigSnapshot = (await settingsApi.getConfigSnapshot(missing)) ?? {}
+        const loadedKeys: SettingsConfigKey[] = []
+        const failedKeys: SettingsConfigKey[] = []
+        let mergedPatch: Partial<SettingsStore> = {}
+
+        for (const key of missing) {
+          if (snapshot[key] === undefined) {
+            failedKeys.push(key)
+            continue
+          }
+          mergedPatch = { ...mergedPatch, ...normalizeSettingsConfigKey(key, snapshot[key]) }
+          loadedKeys.push(key)
+        }
+
+        set((state) => {
+          const mergedLoaded = [...new Set([...state.loadedConfigKeys, ...loadedKeys])]
+          const allLoaded = ALL_SETTINGS_CONFIG_KEYS.every((configKey) =>
+            mergedLoaded.includes(configKey)
+          )
+          return {
+            ...mergedPatch,
+            loadedConfigKeys: mergedLoaded,
+            loadingConfigKeys: state.loadingConfigKeys.filter((key) => !missing.includes(key)),
+            failedConfigKeys: [...new Set([...state.failedConfigKeys, ...failedKeys])],
+            configHydrated: allLoaded || state.configHydrated
+          }
+        })
+        return
+      }
+
+      const patches = await Promise.all(
+        missing.map((key) => fetchSettingsConfigKey(key, settingsApi))
+      )
+      set((state) => {
+        const mergedLoaded = [...new Set([...state.loadedConfigKeys, ...missing])]
+        const allLoaded = ALL_SETTINGS_CONFIG_KEYS.every((configKey) =>
+          mergedLoaded.includes(configKey)
+        )
+        return {
+          ...Object.assign({}, ...patches),
+          loadedConfigKeys: mergedLoaded,
+          loadingConfigKeys: state.loadingConfigKeys.filter((key) => !missing.includes(key)),
+          failedConfigKeys: state.failedConfigKeys.filter((key) => !missing.includes(key)),
+          configHydrated: allLoaded || state.configHydrated
+        }
+      })
+    } catch (e) {
+      console.error('[SettingsStore] Failed to load config snapshot from IPC', e)
+      set((state) => ({
+        loadingConfigKeys: state.loadingConfigKeys.filter((key) => !missing.includes(key)),
+        failedConfigKeys: [...new Set([...state.failedConfigKeys, ...missing])]
+      }))
+    }
+  })
+}
+
+function scheduleDeferredConfigWarmup(
+  get: () => SettingsStore,
+  set: (
+    partial:
+      | Partial<SettingsStore>
+      | ((state: SettingsStore) => Partial<SettingsStore>)
+  ) => void
+): void {
+  deferredWarmupGeneration += 1
+  const generation = deferredWarmupGeneration
+
+  if (deferredWarmupTimer) {
+    clearTimeout(deferredWarmupTimer)
+    deferredWarmupTimer = null
+  }
+
+  deferredWarmupTimer = setTimeout(() => {
+    deferredWarmupTimer = null
+    if (generation !== deferredWarmupGeneration) return
+
+    const missing = ALL_SETTINGS_CONFIG_KEYS.filter((key) => !get().loadedConfigKeys.includes(key))
+    if (missing.length === 0) return
+
+    void hydrateConfigSnapshot(missing, get, set)
+  }, DEFERRED_WARMUP_DELAY_MS)
+}
+
+function cancelDeferredConfigWarmup(): void {
+  deferredWarmupGeneration += 1
+  if (deferredWarmupTimer) {
+    clearTimeout(deferredWarmupTimer)
+    deferredWarmupTimer = null
+  }
+}
+
+function getSettingsApi(): any | null {
+  if (typeof window === 'undefined') return null
+  return (window as any).api?.settings ?? null
+}
 
 export type AppThemeMode = 'light' | 'dark' | 'system'
 
@@ -43,6 +238,9 @@ export interface SettingsState {
 
   isLoading: boolean
   configHydrated: boolean
+  loadedConfigKeys: SettingsConfigKey[]
+  loadingConfigKeys: SettingsConfigKey[]
+  failedConfigKeys: SettingsConfigKey[]
 }
 
 export interface SettingsActions {
@@ -52,7 +250,18 @@ export interface SettingsActions {
   setThemeColor: (color: string) => void
 
   // AI 设定异步操作
-  loadConfig: () => Promise<void>
+  loadConfig: (options?: { force?: boolean }) => Promise<void>
+  ensureConfigForSegment: (segment: string) => Promise<void>
+  retryConfigForSegment: (segment: string) => Promise<void>
+  ensureConfigKeys: (
+    keys: SettingsConfigKey[],
+    options?: { trackGlobalLoading?: boolean }
+  ) => Promise<void>
+  scheduleDeferredConfigWarmup: () => void
+  cancelDeferredConfigWarmup: () => void
+  resetSettingsConfigCache: () => void
+  isSegmentConfigReady: (segment: string) => boolean
+  isSegmentConfigFailed: (segment: string) => boolean
 
   // Provider Configs
   setProviders: (providers: AIProviderConfig[]) => Promise<void>
@@ -73,10 +282,10 @@ export interface SettingsActions {
   setCloudSyncConfig: (config: any) => Promise<void>
 }
 
-export const useSettingsStore = create<SettingsState & SettingsActions>()(
+export const useSettingsStore = create<SettingsStore>()(
   persist(
     devtools(
-      (set, get: any) => ({
+      (set, get) => ({
         themeMode: 'system',
         useGlassmorphism: true,
         locale: 'zh',
@@ -95,6 +304,9 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
 
         isLoading: false,
         configHydrated: false,
+        loadedConfigKeys: [],
+        loadingConfigKeys: [],
+        failedConfigKeys: [],
 
         setThemeMode: (themeMode) => set({ themeMode }),
         toggleGlassmorphism: (useGlassmorphism) => set({ useGlassmorphism }),
@@ -133,139 +345,98 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
           }
         },
 
-        loadConfig: async () => {
-          const alreadyHydrated = get().configHydrated
-          if (!alreadyHydrated) {
-            set({ isLoading: true })
+        loadConfig: async (options?: { force?: boolean }) => {
+          const { loadedConfigKeys } = get()
+          const allLoaded =
+            loadedConfigKeys.length >= ALL_SETTINGS_CONFIG_KEYS.length &&
+            ALL_SETTINGS_CONFIG_KEYS.every((key) => loadedConfigKeys.includes(key))
+          if (allLoaded && !options?.force) {
+            return
           }
-          try {
-            if (typeof window !== 'undefined' && (window as any).api?.settings) {
-              const { settings } = (window as any).api
-              const [
-                providers,
-                globalModels,
-                agentBehavior,
-                ragConfig,
-                webSearchConfig,
-                summaryConfig,
-                toolManagementConfig,
-                mcpServerConfig,
-                hotkeyConfig,
-                cloudSyncConfig
-              ] = await Promise.all([
-                settings.getProviders(),
-                settings.getGlobalModels(),
-                settings.getAgentBehaviorConfig(),
-                settings.getRagConfig(),
-                settings.getWebSearchConfig(),
-                settings.getSummaryConfig(),
-                settings.getToolManagementConfig(),
-                settings.getMcpServerConfig(),
-                settings.getHotkeyConfig(),
-                typeof settings.getCloudSyncConfig === 'function'
-                  ? settings.getCloudSyncConfig()
-                  : Promise.resolve(null)
-              ])
 
-              const defaultGlobalModels: GlobalModelsConfig = {
-                globalDialogueProviderId: '',
-                globalDialogueModelId: '',
-                globalNamingProviderId: '',
-                globalNamingModelId: '',
-                globalSummaryProviderId: '',
-                globalSummaryModelId: '',
-                globalEmbeddingProviderId: '',
-                globalEmbeddingModelId: '',
-                globalTtsProviderId: '',
-                globalTtsModelId: '',
-                globalTtsSettings: {
-                  voice: 'alloy',
-                  speed: 1.0,
-                  responseFormat: 'mp3'
-                },
-                monthlySummarySource: 'weeklies'
-              }
+          const missing = options?.force
+            ? [...ALL_SETTINGS_CONFIG_KEYS]
+            : ALL_SETTINGS_CONFIG_KEYS.filter((key) => !loadedConfigKeys.includes(key))
+          if (missing.length === 0) return
 
-              const defaultAgentBehavior: AgentBehaviorConfig = {
-                agentContextWindowSize: 20,
-                companionCompressTokens: 8000,
-                companionTruncateTokens: 4000,
-                agentPersona: '',
-                agentGuidelines: '',
-                pinnedAssistantIds: []
-              }
+          await get().ensureConfigKeys(missing, { trackGlobalLoading: true })
+        },
 
-              const defaultRagConfig: RagConfig = {
-                ragEnabled: true,
-                ragTopK: 20,
-                ragSimilarityThreshold: 0.4,
-                batchEmbedConcurrency: 3
-              }
+        ensureConfigForSegment: async (segment: string) => {
+          const keys = getConfigKeysForSegment(segment)
+          if (keys.length === 0) return
 
-              const defaultWebSearchConfig: WebSearchConfig = {
-                webSearchEngine: 'exa-mcp',
-                webSearchMaxResults: 5,
-                webSearchRagEnabled: false,
-                tavilyApiKey: '',
-                exaApiKey: '',
-                anysearchApiKey: '',
-                webSearchRagMaxChunks: 12,
-                webSearchRagChunksPerSource: 4,
-                webSearchPlainSnippetLength: 3000
-              }
+          const { loadedConfigKeys, failedConfigKeys } = get()
+          const missing = keys.filter(
+            (key) => !loadedConfigKeys.includes(key) || failedConfigKeys.includes(key)
+          )
+          if (missing.length === 0) return
 
-              const defaultSummaryConfig: SummaryConfig = {
-                instructions: {}
-              }
+          await hydrateConfigSnapshot(missing, get, set)
+        },
 
-              const defaultToolManagementConfig: ToolManagementConfig = {
-                disabledToolIds: [AUTO_INJECT_TIME_TOOL_ID],
-                customConfigs: {},
-                emojiConfig: {
-                  enabled: false,
-                  groups: []
-                }
-              }
+        retryConfigForSegment: async (segment: string) => {
+          const keys = getConfigKeysForSegment(segment)
+          if (keys.length === 0) return
 
-              const defaultMcpServerConfig: McpServerConfig = {
-                mcpEnabled: false,
-                mcpPort: 31004
-              }
+          set({
+            failedConfigKeys: get().failedConfigKeys.filter((key) => !keys.includes(key)),
+            loadedConfigKeys: get().loadedConfigKeys.filter((key) => !keys.includes(key))
+          })
 
-              const defaultHotkeyConfig: HotkeyConfig = {
-                hotkeyEnabled: false,
-                hotkeyModifier: 'Alt',
-                hotkeyKey: 'Space'
-              }
+          await hydrateConfigSnapshot(keys, get, set)
+        },
 
-              set({
-                providers: providers || [],
-                globalModels: globalModels || defaultGlobalModels,
-                agentBehavior: agentBehavior || defaultAgentBehavior,
-                ragConfig: ragConfig || defaultRagConfig,
-                webSearchConfig: { ...defaultWebSearchConfig, ...(webSearchConfig || {}) },
-                summaryConfig: summaryConfig || defaultSummaryConfig,
-                toolManagementConfig: {
-                  ...defaultToolManagementConfig,
-                  ...toolManagementConfig,
-                  emojiConfig: normalizeEmojiToolConfig({
-                    ...defaultToolManagementConfig.emojiConfig,
-                    ...(toolManagementConfig?.emojiConfig || {})
-                  })
-                },
-                mcpServerConfig: mcpServerConfig || defaultMcpServerConfig,
-                hotkeyConfig: hotkeyConfig || defaultHotkeyConfig,
-                cloudSyncConfig: cloudSyncConfig || null,
-                configHydrated: true
-              })
-            }
-          } catch (e) {
-            console.error('[SettingsStore] Failed to load config from IPC', e)
-          } finally {
-            if (!alreadyHydrated) {
-              set({ isLoading: false })
-            }
-          }
+        isSegmentConfigReady: (segment: string) => {
+          return !segmentNeedsConfigLoading(segment, get().loadedConfigKeys)
+        },
+
+        isSegmentConfigFailed: (segment: string) => {
+          const { failedConfigKeys, loadingConfigKeys } = get()
+          const required = getConfigKeysForSegment(segment)
+          if (required.length === 0) return false
+          if (required.some((key) => loadingConfigKeys.includes(key))) return false
+          return segmentHasConfigFailure(segment, failedConfigKeys)
+        },
+
+        resetSettingsConfigCache: () => {
+          cancelDeferredConfigWarmup()
+          set({
+            loadedConfigKeys: [],
+            loadingConfigKeys: [],
+            failedConfigKeys: [],
+            configHydrated: false,
+            isLoading: false,
+            providers: [],
+            globalModels: null,
+            agentBehavior: null,
+            ragConfig: null,
+            webSearchConfig: null,
+            summaryConfig: null,
+            toolManagementConfig: null,
+            mcpServerConfig: null,
+            hotkeyConfig: null,
+            cloudSyncConfig: null
+          })
+        },
+
+        ensureConfigKeys: async (
+          keys: SettingsConfigKey[],
+          options?: { trackGlobalLoading?: boolean }
+        ) => {
+          const uniqueKeys = [...new Set(keys)]
+          const toLoad = uniqueKeys.filter((key) => !get().loadedConfigKeys.includes(key))
+          if (toLoad.length === 0) return
+
+          await Promise.all(toLoad.map((key) => loadSingleConfigKey(key, get, set, options)))
+        },
+
+        scheduleDeferredConfigWarmup: () => {
+          scheduleDeferredConfigWarmup(get, set)
+        },
+
+        cancelDeferredConfigWarmup: () => {
+          cancelDeferredConfigWarmup()
         },
 
         setProviders: async (providers) => {
@@ -307,11 +478,11 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
         },
 
         updateProvider: async (provider) => {
-          await (get() as SettingsState & SettingsActions).patchProvider(provider.id, provider)
+          await get().patchProvider(provider.id, provider)
         },
 
         toggleProvider: async (id, isEnabled) => {
-          const { providers, updateProvider } = get() as SettingsState & SettingsActions
+          const { providers, updateProvider } = get()
           const provider = providers.find((p) => p.id === id)
           if (provider) {
             await updateProvider({ ...provider, isEnabled })
