@@ -106,6 +106,12 @@ export const editorTheme = EditorView.baseTheme({
     color: 'var(--text-secondary)'
   },
 
+  '.cm-rendered-blockquote': {
+    borderLeft: '3px solid var(--color-primary)',
+    paddingLeft: '0.75rem',
+    color: 'var(--text-secondary)'
+  },
+
   '.cm-rendered-inline-code': {
     fontFamily: "'Fira Code', 'Courier New', monospace",
     fontSize: '0.88em',
@@ -114,6 +120,14 @@ export const editorTheme = EditorView.baseTheme({
     borderRadius: '0.35rem',
     padding: '0.08em 0.35em',
     wordBreak: 'break-word'
+  },
+
+  '.cm-syntax-hidden-mark': {
+    display: 'inline-block',
+    width: '0',
+    overflow: 'hidden',
+    opacity: '0',
+    verticalAlign: 'top'
   },
 
   '.cm-rendered-link': {
@@ -805,6 +819,11 @@ export const editorTheme = EditorView.baseTheme({
     backgroundColor: 'var(--bg-code-block, #eceef2) !important',
     paddingLeft: '12px !important',
     paddingRight: '12px !important'
+  },
+  '.cm-code-line .cm-rendered-inline-code': {
+    backgroundColor: 'transparent !important',
+    padding: '0 !important',
+    borderRadius: '0 !important'
   },
   '.cm-activeLine.cm-code-line': {
     backgroundColor: 'var(--bg-code-block, #eceef2) !important'

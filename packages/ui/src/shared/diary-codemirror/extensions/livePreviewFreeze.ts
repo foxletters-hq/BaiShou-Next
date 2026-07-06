@@ -27,7 +27,7 @@ export function livePreviewFreezePlugin(): Extension {
       private releaseTimer: ReturnType<typeof setTimeout> | null = null
 
       constructor(private readonly view: EditorView) {
-        this.view.contentDOM.addEventListener('pointerdown', this.onDown, true)
+        this.view.dom.addEventListener('pointerdown', this.onDown, true)
         this.view.contentDOM.addEventListener('touchstart', this.onDown, {
           capture: true,
           passive: true
@@ -38,7 +38,7 @@ export function livePreviewFreezePlugin(): Extension {
       }
 
       destroy(): void {
-        this.view.contentDOM.removeEventListener('pointerdown', this.onDown, true)
+        this.view.dom.removeEventListener('pointerdown', this.onDown, true)
         this.view.contentDOM.removeEventListener('touchstart', this.onDown, true)
         window.removeEventListener('pointerup', this.onUp)
         window.removeEventListener('touchend', this.onUp)
@@ -49,7 +49,7 @@ export function livePreviewFreezePlugin(): Extension {
       private readonly onDown = (event: PointerEvent | TouchEvent): void => {
         if (event instanceof PointerEvent && event.button !== 0) return
         const target = event.target
-        if (!(target instanceof Node) || !this.view.contentDOM.contains(target)) return
+        if (!(target instanceof Node) || !this.view.dom.contains(target)) return
         if (target instanceof Element && target.closest('.cm-code-line, .cm-table-block')) return
         this.down = true
         if (this.releaseTimer != null) {

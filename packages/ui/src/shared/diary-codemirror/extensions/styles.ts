@@ -21,10 +21,11 @@ class ListBulletWidget extends WidgetType {
 const listBulletWidget = new ListBulletWidget()
 
 /** 将 `- ` 等列表标记替换为圆点 */
-export const listMarkerReplace = Decoration.replace({
+export const listMarkerReplaceSpec = {
   widget: listBulletWidget,
-  inclusive: false
-})
+  inclusive: false as const
+}
+export const listMarkerReplace = Decoration.replace(listMarkerReplaceSpec)
 
 class HiddenSyntaxWidget extends WidgetType {
   toDOM(): HTMLElement {
@@ -51,6 +52,21 @@ const hiddenSyntaxWidget = new HiddenSyntaxWidget()
  */
 export const hideSyntaxReplace = Decoration.replace({
   widget: hiddenSyntaxWidget,
+  inclusive: false
+})
+
+/** 桌面端：空 replace 隐藏语法，避免 widget 槽位冲突（atomic-editor 策略） */
+export const hideSyntaxEmptyReplace = Decoration.replace({})
+
+export function hideSyntaxReplaceSpec(
+  touchMode: boolean
+): Parameters<typeof Decoration.replace>[0] {
+  return touchMode ? { widget: hiddenSyntaxWidget, inclusive: false } : {}
+}
+
+/** 用 mark 隐藏前缀（touch 端 blockquote 备用） */
+export const hideSyntaxMark = Decoration.mark({
+  class: 'cm-syntax-hidden-mark',
   inclusive: false
 })
 

@@ -17,14 +17,18 @@ describe('live preview marker hiding', () => {
     view = null
   })
 
-  function mount(content: string, cursor = content.length) {
+  function mount(
+    content: string,
+    cursor = content.length,
+    interactionMode: 'touch' | 'mouse' = 'touch'
+  ) {
     parent = document.createElement('div')
     document.body.appendChild(parent)
     view = createDiaryCodeMirror(parent, {
       content,
       platform: {
         resolveAttachmentUrl: (u) => u,
-        interactionMode: 'touch',
+        interactionMode,
         scrollMode: 'viewport'
       }
     })
@@ -77,8 +81,13 @@ describe('live preview marker hiding', () => {
 
   it('renders blockquote with left rail', () => {
     mount('> quoted line\n')
-    expect(parent.querySelector('.cm-rendered-blockquote-content')).not.toBeNull()
-    expect(parent.querySelectorAll('.cm-syntax-hidden-widget').length).toBeGreaterThan(0)
+    expect(parent.querySelector('.cm-rendered-blockquote')).not.toBeNull()
+  })
+
+  it('does not extend blockquote styling to lines without > prefix', () => {
+    mount('> quoted line\nplain line\n')
+    expect(parent.querySelectorAll('.cm-rendered-blockquote').length).toBe(1)
+    expect(parent.textContent).toContain('plain line')
   })
 
   it('hides ** on same line when cursor is outside emphasis', () => {
@@ -134,6 +143,66 @@ describe('live preview marker hiding', () => {
       if (value.spec?.widget?.constructor.name === 'HiddenSyntaxWidget') hiddenFenceCount += 1
     })
     expect(hiddenFenceCount).toBeGreaterThan(0)
+  })
+
+  it('does not throw for blockquote lines with live preview decorations', () => {
+    const content = '> quoted\nplain\n'
+    const state = EditorState.create({
+      doc: content,
+      selection: { anchor: 2, head: 2 },
+      extensions: [markdown()]
+    })
+    ensureSyntaxTree(state, state.doc.length, 200)
+    expect(() =>
+      buildMarkerHidingDecorations(
+        state,
+        { resolveAttachmentUrl: (u) => u, interactionMode: 'mouse' },
+        { hasFocus: true }
+      )
+    ).not.toThrow()
+  })
+
+  it('does not add list widgets inside fenced code blocks', () => {
+    const content = '```\n- not a list\n```\n'
+    const state = EditorState.create({
+      doc: content,
+      selection: { anchor: content.indexOf('not'), head: content.indexOf('not') },
+      extensions: [markdown()]
+    })
+    ensureSyntaxTree(state, state.doc.length, 200)
+    const deco = buildMarkerHidingDecorations(
+      state,
+      { resolveAttachmentUrl: (u) => u, interactionMode: 'mouse' },
+      { hasFocus: true }
+    )
+    let listWidgetCount = 0
+    deco.between(0, state.doc.length, (_from, _to, value) => {
+      if (value.spec?.widget?.constructor.name === 'ListBulletWidget') listWidgetCount += 1
+    })
+    expect(listWidgetCount).toBe(0)
+  })
+
+  it('does not throw when building decorations for fenced code with inline backticks', () => {
+    const content = '```\nconst x = `y`\n```\n'
+    const state = EditorState.create({
+      doc: content,
+      selection: { anchor: content.indexOf('y'), head: content.indexOf('y') },
+      extensions: [markdown()]
+    })
+    ensureSyntaxTree(state, state.doc.length, 200)
+    expect(() =>
+      buildMarkerHidingDecorations(
+        state,
+        { resolveAttachmentUrl: (u) => u, interactionMode: 'touch' },
+        { hasFocus: true }
+      )
+    ).not.toThrow()
+  })
+
+  it('styles unclosed fenced blocks consistently via line scan', () => {
+    const content = 'intro\n```\nline one\nline two'
+    mount(content, content.length)
+    expect(parent.querySelectorAll('.cm-code-line').length).toBe(3)
   })
 
   it('renders fenced code inline for block followed by body text', () => {
@@ -200,6 +269,56 @@ describe('live preview marker hiding', () => {
     focusEditor(v)
     expect(parent.querySelectorAll('.cm-table-block').length).toBe(1)
     expect(parent.querySelectorAll('.cm-table-line').length).toBe(0)
+  })
+
+  it('mounts complex diary content without decoration errors', () => {
+    const content = [
+      '##### 10:31',
+      '',
+      '阿```',
+      '',
+      '```',
+      'asdasdasdas dqw',
+      'sadasd',
+      '```',
+      '',
+      '> quoted',
+      'plain'
+    ].join('\n')
+    const v = mount(content, content.indexOf('dqw'))
+    focusEditor(v)
+    expect(() => {
+      v.dispatch({ selection: { anchor: content.indexOf('quoted'), head: content.indexOf('quoted') } })
+      v.dispatch({ selection: { anchor: content.indexOf('```', 10), head: content.indexOf('```', 10) + 1 } })
+      buildMarkerHidingDecorations(
+        v.state,
+        { resolveAttachmentUrl: (u) => u, interactionMode: 'mouse' },
+        { hasFocus: true }
+      )
+    }).not.toThrow()
+  })
+
+  it('mouse mode click does not throw on complex diary content', () => {
+    const content = [
+      '##### 10:31',
+      '',
+      '阿```',
+      '',
+      '```',
+      'asdasdasdas dqw',
+      'sadasd',
+      '```',
+      '',
+      '> quoted',
+      'plain'
+    ].join('\n')
+    const v = mount(content, content.indexOf('plain'), 'mouse')
+    focusEditor(v)
+    expect(() => {
+      v.dom.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }))
+      v.dispatch({ selection: { anchor: content.indexOf('quoted'), head: content.indexOf('quoted') } })
+      window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }))
+    }).not.toThrow()
   })
 
   it('table plus fenced block does not insert extra gap on caret move', async () => {

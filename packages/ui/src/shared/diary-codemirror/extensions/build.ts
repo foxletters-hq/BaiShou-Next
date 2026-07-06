@@ -1,6 +1,7 @@
 import type { EditorState } from '@codemirror/state'
 import { ensureSyntaxTree } from '@codemirror/language'
-import { Decoration, DecorationSet } from '@codemirror/view'
+import type { DecorationSet } from '@codemirror/view'
+import { buildSafeDecorationSet, type DecorationMark } from './decorationMarks'
 import { getCursorPositions } from './cursor'
 import { scanImageRanges } from './buildImages'
 import { collectListLineDecorations } from './buildList'
@@ -11,6 +12,7 @@ import { collectTreeDecorations, getActiveLinesForDecorations } from './buildTre
 import {
   collectFencedCodeLineDecorations,
   collectFencedCodeMarkDecorations,
+  collectFencedCodeProtectedLineNumbers,
   expandActiveLinesForFencedCode
 } from './buildFencedCode'
 import type { DiaryCmPlatform } from '../types'
@@ -31,16 +33,17 @@ export function buildMarkerHidingDecorations(
   const hasFocus = options?.hasFocus ?? true
   const activeLines = getActiveLinesForDecorations(state, hasFocus)
   expandActiveLinesForFencedCode(state, activeLines)
-  const marks: { from: number; to: number; value: Decoration }[] = []
+  const fencedCodeLines = collectFencedCodeProtectedLineNumbers(state)
+  const marks: DecorationMark[] = []
   const imageRanges = scanImageRanges(state)
-  collectListLineDecorations(state, cursors, marks)
-  collectLineSyntaxDecorations(state, activeLines, marks)
+  collectListLineDecorations(state, cursors, marks, fencedCodeLines)
+  collectLineSyntaxDecorations(state, activeLines, marks, fencedCodeLines, platform)
   const tableBlocks = collectTableBlockRanges(state)
   if (platform?.interactionMode !== 'touch') {
     collectTableDecorations(state, cursors, marks, tableBlocks)
   }
   collectFencedCodeLineDecorations(state, marks)
   collectTreeDecorations(state, activeLines, imageRanges, marks, tableBlocks, hasFocus, platform)
-  collectFencedCodeMarkDecorations(state, marks, activeLines, hasFocus)
-  return Decoration.set(marks, true)
+  collectFencedCodeMarkDecorations(state, marks, activeLines, hasFocus, platform)
+  return buildSafeDecorationSet(marks)
 }

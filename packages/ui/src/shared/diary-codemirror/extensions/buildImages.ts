@@ -4,6 +4,7 @@ import { syntaxTree } from '@codemirror/language'
 import { ImageWidget } from '../widgets/ImageWidget'
 import { ImagePlaceholderWidget } from '../widgets/ImagePlaceholderWidget'
 import { isCursorOnLine } from './cursor'
+import { pushReplaceDecoration, type DecorationMark } from './decorationMarks'
 import type { DiaryCmPlatform } from '../types'
 
 const IMAGE_MARKDOWN_REGEX = /!\[([^\]]*)\]\(([^ |)]+)(?:\s*\|\s*(\d+))?\)/g
@@ -62,7 +63,7 @@ export function collectImageDecorations(
   state: EditorState,
   cursors: number[],
   platform: DiaryCmPlatform | undefined,
-  marks: { from: number; to: number; value: Decoration }[],
+  marks: DecorationMark[],
   options?: CollectImageDecorationsOptions
 ): ImageRange[] {
   const resolveUrl = platform?.resolveAttachmentUrl
@@ -96,32 +97,24 @@ export function collectImageDecorations(
     const inView = intersectsVisible(matchStart, matchEnd, options?.visibleRanges)
     if (!inView) {
       if (options?.offscreenPlaceholder) {
-        marks.push({
-          from: matchStart,
-          to: matchEnd,
-          value: Decoration.replace({
-            widget: new ImagePlaceholderWidget(validWidth, alt)
-          })
+        pushReplaceDecoration(marks, doc, matchStart, matchEnd, {
+          widget: new ImagePlaceholderWidget(validWidth, alt)
         })
       }
       continue
     }
 
-    marks.push({
-      from: matchStart,
-      to: matchEnd,
-      value: Decoration.replace({
-        widget: new ImageWidget(
-          src,
-          alt,
-          validWidth,
-          matchStart,
-          matchEnd,
-          showLinkBar,
-          srcRaw,
-          platform
-        )
-      })
+    pushReplaceDecoration(marks, doc, matchStart, matchEnd, {
+      widget: new ImageWidget(
+        src,
+        alt,
+        validWidth,
+        matchStart,
+        matchEnd,
+        showLinkBar,
+        srcRaw,
+        platform
+      )
     })
   }
 

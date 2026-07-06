@@ -8,7 +8,6 @@ const livePreviewHighlight = HighlightStyle.define([
   { tag: tags.heading4, class: 'cm-rendered-h4' },
   { tag: tags.heading5, class: 'cm-rendered-h5' },
   { tag: tags.heading6, class: 'cm-rendered-h6' },
-  { tag: tags.quote, class: 'cm-rendered-blockquote-content' },
   { tag: tags.strong, fontWeight: '700' },
   { tag: tags.emphasis, fontStyle: 'italic' },
   {

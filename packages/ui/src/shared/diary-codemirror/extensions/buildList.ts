@@ -1,40 +1,30 @@
 import type { EditorState } from '@codemirror/state'
-import type { Decoration } from '@codemirror/view'
 import { isCursorInRange } from './cursor'
-import { listMarkerReplace } from './styles'
+import { listMarkerReplaceSpec } from './styles'
+import { pushReplaceDecoration, type DecorationMark } from './decorationMarks'
 
 const BULLET_LINE_RE = /^(\s*)([-*+])\s/
 
-type DecorationMark = { from: number; to: number; value: Decoration }
-
-function pushDecoration(
-  marks: DecorationMark[],
-  value: Decoration,
-  from: number,
-  to: number
-): void {
-  if (from < to) marks.push(value.range(from, to))
-}
-
-/** 基于行文本渲染列表圆点（不依赖语法树解析时机） */
 export function collectListLineDecorations(
   state: EditorState,
   cursors: number[],
-  marks: DecorationMark[]
+  marks: DecorationMark[],
+  skipLineNumbers?: Set<number>
 ): void {
   const doc = state.doc
 
   for (let lineNum = 1; lineNum <= doc.lines; lineNum += 1) {
+    if (skipLineNumbers?.has(lineNum)) continue
     const line = doc.line(lineNum)
     const match = line.text.match(BULLET_LINE_RE)
     if (!match) continue
 
     const indent = match[1] ?? ''
     const markerStart = line.from + indent.length
-    const markerEnd = markerStart + 2 // `-` + 空格
+    const markerEnd = markerStart + 2
 
     if (isCursorInRange(markerStart, markerEnd, cursors)) continue
 
-    pushDecoration(marks, listMarkerReplace, markerStart, markerEnd)
+    pushReplaceDecoration(marks, doc, markerStart, markerEnd, listMarkerReplaceSpec)
   }
 }
