@@ -1,8 +1,13 @@
-import React, { Suspense, lazy } from 'react'
+import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { motion } from 'framer-motion'
-import { useSettingsStore } from '@baishou/store'
+import { Loader2 } from 'lucide-react'
+import {
+  useSettingsStore,
+  getConfigKeysForSegment,
+  useSettingsPaneApi
+} from '@baishou/store'
 import { getSettingsRouteSegment } from './settings-route.util'
+import { useSettingsRouteActive } from './hooks/useSettingsRouteActive'
 
 const GeneralSettingsPane = lazy(() =>
   import('./components/GeneralSettingsPane').then((m) => ({ default: m.GeneralSettingsPane }))
@@ -70,13 +75,6 @@ const LegacyMigrationPane = lazy(() =>
   import('./components/LegacyMigrationPane').then((m) => ({ default: m.LegacyMigrationPane }))
 )
 
-const settingsViewTransition = {
-  initial: { opacity: 0, y: 10 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -6 },
-  transition: { duration: 0.2, ease: 'easeOut' as const }
-}
-
 const FULL_HEIGHT_SEGMENTS = new Set([
   'general',
   'mcp',
@@ -97,55 +95,176 @@ const FULL_HEIGHT_SEGMENTS = new Set([
 
 interface SettingsContentViewProps {
   pathname: string
-  settings?: ReturnType<typeof useSettingsStore>
   motionKey?: string
   className?: string
 }
 
-const PaneLoadingFallback: React.FC = () => {
+const SETTINGS_SPINNER_MIN_VISIBLE_MS = 200
+const SETTINGS_LOAD_FADE_MS = 200
+
+const SettingsPaneLoadingOverlay: React.FC<{ srLabel: string; leaving?: boolean }> = ({
+  srLabel,
+  leaving = false
+}) => (
+  <div
+    className={`settings-config-loading-overlay${leaving ? ' settings-config-loading-overlay--leaving' : ''}`}
+    role="status"
+    aria-live="polite"
+  >
+    <Loader2 className="settings-config-loading-spinner" size={36} strokeWidth={2} aria-hidden />
+    <span className="settings-config-loading-sr-only">{srLabel}</span>
+  </div>
+)
+
+/** Suspense 子树挂载后标记对应 Tab 的 chunk 已就绪 */
+const ChunkReadyMarker: React.FC<{
+  contentKey: string
+  onReady: (key: string) => void
+  children: React.ReactNode
+}> = ({ contentKey, onReady, children }) => {
+  useEffect(() => {
+    onReady(contentKey)
+  }, [contentKey, onReady])
+
+  return <>{children}</>
+}
+
+function useLoadCrossfade(isLoading: boolean) {
+  const [showOverlay, setShowOverlay] = useState(isLoading)
+  const [overlayLeaving, setOverlayLeaving] = useState(false)
+  const [contentVisible, setContentVisible] = useState(!isLoading)
+
+  useEffect(() => {
+    if (isLoading) {
+      setShowOverlay(true)
+      setOverlayLeaving(false)
+      setContentVisible(false)
+      return
+    }
+
+    setOverlayLeaving(true)
+    setContentVisible(true)
+
+    const timer = window.setTimeout(() => {
+      setShowOverlay(false)
+      setOverlayLeaving(false)
+    }, SETTINGS_LOAD_FADE_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [isLoading])
+
+  return { showOverlay, overlayLeaving, contentVisible }
+}
+
+const SegmentConfigFailedOverlay: React.FC<{
+  onRetry: () => void
+}> = ({ onRetry }) => {
   const { t } = useTranslation()
+
   return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'center',
-        marginTop: 100,
-        color: 'var(--color-on-surface-variant)'
-      }}
-    >
-      {t('common.loading', '加载中...')}
+    <div className="settings-config-failed-overlay" role="alert">
+      <p className="settings-config-failed-text">
+        {t('settings.config_load_failed', '部分配置加载失败')}
+      </p>
+      <button type="button" className="settings-retry-btn" onClick={onRetry}>
+        {t('common.retry', '重试')}
+      </button>
     </div>
   )
 }
 
 export const SettingsContentView: React.FC<SettingsContentViewProps> = ({
   pathname,
-  settings: settingsProp,
   motionKey,
   className = ''
 }) => {
   const { t } = useTranslation()
-  const isLoading = useSettingsStore((s) => s.isLoading)
-  const configHydrated = useSettingsStore((s) => s.configHydrated)
-  const settingsFromStore = useSettingsStore()
-  const settings = settingsProp ?? settingsFromStore
+  const ensureConfigForSegment = useSettingsStore((s) => s.ensureConfigForSegment)
+  const retryConfigForSegment = useSettingsStore((s) => s.retryConfigForSegment)
+  const scheduleDeferredConfigWarmup = useSettingsStore((s) => s.scheduleDeferredConfigWarmup)
+  const cancelDeferredConfigWarmup = useSettingsStore((s) => s.cancelDeferredConfigWarmup)
+  const loadingConfigKeys = useSettingsStore((s) => s.loadingConfigKeys)
+  const failedConfigKeys = useSettingsStore((s) => s.failedConfigKeys)
+  const settings = useSettingsPaneApi()
+  const settingsRouteActive = useSettingsRouteActive()
+  const deferredWarmupScheduledRef = useRef(false)
+  const segmentSyncMinVisibleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [segmentSyncing, setSegmentSyncing] = useState(false)
+  const [readyChunkKeys, setReadyChunkKeys] = useState<Set<string>>(() => new Set())
   const segment = getSettingsRouteSegment(pathname)
   const contentKey = motionKey ?? segment
+  const chunkReady = readyChunkKeys.has(contentKey)
+  const markChunkReady = useCallback((key: string) => {
+    setReadyChunkKeys((prev) => {
+      if (prev.has(key)) return prev
+      const next = new Set(prev)
+      next.add(key)
+      return next
+    })
+  }, [])
+  const requiredKeys = getConfigKeysForSegment(segment)
+  const isStoreLoading =
+    requiredKeys.length > 0 && requiredKeys.some((key) => loadingConfigKeys.includes(key))
+  const isSegmentLoading = segmentSyncing || isStoreLoading
+  const isSegmentFailed =
+    requiredKeys.length > 0 &&
+    !isSegmentLoading &&
+    requiredKeys.some((key) => failedConfigKeys.includes(key))
 
-  if (isLoading && !configHydrated) {
-    return (
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'center',
-          marginTop: 100,
-          color: 'var(--color-on-surface-variant)'
-        }}
-      >
-        {t('common.loading_settings', '读取配置表项状态中...')}
-      </div>
+  const isBlockingLoad = isSegmentLoading || !chunkReady
+  const { showOverlay, overlayLeaving, contentVisible } = useLoadCrossfade(isBlockingLoad)
+
+  useEffect(() => {
+    if (!settingsRouteActive) {
+      cancelDeferredConfigWarmup()
+      return
+    }
+
+    if (!deferredWarmupScheduledRef.current) {
+      deferredWarmupScheduledRef.current = true
+      scheduleDeferredConfigWarmup()
+    }
+  }, [settingsRouteActive, scheduleDeferredConfigWarmup, cancelDeferredConfigWarmup])
+
+  useEffect(() => {
+    if (!settingsRouteActive) {
+      if (segmentSyncMinVisibleTimerRef.current) {
+        clearTimeout(segmentSyncMinVisibleTimerRef.current)
+        segmentSyncMinVisibleTimerRef.current = null
+      }
+      setSegmentSyncing(false)
+      return
+    }
+
+    const keys = getConfigKeysForSegment(segment)
+    if (keys.length === 0) return
+
+    const { loadedConfigKeys, failedConfigKeys } = useSettingsStore.getState()
+    const needsFetch = keys.some(
+      (key) => !loadedConfigKeys.includes(key) || failedConfigKeys.includes(key)
     )
-  }
+    if (!needsFetch) return
+
+    let cancelled = false
+    const startedAt = Date.now()
+    setSegmentSyncing(true)
+
+    void ensureConfigForSegment(segment).finally(() => {
+      if (cancelled) return
+      const remain = Math.max(0, SETTINGS_SPINNER_MIN_VISIBLE_MS - (Date.now() - startedAt))
+      if (segmentSyncMinVisibleTimerRef.current) {
+        clearTimeout(segmentSyncMinVisibleTimerRef.current)
+      }
+      segmentSyncMinVisibleTimerRef.current = setTimeout(() => {
+        segmentSyncMinVisibleTimerRef.current = null
+        if (!cancelled) setSegmentSyncing(false)
+      }, remain)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [ensureConfigForSegment, segment, settingsRouteActive])
 
   const isManagementSubPage = segment === 'workspaces' || segment === 'identity-cards'
   const isFullHeightPane = FULL_HEIGHT_SEGMENTS.has(segment)
@@ -196,16 +315,33 @@ export const SettingsContentView: React.FC<SettingsContentViewProps> = ({
   }
 
   return (
-    <motion.div
+    <div
       key={contentKey}
-      className={`settings-content-motion-host ${isFullHeightPane ? '' : 'settings-content-scroll'} ${className}`.trim()}
+      className={`settings-content-motion-host settings-content-enter ${isFullHeightPane ? '' : 'settings-content-scroll'} ${className}`.trim()}
       style={{
         overflow: isManagementSubPage ? 'hidden' : undefined,
-        height: '100%'
+        height: '100%',
+        position: 'relative'
       }}
-      {...settingsViewTransition}
     >
-      <Suspense fallback={<PaneLoadingFallback />}>{renderBody()}</Suspense>
-    </motion.div>
+      {showOverlay ? (
+        <SettingsPaneLoadingOverlay
+          leaving={overlayLeaving}
+          srLabel={t('settings.config_syncing', '正在同步配置…')}
+        />
+      ) : null}
+      {isSegmentFailed && !isBlockingLoad ? (
+        <SegmentConfigFailedOverlay onRetry={() => void retryConfigForSegment(segment)} />
+      ) : null}
+      <div
+        className={`settings-pane-body${contentVisible ? ' settings-pane-body--visible' : ''}`}
+      >
+        <Suspense fallback={null}>
+          <ChunkReadyMarker contentKey={contentKey} onReady={markChunkReady}>
+            {renderBody()}
+          </ChunkReadyMarker>
+        </Suspense>
+      </div>
+    </div>
   )
 }
