@@ -51,6 +51,8 @@ export const settingsApi = {
     getCloudSyncConfig: () => ipcRenderer.invoke('settings:get-cloud-sync-config'),
     setCloudSyncConfig: (config: any) =>
       ipcRenderer.invoke('settings:set-cloud-sync-config', config),
+    getConfigSnapshot: (keys?: string[]) =>
+      ipcRenderer.invoke('settings:get-config-snapshot', keys),
 
     getLegacyUpgradeNoticeState: () =>
       ipcRenderer.invoke('settings:get-legacy-upgrade-notice-state'),
@@ -127,7 +129,8 @@ export const settingsApi = {
       ipcRenderer.on('storage:root-changed', listener)
       return () => ipcRenderer.removeListener('storage:root-changed', listener)
     },
-    getExternalJournalsInfo: () => ipcRenderer.invoke('storage:getExternalJournalsInfo'),
+    getExternalJournalsInfo: (options?: { includeFileCounts?: boolean }) =>
+      ipcRenderer.invoke('storage:getExternalJournalsInfo', options),
     pickExternalJournalsDirectory: () =>
       ipcRenderer.invoke('storage:pickExternalJournalsDirectory'),
     setExternalJournalsDirectory: (targetPath: string) =>
@@ -139,7 +142,8 @@ export const settingsApi = {
       ipcRenderer.on('storage:journals-path-changed', listener)
       return () => ipcRenderer.removeListener('storage:journals-path-changed', listener)
     },
-    getExternalSummariesInfo: () => ipcRenderer.invoke('storage:getExternalSummariesInfo'),
+    getExternalSummariesInfo: (options?: { includeFileCounts?: boolean }) =>
+      ipcRenderer.invoke('storage:getExternalSummariesInfo', options),
     pickExternalSummariesDirectory: () =>
       ipcRenderer.invoke('storage:pickExternalSummariesDirectory'),
     setExternalSummariesDirectory: (targetPath: string) =>

@@ -112,9 +112,12 @@ export function registerStorageIPC() {
     return true
   })
 
-  ipcMain.handle('storage:getExternalJournalsInfo', async () => {
-    return getExternalJournalsDirectoryInfo()
-  })
+  ipcMain.handle(
+    'storage:getExternalJournalsInfo',
+    async (_, options?: { includeFileCounts?: boolean }) => {
+      return getExternalJournalsDirectoryInfo(options)
+    }
+  )
 
   ipcMain.handle('storage:pickExternalJournalsDirectory', async (event) => {
     const window = BrowserWindow.fromWebContents(event.sender)
@@ -137,9 +140,12 @@ export function registerStorageIPC() {
     return { ok: true as const }
   })
 
-  ipcMain.handle('storage:getExternalSummariesInfo', async () => {
-    return getExternalSummariesDirectoryInfo()
-  })
+  ipcMain.handle(
+    'storage:getExternalSummariesInfo',
+    async (_, options?: { includeFileCounts?: boolean }) => {
+      return getExternalSummariesDirectoryInfo(options)
+    }
+  )
 
   ipcMain.handle('storage:pickExternalSummariesDirectory', async (event) => {
     const window = BrowserWindow.fromWebContents(event.sender)

@@ -6,6 +6,7 @@ import { fileSystem } from '../services/node-file-system'
 import type { HotkeyService } from '../services/hotkey.service'
 import { registerSettingsAppIPC } from './settings-app.ipc'
 import { registerSettingsModelsIPC } from './settings-models.ipc'
+import { registerSettingsConfigSnapshotIPC } from './settings-config-snapshot.ipc'
 
 let _settingsManager: SettingsManagerService | null = null
 export const settingsManager = new Proxy({} as SettingsManagerService, {
@@ -36,4 +37,5 @@ export function getHotkeyService() {
 export function registerSettingsIPC() {
   registerSettingsAppIPC()
   registerSettingsModelsIPC()
+  registerSettingsConfigSnapshotIPC()
 }

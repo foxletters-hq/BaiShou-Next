@@ -265,4 +265,17 @@ interface LegacyMigrationAPI {
 declare interface Window {
   electron: ElectronAPI
   api: AppAPI
+  gc?: () => void
+  __baiShouMemProbe?: {
+    version: number
+    run: (
+      scenario?: import('./dev/memory-leak-probe').ProbeScenarioId,
+      options?: { rounds?: number }
+    ) => Promise<import('./dev/memory-leak-probe').ProbeReport>
+    runAll: (options?: {
+      rounds?: number
+      scenarios?: import('./dev/memory-leak-probe').ProbeScenarioId[]
+    }) => Promise<import('./dev/memory-leak-probe').ProbeSuiteReport>
+    scenarios: import('./dev/memory-leak-probe').ProbeScenarioId[]
+  }
 }
