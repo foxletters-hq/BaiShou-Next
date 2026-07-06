@@ -119,8 +119,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git fetch origin main --depth=1
-          if ! git merge-base --is-ancestor "${{ github.sha }}" origin/main; then
+          git fetch origin main
+          if ! git branch -r --contains "${{ github.sha }}" | grep -qE '(^|\s)origin/main$'; then
             echo "::error::Release tag 必须指向 main 上的 commit（先合并 PR 到 main，再在 main 上打 tag）"
             exit 1
           fi
