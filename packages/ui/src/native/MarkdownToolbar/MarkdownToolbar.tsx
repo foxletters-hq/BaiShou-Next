@@ -259,7 +259,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
               onPress={guardPress(() => onInsertText('#'))}
               accessibilityLabel={t('diary.toolbar_insert_tag', '插入标签')}
             >
-              <Text style={[styles.hashText, { color: colors.primary }]}>#</Text>
+              <Text style={[styles.hashText, { color: iconColor }]}>#</Text>
             </ToolbarButton>
           )
         case 'h5':
