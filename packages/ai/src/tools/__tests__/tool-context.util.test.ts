@@ -10,7 +10,11 @@ describe('tool-context.util', () => {
       sessionId: MCP_EXTERNAL_SESSION_ID,
       vaultName: 'Personal',
       userConfig: { ragEnabled: true, hasEmbeddingModel: false },
-      embeddingService: { isConfigured: true, embedQuery: async () => [] },
+      embeddingService: {
+        isConfigured: true,
+        embedQuery: async () => [],
+        embedText: async () => {}
+      },
       vectorStore: { searchSimilar: async () => [], deleteBySource: async () => {} }
     }
 
@@ -24,7 +28,11 @@ describe('tool-context.util', () => {
       sessionId: MCP_EXTERNAL_SESSION_ID,
       vaultName: 'Personal',
       userConfig: { ragEnabled: true, hasEmbeddingModel: false },
-      embeddingService: { isConfigured: true, embedQuery: async () => [] },
+      embeddingService: {
+        isConfigured: true,
+        embedQuery: async () => [],
+        embedText: async () => {}
+      },
       vectorStore: { searchSimilar: async () => [], deleteBySource: async () => {} }
     }
 

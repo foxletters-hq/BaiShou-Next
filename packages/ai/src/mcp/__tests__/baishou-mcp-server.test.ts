@@ -73,7 +73,11 @@ describe('baishou-mcp-server', () => {
         disabledToolIds: [],
         web_search_enabled: false
       },
-      embeddingService: { isConfigured: true, embedQuery: async () => [] },
+      embeddingService: {
+        isConfigured: true,
+        embedQuery: async () => [],
+        embedText: async () => {}
+      },
       vectorStore: { searchSimilar: async () => [], deleteBySource: async () => {} }
     }
 

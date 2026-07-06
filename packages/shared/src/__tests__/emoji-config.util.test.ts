@@ -18,8 +18,8 @@ describe('emoji-config.util', () => {
   })
 
   it('defaults global emoji feature to disabled', () => {
-    const normalized = normalizeEmojiToolConfig({ groups: [] })
-    expect(normalized.enabled).toBe(false)
+    expect(normalizeEmojiToolConfig(null).enabled).toBe(false)
+    expect(normalizeEmojiToolConfig({ enabled: false, groups: [] }).enabled).toBe(false)
   })
 
   it('resolves assistant emoji groups when enabled', () => {

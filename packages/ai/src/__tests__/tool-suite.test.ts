@@ -20,11 +20,11 @@ import {
 } from '../tools/context-compress.tool'
 
 describe('ToolRegistry — Full Tool Suite', () => {
-  it('should auto-register all 16 built-in tools on construction', () => {
+  it('should auto-register all 17 built-in tools on construction', () => {
     const registry = new ToolRegistry()
     const allTools = registry.getAllRaw()
 
-    expect(allTools).toHaveLength(16)
+    expect(allTools).toHaveLength(17)
 
     // 检验每个预期工具都被注册了
     const toolNames = allTools.map((t) => t.name)
@@ -42,6 +42,7 @@ describe('ToolRegistry — Full Tool Suite', () => {
     expect(toolNames).toContain('summary_read')
     expect(toolNames).toContain('web_search')
     expect(toolNames).toContain('url_read')
+    expect(toolNames).toContain('emoji_send')
     expect(toolNames).toContain('compress_context_upstream')
     expect(toolNames).toContain('compress_context_downstream')
   })

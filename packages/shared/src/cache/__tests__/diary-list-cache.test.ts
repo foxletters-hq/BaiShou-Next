@@ -4,7 +4,6 @@ import {
   getDiaryListCacheVersion,
   subscribeDiaryListCache,
   invalidateDiaryListCache,
-  emitDiaryListSavedPatch,
   subscribeDiaryListSavedPatch,
   notifyDiaryListAfterSave
 } from '../diary-list-cache'
