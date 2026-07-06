@@ -13,7 +13,7 @@
 
 | 仓库 | PR 目标分支（参考） |
 |------|---------------------|
-| `foxletters-hq/BaiShou-Next` | `Baishou-dev` |
+| `foxletters-hq/BaiShou-Next` | `main` |
 | `foxletters-hq/BaiShou-website` | `main` |
 
 ---
@@ -53,7 +53,7 @@
 
 ### 第 5 步：验证
 
-分别向 `BaiShou-Next`（→ `Baishou-dev`）和 `BaiShou-website`（→ `main`）提测试 PR，确认 CLA 评论与签署流程。
+分别向 `BaiShou-Next` 与 `BaiShou-website`（均 → `main`）提测试 PR，确认 CLA 评论与签署流程。
 
 ---
 

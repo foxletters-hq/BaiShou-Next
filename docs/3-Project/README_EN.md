@@ -117,7 +117,7 @@ Full policy (multilingual): [Contributing policy](../2-Submit/2-Contributing-Gui
 Technical workflow:
 
 1. **Fork** this repo and work on a feature branch (do not push directly to upstream `main`).
-2. When opening a PR upstream, set the **base branch to `Baishou-dev`**; PRs targeting `main` are invalid and will not be reviewed or responded to.
+2. When opening a PR upstream, set the **base branch to `main`**; work on a feature branch in your Fork—do not push directly to upstream `main`.
 3. Coding conventions: [AI coding rules](../1-AI-Code/1-AI-Code-Rule.md) (Chinese).
 4. Before opening a PR, run **`pnpm ci:check`** and follow commit message rules in [submission guidelines](../2-Submit/1-Submit-Rule.md).
 

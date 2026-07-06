@@ -117,7 +117,7 @@ pnpm ci:check
 技術流程：
 
 1. 在 GitHub **Fork** 本倉庫，在功能分支上開發（勿直接向上游 `main` 推送）。
-2. 向上游開 PR 時，**目標分支（base）選擇 `Baishou-dev`**；以 `main` 為目標的 PR 視為無效，不予審核與回覆。
+2. 向上游開 PR 時，**目標分支（base）選擇 `main`**；在 Fork 的功能分支上開發，勿直接向上游 `main` 推送。
 3. 編碼與目錄規範見 [AI 編碼規範](../1-AI-Code/1-AI-Code-Rule.md)（簡體中文）。
 4. 開 PR 前執行 **`pnpm ci:check`**，並遵循 [提交規範](../2-Submit/1-Submit-Rule.md) 中的 Commit Message 約定。
 
