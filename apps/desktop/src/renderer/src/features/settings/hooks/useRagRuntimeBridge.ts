@@ -76,7 +76,7 @@ export function useRagRuntimeBridge(active: boolean): void {
     const cleanup = api.rag.onRagProgress((state: any) => {
       const translate = (key: string, fallback: string) => tRef.current(key, fallback)
       const statusText = state.statusKey
-        ? resolveMigrationStatusText(translate, state.statusKey, state.statusParams)
+        ? resolveMigrationStatusText(tRef.current, state.statusKey, state.statusParams)
         : state.statusText || ''
       const errorText =
         typeof state.error === 'string' && state.error.trim()

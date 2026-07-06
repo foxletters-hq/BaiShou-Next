@@ -221,7 +221,11 @@ async function collectGarbage(): Promise<boolean> {
 }
 
 function takeSample(round: number): MemSample {
-  const mem = performance.memory
+  const mem = (
+    performance as Performance & {
+      memory?: { usedJSHeapSize: number; totalJSHeapSize: number }
+    }
+  ).memory
   return {
     round,
     heapUsedMB: mem
