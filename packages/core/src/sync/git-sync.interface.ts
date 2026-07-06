@@ -107,6 +107,12 @@ export interface IGitSyncService {
   // ── 版本历史 ───────────────────────────────────────────────
 
   /**
+   * 获取提交历史总条数（用于分页）
+   * @param filePath - 文件相对路径（可选，不传则统计全局历史）
+   */
+  getHistoryCount(filePath?: string): Promise<number>
+
+  /**
    * 获取指定文件的版本历史
    * @param filePath - 文件相对路径（可选，不传则获取全局历史）
    * @param limit - 返回数量限制，默认 20

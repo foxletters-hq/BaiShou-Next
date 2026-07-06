@@ -35,7 +35,11 @@ export const GitCommitsSection: React.FC<GitCommitsSectionProps> = ({ vm }) => {
         <span className="gmp-collapsible-title">
           {t('version_control.recent_commits', 'Recent Commits')}
         </span>
-        {history.length > 0 && <span className="gmp-collapsible-badge">{history.length}</span>}
+        {totalCount > 0 ? (
+          <span className="gmp-collapsible-badge">{totalCount}</span>
+        ) : history.length > 0 ? (
+          <span className="gmp-collapsible-badge">{history.length}</span>
+        ) : null}
       </div>
       {expandedSections.commits && (
         <div className="gmp-collapsible-body">

@@ -73,6 +73,10 @@ export const GitManagementPage: React.FC = () => {
           if (!api) return []
           return api.getHistory(filePath, limit, offset) ?? []
         }}
+        onGetHistoryCount={async (filePath?) => {
+          if (!api) return 0
+          return api.getHistoryCount(filePath) ?? 0
+        }}
         onGetRecentPulls={async (limit?) => {
           if (!api) return []
           return api.getRecentPulls(limit) ?? []
