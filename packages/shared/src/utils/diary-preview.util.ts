@@ -1,5 +1,39 @@
 import { isDiaryTimestampLine, stripDedicatedTagLinesFromContent } from './diary-content-tags.util'
 
+export type DiaryCardPreviewBlock =
+  | { kind: 'markdown'; text: string }
+  | { kind: 'quote'; text: string }
+
+const BLOCKQUOTE_LINE_RE = /^\s*>\s?(.*)$/
+
+/** 将卡片预览拆成普通 Markdown 块与逐行引用块，避免 CommonMark 懒续行扩大引用范围 */
+export function buildDiaryCardPreviewBlocks(text: string | null | undefined): DiaryCardPreviewBlock[] {
+  const prepared = prepareDiaryCardPreviewMarkdown(text)
+  if (!prepared) return []
+
+  const blocks: DiaryCardPreviewBlock[] = []
+  let markdownBuffer: string[] = []
+
+  const flushMarkdown = () => {
+    const joined = markdownBuffer.join('\n').trimEnd()
+    if (joined) blocks.push({ kind: 'markdown', text: joined })
+    markdownBuffer = []
+  }
+
+  for (const line of prepared.split('\n')) {
+    const quoteMatch = line.match(BLOCKQUOTE_LINE_RE)
+    if (quoteMatch) {
+      flushMarkdown()
+      blocks.push({ kind: 'quote', text: quoteMatch[1] ?? '' })
+      continue
+    }
+    markdownBuffer.push(line)
+  }
+
+  flushMarkdown()
+  return blocks
+}
+
 /** 语义搜索命中分片：去掉嵌入时写入的标签/日期前缀 */
 export function formatSemanticChunkSnippet(text: string | null | undefined): string {
   if (!text) return ''

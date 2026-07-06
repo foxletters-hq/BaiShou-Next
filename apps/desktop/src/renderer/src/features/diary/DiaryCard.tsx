@@ -3,7 +3,7 @@ import { Edit3, Trash2, Heart } from 'lucide-react'
 import { MarkdownRenderer, MoodEmoji, WeatherEmoji } from '@baishou/ui'
 import {
   limitDiaryPreviewTags,
-  prepareDiaryCardPreviewMarkdown,
+  buildDiaryCardPreviewBlocks,
   resolveWeatherId,
   resolveMoodId
 } from '@baishou/shared'
@@ -121,7 +121,10 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
   const visibleTags = entry.tags.filter((t) => t.trim().length > 0)
   const { visibleTags: previewTags, overflowCount: tagOverflowCount } =
     limitDiaryPreviewTags(visibleTags)
-  const previewMarkdown = prepareDiaryCardPreviewMarkdown(entry.preview)
+  const previewBlocks = React.useMemo(
+    () => buildDiaryCardPreviewBlocks(entry.preview),
+    [entry.preview]
+  )
 
   return (
     <div className="diary-card" onClick={onClick}>
@@ -154,7 +157,15 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
       {/* 内容预览 */}
       <div className="diary-card-content">
         <div className="diary-card-content-text">
-          <MarkdownRenderer content={previewMarkdown} basePath={basePath} />
+          {previewBlocks.map((block, index) =>
+            block.kind === 'quote' ? (
+              <div key={`quote-${index}`} className="diary-card-quote-line">
+                <MarkdownRenderer content={block.text} basePath={basePath} />
+              </div>
+            ) : (
+              <MarkdownRenderer key={`md-${index}`} content={block.text} basePath={basePath} />
+            )
+          )}
         </div>
 
         {/* 媒体指示器 */}

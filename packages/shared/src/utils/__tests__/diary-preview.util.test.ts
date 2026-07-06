@@ -4,7 +4,8 @@ import {
   formatSemanticChunkSnippet,
   normalizeDiaryPreviewMarkdown,
   prepareDiaryCardPreviewMarkdown,
-  convertFtsHighlightTagsToMarkdownBold
+  convertFtsHighlightTagsToMarkdownBold,
+  buildDiaryCardPreviewBlocks
 } from '../diary-preview.util'
 
 describe('normalizeDiaryPreviewMarkdown', () => {
@@ -45,6 +46,25 @@ describe('formatSemanticChunkSnippet', () => {
   it('strips diary embed prefix from semantic chunk text', () => {
     const raw = '[标签: 旅行] [2024-06-15 日记:]\n今天去爬山了'
     expect(formatSemanticChunkSnippet(raw)).toBe('今天去爬山了')
+  })
+})
+
+describe('buildDiaryCardPreviewBlocks', () => {
+  it('renders only explicit quote lines as quote blocks', () => {
+    const blocks = buildDiaryCardPreviewBlocks('正文\n> sadsad\nsadas')
+    expect(blocks).toEqual([
+      { kind: 'markdown', text: '正文' },
+      { kind: 'quote', text: 'sadsad' },
+      { kind: 'markdown', text: 'sadas' }
+    ])
+  })
+
+  it('keeps consecutive quote lines as separate quote blocks', () => {
+    const blocks = buildDiaryCardPreviewBlocks('> one\n> two')
+    expect(blocks).toEqual([
+      { kind: 'quote', text: 'one' },
+      { kind: 'quote', text: 'two' }
+    ])
   })
 })
 
