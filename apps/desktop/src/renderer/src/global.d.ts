@@ -199,7 +199,8 @@ interface GitAPI {
   commit(files: string[], message: string): Promise<unknown>
   commitAll(message: string): Promise<import('@baishou/shared').GitCommit | null>
   commitStaged(message: string): Promise<import('@baishou/shared').GitCommit | null>
-  getHistory(filePath?: string, limit?: number): Promise<unknown[]>
+  getHistory(filePath?: string, limit?: number, offset?: number): Promise<unknown[]>
+  getHistoryCount(filePath?: string): Promise<number>
   getRecentPulls(limit?: number): Promise<unknown[]>
   getCommitChanges(commitHash: string): Promise<unknown[]>
   getFileDiff(filePath: string, commitHash?: string): Promise<unknown>

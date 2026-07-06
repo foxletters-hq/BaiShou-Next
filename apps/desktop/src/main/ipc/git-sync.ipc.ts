@@ -102,10 +102,14 @@ export function registerGitSyncIPC() {
 
   ipcMain.handle(
     'git:getHistory',
-    async (_, filePath?: string, limit?: number, _offset?: number) => {
-      return getGitService().getHistory(filePath, limit)
+    async (_, filePath?: string, limit?: number, offset?: number) => {
+      return getGitService().getHistory(filePath, limit, offset)
     }
   )
+
+  ipcMain.handle('git:getHistoryCount', async (_, filePath?: string) => {
+    return getGitService().getHistoryCount(filePath)
+  })
 
   ipcMain.handle('git:getRecentPulls', async (_, limit?: number) => {
     return getGitService().getRecentPulls(limit)

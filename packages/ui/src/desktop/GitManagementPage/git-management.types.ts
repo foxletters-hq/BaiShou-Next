@@ -31,6 +31,7 @@ export interface GitManagementPageProps {
     limit?: number,
     offset?: number
   ) => Promise<VersionHistoryEntry[]>
+  onGetHistoryCount: (filePath?: string) => Promise<number>
   onGetRecentPulls: (limit?: number) => Promise<VersionHistoryEntry[]>
   onGetCommitChanges: (commitHash: string) => Promise<FileChange[]>
   onGetFileDiff: (filePath: string, commitHash?: string) => Promise<FileDiff>

@@ -18,28 +18,53 @@ import {
 } from './git-sync.helpers'
 
 export abstract class GitSyncHistoryMixin extends GitSyncCommitMixin {
-  async getHistory(filePath?: string, limit = 50): Promise<VersionHistoryEntry[]> {
+  async getHistoryCount(filePath?: string): Promise<number> {
+    const git = await this.ensureGit()
+
+    try {
+      const args = ['rev-list', '--count', 'HEAD']
+      if (filePath) {
+        args.push('--', filePath)
+      }
+      const count = await git.raw(args)
+      return Math.max(0, parseInt(count.trim(), 10) || 0)
+    } catch {
+      return 0
+    }
+  }
+
+  async getHistory(
+    filePath?: string,
+    limit = 50,
+    offset = 0
+  ): Promise<VersionHistoryEntry[]> {
     const git = await this.ensureGit()
 
     const options = ['--max-count', String(limit)]
+    if (offset > 0) {
+      options.push('--skip', String(offset))
+    }
     if (filePath) {
       options.push('--', filePath)
     }
 
     try {
+      const headRef = (await git.revparse(['HEAD'])).trim()
+      const headShort = headRef.substring(0, 7)
       const log = await git.log(options)
       const entries: VersionHistoryEntry[] = []
       for (const commit of log.all) {
         const changes = await this.getCommitChanges(commit.hash)
+        const hashShort = commit.hash.substring(0, 7)
         entries.push({
           commit: {
-            hash: commit.hash.substring(0, 7),
+            hash: hashShort,
             message: commit.message,
             date: new Date(commit.date),
             files: changes.map((c) => c.path)
           },
           changes,
-          isCurrent: entries.length === 0
+          isCurrent: hashShort === headShort
         })
       }
       return entries

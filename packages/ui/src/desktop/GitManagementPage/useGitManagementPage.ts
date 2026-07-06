@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { GitStatus, VersionHistoryEntry, FileChange, FileDiff } from '@baishou/shared'
 import type { GitManagementPageProps } from './git-management.types'
@@ -16,6 +16,7 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     onToast,
     onGetStatus,
     onGetHistory,
+    onGetHistoryCount,
     onGetRecentPulls,
     onGetCommitChanges,
     onGetFileDiff,
@@ -73,6 +74,7 @@ export function useGitManagementPage(props: GitManagementPageProps) {
   const [pageSize, setPageSize] = useState(20)
   const [totalCount, setTotalCount] = useState(0)
   const [commitMessage, setCommitMessage] = useState('')
+  const historyRequestRef = useRef(0)
 
   useEffect(() => {
     setRemoteUrl(config.remote?.url || '')
@@ -97,17 +99,28 @@ export function useGitManagementPage(props: GitManagementPageProps) {
   }, [onGetStatus])
 
   const handleLoadHistory = useCallback(async () => {
+    const requestId = ++historyRequestRef.current
     try {
       const offset = (page - 1) * pageSize
-      const entries = await onGetHistory(undefined, pageSize, offset)
-      setTotalCount(
-        entries.length === pageSize ? page * pageSize + 1 : (page - 1) * pageSize + entries.length
-      )
+      const [entries, total] = await Promise.all([
+        onGetHistory(undefined, pageSize, offset),
+        onGetHistoryCount()
+      ])
+      if (requestId !== historyRequestRef.current) return
       setHistory(entries)
+      setTotalCount(total)
     } catch {
+      if (requestId !== historyRequestRef.current) return
       onToast(t('version_control.load_history_failed', '加载历史失败'), 'error')
     }
-  }, [onGetHistory, page, pageSize, onToast, t])
+  }, [onGetHistory, onGetHistoryCount, page, pageSize, onToast, t])
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
+    if (page > totalPages) {
+      setPage(totalPages)
+    }
+  }, [page, pageSize, totalCount])
 
   const handleLoadRecentPulls = useCallback(async () => {
     try {
