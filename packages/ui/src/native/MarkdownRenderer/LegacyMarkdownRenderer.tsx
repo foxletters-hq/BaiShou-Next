@@ -65,11 +65,11 @@ function buildMarkdownStyles(
       marginBottom: 4
     },
     heading6: {
-      color: colors.textSecondary,
-      fontSize: Math.round(15 * headingScale),
+      color: isPreview ? colors.primary : colors.textSecondary,
+      fontSize: isPreview ? 15 : Math.round(15 * headingScale),
       fontWeight: '600',
-      marginTop: isChat ? 4 : 6,
-      marginBottom: 4
+      marginTop: isPreview ? 0 : isChat ? 4 : 6,
+      marginBottom: isPreview ? 2 : 4
     },
     paragraph: {
       color: bodyColor,

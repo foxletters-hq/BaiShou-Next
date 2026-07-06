@@ -1,10 +1,30 @@
 import { describe, it, expect } from 'vitest'
 import {
+  buildStreamdownMarkdownStyle,
   prepareNativeStreamdownMarkdown,
   markdownNeedsLegacyImageRenderer,
   preserveChatDisplayNewlines,
   estimateChatMarkdownMinHeight
 } from '../streamdown-markdown.util'
+
+const mockColors = {
+  textPrimary: '#111',
+  textSecondary: '#666',
+  primary: '#0a7',
+  bgSurface: '#fff',
+  bgSurfaceHighest: '#eee',
+  borderSubtle: '#ccc'
+} as const
+
+describe('buildStreamdownMarkdownStyle', () => {
+  it('keeps preview h4-h6 at or above body size', () => {
+    const style = buildStreamdownMarkdownStyle(mockColors, 'preview')
+    expect(style.paragraph?.fontSize).toBe(15)
+    expect(style.h4?.fontSize).toBeGreaterThanOrEqual(16)
+    expect(style.h5?.fontSize).toBeGreaterThanOrEqual(15)
+    expect(style.h6?.fontSize).toBeGreaterThanOrEqual(15)
+  })
+})
 
 describe('preserveChatDisplayNewlines', () => {
   it('converts trailing newlines to hard breaks', () => {

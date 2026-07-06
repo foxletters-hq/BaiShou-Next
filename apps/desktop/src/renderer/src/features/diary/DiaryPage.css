@@ -425,6 +425,22 @@
   margin-top: 0;
 }
 
+.diary-card-content-text h4 {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.diary-card-content-text h5 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.diary-card-content-text h6 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-primary) !important;
+}
+
 .diary-card-content-text ul,
 .diary-card-content-text ol {
   margin-top: 4px;

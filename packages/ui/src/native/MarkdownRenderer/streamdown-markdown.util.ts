@@ -7,6 +7,22 @@ import type { useNativeTheme } from '../theme'
 
 export type StreamdownMarkdownVariant = 'default' | 'chat' | 'ancillary' | 'preview'
 
+/** 卡片预览：h1–h3 略压缩，h4–h6 不低于正文 15px */
+const PREVIEW_HEADING_FONT_SIZES = [19, 17, 16, 17, 16, 15] as const
+const DEFAULT_HEADING_FONT_SIZES = [24, 20, 18, 17, 16, 15] as const
+
+function resolveHeadingFontSize(
+  level: 1 | 2 | 3 | 4 | 5 | 6,
+  variant: StreamdownMarkdownVariant,
+  isChat: boolean
+): number {
+  if (variant === 'preview') {
+    return PREVIEW_HEADING_FONT_SIZES[level - 1]
+  }
+  const scale = isChat ? 0.85 : 1
+  return Math.round(DEFAULT_HEADING_FONT_SIZES[level - 1] * scale)
+}
+
 const IMAGE_IN_MARKDOWN_RE = /!\[([^\]]*)\]\(([^ |)]+)(?:\s*\|\s*(\d+))?\)/g
 
 function isDisplayableImageUri(uri: string): boolean {
@@ -31,7 +47,6 @@ export function buildStreamdownMarkdownStyle(
   const bodyColor = isAncillary ? colors.textSecondary : colors.textPrimary
   /** 末行由 CHAT_MARKDOWN_BOTTOM_GUARD 托底，段落间距改由 lineHeight 自然分隔 */
   const paragraphMargin = isPreview ? 2 : isAncillary ? 4 : isChat ? 0 : 8
-  const headingScale = isPreview ? 0.72 : isChat ? 0.85 : 1
   const codeFontSize = isAncillary ? 12 : 13
 
   return {
@@ -43,45 +58,45 @@ export function buildStreamdownMarkdownStyle(
     },
     h1: {
       color: colors.textPrimary,
-      fontSize: Math.round(24 * headingScale),
+      fontSize: resolveHeadingFontSize(1, variant, isChat),
       fontWeight: 'bold',
       marginTop: isPreview ? 0 : isChat ? 12 : 16,
       marginBottom: isPreview ? 2 : isChat ? 6 : 8
     },
     h2: {
       color: colors.textPrimary,
-      fontSize: Math.round(20 * headingScale),
+      fontSize: resolveHeadingFontSize(2, variant, isChat),
       fontWeight: 'bold',
-      marginTop: isChat ? 10 : 14,
-      marginBottom: isChat ? 4 : 6
+      marginTop: isPreview ? 0 : isChat ? 10 : 14,
+      marginBottom: isPreview ? 2 : isChat ? 4 : 6
     },
     h3: {
       color: colors.textPrimary,
-      fontSize: Math.round(18 * headingScale),
+      fontSize: resolveHeadingFontSize(3, variant, isChat),
       fontWeight: 'bold',
-      marginTop: isChat ? 8 : 12,
-      marginBottom: 4
+      marginTop: isPreview ? 0 : isChat ? 8 : 12,
+      marginBottom: isPreview ? 2 : 4
     },
     h4: {
       color: colors.textPrimary,
-      fontSize: Math.round(17 * headingScale),
+      fontSize: resolveHeadingFontSize(4, variant, isChat),
       fontWeight: '600',
-      marginTop: isChat ? 8 : 10,
-      marginBottom: 4
+      marginTop: isPreview ? 0 : isChat ? 8 : 10,
+      marginBottom: isPreview ? 2 : 4
     },
     h5: {
       color: colors.textPrimary,
-      fontSize: Math.round(16 * headingScale),
+      fontSize: resolveHeadingFontSize(5, variant, isChat),
       fontWeight: '600',
-      marginTop: isChat ? 6 : 8,
-      marginBottom: 4
+      marginTop: isPreview ? 0 : isChat ? 6 : 8,
+      marginBottom: isPreview ? 2 : 4
     },
     h6: {
-      color: colors.textSecondary,
-      fontSize: Math.round(15 * headingScale),
+      color: isPreview ? colors.primary : colors.textSecondary,
+      fontSize: resolveHeadingFontSize(6, variant, isChat),
       fontWeight: '600',
-      marginTop: isChat ? 4 : 6,
-      marginBottom: 4
+      marginTop: isPreview ? 0 : isChat ? 4 : 6,
+      marginBottom: isPreview ? 2 : 4
     },
     blockquote: isPreview
       ? {
