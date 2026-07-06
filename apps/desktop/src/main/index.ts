@@ -42,6 +42,11 @@ import { HotkeyService } from './services/hotkey.service'
 import { setHotkeyService } from './ipc/settings.ipc'
 import { logger } from '@baishou/shared'
 
+if (is.dev) {
+  app.commandLine.appendSwitch('remote-debugging-port', '9333')
+  app.commandLine.appendSwitch('js-flags', '--expose-gc')
+}
+
 let mainWindow: BrowserWindow | null = null
 let isBootstrapping = false
 
