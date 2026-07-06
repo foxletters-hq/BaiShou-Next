@@ -111,7 +111,7 @@ export function createDiaryCodeMirrorExtensions(
     diarySyntaxTreeGrowthPlugin,
     ...(isTouch
       ? [
-          EditorView.dragMovesSelection.of(false),
+          EditorView.dragMovesSelection.of(() => false),
           tableChromeTouchPlugin(platform),
           tablePostTableTouchPlugin(platform),
           touchSelectionDebugPlugin()

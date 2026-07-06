@@ -29,10 +29,7 @@ export class VaultIndexServiceImpl implements VaultIndexService {
             .filter(Boolean)
             .map((t) => t.trim())
         : []
-    const previewSource =
-      'preview' in d && typeof (d as DiaryMeta).preview === 'string'
-        ? (d as DiaryMeta).preview
-        : content
+    const previewSource = content
     return {
       id: d.id!,
       date: d.date,
