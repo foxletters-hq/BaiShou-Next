@@ -13,7 +13,11 @@ export function isInteractableChromeElement(el: HTMLElement | null): boolean {
 
   const block = chrome.closest('.cm-table-block')
   if (block?.classList.contains('cm-table-block--touch')) {
-    return block.classList.contains('cm-table-block--has-active-cell')
+    return (
+      block.classList.contains('cm-table-block--has-active-cell') ||
+      block.classList.contains('cm-table-block--col-selected') ||
+      block.classList.contains('cm-table-block--row-selected')
+    )
   }
 
   const style = window.getComputedStyle(chrome)

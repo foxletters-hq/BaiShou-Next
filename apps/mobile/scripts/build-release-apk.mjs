@@ -9,7 +9,7 @@
  * - BAISHOU_RELEASE_FULL_CLEAN=1：强制全量清缓存 + --no-build-cache（排查陈旧产物时用）
  */
 import { spawnSync } from 'node:child_process'
-import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { applyAndroidPlainSplashPatch } from './plain-splash-patch.mjs'
@@ -25,6 +25,31 @@ const gradlew = path.join(androidDir, process.platform === 'win32' ? 'gradlew.ba
 const isCi = process.env.CI === 'true'
 const forceFullClean = process.env.BAISHOU_RELEASE_FULL_CLEAN === '1'
 const skipSync = process.env.SKIP_SYNC === '1'
+
+const diaryEditorBundle = path.join(mobileRoot, 'assets/diary-editor/diary-editor.bundle')
+const diaryEditorHtml = path.join(mobileRoot, 'assets/diary-editor/index.html')
+const MIN_DIARY_EDITOR_BUNDLE_BYTES = 100_000
+
+function assertDiaryEditorBundleReady() {
+  for (const filePath of [diaryEditorHtml, diaryEditorBundle]) {
+    if (!existsSync(filePath)) {
+      console.error(`❌ 缺少日记编辑器 WebView 资源: ${filePath}`)
+      console.error('   请先执行: cd apps/mobile && pnpm run build:diary-editor')
+      process.exit(1)
+    }
+  }
+  const bundleSize = statSync(diaryEditorBundle).size
+  if (bundleSize < MIN_DIARY_EDITOR_BUNDLE_BYTES) {
+    console.error(`❌ diary-editor.bundle 过小（${bundleSize} bytes），请重新 build:diary-editor`)
+    process.exit(1)
+  }
+}
+
+function buildDiaryEditorBundle() {
+  console.log('\n📦 打包 diary-editor WebView bundle（Release 必须与主包同步）…')
+  run('pnpm', ['run', 'build:diary-editor'], mobileRoot)
+  assertDiaryEditorBundleReady()
+}
 
 function run(cmd, args, cwd, extraEnv = {}) {
   const result = spawnSync(cmd, args, {
@@ -57,6 +82,8 @@ if (forceFullClean || !isCi) {
 } else {
   console.log('\n🧹 CI：跳过全量清缓存（干净 checkout，保留 Gradle 缓存加速）')
 }
+
+buildDiaryEditorBundle()
 
 console.log('\n🔧 Expo prebuild（注入 release 签名配置）…')
 run('npx', ['expo', 'prebuild', '--platform', 'android', '--no-install'], mobileRoot, {

@@ -856,9 +856,6 @@ export function openChromeMenuForTrigger(
   }
 
   dismissEditorKeyboardForChrome(view)
-  if (touch && !isRowOrColHandle(trigger)) {
-    view.dispatch({ effects: setActiveTableCell.of(null) })
-  }
 
   const rect = trigger.getBoundingClientRect()
   const x = rect.left
@@ -909,7 +906,7 @@ export function openChromeMenuForTrigger(
   if (trigger.classList.contains('cm-table-col-handle')) {
     const colIndex = Number(trigger.dataset.colIndex)
     if (Number.isNaN(colIndex)) return
-    setChromeSelection(view, tableFrom, 'col', colIndex, { clearActiveCell: touch })
+    setChromeSelection(view, tableFrom, 'col', colIndex)
     const sections = buildColMenuSections(table, colIndex)
     const onPick = (id: string) => {
       runChromeMenuAction(view, tableFrom, tableTo, trigger, id)
@@ -928,7 +925,7 @@ export function openChromeMenuForTrigger(
   if (trigger.classList.contains('cm-table-row-handle')) {
     const rowIndex = Number(trigger.dataset.rowIndex)
     if (Number.isNaN(rowIndex)) return
-    setChromeSelection(view, tableFrom, 'row', rowIndex, { clearActiveCell: touch })
+    setChromeSelection(view, tableFrom, 'row', rowIndex)
     const sections = buildRowMenuSections(table, rowIndex)
     const title = rowIndex < 0 ? '表头' : `第 ${rowIndex + 1} 行`
     const onPick = (id: string) => {

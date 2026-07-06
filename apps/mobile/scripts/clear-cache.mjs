@@ -31,9 +31,23 @@ function resetWorkletsCache() {
   console.log(`  ✓ 已重置 ${path.relative(workspaceRoot, workletsDir)}`)
 }
 
-/** Metro file-map 磁盘缓存在 /tmp；Node 升级或中断构建后可能无法反序列化 */
+/** Metro file-map / transform 磁盘缓存在 /tmp；Node 升级、中断构建或清空 .worklets 后可能仍引用已删文件 */
 function rmMetroTmpCaches() {
   const tmpDir = os.tmpdir()
+
+  const exactNames = ['metro-cache', 'haste-map']
+  for (const name of exactNames) {
+    const fullPath = path.join(tmpDir, name)
+    try {
+      if (fs.existsSync(fullPath)) {
+        fs.rmSync(fullPath, { recursive: true, force: true })
+        console.log(`  ✓ 已删除 ${fullPath}`)
+      }
+    } catch {
+      // ignore locked tmp files
+    }
+  }
+
   let names
   try {
     names = fs.readdirSync(tmpDir)

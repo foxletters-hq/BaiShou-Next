@@ -1,7 +1,18 @@
-import React, { forwardRef, useEffect, useImperativeHandle, useMemo } from 'react'
-import { Platform, StyleSheet, View, type ViewStyle } from 'react-native'
+import React, {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo
+} from 'react'
+import { Keyboard, Platform, StyleSheet, View, type ViewStyle } from 'react-native'
 import { WebView } from 'react-native-webview'
-import type { DiaryCmTheme } from '../../shared/diary-codemirror/types'
+import type {
+  DiaryCmConfirmRequestPayload,
+  DiaryCmMarkdownMark,
+  DiaryCmTheme
+} from '../../shared/diary-codemirror/types'
+import { useDialog } from '../Dialog/Dialog'
 import { useNativeTheme } from '../theme'
 import { buildDiaryCmThemeFromNative } from './diary-cm-theme.util'
 import {
@@ -14,6 +25,8 @@ const EDITOR_MIN_HEIGHT = 320
 export interface DiaryEditorWebViewDocument {
   uri: string
   baseUrl: string
+  /** bundle 版本戳；变化时强制 WebView remount */
+  cacheKey?: string
 }
 
 export interface NativeDiaryCodeMirrorEditorHandle {
@@ -21,6 +34,10 @@ export interface NativeDiaryCodeMirrorEditorHandle {
   blur: () => void
   insertAtCursor: (text: string) => void
   insertAtRange: (start: number, end: number, text: string) => void
+  undo: () => void
+  redo: () => void
+  toggleMarkdownMark: (marker: DiaryCmMarkdownMark) => void
+  deleteRange: (from: number, to: number) => void
 }
 
 export interface NativeDiaryCodeMirrorEditorProps
@@ -40,6 +57,9 @@ export interface NativeDiaryCodeMirrorEditorProps
     | 'onImageAction'
     | 'onImagePreview'
     | 'resolveAttachmentUrl'
+    | 'onDismissKeyboard'
+    | 'onConfirmRequest'
+    | 'onTableSheetRequest'
   > {
   /** WebView 文档（同目录 index.html + bundle，由宿主 app 预加载后传入） */
   editorWebViewSource: DiaryEditorWebViewDocument
@@ -55,6 +75,7 @@ export interface NativeDiaryCodeMirrorEditorProps
   minHeight?: number
   /** 填满父级剩余空间，在固定顶栏布局下启用 */
   fillViewport?: boolean
+  style?: ViewStyle
 }
 
 export const NativeDiaryCodeMirrorEditor = forwardRef<
@@ -81,6 +102,9 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
     onImageAction,
     onImagePreview,
     resolveAttachmentUrl,
+    onDismissKeyboard,
+    onConfirmRequest,
+    onTableSheetRequest,
     style,
     minHeight = EDITOR_MIN_HEIGHT,
     fillViewport = false
@@ -91,6 +115,26 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
   const theme = useMemo(
     () => themeOverride ?? buildDiaryCmThemeFromNative(isDark, colors),
     [colors, isDark, themeOverride]
+  )
+
+  const dialog = useDialog()
+
+  const defaultDismissKeyboard = useCallback(() => {
+    Keyboard.dismiss()
+  }, [])
+
+  const defaultConfirmRequest = useCallback(
+    (payload: DiaryCmConfirmRequestPayload, respond: (confirmed: boolean) => void) => {
+      void dialog
+        .confirm(payload.message, {
+          title: payload.title ?? '确认删除',
+          confirmText: payload.confirmText ?? '删除',
+          cancelText: payload.cancelText ?? '取消',
+          destructive: payload.destructive ?? true
+        })
+        .then(respond)
+    },
+    [dialog]
   )
 
   const bridge = useDiaryCodeMirrorBridge({
@@ -109,7 +153,10 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
     onImageAction,
     onImagePreview,
     resolveAttachmentUrl,
-    bottomScrollInset
+    bottomScrollInset,
+    onDismissKeyboard: onDismissKeyboard ?? defaultDismissKeyboard,
+    onConfirmRequest: onConfirmRequest ?? defaultConfirmRequest,
+    onTableSheetRequest
   })
 
   useEffect(() => {
@@ -136,10 +183,25 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
       focusAtOffset: bridge.focusAtOffset,
       blur: bridge.blur,
       insertAtCursor: bridge.insertAtCursor,
-      insertAtRange: bridge.insertAtRange
+      insertAtRange: bridge.insertAtRange,
+      undo: bridge.undo,
+      redo: bridge.redo,
+      toggleMarkdownMark: bridge.toggleMarkdownMark,
+      deleteRange: bridge.deleteRange
     }),
-    [bridge.blur, bridge.focusAtOffset, bridge.insertAtCursor, bridge.insertAtRange]
+    [
+      bridge.blur,
+      bridge.deleteRange,
+      bridge.focusAtOffset,
+      bridge.insertAtCursor,
+      bridge.insertAtRange,
+      bridge.redo,
+      bridge.toggleMarkdownMark,
+      bridge.undo
+    ]
   )
+
+  const webViewRemountKey = editorWebViewSource.cacheKey ?? editorWebViewSource.uri
 
   const webViewSource = useMemo(
     () => ({
@@ -220,7 +282,7 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
     <View style={shellStyle} collapsable={false}>
       {active ? (
         <WebView
-          key={editorWebViewSource.uri}
+          key={webViewRemountKey}
           ref={bridge.webViewRef}
           source={webViewSource}
           originWhitelist={['*']}

@@ -27,9 +27,15 @@ type PendingNativeSheet = {
 
 const pendingSheets = new Map<string, PendingNativeSheet>()
 let nativeSheetOpen = false
+let nativeSheetOpenedAt = 0
 
 export function isNativeTableSheetOpen(): boolean {
   return nativeSheetOpen
+}
+
+/** RN 侧菜单未正常关闭时，允许把手再次尝试拉起 */
+export function isNativeTableSheetStale(maxAgeMs = 1200): boolean {
+  return nativeSheetOpen && Date.now() - nativeSheetOpenedAt > maxAgeMs
 }
 
 export function shouldUseNativeTableSheet(): boolean {
@@ -58,6 +64,7 @@ export function requestNativeTableSheet(
   const requestId = `table-sheet-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   pendingSheets.set(requestId, { onPick, onClose })
   nativeSheetOpen = true
+  nativeSheetOpenedAt = Date.now()
   markTableSheetOpen()
 
   const payload: DiaryCmTableSheetRequestPayload = {
@@ -87,6 +94,7 @@ export function requestNativeTableSheet(
 function finishNativeTableSheetSession(): void {
   if (pendingSheets.size === 0) {
     nativeSheetOpen = false
+    nativeSheetOpenedAt = 0
     markTableSheetClosed()
   }
 }
@@ -111,6 +119,7 @@ export function resolveNativeTableSheetResponse(payload: DiaryCmTableSheetRespon
 export function resetNativeTableSheetsForTest(): void {
   pendingSheets.clear()
   nativeSheetOpen = false
+  nativeSheetOpenedAt = 0
   markTableSheetClosed()
 }
 
@@ -121,5 +130,6 @@ export function closeNativeTableSheets(): void {
     pendingSheets.delete(requestId)
   }
   nativeSheetOpen = false
+  nativeSheetOpenedAt = 0
   markTableSheetClosed()
 }

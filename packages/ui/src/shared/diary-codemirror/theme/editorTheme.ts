@@ -929,7 +929,9 @@ export const editorTheme = EditorView.baseTheme({
 export const mobileTouchEditorLayoutTheme = EditorView.theme({
   '.cm-content': {
     padding: '8px 0',
-    paddingBottom: 'min(40vh, 280px)'
+    paddingBottom: 'min(40vh, 280px)',
+    userSelect: 'text',
+    WebkitUserSelect: 'text'
   },
   '.cm-editor': {
     height: 'auto !important',
@@ -959,7 +961,9 @@ export const mobileTouchEditorLayoutTheme = EditorView.theme({
 export const mobileTouchViewportTheme = EditorView.theme({
   '.cm-content': {
     padding: '8px 0',
-    paddingBottom: 'max(min(40vh, 280px), var(--diary-bottom-scroll-inset, 0px))'
+    paddingBottom: 'max(min(40vh, 280px), var(--diary-bottom-scroll-inset, 0px))',
+    userSelect: 'text',
+    WebkitUserSelect: 'text'
   },
   '.cm-editor': {
     height: '100%'

@@ -18,6 +18,10 @@ import {
   isTableSheetOpen
 } from '@baishou/ui/shared/diary-codemirror/table/tableSheetInteraction'
 import { logDiaryBridge } from '@baishou/ui/shared/diary-codemirror/diaryBridgeDebug'
+import {
+  logTouchSelectionProbe,
+  scheduleSelectionProbesAfterTouch
+} from '@baishou/ui/shared/diary-codemirror/extensions/touchSelectionDebug'
 import { diarySyntaxTreeGrowthEffect } from '@baishou/ui/shared/diary-codemirror/extensions/diarySyntaxTreeGrowth'
 import type { DiaryCmTheme } from '@baishou/ui/shared/diary-codemirror/types'
 
@@ -47,8 +51,30 @@ let scrollListenerInstalled = false
 let touchInteractionDidPan = false
 let touchInteractionStartX: number | null = null
 let touchInteractionStartY: number | null = null
+let touchInteractionStartAt: number | null = null
 /** touchend 后短时间内抑制 click 触发的二次滚回 */
 let suppressCaretScrollFromClickUntil = 0
+
+function isCaretAtMountDefault(): boolean {
+  if (!view) return true
+  const docLen = view.state.doc.length
+  if (docLen <= 1) return true
+  return view.state.selection.main.head >= docLen - 1
+}
+
+/** 初次挂载且光标仍在文末默认位置时，才保持「钉在底部」 */
+function shouldPinScrollToBottomDuringMount(): boolean {
+  return Date.now() < suppressCaretScrollUntil && isCaretAtMountDefault()
+}
+
+/** 用户主动把光标移到非文末时，结束初次挂载的底部钉住阶段 */
+function noteUserCaretPlacement(head: number, docLen: number): void {
+  if (Date.now() >= suppressCaretScrollUntil) return
+  if (docLen > 1 && head < docLen - 1) {
+    suppressCaretScrollUntil = 0
+    suppressCaretScrollOnce = false
+  }
+}
 
 /** 用户手动滚动后，暂停自动拽回光标的时长 */
 const USER_SCROLL_LOCK_MS = 3000
@@ -248,6 +274,7 @@ function resetTouchInteractionState(): void {
   touchInteractionDidPan = false
   touchInteractionStartX = null
   touchInteractionStartY = null
+  touchInteractionStartAt = null
 }
 
 function noteTouchInteractionStart(event: TouchEvent): void {
@@ -256,6 +283,7 @@ function noteTouchInteractionStart(event: TouchEvent): void {
   touchInteractionDidPan = false
   touchInteractionStartX = touch.clientX
   touchInteractionStartY = touch.clientY
+  touchInteractionStartAt = Date.now()
 }
 
 function noteTouchInteractionMove(event: TouchEvent): void {
@@ -477,7 +505,8 @@ function ensureCaretVisible(onDone?: () => void, force = false): void {
 
 function scheduleForcedCaretScroll(): void {
   if (Date.now() < suppressCaretScrollUntil) {
-    scrollEditorToBottomInstant()
+    userScrollLockUntil = 0
+    ensureCaretVisible(undefined, true)
     return
   }
   userScrollLockUntil = 0
@@ -487,7 +516,7 @@ function scheduleForcedCaretScroll(): void {
 }
 
 function scheduleEnsureCaretVisible(onDone?: () => void): void {
-  if (Date.now() < suppressCaretScrollUntil) {
+  if (shouldPinScrollToBottomDuringMount()) {
     scrollEditorToBottomInstant()
     onDone?.()
     return
@@ -515,6 +544,7 @@ function setScrollInsets(payload: DiaryCmSetScrollInsetsPayload): void {
 
 function reportContentMetrics(): void {
   if (!view) return
+  if (touchInteractionStartAt != null) return
 
   const contentRect = view.contentDOM.getBoundingClientRect()
   const contentTop = contentRect.top
@@ -632,7 +662,7 @@ function installTouchParentScrollRelay(): void {
 function setupContentHeightObserver(editorView: EditorView): void {
   contentHeightObserver?.disconnect()
   contentHeightObserver = new ResizeObserver(() => {
-    if (Date.now() < suppressCaretScrollUntil) {
+    if (shouldPinScrollToBottomDuringMount()) {
       scrollEditorToBottomInstant()
     }
     reportContentMetrics()
@@ -720,13 +750,18 @@ function mountEditor(init: InitPayload): void {
             from,
             to,
             docLen: update.state.doc.length,
-            docChanged: update.docChanged
+            docChanged: update.docChanged,
+            selectedText: update.state.sliceDoc(from, to)
           })
+          if (view && init.interactionMode === 'touch' && (from !== to || update.state.sliceDoc(from, to))) {
+            logTouchSelectionProbe(view, 'cm-selectionSet')
+          }
           postToNative({ type: 'selectionChange', payload: { start: from, end: to } })
           if (init.interactionMode === 'touch') {
+            noteUserCaretPlacement(from, update.state.doc.length)
             window.requestAnimationFrame(() => {
               reportContentMetrics()
-              if (scrollMode === 'viewport') {
+              if (scrollMode === 'viewport' && from === to) {
                 if (Date.now() >= suppressCaretScrollFromClickUntil) {
                   if (suppressCaretScrollOnce) {
                     suppressCaretScrollOnce = false
@@ -787,6 +822,17 @@ function mountEditor(init: InitPayload): void {
             resetTouchInteractionState()
             return false
           }
+          const touch = event.changedTouches[0]
+          if (view && touch && init.interactionMode === 'touch') {
+            const durationMs =
+              touchInteractionStartAt != null ? Date.now() - touchInteractionStartAt : undefined
+            const touchMeta = {
+              clientX: touch.clientX,
+              clientY: touch.clientY,
+              durationMs
+            }
+            scheduleSelectionProbesAfterTouch(view, touchMeta)
+          }
           if (init.interactionMode === 'touch' && scrollMode === 'viewport') {
             handleTouchPointerEnd(event.target)
           } else {
@@ -815,7 +861,7 @@ function mountEditor(init: InitPayload): void {
             userScrollLockUntil = 0
             window.requestAnimationFrame(() => {
               if (!view) return
-              if (Date.now() < suppressCaretScrollUntil) {
+              if (shouldPinScrollToBottomDuringMount()) {
                 scrollEditorToBottomInstant()
                 return
               }
@@ -910,13 +956,13 @@ function probeLivePreviewDom(attempt: number): void {
     scrollerClientHeight: view?.scrollDOM.clientHeight ?? 0,
     scrollerScrollHeight: view?.scrollDOM.scrollHeight ?? 0
   })
-  if (needsRetry) {
+    if (needsRetry) {
     view?.dispatch({ effects: diarySyntaxTreeGrowthEffect.of(null) })
-    if (Date.now() < suppressCaretScrollUntil) {
+    if (shouldPinScrollToBottomDuringMount()) {
       scrollEditorToBottomInstant()
     }
     window.setTimeout(() => probeLivePreviewDom(attempt + 1), 50 * (attempt + 1))
-  } else if (Date.now() < suppressCaretScrollUntil) {
+  } else if (shouldPinScrollToBottomDuringMount()) {
     scrollEditorToBottomInstant()
   }
 }
@@ -983,7 +1029,7 @@ function insertAtCursor(text: string): void {
 function setSelection(start: number, end: number): void {
   if (!view) return
   view.dispatch({ selection: { anchor: start, head: end }, scrollIntoView: false })
-  if (Date.now() < suppressCaretScrollUntil) {
+  if (shouldPinScrollToBottomDuringMount()) {
     scrollEditorToBottomInstant()
     return
   }
@@ -1020,6 +1066,17 @@ function handleRnMessage(raw: unknown): void {
     return
   }
 
+  try {
+    handleRnMessageInner(message)
+  } catch (error) {
+    logDiaryBridge('diaryCm', 'webviewCommandError', {
+      type: message.type,
+      message: error instanceof Error ? error.message : String(error)
+    })
+  }
+}
+
+function handleRnMessageInner(message: RnToWebViewMessage): void {
   switch (message.type) {
     case 'init':
       mountEditor(message.payload)
@@ -1060,7 +1117,7 @@ function handleRnMessage(raw: unknown): void {
     case 'focus':
       view?.focus()
       userScrollLockUntil = 0
-      if (Date.now() < suppressCaretScrollUntil) {
+      if (shouldPinScrollToBottomDuringMount()) {
         scrollEditorToBottomInstant()
       } else {
         scheduleEnsureCaretVisible()

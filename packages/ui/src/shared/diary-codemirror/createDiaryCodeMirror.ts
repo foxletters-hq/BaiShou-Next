@@ -30,6 +30,7 @@ import {
   tableBoundaryBackspaceKeymap
 } from './extensions/tableEditorPlugin'
 import { tablePostTableTouchPlugin } from './extensions/tablePostTableTouchPlugin'
+import { touchSelectionDebugPlugin } from './extensions/touchSelectionDebug'
 import {
   diarySyntaxTreeGrowthPlugin,
   diarySyntaxTreeGrowthEffect
@@ -50,6 +51,7 @@ import { tableMenuI18nPlugin } from './table/desktop/tableMenuI18nPlugin'
 import { insertEmptyMarkdownTableKeymap } from './table/markdownTableCommands'
 import { selectionBoundsTransactionFilter, installSafeEditorDispatch } from './extensions/selectionBoundsTransactionFilter'
 import { clampPosToDoc } from './editorContentSync'
+import { configureCodeMirrorForMobileWebView } from './configureMobileCodeMirror'
 import { diaryPostTableGapNormalize } from './table/tableEffects'
 import type { DiaryCmPlatform } from './types'
 
@@ -85,7 +87,7 @@ export function createDiaryCodeMirrorExtensions(
   return [
     Prec.highest(selectionBoundsTransactionFilter()),
     EditorView.lineWrapping,
-    highlightActiveLine(),
+    ...(isTouch ? [] : [highlightActiveLine()]),
     history(),
     ...(platform.tagLineMode ? [Prec.high(diaryTagLineKeymap), diaryTagLinePlugin] : []),
     ...(isTouch
@@ -107,7 +109,14 @@ export function createDiaryCodeMirrorExtensions(
       ? [tableCellExtension, tableAtomicRanges, tableBoundaryBackspaceKeymap, tableEditorPlugin]
       : []),
     diarySyntaxTreeGrowthPlugin,
-    ...(isTouch ? [tableChromeTouchPlugin(platform), tablePostTableTouchPlugin(platform)] : []),
+    ...(isTouch
+      ? [
+          EditorView.dragMovesSelection.of(false),
+          tableChromeTouchPlugin(platform),
+          tablePostTableTouchPlugin(platform),
+          touchSelectionDebugPlugin()
+        ]
+      : []),
     listContinuationExtension,
     inlineMarkEnterExtension,
     markdownKeymap,
@@ -153,6 +162,9 @@ export function createDiaryCodeMirror(
   parent: HTMLElement,
   options: CreateDiaryCodeMirrorOptions
 ): EditorView {
+  if (options.platform.interactionMode === 'touch') {
+    configureCodeMirrorForMobileWebView()
+  }
   const extensions = createDiaryCodeMirrorExtensions(options)
   const view = new EditorView({
     parent,

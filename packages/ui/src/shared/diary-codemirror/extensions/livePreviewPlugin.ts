@@ -6,6 +6,7 @@ import { diarySyntaxTreeGrowthEffect } from './diarySyntaxTreeGrowth'
 import { buildMarkerHidingDecorations } from './build'
 import { livePreviewFreezePlugin, previewFrozenField, setPreviewFrozen } from './livePreviewFreeze'
 import { editorFocusEffect, editorFocusField } from './editorFocus'
+import { findFencedCodeBlockContaining } from './fencedCodeScan'
 import type { DiaryCmPlatform } from '../types'
 
 export { editorFocusEffect } from './editorFocus'
@@ -29,14 +30,26 @@ function transactionHasSelectionChange(tr: Transaction): boolean {
   return tr.selection !== undefined
 }
 
+function selectionAffectsFencedCode(tr: Transaction): boolean {
+  const head = tr.state.selection.main.head
+  const prevHead = tr.startState.selection.main.head
+  const doc = tr.state.doc
+  const prevDoc = tr.startState.doc
+  return (
+    findFencedCodeBlockContaining(doc, head) != null ||
+    findFencedCodeBlockContaining(prevDoc, prevHead) != null
+  )
+}
+
 function shouldRebuildLivePreview(tr: Transaction): boolean {
   if (tr.state.field(previewFrozenField)) {
     if (tr.effects.some((e) => e.is(setPreviewFrozen) && e.value === false)) {
       return true
     }
     if (tr.docChanged) return true
-    // 点击进围栏块时需立刻根据 selection/focus 显隐 ```，不能等 freeze 结束
-    if (transactionHasSelectionChange(tr)) return true
+    if (transactionHasSelectionChange(tr)) {
+      return selectionAffectsFencedCode(tr)
+    }
     if (tr.effects.some((e) => e.is(editorFocusEffect))) return true
     if (tr.effects.some((e) => e.is(livePreviewRefreshEffect))) return true
     return false
