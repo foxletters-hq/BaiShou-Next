@@ -260,7 +260,8 @@
 
 /* Full-bleed tabs (RAG, models, …): pane fills area and scrolls internally */
 .settings-content-area > .settings-pane-full,
-.settings-content-motion-host > .settings-pane-full {
+.settings-content-motion-host > .settings-pane-full,
+.settings-content-motion-host > .settings-pane-body > .settings-pane-full {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
