@@ -5,6 +5,7 @@ import { resolveDesktopAssistantAvatarSrc, AssistantKindBadge } from '@baishou/u
 import type { AgentAssistant } from './AgentSidebar'
 import styles from './AgentSidebar.module.css'
 import { rememberSettingsReturnPath } from '../../settings/settings-navigation.util'
+import { prefetchSettingsEntry } from '../../../lib/prefetch-settings-entry'
 import { ChevronsUpDown, ListChecks, Plus, Settings } from 'lucide-react'
 
 interface AssistantAvatarProps {
@@ -168,6 +169,8 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
 
       <div
         className={styles.menuItemRow}
+        onMouseEnter={prefetchSettingsEntry}
+        onFocus={prefetchSettingsEntry}
         onClick={() => {
           rememberSettingsReturnPath(location.pathname)
           startTransition(() => {

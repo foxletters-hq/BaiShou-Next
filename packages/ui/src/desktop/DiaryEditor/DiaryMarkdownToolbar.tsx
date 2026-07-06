@@ -218,7 +218,7 @@ export function DiaryMarkdownToolbar({
 
           <button
             type="button"
-            className={`${styles.btn} ${styles.btnPrimary} ${styles.hash}`}
+            className={`${styles.btn} ${styles.hash}`}
             onClick={() => onInsertText('#')}
             title={t('diary.toolbar_insert_tag', '插入标签')}
             aria-label={t('diary.toolbar_insert_tag', '插入标签')}

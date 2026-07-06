@@ -253,6 +253,7 @@
 
 /* 纯表情包消息行：头像 + 图片，不包裹气泡卡片 */
 .emojiOnlyRow {
+  --chat-bubble-side-inset: 100px;
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -280,6 +281,7 @@
   flex-wrap: wrap;
   gap: 6px;
   align-items: flex-start;
+  max-width: min(800px, calc(100% - var(--chat-bubble-side-inset)));
 }
 
 .emojiOnlyImg {

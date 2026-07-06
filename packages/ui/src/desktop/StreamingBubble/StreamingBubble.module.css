@@ -1,4 +1,5 @@
 .container {
+  --chat-bubble-side-inset: 100px;
   padding: 8px 16px;
   display: flex;
   align-items: flex-start;
@@ -37,12 +38,12 @@
   display: flex;
   flex-direction: column;
   width: fit-content;
-  max-width: min(800px, calc(100% - 60px));
+  max-width: min(800px, calc(100% - var(--chat-bubble-side-inset)));
   align-items: flex-start;
 }
 
 .messageColWide {
-  width: min(800px, calc(100% - 60px));
+  width: min(800px, calc(100% - var(--chat-bubble-side-inset)));
 }
 
 .nameTimeRow {

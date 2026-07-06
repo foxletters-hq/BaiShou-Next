@@ -1,4 +1,6 @@
 .chatBubbleContainer {
+  /* 本侧头像列(36+10) + 对侧头像列(36+10) + 额外留白 */
+  --chat-bubble-side-inset: 100px;
   padding: 8px 16px;
   width: 100%;
   box-sizing: border-box;
@@ -56,19 +58,19 @@
 .messageCol {
   display: flex;
   flex-direction: column;
-  max-width: min(800px, calc(100% - 60px));
+  max-width: min(800px, calc(100% - var(--chat-bubble-side-inset)));
 }
 
 .userRow .messageCol {
   align-items: flex-end;
   width: fit-content;
-  max-width: min(800px, calc(100% - 60px));
+  max-width: min(800px, calc(100% - var(--chat-bubble-side-inset)));
 }
 
 .aiRow .messageCol {
   align-items: flex-start;
   width: fit-content;
-  max-width: min(800px, calc(100% - 60px));
+  max-width: min(800px, calc(100% - var(--chat-bubble-side-inset)));
 }
 
 .timeRow {
