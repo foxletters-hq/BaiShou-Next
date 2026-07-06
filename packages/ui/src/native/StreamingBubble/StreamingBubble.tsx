@@ -88,31 +88,34 @@ export const StreamingBubble = React.memo(function StreamingBubble({
             )}
           </View>
         ) : hasText || hasReasoning || hasTools || hasAttachments ? (
-          <View
-            collapsable={false}
-            style={[
-              chatBubbleStyles.bubble,
-              chatBubbleStyles.bubbleEditing,
-              {
-                backgroundColor: colors.bgSurface,
-                borderBottomLeftRadius: 4
-              }
-            ]}
-          >
-            <Text
+          <>
+            <View style={[chatBubbleStyles.nameTimeRow, chatBubbleStyles.nameTimeRowAssistant]}>
+              <Text
+                style={[
+                  chatBubbleStyles.nameLabel,
+                  chatBubbleStyles.nameLabelAssistant,
+                  { color: colors.textSecondary },
+                  invertMetaOverBackground ? chatOverBackgroundMetaTextStyle : null
+                ]}
+              >
+                {aiName}
+              </Text>
+            </View>
+            <View
+              collapsable={false}
               style={[
-                chatBubbleStyles.bubbleNameLabel,
-                chatBubbleStyles.nameLabelAssistant,
-                { color: colors.textSecondary },
-                invertMetaOverBackground ? chatOverBackgroundMetaTextStyle : null
+                chatBubbleStyles.bubble,
+                chatBubbleStyles.bubbleEditing,
+                {
+                  backgroundColor: colors.bgSurface,
+                  borderBottomLeftRadius: 4
+                }
               ]}
             >
-              {aiName}
-            </Text>
-            {hasAttachments ? (
-              <NativeChatBubbleAttachments attachments={attachments} isUserBubble={false} />
-            ) : null}
-            {hasReasoning && (
+              {hasAttachments ? (
+                <NativeChatBubbleAttachments attachments={attachments} isUserBubble={false} />
+              ) : null}
+              {hasReasoning && (
               <View
                 style={{
                   marginBottom: hasText || hasTools ? 8 : 0,
@@ -164,7 +167,8 @@ export const StreamingBubble = React.memo(function StreamingBubble({
               </View>
             )}
             {reserveActionBarSpace ? <View style={auxStyles.actionBarSpacer} /> : null}
-          </View>
+            </View>
+          </>
         ) : (
           <View style={auxStyles.dotsWrap}>
             <StreamingBubbleBouncingDots />

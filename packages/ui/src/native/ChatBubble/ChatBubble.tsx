@@ -109,10 +109,16 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
     isAssistant &&
     (edit.isEditing || showStreamingTools || Boolean(deferAssistantChrome && liveStream))
 
+  const nameLabelStyle = [
+    styles.nameLabel,
+    { color: colors.textSecondary },
+    isUser ? styles.nameLabelUser : styles.nameLabelAssistant,
+    invertMetaOverBackground ? chatOverBackgroundMetaTextStyle : null
+  ]
+
   const timeLabelStyle = [
     styles.timeLabel,
     { color: colors.textTertiary },
-    isUser ? styles.timeLabelUser : styles.timeLabelAssistant,
     invertMetaOverBackground ? chatOverBackgroundMetaTextStyle : null
   ]
 
@@ -135,8 +141,29 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
           useFullWidthAssistantBubble ? styles.bubbleWrapperEditing : null
         ]}
       >
-        {message.timestamp ? (
-          <Text style={timeLabelStyle}>{formatRelativeTime(message.timestamp, t)}</Text>
+        {message.timestamp || displayName ? (
+          <View
+            style={[
+              styles.nameTimeRow,
+              isUser ? styles.nameTimeRowUser : styles.nameTimeRowAssistant
+            ]}
+          >
+            {isUser ? (
+              <>
+                {message.timestamp ? (
+                  <Text style={timeLabelStyle}>{formatRelativeTime(message.timestamp, t)}</Text>
+                ) : null}
+                <Text style={nameLabelStyle}>{displayName}</Text>
+              </>
+            ) : (
+              <>
+                <Text style={nameLabelStyle}>{displayName}</Text>
+                {message.timestamp ? (
+                  <Text style={timeLabelStyle}>{formatRelativeTime(message.timestamp, t)}</Text>
+                ) : null}
+              </>
+            )}
+          </View>
         ) : null}
 
         <View
@@ -166,17 +193,6 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                   }
           ]}
         >
-          <Text
-            style={[
-              styles.bubbleNameLabel,
-              { color: colors.textSecondary },
-              isUser ? styles.nameLabelUser : styles.nameLabelAssistant,
-              invertMetaOverBackground ? chatOverBackgroundMetaTextStyle : null
-            ]}
-          >
-            {displayName}
-          </Text>
-
           {showThinkSection ? (
             <View
               style={{

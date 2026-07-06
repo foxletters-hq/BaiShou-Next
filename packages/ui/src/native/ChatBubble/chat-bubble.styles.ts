@@ -55,7 +55,22 @@ export const chatBubbleStyles = StyleSheet.create({
   nameLabel: {
     fontSize: 12,
     fontWeight: '600',
-    marginBottom: 4
+    flexShrink: 0
+  },
+  nameTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 8,
+    paddingBottom: 6,
+    width: '100%'
+  },
+  nameTimeRowUser: {
+    justifyContent: 'flex-end',
+    paddingRight: 4
+  },
+  nameTimeRowAssistant: {
+    justifyContent: 'flex-start',
+    paddingLeft: 4
   },
   bubbleNameLabel: {
     fontSize: 12,
@@ -64,16 +79,7 @@ export const chatBubbleStyles = StyleSheet.create({
     alignSelf: 'stretch'
   },
   timeLabel: {
-    fontSize: 10,
-    marginBottom: 6
-  },
-  timeLabelUser: {
-    alignSelf: 'flex-end',
-    textAlign: 'right'
-  },
-  timeLabelAssistant: {
-    alignSelf: 'flex-start',
-    textAlign: 'left'
+    fontSize: 10
   },
   nameLabelUser: {
     textAlign: 'right'
@@ -109,7 +115,8 @@ export const chatBubbleStyles = StyleSheet.create({
   },
   text: {
     fontSize: 15,
-    lineHeight: 24
+    lineHeight: 24,
+    textAlign: 'right'
   },
   reasoningBlock: {
     marginBottom: 8,
@@ -165,14 +172,17 @@ export const chatBubbleStyles = StyleSheet.create({
     justifyContent: 'flex-start',
     flexWrap: 'wrap',
     gap: 8,
-    marginTop: 6,
-    width: '100%'
+    marginTop: 4,
+    width: '100%',
+    alignSelf: 'stretch',
+    minHeight: 26
   },
   actionsRowUser: {
     alignSelf: 'flex-end',
     width: undefined,
     maxWidth: '100%',
-    justifyContent: 'flex-end'
+    justifyContent: 'flex-end',
+    minHeight: 26
   },
   actionChip: {
     paddingHorizontal: 8,
