@@ -30,4 +30,6 @@ export interface AgentToolDef {
   icon: React.ReactNode
   tooltipKey: string
   configurableParams?: ToolConfigParam[]
+  /** 为 false 时开关固定开启且不可关闭（与 registry 中 canBeDisabled 一致） */
+  canBeDisabled?: boolean
 }

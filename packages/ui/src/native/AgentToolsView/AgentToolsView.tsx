@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import React, { useEffect, useMemo, useState } from 'react'
-import { normalizeToolManagementConfig, type EmojiToolConfig } from '@baishou/shared'
+import { normalizeToolManagementConfig, type EmojiToolConfig, AGENT_TOOL_CATEGORY_ORDER, AGENT_TOOL_UI_DEFS } from '@baishou/shared'
 import {
   View,
   Text,
@@ -59,102 +59,71 @@ export interface AgentToolDef {
   name: string
   tooltipKey: string
   configurableParams?: ToolConfigParam[]
+  canBeDisabled?: boolean
 }
 
-const getAgentTools = (t: (key: string, fallback: string) => string): AgentToolDef[] => [
-  {
-    id: 'diary_read',
-    category: 'diary',
-    name: t('agent.tools.diary_read', '日记读取'),
-    tooltipKey: 'agent.tools.diary_read_tooltip'
-  },
-  {
-    id: 'diary_edit',
-    category: 'diary',
-    name: t('agent.tools.diary_edit', '日记编辑'),
-    tooltipKey: 'agent.tools.diary_edit_tooltip'
-  },
-  {
-    id: 'diary_delete',
-    category: 'diary',
-    name: t('agent.tools.diary_delete', '日记删除'),
-    tooltipKey: 'agent.tools.diary_delete_tooltip'
-  },
-  {
-    id: 'diary_list',
-    category: 'diary',
-    name: t('agent.tools.diary_list', '日记列表'),
-    tooltipKey: 'agent.tools.diary_list_tooltip'
-  },
-  {
-    id: 'diary_search',
-    category: 'diary',
-    name: t('agent.tools.diary_search', '日记搜索'),
-    tooltipKey: 'agent.tools.diary_search_tooltip',
-    configurableParams: [
-      {
-        key: 'max_results',
-        label: t('agent.tools.param_max_results', '搜索结果上限'),
-        type: 'integer',
-        defaultValue: 10,
-        min: 1,
-        max: 50,
-        icon: 'ListOrdered'
-      }
-    ]
-  },
-  {
-    id: 'summary_read',
-    category: 'summary',
-    name: t('agent.tools.summary_read', '总结读取'),
-    tooltipKey: 'agent.tools.summary_read_tooltip'
-  },
-  {
-    id: 'message_search',
-    category: 'memory',
-    name: t('agent.tools.message_search', '消息搜索'),
-    tooltipKey: 'agent.tools.message_search_tooltip'
-  },
-  {
-    id: 'vector_search',
-    category: 'memory',
-    name: t('agent.tools.vector_search', '语义搜索'),
-    tooltipKey: 'agent.tools.vector_search_desc'
-  },
-  {
-    id: 'memory_store',
-    category: 'memory',
-    name: t('agent.tools.memory_store', '记忆存储'),
-    tooltipKey: 'agent.tools.memory_store_tooltip'
-  },
-  {
-    id: 'memory_delete',
-    category: 'memory',
-    name: t('agent.tools.memory_delete', '记忆删除'),
-    tooltipKey: 'agent.tools.memory_delete_tooltip'
-  },
-  {
-    id: 'auto_inject_time',
-    category: 'general',
-    name: t('agent.tools.auto_inject_time', '当前时间'),
-    tooltipKey: 'agent.tools.auto_inject_time_tooltip'
-  }
-]
+const TOOL_NAME_FALLBACKS: Record<string, string> = {
+  'agent.tools.diary_read': '日记读取',
+  'agent.tools.diary_write': '日记写入',
+  'agent.tools.diary_edit': '日记编辑',
+  'agent.tools.diary_delete': '日记删除',
+  'agent.tools.diary_list': '日记列表',
+  'agent.tools.diary_search': '日记搜索',
+  'agent.tools.summary_read': '总结读取',
+  'agent.tools.message_search': '消息搜索',
+  'agent.tools.vector_search': '语义搜索',
+  'agent.tools.memory_store': '记忆存储',
+  'agent.tools.memory_delete': '记忆删除',
+  'agent.tools.web_search': '网络搜索',
+  'agent.tools.url_read': '网页读取',
+  'agent.tools.auto_inject_time': '当前时间',
+  'agent.tools.current_time': '查询时间',
+  'agent.tools.param_max_results': '搜索结果上限'
+}
 
-const getCategoryMeta = (t: (key: string, fallback: string) => string) => ({
-  diary: {
-    label: t('settings.agent_tools_category_diary', '日记工具')
-  },
-  summary: {
-    label: t('settings.agent_tools_category_summary', '总结工具')
-  },
-  memory: {
-    label: t('settings.agent_tools_category_memory', '记忆工具')
-  },
-  general: {
-    label: t('settings.agent_tools_category_general', '通用工具')
-  }
-})
+const CATEGORY_LABEL_KEYS: Record<string, string> = {
+  diary: 'settings.agent_tools_category_diary',
+  summary: 'settings.agent_tools_category_summary',
+  memory: 'settings.agent_tools_category_memory',
+  search: 'settings.agent_tools_category_search',
+  general: 'settings.agent_tools_category_general'
+}
+
+const CATEGORY_LABEL_FALLBACKS: Record<string, string> = {
+  diary: '日记工具',
+  summary: '总结工具',
+  memory: '记忆工具',
+  search: '搜索工具',
+  general: '通用工具'
+}
+
+const getAgentTools = (t: (key: string, fallback: string) => string): AgentToolDef[] =>
+  AGENT_TOOL_UI_DEFS.map((def) => ({
+    id: def.id,
+    category: def.category,
+    name: t(def.nameKey, TOOL_NAME_FALLBACKS[def.nameKey] ?? def.id),
+    tooltipKey: def.tooltipKey,
+    canBeDisabled: def.canBeDisabled,
+    configurableParams: def.configurableParams?.map((param) => ({
+      key: param.key,
+      label: t(param.labelKey, TOOL_NAME_FALLBACKS[param.labelKey] ?? param.key),
+      type: param.type,
+      defaultValue: param.defaultValue,
+      min: param.min,
+      max: param.max,
+      icon: param.icon
+    }))
+  }))
+
+const getCategoryMeta = (t: (key: string, fallback: string) => string) =>
+  Object.fromEntries(
+    AGENT_TOOL_CATEGORY_ORDER.map((category) => [
+      category,
+      {
+        label: t(CATEGORY_LABEL_KEYS[category], CATEGORY_LABEL_FALLBACKS[category])
+      }
+    ])
+  )
 
 export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
   config,
@@ -313,7 +282,10 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
   )
 
   const renderToolCard = (tool: AgentToolDef, isLastInGroup: boolean) => {
-    const isEnabled = !(normalizedConfig.disabledToolIds || []).includes(tool.id)
+    const toggleable = tool.canBeDisabled !== false
+    const isEnabled = toggleable
+      ? !(normalizedConfig.disabledToolIds || []).includes(tool.id)
+      : true
     const hasParams = tool.configurableParams && tool.configurableParams.length > 0
 
     return (
@@ -371,7 +343,11 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
             </View>
           </View>
           <View style={styles.switchSlot}>
-            <Switch value={isEnabled} onValueChange={() => toggleTool(tool.id)} />
+            <Switch
+              value={isEnabled}
+              disabled={!toggleable}
+              onValueChange={() => toggleTool(tool.id)}
+            />
           </View>
         </View>
 
@@ -461,7 +437,7 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
 
   const renderBuiltInList = () => (
     <View style={styles.list}>
-      {Object.keys(categoryMeta).map((catKey) => {
+      {AGENT_TOOL_CATEGORY_ORDER.map((catKey) => {
         const list = groupedTools[catKey]
         if (!list || list.length === 0) return null
         const meta = (categoryMeta as any)[catKey]

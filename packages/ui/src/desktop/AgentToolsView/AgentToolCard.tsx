@@ -22,7 +22,8 @@ export const AgentToolCard: React.FC<AgentToolCardProps> = ({
   setToolParam
 }) => {
   const { t } = useTranslation()
-  const isEnabled = !(config.disabledToolIds || []).includes(tool.id)
+  const toggleable = tool.canBeDisabled !== false
+  const isEnabled = toggleable ? !(config.disabledToolIds || []).includes(tool.id) : true
   const hasParams = tool.configurableParams && tool.configurableParams.length > 0
 
   return (
@@ -38,7 +39,11 @@ export const AgentToolCard: React.FC<AgentToolCardProps> = ({
             <span className={styles.toolIdTag}>{tool.id}</span>
           </div>
         </div>
-        <Switch checked={isEnabled} onChange={() => onToggle(tool.id)} />
+        <Switch
+          checked={isEnabled}
+          disabled={!toggleable}
+          onChange={() => onToggle(tool.id)}
+        />
       </div>
 
       {hasParams && isEnabled && (

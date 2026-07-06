@@ -1,6 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { BadgeCheck, Store } from 'lucide-react'
+import { AGENT_TOOL_CATEGORY_ORDER } from '@baishou/shared'
 import { AgentToolCard } from './AgentToolCard'
 import { AgentToolsCommunityTab } from './AgentToolsCommunityTab'
 import type { AgentToolDef, ToolConfigParam, ToolManagementConfig } from './agent-tools.types'
@@ -63,7 +64,7 @@ export const AgentToolsBuiltInList: React.FC<AgentToolsBuiltInListProps> = ({
       <div className={styles.contentArea}>
         {!showCommunity ? (
           <div className={styles.list}>
-            {Object.keys(categoryMeta).map((catKey) => {
+            {AGENT_TOOL_CATEGORY_ORDER.map((catKey) => {
               const list = groupedTools[catKey]
               if (!list || list.length === 0) return null
               const meta = categoryMeta[catKey]

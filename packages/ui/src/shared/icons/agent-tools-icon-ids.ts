@@ -3,6 +3,7 @@ import type { LucideIcon } from 'lucide-react'
 /** 工具 id → Lucide 图标名（与 desktop agent-tools.constants 一致） */
 export const AGENT_TOOL_ICON_IDS = {
   diary_read: 'BookOpen',
+  diary_write: 'NotebookPen',
   diary_edit: 'PenSquare',
   diary_delete: 'Trash2',
   diary_list: 'List',
@@ -12,7 +13,10 @@ export const AGENT_TOOL_ICON_IDS = {
   vector_search: 'ScanSearch',
   memory_store: 'Database',
   memory_delete: 'DatabaseZap',
-  auto_inject_time: 'Clock'
+  web_search: 'Globe',
+  url_read: 'Link2',
+  auto_inject_time: 'Clock',
+  current_time: 'Timer'
 } as const satisfies Record<string, keyof typeof import('lucide-react')>
 
 export const AGENT_TOOL_CATEGORY_ICON_IDS = {

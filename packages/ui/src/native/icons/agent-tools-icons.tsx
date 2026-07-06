@@ -4,10 +4,12 @@ import {
   Book,
   BookOpen,
   Clock,
+  NotebookPen,
   Database,
   DatabaseZap,
   FileText,
   Globe,
+  Link2,
   List,
   MessageSquare,
   Palette,
@@ -15,6 +17,7 @@ import {
   Puzzle,
   ScanSearch,
   Search,
+  Timer,
   Trash2
 } from 'lucide-react-native'
 import {
@@ -31,6 +34,7 @@ import {
 
 const TOOL_ICONS: Record<AgentToolIconId, React.ComponentType<LucideProps>> = {
   diary_read: BookOpen,
+  diary_write: NotebookPen,
   diary_edit: PenSquare,
   diary_delete: Trash2,
   diary_list: List,
@@ -40,7 +44,10 @@ const TOOL_ICONS: Record<AgentToolIconId, React.ComponentType<LucideProps>> = {
   vector_search: ScanSearch,
   memory_store: Database,
   memory_delete: DatabaseZap,
-  auto_inject_time: Clock
+  web_search: Globe,
+  url_read: Link2,
+  auto_inject_time: Clock,
+  current_time: Timer
 }
 
 const CATEGORY_ICONS: Record<AgentToolCategoryIconId, React.ComponentType<LucideProps>> = {
