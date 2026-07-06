@@ -54,8 +54,8 @@ if (!existsSync(gradlew)) {
 console.log('\n🎨 应用纯色启动屏补丁…')
 applyAndroidPlainSplashPatch(androidDir)
 
-console.log('\n🔨 assembleRelease（clean + 无构建缓存）…')
-run(gradlew, [':app:clean', ':app:assembleRelease', '--no-build-cache'], androidDir)
+console.log('\n🔨 assembleRelease（无构建缓存）…')
+run(gradlew, [':app:assembleRelease', '--no-build-cache'], androidDir)
 
 const apkSrc = path.join(androidDir, 'app/build/outputs/apk/release/app-release.apk')
 if (!existsSync(apkSrc)) {

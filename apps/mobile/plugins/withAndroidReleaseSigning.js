@@ -22,7 +22,7 @@ const RELEASE_SIGNING_LINES = [
   '                def storeFilePath = keystoreProperties.getProperty("storeFile")',
   '',
   '                if (storeBase64 != null && !storeBase64.isEmpty()) {',
-  '                    def tmpKeystore = file("${layout.buildDirectory.get()}/tmp_keystore/upload.jks")',
+  '                    def tmpKeystore = rootProject.file("tmp_keystore/upload.jks")',
   '                    tmpKeystore.parentFile.mkdirs()',
   '                    tmpKeystore.bytes = Base64.decoder.decode(storeBase64)',
   '                    storeFile tmpKeystore',
