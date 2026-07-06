@@ -64,6 +64,30 @@ export class SessionAggregateSync {
     return oldMutex.then(() => release!)
   }
 
+  private _resolveMessageField<T>(message: Record<string, unknown>, camel: string, snake: string): T | null {
+    const value = message[camel] ?? message[snake]
+    return value === undefined ? null : (value as T)
+  }
+
+  private _buildMessageInsertArgs(message: Record<string, unknown>, toUnixSec: (ts: unknown) => number) {
+    return [
+      message.id,
+      message.sessionId ?? message.session_id,
+      message.role,
+      message.isSummary ?? message.is_summary ? 1 : 0,
+      message.orderIndex ?? message.order_index,
+      this._resolveMessageField<number>(message, 'inputTokens', 'input_tokens'),
+      this._resolveMessageField<number>(message, 'outputTokens', 'output_tokens'),
+      this._resolveMessageField<number>(message, 'cacheReadInputTokens', 'cache_read_input_tokens'),
+      this._resolveMessageField<number>(message, 'cacheWriteInputTokens', 'cache_write_input_tokens'),
+      this._resolveMessageField<number>(message, 'costMicros', 'cost_micros'),
+      this._resolveMessageField<string>(message, 'providerId', 'provider_id'),
+      this._resolveMessageField<string>(message, 'modelId', 'model_id'),
+      this._resolveMessageField<string>(message, 'askId', 'ask_id'),
+      toUnixSec(message.createdAt ?? message.created_at)
+    ]
+  }
+
   private async _upsertAggregateInternal(aggregate: any): Promise<void> {
     const { session, messages } = aggregate
     const rawClient = (this.db as any).$client || (this.db as any).session?.client
@@ -119,16 +143,11 @@ export class SessionAggregateSync {
       for (const m of messages) {
         stmts.push({
           sql: `INSERT OR IGNORE INTO agent_messages
-                    (id, session_id, role, is_summary, order_index, created_at)
-                    VALUES (?,?,?,?,?,?)`,
-          args: [
-            m.id,
-            m.sessionId,
-            m.role,
-            m.isSummary ? 1 : 0,
-            m.orderIndex,
-            toUnixSec(m.createdAt)
-          ]
+                    (id, session_id, role, is_summary, order_index,
+                     input_tokens, output_tokens, cache_read_input_tokens, cache_write_input_tokens,
+                     cost_micros, provider_id, model_id, ask_id, created_at)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          args: this._buildMessageInsertArgs(m, toUnixSec)
         })
 
         if (m.parts && m.parts.length > 0) {
