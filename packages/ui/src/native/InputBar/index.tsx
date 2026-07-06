@@ -193,25 +193,19 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
             label: t('input.attachment_camera', '拍照'),
             value: 'camera',
             centered: true,
-            leading: (
-              <Camera size={22} color={iconColor} strokeWidth={DEFAULT_STROKE_WIDTH} />
-            )
+            leading: <Camera size={22} color={iconColor} strokeWidth={DEFAULT_STROKE_WIDTH} />
           },
           {
             label: t('input.attachment_photo_library', '相册'),
             value: 'album',
             centered: true,
-            leading: (
-              <ImageIcon size={22} color={iconColor} strokeWidth={DEFAULT_STROKE_WIDTH} />
-            )
+            leading: <ImageIcon size={22} color={iconColor} strokeWidth={DEFAULT_STROKE_WIDTH} />
           },
           {
             label: t('input.attachment_file_manager', '文件管理'),
             value: 'files',
             centered: true,
-            leading: (
-              <FolderOpen size={22} color={iconColor} strokeWidth={DEFAULT_STROKE_WIDTH} />
-            )
+            leading: <FolderOpen size={22} color={iconColor} strokeWidth={DEFAULT_STROKE_WIDTH} />
           }
         ],
         t('input.attachment_source_title', '选择附件来源')

@@ -55,7 +55,12 @@ export const DiaryEditorScreen: React.FC = () => {
   const { colors } = useNativeTheme()
   const dialog = useDialog()
   const toast = useNativeToast()
-  const { id, date, append, new: newParam } = useLocalSearchParams<{
+  const {
+    id,
+    date,
+    append,
+    new: newParam
+  } = useLocalSearchParams<{
     id?: string
     date?: string
     append?: string
@@ -139,7 +144,11 @@ export const DiaryEditorScreen: React.FC = () => {
       setIsDirty(true)
       isDirtyRef.current = true
 
-      if (loadedDateKeyRef.current && loadedDateKeyRef.current !== nextKey && existingIdRef.current !== null) {
+      if (
+        loadedDateKeyRef.current &&
+        loadedDateKeyRef.current !== nextKey &&
+        existingIdRef.current !== null
+      ) {
         existingIdRef.current = null
         setExistingId(null)
       }
@@ -281,11 +290,7 @@ export const DiaryEditorScreen: React.FC = () => {
           if (existing) {
             applyLoadedDiary(existing, templateConfig, now)
           } else {
-            initBlankDiaryEntry(
-              templateConfig,
-              now,
-              normalizeDiaryCalendarDate(new Date(date))
-            )
+            initBlankDiaryEntry(templateConfig, now, normalizeDiaryCalendarDate(new Date(date)))
           }
         } else {
           initBlankDiaryEntry(templateConfig, now, normalizeDiaryCalendarDate(now))

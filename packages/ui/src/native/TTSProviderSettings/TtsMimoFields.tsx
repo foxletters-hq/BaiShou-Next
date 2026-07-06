@@ -96,7 +96,11 @@ export const TtsMimoFields: React.FC<TtsMimoFieldsProps> = ({
             <>
               <Button variant="outline" onPress={() => void handlePickRefAudio()}>
                 <View style={styles.refAudioPickButtonContent}>
-                  <FolderOpen size={18} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                  <FolderOpen
+                    size={18}
+                    color={colors.textSecondary}
+                    strokeWidth={DEFAULT_STROKE_WIDTH}
+                  />
                   <Text style={[styles.refAudioPickButtonText, { color: colors.textPrimary }]}>
                     {refAudioPath
                       ? t('tts.settings.pick_ref_audio_again_button', '重新选择参考音频')
@@ -111,7 +115,11 @@ export const TtsMimoFields: React.FC<TtsMimoFieldsProps> = ({
                   onPress={() => void onPlayRefAudio(refAudioBase64, refPlaybackFormat)}
                 >
                   <View style={styles.refAudioPickButtonContent}>
-                    <Volume2 size={18} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                    <Volume2
+                      size={18}
+                      color={colors.textSecondary}
+                      strokeWidth={DEFAULT_STROKE_WIDTH}
+                    />
                     <Text style={[styles.refAudioPickButtonText, { color: colors.textPrimary }]}>
                       {t('tts.settings.preview_ref_audio_button', '试听参考音频')}
                     </Text>

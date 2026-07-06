@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { CONTEXT_MENU_GAP, CONTEXT_MENU_MARGIN } from '../../../desktop/ContextMenu/context-menu-placement.util'
+import {
+  CONTEXT_MENU_GAP,
+  CONTEXT_MENU_MARGIN
+} from '../../../desktop/ContextMenu/context-menu-placement.util'
 import { portalAndLayoutCkantTableMenu } from '../table/desktop/tableMenuPlacement.util'
 
 describe('tableMenuPlacement.util', () => {
@@ -37,7 +40,8 @@ describe('tableMenuPlacement.util', () => {
 
     const tooltip = document.createElement('div')
     tooltip.className = 'cm-tooltip tbl-menu-tooltip'
-    tooltip.innerHTML = '<div class="tbl-menu"><div class="tbl-menu-item-text">Delete column</div></div>'
+    tooltip.innerHTML =
+      '<div class="tbl-menu"><div class="tbl-menu-item-text">Delete column</div></div>'
     editor.appendChild(tooltip)
 
     const menuHeight = 220

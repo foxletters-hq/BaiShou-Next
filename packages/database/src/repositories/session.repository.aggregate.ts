@@ -64,22 +64,33 @@ export class SessionAggregateSync {
     return oldMutex.then(() => release!)
   }
 
-  private _resolveMessageField<T>(message: Record<string, unknown>, camel: string, snake: string): T | null {
+  private _resolveMessageField<T>(
+    message: Record<string, unknown>,
+    camel: string,
+    snake: string
+  ): T | null {
     const value = message[camel] ?? message[snake]
     return value === undefined ? null : (value as T)
   }
 
-  private _buildMessageInsertArgs(message: Record<string, unknown>, toUnixSec: (ts: unknown) => number) {
+  private _buildMessageInsertArgs(
+    message: Record<string, unknown>,
+    toUnixSec: (ts: unknown) => number
+  ) {
     return [
       message.id,
       message.sessionId ?? message.session_id,
       message.role,
-      message.isSummary ?? message.is_summary ? 1 : 0,
+      (message.isSummary ?? message.is_summary) ? 1 : 0,
       message.orderIndex ?? message.order_index,
       this._resolveMessageField<number>(message, 'inputTokens', 'input_tokens'),
       this._resolveMessageField<number>(message, 'outputTokens', 'output_tokens'),
       this._resolveMessageField<number>(message, 'cacheReadInputTokens', 'cache_read_input_tokens'),
-      this._resolveMessageField<number>(message, 'cacheWriteInputTokens', 'cache_write_input_tokens'),
+      this._resolveMessageField<number>(
+        message,
+        'cacheWriteInputTokens',
+        'cache_write_input_tokens'
+      ),
       this._resolveMessageField<number>(message, 'costMicros', 'cost_micros'),
       this._resolveMessageField<string>(message, 'providerId', 'provider_id'),
       this._resolveMessageField<string>(message, 'modelId', 'model_id'),

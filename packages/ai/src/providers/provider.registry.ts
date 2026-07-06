@@ -1,4 +1,10 @@
-import { AiProviderModel, ProviderType, createAiProvider, AIProviderConfig, resolveProviderDisplayName } from '@baishou/shared'
+import {
+  AiProviderModel,
+  ProviderType,
+  createAiProvider,
+  AIProviderConfig,
+  resolveProviderDisplayName
+} from '@baishou/shared'
 import { IAIProvider } from './provider.interface'
 import { ProviderFactory } from './provider.factory'
 

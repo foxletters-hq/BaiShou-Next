@@ -5,13 +5,7 @@ import { useDialog } from '../Dialog'
 import { ModelSwitcherPopup } from '../ModelSwitcherPopup'
 import { GlobalModelsConfig, GlobalModelsConfig as SharedGlobalModelsConfig } from '@baishou/shared'
 import { isEmbeddingModel, isTtsModel } from '@baishou/shared'
-import {
-  Database,
-  Cloud,
-  MessageCircle,
-  Pencil,
-  ScrollText
-} from 'lucide-react'
+import { Database, Cloud, MessageCircle, Pencil, ScrollText } from 'lucide-react'
 import { HelpTooltip } from '../HelpTooltip'
 import { useTheme } from '../../hooks/useTheme'
 import { getProviderIcon } from '../../utils/provider-icons'

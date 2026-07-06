@@ -7,7 +7,12 @@ const DRAG_THRESHOLD_PX = 4
 export type TableOutlineCallbacks = {
   onOutlineStart: (anchor: CellLocation) => void
   onOutlineExpand: (anchor: CellLocation, head: CellLocation, section: TableSection) => void
-  onOutlineEnd: (anchor: CellLocation, head: CellLocation, section: TableSection, dragged: boolean) => void
+  onOutlineEnd: (
+    anchor: CellLocation,
+    head: CellLocation,
+    section: TableSection,
+    dragged: boolean
+  ) => void
   onBeforeOutlineDrag?: () => void
   getScrollOffset: () => { x: number; y: number }
   getScrollElements: () => { x: HTMLElement; y: HTMLElement }

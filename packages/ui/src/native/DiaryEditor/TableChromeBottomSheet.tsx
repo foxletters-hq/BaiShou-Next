@@ -192,7 +192,9 @@ export const TableChromeBottomSheet: React.FC<TableChromeBottomSheetProps> = ({
                               borderBottomWidth: StyleSheet.hairlineWidth,
                               borderBottomColor: colors.borderSubtle
                             },
-                            pressed && !item.disabled ? { backgroundColor: colors.bgSurface } : null,
+                            pressed && !item.disabled
+                              ? { backgroundColor: colors.bgSurface }
+                              : null,
                             item.disabled ? styles.itemDisabled : null
                           ]}
                         >

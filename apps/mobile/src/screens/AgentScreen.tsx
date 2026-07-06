@@ -381,9 +381,8 @@ export const AgentScreen = () => {
     if (!services) return
     void (async () => {
       try {
-        const toolConfig = await services.settingsManager.get<ToolManagementConfig>(
-          'tool_management_config'
-        )
+        const toolConfig =
+          await services.settingsManager.get<ToolManagementConfig>('tool_management_config')
         if (toolConfig?.emojiConfig) {
           setEmojiToolConfig(normalizeEmojiToolConfig(toolConfig.emojiConfig))
         }
@@ -413,19 +412,30 @@ export const AgentScreen = () => {
       if (!emojis || emojis.length === 0) return undefined
       const normalizedQuery = query.trim().toLowerCase()
 
-      const exactMatch = emojis.find((e) => e.id === normalizedQuery || e.id.toLowerCase() === normalizedQuery)
+      const exactMatch = emojis.find(
+        (e) => e.id === normalizedQuery || e.id.toLowerCase() === normalizedQuery
+      )
       if (exactMatch) return exactMatch
 
-      const idNoExtMatch = emojis.find((e) => e.id.replace(/\.[^.]+$/, '').toLowerCase() === normalizedQuery)
+      const idNoExtMatch = emojis.find(
+        (e) => e.id.replace(/\.[^.]+$/, '').toLowerCase() === normalizedQuery
+      )
       if (idNoExtMatch) return idNoExtMatch
 
-      const normalizeName = (s: string) => s.toLowerCase().replace(/[_\s]+/g, ' ').trim()
+      const normalizeName = (s: string) =>
+        s
+          .toLowerCase()
+          .replace(/[_\s]+/g, ' ')
+          .trim()
       const normalizedNameQuery = normalizeName(normalizedQuery)
       const nameMatch = emojis.find((e) => normalizeName(e.name) === normalizedNameQuery)
       if (nameMatch) return nameMatch
 
       const idContainsMatch = emojis.find((e) =>
-        e.id.replace(/\.[^.]+$/, '').toLowerCase().includes(normalizedQuery)
+        e.id
+          .replace(/\.[^.]+$/, '')
+          .toLowerCase()
+          .includes(normalizedQuery)
       )
       if (idContainsMatch) return idContainsMatch
 
@@ -1227,10 +1237,10 @@ export const AgentScreen = () => {
     showStreamingFooter || streamPresentationLinger || holdLivePresentation
   const hasStreamingBody = Boolean(
     streamingText.trim() ||
-      streamingReasoning.trim() ||
-      activeTool ||
-      completedTools.length > 0 ||
-      pendingEmojiAttachments.length > 0
+    streamingReasoning.trim() ||
+    activeTool ||
+    completedTools.length > 0 ||
+    pendingEmojiAttachments.length > 0
   )
 
   const chatRows = useMemo(() => {
@@ -1254,8 +1264,7 @@ export const AgentScreen = () => {
       isThinkStreaming: false,
       activeToolName: activeToolDisplayName,
       completedTools: streamingCompletedTools,
-      attachments:
-        pendingEmojiAttachments.length > 0 ? pendingEmojiAttachments : undefined
+      attachments: pendingEmojiAttachments.length > 0 ? pendingEmojiAttachments : undefined
     }),
     [
       streamingText,

@@ -104,11 +104,7 @@ export const ContextChainDialog: React.FC<ContextChainDialogProps> = ({
       <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
           <div className={styles.titleRow}>
-            <ListTree
-              size={CONTEXT_CHAIN_HEADER_ICON_SIZE}
-              className={styles.icon}
-              aria-hidden
-            />
+            <ListTree size={CONTEXT_CHAIN_HEADER_ICON_SIZE} className={styles.icon} aria-hidden />
             <span className={styles.title}>{t('agent.chat.full_call_chain', '完整调用链')}</span>
             <span className={styles.badge}>{contextMessages.length}</span>
           </div>

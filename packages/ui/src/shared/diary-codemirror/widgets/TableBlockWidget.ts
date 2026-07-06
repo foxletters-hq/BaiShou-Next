@@ -46,10 +46,7 @@ import {
   pasteTableRange,
   readClipboardTextForTablePaste
 } from '../table/tableRangeClipboard'
-import {
-  applyRangeHighlightToBlock,
-  setTableRangeDragging
-} from '../table/tableRangeHighlight'
+import { applyRangeHighlightToBlock, setTableRangeDragging } from '../table/tableRangeHighlight'
 import { TableOutlineSession } from '../table/tableOutlineSession'
 import { TableSection, type CellLocation } from '../table/tableSection'
 import { isTableTypeToEditKey } from '../table/tableInputKeys'
@@ -329,11 +326,7 @@ export class TableBlockWidget extends WidgetType {
     return inside
   }
 
-  private focusGridCell(
-    gridCell: HTMLElement,
-    clientX?: number,
-    clientY?: number
-  ): void {
+  private focusGridCell(gridCell: HTMLElement, clientX?: number, clientY?: number): void {
     const rowIndex = Number(gridCell.dataset.row)
     const colIndex = Number(gridCell.dataset.col)
     if (Number.isNaN(rowIndex) || Number.isNaN(colIndex)) return
@@ -503,7 +496,9 @@ export class TableBlockWidget extends WidgetType {
     const getCellFromPoint = (x: number, y: number) => {
       const block = resolveBlock()
       if (!block) return null
-      const cell = document.elementFromPoint(x, y)?.closest('.cm-table-grid-cell') as HTMLElement | null
+      const cell = document
+        .elementFromPoint(x, y)
+        ?.closest('.cm-table-grid-cell') as HTMLElement | null
       if (!cell || !block.contains(cell)) return null
       const row = Number(cell.dataset.row)
       const col = Number(cell.dataset.col)

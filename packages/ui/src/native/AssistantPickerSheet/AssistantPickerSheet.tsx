@@ -98,8 +98,15 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
             </Text>
             <View style={styles.headerSpacer} />
             {onSettingsPress ? (
-              <TouchableOpacity onPress={onSettingsPress} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Settings size={22} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+              <TouchableOpacity
+                onPress={onSettingsPress}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Settings
+                  size={22}
+                  color={colors.textSecondary}
+                  strokeWidth={DEFAULT_STROKE_WIDTH}
+                />
               </TouchableOpacity>
             ) : null}
             <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -126,7 +133,11 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
                       onCreatePress()
                     }}
                   >
-                    <Plus size={18} color={colors.textOnPrimary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                    <Plus
+                      size={18}
+                      color={colors.textOnPrimary}
+                      strokeWidth={DEFAULT_STROKE_WIDTH}
+                    />
                     <Text style={[styles.createBtnText, { color: colors.textOnPrimary }]}>
                       {t('agent.assistant.create_first', '创建第一个伙伴')}
                     </Text>
@@ -148,7 +159,9 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
                         style={[
                           styles.assistantChip,
                           {
-                            backgroundColor: active ? colors.primaryContainer : colors.bgSurfaceNormal,
+                            backgroundColor: active
+                              ? colors.primaryContainer
+                              : colors.bgSurfaceNormal,
                             borderColor: active ? colors.primary : colors.borderSubtle
                           }
                         ]}

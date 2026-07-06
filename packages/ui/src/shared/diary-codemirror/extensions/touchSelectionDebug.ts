@@ -16,7 +16,9 @@ function nodeLabel(node: Node | null): string {
     return `text:"${preview}"`
   }
   if (node instanceof Element) {
-    return node.className ? `${node.tagName.toLowerCase()}.${String(node.className).slice(0, 32)}` : node.tagName.toLowerCase()
+    return node.className
+      ? `${node.tagName.toLowerCase()}.${String(node.className).slice(0, 32)}`
+      : node.tagName.toLowerCase()
   }
   return `node#${node.nodeType}`
 }

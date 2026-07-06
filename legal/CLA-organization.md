@@ -22,8 +22,9 @@
 3. **「覆盖仓库（Covered Repository）」**：同时满足下列条件的 GitHub 仓库：
    - 归属于 [foxletters-hq](https://github.com/foxletters-hq) 组织；且
    - 托管方已将该仓库与本协议关联——例如在 [CLA Assistant](https://cla-assistant.io/) 中 Link 本协议，和/或在该仓库 `README`、`CONTRIBUTING` 或 `.github/CLA.md` 中明示适用本协议。
-   
+
    **不以本协议正文是否逐条列出仓库名为准**；未关联本协议的 foxletters-hq 仓库不在覆盖范围内。
+
 4. **「贡献（Contribution）」**：您向任一覆盖仓库提交的原创作品，包括源代码、测试、构建脚本、配置，以及与上述代码变更一并提交的文档部分。
 5. **「托管方」**：Anson-Trio / foxletters-hq（白守项目当前托管组织），作为覆盖仓库的版权管理与再许可方。
 
@@ -33,10 +34,10 @@
 
 您的贡献合并后，按**目标覆盖仓库**根目录 `LICENSE` 及仓库性质向社区发布；托管方另享有下文再许可权（含商业用途）。
 
-| 仓库类型 | 说明 | 贡献合并后的社区许可 |
-|----------|------|----------------------|
-| **产品代码仓库** | 白守客户端、核心逻辑、SaaS 相关开源组件等 | **以该仓库根目录 LICENSE 为准**（主产品仓库通常为 **AGPL-3.0-or-later**） |
-| **官网 / 文档 / 配套工具仓库** | 官方网站、文档站、发布与社区配套工程等 | **以该仓库根目录 LICENSE 为准**（未标明时，托管方可在与仓库性质相符的 OSI 认可开源许可下发布，例如 MIT） |
+| 仓库类型                       | 说明                                      | 贡献合并后的社区许可                                                                                     |
+| ------------------------------ | ----------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| **产品代码仓库**               | 白守客户端、核心逻辑、SaaS 相关开源组件等 | **以该仓库根目录 LICENSE 为准**（主产品仓库通常为 **AGPL-3.0-or-later**）                                |
+| **官网 / 文档 / 配套工具仓库** | 官方网站、文档站、发布与社区配套工程等    | **以该仓库根目录 LICENSE 为准**（未标明时，托管方可在与仓库性质相符的 OSI 认可开源许可下发布，例如 MIT） |
 
 新增 foxletters-hq 仓库时，托管方只需在 CLA Assistant 中 Link 本协议（并在该仓库注明适用本 CLA），**无需因仓库名变更而修订本协议**，除非社区发布许可规则本身需要调整。
 
@@ -120,10 +121,10 @@ Thank you for contributing to Foxletters / BaiShou open-source repositories. Thi
 
 ## 2. Community license (by repository type)
 
-| Type | Description | License on merge |
-|------|-------------|------------------|
-| **Product code** | BaiShou clients, core logic, open-source SaaS-related components | **Per that repo's root LICENSE** (main product repos are typically **AGPL-3.0-or-later**) |
-| **Website / docs / tooling** | Official site, docs, release and community tooling | **Per that repo's root LICENSE** (or an OSI-approved license the Steward designates, e.g. MIT) |
+| Type                         | Description                                                      | License on merge                                                                               |
+| ---------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| **Product code**             | BaiShou clients, core logic, open-source SaaS-related components | **Per that repo's root LICENSE** (main product repos are typically **AGPL-3.0-or-later**)      |
+| **Website / docs / tooling** | Official site, docs, release and community tooling               | **Per that repo's root LICENSE** (or an OSI-approved license the Steward designates, e.g. MIT) |
 
 New foxletters-hq repositories can be covered by linking this agreement in CLA Assistant without amending this document, unless these license rules change.
 

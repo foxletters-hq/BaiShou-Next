@@ -1,10 +1,4 @@
-import React, {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useMemo
-} from 'react'
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo } from 'react'
 import { Keyboard, Platform, StyleSheet, View, type ViewStyle } from 'react-native'
 import { WebView } from 'react-native-webview'
 import type {
@@ -40,27 +34,26 @@ export interface NativeDiaryCodeMirrorEditorHandle {
   deleteRange: (from: number, to: number) => void
 }
 
-export interface NativeDiaryCodeMirrorEditorProps
-  extends Pick<
-    UseDiaryCodeMirrorBridgeOptions,
-    | 'content'
-    | 'placeholder'
-    | 'editable'
-    | 'onChange'
-    | 'onSelectionChange'
-    | 'onFocus'
-    | 'onBlur'
-    | 'onContentHeight'
-    | 'onCaretViewport'
-    | 'onPanScroll'
-    | 'tagColorRegistry'
-    | 'onImageAction'
-    | 'onImagePreview'
-    | 'resolveAttachmentUrl'
-    | 'onDismissKeyboard'
-    | 'onConfirmRequest'
-    | 'onTableSheetRequest'
-  > {
+export interface NativeDiaryCodeMirrorEditorProps extends Pick<
+  UseDiaryCodeMirrorBridgeOptions,
+  | 'content'
+  | 'placeholder'
+  | 'editable'
+  | 'onChange'
+  | 'onSelectionChange'
+  | 'onFocus'
+  | 'onBlur'
+  | 'onContentHeight'
+  | 'onCaretViewport'
+  | 'onPanScroll'
+  | 'tagColorRegistry'
+  | 'onImageAction'
+  | 'onImagePreview'
+  | 'resolveAttachmentUrl'
+  | 'onDismissKeyboard'
+  | 'onConfirmRequest'
+  | 'onTableSheetRequest'
+> {
   /** WebView 文档（同目录 index.html + bundle，由宿主 app 预加载后传入） */
   editorWebViewSource: DiaryEditorWebViewDocument
   /** 页面聚焦时为 true；false 时卸载 WebView 释放内存（P-5） */
@@ -220,15 +213,15 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
       styles.shell,
       fillViewport
         ? {
-          flex: 1,
-          marginBottom: keyboardInset > 0 ? keyboardInset : 0,
-          backgroundColor: editorBackground
-        }
+            flex: 1,
+            marginBottom: keyboardInset > 0 ? keyboardInset : 0,
+            backgroundColor: editorBackground
+          }
         : {
-          minHeight: editorBlockHeight,
-          marginBottom: keyboardInset > 0 ? keyboardInset : 0,
-          backgroundColor: editorBackground
-        },
+            minHeight: editorBlockHeight,
+            marginBottom: keyboardInset > 0 ? keyboardInset : 0,
+            backgroundColor: editorBackground
+          },
       style
     ],
     [editorBackground, editorBlockHeight, fillViewport, keyboardInset, style]
@@ -313,9 +306,9 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
           androidLayerType="hardware"
           {...(Platform.OS === 'ios'
             ? {
-              allowingReadAccessToURL: editorWebViewSource.baseUrl,
-              dataDetectorTypes: 'none' as const
-            }
+                allowingReadAccessToURL: editorWebViewSource.baseUrl,
+                dataDetectorTypes: 'none' as const
+              }
             : {})}
         />
       ) : null}

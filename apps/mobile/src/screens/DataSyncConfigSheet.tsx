@@ -1,14 +1,7 @@
 import React from 'react'
 import { View, Text, StyleSheet, Modal, TouchableOpacity, SafeAreaView } from 'react-native'
 import type { LucideIcon } from 'lucide-react-native'
-import {
-  ArrowLeft,
-  Cloud,
-  Eye,
-  EyeOff,
-  Folder,
-  Globe
-} from 'lucide-react-native'
+import { ArrowLeft, Cloud, Eye, EyeOff, Folder, Globe } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import type { SyncConfig } from '@baishou/core-mobile'
 import { Input, KeyboardAwareScrollView } from '@baishou/ui/native'

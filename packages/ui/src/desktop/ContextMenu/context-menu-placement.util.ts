@@ -102,13 +102,7 @@ export function applyFixedContextMenuLayout(
   bounds: ContextMenuBounds = getDefaultContextMenuBounds()
 ): void {
   const rect = menuEl.getBoundingClientRect()
-  const { x, y } = resolveContextMenuPosition(
-    anchorX,
-    anchorY,
-    rect.width,
-    rect.height,
-    bounds
-  )
+  const { x, y } = resolveContextMenuPosition(anchorX, anchorY, rect.width, rect.height, bounds)
 
   menuEl.style.left = `${x}px`
   menuEl.style.top = `${y}px`

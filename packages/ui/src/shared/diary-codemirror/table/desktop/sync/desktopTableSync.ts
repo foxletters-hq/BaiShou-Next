@@ -12,7 +12,11 @@ import { domRowToParsedRow } from '../models/cellLocation'
 import { applyDesktopCellOutline } from '../desktopOutlinePaint'
 import { formatDesktopTableCellDisplay } from '../../tableCellText'
 import { commitDesktopTableToDoc } from '../tableDescription'
-import { findRootEditorViewFromTableBlock, blurTableCellEditor, isTableCellEditorFocused } from '../../tableDom'
+import {
+  findRootEditorViewFromTableBlock,
+  blurTableCellEditor,
+  isTableCellEditorFocused
+} from '../../tableDom'
 import { pendingTableCellFocus } from '../../tableEffects'
 import { parseTableFromDoc } from '../../table.model'
 import { findCurrentTableRange } from '../../tableDom'
@@ -235,7 +239,10 @@ function handleCellKey(
       const head = cm.state.selection.main.head
       cm.dispatch({
         changes: { from: head, insert: action.insertText },
-        selection: { anchor: head + action.insertText.length, head: head + action.insertText.length }
+        selection: {
+          anchor: head + action.insertText.length,
+          head: head + action.insertText.length
+        }
       })
       requestAnimationFrame(() => cm.focus())
       return
@@ -253,7 +260,11 @@ function handleCellKey(
             outlinedSection: DesktopTableSection.ofCell({ row: domRow, col: action.colIndex }),
             mode: 'cell'
           }),
-          pendingTableCellFocus.of({ tableFrom, rowIndex: action.rowIndex, colIndex: action.colIndex })
+          pendingTableCellFocus.of({
+            tableFrom,
+            rowIndex: action.rowIndex,
+            colIndex: action.colIndex
+          })
         ]
       })
       return
@@ -327,13 +338,7 @@ export function syncDesktopTableBlock(view: EditorView, block: HTMLElement): voi
   }
 
   if (interaction.mode === 'cell') {
-    mountCellEditor(
-      view,
-      block,
-      tableFrom,
-      interaction.activeCell.row,
-      interaction.activeCell.col
-    )
+    mountCellEditor(view, block, tableFrom, interaction.activeCell.row, interaction.activeCell.col)
   } else {
     teardownCellEditor(block)
   }

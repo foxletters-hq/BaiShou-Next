@@ -1,8 +1,5 @@
 import path from 'node:path'
-import {
-  emojiVaultKeyToAttachmentsRelativePath,
-  isEmojiVaultRelativePath
-} from '@baishou/shared'
+import { emojiVaultKeyToAttachmentsRelativePath, isEmojiVaultRelativePath } from '@baishou/shared'
 import type { DesktopStoragePathService } from '../services/path.service'
 
 export type AttachmentAllowedRoots = {

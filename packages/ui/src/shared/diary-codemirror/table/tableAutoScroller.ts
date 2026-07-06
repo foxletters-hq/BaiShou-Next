@@ -15,7 +15,12 @@ export class TableAutoScroller {
   private xAmount = 0
   private yAmount = 0
 
-  private constructor({ offset, maxScroll, boundaryElement, scrollElement }: TableAutoScrollerProps) {
+  private constructor({
+    offset,
+    maxScroll,
+    boundaryElement,
+    scrollElement
+  }: TableAutoScrollerProps) {
     this.offset = offset ?? 0
     this.maxScroll = maxScroll
     this.boundaryElement = boundaryElement

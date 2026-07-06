@@ -4,7 +4,12 @@ import { z } from 'zod'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import { ToolSchema } from '@modelcontextprotocol/sdk/types.js'
-import { ToolRegistry, buildBaishouMcpToolSchemas, executeBaishouMcpTool, MCP_EXTERNAL_SESSION_ID } from '@baishou/ai'
+import {
+  ToolRegistry,
+  buildBaishouMcpToolSchemas,
+  executeBaishouMcpTool,
+  MCP_EXTERNAL_SESSION_ID
+} from '@baishou/ai'
 import { McpService } from '../mcp.service'
 
 const getDesktopMcpServerConfigMock = vi.hoisted(() => vi.fn())

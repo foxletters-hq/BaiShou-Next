@@ -118,7 +118,11 @@ export const IdentitySettingsFactsSection: React.FC<IdentitySettingsFactsSection
               </Text>
             </View>
             <Pressable onPress={() => onStartEdit(k, v)} style={{ padding: 4 }}>
-              <SquarePen size={18} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+              <SquarePen
+                size={18}
+                color={colors.textSecondary}
+                strokeWidth={DEFAULT_STROKE_WIDTH}
+              />
             </Pressable>
             <Pressable onPress={() => onDeleteFact(k)} style={{ padding: 4 }}>
               <Trash2 size={18} color={colors.error} strokeWidth={DEFAULT_STROKE_WIDTH} />

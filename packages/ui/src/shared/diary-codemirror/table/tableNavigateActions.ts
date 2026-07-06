@@ -207,11 +207,7 @@ function moveDown(
   moveTo(view, ctx, shiftDown(activeCell), shiftDown(activeCell))
 }
 
-function shiftExpand(
-  view: EditorView,
-  ctx: TableNavigateContext,
-  key: TableNavigateKey
-): void {
+function shiftExpand(view: EditorView, ctx: TableNavigateContext, key: TableNavigateKey): void {
   const { section, anchorCell, activeCell, table } = ctx
   let nextSection = section
   let nextActive = activeCell

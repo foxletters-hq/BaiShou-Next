@@ -32,7 +32,10 @@ import {
   invalidateChatBackgroundDisplayCache,
   resolveChatBackgroundForMobileUi
 } from '../../../lib/chat-background-display.util'
-import { invalidateAgentUserProfileCache, peekAgentUserProfileCache } from '../../../lib/agent-user-profile.util'
+import {
+  invalidateAgentUserProfileCache,
+  peekAgentUserProfileCache
+} from '../../../lib/agent-user-profile.util'
 import { resolveUserAvatarForMobileUi } from '../../../lib/user-avatar-display.util'
 import { ensureDefaultLatteAssistant, syncDefaultLatteAssistantLocale } from '@baishou/core-mobile'
 import { resolveAppUiLanguage } from '../../../lib/device-locale'

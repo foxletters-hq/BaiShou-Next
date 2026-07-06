@@ -73,11 +73,7 @@ export const IncrementalSyncConfigSheet: React.FC<IncrementalSyncConfigSheetProp
     </>
   )
 
-  const renderTargetCard = (
-    value: 's3' | 'webdav',
-    icon: LucideIcon,
-    title: string
-  ) => {
+  const renderTargetCard = (value: 's3' | 'webdav', icon: LucideIcon, title: string) => {
     const selected = target === value
     const Icon = icon
     return (

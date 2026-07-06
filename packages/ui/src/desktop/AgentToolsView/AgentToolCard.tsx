@@ -39,11 +39,7 @@ export const AgentToolCard: React.FC<AgentToolCardProps> = ({
             <span className={styles.toolIdTag}>{tool.id}</span>
           </div>
         </div>
-        <Switch
-          checked={isEnabled}
-          disabled={!toggleable}
-          onChange={() => onToggle(tool.id)}
-        />
+        <Switch checked={isEnabled} disabled={!toggleable} onChange={() => onToggle(tool.id)} />
       </div>
 
       {hasParams && isEnabled && (

@@ -1,6 +1,16 @@
 import React, { useState } from 'react'
 import styles from './MessageActionBar.module.css'
-import { Copy, Edit3, GitBranch, ListTree, RefreshCcw, Trash2, Volume2, Check, Loader2 } from 'lucide-react'
+import {
+  Copy,
+  Edit3,
+  GitBranch,
+  ListTree,
+  RefreshCcw,
+  Trash2,
+  Volume2,
+  Check,
+  Loader2
+} from 'lucide-react'
 import { CONTEXT_CHAIN_ACTION_ICON_SIZE } from '../../shared/icons/icon-sizes'
 import { useTranslation } from 'react-i18next'
 

@@ -38,7 +38,8 @@ export function usePersistedSharedMemoryLookback() {
 
     void (async () => {
       try {
-        const existing = ((await window.api?.settings?.getSummaryConfig?.()) as SummaryConfig | null) || {}
+        const existing =
+          ((await window.api?.settings?.getSummaryConfig?.()) as SummaryConfig | null) || {}
         await window.api?.settings?.setSummaryConfig?.({
           ...existing,
           sharedMemoryLookbackMonths: clamped

@@ -1,7 +1,12 @@
 import React from 'react'
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native'
 import { useRouter } from 'expo-router'
-import { useNativeTheme, scrollIndicatorStyle, SettingsNavIcon, SettingsListLeadingIcon } from '@baishou/ui/native'
+import {
+  useNativeTheme,
+  scrollIndicatorStyle,
+  SettingsNavIcon,
+  SettingsListLeadingIcon
+} from '@baishou/ui/native'
 import { useTranslation } from 'react-i18next'
 import { CompactTabHeader } from '../../components/CompactTabHeader'
 import {

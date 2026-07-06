@@ -32,11 +32,13 @@ export interface EmojiToolCardProps {
   config: EmojiToolConfig
   onChange: (config: EmojiToolConfig) => void
   /** Mobile: pick and import emoji images via image picker */
-  onPickAndImport: () => Promise<{
-    relativePath: string
-    originalName: string
-    error: string | null
-  }[]>
+  onPickAndImport: () => Promise<
+    {
+      relativePath: string
+      originalName: string
+      error: string | null
+    }[]
+  >
   /** Resolve a relativePath to a displayable URI */
   onResolvePath: (relativePath: string) => Promise<string>
   /** Delete an emoji file */
@@ -136,10 +138,7 @@ export const EmojiToolCard: React.FC<EmojiToolCardProps> = ({
               }) +
               '：' +
               errors.join('；')
-        Alert.alert(
-          t('agent.tools.emoji_import_error_title', '导入失败'),
-          errorMsg
-        )
+        Alert.alert(t('agent.tools.emoji_import_error_title', '导入失败'), errorMsg)
       }
 
       if (newEmojis.length > 0) {
@@ -176,8 +175,7 @@ export const EmojiToolCard: React.FC<EmojiToolCardProps> = ({
   const handleRenameEmoji = (emojiId: string, newName: string) => {
     onChange({
       ...emojiConfig,
-      emojis:
-        emojiConfig.emojis?.map((e) => (e.id === emojiId ? { ...e, name: newName } : e)) || []
+      emojis: emojiConfig.emojis?.map((e) => (e.id === emojiId ? { ...e, name: newName } : e)) || []
     })
   }
 
@@ -209,7 +207,10 @@ export const EmojiToolCard: React.FC<EmojiToolCardProps> = ({
         <View style={styles.toolInfo}>
           <View style={styles.toolNameRow}>
             <Text
-              style={[styles.toolName, { color: isEnabled ? colors.textPrimary : colors.textSecondary }]}
+              style={[
+                styles.toolName,
+                { color: isEnabled ? colors.textPrimary : colors.textSecondary }
+              ]}
             >
               {t('agent.tools.emoji_send', '表情包')}
             </Text>
@@ -253,7 +254,9 @@ export const EmojiToolCard: React.FC<EmojiToolCardProps> = ({
                     key={emoji.id}
                     style={[styles.emojiCard, { borderColor: colors.borderMuted }]}
                   >
-                    <View style={[styles.emojiCardImage, { backgroundColor: colors.bgSurfaceNormal }]}>
+                    <View
+                      style={[styles.emojiCardImage, { backgroundColor: colors.bgSurfaceNormal }]}
+                    >
                       {emojiPreviews[emoji.id] ? (
                         <Image
                           source={{ uri: emojiPreviews[emoji.id] }}
@@ -261,16 +264,15 @@ export const EmojiToolCard: React.FC<EmojiToolCardProps> = ({
                           resizeMode="contain"
                         />
                       ) : (
-                        <MaterialIcons
-                          name="image"
-                          size={24}
-                          color={colors.textTertiary}
-                        />
+                        <MaterialIcons name="image" size={24} color={colors.textTertiary} />
                       )}
                     </View>
                     <View style={styles.emojiCardFooter}>
                       <TextInput
-                        style={[styles.emojiNameInput, { color: colors.textPrimary, borderColor: colors.borderMuted }]}
+                        style={[
+                          styles.emojiNameInput,
+                          { color: colors.textPrimary, borderColor: colors.borderMuted }
+                        ]}
                         value={emoji.name}
                         onChangeText={(text) => handleRenameEmoji(emoji.id, text)}
                         placeholder={t('agent.tools.emoji_name_placeholder', '名称')}
@@ -282,12 +284,16 @@ export const EmojiToolCard: React.FC<EmojiToolCardProps> = ({
                         onPress={() => handleDeleteEmoji(emoji.id)}
                         accessibilityLabel={t('agent.tools.emoji_delete', '删除')}
                       >
-                        <MaterialIcons name="delete-outline" size={16} color={colors.textSecondary} />
+                        <MaterialIcons
+                          name="delete-outline"
+                          size={16}
+                          color={colors.textSecondary}
+                        />
                       </TouchableOpacity>
                     </View>
                   </View>
                 ))}
-                {(!emojiConfig.emojis || emojiConfig.emojis.length === 0) ? (
+                {!emojiConfig.emojis || emojiConfig.emojis.length === 0 ? (
                   <TouchableOpacity
                     style={styles.emojiEmptyHint}
                     onPress={handlePickAndImport}
@@ -297,7 +303,11 @@ export const EmojiToolCard: React.FC<EmojiToolCardProps> = ({
                     {isLoading ? (
                       <ActivityIndicator size="small" color={colors.textTertiary} />
                     ) : (
-                      <MaterialIcons name="add-photo-alternate" size={32} color={colors.textTertiary} />
+                      <MaterialIcons
+                        name="add-photo-alternate"
+                        size={32}
+                        color={colors.textTertiary}
+                      />
                     )}
                     <Text style={[styles.emojiEmptyText, { color: colors.textTertiary }]}>
                       {isLoading

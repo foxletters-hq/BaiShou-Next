@@ -1,7 +1,10 @@
 import React from 'react'
 import { History, Minimize2 } from 'lucide-react'
 import { HelpTooltip } from '../HelpTooltip'
-import { DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD, getDefaultCompressionSystemPrompt } from '@baishou/shared'
+import {
+  DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD,
+  getDefaultCompressionSystemPrompt
+} from '@baishou/shared'
 import styles from './AssistantPickerSheet.module.css'
 import type { AssistantPickerSheetViewModel } from './useAssistantPickerSheet'
 
@@ -108,10 +111,14 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
             value={editingContextWindow}
             onChange={(e) => setEditingContextWindow(Number(e.target.value))}
             onPointerUp={(e) =>
-              void saveConfig({ contextWindow: Number((e.currentTarget as HTMLInputElement).value) })
+              void saveConfig({
+                contextWindow: Number((e.currentTarget as HTMLInputElement).value)
+              })
             }
             onKeyUp={(e) =>
-              void saveConfig({ contextWindow: Number((e.currentTarget as HTMLInputElement).value) })
+              void saveConfig({
+                contextWindow: Number((e.currentTarget as HTMLInputElement).value)
+              })
             }
           />
         )}

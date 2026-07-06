@@ -2,7 +2,14 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
-import { ChevronRight, Database, FlaskConical, GalleryHorizontalEnd, MessageCircle, Trash2 } from 'lucide-react'
+import {
+  ChevronRight,
+  Database,
+  FlaskConical,
+  GalleryHorizontalEnd,
+  MessageCircle,
+  Trash2
+} from 'lucide-react'
 
 export interface DeveloperOptionsViewProps {
   /** 注入压缩测试会话后跳转到对应对话页（桌面端传入） */

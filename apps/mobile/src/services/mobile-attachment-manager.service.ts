@@ -384,9 +384,10 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
       }
 
       // Handle URI-style sources (file://, content://, etc.)
-      const sourceUri = absoluteSourcePath.startsWith('file://') || absoluteSourcePath.startsWith('content://')
-        ? absoluteSourcePath
-        : toFileUri(absoluteSourcePath)
+      const sourceUri =
+        absoluteSourcePath.startsWith('file://') || absoluteSourcePath.startsWith('content://')
+          ? absoluteSourcePath
+          : toFileUri(absoluteSourcePath)
 
       // Extract original filename from URI
       const uriPath = absoluteSourcePath.startsWith('file://')

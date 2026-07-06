@@ -845,7 +845,12 @@ export const DataSyncScreen: React.FC = () => {
                 </View>
               ) : recordsFetchError ? (
                 <View style={styles.emptyContainer}>
-                  <CloudOff size={48} color={colors.error} strokeWidth={2} style={{ opacity: 0.7 }} />
+                  <CloudOff
+                    size={48}
+                    color={colors.error}
+                    strokeWidth={2}
+                    style={{ opacity: 0.7 }}
+                  />
                   <Text style={[styles.emptyText, { color: colors.textPrimary }]}>
                     {recordsFetchError}
                   </Text>

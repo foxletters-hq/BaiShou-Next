@@ -95,8 +95,7 @@ export function prettifyTableCells(
     }
     return max
   })
-  const pad = (cells: string[]) =>
-    cells.map((cell, col) => cell.padEnd(widths[col] ?? cell.length))
+  const pad = (cells: string[]) => cells.map((cell, col) => cell.padEnd(widths[col] ?? cell.length))
   return {
     header: pad(header),
     body: body.map((row) => pad(normalizeRowCells(row, colCount)))

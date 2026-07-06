@@ -246,9 +246,7 @@ export const AssistantManagementScreen: React.FC = () => {
                 {item.name}
               </Text>
               <AssistantKindBadge kind={item.assistantKind} compact />
-              {item.isPinned ? (
-                <Pin size={14} color={colors.primary} strokeWidth={2} />
-              ) : null}
+              {item.isPinned ? <Pin size={14} color={colors.primary} strokeWidth={2} /> : null}
             </View>
           </View>
         </View>

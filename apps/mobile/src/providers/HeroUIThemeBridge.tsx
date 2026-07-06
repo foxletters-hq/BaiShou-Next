@@ -31,7 +31,5 @@ export function HeroUIThemeBridge({ children }: { children: React.ReactNode }) {
     []
   )
 
-  return (
-    <HeroUINativeProvider config={providerConfig}>{children}</HeroUINativeProvider>
-  )
+  return <HeroUINativeProvider config={providerConfig}>{children}</HeroUINativeProvider>
 }

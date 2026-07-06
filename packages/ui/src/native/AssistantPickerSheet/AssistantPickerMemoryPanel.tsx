@@ -27,10 +27,7 @@ export function AssistantPickerMemoryPanel({
 }: {
   assistant: AssistantPickerSheetAssistant | null
   isSaving?: boolean
-  onSaveMemoryConfig?: (
-    assistantId: string,
-    updates: AssistantMemoryConfigPatch
-  ) => Promise<void>
+  onSaveMemoryConfig?: (assistantId: string, updates: AssistantMemoryConfigPatch) => Promise<void>
 }) {
   const { t, i18n } = useTranslation()
   const { colors } = useNativeTheme()
@@ -82,7 +79,12 @@ export function AssistantPickerMemoryPanel({
         {isSaving ? <ActivityIndicator size="small" color={colors.primary} /> : null}
       </View>
 
-      <View style={[styles.card, { backgroundColor: colors.bgSurfaceNormal, borderColor: colors.borderSubtle }]}>
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: colors.bgSurfaceNormal, borderColor: colors.borderSubtle }
+        ]}
+      >
         <View style={styles.row}>
           <Text style={[styles.label, { color: colors.textPrimary }]}>
             {t('agent.assistant.context_window_label', '上下文轮数')}
@@ -96,7 +98,9 @@ export function AssistantPickerMemoryPanel({
           />
           <View style={styles.rowSpacer} />
           {!isUnlimitedContext ? (
-            <Text style={[styles.value, { color: colors.primary }]}>{Math.round(contextWindow)}</Text>
+            <Text style={[styles.value, { color: colors.primary }]}>
+              {Math.round(contextWindow)}
+            </Text>
           ) : null}
           <Text style={[styles.hint, { color: colors.textSecondary }]}>
             {isUnlimitedContext
@@ -128,7 +132,12 @@ export function AssistantPickerMemoryPanel({
         ) : null}
       </View>
 
-      <View style={[styles.card, { backgroundColor: colors.bgSurfaceNormal, borderColor: colors.borderSubtle }]}>
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: colors.bgSurfaceNormal, borderColor: colors.borderSubtle }
+        ]}
+      >
         <View style={styles.row}>
           <Text style={[styles.label, { color: colors.textPrimary }]}>
             {t('agent.assistant.compress_label', '自动压缩')}

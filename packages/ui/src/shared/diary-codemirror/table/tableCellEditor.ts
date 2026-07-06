@@ -1,11 +1,6 @@
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { Prec, type Extension, type Transaction } from '@codemirror/state'
-import {
-  EditorView,
-  type DOMEventHandlers,
-  type KeyBinding,
-  keymap
-} from '@codemirror/view'
+import { EditorView, type DOMEventHandlers, type KeyBinding, keymap } from '@codemirror/view'
 import { defaultKeymap, historyKeymap } from '@codemirror/commands'
 import { searchKeymap } from '@codemirror/search'
 import { drawSelection } from '@codemirror/view'

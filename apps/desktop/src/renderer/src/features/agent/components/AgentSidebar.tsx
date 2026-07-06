@@ -94,68 +94,68 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
         />
 
         <div className={styles.sidebarContent}>
-        <div className={styles.fixedHeaderArea}>
-          <AgentSidebarHeader
-            pinnedAssistants={pinnedAssistants}
+          <div className={styles.fixedHeaderArea}>
+            <AgentSidebarHeader
+              pinnedAssistants={pinnedAssistants}
+              searchQuery={searchQuery}
+              hasSessions={sessions.length > 0}
+              isMultiSelect={isMultiSelect}
+              onSearchQueryChanged={onSearchQueryChanged}
+              onNewSession={onNewSession}
+              onAssistantSwitched={onAssistantSwitched}
+              onToggleMultiSelect={toggleMultiSelect}
+              currentAssistantId={currentAssistant?.id}
+            />
+          </div>
+
+          <div style={{ height: 8, flexShrink: 0 }} />
+
+          {/* 可滚动历史对话区 */}
+          <AgentSessionList
+            sessions={sessions}
+            isLoading={isLoading}
             searchQuery={searchQuery}
-            hasSessions={sessions.length > 0}
+            selectedSessionId={selectedSessionId}
+            hasMore={hasMore}
+            isLoadingMore={isLoadingMore}
+            scrollKey={scrollKey}
             isMultiSelect={isMultiSelect}
-            onSearchQueryChanged={onSearchQueryChanged}
-            onNewSession={onNewSession}
-            onAssistantSwitched={onAssistantSwitched}
-            onToggleMultiSelect={toggleMultiSelect}
-            currentAssistantId={currentAssistant?.id}
+            selectedIds={selectedIds}
+            onLoadMore={onLoadMore}
+            onSessionSelected={onSessionSelected}
+            onCheckChanged={handleCheckChanged}
+            onPinSession={onPinSession}
+            onDeleteSession={onDeleteSession}
+            onRenameSession={onRenameSession}
           />
+
+          {/* ─── 固定底部区（批量删除操作栏） ─── */}
+          <div className={styles.bottomArea}>
+            {isMultiSelect && sessions.length > 0 && (
+              <div className={styles.batchBar}>
+                <button
+                  className={styles.selectAllBtn}
+                  onClick={() => {
+                    if (selectedIds.size === sessions.length) setSelectedIds(new Set())
+                    else setSelectedIds(new Set(sessions.map((s) => s.id)))
+                  }}
+                >
+                  {selectedIds.size === sessions.length
+                    ? t('agent.chat.cancel_select_all', '取消全选')
+                    : t('agent.chat.select_all', '全选')}
+                </button>
+                <div style={{ flex: 1 }} />
+                <button
+                  className={styles.batchDeleteBtn}
+                  disabled={selectedIds.size === 0}
+                  onClick={handleBatchDelete}
+                >
+                  {t('common.delete', '删除')} ({selectedIds.size})
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-
-        <div style={{ height: 8, flexShrink: 0 }} />
-
-        {/* 可滚动历史对话区 */}
-        <AgentSessionList
-          sessions={sessions}
-          isLoading={isLoading}
-          searchQuery={searchQuery}
-          selectedSessionId={selectedSessionId}
-          hasMore={hasMore}
-          isLoadingMore={isLoadingMore}
-          scrollKey={scrollKey}
-          isMultiSelect={isMultiSelect}
-          selectedIds={selectedIds}
-          onLoadMore={onLoadMore}
-          onSessionSelected={onSessionSelected}
-          onCheckChanged={handleCheckChanged}
-          onPinSession={onPinSession}
-          onDeleteSession={onDeleteSession}
-          onRenameSession={onRenameSession}
-        />
-
-        {/* ─── 固定底部区（批量删除操作栏） ─── */}
-        <div className={styles.bottomArea}>
-          {isMultiSelect && sessions.length > 0 && (
-            <div className={styles.batchBar}>
-              <button
-                className={styles.selectAllBtn}
-                onClick={() => {
-                  if (selectedIds.size === sessions.length) setSelectedIds(new Set())
-                  else setSelectedIds(new Set(sessions.map((s) => s.id)))
-                }}
-              >
-                {selectedIds.size === sessions.length
-                  ? t('agent.chat.cancel_select_all', '取消全选')
-                  : t('agent.chat.select_all', '全选')}
-              </button>
-              <div style={{ flex: 1 }} />
-              <button
-                className={styles.batchDeleteBtn}
-                disabled={selectedIds.size === 0}
-                onClick={handleBatchDelete}
-              >
-                {t('common.delete', '删除')} ({selectedIds.size})
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
       </div>
     </div>
   )

@@ -164,7 +164,11 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
                 accessibilityLabel={showApiKey ? t('common.hide') : t('common.show')}
               >
                 {showApiKey ? (
-                  <EyeOff size={22} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                  <EyeOff
+                    size={22}
+                    color={colors.textSecondary}
+                    strokeWidth={DEFAULT_STROKE_WIDTH}
+                  />
                 ) : (
                   <Eye size={22} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
                 )}

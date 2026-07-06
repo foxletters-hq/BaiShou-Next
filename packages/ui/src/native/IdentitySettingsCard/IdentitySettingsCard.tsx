@@ -62,7 +62,11 @@ export const IdentitySettingsCard: React.FC<NativeIdentitySettingsCardProps> = (
       embedded={embedded}
       isLast={isLast}
       icon={
-        <IdCard size={NAV_ICON_SIZE} strokeWidth={DEFAULT_STROKE_WIDTH} color={colors.textSecondary} />
+        <IdCard
+          size={NAV_ICON_SIZE}
+          strokeWidth={DEFAULT_STROKE_WIDTH}
+          color={colors.textSecondary}
+        />
       }
       title={t('settings.identity_card')}
       subtitle={

@@ -51,17 +51,11 @@ function syncChromeHandles(
   block.classList.toggle('cm-table-block--has-active-cell', activeRow != null || activeCol != null)
   block.querySelectorAll('.cm-table-col-handle').forEach((handle) => {
     const handleCol = Number((handle as HTMLElement).dataset.colIndex)
-    handle.classList.toggle(
-      'cm-table-handle--active',
-      activeCol != null && handleCol === activeCol
-    )
+    handle.classList.toggle('cm-table-handle--active', activeCol != null && handleCol === activeCol)
   })
   block.querySelectorAll('.cm-table-row-handle').forEach((handle) => {
     const handleRow = Number((handle as HTMLElement).dataset.rowIndex)
-    handle.classList.toggle(
-      'cm-table-handle--active',
-      activeRow != null && handleRow === activeRow
-    )
+    handle.classList.toggle('cm-table-handle--active', activeRow != null && handleRow === activeRow)
   })
 }
 
@@ -245,13 +239,9 @@ function mountCellEditor(
         setTableCellRangeSelection.of(null)
       ]
       if (rowIndex >= 0) {
-        effects.push(
-          setTableChromeSelection.of({ tableFrom, kind: 'row', index: rowIndex })
-        )
+        effects.push(setTableChromeSelection.of({ tableFrom, kind: 'row', index: rowIndex }))
       } else {
-        effects.push(
-          setTableChromeSelection.of({ tableFrom, kind: 'col', index: colIndex })
-        )
+        effects.push(setTableChromeSelection.of({ tableFrom, kind: 'col', index: colIndex }))
       }
       view.dispatch({ effects })
     },
@@ -346,10 +336,8 @@ export function syncTableBlockFromState(view: EditorView, block: HTMLElement): v
   const rangeSelection = readTableCellRangeSelectionFor(view.state, tableFrom)
   const chromeSelection = readTableChromeSelectionFor(view.state, tableFrom)
 
-  const activeRow =
-    chromeSelection?.kind === 'row' ? chromeSelection.index : activeCell?.rowIndex
-  const activeCol =
-    chromeSelection?.kind === 'col' ? chromeSelection.index : activeCell?.colIndex
+  const activeRow = chromeSelection?.kind === 'row' ? chromeSelection.index : activeCell?.rowIndex
+  const activeCol = chromeSelection?.kind === 'col' ? chromeSelection.index : activeCell?.colIndex
 
   syncChromeHandles(block, activeRow, activeCol)
   syncChromeSelectionClasses(block, chromeSelection)

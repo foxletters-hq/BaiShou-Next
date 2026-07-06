@@ -65,9 +65,7 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
       <div className={styles.avatarWrap}>
         <AssistantAvatar avatarPath={aiProfile.avatarPath} size={36} borderRadius="50%" />
       </div>
-      <div
-        className={`${styles.messageCol} ${useWideBubble ? styles.messageColWide : ''}`}
-      >
+      <div className={`${styles.messageCol} ${useWideBubble ? styles.messageColWide : ''}`}>
         {error ? (
           <div className={styles.errorBox}>
             <span className={styles.errorText}>⚠ {error}</span>

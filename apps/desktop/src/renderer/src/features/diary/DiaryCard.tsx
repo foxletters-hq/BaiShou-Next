@@ -1,7 +1,12 @@
 import React from 'react'
 import { Edit3, Trash2, Heart } from 'lucide-react'
 import { MarkdownRenderer, MoodEmoji, WeatherEmoji } from '@baishou/ui'
-import { limitDiaryPreviewTags, prepareDiaryCardPreviewMarkdown, resolveWeatherId, resolveMoodId } from '@baishou/shared'
+import {
+  limitDiaryPreviewTags,
+  prepareDiaryCardPreviewMarkdown,
+  resolveWeatherId,
+  resolveMoodId
+} from '@baishou/shared'
 
 /** 星期几名称 */
 const WEEKDAY_NAMES_KEYS = [

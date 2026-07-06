@@ -1,6 +1,9 @@
 import type { DiaryListSavedPatch } from '../cache/diary-list-cache'
 import { normalizeDiaryTags } from './diary-tags.util'
-import { normalizeDiaryPreviewMarkdown, prepareDiaryCardPreviewMarkdown } from './diary-preview.util'
+import {
+  normalizeDiaryPreviewMarkdown,
+  prepareDiaryCardPreviewMarkdown
+} from './diary-preview.util'
 
 export type DiaryListSavedPatchSource = {
   id?: number | null

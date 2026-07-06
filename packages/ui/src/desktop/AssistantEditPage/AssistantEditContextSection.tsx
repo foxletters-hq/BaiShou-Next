@@ -49,9 +49,7 @@ export const AssistantEditContextSection: React.FC<AssistantEditContextSectionPr
             step={1}
             value={contextWindow}
             onChange={(e) => onContextWindowChange(Number(e.target.value))}
-            onPointerUp={(e) =>
-              onContextWindowCommit?.(readRangeInputValue(e.currentTarget))
-            }
+            onPointerUp={(e) => onContextWindowCommit?.(readRangeInputValue(e.currentTarget))}
             onKeyUp={(e) => onContextWindowCommit?.(readRangeInputValue(e.currentTarget))}
             style={{
               backgroundSize: `${((contextWindow - 2) * 100) / 98}% 100%`

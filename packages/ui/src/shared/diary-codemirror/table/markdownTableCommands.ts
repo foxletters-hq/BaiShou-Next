@@ -2,7 +2,15 @@ import type { EditorView } from '@codemirror/view'
 import type { KeyBinding } from '@codemirror/view'
 import { serializeTable } from './table.model'
 
-const EMPTY_TABLE = serializeTable(['', ''], [['', ''], ['', '']], undefined, { prettify: true })
+const EMPTY_TABLE = serializeTable(
+  ['', ''],
+  [
+    ['', ''],
+    ['', '']
+  ],
+  undefined,
+  { prettify: true }
+)
 
 export function insertEmptyMarkdownTable(view: EditorView): boolean {
   const { from, to } = view.state.selection.main

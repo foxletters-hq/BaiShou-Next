@@ -119,7 +119,9 @@ export const RagMemorySearchSection: React.FC<RagMemorySearchSectionProps> = ({
             placeholder={placeholder}
             autoFocus={autoFocus}
             returnKeyType="search"
-            leftSlot={<Search size={18} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />}
+            leftSlot={
+              <Search size={18} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+            }
             rightSlot={
               searchQuery.length > 0 ? (
                 <TouchableOpacity

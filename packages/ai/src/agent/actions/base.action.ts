@@ -55,8 +55,7 @@ export function extractAttachmentsFromParts(
 
     const att = normalizePartData(part.data)
     const fileName = String(att.name || att.fileName || 'Attachment')
-    const isImage =
-      partType === 'image' || att.type === 'image' || att.isImage === true
+    const isImage = partType === 'image' || att.type === 'image' || att.isImage === true
     attachments.push({
       type: isImage ? 'image' : 'file',
       url: typeof att.url === 'string' ? att.url : undefined,

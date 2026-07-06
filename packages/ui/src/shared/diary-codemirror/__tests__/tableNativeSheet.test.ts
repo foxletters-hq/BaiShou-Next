@@ -63,7 +63,11 @@ describe('tableNativeSheet', () => {
       requestNativeTableSheet('第 5 行', [{ items: [{ id: 'up', label: '向上移动行' }] }], vi.fn())
     ).toBe(true)
     expect(
-      requestNativeTableSheet('第 5 行', [{ items: [{ id: 'clear-row', label: '清空行' }] }], vi.fn())
+      requestNativeTableSheet(
+        '第 5 行',
+        [{ items: [{ id: 'clear-row', label: '清空行' }] }],
+        vi.fn()
+      )
     ).toBe(true)
 
     const sheetRequests = posted.filter((raw) => {

@@ -1,5 +1,10 @@
 import { shadowConnectionManager, ShadowIndexRepository } from '@baishou/database'
-import { logger, parseDateStr, estimateTextTokensApprox, type SharedMemoryCopyPreview } from '@baishou/shared'
+import {
+  logger,
+  parseDateStr,
+  estimateTextTokensApprox,
+  type SharedMemoryCopyPreview
+} from '@baishou/shared'
 import { quarterlySummariesForMonthCascade } from './summary-cascade.util'
 
 /** 国际化字典类型 */
@@ -203,8 +208,7 @@ function buildSharedContextBody(
   const formattedParts = allItems.map((item) => {
     const dateStr = formatDate(item.date)
     const prefix = prefixByKind[item.kind]
-    const content =
-      item.kind === 'diary' ? item.data.rawContent || '' : item.data.content || ''
+    const content = item.kind === 'diary' ? item.data.rawContent || '' : item.data.content || ''
     return `## ${prefix} ${dateStr}\n\n${content}`
   })
 
@@ -292,7 +296,6 @@ export async function buildSharedContextText(
     const shadowRepo = new ShadowIndexRepository(shadowDb as any, options.vaultName)
     diaries = await shadowRepo.listAllWithFTS()
   }
-
 
   const { allItems } = resolveSharedMemoryItems(summaries, diaries, lookbackMonths)
 

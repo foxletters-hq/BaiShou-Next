@@ -1,6 +1,11 @@
 import { ShadowIndexRepository } from '@baishou/database'
 import type { AppDatabase } from '@baishou/database'
-import { normalizeDiaryPreviewMarkdown, parseDateStr, resolveDiaryTagsFromSources, type DiaryMeta } from '@baishou/shared'
+import {
+  normalizeDiaryPreviewMarkdown,
+  parseDateStr,
+  resolveDiaryTagsFromSources,
+  type DiaryMeta
+} from '@baishou/shared'
 
 type ShadowListRow = Awaited<ReturnType<ShadowIndexRepository['listAllWithFTS']>>[number]
 type ShadowDetailRow = Awaited<ReturnType<ShadowIndexRepository['findByIds']>>[number]

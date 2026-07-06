@@ -129,8 +129,7 @@ export const EmojiGroupDetailView: React.FC<EmojiGroupDetailViewProps> = ({
   const handleRenameEmoji = (emojiId: string, newName: string) => {
     updateGroup({
       ...group,
-      emojis:
-        group.emojis?.map((e) => (e.id === emojiId ? { ...e, name: newName } : e)) || []
+      emojis: group.emojis?.map((e) => (e.id === emojiId ? { ...e, name: newName } : e)) || []
     })
   }
 

@@ -153,7 +153,11 @@ export const AssistantPicker: React.FC<NativeAssistantPickerProps> = ({
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 accessibilityLabel={t('agent.assistant.settings_entry', '伙伴管理')}
               >
-                <Settings size={22} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                <Settings
+                  size={22}
+                  color={colors.textSecondary}
+                  strokeWidth={DEFAULT_STROKE_WIDTH}
+                />
               </TouchableOpacity>
             ) : null}
           </View>
@@ -172,7 +176,11 @@ export const AssistantPicker: React.FC<NativeAssistantPickerProps> = ({
                       onCreatePress()
                     }}
                   >
-                    <Plus size={18} color={colors.textOnPrimary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                    <Plus
+                      size={18}
+                      color={colors.textOnPrimary}
+                      strokeWidth={DEFAULT_STROKE_WIDTH}
+                    />
                     <Text style={[styles.createBtnText, { color: colors.textOnPrimary }]}>
                       {t('agent.assistant.create_first', '创建第一个伙伴')}
                     </Text>

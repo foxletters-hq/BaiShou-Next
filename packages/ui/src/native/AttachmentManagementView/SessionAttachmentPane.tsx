@@ -130,7 +130,11 @@ export const SessionAttachmentPane: React.FC<{ vm: AttachmentManagementViewModel
               style={[styles.actionBtn, { borderColor: colors.borderSubtle }]}
               onPress={handleSelectAll}
             >
-              <CheckSquare size={16} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+              <CheckSquare
+                size={16}
+                color={colors.textSecondary}
+                strokeWidth={DEFAULT_STROKE_WIDTH}
+              />
               <Text style={[styles.actionBtnText, { color: colors.textPrimary }]}>
                 {selectedIds.size === pagedSessionList.length
                   ? t('settings.attachment_deselect_all', '取消全选')

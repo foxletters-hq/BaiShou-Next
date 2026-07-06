@@ -27,7 +27,9 @@ export class DesktopTableSection {
   }
 
   isSingleCell(): boolean {
-    return this.row.endExclusive - this.row.start === 1 && this.col.endExclusive - this.col.start === 1
+    return (
+      this.row.endExclusive - this.row.start === 1 && this.col.endExclusive - this.col.start === 1
+    )
   }
 
   containsCell({ row, col }: CellLocation): boolean {

@@ -157,7 +157,11 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
               autoCapitalize="none"
               leftSlot={
                 <View style={styles.searchIconWrap}>
-                  <Search size={18} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                  <Search
+                    size={18}
+                    color={colors.textTertiary}
+                    strokeWidth={DEFAULT_STROKE_WIDTH}
+                  />
                 </View>
               }
               rightSlot={
@@ -261,7 +265,11 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
                             />
                           </View>
                           {isSelected && (
-                            <Check size={18} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                            <Check
+                              size={18}
+                              color={colors.primary}
+                              strokeWidth={DEFAULT_STROKE_WIDTH}
+                            />
                           )}
                         </Pressable>
                       )

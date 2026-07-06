@@ -9,15 +9,7 @@ import {
   type NativeSyntheticEvent,
   type NativeScrollEvent
 } from 'react-native'
-import {
-  Code,
-  Image,
-  List,
-  Quote,
-  Redo2,
-  SlidersHorizontal,
-  Undo2
-} from 'lucide-react-native'
+import { Code, Image, List, Quote, Redo2, SlidersHorizontal, Undo2 } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../../native/theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
@@ -139,7 +131,11 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
               disabled={!onUndo}
               accessibilityLabel={t('diary.toolbar_undo', '撤销')}
             >
-              <Undo2 size={22} color={onUndo ? iconColor : disabledIcon} strokeWidth={DEFAULT_STROKE_WIDTH} />
+              <Undo2
+                size={22}
+                color={onUndo ? iconColor : disabledIcon}
+                strokeWidth={DEFAULT_STROKE_WIDTH}
+              />
             </ToolbarButton>
           )
         case 'redo':
@@ -151,7 +147,11 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
               disabled={!onRedo}
               accessibilityLabel={t('diary.toolbar_redo', '重做')}
             >
-              <Redo2 size={22} color={onRedo ? iconColor : disabledIcon} strokeWidth={DEFAULT_STROKE_WIDTH} />
+              <Redo2
+                size={22}
+                color={onRedo ? iconColor : disabledIcon}
+                strokeWidth={DEFAULT_STROKE_WIDTH}
+              />
             </ToolbarButton>
           )
         case 'bold':
@@ -222,7 +222,11 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
               disabled={!onToggleMark}
               accessibilityLabel={t('diary.toolbar_code', '行内代码')}
             >
-              <Code size={22} color={onToggleMark ? iconColor : disabledIcon} strokeWidth={DEFAULT_STROKE_WIDTH} />
+              <Code
+                size={22}
+                color={onToggleMark ? iconColor : disabledIcon}
+                strokeWidth={DEFAULT_STROKE_WIDTH}
+              />
             </ToolbarButton>
           )
         case 'quote':
@@ -292,7 +296,11 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
               {pickingImages ? (
                 <ActivityIndicator size="small" color={colors.primary} />
               ) : (
-                <Image size={22} color={onPickImages ? iconColor : disabledIcon} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                <Image
+                  size={22}
+                  color={onPickImages ? iconColor : disabledIcon}
+                  strokeWidth={DEFAULT_STROKE_WIDTH}
+                />
               )}
             </ToolbarButton>
           )

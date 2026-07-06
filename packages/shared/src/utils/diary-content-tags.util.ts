@@ -153,7 +153,10 @@ export function resolveDiaryTagsFromSources(
 ): string[] {
   const merged: string[] = []
   const seen = new Set<string>()
-  for (const tag of [...normalizeDiaryTags(frontmatterTags), ...extractDiaryTagsFromContent(content)]) {
+  for (const tag of [
+    ...normalizeDiaryTags(frontmatterTags),
+    ...extractDiaryTagsFromContent(content)
+  ]) {
     if (seen.has(tag)) continue
     seen.add(tag)
     merged.push(tag)
@@ -169,5 +172,8 @@ export function stripDedicatedTagLinesFromContent(full: string): string {
     if (isLegacyDedicatedTagLine(line)) continue
     kept.push(line)
   }
-  return kept.join('\n').replace(/\n{3,}/g, '\n\n').trim()
+  return kept
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
 }

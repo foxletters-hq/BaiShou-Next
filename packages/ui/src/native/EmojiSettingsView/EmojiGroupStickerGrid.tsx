@@ -19,11 +19,13 @@ import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 export interface EmojiGroupStickerGridProps {
   group: EmojiGroup
   onChange: (group: EmojiGroup) => void
-  onPickAndImport: () => Promise<{
-    relativePath: string
-    originalName: string
-    error: string | null
-  }[]>
+  onPickAndImport: () => Promise<
+    {
+      relativePath: string
+      originalName: string
+      error: string | null
+    }[]
+  >
   onResolvePath: (relativePath: string) => Promise<string>
   onDelete: (relativePath: string) => Promise<boolean>
 }
@@ -127,7 +129,8 @@ export const EmojiGroupStickerGrid: React.FC<EmojiGroupStickerGridProps> = ({
   const handleRenameEmoji = (emojiId: string, newName: string) => {
     onChange({
       ...group,
-      emojis: group.emojis?.map((item) => (item.id === emojiId ? { ...item, name: newName } : item)) || []
+      emojis:
+        group.emojis?.map((item) => (item.id === emojiId ? { ...item, name: newName } : item)) || []
     })
   }
 
@@ -160,11 +163,18 @@ export const EmojiGroupStickerGrid: React.FC<EmojiGroupStickerGridProps> = ({
         {group.emojis?.map((emoji) => (
           <View
             key={emoji.id}
-            style={[styles.card, { borderColor: colors.borderMuted, backgroundColor: colors.bgSurface }]}
+            style={[
+              styles.card,
+              { borderColor: colors.borderMuted, backgroundColor: colors.bgSurface }
+            ]}
           >
             <View style={[styles.imageBox, { backgroundColor: colors.bgSurfaceNormal }]}>
               {emojiPreviews[emoji.id] ? (
-                <Image source={{ uri: emojiPreviews[emoji.id] }} style={styles.image} resizeMode="contain" />
+                <Image
+                  source={{ uri: emojiPreviews[emoji.id] }}
+                  style={styles.image}
+                  resizeMode="contain"
+                />
               ) : (
                 <Text style={{ color: colors.textTertiary, fontSize: 12 }}>?</Text>
               )}

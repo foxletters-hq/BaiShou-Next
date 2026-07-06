@@ -117,9 +117,7 @@ const BaishouHeroToast: React.FC<BaishouHeroToastProps> = ({
         >
           {(() => {
             const Icon = ICON_BY_TYPE[type]
-            return (
-              <Icon size={18} color={COLOR_BY_TYPE[type]} strokeWidth={DEFAULT_STROKE_WIDTH} />
-            )
+            return <Icon size={18} color={COLOR_BY_TYPE[type]} strokeWidth={DEFAULT_STROKE_WIDTH} />
           })()}
           <Text style={[styles.message, { color: isDark ? colors.textPrimary : '#1A1C23' }]}>
             {message}

@@ -56,10 +56,10 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   /** live 行流式覆盖：重生成时消息已落库，仍须走 stream 态（转圈 / 工具 / 正文） */
   const liveStreamOverlay = Boolean(
     liveStream &&
-      (liveStream.isThinkLoading ||
-        liveStream.isTextStreaming ||
-        liveStream.activeToolName ||
-        (liveStream.completedTools?.length ?? 0) > 0)
+    (liveStream.isThinkLoading ||
+      liveStream.isTextStreaming ||
+      liveStream.activeToolName ||
+      (liveStream.completedTools?.length ?? 0) > 0)
   )
   const parseContent = liveStreamOverlay ? sourceContent : (message.content ?? '')
   const parseReasoning = liveStreamOverlay ? sourceReasoning : (message.reasoning ?? '')
@@ -245,9 +245,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
               {isAssistant && cleanContent ? (
                 <View
                   style={
-                    chatNeedsRichMarkdown(cleanContent)
-                      ? styles.markdownSlot
-                      : styles.plainTextSlot
+                    chatNeedsRichMarkdown(cleanContent) ? styles.markdownSlot : styles.plainTextSlot
                   }
                 >
                   {chatNeedsRichMarkdown(cleanContent) ? (

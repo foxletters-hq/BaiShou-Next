@@ -171,8 +171,7 @@ export class MissingSummaryDetector {
       if (mEnd.getTime() > now.getTime()) continue
 
       const eligibleWeeklies = weeklies.filter(
-        (w) =>
-          w.type === SummaryType.weekly && summaryFullyWithinPeriod(w, mStart, mEnd)
+        (w) => w.type === SummaryType.weekly && summaryFullyWithinPeriod(w, mStart, mEnd)
       )
       if (eligibleWeeklies.length === 0) continue
 
@@ -224,8 +223,7 @@ export class MissingSummaryDetector {
       if (qEnd.getTime() > now.getTime()) continue
 
       const eligibleMonthlies = monthlies.filter(
-        (m) =>
-          m.type === SummaryType.monthly && summaryFullyWithinPeriod(m, qStart, qEnd)
+        (m) => m.type === SummaryType.monthly && summaryFullyWithinPeriod(m, qStart, qEnd)
       )
       if (eligibleMonthlies.length === 0) continue
 
@@ -276,8 +274,7 @@ export class MissingSummaryDetector {
       if (yEnd.getTime() > now.getTime()) continue
 
       const eligibleQuarterlies = quarterlies.filter(
-        (q) =>
-          q.type === SummaryType.quarterly && summaryFullyWithinPeriod(q, yStart, yEnd)
+        (q) => q.type === SummaryType.quarterly && summaryFullyWithinPeriod(q, yStart, yEnd)
       )
       if (eligibleQuarterlies.length === 0) continue
 

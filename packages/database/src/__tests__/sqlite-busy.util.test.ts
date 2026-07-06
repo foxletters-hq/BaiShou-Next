@@ -17,13 +17,16 @@ describe('isSqliteDatabaseLockedError', () => {
 describe('runWithSqliteBusyRetry', () => {
   it('retries locked errors then succeeds', async () => {
     let attempts = 0
-    const result = await runWithSqliteBusyRetry(async () => {
-      attempts += 1
-      if (attempts < 3) {
-        throw new Error('database is locked')
-      }
-      return 'ok'
-    }, { attempts: 5, baseDelayMs: 1 })
+    const result = await runWithSqliteBusyRetry(
+      async () => {
+        attempts += 1
+        if (attempts < 3) {
+          throw new Error('database is locked')
+        }
+        return 'ok'
+      },
+      { attempts: 5, baseDelayMs: 1 }
+    )
 
     expect(result).toBe('ok')
     expect(attempts).toBe(3)

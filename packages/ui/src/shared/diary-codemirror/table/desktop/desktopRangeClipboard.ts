@@ -17,10 +17,7 @@ import { writeTextToClipboardSync } from '../tableDom'
 import { commitDesktopTableToDoc } from './tableDescription'
 import { domRowToParsedRow, parsedRowToDomRow } from './models/cellLocation'
 import { DesktopTableSection } from './models/desktopTableSection'
-import {
-  setDesktopTableInteraction,
-  type DesktopTableInteraction
-} from './tableInteractionField'
+import { setDesktopTableInteraction, type DesktopTableInteraction } from './tableInteractionField'
 import { readTableGridFromDesktopBlock } from './readDesktopGrid'
 
 export function domSectionToParsedBounds(section: DesktopTableSection): NormalizedTableCellRange {
@@ -102,8 +99,7 @@ export function desktopPasteTableRange(
   if (isMarkdownTableClipboard(text)) {
     const parsed = maybeParseClipboardGrid(text)
     if (parsed) {
-      const dataRows =
-        bounds.minRow >= 0 ? parsed.rows : [parsed.header, ...parsed.rows]
+      const dataRows = bounds.minRow >= 0 ? parsed.rows : [parsed.header, ...parsed.rows]
       const selRowCount = bounds.maxRow - bounds.minRow + 1
       const selColCount = bounds.maxCol - bounds.minCol + 1
       const blockRows = dataRows.length

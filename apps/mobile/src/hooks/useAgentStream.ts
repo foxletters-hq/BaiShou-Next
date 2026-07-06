@@ -311,9 +311,7 @@ export function useAgentStream(
           for (const row of rows) {
             if (seen.has(row.id)) continue
             seen.add(row.id)
-            addMessage(
-              mapSessionMessageFromDb(row as any, { storageRoot, attachmentsBasePath })
-            )
+            addMessage(mapSessionMessageFromDb(row as any, { storageRoot, attachmentsBasePath }))
           }
         }
 

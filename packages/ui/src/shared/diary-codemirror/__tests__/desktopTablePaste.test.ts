@@ -14,26 +14,34 @@ function buildDesktopBlock(grid: TableGridModel): HTMLElement {
   root.innerHTML = `
     <table class="cm-table-preview">
       <thead><tr>
-        ${grid.header.map((cell, col) => `<th class="cm-table-grid-cell" data-row="0" data-col="${col}">
+        ${grid.header
+          .map(
+            (cell, col) => `<th class="cm-table-grid-cell" data-row="0" data-col="${col}">
           <div class="cm-table-cell-inner">
             <div class="cm-table-cell-view" data-row="0" data-col="${col}"></div>
             <div class="cm-table-cell-source" data-row="0" data-col="${col}" data-raw=""></div>
           </div>
-        </th>`).join('')}
+        </th>`
+          )
+          .join('')}
       </tr></thead>
       <tbody>
         ${grid.rows
           .map(
-            (row, rowIndex) => `<tr>${row
-              .map(
-                (cell, col) => `<td class="cm-table-grid-cell" data-row="${rowIndex + 1}" data-col="${col}">
+            (row, rowIndex) =>
+              `<tr>${row
+                .map(
+                  (
+                    cell,
+                    col
+                  ) => `<td class="cm-table-grid-cell" data-row="${rowIndex + 1}" data-col="${col}">
           <div class="cm-table-cell-inner">
             <div class="cm-table-cell-view" data-row="${rowIndex + 1}" data-col="${col}"></div>
             <div class="cm-table-cell-source" data-row="${rowIndex + 1}" data-col="${col}" data-raw=""></div>
           </div>
         </td>`
-              )
-              .join('')}</tr>`
+                )
+                .join('')}</tr>`
           )
           .join('')}
       </tbody>
@@ -77,7 +85,11 @@ describe('desktop table paste', () => {
 
   it('mergeTsvIntoGrid keeps each clipboard line on its own row', () => {
     const grid: TableGridModel = { header: [''], rows: [[''], [''], ['']] }
-    mergeTsvIntoGrid(grid, TableSection.of({ start: 0, endExclusive: 3 }, { start: 0, endExclusive: 1 }), 'r1\nr2\nr3')
+    mergeTsvIntoGrid(
+      grid,
+      TableSection.of({ start: 0, endExclusive: 3 }, { start: 0, endExclusive: 1 }),
+      'r1\nr2\nr3'
+    )
     expect(grid.rows[0]![0]).toBeTruthy()
     expect(grid.rows[1]![0]).toBeTruthy()
     expect(grid.rows[2]![0]).toBeTruthy()

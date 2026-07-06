@@ -26,8 +26,16 @@ describe('emoji-config.util', () => {
     const config = normalizeEmojiToolConfig({
       enabled: true,
       groups: [
-        { id: 'work', name: '工作', emojis: [{ id: 'a.png', name: 'a', relativePath: 'emojis/a.png' }] },
-        { id: 'life', name: '日常', emojis: [{ id: 'b.png', name: 'b', relativePath: 'emojis/b.png' }] }
+        {
+          id: 'work',
+          name: '工作',
+          emojis: [{ id: 'a.png', name: 'a', relativePath: 'emojis/a.png' }]
+        },
+        {
+          id: 'life',
+          name: '日常',
+          emojis: [{ id: 'b.png', name: 'b', relativePath: 'emojis/b.png' }]
+        }
       ]
     })
 

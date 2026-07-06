@@ -37,10 +37,7 @@ export function matchCellNavigateKey(event: KeyboardEvent): TableKeyCommand | nu
   return null
 }
 
-export function shouldLeaveCellForNav(
-  cm: EditorView,
-  command: TableKeyCommand
-): boolean {
+export function shouldLeaveCellForNav(cm: EditorView, command: TableKeyCommand): boolean {
   const pos = readCellEdgePosition(cm)
   switch (command) {
     case 'arrow-left':

@@ -100,7 +100,11 @@ export const DiaryAttachmentGrid: React.FC<{ vm: AttachmentManagementViewModel }
                       onPress={() => handleOpenImagePreview(item.path, item.name)}
                       hitSlop={8}
                     >
-                      <ZoomIn size={14} color={colors.textPrimary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                      <ZoomIn
+                        size={14}
+                        color={colors.textPrimary}
+                        strokeWidth={DEFAULT_STROKE_WIDTH}
+                      />
                     </TouchableOpacity>
                   )}
                   {onOpenFileLocation && (
@@ -109,7 +113,11 @@ export const DiaryAttachmentGrid: React.FC<{ vm: AttachmentManagementViewModel }
                       onPress={() => void onOpenFileLocation(item.path)}
                       hitSlop={8}
                     >
-                      <Share2 size={14} color={colors.textPrimary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                      <Share2
+                        size={14}
+                        color={colors.textPrimary}
+                        strokeWidth={DEFAULT_STROKE_WIDTH}
+                      />
                     </TouchableOpacity>
                   )}
                   {onDeleteDiaryAttachment && (
@@ -119,7 +127,11 @@ export const DiaryAttachmentGrid: React.FC<{ vm: AttachmentManagementViewModel }
                       disabled={isDeleting}
                       hitSlop={8}
                     >
-                      <Trash2 size={14} color={colors.textOnPrimary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                      <Trash2
+                        size={14}
+                        color={colors.textOnPrimary}
+                        strokeWidth={DEFAULT_STROKE_WIDTH}
+                      />
                     </TouchableOpacity>
                   )}
                 </View>

@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  MCP_EXPOSABLE_TOOL_IDS,
-  isMcpExposableToolId
-} from '../mcp-exposable-tool-ids.constants'
+import { MCP_EXPOSABLE_TOOL_IDS, isMcpExposableToolId } from '../mcp-exposable-tool-ids.constants'
 
 describe('mcp-exposable-tool-ids.constants', () => {
   it('includes diary, memory, web, and utility tools for MCP', () => {

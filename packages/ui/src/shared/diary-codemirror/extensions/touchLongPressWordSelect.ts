@@ -2,7 +2,11 @@ import { Annotation, type Extension } from '@codemirror/state'
 import { EditorView, ViewPlugin } from '@codemirror/view'
 import { logDiaryBridge } from '../diaryBridgeDebug'
 import { shouldBlockEditorTouchForTableSheet } from '../table/tableSheetInteraction'
-import { findWordRangeAtPosition, resolveTouchDocPosition, snapTouchSelectPos } from './wordBoundaryAtPos'
+import {
+  findWordRangeAtPosition,
+  resolveTouchDocPosition,
+  snapTouchSelectPos
+} from './wordBoundaryAtPos'
 
 const LONG_PRESS_MS = 420
 const MOVE_CANCEL_PX = 12
@@ -13,7 +17,11 @@ export const touchLongPressWordSelectAnnotation = Annotation.define<boolean>()
 
 function isWordSelectTarget(target: Element): boolean {
   if (!target.closest('.cm-content')) return false
-  if (target.closest('.cm-table-block, .cm-table-cell-source, .cm-table-handle, .cm-table-corner-menu, .cm-table-add-btn')) {
+  if (
+    target.closest(
+      '.cm-table-block, .cm-table-cell-source, .cm-table-handle, .cm-table-corner-menu, .cm-table-add-btn'
+    )
+  ) {
     return false
   }
   return true

@@ -1,1 +1,4 @@
-export { TableAutoScroller as DesktopAutoScroller, outlineAutoScrollEnabled } from '../../tableAutoScroller'
+export {
+  TableAutoScroller as DesktopAutoScroller,
+  outlineAutoScrollEnabled
+} from '../../tableAutoScroller'

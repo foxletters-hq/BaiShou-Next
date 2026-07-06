@@ -38,7 +38,12 @@ export class TableSection {
   }
 
   containsCell({ row, col }: CellLocation): boolean {
-    return row >= this.startRow && row < this.row.endExclusive && col >= this.startCol && col < this.col.endExclusive
+    return (
+      row >= this.startRow &&
+      row < this.row.endExclusive &&
+      col >= this.startCol &&
+      col < this.col.endExclusive
+    )
   }
 
   containsOnEdge({ row, col }: CellLocation): {

@@ -148,7 +148,12 @@ export class TableDesktopWidget extends WidgetType {
     return tableEl
   }
 
-  private createCell(raw: string, parsedRow: number, colIndex: number, isHeader: boolean): HTMLElement {
+  private createCell(
+    raw: string,
+    parsedRow: number,
+    colIndex: number,
+    isHeader: boolean
+  ): HTMLElement {
     const el = document.createElement(isHeader ? 'th' : 'td')
     el.className = `cm-table-grid-cell cm-tbl-cell ${isHeader ? 'cm-tbl-header-cell' : 'cm-tbl-data-cell'}`
     const domRow = parsedRowToDomRow(parsedRow)
@@ -176,7 +181,14 @@ export class TableDesktopWidget extends WidgetType {
         const view = this.editorView()
         if (!view) return
         this.commitEditors()
-        openTableCellContextMenu(view, this.table, parsedRow, colIndex, event.clientX, event.clientY)
+        openTableCellContextMenu(
+          view,
+          this.table,
+          parsedRow,
+          colIndex,
+          event.clientX,
+          event.clientY
+        )
       },
       true
     )
@@ -229,8 +241,9 @@ export class TableDesktopWidget extends WidgetType {
     btn.dataset.desktopHandle = kind === 'col' ? 'header-col' : 'header-row'
     btn.dataset.handleIndex = String(index)
     btn.dataset.menuSections = '1'
-    ;(btn as HTMLElement & { __menuSections?: () => { items: { id: string; label: string }[] }[] }).__menuSections =
-      sections
+    ;(
+      btn as HTMLElement & { __menuSections?: () => { items: { id: string; label: string }[] }[] }
+    ).__menuSections = sections
   }
 
   private getScrollOffset(): { x: number; y: number } {
@@ -278,7 +291,11 @@ export class TableDesktopWidget extends WidgetType {
         (id) => {
           if (id === 'copy-table') void this.copyTableMarkdown()
           else if (id === 'delete-table') {
-            this.runAction({ type: 'deleteTable', tableFrom: this.table.from, tableTo: this.table.to })
+            this.runAction({
+              type: 'deleteTable',
+              tableFrom: this.table.from,
+              tableTo: this.table.to
+            })
           }
         }
       )
@@ -319,7 +336,9 @@ export class TableDesktopWidget extends WidgetType {
       const index = Number(btn.dataset.handleIndex)
       if (kind === 'header-col' || kind === 'header-row') {
         const sections = (
-          btn as HTMLElement & { __menuSections?: () => { items: { id: string; label: string }[] }[] }
+          btn as HTMLElement & {
+            __menuSections?: () => { items: { id: string; label: string }[] }[]
+          }
         ).__menuSections
         const openMenu = () => {
           this.commitEditors()

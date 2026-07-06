@@ -13,7 +13,11 @@ interface AgentToolsCommunityTabProps {
 }
 
 const COMMUNITY_CATEGORIES = [
-  { key: 'interaction', labelKey: 'settings.agent_tools_category_interaction', fallback: '互动工具' }
+  {
+    key: 'interaction',
+    labelKey: 'settings.agent_tools_category_interaction',
+    fallback: '互动工具'
+  }
 ] as const
 
 export const AgentToolsCommunityTab: React.FC<AgentToolsCommunityTabProps> = ({

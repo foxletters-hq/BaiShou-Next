@@ -150,7 +150,11 @@ export const DashboardStatsCard: React.FC<DashboardStatsCardProps> = ({
             {rescanning ? (
               <ActivityIndicator size="small" color={colors.primary} />
             ) : (
-              <RefreshCw size={18} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+              <RefreshCw
+                size={18}
+                color={colors.textSecondary}
+                strokeWidth={DEFAULT_STROKE_WIDTH}
+              />
             )}
           </Pressable>
         ) : null}

@@ -352,7 +352,9 @@ export function useDiaryCodeMirrorBridge(
           if (handler) {
             handler(message.payload, (response) => {
               if (typeof __DEV__ !== 'undefined' && __DEV__) {
-                logBridge(`tableSheetResponse ${response.action}${response.itemId ? ` item=${response.itemId}` : ''}`)
+                logBridge(
+                  `tableSheetResponse ${response.action}${response.itemId ? ` item=${response.itemId}` : ''}`
+                )
               }
               enqueueOrSend({ type: 'tableSheetResponse', payload: response })
             })

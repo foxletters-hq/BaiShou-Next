@@ -136,7 +136,10 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
               ) : null}
               {matchSimilarity != null && (
                 <View style={[styles.similarityBadge, { backgroundColor: colors.primaryLight }]}>
-                  <Text style={[styles.similarityText, { color: colors.primary }]} selectable={false}>
+                  <Text
+                    style={[styles.similarityText, { color: colors.primary }]}
+                    selectable={false}
+                  >
                     {(matchSimilarity * 100).toFixed(0)}%
                   </Text>
                 </View>
@@ -145,7 +148,12 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
           </View>
         </View>
         {isFavorite ? (
-          <Heart size={22} color={colors.warning} strokeWidth={DEFAULT_STROKE_WIDTH} fill={colors.warning} />
+          <Heart
+            size={22}
+            color={colors.warning}
+            strokeWidth={DEFAULT_STROKE_WIDTH}
+            fill={colors.warning}
+          />
         ) : (
           <View style={styles.headerSpacer} />
         )}
@@ -190,12 +198,22 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
       {/* On Mobile we always show the action buttons according to the original code "Builder isMobile" logic */}
       <View style={[styles.actionsDivider, { backgroundColor: colors.borderMuted }]} />
       <View style={styles.actionsBox}>
-        <TouchableOpacity onPress={onEdit} style={styles.actionBtn} activeOpacity={0.7} disallowInterruption>
+        <TouchableOpacity
+          onPress={onEdit}
+          style={styles.actionBtn}
+          activeOpacity={0.7}
+          disallowInterruption
+        >
           <Text style={[styles.editText, { color: colors.textSecondary }]} selectable={false}>
             {t('common.edit')}
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={onDelete} style={styles.actionBtn} activeOpacity={0.7} disallowInterruption>
+        <TouchableOpacity
+          onPress={onDelete}
+          style={styles.actionBtn}
+          activeOpacity={0.7}
+          disallowInterruption
+        >
           <Text style={[styles.deleteText, { color: colors.error }]} selectable={false}>
             {t('common.delete')}
           </Text>

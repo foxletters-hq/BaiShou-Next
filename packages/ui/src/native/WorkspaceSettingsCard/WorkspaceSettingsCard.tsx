@@ -106,7 +106,11 @@ export const WorkspaceSettingsCard: React.FC<NativeWorkspaceSettingsCardProps> =
       embedded={embedded}
       isLast={isLast}
       icon={
-        <Layers size={NAV_ICON_SIZE} strokeWidth={DEFAULT_STROKE_WIDTH} color={colors.textSecondary} />
+        <Layers
+          size={NAV_ICON_SIZE}
+          strokeWidth={DEFAULT_STROKE_WIDTH}
+          color={colors.textSecondary}
+        />
       }
       title={t('workspace.title', '工作空间')}
       titleAddon={<HelpTooltip content={workspaceHelpContent} />}

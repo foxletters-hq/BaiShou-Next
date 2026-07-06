@@ -210,9 +210,7 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
               await navigator.clipboard.writeText(contextText)
               toast.showSuccess(t('summary.toast_copied', '共同回忆已复制'))
             } else {
-              toast.showError(
-                t('summary.no_data_to_copy', '当前回溯范围内无已生成的总结回忆')
-              )
+              toast.showError(t('summary.no_data_to_copy', '当前回溯范围内无已生成的总结回忆'))
             }
           } catch (e: any) {
             console.error('[AgentScreen] Copy failed:', e)

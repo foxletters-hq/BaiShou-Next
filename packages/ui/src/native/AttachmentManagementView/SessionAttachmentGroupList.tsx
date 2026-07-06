@@ -1,13 +1,6 @@
 import React from 'react'
 import { View, Text, TouchableOpacity } from 'react-native'
-import {
-  CheckSquare,
-  ChevronDown,
-  Folder,
-  Share2,
-  Trash2,
-  ZoomIn
-} from 'lucide-react-native'
+import { CheckSquare, ChevronDown, Folder, Share2, Trash2, ZoomIn } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import type { AttachmentManagementViewModel } from './useAttachmentManagementView'
@@ -263,7 +256,11 @@ export const SessionAttachmentGroupList: React.FC<{ vm: Vm }> = ({ vm }) => {
                           disabled={isDeleting}
                           hitSlop={8}
                         >
-                          <Trash2 size={16} color={colors.error} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                          <Trash2
+                            size={16}
+                            color={colors.error}
+                            strokeWidth={DEFAULT_STROKE_WIDTH}
+                          />
                         </TouchableOpacity>
                       </View>
                     </View>

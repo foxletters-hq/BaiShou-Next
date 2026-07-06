@@ -114,9 +114,7 @@ export function isMarkdownTableClipboard(text: string): boolean {
     .filter(Boolean)
   if (lines.length < 2) return false
   if (!lines.some((line) => line.startsWith('|'))) return false
-  return lines.some((line) =>
-    /^\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line)
-  )
+  return lines.some((line) => /^\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line))
 }
 
 /** 多行 / TSV / Markdown 表格应走区域粘贴，而非根编辑器或单格 CM 默认粘贴 */
@@ -124,18 +122,29 @@ export function shouldUseTableRangePaste(text: string): boolean {
   if (!text.trim()) return false
   if (isMarkdownTableClipboard(text)) return true
   if (text.includes('\t')) return true
-  return text.replace(/\r\n/g, '\n').split('\n').filter((line) => line.length > 0).length > 1
+  return (
+    text
+      .replace(/\r\n/g, '\n')
+      .split('\n')
+      .filter((line) => line.length > 0).length > 1
+  )
 }
 
 export function tsvPasteDimensions(text: string): { rowCount: number; colCount: number } {
-  const lines = text.replace(/\r\n/g, '\n').split('\n').filter((line) => line.length > 0)
+  const lines = text
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .filter((line) => line.length > 0)
   const colCount = Math.max(1, ...lines.map((line) => line.split('\t').length))
   return { rowCount: Math.max(1, lines.length), colCount }
 }
 
 /** 尝试将剪贴板解析为表格（多行管道符或 TSV） */
 export function maybeParseClipboardGrid(text: string): TableGridModel | null {
-  const lines = text.replace(/\r\n/g, '\n').split('\n').filter((line) => line.length > 0)
+  const lines = text
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .filter((line) => line.length > 0)
   if (lines.length === 0) return null
 
   const parsedRows = lines.map((line) => {
@@ -238,7 +247,11 @@ export function removeGridColsAt(grid: TableGridModel, index: number, count: num
 export function insertGridRowsAt(grid: TableGridModel, index: number, count: number): void {
   const colCount = grid.header.length
   for (let i = 0; i < count; i += 1) {
-    grid.rows.splice(index, 0, Array.from({ length: colCount }, () => ''))
+    grid.rows.splice(
+      index,
+      0,
+      Array.from({ length: colCount }, () => '')
+    )
   }
 }
 
@@ -252,11 +265,7 @@ export function insertGridColsAt(grid: TableGridModel, index: number, count: num
   }
 }
 
-export function readGridCellFromDom(
-  block: HTMLElement,
-  row: number,
-  col: number
-): string {
+export function readGridCellFromDom(block: HTMLElement, row: number, col: number): string {
   const editorMount = block.querySelector(
     `.cm-table-cell-editor[data-row="${row}"][data-col="${col}"] .cm-content`
   ) as HTMLElement | null
@@ -292,8 +301,7 @@ function queryCellDisplays(container: Element, row: number): HTMLElement[] {
   )
     .filter((el) => !(el as HTMLElement).hidden)
     .sort(
-      (a, b) =>
-        Number((a as HTMLElement).dataset.col) - Number((b as HTMLElement).dataset.col)
+      (a, b) => Number((a as HTMLElement).dataset.col) - Number((b as HTMLElement).dataset.col)
     ) as HTMLElement[]
 }
 

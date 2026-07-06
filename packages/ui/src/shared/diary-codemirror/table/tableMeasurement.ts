@@ -27,12 +27,8 @@ export class TableMeasurement {
   }
 
   lastCellBeforePosition(position: { x: number; y: number }): CellLocation {
-    const maybeRow = this.rows
-      .map((it) => it.start)
-      .findLastIndex((start) => start < position.y)
-    const maybeCol = this.cols
-      .map((it) => it.start)
-      .findLastIndex((start) => start < position.x)
+    const maybeRow = this.rows.map((it) => it.start).findLastIndex((start) => start < position.y)
+    const maybeCol = this.cols.map((it) => it.start).findLastIndex((start) => start < position.x)
     return {
       row: maybeRow === -1 ? 0 : maybeRow,
       col: maybeCol === -1 ? 0 : maybeCol
@@ -43,7 +39,11 @@ export class TableMeasurement {
     tableElement: HTMLTableElement,
     scrollOffset: { x: number; y: number }
   ): TableMeasurement {
-    const firstRowCells = [...tableElement.querySelectorAll<HTMLTableCellElement>('tr:first-child > th, tr:first-child > td')]
+    const firstRowCells = [
+      ...tableElement.querySelectorAll<HTMLTableCellElement>(
+        'tr:first-child > th, tr:first-child > td'
+      )
+    ]
     const firstColCells = [
       ...tableElement.querySelectorAll<HTMLTableCellElement>(
         'tr > th:first-child, tr > td:first-child'

@@ -258,9 +258,7 @@ export function useAssistantPickerSheet({
   const handleToggleEmojiGroup = (groupId: string) => {
     if (!activeAssistant) return
     setEditingSelectedEmojiGroupIds((prev) => {
-      const next = prev.includes(groupId)
-        ? prev.filter((id) => id !== groupId)
-        : [...prev, groupId]
+      const next = prev.includes(groupId) ? prev.filter((id) => id !== groupId) : [...prev, groupId]
       void updateAssistantAPI(
         activeAssistant.id,
         buildEmojiPersistFields(next, editingEmojiEnabled)

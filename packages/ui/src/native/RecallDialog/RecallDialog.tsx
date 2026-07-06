@@ -146,7 +146,11 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
                 >
                   <View style={styles.searchInputInner}>
                     <View pointerEvents="none" style={styles.searchIconInside}>
-                      <Search size={18} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                      <Search
+                        size={18}
+                        color={colors.textSecondary}
+                        strokeWidth={DEFAULT_STROKE_WIDTH}
+                      />
                     </View>
                     <TextInput
                       style={[styles.searchInput, { color: colors.textPrimary }]}
@@ -165,7 +169,11 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
                         activeOpacity={0.7}
                         style={styles.searchClearBtn}
                       >
-                        <X size={16} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                        <X
+                          size={16}
+                          color={colors.textTertiary}
+                          strokeWidth={DEFAULT_STROKE_WIDTH}
+                        />
                       </TouchableOpacity>
                     ) : null}
                   </View>
@@ -269,9 +277,7 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
             </ScrollView>
 
             {dialog.activeTab === 'memory' && items.length > RECALL_MEMORY_PAGE_SIZE ? (
-              <View
-                style={[styles.paginationArea, { borderTopColor: colors.borderSubtle }]}
-              >
+              <View style={[styles.paginationArea, { borderTopColor: colors.borderSubtle }]}>
                 <Pagination
                   current={safeMemoryPage}
                   total={memoryPageCount}

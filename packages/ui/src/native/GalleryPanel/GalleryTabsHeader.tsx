@@ -89,9 +89,17 @@ export const GalleryTabsHeader: React.FC<GalleryTabsHeaderProps> = ({
                 : `${selectedYear}${t('common.year_suffix')}`}
             </Text>
             {isYearPickerOpen ? (
-              <ChevronUp size={18} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+              <ChevronUp
+                size={18}
+                color={colors.textSecondary}
+                strokeWidth={DEFAULT_STROKE_WIDTH}
+              />
             ) : (
-              <ChevronDown size={18} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+              <ChevronDown
+                size={18}
+                color={colors.textSecondary}
+                strokeWidth={DEFAULT_STROKE_WIDTH}
+              />
             )}
           </Pressable>
         ) : null}
@@ -134,7 +142,11 @@ export const GalleryTabsHeader: React.FC<GalleryTabsHeaderProps> = ({
           {isYearPickerOpen ? (
             <ChevronUp size={16} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
           ) : (
-            <ChevronDown size={16} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+            <ChevronDown
+              size={16}
+              color={colors.textSecondary}
+              strokeWidth={DEFAULT_STROKE_WIDTH}
+            />
           )}
         </Pressable>
       )}

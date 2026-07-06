@@ -29,8 +29,21 @@ export type TableCellFocusTarget = {
 }
 
 export type TableEditorAction =
-  | { type: 'addColumn'; tableFrom: number; tableTo: number; atIndex?: number; focusAfter?: TableCellFocusTarget }
-  | { type: 'addRow'; tableFrom: number; tableTo: number; atIndex?: number; templateRow?: string[]; focusAfter?: TableCellFocusTarget }
+  | {
+      type: 'addColumn'
+      tableFrom: number
+      tableTo: number
+      atIndex?: number
+      focusAfter?: TableCellFocusTarget
+    }
+  | {
+      type: 'addRow'
+      tableFrom: number
+      tableTo: number
+      atIndex?: number
+      templateRow?: string[]
+      focusAfter?: TableCellFocusTarget
+    }
   | { type: 'deleteTable'; tableFrom: number; tableTo: number }
   | { type: 'deleteColumn'; tableFrom: number; tableTo: number; colIndex: number }
   | { type: 'deleteRow'; tableFrom: number; tableTo: number; rowIndex: number }

@@ -155,7 +155,13 @@ export const EmojiPicker: React.FC<EmojiPickerProps> = ({
                 onChangeText={setSearchQuery}
                 autoCorrect={false}
                 autoCapitalize="none"
-                leftSlot={<Search size={18} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />}
+                leftSlot={
+                  <Search
+                    size={18}
+                    color={colors.textTertiary}
+                    strokeWidth={DEFAULT_STROKE_WIDTH}
+                  />
+                }
                 rightSlot={
                   searchQuery.length > 0 ? (
                     <TouchableOpacity onPress={() => setSearchQuery('')}>

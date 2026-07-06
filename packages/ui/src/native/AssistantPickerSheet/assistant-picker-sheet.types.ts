@@ -25,10 +25,7 @@ export interface AssistantPickerSheetProps {
   assistants: AssistantPickerSheetAssistant[]
   currentAssistantId?: string | null
   onSelect: (assistant: AssistantPickerSheetAssistant) => void
-  onSaveMemoryConfig?: (
-    assistantId: string,
-    updates: AssistantMemoryConfigPatch
-  ) => Promise<void>
+  onSaveMemoryConfig?: (assistantId: string, updates: AssistantMemoryConfigPatch) => Promise<void>
   onSettingsPress?: () => void
   onCreatePress?: () => void
 }

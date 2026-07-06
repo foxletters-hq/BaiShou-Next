@@ -59,9 +59,7 @@ export function buildToolUsageGuidelines(availableToolIds: readonly string[]): s
       '- 用户只要求改/补某一段时：用 **append** 追加勘误或补充；或在 overwrite 时把 diary_read 读到的**全文**作为底稿，仅修改目标段落后整体写回。' +
         '**禁止**只传修改后的片段——那会删掉其他所有段落。'
     )
-    lines.push(
-      '- 默认使用 **append（追加）**；content 只传需要新增或勘误的一段，不要传整篇日记。'
-    )
+    lines.push('- 默认使用 **append（追加）**；content 只传需要新增或勘误的一段，不要传整篇日记。')
     lines.push(
       '- **overwrite（整篇覆盖）** 仅在用户明确要求替换/重写当天整篇日记时使用；' +
         '此时 content 必须是合并保留后的**完整正文**（含所有要保留的段落），修改个别段落、润色、补充一律用 append。'

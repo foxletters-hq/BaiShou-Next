@@ -1,5 +1,11 @@
 import React, { useMemo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { mapAttachmentsFromParts, resolveAttachmentImageSrc, normalizeEmojiToolConfig, resolveAssistantEmojiConfig, assistantRowToEmojiPrefs } from '@baishou/shared'
+import {
+  mapAttachmentsFromParts,
+  resolveAttachmentImageSrc,
+  normalizeEmojiToolConfig,
+  resolveAssistantEmojiConfig,
+  assistantRowToEmojiPrefs
+} from '@baishou/shared'
 import {
   ChatBubble,
   StreamingBubble,
@@ -21,25 +27,34 @@ function resolvePendingEmoji(
 ): { id: string; name: string; relativePath: string } | undefined {
   const normalizedQuery = query.trim().toLowerCase()
 
-  const exactMatch = emojis.find((e) => e.id === normalizedQuery || e.id.toLowerCase() === normalizedQuery)
+  const exactMatch = emojis.find(
+    (e) => e.id === normalizedQuery || e.id.toLowerCase() === normalizedQuery
+  )
   if (exactMatch) return exactMatch
 
-  const idNoExtMatch = emojis.find((e) => e.id.replace(/\.[^.]+$/, '').toLowerCase() === normalizedQuery)
+  const idNoExtMatch = emojis.find(
+    (e) => e.id.replace(/\.[^.]+$/, '').toLowerCase() === normalizedQuery
+  )
   if (idNoExtMatch) return idNoExtMatch
 
-  const normalizeName = (s: string) => s.toLowerCase().replace(/[_\s]+/g, ' ').trim()
+  const normalizeName = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/[_\s]+/g, ' ')
+      .trim()
   const normalizedNameQuery = normalizeName(normalizedQuery)
   const nameMatch = emojis.find((e) => normalizeName(e.name) === normalizedNameQuery)
   if (nameMatch) return nameMatch
 
   const idContainsMatch = emojis.find((e) =>
-    e.id.replace(/\.[^.]+$/, '').toLowerCase().includes(normalizedQuery)
+    e.id
+      .replace(/\.[^.]+$/, '')
+      .toLowerCase()
+      .includes(normalizedQuery)
   )
   if (idContainsMatch) return idContainsMatch
 
-  const nameContainsMatch = emojis.find((e) =>
-    normalizeName(e.name).includes(normalizedNameQuery)
-  )
+  const nameContainsMatch = emojis.find((e) => normalizeName(e.name).includes(normalizedNameQuery))
   if (nameContainsMatch) return nameContainsMatch
 
   return undefined
@@ -273,9 +288,7 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
         return {
           id: emoji.id,
           fileName: emoji.name || emoji.id,
-          filePath: resolveAttachmentImageSrc(
-            `local:///${emoji.relativePath.replace(/\\/g, '/')}`
-          ),
+          filePath: resolveAttachmentImageSrc(`local:///${emoji.relativePath.replace(/\\/g, '/')}`),
           isImage: true
         }
       })
@@ -307,11 +320,7 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
       >
         <div className={styles.messageContent}>
           {showLoadMoreButton && (
-            <button
-              type="button"
-              className={styles.loadMoreBanner}
-              onClick={triggerLoadMore}
-            >
+            <button type="button" className={styles.loadMoreBanner} onClick={triggerLoadMore}>
               {t('agent.chat.load_earlier_messages', '加载更早对话')}
             </button>
           )}

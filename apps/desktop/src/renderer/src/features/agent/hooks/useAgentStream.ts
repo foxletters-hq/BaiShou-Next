@@ -1,5 +1,9 @@
 import { useEffect, useState, useCallback, useRef, useContext } from 'react'
-import { createStreamingTextDisplayBuffer, isAgentStreamAbortError, type StreamingTextDisplayBuffer } from '@baishou/shared'
+import {
+  createStreamingTextDisplayBuffer,
+  isAgentStreamAbortError,
+  type StreamingTextDisplayBuffer
+} from '@baishou/shared'
 import { MainPageCacheActiveContext } from '../../../layouts/main-page-cache.context'
 
 /** 桌面 Agent + XMarkdown：每个 chunk 立即透传全文，流式 Markdown 由 XMarkdown 负责 */
@@ -288,11 +292,19 @@ function registerGlobalStreamIpcListeners(): () => void {
     const args = typeof payload === 'object' ? payload?.args : payload?.args
     // emoji_send 工具：即时将表情包加入 pendingEmojis（在流式文本之前显示）
     if (name === 'emoji_send') {
-      const emojiId = typeof args === 'object' && args !== null
-        ? (args as Record<string, unknown>).emoji_id
-        : typeof args === 'string'
-          ? (() => { try { const p = JSON.parse(args); return p?.emoji_id } catch { return args } })()
-          : null
+      const emojiId =
+        typeof args === 'object' && args !== null
+          ? (args as Record<string, unknown>).emoji_id
+          : typeof args === 'string'
+            ? (() => {
+                try {
+                  const p = JSON.parse(args)
+                  return p?.emoji_id
+                } catch {
+                  return args
+                }
+              })()
+            : null
       if (typeof emojiId === 'string' && emojiId.length > 0) {
         updateSessionState(sId, (state) => {
           state.pendingEmojis.push({ emojiId })

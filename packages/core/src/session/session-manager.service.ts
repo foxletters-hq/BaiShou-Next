@@ -25,11 +25,7 @@ export class SessionManagerService {
     private readonly syncService: SessionSyncService,
     persistenceHooks?: SessionDiskPersistenceHooks
   ) {
-    this.persistence = new SessionDiskPersistenceService(
-      sessionRepo,
-      fileService,
-      persistenceHooks
-    )
+    this.persistence = new SessionDiskPersistenceService(sessionRepo, fileService, persistenceHooks)
   }
 
   async upsertSession(input: InsertSessionInput): Promise<void> {

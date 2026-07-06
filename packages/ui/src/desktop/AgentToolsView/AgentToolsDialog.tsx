@@ -23,12 +23,7 @@ export const AgentToolsDialog: React.FC<AgentToolsDialogProps> = ({
     className={styles.toolManagerModal}
   >
     <div className={styles.toolManagerModalBody}>
-      <AgentToolsView
-        config={config}
-        onChange={onChange}
-        presentation="dialog"
-        onClose={onClose}
-      />
+      <AgentToolsView config={config} onChange={onChange} presentation="dialog" onClose={onClose} />
     </div>
   </Modal>
 )

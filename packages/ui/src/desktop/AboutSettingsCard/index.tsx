@@ -7,7 +7,14 @@ import { useToast } from '../Toast/useToast'
 import { DeveloperOptionsView } from '../DeveloperOptionsView'
 import { formatAppVersion, GITHUB_CONTRIBUTORS_URL } from '@baishou/shared'
 import { VersionManager } from '../VersionManager/index'
-import { ArrowLeft, ChevronRight, ExternalLink, Info, MessageSquare, ShieldCheck } from 'lucide-react'
+import {
+  ArrowLeft,
+  ChevronRight,
+  ExternalLink,
+  Info,
+  MessageSquare,
+  ShieldCheck
+} from 'lucide-react'
 
 export interface AboutSettingsCardProps {
   version: string

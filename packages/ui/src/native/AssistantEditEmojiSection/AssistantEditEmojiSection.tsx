@@ -67,12 +67,10 @@ export const AssistantEditEmojiSection: React.FC<AssistantEditEmojiSectionProps>
         <>
           <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
           <View style={styles.pickLabelRow}>
-            <View style={[styles.pickSectionIconWrap, { backgroundColor: colors.primaryContainer }]}>
-              <Smile
-                size={16}
-                color={colors.primary}
-                strokeWidth={DEFAULT_STROKE_WIDTH}
-              />
+            <View
+              style={[styles.pickSectionIconWrap, { backgroundColor: colors.primaryContainer }]}
+            >
+              <Smile size={16} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
             </View>
             <Text style={[settingsCardStyles.label, { color: colors.textPrimary, flex: 1 }]}>
               {t('agent.assistant.emoji_groups_pick_label', '可用的表情包组')}
@@ -85,10 +83,7 @@ export const AssistantEditEmojiSection: React.FC<AssistantEditEmojiSectionProps>
             </Text>
           ) : (
             <ScrollView
-              style={[
-                styles.groupList,
-                canScrollList ? { height: emojiGroupListMaxHeight } : null
-              ]}
+              style={[styles.groupList, canScrollList ? { height: emojiGroupListMaxHeight } : null]}
               contentContainerStyle={styles.groupListContent}
               nestedScrollEnabled
               scrollEnabled={canScrollList}
@@ -117,7 +112,9 @@ export const AssistantEditEmojiSection: React.FC<AssistantEditEmojiSectionProps>
                       onPress={() => onToggleGroup(group.id)}
                       activeOpacity={0.75}
                     >
-                      <View style={[styles.groupIconWrap, { backgroundColor: colors.primaryContainer }]}>
+                      <View
+                        style={[styles.groupIconWrap, { backgroundColor: colors.primaryContainer }]}
+                      >
                         <Smile
                           size={18}
                           color={colors.primary}

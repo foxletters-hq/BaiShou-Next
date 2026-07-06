@@ -56,11 +56,7 @@ export const AgentChatAppBar: React.FC<AgentChatAppBarProps> = ({
       <TouchableOpacity style={styles.titleWrap} onPress={onModelPress} activeOpacity={0.7}>
         <View style={styles.modelCluster}>
           {showProviderIcon ? (
-            <ProviderBrandIcon
-              providerId={providerId!}
-              providerType={providerType}
-              size={18}
-            />
+            <ProviderBrandIcon providerId={providerId!} providerType={providerType} size={18} />
           ) : null}
           <Text style={[styles.modelName, { color: colors.textPrimary }]} numberOfLines={1}>
             {displayModel}

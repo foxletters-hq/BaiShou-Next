@@ -350,11 +350,7 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
             onPress={() => setPrefixModalVisible(true)}
             accessibilityLabel={t('summary.copy_prefix_label', '拷贝前缀')}
           >
-            <TextQuote
-              size={16}
-              color={colors.textSecondary}
-              strokeWidth={DEFAULT_STROKE_WIDTH}
-            />
+            <TextQuote size={16} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
           </TouchableOpacity>
         ) : null}
       </View>
@@ -376,7 +372,12 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
         {copying ? (
           <ActivityIndicator size="small" color="#ffffff" style={styles.btnIcon} />
         ) : (
-          <Copy size={16} color="#ffffff" strokeWidth={DEFAULT_STROKE_WIDTH} style={styles.btnIcon} />
+          <Copy
+            size={16}
+            color="#ffffff"
+            strokeWidth={DEFAULT_STROKE_WIDTH}
+            style={styles.btnIcon}
+          />
         )}
         <Text style={styles.btnText}>{t('summary.copy_memories')}</Text>
       </TouchableOpacity>

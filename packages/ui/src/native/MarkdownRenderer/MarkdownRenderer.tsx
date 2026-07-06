@@ -109,8 +109,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = (props) => {
 
   if (!displayContent) return null
 
-  const useLegacyChatLayout =
-    (variant === 'chat' || variant === 'ancillary') && !isStreaming
+  const useLegacyChatLayout = (variant === 'chat' || variant === 'ancillary') && !isStreaming
 
   if (useLegacyChatLayout) {
     return <LegacyMarkdownRenderer {...props} content={displayContent} />
@@ -148,10 +147,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = (props) => {
       {isStreaming ? (
         <StreamdownText {...streamdownCommonProps} streamingConfig={{ tableMode: 'hidden' }} />
       ) : (
-        <StaticStreamdownText
-          {...streamdownCommonProps}
-          preferSyncRemend={variant === 'preview'}
-        />
+        <StaticStreamdownText {...streamdownCommonProps} preferSyncRemend={variant === 'preview'} />
       )}
     </View>
   )

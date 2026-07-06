@@ -4,7 +4,18 @@ import { Switch } from '../Switch/Switch'
 import { HelpTooltip } from '../HelpTooltip'
 import { ModelVisionBadge } from '../../shared/ModelVisionBadge'
 import type { AIModelServicesViewModel } from './useAIModelServicesView'
-import { Braces, Eye, EyeOff, Key, Link, List, RefreshCw, RotateCcw, Search, Trash2 } from 'lucide-react'
+import {
+  Braces,
+  Eye,
+  EyeOff,
+  Key,
+  Link,
+  List,
+  RefreshCw,
+  RotateCcw,
+  Search,
+  Trash2
+} from 'lucide-react'
 
 export interface AIModelServicesConfigPaneProps {
   vm: AIModelServicesViewModel

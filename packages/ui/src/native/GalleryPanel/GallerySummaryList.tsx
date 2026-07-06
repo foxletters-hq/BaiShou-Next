@@ -117,7 +117,11 @@ export const GallerySummaryList: React.FC<GallerySummaryListProps> = ({
                 ) : null}
               </View>
               {compact ? (
-                <ChevronRight size={22} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                <ChevronRight
+                  size={22}
+                  color={colors.textTertiary}
+                  strokeWidth={DEFAULT_STROKE_WIDTH}
+                />
               ) : null}
             </Pressable>
           )

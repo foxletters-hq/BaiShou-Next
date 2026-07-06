@@ -1,9 +1,7 @@
 import React, { useRef, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import {
-  applyFixedContextMenuLayout
-} from '../ContextMenu/context-menu-placement.util'
+import { applyFixedContextMenuLayout } from '../ContextMenu/context-menu-placement.util'
 import styles from './ChatBubble.module.css'
 
 interface ChatBubbleContextMenuProps {

@@ -424,9 +424,7 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
       keyboardShouldPersistTaps="handled"
       automaticallyAdjustKeyboardInsets={false}
       scrollEnabled={scrollEnabled}
-      {...(onListScroll
-        ? { onScroll: handleScroll, scrollEventThrottle: 1 as const }
-        : {})}
+      {...(onListScroll ? { onScroll: handleScroll, scrollEventThrottle: 1 as const } : {})}
     />
   )
 })

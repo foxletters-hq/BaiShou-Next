@@ -45,7 +45,10 @@ import {
   focusTableCellInEditor,
   placeCursorAfterTable
 } from '../table/tableFocus'
-import { desktopTableInteractionField, setDesktopTableInteraction } from '../table/desktop/tableInteractionField'
+import {
+  desktopTableInteractionField,
+  setDesktopTableInteraction
+} from '../table/desktop/tableInteractionField'
 import { DesktopTableSection } from '../table/desktop/models/desktopTableSection'
 import { parsedRowToDomRow } from '../table/desktop/models/cellLocation'
 import { logDiaryBridge } from '../diaryBridgeDebug'
@@ -96,7 +99,9 @@ function buildTableCellFocusEffects(
   ]
 }
 
-function clearTableInteractionEffects(state: import('@codemirror/state').EditorState): StateEffect<unknown>[] {
+function clearTableInteractionEffects(
+  state: import('@codemirror/state').EditorState
+): StateEffect<unknown>[] {
   if (isDesktopTableEditor(state)) {
     return [setDesktopTableInteraction.of(null)]
   }
@@ -126,10 +131,16 @@ function applyTableMarkdown(
   const effects: StateEffect<unknown>[] = [forceTableRefresh.of(null)]
   if (focusAfter) {
     effects.push(
-      ...buildTableCellFocusEffects(view.state, tableFrom, focusAfter.rowIndex, focusAfter.colIndex, {
-        selectionStart: focusAfter.selectionStart,
-        selectionEnd: focusAfter.selectionEnd
-      })
+      ...buildTableCellFocusEffects(
+        view.state,
+        tableFrom,
+        focusAfter.rowIndex,
+        focusAfter.colIndex,
+        {
+          selectionStart: focusAfter.selectionStart,
+          selectionEnd: focusAfter.selectionEnd
+        }
+      )
     )
   }
   view.dispatch({
@@ -337,7 +348,10 @@ export const tableEditorPlugin = ViewPlugin.fromClass(
           blurTableCellEditor()
           queueMicrotask(() => {
             update.view.dispatch({
-              effects: [...clearTableInteractionEffects(update.view.state), forceTableRefresh.of(null)]
+              effects: [
+                ...clearTableInteractionEffects(update.view.state),
+                forceTableRefresh.of(null)
+              ]
             })
           })
         }
@@ -425,10 +439,7 @@ export const tableEditorPlugin = ViewPlugin.fromClass(
         view.dispatch({
           changes: pending,
           scrollIntoView: false,
-          annotations: [
-            allowTableStructureEdit.of(true),
-            diaryPostTableGapNormalize.of(true)
-          ]
+          annotations: [allowTableStructureEdit.of(true), diaryPostTableGapNormalize.of(true)]
         })
       })
     }
@@ -466,7 +477,9 @@ export const tableEditorPlugin = ViewPlugin.fromClass(
 
       const desktopInteraction = view.state.field(desktopTableInteractionField, false)
       if (desktopInteraction) {
-        logTableDesktop('redirect:skip-desktop-interaction', { tableFrom: desktopInteraction.tableFrom })
+        logTableDesktop('redirect:skip-desktop-interaction', {
+          tableFrom: desktopInteraction.tableFrom
+        })
         return
       }
 

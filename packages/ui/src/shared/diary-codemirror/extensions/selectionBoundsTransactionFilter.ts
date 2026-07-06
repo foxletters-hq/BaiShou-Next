@@ -66,10 +66,7 @@ export function clampTransactionSelection(
 function selectionNeedsClamp(selection: EditorSelection, docLength: number): boolean {
   return selection.ranges.some(
     (range) =>
-      range.anchor < 0 ||
-      range.anchor > docLength ||
-      range.head < 0 ||
-      range.head > docLength
+      range.anchor < 0 || range.anchor > docLength || range.head < 0 || range.head > docLength
   )
 }
 
@@ -83,10 +80,7 @@ export function selectionBoundsTransactionFilter(): Extension {
     if (!selectionNeedsClamp(sel, len)) return tr
 
     const ranges = sel.ranges.map((range) =>
-      EditorSelection.range(
-        clampPosToDoc(range.anchor, len),
-        clampPosToDoc(range.head, len)
-      )
+      EditorSelection.range(clampPosToDoc(range.anchor, len), clampPosToDoc(range.head, len))
     )
     const clamped = EditorSelection.create(ranges, sel.mainIndex)
     const annotations = (tr as Transaction & { annotations?: readonly Annotation<unknown>[] })

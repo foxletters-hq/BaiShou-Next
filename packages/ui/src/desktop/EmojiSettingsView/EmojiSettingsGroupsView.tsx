@@ -105,7 +105,11 @@ export const EmojiSettingsGroupsView: React.FC<EmojiSettingsGroupsViewProps> = (
       {isEnabled ? (
         <>
           <div className={styles.emojiSectionToolbar}>
-            <button type="button" className={styles.emojiAddGroupBtn} onClick={() => void handleAddGroup()}>
+            <button
+              type="button"
+              className={styles.emojiAddGroupBtn}
+              onClick={() => void handleAddGroup()}
+            >
               <Plus size={16} />
               {t('agent.tools.emoji_group_add', '新建组')}
             </button>

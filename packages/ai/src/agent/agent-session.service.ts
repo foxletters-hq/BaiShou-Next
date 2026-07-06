@@ -193,10 +193,7 @@ export class AgentSessionService {
       const configRecentCount =
         typeof userConfig?.['recentCount'] === 'number' ? userConfig['recentCount'] : 30
 
-      if (
-        userMessageId &&
-        !sessionMessages.some((message) => message.id === userMessageId)
-      ) {
+      if (userMessageId && !sessionMessages.some((message) => message.id === userMessageId)) {
         sessionMessages = await loadSessionMessages()
       }
 

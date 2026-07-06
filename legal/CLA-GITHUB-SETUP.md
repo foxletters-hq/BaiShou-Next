@@ -11,10 +11,10 @@
 
 **覆盖仓库（当前）**：
 
-| 仓库 | PR 目标分支（参考） |
-|------|---------------------|
-| `foxletters-hq/BaiShou-Next` | `main` |
-| `foxletters-hq/BaiShou-website` | `main` |
+| 仓库                            | PR 目标分支（参考） |
+| ------------------------------- | ------------------- |
+| `foxletters-hq/BaiShou-Next`    | `main`              |
+| `foxletters-hq/BaiShou-website` | `main`              |
 
 ---
 
@@ -37,11 +37,11 @@
 
 对每个仓库执行 **Configure CLA**：
 
-| 字段 | 填写 |
-|------|------|
-| Repository | `foxletters-hq/BaiShou-Next`，然后对 `foxletters-hq/BaiShou-website` 再 Link 一次 |
-| CLA document | **同一个 Gist URL**（上一步复制的链接） |
-| Minimum file changes | `1` |
+| 字段                 | 填写                                                                              |
+| -------------------- | --------------------------------------------------------------------------------- |
+| Repository           | `foxletters-hq/BaiShou-Next`，然后对 `foxletters-hq/BaiShou-website` 再 Link 一次 |
+| CLA document         | **同一个 Gist URL**（上一步复制的链接）                                           |
+| Minimum file changes | `1`                                                                               |
 
 点 **Link** → **Yes, let's do this!** → 授权 Gist + Webhook。
 

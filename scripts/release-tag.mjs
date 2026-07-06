@@ -51,7 +51,9 @@ if (platformArg === 'all') {
   const desktopVer = readVersion('desktop').version
   if (mobileVer !== desktopVer) {
     console.error(`\n❌ 两端版本不同（mobile ${mobileVer} / desktop ${desktopVer}）`)
-    console.error('   请分别执行：pnpm release:tag mobile --push  或  pnpm release:tag desktop --push\n')
+    console.error(
+      '   请分别执行：pnpm release:tag mobile --push  或  pnpm release:tag desktop --push\n'
+    )
     process.exit(1)
   }
 }

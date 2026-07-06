@@ -28,7 +28,10 @@ export function livePreviewFreezePlugin(): Extension {
 
       constructor(private readonly view: EditorView) {
         this.view.contentDOM.addEventListener('pointerdown', this.onDown, true)
-        this.view.contentDOM.addEventListener('touchstart', this.onDown, { capture: true, passive: true })
+        this.view.contentDOM.addEventListener('touchstart', this.onDown, {
+          capture: true,
+          passive: true
+        })
         window.addEventListener('pointerup', this.onUp)
         window.addEventListener('touchend', this.onUp, { passive: true })
         window.addEventListener('touchcancel', this.onUp, { passive: true })

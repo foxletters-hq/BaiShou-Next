@@ -176,6 +176,8 @@ export class AssistantRepository {
    * 删除指定的助手
    */
   async delete(id: string): Promise<void> {
-    await this.run(() => this.db.delete(agentAssistantsTable).where(eq(agentAssistantsTable.id, id)))
+    await this.run(() =>
+      this.db.delete(agentAssistantsTable).where(eq(agentAssistantsTable.id, id))
+    )
   }
 }

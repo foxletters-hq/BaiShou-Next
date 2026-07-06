@@ -91,7 +91,11 @@ export const RagMemoryActionsSection: React.FC<RagMemoryActionsSectionProps> = (
             disabled={ragState.isRunning}
             activeOpacity={0.7}
           >
-            <MessageSquarePlus size={16} color={colors.success} strokeWidth={DEFAULT_STROKE_WIDTH} />
+            <MessageSquarePlus
+              size={16}
+              color={colors.success}
+              strokeWidth={DEFAULT_STROKE_WIDTH}
+            />
             <Text style={[styles.actionBtnText, { color: colors.success }]}>
               {t('settings.rag_add_manual')}
             </Text>

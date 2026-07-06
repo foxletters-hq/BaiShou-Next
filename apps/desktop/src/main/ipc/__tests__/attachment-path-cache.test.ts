@@ -1,9 +1,6 @@
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import {
-  isPathUnderAllowedRoots,
-  resolveAttachmentInputPath
-} from '../attachment-path-cache'
+import { isPathUnderAllowedRoots, resolveAttachmentInputPath } from '../attachment-path-cache'
 import type { DesktopStoragePathService } from '../../services/path.service'
 
 describe('isPathUnderAllowedRoots', () => {

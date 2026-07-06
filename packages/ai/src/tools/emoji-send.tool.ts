@@ -9,11 +9,15 @@ type EmojiConfig = { enabled?: boolean; emojis?: EmojiItem[] }
 const emojiSendParams = z.object({
   emoji_id: z
     .string()
-    .describe('The ID or name of the sticker/emoji to send. Can be the sticker ID (e.g. "yawning_good_morning") or the display name (e.g. "yawning good morning"). Fuzzy matching is supported.'),
+    .describe(
+      'The ID or name of the sticker/emoji to send. Can be the sticker ID (e.g. "yawning_good_morning") or the display name (e.g. "yawning good morning"). Fuzzy matching is supported.'
+    ),
   reason: z
     .string()
     .optional()
-    .describe('A brief reason for choosing this sticker (1-10 words). Helps contextualize the sticker choice.')
+    .describe(
+      'A brief reason for choosing this sticker (1-10 words). Helps contextualize the sticker choice.'
+    )
 })
 
 export class EmojiSendTool extends AgentTool<typeof emojiSendParams> {
@@ -50,12 +54,14 @@ export class EmojiSendTool extends AgentTool<typeof emojiSendParams> {
    * 让模型从工具描述本身获取可用表情包，而非依赖 system prompt 注入。
    */
   override toVercelTool(context: ToolContext): any {
-    const emojiConfig = (context.userConfig?.['emojiConfig'] as EmojiConfig | undefined) || undefined
+    const emojiConfig =
+      (context.userConfig?.['emojiConfig'] as EmojiConfig | undefined) || undefined
     const emojis = emojiConfig?.emojis || []
 
-    const listLines = emojis.length > 0
-      ? emojis.map((e) => `- ${e.id.replace(/\.[^.]+$/, '')}: ${e.name}`).join('\n')
-      : '(none)'
+    const listLines =
+      emojis.length > 0
+        ? emojis.map((e) => `- ${e.id.replace(/\.[^.]+$/, '')}: ${e.name}`).join('\n')
+        : '(none)'
 
     const dynamicDescription =
       this.description +
@@ -87,7 +93,8 @@ export class EmojiSendTool extends AgentTool<typeof emojiSendParams> {
   async execute(args: z.infer<typeof emojiSendParams>, context: ToolContext): Promise<string> {
     const { emoji_id, reason } = args
 
-    const emojiConfig = (context.userConfig?.['emojiConfig'] as EmojiConfig | undefined) || undefined
+    const emojiConfig =
+      (context.userConfig?.['emojiConfig'] as EmojiConfig | undefined) || undefined
 
     if (!emojiConfig?.emojis || emojiConfig.emojis.length === 0) {
       return 'No stickers are available. The user has not uploaded any stickers yet.'
@@ -120,22 +127,33 @@ export class EmojiSendTool extends AgentTool<typeof emojiSendParams> {
     const normalizedQuery = query.trim().toLowerCase()
 
     // 1. Exact id match
-    const exactMatch = emojis.find((e) => e.id === normalizedQuery || e.id.toLowerCase() === normalizedQuery)
+    const exactMatch = emojis.find(
+      (e) => e.id === normalizedQuery || e.id.toLowerCase() === normalizedQuery
+    )
     if (exactMatch) return exactMatch
 
     // 2. Id without extension match
-    const idNoExtMatch = emojis.find((e) => e.id.replace(/\.[^.]+$/, '').toLowerCase() === normalizedQuery)
+    const idNoExtMatch = emojis.find(
+      (e) => e.id.replace(/\.[^.]+$/, '').toLowerCase() === normalizedQuery
+    )
     if (idNoExtMatch) return idNoExtMatch
 
     // 3. Name match (case-insensitive, underscore/space normalized)
-    const normalizeName = (s: string) => s.toLowerCase().replace(/[_\s]+/g, ' ').trim()
+    const normalizeName = (s: string) =>
+      s
+        .toLowerCase()
+        .replace(/[_\s]+/g, ' ')
+        .trim()
     const normalizedNameQuery = normalizeName(normalizedQuery)
     const nameMatch = emojis.find((e) => normalizeName(e.name) === normalizedNameQuery)
     if (nameMatch) return nameMatch
 
     // 4. Id without extension contains query
     const idContainsMatch = emojis.find((e) =>
-      e.id.replace(/\.[^.]+$/, '').toLowerCase().includes(normalizedQuery)
+      e.id
+        .replace(/\.[^.]+$/, '')
+        .toLowerCase()
+        .includes(normalizedQuery)
     )
     if (idContainsMatch) return idContainsMatch
 

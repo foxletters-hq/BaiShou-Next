@@ -261,9 +261,7 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
             preview.vaultSummaries.map((summary) => {
               const vaultItems = itemsByVault.get(summary.vaultName) ?? []
               const isExpanded = expandedVaults.has(summary.vaultName)
-              const displayItems = isExpanded
-                ? vaultItems
-                : vaultItems.slice(0, PREVIEW_FILE_LIMIT)
+              const displayItems = isExpanded ? vaultItems : vaultItems.slice(0, PREVIEW_FILE_LIMIT)
               const hiddenCount = isExpanded ? 0 : vaultItems.length - displayItems.length
               const isActive = summary.vaultName === preview.activeVaultName
               const isRegistered =

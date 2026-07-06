@@ -1,13 +1,7 @@
 import React from 'react'
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import {
-  Sparkles,
-  RefreshCw,
-  XCircle,
-  Clock,
-  CheckCircle2
-} from 'lucide-react-native'
+import { Sparkles, RefreshCw, XCircle, Clock, CheckCircle2 } from 'lucide-react-native'
 import { useNativeTheme } from '@baishou/ui/native'
 import { ConcurrencyDropdown } from './ConcurrencyDropdown'
 

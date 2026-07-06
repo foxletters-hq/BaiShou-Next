@@ -10,11 +10,13 @@ export interface EmojiGroupDetailViewProps {
   config: EmojiToolConfig
   groupId: string
   onChange: (config: EmojiToolConfig) => void
-  onPickAndImport: () => Promise<{
-    relativePath: string
-    originalName: string
-    error: string | null
-  }[]>
+  onPickAndImport: () => Promise<
+    {
+      relativePath: string
+      originalName: string
+      error: string | null
+    }[]
+  >
   onResolvePath: (relativePath: string) => Promise<string>
   onDelete: (relativePath: string) => Promise<boolean>
 }

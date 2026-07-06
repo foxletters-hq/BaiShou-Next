@@ -78,7 +78,11 @@ export const NativeImagePreviewModal: React.FC<NativeImagePreviewModalProps> = (
               onPress={resetView}
               accessibilityLabel={t('image_preview.reset', 'Reset')}
             >
-              <RotateCcw size={22} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+              <RotateCcw
+                size={22}
+                color={colors.textSecondary}
+                strokeWidth={DEFAULT_STROKE_WIDTH}
+              />
             </TouchableOpacity>
             <View style={[styles.divider, { backgroundColor: colors.borderMuted }]} />
             <TouchableOpacity

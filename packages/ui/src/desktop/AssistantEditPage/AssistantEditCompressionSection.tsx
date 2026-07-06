@@ -16,10 +16,7 @@ interface AssistantEditCompressionSectionProps {
   onToggleCompress: (enabled: boolean) => void
 }
 
-function commitRangeValue(
-  target: EventTarget,
-  commit?: (value: number) => void
-): void {
+function commitRangeValue(target: EventTarget, commit?: (value: number) => void): void {
   if (!commit) return
   commit(readRangeInputValue(target))
 }

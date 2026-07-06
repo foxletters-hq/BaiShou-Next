@@ -66,7 +66,11 @@ export const MarkdownToolbarSettingsSheet: React.FC<MarkdownToolbarSettingsSheet
               }
             ]}
           >
-            <GripVertical size={22} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+            <GripVertical
+              size={22}
+              color={colors.textTertiary}
+              strokeWidth={DEFAULT_STROKE_WIDTH}
+            />
             <Text style={[styles.rowLabel, { color: colors.textPrimary }]}>{label}</Text>
           </TouchableOpacity>
         </ScaleDecorator>

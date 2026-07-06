@@ -4,7 +4,25 @@ import { motion, AnimatePresence } from 'framer-motion'
 import type { useInputBar } from './useInputBar'
 import { QuickActionChip } from './QuickActionChip'
 import { PromptShortcutSheet } from '../PromptShortcutSheet'
-import { ArrowUp, BookOpen, ChevronLeft, ChevronRight, FileText, Folder, Globe, LayoutGrid, Maximize2, Menu, Minimize2, Paperclip, Send, Square, Volume2, X, Zap } from 'lucide-react'
+import {
+  ArrowUp,
+  BookOpen,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  Folder,
+  Globe,
+  LayoutGrid,
+  Maximize2,
+  Menu,
+  Minimize2,
+  Paperclip,
+  Send,
+  Square,
+  Volume2,
+  X,
+  Zap
+} from 'lucide-react'
 
 type InputBarViewModel = ReturnType<typeof useInputBar>
 

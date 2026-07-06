@@ -753,7 +753,11 @@ function mountEditor(init: InitPayload): void {
             docChanged: update.docChanged,
             selectedText: update.state.sliceDoc(from, to)
           })
-          if (view && init.interactionMode === 'touch' && (from !== to || update.state.sliceDoc(from, to))) {
+          if (
+            view &&
+            init.interactionMode === 'touch' &&
+            (from !== to || update.state.sliceDoc(from, to))
+          ) {
             logTouchSelectionProbe(view, 'cm-selectionSet')
           }
           postToNative({ type: 'selectionChange', payload: { start: from, end: to } })
@@ -956,7 +960,7 @@ function probeLivePreviewDom(attempt: number): void {
     scrollerClientHeight: view?.scrollDOM.clientHeight ?? 0,
     scrollerScrollHeight: view?.scrollDOM.scrollHeight ?? 0
   })
-    if (needsRetry) {
+  if (needsRetry) {
     view?.dispatch({ effects: diarySyntaxTreeGrowthEffect.of(null) })
     if (shouldPinScrollToBottomDuringMount()) {
       scrollEditorToBottomInstant()

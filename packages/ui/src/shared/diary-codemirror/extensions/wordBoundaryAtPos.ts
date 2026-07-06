@@ -121,7 +121,12 @@ type SegmentSlice = {
   wordLike: boolean
 }
 
-function collectSegments(segmenter: Intl.Segmenter, doc: string, from: number, to: number): SegmentSlice[] {
+function collectSegments(
+  segmenter: Intl.Segmenter,
+  doc: string,
+  from: number,
+  to: number
+): SegmentSlice[] {
   const slice = doc.slice(from, to)
   const out: SegmentSlice[] = []
   for (const segment of segmenter.segment(slice)) {
@@ -151,8 +156,7 @@ function nearestWordSegment(segments: SegmentSlice[], pos: number): SegmentSlice
   let bestDist = Infinity
   for (const seg of segments) {
     if (!seg.wordLike || seg.to <= seg.from) continue
-    const dist =
-      pos < seg.from ? seg.from - pos : pos >= seg.to ? pos - seg.to + 1 : 0
+    const dist = pos < seg.from ? seg.from - pos : pos >= seg.to ? pos - seg.to + 1 : 0
     if (dist < bestDist) {
       bestDist = dist
       best = seg
@@ -161,11 +165,7 @@ function nearestWordSegment(segments: SegmentSlice[], pos: number): SegmentSlice
   return best
 }
 
-function expandHanWordAtPos(
-  doc: string,
-  pos: number,
-  maxLen = 4
-): { from: number; to: number } {
+function expandHanWordAtPos(doc: string, pos: number, maxLen = 4): { from: number; to: number } {
   const len = doc.length
   if (len === 0) return { from: 0, to: 0 }
 
@@ -254,11 +254,7 @@ function refineWeakSingleChar(
   if (prevSlices.length > 0) {
     const candidateFrom = prevSlices[0]!.from
     const candidate = doc.slice(candidateFrom, to)
-    if (
-      candidate.length >= 2 &&
-      candidate.length <= 4 &&
-      /^[\u4e00-\u9fff]+$/.test(candidate)
-    ) {
+    if (candidate.length >= 2 && candidate.length <= 4 && /^[\u4e00-\u9fff]+$/.test(candidate)) {
       return { from: candidateFrom, to }
     }
   }
@@ -339,10 +335,7 @@ function fallbackWordRange(doc: string, pos: number): { from: number; to: number
   return { from: clamped, to: clamped + 1 }
 }
 
-export function findWordRangeAtPosition(
-  doc: string,
-  pos: number
-): { from: number; to: number } {
+export function findWordRangeAtPosition(doc: string, pos: number): { from: number; to: number } {
   const len = doc.length
   if (len === 0) return { from: 0, to: 0 }
 

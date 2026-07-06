@@ -290,8 +290,7 @@ export function registerSummaryIPC() {
     async (_, lookbackMonths: number, locale?: string, userCopyPrefix?: string) => {
       const summaries = await ensureManager().list()
       const prefix =
-        userCopyPrefix ??
-        (await settingsManager.get<any>('summary_config'))?.sharedMemoryCopyPrefix
+        userCopyPrefix ?? (await settingsManager.get<any>('summary_config'))?.sharedMemoryCopyPrefix
       return handleBuildSharedContext(
         summaries,
         lookbackMonths,
@@ -304,11 +303,7 @@ export function registerSummaryIPC() {
 
   ipcMain.handle(
     'summary:buildSharedContextPreview',
-    async (
-      _,
-      lookbackMonths: number,
-      options?: { userCopyPrefix?: string; locale?: string }
-    ) => {
+    async (_, lookbackMonths: number, options?: { userCopyPrefix?: string; locale?: string }) => {
       const summaries = await ensureManager().list()
       const summaryConfig = await settingsManager.get<any>('summary_config')
       const userCopyPrefix = options?.userCopyPrefix ?? summaryConfig?.sharedMemoryCopyPrefix

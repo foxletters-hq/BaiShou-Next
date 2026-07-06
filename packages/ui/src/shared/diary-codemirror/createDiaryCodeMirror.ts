@@ -49,7 +49,10 @@ import {
 } from './table/desktop/markdownTablesCkant'
 import { tableMenuI18nPlugin } from './table/desktop/tableMenuI18nPlugin'
 import { insertEmptyMarkdownTableKeymap } from './table/markdownTableCommands'
-import { selectionBoundsTransactionFilter, installSafeEditorDispatch } from './extensions/selectionBoundsTransactionFilter'
+import {
+  selectionBoundsTransactionFilter,
+  installSafeEditorDispatch
+} from './extensions/selectionBoundsTransactionFilter'
 import { clampPosToDoc } from './editorContentSync'
 import { configureCodeMirrorForMobileWebView } from './configureMobileCodeMirror'
 import { diaryPostTableGapNormalize } from './table/tableEffects'

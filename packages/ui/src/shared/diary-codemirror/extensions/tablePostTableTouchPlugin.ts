@@ -8,9 +8,7 @@ import { logTableDesktop } from '../table/tableDesktopDebug'
 import { shouldBlockEditorTouchForTableSheet } from '../table/tableSheetInteraction'
 import { clearTableChromeSelection } from '../table/tableChromeSelection'
 import { activeTableCellField, setActiveTableCell } from '../table/tableActiveCell'
-import {
-  placeEditorCaretFromPointer
-} from '../table/tableEditorTouchCaret'
+import { placeEditorCaretFromPointer } from '../table/tableEditorTouchCaret'
 import {
   hasEditorDomTextSelection,
   isChromeTouchBlocked as isChromeTouchBlockedPolicy,
@@ -63,11 +61,7 @@ function isLongPressGesture(view: EditorView): boolean {
 }
 
 function isChromeTouchBlocked(target: Element): boolean {
-  return isChromeTouchBlockedPolicy(
-    target,
-    isTableChromeTouchTarget,
-    isInteractableChromeElement
-  )
+  return isChromeTouchBlockedPolicy(target, isTableChromeTouchTarget, isInteractableChromeElement)
 }
 
 function shouldSkipTapCaretPlacement(view: EditorView): boolean {

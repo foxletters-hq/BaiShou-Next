@@ -47,7 +47,9 @@ export function installDesktopWidgetInteraction(
 ): () => void {
   root.tabIndex = -1
   const tableEl = root.querySelector('.cm-table-preview') as HTMLTableElement | null
-  const scrollHost = root.querySelector('.cm-tbl-scroll, .cm-table-scroll-host') as HTMLElement | null
+  const scrollHost = root.querySelector(
+    '.cm-tbl-scroll, .cm-table-scroll-host'
+  ) as HTMLElement | null
   let liveSection: DesktopTableSection | null = null
   let outlineAnchor: CellLocation | null = null
 
@@ -67,7 +69,9 @@ export function installDesktopWidgetInteraction(
   const getParsedBounds = () => {
     if (liveSection) return domSectionToParsedBounds(liveSection)
     const interaction = getInteraction()
-    return interaction?.outlinedSection ? domSectionToParsedBounds(interaction.outlinedSection) : null
+    return interaction?.outlinedSection
+      ? domSectionToParsedBounds(interaction.outlinedSection)
+      : null
   }
 
   const paintSection = (section: DesktopTableSection | null) => {
@@ -104,107 +108,101 @@ export function installDesktopWidgetInteraction(
   }
 
   const onPointerDown = (event: PointerEvent) => {
-      if (event.button !== 0) return
-      const target = event.target
-      if (!(target instanceof Element) || target.closest(CHROME_SELECTOR) || !tableEl) return
+    if (event.button !== 0) return
+    const target = event.target
+    if (!(target instanceof Element) || target.closest(CHROME_SELECTOR) || !tableEl) return
 
-      const block = resolveBlock()
-      const view = editorView()
-      if (!block || !view) return
+    const block = resolveBlock()
+    const view = editorView()
+    if (!block || !view) return
 
-      const hit = cellAtPoint(block, event.clientX, event.clientY, target instanceof Element ? target : null)
-      if (!hit) return
+    const hit = cellAtPoint(
+      block,
+      event.clientX,
+      event.clientY,
+      target instanceof Element ? target : null
+    )
+    if (!hit) return
 
-      const interaction = getInteraction()
+    const interaction = getInteraction()
 
-      // 已在嵌套 CM 内点击：交给 CM 处理光标
-      if (isTableCellEditorFocused() && isCellInnerTarget(target)) {
-        const editorCell = (document.activeElement as HTMLElement)?.closest(
-          '.cm-table-cell-editor'
-        ) as HTMLElement | null
-        const prevRow = Number(editorCell?.dataset.row)
-        const prevCol = Number(editorCell?.dataset.col)
-        if (prevRow === hit.row && prevCol === hit.col) return
+    // 已在嵌套 CM 内点击：交给 CM 处理光标
+    if (isTableCellEditorFocused() && isCellInnerTarget(target)) {
+      const editorCell = (document.activeElement as HTMLElement)?.closest(
+        '.cm-table-cell-editor'
+      ) as HTMLElement | null
+      const prevRow = Number(editorCell?.dataset.row)
+      const prevCol = Number(editorCell?.dataset.col)
+      if (prevRow === hit.row && prevCol === hit.col) return
+    }
+
+    if (isTableCellEditorFocused()) {
+      const editorCell = (document.activeElement as HTMLElement)?.closest(
+        '.cm-table-cell-editor'
+      ) as HTMLElement | null
+      const prevRow = Number(editorCell?.dataset.row)
+      const prevCol = Number(editorCell?.dataset.col)
+      if (prevRow !== hit.row || prevCol !== hit.col) {
+        commitDesktopCellEditors(block, view)
       }
+    }
 
-      if (isTableCellEditorFocused()) {
-        const editorCell = (document.activeElement as HTMLElement)?.closest(
-          '.cm-table-cell-editor'
-        ) as HTMLElement | null
-        const prevRow = Number(editorCell?.dataset.row)
-        const prevCol = Number(editorCell?.dataset.col)
-        if (prevRow !== hit.row || prevCol !== hit.col) {
+    // ckant：已选中单格再次点击内容区 → 直接进入编辑并落光标
+    if (
+      interaction &&
+      interaction.mode === 'hidden' &&
+      interaction.outlinedSection.isSingleCell() &&
+      cellEquals(interaction.activeCell, hit) &&
+      isCellInnerTarget(target)
+    ) {
+      event.preventDefault()
+      enterCellMode(view, hit, { clientX: event.clientX, clientY: event.clientY })
+      return
+    }
+
+    // 框选：仅在拖拽时 preventDefault，避免阻断后续 click/selection
+    if (!isTableCellEditorFocused()) {
+      event.preventDefault()
+    }
+
+    outlineAnchor = hit
+    liveSection = DesktopTableSection.ofCell(hit)
+
+    DesktopOutlineSession.start(
+      block,
+      hit,
+      event,
+      {
+        onOutlineStart: (anchor) => {
+          outlineAnchor = anchor
+          liveSection = DesktopTableSection.ofCell(anchor)
+          paintSection(liveSection)
+        },
+        onBeforeOutlineDrag: () => {
+          window.getSelection()?.removeAllRanges()
+          blurTableCellEditor()
           commitDesktopCellEditors(block, view)
-        }
-      }
+          block.classList.add('cm-table-block--range-dragging')
+          dispatchDesktopInteraction(view, {
+            tableFrom,
+            activeCell: hit,
+            anchorCell: outlineAnchor ?? hit,
+            outlinedSection: liveSection ?? DesktopTableSection.ofCell(hit),
+            mode: 'hidden'
+          })
+        },
+        onOutlineExpand: (section) => {
+          liveSection = section
+          paintSection(section)
+        },
+        onOutlineEnd: (section, dragged, pointer) => {
+          liveSection = null
+          block.classList.remove('cm-table-block--range-dragging')
+          paintSection(section)
+          const anchor = outlineAnchor ?? hit
+          const head = DesktopTableSection.resolveHead(section, anchor)
 
-      // ckant：已选中单格再次点击内容区 → 直接进入编辑并落光标
-      if (
-        interaction &&
-        interaction.mode === 'hidden' &&
-        interaction.outlinedSection.isSingleCell() &&
-        cellEquals(interaction.activeCell, hit) &&
-        isCellInnerTarget(target)
-      ) {
-        event.preventDefault()
-        enterCellMode(view, hit, { clientX: event.clientX, clientY: event.clientY })
-        return
-      }
-
-      // 框选：仅在拖拽时 preventDefault，避免阻断后续 click/selection
-      if (!isTableCellEditorFocused()) {
-        event.preventDefault()
-      }
-
-      outlineAnchor = hit
-      liveSection = DesktopTableSection.ofCell(hit)
-
-      DesktopOutlineSession.start(
-        block,
-        hit,
-        event,
-        {
-          onOutlineStart: (anchor) => {
-            outlineAnchor = anchor
-            liveSection = DesktopTableSection.ofCell(anchor)
-            paintSection(liveSection)
-          },
-          onBeforeOutlineDrag: () => {
-            window.getSelection()?.removeAllRanges()
-            blurTableCellEditor()
-            commitDesktopCellEditors(block, view)
-            block.classList.add('cm-table-block--range-dragging')
-            dispatchDesktopInteraction(view, {
-              tableFrom,
-              activeCell: hit,
-              anchorCell: outlineAnchor ?? hit,
-              outlinedSection: liveSection ?? DesktopTableSection.ofCell(hit),
-              mode: 'hidden'
-            })
-          },
-          onOutlineExpand: (section) => {
-            liveSection = section
-            paintSection(section)
-          },
-          onOutlineEnd: (section, dragged, pointer) => {
-            liveSection = null
-            block.classList.remove('cm-table-block--range-dragging')
-            paintSection(section)
-            const anchor = outlineAnchor ?? hit
-            const head = DesktopTableSection.resolveHead(section, anchor)
-
-            if (!dragged && section.isSingleCell()) {
-              dispatchDesktopInteraction(view, {
-                tableFrom,
-                activeCell: head,
-                anchorCell: anchor,
-                outlinedSection: section,
-                mode: 'hidden'
-              })
-              block.focus()
-              return
-            }
-
+          if (!dragged && section.isSingleCell()) {
             dispatchDesktopInteraction(view, {
               tableFrom,
               activeCell: head,
@@ -213,18 +211,29 @@ export function installDesktopWidgetInteraction(
               mode: 'hidden'
             })
             block.focus()
-          },
-          getTableRoot: () => block,
-          getScrollElements: () => ({
-            x: scrollHost ?? root,
-            y: editorView()?.scrollDOM ?? root
+            return
+          }
+
+          dispatchDesktopInteraction(view, {
+            tableFrom,
+            activeCell: head,
+            anchorCell: anchor,
+            outlinedSection: section,
+            mode: 'hidden'
           })
+          block.focus()
         },
-        {
-          shiftKey: event.shiftKey,
-          existingAnchor: event.shiftKey && interaction ? interaction.anchorCell : undefined
-        }
-      )
+        getTableRoot: () => block,
+        getScrollElements: () => ({
+          x: scrollHost ?? root,
+          y: editorView()?.scrollDOM ?? root
+        })
+      },
+      {
+        shiftKey: event.shiftKey,
+        existingAnchor: event.shiftKey && interaction ? interaction.anchorCell : undefined
+      }
+    )
   }
 
   root.addEventListener('pointerdown', onPointerDown, true)

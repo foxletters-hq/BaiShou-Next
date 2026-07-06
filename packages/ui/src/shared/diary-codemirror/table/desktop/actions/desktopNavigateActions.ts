@@ -61,11 +61,13 @@ export function runDesktopNavigate(
   const lastCol = table.columnCount - 1
   const { activeCell, anchorCell, outlinedSection } = interaction
 
-  const exitAfter = () => placeCursorAfterTable(view, findTableToByFrom(view.state, tableFrom) ?? tableTo)
+  const exitAfter = () =>
+    placeCursorAfterTable(view, findTableToByFrom(view.state, tableFrom) ?? tableTo)
 
   switch (key) {
     case 'tab': {
-      if (activeCell.col < lastCol) moveTo(view, tableFrom, { row: activeCell.row, col: activeCell.col + 1 })
+      if (activeCell.col < lastCol)
+        moveTo(view, tableFrom, { row: activeCell.row, col: activeCell.col + 1 })
       else if (activeCell.row < lastRow)
         moveTo(view, tableFrom, { row: activeCell.row + 1, col: 0 })
       else
@@ -89,77 +91,137 @@ export function runDesktopNavigate(
         })
         return
       }
-      if (activeCell.col > 0) moveTo(view, tableFrom, { row: activeCell.row, col: activeCell.col - 1 })
-      else if (activeCell.row > 0) moveTo(view, tableFrom, { row: activeCell.row - 1, col: lastCol })
+      if (activeCell.col > 0)
+        moveTo(view, tableFrom, { row: activeCell.row, col: activeCell.col - 1 })
+      else if (activeCell.row > 0)
+        moveTo(view, tableFrom, { row: activeCell.row - 1, col: lastCol })
       return
     }
     case 'enter': {
-      if (activeCell.row < lastRow) moveTo(view, tableFrom, { row: activeCell.row + 1, col: activeCell.col })
+      if (activeCell.row < lastRow)
+        moveTo(view, tableFrom, { row: activeCell.row + 1, col: activeCell.col })
       else
         invokeTableAction(view, {
           type: 'addRow',
           tableFrom,
           tableTo,
           atIndex: table.bodyRows.length,
-          focusAfter: { rowIndex: activeCell.row <= 0 ? 0 : activeCell.row - 1, colIndex: activeCell.col }
+          focusAfter: {
+            rowIndex: activeCell.row <= 0 ? 0 : activeCell.row - 1,
+            colIndex: activeCell.col
+          }
         })
       return
     }
     case 'arrow-left': {
-      if (activeCell.col > 0) moveTo(view, tableFrom, { row: activeCell.row, col: activeCell.col - 1 })
-      else if (activeCell.row > 0) moveTo(view, tableFrom, { row: activeCell.row - 1, col: lastCol })
+      if (activeCell.col > 0)
+        moveTo(view, tableFrom, { row: activeCell.row, col: activeCell.col - 1 })
+      else if (activeCell.row > 0)
+        moveTo(view, tableFrom, { row: activeCell.row - 1, col: lastCol })
       else exitAfter()
       return
     }
     case 'arrow-up': {
-      if (activeCell.row > 0) moveTo(view, tableFrom, { row: activeCell.row - 1, col: activeCell.col })
+      if (activeCell.row > 0)
+        moveTo(view, tableFrom, { row: activeCell.row - 1, col: activeCell.col })
       else exitAfter()
       return
     }
     case 'arrow-right': {
-      if (activeCell.col < lastCol) moveTo(view, tableFrom, { row: activeCell.row, col: activeCell.col + 1 })
-      else if (activeCell.row < lastRow) moveTo(view, tableFrom, { row: activeCell.row + 1, col: 0 })
+      if (activeCell.col < lastCol)
+        moveTo(view, tableFrom, { row: activeCell.row, col: activeCell.col + 1 })
+      else if (activeCell.row < lastRow)
+        moveTo(view, tableFrom, { row: activeCell.row + 1, col: 0 })
       else exitAfter()
       return
     }
     case 'arrow-down': {
-      if (activeCell.row < lastRow) moveTo(view, tableFrom, { row: activeCell.row + 1, col: activeCell.col })
+      if (activeCell.row < lastRow)
+        moveTo(view, tableFrom, { row: activeCell.row + 1, col: activeCell.col })
       else exitAfter()
       return
     }
     case 'shift-arrow-left': {
       if (outlinedSection.endCol === anchorCell.col) {
         if (outlinedSection.startCol === 0) return
-        dispatchMove(view, tableFrom, { row: activeCell.row, col: activeCell.col - 1 }, anchorCell, outlinedSection.expandLeft())
+        dispatchMove(
+          view,
+          tableFrom,
+          { row: activeCell.row, col: activeCell.col - 1 },
+          anchorCell,
+          outlinedSection.expandLeft()
+        )
       } else {
-        dispatchMove(view, tableFrom, { row: activeCell.row, col: activeCell.col - 1 }, anchorCell, outlinedSection.contractLeft())
+        dispatchMove(
+          view,
+          tableFrom,
+          { row: activeCell.row, col: activeCell.col - 1 },
+          anchorCell,
+          outlinedSection.contractLeft()
+        )
       }
       return
     }
     case 'shift-arrow-right': {
       if (outlinedSection.startCol === anchorCell.col) {
         if (outlinedSection.endCol >= lastCol) return
-        dispatchMove(view, tableFrom, { row: activeCell.row, col: activeCell.col + 1 }, anchorCell, outlinedSection.expandRight())
+        dispatchMove(
+          view,
+          tableFrom,
+          { row: activeCell.row, col: activeCell.col + 1 },
+          anchorCell,
+          outlinedSection.expandRight()
+        )
       } else {
-        dispatchMove(view, tableFrom, { row: activeCell.row, col: activeCell.col + 1 }, anchorCell, outlinedSection.contractRight())
+        dispatchMove(
+          view,
+          tableFrom,
+          { row: activeCell.row, col: activeCell.col + 1 },
+          anchorCell,
+          outlinedSection.contractRight()
+        )
       }
       return
     }
     case 'shift-arrow-up': {
       if (outlinedSection.endRow === anchorCell.row) {
         if (outlinedSection.startRow === 0) return
-        dispatchMove(view, tableFrom, { row: activeCell.row - 1, col: activeCell.col }, anchorCell, outlinedSection.expandUp())
+        dispatchMove(
+          view,
+          tableFrom,
+          { row: activeCell.row - 1, col: activeCell.col },
+          anchorCell,
+          outlinedSection.expandUp()
+        )
       } else {
-        dispatchMove(view, tableFrom, { row: activeCell.row - 1, col: activeCell.col }, anchorCell, outlinedSection.contractUp())
+        dispatchMove(
+          view,
+          tableFrom,
+          { row: activeCell.row - 1, col: activeCell.col },
+          anchorCell,
+          outlinedSection.contractUp()
+        )
       }
       return
     }
     case 'shift-arrow-down': {
       if (outlinedSection.startRow === anchorCell.row) {
         if (outlinedSection.endRow >= lastRow) return
-        dispatchMove(view, tableFrom, { row: activeCell.row + 1, col: activeCell.col }, anchorCell, outlinedSection.expandDown())
+        dispatchMove(
+          view,
+          tableFrom,
+          { row: activeCell.row + 1, col: activeCell.col },
+          anchorCell,
+          outlinedSection.expandDown()
+        )
       } else {
-        dispatchMove(view, tableFrom, { row: activeCell.row + 1, col: activeCell.col }, anchorCell, outlinedSection.contractDown())
+        dispatchMove(
+          view,
+          tableFrom,
+          { row: activeCell.row + 1, col: activeCell.col },
+          anchorCell,
+          outlinedSection.contractDown()
+        )
       }
     }
   }

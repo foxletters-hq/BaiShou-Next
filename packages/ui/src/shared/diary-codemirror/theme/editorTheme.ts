@@ -213,26 +213,30 @@ export const editorTheme = EditorView.baseTheme({
     userSelect: 'auto',
     pointerEvents: 'auto'
   },
-  '.cm-table-block:not(.cm-table-block--touch):not(.cm-table-block--desktop):hover .cm-table-handle': {
-    opacity: '0.45',
-    pointerEvents: 'auto'
-  },
-  '.cm-table-block:not(.cm-table-block--touch):not(.cm-table-block--desktop) .cm-table-corner-menu': {
-    opacity: '0.55',
-    pointerEvents: 'auto'
-  },
-  '.cm-table-block:not(.cm-table-block--touch):not(.cm-table-block--desktop):hover .cm-table-corner-menu': {
-    opacity: '1',
-    pointerEvents: 'auto'
-  },
+  '.cm-table-block:not(.cm-table-block--touch):not(.cm-table-block--desktop):hover .cm-table-handle':
+    {
+      opacity: '0.45',
+      pointerEvents: 'auto'
+    },
+  '.cm-table-block:not(.cm-table-block--touch):not(.cm-table-block--desktop) .cm-table-corner-menu':
+    {
+      opacity: '0.55',
+      pointerEvents: 'auto'
+    },
+  '.cm-table-block:not(.cm-table-block--touch):not(.cm-table-block--desktop):hover .cm-table-corner-menu':
+    {
+      opacity: '1',
+      pointerEvents: 'auto'
+    },
   '.cm-table-block:not(.cm-table-block--touch):not(.cm-table-block--desktop) .cm-table-add-btn': {
     opacity: '0.45',
     pointerEvents: 'auto'
   },
-  '.cm-table-block:not(.cm-table-block--touch):not(.cm-table-block--desktop):hover .cm-table-add-btn': {
-    opacity: '1',
-    pointerEvents: 'auto'
-  },
+  '.cm-table-block:not(.cm-table-block--touch):not(.cm-table-block--desktop):hover .cm-table-add-btn':
+    {
+      opacity: '1',
+      pointerEvents: 'auto'
+    },
   '.cm-table-scroll-host': {
     overflowX: 'auto',
     maxWidth: '100%'
@@ -367,14 +371,15 @@ export const editorTheme = EditorView.baseTheme({
     border: 'none',
     borderRadius: '0'
   },
-  '.cm-table-block:not(.cm-table-block--desktop) .cm-table-preview th, .cm-table-block:not(.cm-table-block--desktop) .cm-table-preview td': {
-    borderRight: '1px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.12)))',
-    borderBottom: '1px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.1)))',
-    padding: '10px 12px',
-    verticalAlign: 'top',
-    wordBreak: 'break-word',
-    cursor: 'text'
-  },
+  '.cm-table-block:not(.cm-table-block--desktop) .cm-table-preview th, .cm-table-block:not(.cm-table-block--desktop) .cm-table-preview td':
+    {
+      borderRight: '1px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.12)))',
+      borderBottom: '1px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.1)))',
+      padding: '10px 12px',
+      verticalAlign: 'top',
+      wordBreak: 'break-word',
+      cursor: 'text'
+    },
   '.cm-table-grid-cell': {
     padding: '0',
     position: 'relative'
@@ -450,9 +455,10 @@ export const editorTheme = EditorView.baseTheme({
   '.cm-table-block:not(.cm-table-block--desktop) .cm-table-preview tr:last-child td': {
     borderBottom: 'none'
   },
-  '.cm-table-block:not(.cm-table-block--desktop) .cm-table-preview th:last-child, .cm-table-block:not(.cm-table-block--desktop) .cm-table-preview td:last-child': {
-    borderRight: 'none'
-  },
+  '.cm-table-block:not(.cm-table-block--desktop) .cm-table-preview th:last-child, .cm-table-block:not(.cm-table-block--desktop) .cm-table-preview td:last-child':
+    {
+      borderRight: 'none'
+    },
   '.cm-table-handle': {
     display: 'flex',
     alignItems: 'center',
@@ -922,7 +928,7 @@ export const editorTheme = EditorView.baseTheme({
     boxShadow: 'var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.12))',
     borderRadius: 'var(--radius-sm, 8px)',
     zIndex: String(DIARY_EDITOR_OVERLAY_Z.tableMenu)
-  },
+  }
 })
 
 /** 移动端 WebView：RN 外层 ScrollView 负责滚动，CM 随内容撑高 */

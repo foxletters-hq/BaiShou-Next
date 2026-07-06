@@ -83,7 +83,10 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
               className={`theme-btn ${themeMode === 'system' ? 'active' : ''}`}
               onClick={() => onThemeModeChange('system')}
             >
-              <MonitorSmartphone size={16} style={{ marginRight: 6, verticalAlign: 'text-bottom' }} />
+              <MonitorSmartphone
+                size={16}
+                style={{ marginRight: 6, verticalAlign: 'text-bottom' }}
+              />
               {t('settings.theme_system', '系统跟随')}
             </button>
             <button

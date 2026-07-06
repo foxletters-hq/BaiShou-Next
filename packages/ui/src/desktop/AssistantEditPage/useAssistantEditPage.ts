@@ -47,7 +47,11 @@ interface UseAssistantEditPageOptions {
   onPatchSave?: (id: string, patch: Partial<AssistantFormData>) => void | Promise<void>
 }
 
-export function useAssistantEditPage({ assistant, onSave, onPatchSave }: UseAssistantEditPageOptions) {
+export function useAssistantEditPage({
+  assistant,
+  onSave,
+  onPatchSave
+}: UseAssistantEditPageOptions) {
   const { t } = useTranslation()
   const isEditing = assistant !== null
 
@@ -94,7 +98,9 @@ export function useAssistantEditPage({ assistant, onSave, onPatchSave }: UseAssi
     setContextWindow(assistant.contextWindow ?? DEFAULT_ASSISTANT_CONTEXT_WINDOW)
     setProviderId(assistant.providerId)
     setModelId(assistant.modelId)
-    setCompressThreshold(assistant.compressTokenThreshold ?? DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD)
+    setCompressThreshold(
+      assistant.compressTokenThreshold ?? DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD
+    )
     setCompressKeepTurns(assistant.compressKeepTurns ?? DEFAULT_ASSISTANT_COMPRESS_KEEP_TURNS)
     setAvatarPath(
       normalizeAssistantAvatarPath(assistant.avatarPath) || DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH

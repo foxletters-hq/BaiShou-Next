@@ -78,8 +78,6 @@ describe('diary-content-tags.util', () => {
 
   it('预览时剥离独立标签行，保留正文内联标签', () => {
     const full = '#疲惫 #深夜 #反思\n\n##### 12:00\n\n今天 #市集 很开心'
-    expect(stripDedicatedTagLinesFromContent(full)).toBe(
-      '##### 12:00\n\n今天 #市集 很开心'
-    )
+    expect(stripDedicatedTagLinesFromContent(full)).toBe('##### 12:00\n\n今天 #市集 很开心')
   })
 })

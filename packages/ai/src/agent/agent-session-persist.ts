@@ -5,7 +5,10 @@ import { IAIProvider } from '../providers/provider.interface'
 import { ModelPricingService } from '../pricing/model-pricing.service'
 import { mergeStreamUsageFromSdk, normalizeTokenUsageForBilling } from './token-usage.util'
 import { StreamAccumulator } from './stream-accumulator'
-import { resolveAssistantParentOrderIndex, buildEmojiImagePartsFromToolCalls } from './agent-session-persist.utils'
+import {
+  resolveAssistantParentOrderIndex,
+  buildEmojiImagePartsFromToolCalls
+} from './agent-session-persist.utils'
 import { sanitizeToolPayloadForStorage } from './session-tool-payload-sanitizer'
 // @ts-ignore
 import { SnapshotRepository } from '@baishou/database'

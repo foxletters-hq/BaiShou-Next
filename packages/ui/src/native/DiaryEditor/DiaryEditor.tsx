@@ -321,9 +321,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
     async (itemId: string) => {
       const sheet = tableSheetRef.current
       if (!sheet) return
-      const item = sheet.sections
-        .flatMap((section) => section.items)
-        .find((i) => i.id === itemId)
+      const item = sheet.sections.flatMap((section) => section.items).find((i) => i.id === itemId)
       if (item?.destructive) {
         const confirmed = await dialog.confirm(confirmMessageForDestructiveItem(item), {
           title: t('common.confirm_delete', '确认删除'),

@@ -158,7 +158,7 @@ export const EmojiToolCard: React.FC<EmojiToolCardProps> = ({ config, onChange }
     })
   }
 
-  const noEmojis = (!emojiConfig.emojis || emojiConfig.emojis.length === 0);
+  const noEmojis = !emojiConfig.emojis || emojiConfig.emojis.length === 0
 
   return (
     <div className={`${styles.toolCard} ${isEnabled ? styles.enabled : styles.disabled}`}>
@@ -209,7 +209,10 @@ export const EmojiToolCard: React.FC<EmojiToolCardProps> = ({ config, onChange }
             <div className={styles.emojiManageLabel}>
               {t('agent.tools.emoji_manage_label', '表情包管理')}
             </div>
-            <div className={styles.emojiPopupGrid} style={noEmojis ? {gridTemplateColumns: 'unset'} : {}}>
+            <div
+              className={styles.emojiPopupGrid}
+              style={noEmojis ? { gridTemplateColumns: 'unset' } : {}}
+            >
               {emojiConfig.emojis?.map((emoji) => (
                 <div key={emoji.id} className={styles.emojiCard}>
                   <div className={styles.emojiCardImage}>

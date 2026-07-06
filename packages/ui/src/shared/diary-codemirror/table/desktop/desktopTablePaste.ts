@@ -4,14 +4,8 @@ import type { NormalizedTableCellRange } from '../tableRangeSelection'
 import { shouldUseTableRangePaste } from '../tableGridModel'
 import { domRowToParsedRow } from './models/cellLocation'
 import { DesktopTableSection } from './models/desktopTableSection'
-import {
-  applyDesktopTablePasteToBlock,
-  domSectionToParsedBounds
-} from './desktopRangeClipboard'
-import {
-  desktopTableInteractionField,
-  type DesktopTableInteraction
-} from './tableInteractionField'
+import { applyDesktopTablePasteToBlock, domSectionToParsedBounds } from './desktopRangeClipboard'
+import { desktopTableInteractionField, type DesktopTableInteraction } from './tableInteractionField'
 
 export type DesktopTablePasteTarget = {
   block: HTMLElement
@@ -20,7 +14,9 @@ export type DesktopTablePasteTarget = {
   interaction: DesktopTableInteraction
 }
 
-export function findActiveDesktopTablePasteTarget(view: EditorView): DesktopTablePasteTarget | null {
+export function findActiveDesktopTablePasteTarget(
+  view: EditorView
+): DesktopTablePasteTarget | null {
   const interaction = view.state.field(desktopTableInteractionField, false)
   if (interaction) {
     const block = view.dom.querySelector(
@@ -70,7 +66,13 @@ export function runDesktopTablePaste(view: EditorView, clipboardText: string): b
   const target = findActiveDesktopTablePasteTarget(view)
   if (!target) return false
 
-  applyDesktopTablePasteToBlock(view, target.block, target.bounds, target.interaction, clipboardText)
+  applyDesktopTablePasteToBlock(
+    view,
+    target.block,
+    target.bounds,
+    target.interaction,
+    clipboardText
+  )
   return true
 }
 

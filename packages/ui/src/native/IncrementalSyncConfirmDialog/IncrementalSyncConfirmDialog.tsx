@@ -319,9 +319,7 @@ const PlanScrollContent = memo(function PlanScrollContent({ preview }: PlanScrol
               {hiddenCount > 0 && (
                 <Pressable
                   accessibilityRole="button"
-                  onPress={() =>
-                    setExpandedVaults((prev) => new Set(prev).add(summary.vaultName))
-                  }
+                  onPress={() => setExpandedVaults((prev) => new Set(prev).add(summary.vaultName))}
                 >
                   <Text style={[styles.moreHint, { color: colors.primary }]}>
                     {t('data_sync.plan_more_files', { count: hiddenCount })}

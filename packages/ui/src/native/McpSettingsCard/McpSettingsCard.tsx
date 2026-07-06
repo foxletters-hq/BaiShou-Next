@@ -160,7 +160,11 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
                   ]}
                   accessibilityLabel={t('settings.mcp_refresh_token', '刷新访问令牌')}
                 >
-                  <RefreshCw size={20} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                  <RefreshCw
+                    size={20}
+                    color={colors.textSecondary}
+                    strokeWidth={DEFAULT_STROKE_WIDTH}
+                  />
                 </Pressable>
               ) : null}
               {onCopyToken ? (

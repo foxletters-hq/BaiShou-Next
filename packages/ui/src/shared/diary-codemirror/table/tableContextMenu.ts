@@ -6,7 +6,10 @@ import { invokeTableAction } from './tableEffects'
 import { setTableChromeSelection, clearTableChromeSelection } from './tableChromeSelection'
 import { logTableChrome } from './tableChromeDebug'
 import { confirmMessageForDestructiveItem, requestTableConfirm } from './tableConfirm'
-import { ensureTableSheetGlobalStyles, ensureTableContextMenuGlobalStyles } from './tableSheetGlobalStyles'
+import {
+  ensureTableSheetGlobalStyles,
+  ensureTableContextMenuGlobalStyles
+} from './tableSheetGlobalStyles'
 import {
   dismissKeyboardForSheetInteraction,
   isTableSheetOpen,
@@ -15,7 +18,13 @@ import {
 } from './tableSheetInteraction'
 import { blurActiveTableCellInput, dismissEditorKeyboardForChrome } from './tableChromeKeyboard'
 import { requestNativeTableSheet, closeNativeTableSheets } from './tableNativeSheet'
-import { copyTableMarkdownFromBlock, findCurrentTableRange, readTableModelFromBlock, writeTextToClipboard, writeTextToClipboardSync } from './tableDom'
+import {
+  copyTableMarkdownFromBlock,
+  findCurrentTableRange,
+  readTableModelFromBlock,
+  writeTextToClipboard,
+  writeTextToClipboardSync
+} from './tableDom'
 import { findTableNodeBounds } from './tableBounds'
 import { parseTableFromDoc } from './table.model'
 import { setColumnAlignmentMarkdown, sortTableByColumnMarkdown } from './table.ops'
@@ -447,7 +456,10 @@ export function runCellContextMenuAction(
   }
 }
 
-export async function copyTableRowFromBlock(block: HTMLElement, rowIndex: number): Promise<boolean> {
+export async function copyTableRowFromBlock(
+  block: HTMLElement,
+  rowIndex: number
+): Promise<boolean> {
   const model = readTableModelFromBlock(block)
   if (!model || rowIndex < 0 || rowIndex >= model.rows.length) return false
   const line = `| ${model.rows[rowIndex]!.join(' | ')} |`

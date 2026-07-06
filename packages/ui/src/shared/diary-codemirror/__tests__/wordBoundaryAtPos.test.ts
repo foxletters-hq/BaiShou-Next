@@ -1,8 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  findWordRangeAtPosition,
-  snapTouchSelectPos
-} from '../extensions/wordBoundaryAtPos'
+import { findWordRangeAtPosition, snapTouchSelectPos } from '../extensions/wordBoundaryAtPos'
 
 describe('findWordRangeAtPosition', () => {
   const sample = '下午去水果店买了个大西瓜，老板帮忙挑的，说保甜。'

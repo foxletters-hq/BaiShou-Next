@@ -20,11 +20,7 @@ function pushDecoration(
   if (from < to) marks.push(value.range(from, to))
 }
 
-function selectionIntersectsRange(
-  state: EditorState,
-  from: number,
-  to: number
-): boolean {
+function selectionIntersectsRange(state: EditorState, from: number, to: number): boolean {
   for (const range of state.selection.ranges) {
     if (range.from < to && range.to > from) return true
   }

@@ -188,7 +188,9 @@ export const TtsModelCombobox: React.FC<TtsModelComboboxProps> = ({
                     >
                       {opt}
                     </Text>
-                    {selected && <Check size={18} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />}
+                    {selected && (
+                      <Check size={18} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                    )}
                   </TouchableOpacity>
                 )
               })}

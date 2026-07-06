@@ -17,7 +17,12 @@ import { beginDesktopTableBlocking, syncDesktopBlockingOverlay } from '../deskto
 
 const DRAG_THRESHOLD = 4
 
-export type ResizeHandleKind = 'border-row' | 'border-col' | 'table-right' | 'table-bottom' | 'table-corner'
+export type ResizeHandleKind =
+  | 'border-row'
+  | 'border-col'
+  | 'table-right'
+  | 'table-bottom'
+  | 'table-corner'
 
 export type ResizeSessionOptions = {
   block: HTMLElement

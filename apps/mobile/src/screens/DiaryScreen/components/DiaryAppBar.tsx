@@ -12,14 +12,7 @@ import {
   Platform
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import {
-  Search,
-  Filter,
-  RefreshCw,
-  X,
-  Heart,
-  Check
-} from 'lucide-react-native'
+import { Search, Filter, RefreshCw, X, Heart, Check } from 'lucide-react-native'
 import {
   WEATHER_IDS,
   weatherI18nKey,

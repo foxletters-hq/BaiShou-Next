@@ -266,7 +266,11 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                   hitSlop={6}
                   accessibilityLabel={t('shortcut.move_up', '上移')}
                 >
-                  <ChevronUp size={22} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                  <ChevronUp
+                    size={22}
+                    color={colors.textTertiary}
+                    strokeWidth={DEFAULT_STROKE_WIDTH}
+                  />
                 </Pressable>
                 <Pressable
                   style={[
@@ -278,7 +282,11 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                   hitSlop={6}
                   accessibilityLabel={t('shortcut.move_down', '下移')}
                 >
-                  <ChevronDown size={22} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                  <ChevronDown
+                    size={22}
+                    color={colors.textTertiary}
+                    strokeWidth={DEFAULT_STROKE_WIDTH}
+                  />
                 </Pressable>
               </View>
             ) : (
@@ -316,7 +324,11 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                   onPress={() => handleEdit(item)}
                   accessibilityLabel={t('shortcut.edit', '编辑')}
                 >
-                  <Pencil size={20} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                  <Pencil
+                    size={20}
+                    color={colors.textTertiary}
+                    strokeWidth={DEFAULT_STROKE_WIDTH}
+                  />
                 </Pressable>
                 <Pressable
                   style={styles.actionBtn}
@@ -490,7 +502,11 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                       }
                     ]}
                   >
-                    <Search size={20} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                    <Search
+                      size={20}
+                      color={colors.textTertiary}
+                      strokeWidth={DEFAULT_STROKE_WIDTH}
+                    />
                     <TextInput
                       value={searchQuery}
                       onChangeText={setSearchQuery}
@@ -502,7 +518,11 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                     />
                     {searchQuery.length > 0 ? (
                       <Pressable onPress={() => setSearchQuery('')} hitSlop={8}>
-                        <X size={18} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                        <X
+                          size={18}
+                          color={colors.textTertiary}
+                          strokeWidth={DEFAULT_STROKE_WIDTH}
+                        />
                       </Pressable>
                     ) : null}
                   </View>
@@ -565,7 +585,11 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                           disabled={currentPage <= 1}
                           onPress={() => setCurrentPage(currentPage - 1)}
                         >
-                          <ChevronLeft size={22} color={colors.textPrimary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                          <ChevronLeft
+                            size={22}
+                            color={colors.textPrimary}
+                            strokeWidth={DEFAULT_STROKE_WIDTH}
+                          />
                         </Pressable>
                         <Pressable
                           style={[
@@ -578,7 +602,11 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                           disabled={currentPage >= totalPages}
                           onPress={() => setCurrentPage(currentPage + 1)}
                         >
-                          <ChevronRight size={22} color={colors.textPrimary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                          <ChevronRight
+                            size={22}
+                            color={colors.textPrimary}
+                            strokeWidth={DEFAULT_STROKE_WIDTH}
+                          />
                         </Pressable>
                       </View>
                     </View>

@@ -12,6 +12,8 @@ export const SettingsListLeadingIcon: React.FC<SettingsListLeadingIconProps> = (
   const { colors } = useNativeTheme()
 
   return (
-    <View style={[hubStyles.iconWrap, { backgroundColor: colors.bgSurfaceNormal }]}>{children}</View>
+    <View style={[hubStyles.iconWrap, { backgroundColor: colors.bgSurfaceNormal }]}>
+      {children}
+    </View>
   )
 }

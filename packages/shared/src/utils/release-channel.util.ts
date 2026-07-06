@@ -71,10 +71,7 @@ export function parseReleaseChannelManifest(raw: unknown): ReleaseChannelManifes
   return manifest
 }
 
-export function releaseTagToPageUrl(
-  tag: string,
-  repoUrl: string = GITHUB_REPO_URL
-): string {
+export function releaseTagToPageUrl(tag: string, repoUrl: string = GITHUB_REPO_URL): string {
   return `${repoUrl}/releases/tag/${encodeURIComponent(tag)}`
 }
 

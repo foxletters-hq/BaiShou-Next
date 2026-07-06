@@ -2,15 +2,7 @@ import React, { useEffect, useRef } from 'react'
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
 import { KeyboardAwareScrollView } from '../KeyboardAwareScrollView'
 import { useTranslation } from 'react-i18next'
-import {
-  Calendar,
-  Pencil,
-  Save,
-  SquarePen,
-  Tag,
-  Trash2,
-  X
-} from 'lucide-react-native'
+import { Calendar, Pencil, Save, SquarePen, Tag, Trash2, X } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { Input } from '../Input/Input'

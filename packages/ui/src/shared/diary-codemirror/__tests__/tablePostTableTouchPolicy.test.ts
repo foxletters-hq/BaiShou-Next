@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
-import { shouldExplicitCaretPlacement, shouldPlaceCaretOnTapEnd } from '../extensions/tablePostTableTouchPolicy'
+import {
+  shouldExplicitCaretPlacement,
+  shouldPlaceCaretOnTapEnd
+} from '../extensions/tablePostTableTouchPolicy'
 
 describe('tablePostTableTouchPolicy', () => {
   it('uses native caret on plain cm-content for touch taps', () => {

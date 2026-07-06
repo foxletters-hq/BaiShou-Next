@@ -21,7 +21,9 @@ function parseArgs() {
   const repo = get('--repo') || 'foxletters-hq/BaiShou-Next'
   const versionCode = get('--version-code')
   if (!platform || !version || !tag) {
-    console.error('用法: update-release-channel.mjs --platform android|windows --version 1.2.3 --tag mobile/v1.2.3 [--version-code 80]')
+    console.error(
+      '用法: update-release-channel.mjs --platform android|windows --version 1.2.3 --tag mobile/v1.2.3 [--version-code 80]'
+    )
     process.exit(1)
   }
   return { platform, version, tag, repo, versionCode }

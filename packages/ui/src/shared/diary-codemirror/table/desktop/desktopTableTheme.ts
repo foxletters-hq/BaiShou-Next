@@ -114,9 +114,10 @@ export const desktopTableTheme = EditorView.baseTheme({
       height: 'inherit'
     },
 
-  '.cm-table-block--desktop .cm-tbl-table tbody tr, .cm-table-block--desktop .cm-tbl-table thead tr': {
-    height: '0'
-  },
+  '.cm-table-block--desktop .cm-tbl-table tbody tr, .cm-table-block--desktop .cm-tbl-table thead tr':
+    {
+      height: '0'
+    },
 
   '@supports (-moz-appearance: none)': {
     '.cm-table-block--desktop .cm-tbl-table tbody tr, .cm-table-block--desktop .cm-tbl-table thead tr':
@@ -319,11 +320,12 @@ export const desktopTableTheme = EditorView.baseTheme({
       'color-mix(in srgb, var(--tbl-theme-border-color), var(--tbl-theme-header-row-background) 80%)'
   },
 
-  '.cm-table-block--desktop[data-tbl-handle-position="outside"] .cm-tbl-handle--header[data-active]': {
-    backgroundColor: 'var(--tbl-theme-outline-color)',
-    borderColor: 'var(--tbl-theme-outline-color)',
-    color: '#ffffff'
-  },
+  '.cm-table-block--desktop[data-tbl-handle-position="outside"] .cm-tbl-handle--header[data-active]':
+    {
+      backgroundColor: 'var(--tbl-theme-outline-color)',
+      borderColor: 'var(--tbl-theme-outline-color)',
+      color: '#ffffff'
+    },
 
   '.cm-table-block--desktop[data-tbl-handle-position="outside"] .cm-table-col-handle': {
     top: '-17px',

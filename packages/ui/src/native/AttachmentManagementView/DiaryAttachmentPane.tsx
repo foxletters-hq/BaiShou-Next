@@ -68,7 +68,11 @@ export const DiaryAttachmentPane: React.FC<{ vm: AttachmentManagementViewModel }
                   ? t('gallery.filter_all_years', '全部年份')
                   : `${diaryYear}${t('common.year_suffix', '年')}`}
               </Text>
-              <ChevronDown size={14} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+              <ChevronDown
+                size={14}
+                color={colors.textSecondary}
+                strokeWidth={DEFAULT_STROKE_WIDTH}
+              />
             </TouchableOpacity>
           )}
 
@@ -82,7 +86,11 @@ export const DiaryAttachmentPane: React.FC<{ vm: AttachmentManagementViewModel }
                 ? t('settings.all_months', '全部月份')
                 : `${diaryMonth}${t('common.month_suffix', '月')}`}
             </Text>
-            <ChevronDown size={14} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+            <ChevronDown
+              size={14}
+              color={colors.textSecondary}
+              strokeWidth={DEFAULT_STROKE_WIDTH}
+            />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -95,7 +103,11 @@ export const DiaryAttachmentPane: React.FC<{ vm: AttachmentManagementViewModel }
                 ? t('settings.tag_orphan', '孤立附件')
                 : t('settings.all_filters', '全部筛选')}
             </Text>
-            <ChevronDown size={14} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+            <ChevronDown
+              size={14}
+              color={colors.textSecondary}
+              strokeWidth={DEFAULT_STROKE_WIDTH}
+            />
           </TouchableOpacity>
         </View>
 
@@ -123,7 +135,11 @@ export const DiaryAttachmentPane: React.FC<{ vm: AttachmentManagementViewModel }
               style={[styles.actionBtn, { borderColor: colors.borderSubtle }]}
               onPress={toggleSelectAllDiary}
             >
-              <CheckSquare size={16} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+              <CheckSquare
+                size={16}
+                color={colors.textSecondary}
+                strokeWidth={DEFAULT_STROKE_WIDTH}
+              />
               <Text style={[styles.actionBtnText, { color: colors.textPrimary }]}>
                 {selectedDiaryPaths.size === pagedDiaryAttachments.length
                   ? t('settings.attachment_deselect_all', '取消全选')

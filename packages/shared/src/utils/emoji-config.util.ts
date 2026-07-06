@@ -74,15 +74,11 @@ export function isEmojiGroupNameTaken(
   const target = name.trim().toLowerCase()
   if (!target) return false
   return normalized.groups.some(
-    (group) =>
-      group.id !== excludeGroupId && group.name.trim().toLowerCase() === target
+    (group) => group.id !== excludeGroupId && group.name.trim().toLowerCase() === target
   )
 }
 
-export function upsertEmojiGroup(
-  config: EmojiToolConfig,
-  group: EmojiGroup
-): EmojiToolConfig {
+export function upsertEmojiGroup(config: EmojiToolConfig, group: EmojiGroup): EmojiToolConfig {
   const normalized = normalizeEmojiToolConfig(config)
   const groups = normalized.groups.some((item) => item.id === group.id)
     ? normalized.groups.map((item) => (item.id === group.id ? group : item))
@@ -150,10 +146,7 @@ export function normalizeAssistantEmojiPrefs(prefs?: AssistantEmojiPrefs | null)
   return { emojiEnabled, emojiGroupIds: [] }
 }
 
-function mergeEmojiItemsFromGroups(
-  config: EmojiToolConfig,
-  groupIds: string[]
-): EmojiItem[] {
+function mergeEmojiItemsFromGroups(config: EmojiToolConfig, groupIds: string[]): EmojiItem[] {
   const normalized = normalizeEmojiToolConfig(config)
   const seen = new Set<string>()
   const merged: EmojiItem[] = []

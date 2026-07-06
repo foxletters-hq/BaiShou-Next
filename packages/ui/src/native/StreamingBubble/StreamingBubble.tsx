@@ -116,57 +116,59 @@ export const StreamingBubble = React.memo(function StreamingBubble({
                 <NativeChatBubbleAttachments attachments={attachments} isUserBubble={false} />
               ) : null}
               {hasReasoning && (
-              <View
-                style={{
-                  marginBottom: hasText || hasTools ? 8 : 0,
-                  alignSelf: 'stretch',
-                  width: '100%'
-                }}
-              >
-                <AgentThinkSection
-                  content={cleanReasoning}
-                  isLoading={isReasoning || isThinkStreaming}
-                  isMarkdownStreaming={false}
-                />
-              </View>
-            )}
-
-            {hasTools ? (
-              <View style={{ marginBottom: hasText ? 8 : 0, alignSelf: 'stretch', width: '100%' }}>
-                <ToolResultGroupCard
-                  completedTools={completedTools.map((tool, idx) => ({
-                    name: tool.name,
-                    durationMs: tool.durationMs ?? 0,
-                    toolCallId: tool.toolCallId ?? `streaming-${tool.name}-${idx}`,
-                    startTime: tool.toolCallId ?? idx,
-                    result: tool.result,
-                    args: tool.args
-                  }))}
-                  activeToolName={activeToolName}
-                />
-              </View>
-            ) : null}
-
-            {hasText && (
-              <View
-                style={
-                  chatNeedsRichMarkdown(cleanText)
-                    ? chatBubbleStyles.markdownSlot
-                    : chatBubbleStyles.plainTextSlot
-                }
-              >
-                {chatNeedsRichMarkdown(cleanText) ? (
-                  <AgentMarkdownRenderer
-                    content={cleanText}
-                    isStreaming={isTextStreaming}
-                    variant="chat"
+                <View
+                  style={{
+                    marginBottom: hasText || hasTools ? 8 : 0,
+                    alignSelf: 'stretch',
+                    width: '100%'
+                  }}
+                >
+                  <AgentThinkSection
+                    content={cleanReasoning}
+                    isLoading={isReasoning || isThinkStreaming}
+                    isMarkdownStreaming={false}
                   />
-                ) : (
-                  <ChatPlainTextBody content={cleanText} color={colors.textPrimary} />
-                )}
-              </View>
-            )}
-            {reserveActionBarSpace ? <View style={auxStyles.actionBarSpacer} /> : null}
+                </View>
+              )}
+
+              {hasTools ? (
+                <View
+                  style={{ marginBottom: hasText ? 8 : 0, alignSelf: 'stretch', width: '100%' }}
+                >
+                  <ToolResultGroupCard
+                    completedTools={completedTools.map((tool, idx) => ({
+                      name: tool.name,
+                      durationMs: tool.durationMs ?? 0,
+                      toolCallId: tool.toolCallId ?? `streaming-${tool.name}-${idx}`,
+                      startTime: tool.toolCallId ?? idx,
+                      result: tool.result,
+                      args: tool.args
+                    }))}
+                    activeToolName={activeToolName}
+                  />
+                </View>
+              ) : null}
+
+              {hasText && (
+                <View
+                  style={
+                    chatNeedsRichMarkdown(cleanText)
+                      ? chatBubbleStyles.markdownSlot
+                      : chatBubbleStyles.plainTextSlot
+                  }
+                >
+                  {chatNeedsRichMarkdown(cleanText) ? (
+                    <AgentMarkdownRenderer
+                      content={cleanText}
+                      isStreaming={isTextStreaming}
+                      variant="chat"
+                    />
+                  ) : (
+                    <ChatPlainTextBody content={cleanText} color={colors.textPrimary} />
+                  )}
+                </View>
+              )}
+              {reserveActionBarSpace ? <View style={auxStyles.actionBarSpacer} /> : null}
             </View>
           </>
         ) : (

@@ -40,7 +40,10 @@ export function desktopRootSelectionSyncPlugin(): Extension {
 
             const rowEls = block.querySelectorAll('tbody tr')
             const lastDomRow = rowEls.length
-            const lastCol = Math.max(0, block.querySelectorAll('.cm-table-preview thead th').length - 1)
+            const lastCol = Math.max(
+              0,
+              block.querySelectorAll('.cm-table-preview thead th').length - 1
+            )
             view.dispatch({
               effects: [
                 setDesktopTableInteraction.of({

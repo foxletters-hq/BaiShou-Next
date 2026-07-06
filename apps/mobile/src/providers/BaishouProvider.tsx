@@ -133,7 +133,10 @@ import {
   emitSyncMutation,
   emitVaultSwitchMutation
 } from '../cache/mobile-cache-coordinator'
-import { sessionFileWatcher, createMobileSessionDiskPersistenceHooks } from '../services/session-file-watcher.service'
+import {
+  sessionFileWatcher,
+  createMobileSessionDiskPersistenceHooks
+} from '../services/session-file-watcher.service'
 import { summaryFileWatcher } from '../services/summary-file-watcher.service'
 import {
   activateVaultRuntime,
@@ -1150,11 +1153,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                 runtime.sessionRepo,
                 runtime.assistantManager
               ),
-              resolveAssistantEmojiPrefs(
-                sessionId,
-                runtime.sessionRepo,
-                runtime.assistantManager
-              )
+              resolveAssistantEmojiPrefs(sessionId, runtime.sessionRepo, runtime.assistantManager)
             ])
             const userConfig = await buildMobileStreamUserConfig(
               runtime.settingsManager,

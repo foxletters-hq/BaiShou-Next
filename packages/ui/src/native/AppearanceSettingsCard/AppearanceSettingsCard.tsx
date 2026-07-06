@@ -169,7 +169,11 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
       embedded={embedded}
       isLast={isLast}
       icon={
-        <Palette size={NAV_ICON_SIZE} strokeWidth={DEFAULT_STROKE_WIDTH} color={colors.textSecondary} />
+        <Palette
+          size={NAV_ICON_SIZE}
+          strokeWidth={DEFAULT_STROKE_WIDTH}
+          color={colors.textSecondary}
+        />
       }
       title={t('settings.appearance', '外观与多语言')}
       subtitle={embedded ? undefined : `${themeMode} · ${language}`}

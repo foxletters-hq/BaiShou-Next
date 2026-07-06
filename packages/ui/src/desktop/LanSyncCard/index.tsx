@@ -319,11 +319,7 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
                   style={{ top: pos.top, left: pos.left, ...delayStyle }}
                 >
                   <div className={styles.bubbleIcon}>
-                    {d.deviceType === 'mobile' ? (
-                      <Smartphone size={20} />
-                    ) : (
-                      <Monitor size={20} />
-                    )}
+                    {d.deviceType === 'mobile' ? <Smartphone size={20} /> : <Monitor size={20} />}
                   </div>
                   <div className={styles.bubbleInfo}>
                     <span className={styles.bubbleName} title={d.nickname}>

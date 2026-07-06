@@ -187,13 +187,7 @@ export function focusTableCellInEditor(
     return true
   }
   if (options?.clientX != null && options?.clientY != null) {
-    return focusTableCellSourceAtPoint(
-      block,
-      rowIndex,
-      colIndex,
-      options.clientX,
-      options.clientY
-    )
+    return focusTableCellSourceAtPoint(block, rowIndex, colIndex, options.clientX, options.clientY)
   }
   return focusTableCellSource(block, rowIndex, colIndex, false)
 }

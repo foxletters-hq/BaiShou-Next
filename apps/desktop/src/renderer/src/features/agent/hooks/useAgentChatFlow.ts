@@ -81,7 +81,11 @@ export function useAgentChatFlow() {
 
   // ── 2. Store 状态订阅 ──
   const settings = useSettingsStore()
-  const toolConfig = settings.toolManagementConfig || { disabledToolIds: [], customConfigs: {}, emojiConfig: { enabled: false, groups: [] } }
+  const toolConfig = settings.toolManagementConfig || {
+    disabledToolIds: [],
+    customConfigs: {},
+    emojiConfig: { enabled: false, groups: [] }
+  }
   const providers = settings?.providers || []
   const { assistants, fetchAssistants } = useAssistantStore()
   const { shortcuts, loadShortcuts, addShortcut, updateShortcut, removeShortcut } =

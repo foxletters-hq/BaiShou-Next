@@ -48,10 +48,7 @@ export function AgentThinkSection({
         accessibilityState={{ expanded: thinkExpanded }}
       >
         <ThinkStatusIcon loading={showSpinner} color={colors.textSecondary} />
-        <Text
-          style={[styles.statusText, { color: colors.textSecondary }]}
-          numberOfLines={1}
-        >
+        <Text style={[styles.statusText, { color: colors.textSecondary }]} numberOfLines={1}>
           {title}
         </Text>
         <ThinkChevron expanded={thinkExpanded} color={colors.textTertiary} />

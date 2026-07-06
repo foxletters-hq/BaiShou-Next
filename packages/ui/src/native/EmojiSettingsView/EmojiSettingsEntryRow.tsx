@@ -12,12 +12,18 @@ export interface EmojiSettingsEntryRowProps {
   onPress: () => void
 }
 
-export const EmojiSettingsEntryRow: React.FC<EmojiSettingsEntryRowProps> = ({ config, onPress }) => {
+export const EmojiSettingsEntryRow: React.FC<EmojiSettingsEntryRowProps> = ({
+  config,
+  onPress
+}) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const normalized = normalizeEmojiToolConfig(config)
   const groupCount = normalized.groups.length
-  const stickerCount = normalized.groups.reduce((sum, group) => sum + (group.emojis?.length ?? 0), 0)
+  const stickerCount = normalized.groups.reduce(
+    (sum, group) => sum + (group.emojis?.length ?? 0),
+    0
+  )
 
   return (
     <TouchableOpacity

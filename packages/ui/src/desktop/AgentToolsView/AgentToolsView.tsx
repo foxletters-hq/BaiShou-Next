@@ -25,10 +25,10 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
   const isDialog = presentation === 'dialog'
 
   const emojiConfig = normalizeEmojiToolConfig(config.emojiConfig)
-  const containerClass = isDialog ? `${styles.container} ${styles.containerDialog}` : styles.container
-  const headerClass = isDialog
-    ? `${styles.header} ${styles.headerDialog}`
-    : styles.header
+  const containerClass = isDialog
+    ? `${styles.container} ${styles.containerDialog}`
+    : styles.container
+  const headerClass = isDialog ? `${styles.header} ${styles.headerDialog}` : styles.header
   const scrollClass = isDialog
     ? `${styles.scrollArea} ${styles.scrollAreaDialog}`
     : styles.scrollArea

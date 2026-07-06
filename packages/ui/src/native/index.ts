@@ -149,7 +149,11 @@ export {
   type ThemeModePreference
 } from './theme'
 
-export { NATIVE_APP_BRAND_ICON, resolveNativeUserAvatarSource, isCustomUserAvatar } from './user-avatar.util'
+export {
+  NATIVE_APP_BRAND_ICON,
+  resolveNativeUserAvatarSource,
+  isCustomUserAvatar
+} from './user-avatar.util'
 
 export { useKeyboardHeight, type UseKeyboardHeightOptions } from './hooks/useKeyboardHeight'
 export {

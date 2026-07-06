@@ -62,7 +62,10 @@ export class MobileMcpSdkBridge {
       return listBaishouMcpToolsForUi(this.toolRegistry, context)
     } catch (e) {
       if (!this.resolveToolListContext) throw e
-      logger.warn('[MobileMcpSdkBridge] Full MCP context unavailable, using settings-only list', e as Error)
+      logger.warn(
+        '[MobileMcpSdkBridge] Full MCP context unavailable, using settings-only list',
+        e as Error
+      )
       const context = await this.resolveToolListContext()
       return listBaishouMcpToolsForUi(this.toolRegistry, context)
     }

@@ -95,7 +95,9 @@ export const AboutSettingsAboutContent: React.FC<AboutSettingsAboutContentProps>
         </View>
       </Pressable>
 
-      <Text style={{ fontSize: 13, lineHeight: 19, color: colors.textSecondary, textAlign: 'center' }}>
+      <Text
+        style={{ fontSize: 13, lineHeight: 19, color: colors.textSecondary, textAlign: 'center' }}
+      >
         {t(
           'about.contributors_hint',
           '白守受到社群小伙伴的支持，\n你可以直接点击这里查看代码贡献者！'

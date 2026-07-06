@@ -11,10 +11,7 @@ import {
   isInteractableChromeElement
 } from '../table/tableChromeHitTest'
 import { shouldBlockEditorTouchForTableSheet } from '../table/tableSheetInteraction'
-import {
-  closeNativeTableSheets,
-  isNativeTableSheetStale
-} from '../table/tableNativeSheet'
+import { closeNativeTableSheets, isNativeTableSheetStale } from '../table/tableNativeSheet'
 import {
   TABLE_CHROME_LONG_PRESS_MS,
   TABLE_CHROME_LONG_PRESS_MOVE_TOLERANCE_PX

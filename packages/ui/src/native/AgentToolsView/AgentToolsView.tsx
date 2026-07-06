@@ -1,6 +1,11 @@
 import { useTranslation } from 'react-i18next'
 import React, { useEffect, useMemo, useState } from 'react'
-import { normalizeToolManagementConfig, type EmojiToolConfig, AGENT_TOOL_CATEGORY_ORDER, AGENT_TOOL_UI_DEFS } from '@baishou/shared'
+import {
+  normalizeToolManagementConfig,
+  type EmojiToolConfig,
+  AGENT_TOOL_CATEGORY_ORDER,
+  AGENT_TOOL_UI_DEFS
+} from '@baishou/shared'
 import {
   View,
   Text,
@@ -34,7 +39,9 @@ export interface AgentToolsViewProps {
   onChange: (config: ToolManagementConfig) => void
   disableScroll?: boolean
   /** Mobile: pick and import emoji images via image picker */
-  onPickAndImportEmojis?: () => Promise<{ relativePath: string; originalName: string; error: string | null }[]>
+  onPickAndImportEmojis?: () => Promise<
+    { relativePath: string; originalName: string; error: string | null }[]
+  >
   /** Mobile: resolve a relativePath to a displayable URI */
   onResolveEmojiPath?: (relativePath: string) => Promise<string>
   /** Mobile: delete an emoji file */
@@ -390,7 +397,11 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
                       disabled={val <= (param.min ?? 1)}
                       onPress={() => setToolParam(tool.id, param.key, val - 1)}
                     >
-                      <Minus size={16} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                      <Minus
+                        size={16}
+                        color={colors.textSecondary}
+                        strokeWidth={DEFAULT_STROKE_WIDTH}
+                      />
                     </TouchableOpacity>
                     <TextInput
                       style={[
@@ -423,7 +434,11 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
                       disabled={val >= (param.max ?? 50)}
                       onPress={() => setToolParam(tool.id, param.key, val + 1)}
                     >
-                      <Plus size={16} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                      <Plus
+                        size={16}
+                        color={colors.textSecondary}
+                        strokeWidth={DEFAULT_STROKE_WIDTH}
+                      />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -486,10 +501,7 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
               }
             ]}
           >
-            <EmojiSettingsEntryRow
-              config={emojiConfig}
-              onPress={() => onOpenEmojiSettings?.()}
-            />
+            <EmojiSettingsEntryRow config={emojiConfig} onPress={() => onOpenEmojiSettings?.()} />
           </View>
         </View>
       </View>

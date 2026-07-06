@@ -127,9 +127,7 @@ describe('sanitizeSessionAggregateForDisk', () => {
       ]
     })
 
-    expect(partUpdates).toEqual([
-      { id: 'p1', data: { fileName: 'a.png', filePath: '/a.png' } }
-    ])
+    expect(partUpdates).toEqual([{ id: 'p1', data: { fileName: 'a.png', filePath: '/a.png' } }])
     expect(aggregate.messages?.[0]?.parts?.[0]?.data).toEqual({
       fileName: 'a.png',
       filePath: '/a.png'

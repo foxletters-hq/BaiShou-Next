@@ -33,9 +33,7 @@ export const RagMemoryRetrievalSection: React.FC<RagMemoryRetrievalSectionProps>
 
   const ragTopK = coerceNumber(config.ragTopK, 20)
   const ragSimilarityThreshold = coerceNumber(config.ragSimilarityThreshold, 0.4)
-  const similaritySliderValue = Math.round(
-    ragSimilarityThreshold * RAG_SIMILARITY_SLIDER_SCALE
-  )
+  const similaritySliderValue = Math.round(ragSimilarityThreshold * RAG_SIMILARITY_SLIDER_SCALE)
 
   return (
     <View>

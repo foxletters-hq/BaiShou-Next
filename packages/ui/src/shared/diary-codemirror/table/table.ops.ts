@@ -1,9 +1,6 @@
 import type { Text } from '@codemirror/state'
 import type { ParsedTable } from './table.model'
-import {
-  parseSeparatorAlignments,
-  serializeTable
-} from './table.model'
+import { parseSeparatorAlignments, serializeTable } from './table.model'
 import type { ColumnAlignment } from './tableGridModel'
 
 function cloneTableData(table: ParsedTable): { header: string[]; body: string[][] } {

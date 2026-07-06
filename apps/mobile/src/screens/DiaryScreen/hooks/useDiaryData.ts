@@ -3,7 +3,11 @@ import { useTranslation } from 'react-i18next'
 import { logger } from '@baishou/shared'
 import type { DiaryListFilter } from '@baishou/shared'
 import type { DiaryService } from '@baishou/core-mobile'
-import { getDiaryListCacheVersion, subscribeDiaryListCache, subscribeDiaryListSavedPatch } from '@baishou/shared/cache'
+import {
+  getDiaryListCacheVersion,
+  subscribeDiaryListCache,
+  subscribeDiaryListSavedPatch
+} from '@baishou/shared/cache'
 import { useNativeToast } from '@baishou/ui/native'
 import { shouldDiaryListLoadSilently } from '../diary-list-load.util'
 import { diaryListEntriesUnchanged } from '../diary-list-entries.util'
@@ -124,8 +128,12 @@ export function useDiaryData(
 ) {
   const { t } = useTranslation()
   const toast = useNativeToast()
-  const { ready = true, vaultRevision = 0, ecosystemResyncEpoch = 0, isScreenFocused = true } =
-    options
+  const {
+    ready = true,
+    vaultRevision = 0,
+    ecosystemResyncEpoch = 0,
+    isScreenFocused = true
+  } = options
   const [entries, setEntries] = useState<DiaryListEntryData[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(false)
