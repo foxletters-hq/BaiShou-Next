@@ -75,8 +75,6 @@ export const DiaryScreen: React.FC = () => {
   const lastListScrollLogAtRef = useRef(0)
   const isListFocusedRef = useRef(isListFocused)
   isListFocusedRef.current = isListFocused
-  const skipInitialFocusRefreshRef = useRef(true)
-  const skipNextFocusRefreshRef = useRef(false)
   const {
     isSyncing,
     isPlanning,
@@ -163,7 +161,6 @@ export const DiaryScreen: React.FC = () => {
 
   const openDiaryEditor = useCallback(
     (params: Record<string, string>) => {
-      skipNextFocusRefreshRef.current = true
       pendingEditorNavRef.current = true
       if (__DEV__) {
         console.log('[DiaryScreen] openDiaryEditor', {
@@ -238,25 +235,6 @@ export const DiaryScreen: React.FC = () => {
       openDiaryEditor({ id: String(id) })
     },
     [openDiaryEditor]
-  )
-
-  const diaryDataReady = Boolean(
-    dbReady && services?.diaryService && storageReady && !vaultSwitching
-  )
-
-  useFocusEffect(
-    useCallback(() => {
-      if (!diaryDataReady || isSyncing || !diaryListReady) return
-      if (skipInitialFocusRefreshRef.current) {
-        skipInitialFocusRefreshRef.current = false
-        return
-      }
-      if (skipNextFocusRefreshRef.current) {
-        skipNextFocusRefreshRef.current = false
-        return
-      }
-      void loadEntries({ silent: true })
-    }, [diaryDataReady, diaryListReady, isSyncing, loadEntries])
   )
 
   const handleRequestStoragePermission = useCallback(async () => {
@@ -343,7 +321,8 @@ export const DiaryScreen: React.FC = () => {
 
   const handleAddNew = () => {
     void ensureStorageThen(() => {
-      openDiaryEditor({ new: '1' })
+      // 新建日记：仅作默认日期展示，不加载已有正文（与「编辑今天」不同）
+      openDiaryEditor({ new: '1', date: formatTodayDateStr() })
     })
   }
 

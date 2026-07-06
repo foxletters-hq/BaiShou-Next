@@ -250,6 +250,11 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
     [onListScroll]
   )
 
+  const listPreviewSignature = useMemo(
+    () => entries.map((entry) => `${entry.id}:${entry.preview}:${entry.updatedAt ?? ''}`).join('|'),
+    [entries]
+  )
+
   const listHeader = useMemo(
     () => (
       <>
@@ -409,7 +414,7 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
       columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : undefined}
       ListHeaderComponent={listHeader}
       ListFooterComponent={listFooter}
-      extraData={`${currentPage}-${selectedMonth?.getTime() ?? 'all'}-${totalCount}`}
+      extraData={listPreviewSignature}
       initialNumToRender={8}
       maxToRenderPerBatch={6}
       windowSize={7}

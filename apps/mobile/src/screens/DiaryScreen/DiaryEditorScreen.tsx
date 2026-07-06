@@ -13,6 +13,7 @@ import {
 } from '@baishou/ui/native'
 import { mergeDiaryTags } from '@baishou/ai'
 import {
+  buildDiaryListSavedPatch,
   joinDiaryContentWithAppendBlock,
   resolveDiaryAppendBlock,
   resolveDiaryNewEntryContent,
@@ -21,9 +22,12 @@ import {
   normalizeDiaryTagColorRegistry,
   pickEntryTagColors,
   syncDiaryTagColorRegistry,
+  formatLocalDate,
+  parseDateStr,
   type DiaryTagColorRegistry,
   type DiaryTemplateConfig
 } from '@baishou/shared'
+import { notifyDiaryListAfterSave } from '@baishou/shared/cache'
 import { useBaishou } from '../../providers/BaishouProvider'
 import {
   getDiaryInsertMarkdown,
@@ -51,10 +55,11 @@ export const DiaryEditorScreen: React.FC = () => {
   const { colors } = useNativeTheme()
   const dialog = useDialog()
   const toast = useNativeToast()
-  const { id, date, append } = useLocalSearchParams<{
+  const { id, date, append, new: newParam } = useLocalSearchParams<{
     id?: string
     date?: string
     append?: string
+    new?: string
   }>()
   const router = useRouter()
   const navigation = useNavigation()
@@ -65,7 +70,10 @@ export const DiaryEditorScreen: React.FC = () => {
 
   const [content, setContent] = useState('')
   const [tags, setTags] = useState<string[]>([])
-  const [selectedDate, setSelectedDate] = useState(new Date())
+  const [selectedDate, setSelectedDate] = useState(() => parseDateStr(formatLocalDate(new Date())))
+  const selectedDateRef = useRef(selectedDate)
+  const loadedDateKeyRef = useRef<string | null>(null)
+  const existingIdRef = useRef<number | null>(null)
   const [weather, setWeather] = useState<string | null>(null)
   const [mood, setMood] = useState<string | null>(null)
   const [isFavorite, setIsFavorite] = useState(false)
@@ -99,6 +107,45 @@ export const DiaryEditorScreen: React.FC = () => {
   }, [content, handleTtsReadAloud])
 
   const isAppendMode = append === '1'
+  const isNewEntryMode = newParam === '1'
+  const isNewEntryModeRef = useRef(isNewEntryMode)
+
+  useEffect(() => {
+    isNewEntryModeRef.current = isNewEntryMode
+  }, [isNewEntryMode])
+
+  useEffect(() => {
+    selectedDateRef.current = selectedDate
+  }, [selectedDate])
+
+  useEffect(() => {
+    existingIdRef.current = existingId
+  }, [existingId])
+
+  const normalizeDiaryCalendarDate = useCallback((date: Date) => {
+    return parseDateStr(formatLocalDate(date))
+  }, [])
+
+  const handleDateChange = useCallback(
+    (date: Date) => {
+      const normalized = normalizeDiaryCalendarDate(date)
+      const prevKey = formatLocalDate(selectedDateRef.current)
+      const nextKey = formatLocalDate(normalized)
+      if (prevKey === nextKey) return
+
+      selectedDateRef.current = normalized
+      setSelectedDate(normalized)
+      metadataDirtyRef.current = true
+      setIsDirty(true)
+      isDirtyRef.current = true
+
+      if (loadedDateKeyRef.current && loadedDateKeyRef.current !== nextKey && existingIdRef.current !== null) {
+        existingIdRef.current = null
+        setExistingId(null)
+      }
+    },
+    [normalizeDiaryCalendarDate]
+  )
 
   const parseDiaryTags = (raw: string | string[] | null | undefined): string[] => {
     if (!raw) return []
@@ -107,6 +154,35 @@ export const DiaryEditorScreen: React.FC = () => {
       .split(',')
       .map((t) => t.trim())
       .filter(Boolean)
+  }
+
+  const initBlankDiaryEntry = (
+    templateConfig: DiaryTemplateConfig,
+    now: Date,
+    targetDate: Date
+  ) => {
+    loadedDateKeyRef.current = formatLocalDate(targetDate)
+    originalTagsRef.current = []
+    setTagColorRegistry({})
+    const newContent = resolveDiaryNewEntryContent(templateConfig, now)
+    setContent(newContent)
+    savedEditorSnapshotRef.current = {
+      body: parseDiaryEditorContent(newContent).body,
+      tags: ''
+    }
+    metadataDirtyRef.current = false
+    setIsDirty(false)
+    isDirtyRef.current = false
+    selectedDateRef.current = targetDate
+    setSelectedDate(targetDate)
+    setExistingId(null)
+    existingIdRef.current = null
+    setWeather(null)
+    setMood(null)
+    setIsFavorite(false)
+    setTags([])
+    previousTagsRef.current = []
+    setOriginalContent('')
   }
 
   const applyLoadedDiary = (
@@ -128,8 +204,12 @@ export const DiaryEditorScreen: React.FC = () => {
     setTagColorRegistry(entryTagColors)
     previousTagsRef.current = parsedTags
     originalTagsRef.current = parsedTags
+    const diaryDate = normalizeDiaryCalendarDate(diary.date)
+    loadedDateKeyRef.current = formatLocalDate(diaryDate)
     setExistingId(diary.id ?? null)
-    setSelectedDate(diary.date)
+    existingIdRef.current = diary.id ?? null
+    selectedDateRef.current = diaryDate
+    setSelectedDate(diaryDate)
     setWeather(diary.weather || null)
     setMood(diary.mood || null)
     setIsFavorite(diary.isFavorite || false)
@@ -191,36 +271,24 @@ export const DiaryEditorScreen: React.FC = () => {
           if (diary) {
             applyLoadedDiary(diary, templateConfig, now)
           }
+        } else if (isNewEntryMode) {
+          const targetDate = date
+            ? normalizeDiaryCalendarDate(new Date(date))
+            : normalizeDiaryCalendarDate(now)
+          initBlankDiaryEntry(templateConfig, now, targetDate)
         } else if (date) {
           const existing = await services.diaryService.findByDate(new Date(date))
           if (existing) {
             applyLoadedDiary(existing, templateConfig, now)
           } else {
-            originalTagsRef.current = []
-            setTagColorRegistry({})
-            const newContent = resolveDiaryNewEntryContent(templateConfig, now)
-            setContent(newContent)
-            savedEditorSnapshotRef.current = {
-              body: parseDiaryEditorContent(newContent).body,
-              tags: ''
-            }
-            metadataDirtyRef.current = false
-            setIsDirty(false)
-            isDirtyRef.current = false
-            setSelectedDate(new Date(date))
+            initBlankDiaryEntry(
+              templateConfig,
+              now,
+              normalizeDiaryCalendarDate(new Date(date))
+            )
           }
         } else {
-          originalTagsRef.current = []
-          setTagColorRegistry({})
-          const newContent = resolveDiaryNewEntryContent(templateConfig, now)
-          setContent(newContent)
-          savedEditorSnapshotRef.current = {
-            body: parseDiaryEditorContent(newContent).body,
-            tags: ''
-          }
-          metadataDirtyRef.current = false
-          setIsDirty(false)
-          isDirtyRef.current = false
+          initBlankDiaryEntry(templateConfig, now, normalizeDiaryCalendarDate(now))
         }
       } catch (e) {
         console.error('Failed to load diary:', e)
@@ -233,7 +301,7 @@ export const DiaryEditorScreen: React.FC = () => {
     return () => {
       cancelled = true
     }
-  }, [id, date, append, dbReady, services, isAppendMode])
+  }, [id, date, append, newParam, dbReady, services, isAppendMode, isNewEntryMode])
 
   const handleSave = async () => {
     if (!services) return
@@ -245,22 +313,31 @@ export const DiaryEditorScreen: React.FC = () => {
 
     try {
       await assertExternalStorageReady()
+      const targetDate = normalizeDiaryCalendarDate(selectedDateRef.current)
       const { tags: parsedTags, body } = parseDiaryEditorContent(content)
       const mergedTags = isAppendMode
         ? mergeDiaryTags(originalTagsRef.current.join(', '), parsedTags.join(','))
         : parsedTags.join(',')
       const entryTagColors = pickEntryTagColors(parsedTags, tagColorRegistry)
+      const saveId =
+        !isNewEntryModeRef.current &&
+        existingIdRef.current !== null &&
+        loadedDateKeyRef.current === formatLocalDate(targetDate)
+          ? existingIdRef.current
+          : null
       const input = {
         content: body,
         tags: mergedTags,
         tagColors: Object.keys(entryTagColors).length > 0 ? entryTagColors : undefined,
-        date: selectedDate,
+        date: targetDate,
         weather: weather || undefined,
         mood: mood || undefined,
         isFavorite
       }
 
-      await services.diaryService.save(existingId, input)
+      const saved = await services.diaryService.save(saveId, input)
+      const patch = buildDiaryListSavedPatch(saved)
+      if (patch) notifyDiaryListAfterSave(patch)
       savedEditorSnapshotRef.current = {
         body: parseDiaryEditorContent(content).body,
         tags: parsedTags.join(',')
@@ -470,7 +547,7 @@ export const DiaryEditorScreen: React.FC = () => {
             onContentChange={handleContentChange}
             onTagsChange={handleTagsChange}
             tagColorRegistry={tagColorRegistry}
-            onDateChange={setSelectedDate}
+            onDateChange={handleDateChange}
             onWeatherChange={handleWeatherChange}
             onMoodChange={handleMoodChange}
             onFavoriteChange={handleFavoriteChange}

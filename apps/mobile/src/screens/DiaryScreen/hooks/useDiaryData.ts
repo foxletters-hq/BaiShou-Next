@@ -3,10 +3,11 @@ import { useTranslation } from 'react-i18next'
 import { logger } from '@baishou/shared'
 import type { DiaryListFilter } from '@baishou/shared'
 import type { DiaryService } from '@baishou/core-mobile'
-import { getDiaryListCacheVersion, subscribeDiaryListCache } from '@baishou/shared/cache'
+import { getDiaryListCacheVersion, subscribeDiaryListCache, subscribeDiaryListSavedPatch } from '@baishou/shared/cache'
 import { useNativeToast } from '@baishou/ui/native'
 import { shouldDiaryListLoadSilently } from '../diary-list-load.util'
 import { diaryListEntriesUnchanged } from '../diary-list-entries.util'
+import { applyDiaryListSavedPatch } from '../diary-list-saved-patch.util'
 
 export interface DiaryPageQuery {
   selectedMonth: Date | null
@@ -139,6 +140,15 @@ export function useDiaryData(
     subscribeDiaryListCache,
     getDiaryListCacheVersion
   )
+
+  useEffect(() => {
+    return subscribeDiaryListSavedPatch((patch) => {
+      setEntries((prev) => {
+        const next = applyDiaryListSavedPatch(prev, patch)
+        return next ?? prev
+      })
+    })
+  }, [])
 
   const rawSearchTerm = query.searchQuery.trim()
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(rawSearchTerm)
@@ -315,6 +325,7 @@ export function useDiaryData(
         }
       } finally {
         if (requestId === loadRequestIdRef.current) {
+          lastLoadedCacheVersionRef.current = diaryListCacheVersion
           setLoading(false)
           if (__DEV__) {
             console.log('[useDiaryData] loadEntries:done', {
@@ -329,18 +340,11 @@ export function useDiaryData(
   )
 
   const prevScreenFocusedRef = useRef(isScreenFocused)
-  const vaultRevisionAtBlurRef = useRef(vaultRevision)
-  const syncEpochAtBlurRef = useRef(ecosystemResyncEpoch)
-  const listCacheVersionAtBlurRef = useRef(diaryListCacheVersion)
+  const lastLoadedCacheVersionRef = useRef(diaryListCacheVersion)
 
   useEffect(() => {
-    if (!isScreenFocused) {
-      vaultRevisionAtBlurRef.current = vaultRevision
-      syncEpochAtBlurRef.current = ecosystemResyncEpoch
-      listCacheVersionAtBlurRef.current = diaryListCacheVersion
-    }
-    const regainingFocus =
-      isScreenFocused && !prevScreenFocusedRef.current && entriesRef.current.length > 0
+    const wasFocused = prevScreenFocusedRef.current
+    const gainingFocus = isScreenFocused && !wasFocused
     prevScreenFocusedRef.current = isScreenFocused
 
     if (!ready || !diaryService) {
@@ -351,45 +355,47 @@ export function useDiaryData(
       setEntries([])
       setTotalCount(0)
       setLoading(false)
+      lastLoadedCacheVersionRef.current = diaryListCacheVersion
       return
     }
-    if (!isScreenFocused && entriesRef.current.length > 0) {
+
+    if (!isScreenFocused) {
       if (__DEV__) {
-        console.log('[useDiaryData] effect:skip-unfocused', {
-          isScreenFocused,
+        console.log('[useDiaryData] effect:defer-unfocused', {
           cachedCount: entriesRef.current.length,
-          vaultRevision,
-          ecosystemResyncEpoch,
-          diaryListCacheVersion
+          diaryListCacheVersion,
+          lastLoadedCacheVersion: lastLoadedCacheVersionRef.current
         })
       }
       return
     }
-    if (
-      regainingFocus &&
-      vaultRevision === vaultRevisionAtBlurRef.current &&
-      ecosystemResyncEpoch === syncEpochAtBlurRef.current &&
-      diaryListCacheVersion === listCacheVersionAtBlurRef.current
-    ) {
+
+    const cacheStale = diaryListCacheVersion !== lastLoadedCacheVersionRef.current
+    const browseChanged = browseChangedRef.current
+    const needsInitialLoad = entriesRef.current.length === 0
+
+    if (gainingFocus && !cacheStale && !browseChanged && !needsInitialLoad) {
       if (__DEV__) {
         console.log('[useDiaryData] effect:skip-regain-focus', {
-          cachedCount: entriesRef.current.length,
-          vaultRevision
+          cachedCount: entriesRef.current.length
         })
       }
       return
     }
+
     if (__DEV__) {
       console.log('[useDiaryData] effect:load', {
         isScreenFocused,
+        gainingFocus,
+        cacheStale,
+        browseChanged,
+        needsInitialLoad,
         cachedCount: entriesRef.current.length,
-        vaultRevision,
-        ecosystemResyncEpoch,
         diaryListCacheVersion,
         browseIdentity
       })
     }
-    const browseChanged = browseChangedRef.current
+
     void loadEntries({
       silent: shouldDiaryListLoadSilently(entriesRef.current.length > 0, browseChanged)
     })
