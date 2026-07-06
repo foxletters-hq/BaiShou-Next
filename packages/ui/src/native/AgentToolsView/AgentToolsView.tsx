@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   normalizeToolManagementConfig,
   type EmojiToolConfig,
@@ -14,9 +14,9 @@ import {
   TouchableOpacity,
   TextInput,
   Platform,
-  Pressable
+  Pressable,
+  Animated
 } from 'react-native'
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import { BadgeCheck, ListOrdered, Minus, Plus, Smile, Store } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
 import { Switch } from '../Switch'
@@ -146,21 +146,23 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
 
   const [showCommunity, setShowCommunity] = useState(false)
   const [toolTabsWidth, setToolTabsWidth] = useState(0)
-  const toolTabSlide = useSharedValue(0)
+  const toolTabSlide = useRef(new Animated.Value(0)).current
 
   const toolTabWidth =
     toolTabsWidth > 0 ? (toolTabsWidth - TOOL_TAB_PADDING * 2 - TOOL_TAB_GAP) / 2 : 0
 
   useEffect(() => {
-    toolTabSlide.value = withTiming(showCommunity ? 1 : 0, { duration: 280 })
+    Animated.timing(toolTabSlide, {
+      toValue: showCommunity ? 1 : 0,
+      duration: 280,
+      useNativeDriver: true
+    }).start()
   }, [showCommunity, toolTabSlide])
 
-  const toolTabIndicatorStyle = useAnimatedStyle(
-    () => ({
-      transform: [{ translateX: toolTabSlide.value * (toolTabWidth + TOOL_TAB_GAP) }]
-    }),
-    [toolTabWidth]
-  )
+  const toolTabTranslateX = toolTabSlide.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, toolTabWidth > 0 ? toolTabWidth + TOOL_TAB_GAP : 0]
+  })
 
   const normalizedConfig = useMemo(() => normalizeToolManagementConfig(config), [config])
   const allTools = useMemo(() => getAgentTools(t), [t])
@@ -223,6 +225,7 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
                 width: toolTabWidth,
                 backgroundColor: colors.bgSurface,
                 borderColor: colors.borderMuted,
+                transform: [{ translateX: toolTabTranslateX }],
                 ...Platform.select({
                   ios: {
                     shadowColor: '#000',
@@ -232,8 +235,7 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
                   },
                   default: { elevation: 1 }
                 })
-              },
-              toolTabIndicatorStyle
+              }
             ]}
           />
         ) : null}
@@ -544,7 +546,7 @@ const styles = StyleSheet.create({
     paddingBottom: 32
   },
   nonScrollContainer: {
-    flex: 1
+    width: '100%'
   },
   subtitle: {
     fontSize: 14,
