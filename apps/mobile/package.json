@@ -10,6 +10,7 @@
     "predev:clear": "pnpm run rebuild:dev-artifacts",
     "dev:clear": "node ./scripts/run-android.mjs",
     "install:apk": "node ./scripts/install-apk.mjs",
+    "install:release": "node ./scripts/install-release-apk.mjs",
     "connect": "node ./scripts/connect-device.mjs",
     "fix": "node ../../scripts/run-with-hint.mjs \"对齐本目录 Expo SDK 55 依赖版本。\" npx expo install --fix",
     "export:android": "pnpm run build:diary-editor && expo export --platform android",
