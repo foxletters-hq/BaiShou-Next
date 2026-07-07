@@ -14,12 +14,7 @@ import {
 import { mergeDiaryTags } from '@baishou/ai'
 import {
   buildDiaryListSavedPatch,
-  joinDiaryContentWithAppendBlock,
-  resolveDiaryAppendBlock,
-  resolveDiaryNewEntryContent,
-  composeDiaryEditorContent,
   parseDiaryEditorContent,
-  normalizeDiaryTagColorRegistry,
   pickEntryTagColors,
   syncDiaryTagColorRegistry,
   formatLocalDate,
@@ -29,24 +24,18 @@ import {
 } from '@baishou/shared'
 import { notifyDiaryListAfterSave } from '@baishou/shared/cache'
 import { useBaishou } from '../../providers/BaishouProvider'
-import {
-  getDiaryInsertMarkdown,
-  pickDiaryImagesFromLibrary,
-  uploadDiaryAttachments
-} from '../../services/mobile-diary-attachment.service'
 import { useStoragePermission } from '../../hooks/useStoragePermission'
 import { useAttachmentImageLoader } from '../../hooks/useAttachmentImageLoader'
 import { useDiaryEditorWebViewSource } from '../../hooks/useDiaryEditorWebViewSource'
 import { useMarkdownToolbarOrder } from '../../hooks/useMarkdownToolbarOrder'
 import { useTTS } from '../../hooks/useTTS'
-import { resolveDiaryAttachmentUrlForWebView } from '../../services/diary-cm-attachment-url.service'
-import { extractDiaryAttachmentRefs } from '../../utils/diary-attachment-prefetch.util'
-import { clearDiaryAttachmentAbsPathCache } from '../../utils/mobile-diary-attachment-resolver'
 import { FullFileAccessGate } from '../../components/FullFileAccessGate'
 import {
   assertExternalStorageReady,
   isExternalStorageRequiredError
 } from '../../services/storage-permission.service'
+import { createDiaryEditorLifecycleHandlers } from './diary-editor-lifecycle.helpers'
+import { useDiaryEditorAttachments, useDiaryEditorExitGuard } from './useDiaryEditorAttachments'
 
 const DIARY_TTS_PLAYBACK_ID = 'diary-editor'
 
@@ -90,7 +79,6 @@ export const DiaryEditorScreen: React.FC = () => {
   const metadataDirtyRef = useRef(false)
   const savedEditorSnapshotRef = useRef<{ body: string; tags: string }>({ body: '', tags: '' })
   const originalTagsRef = useRef<string[]>([])
-  const [pickingImages, setPickingImages] = useState(false)
   const editorWebViewSource = useDiaryEditorWebViewSource()
   const [tagColorRegistry, setTagColorRegistry] = useState<DiaryTagColorRegistry>({})
   const previousTagsRef = useRef<string[]>([])
@@ -156,112 +144,34 @@ export const DiaryEditorScreen: React.FC = () => {
     [normalizeDiaryCalendarDate]
   )
 
-  const parseDiaryTags = (raw: string | string[] | null | undefined): string[] => {
-    if (!raw) return []
-    if (Array.isArray(raw)) return raw
-    return raw
-      .split(',')
-      .map((t) => t.trim())
-      .filter(Boolean)
-  }
-
-  const initBlankDiaryEntry = (
-    templateConfig: DiaryTemplateConfig,
-    now: Date,
-    targetDate: Date
-  ) => {
-    loadedDateKeyRef.current = formatLocalDate(targetDate)
-    originalTagsRef.current = []
-    setTagColorRegistry({})
-    const newContent = resolveDiaryNewEntryContent(templateConfig, now)
-    setContent(newContent)
-    savedEditorSnapshotRef.current = {
-      body: parseDiaryEditorContent(newContent).body,
-      tags: ''
-    }
-    metadataDirtyRef.current = false
-    setIsDirty(false)
-    isDirtyRef.current = false
-    selectedDateRef.current = targetDate
-    setSelectedDate(targetDate)
-    setExistingId(null)
-    existingIdRef.current = null
-    setWeather(null)
-    setMood(null)
-    setIsFavorite(false)
-    setTags([])
-    previousTagsRef.current = []
-    setOriginalContent('')
-  }
-
-  const applyLoadedDiary = (
-    diary: {
-      id?: number | null
-      content: string
-      tags?: string | string[] | null
-      tagColors?: string | Record<string, number> | null
-      date: Date
-      weather?: string | null
-      mood?: string | null
-      isFavorite?: boolean
+  const { initBlankDiaryEntry, applyLoadedDiary } = createDiaryEditorLifecycleHandlers({
+    isAppendMode,
+    normalizeDiaryCalendarDate,
+    state: {
+      setContent,
+      setTags,
+      setSelectedDate,
+      setExistingId,
+      setWeather,
+      setMood,
+      setIsFavorite,
+      setTagColorRegistry,
+      setOriginalContent,
+      setIsDirty
     },
-    templateConfig: DiaryTemplateConfig,
-    now: Date
-  ) => {
-    const parsedTags = parseDiaryTags(diary.tags)
-    const entryTagColors = normalizeDiaryTagColorRegistry(diary.tagColors)
-    setTagColorRegistry(entryTagColors)
-    previousTagsRef.current = parsedTags
-    originalTagsRef.current = parsedTags
-    const diaryDate = normalizeDiaryCalendarDate(diary.date)
-    loadedDateKeyRef.current = formatLocalDate(diaryDate)
-    setExistingId(diary.id ?? null)
-    existingIdRef.current = diary.id ?? null
-    selectedDateRef.current = diaryDate
-    setSelectedDate(diaryDate)
-    setWeather(diary.weather || null)
-    setMood(diary.mood || null)
-    setIsFavorite(diary.isFavorite || false)
-
-    if (isAppendMode) {
-      const safeExisting = isLikelyEditorBundleLeak(diary.content || '') ? '' : diary.content || ''
-      const timeMark = resolveDiaryAppendBlock(templateConfig, now)
-      const composed = joinDiaryContentWithAppendBlock(safeExisting, timeMark)
-      setContent(composed)
-      setOriginalContent(safeExisting.trimEnd())
-      savedEditorSnapshotRef.current = {
-        body: parseDiaryEditorContent(composed).body,
-        tags: ''
-      }
-      metadataDirtyRef.current = false
-      setIsDirty(false)
-      isDirtyRef.current = false
-      setTags([])
-      previousTagsRef.current = []
-      setTagColorRegistry({})
-    } else {
-      const safeContent = isLikelyEditorBundleLeak(diary.content) ? '' : diary.content
-      if (safeContent !== diary.content) {
-        toast.showError(
-          t('diary.content_corrupted_hint', '日记正文异常，已阻止加载损坏内容，请从备份恢复')
-        )
-      }
-      const composed = composeDiaryEditorContent(safeContent, parsedTags)
-      const { tags: editorTags } = parseDiaryEditorContent(composed)
-      setContent(composed)
-      setOriginalContent(safeContent)
-      savedEditorSnapshotRef.current = {
-        body: parseDiaryEditorContent(composed).body,
-        tags: editorTags.join(',')
-      }
-      metadataDirtyRef.current = false
-      setIsDirty(false)
-      isDirtyRef.current = false
-      setTags(editorTags)
-      previousTagsRef.current = editorTags
-      originalTagsRef.current = editorTags.length > 0 ? editorTags : parsedTags
-    }
-  }
+    refs: {
+      selectedDateRef,
+      loadedDateKeyRef,
+      existingIdRef,
+      isDirtyRef,
+      metadataDirtyRef,
+      savedEditorSnapshotRef,
+      originalTagsRef,
+      previousTagsRef
+    },
+    t,
+    toast
+  })
 
   useEffect(() => {
     if (!dbReady || !services) return
@@ -306,7 +216,19 @@ export const DiaryEditorScreen: React.FC = () => {
     return () => {
       cancelled = true
     }
-  }, [id, date, append, newParam, dbReady, services, isAppendMode, isNewEntryMode])
+  }, [
+    id,
+    date,
+    append,
+    newParam,
+    dbReady,
+    services,
+    isAppendMode,
+    isNewEntryMode,
+    normalizeDiaryCalendarDate,
+    applyLoadedDiary,
+    initBlankDiaryEntry
+  ])
 
   const handleSave = async () => {
     if (!services) return
@@ -357,7 +279,9 @@ export const DiaryEditorScreen: React.FC = () => {
       if (
         isExternalStorageRequiredError(e) ||
         msg.includes('expo-file-system') ||
-        msg.includes('原生存储')
+        msg.includes(
+          t('auto.apps.mobile.src.screens.DiaryScreen.DiaryEditorScreen.L360', '原生存储')
+        )
       ) {
         const openSettings = await dialog.confirm(
           msg.includes('pnpm dev:mobile:clear') ? msg : t('storage.all_files_access_settings_hint'),
@@ -419,118 +343,25 @@ export const DiaryEditorScreen: React.FC = () => {
     isDirtyRef.current = true
   }
 
-  const attachmentCacheRef = useRef<Record<string, string>>({})
   const { loadImageUri } = useAttachmentImageLoader(services?.fileSystem)
+  const { pickingImages, resolveAttachmentUrl, handlePickImages } = useDiaryEditorAttachments({
+    services,
+    selectedDate,
+    content,
+    loadImageUri,
+    setIsDirty
+  })
 
-  useEffect(() => {
-    attachmentCacheRef.current = {}
-    clearDiaryAttachmentAbsPathCache()
-  }, [selectedDate])
-
-  const resolveAttachmentUrl = useCallback(
-    async (src: string): Promise<string | null> => {
-      if (!src.startsWith('attachment/')) return src
-      const cached = attachmentCacheRef.current[src]
-      if (cached) return cached
-      if (!services?.pathService || !services?.fileSystem) return null
-      const url = await resolveDiaryAttachmentUrlForWebView(
-        services.pathService,
-        services.fileSystem,
-        selectedDate,
-        src,
-        (absPath) => loadImageUri(absPath, 'editor')
-      )
-      if (url) {
-        attachmentCacheRef.current = { ...attachmentCacheRef.current, [src]: url }
-      }
-      return url
-    },
-    [loadImageUri, selectedDate, services?.pathService, services?.fileSystem]
-  )
-
-  useEffect(() => {
-    if (!content || !services?.pathService || !services?.fileSystem) return
-    const refs = extractDiaryAttachmentRefs(content)
-    if (!refs.length) return
-
-    let cancelled = false
-    void Promise.all(
-      refs.map(async (src) => {
-        if (cancelled) return
-        await resolveAttachmentUrl(src)
-      })
-    )
-    return () => {
-      cancelled = true
-    }
-  }, [content, resolveAttachmentUrl, services?.fileSystem, services?.pathService])
-
-  const handlePickImages = useCallback(async (): Promise<string[]> => {
-    if (!services?.pathService) return []
-    setPickingImages(true)
-    try {
-      const assets = await pickDiaryImagesFromLibrary()
-      if (!assets?.length) return []
-
-      const results = await uploadDiaryAttachments(
-        services.pathService,
-        services.fileSystem,
-        selectedDate,
-        assets
-      )
-      const markdowns = results
-        .filter((r) => r.success && r.fileName)
-        .map((r) => getDiaryInsertMarkdown(r.fileName!))
-
-      if (markdowns.length) setIsDirty(true)
-      return markdowns
-    } catch (e) {
-      console.error('Failed to upload diary images:', e)
-      return []
-    } finally {
-      setPickingImages(false)
-    }
-  }, [services?.pathService, selectedDate])
-
-  const handleBack = async () => {
-    if (isDirty) {
-      const confirmed = await dialog.confirm(t('diary.exit_confirmation_hint'), {
-        confirmText: t('diary.exit_without_saving_confirm'),
-        destructive: true
-      })
-      if (confirmed) {
-        setIsDirty(false)
-        isDirtyRef.current = false
-        dismissEditorKeyboard()
-        router.back()
-      }
-    } else {
-      dismissEditorKeyboard()
-      router.back()
-    }
-  }
-
-  useEffect(() => {
-    const unsub = navigation.addListener('beforeRemove', (e) => {
-      dismissEditorKeyboard()
-      if (!isDirtyRef.current) return
-
-      e.preventDefault()
-      void (async () => {
-        const confirmed = await dialog.confirm(t('diary.exit_confirmation_hint'), {
-          confirmText: t('diary.exit_without_saving_confirm'),
-          destructive: true
-        })
-        if (confirmed) {
-          setIsDirty(false)
-          isDirtyRef.current = false
-          dismissEditorKeyboard()
-          router.back()
-        }
-      })()
-    })
-    return unsub
-  }, [navigation, dialog, t, router, dismissEditorKeyboard])
+  const { handleBack } = useDiaryEditorExitGuard({
+    navigation,
+    dialog,
+    router,
+    t,
+    isDirty,
+    isDirtyRef,
+    setIsDirty,
+    dismissEditorKeyboard
+  })
 
   return (
     <ScreenSafeArea preset="screen" style={{ backgroundColor: colors.bgSurface }}>

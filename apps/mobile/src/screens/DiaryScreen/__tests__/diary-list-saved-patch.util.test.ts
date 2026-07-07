@@ -13,7 +13,10 @@ describe('applyDiaryListSavedPatch', () => {
         tags: []
       }
     ]
-    const next = applyDiaryListSavedPatch(entries, { id: 1, preview: '**新预览**' })
+    const next = applyDiaryListSavedPatch(entries, {
+      id: 1,
+      preview: '**新预览**'
+    })
     expect(next?.[0]?.preview).toBe('**新预览**')
   })
 
@@ -27,6 +30,11 @@ describe('applyDiaryListSavedPatch', () => {
         tags: []
       }
     ]
-    expect(applyDiaryListSavedPatch(entries, { id: 99, preview: '新' })).toBeNull()
+    expect(
+      applyDiaryListSavedPatch(entries, {
+        id: 99,
+        preview: '新'
+      })
+    ).toBeNull()
   })
 })

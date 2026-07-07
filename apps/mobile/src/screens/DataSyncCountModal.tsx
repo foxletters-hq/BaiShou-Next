@@ -52,7 +52,7 @@ export const DataSyncCountModal: React.FC<DataSyncCountModalProps> = ({
       val === '' ||
       val === noLimitLabel ||
       val === t('data_sync.no_limit', '不限制数量') ||
-      val === '不限制' ||
+      val === t('auto.apps.mobile.src.screens.DataSyncCountModal.L55', '不限制') ||
       val === '∞' ||
       val === '-1'
     ) {

@@ -98,6 +98,7 @@ const DraggableProviderRow = React.memo(function DraggableProviderRow({
   onLabel: string
   offLabel: string
 }) {
+  const { t } = useTranslation()
   const translateY = useSharedValue(0)
   const isDragging = useSharedValue(false)
 
@@ -199,7 +200,12 @@ const DraggableProviderRow = React.memo(function DraggableProviderRow({
         </View>
         {!item.isSystem && (
           <View style={[styles.customBadge, { borderColor: colors.borderSubtle }]}>
-            <Text style={{ fontSize: 9, color: colors.textTertiary }}>自定义</Text>
+            <Text style={{ fontSize: 9, color: colors.textTertiary }}>
+              {t(
+                'auto.apps.mobile.src.screens.SettingsScreen.components.ProviderSortableList.L202',
+                '自定义'
+              )}
+            </Text>
           </View>
         )}
         <ChevronRight size={22} color={colors.textTertiary} strokeWidth={2} />

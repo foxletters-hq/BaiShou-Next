@@ -185,7 +185,7 @@ export function useDiaryData(
   const browseMonthKey = effectiveQuery.selectedMonth?.getTime() ?? 0
   const searchFilterKey = useMemo(
     () => searchFilterCacheKey(buildSearchFilter(effectiveQuery)),
-    [effectiveQuery.filterFavorite, effectiveQuery.filterWeathers, effectiveQuery.filterMoods]
+    [effectiveQuery]
   )
 
   const browseIdentity = useMemo(
@@ -344,11 +344,13 @@ export function useDiaryData(
         }
       }
     },
-    [diaryService, t, toast, isScreenFocused, browseIdentity]
+    [diaryService, t, toast, isScreenFocused, browseIdentity, diaryListCacheVersion]
   )
 
   const prevScreenFocusedRef = useRef(isScreenFocused)
   const lastLoadedCacheVersionRef = useRef(diaryListCacheVersion)
+  const listFilterDep = debouncedSearchTerm ? 0 : listFilter
+  const countFilterDep = debouncedSearchTerm ? 0 : countFilter
 
   useEffect(() => {
     const wasFocused = prevScreenFocusedRef.current
@@ -416,8 +418,8 @@ export function useDiaryData(
     ecosystemResyncEpoch,
     diaryListCacheVersion,
     isScreenFocused,
-    debouncedSearchTerm ? 0 : listFilter,
-    debouncedSearchTerm ? 0 : countFilter
+    listFilterDep,
+    countFilterDep
   ])
 
   const isSearchPending = rawSearchTerm !== debouncedSearchTerm

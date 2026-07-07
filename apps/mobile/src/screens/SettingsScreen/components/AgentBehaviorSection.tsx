@@ -34,7 +34,7 @@ export const AgentBehaviorSection: React.FC = () => {
       }
     }
     loadConfig()
-  }, [dbReady, services])
+  }, [dbReady, services, t])
 
   const handleSave = useCallback(async () => {
     if (!services || !dbReady) return

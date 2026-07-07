@@ -23,7 +23,7 @@ export const McpSettingsSection: React.FC = () => {
       if (!mcp.loading) {
         void mcp.reloadTools()
       }
-    }, [mcp.loading, mcp.reloadTools])
+    }, [mcp])
   )
 
   const handleCopyEndpoint = async () => {

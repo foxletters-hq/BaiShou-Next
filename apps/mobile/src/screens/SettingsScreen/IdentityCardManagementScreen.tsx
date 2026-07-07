@@ -57,11 +57,11 @@ export const IdentityCardManagementScreen: React.FC = () => {
     } catch (e) {
       console.warn('Load personas failed', e)
     }
-  }, [dbReady, services, vaultRevision])
+  }, [dbReady, services])
 
   useEffect(() => {
     void loadPersonas()
-  }, [loadPersonas])
+  }, [loadPersonas, vaultRevision])
 
   useEffect(() => {
     setCurrentPage(1)

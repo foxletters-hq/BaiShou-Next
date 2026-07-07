@@ -120,14 +120,14 @@ export const AssistantManagementScreen: React.FC = () => {
         if (!silent) setInitialLoading(false)
       }
     },
-    [dbReady, services, vaultRevision]
+    [dbReady, services]
   )
 
   const isBootstrapping = !dbReady || !services
 
   useEffect(() => {
     void loadAssistants()
-  }, [loadAssistants])
+  }, [loadAssistants, vaultRevision])
 
   useThrottledFocusRefresh(() => {
     void loadAssistants({ silent: true })
@@ -168,42 +168,51 @@ export const AssistantManagementScreen: React.FC = () => {
     router.push('/settings/assistant-edit?id=new')
   }
 
-  const handleEditAssistant = (assistant: Assistant) => {
-    router.push(`/settings/assistant-edit?id=${encodeURIComponent(assistant.id)}`)
-  }
+  const handleEditAssistant = useCallback(
+    (assistant: Assistant) => {
+      router.push(`/settings/assistant-edit?id=${encodeURIComponent(assistant.id)}`)
+    },
+    [router]
+  )
 
-  const handleDeleteAssistant = async (assistant: Assistant) => {
-    const confirmed = await dialog.confirm(t('agent.assistant.delete_confirm_content'), {
-      title: t('agent.assistant.delete_confirm_title'),
-      confirmText: t('common.delete'),
-      destructive: true
-    })
-    if (!confirmed) return
-    try {
-      await services?.assistantManager.delete(assistant.id)
-      setAssistants((prev) => prev.filter((a) => a.id !== assistant.id))
-      setOrderedAssistants((prev) => prev.filter((a) => a.id !== assistant.id))
-      toast.showSuccess(t('agent.assistant.deleted'))
-    } catch (e) {
-      console.error('Failed to delete assistant', e)
-      toast.showError(t('common.delete_failed', '删除失败'))
-    }
-  }
+  const handleDeleteAssistant = useCallback(
+    async (assistant: Assistant) => {
+      const confirmed = await dialog.confirm(t('agent.assistant.delete_confirm_content'), {
+        title: t('agent.assistant.delete_confirm_title'),
+        confirmText: t('common.delete'),
+        destructive: true
+      })
+      if (!confirmed) return
+      try {
+        await services?.assistantManager.delete(assistant.id)
+        setAssistants((prev) => prev.filter((a) => a.id !== assistant.id))
+        setOrderedAssistants((prev) => prev.filter((a) => a.id !== assistant.id))
+        toast.showSuccess(t('agent.assistant.deleted'))
+      } catch (e) {
+        console.error('Failed to delete assistant', e)
+        toast.showError(t('common.delete_failed', '删除失败'))
+      }
+    },
+    [dialog, services, t, toast]
+  )
 
-  const handleTogglePin = async (assistant: Assistant) => {
-    const nextPinned = !assistant.isPinned
-    try {
-      await services?.assistantManager.togglePin(assistant.id, nextPinned)
-      const applyPin = (prev: Assistant[]) =>
-        sortAssistantsByOrder(
-          prev.map((a) => (a.id === assistant.id ? { ...a, isPinned: nextPinned } : a))
-        )
-      setAssistants(applyPin)
-      setOrderedAssistants(applyPin)
-    } catch (e) {
-      console.error('Failed to toggle pin', e)
-    }
-  }
+  const handleTogglePin = useCallback(
+    async (assistant: Assistant) => {
+      const nextPinned = !assistant.isPinned
+      try {
+        await services?.assistantManager.togglePin(assistant.id, nextPinned)
+        const applyPin = (prev: Assistant[]) =>
+          sortAssistantsByOrder(
+            prev.map((a) => (a.id === assistant.id ? { ...a, isPinned: nextPinned } : a))
+          )
+        setAssistants(applyPin)
+        setOrderedAssistants(applyPin)
+      } catch (e) {
+        console.error('Failed to toggle pin', e)
+      }
+    },
+    [services]
+  )
 
   const renderAssistantCard = useCallback(
     (

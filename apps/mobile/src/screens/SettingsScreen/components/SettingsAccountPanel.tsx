@@ -179,12 +179,12 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
     } catch (e) {
       console.warn('Load account settings failed', e)
     }
-  }, [dbReady, services, vaultRevision])
+  }, [dbReady, services])
 
   useEffect(() => {
     void loadAccountSettings()
     void loadVaults()
-  }, [loadAccountSettings, loadVaults])
+  }, [loadAccountSettings, loadVaults, vaultRevision])
 
   useThrottledFocusRefresh(() => {
     void loadAccountSettings()

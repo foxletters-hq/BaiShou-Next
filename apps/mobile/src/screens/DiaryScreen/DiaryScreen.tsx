@@ -123,7 +123,7 @@ export const DiaryScreen: React.FC = () => {
       [DIARY_FILTER_STORAGE_KEYS.filterFavorite, 'false'],
       [DIARY_FILTER_STORAGE_KEYS.currentPage, '1']
     ]).catch((e) => logger.error('归档恢复后重置日记筛选失败', e instanceof Error ? e : String(e)))
-  }, [archiveRestoreEpoch, dbReady, resetFilters])
+  }, [archiveRestoreEpoch, dbReady, resetFilters, t])
 
   const diaryQuery: DiaryPageQuery = useMemo(
     () => ({

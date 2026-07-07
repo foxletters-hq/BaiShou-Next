@@ -60,7 +60,7 @@ export const SummarySettingsSection: React.FC = () => {
         getSummaryTemplateForEdit(saved.instructionsByLocale ?? {}, autoLocale, 'weekly')
       )
     })()
-  }, [dbReady, services])
+  }, [dbReady, services, i18n.language])
 
   useEffect(() => {
     if (!dbReady || !services) return

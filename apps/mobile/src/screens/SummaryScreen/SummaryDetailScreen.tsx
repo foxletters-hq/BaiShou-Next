@@ -90,7 +90,7 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
       }
     }
     fetchSummary()
-  }, [summaryId, dbReady, services, onBack, t])
+  }, [summaryId, dbReady, services, onBack, t, toast])
 
   const handleCopy = async () => {
     if (!summary?.content) return
