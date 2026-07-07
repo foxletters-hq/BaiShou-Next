@@ -2,13 +2,23 @@
  * ESLint自定义规则：检测硬编码的中文字符
  *
  * 规则说明：
- * - 检测TSX/JSX文件中的硬编码中文字符
- * - 忽略注释中的中文
- * - 忽略t()函数调用中的默认值参数
- * - 忽略import语句
+ * - 检测用户可见文案中的硬编码中文（需走 t() / i18n.t()）
+ * - 忽略 logger / console 日志
+ * - 忽略测试文件
+ * - 忽略注释、import、t() 默认值参数
  */
 
 const CHINESE_REGEX = /[\u4e00-\u9fa5]/
+const LOG_METHODS = new Set(['log', 'info', 'warn', 'error', 'debug', 'trace'])
+
+/** @param {string} filename */
+function isTestFile(filename) {
+  const normalized = filename.replace(/\\/g, '/')
+  return (
+    /(?:^|\/)(?:__tests__|tests)(?:\/|$)/.test(normalized) ||
+    /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(normalized)
+  )
+}
 
 export default {
   meta: {
@@ -25,13 +35,16 @@ export default {
   },
 
   create(context) {
+    const filename = context.filename ?? context.getFilename?.() ?? ''
+    if (isTestFile(filename)) {
+      return {}
+    }
+
     const sourceCode = context.sourceCode ?? context.getSourceCode()
 
-    // 检查是否在t()函数调用内部
     function isInsideTCall(node) {
       let parent = node.parent
       while (parent) {
-        // 检查是否是CallExpression且callee是t
         if (
           parent.type === 'CallExpression' &&
           parent.callee &&
@@ -40,7 +53,6 @@ export default {
         ) {
           return true
         }
-        // 检查是否是JSXExpressionContainer内的模板字符串
         if (parent.type === 'JSXExpressionContainer') {
           return false
         }
@@ -49,20 +61,37 @@ export default {
       return false
     }
 
-    // 检查是否是import语句
+    function isInsideLoggerOrConsoleCall(node) {
+      let parent = node.parent
+      while (parent) {
+        if (parent.type === 'CallExpression' && parent.callee?.type === 'MemberExpression') {
+          const object = parent.callee.object
+          const method = parent.callee.property?.name
+          if (
+            object?.type === 'Identifier' &&
+            (object.name === 'logger' || object.name === 'console') &&
+            LOG_METHODS.has(method)
+          ) {
+            return true
+          }
+        }
+        parent = parent.parent
+      }
+      return false
+    }
+
     function isImportDeclaration(node) {
       return node.parent?.type === 'ImportDeclaration'
     }
 
     return {
-      // 检查字符串字面量
       Literal(node) {
         if (typeof node.value !== 'string') return
         if (!CHINESE_REGEX.test(node.value)) return
         if (isInsideTCall(node)) return
+        if (isInsideLoggerOrConsoleCall(node)) return
         if (isImportDeclaration(node)) return
 
-        // 忽略注释
         const comments = sourceCode.getCommentsBefore(node)
         const isComment = comments.some(
           (c) => c.value.includes(node.value) || node.value.includes(c.value)
@@ -78,7 +107,6 @@ export default {
         })
       },
 
-      // 检查JSX文本内容
       JSXText(node) {
         const text = node.value.trim()
         if (!text) return
@@ -93,14 +121,13 @@ export default {
         })
       },
 
-      // 检查模板字符串
       TemplateLiteral(node) {
         if (isInsideTCall(node)) return
+        if (isInsideLoggerOrConsoleCall(node)) return
 
         const text = node.quasis.map((q) => q.value.raw).join('')
         if (!CHINESE_REGEX.test(text)) return
 
-        // 检查是否在JSX属性中（如title, placeholder等）
         const parent = node.parent
         if (parent?.type === 'JSXExpressionContainer') {
           context.report({

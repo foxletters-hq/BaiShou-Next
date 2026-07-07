@@ -89,6 +89,18 @@ export function createBaishouEslintConfig(options = {}) {
       }
     },
     cacheCoordinatorImportRestrictions,
+    {
+      files: ['**/*.{test,spec}.{ts,tsx}', '**/__tests__/**/*.{ts,tsx}'],
+      rules: {
+        'i18n-chinese/no-hardcoded-chinese': 'off'
+      }
+    },
+    {
+      files: ['**/app-identity.ts', '**/dev-user-data.ts'],
+      rules: {
+        'i18n-chinese/no-hardcoded-chinese': 'off'
+      }
+    },
     eslintConfigPrettier
   )
 }
