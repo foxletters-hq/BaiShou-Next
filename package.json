@@ -8,6 +8,7 @@
     "commands:desktop": "node scripts/commands-help.mjs desktop",
     "dev": "turbo run dev",
     "dev:desktop": "turbo run dev --filter=@baishou/desktop",
+    "setup:desktop": "node scripts/run-with-hint.mjs \"下载 dugite 内置 Git（工作台 Git 面板依赖）\" node scripts/ensure-dugite-git.mjs",
     "dev:mobile": "node scripts/run-with-hint.mjs \"日常开发：启动 Metro（只改 JS/TS；手机须已装开发版 APK）。\" pnpm --filter @baishou/mobile dev",
     "dev:mobile:clear": "node scripts/run-with-hint.mjs \"全量重装：sync + 重打 diary-editor bundle，清 Metro/Gradle 缓存并重编安装开发版 APK（包名 com.baishou.baishou.dev，与正式版并存）。\" pnpm --filter @baishou/mobile dev:clear",
     "mobile:fix": "node scripts/run-with-hint.mjs \"将 Expo 相关依赖对齐到当前 SDK（改 package.json 后建议执行）。\" pnpm --filter @baishou/mobile fix",

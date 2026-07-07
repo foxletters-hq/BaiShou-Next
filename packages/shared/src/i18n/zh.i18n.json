@@ -2927,6 +2927,9 @@
     "load_file_failed": "无法加载文件",
     "new_tab": "新标签页",
     "settings": "设置",
-    "diary": "日记"
+    "diary": "日记",
+    "sessions": "会话",
+    "toggle_side_bar": "切换左侧边栏",
+    "toggle_agent_panel": "切换 Agent 面板"
   }
 }

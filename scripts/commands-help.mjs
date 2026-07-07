@@ -35,6 +35,10 @@ const sections = [
     id: 'desktop',
     title: '桌面端 · 构建',
     commands: [
+      [
+        'pnpm setup:desktop',
+        '首次克隆或 Git 报错时：下载 dugite 内置 Git（dev:desktop 的 predev 也会自动检查）'
+      ],
       ['pnpm build:desktop', '构建 Electron 桌面应用（开发用 out/）'],
       ['pnpm release:desktop:win', '★ 官方发版：Windows 安装包 → apps/desktop/dist'],
       ['pnpm release:desktop:linux', '自行编译 Linux AppImage（非官方发版）→ apps/desktop/dist']

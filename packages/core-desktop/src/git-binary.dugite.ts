@@ -28,7 +28,7 @@ function resolveDugiteGitDirectory(): string {
 
   if (!fs.existsSync(gitBinary)) {
     throw new Error(
-      `内置 Git 未找到: ${gitBinary}。请在仓库根目录执行 pnpm install，或运行 node node_modules/dugite/script/download-git.js`
+      `内置 Git 未找到: ${gitBinary}。请执行 pnpm setup:desktop，或运行 node scripts/ensure-dugite-git.mjs`
     )
   }
 
