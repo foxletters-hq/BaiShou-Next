@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { useEffect, useState } from 'react'
 import { Asset } from 'expo-asset'
 import {
@@ -165,12 +166,18 @@ async function readDiaryEditorWebViewSource(): Promise<DiaryEditorWebViewSource 
         readAsStringAsync(STAGING_HTML).catch(() => '')
       ])
       const hasFeatureMarker = stagedBundleJs.includes(FEATURE_MARKER)
-      logStaging('WebView bundle 已缓存（磁盘 staging 与 asset 指纹一致）', {
-        fingerprint,
-        stagedBundleBytes: stagedBundleJs.length,
-        hasFeatureMarker,
-        buildStamp: stagedShellHtml.match(BUILD_STAMP_RE)?.[1] ?? '(none)'
-      })
+      logStaging(
+        i18n.t(
+          'auto.apps.mobile.src.hooks.useDiaryEditorWebViewSource.L168',
+          'WebView bundle 已缓存（磁盘 staging 与 asset 指纹一致）'
+        ),
+        {
+          fingerprint,
+          stagedBundleBytes: stagedBundleJs.length,
+          hasFeatureMarker,
+          buildStamp: stagedShellHtml.match(BUILD_STAMP_RE)?.[1] ?? '(none)'
+        }
+      )
       if (!hasFeatureMarker) {
         console.warn(
           `[DiaryEditor] staging bundle 缺少 ${FEATURE_MARKER}，将强制重新复制。请确认已执行 build:diary-editor`
@@ -191,14 +198,20 @@ async function readDiaryEditorWebViewSource(): Promise<DiaryEditorWebViewSource 
     }
 
     await stageDiaryEditorBundle(htmlUri, bundleUri, bundled.fingerprint)
-    logStaging('已复制 WebView bundle 到 staging', {
-      fingerprint: bundled.fingerprint,
-      shellChars: bundled.shellHtml.length,
-      bundleChars: bundled.bundleJs.length,
-      hasFeatureMarker,
-      buildStamp: bundled.shellHtml.match(BUILD_STAMP_RE)?.[1] ?? '(none)',
-      uri: STAGING_HTML
-    })
+    logStaging(
+      i18n.t(
+        'auto.apps.mobile.src.hooks.useDiaryEditorWebViewSource.L194',
+        '已复制 WebView bundle 到 staging'
+      ),
+      {
+        fingerprint: bundled.fingerprint,
+        shellChars: bundled.shellHtml.length,
+        bundleChars: bundled.bundleJs.length,
+        hasFeatureMarker,
+        buildStamp: bundled.shellHtml.match(BUILD_STAMP_RE)?.[1] ?? '(none)',
+        uri: STAGING_HTML
+      }
+    )
 
     return makeSource(bundled.fingerprint)
   } catch (error) {

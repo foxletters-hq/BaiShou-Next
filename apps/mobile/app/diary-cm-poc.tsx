@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { Stack, Redirect } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
@@ -18,7 +19,9 @@ import { fadeStackAnimation } from '@/src/navigation/fadeStackAnimation'
 
 const POC_DATE = new Date(2026, 5, 22)
 
-const SAMPLE_MARKDOWN = `# CodeMirror POC
+const SAMPLE_MARKDOWN = i18n.t(
+  'auto.apps.mobile.app.diary.cm.poc.L21',
+  `# CodeMirror POC
 
 这是一段带附件的测试日记。
 
@@ -28,6 +31,7 @@ const SAMPLE_MARKDOWN = `# CodeMirror POC
 
 ![另一张](attachment/demo.jpg)
 `
+)
 
 export default function DiaryCmPocScreen() {
   const insets = useSafeAreaInsets()
@@ -45,7 +49,12 @@ export default function DiaryCmPocScreen() {
   useEffect(() => {
     if (editorWebViewSource === null && !loadError) {
       const timer = setTimeout(() => {
-        setLoadError('无法加载 diary-editor HTML（请 pnpm run build:diary-editor）')
+        setLoadError(
+          i18n.t(
+            'auto.apps.mobile.app.diary.cm.poc.L48',
+            '无法加载 diary-editor HTML（请 pnpm run build:diary-editor）'
+          )
+        )
       }, 8000)
       return () => clearTimeout(timer)
     }
@@ -101,7 +110,9 @@ export default function DiaryCmPocScreen() {
 
   const attachmentSummary = useMemo(() => {
     const srcs = extractDiaryAttachmentSrcs(content)
-    return srcs.length ? srcs.join(', ') : '（无 attachment）'
+    return srcs.length
+      ? srcs.join(', ')
+      : i18n.t('auto.apps.mobile.app.diary.cm.poc.L104', '（无 attachment）')
   }, [content])
 
   // 仅 DEV 构建可用；hooks 必须先于早返回调用，故放在所有 hooks 之后
@@ -113,7 +124,7 @@ export default function DiaryCmPocScreen() {
     <>
       <Stack.Screen
         options={{
-          title: 'CM 编辑器 POC',
+          title: i18n.t('auto.apps.mobile.app.diary.cm.poc.L116', 'CM 编辑器 POC'),
           headerShown: true,
           ...fadeStackAnimation
         }}
@@ -124,15 +135,24 @@ export default function DiaryCmPocScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <Text style={[styles.hint, { color: colors.textSecondary }]}>
-            临时 POC：验证 WebView 桥接。路由 /diary-cm-poc
+            {i18n.t(
+              'auto.apps.mobile.app.diary.cm.poc.L127',
+              '临时 POC：验证 WebView 桥接。路由 /diary-cm-poc'
+            )}
           </Text>
 
           <View style={styles.toolbar}>
             <Pressable
               style={[styles.btn, { backgroundColor: colors.primary }]}
-              onPress={() => editorRef.current?.insertAtCursor('\n\n**插入测试**\n')}
+              onPress={() =>
+                editorRef.current?.insertAtCursor(
+                  i18n.t('auto.apps.mobile.app.diary.cm.poc.L133', '\n\n**插入测试**\n')
+                )
+              }
             >
-              <Text style={styles.btnText}>插入文本</Text>
+              <Text style={styles.btnText}>
+                {i18n.t('auto.apps.mobile.app.diary.cm.poc.L135', '插入文本')}
+              </Text>
             </Pressable>
             <Pressable
               style={[
@@ -141,7 +161,9 @@ export default function DiaryCmPocScreen() {
               ]}
               onPress={() => editorRef.current?.focusAtOffset(content.length)}
             >
-              <Text style={[styles.btnText, { color: colors.textPrimary }]}>聚焦末尾</Text>
+              <Text style={[styles.btnText, { color: colors.textPrimary }]}>
+                {i18n.t('auto.apps.mobile.app.diary.cm.poc.L144', '聚焦末尾')}
+              </Text>
             </Pressable>
             <Pressable
               style={[
@@ -150,12 +172,17 @@ export default function DiaryCmPocScreen() {
               ]}
               onPress={() => editorRef.current?.blur()}
             >
-              <Text style={[styles.btnText, { color: colors.textPrimary }]}>失焦</Text>
+              <Text style={[styles.btnText, { color: colors.textPrimary }]}>
+                {i18n.t('auto.apps.mobile.app.diary.cm.poc.L153', '失焦')}
+              </Text>
             </Pressable>
           </View>
 
           <Text style={[styles.meta, { color: colors.textTertiary }]}>
-            选区 {selection.start}–{selection.end} · 附件 {attachmentSummary}
+            {i18n.t('auto.apps.mobile.app.diary.cm.poc.L158', '选区')}
+            {selection.start}–{selection.end}{' '}
+            {i18n.t('auto.apps.mobile.app.diary.cm.poc.L158', '· 附件')}
+            {attachmentSummary}
           </Text>
 
           {loadError ? (
@@ -167,7 +194,7 @@ export default function DiaryCmPocScreen() {
               ref={editorRef}
               editorWebViewSource={editorWebViewSource}
               content={content}
-              placeholder="写日记…"
+              placeholder={i18n.t('auto.apps.mobile.app.diary.cm.poc.L170', '写日记…')}
               onChange={setContent}
               onSelectionChange={(start, end) => setSelection({ start, end })}
               resolveAttachmentUrl={resolveAttachmentUrl}
@@ -176,7 +203,7 @@ export default function DiaryCmPocScreen() {
           )}
 
           <Text style={[styles.previewLabel, { color: colors.textSecondary }]}>
-            RN 侧 content 快照
+            {i18n.t('auto.apps.mobile.app.diary.cm.poc.L179', 'RN 侧 content 快照')}
           </Text>
           <Text
             style={[

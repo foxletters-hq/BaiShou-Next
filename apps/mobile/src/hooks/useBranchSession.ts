@@ -102,7 +102,7 @@ export function useBranchSession() {
         return null
       }
     },
-    [services, t]
+    [services, t, toast]
   )
 
   return { branchSession }

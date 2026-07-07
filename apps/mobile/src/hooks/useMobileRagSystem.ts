@@ -128,7 +128,7 @@ export function useMobileRagSystem(ragService: MobileRagService | undefined) {
       toast.showError(t('settings.rag_migration_failed', { message: detail }))
       return false
     }
-  }, [dialog, ragService, t, mapProgress, toast])
+  }, [dialog, ragService, t, mapProgress, toast, setRagState])
 
   return {
     hasMismatchModel,

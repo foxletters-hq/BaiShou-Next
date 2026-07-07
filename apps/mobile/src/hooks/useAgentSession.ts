@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, type MutableRefObject } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef, type MutableRefObject } from 'react'
 import { useFocusEffect } from '@react-navigation/native'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast } from '@baishou/ui/native'
@@ -75,12 +75,15 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
   const loadedFromEndRef = useRef(0)
   const fetchHasMoreRef = useRef(false)
   const loadMoreLockRef = useRef(false)
-  const paginationRefs = {
-    messageCacheRef,
-    roundWindowStartRef,
-    loadedFromEndRef,
-    fetchHasMoreRef
-  }
+  const paginationRefs = useMemo(
+    () => ({
+      messageCacheRef,
+      roundWindowStartRef,
+      loadedFromEndRef,
+      fetchHasMoreRef
+    }),
+    []
+  )
   const lastVaultRevisionRef = useRef(vaultRevision)
   const lastEcosystemResyncEpochRef = useRef(ecosystemResyncEpoch)
   /** 递增后使进行中的 DB 刷新放弃写回 UI，避免截断前发起的 reload 覆盖乐观截断 */
@@ -91,7 +94,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
     setHasMore(false)
     resetPaginationRefs(paginationRefs)
     clearSession()
-  }, [clearSession])
+  }, [clearSession, paginationRefs, setCurrentSessionId])
 
   useEffect(() => {
     storageRootRef.current = null
@@ -262,7 +265,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
       clearSession()
       await refreshSessionMessages(sessionId, { preserveWindow: false })
     },
-    [dbReady, services, clearSession, refreshSessionMessages]
+    [dbReady, services, clearSession, refreshSessionMessages, paginationRefs]
   )
 
   const handleLoadMore = useCallback(async () => {
@@ -348,7 +351,15 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
     if (!dbReady || !services || vaultSwitching) return
 
     void loadMessages(currentSessionId)
-  }, [currentSessionId, dbReady, services, vaultSwitching, loadMessages, clearSession])
+  }, [
+    currentSessionId,
+    dbReady,
+    services,
+    vaultSwitching,
+    loadMessages,
+    clearSession,
+    paginationRefs
+  ])
 
   /** 切换伙伴：清空当前会话，由用户从侧栏手动选择对话 */
   const handleAssistantSwitched = useCallback(
@@ -358,7 +369,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
       clearSession()
       setHasMore(false)
     },
-    [clearSession]
+    [clearSession, paginationRefs, setCurrentSessionId]
   )
 
   const handleCreateSession = useCallback(
@@ -393,7 +404,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
         return null
       }
     },
-    [dbReady, services, t, clearSession, toast]
+    [dbReady, services, t, clearSession, toast, paginationRefs, setCurrentSessionId]
   )
 
   const handleDeleteSession = useCallback(
@@ -409,7 +420,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
         toast.showError(t('agent.sessions.delete_session', '删除对话'))
       }
     },
-    [services, t, currentSessionId, resetSessionState]
+    [services, t, currentSessionId, resetSessionState, toast]
   )
 
   const handlePinSession = useCallback(

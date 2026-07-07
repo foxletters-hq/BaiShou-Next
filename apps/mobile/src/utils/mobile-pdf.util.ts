@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import type { IFileSystem } from '@baishou/core-mobile'
 import { logger } from '@baishou/shared'
 
@@ -39,7 +40,10 @@ export async function extractPdfText(filePath: string, fileSystem: IFileSystem):
     throw new Error('PDF file not found')
   }
   throw new Error(
-    'PDF 文本提取需要包含 expo-pdf-text-extract 的开发构建（pnpm dev:mobile:clear 重编）'
+    i18n.t(
+      'auto.apps.mobile.src.utils.mobile.pdf.util.L42',
+      'PDF 文本提取需要包含 expo-pdf-text-extract 的开发构建（pnpm dev:mobile:clear 重编）'
+    )
   )
 }
 

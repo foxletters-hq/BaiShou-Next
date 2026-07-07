@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import {
   USER_PROFILE_SETTINGS_KEY,
   normalizeChatBackgroundBlur,
@@ -61,7 +62,7 @@ export async function warmAgentScreenCaches(
   settingsManager: SettingsManagerService,
   attachmentManager: IAttachmentManager,
   fileSystem: IFileSystem,
-  fallbackNickname = '白守用户'
+  fallbackNickname = i18n.t('auto.apps.mobile.src.lib.agent.user.profile.util.L64', '白守用户')
 ): Promise<void> {
   try {
     const profile = await loadAgentUserProfileFromSettings(settingsManager, fallbackNickname)

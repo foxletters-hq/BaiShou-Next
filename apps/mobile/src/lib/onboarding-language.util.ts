@@ -17,10 +17,10 @@ import { getSystemLanguage } from './device-locale'
 export type OnboardingUiLanguage = ResolvedAppUiLanguage
 
 const LANGUAGE_LABELS: Record<OnboardingUiLanguage, string> = {
-  zh: '简体中文',
-  'zh-TW': '繁體中文',
+  zh: i18n.t('auto.apps.mobile.src.lib.onboarding.language.util.L20', '简体中文'),
+  'zh-TW': i18n.t('auto.apps.mobile.src.lib.onboarding.language.util.L21', '繁體中文'),
   en: 'English',
-  ja: '日本語'
+  ja: i18n.t('auto.apps.mobile.src.lib.onboarding.language.util.L23', '日本語')
 }
 
 export const ONBOARDING_LANGUAGE_OPTIONS = APP_UI_LANGUAGE_ORDER.map((id) => ({

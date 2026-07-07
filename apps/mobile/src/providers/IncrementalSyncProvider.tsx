@@ -1,25 +1,16 @@
 import React, {
   createContext,
-  forwardRef,
   useCallback,
   useContext,
   useEffect,
-  useImperativeHandle,
   useMemo,
   useRef,
   useState,
-  startTransition,
   type ReactNode
 } from 'react'
 import { InteractionManager, View, StyleSheet, BackHandler } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTranslation } from 'react-i18next'
-import {
-  IncrementalSyncConfirmDialog,
-  IncrementalSyncProgressOverlay,
-  useDialog,
-  useNativeToast
-} from '@baishou/ui/native'
+import { IncrementalSyncConfirmDialog, useDialog, useNativeToast } from '@baishou/ui/native'
 import { useRouter } from 'expo-router'
 import type { IncrementalSyncPlanPreview } from '@baishou/shared'
 import type {
@@ -32,23 +23,19 @@ import {
 } from '../services/incremental-sync-vault-registry'
 import { useBaishou } from './BaishouProvider'
 import {
-  assertSyncConfirmAllowed,
-  canExecuteIncrementalSyncPlan,
-  INCREMENTAL_SYNC_PLAN_REUSE_TTL_MS,
-  logger,
   isIncrementalSyncReady,
+  logger,
   readVaultRegistryFingerprint,
-  resolveIncrementalSyncConfirmReplan,
   resolvePlanConfirmEligibleAt,
   runIncrementalSyncWithDivergenceConfirmation,
-  shouldRequireIncrementalSyncReconfirmAfterReplan,
-  type IncrementalSyncRunOptions,
-  type SyncDeletePropagationChoice
+  type IncrementalSyncRunOptions
 } from '@baishou/shared'
-import { mergeIncrementalSyncProgress } from '../services/mobile-incremental-sync-progress.util'
-import { detectLocalSyncTreeDrift } from '../services/mobile-incremental-sync-drift.util'
 import { friendlyMobileSyncError } from '../utils/friendly-sync-error'
-import { isIncrementalSyncAbortedError } from '../services/mobile-incremental-sync-abort.util'
+import {
+  IncrementalSyncOverlayHost,
+  type IncrementalSyncOverlayHandle
+} from './IncrementalSyncOverlayHost'
+import { useIncrementalSyncConfirm } from './useIncrementalSyncConfirm'
 
 type IncrementalSyncActionsValue = {
   isSyncing: boolean
@@ -62,10 +49,7 @@ type IncrementalSyncActionsValue = {
   runIncrementalSync: () => Promise<IncrementalSyncResult | undefined>
 }
 
-export type IncrementalSyncOverlayHandle = {
-  publish: (progress: IncrementalSyncProgress) => void
-  reset: () => void
-}
+export type { IncrementalSyncOverlayHandle } from './IncrementalSyncOverlayHost'
 
 const IncrementalSyncActionsContext = createContext<IncrementalSyncActionsValue>({
   isSyncing: false,
@@ -79,93 +63,6 @@ const IncrementalSyncActionsContext = createContext<IncrementalSyncActionsValue>
 })
 
 export const useIncrementalSync = () => useContext(IncrementalSyncActionsContext)
-
-const IncrementalSyncOverlayHost = forwardRef<
-  IncrementalSyncOverlayHandle,
-  {
-    isSyncing: boolean
-    blocking: boolean
-    blockingTitle?: string
-    onRequestClose?: () => void
-  }
->(function IncrementalSyncOverlayHost({ isSyncing, blocking, blockingTitle, onRequestClose }, ref) {
-  const insets = useSafeAreaInsets()
-  const [progress, setProgress] = useState<IncrementalSyncProgress | null>(null)
-  const progressThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const pendingProgressRef = useRef<IncrementalSyncProgress | null>(null)
-  const progressSnapshotRef = useRef<IncrementalSyncProgress | null>(null)
-
-  const applyProgress = useCallback((incoming: IncrementalSyncProgress) => {
-    const slice = mergeIncrementalSyncProgress(progressSnapshotRef.current, incoming)
-    const merged: IncrementalSyncProgress = {
-      current: slice.current ?? progressSnapshotRef.current?.current ?? incoming.current ?? 0,
-      total: slice.total ?? progressSnapshotRef.current?.total ?? incoming.total ?? 0,
-      ...slice
-    }
-    progressSnapshotRef.current = merged
-    setProgress(merged)
-  }, [])
-
-  const flushProgress = useCallback(() => {
-    if (progressThrottleRef.current) {
-      clearTimeout(progressThrottleRef.current)
-      progressThrottleRef.current = null
-    }
-    pendingProgressRef.current = null
-    progressSnapshotRef.current = null
-  }, [])
-
-  useImperativeHandle(
-    ref,
-    () => ({
-      publish: (p: IncrementalSyncProgress) => {
-        pendingProgressRef.current = p
-        const hasByteProgress = (p.fileBytesTotal ?? 0) > 0
-        const hasStatusUpdate = Boolean(p.statusText)
-        if (hasByteProgress || hasStatusUpdate) {
-          if (progressThrottleRef.current) {
-            clearTimeout(progressThrottleRef.current)
-            progressThrottleRef.current = null
-          }
-          startTransition(() => applyProgress(p))
-          return
-        }
-        if (progressThrottleRef.current) return
-        startTransition(() => applyProgress(p))
-        progressThrottleRef.current = setTimeout(() => {
-          progressThrottleRef.current = null
-          if (pendingProgressRef.current) {
-            startTransition(() => applyProgress(pendingProgressRef.current!))
-            pendingProgressRef.current = null
-          }
-        }, 280)
-      },
-      reset: () => {
-        flushProgress()
-        setProgress(null)
-      }
-    }),
-    [applyProgress, flushProgress]
-  )
-
-  useEffect(() => {
-    if (!isSyncing) {
-      flushProgress()
-      setProgress(null)
-    }
-  }, [flushProgress, isSyncing])
-
-  return (
-    <IncrementalSyncProgressOverlay
-      visible={isSyncing}
-      progress={progress}
-      blocking={blocking}
-      blockingTitle={blockingTitle}
-      onRequestClose={onRequestClose}
-      topInset={insets.top + 48}
-    />
-  )
-})
 
 export function IncrementalSyncProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation()
@@ -299,196 +196,27 @@ export function IncrementalSyncProvider({ children }: { children: ReactNode }) {
     [services, t, toast]
   )
 
-  const confirmSyncPlan = useCallback(
-    async (deletePropagationChoice?: SyncDeletePropagationChoice) => {
-      if (confirmingRef.current || syncingRef.current) return
-
-      const stalePreview = planPreview
-      if (!stalePreview || !services?.incrementalSyncService || !services.vaultService) return
-
-      if (stalePreview.requiresDeletePropagationChoice && !deletePropagationChoice) {
-        return
-      }
-
-      const canExecute = canExecuteIncrementalSyncPlan(stalePreview)
-      try {
-        assertSyncConfirmAllowed({
-          canExecuteSync: canExecute,
-          eligibleAtMs: planConfirmEligibleAt
-        })
-      } catch {
-        return
-      }
-
-      const initialRunOptions: IncrementalSyncRunOptions | undefined =
-        stalePreview.requiresHighDivergenceConfirm ? { highDivergenceConfirmed: true } : undefined
-
-      confirmingRef.current = true
-      setIsConfirmingPlan(true)
-
-      let preview = stalePreview
-      try {
-        const registryPath = `${await services.pathService.getRootDirectory()}/vault_registry.json`
-        const currentFingerprint = await readVaultRegistryFingerprint(
-          services.fileSystem,
-          registryPath
-        )
-        const vaultRegistryChanged =
-          planVaultRegistryFingerprintRef.current != null &&
-          planVaultRegistryFingerprintRef.current !== currentFingerprint
-
-        let localTreeDrifted = false
-        let remoteManifestDrifted = false
-        const withinPlanReuseTtl =
-          planPreparedAtRef.current != null &&
-          Date.now() - planPreparedAtRef.current <= INCREMENTAL_SYNC_PLAN_REUSE_TTL_MS
-        if (
-          withinPlanReuseTtl &&
-          !vaultRegistryChanged &&
-          !stalePreview.deletePropagationBlocked &&
-          !(
-            stalePreview.requiresHighDivergenceConfirm &&
-            !initialRunOptions?.highDivergenceConfirmed
-          )
-        ) {
-          const pendingLocal = services.incrementalSyncService.peekPendingSyncPlanLocalManifest()
-          if (pendingLocal) {
-            const syncRoot = await services.pathService.getRootDirectory()
-            localTreeDrifted = await detectLocalSyncTreeDrift(
-              services.fileSystem,
-              syncRoot,
-              pendingLocal
-            )
-          }
-          if (!localTreeDrifted) {
-            remoteManifestDrifted =
-              await services.incrementalSyncService.detectRemoteManifestDrift()
-          }
-        }
-
-        const replanRunOptions: IncrementalSyncRunOptions | undefined =
-          initialRunOptions || deletePropagationChoice
-            ? {
-                ...initialRunOptions,
-                ...(deletePropagationChoice ? { deletePropagationChoice } : {})
-              }
-            : undefined
-
-        const { needsReplan } = resolveIncrementalSyncConfirmReplan({
-          stalePreview,
-          planPreparedAtMs:
-            stalePreview.planReuseBaseline?.preparedAtMs ?? planPreparedAtRef.current,
-          planReuseBaseline: stalePreview.planReuseBaseline,
-          vaultRegistryChanged,
-          highDivergenceConfirmed: Boolean(initialRunOptions?.highDivergenceConfirmed),
-          deletePropagationChoiceProvided: Boolean(deletePropagationChoice),
-          drift: { localTreeDrifted, remoteManifestDrifted }
-        })
-
-        if (needsReplan) {
-          preview = await planIncrementalSyncWithVaultRegistry(
-            {
-              pathService: services.pathService,
-              fileSystem: services.fileSystem,
-              vaultService: services.vaultService,
-              incrementalSyncService: services.incrementalSyncService
-            },
-            { runOptions: replanRunOptions }
-          )
-          planPreparedAtRef.current = Date.now()
-          planVaultRegistryFingerprintRef.current = await readVaultRegistryFingerprint(
-            services.fileSystem,
-            registryPath
-          )
-        }
-
-        if (preview.changeCount === 0) {
-          clearPlanPreview()
-          if (preview.warnings.length === 0) {
-            toast.showSuccess(t('data_sync.plan_up_to_date', '本地与云端已一致，无需同步'))
-          }
-          return
-        }
-
-        if (
-          shouldRequireIncrementalSyncReconfirmAfterReplan(
-            needsReplan,
-            stalePreview,
-            preview,
-            Boolean(deletePropagationChoice)
-          )
-        ) {
-          setPlanPreview(preview)
-          setPlanConfirmEligibleAt(resolvePlanConfirmEligibleAt(preview))
-          toast.showWarning(t('data_sync.plan_changed_reconfirm'))
-          return
-        }
-
-        if (preview.requiresDeletePropagationChoice && !deletePropagationChoice) {
-          setPlanPreview(preview)
-          setPlanConfirmEligibleAt(resolvePlanConfirmEligibleAt(preview))
-          return
-        }
-
-        clearPlanPreview()
-        syncingRef.current = true
-        setIsSyncing(true)
-        overlayRef.current?.publish({
-          phase: 'comparing',
-          current: 0,
-          total: 1,
-          statusText: 'data_sync.progress_registering_vaults'
-        })
-        const abortSignal = beginSyncAbortController()
-        let syncResult: IncrementalSyncResult | undefined
-
-        try {
-          syncResult = await executeIncrementalSync(
-            {
-              ...initialRunOptions,
-              ...(deletePropagationChoice ? { deletePropagationChoice } : {})
-            },
-            abortSignal
-          )
-        } catch (e) {
-          if (isIncrementalSyncAbortedError(e)) {
-            toast.showInfo(t('data_sync.sync_cancelled', '已取消同步'))
-            return
-          }
-          logger.error('增量同步失败', e instanceof Error ? e : String(e))
-          const message = e instanceof Error ? e.message : t('data_sync.sync_failed_generic')
-          toast.showError(friendlyMobileSyncError(message, t))
-        } finally {
-          syncAbortRef.current = null
-          syncingRef.current = false
-          setIsSyncing(false)
-          overlayRef.current?.reset()
-        }
-
-        if (syncResult) {
-          await finishIncrementalSync(syncResult)
-        }
-      } catch (e) {
-        logger.error('增量同步确认失败', e instanceof Error ? e : String(e))
-        const message = e instanceof Error ? e.message : t('data_sync.sync_failed_generic')
-        toast.showError(friendlyMobileSyncError(message, t))
-      } finally {
-        confirmingRef.current = false
-        setIsConfirmingPlan(false)
-      }
-    },
-    [
-      beginSyncAbortController,
-      clearPlanPreview,
-      executeIncrementalSync,
-      finishIncrementalSync,
-      planConfirmEligibleAt,
-      planPreview,
-      services,
-      t,
-      toast
-    ]
-  )
+  const confirmSyncPlan = useIncrementalSyncConfirm({
+    services,
+    t,
+    toast,
+    planPreview,
+    planConfirmEligibleAt,
+    planPreparedAtRef,
+    planVaultRegistryFingerprintRef,
+    confirmingRef,
+    syncingRef,
+    overlayRef,
+    beginSyncAbortController,
+    executeIncrementalSync,
+    finishIncrementalSync,
+    clearPlanPreview,
+    setPlanPreview,
+    setPlanConfirmEligibleAt,
+    setIsConfirmingPlan,
+    setIsSyncing,
+    syncAbortRef
+  })
 
   const runIncrementalSync = useCallback(async (): Promise<IncrementalSyncResult | undefined> => {
     if (!services?.incrementalSyncService || !dbReady) {
@@ -567,11 +295,8 @@ export function IncrementalSyncProvider({ children }: { children: ReactNode }) {
     }
   }, [
     abortActiveSyncFlow,
-    beginSyncAbortController,
     dbReady,
     dialog,
-    executeIncrementalSync,
-    finishIncrementalSync,
     isConfigured,
     isPlanning,
     isSyncing,
