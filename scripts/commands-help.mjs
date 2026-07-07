@@ -15,7 +15,8 @@ const sections = [
         '★ 全量重装：sync + 重打 diary-editor bundle，清 Metro/.expo/Gradle 缓存 + 重编安装 APK（升级 Expo、改 CM/WebView、加原生模块、闪退时用；完成后 dev:mobile）'
       ],
       ['pnpm mobile:connect', 'adb reverse + 打开 App（Metro 需已在 dev:mobile 跑着）'],
-      ['pnpm mobile:install', '安装已编好的 debug APK（clear 编完但手机没点安装时用）']
+      ['pnpm mobile:install', '安装已编好的 debug APK（clear 编完但手机没点安装时用）'],
+      ['pnpm mobile:install:release', '安装 release/ 下最新正式版 APK 到手机（需 adb）']
     ]
   },
   {
@@ -46,6 +47,7 @@ const sections = [
       ['pnpm release:all', '★ 一键官方打包：Android + Windows'],
       ['pnpm release:setup-signing', '从旧版 BaiShou 复制 android/key.properties（不入库）'],
       ['pnpm release:android', '正式签名 APK → release/BaiShou-v{版本}-Android.apk'],
+      ['pnpm mobile:install:release', '将 release/ 最新正式版 APK 安装到已连接手机'],
       ['pnpm release:desktop:win', 'Windows 安装包 → apps/desktop/dist/'],
       ['pnpm release:desktop:linux', 'Linux 自行编译 AppImage（非官方，不入 Release）'],
       [

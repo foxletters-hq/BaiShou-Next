@@ -193,6 +193,7 @@ export function prepareAndroidInstall(
 
 const ADB_INSTALL_FLAGS = '-r -d -t'
 const REMOTE_APK_PATH = '/data/local/tmp/baishou-app-debug.apk'
+const REMOTE_RELEASE_APK_PATH = '/data/local/tmp/baishou-app-release.apk'
 
 function tryStreamedInstall(absApk) {
   try {
@@ -203,10 +204,10 @@ function tryStreamedInstall(absApk) {
   }
 }
 
-function tryPushInstall(absApk) {
+function tryPushInstall(absApk, remotePath = REMOTE_APK_PATH) {
   try {
-    adbExec(`adb push "${absApk}" ${REMOTE_APK_PATH}`)
-    const out = adbExec(`adb shell pm install ${ADB_INSTALL_FLAGS} ${REMOTE_APK_PATH}`)
+    adbExec(`adb push "${absApk}" ${remotePath}`)
+    const out = adbExec(`adb shell pm install ${ADB_INSTALL_FLAGS} ${remotePath}`)
     if (!out.includes('Success')) {
       return { ok: false, err: out.trim() || 'pm install 未返回 Success' }
     }
@@ -215,7 +216,7 @@ function tryPushInstall(absApk) {
     return { ok: false, err: adbExecErrorText(err) }
   } finally {
     try {
-      adbExec(`adb shell rm -f ${REMOTE_APK_PATH}`)
+      adbExec(`adb shell rm -f ${remotePath}`)
     } catch {
       /* ignore */
     }
@@ -225,7 +226,7 @@ function tryPushInstall(absApk) {
 const HTTP_INSTALL_PORT = 18765
 
 /** 无线 adb 传大 APK 常失败；手机经局域网 curl 下载后 pm install（WSL2 + 小米更稳） */
-function tryHttpInstall(absApk) {
+function tryHttpInstall(absApk, remotePath = REMOTE_APK_PATH) {
   const lanIp = getLanIp()
   const apkDir = path.dirname(absApk)
   const apkName = path.basename(absApk)
@@ -250,8 +251,8 @@ function tryHttpInstall(absApk) {
       return { ok: false, err: `无法在端口 ${HTTP_INSTALL_PORT} 启动临时 HTTP 服务（需 python3）` }
     }
 
-    adbExec(`adb shell "curl -f -o ${REMOTE_APK_PATH} '${url}'"`)
-    const out = adbExec(`adb shell pm install ${ADB_INSTALL_FLAGS} ${REMOTE_APK_PATH}`)
+    adbExec(`adb shell "curl -f -o ${remotePath} '${url}'"`)
+    const out = adbExec(`adb shell pm install ${ADB_INSTALL_FLAGS} ${remotePath}`)
     if (!out.includes('Success')) {
       return { ok: false, err: out.trim() || 'pm install 未返回 Success' }
     }
@@ -261,19 +262,19 @@ function tryHttpInstall(absApk) {
   } finally {
     server.kill('SIGTERM')
     try {
-      adbExec(`adb shell rm -f ${REMOTE_APK_PATH}`)
+      adbExec(`adb shell rm -f ${remotePath}`)
     } catch {
       /* ignore */
     }
   }
 }
 
-function installOnce(absApk) {
+function installOnce(absApk, remotePath = REMOTE_APK_PATH) {
   const streamed = tryStreamedInstall(absApk)
   if (streamed.ok) return streamed
-  const pushed = tryPushInstall(absApk)
+  const pushed = tryPushInstall(absApk, remotePath)
   if (pushed.ok) return pushed
-  const http = tryHttpInstall(absApk)
+  const http = tryHttpInstall(absApk, remotePath)
   if (http.ok) return http
   return { ok: false, err: [streamed.err, pushed.err, http.err].filter(Boolean).join('\n') }
 }
@@ -304,6 +305,64 @@ export function installApkViaAdb(apkPath) {
     throw new Error(result.err || 'adb 安装失败')
   }
   return result.method
+}
+
+/** 安装正式版 APK（com.baishou.baishou）；签名冲突时卸载旧正式包后重试 */
+export function installReleaseApkViaAdb(apkPath) {
+  const absApk = path.resolve(apkPath)
+  if (!fs.existsSync(absApk)) {
+    throw new Error(`找不到 APK: ${absApk}`)
+  }
+  if (!hasAdbDevice()) {
+    throw new Error('未检测到 adb 设备')
+  }
+
+  prepareAndroidInstall(ANDROID_RELEASE_PACKAGE_ID)
+
+  let result = installOnce(absApk, REMOTE_RELEASE_APK_PATH)
+  if (!result.ok && isSignatureMismatchError(result.err)) {
+    console.log('\n⚠️  检测到旧版正式包签名不一致，正在卸载后重试…\n')
+    try {
+      const out = adbExec(`adb uninstall ${ANDROID_RELEASE_PACKAGE_ID}`)
+      if (out.includes('Success')) {
+        console.log(`📲 已卸载 ${ANDROID_RELEASE_PACKAGE_ID}`)
+      }
+    } catch {
+      /* 未安装 */
+    }
+    result = installOnce(absApk, REMOTE_RELEASE_APK_PATH)
+  }
+
+  if (!result.ok) {
+    throw new Error(result.err || 'adb 安装失败')
+  }
+  return result.method
+}
+
+/** 正式版安装失败时的排查提示 */
+export function printReleaseInstallFailureHelp(apkPath, lastError = '') {
+  const signatureHint = isSignatureMismatchError(lastError)
+    ? `
+⚠️  本次为签名冲突：请先卸载旧正式版再装：
+     adb uninstall ${ANDROID_RELEASE_PACKAGE_ID}
+     pnpm mobile:install:release
+`
+    : ''
+
+  console.error(`
+❌ 正式版 APK 安装失败
+${signatureHint}
+建议：
+  1. 保持手机解锁、亮屏
+  2. 卸载冲突包后重装：
+     adb uninstall ${ANDROID_RELEASE_PACKAGE_ID}
+     pnpm mobile:install:release
+  3. 若无 APK，先构建：pnpm release:android
+
+手动安装：
+  adb push "${apkPath}" ${REMOTE_RELEASE_APK_PATH}
+  adb shell pm install ${ADB_INSTALL_FLAGS} ${REMOTE_RELEASE_APK_PATH}
+`)
 }
 
 /** 安装失败时在终端打印可复制的排查步骤 */
