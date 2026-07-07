@@ -7,6 +7,7 @@
 | 桌面版本清单 | `apps/desktop/src/version.json` |
 | 移动版本清单 | `apps/mobile/src/version.json`（含 `versionCode`） |
 | Release 说明草稿 | `releases/notes/{mobile\|desktop}-{version}.md` |
+| 邮箱 → GitHub 映射 | `releases/contributor-map.json` |
 | 提取提交 / 贡献者 | `pnpm release:notes -- --platform mobile --version 1.2.9` |
 | 预览 Release 正文 | `node scripts/compose-release-body.mjs` |
 | 版本同步脚本 | `scripts/sync-app-version.mjs` |

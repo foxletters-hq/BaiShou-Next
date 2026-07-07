@@ -9,6 +9,12 @@ import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import {
+  collectReleaseContributors,
+  formatContributorThanks,
+  resolveContributor,
+  resolvePreviousPlatformTag
+} from './release-contributors.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -59,20 +65,6 @@ function git(args) {
   return result.stdout.trim()
 }
 
-function listTags(prefix) {
-  const out = git(['tag', '-l', `${prefix}/v*`, '--sort=-v:refname'])
-  return out ? out.split('\n').filter(Boolean) : []
-}
-
-function resolvePreviousTag(platform, version) {
-  const current = `${platform}/v${version}`
-  const tags = listTags(platform)
-  const idx = tags.indexOf(current)
-  if (idx >= 0 && tags[idx + 1]) return tags[idx + 1]
-  const older = tags.filter((tag) => tag !== current)
-  return older[0]
-}
-
 function normalizeSubject(subject) {
   const match = subject.match(/^(\w+)(?:\([^)]+\))?!?:\s*(.+)$/)
   if (!match) return { category: null, summary: subject.trim() }
@@ -81,12 +73,8 @@ function normalizeSubject(subject) {
   return { category: label, summary: rest.trim() }
 }
 
-function authorHandle(name, email) {
-  const loginMatch = email?.match(/(\d+\+)?([^@+]+)@users\.noreply\.github\.com/i)
-  if (loginMatch?.[2]) return `@${loginMatch[2]}`
-  const ghMatch = email?.match(/^([^@]+)@github\.com$/i)
-  if (ghMatch) return `@${ghMatch[1]}`
-  return name?.trim() || '贡献者'
+function formatAuthorLabel(person) {
+  return person.github ? `@${person.github}` : person.displayName
 }
 
 function collectCommits(fromRef) {
@@ -105,10 +93,12 @@ function collectCommits(fromRef) {
     const subject = rest.join('|')
     if (SKIP_COMMIT_RE.test(subject)) continue
     const { category, summary } = normalizeSubject(subject)
+    const person = resolveContributor(authorName, authorEmail)
     commits.push({
       authorName,
       authorEmail,
-      handle: authorHandle(authorName, authorEmail),
+      person,
+      authorLabel: formatAuthorLabel(person),
       subject,
       category,
       summary
@@ -127,24 +117,13 @@ function groupByCategory(commits) {
   return groups
 }
 
-function uniqueContributors(commits) {
-  const seen = new Map()
-  for (const commit of commits) {
-    const key = commit.handle
-    if (!seen.has(key)) {
-      seen.set(key, { handle: commit.handle, name: commit.authorName })
-    }
-  }
-  return [...seen.values()]
-}
-
 export function generateReleaseNotesData({ platform, version, since }) {
-  const previousTag = since || resolvePreviousTag(platform, version)
+  const previousTag = since || resolvePreviousPlatformTag(platform, version)
   const notesPath = join(root, 'releases', 'notes', `${platform}-${version}.md`)
   const draftedNotes = existsSync(notesPath) ? readFileSync(notesPath, 'utf8').trim() : ''
 
   const commits = collectCommits(previousTag)
-  const contributors = uniqueContributors(commits)
+  const contributors = collectReleaseContributors(previousTag)
   const groups = groupByCategory(commits)
 
   return {
@@ -153,6 +132,7 @@ export function generateReleaseNotesData({ platform, version, since }) {
     previousTag: previousTag || null,
     draftedNotes,
     draftedNotesPath: existsSync(notesPath) ? notesPath : null,
+    contributorThanks: formatContributorThanks(contributors),
     commits,
     contributors,
     groups
@@ -182,17 +162,24 @@ function renderMarkdown(data) {
       '',
       '- 用**用户能听懂的话**写 3～6 条亮点，避免堆砌 commit hash',
       '- 合并相近改动，不要一条 commit 抄一行',
-      '- 文末感谢贡献者（见下方名单）',
-      '- 可引用 GitHub 用户名，如 `@Anson-Trio`',
+      '- **不要**在文件中手写贡献者 @ 或感谢语——CI 会按 `releases/contributor-map.json` 与 git 邮箱自动追加',
       ''
     )
   }
 
   if (data.contributors.length > 0) {
+    lines.push('## 贡献者（自动解析，将写入 Release）', '')
+    if (data.contributorThanks) {
+      lines.push(data.contributorThanks, '')
+    }
+    for (const c of data.contributors) {
+      lines.push(
+        `- @${c.github}（${c.email || 'noreply'}）`
+      )
+    }
     lines.push(
-      '## 贡献者',
       '',
-      data.contributors.map((c) => `- ${c.handle}${c.handle !== c.name ? `（${c.name}）` : ''}`).join('\n'),
+      '未映射邮箱请在 `releases/contributor-map.json` 的 `emails` 中补充，**切勿**手写不存在的 @用户名。',
       ''
     )
   }
@@ -202,7 +189,7 @@ function renderMarkdown(data) {
     for (const [category, items] of data.groups) {
       lines.push(`### ${category}`, '')
       for (const item of items) {
-        lines.push(`- ${item.summary} — ${item.handle}`)
+        lines.push(`- ${item.summary} — ${item.authorLabel}`)
       }
       lines.push('')
     }

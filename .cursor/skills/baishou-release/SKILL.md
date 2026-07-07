@@ -117,14 +117,14 @@ pnpm release:notes -- --platform desktop --version 1.2.6
 1. **3～6 条**更新亮点，用用户能听懂的话，不要堆技术术语
 2. **合并相近改动**，不要一条 commit 抄一行
 3. 可适当用 emoji，但克制
-4. **文末感谢贡献者**，引用脚本输出的 `@用户名`，例如：
+4. **文末不要手写 @ 或感谢语**——CI 会按 git 邮箱 + `releases/contributor-map.json` 自动追加，避免误 @ 他人
 
 ```markdown
 - 日记编辑器支持粘贴图片，分享更方便
 - 修复了夜间模式下偶发的闪屏问题
-
-感谢 @Anson-Trio、@Ratman463 在本版本的贡献。
 ```
+
+**不要**写 `感谢 @某人`；需要新贡献者映射时，编辑 `releases/contributor-map.json` 的 `emails` 字段。
 
 **不要**在文件里写「各平台下载」表格——CI 会自动从 `version.json` 拼接各端最新下载链接和官网入口。
 

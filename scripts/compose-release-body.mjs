@@ -8,6 +8,11 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { RELEASE_ARTIFACTS_VERSIONED } from './release-constants.mjs'
+import {
+  collectReleaseContributors,
+  renderContributorSection,
+  resolvePreviousPlatformTag
+} from './release-contributors.mjs'
 import { renderReleaseDownloadsMarkdown } from './render-release-downloads.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -57,7 +62,22 @@ function platformSection(scope, version) {
   ].join('\n')
 }
 
-export function composeReleaseBody({ scope, version, repo, append = false, draftNotes = readDraftNotes(scope, version) }) {
+function sanitizeDraftNotes(text) {
+  if (!text) return ''
+  return text
+    .replace(/^##\s*贡献者[\s\S]*?(?=^##\s|\z)/gm, '')
+    .replace(/^感谢\s+@.+$/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+export function composeReleaseBody({
+  scope,
+  version,
+  repo,
+  append = false,
+  draftNotes = sanitizeDraftNotes(readDraftNotes(scope, version))
+}) {
   const parts = []
 
   if (!append) {
@@ -66,6 +86,9 @@ export function composeReleaseBody({ scope, version, repo, append = false, draft
     if (draftNotes) {
       parts.push('## 本版本更新', '', draftNotes, '')
     }
+    const previousTag = resolvePreviousPlatformTag(scope, version)
+    const contributorBlock = renderContributorSection(collectReleaseContributors(previousTag))
+    if (contributorBlock) parts.push(contributorBlock)
   }
 
   parts.push(platformSection(scope, version))
