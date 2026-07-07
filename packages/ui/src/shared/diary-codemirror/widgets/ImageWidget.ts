@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { WidgetType } from '@codemirror/view'
 import { clampWidth, IMAGE_SIZE_CONFIG } from '../utils/image-utils'
 import { invokeImageAction, invokeUpdateImageWidth } from '../extensions/effects'
@@ -142,15 +143,24 @@ export class ImageWidget extends WidgetType {
 
       const items = [
         {
-          label: '复制图片',
+          label: i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.widgets.ImageWidget.L145',
+            '复制图片'
+          ),
           onClick: () => this.runImageAction('copy')
         },
         {
-          label: '打开所在文件夹',
+          label: i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.widgets.ImageWidget.L149',
+            '打开所在文件夹'
+          ),
           onClick: () => this.runImageAction('open')
         },
         {
-          label: '删除图片附件',
+          label: i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.widgets.ImageWidget.L153',
+            '删除图片附件'
+          ),
           isDanger: true,
           onClick: () => this.runImageAction('delete')
         }

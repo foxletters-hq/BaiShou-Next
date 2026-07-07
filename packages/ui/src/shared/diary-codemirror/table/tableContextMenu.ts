@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import type { StateEffect } from '@codemirror/state'
 import type { EditorView } from '@codemirror/view'
 import type { ParsedTable } from './table.model'
@@ -129,69 +130,219 @@ export function buildColMenuSections(table: ParsedTable, colIndex: number): Tabl
   return [
     {
       items: [
-        { id: 'sort-asc', label: '按列排序 (A-Z)' },
-        { id: 'sort-desc', label: '按列排序 (Z-A)' }
+        {
+          id: 'sort-asc',
+          label: i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.table.tableContextMenu.L132',
+            '按列排序 (A-Z)'
+          )
+        },
+        {
+          id: 'sort-desc',
+          label: i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.table.tableContextMenu.L133',
+            '按列排序 (Z-A)'
+          )
+        }
       ]
     },
     {
       items: [
-        { id: 'align-none', label: '取消对齐' },
-        { id: 'align-left', label: '左对齐' },
-        { id: 'align-center', label: '居中对齐' },
-        { id: 'align-right', label: '右对齐' }
+        {
+          id: 'align-none',
+          label: i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.table.tableContextMenu.L138',
+            '取消对齐'
+          )
+        },
+        {
+          id: 'align-left',
+          label: i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.table.tableContextMenu.L139',
+            '左对齐'
+          )
+        },
+        {
+          id: 'align-center',
+          label: i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.table.tableContextMenu.L140',
+            '居中对齐'
+          )
+        },
+        {
+          id: 'align-right',
+          label: i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.table.tableContextMenu.L141',
+            '右对齐'
+          )
+        }
       ]
     },
     {
       items: [
-        { id: 'duplicate-col', label: '复制列' },
-        { id: 'clear-col', label: '清空列' }
+        {
+          id: 'duplicate-col',
+          label: i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.table.tableContextMenu.L146',
+            '复制列'
+          )
+        },
+        {
+          id: 'clear-col',
+          label: i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.table.tableContextMenu.L147',
+            '清空列'
+          )
+        }
       ]
     },
     {
       items: [
-        { id: 'insert-col-left', label: '在左侧插入列' },
-        { id: 'insert-col-right', label: '在右侧插入列' }
+        {
+          id: 'insert-col-left',
+          label: i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.table.tableContextMenu.L152',
+            '在左侧插入列'
+          )
+        },
+        {
+          id: 'insert-col-right',
+          label: i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.table.tableContextMenu.L153',
+            '在右侧插入列'
+          )
+        }
       ]
     },
     {
       items: [
-        { id: 'left', label: '向左移动列', disabled: colIndex <= 0 },
-        { id: 'right', label: '向右移动列', disabled: colIndex >= colCount - 1 }
+        {
+          id: 'left',
+          label: i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.table.tableContextMenu.L158',
+            '向左移动列'
+          ),
+          disabled: colIndex <= 0
+        },
+        {
+          id: 'right',
+          label: i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.table.tableContextMenu.L159',
+            '向右移动列'
+          ),
+          disabled: colIndex >= colCount - 1
+        }
       ]
     },
     {
-      items: [{ id: 'delete', label: '删除列', disabled: colCount <= 1, destructive: true }]
+      items: [
+        {
+          id: 'delete',
+          label: i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.table.tableContextMenu.L163',
+            '删除列'
+          ),
+          disabled: colCount <= 1,
+          destructive: true
+        }
+      ]
     }
   ]
 }
 
 export function buildRowMenuSections(table: ParsedTable, rowIndex: number): TableMenuSection[] {
   if (rowIndex < 0) {
-    return [{ items: [{ id: 'noop', label: '表头行', disabled: true }] }]
+    return [
+      {
+        items: [
+          {
+            id: 'noop',
+            label: i18n.t(
+              'auto.packages.ui.src.shared.diary.codemirror.table.tableContextMenu.L170',
+              '表头行'
+            ),
+            disabled: true
+          }
+        ]
+      }
+    ]
   }
   const rowCount = table.bodyRows.length
   return [
     {
       items: [
-        { id: 'insert-row-above', label: '在上方插入行' },
-        { id: 'insert-row-below', label: '在下方插入行' }
+        {
+          id: 'insert-row-above',
+          label: i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.table.tableContextMenu.L176',
+            '在上方插入行'
+          )
+        },
+        {
+          id: 'insert-row-below',
+          label: i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.table.tableContextMenu.L177',
+            '在下方插入行'
+          )
+        }
       ]
     },
     {
       items: [
-        { id: 'up', label: '向上移动行', disabled: rowIndex <= 0 },
-        { id: 'down', label: '向下移动行', disabled: rowIndex >= rowCount - 1 }
+        {
+          id: 'up',
+          label: i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.table.tableContextMenu.L182',
+            '向上移动行'
+          ),
+          disabled: rowIndex <= 0
+        },
+        {
+          id: 'down',
+          label: i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.table.tableContextMenu.L183',
+            '向下移动行'
+          ),
+          disabled: rowIndex >= rowCount - 1
+        }
       ]
     },
     {
       items: [
-        { id: 'duplicate-row', label: '复制行' },
-        { id: 'clear-row', label: '清空行' },
-        { id: 'copy-row', label: '复制行到剪贴板' }
+        {
+          id: 'duplicate-row',
+          label: i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.table.tableContextMenu.L188',
+            '复制行'
+          )
+        },
+        {
+          id: 'clear-row',
+          label: i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.table.tableContextMenu.L189',
+            '清空行'
+          )
+        },
+        {
+          id: 'copy-row',
+          label: i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.table.tableContextMenu.L190',
+            '复制行到剪贴板'
+          )
+        }
       ]
     },
     {
-      items: [{ id: 'delete', label: '删除行', destructive: true }]
+      items: [
+        {
+          id: 'delete',
+          label: i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.table.tableContextMenu.L194',
+            '删除行'
+          ),
+          destructive: true
+        }
+      ]
     }
   ]
 }
@@ -889,8 +1040,21 @@ export function openChromeMenuForTrigger(
     const sections: TableMenuSection[] = [
       {
         items: [
-          { id: 'copy-table', label: '复制表格' },
-          { id: 'delete-table', label: '删除表格', destructive: true }
+          {
+            id: 'copy-table',
+            label: i18n.t(
+              'auto.packages.ui.src.shared.diary.codemirror.table.tableContextMenu.L892',
+              '复制表格'
+            )
+          },
+          {
+            id: 'delete-table',
+            label: i18n.t(
+              'auto.packages.ui.src.shared.diary.codemirror.table.tableContextMenu.L893',
+              '删除表格'
+            ),
+            destructive: true
+          }
         ]
       }
     ]
@@ -908,7 +1072,11 @@ export function openChromeMenuForTrigger(
       })
     }
     if (touch) {
-      showTableBottomSheet('表格', sections, onPick)
+      showTableBottomSheet(
+        i18n.t('auto.packages.ui.src.shared.diary.codemirror.table.tableContextMenu.L911', '表格'),
+        sections,
+        onPick
+      )
     } else {
       showTableContextMenu(sections[0]!.items, x, y, onPick)
     }
@@ -939,7 +1107,10 @@ export function openChromeMenuForTrigger(
     if (Number.isNaN(rowIndex)) return
     setChromeSelection(view, tableFrom, 'row', rowIndex)
     const sections = buildRowMenuSections(table, rowIndex)
-    const title = rowIndex < 0 ? '表头' : `第 ${rowIndex + 1} 行`
+    const title =
+      rowIndex < 0
+        ? i18n.t('auto.packages.ui.src.shared.diary.codemirror.table.tableContextMenu.L942', '表头')
+        : `第 ${rowIndex + 1} 行`
     const onPick = (id: string) => {
       runChromeMenuAction(view, tableFrom, tableTo, trigger, id)
     }

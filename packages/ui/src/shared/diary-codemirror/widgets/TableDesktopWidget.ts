@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { WidgetType, type EditorView } from '@codemirror/view'
 import type { ColumnAlignment } from '../table/tableGridModel'
 import { type ParsedTable, tableContentSignature } from '../table/table.model'
@@ -274,7 +275,13 @@ export class TableDesktopWidget extends WidgetType {
     const btn = document.createElement('button')
     btn.type = 'button'
     btn.className = 'cm-tbl-table-handle cm-tbl-table-handle--menu cm-table-corner-menu'
-    btn.setAttribute('aria-label', '表格菜单')
+    btn.setAttribute(
+      'aria-label',
+      i18n.t(
+        'auto.packages.ui.src.shared.diary.codemirror.widgets.TableDesktopWidget.L277',
+        '表格菜单'
+      )
+    )
     btn.appendChild(createTableGridIcon(2, 2))
     btn.addEventListener('click', (e) => {
       e.preventDefault()
@@ -283,8 +290,21 @@ export class TableDesktopWidget extends WidgetType {
       const rect = btn.getBoundingClientRect()
       showTableContextMenu(
         [
-          { id: 'copy-table', label: '复制表格' },
-          { id: 'delete-table', label: '删除表格', destructive: true }
+          {
+            id: 'copy-table',
+            label: i18n.t(
+              'auto.packages.ui.src.shared.diary.codemirror.widgets.TableDesktopWidget.L286',
+              '复制表格'
+            )
+          },
+          {
+            id: 'delete-table',
+            label: i18n.t(
+              'auto.packages.ui.src.shared.diary.codemirror.widgets.TableDesktopWidget.L287',
+              '删除表格'
+            ),
+            destructive: true
+          }
         ],
         rect.left,
         rect.bottom + 4,
@@ -307,7 +327,18 @@ export class TableDesktopWidget extends WidgetType {
     const btn = document.createElement('button')
     btn.type = 'button'
     btn.className = `cm-tbl-table-handle cm-tbl-table-handle--add-${kind} cm-table-add-btn cm-table-add-${kind === 'col' ? 'col' : 'row'}`
-    btn.setAttribute('aria-label', kind === 'row' ? '添加行' : '添加列')
+    btn.setAttribute(
+      'aria-label',
+      kind === 'row'
+        ? i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.widgets.TableDesktopWidget.L310',
+            '添加行'
+          )
+        : i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.widgets.TableDesktopWidget.L310',
+            '添加列'
+          )
+    )
     btn.appendChild(createCkantPlusIcon(14))
     btn.dataset.desktopHandle = kind === 'col' ? 'table-right' : 'table-bottom'
     btn.dataset.handleIndex = String(
@@ -320,7 +351,13 @@ export class TableDesktopWidget extends WidgetType {
     const btn = document.createElement('button')
     btn.type = 'button'
     btn.className = 'cm-tbl-table-handle cm-tbl-table-handle--corner cm-table-add-btn'
-    btn.setAttribute('aria-label', '扩展表格')
+    btn.setAttribute(
+      'aria-label',
+      i18n.t(
+        'auto.packages.ui.src.shared.diary.codemirror.widgets.TableDesktopWidget.L323',
+        '扩展表格'
+      )
+    )
     btn.appendChild(createCkantPlusIcon(12))
     btn.dataset.desktopHandle = 'table-corner'
     btn.dataset.handleIndex = '0'

@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo } from 'react'
 import { Keyboard, Platform, StyleSheet, View, type ViewStyle } from 'react-native'
 import { WebView } from 'react-native-webview'
@@ -120,9 +121,24 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
     (payload: DiaryCmConfirmRequestPayload, respond: (confirmed: boolean) => void) => {
       void dialog
         .confirm(payload.message, {
-          title: payload.title ?? '确认删除',
-          confirmText: payload.confirmText ?? '删除',
-          cancelText: payload.cancelText ?? '取消',
+          title:
+            payload.title ??
+            i18n.t(
+              'auto.packages.ui.src.native.DiaryEditor.NativeDiaryCodeMirrorEditor.L123',
+              '确认删除'
+            ),
+          confirmText:
+            payload.confirmText ??
+            i18n.t(
+              'auto.packages.ui.src.native.DiaryEditor.NativeDiaryCodeMirrorEditor.L124',
+              '删除'
+            ),
+          cancelText:
+            payload.cancelText ??
+            i18n.t(
+              'auto.packages.ui.src.native.DiaryEditor.NativeDiaryCodeMirrorEditor.L125',
+              '取消'
+            ),
           destructive: payload.destructive ?? true
         })
         .then(respond)

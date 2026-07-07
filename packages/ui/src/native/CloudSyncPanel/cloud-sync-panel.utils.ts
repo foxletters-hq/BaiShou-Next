@@ -1,5 +1,9 @@
+import i18n from 'i18next'
 export const CLOUD_SYNC_TARGETS = [
-  { key: 'local', label: '本地' },
+  {
+    key: 'local',
+    label: i18n.t('auto.packages.ui.src.native.CloudSyncPanel.cloud.sync.panel.utils.L2', '本地')
+  },
   { key: 'webdav', label: 'WebDAV' },
   { key: 's3', label: 'S3' }
 ] as const

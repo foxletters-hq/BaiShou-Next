@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 export const BASE_KNOWN_PROVIDERS_CONFIG = [
   {
     id: 'gemini',
@@ -31,7 +32,10 @@ export const BASE_KNOWN_PROVIDERS_CONFIG = [
   },
   {
     id: 'siliconflow',
-    name: '硅基流动 (SiliconFlow)',
+    name: i18n.t(
+      'auto.packages.ui.src.desktop.AIModelServicesView.ai.model.services.constants.L34',
+      '硅基流动 (SiliconFlow)'
+    ),
     defaultBase: 'https://api.siliconflow.cn/v1',
     isSystem: true
   },
@@ -43,7 +47,10 @@ export const BASE_KNOWN_PROVIDERS_CONFIG = [
   },
   {
     id: 'xiaomimimo',
-    name: '小米 MiMo',
+    name: i18n.t(
+      'auto.packages.ui.src.desktop.AIModelServicesView.ai.model.services.constants.L46',
+      '小米 MiMo'
+    ),
     defaultBase: 'https://api.xiaomimimo.com/v1',
     isSystem: true
   },
@@ -55,19 +62,28 @@ export const BASE_KNOWN_PROVIDERS_CONFIG = [
   },
   {
     id: 'zhipu',
-    name: '智谱 AI (ZhiPu)',
+    name: i18n.t(
+      'auto.packages.ui.src.desktop.AIModelServicesView.ai.model.services.constants.L58',
+      '智谱 AI (ZhiPu)'
+    ),
     defaultBase: 'https://open.bigmodel.cn/api/paas/v4',
     isSystem: true
   },
   {
     id: 'dashscope',
-    name: '通义千问 (百炼)',
+    name: i18n.t(
+      'auto.packages.ui.src.desktop.AIModelServicesView.ai.model.services.constants.L64',
+      '通义千问 (百炼)'
+    ),
     defaultBase: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
     isSystem: true
   },
   {
     id: 'doubao',
-    name: '豆包 (火山引擎)',
+    name: i18n.t(
+      'auto.packages.ui.src.desktop.AIModelServicesView.ai.model.services.constants.L70',
+      '豆包 (火山引擎)'
+    ),
     defaultBase: 'https://ark.cn-beijing.volces.com/api/v3',
     isSystem: true
   },
@@ -103,13 +119,19 @@ export const BASE_KNOWN_PROVIDERS_CONFIG = [
   },
   {
     id: 'stepfun',
-    name: '阶跃星辰 (StepFun)',
+    name: i18n.t(
+      'auto.packages.ui.src.desktop.AIModelServicesView.ai.model.services.constants.L106',
+      '阶跃星辰 (StepFun)'
+    ),
     defaultBase: 'https://api.stepfun.com/v1',
     isSystem: true
   },
   {
     id: 'hunyuan',
-    name: '腾讯混元 (Hunyuan)',
+    name: i18n.t(
+      'auto.packages.ui.src.desktop.AIModelServicesView.ai.model.services.constants.L112',
+      '腾讯混元 (Hunyuan)'
+    ),
     defaultBase: 'https://api.hunyuan.cloud.tencent.com/v1',
     isSystem: true
   },

@@ -284,7 +284,10 @@ describe('useDiaryCodeMirrorBridge onWebViewMessage', () => {
         nativeEvent: {
           data: JSON.stringify({
             type: 'confirmRequest',
-            payload: { requestId: 'c1', message: '确定删除？' }
+            payload: {
+              requestId: 'c1',
+              message: '确定删除？'
+            }
           })
         }
       })

@@ -85,13 +85,16 @@ export function useContextChainView({
   const getChainRoleLabel = (role: string) => {
     switch (role) {
       case 'system':
-        return '系统'
+        return t('auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L88', '系统')
       case 'user':
-        return '用户'
+        return t('auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L90', '用户')
       case 'assistant':
-        return 'AI 助手'
+        return t(
+          'auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L92',
+          'AI 助手'
+        )
       case 'tool':
-        return '工具'
+        return t('auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L94', '工具')
       default:
         return role
     }
@@ -102,17 +105,20 @@ export function useContextChainView({
 
   const getLabelBadgeClass = (label?: string) => {
     switch (label) {
-      case '系统提示词':
+      case t(
+        'auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L105',
+        '系统提示词'
+      ):
         return panelStyles.roleSystem
-      case '用户':
+      case t('auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L107', '用户'):
         return panelStyles.roleUser
-      case 'AI 思考':
+      case t('auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L109', 'AI 思考'):
         return panelStyles.roleThinking
-      case 'AI 输出':
+      case t('auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L111', 'AI 输出'):
         return panelStyles.roleAssistant
-      case '工具调用':
+      case t('auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L113', '工具调用'):
         return panelStyles.roleTool
-      case '对话压缩':
+      case t('auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L115', '对话压缩'):
         return panelStyles.roleCompaction
       default:
         return panelStyles.roleDefault
@@ -202,7 +208,10 @@ export function useContextChainView({
   )
 
   const systemPromptInChain = flatEntries.some(
-    (e) => e.kind === 'system-prompt' || e.item?.label === '系统提示词'
+    (e) =>
+      e.kind === 'system-prompt' ||
+      e.item?.label ===
+        t('auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L205', '系统提示词')
   )
 
   const getRoleColorClass = (role: string) => {

@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import React from 'react'
 import { View, Text, Pressable } from 'react-native'
 import { useNativeTheme } from '../theme'
@@ -15,28 +16,40 @@ interface ContextChainFlatListProps {
 
 function getBadgeSurface(label: string, colors: ReturnType<typeof useNativeTheme>['colors']) {
   const color = getLabelBadgeColor(label, colors)
-  if (label === '用户') {
+  if (
+    label ===
+    i18n.t('auto.packages.ui.src.native.ContextChainDialog.ContextChainFlatList.L18', '用户')
+  ) {
     return {
       color,
       backgroundColor: 'rgba(59, 130, 246, 0.14)',
       borderColor: 'rgba(59, 130, 246, 0.32)'
     }
   }
-  if (label === 'AI 思考') {
+  if (
+    label ===
+    i18n.t('auto.packages.ui.src.native.ContextChainDialog.ContextChainFlatList.L25', 'AI 思考')
+  ) {
     return {
       color: '#7c3aed',
       backgroundColor: 'rgba(139, 92, 246, 0.12)',
       borderColor: 'rgba(139, 92, 246, 0.24)'
     }
   }
-  if (label === 'AI 输出') {
+  if (
+    label ===
+    i18n.t('auto.packages.ui.src.native.ContextChainDialog.ContextChainFlatList.L32', 'AI 输出')
+  ) {
     return {
       color,
       backgroundColor: `${color}1A`,
       borderColor: `${color}33`
     }
   }
-  if (label === '工具调用') {
+  if (
+    label ===
+    i18n.t('auto.packages.ui.src.native.ContextChainDialog.ContextChainFlatList.L39', '工具调用')
+  ) {
     return {
       color: colors.textTertiary,
       backgroundColor: 'rgba(100, 116, 139, 0.1)',
@@ -115,7 +128,8 @@ export const ContextChainFlatList: React.FC<ContextChainFlatListProps> = ({
     const label = view.getMessageLabel(msg)
     const badge = getBadgeSurface(label, colors)
     const preview =
-      msg.label === '工具调用'
+      msg.label ===
+      i18n.t('auto.packages.ui.src.native.ContextChainDialog.ContextChainFlatList.L118', '工具调用')
         ? view.formatToolPreview(msg.content)
         : msg.content
           ? view.formatPreview(msg.content)

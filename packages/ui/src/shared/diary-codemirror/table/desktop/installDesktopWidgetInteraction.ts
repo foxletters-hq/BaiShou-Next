@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import type { EditorView } from '@codemirror/view'
 import { parseTableFromDoc } from '../table.model'
 import { isTableTypeToEditKey } from '../tableInputKeys'
@@ -271,10 +272,34 @@ export function installDesktopWidgetInteraction(
     const bounds = domSectionToParsedBounds(interaction.outlinedSection)
     showTableContextMenu(
       [
-        { id: 'cut-range', label: '剪切' },
-        { id: 'copy-range', label: '复制' },
-        { id: 'paste-range', label: '粘贴' },
-        { id: 'clear-range', label: '清空选中的单元格' }
+        {
+          id: 'cut-range',
+          label: i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.table.desktop.installDesktopWidgetInteraction.L274',
+            '剪切'
+          )
+        },
+        {
+          id: 'copy-range',
+          label: i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.table.desktop.installDesktopWidgetInteraction.L275',
+            '复制'
+          )
+        },
+        {
+          id: 'paste-range',
+          label: i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.table.desktop.installDesktopWidgetInteraction.L276',
+            '粘贴'
+          )
+        },
+        {
+          id: 'clear-range',
+          label: i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.table.desktop.installDesktopWidgetInteraction.L277',
+            '清空选中的单元格'
+          )
+        }
       ],
       event.clientX,
       event.clientY,

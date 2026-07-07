@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 /** 可排序的工具栏按钮（不含固定的「设置」按钮） */
 export type MarkdownToolbarToolId =
   | 'undo'
@@ -39,22 +40,102 @@ export interface MarkdownToolbarToolMeta {
 }
 
 export const MARKDOWN_TOOLBAR_TOOL_META: Record<MarkdownToolbarToolId, MarkdownToolbarToolMeta> = {
-  undo: { id: 'undo', labelKey: 'diary.toolbar_undo', labelDefault: '撤销' },
-  redo: { id: 'redo', labelKey: 'diary.toolbar_redo', labelDefault: '重做' },
-  bold: { id: 'bold', labelKey: 'diary.toolbar_bold', labelDefault: '加粗' },
-  italic: { id: 'italic', labelKey: 'diary.toolbar_italic', labelDefault: '斜体' },
+  undo: {
+    id: 'undo',
+    labelKey: 'diary.toolbar_undo',
+    labelDefault: i18n.t(
+      'auto.packages.ui.src.native.MarkdownToolbar.markdown.toolbar.types.L42',
+      '撤销'
+    )
+  },
+  redo: {
+    id: 'redo',
+    labelKey: 'diary.toolbar_redo',
+    labelDefault: i18n.t(
+      'auto.packages.ui.src.native.MarkdownToolbar.markdown.toolbar.types.L43',
+      '重做'
+    )
+  },
+  bold: {
+    id: 'bold',
+    labelKey: 'diary.toolbar_bold',
+    labelDefault: i18n.t(
+      'auto.packages.ui.src.native.MarkdownToolbar.markdown.toolbar.types.L44',
+      '加粗'
+    )
+  },
+  italic: {
+    id: 'italic',
+    labelKey: 'diary.toolbar_italic',
+    labelDefault: i18n.t(
+      'auto.packages.ui.src.native.MarkdownToolbar.markdown.toolbar.types.L45',
+      '斜体'
+    )
+  },
   strikethrough: {
     id: 'strikethrough',
     labelKey: 'diary.toolbar_strikethrough',
-    labelDefault: '删除线'
+    labelDefault: i18n.t(
+      'auto.packages.ui.src.native.MarkdownToolbar.markdown.toolbar.types.L49',
+      '删除线'
+    )
   },
-  code: { id: 'code', labelKey: 'diary.toolbar_code', labelDefault: '行内代码' },
-  quote: { id: 'quote', labelKey: 'diary.toolbar_quote', labelDefault: '引用' },
-  list: { id: 'list', labelKey: 'diary.toolbar_list', labelDefault: '无序列表' },
-  hash: { id: 'hash', labelKey: 'diary.toolbar_insert_tag', labelDefault: '插入标签' },
-  h5: { id: 'h5', labelKey: 'diary.toolbar_insert_h5', labelDefault: '五级标题' },
-  h6: { id: 'h6', labelKey: 'diary.toolbar_insert_h6', labelDefault: '六级标题' },
-  image: { id: 'image', labelKey: 'diary.toolbar_insert_image', labelDefault: '插入图片' }
+  code: {
+    id: 'code',
+    labelKey: 'diary.toolbar_code',
+    labelDefault: i18n.t(
+      'auto.packages.ui.src.native.MarkdownToolbar.markdown.toolbar.types.L51',
+      '行内代码'
+    )
+  },
+  quote: {
+    id: 'quote',
+    labelKey: 'diary.toolbar_quote',
+    labelDefault: i18n.t(
+      'auto.packages.ui.src.native.MarkdownToolbar.markdown.toolbar.types.L52',
+      '引用'
+    )
+  },
+  list: {
+    id: 'list',
+    labelKey: 'diary.toolbar_list',
+    labelDefault: i18n.t(
+      'auto.packages.ui.src.native.MarkdownToolbar.markdown.toolbar.types.L53',
+      '无序列表'
+    )
+  },
+  hash: {
+    id: 'hash',
+    labelKey: 'diary.toolbar_insert_tag',
+    labelDefault: i18n.t(
+      'auto.packages.ui.src.native.MarkdownToolbar.markdown.toolbar.types.L54',
+      '插入标签'
+    )
+  },
+  h5: {
+    id: 'h5',
+    labelKey: 'diary.toolbar_insert_h5',
+    labelDefault: i18n.t(
+      'auto.packages.ui.src.native.MarkdownToolbar.markdown.toolbar.types.L55',
+      '五级标题'
+    )
+  },
+  h6: {
+    id: 'h6',
+    labelKey: 'diary.toolbar_insert_h6',
+    labelDefault: i18n.t(
+      'auto.packages.ui.src.native.MarkdownToolbar.markdown.toolbar.types.L56',
+      '六级标题'
+    )
+  },
+  image: {
+    id: 'image',
+    labelKey: 'diary.toolbar_insert_image',
+    labelDefault: i18n.t(
+      'auto.packages.ui.src.native.MarkdownToolbar.markdown.toolbar.types.L57',
+      '插入图片'
+    )
+  }
 }
 
 function isLegacyIgnoredId(id: string): boolean {

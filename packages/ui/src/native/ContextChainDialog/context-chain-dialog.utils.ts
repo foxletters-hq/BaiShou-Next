@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import type { TFunction } from 'i18next'
 import type { lightColors } from '../../theme'
 import type { ContextChainTab, ContextChainTabItem } from './context-chain-dialog.types'
@@ -36,17 +37,35 @@ export function getRoleColor(role: string, colors: ThemeColors): string {
 
 export function getLabelBadgeColor(label: string, colors: ThemeColors): string {
   switch (label) {
-    case '系统提示词':
+    case i18n.t(
+      'auto.packages.ui.src.native.ContextChainDialog.context.chain.dialog.utils.L39',
+      '系统提示词'
+    ):
       return colors.tertiary
-    case '用户':
+    case i18n.t(
+      'auto.packages.ui.src.native.ContextChainDialog.context.chain.dialog.utils.L41',
+      '用户'
+    ):
       return colors.primary
-    case 'AI 思考':
+    case i18n.t(
+      'auto.packages.ui.src.native.ContextChainDialog.context.chain.dialog.utils.L43',
+      'AI 思考'
+    ):
       return colors.secondary
-    case 'AI 输出':
+    case i18n.t(
+      'auto.packages.ui.src.native.ContextChainDialog.context.chain.dialog.utils.L45',
+      'AI 输出'
+    ):
       return colors.secondary
-    case '工具调用':
+    case i18n.t(
+      'auto.packages.ui.src.native.ContextChainDialog.context.chain.dialog.utils.L47',
+      '工具调用'
+    ):
       return colors.error
-    case '对话压缩':
+    case i18n.t(
+      'auto.packages.ui.src.native.ContextChainDialog.context.chain.dialog.utils.L49',
+      '对话压缩'
+    ):
       return colors.tertiary
     default:
       return getRoleColor(label, colors)

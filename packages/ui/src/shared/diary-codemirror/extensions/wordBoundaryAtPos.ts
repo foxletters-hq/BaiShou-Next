@@ -1,4 +1,5 @@
-/** 触摸长按选词：行内语境分词 + 落点校正 + 跳过 Markdown 标记 */
+/** 行内弱助词：单独选中体验差，尽量并入相邻实词 */
+const WEAK_SINGLE_CHARS = new Set('了的地得吗呢吧啊嘛着过于在和与及')
 
 let cachedSegmenter: Intl.Segmenter | null | undefined
 
@@ -28,8 +29,7 @@ function isWordContentChar(ch: string): boolean {
 
 const MARKUP_DELIMS = ['**', '~~', '`', '*', '_'] as const
 
-/** 行内弱助词：单独选中体验差，尽量并入相邻实词 */
-const WEAK_SINGLE_CHARS = new Set('了的地得吗呢吧啊嘛着过于在和与及')
+/** 触摸长按选词：行内语境分词 + 落点校正 + 跳过 Markdown 标记 */
 
 function getLineBounds(doc: string, pos: number): { from: number; to: number } {
   let from = Math.max(0, Math.min(pos, doc.length))

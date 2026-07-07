@@ -11,11 +11,24 @@ describe('tableConfirm', () => {
   })
 
   it('builds messages for destructive table actions', () => {
-    expect(confirmMessageForDestructiveItem({ id: 'delete-table', label: '删除表格' })).toContain(
-      '删除这张表格'
-    )
-    expect(confirmMessageForDestructiveItem({ id: 'delete', label: '删除列' })).toContain('这一列')
-    expect(confirmMessageForDestructiveItem({ id: 'delete', label: '删除行' })).toContain('这一行')
+    expect(
+      confirmMessageForDestructiveItem({
+        id: 'delete-table',
+        label: '删除表格'
+      })
+    ).toContain('删除这张表格')
+    expect(
+      confirmMessageForDestructiveItem({
+        id: 'delete',
+        label: '删除列'
+      })
+    ).toContain('这一列')
+    expect(
+      confirmMessageForDestructiveItem({
+        id: 'delete',
+        label: '删除行'
+      })
+    ).toContain('这一行')
   })
 
   it('resolves native confirm through bridge response', async () => {

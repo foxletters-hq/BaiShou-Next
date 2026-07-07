@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { WidgetType } from '@codemirror/view'
 import { IMAGE_SIZE_CONFIG } from '../utils/image-utils'
 
@@ -18,7 +19,14 @@ export class ImagePlaceholderWidget extends WidgetType {
     const el = document.createElement('div')
     el.className = 'cm-image-placeholder'
     el.setAttribute('role', 'img')
-    el.setAttribute('aria-label', this.alt || '图片')
+    el.setAttribute(
+      'aria-label',
+      this.alt ||
+        i18n.t(
+          'auto.packages.ui.src.shared.diary.codemirror.widgets.ImagePlaceholderWidget.L21',
+          '图片'
+        )
+    )
     if (this.width) {
       el.style.width = `${this.width}px`
       el.style.maxWidth = '100%'

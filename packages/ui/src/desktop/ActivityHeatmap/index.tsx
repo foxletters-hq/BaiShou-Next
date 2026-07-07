@@ -287,7 +287,10 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
                     <div
                       key={colIndex}
                       className={`${styles.cell} ${getColorLevel(cell.count)}`}
-                      title={`${formatLocalDate(cell.date)} : ${cell.count} ${t('activity.interactions', '篇日记')}`}
+                      title={t(
+                        'auto.packages.ui.src.desktop.ActivityHeatmap.index.L290',
+                        `${formatLocalDate(cell.date)} : ${cell.count} ${t('activity.interactions', '篇日记')}`
+                      )}
                     />
                   ))}
                 </div>

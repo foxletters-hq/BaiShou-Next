@@ -69,7 +69,12 @@ export const ContextChainList: React.FC<ContextChainListProps> = ({
             numberOfLines={1}
           >
             {msg.content ||
-              (msg.toolInvocations ? '→ 工具交互' : t('agent.chat.empty_content', '[空文本]'))}
+              (msg.toolInvocations
+                ? t(
+                    'auto.packages.ui.src.native.ContextChainDialog.ContextChainList.L72',
+                    '→ 工具交互'
+                  )
+                : t('agent.chat.empty_content', '[空文本]'))}
           </Text>
           <Text style={{ fontSize: 16, color: colors.textSecondary }}>›</Text>
         </Pressable>

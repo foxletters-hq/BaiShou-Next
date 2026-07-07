@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import React from 'react'
 import { Archive } from 'lucide-react'
 import styles from './CloudSyncPanel.module.css'
@@ -64,8 +65,16 @@ export const CloudSyncCountModal: React.FC<CloudSyncCountModalProps> = ({ vm }) 
                   val === '' ||
                   val === noLimitLabel ||
                   val === t('data_sync.no_limit', 'No Limit') ||
-                  val === '不限制' ||
-                  val === '不限制数量' ||
+                  val ===
+                    i18n.t(
+                      'auto.packages.ui.src.desktop.CloudSyncPanel.CloudSyncCountModal.L67',
+                      '不限制'
+                    ) ||
+                  val ===
+                    i18n.t(
+                      'auto.packages.ui.src.desktop.CloudSyncPanel.CloudSyncCountModal.L68',
+                      '不限制数量'
+                    ) ||
                   val === '∞' ||
                   val === '-1'
                 ) {

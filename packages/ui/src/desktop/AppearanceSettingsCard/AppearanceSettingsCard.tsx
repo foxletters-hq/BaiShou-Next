@@ -43,12 +43,21 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
       val,
       label:
         val === 'zh'
-          ? '简体中文'
+          ? t(
+              'auto.packages.ui.src.desktop.AppearanceSettingsCard.AppearanceSettingsCard.L46',
+              '简体中文'
+            )
           : val === 'zh-TW'
-            ? '繁體中文'
+            ? t(
+                'auto.packages.ui.src.desktop.AppearanceSettingsCard.AppearanceSettingsCard.L48',
+                '繁體中文'
+              )
             : val === 'en'
               ? 'English'
-              : '日本語'
+              : t(
+                  'auto.packages.ui.src.desktop.AppearanceSettingsCard.AppearanceSettingsCard.L51',
+                  '日本語'
+                )
     }))
   ]
 

@@ -26,7 +26,17 @@ describe('tableNativeSheet', () => {
     const onClose = vi.fn()
     const ok = requestNativeTableSheet(
       '第 1 列',
-      [{ items: [{ id: 'delete', label: '删除列', destructive: true }] }],
+      [
+        {
+          items: [
+            {
+              id: 'delete',
+              label: '删除列',
+              destructive: true
+            }
+          ]
+        }
+      ],
       onPick,
       onClose
     )
@@ -60,12 +70,34 @@ describe('tableNativeSheet', () => {
     }
 
     expect(
-      requestNativeTableSheet('第 5 行', [{ items: [{ id: 'up', label: '向上移动行' }] }], vi.fn())
+      requestNativeTableSheet(
+        '第 5 行',
+        [
+          {
+            items: [
+              {
+                id: 'up',
+                label: '向上移动行'
+              }
+            ]
+          }
+        ],
+        vi.fn()
+      )
     ).toBe(true)
     expect(
       requestNativeTableSheet(
         '第 5 行',
-        [{ items: [{ id: 'clear-row', label: '清空行' }] }],
+        [
+          {
+            items: [
+              {
+                id: 'clear-row',
+                label: '清空行'
+              }
+            ]
+          }
+        ],
         vi.fn()
       )
     ).toBe(true)

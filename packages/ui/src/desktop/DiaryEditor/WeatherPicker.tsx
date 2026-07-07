@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import './WeatherPicker.css'
 
@@ -20,7 +21,7 @@ export const WeatherPicker: React.FC<WeatherPickerProps> = ({
   value,
   options,
   onChange,
-  placeholder = '天气'
+  placeholder = i18n.t('auto.packages.ui.src.desktop.DiaryEditor.WeatherPicker.L23', '天气')
 }) => {
   const [open, setOpen] = useState(false)
   const [closing, setClosing] = useState(false)

@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Modal,
@@ -135,7 +136,10 @@ export const TableChromeBottomSheet: React.FC<TableChromeBottomSheetProps> = ({
             style={StyleSheet.absoluteFill}
             onPress={handleDismiss}
             accessibilityRole="button"
-            accessibilityLabel="关闭菜单"
+            accessibilityLabel={i18n.t(
+              'auto.packages.ui.src.native.DiaryEditor.TableChromeBottomSheet.L138',
+              '关闭菜单'
+            )}
           />
         </Animated.View>
         <View style={styles.sheetDock} pointerEvents="box-none">

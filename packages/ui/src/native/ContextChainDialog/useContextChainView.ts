@@ -71,13 +71,16 @@ export function useContextChainView({
   const getChainRoleLabel = (role: string) => {
     switch (role) {
       case 'system':
-        return '系统'
+        return t('auto.packages.ui.src.native.ContextChainDialog.useContextChainView.L74', '系统')
       case 'user':
-        return '用户'
+        return t('auto.packages.ui.src.native.ContextChainDialog.useContextChainView.L76', '用户')
       case 'assistant':
-        return 'AI 助手'
+        return t(
+          'auto.packages.ui.src.native.ContextChainDialog.useContextChainView.L78',
+          'AI 助手'
+        )
       case 'tool':
-        return '工具'
+        return t('auto.packages.ui.src.native.ContextChainDialog.useContextChainView.L80', '工具')
       default:
         return role
     }
@@ -172,7 +175,10 @@ export function useContextChainView({
   )
 
   const systemPromptInChain = flatEntries.some(
-    (e) => e.kind === 'system-prompt' || e.item?.label === '系统提示词'
+    (e) =>
+      e.kind === 'system-prompt' ||
+      e.item?.label ===
+        t('auto.packages.ui.src.native.ContextChainDialog.useContextChainView.L175', '系统提示词')
   )
 
   const compressionInChain = Boolean(compressionSummaryEntry?.summaryText)

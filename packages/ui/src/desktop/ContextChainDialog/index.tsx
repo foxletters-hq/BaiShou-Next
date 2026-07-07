@@ -63,7 +63,9 @@ export const ContextChainDialog: React.FC<ContextChainDialogProps> = ({
   const getMessageLabel = (msg: MockChatMessage) => msg.label || getRoleLabel(msg.role)
 
   const systemPromptInChain = contextMessages.some(
-    (m) => m.role === 'system' && m.label === '系统提示词'
+    (m) =>
+      m.role === 'system' &&
+      m.label === t('auto.packages.ui.src.desktop.ContextChainDialog.index.L66', '系统提示词')
   )
 
   const getRoleColorClass = (role: string) => {

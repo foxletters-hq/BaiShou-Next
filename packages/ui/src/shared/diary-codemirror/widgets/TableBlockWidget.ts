@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { WidgetType, EditorView } from '@codemirror/view'
 import { StateEffect } from '@codemirror/state'
 import { type ParsedTable, tableContentSignature } from '../table/table.model'
@@ -150,7 +151,12 @@ export class TableBlockWidget extends WidgetType {
 
     const rowHandles = document.createElement('div')
     rowHandles.className = 'cm-table-row-handles'
-    rowHandles.appendChild(this.createRowHandle(-1, '表头'))
+    rowHandles.appendChild(
+      this.createRowHandle(
+        -1,
+        i18n.t('auto.packages.ui.src.shared.diary.codemirror.widgets.TableBlockWidget.L153', '表头')
+      )
+    )
     this.table.bodyRows.forEach((_, rowIndex) => {
       rowHandles.appendChild(this.createRowHandle(rowIndex, `第 ${rowIndex + 1} 行`))
     })
@@ -197,7 +203,18 @@ export class TableBlockWidget extends WidgetType {
     const isTouch = this.platform?.interactionMode === 'touch'
     const btn = this.createChromeTrigger(isTouch ? 'div' : 'button')
     btn.className = `cm-table-add-btn cm-table-add-${kind}`
-    btn.setAttribute('aria-label', kind === 'row' ? '添加行' : '添加列')
+    btn.setAttribute(
+      'aria-label',
+      kind === 'row'
+        ? i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.widgets.TableBlockWidget.L200',
+            '添加行'
+          )
+        : i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.widgets.TableBlockWidget.L200',
+            '添加列'
+          )
+    )
     const icon = document.createElement('span')
     icon.className = 'cm-table-add-btn-icon'
     icon.textContent = '+'
@@ -764,7 +781,13 @@ export class TableBlockWidget extends WidgetType {
     if (this.platform?.interactionMode === 'touch') {
       btn.classList.add('cm-table-handle--touch')
     }
-    btn.setAttribute('aria-label', '表格菜单')
+    btn.setAttribute(
+      'aria-label',
+      i18n.t(
+        'auto.packages.ui.src.shared.diary.codemirror.widgets.TableBlockWidget.L767',
+        '表格菜单'
+      )
+    )
     btn.appendChild(createTableGridIcon(3, 3))
     this.bindTableMenu(btn)
     return btn
@@ -1073,8 +1096,21 @@ export class TableBlockWidget extends WidgetType {
       const rect = btn.getBoundingClientRect()
       this.showMenu(
         [
-          { id: 'copy-table', label: '复制表格' },
-          { id: 'delete-table', label: '删除表格', destructive: true }
+          {
+            id: 'copy-table',
+            label: i18n.t(
+              'auto.packages.ui.src.shared.diary.codemirror.widgets.TableBlockWidget.L1076',
+              '复制表格'
+            )
+          },
+          {
+            id: 'delete-table',
+            label: i18n.t(
+              'auto.packages.ui.src.shared.diary.codemirror.widgets.TableBlockWidget.L1077',
+              '删除表格'
+            ),
+            destructive: true
+          }
         ],
         rect.left,
         rect.bottom + 4,
@@ -1233,7 +1269,10 @@ export class TableBlockWidget extends WidgetType {
       const title = isCol
         ? `第 ${colIndex + 1} 列`
         : rowIndex < 0
-          ? '表头'
+          ? i18n.t(
+              'auto.packages.ui.src.shared.diary.codemirror.widgets.TableBlockWidget.L1236',
+              '表头'
+            )
           : `第 ${rowIndex + 1} 行`
       this.showMenu(
         sections.flatMap((s) => s.items),
@@ -1321,15 +1360,46 @@ export class TableBlockWidget extends WidgetType {
     const sections = [
       {
         items: [
-          { id: 'cut-range', label: '剪切' },
-          { id: 'copy-range', label: '复制' },
-          { id: 'paste-range', label: '粘贴' }
+          {
+            id: 'cut-range',
+            label: i18n.t(
+              'auto.packages.ui.src.shared.diary.codemirror.widgets.TableBlockWidget.L1324',
+              '剪切'
+            )
+          },
+          {
+            id: 'copy-range',
+            label: i18n.t(
+              'auto.packages.ui.src.shared.diary.codemirror.widgets.TableBlockWidget.L1325',
+              '复制'
+            )
+          },
+          {
+            id: 'paste-range',
+            label: i18n.t(
+              'auto.packages.ui.src.shared.diary.codemirror.widgets.TableBlockWidget.L1326',
+              '粘贴'
+            )
+          }
         ]
       },
       {
         items: [
-          { id: 'clear-range', label: '清空选中的单元格' },
-          { id: 'delete-range', label: '删除选中的单元格', destructive: true }
+          {
+            id: 'clear-range',
+            label: i18n.t(
+              'auto.packages.ui.src.shared.diary.codemirror.widgets.TableBlockWidget.L1331',
+              '清空选中的单元格'
+            )
+          },
+          {
+            id: 'delete-range',
+            label: i18n.t(
+              'auto.packages.ui.src.shared.diary.codemirror.widgets.TableBlockWidget.L1332',
+              '删除选中的单元格'
+            ),
+            destructive: true
+          }
         ]
       }
     ]
@@ -1408,7 +1478,15 @@ export class TableBlockWidget extends WidgetType {
   ): void {
     if (this.platform?.interactionMode === 'touch') {
       const sections = options?.sections ?? [{ items }]
-      showTableBottomSheet(options?.title ?? '表格', sections, onPick)
+      showTableBottomSheet(
+        options?.title ??
+          i18n.t(
+            'auto.packages.ui.src.shared.diary.codemirror.widgets.TableBlockWidget.L1411',
+            '表格'
+          ),
+        sections,
+        onPick
+      )
       return
     }
     showTableContextMenu(items, clientX, clientY, onPick)

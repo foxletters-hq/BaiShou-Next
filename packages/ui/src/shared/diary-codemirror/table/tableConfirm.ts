@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 declare global {
   interface Window {
     ReactNativeWebView?: { postMessage: (message: string) => void }
@@ -14,12 +15,32 @@ export function resolveTableConfirmResponse(requestId: string, confirmed: boolea
 }
 
 export function confirmMessageForDestructiveItem(item: { id: string; label: string }): string {
-  if (item.id === 'delete-table') return '确定要删除这张表格吗？此操作不可撤销。'
-  if (item.id === 'delete' && item.label.includes('列')) {
-    return '确定要删除这一列吗？此操作不可撤销。'
+  if (item.id === 'delete-table')
+    return i18n.t(
+      'auto.packages.ui.src.shared.diary.codemirror.table.tableConfirm.L17',
+      '确定要删除这张表格吗？此操作不可撤销。'
+    )
+  if (
+    item.id === 'delete' &&
+    item.label.includes(
+      i18n.t('auto.packages.ui.src.shared.diary.codemirror.table.tableConfirm.L18', '列')
+    )
+  ) {
+    return i18n.t(
+      'auto.packages.ui.src.shared.diary.codemirror.table.tableConfirm.L19',
+      '确定要删除这一列吗？此操作不可撤销。'
+    )
   }
-  if (item.id === 'delete' && item.label.includes('行')) {
-    return '确定要删除这一行吗？此操作不可撤销。'
+  if (
+    item.id === 'delete' &&
+    item.label.includes(
+      i18n.t('auto.packages.ui.src.shared.diary.codemirror.table.tableConfirm.L21', '行')
+    )
+  ) {
+    return i18n.t(
+      'auto.packages.ui.src.shared.diary.codemirror.table.tableConfirm.L22',
+      '确定要删除这一行吗？此操作不可撤销。'
+    )
   }
   return `确定要${item.label}吗？`
 }
@@ -46,10 +67,23 @@ export function requestTableConfirm(
             type: 'confirmRequest',
             payload: {
               requestId,
-              title: options?.title ?? '确认',
+              title:
+                options?.title ??
+                i18n.t(
+                  'auto.packages.ui.src.shared.diary.codemirror.table.tableConfirm.L49',
+                  '确认'
+                ),
               message,
-              confirmText: options?.confirmText ?? '删除',
-              cancelText: '取消',
+              confirmText:
+                options?.confirmText ??
+                i18n.t(
+                  'auto.packages.ui.src.shared.diary.codemirror.table.tableConfirm.L51',
+                  '删除'
+                ),
+              cancelText: i18n.t(
+                'auto.packages.ui.src.shared.diary.codemirror.table.tableConfirm.L52',
+                '取消'
+              ),
               destructive: options?.destructive ?? true
             }
           })

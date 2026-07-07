@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import React from 'react'
 import { View, Text, TouchableOpacity } from 'react-native'
 import { useNativeTheme } from '../theme'
@@ -89,9 +90,22 @@ export const CloudSyncConfigFields: React.FC<CloudSyncConfigFieldsProps> = ({
     return (
       <View style={styles.configSection}>
         {renderField('WebDAV URL', 'webdavUrl', 'https://example.com/dav')}
-        {renderField('用户名', 'webdavUsername', 'username')}
-        {renderField('密码', 'webdavPassword', 'password', true)}
-        {renderField('路径', 'webdavPath', '/baishou')}
+        {renderField(
+          i18n.t('auto.packages.ui.src.native.CloudSyncPanel.CloudSyncConfigFields.L92', '用户名'),
+          'webdavUsername',
+          'username'
+        )}
+        {renderField(
+          i18n.t('auto.packages.ui.src.native.CloudSyncPanel.CloudSyncConfigFields.L93', '密码'),
+          'webdavPassword',
+          'password',
+          true
+        )}
+        {renderField(
+          i18n.t('auto.packages.ui.src.native.CloudSyncPanel.CloudSyncConfigFields.L94', '路径'),
+          'webdavPath',
+          '/baishou'
+        )}
       </View>
     )
   }
@@ -102,7 +116,11 @@ export const CloudSyncConfigFields: React.FC<CloudSyncConfigFieldsProps> = ({
         {renderField('Endpoint', 's3Endpoint', 'https://s3.amazonaws.com')}
         {renderField('Region', 's3Region', 'us-east-1')}
         {renderField('Bucket', 's3Bucket', 'my-bucket')}
-        {renderField('路径', 's3Path', 'baishou/')}
+        {renderField(
+          i18n.t('auto.packages.ui.src.native.CloudSyncPanel.CloudSyncConfigFields.L105', '路径'),
+          's3Path',
+          'baishou/'
+        )}
         {renderField('Access Key', 's3AccessKey', 'AKID...')}
         {renderField('Secret Key', 's3SecretKey', 'secret', true)}
       </View>
@@ -112,7 +130,10 @@ export const CloudSyncConfigFields: React.FC<CloudSyncConfigFieldsProps> = ({
   if (selectedTarget === 'local') {
     return (
       <Text style={[styles.hintText, { color: colors.textTertiary }]}>
-        本地模式将备份保存在设备本地存储中
+        {i18n.t(
+          'auto.packages.ui.src.native.CloudSyncPanel.CloudSyncConfigFields.L115',
+          '本地模式将备份保存在设备本地存储中'
+        )}
       </Text>
     )
   }
@@ -128,7 +149,12 @@ export const CloudSyncMaxBackupField: React.FC<{
 
   return (
     <View style={styles.fieldGroup}>
-      <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>最大备份数</Text>
+      <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+        {i18n.t(
+          'auto.packages.ui.src.native.CloudSyncPanel.CloudSyncConfigFields.L131',
+          '最大备份数'
+        )}
+      </Text>
       <Input
         style={styles.fieldInput}
         value={String(localConfig.maxBackupCount)}

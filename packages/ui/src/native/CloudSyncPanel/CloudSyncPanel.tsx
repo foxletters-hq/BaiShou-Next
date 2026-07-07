@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import React from 'react'
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native'
 import { useNativeTheme } from '../theme'
@@ -38,7 +39,9 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
         }
       ]}
     >
-      <Text style={[styles.title, { color: colors.textPrimary }]}>☁️ 云同步配置</Text>
+      <Text style={[styles.title, { color: colors.textPrimary }]}>
+        {i18n.t('auto.packages.ui.src.native.CloudSyncPanel.CloudSyncPanel.L41', '☁️ 云同步配置')}
+      </Text>
 
       <CloudSyncTargetSelector
         selectedTarget={panel.selectedTarget}
@@ -64,7 +67,9 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
         onPress={panel.handleSave}
         activeOpacity={0.7}
       >
-        <Text style={[styles.saveButtonText, { color: colors.textOnPrimary }]}>保存配置</Text>
+        <Text style={[styles.saveButtonText, { color: colors.textOnPrimary }]}>
+          {i18n.t('auto.packages.ui.src.native.CloudSyncPanel.CloudSyncPanel.L67', '保存配置')}
+        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -83,7 +88,9 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
         {panel.syncing || isLoading ? (
           <ActivityIndicator size="small" color={colors.primary} />
         ) : (
-          <Text style={[styles.syncButtonText, { color: colors.primary }]}>🚀 立即同步</Text>
+          <Text style={[styles.syncButtonText, { color: colors.primary }]}>
+            {i18n.t('auto.packages.ui.src.native.CloudSyncPanel.CloudSyncPanel.L86', '🚀 立即同步')}
+          </Text>
         )}
       </TouchableOpacity>
 

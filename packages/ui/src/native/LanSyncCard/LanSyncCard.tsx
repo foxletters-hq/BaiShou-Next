@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import React from 'react'
 import { View, Text, TouchableOpacity, FlatList } from 'react-native'
 import { getLanDeviceDedupKey } from '@baishou/shared'
@@ -52,7 +53,15 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
             ]}
           />
           <Text style={[styles.statusText, { color: colors.textPrimary }]}>
-            {isActive ? '局域网同步已激活' : '局域网同步未激活'}
+            {isActive
+              ? i18n.t(
+                  'auto.packages.ui.src.native.LanSyncCard.LanSyncCard.L55',
+                  '局域网同步已激活'
+                )
+              : i18n.t(
+                  'auto.packages.ui.src.native.LanSyncCard.LanSyncCard.L55',
+                  '局域网同步未激活'
+                )}
           </Text>
         </View>
         <TouchableOpacity
@@ -67,7 +76,9 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
           activeOpacity={0.7}
         >
           <Text style={[styles.toggleText, { color: colors.textOnPrimary }]}>
-            {isActive ? '停止' : '启动'}
+            {isActive
+              ? i18n.t('auto.packages.ui.src.native.LanSyncCard.LanSyncCard.L70', '停止')
+              : i18n.t('auto.packages.ui.src.native.LanSyncCard.LanSyncCard.L70', '启动')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -83,7 +94,9 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
             }
           ]}
         >
-          <Text style={[styles.qrLabel, { color: colors.textSecondary }]}>本机连接信息</Text>
+          <Text style={[styles.qrLabel, { color: colors.textSecondary }]}>
+            {i18n.t('auto.packages.ui.src.native.LanSyncCard.LanSyncCard.L86', '本机连接信息')}
+          </Text>
           <Text style={[styles.qrText, { color: colors.textPrimary }]}>
             {localConnection.ip}:{localConnection.port}
           </Text>
@@ -93,11 +106,15 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
       {isActive && (
         <View style={styles.devicesSection}>
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-            发现的设备 ({devices.length})
+            {i18n.t('auto.packages.ui.src.native.LanSyncCard.LanSyncCard.L96', '发现的设备 (')}
+            {devices.length})
           </Text>
           {devices.length === 0 ? (
             <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
-              正在搜索局域网设备...
+              {i18n.t(
+                'auto.packages.ui.src.native.LanSyncCard.LanSyncCard.L100',
+                '正在搜索局域网设备...'
+              )}
             </Text>
           ) : (
             <FlatList

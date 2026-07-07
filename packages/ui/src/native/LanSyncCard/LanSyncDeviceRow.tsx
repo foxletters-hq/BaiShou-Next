@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import React from 'react'
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native'
 import type { useNativeTheme } from '../theme'
@@ -48,7 +49,9 @@ export function LanSyncDeviceRow({
         {isSending ? (
           <ActivityIndicator size="small" color={colors.textOnPrimary} />
         ) : (
-          <Text style={[styles.sendButtonText, { color: colors.textOnPrimary }]}>发送</Text>
+          <Text style={[styles.sendButtonText, { color: colors.textOnPrimary }]}>
+            {i18n.t('auto.packages.ui.src.native.LanSyncCard.LanSyncDeviceRow.L51', '发送')}
+          </Text>
         )}
       </TouchableOpacity>
       {isSending && progress > 0 && (

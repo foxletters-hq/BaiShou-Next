@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import React from 'react'
 import {
   Puzzle,
@@ -61,30 +62,93 @@ const CATEGORY_LABEL_KEYS: Record<AgentToolCategory, string> = {
 }
 
 const CATEGORY_LABEL_FALLBACKS: Record<AgentToolCategory, string> = {
-  diary: '日记工具',
-  summary: '总结工具',
-  memory: '记忆工具',
-  search: '搜索工具',
-  general: '通用工具'
+  diary: i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L64',
+    '日记工具'
+  ),
+  summary: i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L65',
+    '总结工具'
+  ),
+  memory: i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L66',
+    '记忆工具'
+  ),
+  search: i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L67',
+    '搜索工具'
+  ),
+  general: i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L68',
+    '通用工具'
+  )
 }
 
 const TOOL_NAME_FALLBACKS: Record<string, string> = {
-  'agent.tools.diary_read': '日记读取',
-  'agent.tools.diary_write': '日记写入',
-  'agent.tools.diary_edit': '日记编辑',
-  'agent.tools.diary_delete': '日记删除',
-  'agent.tools.diary_list': '日记列表',
-  'agent.tools.diary_search': '日记搜索',
-  'agent.tools.summary_read': '总结读取',
-  'agent.tools.message_search': '消息搜索',
-  'agent.tools.vector_search': '语义搜索',
-  'agent.tools.memory_store': '记忆存储',
-  'agent.tools.memory_delete': '记忆删除',
-  'agent.tools.web_search': '网络搜索',
-  'agent.tools.url_read': '网页读取',
-  'agent.tools.auto_inject_time': '当前时间',
-  'agent.tools.current_time': '查询时间',
-  'agent.tools.param_max_results': '搜索结果上限'
+  'agent.tools.diary_read': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L72',
+    '日记读取'
+  ),
+  'agent.tools.diary_write': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L73',
+    '日记写入'
+  ),
+  'agent.tools.diary_edit': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L74',
+    '日记编辑'
+  ),
+  'agent.tools.diary_delete': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L75',
+    '日记删除'
+  ),
+  'agent.tools.diary_list': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L76',
+    '日记列表'
+  ),
+  'agent.tools.diary_search': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L77',
+    '日记搜索'
+  ),
+  'agent.tools.summary_read': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L78',
+    '总结读取'
+  ),
+  'agent.tools.message_search': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L79',
+    '消息搜索'
+  ),
+  'agent.tools.vector_search': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L80',
+    '语义搜索'
+  ),
+  'agent.tools.memory_store': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L81',
+    '记忆存储'
+  ),
+  'agent.tools.memory_delete': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L82',
+    '记忆删除'
+  ),
+  'agent.tools.web_search': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L83',
+    '网络搜索'
+  ),
+  'agent.tools.url_read': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L84',
+    '网页读取'
+  ),
+  'agent.tools.auto_inject_time': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L85',
+    '当前时间'
+  ),
+  'agent.tools.current_time': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L86',
+    '查询时间'
+  ),
+  'agent.tools.param_max_results': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L87',
+    '搜索结果上限'
+  )
 }
 
 export function buildAgentTools(t: (key: string, fallback: string) => string): AgentToolDef[] {

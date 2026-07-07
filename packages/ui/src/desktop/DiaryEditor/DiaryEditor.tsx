@@ -176,14 +176,14 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   )
 
   const weatherLabelFallback: Record<WeatherId, string> = {
-    sunny: '晴',
-    cloudy: '多云',
-    overcast: '阴',
-    light_rain: '小雨',
-    heavy_rain: '大雨',
-    snow: '雪',
-    fog: '雾',
-    windy: '风'
+    sunny: t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L179', '晴'),
+    cloudy: t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L180', '多云'),
+    overcast: t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L181', '阴'),
+    light_rain: t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L182', '小雨'),
+    heavy_rain: t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L183', '大雨'),
+    snow: t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L184', '雪'),
+    fog: t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L185', '雾'),
+    windy: t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L186', '风')
   }
 
   const WEATHER_OPTIONS = useMemo(

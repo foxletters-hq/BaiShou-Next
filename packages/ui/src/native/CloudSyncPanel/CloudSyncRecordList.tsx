@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import React from 'react'
 import { View, Text, FlatList } from 'react-native'
 import { useNativeTheme } from '../theme'
@@ -28,7 +29,8 @@ export const CloudSyncRecordList: React.FC<CloudSyncRecordListProps> = ({ record
   return (
     <View style={styles.recordsSection}>
       <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-        云端记录 ({records.length})
+        {i18n.t('auto.packages.ui.src.native.CloudSyncPanel.CloudSyncRecordList.L31', '云端记录 (')}
+        {records.length})
       </Text>
       <FlatList
         data={records}

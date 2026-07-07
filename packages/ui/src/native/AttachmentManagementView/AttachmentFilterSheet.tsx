@@ -66,7 +66,10 @@ export const AttachmentFilterSheet: React.FC<AttachmentFilterSheetProps> = ({
           {availableYears.map((year) => (
             <FilterOption
               key={year}
-              label={`${year}${t('common.year_suffix', '年')}`}
+              label={t(
+                'auto.packages.ui.src.native.AttachmentManagementView.AttachmentFilterSheet.L69',
+                `${year}${t('common.year_suffix', '年')}`
+              )}
               active={diaryYear === year}
               onPress={() => {
                 onSelectYear(year)
@@ -94,7 +97,10 @@ export const AttachmentFilterSheet: React.FC<AttachmentFilterSheetProps> = ({
           {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map((m) => (
             <FilterOption
               key={m}
-              label={`${m}${t('common.month_suffix', '月')}`}
+              label={t(
+                'auto.packages.ui.src.native.AttachmentManagementView.AttachmentFilterSheet.L97',
+                `${m}${t('common.month_suffix', '月')}`
+              )}
               active={diaryMonth === m}
               onPress={() => {
                 onSelectMonth(m)

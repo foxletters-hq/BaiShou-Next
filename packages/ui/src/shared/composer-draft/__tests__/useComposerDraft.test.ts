@@ -40,7 +40,12 @@ describe('useComposerDraft', () => {
 
   it('loads draft for new key and does not keep previous session text', async () => {
     const storage = createMemoryStorage()
-    await storage.setItem('session-b', JSON.stringify({ text: '会话B草稿' }))
+    await storage.setItem(
+      'session-b',
+      JSON.stringify({
+        text: '会话B草稿'
+      })
+    )
 
     const setText = vi.fn()
 
@@ -101,7 +106,12 @@ describe('useComposerDraft', () => {
 
   it('defers draft load while draftSyncSuspended and applies after key change', async () => {
     const storage = createMemoryStorage()
-    await storage.setItem('session-b', JSON.stringify({ text: '会话B' }))
+    await storage.setItem(
+      'session-b',
+      JSON.stringify({
+        text: '会话B'
+      })
+    )
 
     const setText = vi.fn()
 

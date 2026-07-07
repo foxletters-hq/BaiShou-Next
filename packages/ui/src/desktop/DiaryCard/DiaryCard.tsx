@@ -144,7 +144,8 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
               onEdit?.()
             }}
           >
-            ✏️ {t('common.edit') || '编辑'}
+            ✏️{' '}
+            {t('common.edit') || t('auto.packages.ui.src.desktop.DiaryCard.DiaryCard.L147', '编辑')}
           </button>
           <button
             className="action-btn delete-btn"
@@ -153,7 +154,9 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
               onDelete?.()
             }}
           >
-            🗑️ {t('common.delete') || '删除'}
+            🗑️{' '}
+            {t('common.delete') ||
+              t('auto.packages.ui.src.desktop.DiaryCard.DiaryCard.L156', '删除')}
           </button>
         </div>
       </div>

@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import React, { useEffect, useRef } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native'
 import { useNativeTheme } from '../theme'
@@ -55,9 +56,19 @@ export const IncrementalSyncPanel: React.FC<IncrementalSyncPanelProps> = ({
       ]}
     >
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>增量同步</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>
+          {i18n.t(
+            'auto.packages.ui.src.native.IncrementalSyncPanel.IncrementalSyncPanel.L58',
+            '增量同步'
+          )}
+        </Text>
         {!isConfigured && (
-          <Text style={[styles.hint, { color: colors.error }]}>未配置同步目标</Text>
+          <Text style={[styles.hint, { color: colors.error }]}>
+            {i18n.t(
+              'auto.packages.ui.src.native.IncrementalSyncPanel.IncrementalSyncPanel.L60',
+              '未配置同步目标'
+            )}
+          </Text>
         )}
       </View>
 
@@ -81,7 +92,15 @@ export const IncrementalSyncPanel: React.FC<IncrementalSyncPanelProps> = ({
             }
           ]}
         >
-          {isSyncing ? '同步中...' : '同步'}
+          {isSyncing
+            ? i18n.t(
+                'auto.packages.ui.src.native.IncrementalSyncPanel.IncrementalSyncPanel.L84',
+                '同步中...'
+              )
+            : i18n.t(
+                'auto.packages.ui.src.native.IncrementalSyncPanel.IncrementalSyncPanel.L84',
+                '同步'
+              )}
         </Text>
       </TouchableOpacity>
 

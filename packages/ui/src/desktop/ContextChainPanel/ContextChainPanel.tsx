@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import React from 'react'
 import { ListTree } from 'lucide-react'
 import type { MockChatMessage } from '@baishou/shared'
@@ -187,7 +188,13 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
     const msg = entry.item
     const selected = view.selectedMessageKey === msg.id
     const label = view.getMessageLabel(msg)
-    const isSystemPrompt = entry.kind === 'system-prompt' || msg.label === '系统提示词'
+    const isSystemPrompt =
+      entry.kind === 'system-prompt' ||
+      msg.label ===
+        i18n.t(
+          'auto.packages.ui.src.desktop.ContextChainPanel.ContextChainPanel.L190',
+          '系统提示词'
+        )
 
     const itemKey = msg.id ?? `msg-${idx}`
 
@@ -210,7 +217,11 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
           <ContextChainAttachments attachments={msg.attachments} compact />
         )}
         <div className={panelStyles.msgPreview}>
-          {msg.label === '工具调用'
+          {msg.label ===
+          i18n.t(
+            'auto.packages.ui.src.desktop.ContextChainPanel.ContextChainPanel.L213',
+            '工具调用'
+          )
             ? view.formatToolPreview(msg.content)
             : msg.content
               ? view.formatPreview(msg.content)
@@ -258,7 +269,10 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
             type="button"
             className={panelStyles.closeBtn}
             onClick={onClose}
-            aria-label="关闭"
+            aria-label={i18n.t(
+              'auto.packages.ui.src.desktop.ContextChainPanel.ContextChainPanel.L261',
+              '关闭'
+            )}
           >
             ×
           </button>
@@ -445,7 +459,13 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
                       {view.selected.content ? (
                         <AgentMarkdownRenderer
                           content={view.selected.content}
-                          plainText={view.selected.label === '系统提示词'}
+                          plainText={
+                            view.selected.label ===
+                            i18n.t(
+                              'auto.packages.ui.src.desktop.ContextChainPanel.ContextChainPanel.L448',
+                              '系统提示词'
+                            )
+                          }
                         />
                       ) : !view.selected.attachments?.length ? (
                         view.t('agent.chat.no_content', '[无内容]')

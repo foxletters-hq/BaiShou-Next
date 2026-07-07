@@ -113,7 +113,14 @@ export const ContextChainDetailPage: React.FC<ContextChainDetailPageProps> = ({
       )
     }
 
-    if (selected.label === 'AI 思考' && selected.content) {
+    if (
+      selected.label ===
+        t(
+          'auto.packages.ui.src.native.ContextChainDialog.ContextChainDetailPage.L116',
+          'AI 思考'
+        ) &&
+      selected.content
+    ) {
       return (
         <ThinkingBlock
           content={selected.content}
@@ -127,8 +134,24 @@ export const ContextChainDetailPage: React.FC<ContextChainDetailPageProps> = ({
       return (
         <AgentMarkdownRenderer
           content={selected.content}
-          variant={isSystemPrompt || selected.label === '系统提示词' ? 'chat' : 'ancillary'}
-          plainText={isSystemPrompt || selected.label === '系统提示词'}
+          variant={
+            isSystemPrompt ||
+            selected.label ===
+              t(
+                'auto.packages.ui.src.native.ContextChainDialog.ContextChainDetailPage.L130',
+                '系统提示词'
+              )
+              ? 'chat'
+              : 'ancillary'
+          }
+          plainText={
+            isSystemPrompt ||
+            selected.label ===
+              t(
+                'auto.packages.ui.src.native.ContextChainDialog.ContextChainDetailPage.L131',
+                '系统提示词'
+              )
+          }
         />
       )
     }
