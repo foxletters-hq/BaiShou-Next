@@ -38,9 +38,7 @@ function canPushReplace(
       (m) => isWidgetReplaceDecoration(m.value) && rangesOverlap(m.from, m.to, from, to)
     )
   }
-  return !marks.some(
-    (m) => isReplaceDecoration(m.value) && rangesOverlap(m.from, m.to, from, to)
-  )
+  return !marks.some((m) => isReplaceDecoration(m.value) && rangesOverlap(m.from, m.to, from, to))
 }
 
 /**
@@ -101,10 +99,7 @@ export function pushWidgetReplace(
 ): void {
   if (from >= to) return
   if (
-    marks.some(
-      (m) =>
-        isWidgetReplaceDecoration(m.value) && rangesOverlap(m.from, m.to, from, to)
-    )
+    marks.some((m) => isWidgetReplaceDecoration(m.value) && rangesOverlap(m.from, m.to, from, to))
   ) {
     return
   }
@@ -139,11 +134,7 @@ export function buildSafeDecorationSet(marks: DecorationMark[]): DecorationSet {
   const sortedReplaces = [...replaceMarks].sort((a, b) => a.from - b.from || a.to - b.to)
   const keptReplaces: DecorationMark[] = []
   for (const entry of sortedReplaces) {
-    if (
-      keptReplaces.some((kept) =>
-        rangesOverlap(kept.from, kept.to, entry.from, entry.to)
-      )
-    ) {
+    if (keptReplaces.some((kept) => rangesOverlap(kept.from, kept.to, entry.from, entry.to))) {
       continue
     }
     keptReplaces.push(entry)

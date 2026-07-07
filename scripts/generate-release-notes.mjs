@@ -70,12 +70,7 @@ function normalizeSubject(subject) {
 
 function collectCommits(fromRef) {
   const range = fromRef ? `${fromRef}..HEAD` : 'HEAD'
-  const out = git([
-    'log',
-    range,
-    '--no-merges',
-    '--pretty=format:%an|%ae|%s'
-  ])
+  const out = git(['log', range, '--no-merges', '--pretty=format:%an|%ae|%s'])
   if (!out) return []
 
   const commits = []

@@ -288,8 +288,12 @@ describe('live preview marker hiding', () => {
     const v = mount(content, content.indexOf('dqw'))
     focusEditor(v)
     expect(() => {
-      v.dispatch({ selection: { anchor: content.indexOf('quoted'), head: content.indexOf('quoted') } })
-      v.dispatch({ selection: { anchor: content.indexOf('```', 10), head: content.indexOf('```', 10) + 1 } })
+      v.dispatch({
+        selection: { anchor: content.indexOf('quoted'), head: content.indexOf('quoted') }
+      })
+      v.dispatch({
+        selection: { anchor: content.indexOf('```', 10), head: content.indexOf('```', 10) + 1 }
+      })
       buildMarkerHidingDecorations(
         v.state,
         { resolveAttachmentUrl: (u) => u, interactionMode: 'mouse' },
@@ -316,7 +320,9 @@ describe('live preview marker hiding', () => {
     focusEditor(v)
     expect(() => {
       v.dom.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }))
-      v.dispatch({ selection: { anchor: content.indexOf('quoted'), head: content.indexOf('quoted') } })
+      v.dispatch({
+        selection: { anchor: content.indexOf('quoted'), head: content.indexOf('quoted') }
+      })
       window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }))
     }).not.toThrow()
   })

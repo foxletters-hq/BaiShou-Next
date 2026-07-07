@@ -33,11 +33,7 @@ export abstract class GitSyncHistoryMixin extends GitSyncCommitMixin {
     }
   }
 
-  async getHistory(
-    filePath?: string,
-    limit = 50,
-    offset = 0
-  ): Promise<VersionHistoryEntry[]> {
+  async getHistory(filePath?: string, limit = 50, offset = 0): Promise<VersionHistoryEntry[]> {
     const git = await this.ensureGit()
 
     const options = ['--max-count', String(limit)]

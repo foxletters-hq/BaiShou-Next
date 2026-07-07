@@ -10,11 +10,7 @@ import {
   hideSyntaxReplaceSpec
 } from './styles'
 import { findFencedCodeBlockContaining, collectFencedCodeBlockRanges } from './fencedCodeScan'
-import {
-  pushLineDecoration,
-  pushReplaceDecoration,
-  type DecorationMark
-} from './decorationMarks'
+import { pushLineDecoration, pushReplaceDecoration, type DecorationMark } from './decorationMarks'
 import type { DiaryCmPlatform } from '../types'
 
 const FENCED_CODE_HIDEABLE = new Set(['CodeMark', 'CodeInfo'])

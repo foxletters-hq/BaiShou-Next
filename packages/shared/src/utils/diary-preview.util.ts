@@ -7,7 +7,9 @@ export type DiaryCardPreviewBlock =
 const BLOCKQUOTE_LINE_RE = /^\s*>\s?(.*)$/
 
 /** 将卡片预览拆成普通 Markdown 块与逐行引用块，避免 CommonMark 懒续行扩大引用范围 */
-export function buildDiaryCardPreviewBlocks(text: string | null | undefined): DiaryCardPreviewBlock[] {
+export function buildDiaryCardPreviewBlocks(
+  text: string | null | undefined
+): DiaryCardPreviewBlock[] {
   const prepared = prepareDiaryCardPreviewMarkdown(text)
   if (!prepared) return []
 

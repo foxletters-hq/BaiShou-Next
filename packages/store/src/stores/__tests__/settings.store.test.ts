@@ -143,11 +143,9 @@ describe('useSettingsStore', () => {
   })
 
   it('should hydrate missing config via snapshot IPC', async () => {
-    ;(globalThis as any).window.api.settings.getConfigSnapshot = vi
-      .fn()
-      .mockResolvedValue({
-        mcpServerConfig: { mcpEnabled: true, mcpPort: 31005 }
-      })
+    ;(globalThis as any).window.api.settings.getConfigSnapshot = vi.fn().mockResolvedValue({
+      mcpServerConfig: { mcpEnabled: true, mcpPort: 31005 }
+    })
 
     await useSettingsStore.getState().ensureConfigForSegment('mcp')
 
@@ -300,7 +298,6 @@ describe('useSettingsStore', () => {
         }
       ]
     })
-
     ;(globalThis as any).window.api.settings.getProviders.mockResolvedValue([
       {
         id: 'anthropic',

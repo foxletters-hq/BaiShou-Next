@@ -211,9 +211,7 @@ const keyFetchers: Record<
   cloudSyncConfig: async (settings) =>
     normalizeSettingsConfigKey(
       'cloudSyncConfig',
-      typeof settings.getCloudSyncConfig === 'function'
-        ? await settings.getCloudSyncConfig()
-        : null
+      typeof settings.getCloudSyncConfig === 'function' ? await settings.getCloudSyncConfig() : null
     )
 }
 
@@ -284,6 +282,8 @@ export async function fetchSettingsConfigKeys(
   settingsApi: SettingsApi
 ): Promise<SettingsConfigPatch> {
   const uniqueKeys = [...new Set(keys)]
-  const patches = await Promise.all(uniqueKeys.map((key) => fetchSettingsConfigKey(key, settingsApi)))
+  const patches = await Promise.all(
+    uniqueKeys.map((key) => fetchSettingsConfigKey(key, settingsApi))
+  )
   return Object.assign({}, ...patches)
 }

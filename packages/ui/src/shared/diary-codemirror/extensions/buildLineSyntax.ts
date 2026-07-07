@@ -1,10 +1,6 @@
 import type { EditorState } from '@codemirror/state'
 import { blockquoteLineStyle, hideSyntaxReplaceSpec } from './styles'
-import {
-  pushLineDecoration,
-  pushReplaceDecoration,
-  type DecorationMark
-} from './decorationMarks'
+import { pushLineDecoration, pushReplaceDecoration, type DecorationMark } from './decorationMarks'
 import type { DiaryCmPlatform } from '../types'
 
 const ATX_HEADING_PREFIX_RE = /^(#{1,6})\s?/

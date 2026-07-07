@@ -49,9 +49,7 @@ async function loadSingleConfigKey(
   key: SettingsConfigKey,
   get: () => SettingsStore,
   set: (
-    partial:
-      | Partial<SettingsStore>
-      | ((state: SettingsStore) => Partial<SettingsStore>)
+    partial: Partial<SettingsStore> | ((state: SettingsStore) => Partial<SettingsStore>)
   ) => void,
   options?: { trackGlobalLoading?: boolean }
 ): Promise<void> {
@@ -60,8 +58,7 @@ async function loadSingleConfigKey(
     if (!settingsApi) return
     if (get().loadedConfigKeys.includes(key)) return
 
-    const shouldTrackGlobalLoading =
-      options?.trackGlobalLoading === true && !get().configHydrated
+    const shouldTrackGlobalLoading = options?.trackGlobalLoading === true && !get().configHydrated
 
     set((state) => ({
       loadingConfigKeys: state.loadingConfigKeys.includes(key)
@@ -101,9 +98,7 @@ async function hydrateConfigSnapshot(
   keys: SettingsConfigKey[],
   get: () => SettingsStore,
   set: (
-    partial:
-      | Partial<SettingsStore>
-      | ((state: SettingsStore) => Partial<SettingsStore>)
+    partial: Partial<SettingsStore> | ((state: SettingsStore) => Partial<SettingsStore>)
   ) => void
 ): Promise<void> {
   const settingsApi = getSettingsApi()
@@ -119,7 +114,8 @@ async function hydrateConfigSnapshot(
 
     try {
       if (typeof settingsApi.getConfigSnapshot === 'function') {
-        const snapshot: SettingsConfigSnapshot = (await settingsApi.getConfigSnapshot(missing)) ?? {}
+        const snapshot: SettingsConfigSnapshot =
+          (await settingsApi.getConfigSnapshot(missing)) ?? {}
         const loadedKeys: SettingsConfigKey[] = []
         const failedKeys: SettingsConfigKey[] = []
         let mergedPatch: Partial<SettingsStore> = {}
@@ -178,9 +174,7 @@ async function hydrateConfigSnapshot(
 function scheduleDeferredConfigWarmup(
   get: () => SettingsStore,
   set: (
-    partial:
-      | Partial<SettingsStore>
-      | ((state: SettingsStore) => Partial<SettingsStore>)
+    partial: Partial<SettingsStore> | ((state: SettingsStore) => Partial<SettingsStore>)
   ) => void
 ): void {
   deferredWarmupGeneration += 1
