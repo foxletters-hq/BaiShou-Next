@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 /** 版本迁移全局板块 ID */
 export type LegacyVersionMigrationGlobalSectionId = 'avatar' | 'personas' | 'config'
 
@@ -302,7 +303,15 @@ export function parseLegacyPersonasFromSp(
 
   const facts = parseLegacyIdentityFacts(sp['user_identity_facts'])
   if (facts) {
-    return [{ id: '默认身份', facts }]
+    return [
+      {
+        id: i18n.t(
+          'auto.packages.core.src.migration.legacy.version.migration.util.L305',
+          '默认身份'
+        ),
+        facts
+      }
+    ]
   }
 
   return []
@@ -321,7 +330,15 @@ export function resolveLegacyIdentityPersonas(
 
   const identityFacts = parseLegacyIdentityFacts(config?.['identity_facts'])
   if (identityFacts) {
-    return [{ id: '默认身份', facts: identityFacts }]
+    return [
+      {
+        id: i18n.t(
+          'auto.packages.core.src.migration.legacy.version.migration.util.L324',
+          '默认身份'
+        ),
+        facts: identityFacts
+      }
+    ]
   }
 
   return []

@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { FileSyncService } from './file-sync.service'
 import { VaultIndexService } from './vault-index.service'
 import { ShadowIndexSyncService } from '../shadow-index/shadow-index-sync.service'
@@ -66,7 +67,9 @@ export class DiaryService {
     // 4. 同步到 SQLite 影子索引中重建缓存并下发向量任务
     const syncResult = await this.shadowSync.syncJournal(formatLocalDate(input.date))
     if (!syncResult.meta) {
-      throw new Error('写入文件后却无法建立影子索引')
+      throw new Error(
+        i18n.t('auto.packages.core.src.diary.diary.service.L69', '写入文件后却无法建立影子索引')
+      )
     }
 
     // 5. 更新界面内存索引以供列表呈现

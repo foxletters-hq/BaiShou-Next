@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import type { GitSyncConfig } from '@baishou/shared'
 
 /** 内置 Git 无全局配置时的默认提交签名（用户可在设置中覆盖） */
@@ -11,7 +12,9 @@ export const DEFAULT_GIT_SYNC_CONFIG: GitSyncConfig = {
 }
 
 /** 存储根 `.gitignore`：覆盖全部工作区（Vault） */
-export const GITIGNORE_CONTENT = `# 增量同步配置与元数据（存储根）
+export const GITIGNORE_CONTENT = i18n.t(
+  'auto.packages.core.src.sync.git.sync.constants.L14',
+  `# 增量同步配置与元数据（存储根）
 .baishou/
 .baishou-s3.json
 .baishou-git.json
@@ -45,6 +48,7 @@ temp/
 .DS_Store
 Thumbs.db
 `
+)
 
 export const GIT_SYNC_CONFIG_FILE = '.baishou-git.json'
 

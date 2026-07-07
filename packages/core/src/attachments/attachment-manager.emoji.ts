@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import fs from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
@@ -19,7 +20,14 @@ export class AttachmentEmojiOps {
    */
   async importEmoji(absoluteSourcePath: string): Promise<EmojiImportResult> {
     if (!absoluteSourcePath || absoluteSourcePath.trim() === '') {
-      return { relativePath: '', originalName: '', error: '源路径为空' }
+      return {
+        relativePath: '',
+        originalName: '',
+        error: i18n.t(
+          'auto.packages.core.src.attachments.attachment.manager.emoji.L22',
+          '源路径为空'
+        )
+      }
     }
     if (absoluteSourcePath.startsWith('emojis/')) {
       return { relativePath: absoluteSourcePath, originalName: '', error: null }

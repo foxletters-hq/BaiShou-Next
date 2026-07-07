@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import {
   MissingSummary,
   SummaryType,
@@ -133,8 +134,12 @@ export class SummaryGeneratorService {
     return diaries
       .map((d) => {
         const dateStr = formatLocalDate(d.date)
-        const content = d.content || '（无内容）'
-        const tags = d.tags || '无标签'
+        const content =
+          d.content ||
+          i18n.t('auto.packages.core.src.summary.summary.generator.service.L136', '（无内容）')
+        const tags =
+          d.tags ||
+          i18n.t('auto.packages.core.src.summary.summary.generator.service.L137', '无标签')
         return `#### ${dateStr}\n${content}\n标签: ${tags}`
       })
       .join('\n\n')
@@ -156,7 +161,9 @@ export class SummaryGeneratorService {
       .map((w) => {
         const startStr = formatLocalDate(w.startDate)
         const endStr = formatLocalDate(w.endDate)
-        const content = w.content || '（无内容）'
+        const content =
+          w.content ||
+          i18n.t('auto.packages.core.src.summary.summary.generator.service.L159', '（无内容）')
         return `#### ${startStr} 至 ${endStr} (周记)\n${content}`
       })
       .join('\n\n')
@@ -177,7 +184,9 @@ export class SummaryGeneratorService {
     return monthlies
       .map((m) => {
         const dateStr = formatLocalDate(m.startDate)
-        const content = m.content || '（无内容）'
+        const content =
+          m.content ||
+          i18n.t('auto.packages.core.src.summary.summary.generator.service.L180', '（无内容）')
         return `#### ${dateStr} (月报)\n${content}`
       })
       .join('\n\n')
@@ -197,7 +206,9 @@ export class SummaryGeneratorService {
     if (!quarterlies.length) return ''
     return quarterlies
       .map((q) => {
-        const content = q.content || '（无内容）'
+        const content =
+          q.content ||
+          i18n.t('auto.packages.core.src.summary.summary.generator.service.L200', '（无内容）')
         return `#### (季度总结)\n${content}`
       })
       .join('\n\n')

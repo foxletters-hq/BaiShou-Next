@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import Database from 'better-sqlite3'
@@ -6,7 +7,10 @@ import Database from 'better-sqlite3'
 export async function writeBsV3Fixture(root: string): Promise<void> {
   await fs.mkdir(path.join(root, 'Personal', 'Journals'), { recursive: true })
   await fs.mkdir(path.join(root, 'Personal', 'Archives'), { recursive: true })
-  await fs.mkdir(path.join(root, '工作'), { recursive: true })
+  await fs.mkdir(
+    path.join(root, i18n.t('auto.packages.core.src.migration.legacy.migration.fixture.L9', '工作')),
+    { recursive: true }
+  )
   await fs.mkdir(path.join(root, '.baishou'), { recursive: true })
   await fs.mkdir(path.join(root, 'config'), { recursive: true })
 
@@ -21,7 +25,10 @@ export async function writeBsV3Fixture(root: string): Promise<void> {
   await fs.writeFile(path.join(root, 'Personal', 'Archives', 'note.md'), '# archived note')
   await fs.writeFile(
     path.join(root, '.baishou', 'vault_registry.json'),
-    JSON.stringify([{ name: 'Personal' }, { name: '工作' }])
+    JSON.stringify([
+      { name: 'Personal' },
+      { name: i18n.t('auto.packages.core.src.migration.legacy.migration.fixture.L24', '工作') }
+    ])
   )
 }
 
@@ -118,12 +125,18 @@ export async function writeLegacyAgentDb(
   try {
     createLegacyAgentSchema(db)
     db.prepare(
-      `INSERT INTO agent_assistants (id, name, is_default, provider_id, model_id)
+      i18n.t(
+        'auto.packages.core.src.migration.legacy.migration.fixture.L121',
+        `INSERT INTO agent_assistants (id, name, is_default, provider_id, model_id)
        VALUES (?, '测试伙伴', 0, 'openai', 'gpt-4')`
+      )
     ).run(assistantId)
     db.prepare(
-      `INSERT INTO agent_sessions (id, title, vault_name, assistant_id, provider_id, model_id)
+      i18n.t(
+        'auto.packages.core.src.migration.legacy.migration.fixture.L125',
+        `INSERT INTO agent_sessions (id, title, vault_name, assistant_id, provider_id, model_id)
        VALUES (?, '测试会话', ?, ?, 'openai', 'gpt-4')`
+      )
     ).run(sessionId, vaultName, assistantId)
     db.prepare(
       `INSERT INTO agent_messages (id, session_id, role, order_index, is_summary)

@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { createHash } from 'node:crypto'
 import type { IFileSystem } from '../fs/file-system.types'
 import * as path from '../fs/path.util'
@@ -6,13 +7,28 @@ import { parseJournalMarkdown } from '../diary/journal-markdown.parser'
 import { parseFlutterSharedPreferencesJson } from './flutter-shared-prefs.util'
 
 export const LEGACY_MIGRATION_SECTION_LABELS: Record<LegacyMigrationSectionId, string> = {
-  avatar: '用户头像',
-  identityCards: '身份卡',
-  config: '配置',
-  diaries: '日记',
-  assistants: '伙伴',
-  chatMessages: '聊天记录',
-  workspaces: '工作空间'
+  avatar: i18n.t(
+    'auto.packages.core.src.migration.legacy.selective.migration.shared.L9',
+    '用户头像'
+  ),
+  identityCards: i18n.t(
+    'auto.packages.core.src.migration.legacy.selective.migration.shared.L10',
+    '身份卡'
+  ),
+  config: i18n.t('auto.packages.core.src.migration.legacy.selective.migration.shared.L11', '配置'),
+  diaries: i18n.t('auto.packages.core.src.migration.legacy.selective.migration.shared.L12', '日记'),
+  assistants: i18n.t(
+    'auto.packages.core.src.migration.legacy.selective.migration.shared.L13',
+    '伙伴'
+  ),
+  chatMessages: i18n.t(
+    'auto.packages.core.src.migration.legacy.selective.migration.shared.L14',
+    '聊天记录'
+  ),
+  workspaces: i18n.t(
+    'auto.packages.core.src.migration.legacy.selective.migration.shared.L15',
+    '工作空间'
+  )
 }
 
 export function formatMigrationSizeBytes(bytes: number): string {
@@ -39,7 +55,15 @@ export function parseFlutterPersonasFromSp(
     if (typeof legacyFacts === 'string' && legacyFacts.trim()) {
       try {
         const facts = JSON.parse(legacyFacts) as Record<string, string>
-        return [{ id: '默认身份', facts }]
+        return [
+          {
+            id: i18n.t(
+              'auto.packages.core.src.migration.legacy.selective.migration.shared.L42',
+              '默认身份'
+            ),
+            facts
+          }
+        ]
       } catch {
         return []
       }

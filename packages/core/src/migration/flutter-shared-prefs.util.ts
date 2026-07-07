@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 function stripFlutterKeyPrefix(key: string): string {
   return key.startsWith('flutter.') ? key.slice('flutter.'.length) : key
 }
@@ -236,8 +237,10 @@ export function assembleDevicePreferencesFromFlutterSp(
   return config
 }
 
-export const IOS_FLUTTER_SETTINGS_MIGRATION_NOTE =
+export const IOS_FLUTTER_SETTINGS_MIGRATION_NOTE = i18n.t(
+  'auto.packages.core.src.migration.flutter.shared.prefs.util.L240',
   'iOS 覆盖升级时日记、会话等内容可自动迁移；API Key 等应用设置需在新版中重新配置。'
+)
 
 export function isFlutterSettingsMigrationFullySupported(platform: string): boolean {
   return platform === 'android'

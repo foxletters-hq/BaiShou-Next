@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import type { IFileSystem } from '../fs/file-system.types'
 import * as path from '../fs/path.util'
 import { parseJournalMarkdown } from '../diary/journal-markdown.parser'
@@ -696,7 +697,10 @@ export async function importLegacyAssistantsFromRows(
     }
 
     const uniqueName = resolveUniqueNameWithTwoDigitSuffix(
-      String(row.name ?? '伙伴'),
+      String(
+        row.name ??
+          i18n.t('auto.packages.core.src.migration.legacy.version.migration.importer.L699', '伙伴')
+      ),
       existingNames
     )
     existingNames.add(uniqueName)

@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import * as fs from 'fs'
 import * as path from 'path'
 import { logger } from '@baishou/shared'
@@ -17,7 +18,9 @@ export abstract class GitSyncInitMixin extends GitSyncInternalBase {
 
         await git.add('.gitignore')
         try {
-          await git.commit('初始化 Git 版本管理')
+          await git.commit(
+            i18n.t('auto.packages.core.src.sync.git.sync.init.L20', '初始化 Git 版本管理')
+          )
         } catch (commitErr) {
           logger.warn('[GitSync] 初始提交失败:', commitErr as any)
         }

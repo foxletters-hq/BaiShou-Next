@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import type {
   IncrementalSyncResult,
   SyncSessionLog,
@@ -62,7 +63,9 @@ export class SyncOrchestrator implements ISyncOrchestrator {
         total: 1,
         statusText: 'data_sync.progress_git_commit'
       })
-      await this.gitService.commitAll('sync: 同步前自动保存')
+      await this.gitService.commitAll(
+        i18n.t('auto.packages.core.src.sync.sync.orchestrator.L65', 'sync: 同步前自动保存')
+      )
     } catch {
       // git 预提交失败不阻塞同步
     }
