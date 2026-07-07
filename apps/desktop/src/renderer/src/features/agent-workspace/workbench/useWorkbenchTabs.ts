@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import type { WorkspaceChangeEntry } from '@baishou/shared'
 import { basenameFromPath } from '@baishou/ui'
 
-export type WorkbenchTabKind = 'welcome' | 'markdown' | 'text' | 'diff'
+export type WorkbenchTabKind = 'welcome' | 'markdown' | 'text' | 'diff' | 'git-diff'
 
 export interface WorkbenchTab {
   id: string
@@ -12,8 +12,20 @@ export interface WorkbenchTab {
   content?: string
   truncated?: boolean
   change?: WorkspaceChangeEntry
+  fileDiff?: import('@baishou/shared').FileDiff
+  gitDiffStaged?: boolean
+  gitDiffCommitHash?: string
+  gitDiffEditable?: boolean
+  gitDiffOriginal?: string
   loading?: boolean
   error?: string | null
+  scrollToLine?: number
+  scrollToColumn?: number
+}
+
+export interface WorkbenchOpenFileOptions {
+  line?: number
+  column?: number
 }
 
 function isMarkdownPath(path: string): boolean {
@@ -44,11 +56,20 @@ export function useWorkbenchTabs(folderRoot: string | null) {
   )
 
   const openFile = useCallback(
-    async (relativePath: string) => {
+    async (relativePath: string, options?: WorkbenchOpenFileOptions) => {
       if (!folderRoot) return
       const existing = tabs.find((tab) => tab.relativePath === relativePath && tab.kind !== 'diff')
       if (existing) {
         setActiveTabId(existing.id)
+        if (options?.line) {
+          setTabs((prev) =>
+            prev.map((tab) =>
+              tab.id === existing.id
+                ? { ...tab, scrollToLine: options.line, scrollToColumn: options.column }
+                : tab
+            )
+          )
+        }
         return
       }
 
@@ -60,7 +81,9 @@ export function useWorkbenchTabs(folderRoot: string | null) {
         kind,
         title,
         relativePath,
-        loading: true
+        loading: true,
+        scrollToLine: options?.line,
+        scrollToColumn: options?.column
       }
 
       setTabs((prev) => [...prev.filter((tab) => tab.kind !== 'welcome'), placeholder])
@@ -113,6 +136,117 @@ export function useWorkbenchTabs(folderRoot: string | null) {
     setActiveTabId(id)
   }, [tabs])
 
+  const openGitDiff = useCallback(
+    async (
+      filePath: string,
+      options?: { staged?: boolean; commitHash?: string }
+    ) => {
+      if (!folderRoot) return
+      const staged = options?.staged ?? false
+      const commitHash = options?.commitHash
+
+      if (!commitHash) {
+        const id = `git-editable-${filePath}-${staged ? 'staged' : 'working'}`
+        const existing = tabs.find((tab) => tab.id === id)
+        if (existing) {
+          setActiveTabId(existing.id)
+          return
+        }
+
+        const title = `Δ ${basenameFromPath(filePath)}`
+        const placeholder: WorkbenchTab = {
+          id,
+          kind: 'git-diff',
+          title,
+          relativePath: filePath,
+          gitDiffStaged: staged,
+          gitDiffEditable: true,
+          loading: true
+        }
+
+        setTabs((prev) => [...prev.filter((tab) => tab.kind !== 'welcome'), placeholder])
+        setActiveTabId(id)
+
+        try {
+          const [fileResult, headContent] = await Promise.all([
+            window.api.agentWorkspace.readFile(folderRoot, filePath),
+            window.api.agentWorkspace.git.getHeadFileContent(folderRoot, filePath)
+          ])
+          setTabs((prev) =>
+            prev.map((tab) =>
+              tab.id === id
+                ? {
+                    ...tab,
+                    loading: false,
+                    content: fileResult.content,
+                    gitDiffOriginal: headContent ?? '',
+                    truncated: fileResult.truncated
+                  }
+                : tab
+            )
+          )
+        } catch (error) {
+          setTabs((prev) =>
+            prev.map((tab) =>
+              tab.id === id
+                ? {
+                    ...tab,
+                    loading: false,
+                    error: error instanceof Error ? error.message : 'Failed to load file'
+                  }
+                : tab
+            )
+          )
+        }
+        return
+      }
+
+      const id = `git-diff-${filePath}-commit-${commitHash}`
+      const existing = tabs.find((tab) => tab.id === id)
+      if (existing) {
+        setActiveTabId(existing.id)
+        return
+      }
+
+      const title = `Δ ${basenameFromPath(filePath)} (${commitHash.slice(0, 7)})`
+      const placeholder: WorkbenchTab = {
+        id,
+        kind: 'git-diff',
+        title,
+        relativePath: filePath,
+        gitDiffCommitHash: commitHash,
+        loading: true
+      }
+
+      setTabs((prev) => [...prev.filter((tab) => tab.kind !== 'welcome'), placeholder])
+      setActiveTabId(id)
+
+      try {
+        const fileDiff = await window.api.agentWorkspace.git.getFileDiff(
+          folderRoot,
+          filePath,
+          commitHash
+        )
+        setTabs((prev) =>
+          prev.map((tab) => (tab.id === id ? { ...tab, loading: false, fileDiff } : tab))
+        )
+      } catch (error) {
+        setTabs((prev) =>
+          prev.map((tab) =>
+            tab.id === id
+              ? {
+                  ...tab,
+                  loading: false,
+                  error: error instanceof Error ? error.message : 'Failed to load diff'
+                }
+              : tab
+          )
+        )
+      }
+    },
+    [folderRoot, tabs]
+  )
+
   const closeTab = useCallback(
     (tabId: string) => {
       setTabs((prev) => {
@@ -142,6 +276,14 @@ export function useWorkbenchTabs(folderRoot: string | null) {
     setActiveTabId('welcome')
   }, [])
 
+  const clearTabScrollTarget = useCallback((tabId: string) => {
+    setTabs((prev) =>
+      prev.map((tab) =>
+        tab.id === tabId ? { ...tab, scrollToLine: undefined, scrollToColumn: undefined } : tab
+      )
+    )
+  }, [])
+
   return {
     tabs,
     activeTab,
@@ -149,8 +291,10 @@ export function useWorkbenchTabs(folderRoot: string | null) {
     setActiveTabId,
     openFile,
     openDiff,
+    openGitDiff,
     closeTab,
     updateTabContent,
+    clearTabScrollTarget,
     resetTabs
   }
 }

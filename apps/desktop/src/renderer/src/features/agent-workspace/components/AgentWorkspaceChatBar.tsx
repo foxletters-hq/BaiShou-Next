@@ -88,7 +88,7 @@ export const AgentWorkspaceChatBar: React.FC<AgentWorkspaceChatBarProps> = ({
           onClick={onModelClick}
         >
           <span className={styles.modelProviderIcon} aria-hidden>
-            {providerIconUrl ? <img src={providerIconUrl} alt="" /> : <MdAutoAwesome size={18} />}
+            {providerIconUrl ? <img src={providerIconUrl} alt="" /> : <MdAutoAwesome size={16} />}
           </span>
           <span className={styles.modelName}>{displayModelName}</span>
           <span className={styles.chevron}>▼</span>
@@ -114,7 +114,7 @@ export const AgentWorkspaceChatBar: React.FC<AgentWorkspaceChatBarProps> = ({
             }
             aria-pressed={!changesPanelCollapsed}
           >
-            <MdDifference size={18} aria-hidden />
+            <MdDifference size={16} aria-hidden />
           </button>
         ) : null}
       </div>

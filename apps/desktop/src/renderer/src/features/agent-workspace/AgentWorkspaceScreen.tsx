@@ -21,6 +21,7 @@ import { useWorkspaceAgentStream } from './hooks/useWorkspaceAgentStream'
 import { useWorkspaceChatMessages } from './hooks/useWorkspaceChatMessages'
 import { useWorkspaceRuntimeRefresh } from './hooks/useWorkspaceRuntimeRefresh'
 import { formatWorkspaceRollbackSummary } from './utils/workspace-rollback.util'
+import { useWorkspaceSessions } from './hooks/useWorkspaceSessions'
 import { useAgentWorkspaces } from './hooks/useAgentWorkspaces'
 import { useAgentWorkspaceChrome } from './hooks/useAgentWorkspaceChrome'
 import { useStreamError } from '../agent/hooks/useStreamError'
@@ -53,6 +54,7 @@ export const AgentWorkspaceScreen: React.FC = () => {
     loading: loadingWorkspaces
   } = useAgentWorkspaces()
   const chrome = useAgentWorkspaceChrome(sessionId)
+  const { sessions, loading: loadingSessions } = useWorkspaceSessions()
   const [changes, setChanges] = useState<WorkspaceChangeEntry[]>([])
   const syncedFolderKeysRef = useRef(new Set<string>())
 
@@ -140,6 +142,102 @@ export const AgentWorkspaceScreen: React.FC = () => {
       )
     }
   }, [addWorkspaceFromPicker, dialog, setFolderRoot, t])
+
+  const handleSelectWorkspace = useCallback(
+    async (workspaceId: string) => {
+      if (workspaceId === resolvedActiveWorkspace?.id) return
+      const target = workspaces.find((entry) => entry.id === workspaceId)
+      if (!target) return
+      await selectWorkspace(workspaceId)
+      setFolderRoot(target.folderRoot)
+      if (sessionId) {
+        navigate('/agent-workspace')
+      }
+    },
+    [navigate, resolvedActiveWorkspace?.id, selectWorkspace, sessionId, setFolderRoot, workspaces]
+  )
+
+  const handleChangeWorkspaceAvatar = useCallback(
+    (workspaceId: string) => {
+      void updateWorkspaceAvatar(workspaceId)
+    },
+    [updateWorkspaceAvatar]
+  )
+
+  const handleNewSession = useCallback(() => {
+    if (!activeFolderRoot) return
+    navigate('/agent-workspace')
+  }, [activeFolderRoot, navigate])
+
+  const handleSelectSession = useCallback(
+    async (targetSessionId: string) => {
+      if (targetSessionId === sessionId) return
+      try {
+        const binding = await window.api.agentWorkspace.getBinding(targetSessionId)
+        if (binding?.folderRoot) {
+          setFolderRoot(binding.folderRoot)
+          const workspace = workspaces.find((entry) =>
+            workspaceEntryMatchesFolder(entry, binding.folderRoot)
+          )
+          if (workspace) {
+            await selectWorkspace(workspace.id)
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+      navigate(`/agent-workspace/${targetSessionId}`)
+    },
+    [navigate, sessionId, selectWorkspace, setFolderRoot, workspaces]
+  )
+
+  const handleDeleteSession = useCallback(
+    async (targetSessionId: string) => {
+      const confirmed = await dialog.confirm(
+        t('agent_workspace.delete_session_confirm', '确定删除此工作区会话？相关对话记录也会被移除。'),
+        t('agent_workspace.delete_session', '删除会话')
+      )
+      if (!confirmed) return
+
+      try {
+        await window.api.agentWorkspace.deleteSession(targetSessionId)
+        notifyWorkspaceSessionsChanged()
+        if (targetSessionId === sessionId) {
+          navigate('/agent-workspace')
+        }
+      } catch (error) {
+        console.error('[AgentWorkspaceScreen] delete session failed:', error)
+        await dialog.alert(
+          t('common.error', '操作失败'),
+          t('agent_workspace.delete_session', '删除会话')
+        )
+      }
+    },
+    [dialog, navigate, sessionId, t]
+  )
+
+  const handleRenameSession = useCallback(
+    async (targetSessionId: string, title: string) => {
+      const trimmed = title.trim()
+      if (!trimmed) return
+
+      try {
+        await window.electron.ipcRenderer.invoke(
+          'agent:update-session-title',
+          targetSessionId,
+          trimmed
+        )
+        notifyWorkspaceSessionsChanged()
+      } catch (error) {
+        console.error('[AgentWorkspaceScreen] rename session failed:', error)
+        await dialog.alert(
+          t('common.error', '操作失败'),
+          t('workbench.rename_session', '重命名')
+        )
+      }
+    },
+    [dialog, t]
+  )
 
   const handleSend = useCallback(
     async (text: string) => {
@@ -244,8 +342,20 @@ export const AgentWorkspaceScreen: React.FC = () => {
       <WorkbenchShell
         folderRoot={activeFolderRoot}
         layoutScopeKey={layoutScopeKey}
+        workspace={resolvedActiveWorkspace}
+        workspaces={workspaces}
+        activeWorkspaceId={resolvedActiveWorkspace?.id}
+        sessions={sessions}
+        loadingSessions={loadingSessions}
+        activeSessionId={sessionId}
         changes={changes}
         onOpenFolder={() => void handleAddWorkspace()}
+        onSelectWorkspace={(id) => void handleSelectWorkspace(id)}
+        onChangeWorkspaceAvatar={handleChangeWorkspaceAvatar}
+        onNewSession={handleNewSession}
+        onSelectSession={(id) => void handleSelectSession(id)}
+        onDeleteSession={(id) => void handleDeleteSession(id)}
+        onRenameSession={(id, title) => void handleRenameSession(id, title)}
         agentPanel={{
           hasWorkspace,
           hasConfiguredModel,

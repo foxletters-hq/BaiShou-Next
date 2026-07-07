@@ -3,7 +3,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-app);
+  background: var(--wb-chrome-bg, #f3f4f6);
 }
 
 .card {
@@ -11,8 +11,8 @@
   padding: 32px 36px;
   text-align: center;
   border-radius: 16px;
-  border: 1px solid var(--border-subtle);
-  background: var(--bg-surface);
+  border: 1px solid var(--wb-chrome-border, #d8dee4);
+  background: var(--wb-editor-bg, #ffffff);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
 }
 

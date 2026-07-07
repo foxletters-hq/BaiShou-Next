@@ -1,13 +1,22 @@
 import React, { useCallback, useEffect, useRef } from 'react'
 import { EditorState } from '@codemirror/state'
-import type { EditorView } from '@codemirror/view'
-import { createDiaryCodeMirror, type DiaryCmPlatform } from '@baishou/ui/shared/diary-codemirror'
+import { EditorView } from '@codemirror/view'
+import {
+  createDiaryCodeMirror,
+  workbenchEditorTheme,
+  placePreviewCursorPastHeading,
+  placePreviewCursorAt,
+  type DiaryCmPlatform
+} from '@baishou/ui/shared/diary-codemirror'
 import styles from './WorkbenchLivePreviewEditor.module.css'
 
 export interface WorkbenchLivePreviewEditorProps {
   documentId: string
   content: string
   folderRoot: string
+  scrollToLine?: number
+  scrollToColumn?: number
+  onScrolledToLine?: () => void
   onChange?: (content: string) => void
   readOnly?: boolean
 }
@@ -16,6 +25,9 @@ export const WorkbenchLivePreviewEditor: React.FC<WorkbenchLivePreviewEditorProp
   documentId,
   content,
   folderRoot,
+  scrollToLine,
+  scrollToColumn,
+  onScrolledToLine,
   onChange,
   readOnly = false
 }) => {
@@ -23,6 +35,13 @@ export const WorkbenchLivePreviewEditor: React.FC<WorkbenchLivePreviewEditorProp
   const viewRef = useRef<EditorView | null>(null)
   const onChangeRef = useRef(onChange)
   const suppressEchoRef = useRef(false)
+  const pendingScrollRef = useRef<{ line: number; column?: number } | null>(null)
+
+  useEffect(() => {
+    if (scrollToLine) {
+      pendingScrollRef.current = { line: scrollToLine, column: scrollToColumn }
+    }
+  }, [scrollToLine, scrollToColumn])
 
   useEffect(() => {
     onChangeRef.current = onChange
@@ -54,9 +73,17 @@ export const WorkbenchLivePreviewEditor: React.FC<WorkbenchLivePreviewEditorProp
         if (suppressEchoRef.current || readOnly) return
         onChangeRef.current?.(next)
       },
-      extraExtensions: readOnly ? [EditorState.readOnly.of(true)] : []
+      extraExtensions: [
+        workbenchEditorTheme,
+        EditorView.editorAttributes.of({ class: 'workbench-cm-editor' }),
+        ...(readOnly ? [EditorState.readOnly.of(true)] : [])
+      ]
     })
     viewRef.current = view
+    requestAnimationFrame(() => {
+      if (pendingScrollRef.current) return
+      placePreviewCursorPastHeading(view)
+    })
 
     return () => {
       view.destroy()
@@ -77,5 +104,13 @@ export const WorkbenchLivePreviewEditor: React.FC<WorkbenchLivePreviewEditorProp
     suppressEchoRef.current = false
   }, [content])
 
-  return <div ref={containerRef} className={styles.editor} />
+  useEffect(() => {
+    const view = viewRef.current
+    if (!view || !scrollToLine) return
+    placePreviewCursorAt(view, scrollToLine, scrollToColumn ?? 0)
+    pendingScrollRef.current = null
+    onScrolledToLine?.()
+  }, [content, documentId, onScrolledToLine, scrollToColumn, scrollToLine])
+
+  return <div ref={containerRef} className={`workbench-cm-editor ${styles.editor}`} />
 }

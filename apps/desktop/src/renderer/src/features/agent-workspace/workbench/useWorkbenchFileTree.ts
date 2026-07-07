@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { AgentWorkspaceDirEntry } from '@baishou/shared'
+import { parentRelativePath } from './workbench-path.util'
 
 export interface FileTreeNode {
   relativePath: string
@@ -130,6 +131,22 @@ export function useWorkbenchFileTree(folderRoot: string | null) {
     setSelectedPath(relativePath)
   }, [])
 
+  const refreshPath = useCallback(
+    async (relativePath: string) => {
+      const parent = relativePath === '' ? '' : parentRelativePath(relativePath)
+      await loadPath(parent === relativePath ? '' : parent)
+      if (relativePath !== '' && expandedPaths.has(parentRelativePath(relativePath))) {
+        await loadPath(parentRelativePath(relativePath))
+      }
+      if (relativePath === '' || expandedPaths.has(relativePath)) {
+        await loadPath(relativePath)
+      }
+    },
+    [expandedPaths, loadPath]
+  )
+
+  const loadDirectory = loadPath
+
   return useMemo(
     () => ({
       rootChildren,
@@ -140,12 +157,27 @@ export function useWorkbenchFileTree(folderRoot: string | null) {
       toggleExpanded,
       getChildren,
       selectPath,
-      refreshRoot
+      refreshRoot,
+      refreshPath,
+      loadDirectory,
+      ensureExpanded: (relativePath: string) => {
+        setExpandedPaths((prev) => {
+          if (prev.has(relativePath)) return prev
+          const next = new Set(prev)
+          next.add(relativePath)
+          if (folderRoot) persistExpandedPaths(folderRoot, next)
+          return next
+        })
+        void loadPath(relativePath)
+      }
     }),
     [
+      folderRoot,
       getChildren,
       isExpanded,
+      loadDirectory,
       loadingRoot,
+      refreshPath,
       refreshRoot,
       rootChildren,
       rootError,

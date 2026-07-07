@@ -2,13 +2,22 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  background: var(--wb-chrome-bg, #f3f4f6);
 }
 
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px 6px;
+  gap: 8px;
+  padding: 8px 10px 6px;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
 }
 
 .headerTitle {
@@ -16,21 +25,38 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--text-secondary);
+  color: var(--wb-chrome-fg, #57606a);
+}
+
+.actionBtn {
+  border: none;
+  background: transparent;
+  color: var(--wb-chrome-fg, #57606a);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.actionBtn:hover {
+  background: color-mix(in srgb, var(--wb-chrome-fg-strong, #24292f) 8%, transparent);
+  color: var(--wb-chrome-fg-strong, #24292f);
 }
 
 .refreshBtn {
   border: none;
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--wb-chrome-fg, #57606a);
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
 }
 
 .refreshBtn:hover {
-  background: var(--bg-hover, rgba(255, 255, 255, 0.06));
-  color: var(--text-primary);
+  background: color-mix(in srgb, var(--wb-chrome-fg-strong, #24292f) 8%, transparent);
+  color: var(--wb-chrome-fg-strong, #24292f);
 }
 
 .tree {
@@ -47,14 +73,48 @@
 }
 
 .rowSelected {
-  background: var(--color-primary-soft, rgba(91, 168, 245, 0.12));
+  background: color-mix(in srgb, var(--color-primary, #5ba8f5) 10%, transparent);
+}
+
+.rowEditing {
+  background: color-mix(in srgb, var(--color-primary, #5ba8f5) 8%, transparent);
+  flex-wrap: wrap;
+}
+
+.inlineInput {
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  margin: 0 6px 0 0;
+  padding: 0 6px;
+  border: 1px solid var(--color-primary, #5ba8f5);
+  border-radius: 4px;
+  background: var(--wb-editor-bg, #ffffff);
+  color: var(--wb-chrome-fg-strong, #24292f);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary, #5ba8f5) 25%, transparent);
+}
+
+.inlineInputInvalid {
+  border-color: #cf222e;
+  box-shadow: 0 0 0 1px color-mix(in srgb, #cf222e 25%, transparent);
+}
+
+.inlineError {
+  flex: 1 1 100%;
+  margin: 0 6px 2px 26px;
+  font-size: 11px;
+  line-height: 1.3;
+  color: #cf222e;
 }
 
 .chevronBtn,
 .nameBtn {
   border: none;
   background: transparent;
-  color: var(--text-primary);
+  color: var(--wb-chrome-fg-strong, #24292f);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -65,7 +125,7 @@
   height: 20px;
   padding: 0;
   flex-shrink: 0;
-  color: var(--text-secondary);
+  color: var(--wb-chrome-fg, #57606a);
 }
 
 .chevronSpacer {
@@ -90,14 +150,14 @@
 
 .fileIcon {
   flex-shrink: 0;
-  color: var(--text-secondary);
+  color: var(--wb-chrome-fg, #57606a);
 }
 
 .placeholder,
 .error {
   padding: 12px;
   font-size: 12px;
-  color: var(--text-secondary);
+  color: var(--wb-chrome-fg, #57606a);
 }
 
 .error {

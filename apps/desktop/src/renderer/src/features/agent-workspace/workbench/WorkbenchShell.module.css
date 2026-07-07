@@ -1,7 +1,51 @@
 .shell {
+  --wb-chrome-bg: #f3f4f6;
+  --wb-chrome-bg-raised: #e8eaed;
+  --wb-chrome-border: #d8dee4;
+  --wb-chrome-fg: #57606a;
+  --wb-chrome-fg-strong: #24292f;
+  --wb-tab-bg: #eceff3;
+  --wb-tab-active-bg: #ffffff;
+  --wb-tab-border: #d8dee4;
+  --wb-editor-bg: #ffffff;
+  --wb-editor-fg: #24292f;
+  --wb-editor-fg-muted: #57606a;
+  --wb-editor-fg-faint: #8c959f;
+  --wb-editor-border: #d0d7de;
+  --wb-editor-code-bg: #f6f8fa;
+  --wb-editor-body-size: 16px;
+  --wb-editor-body-leading: 1.7;
+
   display: flex;
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: var(--bg-app);
+  background: var(--wb-chrome-bg);
+  color: var(--wb-chrome-fg-strong);
+}
+
+:global([data-theme='dark']) .shell {
+  --wb-chrome-bg: #1a1f27;
+  --wb-chrome-bg-raised: #222833;
+  --wb-chrome-border: #30363d;
+  --wb-chrome-fg: #8b949e;
+  --wb-chrome-fg-strong: #e6edf3;
+  --wb-tab-bg: #161b22;
+  --wb-tab-active-bg: #0d1117;
+  --wb-tab-border: #30363d;
+  --wb-editor-bg: #0d1117;
+  --wb-editor-fg: #e6edf3;
+  --wb-editor-fg-muted: #8b949e;
+  --wb-editor-fg-faint: #6e7681;
+  --wb-editor-border: #30363d;
+  --wb-editor-code-bg: #161b22;
+}
+
+.editorLayout {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+  overflow: hidden;
 }

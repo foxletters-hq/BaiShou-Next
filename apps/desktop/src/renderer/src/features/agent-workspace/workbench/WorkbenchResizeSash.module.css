@@ -1,0 +1,25 @@
+.sash {
+  flex-shrink: 0;
+  width: 4px;
+  margin: 0 -2px;
+  cursor: col-resize;
+  position: relative;
+  z-index: 5;
+  background: transparent;
+  transition: background 0.15s;
+}
+
+.sash::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  left: 1px;
+  width: 2px;
+  background: transparent;
+  transition: background 0.15s;
+}
+
+.sash:hover::after,
+.sash:active::after {
+  background: var(--color-primary, #5ba8f5);
+}
