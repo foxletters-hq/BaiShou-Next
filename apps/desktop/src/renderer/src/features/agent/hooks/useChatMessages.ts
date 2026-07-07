@@ -1,48 +1,27 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react'
-import type { MockChatAttachment } from '@baishou/shared'
-import {
-  CHAT_MESSAGE_FETCH_LIMIT,
-  CHAT_ROUNDS_PER_PAGE,
-  CHAT_TAIL_FETCH_LIMIT,
-  computeInitialRoundWindowStart,
-  expandRoundWindowStart,
-  flattenRoundSlice,
-  groupMessagesIntoRounds
-} from '../utils/chat-round-pagination'
+import { CHAT_MESSAGE_FETCH_LIMIT, CHAT_TAIL_FETCH_LIMIT } from '../utils/chat-round-pagination'
 import { clearStreamBridgeForSession } from './useAgentStream'
 import {
   chatSessionMessageCache,
   type SessionMessageCacheEntry
 } from '../utils/chat-session-message-cache'
+import {
+  type CompactionAnchor,
+  resolveLatestCompactionAnchor,
+  applyPendingUsageToMessages,
+  mergeFetchedWithCache,
+  mergeTailIntoCache,
+  messageHasUsageStats,
+  isViewingLatestRounds,
+  resolveRoundWindowStart,
+  applyCacheToWindow,
+  buildSessionCacheSnapshot,
+  fetchMessagesFromIpc
+} from './useChatMessages.helpers'
+import { useChatMessageMutations } from './useChatMessages.mutations'
+import type { MockChatAttachment } from '@baishou/shared'
 
-export type CompactionAnchor = {
-  messageId: string
-  record: {
-    streamTranscript?: string
-    streamReasoning?: string
-    phase?: 'auto' | 'manual'
-    status?: 'completed' | 'failed'
-    thoughtDurationMs?: number
-    summaryDurationMs?: number
-  }
-}
-
-function resolveLatestCompactionAnchor(messages: readonly any[]): CompactionAnchor | null {
-  let best: CompactionAnchor | null = null
-  let bestOrder = -1
-
-  for (const msg of messages) {
-    if (msg.role !== 'user' || !msg.compactionRecord) continue
-    if (msg.compactionRecord.status === 'failed') continue
-    const orderIndex = typeof msg.orderIndex === 'number' ? msg.orderIndex : bestOrder + 1
-    if (orderIndex >= bestOrder) {
-      bestOrder = orderIndex
-      best = { messageId: msg.id, record: msg.compactionRecord }
-    }
-  }
-
-  return best
-}
+export type { CompactionAnchor } from './useChatMessages.helpers'
 
 export interface UseChatMessagesParams {
   sessionId: string | undefined
@@ -63,7 +42,6 @@ export interface UseChatMessagesResult {
     overrideSessionId?: string,
     options?: { resetPagination?: boolean }
   ) => Promise<boolean>
-  /** 用户消息落库后立刻插入列表，避免等待 IPC 刷新才显示 */
   appendSentUserMessage: (payload: {
     id: string
     content: string
@@ -77,131 +55,6 @@ export interface UseChatMessagesResult {
 }
 
 /** @deprecated 兼容旧测试引用；首屏按轮分页，不再按固定条数估算 */
-export const CHAT_INITIAL_ROUND_BATCH = CHAT_ROUNDS_PER_PAGE
-export const CHAT_INITIAL_MESSAGE_BATCH = CHAT_MESSAGE_FETCH_LIMIT
-
-function resolveHasMore(roundWindowStart: number, fetchHasMore: boolean): boolean {
-  return roundWindowStart > 0 || fetchHasMore
-}
-
-function mergeMessageTokenFields(prev: any | undefined, next: any): any {
-  if (!prev) return next
-  const nextHasUsage = messageHasUsageStats(next)
-  const prevHasUsage = messageHasUsageStats(prev)
-  if (nextHasUsage || !prevHasUsage) return next
-  return {
-    ...next,
-    inputTokens: prev.inputTokens,
-    outputTokens: prev.outputTokens,
-    cacheReadInputTokens: prev.cacheReadInputTokens,
-    cacheWriteInputTokens: prev.cacheWriteInputTokens,
-    costMicros: prev.costMicros
-  }
-}
-
-function mergeFetchedWithCache(prevCache: readonly any[], fetched: any[]): any[] {
-  const prevById = new Map(prevCache.map((m) => [m.id, m]))
-  return fetched.map((m) => mergeMessageTokenFields(prevById.get(m.id), m))
-}
-
-function mergeTailIntoCache(prevCache: readonly any[], tail: any[]): any[] {
-  if (tail.length === 0) return [...prevCache]
-  const tailIds = new Set(tail.map((m) => m.id))
-  const kept = prevCache.filter((m) => !tailIds.has(m.id))
-  return mergeFetchedWithCache(kept, [...kept, ...tail])
-}
-
-function messageHasUsageStats(msg: any): boolean {
-  return (
-    (msg.inputTokens ?? 0) > 0 ||
-    (msg.outputTokens ?? 0) > 0 ||
-    (msg.costMicros ?? 0) > 0 ||
-    (msg.cacheReadInputTokens ?? 0) > 0 ||
-    (msg.cacheWriteInputTokens ?? 0) > 0
-  )
-}
-
-function applyPendingUsageToMessages(
-  messages: any[],
-  pendingUsage: Map<string, Record<string, number | undefined>>
-): any[] {
-  if (pendingUsage.size === 0) return messages
-  return messages.map((msg) => {
-    const usage = pendingUsage.get(msg.id)
-    if (!usage || messageHasUsageStats(msg)) return msg
-    return {
-      ...msg,
-      inputTokens: usage.inputTokens ?? msg.inputTokens,
-      outputTokens: usage.outputTokens ?? msg.outputTokens,
-      cacheReadInputTokens: usage.cacheReadInputTokens ?? msg.cacheReadInputTokens,
-      cacheWriteInputTokens: usage.cacheWriteInputTokens ?? msg.cacheWriteInputTokens,
-      costMicros: usage.costMicros ?? msg.costMicros
-    }
-  })
-}
-
-function isViewingLatestRounds(cache: readonly any[], roundWindowStart: number): boolean {
-  const totalRounds = groupMessagesIntoRounds(cache).length
-  return roundWindowStart >= Math.max(0, totalRounds - CHAT_ROUNDS_PER_PAGE)
-}
-
-function resolveRoundWindowStart(
-  cache: readonly any[],
-  currentStart: number,
-  preserveWindow: boolean
-): number {
-  const totalRounds = groupMessagesIntoRounds(cache).length
-  const initialStart = computeInitialRoundWindowStart(totalRounds)
-  if (!preserveWindow) return initialStart
-  return Math.min(currentStart, initialStart)
-}
-
-function applyCacheToWindow(
-  cache: any[],
-  roundWindowStart: number,
-  fetchHasMore: boolean
-): { display: any[]; hasMore: boolean; roundWindowStart: number } {
-  const rounds = groupMessagesIntoRounds(cache)
-  const clampedStart = Math.min(roundWindowStart, computeInitialRoundWindowStart(rounds.length))
-  const display = flattenRoundSlice(rounds, clampedStart)
-  return {
-    display,
-    hasMore: resolveHasMore(clampedStart, fetchHasMore),
-    roundWindowStart: clampedStart
-  }
-}
-
-function buildSessionCacheSnapshot(state: {
-  messageCacheRef: { current: any[] }
-  loadedFromEndRef: { current: number }
-  roundWindowStartRef: { current: number }
-  fetchHasMoreRef: { current: boolean }
-  compactionAnchor: CompactionAnchor | null
-}): SessionMessageCacheEntry {
-  return {
-    messages: [...state.messageCacheRef.current],
-    loadedFromEnd: state.loadedFromEndRef.current,
-    roundWindowStart: state.roundWindowStartRef.current,
-    fetchHasMore: state.fetchHasMoreRef.current,
-    compactionAnchor: state.compactionAnchor
-  }
-}
-
-async function fetchMessagesFromIpc(
-  sessionId: string,
-  limit: number,
-  offset: number
-): Promise<any[] | null> {
-  const fetched = await window.electron.ipcRenderer.invoke(
-    'agent:get-messages',
-    sessionId,
-    limit,
-    offset,
-    false
-  )
-  return fetched ?? null
-}
-
 /**
  * 消息生命周期管理 Hook (去乐观化版本)
  * 所有的状态更新均建立在数据库真实数据之上。
@@ -590,146 +443,27 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
     prevStreamingRef.current = isStreaming
   }, [isStreaming, sessionId, refreshLatestMessages, persistSessionCache])
 
-  const loadMore = useCallback(async () => {
-    if (!sessionId) return
-
-    if (roundWindowStartRef.current > 0) {
-      roundWindowStartRef.current = expandRoundWindowStart(roundWindowStartRef.current)
-      syncFromCache(roundWindowStartRef.current)
-      return
-    }
-
-    if (!fetchHasMoreRef.current) {
-      setHasMore(false)
-      return
-    }
-
-    try {
-      const fetched = await fetchMessagesFromIpc(
-        sessionId,
-        CHAT_MESSAGE_FETCH_LIMIT,
-        loadedFromEndRef.current
-      )
-      if (!fetched?.length) {
-        fetchHasMoreRef.current = false
-        setHasMore(false)
-        return
-      }
-
-      fetchHasMoreRef.current = fetched.length >= CHAT_MESSAGE_FETCH_LIMIT
-      loadedFromEndRef.current += fetched.length
-
-      const oldStart = roundWindowStartRef.current
-      const prependedRoundCount = groupMessagesIntoRounds(fetched).length
-      messageCacheRef.current = [...fetched, ...messageCacheRef.current]
-
-      roundWindowStartRef.current = Math.max(
-        0,
-        oldStart + prependedRoundCount - CHAT_ROUNDS_PER_PAGE
-      )
-      syncFromCache(roundWindowStartRef.current)
-      persistSessionCache(sessionId)
-    } catch (e) {
-      console.warn('[useChatMessages] loadMore failed:', e)
-    }
-  }, [sessionId, syncFromCache, persistSessionCache])
-
-  const optimisticRemove = useCallback(
-    (id: string) => {
-      setMessages((prev) => prev.filter((m) => m.id !== id))
-      messageCacheRef.current = messageCacheRef.current.filter((m) => m.id !== id)
-      if (sessionId) {
-        chatSessionMessageCache.delete(sessionId)
-      }
-    },
-    [sessionId]
-  )
-
-  const setStreamSessionId = useCallback((id: string | null) => {
-    streamSessionIdRef.current = id
-  }, [])
-
-  const ensureMessageAttachments = useCallback(
-    (messageId: string, attachments: MockChatAttachment[]) => {
-      if (!attachments.length) return
-
-      const patch = (msg: any) => {
-        if (msg.id !== messageId) return msg
-        if (msg.attachments?.length) return msg
-        return { ...msg, attachments }
-      }
-
-      messageCacheRef.current = messageCacheRef.current.map(patch)
-      setMessages((prev) => prev.map(patch))
-    },
-    []
-  )
-
-  const truncateMessages = useCallback(
-    (messageId: string, options?: { content?: string }) => {
-      const idx = messageCacheRef.current.findIndex((m) => m.id === messageId)
-      if (idx === -1) return
-
-      const truncated = messageCacheRef.current.slice(0, idx + 1).map((m, i) => {
-        if (i < idx) return m
-        const trimmedContent = options?.content?.trim()
-        return {
-          ...m,
-          ...(trimmedContent ? { content: trimmedContent } : {}),
-          compactionRecord: undefined,
-          hasCompactionMarker: false
-        }
-      })
-      messageCacheRef.current = truncated
-      loadedFromEndRef.current = truncated.length
-
-      const newAnchor = resolveLatestCompactionAnchor(truncated)
-      setCompactionAnchor(newAnchor)
-
-      syncFromCache(roundWindowStartRef.current)
-      if (sessionId) {
-        chatSessionMessageCache.delete(sessionId)
-      }
-    },
-    [sessionId, syncFromCache]
-  )
-
-  const appendSentUserMessage = useCallback(
-    (payload: {
-      id: string
-      content: string
-      attachments?: MockChatAttachment[]
-      createdAt?: Date
-    }) => {
-      if (messageCacheRef.current.some((m) => m.id === payload.id)) return
-
-      const maxOrder = messageCacheRef.current.reduce(
-        (max, m) => Math.max(max, typeof m.orderIndex === 'number' ? m.orderIndex : 0),
-        0
-      )
-      const createdAt = payload.createdAt ?? new Date()
-      const msg = {
-        id: payload.id,
-        role: 'user',
-        content: payload.content,
-        attachments: payload.attachments,
-        orderIndex: maxOrder + 1,
-        createdAt,
-        parts: payload.content
-          ? [
-              {
-                id: `${payload.id}-text`,
-                messageId: payload.id,
-                type: 'text',
-                data: { text: payload.content }
-              }
-            ]
-          : []
-      }
-      ingestTailMessages([msg], false)
-    },
-    [ingestTailMessages]
-  )
+  const {
+    loadMore,
+    optimisticRemove,
+    setStreamSessionId,
+    ensureMessageAttachments,
+    truncateMessages,
+    appendSentUserMessage
+  } = useChatMessageMutations({
+    sessionId,
+    messageCacheRef,
+    roundWindowStartRef,
+    fetchHasMoreRef,
+    loadedFromEndRef,
+    streamSessionIdRef,
+    syncFromCache,
+    persistSessionCache,
+    ingestTailMessages,
+    setMessages,
+    setHasMore,
+    setCompactionAnchor
+  })
 
   return {
     messages,

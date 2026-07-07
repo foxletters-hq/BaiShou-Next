@@ -125,6 +125,7 @@ export function useDiaryData(query: DiaryPageQuery) {
     () => `${browseMonthKey}:${searchFilterKey}`,
     [browseMonthKey, searchFilterKey]
   )
+  const activeFilterKey = searchTerm ? searchFilterKey : browseFilterKey
   const prevBrowseFilterKeyRef = useRef(browseFilterKey)
 
   useEffect(() => {
@@ -189,7 +190,7 @@ export function useDiaryData(query: DiaryPageQuery) {
     searchTerm,
     query.page,
     query.pageSize,
-    searchTerm ? searchFilterKey : browseFilterKey,
+    activeFilterKey,
     diaryListCacheVersion,
     vaultScopeKey
   ])

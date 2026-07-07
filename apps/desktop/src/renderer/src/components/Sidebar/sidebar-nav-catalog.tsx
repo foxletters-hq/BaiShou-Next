@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import React from 'react'
 import type { TFunction } from 'i18next'
 import {
@@ -86,31 +87,46 @@ export const SIDEBAR_NAV_GROUPS: SidebarNavGroupDef[] = [
   {
     key: 'diary',
     labelKey: 'sidebar.group_diary',
-    defaultLabel: '日记与回忆',
+    defaultLabel: i18n.t(
+      'auto.apps.desktop.src.renderer.src.components.Sidebar.sidebar.nav.catalog.L89',
+      '日记与回忆'
+    ),
     itemIds: ['diary', 'summary', 'diary-template', 'summary-settings']
   },
   {
     key: 'settings-general',
     labelKey: 'sidebar.group_settings_general',
-    defaultLabel: '常规',
+    defaultLabel: i18n.t(
+      'auto.apps.desktop.src.renderer.src.components.Sidebar.sidebar.nav.catalog.L95',
+      '常规'
+    ),
     itemIds: ['general', 'mcp']
   },
   {
     key: 'settings-ai',
     labelKey: 'sidebar.group_settings_ai',
-    defaultLabel: 'AI 与模型',
+    defaultLabel: i18n.t(
+      'auto.apps.desktop.src.renderer.src.components.Sidebar.sidebar.nav.catalog.L101',
+      'AI 与模型'
+    ),
     itemIds: ['ai-services', 'ai-models', 'assistants']
   },
   {
     key: 'memory',
     labelKey: 'sidebar.group_memory',
-    defaultLabel: '记忆与工具',
+    defaultLabel: i18n.t(
+      'auto.apps.desktop.src.renderer.src.components.Sidebar.sidebar.nav.catalog.L107',
+      '记忆与工具'
+    ),
     itemIds: ['rag', 'web-search', 'agent-tools', 'tts']
   },
   {
     key: 'sync',
     labelKey: 'sidebar.group_sync',
-    defaultLabel: '同步与数据',
+    defaultLabel: i18n.t(
+      'auto.apps.desktop.src.renderer.src.components.Sidebar.sidebar.nav.catalog.L113',
+      '同步与数据'
+    ),
     itemIds: ['incremental-sync', 'sync', 'git', 'attachments', 'lan']
   }
 ]

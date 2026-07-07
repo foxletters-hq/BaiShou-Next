@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useSyncExternalStore } from 'react'
+import { useState, useEffect, useRef, useSyncExternalStore, useCallback } from 'react'
 import { useRagSystem } from './useRagSystem'
 import { useRagActions } from './useRagActions'
 import { getCachedRagStats, setCachedRagStats, subscribeRagRuntime } from '../rag-runtime-cache'
@@ -44,83 +44,87 @@ export function useRagSettings({
 
   const stateRef = useRef({ searchQuery, searchMode, currentPage, pageSize })
   const dataGenerationRef = useRef(0)
+  const checkMigrationStatusRef = useRef<() => Promise<void>>(async () => {})
   useEffect(() => {
     stateRef.current = { searchQuery, searchMode, currentPage, pageSize }
   }, [searchQuery, searchMode, currentPage, pageSize])
 
   const isDataRequestStale = (generation: number) => generation !== dataGenerationRef.current
 
-  const loadRagData = async (
-    q: string,
-    mode: 'semantic' | 'text',
-    page: number,
-    size: number,
-    generation = dataGenerationRef.current
-  ) => {
-    try {
-      const limit = size
-      const offset = (page - 1) * limit
-      const params: any = { limit, offset, mode, withTotal: true }
+  const loadRagData = useCallback(
+    async (
+      q: string,
+      mode: 'semantic' | 'text',
+      page: number,
+      size: number,
+      generation = dataGenerationRef.current
+    ) => {
+      try {
+        const limit = size
+        const offset = (page - 1) * limit
+        const params: any = { limit, offset, mode, withTotal: true }
 
-      if (q && q.trim() !== '') {
-        params.keyword = q
-        if (mode === 'semantic') {
-          params.limit = 50
-          params.offset = 0
-        }
-      }
-
-      const [statsResult, entriesResult] = await Promise.all([
-        (window as any).api?.rag?.getStats(),
-        (window as any).api?.rag?.queryEntries(params)
-      ])
-
-      if (isDataRequestStale(generation)) return
-
-      if (statsResult) {
-        setCachedRagStats(statsResult)
-      }
-
-      const s = statsResult ?? getCachedRagStats()
-      const res = entriesResult
-
-      if (res) {
-        if (res.entries && typeof res.total === 'number') {
-          const total = res.total
-          if (total > 0 && (page - 1) * size >= total) {
-            const maxPage = Math.max(1, Math.ceil(total / size))
-            setCurrentPage(maxPage)
-            loadRagData(q, mode, maxPage, size, generation)
-            return
+        if (q && q.trim() !== '') {
+          params.keyword = q
+          if (mode === 'semantic') {
+            params.limit = 50
+            params.offset = 0
           }
-          if (q && q.trim() !== '' && mode === 'semantic') {
-            const allEntries = res.entries
-            const semanticTotal = res.total
-            const sliced = allEntries.slice((page - 1) * size, page * size)
-            if (isDataRequestStale(generation)) return
-            setRagEntries(sliced)
-            setRagTotalCount(semanticTotal)
+        }
+
+        const [statsResult, entriesResult] = await Promise.all([
+          (window as any).api?.rag?.getStats(),
+          (window as any).api?.rag?.queryEntries(params)
+        ])
+
+        if (isDataRequestStale(generation)) return
+
+        if (statsResult) {
+          setCachedRagStats(statsResult)
+        }
+
+        const s = statsResult ?? getCachedRagStats()
+        const res = entriesResult
+
+        if (res) {
+          if (res.entries && typeof res.total === 'number') {
+            const total = res.total
+            if (total > 0 && (page - 1) * size >= total) {
+              const maxPage = Math.max(1, Math.ceil(total / size))
+              setCurrentPage(maxPage)
+              loadRagData(q, mode, maxPage, size, generation)
+              return
+            }
+            if (q && q.trim() !== '' && mode === 'semantic') {
+              const allEntries = res.entries
+              const semanticTotal = res.total
+              const sliced = allEntries.slice((page - 1) * size, page * size)
+              if (isDataRequestStale(generation)) return
+              setRagEntries(sliced)
+              setRagTotalCount(semanticTotal)
+            } else {
+              if (isDataRequestStale(generation)) return
+              setRagEntries(res.entries)
+              setRagTotalCount(res.total)
+            }
           } else {
             if (isDataRequestStale(generation)) return
-            setRagEntries(res.entries)
-            setRagTotalCount(res.total)
+            setRagEntries(res)
+            setRagTotalCount(s ? s.totalCount || 0 : 0)
           }
-        } else {
+        } else if (s) {
           if (isDataRequestStale(generation)) return
-          setRagEntries(res)
-          setRagTotalCount(s ? s.totalCount || 0 : 0)
+          setRagTotalCount(s.totalCount || 0)
         }
-      } else if (s) {
-        if (isDataRequestStale(generation)) return
-        setRagTotalCount(s.totalCount || 0)
-      }
 
-      if (isDataRequestStale(generation)) return
-      await checkMigrationStatus()
-    } catch (err) {
-      console.error('[SettingsPage] loadRagData failed:', err)
-    }
-  }
+        if (isDataRequestStale(generation)) return
+        await checkMigrationStatusRef.current()
+      } catch (err) {
+        console.error('[SettingsPage] loadRagData failed:', err)
+      }
+    },
+    []
+  )
 
   const fetchRagInfo = async (page?: number, size?: number) => {
     const targetPage = page !== undefined ? page : stateRef.current.currentPage
@@ -150,6 +154,8 @@ export function useRagSettings({
     handleClearAll
   } = useRagSystem(t, toast, confirm, alert, fetchRagInfo, settings.loadConfig)
 
+  checkMigrationStatusRef.current = checkMigrationStatus
+
   const {
     handleAddManualMemory,
     handleDeleteEntry,
@@ -170,7 +176,7 @@ export function useRagSettings({
     return () => {
       dataGenerationRef.current += 1
     }
-  }, [])
+  }, [loadRagData, searchQuery, searchMode, currentPage, pageSize])
 
   useEffect(() => {
     const api = (window as any).api
@@ -182,7 +188,7 @@ export function useRagSettings({
     })
 
     return unsubscribe
-  }, [settings.loadConfig])
+  }, [settings])
 
   const handleSearch = (q: string, mode: 'semantic' | 'text') => {
     setSearchQuery(q)

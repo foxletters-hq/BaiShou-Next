@@ -1,94 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { TFunction } from 'i18next'
 import { useDialog, useToast } from '@baishou/ui'
-
-type StorageBusyState =
-  | 'idle'
-  | 'migrating'
-  | 'switching'
-  | 'external-journals'
-  | 'external-summaries'
-
-type StorageTargetValidation =
-  | { valid: true; sourceRoot: string; hasData: boolean }
-  | { valid: false; code: string }
-
-const OVERLAY_DISMISS_MS = 320
-
-function waitMs(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-function getStorageApi() {
-  return (window as any).api?.storage as
-    | {
-        getStats?: () => Promise<{
-          storageRootPath?: string
-          sqliteSizeStats?: string
-          vectorDbStats?: string
-          mediaCacheStats?: string
-        }>
-        pickDirectory?: () => Promise<string | null>
-        validateTargetDirectory?: (targetPath: string) => Promise<StorageTargetValidation>
-        changeDirectory?: (targetPath: string) => Promise<{ ok: boolean }>
-        migrateDirectory?: (targetPath: string) => Promise<{ ok: boolean }>
-        onMigrationProgress?: (cb: (payload: { name: string }) => void) => () => void
-        onRootChanged?: (cb: () => void) => () => void
-        getExternalJournalsInfo?: (options?: { includeFileCounts?: boolean }) => Promise<{
-          path: string | null
-          defaultPath: string
-          journalFileCount: number
-          pathAvailableOnDevice?: boolean
-        }>
-        pickExternalJournalsDirectory?: () => Promise<string | null>
-        setExternalJournalsDirectory?: (targetPath: string) => Promise<{
-          ok: boolean
-          journalFileCount?: number
-        }>
-        clearExternalJournalsDirectory?: () => Promise<{ ok: boolean }>
-        onJournalsPathChanged?: (cb: () => void) => () => void
-        getExternalSummariesInfo?: (options?: { includeFileCounts?: boolean }) => Promise<{
-          path: string | null
-          defaultPath: string
-          summaryFileCount: number
-          summaryFileCounts?: {
-            weekly: number
-            monthly: number
-            quarterly: number
-            yearly: number
-          }
-          pathAvailableOnDevice?: boolean
-        }>
-        pickExternalSummariesDirectory?: () => Promise<string | null>
-        setExternalSummariesDirectory?: (targetPath: string) => Promise<{
-          ok: boolean
-          summaryFileCount?: number
-          summaryFileCounts?: {
-            weekly: number
-            monthly: number
-            quarterly: number
-            yearly: number
-          }
-        }>
-        clearExternalSummariesDirectory?: () => Promise<{ ok: boolean }>
-        onSummariesPathChanged?: (cb: () => void) => () => void
-      }
-    | undefined
-}
-
-function mapValidationError(t: TFunction, code: string): string {
-  switch (code) {
-    case 'SAME_PATH':
-      return t('storage.migrate_same_path', '目标目录与当前数据根目录相同')
-    case 'INSIDE_SOURCE':
-      return t('storage.migrate_inside_source', '不能选择当前数据目录内的子文件夹')
-    case 'NOT_WRITABLE':
-      return t('storage.directory_not_writable', '无法写入所选目录，请检查权限或更换路径')
-    default:
-      return t('storage.service_unavailable', '路径服务未就绪')
-  }
-}
+import {
+  getStorageApi,
+  mapValidationError,
+  waitMs,
+  OVERLAY_DISMISS_MS,
+  type StorageBusyState,
+  type StorageTargetValidation
+} from './desktop-storage-settings.api'
+import { useDesktopStorageExternalPaths } from './useDesktopStorageExternalPaths'
 
 export function useDesktopStorageSettings() {
   const { t } = useTranslation()
@@ -392,184 +313,26 @@ export function useDesktopStorageSettings() {
     await openDirectoryPicker('migrate')
   }, [openDirectoryPicker])
 
-  const mapExternalDirectoryError = useCallback(
-    (code: string, kind: 'journals' | 'summaries'): string => {
-      switch (code) {
-        case 'NOT_DIRECTORY':
-          return kind === 'journals'
-            ? t('storage.external_journals_not_directory', '所选路径不是文件夹')
-            : t('storage.external_summaries_not_directory', '所选路径不是文件夹')
-        case 'NOT_ACCESSIBLE':
-          return kind === 'journals'
-            ? t('storage.external_journals_not_accessible', '无法访问所选目录')
-            : t('storage.external_summaries_not_accessible', '无法访问所选目录')
-        case 'NOT_WRITABLE':
-          return kind === 'journals'
-            ? t('storage.external_journals_not_writable', '所选目录不可写，请检查权限')
-            : t('storage.external_summaries_not_writable', '所选目录不可写，请检查权限')
-        default:
-          return code
-      }
-    },
-    [t]
-  )
-
-  const mapExternalJournalsError = useCallback(
-    (code: string): string => mapExternalDirectoryError(code, 'journals'),
-    [mapExternalDirectoryError]
-  )
-
-  const mapExternalSummariesError = useCallback(
-    (code: string): string => mapExternalDirectoryError(code, 'summaries'),
-    [mapExternalDirectoryError]
-  )
-
-  const handleChangeExternalJournalsDirectory = useCallback(async () => {
-    const api = getStorageApi()
-    const picked = await api?.pickExternalJournalsDirectory?.()
-    if (!picked) return
-
-    const confirmed = await dialog.confirm(
-      t(
-        'storage.external_journals_confirm',
-        '将把当前工作区的日记读写指向所选文件夹（不会移动或删除原文件）。是否继续？'
-      ),
-      t('storage.external_journals_pick', '选择日记目录')
-    )
-    if (!confirmed) return
-
-    setStorageBusy('external-journals')
-    suppressExternalPathRefreshRef.current = true
-    try {
-      const result = await api?.setExternalJournalsDirectory?.(picked)
-      setExternalJournalsPath(picked)
-      setExternalJournalsPathAvailable(true)
-      if (typeof result?.journalFileCount === 'number') {
-        setExternalJournalsFileCount(result.journalFileCount)
-      }
-      await refreshStorageInfo({ includeFileCounts: true })
-      const count = result?.journalFileCount
-      toast.showSuccess(
-        t('storage.external_journals_applied', {
-          count: count ?? 0,
-          defaultValue: `已切换外部日记目录，识别到 ${count ?? 0} 篇日记`
-        })
-      )
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e)
-      toast.showError(mapExternalJournalsError(message))
-    } finally {
-      suppressExternalPathRefreshRef.current = false
-      setStorageBusy('idle')
-    }
-  }, [dialog, mapExternalJournalsError, refreshStorageInfo, t, toast])
-
-  const handleChangeExternalSummariesDirectory = useCallback(async () => {
-    const api = getStorageApi()
-    const picked = await api?.pickExternalSummariesDirectory?.()
-    if (!picked) return
-
-    const confirmed = await dialog.confirm(
-      t(
-        'storage.external_summaries_confirm',
-        '将把当前工作区的总结读写指向所选文件夹（不会移动或删除原文件）。是否继续？'
-      ),
-      t('storage.external_summaries_pick', '选择总结目录')
-    )
-    if (!confirmed) return
-
-    setStorageBusy('external-summaries')
-    suppressExternalPathRefreshRef.current = true
-    try {
-      const result = await api?.setExternalSummariesDirectory?.(picked)
-      setExternalSummariesPath(picked)
-      setExternalSummariesPathAvailable(true)
-      if (typeof result?.summaryFileCount === 'number') {
-        setExternalSummariesFileCount(result.summaryFileCount)
-      }
-      if (result?.summaryFileCounts) {
-        setExternalSummariesFileCounts(result.summaryFileCounts)
-      }
-      await refreshStorageInfo({ includeFileCounts: true })
-      const count = result?.summaryFileCount
-      toast.showSuccess(
-        t('storage.external_summaries_applied', {
-          count: count ?? 0,
-          defaultValue: `已切换外部总结目录，识别到 ${count ?? 0} 篇总结`
-        })
-      )
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e)
-      toast.showError(mapExternalSummariesError(message))
-    } finally {
-      suppressExternalPathRefreshRef.current = false
-      setStorageBusy('idle')
-    }
-  }, [dialog, mapExternalSummariesError, refreshStorageInfo, t, toast])
-
-  const handleClearExternalSummariesDirectory = useCallback(async () => {
-    const confirmed = await dialog.confirm(
-      t(
-        'storage.external_summaries_clear_confirm',
-        '将恢复为工作区内的 Archives 目录。外部文件夹中的文件不会被删除。'
-      ),
-      t('storage.external_summaries_clear', '恢复默认目录')
-    )
-    if (!confirmed) return
-
-    setStorageBusy('external-summaries')
-    suppressExternalPathRefreshRef.current = true
-    try {
-      await getStorageApi()?.clearExternalSummariesDirectory?.()
-      setExternalSummariesPath(null)
-      setExternalSummariesPathAvailable(true)
-      await refreshStorageInfo({ includeFileCounts: true })
-      toast.showSuccess(t('storage.external_summaries_cleared', '已恢复默认总结目录'))
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e)
-      toast.showError(
-        t('storage.external_summaries_clear_failed', {
-          error: message,
-          defaultValue: `恢复失败：${message}`
-        })
-      )
-    } finally {
-      suppressExternalPathRefreshRef.current = false
-      setStorageBusy('idle')
-    }
-  }, [dialog, refreshStorageInfo, t, toast])
-
-  const handleClearExternalJournalsDirectory = useCallback(async () => {
-    const confirmed = await dialog.confirm(
-      t(
-        'storage.external_journals_clear_confirm',
-        '将恢复为工作区内的 Journals 目录。外部文件夹中的文件不会被删除。'
-      ),
-      t('storage.external_journals_clear', '恢复默认目录')
-    )
-    if (!confirmed) return
-
-    setStorageBusy('external-journals')
-    suppressExternalPathRefreshRef.current = true
-    try {
-      await getStorageApi()?.clearExternalJournalsDirectory?.()
-      setExternalJournalsPath(null)
-      setExternalJournalsPathAvailable(true)
-      await refreshStorageInfo({ includeFileCounts: true })
-      toast.showSuccess(t('storage.external_journals_cleared', '已恢复默认日记目录'))
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e)
-      toast.showError(
-        t('storage.external_journals_clear_failed', {
-          error: message,
-          defaultValue: `恢复失败：${message}`
-        })
-      )
-    } finally {
-      suppressExternalPathRefreshRef.current = false
-      setStorageBusy('idle')
-    }
-  }, [dialog, refreshStorageInfo, t, toast])
+  const {
+    handleChangeExternalJournalsDirectory,
+    handleClearExternalJournalsDirectory,
+    handleChangeExternalSummariesDirectory,
+    handleClearExternalSummariesDirectory
+  } = useDesktopStorageExternalPaths({
+    t,
+    dialog,
+    toast,
+    refreshStorageInfo,
+    setStorageBusy,
+    suppressExternalPathRefreshRef,
+    setExternalJournalsPath,
+    setExternalJournalsPathAvailable,
+    setExternalJournalsFileCount,
+    setExternalSummariesPath,
+    setExternalSummariesPathAvailable,
+    setExternalSummariesFileCount,
+    setExternalSummariesFileCounts
+  })
 
   const overlayVisible = storageBusy !== 'idle'
   const overlayMessage =

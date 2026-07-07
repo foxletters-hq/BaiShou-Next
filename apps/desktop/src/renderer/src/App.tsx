@@ -71,7 +71,7 @@ const GlobalErrorHandler = () => {
       window.removeEventListener('unhandledrejection', handleRejection)
       window.removeEventListener('error', handleError)
     }
-  }, [toast])
+  }, [toast, t])
 
   return null
 }
@@ -163,7 +163,7 @@ const AppRoutes = () => {
   // 路由变化时关闭所有弹窗
   useEffect(() => {
     dialog.closeAll()
-  }, [location.pathname])
+  }, [location.pathname, dialog])
 
   useEffect(() => {
     if (!location.pathname.startsWith('/settings')) {
@@ -171,7 +171,7 @@ const AppRoutes = () => {
     } else if (!backgroundLocation.pathname.startsWith('/settings')) {
       rememberSettingsReturnPath(backgroundLocation.pathname)
     }
-  }, [location])
+  }, [location, backgroundLocation.pathname])
 
   const mainRoutesLocation = isSettings ? backgroundLocation : location
   const mountSettingsHost = !location.pathname.startsWith('/welcome')

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Outlet, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { AgentSidebar } from './components/AgentSidebar'
+import { AgentSessionRenameModal } from './components/AgentSessionRenameModal'
 import type { AgentAssistant } from './components/AgentSidebar'
 import {
   useAssistantStore,
@@ -200,7 +201,7 @@ export const AgentLayout: React.FC = () => {
     })
     loadConfig()
     loadProfile()
-  }, [fetchAssistants, loadConfig, loadProfile])
+  }, [fetchAssistants, loadConfig, loadProfile, sessionId, urlAssistantId])
 
   // Vault resync / 增量同步完成后，刷新当前伙伴、会话与用户头像
   useEffect(() => {
@@ -423,106 +424,20 @@ export const AgentLayout: React.FC = () => {
         />
       </div>
 
-      {/* ─── 内联重命名 Modal ─── */}
-      {renameTarget && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'rgba(0,0,0,0.3)'
-          }}
-          onClick={() => setRenameTarget(null)}
-        >
-          <div
-            style={{
-              background: 'var(--bg-surface, #fff)',
-              borderRadius: 16,
-              padding: '24px 24px 16px',
-              width: 320,
-              boxShadow: '0 12px 40px rgba(0,0,0,0.15)'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div
-              style={{
-                fontWeight: 700,
-                fontSize: 15,
-                marginBottom: 12,
-                color: 'var(--text-primary, #1e293b)'
-              }}
-            >
-              {t('agent.rename_session', '重命名对话')}
-            </div>
-            <input
-              ref={renameInputRef}
-              autoFocus
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                borderRadius: 10,
-                border: '1px solid rgba(148,163,184,0.4)',
-                fontSize: 14,
-                outline: 'none',
-                background: 'var(--bg-surface-highlight, #f8fafc)',
-                color: 'var(--text-primary, #1e293b)',
-                boxSizing: 'border-box'
-              }}
-              value={renameTarget.title}
-              onChange={(e) => setRenameTarget({ ...renameTarget, title: e.target.value })}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter')
-                  commitRename((title) =>
-                    toast.showSuccess(
-                      t('agent.renamed_toast', '已重命名为「{{title}}」', { title })
-                    )
-                  )
-                if (e.key === 'Escape') setRenameTarget(null)
-              }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
-              <button
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: 8,
-                  border: 'none',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  fontSize: 14,
-                  color: 'var(--text-secondary)'
-                }}
-                onClick={() => setRenameTarget(null)}
-              >
-                {t('common.cancel', '取消')}
-              </button>
-              <button
-                style={{
-                  padding: '8px 20px',
-                  borderRadius: 8,
-                  border: 'none',
-                  background: 'var(--color-primary, #5BA8F5)',
-                  color: '#fff',
-                  cursor: 'pointer',
-                  fontSize: 14,
-                  fontWeight: 600
-                }}
-                onClick={() =>
-                  commitRename((title) =>
-                    toast.showSuccess(
-                      t('agent.renamed_toast', '已重命名为「{{title}}」', { title })
-                    )
-                  )
-                }
-              >
-                {t('common.confirm', '确定')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {renameTarget ? (
+        <AgentSessionRenameModal
+          renameTarget={renameTarget}
+          renameInputRef={renameInputRef}
+          t={t}
+          onClose={() => setRenameTarget(null)}
+          onTitleChange={(title) => setRenameTarget({ ...renameTarget, title })}
+          onCommit={() =>
+            commitRename((title) =>
+              toast.showSuccess(t('agent.renamed_toast', '已重命名为「{{title}}」', { title }))
+            )
+          }
+        />
+      ) : null}
 
       {/* ─── Assistant Picker Sheet ─── */}
       <AssistantPickerSheet

@@ -75,7 +75,9 @@ describe('useAgentStream', () => {
     })
 
     it('should return error object when save fails', async () => {
-      mockRenderer.invoke.mockResolvedValue({ error: '磁盘写入失败' })
+      mockRenderer.invoke.mockResolvedValue({
+        error: '磁盘写入失败'
+      })
 
       const { result } = renderHook(() => useAgentStream('s1'))
 
@@ -84,7 +86,9 @@ describe('useAgentStream', () => {
         saveResult = await result.current.saveUserMessage('s1', '你好')
       })
 
-      expect(saveResult).toEqual({ error: '磁盘写入失败' })
+      expect(saveResult).toEqual({
+        error: '磁盘写入失败'
+      })
     })
 
     it('should not affect isStreaming', async () => {
@@ -177,7 +181,10 @@ describe('useAgentStream', () => {
     it('should set error on stream-finish with error payload', () => {
       const { result } = renderHook(() => useAgentStream('s1'))
       act(() => {
-        emit('agent:stream-finish', { sessionId: 's1', error: '超时错误' })
+        emit('agent:stream-finish', {
+          sessionId: 's1',
+          error: '超时错误'
+        })
       })
       expect(result.current.isStreaming).toBe(false)
       expect(result.current.error).toBe('超时错误')

@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 export type MemSample = {
   round: number
   heapUsedMB: number
@@ -75,7 +76,12 @@ const DOM_PLATEAU_JUMP = 50
 async function assertNotOnWelcome(): Promise<void> {
   const hash = window.location.hash || ''
   if (hash.includes('/welcome')) {
-    throw new Error('当前在欢迎/引导页（/welcome），请先完成 onboarding 进入主界面后再运行内存探测')
+    throw new Error(
+      i18n.t(
+        'auto.apps.desktop.src.renderer.src.dev.memory.leak.probe.L78',
+        '当前在欢迎/引导页（/welcome），请先完成 onboarding 进入主界面后再运行内存探测'
+      )
+    )
   }
 }
 
@@ -260,7 +266,10 @@ function analyze(samples: MemSample[]): Pick<ProbeReport, 'verdict' | 'summary' 
   if (samples.length < 2) {
     return {
       verdict: 'inconclusive',
-      summary: '样本不足，无法判断',
+      summary: i18n.t(
+        'auto.apps.desktop.src.renderer.src.dev.memory.leak.probe.L263',
+        '样本不足，无法判断'
+      ),
       metrics: {
         heapGrowthMB: 0,
         avgGrowthPerRoundMB: 0,
@@ -294,7 +303,10 @@ function analyze(samples: MemSample[]): Pick<ProbeReport, 'verdict' | 'summary' 
   if (samples[0]!.heapUsedMB < 0) {
     return {
       verdict: 'inconclusive',
-      summary: '当前环境无 performance.memory（需 Chromium/Electron）',
+      summary: i18n.t(
+        'auto.apps.desktop.src.renderer.src.dev.memory.leak.probe.L297',
+        '当前环境无 performance.memory（需 Chromium/Electron）'
+      ),
       metrics
     }
   }

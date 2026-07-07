@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useDialog, toast } from '@baishou/ui'
@@ -148,7 +149,13 @@ export function useMessageActions({
     if (typeof window === 'undefined' || !window.electron) return
     try {
       const currentSession = sessions.find((s) => s.id === sessionId)
-      const originalTitle = currentSession?.title || currentAssistant?.name || '对话'
+      const originalTitle =
+        currentSession?.title ||
+        currentAssistant?.name ||
+        i18n.t(
+          'auto.apps.desktop.src.renderer.src.features.agent.hooks.useMessageActions.L151',
+          '对话'
+        )
       const title = `${originalTitle} (${t('agent.chat.branch', '分支')})`
       const newSessionId = await window.electron.ipcRenderer.invoke('agent:branch-session', {
         sessionId,
