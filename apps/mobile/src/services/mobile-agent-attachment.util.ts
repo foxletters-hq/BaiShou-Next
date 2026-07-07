@@ -1,4 +1,4 @@
-import { supportsNativePdf, logger, stripAttachmentBinaryForStorage } from '@baishou/shared'
+import { supportsNativePdf, logger } from '@baishou/shared'
 import type { IFileSystem, IStoragePathService } from '@baishou/core-mobile'
 import { extractPdfText } from '../utils/mobile-pdf.util'
 import { importUriToPath } from './mobile-uri-import'

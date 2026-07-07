@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { StyleSheet, View } from 'react-native'
+import { StyleSheet } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { scrollIndicatorStyle, KeyboardAwareScrollView, useNativeTheme } from '@baishou/ui/native'

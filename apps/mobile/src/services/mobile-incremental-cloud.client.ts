@@ -18,7 +18,7 @@ import {
   type S3SyncConfig
 } from '@baishou/shared'
 import * as ExpoFS from 'expo-file-system/legacy'
-import { isExternalStoragePath, normalizeSyncFilePath, toFileUri } from './android-external-fs'
+import { isExternalStoragePath, toFileUri } from './android-external-fs'
 import { getAppCacheDirectory } from './mobile-app-paths'
 import { FileSystemUploadType, downloadAsync, uploadAsync } from './mobile-http-transfer'
 import { createPartProgressReporter } from './mobile-incremental-sync-progress.util'

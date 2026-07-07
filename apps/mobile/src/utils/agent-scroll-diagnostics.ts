@@ -50,7 +50,7 @@ function logAgentDiagnostic(
   if (typeof __DEV__ === 'undefined' || !__DEV__) return
 
   const line = `[${channel}:${tag}] ${JSON.stringify({ ...debugContext, ...payload })}`
-  // eslint-disable-next-line no-console
+
   console.log(line)
   appendDiagnosticBreadcrumb(line)
 

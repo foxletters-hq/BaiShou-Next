@@ -3,7 +3,7 @@ import { View, StyleSheet, ActivityIndicator, Keyboard } from 'react-native'
 import { ScreenSafeArea } from '../../components/ScreenSafeArea'
 import { useTranslation } from 'react-i18next'
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router'
-import { useIsFocused, useFocusEffect } from '@react-navigation/native'
+import { useFocusEffect } from '@react-navigation/native'
 import {
   DiaryEditor,
   isLikelyEditorBundleLeak,
@@ -83,7 +83,7 @@ export const DiaryEditorScreen: React.FC = () => {
   const [mood, setMood] = useState<string | null>(null)
   const [isFavorite, setIsFavorite] = useState(false)
   const [existingId, setExistingId] = useState<number | null>(null)
-  const [originalContent, setOriginalContent] = useState('')
+  const [, setOriginalContent] = useState('')
   const [loading, setLoading] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
   const isDirtyRef = useRef(false)

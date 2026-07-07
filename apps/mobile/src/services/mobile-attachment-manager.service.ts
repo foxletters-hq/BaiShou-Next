@@ -8,7 +8,7 @@ import type {
   IFileSystem,
   IStoragePathService
 } from '@baishou/core-mobile'
-import type { EmojiImportResult } from '@baishou/core'
+import type { EmojiImportResult } from '@baishou/core-mobile'
 import { isUserAvatarRelativePath, normalizePersistedAvatarPath } from '@baishou/shared'
 import { joinPath, basename } from '@baishou/core-mobile'
 import {
@@ -389,10 +389,6 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
           ? absoluteSourcePath
           : toFileUri(absoluteSourcePath)
 
-      // Extract original filename from URI
-      const uriPath = absoluteSourcePath.startsWith('file://')
-        ? absoluteSourcePath.replace(/^file:\/\/\//, '/').replace(/^file:\/\//, '')
-        : absoluteSourcePath
       const originalBasename = basename(absoluteSourcePath.split('?')[0])
       const originalNameWithoutExt = originalBasename.replace(/\.[^.]+$/, '')
       const targetFileName = originalBasename

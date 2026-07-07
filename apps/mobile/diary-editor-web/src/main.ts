@@ -406,13 +406,6 @@ function installUserScrollListener(editorView: EditorView): void {
   )
 }
 
-function shouldAutoScrollCaret(): boolean {
-  if (!view || activeScrollMode !== 'viewport') return false
-  if (isUserScrollLocked()) return false
-  if (isTableCellEditorFocused()) return false
-  return true
-}
-
 function caretScrollSkipReason(force = false): string | null {
   if (!view) return 'no-view'
   if (activeScrollMode !== 'viewport') return `scrollMode=${activeScrollMode}`
@@ -494,7 +487,6 @@ function ensureCaretVisible(onDone?: () => void, force = false): void {
     onDone?.()
     return
   }
-  const scrollDOM = view.scrollDOM
   if (Date.now() < suppressCaretScrollUntil) {
     applyProgrammaticScrollTop(targetScrollTop)
     onDone?.()
@@ -848,7 +840,7 @@ function mountEditor(init: InitPayload): void {
           resetTouchInteractionState()
           return false
         },
-        click: (event) => {
+        click: (_event) => {
           if (isTableSheetOpen()) {
             dismissKeyboardForSheetInteraction()
             return false

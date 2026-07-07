@@ -87,7 +87,7 @@ function AgentDrawerComponent({
   isLoadingMoreSessions,
   onLoadMoreSessions,
   onRefreshSessions,
-  selectedSessionId,
+  selectedSessionId: _selectedSessionId,
   onSelectSession,
   onCreateSession,
   onShowAssistantPicker,

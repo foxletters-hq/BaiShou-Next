@@ -284,7 +284,6 @@ export function createVaultBoundDiaryStack(deps: {
           }
         }
 
-        const resolvedMode = mode ?? 'append'
         let finalContent = content
         const editMode = resolveDiaryEditMode(mode)
         if (editMode === 'append') {
@@ -548,7 +547,6 @@ export async function rebootstrapAfterStorageRootChange(
       fileSystem: deps.fileSystem,
       settingsManager: deps.bootstrapDeps.settingsManager
     })
-    const bootstrapDeps = buildBootstrapDeps(diaryStack, deps.bootstrapDeps)
     await runVaultBootstrap(
       {
         pathService: deps.pathService,

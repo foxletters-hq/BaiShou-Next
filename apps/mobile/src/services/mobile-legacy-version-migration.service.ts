@@ -36,7 +36,6 @@ import {
 import { stageLegacySqliteForAttach } from '@baishou/core-mobile'
 import { getAppDocumentDirectory } from './mobile-app-paths'
 import { FLUTTER_LEGACY_MIGRATED_SOURCE_KEY } from '../constants/storage'
-import { emitSyncMutation } from '../cache/mobile-cache-coordinator'
 import {
   getCustomLegacySourceRoot,
   getStoredAssistantIdMap,

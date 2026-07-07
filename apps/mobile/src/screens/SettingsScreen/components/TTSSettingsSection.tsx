@@ -28,7 +28,7 @@ export interface TTSSettingsSectionProps {
 
 export const TTSSettingsSection: React.FC<TTSSettingsSectionProps> = ({ providerId }) => {
   const toast = useNativeToast()
-  const { colors, isDark } = useNativeTheme()
+  const { isDark } = useNativeTheme()
   const { services, dbReady } = useBaishou()
   const [activeProviderId, setActiveProviderId] = useState(providerId)
   const [initialConfig, setInitialConfig] = useState<Partial<TtsProviderConfig> | undefined>()

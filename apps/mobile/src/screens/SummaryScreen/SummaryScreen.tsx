@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useFocusEffect } from 'expo-router'
-import { View, StyleSheet, ScrollView, useWindowDimensions, StatusBar, Text } from 'react-native'
+import { View, StyleSheet, ScrollView, useWindowDimensions, StatusBar } from 'react-native'
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import * as Clipboard from 'expo-clipboard'
 import {

@@ -8,7 +8,7 @@ import {
   scrollIndicatorStyle,
   useNativeTheme
 } from '@baishou/ui/native'
-import type { EmojiImportResult } from '@baishou/core'
+import type { EmojiImportResult } from '@baishou/core-mobile'
 import { findEmojiGroup, normalizeEmojiToolConfig } from '@baishou/shared'
 import { StackScreenLayout } from '../components/StackScreenLayout'
 import { getStackScreenChrome } from '../components/stackScreenChrome'

@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react'
 import { useRouter } from 'expo-router'
 import { AgentToolsView } from '@baishou/ui/native'
-import type { EmojiImportResult } from '@baishou/core'
+import type { EmojiImportResult } from '@baishou/core-mobile'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { MobileAttachmentManagerService } from '../../../services/mobile-attachment-manager.service'
 import { useToolManagementConfig } from '../../../hooks/useToolManagementConfig'

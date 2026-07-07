@@ -1,13 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Pressable,
-  Keyboard
-} from 'react-native'
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Keyboard } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ChevronRight, Plus } from 'lucide-react-native'
 import {
@@ -34,11 +26,9 @@ import {
   DEFAULT_ASSISTANT_KIND,
   DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH,
   isDefaultAssistantAvatarPath,
-  normalizeAssistantAvatarPath,
   normalizePersistedAvatarPath,
   normalizeAssistantKind,
   getDefaultCompressionSystemPrompt,
-  isAssistantAvatarDirectUri,
   isAssistantAvatarRelativePath,
   filterProvidersForModelSwitcher,
   normalizeEmojiToolConfig,

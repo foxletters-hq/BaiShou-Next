@@ -80,7 +80,7 @@ export function useAgentUI() {
     setRecallSearchMode((prev) => (prev === 'semantic' ? 'text' : 'semantic'))
   }, [])
 
-  const handleInjectRecall = useCallback((items: RecallItem[]) => {
+  const handleInjectRecall = useCallback((_items: RecallItem[]) => {
     setShowRecallSheet(false)
   }, [])
 

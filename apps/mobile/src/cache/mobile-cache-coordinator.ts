@@ -1,6 +1,6 @@
 import { domainMutationBus, emitDomainMutation } from '@baishou/core-mobile'
 import { applyCacheInvalidation, globalCacheRegistry } from '@baishou/shared/cache'
-import type { DomainMutationEvent, MutationAction } from '@baishou/shared/cache'
+import type { MutationAction } from '@baishou/shared/cache'
 import { registerMobileCacheStores } from './register-mobile-cache-stores'
 
 /**

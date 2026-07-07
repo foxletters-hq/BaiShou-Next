@@ -12,21 +12,17 @@ import {
   resolveAssistantEmojiConfig
 } from '@baishou/shared'
 import { DEFAULT_WEB_SEARCH_CONFIG } from '@baishou/database'
-import type { PendingEmoji } from '../hooks/useAgentStream'
 import {
   View,
   StyleSheet,
   StatusBar,
   TouchableOpacity,
   Text,
-  Alert,
-  Pressable,
   Platform,
   Dimensions,
   Keyboard,
   ImageBackground,
   ScrollView,
-  Image,
   type NativeScrollEvent,
   type NativeSyntheticEvent
 } from 'react-native'
@@ -40,9 +36,7 @@ import {
   RecallDialog,
   ChatCostDialog,
   PromptShortcutSheet,
-  resolveActiveToolDisplayName,
-  resolveNativeAssistantAvatarSource,
-  shouldShowAssistantEmoji
+  resolveActiveToolDisplayName
 } from '@baishou/ui/native'
 import { useNativeTheme, useNativeToast } from '@baishou/ui/native'
 import { useAgentStore, useAgentNavigationStore, useContextCompressionStore } from '@baishou/store'
@@ -495,8 +489,6 @@ export const AgentScreen = () => {
       .filter((item): item is NonNullable<typeof item> => item != null)
   }, [pendingEmojis, assistantEmojis, resolvePendingEmoji, pendingEmojiUris])
 
-  const loadMoreLockRef = useRef(false)
-
   const {
     showCostDialog,
     showShortcutSheet,
@@ -531,7 +523,6 @@ export const AgentScreen = () => {
     handleContentSizeChange,
     contentAnchorMinHeight,
     beginContentHandoff,
-    releaseContentHandoff,
     finalizeContentHandoff,
     bindFlatList
   } = useAgentChatScroll({

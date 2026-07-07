@@ -13,8 +13,7 @@ import {
 import {
   createAgentDbRuntime,
   createSummaryPipelineServices,
-  rebindSummaryPipelineForVault,
-  type AgentDbRuntime
+  rebindSummaryPipelineForVault
 } from '../services/mobile-agent-db-runtime'
 import { agentDbRuntimeRef } from '../services/mobile-agent-db-runtime-ref'
 import {
@@ -58,7 +57,6 @@ import {
   UserProfileRepository,
   SummaryRepositoryImpl,
   SnapshotRepository,
-  shadowConnectionManager,
   SqliteHybridSearchRepository,
   createSqlExecutorFromDrizzleDb
 } from '@baishou/database'
@@ -140,7 +138,6 @@ import {
 import { summaryFileWatcher } from '../services/summary-file-watcher.service'
 import {
   activateVaultRuntime,
-  createUnavailableDiaryService,
   createVaultDiaryServiceProxy,
   EMPTY_DIARY_REPO_ADAPTER,
   EMPTY_DIARY_SEARCHER,
@@ -157,7 +154,6 @@ import {
 } from '../services/mobile-vault-runtime.service'
 import { consumeAppUpgradeShadowResync } from '../services/mobile-app-upgrade-shadow.util'
 import {
-  bindShadowVaultScanState,
   getShadowVaultScanning,
   subscribeShadowVaultScanning,
   unbindShadowVaultScanState
@@ -168,7 +164,6 @@ import type {
   SnapshotRepository as SnapshotRepositoryType
 } from '@baishou/database'
 import {
-  ONBOARDING_STORAGE_KEY,
   FLUTTER_LEGACY_MIGRATED_SOURCE_KEY,
   PENDING_RESTORE_CLOUD_SYNC_CONFIG_KEY
 } from '@/src/constants/storage'
@@ -185,8 +180,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { isExternalStorageNativeAvailable } from 'expo-baishou-server'
 import {
   hasStoragePermission,
-  isExternalStorageRequiredError,
-  requestStoragePermission
+  isExternalStorageRequiredError
 } from '../services/storage-permission.service'
 
 // 采用类似于桌面端 db.ts 里的静态导出，但在 RN 里我们走 Context 更加 React 化

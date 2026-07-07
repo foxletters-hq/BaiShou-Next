@@ -34,8 +34,7 @@ import { logger } from '@baishou/shared'
 import { normalizeStorageRoot } from '@baishou/shared'
 import {
   resolveFlutterLegacyMigrationTargetRoot,
-  resolveIosFlutterPreferencesPlistPath,
-  resolveMobileMigrationTargetRoot
+  resolveIosFlutterPreferencesPlistPath
 } from './mobile-legacy-migration.paths'
 
 export {

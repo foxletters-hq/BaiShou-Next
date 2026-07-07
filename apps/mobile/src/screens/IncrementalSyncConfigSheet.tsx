@@ -31,7 +31,7 @@ export const IncrementalSyncConfigSheet: React.FC<IncrementalSyncConfigSheetProp
   showAccessKey,
   showSecretKey,
   colors,
-  tokens,
+  tokens: _tokens,
   testing = false,
   onChange,
   onToggleAccessKey,

@@ -2,7 +2,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
   WEATHER_IDS,
   normalizeWeatherId,
-  MOOD_IDS,
   normalizeMoodIdForFilter,
   type WeatherId,
   type MoodId

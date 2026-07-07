@@ -1,13 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView
-} from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, RefreshControl, ScrollView } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { SnapshotMeta } from '@baishou/core-mobile'
 import {

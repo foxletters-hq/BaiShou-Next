@@ -111,8 +111,7 @@ export const DataSyncScreen: React.FC = () => {
     importHint: archiveImportHint,
     importDetail: archiveImportDetail,
     importPercent: archiveImportPercent,
-    importSucceeded: archiveImportSucceeded,
-    importFailed: archiveImportFailed
+    importSucceeded: archiveImportSucceeded
   } = useArchiveImportExport()
 
   const totalSizeString = useMemo(() => {
