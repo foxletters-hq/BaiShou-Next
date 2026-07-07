@@ -15,11 +15,11 @@ export const DiaryEditorPage: React.FC = () => {
     return () => {
       tts.stopTts()
     }
-  }, [tts.stopTts])
+  }, [tts])
 
   const handleReadAloud = useCallback(() => {
     void tts.handleTtsReadAloud(editor.content, DIARY_TTS_PLAYBACK_ID)
-  }, [editor.content, tts.handleTtsReadAloud])
+  }, [editor.content, tts])
 
   if (editor.isLoading) {
     return (

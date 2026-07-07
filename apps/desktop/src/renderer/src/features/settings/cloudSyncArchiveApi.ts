@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 /** 数据备份页共用的本地快照 IPC 封装 */
 export const cloudSyncArchiveApi = {
   listSnapshots: async () => {
@@ -13,11 +14,31 @@ export const cloudSyncArchiveApi = {
     try {
       const res = await (window as any).api?.archive?.restoreSnapshot(filename)
       if (res.profileRestored) {
-        return { success: true, message: '快照还原成功，准备重启' }
+        return {
+          success: true,
+          message: i18n.t(
+            'auto.apps.desktop.src.renderer.src.features.settings.cloudSyncArchiveApi.L16',
+            '快照还原成功，准备重启'
+          )
+        }
       }
-      return { success: false, message: '还原未成功完成' }
+      return {
+        success: false,
+        message: i18n.t(
+          'auto.apps.desktop.src.renderer.src.features.settings.cloudSyncArchiveApi.L18',
+          '还原未成功完成'
+        )
+      }
     } catch (e: any) {
-      return { success: false, message: e.message || '还原失败' }
+      return {
+        success: false,
+        message:
+          e.message ||
+          i18n.t(
+            'auto.apps.desktop.src.renderer.src.features.settings.cloudSyncArchiveApi.L20',
+            '还原失败'
+          )
+      }
     }
   },
   deleteSnapshot: async (filename: string) => {

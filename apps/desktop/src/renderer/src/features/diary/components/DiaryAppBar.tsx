@@ -60,14 +60,26 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
   const hasActiveFilters = filterWeathers.length > 0 || filterMoods.length > 0 || filterFavorite
 
   const weatherLabelFallback: Record<WeatherId, string> = {
-    sunny: '晴',
-    cloudy: '多云',
-    overcast: '阴',
-    light_rain: '小雨',
-    heavy_rain: '大雨',
-    snow: '雪',
-    fog: '雾',
-    windy: '风'
+    sunny: t('auto.apps.desktop.src.renderer.src.features.diary.components.DiaryAppBar.L63', '晴'),
+    cloudy: t(
+      'auto.apps.desktop.src.renderer.src.features.diary.components.DiaryAppBar.L64',
+      '多云'
+    ),
+    overcast: t(
+      'auto.apps.desktop.src.renderer.src.features.diary.components.DiaryAppBar.L65',
+      '阴'
+    ),
+    light_rain: t(
+      'auto.apps.desktop.src.renderer.src.features.diary.components.DiaryAppBar.L66',
+      '小雨'
+    ),
+    heavy_rain: t(
+      'auto.apps.desktop.src.renderer.src.features.diary.components.DiaryAppBar.L67',
+      '大雨'
+    ),
+    snow: t('auto.apps.desktop.src.renderer.src.features.diary.components.DiaryAppBar.L68', '雪'),
+    fog: t('auto.apps.desktop.src.renderer.src.features.diary.components.DiaryAppBar.L69', '雾'),
+    windy: t('auto.apps.desktop.src.renderer.src.features.diary.components.DiaryAppBar.L70', '风')
   }
 
   const getWeatherLabel = (id: WeatherId) =>

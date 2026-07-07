@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import React, { useMemo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   mapAttachmentsFromParts,
@@ -139,7 +140,10 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
                 sessionId,
                 role: 'system',
                 content: entry.item?.content ?? result?.systemPrompt,
-                label: '系统提示词',
+                label: i18n.t(
+                  'auto.apps.desktop.src.renderer.src.features.agent.components.AgentMessageList.L142',
+                  '系统提示词'
+                ),
                 timestamp: sourceMsg.createdAt || new Date()
               }
             }
@@ -217,7 +221,7 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
         syncLoadMoreVisibility()
       })
     })
-  }, [chat.hasMore, chat.loadMore, scroll.scrollRef, syncLoadMoreVisibility])
+  }, [chat, scroll.scrollRef, syncLoadMoreVisibility])
 
   useEffect(() => {
     const el = scroll.scrollRef.current

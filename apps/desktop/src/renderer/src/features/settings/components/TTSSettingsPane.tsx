@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import React, { useCallback, useMemo } from 'react'
 import { useSettingsStore } from '@baishou/store'
 import {
@@ -35,7 +36,13 @@ export const TTSSettingsPane: React.FC = () => {
     try {
       const result = await window.api?.settings?.testTts(config, text)
       if (!result) {
-        return { success: false, error: 'TTS 试听不可用' }
+        return {
+          success: false,
+          error: i18n.t(
+            'auto.apps.desktop.src.renderer.src.features.settings.components.TTSSettingsPane.L38',
+            'TTS 试听不可用'
+          )
+        }
       }
       if (!result.success) {
         const failed = result as Extract<TtsSynthesizeFromSettingsResult, { success: false }>
@@ -89,7 +96,10 @@ export const TTSSettingsPane: React.FC = () => {
       const pickFiles = window.api?.pickFiles
       if (pickFiles) {
         const files = await pickFiles({
-          title: '选择参考音频',
+          title: i18n.t(
+            'auto.apps.desktop.src.renderer.src.features.settings.components.TTSSettingsPane.L92',
+            '选择参考音频'
+          ),
           properties: ['openFile'],
           filters: [{ name: 'Audio', extensions: ['wav', 'mp3', 'mpeg'] }]
         })

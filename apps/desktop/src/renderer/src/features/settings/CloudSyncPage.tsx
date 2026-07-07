@@ -6,12 +6,13 @@ import { cloudSyncArchiveApi } from './cloudSyncArchiveApi'
 
 export const CloudSyncPage: React.FC = () => {
   const settings = useSettingsStore()
+  const loadConfig = useSettingsStore((s) => s.loadConfig)
   const { i18n } = useTranslation()
   const archiveLocale = settings.locale === 'system' ? i18n.language : settings.locale
 
   useEffect(() => {
-    settings.loadConfig()
-  }, [settings.loadConfig])
+    loadConfig()
+  }, [loadConfig])
 
   return (
     <div style={{ flex: 1, overflowY: 'auto' }}>

@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useCallback } from 'react'
 import { toast } from '@baishou/ui'
 import { useTranslation } from 'react-i18next'
 import { isAgentStreamAbortError } from '@baishou/shared'
@@ -12,75 +12,83 @@ export function useStreamError(error: string | null, isStreaming: boolean): void
   const { t } = useTranslation()
   const lastToastedErrorRef = useRef<string | null>(null)
 
-  const getLocalizedError = (rawErr: string): string => {
-    const lower = rawErr.toLowerCase()
-    if (
-      lower.includes('api key expired') ||
-      lower.includes('invalid_api_key') ||
-      lower.includes('api key not valid')
-    ) {
-      return t('agent.error.api_key', 'API Key 已过期或无效，请转至模型设置中更新您的密钥。')
-    }
-    if (
-      rawErr.includes('VISION_NOT_SUPPORTED') ||
-      rawErr.includes('图片识别') ||
-      lower.includes('vision') ||
-      lower.includes('multimodal') ||
-      lower.includes('image') ||
-      ((lower.includes('not support') || lower.includes('does not support')) &&
-        (lower.includes('capability') || lower.includes('part') || lower.includes('content')))
-    ) {
-      return t(
-        'agent.error.vision_not_supported',
-        '当前模型不支持图片识别哦，可以换成视觉模型再试试呢~'
-      )
-    }
-    if (
-      lower.includes('entity too large') ||
-      lower.includes('413') ||
-      lower.includes('payload too large')
-    ) {
-      return t(
-        'agent.error.payload_too_large',
-        '请求体过大（多为图片未压缩或历史图片过多），请换用小图、减少附件，或更换视觉模型后重试'
-      )
-    }
-    if (
-      lower.includes('rate limit') ||
-      lower.includes('too many requests') ||
-      lower.includes('429')
-    ) {
-      return t('agent.error.rate_limit', '请求过于频繁或超出并发限制，请稍后再试。')
-    }
-    if (
-      lower.includes('network') ||
-      lower.includes('fetch failed') ||
-      lower.includes('econnrefused')
-    ) {
-      return t('agent.error.network', '网络连接失败，请检查您的网络连接或代理设置。')
-    }
-    if (
-      lower.includes('terminated') ||
-      lower.includes('econnreset') ||
-      lower.includes('socket hung up')
-    ) {
-      return t(
-        'agent.error.terminated',
-        '网络连接意外断开 (ECONNRESET)，请检查您的代理稳定性，系统已为您保存当前已生成的部分内容，您可以尝试重新生成。'
-      )
-    }
-    if (lower.includes('timeout') || lower.includes('deadline')) {
-      return t('agent.error.timeout', '请求响应超时，请重试。')
-    }
-    if (
-      lower.includes('insufficient_quota') ||
-      lower.includes('balance') ||
-      lower.includes('payment required')
-    ) {
-      return t('agent.error.quota', '模型服务商提示账号额度不足。')
-    }
-    return t('agent.error.unknown', '出错了：{{msg}}', { msg: rawErr })
-  }
+  const getLocalizedError = useCallback(
+    (rawErr: string): string => {
+      const lower = rawErr.toLowerCase()
+      if (
+        lower.includes('api key expired') ||
+        lower.includes('invalid_api_key') ||
+        lower.includes('api key not valid')
+      ) {
+        return t('agent.error.api_key', 'API Key 已过期或无效，请转至模型设置中更新您的密钥。')
+      }
+      if (
+        rawErr.includes('VISION_NOT_SUPPORTED') ||
+        rawErr.includes(
+          t(
+            'auto.apps.desktop.src.renderer.src.features.agent.hooks.useStreamError.L26',
+            '图片识别'
+          )
+        ) ||
+        lower.includes('vision') ||
+        lower.includes('multimodal') ||
+        lower.includes('image') ||
+        ((lower.includes('not support') || lower.includes('does not support')) &&
+          (lower.includes('capability') || lower.includes('part') || lower.includes('content')))
+      ) {
+        return t(
+          'agent.error.vision_not_supported',
+          '当前模型不支持图片识别哦，可以换成视觉模型再试试呢~'
+        )
+      }
+      if (
+        lower.includes('entity too large') ||
+        lower.includes('413') ||
+        lower.includes('payload too large')
+      ) {
+        return t(
+          'agent.error.payload_too_large',
+          '请求体过大（多为图片未压缩或历史图片过多），请换用小图、减少附件，或更换视觉模型后重试'
+        )
+      }
+      if (
+        lower.includes('rate limit') ||
+        lower.includes('too many requests') ||
+        lower.includes('429')
+      ) {
+        return t('agent.error.rate_limit', '请求过于频繁或超出并发限制，请稍后再试。')
+      }
+      if (
+        lower.includes('network') ||
+        lower.includes('fetch failed') ||
+        lower.includes('econnrefused')
+      ) {
+        return t('agent.error.network', '网络连接失败，请检查您的网络连接或代理设置。')
+      }
+      if (
+        lower.includes('terminated') ||
+        lower.includes('econnreset') ||
+        lower.includes('socket hung up')
+      ) {
+        return t(
+          'agent.error.terminated',
+          '网络连接意外断开 (ECONNRESET)，请检查您的代理稳定性，系统已为您保存当前已生成的部分内容，您可以尝试重新生成。'
+        )
+      }
+      if (lower.includes('timeout') || lower.includes('deadline')) {
+        return t('agent.error.timeout', '请求响应超时，请重试。')
+      }
+      if (
+        lower.includes('insufficient_quota') ||
+        lower.includes('balance') ||
+        lower.includes('payment required')
+      ) {
+        return t('agent.error.quota', '模型服务商提示账号额度不足。')
+      }
+      return t('agent.error.unknown', '出错了：{{msg}}', { msg: rawErr })
+    },
+    [t]
+  )
 
   useEffect(() => {
     if (error && !isStreaming) {
@@ -97,5 +105,5 @@ export function useStreamError(error: string | null, isStreaming: boolean): void
     } else if (!error) {
       lastToastedErrorRef.current = null
     }
-  }, [error, isStreaming, t])
+  }, [error, isStreaming, t, getLocalizedError])
 }

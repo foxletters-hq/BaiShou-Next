@@ -232,7 +232,7 @@ export function useAgentChatFlow() {
         void tts.handleTtsReadAloud(lastMsg.content, lastMsg.id)
       }
     }
-  }, [chat.messages, stream.isStreaming, tts.ttsMode, tts.handleTtsReadAloud, sessionId])
+  }, [chat.messages, stream.isStreaming, tts, sessionId])
 
   // ── 9. 发送与停止消息 ──
   const handleSend = async (

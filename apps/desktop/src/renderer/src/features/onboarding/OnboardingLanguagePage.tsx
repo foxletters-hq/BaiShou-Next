@@ -5,13 +5,6 @@ import { APP_UI_LANGUAGE_ORDER } from '@baishou/shared'
 import type { CompressionPromptLocale } from '@baishou/shared'
 import styles from './OnboardingLanguagePage.module.css'
 
-const LANGUAGE_LABELS: Record<CompressionPromptLocale, string> = {
-  zh: '简体中文',
-  'zh-TW': '繁體中文',
-  en: 'English',
-  ja: '日本語'
-}
-
 type OnboardingLanguagePageProps = {
   selectedLanguage: CompressionPromptLocale | null
   onSelectLanguage: (lang: CompressionPromptLocale) => void
@@ -22,6 +15,21 @@ export const OnboardingLanguagePage: React.FC<OnboardingLanguagePageProps> = ({
   onSelectLanguage
 }) => {
   const { t } = useTranslation()
+
+  const getLanguageLabel = (lang: CompressionPromptLocale) => {
+    switch (lang) {
+      case 'zh':
+        return t('onboarding.lang_zh', '简体中文')
+      case 'zh-TW':
+        return t('onboarding.lang_zh_tw', '繁體中文')
+      case 'en':
+        return t('onboarding.lang_en', 'English')
+      case 'ja':
+        return t('onboarding.lang_ja', '日本語')
+      default:
+        return lang
+    }
+  }
 
   return (
     <div className={styles.pageInner}>
@@ -40,7 +48,7 @@ export const OnboardingLanguagePage: React.FC<OnboardingLanguagePageProps> = ({
               className={`${styles.langChip} ${active ? styles.langChipActive : ''}`}
               onClick={() => onSelectLanguage(lang)}
             >
-              <span>{LANGUAGE_LABELS[lang]}</span>
+              <span>{getLanguageLabel(lang)}</span>
               {active ? <span className={styles.checkMark}>✓</span> : null}
             </button>
           )

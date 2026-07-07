@@ -84,8 +84,18 @@ describe('useChatMessages', () => {
   describe('refreshMessages', () => {
     it('should fetch messages from IPC and replace state', async () => {
       const dbMessages = [
-        { id: 'db-1', role: 'user', content: '历史消息', createdAt: new Date().toISOString() },
-        { id: 'db-2', role: 'assistant', content: 'AI 回复', createdAt: new Date().toISOString() }
+        {
+          id: 'db-1',
+          role: 'user',
+          content: '历史消息',
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: 'db-2',
+          role: 'assistant',
+          content: 'AI 回复',
+          createdAt: new Date().toISOString()
+        }
       ]
       mockRenderer.invoke.mockResolvedValue(dbMessages)
 
@@ -312,7 +322,12 @@ describe('useChatMessages', () => {
     it('should refresh messages and clear stream bridge when stream finishes on matching session', async () => {
       const fetchSpy = vi.fn().mockResolvedValue([
         { id: 'u1', role: 'user', content: 'hi', orderIndex: 0 },
-        { id: 'a1', role: 'assistant', content: 'AI 回复内容', orderIndex: 1 }
+        {
+          id: 'a1',
+          role: 'assistant',
+          content: 'AI 回复内容',
+          orderIndex: 1
+        }
       ])
       mockRenderer.invoke.mockImplementation(fetchSpy)
 

@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import React from 'react'
 import { Edit3, Trash2, Heart } from 'lucide-react'
 import { MarkdownRenderer, MoodEmoji, WeatherEmoji } from '@baishou/ui'
@@ -18,7 +19,15 @@ const WEEKDAY_NAMES_KEYS = [
   'diary.weekday_fri',
   'diary.weekday_sat'
 ]
-const WEEKDAY_NAMES_DEFAULT = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+const WEEKDAY_NAMES_DEFAULT = [
+  i18n.t('auto.apps.desktop.src.renderer.src.features.diary.DiaryCard.L21', '周日'),
+  i18n.t('auto.apps.desktop.src.renderer.src.features.diary.DiaryCard.L21', '周一'),
+  i18n.t('auto.apps.desktop.src.renderer.src.features.diary.DiaryCard.L21', '周二'),
+  i18n.t('auto.apps.desktop.src.renderer.src.features.diary.DiaryCard.L21', '周三'),
+  i18n.t('auto.apps.desktop.src.renderer.src.features.diary.DiaryCard.L21', '周四'),
+  i18n.t('auto.apps.desktop.src.renderer.src.features.diary.DiaryCard.L21', '周五'),
+  i18n.t('auto.apps.desktop.src.renderer.src.features.diary.DiaryCard.L21', '周六')
+]
 
 /** 月份名称 */
 const MONTH_NAMES_KEYS = [
@@ -36,18 +45,18 @@ const MONTH_NAMES_KEYS = [
   'diary.month_dec'
 ]
 const MONTH_NAMES_DEFAULT = [
-  '一月',
-  '二月',
-  '三月',
-  '四月',
-  '五月',
-  '六月',
-  '七月',
-  '八月',
-  '九月',
-  '十月',
-  '十一月',
-  '十二月'
+  i18n.t('auto.apps.desktop.src.renderer.src.features.diary.DiaryCard.L39', '一月'),
+  i18n.t('auto.apps.desktop.src.renderer.src.features.diary.DiaryCard.L40', '二月'),
+  i18n.t('auto.apps.desktop.src.renderer.src.features.diary.DiaryCard.L41', '三月'),
+  i18n.t('auto.apps.desktop.src.renderer.src.features.diary.DiaryCard.L42', '四月'),
+  i18n.t('auto.apps.desktop.src.renderer.src.features.diary.DiaryCard.L43', '五月'),
+  i18n.t('auto.apps.desktop.src.renderer.src.features.diary.DiaryCard.L44', '六月'),
+  i18n.t('auto.apps.desktop.src.renderer.src.features.diary.DiaryCard.L45', '七月'),
+  i18n.t('auto.apps.desktop.src.renderer.src.features.diary.DiaryCard.L46', '八月'),
+  i18n.t('auto.apps.desktop.src.renderer.src.features.diary.DiaryCard.L47', '九月'),
+  i18n.t('auto.apps.desktop.src.renderer.src.features.diary.DiaryCard.L48', '十月'),
+  i18n.t('auto.apps.desktop.src.renderer.src.features.diary.DiaryCard.L49', '十一月'),
+  i18n.t('auto.apps.desktop.src.renderer.src.features.diary.DiaryCard.L50', '十二月')
 ]
 
 /** 标签颜色映射 */
@@ -172,7 +181,12 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
         {entry.hasMedia && (
           <div className="diary-card-media-indicator">
             <span className="diary-card-media-icon">📎</span>
-            <span className="diary-card-media-text">包含附件</span>
+            <span className="diary-card-media-text">
+              {i18n.t(
+                'auto.apps.desktop.src.renderer.src.features.diary.DiaryCard.L175',
+                '包含附件'
+              )}
+            </span>
           </div>
         )}
       </div>

@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { useState } from 'react'
 import { useToast } from '@baishou/ui'
 
@@ -24,17 +25,29 @@ export function useSummaryDashboardMock() {
   const summaries = [
     {
       id: '1',
-      title: '2026年第13周',
+      title: i18n.t(
+        'auto.apps.desktop.src.renderer.src.features.summary.hooks.useSummaryDashboardMock.L27',
+        '2026年第13周'
+      ),
       dateRange: '03.24-03.30',
       type: 'week' as const,
-      summaryText: '本周完成了跨 Agent 并行流的设计。'
+      summaryText: i18n.t(
+        'auto.apps.desktop.src.renderer.src.features.summary.hooks.useSummaryDashboardMock.L30',
+        '本周完成了跨 Agent 并行流的设计。'
+      )
     },
     {
       id: '2',
-      title: '2026年3月总结',
+      title: i18n.t(
+        'auto.apps.desktop.src.renderer.src.features.summary.hooks.useSummaryDashboardMock.L34',
+        '2026年3月总结'
+      ),
       dateRange: '03.01-03.31',
       type: 'month' as const,
-      summaryText: '整个三月都沉浸在白守的双端架构中。'
+      summaryText: i18n.t(
+        'auto.apps.desktop.src.renderer.src.features.summary.hooks.useSummaryDashboardMock.L37',
+        '整个三月都沉浸在白守的双端架构中。'
+      )
     }
   ]
 
