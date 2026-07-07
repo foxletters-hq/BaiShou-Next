@@ -1,68 +1,20 @@
-import { EditorState, Prec, Transaction, type Extension } from '@codemirror/state'
+import { EditorState, Prec, type Extension } from '@codemirror/state'
 import {
   EditorView,
   keymap,
   placeholder as cmPlaceholder,
-  highlightActiveLine,
-  type ViewUpdate
+  highlightActiveLine
 } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { searchKeymap } from '@codemirror/search'
-import { livePreviewField } from './extensions/livePreviewPlugin'
-import { tablePreviewField } from './extensions/tablePreviewField'
-import { imagePreviewPlugin } from './extensions/imagePreviewPlugin'
+import { livePreviewPlugin } from './extensions/livePreviewPlugin'
 import { livePreviewSyntaxHighlighting } from './extensions/syntax'
 import { markdownKeymap } from './extensions/keymap'
-import {
-  editorTheme,
-  mobileTouchEditorLayoutTheme,
-  mobileTouchViewportTheme
-} from './theme/editorTheme'
+import { editorTheme, mobileTouchEditorLayoutTheme, mobileTouchViewportTheme } from './theme/editorTheme'
 import { attachmentUrlPlugin } from './extensions/attachmentUrlPlugin'
 import { diaryTagLineKeymap, diaryTagLinePlugin } from './extensions/diaryTagLinePlugin'
-import { listContinuationExtension } from './extensions/listContinuationKeymap'
-import { inlineMarkEnterExtension } from './extensions/inlineMarkEnterKeymap'
-import { tableCellExtension } from './extensions/tableCellKeymap'
-import {
-  tableEditorPlugin,
-  tableAtomicRanges,
-  tableBoundaryBackspaceKeymap
-} from './extensions/tableEditorPlugin'
-import { tablePostTableTouchPlugin } from './extensions/tablePostTableTouchPlugin'
-import { touchSelectionDebugPlugin } from './extensions/touchSelectionDebug'
-import {
-  diarySyntaxTreeGrowthPlugin,
-  diarySyntaxTreeGrowthEffect
-} from './extensions/diarySyntaxTreeGrowth'
-import { activeTableCellField } from './table/tableActiveCell'
-import { tableCellEditingField } from './table/tableCellEditing'
-import { tableChromeSelectionField } from './table/tableChromeSelection'
-import { tableCellRangeSelectionField } from './table/tableRangeSelection'
-import { tableRangeKeymap } from './table/tableRangeKeymap'
-import { tableWidgetSyncPlugin } from './extensions/tableWidgetSyncPlugin'
-import { tableChromeTouchPlugin } from './extensions/tableChromeTouchPlugin'
-import {
-  diaryMarkdownTableAutocompletionExt,
-  diaryMarkdownTablesCkant,
-  insertEmptyMarkdownTable
-} from './table/desktop/markdownTablesCkant'
-import { tableMenuI18nPlugin } from './table/desktop/tableMenuI18nPlugin'
-import { insertEmptyMarkdownTableKeymap } from './table/markdownTableCommands'
-import {
-  selectionBoundsTransactionFilter,
-  installSafeEditorDispatch
-} from './extensions/selectionBoundsTransactionFilter'
-import { clampPosToDoc } from './editorContentSync'
-import { configureCodeMirrorForMobileWebView } from './configureMobileCodeMirror'
-import { diaryPostTableGapNormalize } from './table/tableEffects'
 import type { DiaryCmPlatform } from './types'
-
-function isPostTableGapNormalizeUpdate(update: ViewUpdate): boolean {
-  return update.transactions.every(
-    (tr) => !tr.docChanged || tr.annotation(diaryPostTableGapNormalize) === true
-  )
-}
 
 export interface CreateDiaryCodeMirrorOptions {
   content: string
@@ -85,58 +37,25 @@ export function createDiaryCodeMirrorExtensions(
       : isTouch
         ? mobileTouchEditorLayoutTheme
         : null
-  const markdownSupport = markdown({ base: markdownLanguage })
 
   return [
-    Prec.highest(selectionBoundsTransactionFilter()),
     EditorView.lineWrapping,
-    ...(isTouch ? [] : [highlightActiveLine()]),
+    highlightActiveLine(),
     history(),
     ...(platform.tagLineMode ? [Prec.high(diaryTagLineKeymap), diaryTagLinePlugin] : []),
-    ...(isTouch
-      ? [
-          activeTableCellField,
-          tableCellEditingField,
-          tableChromeSelectionField,
-          tableCellRangeSelectionField,
-          tableWidgetSyncPlugin(platform),
-          tableRangeKeymap()
-        ]
-      : [...diaryMarkdownTablesCkant(), tableMenuI18nPlugin(platform)]),
-    keymap.of(
-      isTouch
-        ? insertEmptyMarkdownTableKeymap
-        : [{ key: 'Mod-Shift-t', run: insertEmptyMarkdownTable() }]
-    ),
-    ...(isTouch
-      ? [tableCellExtension, tableAtomicRanges, tableBoundaryBackspaceKeymap, tableEditorPlugin]
-      : []),
-    diarySyntaxTreeGrowthPlugin,
-    ...(isTouch
-      ? [
-          EditorView.dragMovesSelection.of(() => false),
-          tableChromeTouchPlugin(platform),
-          tablePostTableTouchPlugin(platform),
-          touchSelectionDebugPlugin()
-        ]
-      : []),
-    listContinuationExtension,
-    inlineMarkEnterExtension,
     markdownKeymap,
     keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
-    markdownSupport,
-    ...(isTouch ? [] : diaryMarkdownTableAutocompletionExt(markdownSupport)),
+    markdown({ base: markdownLanguage }),
     cmPlaceholder(placeholder || ''),
-    ...(isTouch ? [tablePreviewField(platform)] : []),
-    ...livePreviewField(platform),
-    imagePreviewPlugin(platform),
+    ...livePreviewPlugin(platform),
     livePreviewSyntaxHighlighting(),
     attachmentUrlPlugin(resolveUrl),
     ...(onChange
       ? [
           EditorView.updateListener.of((update) => {
-            if (!update.docChanged || isPostTableGapNormalizeUpdate(update)) return
-            onChange(update.state.doc.toString())
+            if (update.docChanged) {
+              onChange(update.state.doc.toString())
+            }
           })
         ]
       : []),
@@ -165,40 +84,9 @@ export function createDiaryCodeMirror(
   parent: HTMLElement,
   options: CreateDiaryCodeMirrorOptions
 ): EditorView {
-  if (options.platform.interactionMode === 'touch') {
-    configureCodeMirrorForMobileWebView()
-  }
-  const extensions = createDiaryCodeMirrorExtensions(options)
-  const view = new EditorView({
-    parent,
-    state: EditorState.create({ doc: '', extensions })
+  const state = EditorState.create({
+    doc: options.content,
+    extensions: createDiaryCodeMirrorExtensions(options)
   })
-  installSafeEditorDispatch(view)
-
-  const content = options.content
-  if (content.length > 0) {
-    // 直接 create({ doc: 全文 }) 时 Lezer 常在 livePreview create 前未追到文末，
-    // 导致 #/** 等隐藏装饰与标题样式无法进入 DOM（仅语法高亮仍可见）。
-    const end = clampPosToDoc(content.length, content.length)
-    view.dispatch({
-      changes: { from: 0, insert: content },
-      selection: { anchor: end, head: end },
-      effects: diarySyntaxTreeGrowthEffect.of(null),
-      annotations: Transaction.addToHistory.of(false),
-      scrollIntoView: false
-    })
-    // WebView 首帧：同步 + 多帧补刷装饰
-    const refreshDecorations = () => {
-      if (!view.dom.isConnected) return
-      view.dispatch({
-        effects: diarySyntaxTreeGrowthEffect.of(null),
-        scrollIntoView: false
-      })
-    }
-    refreshDecorations()
-    requestAnimationFrame(refreshDecorations)
-    requestAnimationFrame(() => requestAnimationFrame(refreshDecorations))
-  }
-
-  return view
+  return new EditorView({ state, parent })
 }

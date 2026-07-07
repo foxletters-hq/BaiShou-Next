@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react'
 import { motion } from 'framer-motion'
+import './GitManagementPage.css'
 import type { GitManagementViewModel } from './useGitManagementPage'
 import { GitVersionCommitBar } from './GitVersionCommitBar'
 import { GitStagedSection } from './GitStagedSection'

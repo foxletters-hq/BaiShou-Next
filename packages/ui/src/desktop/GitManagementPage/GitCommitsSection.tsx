@@ -6,9 +6,10 @@ import { GitDiffViewer } from './GitDiffViewer'
 
 export interface GitCommitsSectionProps {
   vm: GitManagementViewModel
+  compact?: boolean
 }
 
-export const GitCommitsSection: React.FC<GitCommitsSectionProps> = ({ vm }) => {
+export const GitCommitsSection: React.FC<GitCommitsSectionProps> = ({ vm, compact = false }) => {
   const {
     t,
     expandedSections,
@@ -33,7 +34,7 @@ export const GitCommitsSection: React.FC<GitCommitsSectionProps> = ({ vm }) => {
       <div className="gmp-collapsible-header" onClick={() => toggleSection('commits')}>
         <span className="gmp-collapsible-arrow">{expandedSections.commits ? '▾' : '▸'}</span>
         <span className="gmp-collapsible-title">
-          {t('version_control.recent_commits', 'Recent Commits')}
+          {t('workbench.git_history', '提交历史')}
         </span>
         {totalCount > 0 ? (
           <span className="gmp-collapsible-badge">{totalCount}</span>
@@ -111,7 +112,7 @@ export const GitCommitsSection: React.FC<GitCommitsSectionProps> = ({ vm }) => {
                                   </span>
                                 </div>
 
-                                {expandedFile === change.path && selectedFileDiff && (
+                                {expandedFile === change.path && selectedFileDiff && !compact && (
                                   <GitDiffViewer diff={selectedFileDiff} />
                                 )}
                               </div>
@@ -124,23 +125,25 @@ export const GitCommitsSection: React.FC<GitCommitsSectionProps> = ({ vm }) => {
                 ))}
               </div>
 
-              <div className="gmp-pagination-row">
-                <PageSizeSelector
-                  value={pageSize}
-                  options={[10, 20, 50, 100]}
-                  onChange={(size) => {
-                    setPageSize(size)
-                    setPage(1)
-                  }}
-                />
-                <Pagination
-                  current={page}
-                  total={Math.max(1, Math.ceil(totalCount / pageSize))}
-                  onChange={setPage}
-                  showJumper
-                  jumperPlaceholder={t('version_control.jump_page', '跳页')}
-                />
-              </div>
+              {!compact ? (
+                <div className="gmp-pagination-row">
+                  <PageSizeSelector
+                    value={pageSize}
+                    options={[10, 20, 50, 100]}
+                    onChange={(size) => {
+                      setPageSize(size)
+                      setPage(1)
+                    }}
+                  />
+                  <Pagination
+                    current={page}
+                    total={Math.max(1, Math.ceil(totalCount / pageSize))}
+                    onChange={setPage}
+                    showJumper
+                    jumperPlaceholder={t('version_control.jump_page', '跳页')}
+                  />
+                </div>
+              ) : null}
             </>
           )}
         </div>

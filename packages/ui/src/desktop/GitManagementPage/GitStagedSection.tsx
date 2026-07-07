@@ -1,4 +1,5 @@
 import React from 'react'
+import './GitManagementPage.css'
 import type { GitManagementViewModel } from './useGitManagementPage'
 import { getFileStatusIcon, isTextDiffablePath } from './git-management.utils'
 import { GitDiffViewer } from './GitDiffViewer'

@@ -5,13 +5,23 @@ import type {
   VersionHistoryEntry,
   FileChange,
   FileDiff,
-  GitRollbackAllContext
+  GitRollbackAllContext,
+  GitStashEntry
 } from '@baishou/shared'
+
+export interface GitBranchInfo {
+  current: string
+  branches: string[]
+  hasRemote: boolean
+  ahead: number
+  behind: number
+  remoteUrl?: string
+}
 
 export interface GitManagementPageProps {
   // 配置
   config: GitSyncConfig
-  onSaveConfig: (config: Partial<GitSyncConfig>) => void
+  onSaveConfig: (config: Partial<GitSyncConfig>) => void | Promise<void>
   // 初始化
   onInit: () => Promise<{ success: boolean; message?: string }>
   isInitialized: boolean
@@ -60,4 +70,24 @@ export interface GitManagementPageProps {
   onRollbackFile: (filePath: string, commitHash: string) => Promise<{ success: boolean }>
   onRollbackAll: (commitHash: string) => Promise<{ success: boolean }>
   onGetRollbackAllContext: (commitHash: string) => Promise<GitRollbackAllContext>
+  // 工作台 / 分支（可选）
+  onGetBranchInfo?: () => Promise<GitBranchInfo>
+  onCheckoutBranch?: (branch: string) => Promise<{ success: boolean; message?: string }>
+  onCreateBranch?: (branch: string) => Promise<{ success: boolean; message?: string }>
+  onSetRemoteUrl?: (url: string) => Promise<{ success: boolean; message?: string }>
+  onMergeBranch?: (branch: string) => Promise<{ success: boolean; message?: string }>
+  onDeleteBranch?: (
+    branch: string,
+    force?: boolean
+  ) => Promise<{ success: boolean; message?: string }>
+  onPublishBranch?: (branch?: string) => Promise<{ success: boolean; message?: string }>
+  onListStash?: () => Promise<GitStashEntry[]>
+  onStashPush?: (message?: string) => Promise<{ success: boolean; message?: string }>
+  onStashApply?: (index: number) => Promise<{ success: boolean; message?: string }>
+  onStashPop?: (index: number) => Promise<{ success: boolean; message?: string }>
+  onStashDrop?: (index: number) => Promise<{ success: boolean; message?: string }>
+  /** 在工作台主编辑区打开 diff（若提供则优先于侧栏内联 diff） */
+  onOpenDiffInEditor?: (filePath: string, staged: boolean) => void
+  /** 在工作台主编辑区打开某次提交的 diff */
+  onOpenCommitDiffInEditor?: (filePath: string, commitHash: string) => void
 }
