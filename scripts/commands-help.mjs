@@ -60,12 +60,13 @@ const sections = [
     id: 'ci',
     title: '质量与 CI',
     commands: [
-      ['pnpm ci', '本地跑完整 CI（typecheck + test + lint + format）'],
+      ['pnpm ci', '本地完整 CI（PR / 发版前）'],
       ['pnpm typecheck', '全仓 TypeScript 检查'],
       ['pnpm test', '全仓单元测试'],
-      ['pnpm lint', '全仓 ESLint'],
+      ['pnpm lint', '全仓 ESLint（与 ci:check 相同；warning 有基线上限）'],
+      ['pnpm lint:baseline', '统计 warning 数；加 -- --write 可更新基线文件'],
       ['pnpm format', 'Prettier 格式化'],
-      ['pnpm format:check', 'Prettier 检查（CI 用）']
+      ['pnpm format:check', 'Prettier 检查（ci:check 内含）']
     ]
   },
   {
@@ -73,7 +74,7 @@ const sections = [
     title: '同步生成物',
     commands: [
       ['pnpm sync', '★ 同步图标、版本号、供应商图标、视觉模型快照（manifest 未变时快速跳过）'],
-      ['pnpm sync:check', 'CI 校验生成物是否最新'],
+      ['pnpm sync:check', '校验生成物是否最新（ci:check 内含）'],
       ['pnpm sync --only=providers', '仅同步单项（icons / version / providers / vision）']
     ]
   },

@@ -1,11 +1,12 @@
 # 在克隆目录内任意位置执行均可；自动定位仓库根目录
+# 本地与 GitHub Actions 使用同一套检查（见 .github/workflows/ci.yml）
 $ErrorActionPreference = 'Stop'
 $root = git rev-parse --show-toplevel 2>$null
 if (-not $root) { throw '请在 BaiShou-Next 仓库目录内运行此脚本' }
 
 Push-Location $root
 try {
-  pnpm install
+  pnpm install --frozen-lockfile
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
   pnpm sync:check
@@ -14,13 +15,16 @@ try {
   pnpm typecheck
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-  pnpm turbo run test --continue
+  pnpm audit:cache-invalidation
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-  pnpm --filter @baishou/desktop exec eslint -c ../../eslint.desktop.ci.mjs . --cache --quiet
+  pnpm test
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-  pnpm --filter @baishou/mobile exec eslint -c ../../eslint.mobile.ci.mjs . --cache --quiet
+  pnpm --filter @baishou/mobile run build:diary-editor
+  if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+  pnpm lint
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
   pnpm format:check

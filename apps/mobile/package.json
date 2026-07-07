@@ -17,7 +17,7 @@
     "build:release": "node ./scripts/build-release-apk.mjs",
     "build:diary-editor": "vite build --config diary-editor-web/vite.config.ts && node diary-editor-web/scripts/generate-shell-html.mjs",
     "ios": "expo run:ios",
-    "lint": "eslint . --cache",
+    "lint": "node ../../scripts/run-eslint-with-budget.mjs mobile",
     "typecheck": "tsc --noEmit",
     "test": "node ../../node_modules/vitest/vitest.mjs run --config vitest.config.mts"
   },

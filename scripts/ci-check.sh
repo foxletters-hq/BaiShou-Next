@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # 在克隆目录内任意位置执行均可；自动定位仓库根目录
+# 本地与 GitHub Actions 使用同一套检查（见 .github/workflows/ci.yml）
 set -euo pipefail
 
 root="$(git rev-parse --show-toplevel 2>/dev/null)" || {
@@ -27,14 +28,13 @@ if [ "$(node -p "process.versions.node.split('.')[0]")" != "$ci_node_major" ]; t
   echo "警告: CI 使用 Node ${ci_node_major}，当前为 $(node -v)。请切换后再跑，否则原生依赖测试可能失败。" >&2
 fi
 
-pnpm install
+pnpm install --frozen-lockfile
 pnpm sync:check
 pnpm typecheck
 pnpm audit:cache-invalidation
-pnpm turbo run test --continue
+pnpm test
 pnpm --filter @baishou/mobile run build:diary-editor
-pnpm --filter @baishou/desktop exec eslint -c ../../eslint.desktop.ci.mjs . --cache --quiet
-pnpm --filter @baishou/mobile exec eslint -c ../../eslint.mobile.ci.mjs . --cache --quiet
+pnpm lint
 pnpm format:check
 
 echo ''

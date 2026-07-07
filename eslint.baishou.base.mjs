@@ -1,6 +1,6 @@
 /**
  * 白守 monorepo 共享 ESLint 配置（desktop / mobile 共用）
- * 避免 eslint-plugin-react recommended 与 ESLint 10 不兼容，统一 TS + Hooks + i18n 规则
+ * 策略：error 挡 bug；warn（i18n / max-lines）有基线预算，见 scripts/lint-warning-baseline.json
  */
 import { defineConfig } from 'eslint/config'
 import tseslint from '@electron-toolkit/eslint-config-ts'
