@@ -1,11 +1,7 @@
 import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
-import {
-  useSettingsStore,
-  getConfigKeysForSegment,
-  useSettingsPaneApi
-} from '@baishou/store'
+import { useSettingsStore, getConfigKeysForSegment, useSettingsPaneApi } from '@baishou/store'
 import { getSettingsRouteSegment } from './settings-route.util'
 import { useSettingsRouteActive } from './hooks/useSettingsRouteActive'
 
@@ -333,9 +329,7 @@ export const SettingsContentView: React.FC<SettingsContentViewProps> = ({
       {isSegmentFailed && !isBlockingLoad ? (
         <SegmentConfigFailedOverlay onRetry={() => void retryConfigForSegment(segment)} />
       ) : null}
-      <div
-        className={`settings-pane-body${contentVisible ? ' settings-pane-body--visible' : ''}`}
-      >
+      <div className={`settings-pane-body${contentVisible ? ' settings-pane-body--visible' : ''}`}>
         <Suspense fallback={null}>
           <ChunkReadyMarker contentKey={contentKey} onReady={markChunkReady}>
             {renderBody()}

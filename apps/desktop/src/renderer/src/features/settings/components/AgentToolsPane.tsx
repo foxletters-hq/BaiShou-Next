@@ -7,8 +7,7 @@ interface AgentToolsPaneProps {
 }
 
 export const AgentToolsPane: React.FC<AgentToolsPaneProps> = ({ settings }) => {
-  const toolManagementConfig =
-    settings.toolManagementConfig ?? getDefaultToolManagementConfig()
+  const toolManagementConfig = settings.toolManagementConfig ?? getDefaultToolManagementConfig()
   return (
     <div className="settings-pane settings-pane-full">
       <AgentToolsView

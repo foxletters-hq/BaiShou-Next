@@ -82,8 +82,6 @@ export function useOrchestratedSync() {
   const setMessage = useSyncStore((s) => s.setMessage)
   const setSyncResult = useSyncStore((s) => s.setSyncResult)
   const setProgress = useSyncStore((s) => s.setProgress)
-  const setPlanPreview = useSyncStore((s) => s.setPlanPreview)
-  const setPlanConfirmEligibleAt = useSyncStore((s) => s.setPlanConfirmEligibleAt)
   const showPlanConfirmDialog = useSyncStore((s) => s.showPlanConfirmDialog)
   const clearPlanPreview = useSyncStore((s) => s.clearPlanPreview)
 

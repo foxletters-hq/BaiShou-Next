@@ -9,7 +9,7 @@ import {
   type WeatherId,
   type MoodId
 } from '@baishou/shared'
-import { WEATHER_IDS, MOOD_IDS } from '@baishou/shared'
+import { WEATHER_IDS } from '@baishou/shared'
 import { useDiaryData } from './hooks/useDiaryData'
 import { useStorageIndexing } from './hooks/useStorageIndexing'
 import type { DiaryEntry } from './DiaryCard'

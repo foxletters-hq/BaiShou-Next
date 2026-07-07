@@ -35,9 +35,7 @@ function getStorageApi() {
         migrateDirectory?: (targetPath: string) => Promise<{ ok: boolean }>
         onMigrationProgress?: (cb: (payload: { name: string }) => void) => () => void
         onRootChanged?: (cb: () => void) => () => void
-        getExternalJournalsInfo?: (options?: {
-          includeFileCounts?: boolean
-        }) => Promise<{
+        getExternalJournalsInfo?: (options?: { includeFileCounts?: boolean }) => Promise<{
           path: string | null
           defaultPath: string
           journalFileCount: number
@@ -50,9 +48,7 @@ function getStorageApi() {
         }>
         clearExternalJournalsDirectory?: () => Promise<{ ok: boolean }>
         onJournalsPathChanged?: (cb: () => void) => () => void
-        getExternalSummariesInfo?: (options?: {
-          includeFileCounts?: boolean
-        }) => Promise<{
+        getExternalSummariesInfo?: (options?: { includeFileCounts?: boolean }) => Promise<{
           path: string | null
           defaultPath: string
           summaryFileCount: number
@@ -184,10 +180,13 @@ export function useDesktopStorageSettings() {
     }
 
     if (typeof requestIdleCallback === 'function') {
-      const idleId = requestIdleCallback(() => {
-        runLight()
-        scheduleHeavy()
-      }, { timeout: 2500 })
+      const idleId = requestIdleCallback(
+        () => {
+          runLight()
+          scheduleHeavy()
+        },
+        { timeout: 2500 }
+      )
       return () => {
         cancelIdleCallback(idleId)
         if (heavyTimer) window.clearTimeout(heavyTimer)

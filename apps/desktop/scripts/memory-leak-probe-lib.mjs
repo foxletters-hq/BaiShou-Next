@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 import { spawn } from 'node:child_process'
 
 const CDP_PORT = process.env.BAISHOU_CDP_PORT || '9333'
@@ -78,20 +79,16 @@ function pickRendererTarget(targets) {
     targets.find(
       (t) =>
         t.type === 'page' &&
-        (t.url.includes('localhost') ||
-          t.url.includes('127.0.0.1') ||
-          t.url.includes('index.html'))
+        (t.url.includes('localhost') || t.url.includes('127.0.0.1') || t.url.includes('index.html'))
     ) ?? targets.find((t) => t.type === 'page')
   )
 }
 
 function formatCdpException(details) {
   if (!details) return '未知 CDP 异常'
-  const parts = [
-    details.exception?.description,
-    details.text,
-    details.exception?.value
-  ].filter(Boolean)
+  const parts = [details.exception?.description, details.text, details.exception?.value].filter(
+    Boolean
+  )
   if (parts.length > 0) return parts.join(' | ')
   try {
     return JSON.stringify(details)
@@ -223,7 +220,9 @@ export async function runMemoryProbe({ scenario, rounds, waitSec = 90 }) {
     throw new Error('应用仍在 /welcome 引导页，请先完成 onboarding 进入主界面后再测')
   }
 
-  console.log(`[mem-probe] 目标: ${target.title || target.url} (${state?.hash || 'no hash'}, probe v${state?.version ?? '?'})`)
+  console.log(
+    `[mem-probe] 目标: ${target.title || target.url} (${state?.hash || 'no hash'}, probe v${state?.version ?? '?'})`
+  )
   assertProbeVersion(state)
 
   const expression = `(async () => {
@@ -284,7 +283,9 @@ export async function runMemoryProbeSuite({ rounds, waitSec = 90 }) {
     throw new Error('应用仍在 /welcome 引导页，请先完成 onboarding 进入主界面后再测')
   }
 
-  console.log(`[mem-probe] 目标: ${target.title || target.url} (${state?.hash || 'no hash'}, probe v${state?.version ?? '?'})`)
+  console.log(
+    `[mem-probe] 目标: ${target.title || target.url} (${state?.hash || 'no hash'}, probe v${state?.version ?? '?'})`
+  )
   assertProbeVersion(state)
 
   const expression = `(async () => {

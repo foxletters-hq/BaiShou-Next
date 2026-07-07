@@ -34,8 +34,6 @@ export function registerSettingsAppIPC() {
 
   ipcMain.handle('settings:set-rag-config', async (_, config: any) => {
     await settingsManager.set('rag_config', config)
-    const { invalidateMcpToolContextCache } = await import('./agent-helpers')
-    invalidateMcpToolContextCache()
     return true
   })
 
@@ -72,8 +70,6 @@ export function registerSettingsAppIPC() {
 
   ipcMain.handle('settings:set-tool-management-config', async (_, config: any) => {
     await settingsManager.set('tool_management_config', config)
-    const { invalidateMcpToolContextCache } = await import('./agent-helpers')
-    invalidateMcpToolContextCache()
     return true
   })
 

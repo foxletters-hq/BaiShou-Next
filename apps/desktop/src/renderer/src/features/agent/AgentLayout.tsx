@@ -26,7 +26,7 @@ export const AgentLayout: React.FC = () => {
   const [searchParams] = useSearchParams()
 
   const { assistants, fetchAssistants, isLoading: isAssistantsLoading } = useAssistantStore()
-  const { agentBehavior, loadConfig } = useSettingsStore()
+  const { loadConfig } = useSettingsStore()
   const { loadProfile } = useUserProfileStore()
 
   const [searchQuery, setSearchQuery] = useState('')

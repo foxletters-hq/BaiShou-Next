@@ -21,13 +21,6 @@ type WorkspaceSectionUiState = LegacyVersionMigrationWorkspacePreview & {
   failureSamples?: string[]
 }
 
-function mapImportedToStatus(
-  sectionId: LegacyVersionMigrationSectionId,
-  importedSections: LegacyVersionMigrationSectionId[]
-): LegacyVersionMigrationImportStatus {
-  return importedSections.includes(sectionId) ? 'success' : 'idle'
-}
-
 export function useDesktopVersionMigration() {
   const { t } = useTranslation()
   const dialog = useDialog()
