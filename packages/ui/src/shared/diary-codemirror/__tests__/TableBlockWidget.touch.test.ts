@@ -1,20 +1,31 @@
-import { describe, it, expect, afterEach, vi } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { createDiaryCodeMirror } from '../createDiaryCodeMirror'
 import { setActiveTableCell } from '../table/tableActiveCell'
 import { forceTableRefresh } from '../table/tableEffects'
 import { longPressChromeHandle, touchPoint, TABLE_CHROME_LONG_PRESS_MS } from './tableTouchHelpers'
+import { resetTableSheetInteractionForTests } from '../table/tableSheetInteraction'
 
-describe('TableBlockWidget touch', () => {
+function clearTableSheetDom(): void {
+  document
+    .querySelectorAll(
+      '.cm-table-sheet-layer, .cm-table-context-menu-layer, .cm-table-sheet, .cm-table-sheet-item'
+    )
+    .forEach((el) => el.remove())
+}
+
+describe.sequential('TableBlockWidget touch', () => {
   let parent: HTMLElement | null = null
+
+  beforeEach(() => {
+    clearTableSheetDom()
+    resetTableSheetInteractionForTests()
+  })
 
   afterEach(() => {
     parent?.remove()
     parent = null
-    document
-      .querySelectorAll(
-        '.cm-table-sheet-layer, .cm-table-context-menu-layer, .cm-table-sheet, .cm-table-sheet-item'
-      )
-      .forEach((el) => el.remove())
+    clearTableSheetDom()
+    resetTableSheetInteractionForTests()
     vi.useRealTimers()
   })
 
@@ -125,6 +136,15 @@ describe('TableBlockWidget touch', () => {
     view.destroy()
   })
 
+  function openCornerMenu(view: ReturnType<typeof createDiaryCodeMirror>): void {
+    activateFirstCell(view)
+    const corner = parent!.querySelector('.cm-table-corner-menu') as HTMLElement
+    expect(corner).toBeTruthy()
+    longPressChromeHandle(corner)
+    vi.advanceTimersByTime(TABLE_CHROME_LONG_PRESS_MS + 20)
+    expect(document.querySelector('.cm-table-sheet-layer')).toBeTruthy()
+  }
+
   it('deletes table from corner menu after confirmation', async () => {
     vi.useFakeTimers()
     parent = document.createElement('div')
@@ -137,28 +157,24 @@ describe('TableBlockWidget touch', () => {
       platform: { resolveAttachmentUrl: (u) => u, interactionMode: 'touch' }
     })
 
-    activateFirstCell(view)
-    const corner = parent.querySelector('.cm-table-corner-menu') as HTMLElement
-    longPressChromeHandle(corner)
-    await vi.advanceTimersByTimeAsync(TABLE_CHROME_LONG_PRESS_MS + 80)
+    openCornerMenu(view)
 
-    const deleteBtn = await vi.waitFor(
-      () => {
-        const sheetItems = [...document.querySelectorAll('.cm-table-sheet-item')]
-        const btn = sheetItems.find((el) => el.textContent?.includes('删除表格')) as
-          | HTMLButtonElement
-          | undefined
-        if (!btn) throw new Error('delete menu not open')
-        return btn
-      },
-      { timeout: 3000 }
+    const deleteBtn = [...document.querySelectorAll('.cm-table-sheet-item')].find((el) =>
+      el.textContent?.includes('删除表格')
+    ) as HTMLButtonElement | undefined
+    expect(deleteBtn).toBeTruthy()
+    deleteBtn!.dispatchEvent(
+      new TouchEvent('touchstart', {
+        bubbles: true,
+        cancelable: true,
+        touches: [touchPoint(deleteBtn!, 8, 8)]
+      })
     )
-    deleteBtn.click()
+    await Promise.resolve()
+    await Promise.resolve()
 
-    await vi.waitFor(() => {
-      expect(confirm).toHaveBeenCalled()
-      expect(view.state.doc.toString().trim()).toBe('')
-    })
+    expect(confirm).toHaveBeenCalled()
+    expect(view.state.doc.toString().trim()).toBe('')
 
     confirm.mockRestore()
     view.destroy()

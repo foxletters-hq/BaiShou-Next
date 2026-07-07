@@ -77,6 +77,12 @@ export function markTableSheetClosed(): void {
   dismissKeyboardForSheetInteraction()
 }
 
+/** 仅测试：清除跨用例残留的 sheet 触摸屏蔽状态 */
+export function resetTableSheetInteractionForTests(): void {
+  touchShieldUntil = 0
+  document.documentElement.classList.remove('cm-table-sheet-open')
+}
+
 declare global {
   interface Window {
     ReactNativeWebView?: { postMessage: (message: string) => void }
