@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import * as fs from 'fs'
 import * as path from 'path'
 import { spawn } from 'child_process'
@@ -223,7 +224,10 @@ export abstract class GitSyncInternalBase {
         let content = await fs.promises.readFile(gitignorePath, 'utf8')
         let modified = false
         if (!content.includes('.baishou/')) {
-          content += '\n# 忽略应用数据目录\n**/.baishou/\n.baishou/\n'
+          content += i18n.t(
+            'auto.packages.core.src.sync.git.sync.internal.L226',
+            '\n# 忽略应用数据目录\n**/.baishou/\n.baishou/\n'
+          )
           modified = true
         }
         if (!content.includes('.baishou-s3.json')) {
@@ -239,16 +243,24 @@ export abstract class GitSyncInternalBase {
           modified = true
         }
         if (!content.includes('.git.vault-legacy')) {
-          content += '\n# 工作区嵌套 Git 归档\n**/.git.vault-legacy/\n'
+          content += i18n.t(
+            'auto.packages.core.src.sync.git.sync.internal.L242',
+            '\n# 工作区嵌套 Git 归档\n**/.git.vault-legacy/\n'
+          )
           modified = true
         }
         if (!content.includes('*.conflict-')) {
-          content += '\n# 增量同步冲突备份\n**/*.conflict-*\n'
+          content += i18n.t(
+            'auto.packages.core.src.sync.git.sync.internal.L246',
+            '\n# 增量同步冲突备份\n**/*.conflict-*\n'
+          )
           modified = true
         }
         if (!content.includes('.write_test')) {
-          content +=
+          content += i18n.t(
+            'auto.packages.core.src.sync.git.sync.internal.L251',
             '\n# 存储路径可写性探测（勿入库）\n.write_test\n.write_test_*\n.baishou_write_test\n'
+          )
           modified = true
         }
         if (modified) {
