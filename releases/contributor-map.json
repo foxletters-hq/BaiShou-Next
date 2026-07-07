@@ -1,6 +1,0 @@
-{
-  "emails": {
-    "ansontrio1004@gmail.com": "Anson-Trio"
-  },
-  "bots": ["github-actions[bot]", "dependabot[bot]", "renovate[bot]"]
-}
