@@ -1,8 +1,9 @@
 name: Build & Release
 
-# 分端发版：main 合并后 push tag 触发
+# 分端发版：main 合并后 push tag 触发构建
 #   mobile/v1.2.4  → 仅 Android
 #   desktop/v1.2.1 → 仅 Windows
+# GitHub Release 按版本号统一为 v{semver}，多端产物合并到同一 Release
 # 手动发版：Actions → Run workflow → 选择 mobile / desktop / both
 on:
   push:
@@ -48,6 +49,7 @@ jobs:
       build_desktop: ${{ steps.resolve.outputs.build_desktop }}
       mobile_tag: ${{ steps.resolve.outputs.mobile_tag }}
       desktop_tag: ${{ steps.resolve.outputs.desktop_tag }}
+      release_tag: ${{ steps.resolve.outputs.release_tag }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -113,6 +115,7 @@ jobs:
           echo "build_desktop=$BUILD_DESKTOP" >> "$GITHUB_OUTPUT"
           echo "mobile_tag=$MOBILE_TAG" >> "$GITHUB_OUTPUT"
           echo "desktop_tag=$DESKTOP_TAG" >> "$GITHUB_OUTPUT"
+          echo "release_tag=v${SEMVER}" >> "$GITHUB_OUTPUT"
 
       - name: Verify tag commit is on main
         if: github.event_name == 'push'
@@ -264,9 +267,17 @@ jobs:
       needs.build-android.result == 'success'
     needs: [prepare, build-android]
     runs-on: ubuntu-latest
+    concurrency:
+      group: gh-release-${{ needs.prepare.outputs.release_tag }}
+      cancel-in-progress: false
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.ref }}
+          fetch-depth: 0
+
       - uses: actions/download-artifact@v4
         with:
           name: android-apk
@@ -286,25 +297,51 @@ jobs:
           cp "$TARGET" artifacts/BaiShou-Android.apk
           ls -la artifacts/
 
-      - name: Create GitHub Release (Android)
+      - name: Compose release notes
+        id: notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          SEMVER="${{ needs.prepare.outputs.semver }}"
+          TAG="${{ needs.prepare.outputs.release_tag }}"
+          SCOPE="${{ needs.prepare.outputs.scope }}"
+          APPEND=false
+          if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+            APPEND=true
+            echo "append=true" >> "$GITHUB_OUTPUT"
+            echo "make_latest=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "append=false" >> "$GITHUB_OUTPUT"
+            HIGHEST=$(gh release list --repo "$REPO" --limit 100 --json tagName -q '.[].tagName' | sed 's/^v//' | sort -V | tail -1 || true)
+            if [ -n "$HIGHEST" ] && [ "$(printf '%s\n' "$SEMVER" "$HIGHEST" | sort -V | tail -1)" != "$SEMVER" ]; then
+              echo "make_latest=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "make_latest=true" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+          node scripts/compose-release-body.mjs \
+            --scope "$SCOPE" \
+            --version "$SEMVER" \
+            --repo "$REPO" \
+            --append "$APPEND" \
+            --output body.md
+
+      - name: Create or update GitHub Release (Android)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.prepare.outputs.mobile_tag }}
-          name: 白守 Android ${{ needs.prepare.outputs.semver }}
-          body: |
-            ## 白守 Android v${{ needs.prepare.outputs.semver }}
-
-            | 文件 | 说明 |
-            |------|------|
-            | `BaiShou-v${{ needs.prepare.outputs.semver }}-Android.apk` | 带版本号归档 |
-            | `BaiShou-Android.apk` | 固定文件名 |
-
-            各端最新下载见 [`releases/channel.json`](https://github.com/${{ github.repository }}/blob/main/releases/channel.json)。
+          tag_name: ${{ needs.prepare.outputs.release_tag }}
+          name: 白守 v${{ needs.prepare.outputs.semver }}
+          append_body: ${{ steps.notes.outputs.append == 'true' }}
+          body_path: body.md
           files: |
             artifacts/BaiShou-v${{ needs.prepare.outputs.semver }}-Android.apk
             artifacts/BaiShou-Android.apk
           draft: false
           prerelease: false
+          make_latest: ${{ steps.notes.outputs.make_latest == 'true' }}
 
   release-desktop:
     name: Release Windows
@@ -314,9 +351,17 @@ jobs:
       needs.build-windows.result == 'success'
     needs: [prepare, build-windows]
     runs-on: ubuntu-latest
+    concurrency:
+      group: gh-release-${{ needs.prepare.outputs.release_tag }}
+      cancel-in-progress: false
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.ref }}
+          fetch-depth: 0
+
       - uses: actions/download-artifact@v4
         with:
           name: windows-installer
@@ -336,25 +381,51 @@ jobs:
           cp "$TARGET" artifacts/BaiShou-Windows-Setup.exe
           ls -la artifacts/
 
-      - name: Create GitHub Release (Windows)
+      - name: Compose release notes
+        id: notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          SEMVER="${{ needs.prepare.outputs.semver }}"
+          TAG="${{ needs.prepare.outputs.release_tag }}"
+          SCOPE="${{ needs.prepare.outputs.scope }}"
+          APPEND=false
+          if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+            APPEND=true
+            echo "append=true" >> "$GITHUB_OUTPUT"
+            echo "make_latest=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "append=false" >> "$GITHUB_OUTPUT"
+            HIGHEST=$(gh release list --repo "$REPO" --limit 100 --json tagName -q '.[].tagName' | sed 's/^v//' | sort -V | tail -1 || true)
+            if [ -n "$HIGHEST" ] && [ "$(printf '%s\n' "$SEMVER" "$HIGHEST" | sort -V | tail -1)" != "$SEMVER" ]; then
+              echo "make_latest=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "make_latest=true" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+          node scripts/compose-release-body.mjs \
+            --scope "$SCOPE" \
+            --version "$SEMVER" \
+            --repo "$REPO" \
+            --append "$APPEND" \
+            --output body.md
+
+      - name: Create or update GitHub Release (Windows)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.prepare.outputs.desktop_tag }}
-          name: 白守 Windows ${{ needs.prepare.outputs.semver }}
-          body: |
-            ## 白守 Windows v${{ needs.prepare.outputs.semver }}
-
-            | 文件 | 说明 |
-            |------|------|
-            | `BaiShou-v${{ needs.prepare.outputs.semver }}-Windows-Setup.exe` | 带版本号归档 |
-            | `BaiShou-Windows-Setup.exe` | 固定文件名 |
-
-            各端最新下载见 [`releases/channel.json`](https://github.com/${{ github.repository }}/blob/main/releases/channel.json)。
+          tag_name: ${{ needs.prepare.outputs.release_tag }}
+          name: 白守 v${{ needs.prepare.outputs.semver }}
+          append_body: ${{ steps.notes.outputs.append == 'true' }}
+          body_path: body.md
           files: |
             artifacts/BaiShou-v${{ needs.prepare.outputs.semver }}-Windows-Setup.exe
             artifacts/BaiShou-Windows-Setup.exe
           draft: false
           prerelease: false
+          make_latest: ${{ steps.notes.outputs.make_latest == 'true' }}
 
   update-channel:
     name: Update release channel manifest
@@ -382,7 +453,7 @@ jobs:
           node scripts/update-release-channel.mjs \
             --platform android \
             --version "${{ needs.prepare.outputs.semver }}" \
-            --tag "${{ needs.prepare.outputs.mobile_tag }}" \
+            --tag "${{ needs.prepare.outputs.release_tag }}" \
             --version-code "$(node -p "require('./apps/mobile/src/version.json').versionCode")" \
             --repo "${{ github.repository }}"
 
@@ -393,7 +464,7 @@ jobs:
           node scripts/update-release-channel.mjs \
             --platform windows \
             --version "$DESKTOP_VER" \
-            --tag "${{ needs.prepare.outputs.desktop_tag }}" \
+            --tag "${{ needs.prepare.outputs.release_tag }}" \
             --repo "${{ github.repository }}"
 
       - name: Commit channel manifest

@@ -24,6 +24,7 @@
     "release:desktop:win": "node scripts/run-with-hint.mjs \"构建 Windows Inno Setup 安装包（输出 apps/desktop/dist）。\" pnpm sync && pnpm --filter @baishou/desktop build:win",
     "release:all": "node scripts/run-with-hint.mjs \"官方正式打包 Android + Windows（产物见 release/ 与 apps/desktop/dist）。\" node scripts/release-all.mjs",
     "release:tag": "node scripts/run-with-hint.mjs \"分端打 tag 触发 CI：mobile | desktop | all；加 --push 自动推送。\" node scripts/release-tag.mjs",
+    "release:notes": "node scripts/run-with-hint.mjs \"提取自上次分端 tag 以来的提交与贡献者，辅助撰写 Release 说明。\" node scripts/generate-release-notes.mjs",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "lint": "turbo run lint",

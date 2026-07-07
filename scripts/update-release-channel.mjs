@@ -22,7 +22,7 @@ function parseArgs() {
   const versionCode = get('--version-code')
   if (!platform || !version || !tag) {
     console.error(
-      '用法: update-release-channel.mjs --platform android|windows --version 1.2.3 --tag mobile/v1.2.3 [--version-code 80]'
+      '用法: update-release-channel.mjs --platform android|windows --version 1.2.3 --tag v1.2.3 [--version-code 80]'
     )
     process.exit(1)
   }
