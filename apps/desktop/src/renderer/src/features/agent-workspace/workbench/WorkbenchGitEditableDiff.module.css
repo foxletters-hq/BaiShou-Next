@@ -1,0 +1,118 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.header {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid var(--wb-chrome-border, #d8dee4);
+  background: var(--wb-chrome-bg, #f3f4f6);
+  flex-shrink: 0;
+}
+
+.headerCell {
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--wb-chrome-fg, #57606a);
+}
+
+.headerCell + .headerCell {
+  border-left: 1px solid var(--wb-chrome-border, #d8dee4);
+}
+
+.body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pane {
+  min-height: 0;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.pane + .pane {
+  border-left: 1px solid var(--wb-chrome-border, #d8dee4);
+}
+
+.readonlyPane {
+  background: var(--wb-chrome-bg, #f6f8fa);
+}
+
+.editorPane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--wb-editor-bg, #ffffff);
+}
+
+.editorHost {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.editorHost :global(.cm-editor) {
+  height: 100%;
+}
+
+.editorHost :global(.cm-scroller) {
+  overflow: auto;
+}
+
+.lineRow {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  min-height: 20px;
+}
+
+.lineNum {
+  padding: 0 8px;
+  text-align: right;
+  color: var(--wb-chrome-fg, #8b949e);
+  user-select: none;
+  border-right: 1px solid var(--wb-chrome-border, #d8dee4);
+  background: var(--wb-chrome-bg, #f6f8fa);
+}
+
+.lineText {
+  padding: 0 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--wb-editor-fg, #24292f);
+}
+
+.lineAdd .lineText {
+  background: rgba(34, 197, 94, 0.12);
+}
+
+.lineRemove .lineText {
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.emptyOriginal {
+  padding: 24px 16px;
+  font-size: 12px;
+  color: var(--wb-chrome-fg, #8b949e);
+  font-style: italic;
+  font-family: inherit;
+}
+
+.hint {
+  padding: 8px 12px;
+  font-size: 11px;
+  color: var(--wb-chrome-fg, #57606a);
+  border-top: 1px solid var(--wb-chrome-border, #d8dee4);
+  background: var(--wb-chrome-bg, #f3f4f6);
+  flex-shrink: 0;
+}
