@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * CI / 本地预览：拼装 GitHub Release body（下载入口 + 更新说明 + 本端产物表）
+ * CI / 本地预览：拼装 GitHub Release 自定义正文（下载入口 + 中文更新说明 + 本端产物表）。
+ * 贡献者与 PR 列表由 GitHub generate_release_notes 自动追加在正文之后。
  *
  *   node scripts/compose-release-body.mjs --scope mobile --version 1.2.9 --repo org/repo --append false --output body.md
  */
@@ -8,11 +9,6 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { RELEASE_ARTIFACTS_VERSIONED } from './release-constants.mjs'
-import {
-  collectReleaseContributors,
-  renderContributorSection,
-  resolvePreviousPlatformTag
-} from './release-contributors.mjs'
 import { renderReleaseDownloadsMarkdown } from './render-release-downloads.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -86,9 +82,6 @@ export function composeReleaseBody({
     if (draftNotes) {
       parts.push('## 本版本更新', '', draftNotes, '')
     }
-    const previousTag = resolvePreviousPlatformTag(scope, version)
-    const contributorBlock = renderContributorSection(collectReleaseContributors(previousTag))
-    if (contributorBlock) parts.push(contributorBlock)
   }
 
   parts.push(platformSection(scope, version))

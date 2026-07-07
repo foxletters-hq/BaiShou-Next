@@ -1,20 +1,15 @@
 #!/usr/bin/env node
 /**
- * 从上一次分端 tag 到 HEAD 提取提交与贡献者，供发版前撰写 Release 说明。
+ * 从上一次分端 tag 到 HEAD 提取提交摘要，供发版前撰写中文 Release 说明。
+ * 贡献者与 PR 列表由 GitHub generate_release_notes 在 CI 中自动追加。
  *
  *   node scripts/generate-release-notes.mjs --platform mobile --version 1.2.9
- *   node scripts/generate-release-notes.mjs --platform desktop --version 1.2.6 --format json
  */
 import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import {
-  collectReleaseContributors,
-  formatContributorThanks,
-  resolveContributor,
-  resolvePreviousPlatformTag
-} from './release-contributors.mjs'
+import { resolvePreviousPlatformTag } from './release-tags.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -73,10 +68,6 @@ function normalizeSubject(subject) {
   return { category: label, summary: rest.trim() }
 }
 
-function formatAuthorLabel(person) {
-  return person.github ? `@${person.github}` : person.displayName
-}
-
 function collectCommits(fromRef) {
   const range = fromRef ? `${fromRef}..HEAD` : 'HEAD'
   const out = git([
@@ -93,16 +84,7 @@ function collectCommits(fromRef) {
     const subject = rest.join('|')
     if (SKIP_COMMIT_RE.test(subject)) continue
     const { category, summary } = normalizeSubject(subject)
-    const person = resolveContributor(authorName, authorEmail)
-    commits.push({
-      authorName,
-      authorEmail,
-      person,
-      authorLabel: formatAuthorLabel(person),
-      subject,
-      category,
-      summary
-    })
+    commits.push({ authorName, authorEmail, subject, category, summary })
   }
   return commits
 }
@@ -123,7 +105,6 @@ export function generateReleaseNotesData({ platform, version, since }) {
   const draftedNotes = existsSync(notesPath) ? readFileSync(notesPath, 'utf8').trim() : ''
 
   const commits = collectCommits(previousTag)
-  const contributors = collectReleaseContributors(previousTag)
   const groups = groupByCategory(commits)
 
   return {
@@ -132,9 +113,7 @@ export function generateReleaseNotesData({ platform, version, since }) {
     previousTag: previousTag || null,
     draftedNotes,
     draftedNotesPath: existsSync(notesPath) ? notesPath : null,
-    contributorThanks: formatContributorThanks(contributors),
     commits,
-    contributors,
     groups
   }
 }
@@ -147,6 +126,8 @@ function renderMarkdown(data) {
     data.previousTag
       ? `对比范围：\`${data.previousTag}\` … \`HEAD\`（${data.commits.length} 条有效提交）`
       : `未找到上一分端 tag，对比范围：仓库首次提交 … \`HEAD\`（${data.commits.length} 条有效提交）`,
+    '',
+    '贡献者与 PR 列表由 **GitHub 自动生成 Release 说明** 追加，无需手写 @。',
     ''
   ]
 
@@ -162,24 +143,7 @@ function renderMarkdown(data) {
       '',
       '- 用**用户能听懂的话**写 3～6 条亮点，避免堆砌 commit hash',
       '- 合并相近改动，不要一条 commit 抄一行',
-      '- **不要**在文件中手写贡献者 @ 或感谢语——CI 会按 `releases/contributor-map.json` 与 git 邮箱自动追加',
-      ''
-    )
-  }
-
-  if (data.contributors.length > 0) {
-    lines.push('## 贡献者（自动解析，将写入 Release）', '')
-    if (data.contributorThanks) {
-      lines.push(data.contributorThanks, '')
-    }
-    for (const c of data.contributors) {
-      lines.push(
-        `- @${c.github}（${c.email || 'noreply'}）`
-      )
-    }
-    lines.push(
-      '',
-      '未映射邮箱请在 `releases/contributor-map.json` 的 `emails` 中补充，**切勿**手写不存在的 @用户名。',
+      '- **不要**写贡献者 @ 或感谢语',
       ''
     )
   }
@@ -189,7 +153,7 @@ function renderMarkdown(data) {
     for (const [category, items] of data.groups) {
       lines.push(`### ${category}`, '')
       for (const item of items) {
-        lines.push(`- ${item.summary} — ${item.authorLabel}`)
+        lines.push(`- ${item.summary} — ${item.authorName}`)
       }
       lines.push('')
     }

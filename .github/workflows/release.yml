@@ -322,6 +322,9 @@ jobs:
               echo "make_latest=true" >> "$GITHUB_OUTPUT"
             fi
           fi
+          CURRENT_TAG="${SCOPE}/v${SEMVER}"
+          PREV=$(git tag -l "${SCOPE}/v*" --sort=-v:refname | grep -Fxv "$CURRENT_TAG" | head -1 || true)
+          echo "previous_platform_tag=${PREV}" >> "$GITHUB_OUTPUT"
           node scripts/compose-release-body.mjs \
             --scope "$SCOPE" \
             --version "$SEMVER" \
@@ -336,6 +339,8 @@ jobs:
           name: 白守 v${{ needs.prepare.outputs.semver }}
           append_body: ${{ steps.notes.outputs.append == 'true' }}
           body_path: body.md
+          generate_release_notes: ${{ steps.notes.outputs.append != 'true' }}
+          previous_tag: ${{ steps.notes.outputs.previous_platform_tag }}
           files: |
             artifacts/BaiShou-v${{ needs.prepare.outputs.semver }}-Android.apk
             artifacts/BaiShou-Android.apk
@@ -406,6 +411,9 @@ jobs:
               echo "make_latest=true" >> "$GITHUB_OUTPUT"
             fi
           fi
+          CURRENT_TAG="${SCOPE}/v${SEMVER}"
+          PREV=$(git tag -l "${SCOPE}/v*" --sort=-v:refname | grep -Fxv "$CURRENT_TAG" | head -1 || true)
+          echo "previous_platform_tag=${PREV}" >> "$GITHUB_OUTPUT"
           node scripts/compose-release-body.mjs \
             --scope "$SCOPE" \
             --version "$SEMVER" \
@@ -420,6 +428,8 @@ jobs:
           name: 白守 v${{ needs.prepare.outputs.semver }}
           append_body: ${{ steps.notes.outputs.append == 'true' }}
           body_path: body.md
+          generate_release_notes: ${{ steps.notes.outputs.append != 'true' }}
+          previous_tag: ${{ steps.notes.outputs.previous_platform_tag }}
           files: |
             artifacts/BaiShou-v${{ needs.prepare.outputs.semver }}-Windows-Setup.exe
             artifacts/BaiShou-Windows-Setup.exe

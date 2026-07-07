@@ -1,6 +1,0 @@
-{
-  "emails": {
-    "alice_kei@163.com": "Anson-Trio"
-  },
-  "bots": ["github-actions[bot]", "dependabot[bot]", "renovate[bot]"]
-}
