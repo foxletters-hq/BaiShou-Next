@@ -61,7 +61,9 @@ describe.skipIf(!isBetterSqlite3Available())('Real Database Full Data Export Ext
 
     await realDbInstance.insert(systemSettingsTable).values({
       key: 'user_profile_data',
-      value: JSON.stringify({ nickname: '超级白守测试员' }),
+      value: JSON.stringify({
+        nickname: '超级白守测试员'
+      }),
       updatedAt: new Date('2023-01-01')
     })
 

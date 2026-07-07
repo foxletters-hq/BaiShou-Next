@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { dialog } from 'electron'
 import { DesktopAttachmentManagerService } from './desktop-attachment-manager.service'
 import { USER_DEFAULT_AVATAR_SENTINEL } from '@baishou/shared'
@@ -19,8 +20,8 @@ export class ProfileService {
    */
   async pickAndSaveAvatar(): Promise<string | null> {
     const { canceled, filePaths } = await dialog.showOpenDialog({
-      title: '选择新头像',
-      buttonLabel: '确定',
+      title: i18n.t('auto.apps.desktop.src.main.services.profile.service.L22', '选择新头像'),
+      buttonLabel: i18n.t('auto.apps.desktop.src.main.services.profile.service.L23', '确定'),
       properties: ['openFile'],
       filters: [{ name: 'Images', extensions: ['jpg', 'png', 'jpeg', 'webp', 'gif'] }]
     })
@@ -46,8 +47,8 @@ export class ProfileService {
    */
   async pickAndSaveBackground(): Promise<string | null> {
     const { canceled, filePaths } = await dialog.showOpenDialog({
-      title: '选择聊天背景图',
-      buttonLabel: '确定',
+      title: i18n.t('auto.apps.desktop.src.main.services.profile.service.L49', '选择聊天背景图'),
+      buttonLabel: i18n.t('auto.apps.desktop.src.main.services.profile.service.L50', '确定'),
       properties: ['openFile'],
       filters: [{ name: 'Images', extensions: ['jpg', 'png', 'jpeg', 'webp'] }]
     })

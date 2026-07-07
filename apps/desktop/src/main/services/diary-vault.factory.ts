@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import {
   DiaryService,
   FileSyncServiceImpl,
@@ -76,7 +77,12 @@ export async function getDiaryManagerForVault(vaultName: string): Promise<DiaryS
   }
 
   if (!shadowConnectionManager.isConnected()) {
-    throw new Error('Shadow DB 未连接，无法导入日记')
+    throw new Error(
+      i18n.t(
+        'auto.apps.desktop.src.main.services.diary.vault.factory.L79',
+        'Shadow DB 未连接，无法导入日记'
+      )
+    )
   }
 
   const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultName)

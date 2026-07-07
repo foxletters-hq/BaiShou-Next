@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { BrowserWindow } from 'electron'
 import { MissingSummary, logger, GlobalModelsConfig } from '@baishou/shared'
 import { SummaryGeneratorService, SummaryManagerService } from '@baishou/core-desktop'
@@ -61,7 +62,10 @@ export class SummaryQueueService {
     for (const item of this.queue) {
       if (item.status === 'running' || item.status === 'pending') {
         item.status = 'error'
-        item.error = '用户取消了生成'
+        item.error = i18n.t(
+          'auto.apps.desktop.src.main.services.summary.queue.service.L64',
+          '用户取消了生成'
+        )
       }
     }
 
@@ -139,7 +143,9 @@ export class SummaryQueueService {
       await new Promise((r) => setTimeout(r, 500))
 
       if (signal?.aborted) {
-        throw new Error('用户取消了生成')
+        throw new Error(
+          i18n.t('auto.apps.desktop.src.main.services.summary.queue.service.L142', '用户取消了生成')
+        )
       }
 
       logger.info(`[SummaryQueueService] Loading generator factory for task: ${task.id}`)
@@ -156,7 +162,10 @@ export class SummaryQueueService {
       for await (const chunk of stream) {
         if (signal?.aborted) {
           task.status = 'error'
-          task.error = '用户取消了生成'
+          task.error = i18n.t(
+            'auto.apps.desktop.src.main.services.summary.queue.service.L159',
+            '用户取消了生成'
+          )
           this.broadcastState()
           break
         }
@@ -174,7 +183,12 @@ export class SummaryQueueService {
           const cleanMsg = chunk.replace('STATUS:generation_failed_error:', '').trim()
           throw new Error(cleanMsg)
         } else if (chunk.includes('STATUS:no_data_error')) {
-          throw new Error('没有足够的数据来生成总结，请先补全下级总结。')
+          throw new Error(
+            i18n.t(
+              'auto.apps.desktop.src.main.services.summary.queue.service.L177',
+              '没有足够的数据来生成总结，请先补全下级总结。'
+            )
+          )
         } else if (!chunk.startsWith('STATUS:')) {
           // 阶段 3: AI 总结正流式接收生成... 模拟流式打字机效果输出
           const textLength = chunk.length

@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { shadowConnectionManager, ShadowIndexRepository } from '@baishou/database-desktop'
 import { logger, parseDateStr } from '@baishou/shared'
 import { quarterlySummariesForMonthCascade } from '@baishou/core-desktop'
@@ -17,22 +18,30 @@ interface LocaleDict {
 /** 支持语言的国际化字典 */
 const LOCALE_TRANSLATIONS: Record<string, LocaleDict> = {
   zh: {
-    yearly: '[年总结]',
-    quarterly: '[季度总结]',
-    monthly: '[月总结]',
-    weekly: '[周总结]',
-    diary: '[日记]',
+    yearly: i18n.t('auto.apps.desktop.src.main.ipc.summary.context.L20', '[年总结]'),
+    quarterly: i18n.t('auto.apps.desktop.src.main.ipc.summary.context.L21', '[季度总结]'),
+    monthly: i18n.t('auto.apps.desktop.src.main.ipc.summary.context.L22', '[月总结]'),
+    weekly: i18n.t('auto.apps.desktop.src.main.ipc.summary.context.L23', '[周总结]'),
+    diary: i18n.t('auto.apps.desktop.src.main.ipc.summary.context.L24', '[日记]'),
     subTitle: (months) => `包含最近 ${months} 个月的关键人生节点记录与回忆`,
-    slangs: ['📖 白守 · 共同回忆', '🌸 共同回忆 — 白守', '✨ 白守 | 共同回忆']
+    slangs: [
+      i18n.t('auto.apps.desktop.src.main.ipc.summary.context.L26', '📖 白守 · 共同回忆'),
+      i18n.t('auto.apps.desktop.src.main.ipc.summary.context.L26', '🌸 共同回忆 — 白守'),
+      i18n.t('auto.apps.desktop.src.main.ipc.summary.context.L26', '✨ 白守 | 共同回忆')
+    ]
   },
   zh_TW: {
-    yearly: '[年總結]',
-    quarterly: '[季度總結]',
-    monthly: '[月總結]',
-    weekly: '[周總結]',
-    diary: '[日記]',
+    yearly: i18n.t('auto.apps.desktop.src.main.ipc.summary.context.L29', '[年總結]'),
+    quarterly: i18n.t('auto.apps.desktop.src.main.ipc.summary.context.L30', '[季度總結]'),
+    monthly: i18n.t('auto.apps.desktop.src.main.ipc.summary.context.L31', '[月總結]'),
+    weekly: i18n.t('auto.apps.desktop.src.main.ipc.summary.context.L32', '[周總結]'),
+    diary: i18n.t('auto.apps.desktop.src.main.ipc.summary.context.L33', '[日記]'),
     subTitle: (months) => `包含最近 ${months} 個月的關鍵人生節點記錄與回憶`,
-    slangs: ['📖 白守 · 共同回憶', '🌸 共同回憶 — 白守', '✨ 白守 | 共同回憶']
+    slangs: [
+      i18n.t('auto.apps.desktop.src.main.ipc.summary.context.L35', '📖 白守 · 共同回憶'),
+      i18n.t('auto.apps.desktop.src.main.ipc.summary.context.L35', '🌸 共同回憶 — 白守'),
+      i18n.t('auto.apps.desktop.src.main.ipc.summary.context.L35', '✨ 白守 | 共同回憶')
+    ]
   },
   en: {
     yearly: '[Yearly Summary]',
@@ -48,13 +57,17 @@ const LOCALE_TRANSLATIONS: Record<string, LocaleDict> = {
     ]
   },
   ja: {
-    yearly: '[年次のまとめ]',
-    quarterly: '[四半期のまとめ]',
-    monthly: '[月次のまとめ]',
-    weekly: '[週次のまとめ]',
-    diary: '[日記]',
+    yearly: i18n.t('auto.apps.desktop.src.main.ipc.summary.context.L51', '[年次のまとめ]'),
+    quarterly: i18n.t('auto.apps.desktop.src.main.ipc.summary.context.L52', '[四半期のまとめ]'),
+    monthly: i18n.t('auto.apps.desktop.src.main.ipc.summary.context.L53', '[月次のまとめ]'),
+    weekly: i18n.t('auto.apps.desktop.src.main.ipc.summary.context.L54', '[週次のまとめ]'),
+    diary: i18n.t('auto.apps.desktop.src.main.ipc.summary.context.L55', '[日記]'),
     subTitle: (months) => `過去 ${months} ヶ月間の主要な人生の節目と记录を含みます`,
-    slangs: ['📖 白守 · 共同の思い出', '🌸 共同の思い出 — 白守', '✨ 白守 | 共同の思い出']
+    slangs: [
+      i18n.t('auto.apps.desktop.src.main.ipc.summary.context.L57', '📖 白守 · 共同の思い出'),
+      i18n.t('auto.apps.desktop.src.main.ipc.summary.context.L57', '🌸 共同の思い出 — 白守'),
+      i18n.t('auto.apps.desktop.src.main.ipc.summary.context.L57', '✨ 白守 | 共同の思い出')
+    ]
   }
 }
 

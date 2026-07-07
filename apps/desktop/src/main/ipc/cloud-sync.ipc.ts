@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { ipcMain } from 'electron'
 import { SyncConfig } from '@baishou/core-desktop'
 import { DesktopCloudSyncService } from '../services/cloud-sync.service'
@@ -27,11 +28,15 @@ export function registerCloudSyncIPC() {
     async (_event, config: SyncConfig, remoteFilename: string) => {
       const { dialog } = require('electron')
       const { canceled, filePath } = await dialog.showSaveDialog({
-        title: '下载云端备份包',
+        title: i18n.t('auto.apps.desktop.src.main.ipc.cloud.sync.ipc.L30', '下载云端备份包'),
         defaultPath: remoteFilename,
         filters: [{ name: 'Zip Archive', extensions: ['zip'] }]
       })
-      if (canceled || !filePath) return { success: false, message: '已取消下载' }
+      if (canceled || !filePath)
+        return {
+          success: false,
+          message: i18n.t('auto.apps.desktop.src.main.ipc.cloud.sync.ipc.L34', '已取消下载')
+        }
       return await cloudSyncService.downloadToLocal(config, remoteFilename, filePath)
     }
   )

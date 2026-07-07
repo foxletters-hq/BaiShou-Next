@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { join } from 'node:path'
 import { app } from 'electron'
 import {
@@ -268,7 +269,12 @@ export class DesktopLegacyVersionMigrationService {
     customSourceRoot?: string | null,
     onProgress?: (message: string) => void
   ): Promise<LegacyVersionMigrationScanPayload> {
-    onProgress?.('正在检测旧版数据…')
+    onProgress?.(
+      i18n.t(
+        'auto.apps.desktop.src.main.services.desktop.legacy.version.migration.service.L271',
+        '正在检测旧版数据…'
+      )
+    )
 
     const targetRoot = await pathService.getRootDirectory()
     const source = await resolveDesktopVersionMigrationLegacySource(targetRoot, customSourceRoot)
@@ -304,7 +310,12 @@ export class DesktopLegacyVersionMigrationService {
       ? normalizeImportedSectionIds(state.importedSections, legacyVaultNames)
       : []
 
-    onProgress?.('扫描完成')
+    onProgress?.(
+      i18n.t(
+        'auto.apps.desktop.src.main.services.desktop.legacy.version.migration.service.L307',
+        '扫描完成'
+      )
+    )
     return {
       scanResult,
       sourceKind: source.kind,

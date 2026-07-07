@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { ipcMain, BrowserWindow } from 'electron'
 import { VaultService, VaultNameExistsError, VaultInvalidNameError } from '@baishou/core-desktop'
 import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database-desktop'
@@ -37,7 +38,12 @@ export async function connectGlobalShadowDb(): Promise<void> {
 export function getActiveVaultShadowRepo(): ShadowIndexRepository {
   const activeVault = vaultService.getActiveVault()
   if (!activeVault) {
-    throw new Error('[VaultIPC] 无活跃 Vault，无法创建 ShadowIndexRepository')
+    throw new Error(
+      i18n.t(
+        'auto.apps.desktop.src.main.ipc.vault.ipc.L40',
+        '[VaultIPC] 无活跃 Vault，无法创建 ShadowIndexRepository'
+      )
+    )
   }
   return new ShadowIndexRepository(shadowConnectionManager.getDb(), activeVault.name)
 }

@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { IEmbeddingStorage } from '@baishou/ai'
 import { memoryEmbeddingsTable } from '@baishou/database-desktop'
 import { getAppDb } from '../db'
@@ -205,7 +206,7 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
     const db = getAppDb()
     // 防止 SQL 注入：只允许删除符合命名规则的表
     if (!backupTableName.startsWith(SAFETY_BACKUP_TABLE)) {
-      throw new Error('无效的备份表名')
+      throw new Error(i18n.t('auto.apps.desktop.src.main.ipc.rag.storage.L208', '无效的备份表名'))
     }
     await db.run(sql.raw(`DROP TABLE IF EXISTS ${backupTableName}`))
   }

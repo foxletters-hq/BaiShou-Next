@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import './app-identity'
 import { DESKTOP_APP_ID, DESKTOP_DEV_APP_ID, isDesktopDevBuild } from './app-identity'
 import { app, shell, BrowserWindow, ipcMain, Menu, protocol, net } from 'electron'
@@ -86,7 +87,7 @@ function createWindow(needsOnboarding: boolean): void {
       const template: Electron.MenuItemConstructorOptions[] = [
         {
           id: 'copy',
-          label: '复制',
+          label: i18n.t('auto.apps.desktop.src.main.index.L89', '复制'),
           role: 'copy',
           enabled: editFlags.canCopy,
           visible: true

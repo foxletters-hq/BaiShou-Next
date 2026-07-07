@@ -4,6 +4,7 @@ import { join } from 'path'
 export const DESKTOP_APP_ID = 'com.baishou.baishou'
 export const DESKTOP_DEV_APP_ID = 'com.baishou.baishou.dev'
 
+// 应用显示名与数据目录名，非 UI 文案，不做 i18n
 export const DESKTOP_APP_NAME = '白守'
 export const DESKTOP_DEV_APP_NAME = '白守 Dev'
 

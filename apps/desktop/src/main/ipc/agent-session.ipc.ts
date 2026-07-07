@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { ipcMain } from 'electron'
 import * as crypto from 'crypto'
 import { getAgentManagers } from './agent-helpers'
@@ -74,7 +75,7 @@ export function registerSessionIPC() {
       providerId,
       modelId,
       assistantId: safeAssistantId || undefined,
-      title: title || '新对话'
+      title: title || i18n.t('auto.apps.desktop.src.main.ipc.agent.session.ipc.L77', '新对话')
     } as any)
     logger.info(`[IPC] agent:create-session - session persisted and flushed.`)
     return newId
@@ -103,7 +104,10 @@ export function registerSessionIPC() {
     // 格式化为 Markdown
     const lines: string[] = []
     for (const msg of messages.reverse()) {
-      const role = msg.role === 'user' ? '**用户**' : '**AI**'
+      const role =
+        msg.role === 'user'
+          ? i18n.t('auto.apps.desktop.src.main.ipc.agent.session.ipc.L106', '**用户**')
+          : '**AI**'
       lines.push(`### ${role}\n`)
       const contentParts = msg.parts
         ? msg.parts
@@ -154,7 +158,9 @@ export function registerSessionIPC() {
       // 1. 获取原会话信息
       const originalSession = await realSessionRepo.getSessionById(sessionId)
       if (!originalSession) {
-        throw new Error('原会话不存在')
+        throw new Error(
+          i18n.t('auto.apps.desktop.src.main.ipc.agent.session.ipc.L157', '原会话不存在')
+        )
       }
 
       // 2. 获取原会话的所有消息
@@ -164,7 +170,9 @@ export function registerSessionIPC() {
       // 3. 找到目标消息的位置
       const targetIndex = allMessages.findIndex((m: any) => m.id === messageId)
       if (targetIndex === -1) {
-        throw new Error('目标消息不存在')
+        throw new Error(
+          i18n.t('auto.apps.desktop.src.main.ipc.agent.session.ipc.L167', '目标消息不存在')
+        )
       }
 
       // 4. 截取到目标消息（包含目标消息）
@@ -180,7 +188,11 @@ export function registerSessionIPC() {
       } catch (e) {}
 
       const newSessionId = `branch-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
-      const branchTitle = title || `${originalSession.title || '对话'} (分支)`
+      const defaultSessionTitle = i18n.t(
+        'auto.apps.desktop.src.main.ipc.agent.session.ipc.L191',
+        '对话'
+      )
+      const branchTitle = title || `${originalSession.title || defaultSessionTitle} (分支)`
 
       await sessionManager.upsertSession({
         id: newSessionId,

@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import * as crypto from 'crypto'
 import { logger } from '@baishou/shared'
 import type { GlobalModelsConfig } from '@baishou/shared'
@@ -43,13 +44,24 @@ interface TurnSpec {
 
 const TURN_SPECS: TurnSpec[] = [
   {
-    user: '我在做 BaiShou-Next 的对话压缩功能，请先帮我梳理一下滚动压缩的整体架构，以及快照表 compression_snapshots 各字段的含义。',
-    assistantIntro:
+    user: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L46',
+      '我在做 BaiShou-Next 的对话压缩功能，请先帮我梳理一下滚动压缩的整体架构，以及快照表 compression_snapshots 各字段的含义。'
+    ),
+    assistantIntro: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L48',
       '滚动压缩的核心是 anchored summary：每次只压缩「上次快照之后、保留区之前」的新消息，并把旧摘要放进 `<previous-summary>` 让模型增量更新。'
+    )
   },
   {
-    user: '帮我查一下最近日记里有没有写过 context compressor 或 compression snapshot 相关笔记。',
-    assistantIntro: '我先检索你的日记索引，看看有没有相关记录。',
+    user: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L51',
+      '帮我查一下最近日记里有没有写过 context compressor 或 compression snapshot 相关笔记。'
+    ),
+    assistantIntro: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L52',
+      '我先检索你的日记索引，看看有没有相关记录。'
+    ),
     tools: [
       {
         name: 'diary_search',
@@ -57,16 +69,30 @@ const TURN_SPECS: TurnSpec[] = [
         resultChars: 4200
       }
     ],
-    assistantTail: '检索结果显示你曾在调试快照锚点与 tailStartMessageId 的对应关系。'
+    assistantTail: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L60',
+      '检索结果显示你曾在调试快照锚点与 tailStartMessageId 的对应关系。'
+    )
   },
   {
-    user: 'splitMessagesForCompression 是怎么保留最近 N 轮用户对话的？请结合 keepTurns 和 preserveRecentTokens 解释。',
-    assistantIntro:
+    user: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L63',
+      'splitMessagesForCompression 是怎么保留最近 N 轮用户对话的？请结合 keepTurns 和 preserveRecentTokens 解释。'
+    ),
+    assistantIntro: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L65',
       '算法从时间线末尾向前数 user 轮次，找到 retainFromIndex；若保留区 token 仍超出 preserveRecentTokens，会继续把起点往后推。'
+    )
   },
   {
-    user: '搜索一下这个会话里之前有没有讨论过 resolveCompressionBatch。',
-    assistantIntro: '我在当前 Agent 会话消息里搜索关键词。',
+    user: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L68',
+      '搜索一下这个会话里之前有没有讨论过 resolveCompressionBatch。'
+    ),
+    assistantIntro: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L69',
+      '我在当前 Agent 会话消息里搜索关键词。'
+    ),
     tools: [
       {
         name: 'message_search',
@@ -76,14 +102,24 @@ const TURN_SPECS: TurnSpec[] = [
     ]
   },
   {
-    user: 'ContextWindowBuilder 注入摘要时，tailStartMessageId 缺失会怎么回退？',
-    assistantIntro:
+    user: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L79',
+      'ContextWindowBuilder 注入摘要时，tailStartMessageId 缺失会怎么回退？'
+    ),
+    assistantIntro: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L81',
       '会回退到 coveredUpToMessageId 的下一条；若锚点消息被删，还会用 messageCount 跨度估算 cutoff。'
+    )
   },
   {
-    user: '读一下 packages/ai/src/agent/context-compressor.service.ts 里 generateSummaryText 的实现要点。',
-    assistantIntro:
-      '该函数把 toCompress 转成 ModelMessage，末尾追加 anchored user prompt，temperature 设为 0.1。',
+    user: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L84',
+      '读一下 packages/ai/src/agent/context-compressor.service.ts 里 generateSummaryText 的实现要点。'
+    ),
+    assistantIntro: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L86',
+      '该函数把 toCompress 转成 ModelMessage，末尾追加 anchored user prompt，temperature 设为 0.1。'
+    ),
     tools: [
       {
         name: 'diary_read',
@@ -93,13 +129,24 @@ const TURN_SPECS: TurnSpec[] = [
     ]
   },
   {
-    user: '自动压缩和手动重新压缩在 priorSnapshot 选择上有什么不同？',
-    assistantIntro:
+    user: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L96',
+      '自动压缩和手动重新压缩在 priorSnapshot 选择上有什么不同？'
+    ),
+    assistantIntro: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L98',
       '自动压缩用 latestSnapshot.summaryText 作锚；重新压缩用 previousSnapshot 作锚，并锁定 latestSnapshot 的消息范围原地更新。'
+    )
   },
   {
-    user: '查一下同类 agent 项目对 preserve_recent_tokens 的通常取值。',
-    assistantIntro: '我去检索外部资料与常见实现。',
+    user: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L101',
+      '查一下同类 agent 项目对 preserve_recent_tokens 的通常取值。'
+    ),
+    assistantIntro: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L102',
+      '我去检索外部资料与常见实现。'
+    ),
     tools: [
       {
         name: 'web_search',
@@ -109,18 +156,34 @@ const TURN_SPECS: TurnSpec[] = [
     ]
   },
   {
-    user: 'CompressionPruneService 剪枝工具输出的策略是什么？和 LLM 摘要有什么关系？',
-    assistantIntro:
+    user: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L112',
+      'CompressionPruneService 剪枝工具输出的策略是什么？和 LLM 摘要有什么关系？'
+    ),
+    assistantIntro: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L114',
       'Prune 从后往前保留最近若干 user 轮内的 tool 输出 token，更早的大块 tool 文本替换成占位符；不走 LLM，可与摘要并行。'
+    )
   },
   {
-    user: '如果 coveredUpToMessageId 落在 user 消息上，getMessagesAfterSnapshot 为什么要 trim 孤立 assistant 前缀？',
-    assistantIntro:
+    user: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L117',
+      '如果 coveredUpToMessageId 落在 user 消息上，getMessagesAfterSnapshot 为什么要 trim 孤立 assistant 前缀？'
+    ),
+    assistantIntro: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L119',
       '避免快照截断在 user 上时，下一段开头残留无配对的 assistant/tool 前缀，导致摘要模型或主对话上下文不完整。'
+    )
   },
   {
-    user: '用向量搜索看看项目记忆里有没有 compression trigger 阈值相关的说明。',
-    assistantIntro: '尝试语义检索项目内相关片段。',
+    user: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L122',
+      '用向量搜索看看项目记忆里有没有 compression trigger 阈值相关的说明。'
+    ),
+    assistantIntro: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L123',
+      '尝试语义检索项目内相关片段。'
+    ),
     tools: [
       {
         name: 'vector_search',
@@ -130,18 +193,34 @@ const TURN_SPECS: TurnSpec[] = [
     ]
   },
   {
-    user: 'estimateContextTokensForTrigger 为什么优先用最后一条 assistant 的 usage？',
-    assistantIntro:
+    user: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L133',
+      'estimateContextTokensForTrigger 为什么优先用最后一条 assistant 的 usage？'
+    ),
+    assistantIntro: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L135',
       '因为那最接近真实送入模型的上下文规模；没有 usage 时才回退到文本估算 + 摘要 token。'
+    )
   },
   {
-    user: '分支会话 copyBranchCompressionSnapshots 需要怎样重锚消息 ID？',
-    assistantIntro:
+    user: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L138',
+      '分支会话 copyBranchCompressionSnapshots 需要怎样重锚消息 ID？'
+    ),
+    assistantIntro: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L140',
       '复制消息时维护 oldId→newId 映射，再按映射重写 coveredUpToMessageId 与 tailStartMessageId。'
+    )
   },
   {
-    user: '现在几点？另外帮我确认今天是否适合继续压测长上下文。',
-    assistantIntro: '先获取当前时间，再给你建议。',
+    user: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L143',
+      '现在几点？另外帮我确认今天是否适合继续压测长上下文。'
+    ),
+    assistantIntro: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L144',
+      '先获取当前时间，再给你建议。'
+    ),
     tools: [
       {
         name: 'current_time',
@@ -154,26 +233,64 @@ const TURN_SPECS: TurnSpec[] = [
         resultChars: 2800
       }
     ],
-    assistantTail: '时间已确认；从排期看你今天可以继续做压缩回归。'
+    assistantTail: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L157',
+      '时间已确认；从排期看你今天可以继续做压缩回归。'
+    )
   },
   {
-    user: '今天先到这里，帮我用三句话总结一下我们刚才讨论的压缩架构要点。',
-    assistantIntro:
+    user: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L160',
+      '今天先到这里，帮我用三句话总结一下我们刚才讨论的压缩架构要点。'
+    ),
+    assistantIntro: i18n.t(
+      'auto.apps.desktop.src.main.services.compression.test.session.service.L162',
       '可以概括为三点：一是 anchored summary 增量滚动；二是快照表记录 coveredUpTo 与 tailStart 锚点；三是保留最近若干轮原文再拼接摘要。'
+    )
   }
 ]
 
 const PADDING_SENTENCES = [
-  '实现上需要注意 tool call 与 tool result 不能在中途截断，否则 Vercel AI SDK 会拒绝上下文。',
-  '压缩批次必须包含至少一条 user 文本，否则 ContextCompressor 会直接 skip。',
-  '摘要禁止只复述最后一条 assistant 寒暄，测试用例里也校验了 VERBATIM_SUMMARY。',
-  'tailStartMessageId 等于 coveredUpTo 的下一条，用于 ContextWindowBuilder 精确拼接保留区。',
-  '会话锁 runCompressionWithSessionLock 避免并发压缩与主对话流式写入竞态。',
-  '保留区默认按伙伴 compressKeepTurns 配置，常见值为 3 轮用户对话。',
-  '模型窗口 unknown 时默认 128k，reserved 取窗口 20% 且夹在 8k–40k。',
-  '手动 recompress 不会把快照点之后的新消息纳入，那是自动压缩的职责。',
-  'generateSummaryText 在摘要与最后 assistant 长文本完全一致时会返回 null 防止偷懒复制。',
-  'Prune 占位符为「工具输出已剪枝，详见对话摘要」，可显著降低 trigger 前的 tool token。'
+  i18n.t(
+    'auto.apps.desktop.src.main.services.compression.test.session.service.L167',
+    '实现上需要注意 tool call 与 tool result 不能在中途截断，否则 Vercel AI SDK 会拒绝上下文。'
+  ),
+  i18n.t(
+    'auto.apps.desktop.src.main.services.compression.test.session.service.L168',
+    '压缩批次必须包含至少一条 user 文本，否则 ContextCompressor 会直接 skip。'
+  ),
+  i18n.t(
+    'auto.apps.desktop.src.main.services.compression.test.session.service.L169',
+    '摘要禁止只复述最后一条 assistant 寒暄，测试用例里也校验了 VERBATIM_SUMMARY。'
+  ),
+  i18n.t(
+    'auto.apps.desktop.src.main.services.compression.test.session.service.L170',
+    'tailStartMessageId 等于 coveredUpTo 的下一条，用于 ContextWindowBuilder 精确拼接保留区。'
+  ),
+  i18n.t(
+    'auto.apps.desktop.src.main.services.compression.test.session.service.L171',
+    '会话锁 runCompressionWithSessionLock 避免并发压缩与主对话流式写入竞态。'
+  ),
+  i18n.t(
+    'auto.apps.desktop.src.main.services.compression.test.session.service.L172',
+    '保留区默认按伙伴 compressKeepTurns 配置，常见值为 3 轮用户对话。'
+  ),
+  i18n.t(
+    'auto.apps.desktop.src.main.services.compression.test.session.service.L173',
+    '模型窗口 unknown 时默认 128k，reserved 取窗口 20% 且夹在 8k–40k。'
+  ),
+  i18n.t(
+    'auto.apps.desktop.src.main.services.compression.test.session.service.L174',
+    '手动 recompress 不会把快照点之后的新消息纳入，那是自动压缩的职责。'
+  ),
+  i18n.t(
+    'auto.apps.desktop.src.main.services.compression.test.session.service.L175',
+    'generateSummaryText 在摘要与最后 assistant 长文本完全一致时会返回 null 防止偷懒复制。'
+  ),
+  i18n.t(
+    'auto.apps.desktop.src.main.services.compression.test.session.service.L176',
+    'Prune 占位符为「工具输出已剪枝，详见对话摘要」，可显著降低 trigger 前的 tool token。'
+  )
 ]
 
 function charsForTokens(tokens: number): number {

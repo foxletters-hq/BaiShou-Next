@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { app, shell } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import {
@@ -248,7 +249,11 @@ export class UpdaterService {
     try {
       await autoUpdater.downloadUpdate()
     } catch (error) {
-      throw new UpdateCheckError(error instanceof Error ? error.message : '下载更新失败')
+      throw new UpdateCheckError(
+        error instanceof Error
+          ? error.message
+          : i18n.t('auto.apps.desktop.src.main.services.updater.service.L251', '下载更新失败')
+      )
     }
   }
 

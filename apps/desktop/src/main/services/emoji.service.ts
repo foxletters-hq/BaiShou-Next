@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { dialog } from 'electron'
 import { DesktopAttachmentManagerService } from './desktop-attachment-manager.service'
 import { DesktopStoragePathService } from './path.service'
@@ -20,8 +21,8 @@ export class EmojiService {
    */
   async pickAndImportEmojis(): Promise<EmojiImportResult[]> {
     const { canceled, filePaths } = await dialog.showOpenDialog({
-      title: '选择表情包',
-      buttonLabel: '导入',
+      title: i18n.t('auto.apps.desktop.src.main.services.emoji.service.L23', '选择表情包'),
+      buttonLabel: i18n.t('auto.apps.desktop.src.main.services.emoji.service.L24', '导入'),
       properties: ['openFile', 'multiSelections'],
       filters: [{ name: 'Images', extensions: ['jpg', 'png', 'jpeg', 'webp', 'gif'] }]
     })

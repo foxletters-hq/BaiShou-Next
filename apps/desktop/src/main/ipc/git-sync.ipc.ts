@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { ipcMain } from 'electron'
 import { logger } from '@baishou/shared'
 import { GitSyncServiceImpl } from '@baishou/core-desktop'
@@ -44,7 +45,10 @@ export function registerGitSyncIPC() {
       await getGitService().stageFile(filePath)
       return { success: true }
     } catch (e: any) {
-      return { success: false, message: e?.message || '暂存失败' }
+      return {
+        success: false,
+        message: e?.message || i18n.t('auto.apps.desktop.src.main.ipc.git.sync.ipc.L40', '暂存失败')
+      }
     }
   })
 
@@ -53,7 +57,10 @@ export function registerGitSyncIPC() {
       await getGitService().stageAll()
       return { success: true }
     } catch (e: any) {
-      return { success: false, message: e?.message || '暂存失败' }
+      return {
+        success: false,
+        message: e?.message || i18n.t('auto.apps.desktop.src.main.ipc.git.sync.ipc.L49', '暂存失败')
+      }
     }
   })
 
@@ -169,10 +176,17 @@ export function registerGitSyncIPC() {
       return { success: true }
     } catch (e: any) {
       if (e instanceof GitRemoteNotConfiguredError) {
-        return { success: false, message: '未配置远程仓库' }
+        return {
+          success: false,
+          message: i18n.t('auto.apps.desktop.src.main.ipc.git.sync.ipc.L165', '未配置远程仓库')
+        }
       }
       logger.error(`[GitIPC] 推送失败:`, e as any)
-      return { success: false, message: e?.message || '推送失败' }
+      return {
+        success: false,
+        message:
+          e?.message || i18n.t('auto.apps.desktop.src.main.ipc.git.sync.ipc.L168', '推送失败')
+      }
     }
   })
 
@@ -183,13 +197,20 @@ export function registerGitSyncIPC() {
       return { success: true }
     } catch (e: any) {
       if (e instanceof GitRemoteNotConfiguredError) {
-        return { success: false, message: '未配置远程仓库' }
+        return {
+          success: false,
+          message: i18n.t('auto.apps.desktop.src.main.ipc.git.sync.ipc.L179', '未配置远程仓库')
+        }
       }
       if (e instanceof GitPullError) {
         return { success: false, message: e.message, conflicts: e.conflicts || [] }
       }
       logger.error(`[GitIPC] 拉取失败:`, e as any)
-      return { success: false, message: e?.message || '拉取失败' }
+      return {
+        success: false,
+        message:
+          e?.message || i18n.t('auto.apps.desktop.src.main.ipc.git.sync.ipc.L185', '拉取失败')
+      }
     }
   })
 

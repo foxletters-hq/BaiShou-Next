@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import * as fs from 'fs/promises'
 import { constants as fsConstants } from 'node:fs'
 import * as path from 'path'
@@ -95,7 +96,12 @@ async function refreshVaultFileWatchersAndResync(reason: string): Promise<void> 
 export async function applyExternalJournalsDirectory(targetPath: string | null): Promise<void> {
   const active = vaultService.getActiveVault()
   if (!active) {
-    throw new Error('无活动工作区，无法设置外部日记目录')
+    throw new Error(
+      i18n.t(
+        'auto.apps.desktop.src.main.services.desktop.external.vault.paths.service.L98',
+        '无活动工作区，无法设置外部日记目录'
+      )
+    )
   }
 
   if (targetPath?.trim()) {
@@ -116,7 +122,12 @@ export async function applyExternalJournalsDirectory(targetPath: string | null):
 export async function applyExternalSummariesDirectory(targetPath: string | null): Promise<void> {
   const active = vaultService.getActiveVault()
   if (!active) {
-    throw new Error('无活动工作区，无法设置外部总结目录')
+    throw new Error(
+      i18n.t(
+        'auto.apps.desktop.src.main.services.desktop.external.vault.paths.service.L119',
+        '无活动工作区，无法设置外部总结目录'
+      )
+    )
   }
 
   if (targetPath?.trim()) {

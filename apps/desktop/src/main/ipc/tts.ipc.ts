@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { ipcMain, dialog, BrowserWindow, type OpenDialogOptions, type WebContents } from 'electron'
 import {
   logger,
@@ -129,7 +130,7 @@ export function registerTtsIPC() {
   ipcMain.handle('settings:pick-tts-ref-audio', async (event) => {
     const window = BrowserWindow.fromWebContents(event.sender)
     const options: OpenDialogOptions = {
-      title: '选择参考音频',
+      title: i18n.t('auto.apps.desktop.src.main.ipc.tts.ipc.L132', '选择参考音频'),
       properties: ['openFile'],
       filters: [
         { name: 'Audio', extensions: ['wav', 'mp3', 'mpeg'] },

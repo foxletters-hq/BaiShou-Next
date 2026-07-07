@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { dialog, ipcMain } from 'electron'
 import { createNodeFileSystem } from '@baishou/core-desktop'
 import { isLegacyAppRoot } from '@baishou/core/shared'
@@ -16,7 +17,9 @@ export function registerLegacyMigrationIPC(): void {
     'legacyMigration:scan',
     async (event, customSourceRoot?: string | null): Promise<LegacyVersionMigrationScanPayload> => {
       if (customSourceRoot != null && typeof customSourceRoot !== 'string') {
-        throw new Error('无效的路径参数')
+        throw new Error(
+          i18n.t('auto.apps.desktop.src.main.ipc.legacy.migration.ipc.L19', '无效的路径参数')
+        )
       }
       return desktopLegacyVersionMigrationService.scan(customSourceRoot, (message) => {
         event.sender.send('legacyMigration:progress', { phase: 'scan', message })
@@ -31,7 +34,12 @@ export function registerLegacyMigrationIPC(): void {
     if (result.canceled || !result.filePaths[0]) return null
     const picked = result.filePaths[0]
     if (!(await isLegacyAppRoot(fileSystem, picked))) {
-      throw new Error('所选目录不是有效的旧版白守数据根目录')
+      throw new Error(
+        i18n.t(
+          'auto.apps.desktop.src.main.ipc.legacy.migration.ipc.L34',
+          '所选目录不是有效的旧版白守数据根目录'
+        )
+      )
     }
     await desktopLegacyVersionMigrationService.setCustomSource(picked)
     return picked
@@ -50,7 +58,9 @@ export function registerLegacyMigrationIPC(): void {
       customSourceRoot?: string | null
     ): Promise<LegacyVersionMigrationImportResult> => {
       if (typeof sectionId !== 'string' || !sectionId.trim()) {
-        throw new Error('无效的板块 ID')
+        throw new Error(
+          i18n.t('auto.apps.desktop.src.main.ipc.legacy.migration.ipc.L53', '无效的板块 ID')
+        )
       }
       return desktopLegacyVersionMigrationService.importSection(sectionId, {
         legacySourceRoot: customSourceRoot,
@@ -73,7 +83,9 @@ export function registerLegacyMigrationIPC(): void {
       customSourceRoot?: string | null
     ): Promise<LegacyVersionMigrationBatchImportResult> => {
       if (!Array.isArray(sectionIds)) {
-        throw new Error('无效的工作空间列表')
+        throw new Error(
+          i18n.t('auto.apps.desktop.src.main.ipc.legacy.migration.ipc.L76', '无效的工作空间列表')
+        )
       }
       return desktopLegacyVersionMigrationService.importAllWorkspaces(sectionIds, {
         legacySourceRoot: customSourceRoot,

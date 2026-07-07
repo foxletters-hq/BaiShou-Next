@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { ipcMain } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
@@ -267,7 +268,12 @@ export function registerIncrementalSyncIPC() {
     } else {
       const ok = await (await getSyncService()).testConnection()
       if (!ok) {
-        throw new Error('连接测试失败，请检查配置信息')
+        throw new Error(
+          i18n.t(
+            'auto.apps.desktop.src.main.ipc.incremental.sync.ipc.L270',
+            '连接测试失败，请检查配置信息'
+          )
+        )
       }
       return true
     }

@@ -142,7 +142,10 @@ describe('flutter-legacy-paths.service', () => {
   it('reads original Flutter Windows shared_preferences path (com.baishou/baishou)', async () => {
     await writeMachineSharedPreferences({
       'flutter.user_personas': JSON.stringify({
-        默认身份: { 姓名: 'Anson', 职业: '全栈开发' }
+        默认身份: {
+          姓名: 'Anson',
+          职业: '全栈开发'
+        }
       }),
       'flutter.custom_storage_root': sourceDir
     })
