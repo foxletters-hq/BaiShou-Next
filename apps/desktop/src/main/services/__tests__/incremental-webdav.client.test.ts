@@ -74,4 +74,33 @@ describe('IncrementalWebDavClient.listFiles', () => {
 
     await expect(client.listFiles()).resolves.toEqual([])
   })
+
+  it('creates path prefix directory before listing', async () => {
+    mockClient.getDirectoryContents.mockResolvedValue([])
+
+    const client = new IncrementalWebDavClient('https://dav.example.com', 'u', 'p', 'memories_sync')
+    ;(client as any).client = mockClient
+
+    await client.listFiles()
+
+    expect(mockClient.createDirectory).toHaveBeenCalledWith('memories_sync')
+  })
+
+  it('creates nested path prefix segments before listing', async () => {
+    mockClient.getDirectoryContents.mockResolvedValue([])
+
+    const client = new IncrementalWebDavClient(
+      'https://dav.example.com',
+      'u',
+      'p',
+      'apps/baishou/sync'
+    )
+    ;(client as any).client = mockClient
+
+    await client.listFiles()
+
+    expect(mockClient.createDirectory).toHaveBeenCalledWith('apps')
+    expect(mockClient.createDirectory).toHaveBeenCalledWith('apps/baishou')
+    expect(mockClient.createDirectory).toHaveBeenCalledWith('apps/baishou/sync')
+  })
 })

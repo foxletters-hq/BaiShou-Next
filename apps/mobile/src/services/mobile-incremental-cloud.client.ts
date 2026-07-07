@@ -4,12 +4,17 @@ import {
   buildS3ObjectUrl,
   buildS3ObjectUrlWithQuery,
   fetchAllS3ListPages,
+  formatWebDavRequestError,
   INCREMENTAL_SYNC_CHUNK_SIZE,
+  isManagedIncrementalZipPath,
   limitExecute,
   normalizeS3BasePath,
+  parseWebDavPropfindEntries,
   s3FetchHeaders,
   signS3Request,
   SYNC_MANIFEST_FILENAME,
+  toRelativeWebDavPath,
+  WEBDAV_SHALLOW_LIST_CONCURRENCY,
   type S3SyncConfig
 } from '@baishou/shared'
 import * as ExpoFS from 'expo-file-system/legacy'
@@ -302,7 +307,7 @@ export class MobileIncrementalCloudClient {
         continuationToken
       })
       const response = await this.signAndFetch('GET', listUrl)
-      if (!response.ok) throw new Error(`S3 list failed: ${response.status}`)
+      if (!response.ok) throw new Error(`S3 列举失败: HTTP ${response.status} ${response.statusText}`)
       return response.text()
     })
 
@@ -322,44 +327,130 @@ export class MobileIncrementalCloudClient {
   }
 
   private async listWebDav(): Promise<IncrementalSyncRecord[]> {
-    const baseUrl = (this.config.webdavUrl || '').replace(/\/$/, '')
-    const basePath = this.config.path?.startsWith('/')
-      ? this.config.path
-      : `/${this.config.path || ''}`
-    const auth = `Basic ${btoa(`${this.config.accessKey}:${this.config.secretKey}`)}`
-    const response = await this.fetchWithAbort(`${baseUrl}${basePath}`, {
+    await this.ensureWebDavBasePath()
+
+    const records: IncrementalSyncRecord[] = []
+    const baseDir = this.basePath().replace(/\/$/, '')
+    const rootUrl = baseDir ? `${this.webdavBaseUrl()}/${baseDir}` : this.webdavBaseUrl()
+
+    try {
+      await this.collectWebDavShallow(rootUrl, records)
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e)
+      if (message.includes('HTTP 404')) return []
+      throw e
+    }
+
+    return records.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime())
+  }
+
+  /**
+   * 逐目录 Depth:1 PROPFIND，与桌面端 IncrementalWebDavClient 一致；
+   * 避免 Depth: infinity 在部分网盘/NAS 上返回 403。
+   */
+  private async collectWebDavShallow(
+    remoteUrl: string,
+    records: IncrementalSyncRecord[]
+  ): Promise<void> {
+    const normalizedCurrent = remoteUrl.replace(/\/$/, '')
+    let xml: string
+    try {
+      xml = await this.webdavPropfind(remoteUrl, '1')
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e)
+      if (message.includes('HTTP 404')) return
+      throw e
+    }
+
+    const subdirs: string[] = []
+    const basePrefix = this.basePath().replace(/\/$/, '')
+
+    for (const entry of parseWebDavPropfindEntries(xml)) {
+      const entryUrl = this.resolveWebDavUrl(entry.href).replace(/\/$/, '')
+
+      if (entry.isCollection) {
+        if (entryUrl !== normalizedCurrent) {
+          subdirs.push(entryUrl)
+        }
+        continue
+      }
+
+      const relativeName = toRelativeWebDavPath(entry.href, basePrefix)
+      if (!relativeName) continue
+
+      records.push({
+        filename: relativeName,
+        lastModified: new Date(),
+        sizeInBytes: 0,
+        managed: isManagedIncrementalZipPath(relativeName)
+      })
+    }
+
+    await limitExecute(subdirs, WEBDAV_SHALLOW_LIST_CONCURRENCY, async (dirUrl) => {
+      await this.collectWebDavShallow(dirUrl, records)
+    })
+  }
+
+  private webdavBaseUrl(): string {
+    let safeUrl = (this.config.webdavUrl || '').trim()
+    if (!safeUrl) safeUrl = 'http://localhost'
+    if (!safeUrl.startsWith('http://') && !safeUrl.startsWith('https://')) {
+      safeUrl = `https://${safeUrl}`
+    }
+    return safeUrl.replace(/\/$/, '')
+  }
+
+  private resolveWebDavUrl(href: string): string {
+    const decoded = decodeURIComponent(href.trim())
+    if (decoded.startsWith('http://') || decoded.startsWith('https://')) {
+      return decoded
+    }
+    if (decoded.startsWith('/')) {
+      const baseUrl = this.webdavBaseUrl()
+      const origin = new URL(baseUrl).origin
+      return `${origin}${decoded}`
+    }
+    return `${this.webdavBaseUrl()}/${decoded.replace(/^\//, '')}`
+  }
+
+  private async webdavPropfind(url: string, depth: '0' | '1'): Promise<string> {
+    const response = await this.fetchWithAbort(url, {
       method: 'PROPFIND',
       headers: {
-        Authorization: auth,
-        Depth: 'infinity',
+        Authorization: this.webdavAuth(),
+        Depth: depth,
         'Content-Type': 'application/xml'
       }
     })
-    if (!response.ok && response.status !== 404) {
-      throw new Error(`WebDAV PROPFIND failed: ${response.status}`)
+    if (!response.ok) {
+      throw new Error(formatWebDavRequestError('列举目录', response.status, response.statusText))
     }
-    if (response.status === 404) return []
-    const xml = await response.text()
-    const records: IncrementalSyncRecord[] = []
-    const hrefRegex = /<[^:]*:?href>([^<]+)<\/[^:]*:?href>/gi
-    let m: RegExpExecArray | null
-    const prefix = basePath.replace(/\/$/, '')
-    while ((m = hrefRegex.exec(xml))) {
-      const href = decodeURIComponent(m[1]!)
-      if (href.endsWith('/')) continue
-      let rel = href
-      const idx = rel.indexOf(prefix)
-      if (idx >= 0) rel = rel.slice(idx + prefix.length).replace(/^\//, '')
-      else rel = rel.split('/').pop() || rel
-      if (!rel || rel.includes('..')) continue
-      records.push({
-        filename: rel,
-        lastModified: new Date(),
-        sizeInBytes: 0,
-        managed: /^BaiShou_.*\.zip$/i.test(rel)
+    return response.text()
+  }
+
+  private async ensureWebDavBasePath(): Promise<void> {
+    const prefix = this.basePath().replace(/\/$/, '')
+    if (!prefix) return
+    await this.ensureWebDavPathSegments(prefix.split('/').filter(Boolean))
+  }
+
+  private async ensureWebDavPathSegments(segments: string[]): Promise<void> {
+    if (segments.length === 0) return
+
+    const baseUrl = this.webdavBaseUrl()
+    const auth = this.webdavAuth()
+    let current = ''
+    for (const segment of segments) {
+      current = current ? `${current}/${segment}` : segment
+      const res = await this.fetchWithAbort(`${baseUrl}/${current}`, {
+        method: 'MKCOL',
+        headers: { Authorization: auth }
       })
+      if (res.ok || res.status === 405 || res.status === 409) continue
+      throw new Error(
+        formatWebDavRequestError(`创建目录 ${current}`, res.status, res.statusText)
+      )
     }
-    return records
   }
 
   private async uploadS3(rel: string, localFilePath: string) {
@@ -788,30 +879,16 @@ export class MobileIncrementalCloudClient {
   }
 
   private webdavFileUrl(rel: string): string {
-    const baseUrl = (this.config.webdavUrl || '').replace(/\/$/, '')
     const remotePath = this.basePath() + rel
-    return `${baseUrl}/${remotePath.replace(/^\//, '')}`
+    return `${this.webdavBaseUrl()}/${remotePath.replace(/^\//, '')}`
   }
 
   /** WebDAV 需先创建父目录；S3 按对象 Key 直传，无需此步骤 */
   private async ensureWebDavDirs(rel: string): Promise<void> {
-    const baseUrl = (this.config.webdavUrl || '').replace(/\/$/, '')
-    const auth = this.webdavAuth()
     const remoteFilePath = (this.basePath() + rel).replace(/^\//, '')
     const parentPath = remoteFilePath.replace(/\/[^/]+$/, '')
     if (!parentPath) return
-
-    const segments = parentPath.split('/').filter(Boolean)
-    let current = ''
-    for (const segment of segments) {
-      current = current ? `${current}/${segment}` : segment
-      const res = await this.fetchWithAbort(`${baseUrl}/${current}`, {
-        method: 'MKCOL',
-        headers: { Authorization: auth }
-      })
-      if (res.ok || res.status === 405 || res.status === 409) continue
-      throw new Error(`WebDAV MKCOL failed for ${current}: ${res.status}`)
-    }
+    await this.ensureWebDavPathSegments(parentPath.split('/').filter(Boolean))
   }
 
   private async getWebDavRemoteSize(rel: string): Promise<number> {

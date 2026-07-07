@@ -94,6 +94,7 @@ export {
   parseWebDavPropfindEntries,
   toRelativeWebDavPath,
   isManagedIncrementalZipPath,
+  formatWebDavRequestError,
   type WebDavListEntry
 } from './utils/incremental-sync-webdav.util'
 export { resolveSyncDeviceId } from './utils/sync-device-id.util'

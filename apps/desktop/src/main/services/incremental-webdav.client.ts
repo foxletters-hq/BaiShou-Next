@@ -41,13 +41,24 @@ export class IncrementalWebDavClient implements ICloudSyncClient {
   }
 
   private async ensureDir(dirPath: string): Promise<void> {
-    const parts = dirPath.split('/').filter(Boolean)
+    const parts = dirPath.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean)
+    if (parts.length === 0) return
+
     let current = ''
     for (const part of parts) {
-      current += '/' + part
+      current = current ? `${current}/${part}` : part
       try {
         await this.client.createDirectory(current)
-      } catch {}
+      } catch {
+        // 目录已存在（部分服务器返回 405/409）
+      }
+    }
+  }
+
+  private async ensureBasePath(): Promise<void> {
+    const baseDir = this.basePath.replace(/\/$/, '')
+    if (baseDir) {
+      await this.ensureDir(baseDir)
     }
   }
 
@@ -85,8 +96,8 @@ export class IncrementalWebDavClient implements ICloudSyncClient {
   async uploadFile(localFilePath: string, remoteRelPath?: string): Promise<void> {
     const relativePath = remoteRelPath?.replace(/\\/g, '/') ?? this.relativePath(localFilePath)
     const remotePath = this.remotePath(relativePath)
-    const dir = path.dirname(remotePath)
-    if (dir !== this.basePath.slice(0, -1)) {
+    const dir = path.dirname(remotePath).replace(/\\/g, '/')
+    if (dir && dir !== '.') {
       await this.ensureDir(dir)
     }
 
@@ -203,6 +214,8 @@ export class IncrementalWebDavClient implements ICloudSyncClient {
 
   async listFiles(): Promise<SyncRecord[]> {
     const records: SyncRecord[] = []
+
+    await this.ensureBasePath()
 
     try {
       await this.collectFilesShallow(this.basePath.replace(/\/$/, '') || '/', records)

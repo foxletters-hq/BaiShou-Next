@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  formatWebDavRequestError,
   isManagedIncrementalZipPath,
   parseWebDavPropfindEntries,
   toRelativeWebDavPath
@@ -36,5 +37,11 @@ describe('incremental-sync-webdav.util', () => {
   it('detects managed incremental zip filenames', () => {
     expect(isManagedIncrementalZipPath('BaiShou_IncrementalSync_1.zip')).toBe(true)
     expect(isManagedIncrementalZipPath('Personal/Journals/a.md')).toBe(false)
+  })
+
+  it('formats WebDAV HTTP errors with actionable hints', () => {
+    expect(formatWebDavRequestError('列举目录', 403, 'Forbidden')).toContain('403')
+    expect(formatWebDavRequestError('列举目录', 403, 'Forbidden')).toContain('应用专用密码')
+    expect(formatWebDavRequestError('列举目录', 401)).toContain('用户名或密码错误')
   })
 })

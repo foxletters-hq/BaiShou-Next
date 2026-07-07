@@ -59,3 +59,17 @@ export function toRelativeWebDavPath(href: string, basePath: string): string | n
 export function isManagedIncrementalZipPath(relativePath: string): boolean {
   return /^BaiShou_.*\.zip$/i.test(relativePath)
 }
+
+/** 将 WebDAV HTTP 错误格式化为用户可读的同步失败说明 */
+export function formatWebDavRequestError(
+  action: string,
+  status: number,
+  statusText?: string
+): string {
+  const base = `WebDAV ${action}失败: HTTP ${status}${statusText ? ` ${statusText}` : ''}`
+  if (status === 401) return `${base}（用户名或密码错误）`
+  if (status === 403) return `${base}（请检查应用专用密码与目录读写权限）`
+  if (status === 404) return `${base}（路径前缀不存在或 URL 配置有误）`
+  if (status === 405) return `${base}（请确认服务端支持 WebDAV 且路径前缀可访问）`
+  return base
+}

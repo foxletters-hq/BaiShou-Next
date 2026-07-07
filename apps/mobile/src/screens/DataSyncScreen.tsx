@@ -219,7 +219,7 @@ export const DataSyncScreen: React.FC = () => {
         setCloudRecords([])
         lastFetchedConfigKeyRef.current = syncConfigKey
 
-        if (msg.includes('403')) {
+        if (msg.includes('403') && syncConfig.target !== 'webdav') {
           logger.warn('加载云端记录失败（S3 权限或密钥错误）', msg)
           const errorText = tRef.current(
             'data_sync.s3_list_forbidden',
@@ -232,7 +232,8 @@ export const DataSyncScreen: React.FC = () => {
           }
         } else {
           logger.error('加载云端记录失败', e instanceof Error ? e : String(e))
-          const errorText = tRef.current('data_sync.load_records_failed')
+          const errorText =
+            msg || tRef.current('data_sync.load_records_failed', '加载云端记录失败')
           recordsFetchErrorRef.current = errorText
           setRecordsFetchError(errorText)
           if (options?.force) {

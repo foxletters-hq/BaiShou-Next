@@ -96,21 +96,14 @@ function isConfigReady(config: S3SyncConfig): boolean {
   return isIncrementalSyncReady(config)
 }
 
-async function testWebDav(config: S3SyncConfig): Promise<void> {
-  const baseUrl = (config.webdavUrl || '').replace(/\/$/, '')
-  const basePath = config.path?.startsWith('/') ? config.path : `/${config.path || ''}`
-  const auth = `Basic ${btoa(`${config.accessKey}:${config.secretKey}`)}`
-  const response = await fetch(`${baseUrl}${basePath}`, {
-    method: 'PROPFIND',
-    headers: {
-      Authorization: auth,
-      Depth: '0',
-      'Content-Type': 'application/xml'
-    }
-  })
-  if (!response.ok && response.status !== 404) {
-    throw new Error(`WebDAV PROPFIND failed: ${response.status} ${response.statusText}`)
-  }
+async function testWebDav(
+  config: S3SyncConfig,
+  fileSystem: IFileSystem,
+  syncRoot: string
+): Promise<void> {
+  const client = new MobileIncrementalCloudClient(config, fileSystem)
+  client.setVaultPath(syncRoot)
+  await client.listFiles()
 }
 
 async function testS3(config: S3SyncConfig): Promise<void> {
@@ -311,7 +304,8 @@ export class MobileIncrementalSyncService {
   async testConnection(configOverride?: Partial<S3SyncConfig>): Promise<void> {
     const config = normalizeVaultConfig({ ...(await this.getConfig()), ...configOverride })
     if (config.target === 'webdav') {
-      await testWebDav(config)
+      const syncRoot = await this.pathService.getRootDirectory()
+      await testWebDav(config, this.fileSystem, syncRoot)
     } else {
       await testS3(config)
     }
@@ -441,7 +435,8 @@ export class MobileIncrementalSyncService {
 
     try {
       if (config.target === 'webdav') {
-        await testWebDav(config)
+        const syncRoot = await this.pathService.getRootDirectory()
+        await testWebDav(config, this.fileSystem, syncRoot)
         onProgress?.({ current: 2, total: 3, statusText: `上传 ${remoteName}...` })
         await uploadWebDav(config, zipPath, remoteName)
       } else {
