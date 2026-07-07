@@ -127,8 +127,22 @@
 ## 6. 自测与提交
 
 ```bash
-pnpm ci:check   # 与 GitHub CI 对齐，在最终推送或提交 PR 前必跑（无须在每次小改动后跑）
+pnpm ci:check   # PR / 发版前必跑（无须在每次小改动后跑）
 ```
+
+`pnpm ci:check` 覆盖 typecheck、测试、lint、格式化、sync 与缓存审计；`pnpm lint` 与 CI 使用同一套 ESLint 配置。
+
+### 6.1 ESLint 策略
+
+| 级别      | 规则示例                                                   | 行为                                    |
+| --------- | ---------------------------------------------------------- | --------------------------------------- |
+| **error** | `no-unused-vars`、Hooks、`no-restricted-imports`（mobile） | 必须修复，否则 `pnpm lint` / CI 失败    |
+| **warn**  | `i18n-chinese/no-hardcoded-chinese`、`max-lines`           | 显示但不单独挡 CI；**总数不得超过基线** |
+| **off**   | `no-explicit-any`（暂）                                    | 由 TypeScript strict 与审查兜底         |
+
+- **warning 预算**：`scripts/lint-warning-baseline.json` 记录 desktop / mobile 当前上限；`pnpm lint` 使用 `--max-warnings`，**禁止净增 warning**。
+- 修掉一批 warning 后执行 `pnpm lint:baseline -- --write` 下调基线并提交。
+- 新代码：尽量不新增 warning；中文 UI 文案优先 `t()`，避免加重 i18n 债。
 
 **Commit 格式**（细则见 Submit Rule）：
 
@@ -160,6 +174,7 @@ refactor(ui-web): 按职责拆分 Agent 侧栏，保持单一切换入口
 
 - [ ] 测试先于或与实现同 PR；覆盖正常/边界/错误路径
 - [ ] 最终提交/推送前 `pnpm ci:check` 通过
+- [ ] 未净增 ESLint warning（见 `scripts/lint-warning-baseline.json`）
 - [ ] 覆盖率未明显低于包目标
 
 **提交**

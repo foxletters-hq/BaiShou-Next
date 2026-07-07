@@ -33,20 +33,22 @@
 pnpm ci:check
 ```
 
-无需手写 `cd`：命令会自动定位 Git 仓库根目录，再按与 GitHub [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) 相同的顺序执行下列步骤；任一步失败会立即退出。
+无需手写 `cd`：命令会自动定位 Git 仓库根目录，再执行与 GitHub [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) 等价的完整检查；任一步失败会立即退出。
 
-| 步骤 | 实际命令                                                                                      |
-| ---- | --------------------------------------------------------------------------------------------- |
-| 1    | `pnpm install`                                                                                |
-| 2    | `pnpm typecheck`                                                                              |
-| 3    | `pnpm turbo run test --continue`                                                              |
-| 4    | `pnpm --filter @baishou/desktop exec eslint -c ../../eslint.desktop.ci.mjs . --cache --quiet` |
-| 5    | `pnpm --filter @baishou/mobile exec eslint -c ../../eslint.mobile.ci.mjs . --cache --quiet`   |
-| 6    | `pnpm format:check`                                                                           |
+| 步骤 | 实际命令                                               |
+| ---- | ------------------------------------------------------ |
+| 1    | `pnpm install --frozen-lockfile`                       |
+| 2    | `pnpm sync:check`                                      |
+| 3    | `pnpm typecheck`                                       |
+| 4    | `pnpm audit:cache-invalidation`                        |
+| 5    | `pnpm test`                                            |
+| 6    | `pnpm --filter @baishou/mobile run build:diary-editor` |
+| 7    | `pnpm lint`                                            |
+| 8    | `pnpm format:check`                                    |
 
 实现入口：`package.json` 的 `ci:check` → `scripts/ci-check-runner.mjs` → `scripts/ci-check.ps1`（Windows）或 `scripts/ci-check.sh`（macOS/Linux）。需要时可打开这些文件核对，不是黑盒。
 
-全部通过后再开 PR。
+全部通过后再开 PR。`pnpm lint` 与 CI 使用同一套 ESLint 配置（`apps/*/eslint.config.mjs`）；warning 会显示但不阻断，error 会失败。
 
 ### 1.1 常见问题
 

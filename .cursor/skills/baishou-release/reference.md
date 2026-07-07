@@ -2,20 +2,20 @@
 
 ## 关键路径
 
-| 用途 | 路径 / 命令 |
-|------|-------------|
-| 桌面版本清单 | `apps/desktop/src/version.json` |
-| 移动版本清单 | `apps/mobile/src/version.json`（含 `versionCode`） |
-| Release 说明草稿 | `releases/notes/{mobile\|desktop}-{version}.md` |
-| GitHub 自动 Release 配置 | `.github/release.yml` |
-| 提取提交 / 贡献者 | `pnpm release:notes -- --platform mobile --version 1.2.9` |
-| 预览 Release 正文 | `node scripts/compose-release-body.mjs` |
-| 版本同步脚本 | `scripts/sync-app-version.mjs` |
-| 打 tag 脚本 | `scripts/release-tag.mjs` → `pnpm release:tag` |
-| 本地 CI | `pnpm ci:check` → `scripts/ci-check.ps1` / `ci-check.sh` |
-| CI 发版工作流 | `.github/workflows/release.yml` |
-| 下载清单 | `releases/channel.json` |
-| 官网 | https://baishou.foxletters.com |
+| 用途                     | 路径 / 命令                                               |
+| ------------------------ | --------------------------------------------------------- |
+| 桌面版本清单             | `apps/desktop/src/version.json`                           |
+| 移动版本清单             | `apps/mobile/src/version.json`（含 `versionCode`）        |
+| Release 说明草稿         | `releases/notes/{mobile\|desktop}-{version}.md`           |
+| GitHub 自动 Release 配置 | `.github/release.yml`                                     |
+| 提取提交 / 贡献者        | `pnpm release:notes -- --platform mobile --version 1.2.9` |
+| 预览 Release 正文        | `node scripts/compose-release-body.mjs`                   |
+| 版本同步脚本             | `scripts/sync-app-version.mjs`                            |
+| 打 tag 脚本              | `scripts/release-tag.mjs` → `pnpm release:tag`            |
+| 本地 CI                  | `pnpm ci:check` → `scripts/ci-check.ps1` / `ci-check.sh`  |
+| CI 发版工作流            | `.github/workflows/release.yml`                           |
+| 下载清单                 | `releases/channel.json`                                   |
+| 官网                     | https://baishou.foxletters.com                            |
 
 ## Tag 与 CI
 
