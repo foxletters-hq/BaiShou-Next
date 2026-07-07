@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import {
   isValidNextArchiveManifestContent,
   type ImportResult,
@@ -63,7 +64,9 @@ export function assertSafeSnapshotFilename(filename: string): void {
     !filename.startsWith('snapshot_') ||
     !filename.endsWith('.zip')
   ) {
-    throw new Error('无效的快照文件名')
+    throw new Error(
+      i18n.t('auto.apps.mobile.src.services.archive.guards.util.L66', '无效的快照文件名')
+    )
   }
 }
 
@@ -90,13 +93,25 @@ export function validateArchiveExtractPayload(options: {
 }): void {
   if (options.isFlutterLegacyZip) return
   if (options.isEmpty) {
-    throw new Error('备份包为空，无法导入')
+    throw new Error(
+      i18n.t('auto.apps.mobile.src.services.archive.guards.util.L93', '备份包为空，无法导入')
+    )
   }
   if (!options.hasValidManifest) {
-    throw new Error('不是有效的 BaiShou 备份包：缺少或无效的 manifest.json')
+    throw new Error(
+      i18n.t(
+        'auto.apps.mobile.src.services.archive.guards.util.L96',
+        '不是有效的 BaiShou 备份包：缺少或无效的 manifest.json'
+      )
+    )
   }
   if (!options.hasDatabase && !options.hasVaultRegistry && !options.hasVaultDirectory) {
-    throw new Error('备份包格式无效：缺少数据库或工作区数据')
+    throw new Error(
+      i18n.t(
+        'auto.apps.mobile.src.services.archive.guards.util.L99',
+        '备份包格式无效：缺少数据库或工作区数据'
+      )
+    )
   }
 }
 
@@ -134,7 +149,9 @@ export function formatArchiveImportFailureMessage(error: unknown, snapshotPath?:
 
 export function formatArchiveExportErrorMessage(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error)
-  return message.trim() || '未知错误'
+  return (
+    message.trim() || i18n.t('auto.apps.mobile.src.services.archive.guards.util.L137', '未知错误')
+  )
 }
 
 /** 超过此大小的 ZIP 导入时跳过导入前保护快照，避免先全量导出再导入导致长时间无响应 */
@@ -209,28 +226,64 @@ export interface ArchiveImportProgress {
 export type ArchiveImportProgressCallback = (progress: ArchiveImportProgress) => void
 
 const ARCHIVE_IMPORT_STAGE_MESSAGES: Record<ArchiveImportStage, string> = {
-  preparing: '正在准备导入…',
-  reading_file: '正在读取备份文件…',
-  snapshot: '正在创建保护快照…',
-  unpacking: '正在解压备份包…',
-  validating: '正在校验备份内容…',
-  migrating_legacy: '正在迁移原版数据…',
-  restoring_files: '正在恢复工作区文件…',
-  loading_database: '正在加载数据库…',
-  rebuilding_index: '正在重建索引…',
-  finishing: '即将完成…',
-  succeeded: '导入成功',
-  failed: '导入失败'
+  preparing: i18n.t('auto.apps.mobile.src.services.archive.guards.util.L212', '正在准备导入…'),
+  reading_file: i18n.t(
+    'auto.apps.mobile.src.services.archive.guards.util.L213',
+    '正在读取备份文件…'
+  ),
+  snapshot: i18n.t('auto.apps.mobile.src.services.archive.guards.util.L214', '正在创建保护快照…'),
+  unpacking: i18n.t('auto.apps.mobile.src.services.archive.guards.util.L215', '正在解压备份包…'),
+  validating: i18n.t('auto.apps.mobile.src.services.archive.guards.util.L216', '正在校验备份内容…'),
+  migrating_legacy: i18n.t(
+    'auto.apps.mobile.src.services.archive.guards.util.L217',
+    '正在迁移原版数据…'
+  ),
+  restoring_files: i18n.t(
+    'auto.apps.mobile.src.services.archive.guards.util.L218',
+    '正在恢复工作区文件…'
+  ),
+  loading_database: i18n.t(
+    'auto.apps.mobile.src.services.archive.guards.util.L219',
+    '正在加载数据库…'
+  ),
+  rebuilding_index: i18n.t(
+    'auto.apps.mobile.src.services.archive.guards.util.L220',
+    '正在重建索引…'
+  ),
+  finishing: i18n.t('auto.apps.mobile.src.services.archive.guards.util.L221', '即将完成…'),
+  succeeded: i18n.t('auto.apps.mobile.src.services.archive.guards.util.L222', '导入成功'),
+  failed: i18n.t('auto.apps.mobile.src.services.archive.guards.util.L223', '导入失败')
 }
 
 const ARCHIVE_IMPORT_STAGE_HINTS: Partial<Record<ArchiveImportStage, string>> = {
-  reading_file: '大型备份会先复制到应用缓存，请稍候',
-  unpacking: '大型备份解压较慢，请保持应用在前台并确保存储空间充足',
-  migrating_legacy: '正在合并数据库与工作区文件，请勿关闭应用',
-  restoring_files: '正在复制工作区与附件，请勿关闭应用',
-  rebuilding_index: '日记索引将在后台继续构建，列表可能稍后才会完整',
-  succeeded: '数据已写入，可继续使用应用',
-  failed: '请检查备份文件是否完整，或尝试重新导入'
+  reading_file: i18n.t(
+    'auto.apps.mobile.src.services.archive.guards.util.L227',
+    '大型备份会先复制到应用缓存，请稍候'
+  ),
+  unpacking: i18n.t(
+    'auto.apps.mobile.src.services.archive.guards.util.L228',
+    '大型备份解压较慢，请保持应用在前台并确保存储空间充足'
+  ),
+  migrating_legacy: i18n.t(
+    'auto.apps.mobile.src.services.archive.guards.util.L229',
+    '正在合并数据库与工作区文件，请勿关闭应用'
+  ),
+  restoring_files: i18n.t(
+    'auto.apps.mobile.src.services.archive.guards.util.L230',
+    '正在复制工作区与附件，请勿关闭应用'
+  ),
+  rebuilding_index: i18n.t(
+    'auto.apps.mobile.src.services.archive.guards.util.L231',
+    '日记索引将在后台继续构建，列表可能稍后才会完整'
+  ),
+  succeeded: i18n.t(
+    'auto.apps.mobile.src.services.archive.guards.util.L232',
+    '数据已写入，可继续使用应用'
+  ),
+  failed: i18n.t(
+    'auto.apps.mobile.src.services.archive.guards.util.L233',
+    '请检查备份文件是否完整，或尝试重新导入'
+  )
 }
 
 const ARCHIVE_IMPORT_STAGE_BASE_PERCENT: Record<ArchiveImportStage, number> = {

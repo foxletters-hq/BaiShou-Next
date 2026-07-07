@@ -1,0 +1,284 @@
+import type { SyncManifest, S3SyncConfig, IncrementalSyncRunOptions } from '@baishou/shared'
+import {
+  assertBidirectionalSyncDivergenceAllowed,
+  finalizeIncrementalSyncManifest,
+  getSyncManifestRemovedMap,
+  limitExecute,
+  normalizeSyncManifest,
+  resolveSyncMergeDecisions,
+  threeWayMerge
+} from '@baishou/shared'
+import { MobileIncrementalCloudClient } from './mobile-incremental-cloud.client'
+import { throwIfIncrementalSyncAborted } from './mobile-incremental-sync-abort.util'
+import { sortSyncDecisionsBySizeAsc } from './mobile-incremental-sync-order.util'
+import { normalizeSyncFilePath } from './android-external-fs'
+import { clearIncrementalSyncSession } from './mobile-incremental-sync-session.util'
+import { resolveSyncFileConcurrencyFromDecisions } from './mobile-incremental-sync-progress.util'
+import type {
+  MobileIncrementalExecutionContext,
+  MobileIncrementalProgress,
+  MobileIncrementalSyncOutcome
+} from './mobile-incremental-engine.types'
+import { SYNC_ACTIVITY_STATUS } from './mobile-incremental-engine-transfer.helpers'
+import type { MobileIncrementalEngineWorker } from './mobile-incremental-engine.worker'
+
+type IncrementalProgressCallback = (progress: MobileIncrementalProgress) => void
+
+function mapDecisionProgress(
+  completed: number,
+  total: number,
+  d: ReturnType<typeof threeWayMerge>[number]
+): MobileIncrementalProgress {
+  const base: MobileIncrementalProgress = {
+    phase: 'syncing',
+    current: completed,
+    total,
+    fileName: d.filePath
+  }
+  switch (d.type) {
+    case 'upload':
+      return { ...base, action: 'upload' }
+    case 'download':
+      return { ...base, action: 'download' }
+    case 'delete-remote':
+    case 'delete-local':
+      return { ...base, action: 'delete' }
+    case 'skip':
+      return { ...base, action: 'skip' }
+    case 'conflict-resolved':
+      return { ...base, action: d.direction === 'upload' ? 'upload' : 'download' }
+    default:
+      return base
+  }
+}
+
+export async function runSyncThreeWay(
+  worker: MobileIncrementalEngineWorker,
+  config: S3SyncConfig,
+  onProgress?: IncrementalProgressCallback,
+  runOptions?: IncrementalSyncRunOptions,
+  execution?: MobileIncrementalExecutionContext
+): Promise<MobileIncrementalSyncOutcome> {
+  const syncRoot = await worker.syncRoot()
+  worker.host.invalidateExternalSyncMounts()
+  const reusedLocalManifest = worker.host.takePendingSyncLocalManifest()
+  const reusedRemoteManifest = worker.host.takePendingSyncRemoteManifest()
+  const metaDir = await worker.syncMetaDir()
+  const client = new MobileIncrementalCloudClient(config, worker.host.fileSystem)
+  client.setVaultPath(syncRoot)
+  client.setAbortSignal(execution?.signal)
+
+  onProgress?.({ phase: 'scanning', current: 0, total: 0 })
+  const localManifest =
+    reusedLocalManifest ??
+    (await worker.buildLocalManifest((current, total, fileName) => {
+      onProgress?.({ phase: 'scanning', current, total, fileName })
+    }))
+
+  onProgress?.({ phase: 'comparing', current: 0, total: 1 })
+  const remoteManifest =
+    reusedRemoteManifest ??
+    (await worker.getRemoteManifest(client, (current, total, fileName) => {
+      onProgress?.({ phase: 'comparing', current, total, fileName })
+    }))
+  onProgress?.({ phase: 'comparing', current: 1, total: 1 })
+  const storageHistory = await worker.getSyncStorageHistoryState(config)
+  assertBidirectionalSyncDivergenceAllowed(localManifest, remoteManifest, config, {
+    storageHistory,
+    highDivergenceConfirmed: runOptions?.highDivergenceConfirmed
+  })
+  const ancestorSnapshot = await worker.loadRemoteSnapshot(config)
+  const previousLocalManifest = await worker
+    .readLocalManifestFile()
+    .catch(() => worker.emptyManifest())
+
+  const decisions = resolveSyncMergeDecisions(
+    threeWayMerge(localManifest, remoteManifest, ancestorSnapshot),
+    localManifest,
+    remoteManifest,
+    ancestorSnapshot,
+    previousLocalManifest,
+    { deletePropagationChoice: runOptions?.deletePropagationChoice }
+  )
+
+  const sortedDecisions = sortSyncDecisionsBySizeAsc(decisions)
+  const totalDecisions = sortedDecisions.length
+  const sessionStartedAt = Date.now()
+  await worker.touchSyncSession(metaDir, 'sync', totalDecisions, 0)
+
+  let uploaded = 0
+  let downloaded = 0
+  let skipped = 0
+  let deletedRemote = 0
+  let deletedLocal = 0
+  const conflicted: string[] = []
+  let workingManifest: SyncManifest = normalizeSyncManifest({
+    ...localManifest,
+    files: { ...localManifest.files },
+    removed: { ...getSyncManifestRemovedMap(remoteManifest) }
+  })
+
+  const fileConcurrency = resolveSyncFileConcurrencyFromDecisions(
+    sortedDecisions,
+    config.fileConcurrency
+  )
+  const progressState = { completed: 0 }
+  const signal = execution?.signal
+  const inFlight = new Map<
+    string,
+    { relPath: string; action: MobileIncrementalProgress['action'] }
+  >()
+  const getFileBytes = worker.bindTransferProgress(
+    client,
+    onProgress,
+    () => progressState.completed,
+    totalDecisions,
+    inFlight
+  )
+  const checkpoint = worker.createCheckpointRuntime(metaDir, client, config)
+  const manifestCommitQueue = worker.host.manifestCommitQueue
+
+  await limitExecute(sortedDecisions, fileConcurrency, async (d) => {
+    throwIfIncrementalSyncAborted(signal)
+
+    const resolveAction = (): MobileIncrementalProgress['action'] => {
+      if (d.type === 'upload' || (d.type === 'conflict-resolved' && d.direction === 'upload')) {
+        return 'upload'
+      }
+      if (d.type === 'download' || (d.type === 'conflict-resolved' && d.direction === 'download')) {
+        return 'download'
+      }
+      if (d.type === 'delete-remote' || d.type === 'delete-local') return 'delete'
+      if (d.type === 'skip') return 'skip'
+      return undefined
+    }
+
+    const fullPath = await worker.resolveSyncFullPath(syncRoot, d.filePath)
+    const action = resolveAction()
+    if (action === 'upload' || action === 'download') {
+      worker.trackInFlightTransfer(inFlight, fullPath, d.filePath, action)
+      worker.emitFileTransferStart(
+        onProgress,
+        progressState.completed,
+        totalDecisions,
+        d.filePath,
+        action,
+        d.size
+      )
+    }
+
+    let mutated = false
+    try {
+      switch (d.type) {
+        case 'upload':
+          await client.uploadFile(fullPath, d.filePath)
+          uploaded++
+          mutated = true
+          break
+        case 'download':
+          if (await worker.downloadSyncFile(client, d.filePath, fullPath, d.size)) {
+            downloaded++
+            mutated = true
+          }
+          break
+        case 'delete-remote':
+          await client.deleteFile(d.filePath)
+          deletedRemote++
+          mutated = true
+          break
+        case 'delete-local':
+          await worker.host.fileSystem.unlink(fullPath)
+          deletedLocal++
+          mutated = true
+          break
+        case 'conflict-resolved':
+          conflicted.push(d.filePath)
+          if (d.direction === 'upload') {
+            await worker.backupLocalFile(syncRoot, d.filePath)
+            await client.uploadFile(fullPath, d.filePath)
+            uploaded++
+          } else {
+            await worker.backupLocalFile(syncRoot, d.filePath)
+            if (await worker.downloadSyncFile(client, d.filePath, fullPath, d.size)) {
+              downloaded++
+            }
+          }
+          mutated = true
+          break
+        case 'skip':
+          skipped++
+          break
+      }
+    } finally {
+      inFlight.delete(fullPath)
+      inFlight.delete(normalizeSyncFilePath(fullPath))
+    }
+
+    if (mutated) {
+      const bytes = getFileBytes(d.filePath)
+      onProgress?.({
+        phase: 'syncing',
+        current: progressState.completed,
+        total: totalDecisions,
+        fileName: d.filePath,
+        action,
+        fileBytesDone: bytes?.done,
+        fileBytesTotal: bytes?.total,
+        statusText: SYNC_ACTIVITY_STATUS.checkpointing
+      })
+      await manifestCommitQueue.run(async () => {
+        workingManifest = await worker.applyDecisionToManifest(workingManifest, d, syncRoot)
+        await checkpoint.afterMutation(workingManifest)
+      })
+    }
+
+    progressState.completed++
+    await checkpoint.afterDecisionProgress({
+      metaDir,
+      mode: 'sync',
+      total: totalDecisions,
+      completed: progressState.completed,
+      lastFile: d.filePath,
+      startedAt: sessionStartedAt
+    })
+    if (
+      d.type !== 'skip' ||
+      progressState.completed === totalDecisions ||
+      progressState.completed % 24 === 0
+    ) {
+      onProgress?.(mapDecisionProgress(progressState.completed, totalDecisions, d))
+    }
+  })
+
+  client.setTransferProgressCallback(undefined)
+  client.setTransferActivityCallback(undefined)
+  const scanned = await worker.buildLocalManifest()
+  const finalManifest = finalizeIncrementalSyncManifest({
+    scanned,
+    baselineRemote: remoteManifest,
+    decisions: sortedDecisions,
+    deviceId: worker.host.deviceId
+  })
+  await checkpoint.finalize(finalManifest, {
+    metaDir,
+    mode: 'sync',
+    total: totalDecisions,
+    completed: progressState.completed,
+    lastFile: sortedDecisions[totalDecisions - 1]?.filePath,
+    startedAt: sessionStartedAt
+  })
+  worker.host.setLastConflicts(conflicted)
+  await clearIncrementalSyncSession(worker.host.fileSystem, metaDir)
+  onProgress?.({ phase: 'finalizing', current: 1, total: 1 })
+
+  return {
+    uploaded,
+    downloaded,
+    conflicts: conflicted.length,
+    skipped,
+    deletedRemote,
+    deletedLocal,
+    failed: 0,
+    failedPaths: []
+  }
+}

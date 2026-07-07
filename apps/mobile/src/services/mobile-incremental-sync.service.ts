@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import {
   buildS3ListUrl,
   buildS3ObjectUrl,
@@ -322,7 +323,12 @@ export class MobileIncrementalSyncService {
   ): Promise<IncrementalSyncPlanPreview> {
     const config = await this.getConfig()
     if (!isConfigReady(config)) {
-      throw new Error('增量同步未配置或已禁用')
+      throw new Error(
+        i18n.t(
+          'auto.apps.mobile.src.services.mobile.incremental.sync.service.L331',
+          '增量同步未配置或已禁用'
+        )
+      )
     }
     return this.engine.planSync(config, context, runOptions, (progress) => onProgress?.(progress))
   }
@@ -380,7 +386,12 @@ export class MobileIncrementalSyncService {
   ): Promise<IncrementalSyncResult> {
     const config = await this.getConfig()
     if (!isConfigReady(config)) {
-      throw new Error('增量同步未配置或已禁用')
+      throw new Error(
+        i18n.t(
+          'auto.apps.mobile.src.services.mobile.incremental.sync.service.L389',
+          '增量同步未配置或已禁用'
+        )
+      )
     }
 
     try {
@@ -421,17 +432,41 @@ export class MobileIncrementalSyncService {
   ): Promise<IncrementalSyncResult> {
     const config = await this.getConfig()
     if (!isConfigReady(config)) {
-      throw new Error('增量同步未配置或已禁用')
+      throw new Error(
+        i18n.t(
+          'auto.apps.mobile.src.services.mobile.incremental.sync.service.L430',
+          '增量同步未配置或已禁用'
+        )
+      )
     }
 
-    onProgress?.({ current: 0, total: 3, statusText: '打包数据文件...' })
+    onProgress?.({
+      current: 0,
+      total: 3,
+      statusText: i18n.t(
+        'auto.apps.mobile.src.services.mobile.incremental.sync.service.L433',
+        '打包数据文件...'
+      )
+    })
     const zipPath = await this.archiveService.exportToTempFile()
     if (!zipPath) {
-      throw new Error('生成 vault 归档失败')
+      throw new Error(
+        i18n.t(
+          'auto.apps.mobile.src.services.mobile.incremental.sync.service.L436',
+          '生成 vault 归档失败'
+        )
+      )
     }
 
     const remoteName = `BaiShou_IncrementalSync_${Date.now()}.zip`
-    onProgress?.({ current: 1, total: 3, statusText: '连接远端...' })
+    onProgress?.({
+      current: 1,
+      total: 3,
+      statusText: i18n.t(
+        'auto.apps.mobile.src.services.mobile.incremental.sync.service.L440',
+        '连接远端...'
+      )
+    })
 
     try {
       if (config.target === 'webdav') {
@@ -452,7 +487,14 @@ export class MobileIncrementalSyncService {
       }
     }
 
-    onProgress?.({ current: 3, total: 3, statusText: '完成' })
+    onProgress?.({
+      current: 3,
+      total: 3,
+      statusText: i18n.t(
+        'auto.apps.mobile.src.services.mobile.incremental.sync.service.L460',
+        '完成'
+      )
+    })
 
     return { uploaded: 1, downloaded: 0, conflicts: 0, skipped: 0, failed: 0 }
   }

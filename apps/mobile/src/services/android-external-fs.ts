@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { Platform } from 'react-native'
 import {
   externalCopy,
@@ -22,8 +23,10 @@ import {
   externalMd5Hex
 } from 'expo-baishou-server'
 
-export const EXTERNAL_STORAGE_REBUILD_HINT =
+export const EXTERNAL_STORAGE_REBUILD_HINT = i18n.t(
+  'auto.apps.mobile.src.services.android.external.fs.L26',
   '无法写入外部 BaiShou_Root：当前 APK 未包含原生存储模块或版本过旧。请执行 pnpm dev:mobile:clear 重新编译安装（勿用 Expo Go），并在系统设置中开启「管理所有文件」。'
+)
 
 /** 将绝对路径各段编码为合法 file:// URI（避免 % # 等触发 Java URI 解析错误） */
 function encodeAbsolutePathForFileUri(absPath: string): string {

@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import * as DocumentPicker from 'expo-document-picker'
 import { Platform } from 'react-native'
 import type { IFileSystem } from '@baishou/core-mobile'
@@ -80,12 +81,22 @@ async function readRefAudioBase64FromDisk(fileSystem: IFileSystem, path: string)
 
   const base64 = (await fileSystem.readFile(normalizedPath, 'base64')).trim()
   if (!base64) {
-    throw new Error('参考音频文件为空或读取失败')
+    throw new Error(
+      i18n.t(
+        'auto.apps.mobile.src.services.mobile.tts.ref.audio.service.L83',
+        '参考音频文件为空或读取失败'
+      )
+    )
   }
   assertSupportedRefAudioBase64(base64, normalizedPath)
   const approxBytes = Math.floor((base64.length * 3) / 4)
   if (approxBytes > MAX_REF_AUDIO_BYTES) {
-    throw new Error('参考音频文件不能超过 10MB')
+    throw new Error(
+      i18n.t(
+        'auto.apps.mobile.src.services.mobile.tts.ref.audio.service.L88',
+        '参考音频文件不能超过 10MB'
+      )
+    )
   }
   cacheRefAudioBase64(normalizedPath, base64)
   console.info('[MiMo TTS] ref_audio_read', {
@@ -131,10 +142,20 @@ export async function pickAndStoreTtsRefAudio(
   const asset = pick.assets[0]
   const sourceName = asset.name || asset.uri.split('/').pop() || 'ref-audio.mp3'
   if (!isMimoVoiceCloneAudioExtension(sourceName)) {
-    throw new Error('参考音频仅支持 wav/mp3 格式')
+    throw new Error(
+      i18n.t(
+        'auto.apps.mobile.src.services.mobile.tts.ref.audio.service.L134',
+        '参考音频仅支持 wav/mp3 格式'
+      )
+    )
   }
   if (asset.size != null && asset.size > MAX_REF_AUDIO_BYTES) {
-    throw new Error('参考音频文件不能超过 10MB')
+    throw new Error(
+      i18n.t(
+        'auto.apps.mobile.src.services.mobile.tts.ref.audio.service.L137',
+        '参考音频文件不能超过 10MB'
+      )
+    )
   }
 
   const rootDir = await pathService.getRootDirectory()
@@ -145,11 +166,18 @@ export async function pickAndStoreTtsRefAudio(
 
   const stat = await fileSystem.stat(destPath)
   if (!stat.isFile) {
-    throw new Error('参考音频保存失败')
+    throw new Error(
+      i18n.t('auto.apps.mobile.src.services.mobile.tts.ref.audio.service.L148', '参考音频保存失败')
+    )
   }
   if (stat.size != null && stat.size > MAX_REF_AUDIO_BYTES) {
     await fileSystem.unlink(destPath).catch(() => undefined)
-    throw new Error('参考音频文件不能超过 10MB')
+    throw new Error(
+      i18n.t(
+        'auto.apps.mobile.src.services.mobile.tts.ref.audio.service.L152',
+        '参考音频文件不能超过 10MB'
+      )
+    )
   }
 
   const normalizedPath = normalizeRefAudioPath(destPath)

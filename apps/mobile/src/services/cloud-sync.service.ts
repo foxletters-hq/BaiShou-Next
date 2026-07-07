@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { FileSystemUploadType, downloadAsync, uploadAsync } from './mobile-http-transfer'
 import { getAppCacheDirectory } from './mobile-app-paths'
 import {
@@ -380,7 +381,13 @@ export class MobileCloudSyncService {
 
   async syncNow(config: SyncConfig): Promise<{ success: boolean; message: string }> {
     if (config.target === 'local') {
-      return { success: false, message: '当前同步目标为本地，无需云同步' }
+      return {
+        success: false,
+        message: i18n.t(
+          'auto.apps.mobile.src.services.cloud.sync.service.L383',
+          '当前同步目标为本地，无需云同步'
+        )
+      }
     }
 
     try {
@@ -389,7 +396,13 @@ export class MobileCloudSyncService {
       // 1. 生成临时 ZIP
       const zipPath = await this.archiveService.exportToTempFile()
       if (!zipPath) {
-        return { success: false, message: '生成备份 ZIP 失败' }
+        return {
+          success: false,
+          message: i18n.t(
+            'auto.apps.mobile.src.services.cloud.sync.service.L392',
+            '生成备份 ZIP 失败'
+          )
+        }
       }
 
       // 2. 上传
@@ -405,7 +418,10 @@ export class MobileCloudSyncService {
       // 4. 超限清理
       await this.autoCleanOldBackups(client, config.maxBackupCount)
 
-      return { success: true, message: '同步成功' }
+      return {
+        success: true,
+        message: i18n.t('auto.apps.mobile.src.services.cloud.sync.service.L408', '同步成功')
+      }
     } catch (e: any) {
       return { success: false, message: `同步失败: ${e.message || e}` }
     }
@@ -445,7 +461,13 @@ export class MobileCloudSyncService {
           message: `云端恢复成功${countMsg}`
         }
       } else {
-        return { success: false, message: '导入完成但未检测到文件' }
+        return {
+          success: false,
+          message: i18n.t(
+            'auto.apps.mobile.src.services.cloud.sync.service.L448',
+            '导入完成但未检测到文件'
+          )
+        }
       }
     } catch (e: any) {
       return { success: false, message: `恢复失败: ${e.message || e}` }

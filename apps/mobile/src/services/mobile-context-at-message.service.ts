@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import {
   ContextAtMessageService,
   buildSystemPromptForSession,
@@ -176,7 +177,10 @@ export function mapContextResultToFlatEntries(
           id: `ctx-sys-${sourceMessageId}`,
           role: 'system',
           content: entry.item?.content ?? result.systemPrompt,
-          label: '系统提示词'
+          label: i18n.t(
+            'auto.apps.mobile.src.services.mobile.context.at.message.service.L179',
+            '系统提示词'
+          )
         }
       }
     }

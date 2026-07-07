@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import * as SQLite from 'expo-sqlite'
 import { deleteAsync } from './mobile-sandbox-fs'
 import { getAppDocumentDirectory } from './mobile-app-paths'
@@ -94,7 +95,10 @@ export class MobileDeveloperService {
       return {
         success: true,
         needsRestart: true,
-        message: '已清空本地数据。请完全退出并重新打开应用以重建数据库。'
+        message: i18n.t(
+          'auto.apps.mobile.src.services.developer.service.L97',
+          '已清空本地数据。请完全退出并重新打开应用以重建数据库。'
+        )
       }
     } catch (e: any) {
       logger.error('[Developer] clearAllData failed:', e)
@@ -117,7 +121,13 @@ export class MobileDeveloperService {
         await deps.assistantManager.fullResyncFromDisks()
       }
 
-      return { success: true, message: '已清除 Agent 会话与助手数据。' }
+      return {
+        success: true,
+        message: i18n.t(
+          'auto.apps.mobile.src.services.developer.service.L120',
+          '已清除 Agent 会话与助手数据。'
+        )
+      }
     } catch (e: any) {
       logger.error('[Developer] clearAgentData failed:', e)
       return { success: false, message: e?.message || String(e) }

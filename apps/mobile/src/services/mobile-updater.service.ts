@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { Linking } from 'react-native'
 import * as Application from 'expo-application'
 import type { SettingsManagerService } from '@baishou/core-mobile'
@@ -49,7 +50,12 @@ export class MobileUpdaterService {
       const manifest = await fetchReleaseChannelManifest()
       const android = manifest.android
       if (!android?.version) {
-        throw new Error('Release channel 缺少 android 条目')
+        throw new Error(
+          i18n.t(
+            'auto.apps.mobile.src.services.mobile.updater.service.L52',
+            'Release channel 缺少 android 条目'
+          )
+        )
       }
 
       const latestVersion = android.version
@@ -77,7 +83,12 @@ export class MobileUpdaterService {
   async openReleaseUrl(url: string): Promise<void> {
     const canOpen = await Linking.canOpenURL(url)
     if (!canOpen) {
-      throw new Error('无法打开下载或发布页链接')
+      throw new Error(
+        i18n.t(
+          'auto.apps.mobile.src.services.mobile.updater.service.L80',
+          '无法打开下载或发布页链接'
+        )
+      )
     }
     await Linking.openURL(url)
   }

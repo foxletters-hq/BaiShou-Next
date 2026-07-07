@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import * as ImagePicker from 'expo-image-picker'
 import { extractReferencedFileNames } from '@baishou/shared'
 import type {
@@ -357,7 +358,14 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
 
   async importEmoji(absoluteSourcePath: string): Promise<EmojiImportResult> {
     if (!absoluteSourcePath || absoluteSourcePath.trim() === '') {
-      return { relativePath: '', originalName: '', error: '源路径为空' }
+      return {
+        relativePath: '',
+        originalName: '',
+        error: i18n.t(
+          'auto.apps.mobile.src.services.mobile.attachment.manager.service.L360',
+          '源路径为空'
+        )
+      }
     }
     if (absoluteSourcePath.startsWith('emojis/')) {
       return { relativePath: absoluteSourcePath, originalName: '', error: null }

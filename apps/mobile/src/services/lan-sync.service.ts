@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { Platform } from 'react-native'
 import * as Network from 'expo-network'
 import Zeroconf, { ImplType } from 'react-native-zeroconf'
@@ -189,7 +190,10 @@ export class MobileLanSyncService implements ILanSyncService {
 
     if (!BaishouServer.isBaishouServerAvailable()) {
       throw new Error(
-        '局域网服务需要 ExpoBaishouServer 原生模块。请执行 pnpm dev:mobile:clear 重新安装开发版。'
+        i18n.t(
+          'auto.apps.mobile.src.services.lan.sync.service.L192',
+          '局域网服务需要 ExpoBaishouServer 原生模块。请执行 pnpm dev:mobile:clear 重新安装开发版。'
+        )
       )
     }
 
@@ -316,7 +320,12 @@ export class MobileLanSyncService implements ILanSyncService {
   ): Promise<void> {
     const granted = await ensureLanDiscoveryPermissions()
     if (!granted) {
-      throw new Error('需要授予附近设备或定位权限才能扫描局域网设备')
+      throw new Error(
+        i18n.t(
+          'auto.apps.mobile.src.services.lan.sync.service.L319',
+          '需要授予附近设备或定位权限才能扫描局域网设备'
+        )
+      )
     }
 
     await this.enqueueMdns(async () => {

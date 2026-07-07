@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import type { SessionManagerService } from '@baishou/core-mobile'
 import type { SessionRepository, InsertPartInput } from '@baishou/database'
 import type { IFileSystem, IStoragePathService } from '@baishou/core-mobile'
@@ -115,7 +116,12 @@ export async function saveUserMessage(
       () => {
         const runtime = getAgentDbRuntime()
         if (!runtime) {
-          return Promise.resolve({ error: 'Agent DB 未就绪' })
+          return Promise.resolve({
+            error: i18n.t(
+              'auto.apps.mobile.src.services.mobile.agent.message.service.L118',
+              'Agent DB 未就绪'
+            )
+          })
         }
         return executeSaveUserMessage(
           runtime.sessionRepo,

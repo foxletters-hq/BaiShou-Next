@@ -1,14 +1,6 @@
 import {
   DiaryService,
-  FileSyncServiceImpl,
-  ShadowIndexSyncService,
-  VaultIndexServiceImpl,
   VaultService,
-  journalMarkdownExistsInTree,
-  countJournalMarkdownInTree,
-  countSummaryMarkdownInArchivesTree,
-  probeJournalShadowResyncNeeded,
-  path,
   type IFileSystem,
   type IStoragePathService,
   SessionManagerService,
@@ -17,94 +9,46 @@ import {
   SummarySyncService
 } from '@baishou/core-mobile'
 import {
-  ShadowIndexRepository,
   shadowConnectionManager,
+  ShadowIndexRepository,
   ShadowIndexUpsertOps
 } from '@baishou/database'
-import {
-  formatDiaryPreviewText,
-  logger,
-  parseDateStr,
-  prepareDiaryAppendContent,
-  prepareDiaryWriteContent,
-  isUsingExternalVaultDirectory,
-  resolveDiaryEditMode,
-  type DiaryTemplateConfig
-} from '@baishou/shared'
-import { mergeDiaryTags, type ToolDiaryMutationResult } from '@baishou/ai'
-
-function diaryPreviewFromRaw(raw: string | null | undefined): string {
-  const cleaned = formatDiaryPreviewText(raw)
-  const firstLine = cleaned
-    .split('\n')
-    .map((l) => l.trim())
-    .find((l) => l.length > 0 && !l.startsWith('#') && !l.startsWith('---'))
-  if (!firstLine) return '(empty)'
-  return firstLine.length > 80 ? `${firstLine.slice(0, 80)}...` : firstLine
-}
+import { logger } from '@baishou/shared'
+import type { ToolDiaryMutationResult } from '@baishou/ai'
 import { mobileDataBootstrapper, type MobileBootstrapperDeps } from './mobile-bootstrapper.service'
-import {
-  bindShadowVaultScanState,
-  getShadowVaultScanning,
-  unbindShadowVaultScanState
-} from './mobile-shadow-scan-state.service'
-import {
-  scheduleVaultEcosystemResync,
-  waitForVaultEcosystemResync
-} from './mobile-vault-resync.service'
+import { unbindShadowVaultScanState } from './mobile-shadow-scan-state.service'
+import { waitForVaultEcosystemResync } from './mobile-vault-resync.service'
 import { vaultFileWatcher } from './vault-file-watcher.service'
-import type { MobileExternalPathService } from './mobile-external-vault-paths.service'
 import { sessionFileWatcher } from './session-file-watcher.service'
 import { summaryFileWatcher } from './summary-file-watcher.service'
-import { createShadowDiaryRepoAdapter } from './shadow-diary-adapter'
-import { getMobileDiaryEmbeddingCallback } from './mobile-diary-embedding.service'
 import { ExternalStorageRequiredError } from './storage-required.error'
-import type { SessionFileService } from '@baishou/core-mobile'
-import type { SessionSyncService } from '@baishou/core-mobile'
 import type { DiaryRepository } from '@baishou/database'
+import { createVaultBoundDiaryStack } from './mobile-vault-diary-stack.helpers'
+import {
+  buildBootstrapDeps,
+  preferActiveVaultWithJournalsOnDisk,
+  runVaultBootstrap
+} from './mobile-vault-bootstrap.helpers'
+import { restartVaultWatchers, type VaultRuntimeWatcherDeps } from './mobile-vault-watcher.helpers'
+import { bumpVaultRuntimeGeneration } from './mobile-vault-runtime-state.helpers'
+import type { MobileExternalPathService } from './mobile-external-vault-paths.service'
 
-/** 每次 Vault 切换递增；用于丢弃过期的 deferResync onComplete，避免重连 Shadow DB 时 watcher 仍持有旧连接 */
-let vaultRuntimeGeneration = 0
+import type {
+  VaultDiarySearcher,
+  VaultBoundDiaryStack,
+  VaultSwitchCallbacks,
+  ActivateVaultRuntimeOptions,
+  StorageRootRebootstrapOptions
+} from './mobile-vault-runtime.types'
+export type {
+  VaultDiarySearcher,
+  VaultBoundDiaryStack,
+  VaultSwitchCallbacks,
+  ActivateVaultRuntimeOptions,
+  StorageRootRebootstrapOptions
+} from './mobile-vault-runtime.types'
+export type { VaultRuntimeWatcherDeps } from './mobile-vault-watcher.helpers'
 
-function bumpVaultRuntimeGeneration(): number {
-  vaultRuntimeGeneration += 1
-  return vaultRuntimeGeneration
-}
-
-function isVaultRuntimeGenerationCurrent(generation: number): boolean {
-  return generation === vaultRuntimeGeneration
-}
-
-export type VaultDiarySearcher = {
-  searchFTS: (
-    query: string,
-    limit?: number
-  ) => Promise<Array<{ date: string; contentSnippet: string; tags: string; rankScore: number }>>
-  listInDateRange: (
-    startDate: string,
-    endDate: string
-  ) => Promise<Array<{ date: string; preview: string }>>
-  readByDates: (dates: string[]) => Promise<Array<{ date: string; content: string | null }>>
-  writeEntry: (date: string, content: string, tags?: string) => Promise<ToolDiaryMutationResult>
-  editEntry: (args: {
-    date: string
-    content: string
-    mode?: 'append' | 'overwrite'
-    tags?: string
-  }) => Promise<ToolDiaryMutationResult>
-  deleteEntry: (date: string) => Promise<ToolDiaryMutationResult>
-}
-
-/** 随 Vault 切换需重建的日记/影子索引相关服务 */
-export type VaultBoundDiaryStack = {
-  shadowRepo: ShadowIndexRepository
-  shadowIndexSyncService: ShadowIndexSyncService
-  diaryService: DiaryService
-  diaryRepoAdapter: ReturnType<typeof createShadowDiaryRepoAdapter>
-  diarySearcher: VaultDiarySearcher
-}
-
-/** 无外部存储时 Summary 模块使用的空日记适配器 */
 export const EMPTY_DIARY_REPO_ADAPTER: Pick<DiaryRepository, 'list' | 'findByDateRange'> = {
   list: async () => [],
   findByDateRange: async () => []
@@ -166,15 +110,6 @@ export function createVaultDiaryServiceProxy(stackRef: {
   }) as DiaryService
 }
 
-export type VaultSwitchCallbacks = {
-  /** Shadow DB disconnect 前调用，应清空 diaryStackRef */
-  onStackInvalidated?: () => void
-  /** 新 stack 就绪后立即调用 */
-  onStackReady?: (stack: VaultBoundDiaryStack) => void
-  /** 后台 resync 完成 */
-  onResyncComplete?: () => void
-}
-
 export async function initVaultLayer(deps: {
   pathService: IStoragePathService
   vaultService: VaultService
@@ -185,158 +120,6 @@ export async function initVaultLayer(deps: {
   await deps.vaultService.initRegistry()
   await connectGlobalShadowDb(deps)
   return createVaultBoundDiaryStack(deps)
-}
-
-export function createVaultBoundDiaryStack(deps: {
-  pathService: IStoragePathService
-  vaultService: VaultService
-  fileSystem: IFileSystem
-  settingsManager?: SettingsManagerService
-}): VaultBoundDiaryStack {
-  const activeVault = deps.vaultService.getActiveVault()
-  if (!activeVault) {
-    throw new Error('[VaultRuntime] 无活跃 Vault，无法创建日记栈')
-  }
-  const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), activeVault.name)
-  const fileSyncService = new FileSyncServiceImpl(deps.pathService, deps.fileSystem)
-  const vaultIndexService = new VaultIndexServiceImpl()
-  const shadowIndexSyncService = new ShadowIndexSyncService(
-    shadowRepo,
-    deps.pathService,
-    deps.vaultService,
-    deps.fileSystem,
-    getMobileDiaryEmbeddingCallback()
-  )
-  const diaryService = new DiaryService(
-    shadowRepo,
-    fileSyncService,
-    shadowIndexSyncService,
-    vaultIndexService
-  )
-  const diaryRepoAdapter = createShadowDiaryRepoAdapter(shadowRepo)
-  const diarySearcher: VaultDiarySearcher = {
-    async searchFTS(query: string, limit?: number) {
-      const results = await shadowRepo.searchFTS(query, limit)
-      const allRecords = await shadowRepo.getAllRecords()
-      const idToDateMap = new Map(allRecords.map((r) => [r.id, r.date]))
-      return results.map((r) => ({
-        date: idToDateMap.get(r.rowid) || '',
-        contentSnippet: r.contentSnippet,
-        tags: r.tags,
-        rankScore: r.rankScore
-      }))
-    },
-    async listInDateRange(startDate: string, endDate: string) {
-      const rows = await shadowRepo.findByDateRange(startDate, endDate)
-      return rows.map((row) => ({
-        date: row.date,
-        preview: diaryPreviewFromRaw((row as { rawContent?: string | null }).rawContent)
-      }))
-    },
-    async readByDates(dates: string[]) {
-      const rows: Array<{ date: string; content: string | null }> = []
-      for (const date of dates) {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-          rows.push({ date, content: null })
-          continue
-        }
-        const diary = await diaryService.findByDate(parseDateStr(date))
-        rows.push({ date, content: diary?.content ?? null })
-      }
-      return rows
-    },
-    async writeEntry(date: string, content: string, tags?: string) {
-      try {
-        const templateConfig: DiaryTemplateConfig = deps.settingsManager
-          ? (await deps.settingsManager.get<DiaryTemplateConfig>('diary_template_config')) || {}
-          : {}
-        const tagsStr = tags
-          ?.split(',')
-          .map((s) => s.trim())
-          .filter(Boolean)
-          .join(',')
-        await diaryService.create({
-          date: parseDateStr(date),
-          content: prepareDiaryWriteContent(content, templateConfig, new Date()),
-          ...(tagsStr ? { tags: tagsStr } : {})
-        })
-        return { ok: true as const }
-      } catch (e) {
-        if (e instanceof Error && e.name === 'DiaryDateConflictError') {
-          return {
-            ok: false as const,
-            message: `Error: A diary entry for ${date} already exists. Use diary_edit to modify it.`
-          }
-        }
-        return {
-          ok: false as const,
-          message: `Error: Failed to create diary entry: ${e instanceof Error ? e.message : String(e)}`
-        }
-      }
-    },
-    async editEntry({ date, content, mode, tags }) {
-      try {
-        const existing = await diaryService.findByDate(parseDateStr(date))
-        if (!existing?.id) {
-          return {
-            ok: false as const,
-            message: `Error: Diary entry for ${date} does not exist. Use diary_write to create it instead.`
-          }
-        }
-
-        let finalContent = content
-        const editMode = resolveDiaryEditMode(mode)
-        if (editMode === 'append') {
-          const templateConfig: DiaryTemplateConfig = deps.settingsManager
-            ? (await deps.settingsManager.get<DiaryTemplateConfig>('diary_template_config')) || {}
-            : {}
-          finalContent = prepareDiaryAppendContent(
-            existing.content,
-            content,
-            templateConfig,
-            new Date()
-          )
-        }
-
-        await diaryService.update(existing.id, {
-          content: finalContent,
-          ...(tags ? { tags: mergeDiaryTags(existing.tags, tags) } : {})
-        })
-        return { ok: true as const }
-      } catch (e) {
-        return {
-          ok: false as const,
-          message: `Error: Failed to edit diary: ${e instanceof Error ? e.message : String(e)}`
-        }
-      }
-    },
-    async deleteEntry(date: string) {
-      try {
-        const existing = await diaryService.findByDate(parseDateStr(date))
-        if (!existing?.id) {
-          return {
-            ok: false as const,
-            message: `Error: Could not find diary entry for ${date} to delete.`
-          }
-        }
-        await diaryService.delete(existing.id)
-        return { ok: true as const }
-      } catch (e) {
-        return {
-          ok: false as const,
-          message: `Error: Failed to delete diary: ${e instanceof Error ? e.message : String(e)}`
-        }
-      }
-    }
-  }
-
-  return {
-    shadowRepo,
-    shadowIndexSyncService,
-    diaryService,
-    diaryRepoAdapter,
-    diarySearcher
-  }
 }
 
 export async function connectGlobalShadowDb(deps: {
@@ -373,15 +156,6 @@ export async function connectGlobalShadowDb(deps: {
 }
 
 let connectGlobalShadowDbInFlight: Promise<void> | null = null
-
-export type VaultRuntimeWatcherDeps = {
-  pathService: IStoragePathService
-  fileSystem: IFileSystem
-  sessionFileService: SessionFileService
-  sessionSyncService: SessionSyncService
-  sessionManager: SessionManagerService
-  summarySyncService: SummarySyncService
-}
 
 export async function stopVaultWatchers(): Promise<void> {
   await vaultFileWatcher.waitUntilIdle()
@@ -490,11 +264,6 @@ export async function resyncEcosystemAfterFileMutation(deps: {
 
 let storageRootRebootstrapInFlight: Promise<VaultBoundDiaryStack> | null = null
 
-export type StorageRootRebootstrapOptions = {
-  /** 归档全量恢复后阻塞扫描，避免沿用旧 Shadow 索引导致日记列表不正确 */
-  blockingResync?: boolean
-}
-
 /** 数据根目录变更后：重载 registry、重建 diary stack 并全量扫描日记 */
 export async function rebootstrapAfterStorageRootChange(
   deps: {
@@ -579,32 +348,6 @@ export async function rebootstrapAfterStorageRootChange(
   }
 }
 
-function buildBootstrapDeps(
-  diaryStack: VaultBoundDiaryStack,
-  bootstrapDeps: Omit<
-    MobileBootstrapperDeps,
-    | 'shadowIndexSyncService'
-    | 'sessionManager'
-    | 'assistantManager'
-    | 'settingsManager'
-    | 'summarySyncService'
-  > & {
-    sessionManager: SessionManagerService
-    assistantManager: AssistantManagerService
-    settingsManager: SettingsManagerService
-    summarySyncService: SummarySyncService
-  }
-): MobileBootstrapperDeps {
-  return {
-    shadowIndexSyncService: diaryStack.shadowIndexSyncService,
-    sessionManager: bootstrapDeps.sessionManager,
-    assistantManager: bootstrapDeps.assistantManager,
-    settingsManager: bootstrapDeps.settingsManager,
-    summarySyncService: bootstrapDeps.summarySyncService,
-    getActiveVaultName: bootstrapDeps.getActiveVaultName
-  }
-}
-
 /** 归档恢复 / summary 管线重建后，刷新 bootstrapper 与总结文件 watcher 的绑定 */
 export function registerVaultBootstrapDeps(
   diaryStack: VaultBoundDiaryStack,
@@ -627,316 +370,6 @@ export function registerVaultBootstrapDeps(
   summaryFileWatcher.stop()
   summaryFileWatcher.start(deps.summarySyncService)
   return deps
-}
-
-async function shouldDeferVaultResync(
-  deps: {
-    diaryStack: VaultBoundDiaryStack
-    vaultService: VaultService
-    fileSystem: IFileSystem
-    pathService: IStoragePathService
-  },
-  requested?: boolean,
-  forceDefer?: boolean,
-  resyncReason?: string
-): Promise<boolean> {
-  if (forceDefer) return true
-
-  const defer = requested ?? true
-  if (!defer) return false
-
-  try {
-    const records = await deps.diaryStack.shadowRepo.getAllRecords()
-    if (records.length > 0) return true
-
-    const active = deps.vaultService.getActiveVault()
-    if (!active?.path) return true
-
-    const journalsDir = await deps.pathService.getJournalsBaseDirectory()
-    const hasOnDisk = await journalMarkdownExistsInTree(deps.fileSystem, journalsDir)
-    if (hasOnDisk) {
-      if (resyncReason === 'archive-full-restore') {
-        logger.info(
-          '[VaultRuntime] Shadow index empty but journal files exist on disk; running blocking resync'
-        )
-        return false
-      }
-      logger.info(
-        '[VaultRuntime] Shadow index empty but journal files exist on disk; scheduling background resync'
-      )
-      return true
-    }
-  } catch (e) {
-    logger.warn('[VaultRuntime] Failed to probe on-disk journals for resync mode:', e as Error)
-  }
-
-  return true
-}
-
-/** 归档恢复后：若当前活跃工作区磁盘数据偏少，切换到日记+总结总量最多的工作区 */
-async function countArchiveMarkdownInTree(
-  fileSystem: IFileSystem,
-  vaultPath: string
-): Promise<number> {
-  let count = 0
-  for (const root of ['Archives', 'Summaries']) {
-    const baseDir = path.join(vaultPath, root)
-    if (!(await fileSystem.exists(baseDir))) continue
-    for (const typeDir of ['Weekly', 'Monthly', 'Quarterly', 'Yearly']) {
-      const dir = path.join(baseDir, typeDir)
-      if (!(await fileSystem.exists(dir))) continue
-      const entries = await fileSystem.readdir(dir)
-      count += entries.filter((name) => name.endsWith('.md')).length
-    }
-  }
-  return count
-}
-
-async function preferActiveVaultWithJournalsOnDisk(deps: {
-  vaultService: VaultService
-  fileSystem: IFileSystem
-  pathService: MobileExternalPathService
-}): Promise<void> {
-  const vaults = deps.vaultService.getAllVaults()
-  if (vaults.length === 0) return
-
-  const scored: Array<{ name: string; score: number; journals: number; archives: number }> = []
-  for (const vault of vaults) {
-    const externalJournals = await deps.pathService.getExternalJournalsDirectory(vault.name)
-    const externalSummaries = await deps.pathService.getExternalSummariesDirectory(vault.name)
-    const journalsDir = externalJournals ?? path.join(vault.path, 'Journals')
-    const journalCount = await countJournalMarkdownInTree(deps.fileSystem, journalsDir)
-
-    let archiveCount = 0
-    if (externalSummaries) {
-      archiveCount = await countSummaryMarkdownInArchivesTree(deps.fileSystem, externalSummaries)
-    } else {
-      archiveCount = await countArchiveMarkdownInTree(deps.fileSystem, vault.path)
-    }
-
-    scored.push({
-      name: vault.name,
-      score: journalCount + archiveCount,
-      journals: journalCount,
-      archives: archiveCount
-    })
-  }
-
-  scored.sort((a, b) => b.score - a.score)
-  const best = scored[0]
-  if (!best || best.score === 0) return
-
-  const active = deps.vaultService.getActiveVault()
-  const activeScore = active ? (scored.find((item) => item.name === active.name)?.score ?? 0) : 0
-
-  if (active && activeScore >= best.score) return
-
-  logger.info(
-    `[VaultRuntime] Switching active vault to "${best.name}" (${best.journals} journals, ${best.archives} summaries on disk; previous score ${activeScore})`
-  )
-  await deps.vaultService.switchVault(best.name)
-}
-
-async function runVaultBootstrap(
-  deps: {
-    pathService: IStoragePathService
-    vaultService: VaultService
-    fileSystem: IFileSystem
-    diaryStack: VaultBoundDiaryStack
-    bootstrapDeps: Omit<
-      MobileBootstrapperDeps,
-      | 'shadowIndexSyncService'
-      | 'sessionManager'
-      | 'assistantManager'
-      | 'settingsManager'
-      | 'summarySyncService'
-    > & {
-      sessionManager: SessionManagerService
-      assistantManager: AssistantManagerService
-      settingsManager: SettingsManagerService
-      summarySyncService: SummarySyncService
-    }
-    watcherDeps: VaultRuntimeWatcherDeps
-  },
-  options?: {
-    deferResync?: boolean
-    /** 跳过上架日记存在时的阻塞全量扫描（旧版迁移完成后使用，避免 OOM 闪退） */
-    forceDeferResync?: boolean
-    /** 应用升级等场景强制全量影子 resync，忽略「索引已有记录」快路径 */
-    forceShadowResync?: boolean
-    skipFullResync?: boolean
-    resyncReason?: string
-    onResyncComplete?: () => void
-  }
-): Promise<void> {
-  const bootstrapDeps = buildBootstrapDeps(deps.diaryStack, deps.bootstrapDeps)
-  mobileDataBootstrapper.registerDeps(bootstrapDeps)
-  deps.diaryStack.shadowIndexSyncService.setSyncEnabled(true)
-
-  if (options?.skipFullResync) {
-    await restartVaultWatchers(deps.diaryStack, deps.vaultService, deps.watcherDeps)
-    return
-  }
-
-  if (!options?.forceDeferResync) {
-    try {
-      const activeVault = deps.vaultService.getActiveVault()
-      const shadowCount = await deps.diaryStack.shadowRepo.count()
-      const journalsDir = activeVault?.path
-        ? path.join(activeVault.path, 'Journals')
-        : await deps.pathService.getJournalsBaseDirectory()
-      const probe = await probeJournalShadowResyncNeeded(
-        deps.fileSystem,
-        journalsDir,
-        shadowCount,
-        { forceResync: options?.forceShadowResync }
-      )
-
-      if (!probe.needsResync) {
-        logger.info(
-          `[VaultRuntime] Shadow index aligned with disk (${probe.shadowCount} entries); skipping shadow resync`
-        )
-        const activeVaultName = deps.vaultService.getActiveVault()?.name
-        if (activeVaultName) {
-          await deps.bootstrapDeps.summarySyncService
-            .fullScanArchives({ activeVaultName })
-            .catch((e) => {
-              logger.warn(
-                '[VaultRuntime] summary fullScanArchives after skip-shadow-resync failed:',
-                e as Error
-              )
-            })
-        }
-        await restartVaultWatchers(deps.diaryStack, deps.vaultService, deps.watcherDeps)
-        options?.onResyncComplete?.()
-        return
-      }
-
-      logger.info(
-        `[VaultRuntime] Shadow resync required (${probe.reason ?? 'unknown'}); disk=${probe.diskCount}, shadow=${probe.shadowCount}`
-      )
-    } catch (e) {
-      logger.warn('[VaultRuntime] Failed to probe shadow index before resync:', e as Error)
-    }
-  }
-
-  const deferResync = await shouldDeferVaultResync(
-    deps,
-    options?.deferResync,
-    options?.forceDeferResync,
-    options?.resyncReason
-  )
-
-  if (deferResync) {
-    // 后台 resync 完成后再启动 watcher，避免 fullScanVault 与 VaultFileWatcher 并发写 Shadow DB
-    const generation = vaultRuntimeGeneration
-    void scheduleVaultEcosystemResync(
-      bootstrapDeps,
-      options?.resyncReason ?? 'vault-switch',
-      () => {
-        if (!isVaultRuntimeGenerationCurrent(generation)) {
-          logger.info('[VaultRuntime] Skip stale watcher restart after background resync')
-          return
-        }
-        void restartVaultWatchers(deps.diaryStack, deps.vaultService, deps.watcherDeps).finally(
-          () => options?.onResyncComplete?.()
-        )
-      }
-    )
-    return
-  }
-
-  await mobileDataBootstrapper.runWhenVaultReady(bootstrapDeps, { force: true })
-  await restartVaultWatchers(deps.diaryStack, deps.vaultService, deps.watcherDeps)
-  options?.onResyncComplete?.()
-}
-
-export async function restartVaultWatchers(
-  diaryStack: VaultBoundDiaryStack,
-  vaultService: VaultService,
-  watcherDeps: VaultRuntimeWatcherDeps,
-  options?: { skipSessionSummary?: boolean }
-): Promise<void> {
-  const activeVault = vaultService.getActiveVault()
-  if (!activeVault?.path) {
-    vaultFileWatcher.stop()
-    sessionFileWatcher.stop()
-    summaryFileWatcher.stop()
-    return
-  }
-
-  const journalsDir = await watcherDeps.pathService.getJournalsBaseDirectory()
-  const vaultDir = await watcherDeps.pathService.getVaultDirectory(activeVault.name)
-  const externalJournals = await (
-    watcherDeps.pathService as unknown as MobileExternalPathService
-  ).getExternalJournalsDirectory(activeVault.name)
-  const defaultJournalsDir = path.join(vaultDir, 'Journals')
-  const isExternalJournals = isUsingExternalVaultDirectory(
-    externalJournals,
-    journalsDir,
-    defaultJournalsDir
-  )
-
-  vaultFileWatcher.start(
-    journalsDir,
-    {
-      shadowIndexSyncService: diaryStack.shadowIndexSyncService,
-      fileSystem: watcherDeps.fileSystem
-    },
-    { createIfMissing: !isExternalJournals }
-  )
-  bindShadowVaultScanState(diaryStack.shadowIndexSyncService)
-
-  if (options?.skipSessionSummary) {
-    sessionFileWatcher.stop()
-    summaryFileWatcher.stop()
-    return
-  }
-
-  const sessionsDir = await watcherDeps.pathService.getSessionsBaseDirectory()
-  void startSessionFileWatcherWhenStorageQuiet(sessionsDir, {
-    sessionFileService: watcherDeps.sessionFileService,
-    sessionSyncService: watcherDeps.sessionSyncService,
-    fileSystem: watcherDeps.fileSystem
-  })
-
-  void startSummaryFileWatcherWhenStorageQuiet(watcherDeps.summarySyncService)
-}
-
-async function startSummaryFileWatcherWhenStorageQuiet(
-  summarySync: SummarySyncService
-): Promise<void> {
-  await mobileDataBootstrapper.waitUntilIdle()
-  while (getShadowVaultScanning()) {
-    await new Promise((resolve) => setTimeout(resolve, 200))
-  }
-  summaryFileWatcher.start(summarySync)
-}
-
-async function startSessionFileWatcherWhenStorageQuiet(
-  sessionsDir: string,
-  deps: {
-    sessionFileService: SessionFileService
-    sessionSyncService: SessionSyncService
-    fileSystem: IFileSystem
-  }
-): Promise<void> {
-  await mobileDataBootstrapper.waitUntilIdle()
-  while (getShadowVaultScanning()) {
-    await new Promise((resolve) => setTimeout(resolve, 200))
-  }
-  sessionFileWatcher.start(sessionsDir, deps)
-}
-
-export type ActivateVaultRuntimeOptions = {
-  /** 后台 resync，避免冷启动阻塞 UI（默认 true） */
-  deferResync?: boolean
-  /** 强制后台 resync，不因磁盘已有日记而阻塞全量扫描 */
-  forceDeferResync?: boolean
-  /** 应用升级等场景强制全量影子 resync */
-  forceShadowResync?: boolean
-  resyncReason?: string
-  onResyncComplete?: () => void
 }
 
 export async function activateVaultRuntime(

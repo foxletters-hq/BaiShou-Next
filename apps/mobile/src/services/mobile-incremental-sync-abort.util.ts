@@ -1,6 +1,12 @@
+import i18n from 'i18next'
 /** 用户主动取消增量同步（UI 与 HTTP 一致中止） */
 export class IncrementalSyncAbortedError extends Error {
-  constructor(message = '增量同步已取消') {
+  constructor(
+    message = i18n.t(
+      'auto.apps.mobile.src.services.mobile.incremental.sync.abort.util.L3',
+      '增量同步已取消'
+    )
+  ) {
     super(message)
     this.name = 'IncrementalSyncAbortedError'
   }

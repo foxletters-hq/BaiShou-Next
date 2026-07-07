@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import type { IFileSystem } from '@baishou/core-mobile'
 import { Platform } from 'react-native'
 import { EncodingType, readAsStringAsync } from './mobile-sandbox-fs'
@@ -35,9 +36,19 @@ async function resolveImportFilePath(pathOrUri: string, fileSystem: IFileSystem)
 
   if (zipFiles.length === 1) return zipFiles[0]!
   if (zipFiles.length > 1) {
-    throw new Error('导入路径指向文件夹，且其中包含多个 ZIP 文件，请直接选择要导入的 ZIP 文件')
+    throw new Error(
+      i18n.t(
+        'auto.apps.mobile.src.services.mobile.uri.import.L38',
+        '导入路径指向文件夹，且其中包含多个 ZIP 文件，请直接选择要导入的 ZIP 文件'
+      )
+    )
   }
-  throw new Error('导入路径指向文件夹，未找到可导入的 ZIP 文件')
+  throw new Error(
+    i18n.t(
+      'auto.apps.mobile.src.services.mobile.uri.import.L40',
+      '导入路径指向文件夹，未找到可导入的 ZIP 文件'
+    )
+  )
 }
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
