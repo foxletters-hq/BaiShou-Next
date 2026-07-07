@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 /**
  * 一键：后台启动 desktop:dev → 等待 CDP → 自动跑内存探测
  */

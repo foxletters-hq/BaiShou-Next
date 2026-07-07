@@ -1,4 +1,4 @@
-import React, { useEffect, useState, createContext } from 'react'
+import React, { useEffect, useState } from 'react'
 import { motion, useAnimation } from 'framer-motion'
 import { DiaryPage } from '../features/diary/DiaryPage'
 import { SummaryPage } from '../features/summary/SummaryPage'

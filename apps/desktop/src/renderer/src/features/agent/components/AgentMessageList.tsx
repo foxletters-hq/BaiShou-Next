@@ -226,7 +226,7 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
     syncLoadMoreVisibility()
     el.addEventListener('scroll', syncLoadMoreVisibility, { passive: true })
     return () => el.removeEventListener('scroll', syncLoadMoreVisibility)
-  }, [syncLoadMoreVisibility, chat.messages.length, sessionId])
+  }, [syncLoadMoreVisibility, chat.messages.length, sessionId, scroll.scrollRef])
 
   useLayoutEffect(() => {
     syncLoadMoreVisibility()
@@ -293,13 +293,7 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
         }
       })
       .filter((item): item is NonNullable<typeof item> => item != null)
-  }, [
-    stream.pendingEmojis,
-    settings.toolManagementConfig?.emojiConfig,
-    currentAssistant?.emojiEnabled,
-    currentAssistant?.emojiGroupIds,
-    currentAssistant?.emojiGroupId
-  ])
+  }, [stream.pendingEmojis, settings.toolManagementConfig?.emojiConfig, currentAssistant])
 
   const lastMessage = chat.messages[chat.messages.length - 1]
   const assistantPersistedDuringBridge =

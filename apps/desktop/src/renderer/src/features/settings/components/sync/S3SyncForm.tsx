@@ -143,17 +143,6 @@ const inputStyle: React.CSSProperties = {
   fontSize: '13px',
   boxSizing: 'border-box'
 }
-const selectStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '8px 12px',
-  border: '1px solid var(--border-muted)',
-  borderRadius: '6px',
-  background: 'var(--bg-surface-low)',
-  color: 'var(--text-primary)',
-  fontSize: '13px',
-  boxSizing: 'border-box',
-  outline: 'none'
-}
 const eyeButtonStyle: React.CSSProperties = {
   position: 'absolute',
   right: 8,

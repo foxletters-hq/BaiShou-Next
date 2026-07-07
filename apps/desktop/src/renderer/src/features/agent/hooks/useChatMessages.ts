@@ -208,7 +208,7 @@ async function fetchMessagesFromIpc(
  * 展示层按「每 3 轮」隐藏分页，避免首屏渲染过多导致滚动卡顿。
  */
 export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesResult {
-  const { sessionId, isStreaming, streamingText, streamingReasoning } = params
+  const { sessionId, isStreaming } = params
 
   const [messages, setMessages] = useState<any[]>([])
   const [hasMore, setHasMore] = useState(false)

@@ -75,9 +75,7 @@ const DOM_PLATEAU_JUMP = 50
 async function assertNotOnWelcome(): Promise<void> {
   const hash = window.location.hash || ''
   if (hash.includes('/welcome')) {
-    throw new Error(
-      '当前在欢迎/引导页（/welcome），请先完成 onboarding 进入主界面后再运行内存探测'
-    )
+    throw new Error('当前在欢迎/引导页（/welcome），请先完成 onboarding 进入主界面后再运行内存探测')
   }
 }
 
@@ -228,12 +226,8 @@ function takeSample(round: number): MemSample {
   ).memory
   return {
     round,
-    heapUsedMB: mem
-      ? Math.round((mem.usedJSHeapSize / 1048576) * 10) / 10
-      : -1,
-    heapTotalMB: mem
-      ? Math.round((mem.totalJSHeapSize / 1048576) * 10) / 10
-      : -1,
+    heapUsedMB: mem ? Math.round((mem.usedJSHeapSize / 1048576) * 10) / 10 : -1,
+    heapTotalMB: mem ? Math.round((mem.totalJSHeapSize / 1048576) * 10) / 10 : -1,
     domNodes: document.getElementsByTagName('*').length,
     hash: window.location.hash
   }
@@ -283,9 +277,7 @@ function analyze(samples: MemSample[]): Pick<ProbeReport, 'verdict' | 'summary' 
   const heapGrowthMB = Math.round((last.heapUsedMB - first.heapUsedMB) * 10) / 10
   const domGrowth = last.domNodes - first.domNodes
   const avgGrowthPerRoundMB =
-    steadySamples.length > 1
-      ? Math.round((heapGrowthMB / (steadySamples.length - 1)) * 10) / 10
-      : 0
+    steadySamples.length > 1 ? Math.round((heapGrowthMB / (steadySamples.length - 1)) * 10) / 10 : 0
 
   const monotonicIncreases = countMonotonicHeapIncreases(steadySamples)
 
@@ -416,9 +408,7 @@ function summarizeSuite(reports: ProbeReport[], roundsPerScenario: number): Prob
   const failedScenarios = reports
     .filter((r) => r.verdict === 'leak_suspected')
     .map((r) => r.scenario)
-  const warmScenarios = reports
-    .filter((r) => r.verdict === 'warm_cache')
-    .map((r) => r.scenario)
+  const warmScenarios = reports.filter((r) => r.verdict === 'warm_cache').map((r) => r.scenario)
 
   let overallVerdict: ProbeVerdict = 'stable'
   if (failedScenarios.length > 0) overallVerdict = 'leak_suspected'
@@ -492,8 +482,6 @@ export function installMemoryLeakProbe(): void {
   console.info(
     `[mem-probe] v${MEMORY_PROBE_VERSION} 已就绪（修改探测脚本后需完全重启 desktop:dev）`
   )
-  console.info(
-    '[mem-probe] 单场景：await __baiShouMemProbe.run("settings-idle", { rounds: 6 })'
-  )
+  console.info('[mem-probe] 单场景：await __baiShouMemProbe.run("settings-idle", { rounds: 6 })')
   console.info('[mem-probe] 全量：await __baiShouMemProbe.runAll({ rounds: 5 })')
 }

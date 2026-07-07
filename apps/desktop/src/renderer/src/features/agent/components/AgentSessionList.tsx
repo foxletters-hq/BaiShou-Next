@@ -28,7 +28,7 @@ interface AgentSessionListProps {
 export const AgentSessionList: React.FC<AgentSessionListProps> = ({
   sessions,
   isLoading,
-  searchQuery,
+  searchQuery: _searchQuery,
   selectedSessionId,
   hasMore,
   isLoadingMore = false,

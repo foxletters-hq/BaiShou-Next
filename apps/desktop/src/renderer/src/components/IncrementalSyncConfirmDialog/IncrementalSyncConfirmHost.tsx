@@ -1,5 +1,4 @@
 import React from 'react'
-import type { SyncDeletePropagationChoice } from '@baishou/shared'
 import { IncrementalSyncConfirmDialog } from './IncrementalSyncConfirmDialog'
 import { useOrchestratedSync } from '../../hooks/useOrchestratedSync'
 

@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   Input,
@@ -37,7 +36,6 @@ function toTimestamp(value: Date | string | undefined): number {
 
 export const WorkspaceManagementPane: React.FC = () => {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const settingsNav = useSettingsScopeNavigation()
   const dialog = useDialog()
   const toast = useToast()
