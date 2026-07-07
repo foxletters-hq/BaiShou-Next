@@ -1,0 +1,73 @@
+.root {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0 8px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.root::-webkit-scrollbar {
+  width: 0;
+}
+
+.folderBtn,
+.addBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--wb-chrome-fg, #57606a);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex-shrink: 0;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.folderBtn:hover,
+.addBtn:hover {
+  background: color-mix(in srgb, var(--wb-chrome-fg-strong, #24292f) 8%, transparent);
+  color: var(--wb-chrome-fg-strong, #24292f);
+}
+
+.folderBtnActive {
+  color: var(--color-primary, #5ba8f5);
+  background: color-mix(in srgb, var(--color-primary, #5ba8f5) 14%, transparent);
+  border-color: color-mix(in srgb, var(--color-primary, #5ba8f5) 35%, transparent);
+}
+
+.folderBtn img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 7px;
+  display: block;
+}
+
+.initial {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  user-select: none;
+}
+
+.addBtn {
+  border-style: dashed;
+  border-color: var(--wb-chrome-border, #d8dee4);
+}
+
+.addBtn:hover {
+  border-color: color-mix(in srgb, var(--color-primary, #5ba8f5) 45%, transparent);
+  color: var(--color-primary, #5ba8f5);
+}

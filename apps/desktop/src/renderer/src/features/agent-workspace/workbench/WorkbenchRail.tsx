@@ -1,13 +1,31 @@
 import React from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { MdAutoStories, MdOutlineSettings, MdWorkspaces } from 'react-icons/md'
+import { BookOpen, LayoutPanelLeft, Settings } from 'lucide-react'
 import { resolveDiaryHomePath } from '../../../components/Sidebar/sidebar-preferences'
 import { SETTINGS_HUB_PREFIX } from '../../settings/settings-route.util'
-import { VaultIconSwitcher } from './VaultIconSwitcher'
+import type { AgentWorkspaceEntry } from '@baishou/shared'
+import { FolderIconSwitcher } from './FolderIconSwitcher'
 import styles from './WorkbenchRail.module.css'
 
-export const WorkbenchRail: React.FC = () => {
+const ICON_SIZE = 20
+const ICON_STROKE = 1.75
+
+export interface WorkbenchRailProps {
+  workspaces: AgentWorkspaceEntry[]
+  activeWorkspaceId?: string | null
+  onSelectWorkspace: (workspaceId: string) => void
+  onOpenFolder: () => void
+  onChangeAvatar?: (workspaceId: string) => void
+}
+
+export const WorkbenchRail: React.FC<WorkbenchRailProps> = ({
+  workspaces,
+  activeWorkspaceId,
+  onSelectWorkspace,
+  onOpenFolder,
+  onChangeAvatar
+}) => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
@@ -29,7 +47,7 @@ export const WorkbenchRail: React.FC = () => {
           title={t('workbench.diary', '日记')}
           onClick={() => navigate(resolveDiaryHomePath())}
         >
-          <MdAutoStories size={22} />
+          <BookOpen size={ICON_SIZE} strokeWidth={ICON_STROKE} />
         </button>
         <button
           type="button"
@@ -37,7 +55,7 @@ export const WorkbenchRail: React.FC = () => {
           title={t('nav.workbench', '工作台')}
           onClick={() => navigate('/agent-workspace')}
         >
-          <MdWorkspaces size={22} />
+          <LayoutPanelLeft size={ICON_SIZE} strokeWidth={ICON_STROKE} />
         </button>
         <button
           type="button"
@@ -45,12 +63,16 @@ export const WorkbenchRail: React.FC = () => {
           title={t('workbench.settings', '设置')}
           onClick={() => navigate(`${SETTINGS_HUB_PREFIX}/general`)}
         >
-          <MdOutlineSettings size={22} />
+          <Settings size={ICON_SIZE} strokeWidth={ICON_STROKE} />
         </button>
       </div>
-      <div className={styles.bottom}>
-        <VaultIconSwitcher />
-      </div>
+      <FolderIconSwitcher
+        workspaces={workspaces}
+        activeWorkspaceId={activeWorkspaceId}
+        onSelectWorkspace={onSelectWorkspace}
+        onOpenFolder={onOpenFolder}
+        onChangeAvatar={onChangeAvatar}
+      />
     </nav>
   )
 }

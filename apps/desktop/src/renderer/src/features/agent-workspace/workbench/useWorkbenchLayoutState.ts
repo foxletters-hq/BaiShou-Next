@@ -20,7 +20,7 @@ const DEFAULT_LAYOUT: WorkbenchLayoutState = {
 
 const MIN_SIDE_WIDTH = 200
 const MAX_SIDE_WIDTH = 480
-const MIN_AGENT_WIDTH = 280
+const MIN_AGENT_WIDTH = 380
 const MAX_AGENT_WIDTH = 560
 
 function storageKey(scopeKey: string): string {
@@ -41,11 +41,16 @@ function loadLayout(scopeKey: string): WorkbenchLayoutState {
       ),
       agentPanelCollapsed: parsed.agentPanelCollapsed ?? DEFAULT_LAYOUT.agentPanelCollapsed,
       sidePaneVisible: parsed.sidePaneVisible ?? DEFAULT_LAYOUT.sidePaneVisible,
-      activeSideView: parsed.activeSideView ?? DEFAULT_LAYOUT.activeSideView
+      activeSideView: normalizeSideView(parsed.activeSideView),
     }
   } catch {
     return { ...DEFAULT_LAYOUT }
   }
+}
+
+function normalizeSideView(view: unknown): WorkbenchSideView {
+  if (view === 'files' || view === 'search' || view === 'git') return view
+  return DEFAULT_LAYOUT.activeSideView
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -79,6 +84,10 @@ export function useWorkbenchLayoutState(scopeKey: string | null) {
     update({ agentPanelCollapsed: !layout.agentPanelCollapsed })
   }, [layout.agentPanelCollapsed, update])
 
+  const toggleSidePane = useCallback(() => {
+    update({ sidePaneVisible: !layout.sidePaneVisible })
+  }, [layout.sidePaneVisible, update])
+
   const setActiveSideView = useCallback(
     (view: WorkbenchSideView) => {
       update({ activeSideView: view, sidePaneVisible: true })
@@ -104,11 +113,12 @@ export function useWorkbenchLayoutState(scopeKey: string | null) {
     () => ({
       layout,
       toggleAgentPanel,
+      toggleSidePane,
       setActiveSideView,
       setSidePaneWidth,
       setAgentPanelWidth,
       updateLayout: update
     }),
-    [layout, setActiveSideView, setAgentPanelWidth, setSidePaneWidth, toggleAgentPanel, update]
+    [layout, setActiveSideView, setAgentPanelWidth, setSidePaneWidth, toggleAgentPanel, toggleSidePane, update]
   )
 }

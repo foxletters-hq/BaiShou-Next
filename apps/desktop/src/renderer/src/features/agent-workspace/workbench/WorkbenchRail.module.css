@@ -1,21 +1,21 @@
 .rail {
   width: 48px;
   flex-shrink: 0;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   align-items: center;
   padding: 8px 0;
-  background: var(--bg-surface);
-  border-right: 1px solid var(--border-subtle);
+  background: var(--wb-chrome-bg-raised, #e8eaed);
+  border-right: 1px solid var(--wb-chrome-border, #d8dee4);
 }
 
-.top,
-.bottom {
+.top {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
+  flex-shrink: 0;
 }
 
 .railBtn {
@@ -24,7 +24,7 @@
   border: none;
   border-radius: 8px;
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--wb-chrome-fg, #57606a);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -33,11 +33,11 @@
 }
 
 .railBtn:hover {
-  background: var(--bg-hover, rgba(255, 255, 255, 0.06));
-  color: var(--text-primary);
+  background: color-mix(in srgb, var(--wb-chrome-fg-strong, #24292f) 8%, transparent);
+  color: var(--wb-chrome-fg-strong, #24292f);
 }
 
 .railBtnActive {
   color: var(--color-primary, #5ba8f5);
-  background: var(--color-primary-soft, rgba(91, 168, 245, 0.12));
+  background: color-mix(in srgb, var(--color-primary, #5ba8f5) 14%, transparent);
 }

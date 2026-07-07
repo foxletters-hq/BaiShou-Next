@@ -1,0 +1,222 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--wb-chrome-bg, #f3f4f6);
+}
+
+.toolbar {
+  flex-shrink: 0;
+  padding: 12px 12px 8px;
+}
+
+.searchWrap {
+  position: relative;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--wb-chrome-fg, #57606a);
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px 0 30px;
+  border: 1px solid var(--wb-chrome-border, #d8dee4);
+  border-radius: 8px;
+  background: var(--wb-editor-bg, #ffffff);
+  color: var(--wb-chrome-fg-strong, #24292f);
+  font-size: 13px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.searchInput::placeholder {
+  color: var(--wb-chrome-fg-faint, #8c959f);
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--color-primary, #5ba8f5) 50%, var(--wb-chrome-border, #d8dee4));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary, #5ba8f5) 14%, transparent);
+}
+
+.currentBlock {
+  flex-shrink: 0;
+  margin: 0 12px 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--color-primary, #5ba8f5) 30%, var(--wb-chrome-border, #d8dee4));
+  background: color-mix(in srgb, var(--color-primary, #5ba8f5) 8%, var(--wb-editor-bg, #ffffff));
+}
+
+.currentLabel {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--wb-chrome-fg, #57606a);
+  margin-bottom: 4px;
+}
+
+.currentTitle {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--wb-chrome-fg-strong, #24292f);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 8px 12px;
+}
+
+.placeholder {
+  margin: 0;
+  padding: 16px 12px;
+  font-size: 13px;
+  color: var(--wb-chrome-fg, #57606a);
+  line-height: 1.5;
+}
+
+.group + .group {
+  margin-top: 12px;
+}
+
+.groupTitle {
+  margin: 0 0 6px;
+  padding: 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--wb-chrome-fg, #57606a);
+}
+
+.sessionList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.sessionNode {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  border-radius: 8px;
+}
+
+.sessionNode:hover .sessionActions {
+  opacity: 1;
+}
+
+.sessionBtn {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  padding: 8px 10px;
+  cursor: pointer;
+  color: var(--wb-chrome-fg-strong, #24292f);
+}
+
+.sessionBtn:hover {
+  background: color-mix(in srgb, var(--wb-chrome-fg-strong, #24292f) 5%, transparent);
+}
+
+.sessionBtnActive {
+  background: var(--wb-editor-bg, #ffffff);
+  border-color: var(--wb-chrome-border, #d8dee4);
+  box-shadow: 0 1px 2px color-mix(in srgb, #000 4%, transparent);
+}
+
+.sessionTitle {
+  width: 100%;
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sessionMeta {
+  width: 100%;
+  font-size: 11px;
+  color: var(--wb-chrome-fg, #57606a);
+}
+
+.sessionActions {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding-right: 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.iconBtn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--wb-chrome-fg, #57606a);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.iconBtn:hover {
+  background: color-mix(in srgb, var(--wb-chrome-fg-strong, #24292f) 8%, transparent);
+  color: var(--wb-chrome-fg-strong, #24292f);
+}
+
+.iconBtnDanger:hover {
+  background: rgba(220, 38, 38, 0.08);
+  color: #dc2626;
+}
+
+.editRow {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+}
+
+.editInput {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--wb-chrome-border, #d8dee4);
+  border-radius: 6px;
+  background: var(--wb-editor-bg, #ffffff);
+  color: var(--wb-chrome-fg-strong, #24292f);
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.editInput:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--color-primary, #5ba8f5) 50%, var(--wb-chrome-border, #d8dee4));
+}

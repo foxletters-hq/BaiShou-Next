@@ -1,22 +1,31 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdChevronLeft, MdChevronRight } from 'react-icons/md'
-import type { WorkspaceChangeEntry } from '@baishou/shared'
+import { MessagesSquare, Plus } from 'lucide-react'
+import type { AgentWorkspaceEntry, AgentWorkspaceSessionListItem, WorkspaceChangeEntry } from '@baishou/shared'
 import { InputBar } from '@baishou/ui'
 import { AgentWorkspaceChatBar } from '../components/AgentWorkspaceChatBar'
 import { AgentWorkspaceMessageList } from '../components/AgentWorkspaceMessageList'
 import { WorkbenchAgentChangesSummary } from './WorkbenchAgentChangesSummary'
+import { WorkbenchSessionView } from './WorkbenchSessionView'
+import { workspaceEntryMatchesFolder } from '../utils/workspace-display.util'
 import styles from './WorkbenchAgentPanel.module.css'
 
 export interface WorkbenchAgentPanelProps {
-  collapsed: boolean
   width: number
-  onToggleCollapsed: () => void
+  workspace: AgentWorkspaceEntry | null
   hasWorkspace: boolean
   hasConfiguredModel: boolean
   sessionId?: string
+  sessions: AgentWorkspaceSessionListItem[]
+  loadingSessions?: boolean
   changes: WorkspaceChangeEntry[]
   onSelectChange: (change: WorkspaceChangeEntry) => void
+  sessionsViewActive?: boolean
+  onToggleSessionsView?: () => void
+  onNewSession: () => void
+  onSelectSession: (sessionId: string) => void
+  onDeleteSession: (sessionId: string) => void
+  onRenameSession?: (sessionId: string, title: string) => void
   chrome: {
     currentAssistant?: { id: string; name: string; avatarPath?: string | null }
     currentProviderId: string
@@ -52,14 +61,21 @@ export interface WorkbenchAgentPanelProps {
 }
 
 export const WorkbenchAgentPanel: React.FC<WorkbenchAgentPanelProps> = ({
-  collapsed,
   width,
-  onToggleCollapsed,
+  workspace,
   hasWorkspace,
   hasConfiguredModel,
   sessionId,
+  sessions,
+  loadingSessions,
   changes,
   onSelectChange,
+  sessionsViewActive = false,
+  onToggleSessionsView,
+  onNewSession,
+  onSelectSession,
+  onDeleteSession,
+  onRenameSession,
   chrome,
   chat,
   stream,
@@ -72,95 +88,131 @@ export const WorkbenchAgentPanel: React.FC<WorkbenchAgentPanelProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  if (collapsed) {
-    return (
-      <div className={styles.collapsedRail}>
-        <button
-          type="button"
-          className={styles.expandBtn}
-          onClick={onToggleCollapsed}
-          title={t('workbench.expand_agent', '展开 Agent 面板')}
-        >
-          <MdChevronLeft size={20} />
-        </button>
-      </div>
+  const defaultSessionTitle = t('agent.sessions.default_title', '新对话')
+
+  const currentSessionTitle = useMemo(() => {
+    if (!sessionId || sessionId === 'new-session' || !workspace) return null
+    const match = sessions.find(
+      (session) =>
+        session.sessionId === sessionId &&
+        workspaceEntryMatchesFolder(workspace, session.folderRoot)
     )
-  }
+    return match?.title?.trim() || defaultSessionTitle
+  }, [defaultSessionTitle, sessionId, sessions, workspace])
 
   return (
     <aside className={styles.panel} style={{ width }}>
       <div className={styles.header}>
         <span className={styles.headerTitle}>{t('nav.agent', '伙伴')}</span>
-        <button
-          type="button"
-          className={styles.collapseBtn}
-          onClick={onToggleCollapsed}
-          title={t('workbench.collapse_agent', '收起 Agent 面板')}
-        >
-          <MdChevronRight size={20} />
-        </button>
-      </div>
-
-      <AgentWorkspaceChatBar
-        currentAssistant={chrome.currentAssistant}
-        currentProviderId={chrome.currentProviderId}
-        currentModelId={chrome.currentModelId}
-        providers={chrome.providers}
-        inputTokens={chrome.totalInputTokens}
-        outputTokens={chrome.totalOutputTokens}
-        costMicros={chrome.estimatedCost * 1_000_000}
-        onAssistantClick={chrome.onAssistantClick}
-        onModelClick={chrome.onModelClick}
-        onCostClick={chrome.onCostClick}
-        changesPanelCollapsed
-      />
-
-      <div className={styles.chatBody}>
-        {!hasWorkspace ? (
-          <p className={styles.hint}>{t('agent_workspace.pick_workspace_hint', '请先选择或添加工作区')}</p>
-        ) : !sessionId || sessionId === 'new-session' ? (
-          <p className={styles.hint}>
-            {t('agent_workspace.select_session_hint', '在下方输入开始新对话。')}
-          </p>
-        ) : (
-          <AgentWorkspaceMessageList
-            sessionId={sessionId}
-            messages={chat.messages as any}
-            pendingAssistantMsg={chat.pendingAssistantMsg as any}
-            streamingText={stream.text}
-            streamingReasoning={stream.reasoning}
-            isStreaming={stream.isStreaming}
-            streamError={stream.error}
-            activeToolName={stream.activeToolName}
-            completedTools={stream.completedTools as any}
-            failedTools={stream.failedTools as any}
-            assistantProfile={assistantProfile}
-            onRollbackRound={onRollbackRound}
-            onChangesUpdate={onChangesUpdate}
-          />
-        )}
-      </div>
-
-      <WorkbenchAgentChangesSummary changes={changes} onSelectChange={onSelectChange} />
-
-      {hasWorkspace ? (
-        <div className={styles.inputArea}>
-          {!hasConfiguredModel ? (
-            <p className={styles.noModelHint} role="status">
-              {t('agent_workspace.no_model_send_hint', '请先在顶部选择一个对话模型，然后才能发送消息。')}
-            </p>
-          ) : null}
-          <div className={!hasConfiguredModel ? styles.inputBlocked : undefined}>
-            <InputBar
-              isLoading={stream.isStreaming}
-              onSend={onSend}
-              onStop={stream.stopChat}
-              assistantName={assistantName}
-              onAssistantTap={onAssistantTap}
-            />
+        {hasWorkspace ? (
+          <div className={styles.headerActions}>
+            <button
+              type="button"
+              className={styles.headerIconBtn}
+              title={t('agent_workspace.new_session', '新建会话')}
+              onClick={onNewSession}
+            >
+              <Plus size={16} strokeWidth={1.75} aria-hidden />
+            </button>
+            {onToggleSessionsView ? (
+              <button
+                type="button"
+                className={`${styles.headerIconBtn} ${sessionsViewActive ? styles.headerIconBtnActive : ''}`}
+                title={t('workbench.session_history', '历史会话')}
+                aria-pressed={sessionsViewActive}
+                onClick={onToggleSessionsView}
+              >
+                <MessagesSquare size={16} strokeWidth={1.75} aria-hidden />
+              </button>
+            ) : null}
           </div>
+        ) : null}
+      </div>
+
+      {sessionsViewActive ? (
+        <div className={styles.sessionsBody}>
+          <WorkbenchSessionView
+            workspace={workspace}
+            sessions={sessions}
+            activeSessionId={sessionId}
+            loadingSessions={loadingSessions}
+            onSelectSession={onSelectSession}
+            onDeleteSession={onDeleteSession}
+            onRenameSession={onRenameSession}
+          />
         </div>
-      ) : null}
+      ) : (
+        <>
+          {!sessionsViewActive && currentSessionTitle ? (
+            <div className={styles.currentSessionBar}>
+              <span className={styles.currentSessionLabel}>
+                {t('workbench.current_session', '当前会话')}
+              </span>
+              <span className={styles.currentSessionName}>{currentSessionTitle}</span>
+            </div>
+          ) : null}
+
+          <AgentWorkspaceChatBar
+            currentAssistant={chrome.currentAssistant}
+            currentProviderId={chrome.currentProviderId}
+            currentModelId={chrome.currentModelId}
+            providers={chrome.providers}
+            inputTokens={chrome.totalInputTokens}
+            outputTokens={chrome.totalOutputTokens}
+            costMicros={chrome.estimatedCost * 1_000_000}
+            onAssistantClick={chrome.onAssistantClick}
+            onModelClick={chrome.onModelClick}
+            onCostClick={chrome.onCostClick}
+            changesPanelCollapsed
+          />
+
+          <div className={styles.chatBody}>
+            {!hasWorkspace ? (
+              <p className={styles.hint}>{t('agent_workspace.pick_workspace_hint', '请先选择或添加工作区')}</p>
+            ) : !sessionId || sessionId === 'new-session' ? (
+              <p className={styles.hint}>
+                {t('agent_workspace.select_session_hint', '在下方输入开始新对话。')}
+              </p>
+            ) : (
+              <AgentWorkspaceMessageList
+                sessionId={sessionId}
+                messages={chat.messages as any}
+                pendingAssistantMsg={chat.pendingAssistantMsg as any}
+                streamingText={stream.text}
+                streamingReasoning={stream.reasoning}
+                isStreaming={stream.isStreaming}
+                streamError={stream.error}
+                activeToolName={stream.activeToolName}
+                completedTools={stream.completedTools as any}
+                failedTools={stream.failedTools as any}
+                assistantProfile={assistantProfile}
+                onRollbackRound={onRollbackRound}
+                onChangesUpdate={onChangesUpdate}
+              />
+            )}
+          </div>
+
+          <WorkbenchAgentChangesSummary changes={changes} onSelectChange={onSelectChange} />
+
+          {hasWorkspace ? (
+            <div className={styles.inputArea}>
+              {!hasConfiguredModel ? (
+                <p className={styles.noModelHint} role="status">
+                  {t('agent_workspace.no_model_send_hint', '请先在顶部选择一个对话模型，然后才能发送消息。')}
+                </p>
+              ) : null}
+              <InputBar
+                isLoading={stream.isStreaming}
+                sendDisabled={!hasConfiguredModel}
+                onSend={onSend}
+                onStop={stream.stopChat}
+                assistantName={assistantName}
+                onAssistantTap={onAssistantTap}
+              />
+            </div>
+          ) : null}
+        </>
+      )}
     </aside>
   )
 }

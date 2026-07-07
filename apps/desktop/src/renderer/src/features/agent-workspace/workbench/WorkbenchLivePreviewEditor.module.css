@@ -8,7 +8,5 @@
 }
 
 .editor :global(.cm-scroller) {
-  font-family: var(--font-family-main, inherit);
-  font-size: 15px;
-  line-height: 1.65;
+  scrollbar-gutter: stable;
 }
