@@ -26,7 +26,9 @@ if (typeof maxWarnings !== 'number') {
 const cwd = join(root, 'apps', app)
 const eslintArgs = ['exec', 'eslint', '--cache', '.', `--max-warnings=${maxWarnings}`]
 
-console.log(`[lint:${app}] ESLint（warning 上限 ${maxWarnings}，见 scripts/lint-warning-baseline.json）`)
+console.log(
+  `[lint:${app}] ESLint（warning 上限 ${maxWarnings}，见 scripts/lint-warning-baseline.json）`
+)
 
 const result = spawnSync('pnpm', eslintArgs, { cwd, stdio: 'inherit' })
 process.exit(result.status === null ? 1 : result.status)

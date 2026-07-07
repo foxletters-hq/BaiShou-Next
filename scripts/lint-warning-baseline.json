@@ -1,5 +1,5 @@
 {
-  "desktop": 286,
-  "mobile": 272,
+  "desktop": 0,
+  "mobile": 0,
   "_comment": "pnpm lint 的 --max-warnings 上限；修复 warning 后请下调并提交本文件"
 }
