@@ -89,7 +89,7 @@ export abstract class GitSyncInternalBase {
   protected async getGitRoot(): Promise<string> {
     const root = await this.pathService.getRootDirectory()
     if (!root) {
-      throw new GitInitError(new Error('No storage root found'))
+      throw new GitInitError(new Error('未找到存储根目录'))
     }
     return root
   }

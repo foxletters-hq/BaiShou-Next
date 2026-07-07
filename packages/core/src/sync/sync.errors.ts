@@ -1,9 +1,17 @@
 // ── Git 错误 ─────────────────────────────────────────────────
 
+function formatGitErrorDetail(cause?: unknown): string {
+  if (!cause) return ''
+  if (cause instanceof Error && cause.message) {
+    return `：${cause.message}`
+  }
+  return `：${String(cause)}`
+}
+
 /** Git 仓库初始化失败 */
 export class GitInitError extends Error {
   constructor(public readonly cause?: Error) {
-    super('Failed to initialize Git repository')
+    super(`Git 仓库初始化失败${formatGitErrorDetail(cause)}`)
     this.name = 'GitInitError'
   }
 }

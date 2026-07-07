@@ -51,6 +51,7 @@ describe('GitSyncService', () => {
       vi.mocked(service.init).mockRejectedValue(new GitInitError(cause))
 
       await expect(service.init()).rejects.toThrow(GitInitError)
+      await expect(service.init()).rejects.toThrow('git init failed')
     })
   })
 

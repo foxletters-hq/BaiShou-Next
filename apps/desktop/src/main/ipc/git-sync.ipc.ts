@@ -19,8 +19,15 @@ export function registerGitSyncIPC() {
     try {
       await getGitService().init()
       return { success: true }
-    } catch (e: any) {
-      return { success: false, message: e?.message || 'Git init failed' }
+    } catch (e: unknown) {
+      const message =
+        e instanceof Error
+          ? e.message
+          : typeof e === 'string'
+            ? e
+            : 'Git 仓库初始化失败'
+      logger.error('[GitIPC] 初始化失败:', e as Error)
+      return { success: false, message: message || 'Git 仓库初始化失败' }
     }
   })
 
