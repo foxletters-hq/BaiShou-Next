@@ -1,100 +1,77 @@
-import { StateEffect, StateField, type Extension } from '@codemirror/state'
-import { EditorView, ViewPlugin } from '@codemirror/view'
-import { editorFocusEffect } from './editorFocus'
-import { findFencedCodeBlockContaining } from './fencedCodeScan'
+import { StateEffect, StateField } from '@codemirror/state'
+import { EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view'
 
 const FREEZE_TAIL_MS = 100
-/** 选区未折叠时延长冻结，避免 touchend 后立刻重建装饰导致高亮跳变 */
-const SELECTION_FREEZE_TAIL_MS = 320
 
 export const setPreviewFrozen = StateEffect.define<boolean>()
 
 export const previewFrozenField = StateField.define<boolean>({
   create: () => false,
-  update(value, tr) {
+  update(prev, tr) {
     for (const effect of tr.effects) {
       if (effect.is(setPreviewFrozen)) return effect.value
     }
-    return value
+    return prev
   }
 })
 
-/** 指针按下期间冻结 live preview 装饰重建，避免点击时围栏/标题语法显隐导致布局抖动 */
-export function livePreviewFreezePlugin(): Extension {
-  return ViewPlugin.fromClass(
-    class {
-      private down = false
-      private releaseTimer: ReturnType<typeof setTimeout> | null = null
+export const livePreviewFreezeMousePlugin = ViewPlugin.fromClass(
+  class {
+    private down = false
+    private releaseTimer: number | null = null
 
-      constructor(private readonly view: EditorView) {
-        this.view.dom.addEventListener('pointerdown', this.onDown, true)
-        this.view.contentDOM.addEventListener('touchstart', this.onDown, {
-          capture: true,
-          passive: true
-        })
-        window.addEventListener('pointerup', this.onUp)
-        window.addEventListener('touchend', this.onUp, { passive: true })
-        window.addEventListener('touchcancel', this.onUp, { passive: true })
+    private readonly onDown = (event: PointerEvent) => {
+      if (event.button !== 0) return
+      const target = event.target
+      if (!(target instanceof Node) || !this.view.contentDOM.contains(target)) return
+
+      this.down = true
+      if (this.releaseTimer != null) {
+        window.clearTimeout(this.releaseTimer)
+        this.releaseTimer = null
       }
-
-      destroy(): void {
-        this.view.dom.removeEventListener('pointerdown', this.onDown, true)
-        this.view.contentDOM.removeEventListener('touchstart', this.onDown, true)
-        window.removeEventListener('pointerup', this.onUp)
-        window.removeEventListener('touchend', this.onUp)
-        window.removeEventListener('touchcancel', this.onUp)
-        if (this.releaseTimer != null) clearTimeout(this.releaseTimer)
-      }
-
-      private readonly onDown = (event: PointerEvent | TouchEvent): void => {
-        if (event instanceof PointerEvent && event.button !== 0) return
-        const target = event.target
-        if (!(target instanceof Node) || !this.view.dom.contains(target)) return
-        if (target instanceof Element && target.closest('.cm-code-line, .cm-table-block')) return
-        this.down = true
-        if (this.releaseTimer != null) {
-          clearTimeout(this.releaseTimer)
-          this.releaseTimer = null
-        }
-        if (!this.view.state.field(previewFrozenField)) {
-          this.view.dispatch({ effects: setPreviewFrozen.of(true) })
-        }
-      }
-
-      private readonly onUp = (): void => {
-        if (!this.down) return
-        this.down = false
-        if (this.releaseTimer != null) clearTimeout(this.releaseTimer)
-
-        const release = (): void => {
-          const effects = []
-          if (this.view.state.field(previewFrozenField)) {
-            effects.push(setPreviewFrozen.of(false))
-          }
-          if (this.view.hasFocus) {
-            effects.push(editorFocusEffect.of(true))
-          }
-          if (effects.length > 0) {
-            this.view.dispatch({ effects })
-          }
-        }
-
-        const head = this.view.state.selection.main.head
-        const inFenced = findFencedCodeBlockContaining(this.view.state.doc, head) != null
-        const tailMs =
-          !this.view.state.selection.main.empty && !inFenced
-            ? SELECTION_FREEZE_TAIL_MS
-            : FREEZE_TAIL_MS
-        if (inFenced) {
-          release()
-          return
-        }
-
-        this.releaseTimer = setTimeout(() => {
-          this.releaseTimer = null
-          release()
-        }, tailMs)
+      if (!this.view.state.field(previewFrozenField)) {
+        this.view.dispatch({ effects: setPreviewFrozen.of(true) })
       }
     }
-  )
+
+    private readonly onUp = () => {
+      if (!this.down) return
+      this.down = false
+      if (this.releaseTimer != null) window.clearTimeout(this.releaseTimer)
+      this.releaseTimer = window.setTimeout(() => {
+        this.releaseTimer = null
+        if (!this.view.state.field(previewFrozenField)) return
+        try {
+          this.view.dispatch({ effects: setPreviewFrozen.of(false) })
+        } catch {
+          /* view destroyed */
+        }
+      }, FREEZE_TAIL_MS)
+    }
+
+    constructor(readonly view: EditorView) {
+      view.dom.addEventListener('pointerdown', this.onDown, true)
+      window.addEventListener('pointerup', this.onUp)
+      window.addEventListener('pointercancel', this.onUp)
+    }
+
+    update(_: ViewUpdate) {
+      /* freeze driven by pointer events */
+    }
+
+    destroy() {
+      this.view.dom.removeEventListener('pointerdown', this.onDown, true)
+      window.removeEventListener('pointerup', this.onUp)
+      window.removeEventListener('pointercancel', this.onUp)
+      if (this.releaseTimer != null) window.clearTimeout(this.releaseTimer)
+    }
+  }
+)
+
+export function shouldSkipPreviewRebuildOnFrozen(update: ViewUpdate): boolean {
+  const prevFrozen = update.startState.field(previewFrozenField)
+  const nextFrozen = update.state.field(previewFrozenField)
+  const justUnfroze = prevFrozen && !nextFrozen
+  return nextFrozen && !justUnfroze && !update.docChanged
 }

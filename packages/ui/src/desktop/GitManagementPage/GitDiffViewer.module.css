@@ -1,0 +1,173 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-subtle, #d8dee4);
+  background: var(--bg-surface-normal, #f6f8fa);
+  flex-shrink: 0;
+}
+
+.modeBtn {
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--border-subtle, #d8dee4);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary, #57606a);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.modeBtnActive {
+  background: var(--bg-surface, #fff);
+  color: var(--text-primary, #24292f);
+  border-color: var(--color-primary, #5ba8f5);
+}
+
+.fill {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  max-height: none;
+}
+
+.unified {
+  border-top: 1px solid var(--border-subtle, #d8dee4);
+  background: var(--bg-surface-normal, #f6f8fa);
+  overflow: auto;
+  max-height: 280px;
+}
+
+.unifiedFill {
+  max-height: none;
+  flex: 1;
+  min-height: 0;
+}
+
+.unifiedContent {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  line-height: 1.55;
+  white-space: pre;
+}
+
+.hunkHeader {
+  color: var(--color-accent-blue, #5ba8f5);
+  font-weight: 600;
+  margin: 8px 0 4px;
+}
+
+.lineAdd {
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--text-primary, #24292f);
+}
+
+.lineRemove {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--text-primary, #24292f);
+}
+
+.lineNormal {
+  color: var(--text-secondary, #57606a);
+}
+
+.splitRoot {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.splitHeader {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid var(--border-subtle, #d8dee4);
+  background: var(--bg-surface-normal, #f6f8fa);
+  flex-shrink: 0;
+}
+
+.splitHeaderCell {
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary, #57606a);
+}
+
+.splitHeaderCell + .splitHeaderCell {
+  border-left: 1px solid var(--border-subtle, #d8dee4);
+}
+
+.splitBody {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.splitPane {
+  overflow: auto;
+  min-height: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.splitPane + .splitPane {
+  border-left: 1px solid var(--border-subtle, #d8dee4);
+}
+
+.splitRow {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  min-height: 20px;
+}
+
+.lineNum {
+  padding: 0 8px;
+  text-align: right;
+  color: var(--text-tertiary, #8b949e);
+  user-select: none;
+  border-right: 1px solid var(--border-subtle, #d8dee4);
+  background: var(--bg-surface-normal, #f6f8fa);
+}
+
+.lineText {
+  padding: 0 10px;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.rowRemove .lineText {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--text-primary, #24292f);
+}
+
+.rowAdd .lineText {
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--text-primary, #24292f);
+}
+
+.rowEmpty .lineText {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.empty {
+  padding: 16px;
+  color: var(--text-tertiary, #8b949e);
+  font-size: 12px;
+  font-style: italic;
+}
