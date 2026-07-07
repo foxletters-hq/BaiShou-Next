@@ -2703,6 +2703,9 @@
     "load_file_failed": "ファイルを読み込めませんでした",
     "new_tab": "新しいタブ",
     "settings": "設定",
-    "diary": "日記"
+    "diary": "日記",
+    "sessions": "セッション",
+    "toggle_side_bar": "左サイドバーの表示切替",
+    "toggle_agent_panel": "Agent パネルの表示切替"
   }
 }

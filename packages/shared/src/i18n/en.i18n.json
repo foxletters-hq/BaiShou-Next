@@ -2858,6 +2858,9 @@
     "load_file_failed": "Failed to load file",
     "new_tab": "New tab",
     "settings": "Settings",
-    "diary": "Diary"
+    "diary": "Diary",
+    "sessions": "Sessions",
+    "toggle_side_bar": "Toggle primary side bar",
+    "toggle_agent_panel": "Toggle Agent panel"
   }
 }

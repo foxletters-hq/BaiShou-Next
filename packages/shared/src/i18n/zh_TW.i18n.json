@@ -2921,6 +2921,9 @@
     "load_file_failed": "無法載入檔案",
     "new_tab": "新分頁",
     "settings": "設定",
-    "diary": "日記"
+    "diary": "日記",
+    "sessions": "會話",
+    "toggle_side_bar": "切換左側邊欄",
+    "toggle_agent_panel": "切換 Agent 面板"
   }
 }

@@ -336,6 +336,14 @@ export interface GitStatus {
   hasChanges: boolean
 }
 
+/** Git stash 条目 */
+export interface GitStashEntry {
+  index: number
+  message: string
+  date: Date
+  branch: string
+}
+
 /** 整库回滚前的上下文（用于确认提示） */
 export interface GitRollbackAllContext {
   /** 是否已配置远程仓库 */
