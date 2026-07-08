@@ -27,7 +27,7 @@ const RELEASE_SIGNING_LINES = [
   '                    tmpKeystore.bytes = Base64.decoder.decode(storeBase64)',
   '                    storeFile tmpKeystore',
   '                } else if (storeFilePath != null) {',
-  '                    storeFile file(storeFilePath)',
+  '                    storeFile rootProject.file(storeFilePath)',
   '                }',
   '            }',
   '        }'
