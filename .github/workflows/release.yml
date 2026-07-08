@@ -216,6 +216,11 @@ jobs:
         env:
           BAISHOU_RELEASE_BUILD: '1'
           SKIP_SYNC: '1'
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_FILE: app/upload-keystore.jks
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4

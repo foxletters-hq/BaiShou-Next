@@ -7,9 +7,10 @@
  * - CI=true（GitHub Actions 自动设置）：跳过全量清缓存、启用 Gradle 构建缓存
  * - SKIP_SYNC=1：跳过 sync（workflow 已执行时）
  * - BAISHOU_RELEASE_FULL_CLEAN=1：强制全量清缓存 + --no-build-cache（排查陈旧产物时用）
+ * - ANDROID_*：CI 在 prebuild 清除 android/ 后，可由 setup-android-signing 从环境变量恢复签名
  */
 import { spawnSync } from 'node:child_process'
-import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { applyAndroidPlainSplashPatch } from './plain-splash-patch.mjs'
@@ -25,6 +26,88 @@ const gradlew = path.join(androidDir, process.platform === 'win32' ? 'gradlew.ba
 const isCi = process.env.CI === 'true'
 const forceFullClean = process.env.BAISHOU_RELEASE_FULL_CLEAN === '1'
 const skipSync = process.env.SKIP_SYNC === '1'
+
+/** expo prebuild 在 android/ 不完整时会清空目录，需备份签名配置并在 prebuild 后恢复 */
+function backupAndroidSigning() {
+  if (!existsSync(keyProperties)) return null
+
+  const backup = {
+    keyPropertiesText: readFileSync(keyProperties, 'utf8'),
+    keystoreRelPath: null,
+    keystoreBytes: null
+  }
+  const storeFileMatch = backup.keyPropertiesText.match(/^storeFile=(.+)$/m)
+  if (storeFileMatch) {
+    const rel = storeFileMatch[1].trim()
+    const keystorePath = path.join(androidDir, rel)
+    backup.keystoreRelPath = rel
+    if (existsSync(keystorePath)) {
+      backup.keystoreBytes = readFileSync(keystorePath)
+    }
+  }
+  return backup
+}
+
+function restoreAndroidSigning(backup) {
+  if (!backup?.keyPropertiesText) return false
+
+  mkdirSync(androidDir, { recursive: true })
+  writeFileSync(keyProperties, backup.keyPropertiesText, { mode: 0o600 })
+  if (backup.keystoreRelPath && backup.keystoreBytes) {
+    const keystorePath = path.join(androidDir, backup.keystoreRelPath)
+    mkdirSync(path.dirname(keystorePath), { recursive: true })
+    writeFileSync(keystorePath, backup.keystoreBytes)
+  }
+  return true
+}
+
+function ensureAndroidSigningConfig() {
+  if (existsSync(keyProperties)) return
+
+  console.log('🔐 尝试从环境变量恢复 Android 签名配置…')
+  run(process.execPath, [path.join(repoRoot, 'scripts/setup-android-signing.mjs')], repoRoot)
+
+  if (!existsSync(keyProperties)) {
+    console.error('❌ 缺少 apps/mobile/android/key.properties')
+    console.error('   请先执行（仓库根目录）: pnpm release:setup-signing')
+    process.exit(1)
+  }
+}
+
+function findApksigner() {
+  const sdkRoot = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT
+  if (sdkRoot) {
+    const buildToolsDir = path.join(sdkRoot, 'build-tools')
+    if (existsSync(buildToolsDir)) {
+      const versions = readdirSync(buildToolsDir).sort().reverse()
+      for (const ver of versions) {
+        const candidate = path.join(buildToolsDir, ver, 'apksigner')
+        if (existsSync(candidate)) return candidate
+        const winCandidate = `${candidate}.bat`
+        if (existsSync(winCandidate)) return winCandidate
+      }
+    }
+  }
+  return 'apksigner'
+}
+
+function verifyReleaseApkNotDebugSigned(apkPath) {
+  const apksigner = findApksigner()
+  const result = spawnSync(apksigner, ['verify', '--print-certs', apkPath], {
+    encoding: 'utf8'
+  })
+  const output = `${result.stdout || ''}\n${result.stderr || ''}`
+  if (result.status !== 0) {
+    console.error('❌ 无法校验 APK 签名（apksigner）:\n', output)
+    process.exit(1)
+  }
+  if (output.includes('CN=Android Debug')) {
+    console.error('❌ Release APK 使用了 Android Debug 证书，无法覆盖安装旧版正式包。')
+    console.error('   常见原因：expo prebuild 清除了 android/key.properties 且未恢复。')
+    process.exit(1)
+  }
+  console.log('✅ APK 签名校验通过（非 Debug 证书）')
+}
 
 const diaryEditorBundle = path.join(mobileRoot, 'assets/diary-editor/diary-editor.bundle')
 const diaryEditorHtml = path.join(mobileRoot, 'assets/diary-editor/index.html')
@@ -64,10 +147,10 @@ function run(cmd, args, cwd, extraEnv = {}) {
 }
 
 if (!existsSync(keyProperties)) {
-  console.error('❌ 缺少 apps/mobile/android/key.properties')
-  console.error('   请先执行（仓库根目录）: pnpm release:setup-signing')
-  process.exit(1)
+  ensureAndroidSigningConfig()
 }
+
+const signingBackup = backupAndroidSigning()
 
 if (!skipSync) {
   console.log('🎨 同步生成物…')
@@ -89,6 +172,12 @@ console.log('\n🔧 Expo prebuild（注入 release 签名配置）…')
 run('npx', ['expo', 'prebuild', '--platform', 'android', '--no-install'], mobileRoot, {
   BAISHOU_RELEASE_BUILD: '1'
 })
+
+if (restoreAndroidSigning(signingBackup)) {
+  console.log('🔐 已恢复 expo prebuild 前的 Android 签名配置')
+} else {
+  ensureAndroidSigningConfig()
+}
 
 if (!existsSync(gradlew)) {
   console.error('❌ 未找到 Gradle wrapper，prebuild 可能失败')
@@ -120,5 +209,7 @@ const outDir = path.join(repoRoot, 'release')
 mkdirSync(outDir, { recursive: true })
 const apkDest = path.join(outDir, `BaiShou-v${version}-Android.apk`)
 copyFileSync(apkSrc, apkDest)
+
+verifyReleaseApkNotDebugSigned(apkDest)
 
 console.log(`\n✅ Release APK: ${apkDest}`)
