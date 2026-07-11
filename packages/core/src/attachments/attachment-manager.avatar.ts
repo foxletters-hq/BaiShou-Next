@@ -36,11 +36,29 @@ export class AttachmentAvatarOps {
     if (this.isUserAvatarPrefix(prefix)) {
       return await this.pathProvider.getUserAvatarsDirectory()
     }
-    const extended = this.extendedProvider()
-    if (isPartnerAvatarImportPrefix(prefix) && extended.getGlobalAgentAvatarsDirectory) {
-      return await extended.getGlobalAgentAvatarsDirectory()
-    }
+    // 伙伴头像必须落在 vault 内 Attachments/avatars，才能被增量同步扫描上传
     return await this.pathProvider.getAvatarsDirectory()
+  }
+
+  /** 桌面端额外镜像到全局目录，便于跨 vault 本地解析；同步仍以 vault 副本为准 */
+  private async mirrorPartnerAvatarToGlobalIfNeeded(
+    prefix: string,
+    absoluteAvatarPath: string,
+    fileName: string
+  ): Promise<void> {
+    if (!isPartnerAvatarImportPrefix(prefix)) return
+    const extended = this.extendedProvider()
+    if (!extended.getGlobalAgentAvatarsDirectory) return
+    try {
+      const globalDir = await extended.getGlobalAgentAvatarsDirectory()
+      const dest = path.join(globalDir, fileName)
+      if (path.normalize(dest) === path.normalize(absoluteAvatarPath)) return
+      if (!existsSync(dest)) {
+        await fs.copyFile(absoluteAvatarPath, dest)
+      }
+    } catch (e) {
+      console.warn('[AttachmentManager] Failed to mirror partner avatar to global dir:', e)
+    }
   }
 
   private async getAvatarsDirectoriesForResolve(relativePath: string): Promise<string[]> {
@@ -97,6 +115,7 @@ export class AttachmentAvatarOps {
           const newPath = path.join(avatarsDir, newFileName)
 
           await fs.writeFile(newPath, Buffer.from(matches[2]!, 'base64'))
+          await this.mirrorPartnerAvatarToGlobalIfNeeded(prefix, newPath, newFileName)
           return `avatars/${newFileName}`
         }
       }
@@ -111,6 +130,7 @@ export class AttachmentAvatarOps {
       const newPath = path.join(avatarsDir, newFileName)
 
       await fs.copyFile(absoluteSourcePath, newPath)
+      await this.mirrorPartnerAvatarToGlobalIfNeeded(prefix, newPath, newFileName)
       return `avatars/${newFileName}`
     } catch (e) {
       console.error('[AttachmentManager] Failed to copy/decode avatar:', e)

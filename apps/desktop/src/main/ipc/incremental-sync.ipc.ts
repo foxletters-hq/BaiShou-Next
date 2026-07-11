@@ -284,6 +284,8 @@ export function registerIncrementalSyncIPC() {
 
   ipcMain.handle('incrementalSync:sync', async (event, runOptions) => {
     await flushPendingAgentSessionsBeforeSync()
+    // 历史桌面头像在 userData/AgentAvatars，同步前镜像进 vault 才能被扫描上传
+    await pathService.mirrorGlobalAgentAvatarsIntoVaults()
     const result = await (
       await getOrchestrator()
     ).sync((progress) => {
@@ -318,6 +320,7 @@ export function registerIncrementalSyncIPC() {
 
     service.clearPlanManifestCache()
     await vaultService.syncRegistryWithDisk()
+    await pathService.mirrorGlobalAgentAvatarsIntoVaults()
     let context = await resolveSyncPlanContext()
 
     const localManifest = await service.buildLocalManifest()

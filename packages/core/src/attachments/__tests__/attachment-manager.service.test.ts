@@ -322,17 +322,23 @@ date: 2026-10-01
     expect(resolved).toContain(filename)
   })
 
-  it('imports partner avatars into global agent directory when available', async () => {
+  it('imports partner avatars into vault Attachments/avatars for incremental sync', async () => {
+    const vaultDir = path.join(tempDir, 'avatars-active')
     const globalDir = path.join(tempDir, 'agent-global')
     const source = path.join(tempDir, 'source.jpg')
+    await fs.mkdir(vaultDir, { recursive: true })
     await fs.mkdir(globalDir, { recursive: true })
     await fs.writeFile(source, 'avatar-bytes')
 
+    mockPathService.getAvatarsDirectory.mockResolvedValue(vaultDir)
     mockPathService.getGlobalAgentAvatarsDirectory = vi.fn().mockResolvedValue(globalDir)
 
     const relative = await service.importAvatar(source, 'agent_avatar')
     expect(relative.startsWith('avatars/agent_avatar_')).toBe(true)
-    expect(existsSync(path.join(globalDir, relative.replace('avatars/', '')))).toBe(true)
+    const fileName = relative.replace('avatars/', '')
+    expect(existsSync(path.join(vaultDir, fileName))).toBe(true)
+    // 桌面端额外镜像到全局目录，便于本地跨 vault 解析
+    expect(existsSync(path.join(globalDir, fileName))).toBe(true)
   })
 
   it('does not duplicate chat background when saving resolved local URI', async () => {
