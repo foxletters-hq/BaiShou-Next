@@ -81,16 +81,9 @@ export function useMobileMcpConfig() {
   }, [dbReady, services])
 
   useEffect(() => {
-    if (!loading) {
-      void loadTools()
-    }
-  }, [loading, loadTools])
-
-  useEffect(() => {
-    if (!applying && !loading) {
-      void loadTools()
-    }
-  }, [applying, loading, loadTools, config.mcpEnabled])
+    if (loading || applying) return
+    void loadTools()
+  }, [applying, config.mcpEnabled, loadTools, loading])
 
   const mcpEndpointUrl = `http://${deviceIp}:${config.mcpPort}/mcp`
   const persistConfig = useCallback(

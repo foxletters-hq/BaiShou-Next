@@ -92,7 +92,7 @@ export function useAgentScreenSession(deps: {
     useAgentSessions(currentAssistant?.id)
 
   const resolvedCurrentAvatarUri = useResolvedAssistantAvatar(currentAssistant?.avatarPath)
-  const resolvedUserAvatarUri = useResolvedUserAvatar(userProfile.avatarPath)
+  const resolvedUserAvatarUri = useResolvedUserAvatar(userProfile.avatarPath).uri
   const resolvedChatBackgroundUri = useResolvedChatBackground(userProfile.chatBackgroundPath)
   const chatBackgroundBlur = normalizeChatBackgroundBlur(userProfile.chatBackgroundBlur)
   const chatBackgroundOverlay = normalizeChatBackgroundOverlayOpacity(

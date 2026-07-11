@@ -460,7 +460,6 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
               onKeyPress={handleKeyPress}
               placeholder={t('agent.chat.input_hint', '输入消息...')}
               multiline
-              maxLength={4000}
               textAlignVertical="center"
               editable={composerEnabled}
               onFocus={composerEnabled ? onInputFocus : undefined}

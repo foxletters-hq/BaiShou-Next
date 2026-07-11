@@ -16,19 +16,32 @@ export const McpSettingsSection: React.FC = () => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const toast = useNativeToast()
-  const mcp = useMobileMcpConfig()
+  const {
+    config,
+    mcpEndpointUrl,
+    applying,
+    isRunning,
+    activePort,
+    loading,
+    persistConfig,
+    refreshAuthToken,
+    tools,
+    toolsLoading,
+    toolsFailed,
+    reloadTools
+  } = useMobileMcpConfig()
 
   useFocusEffect(
     useCallback(() => {
-      if (!mcp.loading) {
-        void mcp.reloadTools()
+      if (!loading) {
+        void reloadTools()
       }
-    }, [mcp])
+    }, [loading, reloadTools])
   )
 
   const handleCopyEndpoint = async () => {
     try {
-      await Clipboard.setStringAsync(mcp.mcpEndpointUrl)
+      await Clipboard.setStringAsync(mcpEndpointUrl)
       toast.showSuccess(t('common.copied'))
     } catch {
       toast.showError(t('common.copy_failed'))
@@ -36,9 +49,9 @@ export const McpSettingsSection: React.FC = () => {
   }
 
   const handleCopyToken = async () => {
-    if (!mcp.config.mcpAuthToken) return
+    if (!config.mcpAuthToken) return
     try {
-      await Clipboard.setStringAsync(mcp.config.mcpAuthToken)
+      await Clipboard.setStringAsync(config.mcpAuthToken)
       toast.showSuccess(t('common.copied'))
     } catch {
       toast.showError(t('common.copy_failed'))
@@ -46,10 +59,10 @@ export const McpSettingsSection: React.FC = () => {
   }
 
   const handleRefreshToken = () => {
-    void mcp.refreshAuthToken()
+    void refreshAuthToken()
   }
 
-  if (mcp.loading) {
+  if (loading) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator color={colors.primary} />
@@ -60,17 +73,17 @@ export const McpSettingsSection: React.FC = () => {
   return (
     <View style={styles.root}>
       <McpSettingsCard
-        config={mcp.config}
-        mcpEndpointUrl={mcp.mcpEndpointUrl}
-        applying={mcp.applying}
-        isRunning={mcp.isRunning}
-        activePort={mcp.activePort}
-        onChange={(next) => void mcp.persistConfig(next)}
+        config={config}
+        mcpEndpointUrl={mcpEndpointUrl}
+        applying={applying}
+        isRunning={isRunning}
+        activePort={activePort}
+        onChange={(next) => void persistConfig(next)}
         onCopyEndpoint={() => void handleCopyEndpoint()}
         onCopyToken={() => void handleCopyToken()}
         onRefreshToken={handleRefreshToken}
       />
-      <McpToolsListPanel tools={mcp.tools} loading={mcp.toolsLoading} failed={mcp.toolsFailed} />
+      <McpToolsListPanel tools={tools} loading={toolsLoading} failed={toolsFailed} />
     </View>
   )
 }

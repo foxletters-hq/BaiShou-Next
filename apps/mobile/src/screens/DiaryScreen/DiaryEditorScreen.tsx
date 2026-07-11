@@ -225,9 +225,8 @@ export const DiaryEditorScreen: React.FC = () => {
     services,
     isAppendMode,
     isNewEntryMode,
-    normalizeDiaryCalendarDate,
-    applyLoadedDiary,
-    initBlankDiaryEntry
+    normalizeDiaryCalendarDate
+    // initBlankDiaryEntry / applyLoadedDiary 使用稳定 setState + ref，勿放入 deps
   ])
 
   const handleSave = async () => {

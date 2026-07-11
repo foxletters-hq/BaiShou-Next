@@ -47,6 +47,10 @@ export interface MarkdownRendererProps {
   isStreaming?: boolean
   /** chat：气泡正文；ancillary：思考块等附属内容 */
   variant?: MarkdownRendererVariant
+  /** 主线程同步 remend，避免首帧高度与点击后布局突变 */
+  preferSyncRemend?: boolean
+  /** 覆盖默认可选行为；阅读页可关闭以减轻点击时原生选区抖动 */
+  selectable?: boolean
   /** 将 attachment/xxx 转为可加载的 file:// URI */
   resolveImageUri?: (src: string) => string | null | undefined
   /** 异步解析 attachment/xxx（Android 外部存储需 data: URI） */
@@ -60,9 +64,13 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = (props) => {
     style,
     variant = 'default',
     isStreaming = false,
+    preferSyncRemend: preferSyncRemendProp,
+    selectable: selectableProp,
     resolveImageUri,
     loadImageUri
   } = props
+  const preferSyncRemend = preferSyncRemendProp ?? variant === 'preview'
+  const selectable = selectableProp ?? variant !== 'preview'
   const { colors } = useNativeTheme()
   const { handleLinkPress } = useMarkdownLinkPress()
 
@@ -122,7 +130,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = (props) => {
     markdownStyle,
     md4cFlags: STATIC_MD4C_FLAGS,
     onLinkPress: handleLinkPress,
-    selectable: variant !== 'preview',
+    selectable,
     containerStyle: nativeContainerStyle
   }
 
@@ -147,7 +155,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = (props) => {
       {isStreaming ? (
         <StreamdownText {...streamdownCommonProps} streamingConfig={{ tableMode: 'hidden' }} />
       ) : (
-        <StaticStreamdownText {...streamdownCommonProps} preferSyncRemend={variant === 'preview'} />
+        <StaticStreamdownText {...streamdownCommonProps} preferSyncRemend={preferSyncRemend} />
       )}
     </View>
   )

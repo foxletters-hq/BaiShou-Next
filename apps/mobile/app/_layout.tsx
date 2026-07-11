@@ -103,7 +103,13 @@ function AppContent() {
         <Stack.Screen name="assistants" />
         <Stack.Screen name="assistant-edit" />
         <Stack.Screen name="data-sync" />
-        <Stack.Screen name="summary-detail" />
+        <Stack.Screen
+          name="summary-detail"
+          options={{
+            headerShown: false,
+            ...themedFadeStackOptions
+          }}
+        />
         <Stack.Screen name="storage" />
         <Stack.Screen name="incremental-sync" />
       </Stack>
