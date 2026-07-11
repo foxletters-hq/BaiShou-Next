@@ -281,7 +281,8 @@ export class DesktopStoragePathService implements IStoragePathService {
   }
 
   /**
-   * 伙伴头像全局目录（Agent DB 跨工作区共用，头像不随 vault 切换）
+   * 伙伴头像本地缓存目录（跨工作区解析用）。
+   * 增量同步以 vault 内 `Attachments/avatars` 为准；导入时会 dual-write 到此目录。
    */
   public async getGlobalAgentAvatarsDirectory(): Promise<string> {
     const dir = path.join(app.getPath('userData'), 'AgentAvatars')
@@ -289,7 +290,7 @@ export class DesktopStoragePathService implements IStoragePathService {
     return dir
   }
 
-  /** 解析伙伴头像时依次搜索：全局目录 → 当前 vault → 其余 vault */
+  /** 解析伙伴头像时依次搜索：当前 vault → 全局目录 → 其余 vault */
   public async listAgentAvatarSearchDirectories(): Promise<string[]> {
     const dirs: string[] = []
     const seen = new Set<string>()
@@ -300,8 +301,9 @@ export class DesktopStoragePathService implements IStoragePathService {
       dirs.push(normalized)
     }
 
-    push(await this.getGlobalAgentAvatarsDirectory())
+    // vault 优先：增量同步落盘位置
     push(await this.getAvatarsDirectory())
+    push(await this.getGlobalAgentAvatarsDirectory())
 
     const root = await this.getRootDirectory()
     try {
@@ -342,6 +344,66 @@ export class DesktopStoragePathService implements IStoragePathService {
           } catch {
             // skip single file
           }
+        }
+      }
+    }
+  }
+
+  /**
+   * 将全局 AgentAvatars 中的伙伴头像镜像进各 vault 的 Attachments/avatars，
+   * 使历史桌面头像进入增量同步扫描范围。
+   */
+  public async mirrorGlobalAgentAvatarsIntoVaults(): Promise<void> {
+    const globalDir = await this.getGlobalAgentAvatarsDirectory()
+    let names: string[] = []
+    try {
+      names = await fs.readdir(globalDir)
+    } catch {
+      return
+    }
+    const agentFiles = names.filter(
+      (name) => name.startsWith('agent_avatar') || name.startsWith('agent_')
+    )
+    if (agentFiles.length === 0) return
+
+    const vaultAvatarDirs = new Set<string>()
+    vaultAvatarDirs.add(path.normalize(await this.getAvatarsDirectory()))
+
+    const root = await this.getRootDirectory()
+    try {
+      const entries = await fs.readdir(root, { withFileTypes: true })
+      for (const entry of entries) {
+        if (!entry.isDirectory() || entry.name.startsWith('.')) continue
+        vaultAvatarDirs.add(path.normalize(path.join(root, entry.name, 'Attachments', 'avatars')))
+      }
+    } catch {
+      // ignore unreadable workspace root
+    }
+
+    for (const vaultDir of vaultAvatarDirs) {
+      try {
+        await fs.mkdir(vaultDir, { recursive: true })
+      } catch {
+        continue
+      }
+      for (const name of agentFiles) {
+        const src = path.join(globalDir, name)
+        const dest = path.join(vaultDir, name)
+        try {
+          const srcStat = await fs.stat(src)
+          let shouldCopy = false
+          try {
+            const destStat = await fs.stat(dest)
+            // 全局更新更晚时覆盖 vault 陈旧副本，避免解析一直命中旧头像
+            shouldCopy = srcStat.mtimeMs > destStat.mtimeMs
+          } catch {
+            shouldCopy = true
+          }
+          if (shouldCopy) {
+            await fs.copyFile(src, dest)
+          }
+        } catch {
+          // skip single file
         }
       }
     }

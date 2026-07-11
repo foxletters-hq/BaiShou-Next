@@ -142,6 +142,7 @@ export class GlobalDataBootstrapper {
       }
 
       await pathService.backfillGlobalAgentAvatarsFromVaults()
+      await pathService.mirrorGlobalAgentAvatarsIntoVaults()
 
       logger.info('--- ✅ GLOBAL BOOTSTRAPPER FINISHED. SYSTEM IS RATIONALIZED AND READY ---')
       await this.notifyRenderersAfterResync()

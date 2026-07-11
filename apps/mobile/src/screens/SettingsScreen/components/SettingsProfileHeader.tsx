@@ -11,8 +11,6 @@ import {
   requestAvatarLibraryPermission,
   runAfterOverlayDismiss
 } from '@baishou/ui/native'
-import { isCustomUserAvatar } from '@baishou/shared'
-import { useBaishou } from '../../../providers/BaishouProvider'
 import { useResolvedUserAvatar } from '../../../hooks/useResolvedUserAvatar'
 
 export interface SettingsProfileSavePayload {
@@ -39,10 +37,11 @@ export const SettingsProfileHeader: React.FC<SettingsProfileHeaderProps> = ({
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
-  const { dbReady } = useBaishou()
   const dialog = useDialog()
   const toast = useNativeToast()
-  const resolvedAvatarUri = useResolvedUserAvatar(profile.avatarPath)
+  const { uri: resolvedAvatarUri, resolving: avatarResolving } = useResolvedUserAvatar(
+    profile.avatarPath
+  )
   const [pendingPreviewUri, setPendingPreviewUri] = useState<string | null>(null)
   const [savingAvatar, setSavingAvatar] = useState(false)
 
@@ -55,11 +54,10 @@ export const SettingsProfileHeader: React.FC<SettingsProfileHeaderProps> = ({
 
   const displayName = profile.nickname?.trim() || t('profile.default_nickname', '白守用户')
   const displayUri = pendingPreviewUri ?? resolvedAvatarUri
-  const awaitingCustomAvatar =
-    isCustomUserAvatar(profile.avatarPath) && !displayUri && (dbReady || !!profile.avatarPath)
+  const showAvatarSpinner = avatarResolving && !displayUri && !savingAvatar
   const avatarSource = displayUri
     ? ({ uri: displayUri } as const)
-    : awaitingCustomAvatar
+    : showAvatarSpinner
       ? null
       : resolveNativeUserAvatarSource(profile.avatarPath, displayUri)
 

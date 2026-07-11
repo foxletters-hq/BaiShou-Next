@@ -31,7 +31,6 @@ import { hasRemoteManifestDrift } from './mobile-incremental-plan-reuse.util'
 import type { MobileDataBootstrapper } from './mobile-bootstrapper.service'
 import { emitSyncMutation } from '../cache/mobile-cache-coordinator'
 import { reconcileUserAvatarProfileAfterStorageChange } from '../lib/user-avatar-reconcile.util'
-import { reconcileAssistantAvatarsAfterStorageChange } from '../lib/assistant-avatar-reconcile.util'
 
 export type IncrementalSyncProgress = MobileIncrementalProgress
 
@@ -233,13 +232,7 @@ export class MobileIncrementalSyncService {
               this.pathService,
               this.fileSystem
             )
-            if (this.assistantManager) {
-              await reconcileAssistantAvatarsAfterStorageChange(
-                this.assistantManager,
-                this.pathService,
-                this.fileSystem
-              )
-            }
+            // 不同步后对账重置伙伴头像：文件缺失通常是对端未上传，重置会毁掉可恢复的 avatarPath
             const { schedulePostSyncDiaryBatchEmbed } =
               await import('./mobile-post-sync-diary-embed.service')
             schedulePostSyncDiaryBatchEmbed()

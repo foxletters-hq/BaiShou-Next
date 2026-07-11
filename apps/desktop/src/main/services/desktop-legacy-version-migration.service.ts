@@ -360,6 +360,7 @@ export class DesktopLegacyVersionMigrationService {
 
     if (workspaceName && (result.imported > 0 || result.skipped > 0)) {
       await pathService.backfillGlobalAgentAvatarsFromVaults()
+      await pathService.mirrorGlobalAgentAvatarsIntoVaults()
       await globalBootstrapper.fullyResyncAllEcosystems()
     }
 
