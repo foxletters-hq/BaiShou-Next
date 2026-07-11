@@ -14,6 +14,8 @@ interface CompressionSnapshotRef {
   coveredUpToMessageId: string
   /** 累计已压缩消息条数（用于锚点 id 丢失时的回退） */
   messageCount?: number
+  summaryText?: string | null
+  tailStartMessageId?: string | null
   [key: string]: any
 }
 import { estimateTextTokens } from './call-chain-view-model.builder'
@@ -85,20 +87,90 @@ export function getModelContextWindow(
 }
 
 /**
- * 触发压缩时的上下文 token 估算：仅按「摘要 + 快照后保留消息」文本估算。
- * 不使用 API usage（与伙伴阈值比较的应是实际上下文，而非上一轮计费体量）。
+ * 触发压缩时的上下文 token 估算：与 ContextWindowBuilder 对齐——
+ * 摘要 + 快照保留区 + recentCount 截断 + 系统提示词（粗估）。
  */
 export function estimateContextTokensForTrigger(
-  _allMessages: MessageWithParts[],
-  messagesAfterSnapshot: MessageWithParts[],
-  latestSnapshot: { summaryText?: string | null } | null
+  allMessages: MessageWithParts[],
+  latestSnapshot: CompressionSnapshotRef | null,
+  options?: { recentCount?: number; systemPrompt?: string }
 ): number {
-  let tokens = estimateMessagesTokens(messagesAfterSnapshot, true)
+  const retain = latestSnapshot
+    ? resolveRetainMessagesAfterSnapshot(allMessages, latestSnapshot)
+    : trimLeadingOrphanMessagesAfterSnapshot([...allMessages])
+
+  const windowMessages =
+    options?.recentCount != null && options.recentCount > 0
+      ? sliceMessagesByRecentTurns(retain, options.recentCount)
+      : retain
+
+  let tokens = estimateMessagesTokens(windowMessages, true)
   const summary = latestSnapshot?.summaryText?.trim()
   if (summary) {
     tokens += estimateTextTokens(summary)
   }
+  if (options?.systemPrompt?.trim()) {
+    tokens += estimateTextTokens(options.systemPrompt.trim())
+  }
   return tokens
+}
+
+/** 解析快照之后应保留的消息（优先 tailStartMessageId，其次 coveredUpTo） */
+export function resolveRetainMessagesAfterSnapshot(
+  messages: MessageWithParts[],
+  snapshot: CompressionSnapshotRef
+): MessageWithParts[] {
+  if (snapshot.tailStartMessageId) {
+    const tailIdx = messages.findIndex((m) => m.id === snapshot.tailStartMessageId)
+    if (tailIdx >= 0) {
+      return trimLeadingOrphanMessagesAfterSnapshot(messages.slice(tailIdx))
+    }
+  }
+
+  const cutoffIndex = resolveSnapshotCutoffIndex(messages, snapshot)
+  if (cutoffIndex >= 0) {
+    return trimLeadingOrphanMessagesAfterSnapshot(messages.slice(cutoffIndex + 1))
+  }
+
+  // 快照存在但锚点丢失时，不应把整段历史当作保留区（否则会误触发压缩）
+  return trimLeadingOrphanMessagesAfterSnapshot([])
+}
+
+/** 与 ContextWindowBuilder 一致的按用户轮次截断（不含摘要占位消息） */
+export function sliceMessagesByRecentTurns(
+  messages: MessageWithParts[],
+  recentCount: number
+): MessageWithParts[] {
+  if (recentCount <= 0 || messages.length === 0) return messages
+
+  let startIndex = 0
+  let rounds = 0
+
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i]!
+    const nextMsgInTimeline = i < messages.length - 1 ? messages[i + 1] : null
+    const isUser = msg.role === 'user'
+
+    if (isUser && (!nextMsgInTimeline || nextMsgInTimeline.role !== 'user')) {
+      rounds++
+    }
+
+    if (rounds === recentCount && isUser) {
+      startIndex = i
+    } else if (rounds > recentCount) {
+      break
+    }
+  }
+
+  while (
+    startIndex > 0 &&
+    startIndex < messages.length &&
+    messages[startIndex]!.role === 'tool'
+  ) {
+    startIndex--
+  }
+
+  return messages.slice(Math.max(0, startIndex))
 }
 
 /** 从伙伴记录读取压缩阈值；无效值视为 0（关闭） */
@@ -364,9 +436,10 @@ export function getMessagesAfterSnapshot(
   allMessages: MessageWithParts[],
   snapshot: CompressionSnapshotRef | null
 ): MessageWithParts[] {
-  const cutoffIndex = resolveSnapshotCutoffIndex(allMessages, snapshot)
-  if (cutoffIndex < 0) return trimLeadingOrphanMessagesAfterSnapshot([...allMessages])
-  return trimLeadingOrphanMessagesAfterSnapshot(allMessages.slice(cutoffIndex + 1))
+  if (!snapshot) {
+    return trimLeadingOrphanMessagesAfterSnapshot([...allMessages])
+  }
+  return resolveRetainMessagesAfterSnapshot(allMessages, snapshot)
 }
 
 function trimTrailingToolTail(messages: MessageWithParts[]): MessageWithParts[] {

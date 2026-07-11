@@ -344,8 +344,7 @@ describe('context-compression.utils', () => {
     messages[1]!.inputTokens = 350_000
     messages[1]!.outputTokens = 5_000
 
-    const after = getMessagesAfterSnapshot(messages, snapshot)
-    const tokens = estimateContextTokensForTrigger(messages, after, snapshot)
+    const tokens = estimateContextTokensForTrigger(messages, snapshot)
 
     expect(tokens).toBeLessThan(10_000)
     expect(resolveCompressionTrigger(tokens, { threshold: 300_000, keepTurns: 3 })).toBe(false)
@@ -360,11 +359,57 @@ describe('context-compression.utils', () => {
     messages[1]!.inputTokens = 350_000
     messages[1]!.outputTokens = 5_000
 
-    const after = getMessagesAfterSnapshot(messages, null)
-    const tokens = estimateContextTokensForTrigger(messages, after, null)
+    const tokens = estimateContextTokensForTrigger(messages, null)
 
     expect(tokens).toBeLessThan(1_000)
     expect(resolveCompressionTrigger(tokens, { threshold: 300_000, keepTurns: 3 })).toBe(false)
+  })
+
+  it('estimateContextTokensForTrigger applies recentCount like ContextWindowBuilder', () => {
+    const messages: MessageWithParts[] = []
+    for (let i = 0; i < 40; i++) {
+      const order = i * 2 + 1
+      messages.push(msg(`u${i}`, 'user', order, `user turn ${i} `.repeat(80)))
+      messages.push(msg(`a${i}`, 'assistant', order + 1, `assistant turn ${i} `.repeat(80)))
+    }
+
+    const withoutRecent = estimateContextTokensForTrigger(messages, null)
+    const withRecent = estimateContextTokensForTrigger(messages, null, { recentCount: 5 })
+
+    expect(withRecent).toBeLessThan(withoutRecent)
+    const midThreshold = Math.floor((withoutRecent + withRecent) / 2)
+    expect(resolveCompressionTrigger(withoutRecent, { threshold: midThreshold, keepTurns: 3 })).toBe(
+      true
+    )
+    expect(resolveCompressionTrigger(withRecent, { threshold: midThreshold, keepTurns: 3 })).toBe(
+      false
+    )
+  })
+
+  it('estimateContextTokensForTrigger does not count full history when snapshot anchor is lost', () => {
+    const messages = [
+      msg('1', 'user', 1, 'old '.repeat(200)),
+      msg('2', 'assistant', 2, 'old reply '.repeat(200)),
+      msg('3', 'user', 3, 'recent '.repeat(200)),
+      msg('4', 'assistant', 4, 'recent reply '.repeat(200))
+    ]
+    // id / messageCount / tail 全部无法解析，才会走空保留区
+    const snapshot = {
+      id: 1,
+      sessionId: 's1',
+      summaryText: 'short summary',
+      coveredUpToMessageId: 'missing-id',
+      tailStartMessageId: 'also-missing',
+      messageCount: null,
+      tokenCount: null,
+      createdAt: new Date()
+    }
+
+    const fullHistoryTokens = estimateContextTokensForTrigger(messages, null)
+    const tokens = estimateContextTokensForTrigger(messages, snapshot)
+    expect(tokens).toBeLessThan(100)
+    expect(tokens).toBeLessThan(fullHistoryTokens / 10)
+    expect(resolveCompressionTrigger(tokens, { threshold: 150_000, keepTurns: 3 })).toBe(false)
   })
 
   it('readCompressTokenThreshold normalizes assistant values', () => {

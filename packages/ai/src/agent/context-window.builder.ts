@@ -2,8 +2,8 @@ import { SessionRepository } from '@baishou/database'
 import { MessageWithParts } from './message.adapter'
 // @ts-ignore
 import { SnapshotRepository } from '@baishou/database'
-import { normalizeCompressionOutput } from '@baishou/shared'
-import { resolveSnapshotCutoffIndex } from './context-compression.utils'
+import { logger, normalizeCompressionOutput } from '@baishou/shared'
+import { resolveRetainMessagesAfterSnapshot } from './context-compression.utils'
 import { COMPRESSION_MESSAGE_FETCH_LIMIT } from './compression.constants'
 
 export interface ContextWindowConfig {
@@ -69,24 +69,17 @@ export class ContextWindowBuilder {
         : snapshotOverride
 
     if (snapshot) {
-      let retainStartIndex = -1
-      if (snapshot.tailStartMessageId) {
-        retainStartIndex = messages.findIndex((m) => m.id === snapshot.tailStartMessageId)
-      }
-      if (retainStartIndex < 0) {
-        const cutoffIndex = resolveSnapshotCutoffIndex(messages, snapshot)
-        if (cutoffIndex >= 0) retainStartIndex = cutoffIndex + 1
-      }
+      let retainMessages = resolveRetainMessagesAfterSnapshot(messages, snapshot)
 
       if (config.requiredMessageId) {
         const requiredIdx = messages.findIndex((m) => m.id === config.requiredMessageId)
-        if (requiredIdx >= 0 && (retainStartIndex < 0 || retainStartIndex > requiredIdx)) {
-          retainStartIndex = requiredIdx
+        if (requiredIdx >= 0 && !retainMessages.some((m) => m.id === config.requiredMessageId)) {
+          retainMessages = messages.slice(requiredIdx)
         }
       }
 
-      if (retainStartIndex >= 1 && retainStartIndex <= messages.length - 1) {
-        const cleanSummary = normalizeCompressionOutput(snapshot.summaryText, '').summaryText
+      const cleanSummary = normalizeCompressionOutput(snapshot.summaryText, '').summaryText
+      if (cleanSummary.trim()) {
         const summaryMsg: MessageWithParts = {
           id: 'snapshot_' + snapshot.id,
           sessionId,
@@ -104,9 +97,15 @@ export class ContextWindowBuilder {
             }
           ]
         }
-        effectiveMessages = [summaryMsg, ...messages.slice(retainStartIndex)]
+        effectiveMessages = [summaryMsg, ...retainMessages]
       } else {
-        effectiveMessages = [...messages]
+        // 有快照时绝不回退全量历史（与触发估算一致）；锚点丢失且无摘要时仅保留区（可能为空）
+        if (retainMessages.length === 0) {
+          logger.warn(
+            `[ContextWindowBuilder] Session(${sessionId}) snapshot present but retain anchors unresolved and summary empty; refusing full-history fallback.`
+          )
+        }
+        effectiveMessages = retainMessages
       }
     } else {
       effectiveMessages = [...messages]

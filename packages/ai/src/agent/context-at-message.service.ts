@@ -177,12 +177,14 @@ export class ContextAtMessageService {
 
     if (snapshot.tailStartMessageId) {
       const tailIdx = allMessages.findIndex((m) => m.id === snapshot.tailStartMessageId)
-      if (tailIdx > 0) {
-        const anchor = allMessages[tailIdx - 1]
+      if (tailIdx >= 0) {
+        const anchor = tailIdx > 0 ? allMessages[tailIdx - 1] : undefined
+        const cutoffIndex = resolveSnapshotCutoffIndex(allMessages, snapshot)
+        const coveredAnchor = cutoffIndex >= 0 ? allMessages[cutoffIndex] : undefined
         return {
           compressionSummary,
           compressionReasoning,
-          compactionCutoffOrderIndex: anchor?.orderIndex,
+          compactionCutoffOrderIndex: anchor?.orderIndex ?? coveredAnchor?.orderIndex,
           thoughtDurationMs: durations.thoughtDurationMs,
           summaryDurationMs: durations.summaryDurationMs
         }

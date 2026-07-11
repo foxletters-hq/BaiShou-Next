@@ -26,7 +26,6 @@ import { ContextWindowBuilder } from './context-window.builder'
 import { ContextCompressorService } from './context-compressor.service'
 import {
   estimateContextTokensForTrigger,
-  getMessagesAfterSnapshot,
   resolveSessionCompressionConfig,
   resolveCompressionTrigger,
   usableContextTokens
@@ -125,6 +124,11 @@ export class AgentSessionService {
           : undefined
       )
 
+      const configRecentCount =
+        typeof mergedUserConfig['recentCount'] === 'number'
+          ? mergedUserConfig['recentCount']
+          : 30
+
       // 2. 若上下文 token 超过阈值或逼近模型窗口，先同步压缩再构建窗口
       const compressionConfig = await resolveSessionCompressionConfig(sessionId, sessionRepo)
       const loadSessionMessages = async () =>
@@ -149,11 +153,13 @@ export class AgentSessionService {
           compressionConfig.force || compressionConfig.threshold > 0 || usableWindow > 0
 
         if (shouldEvaluateCompression) {
-          const afterSnap = getMessagesAfterSnapshot(sessionMessages, snapshotForWindow)
           const contextTokens = estimateContextTokensForTrigger(
             sessionMessages,
-            afterSnap,
-            snapshotForWindow
+            snapshotForWindow,
+            {
+              recentCount: configRecentCount,
+              systemPrompt: effectiveSystemPrompt
+            }
           )
           if (resolveCompressionTrigger(contextTokens, compressionConfig)) {
             logger.info(
@@ -171,7 +177,9 @@ export class AgentSessionService {
                 ...(userMessageId ? { triggerUserMessageId: userMessageId } : {}),
                 abortSignal,
                 wrapMessageTime: injectMessageTime,
-                prefetchedMessages: sessionMessages
+                prefetchedMessages: sessionMessages,
+                recentCount: configRecentCount,
+                systemPrompt: effectiveSystemPrompt
               }
             )
             if (abortSignal?.aborted) {
@@ -190,9 +198,6 @@ export class AgentSessionService {
       }
 
       // 3. 从数据库构建模型上下文（用户消息须在 streamChat 之前落库）
-      const configRecentCount =
-        typeof userConfig?.['recentCount'] === 'number' ? userConfig['recentCount'] : 30
-
       if (userMessageId && !sessionMessages.some((message) => message.id === userMessageId)) {
         sessionMessages = await loadSessionMessages()
       }
@@ -280,7 +285,9 @@ export class AgentSessionService {
             resolveEffectiveProviderType(provider.config?.type ?? '', modelId),
             {
               ...(userMessageId ? { triggerUserMessageId: userMessageId } : {}),
-              wrapMessageTime: injectMessageTime
+              wrapMessageTime: injectMessageTime,
+              recentCount: configRecentCount,
+              systemPrompt: effectiveSystemPrompt
             }
           )
           if (ok) {

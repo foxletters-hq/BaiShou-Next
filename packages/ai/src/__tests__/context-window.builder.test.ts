@@ -126,4 +126,144 @@ describe('ContextWindowBuilder', () => {
     )
     expect(withAnchor.map((m) => m.id)).toEqual(['user-msg-1', 'm3', 'user-msg-2'])
   })
+
+  it('applies snapshot retain slice when tailStartMessageId is missing but coveredUpTo resolves', async () => {
+    const messages: MessageWithParts[] = [
+      { ...makeMsg('user', 1), id: '1' },
+      { ...makeMsg('assistant', 2), id: '2' },
+      { ...makeMsg('user', 3), id: '3' },
+      { ...makeMsg('assistant', 4), id: '4' },
+      { ...makeMsg('user', 5), id: '5' }
+    ]
+
+    const sessionRepo = {
+      getMessagesBySession: vi.fn().mockResolvedValue(messages)
+    }
+    const snapshotRepo = {
+      getLatestSnapshot: vi.fn().mockResolvedValue({
+        id: 9,
+        sessionId: 'session_1',
+        summaryText: '摘要',
+        coveredUpToMessageId: '2',
+        tailStartMessageId: 'missing-tail-id',
+        messageCount: 2,
+        tokenCount: null,
+        createdAt: new Date()
+      })
+    }
+
+    const result = await ContextWindowBuilder.build(
+      'session_1',
+      sessionRepo as any,
+      snapshotRepo as any,
+      { recentCount: 0 }
+    )
+
+    expect(result[0]?.isSummary).toBe(true)
+    expect(result.map((m) => m.id)).toEqual(['snapshot_9', '3', '4', '5'])
+  })
+
+  it('does not fall back to full history when snapshot exists but retain anchor is at index 0', async () => {
+    const messages: MessageWithParts[] = [
+      { ...makeMsg('user', 1), id: '1' },
+      { ...makeMsg('assistant', 2), id: '2' },
+      { ...makeMsg('user', 3), id: '3' }
+    ]
+
+    const sessionRepo = {
+      getMessagesBySession: vi.fn().mockResolvedValue(messages)
+    }
+    const snapshotRepo = {
+      getLatestSnapshot: vi.fn().mockResolvedValue({
+        id: 10,
+        sessionId: 'session_1',
+        summaryText: '摘要',
+        coveredUpToMessageId: 'gone',
+        tailStartMessageId: '1',
+        messageCount: 0,
+        tokenCount: null,
+        createdAt: new Date()
+      })
+    }
+
+    const result = await ContextWindowBuilder.build(
+      'session_1',
+      sessionRepo as any,
+      snapshotRepo as any,
+      { recentCount: 0 }
+    )
+
+    expect(result[0]?.isSummary).toBe(true)
+    expect(result.map((m) => m.id)).toEqual(['snapshot_10', '1', '2', '3'])
+  })
+
+  it('does not fall back to full history when snapshot anchors are lost and summary is empty', async () => {
+    const messages: MessageWithParts[] = [
+      { ...makeMsg('user', 1), id: '1' },
+      { ...makeMsg('assistant', 2), id: '2' },
+      { ...makeMsg('user', 3), id: '3' },
+      { ...makeMsg('assistant', 4), id: '4' }
+    ]
+
+    const sessionRepo = {
+      getMessagesBySession: vi.fn().mockResolvedValue(messages)
+    }
+    const snapshotRepo = {
+      getLatestSnapshot: vi.fn().mockResolvedValue({
+        id: 11,
+        sessionId: 'session_1',
+        summaryText: '   ',
+        coveredUpToMessageId: 'missing-id',
+        tailStartMessageId: 'also-missing',
+        messageCount: null,
+        tokenCount: null,
+        createdAt: new Date()
+      })
+    }
+
+    const result = await ContextWindowBuilder.build(
+      'session_1',
+      sessionRepo as any,
+      snapshotRepo as any,
+      { recentCount: 0 }
+    )
+
+    expect(result).toEqual([])
+  })
+
+  it('keeps requiredMessageId turn when snapshot anchors are lost', async () => {
+    const messages: MessageWithParts[] = [
+      { ...makeMsg('user', 1), id: '1' },
+      { ...makeMsg('assistant', 2), id: '2' },
+      { ...makeMsg('user', 3), id: '3' },
+      { ...makeMsg('assistant', 4), id: '4' },
+      { ...makeMsg('user', 5), id: '5' }
+    ]
+
+    const sessionRepo = {
+      getMessagesBySession: vi.fn().mockResolvedValue(messages)
+    }
+    const snapshotRepo = {
+      getLatestSnapshot: vi.fn().mockResolvedValue({
+        id: 12,
+        sessionId: 'session_1',
+        summaryText: '摘要',
+        coveredUpToMessageId: 'missing-id',
+        tailStartMessageId: 'also-missing',
+        messageCount: null,
+        tokenCount: null,
+        createdAt: new Date()
+      })
+    }
+
+    const result = await ContextWindowBuilder.build(
+      'session_1',
+      sessionRepo as any,
+      snapshotRepo as any,
+      { recentCount: 0, requiredMessageId: '5' }
+    )
+
+    expect(result[0]?.isSummary).toBe(true)
+    expect(result.map((m) => m.id)).toEqual(['snapshot_12', '5'])
+  })
 })

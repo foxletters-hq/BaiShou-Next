@@ -14,7 +14,6 @@ import { logger } from '@baishou/shared'
 import { MessageWithParts } from './message.adapter'
 import {
   estimateContextTokensForTrigger,
-  getMessagesAfterSnapshot,
   resolveCompressionBatch,
   hasEnoughMessagesForRecompress,
   hasUserContentInCompressionBatch,
@@ -56,6 +55,10 @@ export type CompressionRunOptions = {
   wrapMessageTime?: boolean
   /** 调用方已加载的会话消息，避免重复全量查询 */
   prefetchedMessages?: MessageWithParts[]
+  /** 与 ContextWindowBuilder 一致的最近轮次截断 */
+  recentCount?: number
+  /** 对话系统提示词，用于触发估算与 UI 对齐 */
+  systemPrompt?: string
 }
 
 export type RecompressResult = {
@@ -159,13 +162,11 @@ export class ContextCompressorService {
       }
 
       const latestSnapshot = await snapshotRepo.getLatestSnapshot(sessionId)
-      const messagesAfterSnapshot = getMessagesAfterSnapshot(allMessages, latestSnapshot)
 
-      const contextTokens = estimateContextTokensForTrigger(
-        allMessages,
-        messagesAfterSnapshot,
-        latestSnapshot
-      )
+      const contextTokens = estimateContextTokensForTrigger(allMessages, latestSnapshot, {
+        recentCount: runOptions?.recentCount,
+        systemPrompt: runOptions?.systemPrompt
+      })
       if (!resolveCompressionTrigger(contextTokens, compressionConfig)) {
         logger.info(
           `[ContextCompressor] Session(${sessionId}) skip: ~${contextTokens} tokens below threshold ${compressionConfig.threshold}.`
