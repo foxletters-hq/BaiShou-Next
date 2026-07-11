@@ -166,7 +166,18 @@ export async function stopVaultWatchers(): Promise<void> {
   summaryFileWatcher.stop()
 }
 
-export async function prepareVaultSwitch(currentStack?: VaultBoundDiaryStack): Promise<void> {
+export async function prepareVaultSwitch(
+  currentStack?: VaultBoundDiaryStack,
+  options?: { sessionManager?: SessionManagerService }
+): Promise<void> {
+  // 停 watcher / 切 vault 前先落盘，避免「库有盘无」被后续 fullResync 当幽灵删掉
+  if (options?.sessionManager) {
+    try {
+      await options.sessionManager.flushPendingDiskWrites()
+    } catch (e) {
+      logger.warn('[VaultRuntime] flushPendingDiskWrites before switch failed:', e as Error)
+    }
+  }
   if (currentStack) {
     currentStack.shadowIndexSyncService.setSyncEnabled(false)
   }
@@ -185,10 +196,18 @@ export async function prepareVaultSwitch(currentStack?: VaultBoundDiaryStack): P
 export async function quiesceStorageForFileCopy(deps: {
   currentStack?: VaultBoundDiaryStack
   settingsManager: SettingsManagerService
+  sessionManager?: SessionManagerService
 }): Promise<void> {
   bumpVaultRuntimeGeneration()
-  await prepareVaultSwitch(deps.currentStack)
+  await prepareVaultSwitch(deps.currentStack, { sessionManager: deps.sessionManager })
   await deps.settingsManager.flushToDisk()
+  if (deps.sessionManager) {
+    try {
+      await deps.sessionManager.flushPendingDiskWrites()
+    } catch (e) {
+      logger.warn('[VaultRuntime] flushPendingDiskWrites during quiesce failed:', e as Error)
+    }
+  }
   await shadowConnectionManager.disconnect()
 }
 
@@ -296,7 +315,9 @@ export async function rebootstrapAfterStorageRootChange(
 
   const task = (async () => {
     bumpVaultRuntimeGeneration()
-    await prepareVaultSwitch(deps.diaryStack)
+    await prepareVaultSwitch(deps.diaryStack, {
+      sessionManager: deps.bootstrapDeps.sessionManager
+    })
     await deps.vaultService.initRegistry()
     if (blockingResync) {
       await preferActiveVaultWithJournalsOnDisk({
@@ -428,7 +449,9 @@ export async function switchVaultRuntime(
 
   const switchTask = (async () => {
     bumpVaultRuntimeGeneration()
-    await prepareVaultSwitch(deps.currentStack)
+    await prepareVaultSwitch(deps.currentStack, {
+      sessionManager: deps.bootstrapDeps.sessionManager
+    })
 
     const active = deps.vaultService.getActiveVault()
     if (active?.name === vaultName && deps.currentStack) {

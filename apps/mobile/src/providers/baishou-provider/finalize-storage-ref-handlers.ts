@@ -148,7 +148,8 @@ export async function finalizeStorageRefHandlers(
       const runtime = agentDbRuntimeRef.current
       await quiesceStorageForFileCopy({
         currentStack: stack ?? undefined,
-        settingsManager: runtime?.settingsManager ?? settingsManager
+        settingsManager: runtime?.settingsManager ?? settingsManager,
+        sessionManager: runtime?.sessionManager
       })
       const activeMcp = refs.vaultBootstrapCtxRef.current?.mobileMcpService ?? mobileMcpService
       if (activeMcp?.isServerRunning()) {

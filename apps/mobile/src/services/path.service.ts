@@ -64,7 +64,7 @@ export class MobileStoragePathService implements IStoragePathService {
 
   /**
    * 首次获得全文件访问权限时写入默认外部 BaiShou_Root。
-   * 若用户已在设置/引导页选定目录，不得覆盖。
+   * 若用户已在设置/引导页选定目录，不得覆盖；短暂写失败也不得清除用户选择。
    */
   public async applyExternalRootWhenPermitted(): Promise<boolean> {
     if (Platform.OS !== 'android') return false
@@ -78,8 +78,12 @@ export class MobileStoragePathService implements IStoragePathService {
         await this.ensureWritableDirectory(existing)
         return true
       } catch (e) {
-        console.warn(`StoragePathService: Saved custom path ${existing} inaccessible.`, e)
-        await AsyncStorage.removeItem(this.customRootKey)
+        // 保留 baishou_custom_storage_root：休眠/挂载抖动时清掉会导致回退默认目录并丢会话
+        console.warn(
+          `StoragePathService: Saved custom path ${existing} inaccessible; keeping preference.`,
+          e
+        )
+        return false
       }
     }
 
@@ -149,8 +153,12 @@ export class MobileStoragePathService implements IStoragePathService {
         try {
           return await this.ensureWritableDirectory(customPath)
         } catch (e) {
-          console.warn(`StoragePathService: Custom path ${customPath} inaccessible.`, e)
-          await AsyncStorage.removeItem(this.customRootKey)
+          // 不得 removeItem / 静默改写为默认根，否则用户目录会「突然变回默认」
+          console.warn(
+            `StoragePathService: Custom path ${customPath} inaccessible; keeping preference.`,
+            e
+          )
+          throw new ExternalStorageRequiredError()
         }
       }
 
@@ -168,7 +176,11 @@ export class MobileStoragePathService implements IStoragePathService {
       try {
         return await this.ensureWritableDirectory(customPath)
       } catch (e) {
-        console.warn(`StoragePathService: Custom path ${customPath} inaccessible.`, e)
+        // 保留用户选择；本次回退沙盒/默认根，避免清掉 preference 后永久丢目录
+        console.warn(
+          `StoragePathService: Custom path ${customPath} inaccessible; keeping preference.`,
+          e
+        )
       }
     }
 
