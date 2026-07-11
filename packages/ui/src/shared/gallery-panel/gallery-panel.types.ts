@@ -17,6 +17,7 @@ export interface GalleryPanelProps {
   images?: GalleryImage[]
   onImagePress?: (uri: string) => void
   summaries?: SummaryItem[]
+  loading?: boolean
   onOpen?: (id: string) => void
   onEdit?: (id: string) => void
   onDelete?: (id: string) => void
