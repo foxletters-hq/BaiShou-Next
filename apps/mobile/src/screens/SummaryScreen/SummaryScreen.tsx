@@ -14,18 +14,19 @@ import {
 } from '@baishou/ui/native'
 import { logger } from '@baishou/shared'
 import { useBaishou } from '../../providers/BaishouProvider'
-import { useSummaryData } from '../../hooks/useSummaryData'
+import { useSummaryData } from '@/src/hooks/useSummaryData'
 import { useTranslation } from 'react-i18next'
 import { ScreenSafeArea } from '../../components/ScreenSafeArea'
 import { SummaryTabBar } from './components/SummaryTabBar'
 import { SummaryMissingSection } from './components/SummaryMissingSection'
 import { SummaryGalleryView } from './components/SummaryGalleryView'
 import { resolveSummaryConfig } from '../../services/mobile-summary-config.util'
-import { peekSummaryDashboardCache } from '../../lib/summary-dashboard-cache'
-import { emitSyncMutation } from '../../cache/mobile-cache-coordinator'
-import { usePersistedSharedMemoryLookback } from '../../hooks/usePersistedSharedMemoryLookback'
-import { usePersistedSharedMemoryCopyPrefix } from '../../hooks/usePersistedSharedMemoryCopyPrefix'
-import { useSharedMemoryCopyPreview } from '../../hooks/useSharedMemoryCopyPreview'
+import { peekSummaryDashboardCache } from '@/src/lib/summary-dashboard-cache'
+import { emitSyncMutation } from '@/src/cache/mobile-cache-coordinator'
+import { usePersistedSharedMemoryLookback } from '@/src/hooks/usePersistedSharedMemoryLookback'
+import { usePersistedSharedMemoryCopyPrefix } from '@/src/hooks/usePersistedSharedMemoryCopyPrefix'
+import { useSharedMemoryCopyPreview } from '@/src/hooks/useSharedMemoryCopyPreview'
+import { preloadDiaryEditorWebViewSource } from '@/src/hooks/useDiaryEditorWebViewSource'
 
 export const SummaryScreen: React.FC = () => {
   const { t, i18n } = useTranslation()
@@ -72,7 +73,8 @@ export const SummaryScreen: React.FC = () => {
     refreshDashboard,
     refreshSummaries,
     refreshData,
-    refreshMissing
+    refreshMissing,
+    loading: galleryLoading
   } = useSummaryData(selectedYear)
 
   const prevStatesRef = useRef<typeof generationStates>({})
@@ -82,10 +84,9 @@ export const SummaryScreen: React.FC = () => {
 
   useEffect(() => {
     if (availableYears.length === 0) return
-    if (!availableYears.includes(selectedYear)) {
-      setSelectedYear(availableYears[availableYears.length - 1]!)
-    }
-  }, [availableYears, selectedYear])
+    const fallbackYear = availableYears[availableYears.length - 1]!
+    setSelectedYear((prev) => (availableYears.includes(prev) ? prev : fallbackYear))
+  }, [availableYears])
 
   useFocusEffect(
     useCallback(() => {
@@ -96,6 +97,11 @@ export const SummaryScreen: React.FC = () => {
       void refreshDashboard()
     }, [refreshDashboard, vaultRevision])
   )
+
+  useEffect(() => {
+    if (activeTab !== 'gallery') return
+    void preloadDiaryEditorWebViewSource()
+  }, [activeTab])
 
   useEffect(() => {
     const prev = prevTabRef.current
@@ -293,7 +299,11 @@ export const SummaryScreen: React.FC = () => {
                 </ScrollView>
               </View>
               <View style={[styles.sliderPage, { width }]}>
-                <SummaryGalleryView summaries={summaries} onRefreshData={refreshData} />
+                <SummaryGalleryView
+                  summaries={summaries}
+                  loading={galleryLoading}
+                  onRefreshData={refreshData}
+                />
               </View>
             </Animated.View>
           </View>

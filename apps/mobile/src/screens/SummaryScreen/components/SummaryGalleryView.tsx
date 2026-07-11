@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo, useSyncExternalStore } from 'react'
 import { View, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'expo-router'
@@ -6,7 +6,15 @@ import { GalleryPanel, useNativeToast, useDialog } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { SummaryType } from '@baishou/shared'
 import { buildSummaryTitle } from '../utils/buildSummaryTitle'
-import { setPendingSummaryDetail } from '../utils/summaryDetailCache'
+import { parseSummaryBoundaryDate } from '../utils/summary-detail.helpers'
+import {
+  applySummaryContentPatches,
+  getSummaryDetailPatchVersion,
+  patchSummaryDetailCache,
+  resolveSummaryForNavigation,
+  setPendingSummaryDetail,
+  subscribeSummaryDetailPatches
+} from '../utils/summaryDetailCache'
 
 interface Summary {
   id?: number | string
@@ -14,15 +22,18 @@ interface Summary {
   startDate: string
   endDate: string
   content: string
+  generatedAt?: string
 }
 
 interface SummaryGalleryViewProps {
   summaries: Summary[]
+  loading?: boolean
   onRefreshData: () => Promise<void>
 }
 
 export const SummaryGalleryView: React.FC<SummaryGalleryViewProps> = ({
   summaries,
+  loading = false,
   onRefreshData
 }) => {
   const { t } = useTranslation()
@@ -30,18 +41,49 @@ export const SummaryGalleryView: React.FC<SummaryGalleryViewProps> = ({
   const dialog = useDialog()
   const router = useRouter()
   const { services } = useBaishou()
+  const patchVersion = useSyncExternalStore(
+    subscribeSummaryDetailPatches,
+    getSummaryDetailPatchVersion
+  )
+
+  const displaySummaries = useMemo(
+    () => applySummaryContentPatches(summaries),
+    [summaries, patchVersion]
+  )
+
+  const seedSummaryNavigation = (id: string) => {
+    const resolved = resolveSummaryForNavigation(
+      id,
+      displaySummaries.find((s) => String(s.id) === id)
+    )
+    // 导航只写 pending，不覆盖保存后的 content patch
+    if (resolved) {
+      setPendingSummaryDetail(resolved)
+    }
+    router.push({
+      pathname: '/summary-detail',
+      params: { id }
+    })
+  }
 
   const handleSave = async (id: string, content: string) => {
-    const summary = summaries.find((s) => String(s.id) === id)
+    const summary = displaySummaries.find((s) => String(s.id) === id)
     if (!summary?.id || !services) return
     try {
       await services.summaryManager.update(
         summary.id as number,
         summary.type as SummaryType,
-        new Date(summary.startDate),
-        new Date(summary.endDate),
+        parseSummaryBoundaryDate(summary.startDate),
+        parseSummaryBoundaryDate(summary.endDate),
         { content }
       )
+      patchSummaryDetailCache({
+        id: typeof summary.id === 'number' ? summary.id : Number(summary.id),
+        type: summary.type,
+        startDate: summary.startDate,
+        endDate: summary.endDate,
+        content
+      })
       await onRefreshData()
     } catch (e) {
       console.error('[SummaryGalleryView] save error:', e)
@@ -63,8 +105,8 @@ export const SummaryGalleryView: React.FC<SummaryGalleryViewProps> = ({
     try {
       await services.summaryManager.delete(
         summary.type as SummaryType,
-        new Date(summary.startDate),
-        new Date(summary.endDate)
+        parseSummaryBoundaryDate(summary.startDate),
+        parseSummaryBoundaryDate(summary.endDate)
       )
       await onRefreshData()
       toast.showSuccess(t('common.delete_success'))
@@ -77,45 +119,17 @@ export const SummaryGalleryView: React.FC<SummaryGalleryViewProps> = ({
   return (
     <View style={styles.gallery}>
       <GalleryPanel
-        summaries={summaries.map((s) => ({
+        loading={loading}
+        summaries={displaySummaries.map((s) => ({
           id: s.id,
           type: s.type,
           startDate: s.startDate,
           endDate: s.endDate,
-          content: s.content
+          content: s.content,
+          generatedAt: s.generatedAt
         }))}
-        onOpen={(id) => {
-          const summary = summaries.find((s) => String(s.id) === id)
-          if (summary) {
-            setPendingSummaryDetail({
-              id: typeof summary.id === 'number' ? summary.id : Number(summary.id),
-              type: summary.type,
-              startDate: summary.startDate,
-              endDate: summary.endDate,
-              content: summary.content
-            })
-          }
-          router.push({
-            pathname: '/summary-detail',
-            params: { id }
-          })
-        }}
-        onEdit={(id) => {
-          const summary = summaries.find((s) => String(s.id) === id)
-          if (summary) {
-            setPendingSummaryDetail({
-              id: typeof summary.id === 'number' ? summary.id : Number(summary.id),
-              type: summary.type,
-              startDate: summary.startDate,
-              endDate: summary.endDate,
-              content: summary.content
-            })
-          }
-          router.push({
-            pathname: '/summary-detail',
-            params: { id }
-          })
-        }}
+        onOpen={seedSummaryNavigation}
+        onEdit={seedSummaryNavigation}
         onDelete={handleDelete}
         onSave={handleSave}
       />

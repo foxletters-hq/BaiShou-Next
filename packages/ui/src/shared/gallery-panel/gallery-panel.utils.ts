@@ -1,4 +1,4 @@
-import { getSummaryWeekNumber } from '@baishou/shared'
+import { formatLocalDate, getSummaryWeekNumber, parseDateStr, safeParseDate } from '@baishou/shared'
 import type { SummaryItem } from './gallery-panel.types'
 
 export const SUMMARY_TABS = ['weekly', 'monthly', 'quarterly', 'yearly'] as const
@@ -15,21 +15,32 @@ export const NUM_COLUMNS = 3
 
 export const getWeekNumber = getSummaryWeekNumber
 
+/** 画廊日期：YYYY-MM-DD 必须走本地解析，禁止 new Date('YYYY-MM-DD') */
+function parseGalleryDate(value: string | Date): Date {
+  if (value instanceof Date) return value
+  if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
+    try {
+      return parseDateStr(value)
+    } catch {
+      return safeParseDate(value)
+    }
+  }
+  return safeParseDate(value)
+}
+
 /** 列表「路径」行：起止日期，与桌面画廊列表一致 */
 export const formatSummarySpan = (s: SummaryItem): string => {
   if (!s.startDate || !s.endDate) return ''
-  const fmt = (d: Date) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  const start = new Date(s.startDate)
-  const end = new Date(s.endDate)
+  const start = parseGalleryDate(s.startDate)
+  const end = parseGalleryDate(s.endDate)
   if (isNaN(start.getTime()) || isNaN(end.getTime())) return ''
-  return `${fmt(start)} 至 ${fmt(end)}`
+  return `${formatLocalDate(start)} 至 ${formatLocalDate(end)}`
 }
 
 export const formatDateRange = (s: SummaryItem): string => {
   if (!s.startDate || !s.endDate) return ''
-  const start = new Date(s.startDate)
-  const end = new Date(s.endDate)
+  const start = parseGalleryDate(s.startDate)
+  const end = parseGalleryDate(s.endDate)
 
   if (s.type === 'weekly') {
     return `${start.getMonth() + 1}/${start.getDate()} - ${end.getMonth() + 1}/${end.getDate()}`
@@ -49,7 +60,7 @@ export const formatDateRange = (s: SummaryItem): string => {
 
 export const getTitle = (s: SummaryItem, t: (key: string, fallback: string) => string): string => {
   if (!s.startDate) return t('gallery.summary', '总结')
-  const dateObj = new Date(s.startDate)
+  const dateObj = parseGalleryDate(s.startDate)
 
   if (s.type === 'weekly') {
     const weekNum = getWeekNumber(dateObj)
