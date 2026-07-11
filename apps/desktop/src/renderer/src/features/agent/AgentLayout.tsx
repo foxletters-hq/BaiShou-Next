@@ -181,7 +181,7 @@ export const AgentLayout: React.FC = () => {
     }
   }, [sessionId, resolvedAssistantId, urlAssistantId, sessionDocReady])
 
-  // 初始化：加载助手列表，由 bootstrap 确保 Latte 存在
+  // 初始化：加载助手列表，由 bootstrap 确保 Latte 存在（勿依赖 session/assistant URL，否则进出设置会反复 refetch 闪烁）
   useEffect(() => {
     void fetchAssistants().then(async () => {
       const store = useAssistantStore.getState()
@@ -201,7 +201,8 @@ export const AgentLayout: React.FC = () => {
     })
     loadConfig()
     loadProfile()
-  }, [fetchAssistants, loadConfig, loadProfile, sessionId, urlAssistantId])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only bootstrap; url 变化由其它 effect 处理
+  }, [fetchAssistants, loadConfig, loadProfile])
 
   // Vault resync / 增量同步完成后，刷新当前伙伴、会话与用户头像
   useEffect(() => {

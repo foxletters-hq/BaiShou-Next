@@ -9,18 +9,18 @@ import {
   getDesktopVaultScopeRevision,
   subscribeDesktopVaultScope
 } from '../cache/desktop-vault-scope'
-import { useDesktopSettingsOverlay } from './desktop-settings-overlay.context'
 
 export const MainLayout: React.FC = () => {
   const location = useLocation()
   const navigate = useNavigate()
-  const settingsOverlayOpen = useDesktopSettingsOverlay()
   const vaultScopeRevision = useSyncExternalStore(
     subscribeDesktopVaultScope,
     getDesktopVaultScopeRevision
   )
   const cacheKey = getMainPageCacheKey(location.pathname)
   const showOutlet = cacheKey === null
+  // 日记/总结二级页：隐藏底座列表，避免与 Outlet 叠层。设置全屏 overlay 不隐藏底座——
+  // overlay 已有更高 z-index 盖住即可；hidden 再显示会造成伙伴页闪烁。
   const hideCacheForSubRoute =
     showOutlet &&
     (location.pathname.startsWith('/diary/') || location.pathname.startsWith('/summary/'))
@@ -57,7 +57,7 @@ export const MainLayout: React.FC = () => {
           <MainPageCache
             activeKey={activeCacheKey}
             vaultScopeRevision={vaultScopeRevision}
-            hideActiveWhenOverlay={hideCacheForSubRoute || settingsOverlayOpen}
+            hideActiveWhenOverlay={hideCacheForSubRoute}
           />
 
           <AnimatePresence mode="wait">

@@ -144,8 +144,9 @@ export function useAssistantPickerSheet({
   }, [filteredAssistants, selectedId])
 
   React.useEffect(() => {
-    if (!activeAssistant) return
+    if (!isOpen || !activeAssistant) return
     const assistantId = String(activeAssistant.id)
+    // 同一伙伴在同一次打开内只 hydrate 一次；关闭后 ref 清空，下次打开再灌入最新数据
     if (hydratedAssistantIdRef.current === assistantId) return
     hydratedAssistantIdRef.current = assistantId
 
@@ -165,7 +166,7 @@ export function useAssistantPickerSheet({
     )
     setEditingEmojiEnabled(activeAssistant.emojiEnabled === true)
     setEditingSelectedEmojiGroupIds(resolvePickerEmojiGroupIds(activeAssistant))
-  }, [activeAssistant, i18n.language])
+  }, [isOpen, activeAssistant, i18n.language])
 
   React.useEffect(() => {
     if (!isOpen) {
@@ -177,34 +178,16 @@ export function useAssistantPickerSheet({
     if (!activeAssistant) return
     try {
       setIsSaving(true)
+      // 有 overrides 时只写变更字段，避免记忆页滑条把过期的 editingPrompt 整包回写盖掉管理页刚保存的提示词
+      const payload =
+        Object.keys(overrides).length > 0
+          ? { ...overrides }
+          : { systemPrompt: editingPrompt.trim() }
       if (typeof window !== 'undefined' && (window as any).electron) {
         await (window as any).electron.ipcRenderer.invoke(
           'agent:update-assistant',
           activeAssistant.id,
-          {
-            systemPrompt:
-              overrides.systemPrompt !== undefined ? overrides.systemPrompt : editingPrompt.trim(),
-            contextWindow:
-              overrides.contextWindow !== undefined
-                ? overrides.contextWindow
-                : editingContextWindow,
-            compressTokenThreshold:
-              overrides.compressTokenThreshold !== undefined
-                ? overrides.compressTokenThreshold
-                : editingCompressEnabled
-                  ? editingCompressThreshold
-                  : 0,
-            compressKeepTurns:
-              overrides.compressKeepTurns !== undefined
-                ? overrides.compressKeepTurns
-                : editingCompressKeepTurns,
-            compressSystemPrompt:
-              overrides.compressSystemPrompt !== undefined
-                ? overrides.compressSystemPrompt
-                : editingCompressEnabled
-                  ? editingCompressSystemPrompt.trim() || null
-                  : null
-          }
+          payload
         )
       }
       if (

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { resolveDesktopAssistantAvatarSrc, AssistantKindBadge } from '@baishou/ui'
 import type { AgentAssistant } from './AgentSidebar'
 import styles from './AgentSidebar.module.css'
-import { rememberSettingsReturnPath } from '../../settings/settings-navigation.util'
+import { rememberSettingsReturnPath, locationToReturnPath } from '../../settings/settings-navigation.util'
 import { prefetchSettingsEntry } from '../../../lib/prefetch-settings-entry'
 import { ChevronsUpDown, ListChecks, Plus, Settings } from 'lucide-react'
 
@@ -172,7 +172,7 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
         onMouseEnter={prefetchSettingsEntry}
         onFocus={prefetchSettingsEntry}
         onClick={() => {
-          rememberSettingsReturnPath(location.pathname)
+          rememberSettingsReturnPath(locationToReturnPath(location))
           startTransition(() => {
             navigate('/settings/general')
           })

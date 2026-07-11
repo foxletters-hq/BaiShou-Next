@@ -43,13 +43,15 @@ export interface AssistantActions {
 
 export const useAssistantStore = createStore<AssistantState & AssistantActions>(
   'AssistantStore',
-  (set) => ({
+  (set, get) => ({
     assistants: [],
     isLoading: false,
     error: null,
 
     fetchAssistants: async () => {
-      set({ isLoading: true, error: null })
+      const hadCache = get().assistants.length > 0
+      // 已有列表时静默刷新，避免设置页返回时 isLoading 把伙伴 UI 打成空白闪一下
+      set({ isLoading: !hadCache, error: null })
       try {
         if (typeof window !== 'undefined' && (window as any).api) {
           const data = await (window as any).api.getAssistants()

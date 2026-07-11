@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { AssistantManagementPage, AssistantEditPage } from '@baishou/ui'
+import { useAssistantStore } from '@baishou/store'
 import { motion, AnimatePresence } from 'framer-motion'
 
 const pageTransition = {
@@ -7,6 +8,14 @@ const pageTransition = {
   animate: { opacity: 1 },
   exit: { opacity: 0 },
   transition: { duration: 0.15, ease: 'easeOut' as any }
+}
+
+/** 管理页本地列表 + 聊天侧伙伴 store 一并刷新，避免选择器仍显示旧提示词 */
+async function refreshAssistantsAfterMutation(
+  loadAssistants: () => Promise<void>
+): Promise<void> {
+  await loadAssistants()
+  await useAssistantStore.getState().fetchAssistants()
 }
 
 export const AssistantManagementScreen: React.FC = () => {
@@ -29,7 +38,7 @@ export const AssistantManagementScreen: React.FC = () => {
 
     const onVaultResyncComplete = (event: { type?: string }) => {
       if (event?.type !== 'vault-resync-complete') return
-      void loadAssistants()
+      void refreshAssistantsAfterMutation(loadAssistants)
     }
 
     const removeListener = window.electron.ipcRenderer.on('diary:sync-event', onVaultResyncComplete)
@@ -53,7 +62,7 @@ export const AssistantManagementScreen: React.FC = () => {
                     ...data,
                     id: newId
                   })
-                  await loadAssistants()
+                  await refreshAssistantsAfterMutation(loadAssistants)
                 }
                 setIsCreatingNew(false)
               }}
@@ -79,7 +88,11 @@ export const AssistantManagementScreen: React.FC = () => {
                           assistantId,
                           patch
                         )
-                        await loadAssistants()
+                        // 只合并 patch，避免整表重载把未保存的系统提示词打回旧值
+                        setAssistants((prev) =>
+                          prev.map((a) => (a.id === assistantId ? { ...a, ...patch } : a))
+                        )
+                        await useAssistantStore.getState().fetchAssistants()
                       }
                     }}
                     onSave={async (data) => {
@@ -89,7 +102,7 @@ export const AssistantManagementScreen: React.FC = () => {
                           target.id,
                           data
                         )
-                        await loadAssistants()
+                        await refreshAssistantsAfterMutation(loadAssistants)
                       }
                       setEditingAssistantId(null)
                     }}
@@ -100,7 +113,7 @@ export const AssistantManagementScreen: React.FC = () => {
                           'agent:delete-assistant',
                           target.id
                         )
-                        await loadAssistants()
+                        await refreshAssistantsAfterMutation(loadAssistants)
                       }
                       setEditingAssistantId(null)
                     }}
@@ -119,20 +132,20 @@ export const AssistantManagementScreen: React.FC = () => {
               onDelete={async (id) => {
                 if (typeof window !== 'undefined' && window.electron) {
                   await window.electron.ipcRenderer.invoke('agent:delete-assistant', id)
-                  loadAssistants()
+                  await refreshAssistantsAfterMutation(loadAssistants)
                 }
               }}
               pinnedIds={new Set()}
               onTogglePin={async (id) => {
                 if (typeof window !== 'undefined' && window.electron) {
                   await window.electron.ipcRenderer.invoke('agent:pin-assistant', id, true)
-                  loadAssistants()
+                  await refreshAssistantsAfterMutation(loadAssistants)
                 }
               }}
               onReorder={async (orderedIds) => {
                 if (typeof window !== 'undefined' && window.electron) {
                   await window.electron.ipcRenderer.invoke('agent:reorder-assistants', orderedIds)
-                  await loadAssistants()
+                  await refreshAssistantsAfterMutation(loadAssistants)
                 }
               }}
             />

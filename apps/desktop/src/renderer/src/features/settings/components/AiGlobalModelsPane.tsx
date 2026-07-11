@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react'
+import { isTtsProviderId } from '@baishou/shared'
 import { AIGlobalModelsView, AgentBehaviorSettingsCard, useToast } from '@baishou/ui'
 import { useTranslation } from 'react-i18next'
 import { showMigrationResultToast } from '../hooks/migration-result-toast'
@@ -13,8 +14,11 @@ export const AiGlobalModelsPane: React.FC<{ settings: any }> = ({ settings }) =>
     const rec: Record<string, any> = {}
     if (Array.isArray(settings.providers)) {
       settings.providers.forEach((p: any) => {
+        if (isTtsProviderId(p.id)) return
         rec[p.id] = {
           providerId: p.id,
+          name: p.name,
+          type: p.type,
           enabled: p.isEnabled,
           apiKey: p.apiKey,
           apiBaseUrl: p.baseUrl,
