@@ -269,7 +269,7 @@ describe('threeWayMerge', () => {
     expect(decision?.type).toBe('delete-local')
   })
 
-  it('should upload without ancestor when remote removed record hash differs from local', () => {
+  it('should delete-local without ancestor when remote removed record is not older than local', () => {
     const filePath = 'Personal/Attachments/diary/photo.jpg'
     const localEntry = makeEntry({ hash: 'local-new', lastModified: 1000 })
     const local = makeManifest({ [filePath]: localEntry })
@@ -287,7 +287,49 @@ describe('threeWayMerge', () => {
     const decisions = threeWayMerge(local, remote, ancestor)
     const decision = decisions.find((d) => d.filePath === filePath)
 
+    expect(decision?.type).toBe('delete-local')
+  })
+
+  it('should upload without ancestor when local is newer than remote removed record', () => {
+    const filePath = 'Personal/Attachments/diary/photo.jpg'
+    const localEntry = makeEntry({ hash: 'local-new', lastModified: 9000 })
+    const local = makeManifest({ [filePath]: localEntry })
+    const remote = makeManifest({})
+    remote.removed = {
+      [filePath]: {
+        hash: 'old-remote',
+        size: 1,
+        removedAt: 5000,
+        deviceId: 'peer-device'
+      }
+    }
+    const ancestor = makeManifest({})
+
+    const decisions = threeWayMerge(local, remote, ancestor)
+    const decision = decisions.find((d) => d.filePath === filePath)
+
     expect(decision?.type).toBe('upload')
+  })
+
+  it('should delete-remote without ancestor when remote file is not newer than removed tombstone', () => {
+    const filePath = 'Personal/Sessions/s1.json'
+    const remoteEntry = makeEntry({ hash: 'resurrected', lastModified: 2000 })
+    const local = makeManifest({})
+    const remote = makeManifest({ [filePath]: remoteEntry })
+    remote.removed = {
+      [filePath]: {
+        hash: 'old',
+        size: 1,
+        removedAt: 5000,
+        deviceId: 'desktop'
+      }
+    }
+    const ancestor = makeManifest({})
+
+    const decisions = threeWayMerge(local, remote, ancestor)
+    const decision = decisions.find((d) => d.filePath === filePath)
+
+    expect(decision?.type).toBe('delete-remote')
   })
 
   it('should not iterate removed-only paths that are absent from local, remote, and ancestor', () => {

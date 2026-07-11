@@ -68,6 +68,24 @@ describe('SessionDiskPersistenceService', () => {
     expect(mockFileService.writeSession).toHaveBeenCalledTimes(1)
   })
 
+  it('discard cancels pending flush and prevents in-flight write after delete', async () => {
+    let resolveAggregate: (value: unknown) => void = () => {}
+    mockRepo.getSessionAggregate.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveAggregate = resolve
+        })
+    )
+
+    const flushPromise = service.flushNow('s1')
+    service.discard('s1')
+    resolveAggregate({ session: { id: 's1' }, messages: [] })
+    await flushPromise
+
+    expect(mockFileService.writeSession).not.toHaveBeenCalled()
+    expect(service.isDirty('s1')).toBe(false)
+  })
+
   it('flushPending only flushes dirty sessions', async () => {
     service.markDirty('s1')
     service.markDirty('s2')

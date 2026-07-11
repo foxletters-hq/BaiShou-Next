@@ -18,6 +18,7 @@ export type SessionDiskPersistenceHooks = {
  */
 export class SessionDiskPersistenceService {
   private readonly dirty = new Set<string>()
+  private readonly discarded = new Set<string>()
   private readonly debounceTimers = new Map<string, ReturnType<typeof setTimeout>>()
   private readonly inFlight = new Map<string, Promise<void>>()
 
@@ -39,6 +40,7 @@ export class SessionDiskPersistenceService {
   /** SQLite 已变更、JSON 尚未对齐时调用 */
   markDirty(sessionId: string): void {
     if (!sessionId) return
+    this.discarded.delete(sessionId)
     this.dirty.add(sessionId)
   }
 
@@ -63,6 +65,16 @@ export class SessionDiskPersistenceService {
       clearTimeout(timer)
       this.debounceTimers.delete(sessionId)
     }
+  }
+
+  /**
+   * 删除会话前作废待落盘：取消防抖、清 dirty，并标记 in-flight flush 写完也不落盘。
+   */
+  discard(sessionId: string): void {
+    if (!sessionId) return
+    this.cancelScheduledFlush(sessionId)
+    this.dirty.delete(sessionId)
+    this.discarded.add(sessionId)
   }
 
   notifySessionMutated(sessionId: string, urgency: SessionDiskFlushUrgency = 'immediate'): void {
@@ -100,12 +112,29 @@ export class SessionDiskPersistenceService {
     }
     const ids = [...this.dirty]
     if (ids.length === 0) return
-    await Promise.all(ids.map((sessionId) => this.flushNow(sessionId)))
+    const results = await Promise.allSettled(ids.map((sessionId) => this.flushNow(sessionId)))
+    const failed = results.filter((r) => r.status === 'rejected')
+    if (failed.length > 0) {
+      const first = failed[0] as PromiseRejectedResult
+      throw first.reason instanceof Error ? first.reason : new Error(String(first.reason))
+    }
   }
 
   private async flushSessionUnlocked(sessionId: string): Promise<void> {
+    if (this.discarded.has(sessionId)) {
+      this.discarded.delete(sessionId)
+      this.dirty.delete(sessionId)
+      return
+    }
+
     const aggregate = await this.sessionRepo.getSessionAggregate(sessionId)
     if (!aggregate) {
+      this.dirty.delete(sessionId)
+      return
+    }
+
+    if (this.discarded.has(sessionId)) {
+      this.discarded.delete(sessionId)
       this.dirty.delete(sessionId)
       return
     }
@@ -113,6 +142,12 @@ export class SessionDiskPersistenceService {
     const { aggregate: cleaned, partUpdates } = sanitizeSessionAggregateForDisk(aggregate)
     if (partUpdates.length > 0 && typeof this.sessionRepo.updatePartsDataById === 'function') {
       await this.sessionRepo.updatePartsDataById(partUpdates)
+    }
+
+    if (this.discarded.has(sessionId)) {
+      this.discarded.delete(sessionId)
+      this.dirty.delete(sessionId)
+      return
     }
 
     this.hooks?.onBeforeWrite?.(sessionId, sessionId)

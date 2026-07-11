@@ -49,7 +49,37 @@ export function isRemoteRemovalRecorded(
 ): boolean {
   const removed = getSyncManifestRemovedEntry(remote, filePath)
   if (!removed || !localEntry) return false
-  return localEntry.hash === removed.hash
+  // 同内容删除：hash 一致则直接采信
+  if (localEntry.hash === removed.hash) return true
+  // 会话 JSON 等易变 hash：对端删除时间不早于本地修改时，仍视为显式删除（避免误 upload 复活）
+  return localEntry.lastModified <= removed.removedAt
+}
+
+/**
+ * 远端存储上已重新出现的文件：若其 lastModified 不晚于 tombstone，视为陈旧复活，保留 removed；
+ * 否则清除 removed（对端在删除之后又合法重建了该文件）。
+ * 远端有路径但 manifest.files 尚无条目时保守保留 tombstone，避免误清后被 download 复活。
+ */
+export function reconcileSyncManifestRemovedWithRemoteFiles(
+  manifest: SyncManifest,
+  remoteFilePaths: ReadonlySet<string>
+): SyncManifest {
+  const removed = { ...(manifest.removed ?? {}) }
+  let changed = false
+  for (const filePath of Object.keys(removed)) {
+    if (!remoteFilePaths.has(filePath)) continue
+    const remoteEntry = manifest.files?.[filePath]
+    const tombstone = removed[filePath]
+    if (!remoteEntry || !tombstone) {
+      continue
+    }
+    if (remoteEntry.lastModified <= tombstone.removedAt) {
+      continue
+    }
+    delete removed[filePath]
+    changed = true
+  }
+  return changed ? { ...manifest, removed } : manifest
 }
 
 export function clearSyncManifestRemoved(manifest: SyncManifest, filePath: string): SyncManifest {
@@ -93,22 +123,6 @@ export function pruneSyncManifestRemoved(manifest: SyncManifest): SyncManifest {
     ...manifest,
     removed: Object.fromEntries(entries.slice(0, SYNC_MANIFEST_REMOVED_MAX_ENTRIES))
   }
-}
-
-/** 远端存储上已重新出现的文件，清除对应已移除记录 */
-export function reconcileSyncManifestRemovedWithRemoteFiles(
-  manifest: SyncManifest,
-  remoteFilePaths: ReadonlySet<string>
-): SyncManifest {
-  const removed = { ...(manifest.removed ?? {}) }
-  let changed = false
-  for (const filePath of Object.keys(removed)) {
-    if (remoteFilePaths.has(filePath)) {
-      delete removed[filePath]
-      changed = true
-    }
-  }
-  return changed ? { ...manifest, removed } : manifest
 }
 
 export function applySyncDecisionRemovedSideEffects(

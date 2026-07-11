@@ -85,6 +85,9 @@ export class SessionManagerService {
   }
 
   async deleteSessions(ids: string[]): Promise<void> {
+    for (const id of ids) {
+      this.persistence.discard(id)
+    }
     await this.sessionRepo.deleteSessions(ids)
     for (const id of ids) {
       await this.fileService.deleteSession(id)
@@ -128,6 +131,19 @@ export class SessionManagerService {
   async fullResyncFromDisks(
     options?: import('../vault/disk-resync.types').DiskResyncOptions
   ): Promise<void> {
-    await this.syncService.fullScanArchives(options)
+    // 先尽量落盘，再把仍 dirty 的会话排除出幽灵删除（flush 失败 / 竞态）
+    try {
+      await this.persistence.flushPending()
+    } catch (e) {
+      console.warn('[SessionManager] flushPending before fullResync failed:', e)
+    }
+    const preserve = new Set<string>([
+      ...this.persistence.getDirtySessionIds(),
+      ...(options?.preserveSessionIds ?? [])
+    ])
+    await this.syncService.fullScanArchives({
+      ...options,
+      preserveSessionIds: preserve.size > 0 ? preserve : options?.preserveSessionIds
+    })
   }
 }

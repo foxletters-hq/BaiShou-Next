@@ -79,8 +79,29 @@ describe('SessionManagerService (Ghost memory interceptor)', () => {
     expect(mockFileService.deleteSession).toHaveBeenCalledWith('chat-2')
   })
 
-  it('fullResyncFromDisks() calls syncService fullScanArchives', async () => {
-    await manager.fullResyncFromDisks()
-    expect(mockSyncService.fullScanArchives).toHaveBeenCalled()
+  it('fullResyncFromDisks() flushes pending then calls fullScanArchives', async () => {
+    await manager.fullResyncFromDisks({ activeVaultName: 'Work' })
+    expect(mockSyncService.fullScanArchives).toHaveBeenCalledWith(
+      expect.objectContaining({ activeVaultName: 'Work' })
+    )
+  })
+
+  it('fullResyncFromDisks() preserves sessions that remain dirty after flush', async () => {
+    mockRepo.getSessionAggregate.mockResolvedValue(aggregateDummy)
+    mockFileService.writeSession.mockRejectedValue(new Error('disk busy'))
+    manager.notifySessionMutated('mid-chat', 'debounced')
+
+    await manager.fullResyncFromDisks({ activeVaultName: 'Work' })
+
+    expect(mockSyncService.fullScanArchives).toHaveBeenCalledWith(
+      expect.objectContaining({
+        activeVaultName: 'Work',
+        preserveSessionIds: expect.any(Set)
+      })
+    )
+    const arg = mockSyncService.fullScanArchives.mock.calls[0][0] as {
+      preserveSessionIds?: Set<string>
+    }
+    expect(arg.preserveSessionIds?.has('mid-chat')).toBe(true)
   })
 })

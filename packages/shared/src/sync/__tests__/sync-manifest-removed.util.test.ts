@@ -5,6 +5,7 @@ import {
   finalizeIncrementalSyncManifest,
   normalizeSyncManifest,
   pruneSyncManifestRemoved,
+  reconcileSyncManifestRemovedWithRemoteFiles,
   recordSyncManifestRemoved
 } from '../sync-manifest-removed.util'
 import type { MergeDecision } from '../three-way-merge'
@@ -98,5 +99,42 @@ describe('sync-manifest-removed.util', () => {
   it('normalizeSyncManifest ensures removed object exists', () => {
     const raw = { version: 1, updatedAt: 0, deviceId: '', files: {} } as SyncManifest
     expect(normalizeSyncManifest(raw).removed).toEqual({})
+  })
+
+  it('reconcile keeps tombstone when remote file is not newer than removedAt', () => {
+    const m: SyncManifest = {
+      ...manifest({
+        's.json': { hash: 'old', size: 1, lastModified: 1000 }
+      }),
+      removed: {
+        's.json': { hash: 'old', size: 1, removedAt: 5000, deviceId: 'd' }
+      }
+    }
+    const next = reconcileSyncManifestRemovedWithRemoteFiles(m, new Set(['s.json']))
+    expect(next.removed?.['s.json']).toBeDefined()
+  })
+
+  it('reconcile clears tombstone when remote file is newer than removedAt', () => {
+    const m: SyncManifest = {
+      ...manifest({
+        's.json': { hash: 'new', size: 1, lastModified: 9000 }
+      }),
+      removed: {
+        's.json': { hash: 'old', size: 1, removedAt: 5000, deviceId: 'd' }
+      }
+    }
+    const next = reconcileSyncManifestRemovedWithRemoteFiles(m, new Set(['s.json']))
+    expect(next.removed?.['s.json']).toBeUndefined()
+  })
+
+  it('reconcile keeps tombstone when remote path exists but files entry is missing', () => {
+    const m: SyncManifest = {
+      ...manifest({}),
+      removed: {
+        's.json': { hash: 'old', size: 1, removedAt: 5000, deviceId: 'd' }
+      }
+    }
+    const next = reconcileSyncManifestRemovedWithRemoteFiles(m, new Set(['s.json']))
+    expect(next.removed?.['s.json']).toBeDefined()
   })
 })

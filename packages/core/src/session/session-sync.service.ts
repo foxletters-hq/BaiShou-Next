@@ -56,10 +56,14 @@ export class SessionSyncService {
 
     // 顺向清理：SQLite 中存在但对应的实体文件已销毁（可能是被彻底孤立淘汰了）
     const fileIds = new Set(allFiles.map((f) => f.id))
+    const preserveIds = new Set(options?.preserveSessionIds ?? [])
     const toDeleteIds: string[] = []
     const activeVaultName = options?.activeVaultName
     for (const dbRecord of allDbSessions) {
       if (!fileIds.has(dbRecord.id)) {
+        if (preserveIds.has(dbRecord.id)) {
+          continue
+        }
         if (activeVaultName && dbRecord.vaultName !== activeVaultName) {
           continue
         }
