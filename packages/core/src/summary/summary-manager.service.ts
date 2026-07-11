@@ -1,8 +1,25 @@
-import { Summary, CreateSummaryInput, UpdateSummaryInput, SummaryType } from '@baishou/shared'
+import {
+  Summary,
+  CreateSummaryInput,
+  UpdateSummaryInput,
+  SummaryType,
+  formatLocalDate
+} from '@baishou/shared'
 import { SummarySyncService } from './summary-sync.service'
 import { SummaryFileService } from '../vault/summary-file.service'
 import { SummaryRepository } from '@baishou/database'
 import { emitDomainMutation } from '../events'
+
+/** 文件存在但 DB 未入库时的稳定负向占位 id（避免多条撞成 0） */
+export function ghostSummaryId(type: SummaryType | string, startDate: Date): number {
+  const key = `${type}:${formatLocalDate(startDate)}`
+  let hash = 0
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash * 31 + key.charCodeAt(i)) | 0
+  }
+  const id = -Math.abs(hash)
+  return id === 0 ? -1 : id
+}
 
 export class SummaryManagerService {
   constructor(
@@ -43,11 +60,13 @@ export class SummaryManagerService {
     endDate: Date,
     update: UpdateSummaryInput
   ): Promise<Summary> {
-    // 我们必须保证有 content 更新才能重写。对于其他可能的字段我们暂时忽略或如果它只是基于库的字段也应走全管线
     const existing = await this.summaryRepo.getByDateRange(type, startDate, endDate)
-    if (!existing) throw new Error(`Summary not found for ${type}`)
+    const fileContent = await this.fileSync.readSummary(type, startDate)
+    if (!existing && fileContent == null) {
+      throw new Error(`Summary not found for ${type}`)
+    }
 
-    const newContent = update.content ?? existing.content
+    const newContent = update.content ?? existing?.content ?? fileContent ?? ''
 
     await this.fileSync.writeSummary(type, startDate, newContent)
     await this.summarySync.syncSummaryFile(type, startDate, endDate)
@@ -56,10 +75,20 @@ export class SummaryManagerService {
     emitDomainMutation({
       domain: 'summary',
       action: 'update',
-      entityId: updated?.id,
+      entityId: updated?.id ?? existing?.id,
       meta: { type }
     })
-    return updated!
+    if (updated) return updated
+
+    return {
+      id: existing?.id ?? ghostSummaryId(type, startDate),
+      type,
+      startDate,
+      endDate,
+      content: newContent,
+      sourceIds: existing?.sourceIds ?? null,
+      generatedAt: existing?.generatedAt ?? new Date()
+    }
   }
 
   async readDetail(type: SummaryType, startDate: Date, endDate: Date): Promise<Summary | null> {
@@ -75,7 +104,7 @@ export class SummaryManagerService {
 
     // Fallback，文件存在但 DB 不存在（可能因为没 sync）
     return {
-      id: 0,
+      id: ghostSummaryId(type, startDate),
       type,
       startDate,
       endDate,
@@ -91,22 +120,70 @@ export class SummaryManagerService {
       : files
 
     const summaries = await Promise.all(
-      filtered.map(async (file, index) => {
-        const content = await this.fileSync.readSummary(file.type, file.startDate)
+      filtered.map(async (file) => {
         const dbRecord = await this.summaryRepo.getByDateRange(
           file.type,
           file.startDate,
           file.endDate
         )
+        const fileContent = await this.fileSync.readSummary(file.type, file.startDate)
+        const content = fileContent ?? dbRecord?.content ?? ''
         return {
           ...(dbRecord ?? {
-            id: -(index + 1),
+            id: ghostSummaryId(file.type, file.startDate),
             generatedAt: new Date()
           }),
           type: file.type,
           startDate: file.startDate,
           endDate: file.endDate,
-          content: content ?? dbRecord?.content ?? ''
+          content
+        } as Summary
+      })
+    )
+
+    return summaries.sort((a, b) => b.startDate.getTime() - a.startDate.getTime())
+  }
+
+  /**
+   * 画廊列表：文件索引 + 单次 DB 批量查询。
+   * DB 已有正文时不读盘；仅当文件在盘、DB 无正文时按需读盘（共同回忆/预览一致性）。
+   */
+  async listForGallery(options?: { start?: Date; endAfter?: Date }): Promise<Summary[]> {
+    const files = await this.fileSync.listAllSummaries()
+    let filtered = files
+    if (options?.start) {
+      filtered = filtered.filter((file) => file.startDate >= options.start!)
+    }
+    if (options?.endAfter) {
+      filtered = filtered.filter((file) => file.endDate > options.endAfter!)
+    }
+
+    const dbRecords = await this.summaryRepo.getSummaries(
+      options?.start ? { start: options.start } : undefined
+    )
+    const dbByKey = new Map<string, Summary>()
+    for (const record of dbRecords) {
+      const start =
+        record.startDate instanceof Date ? record.startDate : new Date(record.startDate)
+      dbByKey.set(`${record.type}:${start.getTime()}`, record)
+    }
+
+    const summaries = await Promise.all(
+      filtered.map(async (file) => {
+        const dbRecord = dbByKey.get(`${file.type}:${file.startDate.getTime()}`)
+        let content = dbRecord?.content ?? ''
+        if (!content.trim()) {
+          content = (await this.fileSync.readSummary(file.type, file.startDate)) ?? ''
+        }
+        return {
+          ...(dbRecord ?? {
+            id: ghostSummaryId(file.type, file.startDate),
+            generatedAt: new Date()
+          }),
+          type: file.type,
+          startDate: file.startDate,
+          endDate: file.endDate,
+          content
         } as Summary
       })
     )

@@ -10,8 +10,10 @@ import {
   SummaryFileService,
   MissingSummaryDetector,
   SummaryGeneratorService,
-  handleBuildSharedContext,
-  handleBuildSharedContextPreview
+  computeLookbackCutoffDate,
+  formatLookbackCutoffIso,
+  handleBuildSharedContextPreview,
+  buildSharedContextText
 } from '@baishou/core-desktop'
 import { settingsManager } from './settings.ipc'
 import {
@@ -288,23 +290,32 @@ export function registerSummaryIPC() {
   ipcMain.handle(
     'summary:buildSharedContext',
     async (_, lookbackMonths: number, locale?: string, userCopyPrefix?: string) => {
-      const summaries = await ensureManager().list()
+      const manager = ensureManager()
+      const cutoff = computeLookbackCutoffDate(lookbackMonths)
+      const summaries = await manager.listForGallery({ endAfter: cutoff })
+      const diaries = await getActiveVaultShadowRepo().listContentSinceDate(
+        formatLookbackCutoffIso(lookbackMonths)
+      )
       const prefix =
         userCopyPrefix ?? (await settingsManager.get<any>('summary_config'))?.sharedMemoryCopyPrefix
-      return handleBuildSharedContext(
-        summaries,
-        lookbackMonths,
-        locale,
-        vaultService.getActiveVault()?.name,
-        prefix
-      )
+      try {
+        return await buildSharedContextText(summaries, lookbackMonths, locale, {
+          diaries,
+          userCopyPrefix: prefix
+        })
+      } catch (e) {
+        logger.error('[SummaryIPC] buildSharedContext error:', e as Error)
+        return ''
+      }
     }
   )
 
   ipcMain.handle(
     'summary:buildSharedContextPreview',
     async (_, lookbackMonths: number, options?: { userCopyPrefix?: string; locale?: string }) => {
-      const summaries = await ensureManager().list()
+      const manager = ensureManager()
+      const cutoff = computeLookbackCutoffDate(lookbackMonths)
+      const summaries = await manager.listForGallery({ endAfter: cutoff })
       const summaryConfig = await settingsManager.get<any>('summary_config')
       const userCopyPrefix = options?.userCopyPrefix ?? summaryConfig?.sharedMemoryCopyPrefix
       return handleBuildSharedContextPreview(

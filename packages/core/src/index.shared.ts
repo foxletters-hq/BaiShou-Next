@@ -64,6 +64,8 @@ export * from './summary/summary-manager.service'
 export * from './summary/missing-summary-detector.service'
 export {
   buildSharedContextText,
+  computeLookbackCutoffDate,
+  formatLookbackCutoffIso,
   computeSharedMemoryCopyPreview,
   handleBuildSharedContext,
   handleBuildSharedContextPreview,

@@ -59,6 +59,25 @@ export class ShadowIndexQueryOps {
       .orderBy(sql`${shadowJournalIndexTable.date} ASC`)
   }
 
+  /** 共同回忆预览：仅拉取日期范围内的正文，避免全量 FTS 扫描 */
+  async listContentSinceDate(
+    startIso: string
+  ): Promise<{ date: string; rawContent: string }[]> {
+    const rows = await this.database
+      .select({
+        date: shadowJournalIndexTable.date,
+        rawContent: shadowJournalIndexTable.rawContent
+      })
+      .from(shadowJournalIndexTable)
+      .where(this.withVault(gte(shadowJournalIndexTable.date, startIso)))
+      .orderBy(sql`${shadowJournalIndexTable.date} ASC`)
+
+    return rows.map((row) => ({
+      date: row.date,
+      rawContent: row.rawContent || ''
+    }))
+  }
+
   async getHashByDate(dateIso: string): Promise<string | null> {
     const rows = await this.database
       .select({ contentHash: shadowJournalIndexTable.contentHash })

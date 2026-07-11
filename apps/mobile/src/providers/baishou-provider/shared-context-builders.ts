@@ -1,4 +1,9 @@
-import { buildSharedContextText, computeSharedMemoryCopyPreview } from '@baishou/core-mobile'
+import {
+  buildSharedContextText,
+  computeLookbackCutoffDate,
+  computeSharedMemoryCopyPreview,
+  formatLookbackCutoffIso
+} from '@baishou/core-mobile'
 import type { SummaryConfig, SharedMemoryCopyPreview } from '@baishou/shared'
 import type { SummaryManagerService, SettingsManagerService } from '@baishou/core-mobile'
 import type { VaultBoundDiaryStack } from '../../services/mobile-vault-runtime.service'
@@ -16,8 +21,9 @@ export function createSharedContextBuilders(deps: {
   ) => {
     const stack = diaryStackRef.current
     if (!stack) return ''
-    const allSummaries = await summaryManager.list()
-    const diaries = await stack.shadowRepo.listAllWithFTS({ limit: 10000 })
+    const cutoff = computeLookbackCutoffDate(lookbackMonths)
+    const allSummaries = await summaryManager.listForGallery({ endAfter: cutoff })
+    const diaries = await stack.shadowRepo.listContentSinceDate(formatLookbackCutoffIso(lookbackMonths))
     const prefix =
       userCopyPrefix ??
       (await settingsManager.get<SummaryConfig>('summary_config'))?.sharedMemoryCopyPrefix
@@ -44,8 +50,9 @@ export function createSharedContextBuilders(deps: {
       estimatedTokens: 0
     }
     if (!stack) return empty
-    const allSummaries = await summaryManager.list()
-    const diaries = await stack.shadowRepo.listAllWithFTS({ limit: 10000 })
+    const cutoff = computeLookbackCutoffDate(lookbackMonths)
+    const allSummaries = await summaryManager.listForGallery({ endAfter: cutoff })
+    const diaries = await stack.shadowRepo.listContentSinceDate(formatLookbackCutoffIso(lookbackMonths))
     const summaryConfig = (await settingsManager.get<SummaryConfig>('summary_config')) || {}
     const userCopyPrefix = options?.userCopyPrefix ?? summaryConfig.sharedMemoryCopyPrefix
     return computeSharedMemoryCopyPreview(allSummaries, diaries, lookbackMonths, {

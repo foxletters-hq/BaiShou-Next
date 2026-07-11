@@ -91,7 +91,7 @@ describe('SummaryManagerService (SSOT refactor)', () => {
 
     const detail = await manager.readDetail(testType, start, end)
 
-    expect(detail?.id).toBe(0) // 游离态
+    expect(detail?.id).toBeLessThan(0) // 游离态：稳定负向占位，避免多条撞成 0
     expect(detail?.content).toBe('Unsynced Ghost File Content')
   })
 
@@ -139,6 +139,72 @@ describe('SummaryManagerService (SSOT refactor)', () => {
 
     expect(mockFileService.writeSummary).toHaveBeenCalledWith(testType, start, 'NewContent')
     expect(mockSyncService.syncSummaryFile).toHaveBeenCalledWith(testType, start, end)
+  })
+
+  it('update() should write file when DB misses but summary file exists', async () => {
+    mockRepo.getByDateRange.mockResolvedValue(null)
+    mockFileService.readSummary.mockResolvedValue('Ghost weekly summary')
+
+    const result = await manager.update(0, SummaryType.weekly, start, end, {
+      content: 'Edited weekly'
+    })
+
+    expect(mockFileService.writeSummary).toHaveBeenCalledWith(
+      SummaryType.weekly,
+      start,
+      'Edited weekly'
+    )
+    expect(mockSyncService.syncSummaryFile).toHaveBeenCalledWith(SummaryType.weekly, start, end)
+    expect(result.content).toBe('Edited weekly')
+    expect(result.id).toBeLessThan(0)
+  })
+
+  it('listForGallery() should use DB batch query without reading every summary file', async () => {
+    mockFileService.listAllSummaries.mockResolvedValue([
+      {
+        type: testType,
+        startDate: start,
+        endDate: end,
+        fullPath: '/vault/Archives/Monthly/2026-03-01.md'
+      }
+    ])
+    mockRepo.getSummaries.mockResolvedValue([
+      {
+        id: 1,
+        type: testType,
+        startDate: start,
+        endDate: end,
+        content: 'From DB cache',
+        generatedAt: new Date()
+      } as Summary
+    ])
+
+    const res = await manager.listForGallery()
+
+    expect(mockFileService.listAllSummaries).toHaveBeenCalled()
+    expect(mockRepo.getSummaries).toHaveBeenCalled()
+    expect(mockFileService.readSummary).not.toHaveBeenCalled()
+    expect(res).toHaveLength(1)
+    expect(res[0]?.content).toBe('From DB cache')
+  })
+
+  it('listForGallery() should read disk when DB has no content for a file', async () => {
+    mockFileService.listAllSummaries.mockResolvedValue([
+      {
+        type: testType,
+        startDate: start,
+        endDate: end,
+        fullPath: '/vault/Archives/Monthly/2026-03-01.md'
+      }
+    ])
+    mockRepo.getSummaries.mockResolvedValue([])
+    mockFileService.readSummary.mockResolvedValue('From disk file')
+
+    const res = await manager.listForGallery()
+
+    expect(mockFileService.readSummary).toHaveBeenCalledWith(testType, start)
+    expect(res[0]?.content).toBe('From disk file')
+    expect(res[0]?.id).toBeLessThan(0)
   })
 
   it('countByType() should count summaries from current vault files only', async () => {

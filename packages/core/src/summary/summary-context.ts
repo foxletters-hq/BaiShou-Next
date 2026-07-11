@@ -1,11 +1,6 @@
 import i18n from 'i18next'
 import { shadowConnectionManager, ShadowIndexRepository } from '@baishou/database'
-import {
-  logger,
-  parseDateStr,
-  estimateTextTokensApprox,
-  type SharedMemoryCopyPreview
-} from '@baishou/shared'
+import { logger, parseDateStr, type SharedMemoryCopyPreview } from '@baishou/shared'
 import { quarterlySummariesForMonthCascade } from './summary-cascade.util'
 
 /** 国际化字典类型 */
@@ -93,6 +88,19 @@ const formatDate = (d: Date): string => {
   return `${year}-${month}-${day}`
 }
 
+/** 共同回忆回溯窗口起点（当月 1 日 00:00） */
+export function computeLookbackCutoffDate(lookbackMonths: number): Date {
+  const cutoffDate = new Date()
+  cutoffDate.setMonth(cutoffDate.getMonth() - lookbackMonths)
+  cutoffDate.setDate(1)
+  cutoffDate.setHours(0, 0, 0, 0)
+  return cutoffDate
+}
+
+export function formatLookbackCutoffIso(lookbackMonths: number): string {
+  return formatDate(computeLookbackCutoffDate(lookbackMonths))
+}
+
 /** 将总结覆盖的月份打入覆盖集合（用于级联过滤） */
 function markMonthsCovered(s: any, coveredMonthKeys: Set<string>): void {
   const start = new Date(s.startDate)
@@ -136,10 +144,7 @@ function resolveSharedMemoryItems(
   lookbackMonths: number
 ): ResolvedSharedMemoryItems {
   const now = new Date()
-  const cutoffDate = new Date()
-  cutoffDate.setMonth(cutoffDate.getMonth() - lookbackMonths)
-  cutoffDate.setDate(1)
-  cutoffDate.setHours(0, 0, 0, 0)
+  const cutoffDate = computeLookbackCutoffDate(lookbackMonths)
 
   const relevantSummaries = (summaries || []).filter((s) => new Date(s.endDate) > cutoffDate)
   const relevantDiaries = diaries.filter((d) => {
@@ -239,6 +244,50 @@ function applyUserCopyPrefix(text: string, userCopyPrefix?: string): string {
   return `${prefix}\n\n${text}`
 }
 
+function estimateSharedContextMetrics(
+  allItems: ResolvedSharedMemoryItems['allItems'],
+  lookbackMonths: number,
+  locale?: string,
+  userCopyPrefix?: string
+): { estimatedChars: number; estimatedTokens: number } {
+  if (allItems.length === 0) {
+    return { estimatedChars: 0, estimatedTokens: 0 }
+  }
+
+  const tDict = LOCALE_TRANSLATIONS[resolveLocaleKey(locale || 'zh')] ?? LOCALE_TRANSLATIONS['zh']!
+  const prefixByKind: Record<SharedMemoryItemKind, string> = {
+    yearly: tDict.yearly,
+    quarterly: tDict.quarterly,
+    monthly: tDict.monthly,
+    weekly: tDict.weekly,
+    diary: tDict.diary
+  }
+  const header = `${tDict.slangs[0]!}\n${tDict.subTitle(lookbackMonths)}\n`
+  const separator = '\n\n---\n\n'
+
+  let bodyChars = 0
+  for (let i = 0; i < allItems.length; i++) {
+    const item = allItems[i]!
+    const dateStr = formatDate(item.date)
+    const prefix = prefixByKind[item.kind]
+    const content = item.kind === 'diary' ? item.data.rawContent || '' : item.data.content || ''
+    bodyChars += `## ${prefix} ${dateStr}\n\n${content}`.length
+    if (i > 0) bodyChars += separator.length
+  }
+
+  let estimatedChars = header.length + 1 + bodyChars
+  const trimmedPrefix = userCopyPrefix?.trim()
+  if (trimmedPrefix) {
+    estimatedChars += trimmedPrefix.length + 2
+  }
+
+  return {
+    estimatedChars,
+    // 与 estimateTextTokensApprox 同公式（按字符数估算，避免拼出全文）
+    estimatedTokens: estimatedChars > 0 ? Math.ceil(estimatedChars / 3) : 0
+  }
+}
+
 function emptySharedMemoryCopyPreview(lookbackMonths: number): SharedMemoryCopyPreview {
   return {
     lookbackMonths,
@@ -269,12 +318,12 @@ export function computeSharedMemoryCopyPreview(
   const diary = visibleDiaries.length
   const total = yearly + quarterly + monthly + weekly + diary
 
-  const body = buildSharedContextBody(allItems, lookbackMonths, options?.locale, {
-    deterministicHeader: true
-  })
-  const fullText = applyUserCopyPrefix(body, options?.userCopyPrefix)
-  const estimatedChars = fullText.length
-  const estimatedTokens = estimateTextTokensApprox(fullText)
+  const { estimatedChars, estimatedTokens } = estimateSharedContextMetrics(
+    allItems,
+    lookbackMonths,
+    options?.locale,
+    options?.userCopyPrefix
+  )
 
   return {
     lookbackMonths,
@@ -307,7 +356,8 @@ export async function buildSharedContextText(
     if (!shadowDb || !options?.vaultName) return ''
 
     const shadowRepo = new ShadowIndexRepository(shadowDb as any, options.vaultName)
-    diaries = await shadowRepo.listAllWithFTS()
+    // 与预览路径一致：只拉回溯窗口内日记，避免全量 FTS 扫描
+    diaries = await shadowRepo.listContentSinceDate(formatLookbackCutoffIso(lookbackMonths))
   }
 
   const { allItems } = resolveSharedMemoryItems(summaries, diaries, lookbackMonths)
@@ -349,7 +399,8 @@ export async function handleBuildSharedContextPreview(
     }
 
     const shadowRepo = new ShadowIndexRepository(shadowDb as any, vaultName)
-    const diaries = await shadowRepo.listAllWithFTS()
+    const cutoffIso = formatLookbackCutoffIso(lookbackMonths)
+    const diaries = await shadowRepo.listContentSinceDate(cutoffIso)
     return computeSharedMemoryCopyPreview(summaries, diaries, lookbackMonths, options)
   } catch (e) {
     logger.error('[SummaryIPC] buildSharedContextPreview error:', e as any)

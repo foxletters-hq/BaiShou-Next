@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBaishou } from '../providers/BaishouProvider'
-import { logger, type MissingSummary as DetectedMissingSummary } from '@baishou/shared'
+import { logger, type MissingSummary as DetectedMissingSummary, formatLocalDate } from '@baishou/shared'
 import {
   commitSummaryDashboardCache,
   getSummaryDashboardCacheVersion,
@@ -9,6 +9,14 @@ import {
   subscribeSummaryDashboardCache,
   type SummaryDashboardSnapshot
 } from '../lib/summary-dashboard-cache'
+import {
+  clearAllSummaryDetailPatches,
+  reconcileSummaryContentPatches
+} from '../screens/SummaryScreen/utils/summaryDetailCache'
+import {
+  parseSummaryBoundaryDate,
+  summaryDateToStorageKey
+} from '../screens/SummaryScreen/utils/summary-detail.helpers'
 import {
   fetchSummaryDashboardSnapshot,
   filterActivityForYear
@@ -21,6 +29,7 @@ interface Summary {
   startDate: string
   endDate: string
   content: string
+  generatedAt?: string
 }
 
 interface Stats {
@@ -68,6 +77,7 @@ export function useSummaryData(selectedYear: number) {
   const bootstrapper = services?.bootstrapper
   const autoRescanAttemptedRef = useRef(-1)
   const dashboardFetchRef = useRef(0)
+  const hasGalleryDataRef = useRef(false)
   const scopeKey = String(vaultRevision)
 
   const cacheVersion = useSyncExternalStore(
@@ -86,9 +96,26 @@ export function useSummaryData(selectedYear: number) {
   const [isDashboardRefreshing, setIsDashboardRefreshing] = useState(false)
 
   const applyDashboardSnapshot = useCallback((snapshot: SummaryDashboardSnapshot) => {
-    setStats(snapshotToStats(snapshot))
-    setActivityByDate(snapshot.activityByDate)
-    setAvailableYears(snapshot.availableYears)
+    const nextStats = snapshotToStats(snapshot)
+    setStats((prev) =>
+      prev.totalDiaryCount === nextStats.totalDiaryCount &&
+      prev.totalWeeklyCount === nextStats.totalWeeklyCount &&
+      prev.totalMonthlyCount === nextStats.totalMonthlyCount &&
+      prev.totalQuarterlyCount === nextStats.totalQuarterlyCount &&
+      prev.totalYearlyCount === nextStats.totalYearlyCount
+        ? prev
+        : nextStats
+    )
+    setActivityByDate((prev) =>
+      prev === snapshot.activityByDate ? prev : snapshot.activityByDate
+    )
+    setAvailableYears((prev) => {
+      const next = snapshot.availableYears
+      if (prev.length === next.length && prev.every((year, index) => year === next[index])) {
+        return prev
+      }
+      return next
+    })
   }, [])
 
   const hydrateDashboardFromCache = useCallback(() => {
@@ -102,21 +129,29 @@ export function useSummaryData(selectedYear: number) {
 
   useEffect(() => {
     setSummaries([])
+    hasGalleryDataRef.current = false
     setStats(EMPTY_STATS)
     setActivityByDate({})
     setAvailableYears([new Date().getFullYear()])
     setMissingSummaries([])
+    clearAllSummaryDetailPatches()
   }, [vaultRevision])
 
   const mapDetectedMissing = useCallback(
     (detected: DetectedMissingSummary[]) =>
-      detected.map((m) => ({
-        type: m.type,
-        startDate: m.startDate instanceof Date ? m.startDate.toISOString() : String(m.startDate),
-        endDate: m.endDate instanceof Date ? m.endDate.toISOString() : String(m.endDate),
-        label: m.label,
-        dateRangeStr: `${new Date(m.startDate).toLocaleDateString()} - ${new Date(m.endDate).toLocaleDateString()}`
-      })),
+      detected.map((m) => {
+        const startKey = summaryDateToStorageKey(m.startDate)
+        const endKey = summaryDateToStorageKey(m.endDate)
+        const startLocal = parseSummaryBoundaryDate(startKey)
+        const endLocal = parseSummaryBoundaryDate(endKey)
+        return {
+          type: m.type,
+          startDate: startKey,
+          endDate: endKey,
+          label: m.label,
+          dateRangeStr: `${startLocal.toLocaleDateString()} - ${endLocal.toLocaleDateString()}`
+        }
+      }),
     []
   )
 
@@ -185,34 +220,46 @@ export function useSummaryData(selectedYear: number) {
     if (!dbReady || storageIndexing || vaultSwitching || !summaryManager) return
 
     try {
-      setLoading(true)
+      if (!hasGalleryDataRef.current) {
+        setLoading(true)
+      }
 
-      let summaryList = await summaryManager.list()
+      let summaryList = await summaryManager.listForGallery()
 
       if (
         summaryList.length === 0 &&
         bootstrapper &&
+        bootstrapper.getStatus() !== 'running' &&
+        !storageIndexing &&
+        !vaultSwitching &&
         autoRescanAttemptedRef.current !== vaultRevision
       ) {
         autoRescanAttemptedRef.current = vaultRevision
         try {
           await bootstrapper.resyncFromDisk()
-          summaryList = await summaryManager.list()
+          summaryList = await summaryManager.listForGallery()
           await refreshDashboard({ force: true })
         } catch (e) {
           logger.warn('[useSummaryData] auto resync after empty summary list failed:', e as Error)
         }
       }
 
-      setSummaries(
-        summaryList.map((s) => ({
-          id: String(s.id),
-          type: s.type,
-          startDate: s.startDate instanceof Date ? s.startDate.toISOString() : s.startDate,
-          endDate: s.endDate instanceof Date ? s.endDate.toISOString() : s.endDate,
-          content: s.content
-        }))
-      )
+      const mapped = summaryList.map((s) => ({
+        id: String(s.id),
+        type: s.type,
+        startDate: s.startDate instanceof Date ? formatLocalDate(s.startDate) : s.startDate,
+        endDate: s.endDate instanceof Date ? formatLocalDate(s.endDate) : s.endDate,
+        content: s.content,
+        generatedAt:
+          s.generatedAt instanceof Date
+            ? s.generatedAt.toISOString()
+            : s.generatedAt != null
+              ? String(s.generatedAt)
+              : undefined
+      }))
+      // DB 仍空时保留本地已保存正文，避免刚编辑的预览被清空
+      setSummaries(reconcileSummaryContentPatches(mapped))
+      hasGalleryDataRef.current = summaryList.length > 0
     } catch (e) {
       console.warn('Failed to fetch summary gallery data', e)
     } finally {
@@ -228,18 +275,29 @@ export function useSummaryData(selectedYear: number) {
     vaultSwitching
   ])
 
+  const fetchMissingSummariesRef = useRef(fetchMissingSummaries)
+  fetchMissingSummariesRef.current = fetchMissingSummaries
+
+  const refreshDashboardRef = useRef(refreshDashboard)
+  refreshDashboardRef.current = refreshDashboard
+
+  const fetchSummariesForGalleryRef = useRef(fetchSummariesForGallery)
+  fetchSummariesForGalleryRef.current = fetchSummariesForGallery
+
   useEffect(() => {
     hydrateDashboardFromCache()
-    void refreshDashboard()
-    void fetchMissingSummaries()
+    void refreshDashboardRef.current()
+    void fetchMissingSummariesRef.current()
+    if (!vaultSwitching && !storageIndexing) {
+      void fetchSummariesForGalleryRef.current()
+    }
   }, [
-    fetchMissingSummaries,
     hydrateDashboardFromCache,
-    refreshDashboard,
     vaultRevision,
     ecosystemResyncEpoch,
     archiveRestoreEpoch,
-    vaultSwitching
+    vaultSwitching,
+    storageIndexing
   ])
 
   useEffect(() => {
@@ -247,8 +305,8 @@ export function useSummaryData(selectedYear: number) {
       cacheInvalidationHandledRef.current = true
       return
     }
-    void refreshDashboard()
-  }, [cacheVersion, refreshDashboard])
+    void refreshDashboardRef.current()
+  }, [cacheVersion])
 
   const activityData = useMemo(
     () => filterActivityForYear(activityByDate, selectedYear),

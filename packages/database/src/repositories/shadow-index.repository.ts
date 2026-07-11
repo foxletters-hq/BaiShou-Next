@@ -60,6 +60,10 @@ export class ShadowIndexRepository {
     return this.queryOps.findByDateRange(...args)
   }
 
+  async listContentSinceDate(...args: Parameters<ShadowIndexQueryOps['listContentSinceDate']>) {
+    return this.queryOps.listContentSinceDate(...args)
+  }
+
   async getHashByDate(...args: Parameters<ShadowIndexQueryOps['getHashByDate']>) {
     return this.queryOps.getHashByDate(...args)
   }
