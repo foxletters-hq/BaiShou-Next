@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { AssistantEditPage } from '@baishou/ui'
+import { useAssistantStore } from '@baishou/store'
 import { useTranslation } from 'react-i18next'
 
 export const AssistantEditScreen: React.FC = () => {
@@ -59,6 +60,7 @@ export const AssistantEditScreen: React.FC = () => {
                 setAssistant((prev: typeof assistant) =>
                   prev && prev.id === assistantId ? { ...prev, ...patch } : prev
                 )
+                await useAssistantStore.getState().fetchAssistants()
               }
             }
           : undefined
@@ -74,6 +76,7 @@ export const AssistantEditScreen: React.FC = () => {
           } else {
             await window.electron.ipcRenderer.invoke('agent:update-assistant', id, data)
           }
+          await useAssistantStore.getState().fetchAssistants()
         }
         navigate(-1)
       }}

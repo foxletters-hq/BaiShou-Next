@@ -90,6 +90,8 @@ export function useAssistantEditPage({
   const isCompressDisabled = compressThreshold <= 0
   const showResetBuiltin = isAssistantCustomAvatar(avatarPath)
 
+  // 仅在切换伙伴（id 变化）时灌入表单；patch 合并后的新引用不得把未保存的系统提示词打回旧值
+  const assistantId = assistant?.id ?? null
   useEffect(() => {
     if (!assistant) return
     setName(assistant.name ?? '')
@@ -108,7 +110,8 @@ export function useAssistantEditPage({
     setAssistantKind(normalizeAssistantKind(assistant.assistantKind))
     setEmojiEnabled(assistant.emojiEnabled === true)
     setSelectedEmojiGroupIds(resolveFormEmojiGroupIds(assistant))
-  }, [assistant])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally hydrate only on id change
+  }, [assistantId])
 
   useEffect(() => {
     const loadEmojiConfig = () => {
