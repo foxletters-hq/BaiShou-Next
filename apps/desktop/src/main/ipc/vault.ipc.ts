@@ -78,8 +78,11 @@ export async function switchVaultFast(vaultName: string) {
 
   const { globalBootstrapper } = await import('../services/bootstrapper.service')
   await globalBootstrapper.activateVaultRuntime()
-  const { resetAttachmentAllowedRootsCache } = await import('./attachment-path-cache')
+  const { resetAttachmentAllowedRootsCache, refreshDesktopAttachmentPathRemapper } =
+    await import('./attachment-path-cache')
   resetAttachmentAllowedRootsCache()
+  const { DesktopStoragePathService } = await import('../services/path.service')
+  await refreshDesktopAttachmentPathRemapper(new DesktopStoragePathService())
   resetSyncService()
   resetGitService()
   const { scheduleVaultEcosystemResync } = await import('../services/vault-resync.service')

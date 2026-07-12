@@ -7,12 +7,14 @@ import { existsSync } from 'node:fs'
 import {
   getAttachmentAllowedRoots,
   isPathUnderAllowedRoots,
+  refreshDesktopAttachmentPathRemapper,
   resolveAttachmentInputPath
 } from './attachment-path-cache'
 
 export function registerAttachmentIPC() {
   const pathService = new DesktopStoragePathService()
   const attachmentManager = new DesktopAttachmentManagerService(pathService)
+  void refreshDesktopAttachmentPathRemapper(pathService)
 
   ipcMain.handle('attachment:listAll', async () => {
     const db = connectionManager.getDb()

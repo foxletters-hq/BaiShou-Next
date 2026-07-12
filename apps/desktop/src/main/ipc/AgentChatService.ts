@@ -80,6 +80,10 @@ export class AgentChatService {
     const { realSessionRepo, realSnapshotRepo, sessionManager } = getAgentManagers()
     const emitter = new ElectronStreamEmitter(params.event)
 
+    const { DesktopStoragePathService } = await import('../services/path.service')
+    const { refreshDesktopAttachmentPathRemapper } = await import('./attachment-path-cache')
+    await refreshDesktopAttachmentPathRemapper(new DesktopStoragePathService())
+
     await AgentChatCoreService.runStreamChat({
       emitter,
       sessionId: params.sessionId,

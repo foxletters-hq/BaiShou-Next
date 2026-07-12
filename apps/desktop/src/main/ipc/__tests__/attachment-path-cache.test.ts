@@ -1,6 +1,10 @@
 import path from 'node:path'
-import { describe, expect, it } from 'vitest'
-import { isPathUnderAllowedRoots, resolveAttachmentInputPath } from '../attachment-path-cache'
+import { beforeEach, describe, expect, it } from 'vitest'
+import {
+  isPathUnderAllowedRoots,
+  resetAttachmentAllowedRootsCache,
+  resolveAttachmentInputPath
+} from '../attachment-path-cache'
 import type { DesktopStoragePathService } from '../../services/path.service'
 
 describe('isPathUnderAllowedRoots', () => {
@@ -31,13 +35,18 @@ describe('isPathUnderAllowedRoots', () => {
 })
 
 describe('resolveAttachmentInputPath', () => {
+  beforeEach(() => {
+    resetAttachmentAllowedRootsCache()
+  })
+
   const vaultPath = path.join('D:', 'Vaults', 'Personal')
   const attachmentsBase = path.join(vaultPath, 'Attachments')
   const emojisDir = path.join(attachmentsBase, 'emojis')
 
   const pathService = {
     getActiveVaultPath: async () => vaultPath,
-    getEmojisDirectory: async () => emojisDir
+    getEmojisDirectory: async () => emojisDir,
+    getRootDirectory: async () => path.join('D:', 'Vaults')
   } as unknown as DesktopStoragePathService
 
   it('resolves emoji vault relative keys under Attachments/emojis', async () => {
@@ -54,5 +63,17 @@ describe('resolveAttachmentInputPath', () => {
     const absolute = path.join(emojisDir, 'cat.png')
     const resolved = await resolveAttachmentInputPath(absolute, pathService)
     expect(resolved).toBe(path.resolve(absolute))
+  })
+
+  it('remaps Android absolute attachment paths onto desktop storage root', async () => {
+    const mobile =
+      '/storage/emulated/0/Baishou-Love/Personal/Attachments/session-1/photo.jpeg'
+    const resolved = await resolveAttachmentInputPath(mobile, {
+      ...pathService,
+      getRootDirectory: async () => path.join('D:', 'Baishou-Love')
+    } as unknown as DesktopStoragePathService)
+    expect(resolved).toBe(
+      path.resolve(path.join('D:', 'Baishou-Love', 'Personal', 'Attachments', 'session-1', 'photo.jpeg'))
+    )
   })
 })

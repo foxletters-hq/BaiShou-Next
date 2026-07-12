@@ -1,5 +1,10 @@
 import path from 'node:path'
-import { emojiVaultKeyToAttachmentsRelativePath, isEmojiVaultRelativePath } from '@baishou/shared'
+import {
+  emojiVaultKeyToAttachmentsRelativePath,
+  isEmojiVaultRelativePath,
+  remapAttachmentPathToStorageRoot
+} from '@baishou/shared'
+import { registerAttachmentPathRemapper } from '@baishou/ai'
 import type { DesktopStoragePathService } from '../services/path.service'
 
 export type AttachmentAllowedRoots = {
@@ -8,6 +13,7 @@ export type AttachmentAllowedRoots = {
 }
 
 let allowedRootsPromise: Promise<AttachmentAllowedRoots> | null = null
+let cachedStorageRoot = ''
 
 export function getAttachmentAllowedRoots(
   pathService: DesktopStoragePathService
@@ -21,8 +27,21 @@ export function getAttachmentAllowedRoots(
   return allowedRootsPromise
 }
 
+/** 刷新 AI 读附件时的跨端路径重映射（移动端绝对路径 → 本机 storageRoot） */
+export async function refreshDesktopAttachmentPathRemapper(
+  pathService: DesktopStoragePathService
+): Promise<string> {
+  cachedStorageRoot = (await pathService.getRootDirectory()).replace(/\\/g, '/').replace(/\/+$/, '')
+  registerAttachmentPathRemapper((filePath) => {
+    if (!cachedStorageRoot) return filePath
+    return remapAttachmentPathToStorageRoot(filePath, cachedStorageRoot)
+  })
+  return cachedStorageRoot
+}
+
 export function resetAttachmentAllowedRootsCache(): void {
   allowedRootsPromise = null
+  cachedStorageRoot = ''
 }
 
 function isPathUnderRoot(targetPath: string, rootPath: string): boolean {
@@ -42,17 +61,13 @@ export function isPathUnderAllowedRoots(
   )
 }
 
-/** 将 IPC 入参（含 local:///emojis/ 相对键）解析为可校验的绝对路径 */
+/** 将 IPC 入参（含 local:///emojis/ 相对键、跨端绝对路径）解析为可校验的绝对路径 */
 export async function resolveAttachmentInputPath(
   filePath: string,
   pathService: DesktopStoragePathService
 ): Promise<string> {
   const trimmed = filePath.trim()
   if (!trimmed) return ''
-
-  if (/^[a-zA-Z]:[\\/]/.test(trimmed) || (trimmed.startsWith('/') && !trimmed.startsWith('//'))) {
-    return path.resolve(trimmed)
-  }
 
   if (isEmojiVaultRelativePath(trimmed)) {
     const attachmentsRelative = emojiVaultKeyToAttachmentsRelativePath(trimmed)
@@ -65,5 +80,12 @@ export async function resolveAttachmentInputPath(
     return path.join(emojisDir, filename)
   }
 
-  return path.resolve(trimmed)
+  const storageRoot = await refreshDesktopAttachmentPathRemapper(pathService)
+  const remapped = remapAttachmentPathToStorageRoot(trimmed, storageRoot)
+
+  if (/^[a-zA-Z]:[\\/]/.test(remapped) || (remapped.startsWith('/') && !remapped.startsWith('//'))) {
+    return path.resolve(remapped)
+  }
+
+  return path.resolve(remapped)
 }
