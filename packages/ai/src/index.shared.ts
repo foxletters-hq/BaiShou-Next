@@ -85,6 +85,12 @@ export {
   type LocalFileReader
 } from './platform/local-file-reader.registry'
 export {
+  registerAttachmentPathRemapper,
+  clearAttachmentPathRemapper,
+  applyAttachmentPathRemapper,
+  type AttachmentPathRemapper
+} from './platform/attachment-path-remapper.registry'
+export {
   registerImageCompressor,
   clearImageCompressor,
   type ImageCompressor,
