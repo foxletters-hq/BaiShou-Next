@@ -83,7 +83,10 @@ export async function resolveAttachmentInputPath(
   const storageRoot = await refreshDesktopAttachmentPathRemapper(pathService)
   const remapped = remapAttachmentPathToStorageRoot(trimmed, storageRoot)
 
-  if (/^[a-zA-Z]:[\\/]/.test(remapped) || (remapped.startsWith('/') && !remapped.startsWith('//'))) {
+  if (
+    /^[a-zA-Z]:[\\/]/.test(remapped) ||
+    (remapped.startsWith('/') && !remapped.startsWith('//'))
+  ) {
     return path.resolve(remapped)
   }
 

@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import {
   formatWebDavRequestError,
   INCREMENTAL_SYNC_CHUNK_SIZE,
@@ -79,7 +80,13 @@ async function webdavPropfind(
     }
   })
   if (!response.ok) {
-    throw new Error(formatWebDavRequestError('列举目录', response.status, response.statusText))
+    throw new Error(
+      formatWebDavRequestError(
+        i18n.t('auto.apps.mobile.src.services.mobile.incremental.cloud.webdav.ops.L82', '列举目录'),
+        response.status,
+        response.statusText
+      )
+    )
   }
   return response.text()
 }
@@ -100,7 +107,17 @@ async function ensureWebDavBasePath(host: IncrementalCloudOpsHost): Promise<void
       headers: { Authorization: auth }
     })
     if (res.ok || res.status === 405 || res.status === 409) continue
-    throw new Error(formatWebDavRequestError(`创建目录 ${current}`, res.status, res.statusText))
+    throw new Error(
+      formatWebDavRequestError(
+        i18n.t(
+          'auto.apps.mobile.src.services.mobile.incremental.cloud.webdav.ops.L110',
+          '创建目录 {{path}}',
+          { path: current }
+        ),
+        res.status,
+        res.statusText
+      )
+    )
   }
 }
 

@@ -163,8 +163,7 @@ export class SummaryManagerService {
     )
     const dbByKey = new Map<string, Summary>()
     for (const record of dbRecords) {
-      const start =
-        record.startDate instanceof Date ? record.startDate : new Date(record.startDate)
+      const start = record.startDate instanceof Date ? record.startDate : new Date(record.startDate)
       dbByKey.set(`${record.type}:${start.getTime()}`, record)
     }
 

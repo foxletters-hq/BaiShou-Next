@@ -44,9 +44,9 @@ export function patchSummaryDetailCache(summary: CachedSummaryDetail) {
  * 列表刷新后合并 patch：DB 仍空时保留本地已保存正文，避免预览被清空。
  * 同时清理已不在列表中的过期 patch。
  */
-export function reconcileSummaryContentPatches<
-  T extends { id?: string | number; content: string }
->(items: T[]): T[] {
+export function reconcileSummaryContentPatches<T extends { id?: string | number; content: string }>(
+  items: T[]
+): T[] {
   if (contentPatches.size === 0) return items
 
   const liveIds = new Set(items.map((item) => String(item.id)))

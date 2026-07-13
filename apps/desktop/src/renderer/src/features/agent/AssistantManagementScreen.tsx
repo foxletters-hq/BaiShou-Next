@@ -11,9 +11,7 @@ const pageTransition = {
 }
 
 /** 管理页本地列表 + 聊天侧伙伴 store 一并刷新，避免选择器仍显示旧提示词 */
-async function refreshAssistantsAfterMutation(
-  loadAssistants: () => Promise<void>
-): Promise<void> {
+async function refreshAssistantsAfterMutation(loadAssistants: () => Promise<void>): Promise<void> {
   await loadAssistants()
   await useAssistantStore.getState().fetchAssistants()
 }

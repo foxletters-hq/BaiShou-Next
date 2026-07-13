@@ -10,7 +10,15 @@
  * - ANDROID_*：CI 在 prebuild 清除 android/ 后，可由 setup-android-signing 从环境变量恢复签名
  */
 import { spawnSync } from 'node:child_process'
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+  writeFileSync
+} from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { applyAndroidPlainSplashPatch } from './plain-splash-patch.mjs'

@@ -50,11 +50,7 @@ export function useResolvedUserAvatar(avatarPath?: string | null): ResolvedUserA
 
     let cancelled = false
     setResolving(true)
-    void resolveUserAvatarForMobileUi(
-      avatarPath,
-      services.attachmentManager,
-      services.fileSystem
-    )
+    void resolveUserAvatarForMobileUi(avatarPath, services.attachmentManager, services.fileSystem)
       .then((resolved) => {
         if (!cancelled) {
           setUri(resolved ?? null)

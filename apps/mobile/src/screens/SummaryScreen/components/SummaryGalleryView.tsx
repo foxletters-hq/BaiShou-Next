@@ -46,10 +46,10 @@ export const SummaryGalleryView: React.FC<SummaryGalleryViewProps> = ({
     getSummaryDetailPatchVersion
   )
 
-  const displaySummaries = useMemo(
-    () => applySummaryContentPatches(summaries),
-    [summaries, patchVersion]
-  )
+  const displaySummaries = useMemo(() => {
+    void patchVersion
+    return applySummaryContentPatches(summaries)
+  }, [summaries, patchVersion])
 
   const seedSummaryNavigation = (id: string) => {
     const resolved = resolveSummaryForNavigation(

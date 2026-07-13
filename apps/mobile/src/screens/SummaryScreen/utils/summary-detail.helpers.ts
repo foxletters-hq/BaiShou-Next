@@ -12,10 +12,7 @@ export function summaryDateToStorageKey(value: Date | string | undefined | null)
   return text
 }
 
-export function isSameSummaryDetail(
-  a: CachedSummaryDetail,
-  b: CachedSummaryDetail
-): boolean {
+export function isSameSummaryDetail(a: CachedSummaryDetail, b: CachedSummaryDetail): boolean {
   return (
     a.content === b.content &&
     a.generatedAt === b.generatedAt &&

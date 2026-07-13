@@ -163,8 +163,7 @@ export function useDataSyncCloud() {
           }
         } else {
           logger.error('加载云端记录失败', e instanceof Error ? e : String(e))
-          const errorText =
-            msg || tRef.current('data_sync.load_records_failed', '加载云端记录失败')
+          const errorText = msg || i18n.t('data_sync.load_records_failed', '加载云端记录失败')
           recordsFetchErrorRef.current = errorText
           setRecordsFetchError(errorText)
           if (options?.force) {

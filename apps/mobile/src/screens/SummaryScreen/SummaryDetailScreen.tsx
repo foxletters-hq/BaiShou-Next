@@ -1,5 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Keyboard, ActivityIndicator, ScrollView } from 'react-native'
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  StatusBar,
+  Keyboard,
+  ActivityIndicator,
+  ScrollView
+} from 'react-native'
 import { useFocusEffect } from '@react-navigation/native'
 import { ScreenSafeArea } from '@/src/components/ScreenSafeArea'
 import {

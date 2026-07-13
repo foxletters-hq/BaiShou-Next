@@ -41,7 +41,10 @@ export class IncrementalWebDavClient implements ICloudSyncClient {
   }
 
   private async ensureDir(dirPath: string): Promise<void> {
-    const parts = dirPath.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean)
+    const parts = dirPath
+      .replace(/^\/+|\/+$/g, '')
+      .split('/')
+      .filter(Boolean)
     if (parts.length === 0) return
 
     let current = ''

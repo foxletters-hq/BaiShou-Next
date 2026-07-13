@@ -72,17 +72,14 @@ function removeUnusedI18nImport(text) {
   if (!/\bi18n\b/.test(text)) return text
   const withoutDefault = text.replace(/^import i18n from 'i18next'\n/m, '')
   if (withoutDefault !== text) return withoutDefault
-  return text.replace(
-    /import\s+\{([^}]*)\}\s+from\s+['"]i18next['"]\n/m,
-    (_match, inner) => {
-      const names = inner
-        .split(',')
-        .map((s) => s.trim())
-        .filter((s) => s && s !== 'i18n')
-      if (names.length === 0) return ''
-      return `import { ${names.join(', ')} } from 'i18next'\n`
-    }
-  )
+  return text.replace(/import\s+\{([^}]*)\}\s+from\s+['"]i18next['"]\n/m, (_match, inner) => {
+    const names = inner
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => s && s !== 'i18n')
+    if (names.length === 0) return ''
+    return `import { ${names.join(', ')} } from 'i18next'\n`
+  })
 }
 
 /** @param {string} filePath */

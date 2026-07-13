@@ -216,6 +216,8 @@ export const DiaryEditorScreen: React.FC = () => {
     return () => {
       cancelled = true
     }
+    // initBlankDiaryEntry / applyLoadedDiary 使用稳定 setState + ref，勿放入 deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 见上
   }, [
     id,
     date,
@@ -226,7 +228,6 @@ export const DiaryEditorScreen: React.FC = () => {
     isAppendMode,
     isNewEntryMode,
     normalizeDiaryCalendarDate
-    // initBlankDiaryEntry / applyLoadedDiary 使用稳定 setState + ref，勿放入 deps
   ])
 
   const handleSave = async () => {

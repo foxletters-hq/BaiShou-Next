@@ -23,7 +23,9 @@ export function createSharedContextBuilders(deps: {
     if (!stack) return ''
     const cutoff = computeLookbackCutoffDate(lookbackMonths)
     const allSummaries = await summaryManager.listForGallery({ endAfter: cutoff })
-    const diaries = await stack.shadowRepo.listContentSinceDate(formatLookbackCutoffIso(lookbackMonths))
+    const diaries = await stack.shadowRepo.listContentSinceDate(
+      formatLookbackCutoffIso(lookbackMonths)
+    )
     const prefix =
       userCopyPrefix ??
       (await settingsManager.get<SummaryConfig>('summary_config'))?.sharedMemoryCopyPrefix
@@ -52,7 +54,9 @@ export function createSharedContextBuilders(deps: {
     if (!stack) return empty
     const cutoff = computeLookbackCutoffDate(lookbackMonths)
     const allSummaries = await summaryManager.listForGallery({ endAfter: cutoff })
-    const diaries = await stack.shadowRepo.listContentSinceDate(formatLookbackCutoffIso(lookbackMonths))
+    const diaries = await stack.shadowRepo.listContentSinceDate(
+      formatLookbackCutoffIso(lookbackMonths)
+    )
     const summaryConfig = (await settingsManager.get<SummaryConfig>('summary_config')) || {}
     const userCopyPrefix = options?.userCopyPrefix ?? summaryConfig.sharedMemoryCopyPrefix
     return computeSharedMemoryCopyPreview(allSummaries, diaries, lookbackMonths, {

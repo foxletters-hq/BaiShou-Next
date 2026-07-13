@@ -60,9 +60,7 @@ export class ShadowIndexQueryOps {
   }
 
   /** 共同回忆预览：仅拉取日期范围内的正文，避免全量 FTS 扫描 */
-  async listContentSinceDate(
-    startIso: string
-  ): Promise<{ date: string; rawContent: string }[]> {
+  async listContentSinceDate(startIso: string): Promise<{ date: string; rawContent: string }[]> {
     const rows = await this.database
       .select({
         date: shadowJournalIndexTable.date,

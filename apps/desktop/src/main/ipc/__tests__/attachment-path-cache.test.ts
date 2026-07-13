@@ -66,14 +66,15 @@ describe('resolveAttachmentInputPath', () => {
   })
 
   it('remaps Android absolute attachment paths onto desktop storage root', async () => {
-    const mobile =
-      '/storage/emulated/0/Baishou-Love/Personal/Attachments/session-1/photo.jpeg'
+    const mobile = '/storage/emulated/0/Baishou-Love/Personal/Attachments/session-1/photo.jpeg'
     const resolved = await resolveAttachmentInputPath(mobile, {
       ...pathService,
       getRootDirectory: async () => path.join('D:', 'Baishou-Love')
     } as unknown as DesktopStoragePathService)
     expect(resolved).toBe(
-      path.resolve(path.join('D:', 'Baishou-Love', 'Personal', 'Attachments', 'session-1', 'photo.jpeg'))
+      path.resolve(
+        path.join('D:', 'Baishou-Love', 'Personal', 'Attachments', 'session-1', 'photo.jpeg')
+      )
     )
   })
 })

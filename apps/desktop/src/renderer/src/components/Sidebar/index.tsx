@@ -23,7 +23,10 @@ import {
   type SidebarNavId
 } from './sidebar-nav-catalog'
 import { SidebarManageModal } from './SidebarManageModal'
-import { rememberSettingsReturnPath, locationToReturnPath } from '../../features/settings/settings-navigation.util'
+import {
+  rememberSettingsReturnPath,
+  locationToReturnPath
+} from '../../features/settings/settings-navigation.util'
 import { prefetchSettingsEntry } from '../../lib/prefetch-settings-entry'
 import { isSettingsOverlayPath } from '../../features/settings/settings-route.util'
 

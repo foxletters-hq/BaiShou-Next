@@ -37,10 +37,7 @@ function revertFile(file) {
   return true
 }
 
-const roots = [
-  path.join(ROOT, 'apps'),
-  path.join(ROOT, 'packages')
-]
+const roots = [path.join(ROOT, 'apps'), path.join(ROOT, 'packages')]
 
 let count = 0
 for (const root of roots) {

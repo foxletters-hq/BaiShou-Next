@@ -1,7 +1,11 @@
 import { useState, useEffect, useCallback, useRef, useMemo, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBaishou } from '../providers/BaishouProvider'
-import { logger, type MissingSummary as DetectedMissingSummary, formatLocalDate } from '@baishou/shared'
+import {
+  logger,
+  type MissingSummary as DetectedMissingSummary,
+  formatLocalDate
+} from '@baishou/shared'
 import {
   commitSummaryDashboardCache,
   getSummaryDashboardCacheVersion,
@@ -106,9 +110,7 @@ export function useSummaryData(selectedYear: number) {
         ? prev
         : nextStats
     )
-    setActivityByDate((prev) =>
-      prev === snapshot.activityByDate ? prev : snapshot.activityByDate
-    )
+    setActivityByDate((prev) => (prev === snapshot.activityByDate ? prev : snapshot.activityByDate))
     setAvailableYears((prev) => {
       const next = snapshot.availableYears
       if (prev.length === next.length && prev.every((year, index) => year === next[index])) {

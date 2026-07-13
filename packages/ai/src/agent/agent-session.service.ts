@@ -125,9 +125,7 @@ export class AgentSessionService {
       )
 
       const configRecentCount =
-        typeof mergedUserConfig['recentCount'] === 'number'
-          ? mergedUserConfig['recentCount']
-          : 30
+        typeof mergedUserConfig['recentCount'] === 'number' ? mergedUserConfig['recentCount'] : 30
 
       // 2. 若上下文 token 超过阈值或逼近模型窗口，先同步压缩再构建窗口
       const compressionConfig = await resolveSessionCompressionConfig(sessionId, sessionRepo)

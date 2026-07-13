@@ -13,4 +13,9 @@ apps/mobile/android/**
 apps/mobile/.expo/**
 apps/mobile/expo-env.d.ts
 apps/mobile/uniwind-types.d.ts
-
+# CI / 本地构建产物（gitignored 但仍可能落在工作区）
+apps/mobile/assets/diary-editor/**
+release/**
+coverage/**
+**/*.bundle
+.lint-count-*.json

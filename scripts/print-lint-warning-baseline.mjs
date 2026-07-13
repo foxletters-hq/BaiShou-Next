@@ -1,20 +1,24 @@
 #!/usr/bin/env node
 /**
  * 统计 desktop / mobile 当前 ESLint warning 数，便于下调 lint-warning-baseline.json。
+ * 直接调用 ESLint CLI（不经 pnpm exec）。
  */
 import { readFileSync, writeFileSync, unlinkSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
+import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const baselinePath = join(root, 'scripts', 'lint-warning-baseline.json')
+const require = createRequire(import.meta.url)
+const eslintCli = join(dirname(require.resolve('eslint/package.json')), 'bin', 'eslint.js')
 
 /** @param {'desktop' | 'mobile'} app */
 function countWarnings(app) {
   const outFile = join(root, `.lint-count-${app}.json`)
   const cwd = join(root, 'apps', app)
-  const result = spawnSync('pnpm', ['exec', 'eslint', '.', '-f', 'json', '-o', outFile], {
+  const result = spawnSync(process.execPath, [eslintCli, '.', '-f', 'json', '-o', outFile], {
     cwd,
     encoding: 'utf8'
   })

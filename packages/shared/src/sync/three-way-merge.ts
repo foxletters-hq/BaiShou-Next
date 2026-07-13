@@ -3,10 +3,7 @@ import {
   isIncrementalSyncChatBackgroundPath,
   isSqliteRuntimeSyncPath
 } from '../utils/incremental-sync-scan.util'
-import {
-  getSyncManifestRemovedEntry,
-  isRemoteRemovalRecorded
-} from './sync-manifest-removed.util'
+import { getSyncManifestRemovedEntry, isRemoteRemovalRecorded } from './sync-manifest-removed.util'
 
 /** 合并决策 */
 export interface MergeDecision {

@@ -162,11 +162,7 @@ export function sliceMessagesByRecentTurns(
     }
   }
 
-  while (
-    startIndex > 0 &&
-    startIndex < messages.length &&
-    messages[startIndex]!.role === 'tool'
-  ) {
+  while (startIndex > 0 && startIndex < messages.length && messages[startIndex]!.role === 'tool') {
     startIndex--
   }
 

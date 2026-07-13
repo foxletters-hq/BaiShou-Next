@@ -26,9 +26,13 @@ export function registerGitSyncIPC() {
           ? e.message
           : typeof e === 'string'
             ? e
-            : 'Git 仓库初始化失败'
+            : i18n.t('auto.apps.desktop.src.main.ipc.git.sync.ipc.L25', 'Git 仓库初始化失败')
       logger.error('[GitIPC] 初始化失败:', e as Error)
-      return { success: false, message: message || 'Git 仓库初始化失败' }
+      return {
+        success: false,
+        message:
+          message || i18n.t('auto.apps.desktop.src.main.ipc.git.sync.ipc.L27', 'Git 仓库初始化失败')
+      }
     }
   })
 
