@@ -121,6 +121,10 @@ export async function runSyncThreeWay(
   let deletedRemote = 0
   let deletedLocal = 0
   const conflicted: string[] = []
+  const uploadedPaths: string[] = []
+  const downloadedPaths: string[] = []
+  const deletedLocalPaths: string[] = []
+  const deletedRemotePaths: string[] = []
   // 仅从远端基线起步；upload 成功后再写入，避免未上云文件污染 checkpoint / 祖先快照
   let workingManifest: SyncManifest = normalizeSyncManifest({
     ...remoteManifest,
@@ -183,22 +187,26 @@ export async function runSyncThreeWay(
         case 'upload':
           await client.uploadFile(fullPath, d.filePath)
           uploaded++
+          uploadedPaths.push(d.filePath)
           mutated = true
           break
         case 'download':
           if (await worker.downloadSyncFile(client, d.filePath, fullPath, d.size)) {
             downloaded++
+            downloadedPaths.push(d.filePath)
             mutated = true
           }
           break
         case 'delete-remote':
           await client.deleteFile(d.filePath)
           deletedRemote++
+          deletedRemotePaths.push(d.filePath)
           mutated = true
           break
         case 'delete-local':
           await worker.host.fileSystem.unlink(fullPath)
           deletedLocal++
+          deletedLocalPaths.push(d.filePath)
           mutated = true
           break
         case 'conflict-resolved':
@@ -207,10 +215,12 @@ export async function runSyncThreeWay(
             await worker.backupLocalFile(syncRoot, d.filePath)
             await client.uploadFile(fullPath, d.filePath)
             uploaded++
+            uploadedPaths.push(d.filePath)
           } else {
             await worker.backupLocalFile(syncRoot, d.filePath)
             if (await worker.downloadSyncFile(client, d.filePath, fullPath, d.size)) {
               downloaded++
+              downloadedPaths.push(d.filePath)
             }
           }
           mutated = true
@@ -289,6 +299,10 @@ export async function runSyncThreeWay(
     deletedRemote,
     deletedLocal,
     failed: 0,
-    failedPaths: []
+    failedPaths: [],
+    uploadedPaths,
+    downloadedPaths,
+    deletedLocalPaths,
+    deletedRemotePaths
   }
 }

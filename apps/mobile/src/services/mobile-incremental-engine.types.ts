@@ -19,6 +19,10 @@ export type MobileIncrementalSyncOutcome = {
   deletedLocal: number
   failed: number
   failedPaths: string[]
+  uploadedPaths: string[]
+  downloadedPaths: string[]
+  deletedLocalPaths: string[]
+  deletedRemotePaths: string[]
 }
 
 export type MobileIncrementalExecutionContext = {

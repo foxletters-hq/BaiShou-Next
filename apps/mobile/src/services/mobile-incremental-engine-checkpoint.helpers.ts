@@ -22,20 +22,21 @@ export function createCheckpointRuntime(delegate: CheckpointRuntimeDelegate) {
   return {
     async afterMutation(manifest: SyncManifest) {
       coordinator.noteManifest(manifest)
-      // 中途只落本地 progress；不写祖先快照、不上传远端 manifest，避免半截状态污染
-      const skipSnapshot = async () => {}
-      await coordinator.flushLocalIfNeeded(false, saveLocal, skipSnapshot)
+      // 成功操作后节流推进本地 progress + 祖先快照，崩溃重跑时已成功路径可 skip
+      await coordinator.flushLocalIfNeeded(false, saveLocal, saveSnapshot)
     },
     async afterDecisionProgress(session: SessionTouchState) {
       coordinator.noteSession(session)
       await coordinator.flushSessionIfNeeded(false, async (state) => {
-        await coordinator.flushLocalIfNeeded(true, saveLocal, async () => {})
+        await coordinator.flushLocalIfNeeded(true, saveLocal, saveSnapshot)
         await writeSession(state)
       })
     },
     async finalize(manifest: SyncManifest, session?: SessionTouchState) {
       if (session) coordinator.noteSession(session)
       coordinator.noteManifest(manifest)
+      // 对齐桌面：结束时必上传远端 manifest
+      coordinator.noteRemoteCheckpoint()
       await coordinator.finalizeAll(saveLocal, saveSnapshot, uploadRemote, async (state) => {
         await ensureLocalFlushed()
         await writeSession(state)

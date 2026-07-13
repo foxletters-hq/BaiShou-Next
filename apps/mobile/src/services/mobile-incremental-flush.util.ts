@@ -121,8 +121,11 @@ export class IncrementalSyncCheckpointCoordinator {
     uploadRemote: () => Promise<void>,
     writeSession: (state: SessionTouchState) => Promise<void>
   ): Promise<void> {
+    // 顺序对齐 INCREMENTAL_SYNC_CHECKPOINT_COMMIT_STEPS：local(+ancestor via saveSnapshot) → remote
     const ensureLocalFlushed = () => this.flushLocalIfNeeded(true, saveLocal, saveSnapshot)
     await ensureLocalFlushed()
+    // 成功同步结束：必上传远端 manifest（对齐桌面 ThreeWaySyncService）
+    if (this.pendingRemoteManifest <= 0) this.noteRemoteCheckpoint()
     await this.flushRemoteIfNeeded(true, uploadRemote, ensureLocalFlushed)
     await this.flushSessionIfNeeded(true, writeSession)
   }

@@ -95,4 +95,19 @@ describe('IncrementalSyncCheckpointCoordinator', () => {
     expect(saveLocal).toHaveBeenCalledTimes(1)
     expect(uploadRemote).toHaveBeenCalledTimes(1)
   })
+
+  it('finalizeAll 在未 noteRemoteCheckpoint 时仍上传远端 manifest', async () => {
+    const coordinator = new IncrementalSyncCheckpointCoordinator()
+    const remoteWrites: number[] = []
+    coordinator.noteManifest(manifest)
+    await coordinator.finalizeAll(
+      async () => {},
+      async () => {},
+      async () => {
+        remoteWrites.push(1)
+      },
+      async () => {}
+    )
+    expect(remoteWrites).toEqual([1])
+  })
 })

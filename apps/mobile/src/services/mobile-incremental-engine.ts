@@ -169,6 +169,10 @@ export class MobileIncrementalEngine implements IncrementalEngineHost {
     return this.initWorker().saveRemoteSnapshot(manifest, config)
   }
 
+  async refreshCheckpointForPaths(config: S3SyncConfig, relPaths: string[]): Promise<void> {
+    return this.initWorker().refreshCheckpointForPaths(config, relPaths)
+  }
+
   async getRemoteManifest(
     client: MobileIncrementalCloudClient,
     onProgress?: (current: number, total: number, fileName: string) => void

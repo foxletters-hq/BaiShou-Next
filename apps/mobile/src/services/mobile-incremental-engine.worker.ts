@@ -14,6 +14,7 @@ import {
   normalizeSyncManifest,
   reconcileSyncManifestRemovedWithRemoteFiles,
   resolveIncrementalSyncStorageHistory,
+  upsertManifestPathEntries,
   SYNC_MANIFEST_FILENAME,
   SYNC_REMOTE_SNAPSHOT_FILENAME,
   SYNC_STORAGE_ID_FILENAME
@@ -27,6 +28,7 @@ import {
 } from './mobile-incremental-sync-session.util'
 import { IncrementalManifestCommitQueue } from './mobile-incremental-manifest-commit.util'
 import { resolveMobileIncrementalSyncFullPath } from './mobile-incremental-sync-path.util'
+import { md5HexForSyncFile } from './mobile-sync-file-md5.util'
 import { loadVaultExternalSyncMounts } from '@baishou/core-mobile'
 import type { VaultExternalSyncMount } from '@baishou/shared'
 import type {
@@ -356,6 +358,53 @@ export class MobileIncrementalEngineWorker {
       this.storageIdPath(metaDir),
       getIncrementalSyncStorageId(config)
     )
+  }
+
+  /**
+   * 收尾写盘后二次定稿：重算指定相对路径的 hash，更新 local + ancestor，并上传远端 manifest。
+   */
+  async refreshCheckpointForPaths(config: S3SyncConfig, relPaths: string[]): Promise<void> {
+    const unique = [...new Set(relPaths.map((p) => p.replace(/\\/g, '/')).filter(Boolean))]
+    if (unique.length === 0) return
+
+    const syncRoot = await this.syncRoot()
+    const updates: Record<string, ManifestEntry | null> = {}
+
+    for (const relPath of unique) {
+      const fullPath = await this.resolveSyncFullPath(syncRoot, relPath)
+      const exists = await this.host.fileSystem.exists(fullPath)
+      if (!exists) {
+        updates[relPath] = null
+        continue
+      }
+      const stat = await this.host.fileSystem.stat(fullPath).catch(() => null)
+      if (!stat?.isFile) {
+        updates[relPath] = null
+        continue
+      }
+      const hash = await md5HexForSyncFile(this.host.fileSystem, fullPath)
+      updates[relPath] = {
+        hash,
+        size: stat.size ?? 0,
+        lastModified: stat.mtimeMs ?? Date.now()
+      }
+    }
+
+    const local = await this.readLocalManifestFile()
+    const ancestor = await this.loadRemoteSnapshot(config)
+    const nextLocal = upsertManifestPathEntries(local, updates)
+    const nextAncestor = upsertManifestPathEntries(ancestor, updates)
+    await this.saveLocalManifest(nextLocal)
+    await this.saveRemoteSnapshot(nextAncestor, config)
+
+    const metaDir = await this.syncMetaDir()
+    const client = new MobileIncrementalCloudClient(config, this.host.fileSystem)
+    client.setVaultPath(syncRoot)
+    await this.flushRemoteManifestCheckpoint(metaDir, client)
+    console.warn('[IncrementalSync][Checkpoint] refreshCheckpointForPaths', {
+      pathCount: unique.length,
+      paths: unique.slice(0, 8)
+    })
   }
 
   async getRemoteManifest(
