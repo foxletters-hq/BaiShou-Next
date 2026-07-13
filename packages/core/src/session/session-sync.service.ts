@@ -31,7 +31,9 @@ export class SessionSyncService {
    * 传入 diskVaultNames 时扫描全部工作区 Sessions/（跨 vault），否则仅扫活跃 vault。
    */
   async fullScanArchives(options?: DiskResyncOptions): Promise<void> {
-    const vaultNames = [...new Set((options?.diskVaultNames ?? []).map((n) => n.trim()).filter(Boolean))]
+    const vaultNames = [
+      ...new Set((options?.diskVaultNames ?? []).map((n) => n.trim()).filter(Boolean))
+    ]
     const allFiles =
       vaultNames.length > 0
         ? await this.fileService.listSessionsAcrossVaults(vaultNames)
@@ -87,11 +89,7 @@ export class SessionSyncService {
       if (scannedVaultSet) {
         // 跨 vault 全扫：仅清理「归属已扫工作区」且盘上已无文件的记录
         const recordVault = dbRecord.vaultName?.trim()
-        if (
-          recordVault &&
-          recordVault !== 'default' &&
-          !scannedVaultSet.has(recordVault)
-        ) {
+        if (recordVault && recordVault !== 'default' && !scannedVaultSet.has(recordVault)) {
           continue
         }
       } else if (activeVaultName && dbRecord.vaultName !== activeVaultName) {

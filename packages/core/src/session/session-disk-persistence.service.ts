@@ -158,7 +158,12 @@ export class SessionDiskPersistenceService {
     }
 
     this.hooks?.onBeforeWrite?.(sessionId, sessionId)
-    await this.fileService.writeSession(sessionId, cleaned, options?.vaultName)
+    const targetVault = options?.vaultName?.trim()
+    if (targetVault) {
+      await this.fileService.writeSession(sessionId, cleaned, targetVault)
+    } else {
+      await this.fileService.writeSession(sessionId, cleaned)
+    }
     this.dirty.delete(sessionId)
   }
 }

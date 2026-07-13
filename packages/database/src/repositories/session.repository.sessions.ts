@@ -1,10 +1,13 @@
 import { eq, desc, or, sql, and, inArray } from 'drizzle-orm'
+import type { InferSelectModel } from 'drizzle-orm'
 import type { AppDatabase } from '../types'
 import { agentSessionsTable } from '../schema/agent-sessions'
 import { agentMessagesTable as messagesTbl } from '../schema/agent-messages'
 import { agentPartsTable as partsTbl } from '../schema/agent-parts'
 import type { InsertSessionInput } from './session.repository.types'
 import { usesSyncTransaction } from './session.repository.utils'
+
+export type AgentSessionRow = InferSelectModel<typeof agentSessionsTable>
 
 export class SessionCrudOps {
   constructor(private readonly db: AppDatabase) {}
@@ -64,7 +67,7 @@ export class SessionCrudOps {
     offset: number = 0,
     assistantId?: string,
     searchQuery?: string
-  ) {
+  ): Promise<AgentSessionRow[]> {
     let matchedSessionIds: string[] = []
 
     if (searchQuery && searchQuery.trim()) {
@@ -166,7 +169,7 @@ export class SessionCrudOps {
       finalQuery = finalQuery.limit(limit).offset(offset)
     }
 
-    const results = await finalQuery
+    const results = (await finalQuery) as AgentSessionRow[]
     console.log(
       `[SessionRepo] findAllSessions(limit=${limit}, offset=${offset}, astId=${assistantId}, query=${searchQuery}) => returned ${results.length} rows.`
     )

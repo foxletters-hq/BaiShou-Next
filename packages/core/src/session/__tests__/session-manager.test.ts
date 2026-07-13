@@ -54,7 +54,7 @@ describe('SessionManagerService (Ghost memory interceptor)', () => {
 
     expect(mockRepo.upsertSession).toHaveBeenCalledWith(expect.objectContaining({ id: 'chat-1' }))
     expect(mockRepo.getSessionAggregate).toHaveBeenCalledWith('chat-1')
-    expect(mockFileService.writeSession).toHaveBeenCalledWith('chat-1', aggregateDummy, undefined)
+    expect(mockFileService.writeSession).toHaveBeenCalledWith('chat-1', aggregateDummy)
   })
 
   it('insertMessageWithParts() should write to SQLite and schedule debounced disk flush', async () => {
@@ -70,7 +70,7 @@ describe('SessionManagerService (Ghost memory interceptor)', () => {
     expect(mockFileService.writeSession).not.toHaveBeenCalled()
 
     await vi.runAllTimersAsync()
-    expect(mockFileService.writeSession).toHaveBeenCalledWith('chat-1', aggregateDummy, undefined)
+    expect(mockFileService.writeSession).toHaveBeenCalledWith('chat-1', aggregateDummy)
     vi.useRealTimers()
   })
 

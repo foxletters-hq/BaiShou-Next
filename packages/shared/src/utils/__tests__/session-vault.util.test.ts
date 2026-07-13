@@ -1,14 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import {
-  resolveSessionFlushTargetVault,
-  sessionBelongsToActiveVault
-} from '../session-vault.util'
+import { resolveSessionFlushTargetVault, sessionBelongsToActiveVault } from '../session-vault.util'
 
 describe('resolveSessionFlushTargetVault', () => {
   it('优先使用磁盘上存在的会话自身 vault', () => {
-    expect(resolveSessionFlushTargetVault('Personal', 'Personal85', ['Personal', 'Personal85'])).toBe(
-      'Personal'
-    )
+    expect(
+      resolveSessionFlushTargetVault('Personal', 'Personal85', ['Personal', 'Personal85'])
+    ).toBe('Personal')
   })
 
   it('会话 vault 不在磁盘时回退到活跃 vault', () => {

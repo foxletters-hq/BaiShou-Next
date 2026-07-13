@@ -204,7 +204,10 @@ async function afterIncrementalSync(
         activeVaultName,
         diskVaultNames
       })
-      if (cls.sessionRefs.length > 0 && typeof sessionManager.importSessionsFromDisk === 'function') {
+      if (
+        cls.sessionRefs.length > 0 &&
+        typeof sessionManager.importSessionsFromDisk === 'function'
+      ) {
         await sessionManager.importSessionsFromDisk(cls.sessionRefs)
       }
       if (hydrate.hydrated || cls.sessionRefs.length > 0) {

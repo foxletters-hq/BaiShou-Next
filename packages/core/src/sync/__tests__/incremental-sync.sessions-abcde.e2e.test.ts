@@ -1,8 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import {
-  reconcileAncestorWithRemoteTruth,
-  threeWayMerge
-} from '@baishou/shared'
+import { reconcileAncestorWithRemoteTruth, threeWayMerge } from '@baishou/shared'
 import { SimulatedSyncDevice } from './helpers/simulated-sync-device'
 import { SharedCloudStore } from './helpers/shared-cloud-store'
 
@@ -125,9 +122,7 @@ describe('incremental sync session files a/b/c ↔ d/e', () => {
 
     const healedAncestor = reconcileAncestorWithRemoteTruth(pollutedAncestor, remote)
     const afterHeal = threeWayMerge(local, remote, healedAncestor)
-    expect(
-      afterHeal.some((d) => d.filePath === sessionPath('e') && d.type === 'upload')
-    ).toBe(true)
+    expect(afterHeal.some((d) => d.filePath === sessionPath('e') && d.type === 'upload')).toBe(true)
 
     // 真实 sync 路径（prepareSyncManifests 内会剥离）应上传 e，且本地保留
     const result = await mobile.sync()

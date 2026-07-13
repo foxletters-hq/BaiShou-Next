@@ -23,10 +23,10 @@ export function classifyIncrementalSyncPaths(paths: readonly string[]): {
     if (/(^|\/)Assistants\//.test(p)) assistants = true
 
     const sessionMatch = p.match(/(?:^|\/)([^/]+)\/Sessions\/([^/]+)\.json$/i)
-    if (sessionMatch) {
+    const vaultName = sessionMatch?.[1]
+    const sessionId = sessionMatch?.[2]
+    if (vaultName && sessionId) {
       sessions = true
-      const vaultName = sessionMatch[1]
-      const sessionId = sessionMatch[2]
       const key = `${vaultName}/${sessionId}`
       if (!seenSession.has(key)) {
         seenSession.add(key)

@@ -263,9 +263,10 @@ export class SessionManagerService {
       }
     }
 
-    const assistantIdSamples = [
-      ...new Set(missing.map((s) => s.assistantId ?? '(null)'))
-    ].slice(0, 12)
+    const assistantIdSamples = [...new Set(missing.map((s) => s.assistantId ?? '(null)'))].slice(
+      0,
+      12
+    )
 
     console.warn('[IncrementalSync][SessionFlush]', {
       phase: 'summary',
@@ -356,7 +357,11 @@ export class SessionManagerService {
         missingById.set(file.id, { id: file.id, vaultName })
         continue
       }
-      if (activeVaultName && vaultName === activeVaultName && existing.vaultName !== activeVaultName) {
+      if (
+        activeVaultName &&
+        vaultName === activeVaultName &&
+        existing.vaultName !== activeVaultName
+      ) {
         missingById.set(file.id, { id: file.id, vaultName })
       }
     }
