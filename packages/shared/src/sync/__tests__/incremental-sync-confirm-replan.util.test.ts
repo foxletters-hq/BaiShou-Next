@@ -148,9 +148,9 @@ describe('shouldRequireIncrementalSyncReconfirmAfterReplan', () => {
       requiresHighDivergenceConfirm: false,
       items: [{ action: 'upload', filePath: 'a.md', vaultScope: 'Personal' }]
     })
-    expect(
-      shouldRequireIncrementalSyncReconfirmAfterReplan(true, stale, fresh, false, true)
-    ).toBe(false)
+    expect(shouldRequireIncrementalSyncReconfirmAfterReplan(true, stale, fresh, false, true)).toBe(
+      false
+    )
   })
 
   it('已选删除传播时跳过二次确认', () => {
