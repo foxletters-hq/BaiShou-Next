@@ -310,17 +310,16 @@ export function useAgentScreenController() {
     handleListContentSizeChange,
     handleListIntrinsicContentHeightChange,
     handleListScroll
-  } =
-    useAgentListScrollHandlers({
-      flatListRef,
-      scrollOffsetRef,
-      layoutReadyRef,
-      handleContentSizeChange,
-      handleIntrinsicContentHeightChange,
-      handleChatListScroll,
-      hasMore,
-      currentSessionId
-    })
+  } = useAgentListScrollHandlers({
+    flatListRef,
+    scrollOffsetRef,
+    layoutReadyRef,
+    handleContentSizeChange,
+    handleIntrinsicContentHeightChange,
+    handleChatListScroll,
+    hasMore,
+    currentSessionId
+  })
 
   const {
     shortcuts,

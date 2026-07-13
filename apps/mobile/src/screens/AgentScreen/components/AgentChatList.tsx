@@ -207,152 +207,156 @@ export function AgentChatList(props: AgentChatListProps) {
                 if (height > 0) p.handleListIntrinsicContentHeightChange(height)
               }}
             >
-            {p.hasMore && p.showLoadMoreBanner ? (
-              <TouchableOpacity
-                style={[
-                  styles.loadMore,
-                  {
-                    borderColor: p.colors.borderSubtle,
-                    backgroundColor: p.colors.bgGlassSurface ?? p.colors.bgSurface
+              {p.hasMore && p.showLoadMoreBanner ? (
+                <TouchableOpacity
+                  style={[
+                    styles.loadMore,
+                    {
+                      borderColor: p.colors.borderSubtle,
+                      backgroundColor: p.colors.bgGlassSurface ?? p.colors.bgSurface
+                    }
+                  ]}
+                  onPress={() => void p.handleLoadMore()}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[styles.loadMoreText, { color: p.colors.primary }]}>
+                    {p.t('agent.chat.load_earlier_messages', '加载更早对话')}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+
+              {!p.isStreaming && !p.isStreamBridgeActive && p.messages.length === 0
+                ? p.renderEmptyState()
+                : null}
+
+              {p.chatRows.map((row) => {
+                if (row.kind === 'stream-tail') {
+                  if (!p.hasStreamingBody) {
+                    return p.renderStreamingDots()
                   }
-                ]}
-                onPress={() => void p.handleLoadMore()}
-                activeOpacity={0.75}
-              >
-                <Text style={[styles.loadMoreText, { color: p.colors.primary }]}>
-                  {p.t('agent.chat.load_earlier_messages', '加载更早对话')}
-                </Text>
-              </TouchableOpacity>
-            ) : null}
-
-            {!p.isStreaming && !p.isStreamBridgeActive && p.messages.length === 0
-              ? p.renderEmptyState()
-              : null}
-
-            {p.chatRows.map((row) => {
-              if (row.kind === 'stream-tail') {
-                if (!p.hasStreamingBody) {
-                  return p.renderStreamingDots()
                 }
-              }
 
-              const item = row.kind === 'message' ? row.item : null
-              if (!item) {
-                const tailItem = {
-                  id: LIVE_ASSISTANT_STREAM_KEY,
-                  role: 'assistant' as const,
-                  content: p.streamingText,
-                  reasoning: p.streamingReasoning
+                const item = row.kind === 'message' ? row.item : null
+                if (!item) {
+                  const tailItem = {
+                    id: LIVE_ASSISTANT_STREAM_KEY,
+                    role: 'assistant' as const,
+                    content: p.streamingText,
+                    reasoning: p.streamingReasoning
+                  }
+                  return (
+                    <View key={LIVE_ASSISTANT_STREAM_KEY} style={styles.bubble}>
+                      <AgentMessageRow
+                        item={tailItem as any}
+                        chatUserProfile={p.chatUserProfile}
+                        chatAiProfile={p.chatAiProfile}
+                        isLiveCompressionAnchor={false}
+                        liveCompression={p.IDLE_LIVE_COMPRESSION}
+                        liveStream={p.liveStreamProps}
+                        deferAssistantChrome
+                        onRegenerate={() => {}}
+                        onCopy={() => {}}
+                        onDelete={() => {}}
+                        invertMetaOverBackground={p.hasChatBackground}
+                        retryDisabled
+                      />
+                    </View>
+                  )
                 }
+
+                const msgWithCompaction = item as typeof item & {
+                  compactionRecord?: { streamTranscript?: string } | null
+                }
+                const isLiveCompressionAnchor =
+                  (p.compressionPhase === 'auto' || p.compressionPhase === 'manual') &&
+                  p.compressionTriggerMessageId === item.id &&
+                  p.isCompressing
+
+                const liveCompression = isLiveCompressionAnchor
+                  ? {
+                      phase: p.compressionPhase,
+                      summary: p.compressionText,
+                      reasoning: p.compressionReasoning,
+                      isActive: p.isCompressing
+                    }
+                  : p.IDLE_LIVE_COMPRESSION
+
+                const isLastAssistant = item.role === 'assistant' && item.id === p.lastMessage?.id
+                const isLiveAssistantRow =
+                  isLastAssistant && (p.liveAssistantActive || p.keepLiveRowAfterHold)
+                const rowKey = isLastAssistant ? LIVE_ASSISTANT_STREAM_KEY : item.id
+
+                const rowLiveStream = isLiveAssistantRow
+                  ? {
+                      content: p.markdownPresentationActive
+                        ? p.streamingText.trim() || item.content
+                        : item.content,
+                      reasoning: p.markdownPresentationActive
+                        ? p.streamingReasoning.trim() || item.reasoning || ''
+                        : item.reasoning || '',
+                      isTextStreaming: p.markdownPresentationActive && p.bubbleTextStreaming,
+                      isThinkLoading: p.markdownPresentationActive && p.streamingThinkLoading,
+                      isThinkStreaming: false,
+                      activeToolName: p.markdownPresentationActive ? p.activeToolDisplayName : null,
+                      completedTools: p.markdownPresentationActive ? p.streamingCompletedTools : [],
+                      attachments: p.liveStreamProps.attachments
+                    }
+                  : undefined
+
+                const deferChromeForRow = isLiveAssistantRow && p.markdownPresentationActive
+
                 return (
-                  <View key={LIVE_ASSISTANT_STREAM_KEY} style={styles.bubble}>
+                  <View
+                    key={rowKey}
+                    ref={item.id === p.editingMessageId ? p.editingRowRef : undefined}
+                    collapsable={false}
+                    style={styles.bubble}
+                  >
                     <AgentMessageRow
-                      item={tailItem as any}
+                      item={msgWithCompaction as any}
                       chatUserProfile={p.chatUserProfile}
                       chatAiProfile={p.chatAiProfile}
-                      isLiveCompressionAnchor={false}
-                      liveCompression={p.IDLE_LIVE_COMPRESSION}
-                      liveStream={p.liveStreamProps}
-                      deferAssistantChrome
-                      onRegenerate={() => {}}
-                      onCopy={() => {}}
-                      onDelete={() => {}}
+                      isLiveCompressionAnchor={isLiveCompressionAnchor}
+                      liveCompression={liveCompression}
+                      liveStream={rowLiveStream}
+                      deferAssistantChrome={deferChromeForRow}
+                      onRegenerate={() => p.handleRegenerate(item.id)}
+                      onResend={
+                        item.role === 'user' ? () => void p.handleResend(item.id) : undefined
+                      }
+                      onResendEdit={
+                        item.role === 'user'
+                          ? (content) => p.handleEditMessage(item.id, content)
+                          : undefined
+                      }
+                      onSaveEdit={
+                        item.role === 'assistant'
+                          ? (content) => p.handleSaveAssistantEdit(item.id, content)
+                          : undefined
+                      }
+                      onCopy={() => Clipboard.setStringAsync(item.content)}
+                      onDelete={() => p.handleDeleteMessage(item.id)}
+                      onReadAloud={
+                        item.role === 'assistant'
+                          ? () => p.handleTtsReadAloud(item.content, item.id)
+                          : undefined
+                      }
+                      isTtsPlaying={p.ttsPlayingMsgId === item.id}
+                      onShowContext={
+                        item.role === 'assistant' ? () => p.handleShowContext(item) : undefined
+                      }
+                      onBranch={
+                        item.role === 'assistant' ? () => p.handleBranch(item.id) : undefined
+                      }
+                      onBubbleEditingChange={p.handleBubbleEditingChange}
                       invertMetaOverBackground={p.hasChatBackground}
-                      retryDisabled
+                      retryDisabled={p.isRetryActionBusy || p.isStreaming || p.isCompressing}
                     />
                   </View>
                 )
-              }
+              })}
 
-              const msgWithCompaction = item as typeof item & {
-                compactionRecord?: { streamTranscript?: string } | null
-              }
-              const isLiveCompressionAnchor =
-                (p.compressionPhase === 'auto' || p.compressionPhase === 'manual') &&
-                p.compressionTriggerMessageId === item.id &&
-                p.isCompressing
-
-              const liveCompression = isLiveCompressionAnchor
-                ? {
-                    phase: p.compressionPhase,
-                    summary: p.compressionText,
-                    reasoning: p.compressionReasoning,
-                    isActive: p.isCompressing
-                  }
-                : p.IDLE_LIVE_COMPRESSION
-
-              const isLastAssistant = item.role === 'assistant' && item.id === p.lastMessage?.id
-              const isLiveAssistantRow =
-                isLastAssistant && (p.liveAssistantActive || p.keepLiveRowAfterHold)
-              const rowKey = isLastAssistant ? LIVE_ASSISTANT_STREAM_KEY : item.id
-
-              const rowLiveStream = isLiveAssistantRow
-                ? {
-                    content: p.markdownPresentationActive
-                      ? p.streamingText.trim() || item.content
-                      : item.content,
-                    reasoning: p.markdownPresentationActive
-                      ? p.streamingReasoning.trim() || item.reasoning || ''
-                      : item.reasoning || '',
-                    isTextStreaming: p.markdownPresentationActive && p.bubbleTextStreaming,
-                    isThinkLoading: p.markdownPresentationActive && p.streamingThinkLoading,
-                    isThinkStreaming: false,
-                    activeToolName: p.markdownPresentationActive ? p.activeToolDisplayName : null,
-                    completedTools: p.markdownPresentationActive ? p.streamingCompletedTools : [],
-                    attachments: p.liveStreamProps.attachments
-                  }
-                : undefined
-
-              const deferChromeForRow = isLiveAssistantRow && p.markdownPresentationActive
-
-              return (
-                <View
-                  key={rowKey}
-                  ref={item.id === p.editingMessageId ? p.editingRowRef : undefined}
-                  collapsable={false}
-                  style={styles.bubble}
-                >
-                  <AgentMessageRow
-                    item={msgWithCompaction as any}
-                    chatUserProfile={p.chatUserProfile}
-                    chatAiProfile={p.chatAiProfile}
-                    isLiveCompressionAnchor={isLiveCompressionAnchor}
-                    liveCompression={liveCompression}
-                    liveStream={rowLiveStream}
-                    deferAssistantChrome={deferChromeForRow}
-                    onRegenerate={() => p.handleRegenerate(item.id)}
-                    onResend={item.role === 'user' ? () => void p.handleResend(item.id) : undefined}
-                    onResendEdit={
-                      item.role === 'user'
-                        ? (content) => p.handleEditMessage(item.id, content)
-                        : undefined
-                    }
-                    onSaveEdit={
-                      item.role === 'assistant'
-                        ? (content) => p.handleSaveAssistantEdit(item.id, content)
-                        : undefined
-                    }
-                    onCopy={() => Clipboard.setStringAsync(item.content)}
-                    onDelete={() => p.handleDeleteMessage(item.id)}
-                    onReadAloud={
-                      item.role === 'assistant'
-                        ? () => p.handleTtsReadAloud(item.content, item.id)
-                        : undefined
-                    }
-                    isTtsPlaying={p.ttsPlayingMsgId === item.id}
-                    onShowContext={
-                      item.role === 'assistant' ? () => p.handleShowContext(item) : undefined
-                    }
-                    onBranch={item.role === 'assistant' ? () => p.handleBranch(item.id) : undefined}
-                    onBubbleEditingChange={p.handleBubbleEditingChange}
-                    invertMetaOverBackground={p.hasChatBackground}
-                    retryDisabled={p.isRetryActionBusy || p.isStreaming || p.isCompressing}
-                  />
-                </View>
-              )
-            })}
-
-            {p.listFooter}
+              {p.listFooter}
             </View>
           </ScrollView>
         </AgentDrawerSwipeZone>

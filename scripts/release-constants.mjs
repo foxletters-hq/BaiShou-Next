@@ -13,8 +13,12 @@ export const RELEASE_ARTIFACTS_VERSIONED = {
 
 /** 比较 semver（仅数字段，如 1.2.12）；a>b → 正数 */
 export function compareSemver(a, b) {
-  const pa = String(a).split('.').map((x) => Number.parseInt(x, 10) || 0)
-  const pb = String(b).split('.').map((x) => Number.parseInt(x, 10) || 0)
+  const pa = String(a)
+    .split('.')
+    .map((x) => Number.parseInt(x, 10) || 0)
+  const pb = String(b)
+    .split('.')
+    .map((x) => Number.parseInt(x, 10) || 0)
   const n = Math.max(pa.length, pb.length)
   for (let i = 0; i < n; i++) {
     const d = (pa[i] || 0) - (pb[i] || 0)

@@ -184,7 +184,10 @@ export {
   canExecuteIncrementalSyncPlan,
   resolvePlanConfirmEligibleAt
 } from './sync/sync-confirm-countdown.util'
-export { hasIncrementalSyncPlanMaterialChange, hasIncrementalSyncPlanReconfirmWorthyChange } from './sync/incremental-sync-plan-compare.util'
+export {
+  hasIncrementalSyncPlanMaterialChange,
+  hasIncrementalSyncPlanReconfirmWorthyChange
+} from './sync/incremental-sync-plan-compare.util'
 export {
   INCREMENTAL_SYNC_PLAN_REUSE_TTL_MS,
   buildIncrementalSyncPlanReuseBaseline,
