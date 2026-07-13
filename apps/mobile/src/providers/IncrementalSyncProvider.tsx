@@ -185,7 +185,15 @@ export function IncrementalSyncProvider({ children }: { children: ReactNode }) {
     async (result: IncrementalSyncResult) => {
       if (!services?.incrementalSyncService) return
 
-      await services.incrementalSyncService.awaitPostSyncMaintenance()
+      try {
+        await services.incrementalSyncService.awaitPostSyncMaintenance()
+      } catch (e: unknown) {
+        logger.warn(
+          '[IncrementalSync] post-sync maintenance failed:',
+          e instanceof Error ? e : String(e)
+        )
+      }
+
       toast.showSuccess(t('data_sync.sync_completed'))
       if (result.conflicts > 0) {
         toast.showWarning(

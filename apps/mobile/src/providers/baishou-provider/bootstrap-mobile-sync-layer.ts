@@ -189,7 +189,12 @@ export async function bootstrapMobileSyncLayer(
     assistantManager,
     settingsManager,
     summarySyncService: summarySyncService as SummarySyncService,
-    getActiveVaultName: () => pathService.getActiveVaultNameForContext()
+    getActiveVaultName: () => pathService.getActiveVaultNameForContext(),
+    getDiskVaultNames: async () => {
+      const { listDiskVaultFolderNames } = await import('@baishou/core-mobile')
+      const syncRoot = await pathService.getRootDirectory()
+      return listDiskVaultFolderNames(fileSystem, syncRoot)
+    }
   }
 
   const watcherDeps = {

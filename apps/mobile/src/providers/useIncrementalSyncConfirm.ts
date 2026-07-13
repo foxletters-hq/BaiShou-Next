@@ -221,6 +221,9 @@ export function useIncrementalSyncConfirm(deps: IncrementalSyncConfirmDeps) {
         clearPlanPreview()
         syncingRef.current = true
         setIsSyncing(true)
+        services?.incrementalSyncService?.setPostSyncProgressListener((p) => {
+          overlayRef.current?.publish(p)
+        })
         overlayRef.current?.publish({
           phase: 'comparing',
           current: 0,
@@ -238,23 +241,29 @@ export function useIncrementalSyncConfirm(deps: IncrementalSyncConfirmDeps) {
             },
             abortSignal
           )
+          if (syncResult) {
+            overlayRef.current?.publish({
+              phase: 'finalizing',
+              current: 1,
+              total: 1,
+              statusText: 'data_sync.progress_finalizing'
+            })
+            await finishIncrementalSync(syncResult)
+          }
         } catch (e) {
           if (isIncrementalSyncAbortedError(e)) {
             toast.showInfo(t('data_sync.sync_cancelled', '已取消同步'))
-            return
+          } else {
+            logger.error('增量同步失败', e instanceof Error ? e : String(e))
+            const message = e instanceof Error ? e.message : t('data_sync.sync_failed_generic')
+            toast.showError(friendlyMobileSyncError(message, t))
           }
-          logger.error('增量同步失败', e instanceof Error ? e : String(e))
-          const message = e instanceof Error ? e.message : t('data_sync.sync_failed_generic')
-          toast.showError(friendlyMobileSyncError(message, t))
         } finally {
+          services?.incrementalSyncService?.setPostSyncProgressListener(null)
           syncAbortRef.current = null
           syncingRef.current = false
           setIsSyncing(false)
           overlayRef.current?.reset()
-        }
-
-        if (syncResult) {
-          await finishIncrementalSync(syncResult)
         }
       } catch (e) {
         logger.error('增量同步确认失败', e instanceof Error ? e : String(e))

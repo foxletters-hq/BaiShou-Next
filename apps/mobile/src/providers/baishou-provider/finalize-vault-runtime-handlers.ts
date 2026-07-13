@@ -108,9 +108,13 @@ export async function finalizeVaultRuntimeHandlers(
     ) {
       try {
         await mobileAgentDbRecovery.runBare(async () => {
+          const { listDiskVaultFolderNames } = await import('@baishou/core-mobile')
+          const syncRoot = await pathService.getRootDirectory()
+          const diskVaultNames = await listDiskVaultFolderNames(fileSystem, syncRoot)
           await resyncAgentDbCachesFromDisk({
             runtime: agentDbRuntimeRef.current!,
             activeVaultName: vaultService.getActiveVault()?.name,
+            diskVaultNames,
             maxSessionJsonReadBytes: MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES
           })
         })

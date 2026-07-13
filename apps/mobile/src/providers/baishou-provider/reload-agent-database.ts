@@ -228,9 +228,13 @@ export function assignReloadAgentDatabaseHandler(
     }
     const activeVaultName = vaultCtx.vaultService.getActiveVault()?.name
     await mobileAgentDbRecovery.runBare(async () => {
+      const { listDiskVaultFolderNames } = await import('@baishou/core-mobile')
+      const syncRoot = await vaultCtx.pathService.getRootDirectory()
+      const diskVaultNames = await listDiskVaultFolderNames(vaultCtx.fileSystem, syncRoot)
       await resyncAgentDbCachesFromDisk({
         runtime,
         activeVaultName,
+        diskVaultNames,
         maxSessionJsonReadBytes: MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES
       })
     })
