@@ -139,5 +139,11 @@ export const AGENT_DB_COLUMN_PATCHES: AgentSchemaColumnPatch[] = [
     table: 'compression_snapshots',
     column: 'tail_start_message_id',
     ddl: `ALTER TABLE compression_snapshots ADD COLUMN tail_start_message_id TEXT`
+  },
+  // ── summaries ──
+  {
+    table: 'summaries',
+    column: 'updated_at',
+    ddl: `ALTER TABLE summaries ADD COLUMN updated_at INTEGER`
   }
 ]

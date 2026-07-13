@@ -16,6 +16,7 @@ sqlite.exec(`
     content TEXT NOT NULL,
     source_ids TEXT,
     generated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+    updated_at INTEGER,
     UNIQUE(type, start_date, end_date)
   );
 `)

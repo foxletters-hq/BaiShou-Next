@@ -11,7 +11,9 @@ export const summariesTable = sqliteTable(
     endDate: integer('end_date', { mode: 'timestamp' }).notNull(),
     content: text('content').notNull(),
     sourceIds: text('source_ids'),
-    generatedAt: integer('generated_at', { mode: 'timestamp' }).notNull().defaultNow()
+    generatedAt: integer('generated_at', { mode: 'timestamp' }).notNull().defaultNow(),
+    /** 用户手动保存后写入；仅 AI 生成时为空，用于区分「生成于 / 保存于」 */
+    updatedAt: integer('updated_at', { mode: 'timestamp' })
   },
   (t) => ({
     unq: unique().on(t.type, t.startDate, t.endDate)

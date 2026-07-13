@@ -78,7 +78,16 @@ export class SummaryManagerService {
       entityId: updated?.id ?? existing?.id,
       meta: { type }
     })
-    if (updated) return updated
+    if (updated?.id != null && updated.id > 0) {
+      // 手动保存：保留 generatedAt，写入 updatedAt 供「保存于」展示
+      return this.summaryRepo.update(updated.id, {
+        content: newContent,
+        updatedAt: new Date()
+      })
+    }
+    if (updated) {
+      return { ...updated, updatedAt: new Date() }
+    }
 
     return {
       id: existing?.id ?? ghostSummaryId(type, startDate),
@@ -87,7 +96,8 @@ export class SummaryManagerService {
       endDate,
       content: newContent,
       sourceIds: existing?.sourceIds ?? null,
-      generatedAt: existing?.generatedAt ?? new Date()
+      generatedAt: existing?.generatedAt ?? new Date(),
+      updatedAt: new Date()
     }
   }
 

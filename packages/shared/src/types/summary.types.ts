@@ -16,12 +16,14 @@ export const SummarySchema = z.object({
   endDate: z.date(),
   content: z.string().min(1),
   sourceIds: z.string().optional().nullable(),
-  generatedAt: z.date().optional()
+  generatedAt: z.date().optional(),
+  /** 手动保存时间；有值且晚于 generatedAt 时 UI 显示「保存于」 */
+  updatedAt: z.date().optional().nullable()
 })
 
 export type Summary = z.infer<typeof SummarySchema>
-export type CreateSummaryInput = Omit<Summary, 'id' | 'generatedAt'>
-export type UpdateSummaryInput = Partial<CreateSummaryInput>
+export type CreateSummaryInput = Omit<Summary, 'id' | 'generatedAt' | 'updatedAt'>
+export type UpdateSummaryInput = Partial<Omit<Summary, 'id'>>
 
 export interface MissingSummary {
   type: SummaryType
