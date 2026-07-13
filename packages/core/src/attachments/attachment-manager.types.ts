@@ -89,6 +89,14 @@ export interface IAttachmentManager {
   deleteFile(sessionId: string, fileName: string): Promise<void>
 
   /**
+   * 按消息 parts 删除会话附件目录内被引用的本地文件（跳过 emoji 等共享资源）
+   */
+  deleteFilesReferencedByParts(
+    sessionId: string,
+    parts: ReadonlyArray<{ type?: string; data?: unknown }>
+  ): Promise<void>
+
+  /**
    * Bulk deletion sweep for given folder UUIDs representing Session attachments
    * @param ids The UUID folder names to nuke natively
    */

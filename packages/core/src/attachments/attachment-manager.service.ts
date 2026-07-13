@@ -45,6 +45,12 @@ export class AttachmentManagerService implements IAttachmentManager {
     return this.sessionOps.deleteFile(...args)
   }
 
+  deleteFilesReferencedByParts(
+    ...args: Parameters<AttachmentSessionOps['deleteFilesReferencedByParts']>
+  ) {
+    return this.sessionOps.deleteFilesReferencedByParts(...args)
+  }
+
   listDiaryAttachments(...args: Parameters<AttachmentDiaryOps['listDiaryAttachments']>) {
     return this.diaryOps.listDiaryAttachments(...args)
   }

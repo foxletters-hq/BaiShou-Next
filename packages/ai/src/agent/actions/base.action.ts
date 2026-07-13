@@ -13,6 +13,13 @@ export interface ActionDeps {
   webSearchResultFetcher: unknown
   fetchSearchPage: unknown
   sessionManager?: { flushSessionToDisk(sessionId: string): Promise<void> }
+  /**
+   * 截断删库后清理会话本地附件（参数为删库前取出的 parts）
+   */
+  cleanupAttachments?: (
+    sessionId: string,
+    parts: ReadonlyArray<{ type?: string; data?: unknown }>
+  ) => Promise<void>
 }
 
 export interface StreamRunConfig {

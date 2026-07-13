@@ -65,6 +65,22 @@ export class SessionRepository {
     return this.run(() => this.messageOps.deleteMessageAndFollowing(...args))
   }
 
+  listMessageIdsFromMessageAndFollowing(
+    ...args: Parameters<SessionMessageOps['listMessageIdsFromMessageAndFollowing']>
+  ) {
+    return this.run(() => this.messageOps.listMessageIdsFromMessageAndFollowing(...args))
+  }
+
+  listMessageIdsAfterOrderIndex(
+    ...args: Parameters<SessionMessageOps['listMessageIdsAfterOrderIndex']>
+  ) {
+    return this.run(() => this.messageOps.listMessageIdsAfterOrderIndex(...args))
+  }
+
+  getPartsByMessageIds(...args: Parameters<SessionMessageOps['getPartsByMessageIds']>) {
+    return this.run(() => this.messageOps.getPartsByMessageIds(...args))
+  }
+
   getMessageById(...args: Parameters<SessionMessageOps['getMessageById']>) {
     return this.run(() => this.messageOps.getMessageById(...args))
   }

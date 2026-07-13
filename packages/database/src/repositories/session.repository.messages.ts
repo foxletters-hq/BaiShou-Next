@@ -153,23 +153,59 @@ export class SessionMessageOps {
   }
 
   async deleteMessageAndFollowing(sessionId: string, messageId: string): Promise<void> {
+    const ids = await this.listMessageIdsFromMessageAndFollowing(sessionId, messageId)
+    if (ids.length > 0) {
+      await this.deleteMessagesByIds(ids)
+    }
+  }
+
+  async listMessageIdsFromMessageAndFollowing(
+    sessionId: string,
+    messageId: string
+  ): Promise<string[]> {
     const msg = await this.db
       .select()
       .from(messagesTbl)
       .where(eq(messagesTbl.id, messageId))
       .limit(1)
-    if (!msg.length) return
+    if (!msg.length) return []
 
     const toDelete = await this.db
-      .select()
+      .select({ id: messagesTbl.id })
       .from(messagesTbl)
       .where(
         and(eq(messagesTbl.sessionId, sessionId), gte(messagesTbl.orderIndex, msg[0]!.orderIndex))
       )
-    const ids = toDelete.map((m) => m.id)
-    if (ids.length > 0) {
-      await this.deleteMessagesByIds(ids)
-    }
+    return toDelete.map((m) => m.id)
+  }
+
+  async listMessageIdsAfterOrderIndex(sessionId: string, orderIndex: number): Promise<string[]> {
+    const toDelete = await this.db
+      .select({ id: messagesTbl.id })
+      .from(messagesTbl)
+      .where(and(eq(messagesTbl.sessionId, sessionId), gt(messagesTbl.orderIndex, orderIndex)))
+    return toDelete.map((m) => m.id)
+  }
+
+  async getPartsByMessageIds(
+    messageIds: string[]
+  ): Promise<Array<{ id: string; messageId: string; type: string; data: unknown }>> {
+    if (messageIds.length === 0) return []
+    const rows = await this.db
+      .select({
+        id: partsTbl.id,
+        messageId: partsTbl.messageId,
+        type: partsTbl.type,
+        data: partsTbl.data
+      })
+      .from(partsTbl)
+      .where(inArray(partsTbl.messageId, messageIds))
+    return rows.map((row) => ({
+      id: row.id,
+      messageId: row.messageId,
+      type: row.type,
+      data: row.data
+    }))
   }
 
   async getMessageById(messageId: string): Promise<any> {
@@ -182,11 +218,7 @@ export class SessionMessageOps {
   }
 
   async deleteMessagesAfter(sessionId: string, orderIndex: number): Promise<void> {
-    const toDelete = await this.db
-      .select()
-      .from(messagesTbl)
-      .where(and(eq(messagesTbl.sessionId, sessionId), gt(messagesTbl.orderIndex, orderIndex)))
-    const ids = toDelete.map((m) => m.id)
+    const ids = await this.listMessageIdsAfterOrderIndex(sessionId, orderIndex)
     if (ids.length > 0) {
       await this.deleteMessagesByIds(ids)
     }

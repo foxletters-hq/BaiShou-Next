@@ -8,7 +8,9 @@ describe('session-truncate.utils', () => {
   const sessionRepo = {
     deleteMessagesAfter: vi.fn(),
     clearCompactionMarkersFromOrderIndex: vi.fn(),
-    getMessagesBySession: vi.fn()
+    getMessagesBySession: vi.fn(),
+    listMessageIdsAfterOrderIndex: vi.fn(),
+    getPartsByMessageIds: vi.fn()
   }
   const snapshotRepo = {
     listSnapshotsBySession: vi.fn(),
@@ -17,6 +19,8 @@ describe('session-truncate.utils', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    sessionRepo.listMessageIdsAfterOrderIndex.mockResolvedValue([])
+    sessionRepo.getPartsByMessageIds.mockResolvedValue([])
     sessionRepo.getMessagesBySession.mockResolvedValue([
       { id: 'u1', orderIndex: 0 },
       { id: 'u2', orderIndex: 1 },
@@ -43,6 +47,27 @@ describe('session-truncate.utils', () => {
     })
 
     expect(flushSessionToDisk).toHaveBeenCalledWith('sess-1')
+  })
+
+  it('truncateSessionAfterOrderIndex deletes messages before cleaning attachments', async () => {
+    const parts = [{ type: 'image', data: { filePath: '/Attachments/sess-1/a.png' } }]
+    sessionRepo.listMessageIdsAfterOrderIndex.mockResolvedValue(['m2', 'm3'])
+    sessionRepo.getPartsByMessageIds.mockResolvedValue(parts)
+    const cleanupAttachments = vi.fn().mockResolvedValue(undefined)
+
+    await truncateSessionAfterOrderIndex(sessionRepo as any, snapshotRepo as any, 'sess-1', 1, {
+      cleanupAttachments
+    })
+
+    expect(sessionRepo.listMessageIdsAfterOrderIndex).toHaveBeenCalledWith('sess-1', 1)
+    expect(sessionRepo.getPartsByMessageIds).toHaveBeenCalledWith(['m2', 'm3'])
+    expect(sessionRepo.deleteMessagesAfter).toHaveBeenCalledWith('sess-1', 1)
+    expect(cleanupAttachments).toHaveBeenCalledWith('sess-1', parts)
+    const deleteOrder = sessionRepo.deleteMessagesAfter.mock.invocationCallOrder[0]
+    const cleanupOrder = cleanupAttachments.mock.invocationCallOrder[0]
+    expect(deleteOrder).toBeDefined()
+    expect(cleanupOrder).toBeDefined()
+    expect(deleteOrder!).toBeLessThan(cleanupOrder!)
   })
 
   it('should delete snapshot when covered message is truncated', async () => {

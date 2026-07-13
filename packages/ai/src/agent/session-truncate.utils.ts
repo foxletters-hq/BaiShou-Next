@@ -58,14 +58,33 @@ export async function reconcileCompressionStateAfterTruncate(
 export type TruncateSessionOptions = {
   /** 截断后同步 JSON 会话文件，避免 file watcher 从磁盘恢复已删消息 */
   flushSessionToDisk?: (sessionId: string) => Promise<void>
+  /**
+   * 删库后清理会话本地附件。
+   * 传入的是截断前取出的 parts（删库后 parts 已不在库中）。
+   */
+  cleanupAttachments?: (
+    sessionId: string,
+    parts: ReadonlyArray<{ type?: string; data?: unknown }>
+  ) => Promise<void>
 }
 
-export function truncateOptionsWithDiskFlush(sessionManager?: {
-  flushSessionToDisk(sessionId: string): Promise<void>
-}): TruncateSessionOptions | undefined {
-  if (!sessionManager) return undefined
+export function truncateOptionsWithDiskFlush(
+  sessionManager?: {
+    flushSessionToDisk(sessionId: string): Promise<void>
+  },
+  cleanupAttachments?: (
+    sessionId: string,
+    parts: ReadonlyArray<{ type?: string; data?: unknown }>
+  ) => Promise<void>
+): TruncateSessionOptions | undefined {
+  if (!sessionManager && !cleanupAttachments) return undefined
   return {
-    flushSessionToDisk: (sessionId) => sessionManager.flushSessionToDisk(sessionId)
+    ...(sessionManager
+      ? {
+          flushSessionToDisk: (sessionId: string) => sessionManager.flushSessionToDisk(sessionId)
+        }
+      : {}),
+    ...(cleanupAttachments ? { cleanupAttachments } : {})
   }
 }
 
@@ -80,6 +99,14 @@ export async function truncateSessionAfterOrderIndex(
   cutoffOrderIndex: number,
   options?: TruncateSessionOptions
 ): Promise<void> {
+  let partsToClean: Array<{ type?: string; data?: unknown }> = []
+  if (options?.cleanupAttachments) {
+    const ids = await sessionRepo.listMessageIdsAfterOrderIndex(sessionId, cutoffOrderIndex)
+    if (ids.length > 0) {
+      partsToClean = await sessionRepo.getPartsByMessageIds(ids)
+    }
+  }
+
   await sessionRepo.deleteMessagesAfter(sessionId, cutoffOrderIndex)
   await reconcileCompressionStateAfterTruncate(
     sessionRepo,
@@ -87,6 +114,10 @@ export async function truncateSessionAfterOrderIndex(
     sessionId,
     cutoffOrderIndex
   )
+
+  if (options?.cleanupAttachments && partsToClean.length > 0) {
+    await options.cleanupAttachments(sessionId, partsToClean)
+  }
   if (options?.flushSessionToDisk) {
     await options.flushSessionToDisk(sessionId)
   }

@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
+import { collectSessionAttachmentFileNames } from '@baishou/shared'
 import type { IStoragePathService } from '../vault/storage-path.types'
 import type { AttachmentItem, SessionAttachmentGroup } from './attachment-manager.types'
 import { getDirectoryFiles, getDirectorySize } from './attachment-manager.utils'
@@ -127,11 +128,27 @@ export class AttachmentSessionOps {
     const safeSessionId = sessionId.replace(/[/\\]/g, '')
     const safeFileName = fileName.replace(/[/\\]/g, '')
 
-    if (safeSessionId === 'avatars' || safeSessionId.trim() === '' || safeFileName.trim() === '') {
+    if (
+      safeSessionId === 'avatars' ||
+      safeSessionId.trim() === '' ||
+      safeFileName.trim() === '' ||
+      safeFileName === '.' ||
+      safeFileName === '..'
+    ) {
       return
     }
 
     const targetPath = path.join(attachBase, safeSessionId, safeFileName)
+    const sessionDir = path.join(attachBase, safeSessionId)
+    const resolvedTarget = path.resolve(targetPath)
+    const resolvedSessionDir = path.resolve(sessionDir)
+    if (
+      resolvedTarget !== resolvedSessionDir &&
+      !resolvedTarget.startsWith(resolvedSessionDir + path.sep)
+    ) {
+      return
+    }
+
     try {
       if (existsSync(targetPath)) {
         await fs.rm(targetPath, { force: true })
@@ -146,6 +163,17 @@ export class AttachmentSessionOps {
       }
     } catch (e) {
       console.error(`[AttachmentManager] Failed to delete attachment file ${targetPath}:`, e)
+    }
+  }
+
+  /** 按消息 parts 中的路径删除会话附件目录内文件（跳过 emoji 等共享资源） */
+  async deleteFilesReferencedByParts(
+    sessionId: string,
+    parts: ReadonlyArray<{ type?: string; data?: unknown }>
+  ): Promise<void> {
+    const fileNames = collectSessionAttachmentFileNames(sessionId, parts)
+    for (const fileName of fileNames) {
+      await this.deleteFile(sessionId, fileName)
     }
   }
 }

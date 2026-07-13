@@ -112,6 +112,32 @@ describe('AttachmentManagerService', () => {
     expect(existsSync(path.join(dir, 'file1.txt'))).toBe(true)
   })
 
+  it('deleteFilesReferencedByParts removes session files but skips emoji paths', async () => {
+    const sessionId = 'sess-att'
+    const dir = path.join(tempDir, sessionId)
+    await fs.mkdir(dir, { recursive: true })
+    await fs.writeFile(path.join(dir, 'photo.jpg'), 'img')
+    await fs.writeFile(path.join(dir, 'keep.txt'), 'keep')
+
+    await service.deleteFilesReferencedByParts(sessionId, [
+      {
+        type: 'image',
+        data: { filePath: path.join(dir, 'photo.jpg') }
+      },
+      {
+        type: 'attachment',
+        data: { url: `file:///emojis/group/a.png` }
+      },
+      {
+        type: 'text',
+        data: { text: 'ignore' }
+      }
+    ])
+
+    expect(existsSync(path.join(dir, 'photo.jpg'))).toBe(false)
+    expect(existsSync(path.join(dir, 'keep.txt'))).toBe(true)
+  })
+
   it('should scan diary attachments and filter out orphans based on references', async () => {
     const journalsDir = path.join(tempDir, 'Journals')
     const yearMonthDir = path.join(journalsDir, '2026', '05')

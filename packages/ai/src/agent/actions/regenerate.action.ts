@@ -56,7 +56,7 @@ export async function runRegenerateAction(
     snapshotRepo,
     deps.sessionId,
     userMessage.orderIndex,
-    truncateOptionsWithDiskFlush(deps.sessionManager)
+    truncateOptionsWithDiskFlush(deps.sessionManager, deps.cleanupAttachments)
   )
 
   return runStreamWithPersistence(deps, {

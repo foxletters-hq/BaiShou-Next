@@ -43,7 +43,7 @@ export async function runResendAction(
     snapshotRepo,
     deps.sessionId,
     targetMsg.orderIndex,
-    truncateOptionsWithDiskFlush(deps.sessionManager)
+    truncateOptionsWithDiskFlush(deps.sessionManager, deps.cleanupAttachments)
   )
 
   return runStreamWithPersistence(deps, {

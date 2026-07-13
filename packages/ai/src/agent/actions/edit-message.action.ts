@@ -29,7 +29,7 @@ export async function runEditMessageAction(
     snapshotRepo,
     deps.sessionId,
     targetMsg.orderIndex,
-    truncateOptionsWithDiskFlush(deps.sessionManager)
+    truncateOptionsWithDiskFlush(deps.sessionManager, deps.cleanupAttachments)
   )
 
   return runStreamWithPersistence(deps, {
