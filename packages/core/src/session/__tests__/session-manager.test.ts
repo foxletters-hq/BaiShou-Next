@@ -104,4 +104,37 @@ describe('SessionManagerService (Ghost memory interceptor)', () => {
     }
     expect(arg?.preserveSessionIds?.has('mid-chat')).toBe(true)
   })
+
+  it('ensureSessionsFlushedToDisk() flushes db sessions missing on disk', async () => {
+    mockRepo.findAllSessions.mockResolvedValue([
+      { id: 'a', vaultName: 'Work' },
+      { id: 'b', vaultName: 'Work' },
+      { id: 'other', vaultName: 'Personal' }
+    ] as any)
+    mockFileService.listAllSessions.mockResolvedValue([{ id: 'a', fullPath: '/a.json' }])
+    mockRepo.getSessionAggregate.mockResolvedValue(aggregateDummy)
+
+    const result = await manager.ensureSessionsFlushedToDisk({ activeVaultName: 'Work' })
+
+    expect(result.flushed).toBe(1)
+    expect(result.pendingFlushed).toBe(false)
+    expect(result.skippedMissingScan).toBe(false)
+    expect(result.dbCount).toBe(2)
+    expect(result.diskCount).toBe(1)
+    expect(mockFileService.writeSession).toHaveBeenCalledWith('b', aggregateDummy)
+    expect(mockFileService.writeSession).not.toHaveBeenCalledWith('other', expect.anything())
+  })
+
+  it('ensureSessionsFlushedToDisk() skips missing-file backfill without active vault', async () => {
+    mockRepo.findAllSessions.mockResolvedValue([{ id: 'a', vaultName: 'Work' }] as any)
+    mockFileService.listAllSessions.mockResolvedValue([])
+    mockRepo.getSessionAggregate.mockResolvedValue(aggregateDummy)
+
+    const result = await manager.ensureSessionsFlushedToDisk({ activeVaultName: null })
+
+    expect(result.skippedMissingScan).toBe(true)
+    expect(result.flushed).toBe(0)
+    expect(mockRepo.findAllSessions).not.toHaveBeenCalled()
+    expect(mockFileService.writeSession).not.toHaveBeenCalled()
+  })
 })

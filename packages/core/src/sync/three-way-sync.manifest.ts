@@ -17,6 +17,8 @@ import {
   createEmptySyncManifest,
   normalizeSyncManifest,
   reconcileSyncManifestRemovedWithRemoteFiles,
+  reconcileAncestorWithRemoteTruth,
+  countUnverifiedAncestorEntries,
   isIncrementalSyncRemoteFileNotFoundError
 } from '@baishou/shared'
 import { isIncrementalSyncConflictBackupPath, isSqliteRuntimeSyncPath } from '@baishou/shared'
@@ -115,7 +117,14 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
     }
 
     const storageHistory = await this.getSyncStorageHistoryState()
-    const ancestorSnapshot = await this.getRemoteSnapshot()
+    let ancestorSnapshot = await this.getRemoteSnapshot()
+    const unverifiedAncestor = countUnverifiedAncestorEntries(ancestorSnapshot, remoteManifest)
+    if (unverifiedAncestor > 0) {
+      console.warn(
+        `[ThreeWaySync] stripping ${unverifiedAncestor} unverified ancestor entr(y/ies) not present on remote`
+      )
+      ancestorSnapshot = reconcileAncestorWithRemoteTruth(ancestorSnapshot, remoteManifest)
+    }
     const previousLocalManifest = await this.getLocalManifest()
 
     this.preparedManifests = {
@@ -160,6 +169,7 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
     }
 
     const total = files.length
+    let hashFailures = 0
     onFileProgress?.(0, total, '')
 
     for (let index = 0; index < files.length; index++) {
@@ -173,8 +183,20 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
           size: stat.size,
           lastModified: stat.mtimeMs
         }
-      } catch {}
+      } catch (e) {
+        hashFailures++
+        console.warn(
+          `[ThreeWaySync] skip unreadable sync file during manifest build: ${relPath}`,
+          e instanceof Error ? e.message : e
+        )
+      }
       onFileProgress?.(index + 1, total, relPath)
+    }
+
+    if (hashFailures > 0) {
+      console.warn(
+        `[ThreeWaySync] buildLocalManifest skipped ${hashFailures} unreadable file(s); they will not sync until readable`
+      )
     }
 
     return manifest

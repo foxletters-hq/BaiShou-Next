@@ -4,6 +4,7 @@ import {
   InsertMessageInput,
   InsertPartInput
 } from '@baishou/database'
+import { sessionBelongsToActiveVault } from '@baishou/shared'
 import { SessionSyncService } from './session-sync.service'
 import { SessionFileService } from './session-file.service'
 import {
@@ -126,6 +127,62 @@ export class SessionManagerService {
   /** 仅 flush 脏会话（增量同步 / 存储静默前） */
   async flushPendingDiskWrites(): Promise<void> {
     await this.persistence.flushPending()
+  }
+
+  /**
+   * 增量同步扫描前：先 flush dirty，再把「库有、当前 Sessions 目录无 JSON」的会话补写到盘。
+   * 只处理活跃 vault（SessionFileService 读写范围），避免跨 vault 写错目录。
+   * activeVaultName 缺失时仅 flushPending，不做缺文件补写。
+   */
+  async ensureSessionsFlushedToDisk(options?: {
+    activeVaultName?: string | null
+  }): Promise<{
+    flushed: number
+    pendingFlushed: boolean
+    dbCount: number
+    diskCount: number
+    skippedMissingScan: boolean
+  }> {
+    const dirtyBefore = this.persistence.getDirtySessionIds().size
+    await this.persistence.flushPending()
+    const pendingFlushed = dirtyBefore > 0
+
+    const activeVaultName = options?.activeVaultName?.trim() || null
+    if (!activeVaultName) {
+      return {
+        flushed: 0,
+        pendingFlushed,
+        dbCount: 0,
+        diskCount: 0,
+        skippedMissingScan: true
+      }
+    }
+
+    const dbSessions = await this.sessionRepo.findAllSessions(-1)
+    const relevant = dbSessions.filter((s) =>
+      sessionBelongsToActiveVault(s.vaultName, activeVaultName)
+    )
+    const diskSessions = await this.fileService.listAllSessions()
+    const diskIds = new Set(diskSessions.map((s) => s.id))
+
+    let flushed = 0
+    for (const session of relevant) {
+      if (diskIds.has(session.id)) continue
+      try {
+        await this.persistence.flushNow(session.id)
+        flushed++
+      } catch (e) {
+        console.warn(`[SessionManager] flush missing session ${session.id} failed:`, e)
+      }
+    }
+
+    return {
+      flushed,
+      pendingFlushed,
+      dbCount: relevant.length,
+      diskCount: diskSessions.length,
+      skippedMissingScan: false
+    }
   }
 
   async fullResyncFromDisks(
