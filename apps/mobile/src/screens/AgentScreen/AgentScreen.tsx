@@ -1,6 +1,7 @@
 import React from 'react'
 import { StatusBar } from 'react-native'
 import { ScreenSafeArea } from '../../components/ScreenSafeArea'
+import { AgentScrollDebugHud } from '../../components/AgentScrollDebugHud'
 import { AgentChatList } from './components/AgentChatList'
 import { AgentScreenOverlays } from './components/AgentScreenOverlays'
 import { useAgentScreenController } from './hooks/useAgentScreenController'
@@ -111,6 +112,7 @@ export const AgentScreen = () => {
           ttsMode={c.ttsMode}
           toggleTtsMode={c.toggleTtsMode}
         />
+        <AgentScrollDebugHud />
       </ScreenSafeArea>
       <AgentScreenOverlays
         drawerOpen={c.drawerOpen}

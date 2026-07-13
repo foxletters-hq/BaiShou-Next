@@ -175,10 +175,15 @@ export function useAgentScreenController() {
     bindFlatList(flatListRef)
   }, [bindFlatList])
 
+  // 仅在真正获得焦点时贴底一次。绝不能把 scrollToBottomOnFocus 放进 deps：
+  // 托底 minHeight / 跟随状态变化会换掉回调引用，useFocusEffect 会在仍聚焦时反复重跑，
+  // 表现为流式中不断 focus_bottom 解锁并拽到底（见滚动诊断日志）。
+  const scrollToBottomOnFocusRef = useRef(scrollToBottomOnFocus)
+  scrollToBottomOnFocusRef.current = scrollToBottomOnFocus
   useFocusEffect(
     useCallback(() => {
-      scrollToBottomOnFocus()
-    }, [scrollToBottomOnFocus])
+      scrollToBottomOnFocusRef.current()
+    }, [])
   )
 
   const composerKeyboardLiftEnabled = !drawerOpen && !showShortcutSheet && !showRecallSheet
@@ -330,7 +335,6 @@ export function useAgentScreenController() {
     inputBarRef,
     flatListRef,
     handleComposerFocus,
-    scrollToBottom,
     beginFollowIfAtBottom,
     handleSend,
     setShowShortcutSheet,
