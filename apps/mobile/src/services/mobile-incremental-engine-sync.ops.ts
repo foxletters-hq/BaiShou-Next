@@ -1,10 +1,12 @@
 import type { SyncManifest, S3SyncConfig, IncrementalSyncRunOptions } from '@baishou/shared'
 import {
   assertBidirectionalSyncDivergenceAllowed,
+  countUnverifiedAncestorEntries,
   finalizeIncrementalSyncManifest,
   getSyncManifestRemovedMap,
   limitExecute,
   normalizeSyncManifest,
+  reconcileAncestorWithRemoteTruth,
   resolveSyncMergeDecisions,
   threeWayMerge
 } from '@baishou/shared'
@@ -87,7 +89,14 @@ export async function runSyncThreeWay(
     storageHistory,
     highDivergenceConfirmed: runOptions?.highDivergenceConfirmed
   })
-  const ancestorSnapshot = await worker.loadRemoteSnapshot(config)
+  let ancestorSnapshot = await worker.loadRemoteSnapshot(config)
+  const unverifiedAncestor = countUnverifiedAncestorEntries(ancestorSnapshot, remoteManifest)
+  if (unverifiedAncestor > 0) {
+    console.warn(
+      `[IncrementalSync] stripping ${unverifiedAncestor} unverified ancestor entr(y/ies) not present on remote`
+    )
+    ancestorSnapshot = reconcileAncestorWithRemoteTruth(ancestorSnapshot, remoteManifest)
+  }
   const previousLocalManifest = await worker
     .readLocalManifestFile()
     .catch(() => worker.emptyManifest())
@@ -112,9 +121,10 @@ export async function runSyncThreeWay(
   let deletedRemote = 0
   let deletedLocal = 0
   const conflicted: string[] = []
+  // 仅从远端基线起步；upload 成功后再写入，避免未上云文件污染 checkpoint / 祖先快照
   let workingManifest: SyncManifest = normalizeSyncManifest({
-    ...localManifest,
-    files: { ...localManifest.files },
+    ...remoteManifest,
+    files: { ...remoteManifest.files },
     removed: { ...getSyncManifestRemovedMap(remoteManifest) }
   })
 

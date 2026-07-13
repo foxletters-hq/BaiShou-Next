@@ -6,7 +6,9 @@ import {
   buildIncrementalSyncPlanMergeResult,
   buildIncrementalSyncPlanReuseBaseline,
   collectManifestVaultScopes,
+  countUnverifiedAncestorEntries,
   isSyncDivergenceConfirmationRequiredError,
+  reconcileAncestorWithRemoteTruth,
   type IncrementalSyncPlanPreview
 } from '@baishou/shared'
 import type { IStoragePathService } from '@baishou/core-mobile'
@@ -100,6 +102,14 @@ export class MobileIncrementalEngine implements IncrementalEngineHost {
     this.planManifestCache = null
     this.pendingSyncLocalManifest = null
     this.pendingSyncRemoteManifest = null
+  }
+
+  /** 磁盘 flush 后仅作废本地 pending，保留远端 pending 供确认后执行复用 */
+  discardPendingLocalManifest(): void {
+    this.pendingSyncLocalManifest = null
+    if (this.planManifestCache) {
+      this.planManifestCache = null
+    }
   }
 
   finalizePlanSession(): void {
@@ -233,7 +243,14 @@ export class MobileIncrementalEngine implements IncrementalEngineHost {
     }
 
     const worker = this.initWorker()
-    const ancestorSnapshot = await worker.loadRemoteSnapshot(config)
+    let ancestorSnapshot = await worker.loadRemoteSnapshot(config)
+    const unverifiedAncestor = countUnverifiedAncestorEntries(ancestorSnapshot, remoteManifest)
+    if (unverifiedAncestor > 0) {
+      console.warn(
+        `[IncrementalSync] stripping ${unverifiedAncestor} unverified ancestor entr(y/ies) not present on remote`
+      )
+      ancestorSnapshot = reconcileAncestorWithRemoteTruth(ancestorSnapshot, remoteManifest)
+    }
     const previousLocalManifest = await worker
       .readLocalManifestFile()
       .catch(() => worker.emptyManifest())

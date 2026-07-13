@@ -307,7 +307,7 @@ export function IncrementalSyncProvider({ children }: { children: ReactNode }) {
     toast
   ])
 
-  const showProgressOverlay = isSyncing || isPlanning || isConfirmingPlan
+  const showProgressOverlay = isSyncing || isPlanning
   const showBlockingOverlay = showProgressOverlay && !planDialogOpen
   const isBusy = isSyncing || isPlanning || isConfirmingPlan || planDialogOpen
 

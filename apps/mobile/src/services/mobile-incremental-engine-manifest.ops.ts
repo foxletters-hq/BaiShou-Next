@@ -70,6 +70,7 @@ export async function buildLocalManifest(
 
   const total = Math.max(files.length, 1)
   let hashedCount = 0
+  let hashFailures = 0
   await limitExecute(files, MANIFEST_HASH_CONCURRENCY, async (scanned) => {
     try {
       const cached = cachedManifest.files[scanned.relPath]
@@ -83,14 +84,23 @@ export async function buildLocalManifest(
           lastModified: scanned.mtimeMs
         }
       }
-    } catch {
-      // skip unreadable
+    } catch (e) {
+      hashFailures++
+      console.warn(
+        `[IncrementalSync] skip unreadable sync file during manifest build: ${scanned.relPath}`,
+        e instanceof Error ? e.message : e
+      )
     }
     hashedCount++
     if (hashedCount % 4 === 0 || hashedCount === files.length) {
       onProgress?.(hashedCount, total, scanned.relPath)
     }
   })
+  if (hashFailures > 0) {
+    console.warn(
+      `[IncrementalSync] buildLocalManifest skipped ${hashFailures} unreadable file(s); they will not sync until readable`
+    )
+  }
   if (files.length > 0) {
     onProgress?.(files.length, total, files[files.length - 1]!.relPath)
   }

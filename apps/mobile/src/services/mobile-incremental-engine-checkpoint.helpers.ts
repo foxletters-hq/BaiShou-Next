@@ -22,14 +22,14 @@ export function createCheckpointRuntime(delegate: CheckpointRuntimeDelegate) {
   return {
     async afterMutation(manifest: SyncManifest) {
       coordinator.noteManifest(manifest)
-      coordinator.noteRemoteCheckpoint()
-      await coordinator.flushLocalIfNeeded(false, saveLocal, saveSnapshot)
-      await coordinator.flushRemoteIfNeeded(false, uploadRemote, ensureLocalFlushed)
+      // 中途只落本地 progress；不写祖先快照、不上传远端 manifest，避免半截状态污染
+      const skipSnapshot = async () => {}
+      await coordinator.flushLocalIfNeeded(false, saveLocal, skipSnapshot)
     },
     async afterDecisionProgress(session: SessionTouchState) {
       coordinator.noteSession(session)
       await coordinator.flushSessionIfNeeded(false, async (state) => {
-        await ensureLocalFlushed()
+        await coordinator.flushLocalIfNeeded(true, saveLocal, async () => {})
         await writeSession(state)
       })
     },

@@ -305,6 +305,49 @@ export class MobileIncrementalSyncService {
     }
   }
 
+  async prepareSessionsForSyncScan(activeVaultName?: string | null): Promise<{
+    flushed: number
+    pendingFlushed: boolean
+    diskChanged: boolean
+  }> {
+    if (!this.sessionManager) {
+      return { flushed: 0, pendingFlushed: false, diskChanged: false }
+    }
+    try {
+      let vaultName = activeVaultName ?? null
+      if (!vaultName) {
+        const pathWithContext = this.pathService as IStoragePathService & {
+          getActiveVaultNameForContext?: () => Promise<string>
+        }
+        if (typeof pathWithContext.getActiveVaultNameForContext === 'function') {
+          vaultName = await pathWithContext.getActiveVaultNameForContext()
+        }
+      }
+      const result = await this.sessionManager.ensureSessionsFlushedToDisk({
+        activeVaultName: vaultName
+      })
+      if (result.flushed > 0) {
+        console.info(
+          `[MobileIncrementalSync] flushed ${result.flushed} session(s) missing on disk (db=${result.dbCount}, disk=${result.diskCount})`
+        )
+      }
+      if (result.skippedMissingScan) {
+        console.warn(
+          '[MobileIncrementalSync] skipped missing-session disk backfill: active vault name unavailable'
+        )
+      }
+      const diskChanged = result.flushed > 0 || result.pendingFlushed
+      return {
+        flushed: result.flushed,
+        pendingFlushed: result.pendingFlushed,
+        diskChanged
+      }
+    } catch (e: unknown) {
+      console.warn('[MobileIncrementalSync] prepareSessionsForSyncScan failed:', e)
+      return { flushed: 0, pendingFlushed: false, diskChanged: false }
+    }
+  }
+
   async planSync(
     context: {
       registeredVaults: string[]
@@ -323,6 +366,7 @@ export class MobileIncrementalSyncService {
         )
       )
     }
+    await this.prepareSessionsForSyncScan(context.activeVaultName)
     return this.engine.planSync(config, context, runOptions, (progress) => onProgress?.(progress))
   }
 
@@ -340,6 +384,10 @@ export class MobileIncrementalSyncService {
 
   endPlanSession(): void {
     this.engine.endPlanSession()
+  }
+
+  discardPendingLocalManifest(): void {
+    this.engine.discardPendingLocalManifest()
   }
 
   finalizePlanSession(): void {
@@ -388,7 +436,11 @@ export class MobileIncrementalSyncService {
     }
 
     try {
-      await this.sessionManager?.flushPendingDiskWrites()
+      const prep = await this.prepareSessionsForSyncScan()
+      // 仅当磁盘相对规划时发生变化时作废本地 pending；保留远端 pending，减少确认/执行不一致
+      if (prep.diskChanged) {
+        this.engine.discardPendingLocalManifest()
+      }
     } catch (e: unknown) {
       console.warn('[MobileIncrementalSync] session flushPending before sync failed:', e)
     }
