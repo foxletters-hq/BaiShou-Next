@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   deleteMarkdownRange,
   isLikelyEditorBundleLeak,
+  isStaleControlledContentEcho,
   looksLikeExternalContentReplace,
   commonPrefixLength
 } from '../diary-cm-content.util'
@@ -44,5 +45,20 @@ describe('looksLikeExternalContentReplace', () => {
 
   it('counts shared prefix length', () => {
     expect(commonPrefixLength('abcdef', 'abcxyz')).toBe(3)
+  })
+})
+
+describe('isStaleControlledContentEcho', () => {
+  it('detects RN lagging behind rapid delete', () => {
+    expect(isStaleControlledContentEcho('hello worl', 'hello world')).toBe(true)
+    expect(isStaleControlledContentEcho('', 'hello')).toBe(true)
+  })
+
+  it('detects RN lagging behind typing', () => {
+    expect(isStaleControlledContentEcho('hello!', 'hello')).toBe(true)
+  })
+
+  it('allows unrelated document swaps', () => {
+    expect(isStaleControlledContentEcho('hello world', '完全不同的日记正文')).toBe(false)
   })
 })

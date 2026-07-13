@@ -30,6 +30,15 @@ export function setContent(content: string): void {
   const current = diaryEditorState.view.state.doc.toString()
   if (content === current) return
 
+  // 聚焦编辑中：拒绝「把已删后缀塞回来」的滞后 RN setContent（长按删除时光标会跑到文字前）
+  if (
+    diaryEditorState.view.hasFocus &&
+    content.length > current.length &&
+    content.startsWith(current)
+  ) {
+    return
+  }
+
   const { anchor, head } = diaryEditorState.view.state.selection.main
   const scrollTop = diaryEditorState.view.scrollDOM.scrollTop
   const mapPos = (pos: number) => Math.max(0, Math.min(pos, content.length))

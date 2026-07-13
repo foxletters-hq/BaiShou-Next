@@ -17,7 +17,11 @@ import {
   type DiaryTagColorRegistry
 } from '../../shared/diary-codemirror/types'
 import { DiaryCmAttachmentUrlCache } from './diary-cm-attachment-url-cache'
-import { isLikelyEditorBundleLeak, looksLikeExternalContentReplace } from './diary-cm-content.util'
+import {
+  isLikelyEditorBundleLeak,
+  isStaleControlledContentEcho,
+  looksLikeExternalContentReplace
+} from './diary-cm-content.util'
 
 interface PendingUrlRequest {
   timeoutId: ReturnType<typeof setTimeout>
@@ -438,6 +442,8 @@ export function useDiaryCodeMirrorBridge(
 
     if (webViewOwnsContentRef.current) {
       const prev = lastWebViewContentRef.current ?? ''
+      // 长按删除等：WebView 领先时，禁止把 RN 滞后正文回写（否则光标跑到文字前面）
+      if (isStaleControlledContentEcho(prev, content)) return
       if (!looksLikeExternalContentReplace(prev, content)) return
     }
 

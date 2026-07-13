@@ -170,6 +170,27 @@ describe('useDiaryCodeMirrorBridge echo suppress', () => {
     expect(postedMessages(postMessage).some((m) => m.type === 'setContent')).toBe(false)
   })
 
+  it('does not push setContent after WebView deletes to empty while RN still has text', () => {
+    const onChange = vi.fn()
+    const { result, rerender } = renderHook(
+      ({ content }) => useDiaryCodeMirrorBridge({ content, theme, onChange }),
+      { initialProps: { content: '残留正文' } }
+    )
+    const postMessage = attachMockWebView(result.current)
+    markReady(result.current)
+    postMessage.mockClear()
+
+    sendFromWebView(result.current, {
+      type: 'change',
+      payload: { content: '' }
+    })
+    expect(onChange).toHaveBeenCalledWith('')
+
+    // pushSetContent 引用变化或父级重渲染时，空文档也不能被旧正文覆盖
+    rerender({ content: '残留正文' })
+    expect(postedMessages(postMessage).some((m) => m.type === 'setContent')).toBe(false)
+  })
+
   it('does not suppress unrelated change after echo was consumed', () => {
     const onChange = vi.fn()
     const { result, rerender } = renderHook(

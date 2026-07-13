@@ -30,6 +30,25 @@ export function commonPrefixLength(a: string, b: string): number {
   return i
 }
 
+/**
+ * RN 受控 content 落后于 WebView 时的回声。
+ * 长按删除时 WebView 已更短，RN 若把更长旧正文 setContent 回去，光标会停在已删位置、文字却重现。
+ */
+export function isStaleControlledContentEcho(webViewContent: string, rnContent: string): boolean {
+  if (webViewContent === rnContent) return true
+  // WebView 已删空，RN 仍持有旧正文
+  if (webViewContent.length === 0 && rnContent.length > 0) return true
+  // 删除超前：RN 更长且以 WebView 正文为前缀（准备把已删后缀塞回）
+  if (webViewContent.length < rnContent.length && rnContent.startsWith(webViewContent)) {
+    return true
+  }
+  // 输入超前：WebView 更长且以 RN 为前缀
+  if (rnContent.length < webViewContent.length && webViewContent.startsWith(rnContent)) {
+    return true
+  }
+  return false
+}
+
 /** RN 与 WebView 内容差异是否像切换日记等外部替换，而非用户正在输入 */
 export function looksLikeExternalContentReplace(prev: string, next: string): boolean {
   if (prev === next) return false
