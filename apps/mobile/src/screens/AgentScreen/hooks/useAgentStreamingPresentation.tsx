@@ -346,13 +346,26 @@ export function useAgentStreamingPresentation(deps: {
   useLayoutEffect(() => {
     if (prevHoldLiveRef.current && !holdLivePresentation) {
       setKeepLiveRowAfterHold(true)
+      logAgentScrollEvent('hold_live_end_finalize_handoff', {
+        offsetY: Math.round(scrollOffsetRef.current),
+        messageId: lastMessage?.id,
+        assistantPersistedInList,
+        contentAnchorMinHeight: contentAnchorMinHeight ?? 0
+      })
       finalizeContentHandoff()
       requestAnimationFrame(() => {
         setKeepLiveRowAfterHold(false)
       })
     }
     prevHoldLiveRef.current = holdLivePresentation
-  }, [holdLivePresentation, finalizeContentHandoff])
+  }, [
+    holdLivePresentation,
+    finalizeContentHandoff,
+    scrollOffsetRef,
+    lastMessage?.id,
+    assistantPersistedInList,
+    contentAnchorMinHeight
+  ])
 
   const listContentStyle = useMemo(() => {
     const showEmptyState = !isStreaming && !isStreamBridgeActive && messages.length === 0

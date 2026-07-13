@@ -1,6 +1,6 @@
 import { appendDiagnosticBreadcrumb } from '../services/mobile-diagnostic-log.service'
 
-const MAX_RECENT_EVENTS = 40
+const MAX_RECENT_EVENTS = 80
 const recentEvents: string[] = []
 
 export type AgentScrollDebugContext = {
@@ -14,6 +14,21 @@ export type AgentScrollDebugContext = {
   assistantPersistedInList?: boolean
   followMode?: string
   newestRole?: string
+  /** 输出结束后短窗：用于标出「结束期拽底」嫌疑事件 */
+  postStreamWatch?: boolean
+}
+
+/** 列表 offset / 内容高度快照，便于对照钳位 */
+export type AgentScrollSnapshot = {
+  offsetY?: number
+  contentH?: number
+  viewportH?: number
+  maxOffset?: number
+  nearBottom?: boolean
+  lockedAway?: boolean
+  followMode?: string
+  anchorMinH?: number
+  peakContentH?: number
 }
 
 let debugContext: AgentScrollDebugContext = {}

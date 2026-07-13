@@ -19,7 +19,6 @@ export function useAgentScreenInteractions(deps: {
   inputBarRef: RefObject<InputBarRef | null>
   flatListRef: RefObject<ScrollView | null>
   handleComposerFocus: () => void
-  scrollToBottom: (listRef: RefObject<ScrollView | null>, animated?: boolean) => void
   beginFollowIfAtBottom: (listRef: RefObject<ScrollView | null>) => void
   handleSend: (text: string, attachments?: unknown[], sendSearchMode?: boolean) => Promise<boolean>
   setShowShortcutSheet: (open: boolean) => void
@@ -38,7 +37,6 @@ export function useAgentScreenInteractions(deps: {
     inputBarRef,
     flatListRef,
     handleComposerFocus,
-    scrollToBottom,
     beginFollowIfAtBottom,
     handleSend,
     setShowShortcutSheet,
@@ -57,8 +55,9 @@ export function useAgentScreenInteractions(deps: {
 
   const handleInputBarFocus = useCallback(() => {
     handleComposerFocus()
-    requestAnimationFrame(() => scrollToBottom(flatListRef, false))
-  }, [handleComposerFocus, scrollToBottom, flatListRef])
+    // 仅在已跟随底部时贴底；用户上滑阅读时聚焦输入框不应强制拽到底
+    requestAnimationFrame(() => beginFollowIfAtBottom(flatListRef))
+  }, [handleComposerFocus, beginFollowIfAtBottom, flatListRef])
 
   const handleSendWithScroll = useCallback(
     async (text: string, attachments?: unknown[], sendSearchMode?: boolean): Promise<boolean> => {

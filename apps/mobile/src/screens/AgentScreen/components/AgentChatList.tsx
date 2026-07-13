@@ -23,6 +23,7 @@ import * as Clipboard from 'expo-clipboard'
 import { AgentChatAppBar } from '../../../components/AgentChatAppBar'
 import { AgentMessageRow } from '../../../components/AgentMessageRow'
 import { AgentDrawerSwipeZone } from '../../../components/AgentDrawerSwipeZone'
+import { logAgentScrollEvent } from '../../../utils/agent-scroll-diagnostics'
 import { LIVE_ASSISTANT_STREAM_KEY } from '../agent-screen.constants'
 import { agentScreenStyles as styles } from '../agent-screen.styles'
 
@@ -180,9 +181,13 @@ export function AgentChatList(props: AgentChatListProps) {
               if (!p.layoutReadyRef.current) {
                 p.layoutReadyRef.current = true
                 if (p.messages.length > 0) {
-                  requestAnimationFrame(() =>
+                  requestAnimationFrame(() => {
+                    logAgentScrollEvent('layout_scroll_to_end', {
+                      messagesCount: p.messages.length,
+                      viewportH: height
+                    })
                     p.flatListRef.current?.scrollToEnd({ animated: false })
-                  )
+                  })
                 }
               }
             }}
