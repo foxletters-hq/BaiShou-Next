@@ -3,12 +3,18 @@ import {
   getDefaultLatteAssistantSeed,
   isAssistantCustomAvatar,
   isFactoryLatteAssistantSystemPrompt,
-  LEGACY_DEFAULT_ASSISTANT_NAMES
+  LEGACY_DEFAULT_ASSISTANT_NAMES,
+  normalizePersistedAvatarPath
 } from '@baishou/shared'
 import type { AssistantManagerService } from './assistant-manager.service'
 
 function isLegacyDefaultAssistantName(name: string): boolean {
   return (LEGACY_DEFAULT_ASSISTANT_NAMES as readonly string[]).includes(name)
+}
+
+/** findAll 可能返回 local:// 解析结果，统一后再判断是否自定义头像 */
+function hasCustomAssistantAvatar(avatarPath: string | null | undefined): boolean {
+  return isAssistantCustomAvatar(normalizePersistedAvatarPath(avatarPath) ?? avatarPath)
 }
 
 function shouldTreatAsFactoryLatteAssistant(input: {
@@ -34,7 +40,7 @@ function factoryLatteSeedMatchesAssistant(
     assistant.name === seed.name &&
     (assistant.description ?? '') === (seed.description ?? '') &&
     (assistant.systemPrompt ?? '') === (seed.systemPrompt ?? '') &&
-    (isAssistantCustomAvatar(assistant.avatarPath) || assistant.avatarPath === seed.avatarPath)
+    (hasCustomAssistantAvatar(assistant.avatarPath) || assistant.avatarPath === seed.avatarPath)
   )
 }
 
@@ -78,7 +84,9 @@ export async function ensureDefaultLatteAssistant(
     await assistantManager.update(legacyDefault.id, {
       name: seed.name,
       description: seed.description,
-      ...(isAssistantCustomAvatar(legacyDefault.avatarPath) ? {} : { avatarPath: seed.avatarPath }),
+      ...(hasCustomAssistantAvatar(legacyDefault.avatarPath)
+        ? {}
+        : { avatarPath: seed.avatarPath }),
       systemPrompt: seed.systemPrompt
     })
   }
@@ -108,7 +116,7 @@ export async function syncDefaultLatteAssistantLocale(
   await assistantManager.update(DEFAULT_LATTE_ASSISTANT_ID, {
     name: seed.name,
     description: seed.description,
-    ...(isAssistantCustomAvatar(assistant.avatarPath) ? {} : { avatarPath: seed.avatarPath }),
+    ...(hasCustomAssistantAvatar(assistant.avatarPath) ? {} : { avatarPath: seed.avatarPath }),
     systemPrompt: seed.systemPrompt
   })
 }

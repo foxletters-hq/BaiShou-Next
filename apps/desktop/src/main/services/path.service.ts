@@ -350,10 +350,20 @@ export class DesktopStoragePathService implements IStoragePathService {
   }
 
   /**
-   * 将全局 AgentAvatars 中的伙伴头像镜像进各 vault 的 Attachments/avatars，
+   * 将全局 AgentAvatars 中的伙伴头像镜像进**当前** vault 的 Attachments/avatars，
    * 使历史桌面头像进入增量同步扫描范围。
+   *
+   * 注意：只镜像到 active vault，禁止广播到所有工作区。
+   * 否则同一 agent_*.png 会在每个 vault 各留一份并上传，删云端后再次镜像又会反复「删云端/上传」。
+   *
+   * vault 是同步 SSOT：仅补缺；excludeBasenames 跳过远端已删/tombstone。
    */
-  public async mirrorGlobalAgentAvatarsIntoVaults(): Promise<void> {
+  public async mirrorGlobalAgentAvatarsIntoVaults(options?: {
+    excludeBasenames?: Iterable<string>
+  }): Promise<void> {
+    const exclude = new Set(
+      [...(options?.excludeBasenames ?? [])].map((name) => name.trim()).filter(Boolean)
+    )
     const globalDir = await this.getGlobalAgentAvatarsDirectory()
     let names: string[] = []
     try {
@@ -362,48 +372,53 @@ export class DesktopStoragePathService implements IStoragePathService {
       return
     }
     const agentFiles = names.filter(
-      (name) => name.startsWith('agent_avatar') || name.startsWith('agent_')
+      (name) => (name.startsWith('agent_avatar') || name.startsWith('agent_')) && !exclude.has(name)
     )
     if (agentFiles.length === 0) return
 
-    const vaultAvatarDirs = new Set<string>()
-    vaultAvatarDirs.add(path.normalize(await this.getAvatarsDirectory()))
-
-    const root = await this.getRootDirectory()
+    // 仅当前工作区；跨 vault 广播会造成同名头像在云端爆炸式复制
+    const vaultDir = path.normalize(await this.getAvatarsDirectory())
     try {
-      const entries = await fs.readdir(root, { withFileTypes: true })
-      for (const entry of entries) {
-        if (!entry.isDirectory() || entry.name.startsWith('.')) continue
-        vaultAvatarDirs.add(path.normalize(path.join(root, entry.name, 'Attachments', 'avatars')))
-      }
+      await fs.mkdir(vaultDir, { recursive: true })
     } catch {
-      // ignore unreadable workspace root
+      return
     }
 
-    for (const vaultDir of vaultAvatarDirs) {
+    for (const name of agentFiles) {
+      const src = path.join(globalDir, name)
+      const dest = path.join(vaultDir, name)
       try {
-        await fs.mkdir(vaultDir, { recursive: true })
+        await fs.access(dest)
       } catch {
-        continue
-      }
-      for (const name of agentFiles) {
-        const src = path.join(globalDir, name)
-        const dest = path.join(vaultDir, name)
         try {
-          const srcStat = await fs.stat(src)
-          let shouldCopy = false
-          try {
-            const destStat = await fs.stat(dest)
-            // 全局更新更晚时覆盖 vault 陈旧副本，避免解析一直命中旧头像
-            shouldCopy = srcStat.mtimeMs > destStat.mtimeMs
-          } catch {
-            shouldCopy = true
-          }
-          if (shouldCopy) {
-            await fs.copyFile(src, dest)
-          }
+          await fs.copyFile(src, dest)
         } catch {
           // skip single file
+        }
+      }
+    }
+  }
+
+  /**
+   * 删除全局与各 vault 中的指定伙伴头像文件。
+   * 用于远端 tombstone / delete-local 后，防止全局镜像再次把文件灌回 vault。
+   */
+  public async purgeAgentAvatarBasenames(basenames: Iterable<string>): Promise<void> {
+    const names = [...new Set([...basenames].map((n) => n.trim()).filter(Boolean))]
+    if (names.length === 0) return
+
+    const dirs = new Set<string>()
+    dirs.add(path.normalize(await this.getGlobalAgentAvatarsDirectory()))
+    for (const dir of await this.listAgentAvatarSearchDirectories()) {
+      dirs.add(path.normalize(dir))
+    }
+
+    for (const dir of dirs) {
+      for (const name of names) {
+        try {
+          await fs.unlink(path.join(dir, name))
+        } catch {
+          // missing is fine
         }
       }
     }

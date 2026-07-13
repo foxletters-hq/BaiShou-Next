@@ -41,13 +41,15 @@ export function isAssistantCustomAvatar(avatarPath: string | null | undefined): 
   if (!avatarPath) return false
   const trimmed = avatarPath.trim()
   if (!trimmed || isDefaultAssistantAvatarPath(trimmed)) return false
-  return isAssistantAvatarRelativePath(trimmed) || isAssistantAvatarDirectUri(trimmed)
+  if (isAssistantAvatarRelativePath(trimmed) || isAssistantAvatarDirectUri(trimmed)) return true
+  // findAll 可能已 resolve 为 local://…/avatars/… 或绝对路径，仍视为自定义
+  return Boolean(extractAvatarsRelativeKey(trimmed))
 }
 
-/** 是否可直接作为 Image uri 使用（file://、content:// 等） */
+/** 是否可直接作为 Image uri 使用（file://、local://、content:// 等） */
 export function isAssistantAvatarDirectUri(avatarPath: string | null | undefined): boolean {
   if (!avatarPath) return false
-  return /^(file:|content:|https?:|data:)/i.test(avatarPath)
+  return /^(file:|local:|secure-file:|content:|https?:|data:)/i.test(avatarPath)
 }
 
 /** 从 local:// 或绝对路径中提取 `avatars/…` 相对键 */
@@ -77,6 +79,30 @@ export function normalizePersistedAvatarPath(
 export function isUserAvatarRelativePath(relativePath: string): boolean {
   const filename = relativePath.split(/[/\\]/).pop() || relativePath
   return filename.startsWith('user_avatar')
+}
+
+/** 同步相对路径是否为伙伴头像文件（Attachments/avatars/agent_*） */
+export function isSyncedAgentAvatarFilePath(relPath: string): boolean {
+  const normalized = relPath.replace(/\\/g, '/')
+  const base = normalized.split('/').pop() || ''
+  if (!base.startsWith('agent_')) return false
+  return /\/Attachments\/avatars\//i.test(`/${normalized}`)
+}
+
+/** 从同步相对路径取出伙伴头像文件名；非伙伴头像返回 null */
+export function syncedAgentAvatarBasename(relPath: string): string | null {
+  if (!isSyncedAgentAvatarFilePath(relPath)) return null
+  return relPath.replace(/\\/g, '/').split('/').pop() || null
+}
+
+/** 从 removed / 路径列表收集伙伴头像 basename */
+export function collectSyncedAgentAvatarBasenames(paths: Iterable<string>): string[] {
+  const out = new Set<string>()
+  for (const filePath of paths) {
+    const base = syncedAgentAvatarBasename(filePath)
+    if (base) out.add(base)
+  }
+  return [...out]
 }
 
 export { BUILTIN_ASSISTANT_AVATAR_PREFIX }

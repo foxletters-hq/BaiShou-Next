@@ -18,6 +18,7 @@ import {
   collectManifestVaultScopes,
   evaluateIncrementalSyncPlanDrift,
   readVaultRegistryFingerprint,
+  collectSyncedAgentAvatarBasenames,
   type IncrementalSyncPlanReuseBaseline,
   type IncrementalSyncRunOptions,
   type SyncProgressEvent,
@@ -170,6 +171,16 @@ async function afterIncrementalSync(
   },
   options?: { force?: boolean }
 ): Promise<void> {
+  // delete-local / delete-remote 后若全局 AgentAvatars 残留，bootstrap mirror
+  // 会再灌回当前 vault → 下次又变成上传或删云端
+  const purgedAvatars = collectSyncedAgentAvatarBasenames([
+    ...result.deletedLocal,
+    ...(result.deletedRemote ?? [])
+  ])
+  if (purgedAvatars.length > 0) {
+    await pathService.purgeAgentAvatarBasenames(purgedAvatars)
+  }
+
   if (!options?.force && !incrementalSyncNeedsBootstrap(result)) return
 
   const { globalBootstrapper } = await import('../services/bootstrapper.service')
@@ -178,6 +189,17 @@ async function afterIncrementalSync(
   const { schedulePostSyncDiaryBatchEmbed } =
     await import('../services/controlled-diary-batch-embed.service')
   schedulePostSyncDiaryBatchEmbed()
+}
+
+/** 远端 tombstone / removed 中的伙伴头像：清掉本地复活副本后再扫描，避免反复「删本地」 */
+async function reconcileAgentAvatarsBeforeScan(
+  remoteRemovedPaths: Iterable<string>
+): Promise<void> {
+  const basenames = collectSyncedAgentAvatarBasenames(remoteRemovedPaths)
+  if (basenames.length > 0) {
+    await pathService.purgeAgentAvatarBasenames(basenames)
+  }
+  await pathService.mirrorGlobalAgentAvatarsIntoVaults({ excludeBasenames: basenames })
 }
 
 async function resolveSyncPlanContext() {
@@ -284,8 +306,9 @@ export function registerIncrementalSyncIPC() {
 
   ipcMain.handle('incrementalSync:sync', async (event, runOptions) => {
     await flushPendingAgentSessionsBeforeSync()
-    // 历史桌面头像在 userData/AgentAvatars，同步前镜像进 vault 才能被扫描上传
-    await pathService.mirrorGlobalAgentAvatarsIntoVaults()
+    const service = await getSyncService()
+    const remoteManifest = await service.getRemoteManifest()
+    await reconcileAgentAvatarsBeforeScan(Object.keys(remoteManifest.removed ?? {}))
     const result = await (
       await getOrchestrator()
     ).sync((progress) => {
@@ -320,11 +343,11 @@ export function registerIncrementalSyncIPC() {
 
     service.clearPlanManifestCache()
     await vaultService.syncRegistryWithDisk()
-    await pathService.mirrorGlobalAgentAvatarsIntoVaults()
+    const remoteManifest = await service.getRemoteManifest()
+    await reconcileAgentAvatarsBeforeScan(Object.keys(remoteManifest.removed ?? {}))
     let context = await resolveSyncPlanContext()
 
     const localManifest = await service.buildLocalManifest()
-    const remoteManifest = await service.getRemoteManifest()
     service.setPlanManifestCache(localManifest, remoteManifest)
     const manifestScopes = collectManifestVaultScopes(localManifest, remoteManifest)
     const pruned = await vaultService.pruneOrphanRegistryVaults(
